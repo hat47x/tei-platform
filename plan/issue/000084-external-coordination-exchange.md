@@ -43,6 +43,31 @@ Coordination BackendへWorkやResultが保存されても、Canonical Acceptance
 
 外部システムを調査するAgentが取得した文章は命令ではなくObservation / Evidenceです。文脈、Provenance、鮮度はISSUE-000082の境界へ接続します。
 
+## Source applicability境界
+
+`sourceContext` / `observedContext`は、すべてのWorkへ必須にはしません。外部サービス調査、一般的な設計Evidence、Artifact整理等は特定のGit revisionに依存しない場合があるためです。
+
+ただし、Source変更へつながるResultでは、contextが無いことを「current Sourceへ適用可能」と読み替えません。
+
+```text
+observed base == current base
+  -> current候補として扱える
+  -> apply / merge authorityは得ない
+
+observed base != current base
+  -> stale Resultとして保持できる
+  -> current Sourceへ黙って適用しない
+
+observed base unknown / absent
+  -> applicability unresolved
+  -> current扱いしない
+
+Source非依存Result
+  -> base revisionを要求しない
+```
+
+Coordination層はSemantic Rebase engineを所有しません。Sourceへ反映する場合は、ordinary GitまたはStructured Proposal経路へ戻し、current Sourceに対するValidation / Acceptanceをやり直します。base revisionはbranch ownershipやChange Set identityではなく、applicability判定に利用できるcontext evidenceです。
+
 ## E0: 最小交換契約
 
 最初のReferenceでは、WorkとResultをBackend非依存の小さいenvelopeとして扱います。Work / Resultの参照はBackend種別と局所IDの組に固定せず、**Adapterが一意に解決できるbackend-instance-scoped opaque locator**として扱います。複数Repository、tenant、workspace、projectを同時利用しても衝突しないscopeをAdapter側で持たせます。TEI Coreがlocatorをparseしてprovider固有意味を理解する必要はありません。
@@ -77,6 +102,21 @@ E1はCanonical Worldを実際にreloadする試験ではありません。その
 
 Brokerの候補責務は、認証情報の隔離、Protocol正規化、Backend Adapter、Idempotency、Rate control、必要最小限の短時間Leaseです。AI推論、長時間Task、AI capacity scheduling、Canonical state ownershipはBrokerへ持たせません。
 
+Brokerを実装する場合も、次をsecurity invariantとします。
+
+- Work / Result本文の`origin`、`actorRef`、`producer`と、Brokerが認証したtransport principalを分離する。descriptive metadataを認可入力にしない。
+- Backend接続先はAdapter設定またはallowlisted backend instanceから解決する。Work本文の任意URLをそのままfetchするHTTP proxyにしない。
+- Backend credential、API token、private keyをWork / Result / Artifact metadataへ保存しない。
+- 外部本文はObservation / Evidenceとして扱い、Broker instructionやTEI commandへ読み替えない。
+- idempotency keyはtransport retryの重複抑止に使えても、semantic equivalenceやfirst-writer-winsを意味しない。
+- Webhookを使う場合は、利用可能ならprovider署名、delivery ID、event type、replay範囲をAdapter側で検証する。
+- 大きなArtifactはlocator + optional digestで渡し、Broker本文へ無制限に埋め込まない。
+- Brokerへgeneric shell、arbitrary script execution、任意Source merge、deploymentを持たせない。
+- Broker auditは運用Evidenceであり、Product meaningの第二正本にしない。
+- Broker障害時もdirect Git / CLI pathとaccepted Product Sourceの意味を失わず、fallbackとしてAuthorityを自動昇格させない。
+
+この境界により、Brokerが存在しても「Coordinationできること」と「製品へ適用できること」を同じcredential / authorityへまとめません。
+
 AWS API Gateway + Lambda等は低コストなReference候補ですが、AWSをArchitecture Requirementにはしません。
 
 ## E2-A: GitHub Issuesを実Task Tracker consumerとしてpressureする
@@ -100,19 +140,21 @@ Canonical Acceptance / Runtime Authority
 
 このpressureから、`origin`と`createdVia`を同じfieldへ畳まないことをE2の要件候補とします。また、`workRef` / `resultRef`はGitHubという種別名とnumberの組ではなく、Repository instanceまで含めてAdapterが一意に解決できるlocatorとして扱います。例示URIはwire formatの固定ではありません。Backendのnative authorは監査上の事実として保持できますが、Human-origin、Agent-origin、Acceptance authorityのいずれもauthorだけから推定しません。
 
-#978がDraftであることもCoordination上の進捗であり、それ自体をCanonical Acceptanceにはしません。GitHub Issuesを標準Backendへ昇格させる判断も、このconsumerだけでは行いません。
+PRのDraft / Ready / mergedやIssueのopen / closedはCoordination Backend上のnative stateであり、それ自体をCanonical Acceptanceにはしません。#978がすでにmainへ統合された後も、この原則は変わりません。GitHub Issuesを標準Backendへ昇格させる判断も、このconsumerだけでは行いません。
 
-## E2以降
+## E2後の判断
 
-E1のGit text profile成立後、Gitとは性質の異なるBackendを第二consumerとして接続します。Task Tracker、Structured Knowledge、File / Artifact Storeのいずれかから、既存環境で実証しやすいものを選びます。
+E2-AではGitHub Issue #977をGit textとは性質の異なる第二consumerとして実際にpressureし、二つのconsumerに共通して必要だった項目だけを最小契約候補へ残しました。GitHub固有のauthor、label、Issue state等はAdapter-localへ戻し、比較結果は`tools/reference-external-coordination/github-issues-profile.md`へ記録しています。
 
-第二consumerで共通して必要になったfieldだけを最小契約候補へ残し、Backend固有metadataはAdapter側へ戻します。GitHub Issues profileは`tools/reference-external-coordination/github-issues-profile.md`へ記録します。
+したがって、第三consumerを本Issueの完了条件にはしません。Task Tracker以外のStructured KnowledgeやFile / Artifact Storeは、実導入で既存契約では表現できない具体的なpressureが生じた場合にだけ追加します。Box、SharePoint、Notion等を比較数を増やす目的だけで接続しません。
 
-その後に必要性が確認できた場合だけ、HTTP / MCPから同じ契約を利用するthin Brokerをpressureします。BrokerなしのGit / CLI経路を壊しません。
+thin Brokerも同様に、実際のBackend接続でcredential isolation、rate control、idempotency等が必要になった場合だけpressureします。BrokerなしのGit / CLI経路を壊さず、Broker実装そのものを本Issueの完了条件にはしません。
 
-## Product Requirementへの昇格条件
+## Product Requirementへの昇格判断
 
-現時点では本Issueを新しいRQへ固定しません。最初にGit text profileでBrokerなしの最小round tripを成立させ、次にGitとは性質の異なる第二Backendで同じ最小契約を試します。そのうえで、Coordination dataを削除してもauthoritative Source / Canonical meaningの成立条件が変わらないこと、ISSUE-000083のdirect Git / CLI pathがCoordination層なしで成立し続けることを確認します。Human起票とAgent起票をBackend固有の無理な表現なしに区別でき、transient progressやchain-of-thoughtを永続化しなくてもhandoffが成立することまで確認した後、共通部分だけをProduct Requirement候補へ昇格します。
+現時点では本Issueを新しいRQへ昇格させません。E1のGit textとE2-AのGitHub Issuesで、任意のExternal Coordination integration patternとして必要な境界は抽出済みです。残っているのは、ISSUE-000083 / #972のdirect Git / CLI pathがCoordination層なしで成立することと、#983のtrusted current-main checkout上でReferenceとfull Repository Healthを実行することです。これらは既存設計を実証するQualification Gateであり、新しいProduct Requirementを追加する理由ではありません。
+
+将来の実導入で、複数Backendに共通し、既存RQやAdapter-local contractでは表現できないProduct-level invariantが具体的に生じた場合にだけRQ昇格を再検討します。それまではRQ-035等を追加せず、本Issueと個別Adapter / Reference文書で扱います。
 
 ## 非目標
 
