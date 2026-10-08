@@ -46,7 +46,7 @@ func TestClassificationCoverageRejectsNamespacedLookalike(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract := []byte(`{"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
+	contract := []byte(`{"sourceProfiles":{"xead":{"rootKind":"System","supportedFormatVersions":["1.2"]}},"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
 	coverage, err := CheckClassificationCoverage(FormatXead, doc, contract)
 	if err != nil {
 		t.Fatal(err)
