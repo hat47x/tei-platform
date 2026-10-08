@@ -213,10 +213,11 @@ func TestGateBUnifiedSyntheticScenarioReplaysOrderEntryWithoutUI(t *testing.T) {
 	evidence.Steps = append(evidence.Steps, "header-detail")
 
 	// line_number_positiveは先頭の受注明細を評価する。その行番号は、header-detailで読んだ行から取る（fixtureの値を前提にしない）。
-	orderLineNumbers := gateBScenarioLineNumbers(t, orderLines.Result.Rows)
+	// この合成行は行番号を整数で持つため、文字列へ揃えてからRatにする。
+	firstLineNumber := fmt.Sprint(orderLines.Result.Rows[0].Attributes["sales.order_line.line_number"])
 	validationSource := submitOrderValidationSource{
 		quantity:    lineQuantity,
-		lineNumber:  mustRat(t, orderLineNumbers[0]),
+		lineNumber:  mustRat(t, firstLineNumber),
 		lineNumbers: []string{"1", "2"},
 	}
 	for _, rule := range orderEntryValidations(t, world) {
