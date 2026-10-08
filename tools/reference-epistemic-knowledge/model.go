@@ -218,8 +218,9 @@ type Assertion struct {
 	Context            []ScopeBinding `json:"context,omitempty"`
 	ValidFrom          string         `json:"validFrom,omitempty"`
 	ValidUntil         string         `json:"validUntil,omitempty"`
-	CheckedAt          string         `json:"checkedAt,omitempty"`
-	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
+	CheckedAt                 string         `json:"checkedAt,omitempty"`
+	CheckedSubjectFingerprint string         `json:"checkedSubjectFingerprint,omitempty"`
+	Evidence                  []EvidenceRef  `json:"evidence,omitempty"`
 	ReviewEvents       []ReviewEvent  `json:"reviewEvents,omitempty"`
 	AccessRefs         []string       `json:"accessRefs,omitempty"`
 	Supersedes         []string       `json:"supersedes,omitempty"`
@@ -470,6 +471,8 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 	a.ID = strings.TrimSpace(a.ID)
 	a.Text = strings.TrimSpace(a.Text)
 	a.MeaningFingerprint = strings.TrimSpace(a.MeaningFingerprint)
+	a.CheckedAt = strings.TrimSpace(a.CheckedAt)
+	a.CheckedSubjectFingerprint = strings.TrimSpace(a.CheckedSubjectFingerprint)
 	if a.ID == "" || a.Text == "" {
 		return a, fmt.Errorf("id / text are required")
 	}
@@ -501,6 +504,13 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 	}
 	if err := validateOptionalTime("checkedAt", a.CheckedAt); err != nil {
 		return a, err
+	}
+	if a.CheckedAt != "" {
+		if !sha256Pattern.MatchString(a.CheckedSubjectFingerprint) {
+			return a, fmt.Errorf("checkedAt requires exact checkedSubjectFingerprint")
+		}
+	} else if a.CheckedSubjectFingerprint != "" {
+		return a, fmt.Errorf("checkedSubjectFingerprint requires checkedAt")
 	}
 	if a.ValidFrom != "" && a.ValidUntil != "" {
 		from, _ := time.Parse(time.RFC3339, a.ValidFrom)
@@ -777,6 +787,32 @@ func reviewSubjectFingerprint(assertion Assertion) string {
 	subject.ReviewEvents = nil
 	subject.ReviewerCandidates = nil
 	subject.AccessRefs = nil
+	encoded, _ := json.Marshal(subject)
+	sum := sha256.Sum256(encoded)
+	return fmt.Sprintf("sha256:%x", sum[:])
+}
+
+
+type freshnessSubject struct {
+	MeaningFingerprint string         `json:"meaningFingerprint"`
+	Target             TargetRef      `json:"target"`
+	StatementKind      AssertionMode  `json:"statementKind"`
+	Context            []ScopeBinding `json:"context,omitempty"`
+	ValidFrom          string         `json:"validFrom,omitempty"`
+	ValidUntil         string         `json:"validUntil,omitempty"`
+	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
+}
+
+func freshnessSubjectFingerprint(assertion Assertion) string {
+	subject := freshnessSubject{
+		MeaningFingerprint: assertion.MeaningFingerprint,
+		Target:             assertion.Target,
+		StatementKind:      assertion.Mode,
+		Context:            append([]ScopeBinding{}, assertion.Context...),
+		ValidFrom:          assertion.ValidFrom,
+		ValidUntil:         assertion.ValidUntil,
+		Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
+	}
 	encoded, _ := json.Marshal(subject)
 	sum := sha256.Sum256(encoded)
 	return fmt.Sprintf("sha256:%x", sum[:])
