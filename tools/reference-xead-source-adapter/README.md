@@ -96,3 +96,9 @@ Evidenceはexact source artifact digest、FormatVersion、name-independent sourc
 `VerifyTranscriptionCandidateEvidence`は同じexternal sourceとmapping contractからEvidenceを再構成します。source bytes、node位置、mapping contractのいずれかが変わった場合はstaleとして拒否します。
 
 このEvidenceはCanonical Acceptance、human Decision witness、Source Adapter Conformance、Runtime Authorityを与えません。Shared Acceptanceへのtyped artifact接続はGitHub #1008 / #267側で扱います。
+
+## Duplicate attribute
+
+`encoding/xml`がtokenとして返すduplicate attributeをmapへ黙って上書きしません。同じexpanded nameのattributeが一つのelement内で重複した場合、`Observe`はparser-invalidとしてエラーにします。
+
+特に`FormatVersion`の重複をfirst-wins / last-winsで解決するとsource profile判定を攻撃・誤判定できるため、semantic mappingへ到達する前に停止します。
