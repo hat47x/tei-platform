@@ -295,3 +295,75 @@ func TestReferenceCommandScenarioEvaluatesPositiveRuleOnEveryOrderLine(t *testin
 		t.Fatalf("invalid second line reached downstream: %+v", result)
 	}
 }
+
+func TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines(t *testing.T) {
+	dir := workspaceWithUnitPriceRule(t)
+	loaded, err := workspace.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(), readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(read.OrderLineRows) < 2 {
+		t.Fatal("scratch fixture does not have at least two order lines")
+	}
+	// Remove the new rule's attribute from the second line. Unknown data must
+	// be an execution error, never a successful validation or business denial.
+	var kept []semanticValueProjection
+	for _, attr := range read.OrderLineRows[1].Attributes {
+		if attr.Attribute != "sales.order_line.unit_price" {
+			kept = append(kept, attr)
+		}
+	}
+	read.OrderLineRows[1].Attributes = kept
+	runner, err := newReferenceCommandScenarioRunner(loaded.World,
+		legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.read = staticReadScenarioRunner{result: read}
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID: "legacy-order-editor", Credential: "editor-secret",
+		From: "2026-09-18T08:30:00Z", RowIndex: 0,
+	})
+	if err == nil || !strings.Contains(err.Error(), "order line 1") {
+		t.Fatalf("missing second-line price did not stop evaluation: stage=%s error=%v", result.Stage, err)
+	}
+	if result.Command != nil || result.Observation != nil {
+		t.Fatalf("missing price reached downstream side effects: %+v", result)
+	}
+}
+
+func TestReferenceCommandScenarioFailsClosedForEmptyOrderLineCollection(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(), readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	read.OrderLineRows = nil
+	runner, err := newReferenceCommandScenarioRunner(loaded.World,
+		legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.read = staticReadScenarioRunner{result: read}
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID: "legacy-order-editor", Credential: "editor-secret",
+		From: "2026-09-18T08:30:00Z", RowIndex: 0,
+	})
+	if err == nil || !strings.Contains(err.Error(), "empty order-line collection") {
+		t.Fatalf("empty detail did not fail closed: stage=%s error=%v", result.Stage, err)
+	}
+	if result.Command != nil || result.Observation != nil {
+		t.Fatalf("empty detail reached downstream side effects: %+v", result)
+	}
+}
