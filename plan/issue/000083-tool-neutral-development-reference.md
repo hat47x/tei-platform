@@ -191,7 +191,7 @@ tool-neutral development reference: PASS
 確認結果:
 
 - exact `--expected-head` / `--expected-main`が一致し、expected mainをcandidateが含む正常系はPASSした
-- 出力にcandidate head、origin/main、repository-health PASS、Reference PASSが含まれた
+- 出力にcandidate head、origin/main、`candidate-contains-expected-main=true`、repository-health PASS、Reference PASSが含まれる
 - 誤った`--expected-head`はexit 1でfail closedした
 - dirty pre-stateもexit 1でfail closedした
 - `origin/main == --expected-main`でも、そのmainがcandidate HEADのancestorでないsibling historyはexit 1でfail closedした
