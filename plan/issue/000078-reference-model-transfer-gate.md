@@ -318,7 +318,7 @@ FunctionUsedByThisは289 edgeすべてがstructurally resolveする一方、9 Fu
 
 両方を同じbranchへ先に混ぜない。exact-head Gateを先に通過したPRをmainへ統合し、後続PRはそのmainへ同期して共有JSONを機械的に統合した後、focused / full Gate Evidenceを取り直す。
 
-Source Adapter / RMT転写レーンはRMP-040〜050・052〜054、RML-022〜025・027〜029を使用する。既存`internal/xeadsource` hardeningレーンはRMP-037〜039・051、RML-019〜021・026を使用する。IDを再利用せず、main同期時にも双方のEvidenceを保持する。
+Source Adapter / RMT転写レーンはRMP-040〜050・052〜055、RML-022〜025・027〜030を使用する。既存`internal/xeadsource` hardeningレーンはRMP-037〜039・051、RML-019〜021・026を使用する。IDを再利用せず、main同期時にも双方のEvidenceを保持する。
 
 ### Source format profile Gate
 
@@ -361,3 +361,9 @@ GitHub #1008がこのwork unitを所有する。RMT側のtyped Evidence生成と
 Go `encoding/xml`がduplicate attributeをtoken化しても、Source Adapter側でmap overwriteへ正規化しない。同じexpanded nameのattribute重複はObserve時点でparser-invalidとして拒否する。
 
 RMP-054 / RML-029として、`FormatVersion`重複とnamespace-qualified duplicate attributeをadversarial caseに固定する。first/last valueの選択は行わない。
+
+### Single XML document Gate
+
+Go `encoding/xml`は複数top-level elementやroot外CharDataをtoken streamとして受理できる。Source Adapterは一つのartifactを一つのXead / Xeaf documentとして扱うため、root elementをちょうど一つに制限する。
+
+RMP-055 / RML-030として、multiple root、leading/trailing non-whitespace text、rootless inputをparser-invalidとして拒否し、root前後の空白だけを許容する。source profile判定対象とclassification対象node集合を分裂させない。
