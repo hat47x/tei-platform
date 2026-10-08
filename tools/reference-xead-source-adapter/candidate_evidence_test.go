@@ -159,13 +159,13 @@ func TestVerifyTranscriptionCandidateEvidenceResolvesRecordedTokenWithoutOrdinal
 		t.Fatalf("Evidence could not be replayed from its own source token: %v", err)
 	}
 
-	recorded.SourceToken = sourceNodeToken(doc.ArtifactSHA256, 2)
+	recorded.SourceToken = "sha256:" + strings.Repeat("f", 64)
 	recorded, err = rmtevidence.Prepare(recorded)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, contract, recorded); err == nil ||
-		!strings.Contains(err.Error(), "mapping contract") {
-		t.Fatalf("token rebound to a different node was accepted: %v", err)
+		!strings.Contains(err.Error(), "does not resolve") {
+		t.Fatalf("nonexistent source token was accepted: %v", err)
 	}
 }
