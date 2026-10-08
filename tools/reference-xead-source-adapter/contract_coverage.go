@@ -20,9 +20,9 @@ type ClassificationCoverage struct {
 	AuthorityLimits           []string     `json:"authorityLimits"`
 }
 
-func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt, contractBytes []byte) (ClassificationCoverage, error) {
-	if format != receipt.Format {
-		return ClassificationCoverage{}, fmt.Errorf("receipt format %s does not match requested format %s", receipt.Format, format)
+func CheckClassificationCoverage(format SourceFormat, doc ObservedDocument, contractBytes []byte) (ClassificationCoverage, error) {
+	if format != doc.Format {
+		return ClassificationCoverage{}, fmt.Errorf("observed document format %s does not match requested format %s", doc.Format, format)
 	}
 	mapped, err := parseConstructMappings(format, contractBytes)
 	if err != nil {
@@ -38,9 +38,19 @@ func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt
 	}
 	sum := sha256.Sum256(contractBytes)
 	coverage.ContractSHA256 = hex.EncodeToString(sum[:])
-	for kind := range receipt.ObservedElementCounts {
+	observedCounts := map[string]int{}
+	knownCounts := map[string]int{}
+	for _, node := range doc.Nodes {
+		observedCounts[node.Kind]++
+		if node.Known {
+			knownCounts[node.Kind]++
+		} else {
+			coverage.UnknownObservedElements++
+		}
+	}
+	for kind := range observedCounts {
 		coverage.ObservedKindCount++
-		if _, exists := mapped[kind]; exists && receipt.ElementCounts[kind] > 0 {
+		if _, exists := mapped[kind]; exists && knownCounts[kind] > 0 {
 			coverage.MappedObservedKindCount++
 			continue
 		}
@@ -50,11 +60,10 @@ func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt
 		}
 	}
 	for kind := range mapped {
-		if _, observed := receipt.ElementCounts[kind]; !observed {
+		if knownCounts[kind] == 0 {
 			coverage.UnobservedMappedKinds = append(coverage.UnobservedMappedKinds, kind)
 		}
 	}
-	coverage.UnknownObservedElements = receipt.UnknownElementCount
 	sort.Strings(coverage.UnmappedObservedKinds)
 	sort.Strings(coverage.UnobservedMappedKinds)
 	coverage.Complete = coverage.UnmappedObservedKindCount == 0 && coverage.UnknownObservedElements == 0
