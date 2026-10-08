@@ -464,3 +464,38 @@ func TestCommandValidationRelationKeysRejectsBlankKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceCommandScenarioRejectsBlankRelationKeyBeforeCommand(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(), readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(read.OrderLineRows) < 2 {
+		t.Fatal("at least two order lines are required")
+	}
+	if !setSemanticRowValue(&read.OrderLineRows[1], "sales.order_line.line_number", "  ") {
+		t.Fatal("second order line has no line_number attribute")
+	}
+	runner, err := newReferenceCommandScenarioRunner(loaded.World,
+		legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.read = staticReadScenarioRunner{result: read}
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID: "legacy-order-editor", Credential: "editor-secret",
+		From: "2026-09-18T08:30:00Z", RowIndex: 0,
+	})
+	if err == nil || !strings.Contains(err.Error(), "blank key") {
+		t.Fatalf("blank relation key escaped validation: stage=%s error=%v", result.Stage, err)
+	}
+	if result.Stage != "validation" || result.Command != nil || result.Observation != nil {
+		t.Fatalf("blank relation key reached downstream effects: %+v", result)
+	}
+}
