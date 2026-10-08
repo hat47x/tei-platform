@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -179,11 +178,13 @@ func TestBoundaryViolationClassification(t *testing.T) {
 }
 
 func TestProductionDependencyBoundaries(t *testing.T) {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate repository guard source")
+	// Go test starts each package with its source directory as the working
+	// directory. Unlike runtime.Caller, this is also reliable with -trimpath.
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
 	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
+	root := filepath.Clean(filepath.Join(wd, "..", ".."))
 	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
 		t.Fatalf("repository root unavailable: %v", err)
 	}
