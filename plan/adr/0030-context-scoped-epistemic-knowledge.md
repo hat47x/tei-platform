@@ -135,7 +135,7 @@ similarity、model confidence、retrieval rankをTruthや確認済み状態へ�
 
 確認、条件付き確認、否定、撤回等は履歴として追記し、現在の確認状態は対象となる意味、適用範囲、時点、確認イベントから導出する構造を優先します。人間が内容を確認したことと、その人に組織上の決定Authorityがあることも分けます。
 
-確認イベントは本文のmeaningだけへ結び付けません。Referenceでは、確認時点のstatement kind、context binding、target identityもsnapshotとして保持します。本文が同じでも、factをhypothesisへ変えた、project scopeを広げた、別subjectへtarget identityを付け替えた場合は、旧確認を現在値へ継承せずstaleとして再確認対象へ戻します。
+確認イベントは本文のmeaningだけへ結び付けません。Referenceでは、確認時点のstatement kind、context binding、target identity、validity windowもsnapshotとして保持します。本文が同じでも、factをhypothesisへ変えた、project scopeを広げた、別subjectへtarget identityを付け替えた、validUntilを延長した場合は、旧確認を現在値へ継承せずstaleとして再確認対象へ戻します。
 
 一方、確認済みを撤回することと内容を否定することも分けます。誤操作等で「確認済みではない状態へ戻す」場合はwithdraw、内容自体を退ける場合はrejectとして履歴を残します。
 
@@ -299,7 +299,7 @@ ISSUE-000082 / GitHub Issue #958では、少なくとも次を確認します。
 - 入力した主体と内容の出所を分離できる
 - observed / declared / inferred contextを区別できる
 - 複数確認イベントから現在の確認状態を導出できる
-- statement kind / context / target identityの変更で旧確認をstaleにできる
+- statement kind / context / target identity / validity windowの変更で旧確認をstaleにできる
 - withdrawとrejectを区別できる
 - annotation対象を編集後に誤って別箇所へ付け替えない
 - legacy資料やmetadata欠落を確認済みへ推定しない
