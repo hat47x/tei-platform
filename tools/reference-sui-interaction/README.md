@@ -56,3 +56,40 @@ Local execution on 2026-10-08 using Node.js v22.16.0: **11 tests passed, 0 faile
 ## Next comparison milestone
 
 Integrate the native SUI Canvas via a thin adapter; bind the `authorize / load / validate / save` ports to actual runtime mechanisms and make permission/revision checking authoritative at commit. Replay one real drag/cancel/collision flow; compare changed files, duplicated definitions, manual synchronization and user-visible behavior against the existing native SUI implementation. Only then decide whether this interface belongs in a reusable Interaction Host plugin.
+
+## E2 — SUI GET / PUT HTTP contract pressure (2026-10-08)
+
+[`sui-http-ports.mjs`](sui-http-ports.mjs) is a **real HTTP client-side adapter** for SUI's existing `GET /docs/{docId}` and `PUT /docs/{docId}` protocol. Its authority, document validation and `fetch` ports remain injected; no TEI or SUI production policy is implemented by this Reference.
+
+```sh
+node --test tools/reference-sui-interaction/sui-http-ports.test.mjs
+```
+
+Verified locally on Node.js v22.16.0: **9/9 passed**, against a loopback HTTP server implemented in the tests (no running SUI server, authentication backend or external network dependency). Git blob hashes for tested files: `sui-http-ports.mjs` `a1afc3082b98a042fe4a556e1c9850ff30cc614c`, `sui-http-ports.test.mjs` `90c01d2fc436839130bf156f03059c329bee3ac3`.
+
+Specific verifications: strong server ETag is required; missing/weak ETag fails before PUT (never silently fall back to LWW); unconditional PUT is forbidden by this adapter; `If-Match` sends the original strong tag; 409/412 stops rather than auto-retrying; caller-side authorization denial occurs before GET; provider 403 remains an explicit failure; untrusted input cannot override `If-Match`, `Cookie` or `Content-Type` through passthrough headers. The success case includes the SUI tenant-session-version precondition header, refreshes `updatedAt`, and retains holds, source hints and unknown relation values.
+
+**These tests verify the request/response contract in an HTTP double, not the actual SUI backend.** SUI's API explicitly permits LWW when `If-Match` is absent. A live SUI server test, strong ETag response verification, actual actor/tenant session policy, runtime validation and authority-at-commit are pending. The application must provide `authorize` and `validate` implementations; returning `true` unconditionally in tests is not a deployable security integration.
+
+### Native Canvas source-grounded delta (important)
+
+Inspecting SUI default-branch implementations reveals that a naive wiring of E1 into Canvas changes existing product behavior:
+
+- `03_Implement/frontend/src/canvas/CardView.tsx` calls `onMove(card.id, deltaScreenX, deltaScreenY)` on **each pointermove**. Only its own pointerup clears the drag state.
+- `CanvasShell.tsx` converts screen delta to world delta by dividing by the current zoom.
+- `App.tsx` `handleCardMove` immediately updates **in-memory** Document history and dirty state during the drag, including optional grid snapping.
+- `App.tsx` listens to both window `pointerup` and `pointercancel` through `commitCardDragSnapshot`, which groups an undo step and can **also move the card into an Island** if the drop position meets the Island bounds test.
+- Durable write occurs later on explicit `handleSave`, using `putDocument` and the app's current `docEtag`. Native pointerup ≠ SUI durable save.
+
+Consequently, the E1 `position.set` action is **not functionally equivalent** to SUI's drag transaction: it lacks screen-to-world conversion, grid snap, Island membership reconciliation, undo grouping and the existing pointercancel behavior. We must not silently replace SUI's current UI semantics or make pointer cancel abort a SUI drag without an explicit product decision. Treat these missing behaviors as a **specialized Domain Action Composition / Native Interaction binding gap**, not as a reason to put Canvas logic in TEI Core.
+
+Before considering a production adapter, add a native-event trace / contract test against these actual callbacks, decide pointercancel policy explicitly, and compare the full atomic application-owned move+membership+undo semantics, including the difference between UI-history commit and durable Document save. A generic `onMove` alone does **not** report drag start/end, so a real integration needs a lifecycle hook, a wrapper, or another explicit observation contract.
+
+### E2 non-claims
+
+- No TEI Driver or Core `Permission` binding yet.
+- No live SUI Canvas, frontend test runner or SUI backend integration yet.
+- No browser CORS, safe output, full DocumentV1 schema or performance qualification.
+- No generic Plugin ABI or production `CapabilityKind` change.
+
+The still-open gate #993 is **native component → actual application action + validator + save**, including product-equivalent behavior. E2 only retires the narrower uncertainty that the existing SUI HTTP ETag protocol can be exercised by a fail-closed client adapter.
