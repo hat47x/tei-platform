@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	"tei/internal/sourceindex"
-	"tei/tools/internal/rmtevidence"
 	semanticevidence "tei/tools/internal/semanticevidence"
 )
 
 const (
 	evidenceArtifactKindSemanticEvaluation = "semantic-evaluation"
-	evidenceArtifactKindRMTTranscription    = "rmt-transcription"
 	semanticEvaluationEvidenceSchema       = semanticevidence.Schema
 )
 
@@ -59,31 +57,6 @@ func normalizeEvidenceArtifact(value EvidenceArtifact) (EvidenceArtifact, error)
 			return value, err
 		}
 		payload, err := semanticevidence.CanonicalBytes(normalized)
-		if err != nil {
-			return value, err
-		}
-		calculated := sourceindex.Fingerprint(payload)
-		if calculated != value.ArtifactFingerprint {
-			return value, fmt.Errorf(
-				"artifact Evidence fingerprintがcanonical payloadと一致しません: recorded=%s calculated=%s",
-				value.ArtifactFingerprint,
-				calculated,
-			)
-		}
-		value.Payload = payload
-	case evidenceArtifactKindRMTTranscription:
-		if value.Schema != rmtevidence.Schema {
-			return value, fmt.Errorf(
-				"artifact Evidence kind %q のschema %q は未対応です",
-				value.Kind,
-				value.Schema,
-			)
-		}
-		normalized, err := rmtevidence.Decode(value.Payload)
-		if err != nil {
-			return value, err
-		}
-		payload, err := rmtevidence.CanonicalBytes(normalized)
 		if err != nil {
 			return value, err
 		}
