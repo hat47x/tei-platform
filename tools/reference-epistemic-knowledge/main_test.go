@@ -1274,3 +1274,44 @@ func TestHealthPolicyRejectsInvalidResolutionThreshold(t *testing.T) {
 		t.Fatalf("invalid resolution threshold was accepted: %v", err)
 	}
 }
+
+
+func TestResolutionCoverageKeepsConditionalConfirmationUnresolved(t *testing.T) {
+	corpus, context := loadFixture(t)
+	var only Assertion
+	for _, assertion := range corpus.Assertions {
+		if assertion.ID == "human-reviewed" {
+			only = assertion
+			break
+		}
+	}
+	if len(only.ReviewEvents) == 0 {
+		t.Fatal("fixture human-reviewed assertion has no review event")
+	}
+	only.ReviewEvents[0].Conditions = []string{"only after owner approval"}
+	corpus.Assertions = []Assertion{only}
+	corpus.Dependencies = nil
+	corpus.CoverageAreas = nil
+	corpus.HealthPolicy = KnowledgeHealthPolicy{
+		MinResolvedRatio:          1,
+		MinimumEligibleAssertions: 1,
+	}
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coverage := projection.Health.ResolutionCoverage
+	if coverage.Eligible != 1 ||
+		coverage.Resolved != 0 ||
+		coverage.Confirmed != 0 ||
+		coverage.Unresolved != 1 ||
+		coverage.State != "attention" ||
+		coverage.RequiredResolutions != 1 {
+		t.Fatalf("conditional confirmation was over-counted as resolved: %+v", coverage)
+	}
+	if len(projection.ReviewRequests) != 1 ||
+		projection.ReviewRequests[0].AssertionID != "human-reviewed" {
+		t.Fatalf("conditional confirmation did not remain actionable: %+v", projection.ReviewRequests)
+	}
+}
