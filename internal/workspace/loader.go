@@ -227,7 +227,7 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 			}
 			rel, err := filepath.Rel(rootReal, real)
 			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return nil, fmt.Errorf("workspace source root %q resolves outside Workspace", sourceRoot)
+				return nil, fmt.Errorf("workspace source root %q resolves outside the Workspace", sourceRoot)
 			}
 			if !info.IsDir() {
 				return nil, fmt.Errorf("workspace source root %q must be a directory", sourceRoot)
@@ -249,7 +249,7 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 			}
 			rel, err := filepath.Rel(rootReal, realPath)
 			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return fmt.Errorf("managed source %s resolves outside Workspace", path)
+				return fmt.Errorf("managed source %s resolves outside the Workspace", path)
 			}
 			info, err := os.Stat(realPath)
 			if err != nil {
