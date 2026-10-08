@@ -61,6 +61,13 @@ TASK_WORKSPACE="$TASK_REPO/reference/workspace"
 TASK_TEI="$TMP_ROOT/tei-task"
 BASE_REVISION="$(git -C "$TASK_REPO" rev-parse HEAD)"
 
+if [[ "$BASE_REVISION" != "$SOURCE_HEAD" ]]; then
+  echo "task clone does not start from source HEAD" >&2
+  echo "source: $SOURCE_HEAD" >&2
+  echo "task:   $BASE_REVISION" >&2
+  exit 1
+fi
+
 build_tei "$TASK_REPO" "$TASK_TEI"
 run_reference_tests "$TASK_REPO" > "$TMP_ROOT/before-tests.txt"
 run_tei "$TASK_TEI" workspace-files -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/managed-files.json"
@@ -80,6 +87,7 @@ run_tei "$TASK_TEI" knowledge-context \
   -subject-kind semantic-validation \
   -subject-id sales.order_line.quantity_positive \
   > "$TMP_ROOT/before-context.json"
+grep -q 'sales.order_line.quantity_positive' "$TMP_ROOT/before-context.json"
 
 cp -R "$TASK_WORKSPACE" "$STATELESS_WORKSPACE"
 rm -rf "$STATELESS_WORKSPACE/.tei/decisions"
@@ -149,13 +157,36 @@ if [[ -n "$(git -C "$TASK_REPO" status --porcelain)" ]]; then
   exit 1
 fi
 
-git clone -q --local --no-hardlinks "$TASK_REPO" "$INTEGRATION_REPO"
+git clone -q --local --no-hardlinks "$ROOT" "$INTEGRATION_REPO"
+git -C "$INTEGRATION_REPO" config user.name "TEI Reference"
+git -C "$INTEGRATION_REPO" config user.email "reference@tei.invalid"
+
+INTEGRATION_BASE_REVISION="$(git -C "$INTEGRATION_REPO" rev-parse HEAD)"
+if [[ "$INTEGRATION_BASE_REVISION" != "$BASE_REVISION" ]]; then
+  echo "integration clone does not start from task base revision" >&2
+  echo "task base:        $BASE_REVISION" >&2
+  echo "integration base: $INTEGRATION_BASE_REVISION" >&2
+  exit 1
+fi
+
+git -C "$INTEGRATION_REPO" fetch -q "$TASK_REPO" "$RESULT_REVISION"
+git -C "$INTEGRATION_REPO" merge -q --ff-only FETCH_HEAD
+
+INTEGRATION_REVISION="$(git -C "$INTEGRATION_REPO" rev-parse HEAD)"
+if [[ "$INTEGRATION_REVISION" != "$RESULT_REVISION" ]]; then
+  echo "integration did not resolve to the task result revision" >&2
+  echo "task result: $RESULT_REVISION" >&2
+  echo "integration: $INTEGRATION_REVISION" >&2
+  exit 1
+fi
+
 INTEGRATION_WORKSPACE="$INTEGRATION_REPO/reference/workspace"
 INTEGRATION_TEI="$TMP_ROOT/tei-integration"
 
 build_tei "$INTEGRATION_REPO" "$INTEGRATION_TEI"
 run_reference_tests "$INTEGRATION_REPO" > "$TMP_ROOT/integration-tests.txt"
 run_tei "$INTEGRATION_TEI" validate -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-validate.txt"
+cmp "$TMP_ROOT/task-validate.txt" "$TMP_ROOT/integration-validate.txt"
 run_tei "$INTEGRATION_TEI" source-index \
   -workspace "$INTEGRATION_WORKSPACE" \
   -subject-kind semantic-validation \
@@ -186,6 +217,11 @@ git -C "$CONFLICT_REPO" config user.email "reference@tei.invalid"
 CONFLICT_WORKSPACE="$CONFLICT_REPO/reference/workspace"
 CONFLICT_TEI="$TMP_ROOT/tei-conflict"
 CONFLICT_BASE_REVISION="$(git -C "$CONFLICT_REPO" rev-parse HEAD)"
+
+if [[ "$CONFLICT_BASE_REVISION" != "$SOURCE_HEAD" ]]; then
+  echo "conflict clone does not start from source HEAD" >&2
+  exit 1
+fi
 
 build_tei "$CONFLICT_REPO" "$CONFLICT_TEI"
 
@@ -252,6 +288,7 @@ fi
 printf 'source-head=%s\n' "$SOURCE_HEAD"
 printf 'base=%s\n' "$BASE_REVISION"
 printf 'result=%s\n' "$RESULT_REVISION"
+printf 'integration=%s\n' "$INTEGRATION_REVISION"
 printf 'changed=%s\n' "$TARGET_FILE"
 printf 'validation-ledger-independent=true\n'
 printf 'decision-ledger-independent=true\n'
