@@ -93,7 +93,7 @@ public出力では、任意のunknown element名や追加attribute名を公開�
 
 Evidenceはexact source artifact digest、FormatVersion、name-independent source token、mapping contract fingerprintへbindします。known / mapped constructでは標準construct名、classification、担当Extensionを保持します。unknown / namespaced constructではsource名を公開せず、`unmapped`のまま残します。
 
-`VerifyTranscriptionCandidateEvidence`は同じexternal sourceとmapping contractからEvidenceを再構成します。source bytes、node位置、mapping contractのいずれかが変わった場合はstaleとして拒否します。
+`VerifyTranscriptionCandidateEvidence`はEvidenceに保存済みの`SourceToken`をexact external source内で再解決し、同じmapping contractからEvidenceを再構成します。replay時にnode ordinalを別入力として保持しません。source artifact digestが変わった場合、tokenがexact source内で解決できない場合、mapping contractが変わった場合はstaleまたは不一致として拒否します。
 
 このEvidenceはCanonical Acceptance、human Decision witness、Source Adapter Conformance、Runtime Authorityを与えません。Shared Acceptanceへのtyped artifact接続はGitHub #1008 / #267側で扱います。
 
