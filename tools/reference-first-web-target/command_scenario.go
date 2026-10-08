@@ -447,6 +447,11 @@ func (s commandValidationSource) RelationKeys(
 	if relation != core.MustCanonicalID("sales.order.lines") {
 		return nil, fmt.Errorf("unsupported relation %s", relation)
 	}
+	// An empty read result is not evidence that an order's relation keys are
+	// unique. Keep the same fail-closed boundary as record-level validations.
+	if len(s.orderLines) == 0 {
+		return nil, fmt.Errorf("cannot validate relation %s over an empty order-line collection", relation)
+	}
 	result := make([]string, 0, len(s.orderLines))
 	for rowIndex, row := range s.orderLines {
 		value, ok := semanticRowValueByAttribute(row, string(attribute))
