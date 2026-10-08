@@ -48,3 +48,7 @@ E1の結果だけで、Git repositoryをproductionの標準Coordination Backend�
 Coordination Store削除後のCanonical reloadは、このrunner単独では検証しません。Canonical reloadとGit-nativeな開発経路はRQ-034 / ISSUE-000083が所有します。本Referenceは、Coordination層がProduct Sourceの第二正本やAuthority sourceにならないことを先に検証します。
 
 GitHub Issuesを第二consumerとして比較した結果は`github-issues-profile.md`に記録しています。Backend stateを共通lifecycleへ黙って正規化せず、`origin`、`createdVia`、Backend actor、Authorityを分離します。locatorのschemeや文字列表現はReference例であり、TEI Coreがprovider固有URIを解釈するproduction wire formatとしては固定しません。
+
+## Backend-native lifecycle境界
+
+共通Work envelopeには`status`や`coordination.status`を置きません。Git text Referenceでは`native-state/<work-id>.json`をAdapter-local sidecarとして保持し、completion時にはこのsidecarのみ変更します。runnerはWork本文のGit blobが不変であることを検査します。同じ局所Work IDでもBackend instanceが異なればlocatorは異なります。これはReferenceの例示形式であり、production URI仕様の確定ではありません。
