@@ -105,12 +105,12 @@ func TestRMTTranscriptionEvidenceDoesNotBecomeCandidateMeaningOrAcceptanceAuthor
 			}
 			if !strings.Contains(rendered, wantStatus) ||
 				!strings.Contains(rendered, rmtEvidenceFixture(t, mapped).SourceToken) {
-				t.Fatalf("Review hid RMT Evidence state/binding:\\n%s", rendered)
+				t.Fatalf("Review hid RMT Evidence state/binding:\n%s", rendered)
 			}
 			if mapped {
 				if !strings.Contains(rendered, "sourceConstruct=Table") ||
 					!strings.Contains(rendered, "classification=canonical-candidate,unresolved") {
-					t.Fatalf("Review hid mapped RMT summary:\\n%s", rendered)
+					t.Fatalf("Review hid mapped RMT summary:\n%s", rendered)
 				}
 			}
 		})
@@ -173,7 +173,7 @@ func TestAttachRMTTranscriptionCLIProducesReviewableCandidate(t *testing.T) {
 	rendered := renderReviewProjection(review)
 	if !strings.Contains(rendered, "artifactKind="+evidenceArtifactKindRMTTranscription) ||
 		!strings.Contains(rendered, "mappingStatus=unmapped") {
-		t.Fatalf("Review did not expose RMT artifact state:\\n%s", rendered)
+		t.Fatalf("Review did not expose RMT artifact state:\n%s", rendered)
 	}
 }
 
