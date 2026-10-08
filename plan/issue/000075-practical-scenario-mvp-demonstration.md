@@ -166,6 +166,7 @@ git rev-parse HEAD
 | --- | --- | --- |
 | 同じ候補に単価Validationの追加とApplicationの利用宣言 | Previewで2つのSourceへの変更を可視化し、review fingerprintに結び付いたscratch Accept後にDriverが3規則を解決 | 追加した規則が評価されないままCommandへ進む |
 | Validationの未知のAttribute / Namespace、未知の利用先、重複操作 | Shared Acceptanceで拒否し、Sourceは不変 | 規則と適用宣言が別々に受理されたように見える |
+| PreviewからAcceptまでにReview fingerprintが不一致になる | scratchの二つのauthoritative Sourceをどちらも書き換えず拒否 | 規則だけ、または利用宣言だけが部分的に受理される |
 | 2行目の単価・数量が正値でない | `validation-not-satisfied`、CommandとObservationはなし | 最初の1行だけを見て確定する |
 | 前方の行は業務不成立だが後方の行の値が欠落・評価不能 | Execution Error（不完全な評価）、後続副作用なし | 不完全な入力を確定的な業務拒否と呼ぶ |
 | 明細が空、Relation keyがnull・空文字列・空白のみ | Execution Error、後続副作用なし | 空集合や欠落した業務識別値を「一意である証拠」とみなす |
