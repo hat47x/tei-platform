@@ -113,7 +113,7 @@ func collect(root string) (report, error) {
 			if err != nil {
 				return fmt.Errorf("import %s: %w", relative, err)
 			}
-			if !strings.HasPrefix(imported, module+"/internal/") {
+			if imported != module+"/internal" && !strings.HasPrefix(imported, module+"/internal/") {
 				continue
 			}
 			to := strings.TrimPrefix(imported, module+"/")
