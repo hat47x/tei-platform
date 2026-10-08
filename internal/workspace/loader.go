@@ -64,10 +64,8 @@ func Load(root string) (Result, error) {
 	} else {
 		return Result{}, fmt.Errorf("TEI workspace manifest not found: expected %s", manifestYAML)
 	}
-	for _, sourceRoot := range roots {
-		if err := validateWorkspaceSourceRoot(sourceRoot); err != nil {
-			return Result{}, fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
-		}
+	if err := validateWorkspaceSourceRoots(roots); err != nil {
+		return Result{}, err
 	}
 	// Inventory and verify the physical boundary before any domain loader can
 	// read a Source file or parse a symlink to an outside target.
@@ -172,6 +170,24 @@ func validateWorkspaceSourceRoot(sourceRoot string) error {
 	if sourceRoot == "" || sourceRoot == "." || !filepath.IsLocal(sourceRoot) ||
 		strings.ContainsAny(sourceRoot, "\\\\:") || path.Clean(sourceRoot) != sourceRoot {
 		return fmt.Errorf("must be a clean Workspace-relative path")
+	}
+	return nil
+}
+
+// A declared source must be owned by exactly one source root. Duplicate and
+// ancestor/descendant roots could otherwise parse one canonical declaration
+// more than once or create duplicate Source Index artifacts.
+func validateWorkspaceSourceRoots(roots []string) error {
+	for i, sourceRoot := range roots {
+		if err := validateWorkspaceSourceRoot(sourceRoot); err != nil {
+			return fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
+		}
+		for _, prior := range roots[:i] {
+			if sourceRoot == prior || strings.HasPrefix(sourceRoot, prior+"/") ||
+				strings.HasPrefix(prior, sourceRoot+"/") {
+				return fmt.Errorf("workspace source roots %q and %q overlap", prior, sourceRoot)
+			}
+		}
 	}
 	return nil
 }
