@@ -95,7 +95,8 @@ func Parse(format Format, source []byte) (Document, error) {
 		switch t := token.(type) {
 		case xml.StartElement:
 			name := qualifiedName(t.Name)
-			_, isKnown := knownNames[t.Name.Local]
+			_, knownLocalName := knownNames[t.Name.Local]
+			isKnown := t.Name.Space == "" && knownLocalName
 			n := Node{Name: name, Known: isKnown}
 			n.Attributes = make([]Attribute, 0, len(t.Attr))
 			for _, attr := range t.Attr {
@@ -156,7 +157,8 @@ func Parse(format Format, source []byte) (Document, error) {
 
 	inventory := make([]InventoryEntry, 0, len(counts))
 	for name, count := range counts {
-		_, isKnown := knownNames[localName(name)]
+		_, knownLocalName := knownNames[localName(name)]
+		isKnown := name == localName(name) && knownLocalName
 		inventory = append(inventory, InventoryEntry{Name: name, Count: count, Known: isKnown})
 	}
 	sort.Slice(inventory, func(i, j int) bool { return inventory[i].Name < inventory[j].Name })
