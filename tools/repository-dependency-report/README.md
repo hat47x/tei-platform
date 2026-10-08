@@ -13,6 +13,6 @@ JSONの`packages`は`internal/`配下のGoパッケージごとに、production 
 
 対象は`internal/`以下のGoソースで、`_test.go`、ドット・アンダースコアで始まるファイル、`testdata`・`vendor`やドット・アンダースコアで始まるディレクトリを除外します。Goのbuild tagやGOOS/GOARCHごとの実行対象を解決しないため、**実際の一つのビルドで有効な依存グラフ**とは異なります。依存辺が存在しても、その機能が実行可能・権限付与済み・Provider適合済みであるとは主張しません。
 
-欠けた`go.mod`、ソースの構文エラー、`internal/`へのimport先にproduction Goパッケージがない状態、ディレクトリ走査失敗などは黙って空の成功結果にしません。特定revisionの報告が必要なら、実行した`git rev-parse HEAD`、toolchain、worktree状態を報告と一緒に保存します。ツール自身はcommitやファイルを変更しません。
+欠けた`go.mod`、package/import宣言を読む際の解析エラー、`internal/`へのimport先にproduction Goパッケージがない状態、ディレクトリ走査失敗などは黙って空の成功結果にしません。特定revisionの報告が必要なら、実行した`git rev-parse HEAD`、toolchain、worktree状態を報告と一緒に保存します。ツール自身はcommitやファイルを変更しません。
 
 このツールは依存の**観測**を目的とします。許容/禁止する依存方向の検査は`tools/repository-architecture-check/dependency_test.go`側に置き、観測結果に合わせて自動的に許容ルールを緩めません。両者とも本番用Runtime APIやTEIのCanonical meaningではありません。
