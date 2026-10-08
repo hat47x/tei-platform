@@ -83,9 +83,6 @@ type PublicationReceipt struct {
 	AuthorityLimits       []string         `json:"authorityLimits"`
 	ReceiptFingerprint    string           `json:"receiptFingerprint"`
 
-	ObservedElementCounts map[string]int            `json:"-"`
-	AttributeNameCounts   map[string]map[string]int `json:"-"`
-	UnknownElements       map[string]int            `json:"-"`
 }
 
 type PublishedFact struct {
@@ -156,12 +153,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	coverage, err := CheckClassificationCoverage(format, receipt, contractBytes)
+	coverage, err := CheckClassificationCoverage(format, doc, contractBytes)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	classification, err := BuildClassificationProjection(format, receipt, contractBytes)
+	classification, err := BuildClassificationProjection(format, doc, contractBytes)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
@@ -310,9 +307,6 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 		RootKind:              publicRootKind(doc),
 		ElementCounts:         map[string]int{},
 		AttributeCounts:       map[string]int{},
-		ObservedElementCounts: map[string]int{},
-		AttributeNameCounts:   map[string]map[string]int{},
-		UnknownElements:       map[string]int{},
 		MarkupCounts:          map[string]int{},
 		AuthorityLimits: []string{
 			"source-observation-is-not-canonical-authority",
@@ -324,18 +318,10 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	}
 	var locatorDigests []string
 	for _, node := range doc.Nodes {
-		receipt.ObservedElementCounts[node.Kind]++
-		if receipt.AttributeNameCounts[node.Kind] == nil {
-			receipt.AttributeNameCounts[node.Kind] = map[string]int{}
-		}
-		for name := range node.Attributes {
-			receipt.AttributeNameCounts[node.Kind][name]++
-		}
 		if node.Known {
 			receipt.ElementCounts[node.Kind]++
 			receipt.AttributeCounts[node.Kind] += len(node.Attributes)
 		} else {
-			receipt.UnknownElements[node.Kind]++
 			receipt.UnknownElementCount++
 			receipt.UnknownAttributeCount += len(node.Attributes)
 		}
