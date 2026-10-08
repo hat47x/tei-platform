@@ -69,11 +69,11 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(read.OrderLineRows) == 0 {
+	if len(read.OrderLineRows) < 2 {
 		t.Fatal("order line fixture is empty")
 	}
-	// Two existing rules are satisfied; a zero price exercises only the new rule.
-	if !setSemanticRowValue(&read.OrderLineRows[0], "sales.order_line.unit_price", "0") {
+	// Two existing rules are satisfied; a zero price in the second line exercises only the new rule.
+	if !setSemanticRowValue(&read.OrderLineRows[1], "sales.order_line.unit_price", "0") {
 		t.Fatal("unit price not present in read result")
 	}
 	input := commandScenarioInput{
@@ -153,7 +153,7 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 	}
 
 	// The accepted rule must not reject a valid amount.
-	if !setSemanticRowValue(&read.OrderLineRows[0], "sales.order_line.unit_price", "4000.00") {
+	if !setSemanticRowValue(&read.OrderLineRows[1], "sales.order_line.unit_price", "4500.00") {
 		t.Fatal("unit price no longer present")
 	}
 	after.read = staticReadScenarioRunner{result: read}
@@ -163,5 +163,46 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 	}
 	if positive.Stage != "completed" || len(positive.Validations) != 3 {
 		t.Fatalf("valid price was not accepted: %+v", positive)
+	}
+}
+
+func TestReferenceCommandScenarioEvaluatesPositiveRuleOnEveryOrderLine(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(),
+		readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(read.OrderLineRows) < 2 {
+		t.Fatalf("fixture has only %d order lines", len(read.OrderLineRows))
+	}
+	if !setSemanticRowValue(&read.OrderLineRows[1], "sales.order_line.quantity", "0") {
+		t.Fatal("second order line has no quantity")
+	}
+	runner, err := newReferenceCommandScenarioRunner(loaded.World,
+		legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.read = staticReadScenarioRunner{result: read}
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID: "legacy-order-editor", Credential: "editor-secret",
+		From: "2026-09-18T08:30:00Z", RowIndex: 0,
+	})
+	if err != nil {
+		t.Fatalf("nonpositive quantity was an execution error: %v", err)
+	}
+	if result.Stage != "validation-not-satisfied" || len(result.Validations) != 1 ||
+		result.Validations[0].Validation != "sales.order_line.quantity_positive" ||
+		result.Validations[0].Result != "not-satisfied" {
+		t.Fatalf("second line was not validated: %+v", result)
+	}
+	if result.Command != nil || result.Observation != nil {
+		t.Fatalf("invalid second line reached downstream: %+v", result)
 	}
 }
