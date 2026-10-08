@@ -402,6 +402,10 @@ consumer requirementを満たさなくてもassertion本体のconfirmation / bas
 
 Healthはreview率を主判定にせず、`dependencies` のcriticalityと現在のuse stateを組み合わせる。
 
+補助signalとして `resolution coverage` candidateを追加した。current human confirmation、direct user working premise、current rejectを「解消済み」として数え、現在文脈でreview可能な未確認assertionを未解消として数える。これはTruth ratioではない。
+
+project側が `healthPolicy.minResolvedRatio` を設定した場合だけ、基準未満をHealth attentionへ反映する。`minimumEligibleAssertions` に満たない小標本ではalertしない。閾値不足分は必要な最小review件数へ変換し、dependency criticalityを優先してreview requestへ送る。direct user working premiseへ機械的な再確認は要求しない。
+
 critical consumerがunreviewed / stale / Conflict / context不適合なassertionへ依存する場合は `critical` とする。低重要度unreviewed memoが多数存在しても、critical dependencyを件数比で希釈しないnegative testを置いた。
 
 さらに、project側が状態を把握すべき情報領域をcoverage areaとして入力できるcandidateを追加した。areaへ対応するassertion mappingが無い、またはmapping先targetを再特定できない場合はcoverage gapとする。critical / high gapはHealthへ反映する。
@@ -491,6 +495,8 @@ reviewer candidate
 - [ ] supersession cycleを拒否できる
 - [ ] retrievalへrelevanceとcontext compatibilityを別signalとして渡せる
 - [ ] Project Knowledge Healthがcritical dependencyを考慮できる
+- [ ] resolution coverageをTruth ratioへ格上げせず、project policyに基づくattention signalとして扱える
+- [ ] resolution coverage不足を、必要最小件数のstakeholder review requestへ変換できる
 - [ ] consumer側のfreshness requirementをassertion本体の確認状態と分離して評価できる
 - [ ] stakeholderへの確認依頼へimpact / Evidence / 適用範囲を渡せる
 - [ ] 条件付き確認で適用範囲の精密化を保持できる
