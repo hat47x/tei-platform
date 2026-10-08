@@ -326,7 +326,7 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 			receipt.UnknownElementCount++
 			receipt.UnknownAttributeCount += len(node.Attributes)
 		}
-		locatorDigest := digestString(fmt.Sprintf("%s|node-ordinal:%d", doc.ArtifactSHA256, i+1))
+		locatorDigest := sourceNodeToken(doc.ArtifactSHA256, i+1)
 		publicLocatorByPath[node.Locator.Path] = locatorDigest
 		locatorDigests = append(locatorDigests, locatorDigest)
 	}
