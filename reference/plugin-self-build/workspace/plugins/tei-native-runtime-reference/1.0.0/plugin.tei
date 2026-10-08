@@ -1,0 +1,7 @@
+plugin tei.native.runtime.reference v1.0.0 {
+    runtime builtin
+
+    provides deployment-executor runtime.native_reference {
+        action application-start
+    }
+}
