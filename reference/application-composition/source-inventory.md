@@ -71,3 +71,17 @@ SUIで構成対象になるのは、Canvas Rendererだけではない。Document
 **E1はSource所在の観察まで。自動の構成解決や実Targetでの再現は未了。** 次に行うのは、上の受注例に対し「UI部品を一つ変更」「Database接続を一つ変更」という**異種の二変更**を適用し、既存WorkspaceとExtensionでの変更先・必要な検証・未解決を比較すること。
 
 判定時は、(1)既存Source/Environmentにすでにある情報、(2)構成候補で初めて必要になる情報、(3)実行時点で初めて判定可能な権限・状態を三つに分離する。三つ目を構成プロファイルの固定値に格納しない。新しい共通Manifestや汎用的な上書きResolverは、この実証で**具体的な不足が生じるまで作らない**。
+
+
+## E1 Sourceの変化を読み取り専用で検出する
+
+この棚卸しで参照したSourceの一部について、[E1観測器](e1-observe.mjs)と[合成fixtureテスト](e1-observe.test.mjs)を用意した。受注明細とSUI Stage 0の計14か所を、既存ファイル内の文字列が存在するかどうかだけで調べる。文字列が変わった場合、対象ファイルがない場合、参照経路がWorkspace外を指す場合は、観測が**未解決**であると報告し、自動補正しない。
+
+```sh
+node --test reference/application-composition/e1-observe.test.mjs
+node reference/application-composition/e1-observe.mjs .
+```
+
+合成fixtureでは、通常の観測、Sourceの欠落・変更、パスの逸脱・Workspace外へのシンボリックリンクという**4件のテストが成功**した（Node.js 22.16.0）。この結果は、TEIの全Sourceを使った実行、TEI DSLの意味解析、Providerの適合、認可、Application Compositionの完成を保証しない。出力されるSHA-256は観測対象ファイルの内容識別子であり、Git blob SHA、Plugin LockのFingerprintや実行権限の証明ではない。
+
+コード変更を含むため、実Repositoryのtrusted checkoutでの全体健全性検査が完了するまでは、PR #1020をDraftに保ち、mainへ統合しない。
