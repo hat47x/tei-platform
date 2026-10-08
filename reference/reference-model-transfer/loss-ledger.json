@@ -269,6 +269,15 @@
       "risk": "conflicting source bytes can be reduced to an apparently unambiguous ObservedDocument before profile validation or loss accounting.",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "Observe rejects duplicate expanded attribute names before map assignment; tests cover unqualified FormatVersion duplication and duplicate namespaced attributes, and no first/last-value fallback is introduced"
+    },
+    {
+      "id": "RML-030",
+      "topic": "fingerprint-valid-rmt-artifact-treated-as-qualified-observation",
+      "nature": "unresolved",
+      "evidence": "rmtevidence content and outer EvidenceArtifact fingerprints prove deterministic content identity, not that the payload was produced by a conformant Source Adapter or replayed against the current external source. A caller can prepare a valid artifact from self-asserted fields.",
+      "risk": "integrity can be mistaken for provenance/observer authority and a self-authored mapped claim can influence review as if it were qualified observation.",
+      "owner": "ISSUE-000078 / GitHub #1008; observer/provider authority handoff to GitHub #951",
+      "stopCondition": "mandatory authority limits survive producer omission; Shared Acceptance displays observerConformance and external-source freshness as not verified; any future qualified-observer claim must bind separately to current Provider/Conformance authority and source replay Evidence"
     }
   ],
   "claimsNotEstablished": [
