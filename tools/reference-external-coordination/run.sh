@@ -52,14 +52,22 @@ cat > "$STORE/work/$WORK_ID.json" <<EOF_WORK
   },
   "constraints": ["do-not-mutate-product-source"],
   "contextRefs": [],
-  "expectedOutputs": ["reference.evidence"],
-  "coordination": {"status": "ready"}
+  "expectedOutputs": ["reference.evidence"]
 }
 EOF_WORK
 
-git -C "$STORE" add "work/$WORK_ID.json"
+cat > "$STORE/native-state/$WORK_ID.json" <<EOF_NATIVE_STATE
+{
+  "backendProfile": "git-text-reference",
+  "workRef": "$WORK_REF",
+  "status": "ready"
+}
+EOF_NATIVE_STATE
+
+git -C "$STORE" add "work/$WORK_ID.json" "native-state/$WORK_ID.json"
 git -C "$STORE" commit -qm "coordination: create human work"
 WORK_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
+WORK_BLOB_BEFORE="$(git -C "$STORE" hash-object "work/$WORK_ID.json")"
 
 printf 'current evidence\n' > "$STORE/artifacts/$WORK_ID/run-a.txt"
 ARTIFACT_DIGEST="$(python3 - "$STORE/artifacts/$WORK_ID/run-a.txt" <<'PY'
