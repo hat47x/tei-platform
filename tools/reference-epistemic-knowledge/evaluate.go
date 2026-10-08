@@ -72,12 +72,28 @@ type CoverageAssessment struct {
 	Areas  []CoverageAreaAssessment `json:"areas,omitempty"`
 }
 
+type ResolutionCoverage struct {
+	Eligible                    int      `json:"eligible"`
+	Resolved                    int      `json:"resolved"`
+	Confirmed                   int      `json:"confirmed"`
+	NativePremise               int      `json:"nativePremise"`
+	Rejected                    int      `json:"rejected"`
+	Unresolved                  int      `json:"unresolved"`
+	Ratio                       float64  `json:"ratio"`
+	MinimumRatio                float64  `json:"minimumRatio,omitempty"`
+	MinimumEligibleAssertions   int      `json:"minimumEligibleAssertions,omitempty"`
+	RequiredResolutions         int      `json:"requiredResolutions,omitempty"`
+	State                       string   `json:"state"`
+	Reasons                     []string `json:"reasons,omitempty"`
+}
+
 type KnowledgeHealth struct {
-	Level             string             `json:"level"`
-	ViewMetadataState MetadataState      `json:"viewMetadataState"`
-	Counts            HealthCounts       `json:"counts"`
-	Issues            []HealthIssue      `json:"issues,omitempty"`
-	Coverage          CoverageAssessment `json:"coverage"`
+	Level              string             `json:"level"`
+	ViewMetadataState  MetadataState      `json:"viewMetadataState"`
+	Counts             HealthCounts       `json:"counts"`
+	ResolutionCoverage ResolutionCoverage `json:"resolutionCoverage"`
+	Issues             []HealthIssue      `json:"issues,omitempty"`
+	Coverage           CoverageAssessment `json:"coverage"`
 }
 
 type ReviewRequest struct {
@@ -177,7 +193,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 		out.Assessments = append(out.Assessments, assessments[assertion.ID])
 	}
 	out.Health = buildHealth(corpus, assertions, assessments, context)
-	out.ReviewRequests = buildReviewRequests(corpus, assertions, assessments, context)
+	out.ReviewRequests = buildReviewRequests(corpus, assertions, assessments, context, out.Health)
 	return out, nil
 }
 
@@ -503,6 +519,111 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	return "candidate-only", append(reasons, "ASSERTION_UNREVIEWED")
 }
 
+
+func resolutionCoverageEligible(assertion Assertion, assessment Assessment) bool {
+	if !assertion.Mode.canBeWorkingPremise() ||
+		assertion.MetadataState != MetadataComplete ||
+		assessment.LifecycleState != "active" ||
+		assessment.ContextCompatibility != "compatible" ||
+		assessment.Freshness == "stale" ||
+		assessment.Freshness == "not-yet-valid" ||
+		assessment.TargetBinding == "ambiguous" ||
+		assessment.TargetBinding == "detached" {
+		return false
+	}
+	return true
+}
+
+func resolutionCoverageResolved(assertion Assertion, assessment Assessment) bool {
+	if assessment.ConfirmationState == "confirmed" || assessment.ConfirmationState == "rejected" {
+		return true
+	}
+	return assertion.Origin == OriginUser &&
+		assertion.IngestedBy == IngestedByUser &&
+		assessment.UseState == "premise"
+}
+
+func assessResolutionCoverage(
+	corpus Corpus,
+	assertions map[string]Assertion,
+	assessments map[string]Assessment,
+) ResolutionCoverage {
+	out := ResolutionCoverage{
+		MinimumRatio:              corpus.HealthPolicy.MinResolvedRatio,
+		MinimumEligibleAssertions: corpus.HealthPolicy.MinimumEligibleAssertions,
+		State:                     "not-configured",
+	}
+	for id, assertion := range assertions {
+		assessment := assessments[id]
+		if !resolutionCoverageEligible(assertion, assessment) {
+			continue
+		}
+		out.Eligible++
+		switch {
+		case assessment.ConfirmationState == "confirmed":
+			out.Confirmed++
+			out.Resolved++
+		case assessment.ConfirmationState == "rejected":
+			out.Rejected++
+			out.Resolved++
+		case assertion.Origin == OriginUser &&
+			assertion.IngestedBy == IngestedByUser &&
+			assessment.UseState == "premise":
+			out.NativePremise++
+			out.Resolved++
+		default:
+			out.Unresolved++
+		}
+	}
+	if out.Eligible > 0 {
+		out.Ratio = float64(out.Resolved) / float64(out.Eligible)
+	}
+
+	if corpus.MetadataState != MetadataComplete {
+		out.State = "unknown"
+		out.Reasons = []string{"RESOLUTION_COVERAGE_METADATA_INCOMPLETE"}
+		return out
+	}
+	if out.MinimumRatio <= 0 {
+		return out
+	}
+	minimum := out.MinimumEligibleAssertions
+	if minimum <= 0 {
+		minimum = 1
+	}
+	if out.Eligible < minimum {
+		out.State = "insufficient-sample"
+		out.Reasons = []string{"RESOLUTION_COVERAGE_SAMPLE_TOO_SMALL"}
+		return out
+	}
+	if out.Ratio >= out.MinimumRatio {
+		out.State = "healthy"
+		return out
+	}
+	out.State = "attention"
+	required := int(out.MinimumRatio*float64(out.Eligible) + 0.999999999)
+	if required > out.Eligible {
+		required = out.Eligible
+	}
+	out.RequiredResolutions = required - out.Resolved
+	if out.RequiredResolutions < 0 {
+		out.RequiredResolutions = 0
+	}
+	out.Reasons = []string{"PROJECT_RESOLUTION_RATIO_BELOW_POLICY"}
+	return out
+}
+
+func highestDependencyCriticalityByAssertion(corpus Corpus) map[string]Criticality {
+	out := map[string]Criticality{}
+	for _, dependency := range corpus.Dependencies {
+		current, ok := out[dependency.AssertionID]
+		if !ok || criticalityRank(dependency.Criticality) > criticalityRank(current) {
+			out[dependency.AssertionID] = dependency.Criticality
+		}
+	}
+	return out
+}
+
 func buildHealth(
 	corpus Corpus,
 	assertions map[string]Assertion,
@@ -526,6 +647,11 @@ func buildHealth(
 			health.Counts.Blocked++
 		}
 		health.Counts.Total++
+	}
+
+	health.ResolutionCoverage = assessResolutionCoverage(corpus, assertions, assessments)
+	if health.ResolutionCoverage.State == "attention" && health.Level == "healthy" {
+		health.Level = "attention"
 	}
 
 	for _, dependency := range corpus.Dependencies {
@@ -709,6 +835,7 @@ func buildReviewRequests(
 	assertions map[string]Assertion,
 	assessments map[string]Assessment,
 	context ContextQuery,
+	health KnowledgeHealth,
 ) []ReviewRequest {
 	impact := map[string][]string{}
 	critical := map[string]bool{}
@@ -732,11 +859,46 @@ func buildReviewRequests(
 			}
 		}
 	}
+	ratioRequested := map[string]bool{}
+	if health.ResolutionCoverage.State == "attention" && health.ResolutionCoverage.RequiredResolutions > 0 {
+		type candidate struct {
+			id   string
+			rank int
+		}
+		ranks := highestDependencyCriticalityByAssertion(corpus)
+		var candidates []candidate
+		for id, assessment := range assessments {
+			assertion := assertions[id]
+			if !resolutionCoverageEligible(assertion, assessment) ||
+				resolutionCoverageResolved(assertion, assessment) {
+				continue
+			}
+			candidates = append(candidates, candidate{
+				id:   id,
+				rank: criticalityRank(ranks[id]),
+			})
+		}
+		sort.Slice(candidates, func(i, j int) bool {
+			if candidates[i].rank != candidates[j].rank {
+				return candidates[i].rank > candidates[j].rank
+			}
+			return candidates[i].id < candidates[j].id
+		})
+		limit := health.ResolutionCoverage.RequiredResolutions
+		if limit > len(candidates) {
+			limit = len(candidates)
+		}
+		for _, candidate := range candidates[:limit] {
+			ratioRequested[candidate.id] = true
+		}
+	}
+
 	var out []ReviewRequest
 	for id, assessment := range assessments {
 		consumerReasons := normalizeStrings(consumerReviewReasons[id])
 		if assessment.UseState != "review-required" &&
-			!(critical[id] && (assessment.UseState != "premise" || len(consumerReasons) > 0)) {
+			!(critical[id] && (assessment.UseState != "premise" || len(consumerReasons) > 0)) &&
+			!ratioRequested[id] {
 			continue
 		}
 		assertion := assertions[id]
@@ -748,7 +910,18 @@ func buildReviewRequests(
 			TargetBinding:      assessment.TargetBinding,
 			Context:            append([]ScopeBinding{}, assertion.Context...),
 			Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
-			Reasons:            normalizeStrings(append(append([]string{}, assessment.Reasons...), consumerReasons...)),
+			Reasons: normalizeStrings(append(
+				append(
+					append([]string{}, assessment.Reasons...),
+					consumerReasons...,
+				),
+				func() []string {
+					if ratioRequested[id] {
+						return []string{"PROJECT_RESOLUTION_RATIO_BELOW_POLICY"}
+					}
+					return nil
+				}()...,
+			)),
 			DownstreamImpact:   normalizeStrings(impact[id]),
 			ReviewerCandidates: append([]string{}, assertion.ReviewerCandidates...),
 			AuthorityLimit:     "reviewer-candidate-is-not-review-authority",
