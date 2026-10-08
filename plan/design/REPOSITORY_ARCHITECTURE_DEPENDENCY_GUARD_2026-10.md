@@ -120,6 +120,16 @@ Plugin capabilityの変更は #951 / PR #963、TEI-native sourceは #957 / PR #9
 
 このグラフは一時的な分析成果物であり正本ではない。測定前に広域の禁止規則を追加しない。
 
+## ソース確認による拡張障壁の具体化（2026-10-08）
+
+`internal/plugin/model.go` の `CapabilityKind.Valid()` は7種類の文字列をswitchで列挙している。`Capability` 構造体には `Actions`、`Observations`、`Evidence`、`DatabaseProviders`、`MigrationTools`、`Features`、`Permissions` が型付きフィールドとして並ぶ。このため、未知の能力種別を追加する試行では、まずKindの検証とdescriptorの保存・解釈・bindingを確認する必要がある。列挙にないKindが受理されないことはソース上で確認できるが、未知の能力が別の拡張機構で扱えるかは未検証であり「拡張不能」とは断定しない。
+
+`internal/ir/world.go` の `World` は `Plugins`、`Bundles`、`Semantics`、`Applications`、`Databases`、`Migrations`、`MigrationProviders`、各種binding等を個別の型付きsliceとして保持する。これは明示的な統合モデルとして利点がある一方、新しいDSL全体や独立したモデル種別を追加する際にWorldのフィールド変更が必要になるかを試すべき箇所である。未知フィールドの受理・保持・意味付けはParser/Workspace側の検証と切り離して判断しない。
+
+`internal/database/migration/plan.go` は共通 `planWithRenderer` にrender関数を注入しており、計画組立処理には既に分離の余地がある。一方 `PlanPostgresWithObservation` はPostgres固有の `SchemaObservation` を要求し、破壊的変更の前提確認を伴う。依存の見た目だけを整える目的でこの安全条件を汎用化・削除しない。
+
+**次の具体的な受け入れ実験**： (A) 既存Kindに含まれない架空Capabilityをdescriptorとして宣言し、parse→validate→lock→resolveの各段階でどこまで保持できるか記録する。(B) 既存WorldフィールドにないモデルをDSL pluginで追加する想定で、parser→IR→validation→serializationを通過するために必要な既存ファイル変更を列挙する。(C) 第2のDB Providerで非破壊migrationを計画する際、共通Planを変更せずrenderer追加だけで済むか確認し、破壊的操作の安全条件は別途試験する。いずれも現時点では実験計画であり、成功を主張しない。
+
 ## 非目標
 
 本ガードはRuntime Permission、Plugin Authority、Provider Conformance、外部実装のsource identityを検査しない。また、Plugin packageとphysical process / Wasm artifactが一対一であることを要求しない。Source importがきれいでもRuntimeの振る舞いまで安全・適合済みとはいえない。
