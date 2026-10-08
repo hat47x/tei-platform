@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"tei/internal/application"
 	apprelease "tei/internal/application/release"

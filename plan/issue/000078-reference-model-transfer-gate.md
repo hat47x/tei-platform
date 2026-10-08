@@ -318,4 +318,4 @@ FunctionUsedByThisは289 edgeすべてがstructurally resolveする一方、9 Fu
 
 両方を同じbranchへ先に混ぜない。exact-head Gateを先に通過したPRをmainへ統合し、後続PRはそのmainへ同期して共有JSONを機械的に統合した後、focused / full Gate Evidenceを取り直す。
 
-現時点では#968にRMP-040〜049とRML-022〜024、#964にRMP-037〜039・RMP-050とRML-019〜021・RML-025が割り当てられており、IDを再利用しない。同期時にRMP-040とRML-022が衝突したため、#964側の2件をRMP-050とRML-025へ付け替えた。loss ledgerも既存IDを上書きせず、main同期時に双方の項目を保持する。
+現時点では#968にRMP-040〜049とRML-022〜024、#964にRMP-037〜039・RMP-051とRML-019〜021・RML-026が割り当てられており、IDを再利用しない。同期時にRMP-040・RMP-050とRML-022・RML-025が衝突したため、#964側の2件をRMP-051とRML-026へ付け替えた。loss ledgerも既存IDを上書きせず、main同期時に双方の項目を保持する。

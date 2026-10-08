@@ -278,7 +278,7 @@
       "teiDirection": "preserve effective date/history number/latest flag as source facts, but distinguish business occurrence identity, history/version identity, validity periods, current-state selection and state transitions; require Source/Contract evidence before promotion and keep temporal modeling opt-in"
     },
     {
-      "id": "RMP-050",
+      "id": "RMP-051",
       "topic": "global-fail-closed-vs-local-lowering-readiness",
       "observed": "a mature reference model can contain one malformed or unresolved relational area while unrelated TableKey, Relationship, runtime Key, or Refer facts remain structurally consistent; treating any single diagnostic as proof that every relational fact is unusable preserves safety but makes full-reference transcription unnecessarily all-or-nothing",
       "risk": "a global unresolved flag can either block useful independent transfer indefinitely or tempt later code to bypass the global gate wholesale, losing the fail-closed dependency boundary",
