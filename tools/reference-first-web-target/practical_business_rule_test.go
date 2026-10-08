@@ -338,6 +338,55 @@ func TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines(t *testing.T
 	}
 }
 
+// An early business denial must not hide malformed input on a later row.
+// A partially evaluable collection is an Execution Error, not a complete
+// NotSatisfied outcome, and cannot proceed to Authorization or Command.
+func TestReferenceCommandScenarioDoesNotMaskMissingLaterValueAfterDenial(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(),
+		readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(read.OrderLineRows) < 2 {
+		t.Fatal("two order lines are required")
+	}
+	if !setSemanticRowValue(&read.OrderLineRows[0], "sales.order_line.quantity", "0") {
+		t.Fatal("first line has no quantity")
+	}
+	// Leave the second line unable to be evaluated at all.
+	remaining := make([]semanticValueProjection, 0, len(read.OrderLineRows[1].Attributes))
+	for _, attribute := range read.OrderLineRows[1].Attributes {
+		if attribute.Attribute != "sales.order_line.quantity" {
+			remaining = append(remaining, attribute)
+		}
+	}
+	read.OrderLineRows[1].Attributes = remaining
+
+	runner, err := newReferenceCommandScenarioRunner(loaded.World,
+		legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.read = staticReadScenarioRunner{result: read}
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID: "legacy-order-editor", Credential: "editor-secret",
+		From: "2026-09-18T08:30:00Z", RowIndex: 0,
+	})
+	if err == nil || !strings.Contains(err.Error(), "order line 1") {
+		t.Fatalf("later missing value was hidden by earlier denial: stage=%s error=%v", result.Stage, err)
+	}
+	if result.Stage != "validation" || result.Authorization != nil ||
+		result.Command != nil || result.Observation != nil {
+		t.Fatalf("incomplete validation reached downstream effects: %+v", result)
+	}
+}
+
 func TestReferenceCommandScenarioFailsClosedForEmptyOrderLineCollection(t *testing.T) {
 	loaded, err := workspace.Load(referenceWorkspacePath(t))
 	if err != nil {
