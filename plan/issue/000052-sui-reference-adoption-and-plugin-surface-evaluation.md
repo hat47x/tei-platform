@@ -262,6 +262,8 @@ TEIの現在のProduct Gateやsupported scopeを、SUI移管のためだけに�
 
 ## 非業務・非汎用Applicationによる構成力の圧力試験（2026-10-08）
 
+- Native Canvas / Interaction Hostの実装窓口: GitHub Issue #993（本節を設計・Acceptanceの正本とする）
+
 ### 判定したい問い
 
 SUIのように専用の空間UI、探索的な状態、利用者による保留・判断、任意の認知処理を持つApplicationを、**TEI CoreにSUI固有概念を追加せず**組み立てられるかを検証する。SUIを移植した割合ではなく、同じ意味変更を行ったときの保守負荷、既存native資産の再利用、Validationの一貫性を成果とする。
