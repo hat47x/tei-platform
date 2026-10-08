@@ -165,6 +165,8 @@ paragraph、card、row、選択範囲等へannotationする場合、文字位置
 
 未確認情報の比率はProject Healthのsignalにはできますが、それだけを強いKPIにはしません。
 
+Referenceでは、現在文脈で作業上の不確実性がどこまで解消されているかを `resolution coverage` として別signalにします。これは真理率でも、人間確認済み率そのものでもありません。現在文脈で利用可能なユーザー直入力の前提、currentな人間確認、明示的なrejectを「解消済み」と数え、AI / external由来の未確認候補等を未解消として数えます。hypothesis、context不一致、stale、target不明、metadata不完全等は別の問題として分離し、この比率の分母へ無理に入れません。
+
 さらに、確認状態が付いている情報だけを分母にすると、まだannotationされていない大量のAI出力や既存資料を見落とせます。そのため、Project Knowledge Healthとは別に、重要な情報領域の状態をどこまで把握できているかというepistemic coverageも扱います。重要領域が未分類、出所不明、対象不明である場合は、それ自体をUnknownとして残します。
 
 Project Healthでは、未確認、stale、矛盾、適用範囲の不一致、coverage不足の情報が、どの判断や実装に依存されているかを重く見ます。
@@ -180,6 +182,8 @@ Project Knowledge Healthでは少なくとも次を考慮します。
 - review age
 
 強いalertは、重要な判断や実装が未確認情報へ依存している場合など、利用者が次の行動を取れる条件へ限定します。
+
+projectごとに最低 `resolution coverage` を設定できるようにしますが、TEI Coreが一律の閾値を決めません。閾値を下回った場合はHealthを少なくともattentionにし、目標比率へ届くために必要な最小件数を算出します。その件数だけ未解消assertionをreview requestへ送り、criticalityとdownstream dependencyを優先順位付けへ使います。ユーザー直入力の作業前提へ機械的な再確認は要求しません。
 
 ### 未確認事項をステークホルダー確認へ接続する
 
