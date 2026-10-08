@@ -11,7 +11,8 @@ clean TEI Repository checkout
   -> file-native sourceを直接編集
   -> build / targeted test / validate / Canonical reload
   -> ordinary Git commit
-  -> separate integration clone
+  -> original baseから作ったseparate integration clone
+  -> task commitを通常Gitでfetch / fast-forward integration
   -> rebuild / test / validate / Canonical reload
 ```
 
@@ -68,11 +69,13 @@ runnerは少なくとも次を検査します。
 - commit前の変更fileが意図した1 fileだけである
 - CLI / build / testの利用によってRepository内へ別のuntracked artifactが生成されない
 - ordinary Git commitに変更を確定できる
-- integration側はtask repositoryから作った別local cloneである
+- integration側は元のsource checkoutから作った別local cloneであり、task repository自体を複製しない
+- integration cloneがtaskと同じbase revisionから始まり、task result commitを通常Gitのfetch / fast-forwardで統合する
+- integration後のHEADがtask result revisionと一致する
 - integration clone内でもCLIをbuildし、関連targeted testを実行できる
 - integration cloneでも追加ValidationのSource Indexが同じauthoring sourceへ戻る
 - integration cloneで同じValidationへ到達できる
-- integration cloneのCanonical Worldがtask側とbyte単位で一致する
+- integration cloneのValidation出力とCanonical Worldがtask側とそれぞれbyte単位で一致する
 - read-only reload後もintegration cloneがcleanである
 
 ## Git mergeとSemantic conflict
