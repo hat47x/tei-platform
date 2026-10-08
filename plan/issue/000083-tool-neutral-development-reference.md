@@ -4,7 +4,7 @@
 - 起票日: 2026-10-07
 - GitHub Issue: #972
 - 関連RQ: RQ-015 / RQ-017 / RQ-021 / RQ-027 / RQ-034
-- 関連ADR: ADR-0022
+- 関連ADR: ADR-0022 / ADR-0031
 - 関連Issue: ISSUE-000027 / ISSUE-000046 / ISSUE-000047 / ISSUE-000079 / ISSUE-000080
 - Primary PAS: PAS-06
 - Secondary PAS: PAS-01
@@ -423,6 +423,7 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `requirements/README.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
+- `plan/adr/0031-tool-neutral-git-native-development.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
