@@ -198,6 +198,8 @@ type ReviewEvent struct {
 	StatementKind      AssertionMode   `json:"statementKind"`
 	Context            []ScopeBinding  `json:"context"`
 	TargetIdentity     ReviewTargetIdentity `json:"targetIdentity"`
+	ValidFrom          string          `json:"validFrom,omitempty"`
+	ValidUntil         string          `json:"validUntil,omitempty"`
 	OccurredAt         string          `json:"occurredAt"`
 	Evidence           []EvidenceRef   `json:"evidence,omitempty"`
 	Conditions         []string        `json:"conditions,omitempty"`
@@ -524,6 +526,8 @@ func normalizeReviewEvents(values []ReviewEvent) ([]ReviewEvent, error) {
 		event.MeaningFingerprint = strings.TrimSpace(event.MeaningFingerprint)
 		event.TargetIdentity.Kind = strings.TrimSpace(event.TargetIdentity.Kind)
 		event.TargetIdentity.ID = strings.TrimSpace(event.TargetIdentity.ID)
+		event.ValidFrom = strings.TrimSpace(event.ValidFrom)
+		event.ValidUntil = strings.TrimSpace(event.ValidUntil)
 		event.OccurredAt = strings.TrimSpace(event.OccurredAt)
 
 		if event.Sequence <= 0 || event.ID == "" || event.Reviewer == "" {
@@ -548,6 +552,19 @@ func normalizeReviewEvents(values []ReviewEvent) ([]ReviewEvent, error) {
 		event.Context = context
 		if event.TargetIdentity.Kind == "" || event.TargetIdentity.ID == "" {
 			return nil, fmt.Errorf("reviewEvents[%d] targetIdentity requires kind and id", i)
+		}
+		if err := validateOptionalTime("reviewEvents.validFrom", event.ValidFrom); err != nil {
+			return nil, err
+		}
+		if err := validateOptionalTime("reviewEvents.validUntil", event.ValidUntil); err != nil {
+			return nil, err
+		}
+		if event.ValidFrom != "" && event.ValidUntil != "" {
+			from, _ := time.Parse(time.RFC3339, event.ValidFrom)
+			until, _ := time.Parse(time.RFC3339, event.ValidUntil)
+			if until.Before(from) {
+				return nil, fmt.Errorf("reviewEvents[%d] validUntil precedes validFrom", i)
+			}
 		}
 		if err := validateOptionalTime("reviewEvents.occurredAt", event.OccurredAt); err != nil || event.OccurredAt == "" {
 			if err != nil {
