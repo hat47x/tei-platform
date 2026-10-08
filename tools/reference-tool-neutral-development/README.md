@@ -43,7 +43,7 @@ validation sales.order_line.unit_price_positive positive {
 
 current Reference Workspaceには`.tei/decisions`が存在します。これはShared AcceptanceのDecision ledgerであり、Canonical meaningの第二正本ではありません。
 
-runnerはtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerを持つWorkspaceとCanonical Worldがbyte単位で一致することを要求します。
+runnerはtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerを持つWorkspaceに対して、Validation出力とCanonical Worldのそれぞれがbyte単位で一致することを要求します。
 
 `.tei/plugin-lock.json`はこのpressureでは削除しません。Plugin resolutionを固定するlockと、削除可能なDecision ledgerを同じ「Tool state」として扱わないためです。
 
