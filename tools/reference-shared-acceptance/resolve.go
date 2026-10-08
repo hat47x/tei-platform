@@ -117,17 +117,14 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 	// A candidate may add a Validation and declare its use in one semantic change.
 	// Check the whole candidate rather than requiring the new Validation to exist
 	// in the baseline World. Unrelated or unknown IDs still fail closed.
-	deltaValidations := map[core.CanonicalID]int{}
-	deltaValidationUses := map[string]int{}
+	deltaValidations := map[core.CanonicalID]bool{}
 	for _, op := range c.Delta {
 		switch op.Op {
 		case opAddApplication:
 			deltaApplications[core.CanonicalID(op.Application.ID)] = op.Placement
 		case opAddValidation:
-			deltaValidations[core.CanonicalID(op.ID)]++
-		case opAddApplicationValidationUse:
-			u := op.ApplicationValidationUse
-			deltaValidationUses[u.Application+"/"+u.Validation]++
+			// normalizeCandidate already rejects duplicate operation identities.
+			deltaValidations[core.CanonicalID(op.ID)] = true
 		}
 	}
 
@@ -145,9 +142,6 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			}
 			if idx.validations[core.CanonicalID(op.ID)] {
 				diag("VALIDATION_ALREADY_EXISTS", "validation %s は既に存在します", op.ID)
-			}
-			if deltaValidations[core.CanonicalID(op.ID)] > 1 {
-				diag("VALIDATION_DUPLICATE_IN_DELTA", "validation %s が同じcandidateに複数回あります", op.ID)
 			}
 			if !idx.attributes[core.CanonicalID(op.Attribute)] {
 				diag("ATTRIBUTE_NOT_FOUND", "attribute %s は存在しません", op.Attribute)
@@ -195,11 +189,8 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				break
 			}
 			if !idx.validations[core.CanonicalID(u.Validation)] &&
-				deltaValidations[core.CanonicalID(u.Validation)] != 1 {
-				diag("VALIDATION_NOT_FOUND", "validation %s は既存Worldにも同じcandidateの単一の追加にも存在しません", u.Validation)
-			}
-			if deltaValidationUses[u.Application+"/"+u.Validation] > 1 {
-				diag("APPLICATION_VALIDATION_USE_DUPLICATE_IN_DELTA", "application %s のvalidation %s が同じcandidateに複数回宣言されています", u.Application, u.Validation)
+				!deltaValidations[core.CanonicalID(u.Validation)] {
+				diag("VALIDATION_NOT_FOUND", "validation %s は既存Worldにも同じcandidateにも存在しません", u.Validation)
 			}
 			if _, ok := fingerprints[op.Placement]; !ok {
 				diag("PLACEMENT_NOT_MANAGED_SOURCE", "placement %s は管理対象sourceではありません", op.Placement)
