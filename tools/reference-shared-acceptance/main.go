@@ -21,7 +21,7 @@ func main() {
 
 const usage = `usage:
   reference-shared-acceptance preview -workspace DIR -candidate FILE [-out FILE]
-  reference-shared-acceptance review  -workspace DIR -candidate FILE [-format text|json] [-out FILE]
+  reference-shared-acceptance review  -workspace DIR -candidate FILE [-format text|json|html] [-out FILE]
   reference-shared-acceptance accept  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
@@ -52,7 +52,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	referenceReusePath := flags.String("reference-reuse", "", "qualified reference Patternのdestination-owned fields JSON file")
 	semanticEvaluationPath := flags.String("semantic-evaluation", "", "semantic evaluation Evidence JSON file")
 	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
-	format := flags.String("format", "text", "reviewの出力形式（text / json）")
+	format := flags.String("format", "text", "reviewの出力形式（text / json / html）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
 	expectedReviewFingerprint := flags.String("expected-review-fingerprint", "", "accept時に必須のreviewFingerprint。reviewコマンドで得た現在のProjectionと一致する必要があります")
 	reason := flags.String("reason", "", "rejectの理由")
@@ -228,8 +228,17 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			if code := emit(review); code != 0 {
 				return code
 			}
+		case "html":
+			page, err := renderReviewHTML(review)
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+			if code := emitText(page); code != 0 {
+				return code
+			}
 		default:
-			fmt.Fprintln(stderr, "reviewの-formatはtextまたはjsonを指定してください")
+			fmt.Fprintln(stderr, "reviewの-formatはtext、json、htmlのいずれかを指定してください")
 			return 2
 		}
 		if !ev.preview.Acceptable {
