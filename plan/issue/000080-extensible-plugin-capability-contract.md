@@ -419,3 +419,16 @@ resolver本体へAuthorityを埋め込まず、accepted Contract catalogを作�
 - Authority Evidence rotation後、旧publicationはstaleになり、再publication後もContract / Provider resolution identityは変わらずAuthority bindingだけが変わる
 
 このReferenceはpublisher trust root、署名、鍵rotation/revocationの最終実装ではない。fingerprintの存在だけを真正なAuthorityとはみなさず、production化では既存signature / provenance / Acceptance境界との接続が必要である。
+
+## E12 Locked Contract Authority replay — 2026-10-08
+
+E11だけではfresh resolution時のContract publisher Authorityしか確認できない。Capability Resolution Lockはexact Contractを保持するため、publisher Authorityが後からrotation / revokeされても、declaration replayそのものは成立し得る。
+
+`verifyCapabilityResolutionLockAcceptedContractAuthority`を追加し、Lock replayとcurrent Contract Authority verificationを分離した。
+
+- `verifyCapabilityResolutionLockReplay`: exact Contract / Provider declarationを再現する。publisher current性は判定しない
+- `verifyCapabilityResolutionLockAcceptedContractAuthority`: Lock内のexact Contractをcurrent namespace Grant / Publicationへ再照合する
+- Authority Evidenceがrotationした後、旧publicationはstaleとして拒否する
+- current publicationを更新するとAuthority binding fingerprintは変わるが、Contract fingerprint / Resolution Lock fingerprintは変えない
+
+この分離はConformance Evidenceのcurrent性と同型である。保存済みfingerprintの存在だけを現在のAuthorityへ読み替えず、意味identityとcurrent trustを別artifactとして扱う。
