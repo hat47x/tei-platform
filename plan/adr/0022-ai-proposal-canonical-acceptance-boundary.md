@@ -19,36 +19,23 @@ AI支援についてもRQ-015 / RQ-016で、既存知識を探索してから新
 
 ## 判断
 
-AIが生成した内容を、そのままCanonical Worldと同一視しません。
+AIが生成した内容を、そのままCanonical Worldやauthoritative sourceへ書き込みません。
 
-AIがauthoritative sourceへ未統合の状態で作った変更は、通常のfile edit、Git差分、または必要に応じて**Proposal / Structured Intent candidate**として扱います。Proposal objectは、意味差分や根拠を構造化して受け渡す手段になり得ますが、すべてのAI編集を開始する前に必ず生成する中間形式にはしません。
+AIの最初の出力は、**Proposal / Structured Intent candidate**として扱います。
 
 ```text
-Natural Language / Repository Evidence / AI / Human
-                    |
-          +---------+---------+
-          |                   |
-          v                   v
-Proposal / Structured     isolated file edit /
-Intent candidate          Git branch / worktree
-          |                   |
-          +---------+---------+
-                    |
-                    v
-     integration / acceptance boundary
-                    |
-                    v
+Natural Language / Repository Evidence / AI
+                    ↓
+       Proposal / Structured Intent
+                    ↓
+         Shared Acceptance Boundary
+                    ↓
            authoritative source
-                    |
-                  reload
-                    v
+                    ↓ reload
           Canonical TEI Meaning
-                    |
-                    v
+                    ↓
    Mapping / Driver / Projection / Runtime
 ```
-
-Structured Proposalは、意味差分や根拠を構造化して扱う必要がある場合の経路です。通常のRepository開発では、分離されたbranch / worktree上のfile editをGitで統合する経路も同等に正規です。どちらも、未統合の変更をCanonical authorityとは扱わず、正式統合後のauthoritative sourceから同じ意味を再構築できることを要求します。
 
 ### ProposalはCanonical authorityではない
 
@@ -95,22 +82,6 @@ reload / conformance
 
 この順序を一つの固定APIや単一processとして実装することまでは要求しません。対象となるauthoring sourceや変更種類に必要な検査を省略せず、AI経路だけが近道にならないことを要求します。
 
-### 開発環境内での直接編集を許容する
-
-生成AIや人間は、authoritative sourceから分離されたRepository clone、branch、worktree、scratch workspace等で、通常のSource編集を行って構いません。その環境でTEI CLI、Hostが提供するShell / Filesystem / Git MCP、Repository内Tool、言語固有Toolchain等を利用し、Build、Driver実行、Validation、Conformance、Testまで進めることも許容します。TEI固有のdeveloper MCP serverは、この経路の成立条件にはしません。
-
-この経路でSourceを直接編集した場合、TEIが作業中の全操作を仲介したり、編集前にStructured Proposalへ変換したりすることは要求しません。正式なauthoritative stateへまだ統合されていない変更をcandidateとして扱い、Git差分やfile-native sourceから必要なSemantic Diff / Validation / Conformanceを再構築できることを優先します。
-
-ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE / CLIは、この意味で同等の外部開発環境になり得ます。特定のAgent RuntimeやAdapterをTEIの標準Authoring経路にはしません。
-
-### Shared Acceptance Boundaryは中央Serviceを意味しない
-
-Shared Acceptance Boundaryは、すべての編集操作を一つのTEI Serviceへ逐次送信するArchitectureを要求しません。
-
-file-native edit、Git workflow、Studio、CLI、AI等から生じた変更が正式なauthoritative sourceへ統合されるときに、入口ごとに異なるCanonical解釈やValidation規則を持たないことが境界の中心です。Repository policyに応じて、local integration、Git merge、Pull Request、CI、Studio上のAcceptance等がその実現に参加できます。
-
-Git commit、branch、Pull Request等が変更候補を十分に表現できる場合、TEI独自Change Setを追加で要求しません。独自形式は、Semantic operation等に明確な追加価値がある場合の選択肢として扱います。
-
 ### staleなProposalを黙って適用しない
 
 interactiveなEditor / AI支援では、Proposal作成後にauthoritative sourceやCanonical Worldが変更される可能性があります。
@@ -151,14 +122,6 @@ Derived Experience Knowledgeを再利用する場合も、少なくとも次を�
 - similarity / routing結果とauthoritative Decisionの分離
 - 再利用候補もAcceptance Boundaryを通ること
 
-### 開発過程の一般状態をTEIへ再管理しない
-
-Agent Session、Agent Workspace、Checkpoint、Plan、tool trajectory、Test実行回数、一般的な `verified / unverified` 状態等は、それ自体をTEIのProduct stateにはしません。
-
-Git、CI、開発Tool等が所有する状態は、必要な理由がない限りTEIへ複製しません。TEIが保持するのは、Canonical meaning、Source、Decision、Authority、Conformance等としてTEI自身に独立した必要性がある情報です。
-
-Agent Adapter、TEI固有MCP、その他の外部Serviceとの直接統合は追加できますが、その存在をfile-native / Git / CLIやHost-provided MCPによる標準的な開発の前提にはしません。
-
 ### AI固有EvidenceをCanonicalへ混ぜない
 
 model名、prompt、tool call、trajectory、token使用量、judge score等は、再現性や評価のためのEvidenceになり得ます。
@@ -171,9 +134,9 @@ secret、credential、不要なprivate dataをPrompt / Evidence / Durable artifa
 
 TEIの設計・Authoring支援では、自然言語から生成した内容をそのままRuntime操作や生成コードの実行へ接続することを標準経路にはしません。
 
-設計変更を正式なCanonical stateへ統合する場合は、対象に必要なAcceptance / Validation境界を経由します。ただし、独立した開発workspace内でSourceを編集し、Build、Test、Driver、preview等を実行することまで、Production Runtimeへの直接操作と同一視しません。
+設計変更はProposal / Acceptanceを経由します。
 
-実Database、外部Service、Secret、Production相当Resource、その他の外部副作用へ到達する実行要求では、既存のSemantic Capability、Authorization、Runtime Binding、Resource、Business Result / Execution Error / Observation境界を利用し、AI tool callや開発環境のShell権限をauthority modelの代替にはしません。
+実行要求が必要な場合も、既存のSemantic Capability、Authorization、Runtime Binding、Resource、Business Result / Execution Error / Observation境界を利用し、AI tool callをauthority modelの代替にはしません。
 
 ## Gate Cとの関係
 
@@ -199,12 +162,12 @@ Proposal schema、API、AI provider、Editor UI、承認UXは、そのEvidence�
 
 ### 増える負担
 
-- Structured Proposalを利用する経路では、Proposalと採用済みDecisionを区別する必要がある
-- 並行変更にはGitまたは対象に応じたrevision / conflict handlingが必要になる
-- AI経路でも通常のValidation / Conformanceを省略できない
-- provenanceやEvidenceを永続化する場合は、何をTEIが所有し、何をGit / CI / Tool側へ残すかを区別する必要がある
+- Proposalと採用済みDecisionを区別して管理する必要がある
+- revision / conflict handlingが必要になる
+- AI経路でも通常のValidation / Conformanceを通す必要がある
+- provenanceやEvidenceを保存する範囲を設計する必要がある
 
-これらは、AI支援をTEIの既存authority modelへ安全に統合するために受け入れます。ただし、すべての変更へProposal lifecycleやTEI独自stateを追加する負担は受け入れません。
+これらは、AI支援をTEIの既存authority modelへ安全に統合するために受け入れます。
 
 ## 採用しない案
 
@@ -215,14 +178,6 @@ Proposal schema、API、AI provider、Editor UI、承認UXは、そのEvidence�
 ### AI専用のCanonical Knowledge Storeを作る
 
 同じ業務上の意味を人が二重管理する可能性が高く、RQ-003 / RQ-017に反するため採用しません。
-
-### Agent Adapterを標準Authoringの必須経路にする
-
-ChatGPT、Codex、Claude Code、通常のIDE / CLI等からの開発をTEI固有Adapterの有無へ依存させ、既存のGit-native開発を二級経路にするため採用しません。
-
-### Agentの作業状態をTEIで一元管理する
-
-開発ToolやCIがすでに所有するSession、Workspace、Checkpoint、一般的な検証状態をTEIへ重複して持つと、変更管理の第二正本になりやすいため採用しません。
 
 ### AIのautonomy levelから権限を自動決定する
 
@@ -238,11 +193,12 @@ autonomyとauthorityは別の関心事であり、security境界を曖昧にす�
 
 ## 検証
 
-`ISSUE-000027`ではStructured Proposal / Shared Acceptanceを利用する経路を確認します。
+`ISSUE-000027`では少なくとも次を確認します。
 
 - read-only knowledge searchとCanonical変更候補を分離できる
-- Structured Proposalを利用する場合、Canonical ID / Source / Evidenceを参照できる
-- Proposalをそのままauthoritative sourceへ書かない
+- ProposalがCanonical ID / Source / Evidenceを参照できる
+- AI Proposalをそのままauthoritative sourceへ書かない
+- Editor / CLI等の候補も同じAcceptance原則を利用できる
 - stale base revisionを検出できる
 - 採用後のauthoritative sourceをAIなしで再読込できる
 - reload後のCanonicalがValidation / Conformanceを満たす
@@ -250,21 +206,10 @@ autonomyとauthorityは別の関心事であり、security境界を曖昧にす�
 - Derived Experience Knowledgeを無効化してもCanonical Worldが変わらない
 - AI固有Evidenceを除去しても業務上の意味が失われない
 
-`ISSUE-000083` / GitHub #972では、Proposalを必須にしないGit-native経路を確認します。
-
-- clean Repository clone / worktreeからTEI CLIをbuild・実行できる
-- managed authoring sourceを直接編集し、Source Indexから同じ意味へ追跡できる
-- ordinary Git commit / branchを変更成果物として利用できる
-- 別のintegration contextから同じCanonical meaningを再構築できる
-- `.tei/decisions`等のderived / supporting stateを除去してもCanonical meaningが変わらない
-- Git上はmerge可能でも意味上不正な変更を既存Validationが拒否できる
-- Agent Adapter、TEI独自Change Set、native developer MCPを必須にしない
-
 ## 関連文書
 
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
-- `plan/issue/000083-tool-neutral-development-reference.md`
 - `docs/architecture.md`
