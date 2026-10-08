@@ -1,0 +1,115 @@
+package main
+
+import (
+	"strings"
+	"testing"
+
+	"tei/tools/internal/rmtevidence"
+)
+
+func TestBuildTranscriptionCandidateEvidenceForKnownMappedNode(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table ID="private-table"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence, err := BuildTranscriptionCandidateEvidence(
+		FormatXead,
+		doc,
+		classificationContractFixture(),
+		2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.MappingStatus != rmtevidence.MappingMapped ||
+		!evidence.SourceConstructKnown ||
+		evidence.SourceConstruct != "Table" ||
+		evidence.Extension != "reference.xead.relational-semantics" {
+		t.Fatalf("evidence=%+v", evidence)
+	}
+	if evidence.SourceToken != sourceNodeToken(doc.ArtifactSHA256, 2) {
+		t.Fatalf("source token=%q", evidence.SourceToken)
+	}
+	if evidence.SourceArtifactDigest != "sha256:"+doc.ArtifactSHA256 {
+		t.Fatalf("source artifact=%q", evidence.SourceArtifactDigest)
+	}
+}
+
+func TestBuildTranscriptionCandidateEvidenceRedactsUnknownConstructName(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><PrivateBusinessThing Secret="private-value"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence, err := BuildTranscriptionCandidateEvidence(
+		FormatXead,
+		doc,
+		classificationContractFixture(),
+		2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.SourceConstructKnown || evidence.SourceConstruct != "" || evidence.MappingStatus != rmtevidence.MappingUnmapped {
+		t.Fatalf("unknown construct was promoted: %+v", evidence)
+	}
+	encoded, err := rmtevidence.CanonicalBytes(evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"PrivateBusinessThing", "Secret", "private-value"} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Fatalf("RMT Evidence leaked %q: %s", forbidden, encoded)
+		}
+	}
+}
+
+func TestBuildTranscriptionCandidateEvidenceDoesNotPromoteNamespacedLookalike(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" xmlns:x="urn:private"><x:Table ID="private"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence, err := BuildTranscriptionCandidateEvidence(
+		FormatXead,
+		doc,
+		classificationContractFixture(),
+		2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.SourceConstructKnown || evidence.SourceConstruct != "" ||
+		evidence.MappingStatus != rmtevidence.MappingUnmapped ||
+		evidence.Extension != "" {
+		t.Fatalf("namespaced lookalike was promoted: %+v", evidence)
+	}
+}
+
+func TestBuildTranscriptionCandidateEvidenceRejectsUnsupportedSourceProfile(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="9.9"><Table/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BuildTranscriptionCandidateEvidence(
+		FormatXead,
+		doc,
+		classificationContractFixture(),
+		2,
+	); err == nil || !strings.Contains(err.Error(), "not supported") {
+		t.Fatalf("unsupported source profile was accepted: %v", err)
+	}
+}
+
+func TestBuildTranscriptionCandidateEvidenceRejectsInvalidOrdinal(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BuildTranscriptionCandidateEvidence(
+		FormatXead,
+		doc,
+		classificationContractFixture(),
+		0,
+	); err == nil || !strings.Contains(err.Error(), "ordinal") {
+		t.Fatalf("invalid source ordinal was accepted: %v", err)
+	}
+}
