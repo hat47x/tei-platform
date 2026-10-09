@@ -24,6 +24,7 @@ type validationScopeReviewRow struct {
 // 確定する情報ではない。明示されていない Application を名前から推測しない。
 func compareValidationScopes(world ir.World, f fixture) []validationScopeReviewRow {
 	var rows []validationScopeReviewRow
+	_, _, validationCounts, _ := semanticCounts(world)
 	for _, s := range f.Steps {
 		if s.Realization != "validation-support" {
 			continue
@@ -54,33 +55,35 @@ func compareValidationScopes(world ir.World, f fixture) []validationScopeReviewR
 			continue
 		}
 
-		// 解決不能な明示参照の集合差を、影響分析の確定結果にしない。
-		_, _, validationCounts, _ := semanticCounts(world)
+		// 未解決参照に加え、Applicationや手順の宣言重複を集合化で消さない。
+		// 参照の個数は暗黙に意味のある検査順序を担う可能性がある。
+		inApplication := make(map[string]struct{}, len(matched.Validations))
+		inProcedure := make(map[string]struct{}, len(s.Validations))
 		unresolved := false
 		for _, id := range s.Validations {
+			if _, seen := inProcedure[id]; seen {
+				unresolved = true
+			}
+			inProcedure[id] = struct{}{}
 			if validationCounts[id] != 1 {
 				unresolved = true
 			}
 		}
 		for _, id := range matched.Validations {
-			if validationCounts[string(id)] != 1 {
+			name := string(id)
+			if _, seen := inApplication[name]; seen {
+				unresolved = true
+			}
+			inApplication[name] = struct{}{}
+			if validationCounts[name] != 1 {
 				unresolved = true
 			}
 		}
 		if unresolved {
 			row.Status = "unresolved-reference"
-			row.Reason = "Validation参照を正確に解決できません。集合差の判定を保留します"
+			row.Reason = "Validation参照が重複しているか正確に1件へ解決できません。集合差の判定を保留します"
 			rows = append(rows, row)
 			continue
-		}
-
-		inApplication := make(map[string]struct{}, len(matched.Validations))
-		inProcedure := make(map[string]struct{}, len(s.Validations))
-		for _, id := range matched.Validations {
-			inApplication[string(id)] = struct{}{}
-		}
-		for _, id := range s.Validations {
-			inProcedure[id] = struct{}{}
 		}
 		for id := range inApplication {
 			if _, ok := inProcedure[id]; !ok {
