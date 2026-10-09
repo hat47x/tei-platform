@@ -97,7 +97,6 @@ func TestMappedEvidenceRequiresKnownConstructAndExtension(t *testing.T) {
 	}
 }
 
-
 func TestPrepareAddsMandatoryAuthorityLimits(t *testing.T) {
 	value := fixture()
 	value.AuthorityLimits = []string{"producer-specific-limit"}
@@ -118,7 +117,6 @@ func TestPrepareAddsMandatoryAuthorityLimits(t *testing.T) {
 		}
 	}
 }
-
 
 func TestFingerprintFieldsRequireExactSHA256(t *testing.T) {
 	cases := []struct {
