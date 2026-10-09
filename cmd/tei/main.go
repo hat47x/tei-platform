@@ -69,7 +69,7 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
@@ -82,6 +82,9 @@ func main() {
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
+	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
+	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
+	expectedDataDesignCandidateEvidenceRequirementFingerprint := fs.String("expected-data-design-candidate-evidence-requirement-fingerprint", "", "expected current Data Design candidate Evidence requirement fingerprint")
 	expectedReviewPlanFingerprint := fs.String("expected-review-plan-fingerprint", "", "expected Builder Review Plan fingerprint; knowledge-review-plan fails on mismatch")
 	expectedReviewHandoffFingerprint := fs.String("expected-review-handoff-fingerprint", "", "expected Builder Review Handoff fingerprint; review handoff commands fail on mismatch")
 	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
@@ -220,6 +223,33 @@ func main() {
 			os.Exit(1)
 		}
 		writeJSON(disclosure)
+		return
+	}
+	if command == "knowledge-data-design-candidate-review" {
+		if *workspacePath == "" || *worldPath != "" {
+			fmt.Fprintln(os.Stderr, "knowledge-data-design-candidate-review requires -workspace and does not accept -world")
+			os.Exit(2)
+		}
+		context, err := buildKnowledgeContext(*workspacePath, *subjectKind, *subjectID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := checkDataDesignFingerprint(context, *expectedDataDesignFingerprint); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		packet, err := knowledgecontext.BuildDataDesignCandidateReview(
+			context,
+			*dataDesignCandidateKind,
+			*dataDesignCandidateFingerprint,
+			*expectedDataDesignCandidateEvidenceRequirementFingerprint,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		writeJSON(packet)
 		return
 	}
 	if command == "knowledge-context" {
