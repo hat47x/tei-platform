@@ -212,3 +212,23 @@ func TestPanicAfterResponseStartedRemainsAuditError(t *testing.T) {
 		t.Fatalf("panic after response must be audited as error: status=%d audit=%+v", w.Code, records)
 	}
 }
+
+func TestRejectAmbiguousProtectedRoutePolicies(t *testing.T) {
+	for _, path := range []string{"/scenario/submit?admin=1", "/scenario/submit#fragment", "/scenario/%73ubmit", "/scenario//submit", "/scenario/\\\\submit"} {
+		t.Run(path, func(t *testing.T) {
+			_, err := NewHost(Policy{
+				Path: path, Method: http.MethodPost, ActionID: "order_entry.submit_order",
+				Providers: map[string]string{"legacy": "legacy:order_entry"},
+			}, Dependencies{
+				VerifySession: func(*http.Request) (Principal, error) { return Principal{}, nil },
+				VerifyCSRF:    func(*http.Request, Principal) bool { return true },
+				Authorize:     func(context.Context, Principal, string) (bool, error) { return true, nil },
+				Invoke:        http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
+				Audit:         func(AuditRecord) {},
+			})
+			if err == nil {
+				t.Fatal("ambiguous protected route accepted")
+			}
+		})
+	}
+}
