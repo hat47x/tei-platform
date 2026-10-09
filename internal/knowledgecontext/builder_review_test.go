@@ -53,7 +53,7 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 		"apply-required-knowledge-qualification-before-semantic-use",
 		"inspect-selected-section-local-resolution-and-evidence-status",
 		"inspect-unresolved-and-authority-limits",
-		"form-proposal-without-inventing-missing-meaning",
+		"form-minimum-semantic-delta-proposal-without-inventing-missing-meaning",
 		"route-authoritative-change-through-shared-acceptance",
 	}
 	if !reflect.DeepEqual(got.ReviewSequence, wantSequence) {
@@ -63,6 +63,7 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 		"stop-when-required-evidence-or-authority-is-unresolved",
 		"do-not-treat-omitted-or-unavailable-knowledge-as-negative-evidence",
 		"do-not-promote-derived-candidate-or-guidance-to-accepted-meaning",
+		"do-not-copy-disclosed-knowledge-snapshot-into-proposal-meaning",
 		"do-not-treat-recommended-section-as-qualified-or-disclosed-knowledge",
 		"do-not-treat-context-unresolved-as-exhaustive-of-section-local-uncertainty",
 		"stop-semantic-use-when-selected-section-local-status-is-unresolved",
@@ -79,6 +80,7 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 		"recommended-section-is-not-knowledge-qualification",
 		"review-order-does-not-grant-write-or-runtime-authority",
 		"review-plan-does-not-replace-qualification-or-shared-acceptance",
+		"proposal-delta-remains-separate-from-knowledge-evidence",
 		"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
 		"review-plan-fingerprint-is-routing-identity-not-knowledge-freshness-proof",
 		"review-plan-fingerprint-is-not-selected-knowledge-fingerprint",
