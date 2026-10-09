@@ -120,7 +120,9 @@ saved handoff
   -> existing DisclosureProjection
 ```
 
-DisclosureにはHandoffを埋め込まない。したがってDisclosureの存在自体は、任意の別taskについてQualification済みであることを意味しない。これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
+DisclosureにはHandoffを埋め込まない。したがってDisclosureの存在自体は、任意の別taskについてQualification済みであることを意味しない。
+
+また、HandoffのQualificationと各Knowledge区画内部のreadinessを同一視しない。`qualified-for-disclosure`でも、選択区画が持つ`resolutionStatus`、`evidenceCoverageStatus`、局所的なambiguity等は別途確認する。共有`Context.unresolved`を局所的不確実性の完全な一覧とは扱わない。これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
 
 Review Planのfingerprintはrouting identityを表すだけであり、選択したKnowledge自体のfreshness proofにはしない。また、推奨された区画をQualification済みKnowledgeやsemantic applicabilityへ昇格させず、必要なQualificationを別境界で通す。current Knowledge Contextに区画が無いことも、他のKnowledge surfaceを含む全体的な不存在へ一般化しない。Knowledge内容の再利用可否は、それぞれのProjection / DisclosureのfingerprintとEvidence境界で別に確認する。
 
