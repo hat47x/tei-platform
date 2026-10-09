@@ -289,6 +289,57 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 	}
 }
 
+func TestContractQuerySQLRealizationReverseTracesByExplicitResultMappingOnly(t *testing.T) {
+	root := testRepositoryRoot(t)
+	const realizationID = "sales_core/sales_core.order_line/find_by_order/sql/postgres"
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"contract-query-sql-realization",
+		realizationID,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil ||
+		got.DataDesign.Data != "sales.order_line" ||
+		got.DataDesign.Focus.Kind != "contract-query-sql-realization" ||
+		got.DataDesign.Focus.ID != realizationID {
+		t.Fatalf("SQL realization did not reverse trace to Semantic Data: %+v", got.DataDesign)
+	}
+	if len(got.References) == 0 || len(got.Artifacts) == 0 {
+		t.Fatalf("SQL realization source trace is missing: references=%+v artifacts=%+v", got.References, got.Artifacts)
+	}
+	if !hasDataDesignEvidence(
+		got.DataDesign,
+		"contract-query-sql-realization",
+		realizationID,
+		"databases/sales-core/query-realizations/order-line-find-by-order.tei",
+	) {
+		t.Fatalf("SQL realization authoring Evidence is missing: %+v", got.DataDesign.Evidence)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("SQL realization identity was promoted to business identity: %+v", got.DataDesign)
+	}
+	for _, candidate := range got.DataDesign.BusinessIdentityCandidates {
+		for _, component := range candidate.Components {
+			if component.Attribute == "sales.order_line.order_line_id" {
+				t.Fatalf("raw SQL result identity leaked into business identity candidate: %+v", candidate)
+			}
+		}
+	}
+	for _, limit := range []string{
+		"contract-query-sql-realization-identity-is-not-business-data-identity",
+		"raw-result-column-is-not-business-identity",
+		"provider-specific-realization-is-not-semantic-authority",
+	} {
+		if !containsKnowledgeContextString(got.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("SQL realization authority limit %q is missing: %+v", limit, got.DataDesign.AuthorityLimits)
+		}
+	}
+}
+
 func TestPersistenceMappingReverseTracesToSemanticDataWithoutInventingBusinessIdentity(t *testing.T) {
 	root := testRepositoryRoot(t)
 	got, err := buildKnowledgeContext(
