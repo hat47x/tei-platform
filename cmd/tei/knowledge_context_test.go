@@ -207,6 +207,21 @@ func TestBuildBuilderReviewPlanRoutesCurrentKnowledge(t *testing.T) {
 	}
 }
 
+func TestBuildBuilderReviewPlanRequiresWorkspaceAndSubject(t *testing.T) {
+	if _, err := buildBuilderReviewPlan("", "semantic-data", "sales.order_line"); err == nil ||
+		!strings.Contains(err.Error(), "knowledge-review-plan requires -workspace") {
+		t.Fatalf("empty workspace was not rejected clearly: %v", err)
+	}
+	if _, err := buildBuilderReviewPlan("unused", "", "sales.order_line"); err == nil ||
+		!strings.Contains(err.Error(), "requires -subject-kind and -subject-id") {
+		t.Fatalf("empty subject kind was not rejected clearly: %v", err)
+	}
+	if _, err := buildBuilderReviewPlan("unused", "semantic-data", ""); err == nil ||
+		!strings.Contains(err.Error(), "requires -subject-kind and -subject-id") {
+		t.Fatalf("empty subject id was not rejected clearly: %v", err)
+	}
+}
+
 func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(
