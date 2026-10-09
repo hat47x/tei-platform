@@ -70,6 +70,20 @@ AI Builderが高い自律性を持っていても、Canonical authorityを暗黙
 
 AI Builderへ渡す理解用Contextは、Repository断片の単純な列挙に限定しない。対象subjectについて、現在のSource / Evidence、未解決事項、authority limit、設計判断に必要な確認順序を、用途別のderived Projectionとしてまとめてよい。
 
+Knowledge Contextは、対象subjectについて現在利用できる知識区画から`builderReviewPlan`を派生させてよい。この計画は、AI BuilderへSource / Evidence、定義、Data設計、依存・影響の確認順を伝えるrouting guidanceであり、各区画が持つ設計原則や業務意味を複製しない。選択的開示でも計画を保持し、省略されたKnowledgeを「存在しない」意味へ変換しない。
+
+```text
+Builder Review Plan
+  -> relevant Knowledgeの読み順
+  -> unresolved / authority limitの確認
+  -> Proposal / Shared Acceptanceへの接続
+
+Builder Review Plan
+  != semantic applicability
+  != accepted Decision
+  != write / runtime authority
+```
+
 Data設計では、`tei knowledge-context ... -disclose data-design` がこの境界を担う。識別子、候補キー、関数従属性等について、PersistenceやUIの構造から業務意味を推測せず、根拠が不足する場合は`unresolved`を保持する。投影が返すreview protocolや設計候補はAIへの作業指針であって、Canonical authorityやAcceptanceそのものではない。
 
 ```text
