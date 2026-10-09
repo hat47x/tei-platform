@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"tei/internal/core"
@@ -184,10 +183,14 @@ func validateRuntimeCapabilityRef(ref RuntimeCapabilityRef) error {
 	if ref.Schema != runtimeCapabilityRefSchema {
 		return fmt.Errorf("runtime Capability Ref schema %q is not supported", ref.Schema)
 	}
-	if strings.TrimSpace(ref.ContractID) == "" || ref.PluginID == "" ||
+	if strings.TrimSpace(ref.ContractID) == "" ||
+		ref.ContractID != strings.TrimSpace(ref.ContractID) ||
+		ref.PluginID == "" ||
 		strings.TrimSpace(ref.ImplementationID) == "" ||
-		strings.TrimSpace(ref.RealizationTarget) == "" {
-		return fmt.Errorf("runtime Capability Ref identity is incomplete")
+		ref.ImplementationID != strings.TrimSpace(ref.ImplementationID) ||
+		strings.TrimSpace(ref.RealizationTarget) == "" ||
+		ref.RealizationTarget != strings.TrimSpace(ref.RealizationTarget) {
+		return fmt.Errorf("runtime Capability Ref identity is incomplete or non-canonical")
 	}
 	if _, err := plugin.ParseVersion(ref.ContractVersion); err != nil {
 		return fmt.Errorf("runtime Capability Ref Contract version: %w", err)
@@ -253,6 +256,7 @@ type RuntimeEnvironmentPlan struct {
 	Environment core.CanonicalID `json:"environment"`
 	RuntimeCapability RuntimeCapabilityRef `json:"runtimeCapability"`
 	ExecutionProfileFingerprint string `json:"executionProfileFingerprint"`
+	IsolationPolicy RuntimeIsolationPolicy `json:"isolationPolicy"`
 	Permissions []permission.Spec `json:"permissions,omitempty"`
 	ResourceBindings []resource.Binding `json:"resourceBindings,omitempty"`
 	LeasePolicy resource.LeasePolicy `json:"leasePolicy,omitempty"`
@@ -354,6 +358,7 @@ func buildRuntimeEnvironmentPlan(
 		Environment: authority.Environment,
 		RuntimeCapability: ref,
 		ExecutionProfileFingerprint: profile.Fingerprint,
+		IsolationPolicy: profile.IsolationPolicy,
 		Permissions: normalizedGrants,
 		ResourceBindings: resource.NormalizeBindings(matchedBindings),
 		LeasePolicy: leasePolicy,
@@ -376,6 +381,44 @@ func validateRuntimeEnvironmentPlan(plan RuntimeEnvironmentPlan) error {
 	}
 	if plan.ExecutionProfileFingerprint != plan.RuntimeCapability.ExecutionProfileFingerprint {
 		return fmt.Errorf("runtime Environment Plan execution profile differs from runtime Capability Ref")
+	}
+	if !plan.IsolationPolicy.valid() {
+		return fmt.Errorf("runtime Environment Plan isolation policy %q is invalid", plan.IsolationPolicy)
+	}
+	normalizedPermissions, err := normalizePermissionSet(plan.Permissions)
+	if err != nil {
+		return err
+	}
+	if !samePermissionSet(normalizedPermissions, plan.Permissions) {
+		return fmt.Errorf("runtime Environment Plan permissions are not normalized")
+	}
+	normalizedBindings := resource.NormalizeBindings(plan.ResourceBindings)
+	if len(normalizedBindings) != len(plan.ResourceBindings) {
+		return fmt.Errorf("runtime Environment Plan Resource Bindings are invalid")
+	}
+	for i := range normalizedBindings {
+		if err := normalizedBindings[i].Validate(); err != nil {
+			return err
+		}
+		if normalizedBindings[i] != plan.ResourceBindings[i] {
+			return fmt.Errorf("runtime Environment Plan Resource Bindings are not normalized")
+		}
+	}
+	if len(plan.Permissions) == 0 {
+		if len(plan.ResourceBindings) > 0 || plan.LeasePolicy != (resource.LeasePolicy{}) {
+			return fmt.Errorf("zero-Permission runtime Environment Plan may not carry Resource Authority")
+		}
+	} else {
+		matched, err := resource.MatchBindings(plan.Permissions, plan.ResourceBindings)
+		if err != nil {
+			return err
+		}
+		if len(matched) != len(plan.ResourceBindings) {
+			return fmt.Errorf("runtime Environment Plan carries unused Resource Binding")
+		}
+		if err := plan.LeasePolicy.Validate(); err != nil {
+			return err
+		}
 	}
 	if !validSHA256Fingerprint(plan.RuntimePolicyFingerprint) ||
 		runtimeEnvironmentPlanFingerprint(plan) != plan.RuntimePolicyFingerprint {
@@ -445,6 +488,15 @@ func invokeWithExistingHostBoundary(
 	}
 	if sandbox == nil {
 		return prov, fmt.Errorf("generic runtime invocation requires existing Host Sandbox")
+	}
+	if plan.IsolationPolicy != RuntimeIsolationHostEnforcedSandbox {
+		return prov, fmt.Errorf(
+			"Host Sandbox invocation requires host-enforced-sandbox isolation, got %q",
+			plan.IsolationPolicy,
+		)
+	}
+	if strings.TrimSpace(operation) == "" || strings.TrimSpace(requestID) == "" {
+		return prov, fmt.Errorf("generic runtime invocation requires operation and request ID")
 	}
 	if plan.RuntimeCapability.Fingerprint != realization.RuntimeCapabilityFingerprint {
 		return prov, fmt.Errorf("process realization belongs to a different runtime Capability Ref")
