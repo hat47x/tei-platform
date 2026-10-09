@@ -10,6 +10,14 @@ import (
 
 // validationScopeReviewRow は、Application 全体の評価宣言と業務手順の明示参照を
 // 比較するための読み取り専用の表示情報である。集合の差は不整合の証拠ではない。
+// validationReferenceIssue は比較を保留した具体的な理由を指す。
+// 適用範囲や実行時の成否の判定ではない。
+type validationReferenceIssue struct {
+	Side   string `json:"side"`
+	ID     string `json:"id"`
+	Reason string `json:"reason"`
+}
+
 type validationScopeReviewRow struct {
 	Step             string                   `json:"step"`
 	Application      string                   `json:"applicationContext,omitempty"`
@@ -20,6 +28,7 @@ type validationScopeReviewRow struct {
 	Reason           string                   `json:"reason"`
 	SourceEvidence   []validationReviewSource `json:"sourceEvidence,omitempty"`
 	UnresolvedSource []string                 `json:"unresolvedSource,omitempty"`
+	ReferenceIssues  []validationReferenceIssue `json:"referenceIssues,omitempty"`
 }
 
 // compareValidationScopes は業務手順の validation-support に限って比較する。
@@ -62,29 +71,53 @@ func compareValidationScopes(world ir.World, f fixture) []validationScopeReviewR
 		// 参照の個数は暗黙に意味のある検査順序を担う可能性がある。
 		inApplication := make(map[string]struct{}, len(matched.Validations))
 		inProcedure := make(map[string]struct{}, len(s.Validations))
-		unresolved := false
+		issueSet := make(map[validationReferenceIssue]struct{})
+		recordIssue := func(side, id, reason string) {
+			issue := validationReferenceIssue{Side: side, ID: id, Reason: reason}
+			if _, found := issueSet[issue]; found {
+				return
+			}
+			issueSet[issue] = struct{}{}
+			row.ReferenceIssues = append(row.ReferenceIssues, issue)
+		}
+		checkDefinition := func(side, id string) {
+			switch validationCounts[id] {
+			case 0:
+				recordIssue(side, id, "missing-definition")
+			case 1:
+				// Unique source declaration.
+			default:
+				recordIssue(side, id, "ambiguous-definition")
+			}
+		}
 		for _, id := range s.Validations {
 			if _, seen := inProcedure[id]; seen {
-				unresolved = true
+				recordIssue("procedure", id, "duplicate-declaration")
 			}
 			inProcedure[id] = struct{}{}
-			if validationCounts[id] != 1 {
-				unresolved = true
-			}
+			checkDefinition("procedure", id)
 		}
 		for _, id := range matched.Validations {
 			name := string(id)
 			if _, seen := inApplication[name]; seen {
-				unresolved = true
+				recordIssue("application", name, "duplicate-declaration")
 			}
 			inApplication[name] = struct{}{}
-			if validationCounts[name] != 1 {
-				unresolved = true
-			}
+			checkDefinition("application", name)
 		}
-		if unresolved {
+		if len(row.ReferenceIssues) > 0 {
+			sort.Slice(row.ReferenceIssues, func(a, b int) bool {
+				left, right := row.ReferenceIssues[a], row.ReferenceIssues[b]
+				if left.Side != right.Side {
+					return left.Side < right.Side
+				}
+				if left.ID != right.ID {
+					return left.ID < right.ID
+				}
+				return left.Reason < right.Reason
+			})
 			row.Status = "unresolved-reference"
-			row.Reason = "Validation参照が重複しているか正確に1件へ解決できません。集合差の判定を保留します"
+			row.Reason = "比較を保留したValidation参照とその理由をreferenceIssuesに示します。未解決の参照から集合差を確定しません"
 			rows = append(rows, row)
 			continue
 		}
