@@ -27,12 +27,16 @@ type BootstrapSeedEvidence struct {
 }
 
 type BootstrapStageEvidence struct {
-	Stage                 BootstrapStageName `json:"stage"`
-	Builder               BuilderIdentity    `json:"builder"`
-	SourceClosureDigest   string             `json:"sourceClosureDigest"`
-	BuildInputFingerprint string             `json:"buildInputFingerprint"`
-	BuildPlanFingerprint  string             `json:"buildPlanFingerprint"`
-	Output                BuilderIdentity    `json:"output"`
+	Stage               BootstrapStageName `json:"stage"`
+	Builder             BuilderIdentity    `json:"builder"`
+	SourceClosureDigest string             `json:"sourceClosureDigest"`
+	// BuildInputFingerprint identifies the semantic inputs that must remain
+	// comparable across bootstrap stages. Exact executing builder / interpreter
+	// identities are stage-specific and belong in Builder, BuildPlanFingerprint,
+	// and the Reference execution Evidence rather than this common fingerprint.
+	BuildInputFingerprint string          `json:"buildInputFingerprint"`
+	BuildPlanFingerprint  string          `json:"buildPlanFingerprint"`
+	Output                BuilderIdentity `json:"output"`
 }
 
 // BootstrapConvergenceEvidence is read-only Evidence for SB-3. It does not
