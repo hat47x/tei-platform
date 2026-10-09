@@ -29,10 +29,15 @@ check_case() {
     tracked-dirty) printf 'changed\n' >> "$repo/README.md" ;;
     untracked) printf 'new\n' > "$repo/new.txt" ;;
     ignored) printf 'cache\n' > "$repo/ignored.txt" ;;
-    assume-unchanged) git -C "$repo" update-index --assume-unchanged README.md ;;
-    skip-worktree) git -C "$repo" update-index --skip-worktree README.md ;;
+    assume-unchanged) git -C "$repo" update-index --assume-unchanged README.md; printf 'masked\n' >> "$repo/README.md" ;;
+    skip-worktree) git -C "$repo" update-index --skip-worktree README.md; printf 'masked\n' >> "$repo/README.md" ;;
     *) echo "unknown fixture: $name" >&2; exit 1 ;;
   esac
+
+  if [[ "$name" == assume-unchanged || "$name" == skip-worktree ]]; then
+    # Ordinary porcelain output can be empty even when a tracked file was changed.
+    test -z "$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
+  fi
 
   bash "$repo/tools/reference-external-coordination/run.sh" > "$output" 2>&1 || actual=$?
   if [[ "$actual" -ne "$expected" ]]; then
