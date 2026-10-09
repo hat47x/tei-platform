@@ -531,6 +531,7 @@ type GenericInvocationProvenance struct {
 	RuntimeCapability RuntimeCapabilityRef `json:"runtimeCapability"`
 	RuntimePolicyFingerprint string `json:"runtimePolicyFingerprint"`
 	ExecutionAuthorityEvidenceFingerprint string `json:"executionAuthorityEvidenceFingerprint"`
+	ArtifactVerification *pruntime.ArtifactVerification `json:"artifactVerification,omitempty"`
 	TransportCapabilityKind string `json:"transportCapabilityKind"`
 	TransportCapabilityID core.CanonicalID `json:"transportCapabilityId"`
 	Sandboxed bool `json:"sandboxed"`
@@ -543,6 +544,7 @@ func invokeWithExistingHostBoundary(
 	ctx context.Context,
 	plan RuntimeEnvironmentPlan,
 	realization RuntimeProcessRealization,
+	verifier pruntime.ArtifactVerifier,
 	broker resource.Broker,
 	sandbox pruntime.SandboxLauncher,
 	operation string,
@@ -574,6 +576,22 @@ func invokeWithExistingHostBoundary(
 	if realization.Artifact.Digest != plan.RuntimeCapability.ArtifactDigest {
 		return prov, fmt.Errorf("process realization artifact differs from runtime Capability Ref")
 	}
+	if verifier == nil {
+		return prov, fmt.Errorf("generic runtime invocation requires existing Artifact Verifier")
+	}
+	verified, err := verifier.Verify(ctx, realization.Plugin, realization.Artifact)
+	if err != nil {
+		return prov, fmt.Errorf("artifact verification failed: %w", err)
+	}
+	if !verified.DigestVerified {
+		return prov, fmt.Errorf("artifact digest was not verified")
+	}
+	if realization.Artifact.SignatureRef != "" && !verified.SignatureVerified {
+		return prov, fmt.Errorf("artifact signature was not verified")
+	}
+	if realization.Artifact.Provenance != "" && !verified.ProvenanceChecked {
+		return prov, fmt.Errorf("artifact provenance was not verified")
+	}
 	if strings.TrimSpace(realization.Command.Executable) == "" {
 		return prov, fmt.Errorf("process realization executable is empty")
 	}
@@ -586,6 +604,7 @@ func invokeWithExistingHostBoundary(
 		RuntimeCapability: plan.RuntimeCapability,
 		RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
 		ExecutionAuthorityEvidenceFingerprint: plan.ExecutionAuthorityEvidenceFingerprint,
+		ArtifactVerification: &verified,
 		TransportCapabilityKind: genericResourceTransportKind,
 		TransportCapabilityID: capabilityID,
 		Sandboxed: true,
