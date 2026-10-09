@@ -1,30 +1,30 @@
-# TEI Architecture 読み方ガイド
+# TEIの全体構成を読むための案内
 
 この文書は、[`architecture.md`](architecture.md) の技術境界を、**仕組みの名前からではなく、何を壊さないための分離なのか**という順序で読むための案内です。
 
-Architectureの正本は`architecture.md`です。この文書は新しいArchitecture判断を追加せず、既存の境界を理解するための補助説明だけを行います。
+全体構成の正本は`architecture.md`です。本書は新しい設計判断を追加せず、既に定めた境界を理解するための補足説明を行います。
 
-TEIは、Authoring、業務意味、Application、Database、Target、Runtime、Security、Deploymentまでを扱うため、個別技術だけを追うと全体像を見失いやすくなります。まず次の四つの問いを持って読むと、各節の役割を追いやすくなります。
+TEIは、入力と編集、業務上の意味、アプリケーション、データベース、実行先、実行環境、セキュリティ、配備までを扱うため、個別技術だけを追うと全体像を見失いやすくなります。まず次の四つの問いを持って読むと、各節の役割を追いやすくなります。
 
 1. **何が業務上の意味なのか**
 2. **何がその意味から派生した実装なのか**
 3. **誰が何を実行してよいのか**
 4. **外部で実際に何が起きたと確認できるのか**
 
-## 1. Architecture全体で防ぎたいこと
+## 1. 全体構成で防ぎたい問題
 
-TEIのArchitectureは、特定frameworkをきれいに配置するためのlayeringではありません。
+TEIの全体構成は、特定の開発基盤をきれいに層分けして配置することが目的ではありません。
 
 主に次の失敗を防ぐために境界を分けています。
 
-- 画面やDatabase schemaの都合が、業務上の意味そのものになる
-- generated fileやEditor内部状態が第二の正本になる
-- ApplicationとDatabaseのrelease lifecycleが不必要に一体化する
-- Provider固有仕様がCoreへ積み上がる
-- AIやPluginが、提案能力と実行権限を同時に得る
-- command成功を、外部世界で目的が達成された証拠とみなす
-- Host障害時に、外部副作用を重複実行する
-- Webで成立した設計を、DesktopやAPIでも成立すると無条件にみなす
+- 画面やデータベースのスキーマの都合が、業務上の意味そのものになる
+- 生成ファイルや編集画面の内部状態が、第二の正本になる
+- アプリケーションとデータベースの配布・変更の周期が、不必要に一体化する
+- 外部機能の提供元に固有の仕様が、汎用の中核へ積み上がる
+- AIやプラグインが、提案する能力と実行する権限を無条件に併せ持つ
+- コマンドの成功を、外部の状態が目的どおりになった証拠とみなす
+- 実行環境の障害時に、外部への副作用を重複して実行する
+- Webで成立した設計が、デスクトップアプリやAPIでも成り立つと無条件にみなす
 
 このため、TEIでは「分けること」自体ではなく、**変更してよいものと、変更してはいけない意味を区別すること**を重視します。
 
@@ -74,15 +74,15 @@ API TargetではID / reference input
 
 この一例が、CanonicalとProjection、Target Adapter、Realizationを分ける理由です。
 
-## 3. AuthoringとCanonicalを分ける
+## 3. 記述形式と意味の正本を分ける
 
 ### 防ぎたい失敗
 
-同じ業務意味が、`.tei`、Editor、AI内部state、generated JSON等へ別々に保存されると、どれを直せばよいかわからなくなります。
+同じ業務上の意味が、`.tei`、編集画面、AIの内部状態、生成したJSONなどに別々に保存されると、どれを直せばよいかわからなくなります。
 
-また、file pathをidentityにすると、directory整理だけで業務概念が変わったように見える可能性があります。
+また、ファイルのパスを識別子とすると、ディレクトリを整理しただけで業務概念が変わったように見える可能性があります。
 
-### Architecture上の考え方
+### 全体構成における考え方
 
 ```text
 TEI DSL / native SQL / Editor / AI candidate
@@ -90,26 +90,26 @@ TEI DSL / native SQL / Editor / AI candidate
 Canonical meaning
 ```
 
-Authoring形式は「意味を入力する方法」です。Canonicalは「受理後にTEIが基準として扱う意味」です。
+記述形式（Authoring）は「意味を入力する方法」、正本となる意味（Canonical）は「受理後にTEIが基準として扱う意味」を指します。
 
-`.tei`のsyntax treeやEditorの画面stateそのものをCanonicalとみなしません。
+`.tei`の構文木や編集画面の内部状態そのものを、意味の正本とはみなしません。
 
-### Source Indexは何のためか
+### 入力元の索引を分ける理由
 
-Canonicalをfile pathから独立させる一方で、「この意味がどのsourceから来たか」は追跡する必要があります。
+意味の正本をファイルのパスから独立させる一方で、「この意味がどの入力元から来たか」は追跡できなければなりません。
 
-そこで、Source locatorやrangeはCanonicalそのものへ混ぜず、**Source Indexという派生追跡情報**に置きます。
+そのため、入力元の場所や範囲を正本となる意味に混ぜず、**入力元索引（Source Index）という派生情報**に記録します。
 
 これにより、
 
-- fileを移動しても意味identityは維持する
-- diagnosticから元source位置へ戻れる
+- ファイルを移動しても、意味を識別する情報は変わらない
+- 診断結果から入力元の該当箇所へ戻れる
 
 という二つを同時に成立させます。
 
 ### 読めることと正本になったことは別
 
-既存ApplicationをTEIへ段階移管するとき、最初から元のnative assetを捨てる必要はありません。
+既存アプリケーションをTEIへ段階的に移管するとき、最初から既存形式の資産を捨てる必要はありません。
 
 ```text
 native asset
@@ -131,7 +131,7 @@ native source = authoritative
 TEI projection = derived
 ```
 
-として二重管理を避けます。TEIへauthorityを移す場合は、before / afterのowner、migration transform、equivalence Evidence、未対応情報、rollbackを明示してcutoverします。
+として二重管理を避けます。正本を管理する権限をTEIへ移す場合は、移管前後の管理主体、移行時の変換、同等性の検証根拠、未対応の情報、元へ戻す手段を明示して切り替えます。
 
 特に、
 
@@ -142,21 +142,21 @@ file timestamp
 TEI parse success
 ```
 
-からsource ownershipを推測しません。
+という事実だけから、入力元の管理権限が移ったとは推測しません。
 
-Application全体を一度に切り替える必要もありません。subject / concern単位の段階移管は許容しますが、同じconcernへ二つの暗黙正本を持たせないことが重要です。
+アプリケーション全体を一度に切り替える必要もありません。対象や関心領域ごとの段階移管は認めますが、同じ関心領域に暗黙の正本を二つ作らないことが重要です。
 
-## 4. ProposalとAuthorityを分ける
+## 4. 提案と決定権限を分ける
 
 ### 防ぎたい失敗
 
-EditorやAIが便利になるほど、「提案できる」ことと「確定できる」ことを混同しやすくなります。
+編集画面やAIが便利になるほど、「提案できる」ことと「確定できる」ことを混同しやすくなります。
 
-たとえばAIがもっともらしいRelationを提案しても、それが業務上正しいとは限りません。
+たとえばAIがもっともらしい関係を提案しても、それが業務上正しいとは限りません。
 
-### Shared Acceptance Boundary
+### 変更を共通して受け入れる境界
 
-TEIでは、file、CLI、Editor、AI等から来る変更候補を、最終的に同じAcceptance境界へ集めます。
+TEIでは、ファイル、CLI、編集画面、AIなどからの変更候補を、最終的に共通の受け入れ境界へ集めます。
 
 ```text
 file / CLI / Editor / AI
@@ -170,19 +170,19 @@ authoritative source
 Canonical World
 ```
 
-この境界で、Validation、semantic diff、policy check、impact analysis等を必要に応じて行います。
+この境界では、必要に応じて検証、意味の差分、規則への適合、影響範囲の分析などを行います。
 
-重要なのは、**AI経路だけが特別にValidationを迂回しないこと**です。
+重要なのは、**AIからの変更だけが例外的に検証を迂回することを認めない**点です。
 
-## 5. Semantic Kernelを小さく保つ
+## 5. 意味を扱う中核を小さく保つ
 
 ### 防ぎたい失敗
 
-新しい業務概念が見つかるたびにCoreへ専用objectを追加すると、Coreが特定domainや特定設計手法へ引っ張られます。
+新たな業務概念が見つかるたびに中核へ専用のオブジェクトを追加すると、中核が特定の分野や設計手法に依存しやすくなります。
 
 ### TEIの方向
 
-Identity、Type、Relation、Expression、Constraint、Lifecycle等の小さいmechanismで表せるものは、まずそれらで表現できるか確認します。
+識別子、型、関係、式、制約、変更の周期など、小さな仕組みの組み合わせで表せるものは、まずその可能性を確かめます。
 
 これは、`Workflow`や`Procedure`が重要でないという意味ではありません。
 
@@ -194,7 +194,7 @@ Identity、Type、Relation、Expression、Constraint、Lifecycle等の小さいm
 >
 > は別です。
 
-専用primitiveが必要かは、Referenceで「既存mechanismでは意味が失われる」と確認してから判断します。
+専用の基本要素が必要かどうかは、参照例を使い、既存の仕組みでは意味が失われると確認してから判断します。
 
 ### 型や関係の定義と、実データの一件一件は別
 
@@ -217,11 +217,11 @@ Canonical側は主に「どんな意味・構造・制約か」を保持し、Ap
 
 reference dataやconfigurationのようにinstance集合自体をauthoritative assetとして扱いたい場合は例外的にあり得ます。その場合も、誰がownerで、どこから変更され、何がruntime dataなのかを明示して扱います。
 
-## 6. BusinessとApplication実装を分ける
+## 6. 業務とアプリケーションの実装を分ける
 
 ### 防ぎたい失敗
 
-業務手順をApplication Functionだけで表すと、電話、対面確認、外部組織の承認、物理作業等がmodelから消えることがあります。
+業務手順をアプリケーションの機能だけで表すと、電話、対面確認、外部組織の承認、物理作業等がmodelから消えることがあります。
 
 そのため、TEIでは次を分けます。
 
@@ -239,11 +239,11 @@ Realization
 
 > 倉庫担当者が現物の破損を確認する
 
-というBusiness Actionには、TEI Application上のFunctionが存在しないかもしれません。それでも業務上の意味としては正当です。
+という業務上の操作には、TEIアプリケーション上の機能が存在しないかもしれません。それでも業務上の意味としては正当です。
 
 この境界は[`business-system-design.md`](business-system-design.md)で詳しく説明しています。
 
-### Policyが操作を選ぶことと、操作の意味を定義することは別
+### 操作を選ぶ規則と、操作の意味を定める契約は別
 
 AIやRuleが「次にこの操作を使う」と選べても、そのpolicy自身がApplication Action、Capability、Permission、Resultの意味を所有するわけではありません。
 
@@ -302,7 +302,7 @@ ambiguous / compositional
 
 というroutingを許します。重要なのはどちらの経路でも同じsemantic actionへ戻ることであり、「AIを使ったかどうか」を業務意味へしないことです。
 
-## 7. ApplicationとDatabaseを分ける
+## 7. アプリケーションとデータベースを分ける
 
 ### 防ぎたい失敗
 
@@ -332,7 +332,7 @@ Databaseでは、
 
 情報不足を`diffなし`へ丸めないことが重要です。
 
-## 8. Queryは「隠すべき低級表現」ではない
+## 8. 問い合わせを独自の記述形式へ閉じ込めない
 
 TEIはSQLをすべて独自DSLへ置き換えることを目的にしません。
 
@@ -349,7 +349,7 @@ Query IR = derived representation
 
 重要なのは、**同じ意味について二つの正本を同時に持たないこと**です。
 
-## 9. TargetとHostを分ける
+## 9. 実行先とホストを分ける
 
 ### 防ぎたい失敗
 
@@ -388,7 +388,7 @@ semantic operation
 
 です。Replayable BehaviorはFunctional Evidenceを再確認しやすくする派生物であり、そこからCanonical actionやBusiness Procedureを逆定義しません。異なるTargetのeventを正規化する場合も、raw Evidenceへ戻れることを優先します。
 
-## 10. Deploymentは「命令」と「実際」を分ける
+## 10. 配備では命令の成功と実際の状態を分ける
 
 Deploymentでは、
 
@@ -410,7 +410,7 @@ commandが成功したことと、外部状態が意図どおりになったこ�
 
 そのためTEIでは、必要に応じてObservationを行い、次へ進む根拠としてEvidenceを確認します。
 
-## 11. Plugin / Runtimeでは能力と権限を分ける
+## 11. プラグインと実行環境では能力と権限を分ける
 
 PluginはCapabilityを実現できますが、Capabilityを実装していることだけで、すべてのResourceを利用できるわけではありません。
 
@@ -431,7 +431,7 @@ new Host became owner
     != old Host can no longer act
 ```
 
-## 12. Host restart / takeoverは「unknown」を消さない
+## 12. ホストの再起動と引き継ぎでは不明な状態を残す
 
 Hostが停止したあと、外部processの状態がわからない場合があります。
 
@@ -445,7 +445,7 @@ Hostが停止したあと、外部processの状態がわからない場合があ
 
 `missing`や`unknown`を自動replayへ変換しません。
 
-## 13. Architectureを一つの受注例でつなぐ
+## 13. 一つの受注例から全体構成を確認する
 
 受注Applicationを例にすると、主要境界は次のようにつながります。
 
@@ -498,7 +498,7 @@ Architecture boundary exists
 
 個別のConformance文書は、「この境界について、どの実装・testまで直接追跡できるか」を示します。
 
-## 15. おすすめの読み順
+## 15. 読む順序の案内
 
 Architectureを最初から最後まで一度に読む必要はありません。
 
