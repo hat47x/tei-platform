@@ -281,3 +281,18 @@ Referenceでは`Contract.invocationEffect`を追加し、generic Invocationが�
 この制約はproductionでmutating Capabilityを禁止する決定ではない。書込みCapabilityを共通Invocationへ載せる前に、少なくともtransactionまたはprepare / commit、失敗時の補償、再試行、result validation失敗時のAuthorityを別pressureで定める必要があることを示す。
 
 現時点ではReference candidateであり、production Permission / Resource / SandboxやDatabase transaction contractへは接続していない。Evidence tierは変更しない。
+
+
+## E5 Shape Authority Evidence Gate — 2026-10-09
+
+E3でshape artifactへissuer identityを入れたが、issuerを名乗ること自体はAuthority Evidenceではない。artifactやProviderがissuer文字列を自己申告しただけでschemaを信頼すると、namespace authorityで避けたfirst claimant / self-claim問題をInvocation schemaへ再導入する。
+
+Referenceでは`InvocationShapeAuthorityEvidence`を追加し、Invocation RegistryへImplementationとは別に渡す構造へ変更した。Evidenceはissuer ID / version、shape ID、exact shape fingerprint、Evidence fingerprintへ結び付く。
+
+request / resultの両shapeについてAccepted Evidenceが無ければ、ImplementationをRegistryへ登録しない。古いshape fingerprintを指すEvidenceも利用しない。同じexact shapeへ複数のAccepted Evidenceが与えられ、winnerを決められない場合も曖昧として拒否する。
+
+実行結果にはrequest / resultで利用したAuthority Evidence fingerprintを記録する。Authority Evidenceだけを更新してもCapability resolution identityは変わらず、Evidence更新だけを観測できる。schema identityとEvidence identityを分離する。
+
+このGateはpublisher trustそのものを成立させたものではない。現在確認しているのは、呼出し元がAccepted Evidenceとして渡した入力をexact shapeへ結ぶことまでである。誰がEvidenceを発行できるか、署名、organization policy、revocation / freshnessは未実証である。Evidence fingerprintの形式だけからtrustを推測しない。
+
+この境界はSemantic Extensionのnamespace / Conformance Evidenceと同じ原則を使うが、Evidence型やAuthority scopeを統合しない。Semantic meaningのAuthorityとInvocation wire schemaのAuthorityは別に保つ。
