@@ -49,6 +49,7 @@ type DataDesignCandidateReviewPacket struct {
 	BusinessEvidenceRequirements          []DataDesignCandidateReviewRequirement `json:"businessEvidenceRequirements"`
 	ReviewStatus                          string                                `json:"reviewStatus"`
 	FirstClassAuthoringContractStatus     string                                `json:"firstClassAuthoringContractStatus"`
+	FirstClassAuthoringContractReasons    []string                              `json:"firstClassAuthoringContractReasons"`
 	ReviewSequence                        []string                              `json:"reviewSequence"`
 	AuthorityLimits                       []string                              `json:"authorityLimits"`
 }
@@ -116,6 +117,7 @@ func BuildDataDesignCandidateReview(
 		BusinessEvidenceRequirements:     requirements,
 		ReviewStatus:                     reviewStatus,
 		FirstClassAuthoringContractStatus: "unresolved",
+		FirstClassAuthoringContractReasons: dataDesignFirstClassAuthoringContractReasons(kind),
 		ReviewSequence: []string{
 			"verify-current-data-design-fingerprint",
 			"review-derived-candidate-shape-and-basis-constraint",
@@ -131,12 +133,34 @@ func BuildDataDesignCandidateReview(
 			"source-evidence-proves-traceability-not-business-meaning",
 			"unresolved-business-evidence-requirement-must-not-be-inferred-as-satisfied",
 			"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
+			"semantic-extension-reference-is-not-current-lossless-authoring-contract",
 			"candidate-review-does-not-grant-write-runtime-or-decision-authority",
 			"candidate-review-does-not-replace-shared-acceptance",
 		},
 	}
 	packet.Fingerprint = dataDesignCandidateReviewFingerprint(packet)
 	return packet, nil
+}
+
+func dataDesignFirstClassAuthoringContractReasons(kind string) []string {
+	common := []string{
+		"semantic-extension-v0-is-reference-not-production-authoring-contract",
+		"authoritative-declaration-source-and-namespace-authority-not-selected",
+	}
+	switch kind {
+	case DataDesignCandidateKindBusinessIdentity:
+		return append([]string{
+			"current-core-has-no-first-class-business-identity-authoring-contract",
+			"semantic-extension-v0-constraint-cannot-losslessly-encode-composite-identity-components-and-scope",
+		}, common...)
+	case DataDesignCandidateKindFunctionalDependency:
+		return append([]string{
+			"current-core-has-no-first-class-functional-dependency-authoring-contract",
+			"semantic-extension-v0-constraint-cannot-losslessly-encode-determinants-dependent-occurrence-and-scope",
+		}, common...)
+	default:
+		return append([]string(nil), common...)
+	}
 }
 
 func resolveDataDesignReviewCandidate(
