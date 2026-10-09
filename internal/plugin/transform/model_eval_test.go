@@ -706,3 +706,88 @@ func TestSortArrayConsumesActualWorkBudget(t *testing.T) {
 		t.Fatal("expected sort work to exceed maxSteps")
 	}
 }
+
+
+func TestSelectFieldConsumesLinearScanBudget(t *testing.T) {
+	from := transform.Expr{Op: transform.OpInput, Name: "value"}
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.field_scan_budget_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        4,
+			MaxCollection:   16,
+			MaxInputNodes:   64,
+			MaxInputBytes:   1024,
+			MaxOutputBytes:  1024,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{{Name: "value", Kind: transform.InputObject}},
+		Program: transform.Program{Output: transform.Expr{
+			Op:    transform.OpSelectField,
+			From:  &from,
+			Field: "target",
+		}},
+	}
+	value, err := transform.Object(
+		transform.Field{Name: "a", Value: transform.String("a")},
+		transform.Field{Name: "b", Value: transform.String("b")},
+		transform.Field{Name: "target", Value: transform.String("found")},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := transform.Evaluate(source, map[string]transform.Value{"value": value}); err == nil {
+		t.Fatal("expected field scan to exceed maxSteps")
+	}
+}
+
+func TestAssertEqualConsumesStructuralComparisonBudget(t *testing.T) {
+	actual := transform.Expr{Op: transform.OpInput, Name: "actual"}
+	expected := transform.Expr{Op: transform.OpInput, Name: "expected"}
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.equal_budget_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        8,
+			MaxCollection:   16,
+			MaxInputNodes:   128,
+			MaxInputBytes:   4096,
+			MaxOutputBytes:  4096,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{
+			{Name: "actual", Kind: transform.InputArray},
+			{Name: "expected", Kind: transform.InputArray},
+		},
+		Program: transform.Program{
+			Assertions: []transform.Expr{{
+				Op:       transform.OpAssertEqual,
+				Actual:   &actual,
+				Expected: &expected,
+			}},
+			Output: actual,
+		},
+	}
+	value := transform.Array(
+		transform.String("a"),
+		transform.String("b"),
+		transform.String("c"),
+		transform.String("d"),
+	)
+	if _, err := transform.Evaluate(source, map[string]transform.Value{
+		"actual":   value,
+		"expected": value,
+	}); err == nil {
+		t.Fatal("expected structural equality to exceed maxSteps")
+	}
+}
