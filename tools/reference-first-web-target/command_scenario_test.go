@@ -537,3 +537,55 @@ func legacyFixturePath(t *testing.T, name string) string {
 	t.Helper()
 	return filepath.Join(referenceWorkspacePath(t), "..", "legacy-auth", name)
 }
+
+// 規則は受注明細ごとに適用される。先頭の明細が正しくても、2行目以降が反する受注は確定できない。
+func TestReferenceCommandScenarioValidatesEveryOrderLine(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		legacyFixturePath(t, "users.json"),
+		legacyFixturePath(t, "authorization.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readResult, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(),
+		readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(readResult.OrderLineRows) < 2 {
+		t.Fatalf("test setup: 2行以上の受注明細が必要です: %d", len(readResult.OrderLineRows))
+	}
+	// 先頭の明細は既定の正しい値のまま残し、2行目だけ数量を0にする。
+	if !setSemanticRowValue(&readResult.OrderLineRows[1], "sales.order_line.quantity", "0") {
+		t.Fatal("test setup: quantity attribute not found")
+	}
+	runner.read = staticReadScenarioRunner{result: readResult}
+
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID:    "legacy-order-editor",
+		Credential: "editor-secret",
+		From:       "2026-09-18T08:30:00Z",
+		RowIndex:   0,
+	})
+	if err != nil {
+		t.Fatalf("Validation not-satisfied became Execution Error: %v", err)
+	}
+	if result.Stage != "validation-not-satisfied" {
+		t.Fatalf("2行目の不成立が見逃された: stage=%s result=%+v", result.Stage, result)
+	}
+	if len(result.Validations) != 1 ||
+		result.Validations[0].Validation != "sales.order_line.quantity_positive" ||
+		result.Validations[0].Result != "not-satisfied" {
+		t.Fatalf("validations=%+v", result.Validations)
+	}
+	if result.Authorization != nil || result.Command != nil || result.Observation != nil {
+		t.Fatalf("Validation failure continued downstream: %+v", result)
+	}
+}
