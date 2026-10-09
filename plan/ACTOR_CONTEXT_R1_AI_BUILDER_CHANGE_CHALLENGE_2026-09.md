@@ -134,7 +134,7 @@ tei knowledge-review-handoff
   -workspace reference/workspace
   -subject-kind application-pattern
   -subject-id order_entry.customer_reference
-  -qualification-requirements     reference/business-system-design/order-entry-customer-reference-review-qualification.json
+  -qualification-requirements reference/business-system-design/order-entry-customer-reference-review-qualification.json
 ```
 
 このhandoffが`qualified-for-disclosure`になっても、customer edit要求自体がacceptedになったわけではない。確定するのは、Review対象のcurrent Patternとrequired dependencyを、明示したtask scopeでSource Evidence付きに利用できることまでである。customer editの矛盾判定は既存Business Procedure checker、採否はShared Acceptanceの責務として残す。
