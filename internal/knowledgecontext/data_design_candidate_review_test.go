@@ -304,6 +304,29 @@ func TestDataDesignCandidateReviewBindsCurrentFunctionalDependencyCandidate(t *t
 	}
 }
 
+func TestDataDesignEvidenceSearchHintsFailClosedForUnknownRequirement(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	packet, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packet.Candidate.Terms) == 0 {
+		t.Fatal("candidate terms are missing")
+	}
+	if got := dataDesignEvidenceSearchSubjects(
+		packet.Candidate,
+		"future-unmodeled-business-evidence",
+	); len(got) != 0 {
+		t.Fatalf("unknown Evidence requirement received speculative search hints: %+v", got)
+	}
+}
+
 func TestDataDesignCandidateReviewRejectsModifiedContextWithStaleFingerprint(t *testing.T) {
 	ctx := dataDesignCandidateReviewContext(t)
 	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
