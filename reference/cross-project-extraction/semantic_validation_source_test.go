@@ -96,7 +96,7 @@ func TestActualOrderEntrySemanticValidationsProjectWithoutDuplicateRuleDefinitio
 	}
 	// Independent expected meaning: positive is NOT nonnegative;
 	// relation-unique retains both its relation and target attribute.
-	const expected = `{"format":"tei.reference.semantic-validation-plan/v0","rules":[{"id":"sales.order_line.quantity_positive","kind":"positive","attribute":"sales.order_line.quantity","relation":""},{"id":"sales.order.lines.line_number_unique","kind":"relation-unique","attribute":"sales.order_line.line_number","relation":"sales.order.lines"},{"id":"sales.order_line.line_number_positive","kind":"positive","attribute":"sales.order_line.line_number","relation":""}]}`
+	const expected = `{"format":"tei.reference.application-validation-projection/v0","rules":[{"id":"sales.order_line.quantity_positive","kind":"positive","attribute":"sales.order_line.quantity","relation":""},{"id":"sales.order.lines.line_number_unique","kind":"relation-unique","attribute":"sales.order_line.line_number","relation":"sales.order.lines"},{"id":"sales.order_line.line_number_positive","kind":"positive","attribute":"sales.order_line.line_number","relation":""}]}`
 	if string(got) != expected {
 		t.Fatalf("semantic projection changed authored meaning: got %s; want %s", got, expected)
 	}
