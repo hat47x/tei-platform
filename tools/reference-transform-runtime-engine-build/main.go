@@ -100,6 +100,9 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 	if err != nil {
 		return buildEvidence{}, err
 	}
+	if resolved, resolveErr := filepath.EvalSymlinks(root); resolveErr == nil {
+		root = resolved
+	}
 	if err := requireCleanRepository(root); err != nil {
 		return buildEvidence{}, err
 	}
@@ -513,11 +516,20 @@ func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDi
 	if err != nil {
 		return err
 	}
+	parentResolved, err := filepath.EvalSymlinks(filepath.Dir(destinationAbs))
+	if err != nil {
+		return fmt.Errorf("resolve artifact-out parent: %w", err)
+	}
+	destinationResolved := filepath.Join(parentResolved, filepath.Base(destinationAbs))
+
 	repoAbs, err := filepath.Abs(repo)
 	if err != nil {
 		return err
 	}
-	rel, err := filepath.Rel(repoAbs, destinationAbs)
+	if resolved, resolveErr := filepath.EvalSymlinks(repoAbs); resolveErr == nil {
+		repoAbs = resolved
+	}
+	rel, err := filepath.Rel(repoAbs, destinationResolved)
 	if err != nil {
 		return err
 	}
@@ -525,14 +537,20 @@ func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDi
 	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, parentPrefix)) {
 		return fmt.Errorf("artifact-out must be outside the repository")
 	}
+	if _, err := os.Lstat(destinationResolved); err == nil {
+		return fmt.Errorf("artifact-out already exists")
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
 	raw, err := os.ReadFile(source)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(destinationAbs, raw, 0o755); err != nil {
+	if err := os.WriteFile(destinationResolved, raw, 0o755); err != nil {
 		return fmt.Errorf("write verified Runtime Engine artifact: %w", err)
 	}
-	digest, err := hashFile(destinationAbs)
+	digest, err := hashFile(destinationResolved)
 	if err != nil {
 		return err
 	}
