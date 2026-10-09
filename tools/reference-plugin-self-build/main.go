@@ -45,13 +45,15 @@ const (
 	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
 	nativeImplementation   = "reference/plugin-self-build/workspace/plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
 	nativeBuilderPackage   = "./tools/reference-native-plugin-builder"
-	nativeBuilderVersion   = "1.0.0"
+	nativeBuilderVersion             = "1.0.0"
+	repositoryTreeDigestAlgorithm = "git-ls-tree-sha256-v1"
 )
 
 type evidence struct {
 	Schema                             string                         `json:"schema"`
 	RepositoryRevision                 string                         `json:"repositoryRevision"`
 	RepositoryTreeDigest               string                         `json:"repositoryTreeDigest"`
+	RepositoryTreeDigestAlgorithm      string                         `json:"repositoryTreeDigestAlgorithm"`
 	GoVersion                          string                         `json:"goVersion"`
 	GoBinaryDigest                     string                         `json:"goBinaryDigest"`
 	GoToolchainDigest                  string                         `json:"goToolchainDigest"`
@@ -782,6 +784,7 @@ func run(repo string) (evidence, error) {
 		Schema:                             "tei.reference.plugin-self-build-evidence/v2",
 		RepositoryRevision:                 revision,
 		RepositoryTreeDigest:               treeDigest,
+		RepositoryTreeDigestAlgorithm:      repositoryTreeDigestAlgorithm,
 		GoVersion:                          goVersion,
 		GoBinaryDigest:                     goBinaryDigest,
 		GoToolchainDigest:                  goToolchainDigest,
