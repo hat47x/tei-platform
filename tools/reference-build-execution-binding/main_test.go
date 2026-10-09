@@ -273,3 +273,64 @@ func TestExecutionIdentityIgnoresSourceLocatorWhenExactBytesMatch(t *testing.T) 
 		t.Fatal("source locator leaked into execution input identity despite identical exact bytes")
 	}
 }
+
+
+func TestCompareArtifactSetsPreservesMissingExtraAndChangedEvidence(t *testing.T) {
+	first := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{
+			{Role: "executable", Format: "application/octet-stream", Digest: digestA},
+			{Role: "manifest", Format: "application/json", Digest: digestB},
+			{Role: "symbols", Format: "application/octet-stream", Digest: digestC},
+		},
+	}
+	second := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{
+			{Role: "executable", Format: "application/octet-stream", Digest: digestD},
+			{Role: "manifest", Format: "application/json", Digest: digestB},
+			{Role: "resource-map", Format: "application/json", Digest: digestA},
+		},
+	}
+	comparison, err := compareArtifactSets(first, second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if comparison.Reproducible {
+		t.Fatal("different Artifact Sets were reported as reproducible")
+	}
+	if len(comparison.MissingFromSecond) != 1 || comparison.MissingFromSecond[0] != "symbols" {
+		t.Fatalf("missing roles: %#v", comparison.MissingFromSecond)
+	}
+	if len(comparison.ExtraInSecond) != 1 || comparison.ExtraInSecond[0] != "resource-map" {
+		t.Fatalf("extra roles: %#v", comparison.ExtraInSecond)
+	}
+	if len(comparison.Changed) != 1 || comparison.Changed[0].Role != "executable" {
+		t.Fatalf("changed members: %#v", comparison.Changed)
+	}
+	if comparison.Changed[0].FirstDigest != digestA || comparison.Changed[0].SecondDigest != digestD {
+		t.Fatalf("changed digest evidence: %#v", comparison.Changed[0])
+	}
+}
+
+func TestCompareArtifactSetsIgnoresLocatorOnlyChanges(t *testing.T) {
+	first := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "primary", Format: "application/octet-stream", Digest: digestA, Locator: "/tmp/first",
+		}},
+	}
+	second := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "primary", Format: "application/octet-stream", Digest: digestA, Locator: "store://second",
+		}},
+	}
+	comparison, err := compareArtifactSets(first, second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !comparison.Reproducible {
+		t.Fatalf("locator-only change was treated as output content drift: %#v", comparison)
+	}
+}
