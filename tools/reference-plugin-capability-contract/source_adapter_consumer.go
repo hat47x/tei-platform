@@ -51,6 +51,7 @@ type SourceAdapterRegistry struct {
 
 func NewSourceAdapterRegistry(
 	implementations []SourceAdapterImplementation,
+	shapeAuthorities []InvocationShapeAuthorityEvidence,
 ) (*SourceAdapterRegistry, error) {
 	generic := make([]InvocationImplementation, 0, len(implementations))
 	for i, implementation := range implementations {
@@ -60,7 +61,7 @@ func NewSourceAdapterRegistry(
 		}
 		generic = append(generic, invocation)
 	}
-	registry, err := NewInvocationRegistry(generic)
+	registry, err := NewInvocationRegistry(generic, shapeAuthorities)
 	if err != nil {
 		return nil, err
 	}
