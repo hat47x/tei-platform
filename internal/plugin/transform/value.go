@@ -56,7 +56,7 @@ func Object(fields ...Field) (Value, error) {
 			return Value{}, fmt.Errorf("object field %q is declared more than once", field.Name)
 		}
 		seen[field.Name] = struct{}{}
-		out.Object[i] = Field{Name: field.Name, Value: field.Value.Clone()}
+		out.Object[i] = Field{Name: field.Name, Value: field.Value}
 	}
 	return out, nil
 }
@@ -81,7 +81,7 @@ func (v Value) Field(name string) (Value, bool) {
 	}
 	for _, field := range v.Object {
 		if field.Name == name {
-			return field.Value.Clone(), true
+			return field.Value, true
 		}
 	}
 	return Value{}, false
@@ -91,10 +91,11 @@ func (v Value) ReplaceField(name string, replacement Value) (Value, bool, error)
 	if v.Kind != ValueObject {
 		return Value{}, false, fmt.Errorf("replace-field requires object, got %s", v.Kind)
 	}
-	out := v.Clone()
+	out := v
+	out.Object = append([]Field(nil), v.Object...)
 	for i := range out.Object {
 		if out.Object[i].Name == name {
-			out.Object[i].Value = replacement.Clone()
+			out.Object[i].Value = replacement
 			return out, true, nil
 		}
 	}
@@ -110,7 +111,7 @@ func (v Value) OmitField(name string) (Value, error) {
 		if field.Name == name {
 			continue
 		}
-		out.Object = append(out.Object, Field{Name: field.Name, Value: field.Value.Clone()})
+		out.Object = append(out.Object, field)
 	}
 	return out, nil
 }
@@ -214,6 +215,105 @@ func (v Value) JSON() ([]byte, error) {
 		return nil, err
 	}
 	return out.Bytes(), nil
+}
+
+func (v Value) JSONWithinLimit(maxBytes int) ([]byte, error) {
+	if maxBytes < 0 {
+		return nil, fmt.Errorf("JSON byte limit must be non-negative")
+	}
+	if _, err := jsonEncodedSizeWithin(v, maxBytes); err != nil {
+		return nil, err
+	}
+	return v.JSON()
+}
+
+func jsonEncodedSizeWithin(v Value, maxBytes int) (int, error) {
+	add := func(total, amount int) (int, error) {
+		if amount < 0 || total < 0 || total > maxBytes || amount > maxBytes-total {
+			return 0, fmt.Errorf("JSON encoding exceeds byte limit")
+		}
+		return total + amount, nil
+	}
+	switch v.Kind {
+	case ValueNull:
+		return add(0, len("null"))
+	case ValueBool:
+		if v.Bool {
+			return add(0, len("true"))
+		}
+		return add(0, len("false"))
+	case ValueNumber:
+		if !validJSONNumber(v.Number) {
+			return 0, fmt.Errorf("invalid JSON number %q", v.Number)
+		}
+		return add(0, len(v.Number))
+	case ValueString:
+		raw, _ := json.Marshal(v.String)
+		return add(0, len(raw))
+	case ValueBytes:
+		return 0, fmt.Errorf("byte value cannot be encoded as JSON directly")
+	case ValueArray:
+		total, err := add(0, 2)
+		if err != nil {
+			return 0, err
+		}
+		for i, item := range v.Array {
+			if i > 0 {
+				total, err = add(total, 1)
+				if err != nil {
+					return 0, err
+				}
+			}
+			remaining := maxBytes - total
+			size, err := jsonEncodedSizeWithin(item, remaining)
+			if err != nil {
+				return 0, err
+			}
+			total, err = add(total, size)
+			if err != nil {
+				return 0, err
+			}
+		}
+		return total, nil
+	case ValueObject:
+		total, err := add(0, 2)
+		if err != nil {
+			return 0, err
+		}
+		seen := map[string]struct{}{}
+		for i, field := range v.Object {
+			if field.Name == "" {
+				return 0, fmt.Errorf("object field name is required")
+			}
+			if _, exists := seen[field.Name]; exists {
+				return 0, fmt.Errorf("object field %q is declared more than once", field.Name)
+			}
+			seen[field.Name] = struct{}{}
+			if i > 0 {
+				total, err = add(total, 1)
+				if err != nil {
+					return 0, err
+				}
+			}
+			name, _ := json.Marshal(field.Name)
+			total, err = add(total, len(name)+1)
+			if err != nil {
+				return 0, err
+			}
+			remaining := maxBytes - total
+			size, err := jsonEncodedSizeWithin(field.Value, remaining)
+			if err != nil {
+				return 0, err
+			}
+			total, err = add(total, size)
+			if err != nil {
+				return 0, err
+			}
+		}
+		return total, nil
+	default:
+		return 0, fmt.Errorf("unknown value kind %q", v.Kind)
+	}
 }
 
 func writeJSON(out *bytes.Buffer, v Value) error {
