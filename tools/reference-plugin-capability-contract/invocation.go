@@ -6,15 +6,18 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 const referenceJSONPayloadCodec = "application/json;profile=tei-reference-v0"
 
 type InvocationImplementation struct {
 	Provider        Provider
-	RequestShape    string
-	ResultShape     string
-	PayloadCodec    string
+	RequestShape            string
+	RequestShapeFingerprint string
+	ResultShape             string
+	ResultShapeFingerprint  string
+	PayloadCodec            string
 	AuthorityLimits []string
 	Invoke          func(context.Context, []byte) ([]byte, error)
 }
@@ -60,7 +63,9 @@ func NewInvocationRegistry(
 			)
 		}
 		if implementation.RequestShape == "" ||
+			!validInvocationShapeFingerprint(implementation.RequestShapeFingerprint) ||
 			implementation.ResultShape == "" ||
+			!validInvocationShapeFingerprint(implementation.ResultShapeFingerprint) ||
 			implementation.PayloadCodec == "" {
 			return nil, fmt.Errorf(
 				"capability implementation[%d] has incomplete invocation shape",
@@ -96,7 +101,9 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 	}
 	contract := resolution.Contract
 	if contract.RequestShape == "" ||
+		!validInvocationShapeFingerprint(contract.RequestShapeFingerprint) ||
 		contract.ResultShape == "" ||
+		!validInvocationShapeFingerprint(contract.ResultShapeFingerprint) ||
 		contract.PayloadCodec == "" {
 		return InvocationExecution{}, fmt.Errorf(
 			"capability contract %s@%s has no machine-readable invocation shape",
@@ -121,7 +128,9 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 		)
 	}
 	if implementation.RequestShape != contract.RequestShape ||
+		implementation.RequestShapeFingerprint != contract.RequestShapeFingerprint ||
 		implementation.ResultShape != contract.ResultShape ||
+		implementation.ResultShapeFingerprint != contract.ResultShapeFingerprint ||
 		implementation.PayloadCodec != contract.PayloadCodec {
 		return InvocationExecution{}, fmt.Errorf(
 			"capability implementation invocation shape does not match contract %s@%s",
@@ -173,4 +182,16 @@ func uniqueSortedInvocationStrings(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func validInvocationShapeFingerprint(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") || len(value) != len("sha256:")+64 {
+		return false
+	}
+	for _, r := range strings.TrimPrefix(value, "sha256:") {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
+			return false
+		}
+	}
+	return true
 }
