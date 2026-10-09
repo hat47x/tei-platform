@@ -33,7 +33,7 @@ func PluginPackageSourceV1() Source {
 		Program: Program{
 			Assertions: []Expr{
 				assertEqual(selectRequired(inputExpr("buildPlan"), "formatVersion"), literalExpr("1")),
-				assertEnum(selectRequired(inputExpr("buildPlan"), "outputKind"), ""plugin-package""),
+				assertEnum(selectRequired(inputExpr("buildPlan"), "outputKind"), "\\"plugin-package\\""),
 				assertEqual(
 					selectRequired(selectRequired(inputExpr("buildPlan"), "plugin"), "id"),
 					selectRequired(inputExpr("pluginDefinition"), "id"),
@@ -56,8 +56,7 @@ func PluginPackageSourceV1() Source {
 					fieldExpr("pluginDefinitionFingerprint", definitionFingerprint),
 					fieldExpr("definition", normalizedDefinition),
 				)),
-				"
-",
+				"\\n",
 			),
 		},
 	}
