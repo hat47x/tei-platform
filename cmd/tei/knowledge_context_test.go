@@ -243,22 +243,16 @@ func TestBuildBuilderReviewPlanRoutesApplicationPatternAcrossViews(t *testing.T)
 
 func TestBuildBuilderReviewHandoffQualifiesBeforeDisclosure(t *testing.T) {
 	root := testRepositoryRoot(t)
-	handoff, err := buildBuilderReviewHandoff(
+	handoff, err := buildBuilderReviewHandoffFromFile(
 		filepath.Join(root, "reference", "workspace"),
 		"application-pattern",
 		"order_entry.customer_reference",
-		knowledgecontext.QualificationRequirements{
-			ExpectedKind: "application-pattern",
-			Application:  "order_entry",
-			RequiredDependencies: []knowledgecontext.DependencyRequirement{
-				{
-					Direction: "outgoing",
-					Relation:  "contract-query",
-					Kind:      "database-contract-query",
-					ID:        "master_data.customer/find_by_id",
-				},
-			},
-		},
+		filepath.Join(
+			root,
+			"reference",
+			"business-system-design",
+			"order-entry-customer-reference-review-qualification.json",
+		),
 	)
 	if err != nil {
 		t.Fatal(err)
