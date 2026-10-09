@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	contractQueryCapabilityContractID = "runtime.contract-query-executor"
-	contractQueryRequestShape         = "tei.reference.contract-query-execution.request/v0"
-	contractQueryResultShape          = "tei.reference.contract-query-execution.result/v0"
+	contractQueryCapabilityContractID    = "runtime.contract-query-executor"
+	contractQueryRequestShape            = "tei.reference.contract-query-execution.request/v0"
+	contractQueryRequestShapeFingerprint = "sha256:0330a35c02b4dc896ecaeb670def82329acba42dc25853236dde0fd011476f64"
+	contractQueryResultShape             = "tei.reference.contract-query-execution.result/v0"
+	contractQueryResultShapeFingerprint  = "sha256:79160ba679f35aad8fdbbc107199711e4d75f18e9feadc40e0b5f3da82e32240"
 )
 
 type ContractQueryInvocationRequest struct {
@@ -48,10 +50,12 @@ func ContractQueryInvocationImplementation(
 		)
 	}
 	return InvocationImplementation{
-		Provider:     provider,
-		RequestShape: contractQueryRequestShape,
-		ResultShape:  contractQueryResultShape,
-		PayloadCodec: referenceJSONPayloadCodec,
+		Provider:                provider,
+		RequestShape:            contractQueryRequestShape,
+		RequestShapeFingerprint: contractQueryRequestShapeFingerprint,
+		ResultShape:             contractQueryResultShape,
+		ResultShapeFingerprint:  contractQueryResultShapeFingerprint,
+		PayloadCodec:            referenceJSONPayloadCodec,
 		AuthorityLimits: []string{
 			"application-runtime-capability-does-not-grant-authoring-authority",
 			"contract-query-invocation-does-not-bypass-database-provider-binding",
