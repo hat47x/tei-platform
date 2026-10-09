@@ -531,6 +531,8 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 		"distinguish-functional-dependency-from-composite-domain-constraint",
 		"treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
 		"preserve-unresolved-when-required-business-evidence-is-missing",
+		"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+		"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
 		"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
 	}
 	if !reflect.DeepEqual(ctx.DataDesign.DesignReviewProtocol, want) {
