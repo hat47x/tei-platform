@@ -48,7 +48,7 @@ type Dependencies struct {
 // NewHost creates a single protected Action endpoint. Security steps belong to the
 // host, not to interchangeable middleware that may declare its own guards.
 func NewHost(p Policy, d Dependencies) (http.Handler, error) {
-	if p.Path == "" || p.Path[0] != '/' || strings.ContainsAny(p.Path, "?#%\\\\") || strings.Contains(p.Path, "//") || p.Method != http.MethodPost || p.ActionID == "" || len(p.Providers) == 0 {
+	if p.Path == "" || p.Path[0] != '/' || strings.ContainsAny(p.Path, "?#%\\\\") || strings.Contains(p.Path, "//") || strings.Contains(p.Path, "/./") || strings.Contains(p.Path, "/../") || strings.HasSuffix(p.Path, "/.") || strings.HasSuffix(p.Path, "/..") || p.Method != http.MethodPost || p.ActionID == "" || len(p.Providers) == 0 {
 		return nil, errors.New("protected route needs exact POST path, action and providers")
 	}
 	for id, issuer := range p.Providers {
