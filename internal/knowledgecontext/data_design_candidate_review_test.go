@@ -159,6 +159,59 @@ func TestDataDesignCandidateReviewRejectsStaleCandidateAndEvidenceContract(t *te
 	}
 }
 
+func TestDataDesignCandidateReviewBlocksOnlyOnCandidateLocalAmbiguity(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	ctx.DataDesign.ResolutionStatus = "ambiguous"
+	ctx.DataDesign.Ambiguities = []DataDesignAmbiguity{
+		{
+			Kind:   "duplicate-persistence-mapping",
+			ID:     "sales_core.order_line",
+			Count:  2,
+			Effect: "realization-suppressed",
+		},
+	}
+
+	packet, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packet.DataDesignResolutionStatus != "ambiguous" ||
+		packet.ReviewStatus != "evidence-required" ||
+		len(packet.ReviewBlockingAmbiguities) != 0 {
+		t.Fatalf("unrelated persistence ambiguity blocked candidate review: %+v", packet)
+	}
+
+	ctx.DataDesign.Ambiguities = append(
+		ctx.DataDesign.Ambiguities,
+		DataDesignAmbiguity{
+			Kind:   "duplicate-semantic-relation",
+			ID:     "sales.order.lines",
+			Count:  2,
+			Effect: "design-candidates-suppressed",
+		},
+	)
+	packet, err = BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packet.ReviewStatus != "blocked-context-unresolved" ||
+		len(packet.ReviewBlockingAmbiguities) != 1 ||
+		packet.ReviewBlockingAmbiguities[0].Kind != "duplicate-semantic-relation" {
+		t.Fatalf("candidate-local ambiguity did not block review: %+v", packet)
+	}
+}
+
 func TestDataDesignCandidateReviewBlocksWhenRelevantSourceEvidenceIsMissing(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	target := subject.Subject{Kind: "semantic-data", ID: "sales.order_line"}
