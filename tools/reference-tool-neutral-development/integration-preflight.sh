@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+INTEGRATION_ROOT=""
 RECEIPT_FILE=""
 CANDIDATE_REF=""
 EXPECTED_MAIN=""
@@ -16,10 +17,15 @@ Options:
   --receipt-file PATH   qualification receipt emitted by qualify.sh
   --candidate REF       candidate branch, tag, or commit to integrate
   --expected-main SHA   exact fetched origin/main qualified by the receipt
+  --integration-root PATH
+                        clean checkout whose HEAD/origin/main are the integration base
   -h, --help            show this help
 
-Run after refreshing origin/main. The script does not fetch, merge, commit, push,
-or change refs.
+Run this script from the exact candidate checkout. By default that checkout is
+also treated as the integration checkout; for the bootstrap case where this
+script is new in the candidate, point --integration-root at a separate clean
+checkout of the exact expected main. The script does not fetch, merge, commit,
+push, or change refs.
 EOF
 }
 
@@ -40,6 +46,11 @@ while [[ "$#" -gt 0 ]]; do
       EXPECTED_MAIN="$2"
       shift 2
       ;;
+    --integration-root)
+      [[ "$#" -ge 2 ]] || { echo "error: --integration-root requires PATH" >&2; exit 2; }
+      INTEGRATION_ROOT="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -57,21 +68,35 @@ if [[ -z "$RECEIPT_FILE" || -z "$CANDIDATE_REF" || -z "$EXPECTED_MAIN" ]]; then
   exit 2
 fi
 
-cd "$ROOT"
+if ! git -C "$SCRIPT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "error: integration preflight must be executed from a TEI candidate checkout" >&2
+  exit 2
+fi
 
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "error: run from a TEI Git checkout" >&2
+if [[ -z "$INTEGRATION_ROOT" ]]; then
+  INTEGRATION_ROOT="$SCRIPT_ROOT"
+else
+  INTEGRATION_ROOT="$(cd "$INTEGRATION_ROOT" 2>/dev/null && pwd -P)" || {
+    echo "error: integration root does not exist" >&2
+    exit 2
+  }
+fi
+
+if ! git -C "$INTEGRATION_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "error: integration root is not a Git checkout" >&2
   exit 2
 fi
 
 assert_clean_checkout() {
+  local repo="$1"
+  local label="$2"
   local status ignored
-  status="$(git status --porcelain=v1 --untracked-files=all)"
-  ignored="$(git ls-files --others --ignored --exclude-standard)"
+  status="$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
+  ignored="$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
   if [[ -n "$status" || -n "$ignored" ]]; then
-    echo "error: integration preflight requires a clean checkout" >&2
+    echo "error: $label must be clean" >&2
     if [[ -n "$status" ]]; then
-      git status --short --untracked-files=all >&2
+      git -C "$repo" status --short --untracked-files=all >&2
     fi
     if [[ -n "$ignored" ]]; then
       echo "ignored artifacts:" >&2
@@ -108,20 +133,29 @@ require_receipt_value() {
 
 candidate_blob() {
   local path="$1"
-  git rev-parse "$CANDIDATE_HEAD:$path"
+  git -C "$SCRIPT_ROOT" rev-parse "$CANDIDATE_HEAD:$path"
 }
 
 [[ -f "$RECEIPT_FILE" ]] || { echo "error: receipt file not found: $RECEIPT_FILE" >&2; exit 2; }
-assert_clean_checkout
+assert_clean_checkout "$SCRIPT_ROOT" "candidate checkout"
+assert_clean_checkout "$INTEGRATION_ROOT" "integration checkout"
 
-CANDIDATE_HEAD="$(git rev-parse "$CANDIDATE_REF^{commit}")"
-CURRENT_HEAD="$(git rev-parse HEAD)"
+CANDIDATE_HEAD="$(git -C "$SCRIPT_ROOT" rev-parse "$CANDIDATE_REF^{commit}")"
+SCRIPT_HEAD="$(git -C "$SCRIPT_ROOT" rev-parse HEAD)"
+CURRENT_HEAD="$(git -C "$INTEGRATION_ROOT" rev-parse HEAD)"
 
-if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+if [[ "$SCRIPT_HEAD" != "$CANDIDATE_HEAD" ]]; then
+  echo "error: preflight must execute from the exact candidate checkout" >&2
+  echo "candidate: $CANDIDATE_HEAD" >&2
+  echo "script checkout HEAD: $SCRIPT_HEAD" >&2
+  exit 1
+fi
+
+if ! git -C "$INTEGRATION_ROOT" rev-parse --verify origin/main >/dev/null 2>&1; then
   echo "error: origin/main is unavailable; fetch remote state before preflight" >&2
   exit 1
 fi
-ORIGIN_MAIN="$(git rev-parse origin/main)"
+ORIGIN_MAIN="$(git -C "$INTEGRATION_ROOT" rev-parse origin/main)"
 
 if [[ "$ORIGIN_MAIN" != "$EXPECTED_MAIN" ]]; then
   echo "error: origin/main moved or expected main is stale" >&2
@@ -137,14 +171,14 @@ if [[ "$CURRENT_HEAD" != "$EXPECTED_MAIN" ]]; then
   exit 1
 fi
 
-if ! git merge-base --is-ancestor "$EXPECTED_MAIN" "$CANDIDATE_HEAD"; then
+if ! git -C "$SCRIPT_ROOT" merge-base --is-ancestor "$EXPECTED_MAIN" "$CANDIDATE_HEAD"; then
   echo "error: candidate does not contain the expected main" >&2
   echo "candidate: $CANDIDATE_HEAD" >&2
   echo "main:      $EXPECTED_MAIN" >&2
   exit 1
 fi
 
-require_receipt_value "format" "tei-rq034-qualification-v1"
+require_receipt_value "format" "tei-rq034-qualification-v2"
 require_receipt_value "candidate-head" "$CANDIDATE_HEAD"
 require_receipt_value "origin-main" "$EXPECTED_MAIN"
 require_receipt_value "expected-main" "$EXPECTED_MAIN"
@@ -164,11 +198,43 @@ require_receipt_value \
 require_receipt_value \
   "reference-runner-blob" \
   "$(candidate_blob tools/reference-tool-neutral-development/run.sh)"
+PREFLIGHT_BLOB="$(candidate_blob tools/reference-tool-neutral-development/integration-preflight.sh)"
+require_receipt_value \
+  "integration-preflight-runner-blob" \
+  "$PREFLIGHT_BLOB"
 
-assert_clean_checkout
+EXECUTING_PREFLIGHT_BLOB="$(git -C "$SCRIPT_ROOT" hash-object "$SCRIPT_ROOT/tools/reference-tool-neutral-development/integration-preflight.sh")"
+if [[ "$EXECUTING_PREFLIGHT_BLOB" != "$PREFLIGHT_BLOB" ]]; then
+  echo "error: executing integration preflight does not match candidate blob" >&2
+  echo "candidate:  $PREFLIGHT_BLOB" >&2
+  echo "executing:  $EXECUTING_PREFLIGHT_BLOB" >&2
+  exit 1
+fi
+
+if [[ "$(git -C "$SCRIPT_ROOT" rev-parse "$CANDIDATE_REF^{commit}")" != "$CANDIDATE_HEAD" ]]; then
+  echo "error: candidate ref moved during integration preflight" >&2
+  exit 1
+fi
+if [[ "$(git -C "$SCRIPT_ROOT" rev-parse HEAD)" != "$CANDIDATE_HEAD" ]]; then
+  echo "error: candidate checkout HEAD changed during integration preflight" >&2
+  exit 1
+fi
+if [[ "$(git -C "$INTEGRATION_ROOT" rev-parse HEAD)" != "$EXPECTED_MAIN" ]]; then
+  echo "error: integration checkout HEAD changed during integration preflight" >&2
+  exit 1
+fi
+if [[ "$(git -C "$INTEGRATION_ROOT" rev-parse origin/main)" != "$EXPECTED_MAIN" ]]; then
+  echo "error: origin/main changed during integration preflight" >&2
+  exit 1
+fi
+
+assert_clean_checkout "$SCRIPT_ROOT" "candidate checkout after preflight"
+assert_clean_checkout "$INTEGRATION_ROOT" "integration checkout after preflight"
 
 printf 'candidate-head=%s\n' "$CANDIDATE_HEAD"
 printf 'expected-main=%s\n' "$EXPECTED_MAIN"
+printf 'integration-root=%s\n' "$INTEGRATION_ROOT"
 printf 'receipt-binding=PASS\n'
 printf 'runner-blob-binding=PASS\n'
+printf 'preflight-self-binding=PASS\n'
 printf 'integration-preflight=PASS\n'
