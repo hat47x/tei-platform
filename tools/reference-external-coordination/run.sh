@@ -25,11 +25,25 @@ if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 2
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "external-coordination reference requires a clean product checkout" >&2
-  git -C "$ROOT" status --short >&2
-  exit 2
-fi
+# Reject non-standard index flags and ignored files as well as ordinary changes.
+# An assume-unchanged / skip-worktree entry can hide edits from git status.
+assert_product_clean() {
+  local phase="$1" failure_code="$2" status ignored index_flags hidden_index
+  status="$(git -C "$ROOT" status --porcelain=v1 --untracked-files=all)"
+  ignored="$(git -C "$ROOT" ls-files --others --ignored --exclude-standard)"
+  index_flags="$(git -C "$ROOT" ls-files -v)"
+  hidden_index="$(printf '%s\n' "$index_flags" | grep -E '^[a-zS]' || true)"
+
+  if [[ -n "$status" || -n "$ignored" || -n "$hidden_index" ]]; then
+    echo "external-coordination reference requires a clean product checkout ($phase)" >&2
+    [[ -z "$status" ]] || printf 'git status:\n%s\n' "$status" >&2
+    [[ -z "$ignored" ]] || printf 'ignored artifacts:\n%s\n' "$ignored" >&2
+    [[ -z "$hidden_index" ]] || printf 'hidden index entries:\n%s\n' "$hidden_index" >&2
+    exit "$failure_code"
+  fi
+}
+
+assert_product_clean "pre-state" 2
 
 PRODUCT_HEAD_BEFORE="$(git -C "$ROOT" rev-parse HEAD)"
 
@@ -270,11 +284,7 @@ if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$PRODUCT_HEAD_BEFORE" ]]; then
   exit 1
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "coordination activity changed the product checkout" >&2
-  git -C "$ROOT" status --short >&2
-  exit 1
-fi
+assert_product_clean "after coordination" 1
 
 STORE_HEAD="$(git -C "$STORE" rev-parse HEAD)"
 rm -rf "$STORE"
@@ -284,11 +294,7 @@ if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$PRODUCT_HEAD_BEFORE" ]]; then
   exit 1
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "deleting the coordination store changed the product checkout" >&2
-  git -C "$ROOT" status --short >&2
-  exit 1
-fi
+assert_product_clean "after coordination store deletion" 1
 
 printf 'product=%s\n' "$PRODUCT_HEAD_BEFORE"
 printf 'work-commit=%s\n' "$WORK_COMMIT"
