@@ -58,6 +58,22 @@ func sourceAdapterTranscriptionContract() []byte {
 }`)
 }
 
+func sourceAdapterShapeAuthoritiesForTest(
+	t *testing.T,
+	implementations []SourceAdapterImplementation,
+) []InvocationShapeAuthorityEvidence {
+	t.Helper()
+	generic := make([]InvocationImplementation, 0, len(implementations))
+	for _, implementation := range implementations {
+		invocation, err := sourceAdapterInvocationImplementation(implementation)
+		if err != nil {
+			t.Fatal(err)
+		}
+		generic = append(generic, invocation)
+	}
+	return invocationShapeAuthoritiesForTest(generic)
+}
+
 func sourceAdapterRegistryFixture(t *testing.T) (
 	Contract,
 	Provider,
@@ -75,9 +91,11 @@ func sourceAdapterRegistryFixture(t *testing.T) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewSourceAdapterRegistry([]SourceAdapterImplementation{
-		implementation,
-	})
+	implementations := []SourceAdapterImplementation{implementation}
+	registry, err := NewSourceAdapterRegistry(
+		implementations,
+		sourceAdapterShapeAuthoritiesForTest(t, implementations),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,10 +357,14 @@ func TestSourceAdapterRegistryRejectsDuplicatePhysicalImplementation(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewSourceAdapterRegistry([]SourceAdapterImplementation{
+	implementations := []SourceAdapterImplementation{
 		implementation,
 		implementation,
-	}); err == nil || !strings.Contains(err.Error(), "registered more than once") {
+	}
+	if _, err := NewSourceAdapterRegistry(
+		implementations,
+		sourceAdapterShapeAuthoritiesForTest(t, implementations),
+	); err == nil || !strings.Contains(err.Error(), "registered more than once") {
 		t.Fatalf("duplicate physical implementation was accepted: %v", err)
 	}
 }
