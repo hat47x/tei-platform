@@ -88,6 +88,14 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 - 実データの結合。結合キーの整合性は、参照先レコードの存在やキーの一意性を証明しない
 - 属性とRelationの完全な意味型を伝える正式な型体系。`rows/<dataID>`は移行用の文字列表現にすぎない
 
+### 構文解析と固定契約への変換（今回の更新）
+
+`ParsePipelineSyntax`は`|>`で区切った識別子を解析し、入力と各Operatorについて元ソースの**半開区間のUTF-8バイト位置**を保持する。構文解析段階では、契約のversion・fingerprint・入出力型を推定しない。`LowerPinnedPipeline`は外部で受理済みとされたpinと照合し、`ResolvedPipelineStep`に型・契約・位置を保持する。`ParsePinnedPipeline`は既存Reference呼び出し用の簡易Adapterであり、位置を利用する場合は前二者を使用する。Source Indexの正式なspan ABIに接続したものではない。
+
+`ResolveOperator`はIDとversionが同じ契約がCatalogに複数ある場合、fingerprintの異同にかかわらず拒否する。つまり同じID/versionに異なる契約内容が混入しても、指定したpinが存在することだけを根拠に選ばない。
+
+実装の一部について独立した小型Go検証環境で`go test`、`go test -race`、`go vet`と`gofmt`の実行を確認した。ただし、その検証環境にはTEIリポジトリ全体のファイルがなく、PR headに対する正規のテストPASSの証拠ではない。統合条件を満たすには、リモートのPR headそのものからクリーンなチェックアウトを用意する必要がある。
+
 ### 既存Semantic Extensionへの接続条件（調査結果）
 
 `tools/reference-semantic-extension-catalog/`は現在`package main`の独立した検証器であり、Language Referenceから直接importできる共通APIではない。ここに別の契約解決器を設けるのではなく、**既存Semantic Catalogの解決・Lock照合が成功した後の読み取り専用Projection**を、呼び出し側から受け取る形を第一候補とする。
