@@ -61,7 +61,7 @@ type transformBootstrapEvidence struct {
 }
 
 func runTransformBootstrap(
-	root, goPath, goVersion, goToolchainDigest, revision string,
+	root, goPath, goToolchainDigest, revision string,
 	packageDefinition plugin.Definition,
 	basePackagePlan plugin.BuildPlan,
 ) (transformBootstrapEvidence, error) {
