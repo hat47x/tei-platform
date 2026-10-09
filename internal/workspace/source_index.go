@@ -17,9 +17,9 @@ import (
 // subjects continue to use the loader's legacy point location until their
 // parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
-	rootReal, err := filepath.EvalSymlinks(root)
+	rootReal, err := canonicalWorkspaceRoot(root)
 	if err != nil {
-		return sourceindex.Index{}, fmt.Errorf("resolve Workspace root: %w", err)
+		return sourceindex.Index{}, err
 	}
 	if result.sourceSnapshot != nil && result.sourceSnapshotRoot != rootReal {
 		return sourceindex.Index{}, fmt.Errorf("loaded source snapshot belongs to another Workspace")
@@ -48,7 +48,7 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		// physical escapes here as well as in the managed-source preflight.
 		// This check is not atomic with ReadFile; see issue #1017 for the
 		// platform-specific read-time race-free boundary.
-		physical, err := filepath.EvalSymlinks(filepath.Join(root, filepath.FromSlash(p)))
+		physical, err := filepath.EvalSymlinks(filepath.Join(rootReal, filepath.FromSlash(p)))
 		if err != nil {
 			return nil, fmt.Errorf("resolve source %q: %w", p, err)
 		}
