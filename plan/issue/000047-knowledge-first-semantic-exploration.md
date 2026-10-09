@@ -877,3 +877,4 @@ Data Design Context、Knowledge Qualification、selective Disclosure、qualifica
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
 - `plan/issue/000051-derived-cognitive-retrieval-evaluation.md`
+- `plan/issue/000077-semantic-extension-reference.md`
