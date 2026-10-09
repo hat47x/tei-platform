@@ -236,6 +236,19 @@ planning-onlyの将来作業まで不要にGitHub Issueへ二重起票するこ�
 
 Plan Issueの構成ルールは[`issue/README.md`](issue/README.md)を参照します。
 
+## 判定文書と調査記録の役割
+
+「監査」というファイル名だけで保管先を決めない。現在の判定や受入条件を管理する文書と、特定時点に実施した調査記録を区別する。
+
+| 役割 | 正本または参照先 | 扱い |
+| --- | --- | --- |
+| Gate A・B・Cの判定 | [Gate A](GATE_A_READINESS_AUDIT.md)／[Gate B](GATE_B_READINESS_AUDIT.md)／[Gate C](GATE_C_READINESS_AUDIT.md) | 判定した対象・版・Evidenceに結び付く正式記録。現在の`main`の検証済みを意味しない。 |
+| 製品要求の不足と根拠 | [要求別の不足監査](PRODUCT_REQUIREMENT_GAP_AUDIT.md) | 更新型の照合文書。要求と実証の正本を置き換えない。 |
+| 業務手順の契約ADR作成可否 | [ADR作成前の判定](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) | 当該契約の判定正本。他の調査や独立レビューだけでReadyに変更しない。 |
+| 特定時点の調査結果 | [監査記録一覧](../docs/audits/README.md) | 判断を裏付ける参考記録。現行の採用判断やGateの第二正本にしない。 |
+
+独立レビューや証拠の引継ぎに使う文書は、関連するIssue・判定文書との関係を確かめてから配置を変更する。旧パスの移動案内は参照をつなぐだけであり、本文の正本ではない。
+
 ## current snapshot方針
 
 Master Plan、v1 Plan、Milestones、Gap Audit、Gate契約等の上位文書は、判断履歴を本文へ無制限に追記せず**現在の正規baseline**を優先します。
