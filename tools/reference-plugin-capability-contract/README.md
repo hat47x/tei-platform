@@ -101,3 +101,12 @@ Contract側の`shapeIssuer`は、request / result schemaを誰が発行したも
 このため、Providerが同じshape名だけを名乗って別schemaを持ち込むことはできません。artifact本文を変えた場合も、issuerだけを変えた場合もfingerprintが変わり、Contractとの照合で停止します。
 
 ただし、Referenceが確認したのはissuer identityの結び付けまでです。署名検証や組織横断のpublisher trust policyは別のEvidenceとして扱います。
+
+
+## 副作用を持つCapabilityとの境界
+
+generic Invocationではrequest schemaを実装呼出し前に検査できますが、result schemaは呼出し後にしか検査できません。書込みCapabilityへそのまま使うと、resultが不正でも外部副作用だけが残る可能性があります。
+
+このReferenceでは、共通Invocation境界で実行するContractを`read-only`に限定します。Source AdapterとContract Queryはこの条件を満たします。mutating effectを宣言したContractは、requestが正しくても実装呼出し前に拒否します。
+
+これはmutating Capabilityを禁止する製品方針ではありません。transaction、prepare / commit、補償、再試行、結果検証失敗時の扱いを含む実行契約が未設計のため、Referenceが安全性を過大に主張しないための境界です。PermissionやSandboxだけでは、この問題の代わりになりません。
