@@ -180,3 +180,29 @@ func TestForeignNamespaceLookalikeRemainsUnknown(t *testing.T) {
 		}
 	}
 }
+
+
+func TestParseRejectsDuplicateExpandedAttributeName(t *testing.T) {
+	for _, source := range []string{
+		`<System FormatVersion="1.2" FormatVersion="9.9"/>`,
+		`<System xmlns:x="urn:test" x:Flag="1" x:Flag="2"/>`,
+	} {
+		if _, err := Parse(FormatXead, []byte(source)); err == nil {
+			t.Fatalf("duplicate expanded attribute was accepted: %s", source)
+		}
+	}
+}
+
+func TestParseRejectsNonWhitespaceCharacterDataOutsideRoot(t *testing.T) {
+	for _, source := range []string{
+		`prefix<System/>`,
+		`<System/>suffix`,
+	} {
+		if _, err := Parse(FormatXead, []byte(source)); err == nil {
+			t.Fatalf("character data outside root was accepted: %q", source)
+		}
+	}
+	if _, err := Parse(FormatXead, []byte("  \n<System/>\n  ")); err != nil {
+		t.Fatalf("whitespace around root should remain valid: %v", err)
+	}
+}
