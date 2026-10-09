@@ -142,7 +142,8 @@ PASS時には`candidate-head`、`origin-main`、`candidate-contains-expected-mai
 ```bash
 CANDIDATE_HEAD="$(git rev-parse HEAD)"
 TESTED_MAIN="$(git rev-parse origin/main)"
-RECEIPT="$(mktemp)"
+RECEIPT_DIR="$(mktemp -d)"
+RECEIPT="$RECEIPT_DIR/rq034-qualification.receipt"
 
 tools/reference-tool-neutral-development/qualify.sh \
   --expected-head "$CANDIDATE_HEAD" \
@@ -152,7 +153,7 @@ tools/reference-tool-neutral-development/qualify.sh \
 
 receiptは少なくとも次を固定します。
 
-- exact candidate HEAD
+- exact candidate HEAD / candidate tree
 - exact `origin/main` / expected main
 - candidateがexpected mainを含むこと
 - tracked / untracked / ignored clean pre/post
@@ -162,7 +163,7 @@ receiptは少なくとも次を固定します。
 - `repository-health-check.sh` / `qualify.sh` / `run.sh` / `integration-preflight.sh` のcandidate上のGit blob SHA
 - Git / Go / Python version
 
-receiptはRepository内へ書けません。receipt出力自体によってqualification checkoutをdirtyにしないためです。
+receiptはRepository内へ書けず、出力先はまだ存在しないpathでなければなりません。既存receiptの上書きやsymlink置換を避けるため、同じdirectory内の一時fileからhard-linkで原子的に公開します。receipt出力自体によってqualification checkoutをdirtyにしません。
 
 ### integration preflight
 
@@ -179,24 +180,26 @@ git -C "$INTEGRATION_CHECKOUT" switch --detach "$TESTED_MAIN"
   --receipt-file "$RECEIPT" \
   --candidate "$CANDIDATE_HEAD" \
   --expected-main "$TESTED_MAIN" \
+  --remote origin \
   --integration-root "$INTEGRATION_CHECKOUT"
 ```
 
-preflightはmerge / commit / push / ref更新を行いません。次をfail closedで照合します。
+preflightはmerge / commit / push / ref更新を行いません。ただし、remote-tracking refが古いままでも通らないよう、`git ls-remote`で指定remoteのlive `main`を開始時と終了時にread-only確認します。次をfail closedで照合します。
 
 - integration checkoutのHEAD == expected main
 - local `origin/main` == expected main
-- candidate HEAD == receiptのcandidate
+- live remote `main` == expected main（開始時 / 終了時）
+- candidate HEAD / tree == receiptのcandidate
 - candidateがexpected mainを含む
 - receiptの全PASS条件
 - receiptに記録された4つのrunner blob == candidate上の現在のblob
 - 実行中の`integration-preflight.sh`自身 == candidate上のpreflight blob
 - candidate checkoutとintegration checkoutの双方がtracked / untracked / ignored cleanで、tracked内容を隠せるindex flagも持たない
-- preflightの開始から終了までcandidate HEAD / candidate ref / integration HEAD / `origin/main`が不変
+- preflightの開始から終了までcandidate HEAD / candidate ref / integration HEAD / local `origin/main` / live remote `main`が不変
 
-mainがreceipt取得後に動いた場合、candidateやrunnerが変わった場合、preflight自身がreceipt取得時と異なる場合、receiptを書き換えた場合、またpreflight実行中にreceipt内容が変化した場合は失敗します。その場合は新しいmainをcandidateへ取り込み、**新しいexact candidateでqualificationから取り直します**。
+mainがreceipt取得後に動いた場合、local remote-tracking refが古い場合、candidateやrunnerが変わった場合、preflight自身がreceipt取得時と異なる場合、receiptを書き換えた場合、またpreflight実行中にreceipt内容が変化した場合は失敗します。その場合は新しいmainをcandidateへ取り込み、**新しいexact candidateでqualificationから取り直します**。
 
-preflightがPASSした後の統合対象は、`--candidate`に渡したbranch名をもう一度解決した結果ではなく、preflightが出力した**exact `candidate-head` SHA**です。branch refがpreflight後に動いても別commitを誤統合しないため、通常Gitのfetch / merge / pushでもこのSHAを引継ぎます。remote mainがその後進んだ場合は通常のnon-fast-forward保護に加え、必要ならqualificationから取り直します。
+preflightがPASSした後の統合対象は、`--candidate`に渡したbranch名をもう一度解決した結果ではなく、preflightが出力した**exact `candidate-head` SHA**です。branch refがpreflight後に動いても別commitを誤統合しないため、通常Gitのfetch / merge / pushでもこのSHAを引継ぎます。preflightはremoteをlockしないため、その後remote mainが進んだ場合はnon-force pushのnon-fast-forward拒否を安全網とし、最新mainを取り込んだcandidateでqualificationから取り直します。
 
 このreceiptは暗号学的な署名やGitHub branch protectionの代替ではありません。人間・AIが通常Gitで統合するときに、別revisionの成功記録を誤って流用しないための機械的なhandoffです。TEI Product state、Agent Session、独自Change Setへ昇格させません。
 
