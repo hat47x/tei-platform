@@ -4,6 +4,8 @@ GitHub Issue #976「Generic Runtime Capability Identityをproduction Authority�
 
 このReferenceは、Coreの`CapabilityKind`へ新しい列挙値を追加せず、新しいApplication Runtime CapabilityをEnvironmentの実行Authorityへ結び付けられるかを検証します。production schemaの採用案ではありません。
 
+主にRQ-032「Plugin / DSLで意味論を宣言・合成できること」のうち、Runtime CapabilityをCore固定enumへ戻さずに既存Authority境界へ接続できるかという不確実性を減らします。
+
 ## 防ぎたい失敗
 
 現在のproduction Runtimeでは、Permission Grant、Resource Binding、Lease Policy、Resource Brokerへの要求、Invocation provenanceが`CapabilityKind + CapabilityID`を前提にしています。新しいCapabilityを追加するたびにCore enumを増やすと、標準機能もPluginで提供する方針と衝突します。
@@ -66,6 +68,8 @@ projection結果のgeneric Authorityにはlegacy claimを残しません。旧Au
 
 このtransport kind / IDはAuthorityではありません。任意文字列から作らず、検証済みRuntime Capability Refからだけ導出します。Invocation provenanceには元のRuntime Capability RefとRuntime Policy fingerprintを保持し、Contract、Provider、artifact、Execution Profileへ逆追跡できるようにします。
 
+実行前には既存`plugin/runtime.ArtifactVerifier`でexact artifactを検証します。digest、必要なsignature、provenanceの検証を通過するまでResource Authorityを取得しません。
+
 Permissionがある場合は既存Resource Brokerでleaseを取得し、`resource.ValidateLease`を通した後、既存`HostSandboxLauncher`へ渡します。filesystem resourceは既存Sandbox mountへ変換されます。呼出し後は既存Brokerでleaseをreleaseします。
 
 このReference専用のPermission Store、Resource Broker、process launcher、sandbox実装は追加しません。
@@ -81,6 +85,7 @@ Reference testでは少なくとも次を拒否します。
 - Environment Permissionの不足と過剰付与
 - legacy Authorityとgeneric Authorityの二重化
 - process realizationのartifact drift後にResource Authorityを取得すること
+- Artifact Verifierが無い、またはdigestを検証できない状態でResource Authorityを取得すること
 - Resource Brokerが無いPermission付きCapabilityの実行
 - `host-trusted` Profileをsandbox専用経路へ暗黙転送すること
 
@@ -89,6 +94,8 @@ Reference testでは少なくとも次を拒否します。
 このReferenceで確認するのは、generic Runtime identity、Environment Authority、既存Resource Broker / Host Sandboxの接続境界です。
 
 まだproductionの`plugin.Definition`、`EnvironmentPlan`、`permission.Grant`、`Registry.Invoke`を変更していません。Host-trusted builtinのgeneric実行経路も未実装です。
+
+generic実行は既存Artifact Verifier、Resource Broker、HostSandboxLauncherへ直接委譲するReference orchestrationです。production `Registry.Invoke`へgeneric identityを組み込んだことはまだ意味しません。
 
 Resource Broker経路はfilesystem read一件のAcquire / Validate / Sandbox mount / Releaseを最初のpressureとします。renew / refresh、Supervisor ownership / fencing、Secret injection、Network endpointはproduction機構として既に存在しますが、このgeneric Runtime RefからのE2E Evidenceはまだありません。
 
