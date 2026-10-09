@@ -8,26 +8,68 @@ import (
 
 const buildGraphFormatVersion = 1
 
+type BuildGraphInputKind string
+
+const (
+	buildGraphInputBuilder    BuildGraphInputKind = "builder"
+	buildGraphInputDependency BuildGraphInputKind = "dependency"
+)
+
+type BuildGraphInputBinding struct {
+	Kind              BuildGraphInputKind `json:"kind"`
+	DependencyKind    string              `json:"dependencyKind,omitempty"`
+	DependencyID      string              `json:"dependencyId,omitempty"`
+	DependencyVersion string              `json:"dependencyVersion,omitempty"`
+}
+
+func (b BuildGraphInputBinding) Validate() error {
+	switch b.Kind {
+	case buildGraphInputBuilder:
+		if b.DependencyKind != "" || b.DependencyID != "" || b.DependencyVersion != "" {
+			return fmt.Errorf("builder input binding must not declare dependency identity")
+		}
+		return nil
+	case buildGraphInputDependency:
+		if strings.TrimSpace(b.DependencyKind) == "" ||
+			strings.TrimSpace(b.DependencyID) == "" ||
+			strings.TrimSpace(b.DependencyVersion) == "" {
+			return fmt.Errorf("dependency input binding requires kind, id, and version")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported build graph input kind %q", b.Kind)
+	}
+}
+
+func (b BuildGraphInputBinding) key() string {
+	return strings.Join([]string{
+		string(b.Kind),
+		b.DependencyKind,
+		b.DependencyID,
+		b.DependencyVersion,
+	}, "\x00")
+}
+
 type BuildGraphNode struct {
 	ID                       string `json:"id"`
 	ExecutionPlanFingerprint string `json:"executionPlanFingerprint"`
 }
 
 type BuildGraphEdge struct {
-	FromNode     string `json:"fromNode"`
-	OutputRole   string `json:"outputRole"`
-	ToNode       string `json:"toNode"`
-	DependencyID string `json:"dependencyId"`
+	FromNode   string                 `json:"fromNode"`
+	OutputRole string                 `json:"outputRole"`
+	ToNode     string                 `json:"toNode"`
+	Input      BuildGraphInputBinding `json:"input"`
 }
 
 type BuildGraphSeed struct {
-	ID             string `json:"id"`
-	Kind           string `json:"kind"`
-	Version        string `json:"version"`
-	ArtifactDigest string `json:"artifactDigest"`
-	TrustBoundary  string `json:"trustBoundary"`
-	ToNode         string `json:"toNode"`
-	DependencyID   string `json:"dependencyId"`
+	ID             string                 `json:"id"`
+	Kind           string                 `json:"kind"`
+	Version        string                 `json:"version"`
+	ArtifactDigest string                 `json:"artifactDigest"`
+	TrustBoundary  string                 `json:"trustBoundary"`
+	ToNode         string                 `json:"toNode"`
+	Input          BuildGraphInputBinding `json:"input"`
 }
 
 type BuildGraph struct {
@@ -62,9 +104,11 @@ func (g BuildGraph) Validate() error {
 	for _, edge := range g.Edges {
 		if strings.TrimSpace(edge.FromNode) == "" ||
 			strings.TrimSpace(edge.ToNode) == "" ||
-			strings.TrimSpace(edge.OutputRole) == "" ||
-			strings.TrimSpace(edge.DependencyID) == "" {
-			return fmt.Errorf("build graph edge requires fromNode, outputRole, toNode, and dependencyId")
+			strings.TrimSpace(edge.OutputRole) == "" {
+			return fmt.Errorf("build graph edge requires fromNode, outputRole, and toNode")
+		}
+		if err := edge.Input.Validate(); err != nil {
+			return fmt.Errorf("build graph edge %s -> %s input: %w", edge.FromNode, edge.ToNode, err)
 		}
 		if _, ok := nodes[edge.FromNode]; !ok {
 			return fmt.Errorf("build graph edge references unknown producer node %s", edge.FromNode)
@@ -72,9 +116,14 @@ func (g BuildGraph) Validate() error {
 		if _, ok := nodes[edge.ToNode]; !ok {
 			return fmt.Errorf("build graph edge references unknown consumer node %s", edge.ToNode)
 		}
-		key := strings.Join([]string{edge.FromNode, edge.OutputRole, edge.ToNode, edge.DependencyID}, "\x00")
+		key := strings.Join([]string{
+			edge.FromNode,
+			edge.OutputRole,
+			edge.ToNode,
+			edge.Input.key(),
+		}, "\x00")
 		if _, duplicate := edges[key]; duplicate {
-			return fmt.Errorf("build graph edge %s -> %s dependency %s is declared more than once", edge.FromNode, edge.ToNode, edge.DependencyID)
+			return fmt.Errorf("build graph edge %s -> %s input %s is declared more than once", edge.FromNode, edge.ToNode, edge.Input.key())
 		}
 		edges[key] = struct{}{}
 	}
@@ -85,9 +134,11 @@ func (g BuildGraph) Validate() error {
 			strings.TrimSpace(seed.Kind) == "" ||
 			strings.TrimSpace(seed.Version) == "" ||
 			strings.TrimSpace(seed.TrustBoundary) == "" ||
-			strings.TrimSpace(seed.ToNode) == "" ||
-			strings.TrimSpace(seed.DependencyID) == "" {
-			return fmt.Errorf("build graph seed identity, trust boundary, consumer, and dependency id are required")
+			strings.TrimSpace(seed.ToNode) == "" {
+			return fmt.Errorf("build graph seed identity, trust boundary, and consumer are required")
+		}
+		if err := seed.Input.Validate(); err != nil {
+			return fmt.Errorf("build graph seed %s input: %w", seed.ID, err)
 		}
 		if err := validateDigest("build graph seed "+seed.ID+" artifact digest", seed.ArtifactDigest); err != nil {
 			return err
@@ -95,7 +146,13 @@ func (g BuildGraph) Validate() error {
 		if _, ok := nodes[seed.ToNode]; !ok {
 			return fmt.Errorf("build graph seed %s references unknown consumer node %s", seed.ID, seed.ToNode)
 		}
-		key := strings.Join([]string{seed.ID, seed.Kind, seed.Version, seed.ToNode, seed.DependencyID}, "\x00")
+		key := strings.Join([]string{
+			seed.ID,
+			seed.Kind,
+			seed.Version,
+			seed.ToNode,
+			seed.Input.key(),
+		}, "\x00")
 		if _, duplicate := seeds[key]; duplicate {
 			return fmt.Errorf("build graph seed %s is declared more than once for node %s", seed.ID, seed.ToNode)
 		}
@@ -129,13 +186,13 @@ func normalizeBuildGraph(g BuildGraph) BuildGraph {
 			out.Edges[i].FromNode,
 			out.Edges[i].OutputRole,
 			out.Edges[i].ToNode,
-			out.Edges[i].DependencyID,
+			out.Edges[i].Input.key(),
 		}, "\x00")
 		right := strings.Join([]string{
 			out.Edges[j].FromNode,
 			out.Edges[j].OutputRole,
 			out.Edges[j].ToNode,
-			out.Edges[j].DependencyID,
+			out.Edges[j].Input.key(),
 		}, "\x00")
 		return left < right
 	})
@@ -145,14 +202,14 @@ func normalizeBuildGraph(g BuildGraph) BuildGraph {
 			out.Seeds[i].Kind,
 			out.Seeds[i].Version,
 			out.Seeds[i].ToNode,
-			out.Seeds[i].DependencyID,
+			out.Seeds[i].Input.key(),
 		}, "\x00")
 		right := strings.Join([]string{
 			out.Seeds[j].ID,
 			out.Seeds[j].Kind,
 			out.Seeds[j].Version,
 			out.Seeds[j].ToNode,
-			out.Seeds[j].DependencyID,
+			out.Seeds[j].Input.key(),
 		}, "\x00")
 		return left < right
 	})
@@ -164,6 +221,99 @@ func buildGraphFingerprint(g BuildGraph) (string, error) {
 		return "", err
 	}
 	return fingerprintJSON(normalizeBuildGraph(g))
+}
+
+func verifyBuildGraphBindings(
+	g BuildGraph,
+	plans map[string]BuildExecutionPlan,
+	outputs map[string]ArtifactSet,
+) error {
+	if err := g.Validate(); err != nil {
+		return err
+	}
+	for _, node := range g.Nodes {
+		plan, ok := plans[node.ID]
+		if !ok {
+			return fmt.Errorf("build graph node %s has no exact BuildExecutionPlan", node.ID)
+		}
+		fingerprint, err := buildExecutionPlanFingerprint(plan)
+		if err != nil {
+			return fmt.Errorf("build graph node %s plan: %w", node.ID, err)
+		}
+		if normalizeFingerprint(node.ExecutionPlanFingerprint) != fingerprint {
+			return fmt.Errorf("build graph node %s execution plan fingerprint does not match plan", node.ID)
+		}
+	}
+	for _, seed := range g.Seeds {
+		plan := plans[seed.ToNode]
+		if err := verifyBuildGraphConsumerInput(plan, seed.Input, seed.ArtifactDigest); err != nil {
+			return fmt.Errorf("build graph seed %s -> %s: %w", seed.ID, seed.ToNode, err)
+		}
+	}
+	for _, edge := range g.Edges {
+		set, ok := outputs[edge.FromNode]
+		if !ok {
+			return fmt.Errorf("build graph producer node %s has no ArtifactSet output", edge.FromNode)
+		}
+		if err := set.Validate(); err != nil {
+			return fmt.Errorf("build graph producer node %s output: %w", edge.FromNode, err)
+		}
+		member, ok := artifactMemberByRole(set, edge.OutputRole)
+		if !ok {
+			return fmt.Errorf("build graph producer node %s has no output role %s", edge.FromNode, edge.OutputRole)
+		}
+		plan := plans[edge.ToNode]
+		if err := verifyBuildGraphConsumerInput(plan, edge.Input, member.Digest); err != nil {
+			return fmt.Errorf("build graph edge %s/%s -> %s: %w", edge.FromNode, edge.OutputRole, edge.ToNode, err)
+		}
+	}
+	return nil
+}
+
+func verifyBuildGraphConsumerInput(
+	plan BuildExecutionPlan,
+	input BuildGraphInputBinding,
+	artifactDigest string,
+) error {
+	if err := input.Validate(); err != nil {
+		return err
+	}
+	if err := validateDigest("build graph input artifact", artifactDigest); err != nil {
+		return err
+	}
+	switch input.Kind {
+	case buildGraphInputBuilder:
+		if normalizeDigest(plan.Builder.ArtifactDigest) != normalizeDigest(artifactDigest) {
+			return fmt.Errorf("consumer builder artifact does not match producer/seed artifact")
+		}
+		return nil
+	case buildGraphInputDependency:
+		for _, dependency := range plan.Dependencies {
+			if dependency.Kind != input.DependencyKind ||
+				dependency.ID != input.DependencyID ||
+				dependency.Version != input.DependencyVersion {
+				continue
+			}
+			if normalizeDigest(dependency.ArtifactDigest) != normalizeDigest(artifactDigest) {
+				return fmt.Errorf("consumer dependency %s/%s@%s artifact does not match producer/seed artifact",
+					input.DependencyKind, input.DependencyID, input.DependencyVersion)
+			}
+			return nil
+		}
+		return fmt.Errorf("consumer plan has no dependency %s/%s@%s",
+			input.DependencyKind, input.DependencyID, input.DependencyVersion)
+	default:
+		return fmt.Errorf("unsupported build graph input kind %q", input.Kind)
+	}
+}
+
+func artifactMemberByRole(set ArtifactSet, role string) (ArtifactMember, bool) {
+	for _, member := range set.Members {
+		if member.Role == role {
+			return member, true
+		}
+	}
+	return ArtifactMember{}, false
 }
 
 func topologicalBuildOrder(g BuildGraph) ([]string, error) {
