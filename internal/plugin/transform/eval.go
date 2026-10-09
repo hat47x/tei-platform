@@ -29,10 +29,7 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 		return EvaluationResult{}, err
 	}
 	e := evaluator{limits: source.Limits}
-	env := make(map[string]Value, len(inputs))
-	for name, value := range inputs {
-		env[name] = value
-	}
+	env := snapshotInputs(inputs)
 	for i := range source.Program.Assertions {
 		if _, err := e.eval(source.Program.Assertions[i], env, 0); err != nil {
 			return EvaluationResult{}, fmt.Errorf("assertion %d: %w", i, err)
@@ -114,7 +111,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if !ok {
 			return Value{}, fmt.Errorf("transform input or binding %q is not available", expr.Name)
 		}
-		return value.Clone(), nil
+		return value, nil
 	case OpLiteral:
 		return ParseJSON(expr.Literal)
 	case OpSelectField:
@@ -125,7 +122,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("select-field requires object, got %s", source.Kind)
 		}
-		value, ok := source.Field(expr.Field)
+		value, ok := fieldView(source, expr.Field)
 		if !ok {
 			if expr.Optional {
 				return Null(), nil
@@ -142,7 +139,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			}
 			fields = append(fields, Field{Name: field.Name, Value: value})
 		}
-		return Object(fields...)
+		return evaluatorObject(fields)
 	case OpMapArray:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -198,7 +195,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 				}
 				keys[k] = key.String
 			}
-			items[i] = keyed{value: item.Clone(), keys: keys}
+			items[i] = keyed{value: item, keys: keys}
 		}
 		sort.Slice(items, func(i, j int) bool {
 			for k := range items[i].keys {
@@ -211,7 +208,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		})
 		out := make([]Value, len(items))
 		for i := range items {
-			out[i] = items[i].value.Clone()
+			out[i] = items[i].value
 		}
 		return Array(out...), nil
 	case OpReplaceField:
@@ -222,21 +219,21 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("replace-field requires object, got %s", source.Kind)
 		}
-		if _, exists := source.Field(expr.Field); !exists {
-			return source.Clone(), nil
+		if _, exists := fieldView(source, expr.Field); !exists {
+			return source, nil
 		}
 		replacement, err := e.eval(*expr.Value, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		out, _, err := source.ReplaceField(expr.Field, replacement)
+		out, _, err := replaceFieldOwned(source, expr.Field, replacement)
 		return out, err
 	case OpOmitField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		return source.OmitField(expr.Field)
+		return omitFieldOwned(source, expr.Field)
 	case OpAssertEqual:
 		actual, err := e.eval(*expr.Actual, env, depth+1)
 		if err != nil {
@@ -332,6 +329,73 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 }
 
 
+
+func snapshotInputs(inputs map[string]Value) map[string]Value {
+	out := make(map[string]Value, len(inputs))
+	for name, value := range inputs {
+		out[name] = value.Clone()
+	}
+	return out
+}
+
+// The evaluator treats the snapshot created at invocation entry as immutable.
+// Internal operations therefore share nested Value storage and copy only the
+// container that they structurally change.
+func fieldView(value Value, name string) (Value, bool) {
+	if value.Kind != ValueObject {
+		return Value{}, false
+	}
+	for _, field := range value.Object {
+		if field.Name == name {
+			return field.Value, true
+		}
+	}
+	return Value{}, false
+}
+
+func evaluatorObject(fields []Field) (Value, error) {
+	seen := map[string]struct{}{}
+	out := Value{Kind: ValueObject, Object: append([]Field(nil), fields...)}
+	for _, field := range out.Object {
+		if field.Name == "" {
+			return Value{}, fmt.Errorf("object field name is required")
+		}
+		if _, exists := seen[field.Name]; exists {
+			return Value{}, fmt.Errorf("object field %q is declared more than once", field.Name)
+		}
+		seen[field.Name] = struct{}{}
+	}
+	return out, nil
+}
+
+func replaceFieldOwned(value Value, name string, replacement Value) (Value, bool, error) {
+	if value.Kind != ValueObject {
+		return Value{}, false, fmt.Errorf("replace-field requires object, got %s", value.Kind)
+	}
+	out := value
+	out.Object = append([]Field(nil), value.Object...)
+	for i := range out.Object {
+		if out.Object[i].Name == name {
+			out.Object[i].Value = replacement
+			return out, true, nil
+		}
+	}
+	return out, false, nil
+}
+
+func omitFieldOwned(value Value, name string) (Value, error) {
+	if value.Kind != ValueObject {
+		return Value{}, fmt.Errorf("omit-field requires object, got %s", value.Kind)
+	}
+	out := Value{Kind: ValueObject, Object: make([]Field, 0, len(value.Object))}
+	for _, field := range value.Object {
+		if field.Name == name {
+			continue
+		}
+		out.Object = append(out.Object, field)
+	}
+	return out, nil
+}
 
 func encodedOutputSize(value Value) (int, error) {
 	if value.Kind == ValueBytes {
