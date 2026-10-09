@@ -38,13 +38,6 @@ func TestCommitBoundary(t *testing.T) {
 	mk := func() Intent {
 		return Intent{ApplicationID: "sui", DocumentID: "doc", ActionID: "move", ExpectedRevision: "r1", Payload: map[string]int{"x": 2}}
 	}
-	t.Run("preview and cancel do not invoke host", func(t *testing.T) {
-		s := &memoryStore{revision: "r1"}
-		_ = s
-		if s.writes != 0 {
-			t.Fatal("preview must not write")
-		}
-	})
 	t.Run("commit once", func(t *testing.T) {
 		s := &memoryStore{revision: "r1"}
 		h := Host{Authorizer: permit(true), Bindings: []Binding{{"sui", "move", s}}}
