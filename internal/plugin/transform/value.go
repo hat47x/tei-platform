@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
+	"strings"
 )
 
 type ValueKind string
@@ -146,9 +146,6 @@ func decodeJSONValue(decoder *json.Decoder, depth int) (Value, error) {
 	case string:
 		return String(value), nil
 	case json.Number:
-		if _, err := strconv.ParseFloat(value.String(), 64); err != nil {
-			return Value{}, fmt.Errorf("invalid JSON number %q", value.String())
-		}
 		return Number(value.String()), nil
 	case json.Delim:
 		switch value {
@@ -226,8 +223,8 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 			out.WriteString("false")
 		}
 	case ValueNumber:
-		if v.Number == "" {
-			return fmt.Errorf("number value is empty")
+		if !validJSONNumber(v.Number) {
+			return fmt.Errorf("invalid JSON number %q", v.Number)
 		}
 		out.WriteString(v.Number)
 	case ValueString:
@@ -272,6 +269,25 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 		return fmt.Errorf("unknown value kind %q", v.Kind)
 	}
 	return nil
+}
+
+
+
+func validJSONNumber(raw string) bool {
+	if strings.TrimSpace(raw) != raw || raw == "" {
+		return false
+	}
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+	token, err := decoder.Token()
+	if err != nil {
+		return false
+	}
+	if _, ok := token.(json.Number); !ok {
+		return false
+	}
+	_, err = decoder.Token()
+	return err == io.EOF
 }
 
 func Equal(a, b Value) bool {
