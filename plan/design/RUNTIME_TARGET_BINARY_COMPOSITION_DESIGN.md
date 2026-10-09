@@ -253,10 +253,12 @@ UnitBuildInput (概念上)
 
 ここで得られるのは**DB接続の構成情報だけ**である。これをそのまま二層・三層アプリケーション用のBuild Planへ変換すると、次の情報が欠落する。
 
-- `order_entry.submit_order`などの実行入口と、`sales.order.submit`のCustom Go実現との具体的な依存辺。
+- `order_entry.submit_order`から`order_entry/sales.order.submit`のCustom Go宣言へは既存Resolverで対応できるが、その期待するAdapter名と**実際にコンパイル・リンクされるGoパッケージ**を結ぶ情報。
 - Web Targetの画面・HTML・React等の資産と、それらを参照するHost側の実装。
 - 認証、認可、環境別の秘密情報・通信方式・信頼境界の配置。
 - 生成後のバイナリ内に、実際にどのGo実装と依存ライブラリが結合されるか。
+
+さらに[Command Patternの読取り参照](../../reference/runtime-packaging/README.md)を追加し、`realization.ResolveCustomGoBinding`によって`order_entry.submit_order → sales.order.submit → order_entry/sales.order.submit`を取得する実装とテストを記述した。これはCustom Goの宣言を既存の解決境界で確認するものであり、生成後のバイナリに含まれる実装をまだ証明しない。
 
 また、既存のformat 2 Plugin LockではBuiltin Pluginが成果物digestを持たず、**Plugin descriptor fingerprintだけで固定される**場合がある。そこで参照実装のBinding候補は、`PluginFingerprint`、`BuildPlanFingerprint`、`ArtifactDigest`を別々に扱うよう修正した。既存のPlugin定義指紋を、まだ正式化されていないCapability Contract fingerprintとして再利用しない。
 
