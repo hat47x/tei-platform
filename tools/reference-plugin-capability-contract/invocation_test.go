@@ -128,7 +128,9 @@ func TestGenericInvocationRegistryRunsIndependentAuthoringAndRuntimeCapabilities
 	}
 	if sourceExecution.Resolution.Provider != sourceProvider ||
 		sourceExecution.RequestShape != sourceAdapterRequestShape ||
+		sourceExecution.RequestShapeFingerprint != sourceAdapterRequestShapeFingerprint ||
 		sourceExecution.ResultShape != sourceAdapterResultShape ||
+		sourceExecution.ResultShapeFingerprint != sourceAdapterResultShapeFingerprint ||
 		sourceExecution.PayloadCodec != referenceJSONPayloadCodec {
 		t.Fatalf("source invocation execution=%+v", sourceExecution)
 	}
@@ -177,7 +179,9 @@ func TestGenericInvocationRegistryRunsIndependentAuthoringAndRuntimeCapabilities
 	}
 	if queryExecution.Resolution.Provider != queryProvider ||
 		queryExecution.RequestShape != contractQueryRequestShape ||
-		queryExecution.ResultShape != contractQueryResultShape {
+		queryExecution.RequestShapeFingerprint != contractQueryRequestShapeFingerprint ||
+		queryExecution.ResultShape != contractQueryResultShape ||
+		queryExecution.ResultShapeFingerprint != contractQueryResultShapeFingerprint {
 		t.Fatalf("query invocation execution=%+v", queryExecution)
 	}
 	var queryResult driver.ContractQueryResult
@@ -245,6 +249,45 @@ func TestGenericInvocationRejectsContractShapeDriftBeforeDomainCall(t *testing.T
 	}
 }
 
+func TestGenericInvocationRejectsSameShapeNameWithDifferentSchemaFingerprint(t *testing.T) {
+	contract := sourceAdapterContract()
+	contract.RequestShapeFingerprint = "sha256:" + strings.Repeat("f", 64)
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(SourceAdapterRequest{
+		Format:                xeadsource.FormatXead,
+		SourceBytes:           []byte(`<System FormatVersion="1.2"/>`),
+		TranscriptionContract: sourceAdapterTranscriptionContract(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = registry.ResolveAndInvoke(
+		context.Background(),
+		sourceAdapterResolveInput(contract, provider),
+		payload,
+	)
+	if err == nil || !strings.Contains(err.Error(), "invocation shape") {
+		t.Fatalf("same shape name with different schema fingerprint was accepted: %v", err)
+	}
+}
+
 func TestGenericInvocationRejectsResolvedButUninstalledExactArtifact(t *testing.T) {
 	registry, contract, installed, _, _, _ := genericInvocationRegistryFixture(t)
 	uninstalled := installed
@@ -296,9 +339,11 @@ func TestInvocationPayloadCodecIsContractScopedRatherThanJSONHardCoded(t *testin
 		RequestSemantics:   "opaque-bytes",
 		ResultSemantics:    "same-opaque-bytes",
 		FailureSemantics:   "execution-error-is-not-success",
-		RequestShape:       "tei.reference.opaque.request/v0",
-		ResultShape:        "tei.reference.opaque.result/v0",
-		PayloadCodec:       "application/octet-stream;profile=tei-reference-v0",
+		RequestShape:            "tei.reference.opaque.request/v0",
+		RequestShapeFingerprint: "sha256:c43afa7741de2f84dd9d149ef6f4fde2d0bd2f347d7a377176cb1aa24adab8b2",
+		ResultShape:             "tei.reference.opaque.result/v0",
+		ResultShapeFingerprint:  "sha256:c43afa7741de2f84dd9d149ef6f4fde2d0bd2f347d7a377176cb1aa24adab8b2",
+		PayloadCodec:            "application/octet-stream;profile=tei-reference-v0",
 		ConformanceProfile: "tei.reference.opaque-copy/v0",
 	}
 	provider := sourceAdapterProvider(
@@ -308,10 +353,12 @@ func TestInvocationPayloadCodecIsContractScopedRatherThanJSONHardCoded(t *testin
 		"opaque.copy.v1",
 	)
 	implementation := InvocationImplementation{
-		Provider:     provider,
-		RequestShape: contract.RequestShape,
-		ResultShape:  contract.ResultShape,
-		PayloadCodec: contract.PayloadCodec,
+		Provider:                provider,
+		RequestShape:            contract.RequestShape,
+		RequestShapeFingerprint: contract.RequestShapeFingerprint,
+		ResultShape:             contract.ResultShape,
+		ResultShapeFingerprint:  contract.ResultShapeFingerprint,
+		PayloadCodec:            contract.PayloadCodec,
 		Invoke: func(ctx context.Context, payload []byte) ([]byte, error) {
 			if err := ctx.Err(); err != nil {
 				return nil, err
