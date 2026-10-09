@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode/utf8"
 )
 
 type ValueKind string
@@ -115,6 +116,9 @@ func (v Value) OmitField(name string) (Value, error) {
 }
 
 func ParseJSON(raw []byte) (Value, error) {
+	if !utf8.Valid(raw) {
+		return Value{}, fmt.Errorf("JSON is not valid UTF-8")
+	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	value, err := decodeJSONValue(decoder, 0)
