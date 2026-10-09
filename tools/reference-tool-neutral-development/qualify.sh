@@ -82,12 +82,13 @@ fi
 
 assert_clean_checkout() {
   local phase="$1"
-  local status ignored
+  local status ignored hidden_index
 
   status="$(git status --porcelain=v1 --untracked-files=all)"
   ignored="$(git ls-files --others --ignored --exclude-standard)"
+  hidden_index="$(git ls-files -v | grep -E '^[a-zS]' || true)"
 
-  if [[ -n "$status" || -n "$ignored" ]]; then
+  if [[ -n "$status" || -n "$ignored" || -n "$hidden_index" ]]; then
     echo "error: qualification checkout is not clean during $phase" >&2
     if [[ -n "$status" ]]; then
       git status --short --untracked-files=all >&2
@@ -95,6 +96,10 @@ assert_clean_checkout() {
     if [[ -n "$ignored" ]]; then
       echo "ignored artifacts:" >&2
       printf '%s\n' "$ignored" >&2
+    fi
+    if [[ -n "$hidden_index" ]]; then
+      echo "index flags that can hide tracked worktree content:" >&2
+      printf '%s\n' "$hidden_index" >&2
     fi
     exit 1
   fi
