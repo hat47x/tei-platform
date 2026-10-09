@@ -1,8 +1,6 @@
 package languagereference
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestPipelineSyntaxSeparatesParsingFromContracts(t *testing.T) {
 	input := "  rows/order  |>  std.where  |>  std.expand  "
