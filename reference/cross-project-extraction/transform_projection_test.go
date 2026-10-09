@@ -1,7 +1,7 @@
 package crossprojectextraction_test
 
 import (
-	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -9,46 +9,19 @@ import (
 	"tei/internal/plugin/transform"
 )
 
-// E6: when the accepted semantic input already carries ordered typed rule
-// descriptors, the existing map-array operation can materialize the plan.
-// This fixture does not decide which rules are accepted.
-func projectionSource() transform.Source {
-	rule := transform.Expr{Op: transform.OpInput, Name: "rule"}
-	ruleField := func(name string) transform.Expr {
-		from := rule
-		return transform.Expr{Op: transform.OpSelectField, From: &from, Field: name}
+// The serialized Source is the single Reference for this projection, not a
+// separately generated program hidden in the test. It is not accepted meaning.
+func projectionSource(t *testing.T) transform.Source {
+	t.Helper()
+	raw, err := os.ReadFile("required-fields-projection.transform.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	arrayInput := transform.Expr{Op: transform.OpInput, Name: "rules"}
-	body := transform.Expr{
-		Op: transform.OpConstructObject,
-		Fields: []transform.ObjectFieldExpr{
-			{Name: "op", Value: ruleField("op")},
-			{Name: "field", Value: ruleField("field")},
-		},
+	source, err := transform.ParseSourceJSON(raw)
+	if err != nil {
+		t.Fatal(err)
 	}
-	mappedRules := transform.Expr{Op: transform.OpMapArray, From: &arrayInput, Item: "rule", Body: &body}
-	return transform.Source{
-		FormatVersion: transform.SourceFormatVersion,
-		Identity: transform.SourceIdentity{
-			ID: core.MustCanonicalID("tei.reference.required-fields-projection"),
-			Version: "1.0.0",
-			ContractVersion: "tei.reference.validation-plan/v0",
-		},
-		Profile: transform.ProfileV1,
-		Limits: transform.Limits{
-			MaxSteps: 200, MaxCollection: 8, MaxInputNodes: 100,
-			MaxInputBytes: 4096, MaxOutputBytes: 4096, MaxNestingDepth: 16,
-		},
-		Inputs: []transform.InputSpec{{Name: "rules", Kind: transform.InputArray}},
-		Program: transform.Program{Output: transform.Expr{
-			Op: transform.OpConstructObject,
-			Fields: []transform.ObjectFieldExpr{
-				{Name: "format", Value: transform.Expr{Op: transform.OpLiteral,
-					Literal: json.RawMessage(`"tei.reference.validation-plan/v0"`)}},
-				{Name: "rules", Value: mappedRules},
-			},
-		}},
-	}
+	return source
 }
 
 func projectionOutput(t *testing.T, source transform.Source, rules string) string {
@@ -69,7 +42,7 @@ func projectionOutput(t *testing.T, source transform.Source, rules string) strin
 }
 
 func TestExistingMapArrayProjectsTwoIndependentAcceptedRuleSets(t *testing.T) {
-	source := projectionSource()
+	source := projectionSource(t)
 	if err := source.Validate(); err != nil {
 		t.Fatalf("reference Source is invalid: %v", err)
 	}
@@ -98,8 +71,22 @@ func TestExistingMapArrayProjectsTwoIndependentAcceptedRuleSets(t *testing.T) {
 	}
 }
 
+func TestProjectionSourceRejectsUnknownTransformOperator(t *testing.T) {
+	raw, err := os.ReadFile("required-fields-projection.transform.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := strings.Replace(string(raw), `"op": "map-array"`, `"op": "unrecognized-transform"`, 1)
+	if changed == string(raw) {
+		t.Fatal("test fixture did not change the transform program")
+	}
+	if _, err := transform.ParseSourceJSON([]byte(changed)); err == nil {
+		t.Fatal("unsupported transform operation was not rejected")
+	}
+}
+
 func TestProjectionFailsClosedForMissingRuleField(t *testing.T) {
-	source := projectionSource()
+	source := projectionSource(t)
 	input, err := transform.ParseJSON([]byte(`[{"op":"required-text"}]`))
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +100,7 @@ func TestProjectionDoesNotValidateDomainRuleSemantics(t *testing.T) {
 	// A mapping operation can copy descriptors, not decide whether their
 	// operation is part of the accepted business meaning. The authoring
 	// layer must enforce the semantic contract before this transform runs.
-	source := projectionSource()
+	source := projectionSource(t)
 	unaccepted := projectionOutput(t, source, `[{"op":"unknown-business-rule","field":"orderId"}]`)
 	if !strings.Contains(unaccepted, "unknown-business-rule") {
 		t.Fatal("fixture must show that the transform alone cannot authorize semantic rules")
