@@ -402,11 +402,11 @@ PR #967は2026-10-08T06:06:01Zに、head `425b5743fab37ec087892d67d7bbf09e6496ba
 
 現在のforward stopは、trustedなactual TEI full checkoutで、その時点のcurrent main exact HEADを固定し、次を同じcheckoutで確認することです。
 
-1. tracked / untracked / ignored artifactを含めたclean pre-state。
+1. tracked / untracked / ignored artifactに加え、`assume-unchanged` / `skip-worktree`等のtracked内容を隠せるindex flagも無いclean pre-state。
 2. full `tools/repository-health-check.sh` PASS。
 3. RQ-034 Executable Reference PASS。
 4. 実行中にHEADと対象mainが変わっていないこと。
-5. tracked / untracked / ignored artifactを含めたclean post-state。
+5. tracked / untracked / ignored artifactとtracked内容を隠せるindex flagの双方が無いclean post-state。
 
 current execution environmentではactual TEI checkoutを実行できないため、このforward stopは未完了です。RQ-034はDesign Only、本IssueはIn Progressのままとします。2026-10-09の是正作業はmain `60b8de4718c495dfbcbb1f20b98427f399d6598c`を起点に開始しましたが、このSHAは固定の完了条件ではありません。actual qualification時にmainが進んでいれば、新しいcurrent mainから最初から取り直します。
 
@@ -462,6 +462,16 @@ preflight_self_mutation=PASS
 - preflight自己変更: receipt取得後に実行中preflightのbytesを変えた場合、candidate blobとの不一致で拒否。
 
 また、detached HEADのsource checkoutから`git clone --local --no-hardlinks`した場合、cloneも同じdetached commitから始まることをlocal Gitで確認しました。source checkoutにignored / untracked artifactが存在してもclone側へは複製されないため、source側のignored-clean検査は省略できません。
+
+追加のindex-state pressureでは、`git status --porcelain`が空のままになる`assume-unchanged`と`skip-worktree`をそれぞれ設定し、`git ls-files -v`由来のfail-closed検査が両方を検出することを確認しました。
+
+```text
+assume_unchanged_detected=PASS
+skip_worktree_detected=PASS
+normal_index=PASS
+```
+
+これは「working treeで実行した内容」と「receiptが指すcommit内容」がずれる経路を閉じるためのRepository mechanicsです。sparse checkout等で`skip-worktree`が必要なcheckoutはRQ-034 qualificationには使わず、full clean checkoutへ切り替えます。
 
 これはqualification toolingのmechanics Evidenceであり、actual TEIのRepository Health、CLI、Canonical meaning、RQ-034 Reference成立Evidenceではありません。
 
