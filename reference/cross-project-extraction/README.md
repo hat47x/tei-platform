@@ -2,7 +2,7 @@
 
 この参照実装は、[Issue #1067](https://github.com/hat47x/tei-platform/issues/1067)の最初の検証に使うものです。二つの案件で個別に作られた小さな生成処理から、共通する検証規則だけを取り出し、元の期待結果と振る舞いが保たれるかを確かめます。
 
-**現在の状態は、合成データによる独立した試作です。** 二つの実リポジトリから自動抽出したものでも、TEIの正式なDSLプラグインや実行機構に接続したものでもありません。共通化の受理、依存版の固定、実アプリケーションでの動作は、まだ確認していません。
+**現在の状態は、合成データを中心とした段階的な試作です。** 共通契約の抽出と案件別採用はReference内で検証し、その採用・版固定・Build入力追跡をTEI既存のPlugin Lock／Build機構へ接続する試験も追加しています。一方、二つの実案件へ同じ共有Pluginを導入した実証、正式な汎用Capability Contractへの接続、実配備はまだ行っていません。
 
 ## 確かめること
 
@@ -14,7 +14,7 @@
 
 ## 局所的な実行
 
-リポジトリのルートから実行します。
+リポジトリのルートから、抽出前後の振る舞いを確認します。
 
 ```bash
 node --test reference/cross-project-extraction/regression.test.mjs
@@ -40,12 +40,42 @@ node --test reference/cross-project-extraction/regression.test.mjs
 node --test reference/cross-project-extraction/adoption-regression.test.mjs
 ```
 
-**これは既存のプラグイン解決機構やPlugin Lockの代替実装ではありません。** 回帰試験内で明示的に指定した候補を、読み取り専用で比較する補助です。選択の受理、永続化、配備、別リポジトリへの変更反映、実環境での切り戻しは行っていません。候補のGit blob SHAもReference内の検査に限定し、本番の署名・権限確認と同一視しません。検証用の案件モジュールは静的に読み込まれるため、ソース内容の照合を実行前のコード読込み制限として機能させたものでもありません。実際のプラグインの検証・読込み順序と隔離は既存のTEI機構で別途確認する必要があります。
+このNode.js試験は、既存のプラグイン解決機構やPlugin Lockの代替実装ではありません。回帰試験内で明示的に指定した候補を、読み取り専用で比較する補助です。
+
+## 既存Plugin Lock／Build機構との接続
+
+[Plugin Lock接続試験](plugin_lock_integration_test.go)は、独自の採用Lockや新しいResolverを作らず、TEIに既にある次の機構をそのまま利用します。
+
+- `Environment`ごとのPlugin要求
+- Runtime Plugin LockによるPlugin ID・版・Definition fingerprint・artifact digestの固定
+- `BuildPlan`とBuild出力Lockによるsource digest・builder・target・build入力の固定
+- Runtime Plugin LockへのBuildPlan fingerprintの結び付け
+- `VerifyRuntimePluginBuild`によるBuild入力・artifact・Runtime選択の横断照合
+
+試験では、受注と請求を別々のEnvironmentとして扱います。両方が共有Pluginの1.0.0を利用している状態から、請求だけ1.1.0へ採用し、受注のLockが1.0.0に留まることを確認します。請求を以前のLockへ戻せることも検査します。これにより、「別案件が新版を採用しただけで自案件へ伝播する」経路を作りません。
+
+さらに、共有候補の実ソースを`BuildPlan.Sources[].Digest`へ結び付けます。固定後にsource digest、artifact、Build出力の対応が変わった場合は、既存の検証機構で失敗させます。
+
+局所的には次の試験を実行できます。
+
+```bash
+go test ./reference/cross-project-extraction
+```
+
+このGo試験を追加した時点では、trustedな完全checkoutでの実行結果はまだ取得していません。PR統合資格として扱うには、exact headを固定した`tools/repository-health-check.sh`の全項目PASSと、実行前後のclean状態が別途必要です。
+
+## Capability契約との境界
+
+共有した検証生成器を、既存の`editor-intelligence`など別のCapabilityへ便宜的に押し込めません。現行productionの`internal/plugin.CapabilityKind`は固定列挙であり、任意の新しい意味契約を追加する正本にはまだなっていません。
+
+汎用Capability ContractのReferenceは[#951](https://github.com/hat47x/tei-platform/issues/951)で進めています。並行PR #1058では、その契約を独立したConsumerから呼び出す検証が進行中です。本ReferenceはPlugin Lock／Buildとの接続だけを先に行い、Capability契約がproductionへ収束する前に独自のCapability表現を増やしません。
 
 ## この試作では分からないこと
 
-本試作の検証計画は、TEIの正式な正本モデルやBuild Lockではありません。入力・出力も実際のTEIワークスペースから取得していません。テスト内の簡単な評価器もTEI実行機構とは異なります。したがって、局所試験の成功を、TEIプラグインの適合性や実環境での動作確認として扱いません。
+今回の接続により、案件別の版固定とBuild入力の追跡を既存TEI機構で表現できることは検証対象に入りました。一方、Node.js側の簡単な評価器はTEI実行機構とは異なり、共有生成器を正式なCapabilityとして呼び出しているわけでもありません。
 
-次に必要なのは、実際の二つの案件定義を読み取り専用で比較することです。その際は、両リポジトリの変更不可のリビジョン、権限、使用するプラグイン版、独立した受入試験を固定します。共通化の対象と案件固有の意味を区別し、各案件の所有者が個別に採用できるようにします。
+また、実際の二つの案件リポジトリへ同じ共有Pluginを導入し、それぞれの所有者が独立して受理・切り戻しを行った事実はまだありません。実Provider、署名・権限、配備、Runtime AuthorityもこのReferenceだけでは確認できません。
+
+次の正の実証では、同一の意味契約を本当に共有できる二つの独立Consumerを固定し、それぞれの受入試験を保持したまま、共有Pluginの採用差分とLock更新を比較します。Capability契約については#951の既存機構へ収束させ、新しい並行正本を作りません。
 
 生成コードの単体試験を機械的に案件ごとへ複製することは目的ではありません。共通部分の契約試験は共有側へ寄せ、案件ごとの業務上の期待値と接続検証は引き続き保持します。定義量と保守負担の削減効果は、実案件の比較が可能になってから測定します。
