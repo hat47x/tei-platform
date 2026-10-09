@@ -24,9 +24,11 @@ type InvocationImplementation struct {
 
 type InvocationExecution struct {
 	Resolution        Resolution `json:"resolution"`
-	RequestShape      string     `json:"requestShape"`
-	ResultShape       string     `json:"resultShape"`
-	PayloadCodec      string     `json:"payloadCodec"`
+	RequestShape            string     `json:"requestShape"`
+	RequestShapeFingerprint string     `json:"requestShapeFingerprint"`
+	ResultShape             string     `json:"resultShape"`
+	ResultShapeFingerprint  string     `json:"resultShapeFingerprint"`
+	PayloadCodec            string     `json:"payloadCodec"`
 	RequestDigest     string     `json:"requestDigest"`
 	ResultDigest      string     `json:"resultDigest"`
 	ResultPayload     []byte     `json:"resultPayload"`
@@ -157,9 +159,11 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 
 	return InvocationExecution{
 		Resolution:      resolution,
-		RequestShape:    contract.RequestShape,
-		ResultShape:     contract.ResultShape,
-		PayloadCodec:    contract.PayloadCodec,
+		RequestShape:            contract.RequestShape,
+		RequestShapeFingerprint: contract.RequestShapeFingerprint,
+		ResultShape:             contract.ResultShape,
+		ResultShapeFingerprint:  contract.ResultShapeFingerprint,
+		PayloadCodec:            contract.PayloadCodec,
 		RequestDigest:   "sha256:" + hex.EncodeToString(requestSum[:]),
 		ResultDigest:    "sha256:" + hex.EncodeToString(resultSum[:]),
 		ResultPayload:   append([]byte(nil), resultPayload...),
