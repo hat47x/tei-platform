@@ -79,9 +79,10 @@ type goListPackage struct {
 
 func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
+	artifactOut := flag.String("artifact-out", "", "optional path outside the repository for the verified engine artifact")
 	flag.Parse()
 
-	evidence, err := run(*repo)
+	evidence, err := run(*repo, *artifactOut)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -94,7 +95,7 @@ func main() {
 	}
 }
 
-func run(repo string) (buildEvidence, error) {
+func run(repo, artifactOut string) (buildEvidence, error) {
 	root, err := filepath.Abs(repo)
 	if err != nil {
 		return buildEvidence{}, err
@@ -157,6 +158,11 @@ func run(repo string) (buildEvidence, error) {
 			firstDigest,
 			secondDigest,
 		)
+	}
+	if artifactOut != "" {
+		if err := copyVerifiedArtifactOutsideRepository(root, firstPath, artifactOut, firstDigest); err != nil {
+			return buildEvidence{}, err
+		}
 	}
 
 	out := buildEvidence{
@@ -500,6 +506,39 @@ func hashToolchainEntry(sum io.Writer, goRoot, path string, info os.FileInfo) er
 	}
 	_, err = fmt.Fprint(sum, "\n")
 	return err
+}
+
+func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDigest string) error {
+	destinationAbs, err := filepath.Abs(destination)
+	if err != nil {
+		return err
+	}
+	repoAbs, err := filepath.Abs(repo)
+	if err != nil {
+		return err
+	}
+	rel, err := filepath.Rel(repoAbs, destinationAbs)
+	if err != nil {
+		return err
+	}
+	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, "../")) {
+		return fmt.Errorf("artifact-out must be outside the repository")
+	}
+	raw, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(destinationAbs, raw, 0o755); err != nil {
+		return fmt.Errorf("write verified Runtime Engine artifact: %w", err)
+	}
+	digest, err := hashFile(destinationAbs)
+	if err != nil {
+		return err
+	}
+	if digest != expectedDigest {
+		return fmt.Errorf("copied Runtime Engine artifact digest changed: got %s want %s", digest, expectedDigest)
+	}
+	return nil
 }
 
 func executableName(name string) string {
