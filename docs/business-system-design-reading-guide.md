@@ -347,7 +347,7 @@ tei knowledge-review-handoff
   -qualification-requirements <requirements.json>
 ```
 
-HandoffはKnowledge本文を含みません。Review Planのfingerprint、選択候補となる区画、明示したQualification requirements、Qualification結果とそのSource Evidenceを結びます。Qualificationが`applicable`で、authoritative Evidenceと必要なdependency Evidenceが揃った場合だけ`qualified-for-disclosure`になります。`unknown`は`blocked-unresolved`、`incompatible`は`blocked-incompatible`として保持します。
+HandoffはKnowledge本文を含みません。Review Planのrevision / fingerprint、routing scope、選択候補となる区画、明示したQualification requirements、Qualification結果とそのSource Evidenceを結びます。Qualificationが`applicable`で、authoritative Evidenceと必要なdependency Evidenceが揃い、ContextとSource Indexの候補subject Evidenceが同一revisionである場合だけ`qualified-for-disclosure`になります。`unknown`は`blocked-unresolved`、`incompatible`は`blocked-incompatible`として保持します。
 
 ```text
 available
