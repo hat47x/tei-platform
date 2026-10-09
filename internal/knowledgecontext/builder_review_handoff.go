@@ -48,6 +48,62 @@ func ValidateBuilderReviewHandoff(handoff BuilderReviewHandoff) error {
 		handoff.ReviewPlanFingerprint == "" {
 		return fmt.Errorf("builder review handoff review-plan identity is incomplete")
 	}
+	if handoff.Qualification.Candidate != handoff.Subject {
+		return fmt.Errorf(
+			"builder review handoff qualification subject mismatch: handoff=%s:%s qualification=%s:%s",
+			handoff.Subject.Kind,
+			handoff.Subject.ID,
+			handoff.Qualification.Candidate.Kind,
+			handoff.Qualification.Candidate.ID,
+		)
+	}
+	expectedStatus := ""
+	switch handoff.Qualification.Status {
+	case QualificationApplicable:
+		expectedStatus = "qualified-for-disclosure"
+	case QualificationIncompatible:
+		expectedStatus = "blocked-incompatible"
+	case QualificationUnknown:
+		expectedStatus = "blocked-unresolved"
+	default:
+		return fmt.Errorf(
+			"builder review handoff qualification status %q is unsupported",
+			handoff.Qualification.Status,
+		)
+	}
+	if handoff.Status != expectedStatus {
+		return fmt.Errorf(
+			"builder review handoff status mismatch: handoff=%q qualification=%q expected=%q",
+			handoff.Status,
+			handoff.Qualification.Status,
+			expectedStatus,
+		)
+	}
+	if handoff.Status == "qualified-for-disclosure" {
+		if handoff.Qualification.Requirements.ExpectedKind != handoff.Subject.Kind {
+			return fmt.Errorf(
+				"builder review handoff applicable qualification expected kind %q does not match subject kind %q",
+				handoff.Qualification.Requirements.ExpectedKind,
+				handoff.Subject.Kind,
+			)
+		}
+		if len(handoff.Qualification.Evidence) == 0 {
+			return fmt.Errorf(
+				"builder review handoff applicable qualification has no authoritative Evidence",
+			)
+		}
+		if len(handoff.Qualification.Requirements.RequiredDependencies) != 0 &&
+			len(handoff.Qualification.DependencyEvidence) == 0 {
+			return fmt.Errorf(
+				"builder review handoff applicable qualification has no dependency Evidence",
+			)
+		}
+		if len(handoff.SelectedSections) == 0 {
+			return fmt.Errorf(
+				"builder review handoff qualified state has no selected Knowledge",
+			)
+		}
+	}
 	if handoff.Fingerprint == "" {
 		return fmt.Errorf("builder review handoff fingerprint is empty")
 	}
