@@ -99,11 +99,15 @@ func (s *JSONDocumentStore) Commit(_ context.Context, in Intent) (string, error)
 		}
 		found = true
 		var currentX, currentY float64
-		if string(cards[i]["x"]) == "null" { return "", fmt.Errorf("%w: null card x coordinate", ErrInvalid) }
+		if string(cards[i]["x"]) == "null" {
+			return "", fmt.Errorf("%w: null card x coordinate", ErrInvalid)
+		}
 		if err := json.Unmarshal(cards[i]["x"], &currentX); err != nil {
 			return "", fmt.Errorf("%w: invalid card x coordinate", ErrInvalid)
 		}
-		if string(cards[i]["y"]) == "null" { return "", fmt.Errorf("%w: null card y coordinate", ErrInvalid) }
+		if string(cards[i]["y"]) == "null" {
+			return "", fmt.Errorf("%w: null card y coordinate", ErrInvalid)
+		}
 		if err := json.Unmarshal(cards[i]["y"], &currentY); err != nil {
 			return "", fmt.Errorf("%w: invalid card y coordinate", ErrInvalid)
 		}
