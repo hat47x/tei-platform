@@ -48,6 +48,9 @@ func TestRepositoryLocalQualificationControlFlow(t *testing.T) {
 	health := []byte(`#!/usr/bin/env bash
 set -euo pipefail
 test -z "$(git status --porcelain --untracked-files=all --ignored=matching)"
+if [[ -n "${TEI_SYNTHETIC_ADVANCE_MAIN_TO:-}" ]]; then
+  git --git-dir="${TEI_SYNTHETIC_ORIGIN:?}" update-ref refs/heads/main "$TEI_SYNTHETIC_ADVANCE_MAIN_TO"
+fi
 printf 'synthetic repository health: PASS\n' >&2
 `)
 	if err := os.WriteFile(filepath.Join(work, "tools", "repository-health-check.sh"), health, 0o755); err != nil {
@@ -153,6 +156,31 @@ printf 'synthetic repository health: PASS\n' >&2
 		)
 	})
 
+	t.Run("rejects main movement during health", func(t *testing.T) {
+		movingReceipt := filepath.Join(tmp, "moving-main-receipt.json")
+		output := runFailureEnv(
+			t,
+			work,
+			[]string{
+				"TEI_SYNTHETIC_ORIGIN=" + origin,
+				"TEI_SYNTHETIC_ADVANCE_MAIN_TO=" + head,
+			},
+			"bash",
+			"tools/run-repository-local-qualification.sh",
+			"--expected-head", head,
+			"--expected-main", main,
+			"--receipt", movingReceipt,
+		)
+		if !strings.Contains(output, "main moved during qualification") {
+			t.Fatalf("main movement was rejected for an unexpected reason:\n%s", output)
+		}
+		if _, err := os.Stat(movingReceipt); !os.IsNotExist(err) {
+			t.Fatalf("receipt exists after main movement: %v", err)
+		}
+		run(t, "", "git", "--git-dir", origin, "update-ref", "refs/heads/main", main)
+		run(t, work, "git", "fetch", "origin", "--prune")
+	})
+
 	t.Run("rejects receipt inside repository", func(t *testing.T) {
 		runFailure(
 			t,
@@ -209,6 +237,18 @@ func runFailure(t *testing.T, dir string, name string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("%s %v unexpectedly succeeded:\n%s", name, args, out)
+	}
+	return string(out)
+}
+
+func runFailureEnv(t *testing.T, dir string, env []string, name string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), env...)
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatalf("%s %v unexpectedly succeeded:\n%s", name, args, out)
