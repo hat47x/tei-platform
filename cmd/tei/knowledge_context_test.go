@@ -230,6 +230,7 @@ func TestBuildBuilderReviewPlanRoutesApplicationPatternAcrossViews(t *testing.T)
 		"review-current-definition",
 		"review-data-design-and-its-review-protocol",
 		"review-dependencies-and-impact",
+		"review-cross-view-constraints-authority-and-known-conflicts",
 	} {
 		if !containsKnowledgeContextString(plan.ReviewSequence, stage) {
 			t.Fatalf("application pattern review stage %q is missing: %+v", stage, plan.ReviewSequence)
