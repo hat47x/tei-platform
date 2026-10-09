@@ -45,9 +45,10 @@ const (
 	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
 	nativeImplementation   = "reference/plugin-self-build/workspace/plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
 	nativeBuilderPackage   = "./tools/reference-native-plugin-builder"
-	nativeBuilderVersion             = "1.0.0"
-	repositoryTreeDigestAlgorithm = "git-ls-tree-sha256-v1"
+	nativeBuilderVersion   = "1.0.0"
 )
+
+const repositoryTreeDigestAlgorithm = "git-ls-tree-sha256-v1"
 
 type evidence struct {
 	Schema                             string                         `json:"schema"`
