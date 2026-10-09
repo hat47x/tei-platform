@@ -101,7 +101,11 @@ Reference testでは少なくとも次を拒否します。
 
 generic実行は既存Artifact Verifier、Resource Broker、HostSandboxLauncherへ直接委譲するReference orchestrationです。production `Registry.Invoke`へgeneric identityを組み込んだことはまだ意味しません。
 
-現行process protocolへはderived dispatch IDを渡します。このIDはContract semantics + implementationから静的に再現できますが、実Plugin processが複数generic Capabilityをdispatchする実例はまだ作っていません。production `Request / Response`へ追加metadataが必要か、derived dispatch IDだけで十分かは次のpressureで判断します。
+現行process protocolへはderived dispatch IDを渡します。このIDはContract semantics + implementationから静的に再現できます。
+
+Reference testには、同じprocess artifact内の二つのgeneric Contractを別々のdispatch IDへ写し、既存`StdioProcessLauncher`で実OS processを起動するpressureも追加しています。子processはEnvironment固有のRuntime Refを知らなくても、Contract fingerprintとimplementation IDから事前計算できるdispatch IDで処理を分けられます。Responseが別dispatch IDを返した場合はHost側で拒否します。
+
+このtestはまだexact-head Gateを通していません。したがって、現行`Request / Response`へ追加metadataが不要だと確定したわけではありません。Gate結果と、より複雑なProvider構成での再利用性を見て判断します。
 
 Resource Broker経路はfilesystem read一件のAcquire / Validate / Sandbox mount / Releaseを最初のpressureとします。renew / refresh、Supervisor ownership / fencing、Secret injection、Network endpointはproduction機構として既に存在しますが、このgeneric Runtime RefからのE2E Evidenceはまだありません。
 
