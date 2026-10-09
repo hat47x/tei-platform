@@ -127,7 +127,10 @@ func run(repo, artifactOut, goExecutable string) (buildEvidence, error) {
 	if err != nil {
 		return buildEvidence{}, err
 	}
-	hostEnvironment := allowedHostEnvironment(os.Environ())
+	hostEnvironment, err := allowedHostEnvironment(os.Environ())
+	if err != nil {
+		return buildEvidence{}, err
+	}
 	goVersion, goRoot, goBinaryDigest, goToolchainDigest, err := identifyGoToolchain(root, goPath)
 	if err != nil {
 		return buildEvidence{}, err
@@ -498,30 +501,47 @@ func recordedBuildSettings() []string {
 	return settings
 }
 
-func allowedHostEnvironment(base []string) []string {
+func allowedHostEnvironment(base []string) ([]string, error) {
+	return allowedHostEnvironmentForOS(base, runtime.GOOS)
+}
+
+func allowedHostEnvironmentForOS(base []string, goos string) ([]string, error) {
 	allowed := map[string]struct{}{}
-	if runtime.GOOS == "windows" {
+	if goos == "windows" {
 		for _, key := range []string{"COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR"} {
 			allowed[key] = struct{}{}
 		}
 	}
-	out := make([]string, 0, len(allowed))
+	values := map[string]string{}
 	for _, entry := range base {
-		key := entry
-		if i := strings.IndexByte(entry, '='); i >= 0 {
-			key = entry[:i]
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
 		}
 		upper := strings.ToUpper(key)
-		if _, ok := allowed[upper]; ok {
-			out = append(out, upper+entry[len(key):])
+		if _, ok := allowed[upper]; !ok {
+			continue
 		}
+		normalized := upper + "=" + value
+		if existing, exists := values[upper]; exists && existing != normalized {
+			return nil, fmt.Errorf("conflicting inherited Host environment for %s", upper)
+		}
+		values[upper] = normalized
+	}
+	out := make([]string, 0, len(values))
+	for _, entry := range values {
+		out = append(out, entry)
 	}
 	sort.Strings(out)
-	return out
+	return out, nil
 }
 
 func buildEnvironment(base []string, stateDir string) ([]string, error) {
-	out := append([]string(nil), allowedHostEnvironment(base)...)
+	host, err := allowedHostEnvironment(base)
+	if err != nil {
+		return nil, err
+	}
+	out := append([]string(nil), host...)
 	out = append(out, fixedGoBuildSettings()...)
 	if stateDir != "" {
 		if err := os.MkdirAll(stateDir, 0o755); err != nil {
