@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -112,5 +114,57 @@ func TestFixedGoBuildSettingsPinTargetAndAmbientGoControls(t *testing.T) {
 		if !found {
 			t.Fatalf("missing fixed Go build setting %q in %#v", want, settings)
 		}
+	}
+}
+
+
+func TestCopyVerifiedArtifactRequiresDestinationOutsideRepository(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inside := filepath.Join(root, "engine-copy")
+	if err := copyVerifiedArtifactOutsideRepository(root, source, inside, digest); err == nil {
+		t.Fatal("expected artifact export inside repository to fail")
+	}
+	if _, err := os.Stat(inside); !os.IsNotExist(err) {
+		t.Fatalf("inside-repository artifact was created: %v", err)
+	}
+
+	outsideDir := t.TempDir()
+	outside := filepath.Join(outsideDir, "engine-copy")
+	if err := copyVerifiedArtifactOutsideRepository(root, source, outside, digest); err != nil {
+		t.Fatal(err)
+	}
+	got, err := hashFile(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != digest {
+		t.Fatalf("copied artifact digest changed: got %s want %s", got, digest)
+	}
+}
+
+func TestCopyVerifiedArtifactRejectsUnexpectedDigest(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "engine-copy")
+	err := copyVerifiedArtifactOutsideRepository(
+		root,
+		source,
+		outside,
+		"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	)
+	if err == nil {
+		t.Fatal("expected unexpected artifact digest to fail")
 	}
 }
