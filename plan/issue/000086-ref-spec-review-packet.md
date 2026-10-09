@@ -58,7 +58,7 @@ evidence
   -> findingから元Sourceへ戻る導線
 ```
 
-`evidence`は既存toolが持つSource traceを引き継ぐだけで、新しい根拠を生成しない。完全一致する重複行だけを正規化し、入力に無いfingerprintやAuthorityは補完しない。
+`evidence`は既存toolが持つSource traceを引き継ぐだけで、新しい根拠を生成しない。一件のreview caseへ複数のKnowledge Contextを渡せるようにし、customer editではPatternと所有ApplicationのSourceを同じpacketへ束ねる。完全一致する重複行だけを正規化し、入力に無いfingerprintやAuthorityは補完しない。
 
 `status=no-finding-in-provided-evidence`も仕様の完全性を意味しない。確認した三つの入力の範囲でfindingが無かったことだけを表す。
 
@@ -80,7 +80,7 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 4. 未知のcross-view diagnosticを独自解釈せず`source-diagnostic`として保持する。
 5. PR #1040型のValidation scope差を入力できても、その意味の所有者はBusiness Procedure checker側に残す。
 6. JSONの後ろに追加valueがある不正入力を拒否する。
-7. Knowledge ContextとShared Acceptanceが持つSource Evidenceをpacketへ保持し、完全一致する重複だけを除く。
+7. 複数のKnowledge ContextとShared Acceptanceが持つSource Evidenceをpacketへ保持し、完全一致する重複だけを除く。customer editではPattern sourceと所有Application sourceの両方へ戻れることを確認する。
 8. 既存Practical-B candidateのbase revisionだけをscratchで古くし、実Shared Acceptance Previewが返す`stale`をpacketへ取り込む。
 9. subject / procedure identityが欠けた入力や、未対応のShared Acceptance schemaを拒否し、別toolのJSONを誤ってreview inputへ読み替えない。
 
