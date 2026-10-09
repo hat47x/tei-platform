@@ -8,6 +8,30 @@ import (
 	"testing"
 )
 
+func TestResolveReproducibilityKeepsDivergentArtifactUnresolved(t *testing.T) {
+	ok, artifact := resolveReproducibility(
+		"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+	)
+	if ok {
+		t.Fatal("different artifact digests were reported as reproducible")
+	}
+	if artifact != "" {
+		t.Fatalf("non-reproducible artifact was assigned a canonical digest: %s", artifact)
+	}
+
+	ok, artifact = resolveReproducibility(
+		"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+		"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+	)
+	if !ok {
+		t.Fatal("matching artifact digests were not reported as reproducible")
+	}
+	if artifact != "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" {
+		t.Fatalf("reproducible artifact digest: %s", artifact)
+	}
+}
+
 func TestSourceClosureFingerprintIgnoresMemberOrder(t *testing.T) {
 	a := []sourceMember{
 		{Path: "b.go", Digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
