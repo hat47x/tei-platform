@@ -420,3 +420,66 @@ func TestCopyVerifiedArtifactRejectsExistingDestination(t *testing.T) {
 		t.Fatal("existing artifact-out was overwritten")
 	}
 }
+
+
+func TestPublishVerifiedArtifactNoClobberRejectsLateDestination(t *testing.T) {
+	dir := t.TempDir()
+	tempPath := filepath.Join(dir, ".verified-temp")
+	destination := filepath.Join(dir, "engine")
+	if err := os.WriteFile(tempPath, []byte("verified"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// This destination models a competing writer that created the final path
+	// after copyVerifiedArtifactOutsideRepository's initial non-existence check.
+	if err := os.WriteFile(destination, []byte("competitor"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := publishVerifiedArtifactNoClobber(tempPath, destination); err == nil {
+		t.Fatal("expected no-clobber publish to reject late destination")
+	}
+
+	raw, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "competitor" {
+		t.Fatalf("late destination was replaced: %q", raw)
+	}
+	after, err := os.Stat(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Mode().Perm() != before.Mode().Perm() {
+		t.Fatalf("late destination mode changed: before=%v after=%v", before.Mode().Perm(), after.Mode().Perm())
+	}
+}
+
+func TestPublishVerifiedArtifactNoClobberPublishesSameArtifact(t *testing.T) {
+	dir := t.TempDir()
+	tempPath := filepath.Join(dir, ".verified-temp")
+	destination := filepath.Join(dir, "engine")
+	if err := os.WriteFile(tempPath, []byte("verified"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := publishVerifiedArtifactNoClobber(tempPath, destination); err != nil {
+		t.Fatal(err)
+	}
+	tempDigest, err := hashFile(tempPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destinationDigest, err := hashFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if destinationDigest != tempDigest {
+		t.Fatalf("published artifact digest changed: got %s want %s", destinationDigest, tempDigest)
+	}
+}
