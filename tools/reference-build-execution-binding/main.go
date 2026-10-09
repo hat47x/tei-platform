@@ -57,6 +57,23 @@ type BuildExecutionResult struct {
 	ArtifactSetFingerprint   string `json:"artifactSetFingerprint"`
 }
 
+type ArtifactMemberChange struct {
+	Role         string `json:"role"`
+	FirstFormat  string `json:"firstFormat"`
+	SecondFormat string `json:"secondFormat"`
+	FirstDigest  string `json:"firstDigest"`
+	SecondDigest string `json:"secondDigest"`
+}
+
+type ArtifactSetComparison struct {
+	Reproducible      bool                   `json:"reproducible"`
+	FirstFingerprint  string                 `json:"firstFingerprint"`
+	SecondFingerprint string                 `json:"secondFingerprint"`
+	MissingFromSecond []string               `json:"missingFromSecond,omitempty"`
+	ExtraInSecond     []string               `json:"extraInSecond,omitempty"`
+	Changed           []ArtifactMemberChange `json:"changed,omitempty"`
+}
+
 // PluginSubjectBinding connects a logical Plugin to a domain-neutral build
 // result. It grants no Acceptance or Runtime Authority.
 type PluginSubjectBinding struct {
@@ -286,6 +303,62 @@ func artifactSetFingerprint(set ArtifactSet) (string, error) {
 		FormatVersion: set.FormatVersion,
 		Members:       members,
 	})
+}
+
+func compareArtifactSets(first, second ArtifactSet) (ArtifactSetComparison, error) {
+	firstFingerprint, err := artifactSetFingerprint(first)
+	if err != nil {
+		return ArtifactSetComparison{}, err
+	}
+	secondFingerprint, err := artifactSetFingerprint(second)
+	if err != nil {
+		return ArtifactSetComparison{}, err
+	}
+
+	firstByRole := make(map[string]ArtifactMember, len(first.Members))
+	for _, member := range first.Members {
+		firstByRole[member.Role] = member
+	}
+	secondByRole := make(map[string]ArtifactMember, len(second.Members))
+	for _, member := range second.Members {
+		secondByRole[member.Role] = member
+	}
+
+	comparison := ArtifactSetComparison{
+		FirstFingerprint:  firstFingerprint,
+		SecondFingerprint: secondFingerprint,
+	}
+	for role, firstMember := range firstByRole {
+		secondMember, ok := secondByRole[role]
+		if !ok {
+			comparison.MissingFromSecond = append(comparison.MissingFromSecond, role)
+			continue
+		}
+		if firstMember.Format != secondMember.Format || firstMember.Digest != secondMember.Digest {
+			comparison.Changed = append(comparison.Changed, ArtifactMemberChange{
+				Role:         role,
+				FirstFormat:  firstMember.Format,
+				SecondFormat: secondMember.Format,
+				FirstDigest:  firstMember.Digest,
+				SecondDigest: secondMember.Digest,
+			})
+		}
+	}
+	for role := range secondByRole {
+		if _, ok := firstByRole[role]; !ok {
+			comparison.ExtraInSecond = append(comparison.ExtraInSecond, role)
+		}
+	}
+	sort.Strings(comparison.MissingFromSecond)
+	sort.Strings(comparison.ExtraInSecond)
+	sort.Slice(comparison.Changed, func(i, j int) bool {
+		return comparison.Changed[i].Role < comparison.Changed[j].Role
+	})
+	comparison.Reproducible = len(comparison.MissingFromSecond) == 0 &&
+		len(comparison.ExtraInSecond) == 0 &&
+		len(comparison.Changed) == 0 &&
+		firstFingerprint == secondFingerprint
+	return comparison, nil
 }
 
 func (r BuildExecutionResult) Validate() error {
