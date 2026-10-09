@@ -371,6 +371,19 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 このresearch integrationは、RQ-010 / 013 / 015 / 016 / 021 / 024 / 027〜030の既存Gapを減らすための作業であり、研究を読んだことだけでEvidence tierを変更しません。
 
+
+### 2026-10-09の追加検証候補（評価待ち）
+
+直近の仕様レビュー研究、画面操作の評価、WebAssemblyのインターフェース標準化を、**新しいGateや独立した基盤の追加ではなく、既存の業務Referenceをより厳しく確かめる材料**として扱う。Product Valueにとっての意味と調査根拠は、[技術リサーチ統合方針 §9](TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とする。
+
+- **REF-SPEC-01：仕様の不足を実装前に発見する。** 既存の受注Referenceで欠落、曖昧さ、矛盾、古い前提を人が発見できるかを比較する。受け皿はISSUE-000075、#982、#998、#915、#267。最初に得たい価値は、生成量ではなく、意味を誤って確定させない変更レビューである。
+- **REF-INTERACTION-01：画面操作を業務結果まで確認する。** 表示、操作、権限による拒否、Business Result、Observation、視覚評価を別の結果として記録する。受け皿は#997、#1000、#1001、#259。第一Web Targetの既存Gate C判定を遡って変更しない。
+- **REF-PORTABLE-01：異なる実行物・Hostで意味を保つ。** Go native、TinyGo Wasmなどの対応可能な実行物を小さく比較する。WASI 0.2 / 0.3、ABI、Host imports、依存、権限、資源、性能を分けて記録する。受け皿は#259、#943、#973、#976、#1016。Studio用Wails Hostと第二業務Targetを混同せず、HikeをGoコンパイラとして扱わない。
+
+優先度は、まず**業務変更時に役立つREF-SPEC-01**、次に**操作の成立を示すREF-INTERACTION-01**、続いて**可搬性を確かめるREF-PORTABLE-01**とする。ただしこれは研究候補の評価順であって、既存Issueの着手承認・並行作業・保護された統合手順を変更しない。特にISSUE-000075の次候補Bは、まだ着手を決定していない。
+
+**判定:** 文書への反映は実施済み。三つのREFはいずれも設計案であり、実行・利用者評価・性能計測・Requirement Evidenceへの昇格は未実施。小さな実証で中心価値の不確実性を減らせない場合、方式や作業範囲を広げる前に見送る。
+
 ## Reference Model Transfer Evidence — 成熟した外部modelで全体をpressureする
 
 小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkはX-TEA / XEAD系「CONCEPTWARE／受注生産」の既存Reference Modelです。
