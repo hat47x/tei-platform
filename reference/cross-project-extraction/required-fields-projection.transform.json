@@ -1,0 +1,63 @@
+{
+  "formatVersion": 1,
+  "identity": {
+    "id": "tei.reference.required-fields-projection",
+    "version": "1.0.0",
+    "contractVersion": "tei.reference.validation-plan/v0"
+  },
+  "profile": "deterministic-transform-v1",
+  "limits": {
+    "maxSteps": 200,
+    "maxCollection": 8,
+    "maxInputNodes": 100,
+    "maxInputBytes": 4096,
+    "maxOutputBytes": 4096,
+    "maxNestingDepth": 16
+  },
+  "inputs": [
+    { "name": "rules", "kind": "array" }
+  ],
+  "program": {
+    "output": {
+      "op": "construct-object",
+      "fields": [
+        {
+          "name": "format",
+          "value": {
+            "op": "literal",
+            "literal": "tei.reference.validation-plan/v0"
+          }
+        },
+        {
+          "name": "rules",
+          "value": {
+            "op": "map-array",
+            "from": { "op": "input", "name": "rules" },
+            "item": "rule",
+            "body": {
+              "op": "construct-object",
+              "fields": [
+                {
+                  "name": "op",
+                  "value": {
+                    "op": "select-field",
+                    "from": { "op": "input", "name": "rule" },
+                    "field": "op"
+                  }
+                },
+                {
+                  "name": "field",
+                  "value": {
+                    "op": "select-field",
+                    "from": { "op": "input", "name": "rule" },
+                    "field": "field"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
