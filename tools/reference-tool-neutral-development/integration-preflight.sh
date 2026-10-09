@@ -143,6 +143,7 @@ candidate_blob() {
 }
 
 [[ -f "$RECEIPT_FILE" ]] || { echo "error: receipt file not found: $RECEIPT_FILE" >&2; exit 2; }
+RECEIPT_BLOB="$(git -C "$SCRIPT_ROOT" hash-object "$RECEIPT_FILE")"
 assert_clean_checkout "$SCRIPT_ROOT" "candidate checkout"
 assert_clean_checkout "$INTEGRATION_ROOT" "integration checkout"
 
@@ -237,9 +238,15 @@ fi
 assert_clean_checkout "$SCRIPT_ROOT" "candidate checkout after preflight"
 assert_clean_checkout "$INTEGRATION_ROOT" "integration checkout after preflight"
 
+if [[ "$(git -C "$SCRIPT_ROOT" hash-object "$RECEIPT_FILE")" != "$RECEIPT_BLOB" ]]; then
+  echo "error: qualification receipt changed during integration preflight" >&2
+  exit 1
+fi
+
 printf 'candidate-head=%s\n' "$CANDIDATE_HEAD"
 printf 'expected-main=%s\n' "$EXPECTED_MAIN"
 printf 'integration-root=%s\n' "$INTEGRATION_ROOT"
+printf 'receipt-blob=%s\n' "$RECEIPT_BLOB"
 printf 'receipt-binding=PASS\n'
 printf 'runner-blob-binding=PASS\n'
 printf 'preflight-self-binding=PASS\n'
