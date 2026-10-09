@@ -43,6 +43,7 @@ coverage
 
 finding
   ambiguity
+    Knowledge Context / Shared Acceptance等が明示した未解決事項
   inconsistency
   cross-view-difference
   stale-premise
@@ -73,13 +74,14 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 
 最初のtestでは次を固定する。
 
-1. Knowledge Contextの`unresolved`、customer edit conflict、stale revisionを別classで保持する。
+1. Knowledge ContextとShared Acceptanceの`unresolved`、customer edit conflict、stale revisionを別classで保持する。
 2. 実Repositoryの`order_entry.customer_reference`とcustomer edit probeを、既存CLIの出力から一つのpacketへ束ねる。
 3. 入力が不足した場合は`partial-no-finding`とし、不在をnegative Evidenceへ変換しない。
 4. 未知のcross-view diagnosticを独自解釈せず`source-diagnostic`として保持する。
 5. PR #1040型のValidation scope差を入力できても、その意味の所有者はBusiness Procedure checker側に残す。
 6. JSONの後ろに追加valueがある不正入力を拒否する。
 7. Knowledge ContextとShared Acceptanceが持つSource Evidenceをpacketへ保持し、完全一致する重複だけを除く。
+8. 既存Practical-B candidateのbase revisionだけをscratchで古くし、実Shared Acceptance Previewが返す`stale`をpacketへ取り込む。
 
 ## 非目標
 
