@@ -291,6 +291,74 @@ change request
 
 token量だけをProduct KPIにはしない。
 
+### Phase 1の共通入口 — Builder Review Plan
+
+AI Builderが個別の設計原則を知っていることを前提にせず、共有Knowledge Contextから用途別のBuilder Review Planを派生させる。CLIでは`tei knowledge-review-plan`として独立して取得し、共有ContextやOperational ProjectionへBuilder固有情報を混入させない。
+
+この計画が持つのは、`current-knowledge-context`の範囲で現在利用できるKnowledgeのうち何をどの順で確認するかというrouting guidanceだけである。個別の設計原則は各Knowledgeへ残す。たとえばData設計では、識別子・候補キー・関数従属性等の詳細な確認事項を`dataDesign.designReviewProtocol`が担当する。現在Contextに区画が無いことから、Accepted Decision等を含む他のKnowledge surfaceにも情報が存在しないとは判断しない。
+
+```text
+shared Knowledge Context
+  -> Builder Review Plan
+      -> source / definition / data-design / dependenciesの読み順
+
+Data Design Review Protocol
+  -> Data設計固有の確認事項
+
+どちらも
+  != accepted meaning
+  != semantic applicability
+  != write / runtime authority
+```
+
+Review Planはrouting identity用のfingerprintを持つ。ただし、その一致をKnowledge内容のfreshness proofへ昇格させない。また、`recommendedDisclosureSections`はselection候補であってQualification結果やDisclosure結果ではない。既存R6の `available != selected != qualified != disclosed` を維持し、必要なQualificationを経てからsemantic useへ進む。Data Designや選択的Disclosure等の内容を再利用するときは、それぞれのfingerprintとEvidence境界を別に確認する。
+
+Review Planの次段では、selected候補をそのままsemantic useへ渡さず、明示的なQualification requirementsと既存`knowledge-qualify`相当の判定をBuilder Review Handoffへ接続する。CLIでは`tei knowledge-review-handoff`を使う。
+
+```text
+available
+  -> selected candidate sections
+  -> explicit Qualification
+  -> qualified / blocked
+  -> current Disclosure
+```
+
+Handoffは本文をmaterializeせず、Plan revision / fingerprint、routing scope、selected sections、Qualification requirements / status / Evidenceだけを保持する。ここでいう`qualified-for-disclosure`はKnowledge routing上の状態であり、RBAC、redaction、secret access、write/runtime authorizationを表さない。applicableでもauthoritative Evidenceが無い場合、required dependencyがあるのにdependency Evidenceが無い場合、PlanとQualificationのsubjectが一致しない場合はfail closedする。さらに候補subjectのauthoritative EvidenceがContextとSource Indexで同一でなければ、異なるrevisionを混在させたhandoffとして拒否する。
+
+Handoff fingerprintにはQualification Evidenceのrevisionを含める。一方、Review Plan fingerprintはrouting identityのまま維持し、Knowledge本文の変更だけで変化させない。Disclosure contentの再利用判断はDisclosure fingerprintへ委ねる。
+
+`tei knowledge-review-disclose`は、保存済みHandoffを入力としてcurrent Handoffを再構成し、fingerprint一致と`qualified-for-disclosure`を確認したときだけ既存`DisclosureProjection`を返す。これにより、手作業でselected sectionsを書き写してQualification境界を迂回する経路を避ける。
+
+```text
+available
+  -> selected
+  -> qualified
+  -> verified handoff
+  -> disclosed
+```
+
+このコマンドは新しいContext packetを作らない。出力は既存Disclosureそのものであり、Qualification / Handoff本文を埋め込まない。Disclosureを別taskで使う場合は、そのtaskで再Qualificationする。
+
+`qualified-for-disclosure`はselected section内部のEvidence completenessやresolutionまで保証しない。Review Sequenceは共有`unresolved`だけでなく、各区画が持つ局所的なresolution / Evidence statusも確認してからsemantic useへ進む。
+
+さらにsubject-local Qualificationはcross-view change qualificationではない。Review Sequenceには`review-cross-view-constraints-authority-and-known-conflicts`を置き、Business Procedure、Application authority、datasource access、Contract、Authorization、既知conflict等の必要Evidenceがcurrent Context外にある場合も確認する。必要なcross-view Evidenceが未解決なら、Minimum Semantic Delta Proposalを形成する前に停止する。
+
+Proposalへ進むときは、新しいBuilder専用Proposal schemaを追加しない。`tools/reference-shared-acceptance`の既存`attach-qualification` / qualified reference proposal経路が、bare `QualificationResult`に加えてBuilder Review Handoffも入力として受けるadapterを持つ。Handoffのidentityを検証した後、内包Qualificationだけを既存Evidenceへ接続する。
+
+この結果、
+
+```text
+Builder Review Handoff
+  -> Qualification Evidence
+  -> existing Candidate
+  -> Preview / Review
+  -> explicit Accept / Reject
+```
+
+となる。Disclosure snapshotはProposal deltaへ含めず、AIが提案する意味はMinimum Semantic Deltaとして別に記述する。Handoff経路と直接Qualification経路でcandidate meaning / Evidence identityが変わらないことをReference testで固定する。
+
+この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
+
 ## Phase 1 first challenge — customer_referenceを編集可能にする要求
 
 最初のAI Builder re-entry challengeは `plan/ACTOR_CONTEXT_R1_AI_BUILDER_CHANGE_CHALLENGE_2026-09.md` を正本とする。
