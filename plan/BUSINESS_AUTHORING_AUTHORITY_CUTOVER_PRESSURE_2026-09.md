@@ -233,7 +233,7 @@ Lane Cからdual-reader transition modeを長期production contractへしない�
 
 ## 9. Shared Acceptanceとの接続
 
-Authority cutoverは`BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`の:
+Authority cutoverは`docs/audits/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`の:
 
 ```text
 Business source freshness
