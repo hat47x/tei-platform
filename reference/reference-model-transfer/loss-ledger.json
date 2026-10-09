@@ -296,6 +296,15 @@
       "risk": "parser support, candidate mapping, and typed Evidence acceptance can diverge after an otherwise local schema update.",
       "owner": "GitHub #1008 / Draft PR #1011",
       "stopCondition": "the Source Adapter test suite reads the current transcription contract and fails unless reader known constructs, mapped construct kinds, and typed Evidence public constructs have equal coverage for both source formats; every contract classification must also be supported by rmtevidence"
+    },
+    {
+      "id": "RML-033",
+      "topic": "arbitrary-prose-in-rmt-extension-or-authority-limit",
+      "nature": "unresolved",
+      "evidence": "Before RMP-058 hardening, rmtevidence accepted any non-empty Extension for mapped Evidence and arbitrary non-empty authorityLimits. Both survive canonical serialization; Extension is also shown in the Shared Acceptance review summary.",
+      "risk": "source-derived prose or arbitrary private strings can cross a public-safe typed Evidence boundary through fields that are intended to carry TEI identifiers/codes.",
+      "owner": "GitHub #1008 / Draft PR #1011",
+      "stopCondition": "Extension and authorityLimits use a bounded public token syntax, adversarial tests reject whitespace/Unicode/overlength prose-like values, and the current transcription contract is checked so every emitted Extension and authority limit satisfies the same token boundary"
     }
   ],
   "claimsNotEstablished": [
