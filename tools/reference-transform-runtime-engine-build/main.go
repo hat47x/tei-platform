@@ -521,7 +521,8 @@ func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDi
 	if err != nil {
 		return err
 	}
-	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, "../")) {
+	parentPrefix := ".." + string(os.PathSeparator)
+	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, parentPrefix)) {
 		return fmt.Errorf("artifact-out must be outside the repository")
 	}
 	raw, err := os.ReadFile(source)
