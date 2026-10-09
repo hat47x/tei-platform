@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -219,5 +220,43 @@ func TestValidationScopeReviewShowsBothDifferenceDirections(t *testing.T) {
 		!reflect.DeepEqual(rows[0].ApplicationOnly, []string{"sales.order_line.quantity_positive"}) ||
 		!reflect.DeepEqual(rows[0].ProcedureOnly, []string{"sales.order_line.line_number_positive"}) {
 		t.Fatalf("双方向のValidation参照差を説明できません: %+v", rows)
+	}
+}
+
+func TestValidationScopeReviewJSONIsOptIn(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	baseline, err := run(workspacePath, fixturePath, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	existingJSON, err := json.Marshal(baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var existing map[string]json.RawMessage
+	if err := json.Unmarshal(existingJSON, &existing); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := existing["validationScopeReview"]; ok {
+		t.Fatal("明示指定なしで比較結果が出力されました")
+	}
+	reviewed, err := runWithOptions(workspacePath, fixturePath, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reviewedJSON, err := json.Marshal(reviewed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var withReview map[string]json.RawMessage
+	if err := json.Unmarshal(reviewedJSON, &withReview); err != nil {
+		t.Fatal(err)
+	}
+	if len(withReview["validationScopeReview"]) == 0 {
+		t.Fatal("明示指定時にValidation比較結果が出力されません")
+	}
+	delete(withReview, "validationScopeReview")
+	if !reflect.DeepEqual(withReview, existing) {
+		t.Fatalf("任意表示が従来のJSON項目を書き換えました: before=%v after=%v", existing, withReview)
 	}
 }
