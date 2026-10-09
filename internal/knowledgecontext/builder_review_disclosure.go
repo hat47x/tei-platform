@@ -11,15 +11,10 @@ func BuildBuilderReviewDisclosure(
 	sources sourceindex.Index,
 	handoff BuilderReviewHandoff,
 ) (DisclosureProjection, error) {
-	if handoff.ProjectionRevision != builderReviewHandoffProjectionRevision ||
-		handoff.Fingerprint == "" {
+	if err := ValidateBuilderReviewHandoff(handoff); err != nil {
 		return DisclosureProjection{}, fmt.Errorf(
-			"builder review disclosure requires a Builder Review Handoff",
-		)
-	}
-	if builderReviewHandoffFingerprint(handoff) != handoff.Fingerprint {
-		return DisclosureProjection{}, fmt.Errorf(
-			"builder review disclosure rejects a modified Builder Review Handoff",
+			"builder review disclosure rejects invalid handoff: %w",
+			err,
 		)
 	}
 	if handoff.Subject != ctx.Subject {
