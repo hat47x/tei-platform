@@ -52,6 +52,7 @@ type buildEvidence struct {
 	Builder              goBuilderEvidence `json:"builder"`
 	Recipe               []string          `json:"recipe"`
 	BuildSettings        []string          `json:"buildSettings"`
+	HostEnvironment      []string          `json:"hostEnvironment,omitempty"`
 	FirstArtifactDigest  string            `json:"firstArtifactDigest"`
 	SecondArtifactDigest string            `json:"secondArtifactDigest"`
 	Reproducible         bool              `json:"reproducible"`
@@ -128,6 +129,7 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 	if resolved, resolveErr := filepath.EvalSymlinks(goPath); resolveErr == nil {
 		goPath = resolved
 	}
+	hostEnvironment := allowedHostEnvironment(os.Environ())
 	goVersion, goRoot, goBinaryDigest, goToolchainDigest, err := identifyGoToolchain(root, goPath)
 	if err != nil {
 		return buildEvidence{}, err
@@ -206,6 +208,7 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 			enginePackage,
 		},
 		BuildSettings:        fixedGoBuildSettings(),
+		HostEnvironment:      hostEnvironment,
 		FirstArtifactDigest:  firstDigest,
 		SecondArtifactDigest: secondDigest,
 		Reproducible:         reproducible,
@@ -222,7 +225,11 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 func identifyGoToolchain(repo, goPath string) (version, goRoot, binaryDigest, toolchainDigest string, err error) {
 	versionCmd := exec.Command(goPath, "version")
 	versionCmd.Dir = repo
-	versionCmd.Env = buildEnvironment(os.Environ(), "")
+	versionEnv, err := buildEnvironment(os.Environ(), "")
+	if err != nil {
+		return "", "", "", "", err
+	}
+	versionCmd.Env = versionEnv
 	versionRaw, err := versionCmd.Output()
 	if err != nil {
 		return "", "", "", "", fmt.Errorf("read Go version: %w", err)
@@ -231,7 +238,11 @@ func identifyGoToolchain(repo, goPath string) (version, goRoot, binaryDigest, to
 
 	rootCmd := exec.Command(goPath, "env", "GOROOT")
 	rootCmd.Dir = repo
-	rootCmd.Env = buildEnvironment(os.Environ(), "")
+	rootEnv, err := buildEnvironment(os.Environ(), "")
+	if err != nil {
+		return "", "", "", "", err
+	}
+	rootCmd.Env = rootEnv
 	rootRaw, err := rootCmd.Output()
 	if err != nil {
 		return "", "", "", "", fmt.Errorf("resolve Go root: %w", err)
@@ -262,7 +273,11 @@ func collectModuleSourceClosure(repo, goPath, packagePath, stateDir string) ([]s
 		packagePath,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
+	env, err := buildEnvironment(os.Environ(), stateDir)
+	if err != nil {
+		return nil, "", err
+	}
+	cmd.Env = env
 	raw, err := cmd.Output()
 	if err != nil {
 		var exitErr *exec.ExitError
@@ -422,7 +437,11 @@ func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
 		packagePath,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
+	env, err := buildEnvironment(os.Environ(), stateDir)
+	if err != nil {
+		return err
+	}
+	cmd.Env = env
 	combined, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
@@ -443,33 +462,61 @@ func fixedGoBuildSettings() []string {
 		"GOTOOLCHAIN=local",
 		"GOVCS=*:off",
 		"GOWORK=off",
+		"STATE_ISOLATION=GOCACHE,GOMODCACHE,GOPATH,HOME,USERPROFILE,TMPDIR,TMP,TEMP",
 	}
 	sort.Strings(settings)
 	return settings
 }
 
-func buildEnvironment(base []string, stateDir string) []string {
-	out := make([]string, 0, len(base)+14)
+func allowedHostEnvironment(base []string) []string {
+	allowed := map[string]struct{}{}
+	if runtime.GOOS == "windows" {
+		for _, key := range []string{"COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR"} {
+			allowed[key] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(allowed))
 	for _, entry := range base {
 		key := entry
 		if i := strings.IndexByte(entry, '='); i >= 0 {
 			key = entry[:i]
 		}
-		if strings.HasPrefix(key, "GO") || key == "CGO_ENABLED" {
-			continue
+		upper := strings.ToUpper(key)
+		if _, ok := allowed[upper]; ok {
+			out = append(out, upper+entry[len(key):])
 		}
-		out = append(out, entry)
 	}
+	sort.Strings(out)
+	return out
+}
+
+func buildEnvironment(base []string, stateDir string) ([]string, error) {
+	out := append([]string(nil), allowedHostEnvironment(base)...)
 	out = append(out, fixedGoBuildSettings()...)
 	if stateDir != "" {
+		if err := os.MkdirAll(stateDir, 0o755); err != nil {
+			return nil, fmt.Errorf("create isolated build state: %w", err)
+		}
+		home := filepath.Join(stateDir, "home")
+		temp := filepath.Join(stateDir, "tmp")
+		for _, dir := range []string{home, temp} {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return nil, fmt.Errorf("create isolated build directory: %w", err)
+			}
+		}
 		out = append(out,
 			"GOCACHE="+filepath.Join(stateDir, "cache"),
 			"GOMODCACHE="+filepath.Join(stateDir, "modcache"),
 			"GOPATH="+filepath.Join(stateDir, "gopath"),
+			"HOME="+home,
+			"USERPROFILE="+home,
+			"TMPDIR="+temp,
+			"TMP="+temp,
+			"TEMP="+temp,
 		)
 	}
 	sort.Strings(out)
-	return out
+	return out, nil
 }
 
 func hashGoToolchain(goRoot string) (string, error) {
