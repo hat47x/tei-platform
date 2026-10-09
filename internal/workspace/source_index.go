@@ -37,9 +37,10 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		// the domain loader. A forged/standalone Result has no snapshot
 		// and retains the existing checked filesystem read fallback.
 		if snapshot, ok := result.sourceSnapshot[p]; ok {
-			content := append([]byte(nil), snapshot...)
-			contents[p] = content
-			return content, nil
+			// Load retained an independent copy of the parsed bytes. Source
+			// Index only reads it; a second full-file copy is unnecessary.
+			contents[p] = snapshot
+			return snapshot, nil
 		}
 		// Standalone Results and unparsed managed assets go through the same
 		// checked native reader as Load. It is not a race-free open boundary.
