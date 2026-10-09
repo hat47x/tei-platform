@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"tei/internal/application"
+	"tei/internal/core"
 	"tei/internal/workspace"
 )
 
@@ -180,4 +181,43 @@ func TestValidationScopeReviewDoesNotHideDuplicateDeclarations(t *testing.T) {
 			t.Fatalf("Application内の重複を集合で消しました: %+v", rows)
 		}
 	})
+}
+
+func TestValidationScopeReviewShowsBothDifferenceDirections(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	world := loaded.World
+	world.Applications = append([]application.Application(nil), world.Applications...)
+	found := false
+	for i := range world.Applications {
+		if string(world.Applications[i].ID) == f.Application {
+			values := world.Applications[i].Validations
+			world.Applications[i].Validations = append([]core.CanonicalID(nil), values[:2]...)
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("比較対象Applicationがありません")
+	}
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = []string{
+				"sales.order.lines.line_number_unique",
+				"sales.order_line.line_number_positive",
+			}
+		}
+	}
+	rows := compareValidationScopes(world, f)
+	if len(rows) != 1 || rows[0].Status != "review-needed" ||
+		!reflect.DeepEqual(rows[0].ApplicationOnly, []string{"sales.order_line.quantity_positive"}) ||
+		!reflect.DeepEqual(rows[0].ProcedureOnly, []string{"sales.order_line.line_number_positive"}) {
+		t.Fatalf("双方向のValidation参照差を説明できません: %+v", rows)
+	}
 }
