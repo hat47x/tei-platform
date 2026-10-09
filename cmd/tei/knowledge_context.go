@@ -189,6 +189,24 @@ func buildBuilderReviewDisclosureFromFile(
 	return disclosure, handoff, nil
 }
 
+func checkDataDesignCandidateReviewFingerprint(
+	packet knowledgecontext.DataDesignCandidateReviewPacket,
+	expected string,
+) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if packet.Fingerprint != expected {
+		return fmt.Errorf(
+			"Data Design candidate review fingerprint mismatch: expected=%s current=%s",
+			expected,
+			packet.Fingerprint,
+		)
+	}
+	return nil
+}
+
 func checkBuilderReviewHandoffFingerprint(
 	handoff knowledgecontext.BuilderReviewHandoff,
 	expected string,
