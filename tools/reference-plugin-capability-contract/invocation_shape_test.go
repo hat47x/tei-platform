@@ -263,3 +263,155 @@ func TestGenericInvocationRejectsMutatingEffectBeforeInvoker(t *testing.T) {
 		t.Fatalf("mutating implementation was invoked %d times", calls)
 	}
 }
+
+
+func TestInvocationRegistryRejectsSelfAssertedShapeWithoutAuthorityEvidence(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.shape-self-claim",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewInvocationRegistry(
+		[]InvocationImplementation{implementation},
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "Authority Evidence") {
+		t.Fatalf("self-asserted shape issuer was accepted without Evidence: %v", err)
+	}
+}
+
+func TestInvocationRegistryRejectsStaleShapeAuthorityEvidence(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.shape-stale-evidence",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorities := invocationShapeAuthoritiesForTest(
+		[]InvocationImplementation{implementation},
+	)
+	authorities[0].ShapeFingerprint = "sha256:" + strings.Repeat("f", 64)
+	if _, err := NewInvocationRegistry(
+		[]InvocationImplementation{implementation},
+		authorities,
+	); err == nil || !strings.Contains(err.Error(), "no accepted Shape Authority Evidence") {
+		t.Fatalf("stale shape authority Evidence was accepted: %v", err)
+	}
+}
+
+func TestInvocationRegistryRejectsAmbiguousShapeAuthorityEvidence(t *testing.T) {
+	artifact := sourceAdapterRequestShapeArtifact()
+	left := invocationShapeAuthorityEvidenceForTest(artifact, "authority-left")
+	right := invocationShapeAuthorityEvidenceForTest(artifact, "authority-right")
+	if left.EvidenceFingerprint == right.EvidenceFingerprint {
+		t.Fatal("test authority fingerprints unexpectedly match")
+	}
+	if _, err := NewInvocationRegistry(
+		nil,
+		[]InvocationShapeAuthorityEvidence{left, right},
+	); err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("ambiguous accepted Shape Authority Evidence was accepted: %v", err)
+	}
+}
+
+func TestShapeAuthorityEvidenceRefreshDoesNotChangeCapabilityResolutionIdentity(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.shape-evidence-refresh",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementations := []InvocationImplementation{implementation}
+
+	oldAuthorities := []InvocationShapeAuthorityEvidence{
+		invocationShapeAuthorityEvidenceForTest(
+			implementation.RequestShapeArtifact,
+			"authority-old-request",
+		),
+		invocationShapeAuthorityEvidenceForTest(
+			implementation.ResultShapeArtifact,
+			"authority-old-result",
+		),
+	}
+	newAuthorities := []InvocationShapeAuthorityEvidence{
+		invocationShapeAuthorityEvidenceForTest(
+			implementation.RequestShapeArtifact,
+			"authority-new-request",
+		),
+		invocationShapeAuthorityEvidenceForTest(
+			implementation.ResultShapeArtifact,
+			"authority-new-result",
+		),
+	}
+	oldRegistry, err := NewInvocationRegistry(implementations, oldAuthorities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newRegistry, err := NewInvocationRegistry(implementations, newAuthorities)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload, err := json.Marshal(SourceAdapterRequest{
+		Format:                "xead",
+		SourceBytes:           []byte("<System FormatVersion=\"1.2\"/>"),
+		TranscriptionContract: sourceAdapterTranscriptionContract(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := sourceAdapterResolveInput(contract, provider)
+	oldExecution, err := oldRegistry.ResolveAndInvoke(
+		context.Background(),
+		input,
+		payload,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newExecution, err := newRegistry.ResolveAndInvoke(
+		context.Background(),
+		input,
+		payload,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oldExecution.Resolution.ResolutionFingerprint !=
+		newExecution.Resolution.ResolutionFingerprint {
+		t.Fatal("Shape Authority Evidence refresh changed Capability resolution identity")
+	}
+	if oldExecution.RequestShapeAuthorityEvidenceFingerprint ==
+		newExecution.RequestShapeAuthorityEvidenceFingerprint ||
+		oldExecution.ResultShapeAuthorityEvidenceFingerprint ==
+			newExecution.ResultShapeAuthorityEvidenceFingerprint {
+		t.Fatal("Shape Authority Evidence refresh was not observable")
+	}
+}
