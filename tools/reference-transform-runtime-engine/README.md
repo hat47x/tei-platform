@@ -117,7 +117,7 @@ tools/reference-transform-runtime-engine-build
 このtoolはclean Repositoryから次をEvidenceとして出力します。
 
 - Repository revision
-- Runtime Engine logical ID / contract
+- Runtime Engine logical ID / version / contract
 - Target
 - exact Go package entrypoint
 - actual module-local build Source closure
@@ -156,6 +156,8 @@ GOARCH=<target arch>
 二回のbuild digestが一致しなかった場合もEvidence自体は失いません。`firstArtifactDigest`と`secondArtifactDigest`、`reproducible=false`を出力し、canonicalな`artifactDigest`は空のままにします。この場合はartifactをexportせず、CLIもnon-zeroで停止します。
 
 再現できなかった場合もEvidence自体は失いません。一方、そのEvidenceを成功扱いしたり、artifactをAccepted状態へ進めたりはしません。
+
+Repository revisionはRuntime Engineの論理版には使いません。Referenceではlogical Engine Versionを明示的な版として固定し、Repository revisionはbuild provenanceへ残します。再現成功時だけ、logical ID / version / contract / Targetとactual executable digestからexact `RuntimeEngineIdentity`を構成します。docs-only commit等でSource artifactが変わらない場合に、Repository revisionだけを理由としてEngine Versionを変えないためです。
 
 このEvidenceは、将来のdomain-neutral build contractを検討するためのReference pressureです。Plugin identityを捏造せず、現行Plugin `BuildPlan`の意味も変更しません。build成功だけでAcceptance / Runtime Authorityを付与することもありません。
 
