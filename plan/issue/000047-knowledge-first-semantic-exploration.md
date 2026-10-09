@@ -355,7 +355,7 @@ Data Design Contextには、判断材料として使ったData、Attribute、Rel
 
 Context再利用では、Evidenceの揃い方と構造解決の一意性を分ける。`evidenceCoverageStatus=complete|incomplete`は必要subjectのSource Evidenceが揃っているかだけを表し、`resolutionStatus=resolved|ambiguous`はCanonical ID / Persistence Mapping等の構造解決が一意かだけを表す。業務意味がすべて確定したことを`resolved`の意味にはしない。cached Contextのexact fingerprint guardは、`resolutionStatus=resolved`かつEvidence completeの場合だけ通す。Evidenceが揃っていてもduplicate Semantic IDやduplicate Persistence Mappingが残るContextは再利用しない。
 
-構造解決状態を追加した段階ではData Design Projection revisionを`tei.knowledge.data-design/v2`へ上げ、その後、Data全体の`temporalHistoryConditions`とEvidence questionを追加してv3、候補単位のfingerprint追加でv4とした。候補identityとEvidence確認契約を分離した現在のrevisionは`tei.knowledge.data-design/v5`とする。Context fingerprintにもprojection revisionが含まれるため、v1〜v4 cacheをv5へ黙って持ち越さない。
+構造解決状態を追加した段階ではData Design Projection revisionを`tei.knowledge.data-design/v2`へ上げ、その後、Data全体の`temporalHistoryConditions`とEvidence questionを追加してv3、候補単位のfingerprint追加でv4、候補identityとEvidence確認契約の分離でv5とした。SQL Realizationを明示result mappingからData Design Contextへ接続する現在のrevisionは`tei.knowledge.data-design/v6`とする。Context fingerprintにもprojection revisionが含まれるため、v1〜v5 cacheをv6へ黙って持ち越さない。
 
 Data Design Context全体には`projectionRevision`と`fingerprint`も付ける。fingerprintは、正規化・並べ替え後のData Design Context全体から`fingerprint`自身だけを空にして決定論的に生成する。したがって、関連Source Evidenceだけでなく、ambiguity、候補、Persistence Realization、Evidence coverageなどProjectionの意味が変われば値も変わる。無関係なSourceはProjectionへ入らないため、その追加だけではfingerprintを変えない。この値はData設計の正しさやCanonical meaningの同一性を証明するものではなく、AIやStudioがContextを再取得するためのcache identityとして扱う。
 
@@ -402,6 +402,34 @@ Persistence RealizationもData Design Contextへ接続した。`sales.order_line
 ただし、異なるMapping IDを持つ複数Databaseの実現と、同じMapping IDの重複定義は分ける。同じMapping IDが複数ある場合はどちらもRealization factとして採用せず、`duplicate-persistence-mapping`を`ambiguities`へ出す。Persistence Mappingを入口にした逆追跡でも、重複IDを読み込み順で解決しない。
 
 このincrementでも`BusinessKey`や`FunctionalDependency`を新しいCore primitiveとして追加しない。まずexisting primitiveからlosslessに説明できる範囲と、なお不足するEvidenceをReferenceで分離する。exact-headのRepository Healthは現在の実行環境では取得できないため、Product Evidence成立や完了条件充足はまだ主張しない。
+
+### 2026-10-09 version / history identity negative pressure
+
+時間・履歴条件については、日時型Attributeがあるだけでは意味を確定しないnegative testを既に持っている。ただし完了条件では、適用開始日、履歴番号、version番号、最新フラグ、履歴行の物理キーが同時に存在する場合でも、それらをbusiness occurrence identifierへ自動昇格しないことを求めている。
+
+この境界を直接固定するため、`sales.order_line`へ`order_line_id`、`version_no`、`valid_from`、`valid_to`、`is_latest`を追加し、Persistence Mappingでは`order_line_id + version_no`を履歴行の複合primary keyとするpressureを追加した。
+
+このcaseでも、Data Design Contextの`businessOccurrenceIdentifier`と`candidateKeys`は`unresolved`のままとし、`temporalHistoryConditions`も`temporal-history-condition-not-first-class-in-current-canonical-model`として未確定を維持する。物理primary keyは`database-owned-realization`として観測できるが、同一business occurrenceのversionを表すのか、別occurrenceを表すのかは決めない。
+
+既存の`sales.order.lines.line_number_unique`から得られるbusiness identity候補も、履歴用columnやversion番号では置換しない。候補componentへ`version_no`、`valid_from`、`valid_to`、`is_latest`を自動追加しないことをtestで固定する。
+
+このpressureが防ぐのは、既存DBやORMを読み取った生成AIが「version番号を含むprimary keyだから、これが業務上の識別子である」「最新フラグがあるから履歴意味は確定している」と短絡することだ。現在のSource / Contractから確認できない限り、同一occurrenceのversionか別occurrenceか、validityの重複可否、最新状態の定義、識別子再利用可否はEvidence questionとして残す。
+
+この変更は新しいTemporal modelやHistory primitiveを導入しない。現行Canonicalで表現できていない意味を、physical schemaや命名から補完しないためのnegative Referenceである。exact-headのfull Repository-healthは未取得なので、該当完了条件を完了扱いにはしない。
+
+### 2026-10-09 SQL Realization identity negative pressure
+
+Target / ORM / runtime objectのidentityからbusiness keyを逆算しない完了条件について、現行Repositoryにはこれらを共通に表すfirst-class subjectはまだない。そこで新しい抽象schemaを先に追加せず、Source Indexへ実在するruntime寄りのsubjectである`contract-query-sql-realization`を使って境界をpressureする。
+
+Contract Query SQL Realizationは、Database / Contract / Query / providerから成るRealization identityを持ち、raw result列をSemantic Attributeへ明示的に対応付ける。Data Design ContextはRealization ID、provider名、raw列名からDataを推測せず、result column mappingがすべて一つのSemantic Dataへ一意に戻れる場合だけ、そのDataへ接続する。
+
+Referenceの`sales_core/sales_core.order_line/find_by_order/sql/postgres`では、result mappingが`sales.order_line`のAttributeだけを指すため、同じData Design Contextへ逆追跡できる。このときもRealization identityやraw result列をbusiness occurrence identifier、candidate key、functional dependencyへ昇格しない。Realization authoring sourceもEvidenceとして同じContextから辿れるようにする。
+
+反対に、一つのSQL Realizationのresult mappingが複数Semantic Dataへまたがるsynthetic caseでは、どれか一つのDataを選ばない。`data-design-contract-query-sql-realization-scope-not-uniquely-resolvable`を`unresolved`へ残し、Data Design Contextを生成しない。
+
+authority limitには、SQL Realization identity、raw result column、provider固有Realizationがbusiness data identityやSemantic authorityではないことを明示する。これにより、物理SQLやruntime registry上のidentityが業務識別へ逆流する経路を閉じる。
+
+このpressureはTarget / ORM / runtime object全般を網羅したものではない。現行モデルで実在するSQL Realizationに対するReferenceであり、TargetやORMのfirst-class subjectが定義された場合は、そのidentity境界を別途pressureする。したがって該当完了条件はまだ完了扱いにしない。
 
 ### experienceからのlocal learning
 

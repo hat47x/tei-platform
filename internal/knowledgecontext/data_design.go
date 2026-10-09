@@ -123,7 +123,7 @@ type DataDesignPersistenceRealization struct {
 	Authority  string                            `json:"authority"`
 }
 
-const dataDesignProjectionRevision = "tei.knowledge.data-design/v5"
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v6"
 
 type DataDesignContext struct {
 	ProjectionRevision                         string                                    `json:"projectionRevision"`
@@ -224,6 +224,52 @@ func validationDataID(w ir.World, validationID core.CanonicalID) (core.Canonical
 	return resolved, matches == 1 && resolved != ""
 }
 
+func contractQuerySQLRealizationDataID(
+	w ir.World,
+	realizationID string,
+) (core.CanonicalID, bool) {
+	attributeOwners := map[core.CanonicalID]core.CanonicalID{}
+	attributeCounts := map[core.CanonicalID]int{}
+	for _, ns := range w.Semantics {
+		for _, data := range ns.Data {
+			for _, attribute := range data.Attributes {
+				attributeCounts[attribute.ID]++
+				if attributeCounts[attribute.ID] == 1 {
+					attributeOwners[attribute.ID] = data.ID
+				}
+			}
+		}
+	}
+
+	var resolved core.CanonicalID
+	matches := 0
+	for _, realization := range w.ContractQuerySQLRealizations {
+		if realization.Identity() != realizationID {
+			continue
+		}
+		matches++
+		var candidate core.CanonicalID
+		if len(realization.ResultColumns) == 0 {
+			return "", false
+		}
+		for _, result := range realization.ResultColumns {
+			if result.Attribute == "" || attributeCounts[result.Attribute] != 1 {
+				return "", false
+			}
+			owner := attributeOwners[result.Attribute]
+			if candidate != "" && candidate != owner {
+				return "", false
+			}
+			candidate = owner
+		}
+		if candidate == "" {
+			return "", false
+		}
+		resolved = candidate
+	}
+	return resolved, matches == 1 && resolved != ""
+}
+
 func buildDataDesignContext(
 	w ir.World,
 	sources sourceindex.Index,
@@ -254,6 +300,12 @@ func buildDataDesignContext(
 			return nil
 		}
 		dataID = pattern.Data
+	case "contract-query-sql-realization":
+		resolved, ok := contractQuerySQLRealizationDataID(w, target.ID)
+		if !ok {
+			return nil
+		}
+		dataID = resolved
 	case "persistence":
 		var matched core.CanonicalID
 		count := 0
@@ -373,6 +425,9 @@ func buildDataDesignContext(
 			"persistence-unique-constraint-is-not-business-identifier-or-candidate-key",
 			"persistence-semantic-data-reference-is-reverse-trace-not-business-identity",
 			"application-pattern-data-reference-is-context-not-business-identity",
+			"contract-query-sql-realization-identity-is-not-business-data-identity",
+			"raw-result-column-is-not-business-identity",
+			"provider-specific-realization-is-not-semantic-authority",
 			"attribute-name-or-id-shape-is-not-key-evidence",
 			"identifier-like-attribute-is-not-business-identity",
 			"identifier-value-presence-is-not-uniqueness-evidence",
