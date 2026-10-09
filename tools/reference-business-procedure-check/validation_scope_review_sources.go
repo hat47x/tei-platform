@@ -17,6 +17,17 @@ type validationReviewSource struct {
 	Fingerprint string `json:"fingerprint"`
 }
 
+// validationScopeSourcesNeeded は比較の対象がある場合だけ追加のSource解析を求める。
+// 文脈や参照が未解決の行は、出典探索によって意味を補完しない。
+func validationScopeSourcesNeeded(rows []validationScopeReviewRow) bool {
+	for _, row := range rows {
+		if row.Status == "review-needed" || row.Status == "no-set-difference" {
+			return true
+		}
+	}
+	return false
+}
+
 // attachValidationScopeSources は差の原因となるApplicationとValidation定義を
 // 既存Source Indexへ戻す。曖昧・欠落時に名前からSourceを補完しない。
 func attachValidationScopeSources(rows []validationScopeReviewRow, index sourceindex.Index) {
