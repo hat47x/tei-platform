@@ -286,6 +286,18 @@ func TestREFSPEC01CustomerEditUsesExistingKnowledgeAndCheckerOutputs(t *testing.
 	if err := os.WriteFile(knowledgePath, knowledgeOut, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	applicationKnowledgeOut := runReviewCommand(
+		t,
+		root,
+		"go", "run", "./cmd/tei", "knowledge-context",
+		"-workspace", filepath.Join(root, "reference", "workspace"),
+		"-subject-kind", "application",
+		"-subject-id", "order_entry",
+	)
+	applicationKnowledgePath := filepath.Join(temp, "application-knowledge.json")
+	if err := os.WriteFile(applicationKnowledgePath, applicationKnowledgeOut, 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	crossViewOut := runReviewCommand(
 		t,
@@ -301,7 +313,12 @@ func TestREFSPEC01CustomerEditUsesExistingKnowledgeAndCheckerOutputs(t *testing.
 		t.Fatal(err)
 	}
 
-	got, err := buildReviewPacket("ref-spec-01-customer-edit", knowledgePath, crossViewPath, "")
+	got, err := buildReviewPacketWithKnowledge(
+		"ref-spec-01-customer-edit",
+		[]string{knowledgePath, applicationKnowledgePath},
+		crossViewPath,
+		"",
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,6 +351,13 @@ func TestREFSPEC01CustomerEditUsesExistingKnowledgeAndCheckerOutputs(t *testing.
 		"applications/order-entry/patterns/customer-reference.tei",
 	) {
 		t.Fatalf("customer reference Source Evidence is not reachable from the packet: %+v", got.Evidence)
+	}
+	if !hasReviewEvidence(
+		got.Evidence,
+		"application:order_entry",
+		"applications/order-entry/application.tei",
+	) {
+		t.Fatalf("owning Application Source Evidence is not reachable from the packet: %+v", got.Evidence)
 	}
 }
 
