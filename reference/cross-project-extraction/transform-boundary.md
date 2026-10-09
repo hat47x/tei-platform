@@ -57,7 +57,7 @@ derived validation plan
 
 E3で追加した`plugin_lock_integration_test.go`は、採用・Build入力・artifactの固定を確認するため引き続き有効です。ここで扱うTransform分類は、その前段の「共有生成器の実装方式」を明確にするものです。
 
-## 現行Transform IRで不足する最小primitive
+## 二つの独立した項目参照から配列を組み立てる場合の不足
 
 現行`deterministic-transform-v1`には、objectの構築、field選択、map、sort、assert、canonical JSON等がありますが、**複数の式から固定長arrayを構築する演算がありません**。
 
@@ -131,6 +131,23 @@ construct-array(values: Expr[])
 また、変換した結果は元の意味を写した派生情報であり、業務規則を評価する実行器そのものではない。出力先の実Consumerが派生計画を必要としないなら、元の`semantic.Validation`を直接参照する方が簡潔である。**何か生成できるからといって、生成物を新たな第二正本にしない。**
 
 この実証で既存Transformを再利用できれば、新しい`construct-array`演算子を追加する前に「既存モデルを消費するだけで十分か」を判断できる。ただし今ある実Consumerは受注一件であり、複数案件の共通化が成立したとは扱わない。実テストとfull Repository Healthは独立して確認する。
+
+## E8：実際の業務実行で生成器は不要
+
+最新の`main`にある次の実装を確認した。
+
+- `internal/driver/application_validations.go`：`ResolveApplicationValidations`は、Applicationの`uses validation`宣言をそのまま選択の正本として、順序を守り、未定義・重複・空の選択を拒否する。
+- `internal/semantic/validationeval/evaluator.go`：`positive`と`relation-unique`を既存の`semantic.Validation`から直接評価する。評価不能は業務上の不成立とは別のエラーとする。
+- `tools/reference-first-web-target/practical_business_rule_test.go`：受理後の規則追加が、受注処理とWeb側の応答へ反映される参照テストを持つ。Targetごとに独自の規則一覧を複製しない。
+- `tools/reference-shared-acceptance/application_validation_use_test.go`：規則の選択変更を既存Applicationのソースに限り、影響関係を説明する試験を持つ。
+
+したがって、**現行の受注実行を理由とする新しい「共有検証計画ジェネレータ」の採用は見送る**。正本の規則と、既存Driver・Evaluatorによる直接利用がより小さい実装である。
+
+E7のGo試験が独自の規則解決関数を持っていたのは、この原則に反するため、`driver.NewResolver(...).ResolveApplicationValidations`を使う形に修正した。新たなReferenceの責務は、既存Driverで選ばれた規則を必要な派生形式へ**表現変換することだけ**に限る。型とスコープの検査は既存Validation側に残し、正本を第二の場所へ作らない。
+
+ただし、`semantic-validation-projection.transform.json`は、まだそれを必要とする具体的な消費側が確認できていない**能力試験**である。実際の画面・外部形式・他Targetが同じ意味規則を別表現へ変換する必要が生じたときだけ、生成の費用対効果を測り、共有機構への昇格を再判定する。
+
+`positive`や`relation-unique`の**評価器自体**を別実行Targetへ移植・差し替える必要が出た場合は、単なるJSONの表現変換では足りない。その場合は、評価の意味契約、値取得の権限、関係の適用範囲、エラーと不成立の区別、実行対象を独立の受入試験で確認する。
 
 ## なぜCapabilityへ直接接続しないか
 
