@@ -244,4 +244,6 @@ payload codecはContract scopedとした。ReferenceではSource AdapterとContr
 
 ここで使うshape fingerprintは、exact schema artifactへ戻るためのidentity候補である。schema artifactの正本、発行Authority、schema validation engineは未実証であり、fingerprintだけを型検証の成立Evidenceにはしない。
 
+現在のReference JSON adapterについては、未知fieldとtrailing JSON valueを拒否するexact decodeを追加した。shapeより緩いJSONをdomain実装へ流さないための局所的な検査であり、汎用schema validationが成立したとは扱わない。
+
 このE2で、generic resolutionからgeneric invocationまでCore固定Capability enumへ依存しないReference経路ができた。ただしproduction Permission / Resource / Sandbox、Targetごとの実行方式、process / Wasm transport、schema artifact管理は未接続である。コード変更を含むため、exact-head focused testとfull Repository healthが得られるまでPRはDraftのまま維持する。
