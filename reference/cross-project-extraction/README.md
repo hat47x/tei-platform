@@ -86,6 +86,20 @@ go test ./reference/cross-project-extraction -run 'TestExistingMapArray|TestProj
 
 検討の根拠と境界は[実行境界の整理](transform-boundary.md)に記録しています。これは合成入力の能力試験であり、既存の業務仕様から規則を自動導出した証拠ではありません。現時点ではtrustedな完全checkoutでのGo試験実行結果も取得していません。
 
+## 実際の業務仕様を起点とする規則投影
+
+[業務意味モデルからの投影試験](semantic_validation_source_test.go)では、実際の`reference/workspace`を既存の`workspace.Load`で読み込み、`validation.Validate`で意味検証を実施します。受注アプリケーション`order_entry`が明示的に参照する3件の業務規則を、`semantic.Validation`から宣言順に取り出し、[既存Transformの変換定義](semantic-validation-projection.transform.json)へ渡します。新しいルールを試験コードに書き直して入力する方式ではありません。
+
+確認対象は、数量と明細番号の`positive`、明細番号の`relation-unique`です。正の値を「非負」に置き換えず、関係内一意性を単なる項目検査へ弱めず、識別子・規則種別・属性・Relationを保持します。検証結果の期待JSONは試験側に独立して記述します。Source Indexも参照し、正本の定義ファイルとアプリケーションから遡れるかを確かめます。
+
+```bash
+go test ./reference/cross-project-extraction -run 'TestActualOrderEntrySemantic|TestSemanticValidationProjection'
+```
+
+これは既存の業務仕様から**派生する規則情報**をTransformで表せるかの試験です。生成された計画が各種のデータ検査を実行できること、実際のProvider・UIに適用されたこと、異なる二つの実案件で同じPluginを採用したことは示しません。現時点でGo試験はtrustedな完全checkoutで未実行です。
+
+この経路で確認できるのは受注アプリケーション一つです。独立した二番目のConsumerと、実際の業務検証ロジックを共通化できるという証拠は引き続き必要です。
+
 ## 共通化の効果測定
 
 [共通化の効果測定](sharing-economics.md)では、現在の二案件fixtureについて、抽出前後の生成処理の記述量を比較しています。
