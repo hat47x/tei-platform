@@ -11,6 +11,7 @@ import (
 const usage = `usage:
   reference-epistemic-knowledge -corpus FILE -context FILE [-out FILE]
   reference-epistemic-knowledge -corpus FILE -context FILE -review-command FILE [-out FILE]
+  reference-epistemic-knowledge -corpus FILE -context FILE -detail-query FILE [-out FILE]
 `
 
 func main() {
@@ -24,10 +25,16 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	contextPath := flags.String("context", "", "current context JSON")
 	outPath := flags.String("out", "", "output JSON file; stdout when omitted")
 	reviewCommandPath := flags.String("review-command", "", "optional human review mutation command JSON")
+	detailQueryPath := flags.String("detail-query", "", "optional epistemic detail query JSON")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 	if *corpusPath == "" || *contextPath == "" {
+		fmt.Fprint(stderr, usage)
+		return 2
+	}
+	if *reviewCommandPath != "" && *detailQueryPath != "" {
+		fmt.Fprintln(stderr, "review-command and detail-query are mutually exclusive")
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
@@ -53,14 +60,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	var output any
-	if *reviewCommandPath == "" {
-		projection, err := evaluateCorpus(corpus, context)
-		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		output = projection
-	} else {
+	switch {
+	case *reviewCommandPath != "":
 		commandData, err := os.ReadFile(*reviewCommandPath)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
@@ -77,6 +78,30 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		output = result
+	case *detailQueryPath != "":
+		queryData, err := os.ReadFile(*detailQueryPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		query, err := decodeStrict[DetailQuery](queryData)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		result, err := resolveEpistemicDetail(corpus, context, query)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		output = result
+	default:
+		projection, err := evaluateCorpus(corpus, context)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		output = projection
 	}
 	encoded, err := jsonBytes(output)
 	if err != nil {
