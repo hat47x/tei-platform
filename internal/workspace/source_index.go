@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,16 +45,29 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 			return nil, fmt.Errorf("source %q resolves outside Workspace", p)
 		}
-		info, err := os.Stat(physical)
+		// Check the opened file, not a separate path lookup. This avoids a
+		// stat/read mismatch, but does not make the preceding symlink
+		// resolution atomic with open (see issue #1017).
+		file, err := os.Open(physical)
 		if err != nil {
+			return nil, fmt.Errorf("open source %q: %w", p, err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			file.Close()
 			return nil, fmt.Errorf("stat source %q: %w", p, err)
 		}
 		if !info.Mode().IsRegular() {
+			file.Close()
 			return nil, fmt.Errorf("source %q is not a regular file", p)
 		}
-		content, err := os.ReadFile(physical)
-		if err != nil {
-			return nil, err
+		content, readErr := io.ReadAll(file)
+		closeErr := file.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("read source %q: %w", p, readErr)
+		}
+		if closeErr != nil {
+			return nil, fmt.Errorf("close source %q: %w", p, closeErr)
 		}
 		contents[p] = content
 		return content, nil
