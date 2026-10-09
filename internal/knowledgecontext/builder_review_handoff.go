@@ -156,6 +156,8 @@ func buildBuilderReviewHandoffFromQualification(
 			"qualified-for-disclosure-does-not-prove-selected-knowledge-complete",
 			"qualified-for-disclosure-does-not-prove-section-local-evidence-complete",
 			"handoff-does-not-materialize-knowledge",
+			"handoff-qualification-may-ground-shared-acceptance-evidence-not-proposal-meaning",
+			"disclosed-knowledge-snapshot-is-not-proposal-delta",
 			"current-disclosure-must-be-built-after-handoff",
 			"disclosure-fingerprint-not-handoff-fingerprint-governs-disclosed-content-reuse",
 		},
