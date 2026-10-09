@@ -326,14 +326,21 @@ similarity  != applicability
 
 ### AIが設計変更へ入るときの読み順
 
-AIが設計変更を始めるときは、対象のKnowledge Contextから**設計確認計画（`builderReviewPlan`）**を取得します。これは個々の設計原則を重複して持つものではなく、その対象について、どの知識をどの順で確認すべきかを示す派生情報です。
-
-`recommendedDisclosureSections`には、現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち、確認対象となる区画がレビュー順に並びます。`reviewSequence`は、Source / Evidenceの確認から始め、対象に応じて定義、Data設計、依存・影響へ進み、最後に`unresolved`と`authorityLimits`を確認してからProposalをShared Acceptanceへ渡す流れを示します。
-
-選択的にKnowledgeを開示した場合も、この設計確認計画は残します。したがってAIは、現在受け取った情報だけで判断を閉じず、利用可能だが省略された区画があることを確認できます。
+AIが設計変更を始めるときは、通常のKnowledge Contextとは別に、**設計確認計画（Builder Review Plan）**を取得できます。
 
 ```text
-builderReviewPlan
+tei knowledge-review-plan
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+```
+
+このProjectionは、個々の設計原則を重複して持ちません。`recommendedDisclosureSections`で、現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち何を確認すべきかを示し、`reviewSequence`で確認順を示します。Data設計の詳細な確認事項は、従来どおり`data-design.designReviewProtocol`が担当します。
+
+Review PlanはAI Builder向けの用途別Projectionであり、通常のKnowledge Context、人間向け表示、業務実行用Contextへ混入させません。また、Review Planのfingerprintが一致しても、選択したKnowledgeの内容が最新であることまでは証明しません。Knowledgeの再利用には、対応するData Design / Disclosure等のfingerprintを別に確認します。
+
+```text
+Builder Review Plan
   -> 何をどの順で読むか
 
 data-design.designReviewProtocol
@@ -341,6 +348,7 @@ data-design.designReviewProtocol
 
 どちらも
   != accepted business meaning
+  != semantic applicability
   != write / runtime authority
 ```
 
