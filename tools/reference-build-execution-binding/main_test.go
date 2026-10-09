@@ -503,6 +503,28 @@ func TestReferenceEvidenceIsDeterministicAndKeepsAuthoritySeparated(t *testing.T
 	if first.RuntimeEngineBinding.Engine.ID == "" || first.RuntimeEngineBindingFingerprint == "" {
 		t.Fatalf("Runtime Engine binding Evidence is incomplete: %#v", first.RuntimeEngineBinding)
 	}
+	if first.BuildGraphFingerprint == "" {
+		t.Fatal("Build graph fingerprint is missing from Reference Evidence")
+	}
+	if len(first.BuildGraphOrder) != 2 ||
+		first.BuildGraphOrder[0] != "stage1" ||
+		first.BuildGraphOrder[1] != "stage2" {
+		t.Fatalf("bootstrap Build graph order: %#v", first.BuildGraphOrder)
+	}
+	if len(first.BuildGraph.Seeds) != 1 ||
+		first.BuildGraph.Seeds[0].TrustBoundary != "trusted-stage0-seed" {
+		t.Fatalf("stage0 trust boundary is missing from Build graph Evidence: %#v", first.BuildGraph.Seeds)
+	}
+	if normalizeDigest(first.BuildGraph.Seeds[0].ArtifactDigest) !=
+		normalizeDigest(first.BootstrapStage1Plan.Builder.ArtifactDigest) {
+		t.Fatal("stage0 seed does not bind the exact stage1 builder")
+	}
+	if len(first.BuildGraph.Edges) != 1 ||
+		first.BuildGraph.Edges[0].FromNode != "stage1" ||
+		first.BuildGraph.Edges[0].ToNode != "stage2" ||
+		first.BuildGraph.Edges[0].OutputRole != "builder-artifact" {
+		t.Fatalf("stage1 -> stage2 Build graph edge is incomplete: %#v", first.BuildGraph.Edges)
+	}
 	for _, forbidden := range []string{"accepted", "runtime-authorized"} {
 		for _, limit := range first.AuthorityLimits {
 			if limit == forbidden {
