@@ -171,6 +171,42 @@ func TestCheckKnowledgeDisclosureFingerprint(t *testing.T) {
 	}
 }
 
+func TestBuildBuilderReviewPlanRoutesCurrentKnowledge(t *testing.T) {
+	root := testRepositoryRoot(t)
+	plan, err := buildBuilderReviewPlan(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.ProjectionRevision != "tei.knowledge.builder-review-plan/v1" ||
+		plan.Purpose != "design-change" ||
+		plan.Fingerprint == "" {
+		t.Fatalf("builder review plan identity is incomplete: %+v", plan)
+	}
+	for _, section := range []string{"source", "definition", "data-design", "dependencies"} {
+		if !containsKnowledgeContextString(plan.RecommendedDisclosureSections, section) {
+			t.Fatalf("builder review section %q is missing: %+v", section, plan.RecommendedDisclosureSections)
+		}
+	}
+	if len(plan.ReviewSequence) == 0 ||
+		plan.ReviewSequence[0] != "review-current-source-and-evidence" {
+		t.Fatalf("builder review sequence does not start from current Evidence: %+v", plan.ReviewSequence)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, ""); err != nil {
+		t.Fatalf("empty expected review-plan fingerprint enabled the guard: %v", err)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, plan.Fingerprint); err != nil {
+		t.Fatalf("current review-plan fingerprint was rejected: %v", err)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale review-plan fingerprint was not rejected: %v", err)
+	}
+}
+
 func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(
