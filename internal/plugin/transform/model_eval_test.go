@@ -603,3 +603,106 @@ func TestJSONWithinLimitRejectsLargeStringBeforeOutputBudget(t *testing.T) {
 		t.Fatal("expected escaped string to exceed small output budget")
 	}
 }
+
+
+func TestSortArrayUsesDeterministicStableOrdering(t *testing.T) {
+	from := transform.Expr{Op: transform.OpInput, Name: "items"}
+	item := transform.Expr{Op: transform.OpInput, Name: "item"}
+	key := transform.Expr{Op: transform.OpSelectField, From: &item, Field: "key"}
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.sort_order_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        512,
+			MaxCollection:   32,
+			MaxInputNodes:   128,
+			MaxInputBytes:   4096,
+			MaxOutputBytes:  4096,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{{Name: "items", Kind: transform.InputArray}},
+		Program: transform.Program{Output: transform.Expr{
+			Op:   transform.OpSortArrayBy,
+			From: &from,
+			Item: "item",
+			Keys: []transform.Expr{key},
+		}},
+	}
+	makeItem := func(key, id string) transform.Value {
+		value, err := transform.Object(
+			transform.Field{Name: "key", Value: transform.String(key)},
+			transform.Field{Name: "id", Value: transform.String(id)},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	result, err := transform.Evaluate(source, map[string]transform.Value{
+		"items": transform.Array(
+			makeItem("b", "b1"),
+			makeItem("a", "a1"),
+			makeItem("a", "a2"),
+			makeItem("c", "c1"),
+		),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := result.Output.Array
+	if len(got) != 4 {
+		t.Fatalf("sorted length: %d", len(got))
+	}
+	wantIDs := []string{"a1", "a2", "b1", "c1"}
+	for i, want := range wantIDs {
+		id, ok := got[i].Field("id")
+		if !ok || id.String != want {
+			t.Fatalf("sorted item %d: got %#v want id=%s", i, got[i], want)
+		}
+	}
+}
+
+func TestSortArrayConsumesActualWorkBudget(t *testing.T) {
+	from := transform.Expr{Op: transform.OpInput, Name: "items"}
+	item := transform.Expr{Op: transform.OpInput, Name: "item"}
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.sort_budget_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        8,
+			MaxCollection:   32,
+			MaxInputNodes:   128,
+			MaxInputBytes:   4096,
+			MaxOutputBytes:  4096,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{{Name: "items", Kind: transform.InputArray}},
+		Program: transform.Program{Output: transform.Expr{
+			Op:   transform.OpSortArrayBy,
+			From: &from,
+			Item: "item",
+			Keys: []transform.Expr{item},
+		}},
+	}
+	_, err := transform.Evaluate(source, map[string]transform.Value{
+		"items": transform.Array(
+			transform.String("d"),
+			transform.String("c"),
+			transform.String("b"),
+			transform.String("a"),
+		),
+	})
+	if err == nil {
+		t.Fatal("expected sort work to exceed maxSteps")
+	}
+}
