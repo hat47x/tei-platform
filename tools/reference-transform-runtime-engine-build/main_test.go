@@ -164,6 +164,32 @@ func TestEvidenceFingerprintBindsBuildInputsAndArtifact(t *testing.T) {
 	}
 }
 
+func TestSelectGoExecutableDoesNotDependOnPATHForExplicitPath(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "go-test")
+	if err := os.WriteFile(path, []byte("not-an-actual-go-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(root, "unrelated"))
+	got, err := selectGoExecutable(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("selected Go executable: got %s want %s", got, want)
+	}
+}
+
+func TestSelectGoExecutableRejectsDirectory(t *testing.T) {
+	if _, err := selectGoExecutable(t.TempDir()); err == nil {
+		t.Fatal("expected directory Go executable to fail")
+	}
+}
+
 func TestBuildEnvironmentDropsAmbientHostVariables(t *testing.T) {
 	state := t.TempDir()
 	env, err := buildEnvironment([]string{
