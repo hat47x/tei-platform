@@ -1,5 +1,7 @@
 package knowledgecontext
 
+import "sort"
+
 const builderReviewPlanProjectionRevision = "tei.knowledge.builder-review-plan/v1"
 
 type BuilderReviewPlan struct {
@@ -19,7 +21,7 @@ var builderReviewSectionOrder = []string{
 }
 
 func buildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
-	available := availableDisclosureSections(ctx)
+	available := availableKnowledgeSections(ctx)
 	availableSet := make(map[string]struct{}, len(available))
 	for _, section := range available {
 		availableSet[section] = struct{}{}
@@ -69,6 +71,24 @@ func buildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"review-plan-does-not-replace-qualification-or-shared-acceptance",
 		},
 	}
+}
+
+func availableKnowledgeSections(ctx Context) []string {
+	var result []string
+	if len(ctx.Artifacts) != 0 || len(ctx.References) != 0 {
+		result = append(result, "source")
+	}
+	if ctx.SemanticElement != nil || ctx.ApplicationPattern != nil {
+		result = append(result, "definition")
+	}
+	if ctx.DataDesign != nil {
+		result = append(result, "data-design")
+	}
+	if len(ctx.Outgoing) != 0 || len(ctx.Incoming) != 0 {
+		result = append(result, "dependencies")
+	}
+	sort.Strings(result)
+	return result
 }
 
 func cloneBuilderReviewPlan(value BuilderReviewPlan) BuilderReviewPlan {
