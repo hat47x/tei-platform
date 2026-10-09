@@ -259,3 +259,10 @@ func TestTransformSourceFingerprintIgnoresInputDeclarationOrder(t *testing.T) {
 		t.Fatalf("input declaration order changed Source fingerprint: %s != %s", aFP, bFP)
 	}
 }
+
+
+func TestOrderedValueRejectsInvalidUTF8(t *testing.T) {
+	if _, err := transform.ParseJSON([]byte{'"', 0xff, '"'}); err == nil {
+		t.Fatal("expected invalid UTF-8 JSON to fail")
+	}
+}
