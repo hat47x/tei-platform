@@ -216,12 +216,6 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
 	defer cancelInvoke()
 	var supervisorErrCh chan error
 	var ownershipErrCh chan error
-	// A capability without Permissions has no lease. The caller may pass that as a
-	// nil *leaseController wrapped in the interface, which is not == nil.
-	if lc, ok := spec.LeaseController.(*leaseController); ok && lc == nil {
-		spec.LeaseController = nil
-		req.LeaseController = nil
-	}
 	if spec.LeaseController != nil {
 		wrapped := &hostRefreshingLeaseController{base: spec.LeaseController, host: &h}
 		spec.LeaseController = wrapped
