@@ -94,6 +94,7 @@ type staleInput struct {
 }
 
 type acceptanceInput struct {
+	Schema              string      `json:"schema,omitempty"`
 	Decision            string      `json:"decision,omitempty"`
 	BaseModelRevision   string      `json:"baseModelRevision,omitempty"`
 	ModelRevisionBefore string      `json:"modelRevisionBefore,omitempty"`
@@ -159,6 +160,10 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 		if err := readJSONFile(knowledgePath, &input); err != nil {
 			return reviewPacket{}, fmt.Errorf("knowledge contextを読めません: %w", err)
 		}
+		if strings.TrimSpace(input.Subject.Kind) == "" ||
+			strings.TrimSpace(input.Subject.ID) == "" {
+			return reviewPacket{}, errors.New("knowledge contextにsubject kind / idがありません")
+		}
 		packet.Coverage.KnowledgeContext = true
 		artifactFingerprints := map[string]string{}
 		for _, artifact := range input.Artifacts {
@@ -203,6 +208,9 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 		if err := readJSONFile(crossViewPath, &input); err != nil {
 			return reviewPacket{}, fmt.Errorf("cross-view reportを読めません: %w", err)
 		}
+		if strings.TrimSpace(input.Procedure) == "" {
+			return reviewPacket{}, errors.New("cross-view reportにprocedure identityがありません")
+		}
 		packet.Coverage.CrossView = true
 		for _, diagnostic := range input.Diagnostics {
 			class := "source-diagnostic"
@@ -246,6 +254,14 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 		var input acceptanceInput
 		if err := readJSONFile(acceptancePath, &input); err != nil {
 			return reviewPacket{}, fmt.Errorf("Shared Acceptance出力を読めません: %w", err)
+		}
+		switch strings.TrimSpace(input.Schema) {
+		case "tei.reference.change-preview/v0", "tei.reference.change-decision/v0":
+		default:
+			return reviewPacket{}, fmt.Errorf(
+				"Shared Acceptance schema %q はreview packetの入力として未対応です",
+				input.Schema,
+			)
 		}
 		packet.Coverage.SharedAcceptance = true
 		for _, item := range input.Evidence {
