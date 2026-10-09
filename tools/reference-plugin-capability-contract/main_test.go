@@ -12,6 +12,9 @@ func sourceAdapterContract() Contract {
 		RequestSemantics:   "exact-source-bytes",
 		ResultSemantics:    "source-faithful-inventory-with-unresolved",
 		FailureSemantics:   "unsupported-or-invalid-is-not-success",
+		RequestShape:       sourceAdapterRequestShape,
+		ResultShape:        sourceAdapterResultShape,
+		PayloadCodec:       referenceJSONPayloadCodec,
 		ConformanceProfile: "tei.reference.source-adapter/v0",
 	}
 }
