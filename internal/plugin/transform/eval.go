@@ -15,6 +15,8 @@ type EvaluationResult struct {
 	Steps  int
 }
 
+const evaluatorByteWorkQuantum = 4 << 10
+
 type evaluator struct {
 	limits Limits
 	steps  int
@@ -47,7 +49,7 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 	if err != nil {
 		return EvaluationResult{}, err
 	}
-	if _, err := encodedOutputSize(output, source.Limits.MaxOutputBytes); err != nil {
+	if err := e.validateFinalOutput(output); err != nil {
 		return EvaluationResult{}, err
 	}
 	return EvaluationResult{Output: output, Steps: e.steps}, nil
@@ -113,6 +115,20 @@ func (e *evaluator) tick(depth int) error {
 		return fmt.Errorf("transform exceeded maxNestingDepth")
 	}
 	return e.consume(1)
+}
+
+func (e *evaluator) consumeByteWork(byteCount int) error {
+	if byteCount < 0 {
+		return fmt.Errorf("transform byte work is negative")
+	}
+	if byteCount == 0 {
+		return nil
+	}
+	units := byteCount / evaluatorByteWorkQuantum
+	if byteCount%evaluatorByteWorkQuantum != 0 {
+		units++
+	}
+	return e.consume(units)
 }
 
 func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
@@ -293,7 +309,7 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if err != nil {
 			return Value{}, err
 		}
-		raw, err := source.JSONWithinLimit(e.limits.MaxOutputBytes)
+		raw, err := e.canonicalJSON(source)
 		if err != nil {
 			return Value{}, fmt.Errorf("canonical-json: %w", err)
 		}
@@ -305,6 +321,9 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		}
 		if source.Kind != ValueBytes {
 			return Value{}, fmt.Errorf("sha256 requires bytes, got %s", source.Kind)
+		}
+		if err := e.consumeByteWork(len(source.Bytes)); err != nil {
+			return Value{}, err
 		}
 		sum := sha256.Sum256(source.Bytes)
 		return String(hex.EncodeToString(sum[:])), nil
@@ -319,7 +338,11 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if len(source.Bytes) > e.limits.MaxOutputBytes || len(expr.Suffix) > e.limits.MaxOutputBytes-len(source.Bytes) {
 			return Value{}, fmt.Errorf("append-bytes exceeds maxOutputBytes")
 		}
-		out := make([]byte, 0, len(source.Bytes)+len(expr.Suffix))
+		totalBytes := len(source.Bytes) + len(expr.Suffix)
+		if err := e.consumeByteWork(totalBytes); err != nil {
+			return Value{}, err
+		}
+		out := make([]byte, 0, totalBytes)
 		out = append(out, source.Bytes...)
 		out = append(out, expr.Suffix...)
 		return bytesShared(out), nil
@@ -346,6 +369,9 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			}
 			parts[i] = value.String
 		}
+		if err := e.consumeByteWork(total); err != nil {
+			return Value{}, err
+		}
 		return String(strings.Join(parts, expr.Separator)), nil
 	default:
 		return Value{}, fmt.Errorf("unsupported transform operation %q", expr.Op)
@@ -354,18 +380,37 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 
 
 
-func encodedOutputSize(value Value, maxBytes int) (int, error) {
+func (e *evaluator) validateFinalOutput(value Value) error {
 	if value.Kind == ValueBytes {
-		if len(value.Bytes) > maxBytes {
-			return 0, fmt.Errorf("transform output exceeds maxOutputBytes")
+		if len(value.Bytes) > e.limits.MaxOutputBytes {
+			return fmt.Errorf("transform output exceeds maxOutputBytes")
 		}
-		return len(value.Bytes), nil
+		return nil
 	}
-	raw, err := value.JSONWithinLimit(maxBytes)
+	size, err := jsonEncodedSizeWithin(value, e.limits.MaxOutputBytes, 0)
 	if err != nil {
-		return 0, fmt.Errorf("encode transform output: %w", err)
+		return fmt.Errorf("encode transform output: %w", err)
 	}
-	return len(raw), nil
+	if err := e.consumeByteWork(size); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *evaluator) canonicalJSON(value Value) ([]byte, error) {
+	size, err := jsonEncodedSizeWithin(value, e.limits.MaxOutputBytes, 0)
+	if err != nil {
+		return nil, err
+	}
+	// JSONWithinLimit performs one bounded size walk and one encoding walk.
+	// Charge both byte-linear passes before materializing the output bytes.
+	if size > int(^uint(0)>>1)/2 {
+		return nil, fmt.Errorf("canonical JSON size overflow")
+	}
+	if err := e.consumeByteWork(size * 2); err != nil {
+		return nil, err
+	}
+	return value.JSONWithinLimit(e.limits.MaxOutputBytes)
 }
 
 type sortItem struct {
@@ -446,6 +491,9 @@ func compareSortKeys(e *evaluator, a, b []string) (int, error) {
 	}
 	for i := range a {
 		if err := e.consume(1); err != nil {
+			return 0, err
+		}
+		if err := e.consumeByteWork(len(a[i]) + len(b[i])); err != nil {
 			return 0, err
 		}
 		if a[i] < b[i] {
@@ -603,6 +651,9 @@ func (e *evaluator) findObjectField(value Value, name string) (int, bool, error)
 		if err := e.consume(1); err != nil {
 			return 0, false, err
 		}
+		if err := e.consumeByteWork(len(value.Object[i].Name) + len(name)); err != nil {
+			return 0, false, err
+		}
 		if value.Object[i].Name == name {
 			return i, true, nil
 		}
@@ -623,10 +674,19 @@ func (e *evaluator) equalValues(a, b Value) (bool, error) {
 	case ValueBool:
 		return a.Bool == b.Bool, nil
 	case ValueNumber:
+		if err := e.consumeByteWork(len(a.Number) + len(b.Number)); err != nil {
+			return false, err
+		}
 		return a.Number == b.Number, nil
 	case ValueString:
+		if err := e.consumeByteWork(len(a.String) + len(b.String)); err != nil {
+			return false, err
+		}
 		return a.String == b.String, nil
 	case ValueBytes:
+		if err := e.consumeByteWork(len(a.Bytes) + len(b.Bytes)); err != nil {
+			return false, err
+		}
 		return bytes.Equal(a.Bytes, b.Bytes), nil
 	case ValueArray:
 		if len(a.Array) != len(b.Array) {
@@ -645,6 +705,9 @@ func (e *evaluator) equalValues(a, b Value) (bool, error) {
 		}
 		for i := range a.Object {
 			if err := e.consume(1); err != nil {
+				return false, err
+			}
+			if err := e.consumeByteWork(len(a.Object[i].Name) + len(b.Object[i].Name)); err != nil {
 				return false, err
 			}
 			if a.Object[i].Name != b.Object[i].Name {
