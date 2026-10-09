@@ -51,6 +51,39 @@ func TestBuildDataDesignCandidateReviewFromReferenceWorkspace(t *testing.T) {
 	}
 }
 
+func TestDataDesignCandidateReviewFingerprintGuardsCachedReviewState(t *testing.T) {
+	root := testRepositoryRoot(t)
+	ctx, err := buildKnowledgeContext(
+		root+"/reference/workspace",
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	packet, err := buildDataDesignCandidateReview(
+		root+"/reference/workspace",
+		"semantic-data",
+		"sales.order_line",
+		knowledgecontext.DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := checkDataDesignCandidateReviewFingerprint(packet, packet.Fingerprint); err != nil {
+		t.Fatalf("current candidate review fingerprint was rejected: %v", err)
+	}
+	if err := checkDataDesignCandidateReviewFingerprint(
+		packet,
+		"sha256:"+strings.Repeat("0", 64),
+	); err == nil || !strings.Contains(err.Error(), "candidate review fingerprint mismatch") {
+		t.Fatalf("stale candidate review fingerprint was accepted: %v", err)
+	}
+}
+
 func TestDataDesignCandidateReviewRejectsStaleReferenceFingerprints(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(
