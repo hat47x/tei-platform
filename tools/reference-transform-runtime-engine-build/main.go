@@ -207,7 +207,7 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 			"-mod=readonly",
 			enginePackage,
 		},
-		BuildSettings:        fixedGoBuildSettings(),
+		BuildSettings:        recordedBuildSettings(),
 		HostEnvironment:      hostEnvironment,
 		FirstArtifactDigest:  firstDigest,
 		SecondArtifactDigest: secondDigest,
@@ -462,8 +462,17 @@ func fixedGoBuildSettings() []string {
 		"GOTOOLCHAIN=local",
 		"GOVCS=*:off",
 		"GOWORK=off",
-		"STATE_ISOLATION=GOCACHE,GOMODCACHE,GOPATH,HOME,USERPROFILE,TMPDIR,TMP,TEMP",
 	}
+	sort.Strings(settings)
+	return settings
+}
+
+func recordedBuildSettings() []string {
+	settings := append([]string(nil), fixedGoBuildSettings()...)
+	settings = append(settings,
+		"STATE_ISOLATION=GOCACHE,GOMODCACHE,GOPATH,HOME,USERPROFILE,TMPDIR,TMP,TEMP",
+		"HOST_ENVIRONMENT=deny-by-default",
+	)
 	sort.Strings(settings)
 	return settings
 }
