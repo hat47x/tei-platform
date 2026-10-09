@@ -120,6 +120,15 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			deltaApplications[core.CanonicalID(op.Application.ID)] = op.Placement
 		}
 	}
+	// 同じdeltaで追加するValidationは、`uses validation`の参照先として既に存在するものと同じに扱う（ADR-0029の確かめ方1）。
+	// ここで確かめるのは、参照先のIDが基準のWorldのValidation、または同じdeltaのadd-validationのIDと完全一致することだけである。
+	// overlay適用後のreloadとvalidate（UNKNOWN_APPLICATION_VALIDATION）は別の確認で、多層防御として残す。
+	deltaValidations := map[core.CanonicalID]bool{}
+	for _, op := range c.Delta {
+		if op.Op == opAddValidation {
+			deltaValidations[core.CanonicalID(op.ID)] = true
+		}
+	}
 
 	planned := map[string]string{}
 	seenNamespaces := map[core.CanonicalID]bool{}
@@ -181,7 +190,7 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				diag("APPLICATION_NOT_FOUND", "application %s は存在しません（%s は既存のApplicationへ宣言を追加します）", u.Application, opAddApplicationValidationUse)
 				break
 			}
-			if !idx.validations[core.CanonicalID(u.Validation)] {
+			if !idx.validations[core.CanonicalID(u.Validation)] && !deltaValidations[core.CanonicalID(u.Validation)] {
 				diag("VALIDATION_NOT_FOUND", "validation %s は存在しません", u.Validation)
 			}
 			if _, ok := fingerprints[op.Placement]; !ok {

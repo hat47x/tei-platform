@@ -117,8 +117,6 @@ Previewは、Validationが追加または変更されたとき（削除は対象
 - 「全Applicationに宣言が要る」と読まれると、Commandを持たないApplicationへ空の宣言を強いる運用になる。判定不能は、Commandを実行する経路が選択を要求したときだけ返します。
 - 宣言の順序に意味を持たせるため、順序を入れ替える変更は意味の変更になります。Shared Acceptance Previewは、`Application.Validations`の順序の変更を差分として扱う必要があります（現在の差分は`Validations`のslice順をそのままJSON化してbyteで比較するため、順序の入れ替えも変更として現れます）。Loaderは`Application.Validations`を並べ替えないため（`Databases`と`Patterns`だけを整列します）、順序はWorldにそのまま残ります。一方で、同じIDを二回宣言しても現在は検査で拒否されず、評価が二重になり順序の意味もあいまいになります。重複を診断にするかは実装時に決めます。確認できた範囲では、順序の入れ替えを差分として固定するtestは無い（`application_test.go`が扱うのは`uses validation`の追加だけ）ため、実装時に足します。
 
-[apply with oldText = "順序の入れ替えも変更として現れます）。" which appears exactly once, at the end of ADR line 111]
-
 ## 未解決
 
 - 操作（Command）ごとに評価対象が異なる必要が生じたときの層の重ね方（上記A′とB）。

@@ -702,7 +702,7 @@ func requireSuccessfulCommand(result commandArtifact) error {
 		result.Authentication.Outcome != "authenticated" {
 		return fmt.Errorf("successful command Authentication=%+v", result.Authentication)
 	}
-	if len(result.Validations) != 2 {
+	if len(result.Validations) != 3 {
 		return fmt.Errorf("successful command Validation count=%d", len(result.Validations))
 	}
 	for _, validation := range result.Validations {
