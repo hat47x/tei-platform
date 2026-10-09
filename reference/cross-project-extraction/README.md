@@ -108,6 +108,12 @@ go test ./reference/cross-project-extraction -run 'TestActualOrderEntrySemantic|
 
 このReferenceの[意味規則の投影試験](semantic_validation_source_test.go)も、規則の選択を独自に再実装せず、既存Driverの解決結果を入力として使う形に修正しました。元の業務規則を異なる形式で必要とする明確な消費側が見つかるまでは、投影した計画は製品の実装対象ではなく、**既存Transformで表現可能かを確かめる試作**として扱います。
 
+## 派生記述と評価器拘束計画の区別
+
+[実行境界の整理](transform-boundary.md)のE9で、既存の評価器拘束計画と試験用の規則投影に同じ識別子が使われていた衝突を修正しました。試験用の契約識別子は`tei.reference.application-validation-projection/v0`です。
+
+既存の`tei.reference.semantic-validation-plan/v0`は、評価器実装の束縛とSemantic Setの整合性を扱う別契約です。規則の一覧を写しただけのJSONが、評価器の版・証拠・実行権限まで備えていると見なされないようにします。
+
 ## 共通化の効果測定
 
 [共通化の効果測定](sharing-economics.md)では、現在の二案件fixtureについて、抽出前後の生成処理の記述量を比較しています。
