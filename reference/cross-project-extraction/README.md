@@ -76,7 +76,7 @@ go test ./reference/cross-project-extraction
 
 ## 既存の配列写像によるTransform実証候補
 
-[配列写像のGo試験](transform_projection_test.go)では、TEIの既存 `map-array` と `construct-object` を使い、受理済み規則を表す順序付き配列から、受注と請求の派生検証計画を構築します。
+[配列写像のGo試験](transform_projection_test.go)では、[TEIの変換定義](required-fields-projection.transform.json)を実際の`ParseSourceJSON`で解析し、既存の`map-array`と`construct-object`を使って、順序付き規則配列から受注・請求の派生検証計画を構築できるか確認します。期待される出力は試験側に独立して記述し、未対応の演算子・必須項目の欠落を拒否する試験も含めます。
 
 ```bash
 go test ./reference/cross-project-extraction -run 'TestExistingMapArray|TestProjection'
