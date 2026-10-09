@@ -397,3 +397,57 @@ func TestValidationScopeReviewSourceOrderingIsDeterministic(t *testing.T) {
 		t.Fatalf("Source Indexの走査順で比較結果が変わりました: original=%+v reversed=%+v", ordered, reversed)
 	}
 }
+
+func TestValidationScopeReviewDoesNotTrustDuplicateArtifactPaths(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		fingerprints []string
+	}{
+		{name: "conflicting", fingerprints: []string{"sha256:first", "sha256:second"}},
+		{name: "identical", fingerprints: []string{"sha256:first", "sha256:first"}},
+		{name: "third-cannot-restore", fingerprints: []string{"sha256:first", "sha256:second", "sha256:third"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const applicationPath = "applications/order-entry/application.tei"
+			const validationPath = "semantic/sales/validation.tei"
+			const validationID = "sales.order_line.line_number_positive"
+			index := sourceindex.Index{
+				Artifacts: []sourceindex.Artifact{{Path: validationPath, Fingerprint: "sha256:valid"}},
+				References: []sourceindex.Reference{
+					{
+						Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+						Role: sourceindex.RoleDefinition,
+						ArtifactPath: applicationPath,
+						Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+					},
+					{
+						Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+						Role: sourceindex.RoleDefinition,
+						ArtifactPath: validationPath,
+						Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+					},
+				},
+			}
+			for _, fingerprint := range tc.fingerprints {
+				index.Artifacts = append(index.Artifacts, sourceindex.Artifact{
+					Path: applicationPath, Fingerprint: fingerprint,
+				})
+			}
+			rows := []validationScopeReviewRow{{
+				Step: "BP-05",
+				Application: "order_entry",
+				Status: "review-needed",
+				ApplicationOnly: []string{validationID},
+			}}
+			attachValidationScopeSources(rows, index)
+			if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+				t.Fatalf("重複Sourceを未解決とせず、根拠に昇格しました: %+v", rows[0])
+			}
+			if len(rows[0].SourceEvidence) != 1 ||
+				rows[0].SourceEvidence[0].Kind != "semantic-validation" ||
+				rows[0].SourceEvidence[0].Fingerprint != "sha256:valid" {
+				t.Fatalf("重複していないValidation出典まで破壊しました: %+v", rows[0])
+			}
+		})
+	}
+}
