@@ -139,7 +139,6 @@ func TestHostSandboxLauncherRejectsMissingDefaultDenyEnforcer(t *testing.T) {
 	}
 }
 
-
 func TestZeroPermissionSandboxedCapabilityDoesNotStartLeaseSupervisor(t *testing.T) {
 	def := plugin.Definition{
 		ID:      cid("tei.zero_permission"),
