@@ -214,7 +214,7 @@ func TestPanicAfterResponseStartedRemainsAuditError(t *testing.T) {
 }
 
 func TestRejectAmbiguousProtectedRoutePolicies(t *testing.T) {
-	for _, path := range []string{"/scenario/submit?admin=1", "/scenario/submit#fragment", "/scenario/%73ubmit", "/scenario//submit", "/scenario/\\\\submit"} {
+	for _, path := range []string{"/scenario/submit?admin=1", "/scenario/submit#fragment", "/scenario/%73ubmit", "/scenario//submit", "/scenario/./submit", "/scenario/../submit", "/scenario/submit/.", "/scenario/submit/..", "/scenario/\\\\submit"} {
 		t.Run(path, func(t *testing.T) {
 			_, err := NewHost(Policy{
 				Path: path, Method: http.MethodPost, ActionID: "order_entry.submit_order",
