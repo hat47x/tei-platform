@@ -153,6 +153,10 @@ GOARCH=<target arch>
 
 `-artifact-out`を指定すると、二回のbuildでdigest一致を確認したfirst artifactをRepository外へコピーします。既存fileは上書きしません。これにより、Evidenceでdigestを固定した同じexecutableをprocess smokeや後続のRuntime Engine bindingで利用できます。
 
+二回のbuild digestが一致しなかった場合もEvidence自体は失いません。`firstArtifactDigest`と`secondArtifactDigest`、`reproducible=false`を出力し、canonicalな`artifactDigest`は空のままにします。この場合はartifactをexportせず、CLIもnon-zeroで停止します。
+
+再現できなかった場合もEvidence自体は失いません。一方、そのEvidenceを成功扱いしたり、artifactをAccepted状態へ進めたりはしません。
+
 このEvidenceは、将来のdomain-neutral build contractを検討するためのReference pressureです。Plugin identityを捏造せず、現行Plugin `BuildPlan`の意味も変更しません。build成功だけでAcceptance / Runtime Authorityを付与することもありません。
 
 ## 現在の非目標
