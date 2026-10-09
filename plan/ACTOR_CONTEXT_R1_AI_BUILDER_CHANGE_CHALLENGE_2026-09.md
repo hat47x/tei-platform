@@ -110,6 +110,35 @@ order_entry.customer_reference
 
 この既存EvidenceをR1で再利用する。
 
+## 2.1 Structured review entry
+
+R1の`order_entry.customer_reference`については、Review PlanからQualificationへ進む入力をReferenceとして固定する。
+
+`reference/business-system-design/order-entry-customer-reference-review-qualification.json`
+
+内容は次のcurrent task expectationだけを表す。
+
+- subject kindは`application-pattern`
+- owning Applicationは`order_entry`
+- current reviewで必要なdependencyは`master_data.customer/find_by_id`への`contract-query`
+
+これは新しい業務意味の正本ではなく、R1で何をQualification条件にしたかを再現するReference入力である。
+
+```text
+tei knowledge-review-plan
+  -workspace reference/workspace
+  -subject-kind application-pattern
+  -subject-id order_entry.customer_reference
+
+tei knowledge-review-handoff
+  -workspace reference/workspace
+  -subject-kind application-pattern
+  -subject-id order_entry.customer_reference
+  -qualification-requirements     reference/business-system-design/order-entry-customer-reference-review-qualification.json
+```
+
+このhandoffが`qualified-for-disclosure`になっても、customer edit要求自体がacceptedになったわけではない。確定するのは、Review対象のcurrent Patternとrequired dependencyを、明示したtask scopeでSource Evidence付きに利用できることまでである。customer editの矛盾判定は既存Business Procedure checker、採否はShared Acceptanceの責務として残す。
+
 ## 3. R1でAI Builderが実装前に知るべきこと
 
 structured contextは最低限、次を同時に示す。
