@@ -40,6 +40,7 @@ type Contract struct {
 	ResultShapeFingerprint  string                `json:"resultShapeFingerprint,omitempty"`
 	PayloadCodec            string                `json:"payloadCodec,omitempty"`
 	ShapeIssuer             *InvocationShapeIssuer `json:"shapeIssuer,omitempty"`
+	InvocationEffect        string                 `json:"invocationEffect,omitempty"`
 	ConformanceProfile string `json:"conformanceProfile"`
 }
 
