@@ -268,6 +268,124 @@ func TestDataDesignContextKeepsTemporalHistoryUnresolvedFromDatetimeAttribute(t 
 	}
 }
 
+func TestDataDesignContextDoesNotPromoteVersionAndValidityRealizationToBusinessIdentity(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	w.Semantics[0].Data[1].Attributes = append(
+		w.Semantics[0].Data[1].Attributes,
+		semantic.Attribute{ID: "sales.order_line.order_line_id", Symbol: "orderLineId", TypeRef: "std.identifier"},
+		semantic.Attribute{ID: "sales.order_line.version_no", Symbol: "versionNo", TypeRef: "std.integer"},
+		semantic.Attribute{ID: "sales.order_line.valid_from", Symbol: "validFrom", TypeRef: "std.datetime"},
+		semantic.Attribute{ID: "sales.order_line.valid_to", Symbol: "validTo", TypeRef: "std.datetime"},
+		semantic.Attribute{ID: "sales.order_line.is_latest", Symbol: "isLatest", TypeRef: "std.integer"},
+	)
+	w.Persistence = []persistence.Mapping{
+		{
+			ID:           "history.order_line",
+			Database:     "history",
+			SemanticData: "sales.order_line",
+			Table:        "order_line_history",
+			Columns: []persistence.ColumnMapping{
+				{
+					Attribute:   "sales.order_line.order_line_id",
+					Column:      "order_line_id",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+				{
+					Attribute:   "sales.order_line.version_no",
+					Column:      "version_no",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+				{
+					Attribute:   "sales.order_line.valid_from",
+					Column:      "valid_from",
+					Storage:     persistence.StorageDateTimeTZ,
+					Nullability: persistence.Required,
+				},
+				{
+					Attribute:   "sales.order_line.valid_to",
+					Column:      "valid_to",
+					Storage:     persistence.StorageDateTimeTZ,
+					Nullability: persistence.Optional,
+				},
+				{
+					Attribute:   "sales.order_line.is_latest",
+					Column:      "is_latest",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+			},
+			PrimaryKey: []core.CanonicalID{
+				"sales.order_line.order_line_id",
+				"sales.order_line.version_no",
+			},
+		},
+	}
+
+	ctx := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil {
+		t.Fatal("data design context is missing")
+	}
+	if ctx.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		ctx.DataDesign.CandidateKeys.Nature != "unresolved" {
+		t.Fatalf("version/history realization was promoted to business identity: %+v", ctx.DataDesign)
+	}
+	if ctx.DataDesign.TemporalHistoryConditions.Nature != "unresolved" ||
+		ctx.DataDesign.TemporalHistoryConditions.Reason != "temporal-history-condition-not-first-class-in-current-canonical-model" {
+		t.Fatalf("version/history columns were promoted to temporal semantics: %+v", ctx.DataDesign.TemporalHistoryConditions)
+	}
+	if len(ctx.DataDesign.PersistenceRealizations) != 1 {
+		t.Fatalf("history persistence realization is missing: %+v", ctx.DataDesign.PersistenceRealizations)
+	}
+	realization := ctx.DataDesign.PersistenceRealizations[0]
+	if realization.Mapping != "history.order_line" ||
+		len(realization.Uniqueness) != 1 ||
+		realization.Uniqueness[0].Kind != "primary-key" ||
+		len(realization.Uniqueness[0].Attributes) != 2 ||
+		realization.Uniqueness[0].Attributes[0] != "sales.order_line.order_line_id" ||
+		realization.Uniqueness[0].Attributes[1] != "sales.order_line.version_no" {
+		t.Fatalf("history-row physical identity drifted: %+v", realization)
+	}
+	if len(ctx.DataDesign.BusinessIdentityCandidates) != 1 ||
+		ctx.DataDesign.BusinessIdentityCandidates[0].BasisConstraint != "sales.order.lines.line_number_unique" {
+		t.Fatalf("history/version fields replaced semantic identity candidate: %+v", ctx.DataDesign.BusinessIdentityCandidates)
+	}
+	for _, candidate := range ctx.DataDesign.BusinessIdentityCandidates {
+		for _, component := range candidate.Components {
+			if component.Attribute == "sales.order_line.version_no" ||
+				component.Attribute == "sales.order_line.valid_from" ||
+				component.Attribute == "sales.order_line.valid_to" ||
+				component.Attribute == "sales.order_line.is_latest" {
+				t.Fatalf("history/version field was promoted into business identity candidate: %+v", candidate)
+			}
+		}
+	}
+	for _, limit := range []string{
+		"effective-date-or-history-number-is-not-business-occurrence-identity-by-default",
+		"latest-flag-is-not-business-identity-evidence",
+		"history-row-identity-is-not-business-occurrence-identity-by-default",
+		"persistence-history-column-is-not-business-temporal-semantics",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("history/version authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
+		}
+	}
+	for _, question := range []string{
+		"does-the-history-record-represent-a-version-of-the-same-occurrence-or-a-new-occurrence",
+		"is-current-state-derived-from-validity-or-marked-by-a-latest-flag",
+		"which-source-or-contract-establishes-the-temporal-semantics",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.TemporalHistoryEvidenceQuestions, question) {
+			t.Fatalf("history/version Evidence question %q is missing: %+v", question, ctx.DataDesign.TemporalHistoryEvidenceQuestions)
+		}
+	}
+}
+
 func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	w.Persistence = []persistence.Mapping{
