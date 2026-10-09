@@ -190,7 +190,41 @@ func buildExecutionPlanFingerprint(plan BuildExecutionPlan) (string, error) {
 	if err := plan.Validate(); err != nil {
 		return "", err
 	}
-	return fingerprintJSON(normalizeBuildExecutionPlan(plan))
+	normalized := normalizeBuildExecutionPlan(plan)
+	type identitySource struct {
+		Kind   string `json:"kind"`
+		ID     string `json:"id"`
+		Digest string `json:"digest"`
+	}
+	sources := make([]identitySource, 0, len(normalized.Sources))
+	for _, source := range normalized.Sources {
+		sources = append(sources, identitySource{
+			Kind:   source.Kind,
+			ID:     source.ID,
+			Digest: source.Digest,
+		})
+	}
+	return fingerprintJSON(struct {
+		FormatVersion  int                      `json:"formatVersion"`
+		Sources        []identitySource         `json:"sources"`
+		Builder        plugin.BuilderIdentity   `json:"builder"`
+		Recipe         plugin.BuildRecipe       `json:"recipe"`
+		OutputContract string                   `json:"outputContract"`
+		Dependencies   []plugin.BuildDependency `json:"dependencies,omitempty"`
+		Target         string                   `json:"target"`
+		Profile        string                   `json:"profile,omitempty"`
+		Parameters     []plugin.BuildParameter  `json:"parameters,omitempty"`
+	}{
+		FormatVersion:  normalized.FormatVersion,
+		Sources:        sources,
+		Builder:        normalized.Builder,
+		Recipe:         normalized.Recipe,
+		OutputContract: normalized.OutputContract,
+		Dependencies:   normalized.Dependencies,
+		Target:         normalized.Target,
+		Profile:        normalized.Profile,
+		Parameters:     normalized.Parameters,
+	})
 }
 
 func (s ArtifactSet) Validate() error {
