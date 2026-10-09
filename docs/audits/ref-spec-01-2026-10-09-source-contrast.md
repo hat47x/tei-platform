@@ -82,3 +82,22 @@ BP-05の明示参照は、Application全体のValidation宣言を網羅する義
 4. 意味参照自体が未解決であれば、Source探索から勝手に意味を作り出さない。
 
 新規ファイルの`gofmt -l`出力は空だった。これは**原文の一ファイルを隔離した試験**である。本体の`workspace.BuildSourceIndex`、既存のSource Index、`runWithOptions`の接続、テストファイルを含むPR全体の`go test`は未実施である。結論として、実際の業務アプリに対するsource provenanceの成立と、人が確認できる実際の所要時間の短縮は、引き続き未確認である。
+
+## 隔離実行による出典重複の反証（2026-10-09）
+
+新しい参照差表示を隔離したGo 1.23.2モジュール（Linux）で実行し、Source Index相当の入力に同じartifactパスが複数存在する負例を確認した。
+
+**修正前に再現した問題：** 出典一覧を`map[path]fingerprint`へ代入していたため、同じパスに異なる指紋があると最後の値が選ばれ、比較表示の`sourceEvidence`に根拠として現れた。別の参照先が一意であっても、曖昧なartifactパスの指紋を選択してはならない。
+
+**修正内容：** パスが2回以上現れた場合は、そのパスの指紋を不明扱いにし、以後の項目でも復活させない。対応する意味IDは`unresolvedSource`へ残し、一意な別の出典は保持する。異なる指紋、同じ指紋、3回の重複を対象に負例テストを追加した。
+
+隔離した二つのGo原文ファイルの`git hash-object`は次に一致した。
+
+| 対象 | Git blob SHA |
+| --- | --- |
+| `validation_scope_review.go` | `7f5c2ed7f0e6599173706b54d65ef93442265526` |
+| 修正後`validation_scope_review_sources.go` | `f494a1f5997d9a2ce5a9ea198dafe5938ac73d92` |
+
+隔離モジュールはTEIの`application`、`ir`、`sourceindex`、`subject`の必要な型と`semanticCounts`を**代替実装**したもの。原文の比較・出典処理を対象に、参照差、Validation重複、文脈欠落、Source定義の重複、artifactパスの重複を確認した。修正前には重複artifactパスの負例がFAILし、修正後は7テストがPASS、`go vet ./...`もPASSした。対象の二原文ファイルに対する`gofmt -l`は出力なし。
+
+本来、`workspace.BuildSourceIndex`は既存の`sourceindex.Index.Validate`によってartifactパス重複を拒否する。このため、ここで発見した問題は**未検証のIndexを補助関数へ渡したときの防御不足**であり、製品の通常経路で再現した不具合とは記録しない。隔離環境のPASSも、PRのexact-headでのfull Repository healthやSource Loaderの試験の代わりにはならない。追加したRepository回帰テストは未実行であり、mainへの統合資格は未取得である。
