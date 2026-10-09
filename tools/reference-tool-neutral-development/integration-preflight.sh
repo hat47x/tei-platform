@@ -91,10 +91,11 @@ fi
 assert_clean_checkout() {
   local repo="$1"
   local label="$2"
-  local status ignored
+  local status ignored hidden_index
   status="$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
   ignored="$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
-  if [[ -n "$status" || -n "$ignored" ]]; then
+  hidden_index="$(git -C "$repo" ls-files -v | grep -E '^[a-zS]' || true)"
+  if [[ -n "$status" || -n "$ignored" || -n "$hidden_index" ]]; then
     echo "error: $label must be clean" >&2
     if [[ -n "$status" ]]; then
       git -C "$repo" status --short --untracked-files=all >&2
@@ -102,6 +103,10 @@ assert_clean_checkout() {
     if [[ -n "$ignored" ]]; then
       echo "ignored artifacts:" >&2
       printf '%s\n' "$ignored" >&2
+    fi
+    if [[ -n "$hidden_index" ]]; then
+      echo "index flags that can hide tracked worktree content:" >&2
+      printf '%s\n' "$hidden_index" >&2
     fi
     exit 1
   fi
