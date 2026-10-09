@@ -8,6 +8,32 @@ const (
 	sourceDigestC = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 )
 
+func TestReferenceBuilderVersionsAreLogicalAndArtifactExact(t *testing.T) {
+	packageBuilder := packageBuilderIdentity(sourceDigestA)
+	if packageBuilder.Version != packageBuilderVersion {
+		t.Fatalf("package builder version: got %s want %s", packageBuilder.Version, packageBuilderVersion)
+	}
+	if packageBuilder.ArtifactDigest != sourceDigestA {
+		t.Fatalf("package builder artifact digest: %s", packageBuilder.ArtifactDigest)
+	}
+
+	nativeBuilder := nativeBuilderIdentity(sourceDigestB)
+	if nativeBuilder.Version != nativeBuilderVersion {
+		t.Fatalf("native builder version: got %s want %s", nativeBuilder.Version, nativeBuilderVersion)
+	}
+	if nativeBuilder.ArtifactDigest != sourceDigestB {
+		t.Fatalf("native builder artifact digest: %s", nativeBuilder.ArtifactDigest)
+	}
+
+	changedPackage := packageBuilderIdentity(sourceDigestC)
+	if changedPackage.Version != packageBuilder.Version {
+		t.Fatal("exact builder artifact change unexpectedly changed logical builder version")
+	}
+	if changedPackage.ArtifactDigest == packageBuilder.ArtifactDigest {
+		t.Fatal("exact builder artifact change was not reflected in BuilderIdentity")
+	}
+}
+
 func TestPluginBuildPlanSourcesDoNotUseRepositoryTreeAsBuildInput(t *testing.T) {
 	tests := []struct {
 		name    string
