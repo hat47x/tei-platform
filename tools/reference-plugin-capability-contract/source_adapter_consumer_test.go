@@ -1,11 +1,23 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"tei/internal/xeadsource"
 )
+
+func capabilityReferenceRepositoryRoot(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot resolve capability Reference source path")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+}
 
 func sourceAdapterTranscriptionContract() []byte {
 	return []byte(`{
@@ -346,5 +358,53 @@ func TestSourceAdapterConsumerRejectsUnsupportedSourceProfile(t *testing.T) {
 	)
 	if err == nil || !strings.Contains(err.Error(), "not supported") {
 		t.Fatalf("unsupported source profile reached semantic inspection: %v", err)
+	}
+}
+
+
+func TestCapabilitySourceAdapterUsesCurrentReferenceTranscriptionContract(t *testing.T) {
+	contract, provider, registry := sourceAdapterRegistryFixture(t)
+	root := capabilityReferenceRepositoryRoot(t)
+	contractBytes, err := os.ReadFile(filepath.Join(
+		root,
+		"reference",
+		"reference-model-transfer",
+		"transcription-contract-v0.json",
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	execution, err := registry.ResolveAndInvoke(
+		sourceAdapterResolveInput(contract, provider),
+		SourceAdapterRequest{
+			Format: xeadsource.FormatXead,
+			SourceBytes: []byte(
+				`<System FormatVersion="1.2"><Table ID="T1"><TableField ID="F1"/></Table></System>`,
+			),
+			TranscriptionContract: contractBytes,
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if execution.Inspection.TranscriptionContractFingerprint == "" ||
+		execution.Inspection.ClassificationPolicyFingerprint == "" {
+		t.Fatalf("current Reference contract provenance was not preserved: %+v", execution.Inspection)
+	}
+
+	var table *xeadsource.Candidate
+	for i := range execution.Inspection.Candidates {
+		if execution.Inspection.Candidates[i].SourceName == "Table" {
+			table = &execution.Inspection.Candidates[i]
+			break
+		}
+	}
+	if table == nil {
+		t.Fatal("Table candidate is missing")
+	}
+	if table.Unresolved ||
+		table.Extension != "reference.xead.relational-semantics" {
+		t.Fatalf("current Reference Table classification was not applied: %+v", *table)
 	}
 }
