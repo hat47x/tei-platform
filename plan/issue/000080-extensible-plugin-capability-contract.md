@@ -268,3 +268,16 @@ fingerprintの再計算規則もartifactへ`canonicalization`として明示し�
 また、Source Adapter result等の深い構造には明示的な`any`を残している。これはschemaが完全なdomain型を代替したという意味ではない。generic Invocation境界ではwire envelopeを検査し、domain adapterが深い意味と値制約を検査する二段構成としている。
 
 コード変更を含むため、exact-headのfocused testとfull Repository healthが得られるまではDraftのままとし、Evidence tierも変更しない。
+
+
+## E4 Side-effect boundary — 2026-10-09
+
+E3でresult schema validationをInvocation Registryへ入れたことで、mutating Capabilityへそのまま一般化できない理由が具体化した。
+
+requestは実装呼出し前に検査できる。一方、resultのschema違反は実装呼出し後にしか分からない。実装が外部へ書込みを行う場合、resultをrejectしても副作用だけが残り得る。Permission / Sandboxは実行可否の境界であり、この原子性問題を解決しない。
+
+Referenceでは`Contract.invocationEffect`を追加し、generic Invocationが受け入れるのを`read-only`へ限定した。Source AdapterとContract Query、opaque copyのReferenceはread-onlyとして扱う。`mutating`を宣言したContractは、valid requestであってもdomain implementationを呼ぶ前に停止するnegative controlを置いた。
+
+この制約はproductionでmutating Capabilityを禁止する決定ではない。書込みCapabilityを共通Invocationへ載せる前に、少なくともtransactionまたはprepare / commit、失敗時の補償、再試行、result validation失敗時のAuthorityを別pressureで定める必要があることを示す。
+
+現時点ではReference candidateであり、production Permission / Resource / SandboxやDatabase transaction contractへは接続していない。Evidence tierは変更しない。
