@@ -74,6 +74,18 @@ go test ./reference/cross-project-extraction
 
 汎用Capability ContractのReferenceは[#951](https://github.com/hat47x/tei-platform/issues/951)で進めています。並行PR #1058のGeneric Invocationは、Source AdapterやContract Queryなど実行サービスの境界として利用し、今回の純粋生成器の必須依存にはしません。将来、外部schema取得やDB introspection等が必要になった場合だけ、そのreadをCapabilityへ分離します。
 
+## 既存の配列写像によるTransform実証候補
+
+[配列写像のGo試験](transform_projection_test.go)では、TEIの既存 `map-array` と `construct-object` を使い、受理済み規則を表す順序付き配列から、受注と請求の派生検証計画を構築します。
+
+```bash
+go test ./reference/cross-project-extraction -run 'TestExistingMapArray|TestProjection'
+```
+
+この経路で十分かどうかは、**Authoring側が正しい規則配列を独立して提供できるか**に左右されます。Transformは規則名が案件の意味に合致するかを判断しません。既存の受理済み規則から必要な配列を得られるなら、新しい配列構築演算子は追加せずに済む可能性があります。逆に、二つの項目参照しか入力されない場合には、Transformが二規則を構築する方法を別途検討する必要があります。
+
+検討の根拠と境界は[実行境界の整理](transform-boundary.md)に記録しています。これは合成入力の能力試験であり、既存の業務仕様から規則を自動導出した証拠ではありません。現時点ではtrustedな完全checkoutでのGo試験実行結果も取得していません。
+
 ## 共通化の効果測定
 
 [共通化の効果測定](sharing-economics.md)では、現在の二案件fixtureについて、抽出前後の生成処理の記述量を比較しています。
