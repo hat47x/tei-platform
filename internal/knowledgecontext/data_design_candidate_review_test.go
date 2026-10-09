@@ -1,12 +1,33 @@
 package knowledgecontext
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
 )
+
+func TestDataDesignCandidateReviewPacketIsNotAnAuthorityEnvelope(t *testing.T) {
+	typ := reflect.TypeOf(DataDesignCandidateReviewPacket{})
+	for _, forbidden := range []string{
+		"Accepted",
+		"Approved",
+		"Authorized",
+		"CanWrite",
+		"CanExecute",
+		"Truth",
+		"Decision",
+		"ResolvedBusinessEvidence",
+		"CanonicalMeaning",
+		"ProposalDelta",
+	} {
+		if _, found := typ.FieldByName(forbidden); found {
+			t.Fatalf("candidate review packet introduced forbidden authority field %q", forbidden)
+		}
+	}
+}
 
 func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testing.T) {
 	ctx := dataDesignCandidateReviewContext(t)
