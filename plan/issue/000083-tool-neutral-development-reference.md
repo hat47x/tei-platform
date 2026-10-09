@@ -390,13 +390,15 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 
 これらに独立したProduct上の必要性が後から見つかった場合は、その必要性自体を別に評価します。
 
-## 2026-10-08 未資格統合の記録
+## 2026-10-08〜09 未資格統合の記録
 
 PR #967は2026-10-08T06:06:01Zに、head `425b5743fab37ec087892d67d7bbf09e6496bacd`からmerge commit `6307950c53f0c7879d9231c5077e2410cff71e9a`としてmainへ統合されました。
 
 しかし、統合時点のPR本文は、exact headに対するactual `tools/repository-health-check.sh`とRQ-034 ReferenceのPASSが未取得であり、RQ-034をDesign Only、PRをDraftのまま保持する、と明記していました。Repositoryの既存開発ルールも、code変更を含むDraft PRについてexact-head full Repository Healthとclean pre/post stateが無い状態でのmergeを認めていませんでした。
 
 したがって、**#967がmerge済みであること自体をqualification Evidenceとして扱いません。** synthetic runner PASS、shell構文確認、GitHub上のmergeable / merged状態も代替Evidenceにはしません。この記録のために共有済みGit履歴を巻き戻さず、forward-onlyで扱います。
+
+さらに、#967の是正用Draft PR #1027も、actual qualification receipt未取得を本文に明記したまま2026-10-09T06:50:05Zにmainへ統合されました。merge commitは`474c1b545267afad99b8320d676b6f02251809fb`、messageは`Merge remote-tracking branch 'origin/work/rq-034-post-merge-qualification'`です。これは通常Git merge経由の統合であり、Draft flagだけでは防止できないことを示します。#1027のmergeもqualification Evidenceには数えません。
 
 現在のforward stopは、trustedなactual TEI full checkoutで、その時点のcurrent main exact HEADを固定し、次を同じcheckoutで確認することです。
 
@@ -428,6 +430,12 @@ candidate exact head
 ```
 
 これはTEIへ新しい`verified`状態を追加する仕組みではありません。Gate実行時の一時的なEvidenceを取り違えにくくするためのRepository Toolです。
+
+#1027の未資格統合では、文書上の停止条件が存在していても通常Git mergeでmainへ入れられることが実際に起きました。このため`qualify.sh --receipt-file`は、成功時にRepository外へmachine-readable receiptを出せるようにします。receiptはcandidate / expected main、clean pre/post、Repository Health / RQ-034 Reference PASS、およびhealth / qualify / Reference runnerのGit blob SHAを固定します。
+
+統合直前は`integration-preflight.sh`をread-onlyで実行し、integration checkout HEADとlocal `origin/main`がreceiptのexpected mainと一致すること、candidate HEADがreceiptと一致しexpected mainを含むこと、runner blobがreceipt取得時から変わっていないことを確認します。main移動、candidate変更、receipt書換え、runner変更ではfail closedします。このpreflight自体はmerge / commit / push / ref更新を行いません。
+
+receiptは署名済みAuthorityやTEI Product stateではありません。通常Gitを使うHuman / AI間で、別revisionのPASSをmerge authorityとして誤流用しないためのhandoff Evidenceです。強いwitnessが必要な環境では別Providerを重ねられますが、RQ-034の通常開発経路に必須化しません。
 
 `--expected-main`が固定するのは、preflightで取得済みのlocal `origin/main`です。wrapperはそのSHA一致だけでなく、expected mainがcandidate HEADのancestorであることも確認します。remote GitHub上の`main`をlockするものではないため、qualification PASS後もmerge直前にremote stateを再取得し、mainがexpected SHAから動いていれば、そのreceiptをstaleとしてcandidateへ最新mainを統合したうえで再qualificationします。
 
@@ -470,6 +478,7 @@ candidate exact head
 - [ ] Referenceで見つかった不足を通常CLI / application serviceのGapとして説明できる
 - [ ] Agent専用subsystemを追加しなくても一往復が成立する
 - [ ] exact candidate headがcurrent mainを含む状態で、full `tools/repository-health-check.sh`と本Referenceをclean pre/post state付きでPASSできる
+- [ ] qualification receiptとread-only integration preflightで、exact candidate / expected main / runner blobの一致を再確認してから通常Git統合へ進める
 
 ## 非目標
 
