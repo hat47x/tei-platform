@@ -39,6 +39,74 @@ func TestNonInvocationContractFingerprintDoesNotGainEmptyShapeIssuer(t *testing.
 	}
 }
 
+func invocationShapeAuthorityEvidenceForTest(
+	artifact InvocationShapeArtifact,
+	marker string,
+) InvocationShapeAuthorityEvidence {
+	return InvocationShapeAuthorityEvidence{
+		Issuer:           artifact.Issuer,
+		ShapeID:          artifact.ID,
+		ShapeFingerprint: invocationShapeFingerprint(artifact),
+		EvidenceFingerprint: fingerprint(struct {
+			Marker           string `json:"marker"`
+			Issuer           InvocationShapeIssuer `json:"issuer"`
+			ShapeID          string `json:"shapeId"`
+			ShapeFingerprint string `json:"shapeFingerprint"`
+		}{
+			Marker:           marker,
+			Issuer:           artifact.Issuer,
+			ShapeID:          artifact.ID,
+			ShapeFingerprint: invocationShapeFingerprint(artifact),
+		}),
+	}
+}
+
+func invocationShapeAuthoritiesForTest(
+	implementations []InvocationImplementation,
+) []InvocationShapeAuthorityEvidence {
+	seen := map[string]struct{}{}
+	var out []InvocationShapeAuthorityEvidence
+	for _, implementation := range implementations {
+		for _, artifact := range []InvocationShapeArtifact{
+			implementation.RequestShapeArtifact,
+			implementation.ResultShapeArtifact,
+		} {
+			key := invocationShapeAuthorityKey(
+				artifact.Issuer,
+				artifact.ID,
+				invocationShapeFingerprint(artifact),
+			)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(
+				out,
+				invocationShapeAuthorityEvidenceForTest(
+					artifact,
+					"accepted-reference-shape-authority",
+				),
+			)
+		}
+	}
+	return out
+}
+
+func newInvocationRegistryForTest(
+	t *testing.T,
+	implementations []InvocationImplementation,
+) *InvocationRegistry {
+	t.Helper()
+	registry, err := NewInvocationRegistry(
+		implementations,
+		invocationShapeAuthoritiesForTest(implementations),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return registry
+}
+
 func sourceAdapterContract() Contract {
 	return Contract{
 		ID:                 "authoring.source-adapter.xead",
