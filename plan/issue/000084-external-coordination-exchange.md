@@ -94,6 +94,8 @@ E1では、一つのWorkへ複数Resultを保存できることに加え、Human
 
 Git text固有のcompletionはAdapter-localなnative stateだけを更新し、共通Work envelopeにはlifecycle fieldを置きません。同じ局所Work IDでもBackend instanceが異なればlocatorが異なることを確認します。Agent数とGit branch数は1:1にせず、token、quota、credential、Agent Sessionも交換文書へ要求しません。ArtifactはWork本文へ埋め込まず、instance-scoped locatorとdigestを分離して扱います。最後にCoordination Storeを削除し、Product repositoryが変化しないことを確かめます。
 
+Product repository不変の検査では、`git status`の通常表示だけでなく、ignored artifactと`assume-unchanged` / `skip-worktree`などの非標準index状態を拒否します。このclean判定は開始前、Coordination activity後、Store削除後に適用します。合成Git fixtureでnegative pressureを検証できますが、実TEI checkout上のQualification Gateは#983に残します。
+
 E1はCanonical Worldを実際にreloadする試験ではありません。その部分はRQ-034 / ISSUE-000083が所有します。本Issueでは、Coordination層がProduct Sourceの第二正本にならないことを先にpressureします。
 
 ## Optional Broker
