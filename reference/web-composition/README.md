@@ -81,3 +81,15 @@ go test -race -count=1 ./reference/web-composition/go-host
 
 最優先は、既存First Web Targetの`/scenario/submit`と`security.authenticate`/`security.authorize`に対して、実Hostが保護機構を強制する接続を検証することです。E1の宣言をGo実行時の保護の証拠に読み替えず、既存#951のProvider解決・Lockを再利用し、認証結果とApplication Actionの意味契約を変えない条件で進めます。
 
+
+## 既存First Web Targetとの接続に先立つ境界確認
+
+`tools/reference-first-web-target/server.go`の現行`/scenario/submit`は、HTTP本文に`loginId`と`credential`を受け取り、`commandScenarioRunner.RunCommand`へ渡しています。これに対し本Referenceの`NewHost`は、信頼済みセッション検証器が返す`Principal`を使用します。この二つを、単にミドルウェアで囲むだけで同一の認証方式とみなしてはなりません。
+
+**接続に必要な最小契約**は、(1) Webの認証済み主体をTEI Principalへ明示的に対応付ける、(2) 既存の`security.authenticate`と新しいWeb認証を二重に成立させたことにしない、(3) Principalを信頼済みのサーバ内部経路だけでAction境界へ渡す、(4) 業務Actionの`security.authorize`を実行主体ごとに強制する、(5) 既存の`RunCommand`の意味・Business ResultとExecution Errorを維持する、の五点です。
+
+この契約を満たす既存のRunner APIがあるかは未確認です。現在の`commandScenarioInput`には`LoginID`と`Credential`があるため、これらをPrincipalへ安易に置き換えたり、固定値のCredentialを挿入したりする変更は行いません。次段階ではRunnerの内部、Driver、Capabilityの呼出し境界を追跡し、既存の権限モデルと整合する最小のアダプタを特定します。
+
+また、現行`webTargetServer.Handler()`が`/scenario/submit`を登録するため、新しい保護済みHandlerと併用する際には**同一経路を二重に公開しない**ことが必要です。既存Handlerの上から認証だけを付け足す方式では、迂回経路が残り得ます。公開経路の所有者はHost側で一意に決定し、既存経路の互換性は明示的な移行条件として検証します。
+
+2026-10-09時点では、この接続契約は調査結果に基づく候補であり、既存Web Targetへのコード変更や結合テストは未実施です。
