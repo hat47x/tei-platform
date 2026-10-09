@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	detailQueryContract = "tei.epistemic-detail-query/v0"
-	detailQuerySchema   = "tei.reference.epistemic-detail-query/v0"
+	detailQueryContract  = "tei.epistemic-detail-query/v0"
+	detailQuerySchema    = "tei.reference.epistemic-detail-query/v0"
 	detailResultContract = "tei.epistemic-detail/v0"
 	detailResultSchema   = "tei.reference.epistemic-detail/v0"
 )
