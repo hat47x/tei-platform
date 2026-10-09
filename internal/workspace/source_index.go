@@ -21,6 +21,9 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 	if err != nil {
 		return sourceindex.Index{}, fmt.Errorf("resolve Workspace root: %w", err)
 	}
+	if result.sourceSnapshot != nil && result.sourceSnapshotRoot != rootReal {
+		return sourceindex.Index{}, fmt.Errorf("loaded source snapshot belongs to another Workspace")
+	}
 	idx := sourceindex.Index{}
 	contents := map[string][]byte{}
 	artifacts := map[string]sourceindex.Artifact{}
@@ -31,6 +34,14 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 			return nil, err
 		}
 		if content, ok := contents[p]; ok {
+			return content, nil
+		}
+		// For a Result produced by Load, use the exact bytes parsed by
+		// the domain loader. A forged/standalone Result has no snapshot
+		// and retains the existing checked filesystem read fallback.
+		if snapshot, ok := result.sourceSnapshot[p]; ok {
+			content := append([]byte(nil), snapshot...)
+			contents[p] = content
 			return content, nil
 		}
 		// A caller may supply a Result without passing through Load. Reject
