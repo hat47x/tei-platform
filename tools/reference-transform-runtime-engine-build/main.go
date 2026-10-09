@@ -159,10 +159,8 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 	if err != nil {
 		return buildEvidence{}, err
 	}
-	reproducible := firstDigest == secondDigest
-	artifactDigest := ""
+	reproducible, artifactDigest := resolveReproducibility(firstDigest, secondDigest)
 	if reproducible {
-		artifactDigest = firstDigest
 		if artifactOut != "" {
 			if err := copyVerifiedArtifactOutsideRepository(root, firstPath, artifactOut, firstDigest); err != nil {
 				return buildEvidence{}, err
@@ -354,6 +352,13 @@ func packageBuildFiles(pkg goListPackage) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func resolveReproducibility(firstDigest, secondDigest string) (bool, string) {
+	if firstDigest != secondDigest {
+		return false, ""
+	}
+	return true, firstDigest
 }
 
 func sourceClosureFingerprint(members []sourceMember) string {
