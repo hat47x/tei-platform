@@ -114,7 +114,7 @@ go run ./tools/reference-business-procedure-check
 go run ./tools/reference-business-procedure-check -review-validation-scope
 ~~~
 
-指定時のみ、従来の診断とは別に`validationScopeReview`を返す設計です。各行は、ステップ、比較対象のApplication、両側にしか現れないValidation ID、確認状態と理由からなります。
+指定時のみ、従来の診断とは別に`validationScopeReview`を返す設計です。各行は、ステップ、比較対象のApplication、両側にしか現れないValidation ID、確認状態と理由からなります。加えて既存Source Indexから、Application定義と差分に現れたValidation定義の**相対Sourceパス・開始行・ファイル指紋**を`sourceEvidence`として返す候補を含みます。Sourceを一意に特定できない場合は`unresolvedSource`に対象の意味IDを残し、推測による場所の補完は行いません。
 
 | 状態 | 意味 |
 | --- | --- |
