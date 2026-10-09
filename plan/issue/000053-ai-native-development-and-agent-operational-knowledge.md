@@ -341,6 +341,20 @@ available
 
 `qualified-for-disclosure`はselected section内部のEvidence completenessやresolutionまで保証しない。Review Sequenceは共有`unresolved`だけでなく、各区画が持つ局所的なresolution / Evidence statusも確認してからsemantic useへ進む。
 
+Proposalへ進むときは、新しいBuilder専用Proposal schemaを追加しない。`tools/reference-shared-acceptance`の既存`attach-qualification` / qualified reference proposal経路が、bare `QualificationResult`に加えてBuilder Review Handoffも入力として受けるadapterを持つ。Handoffのidentityを検証した後、内包Qualificationだけを既存Evidenceへ接続する。
+
+この結果、
+
+```text
+Builder Review Handoff
+  -> Qualification Evidence
+  -> existing Candidate
+  -> Preview / Review
+  -> explicit Accept / Reject
+```
+
+となる。Disclosure snapshotはProposal deltaへ含めず、AIが提案する意味はMinimum Semantic Deltaとして別に記述する。Handoff経路と直接Qualification経路でcandidate meaning / Evidence identityが変わらないことをReference testで固定する。
+
 この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
 
 ## Phase 1 first challenge — customer_referenceを編集可能にする要求
