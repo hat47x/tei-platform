@@ -46,6 +46,7 @@ type DataDesignCandidateReviewPacket struct {
 	Candidate                             DataDesignCandidateReviewCandidate     `json:"candidate"`
 	SourceEvidence                        []DataDesignEvidence                    `json:"sourceEvidence,omitempty"`
 	SourceEvidenceMissing                 []subject.Subject                     `json:"sourceEvidenceMissing,omitempty"`
+	ReviewBlockingAmbiguities             []DataDesignAmbiguity                  `json:"reviewBlockingAmbiguities,omitempty"`
 	BusinessEvidenceRequirements          []DataDesignCandidateReviewRequirement `json:"businessEvidenceRequirements"`
 	ReviewStatus                          string                                `json:"reviewStatus"`
 	FirstClassAuthoringContractStatus     string                                `json:"firstClassAuthoringContractStatus"`
@@ -91,6 +92,7 @@ func BuildDataDesignCandidateReview(
 	}
 
 	sourceEvidence, sourceMissing := selectDataDesignReviewEvidence(ctx.DataDesign, relevant)
+	blockingAmbiguities := selectDataDesignReviewAmbiguities(ctx.DataDesign, relevant)
 	requirements := make([]DataDesignCandidateReviewRequirement, 0, len(evidenceNeeded))
 	for _, requirement := range normalizedDataDesignStrings(evidenceNeeded) {
 		requirements = append(requirements, DataDesignCandidateReviewRequirement{
@@ -100,7 +102,7 @@ func BuildDataDesignCandidateReview(
 	}
 
 	reviewStatus := "evidence-required"
-	if ctx.DataDesign.ResolutionStatus != "resolved" || len(sourceMissing) != 0 {
+	if len(blockingAmbiguities) != 0 || len(sourceMissing) != 0 {
 		reviewStatus = "blocked-context-unresolved"
 	}
 
@@ -114,6 +116,7 @@ func BuildDataDesignCandidateReview(
 		Candidate:                        candidate,
 		SourceEvidence:                   sourceEvidence,
 		SourceEvidenceMissing:            sourceMissing,
+		ReviewBlockingAmbiguities:        blockingAmbiguities,
 		BusinessEvidenceRequirements:     requirements,
 		ReviewStatus:                     reviewStatus,
 		FirstClassAuthoringContractStatus: "unresolved",
@@ -131,6 +134,7 @@ func BuildDataDesignCandidateReview(
 			"candidate-fingerprint-is-identity-not-acceptance",
 			"evidence-requirement-fingerprint-is-review-contract-not-evidence",
 			"source-evidence-proves-traceability-not-business-meaning",
+			"candidate-review-blocking-ambiguity-is-candidate-local-not-global-context-certainty",
 			"unresolved-business-evidence-requirement-must-not-be-inferred-as-satisfied",
 			"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
 			"semantic-extension-reference-is-not-current-lossless-authoring-contract",
@@ -249,6 +253,36 @@ func dataDesignReviewSubjects(
 		}
 		if term.Attribute != "" {
 			out[subject.Subject{Kind: "semantic-attribute", ID: string(term.Attribute)}] = struct{}{}
+		}
+	}
+	return out
+}
+
+func selectDataDesignReviewAmbiguities(
+	ctx *DataDesignContext,
+	relevant map[subject.Subject]struct{},
+) []DataDesignAmbiguity {
+	var out []DataDesignAmbiguity
+	for _, ambiguity := range ctx.Ambiguities {
+		kind := ""
+		switch ambiguity.Kind {
+		case "duplicate-semantic-data":
+			kind = "semantic-data"
+		case "duplicate-semantic-attribute":
+			kind = "semantic-attribute"
+		case "duplicate-semantic-relation":
+			kind = "semantic-relation"
+		case "duplicate-semantic-validation":
+			kind = "semantic-validation"
+		case "duplicate-persistence-mapping":
+			kind = "persistence"
+		}
+		if kind == "" {
+			out = append(out, ambiguity)
+			continue
+		}
+		if _, ok := relevant[subject.Subject{Kind: kind, ID: string(ambiguity.ID)}]; ok {
+			out = append(out, ambiguity)
 		}
 	}
 	return out
