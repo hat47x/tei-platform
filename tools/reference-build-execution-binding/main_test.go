@@ -245,3 +245,31 @@ func TestArtifactSetRejectsDuplicateRole(t *testing.T) {
 		t.Fatal("Artifact Set accepted duplicate role in the first Reference profile")
 	}
 }
+
+
+func TestExecutionIdentityIgnoresSourceLocatorWhenExactBytesMatch(t *testing.T) {
+	planA := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
+	planB := planA
+	planB.Sources = append([]plugin.BuildSource(nil), planA.Sources...)
+	planB.Sources[0].Locator = "store://alternate/shared-source"
+
+	executionA, err := executionPlanFromPluginBuildPlan(planA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executionB, err := executionPlanFromPluginBuildPlan(planB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fpA, err := buildExecutionPlanFingerprint(executionA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fpB, err := buildExecutionPlanFingerprint(executionB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fpA != fpB {
+		t.Fatal("source locator leaked into execution input identity despite identical exact bytes")
+	}
+}
