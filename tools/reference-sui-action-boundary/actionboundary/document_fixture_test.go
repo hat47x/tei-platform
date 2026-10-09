@@ -12,9 +12,9 @@ import (
 const documentFixture = `{"cards":[{"id":"a","position":{"x":0,"y":1},"source":{"id":"s1"},"hold":true},{"id":"b","position":{"x":8,"y":9}}],"reviewer":{"id":"u1"},"edges":[{"kind":"future-edge","metadata":{"keep":true}}],"affiliations":[{"id":"f1"}]}`
 
 func TestJSONDocumentStorePreservesUnrelatedFields(t *testing.T) {
- s:=NewJSONDocumentStore("r1",[]byte(documentFixture))
+ s:=NewScopedJSONDocumentStore("doc","r1",[]byte(documentFixture))
  h:=Host{Authorizer:permit(true),Bindings:[]Binding{{ApplicationID:"sui",ActionID:"sui.move",Store:s}}}
- rev,err:=h.Commit(context.Background(),Intent{ApplicationID:"sui",DocumentID:"d",ActionID:"sui.move",ExpectedRevision:"r1",Payload:MovePayload{CardID:"a",X:5,Y:6}})
+ rev,err:=h.Commit(context.Background(),Intent{ApplicationID:"sui",DocumentID:"doc",ActionID:"sui.move",ExpectedRevision:"r1",Payload:MovePayload{CardID:"a",X:5,Y:6}})
  if err!=nil||rev!="r2" {t.Fatalf("rev=%s err=%v",rev,err)}
  _,got,writes:=s.Snapshot()
  if writes!=1 {t.Fatalf("writes=%d",writes)}
@@ -42,8 +42,8 @@ func TestJSONDocumentStoreRejectsWithoutWrites(t *testing.T) {
  }
  for _,tc:=range cases {
   t.Run(tc.name,func(t *testing.T){
-   s:=NewJSONDocumentStore("r1",[]byte(documentFixture))
-   _,err:=s.Commit(context.Background(),Intent{ActionID:"sui.move",ExpectedRevision:tc.rev,Payload:tc.payload})
+   s:=NewScopedJSONDocumentStore("doc","r1",[]byte(documentFixture))
+   _,err:=s.Commit(context.Background(),Intent{DocumentID:"doc",ActionID:"sui.move",ExpectedRevision:tc.rev,Payload:tc.payload})
    if !errors.Is(err,tc.want) {t.Fatalf("err=%v want=%v",err,tc.want)}
    rev,got,writes:=s.Snapshot()
    if rev!="r1"||writes!=0||string(got)!=documentFixture {t.Fatalf("mutated on rejection: %s %d",rev,writes)}
@@ -51,12 +51,12 @@ func TestJSONDocumentStoreRejectsWithoutWrites(t *testing.T) {
  }
 }
 func TestJSONDocumentStoreConcurrentRevision(t *testing.T){
- s:=NewJSONDocumentStore("r1",[]byte(documentFixture))
+ s:=NewScopedJSONDocumentStore("doc","r1",[]byte(documentFixture))
  var wg sync.WaitGroup
  results:=make(chan error,2)
  for i:=0;i<2;i++ {
   wg.Add(1)
-  go func(){defer wg.Done();_,err:=s.Commit(context.Background(),Intent{ActionID:"sui.move",ExpectedRevision:"r1",Payload:MovePayload{CardID:"a",X:1,Y:2}});results<-err}()
+  go func(){defer wg.Done();_,err:=s.Commit(context.Background(),Intent{DocumentID:"doc",ActionID:"sui.move",ExpectedRevision:"r1",Payload:MovePayload{CardID:"a",X:1,Y:2}});results<-err}()
  }
  wg.Wait();close(results)
  successes,conflicts:=0,0
@@ -79,8 +79,8 @@ func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
  }
  for _,tc:=range cases {
   t.Run(tc.name,func(t *testing.T){
-   store:=NewJSONDocumentStore("r1",[]byte(tc.document))
-   _,err:=store.Commit(context.Background(),Intent{ActionID:"sui.move",ExpectedRevision:"r1",Payload:tc.payload})
+   store:=NewScopedJSONDocumentStore("doc","r1",[]byte(tc.document))
+   _,err:=store.Commit(context.Background(),Intent{DocumentID:"doc",ActionID:"sui.move",ExpectedRevision:"r1",Payload:tc.payload})
    if !errors.Is(err,ErrInvalid){t.Fatalf("expected invalid, got %v",err)}
    revision,document,writes:=store.Snapshot()
    if revision!="r1"||writes!=0||string(document)!=tc.document {t.Fatal("invalid input mutated state")}
