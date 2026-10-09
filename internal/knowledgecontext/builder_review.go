@@ -14,6 +14,7 @@ type BuilderReviewPlan struct {
 	ProjectionRevision            string          `json:"projectionRevision"`
 	Fingerprint                   string          `json:"fingerprint"`
 	Purpose                       string          `json:"purpose"`
+	RoutingScope                  string          `json:"routingScope"`
 	Subject                       subject.Subject `json:"subject"`
 	RecommendedDisclosureSections []string        `json:"recommendedDisclosureSections,omitempty"`
 	ReviewSequence                []string        `json:"reviewSequence"`
@@ -68,6 +69,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 	result := BuilderReviewPlan{
 		ProjectionRevision:            builderReviewPlanProjectionRevision,
 		Purpose:                       "design-change",
+		RoutingScope:                  "current-knowledge-context",
 		Subject:                       ctx.Subject,
 		RecommendedDisclosureSections: recommended,
 		ReviewSequence:                reviewSequence,
@@ -76,6 +78,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"stop-when-required-evidence-or-authority-is-unresolved",
 			"do-not-treat-omitted-or-unavailable-knowledge-as-negative-evidence",
 			"do-not-promote-derived-candidate-or-guidance-to-accepted-meaning",
+			"do-not-infer-global-knowledge-absence-from-current-context-section-absence",
 			"refresh-review-plan-before-reusing-cached-routing",
 		},
 		AuthorityLimits: []string{
@@ -83,6 +86,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"recommended-section-is-not-semantic-applicability",
 			"review-order-does-not-grant-write-or-runtime-authority",
 			"review-plan-does-not-replace-qualification-or-shared-acceptance",
+			"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
 			"review-plan-fingerprint-is-routing-identity-not-knowledge-freshness-proof",
 			"review-plan-fingerprint-is-not-selected-knowledge-fingerprint",
 		},
