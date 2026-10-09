@@ -433,7 +433,7 @@ func TestRuntimeEngineSubjectBindingDoesNotRequirePluginIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	binding := RuntimeEngineSubjectBinding{
-		FormatVersion: pluginSubjectBindingFormatVersion,
+		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
 		Engine: pruntime.RuntimeEngineIdentity{
 			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
 			Version: "1.0.0",
