@@ -3,6 +3,7 @@ package workspace
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -63,7 +64,16 @@ func Load(root string) (Result, error) {
 	} else {
 		return Result{}, fmt.Errorf("TEI workspace manifest not found: expected %s", manifestYAML)
 	}
-	r := Result{Sources: map[string]SourceLocation{}, PluginImplementationSources: map[string]SourceLocation{}}
+	if err := validateWorkspaceSourceRoots(roots); err != nil {
+		return Result{}, err
+	}
+	// Inventory and verify the physical boundary before any domain loader can
+	// read a Source file or parse a symlink to an outside target.
+	managedFiles, err := scanManagedFiles(root, roots)
+	if err != nil {
+		return Result{}, err
+	}
+	r := Result{Sources: map[string]SourceLocation{}, PluginImplementationSources: map[string]SourceLocation{}, ManagedFiles: managedFiles}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	for _, sourceRoot := range roots {
@@ -119,7 +129,6 @@ func Load(root string) (Result, error) {
 		return Result{}, err
 	}
 	Normalize(&r.World)
-	r.ManagedFiles = scanManagedFiles(root, roots)
 	return r, nil
 }
 
@@ -154,20 +163,116 @@ func parseWorkspaceYAML(src string) ([]string, error) {
 	return roots, nil
 }
 
-func scanManagedFiles(root string, roots []string) []ManagedFile {
+// Source roots are portable Workspace-relative directory names. In particular,
+// OS-specific separators and drive prefixes must not change which files are
+// managed when the same Workspace is opened on another Target.
+func validateWorkspaceSourceRoot(sourceRoot string) error {
+	if sourceRoot == "" || sourceRoot == "." || !filepath.IsLocal(sourceRoot) ||
+		strings.ContainsAny(sourceRoot, "\\\\:") || path.Clean(sourceRoot) != sourceRoot {
+		return fmt.Errorf("must be a clean Workspace-relative path")
+	}
+	return nil
+}
+
+// A declared source must be owned by exactly one source root. Duplicate and
+// ancestor/descendant roots could otherwise parse one canonical declaration
+// more than once or create duplicate Source Index artifacts.
+func validateWorkspaceSourceRoots(roots []string) error {
+	for i, sourceRoot := range roots {
+		if err := validateWorkspaceSourceRoot(sourceRoot); err != nil {
+			return fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
+		}
+		for _, prior := range roots[:i] {
+			if sourceRoot == prior || strings.HasPrefix(sourceRoot, prior+"/") ||
+				strings.HasPrefix(prior, sourceRoot+"/") {
+				return fmt.Errorf("workspace source roots %q and %q overlap", prior, sourceRoot)
+			}
+		}
+	}
+	return nil
+}
+
+// scanManagedFiles inventories native files without granting them semantic
+// authority. Missing optional roots remain forward-compatible; unreadable,
+// escaped, broken-linked or non-regular source entries fail instead of being
+// silently omitted or introduced as Workspace-managed artifacts.
+func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
+	rootReal, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Workspace root: %w", err)
+	}
 	var out []ManagedFile
+	seenPhysicalSources := make(map[string]string)
 	for _, sourceRoot := range roots {
-		base := filepath.Join(root, sourceRoot)
-		_ = filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
+		if err := validateWorkspaceSourceRoot(sourceRoot); err != nil {
+			return nil, fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
+		}
+		base := root
+		missingOptionalRoot := false
+		// Resolve every path component before treating an absent nested source
+		// root as optional. An existing but broken/escaping symlink ancestor
+		// must fail closed instead of being mistaken for a missing root.
+		for _, component := range strings.Split(sourceRoot, "/") {
+			base = filepath.Join(base, component)
+			info, err := os.Lstat(base)
+			if os.IsNotExist(err) {
+				missingOptionalRoot = true
+				break
+			}
+			if err != nil {
+				return nil, fmt.Errorf("stat workspace source root %q at %s: %w", sourceRoot, base, err)
+			}
+			real, err := filepath.EvalSymlinks(base)
+			if err != nil {
+				return nil, fmt.Errorf("resolve workspace source root %q at %s: %w", sourceRoot, base, err)
+			}
+			rel, err := filepath.Rel(rootReal, real)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+				return nil, fmt.Errorf("workspace source root %q resolves outside the Workspace", sourceRoot)
+			}
+			if !info.IsDir() {
+				return nil, fmt.Errorf("workspace source root %q must be a directory", sourceRoot)
+			}
+		}
+		if missingOptionalRoot {
+			continue
+		}
+		err = filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return fmt.Errorf("scan managed source %s: %w", path, walkErr)
+			}
+			if d.IsDir() {
 				return nil
 			}
-			out = append(out, ManagedFile{Path: relPath(root, path), SourceRoot: sourceRoot, Extension: strings.ToLower(filepath.Ext(d.Name()))})
+			realPath, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return fmt.Errorf("resolve managed source %s: %w", path, err)
+			}
+			rel, err := filepath.Rel(rootReal, realPath)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+				return fmt.Errorf("managed source %s resolves outside the Workspace", path)
+			}
+			info, err := os.Stat(realPath)
+			if err != nil {
+				return fmt.Errorf("stat managed source %s: %w", path, err)
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("managed source %s is not a regular file", path)
+			}
+			logicalPath := relPath(root, path)
+			if previous, exists := seenPhysicalSources[realPath]; exists {
+				return fmt.Errorf("managed sources %q and %q resolve to the same physical file", previous, logicalPath)
+			}
+			seenPhysicalSources[realPath] = logicalPath
+			out = append(out, ManagedFile{Path: logicalPath, SourceRoot: sourceRoot, Extension: strings.ToLower(filepath.Ext(d.Name()))})
 			return nil
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
-	return out
+	return out, nil
 }
 
 func loadPlugins(root string, r *Result) error {
