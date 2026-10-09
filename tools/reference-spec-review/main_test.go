@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -358,6 +359,56 @@ func TestREFSPEC01CustomerEditUsesExistingKnowledgeAndCheckerOutputs(t *testing.
 		"applications/order-entry/application.tei",
 	) {
 		t.Fatalf("owning Application Source Evidence is not reachable from the packet: %+v", got.Evidence)
+	}
+}
+
+func TestREFSPEC01MissingDefinitionUsesActualKnowledgeContext(t *testing.T) {
+	root := repositoryRoot(t)
+	temp := t.TempDir()
+
+	knowledgeOut := runReviewCommand(
+		t,
+		root,
+		"go", "run", "./cmd/tei", "knowledge-context",
+		"-workspace", filepath.Join(root, "reference", "workspace"),
+		"-subject-kind", "semantic-data",
+		"-subject-id", "missing.example",
+	)
+	knowledgePath := filepath.Join(temp, "missing-knowledge.json")
+	if err := os.WriteFile(knowledgePath, knowledgeOut, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := buildReviewPacket("ref-spec-01-missing-definition", knowledgePath, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "review-needed" ||
+		!got.Coverage.KnowledgeContext ||
+		got.Coverage.CrossView ||
+		got.Coverage.SharedAcceptance {
+		t.Fatalf("missing-definition packet coverage/status drifted: %+v", got)
+	}
+	if !reflect.DeepEqual(got.MissingInputs, []string{"cross-view", "shared-acceptance"}) {
+		t.Fatalf("missing-definition packet missing inputs=%v", got.MissingInputs)
+	}
+	var reasons []string
+	for _, item := range got.Findings {
+		if item.Source != "knowledge-context" ||
+			item.Class != "ambiguity" ||
+			item.Code != "KNOWLEDGE_UNRESOLVED" ||
+			item.Subject != "semantic-data:missing.example" {
+			t.Fatalf("missing-definition finding drifted: %+v", item)
+		}
+		reasons = append(reasons, item.Message)
+	}
+	sort.Strings(reasons)
+	want := []string{
+		"semantic-element-not-found-in-derived-index",
+		"source-reference-unavailable",
+	}
+	if !reflect.DeepEqual(reasons, want) {
+		t.Fatalf("missing-definition reasons=%v want=%v", reasons, want)
 	}
 }
 
