@@ -550,19 +550,39 @@ func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDi
 		return err
 	}
 
-	raw, err := os.ReadFile(source)
+	sourceFile, err := os.Open(source)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(destinationResolved, raw, 0o755); err != nil {
-		return fmt.Errorf("write verified Runtime Engine artifact: %w", err)
+	defer sourceFile.Close()
+
+	tempFile, err := os.CreateTemp(parentResolved, ".tei-transform-engine-*")
+	if err != nil {
+		return fmt.Errorf("create verified Runtime Engine artifact temp file: %w", err)
 	}
-	digest, err := hashFile(destinationResolved)
+	tempPath := tempFile.Name()
+	defer os.Remove(tempPath)
+
+	if err := tempFile.Chmod(0o755); err != nil {
+		tempFile.Close()
+		return err
+	}
+	if _, err := io.Copy(tempFile, sourceFile); err != nil {
+		tempFile.Close()
+		return fmt.Errorf("copy verified Runtime Engine artifact: %w", err)
+	}
+	if err := tempFile.Close(); err != nil {
+		return err
+	}
+	digest, err := hashFile(tempPath)
 	if err != nil {
 		return err
 	}
 	if digest != expectedDigest {
 		return fmt.Errorf("copied Runtime Engine artifact digest changed: got %s want %s", digest, expectedDigest)
+	}
+	if err := os.Rename(tempPath, destinationResolved); err != nil {
+		return fmt.Errorf("publish verified Runtime Engine artifact: %w", err)
 	}
 	return nil
 }
