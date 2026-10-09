@@ -94,13 +94,13 @@ func genericInvocationRegistryFixture(
 		t.Fatal(err)
 	}
 
-	registry, err := NewInvocationRegistry([]InvocationImplementation{
-		sourceInvocation,
-		queryInvocation,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{
+			sourceInvocation,
+			queryInvocation,
+		},
+	)
 	return registry, sourceContract, sourceProvider, queryContract, queryProvider, queryExecutor
 }
 
@@ -227,10 +227,10 @@ func TestGenericInvocationRejectsContractShapeDriftBeforeDomainCall(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil {
-		t.Fatal(err)
-	}
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	payload, err := json.Marshal(SourceAdapterRequest{
 		Format:                xeadsource.FormatXead,
 		SourceBytes:           []byte(`<System FormatVersion="1.2"/>`),
@@ -266,10 +266,10 @@ func TestGenericInvocationRejectsSameShapeNameWithDifferentSchemaFingerprint(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil {
-		t.Fatal(err)
-	}
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	payload, err := json.Marshal(SourceAdapterRequest{
 		Format:                xeadsource.FormatXead,
 		SourceBytes:           []byte(`<System FormatVersion="1.2"/>`),
@@ -379,10 +379,10 @@ func TestInvocationPayloadCodecIsContractScopedRatherThanJSONHardCoded(t *testin
 			return append([]byte(nil), payload...), nil
 		},
 	}
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil {
-		t.Fatal(err)
-	}
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	payload := []byte{0x00, 0xff, 0x10, 0x20}
 	execution, err := registry.ResolveAndInvoke(
 		context.Background(),
@@ -504,10 +504,10 @@ func TestGenericInvocationRejectsResolvedContractWithoutInvocationShape(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil {
-		t.Fatal(err)
-	}
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	_, err = registry.ResolveAndInvoke(
 		context.Background(),
 		sourceAdapterResolveInput(contract, provider),
@@ -535,8 +535,10 @@ func TestInvocationRegistryRejectsMalformedShapeFingerprint(t *testing.T) {
 		t.Fatal(err)
 	}
 	implementation.RequestShapeFingerprint = "not-a-sha256"
-	if _, err := NewInvocationRegistry([]InvocationImplementation{implementation}); err == nil ||
-		!strings.Contains(err.Error(), "incomplete invocation shape") {
+	if _, err := NewInvocationRegistry(
+		[]InvocationImplementation{implementation},
+		invocationShapeAuthoritiesForTest([]InvocationImplementation{implementation}),
+	); err == nil || !strings.Contains(err.Error(), "incomplete invocation shape") {
 		t.Fatalf("malformed invocation shape fingerprint was accepted: %v", err)
 	}
 }
