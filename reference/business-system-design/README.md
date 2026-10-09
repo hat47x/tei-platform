@@ -125,6 +125,19 @@ go run ./tools/reference-business-procedure-check -review-validation-scope
 
 この表示は`reference-authoring-fixture`へ値を書き戻しません。`fixture.application`は比較する文脈に限り、Procedureの所有者を意味しません。また、差が見つかっても追加のValidationや権限、確認済みの業務規則を自動的に作成しません。既存のblocking diagnosticと`-expect-diagnostic`の判断も変更しません。
 
+正本Sourceの追跡と既存診断の互換性を確認する手順は次のとおりです。いずれも読み取り専用で、受理済みのWorkspaceを変更してはいけません。
+
+```bash
+go test ./tools/reference-business-procedure-check -count=1
+go run ./tools/reference-business-procedure-check -review-validation-scope
+go run ./tools/reference-business-procedure-check \
+  -review-validation-scope \
+  -probe reference/business-system-design/order-entry-customer-edit-conflict.json \
+  -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
+```
+
+確認点は、BP-05で`sales.order_line.line_number_positive`が`applicationOnly`に現れること、`sourceEvidence`からApplication定義とValidation定義の正本へ戻れること、そしてCustomer編集probeの既存blocking diagnosticが維持されることです。上記コマンドの**実際の実行結果は未取得**であり、完了記録は別途残します。
+
 この節は**実装候補の使い方**です。変更を含むPRのexact-headで`tools/repository-health-check.sh`がPASSし、実行記録が残るまでは「利用可能になった」とは主張しません。実証の入口と停止条件は[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)にまとめています。
 
 ## `order-entry-follow-up-procedure.json`
