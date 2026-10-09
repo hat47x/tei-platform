@@ -44,6 +44,18 @@ func TestBuildDataDesignCandidateReviewFromReferenceWorkspace(t *testing.T) {
 		packet.FirstClassAuthoringContractStatus != "unresolved" {
 		t.Fatalf("review status=%q authoring=%q", packet.ReviewStatus, packet.FirstClassAuthoringContractStatus)
 	}
+	for _, reason := range []string{
+		"current-core-has-no-first-class-business-identity-authoring-contract",
+		"semantic-extension-v0-constraint-cannot-losslessly-encode-composite-identity-components-and-scope",
+		"first-class-promotion-route-core-vs-semantic-extension-not-selected",
+		"semantic-extension-v0-is-reference-not-production-authoring-contract",
+		"authoritative-declaration-source-not-selected",
+		"semantic-extension-namespace-authority-not-selected",
+	} {
+		if !containsDataDesignCandidateReviewString(packet.FirstClassAuthoringContractReasons, reason) {
+			t.Fatalf("first-class authoring reason %q is missing: %+v", reason, packet.FirstClassAuthoringContractReasons)
+		}
+	}
 	for _, requirement := range packet.BusinessEvidenceRequirements {
 		if requirement.Status != "unresolved" {
 			t.Fatalf("business Evidence was inferred from source trace: %+v", requirement)
@@ -82,6 +94,15 @@ func TestDataDesignCandidateReviewFingerprintGuardsCachedReviewState(t *testing.
 	); err == nil || !strings.Contains(err.Error(), "candidate review fingerprint mismatch") {
 		t.Fatalf("stale candidate review fingerprint was accepted: %v", err)
 	}
+}
+
+func containsDataDesignCandidateReviewString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestDataDesignCandidateReviewRejectsStaleReferenceFingerprints(t *testing.T) {
