@@ -12,9 +12,11 @@ func sourceAdapterContract() Contract {
 		RequestSemantics:   "exact-source-bytes",
 		ResultSemantics:    "source-faithful-inventory-with-unresolved",
 		FailureSemantics:   "unsupported-or-invalid-is-not-success",
-		RequestShape:       sourceAdapterRequestShape,
-		ResultShape:        sourceAdapterResultShape,
-		PayloadCodec:       referenceJSONPayloadCodec,
+		RequestShape:            sourceAdapterRequestShape,
+		RequestShapeFingerprint: sourceAdapterRequestShapeFingerprint,
+		ResultShape:             sourceAdapterResultShape,
+		ResultShapeFingerprint:  sourceAdapterResultShapeFingerprint,
+		PayloadCodec:            referenceJSONPayloadCodec,
 		ConformanceProfile: "tei.reference.source-adapter/v0",
 	}
 }
@@ -231,9 +233,11 @@ func runtimeContract() Contract {
 		RequestSemantics:   "contract-query-with-bound-parameters",
 		ResultSemantics:    "rows-or-explicit-unresolved",
 		FailureSemantics:   "execution-error-is-not-empty-result",
-		RequestShape:       contractQueryRequestShape,
-		ResultShape:        contractQueryResultShape,
-		PayloadCodec:       referenceJSONPayloadCodec,
+		RequestShape:            contractQueryRequestShape,
+		RequestShapeFingerprint: contractQueryRequestShapeFingerprint,
+		ResultShape:             contractQueryResultShape,
+		ResultShapeFingerprint:  contractQueryResultShapeFingerprint,
+		PayloadCodec:            referenceJSONPayloadCodec,
 		ConformanceProfile: "tei.reference.contract-query-executor/v0",
 	}
 }
