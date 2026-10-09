@@ -63,7 +63,7 @@ SUI側で不足が見つかった場合は、次の順で分類します。
 
 2026-09-18時点で、実装前の準備として次を固定した。
 
-- TEI側設計基線: `plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`
+- TEI側設計基線: `plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`
 - SUI側既存handoff: `IslandHierarchyContractV1`
 - TEI側固定fixture: `reference/sui-adoption/`
   - M1 root — pass
@@ -140,7 +140,7 @@ M1 root / M2 three-levelはpass、M3 missing parent / M4 cycleはfailとして�
 
 ## 固定済みのReference設計
 
-TEI側の移管設計基線は `plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md` を参照する。
+TEI側の移管設計基線は `plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md` を参照する。
 
 SUI側では実履歴から次の3 challengeを固定済みである。
 

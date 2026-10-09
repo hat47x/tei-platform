@@ -33,6 +33,8 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移をCanonicalな意味として定義・実行・観測する設計（[ISSUE-000038](../issue/000038-business-lifecycle-semantics.md) / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026のcross-view照合をbounded proof obligationとしてDesign Synthesisの候補縮約へ接続する評価待ち設計 |
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件単位のPlugin / UI Kit / 仕様Template / Architecture Profileの構成境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
+| [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIで既存の実装を生かしながらTEIへ移行するための設計基線。 |
+| [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) | 業務手順の意味、根拠、確認範囲を評価する設計品質モデル。 |
 
 ## 関連Reference / Evaluation
 
