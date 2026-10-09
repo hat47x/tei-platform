@@ -60,12 +60,22 @@ DatabaseInstance.definition / provider
 
 取得したのは**データベース接続に関する前提情報**であって、Action、認証、画面などの実装を一つの配備物へまとめる完全な依存閉包ではない。結果には配備準備完了を表す項目自体を設けず、DB接続の観測をアプリケーション全体の構築完了と混同させない。
 
+## Command PatternからCustom Go宣言までの参照
+
+`command_probe.go`では、既存Application Patternのうち`command`を対象に、[既存のCustom Go Binding解決器](../../internal/realization/binding.go)を使用して**実装宣言までの参照**を確認する。アプリケーション境界を越える実装の取り違えや、重複したBindingは拒否する。
+
+`order_entry.submit_order → sales.order.submit → order_entry/sales.order.submit`に対して、既存の規約から`sales__order__submit.bind.go`と`TeiBindSalesOrderSubmit`という期待名を取得する。これは**生成・接続すべき実装の識別**であり、当該Go関数が実際のServerバイナリへ結合されていることの証明ではない。
+
+`command_probe_test.go`に実Workspace読取りテストと、Binding欠落・重複・Application間の越境・Pattern重複の負例を追加した。**これらの新テストは未実行**である。
+
+この段階でも、認証と認可を含むすべての呼出し、ブラウザ画面の資産、Host側のプロセス起動点、Goパッケージからバイナリへの結合の情報が残る。結果を`Derive`の実行可能な完全閉包として扱わない。
+
 ## まだ確認していないこと
 
-現時点では`order_entry`のAction実装（Custom Go等）やUI処理を、Plugin Lockで固定したCapabilityの実装と同一視できない。現行のプラグイン管理情報は**環境が要求するPlugin集合**を表すものであり、それだけでアプリケーションの実行入口からの到達可能性がわかるわけではない。
+現時点では`order_entry`のCustom Go実装宣言までの参照を読めても、UI処理や実行中のGoパッケージを、Plugin Lockで固定したCapabilityの実装と同一視できない。現行のプラグイン管理情報は**環境が要求するPlugin集合**を表すものであり、それだけでアプリケーションの実行入口からの到達可能性がわかるわけではない。
 
-まず、アプリケーションのActionと実行入口を既存Driver・Realizationへ戻って正確に対応付ける必要がある。新たな定義指紋や契約指紋を便宜的に合成して`Derive`へ渡すことはしない。
+今後は、既存Driver・Realizationから判明したCustom Goの期待名を、実際のHostコードとGoの実装パッケージへ対応付ける必要がある。新たな定義指紋や契約指紋を便宜的に合成して`Derive`へ渡すことはしない。
 
 Goコードのimport graph、静的結合、実際の実行ファイル、Browserでの権限分離、実ネットワーク接続、実DB、Desktop/Wasm/IoT、運用・監視についても検証していない。論理閉包を絞れても、同じ物理成果物内の未到達コードが除去された証拠にはならない。
 
-次の優先作業は、実際のWeb Targetの起動点と既存Realizationから**実装への参照辺**を取得し、現在のPlugin Lockが説明できる範囲と説明できない範囲を明示することである。ビルド可能な依存閉包が成立して初めて、生成バイナリの差を測定する。
+次の優先作業は、Web Targetの実際の起動点から**Goパッケージへの実参照辺**を取得し、既存Plugin LockとCustom Go実現宣言が説明できる範囲・できない範囲を明示することである。ビルド可能な依存閉包が成立して初めて、生成バイナリの差を測定する。
