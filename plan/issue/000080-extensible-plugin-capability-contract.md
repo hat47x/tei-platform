@@ -261,6 +261,8 @@ Invocation Registryはrequestを実装呼出し前に、resultを呼出し後に
 
 実shapeの正本は`tools/reference-plugin-capability-contract/shapes/`のJSONとした。Go側はこのJSONを埋め込んで読み込み、別のGo literalを正本にしない。shape artifactのissuerを変えた場合もfingerprintが変わる。
 
+fingerprintの再計算規則もartifactへ`canonicalization`として明示した。Reference v0では`required`の順序を正規化し、source JSONの空白や記述順によってidentityが変わらないようにする。canonicalization revisionが変わった場合はshape fingerprintも変わり、未対応revisionは拒否する。
+
 このincrementで、E2に残っていた「shape fingerprintが指すschema artifact」と「共通validation engine」はReference候補として具体化した。一方、issuer identityを信頼する根拠、署名、publisher trust、組織ごとの発行Authorityは未実証である。Referenceのshape languageもproduction標準へ固定しない。
 
 また、Source Adapter result等の深い構造には明示的な`any`を残している。これはschemaが完全なdomain型を代替したという意味ではない。generic Invocation境界ではwire envelopeを検査し、domain adapterが深い意味と値制約を検査する二段構成としている。
