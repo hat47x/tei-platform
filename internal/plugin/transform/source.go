@@ -1,13 +1,13 @@
 package transform
 
-const MaxSerializedSourceBytes = 8 << 20
-
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 )
+
+const MaxSerializedSourceBytes = 8 << 20
 
 // ParseSourceJSON decodes the provisional file representation of TEI's
 // deterministic transform IR. JSON is only a serialization of the TEI-owned
