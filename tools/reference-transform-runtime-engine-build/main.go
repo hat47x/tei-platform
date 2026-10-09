@@ -93,6 +93,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if !evidence.Reproducible {
+		fmt.Fprintln(os.Stderr, "transform Runtime Engine build is not reproducible")
+		os.Exit(1)
+	}
 }
 
 func run(repo, artifactOut string) (buildEvidence, error) {
@@ -155,16 +159,14 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 	if err != nil {
 		return buildEvidence{}, err
 	}
-	if firstDigest != secondDigest {
-		return buildEvidence{}, fmt.Errorf(
-			"transform Runtime Engine build is not reproducible: %s != %s",
-			firstDigest,
-			secondDigest,
-		)
-	}
-	if artifactOut != "" {
-		if err := copyVerifiedArtifactOutsideRepository(root, firstPath, artifactOut, firstDigest); err != nil {
-			return buildEvidence{}, err
+	reproducible := firstDigest == secondDigest
+	artifactDigest := ""
+	if reproducible {
+		artifactDigest = firstDigest
+		if artifactOut != "" {
+			if err := copyVerifiedArtifactOutsideRepository(root, firstPath, artifactOut, firstDigest); err != nil {
+				return buildEvidence{}, err
+			}
 		}
 	}
 
@@ -193,8 +195,8 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 		BuildSettings:        fixedGoBuildSettings(),
 		FirstArtifactDigest:  firstDigest,
 		SecondArtifactDigest: secondDigest,
-		Reproducible:         true,
-		ArtifactDigest:       firstDigest,
+		Reproducible:         reproducible,
+		ArtifactDigest:       artifactDigest,
 	}
 	out.EvidenceFingerprint, err = evidenceFingerprint(out)
 	if err != nil {
