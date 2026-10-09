@@ -209,7 +209,7 @@ func TestTransformSourceRealizerDetectsSourceDrift(t *testing.T) {
 	}
 	evidence := plugin.BootstrapConvergenceEvidence{
 		FormatVersion: plugin.BootstrapConvergenceFormatVersion,
-		Stage0Seed: plugin.BootstrapSeedEvidence{Builder: seed, TrustBoundary: "external-reference-seed"},
+		Stage0Seed:    plugin.BootstrapSeedEvidence{Builder: seed, TrustBoundary: "external-reference-seed"},
 		Stage1: plugin.BootstrapStageEvidence{
 			Stage: plugin.BootstrapStage1, Builder: seed,
 			SourceClosureDigest: digestBytes(rawSource), BuildInputFingerprint: sourceFP,
@@ -219,7 +219,7 @@ func TestTransformSourceRealizerDetectsSourceDrift(t *testing.T) {
 			Stage: plugin.BootstrapStage2, Builder: stage1Output,
 			SourceClosureDigest: digestBytes(driftedRaw), BuildInputFingerprint: sourceFP,
 			BuildPlanFingerprint: fingerprintText("stage2"),
-			Output: builderFromSource(metaSource, digestBytes(stage2.Output.Bytes)),
+			Output:               builderFromSource(metaSource, digestBytes(stage2.Output.Bytes)),
 		},
 	}
 	if _, err := plugin.EvaluateBootstrapConvergence(evidence); err == nil {

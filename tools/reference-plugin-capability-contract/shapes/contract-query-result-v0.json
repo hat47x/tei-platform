@@ -1,0 +1,40 @@
+{
+  "schema": "tei.reference.invocation-shape/v0",
+  "canonicalization": "tei.reference.invocation-shape-canonicalization/v0",
+  "id": "tei.reference.contract-query-execution.result/v0",
+  "issuer": {
+    "id": "tei.reference.plugin-capability-contract",
+    "version": "0.1.0"
+  },
+  "payloadCodec": "application/json;profile=tei-reference-v0",
+  "format": "tei.reference.json-shape/v0",
+  "root": {
+    "kind": "object",
+    "required": [
+      "Rows",
+      "Payload"
+    ],
+    "properties": {
+      "Rows": {
+        "kind": "array",
+        "items": {
+          "kind": "object",
+          "required": [
+            "Attributes"
+          ],
+          "properties": {
+            "Attributes": {
+              "kind": "object",
+              "additionalProperties": {
+                "kind": "any"
+              }
+            }
+          }
+        }
+      },
+      "Payload": {
+        "kind": "any"
+      }
+    }
+  }
+}

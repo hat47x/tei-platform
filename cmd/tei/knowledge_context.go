@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"tei/internal/knowledgecontext"
@@ -38,6 +41,172 @@ func buildKnowledgeDisclosure(
 	selection string,
 ) (knowledgecontext.DisclosureProjection, error) {
 	return knowledgecontext.BuildDisclosure(ctx, []string{selection})
+}
+
+func buildBuilderReviewPlan(
+	root, subjectKind, subjectID string,
+) (knowledgecontext.BuilderReviewPlan, error) {
+	if strings.TrimSpace(root) == "" {
+		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf("knowledge-review-plan requires -workspace")
+	}
+	kind := strings.TrimSpace(subjectKind)
+	id := strings.TrimSpace(subjectID)
+	if kind == "" || id == "" {
+		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf(
+			"knowledge-review-plan requires -subject-kind and -subject-id",
+		)
+	}
+	ctx, err := buildKnowledgeContext(root, kind, id)
+	if err != nil {
+		return knowledgecontext.BuilderReviewPlan{}, err
+	}
+	return knowledgecontext.BuildBuilderReviewPlan(ctx), nil
+}
+
+func buildBuilderReviewHandoff(
+	root, subjectKind, subjectID string,
+	requirements knowledgecontext.QualificationRequirements,
+) (knowledgecontext.BuilderReviewHandoff, error) {
+	if strings.TrimSpace(root) == "" {
+		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
+			"knowledge-review-handoff requires -workspace",
+		)
+	}
+	kind := strings.TrimSpace(subjectKind)
+	id := strings.TrimSpace(subjectID)
+	if kind == "" || id == "" {
+		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
+			"knowledge-review-handoff requires -subject-kind and -subject-id",
+		)
+	}
+
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		return knowledgecontext.BuilderReviewHandoff{}, err
+	}
+	sources, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		return knowledgecontext.BuilderReviewHandoff{}, err
+	}
+	ctx := knowledgecontext.Build(
+		loaded.World,
+		sources,
+		subject.Subject{Kind: kind, ID: id},
+	)
+	return knowledgecontext.BuildBuilderReviewHandoff(ctx, sources, requirements)
+}
+
+func buildBuilderReviewHandoffFromFile(
+	root, subjectKind, subjectID, requirementsPath string,
+) (knowledgecontext.BuilderReviewHandoff, error) {
+	if strings.TrimSpace(requirementsPath) == "" {
+		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
+			"knowledge-review-handoff requires -qualification-requirements",
+		)
+	}
+	var requirements knowledgecontext.QualificationRequirements
+	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
+		return knowledgecontext.BuilderReviewHandoff{}, err
+	}
+	return buildBuilderReviewHandoff(root, subjectKind, subjectID, requirements)
+}
+
+func buildBuilderReviewDisclosureFromFile(
+	root, subjectKind, subjectID, handoffPath string,
+) (
+	knowledgecontext.DisclosureProjection,
+	knowledgecontext.BuilderReviewHandoff,
+	error,
+) {
+	if strings.TrimSpace(root) == "" {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			fmt.Errorf("knowledge-review-disclose requires -workspace")
+	}
+	kind := strings.TrimSpace(subjectKind)
+	id := strings.TrimSpace(subjectID)
+	if kind == "" || id == "" {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			fmt.Errorf(
+				"knowledge-review-disclose requires -subject-kind and -subject-id",
+			)
+	}
+	if strings.TrimSpace(handoffPath) == "" {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			fmt.Errorf("knowledge-review-disclose requires -review-handoff")
+	}
+
+	var handoff knowledgecontext.BuilderReviewHandoff
+	if err := decodeStrictKnowledgeJSONFile(handoffPath, &handoff); err != nil {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			err
+	}
+
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			err
+	}
+	sources, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			err
+	}
+	ctx := knowledgecontext.Build(
+		loaded.World,
+		sources,
+		subject.Subject{Kind: kind, ID: id},
+	)
+	disclosure, err := knowledgecontext.BuildBuilderReviewDisclosure(
+		ctx,
+		sources,
+		handoff,
+	)
+	if err != nil {
+		return knowledgecontext.DisclosureProjection{}, handoff, err
+	}
+	return disclosure, handoff, nil
+}
+
+func checkBuilderReviewHandoffFingerprint(
+	handoff knowledgecontext.BuilderReviewHandoff,
+	expected string,
+) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if handoff.Fingerprint != expected {
+		return fmt.Errorf(
+			"Builder Review Handoff fingerprint mismatch: expected=%s current=%s",
+			expected,
+			handoff.Fingerprint,
+		)
+	}
+	return nil
+}
+
+func checkBuilderReviewPlanFingerprint(
+	plan knowledgecontext.BuilderReviewPlan,
+	expected string,
+) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if plan.Fingerprint != expected {
+		return fmt.Errorf(
+			"Builder Review Plan fingerprint mismatch: expected=%s current=%s",
+			expected,
+			plan.Fingerprint,
+		)
+	}
+	return nil
 }
 
 func checkKnowledgeDisclosureFingerprint(
@@ -124,8 +293,32 @@ func buildKnowledgeQualificationFromFile(root, subjectKind, subjectID, requireme
 		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeJSONFile(requirementsPath, &requirements); err != nil {
+	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
 		return knowledgecontext.QualificationResult{}, err
 	}
 	return buildKnowledgeQualification(root, subjectKind, subjectID, requirements)
+}
+
+func decodeStrictKnowledgeJSONFile(path string, dst any) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	decoder := json.NewDecoder(f)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		return err
+	}
+
+	var trailing any
+	err = decoder.Decode(&trailing)
+	if err == io.EOF {
+		return nil
+	}
+	if err == nil {
+		return fmt.Errorf("%s contains trailing JSON value", path)
+	}
+	return err
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -168,6 +170,339 @@ func TestCheckKnowledgeDisclosureFingerprint(t *testing.T) {
 	if err := checkKnowledgeDisclosureFingerprint(partial, partial.Fingerprint); err == nil ||
 		!strings.Contains(err.Error(), "requires complete selected Knowledge") {
 		t.Fatalf("partial disclosure allowed cached reuse: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewPlanRoutesCurrentKnowledge(t *testing.T) {
+	root := testRepositoryRoot(t)
+	plan, err := buildBuilderReviewPlan(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.ProjectionRevision != "tei.knowledge.builder-review-plan/v1" ||
+		plan.Purpose != "design-change" ||
+		plan.RoutingScope != "current-knowledge-context" ||
+		plan.Fingerprint == "" {
+		t.Fatalf("builder review plan identity is incomplete: %+v", plan)
+	}
+	for _, section := range []string{"source", "definition", "data-design", "dependencies"} {
+		if !containsKnowledgeContextString(plan.RecommendedDisclosureSections, section) {
+			t.Fatalf("builder review section %q is missing: %+v", section, plan.RecommendedDisclosureSections)
+		}
+	}
+	if len(plan.ReviewSequence) == 0 ||
+		plan.ReviewSequence[0] != "review-current-source-and-evidence" {
+		t.Fatalf("builder review sequence does not start from current Evidence: %+v", plan.ReviewSequence)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, ""); err != nil {
+		t.Fatalf("empty expected review-plan fingerprint enabled the guard: %v", err)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, plan.Fingerprint); err != nil {
+		t.Fatalf("current review-plan fingerprint was rejected: %v", err)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale review-plan fingerprint was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewPlanRoutesApplicationPatternAcrossViews(t *testing.T) {
+	root := testRepositoryRoot(t)
+	plan, err := buildBuilderReviewPlan(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, section := range []string{"source", "definition", "dependencies"} {
+		if !containsKnowledgeContextString(plan.RecommendedDisclosureSections, section) {
+			t.Fatalf("application pattern review section %q is missing: %+v", section, plan.RecommendedDisclosureSections)
+		}
+	}
+	// order_entry.customer_reference is a reference Pattern without an explicit
+	// data reference (index_test.go pins Data == ""). plan/issue/000047 forbids
+	// inferring Data from its Relation or Query, so data-design must not be offered.
+	if containsKnowledgeContextString(plan.RecommendedDisclosureSections, "data-design") {
+		t.Fatalf("data-design was inferred for a pattern without explicit data: %+v", plan.RecommendedDisclosureSections)
+	}
+	for _, stage := range []string{
+		"review-current-source-and-evidence",
+		"review-current-definition",
+		"review-dependencies-and-impact",
+		"review-cross-view-constraints-authority-and-known-conflicts",
+	} {
+		if !containsKnowledgeContextString(plan.ReviewSequence, stage) {
+			t.Fatalf("application pattern review stage %q is missing: %+v", stage, plan.ReviewSequence)
+		}
+	}
+	if containsKnowledgeContextString(plan.ReviewSequence, "review-data-design-and-its-review-protocol") {
+		t.Fatalf("data-design review stage was offered without data-design: %+v", plan.ReviewSequence)
+	}
+	if !containsKnowledgeContextString(
+		plan.AuthorityLimits,
+		"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
+	) {
+		t.Fatalf("builder review scope limit is missing: %+v", plan.AuthorityLimits)
+	}
+}
+
+func TestBuildBuilderReviewHandoffQualifiesBeforeDisclosure(t *testing.T) {
+	root := testRepositoryRoot(t)
+	handoff, err := buildBuilderReviewHandoffFromFile(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+		filepath.Join(
+			root,
+			"reference",
+			"business-system-design",
+			"order-entry-customer-reference-review-qualification.json",
+		),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.ProjectionRevision != "tei.knowledge.builder-review-handoff/v1" ||
+		handoff.Status != "qualified-for-disclosure" ||
+		handoff.Fingerprint == "" ||
+		handoff.ReviewPlanProjectionRevision != "tei.knowledge.builder-review-plan/v1" ||
+		handoff.ReviewPlanFingerprint == "" ||
+		handoff.RoutingScope != "current-knowledge-context" {
+		t.Fatalf("builder review handoff identity is incomplete: %+v", handoff)
+	}
+	if handoff.Qualification.Status != knowledgecontext.QualificationApplicable ||
+		len(handoff.Qualification.Evidence) == 0 ||
+		len(handoff.Qualification.DependencyEvidence) == 0 {
+		t.Fatalf("builder review handoff lost qualification Evidence: %+v", handoff.Qualification)
+	}
+	for _, section := range []string{"source", "definition", "dependencies"} {
+		if !containsKnowledgeContextString(handoff.SelectedSections, section) {
+			t.Fatalf("qualified review section %q is missing: %+v", section, handoff.SelectedSections)
+		}
+	}
+	if containsKnowledgeContextString(handoff.SelectedSections, "data-design") {
+		t.Fatalf("data-design was disclosed for a pattern without explicit data: %+v", handoff.SelectedSections)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, ""); err != nil {
+		t.Fatalf("empty expected handoff fingerprint enabled the guard: %v", err)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, handoff.Fingerprint); err != nil {
+		t.Fatalf("current handoff fingerprint was rejected: %v", err)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale handoff fingerprint was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewHandoffKeepsUnknownQualificationBlocked(t *testing.T) {
+	root := testRepositoryRoot(t)
+	handoff, err := buildBuilderReviewHandoff(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"missing.example",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "blocked-unresolved" ||
+		handoff.Qualification.Status != knowledgecontext.QualificationUnknown {
+		t.Fatalf("unknown qualification became disclosable: %+v", handoff)
+	}
+	if len(handoff.Qualification.Reasons) == 0 {
+		t.Fatalf("blocked handoff lost qualification reasons: %+v", handoff.Qualification)
+	}
+}
+
+func TestBuildBuilderReviewHandoffRequiresQualificationRequirements(t *testing.T) {
+	if _, err := buildBuilderReviewHandoffFromFile(
+		"unused",
+		"application-pattern",
+		"order_entry.customer_reference",
+		"",
+	); err == nil || !strings.Contains(err.Error(), "requires -qualification-requirements") {
+		t.Fatalf("missing qualification requirements were accepted: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileUsesQualifiedCurrentHandoff(t *testing.T) {
+	root := testRepositoryRoot(t)
+	workspacePath := filepath.Join(root, "reference", "workspace")
+	requirementsPath := filepath.Join(
+		root,
+		"reference",
+		"business-system-design",
+		"order-entry-customer-reference-review-qualification.json",
+	)
+	handoff, err := buildBuilderReviewHandoffFromFile(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		requirementsPath,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "qualified-for-disclosure" {
+		t.Fatalf("fixture handoff status=%q", handoff.Status)
+	}
+
+	raw, err := json.Marshal(handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffPath := filepath.Join(t.TempDir(), "review-handoff.json")
+	if err := os.WriteFile(handoffPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	disclosure, loadedHandoff, err := buildBuilderReviewDisclosureFromFile(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		handoffPath,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loadedHandoff.Fingerprint != handoff.Fingerprint {
+		t.Fatalf(
+			"review handoff identity changed while loading: got=%s want=%s",
+			loadedHandoff.Fingerprint,
+			handoff.Fingerprint,
+		)
+	}
+	if disclosure.Status != "complete" ||
+		len(disclosure.UnavailableSections) != 0 ||
+		len(disclosure.OmittedAvailableSections) != 0 {
+		t.Fatalf("qualified review disclosure is incomplete: %+v", disclosure)
+	}
+	for _, section := range handoff.SelectedSections {
+		if !containsKnowledgeContextString(disclosure.DisclosedSections, section) {
+			t.Fatalf(
+				"qualified section %q was not disclosed: %+v",
+				section,
+				disclosure.DisclosedSections,
+			)
+		}
+	}
+	if err := checkBuilderReviewHandoffFingerprint(
+		loadedHandoff,
+		handoff.Fingerprint,
+	); err != nil {
+		t.Fatalf("current handoff fingerprint was rejected: %v", err)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(
+		disclosure,
+		disclosure.Fingerprint,
+	); err != nil {
+		t.Fatalf("current qualified disclosure fingerprint was rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileRejectsBlockedHandoff(t *testing.T) {
+	root := testRepositoryRoot(t)
+	workspacePath := filepath.Join(root, "reference", "workspace")
+	handoff, err := buildBuilderReviewHandoff(
+		workspacePath,
+		"semantic-data",
+		"missing.example",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "blocked-unresolved" {
+		t.Fatalf("fixture handoff status=%q", handoff.Status)
+	}
+
+	raw, err := json.Marshal(handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffPath := filepath.Join(t.TempDir(), "blocked-review-handoff.json")
+	if err := os.WriteFile(handoffPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = buildBuilderReviewDisclosureFromFile(
+		workspacePath,
+		"semantic-data",
+		"missing.example",
+		handoffPath,
+	)
+	if err == nil || !strings.Contains(err.Error(), "blocked by handoff status") {
+		t.Fatalf("blocked handoff disclosed Knowledge: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileRequiresHandoff(t *testing.T) {
+	_, _, err := buildBuilderReviewDisclosureFromFile(
+		"unused",
+		"application-pattern",
+		"order_entry.customer_reference",
+		"",
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires -review-handoff") {
+		t.Fatalf("missing review handoff was accepted: %v", err)
+	}
+}
+
+func TestStrictKnowledgeJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) {
+	dir := t.TempDir()
+
+	unknownPath := filepath.Join(dir, "unknown.json")
+	if err := os.WriteFile(
+		unknownPath,
+		[]byte(`{"expectedKind":"semantic-data","accepted":true}`),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	var requirements knowledgecontext.QualificationRequirements
+	if err := decodeStrictKnowledgeJSONFile(unknownPath, &requirements); err == nil ||
+		!strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("unknown qualification field was not rejected: %v", err)
+	}
+
+	trailingPath := filepath.Join(dir, "trailing.json")
+	if err := os.WriteFile(
+		trailingPath,
+		[]byte(`{"expectedKind":"semantic-data"} {"accepted":true}`),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	requirements = knowledgecontext.QualificationRequirements{}
+	if err := decodeStrictKnowledgeJSONFile(trailingPath, &requirements); err == nil ||
+		!strings.Contains(err.Error(), "trailing JSON value") {
+		t.Fatalf("trailing qualification JSON was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewPlanRequiresWorkspaceAndSubject(t *testing.T) {
+	if _, err := buildBuilderReviewPlan("", "semantic-data", "sales.order_line"); err == nil ||
+		!strings.Contains(err.Error(), "knowledge-review-plan requires -workspace") {
+		t.Fatalf("empty workspace was not rejected clearly: %v", err)
+	}
+	if _, err := buildBuilderReviewPlan("unused", "", "sales.order_line"); err == nil ||
+		!strings.Contains(err.Error(), "requires -subject-kind and -subject-id") {
+		t.Fatalf("empty subject kind was not rejected clearly: %v", err)
+	}
+	if _, err := buildBuilderReviewPlan("unused", "semantic-data", ""); err == nil ||
+		!strings.Contains(err.Error(), "requires -subject-kind and -subject-id") {
+		t.Fatalf("empty subject id was not rejected clearly: %v", err)
 	}
 }
 

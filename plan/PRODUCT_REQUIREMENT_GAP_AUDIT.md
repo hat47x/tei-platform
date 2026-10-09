@@ -85,7 +85,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-013 | **Partial Evidence** | PAS-04 | Gate C contract、baseline `R` / Target build `T`分離、Target Capability / Execution-Trust仮説、First Web Target `T1`のactual Evidence（Gate C Ready、`T = 0ba87a4`） | Second Targetとの比較が無く、Target-neutralityは1 Targetだけでは示せない |
 | RQ-014 | **Partial Evidence** | PAS-02 | browse / record / reference / header-detail / commandをApplication intentとして実証 | 複数Application / Targetでの再利用Evidence |
 | RQ-015 | **Design Only** | PAS-06 | knowledge-first原則、read-only exploration計画、derived cognition研究境界 | Gate C後のexploration actual Reference |
-| RQ-016 | **Design Only** | PAS-06 | Proposal / Decision分離、suppression方針、autonomy / authority分離 | Proposal / Decision / suppressionの実UX / Evidence |
+| RQ-016 | **Partial Evidence** | PAS-06 | Proposal / Decision分離、suppression方針、autonomy / authority分離。2026-10-09、`reference-shared-acceptance`の`confirm-record` / `confirm-check` / `confirmations`が、答えた確認を前提のfingerprintつきで`.tei/confirmations/`へ記録し、前提が同じなら再確認せず、変わった・記録が読めない・履歴が分岐・答えが人によるものでないときは確認を出し、種類単位の抑制と解除を新しい記録として足せることをtestで固定した（ISSUE-000074、暫定採用）。2026-10-10、退けた提案を`rejected-proposal`として`reject`の決定記録へ結び、前提が同じ人の退けは再び確認せず、前提が変わった・AIが退けた場合は確認を出すことをtestで固定した（暫定） | 退けたProposalの記録は暫定実装（`linkedDecision`で、同じ候補を退けた`reject`の決定記録へ結ぶ。結び先が同じ候補の退けであることは検査する）。提案の同一性はcandidateFingerprintで、baseModelRevisionを含むため、model revisionが変わって出し直した提案は別identityとして確認が再び出る。`basisSubjects`は運用者の入力で、候補が触れたsubjectとは照合していない（reject決定が触れたsubjectを持たないため）。`decidedBy`は自己申告で、人であることは機械的に担保していない。確認を出すStudio / AI側が`confirm-check`を呼ぶ面が無く、人が抑制の一覧を見て解除したactual UX / Evidenceが無い。前提はfile単位で、subject単位ではない。owner review未了 |
 | RQ-017 | **Partial Evidence** | PAS-01 | deterministic generated artifact、native source authority、Shared Acceptance設計 | Studio / AI / Target間で二重管理を作らないE2E |
 | RQ-018 | **Strong Evidence** | PAS-02 | Business Result / Execution Error / separate Observation read | Target Projectionで同境界を維持するEvidence |
 | RQ-019 | **Strong Evidence** | PAS-05 | Permission Grant、Resource Broker / Lease、Sandbox Profile、Host material分離 | production-grade enforcementの拡張 |
@@ -120,7 +120,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-021
 - RQ-022
 
-### Partial Evidence — 15
+### Partial Evidence — 16
 
 - RQ-004
 - RQ-005
@@ -130,6 +130,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-011
 - RQ-013
 - RQ-014
+- RQ-016
 - RQ-017
 - RQ-023
 - RQ-025
@@ -138,11 +139,10 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-028
 - RQ-029
 
-### Design Only — 9
+### Design Only — 8
 
 - RQ-010
 - RQ-015
-- RQ-016
 - RQ-024
 - RQ-030
 - RQ-031
@@ -177,6 +177,16 @@ Semantic Lock candidateではsemantic replayとcurrent Evidence bindingも分離
 2026-10-05のEvaluator scope追記では、A5のEnvironment依存をReference codeへ反映した。SUI Stage 0のhierarchy shadow validatorを共有packageへ切り出し、Semantic Extension側でも同じ実装を利用する。ConstraintはSemantic Interface evaluator requirementを明示し、Interface / provider / exact contract / conformance profileが解決できない場合はcatalogへ有効Constraintとして出さない。Validation implementationはEnvironmentのCapability negotiationではなく、exact Semantic Set fingerprintへboundした`SemanticValidationPlan`で全件明示し、implementation identity / artifact digestを固定する。M1 / M2 / M3 / M4をPlan経由でpressureし、Conformance欠落、別implementation差し替え、cancel / errorをfail openにしないcandidateを追加した。Plan / Evaluation EvidenceはCLI・JSONで再入場可能にしたが、exact-head test / health gateとRuntime Plugin実行境界は未実証なのでRQ-032 / 033はDesign Onlyを維持する。
 
 2026-10-05のAI / Tool re-entry candidateでは、既存の`knowledgecontext.Build`を変更せず、対象subjectへresolved Semantic Catalogを重ねる`Subject Semantic Context`を追加した。ContextはSemantic Set / Evidence fingerprint、Extension Source / version / root dependency path、Constraint / Interface / evaluator provider、Connection、subject固有UnresolvedとSemantic Set全体のUnresolvedを保持する。Evaluator bindingを入力した場合だけValidation Planの対象bindingを含め、未指定時はimplementationを推測しない。Source Evidence候補であり、exact-head test / health gate未取得のためRQ-033はDesign Onlyを維持する。
+
+2026-10-09のISSUE-000080 E1 candidateでは、Core固定`CapabilityKind`を追加せずに解決した`authoring.source-adapter.xead`から、import可能な`internal/xeadsource`の実readerを呼ぶconsumer経路を追加した。consumerは完成済みのResolutionを信用せず、実行時にConformance EvidenceとAuthority scopeを含むresolverを通し、選ばれたexact Provider artifactがRegistryへ存在する場合だけ実行する。exact source digest、未知constructの保持、unresolved candidate、Canonical AcceptanceとRuntime Authorityを与えない境界をpressureする。あわせて、実consumer側だけがRMT Source Adapterより弱い分類経路にならないよう、`InspectWithContract`へsource profile Gateを追加し、重複expanded-name属性とroot外の非空白textをfail closedにした。Repository正本の転写契約から現在のXead `System / 1.2`分類へ到達するtestも追加した。ただし`tools/reference-xead-source-adapter`のPublication Receiptやpublic-safe Evidence contractを代替せず、二つのreader surfaceの統合も未判断である。exact-head focused test / full Repository healthは未取得のためRQ-032 / RQ-033のtierは変更しない。
+
+2026-10-09のISSUE-000080 E2 candidateでは、Capability専用Registryの増殖を避けるため`InvocationRegistry`を追加した。Hostはresolverが選んだexact Provider、request / result shape identityとfingerprint、payload codec identity、opaque payloadだけを扱う。既存Source Adapter consumerをこの共通境界へ移し、第二consumerとして`driver.ContractQueryExecutor`も同じRegistryから呼び出す。Source AdapterとContract QueryのAuthority scopeは統合しない。Reference JSON codec以外のopaque binary payloadも通し、codecをCore標準へ固定しないpressureを置いた。同じshape名のままwire schemaが変わるcaseはexact shape fingerprint不一致として拒否する。ただしfingerprintが指すschema artifactの正本、schema発行Authority、validation engine、production Permission / Resource / Sandbox、Target別transportは未実証である。コード変更のexact-head Gateも未取得のためEvidence tierは変更しない。
+
+2026-10-09のE3 candidateでは、shape fingerprintの参照先を埋め込みJSON artifactとして明示した。Capability Contractはshape ID / fingerprint / issuerを保持し、Implementationが提示するartifactと一致する場合だけ実行する。Invocation Registryはrequestを呼出し前、resultを呼出し後にReferenceのgeneric shape validatorで検査する。未知field、必須field欠落、JSON型不一致、artifact drift、issuer driftをnegative controlにした。shape artifactはJSONを正本とし、Go literalとの二重管理を避ける。ただしpublisher trust、署名、組織ごとのschema発行Authority、production schema formatは未実証であり、exact-head Gateも未取得のためRQ-032 / RQ-033のtierは変更しない。
+
+同日のE4 candidateでは、result schema validationが実装呼出し後になる点を敵対的に評価した。書込みCapabilityでは、result reject後に外部副作用だけが残り得る。このためReferenceのgeneric Invocationは`read-only` effectだけを実行し、`mutating` contractはdomain implementation呼出し前に拒否する。mutating Capabilityを製品として禁止する決定ではなく、transaction / prepare-commit / compensation / retry / result validation failureの扱いが未設計であることを明示する停止条件である。production Permission / Sandboxはこの原子性問題の代替にならない。Evidence tierは変更しない。
+
+同日のE5 candidateでは、shape artifact内のissuer自己申告をAuthorityへ昇格させないため、issuer / shape ID / exact fingerprintへ結び付くAccepted Shape Authority EvidenceをInvocation Registryの別入力として要求した。Evidence無し、stale shape fingerprint、同一shapeへの競合Evidenceをfail closedにし、実行結果へ利用Evidence fingerprintを残す。Evidence更新だけではCapability resolution identityを変えない。一方、Evidenceの発行Authority、署名、publisher trust、freshness / revocationは未実証であり、Evidence fingerprintだけをtrust proofにはしない。RQ-032 / RQ-033のtierは変更しない。
 ## 6. Cross-cutting Product Quality監査
 
 Quality concernを新しいRequirementへ分割せず、既存RequirementのEvidence completenessとして監査します。
