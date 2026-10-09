@@ -15,6 +15,7 @@ import (
 type JSONDocumentStore struct {
 	mu         sync.Mutex
 	revision   string
+	baseRevision string
 	documentID string
 	document   []byte
 	writes     int
@@ -34,6 +35,7 @@ func NewScopedJSONDocumentStore(documentID, revision string, document []byte) *J
 	return &JSONDocumentStore{
 		documentID: documentID,
 		revision:   revision,
+		baseRevision: revision,
 		document:   append([]byte(nil), document...),
 	}
 }
@@ -97,9 +99,11 @@ func (s *JSONDocumentStore) Commit(_ context.Context, in Intent) (string, error)
 		}
 		found = true
 		var currentX, currentY float64
+		if string(cards[i]["x"]) == "null" { return "", fmt.Errorf("%w: null card x coordinate", ErrInvalid) }
 		if err := json.Unmarshal(cards[i]["x"], &currentX); err != nil {
 			return "", fmt.Errorf("%w: invalid card x coordinate", ErrInvalid)
 		}
+		if string(cards[i]["y"]) == "null" { return "", fmt.Errorf("%w: null card y coordinate", ErrInvalid) }
 		if err := json.Unmarshal(cards[i]["y"], &currentY); err != nil {
 			return "", fmt.Errorf("%w: invalid card y coordinate", ErrInvalid)
 		}
@@ -134,6 +138,6 @@ func (s *JSONDocumentStore) Commit(_ context.Context, in Intent) (string, error)
 	}
 	s.document = next
 	s.writes++
-	s.revision = fmt.Sprintf("r%d", s.writes+1)
+	s.revision = fmt.Sprintf("%s:%d", s.baseRevision, s.writes)
 	return s.revision, nil
 }
