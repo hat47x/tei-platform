@@ -11,7 +11,7 @@
 - Product Requirementの正本: [`../../requirements/TEI_PRODUCT_REQUIREMENTS.md`](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)
 - Business設計境界: [`../../docs/business-system-design.md`](../../docs/business-system-design.md)
 - RQ-025 / RQ-026解釈: [`../../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
-- Business Procedure品質モデル: [`../BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
+- Business Procedure品質モデル: [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
 - Design Synthesis上位目標: [`../DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md)
 
 主にRQ-026の「異なる視点から相互検証できること」と、未採用DSR-02 / DSR-12の候補縮約を接続するための設計仮説です。
