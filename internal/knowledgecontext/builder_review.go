@@ -13,6 +13,7 @@ const builderReviewPlanProjectionRevision = "tei.knowledge.builder-review-plan/v
 type BuilderReviewPlan struct {
 	ProjectionRevision            string          `json:"projectionRevision"`
 	Fingerprint                   string          `json:"fingerprint"`
+	Purpose                       string          `json:"purpose"`
 	Subject                       subject.Subject `json:"subject"`
 	RecommendedDisclosureSections []string        `json:"recommendedDisclosureSections,omitempty"`
 	ReviewSequence                []string        `json:"reviewSequence"`
@@ -66,6 +67,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 
 	result := BuilderReviewPlan{
 		ProjectionRevision:            builderReviewPlanProjectionRevision,
+		Purpose:                       "design-change",
 		Subject:                       ctx.Subject,
 		RecommendedDisclosureSections: recommended,
 		ReviewSequence:                reviewSequence,
