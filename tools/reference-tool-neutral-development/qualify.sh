@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EXPECTED_HEAD=""
 EXPECTED_MAIN=""
+RECEIPT_FILE=""
 
 usage() {
   cat <<'EOF'
@@ -15,6 +16,7 @@ against one unchanged clean checkout.
 Options:
   --expected-head SHA   fail unless current HEAD is exactly SHA
   --expected-main SHA   fail unless origin/main is exactly SHA and candidate contains it
+  --receipt-file PATH   write a machine-readable PASS receipt outside the repository
   -h, --help            show this help
 
 Before using --expected-main, refresh remote refs with the repository's normal
@@ -35,6 +37,11 @@ while [[ "$#" -gt 0 ]]; do
       EXPECTED_MAIN="$2"
       shift 2
       ;;
+    --receipt-file)
+      [[ "$#" -ge 2 ]] || { echo "error: --receipt-file requires PATH" >&2; exit 2; }
+      RECEIPT_FILE="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -48,6 +55,25 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 cd "$ROOT"
+
+if [[ -n "$RECEIPT_FILE" && ( -z "$EXPECTED_HEAD" || -z "$EXPECTED_MAIN" ) ]]; then
+  echo "error: --receipt-file requires both --expected-head and --expected-main" >&2
+  exit 2
+fi
+
+if [[ -n "$RECEIPT_FILE" ]]; then
+  RECEIPT_DIR="$(cd "$(dirname "$RECEIPT_FILE")" 2>/dev/null && pwd -P)" || {
+    echo "error: receipt parent directory does not exist" >&2
+    exit 2
+  }
+  RECEIPT_FILE="$RECEIPT_DIR/$(basename "$RECEIPT_FILE")"
+  case "$RECEIPT_FILE" in
+    "$ROOT"|"$ROOT"/*)
+      echo "error: receipt file must be outside the TEI checkout" >&2
+      exit 2
+      ;;
+  esac
+fi
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "error: run from a TEI Git checkout" >&2
@@ -135,6 +161,43 @@ assert_unchanged() {
   fi
 }
 
+write_receipt() {
+  local path="$1"
+  local tmp="${path}.tmp.$"
+  local git_version go_version python_version
+
+  git_version="$(git --version | tr '\n' ' ')"
+  go_version="$(go version | tr '\n' ' ')"
+  if command -v python3 >/dev/null 2>&1; then
+    python_version="$(python3 --version 2>&1 | tr '\n' ' ')"
+  else
+    python_version="unavailable"
+  fi
+
+  {
+    printf 'format=tei-rq034-qualification-v1\n'
+    printf 'candidate-head=%s\n' "$CANDIDATE_HEAD"
+    printf 'origin-main=%s\n' "$ORIGIN_MAIN"
+    printf 'expected-main=%s\n' "$EXPECTED_MAIN"
+    printf 'candidate-contains-expected-main=true\n'
+    printf 'clean-pre=PASS\n'
+    printf 'repository-health=PASS\n'
+    printf 'tool-neutral-development-reference=PASS\n'
+    printf 'clean-post=PASS\n'
+    printf 'qualification=PASS\n'
+if [[ -n "$RECEIPT_FILE" ]]; then
+  write_receipt "$RECEIPT_FILE"
+  printf 'receipt-file=%s\n' "$RECEIPT_FILE"
+fi
+    printf 'repository-health-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/repository-health-check.sh")"
+    printf 'qualify-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/qualify.sh")"
+    printf 'reference-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/run.sh")"
+    printf 'git-version=%s\n' "$git_version"
+    printf 'go-version=%s\n' "$go_version"
+    printf 'python-version=%s\n' "$python_version"
+  } > "$tmp"
+  mv "$tmp" "$path"
+}
 echo "==> full repository health" >&2
 "$ROOT/tools/repository-health-check.sh"
 assert_unchanged "repository health"
