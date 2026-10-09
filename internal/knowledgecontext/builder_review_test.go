@@ -118,15 +118,23 @@ func TestBuilderReviewPlanKeepsSourceReviewWhenSourceKnowledgeIsUnavailable(t *t
 	}
 }
 
-func TestDisclosureCarriesDetachedBuilderReviewPlan(t *testing.T) {
+func TestDisclosureRederivesBuilderReviewPlanFromCurrentKnowledge(t *testing.T) {
 	ctx := Context{
 		Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
 		DataDesign: &DataDesignContext{
 			ProjectionRevision: dataDesignProjectionRevision,
 			Data:               "sales.order_line",
 		},
+		BuilderReviewPlan: BuilderReviewPlan{
+			ProjectionRevision: "stale",
+			RecommendedDisclosureSections: []string{
+				"source",
+			},
+			ReviewSequence:  []string{"stale"},
+			StopRules:       []string{"stale"},
+			AuthorityLimits: []string{"stale"},
+		},
 	}
-	ctx.BuilderReviewPlan = buildBuilderReviewPlan(ctx)
 
 	got, err := BuildDisclosure(ctx, []string{"data-design"})
 	if err != nil {
@@ -135,18 +143,35 @@ func TestDisclosureCarriesDetachedBuilderReviewPlan(t *testing.T) {
 	if got.BuilderReviewPlan.ProjectionRevision != builderReviewPlanProjectionRevision ||
 		!reflect.DeepEqual(
 			got.BuilderReviewPlan.RecommendedDisclosureSections,
-			ctx.BuilderReviewPlan.RecommendedDisclosureSections,
+			[]string{"data-design"},
 		) {
-		t.Fatalf("builder review plan was not preserved in disclosure: %+v", got.BuilderReviewPlan)
+		t.Fatalf("disclosure reused stale builder review plan: %+v", got.BuilderReviewPlan)
 	}
+	if containsBuilderReviewString(got.BuilderReviewPlan.ReviewSequence, "stale") ||
+		containsBuilderReviewString(got.BuilderReviewPlan.StopRules, "stale") ||
+		containsBuilderReviewString(got.BuilderReviewPlan.AuthorityLimits, "stale") {
+		t.Fatalf("stale builder review metadata leaked into disclosure: %+v", got.BuilderReviewPlan)
+	}
+}
 
-	got.BuilderReviewPlan.ReviewSequence[0] = "mutated"
-	got.BuilderReviewPlan.StopRules[0] = "mutated"
-	got.BuilderReviewPlan.AuthorityLimits[0] = "mutated"
-	if ctx.BuilderReviewPlan.ReviewSequence[0] == "mutated" ||
-		ctx.BuilderReviewPlan.StopRules[0] == "mutated" ||
-		ctx.BuilderReviewPlan.AuthorityLimits[0] == "mutated" {
-		t.Fatalf("disclosed builder review plan aliases source Context: source=%+v disclosed=%+v", ctx.BuilderReviewPlan, got.BuilderReviewPlan)
+func TestCloneBuilderReviewPlanDetachesSlices(t *testing.T) {
+	source := buildBuilderReviewPlan(Context{
+		DataDesign: &DataDesignContext{
+			ProjectionRevision: dataDesignProjectionRevision,
+			Data:               "sales.order_line",
+		},
+	})
+	got := cloneBuilderReviewPlan(source)
+
+	got.RecommendedDisclosureSections[0] = "mutated"
+	got.ReviewSequence[0] = "mutated"
+	got.StopRules[0] = "mutated"
+	got.AuthorityLimits[0] = "mutated"
+	if source.RecommendedDisclosureSections[0] == "mutated" ||
+		source.ReviewSequence[0] == "mutated" ||
+		source.StopRules[0] == "mutated" ||
+		source.AuthorityLimits[0] == "mutated" {
+		t.Fatalf("cloned builder review plan aliases source slices: source=%+v clone=%+v", source, got)
 	}
 }
 
