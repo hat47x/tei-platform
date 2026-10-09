@@ -275,7 +275,7 @@ func decodeWireValue(w wireValue, limits transform.Limits, depth int, budget *wi
 		if w.BytesBase64 == nil || wireFieldCount(w) != 1 {
 			return transform.Value{}, fmt.Errorf("bytes wire value requires only bytesBase64")
 		}
-		decodedLen := base64.StdEncoding.DecodedLen(len(*w.BytesBase64))
+		decodedLen := strictBase64DecodedLength(*w.BytesBase64)
 		if decodedLen > limits.MaxInputBytes-budget.bytes {
 			return transform.Value{}, fmt.Errorf("wire values exceed maxInputBytes")
 		}
@@ -383,6 +383,19 @@ func encodeWireValue(value transform.Value, limits transform.Limits, depth int) 
 	default:
 		return wireValue{}, fmt.Errorf("unsupported output value kind %q", value.Kind)
 	}
+}
+
+func strictBase64DecodedLength(encoded string) int {
+	decodedLen := base64.StdEncoding.DecodedLen(len(encoded))
+	if strings.HasSuffix(encoded, "==") {
+		decodedLen -= 2
+	} else if strings.HasSuffix(encoded, "=") {
+		decodedLen--
+	}
+	if decodedLen < 0 {
+		return 0
+	}
+	return decodedLen
 }
 
 func wireFieldCount(w wireValue) int {
