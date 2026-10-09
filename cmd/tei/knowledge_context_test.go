@@ -192,6 +192,7 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 		"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
 		"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
 		"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
+		"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
 		"distinguish-functional-dependency-from-composite-domain-constraint",
 		"treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
 		"preserve-unresolved-when-required-business-evidence-is-missing",
