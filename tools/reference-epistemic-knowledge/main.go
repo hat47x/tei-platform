@@ -11,7 +11,7 @@ import (
 const usage = `usage:
   reference-epistemic-knowledge -corpus FILE -context FILE [-out FILE]
   reference-epistemic-knowledge -corpus FILE -context FILE -review-command FILE [-out FILE]
-  reference-epistemic-knowledge -corpus FILE -context FILE -detail-query FILE [-out FILE]
+  reference-epistemic-knowledge -corpus FILE -context FILE -detail-query FILE [-detail-access FILE] [-out FILE]
 `
 
 func main() {
@@ -26,6 +26,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	outPath := flags.String("out", "", "output JSON file; stdout when omitted")
 	reviewCommandPath := flags.String("review-command", "", "optional human review mutation command JSON")
 	detailQueryPath := flags.String("detail-query", "", "optional epistemic detail query JSON")
+	detailAccessPath := flags.String("detail-access", "", "optional detail access context JSON; requires detail-query")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -35,6 +36,11 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	if *reviewCommandPath != "" && *detailQueryPath != "" {
 		fmt.Fprintln(stderr, "review-command and detail-query are mutually exclusive")
+		fmt.Fprint(stderr, usage)
+		return 2
+	}
+	if *detailAccessPath != "" && *detailQueryPath == "" {
+		fmt.Fprintln(stderr, "detail-access requires detail-query")
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
@@ -89,7 +95,20 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		result, err := resolveEpistemicDetail(corpus, context, query)
+		access := TransportAccess{}
+		if *detailAccessPath != "" {
+			accessData, err := os.ReadFile(*detailAccessPath)
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+			access, err = decodeStrict[TransportAccess](accessData)
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+		}
+		result, err := resolveEpistemicDetail(corpus, context, query, access)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
