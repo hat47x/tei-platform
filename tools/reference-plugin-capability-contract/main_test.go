@@ -43,22 +43,19 @@ func invocationShapeAuthorityEvidenceForTest(
 	artifact InvocationShapeArtifact,
 	marker string,
 ) InvocationShapeAuthorityEvidence {
-	return InvocationShapeAuthorityEvidence{
+	value := InvocationShapeAuthorityEvidence{
+		Schema:           invocationShapeAuthorityEvidenceSchema,
 		Issuer:           artifact.Issuer,
 		ShapeID:          artifact.ID,
 		ShapeFingerprint: invocationShapeFingerprint(artifact),
-		EvidenceFingerprint: fingerprint(struct {
-			Marker           string `json:"marker"`
-			Issuer           InvocationShapeIssuer `json:"issuer"`
-			ShapeID          string `json:"shapeId"`
-			ShapeFingerprint string `json:"shapeFingerprint"`
+		AuthoritySourceFingerprint: fingerprint(struct {
+			Marker string `json:"marker"`
 		}{
-			Marker:           marker,
-			Issuer:           artifact.Issuer,
-			ShapeID:          artifact.ID,
-			ShapeFingerprint: invocationShapeFingerprint(artifact),
+			Marker: marker,
 		}),
 	}
+	value.EvidenceFingerprint = invocationShapeAuthorityEvidenceFingerprint(value)
+	return value
 }
 
 func invocationShapeAuthoritiesForTest(
