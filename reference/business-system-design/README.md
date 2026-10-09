@@ -101,6 +101,45 @@ go run ./tools/reference-business-procedure-check
 
 これらのMatrix / diagnostic出力はderived Projectionです。Reference authoring fixtureへ逆書きしません。
 
+
+## Applicationと業務手順のValidation参照を比較する（評価中）
+
+受理済みApplicationのValidation宣言と、業務手順の`validation-support`ステップにある明示参照は、異なる目的を持っています。前者はApplicationの評価対象を定め、後者は業務手順側で必要とする確認を表します。**双方が常に同じ集合であるという契約はありません。**
+
+2026-10-08に受理された`sales.order_line.line_number_positive`は、`order_entry`の三つ目のValidation宣言です。現在のBP-05では別の二つのValidationが明示されているため、追加された規則が業務手順側でも必要なのか、どこまでが自動的に導出できるのかを確認する必要があります。
+
+既存checkerへ次の**任意の読み取り表示**を追加する実装候補を検証しています。
+
+~~~bash
+go run ./tools/reference-business-procedure-check -review-validation-scope
+~~~
+
+指定時のみ、従来の診断とは別に`validationScopeReview`を返す設計です。各行は、ステップ、比較対象のApplication、両側にしか現れないValidation ID、確認状態と理由からなります。加えて既存Source Indexから、Application定義と差分に現れたValidation定義の**相対Sourceパス・開始行・ファイル指紋**を`sourceEvidence`として返す候補を含みます。 業務手順側の明示参照は入力したfixtureファイルのパスを`procedureSource`で示します（このパスはCanonicalな意味IDではありません）。Sourceを一意に特定できない場合は`unresolvedSource`に対象の意味IDを残し、推測による場所の補完は行いません。 比較対象が存在しない場合、または全行が`unresolved-context`／`unresolved-reference`の場合には、追加のSource Index構築を行わず、未解決の判断をそのまま返します。参照比較が成立する行が一つでもあれば、Source Indexの検証を要求します。
+
+| 状態 | 意味 |
+| --- | --- |
+| `review-needed` | 明示参照の集合に差があり、人による適用範囲の確認が必要。自動的な不整合判定ではない |
+| `no-set-difference` | 集合には差がない。ただし業務上の意味や実行結果が一致する証拠ではない |
+| `unresolved-context` | 比較先Applicationが未指定・未発見・重複しており、比較を行わない |
+| `unresolved-reference` | Validation参照が未解決・重複するため、集合差の判定を保留する。重複IDを集合化によって隠さない |
+
+この表示は`reference-authoring-fixture`へ値を書き戻しません。`fixture.application`は比較する文脈に限り、Procedureの所有者を意味しません。また、差が見つかっても追加のValidationや権限、確認済みの業務規則を自動的に作成しません。既存のblocking diagnosticと`-expect-diagnostic`の判断も変更しません。
+
+正本Sourceの追跡と既存診断の互換性を確認する手順は次のとおりです。いずれも読み取り専用で、受理済みのWorkspaceを変更してはいけません。
+
+```bash
+go test ./tools/reference-business-procedure-check -count=1
+go run ./tools/reference-business-procedure-check -review-validation-scope
+go run ./tools/reference-business-procedure-check \
+  -review-validation-scope \
+  -probe reference/business-system-design/order-entry-customer-edit-conflict.json \
+  -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
+```
+
+確認点は、BP-05で`sales.order_line.line_number_positive`が`applicationOnly`に現れること、`sourceEvidence`からApplication定義とValidation定義の正本へ戻れること、そしてCustomer編集probeの既存blocking diagnosticが維持されることです。上記コマンドの**実際の実行結果は未取得**であり、完了記録は別途残します。
+
+この節は**実装候補の使い方**です。変更を含むPRのexact-headで`tools/repository-health-check.sh`がPASSし、実行記録が残るまでは「利用可能になった」とは主張しません。実証の入口と停止条件は[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)にまとめています。
+
 ## `order-entry-follow-up-procedure.json`
 
 同じ`order_entry.order_record`を別のBusiness Procedure文脈から利用するReference authoring fixtureです。
