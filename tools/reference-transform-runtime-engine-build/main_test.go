@@ -8,6 +8,54 @@ import (
 	"testing"
 )
 
+func TestExactRuntimeEngineIdentitySeparatesLogicalVersionFromRepositoryRevision(t *testing.T) {
+	digest := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	engine, err := exactRuntimeEngineIdentity(digest, "host/test/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(engine.ID) != engineID {
+		t.Fatalf("engine id: got %s want %s", engine.ID, engineID)
+	}
+	if engine.Version != engineVersion {
+		t.Fatalf("engine version: got %s want %s", engine.Version, engineVersion)
+	}
+	if engine.ContractVersion != engineContract {
+		t.Fatalf("engine contract: got %s want %s", engine.ContractVersion, engineContract)
+	}
+	if engine.ImplementationDigest != digest {
+		t.Fatalf("engine implementation digest: got %s want %s", engine.ImplementationDigest, digest)
+	}
+	if engine.Target != "host/test/test" {
+		t.Fatalf("engine target: got %s", engine.Target)
+	}
+
+	evidenceA := buildEvidence{
+		Schema:             evidenceSchema,
+		RepositoryRevision: "revision-a",
+		EngineID:           engineID,
+		EngineVersion:      engineVersion,
+		EngineContract:     engineContract,
+		Target:             engine.Target,
+		RuntimeEngine:      &engine,
+	}
+	evidenceB := evidenceA
+	evidenceB.RepositoryRevision = "revision-b"
+
+	if evidenceA.RuntimeEngine.Version != evidenceB.RuntimeEngine.Version {
+		t.Fatal("repository revision changed logical Runtime Engine version")
+	}
+	if evidenceA.RuntimeEngine.ImplementationDigest != evidenceB.RuntimeEngine.ImplementationDigest {
+		t.Fatal("repository revision changed exact Runtime Engine artifact identity")
+	}
+}
+
+func TestExactRuntimeEngineIdentityRejectsUnresolvedArtifact(t *testing.T) {
+	if _, err := exactRuntimeEngineIdentity("", "host/test/test"); err == nil {
+		t.Fatal("expected unresolved artifact digest to fail")
+	}
+}
+
 func TestResolveReproducibilityKeepsDivergentArtifactUnresolved(t *testing.T) {
 	ok, artifact := resolveReproducibility(
 		"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
