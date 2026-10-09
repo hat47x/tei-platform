@@ -327,6 +327,46 @@ func TestDataDesignEvidenceSearchHintsFailClosedForUnknownRequirement(t *testing
 	}
 }
 
+func TestDataDesignCandidateReviewRejectsDuplicateBusinessIdentityFingerprint(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	ctx.DataDesign.BusinessIdentityCandidates = append(
+		ctx.DataDesign.BusinessIdentityCandidates,
+		candidate,
+	)
+	ctx.DataDesign.Fingerprint = dataDesignFingerprint(ctx.DataDesign)
+
+	_, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err == nil || !strings.Contains(err.Error(), "fingerprint is not unique in current Context") {
+		t.Fatalf("duplicate business identity fingerprint was accepted: %v", err)
+	}
+}
+
+func TestDataDesignCandidateReviewRejectsDuplicateFunctionalDependencyFingerprint(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.FunctionalDependencyCandidates[0]
+	ctx.DataDesign.FunctionalDependencyCandidates = append(
+		ctx.DataDesign.FunctionalDependencyCandidates,
+		candidate,
+	)
+	ctx.DataDesign.Fingerprint = dataDesignFingerprint(ctx.DataDesign)
+
+	_, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindFunctionalDependency,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err == nil || !strings.Contains(err.Error(), "fingerprint is not unique in current Context") {
+		t.Fatalf("duplicate FD fingerprint was accepted: %v", err)
+	}
+}
+
 func TestDataDesignCandidateReviewRejectsModifiedContextWithStaleFingerprint(t *testing.T) {
 	ctx := dataDesignCandidateReviewContext(t)
 	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
