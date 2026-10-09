@@ -206,6 +206,32 @@ func TestCrossViewDoesNotTreatNamespacedAttributeAsFunctionID(t *testing.T) {
 	}
 }
 
+func TestCrossViewRejectsPartialCRUDWhenMarkerIsUnsupported(t *testing.T) {
+	doc := parseCrossViewFixture(t, `<System>
+  <Table ID="T1"/>
+  <Function ID="F1"><IOTable ID="IO1" TableID="T1" OpR="+" OpU="?"/></Function>
+  <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="0"/></TaskAction></Task>
+</System>`)
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasCrossViewEdge(projection.SourceEdges, "function-table-operation") {
+		t.Fatalf("partially understood CRUD produced a resolved source edge: %+v", projection.SourceEdges)
+	}
+	if len(projection.DerivedEdges) != 0 {
+		t.Fatalf("partially understood CRUD produced a derived action/table path: %+v", projection.DerivedEdges)
+	}
+	if !hasCrossViewUnresolved(projection.Unresolved, "iotable-operation-marker-unsupported") {
+		t.Fatalf("unsupported CRUD marker was not retained as unresolved: %+v", projection.Unresolved)
+	}
+	accounting := CrossViewPublicAccounting(projection)
+	if accounting.IOTableCount != 1 {
+		t.Fatalf("source IOTable count=%d want=1", accounting.IOTableCount)
+	}
+}
+
+
 func TestCrossViewBindsProjectionToSourceContractAndRule(t *testing.T) {
 	sourceA := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpR="+"/></Function></System>`
 	sourceB := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpU="+"/></Function></System>`
