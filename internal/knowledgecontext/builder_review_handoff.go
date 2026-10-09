@@ -3,6 +3,7 @@ package knowledgecontext
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
@@ -33,6 +34,14 @@ func BuildBuilderReviewHandoff(
 	qualification, err := QualifyWithSources(ctx, sources, requirements)
 	if err != nil {
 		return BuilderReviewHandoff{}, err
+	}
+	if qualification.Status == QualificationApplicable {
+		currentEvidence := authoritativeEvidenceForSubject(sources, ctx.Subject)
+		if !reflect.DeepEqual(qualification.Evidence, currentEvidence) {
+			return BuilderReviewHandoff{}, fmt.Errorf(
+				"builder review handoff rejects mixed Context and Source Index revisions",
+			)
+		}
 	}
 	return buildBuilderReviewHandoffFromQualification(plan, qualification)
 }
