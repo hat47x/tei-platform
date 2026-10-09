@@ -196,7 +196,7 @@ func TestBootstrapSeedIsExternalTrustBoundaryNotCycleNode(t *testing.T) {
 		Seeds: []BuildGraphSeed{{
 			ID: string(stage0.ID), Kind: "builder-seed", Version: stage0.Version,
 			ArtifactDigest: stage0.ArtifactDigest,
-			TrustBoundary: "trusted-stage0-seed",
+			TrustBoundary: "external-stage0-seed",
 			ToNode: "stage1", DependencyID: "builder",
 		}},
 	}
@@ -234,7 +234,7 @@ func TestBuildGraphFingerprintBindsOutputSelectorAndSeedTrustBoundary(t *testing
 		}},
 		Seeds: []BuildGraphSeed{{
 			ID: "seed", Kind: "builder-seed", Version: "1.0.0",
-			ArtifactDigest: digestD, TrustBoundary: "trusted-stage0-seed",
+			ArtifactDigest: digestD, TrustBoundary: "external-stage0-seed",
 			ToNode: "producer", DependencyID: "builder",
 		}},
 	}
