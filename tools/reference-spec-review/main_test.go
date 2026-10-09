@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -279,6 +280,66 @@ func TestREFSPEC01CustomerEditUsesExistingKnowledgeAndCheckerOutputs(t *testing.
 	}
 }
 
+func TestREFSPEC01StalePremiseUsesActualSharedAcceptancePreview(t *testing.T) {
+	root := repositoryRoot(t)
+	temp := t.TempDir()
+
+	baseCandidate, err := os.ReadFile(filepath.Join(root, "plan", "issue", "000075-practical-b", "candidate.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var candidate map[string]any
+	if err := json.Unmarshal(baseCandidate, &candidate); err != nil {
+		t.Fatal(err)
+	}
+	candidate["baseModelRevision"] = "sha256:" + strings.Repeat("0", 64)
+	candidatePath := writeReviewJSON(t, temp, "stale-candidate.json", candidate)
+
+	previewOut, previewErr, code := runReviewCommandWithExit(
+		t,
+		root,
+		"go", "run", "./tools/reference-shared-acceptance", "preview",
+		"-workspace", filepath.Join(root, "reference", "workspace"),
+		"-candidate", candidatePath,
+	)
+	if code == 0 {
+		t.Fatalf("intentionally stale candidate unexpectedly passed Preview: %s", previewOut)
+	}
+	if len(previewOut) == 0 {
+		t.Fatalf("stale Preview produced no machine-readable output: stderr=%s", previewErr)
+	}
+	previewPath := filepath.Join(temp, "preview.json")
+	if err := os.WriteFile(previewPath, previewOut, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := buildReviewPacket("ref-spec-01-stale", "", "", previewPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "review-needed" ||
+		got.Coverage.KnowledgeContext ||
+		got.Coverage.CrossView ||
+		!got.Coverage.SharedAcceptance {
+		t.Fatalf("stale packet coverage/status drifted: %+v", got)
+	}
+	if !reflect.DeepEqual(got.MissingInputs, []string{"cross-view", "knowledge-context"}) {
+		t.Fatalf("stale packet missing inputs=%v", got.MissingInputs)
+	}
+	var staleFinding *finding
+	for i := range got.Findings {
+		if got.Findings[i].Code == "STALE_BASE_MODEL_REVISION" {
+			staleFinding = &got.Findings[i]
+			break
+		}
+	}
+	if staleFinding == nil ||
+		staleFinding.Class != "stale-premise" ||
+		!strings.Contains(staleFinding.Message, strings.Repeat("0", 64)) {
+		t.Fatalf("actual Shared Acceptance stale premise was not preserved: %+v", got.Findings)
+	}
+}
+
 func writeReviewJSON(t *testing.T, dir, name string, value any) string {
 	t.Helper()
 	data, err := json.Marshal(value)
@@ -304,6 +365,26 @@ func runReviewCommand(t *testing.T, dir, name string, args ...string) []byte {
 		t.Fatalf("%s %v failed: %v\\nstderr=%s", name, args, err, stderr.String())
 	}
 	return stdout.Bytes()
+}
+
+func runReviewCommandWithExit(t *testing.T, dir, name string, args ...string) ([]byte, string, int) {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		return stdout.Bytes(), stderr.String(), 0
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return stdout.Bytes(), stderr.String(), exitErr.ExitCode()
+	}
+	t.Fatalf("%s %v failed before exit status was available: %v", name, args, err)
+	return nil, "", -1
 }
 
 func repositoryRoot(t *testing.T) string {
