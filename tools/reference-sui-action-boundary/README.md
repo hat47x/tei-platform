@@ -39,7 +39,9 @@ SUI `03_Implement/frontend/src/domain/types.ts` の`DocumentV1`では、Cardの�
 - `cancel`: プレビューを破棄します。書き込みは行いません。
 - `drop`: 最後のPayloadで1回だけ`dispatchCommit`を呼び、処理中の二重操作を拒否します。拒否や競合を勝手に再実行せず、例外を呼出元へ戻します。
 
-**既存SUIのReact Canvasにこのアダプターを接続した状態ではありません。** ドラッグ中の描画と取消しをSUIの局所状態へ切り分け、SUI自身の島所属変更・履歴確定と統合する仕事が残ります。ブラウザーではこのES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。永続化用通信と認証セッションは別途接続します。
+SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) で、`CardView`の局所プレビューと`pointerup`のみの確定コールバック、および`CanvasShell`の任意の`onCardMoveCommit`を実装しました。これは**任意選択のUI接続口**であり、現行`App.tsx`は利用していません。TEIの`native-action-bridge.mjs`や実行時の`Host.Commit`と結線した状態でもありません。SUI側のVitestと実ブラウザー検証は未実施です。
+
+**既存SUIのReact CanvasとTEI Actionを接続した状態ではありません。** ドラッグ中の描画と取消しをSUIの局所状態へ切り分け、SUI自身の島所属変更・履歴確定と統合する仕事が残ります。ブラウザーではこのES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。永続化用通信と認証セッションは別途接続します。
 
 ## 実行
 
