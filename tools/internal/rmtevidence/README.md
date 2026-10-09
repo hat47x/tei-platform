@@ -42,3 +42,12 @@ typed Evidenceは、producerが`sourceConstructKnown=true`と書いただけで�
 この語彙検査はobserver Conformanceの代わりではありません。標準construct名として妥当であることと、qualified Source Adapterが実際のsourceを観測したことは別の主張です。
 
 Source Adapter、`transcription-contract-v0.json`、typed Evidenceは責務が異なるため、語彙の定義自体は別に持ちます。ただし、三者の更新ずれはReference testで検出します。Xead / Xeafのconstruct集合と、転写契約で使うclassificationが一致しなければtestを失敗させます。
+
+
+## 公開token
+
+`Extension`と`authorityLimits`はPlugin-firstの拡張点に関わるため、固定enumにはしません。一方、public typed Evidenceへ任意の説明文を保存できる状態にもしていません。
+
+schema v0では、これらを長さ上限のあるASCII tokenに限定します。空白を含む文章、Unicode本文、過度に長い値は拒否します。current transcription contractで使うExtensionとauthority limitも同じ条件を満たすことをReference testで確認します。
+
+この制約は、悪意あるproducerがtokenへ情報を符号化することまで防ぐ仕組みではありません。また、tokenが構文上妥当でも、そのExtensionが実際にqualified Providerへ結び付くことは証明しません。Provider Conformanceとobserver authorityは#951側の別境界です。
