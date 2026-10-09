@@ -86,7 +86,7 @@ func main() {
 	expectedReviewHandoffFingerprint := fs.String("expected-review-handoff-fingerprint", "", "expected Builder Review Handoff fingerprint; review handoff commands fail on mismatch")
 	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
 	knowledgeDisclosure := fs.String("disclose", "", "comma-separated Knowledge sections to disclose: source,definition,dependencies,data-design")
-	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; requires -disclose")
+	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; valid for disclosure-producing commands")
 	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
