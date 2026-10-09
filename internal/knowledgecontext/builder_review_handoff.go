@@ -211,6 +211,7 @@ func buildBuilderReviewHandoffFromQualification(
 			"qualification-applicable-is-not-write-or-runtime-authority",
 			"qualified-for-disclosure-does-not-prove-selected-knowledge-complete",
 			"qualified-for-disclosure-does-not-prove-section-local-evidence-complete",
+			"subject-qualification-does-not-qualify-cross-view-change-or-resolution",
 			"handoff-does-not-materialize-knowledge",
 			"handoff-qualification-may-ground-shared-acceptance-evidence-not-proposal-meaning",
 			"disclosed-knowledge-snapshot-is-not-proposal-delta",
