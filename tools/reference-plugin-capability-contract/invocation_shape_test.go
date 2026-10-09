@@ -75,7 +75,7 @@ func TestInvocationRegistryRejectsShapeArtifactDriftAtRegistration(t *testing.T)
 
 func TestGenericInvocationRejectsShapeIssuerDriftBeforeDomainCall(t *testing.T) {
 	contract := sourceAdapterContract()
-	contract.ShapeIssuer = InvocationShapeIssuer{ID: contract.ShapeIssuer.ID, Version: "0.2.0"}
+	contract.ShapeIssuer = &InvocationShapeIssuer{ID: contract.ShapeIssuer.ID, Version: "0.2.0"}
 	provider := sourceAdapterProvider(
 		contract, ScopeAuthoringTool, "reference.compat.xead.source", referenceXeadReaderImplementationID,
 	)
