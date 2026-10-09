@@ -313,6 +313,20 @@ Data Design Review Protocol
 
 Review Planはrouting identity用のfingerprintを持つ。ただし、その一致をKnowledge内容のfreshness proofへ昇格させない。また、`recommendedDisclosureSections`はselection候補であってQualification結果やDisclosure結果ではない。既存R6の `available != selected != qualified != disclosed` を維持し、必要なQualificationを経てからsemantic useへ進む。Data Designや選択的Disclosure等の内容を再利用するときは、それぞれのfingerprintとEvidence境界を別に確認する。
 
+Review Planの次段では、selected候補をそのままsemantic useへ渡さず、明示的なQualification requirementsと既存`knowledge-qualify`相当の判定をBuilder Review Handoffへ接続する。CLIでは`tei knowledge-review-handoff`を使う。
+
+```text
+available
+  -> selected candidate sections
+  -> explicit Qualification
+  -> qualified / blocked
+  -> current Disclosure
+```
+
+Handoffは本文をmaterializeせず、Plan fingerprint、selected sections、Qualification requirements / status / Evidenceだけを保持する。applicableでもauthoritative Evidenceが無い場合、required dependencyがあるのにdependency Evidenceが無い場合、PlanとQualificationのsubjectが一致しない場合はfail closedする。
+
+Handoff fingerprintにはQualification Evidenceのrevisionを含める。一方、Review Plan fingerprintはrouting identityのまま維持し、Knowledge本文の変更だけで変化させない。Disclosure contentの再利用判断はDisclosure fingerprintへ委ねる。
+
 この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
 
 ## Phase 1 first challenge — customer_referenceを編集可能にする要求
