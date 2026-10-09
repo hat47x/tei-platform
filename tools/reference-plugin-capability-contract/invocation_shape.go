@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	invocationShapeArtifactSchema = "tei.reference.invocation-shape/v0"
-	invocationJSONShapeFormat      = "tei.reference.json-shape/v0"
+	invocationShapeArtifactSchema    = "tei.reference.invocation-shape/v0"
+	invocationShapeCanonicalization = "tei.reference.invocation-shape-canonicalization/v0"
+	invocationJSONShapeFormat        = "tei.reference.json-shape/v0"
 	invocationOpaqueShapeFormat    = "tei.reference.opaque-shape/v0"
 )
 
@@ -25,8 +26,9 @@ type InvocationShapeIssuer struct {
 }
 
 type InvocationShapeArtifact struct {
-	Schema       string                `json:"schema"`
-	ID           string                `json:"id"`
+	Schema           string                `json:"schema"`
+	Canonicalization string                `json:"canonicalization"`
+	ID               string                `json:"id"`
 	Issuer       InvocationShapeIssuer `json:"issuer"`
 	PayloadCodec string                `json:"payloadCodec"`
 	Format       string                `json:"format"`
@@ -89,6 +91,13 @@ func normalizeInvocationShapeNode(node InvocationShapeNode) InvocationShapeNode 
 func validateInvocationShapeArtifact(artifact InvocationShapeArtifact) error {
 	if artifact.Schema != invocationShapeArtifactSchema {
 		return fmt.Errorf("invocation shape %s has unsupported schema %q", artifact.ID, artifact.Schema)
+	}
+	if artifact.Canonicalization != invocationShapeCanonicalization {
+		return fmt.Errorf(
+			"invocation shape %s has unsupported canonicalization %q",
+			artifact.ID,
+			artifact.Canonicalization,
+		)
 	}
 	if strings.TrimSpace(artifact.ID) == "" || artifact.ID != strings.TrimSpace(artifact.ID) {
 		return fmt.Errorf("invocation shape id %q is invalid", artifact.ID)
@@ -325,8 +334,9 @@ func opaqueInvocationShapeArtifact(
 	codec string,
 ) InvocationShapeArtifact {
 	return InvocationShapeArtifact{
-		Schema:       invocationShapeArtifactSchema,
-		ID:           id,
+		Schema:           invocationShapeArtifactSchema,
+		Canonicalization: invocationShapeCanonicalization,
+		ID:               id,
 		Issuer:       referenceInvocationShapeIssuer(),
 		PayloadCodec: codec,
 		Format:       invocationOpaqueShapeFormat,
