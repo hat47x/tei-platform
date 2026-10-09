@@ -1,6 +1,12 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 const (
 	sourceDigestA = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -206,4 +212,60 @@ func TestRepositoryTreeSnapshotDigestTracksGitTreeListingNotWorktreeSemantics(t 
 	if repositoryTreeSnapshotDigest(first) == repositoryTreeSnapshotDigest(changed) {
 		t.Fatal("repository tree snapshot digest ignored Git tree listing change")
 	}
+}
+
+
+func TestHashRepositorySnapshotTreeUsesCommittedHEADNotWorktreeBytes(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("git is unavailable: %v", err)
+	}
+
+	repo := t.TempDir()
+	runSnapshotGit(t, repo, "init")
+	runSnapshotGit(t, repo, "config", "user.name", "TEI Snapshot Test")
+	runSnapshotGit(t, repo, "config", "user.email", "tei-snapshot@example.invalid")
+	runSnapshotGit(t, repo, "config", "commit.gpgsign", "false")
+
+	path := filepath.Join(repo, "tracked.txt")
+	if err := os.WriteFile(path, []byte("committed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runSnapshotGit(t, repo, "add", "tracked.txt")
+	runSnapshotGit(t, repo, "commit", "-m", "initial")
+
+	before, err := hashRepositorySnapshotTree(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("worktree-only\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	afterWorktreeChange, err := hashRepositorySnapshotTree(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterWorktreeChange != before {
+		t.Fatalf("uncommitted worktree bytes changed repository snapshot digest: %s != %s", afterWorktreeChange, before)
+	}
+
+	runSnapshotGit(t, repo, "add", "tracked.txt")
+	runSnapshotGit(t, repo, "commit", "-m", "change")
+	afterCommit, err := hashRepositorySnapshotTree(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterCommit == before {
+		t.Fatal("committed HEAD tree change did not change repository snapshot digest")
+	}
+}
+
+func runSnapshotGit(t *testing.T, repo string, args ...string) string {
+	t.Helper()
+	all := append([]string{"-C", repo}, args...)
+	cmd := exec.Command("git", all...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s failed: %v\n%s", strings.Join(args, " "), err, out)
+	}
+	return strings.TrimSpace(string(out))
 }
