@@ -91,3 +91,18 @@ Build executionをlogical subjectから分けて追跡できることだけを�
 - Attestation / signing
 - multi-output deployment layout
 - filesystem pathをartifact member identityにすること
+
+
+## Reproducibility Evidence
+
+Artifact Setの二回build比較では、aggregate fingerprintの一致/不一致だけを残しません。
+
+Referenceは次を別々に保持します。
+
+- second buildから欠けたrole
+- second buildに増えたrole
+- 同じroleでformat / digestが変わったmember
+
+Locatorだけの変更はcontent driftに数えません。
+
+これにより`reproducible=false`でも差分Evidenceを失わず、どのphysical outputが変わったかを追跡できます。
