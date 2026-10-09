@@ -335,15 +335,16 @@ tei knowledge-review-plan
   -subject-id <id>
 ```
 
-このProjectionは、個々の設計原則を重複して持ちません。`routingScope = current-knowledge-context`の範囲で、`recommendedDisclosureSections`に現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち何を確認すべきかを示し、`reviewSequence`で確認順を示します。Data設計の詳細な確認事項は、従来どおり`data-design.designReviewProtocol`が担当します。
+このProjectionは、個々の設計原則を重複して持ちません。`routingScope = current-knowledge-context`の範囲で、`recommendedDisclosureSections`に現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち何を確認すべきかを示し、`reviewSequence`で確認順を示します。推奨された区画は、そのまま適用可能・Qualification済み・開示済みのKnowledgeにはなりません。必要なQualificationを経てから設計判断へ使います。Data設計の詳細な確認事項は、従来どおり`dataDesign.designReviewProtocol`が担当します。
 
 Review PlanはAI Builder向けの用途別Projectionであり、通常のKnowledge Context、人間向け表示、業務実行用Contextへ混入させません。また、現在のKnowledge Contextに区画が見つからないことを、Repositoryや外部Knowledge全体に情報が存在しない証拠にはしません。Review Planのfingerprintが一致しても、選択したKnowledgeの内容が最新であることまでは証明しないため、Knowledgeの再利用には対応するData Design / Disclosure等のfingerprintを別に確認します。
 
 ```text
 Builder Review Plan
   -> 何をどの順で読むか
+  -> 必要なQualification境界を通す
 
-data-design.designReviewProtocol
+dataDesign.designReviewProtocol
   -> Data設計で何を確認するか
 
 どちらも
