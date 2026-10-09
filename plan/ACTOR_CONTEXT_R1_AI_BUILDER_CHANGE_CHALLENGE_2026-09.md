@@ -149,7 +149,9 @@ tei knowledge-review-disclose
 
 この段階でも出力は既存`DisclosureProjection`であり、customer edit固有の判定結果を混入させない。保存後にPatternやSource Evidenceが変わればHandoff fingerprintが一致しなくなるため、古いHandoffから現在のKnowledgeを開示しない。
 
-このhandoffが`qualified-for-disclosure`になっても、customer edit要求自体がacceptedになったわけではない。確定するのは、Review対象のcurrent Patternとrequired dependencyを、明示したtask scopeでSource Evidence付きに利用できることまでである。customer editの矛盾判定は既存Business Procedure checker、採否はShared Acceptanceの責務として残す。
+このhandoffが`qualified-for-disclosure`になっても、customer edit要求自体がacceptedになったわけではない。確定するのは、Review対象のcurrent Patternとrequired dependencyを、明示したtask scopeでSource Evidence付きに利用できることまでである。
+
+特にR1では、このsubject Qualificationだけで`order_entry.master access = read`、Business Procedure上の責務、customer-edit conflictまで検証済みにはならない。これらはcross-view Evidenceとして既存Business Procedure checker等から確認し、current direct write pathとの矛盾を別に立証する。subjectがqualifiedであることと、変更案がcross-viewに妥当であることを同一視しない。customer editの採否はShared Acceptanceの責務として残す。
 
 Proposalを作る場合は、Handoff JSONを既存Shared Acceptanceの`attach-qualification -qualification`へ直接渡せる。adapterはHandoffを検証し、内包Qualificationだけをcandidate Evidenceへ付ける。Disclosure本文をcandidateへ丸ごと複製せず、A/B/C等の設計候補はADR-0022に従うMinimum Semantic Deltaとして表す。したがって「何を読んだか」と「何を変更したいか」は別identityのままShared Acceptanceへ入る。
 
