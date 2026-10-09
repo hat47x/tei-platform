@@ -577,3 +577,29 @@ func TestPublicArrayKeepsNestedValueCopySemantics(t *testing.T) {
 		t.Fatalf("public Array leaked nested slice alias: %#v", outer)
 	}
 }
+
+
+func TestJSONWithinLimitMatchesEscapedStringEncoding(t *testing.T) {
+	value := transform.String("<&>\n\t\"\\\u2028")
+	raw, err := value.JSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := value.JSONWithinLimit(len(raw) - 1); err == nil {
+		t.Fatal("expected escaped string to exceed one-byte-short limit")
+	}
+	bounded, err := value.JSONWithinLimit(len(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(raw, bounded) {
+		t.Fatalf("bounded JSON differs from normal encoding: %q != %q", bounded, raw)
+	}
+}
+
+func TestJSONWithinLimitRejectsLargeStringBeforeOutputBudget(t *testing.T) {
+	value := transform.String(strings.Repeat("<", 1024))
+	if _, err := value.JSONWithinLimit(16); err == nil {
+		t.Fatal("expected escaped string to exceed small output budget")
+	}
+}
