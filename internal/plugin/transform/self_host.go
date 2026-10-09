@@ -38,6 +38,8 @@ func TransformSourceRealizerV1() Source {
 		Limits: Limits{
 			MaxSteps:        10_000,
 			MaxCollection:   10_000,
+			MaxInputNodes:   200_000,
+			MaxInputBytes:   16 << 20,
 			MaxOutputBytes:  8 << 20,
 			MaxNestingDepth: 96,
 		},
