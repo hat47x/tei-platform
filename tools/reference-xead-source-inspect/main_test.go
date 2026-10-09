@@ -13,6 +13,7 @@ import (
 
 func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(t *testing.T) {
 	contract := []byte(`{
+	  "sourceProfiles": {"xead": {"rootKind":"System","supportedFormatVersions":["1.2"]}},
 	  "constructMappings": {
 	    "xead": {
 	      "System": {"classification":["source-metadata"],"extension":"reference.compat.xead.source"},
@@ -28,7 +29,7 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 	    }
 	  }
 	}`)
-	source := []byte(`<System><Table ID="SECRET_TABLE"><TableField ID="SECRET_DERIVED" AttributeType="DERIVABLE"/><TableKey ID="SECRET_KEY" Type="PK"><TableKeyField FieldID="SECRET_DERIVED"/></TableKey></Table><Table ID="OTHER_TABLE"><TableField ID="OTHER_FIELD" AttributeType="NATIVE"/><TableKey ID="OTHER_KEY" Type="PK"><TableKeyField FieldID="OTHER_FIELD"/></TableKey></Table><Relationship ID="SECRET_REL" Table1ID="SECRET_TABLE" TableKey1ID="SECRET_KEY" Table2ID="OTHER_TABLE" TableKey2ID="OTHER_KEY"/><PRIVATE_EXTENSION/></System>`)
+	source := []byte(`<System FormatVersion="1.2"><Table ID="SECRET_TABLE"><TableField ID="SECRET_DERIVED" AttributeType="DERIVABLE"/><TableKey ID="SECRET_KEY" Type="PK"><TableKeyField FieldID="SECRET_DERIVED"/></TableKey></Table><Table ID="OTHER_TABLE"><TableField ID="OTHER_FIELD" AttributeType="NATIVE"/><TableKey ID="OTHER_KEY" Type="PK"><TableKeyField FieldID="OTHER_FIELD"/></TableKey></Table><Relationship ID="SECRET_REL" Table1ID="SECRET_TABLE" TableKey1ID="SECRET_KEY" Table2ID="OTHER_TABLE" TableKey2ID="OTHER_KEY"/><PRIVATE_EXTENSION/></System>`)
 	inspection, err := xeadsource.InspectWithContract(xeadsource.FormatXead, source, contract)
 	if err != nil {
 		t.Fatal(err)
@@ -85,8 +86,9 @@ func TestRunEmitsAggregateInspectionWithoutRawSource(t *testing.T) {
 	dir := t.TempDir()
 	sourcePath := filepath.Join(dir, "fixture.xeaf")
 	contractPath := filepath.Join(dir, "contract.json")
-	source := []byte(`<System><Table ID="PRIVATE_TABLE"><Field ID="PRIVATE_FIELD"/><Key Type="PK" Fields="PRIVATE_FIELD;"/></Table></System>`)
+	source := []byte(`<System FormatVersion="1.2"><Table ID="PRIVATE_TABLE"><Field ID="PRIVATE_FIELD"/><Key Type="PK" Fields="PRIVATE_FIELD;"/></Table></System>`)
 	contract := []byte(`{
+	  "sourceProfiles": {"xeaf": {"rootKind":"System","supportedFormatVersions":["1.2"]}},
 	  "constructMappings": {
 	    "xeaf": {
 	      "System": {"classification":["realization"],"extension":"reference.xead.platform-service-binding"},
