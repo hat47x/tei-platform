@@ -165,8 +165,12 @@ func TestValidationScopeReviewDoesNotHideDuplicateDeclarations(t *testing.T) {
 			t.Fatal("検証対象BP-05がありません")
 		}
 		rows := compareValidationScopes(loaded.World, duplicate)
-		if len(rows) != 1 || rows[0].Status != "unresolved-reference" {
-			t.Fatalf("Procedure内の重複を集合で消しました: %+v", rows)
+		want := []validationReferenceIssue{{
+			Side: "procedure", ID: "sales.order_line.quantity_positive", Reason: "duplicate-declaration",
+		}}
+		if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+			!reflect.DeepEqual(rows[0].ReferenceIssues, want) {
+			t.Fatalf("Procedure内の重複を説明できません: %+v", rows)
 		}
 	})
 
@@ -185,8 +189,12 @@ func TestValidationScopeReviewDoesNotHideDuplicateDeclarations(t *testing.T) {
 			t.Fatal("比較対象Applicationがありません")
 		}
 		rows := compareValidationScopes(duplicate, f)
-		if len(rows) != 1 || rows[0].Status != "unresolved-reference" {
-			t.Fatalf("Application内の重複を集合で消しました: %+v", rows)
+		want := []validationReferenceIssue{{
+			Side: "application", ID: "sales.order_line.quantity_positive", Reason: "duplicate-declaration",
+		}}
+		if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+			!reflect.DeepEqual(rows[0].ReferenceIssues, want) {
+			t.Fatalf("Application内の重複を説明できません: %+v", rows)
 		}
 	})
 }
