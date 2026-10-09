@@ -103,3 +103,19 @@ go test -race -count=1 ./reference/web-composition/go-host
 構成上は、旧来の認証情報を含む経路と、セッションを用いる保護済み経路を**暗黙に同一視しない**ことを受入条件とします。移行期間に両者を併存させる場合も、公開する経路・認証方式・許可されるAction・監査対象をそれぞれ明示し、認証失敗時に弱い方式へ自動的に切り替えません。
 
 現段階ではRunnerを改造しておらず、実際の認証方式の置換・共存は未検証です。
+
+## E2追跡：Runner内部の認証・認可
+
+`tools/reference-first-web-target/command_scenario.go`を確認しました。現行`RunCommand`は、入力検査の後に`driver.Resolver.InvokeCapability`で`security.authenticate`を呼び出します。Binding `order_entry/security.authenticate`には`legacyauth.Adapter`を接続し、`LoginID`と`Credential`を渡します。認証成功時の`legacyauth.AuthenticatedSubject.SubjectID`を取得し、読み取りとCanonical Validationを実行した後、同じ`InvokeCapability`で`security.authorize`を呼び出します。Binding `order_entry/security.authorize`には`legacyauthorization.Adapter`を接続し、`SubjectID`、操作`execute`、対象`order_entry.submit_order`を渡します。許可時のみ`sales.order.submit`を呼び出し、その後に合成状態の観測を行います。
+
+この順序には重要な意味があります。本人確認と業務認可は別Capabilityであり、業務認可の拒否は`authorization-denied`というBusiness Result、Provider実行エラーはExecution Errorです。新しいWeb Hostの`Authorize`だけを実行して既存の`security.authorize`を省略する変更は、権限判定の二重正本を生みます。
+
+**次の実装の受入条件：**
+
+- 既存のCredential入力方式は互換経路として維持し、Webセッション方式とは別の明示的な入口を持つ。移行先で旧経路が無保護の迂回路として残らないこと。
+- Webセッションの`PrincipalID`を`legacyauth.AuthenticatedSubject.SubjectID`と同一と決めつけない。Provider・Issuer・Subjectの対応付けと、既存の認可Storeで参照できる業務主体への写像を、信頼済みHostが検証すること。
+- 業務認可は既存の`security.authorize` Capability経由を正本とする。Hostの経路保護はその代替ではない。必要な場合はHost側の早期拒否とAction側の最終認可を区別すること。
+- 認証済み主体の受渡しには、ブラウザから偽装できるヘッダや本文の`subjectId`を使用しない。呼出し元が認証済みであることを保証する内部APIを検討すること。
+- Validation、Command、Observationの順序と、Business Result／Execution Errorの区別を維持すること。失敗した認証方式から別方式へ暗黙にフォールバックしないこと。
+
+ここで確認できたのはコード上の接続順序であり、Webセッションから既存認可Storeまでの主体対応付けは未実装です。したがって、認証方式の共存を動作確認済みとは扱いません。
