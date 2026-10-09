@@ -266,6 +266,8 @@ resolverは最初に既存transportと同じaccess filterを通し、その可�
 
 取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationです。resultにはaccess refを含めません。
 
+`checkedAt` はraw値をそのまま返しません。current freshness subjectへ結び付いており、かつ `ContextQuery.asOf` 以前に行われたsource checkだけを返します。未来のsource checkや、subject編集でbindingが切れたcheckはdetailへ出しません。
+
 assertion自体がaccess不可の場合と、指定IDが存在しない場合は、どちらも`epistemic detail target is unavailable`とします。存在確認のための別経路にしません。
 
 Evidence、review history、relation等の一部がaccess filterで失われた場合は、既存transportと同様にmetadataをpartialへ落とします。hidden IDやpolicy refをresultへ出しません。
