@@ -355,6 +355,28 @@ func TestRuntimeCapabilityRefDoesNotContainConcreteResourceAuthority(t *testing.
 	}
 }
 
+type recordingArtifactVerifier struct {
+	Calls int
+	DigestVerified bool
+}
+
+func (v *recordingArtifactVerifier) Verify(
+	ctx context.Context,
+	identity plugin.Identity,
+	artifact plugin.Artifact,
+) (pruntime.ArtifactVerification, error) {
+	if err := ctx.Err(); err != nil {
+		return pruntime.ArtifactVerification{}, err
+	}
+	v.Calls++
+	return pruntime.ArtifactVerification{
+		VerifierID: "reference-artifact-verifier",
+		DigestVerified: v.DigestVerified,
+		SignatureVerified: artifact.SignatureRef == "",
+		ProvenanceChecked: artifact.Provenance == "",
+	}, nil
+}
+
 type recordingBroker struct {
 	AcquireCalls int
 	ReleaseCalls int
@@ -473,6 +495,7 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 		t.Fatal(err)
 	}
 	broker := &recordingBroker{}
+	verifier := &recordingArtifactVerifier{DigestVerified: true}
 	network := &recordingNetworkEnforcer{}
 	filesystem := &recordingFilesystemEnforcer{}
 	runner := &recordingSandboxRunner{}
@@ -491,6 +514,7 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 		context.Background(),
 		plan,
 		realization,
+		verifier,
 		broker,
 		host,
 		"render",
@@ -499,6 +523,11 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 	)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if verifier.Calls != 1 ||
+		prov.ArtifactVerification == nil ||
+		!prov.ArtifactVerification.DigestVerified {
+		t.Fatalf("artifact verification=%+v calls=%d", prov.ArtifactVerification, verifier.Calls)
 	}
 	if broker.AcquireCalls != 1 || broker.ReleaseCalls != 1 {
 		t.Fatalf("Resource Broker calls acquire=%d release=%d", broker.AcquireCalls, broker.ReleaseCalls)
@@ -560,9 +589,69 @@ func TestPermissionedGenericRuntimeRefRequiresExistingResourceBroker(t *testing.
 		Runner: &recordingSandboxRunner{},
 	}
 	if _, err := invokeWithExistingHostBoundary(
-		context.Background(), plan, realization, nil, host, "render", "request-2", nil,
+		context.Background(), plan, realization,
+		&recordingArtifactVerifier{DigestVerified: true},
+		nil, host, "render", "request-2", nil,
 	); err == nil || !strings.Contains(err.Error(), "no Resource Broker") {
 		t.Fatalf("generic runtime invocation bypassed missing Resource Broker: %v", err)
+	}
+}
+
+func TestGenericRuntimeInvocationRequiresArtifactVerifierBeforeResourceAuthority(t *testing.T) {
+	perm := referencePermission()
+	profile := referenceExecutionProfile(t, "web-browser", []permission.Spec{perm})
+	ref := referenceRuntimeRef(t, profile)
+	plan, err := buildRuntimeEnvironmentPlan(
+		ref, profile, referenceAuthority(ref, []permission.Spec{perm}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	broker := &recordingBroker{}
+	realization := RuntimeProcessRealization{
+		RuntimeCapabilityFingerprint: ref.Fingerprint,
+		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
+		Command: pruntime.ProcessCommand{Executable: "document-render-worker"},
+	}
+	host := pruntime.HostSandboxLauncher{
+		Network: &recordingNetworkEnforcer{},
+		Filesystem: &recordingFilesystemEnforcer{},
+		Runner: &recordingSandboxRunner{},
+	}
+	if _, err := invokeWithExistingHostBoundary(
+		context.Background(),
+		plan,
+		realization,
+		nil,
+		broker,
+		host,
+		"render",
+		"request-verifier-1",
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "Artifact Verifier") {
+		t.Fatalf("generic runtime invocation bypassed missing Artifact Verifier: %v", err)
+	}
+	if broker.AcquireCalls != 0 {
+		t.Fatal("Resource Authority was acquired before artifact verification")
+	}
+
+	verifier := &recordingArtifactVerifier{DigestVerified: false}
+	if _, err := invokeWithExistingHostBoundary(
+		context.Background(),
+		plan,
+		realization,
+		verifier,
+		broker,
+		host,
+		"render",
+		"request-verifier-2",
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "digest was not verified") {
+		t.Fatalf("unverified artifact reached Resource Authority: %v", err)
+	}
+	if broker.AcquireCalls != 0 {
+		t.Fatal("Resource Authority was acquired after failed artifact verification")
 	}
 }
 
@@ -589,7 +678,9 @@ func TestProcessRealizationDriftFailsBeforeResourceAuthority(t *testing.T) {
 		Runner: &recordingSandboxRunner{},
 	}
 	if _, err := invokeWithExistingHostBoundary(
-		context.Background(), plan, realization, broker, host, "render", "request-3", nil,
+		context.Background(), plan, realization,
+		&recordingArtifactVerifier{DigestVerified: true},
+		broker, host, "render", "request-3", nil,
 	); err == nil || !strings.Contains(err.Error(), "artifact") {
 		t.Fatalf("artifact drift was accepted: %v", err)
 	}
@@ -622,7 +713,9 @@ func TestHostTrustedProfileCannotUseSandboxOnlyInvocationPath(t *testing.T) {
 		Runner: &recordingSandboxRunner{},
 	}
 	if _, err := invokeWithExistingHostBoundary(
-		context.Background(), plan, realization, nil, host, "render", "request-4", nil,
+		context.Background(), plan, realization,
+		&recordingArtifactVerifier{DigestVerified: true},
+		nil, host, "render", "request-4", nil,
 	); err == nil || !strings.Contains(err.Error(), "host-enforced-sandbox") {
 		t.Fatalf("host-trusted profile was silently routed through sandbox-only path: %v", err)
 	}
