@@ -163,7 +163,7 @@ receiptは少なくとも次を固定します。
 - `repository-health-check.sh` / `qualify.sh` / `run.sh` / `integration-preflight.sh` のcandidate上のGit blob SHA
 - Git / Go / Python version
 
-receiptはRepository内へ書けず、出力先はまだ存在しないpathでなければなりません。既存receiptの上書きやsymlink置換を避けるため、同じdirectory内の一時fileからhard-linkで原子的に公開します。receipt出力自体によってqualification checkoutをdirtyにしません。
+receiptはRepository内へ書けず、出力先はまだ存在しないpathでなければなりません。既存receiptの上書きやsymlink置換を避けるため、すべてのqualification検査を終えた後にだけ、同じdirectory内の一時fileからhard-linkで原子的に公開します。receiptを可視化した後に失敗し得るqualification判定を置かず、「失敗runがPASS形状のreceiptを残す」経路を作りません。receipt出力自体によってqualification checkoutをdirtyにしません。
 
 ### integration preflight
 
