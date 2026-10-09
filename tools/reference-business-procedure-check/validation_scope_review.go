@@ -8,8 +8,6 @@ import (
 	"tei/internal/ir"
 )
 
-// validationScopeReviewRow は、Application 全体の評価宣言と業務手順の明示参照を
-// 比較するための読み取り専用の表示情報である。集合の差は不整合の証拠ではない。
 // validationReferenceIssue は比較を保留した具体的な理由を指す。
 // 適用範囲や実行時の成否の判定ではない。
 type validationReferenceIssue struct {
@@ -18,16 +16,18 @@ type validationReferenceIssue struct {
 	Reason string `json:"reason"`
 }
 
+// validationScopeReviewRow は、Application 全体の評価宣言と業務手順の明示参照を
+// 比較するための読み取り専用の表示情報である。集合の差は不整合の証拠ではない。
 type validationScopeReviewRow struct {
-	Step             string                   `json:"step"`
-	Application      string                   `json:"applicationContext,omitempty"`
-	ProcedureSource  string                   `json:"procedureSource,omitempty"`
-	Status           string                   `json:"status"`
-	ApplicationOnly  []string                 `json:"applicationOnly,omitempty"`
-	ProcedureOnly    []string                 `json:"procedureOnly,omitempty"`
-	Reason           string                   `json:"reason"`
-	SourceEvidence   []validationReviewSource `json:"sourceEvidence,omitempty"`
-	UnresolvedSource []string                 `json:"unresolvedSource,omitempty"`
+	Step             string                     `json:"step"`
+	Application      string                     `json:"applicationContext,omitempty"`
+	ProcedureSource  string                     `json:"procedureSource,omitempty"`
+	Status           string                     `json:"status"`
+	ApplicationOnly  []string                   `json:"applicationOnly,omitempty"`
+	ProcedureOnly    []string                   `json:"procedureOnly,omitempty"`
+	Reason           string                     `json:"reason"`
+	SourceEvidence   []validationReviewSource   `json:"sourceEvidence,omitempty"`
+	UnresolvedSource []string                   `json:"unresolvedSource,omitempty"`
 	ReferenceIssues  []validationReferenceIssue `json:"referenceIssues,omitempty"`
 }
 
