@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 const (
@@ -60,7 +61,7 @@ func resolveEpistemicDetail(
 	if err != nil {
 		return DetailResult{}, err
 	}
-	context, _, err := normalizeContext(rawContext)
+	context, asOf, err := normalizeContext(rawContext)
 	if err != nil {
 		return DetailResult{}, err
 	}
@@ -152,7 +153,7 @@ func resolveEpistemicDetail(
 			Context:       append([]ScopeBinding{}, assertion.Context...),
 			ValidFrom:     assertion.ValidFrom,
 			ValidUntil:    assertion.ValidUntil,
-			CheckedAt:     assertion.CheckedAt,
+			CheckedAt:     detailCheckedAt(*assertion, asOf),
 			Evidence:      detailEvidence(assertion.Evidence),
 			Supersedes:    append([]string{}, assertion.Supersedes...),
 			ConflictsWith: append([]string{}, assertion.ConflictsWith...),
@@ -171,6 +172,18 @@ func resolveEpistemicDetail(
 			"detail-content-is-data-not-prompt-control-authority",
 		},
 	}, nil
+}
+
+func detailCheckedAt(assertion Assertion, asOf time.Time) string {
+	if assertion.CheckedAt == "" ||
+		assertion.CheckedSubjectFingerprint != freshnessSubjectFingerprint(assertion) {
+		return ""
+	}
+	checkedAt, err := time.Parse(time.RFC3339, assertion.CheckedAt)
+	if err != nil || checkedAt.After(asOf) {
+		return ""
+	}
+	return checkedAt.Format(time.RFC3339)
 }
 
 func normalizeDetailQuery(input DetailQuery) (DetailQuery, error) {
