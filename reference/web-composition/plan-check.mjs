@@ -29,6 +29,8 @@ export function composeRequestPlan(plan){
   if(!route.id || !route.method || !route.path || !hostPolicy.id || !Array.isArray(hostPolicy.requiredGuards) || !Array.isArray(hostPolicy.terminalEvents)) throw new Error("host route policy is incomplete");
   if(route.actionId && route.exposure==="public") throw new Error("action route cannot silently become public");
   if(route.actionId && !hostPolicy.requiredGuards.includes("action-authorized")) throw new Error("action route has no mandatory authorization");
+  if(new Set(hostContracts).size!==hostContracts.length) throw new Error("duplicate host contract");
+  if(new Set(hostPolicy.requiredGuards).size!==hostPolicy.requiredGuards.length) throw new Error("duplicate required guard");
   const ids=new Map(),providers=new Map(),slots=new Set(),guards=new Set(),terminalEvents=new Set();
   for(const p of steps){
     if(!p.id || ids.has(p.id) || p.scope!=="server") throw new Error("step identity is duplicated or scope is not server");
@@ -44,6 +46,7 @@ export function composeRequestPlan(plan){
     for(const guard of p.guards||[]) guards.add(guard);
     for(const event of p.onTerminal||[]) terminalEvents.add(event);
   }
+  if(route.actionId && !steps.some(p=>p.id==="invoke" && (p.requires||[]).includes("action.authorized"))) throw new Error("action invocation must depend on authorization");
   for(const g of hostPolicy.requiredGuards) if(!guards.has(g)) throw new Error("required host protection missing: "+g);
   for(const event of hostPolicy.terminalEvents) if(!terminalEvents.has(event)) throw new Error("required terminal coverage missing: "+event);
   const after=new Map([...ids.keys()].map(id=>[id,new Set()]));
