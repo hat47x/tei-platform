@@ -473,3 +473,46 @@ func TestValidationScopeSourcesAreNotRequiredForUnresolvedRows(t *testing.T) {
 		})
 	}
 }
+
+func TestValidationScopeReviewEvidenceRefreshDropsStaleSources(t *testing.T) {
+	const applicationPath = "applications/order-entry/application.tei"
+	known := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{{Path: applicationPath, Fingerprint: "sha256:known"}},
+		References: []sourceindex.Reference{{
+			Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+			Role: sourceindex.RoleDefinition,
+			ArtifactPath: applicationPath,
+			Range: sourceindex.Range{Start: sourceindex.Position{Line: 3}},
+		}},
+	}
+	rows := []validationScopeReviewRow{{Status: "review-needed", Application: "order_entry"}}
+	attachValidationScopeSources(rows, known)
+	if len(rows[0].SourceEvidence) != 1 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("テスト前提のSource解決に失敗しました: %+v", rows[0])
+	}
+
+	// Indexが変化して同じSourceを解決できなくなったら、古い証拠を残さない。
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if len(rows[0].SourceEvidence) != 0 ||
+		!reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+		t.Fatalf("再解析で以前の出典を残しました: %+v", rows[0])
+	}
+
+	// 同じ未解決Indexでの再解析も、未解決IDを重複させない。
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+		t.Fatalf("再解析で未解決IDが重複しました: %+v", rows[0])
+	}
+
+	// 出典が解決できるようになれば、未解決IDを残さない。
+	attachValidationScopeSources(rows, known)
+	if len(rows[0].SourceEvidence) != 1 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("新しい出典への再解決後に古い未解決を残しました: %+v", rows[0])
+	}
+
+	rows[0].Status = "unresolved-context"
+	attachValidationScopeSources(rows, known)
+	if len(rows[0].SourceEvidence) != 0 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("意味未解決への遷移時にSource根拠が残りました: %+v", rows[0])
+	}
+}
