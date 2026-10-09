@@ -433,7 +433,9 @@ candidate exact head
 
 #1027の未資格統合では、文書上の停止条件が存在していても通常Git mergeでmainへ入れられることが実際に起きました。このため`qualify.sh --receipt-file`は、成功時にRepository外へmachine-readable receiptを出せるようにします。receiptはcandidate / expected main、clean pre/post、Repository Health / RQ-034 Reference PASS、およびhealth / qualify / Reference / integration-preflight runnerのGit blob SHAを固定します。
 
-統合直前は`integration-preflight.sh`をread-onlyで実行します。preflight自身がcandidateで初めて追加・変更される場合にも自己適用できるよう、**exact candidateのclean checkoutからcandidate版preflightを実行し、`--integration-root`でexact expected mainの別clean checkoutを指定します。** candidate checkoutとintegration checkoutを同一にせず、実行中のpreflight file自身もcandidate上のblobおよびreceiptへ結び付けます。integration checkout HEADとlocal `origin/main`、candidate HEAD / ref、4つのrunner blob、双方のclean stateが一致し続けることを確認し、main移動、candidate変更、receipt書換え、runner変更、preflight自身の差替えではfail closedします。このpreflight自体はfetch / merge / commit / push / ref更新を行いません。
+統合直前は`integration-preflight.sh`をread-onlyで実行します。preflight自身がcandidateで初めて追加・変更される場合にも自己適用できるよう、**exact candidateのclean checkoutからcandidate版preflightを実行し、`--integration-root`でexact expected mainの別clean checkoutを指定します。** candidate checkoutとintegration checkoutを同一にせず、実行中のpreflight file自身もcandidate上のblobおよびreceiptへ結び付けます。integration checkout HEADとlocal `origin/main`、candidate HEAD / ref、4つのrunner blob、双方のclean stateが一致し続けることを確認し、main移動、candidate変更、receipt書換え、runner変更、preflight自身の差替えではfail closedします。receiptは開始時と終了時のblobも比較し、preflight実行中の差替えも拒否します。このpreflight自体はfetch / merge / commit / push / ref更新を行いません。
+
+preflightがPASSした後は、branch名を再解決せず、preflightが出力したexact `candidate-head` SHAをそのまま通常Gitの統合対象へ引き継ぎます。これによりpreflight後にbranch refが進んでも別commitを誤統合しません。
 
 receiptは署名済みAuthorityやTEI Product stateではありません。通常Gitを使うHuman / AI間で、別revisionのPASSをmerge authorityとして誤流用しないためのhandoff Evidenceです。強いwitnessが必要な環境では別Providerを重ねられますが、RQ-034の通常開発経路に必須化しません。
 
