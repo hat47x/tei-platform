@@ -90,12 +90,7 @@ func buildBuilderReviewHandoff(
 		sources,
 		subject.Subject{Kind: kind, ID: id},
 	)
-	plan := knowledgecontext.BuildBuilderReviewPlan(ctx)
-	qualification, err := knowledgecontext.QualifyWithSources(ctx, sources, requirements)
-	if err != nil {
-		return knowledgecontext.BuilderReviewHandoff{}, err
-	}
-	return knowledgecontext.BuildBuilderReviewHandoff(plan, qualification)
+	return knowledgecontext.BuildBuilderReviewHandoff(ctx, sources, requirements)
 }
 
 func buildBuilderReviewHandoffFromFile(
