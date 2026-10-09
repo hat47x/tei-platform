@@ -139,7 +139,11 @@ Proposal
 
 この接続で新しいProposal schemaを作らない。Handoff経路と直接`knowledge-qualify`した経路は、同じQualification Resultから同じgrounded candidate / candidate fingerprint / evidence fingerprintへ収束することをReferenceで検証する。
 
-また、HandoffのQualificationと各Knowledge区画内部のreadinessを同一視しない。`qualified-for-disclosure`でも、選択区画が持つ`resolutionStatus`、`evidenceCoverageStatus`、局所的なambiguity等は別途確認する。共有`Context.unresolved`を局所的不確実性の完全な一覧とは扱わない。これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
+また、HandoffのQualificationと各Knowledge区画内部のreadinessを同一視しない。`qualified-for-disclosure`でも、選択区画が持つ`resolutionStatus`、`evidenceCoverageStatus`、局所的なambiguity等は別途確認する。共有`Context.unresolved`を局所的不確実性の完全な一覧とは扱わない。
+
+同様に、subject単体のQualificationをcross-viewな変更妥当性へ昇格させない。Application Patternがqualifiedでも、その変更がBusiness Procedure、Application authority、datasource access、Contract、Authorization、既知conflictと整合するとは限らない。Builder Review Planはcurrent Knowledge Contextの確認後にcross-view constraint / authority / known conflictを確認する段階を必ず置き、必要な外部Evidenceが未解決ならProposal形成前に停止する。
+
+これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
 
 Review Planのfingerprintはrouting identityを表すだけであり、選択したKnowledge自体のfreshness proofにはしない。また、推奨された区画をQualification済みKnowledgeやsemantic applicabilityへ昇格させず、必要なQualificationを別境界で通す。current Knowledge Contextに区画が無いことも、他のKnowledge surfaceを含む全体的な不存在へ一般化しない。Knowledge内容の再利用可否は、それぞれのProjection / DisclosureのfingerprintとEvidence境界で別に確認する。
 
