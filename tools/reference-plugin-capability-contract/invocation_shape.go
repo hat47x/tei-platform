@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,9 @@ const (
 	invocationJSONShapeFormat      = "tei.reference.json-shape/v0"
 	invocationOpaqueShapeFormat    = "tei.reference.opaque-shape/v0"
 )
+
+//go:embed shapes/*.json
+var invocationShapeFS embed.FS
 
 type InvocationShapeIssuer struct {
 	ID      string `json:"id"`
@@ -281,127 +285,35 @@ func validateInvocationJSONValue(
 	}
 }
 
-func sourceAdapterRequestShapeArtifact() InvocationShapeArtifact {
-	return InvocationShapeArtifact{
-		Schema:       invocationShapeArtifactSchema,
-		ID:           sourceAdapterRequestShape,
-		Issuer:       referenceInvocationShapeIssuer(),
-		PayloadCodec: referenceJSONPayloadCodec,
-		Format:       invocationJSONShapeFormat,
-		Root: InvocationShapeNode{
-			Kind:     "object",
-			Required: []string{"Format", "SourceBytes", "TranscriptionContract"},
-			Properties: map[string]InvocationShapeNode{
-				"Format":                {Kind: "string"},
-				"SourceBytes":           {Kind: "string"},
-				"TranscriptionContract": {Kind: "string"},
-			},
-		},
+func mustReferenceInvocationShape(path string) InvocationShapeArtifact {
+	content, err := invocationShapeFS.ReadFile(path)
+	if err != nil {
+		panic(fmt.Sprintf("read invocation shape %s: %v", path, err))
 	}
+	var artifact InvocationShapeArtifact
+	if err := json.Unmarshal(content, &artifact); err != nil {
+		panic(fmt.Sprintf("parse invocation shape %s: %v", path, err))
+	}
+	if err := validateInvocationShapeArtifact(artifact); err != nil {
+		panic(fmt.Sprintf("validate invocation shape %s: %v", path, err))
+	}
+	return artifact
+}
+
+func sourceAdapterRequestShapeArtifact() InvocationShapeArtifact {
+	return mustReferenceInvocationShape("shapes/source-adapter-request-v0.json")
 }
 
 func sourceAdapterResultShapeArtifact() InvocationShapeArtifact {
-	anyItems := InvocationShapeNode{Kind: "any"}
-	stringItems := InvocationShapeNode{Kind: "string"}
-	return InvocationShapeArtifact{
-		Schema:       invocationShapeArtifactSchema,
-		ID:           sourceAdapterResultShape,
-		Issuer:       referenceInvocationShapeIssuer(),
-		PayloadCodec: referenceJSONPayloadCodec,
-		Format:       invocationJSONShapeFormat,
-		Root: InvocationShapeNode{
-			Kind: "object",
-			Required: []string{
-				"document",
-				"candidates",
-				"relationalFacts",
-				"relationalResolutionStatus",
-				"relationalResolutionPolicyRevision",
-				"authorityLimits",
-			},
-			Properties: map[string]InvocationShapeNode{
-				"document":                           {Kind: "object", AdditionalProperties: &anyItems},
-				"candidates":                         {Kind: "array", Items: &anyItems},
-				"relationalFacts":                    {Kind: "object", AdditionalProperties: &anyItems},
-				"relationalDiagnostics":              {Kind: "array", Items: &anyItems},
-				"relationalFactResolutions":          {Kind: "array", Items: &anyItems},
-				"relationalResolutionStatus":         {Kind: "string"},
-				"relationalResolutionPolicyRevision": {Kind: "string"},
-				"classificationPolicyFingerprint":    {Kind: "string"},
-				"transcriptionContractFingerprint":   {Kind: "string"},
-				"authorityLimits":                    {Kind: "array", Items: &stringItems},
-			},
-		},
-	}
+	return mustReferenceInvocationShape("shapes/source-adapter-result-v0.json")
 }
 
 func contractQueryRequestShapeArtifact() InvocationShapeArtifact {
-	anyValue := InvocationShapeNode{Kind: "any"}
-	return InvocationShapeArtifact{
-		Schema:       invocationShapeArtifactSchema,
-		ID:           contractQueryRequestShape,
-		Issuer:       referenceInvocationShapeIssuer(),
-		PayloadCodec: referenceJSONPayloadCodec,
-		Format:       invocationJSONShapeFormat,
-		Root: InvocationShapeNode{
-			Kind:     "object",
-			Required: []string{"target", "contract"},
-			Properties: map[string]InvocationShapeNode{
-				"target": {
-					Kind:     "object",
-					Required: []string{"database", "contract", "query"},
-					Properties: map[string]InvocationShapeNode{
-						"database": {Kind: "string"},
-						"contract": {Kind: "string"},
-						"query":    {Kind: "string"},
-					},
-				},
-				"contract": {
-					Kind:     "object",
-					Required: []string{"name"},
-					Properties: map[string]InvocationShapeNode{
-						"name":              {Kind: "string"},
-						"inputs":            {Kind: "array", Items: &anyValue},
-						"result":            {Kind: "string"},
-						"resultCardinality": {Kind: "string"},
-					},
-				},
-				"parameters": {
-					Kind:                 "object",
-					AdditionalProperties: &anyValue,
-				},
-			},
-		},
-	}
+	return mustReferenceInvocationShape("shapes/contract-query-request-v0.json")
 }
 
 func contractQueryResultShapeArtifact() InvocationShapeArtifact {
-	anyValue := InvocationShapeNode{Kind: "any"}
-	row := InvocationShapeNode{
-		Kind:     "object",
-		Required: []string{"Attributes"},
-		Properties: map[string]InvocationShapeNode{
-			"Attributes": {
-				Kind:                 "object",
-				AdditionalProperties: &anyValue,
-			},
-		},
-	}
-	return InvocationShapeArtifact{
-		Schema:       invocationShapeArtifactSchema,
-		ID:           contractQueryResultShape,
-		Issuer:       referenceInvocationShapeIssuer(),
-		PayloadCodec: referenceJSONPayloadCodec,
-		Format:       invocationJSONShapeFormat,
-		Root: InvocationShapeNode{
-			Kind:     "object",
-			Required: []string{"Rows", "Payload"},
-			Properties: map[string]InvocationShapeNode{
-				"Rows":    {Kind: "array", Items: &row},
-				"Payload": {Kind: "any"},
-			},
-		},
-	}
+	return mustReferenceInvocationShape("shapes/contract-query-result-v0.json")
 }
 
 func opaqueInvocationShapeArtifact(
