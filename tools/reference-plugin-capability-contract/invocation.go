@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 )
@@ -198,4 +201,20 @@ func validInvocationShapeFingerprint(value string) bool {
 		}
 	}
 	return true
+}
+
+func decodeReferenceJSONExact(payload []byte, out any) error {
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(out); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("trailing JSON value is not allowed")
+		}
+		return fmt.Errorf("decode trailing JSON value: %w", err)
+	}
+	return nil
 }
