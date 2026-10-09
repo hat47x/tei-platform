@@ -32,3 +32,18 @@ func ParseSourceJSON(raw []byte) (Source, error) {
 	}
 	return source, nil
 }
+
+
+// SourceValue is the Runtime Engine's typed input projection for a validated,
+// normalized transform Source. It contains no Host state or source locator.
+func SourceValue(source Source) (Value, error) {
+	normalized, err := NormalizeSource(source)
+	if err != nil {
+		return Value{}, err
+	}
+	raw, err := json.Marshal(normalized)
+	if err != nil {
+		return Value{}, err
+	}
+	return ParseJSON(raw)
+}
