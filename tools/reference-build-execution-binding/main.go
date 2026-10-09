@@ -117,6 +117,7 @@ type referenceEvidence struct {
 	BuildGraphOrder                  []string                   `json:"buildGraphOrder"`
 	BootstrapStage1Plan              BuildExecutionPlan         `json:"bootstrapStage1Plan"`
 	BootstrapStage2Plan              BuildExecutionPlan         `json:"bootstrapStage2Plan"`
+	BootstrapStage1ArtifactSet       ArtifactSet                `json:"bootstrapStage1ArtifactSet"`
 	AuthorityLimits                  []string                   `json:"authorityLimits"`
 }
 
@@ -352,18 +353,43 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			{ID: "stage1", ExecutionPlanFingerprint: stage1Fingerprint},
 		},
 		Edges: []BuildGraphEdge{{
-			FromNode: "stage1", OutputRole: "builder-artifact",
-			ToNode: "stage2", DependencyID: "builder",
+			FromNode: "stage1",
+			OutputRole: "builder-artifact",
+			ToNode: "stage2",
+			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 		Seeds: []BuildGraphSeed{{
-			ID: string(stage0Builder.ID), Kind: "builder-seed", Version: stage0Builder.Version,
+			ID: string(stage0Builder.ID),
+			Kind: "builder-seed",
+			Version: stage0Builder.Version,
 			ArtifactDigest: stage0Builder.ArtifactDigest,
 			TrustBoundary: "external-stage0-seed",
-			ToNode: "stage1", DependencyID: "builder",
+			ToNode: "stage1",
+			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
 	graphFingerprint, err := buildGraphFingerprint(graph)
 	if err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1OutputSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "builder-artifact",
+			Format: "application/octet-stream",
+			Digest: stage1Output.ArtifactDigest,
+		}},
+	}
+	if err := verifyBuildGraphBindings(
+		graph,
+		map[string]BuildExecutionPlan{
+			"stage1": stage1Plan,
+			"stage2": stage2Plan,
+		},
+		map[string]ArtifactSet{
+			"stage1": stage1OutputSet,
+		},
+	); err != nil {
 		return referenceEvidence{}, err
 	}
 	graphOrder, err := topologicalBuildOrder(graph)
@@ -392,6 +418,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		BuildGraphOrder: graphOrder,
 		BootstrapStage1Plan: stage1Plan,
 		BootstrapStage2Plan: stage2Plan,
+		BootstrapStage1ArtifactSet: stage1OutputSet,
 		AuthorityLimits: []string{
 			"build-binding-is-not-acceptance-authority",
 			"build-binding-is-not-runtime-authority",
