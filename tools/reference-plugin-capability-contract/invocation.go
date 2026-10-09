@@ -12,7 +12,10 @@ import (
 	"strings"
 )
 
-const referenceJSONPayloadCodec = "application/json;profile=tei-reference-v0"
+const (
+	referenceJSONPayloadCodec = "application/json;profile=tei-reference-v0"
+	invocationEffectReadOnly  = "read-only"
+)
 
 type InvocationImplementation struct {
 	Provider                Provider
@@ -163,6 +166,14 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 			"capability contract %s@%s has no invocation shape issuer",
 			contract.ID,
 			contract.Version,
+		)
+	}
+	if contract.InvocationEffect != invocationEffectReadOnly {
+		return InvocationExecution{}, fmt.Errorf(
+			"capability contract %s@%s invocation effect %q is not supported by the Reference generic boundary",
+			contract.ID,
+			contract.Version,
+			contract.InvocationEffect,
 		)
 	}
 
