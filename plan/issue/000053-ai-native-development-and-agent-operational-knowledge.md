@@ -323,7 +323,7 @@ available
   -> current Disclosure
 ```
 
-Handoffは本文をmaterializeせず、Plan revision / fingerprint、routing scope、selected sections、Qualification requirements / status / Evidenceだけを保持する。applicableでもauthoritative Evidenceが無い場合、required dependencyがあるのにdependency Evidenceが無い場合、PlanとQualificationのsubjectが一致しない場合はfail closedする。さらに候補subjectのauthoritative EvidenceがContextとSource Indexで同一でなければ、異なるrevisionを混在させたhandoffとして拒否する。
+Handoffは本文をmaterializeせず、Plan revision / fingerprint、routing scope、selected sections、Qualification requirements / status / Evidenceだけを保持する。ここでいう`qualified-for-disclosure`はKnowledge routing上の状態であり、RBAC、redaction、secret access、write/runtime authorizationを表さない。applicableでもauthoritative Evidenceが無い場合、required dependencyがあるのにdependency Evidenceが無い場合、PlanとQualificationのsubjectが一致しない場合はfail closedする。さらに候補subjectのauthoritative EvidenceがContextとSource Indexで同一でなければ、異なるrevisionを混在させたhandoffとして拒否する。
 
 Handoff fingerprintにはQualification Evidenceのrevisionを含める。一方、Review Plan fingerprintはrouting identityのまま維持し、Knowledge本文の変更だけで変化させない。Disclosure contentの再利用判断はDisclosure fingerprintへ委ねる。
 
