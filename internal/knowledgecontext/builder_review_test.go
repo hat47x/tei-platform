@@ -31,7 +31,7 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 	got := BuildBuilderReviewPlan(ctx)
 
 	if got.ProjectionRevision != builderReviewPlanProjectionRevision ||
-		got.Purpose() != "design-change" {
+		got.Purpose != "design-change" {
 		t.Fatalf("builder review plan identity drifted: %+v", got)
 	}
 	if got.Subject != ctx.Subject {
@@ -142,10 +142,6 @@ func TestBuilderReviewPlanFingerprintTracksRoutingNotKnowledgeContent(t *testing
 	if first.Fingerprint == fifth.Fingerprint {
 		t.Fatalf("changed unresolved routing state kept fingerprint: %s", fifth.Fingerprint)
 	}
-}
-
-func (p BuilderReviewPlan) Purpose() string {
-	return "design-change"
 }
 
 func containsBuilderReviewString(values []string, want string) bool {
