@@ -162,6 +162,9 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 				tablesByID[id] = append(tablesByID[id], ref)
 			}
 		case "IOPanel", "IOSpool", "IOTable":
+			if ref.node.Name == "IOTable" {
+				ioTableCount++
+			}
 			if ref.functionToken == "" {
 				continue
 			}
@@ -170,9 +173,6 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 					targetsByFunction[ref.functionToken] = map[string][]crossViewNode{}
 				}
 				targetsByFunction[ref.functionToken][id] = append(targetsByFunction[ref.functionToken][id], ref)
-			}
-			if ref.node.Name == "IOTable" {
-				ioTableCount++
 			}
 		}
 	}
