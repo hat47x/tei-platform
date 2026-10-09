@@ -22,6 +22,11 @@ type validationReviewSource struct {
 func attachValidationScopeSources(rows []validationScopeReviewRow, index sourceindex.Index) {
 	artifacts := make(map[string]string, len(index.Artifacts))
 	for _, artifact := range index.Artifacts {
+		if _, duplicated := artifacts[artifact.Path]; duplicated {
+			// An ambiguous artifact path cannot identify a trustworthy fingerprint.
+			artifacts[artifact.Path] = ""
+			continue
+		}
 		artifacts[artifact.Path] = artifact.Fingerprint
 	}
 	for i := range rows {
