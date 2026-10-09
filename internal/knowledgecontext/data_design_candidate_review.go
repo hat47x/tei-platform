@@ -293,79 +293,107 @@ func resolveDataDesignReviewCandidate(
 ) {
 	switch kind {
 	case DataDesignCandidateKindBusinessIdentity:
-		for _, value := range ctx.BusinessIdentityCandidates {
+		var matched *DataDesignBusinessIdentityCandidate
+		for i := range ctx.BusinessIdentityCandidates {
+			value := &ctx.BusinessIdentityCandidates[i]
 			if value.Fingerprint != fingerprint {
 				continue
 			}
-			if businessIdentityCandidateFingerprint(value) != value.Fingerprint {
+			if matched != nil {
 				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
-					"data-design business identity candidate fingerprint does not match current candidate content",
+					"data-design business identity candidate fingerprint is not unique in current Context: %s",
+					fingerprint,
 				)
 			}
-			if dataDesignCandidateEvidenceRequirementFingerprint(
-				"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
-				value.Fingerprint,
-				value.EvidenceNeeded,
-			) != value.EvidenceRequirementFingerprint {
-				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
-					"data-design business identity Evidence requirement fingerprint does not match current requirement content",
-				)
-			}
-			relevant := dataDesignReviewSubjects(
-				value.Relation,
-				value.BasisConstraint,
-				value.TargetOccurrence,
-				value.Components,
-			)
-			return DataDesignCandidateReviewCandidate{
-				Kind:                           kind,
-				Fingerprint:                    value.Fingerprint,
-				EvidenceRequirementFingerprint: value.EvidenceRequirementFingerprint,
-				Relation:                       value.Relation,
-				Terms:                          append([]DataDesignDeterminantTerm(nil), value.Components...),
-				TargetOccurrence:               value.TargetOccurrence,
-				BasisConstraint:                value.BasisConstraint,
-				Scope:                          value.Scope,
-				Nature:                         value.Nature,
-			}, append([]string(nil), value.EvidenceNeeded...), relevant, nil
+			matched = value
 		}
+		if matched == nil {
+			break
+		}
+		value := *matched
+		if businessIdentityCandidateFingerprint(value) != value.Fingerprint {
+			return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+				"data-design business identity candidate fingerprint does not match current candidate content",
+			)
+		}
+		if dataDesignCandidateEvidenceRequirementFingerprint(
+			"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+			value.Fingerprint,
+			value.EvidenceNeeded,
+		) != value.EvidenceRequirementFingerprint {
+			return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+				"data-design business identity Evidence requirement fingerprint does not match current requirement content",
+			)
+		}
+		relevant := dataDesignReviewSubjects(
+			value.Relation,
+			value.BasisConstraint,
+			value.TargetOccurrence,
+			value.Components,
+		)
+		return DataDesignCandidateReviewCandidate{
+			Kind:                           kind,
+			Fingerprint:                    value.Fingerprint,
+			EvidenceRequirementFingerprint: value.EvidenceRequirementFingerprint,
+			Relation:                       value.Relation,
+			Terms:                          append([]DataDesignDeterminantTerm(nil), value.Components...),
+			TargetOccurrence:               value.TargetOccurrence,
+			BasisConstraint:                value.BasisConstraint,
+			Scope:                          value.Scope,
+			Nature:                         value.Nature,
+		}, append([]string(nil), value.EvidenceNeeded...), relevant, nil
+
 	case DataDesignCandidateKindFunctionalDependency:
-		for _, value := range ctx.FunctionalDependencyCandidates {
+		var matched *DataDesignFunctionalDependencyCandidate
+		for i := range ctx.FunctionalDependencyCandidates {
+			value := &ctx.FunctionalDependencyCandidates[i]
 			if value.Fingerprint != fingerprint {
 				continue
 			}
-			if functionalDependencyCandidateFingerprint(value) != value.Fingerprint {
+			if matched != nil {
 				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
-					"data-design functional dependency candidate fingerprint does not match current candidate content",
+					"data-design functional dependency candidate fingerprint is not unique in current Context: %s",
+					fingerprint,
 				)
 			}
-			if dataDesignCandidateEvidenceRequirementFingerprint(
-				"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
-				value.Fingerprint,
-				value.EvidenceNeeded,
-			) != value.EvidenceRequirementFingerprint {
-				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
-					"data-design functional dependency Evidence requirement fingerprint does not match current requirement content",
-				)
-			}
-			relevant := dataDesignReviewSubjects(
-				value.Relation,
-				value.BasisConstraint,
-				value.DependentOccurrence,
-				value.Determinants,
-			)
-			return DataDesignCandidateReviewCandidate{
-				Kind:                           kind,
-				Fingerprint:                    value.Fingerprint,
-				EvidenceRequirementFingerprint: value.EvidenceRequirementFingerprint,
-				Relation:                       value.Relation,
-				Terms:                          append([]DataDesignDeterminantTerm(nil), value.Determinants...),
-				TargetOccurrence:               value.DependentOccurrence,
-				BasisConstraint:                value.BasisConstraint,
-				Scope:                          value.Scope,
-				Nature:                         value.Nature,
-			}, append([]string(nil), value.EvidenceNeeded...), relevant, nil
+			matched = value
 		}
+		if matched == nil {
+			break
+		}
+		value := *matched
+		if functionalDependencyCandidateFingerprint(value) != value.Fingerprint {
+			return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+				"data-design functional dependency candidate fingerprint does not match current candidate content",
+			)
+		}
+		if dataDesignCandidateEvidenceRequirementFingerprint(
+			"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+			value.Fingerprint,
+			value.EvidenceNeeded,
+		) != value.EvidenceRequirementFingerprint {
+			return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+				"data-design functional dependency Evidence requirement fingerprint does not match current requirement content",
+			)
+		}
+		relevant := dataDesignReviewSubjects(
+			value.Relation,
+			value.BasisConstraint,
+			value.DependentOccurrence,
+			value.Determinants,
+		)
+		return DataDesignCandidateReviewCandidate{
+			Kind:                           kind,
+			Fingerprint:                    value.Fingerprint,
+			EvidenceRequirementFingerprint: value.EvidenceRequirementFingerprint,
+			Relation:                       value.Relation,
+			Terms:                          append([]DataDesignDeterminantTerm(nil), value.Determinants...),
+			TargetOccurrence:               value.DependentOccurrence,
+			BasisConstraint:                value.BasisConstraint,
+			Scope:                          value.Scope,
+			Nature:                         value.Nature,
+		}, append([]string(nil), value.EvidenceNeeded...), relevant, nil
+
 	default:
 		return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
 			"unsupported data-design candidate kind %q",
