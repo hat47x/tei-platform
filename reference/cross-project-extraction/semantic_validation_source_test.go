@@ -86,6 +86,11 @@ func TestActualOrderEntrySemanticValidationsProjectWithoutDuplicateRuleDefinitio
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A source-controlled rule projection is not the evaluator binding plan
+	// provided by tools/reference-semantic-extension-catalog.
+	if source.Identity.ContractVersion != "tei.reference.application-validation-projection/v0" {
+		t.Fatalf("unexpected projection contract: %s", source.Identity.ContractVersion)
+	}
 	evaluated, err := transform.Evaluate(source, map[string]transform.Value{"validations": selected})
 	if err != nil {
 		t.Fatal(err)
