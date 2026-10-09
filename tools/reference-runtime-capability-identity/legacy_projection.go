@@ -83,6 +83,25 @@ func projectLegacyRuntimeCapabilityRef(
 	return projection, ref, nil
 }
 
+func validateLegacyRuntimeProjection(
+	projection LegacyRuntimeProjection,
+) error {
+	if projection.Schema != legacyRuntimeProjectionSchema ||
+		!projection.LegacyCapabilityKind.Valid() ||
+		projection.LegacyCapabilityID == "" ||
+		projection.Plugin.ID == "" ||
+		!validSHA256Fingerprint(projection.SourceDeclarationFingerprint) ||
+		!validSHA256Fingerprint(projection.RuntimeCapabilityFingerprint) ||
+		!validSHA256Fingerprint(projection.ProjectionFingerprint) ||
+		legacyRuntimeProjectionFingerprint(projection) != projection.ProjectionFingerprint {
+		return fmt.Errorf("legacy Runtime projection is invalid or stale")
+	}
+	if _, err := plugin.ParseVersion(projection.Plugin.Version); err != nil {
+		return fmt.Errorf("legacy Runtime projection Plugin version: %w", err)
+	}
+	return nil
+}
+
 func verifyLegacyRuntimeProjection(
 	projection LegacyRuntimeProjection,
 	ref RuntimeCapabilityRef,
@@ -90,10 +109,8 @@ func verifyLegacyRuntimeProjection(
 	candidate AcceptedRuntimeCandidate,
 	profile ExecutionProfile,
 ) error {
-	if projection.Schema != legacyRuntimeProjectionSchema ||
-		!validSHA256Fingerprint(projection.ProjectionFingerprint) ||
-		legacyRuntimeProjectionFingerprint(projection) != projection.ProjectionFingerprint {
-		return fmt.Errorf("legacy Runtime projection is invalid or stale")
+	if err := validateLegacyRuntimeProjection(projection); err != nil {
+		return err
 	}
 	currentProjection, currentRef, err := projectLegacyRuntimeCapabilityRef(
 		definition,
@@ -179,6 +196,9 @@ func projectLegacyEnvironmentAuthority(
 	profile ExecutionProfile,
 	executionAuthorityEvidenceFingerprint string,
 ) (LegacyEnvironmentAuthorityProjection, error) {
+	if err := validateLegacyRuntimeProjection(runtimeProjection); err != nil {
+		return LegacyEnvironmentAuthorityProjection{}, err
+	}
 	if env.ID == "" {
 		return LegacyEnvironmentAuthorityProjection{}, fmt.Errorf("legacy Environment ID is empty")
 	}
@@ -314,7 +334,7 @@ func verifyLegacyEnvironmentAuthorityProjection(
 	if err != nil {
 		return err
 	}
-	if projection != current {
+	if projection.ProjectionFingerprint != current.ProjectionFingerprint {
 		return fmt.Errorf(
 			"legacy Environment Authority projection differs from current authoritative Environment",
 		)
