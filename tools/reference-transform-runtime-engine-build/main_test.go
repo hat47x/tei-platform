@@ -190,6 +190,49 @@ func TestSelectGoExecutableRejectsDirectory(t *testing.T) {
 	}
 }
 
+func TestAllowedHostEnvironmentIsExplicitAndRejectsConflicts(t *testing.T) {
+	got, err := allowedHostEnvironmentForOS([]string{
+		"PATH=C:\\ambient",
+		"SystemRoot=C:\\Windows",
+		"COMSPEC=C:\\Windows\\System32\\cmd.exe",
+		"AWS_SECRET_ACCESS_KEY=secret",
+	}, "windows")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"COMSPEC=C:\\Windows\\System32\\cmd.exe",
+		"SYSTEMROOT=C:\\Windows",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("allowed Host environment: got %#v want %#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("allowed Host environment: got %#v want %#v", got, want)
+		}
+	}
+
+	if _, err := allowedHostEnvironmentForOS([]string{
+		"SystemRoot=C:\\Windows",
+		"SYSTEMROOT=D:\\Windows",
+	}, "windows"); err == nil {
+		t.Fatal("expected conflicting case-insensitive Host environment to fail")
+	}
+
+	unix, err := allowedHostEnvironmentForOS([]string{
+		"PATH=/ambient/bin",
+		"HOME=/ambient/home",
+		"LANG=ja_JP.UTF-8",
+	}, "linux")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unix) != 0 {
+		t.Fatalf("Unix Reference inherited unexpected Host environment: %#v", unix)
+	}
+}
+
 func TestBuildEnvironmentDropsAmbientHostVariables(t *testing.T) {
 	state := t.TempDir()
 	env, err := buildEnvironment([]string{
