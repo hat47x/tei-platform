@@ -358,7 +358,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		Seeds: []BuildGraphSeed{{
 			ID: string(stage0Builder.ID), Kind: "builder-seed", Version: stage0Builder.Version,
 			ArtifactDigest: stage0Builder.ArtifactDigest,
-			TrustBoundary: "trusted-stage0-seed",
+			TrustBoundary: "external-stage0-seed",
 			ToNode: "stage1", DependencyID: "builder",
 		}},
 	}
@@ -396,6 +396,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			"build-binding-is-not-acceptance-authority",
 			"build-binding-is-not-runtime-authority",
 			"artifact-set-location-is-not-content-identity",
+			"stage0-boundary-is-not-trust-acceptance",
 		},
 	}, nil
 }
