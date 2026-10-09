@@ -6,6 +6,7 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/plugin"
+	pruntime "tei/internal/plugin/runtime"
 )
 
 const (
@@ -332,5 +333,127 @@ func TestCompareArtifactSetsIgnoresLocatorOnlyChanges(t *testing.T) {
 	}
 	if !comparison.Reproducible {
 		t.Fatalf("locator-only change was treated as output content drift: %#v", comparison)
+	}
+}
+
+
+func TestOneExecutionCanBindMultiplePluginsWithoutDuplicatingArtifactResult(t *testing.T) {
+	plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "source", ID: "shared", Locator: "source://shared", Digest: digestA,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.shared_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "shared-reference", Entrypoint: "shared"},
+		OutputContract: "shared-runtime-artifact",
+		Target: "host/reference",
+	}
+	executionFP, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "primary", Format: "application/octet-stream", Digest: digestC,
+		}},
+	}
+	setFP, err := artifactSetFingerprint(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := BuildExecutionResult{
+		FormatVersion: buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFP,
+		ArtifactSetFingerprint: setFP,
+	}
+	if _, err := buildExecutionResultFingerprint(result); err != nil {
+		t.Fatal(err)
+	}
+
+	bindings := []PluginSubjectBinding{
+		{
+			FormatVersion: pluginSubjectBindingFormatVersion,
+			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_a"), Version: "1.0.0"},
+			PluginDefinitionFingerprint: strings.Repeat("a", 64),
+			ExecutionPlanFingerprint: executionFP,
+			ArtifactSetFingerprint: setFP,
+			OutputRoles: []string{"primary"},
+		},
+		{
+			FormatVersion: pluginSubjectBindingFormatVersion,
+			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_b"), Version: "1.0.0"},
+			PluginDefinitionFingerprint: strings.Repeat("b", 64),
+			ExecutionPlanFingerprint: executionFP,
+			ArtifactSetFingerprint: setFP,
+			OutputRoles: []string{"primary"},
+		},
+	}
+	for _, binding := range bindings {
+		if err := verifyPluginSubjectBinding(binding, plan, set); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fpA, _ := pluginSubjectBindingFingerprint(bindings[0])
+	fpB, _ := pluginSubjectBindingFingerprint(bindings[1])
+	if fpA == fpB {
+		t.Fatal("multiple logical Plugins collapsed into one binding identity")
+	}
+}
+
+func TestRuntimeEngineSubjectBindingDoesNotRequirePluginIdentity(t *testing.T) {
+	plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "go-source-closure", ID: "transform-engine", Locator: "source://engine", Digest: digestA,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.go_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "runtime-engine", Entrypoint: "transform-engine"},
+		OutputContract: "runtime-engine-executable",
+		Target: "host/reference",
+	}
+	executionFP, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "runtime-engine", Format: "application/octet-stream", Digest: digestC,
+		}},
+	}
+	setFP, err := artifactSetFingerprint(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding := RuntimeEngineSubjectBinding{
+		FormatVersion: pluginSubjectBindingFormatVersion,
+		Engine: pruntime.RuntimeEngineIdentity{
+			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
+			Version: "1.0.0",
+			ContractVersion: "tei.transform-runtime/v1",
+			ImplementationDigest: digestC,
+			Target: "host/reference",
+		},
+		ExecutionPlanFingerprint: executionFP,
+		ArtifactSetFingerprint: setFP,
+		OutputRole: "runtime-engine",
+	}
+	if err := verifyRuntimeEngineSubjectBinding(binding, plan, set); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeEngineSubjectBindingFingerprint(binding); err != nil {
+		t.Fatal(err)
+	}
+
+	binding.Engine.ImplementationDigest = digestD
+	if err := verifyRuntimeEngineSubjectBinding(binding, plan, set); err == nil {
+		t.Fatal("runtime engine binding accepted an artifact member with a different implementation digest")
 	}
 }
