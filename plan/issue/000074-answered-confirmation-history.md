@@ -1,6 +1,6 @@
 # ISSUE-000074: 一度答えた確認と退けた提案を記録し、理由なく繰り返さない
 
-- 状態: In Progress — 記録形を暫定採用し、`tools/reference-shared-acceptance`に`answered`と種類単位の抑制・解除を実装した。`rejected-proposal`、Studio / AIから呼ぶ面、owner reviewは未了
+- 状態: In Progress — 記録形を暫定採用し、`tools/reference-shared-acceptance`に`answered`と種類単位の抑制・解除、`rejected-proposal`（暫定）を実装した。Studio / AIから呼ぶ面、owner reviewは未了
 - 提案日: 2026-09-30
 - 性格: Requirementの最小Reference / 既存受入境界の拡張
 - 主担当要求: RQ-016（主）/ RQ-017 / RQ-027
@@ -19,7 +19,7 @@ RQ-016は、AI / Editorの確認提案について「一度回答した質問を
 
 2026-09-30時点で、受入境界（`tools/reference-shared-acceptance`）は受理した決定を`.tei/decisions/`へ残し、会話履歴なしで読めるようにしています（RQ-027）。一方、次の二つは記録されません。
 
-- **退けた提案。** `reject`は「sourceを変えない」ことを確かめますが、何も記録しません。RQ-027が機械到達を求めるのはaccepted Decisionであるため、という理由がtoolのREADMEに書かれています。
+- **退けた提案。** `reject`は「sourceを変えない」ことを確かめ、決定記録を`.tei/decisions/`へ残します。ただし、その退けを答えた確認の履歴とは結びつけていないため、同じ提案が理由なく再び出ても、機械はそれを検出できませんでした。
 - **答えた確認。** 「顧客マスタはread-onlyか」「履歴を残すか」のような確認とその答えを記録する形が、Repositoryのどこにもありません。
 
 このため、AIや将来のStudioが同じ論点について確認を出したとき、「前に答えた」「前に退けた」ことを機械的に知る手段がありません。人は同じ質問に何度も答え、同じ提案を何度も退けることになります。
@@ -82,7 +82,7 @@ RQ-016は、AI / Editorの確認提案について「一度回答した質問を
 ## 完了条件
 
 - [ ] 記録の形と再確認の規則をowner reviewで確定する（`reject`に記録を残すかどうかの判断を含む。残す場合も、authorityにしない理由を明記する）
-  - 暫定採用（2026-10-09、owner reviewまで）: 下の「暫定採用した実装」。`rejected-proposal`は未実装で、`reject`は現状のまま記録を残さない
+  - 暫定採用（2026-10-09、owner reviewまで）: 下の「暫定採用した実装」。`rejected-proposal`は暫定実装し（2026-10-10）、`reject`の出力と決定記録の形は変えていない
 - [x] `basis`のfingerprintをsubject単位で取れるか（現行の`sourceindex.Fingerprint`はfile内容のfingerprint）を確かめ、取れなければfile単位から始める
   - 取れない。subjectを宣言しているfileのfingerprintで固定した。そのため、同じfileの別subjectの変更でも前提が変わったとみなし、確認を出す側へ倒れる（見逃すより多く出す）
 - [x] 受入境界またはその隣のReference toolに確認記録の読み書きを実装する。`reference/workspace`のbaselineへは、決定記録と同じguard（`-allow-reference-baseline`なしでは書き込みを拒む）を適用する。`.tei/decisions/`の記録は現在Gitで追跡されている（`.gitignore`が除外するのは`.tei/cache`と`.tei/index`だけ）ため、`.tei/confirmations/`も同様に追跡するかを決める。次をtestで固定する: basis一致なら再確認しない / basis変化で再確認する / 抑制は解除できる / 記録を消しても意味が変わらない / 読めない記録で黙って抑制しない
@@ -99,11 +99,12 @@ RQ-016は、AI / Editorの確認提案について「一度回答した質問を
 - 同じidentityに有効な記録がある場合、`supersedes`に先頭の記録名を指定しないと追記を拒む。前の記録は消さない。時刻は判定に使わない。
 - 確認を出す条件: 記録なし / 前提のfingerprint変化 / 前提のsubjectが解決できない / 記録が読めない・履歴が分岐・別identityへのsupersedes / 答えが人によるものでない。AIが決めた答えは抑制に使わない。
 - `category-suppressed`は理由を必須とし、`confirmations`の一覧が抑制中の種類を示す。解除は`category-reinstated`を足す。
+- `rejected-proposal`（暫定）: 退けた候補を、identity = {kind: `proposal`, subject: candidateFingerprint}、答え = `rejected`（固定）、理由必須、前提（候補が触るCanonical subject）必須、`linkedDecision`（`reject`が書いた`.tei/decisions/`の記録）必須で記録する。前提が同じで人が退けた場合は`rejected-proposal-basis-unchanged`として再び確認を出さない。前提が変わった場合・AIが退けた場合は確認を出す。`reject`の出力と決定記録の形は変えていない。同じ文字列でも、scope-questionのsubjectとは衝突しない（testで固定）。読むときも同じ必須項目と結び先の検査（`linkedDecision`の形、決定記録がrejectedでidentity.subjectの候補のものか）を確かめ、満たさない記録は読めない記録として確認を出す側へ倒す。決定記録が無いことだけは、読む側では問題にしない（決定記録は消せる派生物のため）。`answered`でidentity.kindを`proposal`にする記録は、書く側も読む側も拒否する（`IDENTITY_KIND_RESERVED`）。前提のsubjectが宣言から消えた場合は、`basis-changed`として変化点を添えて確認を出す（`answered`は従来どおり`basis-unresolved`）。
 - `reference/workspace`のbaselineへは、決定記録と同じく`-allow-reference-baseline`なしでは書かない。
 
-**暫定判断**（owner reviewで覆せる）: 前提はfile単位 / 時刻でなくsupersedes鎖で履歴を表す / 迷ったら確認を出す側へ倒す / AIの答えは抑制に使わない。
+**暫定判断**（owner reviewで覆せる）: 前提はfile単位 / 時刻でなくsupersedes鎖で履歴を表す / 迷ったら確認を出す側へ倒す / AIの答えは抑制に使わない / 退けた提案の同一性はcandidateFingerprint（baseModelRevisionを含む）とし、`linkedDecision`は、identity.subjectの候補を退けた決定記録（decision = rejected）を指すことまで検査する。決定記録が無いことは、書く側では拒否し、読む側では問題にしない。
 
-**未了**: `rejected-proposal`（退けたcandidateの記録）、Studio / AIから`confirm-check`を呼ぶ面（ISSUE-000046 / 000047）、`.tei/confirmations/`をGitで追跡するかの決定、前提に新しいfileが加わった場合の検出を固定するtest（現行fixtureには同一subjectを複数fileで宣言する例がない）。
+**未了**: Studio / AIから`confirm-check`を呼ぶ面（ISSUE-000046 / 000047）。`reject`の後に人が`confirm-record`を呼ぶ手順を、どの面が担うか。`.tei/confirmations/`をGitで追跡するかの決定。前提に新しいfileが加わった場合の検出を固定するtest（現行fixtureには同一subjectを複数fileで宣言する例がない）。次は、2026-10-10のレビューで見つかり、実装では直していないowner判断である。(1) 提案の同一性がbaseModelRevisionを含むこと（model revisionを越えて同じ提案を抑制するには、identityの作り方を変える必要がある）。(2) `rejected-proposal`の`basisSubjects`は運用者の入力で、候補が触れたsubjectとは照合していない。reject決定は触れたsubjectを持たないため、照合には、決定記録に前提を持たせる変更（reject / decision.goに触れる）か、確認時に候補ファイルを受け取る形が要る。(3) `decidedBy`は呼び出し側の自己申告で、CLIは人であることを検証しない。AIが人として書いた記録は抑制に使える。人の答えを機械的に担保するには、人の操作だけが書ける経路が要る。(4) 種類単位の抑制（category-suppressed）はAIが書いても、identityの判定より先に評価されるため、人が退けた提案の前提変化の確認を覆う。現行のspecどおりなので、覆すかどうかはowner判断。(5) 退けた提案の履歴が分岐すると、supersedesで一件を選べず（HISTORY_FORKED）、確認が出続ける。解消には記録の形の変更が要る。
 
 ## 完了後に判断できること
 
