@@ -118,7 +118,6 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 	functionsByID := map[string][]crossViewNode{}
 	tablesByID := map[string][]crossViewNode{}
 	targetsByFunction := map[string]map[string][]crossViewNode{}
-	functionIOTables := map[string][]crossViewNode{}
 	actions := map[string]*CrossViewActionObservation{}
 	taskCount := 0
 	taskFunctionIOCount := 0
@@ -170,7 +169,6 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 			}
 			if ref.node.Name == "IOTable" {
 				ioTableCount++
-				functionIOTables[ref.functionToken] = append(functionIOTables[ref.functionToken], ref)
 			}
 		}
 	}
@@ -306,7 +304,7 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 		case "IOTable":
 			if ref.functionToken == "" {
 				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
-					"ioTableCode("iotable-without-function"),
+					""iotable-without-function",
 					"function-table-operation",
 					[]string{ref.token},
 				))
@@ -315,7 +313,7 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 			tableID, ok := nonEmptyExactAttribute(ref.node, "TableID")
 			if !ok {
 				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
-					ioTableCode("iotable-table-id-missing"),
+					"iotable-table-id-missing",
 					"function-table-operation",
 					[]string{ref.functionToken, ref.token},
 				))
@@ -414,13 +412,9 @@ func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounti
 			"benchmark-observation-is-not-universal-xtea-rule",
 		},
 	}
-	taskTokens := map[string]struct{}{}
 	actionFunctionPairs := map[string]struct{}{}
 	for _, action := range projection.Actions {
 		out.TaskActionCount++
-		if action.TaskToken != "" {
-			taskTokens[action.TaskToken] = struct{}{}
-		}
 		if action.FunctionIOCount == 0 {
 			out.TaskActionWithoutFunctionIOCount++
 		}
@@ -451,9 +445,6 @@ func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounti
 	}
 	for _, unresolved := range projection.Unresolved {
 		out.UnresolvedCounts[unresolved.Code]++
-	}
-	for _, count := range out.UnresolvedCounts {
-		_ = count
 	}
 	if len(out.TaskFunctionIOTargetKindCounts) == 0 {
 		out.TaskFunctionIOTargetKindCounts = nil
