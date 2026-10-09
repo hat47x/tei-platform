@@ -451,3 +451,25 @@ func TestValidationScopeReviewDoesNotTrustDuplicateArtifactPaths(t *testing.T) {
 		})
 	}
 }
+
+func TestValidationScopeSourcesAreNotRequiredForUnresolvedRows(t *testing.T) {
+	cases := []struct {
+		name string
+		rows []validationScopeReviewRow
+		want bool
+	}{
+		{name: "no validation step", want: false},
+		{name: "missing context", rows: []validationScopeReviewRow{{Status: "unresolved-context"}}, want: false},
+		{name: "unknown validation", rows: []validationScopeReviewRow{{Status: "unresolved-reference"}}, want: false},
+		{name: "review needed", rows: []validationScopeReviewRow{{Status: "review-needed"}}, want: true},
+		{name: "matching sets", rows: []validationScopeReviewRow{{Status: "no-set-difference"}}, want: true},
+		{name: "mixed rows", rows: []validationScopeReviewRow{{Status: "unresolved-context"}, {Status: "review-needed"}}, want: true},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if got := validationScopeSourcesNeeded(test.rows); got != test.want {
+				t.Fatalf("出典を探索する条件が不正です: got=%t want=%t rows=%+v", got, test.want, test.rows)
+			}
+		})
+	}
+}
