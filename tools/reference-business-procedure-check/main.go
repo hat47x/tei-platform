@@ -109,7 +109,8 @@ type report struct {
 	BusinessActionFunctionRows       []functionRow       `json:"businessActionFunctionRows"`
 	BusinessActionPatternMeaningRows []patternMeaningRow `json:"businessActionPatternMeaningRows"`
 	ExplicitBusinessMeaningRows      []dataRow           `json:"explicitBusinessMeaningRows"`
-	Diagnostics                      []diagnostic        `json:"diagnostics"`
+	Diagnostics                      []diagnostic             `json:"diagnostics"`
+	ValidationScopeReview            []validationScopeReviewRow `json:"validationScopeReview,omitempty"`
 }
 
 func main() {
@@ -117,9 +118,10 @@ func main() {
 	fixturePath := flag.String("fixture", "reference/business-system-design/order-entry-business-procedure.json", "Business Procedure Reference fixture")
 	probePath := flag.String("probe", "", "optional experiment access probe")
 	expectDiagnostic := flag.String("expect-diagnostic", "", "expected blocking diagnostic code for an intentional defect probe")
+	reviewValidationScope := flag.Bool("review-validation-scope", false, "Application全体のValidation宣言とBusiness Procedureの明示参照を読み取り専用で比較する")
 	flag.Parse()
 
-	result, err := run(*workspacePath, *fixturePath, *probePath)
+	result, err := runWithOptions(*workspacePath, *fixturePath, *probePath, *reviewValidationScope)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -139,6 +141,10 @@ func main() {
 }
 
 func run(workspacePath, fixturePath, probePath string) (report, error) {
+	return runWithOptions(workspacePath, fixturePath, probePath, false)
+}
+
+func runWithOptions(workspacePath, fixturePath, probePath string, reviewValidationScope bool) (report, error) {
 	f, err := readFixture(fixturePath)
 	if err != nil {
 		return report{}, err
@@ -149,6 +155,9 @@ func run(workspacePath, fixturePath, probePath string) (report, error) {
 	}
 
 	result := evaluate(loaded.World, f)
+	if reviewValidationScope {
+		result.ValidationScopeReview = compareValidationScopes(loaded.World, f)
+	}
 	if strings.TrimSpace(probePath) != "" {
 		probe, err := readProbe(probePath)
 		if err != nil {
