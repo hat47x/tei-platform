@@ -14,12 +14,16 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"tei/internal/core"
+	pruntime "tei/internal/plugin/runtime"
 )
 
 const (
 	evidenceSchema = "tei.reference.transform-engine-build-evidence/v1"
 	enginePackage  = "./tools/reference-transform-runtime-engine"
 	engineID       = "tei.runtime.engine.deterministic_transform.reference"
+	engineVersion  = "1.0.0"
 	engineContract = "tei.runtime-engine/deterministic-transform-v1"
 )
 
@@ -37,9 +41,11 @@ type goBuilderEvidence struct {
 type buildEvidence struct {
 	Schema               string            `json:"schema"`
 	RepositoryRevision   string            `json:"repositoryRevision"`
-	EngineID             string            `json:"engineId"`
-	EngineContract       string            `json:"engineContract"`
-	Target               string            `json:"target"`
+	EngineID             string                          `json:"engineId"`
+	EngineVersion        string                          `json:"engineVersion"`
+	EngineContract       string                          `json:"engineContract"`
+	Target               string                          `json:"target"`
+	RuntimeEngine        *pruntime.RuntimeEngineIdentity `json:"runtimeEngine,omitempty"`
 	Entrypoint           string            `json:"entrypoint"`
 	SourceClosure        []sourceMember    `json:"sourceClosure"`
 	SourceClosureDigest  string            `json:"sourceClosureDigest"`
@@ -160,7 +166,20 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 		return buildEvidence{}, err
 	}
 	reproducible, artifactDigest := resolveReproducibility(firstDigest, secondDigest)
+	target := "host/" + runtime.GOOS + "/" + runtime.GOARCH
+	var exactRuntimeEngine *pruntime.RuntimeEngineIdentity
 	if reproducible {
+		engine := pruntime.RuntimeEngineIdentity{
+			ID:                   core.MustCanonicalID(engineID),
+			Version:              engineVersion,
+			ContractVersion:      engineContract,
+			ImplementationDigest: artifactDigest,
+			Target:               target,
+		}
+		if err := engine.Validate(); err != nil {
+			return buildEvidence{}, fmt.Errorf("exact Runtime Engine identity: %w", err)
+		}
+		exactRuntimeEngine = &engine
 		if artifactOut != "" {
 			if err := copyVerifiedArtifactOutsideRepository(root, firstPath, artifactOut, firstDigest); err != nil {
 				return buildEvidence{}, err
@@ -172,8 +191,10 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 		Schema:              evidenceSchema,
 		RepositoryRevision:  revision,
 		EngineID:            engineID,
+		EngineVersion:       engineVersion,
 		EngineContract:      engineContract,
-		Target:              "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+		Target:              target,
+		RuntimeEngine:       exactRuntimeEngine,
 		Entrypoint:          enginePackage,
 		SourceClosure:       sourceClosure,
 		SourceClosureDigest: sourceClosureDigest,
