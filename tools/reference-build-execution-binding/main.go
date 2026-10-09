@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -95,7 +96,235 @@ type RuntimeEngineSubjectBinding struct {
 	OutputRole               string                         `json:"outputRole"`
 }
 
-func main() {}
+type referenceEvidence struct {
+	Schema                         string                      `json:"schema"`
+	SharedPlan                     BuildExecutionPlan          `json:"sharedPlan"`
+	SharedArtifactSet              ArtifactSet                 `json:"sharedArtifactSet"`
+	SharedResult                   BuildExecutionResult        `json:"sharedResult"`
+	SharedResultFingerprint        string                      `json:"sharedResultFingerprint"`
+	SharedPluginBindings           []PluginSubjectBinding      `json:"sharedPluginBindings"`
+	SharedPluginBindingFingerprints []string                    `json:"sharedPluginBindingFingerprints"`
+	MultiOutputPlan                BuildExecutionPlan          `json:"multiOutputPlan"`
+	MultiOutputArtifactSet         ArtifactSet                 `json:"multiOutputArtifactSet"`
+	MultiOutputBinding             PluginSubjectBinding        `json:"multiOutputBinding"`
+	MultiOutputComparison          ArtifactSetComparison       `json:"multiOutputComparison"`
+	RuntimeEnginePlan              BuildExecutionPlan          `json:"runtimeEnginePlan"`
+	RuntimeEngineArtifactSet       ArtifactSet                 `json:"runtimeEngineArtifactSet"`
+	RuntimeEngineBinding           RuntimeEngineSubjectBinding `json:"runtimeEngineBinding"`
+	RuntimeEngineBindingFingerprint string                     `json:"runtimeEngineBindingFingerprint"`
+	AuthorityLimits                []string                    `json:"authorityLimits"`
+}
+
+func main() {
+	evidence, err := buildReferenceEvidence()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(evidence); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func buildReferenceEvidence() (referenceEvidence, error) {
+	const (
+		sourceDigest    = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		builderDigest   = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+		artifactDigest  = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+		secondaryDigest = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+	)
+
+	sharedPlan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "source", ID: "shared", Locator: "source://shared", Digest: sourceDigest,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.shared_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "shared-reference", Entrypoint: "shared"},
+		OutputContract: "shared-runtime-artifact",
+		Target: "host/reference",
+	}
+	sharedExecutionFingerprint, err := buildExecutionPlanFingerprint(sharedPlan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	sharedSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "primary", Format: "application/octet-stream", Digest: artifactDigest,
+		}},
+	}
+	sharedSetFingerprint, err := artifactSetFingerprint(sharedSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	sharedResult := BuildExecutionResult{
+		FormatVersion: buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: sharedExecutionFingerprint,
+		ArtifactSetFingerprint: sharedSetFingerprint,
+	}
+	sharedResultFingerprint, err := buildExecutionResultFingerprint(sharedResult)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	sharedBindings := []PluginSubjectBinding{
+		{
+			FormatVersion: pluginSubjectBindingFormatVersion,
+			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_a"), Version: "1.0.0"},
+			PluginDefinitionFingerprint: strings.Repeat("a", 64),
+			ExecutionPlanFingerprint: sharedExecutionFingerprint,
+			ArtifactSetFingerprint: sharedSetFingerprint,
+			OutputRoles: []string{"primary"},
+		},
+		{
+			FormatVersion: pluginSubjectBindingFormatVersion,
+			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_b"), Version: "1.0.0"},
+			PluginDefinitionFingerprint: strings.Repeat("b", 64),
+			ExecutionPlanFingerprint: sharedExecutionFingerprint,
+			ArtifactSetFingerprint: sharedSetFingerprint,
+			OutputRoles: []string{"primary"},
+		},
+	}
+	sharedBindingFingerprints := make([]string, 0, len(sharedBindings))
+	for _, binding := range sharedBindings {
+		if err := verifyPluginSubjectBinding(binding, sharedPlan, sharedSet); err != nil {
+			return referenceEvidence{}, err
+		}
+		fingerprint, err := pluginSubjectBindingFingerprint(binding)
+		if err != nil {
+			return referenceEvidence{}, err
+		}
+		sharedBindingFingerprints = append(sharedBindingFingerprints, fingerprint)
+	}
+
+	multiOutputPlan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "source", ID: "web-app", Locator: "source://web-app", Digest: sourceDigest,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.web_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "web-reference", Entrypoint: "web-app"},
+		OutputContract: "web-artifact-set",
+		Target: "web/reference",
+	}
+	multiExecutionFingerprint, err := buildExecutionPlanFingerprint(multiOutputPlan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	multiSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{
+			{Role: "web-script", Format: "text/javascript", Digest: artifactDigest, Locator: "out/app.js"},
+			{Role: "resource-manifest", Format: "application/json", Digest: secondaryDigest, Locator: "out/manifest.json"},
+		},
+	}
+	multiSetFingerprint, err := artifactSetFingerprint(multiSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	multiBinding := PluginSubjectBinding{
+		FormatVersion: pluginSubjectBindingFormatVersion,
+		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.web_plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint: strings.Repeat("e", 64),
+		ExecutionPlanFingerprint: multiExecutionFingerprint,
+		ArtifactSetFingerprint: multiSetFingerprint,
+		OutputRoles: []string{"resource-manifest", "web-script"},
+	}
+	if err := verifyPluginSubjectBinding(multiBinding, multiOutputPlan, multiSet); err != nil {
+		return referenceEvidence{}, err
+	}
+	divergentSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{
+			{Role: "web-script", Format: "text/javascript", Digest: secondaryDigest, Locator: "other/app.js"},
+			{Role: "resource-map", Format: "application/json", Digest: sourceDigest, Locator: "other/resources.json"},
+		},
+	}
+	multiComparison, err := compareArtifactSets(multiSet, divergentSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+
+	enginePlan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "go-source-closure", ID: "transform-engine", Locator: "source://engine", Digest: sourceDigest,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.go_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "runtime-engine", Entrypoint: "transform-engine"},
+		OutputContract: "runtime-engine-executable",
+		Target: "host/reference",
+	}
+	engineExecutionFingerprint, err := buildExecutionPlanFingerprint(enginePlan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	engineSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "runtime-engine", Format: "application/octet-stream", Digest: artifactDigest,
+		}},
+	}
+	engineSetFingerprint, err := artifactSetFingerprint(engineSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	engineBinding := RuntimeEngineSubjectBinding{
+		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
+		Engine: pruntime.RuntimeEngineIdentity{
+			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
+			Version: "1.0.0",
+			ContractVersion: "tei.transform-runtime/v1",
+			ImplementationDigest: artifactDigest,
+			Target: "host/reference",
+		},
+		ExecutionPlanFingerprint: engineExecutionFingerprint,
+		ArtifactSetFingerprint: engineSetFingerprint,
+		OutputRole: "runtime-engine",
+	}
+	if err := verifyRuntimeEngineSubjectBinding(engineBinding, enginePlan, engineSet); err != nil {
+		return referenceEvidence{}, err
+	}
+	engineBindingFingerprint, err := runtimeEngineSubjectBindingFingerprint(engineBinding)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+
+	return referenceEvidence{
+		Schema: "tei.reference.build-execution-binding/v0",
+		SharedPlan: sharedPlan,
+		SharedArtifactSet: sharedSet,
+		SharedResult: sharedResult,
+		SharedResultFingerprint: sharedResultFingerprint,
+		SharedPluginBindings: sharedBindings,
+		SharedPluginBindingFingerprints: sharedBindingFingerprints,
+		MultiOutputPlan: multiOutputPlan,
+		MultiOutputArtifactSet: multiSet,
+		MultiOutputBinding: multiBinding,
+		MultiOutputComparison: multiComparison,
+		RuntimeEnginePlan: enginePlan,
+		RuntimeEngineArtifactSet: engineSet,
+		RuntimeEngineBinding: engineBinding,
+		RuntimeEngineBindingFingerprint: engineBindingFingerprint,
+		AuthorityLimits: []string{
+			"build-binding-is-not-acceptance-authority",
+			"build-binding-is-not-runtime-authority",
+			"artifact-set-location-is-not-content-identity",
+		},
+	}, nil
+}
 
 func executionPlanFromPluginBuildPlan(plan plugin.BuildPlan) (BuildExecutionPlan, error) {
 	if err := plan.Validate(); err != nil {
