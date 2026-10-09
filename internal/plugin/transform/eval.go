@@ -135,14 +135,17 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("select-field requires object, got %s", source.Kind)
 		}
-		value, ok := fieldShared(source, expr.Field)
+		index, ok, err := e.findObjectField(source, expr.Field)
+		if err != nil {
+			return Value{}, err
+		}
 		if !ok {
 			if expr.Optional {
 				return Null(), nil
 			}
 			return Value{}, fmt.Errorf("required field %q is missing", expr.Field)
 		}
-		return value, nil
+		return source.Object[index].Value, nil
 	case OpConstructObject:
 		fields := make([]Field, 0, len(expr.Fields))
 		for _, field := range expr.Fields {
@@ -217,21 +220,37 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("replace-field requires object, got %s", source.Kind)
 		}
-		if _, exists := fieldShared(source, expr.Field); !exists {
+		index, exists, err := e.findObjectField(source, expr.Field)
+		if err != nil {
+			return Value{}, err
+		}
+		if !exists {
 			return source, nil
 		}
 		replacement, err := e.eval(*expr.Value, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		out, _, err := replaceFieldShared(source, expr.Field, replacement)
-		return out, err
+		out := source
+		out.Object = append([]Field(nil), source.Object...)
+		out.Object[index].Value = replacement
+		return out, nil
 	case OpOmitField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		return omitFieldShared(source, expr.Field)
+		index, exists, err := e.findObjectField(source, expr.Field)
+		if err != nil {
+			return Value{}, err
+		}
+		if !exists {
+			return source, nil
+		}
+		out := Value{Kind: ValueObject, Object: make([]Field, 0, len(source.Object)-1)}
+		out.Object = append(out.Object, source.Object[:index]...)
+		out.Object = append(out.Object, source.Object[index+1:]...)
+		return out, nil
 	case OpAssertEqual:
 		actual, err := e.eval(*expr.Actual, env, depth+1)
 		if err != nil {
@@ -241,7 +260,11 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if err != nil {
 			return Value{}, err
 		}
-		if !Equal(actual, expected) {
+		equal, err := e.equalValues(actual, expected)
+		if err != nil {
+			return Value{}, err
+		}
+		if !equal {
 			return Value{}, fmt.Errorf("assert-equal failed")
 		}
 		return actual, nil
@@ -255,7 +278,11 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			if err != nil {
 				return Value{}, err
 			}
-			if Equal(actual, allowed) {
+			equal, err := e.equalValues(actual, allowed)
+			if err != nil {
+				return Value{}, err
+			}
+			if equal {
 				return actual, nil
 			}
 		}
@@ -570,45 +597,67 @@ func bytesShared(raw []byte) Value {
 	return Value{Kind: ValueBytes, Bytes: raw}
 }
 
-func fieldShared(value Value, name string) (Value, bool) {
-	if value.Kind != ValueObject {
-		return Value{}, false
-	}
-	for _, field := range value.Object {
-		if field.Name == name {
-			return field.Value, true
+func (e *evaluator) findObjectField(value Value, name string) (int, bool, error) {
+	for i := range value.Object {
+		if err := e.consume(1); err != nil {
+			return 0, false, err
+		}
+		if value.Object[i].Name == name {
+			return i, true, nil
 		}
 	}
-	return Value{}, false
+	return 0, false, nil
 }
 
-func replaceFieldShared(value Value, name string, replacement Value) (Value, bool, error) {
-	if value.Kind != ValueObject {
-		return Value{}, false, fmt.Errorf("replace-field requires object, got %s", value.Kind)
+func (e *evaluator) equalValues(a, b Value) (bool, error) {
+	if err := e.consume(1); err != nil {
+		return false, err
 	}
-	out := value
-	out.Object = append([]Field(nil), value.Object...)
-	for i := range out.Object {
-		if out.Object[i].Name == name {
-			out.Object[i].Value = replacement
-			return out, true, nil
+	if a.Kind != b.Kind {
+		return false, nil
+	}
+	switch a.Kind {
+	case ValueNull:
+		return true, nil
+	case ValueBool:
+		return a.Bool == b.Bool, nil
+	case ValueNumber:
+		return a.Number == b.Number, nil
+	case ValueString:
+		return a.String == b.String, nil
+	case ValueBytes:
+		return bytes.Equal(a.Bytes, b.Bytes), nil
+	case ValueArray:
+		if len(a.Array) != len(b.Array) {
+			return false, nil
 		}
-	}
-	return out, false, nil
-}
-
-func omitFieldShared(value Value, name string) (Value, error) {
-	if value.Kind != ValueObject {
-		return Value{}, fmt.Errorf("omit-field requires object, got %s", value.Kind)
-	}
-	out := Value{Kind: ValueObject, Object: make([]Field, 0, len(value.Object))}
-	for _, field := range value.Object {
-		if field.Name == name {
-			continue
+		for i := range a.Array {
+			equal, err := e.equalValues(a.Array[i], b.Array[i])
+			if err != nil || !equal {
+				return equal, err
+			}
 		}
-		out.Object = append(out.Object, field)
+		return true, nil
+	case ValueObject:
+		if len(a.Object) != len(b.Object) {
+			return false, nil
+		}
+		for i := range a.Object {
+			if err := e.consume(1); err != nil {
+				return false, err
+			}
+			if a.Object[i].Name != b.Object[i].Name {
+				return false, nil
+			}
+			equal, err := e.equalValues(a.Object[i].Value, b.Object[i].Value)
+			if err != nil || !equal {
+				return equal, err
+			}
+		}
+		return true, nil
+	default:
+		return false, fmt.Errorf("unsupported value kind %q", a.Kind)
 	}
-	return out, nil
 }
 
 type evalEnv struct {
