@@ -18,3 +18,4 @@
 | ファイル | 内容 |
 | --- | --- |
 | [`tei-projection-design-sketch.html`](tei-projection-design-sketch.html) | 第一Web Target、Command / Observation、Editor、Studio、既存認証、Database Workbench、Gate Evidence、Runtime観測、CLI出力体裁、同時編集、キーボード操作、移行者向けの対照、1280幅の折り畳み、Coreとプラグインの拡張境界。前提と決定すべき論点もモック内に含みます |
+| [`scope-placement-editor-sketch.html`](scope-placement-editor-sketch.html) | 業務要件とインフラを分け、設定項目（Scope Placement Binding）でつなぐエディタ画面。評価待ち。[設計文書](../SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)の5.5に対応。区分名・判定結果はサンプル |
