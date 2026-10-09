@@ -252,6 +252,10 @@ func collectModuleSourceClosure(repo, goPath, packagePath, stateDir string) ([]s
 	if err != nil {
 		rootClean = filepath.Clean(repo)
 	}
+	tracked, err := gitTrackedPaths(repo)
+	if err != nil {
+		return nil, "", err
+	}
 	paths := map[string]struct{}{"go.mod": {}}
 	decoder := json.NewDecoder(strings.NewReader(string(raw)))
 	for {
@@ -300,6 +304,9 @@ func collectModuleSourceClosure(repo, goPath, packagePath, stateDir string) ([]s
 	sort.Strings(ordered)
 	members := make([]sourceMember, 0, len(ordered))
 	for _, rel := range ordered {
+		if _, ok := tracked[rel]; !ok {
+			return nil, "", fmt.Errorf("Go source closure member is not Git-tracked: %s", rel)
+		}
 		info, err := os.Lstat(filepath.Join(repo, filepath.FromSlash(rel)))
 		if err != nil {
 			return nil, "", err
@@ -500,6 +507,23 @@ func executableName(name string) string {
 		return name + ".exe"
 	}
 	return name
+}
+
+func gitTrackedPaths(repo string) (map[string]struct{}, error) {
+	all := []string{"-C", repo, "ls-files", "-z"}
+	cmd := exec.Command("git", all...)
+	raw, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files: %w", err)
+	}
+	out := map[string]struct{}{}
+	for _, path := range strings.Split(string(raw), "\x00") {
+		if path == "" {
+			continue
+		}
+		out[filepath.ToSlash(path)] = struct{}{}
+	}
+	return out, nil
 }
 
 func requireCleanRepository(repo string) error {
