@@ -58,6 +58,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 	}
 	reviewSequence = append(
 		reviewSequence,
+		"apply-required-knowledge-qualification-before-semantic-use",
 		"inspect-unresolved-and-authority-limits",
 		"form-proposal-without-inventing-missing-meaning",
 		"route-authoritative-change-through-shared-acceptance",
@@ -78,12 +79,14 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"stop-when-required-evidence-or-authority-is-unresolved",
 			"do-not-treat-omitted-or-unavailable-knowledge-as-negative-evidence",
 			"do-not-promote-derived-candidate-or-guidance-to-accepted-meaning",
+			"do-not-treat-recommended-section-as-qualified-or-disclosed-knowledge",
 			"do-not-infer-global-knowledge-absence-from-current-context-section-absence",
 			"refresh-review-plan-before-reusing-cached-routing",
 		},
 		AuthorityLimits: []string{
 			"builder-review-plan-is-derived-routing-guidance-not-semantic-authority",
 			"recommended-section-is-not-semantic-applicability",
+			"recommended-section-is-not-knowledge-qualification",
 			"review-order-does-not-grant-write-or-runtime-authority",
 			"review-plan-does-not-replace-qualification-or-shared-acceptance",
 			"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
