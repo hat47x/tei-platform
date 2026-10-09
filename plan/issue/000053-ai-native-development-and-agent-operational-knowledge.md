@@ -339,6 +339,8 @@ available
 
 このコマンドは新しいContext packetを作らない。出力は既存Disclosureそのものであり、Qualification / Handoff本文を埋め込まない。Disclosureを別taskで使う場合は、そのtaskで再Qualificationする。
 
+`qualified-for-disclosure`はselected section内部のEvidence completenessやresolutionまで保証しない。Review Sequenceは共有`unresolved`だけでなく、各区画が持つ局所的なresolution / Evidence statusも確認してからsemantic useへ進む。
+
 この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
 
 ## Phase 1 first challenge — customer_referenceを編集可能にする要求
