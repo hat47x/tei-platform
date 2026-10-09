@@ -222,6 +222,12 @@ func runtimeCapabilityRefFingerprint(ref RuntimeCapabilityRef) string {
 	return fingerprint(ref)
 }
 
+type RuntimeExecutionGrant struct {
+	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
+	ExecutionProfileFingerprint string `json:"executionProfileFingerprint"`
+	AuthorityEvidenceFingerprint string `json:"authorityEvidenceFingerprint"`
+}
+
 type RuntimePermissionGrant struct {
 	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
 	Permission permission.Spec `json:"permission"`
@@ -245,6 +251,7 @@ type LegacyAuthorityClaim struct {
 
 type RuntimeEnvironmentAuthority struct {
 	Environment core.CanonicalID `json:"environment"`
+	ExecutionGrants []RuntimeExecutionGrant `json:"executionGrants,omitempty"`
 	PermissionGrants []RuntimePermissionGrant `json:"permissionGrants,omitempty"`
 	ResourceBindings []RuntimeResourceBinding `json:"resourceBindings,omitempty"`
 	LeasePolicies []RuntimeLeasePolicy `json:"leasePolicies,omitempty"`
@@ -256,6 +263,7 @@ type RuntimeEnvironmentPlan struct {
 	Environment core.CanonicalID `json:"environment"`
 	RuntimeCapability RuntimeCapabilityRef `json:"runtimeCapability"`
 	ExecutionProfileFingerprint string `json:"executionProfileFingerprint"`
+	ExecutionAuthorityEvidenceFingerprint string `json:"executionAuthorityEvidenceFingerprint"`
 	IsolationPolicy RuntimeIsolationPolicy `json:"isolationPolicy"`
 	Permissions []permission.Spec `json:"permissions,omitempty"`
 	ResourceBindings []resource.Binding `json:"resourceBindings,omitempty"`
@@ -280,6 +288,29 @@ func buildRuntimeEnvironmentPlan(
 	if ref.ExecutionProfileFingerprint != profile.Fingerprint ||
 		ref.RealizationTarget != profile.RealizationTarget {
 		return RuntimeEnvironmentPlan{}, fmt.Errorf("runtime Capability Ref differs from execution profile")
+	}
+	var executionGrants []RuntimeExecutionGrant
+	for _, grant := range authority.ExecutionGrants {
+		if grant.RuntimeCapabilityFingerprint == ref.Fingerprint {
+			executionGrants = append(executionGrants, grant)
+		}
+	}
+	if len(executionGrants) != 1 {
+		return RuntimeEnvironmentPlan{}, fmt.Errorf(
+			"runtime Capability Ref requires exactly one Environment Execution Grant; found %d",
+			len(executionGrants),
+		)
+	}
+	executionGrant := executionGrants[0]
+	if executionGrant.ExecutionProfileFingerprint != profile.Fingerprint {
+		return RuntimeEnvironmentPlan{}, fmt.Errorf(
+			"Environment Execution Grant targets a different execution profile",
+		)
+	}
+	if !validSHA256Fingerprint(executionGrant.AuthorityEvidenceFingerprint) {
+		return RuntimeEnvironmentPlan{}, fmt.Errorf(
+			"Environment Execution Grant Authority Evidence fingerprint is invalid",
+		)
 	}
 	for _, legacy := range authority.LegacyClaims {
 		if legacy.RuntimeCapabilityFingerprint == ref.Fingerprint {
@@ -358,6 +389,7 @@ func buildRuntimeEnvironmentPlan(
 		Environment: authority.Environment,
 		RuntimeCapability: ref,
 		ExecutionProfileFingerprint: profile.Fingerprint,
+		ExecutionAuthorityEvidenceFingerprint: executionGrant.AuthorityEvidenceFingerprint,
 		IsolationPolicy: profile.IsolationPolicy,
 		Permissions: normalizedGrants,
 		ResourceBindings: resource.NormalizeBindings(matchedBindings),
@@ -381,6 +413,9 @@ func validateRuntimeEnvironmentPlan(plan RuntimeEnvironmentPlan) error {
 	}
 	if plan.ExecutionProfileFingerprint != plan.RuntimeCapability.ExecutionProfileFingerprint {
 		return fmt.Errorf("runtime Environment Plan execution profile differs from runtime Capability Ref")
+	}
+	if !validSHA256Fingerprint(plan.ExecutionAuthorityEvidenceFingerprint) {
+		return fmt.Errorf("runtime Environment Plan Execution Authority Evidence fingerprint is invalid")
 	}
 	if !plan.IsolationPolicy.valid() {
 		return fmt.Errorf("runtime Environment Plan isolation policy %q is invalid", plan.IsolationPolicy)
