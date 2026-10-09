@@ -566,3 +566,14 @@ func TestJSONBoundaryRejectsCyclicProgrammaticValue(t *testing.T) {
 		t.Fatal("expected cyclic Value to fail unbounded JSON encoding")
 	}
 }
+
+
+func TestPublicArrayKeepsNestedValueCopySemantics(t *testing.T) {
+	nested := transform.Array(transform.String("a"), transform.String("b"))
+	outer := transform.Array(nested)
+	nested.Array[0] = transform.String("changed")
+
+	if outer.Array[0].Array[0].String != "a" {
+		t.Fatalf("public Array leaked nested slice alias: %#v", outer)
+	}
+}
