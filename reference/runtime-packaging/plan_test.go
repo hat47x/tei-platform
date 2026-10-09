@@ -111,6 +111,28 @@ func TestInvalidArtifactDigestFails(t *testing.T) {
 	x.Bindings[2].ArtifactDigest = "unknown"
 	mustFail(t, x, "invalid binding")
 }
+func TestPrebuildPlanCanBeSelectedWithoutArtifact(t *testing.T) {
+	x := fixture()
+	x.Bindings[2].ArtifactDigest = ""
+	x.Bindings[2].BuildPlanFingerprint = strings.Repeat("b", 64)
+	p, err := Derive(x)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Units[1].Included[0].BuildPlanFingerprint != strings.Repeat("b", 64) {
+		t.Fatal("prebuild identity lost")
+	}
+}
+func TestMissingBuildInputAndArtifactFails(t *testing.T) {
+	x := fixture()
+	x.Bindings[2].ArtifactDigest = ""
+	mustFail(t, x, "invalid binding")
+}
+func TestMalformedBuildFingerprintFails(t *testing.T) {
+	x := fixture()
+	x.Bindings[2].BuildPlanFingerprint = "unfixed"
+	mustFail(t, x, "invalid binding")
+}
 func TestCycleClosure(t *testing.T) {
 	x := fixture()
 	x.Bindings[1].Requires = []string{"action"}
