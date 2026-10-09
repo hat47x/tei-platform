@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"tei/internal/core"
 	"tei/internal/plugin"
@@ -24,14 +25,26 @@ const (
 )
 
 
+type transformBootstrapExecutionKind string
+
+const (
+	transformBootstrapExecutionNativeSeed  transformBootstrapExecutionKind = "native-seed-executable"
+	transformBootstrapExecutionInterpreted transformBootstrapExecutionKind = "interpreted-transform"
+)
+
+type transformBootstrapStageExecution struct {
+	Kind          transformBootstrapExecutionKind  `json:"kind"`
+	Target        string                           `json:"target"`
+	RuntimeEngine *pruntime.RuntimeEngineIdentity `json:"runtimeEngine,omitempty"`
+}
+
 type transformBootstrapStagePlan struct {
-	Stage               plugin.BootstrapStageName     `json:"stage"`
-	Builder             plugin.BuilderIdentity        `json:"builder"`
-	SourceClosureDigest string                        `json:"sourceClosureDigest"`
-	SourceFingerprint   string                        `json:"sourceFingerprint"`
-	RuntimeEngine       pruntime.RuntimeEngineIdentity `json:"runtimeEngine"`
-	Target              string                        `json:"target"`
-	Output              transform.SourceIdentity      `json:"output"`
+	Stage               plugin.BootstrapStageName       `json:"stage"`
+	Builder             plugin.BuilderIdentity          `json:"builder"`
+	SourceClosureDigest string                          `json:"sourceClosureDigest"`
+	SourceFingerprint   string                          `json:"sourceFingerprint"`
+	Execution           transformBootstrapStageExecution `json:"execution"`
+	Output              transform.SourceIdentity        `json:"output"`
 }
 
 type transformBootstrapEvidence struct {
@@ -240,24 +253,34 @@ func runTransformBootstrap(
 		ArtifactDigest:  seedFirstDigest,
 	}
 	stage1Output := builderIdentityFromTransformSource(metaSource, stage1FirstDigest)
-	buildInputFingerprint := transformBootstrapInputFingerprint(
+	buildInputFingerprint := transformBootstrapComparisonFingerprint(
 		metaSourceClosureDigest,
 		metaSourceFingerprint,
-		engineFingerprint,
-		engine.Target,
+		metaSource.Identity,
 	)
 	stage1Plan := transformBootstrapStagePlan{
 		Stage:               plugin.BootstrapStage1,
 		Builder:             seedIdentity,
 		SourceClosureDigest: metaSourceClosureDigest,
 		SourceFingerprint:   metaSourceFingerprint,
-		RuntimeEngine:       engine,
-		Target:              engine.Target,
-		Output:              metaSource.Identity,
+		Execution: transformBootstrapStageExecution{
+			Kind:   transformBootstrapExecutionNativeSeed,
+			Target: "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+		},
+		Output: metaSource.Identity,
 	}
-	stage2Plan := stage1Plan
-	stage2Plan.Stage = plugin.BootstrapStage2
-	stage2Plan.Builder = stage1Output
+	stage2Plan := transformBootstrapStagePlan{
+		Stage:               plugin.BootstrapStage2,
+		Builder:             stage1Output,
+		SourceClosureDigest: metaSourceClosureDigest,
+		SourceFingerprint:   metaSourceFingerprint,
+		Execution: transformBootstrapStageExecution{
+			Kind:          transformBootstrapExecutionInterpreted,
+			Target:        engine.Target,
+			RuntimeEngine: &engine,
+		},
+		Output: metaSource.Identity,
+	}
 	stage1PlanFingerprint := transformBootstrapStagePlanFingerprint(stage1Plan)
 	stage2PlanFingerprint := transformBootstrapStagePlanFingerprint(stage2Plan)
 
@@ -265,7 +288,7 @@ func runTransformBootstrap(
 		FormatVersion: plugin.BootstrapConvergenceFormatVersion,
 		Stage0Seed: plugin.BootstrapSeedEvidence{
 			Builder:       seedIdentity,
-			TrustBoundary: "external-go-seed-and-deterministic-transform-runtime-engine",
+			TrustBoundary: "external-go-seed-builder-and-toolchain",
 		},
 		Stage1: plugin.BootstrapStageEvidence{
 			Stage:                 plugin.BootstrapStage1,
@@ -479,10 +502,19 @@ func transformValueFromJSON(value any) (transform.Value, error) {
 	return transform.ParseJSON(raw)
 }
 
-func transformBootstrapInputFingerprint(
-	sourceClosureDigest, sourceFingerprint, engineFingerprint, target string,
+func transformBootstrapComparisonFingerprint(
+	sourceClosureDigest, sourceFingerprint string,
+	output transform.SourceIdentity,
 ) string {
-	raw := sourceClosureDigest + "\n" + sourceFingerprint + "\n" + engineFingerprint + "\n" + target + "\n"
+	raw := strings.Join([]string{
+		"tei.bootstrap-comparison/transform-source-v1",
+		sourceClosureDigest,
+		sourceFingerprint,
+		string(output.ID),
+		output.Version,
+		output.ContractVersion,
+		"",
+	}, "\n")
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
