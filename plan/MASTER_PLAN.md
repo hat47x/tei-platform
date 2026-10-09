@@ -371,6 +371,19 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 このresearch integrationは、RQ-010 / 013 / 015 / 016 / 021 / 024 / 027〜030の既存Gapを減らすための作業であり、研究を読んだことだけでEvidence tierを変更しません。
 
+
+### 2026-10-09の追加検証候補（評価待ち）
+
+直近の仕様レビュー研究、画面操作の評価、WebAssemblyのインターフェース標準化を、**新しいGateや独立した基盤の追加ではなく、既存の業務Referenceをより厳しく確かめる材料**として扱う。Product Valueにとっての意味と調査根拠は、[技術リサーチ統合方針 §9](TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とする。
+
+- **REF-SPEC-01：仕様の不足を実装前に発見する。** 既存の受注Referenceで欠落、曖昧さ、矛盾、古い前提を人が発見できるかを比較する。受け皿はISSUE-000075、#982、#998、#915、#267。最初に得たい価値は、生成量ではなく、意味を誤って確定させない変更レビューである。
+- **REF-INTERACTION-01：画面操作を業務結果まで確認する。** 表示、操作、権限による拒否、Business Result、Observation、視覚評価を別の結果として記録する。受け皿は#997、#1000、#1001、#259。第一Web Targetの既存Gate C判定を遡って変更しない。
+- **REF-PORTABLE-01：異なる実行物・Hostで意味を保つ。** Go native、TinyGo Wasmなどの対応可能な実行物を小さく比較する。WASI 0.2 / 0.3、ABI、Host imports、依存、権限、資源、性能を分けて記録する。受け皿は#259、#943、#973、#976、#1016。Studio用Wails Hostと第二業務Targetを混同せず、HikeをGoコンパイラとして扱わない。
+
+優先度は、まず**業務変更時に役立つREF-SPEC-01**、次に**操作の成立を示すREF-INTERACTION-01**、続いて**可搬性を確かめるREF-PORTABLE-01**とする。ただしこれは研究候補の評価順であって、既存Issueの着手承認・並行作業・保護された統合手順を変更しない。ISSUE-000075の候補Bは業務規則の変更を受理済みだが、一周の実証は未完了である。REF-SPEC-01はこの受理を置き換えず、受理済みの意味とBusiness Procedure側の記述の差を読み取り専用で示す。
+
+**判定:** 文書への反映は実施済み。三つのREFはいずれも設計案であり、実行・利用者評価・性能計測・Requirement Evidenceへの昇格は未実施。小さな実証で中心価値の不確実性を減らせない場合、方式や作業範囲を広げる前に見送る。
+
 ## Reference Model Transfer Evidence — 成熟した外部modelで全体をpressureする
 
 小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkはX-TEA / XEAD系「CONCEPTWARE／受注生産」の既存Reference Modelです。
@@ -385,7 +398,7 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 [Product triage #982](https://github.com/hat47x/tei-platform/issues/982)では、Data / Function・Interaction / Business Procedureの相互検証、早期に動かせる設計、人が理解できるProjectionを先に成立させる観点から、RQ-001〜033と進行中のRQ-034提案のv1着手範囲を見直している。**Product Requirementの削除・既存優先順位の採用変更をここで確定しない。**
 
-検討の入口は既存の[ISSUE-000075](issue/000075-practical-scenario-mvp-demonstration.md)とする。2026-10-05に実証Aはsyntheticなdevelopment環境で実行記録済み。次の候補Bでは、Sourceの業務規則変更をPreview / Acceptance / reload / Driver / Web / 人間向けcross-view確認まで通せるかを検討する。候補Bへの着手判断はまだ行われていない。
+検討の入口は既存の[ISSUE-000075](issue/000075-practical-scenario-mvp-demonstration.md)とする。2026-10-05に実証Aはsyntheticなdevelopment環境で実行記録済み。候補Bでは2026-10-08に業務規則の変更がownerによって受理されたが、Web画面を含む一周、全明細への規則適用、三視点の意味整合までは完了していない。実証Bの詳細と未完了範囲はISSUE-000075を参照する。
 
 汎用Plugin solver、Builder self-hosting、AI Business Actor、複数Targetなどの長期能力は否定しない。一方、それらの完成をこの最小の業務実証の前提に追加するなら、**どの具体的な不足を埋めるか**を示してから採否を判断する。現行のGate、各laneのqualificationとprotected integration条件は変更しない。
 
