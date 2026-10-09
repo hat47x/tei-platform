@@ -59,7 +59,6 @@ func TestClassificationCoverageRejectsNamespacedLookalike(t *testing.T) {
 	}
 }
 
-
 func TestPublicEvidenceVocabularyMatchesSourceAdapterAndContract(t *testing.T) {
 	contractBytes, err := os.ReadFile("../../reference/reference-model-transfer/transcription-contract-v0.json")
 	if err != nil {
