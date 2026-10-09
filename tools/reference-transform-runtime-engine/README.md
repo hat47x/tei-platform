@@ -135,7 +135,9 @@ tools/reference-transform-runtime-engine-build
 
 Source closureは`go list -deps -json`で、そのTarget・build設定に対して実際に選択されたmodule-local compiler inputから作ります。standard libraryはGo toolchain closureへ含めます。外部module dependency、Repository外のmodule、Gitで追跡されていないbuild inputはfail-closedです。
 
-buildは別々のGo cache / module cache / GOPATHを使います。少なくとも次を固定します。
+build subprocessはHost環境を広く継承しません。Go executableの選択もPATHへ依存せず、既定ではEvidence tool自身の`runtime.GOROOT()/bin/go`を使い、必要なら`-go`でexact executableを明示します。
+
+buildは別々のGo cache / module cache / GOPATHに加え、HOME / USERPROFILE / TMPDIR / TMP / TEMPもisolated stateへ閉じます。少なくとも次を固定します。
 
 ```text
 CGO_ENABLED=0
@@ -150,6 +152,8 @@ GOWORK=off
 GOOS=<target OS>
 GOARCH=<target arch>
 ```
+
+Unix系ReferenceではHost environmentを原則継承しません。Windowsではprocess起動上必要となり得る`COMSPEC`、`PATHEXT`、`SYSTEMROOT`、`WINDIR`だけをcase-insensitive allowlistとし、実際に継承した値はBuild Evidenceの`hostEnvironment`へ残します。allowlist外のPATH、locale、proxy、credential等はbuild subprocessへ渡しません。
 
 `-artifact-out`を指定すると、二回のbuildでdigest一致を確認したfirst artifactをRepository外へコピーします。既存fileは上書きしません。これにより、Evidenceでdigestを固定した同じexecutableをprocess smokeや後続のRuntime Engine bindingで利用できます。
 
