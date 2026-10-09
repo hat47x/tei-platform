@@ -390,6 +390,26 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 
 これらに独立したProduct上の必要性が後から見つかった場合は、その必要性自体を別に評価します。
 
+## 2026-10-08 未資格統合の記録
+
+PR #967は2026-10-08T06:06:01Zに、head `425b5743fab37ec087892d67d7bbf09e6496bacd`からmerge commit `6307950c53f0c7879d9231c5077e2410cff71e9a`としてmainへ統合されました。
+
+しかし、統合時点のPR本文は、exact headに対するactual `tools/repository-health-check.sh`とRQ-034 ReferenceのPASSが未取得であり、RQ-034をDesign Only、PRをDraftのまま保持する、と明記していました。Repositoryの既存開発ルールも、code変更を含むDraft PRについてexact-head full Repository Healthとclean pre/post stateが無い状態でのmergeを認めていませんでした。
+
+したがって、**#967がmerge済みであること自体をqualification Evidenceとして扱いません。** synthetic runner PASS、shell構文確認、GitHub上のmergeable / merged状態も代替Evidenceにはしません。この記録のために共有済みGit履歴を巻き戻さず、forward-onlyで扱います。
+
+現在のforward stopは、trustedなactual TEI full checkoutで、その時点のcurrent main exact HEADを固定し、次を同じcheckoutで確認することです。
+
+1. tracked / untracked / ignored artifactを含めたclean pre-state。
+2. full `tools/repository-health-check.sh` PASS。
+3. RQ-034 Executable Reference PASS。
+4. 実行中にHEADと対象mainが変わっていないこと。
+5. tracked / untracked / ignored artifactを含めたclean post-state。
+
+current execution environmentではactual TEI checkoutを実行できないため、このforward stopは未完了です。RQ-034はDesign Only、本IssueはIn Progressのままとします。2026-10-09の是正作業はmain `60b8de4718c495dfbcbb1f20b98427f399d6598c`を起点に開始しましたが、このSHAは固定の完了条件ではありません。actual qualification時にmainが進んでいれば、新しいcurrent mainから最初から取り直します。
+
+また、qualification wrapperとReference runnerのclean判定は、通常の`git status`だけでなく`git ls-files --others --ignored --exclude-standard`も確認するように強化します。これにより、ignored build artifactが残ったcheckoutからPASS receiptを出しません。この強化自体も、actual Repository Health / RQ-034 PASSの代替には数えません。
+
 ## Merge qualificationとの関係
 
 本IssueのExecutable ReferenceがPASSしても、それだけでcode-changing PRをmainへ統合してよいとは判断しません。
