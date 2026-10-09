@@ -785,7 +785,9 @@ packetは、候補のrelation、determinant / component、target occurrence、ba
 
 `reviewStatus`は、その候補に直接関係するSemantic Data、Attribute、Relation、Validation等にambiguityがある場合、または候補に必要なSource Evidenceが欠ける場合に`blocked-context-unresolved`となる。候補固有のambiguityは`reviewBlockingAmbiguities`へ出す。Data Design Context全体が`ambiguous`でも、候補と無関係なPersistence Mappingの重複等だけであればcandidate review自体は`evidence-required`として進められる。Context全体の`resolutionStatus`はpacketへ残すため、局所reviewを進めることをglobalなData Design completenessとは扱わない。Data Design Context全体のEvidence coverageが不完全でも、候補に必要なSource Evidenceが揃っていれば同じ考え方で局所reviewを進められる。
 
-packetには独自のfingerprintを付ける。これは同じreview snapshotを再利用しているかを確認するためのidentityであり、candidateのAcceptanceやbusiness Evidenceの充足を表さない。CLIでは`-expected-data-design-fingerprint`、candidate fingerprint、Evidence requirement fingerprint、candidate review fingerprintを別々にguardできるため、異なる時点のContext / candidate / review contractを混ぜない。
+packetには独自のfingerprintを付ける。これは同じreview snapshotを再利用しているかを確認するためのidentityであり、candidateのAcceptanceやbusiness Evidenceの充足を表さない。candidate fingerprint、Evidence requirement fingerprint、candidate review fingerprintは別々にguardできるため、異なる時点のcandidate / review contractを混ぜない。
+
+既存の`-expected-data-design-fingerprint`は、Data Design Context全体のcache reuseを対象とする強いguardである。fingerprint一致だけでなく、globalな`resolutionStatus=resolved`と`evidenceCoverageStatus=complete`も要求する。この契約はcandidate reviewの導入で弱めない。候補固有のSource Evidenceとambiguityだけを使ってcurrent candidateをreviewしたい場合、このglobal cache guardは必須ではない。current Contextからpacketを再構築し、candidate review fingerprintでreview snapshotを固定する。
 
 CLI候補は次とする。
 
