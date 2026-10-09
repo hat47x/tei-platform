@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"tei/internal/plugin/transform"
 )
@@ -93,6 +94,7 @@ func execute(source transform.Source, requestRaw []byte) (engineResponse, error)
 		return engineResponse{}, err
 	}
 	inputs := make(map[string]transform.Value, len(request.Inputs))
+	budget := wireBudget{}
 	for _, input := range request.Inputs {
 		if strings.TrimSpace(input.Name) == "" {
 			return engineResponse{}, fmt.Errorf("transform engine input name is required")
@@ -100,7 +102,10 @@ func execute(source transform.Source, requestRaw []byte) (engineResponse, error)
 		if _, exists := inputs[input.Name]; exists {
 			return engineResponse{}, fmt.Errorf("transform engine input %q is declared more than once", input.Name)
 		}
-		value, err := decodeWireValue(input.Value, source.Limits, 0)
+		if err := budget.addBytes(len(input.Name), source.Limits); err != nil {
+			return engineResponse{}, fmt.Errorf("transform engine input %q: %w", input.Name, err)
+		}
+		value, err := decodeWireValue(input.Value, source.Limits, 0, &budget)
 		if err != nil {
 			return engineResponse{}, fmt.Errorf("transform engine input %q: %w", input.Name, err)
 		}
@@ -125,6 +130,9 @@ func execute(source transform.Source, requestRaw []byte) (engineResponse, error)
 func decodeRequest(raw []byte, limits transform.Limits) (engineRequest, error) {
 	if len(raw) == 0 {
 		return engineRequest{}, fmt.Errorf("transform engine request is empty")
+	}
+	if !utf8.Valid(raw) {
+		return engineRequest{}, fmt.Errorf("transform engine request is not valid UTF-8")
 	}
 	if err := validateJSONStructure(raw, limits.MaxNestingDepth+8); err != nil {
 		return engineRequest{}, fmt.Errorf("transform engine request JSON: %w", err)
@@ -151,9 +159,33 @@ func decodeRequest(raw []byte, limits transform.Limits) (engineRequest, error) {
 	return request, nil
 }
 
-func decodeWireValue(w wireValue, limits transform.Limits, depth int) (transform.Value, error) {
+type wireBudget struct {
+	nodes int
+	bytes int
+}
+
+func (b *wireBudget) addNode(limits transform.Limits) error {
+	b.nodes++
+	if b.nodes > limits.MaxInputNodes {
+		return fmt.Errorf("wire values exceed maxInputNodes")
+	}
+	return nil
+}
+
+func (b *wireBudget) addBytes(count int, limits transform.Limits) error {
+	if count < 0 || count > limits.MaxInputBytes-b.bytes {
+		return fmt.Errorf("wire values exceed maxInputBytes")
+	}
+	b.bytes += count
+	return nil
+}
+
+func decodeWireValue(w wireValue, limits transform.Limits, depth int, budget *wireBudget) (transform.Value, error) {
 	if depth > limits.MaxNestingDepth {
 		return transform.Value{}, fmt.Errorf("wire value exceeds maxNestingDepth")
+	}
+	if err := budget.addNode(limits); err != nil {
+		return transform.Value{}, err
 	}
 	switch w.Kind {
 	case transform.ValueNull:
@@ -170,21 +202,34 @@ func decodeWireValue(w wireValue, limits transform.Limits, depth int) (transform
 		if w.Number == nil || wireFieldCount(w) != 1 {
 			return transform.Value{}, fmt.Errorf("number wire value requires only number")
 		}
+		if err := budget.addBytes(len(*w.Number), limits); err != nil {
+			return transform.Value{}, err
+		}
 		return transform.Number(*w.Number), nil
 	case transform.ValueString:
 		if w.String == nil || wireFieldCount(w) != 1 {
 			return transform.Value{}, fmt.Errorf("string wire value requires only string")
+		}
+		if err := budget.addBytes(len(*w.String), limits); err != nil {
+			return transform.Value{}, err
 		}
 		return transform.String(*w.String), nil
 	case transform.ValueBytes:
 		if w.BytesBase64 == nil || wireFieldCount(w) != 1 {
 			return transform.Value{}, fmt.Errorf("bytes wire value requires only bytesBase64")
 		}
+		decodedLen := base64.StdEncoding.DecodedLen(len(*w.BytesBase64))
+		if decodedLen > limits.MaxInputBytes-budget.bytes {
+			return transform.Value{}, fmt.Errorf("wire values exceed maxInputBytes")
+		}
 		raw, err := base64.StdEncoding.Strict().DecodeString(*w.BytesBase64)
 		if err != nil {
 			return transform.Value{}, fmt.Errorf("bytesBase64: %w", err)
 		}
-		return transform.Bytes(raw), nil
+		if err := budget.addBytes(len(raw), limits); err != nil {
+			return transform.Value{}, err
+		}
+		return transform.Value{Kind: transform.ValueBytes, Bytes: raw}, nil
 	case transform.ValueArray:
 		if w.Array == nil || wireFieldCount(w) != 1 {
 			return transform.Value{}, fmt.Errorf("array wire value requires only array")
@@ -194,13 +239,13 @@ func decodeWireValue(w wireValue, limits transform.Limits, depth int) (transform
 		}
 		values := make([]transform.Value, len(*w.Array))
 		for i := range *w.Array {
-			value, err := decodeWireValue((*w.Array)[i], limits, depth+1)
+			value, err := decodeWireValue((*w.Array)[i], limits, depth+1, budget)
 			if err != nil {
 				return transform.Value{}, fmt.Errorf("wire array item %d: %w", i, err)
 			}
 			values[i] = value
 		}
-		return transform.Array(values...), nil
+		return transform.Value{Kind: transform.ValueArray, Array: values}, nil
 	case transform.ValueObject:
 		if w.Object == nil || wireFieldCount(w) != 1 {
 			return transform.Value{}, fmt.Errorf("object wire value requires only object")
@@ -218,13 +263,16 @@ func decodeWireValue(w wireValue, limits transform.Limits, depth int) (transform
 				return transform.Value{}, fmt.Errorf("wire object field %q is declared more than once", field.Name)
 			}
 			seen[field.Name] = struct{}{}
-			value, err := decodeWireValue(field.Value, limits, depth+1)
+			if err := budget.addBytes(len(field.Name), limits); err != nil {
+				return transform.Value{}, err
+			}
+			value, err := decodeWireValue(field.Value, limits, depth+1, budget)
 			if err != nil {
 				return transform.Value{}, fmt.Errorf("wire object field %q: %w", field.Name, err)
 			}
 			fields[i] = transform.Field{Name: field.Name, Value: value}
 		}
-		return transform.Object(fields...)
+		return transform.Value{Kind: transform.ValueObject, Object: fields}, nil
 	default:
 		return transform.Value{}, fmt.Errorf("unsupported wire value kind %q", w.Kind)
 	}
@@ -268,11 +316,7 @@ func encodeWireValue(value transform.Value, limits transform.Limits, depth int) 
 		}
 		fields := make([]wireField, len(value.Object))
 		for i := range value.Object {
-			field, ok := value.Field(value.Object[i].Name)
-			if !ok {
-				return wireValue{}, fmt.Errorf("output object field %q disappeared", value.Object[i].Name)
-			}
-			wire, err := encodeWireValue(field, limits, depth+1)
+			wire, err := encodeWireValue(value.Object[i].Value, limits, depth+1)
 			if err != nil {
 				return wireValue{}, err
 			}
