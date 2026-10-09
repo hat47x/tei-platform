@@ -109,7 +109,7 @@ func TestInvocationRegistryRejectsShapeArtifactDriftAtRegistration(t *testing.T)
 		[]InvocationImplementation{implementation},
 		invocationShapeAuthoritiesForTest([]InvocationImplementation{implementation}),
 	)
-	if err == nil || !strings.Contains(err.Error(), "artifact does not match declaration") {
+	if err == nil || !strings.Contains(err.Error(), `requires undeclared property "NewRequiredField"`) {
 		t.Fatalf("mutated shape artifact was registered: %v", err)
 	}
 }
@@ -165,7 +165,7 @@ func TestGenericInvocationValidatesRequestBeforeInvoker(t *testing.T) {
 		t,
 		[]InvocationImplementation{implementation},
 	)
-	_, err = registry.ResolveAndInvoke(context.Background(), ResolveInput{
+	_, err := registry.ResolveAndInvoke(context.Background(), ResolveInput{
 		Scope:       ScopeAuthoringTool,
 		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
 		Contracts:   []Contract{contract},
