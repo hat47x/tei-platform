@@ -209,20 +209,20 @@ candidateでは`InspectWithContract`へsource profile Gateを追加した。転�
 現headのfocused testとfull`tools/repository-health-check.sh`は未取得である。コード変更を含むためDraftのまま保持し、exact-head full Gate PASS前にmainへ統合しない。
 
 
-### E1から見えた次のGap — generic invocation
+### E1から見えた次のGap — 汎用的な実行呼出し
 
-実Source Adapter consumerを通したことで、resolverのgeneric性と実行dispatchのgeneric性は別問題だと分かった。
+実際のSource Adapter利用経路を通したことで、Capabilityを汎用的に解決できることと、解決した実装を汎用的に呼び出せることは別の問題だと分かった。
 
-現在のReferenceでは、Capability ContractとProviderの解決自体はCore固定enumへ依存しない。一方、実行側の`SourceAdapterRegistry`は`SourceAdapterRequest`と`xeadsource.Inspection`をGo型として知っている。新しいCapability Contractを追加したとき、同じ方法でContract専用Registryやrequest / result型をHostへ書き足す必要があるなら、Core enumを消しても拡張点が実行dispatchへ移っただけになる。
+現在のReferenceでは、Capability ContractとProviderの解決自体はCore固定enumへ依存しない。一方、実行側の`SourceAdapterRegistry`は`SourceAdapterRequest`と`xeadsource.Inspection`をGo型として知っている。新しいCapability Contractを追加するたびに、同じ方法でContract専用Registryやrequest / result型をHostへ書き足す必要があるなら、Core enumをなくしても拡張点が実行呼出しへ移るだけである。
 
-したがって、ISSUE-000080の次段では、少なくとも次を分けて検証する必要がある。
+したがって、ISSUE-000080の次段では、少なくとも次の責務を分けて検証する必要がある。
 
 - Contractが要求するrequest / resultの機械可読な形
-- exact Provider implementationを呼ぶgeneric dispatch境界
-- in-process / process / Wasm等の物理transport
+- exact Provider implementationを呼び出す共通境界
+- in-process / process / Wasm等の物理的な実行方式
 - request / resultのcodecやschema identity
 - Permission / Resource / Target Authority
 
-ここでJSONやRPCをproduction標準として先に固定しない。Source Adapterを第二例とし、別種のCapability consumerでも同じdispatch primitiveを再利用できるかをpressureしてからContractへ昇格する。
+この段階でJSONやRPCをproduction標準として固定しない。Source Adapter以外のCapability consumerでも同じ呼出しprimitiveを再利用できるか確認したうえで、共通Contractへ昇格するかを判断する。
 
 今回のPRでは、このGapを解消済みとは扱わない。実consumerを追加した目的は、resolverだけでは見えなかった次の固定点を具体化することである。
