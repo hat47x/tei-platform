@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"tei/internal/knowledgecontext"
@@ -102,7 +105,7 @@ func buildBuilderReviewHandoffFromFile(
 		)
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeJSONFile(requirementsPath, &requirements); err != nil {
+	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
 		return knowledgecontext.BuilderReviewHandoff{}, err
 	}
 	return buildBuilderReviewHandoff(root, subjectKind, subjectID, requirements)
@@ -136,7 +139,7 @@ func buildBuilderReviewDisclosureFromFile(
 	}
 
 	var handoff knowledgecontext.BuilderReviewHandoff
-	if err := decodeJSONFile(handoffPath, &handoff); err != nil {
+	if err := decodeStrictKnowledgeJSONFile(handoffPath, &handoff); err != nil {
 		return knowledgecontext.DisclosureProjection{},
 			knowledgecontext.BuilderReviewHandoff{},
 			err
@@ -290,8 +293,32 @@ func buildKnowledgeQualificationFromFile(root, subjectKind, subjectID, requireme
 		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -qualification-requirements")
 	}
 	var requirements knowledgecontext.QualificationRequirements
-	if err := decodeJSONFile(requirementsPath, &requirements); err != nil {
+	if err := decodeStrictKnowledgeJSONFile(requirementsPath, &requirements); err != nil {
 		return knowledgecontext.QualificationResult{}, err
 	}
 	return buildKnowledgeQualification(root, subjectKind, subjectID, requirements)
+}
+
+func decodeStrictKnowledgeJSONFile(path string, dst any) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	decoder := json.NewDecoder(f)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		return err
+	}
+
+	var trailing any
+	err = decoder.Decode(&trailing)
+	if err == io.EOF {
+		return nil
+	}
+	if err == nil {
+		return fmt.Errorf("%s contains trailing JSON value", path)
+	}
+	return err
 }
