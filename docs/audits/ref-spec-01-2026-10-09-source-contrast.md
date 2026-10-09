@@ -143,3 +143,17 @@ GitHubのPRに加えた回帰テストは、既知→不明→繰り返し不明
 `GOENV=off GOWORK=off GOFLAGS= go test -count=1 ./...`は4件PASS、`go vet ./...`はPASS、二つの原文に対する`gofmt -l`は出力なしだった。比較処理と出典追跡処理を同一ビルドで呼び出すことまでは確認したが、**本体の既存`main.go`、実Workspace Loader、実Source Index実装、Repository回帰テスト、全体health checkの動作を確認したものではない。**
 
 また、現在のPR head `864d0502dc45388cc3c07a7b7de7eb6bc8fec001`は、点検時のmain `02e4160a529d69835916193aec83b5f932fef46e`から491コミットbehindである。両者の再統合・全Repositoryテスト・前後cleanのreceiptは未取得なので、Draftの停止条件は変わらない。
+
+## 未解決Validationの調査可能性（2026-10-10）
+
+従来の `unresolved-reference` は「Validation参照が曖昧または未定義」という説明のみで、どちらの宣言のどの参照が原因かを表示していなかった。このままでは、`ApplicationOnly`/`ProcedureOnly`が空の保留ケースで修正対象を特定するために、両方の定義を人が再照合する必要がある。
+
+今回の追加実装候補では、保留行に `referenceIssues` を設け、以下の三属性を一件ずつ保持する。
+
+- `side`: `application` または `procedure`。どちらの明示参照に問題があるか
+- `id`: 参照されているValidationの意味ID
+- `reason`: `missing-definition`（意味定義0件）、`ambiguous-definition`（意味定義2件以上）、`duplicate-declaration`（同じ側で明示参照を2回以上記述）
+
+両側で同じValidationを参照し、そのValidation定義が複数あれば、両側の問題として表示する。同じ側・ID・原因の重複は取り除き、表示順を固定する。問題が解決されない限り、集合差の結果は返さない。これは出典ファイルの所在を解決できない`unresolvedSource`とは独立の意味レベルの情報である。
+
+コードと回帰テストはPR #1040に追加した。テストは、手順側の未定義ID、手順側・Application側の参照重複、両側での意味定義の曖昧性、3回の参照重複を含む。**この新しい変更に対するGoテスト、full Repository health、およびclean pre/postはまだ実行していない。** 以前の隔離モジュールのPASSをこの変更の成功と読み替えず、PRをDraftで保持する。
