@@ -96,7 +96,7 @@ func sourceAdapterInvocationImplementation(
 				return nil, err
 			}
 			var request SourceAdapterRequest
-			if err := json.Unmarshal(payload, &request); err != nil {
+			if err := decodeReferenceJSONExact(payload, &request); err != nil {
 				return nil, fmt.Errorf("decode source adapter request: %w", err)
 			}
 			inspection, err := implementation.Invoke(request)
