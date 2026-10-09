@@ -55,3 +55,32 @@ Repository正本の`reference/reference-model-transfer/transcription-contract-v0
 今回のincrementは、後者の全機能を前者へ移したことや、両者が完全に同じreaderになったことを主張しません。Capability Contractから実readerを呼べることと、RMT-2の公開Evidence contractをqualified production contractとして扱えることは別です。
 
 二つのreader経路が長期に別々のXML解釈を持たないよう、共通化する観測kernelと、RMT固有のpublic Evidence projectionを今後のReferenceで分けて判断します。
+
+
+## 汎用Invocation境界
+
+実Source Adapterを接続した結果、Capabilityを汎用的に解決できても、実行側にCapability専用Registryを追加し続けるなら、Core固定enumの問題が呼出し境界へ移るだけだと分かりました。
+
+Referenceでは`InvocationRegistry`を追加し、Hostが扱う情報を次に限定しています。
+
+- resolverが選んだexact Provider
+- request / result shape identity
+- request / result shape fingerprint
+- payload codec identity
+- opaqueなrequest / result bytes
+- request / result bytesのdigest
+- Capability固有のAuthority limit
+
+HostはSource AdapterやContract QueryのGo型を解釈しません。domain adapterがpayloadを型へ変換し、既存実装を呼び出します。
+
+既存の`SourceAdapterRegistry`も内部では`InvocationRegistry`を使うように変更しました。互換用のtyped APIは残しますが、Provider選択とartifact lookupをSource Adapter専用Registryへ重複実装しません。
+
+第二consumerには既存の`driver.ContractQueryExecutor`を使います。Source Adapterは`authoring-tool`、Contract Queryは`application-runtime`のまま同じInvocation境界を通ります。共通化によってAuthority scopeを統合しません。
+
+ReferenceのJSON codecは一つの実装例です。汎用Registryはcodecの内容を解釈せず、ContractとImplementationのcodec identityが一致することだけを確認します。opaque binary payloadを使うtestも置き、JSONをproduction標準へ固定しないことを確認します。
+
+shape名だけの一致では不十分です。同じshape名でwire schemaが変わっても検出できるよう、ContractとImplementationをexact shape fingerprintへ結び付けています。Provider ConformanceはContract fingerprintへ結び付くため、shape fingerprintの変更もContract driftとして扱われます。
+
+ただし、shape fingerprintが参照するschema artifactの保管場所、発行Authority、schema validation engineはまだReference化していません。fingerprintだけをschema本体の代わりには扱いません。
+
+Invocation成功も新しいAuthorityを与えません。Canonical Acceptance、Application Runtime Authority、Database Provider binding、Permission / Resource境界は既存の責務として残ります。
