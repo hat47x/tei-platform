@@ -28,6 +28,19 @@ func TestReferenceInvocationShapesShareCanonicalIssuer(t *testing.T) {
 	}
 }
 
+func TestInvocationShapeCanonicalizationIsVersioned(t *testing.T) {
+	artifact := sourceAdapterRequestShapeArtifact()
+	changed := artifact
+	changed.Canonicalization = "tei.reference.invocation-shape-canonicalization/v1"
+	if invocationShapeFingerprint(artifact) == invocationShapeFingerprint(changed) {
+		t.Fatal("canonicalization revision change did not change shape fingerprint")
+	}
+	if err := validateInvocationShapeArtifact(changed); err == nil ||
+		!strings.Contains(err.Error(), "canonicalization") {
+		t.Fatalf("unsupported canonicalization was accepted: %v", err)
+	}
+}
+
 func TestInvocationShapeFingerprintNormalizesRequiredOrdering(t *testing.T) {
 	left := sourceAdapterRequestShapeArtifact()
 	right := sourceAdapterRequestShapeArtifact()
