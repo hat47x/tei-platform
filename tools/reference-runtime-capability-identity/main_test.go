@@ -88,6 +88,11 @@ func referenceAuthority(
 ) RuntimeEnvironmentAuthority {
 	authority := RuntimeEnvironmentAuthority{
 		Environment: core.MustCanonicalID("reference_runtime"),
+		ExecutionGrants: []RuntimeExecutionGrant{{
+			RuntimeCapabilityFingerprint: ref.Fingerprint,
+			ExecutionProfileFingerprint: ref.ExecutionProfileFingerprint,
+			AuthorityEvidenceFingerprint: fingerprint("reference-environment-execution-authority"),
+		}},
 	}
 	for _, p := range permissions {
 		authority.PermissionGrants = append(
@@ -212,14 +217,24 @@ func TestRuntimeCapabilityRefIdentityChangesWithAcceptedRuntimeInputs(t *testing
 	}
 }
 
+func TestRuntimeCapabilityRefDoesNotAcquireExecutionAuthorityByExistence(t *testing.T) {
+	profile := referenceExecutionProfile(t, "web-browser", nil)
+	ref := referenceRuntimeRef(t, profile)
+	authority := RuntimeEnvironmentAuthority{
+		Environment: core.MustCanonicalID("reference_runtime"),
+	}
+	if _, err := buildRuntimeEnvironmentPlan(ref, profile, authority); err == nil ||
+		!strings.Contains(err.Error(), "Execution Grant") {
+		t.Fatalf("Runtime Capability Ref acquired execution Authority implicitly: %v", err)
+	}
+}
+
 func TestEnvironmentAuthorityMustExactlyMatchExecutionProfile(t *testing.T) {
 	perm := referencePermission()
 	profile := referenceExecutionProfile(t, "web-browser", []permission.Spec{perm})
 	ref := referenceRuntimeRef(t, profile)
 
-	missing := RuntimeEnvironmentAuthority{
-		Environment: core.MustCanonicalID("reference_runtime"),
-	}
+	missing := referenceAuthority(ref, nil)
 	if _, err := buildRuntimeEnvironmentPlan(ref, profile, missing); err == nil ||
 		!strings.Contains(err.Error(), "Permission Grant") {
 		t.Fatalf("missing Environment Permission Grant was accepted: %v", err)
