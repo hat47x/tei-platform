@@ -31,7 +31,8 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 	got := BuildBuilderReviewPlan(ctx)
 
 	if got.ProjectionRevision != builderReviewPlanProjectionRevision ||
-		got.Purpose != "design-change" {
+		got.Purpose != "design-change" ||
+		got.RoutingScope != "current-knowledge-context" {
 		t.Fatalf("builder review plan identity drifted: %+v", got)
 	}
 	if got.Subject != ctx.Subject {
@@ -60,6 +61,7 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 		"stop-when-required-evidence-or-authority-is-unresolved",
 		"do-not-treat-omitted-or-unavailable-knowledge-as-negative-evidence",
 		"do-not-promote-derived-candidate-or-guidance-to-accepted-meaning",
+		"do-not-infer-global-knowledge-absence-from-current-context-section-absence",
 		"refresh-review-plan-before-reusing-cached-routing",
 	} {
 		if !containsBuilderReviewString(got.StopRules, rule) {
@@ -71,6 +73,7 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 		"recommended-section-is-not-semantic-applicability",
 		"review-order-does-not-grant-write-or-runtime-authority",
 		"review-plan-does-not-replace-qualification-or-shared-acceptance",
+		"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
 		"review-plan-fingerprint-is-routing-identity-not-knowledge-freshness-proof",
 		"review-plan-fingerprint-is-not-selected-knowledge-fingerprint",
 	} {
