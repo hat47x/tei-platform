@@ -159,10 +159,6 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 			class := "source-diagnostic"
 			if diagnostic.Code == "BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT" {
 				class = "inconsistency"
-			} else if strings.Contains(diagnostic.Code, "AMBIGUOUS") ||
-				strings.Contains(diagnostic.Code, "NOT_FOUND") ||
-				strings.Contains(diagnostic.Code, "MISSING") {
-				class = "ambiguity"
 			}
 			packet.Findings = append(packet.Findings, finding{
 				Class:    class,
@@ -215,17 +211,6 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 					input.Stale.CurrentModelRevision,
 				),
 			})
-		}
-		for _, refusal := range input.Refusals {
-			if strings.Contains(refusal.Code, "STALE") {
-				packet.Findings = append(packet.Findings, finding{
-					Class:   "stale-premise",
-					Source:  "shared-acceptance",
-					Code:    refusal.Code,
-					Subject: refusal.Subject,
-					Message: refusal.Message,
-				})
-			}
 		}
 	}
 
