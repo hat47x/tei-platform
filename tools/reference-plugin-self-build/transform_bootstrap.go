@@ -281,8 +281,14 @@ func runTransformBootstrap(
 		},
 		Output: metaSource.Identity,
 	}
-	stage1PlanFingerprint := transformBootstrapStagePlanFingerprint(stage1Plan)
-	stage2PlanFingerprint := transformBootstrapStagePlanFingerprint(stage2Plan)
+	stage1PlanFingerprint, err := transformBootstrapStagePlanFingerprint(stage1Plan)
+	if err != nil {
+		return transformBootstrapEvidence{}, err
+	}
+	stage2PlanFingerprint, err := transformBootstrapStagePlanFingerprint(stage2Plan)
+	if err != nil {
+		return transformBootstrapEvidence{}, err
+	}
 
 	convergenceEvidence := plugin.BootstrapConvergenceEvidence{
 		FormatVersion: plugin.BootstrapConvergenceFormatVersion,
@@ -519,8 +525,57 @@ func transformBootstrapComparisonFingerprint(
 	return hex.EncodeToString(sum[:])
 }
 
-func transformBootstrapStagePlanFingerprint(plan transformBootstrapStagePlan) string {
-	raw, _ := json.Marshal(plan)
+func transformBootstrapStagePlanFingerprint(plan transformBootstrapStagePlan) (string, error) {
+	if err := validateTransformBootstrapStagePlan(plan); err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		return "", err
+	}
 	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func validateTransformBootstrapStagePlan(plan transformBootstrapStagePlan) error {
+	if err := plan.Builder.Validate(); err != nil {
+		return fmt.Errorf("%s execution builder: %w", plan.Stage, err)
+	}
+	if strings.TrimSpace(plan.Execution.Target) == "" {
+		return fmt.Errorf("%s execution target is required", plan.Stage)
+	}
+	if _, err := core.ParseCanonicalID(string(plan.Output.ID)); err != nil {
+		return fmt.Errorf("%s output builder id: %w", plan.Stage, err)
+	}
+	if !core.ValidNumericVersion(plan.Output.Version) {
+		return fmt.Errorf("%s output builder version %q must be major.minor.patch", plan.Stage, plan.Output.Version)
+	}
+	if strings.TrimSpace(plan.Output.ContractVersion) == "" {
+		return fmt.Errorf("%s output builder contract is required", plan.Stage)
+	}
+	switch plan.Stage {
+	case plugin.BootstrapStage1:
+		if plan.Execution.Kind != transformBootstrapExecutionNativeSeed {
+			return fmt.Errorf("stage1 execution must be %s", transformBootstrapExecutionNativeSeed)
+		}
+		if plan.Execution.RuntimeEngine != nil {
+			return fmt.Errorf("stage1 native seed execution must not declare a Runtime Engine")
+		}
+	case plugin.BootstrapStage2:
+		if plan.Execution.Kind != transformBootstrapExecutionInterpreted {
+			return fmt.Errorf("stage2 execution must be %s", transformBootstrapExecutionInterpreted)
+		}
+		if plan.Execution.RuntimeEngine == nil {
+			return fmt.Errorf("stage2 interpreted execution requires exact Runtime Engine identity")
+		}
+		if err := plan.Execution.RuntimeEngine.Validate(); err != nil {
+			return fmt.Errorf("stage2 Runtime Engine: %w", err)
+		}
+		if plan.Execution.Target != plan.Execution.RuntimeEngine.Target {
+			return fmt.Errorf("stage2 execution target does not match Runtime Engine target")
+		}
+	default:
+		return fmt.Errorf("unsupported bootstrap stage %q", plan.Stage)
+	}
+	return nil
 }
