@@ -99,7 +99,7 @@ func TestEpistemicDetailUnknownAndInaccessibleAreIndistinguishable(t *testing.T)
 
 	unknown := query
 	unknown.AssertionID = "assertion-that-does-not-exist"
-	_, unknownErr := resolveEpistemicDetail(corpus, context, unknown)
+	_, unknownErr := resolveEpistemicDetail(corpus, context, unknown, TransportAccess{})
 	if unknownErr == nil {
 		t.Fatal("unknown assertion detail was returned")
 	}
