@@ -69,6 +69,16 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 			t.Fatalf("business Evidence was inferred as satisfied: %+v", requirement)
 		}
 	}
+	for _, step := range []string{
+		"review-first-class-authoring-contract-gaps",
+		"select-core-or-semantic-extension-authoring-route-with-evidence",
+		"require-lossless-authoring-contract-before-promoting-derived-candidate",
+		"route-authoritative-change-through-shared-acceptance-only-after-authoring-contract-exists",
+	} {
+		if !containsDataDesignReviewString(packet.ReviewSequence, step) {
+			t.Fatalf("review sequence step %q is missing: %+v", step, packet.ReviewSequence)
+		}
+	}
 	for _, limit := range []string{
 		"candidate-review-packet-is-derived-not-authority",
 		"source-evidence-proves-traceability-not-business-meaning",
