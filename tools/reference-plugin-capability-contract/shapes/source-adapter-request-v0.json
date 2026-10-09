@@ -1,0 +1,29 @@
+{
+  "schema": "tei.reference.invocation-shape/v0",
+  "id": "tei.reference.source-adapter.request/v0",
+  "issuer": {
+    "id": "tei.reference.plugin-capability-contract",
+    "version": "0.1.0"
+  },
+  "payloadCodec": "application/json;profile=tei-reference-v0",
+  "format": "tei.reference.json-shape/v0",
+  "root": {
+    "kind": "object",
+    "required": [
+      "Format",
+      "SourceBytes",
+      "TranscriptionContract"
+    ],
+    "properties": {
+      "Format": {
+        "kind": "string"
+      },
+      "SourceBytes": {
+        "kind": "string"
+      },
+      "TranscriptionContract": {
+        "kind": "string"
+      }
+    }
+  }
+}
