@@ -1,6 +1,6 @@
 # ISSUE-000055: CI停止中でも、未検証の変更がmainへ入り続けない仕組みを決める
 
-- 状態: Done — 2026-09-20に初回方式を決定、2026-09-28に並行AI session / protected Gate運用を踏まえて現行ルールへ更新
+- 状態: Reopened — 2026-10-09。Draft / 未資格mergeの再発を受け、汎用qualification receiptを追加検証中
 - 提案日: 2026-09-19
 - 性格: Repository health / verification gate / Evidence reliability
 - 主担当要求: RQ-021 / RQ-022 / RQ-023
@@ -59,6 +59,41 @@ merge後の監査:
 - docsの未統合変更は同じ既存docs laneを再利用し、sibling branchを増やさない。
 
 この追記は`AGENTS.md` / `CONTRIBUTING.md`の同日hardeningと同じ事故記録を保持する。
+
+## 2026-10-09 再発と汎用qualification receipt
+
+2026-09-28のmerge-bypass incident後も、Repository内の運用契約だけでは同種の事故を止められませんでした。
+
+- PR #967は2026-10-08T06:06:01Z、Draftかつactual exact-head Repository Health / RQ-034 Reference未取得のままmergeされた。
+- そのforward containmentとして作成したPR #1027も、本文で「actual qualification取得までDraftを維持しmerge authorityを主張しない」と明記していたにもかかわらず、2026-10-09T07:18:10ZにDraftのままmergeされた。
+- #1027のmergeは、そこで追加したclean-state hardeningのqualification Evidenceには数えない。current mainからforward-onlyに扱う。
+- 2026-10-09の再確認でも`main`は`protected=false`である。private repositoryのrulesets APIは現行GitHub planでは利用できず、branch protectionの管理APIも現在のGitHub connectorからは利用できない。
+
+このため、文書規則を強めるだけでなく、trusted hostで取得するRepository-wide qualificationを一つの機械可読receiptへまとめるcandidateを追加する。
+
+`tools/run-repository-local-qualification.sh`の責務は次だけに限定する。
+
+```text
+remote refsを取得
+  -> expected candidate HEAD / expected current mainを固定
+  -> mainがcandidateのancestorであることを確認
+  -> tracked / untracked / ignored / index stateをexact-clean確認
+  -> full repository-health-check.sh
+  -> HEAD / clean state再確認
+  -> remote refsを再取得してmain移動を拒否
+  -> Repository外へoptionalなJSON receiptをatomic publish
+```
+
+receiptは少なくともcandidate commit / tree、expected main、health runner blob、qualification helper blob、Go環境、health PASS、HEAD / main安定、clean pre/postを持つ。Repository内へ保存してcandidate HEADを変えない。
+
+このreceiptもGitHub server側の強制保護ではない。merge操作を行うAI / Humanは、直前にPRを再取得し、`draft=false`であることに加えて、code変更ならreceiptの`candidateHead`がPRのexact head、`expectedMain`がその時点のcurrent `main`と一致することを確認する。mainまたはPR headが動けばreceiptはstaleであり、mergeせず取り直す。
+
+この再開作業の完了条件は次のとおり。
+
+- [x] 汎用qualification runnerのshell / Git制御を合成Repositoryでpressureする。local bare originを使い、正常receipt、ignored artifact、stale main、health中のmain移動、Repository内receipt、skip-worktreeを再現した。さらに`tools/repositoryqualification`へ同じ契約のGo回帰テストを追加し、隔離した合成moduleで6 subtestがPASSした。
+- [ ] trusted actual TEI checkoutでrunnerを実行し、full Repository Health PASSを含むreceiptを取得する。
+- [ ] そのexact receiptを使ったcode-changing PRのmerge前照合を一度実施する。
+- [ ] bypass後の`merged`状態をqualificationへ読み替えず、current mainのhealthを独立に確認する。
 
 ## 2026-09-29 verification-anchor audit
 
