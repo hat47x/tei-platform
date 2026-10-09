@@ -244,6 +244,43 @@ requestは少なくとも次を保持します。
 
 reviewer candidateはAuthorityではありません。Projectionには `reviewer-candidate-is-not-review-authority` を明示します。
 
+## 必要時だけ詳細へ戻るdetail resolver
+
+通常のProjectionは、判定に必要なsignalへ絞っています。本文、完全なTarget、Context、EvidenceをすべてのAssessmentへ重ねて持たせません。
+
+SUIで詳細を確認するときや、SEIがContext Egress Planで選んだassertionの本文を解決するときは、読み取り専用のdetail queryを使います。
+
+query identity:
+
+- semantic contract: `tei.epistemic-detail-query/v0`
+- representation schema: `tei.reference.epistemic-detail-query/v0`
+
+result identity:
+
+- semantic contract: `tei.epistemic-detail/v0`
+- representation schema: `tei.reference.epistemic-detail/v0`
+
+queryはassertion IDに加え、表示・選択時点のmeaning fingerprint、review subject fingerprint、target binding、review log sequenceを持ちます。callerが利用できるaccess refも渡しますが、Referenceはそのrefをauthorization Authorityとして解釈しません。既存のauthorization境界が決めたopaqueな入力として完全一致だけを使います。
+
+resolverは最初に既存transportと同じaccess filterを通し、その可視範囲を現在のContextQueryで再評価します。receiptのどれかが変わっていれば古いqueryとして拒否します。
+
+取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationです。resultにはaccess refを含めません。
+
+assertion自体がaccess不可の場合と、指定IDが存在しない場合は、どちらも`epistemic detail target is unavailable`とします。存在確認のための別経路にしません。
+
+Evidence、review history、relation等の一部がaccess filterで失われた場合は、既存transportと同様にmetadataをpartialへ落とします。hidden IDやpolicy refをresultへ出しません。
+
+detail resolverは確認状態や利用可否を更新しません。statement kindが`instruction`でも、本文は`epistemic-data`として返し、prompt control authorityを与えません。
+
+CLIでは次の読み取り専用modeを使います。
+
+```bash
+go run ./tools/reference-epistemic-knowledge \
+  -corpus corpus.json \
+  -context context.json \
+  -detail-query detail-query.json
+```
+
 ## fixture
 
 `testdata/epistemic-fixture-v0.json` は、SUI / SEIへ同じ意味のfixtureを渡すためのtransport candidateです。
