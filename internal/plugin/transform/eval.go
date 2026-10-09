@@ -31,7 +31,9 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 	e := evaluator{limits: source.Limits}
 	env := make(map[string]Value, len(inputs))
 	for name, value := range inputs {
-		env[name] = value
+		// Isolate caller-owned slices once. Evaluation treats Value as immutable
+		// and may then share internal subtrees without repeated deep copies.
+		env[name] = value.Clone()
 	}
 	for i := range source.Program.Assertions {
 		if _, err := e.eval(source.Program.Assertions[i], env, 0); err != nil {
@@ -42,12 +44,8 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 	if err != nil {
 		return EvaluationResult{}, err
 	}
-	outputBytes, err := encodedOutputSize(output)
-	if err != nil {
+	if _, err := encodedOutputSize(output, source.Limits.MaxOutputBytes); err != nil {
 		return EvaluationResult{}, err
-	}
-	if outputBytes > source.Limits.MaxOutputBytes {
-		return EvaluationResult{}, fmt.Errorf("transform output exceeds maxOutputBytes")
 	}
 	return EvaluationResult{Output: output, Steps: e.steps}, nil
 }
@@ -114,7 +112,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if !ok {
 			return Value{}, fmt.Errorf("transform input or binding %q is not available", expr.Name)
 		}
-		return value.Clone(), nil
+		return value, nil
 	case OpLiteral:
 		return ParseJSON(expr.Literal)
 	case OpSelectField:
@@ -198,7 +196,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 				}
 				keys[k] = key.String
 			}
-			items[i] = keyed{value: item.Clone(), keys: keys}
+			items[i] = keyed{value: item, keys: keys}
 		}
 		sort.Slice(items, func(i, j int) bool {
 			for k := range items[i].keys {
@@ -211,7 +209,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		})
 		out := make([]Value, len(items))
 		for i := range items {
-			out[i] = items[i].value.Clone()
+			out[i] = items[i].value
 		}
 		return Array(out...), nil
 	case OpReplaceField:
@@ -223,7 +221,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			return Value{}, fmt.Errorf("replace-field requires object, got %s", source.Kind)
 		}
 		if _, exists := source.Field(expr.Field); !exists {
-			return source.Clone(), nil
+			return source, nil
 		}
 		replacement, err := e.eval(*expr.Value, env, depth+1)
 		if err != nil {
@@ -270,12 +268,9 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if err != nil {
 			return Value{}, err
 		}
-		raw, err := source.JSON()
+		raw, err := source.JSONWithinLimit(e.limits.MaxOutputBytes)
 		if err != nil {
-			return Value{}, err
-		}
-		if len(raw) > e.limits.MaxOutputBytes {
-			return Value{}, fmt.Errorf("canonical-json exceeds maxOutputBytes")
+			return Value{}, fmt.Errorf("canonical-json: %w", err)
 		}
 		return Bytes(raw), nil
 	case OpSHA256:
@@ -333,11 +328,14 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 
 
 
-func encodedOutputSize(value Value) (int, error) {
+func encodedOutputSize(value Value, maxBytes int) (int, error) {
 	if value.Kind == ValueBytes {
+		if len(value.Bytes) > maxBytes {
+			return 0, fmt.Errorf("transform output exceeds maxOutputBytes")
+		}
 		return len(value.Bytes), nil
 	}
-	raw, err := value.JSON()
+	raw, err := value.JSONWithinLimit(maxBytes)
 	if err != nil {
 		return 0, fmt.Errorf("encode transform output: %w", err)
 	}
