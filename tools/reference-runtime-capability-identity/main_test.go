@@ -545,7 +545,15 @@ func (r *recordingSandboxRunner) InvokeSandboxed(
 	}
 	r.Calls++
 	r.Request = req
-	return pruntime.Response{Status: pruntime.ResponseOK}, nil
+	return pruntime.Response{
+		ProtocolVersion: req.ProtocolVersion,
+		RequestID: req.RequestID,
+		Plugin: req.Plugin,
+		CapabilityID: req.CapabilityID,
+		DescriptorFingerprint: req.DescriptorFingerprint,
+		Status: pruntime.ResponseOK,
+		Payload: req.Payload,
+	}, nil
 }
 
 func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing.T) {
@@ -574,7 +582,7 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
 		Command: pruntime.ProcessCommand{Executable: "document-render-worker"},
 	}
-	prov, err := invokeWithExistingHostBoundary(
+	inv, err := invokeWithExistingHostBoundary(
 		context.Background(),
 		plan,
 		realization,
@@ -589,9 +597,9 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 		t.Fatal(err)
 	}
 	if verifier.Calls != 1 ||
-		prov.ArtifactVerification == nil ||
-		!prov.ArtifactVerification.DigestVerified {
-		t.Fatalf("artifact verification=%+v calls=%d", prov.ArtifactVerification, verifier.Calls)
+		inv.Provenance.ArtifactVerification == nil ||
+		!inv.Provenance.ArtifactVerification.DigestVerified {
+		t.Fatalf("artifact verification=%+v calls=%d", inv.Provenance.ArtifactVerification, verifier.Calls)
 	}
 	if broker.AcquireCalls != 1 || broker.ReleaseCalls != 1 {
 		t.Fatalf("Resource Broker calls acquire=%d release=%d", broker.AcquireCalls, broker.ReleaseCalls)
@@ -615,9 +623,9 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 		runner.Request.CapabilityID != expectedProcessDispatchID {
 		t.Fatalf("sandbox runner dispatch request=%+v", runner.Request)
 	}
-	if prov.ResourceAuthoritySubjectID != expectedResourceSubjectID ||
-		prov.ProcessDispatchID != expectedProcessDispatchID {
-		t.Fatalf("generic invocation transport provenance=%+v", prov)
+	if inv.Provenance.ResourceAuthoritySubjectID != expectedResourceSubjectID ||
+		inv.Provenance.ProcessDispatchID != expectedProcessDispatchID {
+		t.Fatalf("generic invocation transport provenance=%+v", inv.Provenance)
 	}
 	if network.Calls != 1 || !network.Policy.DenyByDefault || len(network.Policy.Allowlist) != 0 {
 		t.Fatalf("network policy=%+v", network.Policy)
@@ -629,14 +637,14 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 		filesystem.Policy.Mounts[0].Access != permission.AccessRead {
 		t.Fatalf("filesystem policy=%+v", filesystem.Policy)
 	}
-	if prov.RuntimeCapability.Fingerprint != ref.Fingerprint ||
-		prov.RuntimeCapability.ContractFingerprint != ref.ContractFingerprint ||
-		prov.RuntimeCapability.PluginID != ref.PluginID ||
-		prov.RuntimeCapability.ImplementationID != ref.ImplementationID ||
-		prov.ResourceLeaseID != "generic-runtime-lease" ||
-		!prov.ResourceLeaseReleased ||
-		len(prov.Resources) != 1 {
-		t.Fatalf("generic invocation provenance=%+v", prov)
+	if inv.Provenance.RuntimeCapability.Fingerprint != ref.Fingerprint ||
+		inv.Provenance.RuntimeCapability.ContractFingerprint != ref.ContractFingerprint ||
+		inv.Provenance.RuntimeCapability.PluginID != ref.PluginID ||
+		inv.Provenance.RuntimeCapability.ImplementationID != ref.ImplementationID ||
+		inv.Provenance.ResourceLeaseID != "generic-runtime-lease" ||
+		!inv.Provenance.ResourceLeaseReleased ||
+		len(inv.Provenance.Resources) != 1 {
+		t.Fatalf("generic invocation provenance=%+v", inv.Provenance)
 	}
 }
 
