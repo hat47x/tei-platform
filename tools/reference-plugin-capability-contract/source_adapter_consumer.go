@@ -195,7 +195,7 @@ func (r *SourceAdapterRegistry) ResolveAndInvoke(
 		return SourceAdapterExecution{}, err
 	}
 	var inspection xeadsource.Inspection
-	if err := json.Unmarshal(execution.ResultPayload, &inspection); err != nil {
+	if err := decodeReferenceJSONExact(execution.ResultPayload, &inspection); err != nil {
 		return SourceAdapterExecution{}, fmt.Errorf("decode source adapter result: %w", err)
 	}
 
