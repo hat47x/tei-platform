@@ -16,6 +16,10 @@ const (
 	digestD = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 )
 
+func uppercaseDigest(value string) string {
+	return "sha256:" + strings.ToUpper(strings.TrimPrefix(value, "sha256:"))
+}
+
 func referencePluginBuildPlan(id string, definitionFingerprint string) plugin.BuildPlan {
 	return plugin.BuildPlan{
 		FormatVersion:               plugin.BuildPlanFormatVersion,
@@ -505,5 +509,166 @@ func TestReferenceEvidenceIsDeterministicAndKeepsAuthoritySeparated(t *testing.T
 				t.Fatalf("Reference Evidence claims forbidden authority marker %q", limit)
 			}
 		}
+	}
+}
+
+
+func TestExecutionIdentityCanonicalizesValidSHA256HexCase(t *testing.T) {
+	lower := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
+	lower.Dependencies = []plugin.BuildDependency{{
+		Kind: "sdk", ID: "reference-sdk", Version: "1.0.0", ArtifactDigest: digestC,
+	}}
+	upper := lower
+	upper.Sources = append([]plugin.BuildSource(nil), lower.Sources...)
+	upper.Dependencies = append([]plugin.BuildDependency(nil), lower.Dependencies...)
+	upper.Sources[0].Digest = uppercaseDigest(lower.Sources[0].Digest)
+	upper.Builder.ArtifactDigest = uppercaseDigest(lower.Builder.ArtifactDigest)
+	upper.Dependencies[0].ArtifactDigest = uppercaseDigest(lower.Dependencies[0].ArtifactDigest)
+
+	lowerExecution, err := executionPlanFromPluginBuildPlan(lower)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upperExecution, err := executionPlanFromPluginBuildPlan(upper)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lowerFP, err := buildExecutionPlanFingerprint(lowerExecution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upperFP, err := buildExecutionPlanFingerprint(upperExecution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lowerFP != upperFP {
+		t.Fatal("valid SHA-256 hex letter case changed BuildExecutionPlan identity")
+	}
+}
+
+func TestArtifactSetIdentityCanonicalizesValidSHA256HexCase(t *testing.T) {
+	lower := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "primary", Format: "application/octet-stream", Digest: digestC,
+		}},
+	}
+	upper := lower
+	upper.Members = append([]ArtifactMember(nil), lower.Members...)
+	upper.Members[0].Digest = uppercaseDigest(lower.Members[0].Digest)
+
+	lowerFP, err := artifactSetFingerprint(lower)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upperFP, err := artifactSetFingerprint(upper)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lowerFP != upperFP {
+		t.Fatal("valid SHA-256 hex letter case changed Artifact Set identity")
+	}
+	comparison, err := compareArtifactSets(lower, upper)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !comparison.Reproducible {
+		t.Fatalf("hex-case-only artifact difference was treated as content drift: %#v", comparison)
+	}
+}
+
+func TestSubjectBindingFingerprintsCanonicalizeValidHexCase(t *testing.T) {
+	plan := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
+	execution, err := executionPlanFromPluginBuildPlan(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executionFP, err := buildExecutionPlanFingerprint(execution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "primary", Format: "application/octet-stream", Digest: digestC,
+		}},
+	}
+	setFP, err := artifactSetFingerprint(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lowerPlugin := PluginSubjectBinding{
+		FormatVersion: pluginSubjectBindingFormatVersion,
+		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint: strings.Repeat("a", 64),
+		ExecutionPlanFingerprint: executionFP,
+		ArtifactSetFingerprint: setFP,
+		OutputRoles: []string{"primary"},
+	}
+	upperPlugin := lowerPlugin
+	upperPlugin.PluginDefinitionFingerprint = strings.ToUpper(lowerPlugin.PluginDefinitionFingerprint)
+	upperPlugin.ExecutionPlanFingerprint = strings.ToUpper(lowerPlugin.ExecutionPlanFingerprint)
+	upperPlugin.ArtifactSetFingerprint = strings.ToUpper(lowerPlugin.ArtifactSetFingerprint)
+
+	lowerPluginFP, err := pluginSubjectBindingFingerprint(lowerPlugin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upperPluginFP, err := pluginSubjectBindingFingerprint(upperPlugin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lowerPluginFP != upperPluginFP {
+		t.Fatal("valid fingerprint hex letter case changed Plugin subject binding identity")
+	}
+	if err := verifyPluginSubjectBinding(upperPlugin, execution, set); err != nil {
+		t.Fatalf("valid uppercase Plugin binding was rejected: %v", err)
+	}
+
+	lowerEngine := RuntimeEngineSubjectBinding{
+		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
+		Engine: pruntime.RuntimeEngineIdentity{
+			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
+			Version: "1.0.0",
+			ContractVersion: "tei.transform-runtime/v1",
+			ImplementationDigest: digestC,
+			Target: "host/reference",
+		},
+		ExecutionPlanFingerprint: executionFP,
+		ArtifactSetFingerprint: setFP,
+		OutputRole: "primary",
+	}
+	upperEngine := lowerEngine
+	upperEngine.Engine.ImplementationDigest = uppercaseDigest(lowerEngine.Engine.ImplementationDigest)
+	upperEngine.ExecutionPlanFingerprint = strings.ToUpper(lowerEngine.ExecutionPlanFingerprint)
+	upperEngine.ArtifactSetFingerprint = strings.ToUpper(lowerEngine.ArtifactSetFingerprint)
+
+	lowerEngineFP, err := runtimeEngineSubjectBindingFingerprint(lowerEngine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upperEngineFP, err := runtimeEngineSubjectBindingFingerprint(upperEngine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lowerEngineFP != upperEngineFP {
+		t.Fatal("valid SHA-256/fingerprint hex letter case changed Runtime Engine binding identity")
+	}
+	if err := verifyRuntimeEngineSubjectBinding(upperEngine, execution, set); err != nil {
+		t.Fatalf("valid uppercase Runtime Engine binding was rejected: %v", err)
+	}
+}
+
+func TestCurrentBuildPlanWithUppercaseHexCanBeProjected(t *testing.T) {
+	plan := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("A", 64))
+	plan.Sources[0].Digest = uppercaseDigest(plan.Sources[0].Digest)
+	plan.Builder.ArtifactDigest = uppercaseDigest(plan.Builder.ArtifactDigest)
+	build, err := plugin.LockBuildOutput(plan, uppercaseDigest(digestC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, _, err := projectPluginBuild(plan, build); err != nil {
+		t.Fatalf("current valid BuildPlan with uppercase hex could not be projected: %v", err)
 	}
 }
