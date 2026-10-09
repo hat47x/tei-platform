@@ -29,6 +29,59 @@ func TestDataDesignCandidateReviewPacketIsNotAnAuthorityEnvelope(t *testing.T) {
 	}
 }
 
+func TestBuilderReviewFlowReachesDataDesignCandidateReview(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	sources := dataDesignCandidateReviewSources()
+
+	plan := BuildBuilderReviewPlan(ctx)
+	if !containsDataDesignReviewString(
+		plan.ReviewSequence,
+		"review-data-design-candidates-by-stable-fingerprint-and-evidence-contract",
+	) {
+		t.Fatalf("Builder Review Plan does not route candidate review: %+v", plan.ReviewSequence)
+	}
+
+	handoff, err := BuildBuilderReviewHandoff(
+		ctx,
+		sources,
+		QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "qualified-for-disclosure" ||
+		!containsDataDesignReviewString(handoff.SelectedSections, "data-design") {
+		t.Fatalf("Builder Review Handoff did not select Data Design: %+v", handoff)
+	}
+
+	disclosure, err := BuildBuilderReviewDisclosure(ctx, sources, handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disclosure.DataDesign == nil ||
+		len(disclosure.DataDesign.BusinessIdentityCandidates) != 1 {
+		t.Fatalf("qualified Disclosure lost Data Design candidate: %+v", disclosure.DataDesign)
+	}
+	candidate := disclosure.DataDesign.BusinessIdentityCandidates[0]
+
+	packet, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packet.Candidate.Fingerprint != candidate.Fingerprint ||
+		packet.DataDesignFingerprint != disclosure.DataDesign.Fingerprint ||
+		packet.ReviewStatus != "evidence-required" {
+		t.Fatalf("candidate review did not bind qualified Disclosure: %+v", packet)
+	}
+}
+
 func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testing.T) {
 	ctx := dataDesignCandidateReviewContext(t)
 	if ctx.DataDesign == nil || len(ctx.DataDesign.BusinessIdentityCandidates) != 1 {
