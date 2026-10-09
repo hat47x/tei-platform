@@ -23,18 +23,18 @@ type readScenarioInput struct {
 }
 
 type readScenarioResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
-	From            string                     `json:"from"`
+	ScenarioID       string                     `json:"scenarioId"`
+	Environment      string                     `json:"environment"`
+	ApplicationID    string                     `json:"applicationId"`
+	From             string                     `json:"from"`
 	SelectedRowIndex int                        `json:"selectedRowIndex"`
-	BrowseRows      []semanticRowProjection    `json:"browseRows"`
-	SelectedOrder   semanticRowProjection      `json:"selectedOrder"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	OrderLineRows   []semanticRowProjection    `json:"orderLineRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
+	BrowseRows       []semanticRowProjection    `json:"browseRows"`
+	SelectedOrder    semanticRowProjection      `json:"selectedOrder"`
+	CustomerRows     []semanticRowProjection    `json:"customerRows"`
+	OrderLineRows    []semanticRowProjection    `json:"orderLineRows"`
+	RuntimeBindings  []runtimeBindingProjection `json:"runtimeBindings"`
+	AuthorityLimits  []string                   `json:"authorityLimits"`
+	Unresolved       []string                   `json:"unresolved"`
 }
 
 type semanticRowProjection struct {
@@ -179,15 +179,15 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 	orderLineRows := projectContractRows(lines.Execution.Result.Rows)
 
 	return readScenarioResult{
-		ScenarioID:    "order-entry.read-only-web-slice",
-		Environment:   string(r.environmentID),
-		ApplicationID: string(r.applicationID),
-		From:          input.From,
+		ScenarioID:       "order-entry.read-only-web-slice",
+		Environment:      string(r.environmentID),
+		ApplicationID:    string(r.applicationID),
+		From:             input.From,
 		SelectedRowIndex: input.RowIndex,
-		BrowseRows:    browseRows,
-		SelectedOrder: selectedOrder,
-		CustomerRows:  customerRows,
-		OrderLineRows: orderLineRows,
+		BrowseRows:       browseRows,
+		SelectedOrder:    selectedOrder,
+		CustomerRows:     customerRows,
+		OrderLineRows:    orderLineRows,
 		RuntimeBindings: []runtimeBindingProjection{
 			{
 				Pattern:    "order_entry.recent_orders",
