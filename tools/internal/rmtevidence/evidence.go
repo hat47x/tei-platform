@@ -41,6 +41,10 @@ var fingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
 var sourceFormatVersionPattern = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)*$`)
 
+var publicTokenPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$`)
+
+const publicTokenMaxLength = 160
+
 var standardConstructsByFormat = map[string]map[string]struct{}{
 	"xead": stringSet(
 		"System", "Subsystem", "Department", "DataType",
@@ -150,6 +154,12 @@ func normalize(value Evidence) (Evidence, error) {
 	value.Extension = strings.TrimSpace(value.Extension)
 	value.EvidenceFingerprint = strings.TrimSpace(value.EvidenceFingerprint)
 
+	if value.Extension != "" {
+		if err := validatePublicToken("extension", value.Extension); err != nil {
+			return value, err
+		}
+	}
+
 	if value.Schema != Schema {
 		return value, fmt.Errorf("RMT transcription Evidence schema %q は未対応です", value.Schema)
 	}
@@ -213,6 +223,11 @@ func normalize(value Evidence) (Evidence, error) {
 	if err != nil {
 		return value, err
 	}
+	for _, item := range limits {
+		if err := validatePublicToken("authorityLimits", item); err != nil {
+			return value, err
+		}
+	}
 	value.AuthorityLimits = limits
 
 	if value.MappingStatus == MappingMapped {
@@ -253,6 +268,23 @@ func normalizeStrings(name string, values []string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+func IsPublicToken(value string) bool {
+	return len(value) > 0 &&
+		len(value) <= publicTokenMaxLength &&
+		publicTokenPattern.MatchString(value)
+}
+
+func validatePublicToken(field, value string) error {
+	if !IsPublicToken(value) {
+		return fmt.Errorf(
+			"RMT transcription Evidence.%s %q は公開Evidenceで扱えるtokenではありません",
+			field,
+			value,
+		)
+	}
+	return nil
 }
 
 func IsStandardConstruct(sourceFormat, name string) bool {
