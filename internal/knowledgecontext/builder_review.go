@@ -1,16 +1,24 @@
 package knowledgecontext
 
-import "sort"
+import (
+	"encoding/json"
+	"sort"
+
+	"tei/internal/sourceindex"
+	"tei/internal/subject"
+)
 
 const builderReviewPlanProjectionRevision = "tei.knowledge.builder-review-plan/v1"
 
 type BuilderReviewPlan struct {
-	ProjectionRevision            string   `json:"projectionRevision"`
-	Purpose                       string   `json:"purpose"`
-	RecommendedDisclosureSections []string `json:"recommendedDisclosureSections,omitempty"`
-	ReviewSequence                []string `json:"reviewSequence"`
-	StopRules                     []string `json:"stopRules"`
-	AuthorityLimits               []string `json:"authorityLimits"`
+	ProjectionRevision            string          `json:"projectionRevision"`
+	Fingerprint                   string          `json:"fingerprint"`
+	Subject                       subject.Subject `json:"subject"`
+	RecommendedDisclosureSections []string        `json:"recommendedDisclosureSections,omitempty"`
+	ReviewSequence                []string        `json:"reviewSequence"`
+	Unresolved                    []string        `json:"unresolved,omitempty"`
+	StopRules                     []string        `json:"stopRules"`
+	AuthorityLimits               []string        `json:"authorityLimits"`
 }
 
 var builderReviewSectionOrder = []string{
@@ -20,8 +28,8 @@ var builderReviewSectionOrder = []string{
 	"dependencies",
 }
 
-func buildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
-	available := availableKnowledgeSections(ctx)
+func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
+	available := availableDisclosureSections(ctx)
 	availableSet := make(map[string]struct{}, len(available))
 	for _, section := range available {
 		availableSet[section] = struct{}{}
@@ -53,48 +61,39 @@ func buildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 		"route-authoritative-change-through-shared-acceptance",
 	)
 
-	return BuilderReviewPlan{
+	unresolved := append([]string(nil), ctx.Unresolved...)
+	sort.Strings(unresolved)
+
+	result := BuilderReviewPlan{
 		ProjectionRevision:            builderReviewPlanProjectionRevision,
-		Purpose:                       "design-change",
+		Subject:                       ctx.Subject,
 		RecommendedDisclosureSections: recommended,
 		ReviewSequence:                reviewSequence,
+		Unresolved:                    unresolved,
 		StopRules: []string{
 			"stop-when-required-evidence-or-authority-is-unresolved",
 			"do-not-treat-omitted-or-unavailable-knowledge-as-negative-evidence",
 			"do-not-promote-derived-candidate-or-guidance-to-accepted-meaning",
-			"refresh-selected-knowledge-before-reusing-cached-design-context",
+			"refresh-review-plan-before-reusing-cached-routing",
 		},
 		AuthorityLimits: []string{
 			"builder-review-plan-is-derived-routing-guidance-not-semantic-authority",
 			"recommended-section-is-not-semantic-applicability",
 			"review-order-does-not-grant-write-or-runtime-authority",
 			"review-plan-does-not-replace-qualification-or-shared-acceptance",
+			"review-plan-fingerprint-is-routing-identity-not-knowledge-freshness-proof",
+			"review-plan-fingerprint-is-not-selected-knowledge-fingerprint",
 		},
 	}
-}
-
-func availableKnowledgeSections(ctx Context) []string {
-	var result []string
-	if len(ctx.Artifacts) != 0 || len(ctx.References) != 0 {
-		result = append(result, "source")
-	}
-	if ctx.SemanticElement != nil || ctx.ApplicationPattern != nil {
-		result = append(result, "definition")
-	}
-	if ctx.DataDesign != nil {
-		result = append(result, "data-design")
-	}
-	if len(ctx.Outgoing) != 0 || len(ctx.Incoming) != 0 {
-		result = append(result, "dependencies")
-	}
-	sort.Strings(result)
+	result.Fingerprint = builderReviewPlanFingerprint(result)
 	return result
 }
 
-func cloneBuilderReviewPlan(value BuilderReviewPlan) BuilderReviewPlan {
-	value.RecommendedDisclosureSections = append([]string(nil), value.RecommendedDisclosureSections...)
-	value.ReviewSequence = append([]string(nil), value.ReviewSequence...)
-	value.StopRules = append([]string(nil), value.StopRules...)
-	value.AuthorityLimits = append([]string(nil), value.AuthorityLimits...)
-	return value
+func builderReviewPlanFingerprint(value BuilderReviewPlan) string {
+	value.Fingerprint = ""
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		panic("Builder Review Plan contains non-JSON state: " + err.Error())
+	}
+	return sourceindex.Fingerprint(encoded)
 }
