@@ -154,3 +154,44 @@ func TestFingerprintFieldsRequireExactSHA256(t *testing.T) {
 		})
 	}
 }
+
+func TestKnownConstructMustUsePublicStandardVocabulary(t *testing.T) {
+	value := fixture()
+	value.SourceConstruct = "PrivateBusinessThing"
+	if _, err := Prepare(value); err == nil || !strings.Contains(err.Error(), "標準construct") {
+		t.Fatalf("private construct name was accepted as known: %v", err)
+	}
+
+	value = fixture()
+	value.SourceFormat = "xead"
+	value.SourceConstruct = "Button"
+	if _, err := Prepare(value); err == nil || !strings.Contains(err.Error(), "標準construct") {
+		t.Fatalf("Xeaf-only construct was accepted as Xead: %v", err)
+	}
+}
+
+func TestSourceFormatVersionMustBePublicNumericVersion(t *testing.T) {
+	value := fixture()
+	value.SourceFormatVersion = "private-version"
+	if _, err := Prepare(value); err == nil || !strings.Contains(err.Error(), "数値version") {
+		t.Fatalf("free-text source version was accepted: %v", err)
+	}
+}
+
+func TestClassificationUsesControlledVocabulary(t *testing.T) {
+	value := fixture()
+	value.Classification = []string{"private-classification"}
+	if _, err := Prepare(value); err == nil || !strings.Contains(err.Error(), "classification") {
+		t.Fatalf("unknown classification was accepted: %v", err)
+	}
+}
+
+func TestUnmappedEvidenceCannotClaimMappedClassification(t *testing.T) {
+	value := fixture()
+	value.MappingStatus = MappingUnmapped
+	value.Extension = ""
+	value.Classification = []string{"canonical-candidate"}
+	if _, err := Prepare(value); err == nil || !strings.Contains(err.Error(), "unresolved") {
+		t.Fatalf("unmapped Evidence claimed mapped classification: %v", err)
+	}
+}
