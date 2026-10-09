@@ -157,7 +157,7 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	treeDigest, err := hashTrackedSourceTree(root)
+	treeDigest, err := hashRepositorySnapshotTree(root)
 	if err != nil {
 		return evidence{}, err
 	}
@@ -894,7 +894,7 @@ func hashSourceFiles(repo string, paths []string) (string, error) {
 	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
 }
 
-func hashTrackedSourceTree(repo string) (string, error) {
+func hashRepositorySnapshotTree(repo string) (string, error) {
 	// RepositoryTreeDigest is snapshot provenance, not a BuildPlan source.
 	// Hash Git's exact HEAD tree listing instead of walking the worktree so
 	// unrelated symlinks or file-system metadata cannot become build blockers.
