@@ -2,11 +2,11 @@
 
 この文書は、[はじめてTEIを知る方へ](for-readers.md) より一段だけ技術寄りに、TEIの設計上の考え方を説明します。
 
-個別の型やAPIを追う前に、「なぜTEIが意味・実装・権限・観測を分けるのか」をつかむための入口です。技術境界をさらに詳しく読む場合は、[Architecture 読み方ガイド](architecture-reading-guide.md)を経由すると全体像を追いやすくなります。
+個別の型やAPIを追う前に、「なぜTEIが意味・実装・権限・観測を分けるのか」をつかむための入口です。技術境界をさらに詳しく読む場合は、[構成を読むための案内](architecture-reading-guide.md)を経由すると全体像を追いやすくなります。
 
 ## 一言でいうと
 
-TEIは、業務システムの「意味」をコード・DB・画面・クラウド構成より一段上に置き、その意味がどの実装へ落ち、実際にどう実行されたかまで追跡できるローコード基盤を目指しています。
+TEIは、業務システムの「意味」をコード・データベース・画面・クラウド構成より一段上に置き、その意味がどの実装へ落ち、実際にどう実行されたかまで追跡できるローコード基盤を目指しています。
 
 従来のローコード製品では、画面・テーブル・ワークフローを一つの専用環境に閉じ込めると短期開発は速くなっても、既存システム移行、複雑なSQL、外部API、固有認証、運用ツール、長期保守で専用世界の外へ出たくなることがあります。
 
@@ -14,20 +14,20 @@ TEIはその逆方向から設計しています。
 
 - 意味はできるだけ明示する
 - 実装方式は交換可能にする
-- nativeなSQL / Go等はnativeなまま使える
-- 実行時の推測は減らし、Bindingを明示する
-- derived artifactはCanonical sourceへ逆流させない
-- 実行結果はObservation / Evidenceで確認する
+- SQLやGoなど既存の言語・技術はそのまま使える
+- 実行時の推測を減らし、具体的な実装との対応付けを明示する
+- 派生した成果物を意味の正本となる定義へ逆流させない
+- 実行結果は観測と検証根拠によって確かめる
 
-ここで **Canonical** は「特定の画面やDB製品などに依存しない、基準となる意味表現」、**Binding** は「その意味や要求を、環境上の具体的な実装へ結び付けること」を指します。
+ここでいう「正本となる意味表現（Canonical）」は、特定の画面やデータベース製品などに依存しない基準です。「対応付け（Binding）」は、その意味や要求を具体的な実装へ結び付けることを指します。
 
 ## なぜ「意味」を先に置くのか
 
 たとえば「受注は顧客を参照し、複数の明細を持つ」という業務上の意味を考えます。
 
-Web画面では顧客検索dialogと明細tableになるかもしれません。Desktopでは別のUIになり、APIではCustomer IDと明細配列になるかもしれません。
+Web画面では顧客検索ダイアログと明細表になるかもしれません。デスクトップアプリでは別の画面になり、APIではCustomer IDと明細配列になるかもしれません。
 
-もし画面やframeworkの構造を業務意味そのものにすると、Targetや技術を変えるたびに設計の中心まで作り直すことになります。
+画面や開発基盤の構造を業務上の意味そのものとして扱うと、実行先や技術を変えるたびに設計の中心まで作り直すことになります。
 
 TEIでは、まず変わりにくい意味を保持し、その後で用途別の表現や実装へ落とします。
 
@@ -49,7 +49,7 @@ Web / Desktop / API等のProjection
 
 TEIは「生成AIがあるから、設計書やコードを毎回大量に作り直せばよい」という前提には立ちません。
 
-AIが自由生成する前に、TEI自身が持っている既存の意味、関係、制約、Reference、実行能力を使い、問題をできるだけ小さくします。
+AIに自由生成させる前に、TEIが持つ既存の意味、関係、制約、参照例、実行能力を使い、問題をできるだけ小さくします。
 
 まず、再利用できるものを次の順で探します。
 
@@ -67,12 +67,12 @@ AIが自由生成する前に、TEI自身が持っている既存の意味、関
 
 - 既存のOrder / Customerはあるか
 - header-detailのApplication Patternは使えるか
-- 顧客masterはread-onlyか
-- quantityに既存Validationがあるか
-- Targetが必要なinteractionを提供できるか
-- 類似するReferenceや過去の設計はあるか
+- 顧客マスタは読み取り専用か
+- `quantity`に既存の検証規則があるか
+- 実行先が必要な操作を提供できるか
+- 類似する参照例や過去の設計はあるか
 
-そのうえで、複数の設計候補を作り、既知のconstraintや他の設計viewから不適合案を除外します。
+そのうえで、複数の設計候補を作り、既知の制約や別の設計上の観点から不適合な案を除外します。
 
 ```text
 業務意図
@@ -90,21 +90,21 @@ constraint / cross-viewで候補を縮約
 実装・テストを可能な範囲で再生成
 ```
 
-ここで重要なのは、**LLMを最初の探索器にも、最終authorityにも固定しないこと**です。
+ここで重要なのは、**LLMを最初の探索手段にも、最終的な決定権限にも固定しないこと**です。
 
-exact lookup、graph traversal、constraint check、Pattern recall、構造的な類似探索等は、できる限り軽量なローカル処理で行います。その結果を小さく構造化したうえでlocal LLMへ渡せれば、大きなmodelへRepository全体を毎回読ませなくても実用的な設計支援へ近づけます。
+exact lookup、graph traversal、constraint check、Pattern recall、構造的な類似探索等は、できる限り軽量なローカル処理で行います。その結果を小さく構造化したうえでlocal LLMへ渡せれば、大きなモデルにリポジトリ全体を毎回読ませなくても実用的な設計支援へ近づけます。
 
-local LLMで十分なReference Scenarioを持つことを目標にしつつ、必要ならremote LLMをoptionalに利用できる構造を想定しています。特定のmodel名やparameter数をCanonical Architectureへ固定しません。
+local LLMで十分なReference Scenarioを持つことを目標にしつつ、必要ならremote LLMをoptionalに利用できる構造を想定しています。特定のモデル名やパラメータ数を基準となる設計へ固定しません。
 
-AIが作った内容は、採用されるまではProposalです。AIの提案能力が高くても、Canonical meaningの変更権限、本番操作権限、secret / network / filesystem等のResource authorityを自動的に持つわけではありません。
+AIが作った内容は、採用されるまでは提案です。AIの提案能力が高くても、Canonical meaningの変更権限、本番操作の権限や、秘密情報・ネットワーク・ファイルシステムなどの資源を利用する権限を自動的に持つわけではありません。
 
 より詳しい設計方向は、[Definition-Centered Feedback Loop](definition-centered-feedback-loop.md) と [`Design Synthesis Loop Requirement Draft`](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) を参照してください。
 
-## CanonicalとProjection
+## 意味の正本と用途別の表現
 
 TEIではCanonical Modelを一つの画面表現やファイル表現と同一視しません。
 
-**Projection** は、同じ意味を用途に応じて見せたり編集したりするための表現です。
+**用途別の表現（Projection）**は、同じ意味を用途に応じて表示・編集するためのものです。
 
 同じCanonicalな意味を、たとえば次のように投影できます。
 
@@ -119,7 +119,7 @@ Projectionは見やすさや作業性のために存在し、Projection側の都
 
 たとえばMatrix上で空欄に見えるからといって、それだけで「関係が存在しない」とCanonicalへ書き戻すことはしません。単にtraceが不足している可能性や、まだ判断できない可能性があります。
 
-## ApplicationとDatabase
+## アプリケーションとデータベース
 
 業務システムでは、一つのApplicationが複数Databaseを利用するのは珍しくありません。TEIはこれを例外扱いしません。
 
@@ -131,7 +131,7 @@ DatabaseはDatabase自身のRelease / Migration / Contract / Data Readinessを�
 
 たとえば受注Applicationが販売DBへ書き込み、顧客masterを読み取り専用で参照する場合、二つのDatabaseを同じrelease cycleへ固定する必要はありません。
 
-## Realizationとは何か
+## 意味を具体的な技術で実現すること
 
 TEIでは、業務上の意味そのものと、その意味をどの技術で実現するかを分けます。
 
@@ -171,7 +171,7 @@ Security / Runtimeの具体例は [Security / Trust Boundary](security.md) を�
 
 ## 次に読むもの
 
-- Architectureを根幹から読みたい: [Architecture 読み方ガイド](architecture-reading-guide.md)
+- Architectureを根幹から読みたい: [構成を読むための案内](architecture-reading-guide.md)
 - 正式なProduct Requirementを理解したい: [Product Requirements 読み方ガイド](../requirements/README.md)
 - 業務システム設計を知りたい: [Business-System Design](business-system-design.md)
 - 実装の全体像を追いたい: [Architecture](architecture.md)
