@@ -73,6 +73,10 @@ if [[ -n "$RECEIPT_FILE" ]]; then
       exit 2
       ;;
   esac
+  if [[ -e "$RECEIPT_FILE" || -L "$RECEIPT_FILE" ]]; then
+    echo "error: receipt file already exists: $RECEIPT_FILE" >&2
+    exit 2
+  fi
 fi
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -168,11 +172,12 @@ assert_unchanged() {
 
 write_receipt() {
   local path="$1"
-  local tmp
+  local tmp receipt_name
   local git_version go_version python_version
-  local health_blob qualify_blob reference_blob preflight_blob
+  local health_blob qualify_blob reference_blob preflight_blob candidate_tree
 
-  tmp="$(mktemp "${path}.tmp.XXXXXX")"
+  receipt_name="$(basename "$path")"
+  tmp="$(mktemp "$RECEIPT_DIR/.tei-rq034-qualification.XXXXXX")"
   git_version="$(git --version | tr '\n' ' ')"
   go_version="$(go version | tr '\n' ' ')"
   if command -v python3 >/dev/null 2>&1; then
@@ -180,14 +185,16 @@ write_receipt() {
   else
     python_version="unavailable"
   fi
+  candidate_tree="$(git rev-parse "$CANDIDATE_HEAD^{tree}")"
   health_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/repository-health-check.sh")"
   qualify_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/qualify.sh")"
   reference_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/run.sh")"
   preflight_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/integration-preflight.sh")"
 
   {
-    printf 'format=tei-rq034-qualification-v2\n'
+    printf 'format=tei-rq034-qualification-v3\n'
     printf 'candidate-head=%s\n' "$CANDIDATE_HEAD"
+    printf 'candidate-tree=%s\n' "$candidate_tree"
     printf 'origin-main=%s\n' "$ORIGIN_MAIN"
     printf 'expected-main=%s\n' "$EXPECTED_MAIN"
     printf 'candidate-contains-expected-main=true\n'
@@ -204,7 +211,20 @@ write_receipt() {
     printf 'go-version=%s\n' "$go_version"
     printf 'python-version=%s\n' "$python_version"
   } > "$tmp"
-  mv "$tmp" "$path"
+
+  assert_unchanged "qualification receipt preparation"
+
+  if [[ -e "$path" || -L "$path" ]]; then
+    rm -f -- "$tmp"
+    echo "error: receipt file appeared during qualification: $path" >&2
+    exit 1
+  fi
+  if ! (cd "$RECEIPT_DIR" && ln -- "$(basename "$tmp")" "$receipt_name"); then
+    rm -f -- "$tmp"
+    echo "error: receipt file appeared before atomic publish: $path" >&2
+    exit 1
+  fi
+  rm -f -- "$tmp"
 }
 echo "==> full repository health" >&2
 "$ROOT/tools/repository-health-check.sh"
@@ -226,5 +246,6 @@ printf 'tool-neutral-development-reference=PASS\n'
 if [[ -n "$RECEIPT_FILE" ]]; then
   write_receipt "$RECEIPT_FILE"
   printf 'receipt-file=%s\n' "$RECEIPT_FILE"
+  printf 'receipt-blob=%s\n' "$(git hash-object "$RECEIPT_FILE")"
 fi
 printf 'qualification=PASS\n'
