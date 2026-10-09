@@ -94,6 +94,11 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 			if persistenceSubjectCount(w, core.CanonicalID(target.ID)) != 1 {
 				ctx.Unresolved = append(ctx.Unresolved, "data-design-persistence-subject-not-uniquely-resolvable")
 			}
+		case "contract-query-sql-realization":
+			ctx.Unresolved = append(
+				ctx.Unresolved,
+				"data-design-contract-query-sql-realization-scope-not-uniquely-resolvable",
+			)
 		}
 	}
 
