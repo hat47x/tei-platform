@@ -158,22 +158,27 @@ receiptは少なくとも次を固定します。
 - tracked / untracked / ignored clean pre/post
 - full Repository Health PASS
 - RQ-034 Reference PASS
-- `repository-health-check.sh` / `qualify.sh` / `run.sh` のcandidate上のGit blob SHA
+- `repository-health-check.sh` / `qualify.sh` / `run.sh` / `integration-preflight.sh` のcandidate上のGit blob SHA
 - Git / Go / Python version
 
 receiptはRepository内へ書けません。receipt出力自体によってqualification checkoutをdirtyにしないためです。
 
 ### integration preflight
 
-統合直前にはremoteを再取得し、統合側checkoutをreceiptが固定したexact mainへ合わせてから、read-only preflightを実行します。
+統合直前には、**資格確認済みcandidateのclean checkout**と、receiptが固定したexact mainをHEADに持つ**別のclean integration checkout**を用意します。preflight自身がcandidateで初めて追加・変更される場合でも自己適用できるよう、preflightはcandidate側のfileを実行し、`--integration-root`で統合側checkoutを明示します。
 
 ```bash
-git fetch --prune origin main
+CANDIDATE_CHECKOUT=/path/to/qualified-candidate
+INTEGRATION_CHECKOUT=/path/to/clean-integration-main
 
-bash tools/reference-tool-neutral-development/integration-preflight.sh \
+git -C "$INTEGRATION_CHECKOUT" fetch --prune origin main
+git -C "$INTEGRATION_CHECKOUT" switch --detach "$TESTED_MAIN"
+
+"$CANDIDATE_CHECKOUT/tools/reference-tool-neutral-development/integration-preflight.sh" \
   --receipt-file "$RECEIPT" \
-  --candidate <candidate-ref> \
-  --expected-main "$TESTED_MAIN"
+  --candidate "$CANDIDATE_HEAD" \
+  --expected-main "$TESTED_MAIN" \
+  --integration-root "$INTEGRATION_CHECKOUT"
 ```
 
 preflightはmerge / commit / push / ref更新を行いません。次をfail closedで照合します。
@@ -183,10 +188,12 @@ preflightはmerge / commit / push / ref更新を行いません。次をfail clo
 - candidate HEAD == receiptのcandidate
 - candidateがexpected mainを含む
 - receiptの全PASS条件
-- receiptに記録された3つのrunner blob == candidate上の現在のblob
-- tracked / untracked / ignored clean state
+- receiptに記録された4つのrunner blob == candidate上の現在のblob
+- 実行中の`integration-preflight.sh`自身 == candidate上のpreflight blob
+- candidate checkoutとintegration checkoutの双方がtracked / untracked / ignored clean
+- preflightの開始から終了までcandidate HEAD / candidate ref / integration HEAD / `origin/main`が不変
 
-mainがreceipt取得後に動いた場合、candidateやrunnerが変わった場合、またreceiptを書き換えた場合は失敗します。その場合は新しいmainをcandidateへ取り込み、**新しいexact candidateでqualificationから取り直します**。
+mainがreceipt取得後に動いた場合、candidateやrunnerが変わった場合、preflight自身がreceipt取得時と異なる場合、またreceiptを書き換えた場合は失敗します。その場合は新しいmainをcandidateへ取り込み、**新しいexact candidateでqualificationから取り直します**。
 
 このreceiptは暗号学的な署名やGitHub branch protectionの代替ではありません。人間・AIが通常Gitで統合するときに、別revisionの成功記録を誤って流用しないための機械的なhandoffです。TEI Product state、Agent Session、独自Change Setへ昇格させません。
 
