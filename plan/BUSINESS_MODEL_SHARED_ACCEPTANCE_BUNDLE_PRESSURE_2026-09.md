@@ -185,7 +185,7 @@ Business source freshness
 
 Production implementationが一つのrepository-level `baseModelRevision`で両source群を安全に固定できるなら物理tokenは一つでもよい。ただしLane Cからplatform-wide revision schemaを決めない。Business sourceとWorld sourceが独立更新可能な実装なら、それぞれのstaleを検出する必要がある。
 
-Detailed production-boundary auditは`BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`へ委譲する。
+Detailed production-boundary auditは`docs/audits/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`へ委譲する。
 
 ## 8. Relation to O1 sidecar pressure
 
