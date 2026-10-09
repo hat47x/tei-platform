@@ -48,6 +48,11 @@ func referenceInvocationShapeIssuer() InvocationShapeIssuer {
 	}
 }
 
+func referenceInvocationShapeIssuerPointer() *InvocationShapeIssuer {
+	issuer := referenceInvocationShapeIssuer()
+	return &issuer
+}
+
 func invocationShapeFingerprint(artifact InvocationShapeArtifact) string {
 	normalized := normalizeInvocationShapeArtifact(artifact)
 	return fingerprint(normalized)
