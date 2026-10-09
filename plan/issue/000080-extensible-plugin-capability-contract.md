@@ -178,3 +178,32 @@ Referenceでは次のnegative controlを置いた。
 - logical contractのfingerprintはartifactに依存せず、resolution identityは選ばれたartifactを記録する。同じcontractを別のrealizationへ載せても意味は変わらず、どのrealizationを選んだかは逆追跡できる。
 
 まだ残る点: Xead / Xeaf Source Adapter本体のReference、既存`CapabilityKind`の移行ADR候補、process非対応Targetでの別realizationの説明。検証: この変更を含む作業tree（commit前、内容は同一）を非root userのコピー上で`tools/repository-health-check.sh`のfullを実行し、gofmt / vet / `go test` / validateがPASSした。root実行では`tools/reference-shared-acceptance`の`TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten`がFAILする。chmod 0555がroot権限では書込を止めないためで、この変更前の`main`でも同じく再現する環境起因であり、Repositoryの欠陥とは判断していない。ただし、これはexact-headのtrusted local PASS receiptではない。Gate authorityとしては使わない。
+
+
+## E1 実Source Adapter consumer candidate — 2026-10-09
+
+E0では`authoring.source-adapter.xead`をCore固定enumへ追加せず解決できることをpressureしたが、解決結果から実readerを呼ぶconsumerは存在しなかった。resolverだけが成立しても、実際のToolが別の特別経路でSource Adapterを起動するなら、Plugin-firstの価値は十分に確認できない。
+
+このため、`tools/reference-plugin-capability-contract`からimport可能な`internal/xeadsource`を呼ぶReference consumer candidateを追加した。
+
+consumerは外部から完成済みのResolutionを受け取らない。`ResolveInput`を毎回resolverへ通し、Conformance Evidence、Authority scope、明示wiringを検証した後、解決したexact Provider artifactをRegistryから取得する。解決は成功しても該当artifactがRegistryに無い場合は停止する。
+
+Xead / Xeafのfixtureでは、次をpressureする。
+
+- exact source bytesとinspection digestが一致する
+- source bytesが変わればsource artifact identityも変わる
+- 未知constructの属性・本文を落とさず、candidateをunresolvedのまま返す
+- Conformance Evidenceが無ければreaderを実行しない
+- `application-runtime` scopeからSource Adapterを実行しない
+- 解決済みでも未登録artifactへfallbackしない
+- Repository正本の転写契約から現在のXead `System / FormatVersion 1.2` profileと`Table`分類を適用できる
+
+敵対的に確認したところ、import可能な`internal/xeadsource.InspectWithContract`は転写契約の`sourceProfiles`を確認していなかった。このままconsumerへ接続すると、RMT側で既に停止条件とした「未対応versionへ既知mappingを適用する」経路を再導入する。
+
+candidateでは`InspectWithContract`へsource profile Gateを追加した。転写契約にProfileが無い場合、root kindが違う場合、`FormatVersion`が無い・複数・未対応の場合はclassificationへ進めない。reader側でも同じexpanded nameの属性重複と、root外の非空白textを拒否する。
+
+この変更でRMT-2全体がCapability化されたとは扱わない。`internal/xeadsource`はimport可能なinspection APIであり、`tools/reference-xead-source-adapter`はPublication Receiptやpublic-safe redactionを含む別のReference surfaceである。今回確認するのはgeneric Capability resolutionから実readerへ到達する経路までで、RMT-2の公開Evidence contractやqualificationを代替しない。
+
+長期的には二つのreaderが別々のXML解釈を持ち続けるとdriftの原因になる。共通化するsource observation kernelと、RMT固有のpublic Evidence projectionを分離できるかを後続pressureで確認する。
+
+現headのfocused testとfull`tools/repository-health-check.sh`は未取得である。コード変更を含むためDraftのまま保持し、exact-head full Gate PASS前にmainへ統合しない。
