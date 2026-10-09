@@ -4,6 +4,7 @@ import (
  "context"
  "encoding/json"
  "fmt"
+ "math"
  "sync"
 )
 
@@ -40,12 +41,12 @@ func (s *JSONDocumentStore) Commit(_ context.Context,in Intent)(string,error) {
  defer s.mu.Unlock()
  if in.ExpectedRevision!=s.revision {return "",ErrConflict}
  payload,ok:=in.Payload.(MovePayload)
- if !ok || payload.CardID=="" {return "",ErrInvalid}
+ if !ok || payload.CardID=="" || math.IsNaN(payload.X) || math.IsNaN(payload.Y) || math.IsInf(payload.X,0) || math.IsInf(payload.Y,0) {return "",ErrInvalid}
  if in.ActionID!="sui.move" {return "",ErrInvalid}
  var doc map[string]json.RawMessage
- if err:=json.Unmarshal(s.document,&doc);err!=nil {return "",fmt.Errorf("%w: document JSON: %v",ErrInvalid,err)}
+ if err:=json.Unmarshal(s.document,&doc);err!=nil || doc==nil {return "",fmt.Errorf("%w: invalid document JSON: %v",ErrInvalid,err)}
  var cards []map[string]json.RawMessage
- if err:=json.Unmarshal(doc["cards"],&cards);err!=nil {return "",fmt.Errorf("%w: cards: %v",ErrInvalid,err)}
+ if err:=json.Unmarshal(doc["cards"],&cards);err!=nil || cards==nil {return "",fmt.Errorf("%w: invalid cards: %v",ErrInvalid,err)}
  found:=false
  for i:=range cards {
   var id string
