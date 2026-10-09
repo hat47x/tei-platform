@@ -43,6 +43,11 @@ type Result struct {
 	Sources                     map[string]SourceLocation
 	ManagedFiles                []ManagedFile
 	SourceContributions         []SourceContribution
+
+	// Private, transient read provenance. Not part of Canonical World or a
+	// serialized Source Index; only Load may populate this snapshot.
+	sourceSnapshotRoot string
+	sourceSnapshot     map[string][]byte
 }
 
 func Load(root string) (Result, error) {
@@ -67,13 +72,24 @@ func Load(root string) (Result, error) {
 	if err := validateWorkspaceSourceRoots(roots); err != nil {
 		return Result{}, err
 	}
+	// Bind retained loader bytes to the physical Workspace identity.
+	rootReal, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return Result{}, fmt.Errorf("resolve Workspace root: %w", err)
+	}
 	// Inventory and verify the physical boundary before any domain loader can
 	// read a Source file or parse a symlink to an outside target.
 	managedFiles, err := scanManagedFiles(root, roots)
 	if err != nil {
 		return Result{}, err
 	}
-	r := Result{Sources: map[string]SourceLocation{}, PluginImplementationSources: map[string]SourceLocation{}, ManagedFiles: managedFiles}
+	r := Result{
+		Sources:                     map[string]SourceLocation{},
+		PluginImplementationSources: map[string]SourceLocation{},
+		ManagedFiles:                managedFiles,
+		sourceSnapshotRoot:          rootReal,
+		sourceSnapshot:              make(map[string][]byte),
+	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	for _, sourceRoot := range roots {
@@ -296,7 +312,7 @@ func loadPlugins(root string, r *Result) error {
 	}
 	sort.Strings(files)
 	for _, path := range files {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -331,7 +347,7 @@ func loadBundles(root string, r *Result) error {
 	}
 	sort.Strings(files)
 	for _, path := range files {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -367,7 +383,7 @@ func loadSemantics(root string, r *Result) error {
 	sort.Strings(files)
 	byNamespace := map[core.CanonicalID]int{}
 	for _, path := range files {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -414,7 +430,7 @@ func loadApplications(root string, r *Result) error {
 		return err
 	}
 	for _, path := range manifests {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -426,7 +442,7 @@ func loadApplications(root string, r *Result) error {
 		unitDir := filepath.Dir(path)
 		patternFiles, _ := globSorted(filepath.Join(unitDir, "patterns", "*.tei"))
 		for _, patternPath := range patternFiles {
-			patternSource, err := os.ReadFile(patternPath)
+			patternSource, err := readSourceForLoad(root, r, patternPath)
 			if err != nil {
 				return err
 			}
@@ -440,7 +456,7 @@ func loadApplications(root string, r *Result) error {
 		r.World.Applications = append(r.World.Applications, a)
 		qfiles, _ := globSorted(filepath.Join(unitDir, "queries", "*.tei"))
 		for _, qpath := range qfiles {
-			qsrc, err := os.ReadFile(qpath)
+			qsrc, err := readSourceForLoad(root, r, qpath)
 			if err != nil {
 				return err
 			}
@@ -454,7 +470,7 @@ func loadApplications(root string, r *Result) error {
 				if err != nil {
 					return fmt.Errorf("%s: SQL file %q: %w", qpath, authoring.NativeSQLPath, err)
 				}
-				sqlSource, err := os.ReadFile(nativePath)
+				sqlSource, err := readSourceForLoad(root, r, nativePath)
 				if err != nil {
 					return fmt.Errorf("%s: read SQL file %q: %w", qpath, authoring.NativeSQLPath, err)
 				}
@@ -470,7 +486,7 @@ func loadApplications(root string, r *Result) error {
 		}
 		bfiles, _ := globSorted(filepath.Join(unitDir, "realizations", "*.tei"))
 		for _, bpath := range bfiles {
-			bsrc, err := os.ReadFile(bpath)
+			bsrc, err := readSourceForLoad(root, r, bpath)
 			if err != nil {
 				return err
 			}
@@ -492,7 +508,7 @@ func loadDatabases(root string, r *Result) error {
 		return err
 	}
 	for _, path := range manifests {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -502,7 +518,7 @@ func loadDatabases(root string, r *Result) error {
 		}
 		contractFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "contracts", "*.tei"))
 		for _, cpath := range contractFiles {
-			csrc, err := os.ReadFile(cpath)
+			csrc, err := readSourceForLoad(root, r, cpath)
 			if err != nil {
 				return err
 			}
@@ -519,7 +535,7 @@ func loadDatabases(root string, r *Result) error {
 		}
 		persistenceFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "persistence", "*.tei"))
 		for _, ppath := range persistenceFiles {
-			psrc, err := os.ReadFile(ppath)
+			psrc, err := readSourceForLoad(root, r, ppath)
 			if err != nil {
 				return err
 			}
@@ -531,7 +547,7 @@ func loadDatabases(root string, r *Result) error {
 			r.Sources["persistence:"+string(m.ID)] = SourceLocation{File: relPath(root, ppath), Line: 1, Column: 1}
 		}
 		providerPath := filepath.Join(filepath.Dir(path), "migration-provider.tei")
-		if psrc, err := os.ReadFile(providerPath); err == nil {
+		if psrc, err := readSourceForLoad(root, r, providerPath); err == nil {
 			cfg, err := syntax.NewParser(string(psrc)).ParseMigrationProvider()
 			if err != nil {
 				return sourceErr(providerPath, err)
@@ -543,7 +559,7 @@ func loadDatabases(root string, r *Result) error {
 		}
 		migrationFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "migrations", "*", "migration.tei"))
 		for _, mpath := range migrationFiles {
-			msrc, err := os.ReadFile(mpath)
+			msrc, err := readSourceForLoad(root, r, mpath)
 			if err != nil {
 				return err
 			}
@@ -566,7 +582,7 @@ func loadReleases(root string, r *Result) error {
 		return err
 	}
 	for _, path := range appFiles {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -583,7 +599,7 @@ func loadReleases(root string, r *Result) error {
 		return err
 	}
 	for _, path := range dbFiles {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -600,7 +616,7 @@ func loadReleases(root string, r *Result) error {
 		return err
 	}
 	for _, path := range solutionFiles {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -620,7 +636,7 @@ func loadEnvironments(root string, r *Result) error {
 		return err
 	}
 	for _, path := range manifests {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
