@@ -7,7 +7,8 @@ export function compileRequiredFields({ identityField, amountField, contract } =
   if (contract !== CONTRACT) {
     throw new Error('UNSUPPORTED_SEMANTICS');
   }
-  if (!FIELD_NAME.test(identityField ?? '') || !FIELD_NAME.test(amountField ?? '')) {
+  if (typeof identityField !== 'string' || typeof amountField !== 'string' ||
+      !FIELD_NAME.test(identityField) || !FIELD_NAME.test(amountField)) {
     throw new Error('INVALID_FIELD');
   }
   if (identityField === amountField) {
