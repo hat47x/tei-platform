@@ -52,7 +52,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	workspacePath := flags.String("workspace", "", "対象workspace directory")
 	candidatePath := flags.String("candidate", "", "candidate JSON file")
-	qualificationPath := flags.String("qualification", "", "knowledge qualification result JSON file")
+	qualificationPath := flags.String("qualification", "", "Knowledge Qualification ResultまたはBuilder Review Handoff JSON file")
 	referenceReusePath := flags.String("reference-reuse", "", "qualified reference Patternのdestination-owned fields JSON file")
 	semanticEvaluationPath := flags.String("semantic-evaluation", "", "semantic evaluation Evidence JSON file")
 	rmtTranscriptionPath := flags.String("rmt-transcription", "", "RMT transcription candidate Evidence JSON file")
@@ -119,7 +119,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		qualification, err := decodeQualificationResult(qualificationData)
+		qualification, err := decodeQualificationInput(qualificationData)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1

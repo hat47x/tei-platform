@@ -171,9 +171,9 @@ func TestGoSourceClosureDigestIsOrderIndependentAndInputSensitive(t *testing.T) 
 
 func TestGoPackageBuildFilesIncludesSelectedCompilerAndEmbedInputs(t *testing.T) {
 	pkg := goListPackage{
-		GoFiles:      []string{"z.go", "a.go"},
-		SFiles:       []string{"asm.s"},
-		EmbedFiles:   []string{"schema.json"},
+		GoFiles:    []string{"z.go", "a.go"},
+		SFiles:     []string{"asm.s"},
+		EmbedFiles: []string{"schema.json"},
 	}
 	got := goPackageBuildFiles(pkg)
 	want := map[string]bool{

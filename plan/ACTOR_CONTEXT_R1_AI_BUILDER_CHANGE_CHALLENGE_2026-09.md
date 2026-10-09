@@ -110,6 +110,64 @@ order_entry.customer_reference
 
 この既存EvidenceをR1で再利用する。
 
+## 2.1 Structured review entry
+
+R1の`order_entry.customer_reference`については、Review PlanからQualificationへ進む入力をReferenceとして固定する。
+
+`reference/business-system-design/order-entry-customer-reference-review-qualification.json`
+
+内容は次のcurrent task expectationだけを表す。
+
+- subject kindは`application-pattern`
+- owning Applicationは`order_entry`
+- current reviewで必要なdependencyは`master_data.customer/find_by_id`への`contract-query`
+
+これは新しい業務意味の正本ではなく、R1で何をQualification条件にしたかを再現するReference入力である。
+
+```text
+tei knowledge-review-plan
+  -workspace reference/workspace
+  -subject-kind application-pattern
+  -subject-id order_entry.customer_reference
+
+tei knowledge-review-handoff
+  -workspace reference/workspace
+  -subject-kind application-pattern
+  -subject-id order_entry.customer_reference
+  -qualification-requirements reference/business-system-design/order-entry-customer-reference-review-qualification.json
+```
+
+HandoffをJSONとして保存した後は、次の経路でcurrent Disclosureを取得できる。
+
+```text
+tei knowledge-review-disclose
+  -workspace reference/workspace
+  -subject-kind application-pattern
+  -subject-id order_entry.customer_reference
+  -review-handoff <handoff.json>
+```
+
+この段階でも出力は既存`DisclosureProjection`であり、customer edit固有の判定結果を混入させない。保存後にPatternやSource Evidenceが変わればHandoff fingerprintが一致しなくなるため、古いHandoffから現在のKnowledgeを開示しない。
+
+このhandoffが`qualified-for-disclosure`になっても、customer edit要求自体がacceptedになったわけではない。確定するのは、Review対象のcurrent Patternとrequired dependencyを、明示したtask scopeでSource Evidence付きに利用できることまでである。
+
+特にR1では、このsubject Qualificationだけで`order_entry.master access = read`、Business Procedure上の責務、customer-edit conflictまで検証済みにはならない。これらはcross-view Evidenceとして既存Business Procedure checker等から確認し、current direct write pathとの矛盾を別に立証する。subjectがqualifiedであることと、変更案がcross-viewに妥当であることを同一視しない。customer editの採否はShared Acceptanceの責務として残す。
+
+Proposalを作る場合は、Handoff JSONを既存Shared Acceptanceの`attach-qualification -qualification`へ直接渡せる。adapterはHandoffを検証し、内包Qualificationだけをcandidate Evidenceへ付ける。Disclosure本文をcandidateへ丸ごと複製せず、A/B/C等の設計候補はADR-0022に従うMinimum Semantic Deltaとして表す。したがって「何を読んだか」と「何を変更したいか」は別identityのままShared Acceptanceへ入る。
+
+```text
+reference-shared-acceptance attach-qualification
+  -candidate <minimum-semantic-delta-candidate.json>
+  -qualification <handoff.json>
+  > grounded-candidate.json
+
+reference-shared-acceptance preview
+  -workspace reference/workspace
+  -candidate grounded-candidate.json
+```
+
+このPreviewが通ってもAcceptではない。最終的な受理は既存Shared Acceptanceのreview / explicit Accept / Reject境界へ委ねる。
+
 ## 3. R1でAI Builderが実装前に知るべきこと
 
 structured contextは最低限、次を同時に示す。

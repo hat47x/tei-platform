@@ -178,3 +178,121 @@ Referenceでは次のnegative controlを置いた。
 - logical contractのfingerprintはartifactに依存せず、resolution identityは選ばれたartifactを記録する。同じcontractを別のrealizationへ載せても意味は変わらず、どのrealizationを選んだかは逆追跡できる。
 
 まだ残る点: Xead / Xeaf Source Adapter本体のReference、既存`CapabilityKind`の移行ADR候補、process非対応Targetでの別realizationの説明。検証: この変更を含む作業tree（commit前、内容は同一）を非root userのコピー上で`tools/repository-health-check.sh`のfullを実行し、gofmt / vet / `go test` / validateがPASSした。root実行では`tools/reference-shared-acceptance`の`TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten`がFAILする。chmod 0555がroot権限では書込を止めないためで、この変更前の`main`でも同じく再現する環境起因であり、Repositoryの欠陥とは判断していない。ただし、これはexact-headのtrusted local PASS receiptではない。Gate authorityとしては使わない。
+
+
+## E1 実Source Adapter consumer candidate — 2026-10-09
+
+E0では`authoring.source-adapter.xead`をCore固定enumへ追加せず解決できることをpressureしたが、解決結果から実readerを呼ぶconsumerは存在しなかった。resolverだけが成立しても、実際のToolが別の特別経路でSource Adapterを起動するなら、Plugin-firstの価値は十分に確認できない。
+
+このため、`tools/reference-plugin-capability-contract`からimport可能な`internal/xeadsource`を呼ぶReference consumer candidateを追加した。
+
+consumerは外部から完成済みのResolutionを受け取らない。`ResolveInput`を毎回resolverへ通し、Conformance Evidence、Authority scope、明示wiringを検証した後、解決したexact Provider artifactをRegistryから取得する。解決は成功しても該当artifactがRegistryに無い場合は停止する。
+
+Xead / Xeafのfixtureでは、次をpressureする。
+
+- exact source bytesとinspection digestが一致する
+- source bytesが変わればsource artifact identityも変わる
+- 未知constructの属性・本文を落とさず、candidateをunresolvedのまま返す
+- Conformance Evidenceが無ければreaderを実行しない
+- `application-runtime` scopeからSource Adapterを実行しない
+- 解決済みでも未登録artifactへfallbackしない
+- Repository正本の転写契約から現在のXead `System / FormatVersion 1.2` profileと`Table`分類を適用できる
+
+敵対的に確認したところ、import可能な`internal/xeadsource.InspectWithContract`は転写契約の`sourceProfiles`を確認していなかった。このままconsumerへ接続すると、RMT側で既に停止条件とした「未対応versionへ既知mappingを適用する」経路を再導入する。
+
+candidateでは`InspectWithContract`へsource profile Gateを追加した。転写契約にProfileが無い場合、root kindが違う場合、`FormatVersion`が無い・複数・未対応の場合はclassificationへ進めない。reader側でも同じexpanded nameの属性重複と、root外の非空白textを拒否する。
+
+この変更でRMT-2全体がCapability化されたとは扱わない。`internal/xeadsource`はimport可能なinspection APIであり、`tools/reference-xead-source-adapter`はPublication Receiptやpublic-safe redactionを含む別のReference surfaceである。今回確認するのはgeneric Capability resolutionから実readerへ到達する経路までで、RMT-2の公開Evidence contractやqualificationを代替しない。
+
+長期的には二つのreaderが別々のXML解釈を持ち続けるとdriftの原因になる。共通化するsource observation kernelと、RMT固有のpublic Evidence projectionを分離できるかを後続pressureで確認する。
+
+現headのfocused testとfull`tools/repository-health-check.sh`は未取得である。コード変更を含むためDraftのまま保持し、exact-head full Gate PASS前にmainへ統合しない。
+
+
+### E1から見えた次のGap — 汎用的な実行呼出し
+
+実際のSource Adapter利用経路を通したことで、Capabilityを汎用的に解決できることと、解決した実装を汎用的に呼び出せることは別の問題だと分かった。
+
+現在のReferenceでは、Capability ContractとProviderの解決自体はCore固定enumへ依存しない。一方、実行側の`SourceAdapterRegistry`は`SourceAdapterRequest`と`xeadsource.Inspection`をGo型として知っている。新しいCapability Contractを追加するたびに、同じ方法でContract専用Registryやrequest / result型をHostへ書き足す必要があるなら、Core enumをなくしても拡張点が実行呼出しへ移るだけである。
+
+したがって、ISSUE-000080の次段では、少なくとも次の責務を分けて検証する必要がある。
+
+- Contractが要求するrequest / resultの機械可読な形
+- exact Provider implementationを呼び出す共通境界
+- in-process / process / Wasm等の物理的な実行方式
+- request / resultのcodecやschema identity
+- Permission / Resource / Target Authority
+
+この段階でJSONやRPCをproduction標準として固定しない。Source Adapter以外のCapability consumerでも同じ呼出しprimitiveを再利用できるか確認したうえで、共通Contractへ昇格するかを判断する。
+
+今回のPRでは、このGapを解消済みとは扱わない。実consumerを追加した目的は、resolverだけでは見えなかった次の固定点を具体化することである。
+
+
+## E2 汎用Invocation candidate — 2026-10-09
+
+E1で実Source Adapterを呼び出した結果、Capability Contractの解決を一般化するだけでは不十分だと分かった。実行側がCapabilityごとに専用Registryと専用dispatchを追加する構造では、Core固定enumを減らしても、新しい固定点がHostの呼出しcodeへ移る。
+
+このため、Referenceへ`InvocationRegistry`を追加した。Registryはdomain型を扱わず、resolverが選んだexact Provider、request / result shape identity、shape fingerprint、payload codec identity、opaque payloadだけを扱う。request / result bytesのdigestも実行結果へ残す。
+
+既存のSource Adapter consumerは、このRegistryを内部利用する形へ変更した。Provider選択、Conformance確認、exact artifact lookupをSource Adapter専用Registryへ重複実装しない。Source Adapter固有のsource digest確認やunknown保持はtyped wrapper側に残す。
+
+第二consumerには既存の`driver.ContractQueryExecutor`を接続した。`authoring-tool`のSource Adapterと`application-runtime`のContract Queryを同じInvocation Registryへ登録し、それぞれ元のAuthority scopeを維持したまま呼び出す。共通Registryを使うことはAuthorityの統合を意味しない。
+
+payload codecはContract scopedとした。ReferenceではSource AdapterとContract QueryにJSONを使うが、Registry自体はcodecを解釈しない。opaque binary payloadを往復するtestも追加し、JSONやRPCをproduction標準として固定しない。
+
+敵対的に確認したところ、shape identityを文字列だけで照合すると、同じshape名のままwire schemaを変更できる。このためrequest / result shapeへexact fingerprintを追加し、ImplementationとContractで一致を要求した。ProviderのConformance EvidenceはContract fingerprintへ結び付くため、shape fingerprintの変更も再Conformanceが必要なContract変更として扱える。
+
+ここで使うshape fingerprintは、exact schema artifactへ戻るためのidentity候補である。schema artifactの正本、発行Authority、schema validation engineは未実証であり、fingerprintだけを型検証の成立Evidenceにはしない。
+
+現在のReference JSON adapterについては、未知fieldとtrailing JSON valueを拒否するexact decodeを追加した。shapeより緩いJSONをdomain実装へ流さないための局所的な検査であり、汎用schema validationが成立したとは扱わない。
+
+このE2で、generic resolutionからgeneric invocationまでCore固定Capability enumへ依存しないReference経路ができた。ただしproduction Permission / Resource / Sandbox、Targetごとの実行方式、process / Wasm transport、schema artifact管理は未接続である。コード変更を含むため、exact-head focused testとfull Repository healthが得られるまでPRはDraftのまま維持する。
+
+
+## E3 Invocation shape artifact candidate — 2026-10-09
+
+E2ではrequest / result shapeにfingerprintを持たせたが、fingerprintが何を指すかは未定義だった。この状態では、同じshape名のschema driftを検出できても、schema本体の正本、発行者、検証方法へ戻れない。
+
+Referenceでは、Source AdapterとContract Queryのrequest / result shapeを機械可読なJSON artifactとして追加した。artifactはshape ID、payload codec、shape format、issuer identity、構造定義を持つ。fingerprintは正規化したartifact全体から計算する。
+
+Capability Contractには`shapeIssuer`を追加した。Implementationが提示するrequest / result artifactは、Contractのshape ID、fingerprint、payload codec、issuerと一致しなければ実行できない。Providerの自己申告だけではschemaを差し替えられない。
+
+Invocation Registryはrequestを実装呼出し前に、resultを呼出し後に共通validatorで検査する。ReferenceのvalidatorはJSON object / array / map / scalarとopaque bytesを扱う。未知field、必須field欠落、型不一致、trailing JSON valueをfail closedにする。domain固有の値制約や業務意味は各adapterへ残す。
+
+実shapeの正本は`tools/reference-plugin-capability-contract/shapes/`のJSONとした。Go側はこのJSONを埋め込んで読み込み、別のGo literalを正本にしない。shape artifactのissuerを変えた場合もfingerprintが変わる。
+
+fingerprintの再計算規則もartifactへ`canonicalization`として明示した。Reference v0では`required`の順序を正規化し、source JSONの空白や記述順によってidentityが変わらないようにする。canonicalization revisionが変わった場合はshape fingerprintも変わり、未対応revisionは拒否する。
+
+このincrementで、E2に残っていた「shape fingerprintが指すschema artifact」と「共通validation engine」はReference候補として具体化した。一方、issuer identityを信頼する根拠、署名、publisher trust、組織ごとの発行Authorityは未実証である。Referenceのshape languageもproduction標準へ固定しない。
+
+また、Source Adapter result等の深い構造には明示的な`any`を残している。これはschemaが完全なdomain型を代替したという意味ではない。generic Invocation境界ではwire envelopeを検査し、domain adapterが深い意味と値制約を検査する二段構成としている。
+
+コード変更を含むため、exact-headのfocused testとfull Repository healthが得られるまではDraftのままとし、Evidence tierも変更しない。
+
+
+## E4 Side-effect boundary — 2026-10-09
+
+E3でresult schema validationをInvocation Registryへ入れたことで、mutating Capabilityへそのまま一般化できない理由が具体化した。
+
+requestは実装呼出し前に検査できる。一方、resultのschema違反は実装呼出し後にしか分からない。実装が外部へ書込みを行う場合、resultをrejectしても副作用だけが残り得る。Permission / Sandboxは実行可否の境界であり、この原子性問題を解決しない。
+
+Referenceでは`Contract.invocationEffect`を追加し、generic Invocationが受け入れるのを`read-only`へ限定した。Source AdapterとContract Query、opaque copyのReferenceはread-onlyとして扱う。`mutating`を宣言したContractは、valid requestであってもdomain implementationを呼ぶ前に停止するnegative controlを置いた。
+
+この制約はproductionでmutating Capabilityを禁止する決定ではない。書込みCapabilityを共通Invocationへ載せる前に、少なくともtransactionまたはprepare / commit、失敗時の補償、再試行、result validation失敗時のAuthorityを別pressureで定める必要があることを示す。
+
+現時点ではReference candidateであり、production Permission / Resource / SandboxやDatabase transaction contractへは接続していない。Evidence tierは変更しない。
+
+
+## E5 Shape Authority Evidence Gate — 2026-10-09
+
+E3でshape artifactへissuer identityを入れたが、issuerを名乗ること自体はAuthority Evidenceではない。artifactやProviderがissuer文字列を自己申告しただけでschemaを信頼すると、namespace authorityで避けたfirst claimant / self-claim問題をInvocation schemaへ再導入する。
+
+Referenceでは`InvocationShapeAuthorityEvidence`を追加し、Invocation RegistryへImplementationとは別に渡す構造へ変更した。Evidenceはissuer ID / version、shape ID、exact shape fingerprint、Evidence fingerprintへ結び付く。
+
+request / resultの両shapeについてAccepted Evidenceが無ければ、ImplementationをRegistryへ登録しない。古いshape fingerprintを指すEvidenceも利用しない。同じexact shapeへ複数のAccepted Evidenceが与えられ、winnerを決められない場合も曖昧として拒否する。
+
+実行結果にはrequest / resultで利用したAuthority Evidence fingerprintを記録する。Authority Evidenceだけを更新してもCapability resolution identityは変わらず、Evidence更新だけを観測できる。schema identityとEvidence identityを分離する。
+
+このGateはpublisher trustそのものを成立させたものではない。現在確認しているのは、呼出し元がAccepted Evidenceとして渡した入力をexact shapeへ結ぶことまでである。誰がEvidenceを発行できるか、署名、organization policy、revocation / freshnessは未実証である。Evidence fingerprintの形式だけからtrustを推測しない。
+
+この境界はSemantic Extensionのnamespace / Conformance Evidenceと同じ原則を使うが、Evidence型やAuthority scopeを統合しない。Semantic meaningのAuthorityとInvocation wire schemaのAuthorityは別に保つ。
