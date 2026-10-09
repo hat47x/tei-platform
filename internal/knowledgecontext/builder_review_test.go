@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"tei/internal/index"
-	"tei/internal/sourceindex"
 	"tei/internal/subject"
 )
 
-func TestBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.T) {
+func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.T) {
 	ctx := Context{
 		Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
 		SemanticElement: &index.SemanticElementEntry{
@@ -29,11 +28,17 @@ func TestBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.T) {
 		},
 	}
 
-	got := buildBuilderReviewPlan(ctx)
+	got := BuildBuilderReviewPlan(ctx)
 
 	if got.ProjectionRevision != builderReviewPlanProjectionRevision ||
-		got.Purpose != "design-change" {
+		got.Purpose() != "design-change" {
 		t.Fatalf("builder review plan identity drifted: %+v", got)
+	}
+	if got.Subject != ctx.Subject {
+		t.Fatalf("builder review subject drifted: got=%+v want=%+v", got.Subject, ctx.Subject)
+	}
+	if got.Fingerprint == "" {
+		t.Fatalf("builder review plan fingerprint is missing: %+v", got)
 	}
 	wantSections := []string{"definition", "data-design", "dependencies"}
 	if !reflect.DeepEqual(got.RecommendedDisclosureSections, wantSections) {
@@ -55,7 +60,7 @@ func TestBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.T) {
 		"stop-when-required-evidence-or-authority-is-unresolved",
 		"do-not-treat-omitted-or-unavailable-knowledge-as-negative-evidence",
 		"do-not-promote-derived-candidate-or-guidance-to-accepted-meaning",
-		"refresh-selected-knowledge-before-reusing-cached-design-context",
+		"refresh-review-plan-before-reusing-cached-routing",
 	} {
 		if !containsBuilderReviewString(got.StopRules, rule) {
 			t.Fatalf("builder review stop rule %q is missing: %+v", rule, got.StopRules)
@@ -66,6 +71,8 @@ func TestBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.T) {
 		"recommended-section-is-not-semantic-applicability",
 		"review-order-does-not-grant-write-or-runtime-authority",
 		"review-plan-does-not-replace-qualification-or-shared-acceptance",
+		"review-plan-fingerprint-is-routing-identity-not-knowledge-freshness-proof",
+		"review-plan-fingerprint-is-not-selected-knowledge-fingerprint",
 	} {
 		if !containsBuilderReviewString(got.AuthorityLimits, limit) {
 			t.Fatalf("builder review authority limit %q is missing: %+v", limit, got.AuthorityLimits)
@@ -73,32 +80,8 @@ func TestBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.T) {
 	}
 }
 
-func TestBuildAttachesBuilderReviewPlanToKnowledgeContext(t *testing.T) {
-	ctx := Build(
-		dataDesignRelationUniqueWorld(),
-		sourceindex.Index{},
-		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
-	)
-
-	if ctx.BuilderReviewPlan.ProjectionRevision != builderReviewPlanProjectionRevision {
-		t.Fatalf("builder review plan was not attached: %+v", ctx.BuilderReviewPlan)
-	}
-	for _, section := range []string{"definition", "data-design"} {
-		if !containsBuilderReviewString(ctx.BuilderReviewPlan.RecommendedDisclosureSections, section) {
-			t.Fatalf("available section %q is missing from builder review plan: %+v", section, ctx.BuilderReviewPlan)
-		}
-	}
-	if containsBuilderReviewString(ctx.BuilderReviewPlan.RecommendedDisclosureSections, "source") {
-		t.Fatalf("unavailable source section was recommended: %+v", ctx.BuilderReviewPlan)
-	}
-	if len(ctx.BuilderReviewPlan.ReviewSequence) == 0 ||
-		ctx.BuilderReviewPlan.ReviewSequence[0] != "review-current-source-and-evidence" {
-		t.Fatalf("source review did not remain the first stage: %+v", ctx.BuilderReviewPlan.ReviewSequence)
-	}
-}
-
-func TestBuilderReviewPlanKeepsSourceReviewWhenSourceKnowledgeIsUnavailable(t *testing.T) {
-	got := buildBuilderReviewPlan(Context{
+func TestBuildBuilderReviewPlanKeepsSourceGapVisible(t *testing.T) {
+	got := BuildBuilderReviewPlan(Context{
 		Subject:    subject.Subject{Kind: "semantic-capability", ID: "sales.order.submit"},
 		Unresolved: []string{"source-reference-unavailable"},
 	})
@@ -110,69 +93,59 @@ func TestBuilderReviewPlanKeepsSourceReviewWhenSourceKnowledgeIsUnavailable(t *t
 		got.ReviewSequence[0] != "review-current-source-and-evidence" {
 		t.Fatalf("source review disappeared when source was unavailable: %+v", got.ReviewSequence)
 	}
-	if !containsBuilderReviewString(
-		got.StopRules,
-		"stop-when-required-evidence-or-authority-is-unresolved",
-	) {
-		t.Fatalf("missing source did not preserve fail-closed review guidance: %+v", got.StopRules)
+	if !reflect.DeepEqual(got.Unresolved, []string{"source-reference-unavailable"}) {
+		t.Fatalf("source gap was lost from review plan: %+v", got.Unresolved)
 	}
 }
 
-func TestDisclosureRederivesBuilderReviewPlanFromCurrentKnowledge(t *testing.T) {
-	ctx := Context{
+func TestBuilderReviewPlanFingerprintTracksRoutingNotKnowledgeContent(t *testing.T) {
+	base := Context{
 		Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
 		DataDesign: &DataDesignContext{
 			ProjectionRevision: dataDesignProjectionRevision,
 			Data:               "sales.order_line",
 		},
-		BuilderReviewPlan: BuilderReviewPlan{
-			ProjectionRevision: "stale",
-			RecommendedDisclosureSections: []string{
-				"source",
-			},
-			ReviewSequence:  []string{"stale"},
-			StopRules:       []string{"stale"},
-			AuthorityLimits: []string{"stale"},
-		},
+		Unresolved: []string{"z-gap", "a-gap"},
+	}
+	first := BuildBuilderReviewPlan(base)
+
+	reordered := base
+	reordered.Unresolved = []string{"a-gap", "z-gap"}
+	second := BuildBuilderReviewPlan(reordered)
+	if first.Fingerprint != second.Fingerprint {
+		t.Fatalf("unresolved ordering changed routing identity: first=%s second=%s", first.Fingerprint, second.Fingerprint)
 	}
 
-	got, err := BuildDisclosure(ctx, []string{"data-design"})
-	if err != nil {
-		t.Fatal(err)
+	changedContent := base
+	changedContent.DataDesign = &DataDesignContext{
+		ProjectionRevision: dataDesignProjectionRevision,
+		Data:               "sales.changed",
 	}
-	if got.BuilderReviewPlan.ProjectionRevision != builderReviewPlanProjectionRevision ||
-		!reflect.DeepEqual(
-			got.BuilderReviewPlan.RecommendedDisclosureSections,
-			[]string{"data-design"},
-		) {
-		t.Fatalf("disclosure reused stale builder review plan: %+v", got.BuilderReviewPlan)
+	third := BuildBuilderReviewPlan(changedContent)
+	if first.Fingerprint != third.Fingerprint {
+		t.Fatalf("selected knowledge content changed routing identity: first=%s third=%s", first.Fingerprint, third.Fingerprint)
 	}
-	if containsBuilderReviewString(got.BuilderReviewPlan.ReviewSequence, "stale") ||
-		containsBuilderReviewString(got.BuilderReviewPlan.StopRules, "stale") ||
-		containsBuilderReviewString(got.BuilderReviewPlan.AuthorityLimits, "stale") {
-		t.Fatalf("stale builder review metadata leaked into disclosure: %+v", got.BuilderReviewPlan)
+
+	changedAvailability := base
+	changedAvailability.SemanticElement = &index.SemanticElementEntry{
+		Kind: "data",
+		ID:   "sales.order_line",
+	}
+	fourth := BuildBuilderReviewPlan(changedAvailability)
+	if first.Fingerprint == fourth.Fingerprint {
+		t.Fatalf("new review section did not change routing identity: %s", fourth.Fingerprint)
+	}
+
+	changedGap := base
+	changedGap.Unresolved = []string{"a-gap", "different-gap"}
+	fifth := BuildBuilderReviewPlan(changedGap)
+	if first.Fingerprint == fifth.Fingerprint {
+		t.Fatalf("changed unresolved routing state kept fingerprint: %s", fifth.Fingerprint)
 	}
 }
 
-func TestCloneBuilderReviewPlanDetachesSlices(t *testing.T) {
-	source := buildBuilderReviewPlan(Context{
-		DataDesign: &DataDesignContext{
-			ProjectionRevision: dataDesignProjectionRevision,
-			Data:               "sales.order_line",
-		},
-	})
-	got := cloneBuilderReviewPlan(source)
-
-	got.RecommendedDisclosureSections[0] = "mutated"
-	got.ReviewSequence[0] = "mutated"
-	got.StopRules[0] = "mutated"
-	got.AuthorityLimits[0] = "mutated"
-	if source.RecommendedDisclosureSections[0] == "mutated" ||
-		source.ReviewSequence[0] == "mutated" ||
-		source.StopRules[0] == "mutated" ||
-		source.AuthorityLimits[0] == "mutated" {
-		t.Fatalf("cloned builder review plan aliases source slices: source=%+v clone=%+v", source, got)
-	}
+func (p BuilderReviewPlan) Purpose() string {
+	return "design-change"
 }
 
 func containsBuilderReviewString(values []string, want string) bool {
