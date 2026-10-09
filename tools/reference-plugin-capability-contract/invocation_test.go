@@ -455,7 +455,7 @@ func TestReferenceJSONInvocationRejectsUnknownRequestField(t *testing.T) {
 		sourceAdapterResolveInput(contract, provider),
 		payload,
 	)
-	if err == nil || !strings.Contains(err.Error(), "unknown field") {
+	if err == nil || !strings.Contains(err.Error(), `has undeclared property "Unexpected"`) {
 		t.Fatalf("unknown Reference JSON field was accepted: %v", err)
 	}
 }
