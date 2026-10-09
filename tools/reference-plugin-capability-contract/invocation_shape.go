@@ -42,10 +42,9 @@ type InvocationShapeNode struct {
 }
 
 func referenceInvocationShapeIssuer() InvocationShapeIssuer {
-	return InvocationShapeIssuer{
-		ID:      "tei.reference.plugin-capability-contract",
-		Version: "0.1.0",
-	}
+	return mustReferenceInvocationShape(
+		"shapes/source-adapter-request-v0.json",
+	).Issuer
 }
 
 func referenceInvocationShapeIssuerPointer() *InvocationShapeIssuer {
