@@ -1,17 +1,21 @@
 package transform
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 type EvaluationResult struct {
 	Output Value
 	Steps  int
 }
+
+const evaluatorByteWorkQuantum = 4 << 10
 
 type evaluator struct {
 	limits Limits
@@ -29,10 +33,13 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 		return EvaluationResult{}, err
 	}
 	e := evaluator{limits: source.Limits}
-	env := make(map[string]Value, len(inputs))
+	rootValues := make(map[string]Value, len(inputs))
 	for name, value := range inputs {
-		env[name] = value
+		// Isolate caller-owned slices once. Evaluation treats Value as immutable
+		// and may then share internal subtrees without repeated deep copies.
+		rootValues[name] = value.Clone()
 	}
+	env := &evalEnv{root: rootValues}
 	for i := range source.Program.Assertions {
 		if _, err := e.eval(source.Program.Assertions[i], env, 0); err != nil {
 			return EvaluationResult{}, fmt.Errorf("assertion %d: %w", i, err)
@@ -42,27 +49,33 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 	if err != nil {
 		return EvaluationResult{}, err
 	}
-	outputBytes, err := encodedOutputSize(output)
-	if err != nil {
+	if err := e.validateFinalOutput(output); err != nil {
 		return EvaluationResult{}, err
-	}
-	if outputBytes > source.Limits.MaxOutputBytes {
-		return EvaluationResult{}, fmt.Errorf("transform output exceeds maxOutputBytes")
 	}
 	return EvaluationResult{Output: output, Steps: e.steps}, nil
 }
 
 func validateInputs(specs []InputSpec, inputs map[string]Value) error {
 	expected := map[string]InputKind{}
+	expectedNames := make([]string, 0, len(specs))
 	for _, spec := range specs {
 		expected[spec.Name] = spec.Kind
+		expectedNames = append(expectedNames, spec.Name)
 	}
+	sort.Strings(expectedNames)
+
+	actualNames := make([]string, 0, len(inputs))
 	for name := range inputs {
+		actualNames = append(actualNames, name)
+	}
+	sort.Strings(actualNames)
+	for _, name := range actualNames {
 		if _, ok := expected[name]; !ok {
 			return fmt.Errorf("undeclared transform input %q", name)
 		}
 	}
-	for name, kind := range expected {
+	for _, name := range expectedNames {
+		kind := expected[name]
 		value, ok := inputs[name]
 		if !ok {
 			return fmt.Errorf("required transform input %q is missing", name)
@@ -104,17 +117,31 @@ func (e *evaluator) tick(depth int) error {
 	return e.consume(1)
 }
 
-func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, error) {
+func (e *evaluator) consumeByteWork(byteCount int) error {
+	if byteCount < 0 {
+		return fmt.Errorf("transform byte work is negative")
+	}
+	if byteCount == 0 {
+		return nil
+	}
+	units := byteCount / evaluatorByteWorkQuantum
+	if byteCount%evaluatorByteWorkQuantum != 0 {
+		units++
+	}
+	return e.consume(units)
+}
+
+func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 	if err := e.tick(depth); err != nil {
 		return Value{}, err
 	}
 	switch expr.Op {
 	case OpInput:
-		value, ok := env[expr.Name]
+		value, ok := env.lookup(expr.Name)
 		if !ok {
 			return Value{}, fmt.Errorf("transform input or binding %q is not available", expr.Name)
 		}
-		return value.Clone(), nil
+		return value, nil
 	case OpLiteral:
 		return ParseJSON(expr.Literal)
 	case OpSelectField:
@@ -125,14 +152,17 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("select-field requires object, got %s", source.Kind)
 		}
-		value, ok := source.Field(expr.Field)
+		index, ok, err := e.findObjectField(source, expr.Field)
+		if err != nil {
+			return Value{}, err
+		}
 		if !ok {
 			if expr.Optional {
 				return Null(), nil
 			}
 			return Value{}, fmt.Errorf("required field %q is missing", expr.Field)
 		}
-		return value, nil
+		return source.Object[index].Value, nil
 	case OpConstructObject:
 		fields := make([]Field, 0, len(expr.Fields))
 		for _, field := range expr.Fields {
@@ -142,7 +172,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			}
 			fields = append(fields, Field{Name: field.Name, Value: value})
 		}
-		return Object(fields...)
+		return objectShared(fields)
 	case OpMapArray:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -156,15 +186,14 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		}
 		out := make([]Value, len(source.Array))
 		for i, item := range source.Array {
-			local := cloneEnv(env)
-			local[expr.Item] = item
-			value, err := e.eval(*expr.Body, local, depth+1)
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
+			value, err := e.eval(*expr.Body, &local, depth+1)
 			if err != nil {
 				return Value{}, fmt.Errorf("map-array item %d: %w", i, err)
 			}
 			out[i] = value
 		}
-		return Array(out...), nil
+		return arrayShared(out), nil
 	case OpSortArrayBy:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -176,20 +205,12 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if len(source.Array) > e.limits.MaxCollection {
 			return Value{}, fmt.Errorf("sort-array collection exceeds maxCollection")
 		}
-		type keyed struct {
-			value Value
-			keys  []string
-		}
-		if err := e.consume(sortWorkBudget(len(source.Array))); err != nil {
-			return Value{}, err
-		}
-		items := make([]keyed, len(source.Array))
+		items := make([]sortItem, len(source.Array))
 		for i, item := range source.Array {
-			local := cloneEnv(env)
-			local[expr.Item] = item
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
 			keys := make([]string, len(expr.Keys))
 			for k := range expr.Keys {
-				key, err := e.eval(expr.Keys[k], local, depth+1)
+				key, err := e.eval(expr.Keys[k], &local, depth+1)
 				if err != nil {
 					return Value{}, fmt.Errorf("sort-array item %d key %d: %w", i, k, err)
 				}
@@ -198,22 +219,16 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 				}
 				keys[k] = key.String
 			}
-			items[i] = keyed{value: item.Clone(), keys: keys}
+			items[i] = sortItem{value: item, keys: keys}
 		}
-		sort.Slice(items, func(i, j int) bool {
-			for k := range items[i].keys {
-				if items[i].keys[k] == items[j].keys[k] {
-					continue
-				}
-				return items[i].keys[k] < items[j].keys[k]
-			}
-			return false
-		})
+		if err := stableSortItems(e, items); err != nil {
+			return Value{}, err
+		}
 		out := make([]Value, len(items))
 		for i := range items {
-			out[i] = items[i].value.Clone()
+			out[i] = items[i].value
 		}
-		return Array(out...), nil
+		return arrayShared(out), nil
 	case OpReplaceField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -222,21 +237,37 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("replace-field requires object, got %s", source.Kind)
 		}
-		if _, exists := source.Field(expr.Field); !exists {
-			return source.Clone(), nil
+		index, exists, err := e.findObjectField(source, expr.Field)
+		if err != nil {
+			return Value{}, err
+		}
+		if !exists {
+			return source, nil
 		}
 		replacement, err := e.eval(*expr.Value, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		out, _, err := source.ReplaceField(expr.Field, replacement)
-		return out, err
+		out := source
+		out.Object = append([]Field(nil), source.Object...)
+		out.Object[index].Value = replacement
+		return out, nil
 	case OpOmitField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		return source.OmitField(expr.Field)
+		index, exists, err := e.findObjectField(source, expr.Field)
+		if err != nil {
+			return Value{}, err
+		}
+		if !exists {
+			return source, nil
+		}
+		out := Value{Kind: ValueObject, Object: make([]Field, 0, len(source.Object)-1)}
+		out.Object = append(out.Object, source.Object[:index]...)
+		out.Object = append(out.Object, source.Object[index+1:]...)
+		return out, nil
 	case OpAssertEqual:
 		actual, err := e.eval(*expr.Actual, env, depth+1)
 		if err != nil {
@@ -246,7 +277,11 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if err != nil {
 			return Value{}, err
 		}
-		if !Equal(actual, expected) {
+		equal, err := e.equalValues(actual, expected)
+		if err != nil {
+			return Value{}, err
+		}
+		if !equal {
 			return Value{}, fmt.Errorf("assert-equal failed")
 		}
 		return actual, nil
@@ -260,7 +295,11 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			if err != nil {
 				return Value{}, err
 			}
-			if Equal(actual, allowed) {
+			equal, err := e.equalValues(actual, allowed)
+			if err != nil {
+				return Value{}, err
+			}
+			if equal {
 				return actual, nil
 			}
 		}
@@ -270,14 +309,11 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if err != nil {
 			return Value{}, err
 		}
-		raw, err := source.JSON()
+		raw, err := e.canonicalJSON(source)
 		if err != nil {
-			return Value{}, err
+			return Value{}, fmt.Errorf("canonical-json: %w", err)
 		}
-		if len(raw) > e.limits.MaxOutputBytes {
-			return Value{}, fmt.Errorf("canonical-json exceeds maxOutputBytes")
-		}
-		return Bytes(raw), nil
+		return bytesShared(raw), nil
 	case OpSHA256:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -285,6 +321,9 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		}
 		if source.Kind != ValueBytes {
 			return Value{}, fmt.Errorf("sha256 requires bytes, got %s", source.Kind)
+		}
+		if err := e.consumeByteWork(len(source.Bytes)); err != nil {
+			return Value{}, err
 		}
 		sum := sha256.Sum256(source.Bytes)
 		return String(hex.EncodeToString(sum[:])), nil
@@ -296,12 +335,17 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueBytes {
 			return Value{}, fmt.Errorf("append-bytes requires bytes, got %s", source.Kind)
 		}
-		out := append([]byte(nil), source.Bytes...)
-		out = append(out, []byte(expr.Suffix)...)
-		if len(out) > e.limits.MaxOutputBytes {
+		if len(source.Bytes) > e.limits.MaxOutputBytes || len(expr.Suffix) > e.limits.MaxOutputBytes-len(source.Bytes) {
 			return Value{}, fmt.Errorf("append-bytes exceeds maxOutputBytes")
 		}
-		return Bytes(out), nil
+		totalBytes := len(source.Bytes) + len(expr.Suffix)
+		if err := e.consumeByteWork(totalBytes); err != nil {
+			return Value{}, err
+		}
+		out := make([]byte, 0, totalBytes)
+		out = append(out, source.Bytes...)
+		out = append(out, expr.Suffix...)
+		return bytesShared(out), nil
 	case OpJoinStrings:
 		parts := make([]string, len(expr.Values))
 		total := 0
@@ -325,34 +369,198 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			}
 			parts[i] = value.String
 		}
+		if err := e.consumeByteWork(total); err != nil {
+			return Value{}, err
+		}
 		return String(strings.Join(parts, expr.Separator)), nil
 	default:
 		return Value{}, fmt.Errorf("unsupported transform operation %q", expr.Op)
 	}
 }
 
-
-
-func encodedOutputSize(value Value) (int, error) {
+func (e *evaluator) validateFinalOutput(value Value) error {
 	if value.Kind == ValueBytes {
-		return len(value.Bytes), nil
+		if len(value.Bytes) > e.limits.MaxOutputBytes {
+			return fmt.Errorf("transform output exceeds maxOutputBytes")
+		}
+		return nil
 	}
-	raw, err := value.JSON()
+	size, err := jsonEncodedSizeWithin(value, e.limits.MaxOutputBytes, 0)
 	if err != nil {
-		return 0, fmt.Errorf("encode transform output: %w", err)
+		return fmt.Errorf("encode transform output: %w", err)
 	}
-	return len(raw), nil
+	if err := e.consumeByteWork(size); err != nil {
+		return err
+	}
+	return nil
 }
 
-func sortWorkBudget(n int) int {
-	if n <= 1 {
-		return 0
+func (e *evaluator) canonicalJSON(value Value) ([]byte, error) {
+	size, err := jsonEncodedSizeWithin(value, e.limits.MaxOutputBytes, 0)
+	if err != nil {
+		return nil, err
 	}
-	levels := 0
-	for size := 1; size < n; size <<= 1 {
-		levels++
+	// We perform one size walk here, then JSONWithinLimit performs its own
+	// bounded size walk followed by encoding. Charge all three byte-linear
+	// passes before materializing the output bytes.
+	if size > int(^uint(0)>>1)/3 {
+		return nil, fmt.Errorf("canonical JSON size overflow")
 	}
-	return n * (levels + 1)
+	if err := e.consumeByteWork(size * 3); err != nil {
+		return nil, err
+	}
+	return value.JSONWithinLimit(e.limits.MaxOutputBytes)
+}
+
+type sortItem struct {
+	value Value
+	keys  []string
+}
+
+func stableSortItems(e *evaluator, items []sortItem) error {
+	if len(items) < 2 {
+		return nil
+	}
+	buffer := make([]sortItem, len(items))
+	src := items
+	dst := buffer
+	srcIsItems := true
+	for width := 1; width < len(items); width *= 2 {
+		for left := 0; left < len(items); left += 2 * width {
+			mid := left + width
+			if mid > len(items) {
+				mid = len(items)
+			}
+			right := left + 2*width
+			if right > len(items) {
+				right = len(items)
+			}
+			i, j, k := left, mid, left
+			for i < mid && j < right {
+				cmp, err := compareSortKeys(e, src[i].keys, src[j].keys)
+				if err != nil {
+					return err
+				}
+				if err := e.consume(1); err != nil {
+					return err
+				}
+				if cmp <= 0 {
+					dst[k] = src[i]
+					i++
+				} else {
+					dst[k] = src[j]
+					j++
+				}
+				k++
+			}
+			for i < mid {
+				if err := e.consume(1); err != nil {
+					return err
+				}
+				dst[k] = src[i]
+				i++
+				k++
+			}
+			for j < right {
+				if err := e.consume(1); err != nil {
+					return err
+				}
+				dst[k] = src[j]
+				j++
+				k++
+			}
+		}
+		src, dst = dst, src
+		srcIsItems = !srcIsItems
+	}
+	if !srcIsItems {
+		for i := range items {
+			if err := e.consume(1); err != nil {
+				return err
+			}
+			items[i] = src[i]
+		}
+	}
+	return nil
+}
+
+func compareSortKeys(e *evaluator, a, b []string) (int, error) {
+	if len(a) != len(b) {
+		return 0, fmt.Errorf("sort-array key tuple length mismatch")
+	}
+	for i := range a {
+		if err := e.consume(1); err != nil {
+			return 0, err
+		}
+		if err := e.consumeByteWork(len(a[i]) + len(b[i])); err != nil {
+			return 0, err
+		}
+		if a[i] < b[i] {
+			return -1, nil
+		}
+		if a[i] > b[i] {
+			return 1, nil
+		}
+	}
+	return 0, nil
+}
+
+func validateValueShape(value Value) error {
+	hasArray := len(value.Array) != 0
+	hasObject := len(value.Object) != 0
+	hasBytes := len(value.Bytes) != 0
+	switch value.Kind {
+	case ValueNull:
+		if value.Bool || value.Number != "" || value.String != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("null value contains fields for another value kind")
+		}
+	case ValueBool:
+		if value.Number != "" || value.String != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("bool value contains fields for another value kind")
+		}
+	case ValueNumber:
+		if value.Bool || value.String != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("number value contains fields for another value kind")
+		}
+		if !validJSONNumber(value.Number) {
+			return fmt.Errorf("invalid JSON number %q", value.Number)
+		}
+	case ValueString:
+		if value.Bool || value.Number != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("string value contains fields for another value kind")
+		}
+		if !utf8.ValidString(value.String) {
+			return fmt.Errorf("string value is not valid UTF-8")
+		}
+	case ValueArray:
+		if value.Bool || value.Number != "" || value.String != "" || hasObject || hasBytes {
+			return fmt.Errorf("array value contains fields for another value kind")
+		}
+	case ValueObject:
+		if value.Bool || value.Number != "" || value.String != "" || hasArray || hasBytes {
+			return fmt.Errorf("object value contains fields for another value kind")
+		}
+		seen := map[string]struct{}{}
+		for _, field := range value.Object {
+			if field.Name == "" {
+				return fmt.Errorf("object field name is required")
+			}
+			if !utf8.ValidString(field.Name) {
+				return fmt.Errorf("object field name is not valid UTF-8")
+			}
+			if _, exists := seen[field.Name]; exists {
+				return fmt.Errorf("object field %q is declared more than once", field.Name)
+			}
+			seen[field.Name] = struct{}{}
+		}
+	case ValueBytes:
+		if value.Bool || value.Number != "" || value.String != "" || hasArray || hasObject {
+			return fmt.Errorf("bytes value contains fields for another value kind")
+		}
+	default:
+		return fmt.Errorf("unsupported input value kind %q", value.Kind)
+	}
+	return nil
 }
 
 type inputBudget struct {
@@ -362,7 +570,13 @@ type inputBudget struct {
 
 func validateInputBudgets(limits Limits, inputs map[string]Value) error {
 	budget := inputBudget{}
-	for name, value := range inputs {
+	names := make([]string, 0, len(inputs))
+	for name := range inputs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		value := inputs[name]
 		budget.bytes += len(name)
 		if budget.bytes > limits.MaxInputBytes {
 			return fmt.Errorf("transform inputs exceed maxInputBytes")
@@ -375,6 +589,9 @@ func validateInputBudgets(limits Limits, inputs map[string]Value) error {
 }
 
 func walkInputBudget(value Value, depth int, budget *inputBudget, limits Limits) error {
+	if err := validateValueShape(value); err != nil {
+		return err
+	}
 	if depth > limits.MaxNestingDepth {
 		return fmt.Errorf("input exceeds maxNestingDepth")
 	}
@@ -421,10 +638,105 @@ func walkInputBudget(value Value, depth int, budget *inputBudget, limits Limits)
 	return nil
 }
 
-func cloneEnv(in map[string]Value) map[string]Value {
-	out := make(map[string]Value, len(in)+1)
-	for name, value := range in {
-		out[name] = value
+func bytesShared(raw []byte) Value {
+	return Value{Kind: ValueBytes, Bytes: raw}
+}
+
+func (e *evaluator) findObjectField(value Value, name string) (int, bool, error) {
+	for i := range value.Object {
+		if err := e.consume(1); err != nil {
+			return 0, false, err
+		}
+		if err := e.consumeByteWork(len(value.Object[i].Name) + len(name)); err != nil {
+			return 0, false, err
+		}
+		if value.Object[i].Name == name {
+			return i, true, nil
+		}
 	}
-	return out
+	return 0, false, nil
+}
+
+func (e *evaluator) equalValues(a, b Value) (bool, error) {
+	if err := e.consume(1); err != nil {
+		return false, err
+	}
+	if a.Kind != b.Kind {
+		return false, nil
+	}
+	switch a.Kind {
+	case ValueNull:
+		return true, nil
+	case ValueBool:
+		return a.Bool == b.Bool, nil
+	case ValueNumber:
+		if err := e.consumeByteWork(len(a.Number) + len(b.Number)); err != nil {
+			return false, err
+		}
+		return a.Number == b.Number, nil
+	case ValueString:
+		if err := e.consumeByteWork(len(a.String) + len(b.String)); err != nil {
+			return false, err
+		}
+		return a.String == b.String, nil
+	case ValueBytes:
+		if err := e.consumeByteWork(len(a.Bytes) + len(b.Bytes)); err != nil {
+			return false, err
+		}
+		return bytes.Equal(a.Bytes, b.Bytes), nil
+	case ValueArray:
+		if len(a.Array) != len(b.Array) {
+			return false, nil
+		}
+		for i := range a.Array {
+			equal, err := e.equalValues(a.Array[i], b.Array[i])
+			if err != nil || !equal {
+				return equal, err
+			}
+		}
+		return true, nil
+	case ValueObject:
+		if len(a.Object) != len(b.Object) {
+			return false, nil
+		}
+		for i := range a.Object {
+			if err := e.consume(1); err != nil {
+				return false, err
+			}
+			if err := e.consumeByteWork(len(a.Object[i].Name) + len(b.Object[i].Name)); err != nil {
+				return false, err
+			}
+			if a.Object[i].Name != b.Object[i].Name {
+				return false, nil
+			}
+			equal, err := e.equalValues(a.Object[i].Value, b.Object[i].Value)
+			if err != nil || !equal {
+				return equal, err
+			}
+		}
+		return true, nil
+	default:
+		return false, fmt.Errorf("unsupported value kind %q", a.Kind)
+	}
+}
+
+type evalEnv struct {
+	root         map[string]Value
+	parent       *evalEnv
+	bindingName  string
+	bindingValue Value
+	hasBinding   bool
+}
+
+func (e *evalEnv) lookup(name string) (Value, bool) {
+	for current := e; current != nil; current = current.parent {
+		if current.hasBinding && current.bindingName == name {
+			return current.bindingValue, true
+		}
+		if current.root != nil {
+			value, ok := current.root[name]
+			return value, ok
+		}
+	}
+	return Value{}, false
 }

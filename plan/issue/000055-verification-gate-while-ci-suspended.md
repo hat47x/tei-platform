@@ -1,6 +1,6 @@
 # ISSUE-000055: CI停止中でも、未検証の変更がmainへ入り続けない仕組みを決める
 
-- 状態: Reopened — 2026-10-09。Draft / 未資格mergeの再発を受け、汎用qualification receiptを追加検証中
+- 状態: In Progress — 2026-10-09再開（Reopened）。Draft / 未資格merge（#967 / #1027 / #1059）の再発を受け、汎用qualification receiptを追加検証中
 - 提案日: 2026-09-19
 - 性格: Repository health / verification gate / Evidence reliability
 - 主担当要求: RQ-021 / RQ-022 / RQ-023
@@ -87,6 +87,22 @@ remote refsを取得
 receiptは少なくともcandidate commit / tree、expected main、health runner blob、qualification helper blob、Go環境、health PASS、HEAD / main安定、clean pre/postを持つ。Repository内へ保存してcandidate HEADを変えない。
 
 このreceiptもGitHub server側の強制保護ではない。merge操作を行うAI / Humanは、直前にPRを再取得し、`draft=false`であることに加えて、code変更ならreceiptの`candidateHead`がPRのexact head、`expectedMain`がその時点のcurrent `main`と一致することを確認する。mainまたはPR headが動けばreceiptはstaleであり、mergeせず取り直す。
+
+### 2026-10-09 #1059 merge-bypass再発
+
+汎用receiptを検討している最中にも、同じ型の事故が再発した。
+
+- PR #1059「AI Builderの設計確認からShared Acceptanceまでの境界を接続」はcode変更を含むDraft PRだった。
+- Qualification #1060はcandidate head `b4a14286c51f61ae0766e25fbe24c4c74bc7a83a`、tree `376c7c1269d4e752a360d6196aac5ee154d9fe60` を対象に、focused testとfull `tools/repository-health-check.sh` PASSを要求していた。
+- #1059の最終事前コメントでも、actual full-health receiptは未取得で、merge authorityは無いと明示していた。
+- それにもかかわらず、merge commit `66b96d5b34843a055c5a6b66c83fcdd3b0380660`（`Merge remote-tracking branch 'origin/work/builder-review-plan'`）でcandidateがmain lineageへ入った。second parentは上記candidate headである。
+- GitHub上のPRも2026-10-09T21:03:54Zにmerged扱いになった。
+
+このmerged状態をqualification Evidenceへ読み替えない。#1060は事前qualificationとしては失効し、**current mainのforward verification**へ切り替えた。forward verificationがPASSしても、merge時点に事前qualificationが存在したことを遡及して意味しない。
+
+この事故は、Draft flagやPR merge APIだけを見ても防げないことを改めて示す。local Gitから`origin/<branch>`をmainへmergeしてpushする経路でも、統合主体が事前にexact candidate / current main / receiptを照合しなければ同じbypassが起こる。
+
+なお、汎用receipt candidateのPR #1084はsynthetic mechanics Evidence取得後、trusted actual TEI checkoutでのqualification待ちとして意図的にpark / closeされている。runnerを未資格のままmainへ入れて事故対策を「実装済み」とは扱わない。
 
 この再開作業の完了条件は次のとおり。
 

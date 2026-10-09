@@ -364,8 +364,6 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 	return nil
 }
 
-
-
 func rejectUnexpectedExprFields(expr Expr, allowed ...string) error {
 	ok := make(map[string]struct{}, len(allowed))
 	for _, field := range allowed {

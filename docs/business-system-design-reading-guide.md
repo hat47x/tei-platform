@@ -324,6 +324,75 @@ similarity  != applicability
 
 最終的にはShared Acceptance Boundaryを通してauthoritative sourceへ戻します。
 
+### AIが設計変更へ入るときの読み順
+
+AIが設計変更を始めるときは、通常のKnowledge Contextとは別に、**設計確認計画（Builder Review Plan）**を取得できます。
+
+```text
+tei knowledge-review-plan
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+```
+
+このProjectionは、個々の設計原則を重複して持ちません。`routingScope = current-knowledge-context`の範囲で、`recommendedDisclosureSections`に現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち何を確認すべきかを示し、`reviewSequence`で確認順を示します。推奨された区画は、そのまま適用可能・Qualification済み・開示済みのKnowledgeにはなりません。必要なQualificationを経てから設計判断へ使います。Data設計の詳細な確認事項は、従来どおり`dataDesign.designReviewProtocol`が担当します。
+
+Review Planで読む候補を得た後、設計変更のtask scopeが明示できる場合は、既存のKnowledge Qualificationを通した**Builder Review Handoff**を作れます。
+
+```text
+tei knowledge-review-handoff
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -qualification-requirements <requirements.json>
+```
+
+HandoffはKnowledge本文を含みません。Review Planのrevision / fingerprint、routing scope、選択候補となる区画、明示したQualification requirements、Qualification結果とそのSource Evidenceを結びます。Qualificationが`applicable`で、authoritative Evidenceと必要なdependency Evidenceが揃い、ContextとSource Indexの候補subject Evidenceが同一revisionである場合だけ`qualified-for-disclosure`になります。`unknown`は`blocked-unresolved`、`incompatible`は`blocked-incompatible`として保持します。ここでいう`disclosure`はAI Builderへ渡す知識区画の選択であり、アクセス制御・秘匿・RBAC上の許可ではありません。
+
+```text
+available
+  -> Builder Review Planでselected候補を決める
+  -> explicit requirementsでqualifiedを確認する
+  -> Builder Review Handoff
+  -> current Knowledgeからdiscloseする
+```
+
+Handoff自体はDisclosureではありません。Handoffのfingerprintも開示内容のfreshnessを証明しないため、実際に開示したKnowledgeの再利用にはDisclosure側のfingerprintを使います。
+
+Qualification済みのHandoffから現在のKnowledgeを開示するときは、Handoff JSONを入力にして`knowledge-review-disclose`を使えます。
+
+```text
+tei knowledge-review-disclose
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -review-handoff <handoff.json>
+```
+
+このコマンドは、Handoff自身のfingerprintを検査し、同じrequirementsからcurrent Context / Source Index上のHandoffを再構成します。fingerprintが一致し、statusが`qualified-for-disclosure`の場合だけ、既存の`DisclosureProjection`を返します。stale、改ざん済み、subject不一致、blockedなHandoffからは開示しません。
+
+ただし、`qualified-for-disclosure`は各区画内部の解決状態まで保証しません。たとえば`dataDesign.resolutionStatus`や`dataDesign.evidenceCoverageStatus`はDisclosure内で個別に確認します。上位`Context.unresolved`が空でも、区画内に未解決・Evidence不足が残り得るためです。
+
+さらに、subject単体のQualificationは変更全体のcross-view妥当性を保証しません。Application Patternが適用可能でも、Business Procedure、datasource access、Authorization、Contract、既知のconflict等が別surfaceにある場合があります。Review PlanはProposal形成前に`review-cross-view-constraints-authority-and-known-conflicts`を要求し、必要なEvidenceが未解決ならそこで停止します。
+
+返すJSONは通常のDisclosureと同じです。HandoffやQualification結果を本文へ混ぜないため、同じKnowledgeを別taskへ再利用するときは、そのtaskについて改めてQualificationします。また、blockedでも診断や根拠確認のためにKnowledgeを読むこと自体を禁止するものではありません。禁止するのは、未QualificationのKnowledgeをそのtaskへ適用可能な意味として扱うことです。
+
+Review PlanはAI Builder向けの用途別Projectionであり、通常のKnowledge Context、人間向け表示、業務実行用Contextへ混入させません。また、現在のKnowledge Contextに区画が見つからないことを、Repositoryや外部Knowledge全体に情報が存在しない証拠にはしません。Review Planのfingerprintが一致しても、選択したKnowledgeの内容が最新であることまでは証明しないため、Knowledgeの再利用には対応するData Design / Disclosure等のfingerprintを別に確認します。
+
+```text
+Builder Review Plan
+  -> 何をどの順で読むか
+  -> 必要なQualification境界を通す
+
+dataDesign.designReviewProtocol
+  -> Data設計で何を確認するか
+
+どちらも
+  != accepted business meaning
+  != semantic applicability
+  != write / runtime authority
+```
+
 ### AIがData設計を変更するときの入口
 
 Data、Relation、Validation、Persistence、record系Patternに関わる変更をAIが検討するときは、設計資料を自由検索するだけでなく、対象DataのKnowledge Contextを先に取得します。

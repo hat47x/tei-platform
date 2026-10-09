@@ -88,10 +88,11 @@ func TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rules) != 3 ||
+	if len(rules) != 4 ||
 		rules[0].ID != "sales.order_line.quantity_positive" ||
 		rules[1].ID != "sales.order.lines.line_number_unique" ||
-		rules[2].ID != "sales.order_line.unit_price_positive" {
+		rules[2].ID != "sales.order_line.line_number_positive" ||
+		rules[3].ID != "sales.order_line.unit_price_positive" {
 		t.Fatalf("Driverが解決したValidationの順序=%+v", rules)
 	}
 }
@@ -120,6 +121,7 @@ func TestPracticalRuleChangeRejectsBrokenOrRepeatedDeltaWithoutChangingSource(t 
 			name: "new rule with nonexistent namespace",
 			edit: func(c *Candidate) {
 				c.Delta[0].Namespace = "nonexistent"
+				c.Delta[0].ID = "nonexistent.order_line.unit_price_positive"
 			},
 			code: "NAMESPACE_NOT_FOUND",
 		},
