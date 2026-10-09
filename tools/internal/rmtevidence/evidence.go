@@ -255,6 +255,27 @@ func normalizeStrings(name string, values []string) ([]string, error) {
 	return out, nil
 }
 
+func IsStandardConstruct(sourceFormat, name string) bool {
+	known := standardConstructsByFormat[sourceFormat]
+	_, ok := known[name]
+	return ok
+}
+
+func StandardConstructs(sourceFormat string) []string {
+	known := standardConstructsByFormat[sourceFormat]
+	out := make([]string, 0, len(known))
+	for name := range known {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func IsSupportedClassification(value string) bool {
+	_, ok := allowedClassifications[value]
+	return ok
+}
+
 func stringSet(values ...string) map[string]struct{} {
 	out := make(map[string]struct{}, len(values))
 	for _, value := range values {
