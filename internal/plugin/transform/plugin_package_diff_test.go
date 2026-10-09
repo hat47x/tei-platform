@@ -3,6 +3,9 @@ package transform_test
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"tei/internal/core"
@@ -98,13 +101,32 @@ func valueFromGoJSON(t *testing.T, value any) transform.Value {
 	return got
 }
 
+
+func referencePluginPackageTransformSource(t *testing.T) transform.Source {
+	t.Helper()
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("resolve current test file")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", ".."))
+	raw, err := os.ReadFile(filepath.Join(root, "reference", "plugin-self-build", "builder-sources", "plugin-package-v1.transform.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source, err := transform.ParseSourceJSON(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return source
+}
+
 func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 	definition, plan := transformPackageFixture()
 	oracle, err := plugin.MaterializePluginPackage(definition, plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := transform.Evaluate(transform.PluginPackageSourceV1(), map[string]transform.Value{
+	result, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
 		"buildPlan":        valueFromGoJSON(t, plan),
 		"pluginDefinition": valueFromGoJSON(t, definition),
 	})
@@ -116,5 +138,21 @@ func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 	}
 	if !bytes.Equal(result.Output.Bytes, oracle) {
 		t.Fatalf("TEI-native transform differs from Go oracle")
+	}
+}
+
+
+func TestReferenceTransformSourceMatchesProgrammaticConstruction(t *testing.T) {
+	fromFile := referencePluginPackageTransformSource(t)
+	fileFP, err := transform.SourceFingerprint(fromFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	constructedFP, err := transform.SourceFingerprint(transform.PluginPackageSourceV1())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fileFP != constructedFP {
+		t.Fatalf("Reference transform Source diverged from construction helper: %s != %s", fileFP, constructedFP)
 	}
 }
