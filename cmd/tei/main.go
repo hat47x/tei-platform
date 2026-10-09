@@ -85,6 +85,7 @@ func main() {
 	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
 	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
 	expectedDataDesignCandidateEvidenceRequirementFingerprint := fs.String("expected-data-design-candidate-evidence-requirement-fingerprint", "", "expected current Data Design candidate Evidence requirement fingerprint")
+	expectedDataDesignCandidateReviewFingerprint := fs.String("expected-data-design-candidate-review-fingerprint", "", "expected current Data Design candidate review packet fingerprint")
 	expectedReviewPlanFingerprint := fs.String("expected-review-plan-fingerprint", "", "expected Builder Review Plan fingerprint; knowledge-review-plan fails on mismatch")
 	expectedReviewHandoffFingerprint := fs.String("expected-review-handoff-fingerprint", "", "expected Builder Review Handoff fingerprint; review handoff commands fail on mismatch")
 	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
@@ -246,6 +247,13 @@ func main() {
 			*expectedDataDesignCandidateEvidenceRequirementFingerprint,
 		)
 		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := checkDataDesignCandidateReviewFingerprint(
+			packet,
+			*expectedDataDesignCandidateReviewFingerprint,
+		); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
