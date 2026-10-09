@@ -88,6 +88,27 @@ Builder Review Plan
   != write / runtime authority
 ```
 
+Review Planが示したKnowledgeを特定taskへ用いる前に、task側が明示したQualification requirementsと既存Knowledge Qualificationを接続する。これをBuilder Review Handoffとして別Projectionにできる。
+
+```text
+Builder Review Plan
+  -> selected Knowledge candidates
+
+explicit Qualification Requirements
+  + current Source Evidence
+  -> Qualification
+
+Plan + Qualification
+  -> Builder Review Handoff
+
+Builder Review Handoff
+  != disclosed Knowledge
+  != Accepted Decision
+  != write / runtime authority
+```
+
+HandoffはKnowledge本文を集約しない。Qualificationがapplicableでも、その結果は「明示したrequirementsに対してcurrent Evidence上適用可能」という範囲に限る。実際のKnowledge本文は既存Disclosureからcurrent stateを取得し、そのDisclosure fingerprintで再利用可否を追跡する。これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
+
 Review Planのfingerprintはrouting identityを表すだけであり、選択したKnowledge自体のfreshness proofにはしない。また、推奨された区画をQualification済みKnowledgeやsemantic applicabilityへ昇格させず、必要なQualificationを別境界で通す。current Knowledge Contextに区画が無いことも、他のKnowledge surfaceを含む全体的な不存在へ一般化しない。Knowledge内容の再利用可否は、それぞれのProjection / DisclosureのfingerprintとEvidence境界で別に確認する。
 
 Data設計では、`tei knowledge-context ... -disclose data-design` がこの境界を担う。識別子、候補キー、関数従属性等について、PersistenceやUIの構造から業務意味を推測せず、根拠が不足する場合は`unresolved`を保持する。投影が返すreview protocolや設計候補はAIへの作業指針であって、Canonical authorityやAcceptanceそのものではない。
