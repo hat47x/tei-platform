@@ -31,8 +31,9 @@ type DataDesignCandidateReviewCandidate struct {
 }
 
 type DataDesignCandidateReviewRequirement struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
+	ID                string            `json:"id"`
+	Status            string            `json:"status"`
+	SuggestedSubjects []subject.Subject `json:"suggestedSubjects,omitempty"`
 }
 
 type DataDesignCandidateReviewPacket struct {
@@ -107,8 +108,9 @@ func BuildDataDesignCandidateReview(
 	requirements := make([]DataDesignCandidateReviewRequirement, 0, len(evidenceNeeded))
 	for _, requirement := range normalizedDataDesignStrings(evidenceNeeded) {
 		requirements = append(requirements, DataDesignCandidateReviewRequirement{
-			ID:     requirement,
-			Status: "unresolved",
+			ID:                requirement,
+			Status:            "unresolved",
+			SuggestedSubjects: dataDesignEvidenceSearchSubjects(candidate, requirement),
 		})
 	}
 
@@ -182,6 +184,7 @@ func BuildDataDesignCandidateReview(
 			"review-status-is-review-readiness-not-promotion-authority",
 			"promotion-status-is-derived-readiness-not-acceptance-or-write-authority",
 			"unresolved-business-evidence-requirement-must-not-be-inferred-as-satisfied",
+			"suggested-evidence-subject-is-search-start-not-evidence-or-authority",
 			"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
 			"semantic-extension-reference-is-not-current-lossless-authoring-contract",
 			"candidate-review-does-not-grant-write-runtime-or-decision-authority",
@@ -190,6 +193,66 @@ func BuildDataDesignCandidateReview(
 	}
 	packet.Fingerprint = dataDesignCandidateReviewFingerprint(packet)
 	return packet, nil
+}
+
+func dataDesignEvidenceSearchSubjects(
+	candidate DataDesignCandidateReviewCandidate,
+	requirement string,
+) []subject.Subject {
+	sourceData := core.CanonicalID("")
+	for _, term := range candidate.Terms {
+		if term.Kind == "relation-source-occurrence" && term.Data != "" {
+			sourceData = term.Data
+			break
+		}
+	}
+	relationSubject := subject.Subject{Kind: "semantic-relation", ID: string(candidate.Relation)}
+	targetSubject := subject.Subject{Kind: "semantic-data", ID: string(candidate.TargetOccurrence)}
+	sourceSubject := subject.Subject{Kind: "semantic-data", ID: string(sourceData)}
+
+	var out []subject.Subject
+	switch requirement {
+	case "source-occurrence-business-identifier":
+		if sourceData != "" {
+			out = append(out, sourceSubject)
+		}
+	case "relation-business-meaning":
+		out = append(out, relationSubject)
+	case "target-membership-exclusivity":
+		out = append(out, relationSubject, targetSubject)
+	case "identifier-stability", "history-version-identity", "identifier-reuse-policy":
+		out = append(out, targetSubject)
+	case "temporal-validity", "temporal-dependency-scope":
+		out = append(out, relationSubject, targetSubject)
+	default:
+		out = append(out, relationSubject, targetSubject)
+		if sourceData != "" {
+			out = append(out, sourceSubject)
+		}
+	}
+	return normalizeDataDesignReviewSubjects(out)
+}
+
+func normalizeDataDesignReviewSubjects(values []subject.Subject) []subject.Subject {
+	seen := make(map[subject.Subject]struct{}, len(values))
+	out := make([]subject.Subject, 0, len(values))
+	for _, value := range values {
+		if value.Kind == "" || value.ID == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Kind != out[j].Kind {
+			return out[i].Kind < out[j].Kind
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out
 }
 
 func dataDesignFirstClassAuthoringContractReasons(kind string) []string {
