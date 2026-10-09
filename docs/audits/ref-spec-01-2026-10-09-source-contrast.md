@@ -101,3 +101,13 @@ BP-05の明示参照は、Application全体のValidation宣言を網羅する義
 隔離モジュールはTEIの`application`、`ir`、`sourceindex`、`subject`の必要な型と`semanticCounts`を**代替実装**したもの。原文の比較・出典処理を対象に、参照差、Validation重複、文脈欠落、Source定義の重複、artifactパスの重複を確認した。修正前には重複artifactパスの負例がFAILし、修正後は7テストがPASS、`go vet ./...`もPASSした。対象の二原文ファイルに対する`gofmt -l`は出力なし。
 
 本来、`workspace.BuildSourceIndex`は既存の`sourceindex.Index.Validate`によってartifactパス重複を拒否する。このため、ここで発見した問題は**未検証のIndexを補助関数へ渡したときの防御不足**であり、製品の通常経路で再現した不具合とは記録しない。隔離環境のPASSも、PRのexact-headでのfull Repository healthやSource Loaderの試験の代わりにはならない。追加したRepository回帰テストは未実行であり、mainへの統合資格は未取得である。
+
+## 未解決の比較結果を失わせない条件整理（2026-10-09）
+
+追加の設計レビューにより、`-review-validation-scope`を指定すると、`validation-support`ステップが存在しない場合やすべての比較行が`unresolved-context`／`unresolved-reference`であっても、無条件に`workspace.BuildSourceIndex`を実行していたことを確認した。これは出典探索の必要がない状態でも無関係なSourceの問題が処理全体を停止させ、未解決の比較結果を読めなくするおそれがある。
+
+**修正した振る舞い：** `review-needed`または`no-set-difference`が一行以上ある場合にだけSource Indexを構築する。それ以外の行については、追加の出典探索を要求せず、未解決のまま返す。出典探索が必要な行があるときは従来どおりSource Indexを検証し、構築失敗を隠さない。判定の正本や既存診断は変更しない。
+
+条件分岐について、比較行なし、文脈未解決、Validation未解決、集合の差、集合一致、混合ケースを対象とする**新規Go回帰テストのソースを追加**した。この変更を含む現在のGoソース `validation_scope_review_sources.go` のGitHub blob SHAは `9ebb22754a53444ff272cfdca35fa7a41979b778`。上節までの隔離実行は、それぞれの節が指定する**過去のblob**に対する記録であり、今回変更後のGo実行を示すものではない。
+
+実際のTEI全体のテスト、exact-headのfull Repository healthとclean pre/postは引き続き未実施。Draft PRの検証・統合状態を変更する証拠はない。
