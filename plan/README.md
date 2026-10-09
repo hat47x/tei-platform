@@ -122,7 +122,7 @@ Target側でbaseline meaningを変更する必要がある場合、Web固有fiel
 
 1. [`../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) — RQ-025 / RQ-026の要求解釈
 2. [`../docs/business-system-design.md`](../docs/business-system-design.md) — Data / Function-Interaction / BusinessのArchitecture境界
-3. [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) — false completenessを避け、meaning / evidence / authority / actuality / responsibilityをreviewする品質モデル
+3. [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) — false completenessを避け、meaning / evidence / authority / actuality / responsibilityをreviewする品質モデル
 4. [`issue/000042-business-procedure-cross-view-reference.md`](issue/000042-business-procedure-cross-view-reference.md) — Lane C Reference / Pressure inventory
 5. [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md) — second realistic ReferenceのRRB-P1 / P2 / P3 acceptance / maturity条件
 6. [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) / [`issue/000048-business-procedure-contract-adr-readiness.md`](issue/000048-business-procedure-contract-adr-readiness.md) — Contract ADR readiness
