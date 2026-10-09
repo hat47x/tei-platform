@@ -25,7 +25,6 @@ type Context struct {
 	SemanticElement    *index.SemanticElementEntry         `json:"semanticElement,omitempty"`
 	ApplicationPattern *index.ApplicationPatternIndexEntry `json:"applicationPattern,omitempty"`
 	DataDesign         *DataDesignContext                  `json:"dataDesign,omitempty"`
-	BuilderReviewPlan  BuilderReviewPlan                   `json:"builderReviewPlan"`
 	Outgoing           []Edge                              `json:"outgoing,omitempty"`
 	Incoming           []Edge                              `json:"incoming,omitempty"`
 	Unresolved         []string                            `json:"unresolved,omitempty"`
@@ -126,7 +125,6 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 	sortEdges(ctx.Outgoing)
 	sortEdges(ctx.Incoming)
 	sort.Strings(ctx.Unresolved)
-	ctx.BuilderReviewPlan = buildBuilderReviewPlan(ctx)
 	return ctx
 }
 
