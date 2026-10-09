@@ -1,6 +1,6 @@
 # ISSUE-000055: CI停止中でも、未検証の変更がmainへ入り続けない仕組みを決める
 
-- 状態: Reopened — 2026-10-09。Draft / 未資格mergeの再発を受け、汎用qualification receiptを追加検証中
+- 状態: In Progress — 2026-10-09再開（Reopened）。Draft / 未資格mergeの再発を受け、汎用qualification receiptを追加検証中
 - 提案日: 2026-09-19
 - 性格: Repository health / verification gate / Evidence reliability
 - 主担当要求: RQ-021 / RQ-022 / RQ-023
