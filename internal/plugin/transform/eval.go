@@ -331,8 +331,6 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 	}
 }
 
-
-
 func encodedOutputSize(value Value) (int, error) {
 	if value.Kind == ValueBytes {
 		return len(value.Bytes), nil

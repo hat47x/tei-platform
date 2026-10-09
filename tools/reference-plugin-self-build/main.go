@@ -53,7 +53,7 @@ type evidence struct {
 	GoVersion                          string                         `json:"goVersion"`
 	GoBinaryDigest                     string                         `json:"goBinaryDigest"`
 	GoToolchainDigest                  string                         `json:"goToolchainDigest"`
-	TransformBootstrap                  transformBootstrapEvidence     `json:"transformBootstrap"`
+	TransformBootstrap                 transformBootstrapEvidence     `json:"transformBootstrap"`
 	PackageBuilderFirstDigest          string                         `json:"packageBuilderFirstDigest"`
 	PackageBuilderSecondDigest         string                         `json:"packageBuilderSecondDigest"`
 	PackageBuilderReproducible         bool                           `json:"packageBuilderReproducible"`
@@ -783,7 +783,7 @@ func run(repo string) (evidence, error) {
 		GoVersion:                          goVersion,
 		GoBinaryDigest:                     goBinaryDigest,
 		GoToolchainDigest:                  goToolchainDigest,
-		TransformBootstrap:                  transformBootstrap,
+		TransformBootstrap:                 transformBootstrap,
 		PackageBuilderFirstDigest:          packageBuilderFirstDigest,
 		PackageBuilderSecondDigest:         packageBuilderSecondDigest,
 		PackageBuilderReproducible:         true,

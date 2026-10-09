@@ -23,41 +23,40 @@ const (
 	transformPackageSourcePath  = "reference/plugin-self-build/builder-sources/plugin-package-v1.transform.json"
 )
 
-
 type transformBootstrapStagePlan struct {
-	Stage               plugin.BootstrapStageName     `json:"stage"`
-	Builder             plugin.BuilderIdentity        `json:"builder"`
-	SourceClosureDigest string                        `json:"sourceClosureDigest"`
-	SourceFingerprint   string                        `json:"sourceFingerprint"`
+	Stage               plugin.BootstrapStageName      `json:"stage"`
+	Builder             plugin.BuilderIdentity         `json:"builder"`
+	SourceClosureDigest string                         `json:"sourceClosureDigest"`
+	SourceFingerprint   string                         `json:"sourceFingerprint"`
 	RuntimeEngine       pruntime.RuntimeEngineIdentity `json:"runtimeEngine"`
-	Target              string                        `json:"target"`
-	Output              transform.SourceIdentity      `json:"output"`
+	Target              string                         `json:"target"`
+	Output              transform.SourceIdentity       `json:"output"`
 }
 
 type transformBootstrapEvidence struct {
-	RuntimeEngineSourceDigest      string                            `json:"runtimeEngineSourceDigest"`
-	RuntimeEngine                  pruntime.RuntimeEngineIdentity    `json:"runtimeEngine"`
-	RuntimeEngineFingerprint       string                            `json:"runtimeEngineFingerprint"`
-	SeedBuilderFirstDigest         string                            `json:"seedBuilderFirstDigest"`
-	SeedBuilderSecondDigest        string                            `json:"seedBuilderSecondDigest"`
-	SeedBuilderReproducible        bool                              `json:"seedBuilderReproducible"`
-	MetaSourceFingerprint          string                            `json:"metaSourceFingerprint"`
-	Stage1Plan                     transformBootstrapStagePlan       `json:"stage1Plan"`
-	Stage2Plan                     transformBootstrapStagePlan       `json:"stage2Plan"`
-	Stage1ArtifactDigest           string                            `json:"stage1ArtifactDigest"`
-	Stage2ArtifactDigest           string                            `json:"stage2ArtifactDigest"`
-	ConvergenceEvidence            plugin.BootstrapConvergenceEvidence `json:"convergenceEvidence"`
-	ConvergenceResult              plugin.BootstrapConvergenceResult   `json:"convergenceResult"`
-	PackageBuilderSourceFingerprint string                           `json:"packageBuilderSourceFingerprint"`
-	PackageBuilderArtifactDigest   string                            `json:"packageBuilderArtifactDigest"`
-	PackageBuildPlan               plugin.BuildPlan                  `json:"packageBuildPlan"`
-	PackageBuildPlanFingerprint    string                            `json:"packageBuildPlanFingerprint"`
-	PackageFirstArtifactDigest     string                            `json:"packageFirstArtifactDigest"`
-	PackageSecondArtifactDigest    string                            `json:"packageSecondArtifactDigest"`
-	PackageReproducible            bool                              `json:"packageReproducible"`
-	PackageOracleDigest            string                            `json:"packageOracleDigest"`
-	PackageLockedBuild             plugin.LockedBuild                `json:"packageLockedBuild"`
-	PackageLockFingerprint         string                            `json:"packageLockFingerprint"`
+	RuntimeEngineSourceDigest       string                              `json:"runtimeEngineSourceDigest"`
+	RuntimeEngine                   pruntime.RuntimeEngineIdentity      `json:"runtimeEngine"`
+	RuntimeEngineFingerprint        string                              `json:"runtimeEngineFingerprint"`
+	SeedBuilderFirstDigest          string                              `json:"seedBuilderFirstDigest"`
+	SeedBuilderSecondDigest         string                              `json:"seedBuilderSecondDigest"`
+	SeedBuilderReproducible         bool                                `json:"seedBuilderReproducible"`
+	MetaSourceFingerprint           string                              `json:"metaSourceFingerprint"`
+	Stage1Plan                      transformBootstrapStagePlan         `json:"stage1Plan"`
+	Stage2Plan                      transformBootstrapStagePlan         `json:"stage2Plan"`
+	Stage1ArtifactDigest            string                              `json:"stage1ArtifactDigest"`
+	Stage2ArtifactDigest            string                              `json:"stage2ArtifactDigest"`
+	ConvergenceEvidence             plugin.BootstrapConvergenceEvidence `json:"convergenceEvidence"`
+	ConvergenceResult               plugin.BootstrapConvergenceResult   `json:"convergenceResult"`
+	PackageBuilderSourceFingerprint string                              `json:"packageBuilderSourceFingerprint"`
+	PackageBuilderArtifactDigest    string                              `json:"packageBuilderArtifactDigest"`
+	PackageBuildPlan                plugin.BuildPlan                    `json:"packageBuildPlan"`
+	PackageBuildPlanFingerprint     string                              `json:"packageBuildPlanFingerprint"`
+	PackageFirstArtifactDigest      string                              `json:"packageFirstArtifactDigest"`
+	PackageSecondArtifactDigest     string                              `json:"packageSecondArtifactDigest"`
+	PackageReproducible             bool                                `json:"packageReproducible"`
+	PackageOracleDigest             string                              `json:"packageOracleDigest"`
+	PackageLockedBuild              plugin.LockedBuild                  `json:"packageLockedBuild"`
+	PackageLockFingerprint          string                              `json:"packageLockFingerprint"`
 }
 
 func runTransformBootstrap(
@@ -272,16 +271,16 @@ func runTransformBootstrap(
 			Builder:               seedIdentity,
 			SourceClosureDigest:   metaSourceClosureDigest,
 			BuildInputFingerprint: buildInputFingerprint,
-			BuildPlanFingerprint: stage1PlanFingerprint,
-			Output: stage1Output,
+			BuildPlanFingerprint:  stage1PlanFingerprint,
+			Output:                stage1Output,
 		},
 		Stage2: plugin.BootstrapStageEvidence{
 			Stage:                 plugin.BootstrapStage2,
 			Builder:               stage1Output,
 			SourceClosureDigest:   metaSourceClosureDigest,
 			BuildInputFingerprint: buildInputFingerprint,
-			BuildPlanFingerprint: stage2PlanFingerprint,
-			Output: builderIdentityFromTransformSource(metaSource, stage2Digest),
+			BuildPlanFingerprint:  stage2PlanFingerprint,
+			Output:                builderIdentityFromTransformSource(metaSource, stage2Digest),
 		},
 	}
 	convergenceResult, err := plugin.EvaluateBootstrapConvergence(convergenceEvidence)

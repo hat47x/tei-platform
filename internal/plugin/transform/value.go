@@ -38,12 +38,14 @@ type Value struct {
 	Bytes  []byte
 }
 
-func Null() Value                 { return Value{Kind: ValueNull} }
-func Bool(v bool) Value           { return Value{Kind: ValueBool, Bool: v} }
-func Number(v string) Value       { return Value{Kind: ValueNumber, Number: v} }
-func String(v string) Value       { return Value{Kind: ValueString, String: v} }
-func Bytes(v []byte) Value        { return Value{Kind: ValueBytes, Bytes: append([]byte(nil), v...)} }
-func Array(values ...Value) Value { return Value{Kind: ValueArray, Array: append([]Value(nil), values...)} }
+func Null() Value           { return Value{Kind: ValueNull} }
+func Bool(v bool) Value     { return Value{Kind: ValueBool, Bool: v} }
+func Number(v string) Value { return Value{Kind: ValueNumber, Number: v} }
+func String(v string) Value { return Value{Kind: ValueString, String: v} }
+func Bytes(v []byte) Value  { return Value{Kind: ValueBytes, Bytes: append([]byte(nil), v...)} }
+func Array(values ...Value) Value {
+	return Value{Kind: ValueArray, Array: append([]Value(nil), values...)}
+}
 
 func Object(fields ...Field) (Value, error) {
 	seen := map[string]struct{}{}
@@ -274,8 +276,6 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 	}
 	return nil
 }
-
-
 
 func validJSONNumber(raw string) bool {
 	if strings.TrimSpace(raw) != raw || raw == "" {

@@ -77,13 +77,13 @@ func runGenericRuntimeProcessHelper(mode string) int {
 		return 6
 	}
 	resp := pruntime.Response{
-		ProtocolVersion: req.ProtocolVersion,
-		RequestID: req.RequestID,
-		Plugin: req.Plugin,
-		CapabilityID: req.CapabilityID,
+		ProtocolVersion:       req.ProtocolVersion,
+		RequestID:             req.RequestID,
+		Plugin:                req.Plugin,
+		CapabilityID:          req.CapabilityID,
 		DescriptorFingerprint: req.DescriptorFingerprint,
-		Status: pruntime.ResponseOK,
-		Payload: payload,
+		Status:                pruntime.ResponseOK,
+		Payload:               payload,
 	}
 	if mode == "forge" {
 		resp.CapabilityID = core.MustCanonicalID("runtime_dispatch.forged")
@@ -96,13 +96,13 @@ func runGenericRuntimeProcessHelper(mode string) int {
 
 func writeGenericProcessHelperError(req pruntime.Request, message string) {
 	_ = json.NewEncoder(os.Stdout).Encode(pruntime.Response{
-		ProtocolVersion: req.ProtocolVersion,
-		RequestID: req.RequestID,
-		Plugin: req.Plugin,
-		CapabilityID: req.CapabilityID,
+		ProtocolVersion:       req.ProtocolVersion,
+		RequestID:             req.RequestID,
+		Plugin:                req.Plugin,
+		CapabilityID:          req.CapabilityID,
 		DescriptorFingerprint: req.DescriptorFingerprint,
-		Status: pruntime.ResponseError,
-		Error: message,
+		Status:                pruntime.ResponseError,
+		Error:                 message,
 	})
 }
 
@@ -127,17 +127,17 @@ func referenceRuntimeCandidate(
 	profile ExecutionProfile,
 ) AcceptedRuntimeCandidate {
 	return AcceptedRuntimeCandidate{
-		ContractID: "application.runtime.document-render",
-		ContractVersion: "1.0.0",
+		ContractID:          "application.runtime.document-render",
+		ContractVersion:     "1.0.0",
 		ContractFingerprint: fingerprint("document-render-contract-v1"),
 		Plugin: plugin.Identity{
-			ID: core.MustCanonicalID("tei.reference.document_render"),
+			ID:      core.MustCanonicalID("tei.reference.document_render"),
 			Version: "1.0.0",
 		},
-		ImplementationID: "document-render.process",
-		ArtifactDigest: "sha256:" + strings.Repeat("a", 64),
-		RealizationTarget: profile.RealizationTarget,
-		ExecutionProfileFingerprint: profile.Fingerprint,
+		ImplementationID:                    "document-render.process",
+		ArtifactDigest:                      "sha256:" + strings.Repeat("a", 64),
+		RealizationTarget:                   profile.RealizationTarget,
+		ExecutionProfileFingerprint:         profile.Fingerprint,
 		CapabilityResolutionLockFingerprint: fingerprint("accepted-resolution-lock"),
 	}
 }
@@ -171,16 +171,16 @@ func referenceRuntimeRef(
 
 func referencePermission() permission.Spec {
 	return permission.Spec{
-		Kind: permission.KindFilesystem,
+		Kind:   permission.KindFilesystem,
 		Access: permission.AccessRead,
-		Scope: "workspace-source",
+		Scope:  "workspace-source",
 	}
 }
 
 func referenceResourceBinding() resource.Binding {
 	return resource.Binding{
-		Kind: permission.KindFilesystem,
-		Scope: "workspace-source",
+		Kind:       permission.KindFilesystem,
+		Scope:      "workspace-source",
 		ResourceID: core.MustCanonicalID("resource.workspace_source"),
 	}
 }
@@ -193,7 +193,7 @@ func referenceAuthority(
 		Environment: core.MustCanonicalID("reference_runtime"),
 		ExecutionGrants: []RuntimeExecutionGrant{{
 			RuntimeCapabilityFingerprint: ref.Fingerprint,
-			ExecutionProfileFingerprint: ref.ExecutionProfileFingerprint,
+			ExecutionProfileFingerprint:  ref.ExecutionProfileFingerprint,
 			AuthorityEvidenceFingerprint: fingerprint("reference-environment-execution-authority"),
 		}},
 	}
@@ -202,21 +202,21 @@ func referenceAuthority(
 			authority.PermissionGrants,
 			RuntimePermissionGrant{
 				RuntimeCapabilityFingerprint: ref.Fingerprint,
-				Permission: p,
+				Permission:                   p,
 			},
 		)
 	}
 	if len(permissions) > 0 {
 		authority.ResourceBindings = []RuntimeResourceBinding{{
 			RuntimeCapabilityFingerprint: ref.Fingerprint,
-			Binding: referenceResourceBinding(),
+			Binding:                      referenceResourceBinding(),
 		}}
 		authority.LeasePolicies = []RuntimeLeasePolicy{{
 			RuntimeCapabilityFingerprint: ref.Fingerprint,
 			Policy: resource.LeasePolicy{
-				MaxLifetime: "20m",
-				RenewBefore: "3m",
-				RevokeTimeout: "2s",
+				MaxLifetime:    "20m",
+				RenewBefore:    "3m",
+				RevokeTimeout:  "2s",
 				RenewalFailure: resource.RenewalFailClosed,
 			},
 		}}
@@ -242,13 +242,13 @@ func TestRuntimeCapabilityRefDoesNotRequireCoreCapabilityKind(t *testing.T) {
 
 func TestArbitraryStringOnlyRuntimeCapabilityRefFailsClosed(t *testing.T) {
 	ref := RuntimeCapabilityRef{
-		Schema: runtimeCapabilityRefSchema,
-		ContractID: "arbitrary.rpc",
-		ContractVersion: "1.0.0",
-		PluginID: core.MustCanonicalID("tei.reference.arbitrary"),
-		PluginVersion: "1.0.0",
-		ImplementationID: "arbitrary",
-		ArtifactDigest: "sha256:" + strings.Repeat("a", 64),
+		Schema:            runtimeCapabilityRefSchema,
+		ContractID:        "arbitrary.rpc",
+		ContractVersion:   "1.0.0",
+		PluginID:          core.MustCanonicalID("tei.reference.arbitrary"),
+		PluginVersion:     "1.0.0",
+		ImplementationID:  "arbitrary",
+		ArtifactDigest:    "sha256:" + strings.Repeat("a", 64),
 		RealizationTarget: "server",
 	}
 	ref.Fingerprint = runtimeCapabilityRefFingerprint(ref)
@@ -375,8 +375,8 @@ func TestRuntimeCapabilityRefIdentityChangesWithAcceptedRuntimeInputs(t *testing
 	for name, got := range map[string]RuntimeCapabilityRef{
 		"artifact": artifact,
 		"contract": contract,
-		"target": target,
-		"profile": profileRef,
+		"target":   target,
+		"profile":  profileRef,
 	} {
 		if got.Fingerprint == base.Fingerprint {
 			t.Fatalf("%s drift did not change Runtime Capability identity", name)
@@ -408,14 +408,14 @@ func TestEnvironmentAuthorityMustExactlyMatchExecutionProfile(t *testing.T) {
 	}
 
 	extraPermission := permission.Spec{
-		Kind: permission.KindNetwork,
+		Kind:   permission.KindNetwork,
 		Access: permission.AccessConnect,
-		Scope: "unexpected-network",
+		Scope:  "unexpected-network",
 	}
 	extra := referenceAuthority(ref, []permission.Spec{perm})
 	extra.PermissionGrants = append(extra.PermissionGrants, RuntimePermissionGrant{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Permission: extraPermission,
+		Permission:                   extraPermission,
 	})
 	if _, err := buildRuntimeEnvironmentPlan(ref, profile, extra); err == nil ||
 		!strings.Contains(err.Error(), "Permission Grant") {
@@ -438,8 +438,8 @@ func TestEnvironmentAuthorityRejectsLegacyAndGenericDoubleAuthority(t *testing.T
 	authority := referenceAuthority(ref, nil)
 	authority.LegacyClaims = []LegacyAuthorityClaim{{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		CapabilityKind: string(plugin.CapabilityDeploymentExecutor),
-		CapabilityID: core.MustCanonicalID("legacy.document_render"),
+		CapabilityKind:               string(plugin.CapabilityDeploymentExecutor),
+		CapabilityID:                 core.MustCanonicalID("legacy.document_render"),
 	}}
 	if _, err := buildRuntimeEnvironmentPlan(ref, profile, authority); err == nil ||
 		!strings.Contains(err.Error(), "both generic and legacy Authority") {
@@ -459,15 +459,15 @@ func TestUnrelatedEnvironmentAuthorityDoesNotStaleAcceptedRuntimeRef(t *testing.
 	unrelated := fingerprint("unrelated-runtime-capability")
 	authority.PermissionGrants = append(authority.PermissionGrants, RuntimePermissionGrant{
 		RuntimeCapabilityFingerprint: unrelated,
-		Permission: referencePermission(),
+		Permission:                   referencePermission(),
 	})
 	authority.ResourceBindings = append(authority.ResourceBindings, RuntimeResourceBinding{
 		RuntimeCapabilityFingerprint: unrelated,
-		Binding: referenceResourceBinding(),
+		Binding:                      referenceResourceBinding(),
 	})
 	authority.LeasePolicies = append(authority.LeasePolicies, RuntimeLeasePolicy{
 		RuntimeCapabilityFingerprint: unrelated,
-		Policy: resource.DefaultLeasePolicy(),
+		Policy:                       resource.DefaultLeasePolicy(),
 	})
 	after, err := buildRuntimeEnvironmentPlan(ref, profile, authority)
 	if err != nil {
@@ -523,7 +523,7 @@ func TestRuntimeCapabilityRefDoesNotContainConcreteResourceAuthority(t *testing.
 }
 
 type recordingArtifactVerifier struct {
-	Calls int
+	Calls          int
 	DigestVerified bool
 }
 
@@ -537,8 +537,8 @@ func (v *recordingArtifactVerifier) Verify(
 	}
 	v.Calls++
 	return pruntime.ArtifactVerification{
-		VerifierID: "reference-artifact-verifier",
-		DigestVerified: v.DigestVerified,
+		VerifierID:        "reference-artifact-verifier",
+		DigestVerified:    v.DigestVerified,
 		SignatureVerified: artifact.SignatureRef == "",
 		ProvenanceChecked: artifact.Provenance == "",
 	}, nil
@@ -547,7 +547,7 @@ func (v *recordingArtifactVerifier) Verify(
 type recordingBroker struct {
 	AcquireCalls int
 	ReleaseCalls int
-	LastAcquire resource.AcquireRequest
+	LastAcquire  resource.AcquireRequest
 }
 
 func (b *recordingBroker) Acquire(
@@ -566,18 +566,18 @@ func (b *recordingBroker) Acquire(
 	perm := req.Permissions[0]
 	binding := req.Bindings[0]
 	return resource.Lease{
-		ID: "generic-runtime-lease",
-		Revision: 1,
-		IssuedAt: now.Format(time.RFC3339Nano),
-		ExpiresAt: now.Add(10 * time.Minute).Format(time.RFC3339Nano),
+		ID:                       "generic-runtime-lease",
+		Revision:                 1,
+		IssuedAt:                 now.Format(time.RFC3339Nano),
+		ExpiresAt:                now.Add(10 * time.Minute).Format(time.RFC3339Nano),
 		RuntimePolicyFingerprint: req.RuntimePolicyFingerprint,
 		Resources: []resource.Resolved{{
-			Kind: perm.Kind,
-			Access: perm.Access,
-			Scope: perm.Scope,
-			ResourceID: binding.ResourceID,
+			Kind:              perm.Kind,
+			Access:            perm.Access,
+			Scope:             perm.Scope,
+			ResourceID:        binding.ResourceID,
 			MountSourceHandle: "workspace-source-handle",
-			MountPath: "/workspace/source",
+			MountPath:         "/workspace/source",
 		}},
 	}, nil
 }
@@ -597,7 +597,7 @@ func (b *recordingBroker) Release(
 }
 
 type recordingNetworkEnforcer struct {
-	Calls int
+	Calls  int
 	Policy pruntime.NetworkPolicy
 }
 
@@ -614,7 +614,7 @@ func (e *recordingNetworkEnforcer) ApplyNetworkPolicy(
 }
 
 type recordingFilesystemEnforcer struct {
-	Calls int
+	Calls  int
 	Policy pruntime.FilesystemPolicy
 }
 
@@ -631,7 +631,7 @@ func (e *recordingFilesystemEnforcer) ApplyFilesystemPolicy(
 }
 
 type recordingSandboxRunner struct {
-	Calls int
+	Calls   int
 	Request pruntime.Request
 }
 
@@ -649,13 +649,13 @@ func (r *recordingSandboxRunner) InvokeSandboxed(
 	r.Calls++
 	r.Request = req
 	return pruntime.Response{
-		ProtocolVersion: req.ProtocolVersion,
-		RequestID: req.RequestID,
-		Plugin: req.Plugin,
-		CapabilityID: req.CapabilityID,
+		ProtocolVersion:       req.ProtocolVersion,
+		RequestID:             req.RequestID,
+		Plugin:                req.Plugin,
+		CapabilityID:          req.CapabilityID,
 		DescriptorFingerprint: req.DescriptorFingerprint,
-		Status: pruntime.ResponseOK,
-		Payload: req.Payload,
+		Status:                pruntime.ResponseOK,
+		Payload:               req.Payload,
 	}, nil
 }
 
@@ -675,15 +675,15 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 	filesystem := &recordingFilesystemEnforcer{}
 	runner := &recordingSandboxRunner{}
 	host := pruntime.HostSandboxLauncher{
-		Network: network,
+		Network:    network,
 		Filesystem: filesystem,
-		Runner: runner,
+		Runner:     runner,
 	}
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
-		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
-		Command: pruntime.ProcessCommand{Executable: "document-render-worker"},
+		Plugin:                       plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: ref.ArtifactDigest},
+		Command:                      pruntime.ProcessCommand{Executable: "document-render-worker"},
 	}
 	inv, err := invokeWithExistingHostBoundary(
 		context.Background(),
@@ -763,14 +763,14 @@ func TestPermissionedGenericRuntimeRefRequiresExistingResourceBroker(t *testing.
 	}
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
-		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
-		Command: pruntime.ProcessCommand{Executable: "document-render-worker"},
+		Plugin:                       plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: ref.ArtifactDigest},
+		Command:                      pruntime.ProcessCommand{Executable: "document-render-worker"},
 	}
 	host := pruntime.HostSandboxLauncher{
-		Network: &recordingNetworkEnforcer{},
+		Network:    &recordingNetworkEnforcer{},
 		Filesystem: &recordingFilesystemEnforcer{},
-		Runner: &recordingSandboxRunner{},
+		Runner:     &recordingSandboxRunner{},
 	}
 	if _, err := invokeWithExistingHostBoundary(
 		context.Background(), plan, realization,
@@ -794,14 +794,14 @@ func TestGenericRuntimeInvocationRequiresArtifactVerifierBeforeResourceAuthority
 	broker := &recordingBroker{}
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
-		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
-		Command: pruntime.ProcessCommand{Executable: "document-render-worker"},
+		Plugin:                       plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: ref.ArtifactDigest},
+		Command:                      pruntime.ProcessCommand{Executable: "document-render-worker"},
 	}
 	host := pruntime.HostSandboxLauncher{
-		Network: &recordingNetworkEnforcer{},
+		Network:    &recordingNetworkEnforcer{},
 		Filesystem: &recordingFilesystemEnforcer{},
-		Runner: &recordingSandboxRunner{},
+		Runner:     &recordingSandboxRunner{},
 	}
 	if _, err := invokeWithExistingHostBoundary(
 		context.Background(),
@@ -852,14 +852,14 @@ func TestProcessRealizationDriftFailsBeforeResourceAuthority(t *testing.T) {
 	broker := &recordingBroker{}
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
-		Artifact: plugin.Artifact{Digest: "sha256:" + strings.Repeat("b", 64)},
-		Command: pruntime.ProcessCommand{Executable: "document-render-worker"},
+		Plugin:                       plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: "sha256:" + strings.Repeat("b", 64)},
+		Command:                      pruntime.ProcessCommand{Executable: "document-render-worker"},
 	}
 	host := pruntime.HostSandboxLauncher{
-		Network: &recordingNetworkEnforcer{},
+		Network:    &recordingNetworkEnforcer{},
 		Filesystem: &recordingFilesystemEnforcer{},
-		Runner: &recordingSandboxRunner{},
+		Runner:     &recordingSandboxRunner{},
 	}
 	if _, err := invokeWithExistingHostBoundary(
 		context.Background(), plan, realization,
@@ -887,14 +887,14 @@ func TestHostTrustedProfileCannotUseSandboxOnlyInvocationPath(t *testing.T) {
 	}
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
-		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
-		Command: pruntime.ProcessCommand{Executable: "worker"},
+		Plugin:                       plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: ref.ArtifactDigest},
+		Command:                      pruntime.ProcessCommand{Executable: "worker"},
 	}
 	host := pruntime.HostSandboxLauncher{
-		Network: &recordingNetworkEnforcer{},
+		Network:    &recordingNetworkEnforcer{},
 		Filesystem: &recordingFilesystemEnforcer{},
-		Runner: &recordingSandboxRunner{},
+		Runner:     &recordingSandboxRunner{},
 	}
 	if _, err := invokeWithExistingHostBoundary(
 		context.Background(), plan, realization,
@@ -957,22 +957,22 @@ func TestDerivedDispatchIdentityRoutesMultipleGenericCapabilitiesInRealProcess(t
 
 	launcher, command := genericProcessLauncherForTest(t, "dispatch")
 	host := pruntime.HostSandboxLauncher{
-		Network: &recordingNetworkEnforcer{},
+		Network:    &recordingNetworkEnforcer{},
 		Filesystem: &recordingFilesystemEnforcer{},
-		Runner: launcher,
+		Runner:     launcher,
 	}
 	verifier := &recordingArtifactVerifier{DigestVerified: true}
 	renderRealization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: renderRef.Fingerprint,
-		Plugin: plugin.Identity{ID: renderRef.PluginID, Version: renderRef.PluginVersion},
-		Artifact: plugin.Artifact{Digest: renderRef.ArtifactDigest},
-		Command: command,
+		Plugin:                       plugin.Identity{ID: renderRef.PluginID, Version: renderRef.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: renderRef.ArtifactDigest},
+		Command:                      command,
 	}
 	summaryRealization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: summaryRef.Fingerprint,
-		Plugin: plugin.Identity{ID: summaryRef.PluginID, Version: summaryRef.PluginVersion},
-		Artifact: plugin.Artifact{Digest: summaryRef.ArtifactDigest},
-		Command: command,
+		Plugin:                       plugin.Identity{ID: summaryRef.PluginID, Version: summaryRef.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: summaryRef.ArtifactDigest},
+		Command:                      command,
 	}
 
 	renderInvocation, err := invokeWithExistingHostBoundary(
@@ -1037,15 +1037,15 @@ func TestGenericProcessResponseCannotForgeDerivedDispatchIdentity(t *testing.T) 
 	}
 	launcher, command := genericProcessLauncherForTest(t, "forge")
 	host := pruntime.HostSandboxLauncher{
-		Network: &recordingNetworkEnforcer{},
+		Network:    &recordingNetworkEnforcer{},
 		Filesystem: &recordingFilesystemEnforcer{},
-		Runner: launcher,
+		Runner:     launcher,
 	}
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
-		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
-		Command: command,
+		Plugin:                       plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact:                     plugin.Artifact{Digest: ref.ArtifactDigest},
+		Command:                      command,
 	}
 	if _, err := invokeWithExistingHostBoundary(
 		context.Background(),
@@ -1074,9 +1074,9 @@ func TestRuntimeEnvironmentPlanValidationRejectsRewrittenPermissionAuthority(t *
 	}
 	tampered := plan
 	tampered.Permissions = append(tampered.Permissions, permission.Spec{
-		Kind: permission.KindNetwork,
+		Kind:   permission.KindNetwork,
 		Access: permission.AccessConnect,
-		Scope: "ambient-network",
+		Scope:  "ambient-network",
 	})
 	tampered.RuntimePolicyFingerprint = runtimeEnvironmentPlanFingerprint(tampered)
 	if err := validateRuntimeEnvironmentPlan(tampered); err == nil {
