@@ -107,6 +107,106 @@ func TestApplicableQualificationAttachesExactEvidenceWithoutChangingCandidateMea
 	}
 }
 
+func TestBuilderReviewHandoffQualificationReusesExistingSharedAcceptanceEvidencePath(t *testing.T) {
+	dir := scratchWorkspace(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := knowledgecontext.Build(
+		snapshot.loaded.World,
+		snapshot.index,
+		subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+	)
+	requirements := knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	}
+
+	direct, err := knowledgecontext.QualifyWithSources(ctx, snapshot.index, requirements)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoff, err := knowledgecontext.BuildBuilderReviewHandoff(ctx, snapshot.index, requirements)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "qualified-for-disclosure" {
+		t.Fatalf("builder review handoff status=%q", handoff.Status)
+	}
+	if !bytes.Equal(mustJSON(t, direct), mustJSON(t, handoff.Qualification)) {
+		t.Fatalf(
+			"builder review handoff changed existing QualificationResult:\ndirect=%+v\nhandoff=%+v",
+			direct,
+			handoff.Qualification,
+		)
+	}
+
+	candidateData := mustJSON(t, unitPriceCandidate(snapshot.revision))
+	directGrounded, err := attachQualificationEvidence(candidateData, direct)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffGrounded, err := attachQualificationEvidence(candidateData, handoff.Qualification)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directNormalized, directMeaning, err := normalizeCandidate(directGrounded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffNormalized, handoffMeaning, err := normalizeCandidate(handoffGrounded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if directMeaning != handoffMeaning {
+		t.Fatalf(
+			"builder review path changed candidate meaning: direct=%s handoff=%s",
+			directMeaning,
+			handoffMeaning,
+		)
+	}
+	if !bytes.Equal(mustJSON(t, directNormalized), mustJSON(t, handoffNormalized)) {
+		t.Fatalf(
+			"builder review path produced a different grounded candidate:\ndirect=%+v\nhandoff=%+v",
+			directNormalized.Evidence,
+			handoffNormalized.Evidence,
+		)
+	}
+
+	directEvaluation, err := evaluate(dir, mustJSON(t, directNormalized))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffEvaluation, err := evaluate(dir, mustJSON(t, handoffNormalized))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !directEvaluation.preview.Acceptable || !handoffEvaluation.preview.Acceptable {
+		t.Fatalf(
+			"equivalent qualification paths diverged at Shared Acceptance preview: direct=%v handoff=%v",
+			directEvaluation.preview.Stages,
+			handoffEvaluation.preview.Stages,
+		)
+	}
+	if directEvaluation.preview.CandidateFingerprint != handoffEvaluation.preview.CandidateFingerprint ||
+		directEvaluation.preview.EvidenceFingerprint != handoffEvaluation.preview.EvidenceFingerprint {
+		t.Fatalf(
+			"builder review bridge changed Shared Acceptance identity: direct=(%s,%s) handoff=(%s,%s)",
+			directEvaluation.preview.CandidateFingerprint,
+			directEvaluation.preview.EvidenceFingerprint,
+			handoffEvaluation.preview.CandidateFingerprint,
+			handoffEvaluation.preview.EvidenceFingerprint,
+		)
+	}
+}
+
 func TestAttachQualificationIsIdempotentAfterEvidenceNormalization(t *testing.T) {
 	dir := scratchWorkspace(t)
 	snapshot, err := takeSnapshot(dir)
