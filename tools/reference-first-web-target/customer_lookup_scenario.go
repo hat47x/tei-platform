@@ -23,15 +23,15 @@ type customerLookupInput struct {
 }
 
 type customerLookupResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
+	ScenarioID          string                     `json:"scenarioId"`
+	Environment         string                     `json:"environment"`
+	ApplicationID       string                     `json:"applicationId"`
 	RequestedCustomerID string                     `json:"requestedCustomerId"`
-	Intake          semanticRowProjection      `json:"intake"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
+	Intake              semanticRowProjection      `json:"intake"`
+	CustomerRows        []semanticRowProjection    `json:"customerRows"`
+	RuntimeBindings     []runtimeBindingProjection `json:"runtimeBindings"`
+	AuthorityLimits     []string                   `json:"authorityLimits"`
+	Unresolved          []string                   `json:"unresolved"`
 }
 
 type customerLookupRunner interface {
@@ -114,12 +114,12 @@ func (r *referenceCustomerLookupScenarioRunner) RunCustomerLookup(
 	}
 
 	return customerLookupResult{
-		ScenarioID:    "repair-intake.customer-lookup-web-slice",
-		Environment:   string(r.environmentID),
-		ApplicationID: string(r.applicationID),
+		ScenarioID:          "repair-intake.customer-lookup-web-slice",
+		Environment:         string(r.environmentID),
+		ApplicationID:       string(r.applicationID),
 		RequestedCustomerID: strconv.FormatInt(customerID, 10),
-		Intake:        intakeRows[0],
-		CustomerRows:  rows,
+		Intake:              intakeRows[0],
+		CustomerRows:        rows,
 		RuntimeBindings: []runtimeBindingProjection{
 			projectEnvironmentBinding(string(r.patternID), customer.Environment.ID, customer.Executor),
 		},
