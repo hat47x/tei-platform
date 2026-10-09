@@ -170,7 +170,6 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			keys  []string
 		}
 		items := make([]keyed, len(source.Array))
-		seen := map[string]struct{}{}
 		for i, item := range source.Array {
 			local := cloneEnv(env)
 			local[expr.Item] = item.Clone()
@@ -185,11 +184,6 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 				}
 				keys[k] = key.String
 			}
-			signature := strings.Join(keys, "\x00")
-			if _, exists := seen[signature]; exists {
-				return Value{}, fmt.Errorf("sort-array contains duplicate key tuple")
-			}
-			seen[signature] = struct{}{}
 			items[i] = keyed{value: item.Clone(), keys: keys}
 		}
 		sort.Slice(items, func(i, j int) bool {
