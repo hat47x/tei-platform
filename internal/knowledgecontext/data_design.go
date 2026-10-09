@@ -804,14 +804,15 @@ func buildDataDesignContext(
 	if len(ctx.BusinessIdentityCandidates) != 0 ||
 		len(ctx.FunctionalDependencyCandidates) != 0 {
 		insertAt := len(ctx.DesignReviewProtocol) - 1
-		candidateSteps := []string{
+		protocol := make([]string, 0, len(ctx.DesignReviewProtocol)+2)
+		protocol = append(protocol, ctx.DesignReviewProtocol[:insertAt]...)
+		protocol = append(
+			protocol,
 			"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
 			"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
-		}
-		ctx.DesignReviewProtocol = append(
-			ctx.DesignReviewProtocol[:insertAt],
-			append(candidateSteps, ctx.DesignReviewProtocol[insertAt:]...)...,
 		)
+		protocol = append(protocol, ctx.DesignReviewProtocol[insertAt:]...)
+		ctx.DesignReviewProtocol = protocol
 	}
 	ctx.Fingerprint = dataDesignFingerprint(ctx)
 	return ctx
