@@ -202,6 +202,17 @@ func TestLegacyEnvironmentAuthorityProjectsIntoGenericAuthorityCandidate(t *test
 	); err != nil {
 		t.Fatal(err)
 	}
+	if err := verifyLegacyRuntimeMigration(
+		runtimeProjection,
+		environmentProjection,
+		ref,
+		definition,
+		candidate,
+		profile,
+		env,
+	); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLegacyEnvironmentProjectionIgnoresUnrelatedAuthorityGrowth(t *testing.T) {
