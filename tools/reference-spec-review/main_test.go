@@ -247,8 +247,7 @@ func runReviewCommand(t *testing.T, dir, name string, args ...string) []byte {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("%s %v failed: %v
-stderr=%s", name, args, err, stderr.String())
+		t.Fatalf("%s %v failed: %v\\nstderr=%s", name, args, err, stderr.String())
 	}
 	return stdout.Bytes()
 }
