@@ -156,7 +156,9 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 			contract.Version,
 		)
 	}
-	if contract.ShapeIssuer.ID == "" || contract.ShapeIssuer.Version == "" {
+	if contract.ShapeIssuer == nil ||
+		contract.ShapeIssuer.ID == "" ||
+		contract.ShapeIssuer.Version == "" {
 		return InvocationExecution{}, fmt.Errorf(
 			"capability contract %s@%s has no invocation shape issuer",
 			contract.ID,
@@ -190,8 +192,8 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 			contract.Version,
 		)
 	}
-	if implementation.RequestShapeArtifact.Issuer != contract.ShapeIssuer ||
-		implementation.ResultShapeArtifact.Issuer != contract.ShapeIssuer {
+	if implementation.RequestShapeArtifact.Issuer != *contract.ShapeIssuer ||
+		implementation.ResultShapeArtifact.Issuer != *contract.ShapeIssuer {
 		return InvocationExecution{}, fmt.Errorf(
 			"capability invocation shape issuer does not match contract %s@%s",
 			contract.ID,
