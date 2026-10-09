@@ -733,7 +733,11 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		}()
 	}
 
-	req := Request{ProtocolVersion: ProtocolVersion, RequestID: requestID, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Permissions: prov.Permissions, ResourceLease: lease, LeaseController: leaseControl, Operation: operation, Payload: b}
+	var leaseControllerView ResourceLeaseController
+	if leaseControl != nil {
+		leaseControllerView = leaseControl
+	}
+	req := Request{ProtocolVersion: ProtocolVersion, RequestID: requestID, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Permissions: prov.Permissions, ResourceLease: lease, LeaseController: leaseControllerView, Operation: operation, Payload: b}
 	var resp Response
 	switch cr.Boundary {
 	case BoundaryInProcess:
@@ -749,7 +753,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		processCommand := ProcessCommand{Executable: pr.Command, Args: append([]string(nil), pr.Args...)}
 		if r.Sandboxes != nil && (policy == plugin.SandboxRequired || policy == plugin.SandboxPreferred) {
 			prov.Sandboxed = true
-			resp, err = r.Sandboxes.Invoke(ctx, SandboxSpec{Command: processCommand, Plugin: cr.Plugin, Artifact: pr.Artifact, Permissions: req.Permissions, ResourceLease: lease, LeaseController: leaseControl, LeasePolicy: cr.LeasePolicy, Profile: sandboxProfile(lease)}, req)
+			resp, err = r.Sandboxes.Invoke(ctx, SandboxSpec{Command: processCommand, Plugin: cr.Plugin, Artifact: pr.Artifact, Permissions: req.Permissions, ResourceLease: lease, LeaseController: leaseControllerView, LeasePolicy: cr.LeasePolicy, Profile: sandboxProfile(lease)}, req)
 		} else {
 			if policy == plugin.SandboxRequired {
 				return Invocation{}, fmt.Errorf("process plugin %s@%s requires sandbox launcher", cr.Plugin.ID, cr.Plugin.Version)
