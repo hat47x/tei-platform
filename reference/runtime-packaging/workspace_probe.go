@@ -31,7 +31,6 @@ type WorkspaceDatabaseReport struct {
 	Application  string                        `json:"application"`
 	Environment  string                        `json:"environment"`
 	Providers    []DatabaseProviderObservation `json:"providers"`
-	PackageReady bool                          `json:"packageReady"`
 }
 
 // ObserveWorkspaceDatabaseProviders reuses the existing TEI source loader and
