@@ -54,6 +54,8 @@ type SourceIdentity struct {
 type Limits struct {
 	MaxSteps        int `json:"maxSteps"`
 	MaxCollection   int `json:"maxCollection"`
+	MaxInputNodes   int `json:"maxInputNodes"`
+	MaxInputBytes   int `json:"maxInputBytes"`
 	MaxOutputBytes  int `json:"maxOutputBytes"`
 	MaxNestingDepth int `json:"maxNestingDepth"`
 }
@@ -132,6 +134,12 @@ func (s Source) Validate() error {
 	}
 	if s.Limits.MaxCollection <= 0 || s.Limits.MaxCollection > 100_000 {
 		return fmt.Errorf("transform maxCollection must be between 1 and 100000")
+	}
+	if s.Limits.MaxInputNodes <= 0 || s.Limits.MaxInputNodes > 1_000_000 {
+		return fmt.Errorf("transform maxInputNodes must be between 1 and 1000000")
+	}
+	if s.Limits.MaxInputBytes <= 0 || s.Limits.MaxInputBytes > 64<<20 {
+		return fmt.Errorf("transform maxInputBytes must be between 1 and 67108864")
 	}
 	if s.Limits.MaxOutputBytes <= 0 || s.Limits.MaxOutputBytes > 64<<20 {
 		return fmt.Errorf("transform maxOutputBytes must be between 1 and 67108864")
