@@ -183,3 +183,9 @@ stage1 builder-artifact
 stage0はBuild nodeへ偽装せず、`BuildGraphSeed`として明示します。Reference runnerもこのstage0 / stage1 / stage2境界をEvidenceへ出力します。
 
 既存`Definition.Requires`のRuntime Plugin dependencyからBuild edgeを暗黙生成しません。既存Plugin resolverのversion resolution / Runtime semanticsとも統合していません。
+
+### stage0 boundaryとTrust
+
+`BuildGraphSeed.TrustBoundary`は「ここから先が外部seedに依存する」という境界を記録するためのfieldです。Referenceの値は`external-stage0-seed`とし、stage0 seedが信頼済みであること自体は主張しません。
+
+seed issuer、attestation、現在のTrust受理・失効は#1104の責務です。Build graphの存在やstage convergenceだけでstage0 trustを証明しません。
