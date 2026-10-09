@@ -361,3 +361,39 @@ func TestValidationScopeReviewAmbiguousSourceIsNotChosen(t *testing.T) {
 		}
 	}
 }
+
+func TestValidationScopeReviewSourceOrderingIsDeterministic(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordered := compareValidationScopes(loaded.World, fixture)
+	attachValidationScopeSources(ordered, sources)
+	if len(ordered) != 1 || ordered[0].Status != "review-needed" {
+		t.Fatalf("比較対象がありません: %+v", ordered)
+	}
+
+	reversedIndex := sources
+	reversedIndex.References = append([]sourceindex.Reference(nil), sources.References...)
+	reversedIndex.Artifacts = append([]sourceindex.Artifact(nil), sources.Artifacts...)
+	for i, j := 0, len(reversedIndex.References)-1; i < j; i, j = i+1, j-1 {
+		reversedIndex.References[i], reversedIndex.References[j] = reversedIndex.References[j], reversedIndex.References[i]
+	}
+	for i, j := 0, len(reversedIndex.Artifacts)-1; i < j; i, j = i+1, j-1 {
+		reversedIndex.Artifacts[i], reversedIndex.Artifacts[j] = reversedIndex.Artifacts[j], reversedIndex.Artifacts[i]
+	}
+	reversed := compareValidationScopes(loaded.World, fixture)
+	attachValidationScopeSources(reversed, reversedIndex)
+	if !reflect.DeepEqual(ordered, reversed) {
+		t.Fatalf("Source Indexの走査順で比較結果が変わりました: original=%+v reversed=%+v", ordered, reversed)
+	}
+}
