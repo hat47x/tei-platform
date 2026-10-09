@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -69,6 +70,24 @@ func TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection
 	if len(ev.preview.Unresolved) > 0 && len(review.Coverage.Incomplete) == 0 {
 		t.Fatal("unresolved impact was presented as complete review coverage")
 	}
+	// 受理前に宣言されているruleを基準にする。受理されたruleは、その後ろへ追加されることだけを確かめる。
+	// Reference workspaceへ別の受理（line_number_positive等）が入っても、この検査は変わらない。
+	base, err := workspace.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseRules, err := driver.NewResolver(base.World).ResolveApplicationValidations(
+		core.MustCanonicalID("order_entry"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRules := make([]string, 0, len(baseRules)+1)
+	for _, rule := range baseRules {
+		wantRules = append(wantRules, string(rule.ID))
+	}
+	wantRules = append(wantRules, "sales.order_line.unit_price_positive")
+
 	decision, err := accept(dir, payload, acceptOptions{
 		ExpectedReviewFingerprint: review.ReviewFingerprint,
 	})
@@ -88,11 +107,12 @@ func TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rules) != 3 ||
-		rules[0].ID != "sales.order_line.quantity_positive" ||
-		rules[1].ID != "sales.order.lines.line_number_unique" ||
-		rules[2].ID != "sales.order_line.unit_price_positive" {
-		t.Fatalf("Driverが解決したValidationの順序=%+v", rules)
+	gotRules := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		gotRules = append(gotRules, string(rule.ID))
+	}
+	if !slices.Equal(gotRules, wantRules) {
+		t.Fatalf("Driverが解決したValidationの順序=%v want=%v", gotRules, wantRules)
 	}
 }
 
@@ -121,7 +141,8 @@ func TestPracticalRuleChangeRejectsBrokenOrRepeatedDeltaWithoutChangingSource(t 
 			edit: func(c *Candidate) {
 				c.Delta[0].Namespace = "nonexistent"
 			},
-			code: "NAMESPACE_NOT_FOUND",
+			// 存在しない名前空間は、候補の正規化段階で拒否される（ソースは変わらない）。
+			code: "CANDIDATE_NORMALIZE",
 		},
 		{
 			name: "same rule declared twice",

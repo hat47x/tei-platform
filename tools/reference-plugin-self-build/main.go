@@ -57,7 +57,7 @@ type evidence struct {
 	GoToolchainDigest                  string                         `json:"goToolchainDigest"`
 	ProcessSourceClosure               []goSourceMember               `json:"processSourceClosure"`
 	ProcessSourceClosureDigest         string                         `json:"processSourceClosureDigest"`
-	TransformBootstrap                  transformBootstrapEvidence     `json:"transformBootstrap"`
+	TransformBootstrap                 transformBootstrapEvidence     `json:"transformBootstrap"`
 	PackageBuilderFirstDigest          string                         `json:"packageBuilderFirstDigest"`
 	PackageBuilderSecondDigest         string                         `json:"packageBuilderSecondDigest"`
 	PackageBuilderReproducible         bool                           `json:"packageBuilderReproducible"`
@@ -323,8 +323,8 @@ func run(repo string) (evidence, error) {
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(packageDefinition),
-		Sources: packagePlanSources(packageDescriptor, packageDescriptorDigest),
-		Builder: packageBuilderIdentity(packageBuilderFirstDigest),
+		Sources:                     packagePlanSources(packageDescriptor, packageDescriptorDigest),
+		Builder:                     packageBuilderIdentity(packageBuilderFirstDigest),
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
 			Entrypoint: packageDescriptor,
@@ -787,7 +787,7 @@ func run(repo string) (evidence, error) {
 		GoToolchainDigest:                  goToolchainDigest,
 		ProcessSourceClosure:               processSourceClosure,
 		ProcessSourceClosureDigest:         processSourceClosureDigest,
-		TransformBootstrap:                  transformBootstrap,
+		TransformBootstrap:                 transformBootstrap,
 		PackageBuilderFirstDigest:          packageBuilderFirstDigest,
 		PackageBuilderSecondDigest:         packageBuilderSecondDigest,
 		PackageBuilderReproducible:         true,

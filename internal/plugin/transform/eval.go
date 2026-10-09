@@ -378,8 +378,6 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 	}
 }
 
-
-
 func (e *evaluator) validateFinalOutput(value Value) error {
 	if value.Kind == ValueBytes {
 		if len(value.Bytes) > e.limits.MaxOutputBytes {
@@ -506,7 +504,6 @@ func compareSortKeys(e *evaluator, a, b []string) (int, error) {
 	}
 	return 0, nil
 }
-
 
 func validateValueShape(value Value) error {
 	hasArray := len(value.Array) != 0
@@ -640,8 +637,6 @@ func walkInputBudget(value Value, depth int, budget *inputBudget, limits Limits)
 	}
 	return nil
 }
-
-
 
 func bytesShared(raw []byte) Value {
 	return Value{Kind: ValueBytes, Bytes: raw}

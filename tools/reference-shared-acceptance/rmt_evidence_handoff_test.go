@@ -208,7 +208,6 @@ func rmtTranscriptionEvidenceItem(values []Evidence) (Evidence, bool) {
 	return Evidence{}, false
 }
 
-
 func TestDecisionIndexDoesNotCallRMTArtifactCurrent(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
