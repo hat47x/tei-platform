@@ -110,3 +110,21 @@ generic Invocationではrequest schemaを実装呼出し前に検査できます
 このReferenceでは、共通Invocation境界で実行するContractを`read-only`に限定します。Source AdapterとContract Queryはこの条件を満たします。mutating effectを宣言したContractは、requestが正しくても実装呼出し前に拒否します。
 
 これはmutating Capabilityを禁止する製品方針ではありません。transaction、prepare / commit、補償、再試行、結果検証失敗時の扱いを含む実行契約が未設計のため、Referenceが安全性を過大に主張しないための境界です。PermissionやSandboxだけでは、この問題の代わりになりません。
+
+
+## Shape Authority Evidence Gate
+
+shape artifactがissuer identityを含むだけでは、そのissuerを信頼してよい根拠にはなりません。artifactの自己申告をAuthorityへ昇格させないため、Invocation RegistryはAccepted Shape Authority Evidenceを別入力として要求します。
+
+Evidenceは次へexactに結び付きます。
+
+- issuer ID / version
+- shape ID
+- shape fingerprint
+- Evidence fingerprint
+
+request / resultの両shapeにAccepted Evidenceが無ければ、ImplementationをRegistryへ登録できません。shape fingerprintが古いEvidenceも利用できません。同じshape bindingへ複数のAccepted Evidenceが渡され、どちらを使うか決められない場合も停止します。
+
+Invocation結果には、request / resultで利用したShape Authority Evidence fingerprintを残します。Evidenceだけを更新した場合、Capability ContractやProviderのresolution identityは変えず、Authority Evidenceの更新だけを観測できます。
+
+このGateはpublisher trustを解決したものではありません。現段階では、呼出し元がAccepted Evidenceとして渡したものをexact bindingとして検査するところまでです。Evidenceを誰が発行できるか、署名をどう検証するか、どの組織policyをAcceptedとするかは未実証です。issuer文字列、artifact自身、Provider自己申告のいずれからもtrustを推測しません。
