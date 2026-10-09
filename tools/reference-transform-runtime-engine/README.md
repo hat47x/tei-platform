@@ -102,6 +102,59 @@ Go は最初の Reference implementation です。
 
 実装言語が違うこと自体は拒否理由になりません。一方、同じ contract 名を名乗るだけで同等性を仮定もしません。
 
+
+
+## build Evidence
+
+exact executable のbuild provenanceは、Plugin用の`BuildPlan`へ無理に載せません。Runtime EngineはPluginではないためです。
+
+Referenceでは次のtoolを使います。
+
+```text
+tools/reference-transform-runtime-engine-build
+```
+
+このtoolはclean Repositoryから次をEvidenceとして出力します。
+
+- Repository revision
+- Runtime Engine logical ID / contract
+- Target
+- exact Go package entrypoint
+- actual module-local build Source closure
+- Source closure各fileのdigest
+- Source closure aggregate digest
+- Go version
+- Go executable digest
+- Go toolchain closure digest
+- fixed build settings
+- build recipe
+- 独立した二回のbuild artifact digest
+- reproducibility result
+- exact engine artifact digest
+- Evidence fingerprint
+
+Source closureは`go list -deps -json`で、そのTarget・build設定に対して実際に選択されたmodule-local compiler inputから作ります。standard libraryはGo toolchain closureへ含めます。外部module dependency、Repository外のmodule、Gitで追跡されていないbuild inputはfail-closedです。
+
+buildは別々のGo cache / module cache / GOPATHを使います。少なくとも次を固定します。
+
+```text
+CGO_ENABLED=0
+GOENV=off
+GOEXPERIMENT=
+GOFLAGS=
+GOPROXY=off
+GOSUMDB=off
+GOTOOLCHAIN=local
+GOVCS=*:off
+GOWORK=off
+GOOS=<target OS>
+GOARCH=<target arch>
+```
+
+`-artifact-out`を指定すると、二回のbuildでdigest一致を確認したfirst artifactをRepository外へコピーします。既存fileは上書きしません。これにより、Evidenceでdigestを固定した同じexecutableをprocess smokeや後続のRuntime Engine bindingで利用できます。
+
+このEvidenceは、将来のdomain-neutral build contractを検討するためのReference pressureです。Plugin identityを捏造せず、現行Plugin `BuildPlan`の意味も変更しません。build成功だけでAcceptance / Runtime Authorityを付与することもありません。
+
 ## 現在の非目標
 
 この Reference だけでは次を達成したとは扱いません。
