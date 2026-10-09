@@ -149,6 +149,19 @@ E7のGo試験が独自の規則解決関数を持っていたのは、この原�
 
 `positive`や`relation-unique`の**評価器自体**を別実行Targetへ移植・差し替える必要が出た場合は、単なるJSONの表現変換では足りない。その場合は、評価の意味契約、値取得の権限、関係の適用範囲、エラーと不成立の区別、実行対象を独立の受入試験で確認する。
 
+## E9：規則投影と評価器拘束計画の契約を区別する
+
+現在の`main`にある`tools/reference-semantic-extension-catalog/validation_plan.go`は、`tei.reference.semantic-validation-plan/v0`を評価器の結び付けに使っている。そこではSemantic Setのフィンガープリント、実装と規則の対応、計画のフィンガープリントを保持し、更新時に古い対応を拒否する。
+
+これに対して、このReferenceの`semantic-validation-projection.transform.json`が出力するのは、Applicationが選んだ既存の業務規則を表示・検査用に並べた**派生記述**だけである。評価器の実装も、Semantic Setとの版整合も、実行を認める根拠も保持しない。
+
+同じ契約名を使うと、派生記述を正規の評価器拘束計画と誤認し得るため、試作用の出力契約とSourceの`contractVersion`を`tei.reference.application-validation-projection/v0`へ変更した。出力を必要とするConsumerがまだないことも変わらない。
+
+- `semantic-validation-plan/v0`：既存の評価器拘束計画。既存の正本・検証機構を使用する。
+- `application-validation-projection/v0`：Applicationの選択規則を並べるだけの参照出力。実行の権限や受理を意味しない。
+
+この区別は、単にフィールド名を変えることではなく、生成物を使う側の**責任と保証範囲**を混同しないためのもの。
+
 ## なぜCapabilityへ直接接続しないか
 
 PR #1058のGeneric Invocationは、Source AdapterやContract Queryのような**実行サービス**を扱います。Contract / Provider / artifact / Authority scopeを解決し、opaque requestを実装へ渡す境界です。
