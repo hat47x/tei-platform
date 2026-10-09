@@ -151,6 +151,8 @@ tei knowledge-review-disclose
 
 このhandoffが`qualified-for-disclosure`になっても、customer edit要求自体がacceptedになったわけではない。確定するのは、Review対象のcurrent Patternとrequired dependencyを、明示したtask scopeでSource Evidence付きに利用できることまでである。customer editの矛盾判定は既存Business Procedure checker、採否はShared Acceptanceの責務として残す。
 
+Proposalを作る場合は、Handoff JSONを既存Shared Acceptanceの`attach-qualification -qualification`へ直接渡せる。adapterはHandoffを検証し、内包Qualificationだけをcandidate Evidenceへ付ける。Disclosure本文をcandidateへ丸ごと複製せず、A/B/C等の設計候補はADR-0022に従うMinimum Semantic Deltaとして表す。したがって「何を読んだか」と「何を変更したいか」は別identityのままShared Acceptanceへ入る。
+
 ## 3. R1でAI Builderが実装前に知るべきこと
 
 structured contextは最低限、次を同時に示す。
