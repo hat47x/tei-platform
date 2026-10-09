@@ -60,7 +60,7 @@ func relationPathFixture() semantic.Namespace {
 		ID: "shop",
 		Data: []semantic.Data{
 			{
-				ID: "order",
+				ID:         "order",
 				Attributes: []semantic.Attribute{{ID: "order.customer_id", TypeRef: "std.key"}},
 				Relations: []semantic.Relation{{
 					ID: "order.customer", Target: "customer", Cardinality: semantic.CardinalityOne,
@@ -68,7 +68,7 @@ func relationPathFixture() semantic.Namespace {
 				}},
 			},
 			{
-				ID: "customer",
+				ID:         "customer",
 				Attributes: []semantic.Attribute{{ID: "customer.id", TypeRef: "std.key"}},
 				Relations: []semantic.Relation{{
 					ID: "customer.addresses", Target: "address", Cardinality: semantic.CardinalityMany,
@@ -76,7 +76,7 @@ func relationPathFixture() semantic.Namespace {
 				}},
 			},
 			{
-				ID: "address",
+				ID:         "address",
 				Attributes: []semantic.Attribute{{ID: "address.customer_id", TypeRef: "std.key"}},
 			},
 		},

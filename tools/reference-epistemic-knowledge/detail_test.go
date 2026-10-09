@@ -423,10 +423,10 @@ func TestCLIInjectsDetailAccessSeparatelyFromSemanticQuery(t *testing.T) {
 		[]string{"policy:detail-visible"},
 	)
 	for path, value := range map[string]any{
-		corpusPath: corpus,
+		corpusPath:  corpus,
 		contextPath: context,
-		queryPath: query,
-		accessPath: TransportAccess{GrantedAccessRefs: []string{"policy:detail-visible"}},
+		queryPath:   query,
+		accessPath:  TransportAccess{GrantedAccessRefs: []string{"policy:detail-visible"}},
 	} {
 		encoded, err := json.MarshalIndent(value, "", "  ")
 		if err != nil {

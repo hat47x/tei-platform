@@ -14,13 +14,13 @@ const (
 )
 
 type DetailQuery struct {
-	Contract                         string   `json:"contract"`
-	Schema                           string   `json:"schema"`
-	AssertionID                      string   `json:"assertionId"`
-	ExpectedMeaningFingerprint       string   `json:"expectedMeaningFingerprint"`
-	ExpectedReviewSubjectFingerprint string   `json:"expectedReviewSubjectFingerprint"`
-	ExpectedTargetBinding            string   `json:"expectedTargetBinding"`
-	ExpectedReviewLogSequence        int      `json:"expectedReviewLogSequence"`
+	Contract                         string `json:"contract"`
+	Schema                           string `json:"schema"`
+	AssertionID                      string `json:"assertionId"`
+	ExpectedMeaningFingerprint       string `json:"expectedMeaningFingerprint"`
+	ExpectedReviewSubjectFingerprint string `json:"expectedReviewSubjectFingerprint"`
+	ExpectedTargetBinding            string `json:"expectedTargetBinding"`
+	ExpectedReviewLogSequence        int    `json:"expectedReviewLogSequence"`
 }
 
 type DetailEvidenceRef struct {

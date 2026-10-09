@@ -192,7 +192,6 @@ func TestGoPackageBuildFilesIncludesSelectedCompilerAndEmbedInputs(t *testing.T)
 	}
 }
 
-
 func TestRepositoryTreeSnapshotDigestTracksGitTreeListingNotWorktreeSemantics(t *testing.T) {
 	first := []byte("100644 blob aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\tREADME.md\x00" +
 		"120000 blob bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\tlink\x00")

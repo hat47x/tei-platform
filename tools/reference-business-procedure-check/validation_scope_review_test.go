@@ -280,7 +280,7 @@ func TestValidationScopeReviewSourceEvidence(t *testing.T) {
 		t.Fatalf("比較の意味または出典が未解決です: %+v", row)
 	}
 	want := map[string]string{
-		"application:order_entry": "applications/order-entry/application.tei",
+		"application:order_entry":                                   "applications/order-entry/application.tei",
 		"semantic-validation:sales.order_line.line_number_positive": "semantic/sales/validation.tei",
 	}
 	if len(row.SourceEvidence) != len(want) {
@@ -303,9 +303,9 @@ func TestValidationScopeReviewSourceEvidence(t *testing.T) {
 
 func TestValidationScopeReviewKeepsMissingSourceUnresolved(t *testing.T) {
 	rows := []validationScopeReviewRow{{
-		Step: "BP-05",
-		Application: "order_entry",
-		Status: "review-needed",
+		Step:            "BP-05",
+		Application:     "order_entry",
+		Status:          "review-needed",
 		ApplicationOnly: []string{"sales.order_line.line_number_positive"},
 	}}
 	attachValidationScopeSources(rows, sourceindex.Index{})
@@ -415,16 +415,16 @@ func TestValidationScopeReviewDoesNotTrustDuplicateArtifactPaths(t *testing.T) {
 				Artifacts: []sourceindex.Artifact{{Path: validationPath, Fingerprint: "sha256:valid"}},
 				References: []sourceindex.Reference{
 					{
-						Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
-						Role: sourceindex.RoleDefinition,
+						Subject:      sourceindex.Subject{Kind: "application", ID: "order_entry"},
+						Role:         sourceindex.RoleDefinition,
 						ArtifactPath: applicationPath,
-						Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+						Range:        sourceindex.Range{Start: sourceindex.Position{Line: 1}},
 					},
 					{
-						Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
-						Role: sourceindex.RoleDefinition,
+						Subject:      sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+						Role:         sourceindex.RoleDefinition,
 						ArtifactPath: validationPath,
-						Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+						Range:        sourceindex.Range{Start: sourceindex.Position{Line: 10}},
 					},
 				},
 			}
@@ -434,9 +434,9 @@ func TestValidationScopeReviewDoesNotTrustDuplicateArtifactPaths(t *testing.T) {
 				})
 			}
 			rows := []validationScopeReviewRow{{
-				Step: "BP-05",
-				Application: "order_entry",
-				Status: "review-needed",
+				Step:            "BP-05",
+				Application:     "order_entry",
+				Status:          "review-needed",
 				ApplicationOnly: []string{validationID},
 			}}
 			attachValidationScopeSources(rows, index)
