@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,96 @@ import (
 	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/resource"
 )
+
+const genericProcessHelperEnv = "TEI_GENERIC_RUNTIME_PROCESS_HELPER"
+
+func TestMain(m *testing.M) {
+	if mode := os.Getenv(genericProcessHelperEnv); mode != "" {
+		os.Exit(runGenericRuntimeProcessHelper(mode))
+	}
+	os.Exit(m.Run())
+}
+
+func runGenericRuntimeProcessHelper(mode string) int {
+	var req pruntime.Request
+	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
+		return 3
+	}
+	renderID, err := processDispatchID(
+		"application.runtime.document-render",
+		"1.0.0",
+		fingerprint("document-render-contract-v1"),
+		"document-render.process",
+	)
+	if err != nil {
+		return 4
+	}
+	summaryID, err := processDispatchID(
+		"application.runtime.document-summary",
+		"1.0.0",
+		fingerprint("document-summary-contract-v1"),
+		"document-summary.process",
+	)
+	if err != nil {
+		return 5
+	}
+	if req.CapabilityKind != plugin.CapabilityKind(genericProcessDispatchKind) {
+		writeGenericProcessHelperError(req, "unexpected generic process dispatch kind")
+		return 0
+	}
+
+	dispatch := ""
+	switch req.CapabilityID {
+	case renderID:
+		if req.Operation != "render" {
+			writeGenericProcessHelperError(req, "render dispatch received wrong operation")
+			return 0
+		}
+		dispatch = "render"
+	case summaryID:
+		if req.Operation != "summarize" {
+			writeGenericProcessHelperError(req, "summary dispatch received wrong operation")
+			return 0
+		}
+		dispatch = "summary"
+	default:
+		writeGenericProcessHelperError(req, "unknown generic process dispatch id")
+		return 0
+	}
+
+	payload, err := json.Marshal(map[string]string{"dispatch": dispatch})
+	if err != nil {
+		return 6
+	}
+	resp := pruntime.Response{
+		ProtocolVersion: req.ProtocolVersion,
+		RequestID: req.RequestID,
+		Plugin: req.Plugin,
+		CapabilityID: req.CapabilityID,
+		DescriptorFingerprint: req.DescriptorFingerprint,
+		Status: pruntime.ResponseOK,
+		Payload: payload,
+	}
+	if mode == "forge" {
+		resp.CapabilityID = core.MustCanonicalID("runtime_dispatch.forged")
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(resp); err != nil {
+		return 7
+	}
+	return 0
+}
+
+func writeGenericProcessHelperError(req pruntime.Request, message string) {
+	_ = json.NewEncoder(os.Stdout).Encode(pruntime.Response{
+		ProtocolVersion: req.ProtocolVersion,
+		RequestID: req.RequestID,
+		Plugin: req.Plugin,
+		CapabilityID: req.CapabilityID,
+		DescriptorFingerprint: req.DescriptorFingerprint,
+		Status: pruntime.ResponseError,
+		Error: message,
+	})
+}
 
 func referenceExecutionProfile(
 	t *testing.T,
@@ -49,6 +140,18 @@ func referenceRuntimeCandidate(
 		ExecutionProfileFingerprint: profile.Fingerprint,
 		CapabilityResolutionLockFingerprint: fingerprint("accepted-resolution-lock"),
 	}
+}
+
+func summaryRuntimeCandidate(
+	profile ExecutionProfile,
+) AcceptedRuntimeCandidate {
+	candidate := referenceRuntimeCandidate(profile)
+	candidate.ContractID = "application.runtime.document-summary"
+	candidate.ContractFingerprint = fingerprint("document-summary-contract-v1")
+	candidate.ImplementationID = "document-summary.process"
+	candidate.CapabilityResolutionLockFingerprint =
+		fingerprint("accepted-summary-resolution-lock")
+	return candidate
 }
 
 func referenceRuntimeRef(
@@ -799,6 +902,163 @@ func TestHostTrustedProfileCannotUseSandboxOnlyInvocationPath(t *testing.T) {
 		nil, host, "render", "request-4", nil,
 	); err == nil || !strings.Contains(err.Error(), "host-enforced-sandbox") {
 		t.Fatalf("host-trusted profile was silently routed through sandbox-only path: %v", err)
+	}
+}
+
+func genericProcessLauncherForTest(
+	t *testing.T,
+	mode string,
+) (pruntime.StdioProcessLauncher, pruntime.ProcessCommand) {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := append([]string(nil), os.Environ()...)
+	env = append(env, genericProcessHelperEnv+"="+mode)
+	return pruntime.StdioProcessLauncher{Env: env},
+		pruntime.ProcessCommand{Executable: executable}
+}
+
+func TestDerivedDispatchIdentityRoutesMultipleGenericCapabilitiesInRealProcess(t *testing.T) {
+	profile := referenceExecutionProfile(t, "web-browser", nil)
+	renderRef := referenceRuntimeRef(t, profile)
+	summaryRef, err := deriveRuntimeCapabilityRef(
+		summaryRuntimeCandidate(profile),
+		profile,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	renderDispatch, err := genericProcessDispatchID(renderRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	summaryDispatch, err := genericProcessDispatchID(summaryRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if renderDispatch == summaryDispatch {
+		t.Fatal("different Contract / implementation pairs collapsed to one dispatch ID")
+	}
+
+	renderPlan, err := buildRuntimeEnvironmentPlan(
+		renderRef, profile, referenceAuthority(renderRef, nil),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	summaryPlan, err := buildRuntimeEnvironmentPlan(
+		summaryRef, profile, referenceAuthority(summaryRef, nil),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	launcher, command := genericProcessLauncherForTest(t, "dispatch")
+	host := pruntime.HostSandboxLauncher{
+		Network: &recordingNetworkEnforcer{},
+		Filesystem: &recordingFilesystemEnforcer{},
+		Runner: launcher,
+	}
+	verifier := &recordingArtifactVerifier{DigestVerified: true}
+	renderRealization := RuntimeProcessRealization{
+		RuntimeCapabilityFingerprint: renderRef.Fingerprint,
+		Plugin: plugin.Identity{ID: renderRef.PluginID, Version: renderRef.PluginVersion},
+		Artifact: plugin.Artifact{Digest: renderRef.ArtifactDigest},
+		Command: command,
+	}
+	summaryRealization := RuntimeProcessRealization{
+		RuntimeCapabilityFingerprint: summaryRef.Fingerprint,
+		Plugin: plugin.Identity{ID: summaryRef.PluginID, Version: summaryRef.PluginVersion},
+		Artifact: plugin.Artifact{Digest: summaryRef.ArtifactDigest},
+		Command: command,
+	}
+
+	renderInvocation, err := invokeWithExistingHostBoundary(
+		context.Background(),
+		renderPlan,
+		renderRealization,
+		verifier,
+		nil,
+		host,
+		"render",
+		"real-process-render",
+		map[string]string{"document": "one"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	summaryInvocation, err := invokeWithExistingHostBoundary(
+		context.Background(),
+		summaryPlan,
+		summaryRealization,
+		verifier,
+		nil,
+		host,
+		"summarize",
+		"real-process-summary",
+		map[string]string{"document": "two"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var renderPayload map[string]string
+	if err := json.Unmarshal(renderInvocation.Response.Payload, &renderPayload); err != nil {
+		t.Fatal(err)
+	}
+	var summaryPayload map[string]string
+	if err := json.Unmarshal(summaryInvocation.Response.Payload, &summaryPayload); err != nil {
+		t.Fatal(err)
+	}
+	if renderPayload["dispatch"] != "render" ||
+		summaryPayload["dispatch"] != "summary" {
+		t.Fatalf(
+			"real process dispatch render=%v summary=%v",
+			renderPayload,
+			summaryPayload,
+		)
+	}
+	if renderInvocation.Provenance.ProcessDispatchID != renderDispatch ||
+		summaryInvocation.Provenance.ProcessDispatchID != summaryDispatch {
+		t.Fatal("real process provenance lost derived dispatch identity")
+	}
+}
+
+func TestGenericProcessResponseCannotForgeDerivedDispatchIdentity(t *testing.T) {
+	profile := referenceExecutionProfile(t, "web-browser", nil)
+	ref := referenceRuntimeRef(t, profile)
+	plan, err := buildRuntimeEnvironmentPlan(
+		ref, profile, referenceAuthority(ref, nil),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	launcher, command := genericProcessLauncherForTest(t, "forge")
+	host := pruntime.HostSandboxLauncher{
+		Network: &recordingNetworkEnforcer{},
+		Filesystem: &recordingFilesystemEnforcer{},
+		Runner: launcher,
+	}
+	realization := RuntimeProcessRealization{
+		RuntimeCapabilityFingerprint: ref.Fingerprint,
+		Plugin: plugin.Identity{ID: ref.PluginID, Version: ref.PluginVersion},
+		Artifact: plugin.Artifact{Digest: ref.ArtifactDigest},
+		Command: command,
+	}
+	if _, err := invokeWithExistingHostBoundary(
+		context.Background(),
+		plan,
+		realization,
+		&recordingArtifactVerifier{DigestVerified: true},
+		nil,
+		host,
+		"render",
+		"real-process-forged",
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "response identity") {
+		t.Fatalf("forged generic process response identity was accepted: %v", err)
 	}
 }
 
