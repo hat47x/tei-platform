@@ -18,6 +18,30 @@ func TestReviewPacketClassifiesAmbiguityConflictAndStalePremise(t *testing.T) {
 			"kind": "application-pattern",
 			"id":   "order_entry.customer_reference",
 		},
+		"artifacts": []map[string]any{
+			{
+				"path":        "applications/order-entry/patterns/customer-reference.tei",
+				"fingerprint": "sha256:pattern",
+			},
+		},
+		"references": []map[string]any{
+			{
+				"subject": map[string]any{
+					"kind": "application-pattern",
+					"id":   "order_entry.customer_reference",
+				},
+				"artifactPath": "applications/order-entry/patterns/customer-reference.tei",
+				"role":         "definition",
+			},
+			{
+				"subject": map[string]any{
+					"kind": "application-pattern",
+					"id":   "order_entry.customer_reference",
+				},
+				"artifactPath": "applications/order-entry/patterns/customer-reference.tei",
+				"role":         "definition",
+			},
+		},
 		"unresolved": []string{"write-capability-not-established"},
 	})
 	crossViewPath := writeReviewJSON(t, dir, "cross-view.json", map[string]any{
@@ -36,6 +60,14 @@ func TestReviewPacketClassifiesAmbiguityConflictAndStalePremise(t *testing.T) {
 		"stale": map[string]any{
 			"baseModelRevision":    "sha256:old",
 			"currentModelRevision": "sha256:current",
+		},
+		"evidence": []map[string]any{
+			{
+				"subjectKind":       "semantic-data",
+				"subject":           "sales.order",
+				"source":            "semantic/sales/order.tei",
+				"sourceFingerprint": "sha256:order",
+			},
 		},
 	})
 
@@ -62,6 +94,21 @@ func TestReviewPacketClassifiesAmbiguityConflictAndStalePremise(t *testing.T) {
 		got.Findings[1].Code != "BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT" ||
 		got.Findings[2].Code != "STALE_BASE_MODEL_REVISION" {
 		t.Fatalf("finding codes drifted: %+v", got.Findings)
+	}
+	if len(got.Evidence) != 2 {
+		t.Fatalf("review Evidence was not deduplicated or preserved: %+v", got.Evidence)
+	}
+	if got.Evidence[0].Subject != "application-pattern:order_entry.customer_reference" ||
+		got.Evidence[0].Source != "applications/order-entry/patterns/customer-reference.tei" ||
+		got.Evidence[0].Fingerprint != "sha256:pattern" ||
+		got.Evidence[0].Role != "definition" {
+		t.Fatalf("knowledge Evidence drifted: %+v", got.Evidence[0])
+	}
+	if got.Evidence[1].Subject != "semantic-data:sales.order" ||
+		got.Evidence[1].Source != "semantic/sales/order.tei" ||
+		got.Evidence[1].Fingerprint != "sha256:order" ||
+		got.Evidence[1].Role != "candidate-evidence" {
+		t.Fatalf("acceptance Evidence drifted: %+v", got.Evidence[1])
 	}
 }
 
@@ -223,6 +270,13 @@ func TestREFSPEC01CustomerEditUsesExistingKnowledgeAndCheckerOutputs(t *testing.
 	if !reflect.DeepEqual(got.MissingInputs, []string{"shared-acceptance"}) {
 		t.Fatalf("missing acceptance evidence was hidden: %v", got.MissingInputs)
 	}
+	if !hasReviewEvidence(
+		got.Evidence,
+		"application-pattern:order_entry.customer_reference",
+		"applications/order-entry/patterns/customer-reference.tei",
+	) {
+		t.Fatalf("customer reference Source Evidence is not reachable from the packet: %+v", got.Evidence)
+	}
 }
 
 func writeReviewJSON(t *testing.T, dir, name string, value any) string {
@@ -262,6 +316,17 @@ func repositoryRoot(t *testing.T) string {
 		t.Fatalf("repository root is not reachable from test package: %v", err)
 	}
 	return root
+}
+
+func hasReviewEvidence(values []evidenceRef, subject, source string) bool {
+	for _, value := range values {
+		if value.Subject == subject &&
+			value.Source == source &&
+			value.Fingerprint != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func containsReviewString(values []string, want string) bool {
