@@ -447,6 +447,38 @@ func TestBuildBuilderReviewDisclosureFromFileRequiresHandoff(t *testing.T) {
 	}
 }
 
+func TestStrictKnowledgeJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) {
+	dir := t.TempDir()
+
+	unknownPath := filepath.Join(dir, "unknown.json")
+	if err := os.WriteFile(
+		unknownPath,
+		[]byte(`{"expectedKind":"semantic-data","accepted":true}`),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	var requirements knowledgecontext.QualificationRequirements
+	if err := decodeStrictKnowledgeJSONFile(unknownPath, &requirements); err == nil ||
+		!strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("unknown qualification field was not rejected: %v", err)
+	}
+
+	trailingPath := filepath.Join(dir, "trailing.json")
+	if err := os.WriteFile(
+		trailingPath,
+		[]byte(`{"expectedKind":"semantic-data"} {"accepted":true}`),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	requirements = knowledgecontext.QualificationRequirements{}
+	if err := decodeStrictKnowledgeJSONFile(trailingPath, &requirements); err == nil ||
+		!strings.Contains(err.Error(), "trailing JSON value") {
+		t.Fatalf("trailing qualification JSON was not rejected: %v", err)
+	}
+}
+
 func TestBuildBuilderReviewPlanRequiresWorkspaceAndSubject(t *testing.T) {
 	if _, err := buildBuilderReviewPlan("", "semantic-data", "sales.order_line"); err == nil ||
 		!strings.Contains(err.Error(), "knowledge-review-plan requires -workspace") {
