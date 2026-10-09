@@ -137,6 +137,18 @@ tei knowledge-review-handoff
   -qualification-requirements reference/business-system-design/order-entry-customer-reference-review-qualification.json
 ```
 
+HandoffをJSONとして保存した後は、次の経路でcurrent Disclosureを取得できる。
+
+```text
+tei knowledge-review-disclose
+  -workspace reference/workspace
+  -subject-kind application-pattern
+  -subject-id order_entry.customer_reference
+  -review-handoff <handoff.json>
+```
+
+この段階でも出力は既存`DisclosureProjection`であり、customer edit固有の判定結果を混入させない。保存後にPatternやSource Evidenceが変わればHandoff fingerprintが一致しなくなるため、古いHandoffから現在のKnowledgeを開示しない。
+
 このhandoffが`qualified-for-disclosure`になっても、customer edit要求自体がacceptedになったわけではない。確定するのは、Review対象のcurrent Patternとrequired dependencyを、明示したtask scopeでSource Evidence付きに利用できることまでである。customer editの矛盾判定は既存Business Procedure checker、採否はShared Acceptanceの責務として残す。
 
 ## 3. R1でAI Builderが実装前に知るべきこと
