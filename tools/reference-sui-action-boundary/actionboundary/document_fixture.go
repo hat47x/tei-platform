@@ -26,10 +26,6 @@ type MovePayload struct {
  Y float64 `json:"y"`
 }
 
-func NewJSONDocumentStore(revision string, document []byte) *JSONDocumentStore {
- return &JSONDocumentStore{revision:revision,document:append([]byte(nil),document...)}
-}
-
 // NewScopedJSONDocumentStore binds a document identity at construction.
 func NewScopedJSONDocumentStore(documentID, revision string, document []byte) *JSONDocumentStore {
  return &JSONDocumentStore{documentID:documentID,revision:revision,document:append([]byte(nil),document...)}
@@ -45,7 +41,7 @@ func (s *JSONDocumentStore) Snapshot() (string,[]byte,int) {
 func (s *JSONDocumentStore) Commit(_ context.Context,in Intent)(string,error) {
  s.mu.Lock()
  defer s.mu.Unlock()
- if s.documentID!="" && in.DocumentID!=s.documentID {return "",ErrDenied}
+ if s.documentID=="" || in.DocumentID!=s.documentID {return "",ErrDenied}
  if in.ExpectedRevision!=s.revision {return "",ErrConflict}
  payload,ok:=in.Payload.(MovePayload)
  if !ok || payload.CardID=="" || math.IsNaN(payload.X) || math.IsNaN(payload.Y) || math.IsInf(payload.X,0) || math.IsInf(payload.Y,0) {return "",ErrInvalid}
