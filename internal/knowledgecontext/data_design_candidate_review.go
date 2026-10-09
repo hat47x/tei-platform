@@ -145,7 +145,7 @@ func BuildDataDesignCandidateReview(
 func dataDesignFirstClassAuthoringContractReasons(kind string) []string {
 	common := []string{
 		"first-class-promotion-route-core-vs-semantic-extension-not-selected",
-		"semantic-extension-v0-is-reference-not-production-authoring-contract",
+		"semantic-extension-route-is-not-accepted-production-authoring-contract",
 		"authoritative-declaration-source-not-selected",
 		"semantic-extension-namespace-authority-not-selected",
 	}
@@ -153,12 +153,12 @@ func dataDesignFirstClassAuthoringContractReasons(kind string) []string {
 	case DataDesignCandidateKindBusinessIdentity:
 		return append([]string{
 			"current-core-has-no-first-class-business-identity-authoring-contract",
-			"semantic-extension-v0-constraint-cannot-losslessly-encode-composite-identity-components-and-scope",
+			"semantic-extension-route-cannot-yet-losslessly-author-composite-identity-components-and-scope",
 		}, common...)
 	case DataDesignCandidateKindFunctionalDependency:
 		return append([]string{
 			"current-core-has-no-first-class-functional-dependency-authoring-contract",
-			"semantic-extension-v0-constraint-cannot-losslessly-encode-determinants-dependent-occurrence-and-scope",
+			"semantic-extension-route-cannot-yet-losslessly-author-determinants-dependent-occurrence-and-scope",
 		}, common...)
 	default:
 		return append([]string(nil), common...)
