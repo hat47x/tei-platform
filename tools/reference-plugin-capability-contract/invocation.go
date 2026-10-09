@@ -17,6 +17,13 @@ const (
 	invocationEffectReadOnly  = "read-only"
 )
 
+type InvocationShapeAuthorityEvidence struct {
+	Issuer              InvocationShapeIssuer `json:"issuer"`
+	ShapeID             string                `json:"shapeId"`
+	ShapeFingerprint    string                `json:"shapeFingerprint"`
+	EvidenceFingerprint string                `json:"evidenceFingerprint"`
+}
+
 type InvocationImplementation struct {
 	Provider                Provider
 	RequestShape            string
@@ -31,12 +38,14 @@ type InvocationImplementation struct {
 }
 
 type InvocationExecution struct {
-	Resolution        Resolution `json:"resolution"`
-	RequestShape            string     `json:"requestShape"`
-	RequestShapeFingerprint string     `json:"requestShapeFingerprint"`
-	ResultShape             string     `json:"resultShape"`
-	ResultShapeFingerprint  string     `json:"resultShapeFingerprint"`
-	PayloadCodec            string     `json:"payloadCodec"`
+	Resolution                              Resolution `json:"resolution"`
+	RequestShape                            string     `json:"requestShape"`
+	RequestShapeFingerprint                 string     `json:"requestShapeFingerprint"`
+	RequestShapeAuthorityEvidenceFingerprint string    `json:"requestShapeAuthorityEvidenceFingerprint"`
+	ResultShape                             string     `json:"resultShape"`
+	ResultShapeFingerprint                  string     `json:"resultShapeFingerprint"`
+	ResultShapeAuthorityEvidenceFingerprint string     `json:"resultShapeAuthorityEvidenceFingerprint"`
+	PayloadCodec                            string     `json:"payloadCodec"`
 	RequestDigest     string     `json:"requestDigest"`
 	ResultDigest      string     `json:"resultDigest"`
 	ResultPayload     []byte     `json:"resultPayload"`
@@ -44,14 +53,21 @@ type InvocationExecution struct {
 }
 
 type InvocationRegistry struct {
-	implementations map[string]InvocationImplementation
+	implementations  map[string]InvocationImplementation
+	shapeAuthorities map[string]InvocationShapeAuthorityEvidence
 }
 
 func NewInvocationRegistry(
 	implementations []InvocationImplementation,
+	authorities []InvocationShapeAuthorityEvidence,
 ) (*InvocationRegistry, error) {
+	shapeAuthorities, err := normalizeInvocationShapeAuthorities(authorities)
+	if err != nil {
+		return nil, err
+	}
 	registry := &InvocationRegistry{
-		implementations: map[string]InvocationImplementation{},
+		implementations:  map[string]InvocationImplementation{},
+		shapeAuthorities: shapeAuthorities,
 	}
 	for i, implementation := range implementations {
 		provider := implementation.Provider
@@ -118,6 +134,32 @@ func NewInvocationRegistry(
 			return nil, fmt.Errorf(
 				"capability implementation[%d] result shape artifact does not match declaration",
 				i,
+			)
+		}
+		if _, ok := shapeAuthorities[
+			invocationShapeAuthorityKey(
+				implementation.RequestShapeArtifact.Issuer,
+				implementation.RequestShape,
+				implementation.RequestShapeFingerprint,
+			),
+		]; !ok {
+			return nil, fmt.Errorf(
+				"capability implementation[%d] request shape %s has no accepted Shape Authority Evidence",
+				i,
+				implementation.RequestShape,
+			)
+		}
+		if _, ok := shapeAuthorities[
+			invocationShapeAuthorityKey(
+				implementation.ResultShapeArtifact.Issuer,
+				implementation.ResultShape,
+				implementation.ResultShapeFingerprint,
+			),
+		]; !ok {
+			return nil, fmt.Errorf(
+				"capability implementation[%d] result shape %s has no accepted Shape Authority Evidence",
+				i,
+				implementation.ResultShape,
 			)
 		}
 		key := providerKey(provider)
@@ -211,6 +253,18 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 			contract.Version,
 		)
 	}
+	requestShapeAuthority, err := r.shapeAuthorityFor(
+		implementation.RequestShapeArtifact,
+	)
+	if err != nil {
+		return InvocationExecution{}, err
+	}
+	resultShapeAuthority, err := r.shapeAuthorityFor(
+		implementation.ResultShapeArtifact,
+	)
+	if err != nil {
+		return InvocationExecution{}, err
+	}
 	if err := validateInvocationPayload(
 		implementation.RequestShapeArtifact,
 		requestPayload,
@@ -249,17 +303,103 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 	limits = uniqueSortedInvocationStrings(limits)
 
 	return InvocationExecution{
-		Resolution:      resolution,
-		RequestShape:            contract.RequestShape,
-		RequestShapeFingerprint: contract.RequestShapeFingerprint,
-		ResultShape:             contract.ResultShape,
-		ResultShapeFingerprint:  contract.ResultShapeFingerprint,
-		PayloadCodec:            contract.PayloadCodec,
+		Resolution:                               resolution,
+		RequestShape:                             contract.RequestShape,
+		RequestShapeFingerprint:                  contract.RequestShapeFingerprint,
+		RequestShapeAuthorityEvidenceFingerprint: requestShapeAuthority.EvidenceFingerprint,
+		ResultShape:                              contract.ResultShape,
+		ResultShapeFingerprint:                   contract.ResultShapeFingerprint,
+		ResultShapeAuthorityEvidenceFingerprint:  resultShapeAuthority.EvidenceFingerprint,
+		PayloadCodec:                             contract.PayloadCodec,
 		RequestDigest:   "sha256:" + hex.EncodeToString(requestSum[:]),
 		ResultDigest:    "sha256:" + hex.EncodeToString(resultSum[:]),
 		ResultPayload:   append([]byte(nil), resultPayload...),
 		AuthorityLimits: limits,
 	}, nil
+}
+
+func normalizeInvocationShapeAuthorities(
+	values []InvocationShapeAuthorityEvidence,
+) (map[string]InvocationShapeAuthorityEvidence, error) {
+	out := map[string]InvocationShapeAuthorityEvidence{}
+	for i, value := range values {
+		value.Issuer.ID = strings.TrimSpace(value.Issuer.ID)
+		value.Issuer.Version = strings.TrimSpace(value.Issuer.Version)
+		value.ShapeID = strings.TrimSpace(value.ShapeID)
+		value.ShapeFingerprint = strings.TrimSpace(value.ShapeFingerprint)
+		value.EvidenceFingerprint = strings.TrimSpace(value.EvidenceFingerprint)
+		if value.Issuer.ID == "" || value.Issuer.Version == "" ||
+			value.ShapeID == "" ||
+			!validInvocationShapeFingerprint(value.ShapeFingerprint) ||
+			!validInvocationShapeFingerprint(value.EvidenceFingerprint) {
+			return nil, fmt.Errorf(
+				"shape authority evidence[%d] is incomplete or invalid",
+				i,
+			)
+		}
+		if _, err := parseVersion(value.Issuer.Version); err != nil {
+			return nil, fmt.Errorf(
+				"shape authority evidence[%d] issuer version: %w",
+				i,
+				err,
+			)
+		}
+		key := invocationShapeAuthorityKey(
+			value.Issuer,
+			value.ShapeID,
+			value.ShapeFingerprint,
+		)
+		if existing, duplicate := out[key]; duplicate {
+			return nil, fmt.Errorf(
+				"shape %s authority is ambiguous across accepted Evidence %s and %s",
+				value.ShapeID,
+				existing.EvidenceFingerprint,
+				value.EvidenceFingerprint,
+			)
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
+func invocationShapeAuthorityKey(
+	issuer InvocationShapeIssuer,
+	shapeID string,
+	shapeFingerprint string,
+) string {
+	return strings.Join(
+		[]string{
+			issuer.ID,
+			issuer.Version,
+			shapeID,
+			shapeFingerprint,
+		},
+		"\x00",
+	)
+}
+
+func (r *InvocationRegistry) shapeAuthorityFor(
+	artifact InvocationShapeArtifact,
+) (InvocationShapeAuthorityEvidence, error) {
+	if r == nil {
+		return InvocationShapeAuthorityEvidence{}, fmt.Errorf(
+			"capability invocation registry is nil",
+		)
+	}
+	fingerprint := invocationShapeFingerprint(artifact)
+	key := invocationShapeAuthorityKey(
+		artifact.Issuer,
+		artifact.ID,
+		fingerprint,
+	)
+	evidence, ok := r.shapeAuthorities[key]
+	if !ok {
+		return InvocationShapeAuthorityEvidence{}, fmt.Errorf(
+			"invocation shape %s has no accepted Shape Authority Evidence",
+			artifact.ID,
+		)
+	}
+	return evidence, nil
 }
 
 func uniqueSortedInvocationStrings(values []string) []string {
