@@ -123,7 +123,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("select-field requires object, got %s", source.Kind)
 		}
-		value, ok := source.Field(expr.Field)
+		value, ok := fieldShared(source, expr.Field)
 		if !ok {
 			if expr.Optional {
 				return Null(), nil
@@ -140,7 +140,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			}
 			fields = append(fields, Field{Name: field.Name, Value: value})
 		}
-		return Object(fields...)
+		return objectShared(fields...)
 	case OpMapArray:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -220,21 +220,21 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("replace-field requires object, got %s", source.Kind)
 		}
-		if _, exists := source.Field(expr.Field); !exists {
+		if _, exists := fieldShared(source, expr.Field); !exists {
 			return source, nil
 		}
 		replacement, err := e.eval(*expr.Value, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		out, _, err := source.ReplaceField(expr.Field, replacement)
+		out, _, err := replaceFieldShared(source, expr.Field, replacement)
 		return out, err
 	case OpOmitField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
-		return source.OmitField(expr.Field)
+		return omitFieldShared(source, expr.Field)
 	case OpAssertEqual:
 		actual, err := e.eval(*expr.Actual, env, depth+1)
 		if err != nil {
@@ -417,6 +417,64 @@ func walkInputBudget(value Value, depth int, budget *inputBudget, limits Limits)
 		return fmt.Errorf("inputs exceed maxInputBytes")
 	}
 	return nil
+}
+
+
+
+func objectShared(fields []Field) (Value, error) {
+	seen := map[string]struct{}{}
+	out := Value{Kind: ValueObject, Object: append([]Field(nil), fields...)}
+	for _, field := range out.Object {
+		if field.Name == "" {
+			return Value{}, fmt.Errorf("object field name is required")
+		}
+		if _, exists := seen[field.Name]; exists {
+			return Value{}, fmt.Errorf("object field %q is declared more than once", field.Name)
+		}
+		seen[field.Name] = struct{}{}
+	}
+	return out, nil
+}
+
+func fieldShared(value Value, name string) (Value, bool) {
+	if value.Kind != ValueObject {
+		return Value{}, false
+	}
+	for _, field := range value.Object {
+		if field.Name == name {
+			return field.Value, true
+		}
+	}
+	return Value{}, false
+}
+
+func replaceFieldShared(value Value, name string, replacement Value) (Value, bool, error) {
+	if value.Kind != ValueObject {
+		return Value{}, false, fmt.Errorf("replace-field requires object, got %s", value.Kind)
+	}
+	out := value
+	out.Object = append([]Field(nil), value.Object...)
+	for i := range out.Object {
+		if out.Object[i].Name == name {
+			out.Object[i].Value = replacement
+			return out, true, nil
+		}
+	}
+	return out, false, nil
+}
+
+func omitFieldShared(value Value, name string) (Value, error) {
+	if value.Kind != ValueObject {
+		return Value{}, fmt.Errorf("omit-field requires object, got %s", value.Kind)
+	}
+	out := Value{Kind: ValueObject, Object: make([]Field, 0, len(value.Object))}
+	for _, field := range value.Object {
+		if field.Name == name {
+			continue
+		}
+		out.Object = append(out.Object, field)
+	}
+	return out, nil
 }
 
 func cloneEnv(in map[string]Value) map[string]Value {
