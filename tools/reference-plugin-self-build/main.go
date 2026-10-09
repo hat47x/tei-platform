@@ -366,7 +366,6 @@ func run(repo string) (evidence, error) {
 	transformBootstrap, err := runTransformBootstrap(
 		root,
 		goPath,
-		goVersion,
 		goToolchainDigest,
 		revision,
 		packageDefinition,
