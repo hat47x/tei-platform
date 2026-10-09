@@ -22,6 +22,13 @@ type finding struct {
 	Message  string `json:"message"`
 }
 
+type evidenceRef struct {
+	Subject     string `json:"subject,omitempty"`
+	Source      string `json:"source"`
+	Fingerprint string `json:"fingerprint,omitempty"`
+	Role        string `json:"role,omitempty"`
+}
+
 type coverage struct {
 	KnowledgeContext bool `json:"knowledgeContext"`
 	CrossView        bool `json:"crossView"`
@@ -33,8 +40,9 @@ type reviewPacket struct {
 	CaseID          string    `json:"caseId,omitempty"`
 	Status          string    `json:"status"`
 	Coverage        coverage  `json:"coverage"`
-	Findings        []finding `json:"findings,omitempty"`
-	MissingInputs   []string  `json:"missingInputs,omitempty"`
+	Findings        []finding     `json:"findings,omitempty"`
+	Evidence        []evidenceRef `json:"evidence,omitempty"`
+	MissingInputs   []string      `json:"missingInputs,omitempty"`
 	AuthorityLimits []string  `json:"authorityLimits"`
 }
 
@@ -43,6 +51,18 @@ type knowledgeContextInput struct {
 		Kind string `json:"kind"`
 		ID   string `json:"id"`
 	} `json:"subject"`
+	Artifacts []struct {
+		Path        string `json:"path"`
+		Fingerprint string `json:"fingerprint"`
+	} `json:"artifacts,omitempty"`
+	References []struct {
+		Subject struct {
+			Kind string `json:"kind"`
+			ID   string `json:"id"`
+		} `json:"subject"`
+		ArtifactPath string `json:"artifactPath"`
+		Role         string `json:"role"`
+	} `json:"references,omitempty"`
 	Unresolved []string `json:"unresolved"`
 }
 
@@ -83,6 +103,12 @@ type acceptanceInput struct {
 		Message string `json:"message"`
 		Subject string `json:"subject,omitempty"`
 	} `json:"refusals,omitempty"`
+	Evidence []struct {
+		SubjectKind       string `json:"subjectKind,omitempty"`
+		Subject           string `json:"subject,omitempty"`
+		Source            string `json:"source,omitempty"`
+		SourceFingerprint string `json:"sourceFingerprint,omitempty"`
+	} `json:"evidence,omitempty"`
 }
 
 func main() {
@@ -130,8 +156,27 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 			return reviewPacket{}, fmt.Errorf("knowledge contextを読めません: %w", err)
 		}
 		packet.Coverage.KnowledgeContext = true
+		artifactFingerprints := map[string]string{}
+		for _, artifact := range input.Artifacts {
+			if strings.TrimSpace(artifact.Path) == "" {
+				continue
+			}
+			artifactFingerprints[artifact.Path] = artifact.Fingerprint
+		}
+		for _, ref := range input.References {
+			source := strings.TrimSpace(ref.ArtifactPath)
+			if source == "" {
+				continue
+			}
+			packet.Evidence = append(packet.Evidence, evidenceRef{
+				Subject:     formatSubject(ref.Subject.Kind, ref.Subject.ID),
+				Source:      source,
+				Fingerprint: artifactFingerprints[source],
+				Role:        strings.TrimSpace(ref.Role),
+			})
+		}
 		subjectID := input.Subject.ID
-		subject := strings.TrimSpace(input.Subject.Kind + ":" + subjectID)
+		subject := formatSubject(input.Subject.Kind, subjectID)
 		for _, unresolved := range input.Unresolved {
 			reason := strings.TrimSpace(unresolved)
 			if reason == "" {
@@ -199,6 +244,18 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 			return reviewPacket{}, fmt.Errorf("Shared Acceptance出力を読めません: %w", err)
 		}
 		packet.Coverage.SharedAcceptance = true
+		for _, item := range input.Evidence {
+			source := strings.TrimSpace(item.Source)
+			if source == "" {
+				continue
+			}
+			packet.Evidence = append(packet.Evidence, evidenceRef{
+				Subject:     formatSubject(item.SubjectKind, item.Subject),
+				Source:      source,
+				Fingerprint: strings.TrimSpace(item.SourceFingerprint),
+				Role:        "candidate-evidence",
+			})
+		}
 		if input.Stale != nil {
 			packet.Findings = append(packet.Findings, finding{
 				Class:   "stale-premise",
@@ -213,6 +270,20 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 			})
 		}
 	}
+
+	packet.Evidence = dedupeEvidence(packet.Evidence)
+	sort.Slice(packet.Evidence, func(i, j int) bool {
+		if packet.Evidence[i].Subject != packet.Evidence[j].Subject {
+			return packet.Evidence[i].Subject < packet.Evidence[j].Subject
+		}
+		if packet.Evidence[i].Source != packet.Evidence[j].Source {
+			return packet.Evidence[i].Source < packet.Evidence[j].Source
+		}
+		if packet.Evidence[i].Role != packet.Evidence[j].Role {
+			return packet.Evidence[i].Role < packet.Evidence[j].Role
+		}
+		return packet.Evidence[i].Fingerprint < packet.Evidence[j].Fingerprint
+	})
 
 	sort.Slice(packet.Findings, func(i, j int) bool {
 		if packet.Findings[i].Class != packet.Findings[j].Class {
@@ -240,6 +311,35 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 		packet.Status = "no-finding-in-provided-evidence"
 	}
 	return packet, nil
+}
+
+func formatSubject(kind, id string) string {
+	kind = strings.TrimSpace(kind)
+	id = strings.TrimSpace(id)
+	switch {
+	case kind != "" && id != "":
+		return kind + ":" + id
+	case id != "":
+		return id
+	case kind != "":
+		return kind
+	default:
+		return ""
+	}
+}
+
+func dedupeEvidence(values []evidenceRef) []evidenceRef {
+	seen := map[string]struct{}{}
+	out := make([]evidenceRef, 0, len(values))
+	for _, value := range values {
+		key := value.Subject + "\x1f" + value.Source + "\x1f" + value.Fingerprint + "\x1f" + value.Role
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
 
 func readJSONFile(path string, out any) error {
