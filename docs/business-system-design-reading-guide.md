@@ -337,6 +337,28 @@ tei knowledge-review-plan
 
 このProjectionは、個々の設計原則を重複して持ちません。`routingScope = current-knowledge-context`の範囲で、`recommendedDisclosureSections`に現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち何を確認すべきかを示し、`reviewSequence`で確認順を示します。推奨された区画は、そのまま適用可能・Qualification済み・開示済みのKnowledgeにはなりません。必要なQualificationを経てから設計判断へ使います。Data設計の詳細な確認事項は、従来どおり`dataDesign.designReviewProtocol`が担当します。
 
+Review Planで読む候補を得た後、設計変更のtask scopeが明示できる場合は、既存のKnowledge Qualificationを通した**Builder Review Handoff**を作れます。
+
+```text
+tei knowledge-review-handoff
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -qualification-requirements <requirements.json>
+```
+
+HandoffはKnowledge本文を含みません。Review Planのfingerprint、選択候補となる区画、明示したQualification requirements、Qualification結果とそのSource Evidenceを結びます。Qualificationが`applicable`で、authoritative Evidenceと必要なdependency Evidenceが揃った場合だけ`qualified-for-disclosure`になります。`unknown`は`blocked-unresolved`、`incompatible`は`blocked-incompatible`として保持します。
+
+```text
+available
+  -> Builder Review Planでselected候補を決める
+  -> explicit requirementsでqualifiedを確認する
+  -> Builder Review Handoff
+  -> current Knowledgeからdiscloseする
+```
+
+Handoff自体はDisclosureではありません。Handoffのfingerprintも開示内容のfreshnessを証明しないため、実際に開示したKnowledgeの再利用にはDisclosure側のfingerprintを使います。また、blockedでも診断や根拠確認のためにKnowledgeを読むこと自体を禁止するものではありません。禁止するのは、未QualificationのKnowledgeをそのtaskへ適用可能な意味として扱うことです。
+
 Review PlanはAI Builder向けの用途別Projectionであり、通常のKnowledge Context、人間向け表示、業務実行用Contextへ混入させません。また、現在のKnowledge Contextに区画が見つからないことを、Repositoryや外部Knowledge全体に情報が存在しない証拠にはしません。Review Planのfingerprintが一致しても、選択したKnowledgeの内容が最新であることまでは証明しないため、Knowledgeの再利用には対応するData Design / Disclosure等のfingerprintを別に確認します。
 
 ```text
