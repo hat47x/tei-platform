@@ -3,7 +3,7 @@
   "identity": {
     "id": "tei.reference.semantic-validation-projection",
     "version": "1.0.0",
-    "contractVersion": "tei.reference.semantic-validation-plan/v0"
+    "contractVersion": "tei.reference.application-validation-projection/v0"
   },
   "profile": "deterministic-transform-v1",
   "limits": {
@@ -28,7 +28,7 @@
           "name": "format",
           "value": {
             "op": "literal",
-            "literal": "tei.reference.semantic-validation-plan/v0"
+            "literal": "tei.reference.application-validation-projection/v0"
           }
         },
         {
