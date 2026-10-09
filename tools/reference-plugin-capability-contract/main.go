@@ -34,6 +34,9 @@ type Contract struct {
 	RequestSemantics   string `json:"requestSemantics"`
 	ResultSemantics    string `json:"resultSemantics"`
 	FailureSemantics   string `json:"failureSemantics"`
+	RequestShape       string `json:"requestShape,omitempty"`
+	ResultShape        string `json:"resultShape,omitempty"`
+	PayloadCodec       string `json:"payloadCodec,omitempty"`
 	ConformanceProfile string `json:"conformanceProfile"`
 }
 
