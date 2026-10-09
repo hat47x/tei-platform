@@ -173,6 +173,34 @@ func TestDecodeWireRejectsHiddenFieldsAndInvalidBase64(t *testing.T) {
 	}
 }
 
+func TestWireBytesBudgetUsesExactDecodedLength(t *testing.T) {
+	limits := transform.TransformSourceRealizerV1().Limits
+	limits.MaxInputBytes = 1
+	encoded := base64.StdEncoding.EncodeToString([]byte{0xff})
+	value, err := decodeWireValue(
+		wireValue{Kind: transform.ValueBytes, BytesBase64: &encoded},
+		limits,
+		0,
+		&wireBudget{},
+	)
+	if err != nil {
+		t.Fatalf("one decoded byte at exact budget was rejected: %v", err)
+	}
+	if value.Kind != transform.ValueBytes || len(value.Bytes) != 1 || value.Bytes[0] != 0xff {
+		t.Fatalf("decoded bytes: %#v", value)
+	}
+
+	over := base64.StdEncoding.EncodeToString([]byte{0xff, 0x00})
+	if _, err := decodeWireValue(
+		wireValue{Kind: transform.ValueBytes, BytesBase64: &over},
+		limits,
+		0,
+		&wireBudget{},
+	); err == nil {
+		t.Fatal("expected two decoded bytes to exceed one-byte budget")
+	}
+}
+
 func TestWireDecodeStopsAtSemanticInputBudget(t *testing.T) {
 	source := transform.TransformSourceRealizerV1()
 	source.Limits.MaxInputBytes = 8
