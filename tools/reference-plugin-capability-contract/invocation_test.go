@@ -333,18 +333,28 @@ func TestGenericInvocationForwardsCancellationWithoutFallback(t *testing.T) {
 }
 
 func TestInvocationPayloadCodecIsContractScopedRatherThanJSONHardCoded(t *testing.T) {
+	codec := "application/octet-stream;profile=tei-reference-v0"
+	requestShape := opaqueInvocationShapeArtifact(
+		"tei.reference.opaque.request/v0",
+		codec,
+	)
+	resultShape := opaqueInvocationShapeArtifact(
+		"tei.reference.opaque.result/v0",
+		codec,
+	)
 	contract := Contract{
-		ID:                 "build.reference.opaque-copy",
-		Version:            "1.0.0",
-		RequestSemantics:   "opaque-bytes",
-		ResultSemantics:    "same-opaque-bytes",
-		FailureSemantics:   "execution-error-is-not-success",
-		RequestShape:            "tei.reference.opaque.request/v0",
-		RequestShapeFingerprint: "sha256:c43afa7741de2f84dd9d149ef6f4fde2d0bd2f347d7a377176cb1aa24adab8b2",
-		ResultShape:             "tei.reference.opaque.result/v0",
-		ResultShapeFingerprint:  "sha256:c43afa7741de2f84dd9d149ef6f4fde2d0bd2f347d7a377176cb1aa24adab8b2",
-		PayloadCodec:            "application/octet-stream;profile=tei-reference-v0",
-		ConformanceProfile: "tei.reference.opaque-copy/v0",
+		ID:                      "build.reference.opaque-copy",
+		Version:                 "1.0.0",
+		RequestSemantics:        "opaque-bytes",
+		ResultSemantics:         "same-opaque-bytes",
+		FailureSemantics:        "execution-error-is-not-success",
+		RequestShape:            requestShape.ID,
+		RequestShapeFingerprint: invocationShapeFingerprint(requestShape),
+		ResultShape:             resultShape.ID,
+		ResultShapeFingerprint:  invocationShapeFingerprint(resultShape),
+		PayloadCodec:            codec,
+		ShapeIssuer:             referenceInvocationShapeIssuer(),
+		ConformanceProfile:      "tei.reference.opaque-copy/v0",
 	}
 	provider := sourceAdapterProvider(
 		contract,
@@ -356,8 +366,10 @@ func TestInvocationPayloadCodecIsContractScopedRatherThanJSONHardCoded(t *testin
 		Provider:                provider,
 		RequestShape:            contract.RequestShape,
 		RequestShapeFingerprint: contract.RequestShapeFingerprint,
+		RequestShapeArtifact:    requestShape,
 		ResultShape:             contract.ResultShape,
 		ResultShapeFingerprint:  contract.ResultShapeFingerprint,
+		ResultShapeArtifact:     resultShape,
 		PayloadCodec:            contract.PayloadCodec,
 		Invoke: func(ctx context.Context, payload []byte) ([]byte, error) {
 			if err := ctx.Err(); err != nil {
