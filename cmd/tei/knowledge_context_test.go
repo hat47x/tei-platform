@@ -220,21 +220,29 @@ func TestBuildBuilderReviewPlanRoutesApplicationPatternAcrossViews(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, section := range []string{"source", "definition", "data-design", "dependencies"} {
+	for _, section := range []string{"source", "definition", "dependencies"} {
 		if !containsKnowledgeContextString(plan.RecommendedDisclosureSections, section) {
 			t.Fatalf("application pattern review section %q is missing: %+v", section, plan.RecommendedDisclosureSections)
 		}
 	}
+	// order_entry.customer_reference is a reference Pattern without an explicit
+	// data reference (index_test.go pins Data == ""). plan/issue/000047 forbids
+	// inferring Data from its Relation or Query, so data-design must not be offered.
+	if containsKnowledgeContextString(plan.RecommendedDisclosureSections, "data-design") {
+		t.Fatalf("data-design was inferred for a pattern without explicit data: %+v", plan.RecommendedDisclosureSections)
+	}
 	for _, stage := range []string{
 		"review-current-source-and-evidence",
 		"review-current-definition",
-		"review-data-design-and-its-review-protocol",
 		"review-dependencies-and-impact",
 		"review-cross-view-constraints-authority-and-known-conflicts",
 	} {
 		if !containsKnowledgeContextString(plan.ReviewSequence, stage) {
 			t.Fatalf("application pattern review stage %q is missing: %+v", stage, plan.ReviewSequence)
 		}
+	}
+	if containsKnowledgeContextString(plan.ReviewSequence, "review-data-design-and-its-review-protocol") {
+		t.Fatalf("data-design review stage was offered without data-design: %+v", plan.ReviewSequence)
 	}
 	if !containsKnowledgeContextString(
 		plan.AuthorityLimits,
@@ -273,10 +281,13 @@ func TestBuildBuilderReviewHandoffQualifiesBeforeDisclosure(t *testing.T) {
 		len(handoff.Qualification.DependencyEvidence) == 0 {
 		t.Fatalf("builder review handoff lost qualification Evidence: %+v", handoff.Qualification)
 	}
-	for _, section := range []string{"source", "definition", "data-design", "dependencies"} {
+	for _, section := range []string{"source", "definition", "dependencies"} {
 		if !containsKnowledgeContextString(handoff.SelectedSections, section) {
 			t.Fatalf("qualified review section %q is missing: %+v", section, handoff.SelectedSections)
 		}
+	}
+	if containsKnowledgeContextString(handoff.SelectedSections, "data-design") {
+		t.Fatalf("data-design was disclosed for a pattern without explicit data: %+v", handoff.SelectedSections)
 	}
 	if err := checkBuilderReviewHandoffFingerprint(handoff, ""); err != nil {
 		t.Fatalf("empty expected handoff fingerprint enabled the guard: %v", err)
