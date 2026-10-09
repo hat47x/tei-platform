@@ -1,0 +1,1184 @@
+{
+  "formatVersion": 1,
+  "identity": {
+    "id": "tei.builder.plugin_package",
+    "version": "1.0.0",
+    "contractVersion": "tei.plugin-transform/v1"
+  },
+  "profile": "deterministic-transform-v1",
+  "limits": {
+    "maxSteps": 100000,
+    "maxCollection": 10000,
+    "maxInputNodes": 200000,
+    "maxInputBytes": 16777216,
+    "maxOutputBytes": 8388608,
+    "maxNestingDepth": 96
+  },
+  "inputs": [
+    {
+      "name": "buildPlan",
+      "kind": "object"
+    },
+    {
+      "name": "pluginDefinition",
+      "kind": "object"
+    }
+  ],
+  "program": {
+    "assertions": [
+      {
+        "op": "assert-equal",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "buildPlan"
+          },
+          "field": "formatVersion"
+        },
+        "expected": {
+          "op": "literal",
+          "literal": 1
+        }
+      },
+      {
+        "op": "assert-enum",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "buildPlan"
+          },
+          "field": "outputKind"
+        },
+        "allowed": [
+          "plugin-package"
+        ]
+      },
+      {
+        "op": "assert-equal",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "buildPlan"
+            },
+            "field": "plugin"
+          },
+          "field": "id"
+        },
+        "expected": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "id"
+        }
+      },
+      {
+        "op": "assert-equal",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "buildPlan"
+            },
+            "field": "plugin"
+          },
+          "field": "version"
+        },
+        "expected": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "version"
+        }
+      },
+      {
+        "op": "assert-enum",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "artifact"
+        },
+        "allowed": [
+          {}
+        ]
+      },
+      {
+        "op": "assert-equal",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "buildPlan"
+          },
+          "field": "pluginDefinitionFingerprint"
+        },
+        "expected": {
+          "op": "sha256",
+          "from": {
+            "op": "canonical-json",
+            "from": {
+              "op": "replace-field",
+              "from": {
+                "op": "replace-field",
+                "from": {
+                  "op": "replace-field",
+                  "from": {
+                    "op": "input",
+                    "name": "pluginDefinition"
+                  },
+                  "field": "provides",
+                  "value": {
+                    "op": "sort-array-by",
+                    "from": {
+                      "op": "map-array",
+                      "from": {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "pluginDefinition"
+                        },
+                        "field": "provides"
+                      },
+                      "item": "capability",
+                      "body": {
+                        "op": "replace-field",
+                        "from": {
+                          "op": "replace-field",
+                          "from": {
+                            "op": "replace-field",
+                            "from": {
+                              "op": "replace-field",
+                              "from": {
+                                "op": "replace-field",
+                                "from": {
+                                  "op": "replace-field",
+                                  "from": {
+                                    "op": "replace-field",
+                                    "from": {
+                                      "op": "input",
+                                      "name": "capability"
+                                    },
+                                    "field": "actions",
+                                    "value": {
+                                      "op": "sort-array-by",
+                                      "from": {
+                                        "op": "select-field",
+                                        "from": {
+                                          "op": "input",
+                                          "name": "capability"
+                                        },
+                                        "field": "actions"
+                                      },
+                                      "item": "scalar",
+                                      "keys": [
+                                        {
+                                          "op": "input",
+                                          "name": "scalar"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "field": "observations",
+                                  "value": {
+                                    "op": "sort-array-by",
+                                    "from": {
+                                      "op": "select-field",
+                                      "from": {
+                                        "op": "input",
+                                        "name": "capability"
+                                      },
+                                      "field": "observations"
+                                    },
+                                    "item": "scalar",
+                                    "keys": [
+                                      {
+                                        "op": "input",
+                                        "name": "scalar"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "field": "evidence",
+                                "value": {
+                                  "op": "sort-array-by",
+                                  "from": {
+                                    "op": "select-field",
+                                    "from": {
+                                      "op": "input",
+                                      "name": "capability"
+                                    },
+                                    "field": "evidence"
+                                  },
+                                  "item": "scalar",
+                                  "keys": [
+                                    {
+                                      "op": "input",
+                                      "name": "scalar"
+                                    }
+                                  ]
+                                }
+                              },
+                              "field": "databaseProviders",
+                              "value": {
+                                "op": "sort-array-by",
+                                "from": {
+                                  "op": "select-field",
+                                  "from": {
+                                    "op": "input",
+                                    "name": "capability"
+                                  },
+                                  "field": "databaseProviders"
+                                },
+                                "item": "scalar",
+                                "keys": [
+                                  {
+                                    "op": "input",
+                                    "name": "scalar"
+                                  }
+                                ]
+                              }
+                            },
+                            "field": "migrationTools",
+                            "value": {
+                              "op": "sort-array-by",
+                              "from": {
+                                "op": "select-field",
+                                "from": {
+                                  "op": "input",
+                                  "name": "capability"
+                                },
+                                "field": "migrationTools"
+                              },
+                              "item": "scalar",
+                              "keys": [
+                                {
+                                  "op": "input",
+                                  "name": "scalar"
+                                }
+                              ]
+                            }
+                          },
+                          "field": "features",
+                          "value": {
+                            "op": "sort-array-by",
+                            "from": {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "capability"
+                              },
+                              "field": "features"
+                            },
+                            "item": "scalar",
+                            "keys": [
+                              {
+                                "op": "input",
+                                "name": "scalar"
+                              }
+                            ]
+                          }
+                        },
+                        "field": "permissions",
+                        "value": {
+                          "op": "sort-array-by",
+                          "from": {
+                            "op": "select-field",
+                            "from": {
+                              "op": "input",
+                              "name": "capability"
+                            },
+                            "field": "permissions"
+                          },
+                          "item": "permission",
+                          "keys": [
+                            {
+                              "op": "join-strings",
+                              "values": [
+                                {
+                                  "op": "select-field",
+                                  "from": {
+                                    "op": "input",
+                                    "name": "permission"
+                                  },
+                                  "field": "kind"
+                                },
+                                {
+                                  "op": "select-field",
+                                  "from": {
+                                    "op": "input",
+                                    "name": "permission"
+                                  },
+                                  "field": "access"
+                                },
+                                {
+                                  "op": "select-field",
+                                  "from": {
+                                    "op": "input",
+                                    "name": "permission"
+                                  },
+                                  "field": "scope"
+                                }
+                              ],
+                              "separator": "|"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "item": "provided",
+                    "keys": [
+                      {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "provided"
+                        },
+                        "field": "kind"
+                      },
+                      {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "provided"
+                        },
+                        "field": "id"
+                      }
+                    ]
+                  }
+                },
+                "field": "requires",
+                "value": {
+                  "op": "sort-array-by",
+                  "from": {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "pluginDefinition"
+                    },
+                    "field": "requires"
+                  },
+                  "item": "requirement",
+                  "keys": [
+                    {
+                      "op": "select-field",
+                      "from": {
+                        "op": "input",
+                        "name": "requirement"
+                      },
+                      "field": "plugin"
+                    }
+                  ]
+                }
+              },
+              "field": "externalRequirements",
+              "value": {
+                "op": "sort-array-by",
+                "from": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "pluginDefinition"
+                  },
+                  "field": "externalRequirements"
+                },
+                "item": "external",
+                "keys": [
+                  {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "external"
+                    },
+                    "field": "scope"
+                  },
+                  {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "external"
+                    },
+                    "field": "kind"
+                  },
+                  {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "external"
+                    },
+                    "field": "name"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    ],
+    "output": {
+      "op": "append-bytes",
+      "from": {
+        "op": "canonical-json",
+        "from": {
+          "op": "construct-object",
+          "fields": [
+            {
+              "name": "formatVersion",
+              "value": {
+                "op": "literal",
+                "literal": 1
+              }
+            },
+            {
+              "name": "plugin",
+              "value": {
+                "op": "select-field",
+                "from": {
+                  "op": "input",
+                  "name": "buildPlan"
+                },
+                "field": "plugin"
+              }
+            },
+            {
+              "name": "buildPlanFingerprint",
+              "value": {
+                "op": "sha256",
+                "from": {
+                  "op": "canonical-json",
+                  "from": {
+                    "op": "replace-field",
+                    "from": {
+                      "op": "replace-field",
+                      "from": {
+                        "op": "replace-field",
+                        "from": {
+                          "op": "input",
+                          "name": "buildPlan"
+                        },
+                        "field": "sources",
+                        "value": {
+                          "op": "sort-array-by",
+                          "from": {
+                            "op": "select-field",
+                            "from": {
+                              "op": "input",
+                              "name": "buildPlan"
+                            },
+                            "field": "sources"
+                          },
+                          "item": "source",
+                          "keys": [
+                            {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "source"
+                              },
+                              "field": "kind"
+                            },
+                            {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "source"
+                              },
+                              "field": "id"
+                            },
+                            {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "source"
+                              },
+                              "field": "locator"
+                            }
+                          ]
+                        }
+                      },
+                      "field": "dependencies",
+                      "value": {
+                        "op": "sort-array-by",
+                        "from": {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "buildPlan"
+                          },
+                          "field": "dependencies"
+                        },
+                        "item": "dependency",
+                        "keys": [
+                          {
+                            "op": "select-field",
+                            "from": {
+                              "op": "input",
+                              "name": "dependency"
+                            },
+                            "field": "kind"
+                          },
+                          {
+                            "op": "select-field",
+                            "from": {
+                              "op": "input",
+                              "name": "dependency"
+                            },
+                            "field": "id"
+                          },
+                          {
+                            "op": "select-field",
+                            "from": {
+                              "op": "input",
+                              "name": "dependency"
+                            },
+                            "field": "version"
+                          }
+                        ]
+                      }
+                    },
+                    "field": "parameters",
+                    "value": {
+                      "op": "sort-array-by",
+                      "from": {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "buildPlan"
+                        },
+                        "field": "parameters"
+                      },
+                      "item": "parameter",
+                      "keys": [
+                        {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "parameter"
+                          },
+                          "field": "name"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "pluginDefinitionFingerprint",
+              "value": {
+                "op": "sha256",
+                "from": {
+                  "op": "canonical-json",
+                  "from": {
+                    "op": "replace-field",
+                    "from": {
+                      "op": "replace-field",
+                      "from": {
+                        "op": "replace-field",
+                        "from": {
+                          "op": "input",
+                          "name": "pluginDefinition"
+                        },
+                        "field": "provides",
+                        "value": {
+                          "op": "sort-array-by",
+                          "from": {
+                            "op": "map-array",
+                            "from": {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "pluginDefinition"
+                              },
+                              "field": "provides"
+                            },
+                            "item": "capability",
+                            "body": {
+                              "op": "replace-field",
+                              "from": {
+                                "op": "replace-field",
+                                "from": {
+                                  "op": "replace-field",
+                                  "from": {
+                                    "op": "replace-field",
+                                    "from": {
+                                      "op": "replace-field",
+                                      "from": {
+                                        "op": "replace-field",
+                                        "from": {
+                                          "op": "replace-field",
+                                          "from": {
+                                            "op": "input",
+                                            "name": "capability"
+                                          },
+                                          "field": "actions",
+                                          "value": {
+                                            "op": "sort-array-by",
+                                            "from": {
+                                              "op": "select-field",
+                                              "from": {
+                                                "op": "input",
+                                                "name": "capability"
+                                              },
+                                              "field": "actions"
+                                            },
+                                            "item": "scalar",
+                                            "keys": [
+                                              {
+                                                "op": "input",
+                                                "name": "scalar"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "field": "observations",
+                                        "value": {
+                                          "op": "sort-array-by",
+                                          "from": {
+                                            "op": "select-field",
+                                            "from": {
+                                              "op": "input",
+                                              "name": "capability"
+                                            },
+                                            "field": "observations"
+                                          },
+                                          "item": "scalar",
+                                          "keys": [
+                                            {
+                                              "op": "input",
+                                              "name": "scalar"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "field": "evidence",
+                                      "value": {
+                                        "op": "sort-array-by",
+                                        "from": {
+                                          "op": "select-field",
+                                          "from": {
+                                            "op": "input",
+                                            "name": "capability"
+                                          },
+                                          "field": "evidence"
+                                        },
+                                        "item": "scalar",
+                                        "keys": [
+                                          {
+                                            "op": "input",
+                                            "name": "scalar"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "field": "databaseProviders",
+                                    "value": {
+                                      "op": "sort-array-by",
+                                      "from": {
+                                        "op": "select-field",
+                                        "from": {
+                                          "op": "input",
+                                          "name": "capability"
+                                        },
+                                        "field": "databaseProviders"
+                                      },
+                                      "item": "scalar",
+                                      "keys": [
+                                        {
+                                          "op": "input",
+                                          "name": "scalar"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "field": "migrationTools",
+                                  "value": {
+                                    "op": "sort-array-by",
+                                    "from": {
+                                      "op": "select-field",
+                                      "from": {
+                                        "op": "input",
+                                        "name": "capability"
+                                      },
+                                      "field": "migrationTools"
+                                    },
+                                    "item": "scalar",
+                                    "keys": [
+                                      {
+                                        "op": "input",
+                                        "name": "scalar"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "field": "features",
+                                "value": {
+                                  "op": "sort-array-by",
+                                  "from": {
+                                    "op": "select-field",
+                                    "from": {
+                                      "op": "input",
+                                      "name": "capability"
+                                    },
+                                    "field": "features"
+                                  },
+                                  "item": "scalar",
+                                  "keys": [
+                                    {
+                                      "op": "input",
+                                      "name": "scalar"
+                                    }
+                                  ]
+                                }
+                              },
+                              "field": "permissions",
+                              "value": {
+                                "op": "sort-array-by",
+                                "from": {
+                                  "op": "select-field",
+                                  "from": {
+                                    "op": "input",
+                                    "name": "capability"
+                                  },
+                                  "field": "permissions"
+                                },
+                                "item": "permission",
+                                "keys": [
+                                  {
+                                    "op": "join-strings",
+                                    "values": [
+                                      {
+                                        "op": "select-field",
+                                        "from": {
+                                          "op": "input",
+                                          "name": "permission"
+                                        },
+                                        "field": "kind"
+                                      },
+                                      {
+                                        "op": "select-field",
+                                        "from": {
+                                          "op": "input",
+                                          "name": "permission"
+                                        },
+                                        "field": "access"
+                                      },
+                                      {
+                                        "op": "select-field",
+                                        "from": {
+                                          "op": "input",
+                                          "name": "permission"
+                                        },
+                                        "field": "scope"
+                                      }
+                                    ],
+                                    "separator": "|"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "item": "provided",
+                          "keys": [
+                            {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "provided"
+                              },
+                              "field": "kind"
+                            },
+                            {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "provided"
+                              },
+                              "field": "id"
+                            }
+                          ]
+                        }
+                      },
+                      "field": "requires",
+                      "value": {
+                        "op": "sort-array-by",
+                        "from": {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "pluginDefinition"
+                          },
+                          "field": "requires"
+                        },
+                        "item": "requirement",
+                        "keys": [
+                          {
+                            "op": "select-field",
+                            "from": {
+                              "op": "input",
+                              "name": "requirement"
+                            },
+                            "field": "plugin"
+                          }
+                        ]
+                      }
+                    },
+                    "field": "externalRequirements",
+                    "value": {
+                      "op": "sort-array-by",
+                      "from": {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "pluginDefinition"
+                        },
+                        "field": "externalRequirements"
+                      },
+                      "item": "external",
+                      "keys": [
+                        {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "external"
+                          },
+                          "field": "scope"
+                        },
+                        {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "external"
+                          },
+                          "field": "kind"
+                        },
+                        {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "external"
+                          },
+                          "field": "name"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "definition",
+              "value": {
+                "op": "replace-field",
+                "from": {
+                  "op": "replace-field",
+                  "from": {
+                    "op": "replace-field",
+                    "from": {
+                      "op": "input",
+                      "name": "pluginDefinition"
+                    },
+                    "field": "provides",
+                    "value": {
+                      "op": "sort-array-by",
+                      "from": {
+                        "op": "map-array",
+                        "from": {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "pluginDefinition"
+                          },
+                          "field": "provides"
+                        },
+                        "item": "capability",
+                        "body": {
+                          "op": "replace-field",
+                          "from": {
+                            "op": "replace-field",
+                            "from": {
+                              "op": "replace-field",
+                              "from": {
+                                "op": "replace-field",
+                                "from": {
+                                  "op": "replace-field",
+                                  "from": {
+                                    "op": "replace-field",
+                                    "from": {
+                                      "op": "replace-field",
+                                      "from": {
+                                        "op": "input",
+                                        "name": "capability"
+                                      },
+                                      "field": "actions",
+                                      "value": {
+                                        "op": "sort-array-by",
+                                        "from": {
+                                          "op": "select-field",
+                                          "from": {
+                                            "op": "input",
+                                            "name": "capability"
+                                          },
+                                          "field": "actions"
+                                        },
+                                        "item": "scalar",
+                                        "keys": [
+                                          {
+                                            "op": "input",
+                                            "name": "scalar"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "field": "observations",
+                                    "value": {
+                                      "op": "sort-array-by",
+                                      "from": {
+                                        "op": "select-field",
+                                        "from": {
+                                          "op": "input",
+                                          "name": "capability"
+                                        },
+                                        "field": "observations"
+                                      },
+                                      "item": "scalar",
+                                      "keys": [
+                                        {
+                                          "op": "input",
+                                          "name": "scalar"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "field": "evidence",
+                                  "value": {
+                                    "op": "sort-array-by",
+                                    "from": {
+                                      "op": "select-field",
+                                      "from": {
+                                        "op": "input",
+                                        "name": "capability"
+                                      },
+                                      "field": "evidence"
+                                    },
+                                    "item": "scalar",
+                                    "keys": [
+                                      {
+                                        "op": "input",
+                                        "name": "scalar"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "field": "databaseProviders",
+                                "value": {
+                                  "op": "sort-array-by",
+                                  "from": {
+                                    "op": "select-field",
+                                    "from": {
+                                      "op": "input",
+                                      "name": "capability"
+                                    },
+                                    "field": "databaseProviders"
+                                  },
+                                  "item": "scalar",
+                                  "keys": [
+                                    {
+                                      "op": "input",
+                                      "name": "scalar"
+                                    }
+                                  ]
+                                }
+                              },
+                              "field": "migrationTools",
+                              "value": {
+                                "op": "sort-array-by",
+                                "from": {
+                                  "op": "select-field",
+                                  "from": {
+                                    "op": "input",
+                                    "name": "capability"
+                                  },
+                                  "field": "migrationTools"
+                                },
+                                "item": "scalar",
+                                "keys": [
+                                  {
+                                    "op": "input",
+                                    "name": "scalar"
+                                  }
+                                ]
+                              }
+                            },
+                            "field": "features",
+                            "value": {
+                              "op": "sort-array-by",
+                              "from": {
+                                "op": "select-field",
+                                "from": {
+                                  "op": "input",
+                                  "name": "capability"
+                                },
+                                "field": "features"
+                              },
+                              "item": "scalar",
+                              "keys": [
+                                {
+                                  "op": "input",
+                                  "name": "scalar"
+                                }
+                              ]
+                            }
+                          },
+                          "field": "permissions",
+                          "value": {
+                            "op": "sort-array-by",
+                            "from": {
+                              "op": "select-field",
+                              "from": {
+                                "op": "input",
+                                "name": "capability"
+                              },
+                              "field": "permissions"
+                            },
+                            "item": "permission",
+                            "keys": [
+                              {
+                                "op": "join-strings",
+                                "values": [
+                                  {
+                                    "op": "select-field",
+                                    "from": {
+                                      "op": "input",
+                                      "name": "permission"
+                                    },
+                                    "field": "kind"
+                                  },
+                                  {
+                                    "op": "select-field",
+                                    "from": {
+                                      "op": "input",
+                                      "name": "permission"
+                                    },
+                                    "field": "access"
+                                  },
+                                  {
+                                    "op": "select-field",
+                                    "from": {
+                                      "op": "input",
+                                      "name": "permission"
+                                    },
+                                    "field": "scope"
+                                  }
+                                ],
+                                "separator": "|"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "item": "provided",
+                      "keys": [
+                        {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "provided"
+                          },
+                          "field": "kind"
+                        },
+                        {
+                          "op": "select-field",
+                          "from": {
+                            "op": "input",
+                            "name": "provided"
+                          },
+                          "field": "id"
+                        }
+                      ]
+                    }
+                  },
+                  "field": "requires",
+                  "value": {
+                    "op": "sort-array-by",
+                    "from": {
+                      "op": "select-field",
+                      "from": {
+                        "op": "input",
+                        "name": "pluginDefinition"
+                      },
+                      "field": "requires"
+                    },
+                    "item": "requirement",
+                    "keys": [
+                      {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "requirement"
+                        },
+                        "field": "plugin"
+                      }
+                    ]
+                  }
+                },
+                "field": "externalRequirements",
+                "value": {
+                  "op": "sort-array-by",
+                  "from": {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "pluginDefinition"
+                    },
+                    "field": "externalRequirements"
+                  },
+                  "item": "external",
+                  "keys": [
+                    {
+                      "op": "select-field",
+                      "from": {
+                        "op": "input",
+                        "name": "external"
+                      },
+                      "field": "scope"
+                    },
+                    {
+                      "op": "select-field",
+                      "from": {
+                        "op": "input",
+                        "name": "external"
+                      },
+                      "field": "kind"
+                    },
+                    {
+                      "op": "select-field",
+                      "from": {
+                        "op": "input",
+                        "name": "external"
+                      },
+                      "field": "name"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "suffix": "\n"
+    }
+  }
+}

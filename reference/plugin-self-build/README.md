@@ -269,3 +269,145 @@ stage1とstage2は同じSource closureを使い、stage2を実行するbuilder�
 digestが違う場合はEvidenceを捨てず、`Converged=false`として両digestを保持します。
 
 このmodelは実行機構ではありません。現在のReference package/native builderはまだGo seedから作られており、SB-3 stage executionを実施したとは扱いません。stage0 trustもconvergenceから消去しません。
+
+
+## SB-3 deterministic transform builder候補
+
+#979では、Plugin package builderの意味をGo関数のまま自己参照させず、TEIが所有する小さな決定論的transform IRへ移しています。
+
+最初のIRは、任意コード実行を許しません。扱うのは明示入力、field選択、object構築、配列map / sort、field置換・除去、assert、canonical JSON、SHA-256、固定bytes付加、文字列結合です。再帰、利用者定義関数、filesystem、network、環境変数、clock、random、native callbackはありません。
+
+入力・評価にも上限を持たせます。
+
+- 最大step数
+- 最大collection要素数
+- 最大input node数
+- 最大input byte数
+- 最大output byte数
+- 最大nesting
+
+各operationが無視する余分なfieldは受け付けません。Input参照はtop-level宣言またはmap / sortの局所変数に限り、局所変数による既存bindingのshadowingも拒否します。
+
+### ordered valueを使う理由
+
+現行SB-1 package形式はGo structのfield順を含む決定論的JSONです。Object keyを単純に辞書順へ並べると、意味が同じでも既存package bytesとは一致しません。
+
+そのためtransform Runtime Engine内部では、Objectを順序付きfield列として扱います。Plugin DefinitionやBuild PlanをGoのJSON表現から取り込み、既存field順を保持したまま、意味上unorderedな配列だけを既存Normalization規則と同じkeyでsortします。
+
+これにより、最初の差分試験では次を要求します。
+
+```text
+same Plugin Definition
++ same Build Plan
+  -> existing Go MaterializePluginPackage
+  -> TEI deterministic transform builder
+  -> byte-for-byte equal package
+```
+
+Go materializerはこの比較ではoracleです。TEI-native実行経路からGo materializerを呼び出しません。
+
+### Repository Source
+
+transform IRのReference SourceはGoコードだけに埋め込みません。
+
+- `builder-sources/plugin-package-v1.transform.json`
+- `builder-sources/transform-source-realizer-v1.transform.json`
+
+をRepository上のSourceとして置きます。
+
+JSONは現段階ではTEI-owned IRの暫定直列化です。Plugin DSLの最終構文や汎用JSON Plugin languageを意味しません。decoderは未知field、重複key、複数top-level valueを拒否します。
+
+### meta-builderとstage convergence
+
+Plugin package builder単体は、自分自身のtransform Sourceを入力としてbuilder artifactを出すprogramではありません。したがって、それを直接stage1 / stage2のself-host対象にすると「同じbuilderを自分自身で再構築した」という比較になりません。
+
+このためSB-3の最初のself-host対象は、より小さいgeneric meta-builderです。
+
+```text
+tei.builder.transform_source
+  input: validated normalized transform Source
+  output: canonical transform Source artifact
+```
+
+stage chainは次です。
+
+```text
+stage0
+  exact Go seed builder
+      |
+      v
+stage1
+  transform_source builder artifact B1
+      |
+      |  same explicit Runtime Engine
+      v
+stage2
+  transform_source builder artifact B2
+
+require B1 == B2
+```
+
+stage0 seedはEvidenceから消しません。stage1 / stage2が一致しても、Runtime Engineまでself-hostしたとは扱いません。
+
+収束したmeta-builderで、次に`plugin-package-v1.transform.json`をbuilder artifactへrealizeします。そのpackage builderを同じdeterministic transform Runtime Engineで実行し、TEI-native Builder identityを持つBuild Planからpackageを二回生成します。
+
+その結果は、**同じBuild Plan**を既存Go materializerへ渡した結果とbyte単位で比較します。
+
+### Runtime Engineは別identity
+
+interpreted builderのexecution identityはbuilder Source artifactだけでは決まりません。
+
+```text
+builder execution
+  = transform Source artifact
+  + deterministic transform Runtime Engine
+```
+
+ReferenceではRuntime Engine Source closureとGo toolchain digestからengine identityを作り、TEI-native package Build Planへ次を明示的に束縛します。
+
+- build dependency: engine ID / version / implementation digest
+- build parameter: engine contract
+- build parameter: engine Target
+- build parameter: engine fingerprint
+
+これはRuntime Engine自体をself-hostしたという意味ではありません。engineはstage0から残る明示trust boundaryです。
+
+### Evidence v2
+
+#979 branchでは`tools/reference-plugin-self-build`の候補Evidenceをv2へ拡張します。既存v1のSB-1 / foreign-language SB-2 / TEI-native E3を残した上で、transform bootstrapについて次を追加します。
+
+- transform Runtime Engine Source closure / identity / fingerprint
+- Go stage0 seed builderのfirst / second digest
+- meta-builder Source fingerprint
+- stage1 / stage2 builder artifact digest
+- `BootstrapConvergenceEvidence`
+- convergence result
+- Plugin package builder Source fingerprint / artifact digest
+- TEI-native package Build Plan / fingerprint
+- package first / second digest
+- Go oracle digest
+- BuildArtifactLock fingerprint
+
+このv2候補は#971のcurrent-main forward qualificationを置き換えません。#971はmain上のv1を先に検証するGateです。#979のbranchは、そのGateを越えるまでmainへ統合しません。
+
+
+### input validationの責務
+
+deterministic transform IRは、TEI CoreのBuild PlanやPlugin DefinitionのValidation規則を複製しません。
+
+Reference runnerはtransform executionより前に、既存のCanonical contractを通します。
+
+- Plugin Definition: Workspace load +既存Validation
+- Build Plan: `BuildPlanFingerprint`による`BuildPlan.Validate`
+- transform Source: strict parse + `Source.Validate`
+
+transform Source内のassertionは、これらを置き換えるものではありません。package固有のcross-input条件を確認します。
+
+- Plugin identityがBuild PlanとDefinitionで一致する
+- authoritative Definitionがartifact-free
+- output kindが`plugin-package`
+- Definition fingerprintがBuild Planへ正しく束縛されている
+
+したがって、Hostがdomain-specificなpackage materializerを呼ぶことなく、既存Canonical validationとgeneric transform Runtime Engineを組み合わせます。
+
+TEI-native package生成後は、manifest内の`buildPlanFingerprint`が、事前にvalidateしたexact Build Plan fingerprintと一致することも直接確認します。

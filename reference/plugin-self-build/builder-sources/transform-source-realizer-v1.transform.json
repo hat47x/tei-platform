@@ -1,0 +1,67 @@
+{
+  "formatVersion": 1,
+  "identity": {
+    "id": "tei.builder.transform_source",
+    "version": "1.0.0",
+    "contractVersion": "tei.plugin-transform/v1"
+  },
+  "profile": "deterministic-transform-v1",
+  "limits": {
+    "maxSteps": 10000,
+    "maxCollection": 10000,
+    "maxInputNodes": 200000,
+    "maxInputBytes": 16777216,
+    "maxOutputBytes": 8388608,
+    "maxNestingDepth": 96
+  },
+  "inputs": [
+    {
+      "name": "transformSource",
+      "kind": "object"
+    }
+  ],
+  "program": {
+    "assertions": [
+      {
+        "op": "assert-equal",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "transformSource"
+          },
+          "field": "formatVersion"
+        },
+        "expected": {
+          "op": "literal",
+          "literal": 1
+        }
+      },
+      {
+        "op": "assert-enum",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "transformSource"
+          },
+          "field": "profile"
+        },
+        "allowed": [
+          "deterministic-transform-v1"
+        ]
+      }
+    ],
+    "output": {
+      "op": "append-bytes",
+      "from": {
+        "op": "canonical-json",
+        "from": {
+          "op": "input",
+          "name": "transformSource"
+        }
+      },
+      "suffix": "\n"
+    }
+  }
+}

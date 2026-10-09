@@ -53,6 +53,7 @@ type evidence struct {
 	GoVersion                          string                         `json:"goVersion"`
 	GoBinaryDigest                     string                         `json:"goBinaryDigest"`
 	GoToolchainDigest                  string                         `json:"goToolchainDigest"`
+	TransformBootstrap                  transformBootstrapEvidence     `json:"transformBootstrap"`
 	PackageBuilderFirstDigest          string                         `json:"packageBuilderFirstDigest"`
 	PackageBuilderSecondDigest         string                         `json:"packageBuilderSecondDigest"`
 	PackageBuilderReproducible         bool                           `json:"packageBuilderReproducible"`
@@ -360,6 +361,18 @@ func run(repo string) (evidence, error) {
 	packageLockFingerprint, err := plugin.BuildArtifactLockFingerprint(packageArtifactLock)
 	if err != nil {
 		return evidence{}, err
+	}
+
+	transformBootstrap, err := runTransformBootstrap(
+		root,
+		goPath,
+		goToolchainDigest,
+		revision,
+		packageDefinition,
+		packagePlan,
+	)
+	if err != nil {
+		return evidence{}, fmt.Errorf("TEI-native transform bootstrap: %w", err)
 	}
 
 	nativeDefinition, err := exactPlugin(loaded.World.Plugins, nativePluginID, nativePluginVersion)
@@ -764,12 +777,13 @@ func run(repo string) (evidence, error) {
 	}
 
 	return evidence{
-		Schema:                             "tei.reference.plugin-self-build-evidence/v1",
+		Schema:                             "tei.reference.plugin-self-build-evidence/v2",
 		RepositoryRevision:                 revision,
 		RepositoryTreeDigest:               treeDigest,
 		GoVersion:                          goVersion,
 		GoBinaryDigest:                     goBinaryDigest,
 		GoToolchainDigest:                  goToolchainDigest,
+		TransformBootstrap:                  transformBootstrap,
 		PackageBuilderFirstDigest:          packageBuilderFirstDigest,
 		PackageBuilderSecondDigest:         packageBuilderSecondDigest,
 		PackageBuilderReproducible:         true,
