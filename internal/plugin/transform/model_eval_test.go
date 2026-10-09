@@ -359,3 +359,52 @@ func TestTransformInputIsolationSurvivesInternalValueSharing(t *testing.T) {
 		t.Fatalf("caller-owned input was mutated: %#v", input)
 	}
 }
+
+
+func TestConstructedValueRejectsInvalidUTF8AtJSONBoundary(t *testing.T) {
+	if _, err := transform.String(string([]byte{0xff})).JSON(); err == nil {
+		t.Fatal("expected invalid UTF-8 string value to fail")
+	}
+	value := transform.Value{
+		Kind: transform.ValueObject,
+		Object: []transform.Field{{
+			Name:  string([]byte{0xff}),
+			Value: transform.String("ok"),
+		}},
+	}
+	if _, err := value.JSONWithinLimit(1024); err == nil {
+		t.Fatal("expected invalid UTF-8 object field name to fail")
+	}
+}
+
+func TestAppendBytesRejectsBeforeOversizedResultConstruction(t *testing.T) {
+	from := transform.Expr{Op: transform.OpInput, Name: "payload"}
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.append_budget_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        16,
+			MaxCollection:   16,
+			MaxInputNodes:   16,
+			MaxInputBytes:   64,
+			MaxOutputBytes:  8,
+			MaxNestingDepth: 8,
+		},
+		Inputs: []transform.InputSpec{{Name: "payload", Kind: transform.InputBytes}},
+		Program: transform.Program{Output: transform.Expr{
+			Op:     transform.OpAppendBytes,
+			From:   &from,
+			Suffix: "overflow",
+		}},
+	}
+	if _, err := transform.Evaluate(source, map[string]transform.Value{
+		"payload": transform.Bytes([]byte("12345678")),
+	}); err == nil {
+		t.Fatal("expected append-bytes output budget overflow")
+	}
+}
