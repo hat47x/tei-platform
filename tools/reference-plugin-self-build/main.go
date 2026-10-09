@@ -895,54 +895,19 @@ func hashSourceFiles(repo string, paths []string) (string, error) {
 }
 
 func hashTrackedSourceTree(repo string) (string, error) {
-	listed, err := gitOutputBytes(repo, "ls-files", "-z")
+	// RepositoryTreeDigest is snapshot provenance, not a BuildPlan source.
+	// Hash Git's exact HEAD tree listing instead of walking the worktree so
+	// unrelated symlinks or file-system metadata cannot become build blockers.
+	listed, err := gitOutputBytes(repo, "ls-tree", "-r", "-z", "--full-tree", "HEAD")
 	if err != nil {
 		return "", err
 	}
-	parts := strings.Split(string(listed), "\x00")
-	paths := make([]string, 0, len(parts))
-	for _, rel := range parts {
-		if rel != "" {
-			paths = append(paths, rel)
-		}
-	}
-	sort.Strings(paths)
+	return repositoryTreeSnapshotDigest(listed), nil
+}
 
-	sum := sha256.New()
-	for _, rel := range paths {
-		path := filepath.Join(repo, filepath.FromSlash(rel))
-		info, err := os.Lstat(path)
-		if err != nil {
-			return "", err
-		}
-		if _, err := fmt.Fprintf(sum, "%s\x00", filepath.ToSlash(rel)); err != nil {
-			return "", err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return "", fmt.Errorf("tracked source symlink is not supported in the first self-build reference: %s", rel)
-		}
-		if !info.Mode().IsRegular() {
-			return "", fmt.Errorf("tracked source %s is not a regular file or symlink", rel)
-		}
-		if _, err := fmt.Fprint(sum, "file\x00"); err != nil {
-			return "", err
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return "", err
-		}
-		if _, err := io.Copy(sum, f); err != nil {
-			f.Close()
-			return "", err
-		}
-		if err := f.Close(); err != nil {
-			return "", err
-		}
-		if _, err := fmt.Fprint(sum, "\n"); err != nil {
-			return "", err
-		}
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
+func repositoryTreeSnapshotDigest(listed []byte) string {
+	sum := sha256.Sum256(listed)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func packageBuilderIdentity(artifactDigest string) plugin.BuilderIdentity {
