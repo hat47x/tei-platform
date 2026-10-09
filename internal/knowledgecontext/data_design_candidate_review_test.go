@@ -220,6 +220,81 @@ func TestDataDesignCandidateReviewBindsCurrentFunctionalDependencyCandidate(t *t
 	}
 }
 
+func TestDataDesignCandidateReviewRejectsModifiedContextWithStaleFingerprint(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	ctx.DataDesign.AuthorityLimits = append(
+		ctx.DataDesign.AuthorityLimits,
+		"tampered-without-recomputing-context-fingerprint",
+	)
+
+	_, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err == nil || !strings.Contains(err.Error(), "unmodified current Data Design Context") {
+		t.Fatalf("modified Context with stale fingerprint was accepted: %v", err)
+	}
+}
+
+func TestDataDesignCandidateReviewRejectsModifiedCandidateBehindReFingerprintedContext(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	ctx.DataDesign.BusinessIdentityCandidates[0].Components[1].Attribute =
+		"sales.order_line.changed_line_number"
+	ctx.DataDesign.Fingerprint = dataDesignFingerprint(ctx.DataDesign)
+
+	_, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err == nil || !strings.Contains(err.Error(), "candidate fingerprint does not match current candidate content") {
+		t.Fatalf("modified candidate behind re-fingerprinted Context was accepted: %v", err)
+	}
+}
+
+func TestDataDesignCandidateReviewRejectsModifiedEvidenceContractBehindReFingerprintedContext(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	ctx.DataDesign.BusinessIdentityCandidates[0].EvidenceNeeded = append(
+		ctx.DataDesign.BusinessIdentityCandidates[0].EvidenceNeeded,
+		"new-business-evidence-requirement",
+	)
+	ctx.DataDesign.Fingerprint = dataDesignFingerprint(ctx.DataDesign)
+
+	_, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindBusinessIdentity,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err == nil || !strings.Contains(err.Error(), "Evidence requirement fingerprint does not match current requirement content") {
+		t.Fatalf("modified Evidence contract behind re-fingerprinted Context was accepted: %v", err)
+	}
+}
+
+func TestDataDesignCandidateReviewRejectsModifiedFunctionalDependencyBehindReFingerprintedContext(t *testing.T) {
+	ctx := dataDesignCandidateReviewContext(t)
+	candidate := ctx.DataDesign.FunctionalDependencyCandidates[0]
+	ctx.DataDesign.FunctionalDependencyCandidates[0].Determinants[1].Attribute =
+		"sales.order_line.changed_line_number"
+	ctx.DataDesign.Fingerprint = dataDesignFingerprint(ctx.DataDesign)
+
+	_, err := BuildDataDesignCandidateReview(
+		ctx,
+		DataDesignCandidateKindFunctionalDependency,
+		candidate.Fingerprint,
+		candidate.EvidenceRequirementFingerprint,
+	)
+	if err == nil || !strings.Contains(err.Error(), "candidate fingerprint does not match current candidate content") {
+		t.Fatalf("modified FD candidate behind re-fingerprinted Context was accepted: %v", err)
+	}
+}
+
 func TestDataDesignCandidateReviewRejectsStaleCandidateAndEvidenceContract(t *testing.T) {
 	ctx := dataDesignCandidateReviewContext(t)
 	candidate := ctx.DataDesign.BusinessIdentityCandidates[0]
@@ -255,6 +330,7 @@ func TestDataDesignCandidateReviewBlocksOnlyOnCandidateLocalAmbiguity(t *testing
 			Effect: "realization-suppressed",
 		},
 	}
+	ctx.DataDesign.Fingerprint = dataDesignFingerprint(ctx.DataDesign)
 
 	packet, err := BuildDataDesignCandidateReview(
 		ctx,
@@ -280,6 +356,7 @@ func TestDataDesignCandidateReviewBlocksOnlyOnCandidateLocalAmbiguity(t *testing
 			Effect: "design-candidates-suppressed",
 		},
 	)
+	ctx.DataDesign.Fingerprint = dataDesignFingerprint(ctx.DataDesign)
 	packet, err = BuildDataDesignCandidateReview(
 		ctx,
 		DataDesignCandidateKindBusinessIdentity,
