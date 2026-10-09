@@ -156,3 +156,34 @@ func TestProviderPolicyIsFrozenAtConstruction(t *testing.T) {
 		t.Fatalf("mutable policy bypass: status=%d called=%d", w.Code, called)
 	}
 }
+
+// Exercise the actual net/http transport boundary on loopback, still with test-only providers.
+func TestLoopbackProtectedAction(t *testing.T) {
+	p := Principal{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "s1", PrincipalID: "employee-1"}
+	h, obs := fixture(t, p, nil, nil, true)
+	server := httptest.NewServer(h)
+	defer server.Close()
+	for _, tc := range []struct {
+		csrf   string
+		status int
+	}{{"", 403}, {"matching", 202}} {
+		req, err := http.NewRequest(http.MethodPost, server.URL+"/scenario/submit", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tc.csrf != "" {
+			req.Header.Set("X-CSRF-Fixture", tc.csrf)
+		}
+		resp, err := server.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != tc.status {
+			t.Fatalf("loopback HTTP status %d, want %d", resp.StatusCode, tc.status)
+		}
+	}
+	if obs.calls != 1 || len(obs.records) != 2 {
+		t.Fatalf("action calls=%d, audit entries=%d", obs.calls, len(obs.records))
+	}
+}
