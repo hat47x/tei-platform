@@ -1,6 +1,6 @@
 # ISSUE-000074: 一度答えた確認と退けた提案を記録し、理由なく繰り返さない
 
-- 状態: Proposed — 評価待ち。現状の欠落と最小の記録形の案までを記録した段階で、実装は始めていない
+- 状態: In Progress — 記録形を暫定採用し、`tools/reference-shared-acceptance`に`answered`と種類単位の抑制・解除を実装した。`rejected-proposal`、Studio / AIから呼ぶ面、owner reviewは未了
 - 提案日: 2026-09-30
 - 性格: Requirementの最小Reference / 既存受入境界の拡張
 - 主担当要求: RQ-016（主）/ RQ-017 / RQ-027
@@ -82,11 +82,28 @@ RQ-016は、AI / Editorの確認提案について「一度回答した質問を
 ## 完了条件
 
 - [ ] 記録の形と再確認の規則をowner reviewで確定する（`reject`に記録を残すかどうかの判断を含む。残す場合も、authorityにしない理由を明記する）
-- [ ] `basis`のfingerprintをsubject単位で取れるか（現行の`sourceindex.Fingerprint`はfile内容のfingerprint）を確かめ、取れなければfile単位から始める
-- [ ] 受入境界またはその隣のReference toolに確認記録の読み書きを実装する。`reference/workspace`のbaselineへは、決定記録と同じguard（`-allow-reference-baseline`なしでは書き込みを拒む）を適用する。`.tei/decisions/`の記録は現在Gitで追跡されている（`.gitignore`が除外するのは`.tei/cache`と`.tei/index`だけ）ため、`.tei/confirmations/`も同様に追跡するかを決める。次をtestで固定する: basis一致なら再確認しない / basis変化で再確認する / 抑制は解除できる / 記録を消しても意味が変わらない / 読めない記録で黙って抑制しない
+  - 暫定採用（2026-10-09、owner reviewまで）: 下の「暫定採用した実装」。`rejected-proposal`は未実装で、`reject`は現状のまま記録を残さない
+- [x] `basis`のfingerprintをsubject単位で取れるか（現行の`sourceindex.Fingerprint`はfile内容のfingerprint）を確かめ、取れなければfile単位から始める
+  - 取れない。subjectを宣言しているfileのfingerprintで固定した。そのため、同じfileの別subjectの変更でも前提が変わったとみなし、確認を出す側へ倒れる（見逃すより多く出す）
+- [x] 受入境界またはその隣のReference toolに確認記録の読み書きを実装する。`reference/workspace`のbaselineへは、決定記録と同じguard（`-allow-reference-baseline`なしでは書き込みを拒む）を適用する。`.tei/decisions/`の記録は現在Gitで追跡されている（`.gitignore`が除外するのは`.tei/cache`と`.tei/index`だけ）ため、`.tei/confirmations/`も同様に追跡するかを決める。次をtestで固定する: basis一致なら再確認しない / basis変化で再確認する / 抑制は解除できる / 記録を消しても意味が変わらない / 読めない記録で黙って抑制しない
 - [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
-- [ ] 答えの変更や解除が新しい記録として足され、前の記録が残ることをtestで固定する（RQ-016「選択を後から変更できる」）
+- [x] 答えの変更や解除が新しい記録として足され、前の記録が残ることをtestで固定する（RQ-016「選択を後から変更できる」）
 - [ ] Gap AuditでRQ-016の評価を見直す
+
+## 暫定採用した実装
+
+`tools/reference-shared-acceptance`に、`confirm-record` / `confirm-check` / `confirmations`を足した（`confirmation.go`、`confirmation_test.go`）。
+
+- 保存先は`.tei/confirmations/<sha256>.json`。内容のSHA-256とfile名が一致しない記録は読まない。`.tei/`はmanaged sourceではないので、model revisionを動かさない（testで固定）。
+- outcomeは`answered` / `category-suppressed` / `category-reinstated`。`answered`はidentity（種類+対象）、前提のsubject、答え、答えた主体を持つ。前提のfingerprintは入力せず、記録時にworkspaceから取る。
+- 同じidentityに有効な記録がある場合、`supersedes`に先頭の記録名を指定しないと追記を拒む。前の記録は消さない。時刻は判定に使わない。
+- 確認を出す条件: 記録なし / 前提のfingerprint変化 / 前提のsubjectが解決できない / 記録が読めない・履歴が分岐・別identityへのsupersedes / 答えが人によるものでない。AIが決めた答えは抑制に使わない。
+- `category-suppressed`は理由を必須とし、`confirmations`の一覧が抑制中の種類を示す。解除は`category-reinstated`を足す。
+- `reference/workspace`のbaselineへは、決定記録と同じく`-allow-reference-baseline`なしでは書かない。
+
+**暫定判断**（owner reviewで覆せる）: 前提はfile単位 / 時刻でなくsupersedes鎖で履歴を表す / 迷ったら確認を出す側へ倒す / AIの答えは抑制に使わない。
+
+**未了**: `rejected-proposal`（退けたcandidateの記録）、Studio / AIから`confirm-check`を呼ぶ面（ISSUE-000046 / 000047）、`.tei/confirmations/`をGitで追跡するかの決定、前提に新しいfileが加わった場合の検出を固定するtest（現行fixtureには同一subjectを複数fileで宣言する例がない）。
 
 ## 完了後に判断できること
 

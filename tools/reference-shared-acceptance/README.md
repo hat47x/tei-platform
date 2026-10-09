@@ -101,6 +101,18 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。current Referenceでは`decisionActorStatus`と`decisionAuthorityStatus`をともに`unresolved`として返し、Proposal originやReview identityから判断者を補完しません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
 
+### 確認の記録 — 一度答えた確認を繰り返さない
+
+確認とその答えを`.tei/confirmations/`へ派生物として記録し、同じ確認を理由なく繰り返さないための入口です（ISSUE-000074、RQ-016）。決定記録と同じく、managed sourceではなくmodel revisionに入らず、消しても意味は変わりません。消すと確認がもう一度出るだけです。
+
+```bash
+go run ./tools/reference-shared-acceptance confirm-record -workspace DIR -input answer.json
+go run ./tools/reference-shared-acceptance confirm-check  -workspace DIR -input query.json
+go run ./tools/reference-shared-acceptance confirmations  -workspace DIR
+```
+
+`confirm-check`は`ask: true / false`と理由を返します。判定に使うのは確認の種類と対象、答えた時点の前提(subjectを宣言しているfileのfingerprint)が今も同じかだけで、確認の文面と記録の古さは使いません。記録が無い、前提が変わった、記録が読めない、履歴が分岐している、答えが人によるものでない場合は、確認を出す側へ倒します。答えを変えるときは`supersedes`で先頭の記録を指定します。詳細と暫定判断は[ISSUE-000074](../../plan/issue/000074-answered-confirmation-history.md)を参照します。
+
 ### knowledge qualificationからcandidateへの接続
 
 `tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Source Index identity、source path、source fingerprintが含まれます。required dependencyを明示した場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintを`dependencyEvidence`へ含めます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。
