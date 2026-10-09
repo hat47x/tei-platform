@@ -345,6 +345,7 @@ func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 					"function-table-operation",
 					[]string{ref.functionToken, ref.token, tables[0].token},
 				))
+				continue
 			}
 			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
 				Kind:         "function-table-operation",
