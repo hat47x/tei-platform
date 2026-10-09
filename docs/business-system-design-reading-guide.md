@@ -357,7 +357,21 @@ available
   -> current Knowledgeからdiscloseする
 ```
 
-Handoff自体はDisclosureではありません。Handoffのfingerprintも開示内容のfreshnessを証明しないため、実際に開示したKnowledgeの再利用にはDisclosure側のfingerprintを使います。また、blockedでも診断や根拠確認のためにKnowledgeを読むこと自体を禁止するものではありません。禁止するのは、未QualificationのKnowledgeをそのtaskへ適用可能な意味として扱うことです。
+Handoff自体はDisclosureではありません。Handoffのfingerprintも開示内容のfreshnessを証明しないため、実際に開示したKnowledgeの再利用にはDisclosure側のfingerprintを使います。
+
+Qualification済みのHandoffから現在のKnowledgeを開示するときは、Handoff JSONを入力にして`knowledge-review-disclose`を使えます。
+
+```text
+tei knowledge-review-disclose
+  -workspace <workspace>
+  -subject-kind <kind>
+  -subject-id <id>
+  -review-handoff <handoff.json>
+```
+
+このコマンドは、Handoff自身のfingerprintを検査し、同じrequirementsからcurrent Context / Source Index上のHandoffを再構成します。fingerprintが一致し、statusが`qualified-for-disclosure`の場合だけ、既存の`DisclosureProjection`を返します。stale、改ざん済み、subject不一致、blockedなHandoffからは開示しません。
+
+返すJSONは通常のDisclosureと同じです。HandoffやQualification結果を本文へ混ぜないため、同じKnowledgeを別taskへ再利用するときは、そのtaskについて改めてQualificationします。また、blockedでも診断や根拠確認のためにKnowledgeを読むこと自体を禁止するものではありません。禁止するのは、未QualificationのKnowledgeをそのtaskへ適用可能な意味として扱うことです。
 
 Review PlanはAI Builder向けの用途別Projectionであり、通常のKnowledge Context、人間向け表示、業務実行用Contextへ混入させません。また、現在のKnowledge Contextに区画が見つからないことを、Repositoryや外部Knowledge全体に情報が存在しない証拠にはしません。Review Planのfingerprintが一致しても、選択したKnowledgeの内容が最新であることまでは証明しないため、Knowledgeの再利用には対応するData Design / Disclosure等のfingerprintを別に確認します。
 
