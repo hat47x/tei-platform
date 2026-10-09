@@ -29,7 +29,7 @@ Git text profileの`ready / completed`は共通Work envelopeへ置かず、Adapt
 
 ## 検査内容
 
-runnerは、Product repositoryがcleanなGit checkoutであることを最初に確認します。最初のWorkは`origin.kind=human`として保持し、作成経路を`createdVia`へ分離します。一つのWorkへ二つの独立したAgent Resultを保存し、Result Aからは`origin.kind=agent`のfollow-up Workを生成します。base revisionからcurrent resultとstale resultを区別し、stale resultを自動適用しません。`actorRef=admin`という自己申告もAuthorityとして扱いません。
+runnerは、Product repositoryがcleanなGit checkoutであることを最初に確認します。通常のtracked / untracked変更だけでなく、ignored artifactと、Git indexの`assume-unchanged` / `skip-worktree`によって隠れた状態も拒否します。Coordination処理後とStore削除後にも同じclean判定を行い、Source不変の主張を通常の`git status`のみに依存させません。最初のWorkは`origin.kind=human`として保持し、作成経路を`createdVia`へ分離します。一つのWorkへ二つの独立したAgent Resultを保存し、Result Aからは`origin.kind=agent`のfollow-up Workを生成します。base revisionからcurrent resultとstale resultを区別し、stale resultを自動適用しません。`actorRef=admin`という自己申告もAuthorityとして扱いません。
 
 Result保存やBackend-native completionの前後でProduct Sourceが変化しないことも確認します。Workのpathと内容はcompletionで変更せず、Git text固有のstateは`native-state/<work>.json`だけに保持します。Work / Result locatorがbackend instanceを含むopaque stringであることに加え、同じ局所IDでも別instanceならlocatorが異なることを検査します。Artifactは本文へ埋め込まず、backend-instance-scoped locatorとSHA-256 digestを分けて保持します。token budget、quota、credential、Agent Session、Checkpoint、Acceptance / Runtime Authorityのfieldは交換文書へ含めません。最後にCoordination repositoryを削除し、Product repositoryのrevisionとclean stateが変化しないことを検査します。
 
@@ -40,6 +40,14 @@ bash tools/reference-external-coordination/run.sh
 ```
 
 runnerはremote Git、GitHub API、外部SaaS、Go toolchain、TEI CLIを必要としません。標準Git、Bash、Python 3だけを利用します。
+
+合成Git repositoryでのclean判定回帰を個別に実行する場合は、次を用います。
+
+```bash
+bash tools/reference-external-coordination/clean-check-test.sh
+```
+
+この試験は正常なcheckoutでのE1 round tripと、tracked / untracked / ignored artifact、`assume-unchanged`、`skip-worktree`、non-Git directoryの拒否を確認します。合成環境での成功は、trustedな実TEI checkout上のfull Repository HealthやCanonical reloadのEvidenceには含めません。
 
 ## このReferenceが主張しないこと
 
