@@ -133,6 +133,25 @@ func TestMalformedBuildFingerprintFails(t *testing.T) {
 	x.Bindings[2].BuildPlanFingerprint = "unfixed"
 	mustFail(t, x, "invalid binding")
 }
+func TestBuiltinDescriptorFingerprintWithoutArtifact(t *testing.T) {
+	x := fixture()
+	x.Bindings[2].ArtifactDigest = ""
+	x.Bindings[2].PluginFingerprint = strings.Repeat("c", 64)
+	p, err := Derive(x)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Units[1].Included[0].PluginFingerprint; got != strings.Repeat("c", 64) {
+		t.Fatalf("locked builtin fingerprint lost: %q", got)
+	}
+}
+
+func TestRejectsMalformedDescriptorFingerprint(t *testing.T) {
+	x := fixture()
+	x.Bindings[2].PluginFingerprint = "not-a-fingerprint"
+	mustFail(t, x, "invalid binding")
+}
+
 func TestCycleClosure(t *testing.T) {
 	x := fixture()
 	x.Bindings[1].Requires = []string{"action"}
