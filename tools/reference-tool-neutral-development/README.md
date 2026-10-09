@@ -203,6 +203,19 @@ preflightがPASSした後の統合対象は、`--candidate`に渡したbranch名
 
 このreceiptは暗号学的な署名やGitHub branch protectionの代替ではありません。人間・AIが通常Gitで統合するときに、別revisionの成功記録を誤って流用しないための機械的なhandoffです。TEI Product state、Agent Session、独自Change Setへ昇格させません。
 
+### 回帰テスト
+
+`qualification_test.go` は、actual TEI semanticsを模倣せず、qualification receipt / integration preflightのGit制御だけを合成Repositoryで回帰検証します。
+
+- exact candidate / candidate tree / expected mainを持つv3 receipt
+- exact candidate + live mainのpreflight成功
+- 既存receiptの非上書き
+- candidate tree改ざんの拒否
+- local `origin/main`が古いままlive remote `main`だけ進んだ状態の拒否
+
+このテストはfull `go test ./...`へ含まれるため、将来のreceipt/preflight変更で境界が退行すればRepository Healthから検出できます。ただし、合成Git repository上のmechanics testであり、actual TEI CLI / Canonical meaning / RQ-034 E2EのEvidenceではありません。
+
+
 ## Run
 
 ```bash
