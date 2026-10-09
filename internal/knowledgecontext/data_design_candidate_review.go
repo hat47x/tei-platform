@@ -144,8 +144,10 @@ func BuildDataDesignCandidateReview(
 
 func dataDesignFirstClassAuthoringContractReasons(kind string) []string {
 	common := []string{
+		"first-class-promotion-route-core-vs-semantic-extension-not-selected",
 		"semantic-extension-v0-is-reference-not-production-authoring-contract",
-		"authoritative-declaration-source-and-namespace-authority-not-selected",
+		"authoritative-declaration-source-not-selected",
+		"semantic-extension-namespace-authority-not-selected",
 	}
 	switch kind {
 	case DataDesignCandidateKindBusinessIdentity:
