@@ -88,6 +88,23 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 - 実データの結合。結合キーの整合性は、参照先レコードの存在やキーの一意性を証明しない
 - 属性とRelationの完全な意味型を伝える正式な型体系。`rows/<dataID>`は移行用の文字列表現にすぎない
 
+### 既存Semantic Extensionへの接続条件（調査結果）
+
+`tools/reference-semantic-extension-catalog/`は現在`package main`の独立した検証器であり、Language Referenceから直接importできる共通APIではない。ここに別の契約解決器を設けるのではなく、**既存Semantic Catalogの解決・Lock照合が成功した後の読み取り専用Projection**を、呼び出し側から受け取る形を第一候補とする。
+
+既存の`SemanticLock.Interfaces`はInterface ID、Version、ContractFingerprint、所属Extensionを保持する。`SemanticLock.InterfaceWirings`は提供先、Conformance Profile等を保持する。Catalog側の`CatalogSemanticInterface`は入出力の意味、unknown / failureの意味を持つ。ただし、これらをそのまま`OperatorContract`へコピーしても**完全なOperatorの型と副作用は確定しない**。現行の`OperatorContract.InputType` / `OutputType`は暫定文字列であり、`pure`というEffectをLockに無い情報から推定してはいけない。
+
+接続する際の必要条件は次のとおり。
+
+1. 既存手順でSemantic Lockを再検証し、同じSemantic Setのcatalog projectionを得る。source-localにLockを再発行しない。
+2. Operator ID、Version、ContractFingerprintが、そのprojection内の**同一の受理済みInterface**に一致することを確認する。同じIDの別versionを自動採用しない。
+3. 入出力型、NULL・評価不能の意味、副作用、Cardinality、使用するRelation等、Interface表現に足りない事項は**受理対象の追加意味契約**として明示する。Reference側で推測した値は受理権限とみなさない。
+4. providerの選択と適合根拠には既存Interface Wiring・Conformanceを利用する。Operatorのcatalog登録順でproviderを再選択しない。
+5. `std.*`のOperatorは既存Namespace Authorityを通す。名前空間を名乗るだけのExtensionを標準実装として採用しない。
+6. 最低限の結合試験として、不一致Lock、同名別version、fingerprint drift、authority不在、unknown/failure policy不一致、副作用未宣言を拒否する。
+
+**この接続はまだ実装・試験されていない。** したがって現時点の`pins`と`catalog`は、外部で受理済みだという前提を置いたReference入力にすぎない。
+
 ### 実行・統合の停止条件
 
 参照パッケージ単体は`go test ./reference/dsl-language-plugin`で確認できる。コードをmainへ統合するには、`AGENTS.md`に従い、**exact-headのクリーンなチェックアウトで完全な`tools/repository-health-check.sh`のPASS**を記録する。Draft PR、部分テスト、未実行のテストコードを統合根拠としない。
