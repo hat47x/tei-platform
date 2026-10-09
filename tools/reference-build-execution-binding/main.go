@@ -10,6 +10,7 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/plugin"
+	pruntime "tei/internal/plugin/runtime"
 )
 
 const (
@@ -83,6 +84,14 @@ type PluginSubjectBinding struct {
 	ExecutionPlanFingerprint    string          `json:"executionPlanFingerprint"`
 	ArtifactSetFingerprint      string          `json:"artifactSetFingerprint"`
 	OutputRoles                 []string        `json:"outputRoles"`
+}
+
+type RuntimeEngineSubjectBinding struct {
+	FormatVersion            int                            `json:"formatVersion"`
+	Engine                   pruntime.RuntimeEngineIdentity `json:"engine"`
+	ExecutionPlanFingerprint string                         `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint   string                         `json:"artifactSetFingerprint"`
+	OutputRole               string                         `json:"outputRole"`
 }
 
 func main() {}
@@ -461,6 +470,69 @@ func verifyPluginSubjectBinding(
 		}
 	}
 	return nil
+}
+
+func (b RuntimeEngineSubjectBinding) Validate() error {
+	if b.FormatVersion != pluginSubjectBindingFormatVersion {
+		return fmt.Errorf("unsupported runtime engine subject binding format %d", b.FormatVersion)
+	}
+	if err := b.Engine.Validate(); err != nil {
+		return err
+	}
+	if err := validateFingerprint("execution plan fingerprint", b.ExecutionPlanFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("artifact set fingerprint", b.ArtifactSetFingerprint); err != nil {
+		return err
+	}
+	if strings.TrimSpace(b.OutputRole) == "" {
+		return fmt.Errorf("runtime engine subject binding output role is required")
+	}
+	return nil
+}
+
+func runtimeEngineSubjectBindingFingerprint(binding RuntimeEngineSubjectBinding) (string, error) {
+	if err := binding.Validate(); err != nil {
+		return "", err
+	}
+	return fingerprintJSON(binding)
+}
+
+func verifyRuntimeEngineSubjectBinding(
+	binding RuntimeEngineSubjectBinding,
+	plan BuildExecutionPlan,
+	set ArtifactSet,
+) error {
+	if err := binding.Validate(); err != nil {
+		return err
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		return err
+	}
+	if binding.ExecutionPlanFingerprint != executionFingerprint {
+		return fmt.Errorf("runtime engine subject binding execution plan fingerprint does not match")
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		return err
+	}
+	if binding.ArtifactSetFingerprint != setFingerprint {
+		return fmt.Errorf("runtime engine subject binding artifact set fingerprint does not match")
+	}
+	if binding.Engine.Target != plan.Target {
+		return fmt.Errorf("runtime engine subject binding target does not match build execution target")
+	}
+	for _, member := range set.Members {
+		if member.Role != binding.OutputRole {
+			continue
+		}
+		if member.Digest != binding.Engine.ImplementationDigest {
+			return fmt.Errorf("runtime engine implementation digest does not match selected artifact member")
+		}
+		return nil
+	}
+	return fmt.Errorf("runtime engine subject binding output role %s is not present in artifact set", binding.OutputRole)
 }
 
 func projectPluginBuild(
