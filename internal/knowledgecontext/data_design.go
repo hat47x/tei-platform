@@ -404,8 +404,6 @@ func buildDataDesignContext(
 			"distinguish-functional-dependency-from-composite-domain-constraint",
 			"treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
 			"preserve-unresolved-when-required-business-evidence-is-missing",
-			"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
-			"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
 			"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
 		},
 		AuthorityLimits: []string{
@@ -803,6 +801,18 @@ func buildDataDesignContext(
 	sort.Slice(ctx.PersistenceRealizations, func(i, j int) bool {
 		return ctx.PersistenceRealizations[i].Mapping < ctx.PersistenceRealizations[j].Mapping
 	})
+	if len(ctx.BusinessIdentityCandidates) != 0 ||
+		len(ctx.FunctionalDependencyCandidates) != 0 {
+		insertAt := len(ctx.DesignReviewProtocol) - 1
+		candidateSteps := []string{
+			"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+			"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
+		}
+		ctx.DesignReviewProtocol = append(
+			ctx.DesignReviewProtocol[:insertAt],
+			append(candidateSteps, ctx.DesignReviewProtocol[insertAt:]...)...,
+		)
+	}
 	ctx.Fingerprint = dataDesignFingerprint(ctx)
 	return ctx
 }
