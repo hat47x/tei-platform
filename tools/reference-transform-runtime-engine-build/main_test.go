@@ -168,3 +168,30 @@ func TestCopyVerifiedArtifactRejectsUnexpectedDigest(t *testing.T) {
 		t.Fatal("expected unexpected artifact digest to fail")
 	}
 }
+
+
+func TestCopyVerifiedArtifactRejectsExistingDestination(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "engine-copy")
+	if err := os.WriteFile(outside, []byte("existing"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyVerifiedArtifactOutsideRepository(root, source, outside, digest); err == nil {
+		t.Fatal("expected existing artifact-out to fail")
+	}
+	raw, err := os.ReadFile(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "existing" {
+		t.Fatal("existing artifact-out was overwritten")
+	}
+}
