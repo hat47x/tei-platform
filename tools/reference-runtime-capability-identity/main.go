@@ -19,7 +19,8 @@ import (
 const (
 	runtimeCapabilityRefSchema = "tei.reference.runtime-capability-ref/v0"
 	runtimeEnvironmentPlanSchema = "tei.reference.runtime-capability-environment-plan/v0"
-	genericResourceTransportKind = "generic-runtime-ref"
+	genericResourceAuthorityKind = "generic-runtime-authority"
+	genericProcessDispatchKind = "generic-runtime-dispatch"
 )
 
 type RuntimeIsolationPolicy string
@@ -492,25 +493,48 @@ func verifyRuntimeEnvironmentPlan(
 	return nil
 }
 
-func genericTransportCapabilityID(ref RuntimeCapabilityRef) (core.CanonicalID, error) {
+func genericResourceAuthoritySubjectID(
+	ref RuntimeCapabilityRef,
+) (core.CanonicalID, error) {
 	if err := validateRuntimeCapabilityRef(ref); err != nil {
 		return "", err
 	}
 	hexPart := strings.TrimPrefix(ref.Fingerprint, "sha256:")
-	return core.ParseCanonicalID("runtime_capability.r_" + hexPart)
+	return core.ParseCanonicalID("runtime_authority.r_" + hexPart)
+}
+
+func genericProcessDispatchID(
+	ref RuntimeCapabilityRef,
+) (core.CanonicalID, error) {
+	if err := validateRuntimeCapabilityRef(ref); err != nil {
+		return "", err
+	}
+	dispatchFingerprint := fingerprint(struct {
+		ContractID string `json:"contractId"`
+		ContractVersion string `json:"contractVersion"`
+		ContractFingerprint string `json:"contractFingerprint"`
+		ImplementationID string `json:"implementationId"`
+	}{
+		ContractID: ref.ContractID,
+		ContractVersion: ref.ContractVersion,
+		ContractFingerprint: ref.ContractFingerprint,
+		ImplementationID: ref.ImplementationID,
+	})
+	hexPart := strings.TrimPrefix(dispatchFingerprint, "sha256:")
+	return core.ParseCanonicalID("runtime_dispatch.d_" + hexPart)
 }
 
 func resourceAcquireRequest(plan RuntimeEnvironmentPlan) (resource.AcquireRequest, error) {
 	if err := validateRuntimeEnvironmentPlan(plan); err != nil {
 		return resource.AcquireRequest{}, err
 	}
-	capabilityID, err := genericTransportCapabilityID(plan.RuntimeCapability)
+	capabilityID, err := genericResourceAuthoritySubjectID(plan.RuntimeCapability)
 	if err != nil {
 		return resource.AcquireRequest{}, err
 	}
 	return resource.AcquireRequest{
 		Environment: plan.Environment,
-		CapabilityKind: genericResourceTransportKind,
+		CapabilityKind: genericResourceAuthorityKind,
 		CapabilityID: capabilityID,
 		RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
 		Permissions: append([]permission.Spec(nil), plan.Permissions...),
@@ -532,8 +556,10 @@ type GenericInvocationProvenance struct {
 	RuntimePolicyFingerprint string `json:"runtimePolicyFingerprint"`
 	ExecutionAuthorityEvidenceFingerprint string `json:"executionAuthorityEvidenceFingerprint"`
 	ArtifactVerification *pruntime.ArtifactVerification `json:"artifactVerification,omitempty"`
-	TransportCapabilityKind string `json:"transportCapabilityKind"`
-	TransportCapabilityID core.CanonicalID `json:"transportCapabilityId"`
+	ResourceAuthorityKind string `json:"resourceAuthorityKind"`
+	ResourceAuthoritySubjectID core.CanonicalID `json:"resourceAuthoritySubjectId"`
+	ProcessDispatchKind string `json:"processDispatchKind"`
+	ProcessDispatchID core.CanonicalID `json:"processDispatchId"`
 	Sandboxed bool `json:"sandboxed"`
 	ResourceLeaseID string `json:"resourceLeaseId,omitempty"`
 	ResourceLeaseReleased bool `json:"resourceLeaseReleased,omitempty"`
@@ -595,7 +621,12 @@ func invokeWithExistingHostBoundary(
 	if strings.TrimSpace(realization.Command.Executable) == "" {
 		return prov, fmt.Errorf("process realization executable is empty")
 	}
-	capabilityID, err := genericTransportCapabilityID(plan.RuntimeCapability)
+	resourceAuthoritySubjectID, err :=
+		genericResourceAuthoritySubjectID(plan.RuntimeCapability)
+	if err != nil {
+		return prov, err
+	}
+	processDispatchID, err := genericProcessDispatchID(plan.RuntimeCapability)
 	if err != nil {
 		return prov, err
 	}
@@ -605,8 +636,10 @@ func invokeWithExistingHostBoundary(
 		RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
 		ExecutionAuthorityEvidenceFingerprint: plan.ExecutionAuthorityEvidenceFingerprint,
 		ArtifactVerification: &verified,
-		TransportCapabilityKind: genericResourceTransportKind,
-		TransportCapabilityID: capabilityID,
+		ResourceAuthorityKind: genericResourceAuthorityKind,
+		ResourceAuthoritySubjectID: resourceAuthoritySubjectID,
+		ProcessDispatchKind: genericProcessDispatchKind,
+		ProcessDispatchID: processDispatchID,
 		Sandboxed: true,
 	}
 
@@ -647,8 +680,8 @@ func invokeWithExistingHostBoundary(
 		ProtocolVersion: pruntime.ProtocolVersion,
 		RequestID: requestID,
 		Plugin: realization.Plugin,
-		CapabilityKind: plugin.CapabilityKind(genericResourceTransportKind),
-		CapabilityID: capabilityID,
+		CapabilityKind: plugin.CapabilityKind(genericProcessDispatchKind),
+		CapabilityID: processDispatchID,
 		Permissions: append([]permission.Spec(nil), plan.Permissions...),
 		ResourceLease: lease,
 		Operation: operation,
