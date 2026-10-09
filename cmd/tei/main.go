@@ -231,6 +231,14 @@ func main() {
 			fmt.Fprintln(os.Stderr, "knowledge-data-design-candidate-review requires -workspace and does not accept -world")
 			os.Exit(2)
 		}
+		if strings.TrimSpace(*dataDesignCandidateKind) == "" ||
+			strings.TrimSpace(*dataDesignCandidateFingerprint) == "" {
+			fmt.Fprintln(
+				os.Stderr,
+				"knowledge-data-design-candidate-review requires -data-design-candidate-kind and -data-design-candidate-fingerprint",
+			)
+			os.Exit(2)
+		}
 		context, err := buildKnowledgeContext(*workspacePath, *subjectKind, *subjectID)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
