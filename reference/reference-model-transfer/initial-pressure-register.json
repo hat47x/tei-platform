@@ -388,6 +388,13 @@
       "observed": "The typed RMT Evidence contract can verify canonical payload integrity and exact fingerprints, but any caller can construct a syntactically valid payload and recompute those fingerprints. Shared Acceptance can therefore verify that a recorded artifact was not altered without proving that a qualified Source Adapter actually observed the asserted external source.",
       "risk": "Reviewers or downstream tooling can mistake fingerprint-valid RMT Evidence for trusted observation, allowing self-authored mapped/classification claims to gain more epistemic weight than the contract establishes.",
       "teiDirection": "make non-authority limits mandatory in the RMT Evidence schema, expose observer Conformance and external-source freshness as not verified at the Shared Acceptance boundary, and connect qualified observer/provider authority only through the separate Plugin Capability Conformance boundary rather than the content fingerprint."
+    },
+    {
+      "id": "RMP-056",
+      "topic": "typed-evidence-known-vocabulary-vs-self-assertion",
+      "observed": "The RMT typed Evidence decoder originally accepted any non-empty sourceConstruct whenever sourceConstructKnown=true, and accepted arbitrary classification strings. A caller could therefore bypass the Source Adapter, recompute the content fingerprint, and carry a private or non-Xead/Xeaf name as a supposedly known construct.",
+      "risk": "A public-safe typed artifact can reintroduce redacted source vocabulary or present an unmapped/private construct as standard evidence. Content integrity then protects a misleading self-assertion rather than constraining what the artifact is allowed to claim.",
+      "teiDirection": "make the typed Evidence schema validate the public standard construct vocabulary per source format and the controlled classification vocabulary; unmapped Evidence must remain exactly unresolved. Keep this validation separate from observer Conformance, because vocabulary validity still does not prove that a qualified adapter observed the source."
     }
   ]
 }
