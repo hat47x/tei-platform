@@ -78,6 +78,7 @@ func TestReferenceReadScenarioRunsBrowseRecordReferenceAndHeaderDetailThroughDri
 		"runtime-row-index-is-selection-state-not-business-identity",
 		"runtime-row-or-attribute-value-is-not-business-identity-proof",
 		"explicit-result-mapping-is-semantic-correspondence-not-business-key-proof",
+		"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
 	} {
 		if !containsString(result.AuthorityLimits, limit) {
 			t.Fatalf("runtime identity authority limit %q is missing: %+v", limit, result.AuthorityLimits)
