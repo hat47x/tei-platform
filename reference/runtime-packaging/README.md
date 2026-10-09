@@ -24,7 +24,7 @@ browser [ui] --明示した通信/信頼境界--> api [action] --> api [db]
 - `Requires` は同じ実行単位で呼ぶ契約、`RemoteRequires` は別単位の契約を指す。後者には通信契約と信頼境界への参照を必須とする。ただし参照があるだけで通信保護・認可が成立するわけではない。
 - `AvailableImports` は信頼できるHost側が提示する機能の候補であり、プラグイン自身の申告から無条件に増やしてはならない。
 - `DynamicOpen` は動的依存を閉じられない状態を表す。この状態の実装に到達した場合は失敗する。静的に決まらない呼出しを黙って除外しない。
-- `ArtifactDigest` は生成済み成果物の識別子、`BuildPlanFingerprint` はまだ成果物がない段階の固定されたビルド入力を指す。少なくとも一方が必要で、両方あればそれぞれ別の事実として保持する。これらの値の真正性・相互対応は既存BuildPlan/BuildArtifactLock/Plugin Lockで検査し、ここで第三のLockを作らない。
+- `PluginFingerprint` は既存Plugin Lockの定義指紋、`ArtifactDigest` は生成済み成果物、`BuildPlanFingerprint` は固定済みのビルド入力を指す。**既存のBuiltin Pluginは成果物digestを持たない場合がある**ため、三つの識別のうち一つ以上を保持する。これらの値の真正性と対応関係は既存の解決・Lock検証へ委ね、ここで第三のLockを作らない。なお、`ContractFingerprint`は将来の契約境界の候補であり、現行Plugin Lockの定義指紋を代入してはならない。
 
 ## 確認する振る舞い
 
@@ -32,7 +32,7 @@ browser [ui] --明示した通信/信頼境界--> api [action] --> api [db]
 go test -count=1 ./reference/runtime-packaging
 ```
 
-局所Go 1.23.2環境で、合成入力を使った**17テストがPASS**した。ファイルのGit blob SHAを照合した同一バイト列についての結果であり、GitHubの全リポジトリcheckoutに対する健全性検査ではない。
+初期の依存閉包に対する**17件の合成テストは、当時の局所Go 1.23.2環境でPASS**した。その後に実Workspace接続とBuiltin Plugin識別を追加しているため、**現在のPR最新コミット全体に対するテスト成功はまだ取得していない**。以前のGit blob SHA照合は新しいファイルの検証根拠にはならない。
 
 - BrowserへServer専用のDB処理が混入しないこと。
 - 到達不能なEditor用実装が選択されないこと。
@@ -40,10 +40,32 @@ go test -count=1 ./reference/runtime-packaging
 - 欠落契約、曖昧な実装選択、動的依存の未確定、Targetの機能不足、通信先の欠落、通信境界の参照漏れ、不正な成果物識別やBuild Planの識別子を拒否すること。生成済み成果物がなくても、固定Build Planからの選択を保てること。
 - 依存グラフに循環があっても、到達できる各実装を一度だけ含めること。
 
+## 実Workspaceへの接続（今回の追加）
+
+`workspace_probe.go` は既存の `workspace.Load`、`plugin.Catalog.ResolveEnvironmentWithLock`、`plugin.Lock` をそのまま使用し、`order_entry`の**データベース要件に限って**次の情報を突き合わせる。
+
+```text
+Application.database alias
+       ↓
+Environment.bind
+       ↓
+DatabaseInstance.definition / provider
+       ↓
+既存のPlugin Lockで検証されたDatabase Provider実装
+```
+
+既存Sourceの読取りから期待する対応は、開発環境の `sales → sales_core.dev → postgres → tei.database.postgres` と、`master → master_data.dev → oracle → tei.database.oracle` の二つである。両者ともBuiltin実装であり、現在のPlugin Lockには成果物digestではなく定義指紋が記録されている。
+
+`workspace_probe_test.go`には、実`reference/workspace`を読み取るテストに加え、Lock改ざん、Binding欠落、Database定義の不一致、Provider競合、Alias重複の負例を追加した。これらの**新しいテストは未実行**であり、成功は主張しない。
+
+取得したのは**データベース接続に関する前提情報**であって、Action、認証、画面などの実装を一つの配備物へまとめる完全な依存閉包ではない。結果の`packageReady`は常に`false`とし、成功したかのような表示を防ぐ。
+
 ## まだ確認していないこと
 
-実Reference Application `order_entry`を、実Plugin Lock、Capability契約、BuildArtifactLockからこの形式へ変換する入口は未実装である。Goコードのimport graph、静的結合、実際の実行ファイル、Browserでの権限分離、実ネットワーク接続、実DB、Desktop/Wasm/IoT、運用・監視については**検証していない**。
+現時点では`order_entry`のAction実装（Custom Go等）やUI処理を、Plugin Lockで固定したCapabilityの実装と同一視できない。現行のプラグイン管理情報は**環境が要求するPlugin集合**を表すものであり、それだけでアプリケーションの実行入口からの到達可能性がわかるわけではない。
 
-特に、同じ一つの物理成果物に複数Capabilityが含まれる場合、論理的に未到達のCapabilityを除外しただけでは、バイナリからその実装が削除されたと証明できない。また、宣言されたHost importを検査するだけでは、OS権限を共有するネイティブプラグインを隔離できない。
+まず、アプリケーションのActionと実行入口を既存Driver・Realizationへ戻って正確に対応付ける必要がある。新たな定義指紋や契約指紋を便宜的に合成して`Derive`へ渡すことはしない。
 
-次は、`order_entry`の既存Bindingを読み取るAdapterを用意するかを既存Ownerと評価し、その結果を静的結合時の生成コードへ渡して、生成後の成果物を直接調べる。追加の汎用依存解決機構は設けない。
+Goコードのimport graph、静的結合、実際の実行ファイル、Browserでの権限分離、実ネットワーク接続、実DB、Desktop/Wasm/IoT、運用・監視についても検証していない。論理閉包を絞れても、同じ物理成果物内の未到達コードが除去された証拠にはならない。
+
+次の優先作業は、実際のWeb Targetの起動点と既存Realizationから**実装への参照辺**を取得し、現在のPlugin Lockが説明できる範囲と説明できない範囲を明示することである。ビルド可能な依存閉包が成立して初めて、生成バイナリの差を測定する。
