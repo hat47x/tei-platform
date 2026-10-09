@@ -13,6 +13,21 @@ import (
 
 const reviewSchema = "tei.reference.spec-review/v0"
 
+type pathList []string
+
+func (values *pathList) String() string {
+	return strings.Join(*values, ",")
+}
+
+func (values *pathList) Set(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return errors.New("path is empty")
+	}
+	*values = append(*values, value)
+	return nil
+}
+
 type finding struct {
 	Class    string `json:"class"`
 	Source   string `json:"source"`
@@ -118,12 +133,13 @@ type acceptanceInput struct {
 
 func main() {
 	caseID := flag.String("case-id", "", "review case identifier")
-	knowledgePath := flag.String("knowledge-context", "", "tei knowledge-context JSON")
+	var knowledgePaths pathList
+	flag.Var(&knowledgePaths, "knowledge-context", "tei knowledge-context JSON。複数指定可")
 	crossViewPath := flag.String("cross-view", "", "Business Procedure checker JSON")
 	acceptancePath := flag.String("shared-acceptance", "", "Shared Acceptance Preview / Decision JSON")
 	flag.Parse()
 
-	packet, err := buildReviewPacket(*caseID, *knowledgePath, *crossViewPath, *acceptancePath)
+	packet, err := buildReviewPacketWithKnowledge(*caseID, knowledgePaths, *crossViewPath, *acceptancePath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -137,6 +153,19 @@ func main() {
 }
 
 func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath string) (reviewPacket, error) {
+	var knowledgePaths []string
+	if strings.TrimSpace(knowledgePath) != "" {
+		knowledgePaths = append(knowledgePaths, knowledgePath)
+	}
+	return buildReviewPacketWithKnowledge(caseID, knowledgePaths, crossViewPath, acceptancePath)
+}
+
+func buildReviewPacketWithKnowledge(
+	caseID string,
+	knowledgePaths []string,
+	crossViewPath string,
+	acceptancePath string,
+) (reviewPacket, error) {
 	packet := reviewPacket{
 		Schema: reviewSchema,
 		CaseID: strings.TrimSpace(caseID),
@@ -147,57 +176,58 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 			"source-diagnostic-semantics-remain-owned-by-source-tool",
 		},
 	}
-	if strings.TrimSpace(knowledgePath) == "" &&
+	if len(knowledgePaths) == 0 &&
 		strings.TrimSpace(crossViewPath) == "" &&
 		strings.TrimSpace(acceptancePath) == "" {
 		return reviewPacket{}, errors.New("at least one review input is required")
 	}
 
-	if strings.TrimSpace(knowledgePath) == "" {
+	if len(knowledgePaths) == 0 {
 		packet.MissingInputs = append(packet.MissingInputs, "knowledge-context")
 	} else {
-		var input knowledgeContextInput
-		if err := readJSONFile(knowledgePath, &input); err != nil {
-			return reviewPacket{}, fmt.Errorf("knowledge contextを読めません: %w", err)
-		}
-		if strings.TrimSpace(input.Subject.Kind) == "" ||
-			strings.TrimSpace(input.Subject.ID) == "" {
-			return reviewPacket{}, errors.New("knowledge contextにsubject kind / idがありません")
-		}
 		packet.Coverage.KnowledgeContext = true
-		artifactFingerprints := map[string]string{}
-		for _, artifact := range input.Artifacts {
-			if strings.TrimSpace(artifact.Path) == "" {
-				continue
+		for _, knowledgePath := range knowledgePaths {
+			var input knowledgeContextInput
+			if err := readJSONFile(knowledgePath, &input); err != nil {
+				return reviewPacket{}, fmt.Errorf("knowledge context %sを読めません: %w", knowledgePath, err)
 			}
-			artifactFingerprints[artifact.Path] = artifact.Fingerprint
-		}
-		for _, ref := range input.References {
-			source := strings.TrimSpace(ref.ArtifactPath)
-			if source == "" {
-				continue
+			if strings.TrimSpace(input.Subject.Kind) == "" ||
+				strings.TrimSpace(input.Subject.ID) == "" {
+				return reviewPacket{}, fmt.Errorf("knowledge context %sにsubject kind / idがありません", knowledgePath)
 			}
-			packet.Evidence = append(packet.Evidence, evidenceRef{
-				Subject:     formatSubject(ref.Subject.Kind, ref.Subject.ID),
-				Source:      source,
-				Fingerprint: artifactFingerprints[source],
-				Role:        strings.TrimSpace(ref.Role),
-			})
-		}
-		subjectID := input.Subject.ID
-		subject := formatSubject(input.Subject.Kind, subjectID)
-		for _, unresolved := range input.Unresolved {
-			reason := strings.TrimSpace(unresolved)
-			if reason == "" {
-				continue
+			artifactFingerprints := map[string]string{}
+			for _, artifact := range input.Artifacts {
+				if strings.TrimSpace(artifact.Path) == "" {
+					continue
+				}
+				artifactFingerprints[artifact.Path] = artifact.Fingerprint
 			}
-			packet.Findings = append(packet.Findings, finding{
-				Class:   "ambiguity",
-				Source:  "knowledge-context",
-				Code:    "KNOWLEDGE_UNRESOLVED",
-				Subject: subject,
-				Message: reason,
-			})
+			for _, ref := range input.References {
+				source := strings.TrimSpace(ref.ArtifactPath)
+				if source == "" {
+					continue
+				}
+				packet.Evidence = append(packet.Evidence, evidenceRef{
+					Subject:     formatSubject(ref.Subject.Kind, ref.Subject.ID),
+					Source:      source,
+					Fingerprint: artifactFingerprints[source],
+					Role:        strings.TrimSpace(ref.Role),
+				})
+			}
+			subject := formatSubject(input.Subject.Kind, input.Subject.ID)
+			for _, unresolved := range input.Unresolved {
+				reason := strings.TrimSpace(unresolved)
+				if reason == "" {
+					continue
+				}
+				packet.Findings = append(packet.Findings, finding{
+					Class:   "ambiguity",
+					Source:  "knowledge-context",
+					Code:    "KNOWLEDGE_UNRESOLVED",
+					Subject: subject,
+					Message: reason,
+				})
+			}
 		}
 	}
 
@@ -304,6 +334,7 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 		}
 	}
 
+	packet.Findings = dedupeFindings(packet.Findings)
 	packet.Evidence = dedupeEvidence(packet.Evidence)
 	sort.Slice(packet.Evidence, func(i, j int) bool {
 		if packet.Evidence[i].Subject != packet.Evidence[j].Subject {
@@ -359,6 +390,21 @@ func formatSubject(kind, id string) string {
 	default:
 		return ""
 	}
+}
+
+func dedupeFindings(values []finding) []finding {
+	seen := map[string]struct{}{}
+	out := make([]finding, 0, len(values))
+	for _, value := range values {
+		key := value.Class + "\x1f" + value.Source + "\x1f" + value.Code + "\x1f" +
+			value.Severity + "\x1f" + value.Subject + "\x1f" + value.Message
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
 
 func dedupeEvidence(values []evidenceRef) []evidenceRef {
