@@ -5,7 +5,10 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/database/persistence"
+	"tei/internal/environment"
 	"tei/internal/ir"
+	"tei/internal/query"
+	"tei/internal/realization"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
@@ -383,6 +386,47 @@ func TestDataDesignContextDoesNotPromoteVersionAndValidityRealizationToBusinessI
 		if !containsDataDesignString(ctx.DataDesign.TemporalHistoryEvidenceQuestions, question) {
 			t.Fatalf("history/version Evidence question %q is missing: %+v", question, ctx.DataDesign.TemporalHistoryEvidenceQuestions)
 		}
+	}
+}
+
+func TestDataDesignContextDoesNotGuessAcrossMultipleResultData(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	sqlRealization := realization.ContractQuerySQLRealization{
+		Target: realization.ContractQueryTarget{
+			Database: "sales_core",
+			Contract: "sales_core.order_line",
+			Query:    "mixed_result",
+		},
+		Provider: environment.ProviderPostgres,
+		ResultColumns: []query.ResultColumnMapping{
+			{
+				Column:    "line_number",
+				Attribute: "sales.order_line.line_number",
+			},
+			{
+				Column:    "order_total",
+				Attribute: "sales.order.total",
+			},
+		},
+	}
+	w.ContractQuerySQLRealizations = []realization.ContractQuerySQLRealization{sqlRealization}
+
+	ctx := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{
+			Kind: "contract-query-sql-realization",
+			ID:   sqlRealization.Identity(),
+		},
+	)
+	if ctx.DataDesign != nil {
+		t.Fatalf("mixed-result SQL realization guessed one Semantic Data: %+v", ctx.DataDesign)
+	}
+	if !containsDataDesignString(
+		ctx.Unresolved,
+		"data-design-contract-query-sql-realization-scope-not-uniquely-resolvable",
+	) {
+		t.Fatalf("mixed-result SQL realization unresolved reason is missing: %+v", ctx.Unresolved)
 	}
 }
 
