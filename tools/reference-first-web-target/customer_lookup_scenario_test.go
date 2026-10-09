@@ -83,6 +83,7 @@ func TestCustomerLookupRunsRepairIntakeReferencePatternThroughDriver(t *testing.
 		"requested-customer-id-is-runtime-input-not-business-identity-proof",
 		"mapped-intake-row-is-runtime-carrier-not-business-occurrence-authority",
 		"contract-result-row-is-runtime-observation-not-business-identity-authority",
+		"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
 	} {
 		if !containsString(result.AuthorityLimits, limit) {
 			t.Fatalf("runtime identity authority limit %q is missing: %+v", limit, result.AuthorityLimits)
