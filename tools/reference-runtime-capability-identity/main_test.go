@@ -164,6 +164,70 @@ func TestRuntimeCapabilityRefRejectsExecutionProfileDrift(t *testing.T) {
 	}
 }
 
+func TestProcessDispatchIdentityIsStableAcrossExecutionProfileChanges(t *testing.T) {
+	baseProfile := referenceExecutionProfile(t, "web-browser", nil)
+	baseCandidate := referenceRuntimeCandidate(baseProfile)
+	baseRef, err := deriveRuntimeCapabilityRef(baseCandidate, baseProfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseResourceID, err := genericResourceAuthoritySubjectID(baseRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseDispatchID, err := genericProcessDispatchID(baseRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	permissionProfile := referenceExecutionProfile(
+		t, "web-browser", []permission.Spec{referencePermission()},
+	)
+	permissionCandidate := baseCandidate
+	permissionCandidate.ExecutionProfileFingerprint = permissionProfile.Fingerprint
+	permissionRef, err := deriveRuntimeCapabilityRef(
+		permissionCandidate,
+		permissionProfile,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permissionResourceID, err :=
+		genericResourceAuthoritySubjectID(permissionRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permissionDispatchID, err := genericProcessDispatchID(permissionRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if permissionRef.Fingerprint == baseRef.Fingerprint ||
+		permissionResourceID == baseResourceID {
+		t.Fatal("Execution Profile change did not change Runtime Authority identity")
+	}
+	if permissionDispatchID != baseDispatchID {
+		t.Fatalf(
+			"Execution Profile change altered process dispatch identity: %s != %s",
+			permissionDispatchID,
+			baseDispatchID,
+		)
+	}
+
+	contractCandidate := baseCandidate
+	contractCandidate.ContractFingerprint = fingerprint("changed-contract")
+	contractRef, err := deriveRuntimeCapabilityRef(contractCandidate, baseProfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contractDispatchID, err := genericProcessDispatchID(contractRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if contractDispatchID == baseDispatchID {
+		t.Fatal("Contract semantic drift did not change process dispatch identity")
+	}
+}
+
 func TestRuntimeCapabilityRefIdentityChangesWithAcceptedRuntimeInputs(t *testing.T) {
 	profile := referenceExecutionProfile(t, "web-browser", nil)
 	baseCandidate := referenceRuntimeCandidate(profile)
@@ -532,19 +596,28 @@ func TestExistingResourceBrokerAndHostSandboxExecuteGenericRuntimeRef(t *testing
 	if broker.AcquireCalls != 1 || broker.ReleaseCalls != 1 {
 		t.Fatalf("Resource Broker calls acquire=%d release=%d", broker.AcquireCalls, broker.ReleaseCalls)
 	}
-	expectedTransportID, err := genericTransportCapabilityID(ref)
+	expectedResourceSubjectID, err :=
+		genericResourceAuthoritySubjectID(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if broker.LastAcquire.CapabilityKind != genericResourceTransportKind ||
-		broker.LastAcquire.CapabilityID != expectedTransportID ||
+	expectedProcessDispatchID, err := genericProcessDispatchID(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if broker.LastAcquire.CapabilityKind != genericResourceAuthorityKind ||
+		broker.LastAcquire.CapabilityID != expectedResourceSubjectID ||
 		broker.LastAcquire.RuntimePolicyFingerprint != plan.RuntimePolicyFingerprint {
-		t.Fatalf("Resource Broker transport identity=%+v", broker.LastAcquire)
+		t.Fatalf("Resource Broker Authority identity=%+v", broker.LastAcquire)
 	}
 	if runner.Calls != 1 ||
-		runner.Request.CapabilityKind != plugin.CapabilityKind(genericResourceTransportKind) ||
-		runner.Request.CapabilityID != expectedTransportID {
-		t.Fatalf("sandbox runner request=%+v", runner.Request)
+		runner.Request.CapabilityKind != plugin.CapabilityKind(genericProcessDispatchKind) ||
+		runner.Request.CapabilityID != expectedProcessDispatchID {
+		t.Fatalf("sandbox runner dispatch request=%+v", runner.Request)
+	}
+	if prov.ResourceAuthoritySubjectID != expectedResourceSubjectID ||
+		prov.ProcessDispatchID != expectedProcessDispatchID {
+		t.Fatalf("generic invocation transport provenance=%+v", prov)
 	}
 	if network.Calls != 1 || !network.Policy.DenyByDefault || len(network.Policy.Allowlist) != 0 {
 		t.Fatalf("network policy=%+v", network.Policy)
