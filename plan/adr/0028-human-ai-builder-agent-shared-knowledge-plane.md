@@ -103,6 +103,7 @@ Plan + Qualification
 
 Builder Review Handoff
   != disclosed Knowledge
+  != access control / redaction
   != Accepted Decision
   != write / runtime authority
 ```
