@@ -324,6 +324,26 @@ similarity  != applicability
 
 最終的にはShared Acceptance Boundaryを通してauthoritative sourceへ戻します。
 
+### AIが設計変更へ入るときの読み順
+
+AIが設計変更を始めるときは、対象のKnowledge Contextから**設計確認計画（`builderReviewPlan`）**を取得します。これは個々の設計原則を重複して持つものではなく、その対象について、どの知識をどの順で確認すべきかを示す派生情報です。
+
+`recommendedDisclosureSections`には、現在利用できる`source`、`definition`、`data-design`、`dependencies`のうち、確認対象となる区画がレビュー順に並びます。`reviewSequence`は、Source / Evidenceの確認から始め、対象に応じて定義、Data設計、依存・影響へ進み、最後に`unresolved`と`authorityLimits`を確認してからProposalをShared Acceptanceへ渡す流れを示します。
+
+選択的にKnowledgeを開示した場合も、この設計確認計画は残します。したがってAIは、現在受け取った情報だけで判断を閉じず、利用可能だが省略された区画があることを確認できます。
+
+```text
+builderReviewPlan
+  -> 何をどの順で読むか
+
+data-design.designReviewProtocol
+  -> Data設計で何を確認するか
+
+どちらも
+  != accepted business meaning
+  != write / runtime authority
+```
+
 ### AIがData設計を変更するときの入口
 
 Data、Relation、Validation、Persistence、record系Patternに関わる変更をAIが検討するときは、設計資料を自由検索するだけでなく、対象DataのKnowledge Contextを先に取得します。
