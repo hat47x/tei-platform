@@ -30,13 +30,25 @@ SUI `03_Implement/frontend/src/domain/types.ts` の`DocumentV1`では、Cardの�
 
 したがって、TEI接続時は既存のCanvasを置き換えるのではなく、**局所プレビュー／取消し／確定**を分けるSUI側の接続口を用意し、確定時にだけ`Host.Commit`へ最終座標とRevisionを渡す必要があります。認可拒否やRevision競合では、プレビューを破棄し、Documentを再取得します。SUIの既存島所属・Undo/Redo規則はSUI側のAction実装に残します。
 
+## ブラウザー側の操作アダプター（参照実装）
+
+`native-action-bridge.mjs` は、FrameworkやNode.js専用APIに依存しないES Moduleです。既存のReact Canvasを置き換えず、画面側が`begin`、`preview`、`cancel`、`drop`を呼び分ける接続口だけを提供します。
+
+- `begin`: 操作対象と期待Revisionを固定します。画面入力のApplication IDや権限を信用するという意味ではありません。Host側で再検証が必要です。
+- `preview`: 最終候補のPayloadのコピーをローカルに保持します。永続化・TEI Actionは呼びません。
+- `cancel`: プレビューを破棄します。書き込みは行いません。
+- `drop`: 最後のPayloadで1回だけ`dispatchCommit`を呼び、処理中の二重操作を拒否します。拒否や競合を勝手に再実行せず、例外を呼出元へ戻します。
+
+**既存SUIのReact Canvasにこのアダプターを接続した状態ではありません。** ドラッグ中の描画と取消しをSUIの局所状態へ切り分け、SUI自身の島所属変更・履歴確定と統合する仕事が残ります。ブラウザーではこのES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。永続化用通信と認証セッションは別途接続します。
+
 ## 実行
 
 ```sh
 go test -race -count=1 ./tools/reference-sui-action-boundary/actionboundary
+node --test tools/reference-sui-action-boundary/native-action-bridge.test.mjs
 ```
 
-このREADMEはテストの成功を主張しません。統合時は対象コミットを固定し、`tools/repository-health-check.sh`全項目のPASSと実行前後のclean状態を別途確認してください。
+操作アダプターのNode.js 22単体テスト6件は2026-10-10に実行してPASSを確認しました。GitHub上の正確なPR headをcheckoutして実行した結果ではありません。Goテストとリポジトリ全体の健全性は未検証です。統合時は対象コミットを固定し、`tools/repository-health-check.sh`全項目のPASSと実行前後のclean状態を別途確認してください。
 
 ## 検証範囲と未実装
 
