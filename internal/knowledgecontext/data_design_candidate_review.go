@@ -126,7 +126,9 @@ func BuildDataDesignCandidateReview(
 			"review-derived-candidate-shape-and-basis-constraint",
 			"review-authoritative-source-evidence",
 			"resolve-business-evidence-requirements-without-inference",
-			"decide-whether-first-class-authoring-contract-is-required",
+			"review-first-class-authoring-contract-gaps",
+			"select-core-or-semantic-extension-authoring-route-with-evidence",
+			"require-lossless-authoring-contract-before-promoting-derived-candidate",
 			"route-authoritative-change-through-shared-acceptance-only-after-authoring-contract-exists",
 		},
 		AuthorityLimits: []string{
