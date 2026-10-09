@@ -319,3 +319,45 @@ func TestValidationScopeReviewKeepsMissingSourceUnresolved(t *testing.T) {
 		t.Fatalf("出典が無いときに根拠を作りました: %+v", rows[0])
 	}
 }
+
+func TestValidationScopeReviewAmbiguousSourceIsNotChosen(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := compareValidationScopes(loaded.World, fixture)
+	if len(rows) != 1 || len(rows[0].ApplicationOnly) != 1 {
+		t.Fatalf("比較対象の参照差がありません: %+v", rows)
+	}
+	duplicated := false
+	for _, ref := range sources.References {
+		if ref.Subject.Kind == "semantic-validation" && ref.Subject.ID == "sales.order_line.line_number_positive" {
+			sources.References = append(sources.References, ref)
+			duplicated = true
+			break
+		}
+	}
+	if !duplicated {
+		t.Fatal("ValidationのSource定義がIndex上にありません")
+	}
+	attachValidationScopeSources(rows, sources)
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{
+		"semantic-validation:sales.order_line.line_number_positive",
+	}) {
+		t.Fatalf("重複したSource定義から一件を勝手に選びました: %+v", rows[0])
+	}
+	for _, evidence := range rows[0].SourceEvidence {
+		if evidence.ID == "sales.order_line.line_number_positive" {
+			t.Fatalf("重複したSource定義を確定した根拠としました: %+v", evidence)
+		}
+	}
+}
