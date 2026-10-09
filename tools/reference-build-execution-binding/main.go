@@ -456,8 +456,14 @@ func buildExecutionPlanFingerprint(plan BuildExecutionPlan) (string, error) {
 		sources = append(sources, identitySource{
 			Kind:   source.Kind,
 			ID:     source.ID,
-			Digest: source.Digest,
+			Digest: normalizeDigest(source.Digest),
 		})
+	}
+	builder := normalized.Builder
+	builder.ArtifactDigest = normalizeDigest(builder.ArtifactDigest)
+	dependencies := append([]plugin.BuildDependency(nil), normalized.Dependencies...)
+	for i := range dependencies {
+		dependencies[i].ArtifactDigest = normalizeDigest(dependencies[i].ArtifactDigest)
 	}
 	return fingerprintJSON(struct {
 		FormatVersion  int                      `json:"formatVersion"`
@@ -472,10 +478,10 @@ func buildExecutionPlanFingerprint(plan BuildExecutionPlan) (string, error) {
 	}{
 		FormatVersion:  normalized.FormatVersion,
 		Sources:        sources,
-		Builder:        normalized.Builder,
+		Builder:        builder,
 		Recipe:         normalized.Recipe,
 		OutputContract: normalized.OutputContract,
-		Dependencies:   normalized.Dependencies,
+		Dependencies:   dependencies,
 		Target:         normalized.Target,
 		Profile:        normalized.Profile,
 		Parameters:     normalized.Parameters,
@@ -522,7 +528,7 @@ func artifactSetFingerprint(set ArtifactSet) (string, error) {
 		members = append(members, identityMember{
 			Role:   member.Role,
 			Format: member.Format,
-			Digest: member.Digest,
+			Digest: normalizeDigest(member.Digest),
 		})
 	}
 	sort.Slice(members, func(i, j int) bool {
@@ -572,7 +578,8 @@ func compareArtifactSets(first, second ArtifactSet) (ArtifactSetComparison, erro
 			comparison.MissingFromSecond = append(comparison.MissingFromSecond, role)
 			continue
 		}
-		if firstMember.Format != secondMember.Format || firstMember.Digest != secondMember.Digest {
+		if firstMember.Format != secondMember.Format ||
+			normalizeDigest(firstMember.Digest) != normalizeDigest(secondMember.Digest) {
 			comparison.Changed = append(comparison.Changed, ArtifactMemberChange{
 				Role:         role,
 				FirstFormat:  firstMember.Format,
@@ -616,7 +623,10 @@ func buildExecutionResultFingerprint(result BuildExecutionResult) (string, error
 	if err := result.Validate(); err != nil {
 		return "", err
 	}
-	return fingerprintJSON(result)
+	normalized := result
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(result.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(result.ArtifactSetFingerprint)
+	return fingerprintJSON(normalized)
 }
 
 func (b PluginSubjectBinding) Validate() error {
@@ -662,6 +672,9 @@ func pluginSubjectBindingFingerprint(binding PluginSubjectBinding) (string, erro
 		return "", err
 	}
 	normalized := binding
+	normalized.PluginDefinitionFingerprint = normalizeFingerprint(binding.PluginDefinitionFingerprint)
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
 	normalized.OutputRoles = append([]string(nil), binding.OutputRoles...)
 	sort.Strings(normalized.OutputRoles)
 	return fingerprintJSON(normalized)
@@ -679,14 +692,14 @@ func verifyPluginSubjectBinding(
 	if err != nil {
 		return err
 	}
-	if binding.ExecutionPlanFingerprint != executionFingerprint {
+	if normalizeFingerprint(binding.ExecutionPlanFingerprint) != executionFingerprint {
 		return fmt.Errorf("plugin subject binding execution plan fingerprint does not match")
 	}
 	setFingerprint, err := artifactSetFingerprint(set)
 	if err != nil {
 		return err
 	}
-	if binding.ArtifactSetFingerprint != setFingerprint {
+	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
 		return fmt.Errorf("plugin subject binding artifact set fingerprint does not match")
 	}
 	roles := map[string]struct{}{}
@@ -724,7 +737,11 @@ func runtimeEngineSubjectBindingFingerprint(binding RuntimeEngineSubjectBinding)
 	if err := binding.Validate(); err != nil {
 		return "", err
 	}
-	return fingerprintJSON(binding)
+	normalized := binding
+	normalized.Engine.ImplementationDigest = normalizeDigest(binding.Engine.ImplementationDigest)
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
+	return fingerprintJSON(normalized)
 }
 
 func verifyRuntimeEngineSubjectBinding(
@@ -739,14 +756,14 @@ func verifyRuntimeEngineSubjectBinding(
 	if err != nil {
 		return err
 	}
-	if binding.ExecutionPlanFingerprint != executionFingerprint {
+	if normalizeFingerprint(binding.ExecutionPlanFingerprint) != executionFingerprint {
 		return fmt.Errorf("runtime engine subject binding execution plan fingerprint does not match")
 	}
 	setFingerprint, err := artifactSetFingerprint(set)
 	if err != nil {
 		return err
 	}
-	if binding.ArtifactSetFingerprint != setFingerprint {
+	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
 		return fmt.Errorf("runtime engine subject binding artifact set fingerprint does not match")
 	}
 	if binding.Engine.Target != plan.Target {
@@ -756,7 +773,7 @@ func verifyRuntimeEngineSubjectBinding(
 		if member.Role != binding.OutputRole {
 			continue
 		}
-		if member.Digest != binding.Engine.ImplementationDigest {
+		if normalizeDigest(member.Digest) != normalizeDigest(binding.Engine.ImplementationDigest) {
 			return fmt.Errorf("runtime engine implementation digest does not match selected artifact member")
 		}
 		return nil
@@ -838,14 +855,20 @@ func fingerprintJSON(value any) (string, error) {
 
 func validateFingerprint(label, value string) error {
 	if len(value) != 64 {
-		return fmt.Errorf("%s must be 64 lowercase hex characters", label)
+		return fmt.Errorf("%s must contain 64 hex characters", label)
 	}
 	for _, r := range value {
-		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
-			return fmt.Errorf("%s must be 64 lowercase hex characters", label)
+		if !((r >= '0' && r <= '9') ||
+			(r >= 'a' && r <= 'f') ||
+			(r >= 'A' && r <= 'F')) {
+			return fmt.Errorf("%s contains non-hex character", label)
 		}
 	}
 	return nil
+}
+
+func normalizeFingerprint(value string) string {
+	return strings.ToLower(value)
 }
 
 func validateDigest(label, value string) error {
@@ -853,4 +876,11 @@ func validateDigest(label, value string) error {
 		return fmt.Errorf("%s must use sha256:<64-hex>", label)
 	}
 	return validateFingerprint(label, strings.TrimPrefix(value, "sha256:"))
+}
+
+func normalizeDigest(value string) string {
+	if !strings.HasPrefix(value, "sha256:") {
+		return value
+	}
+	return "sha256:" + strings.ToLower(strings.TrimPrefix(value, "sha256:"))
 }
