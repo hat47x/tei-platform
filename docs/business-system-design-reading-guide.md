@@ -344,10 +344,11 @@ tei knowledge-context
 2. 業務上の同一性を、Databaseの主キー、画面やRuntimeのIDから分離する。
 3. 識別子と候補キーについて、重複不可の範囲、時点・期間、同値性の扱いをEvidenceから確認する。
 4. surrogate IDを採用する場合も、業務上必要な一意性を消さない。
-5. 関数従属性と、単なる複合的な値制約を分ける。
-6. Relation key、局所的な一意制約、Persistenceの主キー・UNIQUEを、業務上の識別子や関数従属性へ自動昇格しない。
-7. 根拠が足りなければ`unresolved`を残す。
-8. 導出した識別子・従属性候補はProposalとして扱い、Shared Acceptanceを経ずにaccepted meaningへ変えない。
+5. 関数従属性は業務上の意味・規約として確認し、現在のデータでたまたま一意であることや統計的な相関から確定しない。
+6. 関数従属性と、単なる複合的な値制約を分ける。
+7. Relation key、局所的な一意制約、Persistenceの主キー・UNIQUEを、業務上の識別子や関数従属性へ自動昇格しない。
+8. 根拠が足りなければ`unresolved`を残す。
+9. 導出した識別子・従属性候補はProposalとして扱い、Shared Acceptanceを経ずにaccepted meaningへ変えない。
 
 この手順自体もCanonicalな業務意味ではありません。現在のKnowledgeから導いた設計支援の手順であり、`authorityLimits`でもその境界を明示します。Knowledge Contextのfingerprintが変わった場合は、古い文脈をそのまま再利用せず、現在のData Design Contextを取り直します。
 
