@@ -113,9 +113,29 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 		len(packet.Candidate.Terms) != len(candidate.Components) {
 		t.Fatalf("candidate projection drifted: %+v want=%+v", packet.Candidate, candidate)
 	}
-	if packet.ReviewStatus != "evidence-required" ||
+	if packet.SourceEvidenceStatus != "complete" ||
+		packet.CandidateAmbiguityStatus != "clear" ||
+		packet.BusinessEvidenceStatus != "unresolved" ||
+		packet.ReviewStatus != "evidence-required" ||
+		packet.PromotionStatus != "blocked" ||
 		packet.FirstClassAuthoringContractStatus != "unresolved" {
-		t.Fatalf("review status=%q authoring=%q", packet.ReviewStatus, packet.FirstClassAuthoringContractStatus)
+		t.Fatalf(
+			"source=%q ambiguity=%q business=%q review=%q promotion=%q authoring=%q",
+			packet.SourceEvidenceStatus,
+			packet.CandidateAmbiguityStatus,
+			packet.BusinessEvidenceStatus,
+			packet.ReviewStatus,
+			packet.PromotionStatus,
+			packet.FirstClassAuthoringContractStatus,
+		)
+	}
+	for _, reason := range []string{
+		"business-evidence-unresolved",
+		"first-class-authoring-contract-unresolved",
+	} {
+		if !containsDataDesignReviewString(packet.PromotionBlockingReasons, reason) {
+			t.Fatalf("promotion blocking reason %q is missing: %+v", reason, packet.PromotionBlockingReasons)
+		}
 	}
 	for _, reason := range []string{
 		"current-core-has-no-first-class-business-identity-authoring-contract",
@@ -156,6 +176,8 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 	}
 	for _, limit := range []string{
 		"candidate-review-packet-is-derived-not-authority",
+		"review-status-is-review-readiness-not-promotion-authority",
+		"promotion-status-is-derived-readiness-not-acceptance-or-write-authority",
 		"data-design-context-fingerprint-is-snapshot-identity-not-source-freshness-proof",
 		"source-evidence-proves-traceability-not-business-meaning",
 		"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
@@ -201,9 +223,21 @@ func TestDataDesignCandidateReviewBindsCurrentFunctionalDependencyCandidate(t *t
 		len(packet.Candidate.Terms) != len(candidate.Determinants) {
 		t.Fatalf("FD candidate projection drifted: %+v want=%+v", packet.Candidate, candidate)
 	}
-	if packet.ReviewStatus != "evidence-required" ||
+	if packet.SourceEvidenceStatus != "complete" ||
+		packet.CandidateAmbiguityStatus != "clear" ||
+		packet.BusinessEvidenceStatus != "unresolved" ||
+		packet.ReviewStatus != "evidence-required" ||
+		packet.PromotionStatus != "blocked" ||
 		packet.FirstClassAuthoringContractStatus != "unresolved" {
-		t.Fatalf("review status=%q authoring=%q", packet.ReviewStatus, packet.FirstClassAuthoringContractStatus)
+		t.Fatalf(
+			"FD source=%q ambiguity=%q business=%q review=%q promotion=%q authoring=%q",
+			packet.SourceEvidenceStatus,
+			packet.CandidateAmbiguityStatus,
+			packet.BusinessEvidenceStatus,
+			packet.ReviewStatus,
+			packet.PromotionStatus,
+			packet.FirstClassAuthoringContractStatus,
+		)
 	}
 	for _, reason := range []string{
 		"current-core-has-no-first-class-functional-dependency-authoring-contract",
@@ -344,7 +378,10 @@ func TestDataDesignCandidateReviewBlocksOnlyOnCandidateLocalAmbiguity(t *testing
 		t.Fatal(err)
 	}
 	if packet.DataDesignResolutionStatus != "ambiguous" ||
+		packet.SourceEvidenceStatus != "complete" ||
+		packet.CandidateAmbiguityStatus != "clear" ||
 		packet.ReviewStatus != "evidence-required" ||
+		packet.PromotionStatus != "blocked" ||
 		len(packet.ReviewBlockingAmbiguities) != 0 {
 		t.Fatalf("unrelated persistence ambiguity blocked candidate review: %+v", packet)
 	}
@@ -368,9 +405,15 @@ func TestDataDesignCandidateReviewBlocksOnlyOnCandidateLocalAmbiguity(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if packet.ReviewStatus != "blocked-context-unresolved" ||
+	if packet.CandidateAmbiguityStatus != "blocked" ||
+		packet.ReviewStatus != "blocked-context-unresolved" ||
+		packet.PromotionStatus != "blocked" ||
 		len(packet.ReviewBlockingAmbiguities) != 1 ||
-		packet.ReviewBlockingAmbiguities[0].Kind != "duplicate-semantic-relation" {
+		packet.ReviewBlockingAmbiguities[0].Kind != "duplicate-semantic-relation" ||
+		!containsDataDesignReviewString(
+			packet.PromotionBlockingReasons,
+			"candidate-local-ambiguity-unresolved",
+		) {
 		t.Fatalf("candidate-local ambiguity did not block review: %+v", packet)
 	}
 }
@@ -396,9 +439,16 @@ func TestDataDesignCandidateReviewBlocksWhenRelevantSourceEvidenceIsMissing(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if packet.ReviewStatus != "blocked-context-unresolved" ||
+	if packet.SourceEvidenceStatus != "incomplete" ||
+		packet.CandidateAmbiguityStatus != "clear" ||
+		packet.ReviewStatus != "blocked-context-unresolved" ||
+		packet.PromotionStatus != "blocked" ||
 		len(packet.SourceEvidenceMissing) != 1 ||
-		packet.SourceEvidenceMissing[0].Kind != "semantic-validation" {
+		packet.SourceEvidenceMissing[0].Kind != "semantic-validation" ||
+		!containsDataDesignReviewString(
+			packet.PromotionBlockingReasons,
+			"candidate-source-evidence-incomplete",
+		) {
 		t.Fatalf("missing relevant Evidence did not block review: %+v", packet)
 	}
 }
