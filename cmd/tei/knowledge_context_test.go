@@ -260,7 +260,9 @@ func TestBuildBuilderReviewHandoffQualifiesBeforeDisclosure(t *testing.T) {
 	if handoff.ProjectionRevision != "tei.knowledge.builder-review-handoff/v1" ||
 		handoff.Status != "qualified-for-disclosure" ||
 		handoff.Fingerprint == "" ||
-		handoff.ReviewPlanFingerprint == "" {
+		handoff.ReviewPlanProjectionRevision != "tei.knowledge.builder-review-plan/v1" ||
+		handoff.ReviewPlanFingerprint == "" ||
+		handoff.RoutingScope != "current-knowledge-context" {
 		t.Fatalf("builder review handoff identity is incomplete: %+v", handoff)
 	}
 	if handoff.Qualification.Status != knowledgecontext.QualificationApplicable ||
