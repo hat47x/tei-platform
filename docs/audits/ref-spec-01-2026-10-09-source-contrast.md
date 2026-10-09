@@ -63,3 +63,22 @@ BP-05の明示参照は、Application全体のValidation宣言を網羅する義
 `GOENV=off GOWORK=off GOFLAGS= go test -count=1 -v ./...`は6件PASS。`GOENV=off GOWORK=off GOFLAGS= go vet ./...`もPASSした。`gofmt -l tools/reference-business-procedure-check/validation_scope_review.go`の出力は空だった。
 
 **限界:** ここで使用したApplication・World・fixture・semanticCountsは隔離モジュール内の最小の代替実装であり、TEI本体の型とWorkspace Loaderは実行していない。さらに、PRの既存`main.go`変更、GitHubにある`validation_scope_review_test.go`、リポジトリ全体のテストは、この記録では検証していない。したがって、隔離テストのPASSはプロダクトの受入・統合資格にならず、PRのexact-headでのfull Repository healthとclean前後記録が必須である。
+
+## Source Indexによる戻り先の検証（2026-10-09）
+
+静的な集合差だけでは、利用者が判断に必要な正本へ戻れない。そこでDraft PRの比較結果へ、次の読取情報を追加した。
+
+- `procedureSource`: Business Procedureの参照を記した入力fixtureのパス。Canonicalな意味IDではない。
+- `sourceEvidence`: 既存Source Indexを根拠とするApplication定義と差分Validation定義の相対パス・開始行・ファイル指紋。
+- `unresolvedSource`: Source Index内の定義が不在・重複・指紋欠落の場合、推測で補完せず残す対象の意味ID。
+
+比較機能を指定しない既存CLI実行では、Source Indexを追加生成しない。比較指定時にSource Index自体の検査に失敗した場合はエラーとして停止する。成功時のsource evidenceも**意味や業務判断の受理・権限付与を表さない**。
+
+今回GitHubに登録した`tools/reference-business-procedure-check/validation_scope_review_sources.go`の原文を隔離用のGoモジュールへ転記し、`git hash-object`がblob SHA `a86ee7dc38a1e1d6f7fa6563511f17e9f70bce66`に一致することを確認した。隔離モジュールは`tei/internal/subject`と`tei/internal/sourceindex`の最小代替型を持つ。Go 1.23.2で次の4件のテストがPASSし、`go vet ./...`もPASSした。
+
+1. ApplicationとValidationの出典をそれぞれ1件に絞って返す。
+2. 同じ意味IDに二つのSource定義が存在すれば、選ばず未解決に残す。
+3. ファイル指紋が無ければ、根拠として返さない。
+4. 意味参照自体が未解決であれば、Source探索から勝手に意味を作り出さない。
+
+新規ファイルの`gofmt -l`出力は空だった。これは**原文の一ファイルを隔離した試験**である。本体の`workspace.BuildSourceIndex`、既存のSource Index、`runWithOptions`の接続、テストファイルを含むPR全体の`go test`は未実施である。結論として、実際の業務アプリに対するsource provenanceの成立と、人が確認できる実際の所要時間の短縮は、引き続き未確認である。
