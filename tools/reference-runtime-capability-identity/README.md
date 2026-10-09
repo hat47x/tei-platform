@@ -64,9 +64,13 @@ projection結果のgeneric Authorityにはlegacy claimを残しません。旧Au
 
 最初の実行pressureは`host-enforced-sandbox`のprocess realizationだけを対象にします。
 
-`RuntimeEnvironmentPlan`から既存`resource.AcquireRequest`へ渡すときは、Runtime Capability Refのfingerprintから決定的なtransport IDを導出します。現在のResource Broker APIへ渡すため、`CapabilityKind`欄には固定値`generic-runtime-ref`を使います。
+Resource BrokerのAuthority subjectとPlugin processのdispatch identityは分けます。
 
-このtransport kind / IDはAuthorityではありません。任意文字列から作らず、検証済みRuntime Capability Refからだけ導出します。Invocation provenanceには元のRuntime Capability RefとRuntime Policy fingerprintを保持し、Contract、Provider、artifact、Execution Profileへ逆追跡できるようにします。
+Resource Brokerへ渡すsubject IDはfull Runtime Capability Refのfingerprintから導出します。Execution ProfileやResolution Lockが変わればRuntime Authorityも変わるため、Resource Authority subjectも変わります。現行`resource.AcquireRequest`の`CapabilityKind`欄には固定値`generic-runtime-authority`を使います。
+
+process dispatch IDはContract ID / version / fingerprintとimplementation IDから導出します。Execution ProfileやEnvironment Authorityが変わっても、同じContract semanticsを同じimplementationで処理する限りdispatch IDは変えません。現行`plugin/runtime.Request`の`CapabilityKind`欄には固定値`generic-runtime-dispatch`を使います。
+
+どちらのkind / IDもAuthorityそのものではありません。任意文字列から作らず、検証済みRuntime Capability Refから決定的に導出するcompatibility envelopeです。Invocation provenanceには元のRuntime Capability Ref、Runtime Policy fingerprint、Resource Authority subject、process dispatch IDを保持し、Contract、Provider、artifact、Execution Profileへ逆追跡できるようにします。
 
 実行前には既存`plugin/runtime.ArtifactVerifier`でexact artifactを検証します。digest、必要なsignature、provenanceの検証を通過するまでResource Authorityを取得しません。
 
@@ -96,6 +100,8 @@ Reference testでは少なくとも次を拒否します。
 まだproductionの`plugin.Definition`、`EnvironmentPlan`、`permission.Grant`、`Registry.Invoke`を変更していません。Host-trusted builtinのgeneric実行経路も未実装です。
 
 generic実行は既存Artifact Verifier、Resource Broker、HostSandboxLauncherへ直接委譲するReference orchestrationです。production `Registry.Invoke`へgeneric identityを組み込んだことはまだ意味しません。
+
+現行process protocolへはderived dispatch IDを渡します。このIDはContract semantics + implementationから静的に再現できますが、実Plugin processが複数generic Capabilityをdispatchする実例はまだ作っていません。production `Request / Response`へ追加metadataが必要か、derived dispatch IDだけで十分かは次のpressureで判断します。
 
 Resource Broker経路はfilesystem read一件のAcquire / Validate / Sandbox mount / Releaseを最初のpressureとします。renew / refresh、Supervisor ownership / fencing、Secret injection、Network endpointはproduction機構として既に存在しますが、このgeneric Runtime RefからのE2E Evidenceはまだありません。
 
