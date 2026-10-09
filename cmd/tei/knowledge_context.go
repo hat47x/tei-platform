@@ -60,6 +60,77 @@ func buildBuilderReviewPlan(
 	return knowledgecontext.BuildBuilderReviewPlan(ctx), nil
 }
 
+func buildBuilderReviewHandoff(
+	root, subjectKind, subjectID string,
+	requirements knowledgecontext.QualificationRequirements,
+) (knowledgecontext.BuilderReviewHandoff, error) {
+	if strings.TrimSpace(root) == "" {
+		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
+			"knowledge-review-handoff requires -workspace",
+		)
+	}
+	kind := strings.TrimSpace(subjectKind)
+	id := strings.TrimSpace(subjectID)
+	if kind == "" || id == "" {
+		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
+			"knowledge-review-handoff requires -subject-kind and -subject-id",
+		)
+	}
+
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		return knowledgecontext.BuilderReviewHandoff{}, err
+	}
+	sources, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		return knowledgecontext.BuilderReviewHandoff{}, err
+	}
+	ctx := knowledgecontext.Build(
+		loaded.World,
+		sources,
+		subject.Subject{Kind: kind, ID: id},
+	)
+	plan := knowledgecontext.BuildBuilderReviewPlan(ctx)
+	qualification, err := knowledgecontext.QualifyWithSources(ctx, sources, requirements)
+	if err != nil {
+		return knowledgecontext.BuilderReviewHandoff{}, err
+	}
+	return knowledgecontext.BuildBuilderReviewHandoff(plan, qualification)
+}
+
+func buildBuilderReviewHandoffFromFile(
+	root, subjectKind, subjectID, requirementsPath string,
+) (knowledgecontext.BuilderReviewHandoff, error) {
+	if strings.TrimSpace(requirementsPath) == "" {
+		return knowledgecontext.BuilderReviewHandoff{}, fmt.Errorf(
+			"knowledge-review-handoff requires -qualification-requirements",
+		)
+	}
+	var requirements knowledgecontext.QualificationRequirements
+	if err := decodeJSONFile(requirementsPath, &requirements); err != nil {
+		return knowledgecontext.BuilderReviewHandoff{}, err
+	}
+	return buildBuilderReviewHandoff(root, subjectKind, subjectID, requirements)
+}
+
+func checkBuilderReviewHandoffFingerprint(
+	handoff knowledgecontext.BuilderReviewHandoff,
+	expected string,
+) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if handoff.Fingerprint != expected {
+		return fmt.Errorf(
+			"Builder Review Handoff fingerprint mismatch: expected=%s current=%s",
+			expected,
+			handoff.Fingerprint,
+		)
+	}
+	return nil
+}
+
 func checkBuilderReviewPlanFingerprint(
 	plan knowledgecontext.BuilderReviewPlan,
 	expected string,
