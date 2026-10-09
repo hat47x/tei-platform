@@ -46,9 +46,14 @@ type DataDesignCandidateReviewPacket struct {
 	Candidate                             DataDesignCandidateReviewCandidate     `json:"candidate"`
 	SourceEvidence                        []DataDesignEvidence                    `json:"sourceEvidence,omitempty"`
 	SourceEvidenceMissing                 []subject.Subject                     `json:"sourceEvidenceMissing,omitempty"`
+	SourceEvidenceStatus                  string                                `json:"sourceEvidenceStatus"`
 	ReviewBlockingAmbiguities             []DataDesignAmbiguity                  `json:"reviewBlockingAmbiguities,omitempty"`
+	CandidateAmbiguityStatus              string                                `json:"candidateAmbiguityStatus"`
 	BusinessEvidenceRequirements          []DataDesignCandidateReviewRequirement `json:"businessEvidenceRequirements"`
+	BusinessEvidenceStatus                string                                `json:"businessEvidenceStatus"`
 	ReviewStatus                          string                                `json:"reviewStatus"`
+	PromotionStatus                       string                                `json:"promotionStatus"`
+	PromotionBlockingReasons              []string                              `json:"promotionBlockingReasons"`
 	FirstClassAuthoringContractStatus     string                                `json:"firstClassAuthoringContractStatus"`
 	FirstClassAuthoringContractReasons    []string                              `json:"firstClassAuthoringContractReasons"`
 	ReviewSequence                        []string                              `json:"reviewSequence"`
@@ -107,10 +112,35 @@ func BuildDataDesignCandidateReview(
 		})
 	}
 
+	sourceEvidenceStatus := "complete"
+	if len(sourceMissing) != 0 {
+		sourceEvidenceStatus = "incomplete"
+	}
+	candidateAmbiguityStatus := "clear"
+	if len(blockingAmbiguities) != 0 {
+		candidateAmbiguityStatus = "blocked"
+	}
 	reviewStatus := "evidence-required"
-	if len(blockingAmbiguities) != 0 || len(sourceMissing) != 0 {
+	if sourceEvidenceStatus != "complete" || candidateAmbiguityStatus != "clear" {
 		reviewStatus = "blocked-context-unresolved"
 	}
+	promotionBlockingReasons := []string{
+		"business-evidence-unresolved",
+		"first-class-authoring-contract-unresolved",
+	}
+	if sourceEvidenceStatus != "complete" {
+		promotionBlockingReasons = append(
+			promotionBlockingReasons,
+			"candidate-source-evidence-incomplete",
+		)
+	}
+	if candidateAmbiguityStatus != "clear" {
+		promotionBlockingReasons = append(
+			promotionBlockingReasons,
+			"candidate-local-ambiguity-unresolved",
+		)
+	}
+	sort.Strings(promotionBlockingReasons)
 
 	packet := DataDesignCandidateReviewPacket{
 		ProjectionRevision:               dataDesignCandidateReviewProjectionRevision,
@@ -122,9 +152,14 @@ func BuildDataDesignCandidateReview(
 		Candidate:                        candidate,
 		SourceEvidence:                   sourceEvidence,
 		SourceEvidenceMissing:            sourceMissing,
+		SourceEvidenceStatus:             sourceEvidenceStatus,
 		ReviewBlockingAmbiguities:        blockingAmbiguities,
+		CandidateAmbiguityStatus:         candidateAmbiguityStatus,
 		BusinessEvidenceRequirements:     requirements,
+		BusinessEvidenceStatus:           "unresolved",
 		ReviewStatus:                     reviewStatus,
+		PromotionStatus:                  "blocked",
+		PromotionBlockingReasons:         promotionBlockingReasons,
 		FirstClassAuthoringContractStatus: "unresolved",
 		FirstClassAuthoringContractReasons: dataDesignFirstClassAuthoringContractReasons(kind),
 		ReviewSequence: []string{
@@ -144,6 +179,8 @@ func BuildDataDesignCandidateReview(
 			"evidence-requirement-fingerprint-is-review-contract-not-evidence",
 			"source-evidence-proves-traceability-not-business-meaning",
 			"candidate-review-blocking-ambiguity-is-candidate-local-not-global-context-certainty",
+			"review-status-is-review-readiness-not-promotion-authority",
+			"promotion-status-is-derived-readiness-not-acceptance-or-write-authority",
 			"unresolved-business-evidence-requirement-must-not-be-inferred-as-satisfied",
 			"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
 			"semantic-extension-reference-is-not-current-lossless-authoring-contract",
