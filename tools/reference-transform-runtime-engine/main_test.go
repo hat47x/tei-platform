@@ -109,6 +109,7 @@ func TestDecodeRequestRejectsAmbiguousOrUnknownJSON(t *testing.T) {
 		`{"schema":"tei.reference.transform-engine-request/v1","schema":"tei.reference.transform-engine-request/v1","inputs":[]}`,
 		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[],"unknown":true}`,
 		`{"schema":"wrong","inputs":[]}`,
+		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[{"name":"x","value":{"kind":"null","unknown":true}}]}`,
 	}
 	for _, raw := range tests {
 		if _, err := decodeRequest([]byte(raw), limits); err == nil {
@@ -177,5 +178,32 @@ func TestRequestLimitIsHostBoundedAboveSemanticInput(t *testing.T) {
 	}
 	if got > int64(source.Limits.MaxInputBytes)*4+requestEnvelopeSlack {
 		t.Fatalf("wire envelope limit escaped Host bound: %d", got)
+	}
+}
+
+
+func TestWireObjectPreservesFieldOrder(t *testing.T) {
+	limits := transform.TransformSourceRealizerV1().Limits
+	a := "first"
+	b := "second"
+	fields := []wireField{
+		{Name: "b", Value: wireValue{Kind: transform.ValueString, String: &b}},
+		{Name: "a", Value: wireValue{Kind: transform.ValueString, String: &a}},
+	}
+	wire := wireValue{Kind: transform.ValueObject, Object: &fields}
+	value, err := decodeWireValue(wire, limits, 0, &wireBudget{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(value.Object) != 2 || value.Object[0].Name != "b" || value.Object[1].Name != "a" {
+		t.Fatalf("object field order changed: %#v", value.Object)
+	}
+	encoded, err := encodeWireValue(value, limits, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.Object == nil || len(*encoded.Object) != 2 ||
+		(*encoded.Object)[0].Name != "b" || (*encoded.Object)[1].Name != "a" {
+		t.Fatalf("wire field order changed: %#v", encoded.Object)
 	}
 }
