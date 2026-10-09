@@ -152,3 +152,74 @@ func TestStandaloneResultContinuesToReadCurrentFile(t *testing.T) {
 		t.Fatal("standalone Result incorrectly reused cached bytes")
 	}
 }
+
+func TestLoadedSnapshotAcceptsRelativeAbsoluteAndSymlinkedRoot(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\\n  sources:\\n    - applications\\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	writeSource(t, root, "applications/demo/application.tei", []byte("application demo {}\\n"))
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	relative, err := filepath.Rel(cwd, root)
+	if err != nil {
+		t.Skipf("no relative path to temporary Workspace: %v", err)
+	}
+	loaded, err := workspace.Load(relative)
+	if err != nil {
+		t.Fatalf("load with relative root: %v", err)
+	}
+	fromAbsolute, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		t.Fatalf("index with absolute root after relative Load: %v", err)
+	}
+	fromRelative, err := workspace.BuildSourceIndex(relative, loaded)
+	if err != nil {
+		t.Fatalf("index with relative root after relative Load: %v", err)
+	}
+	if !reflect.DeepEqual(fromAbsolute, fromRelative) {
+		t.Fatal("relative and absolute root spellings produced different Source Index")
+	}
+
+	alias := filepath.Join(t.TempDir(), "workspace-alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("root symlink unavailable: %v", err)
+	}
+	fromAlias, err := workspace.BuildSourceIndex(alias, loaded)
+	if err != nil {
+		t.Fatalf("same physical root reached through symlink rejected: %v", err)
+	}
+	if !reflect.DeepEqual(fromAbsolute, fromAlias) {
+		t.Fatal("Workspace root symlink changed Source Index identity")
+	}
+}
+
+func TestStandaloneSourceIndexAcceptsRelativeRoot(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "native.md"), []byte("portable native asset"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	relative, err := filepath.Rel(cwd, root)
+	if err != nil {
+		t.Skipf("no relative path to temporary Workspace: %v", err)
+	}
+	result := workspace.Result{ManagedFiles: []workspace.ManagedFile{{Path: "native.md", SourceRoot: "assets"}}}
+	absoluteIndex, err := workspace.BuildSourceIndex(root, result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	relativeIndex, err := workspace.BuildSourceIndex(relative, result)
+	if err != nil {
+		t.Fatalf("standalone Source Index rejected relative Workspace root: %v", err)
+	}
+	if !reflect.DeepEqual(absoluteIndex, relativeIndex) {
+		t.Fatal("standalone source fingerprints differ by Workspace root spelling")
+	}
+}
