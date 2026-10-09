@@ -80,13 +80,13 @@ assert_exact_clean() {
   local phase="$1"
   local status nonstandard_index
 
-  status="$(git status --porcelain --untracked-files=all --ignored=matching)"
+  status="$(git -C "$repo_root" status --porcelain --untracked-files=all --ignored=matching)"
   if [[ -n "$status" ]]; then
     printf 'Repository is not exact-clean during %s (including ignored paths):\n%s\n' "$phase" "$status" >&2
     exit 1
   fi
 
-  nonstandard_index="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
+  nonstandard_index="$(git -C "$repo_root" ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
   if [[ -n "$nonstandard_index" ]]; then
     printf 'Repository has non-standard tracked index state during %s:\n%s\n' "$phase" "$nonstandard_index" >&2
     exit 1
