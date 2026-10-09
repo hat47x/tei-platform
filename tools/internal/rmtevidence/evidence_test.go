@@ -194,7 +194,6 @@ func TestUnmappedEvidenceCannotClaimMappedClassification(t *testing.T) {
 	}
 }
 
-
 func TestPublicFreeTextFieldsUseSafeTokenSyntax(t *testing.T) {
 	cases := []struct {
 		name   string
