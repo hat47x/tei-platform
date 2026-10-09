@@ -34,9 +34,11 @@ type Contract struct {
 	RequestSemantics   string `json:"requestSemantics"`
 	ResultSemantics    string `json:"resultSemantics"`
 	FailureSemantics   string `json:"failureSemantics"`
-	RequestShape       string `json:"requestShape,omitempty"`
-	ResultShape        string `json:"resultShape,omitempty"`
-	PayloadCodec       string `json:"payloadCodec,omitempty"`
+	RequestShape            string `json:"requestShape,omitempty"`
+	RequestShapeFingerprint string `json:"requestShapeFingerprint,omitempty"`
+	ResultShape             string `json:"resultShape,omitempty"`
+	ResultShapeFingerprint  string `json:"resultShapeFingerprint,omitempty"`
+	PayloadCodec            string `json:"payloadCodec,omitempty"`
 	ConformanceProfile string `json:"conformanceProfile"`
 }
 
