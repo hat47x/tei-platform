@@ -117,6 +117,37 @@ func TestValidateBuilderReviewHandoffRejectsReFingerprintingUnsupportedSemantics
 			},
 			want: "projection revision",
 		},
+		{
+			name: "qualification subject",
+			mutate: func(h *BuilderReviewHandoff) {
+				h.Qualification.Candidate = subject.Subject{
+					Kind: "application-pattern",
+					ID:   "order_entry.other",
+				}
+			},
+			want: "qualification subject mismatch",
+		},
+		{
+			name: "qualification status mapping",
+			mutate: func(h *BuilderReviewHandoff) {
+				h.Status = "blocked-unresolved"
+			},
+			want: "status mismatch",
+		},
+		{
+			name: "applicable expected kind",
+			mutate: func(h *BuilderReviewHandoff) {
+				h.Qualification.Requirements.ExpectedKind = "semantic-data"
+			},
+			want: "expected kind",
+		},
+		{
+			name: "applicable evidence",
+			mutate: func(h *BuilderReviewHandoff) {
+				h.Qualification.Evidence = nil
+			},
+			want: "no authoritative Evidence",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			changed := base
