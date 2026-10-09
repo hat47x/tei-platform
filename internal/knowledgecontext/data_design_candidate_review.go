@@ -232,10 +232,7 @@ func dataDesignEvidenceSearchSubjects(
 	case "temporal-validity", "temporal-dependency-scope":
 		out = append(out, relationSubject, targetSubject)
 	default:
-		out = append(out, relationSubject, targetSubject)
-		if sourceData != "" {
-			out = append(out, sourceSubject)
-		}
+		return nil
 	}
 	return normalizeDataDesignReviewSubjects(out)
 }
