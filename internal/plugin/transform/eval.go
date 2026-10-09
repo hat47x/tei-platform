@@ -30,12 +30,13 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 		return EvaluationResult{}, err
 	}
 	e := evaluator{limits: source.Limits}
-	env := make(map[string]Value, len(inputs))
+	rootValues := make(map[string]Value, len(inputs))
 	for name, value := range inputs {
 		// Isolate caller-owned slices once. Evaluation treats Value as immutable
 		// and may then share internal subtrees without repeated deep copies.
-		env[name] = value.Clone()
+		rootValues[name] = value.Clone()
 	}
+	env := &evalEnv{root: rootValues}
 	for i := range source.Program.Assertions {
 		if _, err := e.eval(source.Program.Assertions[i], env, 0); err != nil {
 			return EvaluationResult{}, fmt.Errorf("assertion %d: %w", i, err)
@@ -113,13 +114,13 @@ func (e *evaluator) tick(depth int) error {
 	return e.consume(1)
 }
 
-func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, error) {
+func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 	if err := e.tick(depth); err != nil {
 		return Value{}, err
 	}
 	switch expr.Op {
 	case OpInput:
-		value, ok := env[expr.Name]
+		value, ok := env.lookup(expr.Name)
 		if !ok {
 			return Value{}, fmt.Errorf("transform input or binding %q is not available", expr.Name)
 		}
@@ -165,9 +166,8 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		}
 		out := make([]Value, len(source.Array))
 		for i, item := range source.Array {
-			local := cloneEnv(env)
-			local[expr.Item] = item
-			value, err := e.eval(*expr.Body, local, depth+1)
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
+			value, err := e.eval(*expr.Body, &local, depth+1)
 			if err != nil {
 				return Value{}, fmt.Errorf("map-array item %d: %w", i, err)
 			}
@@ -187,11 +187,10 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		}
 		items := make([]sortItem, len(source.Array))
 		for i, item := range source.Array {
-			local := cloneEnv(env)
-			local[expr.Item] = item
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
 			keys := make([]string, len(expr.Keys))
 			for k := range expr.Keys {
-				key, err := e.eval(expr.Keys[k], local, depth+1)
+				key, err := e.eval(expr.Keys[k], &local, depth+1)
 				if err != nil {
 					return Value{}, fmt.Errorf("sort-array item %d key %d: %w", i, k, err)
 				}
@@ -612,10 +611,23 @@ func omitFieldShared(value Value, name string) (Value, error) {
 	return out, nil
 }
 
-func cloneEnv(in map[string]Value) map[string]Value {
-	out := make(map[string]Value, len(in)+1)
-	for name, value := range in {
-		out[name] = value
+type evalEnv struct {
+	root         map[string]Value
+	parent       *evalEnv
+	bindingName  string
+	bindingValue Value
+	hasBinding   bool
+}
+
+func (e *evalEnv) lookup(name string) (Value, bool) {
+	for current := e; current != nil; current = current.parent {
+		if current.hasBinding && current.bindingName == name {
+			return current.bindingValue, true
+		}
+		if current.root != nil {
+			value, ok := current.root[name]
+			return value, ok
+		}
 	}
-	return out
+	return Value{}, false
 }
