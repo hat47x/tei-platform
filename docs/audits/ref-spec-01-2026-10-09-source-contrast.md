@@ -46,3 +46,20 @@ BP-05の明示参照は、Application全体のValidation宣言を網羅する義
 4. 実際の人のレビュー、業務上の採否、実Provider、UI経由の実行結果は別に確認する。
 
 **現時点の結論：** 同一revisionのSource間に、確認候補となる明示参照の差が一つ存在することまでは静的に確認できた。これを検出する製品機能の成立、checkerのPASS、業務上の欠落の確定、利用者の確認負担の削減は、いずれも未検証である。
+
+## 隔離環境での原文コード確認（Go 1.23.2）
+
+プルリクエスト内の`tools/reference-business-procedure-check/validation_scope_review.go`を、出典のまま隔離用のGoモジュールへ転記し、`git hash-object`の結果がGitHubに保存されているblob SHA `c061d451c774a25999cd2fd7a8e18dc250d6018c`と**完全一致**することを確認した。比較処理そのもののSource bytesは一致する。
+
+隔離モジュールでは、Application、World、fixture、Validation IDの件数取得を最小限の代替型・関数として用意し、以下の6件を実行した。
+
+1. 受注のApplication-only Validation 1件とJSON出力
+2. Application文脈の未指定・同一ID重複
+3. Validation IDの未定義・意味定義の同一ID重複
+4. Application・Procedure内のValidation宣言重複
+5. 集合一致時の扱い
+6. Application-onlyとProcedure-onlyが同時に存在する場合の双方向差
+
+`GOENV=off GOWORK=off GOFLAGS= go test -count=1 -v ./...`は6件PASS。`GOENV=off GOWORK=off GOFLAGS= go vet ./...`もPASSした。`gofmt -l tools/reference-business-procedure-check/validation_scope_review.go`の出力は空だった。
+
+**限界:** ここで使用したApplication・World・fixture・semanticCountsは隔離モジュール内の最小の代替実装であり、TEI本体の型とWorkspace Loaderは実行していない。さらに、PRの既存`main.go`変更、GitHubにある`validation_scope_review_test.go`、リポジトリ全体のテストは、この記録では検証していない。したがって、隔離テストのPASSはプロダクトの受入・統合資格にならず、PRのexact-headでのfull Repository healthとclean前後記録が必須である。
