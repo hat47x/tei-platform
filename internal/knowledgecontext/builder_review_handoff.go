@@ -117,6 +117,7 @@ func buildBuilderReviewHandoffFromQualification(
 		Qualification:         qualification,
 		AuthorityLimits: []string{
 			"builder-review-handoff-is-derived-not-semantic-authority",
+			"builder-review-handoff-is-not-access-control-or-redaction",
 			"selected-section-is-not-disclosed-knowledge",
 			"qualification-applicable-is-not-acceptance",
 			"qualification-applicable-is-not-write-or-runtime-authority",
