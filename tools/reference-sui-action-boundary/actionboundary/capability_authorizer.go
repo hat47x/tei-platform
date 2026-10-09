@@ -52,3 +52,9 @@ func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actio
 	}
 	return nil
 }
+
+// authorizationResource encodes each identity separately. Concatenating raw
+// identities would conflate (app="a/b", doc="c") with (app="a", doc="b/c").
+func authorizationResource(appID, docID, actionID string) string {
+ return url.PathEscape(appID)+"/"+url.PathEscape(docID)+"/"+url.PathEscape(actionID)
+}
