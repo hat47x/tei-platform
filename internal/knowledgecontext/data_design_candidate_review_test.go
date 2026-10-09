@@ -43,6 +43,16 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 		packet.FirstClassAuthoringContractStatus != "unresolved" {
 		t.Fatalf("review status=%q authoring=%q", packet.ReviewStatus, packet.FirstClassAuthoringContractStatus)
 	}
+	for _, reason := range []string{
+		"current-core-has-no-first-class-business-identity-authoring-contract",
+		"semantic-extension-v0-constraint-cannot-losslessly-encode-composite-identity-components-and-scope",
+		"semantic-extension-v0-is-reference-not-production-authoring-contract",
+		"authoritative-declaration-source-and-namespace-authority-not-selected",
+	} {
+		if !containsDataDesignReviewString(packet.FirstClassAuthoringContractReasons, reason) {
+			t.Fatalf("first-class authoring reason %q is missing: %+v", reason, packet.FirstClassAuthoringContractReasons)
+		}
+	}
 	if len(packet.SourceEvidenceMissing) != 0 {
 		t.Fatalf("candidate-specific source Evidence is missing: %+v", packet.SourceEvidenceMissing)
 	}
@@ -61,6 +71,7 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 		"candidate-review-packet-is-derived-not-authority",
 		"source-evidence-proves-traceability-not-business-meaning",
 		"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
+		"semantic-extension-reference-is-not-current-lossless-authoring-contract",
 	} {
 		if !containsDataDesignReviewString(packet.AuthorityLimits, limit) {
 			t.Fatalf("authority limit %q is missing: %+v", limit, packet.AuthorityLimits)
@@ -102,8 +113,19 @@ func TestDataDesignCandidateReviewBindsCurrentFunctionalDependencyCandidate(t *t
 		len(packet.Candidate.Terms) != len(candidate.Determinants) {
 		t.Fatalf("FD candidate projection drifted: %+v want=%+v", packet.Candidate, candidate)
 	}
-	if packet.ReviewStatus != "evidence-required" {
-		t.Fatalf("review status=%q", packet.ReviewStatus)
+	if packet.ReviewStatus != "evidence-required" ||
+		packet.FirstClassAuthoringContractStatus != "unresolved" {
+		t.Fatalf("review status=%q authoring=%q", packet.ReviewStatus, packet.FirstClassAuthoringContractStatus)
+	}
+	for _, reason := range []string{
+		"current-core-has-no-first-class-functional-dependency-authoring-contract",
+		"semantic-extension-v0-constraint-cannot-losslessly-encode-determinants-dependent-occurrence-and-scope",
+		"semantic-extension-v0-is-reference-not-production-authoring-contract",
+		"authoritative-declaration-source-and-namespace-authority-not-selected",
+	} {
+		if !containsDataDesignReviewString(packet.FirstClassAuthoringContractReasons, reason) {
+			t.Fatalf("FD first-class authoring reason %q is missing: %+v", reason, packet.FirstClassAuthoringContractReasons)
+		}
 	}
 	for _, requirement := range packet.BusinessEvidenceRequirements {
 		if requirement.Status != "unresolved" {
