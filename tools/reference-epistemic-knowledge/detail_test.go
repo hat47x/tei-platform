@@ -242,6 +242,54 @@ func TestEpistemicDetailRejectsStaleReceipts(t *testing.T) {
 	})
 }
 
+func TestEpistemicDetailDoesNotLeakFutureCheckedAt(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "user-current" {
+			continue
+		}
+		corpus.Assertions[i].CheckedAt = "2099-01-01T00:00:00Z"
+		corpus.Assertions[i].CheckedSubjectFingerprint = freshnessSubjectFingerprint(corpus.Assertions[i])
+	}
+	query := detailQueryFor(t, corpus, context, "user-current", nil)
+
+	result, err := resolveEpistemicDetail(corpus, context, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Content.CheckedAt != "" {
+		t.Fatalf("future checkedAt leaked through historical detail: %+v", result.Content)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "2099-01-01T00:00:00Z") {
+		t.Fatalf("future checkedAt leaked through encoded detail: %s", encoded)
+	}
+}
+
+func TestEpistemicDetailDoesNotPresentStaleSourceCheckAsCurrentDetail(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "user-current" {
+			continue
+		}
+		corpus.Assertions[i].CheckedAt = "2026-10-01T00:00:00Z"
+		corpus.Assertions[i].CheckedSubjectFingerprint =
+			"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	}
+	query := detailQueryFor(t, corpus, context, "user-current", nil)
+
+	result, err := resolveEpistemicDetail(corpus, context, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Content.CheckedAt != "" {
+		t.Fatalf("stale source check was presented as current detail: %+v", result.Content)
+	}
+}
+
 func TestEpistemicDetailDoesNotLeakFutureReviewHistory(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
