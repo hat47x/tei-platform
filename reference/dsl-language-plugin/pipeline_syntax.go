@@ -30,21 +30,28 @@ type PipelineSyntax struct {
 func ParsePipelineSyntax(source string) (PipelineSyntax, error) {
 	parts := strings.Split(source, "|>")
 	if len(parts) < 2 {
-		return PipelineSyntax{}, fmt.Errorf("pipeline requires at least one operator")
+		return PipelineSyntax{}, &PipelineDiagnostic{
+			Span: PipelineSpan{Start: 0, End: len(source)}, Step: -1,
+			Cause: fmt.Errorf("pipeline requires at least one operator"),
+		}
 	}
 	result := PipelineSyntax{Operators: make([]PipelineToken, 0, len(parts)-1)}
 	offset := 0
 	for i, raw := range parts {
 		trimmedLeft := strings.TrimLeftFunc(raw, unicode.IsSpace)
 		token := strings.TrimSpace(raw)
-		if token == "" || strings.IndexFunc(token, unicode.IsSpace) >= 0 {
-			if i == 0 {
-				return PipelineSyntax{}, fmt.Errorf("invalid pipeline input type")
-			}
-			return PipelineSyntax{}, fmt.Errorf("step %d: invalid operator name", i-1)
-		}
 		start := offset + len(raw) - len(trimmedLeft)
-		candidate := PipelineToken{ID: token, Span: PipelineSpan{Start: start, End: start + len(token)}}
+		span := PipelineSpan{Start: start, End: start + len(token)}
+		if token == "" || strings.IndexFunc(token, unicode.IsSpace) >= 0 {
+			step := i - 1
+			reason := fmt.Errorf("invalid operator name")
+			if i == 0 {
+				step = -1
+				reason = fmt.Errorf("invalid pipeline input type")
+			}
+			return PipelineSyntax{}, &PipelineDiagnostic{Span: span, Step: step, Cause: reason}
+		}
+		candidate := PipelineToken{ID: token, Span: span}
 		if i == 0 {
 			result.Input = candidate
 		} else {
