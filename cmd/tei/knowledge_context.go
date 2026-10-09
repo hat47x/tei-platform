@@ -43,7 +43,17 @@ func buildKnowledgeDisclosure(
 func buildBuilderReviewPlan(
 	root, subjectKind, subjectID string,
 ) (knowledgecontext.BuilderReviewPlan, error) {
-	ctx, err := buildKnowledgeContext(root, subjectKind, subjectID)
+	if strings.TrimSpace(root) == "" {
+		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf("knowledge-review-plan requires -workspace")
+	}
+	kind := strings.TrimSpace(subjectKind)
+	id := strings.TrimSpace(subjectID)
+	if kind == "" || id == "" {
+		return knowledgecontext.BuilderReviewPlan{}, fmt.Errorf(
+			"knowledge-review-plan requires -subject-kind and -subject-id",
+		)
+	}
+	ctx, err := buildKnowledgeContext(root, kind, id)
 	if err != nil {
 		return knowledgecontext.BuilderReviewPlan{}, err
 	}
