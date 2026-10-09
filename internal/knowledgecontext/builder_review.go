@@ -58,6 +58,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 	}
 	reviewSequence = append(
 		reviewSequence,
+		"review-cross-view-constraints-authority-and-known-conflicts",
 		"apply-required-knowledge-qualification-before-semantic-use",
 		"inspect-selected-section-local-resolution-and-evidence-status",
 		"inspect-unresolved-and-authority-limits",
@@ -85,6 +86,8 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"do-not-treat-context-unresolved-as-exhaustive-of-section-local-uncertainty",
 			"stop-semantic-use-when-selected-section-local-status-is-unresolved",
 			"do-not-infer-global-knowledge-absence-from-current-context-section-absence",
+			"do-not-treat-current-context-as-exhaustive-of-cross-view-constraints",
+			"stop-before-proposal-when-required-cross-view-conflict-evidence-is-unresolved",
 			"refresh-review-plan-before-reusing-cached-routing",
 		},
 		AuthorityLimits: []string{
@@ -95,6 +98,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"review-plan-does-not-replace-qualification-or-shared-acceptance",
 			"proposal-delta-remains-separate-from-knowledge-evidence",
 			"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
+			"review-plan-does-not-qualify-cross-view-change",
 			"review-plan-fingerprint-is-routing-identity-not-knowledge-freshness-proof",
 			"review-plan-fingerprint-is-not-selected-knowledge-fingerprint",
 		},
