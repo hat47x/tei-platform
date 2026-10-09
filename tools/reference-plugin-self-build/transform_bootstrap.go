@@ -23,6 +23,17 @@ const (
 	transformPackageSourcePath  = "reference/plugin-self-build/builder-sources/plugin-package-v1.transform.json"
 )
 
+
+type transformBootstrapStagePlan struct {
+	Stage               plugin.BootstrapStageName     `json:"stage"`
+	Builder             plugin.BuilderIdentity        `json:"builder"`
+	SourceClosureDigest string                        `json:"sourceClosureDigest"`
+	SourceFingerprint   string                        `json:"sourceFingerprint"`
+	RuntimeEngine       pruntime.RuntimeEngineIdentity `json:"runtimeEngine"`
+	Target              string                        `json:"target"`
+	Output              transform.SourceIdentity      `json:"output"`
+}
+
 type transformBootstrapEvidence struct {
 	RuntimeEngineSourceDigest      string                            `json:"runtimeEngineSourceDigest"`
 	RuntimeEngine                  pruntime.RuntimeEngineIdentity    `json:"runtimeEngine"`
@@ -31,6 +42,8 @@ type transformBootstrapEvidence struct {
 	SeedBuilderSecondDigest        string                            `json:"seedBuilderSecondDigest"`
 	SeedBuilderReproducible        bool                              `json:"seedBuilderReproducible"`
 	MetaSourceFingerprint          string                            `json:"metaSourceFingerprint"`
+	Stage1Plan                     transformBootstrapStagePlan       `json:"stage1Plan"`
+	Stage2Plan                     transformBootstrapStagePlan       `json:"stage2Plan"`
 	Stage1ArtifactDigest           string                            `json:"stage1ArtifactDigest"`
 	Stage2ArtifactDigest           string                            `json:"stage2ArtifactDigest"`
 	ConvergenceEvidence            plugin.BootstrapConvergenceEvidence `json:"convergenceEvidence"`
@@ -228,10 +241,26 @@ func runTransformBootstrap(
 	}
 	stage1Output := builderIdentityFromTransformSource(metaSource, stage1FirstDigest)
 	buildInputFingerprint := transformBootstrapInputFingerprint(
+		metaSourceClosureDigest,
 		metaSourceFingerprint,
 		engineFingerprint,
 		engine.Target,
 	)
+	stage1Plan := transformBootstrapStagePlan{
+		Stage:               plugin.BootstrapStage1,
+		Builder:             seedIdentity,
+		SourceClosureDigest: metaSourceClosureDigest,
+		SourceFingerprint:   metaSourceFingerprint,
+		RuntimeEngine:       engine,
+		Target:              engine.Target,
+		Output:              metaSource.Identity,
+	}
+	stage2Plan := stage1Plan
+	stage2Plan.Stage = plugin.BootstrapStage2
+	stage2Plan.Builder = stage1Output
+	stage1PlanFingerprint := transformBootstrapStagePlanFingerprint(stage1Plan)
+	stage2PlanFingerprint := transformBootstrapStagePlanFingerprint(stage2Plan)
+
 	convergenceEvidence := plugin.BootstrapConvergenceEvidence{
 		FormatVersion: plugin.BootstrapConvergenceFormatVersion,
 		Stage0Seed: plugin.BootstrapSeedEvidence{
@@ -243,12 +272,7 @@ func runTransformBootstrap(
 			Builder:               seedIdentity,
 			SourceClosureDigest:   metaSourceClosureDigest,
 			BuildInputFingerprint: buildInputFingerprint,
-			BuildPlanFingerprint: transformBootstrapStageFingerprint(
-				"stage1",
-				seedIdentity,
-				metaSourceFingerprint,
-				engineFingerprint,
-			),
+			BuildPlanFingerprint: stage1PlanFingerprint,
 			Output: stage1Output,
 		},
 		Stage2: plugin.BootstrapStageEvidence{
@@ -256,12 +280,7 @@ func runTransformBootstrap(
 			Builder:               stage1Output,
 			SourceClosureDigest:   metaSourceClosureDigest,
 			BuildInputFingerprint: buildInputFingerprint,
-			BuildPlanFingerprint: transformBootstrapStageFingerprint(
-				"stage2",
-				stage1Output,
-				metaSourceFingerprint,
-				engineFingerprint,
-			),
+			BuildPlanFingerprint: stage2PlanFingerprint,
 			Output: builderIdentityFromTransformSource(metaSource, stage2Digest),
 		},
 	}
@@ -392,6 +411,8 @@ func runTransformBootstrap(
 		SeedBuilderSecondDigest:         seedSecondDigest,
 		SeedBuilderReproducible:         true,
 		MetaSourceFingerprint:           metaSourceFingerprint,
+		Stage1Plan:                      stage1Plan,
+		Stage2Plan:                      stage2Plan,
 		Stage1ArtifactDigest:            stage1FirstDigest,
 		Stage2ArtifactDigest:            stage2Digest,
 		ConvergenceEvidence:             convergenceEvidence,
@@ -443,29 +464,16 @@ func transformValueFromJSON(value any) (transform.Value, error) {
 	return transform.ParseJSON(raw)
 }
 
-func transformBootstrapInputFingerprint(sourceFingerprint, engineFingerprint, target string) string {
-	raw := sourceFingerprint + "\n" + engineFingerprint + "\n" + target + "\n"
+func transformBootstrapInputFingerprint(
+	sourceClosureDigest, sourceFingerprint, engineFingerprint, target string,
+) string {
+	raw := sourceClosureDigest + "\n" + sourceFingerprint + "\n" + engineFingerprint + "\n" + target + "\n"
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
 
-func transformBootstrapStageFingerprint(
-	stage string,
-	builder plugin.BuilderIdentity,
-	sourceFingerprint, engineFingerprint string,
-) string {
-	payload := struct {
-		Stage             string                 `json:"stage"`
-		Builder           plugin.BuilderIdentity `json:"builder"`
-		SourceFingerprint string                 `json:"sourceFingerprint"`
-		EngineFingerprint string                 `json:"engineFingerprint"`
-	}{
-		Stage:             stage,
-		Builder:           builder,
-		SourceFingerprint: sourceFingerprint,
-		EngineFingerprint: engineFingerprint,
-	}
-	raw, _ := json.Marshal(payload)
+func transformBootstrapStagePlanFingerprint(plan transformBootstrapStagePlan) string {
+	raw, _ := json.Marshal(plan)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
