@@ -103,13 +103,13 @@ type patternMeaningRow struct {
 }
 
 type report struct {
-	Procedure                        string              `json:"procedure"`
-	Application                      string              `json:"application,omitempty"`
-	CanonicalProcedureIdentityUsed   bool                `json:"canonicalProcedureIdentityUsed"`
-	BusinessActionFunctionRows       []functionRow       `json:"businessActionFunctionRows"`
-	BusinessActionPatternMeaningRows []patternMeaningRow `json:"businessActionPatternMeaningRows"`
-	ExplicitBusinessMeaningRows      []dataRow           `json:"explicitBusinessMeaningRows"`
-	Diagnostics                      []diagnostic             `json:"diagnostics"`
+	Procedure                        string                     `json:"procedure"`
+	Application                      string                     `json:"application,omitempty"`
+	CanonicalProcedureIdentityUsed   bool                       `json:"canonicalProcedureIdentityUsed"`
+	BusinessActionFunctionRows       []functionRow              `json:"businessActionFunctionRows"`
+	BusinessActionPatternMeaningRows []patternMeaningRow        `json:"businessActionPatternMeaningRows"`
+	ExplicitBusinessMeaningRows      []dataRow                  `json:"explicitBusinessMeaningRows"`
+	Diagnostics                      []diagnostic               `json:"diagnostics"`
 	ValidationScopeReview            []validationScopeReviewRow `json:"validationScopeReview,omitempty"`
 }
 
