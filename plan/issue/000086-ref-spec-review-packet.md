@@ -83,6 +83,7 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 7. 複数のKnowledge ContextとShared Acceptanceが持つSource Evidenceをpacketへ保持し、完全一致する重複だけを除く。customer editではPattern sourceと所有Application sourceの両方へ戻れることを確認する。
 8. 既存Practical-B candidateのbase revisionだけをscratchで古くし、実Shared Acceptance Previewが返す`stale`をpacketへ取り込む。
 9. subject / procedure identityが欠けた入力や、未対応のShared Acceptance schemaを拒否し、別toolのJSONを誤ってreview inputへ読み替えない。
+10. 実`knowledge-context`へ未定義subjectを渡し、`semantic-element-not-found-in-derived-index`と`source-reference-unavailable`がreview packetで失われないことを確認する。
 
 ## 非目標
 
@@ -108,6 +109,6 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 
 ## 次段
 
-このpacketが成立した後に、REF-SPEC-01のA/B比較へ進む。測定対象は見落とし、誤警告、開いたSource数、最初の意味あるfindingまでの操作数、確認時間、findingからSourceへ再到達できるかである。
+このpacketが成立した後に、REF-SPEC-01のA/B比較へ進む。現時点のReference testでは、実customer edit衝突、実Knowledge Contextの未定義subject、実Shared Acceptanceのstale Previewまでをそれぞれsource toolから取得する。測定対象は見落とし、誤警告、開いたSource数、最初の意味あるfindingまでの操作数、確認時間、findingからSourceへ再到達できるかである。
 
 packet自体の存在やfinding件数をProduct Valueの達成とみなさない。
