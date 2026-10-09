@@ -26,7 +26,7 @@ func TestJSONDocumentStorePreservesUnrelatedFields(t *testing.T) {
 	s := NewScopedJSONDocumentStore("doc", "r1", []byte(documentFixture))
 	h := Host{Authorizer: permit(true), Bindings: []Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: s}}}
 	rev, err := h.Commit(context.Background(), documentIntent("r1", MovePayload{CardID: "a", X: 5, Y: 6}))
-	if err != nil || rev != "r2" {
+	if err != nil || rev != "r1:1" {
 		t.Fatalf("rev=%s err=%v", rev, err)
 	}
 	_, got, writes := s.Snapshot()
@@ -149,6 +149,8 @@ func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
 		{"missing unrelated card id", `{"version":1,"id":"doc","cards":[{"id":"a","x":0,"y":0},{}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
 		{"missing x", `{"version":1,"id":"doc","cards":[{"id":"a","y":0}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
 		{"missing y", `{"version":1,"id":"doc","cards":[{"id":"a","x":0}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
+		{"null x", `{"version":1,"id":"doc","cards":[{"id":"a","x":null,"y":0}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
+		{"null y", `{"version":1,"id":"doc","cards":[{"id":"a","x":0,"y":null}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -163,4 +165,15 @@ func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestJSONDocumentStoreNeverReusesInitialRevision(t *testing.T) {
+ s:=NewScopedJSONDocumentStore("doc","r2",[]byte(documentFixture))
+ first,err:=s.Commit(context.Background(),documentIntent("r2",MovePayload{CardID:"a",X:1,Y:2}))
+ if err!=nil {t.Fatal(err)}
+ if first=="r2" || first=="" {t.Fatalf("revision did not advance: %q",first)}
+ _,err=s.Commit(context.Background(),documentIntent("r2",MovePayload{CardID:"a",X:3,Y:4}))
+ if !errors.Is(err,ErrConflict) {t.Fatalf("old revision replay accepted: %v",err)}
+ second,err:=s.Commit(context.Background(),documentIntent(first,MovePayload{CardID:"a",X:3,Y:4}))
+ if err!=nil||second==first||second=="r2" {t.Fatalf("revision did not advance: %q err=%v",second,err)}
 }
