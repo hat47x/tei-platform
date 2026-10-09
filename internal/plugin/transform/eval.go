@@ -172,7 +172,7 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			}
 			fields = append(fields, Field{Name: field.Name, Value: value})
 		}
-		return objectShared(fields...)
+		return objectShared(fields)
 	case OpMapArray:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
