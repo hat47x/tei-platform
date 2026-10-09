@@ -169,15 +169,9 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 	target := "host/" + runtime.GOOS + "/" + runtime.GOARCH
 	var exactRuntimeEngine *pruntime.RuntimeEngineIdentity
 	if reproducible {
-		engine := pruntime.RuntimeEngineIdentity{
-			ID:                   core.MustCanonicalID(engineID),
-			Version:              engineVersion,
-			ContractVersion:      engineContract,
-			ImplementationDigest: artifactDigest,
-			Target:               target,
-		}
-		if err := engine.Validate(); err != nil {
-			return buildEvidence{}, fmt.Errorf("exact Runtime Engine identity: %w", err)
+		engine, err := exactRuntimeEngineIdentity(artifactDigest, target)
+		if err != nil {
+			return buildEvidence{}, err
 		}
 		exactRuntimeEngine = &engine
 		if artifactOut != "" {
@@ -373,6 +367,20 @@ func packageBuildFiles(pkg goListPackage) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func exactRuntimeEngineIdentity(artifactDigest, target string) (pruntime.RuntimeEngineIdentity, error) {
+	engine := pruntime.RuntimeEngineIdentity{
+		ID:                   core.MustCanonicalID(engineID),
+		Version:              engineVersion,
+		ContractVersion:      engineContract,
+		ImplementationDigest: artifactDigest,
+		Target:               target,
+	}
+	if err := engine.Validate(); err != nil {
+		return pruntime.RuntimeEngineIdentity{}, fmt.Errorf("exact Runtime Engine identity: %w", err)
+	}
+	return engine, nil
 }
 
 func resolveReproducibility(firstDigest, secondDigest string) (bool, string) {
