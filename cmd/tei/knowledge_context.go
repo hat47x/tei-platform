@@ -36,6 +36,22 @@ func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontex
 		subject.Subject{Kind: kind, ID: id},
 	), nil
 }
+func buildDataDesignCandidateReview(
+	root, subjectKind, subjectID, candidateKind, candidateFingerprint,
+	expectedEvidenceRequirementFingerprint string,
+) (knowledgecontext.DataDesignCandidateReviewPacket, error) {
+	ctx, err := buildKnowledgeContext(root, subjectKind, subjectID)
+	if err != nil {
+		return knowledgecontext.DataDesignCandidateReviewPacket{}, err
+	}
+	return knowledgecontext.BuildDataDesignCandidateReview(
+		ctx,
+		candidateKind,
+		candidateFingerprint,
+		expectedEvidenceRequirementFingerprint,
+	)
+}
+
 func buildKnowledgeDisclosure(
 	ctx knowledgecontext.Context,
 	selection string,
