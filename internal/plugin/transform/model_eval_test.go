@@ -116,7 +116,6 @@ func TestTransformSourceMaterializationIsDeterministic(t *testing.T) {
 	}
 }
 
-
 func TestTransformSourceRejectsUndeclaredAndShadowedBindings(t *testing.T) {
 	t.Run("undeclared input", func(t *testing.T) {
 		source := transform.TransformSourceRealizerV1()
@@ -241,7 +240,6 @@ func TestOrderedValueRejectsInvalidManuallyConstructedNumber(t *testing.T) {
 	}
 }
 
-
 func TestTransformSourceFingerprintIgnoresInputDeclarationOrder(t *testing.T) {
 	a := transform.PluginPackageSourceV1()
 	b := transform.PluginPackageSourceV1()
@@ -260,13 +258,11 @@ func TestTransformSourceFingerprintIgnoresInputDeclarationOrder(t *testing.T) {
 	}
 }
 
-
 func TestOrderedValueRejectsInvalidUTF8(t *testing.T) {
 	if _, err := transform.ParseJSON([]byte{'"', 0xff, '"'}); err == nil {
 		t.Fatal("expected invalid UTF-8 JSON to fail")
 	}
 }
-
 
 func TestTransformSourceRejectsASTBeyondDeclaredNesting(t *testing.T) {
 	source := transform.TransformSourceRealizerV1()
