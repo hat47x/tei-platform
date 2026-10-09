@@ -65,6 +65,16 @@ func TestJSONDocumentStoreConcurrentRevision(t *testing.T){
  if successes!=1||conflicts!=1||writes!=1 {t.Fatalf("success=%d conflict=%d writes=%d",successes,conflicts,writes)}
 }
 
+func TestJSONDocumentStoreRequiresDocumentIdentity(t *testing.T) {
+ s:=NewScopedJSONDocumentStore("doc","r1",[]byte(documentFixture))
+ for _,id:=range []string{"","other"} {
+  _,err:=s.Commit(context.Background(),Intent{DocumentID:id,ActionID:"sui.move",ExpectedRevision:"r1",Payload:MovePayload{CardID:"a",X:1,Y:2}})
+  if !errors.Is(err,ErrDenied){t.Fatalf("document %q: expected denied, got %v",id,err)}
+ }
+ revision,document,writes:=s.Snapshot()
+ if revision!="r1"||writes!=0||string(document)!=documentFixture {t.Fatal("identity rejection mutated document")}
+}
+
 func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
  cases:=[]struct{name string;document string;payload MovePayload}{
   {"null document","null",MovePayload{CardID:"a",X:1,Y:2}},
