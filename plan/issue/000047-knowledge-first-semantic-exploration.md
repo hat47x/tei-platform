@@ -417,6 +417,20 @@ Persistence RealizationもData Design Contextへ接続した。`sales.order_line
 
 この変更は新しいTemporal modelやHistory primitiveを導入しない。現行Canonicalで表現できていない意味を、physical schemaや命名から補完しないためのnegative Referenceである。exact-headのfull Repository-healthは未取得なので、該当完了条件を完了扱いにはしない。
 
+### 2026-10-09 SQL Realization identity negative pressure
+
+Target / ORM / runtime objectのidentityからbusiness keyを逆算しない完了条件について、現行Repositoryにはこれらを共通に表すfirst-class subjectはまだない。そこで新しい抽象schemaを先に追加せず、Source Indexへ実在するruntime寄りのsubjectである`contract-query-sql-realization`を使って境界をpressureする。
+
+Contract Query SQL Realizationは、Database / Contract / Query / providerから成るRealization identityを持ち、raw result列をSemantic Attributeへ明示的に対応付ける。Data Design ContextはRealization ID、provider名、raw列名からDataを推測せず、result column mappingがすべて一つのSemantic Dataへ一意に戻れる場合だけ、そのDataへ接続する。
+
+Referenceの`sales_core/sales_core.order_line/find_by_order/sql/postgres`では、result mappingが`sales.order_line`のAttributeだけを指すため、同じData Design Contextへ逆追跡できる。このときもRealization identityやraw result列をbusiness occurrence identifier、candidate key、functional dependencyへ昇格しない。Realization authoring sourceもEvidenceとして同じContextから辿れるようにする。
+
+反対に、一つのSQL Realizationのresult mappingが複数Semantic Dataへまたがるsynthetic caseでは、どれか一つのDataを選ばない。`data-design-contract-query-sql-realization-scope-not-uniquely-resolvable`を`unresolved`へ残し、Data Design Contextを生成しない。
+
+authority limitには、SQL Realization identity、raw result column、provider固有Realizationがbusiness data identityやSemantic authorityではないことを明示する。これにより、物理SQLやruntime registry上のidentityが業務識別へ逆流する経路を閉じる。
+
+このpressureはTarget / ORM / runtime object全般を網羅したものではない。現行モデルで実在するSQL Realizationに対するReferenceであり、TargetやORMのfirst-class subjectが定義された場合は、そのidentity境界を別途pressureする。したがって該当完了条件はまだ完了扱いにしない。
+
 ### experienceからのlocal learning
 
 将来、過去のaccept / reject結果をcandidate rankingへ反映する場合、まず次のような局所的更新を比較します。
