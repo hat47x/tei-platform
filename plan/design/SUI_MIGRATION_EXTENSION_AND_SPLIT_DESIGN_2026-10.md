@@ -283,7 +283,7 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 
 実装に入る前に、費用の小さい順で次の三つを提案します。
 
-1. **越境試験の棚卸し。** SUIの`test_*tenant*`、`test_saas_*`を、ADR-0059のgate 5のマトリクス（14経路）へ対応付け、欠けている経路を洗い出す。コードは書かない
+1. **越境試験の棚卸し。**（2026-10-09に実施済み。結果は付録A） SUIの`test_*tenant*`、`test_saas_*`を、ADR-0059のgate 5のマトリクス（14経路）へ対応付け、欠けている経路を洗い出す。コードは書かない
 2. **Disclosure Projectionの紙上評価。** `DocumentV1`の全項目について、現在の`redact / preserve / omit`の判断を表にし、一つの宣言から export、共有、AI入力が導けるかを手で確認する
 3. **`If-Match`の扱いの決定。** SUI側の小さな変更として、必須化するか、後勝ちを明示するかを決める
 
@@ -308,3 +308,35 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 2. 共通部品の名前と範囲を`scope-isolation`（tenantを一例とする）にしてよいか
 3. SEI、EKI側の担当と、conformanceの共有場所（どのリポジトリに置くか）を決める必要があるか
 4. SUI側の分割は、本書の八章の順序で`ROADMAP.md`へ載せてよいか（SUI側のAGENTS.mdでは、管理文書を増やさずROADMAPにTODOを書く規則です）
+
+## 付録A. 越境試験の棚卸し（9章の一つ目の実施結果）
+
+- 日付: 2026-10-09
+- 方法: SUIのroute定義とテスト名を静的に読み、`grep`で対応を確認した。**テストは実行していない。** 「見当たらない」は、tenant・saas・guest系のテストファイルを`grep`した範囲での所見であり、「試験が存在しない」とは断定しない
+- 対象: ADR-0059の実装gate 5が挙げる14経路
+
+| 経路 | SUIの実装 | 越境試験の確認結果 |
+| --- | --- | --- |
+| GET（文書の取得） | `routes/docs.py` | あり。同じdoc IDで別tenantの内容を返さないこと（`test_saas_e2e_tenant_isolation.py`、`test_docs_tenant_isolation.py`）、PostgreSQLのRLS単独でも遮断すること（`test_tenant_isolation_postgres_rls.py`） |
+| PUT（文書の更新） | 同上 | あり。解決済みtenantの行だけを更新すること |
+| list（一覧） | `GET /docs`（tenantの文書metadataを返す） | **確認できず。** 上記の隔離試験の中に一覧を扱うものが見当たらない |
+| search / count | 該当するrouteなし | 対象機能がない（N/A）。ただし追加時に試験を必須とする |
+| export | 書き出しはclient側。サーバー側は`export-audit`でeventを記録 | **確認できず。** audit eventにtenantIdを含める単体試験（`test_audit.py`）はあるが、`export-audit` routeの越境試験は見当たらない |
+| share | `document_access_admin`（可視性の更新） | RLSの試験（`test_document_access_rls_postgres.py`）はあるが、HTTP経路での越境は未確認 |
+| import | client側で検証し、`PUT`へ流す | `PUT`の試験に含まれる。import時にtenantの権限を持ち越さない規則（D10）の試験は見当たらない |
+| MCP | `SUI_RUNTIME_PROFILE=saas-multitenant`では`document_client.ts`が**起動を拒否する**（「tenantに束縛したMCP credentialが未実装」） | 試験以前に設計上は閉じている。解除条件が未定で、解除時に必要な試験は未整備 |
+| webhook / job | 該当機能なし | N/A |
+| audit | event envelopeに`tenantId`が必須。metadataで`tenantid`キーを予約済み | 単体では確認済み。DBに保存された監査を別tenantが読めないことの試験は確認できず |
+| cache | server側に共有cacheはなし。browser保存は`tenantId`で名前空間化 | frontendの試験（`app_browser_storage.test.ts`にtenant言及20件）。切り替え時の破棄は`app_runtime_cleanup.ts`にtenant言及がなく、別の経路かを要確認 |
+| rate limit | `rate_limit.py` | **tenantがキーに入っていない。** D7は「レート制限のキーにもtenantIdを伝播する」としており、実装と食い違う可能性がある |
+| agent credential | 上記MCPと同じ。未実装 | N/A（実装時に必須化） |
+| 補足: 古いcontext | `test_tenant_session_precondition.py`、`test_saas_tenant_resource_gate_postgres.py` | あり。資源参照の前に止まること |
+
+**読み取れること**
+
+1. 中核の経路（GET / PUT、RLSの二重化、古いcontextの遮断）は、試験で固定されている
+2. 一覧、export-audit、監査の読み取り、importの権限非継承は、HTTPレベルの試験が見当たらない。越境試験の第一候補
+3. `rate_limit.py`のキーにtenantが無いことは、D7との食い違いの可能性があるため、**SUI側で先に確認する**。確認できればSUIの不具合候補になる
+4. MCPは「閉じている」が、解除条件がない。共通部品のconformanceには「credentialをtenantと文書へ束縛する」項目が要る
+
+この結果は、14経路を適合条件にするというL3の案が実在のコードに対して意味を持つことを示す。一方で、14経路のうち4経路はSUIにも機能がないため、共通のconformanceは「該当機能があれば必須」の形で書く必要がある。
