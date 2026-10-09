@@ -509,16 +509,42 @@ func genericProcessDispatchID(
 	if err := validateRuntimeCapabilityRef(ref); err != nil {
 		return "", err
 	}
+	return processDispatchID(
+		ref.ContractID,
+		ref.ContractVersion,
+		ref.ContractFingerprint,
+		ref.ImplementationID,
+	)
+}
+
+func processDispatchID(
+	contractID string,
+	contractVersion string,
+	contractFingerprint string,
+	implementationID string,
+) (core.CanonicalID, error) {
+	if strings.TrimSpace(contractID) == "" ||
+		contractID != strings.TrimSpace(contractID) ||
+		strings.TrimSpace(implementationID) == "" ||
+		implementationID != strings.TrimSpace(implementationID) {
+		return "", fmt.Errorf("process dispatch identity is incomplete or non-canonical")
+	}
+	if _, err := plugin.ParseVersion(contractVersion); err != nil {
+		return "", fmt.Errorf("process dispatch Contract version: %w", err)
+	}
+	if !validSHA256Fingerprint(contractFingerprint) {
+		return "", fmt.Errorf("process dispatch Contract fingerprint is invalid")
+	}
 	dispatchFingerprint := fingerprint(struct {
 		ContractID string `json:"contractId"`
 		ContractVersion string `json:"contractVersion"`
 		ContractFingerprint string `json:"contractFingerprint"`
 		ImplementationID string `json:"implementationId"`
 	}{
-		ContractID: ref.ContractID,
-		ContractVersion: ref.ContractVersion,
-		ContractFingerprint: ref.ContractFingerprint,
-		ImplementationID: ref.ImplementationID,
+		ContractID: contractID,
+		ContractVersion: contractVersion,
+		ContractFingerprint: contractFingerprint,
+		ImplementationID: implementationID,
 	})
 	hexPart := strings.TrimPrefix(dispatchFingerprint, "sha256:")
 	return core.ParseCanonicalID("runtime_dispatch.d_" + hexPart)
@@ -550,6 +576,11 @@ type RuntimeProcessRealization struct {
 	Command pruntime.ProcessCommand `json:"command"`
 }
 
+type GenericInvocation struct {
+	Response pruntime.Response `json:"response"`
+	Provenance GenericInvocationProvenance `json:"provenance"`
+}
+
 type GenericInvocationProvenance struct {
 	Environment core.CanonicalID `json:"environment"`
 	RuntimeCapability RuntimeCapabilityRef `json:"runtimeCapability"`
@@ -576,61 +607,61 @@ func invokeWithExistingHostBoundary(
 	operation string,
 	requestID string,
 	payload any,
-) (prov GenericInvocationProvenance, retErr error) {
+) (inv GenericInvocation, retErr error) {
 	if err := validateRuntimeEnvironmentPlan(plan); err != nil {
-		return prov, err
+		return inv, err
 	}
 	if sandbox == nil {
-		return prov, fmt.Errorf("generic runtime invocation requires existing Host Sandbox")
+		return inv, fmt.Errorf("generic runtime invocation requires existing Host Sandbox")
 	}
 	if plan.IsolationPolicy != RuntimeIsolationHostEnforcedSandbox {
-		return prov, fmt.Errorf(
+		return inv, fmt.Errorf(
 			"Host Sandbox invocation requires host-enforced-sandbox isolation, got %q",
 			plan.IsolationPolicy,
 		)
 	}
 	if strings.TrimSpace(operation) == "" || strings.TrimSpace(requestID) == "" {
-		return prov, fmt.Errorf("generic runtime invocation requires operation and request ID")
+		return inv, fmt.Errorf("generic runtime invocation requires operation and request ID")
 	}
 	if plan.RuntimeCapability.Fingerprint != realization.RuntimeCapabilityFingerprint {
-		return prov, fmt.Errorf("process realization belongs to a different runtime Capability Ref")
+		return inv, fmt.Errorf("process realization belongs to a different runtime Capability Ref")
 	}
 	if realization.Plugin.ID != plan.RuntimeCapability.PluginID ||
 		realization.Plugin.Version != plan.RuntimeCapability.PluginVersion {
-		return prov, fmt.Errorf("process realization Plugin differs from runtime Capability Ref")
+		return inv, fmt.Errorf("process realization Plugin differs from runtime Capability Ref")
 	}
 	if realization.Artifact.Digest != plan.RuntimeCapability.ArtifactDigest {
-		return prov, fmt.Errorf("process realization artifact differs from runtime Capability Ref")
+		return inv, fmt.Errorf("process realization artifact differs from runtime Capability Ref")
 	}
 	if verifier == nil {
-		return prov, fmt.Errorf("generic runtime invocation requires existing Artifact Verifier")
+		return inv, fmt.Errorf("generic runtime invocation requires existing Artifact Verifier")
 	}
 	verified, err := verifier.Verify(ctx, realization.Plugin, realization.Artifact)
 	if err != nil {
-		return prov, fmt.Errorf("artifact verification failed: %w", err)
+		return inv, fmt.Errorf("artifact verification failed: %w", err)
 	}
 	if !verified.DigestVerified {
-		return prov, fmt.Errorf("artifact digest was not verified")
+		return inv, fmt.Errorf("artifact digest was not verified")
 	}
 	if realization.Artifact.SignatureRef != "" && !verified.SignatureVerified {
-		return prov, fmt.Errorf("artifact signature was not verified")
+		return inv, fmt.Errorf("artifact signature was not verified")
 	}
 	if realization.Artifact.Provenance != "" && !verified.ProvenanceChecked {
-		return prov, fmt.Errorf("artifact provenance was not verified")
+		return inv, fmt.Errorf("artifact provenance was not verified")
 	}
 	if strings.TrimSpace(realization.Command.Executable) == "" {
-		return prov, fmt.Errorf("process realization executable is empty")
+		return inv, fmt.Errorf("process realization executable is empty")
 	}
 	resourceAuthoritySubjectID, err :=
 		genericResourceAuthoritySubjectID(plan.RuntimeCapability)
 	if err != nil {
-		return prov, err
+		return inv, err
 	}
 	processDispatchID, err := genericProcessDispatchID(plan.RuntimeCapability)
 	if err != nil {
-		return prov, err
+		return inv, err
 	}
-	prov = GenericInvocationProvenance{
+	inv.Provenance = GenericInvocationProvenance{
 		Environment: plan.Environment,
 		RuntimeCapability: plan.RuntimeCapability,
 		RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
@@ -646,35 +677,35 @@ func invokeWithExistingHostBoundary(
 	var lease *resource.Lease
 	if len(plan.Permissions) > 0 {
 		if broker == nil {
-			return prov, fmt.Errorf("runtime Capability Ref requires resources but host has no Resource Broker")
+			return inv, fmt.Errorf("runtime Capability Ref requires resources but host has no Resource Broker")
 		}
 		acquire, err := resourceAcquireRequest(plan)
 		if err != nil {
-			return prov, err
+			return inv, err
 		}
 		got, err := broker.Acquire(ctx, acquire)
 		if err != nil {
-			return prov, fmt.Errorf("Resource Broker acquire failed: %w", err)
+			return inv, fmt.Errorf("Resource Broker acquire failed: %w", err)
 		}
 		if err := resource.ValidateLease(acquire, got); err != nil {
 			_ = broker.Release(context.WithoutCancel(ctx), got)
-			return prov, fmt.Errorf("Resource Broker returned invalid lease: %w", err)
+			return inv, fmt.Errorf("Resource Broker returned invalid lease: %w", err)
 		}
 		lease = &got
-		prov.ResourceLeaseID = got.ID
-		prov.Resources = resource.Records(got.Resources)
+		inv.Provenance.ResourceLeaseID = got.ID
+		inv.Provenance.Resources = resource.Records(got.Resources)
 		defer func() {
 			if err := broker.Release(context.WithoutCancel(ctx), *lease); err != nil {
 				retErr = errors.Join(retErr, fmt.Errorf("Resource Broker release failed: %w", err))
 				return
 			}
-			prov.ResourceLeaseReleased = true
+			inv.Provenance.ResourceLeaseReleased = true
 		}()
 	}
 
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		return prov, err
+		return inv, err
 	}
 	req := pruntime.Request{
 		ProtocolVersion: pruntime.ProtocolVersion,
@@ -696,13 +727,24 @@ func invokeWithExistingHostBoundary(
 		LeasePolicy: plan.LeasePolicy,
 		Profile: pruntime.SandboxProfileForLease(lease),
 	}, req)
+	inv.Response = resp
 	if err != nil {
-		return prov, err
+		return inv, err
+	}
+	if resp.ProtocolVersion != req.ProtocolVersion ||
+		resp.RequestID != req.RequestID ||
+		resp.Plugin != req.Plugin ||
+		resp.CapabilityID != req.CapabilityID ||
+		resp.DescriptorFingerprint != req.DescriptorFingerprint {
+		return inv, fmt.Errorf("generic process response identity differs from request")
+	}
+	if resp.Status == pruntime.ResponseError {
+		return inv, fmt.Errorf("sandboxed runtime Capability failed: %s", resp.Error)
 	}
 	if resp.Status != pruntime.ResponseOK {
-		return prov, fmt.Errorf("sandboxed runtime Capability returned status %q", resp.Status)
+		return inv, fmt.Errorf("sandboxed runtime Capability returned status %q", resp.Status)
 	}
-	return prov, nil
+	return inv, nil
 }
 
 func normalizePermissionSet(in []permission.Spec) ([]permission.Spec, error) {
