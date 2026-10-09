@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"tei/internal/core"
 	"tei/internal/plugin/transform"
 )
 
