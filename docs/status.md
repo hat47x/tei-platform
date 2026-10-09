@@ -301,7 +301,7 @@ Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application Targe
 
 ## knowledge-first / AI
 
-Knowledge-first explorationとAI Proposalの基盤実装はmainに存在します。ただし、ISSUE-000055のRepository verification gateは再開中であり、mainに実装があることをcurrent Product Evidence成立とは扱いません。
+Knowledge-first explorationとAI Proposalの基盤実装はmainに存在します。ただし、ISSUE-000055のRepository verification gateは再開中です。mainに実装があるだけでは、現在のProduct Evidenceが成立したとは扱いません。
 
 ### knowledge-first exploration
 
@@ -319,7 +319,7 @@ AI Builder向けには、何を読むかを決めるReview Plan、task-local Qua
 
 AI ProposalやKnowledge ContextはCanonical authorityではありません。AI provider、vector database、汎用のProposal生成方式、chat-first UXは未固定です。
 
-これらのcode-changing incrementについては、trusted actual checkoutでcurrent exact headのfull Repository Healthとclean pre/post stateを確認できるまで、現行規則上のProduct Evidence成立を主張しません。
+これらのコード変更については、信頼できる実Repositoryのcheckoutで現在のexact headに対するfull Repository Healthとclean pre/post stateを確認できるまで、現行規則上のProduct Evidence成立を主張しません。
 
 ## Reference Model Transfer
 
