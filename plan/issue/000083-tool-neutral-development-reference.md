@@ -477,6 +477,87 @@ normal_index=PASS
 
 これはqualification toolingのmechanics Evidenceであり、actual TEIのRepository Health、CLI、Canonical meaning、RQ-034 Reference成立Evidenceではありません。
 
+### receipt / preflight回帰テスト
+
+一回限りのsynthetic pressureだけでは将来の変更で退行を検出できないため、`tools/reference-tool-neutral-development/qualification_test.go`を同じlaneへ追加します。testはactual `qualify.sh` / `integration-preflight.sh`を合成Git Repositoryへ配置し、次を回帰対象にします。
+
+- v3 receiptのcandidate HEAD / tree / expected main / PASS field
+- exact candidate + live remote mainのpreflight正常系
+- 既存receiptを上書きしないこと
+- candidate tree改ざんを拒否すること
+- local remote-tracking refが古いままlive remote mainだけ進んだ状態を拒否すること
+
+test sourceのGit blob `649aebb25101bf199942a627c00205aa464dbbb9`は、隔離した最小Go moduleでcompile-only `go test -run '^
+## Evidence
+
+最初のReferenceでは少なくとも次を残します。
+
+- base Git revision
+- clean pre-state
+- 利用したCLI command
+- 対象Source identity / locator
+- 変更したfile
+- Git diff
+- Build / Validation / Test commandとactual result
+- result commit / revision
+- clean post-state
+- integration context
+- integration後のreload / Validation result
+- 削除対象とした非正本state（最初のReferenceではDecision ledger）に依存せず再構築できたこと
+- Semantic conflict negative case
+- 使用した開発環境の制約。ただしCanonical identityには含めない
+
+このEvidenceを、TEI独自の永続Task stateへ変換することは要求しません。Reference EvidenceとしてRepositoryに残すか、通常のGit / test outputへ結び付けます。
+
+## 完了条件
+
+- [ ] clean checkout / task-local worktreeだけで対象TEI Sourceを理解できる
+- [ ] 専用Agent Adapterなしにfile-native sourceを編集できる
+- [ ] CLI / Repository Toolから必要なBuild / Validation / Testを完結できる
+- [ ] Git commit / branch等を第一級の変更成果物として利用できる
+- [ ] Structured Proposal / TEI独自Change Setを必須にしない
+- [ ] 別contextから変更後SourceをreloadしCanonical meaningを再構築できる
+- [ ] Agent Session / Workspace / Checkpoint / Plan / 一般的な検証状態をTEI Product stateへ追加しない
+- [ ] Decision ledger等、明示的に非正本と分類したstateを除去してもauthoritative sourceとCanonical meaningが変わらない
+- [ ] Git上はmerge可能だがSemantic上は不整合となるnegative caseを少なくとも一つ再現できる
+- [ ] CLI-only pathがdeveloper MCPなしでも成立する
+- [ ] MCPを追加する場合、CLIと同じapplication service / semantic contractを利用できる
+- [ ] CLI / MCPの入口差が意味・Authority差にならない
+- [ ] 開発環境のShell / Filesystem / Git authorityとApplication Runtime authorityを混同しない
+- [ ] Referenceで見つかった不足を通常CLI / application serviceのGapとして説明できる
+- [ ] Agent専用subsystemを追加しなくても一往復が成立する
+- [ ] exact candidate headがcurrent mainを含む状態で、full `tools/repository-health-check.sh`と本Referenceをclean pre/post state付きでPASSできる
+- [ ] qualification receiptとread-only integration preflightで、exact candidate HEAD / tree、expected main、live remote main、runner blobの一致を再確認してから通常Git統合へ進める
+
+## 非目標
+
+- Devin相当のAgent Runtime
+- Agent Session / Checkpoint管理
+- chat-first IDE
+- Gitの置換
+- 全変更へのTEI独自Change Set強制
+- MCP serverをTEI開発の必須入口にすること
+- CI状態のTEI内複製
+- 開発ToolのShell権限をTEI Runtime Capabilityへ変換すること
+- Tool trajectoryの監査基盤
+- 特定のAI provider / modelの標準化
+
+## 関連文書
+
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md`
+- `requirements/README.md`
+- `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
+- `plan/adr/0031-tool-neutral-git-native-development.md`
+- `plan/issue/000027-ai-proposal-acceptance-boundary.md`
+- `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
+- `plan/issue/000047-knowledge-first-semantic-exploration.md`
+- `plan/issue/000079-plugin-self-build.md`
+- `plan/issue/000080-extensible-plugin-capability-contract.md`
+- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+- `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
+- `docs/architecture.md`
+`を通過した同一blobです。actual branch上のscriptsを伴うtest実行はtrusted checkoutでのfull Repository Healthまで未取得であり、compile-only結果をbehavior PASSへ読み替えません。
+
 ## Evidence
 
 最初のReferenceでは少なくとも次を残します。
