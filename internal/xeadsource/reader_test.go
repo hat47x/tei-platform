@@ -202,9 +202,7 @@ func TestParseRejectsNonWhitespaceCharacterDataOutsideRoot(t *testing.T) {
 			t.Fatalf("character data outside root was accepted: %q", source)
 		}
 	}
-	if _, err := Parse(FormatXead, []byte("  
-<System/>
-  ")); err != nil {
+	if _, err := Parse(FormatXead, []byte(`  \n<System/>\n  `)); err != nil {
 		t.Fatalf("whitespace around root should remain valid: %v", err)
 	}
 }
