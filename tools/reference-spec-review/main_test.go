@@ -113,6 +113,35 @@ func TestReviewPacketClassifiesAmbiguityConflictAndStalePremise(t *testing.T) {
 	}
 }
 
+func TestReviewPacketKeepsSharedAcceptanceUnresolvedAsAmbiguity(t *testing.T) {
+	dir := t.TempDir()
+	acceptancePath := writeReviewJSON(t, dir, "acceptance.json", map[string]any{
+		"decision": "preview",
+		"unresolved": []map[string]any{
+			{
+				"code":    "DRIVER_SCENARIO_NOT_RUN",
+				"message": "解析はDriver scenarioを実行しない",
+			},
+		},
+	})
+
+	got, err := buildReviewPacket("shared-unresolved", "", "", acceptancePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "review-needed" ||
+		len(got.Findings) != 1 ||
+		got.Findings[0].Class != "ambiguity" ||
+		got.Findings[0].Source != "shared-acceptance" ||
+		got.Findings[0].Code != "DRIVER_SCENARIO_NOT_RUN" ||
+		got.Findings[0].Message != "解析はDriver scenarioを実行しない" {
+		t.Fatalf("Shared Acceptance unresolved item drifted: %+v", got)
+	}
+	if !reflect.DeepEqual(got.MissingInputs, []string{"cross-view", "knowledge-context"}) {
+		t.Fatalf("missing inputs=%v", got.MissingInputs)
+	}
+}
+
 func TestReviewPacketConsumesValidationScopeReviewWithoutOwningItsSemantics(t *testing.T) {
 	dir := t.TempDir()
 	crossViewPath := writeReviewJSON(t, dir, "cross-view.json", map[string]any{
