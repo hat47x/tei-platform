@@ -25,6 +25,19 @@ type BuilderReviewHandoff struct {
 }
 
 func BuildBuilderReviewHandoff(
+	ctx Context,
+	sources sourceindex.Index,
+	requirements QualificationRequirements,
+) (BuilderReviewHandoff, error) {
+	plan := BuildBuilderReviewPlan(ctx)
+	qualification, err := QualifyWithSources(ctx, sources, requirements)
+	if err != nil {
+		return BuilderReviewHandoff{}, err
+	}
+	return buildBuilderReviewHandoffFromQualification(plan, qualification)
+}
+
+func buildBuilderReviewHandoffFromQualification(
 	plan BuilderReviewPlan,
 	qualification QualificationResult,
 ) (BuilderReviewHandoff, error) {
