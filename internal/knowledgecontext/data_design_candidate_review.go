@@ -99,9 +99,7 @@ func BuildDataDesignCandidateReview(
 	}
 
 	reviewStatus := "evidence-required"
-	if ctx.DataDesign.ResolutionStatus != "resolved" ||
-		ctx.DataDesign.EvidenceCoverageStatus != "complete" ||
-		len(sourceMissing) != 0 {
+	if ctx.DataDesign.ResolutionStatus != "resolved" || len(sourceMissing) != 0 {
 		reviewStatus = "blocked-context-unresolved"
 	}
 
