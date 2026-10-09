@@ -247,6 +247,9 @@ func jsonEncodedSizeWithin(v Value, maxBytes int) (int, error) {
 		}
 		return add(0, len(v.Number))
 	case ValueString:
+		if !utf8.ValidString(v.String) {
+			return 0, fmt.Errorf("string value is not valid UTF-8")
+		}
 		raw, _ := json.Marshal(v.String)
 		return add(0, len(raw))
 	case ValueBytes:
@@ -283,6 +286,9 @@ func jsonEncodedSizeWithin(v Value, maxBytes int) (int, error) {
 		for i, field := range v.Object {
 			if field.Name == "" {
 				return 0, fmt.Errorf("object field name is required")
+			}
+			if !utf8.ValidString(field.Name) {
+				return 0, fmt.Errorf("object field name is not valid UTF-8")
 			}
 			if _, exists := seen[field.Name]; exists {
 				return 0, fmt.Errorf("object field %q is declared more than once", field.Name)
@@ -331,6 +337,9 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 		}
 		out.WriteString(v.Number)
 	case ValueString:
+		if !utf8.ValidString(v.String) {
+			return fmt.Errorf("string value is not valid UTF-8")
+		}
 		raw, _ := json.Marshal(v.String)
 		out.Write(raw)
 	case ValueArray:
@@ -350,6 +359,9 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 		for i, field := range v.Object {
 			if field.Name == "" {
 				return fmt.Errorf("object field name is required")
+			}
+			if !utf8.ValidString(field.Name) {
+				return fmt.Errorf("object field name is not valid UTF-8")
 			}
 			if _, exists := seen[field.Name]; exists {
 				return fmt.Errorf("object field %q is declared more than once", field.Name)
