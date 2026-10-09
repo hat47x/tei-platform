@@ -439,6 +439,28 @@ receiptは署名済みAuthorityやTEI Product stateではありません。通�
 
 `--expected-main`が固定するのは、preflightで取得済みのlocal `origin/main`です。wrapperはそのSHA一致だけでなく、expected mainがcandidate HEADのancestorであることも確認します。remote GitHub上の`main`をlockするものではないため、qualification PASS後もmerge直前にremote stateを再取得し、mainがexpected SHAから動いていれば、そのreceiptをstaleとしてcandidateへ最新mainを統合したうえで再qualificationします。
 
+### qualification receipt / integration preflightの合成検証
+
+actual TEI checkoutを使えない制約とは別に、receipt handoff自体のGit mechanicsをlocal synthetic Repositoryで実行しました。synthetic Repositoryには最小のhealth runnerとReference runnerを置き、candidateをcurrent mainから分岐させ、`qualify.sh`と同じreceipt field / runner blob binding、`integration-preflight.sh`と同じ検査条件を使っています。
+
+確認結果:
+
+```text
+normal=PASS
+tamper=PASS
+runner_mutation=PASS
+main_movement=PASS
+```
+
+- 正常系: exact candidate / mainからreceiptを作成し、integration checkoutをexact mainへ置いたpreflightがPASS。
+- receipt改ざん: `qualification=PASS`を書き換えたreceiptを拒否。
+- candidate runner変更: receipt取得後にReference runnerを変更したcandidateをrunner blob不一致で拒否。
+- main移動: receipt取得後に`origin/main`が進んだ状態をstaleとして拒否。
+
+また、detached HEADのsource checkoutから`git clone --local --no-hardlinks`した場合、cloneも同じdetached commitから始まることをlocal Gitで確認しました。source checkoutにignored / untracked artifactが存在してもclone側へは複製されないため、source側のignored-clean検査は省略できません。
+
+これはqualification toolingのmechanics Evidenceであり、actual TEIのRepository Health、CLI、Canonical meaning、RQ-034 Reference成立Evidenceではありません。
+
 ## Evidence
 
 最初のReferenceでは少なくとも次を残します。
