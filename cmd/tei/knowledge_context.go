@@ -108,6 +108,68 @@ func buildBuilderReviewHandoffFromFile(
 	return buildBuilderReviewHandoff(root, subjectKind, subjectID, requirements)
 }
 
+func buildBuilderReviewDisclosureFromFile(
+	root, subjectKind, subjectID, handoffPath string,
+) (
+	knowledgecontext.DisclosureProjection,
+	knowledgecontext.BuilderReviewHandoff,
+	error,
+) {
+	if strings.TrimSpace(root) == "" {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			fmt.Errorf("knowledge-review-disclose requires -workspace")
+	}
+	kind := strings.TrimSpace(subjectKind)
+	id := strings.TrimSpace(subjectID)
+	if kind == "" || id == "" {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			fmt.Errorf(
+				"knowledge-review-disclose requires -subject-kind and -subject-id",
+			)
+	}
+	if strings.TrimSpace(handoffPath) == "" {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			fmt.Errorf("knowledge-review-disclose requires -review-handoff")
+	}
+
+	var handoff knowledgecontext.BuilderReviewHandoff
+	if err := decodeJSONFile(handoffPath, &handoff); err != nil {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			err
+	}
+
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			err
+	}
+	sources, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		return knowledgecontext.DisclosureProjection{},
+			knowledgecontext.BuilderReviewHandoff{},
+			err
+	}
+	ctx := knowledgecontext.Build(
+		loaded.World,
+		sources,
+		subject.Subject{Kind: kind, ID: id},
+	)
+	disclosure, err := knowledgecontext.BuildBuilderReviewDisclosure(
+		ctx,
+		sources,
+		handoff,
+	)
+	if err != nil {
+		return knowledgecontext.DisclosureProjection{}, handoff, err
+	}
+	return disclosure, handoff, nil
+}
+
 func checkBuilderReviewHandoffFingerprint(
 	handoff knowledgecontext.BuilderReviewHandoff,
 	expected string,
