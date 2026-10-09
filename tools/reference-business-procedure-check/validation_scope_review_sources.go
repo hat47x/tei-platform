@@ -42,6 +42,9 @@ func attachValidationScopeSources(rows []validationScopeReviewRow, index sourcei
 	}
 	for i := range rows {
 		row := &rows[i]
+		// Derived evidence is a fresh projection of this Index, not an append-only log.
+		row.SourceEvidence = nil
+		row.UnresolvedSource = nil
 		if row.Status != "review-needed" && row.Status != "no-set-difference" {
 			continue
 		}
