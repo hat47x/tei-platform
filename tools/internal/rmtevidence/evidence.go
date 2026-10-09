@@ -37,7 +37,48 @@ type Evidence struct {
 	EvidenceFingerprint        string        `json:"evidenceFingerprint"`
 }
 
-var fingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)\n\nvar RequiredAuthorityLimits = []string{
+var fingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}package rmtevidence
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"regexp"
+	"sort"
+	"strings"
+
+	"tei/internal/sourceindex"
+)
+
+const Schema = "tei.reference.rmt-transcription-candidate-evidence/v0"
+
+type MappingStatus string
+
+const (
+	MappingMapped   MappingStatus = "mapped"
+	MappingUnmapped MappingStatus = "unmapped"
+)
+
+type Evidence struct {
+	Schema                     string        `json:"schema"`
+	SourceFormat               string        `json:"sourceFormat"`
+	SourceFormatVersion        string        `json:"sourceFormatVersion"`
+	SourceArtifactDigest       string        `json:"sourceArtifactDigest"`
+	SourceToken                string        `json:"sourceToken"`
+	SourceConstructKnown       bool          `json:"sourceConstructKnown"`
+	SourceConstruct            string        `json:"sourceConstruct,omitempty"`
+	MappingContractFingerprint string        `json:"mappingContractFingerprint"`
+	MappingStatus              MappingStatus `json:"mappingStatus"`
+	Classification             []string      `json:"classification"`
+	Extension                  string        `json:"extension,omitempty"`
+	AuthorityLimits            []string      `json:"authorityLimits"`
+	EvidenceFingerprint        string        `json:"evidenceFingerprint"`
+}
+
+)
+
+var RequiredAuthorityLimits = []string{
 	"source-observation-is-not-canonical-authority",
 	"mapping-is-candidate-not-semantic-acceptance",
 	"rmt-evidence-does-not-grant-runtime-authority",
