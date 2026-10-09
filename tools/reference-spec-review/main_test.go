@@ -131,8 +131,8 @@ func TestReviewPacketKeepsUnknownCrossViewDiagnosticSourceOwned(t *testing.T) {
 	crossViewPath := writeReviewJSON(t, dir, "cross-view.json", map[string]any{
 		"diagnostics": []map[string]any{
 			{
-				"code":     "BUSINESS_CUSTOM_POLICY_REVIEW",
-				"severity": "architecture-policy",
+				"code":     "BUSINESS_APPLICATION_PATTERN_REF_NOT_FOUND",
+				"severity": "semantic-error",
 				"step":     "BP-09",
 				"message":  "source tool owns this diagnostic meaning",
 			},
@@ -145,7 +145,7 @@ func TestReviewPacketKeepsUnknownCrossViewDiagnosticSourceOwned(t *testing.T) {
 	}
 	if len(got.Findings) != 1 ||
 		got.Findings[0].Class != "source-diagnostic" ||
-		got.Findings[0].Code != "BUSINESS_CUSTOM_POLICY_REVIEW" {
+		got.Findings[0].Code != "BUSINESS_APPLICATION_PATTERN_REF_NOT_FOUND" {
 		t.Fatalf("unknown diagnostic was reinterpreted: %+v", got.Findings)
 	}
 }
