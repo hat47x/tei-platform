@@ -48,7 +48,7 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 		return DisclosureProjection{}, err
 	}
 
-	available := availableDisclosureSections(ctx)
+	available := availableKnowledgeSections(ctx)
 	availableSet := make(map[string]struct{}, len(available))
 	for _, section := range available {
 		availableSet[section] = struct{}{}
@@ -58,10 +58,7 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 		selectedSet[section] = struct{}{}
 	}
 
-	reviewPlan := ctx.BuilderReviewPlan
-	if reviewPlan.ProjectionRevision == "" {
-		reviewPlan = buildBuilderReviewPlan(ctx)
-	}
+	reviewPlan := buildBuilderReviewPlan(ctx)
 
 	result := DisclosureProjection{
 		ProjectionRevision: knowledgeDisclosureProjectionRevision,
@@ -182,24 +179,6 @@ func normalizeDisclosureSections(values []string) ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
-}
-
-func availableDisclosureSections(ctx Context) []string {
-	var result []string
-	if ctx.DataDesign != nil {
-		result = append(result, "data-design")
-	}
-	if ctx.SemanticElement != nil || ctx.ApplicationPattern != nil {
-		result = append(result, "definition")
-	}
-	if len(ctx.Outgoing) != 0 || len(ctx.Incoming) != 0 {
-		result = append(result, "dependencies")
-	}
-	if len(ctx.Artifacts) != 0 || len(ctx.References) != 0 {
-		result = append(result, "source")
-	}
-	sort.Strings(result)
-	return result
 }
 
 func disclosureFingerprint(value DisclosureProjection) string {
