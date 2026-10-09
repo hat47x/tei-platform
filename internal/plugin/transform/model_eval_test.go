@@ -266,3 +266,26 @@ func TestOrderedValueRejectsInvalidUTF8(t *testing.T) {
 		t.Fatal("expected invalid UTF-8 JSON to fail")
 	}
 }
+
+
+func TestTransformSourceRejectsASTBeyondDeclaredNesting(t *testing.T) {
+	source := transform.TransformSourceRealizerV1()
+	source.Limits.MaxNestingDepth = 1
+	if err := source.Validate(); err == nil {
+		t.Fatal("expected Source AST deeper than maxNestingDepth to fail")
+	}
+}
+
+func TestTransformRejectsOutputByteBudget(t *testing.T) {
+	source := transform.TransformSourceRealizerV1()
+	source.Limits.MaxOutputBytes = 1
+	value, err := transform.SourceValue(transform.TransformSourceRealizerV1())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := transform.Evaluate(source, map[string]transform.Value{
+		"transformSource": value,
+	}); err == nil {
+		t.Fatal("expected maxOutputBytes overflow")
+	}
+}
