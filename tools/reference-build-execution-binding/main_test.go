@@ -512,7 +512,7 @@ func TestReferenceEvidenceIsDeterministicAndKeepsAuthoritySeparated(t *testing.T
 		t.Fatalf("bootstrap Build graph order: %#v", first.BuildGraphOrder)
 	}
 	if len(first.BuildGraph.Seeds) != 1 ||
-		first.BuildGraph.Seeds[0].TrustBoundary != "trusted-stage0-seed" {
+		first.BuildGraph.Seeds[0].TrustBoundary != "external-stage0-seed" {
 		t.Fatalf("stage0 trust boundary is missing from Build graph Evidence: %#v", first.BuildGraph.Seeds)
 	}
 	if normalizeDigest(first.BuildGraph.Seeds[0].ArtifactDigest) !=
