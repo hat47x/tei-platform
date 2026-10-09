@@ -157,6 +157,9 @@ func runWithOptions(workspacePath, fixturePath, probePath string, reviewValidati
 	result := evaluate(loaded.World, f)
 	if reviewValidationScope {
 		result.ValidationScopeReview = compareValidationScopes(loaded.World, f)
+		for i := range result.ValidationScopeReview {
+			result.ValidationScopeReview[i].ProcedureSource = fixturePath
+		}
 		sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
 		if err != nil {
 			return report{}, fmt.Errorf("Validation比較の根拠Sourceを確認できません: %w", err)
