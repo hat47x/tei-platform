@@ -482,6 +482,7 @@ func NormalizeSource(source Source) (Source, error) {
 	}
 	out := source
 	out.Inputs = append([]InputSpec(nil), source.Inputs...)
+	sort.Slice(out.Inputs, func(i, j int) bool { return out.Inputs[i].Name < out.Inputs[j].Name })
 	out.Program.Assertions = make([]Expr, len(source.Program.Assertions))
 	for i := range source.Program.Assertions {
 		normalized, err := normalizeExpr(source.Program.Assertions[i])
