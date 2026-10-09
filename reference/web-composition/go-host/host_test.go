@@ -55,8 +55,8 @@ func request(h http.Handler, path, method, csrf string) *httptest.ResponseRecord
 
 func TestProtectedActionOnlyAfterAllHostOwnedChecks(t *testing.T) {
 	for _, provider := range []Principal{
-		{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "s1", ApplicationID: "employee-1"},
-		{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-user-1", ApplicationID: "employee-1"},
+		{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "s1", PrincipalID: "employee-1"},
+		{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-user-1", PrincipalID: "employee-1"},
 	} {
 		h, obs := fixture(t, provider, nil, nil, true)
 		w := request(h, "/scenario/submit", http.MethodPost, "matching")
@@ -66,7 +66,7 @@ func TestProtectedActionOnlyAfterAllHostOwnedChecks(t *testing.T) {
 	}
 }
 func TestDeniedRoutesNeverInvokeActionAndAreAudited(t *testing.T) {
-	p := Principal{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "s1", ApplicationID: "employee-1"}
+	p := Principal{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "s1", PrincipalID: "employee-1"}
 	cases := []struct {
 		name, path, method, csrf string
 		subject                  Principal
@@ -76,8 +76,8 @@ func TestDeniedRoutesNeverInvokeActionAndAreAudited(t *testing.T) {
 		wantAuthz                int
 	}{
 		{name: "unauthenticated", path: "/scenario/submit", method: "POST", csrf: "matching", sessionErr: errors.New("no session"), allowed: true, want: 401},
-		{name: "unknown provider", path: "/scenario/submit", method: "POST", csrf: "matching", subject: Principal{ProviderID: "unknown", Issuer: "other", Subject: "a", ApplicationID: "employee-1"}, allowed: true, want: 401},
-		{name: "issuer confusion", path: "/scenario/submit", method: "POST", csrf: "matching", subject: Principal{ProviderID: "corporate", Issuer: "https://attacker.invalid", Subject: "s1", ApplicationID: "employee-1"}, allowed: true, want: 401},
+		{name: "unknown provider", path: "/scenario/submit", method: "POST", csrf: "matching", subject: Principal{ProviderID: "unknown", Issuer: "other", Subject: "a", PrincipalID: "employee-1"}, allowed: true, want: 401},
+		{name: "issuer confusion", path: "/scenario/submit", method: "POST", csrf: "matching", subject: Principal{ProviderID: "corporate", Issuer: "https://attacker.invalid", Subject: "s1", PrincipalID: "employee-1"}, allowed: true, want: 401},
 		{name: "CSRF failed", path: "/scenario/submit", method: "POST", subject: p, allowed: true, want: 403},
 		{name: "business permission denied", path: "/scenario/submit", method: "POST", csrf: "matching", subject: p, want: 403, wantAuthz: 1},
 		{name: "authorization provider unavailable", path: "/scenario/submit", method: "POST", csrf: "matching", subject: p, authzErr: errors.New("down"), want: 503, wantAuthz: 1},
@@ -102,7 +102,7 @@ func TestDeniedRoutesNeverInvokeActionAndAreAudited(t *testing.T) {
 	}
 }
 func TestPolicyConstructionMustFailClosed(t *testing.T) {
-	h, obs := fixture(t, Principal{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "s", ApplicationID: "p"}, nil, nil, true)
+	h, obs := fixture(t, Principal{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "s", PrincipalID: "p"}, nil, nil, true)
 	if h == nil || obs == nil {
 		t.Fatal("fixture failed")
 	}
@@ -122,7 +122,7 @@ func TestPolicyConstructionMustFailClosed(t *testing.T) {
 	}
 }
 func TestAuthorizationNeverChecksClientSuppliedRole(t *testing.T) {
-	p := Principal{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "s", ApplicationID: "employee-1"}
+	p := Principal{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "s", PrincipalID: "employee-1"}
 	h, obs := fixture(t, p, nil, nil, false)
 	req := httptest.NewRequest(http.MethodPost, "http://example.test/scenario/submit", strings.NewReader(`{"role":"admin"}`))
 	req.Header.Set("X-CSRF-Fixture", "matching")
@@ -131,5 +131,28 @@ func TestAuthorizationNeverChecksClientSuppliedRole(t *testing.T) {
 	h.ServeHTTP(w, req)
 	if w.Code != http.StatusForbidden || obs.calls != 0 {
 		t.Fatalf("header bypassed action permission: code=%d calls=%d", w.Code, obs.calls)
+	}
+}
+
+// Changes to a caller-owned map after construction cannot bypass the frozen policy.
+func TestProviderPolicyIsFrozenAtConstruction(t *testing.T) {
+	providers := map[string]string{"corporate": "https://issuer.example.invalid/tenant1"}
+	p := Policy{Path: "/scenario/submit", Method: "POST", ActionID: "order_entry.submit_order", Providers: providers}
+	principal := Principal{ProviderID: "corporate", Issuer: "https://attacker.invalid", Subject: "s1", PrincipalID: "employee-1"}
+	called := 0
+	h, err := NewHost(p, Dependencies{
+		VerifySession: func(*http.Request) (Principal, error) { return principal, nil },
+		VerifyCSRF:    func(*http.Request, Principal) bool { return true },
+		Authorize:     func(context.Context, Principal, string) (bool, error) { return true, nil },
+		Invoke:        http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called++ }),
+		Audit:         func(AuditRecord) {},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers["corporate"] = "https://attacker.invalid"
+	w := request(h, "/scenario/submit", http.MethodPost, "matching")
+	if w.Code != http.StatusUnauthorized || called != 0 {
+		t.Fatalf("mutable policy bypass: status=%d called=%d", w.Code, called)
 	}
 }
