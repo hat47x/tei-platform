@@ -207,6 +207,22 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 	) {
 		t.Fatalf("review protocol authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
 	}
+	for _, limit := range []string{
+		"current-data-uniqueness-is-not-functional-dependency-proof",
+		"statistical-correlation-is-not-functional-dependency",
+		"functional-dependency-direction-is-not-symmetric-by-default",
+		"discovered-functional-dependency-is-proposal-not-accepted-business-semantics",
+	} {
+		if !containsKnowledgeContextString(ctx.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("functional dependency authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
+		}
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.FunctionalDependencyEvidenceQuestions,
+		"is-the-dependency-an-accepted-business-rule-or-only-observed-in-current-data",
+	) {
+		t.Fatalf("functional dependency evidence question is missing: %+v", ctx.DataDesign.FunctionalDependencyEvidenceQuestions)
+	}
 
 	disclosure, err := buildKnowledgeDisclosure(ctx, "data-design")
 	if err != nil {
