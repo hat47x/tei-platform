@@ -94,7 +94,7 @@ construct-array(values: Expr[])
 
 ## E6：既存の配列写像で済む別経路（新規演算子を保留）
 
-[#1067 の配列写像試験](transform_projection_test.go)では、入力が**すでに意味検査を終えた順序付きの規則記述配列**であれば、既存の `map-array` と `construct-object` だけで、受注と請求の両方の検証計画を導出できるかを試す。
+[#1067 の配列写像試験](transform_projection_test.go)では、[変換定義](required-fields-projection.transform.json)をTEIの既存`ParseSourceJSON`経由で読み込み、入力が**すでに意味検査を終えた順序付きの規則記述配列**であれば、既存の`map-array`と`construct-object`だけで受注・請求の検証計画を導出できるかを試す。変換定義をGoの試験コードへ重複して記述しない。
 
 ```text
 意味が確定した業務制約
