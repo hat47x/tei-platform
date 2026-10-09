@@ -21,3 +21,31 @@
 4. 参照先の互換性と並行PRへの影響を確かめる。外部参照を確認できない間は移動案内を保持する。
 
 **今回は移動案内を削除しない。** 信頼できる完全なチェックアウトでのリポジトリ全体の検査も行っていない。
+
+## 追加調査（2026年10月10日）
+
+### 確認した範囲
+
+参照元の点検は`main@0c762cfd103f895c9c2c180e3e911a256858b600`のGitツリーを対象とし、移動案内22件のファイル名を検索した。Markdown文書474件のうち、次の**214件**を取得して調べた。
+
+| 対象 | 確認件数 |
+| --- | ---: |
+| `plan/issue/`直下のMarkdown | 86 |
+| `docs/`直下・`plan/design/`直下・`requirements/`直下のMarkdown | 37 |
+| `plan/`直下の業務設計・定義・設計統合・Lane B・上流・第二アプリケーション関連の本文（`BUSINESS*`、`DEFINITION*`、`DERIVED*`、`DESIGN_SYNTHESIS*`、`LANE_B*`、`UPSTREAM*`、`SECOND_APPLICATION*`、移動案内を除く） | 91 |
+| **合計** | **214** |
+
+取得失敗は0件。ファイル名の文字列出現と、リンク先として旧パスを使っているかは区別した。
+
+### 確認した参照の分類
+
+- **旧パスに直接向かうMarkdownリンク**：この214件では[業務システム設計の読み方ガイド](../business-system-design-reading-guide.md)で1箇所を確認した。移動先の正本は`plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`。同文書を編集するPR #1059に[修正箇所を連絡済み](https://github.com/hat47x/tei-platform/pull/1059#issuecomment-6082495357)であり、本PRでは重複編集しない。
+- **正本への参照**：[Issue 000042](../../plan/issue/000042-business-procedure-cross-view-reference.md)、[Issue 000048](../../plan/issue/000048-business-procedure-contract-adr-readiness.md)、[Issue 000050](../../plan/issue/000050-second-realistic-handoff-corpus.md)では移動済み文書名が現れるが、対象リンクは正本パスを参照している。同一のファイル名が見つかっただけで旧パス参照と判定しない。
+- **履歴上のパス**：[D4・O1の検討](../../plan/BUSINESS_PROCEDURE_D4_O1_2026-09.md)、[第二業務資料の検討](../../plan/BUSINESS_PROCEDURE_SECOND_CORPUS_PRESSURE_2026-09.md)、[引継ぎの検討](../../plan/BUSINESS_PROCEDURE_HANDOFF_2026-09.md)には当時の統合・改名の説明として旧`plan/`パスがある。現行のリンクではないため、自動置換しない。
+- **文書名だけの参照**：移動済み文書の名前だけを記した箇所もある。リンク・実行パス・説明文のどれかを文脈で判断する。
+
+### 未確認範囲と削除判断
+
+今回調べたのはMarkdown474件中214件だけであり、**残り260件のMarkdownは未検査**。Go、JavaScript、設定、生成物、外部リポジトリ等も、参照の不存在を確認していない。GitHubコード検索に結果が出なくても網羅的な無参照証明とはしない。
+
+現行の正本・GateやEvidenceの権限は移さず、**旧パスへの移動案内22件を引き続き保持する**。本調査をRepository Health実行のPASSや安全削除の許可として扱わない。
