@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -317,6 +319,131 @@ func TestBuildBuilderReviewHandoffRequiresQualificationRequirements(t *testing.T
 		"",
 	); err == nil || !strings.Contains(err.Error(), "requires -qualification-requirements") {
 		t.Fatalf("missing qualification requirements were accepted: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileUsesQualifiedCurrentHandoff(t *testing.T) {
+	root := testRepositoryRoot(t)
+	workspacePath := filepath.Join(root, "reference", "workspace")
+	requirementsPath := filepath.Join(
+		root,
+		"reference",
+		"business-system-design",
+		"order-entry-customer-reference-review-qualification.json",
+	)
+	handoff, err := buildBuilderReviewHandoffFromFile(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		requirementsPath,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "qualified-for-disclosure" {
+		t.Fatalf("fixture handoff status=%q", handoff.Status)
+	}
+
+	raw, err := json.Marshal(handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffPath := filepath.Join(t.TempDir(), "review-handoff.json")
+	if err := os.WriteFile(handoffPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	disclosure, loadedHandoff, err := buildBuilderReviewDisclosureFromFile(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		handoffPath,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loadedHandoff.Fingerprint != handoff.Fingerprint {
+		t.Fatalf(
+			"review handoff identity changed while loading: got=%s want=%s",
+			loadedHandoff.Fingerprint,
+			handoff.Fingerprint,
+		)
+	}
+	if disclosure.Status != "complete" ||
+		len(disclosure.UnavailableSections) != 0 ||
+		len(disclosure.OmittedAvailableSections) != 0 {
+		t.Fatalf("qualified review disclosure is incomplete: %+v", disclosure)
+	}
+	for _, section := range handoff.SelectedSections {
+		if !containsKnowledgeContextString(disclosure.DisclosedSections, section) {
+			t.Fatalf(
+				"qualified section %q was not disclosed: %+v",
+				section,
+				disclosure.DisclosedSections,
+			)
+		}
+	}
+	if err := checkBuilderReviewHandoffFingerprint(
+		loadedHandoff,
+		handoff.Fingerprint,
+	); err != nil {
+		t.Fatalf("current handoff fingerprint was rejected: %v", err)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(
+		disclosure,
+		disclosure.Fingerprint,
+	); err != nil {
+		t.Fatalf("current qualified disclosure fingerprint was rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileRejectsBlockedHandoff(t *testing.T) {
+	root := testRepositoryRoot(t)
+	workspacePath := filepath.Join(root, "reference", "workspace")
+	handoff, err := buildBuilderReviewHandoff(
+		workspacePath,
+		"semantic-data",
+		"missing.example",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "blocked-unresolved" {
+		t.Fatalf("fixture handoff status=%q", handoff.Status)
+	}
+
+	raw, err := json.Marshal(handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffPath := filepath.Join(t.TempDir(), "blocked-review-handoff.json")
+	if err := os.WriteFile(handoffPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = buildBuilderReviewDisclosureFromFile(
+		workspacePath,
+		"semantic-data",
+		"missing.example",
+		handoffPath,
+	)
+	if err == nil || !strings.Contains(err.Error(), "blocked by handoff status") {
+		t.Fatalf("blocked handoff disclosed Knowledge: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewDisclosureFromFileRequiresHandoff(t *testing.T) {
+	_, _, err := buildBuilderReviewDisclosureFromFile(
+		"unused",
+		"application-pattern",
+		"order_entry.customer_reference",
+		"",
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires -review-handoff") {
+		t.Fatalf("missing review handoff was accepted: %v", err)
 	}
 }
 
