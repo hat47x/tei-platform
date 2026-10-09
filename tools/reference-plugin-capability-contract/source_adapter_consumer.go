@@ -14,10 +14,17 @@ import (
 const (
 	sourceAdapterCapabilityContractID   = "authoring.source-adapter.xead"
 	referenceXeadReaderImplementationID = "xead.reader.v0"
-	sourceAdapterRequestShape            = "tei.reference.source-adapter.request/v0"
-	sourceAdapterRequestShapeFingerprint = "sha256:2361c07fa1a42bc6e2bf01deed86fe6af649c7e5c21c393588fe8ea8d0071679"
-	sourceAdapterResultShape             = "tei.reference.source-adapter.inspection/v0"
-	sourceAdapterResultShapeFingerprint  = "sha256:2f6338147f1bda6a77843e4b96d101b6df673491720da146b6b86658ddeaef66"
+	sourceAdapterRequestShape           = "tei.reference.source-adapter.request/v0"
+	sourceAdapterResultShape            = "tei.reference.source-adapter.inspection/v0"
+)
+
+var (
+	sourceAdapterRequestShapeFingerprint = invocationShapeFingerprint(
+		sourceAdapterRequestShapeArtifact(),
+	)
+	sourceAdapterResultShapeFingerprint = invocationShapeFingerprint(
+		sourceAdapterResultShapeArtifact(),
+	)
 )
 
 type SourceAdapterRequest struct {
@@ -82,8 +89,10 @@ func sourceAdapterInvocationImplementation(
 		Provider:                provider,
 		RequestShape:            sourceAdapterRequestShape,
 		RequestShapeFingerprint: sourceAdapterRequestShapeFingerprint,
+		RequestShapeArtifact:    sourceAdapterRequestShapeArtifact(),
 		ResultShape:             sourceAdapterResultShape,
 		ResultShapeFingerprint:  sourceAdapterResultShapeFingerprint,
+		ResultShapeArtifact:     sourceAdapterResultShapeArtifact(),
 		PayloadCodec:            referenceJSONPayloadCodec,
 		AuthorityLimits: []string{
 			"authoring-tool-capability-is-not-application-runtime-authority",
