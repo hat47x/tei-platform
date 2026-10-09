@@ -46,8 +46,10 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 	for _, reason := range []string{
 		"current-core-has-no-first-class-business-identity-authoring-contract",
 		"semantic-extension-v0-constraint-cannot-losslessly-encode-composite-identity-components-and-scope",
+		"first-class-promotion-route-core-vs-semantic-extension-not-selected",
 		"semantic-extension-v0-is-reference-not-production-authoring-contract",
-		"authoritative-declaration-source-and-namespace-authority-not-selected",
+		"authoritative-declaration-source-not-selected",
+		"semantic-extension-namespace-authority-not-selected",
 	} {
 		if !containsDataDesignReviewString(packet.FirstClassAuthoringContractReasons, reason) {
 			t.Fatalf("first-class authoring reason %q is missing: %+v", reason, packet.FirstClassAuthoringContractReasons)
