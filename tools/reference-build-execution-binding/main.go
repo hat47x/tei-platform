@@ -137,11 +137,10 @@ func (p BuildExecutionPlan) Validate() error {
 		if err := validateDigest("build execution source "+source.ID, source.Digest); err != nil {
 			return err
 		}
-		key := source.Kind + "\x00" + source.ID
-		if _, duplicate := sourceKeys[key]; duplicate {
-			return fmt.Errorf("build execution source %s/%s is declared more than once", source.Kind, source.ID)
+		if _, duplicate := sourceKeys[source.ID]; duplicate {
+			return fmt.Errorf("build execution source %s is declared more than once", source.ID)
 		}
-		sourceKeys[key] = struct{}{}
+		sourceKeys[source.ID] = struct{}{}
 	}
 	if err := p.Builder.Validate(); err != nil {
 		return err
