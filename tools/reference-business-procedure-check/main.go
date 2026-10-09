@@ -160,11 +160,13 @@ func runWithOptions(workspacePath, fixturePath, probePath string, reviewValidati
 		for i := range result.ValidationScopeReview {
 			result.ValidationScopeReview[i].ProcedureSource = fixturePath
 		}
-		sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
-		if err != nil {
-			return report{}, fmt.Errorf("Validation比較の根拠Sourceを確認できません: %w", err)
+		if validationScopeSourcesNeeded(result.ValidationScopeReview) {
+			sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
+			if err != nil {
+				return report{}, fmt.Errorf("Validation比較の根拠Sourceを確認できません: %w", err)
+			}
+			attachValidationScopeSources(result.ValidationScopeReview, sources)
 		}
-		attachValidationScopeSources(result.ValidationScopeReview, sources)
 	}
 	if strings.TrimSpace(probePath) != "" {
 		probe, err := readProbe(probePath)
