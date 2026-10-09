@@ -36,13 +36,70 @@ type wireField struct {
 }
 
 type wireValue struct {
-	Kind  transform.ValueKind `json:"kind"`
-	Bool  *bool               `json:"bool,omitempty"`
-	Number *string            `json:"number,omitempty"`
-	String *string            `json:"string,omitempty"`
-	Array *[]wireValue        `json:"array,omitempty"`
-	Object *[]wireField       `json:"object,omitempty"`
-	BytesBase64 *string       `json:"bytesBase64,omitempty"`
+	Kind        transform.ValueKind `json:"kind"`
+	Bool        *bool               `json:"bool,omitempty"`
+	Number      *string             `json:"number,omitempty"`
+	String      *string             `json:"string,omitempty"`
+	Array       *[]wireValue        `json:"array,omitempty"`
+	Object      *[]wireField        `json:"object,omitempty"`
+	BytesBase64 *string             `json:"bytesBase64,omitempty"`
+
+	present wireValueFieldPresence `json:"-"`
+}
+
+type wireValueFieldPresence uint8
+
+const (
+	wireValueBoolPresent wireValueFieldPresence = 1 << iota
+	wireValueNumberPresent
+	wireValueStringPresent
+	wireValueArrayPresent
+	wireValueObjectPresent
+	wireValueBytesPresent
+)
+
+func (w *wireValue) UnmarshalJSON(raw []byte) error {
+	type alias wireValue
+	var decoded alias
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&decoded); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("wire value contains multiple JSON values")
+		}
+		return err
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return err
+	}
+	var present wireValueFieldPresence
+	if _, ok := fields["bool"]; ok {
+		present |= wireValueBoolPresent
+	}
+	if _, ok := fields["number"]; ok {
+		present |= wireValueNumberPresent
+	}
+	if _, ok := fields["string"]; ok {
+		present |= wireValueStringPresent
+	}
+	if _, ok := fields["array"]; ok {
+		present |= wireValueArrayPresent
+	}
+	if _, ok := fields["object"]; ok {
+		present |= wireValueObjectPresent
+	}
+	if _, ok := fields["bytesBase64"]; ok {
+		present |= wireValueBytesPresent
+	}
+	*w = wireValue(decoded)
+	w.present = present
+	return nil
 }
 
 type engineResponse struct {
@@ -329,24 +386,29 @@ func encodeWireValue(value transform.Value, limits transform.Limits, depth int) 
 }
 
 func wireFieldCount(w wireValue) int {
-	count := 0
+	present := w.present
 	if w.Bool != nil {
-		count++
+		present |= wireValueBoolPresent
 	}
 	if w.Number != nil {
-		count++
+		present |= wireValueNumberPresent
 	}
 	if w.String != nil {
-		count++
+		present |= wireValueStringPresent
 	}
 	if w.Array != nil {
-		count++
+		present |= wireValueArrayPresent
 	}
 	if w.Object != nil {
-		count++
+		present |= wireValueObjectPresent
 	}
 	if w.BytesBase64 != nil {
-		count++
+		present |= wireValueBytesPresent
+	}
+	count := 0
+	for present != 0 {
+		count += int(present & 1)
+		present >>= 1
 	}
 	return count
 }
