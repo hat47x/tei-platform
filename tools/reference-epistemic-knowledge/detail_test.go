@@ -37,7 +37,6 @@ func detailQueryFor(
 		ExpectedReviewSubjectFingerprint: assessment.ReviewSubjectFingerprint,
 		ExpectedTargetBinding:            assessment.TargetBinding,
 		ExpectedReviewLogSequence:        assessment.ReviewLogSequence,
-		GrantedAccessRefs:                append([]string{}, grantedAccessRefs...),
 	}
 }
 
@@ -46,7 +45,7 @@ func TestEpistemicDetailReturnsCurrentAccessFilteredContent(t *testing.T) {
 	original := structuredCorpusCopyForTest(t, corpus)
 	query := detailQueryFor(t, corpus, context, "ai-unreviewed", nil)
 
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,9 +92,7 @@ func TestEpistemicDetailUnknownAndInaccessibleAreIndistinguishable(t *testing.T)
 		"human-reviewed",
 		[]string{"policy:detail-visible"},
 	)
-	query.GrantedAccessRefs = nil
-
-	_, inaccessibleErr := resolveEpistemicDetail(corpus, context, query)
+	_, inaccessibleErr := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if inaccessibleErr == nil {
 		t.Fatal("inaccessible assertion detail was returned")
 	}
@@ -116,6 +113,25 @@ func TestEpistemicDetailUnknownAndInaccessibleAreIndistinguishable(t *testing.T)
 	}
 }
 
+func TestEpistemicDetailQueryDoesNotCarryAuthorizationContext(t *testing.T) {
+	corpus, context := loadFixture(t)
+	query := detailQueryFor(
+		t,
+		corpus,
+		context,
+		"human-reviewed",
+		[]string{"policy:detail-visible"},
+	)
+	encoded, err := json.Marshal(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "grantedAccessRefs") ||
+		strings.Contains(string(encoded), "policy:detail-visible") {
+		t.Fatalf("semantic detail query carried authorization context: %s", encoded)
+	}
+}
+
 func TestEpistemicDetailGrantedEvidenceDoesNotExposeAccessRefs(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
@@ -128,7 +144,9 @@ func TestEpistemicDetailGrantedEvidenceDoesNotExposeAccessRefs(t *testing.T) {
 	granted := []string{"policy:assertion", "policy:evidence"}
 	query := detailQueryFor(t, corpus, context, "ai-unreviewed", granted)
 
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{
+		GrantedAccessRefs: granted,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +174,7 @@ func TestEpistemicDetailRedactsEvidenceAndMarksMetadataPartial(t *testing.T) {
 	}
 	query := detailQueryFor(t, corpus, context, "ai-unreviewed", nil)
 
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +208,7 @@ func TestEpistemicDetailHidesRestrictedRelationsAndKeepsPartialSignal(t *testing
 	}
 	query := detailQueryFor(t, corpus, context, "conflict-a", nil)
 
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +226,7 @@ func TestEpistemicDetailRejectsStaleReceipts(t *testing.T) {
 	t.Run("meaning", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "user-current", nil)
 		query.ExpectedMeaningFingerprint = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-		_, err := resolveEpistemicDetail(corpus, context, query)
+		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 		if err == nil || !strings.Contains(err.Error(), "meaning binding is stale") {
 			t.Fatalf("stale meaning receipt was accepted: %v", err)
 		}
@@ -217,7 +235,7 @@ func TestEpistemicDetailRejectsStaleReceipts(t *testing.T) {
 	t.Run("subject", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "user-current", nil)
 		query.ExpectedReviewSubjectFingerprint = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-		_, err := resolveEpistemicDetail(corpus, context, query)
+		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 		if err == nil || !strings.Contains(err.Error(), "subject binding is stale") {
 			t.Fatalf("stale subject receipt was accepted: %v", err)
 		}
@@ -226,7 +244,7 @@ func TestEpistemicDetailRejectsStaleReceipts(t *testing.T) {
 	t.Run("target", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "anchored-identifier-policy", nil)
 		query.ExpectedTargetBinding = "exact"
-		_, err := resolveEpistemicDetail(corpus, context, query)
+		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 		if err == nil || !strings.Contains(err.Error(), "target binding is stale") {
 			t.Fatalf("stale target receipt was accepted: %v", err)
 		}
@@ -235,7 +253,7 @@ func TestEpistemicDetailRejectsStaleReceipts(t *testing.T) {
 	t.Run("review-sequence", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "human-reviewed", nil)
 		query.ExpectedReviewLogSequence = 0
-		_, err := resolveEpistemicDetail(corpus, context, query)
+		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 		if err == nil || !strings.Contains(err.Error(), "review sequence is stale") {
 			t.Fatalf("stale review sequence was accepted: %v", err)
 		}
@@ -253,7 +271,7 @@ func TestEpistemicDetailDoesNotLeakFutureCheckedAt(t *testing.T) {
 	}
 	query := detailQueryFor(t, corpus, context, "user-current", nil)
 
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +299,7 @@ func TestEpistemicDetailDoesNotPresentStaleSourceCheckAsCurrentDetail(t *testing
 	}
 	query := detailQueryFor(t, corpus, context, "user-current", nil)
 
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +330,7 @@ func TestEpistemicDetailDoesNotLeakFutureReviewHistory(t *testing.T) {
 	}
 	query := detailQueryFor(t, corpus, context, "human-reviewed", nil)
 
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,7 +356,7 @@ func TestEpistemicDetailInstructionRemainsDataNotPromptControl(t *testing.T) {
 		}
 	}
 	query := detailQueryFor(t, corpus, context, "user-current", nil)
-	result, err := resolveEpistemicDetail(corpus, context, query)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,6 +364,22 @@ func TestEpistemicDetailInstructionRemainsDataNotPromptControl(t *testing.T) {
 		result.ContentRole != "epistemic-data" ||
 		result.ControlAuthority {
 		t.Fatalf("instruction-kind content became prompt control: %+v", result)
+	}
+}
+
+func TestCLIDetailAccessRequiresDetailQuery(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runCLI(
+		[]string{
+			"-corpus", filepath.Join("testdata", "epistemic-fixture-v0.json"),
+			"-context", filepath.Join("testdata", "context-current.json"),
+			"-detail-access", "access.json",
+		},
+		&stdout,
+		&stderr,
+	)
+	if code != 2 || !strings.Contains(stderr.String(), "detail-access requires detail-query") {
+		t.Fatalf("orphan detail access context was accepted: code=%d stderr=%s", code, stderr.String())
 	}
 }
 
@@ -363,6 +397,66 @@ func TestCLIDetailAndReviewModesAreMutuallyExclusive(t *testing.T) {
 	)
 	if code != 2 || !strings.Contains(stderr.String(), "mutually exclusive") {
 		t.Fatalf("detail and review modes were not rejected together: code=%d stderr=%s", code, stderr.String())
+	}
+}
+
+func TestCLIInjectsDetailAccessSeparatelyFromSemanticQuery(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		corpus.Assertions[i].AccessRefs = []string{"policy:detail-visible"}
+	}
+
+	temp := t.TempDir()
+	corpusPath := filepath.Join(temp, "corpus.json")
+	contextPath := filepath.Join(temp, "context.json")
+	queryPath := filepath.Join(temp, "detail-query.json")
+	accessPath := filepath.Join(temp, "detail-access.json")
+
+	query := detailQueryFor(
+		t,
+		corpus,
+		context,
+		"human-reviewed",
+		[]string{"policy:detail-visible"},
+	)
+	for path, value := range map[string]any{
+		corpusPath: corpus,
+		contextPath: context,
+		queryPath: query,
+		accessPath: TransportAccess{GrantedAccessRefs: []string{"policy:detail-visible"}},
+	} {
+		encoded, err := json.MarshalIndent(value, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, encoded, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runCLI(
+		[]string{
+			"-corpus", corpusPath,
+			"-context", contextPath,
+			"-detail-query", queryPath,
+			"-detail-access", accessPath,
+		},
+		&stdout,
+		&stderr,
+	)
+	if code != 0 {
+		t.Fatalf("code=%d stderr=%s", code, stderr.String())
+	}
+	var result DetailResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Assessment.AssertionID != "human-reviewed" {
+		t.Fatalf("separate detail access context did not resolve target: %+v", result)
 	}
 }
 
