@@ -28,9 +28,9 @@ type DatabaseProviderObservation struct {
 	ArtifactDigest    string `json:"artifactDigest,omitempty"`
 }
 type WorkspaceDatabaseReport struct {
-	Application  string                        `json:"application"`
-	Environment  string                        `json:"environment"`
-	Providers    []DatabaseProviderObservation `json:"providers"`
+	Application string                        `json:"application"`
+	Environment string                        `json:"environment"`
+	Providers   []DatabaseProviderObservation `json:"providers"`
 }
 
 // ObserveWorkspaceDatabaseProviders reuses the existing TEI source loader and

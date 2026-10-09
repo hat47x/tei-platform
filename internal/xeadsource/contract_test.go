@@ -205,7 +205,6 @@ func repositoryRootFromSource(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }
 
-
 func TestInspectWithContractRejectsUnsupportedSourceProfile(t *testing.T) {
 	root := repositoryRootFromSource(t)
 	contractBytes, err := os.ReadFile(filepath.Join(root, "reference", "reference-model-transfer", "transcription-contract-v0.json"))

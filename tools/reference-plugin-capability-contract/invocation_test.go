@@ -439,7 +439,6 @@ func TestGenericInvocationDoesNotAddAuthorityBeyondResolvedCapability(t *testing
 	}
 }
 
-
 func TestReferenceJSONInvocationRejectsUnknownRequestField(t *testing.T) {
 	registry, contract, provider, _, _, _ := genericInvocationRegistryFixture(t)
 	payload, err := json.Marshal(map[string]any{
@@ -481,7 +480,6 @@ func TestReferenceJSONInvocationRejectsTrailingJSONValue(t *testing.T) {
 		t.Fatalf("trailing Reference JSON value was accepted: %v", err)
 	}
 }
-
 
 func TestGenericInvocationRejectsResolvedContractWithoutInvocationShape(t *testing.T) {
 	contract := sourceAdapterContract()

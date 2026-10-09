@@ -106,11 +106,11 @@ func newInvocationRegistryForTest(
 
 func sourceAdapterContract() Contract {
 	return Contract{
-		ID:                 "authoring.source-adapter.xead",
-		Version:            "1.0.0",
-		RequestSemantics:   "exact-source-bytes",
-		ResultSemantics:    "source-faithful-inventory-with-unresolved",
-		FailureSemantics:   "unsupported-or-invalid-is-not-success",
+		ID:                      "authoring.source-adapter.xead",
+		Version:                 "1.0.0",
+		RequestSemantics:        "exact-source-bytes",
+		ResultSemantics:         "source-faithful-inventory-with-unresolved",
+		FailureSemantics:        "unsupported-or-invalid-is-not-success",
 		RequestShape:            sourceAdapterRequestShape,
 		RequestShapeFingerprint: sourceAdapterRequestShapeFingerprint,
 		ResultShape:             sourceAdapterResultShape,
@@ -329,11 +329,11 @@ func TestContractFingerprintMismatchFailsClosed(t *testing.T) {
 
 func runtimeContract() Contract {
 	return Contract{
-		ID:                 contractQueryCapabilityContractID,
-		Version:            "1.0.0",
-		RequestSemantics:   "contract-query-with-bound-parameters",
-		ResultSemantics:    "rows-or-explicit-unresolved",
-		FailureSemantics:   "execution-error-is-not-empty-result",
+		ID:                      contractQueryCapabilityContractID,
+		Version:                 "1.0.0",
+		RequestSemantics:        "contract-query-with-bound-parameters",
+		ResultSemantics:         "rows-or-explicit-unresolved",
+		FailureSemantics:        "execution-error-is-not-empty-result",
 		RequestShape:            contractQueryRequestShape,
 		RequestShapeFingerprint: contractQueryRequestShapeFingerprint,
 		ResultShape:             contractQueryResultShape,

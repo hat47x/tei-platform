@@ -36,7 +36,7 @@ func fixture(t *testing.T, principal Principal, sessionErr error, authorizeErr e
 			}
 			return allowed, authorizeErr
 		},
-		Invoke:        http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { obs.calls++; w.WriteHeader(http.StatusAccepted) }),
+		Invoke: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { obs.calls++; w.WriteHeader(http.StatusAccepted) }),
 		Audit:  func(record AuditRecord) { obs.records = append(obs.records, record) },
 	})
 	if err != nil {
@@ -202,7 +202,7 @@ func TestPanicAfterResponseStartedRemainsAuditError(t *testing.T) {
 			w.WriteHeader(http.StatusAccepted)
 			panic("test panic")
 		}),
-		Audit:         func(a AuditRecord) { records = append(records, a) },
+		Audit: func(a AuditRecord) { records = append(records, a) },
 	})
 	if err != nil {
 		t.Fatal(err)

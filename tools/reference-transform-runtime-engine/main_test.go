@@ -231,7 +231,6 @@ func TestRequestLimitIsHostBoundedAboveSemanticInput(t *testing.T) {
 	}
 }
 
-
 func TestWireObjectPreservesFieldOrder(t *testing.T) {
 	limits := transform.TransformSourceRealizerV1().Limits
 	a := "first"

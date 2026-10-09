@@ -36,7 +36,7 @@ func TestRealOrderEntryCommandBinding(t *testing.T) {
 func commandWorld() ir.World {
 	return ir.World{
 		Applications: []application.Application{{
-			ID: "app",
+			ID:       "app",
 			Patterns: []application.Pattern{{ID: "app.submit", Kind: application.PatternCommand, Capability: "order.submit"}},
 		}},
 		Bindings: []realization.CustomGoBinding{{Application: "app", Capability: "order.submit"}},

@@ -12,17 +12,17 @@ import (
 const builderReviewHandoffProjectionRevision = "tei.knowledge.builder-review-handoff/v1"
 
 type BuilderReviewHandoff struct {
-	ProjectionRevision    string              `json:"projectionRevision"`
-	Fingerprint           string              `json:"fingerprint"`
-	Purpose               string              `json:"purpose"`
-	Subject               subject.Subject     `json:"subject"`
+	ProjectionRevision           string              `json:"projectionRevision"`
+	Fingerprint                  string              `json:"fingerprint"`
+	Purpose                      string              `json:"purpose"`
+	Subject                      subject.Subject     `json:"subject"`
 	ReviewPlanProjectionRevision string              `json:"reviewPlanProjectionRevision"`
-	ReviewPlanFingerprint          string              `json:"reviewPlanFingerprint"`
-	RoutingScope                   string              `json:"routingScope"`
-	SelectedSections      []string            `json:"selectedSections,omitempty"`
-	Status                string              `json:"status"`
-	Qualification         QualificationResult `json:"qualification"`
-	AuthorityLimits       []string            `json:"authorityLimits"`
+	ReviewPlanFingerprint        string              `json:"reviewPlanFingerprint"`
+	RoutingScope                 string              `json:"routingScope"`
+	SelectedSections             []string            `json:"selectedSections,omitempty"`
+	Status                       string              `json:"status"`
+	Qualification                QualificationResult `json:"qualification"`
+	AuthorityLimits              []string            `json:"authorityLimits"`
 }
 
 func ValidateBuilderReviewHandoff(handoff BuilderReviewHandoff) error {
@@ -194,15 +194,15 @@ func buildBuilderReviewHandoffFromQualification(
 	}
 
 	result := BuilderReviewHandoff{
-		ProjectionRevision:    builderReviewHandoffProjectionRevision,
-		Purpose:               plan.Purpose,
-		Subject:               plan.Subject,
+		ProjectionRevision:           builderReviewHandoffProjectionRevision,
+		Purpose:                      plan.Purpose,
+		Subject:                      plan.Subject,
 		ReviewPlanProjectionRevision: plan.ProjectionRevision,
-		ReviewPlanFingerprint:          plan.Fingerprint,
-		RoutingScope:                   plan.RoutingScope,
-		SelectedSections:      append([]string(nil), plan.RecommendedDisclosureSections...),
-		Status:                status,
-		Qualification:         qualification,
+		ReviewPlanFingerprint:        plan.Fingerprint,
+		RoutingScope:                 plan.RoutingScope,
+		SelectedSections:             append([]string(nil), plan.RecommendedDisclosureSections...),
+		Status:                       status,
+		Qualification:                qualification,
 		AuthorityLimits: []string{
 			"builder-review-handoff-is-derived-not-semantic-authority",
 			"builder-review-handoff-is-not-access-control-or-redaction",

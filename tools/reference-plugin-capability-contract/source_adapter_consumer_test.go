@@ -369,7 +369,6 @@ func TestSourceAdapterRegistryRejectsDuplicatePhysicalImplementation(t *testing.
 	}
 }
 
-
 func TestSourceAdapterConsumerRejectsUnsupportedSourceProfile(t *testing.T) {
 	contract, provider, registry := sourceAdapterRegistryFixture(t)
 	_, err := registry.ResolveAndInvoke(
@@ -384,7 +383,6 @@ func TestSourceAdapterConsumerRejectsUnsupportedSourceProfile(t *testing.T) {
 		t.Fatalf("unsupported source profile reached semantic inspection: %v", err)
 	}
 }
-
 
 func TestCapabilitySourceAdapterUsesCurrentReferenceTranscriptionContract(t *testing.T) {
 	contract, provider, registry := sourceAdapterRegistryFixture(t)

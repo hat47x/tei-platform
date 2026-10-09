@@ -141,7 +141,6 @@ func TestBuilderIdentityFromTransformSourcePreservesLogicalIdentity(t *testing.T
 	}
 }
 
-
 func TestTransformBootstrapStagePlanRejectsExecutionIdentityConfusion(t *testing.T) {
 	source := transform.TransformSourceRealizerV1()
 	seed := plugin.BuilderIdentity{

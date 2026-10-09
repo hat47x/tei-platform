@@ -181,7 +181,6 @@ func TestForeignNamespaceLookalikeRemainsUnknown(t *testing.T) {
 	}
 }
 
-
 func TestParseRejectsDuplicateExpandedAttributeName(t *testing.T) {
 	for _, source := range []string{
 		`<System FormatVersion="1.2" FormatVersion="9.9"/>`,

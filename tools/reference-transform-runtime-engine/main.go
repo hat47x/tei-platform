@@ -533,4 +533,3 @@ func walkJSONValue(decoder *json.Decoder, depth, maxDepth int) error {
 	}
 	return nil
 }
-

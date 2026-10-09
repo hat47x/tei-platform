@@ -35,10 +35,10 @@ func sampleWorkspace() (ir.World, plugin.Lock) {
 			ID: "database.postgres", DatabaseProviders: []environment.DatabaseProvider{environment.ProviderPostgres}}},
 	}
 	env := environment.Environment{
-		ID: "development",
-		Plugins: []environment.ExtensionRequirement{{ID: provider.ID, CompatibleMajor: 1}},
+		ID:        "development",
+		Plugins:   []environment.ExtensionRequirement{{ID: provider.ID, CompatibleMajor: 1}},
 		Instances: []environment.DatabaseInstance{{ID: "db.dev", Definition: "db", Provider: environment.ProviderPostgres}},
-		Bindings: []environment.ApplicationDatabaseBinding{{Application: "app", Alias: "primary", Instance: "db.dev"}},
+		Bindings:  []environment.ApplicationDatabaseBinding{{Application: "app", Alias: "primary", Instance: "db.dev"}},
 	}
 	world := ir.World{
 		Applications: []application.Application{{ID: "app",
@@ -118,4 +118,3 @@ func TestRejectsWrongApplicationAndEnvironment(t *testing.T) {
 		}
 	}
 }
-

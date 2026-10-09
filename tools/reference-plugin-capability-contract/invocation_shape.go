@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	invocationShapeArtifactSchema    = "tei.reference.invocation-shape/v0"
+	invocationShapeArtifactSchema   = "tei.reference.invocation-shape/v0"
 	invocationShapeCanonicalization = "tei.reference.invocation-shape-canonicalization/v0"
-	invocationJSONShapeFormat        = "tei.reference.json-shape/v0"
-	invocationOpaqueShapeFormat    = "tei.reference.opaque-shape/v0"
+	invocationJSONShapeFormat       = "tei.reference.json-shape/v0"
+	invocationOpaqueShapeFormat     = "tei.reference.opaque-shape/v0"
 )
 
 //go:embed shapes/*.json
@@ -29,10 +29,10 @@ type InvocationShapeArtifact struct {
 	Schema           string                `json:"schema"`
 	Canonicalization string                `json:"canonicalization"`
 	ID               string                `json:"id"`
-	Issuer       InvocationShapeIssuer `json:"issuer"`
-	PayloadCodec string                `json:"payloadCodec"`
-	Format       string                `json:"format"`
-	Root         InvocationShapeNode   `json:"root"`
+	Issuer           InvocationShapeIssuer `json:"issuer"`
+	PayloadCodec     string                `json:"payloadCodec"`
+	Format           string                `json:"format"`
+	Root             InvocationShapeNode   `json:"root"`
 }
 
 type InvocationShapeNode struct {
@@ -337,9 +337,9 @@ func opaqueInvocationShapeArtifact(
 		Schema:           invocationShapeArtifactSchema,
 		Canonicalization: invocationShapeCanonicalization,
 		ID:               id,
-		Issuer:       referenceInvocationShapeIssuer(),
-		PayloadCodec: codec,
-		Format:       invocationOpaqueShapeFormat,
-		Root:         InvocationShapeNode{Kind: "bytes"},
+		Issuer:           referenceInvocationShapeIssuer(),
+		PayloadCodec:     codec,
+		Format:           invocationOpaqueShapeFormat,
+		Root:             InvocationShapeNode{Kind: "bytes"},
 	}
 }

@@ -39,25 +39,25 @@ type goBuilderEvidence struct {
 }
 
 type buildEvidence struct {
-	Schema               string            `json:"schema"`
-	RepositoryRevision   string            `json:"repositoryRevision"`
+	Schema               string                          `json:"schema"`
+	RepositoryRevision   string                          `json:"repositoryRevision"`
 	EngineID             string                          `json:"engineId"`
 	EngineVersion        string                          `json:"engineVersion"`
 	EngineContract       string                          `json:"engineContract"`
 	Target               string                          `json:"target"`
 	RuntimeEngine        *pruntime.RuntimeEngineIdentity `json:"runtimeEngine,omitempty"`
-	Entrypoint           string            `json:"entrypoint"`
-	SourceClosure        []sourceMember    `json:"sourceClosure"`
-	SourceClosureDigest  string            `json:"sourceClosureDigest"`
-	Builder              goBuilderEvidence `json:"builder"`
-	Recipe               []string          `json:"recipe"`
-	BuildSettings        []string          `json:"buildSettings"`
-	HostEnvironment      []string          `json:"hostEnvironment,omitempty"`
-	FirstArtifactDigest  string            `json:"firstArtifactDigest"`
-	SecondArtifactDigest string            `json:"secondArtifactDigest"`
-	Reproducible         bool              `json:"reproducible"`
-	ArtifactDigest       string            `json:"artifactDigest"`
-	EvidenceFingerprint  string            `json:"evidenceFingerprint"`
+	Entrypoint           string                          `json:"entrypoint"`
+	SourceClosure        []sourceMember                  `json:"sourceClosure"`
+	SourceClosureDigest  string                          `json:"sourceClosureDigest"`
+	Builder              goBuilderEvidence               `json:"builder"`
+	Recipe               []string                        `json:"recipe"`
+	BuildSettings        []string                        `json:"buildSettings"`
+	HostEnvironment      []string                        `json:"hostEnvironment,omitempty"`
+	FirstArtifactDigest  string                          `json:"firstArtifactDigest"`
+	SecondArtifactDigest string                          `json:"secondArtifactDigest"`
+	Reproducible         bool                            `json:"reproducible"`
+	ArtifactDigest       string                          `json:"artifactDigest"`
+	EvidenceFingerprint  string                          `json:"evidenceFingerprint"`
 }
 
 type goListModule struct {
@@ -66,22 +66,22 @@ type goListModule struct {
 }
 
 type goListPackage struct {
-	Dir        string
-	ImportPath string
-	Standard   bool
-	Module     *goListModule
-	GoFiles    []string
-	CgoFiles   []string
-	CFiles     []string
-	CXXFiles   []string
-	MFiles     []string
-	HFiles     []string
-	FFiles     []string
-	SFiles     []string
-	SwigFiles  []string
+	Dir          string
+	ImportPath   string
+	Standard     bool
+	Module       *goListModule
+	GoFiles      []string
+	CgoFiles     []string
+	CFiles       []string
+	CXXFiles     []string
+	MFiles       []string
+	HFiles       []string
+	FFiles       []string
+	SFiles       []string
+	SwigFiles    []string
 	SwigCXXFiles []string
-	SysoFiles  []string
-	EmbedFiles []string
+	SysoFiles    []string
+	EmbedFiles   []string
 }
 
 func main() {

@@ -341,7 +341,6 @@ func TestFixedGoBuildSettingsPinTargetAndAmbientGoControls(t *testing.T) {
 	}
 }
 
-
 func TestCopyVerifiedArtifactRequiresDestinationOutsideRepository(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(t.TempDir(), "engine")
@@ -395,7 +394,6 @@ func TestCopyVerifiedArtifactRejectsUnexpectedDigest(t *testing.T) {
 		t.Fatalf("artifact-out remained after digest failure: %v", statErr)
 	}
 }
-
 
 func TestCopyVerifiedArtifactRejectsExistingDestination(t *testing.T) {
 	root := t.TempDir()

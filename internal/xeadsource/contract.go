@@ -20,7 +20,7 @@ type SourceProfile struct {
 
 type TranscriptionContract struct {
 	ConstructMappings map[string]map[string]TranscriptionContractRule `json:"constructMappings"`
-	SourceProfiles     map[string]SourceProfile                        `json:"sourceProfiles"`
+	SourceProfiles    map[string]SourceProfile                        `json:"sourceProfiles"`
 }
 
 func ClassificationPolicyFromContract(format Format, contractBytes []byte) (ClassificationPolicy, error) {

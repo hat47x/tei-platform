@@ -41,18 +41,18 @@ type InvocationImplementation struct {
 }
 
 type InvocationExecution struct {
-	Resolution                              Resolution `json:"resolution"`
-	RequestShape                            string     `json:"requestShape"`
-	RequestShapeFingerprint                 string     `json:"requestShapeFingerprint"`
-	RequestShapeAuthorityEvidenceFingerprint string    `json:"requestShapeAuthorityEvidenceFingerprint"`
-	ResultShape                             string     `json:"resultShape"`
-	ResultShapeFingerprint                  string     `json:"resultShapeFingerprint"`
-	ResultShapeAuthorityEvidenceFingerprint string     `json:"resultShapeAuthorityEvidenceFingerprint"`
-	PayloadCodec                            string     `json:"payloadCodec"`
-	RequestDigest     string     `json:"requestDigest"`
-	ResultDigest      string     `json:"resultDigest"`
-	ResultPayload     []byte     `json:"resultPayload"`
-	AuthorityLimits   []string   `json:"authorityLimits"`
+	Resolution                               Resolution `json:"resolution"`
+	RequestShape                             string     `json:"requestShape"`
+	RequestShapeFingerprint                  string     `json:"requestShapeFingerprint"`
+	RequestShapeAuthorityEvidenceFingerprint string     `json:"requestShapeAuthorityEvidenceFingerprint"`
+	ResultShape                              string     `json:"resultShape"`
+	ResultShapeFingerprint                   string     `json:"resultShapeFingerprint"`
+	ResultShapeAuthorityEvidenceFingerprint  string     `json:"resultShapeAuthorityEvidenceFingerprint"`
+	PayloadCodec                             string     `json:"payloadCodec"`
+	RequestDigest                            string     `json:"requestDigest"`
+	ResultDigest                             string     `json:"resultDigest"`
+	ResultPayload                            []byte     `json:"resultPayload"`
+	AuthorityLimits                          []string   `json:"authorityLimits"`
 }
 
 type InvocationRegistry struct {
@@ -139,26 +139,22 @@ func NewInvocationRegistry(
 				i,
 			)
 		}
-		if _, ok := shapeAuthorities[
-			invocationShapeAuthorityKey(
-				implementation.RequestShapeArtifact.Issuer,
-				implementation.RequestShape,
-				implementation.RequestShapeFingerprint,
-			),
-		]; !ok {
+		if _, ok := shapeAuthorities[invocationShapeAuthorityKey(
+			implementation.RequestShapeArtifact.Issuer,
+			implementation.RequestShape,
+			implementation.RequestShapeFingerprint,
+		)]; !ok {
 			return nil, fmt.Errorf(
 				"capability implementation[%d] request shape %s has no accepted Shape Authority Evidence",
 				i,
 				implementation.RequestShape,
 			)
 		}
-		if _, ok := shapeAuthorities[
-			invocationShapeAuthorityKey(
-				implementation.ResultShapeArtifact.Issuer,
-				implementation.ResultShape,
-				implementation.ResultShapeFingerprint,
-			),
-		]; !ok {
+		if _, ok := shapeAuthorities[invocationShapeAuthorityKey(
+			implementation.ResultShapeArtifact.Issuer,
+			implementation.ResultShape,
+			implementation.ResultShapeFingerprint,
+		)]; !ok {
 			return nil, fmt.Errorf(
 				"capability implementation[%d] result shape %s has no accepted Shape Authority Evidence",
 				i,
@@ -314,10 +310,10 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 		ResultShapeFingerprint:                   contract.ResultShapeFingerprint,
 		ResultShapeAuthorityEvidenceFingerprint:  resultShapeAuthority.EvidenceFingerprint,
 		PayloadCodec:                             contract.PayloadCodec,
-		RequestDigest:   "sha256:" + hex.EncodeToString(requestSum[:]),
-		ResultDigest:    "sha256:" + hex.EncodeToString(resultSum[:]),
-		ResultPayload:   append([]byte(nil), resultPayload...),
-		AuthorityLimits: limits,
+		RequestDigest:                            "sha256:" + hex.EncodeToString(requestSum[:]),
+		ResultDigest:                             "sha256:" + hex.EncodeToString(resultSum[:]),
+		ResultPayload:                            append([]byte(nil), resultPayload...),
+		AuthorityLimits:                          limits,
 	}, nil
 }
 
@@ -346,8 +342,7 @@ func normalizeInvocationShapeAuthorities(
 				i,
 			)
 		}
-		if calculated := invocationShapeAuthorityEvidenceFingerprint(value);
-			calculated != value.EvidenceFingerprint {
+		if calculated := invocationShapeAuthorityEvidenceFingerprint(value); calculated != value.EvidenceFingerprint {
 			return nil, fmt.Errorf(
 				"shape authority evidence[%d] fingerprint mismatch: recorded=%s calculated=%s",
 				i,

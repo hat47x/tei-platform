@@ -287,7 +287,6 @@ func TestTransformRejectsOutputByteBudget(t *testing.T) {
 	}
 }
 
-
 func TestJSONWithinLimitRejectsAggregateExpansion(t *testing.T) {
 	value, err := transform.Object(
 		transform.Field{Name: "a", Value: transform.String("0123456789abcdef")},
@@ -357,7 +356,6 @@ func TestTransformInputIsolationSurvivesInternalValueSharing(t *testing.T) {
 	}
 }
 
-
 func TestConstructedValueRejectsInvalidUTF8AtJSONBoundary(t *testing.T) {
 	if _, err := transform.String(string([]byte{0xff})).JSON(); err == nil {
 		t.Fatal("expected invalid UTF-8 string value to fail")
@@ -406,7 +404,6 @@ func TestAppendBytesRejectsBeforeOversizedResultConstruction(t *testing.T) {
 	}
 }
 
-
 func TestPublicValueFieldKeepsCopySemantics(t *testing.T) {
 	value, err := transform.Object(
 		transform.Field{Name: "items", Value: transform.Array(transform.String("a"), transform.String("b"))},
@@ -429,7 +426,6 @@ func TestPublicValueFieldKeepsCopySemantics(t *testing.T) {
 	}
 }
 
-
 func TestTransformRejectsMalformedProgrammaticInputValue(t *testing.T) {
 	source := transform.Source{
 		FormatVersion: transform.SourceFormatVersion,
@@ -447,7 +443,7 @@ func TestTransformRejectsMalformedProgrammaticInputValue(t *testing.T) {
 			MaxOutputBytes:  1024,
 			MaxNestingDepth: 16,
 		},
-		Inputs: []transform.InputSpec{{Name: "value", Kind: transform.InputObject}},
+		Inputs:  []transform.InputSpec{{Name: "value", Kind: transform.InputObject}},
 		Program: transform.Program{Output: transform.Expr{Op: transform.OpInput, Name: "value"}},
 	}
 	tests := []struct {
@@ -511,7 +507,6 @@ func TestTransformRejectsMalformedProgrammaticInputValue(t *testing.T) {
 	}
 }
 
-
 func TestTransformInputValidationDiagnosticsUseDeterministicNameOrder(t *testing.T) {
 	source := transform.Source{
 		FormatVersion: transform.SourceFormatVersion,
@@ -549,7 +544,6 @@ func TestTransformInputValidationDiagnosticsUseDeterministicNameOrder(t *testing
 	}
 }
 
-
 func TestJSONBoundaryRejectsCyclicProgrammaticValue(t *testing.T) {
 	items := make([]transform.Value, 1)
 	value := transform.Value{Kind: transform.ValueArray, Array: items}
@@ -563,7 +557,6 @@ func TestJSONBoundaryRejectsCyclicProgrammaticValue(t *testing.T) {
 	}
 }
 
-
 func TestPublicArrayKeepsNestedValueCopySemantics(t *testing.T) {
 	nested := transform.Array(transform.String("a"), transform.String("b"))
 	outer := transform.Array(nested)
@@ -573,7 +566,6 @@ func TestPublicArrayKeepsNestedValueCopySemantics(t *testing.T) {
 		t.Fatalf("public Array leaked nested slice alias: %#v", outer)
 	}
 }
-
 
 func TestJSONWithinLimitMatchesEscapedStringEncoding(t *testing.T) {
 	value := transform.String("<&>\n\t\"\\\u2028")
@@ -599,7 +591,6 @@ func TestJSONWithinLimitRejectsLargeStringBeforeOutputBudget(t *testing.T) {
 		t.Fatal("expected escaped string to exceed small output budget")
 	}
 }
-
 
 func TestSortArrayUsesDeterministicStableOrdering(t *testing.T) {
 	from := transform.Expr{Op: transform.OpInput, Name: "items"}
@@ -702,7 +693,6 @@ func TestSortArrayConsumesActualWorkBudget(t *testing.T) {
 		t.Fatal("expected sort work to exceed maxSteps")
 	}
 }
-
 
 func TestSelectFieldConsumesLinearScanBudget(t *testing.T) {
 	from := transform.Expr{Op: transform.OpInput, Name: "value"}
