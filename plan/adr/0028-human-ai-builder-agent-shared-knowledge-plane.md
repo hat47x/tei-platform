@@ -70,7 +70,7 @@ AI Builderが高い自律性を持っていても、Canonical authorityを暗黙
 
 AI Builderへ渡す理解用Contextは、Repository断片の単純な列挙に限定しない。対象subjectについて、現在のSource / Evidence、未解決事項、authority limit、設計判断に必要な確認順序を、用途別のderived Projectionとしてまとめてよい。
 
-AI Builder向けには、共有Knowledge ContextそのものをBuilder専用schemaへ変えず、対象subjectから**Builder Review Plan**を別のderived Projectionとして生成してよい。この計画は、Source / Evidence、定義、Data設計、依存・影響のうち何をどの順で読むかを示すrouting guidanceであり、各Knowledgeが持つ設計原則や業務意味を複製しない。
+AI Builder向けには、共有Knowledge ContextそのものをBuilder専用schemaへ変えず、対象subjectから**Builder Review Plan**を別のderived Projectionとして生成してよい。この計画は`current-knowledge-context`をrouting scopeとし、Source / Evidence、定義、Data設計、依存・影響のうち何をどの順で読むかを示す。各Knowledgeが持つ設計原則や業務意味は複製しない。
 
 ```text
 shared Knowledge Context
@@ -88,7 +88,7 @@ Builder Review Plan
   != write / runtime authority
 ```
 
-Review Planのfingerprintはrouting identityを表すだけであり、選択したKnowledge自体のfreshness proofにはしない。Knowledge内容の再利用可否は、それぞれのProjection / DisclosureのfingerprintとEvidence境界で別に確認する。
+Review Planのfingerprintはrouting identityを表すだけであり、選択したKnowledge自体のfreshness proofにはしない。また、current Knowledge Contextに区画が無いことを、他のKnowledge surfaceを含む全体的な不存在へ一般化しない。Knowledge内容の再利用可否は、それぞれのProjection / DisclosureのfingerprintとEvidence境界で別に確認する。
 
 Data設計では、`tei knowledge-context ... -disclose data-design` がこの境界を担う。識別子、候補キー、関数従属性等について、PersistenceやUIの構造から業務意味を推測せず、根拠が不足する場合は`unresolved`を保持する。投影が返すreview protocolや設計候補はAIへの作業指針であって、Canonical authorityやAcceptanceそのものではない。
 
