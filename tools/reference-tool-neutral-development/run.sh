@@ -14,16 +14,39 @@ cleanup() {
 }
 trap cleanup EXIT
 
+assert_no_ignored_artifacts() {
+  local repo="$1"
+  local phase="$2"
+  local ignored
+
+  ignored="$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
+  if [[ -n "$ignored" ]]; then
+    echo "$phase contains ignored artifacts" >&2
+    printf '%s\n' "$ignored" >&2
+    exit 1
+  fi
+}
+
+assert_repo_clean() {
+  local repo="$1"
+  local phase="$2"
+  local status
+
+  status="$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
+  if [[ -n "$status" ]]; then
+    echo "$phase is not clean" >&2
+    git -C "$repo" status --short --untracked-files=all >&2
+    exit 1
+  fi
+  assert_no_ignored_artifacts "$repo" "$phase"
+}
+
 if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "tool-neutral reference requires a Git checkout" >&2
   exit 2
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "tool-neutral reference requires a clean checkout" >&2
-  git -C "$ROOT" status --short >&2
-  exit 2
-fi
+assert_repo_clean "$ROOT" "tool-neutral reference source checkout"
 
 SOURCE_HEAD="$(git -C "$ROOT" rev-parse HEAD)"
 
@@ -145,6 +168,8 @@ if [[ -n "$(git -C "$TASK_REPO" ls-files --others --exclude-standard)" ]]; then
   exit 1
 fi
 
+assert_no_ignored_artifacts "$TASK_REPO" "task repository before result commit"
+
 git -C "$TASK_REPO" add "$TARGET_FILE"
 git -C "$TASK_REPO" commit -qm "reference: add unit price validation"
 
@@ -157,11 +182,7 @@ if [[ "$commit_paths" != "$TARGET_FILE" ]]; then
   exit 1
 fi
 
-if [[ -n "$(git -C "$TASK_REPO" status --porcelain)" ]]; then
-  echo "task repository is not clean after result commit" >&2
-  git -C "$TASK_REPO" status --short >&2
-  exit 1
-fi
+assert_repo_clean "$TASK_REPO" "task repository after result commit"
 
 git clone -q --local --no-hardlinks "$ROOT" "$INTEGRATION_REPO"
 git -C "$INTEGRATION_REPO" config user.name "TEI Reference"
@@ -210,11 +231,7 @@ run_tei "$INTEGRATION_TEI" world -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROO
 grep -q 'sales.order_line.unit_price_positive' "$TMP_ROOT/integration-context.json"
 cmp "$TMP_ROOT/task-world.json" "$TMP_ROOT/integration-world.json"
 
-if [[ -n "$(git -C "$INTEGRATION_REPO" status --porcelain)" ]]; then
-  echo "read-only reload changed the integration repository" >&2
-  git -C "$INTEGRATION_REPO" status --short >&2
-  exit 1
-fi
+assert_repo_clean "$INTEGRATION_REPO" "integration repository after read-only reload"
 
 git clone -q --local --no-hardlinks "$ROOT" "$CONFLICT_REPO"
 git -C "$CONFLICT_REPO" config user.name "TEI Reference"
@@ -274,22 +291,14 @@ if ! grep -q 'DUPLICATE_SEMANTIC_ELEMENT' "$TMP_ROOT/conflict-merged-validate.tx
   exit 1
 fi
 
-if [[ -n "$(git -C "$CONFLICT_REPO" status --porcelain)" ]]; then
-  echo "semantic validation mutated the conflict repository" >&2
-  git -C "$CONFLICT_REPO" status --short >&2
-  exit 1
-fi
+assert_repo_clean "$CONFLICT_REPO" "conflict repository after semantic validation"
 
 if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$SOURCE_HEAD" ]]; then
   echo "source checkout HEAD changed while reference was running" >&2
   exit 1
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "source checkout became dirty while reference was running" >&2
-  git -C "$ROOT" status --short >&2
-  exit 1
-fi
+assert_repo_clean "$ROOT" "tool-neutral reference source checkout after run"
 
 printf 'source-head=%s\n' "$SOURCE_HEAD"
 printf 'base=%s\n' "$BASE_REVISION"
