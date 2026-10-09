@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -554,7 +555,7 @@ func loadDatabases(root string, r *Result) error {
 			}
 			r.World.MigrationProviders = append(r.World.MigrationProviders, cfg)
 			r.Sources["migration-provider:"+string(cfg.Database)] = SourceLocation{File: relPath(root, providerPath), Line: 1, Column: 1}
-		} else if !os.IsNotExist(err) {
+		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
 		migrationFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "migrations", "*", "migration.tei"))
