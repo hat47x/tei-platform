@@ -153,6 +153,19 @@ tei knowledge-review-disclose
 
 Proposalを作る場合は、Handoff JSONを既存Shared Acceptanceの`attach-qualification -qualification`へ直接渡せる。adapterはHandoffを検証し、内包Qualificationだけをcandidate Evidenceへ付ける。Disclosure本文をcandidateへ丸ごと複製せず、A/B/C等の設計候補はADR-0022に従うMinimum Semantic Deltaとして表す。したがって「何を読んだか」と「何を変更したいか」は別identityのままShared Acceptanceへ入る。
 
+```text
+reference-shared-acceptance attach-qualification
+  -candidate <minimum-semantic-delta-candidate.json>
+  -qualification <handoff.json>
+  > grounded-candidate.json
+
+reference-shared-acceptance preview
+  -workspace reference/workspace
+  -candidate grounded-candidate.json
+```
+
+このPreviewが通ってもAcceptではない。最終的な受理は既存Shared Acceptanceのreview / explicit Accept / Reject境界へ委ねる。
+
 ## 3. R1でAI Builderが実装前に知るべきこと
 
 structured contextは最低限、次を同時に示す。
