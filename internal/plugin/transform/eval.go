@@ -173,7 +173,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			}
 			out[i] = value
 		}
-		return Array(out...), nil
+		return arrayShared(out), nil
 	case OpSortArrayBy:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -222,7 +222,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		for i := range items {
 			out[i] = items[i].value
 		}
-		return Array(out...), nil
+		return arrayShared(out), nil
 	case OpReplaceField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
