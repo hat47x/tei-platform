@@ -327,6 +327,18 @@ Handoffは本文をmaterializeせず、Plan revision / fingerprint、routing sco
 
 Handoff fingerprintにはQualification Evidenceのrevisionを含める。一方、Review Plan fingerprintはrouting identityのまま維持し、Knowledge本文の変更だけで変化させない。Disclosure contentの再利用判断はDisclosure fingerprintへ委ねる。
 
+`tei knowledge-review-disclose`は、保存済みHandoffを入力としてcurrent Handoffを再構成し、fingerprint一致と`qualified-for-disclosure`を確認したときだけ既存`DisclosureProjection`を返す。これにより、手作業でselected sectionsを書き写してQualification境界を迂回する経路を避ける。
+
+```text
+available
+  -> selected
+  -> qualified
+  -> verified handoff
+  -> disclosed
+```
+
+このコマンドは新しいContext packetを作らない。出力は既存Disclosureそのものであり、Qualification / Handoff本文を埋め込まない。Disclosureを別taskで使う場合は、そのtaskで再Qualificationする。
+
 この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
 
 ## Phase 1 first challenge — customer_referenceを編集可能にする要求
