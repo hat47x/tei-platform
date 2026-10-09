@@ -1,0 +1,321 @@
+package transform
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"sort"
+	"strings"
+)
+
+type EvaluationResult struct {
+	Output Value
+	Steps  int
+}
+
+type evaluator struct {
+	limits Limits
+	steps  int
+}
+
+func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) {
+	if err := source.Validate(); err != nil {
+		return EvaluationResult{}, err
+	}
+	if err := validateInputs(source.Inputs, inputs); err != nil {
+		return EvaluationResult{}, err
+	}
+	e := evaluator{limits: source.Limits}
+	env := make(map[string]Value, len(inputs))
+	for name, value := range inputs {
+		env[name] = value.Clone()
+	}
+	for i := range source.Program.Assertions {
+		if _, err := e.eval(source.Program.Assertions[i], env, 0); err != nil {
+			return EvaluationResult{}, fmt.Errorf("assertion %d: %w", i, err)
+		}
+	}
+	output, err := e.eval(source.Program.Output, env, 0)
+	if err != nil {
+		return EvaluationResult{}, err
+	}
+	if output.Kind == ValueBytes && len(output.Bytes) > source.Limits.MaxOutputBytes {
+		return EvaluationResult{}, fmt.Errorf("transform output exceeds maxOutputBytes")
+	}
+	return EvaluationResult{Output: output, Steps: e.steps}, nil
+}
+
+func validateInputs(specs []InputSpec, inputs map[string]Value) error {
+	expected := map[string]InputKind{}
+	for _, spec := range specs {
+		expected[spec.Name] = spec.Kind
+	}
+	for name := range inputs {
+		if _, ok := expected[name]; !ok {
+			return fmt.Errorf("undeclared transform input %q", name)
+		}
+	}
+	for name, kind := range expected {
+		value, ok := inputs[name]
+		if !ok {
+			return fmt.Errorf("required transform input %q is missing", name)
+		}
+		if !inputKindMatches(kind, value.Kind) {
+			return fmt.Errorf("transform input %q requires %s, got %s", name, kind, value.Kind)
+		}
+	}
+	return nil
+}
+
+func inputKindMatches(expected InputKind, actual ValueKind) bool {
+	switch expected {
+	case InputObject:
+		return actual == ValueObject
+	case InputArray:
+		return actual == ValueArray
+	case InputString:
+		return actual == ValueString
+	case InputBytes:
+		return actual == ValueBytes
+	default:
+		return false
+	}
+}
+
+func (e *evaluator) tick(depth int) error {
+	e.steps++
+	if e.steps > e.limits.MaxSteps {
+		return fmt.Errorf("transform exceeded maxSteps")
+	}
+	if depth > e.limits.MaxNestingDepth {
+		return fmt.Errorf("transform exceeded maxNestingDepth")
+	}
+	return nil
+}
+
+func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, error) {
+	if err := e.tick(depth); err != nil {
+		return Value{}, err
+	}
+	switch expr.Op {
+	case OpInput:
+		value, ok := env[expr.Name]
+		if !ok {
+			return Value{}, fmt.Errorf("transform input or binding %q is not available", expr.Name)
+		}
+		return value.Clone(), nil
+	case OpLiteral:
+		return ParseJSON(expr.Literal)
+	case OpSelectField:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind != ValueObject {
+			return Value{}, fmt.Errorf("select-field requires object, got %s", source.Kind)
+		}
+		value, ok := source.Field(expr.Field)
+		if !ok {
+			if expr.Optional {
+				return Null(), nil
+			}
+			return Value{}, fmt.Errorf("required field %q is missing", expr.Field)
+		}
+		return value, nil
+	case OpConstructObject:
+		fields := make([]Field, 0, len(expr.Fields))
+		for _, field := range expr.Fields {
+			value, err := e.eval(field.Value, env, depth+1)
+			if err != nil {
+				return Value{}, fmt.Errorf("construct field %q: %w", field.Name, err)
+			}
+			fields = append(fields, Field{Name: field.Name, Value: value})
+		}
+		return Object(fields...)
+	case OpMapArray:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind != ValueArray {
+			return Value{}, fmt.Errorf("map-array requires array, got %s", source.Kind)
+		}
+		if len(source.Array) > e.limits.MaxCollection {
+			return Value{}, fmt.Errorf("map-array collection exceeds maxCollection")
+		}
+		out := make([]Value, len(source.Array))
+		for i, item := range source.Array {
+			local := cloneEnv(env)
+			local[expr.Item] = item.Clone()
+			value, err := e.eval(*expr.Body, local, depth+1)
+			if err != nil {
+				return Value{}, fmt.Errorf("map-array item %d: %w", i, err)
+			}
+			out[i] = value
+		}
+		return Array(out...), nil
+	case OpSortArrayBy:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind != ValueArray {
+			return Value{}, fmt.Errorf("sort-array requires array, got %s", source.Kind)
+		}
+		if len(source.Array) > e.limits.MaxCollection {
+			return Value{}, fmt.Errorf("sort-array collection exceeds maxCollection")
+		}
+		type keyed struct {
+			value Value
+			keys  []string
+		}
+		items := make([]keyed, len(source.Array))
+		seen := map[string]struct{}{}
+		for i, item := range source.Array {
+			local := cloneEnv(env)
+			local[expr.Item] = item.Clone()
+			keys := make([]string, len(expr.Keys))
+			for k := range expr.Keys {
+				key, err := e.eval(expr.Keys[k], local, depth+1)
+				if err != nil {
+					return Value{}, fmt.Errorf("sort-array item %d key %d: %w", i, k, err)
+				}
+				if key.Kind != ValueString {
+					return Value{}, fmt.Errorf("sort-array keys must be strings, got %s", key.Kind)
+				}
+				keys[k] = key.String
+			}
+			signature := strings.Join(keys, "\x00")
+			if _, exists := seen[signature]; exists {
+				return Value{}, fmt.Errorf("sort-array contains duplicate key tuple")
+			}
+			seen[signature] = struct{}{}
+			items[i] = keyed{value: item.Clone(), keys: keys}
+		}
+		sort.Slice(items, func(i, j int) bool {
+			for k := range items[i].keys {
+				if items[i].keys[k] == items[j].keys[k] {
+					continue
+				}
+				return items[i].keys[k] < items[j].keys[k]
+			}
+			return false
+		})
+		out := make([]Value, len(items))
+		for i := range items {
+			out[i] = items[i].value.Clone()
+		}
+		return Array(out...), nil
+	case OpReplaceField:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind != ValueObject {
+			return Value{}, fmt.Errorf("replace-field requires object, got %s", source.Kind)
+		}
+		if _, exists := source.Field(expr.Field); !exists {
+			return source.Clone(), nil
+		}
+		replacement, err := e.eval(*expr.Value, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		out, _, err := source.ReplaceField(expr.Field, replacement)
+		return out, err
+	case OpOmitField:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		return source.OmitField(expr.Field)
+	case OpAssertEqual:
+		actual, err := e.eval(*expr.Actual, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		expected, err := e.eval(*expr.Expected, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if !Equal(actual, expected) {
+			return Value{}, fmt.Errorf("assert-equal failed")
+		}
+		return actual, nil
+	case OpAssertEnum:
+		actual, err := e.eval(*expr.Actual, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		for _, raw := range expr.Allowed {
+			allowed, err := ParseJSON(raw)
+			if err != nil {
+				return Value{}, err
+			}
+			if Equal(actual, allowed) {
+				return actual, nil
+			}
+		}
+		return Value{}, fmt.Errorf("assert-enum failed")
+	case OpCanonicalJSON:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		raw, err := source.JSON()
+		if err != nil {
+			return Value{}, err
+		}
+		if len(raw) > e.limits.MaxOutputBytes {
+			return Value{}, fmt.Errorf("canonical-json exceeds maxOutputBytes")
+		}
+		return Bytes(raw), nil
+	case OpSHA256:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind != ValueBytes {
+			return Value{}, fmt.Errorf("sha256 requires bytes, got %s", source.Kind)
+		}
+		sum := sha256.Sum256(source.Bytes)
+		return String(hex.EncodeToString(sum[:])), nil
+	case OpAppendBytes:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind != ValueBytes {
+			return Value{}, fmt.Errorf("append-bytes requires bytes, got %s", source.Kind)
+		}
+		out := append([]byte(nil), source.Bytes...)
+		out = append(out, []byte(expr.Suffix)...)
+		if len(out) > e.limits.MaxOutputBytes {
+			return Value{}, fmt.Errorf("append-bytes exceeds maxOutputBytes")
+		}
+		return Bytes(out), nil
+	case OpJoinStrings:
+		parts := make([]string, len(expr.Values))
+		for i := range expr.Values {
+			value, err := e.eval(expr.Values[i], env, depth+1)
+			if err != nil {
+				return Value{}, err
+			}
+			if value.Kind != ValueString {
+				return Value{}, fmt.Errorf("join-strings requires strings, got %s", value.Kind)
+			}
+			parts[i] = value.String
+		}
+		return String(strings.Join(parts, expr.Separator)), nil
+	default:
+		return Value{}, fmt.Errorf("unsupported transform operation %q", expr.Op)
+	}
+}
+
+func cloneEnv(in map[string]Value) map[string]Value {
+	out := make(map[string]Value, len(in)+1)
+	for name, value := range in {
+		out[name] = value.Clone()
+	}
+	return out
+}
