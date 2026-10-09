@@ -694,3 +694,45 @@ func TestCurrentBuildPlanWithUppercaseHexCanBeProjected(t *testing.T) {
 		t.Fatalf("current valid BuildPlan with uppercase hex could not be projected: %v", err)
 	}
 }
+
+
+func TestExecutionIdentityKeepsBuildRelevantPathSemanticsOutsideLocator(t *testing.T) {
+	base := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
+	moved := base
+	moved.Sources = append([]plugin.BuildSource(nil), base.Sources...)
+	moved.Sources[0].Locator = "store://alternate/shared-source"
+
+	baseExecution, err := executionPlanFromPluginBuildPlan(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	movedExecution, err := executionPlanFromPluginBuildPlan(moved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseFP, err := buildExecutionPlanFingerprint(baseExecution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	movedFP, err := buildExecutionPlanFingerprint(movedExecution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if baseFP != movedFP {
+		t.Fatal("retrieval-only Source Locator changed execution identity")
+	}
+
+	pathSensitive := moved
+	pathSensitive.Recipe.Entrypoint = "alternate-module-path"
+	pathExecution, err := executionPlanFromPluginBuildPlan(pathSensitive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pathFP, err := buildExecutionPlanFingerprint(pathExecution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pathFP == baseFP {
+		t.Fatal("build-relevant path semantics in Recipe.Entrypoint were lost with Locator exclusion")
+	}
+}
