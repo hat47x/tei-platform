@@ -187,3 +187,26 @@ func TestLoopbackProtectedAction(t *testing.T) {
 		t.Fatalf("action calls=%d, audit entries=%d", obs.calls, len(obs.records))
 	}
 }
+
+func TestPanicAfterResponseStartedRemainsAuditError(t *testing.T) {
+	records := []AuditRecord{}
+	p := Principal{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "s", PrincipalID: "p"}
+	h, err := NewHost(Policy{
+		Path: "/scenario/submit", Method: http.MethodPost, ActionID: "order_entry.submit_order",
+		Providers: map[string]string{"legacy": "legacy:order_entry"},
+	}, Dependencies{
+		VerifySession: func(*http.Request) (Principal, error) { return p, nil },
+		VerifyCSRF: func(*http.Request, Principal) bool { return true },
+		Authorize: func(context.Context, Principal, string) (bool, error) { return true, nil },
+		Invoke: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusAccepted)
+			panic("test panic")
+		}),
+		Audit: func(a AuditRecord) { records = append(records, a) },
+	})
+	if err != nil { t.Fatal(err) }
+	w := request(h, "/scenario/submit", http.MethodPost, "matching")
+	if w.Code != http.StatusAccepted || len(records) != 1 || records[0].Stage != "error" {
+		t.Fatalf("panic after response must be audited as error: status=%d audit=%+v", w.Code, records)
+	}
+}
