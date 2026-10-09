@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -48,7 +49,7 @@ func TestCustomerLookupRunsRepairIntakeReferencePatternThroughDriver(t *testing.
 	if result.ScenarioID != "repair-intake.customer-lookup-web-slice" ||
 		result.Environment != "development" ||
 		result.ApplicationID != "repair_intake" ||
-		result.CustomerID != "11" {
+		result.RequestedCustomerID != "11" {
 		t.Fatalf("scenario identity=%+v", result)
 	}
 	// The key is read from the mapped intake row through the Relation, not from the request.
@@ -76,20 +77,39 @@ func TestCustomerLookupRunsRepairIntakeReferencePatternThroughDriver(t *testing.
 		t.Fatalf("runtime binding=%+v", binding)
 	}
 
-	// A synthetic Executor must never read as a real Database connection.
-	var sawTestDouble, sawProductionGap bool
-	for _, limit := range result.AuthorityLimits {
-		if limit == "executor-is-a-test-double-not-a-real-database-connection" {
-			sawTestDouble = true
+	// A synthetic Executor and its runtime carrier values must never read as Canonical identity.
+	for _, limit := range []string{
+		"executor-is-a-test-double-not-a-real-database-connection",
+		"requested-customer-id-is-runtime-input-not-business-identity-proof",
+		"mapped-intake-row-is-runtime-carrier-not-business-occurrence-authority",
+		"contract-result-row-is-runtime-observation-not-business-identity-authority",
+		"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
+	} {
+		if !containsString(result.AuthorityLimits, limit) {
+			t.Fatalf("runtime identity authority limit %q is missing: %+v", limit, result.AuthorityLimits)
 		}
 	}
+	var sawProductionGap bool
 	for _, item := range result.Unresolved {
 		if item == "production-environment-has-no-contract-query-executor-binding" {
 			sawProductionGap = true
 		}
 	}
-	if !sawTestDouble || !sawProductionGap {
-		t.Fatalf("limits=%v unresolved=%v", result.AuthorityLimits, result.Unresolved)
+	if !sawProductionGap {
+		t.Fatalf("unresolved=%v", result.Unresolved)
+	}
+
+	rowType := reflect.TypeOf(semanticRowProjection{})
+	if rowType.NumField() != 1 || rowType.Field(0).Name != "Attributes" {
+		t.Fatalf("runtime row projection acquired identity authority fields: %v", rowType)
+	}
+	resultType := reflect.TypeOf(customerLookupResult{})
+	if _, found := resultType.FieldByName("CustomerID"); found {
+		t.Fatal("customer lookup result reintroduced an ambiguous CustomerID identity field")
+	}
+	requestedField, found := resultType.FieldByName("RequestedCustomerID")
+	if !found || requestedField.Tag.Get("json") != "requestedCustomerId" {
+		t.Fatalf("runtime input field is not explicitly labelled as requested input: %+v", requestedField)
 	}
 }
 
@@ -233,7 +253,12 @@ func TestCustomerLookupIsServedAsJSONAndAsAScreenFromTheSameRunner(t *testing.T)
 	if err := json.Unmarshal(jsonRecorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
+	if strings.Contains(jsonRecorder.Body.String(), "\"customerId\"") ||
+		!strings.Contains(jsonRecorder.Body.String(), "\"requestedCustomerId\": \"12\"") {
+		t.Fatalf("customer lookup JSON does not distinguish request input from identity: %s", jsonRecorder.Body.String())
+	}
 	if response.Result.ApplicationID != "repair_intake" ||
+		response.Result.RequestedCustomerID != "12" ||
 		response.TargetBuildRevision != testTargetRevision ||
 		response.BaselineRepositoryRevision != testBaselineRevision {
 		t.Fatalf("response provenance=%+v", response)

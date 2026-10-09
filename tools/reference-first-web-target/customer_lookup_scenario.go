@@ -23,15 +23,15 @@ type customerLookupInput struct {
 }
 
 type customerLookupResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
-	CustomerID      string                     `json:"customerId"`
-	Intake          semanticRowProjection      `json:"intake"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
+	ScenarioID          string                     `json:"scenarioId"`
+	Environment         string                     `json:"environment"`
+	ApplicationID       string                     `json:"applicationId"`
+	RequestedCustomerID string                     `json:"requestedCustomerId"`
+	Intake              semanticRowProjection      `json:"intake"`
+	CustomerRows        []semanticRowProjection    `json:"customerRows"`
+	RuntimeBindings     []runtimeBindingProjection `json:"runtimeBindings"`
+	AuthorityLimits     []string                   `json:"authorityLimits"`
+	Unresolved          []string                   `json:"unresolved"`
 }
 
 type customerLookupRunner interface {
@@ -114,18 +114,22 @@ func (r *referenceCustomerLookupScenarioRunner) RunCustomerLookup(
 	}
 
 	return customerLookupResult{
-		ScenarioID:    "repair-intake.customer-lookup-web-slice",
-		Environment:   string(r.environmentID),
-		ApplicationID: string(r.applicationID),
-		CustomerID:    strconv.FormatInt(customerID, 10),
-		Intake:        intakeRows[0],
-		CustomerRows:  rows,
+		ScenarioID:          "repair-intake.customer-lookup-web-slice",
+		Environment:         string(r.environmentID),
+		ApplicationID:       string(r.applicationID),
+		RequestedCustomerID: strconv.FormatInt(customerID, 10),
+		Intake:              intakeRows[0],
+		CustomerRows:        rows,
 		RuntimeBindings: []runtimeBindingProjection{
 			projectEnvironmentBinding(string(r.patternID), customer.Environment.ID, customer.Executor),
 		},
 		AuthorityLimits: []string{
 			"synthetic-runtime-fixture-is-not-canonical-data",
 			"executor-is-a-test-double-not-a-real-database-connection",
+			"requested-customer-id-is-runtime-input-not-business-identity-proof",
+			"mapped-intake-row-is-runtime-carrier-not-business-occurrence-authority",
+			"contract-result-row-is-runtime-observation-not-business-identity-authority",
+			"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
 			"customer-meaning-and-contract-query-are-reused-from-order-entry-not-copied",
 			"lookup-does-not-imply-authorization-or-command-readiness",
 			"http-interaction-does-not-define-semantic-outcome",
