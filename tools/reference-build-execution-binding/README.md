@@ -32,6 +32,8 @@ PluginSubjectBinding
   consumed output roles
 ```
 
+Sourceの`Locator`もcontent identityとは分けます。exact digestが同じであれば、Repository pathやstore locatorが変わっただけではBuildExecutionPlan fingerprintを変えません。Locatorは再取得・観測のために保持しますが、artifact-affecting input identityではありません。
+
 重要なのは、同じartifact bytesと同じbuild executionを同一視しないことです。
 
 ```text
