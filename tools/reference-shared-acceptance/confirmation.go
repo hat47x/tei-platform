@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -31,6 +32,10 @@ const (
 	outcomeAnswered           = "answered"
 	outcomeCategorySuppressed = "category-suppressed"
 	outcomeCategoryReinstated = "category-reinstated"
+	outcomeRejectedProposal   = "rejected-proposal"
+
+	identityKindProposal = "proposal"
+	answerRejected       = "rejected"
 
 	actorHuman = "human"
 	actorAI    = "ai"
@@ -155,13 +160,57 @@ func isCategory(outcome string) bool {
 	return outcome == outcomeCategorySuppressed || outcome == outcomeCategoryReinstated
 }
 
+// linkedDecisionPatternは、決定記録の保存名（内容のsha256 + .json）と同じ形の、.tei/decisions/配下のpathだけを許す。
+var linkedDecisionPattern = regexp.MustCompile(`^` + regexp.QuoteMeta(decisionDir) + `/[0-9a-f]{64}\.json$`)
+
+// rejectedLinkProblemは、退けた提案の記録のlinkedDecisionが、fingerprintの候補を退けた決定記録を指しているかを確かめる。
+// 問題が無ければ空を返す。決定記録が無いときはmissingとして返し、読む側はそれを問題にしない。
+// 決定記録は消せる派生物なので、その有無で確認の抑制を変えると、一件消しただけで全部の確認が止まるためである。
+func rejectedLinkProblem(root, linked, fingerprint string) (missing bool, problem string) {
+	if !linkedDecisionPattern.MatchString(linked) {
+		return false, fmt.Sprintf("linkedDecisionは%s/<64桁の16進>.json の形である必要があります", decisionDir)
+	}
+	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(linked)))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, ""
+		}
+		return false, fmt.Sprintf("linkedDecision %q を読めません: %v", linked, err)
+	}
+	sum := sha256.Sum256(raw)
+	if strings.TrimPrefix(linked, decisionDir+"/") != hex.EncodeToString(sum[:])+".json" {
+		return false, fmt.Sprintf("linkedDecision %q の内容のhashがfile名と一致しません", linked)
+	}
+	var d Decision
+	if err := decodeStrict(raw, &d); err != nil {
+		return false, fmt.Sprintf("linkedDecision %q を決定記録として読めません: %v", linked, err)
+	}
+	if d.Decision != "rejected" {
+		return false, fmt.Sprintf("linkedDecision %q は退けの決定記録ではありません（decision: %s）", linked, d.Decision)
+	}
+	if d.CandidateFingerprint != fingerprint {
+		return false, fmt.Sprintf("linkedDecision %q は、identity.subjectの候補を退けた決定記録ではありません", linked)
+	}
+	return false, ""
+}
+
+// storedRejectedProblemは、保存された退けた提案の記録を、書くときと同じ規則で読む側から確かめる。
+// 前提のsubjectが今は解決できないことは書いた後の変化なので、ここでは問題にしない（確認側でbasis-changedとして扱う）。
+func storedRejectedProblem(root string, rec ConfirmationRecord) string {
+	if !revisionPattern.MatchString(rec.Identity.Subject) {
+		return "identity.subjectがcandidateFingerprintの形ではありません"
+	}
+	_, problem := rejectedLinkProblem(root, rec.LinkedDecision, rec.Identity.Subject)
+	return problem
+}
+
 // validateRecordShapeは、保存された記録が、このtoolの書く形になっているかを検査する。
 func validateRecordShape(rec ConfirmationRecord) error {
 	if rec.Schema != confirmationSchema {
 		return fmt.Errorf("schema %q は未対応です", rec.Schema)
 	}
 	switch rec.Outcome {
-	case outcomeAnswered, outcomeCategorySuppressed, outcomeCategoryReinstated:
+	case outcomeAnswered, outcomeRejectedProposal, outcomeCategorySuppressed, outcomeCategoryReinstated:
 	default:
 		return fmt.Errorf("outcome %q は未対応です", rec.Outcome)
 	}
@@ -170,6 +219,26 @@ func validateRecordShape(rec ConfirmationRecord) error {
 	}
 	if isCategory(rec.Outcome) != (rec.Identity.Subject == "") {
 		return fmt.Errorf("identity.subjectは、answeredでは必須、category-*では空である必要があります")
+	}
+	if rec.Outcome == outcomeAnswered && rec.Identity.Kind == identityKindProposal {
+		return fmt.Errorf("identity.kind %s の答えは、rejected-proposalの記録である必要があります", identityKindProposal)
+	}
+	if rec.Outcome == outcomeRejectedProposal {
+		if rec.Identity.Kind != identityKindProposal {
+			return fmt.Errorf("rejected-proposalのidentity.kindは%sです", identityKindProposal)
+		}
+		if rec.Answer != answerRejected {
+			return fmt.Errorf("rejected-proposalのanswerは%sです", answerRejected)
+		}
+		if strings.TrimSpace(rec.Reason) == "" {
+			return fmt.Errorf("rejected-proposalの理由が空です")
+		}
+		if len(rec.Basis) == 0 {
+			return fmt.Errorf("rejected-proposalの前提が空です")
+		}
+		if strings.TrimSpace(rec.LinkedDecision) == "" {
+			return fmt.Errorf("rejected-proposalのlinkedDecisionが空です")
+		}
 	}
 	if rec.DecidedBy.Kind != actorHuman && rec.DecidedBy.Kind != actorAI {
 		return fmt.Errorf("decidedBy.kindは%sまたは%sです", actorHuman, actorAI)
@@ -223,6 +292,12 @@ func readConfirmations(root string) ([]confirmationEntry, []UnreadableConfirmati
 		if err := validateRecordShape(rec); err != nil {
 			bad = append(bad, UnreadableConfirmation{Path: rel, Problem: err.Error()})
 			continue
+		}
+		if rec.Outcome == outcomeRejectedProposal {
+			if problem := storedRejectedProblem(root, rec); problem != "" {
+				bad = append(bad, UnreadableConfirmation{Path: rel, Problem: problem})
+				continue
+			}
 		}
 		out = append(out, confirmationEntry{name: name, rel: rel, rec: rec})
 	}
@@ -306,9 +381,13 @@ func normalizeConfirmationInput(in ConfirmationInput) (ConfirmationInput, error)
 	in.Identity.Subject = strings.TrimSpace(in.Identity.Subject)
 	in.Answer = strings.TrimSpace(in.Answer)
 	in.Reason = strings.TrimSpace(in.Reason)
+	in.LinkedDecision = strings.TrimSpace(in.LinkedDecision)
 	in.DecidedBy.ID = strings.TrimSpace(in.DecidedBy.ID)
 	switch in.Outcome {
 	case outcomeAnswered:
+		if in.Identity.Kind == identityKindProposal {
+			return in, confirmationRefusal("IDENTITY_KIND_RESERVED", "identity.kind %s は退けた提案（rejected-proposal）の記録だけが使えます", identityKindProposal)
+		}
 		if in.Identity.Subject == "" {
 			return in, confirmationRefusal("IDENTITY_SUBJECT_REQUIRED", "answeredの記録にはidentity.subjectが必要です")
 		}
@@ -327,6 +406,29 @@ func normalizeConfirmationInput(in ConfirmationInput) (ConfirmationInput, error)
 		}
 		if in.Outcome == outcomeCategorySuppressed && in.Reason == "" {
 			return in, confirmationRefusal("REASON_REQUIRED", "抑制には理由が必要です。理由が無い抑制は、利用者が見ても解除すべきか判断できません")
+		}
+	// 退けた候補の記録。identityは{kind: proposal, subject: candidateFingerprint}で、答えはrejectedに固定する。
+	case outcomeRejectedProposal:
+		if in.Identity.Kind != identityKindProposal {
+			return in, confirmationRefusal("IDENTITY_KIND_INVALID", "rejected-proposalの記録にはidentity.kindとして%sが必要です", identityKindProposal)
+		}
+		if in.Identity.Subject == "" {
+			return in, confirmationRefusal("IDENTITY_SUBJECT_REQUIRED", "rejected-proposalの記録にはidentity.subjectとして候補のcandidateFingerprintが必要です")
+		}
+		if !revisionPattern.MatchString(in.Identity.Subject) {
+			return in, confirmationRefusal("IDENTITY_SUBJECT_INVALID", "rejected-proposalのidentity.subjectは候補のcandidateFingerprint（sha256:<64桁の16進>）である必要があります")
+		}
+		if in.Answer != answerRejected {
+			return in, confirmationRefusal("ANSWER_INVALID", "rejected-proposalの記録のanswerは%sだけです", answerRejected)
+		}
+		if len(in.BasisSubjects) == 0 {
+			return in, confirmationRefusal("BASIS_REQUIRED", "rejected-proposalの記録には前提のsubjectが一つ以上必要です。前提が無い退けは、何が変わっても確認を出さなくなります")
+		}
+		if in.Reason == "" {
+			return in, confirmationRefusal("REASON_REQUIRED", "退けた提案には理由が必要です。理由が無い退けは、後から見て再検討すべきか判断できません")
+		}
+		if in.LinkedDecision == "" {
+			return in, confirmationRefusal("LINKED_DECISION_REQUIRED", "rejected-proposalの記録にはlinkedDecision（rejectが書いた決定記録のrecordPath）が必要です")
 		}
 	default:
 		return in, confirmationRefusal("OUTCOME_UNSUPPORTED", "outcome %q は未対応です", in.Outcome)
@@ -380,16 +482,26 @@ func recordConfirmation(root string, in ConfirmationInput) (string, error) {
 	}
 
 	if in.LinkedDecision != "" {
-		if !strings.HasPrefix(in.LinkedDecision, decisionDir+"/") {
-			return "", confirmationRefusal("LINKED_DECISION_INVALID", "linkedDecisionは%s/配下の決定記録を指す必要があります", decisionDir)
+		// 接頭辞だけでは「../」で決定記録の外へ出られるため、決定記録の保存名と同じ形のpathだけを許す。
+		if !linkedDecisionPattern.MatchString(in.LinkedDecision) {
+			return "", confirmationRefusal("LINKED_DECISION_INVALID", "linkedDecisionは%s/<64桁の16進>.json の形の決定記録を指す必要があります", decisionDir)
 		}
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(in.LinkedDecision))); err != nil {
+		if in.Outcome == outcomeRejectedProposal {
+			// 退けた提案は、identity.subjectの候補を退けたreject決定へ結ぶ。
+			missing, problem := rejectedLinkProblem(root, in.LinkedDecision, in.Identity.Subject)
+			if missing {
+				return "", confirmationRefusal("LINKED_DECISION_NOT_FOUND", "linkedDecision %q が存在しません", in.LinkedDecision)
+			}
+			if problem != "" {
+				return "", confirmationRefusal("LINKED_DECISION_INVALID", "%s", problem)
+			}
+		} else if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(in.LinkedDecision))); err != nil || !info.Mode().IsRegular() {
 			return "", confirmationRefusal("LINKED_DECISION_NOT_FOUND", "linkedDecision %q が存在しません", in.LinkedDecision)
 		}
 	}
 
 	var basis []BasisEntry
-	if in.Outcome == outcomeAnswered {
+	if in.Outcome == outcomeAnswered || in.Outcome == outcomeRejectedProposal {
 		var unresolved []SubjectRef
 		basis, unresolved = resolveBasis(s, in.BasisSubjects)
 		if len(unresolved) != 0 {
@@ -481,6 +593,19 @@ func checkConfirmation(root string, q ConfirmationQuery) (ConfirmationCheck, err
 		subjects = append(subjects, b.Subject)
 	}
 	current, unresolved := resolveBasis(s, subjects)
+	if len(unresolved) != 0 && head.rec.Outcome == outcomeRejectedProposal {
+		// 退けた提案では、前提の宣言が消えたことも前提の変化として扱う（basis-changed）。
+		gone := map[SubjectRef]bool{}
+		for _, u := range unresolved {
+			gone[u] = true
+		}
+		for _, b := range head.rec.Basis {
+			if gone[b.Subject] {
+				result.Changed = append(result.Changed, BasisChange{Subject: b.Subject, Artifact: b.Artifact, Before: b.Fingerprint})
+			}
+		}
+		return ask("basis-changed", "答えた時点から前提が変わっています。前提のsubjectが今は見つからないため、前回の答えと変化点を添えて確認を出します")
+	}
 	if len(unresolved) != 0 {
 		for _, u := range unresolved {
 			result.Changed = append(result.Changed, BasisChange{Subject: u})
@@ -507,6 +632,11 @@ func checkConfirmation(root string, q ConfirmationQuery) (ConfirmationCheck, err
 	}
 	if len(result.Changed) != 0 {
 		return ask("basis-changed", "答えた時点から前提が変わっています。前回の答えと変化点を添えて確認を出します")
+	}
+	if head.rec.Outcome == outcomeRejectedProposal {
+		result.Ask, result.Reason = false, "rejected-proposal-basis-unchanged"
+		result.Message = "この提案は人が退けており、答えた時点から前提も変わっていないため、再び確認を出しません"
+		return result, nil
 	}
 	result.Ask, result.Reason = false, "answered-basis-unchanged"
 	result.Message = "答えた時点の前提が変わっていないため、確認を出しません"
