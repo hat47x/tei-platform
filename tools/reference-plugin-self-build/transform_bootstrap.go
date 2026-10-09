@@ -378,6 +378,21 @@ func runTransformBootstrap(
 			secondPackageDigest,
 		)
 	}
+	var packageManifest plugin.PluginPackageManifest
+	if err := json.Unmarshal(firstPackageBytes, &packageManifest); err != nil {
+		return transformBootstrapEvidence{}, fmt.Errorf("decode TEI-native Plugin package manifest: %w", err)
+	}
+	if packageManifest.BuildPlanFingerprint != teiPackagePlanFingerprint {
+		return transformBootstrapEvidence{}, fmt.Errorf(
+			"TEI-native Plugin package embedded build plan fingerprint %s, expected %s",
+			packageManifest.BuildPlanFingerprint,
+			teiPackagePlanFingerprint,
+		)
+	}
+	if packageManifest.Plugin != teiPackagePlan.Plugin {
+		return transformBootstrapEvidence{}, fmt.Errorf("TEI-native Plugin package embedded wrong Plugin identity")
+	}
+
 	oracleBytes, err := plugin.MaterializePluginPackage(packageDefinition, teiPackagePlan)
 	if err != nil {
 		return transformBootstrapEvidence{}, err
