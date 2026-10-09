@@ -163,9 +163,10 @@ assert_unchanged() {
 
 write_receipt() {
   local path="$1"
-  local tmp="${path}.tmp.$"
+  local tmp
   local git_version go_version python_version
 
+  tmp="${path}.tmp.${BASHPID}"
   git_version="$(git --version | tr '\n' ' ')"
   go_version="$(go version | tr '\n' ' ')"
   if command -v python3 >/dev/null 2>&1; then
@@ -185,10 +186,6 @@ write_receipt() {
     printf 'tool-neutral-development-reference=PASS\n'
     printf 'clean-post=PASS\n'
     printf 'qualification=PASS\n'
-if [[ -n "$RECEIPT_FILE" ]]; then
-  write_receipt "$RECEIPT_FILE"
-  printf 'receipt-file=%s\n' "$RECEIPT_FILE"
-fi
     printf 'repository-health-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/repository-health-check.sh")"
     printf 'qualify-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/qualify.sh")"
     printf 'reference-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/run.sh")"
@@ -216,3 +213,7 @@ fi
 printf 'repository-health=PASS\n'
 printf 'tool-neutral-development-reference=PASS\n'
 printf 'qualification=PASS\n'
+if [[ -n "$RECEIPT_FILE" ]]; then
+  write_receipt "$RECEIPT_FILE"
+  printf 'receipt-file=%s\n' "$RECEIPT_FILE"
+fi
