@@ -128,7 +128,7 @@ func BuildDataDesignCandidateReview(
 		FirstClassAuthoringContractStatus: "unresolved",
 		FirstClassAuthoringContractReasons: dataDesignFirstClassAuthoringContractReasons(kind),
 		ReviewSequence: []string{
-			"verify-current-data-design-fingerprint",
+			"rebuild-current-data-design-context-and-verify-fingerprint",
 			"review-derived-candidate-shape-and-basis-constraint",
 			"review-authoritative-source-evidence",
 			"resolve-business-evidence-requirements-without-inference",
@@ -140,6 +140,7 @@ func BuildDataDesignCandidateReview(
 		AuthorityLimits: []string{
 			"candidate-review-packet-is-derived-not-authority",
 			"candidate-fingerprint-is-identity-not-acceptance",
+			"data-design-context-fingerprint-is-snapshot-identity-not-source-freshness-proof",
 			"evidence-requirement-fingerprint-is-review-contract-not-evidence",
 			"source-evidence-proves-traceability-not-business-meaning",
 			"candidate-review-blocking-ambiguity-is-candidate-local-not-global-context-certainty",
