@@ -850,6 +850,54 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	}
 }
 
+func TestDataDesignReviewProtocolAddsCandidateStepsOnlyWhenCandidatesExist(t *testing.T) {
+	withCandidate := Build(
+		dataDesignRelationUniqueWorld(),
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if withCandidate.DataDesign == nil {
+		t.Fatal("data design context is missing")
+	}
+	for _, step := range []string{
+		"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+		"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
+	} {
+		if !containsDataDesignString(withCandidate.DataDesign.DesignReviewProtocol, step) {
+			t.Fatalf("candidate review step %q is missing: %+v", step, withCandidate.DataDesign.DesignReviewProtocol)
+		}
+	}
+
+	withoutCandidateWorld := dataDesignRelationUniqueWorld()
+	withoutCandidateWorld.Semantics[0].Validations = nil
+	withoutCandidate := Build(
+		withoutCandidateWorld,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if withoutCandidate.DataDesign == nil {
+		t.Fatal("candidate-free data design context is missing")
+	}
+	if len(withoutCandidate.DataDesign.BusinessIdentityCandidates) != 0 ||
+		len(withoutCandidate.DataDesign.FunctionalDependencyCandidates) != 0 {
+		t.Fatalf("candidate-free fixture produced candidates: %+v", withoutCandidate.DataDesign)
+	}
+	for _, step := range []string{
+		"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+		"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
+	} {
+		if containsDataDesignString(withoutCandidate.DataDesign.DesignReviewProtocol, step) {
+			t.Fatalf("candidate-free context contains review step %q: %+v", step, withoutCandidate.DataDesign.DesignReviewProtocol)
+		}
+	}
+	if !containsDataDesignString(
+		withoutCandidate.DataDesign.DesignReviewProtocol,
+		"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
+	) {
+		t.Fatalf("base review protocol lost Shared Acceptance route: %+v", withoutCandidate.DataDesign.DesignReviewProtocol)
+	}
+}
+
 func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequirements(t *testing.T) {
 	ctx := Build(
 		dataDesignRelationUniqueWorld(),
