@@ -39,11 +39,13 @@ const (
 	packageWorkspace       = "reference/workspace"
 	packageDescriptor      = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
 	packageBuilderPackage  = "./tools/reference-plugin-package-builder"
+	packageBuilderVersion  = "1.0.0"
 	nativePluginID         = "tei.native.runtime.reference"
 	nativePluginVersion    = "1.0.0"
 	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
 	nativeImplementation   = "reference/plugin-self-build/workspace/plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
 	nativeBuilderPackage   = "./tools/reference-native-plugin-builder"
+	nativeBuilderVersion   = "1.0.0"
 )
 
 type evidence struct {
@@ -322,12 +324,7 @@ func run(repo string) (evidence, error) {
 		Plugin:                      plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(packageDefinition),
 		Sources: packagePlanSources(packageDescriptor, packageDescriptorDigest),
-		Builder: plugin.BuilderIdentity{
-			ID:              core.MustCanonicalID("tei.builder.package.reference.seed"),
-			Version:         revision,
-			ContractVersion: "tei.plugin-build/v1",
-			ArtifactDigest:  packageBuilderFirstDigest,
-		},
+		Builder: packageBuilderIdentity(packageBuilderFirstDigest),
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
 			Entrypoint: packageDescriptor,
@@ -486,12 +483,7 @@ func run(repo string) (evidence, error) {
 			nativeImplementation,
 			nativeImplementationDigest,
 		),
-		Builder: plugin.BuilderIdentity{
-			ID:              core.MustCanonicalID("tei.builder.native.reference.seed"),
-			Version:         revision,
-			ContractVersion: "tei.plugin-build/v1",
-			ArtifactDigest:  nativeBuilderFirstDigest,
-		},
+		Builder: nativeBuilderIdentity(nativeBuilderFirstDigest),
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-native-static-response",
 			Entrypoint: nativeImplementation,
@@ -951,6 +943,24 @@ func hashTrackedSourceTree(repo string) (string, error) {
 		}
 	}
 	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
+}
+
+func packageBuilderIdentity(artifactDigest string) plugin.BuilderIdentity {
+	return plugin.BuilderIdentity{
+		ID:              core.MustCanonicalID("tei.builder.package.reference.seed"),
+		Version:         packageBuilderVersion,
+		ContractVersion: "tei.plugin-build/v1",
+		ArtifactDigest:  artifactDigest,
+	}
+}
+
+func nativeBuilderIdentity(artifactDigest string) plugin.BuilderIdentity {
+	return plugin.BuilderIdentity{
+		ID:              core.MustCanonicalID("tei.builder.native.reference.seed"),
+		Version:         nativeBuilderVersion,
+		ContractVersion: "tei.plugin-build/v1",
+		ArtifactDigest:  artifactDigest,
+	}
 }
 
 func packagePlanSources(descriptor, descriptorDigest string) []plugin.BuildSource {
