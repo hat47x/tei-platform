@@ -758,7 +758,7 @@ func TestAssertEqualConsumesStructuralComparisonBudget(t *testing.T) {
 		},
 		Profile: transform.ProfileV1,
 		Limits: transform.Limits{
-			MaxSteps:        8,
+			MaxSteps:        7,
 			MaxCollection:   16,
 			MaxInputNodes:   128,
 			MaxInputBytes:   4096,
