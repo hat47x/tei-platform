@@ -18,14 +18,14 @@ Options:
   --candidate REF       candidate branch, tag, or commit to integrate
   --expected-main SHA   exact fetched origin/main qualified by the receipt
   --integration-root PATH
-                        clean checkout whose HEAD/origin/main are the integration base
+                        required clean checkout whose HEAD/origin/main are the integration base
   -h, --help            show this help
 
-Run this script from the exact candidate checkout. By default that checkout is
-also treated as the integration checkout; for the bootstrap case where this
-script is new in the candidate, point --integration-root at a separate clean
-checkout of the exact expected main. The script does not fetch, merge, commit,
-push, or change refs.
+Run this script from the exact candidate checkout and point --integration-root
+at a separate clean checkout of the exact expected main. Keeping verifier source
+and integration base separate makes the bootstrap case explicit and prevents
+the candidate checkout from being mistaken for the integration base. The script
+does not fetch, merge, commit, push, or change refs.
 EOF
 }
 
@@ -63,8 +63,8 @@ while [[ "$#" -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$RECEIPT_FILE" || -z "$CANDIDATE_REF" || -z "$EXPECTED_MAIN" ]]; then
-  echo "error: --receipt-file, --candidate, and --expected-main are required" >&2
+if [[ -z "$RECEIPT_FILE" || -z "$CANDIDATE_REF" || -z "$EXPECTED_MAIN" || -z "$INTEGRATION_ROOT" ]]; then
+  echo "error: --receipt-file, --candidate, --expected-main, and --integration-root are required" >&2
   exit 2
 fi
 
@@ -73,13 +73,14 @@ if ! git -C "$SCRIPT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 2
 fi
 
-if [[ -z "$INTEGRATION_ROOT" ]]; then
-  INTEGRATION_ROOT="$SCRIPT_ROOT"
-else
-  INTEGRATION_ROOT="$(cd "$INTEGRATION_ROOT" 2>/dev/null && pwd -P)" || {
-    echo "error: integration root does not exist" >&2
-    exit 2
-  }
+INTEGRATION_ROOT="$(cd "$INTEGRATION_ROOT" 2>/dev/null && pwd -P)" || {
+  echo "error: integration root does not exist" >&2
+  exit 2
+}
+
+if [[ "$INTEGRATION_ROOT" == "$SCRIPT_ROOT" ]]; then
+  echo "error: candidate checkout and integration root must be separate checkouts" >&2
+  exit 2
 fi
 
 if ! git -C "$INTEGRATION_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
