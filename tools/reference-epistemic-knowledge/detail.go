@@ -19,8 +19,8 @@ type DetailQuery struct {
 	AssertionID                      string   `json:"assertionId"`
 	ExpectedMeaningFingerprint       string   `json:"expectedMeaningFingerprint"`
 	ExpectedReviewSubjectFingerprint string   `json:"expectedReviewSubjectFingerprint"`
-	ExpectedTargetBinding            string `json:"expectedTargetBinding"`
-	ExpectedReviewLogSequence        int    `json:"expectedReviewLogSequence"`
+	ExpectedTargetBinding            string   `json:"expectedTargetBinding"`
+	ExpectedReviewLogSequence        int      `json:"expectedReviewLogSequence"`
 }
 
 type DetailEvidenceRef struct {
