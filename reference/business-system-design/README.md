@@ -121,7 +121,9 @@ go run ./tools/reference-business-procedure-check -review-validation-scope
 | `review-needed` | 明示参照の集合に差があり、人による適用範囲の確認が必要。自動的な不整合判定ではない |
 | `no-set-difference` | 集合には差がない。ただし業務上の意味や実行結果が一致する証拠ではない |
 | `unresolved-context` | 比較先Applicationが未指定・未発見・重複しており、比較を行わない |
-| `unresolved-reference` | Validation参照が未解決・重複するため、集合差の判定を保留する。重複IDを集合化によって隠さない |
+| `unresolved-reference` | Validation参照が未解決・重複するため、集合差の判定を保留する。`referenceIssues`には原因となる側、Validation ID、原因を具体的に返す |
+
+`referenceIssues`の要素は、`side`（`application`または`procedure`）、`id`（明示されたValidation ID）、`reason`で構成します。`reason`は`missing-definition`（意味定義が存在しない）、`ambiguous-definition`（意味定義が複数存在する）、`duplicate-declaration`（その側で同じ参照を繰り返した）のいずれかです。同じIDでも両側で解決できない場合はそれぞれ表示します。これらは調査の手掛かりであり、参照差やビジネス上の矛盾を確定しません。出典ファイルを探せなかった状態を表す`unresolvedSource`とは別概念です。
 
 この表示は`reference-authoring-fixture`へ値を書き戻しません。`fixture.application`は比較する文脈に限り、Procedureの所有者を意味しません。また、差が見つかっても追加のValidationや権限、確認済みの業務規則を自動的に作成しません。既存のblocking diagnosticと`-expect-diagnostic`の判断も変更しません。
 
