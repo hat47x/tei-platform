@@ -107,7 +107,20 @@ Builder Review Handoff
   != write / runtime authority
 ```
 
-HandoffはKnowledge本文を集約しない。Qualificationがapplicableでも、その結果は「明示したrequirementsに対してcurrent Evidence上適用可能」という範囲に限る。実際のKnowledge本文は既存Disclosureからcurrent stateを取得し、そのDisclosure fingerprintで再利用可否を追跡する。これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
+HandoffはKnowledge本文を集約しない。Qualificationがapplicableでも、その結果は「明示したrequirementsに対してcurrent Evidence上適用可能」という範囲に限る。実際のKnowledge本文は既存Disclosureからcurrent stateを取得し、そのDisclosure fingerprintで再利用可否を追跡する。
+
+HandoffからDisclosureへ進むときは、保存済みHandoffの内容をそのまま信用しない。current Context / Source Indexから同じQualification requirementsでHandoffを再構成し、fingerprint一致と`qualified-for-disclosure`を確認してから既存Disclosureを生成する。Handoffとcurrent stateが一致しなければstaleとして停止する。
+
+```text
+saved handoff
+  + current Context / Source Index
+  -> rebuild current handoff
+  -> fingerprint equal?
+  -> qualified-for-disclosure?
+  -> existing DisclosureProjection
+```
+
+DisclosureにはHandoffを埋め込まない。したがってDisclosureの存在自体は、任意の別taskについてQualification済みであることを意味しない。これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
 
 Review Planのfingerprintはrouting identityを表すだけであり、選択したKnowledge自体のfreshness proofにはしない。また、推奨された区画をQualification済みKnowledgeやsemantic applicabilityへ昇格させず、必要なQualificationを別境界で通す。current Knowledge Contextに区画が無いことも、他のKnowledge surfaceを含む全体的な不存在へ一般化しない。Knowledge内容の再利用可否は、それぞれのProjection / DisclosureのfingerprintとEvidence境界で別に確認する。
 
