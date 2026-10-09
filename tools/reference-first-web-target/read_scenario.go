@@ -204,6 +204,7 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 			"runtime-row-index-is-selection-state-not-business-identity",
 			"runtime-row-or-attribute-value-is-not-business-identity-proof",
 			"explicit-result-mapping-is-semantic-correspondence-not-business-key-proof",
+			"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
 			"browse-runtime-environment-binding-is-not-inferred",
 			"reference-and-header-detail-runtime-binding-use-driver-environment-resolution",
 			"read-slice-does-not-imply-authorization-or-command-readiness",
