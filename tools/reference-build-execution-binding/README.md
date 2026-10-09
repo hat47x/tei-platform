@@ -120,3 +120,21 @@ Locatorだけの変更はcontent driftに数えません。
 Runtime Engine bindingはselected output roleのdigestと`ImplementationDigest`、Build TargetとEngine Targetをcross-checkします。
 
 このReferenceにより、共通化の単位は「Plugin Build」ではなくbuild execution / physical outputであり、PluginやRuntime Engineは後段のtyped subject bindingとして分けられる候補が得られます。
+
+## read-only Evidence runner
+
+Referenceはfilesystemやnetworkへ書き込まず、固定fixtureから決定論的なJSON Evidenceを出力します。
+
+```bash
+go run ./tools/reference-build-execution-binding
+```
+
+Evidenceには次を含めます。
+
+- one execution / one Artifact Setを共有する二つのPlugin binding
+- multi-output Artifact Set
+- missing / extra / changed memberを保持した非再現比較
+- fake Pluginを使わないRuntime Engine binding
+- authorityを付与しないことを示すlimit
+
+runnerの出力が成立してもproduction Build model採用やAcceptance成立とは扱いません。
