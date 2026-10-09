@@ -11,10 +11,10 @@ import (
 // Principal is returned by a trusted, explicitly supplied session verifier.
 // Subject and issuer are never inferred from a display name or email address.
 type Principal struct {
-	ProviderID    string
-	Issuer        string
-	Subject       string
-	PrincipalID   string
+	ProviderID  string
+	Issuer      string
+	Subject     string
+	PrincipalID string
 }
 
 // Policy is host-owned: callers must not derive its contents from a browser request.
