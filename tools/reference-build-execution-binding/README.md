@@ -40,6 +40,8 @@ RuntimeEngineSubjectBinding
 
 Sourceの`Locator`もcontent identityとは分けます。exact digestが同じであれば、Repository pathやstore locatorが変わっただけではBuildExecutionPlan fingerprintを変えません。Locatorは再取得・観測のために保持しますが、artifact-affecting input identityではありません。
 
+ただし、path自体がbuild意味へ影響する場合まで無視してよいわけではありません。Goのpackage/module path、relative embed、生成器のlogical entrypoint等、位置がartifactへ影響し得る情報は、builder adapterがSource closure digest、Recipe、Parameter等の**build input identity**へ含める必要があります。Locatorだけにbuild意味を隠したままidentityから落とすことは許容しません。
+
 SHA-256の16進表記は、現行Build / Runtime contractが大文字・小文字のどちらも受理するため、identity計算時に小文字へ正規化します。同じdigestを文字表記の大小だけで別artifactや別executionとして扱いません。`sha256:` prefix自体は現行contractどおり固定です。
 
 重要なのは、同じartifact bytesと同じbuild executionを同一視しないことです。
