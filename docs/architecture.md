@@ -1,8 +1,8 @@
-# Architecture
+# TEIの全体構成
 
-この文書は、TEIの実装構造と技術境界を追う開発者向けです。概念を先に把握したい場合は、[TEIの考え方](overview.md) を先に読む方が自然です。業務システム設計上の境界は [Business-System Design](business-system-design.md) も参照してください。
+この文書では、開発者向けにTEIの実装構造と技術的な境界を説明します。基本的な考え方は、先に[TEIの考え方](overview.md)を読むと把握しやすくなります。業務システム設計上の境界は[業務システムの設計](business-system-design.md)も参照してください。
 
-## レイヤ
+## 四つの層
 
 TEIの基本的な分離は次の4層です。
 
@@ -22,9 +22,9 @@ Implementation & Execution Layer
 
 「何で実装するか」は、「何を意味するか」の一部にはしません。
 
-## Authoring DSL / Canonical IR / Runtime
+## 記述形式・意味の正本・実行時の表現
 
-Authoring形式、Canonical meaning、Runtime objectを同一視しません。
+入力に使う記述形式、正本となる業務上の意味、実行時に使うオブジェクトは、それぞれ別のものとして扱います。
 
 ```text
 TEI DSL / native SQL / Editor / AI candidate
@@ -36,19 +36,19 @@ Runtime Model / Execution Plan / Target Projection
 Go / SQL / Plugin / external system / generated application
 ```
 
-`.tei`はTEI-native meaningを記述する主要なauthoring front-endですが、`.tei`のsyntax tree自体がCanonical Modelではありません。
+`.tei`はTEI固有の意味を記述する主要な入力形式ですが、解析した構文木そのものが意味の正本（Canonical Model）になるわけではありません。
 
-Canonical Semantic Layerは、authoring形式やfile pathから独立したidentityと意味を保持します。Runtimeは、その意味を特定Environment / Provider / Targetへrealizeした実行形です。
+意味を管理する層では、入力形式やファイルの場所に依存しない識別情報と意味を保持します。実行時には、それを特定の環境・提供元・実行先に対応させた形を使います。
 
-GoはParser / Resolver / Validator / Analyzer / Compiler / Runtime / Plugin Host等を支えるTEI platformの主要実装基盤ですが、個別業務システムの意味をGoの型、framework API、Wails等のHost APIへ固定しません。
+Goは、構文解析、名前や参照先の解決、検証、分析、変換、実行、プラグインの管理などを支える主要な実装言語です。ただし、個別の業務システムが持つ意味を、Goの型や開発基盤のAPI、Wailsなどの実行環境固有のAPIに固定しません。
 
-この分離により、業務Applicationは原則としてDSL / native asset中心で記述しつつ、Coreの決定論的な検証・実行境界をGoで提供できます。
+このように分けることで、業務アプリケーションは原則としてDSLや既存資産を使って記述し、中核部分の決定論的な検証と実行はGoで支えられます。
 
-## Repository / Workspace
+## リポジトリと作業領域
 
-Workspaceは`tei.workspace.yaml`で管理rootを定義します。
+作業領域（Workspace）の管理対象となるルートディレクトリは、`tei.workspace.yaml`で定義します。
 
-File pathはsemantic identityではありません。Canonical IDを安定識別子として使います。
+ファイルのパスを意味上の識別子にはしません。意味の正本には安定した識別子（Canonical ID）を使います。
 
 ```text
 workspace/
@@ -65,9 +65,9 @@ workspace/
 └─ .tei/
 ```
 
-## Source-to-Canonical Traceability
+## 入力元から意味の正本までの追跡
 
-Source情報はCanonical Worldへ埋め込まず、Authoring / Workspace側のderived **Source Index**として分離します。
+入力元の情報は意味の正本（Canonical World）に埋め込まず、入力・作業領域側で生成する**入力元索引（Source Index）**として分離します。
 
 ```text
 Authoring source
@@ -83,11 +83,11 @@ path-independent         locator / fingerprint / range / role
 Diagnostic + Subject ──────────┘
 ```
 
-Source ArtifactはWorkspace-relative pathとcontent fingerprintを持ち、Source Referenceはpath-independentなSubjectへbyte rangeとroleを結び付けます。
+入力元の成果物（Source Artifact）は作業領域からの相対パスと内容の指紋値を持ちます。入力元への参照（Source Reference）は、パスに依存しない対象（Subject）へ、バイト範囲と役割を結び付けます。
 
-Semantic validationはSource Indexへ依存せず`Diagnostic + Subject`を返し、Authoring側でsourceへprojectします。Canonical subjectがまだ成立していないparse / lexer errorは、擬似的なidentityを作らずsource-direct diagnosticとして扱います。
+意味の検証は入力元索引に依存せず、`Diagnostic + Subject`を返します。入力側では、その結果を元の記述位置へ対応付けます。構文解析や字句解析に失敗して、正本側の対象がまだ成立していない場合は、架空の識別子を作らず、入力元を直接示す診断として扱います。
 
-Source Indexは次のCLIでinspectionできます。
+入力元索引は、次のCLIコマンドで確認できます。
 
 ```bash
 go run ./cmd/tei source-index \
@@ -96,20 +96,20 @@ go run ./cmd/tei source-index \
   -subject-id order_entry.recent_orders
 ```
 
-この出力はderived projectionであり、Canonical source of truthではありません。
+この出力は派生した表示であり、意味の正本ではありません。
 
-M0.23で直接検証している不変条件と実装・テストの対応は、[Source-to-Canonical TraceabilityのConformance](conformance/source-traceability-m0.23.md) に整理しています。
+M0.23で直接検証した不変条件と実装・テストの対応は、[入力元と意味の正本の対応に関する適合性資料](conformance/source-traceability-m0.23.md)に整理しています。
 
-## Native asset adoption / authority migration
+## 既存資産の利用と正本の移管
 
-既存Applicationや外部toolのnative assetをTEIから読めることと、その意味のauthoritative sourceをTEIへ移したことは別です。
+TEIから既存アプリケーションや外部ツールの資産を読めることと、その意味を確定する正本の管理主体をTEIへ移したことは別です。
 
 ```text
 read / parse / project successfully
   != authority transferred
 ```
 
-段階移管では、まずnative assetをauthoritative sourceとして残し、TEI側のmapping / projection / diagnosticsをderived・read-onlyに保つことを許容します。
+段階的に移管する際は、既存資産を正本として残し、TEI側の対応付け・用途別の表現・診断を、派生した読み取り専用の情報として扱えます。
 
 ```text
 before cutover
@@ -121,7 +121,7 @@ TEI mapping / projection
   = derived / reference
 ```
 
-TEI側で対象意味をlosslessに表現できるEvidenceが揃っても、それだけでsource ownershipを自動変更しません。authorityを移す場合は、少なくとも対象scopeごとに次を明示します。
+TEI側で対象の意味を欠落なく表現できる検証根拠が揃っても、正本の管理主体は自動的には変わりません。管理主体を移す場合は、少なくとも対象範囲ごとに次の情報を明示します。
 
 - source owner before cutover
 - source owner after cutover
@@ -130,9 +130,9 @@ TEI側で対象意味をlosslessに表現できるEvidenceが揃っても、そ�
 - unresolved / unsupported fields
 - rollback path
 
-cutoverはShared Acceptanceや明示的なmigration decisionを通す**authority transition**として扱います。import成功、最新writer、file timestamp、TEIでのparse成功、生成物の存在だけから推測しません。
+正本の切り替えは、共同の受け入れ確認（Shared Acceptance）や明示的な移管判断を伴う**管理権限の移行**として扱います。取り込みの成功、最後に書き込んだ主体、ファイルの更新日時、構文解析の成功、生成物の存在だけから、移行したとは判断しません。
 
-partial migrationも許容します。同じApplication全体へ一つの`tei-native` flagを付けるのではなく、subject / concern単位でownerが異なり得ます。ただし同一concernに二つの暗黙正本を作りません。
+部分的な移管も認めます。アプリケーション全体に一つの`tei-native`フラグを付けるのではなく、対象や関心領域ごとに管理主体が異なる場合を扱います。ただし、同じ関心領域に暗黙の正本を二つ作りません。
 
 ```text
 native source authoritative
@@ -144,7 +144,7 @@ cutover後に旧native assetをcompatibility / export / generated artifactとし
 
 現時点では`AuthorityMigration`等のproduction schemaやglobal cutover protocolをCoreへ固定しません。SUI Reference Adoption等の実Referenceで、scope・equivalence・rollback情報のどれがdurable contractとして必要かを確認します。
 
-## Authoring candidate / Integration / Acceptance Boundary
+## 編集候補の統合と受け入れの境界
 
 Editor、CLI、file-native tooling、AI支援等が増えても、authoritative sourceを変更する入口ごとに別のCanonical authorityを増やしません。
 
@@ -212,7 +212,7 @@ AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等�
 
 この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置きます。Gate C後の実証は、一つのAI Issueへ集約せず、[`ISSUE-000046`](../plan/issue/000046-studio-shared-acceptance-authoring-loop.md)でStudioのShared Acceptance loop、[`ISSUE-000047`](../plan/issue/000047-knowledge-first-semantic-exploration.md)でHuman / AI共通のread-only探索、[`ISSUE-000027`](../plan/issue/000027-ai-proposal-acceptance-boundary.md)でAI Proposal / Acceptanceをそれぞれ扱います。
 
-## Development Tool / Host Boundary
+## 開発ツールと実行環境の境界
 
 TEIは、ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE / CLI、CI等を、TEI専用Agent Runtimeの下位実装として扱いません。
 
@@ -259,13 +259,13 @@ Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / 
 
 この境界の長期判断は[ADR-0031](../plan/adr/0031-tool-neutral-git-native-development.md)、Executable Referenceは[ISSUE-000083](../plan/issue/000083-tool-neutral-development-reference.md)で扱います。
 
-## Semantic kernel
+## 意味を扱う中核
 
 Coreへ無制限に専用kindを追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
 
 Data、Action、Workflow、StateMachine、Migration等は、すべてをMicro Kernelの専用primitiveにする必要はないと考えています。
 
-### Canonical definitionとApplication instance dataを分ける
+### 意味の定義とアプリケーションの個別データを分ける
 
 Canonical Semantic Layerが扱うData / Relation / Validation等の**定義上の意味**と、Application利用時に生成・保存される個々のrecord / user content / domain instanceを同一視しません。
 
@@ -306,7 +306,7 @@ Application instanceがSource / Observation / Evidenceの対象になったり�
 
 現時点では汎用`Instance` Canonical kindやrecord mirrorをCoreへ追加しません。SUI Reference Adoption等の実Referenceで、definition / instance / projection metadata / observed runtime stateの境界をPressureします。
 
-## Business Action / Application Function / Capability / Realization
+## 業務操作・アプリケーション機能・外部能力・実現方式
 
 業務上の行為とApplication / Runtimeの実現を分離します。
 
@@ -329,7 +329,7 @@ Business Procedureは、purpose / trigger / actor / manual or external work / Ap
 
 現時点ではBusiness ProcedureのProduct Requirementを固定しますが、`Procedure`をdurable top-level Canonical identityにするかはReference Evidenceが出るまで固定しません。
 
-## Three-view cross-validation
+## 三つの観点からの相互検証
 
 Data、Function / Interaction、Business Procedureは、別々の正本ではなく同じCanonical meaningを検査する異なる視点です。
 
@@ -349,7 +349,7 @@ CRUD matrix、flow、graph等はこの検査に有用ですが、原則として
 
 詳細は [Business-System Design](business-system-design.md) とRQ-025 / RQ-026を参照してください。
 
-## Authorization semantic boundary
+## 権限判定における意味の境界
 
 Authentication / Organization / Authorizationを一つの固定organization schemaへ畳みません。
 
@@ -369,7 +369,7 @@ Business ProcedureのactorはAuthorization Roleではありません。actor lab
 
 Capabilityの意味的存在と、そのCapabilityをinvokeできるauthorityも別です。
 
-## Decision Policy / Action Contract / Authorityを分ける
+## 判断規則・操作契約・実行権限を分ける
 
 Rule、AI、Human-assisted policy等が「次に何をするか」を選ぶことと、その操作の意味や実行権限を定義することを分けます。
 
@@ -401,7 +401,7 @@ AI policyがraw tool callを生成できても、それを新しいAction Contra
 
 現時点では汎用Decision Policy interfaceやAction Catalog schemaをCoreへ固定しません。Gate C後のsmall Referenceで、Rule / AIの差し替えがRuntime意味を二重化しないことをPressureします。
 
-### AI BuilderとAI Business Actorを分ける
+### AIによる構築と業務操作の主体を分ける
 
 AIがTEI knowledgeを利用する場合も、**Application definitionを変更する主体**と、**受入済みBusiness / Application knowledgeに従って業務Actionを実行する主体**を分けます。
 
@@ -464,7 +464,7 @@ AI向けにCanonical Worldを複製した第二のKnowledge Baseを正本化し�
 
 現時点ではAI Actor専用Runtime、Agent Framework、Agent-only Capability taxonomy、machine-executable Procedure schemaをCoreへ追加しません。RQ-030 / ADR-0028 / ISSUE-000053のReferenceから最小contractを決めます。
 
-### 共通知識面とactor-specific projectionを分ける
+### 共通の知識と主体別の表示を分ける
 
 人間、AI Builder、AI Business Actorが同じTEI knowledgeへ到達できることは、全員へ同じ巨大payloadを渡すことを意味しません。
 
@@ -497,7 +497,7 @@ Operational ProjectionはAI Business Actorがcurrent Procedure / Action / Capabi
 
 現時点では汎用`ApplicationContext` / `KnowledgePacket` schemaをCoreへ固定しません。ISSUE-000053 Phase 0〜2で、既存assetからどこまで再構築できるかを先にPressureします。
 
-### Knowledge portabilityはpattern recallと分ける
+### 知識の持ち運びと既存パターンの再利用を分ける
 
 別Applicationの知識を再利用するとき、Reference Patternとして「似た構造を思い出す」ことと、origin Applicationで受入済みのDomain / Infrastructure knowledgeをdestinationへ持ち込むことを同一視しません。
 
@@ -550,7 +550,7 @@ destination overrideをoriginへ暗黙back-propagateせず、copy-pasteだけで
 
 現時点ではKnowledge Package、inheritance graph、override schema、cross-repository auto-sync protocolをCoreへ固定しません。RQ-029 / ISSUE-000053 Phase 5のReferenceから、どのdependency / invalidation / override traceがdurable contractとして必要かを確認します。
 
-### known operationはAI呼び出しを必須にしない
+### 既知の操作ではAIの呼び出しを必須にしない
 
 Decision Policyを交換可能にすることは、すべてのoperationをLLMへ送ることを意味しません。
 
@@ -571,7 +571,7 @@ exact identity、既知rule、明示済みCapability、決定論的変換等で�
 
 このroutingは性能最適化だけでなく、同じsemantic contractをよりpredictable / local / low-costに満たせる範囲を保つための境界です。現時点でrouter implementationや固定thresholdはArchitectureへ採用しません。
 
-## Database lifecycle
+## データベースの変更と運用の周期
 
 DatabaseはApplicationから独立したUnitです。
 
@@ -598,7 +598,7 @@ PostgreSQLではPrimary Keyのbacking indexを通常Indexとして二重に表�
 
 M0.27ではForeign Keyも同じDatabase-owned realizationとして扱います。Semantic Relationから自動生成せず、Persistence Mappingがsource Attribute、referenced Mapping、target Attributeを明示します。`RealizeDesired`がphysical FKへ解決し、Schema Diffはconstraint名ではなくsource columns / referenced table / referenced columnsの構造で比較します。constraint名だけの違いはdriftではありません。詳細は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) と [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
 
-## Query
+## 問い合わせ
 
 SQLは「低級だから隠す」対象ではなく、正式なauthoring front-endの一つです。
 
@@ -606,7 +606,7 @@ SQL-authored queryではSQLがauthoring source of truthで、Query IRはderived�
 
 M0.23ではQuery declarationからnative `.sql`を参照できます。Workspace loaderはSQL本文を既存Query modelへ渡しますが、physical `.sql` pathはCanonical QueryやAnalyzer protocolへ混ぜません。Query declarationは`definition`、SQL fileは同一Query Subjectの`authoring` sourceとしてSource Indexから追跡します。
 
-## Target / Host boundary
+## 実行先とホストの境界
 
 ApplicationのPresentation / InteractionをTargetへProjectionするとき、Target差を一つのframework差へまとめません。
 
@@ -680,7 +680,7 @@ Visual evaluator、GUI agent、VLM等を利用しても、Visual Evidenceだけ�
 
 第二Targetでの圧力試験は[`ISSUE-000026`](../plan/issue/000026-target-capability-execution-profile-boundary.md)で扱います。
 
-## Deployment
+## 配備と外部状態の確認
 
 ```text
 Solution Release
@@ -698,7 +698,7 @@ Reconcile
 
 Release DefinitionとDeployment execution historyを分離します。
 
-## Plugin / Runtime
+## プラグインと実行環境
 
 PluginはCapabilityの配布単位です。
 
@@ -712,7 +712,7 @@ M0.24では`StdioProcessLauncher`をReference Host adapterとして追加し、a
 
 M0.22.1で直接検証している境界とテストの対応は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
 
-## Host restart / takeover
+## ホストの再起動と引き継ぎ
 
 M0.22では、Supervisor takeover後に外部process / containerへどう再接続するかを`DurableInvocationHandle`として分離しました。
 
