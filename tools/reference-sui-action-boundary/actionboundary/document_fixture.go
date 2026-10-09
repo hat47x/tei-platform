@@ -13,12 +13,12 @@ import (
 // In particular, this fixture does not implement native drag/drop island joining,
 // undo/redo, validation, or durable persistence.
 type JSONDocumentStore struct {
-	mu         sync.Mutex
-	revision   string
+	mu           sync.Mutex
+	revision     string
 	baseRevision string
-	documentID string
-	document   []byte
-	writes     int
+	documentID   string
+	document     []byte
+	writes       int
 }
 
 // MovePayload carries the final absolute world coordinates after a native UI
@@ -33,10 +33,10 @@ type MovePayload struct {
 // the fixture. An empty identity is rejected at commit time.
 func NewScopedJSONDocumentStore(documentID, revision string, document []byte) *JSONDocumentStore {
 	return &JSONDocumentStore{
-		documentID: documentID,
-		revision:   revision,
+		documentID:   documentID,
+		revision:     revision,
 		baseRevision: revision,
-		document:   append([]byte(nil), document...),
+		document:     append([]byte(nil), document...),
 	}
 }
 
