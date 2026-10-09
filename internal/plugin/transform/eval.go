@@ -402,12 +402,13 @@ func (e *evaluator) canonicalJSON(value Value) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// JSONWithinLimit performs one bounded size walk and one encoding walk.
-	// Charge both byte-linear passes before materializing the output bytes.
-	if size > int(^uint(0)>>1)/2 {
+	// We perform one size walk here, then JSONWithinLimit performs its own
+	// bounded size walk followed by encoding. Charge all three byte-linear
+	// passes before materializing the output bytes.
+	if size > int(^uint(0)>>1)/3 {
 		return nil, fmt.Errorf("canonical JSON size overflow")
 	}
-	if err := e.consumeByteWork(size * 2); err != nil {
+	if err := e.consumeByteWork(size * 3); err != nil {
 		return nil, err
 	}
 	return value.JSONWithinLimit(e.limits.MaxOutputBytes)
