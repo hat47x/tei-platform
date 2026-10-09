@@ -236,7 +236,7 @@ Cookieに依存して状態を変更する要求では、CSRF対策が必要で�
 
 **E1：読み取り専用の構成検査**。初版の[参照実装候補](../../reference/web-composition/README.md)では、保護された業務操作の処理グラフと、二つの認証方式の明示的な主体対応付けを検査する。保護の欠落、前後制約、排他的接続点、公開範囲、作用域、暗黙の弱い方式への切替えを負例とした。12件の条件判定をV8隔離環境で直接確認したが、リポジトリの実ファイルに対するNodeテスト、実HTTP、実IdPの検証は未実施である。処理点が保護を宣言したことを、実際の保護の成立とは扱わない。
 
-**E2：Goの実HTTP処理との結合**。現行ServeMuxから既存のCommand Actionへ接続する経路で、保護あり／なし、拒否・障害・短絡応答を検証する。従来のシナリオを置き換えず、受入境界を分ける。
+**E2：Goの実HTTP処理との結合**。[E2のGo参照実装](../../reference/web-composition/README.md)を追加した。合成Providerを使う一つのPOST経路について、Host側でセッション確認・要求元保護・Action認可を強制し、拒否・障害・短絡応答と監査を試験する。Goの`httptest.NewServer`を使ったローカルHTTP試験、race test、vet、gofmtに成功した。ただし**既存First Web Targetの実Command Actionにはまだ接続していない**ため、現行ServeMuxと`security.authenticate`/`security.authorize`を通した検証は残る。従来のシナリオを置き換えず、受入境界を分ける。
 
 **E3：認証の交換と共存**。まず合成ProviderでOIDC相当と既存認証相当の選択・主体対応付け・セッションを試し、その後に本物のIdPとWebブラウザで検証する。合成試験の成功を実IdPや本番セキュリティの成立としない。
 
