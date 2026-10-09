@@ -3,6 +3,7 @@ package actionboundary
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"tei/internal/security/legacyauthorization"
 	"tei/internal/semantic"
@@ -38,7 +39,7 @@ func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actio
 	result, err := capabilityinvoke.Invoke(ctx, a.Capability, a.Adapter, legacyauthorization.Input{
 		SubjectID: subject,
 		Action:    "execute",
-		Resource:  appID + "/" + docID + "/" + actionID,
+		Resource:  authorizationResource(appID, docID, actionID),
 	})
 	if err != nil {
 		return fmt.Errorf("%w: authorization invocation: %v", ErrDenied, err)
@@ -47,7 +48,7 @@ func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actio
 		return fmt.Errorf("%w: authorization outcome %s", ErrDenied, result.Outcome)
 	}
 	grant, ok := result.Payload.(legacyauthorization.AuthorizationGrant)
-	if !ok || grant.SubjectID != subject || grant.Action != "execute" || grant.Resource != appID+"/"+docID+"/"+actionID {
+	if !ok || grant.SubjectID != subject || grant.Action != "execute" || grant.Resource != authorizationResource(appID, docID, actionID) {
 		return fmt.Errorf("%w: authorization grant mismatch", ErrDenied)
 	}
 	return nil
@@ -56,5 +57,5 @@ func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actio
 // authorizationResource encodes each identity separately. Concatenating raw
 // identities would conflate (app="a/b", doc="c") with (app="a", doc="b/c").
 func authorizationResource(appID, docID, actionID string) string {
- return url.PathEscape(appID)+"/"+url.PathEscape(docID)+"/"+url.PathEscape(actionID)
+	return url.PathEscape(appID) + "/" + url.PathEscape(docID) + "/" + url.PathEscape(actionID)
 }
