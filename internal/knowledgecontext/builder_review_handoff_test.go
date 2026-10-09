@@ -179,6 +179,27 @@ func TestBuilderReviewHandoffCompositionRejectsMismatchedOrModifiedPlan(t *testi
 	}
 }
 
+func TestBuildBuilderReviewHandoffRejectsMixedContextAndSourceIndexRevisions(t *testing.T) {
+	ctx, sources := builderReviewHandoffApplicationFixture("sha256:context-pattern", "sha256:dependency")
+	for i := range sources.Artifacts {
+		if sources.Artifacts[i].Path == "applications/order-entry/patterns/customer-reference.tei" {
+			sources.Artifacts[i].Fingerprint = "sha256:source-index-pattern"
+		}
+	}
+
+	_, err := BuildBuilderReviewHandoff(
+		ctx,
+		sources,
+		QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "order_entry",
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "mixed Context and Source Index revisions") {
+		t.Fatalf("mixed Context / Source Index revisions were not rejected: %v", err)
+	}
+}
+
 func TestBuilderReviewHandoffFingerprintTracksQualificationEvidenceRevision(t *testing.T) {
 	ctx, firstSources := builderReviewHandoffApplicationFixture("sha256:pattern", "sha256:dependency-first")
 	requirements := QualificationRequirements{
