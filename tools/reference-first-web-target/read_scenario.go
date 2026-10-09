@@ -27,7 +27,7 @@ type readScenarioResult struct {
 	Environment     string                     `json:"environment"`
 	ApplicationID   string                     `json:"applicationId"`
 	From            string                     `json:"from"`
-	SelectedRow     int                        `json:"selectedRow"`
+	SelectedRowIndex int                        `json:"selectedRowIndex"`
 	BrowseRows      []semanticRowProjection    `json:"browseRows"`
 	SelectedOrder   semanticRowProjection      `json:"selectedOrder"`
 	CustomerRows    []semanticRowProjection    `json:"customerRows"`
@@ -183,7 +183,7 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		Environment:   string(r.environmentID),
 		ApplicationID: string(r.applicationID),
 		From:          input.From,
-		SelectedRow:   input.RowIndex,
+		SelectedRowIndex: input.RowIndex,
 		BrowseRows:    browseRows,
 		SelectedOrder: selectedOrder,
 		CustomerRows:  customerRows,
