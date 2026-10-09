@@ -54,7 +54,7 @@ SEI側のISSUE-000079も、同じ条件（Gate B Ready + Handover Baseline固定
 
 ISSUE-000054のResolutionは、再開時には000054を開き直さず、新しいEvidenceに結び付いた後続Issueで扱うと定めています。本Issueがその後続Issueです。
 
-SEI側でも、2026-09-27に行った「SEIを製品群の統合の頂点に置く」ための評価で、この再開がすぐに着手できる項目として挙がりました。評価記録は`hat47x/sei-cognition:product/value/SEI_FAMILY_APEX_VALUE_REVIEW.md`にあり、ISSUE-000079へ再開条件の成立を記す日付つきの節も提案されています。どちらもSEIの未統合branch `docs/family-apex-backflow-20260927`にだけあり、SEI側ではまだ採用されていません。
+SEI側でも、2026-09-27に行った「SEIを製品群の統合の頂点に置く」ための評価で、この再開がすぐに着手できる項目として挙がりました。評価記録は`hat47x/sei-cognition:product/value/SEI_FAMILY_APEX_VALUE_REVIEW.md@041c3fa`にあり、ISSUE-000079へ再開条件の成立を記す日付つきの節も提案されています。どちらもSEIの`develop/v0.2.0`にあり（`main`には未統合）、SEI側ではまだ採用されていません。
 
 ## 防ぎたい失敗
 
@@ -205,7 +205,7 @@ Change 1と同じく、実行結果は`reference/sei-adoption/`へmachine-readab
 
 ## 付記 — 同じSEI連携の検討から出た二つの設計メモ（評価待ち・本Issueの完了条件外）
 
-SEI側では2026-09-27に、hat47xの製品群に対するSEIの役割を「統合の頂点」として定義し直す提案が出ました（`hat47x/sei-cognition:plan/adr/ADR-0032-family-integration-apex-and-control-meaning-boundary.md`、提案中）。SEIは製品ごとの記録を統合せず、製品間の対応表（`hat47x/sei-cognition:product/definition/SEI_FAMILY_SEMANTIC_MAP.md`）で翻訳する、という立場です。どちらもSEIの未統合branch `docs/family-apex-backflow-20260927`にだけあります。TEIから見た境界は[TEI Product Value §8](../../product/value/TEI_PRODUCT_VALUE.md)に記しています。
+SEI側では2026-09-27に、hat47xの製品群に対するSEIの役割を「統合の頂点」として定義し直す提案が出ました（`hat47x/sei-cognition:plan/adr/ADR-0035-family-integration-apex-and-control-meaning-boundary.md@041c3fa`、提案中）。SEIは製品ごとの記録を統合せず、製品間の対応表（`hat47x/sei-cognition:product/definition/SEI_FAMILY_SEMANTIC_MAP.md@041c3fa`）で翻訳する、という立場です。どちらもSEIの`develop/v0.2.0`にあり、`main`には未統合です。統合前のADR番号はADR-0032でした。TEIから見た境界は[TEI Product Value §8](../../product/value/TEI_PRODUCT_VALUE.md)に記しています。
 
 この提案に対して、TEI側で残しておきたい設計メモが二つあります。どちらも小さく、まだ作業として切り出す段階ではないため、AGENTS.mdの「小さい機能では新しい設計文書を作らず、Issue本文へ書く」に従ってここへ置きます。作業に進める場合は、それぞれ独立したIssueへ切り出します。
 
@@ -215,7 +215,7 @@ SEI側では2026-09-27に、hat47xの製品群に対するSEIの役割を「統�
 
 Shared Acceptance Boundary（file / CLI / Studio / AIのどの入口から来た変更候補も、同じ検査を通してから正本へ反映する受理境界）は、受理のたびに`.tei/decisions/<内容のSHA-256>.json`へ記録を残します（[`tools/reference-shared-acceptance`](../../tools/reference-shared-acceptance/README.md)、RQ-027）。この記録は、後から入る人やAIが「このsourceはなぜここにあるのか」を会話履歴なしで読むためのもので、**Evidenceであってauthorityではありません**。`.tei/`はmanaged sourceではないので、記録を全部消しても、model revisionも受理済みの意味も変わりません。
 
-SEI側の対応表案は、この受理記録を「Decisionの記録 + Authority evidence ref（権限の証拠への参照）」と読みます。SEIの`hat47x/sei-cognition:plan/issue/ISSUE-000082-derive-family-afferent-profile-from-sibling-records.md`（未統合branchのみ）は、実在する兄弟製品の記録から、製品がSEIへ送る記録の最小形を導こうとしています。TEIの受理記録はその入力の候補です。
+SEI側の対応表案は、この受理記録を「Decisionの記録 + Authority evidence ref（権限の証拠への参照）」と読みます。SEIの`hat47x/sei-cognition:plan/issue/ISSUE-000087-derive-family-afferent-profile-from-sibling-records.md@041c3fa`（`develop/v0.2.0`のみ。統合前の番号はISSUE-000082）は、実在する兄弟製品の記録から、製品がSEIへ送る記録の最小形を導こうとしています。TEIの受理記録はその入力の候補です。
 
 #### 防ぎたい失敗
 

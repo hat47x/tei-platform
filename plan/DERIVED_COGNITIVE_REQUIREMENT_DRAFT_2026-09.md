@@ -120,7 +120,7 @@ Learned Memory  != Decision History
 
 ### 5. SEIの統合頂点の検討から借りる二つの考え方（2026-09-27追記・評価待ち）
 
-2026-09-27に、SEI側で「SEIを製品群の統合の頂点に置く」ための設計検討が行われました（`hat47x/sei-cognition:product/value/SEI_FAMILY_APEX_VALUE_REVIEW.md`、`hat47x/sei-cognition:plan/adr/ADR-0032-family-integration-apex-and-control-meaning-boundary.md`。どちらもSEIの未統合branch `docs/family-apex-backflow-20260927`にだけあり、SEI側でも未採用です）。そこから、TEIの派生認知にも当てはまりそうな考え方を二つ借ります。
+2026-09-27に、SEI側で「SEIを製品群の統合の頂点に置く」ための設計検討が行われました（`hat47x/sei-cognition:product/value/SEI_FAMILY_APEX_VALUE_REVIEW.md@041c3fa`、`hat47x/sei-cognition:plan/adr/ADR-0035-family-integration-apex-and-control-meaning-boundary.md@041c3fa`。どちらもSEIの`develop/v0.2.0`にあり、`main`には未統合です。ADRの番号は、統合前はADR-0032でした。SEI側でも未採用です）。そこから、TEIの派生認知にも当てはまりそうな考え方を二つ借ります。
 
 どちらも**要件ではありません**。`DCR-*`の番号を付けず、既存DCRの具体化を検討するときの候補として置きます。TEIのReferenceで確かめるまで、要件の根拠にはしません（DCR-22）。
 

@@ -586,7 +586,7 @@ ADR-0028は、Applicationの定義を変えること（Authoring Plane）と、�
 
 しかしTEIの文書は、その「与えられたAuthority」を**誰が、どの範囲で、いつまで与え、いつ取り消したか**という経緯を、どこで読めるようにするかをまだ定めていない。§7のBP-04でも、将来AIへ委任する場合は「Decision authority / policyのEvidenceが必要」と書くにとどまる。
 
-SEI側では2026-09-27に、この経緯を「委任」という判断のコミットメント（後から確かめられるように記録しておく約束事）として扱う提案が出た。SEIは、既存の契約（ResponsibilityとAuthority evidence ref等）の組み合わせで委任を表せるかを先に試し、表せない独立の失敗が観測されるまで新しい型を足さない方針である（`hat47x/sei-cognition:plan/issue/ISSUE-000081-test-commitment-gaps-by-composition.md`。SEIの未統合branch `docs/family-apex-backflow-20260927`にだけある）。TEIのAI Business Actorは、その試験の題材の候補になっている。
+SEI側では2026-09-27に、この経緯を「委任」という判断のコミットメント（後から確かめられるように記録しておく約束事）として扱う提案が出た。SEIは、既存の契約（ResponsibilityとAuthority evidence ref等）の組み合わせで委任を表せるかを先に試し、表せない独立の失敗が観測されるまで新しい型を足さない方針である（`hat47x/sei-cognition:plan/issue/ISSUE-000086-test-commitment-gaps-by-composition.md@041c3fa`。SEIの`develop/v0.2.0`にあり、`main`には未統合。2026-10-09の統合前の番号はISSUE-000081）。TEIのAI Business Actorは、その試験の題材の候補になっている。
 
 #### 防ぎたい失敗
 

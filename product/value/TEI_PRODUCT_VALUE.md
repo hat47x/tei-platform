@@ -386,7 +386,7 @@ TEIは、SUI Sensemaking、SEI Cognition、EKI Fabricと組み合わせて利用
 
 ### SEIが提案する「統合の頂点」との関係（2026-09-27追記・評価待ち）
 
-SEI側では、hat47xの製品群に対するSEIの役割を「統合の頂点」として定義し直す提案が出ています（`hat47x/sei-cognition:plan/adr/ADR-0032-family-integration-apex-and-control-meaning-boundary.md`、提案中）。この提案とそこから参照される文書は、SEIの未統合branch `docs/family-apex-backflow-20260927`にだけあります。SEIの役割の定義はSEIが正本であり、SEI側で採否が決まるまで、TEIではこの小節を評価待ちとして扱います。
+SEI側では、hat47xの製品群に対するSEIの役割を「統合の頂点」として定義し直す提案が出ています（`hat47x/sei-cognition:plan/adr/ADR-0035-family-integration-apex-and-control-meaning-boundary.md@041c3fa`、提案中）。この提案とそこから参照される文書は、SEIの`develop/v0.2.0`にあり、`main`には未統合です。提案の番号は、統合前はADR-0032でした。SEIの役割の定義はSEIが正本であり、SEI側で採否が決まるまで、TEIではこの小節を評価待ちとして扱います。
 
 提案は「頂点」を三つの意味に限って採ります。観測・決定・権限のような最も一般的な概念を持ち、各製品に固有の意味をそこへ翻訳できるという抽象の頂点。製品やモデルや組織が入れ替わった後も読める、製品群の中で最も長く残る記録を持つという時間の頂点。製品をまたいだ判断の経緯を、時間をさかのぼって組み立て直せる唯一の場所という統合の頂点です。統合は任意の合流であり、製品はSEIへ記録を送ってもよいが、送らなくても成り立つ、とされています。逆に、他製品へ命令する指揮の頂点、他製品の意味やdataの正本を持つ所有の頂点、SEIが止まると製品群が止まる可用性の頂点は採りません。
 

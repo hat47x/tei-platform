@@ -3,7 +3,7 @@
 - Status: Pre-design / Reference Adoption baseline
 - Date: 2026-09-18
 - Parent Issue: `plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`
-- SUI counterpart: `sui-sensemaking/01_Plans/cross-repo/2026-09-18-sui-tei-reference-adoption-baseline.md`
+- SUI counterpart: `sui-sensemaking/01_Plans/cross-repo/2026-09-18-sui-tei-reference-adoption-baseline.md`（SUIが2026-10-01に管理文書を整理したため、SUIのmainにはない。整理前の版は、削除commit `97964fd3`の直前の履歴から取り出せる）
 - Gate impact: None
 - Runtime impact: None
 - Product Requirement impact: None in this document
