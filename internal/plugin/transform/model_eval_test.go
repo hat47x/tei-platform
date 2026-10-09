@@ -3,6 +3,7 @@ package transform_test
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -511,5 +512,43 @@ func TestTransformRejectsMalformedProgrammaticInputValue(t *testing.T) {
 		"value": transform.Value{Kind: transform.ValueString, String: "ok", Number: "1"},
 	}); err == nil {
 		t.Fatal("expected string value with hidden number field to fail")
+	}
+}
+
+
+func TestTransformInputValidationDiagnosticsUseDeterministicNameOrder(t *testing.T) {
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.input_order_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        16,
+			MaxCollection:   16,
+			MaxInputNodes:   64,
+			MaxInputBytes:   1024,
+			MaxOutputBytes:  1024,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{
+			{Name: "z_required", Kind: transform.InputString},
+			{Name: "a_required", Kind: transform.InputString},
+		},
+		Program: transform.Program{Output: transform.Expr{Op: transform.OpInput, Name: "a_required"}},
+	}
+	_, err := transform.Evaluate(source, map[string]transform.Value{
+		"z_extra": transform.String("z"),
+		"a_extra": transform.String("a"),
+	})
+	if err == nil || !strings.Contains(err.Error(), `"a_extra"`) {
+		t.Fatalf("expected deterministic first undeclared input, got %v", err)
+	}
+
+	_, err = transform.Evaluate(source, map[string]transform.Value{})
+	if err == nil || !strings.Contains(err.Error(), `"a_required"`) {
+		t.Fatalf("expected deterministic first missing input, got %v", err)
 	}
 }
