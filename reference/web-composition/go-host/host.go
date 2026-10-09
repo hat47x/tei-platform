@@ -71,7 +71,7 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 		record := AuditRecord{Route: p.Method + " " + p.Path, Action: p.ActionID}
 		defer func() {
 			if recover() != nil {
-				// Test-only panic boundary. A production host needs stronger isolation.
+				// A response already started cannot safely be rewritten as 500.
 				stage = "error"
 				if tw.status == 0 {
 					http.Error(tw, "internal error", http.StatusInternalServerError)
@@ -81,7 +81,7 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 				tw.status = http.StatusOK
 			}
 			record.Status = tw.status
-			if tw.status >= 500 {
+			if stage == "error" || tw.status >= 500 {
 				stage = "error"
 			} else if tw.status >= 400 {
 				stage = "rejected"
