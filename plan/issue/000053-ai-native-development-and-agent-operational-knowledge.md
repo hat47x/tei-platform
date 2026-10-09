@@ -293,13 +293,14 @@ token量だけをProduct KPIにはしない。
 
 ### Phase 1の共通入口 — Builder Review Plan
 
-AI Builderが個別の設計原則を知っていることを前提にせず、`knowledge-context`から対象subjectに応じた`builderReviewPlan`を派生させる。
+AI Builderが個別の設計原則を知っていることを前提にせず、共有Knowledge Contextから用途別のBuilder Review Planを派生させる。CLIでは`tei knowledge-review-plan`として独立して取得し、共有ContextやOperational ProjectionへBuilder固有情報を混入させない。
 
 この計画が持つのは、現在利用できるKnowledgeのうち何をどの順で確認するかというrouting guidanceだけである。個別の設計原則は各Knowledgeへ残す。たとえばData設計では、識別子・候補キー・関数従属性等の詳細な確認事項を`dataDesign.designReviewProtocol`が担当する。
 
 ```text
-Builder Review Plan
-  -> source / definition / data-design / dependenciesの読み順
+shared Knowledge Context
+  -> Builder Review Plan
+      -> source / definition / data-design / dependenciesの読み順
 
 Data Design Review Protocol
   -> Data設計固有の確認事項
@@ -310,7 +311,7 @@ Data Design Review Protocol
   != write / runtime authority
 ```
 
-選択的開示では、保存済みReview Planをそのまま信用せず、current Knowledge Contextから計画を再導出する。これにより、利用可能なKnowledgeが変わった後に古い読み順を再利用しない。
+Review Planはrouting identity用のfingerprintを持つ。ただし、その一致をKnowledge内容のfreshness proofへ昇格させない。Data Designや選択的Disclosure等の内容を再利用するときは、それぞれのfingerprintとEvidence境界を別に確認する。
 
 この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
 
