@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -28,7 +27,7 @@ func loadContractQuerySQLRealizations(root string, r *Result) error {
 		return err
 	}
 	for _, path := range files {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
@@ -42,7 +41,7 @@ func loadContractQuerySQLRealizations(root string, r *Result) error {
 			if err != nil {
 				return fmt.Errorf("%s: SQL file %q: %w", path, authoring.NativeSQLPath, err)
 			}
-			nativeSource, err := os.ReadFile(nativePath)
+			nativeSource, err := readSourceForLoad(root, r, nativePath)
 			if err != nil {
 				return fmt.Errorf("%s: read SQL file %q: %w", path, authoring.NativeSQLPath, err)
 			}
