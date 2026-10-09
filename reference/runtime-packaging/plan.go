@@ -42,6 +42,7 @@ type Binding struct {
 	Capability           string       `json:"capability"`
 	Plugin               string       `json:"plugin"`
 	PluginVersion        string       `json:"pluginVersion"`
+	PluginFingerprint    string       `json:"pluginFingerprint,omitempty"`
 	ArtifactDigest       string       `json:"artifactDigest,omitempty"`
 	BuildPlanFingerprint string       `json:"buildPlanFingerprint,omitempty"`
 	ContractFingerprint  string       `json:"contractFingerprint"`
@@ -104,7 +105,8 @@ func Derive(in Input) (Plan, error) {
 	for _, b := range in.Bindings {
 		if !validName(b.Capability) || !validName(b.Plugin) ||
 			!validName(b.PluginVersion) || !validName(b.ContractFingerprint) ||
-			(b.ArtifactDigest == "" && b.BuildPlanFingerprint == "") ||
+			(b.PluginFingerprint == "" && b.ArtifactDigest == "" && b.BuildPlanFingerprint == "") ||
+			(b.PluginFingerprint != "" && !buildPlanFingerprint.MatchString(b.PluginFingerprint)) ||
 			(b.ArtifactDigest != "" && !sha256Digest.MatchString(b.ArtifactDigest)) ||
 			(b.BuildPlanFingerprint != "" && !buildPlanFingerprint.MatchString(b.BuildPlanFingerprint)) ||
 			!uniqueNames(b.Requires) || !uniqueNames(b.HostImports) {
