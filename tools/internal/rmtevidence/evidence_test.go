@@ -118,3 +118,39 @@ func TestPrepareAddsMandatoryAuthorityLimits(t *testing.T) {
 		}
 	}
 }
+
+
+func TestFingerprintFieldsRequireExactSHA256(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*Evidence)
+	}{
+		{
+			name: "artifact digest trailing data",
+			mutate: func(value *Evidence) {
+				value.SourceArtifactDigest += "x"
+			},
+		},
+		{
+			name: "source token prefix",
+			mutate: func(value *Evidence) {
+				value.SourceToken = "x" + value.SourceToken
+			},
+		},
+		{
+			name: "mapping fingerprint uppercase",
+			mutate: func(value *Evidence) {
+				value.MappingContractFingerprint = strings.ToUpper(value.MappingContractFingerprint)
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			value := fixture()
+			tc.mutate(&value)
+			if _, err := Prepare(value); err == nil || !strings.Contains(err.Error(), "exact sha256") {
+				t.Fatalf("invalid fingerprint field was accepted: %v", err)
+			}
+		})
+	}
+}
