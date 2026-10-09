@@ -103,7 +103,9 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 ### knowledge qualificationからcandidateへの接続
 
-`tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Source Index identity、source path、source fingerprintが含まれます。required dependencyを明示した場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintを`dependencyEvidence`へ含めます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。requirementsは同じ共有正規化を通すため、空の`expectedKind`、不正なdependency指定、重複dependency、`expectedKind`と`subjectKind`の不一致をgrounded candidateとして出力する前にfail closedで拒否します。required dependencyのEvidenceが欠ける場合や、requirementsに無いdependency Evidenceが混入した場合も拒否します。
+`tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Source Index identity、source path、source fingerprintが含まれます。required dependencyを明示した場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintを`dependencyEvidence`へ含めます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。
+
+AI Builderが`tei knowledge-review-handoff`を利用した場合は、そのHandoff JSONを`-qualification`へ直接渡してもよい。adapterはHandoffのschema / purpose / routing scope / subject / Review Plan identity / fingerprintを検証し、`qualified-for-disclosure`かつ内包Qualificationが`applicable`の場合だけ、既存のQualification Evidence経路へ変換する。Handoff自体やDisclosure本文を新しいProposal Evidence schemaとして保存しない。requirementsは同じ共有正規化を通すため、空の`expectedKind`、不正なdependency指定、重複dependency、`expectedKind`と`subjectKind`の不一致をgrounded candidateとして出力する前にfail closedで拒否します。required dependencyのEvidenceが欠ける場合や、requirementsに無いdependency Evidenceが混入した場合も拒否します。
 
 ```bash
 go run ./cmd/tei knowledge-qualify \
