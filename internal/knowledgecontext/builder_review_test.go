@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"tei/internal/index"
+	"tei/internal/sourceindex"
 	"tei/internal/subject"
 )
 
@@ -69,6 +70,30 @@ func TestBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.T) {
 		if !containsBuilderReviewString(got.AuthorityLimits, limit) {
 			t.Fatalf("builder review authority limit %q is missing: %+v", limit, got.AuthorityLimits)
 		}
+	}
+}
+
+func TestBuildAttachesBuilderReviewPlanToKnowledgeContext(t *testing.T) {
+	ctx := Build(
+		dataDesignRelationUniqueWorld(),
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+
+	if ctx.BuilderReviewPlan.ProjectionRevision != builderReviewPlanProjectionRevision {
+		t.Fatalf("builder review plan was not attached: %+v", ctx.BuilderReviewPlan)
+	}
+	for _, section := range []string{"definition", "data-design"} {
+		if !containsBuilderReviewString(ctx.BuilderReviewPlan.RecommendedDisclosureSections, section) {
+			t.Fatalf("available section %q is missing from builder review plan: %+v", section, ctx.BuilderReviewPlan)
+		}
+	}
+	if containsBuilderReviewString(ctx.BuilderReviewPlan.RecommendedDisclosureSections, "source") {
+		t.Fatalf("unavailable source section was recommended: %+v", ctx.BuilderReviewPlan)
+	}
+	if len(ctx.BuilderReviewPlan.ReviewSequence) == 0 ||
+		ctx.BuilderReviewPlan.ReviewSequence[0] != "review-current-source-and-evidence" {
+		t.Fatalf("source review did not remain the first stage: %+v", ctx.BuilderReviewPlan.ReviewSequence)
 	}
 }
 
