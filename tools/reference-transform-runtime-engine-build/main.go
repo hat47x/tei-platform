@@ -707,8 +707,19 @@ func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDi
 	if digest != expectedDigest {
 		return fmt.Errorf("copied Runtime Engine artifact digest changed: got %s want %s", digest, expectedDigest)
 	}
-	if err := os.Rename(tempPath, destinationResolved); err != nil {
-		return fmt.Errorf("publish verified Runtime Engine artifact: %w", err)
+	if err := publishVerifiedArtifactNoClobber(tempPath, destinationResolved); err != nil {
+		return err
+	}
+	return nil
+}
+
+func publishVerifiedArtifactNoClobber(tempPath, destination string) error {
+	// tempPath is created in destination's parent directory. A hard-link
+	// publish is atomic with respect to destination creation and fails when the
+	// destination already exists, unlike rename on platforms where rename may
+	// replace an existing file.
+	if err := os.Link(tempPath, destination); err != nil {
+		return fmt.Errorf("publish verified Runtime Engine artifact without overwrite: %w", err)
 	}
 	return nil
 }
