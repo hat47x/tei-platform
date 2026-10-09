@@ -183,6 +183,7 @@ func TestBuildBuilderReviewPlanRoutesCurrentKnowledge(t *testing.T) {
 	}
 	if plan.ProjectionRevision != "tei.knowledge.builder-review-plan/v1" ||
 		plan.Purpose != "design-change" ||
+		plan.RoutingScope != "current-knowledge-context" ||
 		plan.Fingerprint == "" {
 		t.Fatalf("builder review plan identity is incomplete: %+v", plan)
 	}
@@ -204,6 +205,39 @@ func TestBuildBuilderReviewPlanRoutesCurrentKnowledge(t *testing.T) {
 	if err := checkBuilderReviewPlanFingerprint(plan, "sha256:stale"); err == nil ||
 		!strings.Contains(err.Error(), "fingerprint mismatch") {
 		t.Fatalf("stale review-plan fingerprint was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewPlanRoutesApplicationPatternAcrossViews(t *testing.T) {
+	root := testRepositoryRoot(t)
+	plan, err := buildBuilderReviewPlan(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, section := range []string{"source", "definition", "data-design", "dependencies"} {
+		if !containsKnowledgeContextString(plan.RecommendedDisclosureSections, section) {
+			t.Fatalf("application pattern review section %q is missing: %+v", section, plan.RecommendedDisclosureSections)
+		}
+	}
+	for _, stage := range []string{
+		"review-current-source-and-evidence",
+		"review-current-definition",
+		"review-data-design-and-its-review-protocol",
+		"review-dependencies-and-impact",
+	} {
+		if !containsKnowledgeContextString(plan.ReviewSequence, stage) {
+			t.Fatalf("application pattern review stage %q is missing: %+v", stage, plan.ReviewSequence)
+		}
+	}
+	if !containsKnowledgeContextString(
+		plan.AuthorityLimits,
+		"recommended-sections-cover-current-knowledge-context-not-all-builder-knowledge",
+	) {
+		t.Fatalf("builder review scope limit is missing: %+v", plan.AuthorityLimits)
 	}
 }
 
