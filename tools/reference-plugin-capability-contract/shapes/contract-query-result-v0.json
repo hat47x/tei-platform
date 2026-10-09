@@ -1,5 +1,6 @@
 {
   "schema": "tei.reference.invocation-shape/v0",
+  "canonicalization": "tei.reference.invocation-shape-canonicalization/v0",
   "id": "tei.reference.contract-query-execution.result/v0",
   "issuer": {
     "id": "tei.reference.plugin-capability-contract",
