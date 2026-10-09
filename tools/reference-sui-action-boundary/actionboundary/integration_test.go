@@ -26,7 +26,7 @@ func TestNativeActionPath(t *testing.T) {
   Outcomes:[]semantic.Outcome{{Name:"allowed",Payload:"auth.grant"},{Name:"denied",Payload:"auth.denial"}},
  }
  newHost:=func(outcome core.LocalName)(Host,*JSONDocumentStore){
-  store:=NewJSONDocumentStore("r1",[]byte(documentFixture))
+  store:=NewScopedJSONDocumentStore("doc","r1",[]byte(documentFixture))
   host:=Host{
    CommandGate:&CanonicalCommandGate{Resolver:fakePatternResolver{resolution:command}},
    Authorizer:CapabilityAuthorizer{
@@ -60,6 +60,14 @@ func TestNativeActionPath(t *testing.T) {
   if !errors.Is(err,ErrDenied) {t.Fatalf("expected denial, got %v",err)}
   rev,doc,writes:=store.Snapshot()
   if rev!="r1"||writes!=0||string(doc)!=documentFixture {t.Fatal("denied request mutated document")}
+ })
+ t.Run("other document never mutates bound store",func(t *testing.T){
+  host,store:=newHost("allowed")
+  foreign:=intent;foreign.DocumentID="other-doc"
+  _,err:=host.Commit(context.Background(),foreign)
+  if !errors.Is(err,ErrDenied) {t.Fatalf("expected denial, got %v",err)}
+  revision,doc,writes:=store.Snapshot()
+  if revision!="r1"||writes!=0||string(doc)!=documentFixture {t.Fatal("cross-document mutation")}
  })
  t.Run("other application never invokes store",func(t *testing.T){
   host,store:=newHost("allowed")
