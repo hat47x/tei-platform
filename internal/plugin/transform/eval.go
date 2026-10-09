@@ -42,7 +42,11 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 	if err != nil {
 		return EvaluationResult{}, err
 	}
-	if output.Kind == ValueBytes && len(output.Bytes) > source.Limits.MaxOutputBytes {
+	outputBytes, err := encodedOutputSize(output)
+	if err != nil {
+		return EvaluationResult{}, err
+	}
+	if outputBytes > source.Limits.MaxOutputBytes {
 		return EvaluationResult{}, fmt.Errorf("transform output exceeds maxOutputBytes")
 	}
 	return EvaluationResult{Output: output, Steps: e.steps}, nil
@@ -300,6 +304,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		return Bytes(out), nil
 	case OpJoinStrings:
 		parts := make([]string, len(expr.Values))
+		total := 0
 		for i := range expr.Values {
 			value, err := e.eval(expr.Values[i], env, depth+1)
 			if err != nil {
@@ -308,12 +313,35 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			if value.Kind != ValueString {
 				return Value{}, fmt.Errorf("join-strings requires strings, got %s", value.Kind)
 			}
+			if len(value.String) > e.limits.MaxOutputBytes-total {
+				return Value{}, fmt.Errorf("join-strings exceeds maxOutputBytes")
+			}
+			total += len(value.String)
+			if i > 0 {
+				if len(expr.Separator) > e.limits.MaxOutputBytes-total {
+					return Value{}, fmt.Errorf("join-strings exceeds maxOutputBytes")
+				}
+				total += len(expr.Separator)
+			}
 			parts[i] = value.String
 		}
 		return String(strings.Join(parts, expr.Separator)), nil
 	default:
 		return Value{}, fmt.Errorf("unsupported transform operation %q", expr.Op)
 	}
+}
+
+
+
+func encodedOutputSize(value Value) (int, error) {
+	if value.Kind == ValueBytes {
+		return len(value.Bytes), nil
+	}
+	raw, err := value.JSON()
+	if err != nil {
+		return 0, fmt.Errorf("encode transform output: %w", err)
+	}
+	return len(raw), nil
 }
 
 func sortWorkBudget(n int) int {
