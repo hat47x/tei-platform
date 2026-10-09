@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	buildExecutionPlanFormatVersion = 1
-	artifactSetFormatVersion         = 1
-	buildExecutionResultFormatVersion = 1
-	pluginSubjectBindingFormatVersion = 1
+	buildExecutionPlanFormatVersion        = 1
+	artifactSetFormatVersion                = 1
+	buildExecutionResultFormatVersion       = 1
+	pluginSubjectBindingFormatVersion       = 1
+	runtimeEngineSubjectBindingFormatVersion = 1
 )
 
 // BuildExecutionPlan is a Reference-only projection of exact build inputs.
@@ -473,7 +474,7 @@ func verifyPluginSubjectBinding(
 }
 
 func (b RuntimeEngineSubjectBinding) Validate() error {
-	if b.FormatVersion != pluginSubjectBindingFormatVersion {
+	if b.FormatVersion != runtimeEngineSubjectBindingFormatVersion {
 		return fmt.Errorf("unsupported runtime engine subject binding format %d", b.FormatVersion)
 	}
 	if err := b.Engine.Validate(); err != nil {
