@@ -13,7 +13,7 @@ import (
 // This fixture uses the actual SUI DocumentV1 field names (Card.x/Card.y,
 // meta.source, holdState, reviewAttribution), but is not parsed by SUI's
 // native TypeScript validator.
-const documentFixture = `{"version":1,"id":"doc","createdAt":"2026-10-09T00:00:00Z","updatedAt":"2026-10-09T00:00:00Z","transform":{"panX":0,"panY":0,"zoom":1},"cards":[{"id":"a","text":"one","x":0,"y":1,"meta":{"source":"interview:1"},"holdState":"held","textReviewed":true},{"id":"b","text":"two","x":8,"y":9}],"reviewAttribution":{"schemaVersion":"1.0.0","reviewState":"human_reviewed","reviewedAt":"2026-10-09T00:00:00Z","reviewerRef":"reviewer:1","auditRecordedAt":"2026-10-09T00:00:00Z","overridePolicy":"human_dual_control_only"},"edges":[{"id":"edge-1","fromId":"a","toId":"b","type":"future-edge"}],"islands":[],"affiliations":[{"id":"f1","cardId":"a","islandId":"island-1"}]}`
+const documentFixture = `{"version":1,"id":"doc","createdAt":"2026-10-09T00:00:00Z","updatedAt":"2026-10-09T00:00:00Z","transform":{"panX":0,"panY":0,"zoom":1},"cards":[{"id":"a","text":"one","x":0,"y":1,"meta":{"source":"interview:1"},"holdState":"held","textReviewed":true},{"id":"b","text":"two","x":8,"y":9}],"reviewAttribution":{"schemaVersion":"1.0.0","reviewState":"human_reviewed","reviewedAt":"2026-10-09T00:00:00Z","reviewerRef":"reviewer:1","auditRecordedAt":"2026-10-09T00:00:00Z","overridePolicy":"human_dual_control_only"},"edges":[{"id":"edge-1","fromId":"a","toId":"b","type":"future-edge"}],"islands":[{"id":"island-1","cardIds":["a"]}],"affiliations":[{"id":"f1","cardId":"a","islandId":"island-1"}]}`
 
 func documentIntent(revision string, payload any) Intent {
 	return Intent{
