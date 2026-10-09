@@ -62,17 +62,17 @@ type RemoteCall struct {
 // RemoteRequires refers to explicit, already-selected capabilities in another
 // unit. DynamicOpen means reachability cannot be safely enumerated.
 type Binding struct {
-	Unit                string       `json:"unit"`
-	Capability          string       `json:"capability"`
-	Plugin              string       `json:"plugin"`
-	PluginVersion       string       `json:"pluginVersion"`
-	ArtifactDigest      string       `json:"artifactDigest,omitempty"`
-	BuildPlanFingerprint string `json:"buildPlanFingerprint,omitempty"`
-	ContractFingerprint string       `json:"contractFingerprint"`
-	Requires            []string     `json:"requires,omitempty"`
-	RemoteRequires      []RemoteCall `json:"remoteRequires,omitempty"`
-	HostImports         []string     `json:"hostImports,omitempty"`
-	DynamicOpen         bool         `json:"dynamicOpen,omitempty"`
+	Unit                 string       `json:"unit"`
+	Capability           string       `json:"capability"`
+	Plugin               string       `json:"plugin"`
+	PluginVersion        string       `json:"pluginVersion"`
+	ArtifactDigest       string       `json:"artifactDigest,omitempty"`
+	BuildPlanFingerprint string       `json:"buildPlanFingerprint,omitempty"`
+	ContractFingerprint  string       `json:"contractFingerprint"`
+	Requires             []string     `json:"requires,omitempty"`
+	RemoteRequires       []RemoteCall `json:"remoteRequires,omitempty"`
+	HostImports          []string     `json:"hostImports,omitempty"`
+	DynamicOpen          bool         `json:"dynamicOpen,omitempty"`
 }
 
 type Input struct {
