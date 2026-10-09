@@ -373,13 +373,21 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 ## Reference Model Transfer Evidence — 成熟した外部modelで全体をpressureする
 
-小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkは渡辺幸三氏のX-TEA / XEAD系「CONCEPTWARE／受注生産」です。
+小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkはX-TEA / XEAD系「CONCEPTWARE／受注生産」の既存Reference Modelです。
 
 これはProduct Gate Dではなく、既存Requirementをまとめて圧迫するEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
 
 転写中に見つかった不足は、Business Procedure、Lifecycle、change impact、Target、Semantic Extension等の既存Issueへ返します。Runtime / Tool Capabilityの種類をCore固定enumへ追加しないための共通境界はISSUE-000080へ返します。Reference Modelに存在するという理由だけでCore primitiveを追加しません。原モデルの内容は利用条件を確認せずpublic Repositoryへ転載せず、source fingerprint、mapping、loss / unresolved、TEI独自fixtureをEvidenceとして保持します。
 
 判定契約は[Reference Model Transfer Evidence Gate](REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
+
+## 業務設計の実用性を基準にした範囲の再評価（2026-10-08、評価待ち）
+
+[Product triage #982](https://github.com/hat47x/tei-platform/issues/982)では、Data / Function・Interaction / Business Procedureの相互検証、早期に動かせる設計、人が理解できるProjectionを先に成立させる観点から、RQ-001〜033と進行中のRQ-034提案のv1着手範囲を見直している。**Product Requirementの削除・既存優先順位の採用変更をここで確定しない。**
+
+検討の入口は既存の[ISSUE-000075](issue/000075-practical-scenario-mvp-demonstration.md)とする。2026-10-05に実証Aはsyntheticなdevelopment環境で実行記録済み。次の候補Bでは、Sourceの業務規則変更をPreview / Acceptance / reload / Driver / Web / 人間向けcross-view確認まで通せるかを検討する。候補Bへの着手判断はまだ行われていない。
+
+汎用Plugin solver、Builder self-hosting、AI Business Actor、複数Targetなどの長期能力は否定しない。一方、それらの完成をこの最小の業務実証の前提に追加するなら、**どの具体的な不足を埋めるか**を示してから採否を判断する。現行のGate、各laneのqualificationとprotected integration条件は変更しない。
 
 ## 現在の優先順
 

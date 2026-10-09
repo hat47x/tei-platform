@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -12,6 +13,7 @@ import (
 	"tei/internal/realization"
 	"tei/internal/security/legacyauth"
 	"tei/internal/security/legacyauthorization"
+	"tei/internal/semantic"
 	"tei/internal/semantic/capabilityinvoke"
 	"tei/internal/semantic/validationeval"
 )
@@ -180,7 +182,6 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 	result.Read = &readResult
 
 	result.Stage = "validation"
-	validationSource := commandValidationSource{orderLines: readResult.OrderLineRows}
 	// どのValidationを評価するかは、ApplicationがCanonicalに宣言した選択から得る（ADR-0029）。
 	// Target側に一覧を持たない。宣言が無ければ、空を成功とみなさず、Execution Errorとして返す。
 	rules, err := r.resolver.ResolveApplicationValidations(core.MustCanonicalID("order_entry"))
@@ -189,7 +190,7 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 	}
 	for _, rule := range rules {
 		id := rule.ID
-		evaluated, err := validationeval.Evaluate(rule, validationSource)
+		evaluated, err := evaluateCommandValidation(rule, readResult.OrderLineRows)
 		if err != nil {
 			return result, err
 		}
@@ -376,6 +377,39 @@ func (f capabilityAdapterFunc) Invoke(
 	return f(ctx, capability, input)
 }
 
+// evaluateCommandValidation applies a record-level positive rule to every line in
+// the selected order. A single aggregate result is returned per Canonical rule.
+// Relation-wide uniqueness is evaluated once over the complete collection.
+// Missing values or an empty collection must not silently count as success.
+func evaluateCommandValidation(
+	rule semantic.Validation,
+	orderLines []semanticRowProjection,
+) (validationeval.Result, error) {
+	if rule.Kind != semantic.ValidationPositive {
+		return validationeval.Evaluate(rule, commandValidationSource{orderLines: orderLines})
+	}
+	if len(orderLines) == 0 {
+		return "", fmt.Errorf("cannot evaluate positive validation %s over an empty order-line collection", rule.ID)
+	}
+	// Complete the read of every row before reporting a business denial.
+	// Otherwise an invalid early row can mask an unknown/missing value in a
+	// later row, incorrectly classifying an incomplete evaluation as a normal
+	// not-satisfied business outcome.
+	aggregate := validationeval.ResultSatisfied
+	for index, line := range orderLines {
+		result, err := validationeval.Evaluate(rule, commandValidationSource{
+			orderLines: []semanticRowProjection{line},
+		})
+		if err != nil {
+			return "", fmt.Errorf("validation %s on order line %d: %w", rule.ID, index, err)
+		}
+		if result != validationeval.ResultSatisfied {
+			aggregate = result
+		}
+	}
+	return aggregate, nil
+}
+
 type commandValidationSource struct {
 	orderLines []semanticRowProjection
 }
@@ -383,6 +417,12 @@ type commandValidationSource struct {
 func (s commandValidationSource) Number(attribute core.CanonicalID) (*big.Rat, error) {
 	if len(s.orderLines) == 0 {
 		return nil, fmt.Errorf("order-line collection is empty")
+	}
+	// Number is a scalar read. A collection of multiple lines must never be
+	// silently reduced to its first element; the caller must evaluate each
+	// line explicitly (evaluateCommandValidation).
+	if len(s.orderLines) != 1 {
+		return nil, fmt.Errorf("numeric validation source requires exactly one order line, got %d", len(s.orderLines))
 	}
 	value, ok := semanticRowValueByAttribute(s.orderLines[0], string(attribute))
 	if !ok {
@@ -413,11 +453,24 @@ func (s commandValidationSource) RelationKeys(
 	if relation != core.MustCanonicalID("sales.order.lines") {
 		return nil, fmt.Errorf("unsupported relation %s", relation)
 	}
+	// An empty read result is not evidence that an order's relation keys are
+	// unique. Keep the same fail-closed boundary as record-level validations.
+	if len(s.orderLines) == 0 {
+		return nil, fmt.Errorf("cannot validate relation %s over an empty order-line collection", relation)
+	}
 	result := make([]string, 0, len(s.orderLines))
 	for rowIndex, row := range s.orderLines {
 		value, ok := semanticRowValueByAttribute(row, string(attribute))
 		if !ok {
 			return nil, fmt.Errorf("row %d does not contain %s", rowIndex, attribute)
+		}
+		if value == nil {
+			return nil, fmt.Errorf("row %d contains null key %s for relation %s", rowIndex, attribute, relation)
+		}
+		// An empty or whitespace-only key is not an observed identity.
+		// A uniqueness check must not treat missing business identity as evidence.
+		if key, isString := value.(string); isString && strings.TrimSpace(key) == "" {
+			return nil, fmt.Errorf("row %d contains blank key %s for relation %s", rowIndex, attribute, relation)
 		}
 		result = append(result, fmt.Sprint(value))
 	}
