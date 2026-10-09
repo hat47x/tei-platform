@@ -51,7 +51,13 @@ finding
 missing input
   未確認
   != 問題なし
+
+evidence
+  existing subject / source / fingerprint / role
+  -> findingから元Sourceへ戻る導線
 ```
+
+`evidence`は既存toolが持つSource traceを引き継ぐだけで、新しい根拠を生成しない。完全一致する重複行だけを正規化し、入力に無いfingerprintやAuthorityは補完しない。
 
 `status=no-finding-in-provided-evidence`も仕様の完全性を意味しない。確認した三つの入力の範囲でfindingが無かったことだけを表す。
 
@@ -73,6 +79,7 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 4. 未知のcross-view diagnosticを独自解釈せず`source-diagnostic`として保持する。
 5. PR #1040型のValidation scope差を入力できても、その意味の所有者はBusiness Procedure checker側に残す。
 6. JSONの後ろに追加valueがある不正入力を拒否する。
+7. Knowledge ContextとShared Acceptanceが持つSource Evidenceをpacketへ保持し、完全一致する重複だけを除く。
 
 ## 非目標
 
@@ -89,6 +96,7 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 - [ ] ambiguity / inconsistency / stale premiseを混同せず表示できる
 - [ ] 未確認の入力をcoverage gapとして残せる
 - [ ] 元toolの診断意味を上書きしない
+- [ ] findingから既存Source pathとfingerprintへ再到達できる
 - [ ] read-onlyでReference Workspaceを変更しない
 - [ ] exact headのclean checkoutで`go test ./tools/reference-spec-review -count=1`がPASSする
 - [ ] exact headで`tools/repository-health-check.sh`が全項目PASSする
