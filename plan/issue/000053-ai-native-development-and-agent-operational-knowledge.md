@@ -295,7 +295,7 @@ token量だけをProduct KPIにはしない。
 
 AI Builderが個別の設計原則を知っていることを前提にせず、共有Knowledge Contextから用途別のBuilder Review Planを派生させる。CLIでは`tei knowledge-review-plan`として独立して取得し、共有ContextやOperational ProjectionへBuilder固有情報を混入させない。
 
-この計画が持つのは、現在利用できるKnowledgeのうち何をどの順で確認するかというrouting guidanceだけである。個別の設計原則は各Knowledgeへ残す。たとえばData設計では、識別子・候補キー・関数従属性等の詳細な確認事項を`dataDesign.designReviewProtocol`が担当する。
+この計画が持つのは、`current-knowledge-context`の範囲で現在利用できるKnowledgeのうち何をどの順で確認するかというrouting guidanceだけである。個別の設計原則は各Knowledgeへ残す。たとえばData設計では、識別子・候補キー・関数従属性等の詳細な確認事項を`dataDesign.designReviewProtocol`が担当する。現在Contextに区画が無いことから、Accepted Decision等を含む他のKnowledge surfaceにも情報が存在しないとは判断しない。
 
 ```text
 shared Knowledge Context
