@@ -87,6 +87,8 @@ Invocation Registryは、requestを実装呼出し前に検証し、resultを呼
 
 実Source AdapterとContract Queryのshape artifactは`tools/reference-plugin-capability-contract/shapes/`のJSONを正本とし、Go側は埋め込んで読み込みます。Go literalとJSONを二つの正本にはしません。shape artifact内のissuer変更もfingerprint変更として検出されます。
 
+artifactにはcanonicalization revisionも含めます。Referenceのv0では、JSONを`InvocationShapeArtifact`へ読み込み、各object nodeの`required`を辞書順へ正規化してからfingerprintを計算します。object propertyのmap keyはJSON encoding時の安定順序を使います。source JSONの空白やfield列挙順ではidentityを変えず、canonicalization revision自体を変えた場合は別identityとして扱います。この規則はReference用であり、production標準として固定していません。
+
 一方、issuer identityを誰が信頼してよいかを決めるpublisher trust、署名、組織ごとの発行Authorityはまだ未実証です。Referenceのshape languageもproduction標準ではありません。深いdomain構造で明示的に`any`とした部分は、domain adapterの検証責務として残します。
 
 Invocation成功も新しいAuthorityを与えません。Canonical Acceptance、Application Runtime Authority、Database Provider binding、Permission / Resource境界は既存の責務として残ります。
