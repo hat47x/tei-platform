@@ -92,6 +92,34 @@ construct-array(values: Expr[])
 
 このprimitiveだけで、受理済み二つのfield referenceから検証planを組み立てられます。
 
+## E6：既存の配列写像で済む別経路（新規演算子を保留）
+
+[#1067 の配列写像試験](transform_projection_test.go)では、入力が**すでに意味検査を終えた順序付きの規則記述配列**であれば、既存の `map-array` と `construct-object` だけで、受注と請求の両方の検証計画を導出できるかを試す。
+
+```text
+意味が確定した業務制約
+    ↓ 既存Semantic / Authoringによる規則の型・適用範囲の確定
+[ {op: required-text, field: orderId},
+  {op: nonnegative-safe-integer, field: totalYen} ]
+    ↓ 既存Transform: map-array + construct-object
+{format: validation-plan/v0, rules: [...]}
+```
+
+**元の二項目しか入力にない場合**、出力の二規則をTransform自身が構築する必要があるため、前節の `construct-array` 候補には依然として根拠がある。
+
+**既存の受理済み業務意味から規則記述配列を導出できる場合**、新しい `construct-array` を追加する理由は弱まる。ただし、単にJavaScriptで二規則を組み立てて配列として渡すだけなら、ジェネレータの責務を隠して移したにすぎず、TEI-nativeでの生成が成立したとはいえない。
+
+配列写像の試験は、あくまで**既存Transformの表現能力**を確認するものである。入力の演算子名や項目参照が業務上受理されていること、規則が欠けていないこと、複数の規則の順序が正しいことは証明しない。実際、現行写像は未登録の業務規則名をそのまま写せる。採用済みの意味との照合はTransformに暗黙委任せず、既存のSemantic / Authoring境界で行う。
+
+判断の優先順位は次のとおり。
+
+1. 既存の採用済み意味から必要な規則列を取り出せるかを確かめる。
+2. 取り出せる場合は新規演算子なしの配列写像経路を優先し、出力と生成前の意味を独立して比較する。
+3. 取り出せず、二つの型付き項目から新しい規則列を構築する必要がある場合だけ、`construct-array` の最小追加を#979で検討する。
+4. いずれの場合も、派生生成物の検査成功と、案件がその業務意味を採用したことを区別する。
+
+この試験の実施結果は、全Repository Healthの資格とは分けて記録する。構造が表現できることと、実業務への適用が正しいことは異なる。
+
 ## なぜCapabilityへ直接接続しないか
 
 PR #1058のGeneric Invocationは、Source AdapterやContract Queryのような**実行サービス**を扱います。Contract / Provider / artifact / Authority scopeを解決し、opaque requestを実装へ渡す境界です。
