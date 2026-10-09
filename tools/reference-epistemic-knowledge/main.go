@@ -1,0 +1,99 @@
+package main
+
+import (
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+)
+
+const usage = `usage:
+  reference-epistemic-knowledge -corpus FILE -context FILE [-out FILE]
+  reference-epistemic-knowledge -corpus FILE -context FILE -review-command FILE [-out FILE]
+`
+
+func main() {
+	os.Exit(runCLI(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func runCLI(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("reference-epistemic-knowledge", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	corpusPath := flags.String("corpus", "", "epistemic corpus JSON")
+	contextPath := flags.String("context", "", "current context JSON")
+	outPath := flags.String("out", "", "output JSON file; stdout when omitted")
+	reviewCommandPath := flags.String("review-command", "", "optional human review mutation command JSON")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if *corpusPath == "" || *contextPath == "" {
+		fmt.Fprint(stderr, usage)
+		return 2
+	}
+
+	corpusData, err := os.ReadFile(*corpusPath)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	contextData, err := os.ReadFile(*contextPath)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	corpus, err := decodeStrict[Corpus](corpusData)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	context, err := decodeStrict[ContextQuery](contextData)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	var output any
+	if *reviewCommandPath == "" {
+		projection, err := evaluateCorpus(corpus, context)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		output = projection
+	} else {
+		commandData, err := os.ReadFile(*reviewCommandPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		command, err := decodeStrict[ReviewCommand](commandData)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		result, err := applyReviewCommand(corpus, context, command)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		output = result
+	}
+	encoded, err := jsonBytes(output)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if *outPath == "" {
+		_, _ = stdout.Write(encoded)
+		return 0
+	}
+	if err := os.WriteFile(*outPath, encoded, 0o644); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	return 0
+}
+
+func jsonBytes(value any) ([]byte, error) {
+	return json.MarshalIndent(value, "", "  ")
+}
