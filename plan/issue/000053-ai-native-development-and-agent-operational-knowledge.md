@@ -341,6 +341,8 @@ available
 
 `qualified-for-disclosure`はselected section内部のEvidence completenessやresolutionまで保証しない。Review Sequenceは共有`unresolved`だけでなく、各区画が持つ局所的なresolution / Evidence statusも確認してからsemantic useへ進む。
 
+さらにsubject-local Qualificationはcross-view change qualificationではない。Review Sequenceには`review-cross-view-constraints-authority-and-known-conflicts`を置き、Business Procedure、Application authority、datasource access、Contract、Authorization、既知conflict等の必要Evidenceがcurrent Context外にある場合も確認する。必要なcross-view Evidenceが未解決なら、Minimum Semantic Delta Proposalを形成する前に停止する。
+
 Proposalへ進むときは、新しいBuilder専用Proposal schemaを追加しない。`tools/reference-shared-acceptance`の既存`attach-qualification` / qualified reference proposal経路が、bare `QualificationResult`に加えてBuilder Review Handoffも入力として受けるadapterを持つ。Handoffのidentityを検証した後、内包Qualificationだけを既存Evidenceへ接続する。
 
 この結果、
