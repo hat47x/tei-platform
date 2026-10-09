@@ -431,3 +431,75 @@ func TestPublicValueFieldKeepsCopySemantics(t *testing.T) {
 		t.Fatalf("public Field leaked internal alias: %#v", again)
 	}
 }
+
+
+func TestTransformRejectsMalformedProgrammaticInputValue(t *testing.T) {
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.value_shape_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        16,
+			MaxCollection:   16,
+			MaxInputNodes:   64,
+			MaxInputBytes:   1024,
+			MaxOutputBytes:  1024,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{{Name: "value", Kind: transform.InputObject}},
+		Program: transform.Program{Output: transform.Expr{Op: transform.OpInput, Name: "value"}},
+	}
+	tests := []struct {
+		name  string
+		value transform.Value
+	}{
+		{
+			name: "duplicate object field",
+			value: transform.Value{
+				Kind: transform.ValueObject,
+				Object: []transform.Field{
+					{Name: "x", Value: transform.String("a")},
+					{Name: "x", Value: transform.String("b")},
+				},
+			},
+		},
+		{
+			name: "kind collision",
+			value: transform.Value{
+				Kind:   transform.ValueObject,
+				String: "hidden",
+				Object: []transform.Field{{Name: "x", Value: transform.String("a")}},
+			},
+		},
+		{
+			name: "invalid field utf8",
+			value: transform.Value{
+				Kind: transform.ValueObject,
+				Object: []transform.Field{{
+					Name:  string([]byte{0xff}),
+					Value: transform.String("a"),
+				}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := transform.Evaluate(source, map[string]transform.Value{"value": tt.value}); err == nil {
+				t.Fatal("expected malformed programmatic Value to fail")
+			}
+		})
+	}
+
+	numberSource := source
+	numberSource.Inputs = []transform.InputSpec{{Name: "value", Kind: transform.InputString}}
+	numberSource.Program.Output = transform.Expr{Op: transform.OpInput, Name: "value"}
+	if _, err := transform.Evaluate(numberSource, map[string]transform.Value{
+		"value": {Kind: transform.ValueString, String: "ok", Number: "1"},
+	}); err == nil {
+		t.Fatal("expected string value with hidden number field to fail")
+	}
+}
