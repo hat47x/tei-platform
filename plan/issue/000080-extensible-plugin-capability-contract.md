@@ -247,3 +247,22 @@ payload codecはContract scopedとした。ReferenceではSource AdapterとContr
 現在のReference JSON adapterについては、未知fieldとtrailing JSON valueを拒否するexact decodeを追加した。shapeより緩いJSONをdomain実装へ流さないための局所的な検査であり、汎用schema validationが成立したとは扱わない。
 
 このE2で、generic resolutionからgeneric invocationまでCore固定Capability enumへ依存しないReference経路ができた。ただしproduction Permission / Resource / Sandbox、Targetごとの実行方式、process / Wasm transport、schema artifact管理は未接続である。コード変更を含むため、exact-head focused testとfull Repository healthが得られるまでPRはDraftのまま維持する。
+
+
+## E3 Invocation shape artifact candidate — 2026-10-09
+
+E2ではrequest / result shapeにfingerprintを持たせたが、fingerprintが何を指すかは未定義だった。この状態では、同じshape名のschema driftを検出できても、schema本体の正本、発行者、検証方法へ戻れない。
+
+Referenceでは、Source AdapterとContract Queryのrequest / result shapeを機械可読なJSON artifactとして追加した。artifactはshape ID、payload codec、shape format、issuer identity、構造定義を持つ。fingerprintは正規化したartifact全体から計算する。
+
+Capability Contractには`shapeIssuer`を追加した。Implementationが提示するrequest / result artifactは、Contractのshape ID、fingerprint、payload codec、issuerと一致しなければ実行できない。Providerの自己申告だけではschemaを差し替えられない。
+
+Invocation Registryはrequestを実装呼出し前に、resultを呼出し後に共通validatorで検査する。ReferenceのvalidatorはJSON object / array / map / scalarとopaque bytesを扱う。未知field、必須field欠落、型不一致、trailing JSON valueをfail closedにする。domain固有の値制約や業務意味は各adapterへ残す。
+
+実shapeの正本は`tools/reference-plugin-capability-contract/shapes/`のJSONとした。Go側はこのJSONを埋め込んで読み込み、別のGo literalを正本にしない。shape artifactのissuerを変えた場合もfingerprintが変わる。
+
+このincrementで、E2に残っていた「shape fingerprintが指すschema artifact」と「共通validation engine」はReference候補として具体化した。一方、issuer identityを信頼する根拠、署名、publisher trust、組織ごとの発行Authorityは未実証である。Referenceのshape languageもproduction標準へ固定しない。
+
+また、Source Adapter result等の深い構造には明示的な`any`を残している。これはschemaが完全なdomain型を代替したという意味ではない。generic Invocation境界ではwire envelopeを検査し、domain adapterが深い意味と値制約を検査する二段構成としている。
+
+コード変更を含むため、exact-headのfocused testとfull Repository healthが得られるまではDraftのままとし、Evidence tierも変更しない。
