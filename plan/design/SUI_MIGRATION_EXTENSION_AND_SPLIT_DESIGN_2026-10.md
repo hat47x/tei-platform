@@ -328,7 +328,7 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 | webhook / job | 該当機能なし | N/A |
 | audit | event envelopeに`tenantId`が必須。metadataで`tenantid`キーを予約済み | 単体では確認済み。DBに保存された監査を別tenantが読めないことの試験は確認できず |
 | cache | server側に共有cacheはなし。browser保存は`tenantId`で名前空間化 | frontendの試験（`app_browser_storage.test.ts`にtenant言及20件）。切り替え時の破棄は`app_runtime_cleanup.ts`にtenant言及がなく、別の経路かを要確認 |
-| rate limit | `rate_limit.py` | **tenantがキーに入っていない。** D7は「レート制限のキーにもtenantIdを伝播する」としており、実装と食い違う可能性がある |
+| rate limit | `rate_limit.py`。使用箇所は管理用のprovisioning routeだけで、キーはclient IP | 現状はtenantに属する経路に制限がなく、D7の「キーにtenantIdを含める」が働く場面がない（食い違いではない）。Data Planeへ制限を足す時にtenantをキーへ入れることを、conformanceの項目にする |
 | agent credential | 上記MCPと同じ。未実装 | N/A（実装時に必須化） |
 | 補足: 古いcontext | `test_tenant_session_precondition.py`、`test_saas_tenant_resource_gate_postgres.py` | あり。資源参照の前に止まること |
 
@@ -336,7 +336,7 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 
 1. 中核の経路（GET / PUT、RLSの二重化、古いcontextの遮断）は、試験で固定されている
 2. 一覧、export-audit、監査の読み取り、importの権限非継承は、HTTPレベルの試験が見当たらない。越境試験の第一候補
-3. `rate_limit.py`のキーにtenantが無いことは、D7との食い違いの可能性があるため、**SUI側で先に確認する**。確認できればSUIの不具合候補になる
+3. rate limitは管理用routeだけにあり、tenantとは無関係に動く。Data Planeへ足す時の規則として、conformanceに載せる
 4. MCPは「閉じている」が、解除条件がない。共通部品のconformanceには「credentialをtenantと文書へ束縛する」項目が要る
 
 この結果は、14経路を適合条件にするというL3の案が実在のコードに対して意味を持つことを示す。一方で、14経路のうち4経路はSUIにも機能がないため、共通のconformanceは「該当機能があれば必須」の形で書く必要がある。
