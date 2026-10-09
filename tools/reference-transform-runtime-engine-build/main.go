@@ -45,6 +45,7 @@ type buildEvidence struct {
 	SourceClosureDigest  string            `json:"sourceClosureDigest"`
 	Builder              goBuilderEvidence `json:"builder"`
 	Recipe               []string          `json:"recipe"`
+	BuildSettings        []string          `json:"buildSettings"`
 	FirstArtifactDigest  string            `json:"firstArtifactDigest"`
 	SecondArtifactDigest string            `json:"secondArtifactDigest"`
 	Reproducible         bool              `json:"reproducible"`
@@ -180,6 +181,7 @@ func run(repo string) (buildEvidence, error) {
 			"-mod=readonly",
 			enginePackage,
 		},
+		BuildSettings:        fixedGoBuildSettings(),
 		FirstArtifactDigest:  firstDigest,
 		SecondArtifactDigest: secondDigest,
 		Reproducible:         true,
@@ -376,8 +378,26 @@ func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
 	return nil
 }
 
+func fixedGoBuildSettings() []string {
+	settings := []string{
+		"CGO_ENABLED=0",
+		"GOARCH=" + runtime.GOARCH,
+		"GOENV=off",
+		"GOEXPERIMENT=",
+		"GOFLAGS=",
+		"GOOS=" + runtime.GOOS,
+		"GOPROXY=off",
+		"GOSUMDB=off",
+		"GOTOOLCHAIN=local",
+		"GOVCS=*:off",
+		"GOWORK=off",
+	}
+	sort.Strings(settings)
+	return settings
+}
+
 func buildEnvironment(base []string, stateDir string) []string {
-	out := make([]string, 0, len(base)+12)
+	out := make([]string, 0, len(base)+14)
 	for _, entry := range base {
 		key := entry
 		if i := strings.IndexByte(entry, '='); i >= 0 {
@@ -388,19 +408,7 @@ func buildEnvironment(base []string, stateDir string) []string {
 		}
 		out = append(out, entry)
 	}
-	out = append(out,
-		"CGO_ENABLED=0",
-		"GOARCH="+runtime.GOARCH,
-		"GOENV=off",
-		"GOEXPERIMENT=",
-		"GOFLAGS=",
-		"GOOS="+runtime.GOOS,
-		"GOPROXY=off",
-		"GOSUMDB=off",
-		"GOTOOLCHAIN=local",
-		"GOVCS=*:off",
-		"GOWORK=off",
-	)
+	out = append(out, fixedGoBuildSettings()...)
 	if stateDir != "" {
 		out = append(out,
 			"GOCACHE="+filepath.Join(stateDir, "cache"),
