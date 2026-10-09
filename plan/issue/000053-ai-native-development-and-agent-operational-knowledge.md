@@ -291,6 +291,29 @@ change request
 
 token量だけをProduct KPIにはしない。
 
+### Phase 1の共通入口 — Builder Review Plan
+
+AI Builderが個別の設計原則を知っていることを前提にせず、`knowledge-context`から対象subjectに応じた`builderReviewPlan`を派生させる。
+
+この計画が持つのは、現在利用できるKnowledgeのうち何をどの順で確認するかというrouting guidanceだけである。個別の設計原則は各Knowledgeへ残す。たとえばData設計では、識別子・候補キー・関数従属性等の詳細な確認事項を`dataDesign.designReviewProtocol`が担当する。
+
+```text
+Builder Review Plan
+  -> source / definition / data-design / dependenciesの読み順
+
+Data Design Review Protocol
+  -> Data設計固有の確認事項
+
+どちらも
+  != accepted meaning
+  != semantic applicability
+  != write / runtime authority
+```
+
+選択的開示では、保存済みReview Planをそのまま信用せず、current Knowledge Contextから計画を再導出する。これにより、利用可能なKnowledgeが変わった後に古い読み順を再利用しない。
+
+この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
+
 ## Phase 1 first challenge — customer_referenceを編集可能にする要求
 
 最初のAI Builder re-entry challengeは `plan/ACTOR_CONTEXT_R1_AI_BUILDER_CHANGE_CHALLENGE_2026-09.md` を正本とする。
