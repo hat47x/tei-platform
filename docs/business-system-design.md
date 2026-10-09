@@ -8,7 +8,7 @@ Status: current architecture baseline
 
 TEIの要求・Reference・Evidenceを正本とし、外部の公開知見は必要に応じて設計上の参考とします。特定の既存製品や手法との系譜・互換関係を前提にはしません。
 
-対応する要求解釈は `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md` に置きます。Business Procedure authoring / reviewの具体的な品質観点は `plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md` に置き、このArchitectureへ新しいfield一覧を逆輸入しません。
+対応する要求解釈は `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md` に置きます。Business Procedure authoring / reviewの具体的な品質観点は `plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md` に置き、このArchitectureへ新しいfield一覧を逆輸入しません。
 
 ## 2. 一つの業務システムを複数視点から確認する
 
@@ -589,7 +589,7 @@ Identity / Type / Relation / Expression / Constraint / Lifecycle / Provenance等
 - `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`
 - `docs/architecture.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- `plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
+- `plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
 - `plan/APPLICATION_PATTERN_V1_DESIGN.md`
 
 業務システム設計の検討を理由に既存Gateを増やしたり、Studioのdeveloper-facing HostをApplication Target Evidenceへ読み替えたりしません。Procedure / Business Flow等の実験は、Evidenceが正式なRequirement / Architecture変更を要求するまではplanning / Reference側で進めます。
