@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 type EvaluationResult struct {
@@ -354,6 +355,65 @@ func sortWorkBudget(n int) int {
 	return n * (levels + 1)
 }
 
+
+func validateValueShape(value Value) error {
+	hasArray := len(value.Array) != 0
+	hasObject := len(value.Object) != 0
+	hasBytes := len(value.Bytes) != 0
+	switch value.Kind {
+	case ValueNull:
+		if value.Bool || value.Number != "" || value.String != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("null value contains fields for another value kind")
+		}
+	case ValueBool:
+		if value.Number != "" || value.String != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("bool value contains fields for another value kind")
+		}
+	case ValueNumber:
+		if value.Bool || value.String != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("number value contains fields for another value kind")
+		}
+		if !validJSONNumber(value.Number) {
+			return fmt.Errorf("invalid JSON number %q", value.Number)
+		}
+	case ValueString:
+		if value.Bool || value.Number != "" || hasArray || hasObject || hasBytes {
+			return fmt.Errorf("string value contains fields for another value kind")
+		}
+		if !utf8.ValidString(value.String) {
+			return fmt.Errorf("string value is not valid UTF-8")
+		}
+	case ValueArray:
+		if value.Bool || value.Number != "" || value.String != "" || hasObject || hasBytes {
+			return fmt.Errorf("array value contains fields for another value kind")
+		}
+	case ValueObject:
+		if value.Bool || value.Number != "" || value.String != "" || hasArray || hasBytes {
+			return fmt.Errorf("object value contains fields for another value kind")
+		}
+		seen := map[string]struct{}{}
+		for _, field := range value.Object {
+			if field.Name == "" {
+				return fmt.Errorf("object field name is required")
+			}
+			if !utf8.ValidString(field.Name) {
+				return fmt.Errorf("object field name is not valid UTF-8")
+			}
+			if _, exists := seen[field.Name]; exists {
+				return fmt.Errorf("object field %q is declared more than once", field.Name)
+			}
+			seen[field.Name] = struct{}{}
+		}
+	case ValueBytes:
+		if value.Bool || value.Number != "" || value.String != "" || hasArray || hasObject {
+			return fmt.Errorf("bytes value contains fields for another value kind")
+		}
+	default:
+		return fmt.Errorf("unsupported input value kind %q", value.Kind)
+	}
+	return nil
+}
+
 type inputBudget struct {
 	nodes int
 	bytes int
@@ -374,6 +434,9 @@ func validateInputBudgets(limits Limits, inputs map[string]Value) error {
 }
 
 func walkInputBudget(value Value, depth int, budget *inputBudget, limits Limits) error {
+	if err := validateValueShape(value); err != nil {
+		return err
+	}
 	if depth > limits.MaxNestingDepth {
 		return fmt.Errorf("input exceeds maxNestingDepth")
 	}
