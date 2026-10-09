@@ -125,6 +125,26 @@ go run ./tools/reference-shared-acceptance preview \
   -candidate grounded-candidate.json
 ```
 
+Builder Review経路では、bare Qualification Resultを別に作り直さず、Handoffを同じ`-qualification`へ渡せる。
+
+```bash
+go run ./cmd/tei knowledge-review-handoff \
+  -workspace DIR \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -qualification-requirements requirements.json \
+  > review-handoff.json
+
+go run ./tools/reference-shared-acceptance attach-qualification \
+  -candidate candidate.json \
+  -qualification review-handoff.json \
+  > grounded-candidate.json
+
+go run ./tools/reference-shared-acceptance preview \
+  -workspace DIR \
+  -candidate grounded-candidate.json
+```
+
 探索結果からdestination-owned reference PatternをProposalへ追加する場合は、PatternのContract Query dependencyまで明示したqualificationが前提です。たとえば`order_entry.customer_reference`を再利用候補にする場合、`master_data.customer/find_by_id`をrequired dependencyとして含めます。そのうえで、destination側で決める情報だけを次のrequestへ分けます。
 
 ```json
