@@ -40,6 +40,34 @@ func buildKnowledgeDisclosure(
 	return knowledgecontext.BuildDisclosure(ctx, []string{selection})
 }
 
+func buildBuilderReviewPlan(
+	root, subjectKind, subjectID string,
+) (knowledgecontext.BuilderReviewPlan, error) {
+	ctx, err := buildKnowledgeContext(root, subjectKind, subjectID)
+	if err != nil {
+		return knowledgecontext.BuilderReviewPlan{}, err
+	}
+	return knowledgecontext.BuildBuilderReviewPlan(ctx), nil
+}
+
+func checkBuilderReviewPlanFingerprint(
+	plan knowledgecontext.BuilderReviewPlan,
+	expected string,
+) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if plan.Fingerprint != expected {
+		return fmt.Errorf(
+			"Builder Review Plan fingerprint mismatch: expected=%s current=%s",
+			expected,
+			plan.Fingerprint,
+		)
+	}
+	return nil
+}
+
 func checkKnowledgeDisclosureFingerprint(
 	disclosure knowledgecontext.DisclosureProjection,
 	expected string,
