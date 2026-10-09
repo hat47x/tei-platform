@@ -354,6 +354,7 @@ func TestInvocationPayloadCodecIsContractScopedRatherThanJSONHardCoded(t *testin
 		ResultShapeFingerprint:  invocationShapeFingerprint(resultShape),
 		PayloadCodec:            codec,
 		ShapeIssuer:             referenceInvocationShapeIssuerPointer(),
+		InvocationEffect:        invocationEffectReadOnly,
 		ConformanceProfile:      "tei.reference.opaque-copy/v0",
 	}
 	provider := sourceAdapterProvider(
