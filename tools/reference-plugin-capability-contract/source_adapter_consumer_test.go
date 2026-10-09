@@ -225,6 +225,7 @@ func TestCapabilityResolutionInvokesRealSourceReaderForXeadAndXeaf(t *testing.T)
 				"authoring-tool-capability-is-not-application-runtime-authority",
 				"source-adapter-execution-is-read-only-observation",
 				"source-adapter-inspection-does-not-replace-rmt-publication-receipt",
+				"source-adapter-inspection-is-local-private-evidence",
 			} {
 				if !hasSourceAdapterLimit(execution.AuthorityLimits, limit) {
 					t.Fatalf("authority limit %q missing: %+v", limit, execution.AuthorityLimits)
