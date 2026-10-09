@@ -84,6 +84,8 @@ test('shared generator rejects ambiguous or different semantics', () => {
   assert.throws(() => compileRequiredFields({ ...valid, identityField: '../outside' }), /INVALID_FIELD/);
   assert.throws(() => compileRequiredFields({ ...valid, amountField: 'orderId' }), /CONFLICTING_FIELDS/);
   assert.throws(() => compileRequiredFields({ ...valid, identityField: undefined }), /INVALID_FIELD/);
+  assert.throws(() => compileRequiredFields({ ...valid, identityField: { toString: () => 'orderId' } }), /INVALID_FIELD/);
+  assert.throws(() => compileRequiredFields({ ...valid, amountField: { toString: () => 'totalYen' } }), /INVALID_FIELD/);
   assert.throws(() => compileRequiredFields(), /UNSUPPORTED_SEMANTICS/);
 });
 
