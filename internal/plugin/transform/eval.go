@@ -272,7 +272,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if err != nil {
 			return Value{}, fmt.Errorf("canonical-json: %w", err)
 		}
-		return Bytes(raw), nil
+		return bytesShared(raw), nil
 	case OpSHA256:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -291,12 +291,13 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if source.Kind != ValueBytes {
 			return Value{}, fmt.Errorf("append-bytes requires bytes, got %s", source.Kind)
 		}
-		out := append([]byte(nil), source.Bytes...)
-		out = append(out, []byte(expr.Suffix)...)
-		if len(out) > e.limits.MaxOutputBytes {
+		if len(source.Bytes) > e.limits.MaxOutputBytes || len(expr.Suffix) > e.limits.MaxOutputBytes-len(source.Bytes) {
 			return Value{}, fmt.Errorf("append-bytes exceeds maxOutputBytes")
 		}
-		return Bytes(out), nil
+		out := make([]byte, 0, len(source.Bytes)+len(expr.Suffix))
+		out = append(out, source.Bytes...)
+		out = append(out, expr.Suffix...)
+		return bytesShared(out), nil
 	case OpJoinStrings:
 		parts := make([]string, len(expr.Values))
 		total := 0
@@ -420,6 +421,10 @@ func walkInputBudget(value Value, depth int, budget *inputBudget, limits Limits)
 }
 
 
+
+func bytesShared(raw []byte) Value {
+	return Value{Kind: ValueBytes, Bytes: raw}
+}
 
 func objectShared(fields []Field) (Value, error) {
 	seen := map[string]struct{}{}
