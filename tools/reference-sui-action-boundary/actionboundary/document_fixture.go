@@ -14,6 +14,7 @@ import (
 type JSONDocumentStore struct {
  mu sync.Mutex
  revision string
+ documentID string
  document []byte
  writes int
 }
@@ -29,6 +30,10 @@ func NewJSONDocumentStore(revision string, document []byte) *JSONDocumentStore {
  return &JSONDocumentStore{revision:revision,document:append([]byte(nil),document...)}
 }
 
+// BindDocument scopes this reference store to one document. It must be set
+// before the store is exposed to concurrent callers.
+func (s *JSONDocumentStore) BindDocument(id string) { s.mu.Lock(); defer s.mu.Unlock(); s.documentID=id }
+
 // Snapshot returns a copy so a caller cannot mutate the stored document.
 func (s *JSONDocumentStore) Snapshot() (string,[]byte,int) {
  s.mu.Lock()
@@ -39,6 +44,7 @@ func (s *JSONDocumentStore) Snapshot() (string,[]byte,int) {
 func (s *JSONDocumentStore) Commit(_ context.Context,in Intent)(string,error) {
  s.mu.Lock()
  defer s.mu.Unlock()
+ if s.documentID!="" && in.DocumentID!=s.documentID {return "",ErrDenied}
  if in.ExpectedRevision!=s.revision {return "",ErrConflict}
  payload,ok:=in.Payload.(MovePayload)
  if !ok || payload.CardID=="" || math.IsNaN(payload.X) || math.IsNaN(payload.Y) || math.IsInf(payload.X,0) || math.IsInf(payload.Y,0) {return "",ErrInvalid}
