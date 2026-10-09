@@ -210,7 +210,7 @@ func decodeJSONValue(decoder *json.Decoder, depth int) (Value, error) {
 
 func (v Value) JSON() ([]byte, error) {
 	var out bytes.Buffer
-	if err := writeJSON(&out, v); err != nil {
+	if err := writeJSON(&out, v, 0); err != nil {
 		return nil, err
 	}
 	return out.Bytes(), nil
@@ -220,13 +220,16 @@ func (v Value) JSONWithinLimit(maxBytes int) ([]byte, error) {
 	if maxBytes < 0 {
 		return nil, fmt.Errorf("JSON byte limit must be non-negative")
 	}
-	if _, err := jsonEncodedSizeWithin(v, maxBytes); err != nil {
+	if _, err := jsonEncodedSizeWithin(v, maxBytes, 0); err != nil {
 		return nil, err
 	}
 	return v.JSON()
 }
 
-func jsonEncodedSizeWithin(v Value, maxBytes int) (int, error) {
+func jsonEncodedSizeWithin(v Value, maxBytes, depth int) (int, error) {
+	if depth > 128 {
+		return 0, fmt.Errorf("JSON value nesting exceeds 128 levels")
+	}
 	add := func(total, amount int) (int, error) {
 		if amount < 0 || total < 0 || total > maxBytes || amount > maxBytes-total {
 			return 0, fmt.Errorf("JSON encoding exceeds byte limit")
@@ -267,7 +270,7 @@ func jsonEncodedSizeWithin(v Value, maxBytes int) (int, error) {
 				}
 			}
 			remaining := maxBytes - total
-			size, err := jsonEncodedSizeWithin(item, remaining)
+			size, err := jsonEncodedSizeWithin(item, remaining, depth+1)
 			if err != nil {
 				return 0, err
 			}
@@ -306,7 +309,7 @@ func jsonEncodedSizeWithin(v Value, maxBytes int) (int, error) {
 				return 0, err
 			}
 			remaining := maxBytes - total
-			size, err := jsonEncodedSizeWithin(field.Value, remaining)
+			size, err := jsonEncodedSizeWithin(field.Value, remaining, depth+1)
 			if err != nil {
 				return 0, err
 			}
@@ -321,7 +324,10 @@ func jsonEncodedSizeWithin(v Value, maxBytes int) (int, error) {
 	}
 }
 
-func writeJSON(out *bytes.Buffer, v Value) error {
+func writeJSON(out *bytes.Buffer, v Value, depth int) error {
+	if depth > 128 {
+		return fmt.Errorf("JSON value nesting exceeds 128 levels")
+	}
 	switch v.Kind {
 	case ValueNull:
 		out.WriteString("null")
@@ -348,7 +354,7 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 			if i > 0 {
 				out.WriteByte(',')
 			}
-			if err := writeJSON(out, item); err != nil {
+			if err := writeJSON(out, item, depth+1); err != nil {
 				return err
 			}
 		}
@@ -373,7 +379,7 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 			name, _ := json.Marshal(field.Name)
 			out.Write(name)
 			out.WriteByte(':')
-			if err := writeJSON(out, field.Value); err != nil {
+			if err := writeJSON(out, field.Value, depth+1); err != nil {
 				return err
 			}
 		}
