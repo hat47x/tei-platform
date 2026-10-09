@@ -65,28 +65,31 @@ E1から本実装へ進む前に、少なくとも**Language解決の責任者**
 E2以降は既存`positive`と`relation-unique`を基準に、Operatorの可読な表現、評価エラー、NULL/重複などの同値性へ進みます。最終構文と広範なOperator Catalogは、それらの実証まで標準化しません。
 
 
-## E2試作：Operatorの型付き合成と業務データ参照
+## E2試作：固定したOperator契約とSemantic参照
 
-このPRにはE1に加え、`operator_reference.go`、`pipeline_reference.go`、`semantic_binding_reference.go`と各テストを含む。設計上の**候補を検証するReference**であり、正式なDSL仕様・Semantic Extension契約・実行器ではない。
+E2以降の参照実装は、受理済みの意味契約を**外部から正確に受け取る**前提で構成する。契約の採用、依存解決、Lockの発行は既存のSemantic ExtensionとShared Acceptance Boundaryの責務であり、このディレクトリには別の正本を作らない。
 
-`ParsePipeline`は、`rows/order |> std.op.where`のような**引数を持たない限定的な記法**を読み取り、Operatorの識別子と入出力型から呼出し列を構成する。Operatorの登録順に依存せず、未知・重複・不完全な契約、型不一致、副作用を持つ処理を拒否する。ここでの型は`rows/...`形式の**文字列による仮表現**であり、Attribute・Relationの型検査を実現したものではない。
+`operator.go`の`OperatorContract` / `ResolveOperator`がOperator契約照合の唯一の経路である。`pinned_pipeline.go`は、構文中のOperator識別子と**位置順に与えられた**契約を照合する。`pinned_composition.go`は型の連続性を調べ、契約のバージョン・fingerprint・効果を再検証する。識別子のみで登録Catalogから選択する旧`ResolveCall` / `ParsePipeline` / `Compose`は、暗黙の意味変更を許すため廃止した。
 
-`BindSemanticInput`は既存の`semantic.Namespace.Data`にあるCanonical IDの存在と一意性を確かめ、対応する仮の入力型から合成を始める。**受理済みSemantic Setの証明や取得は行わない。**呼出し側が受理済みの定義を供給する必要があり、このReferenceが独立の受理権限を獲得することはない。
+`pinned_semantic_binding.go`は既存のSemantic NamespaceのData識別子を確認する。`semantic_path_reference.go`はData/Attribute/RelationのCanonical IDと多重度を検証する。`relation_keys_reference.go`はRelationの参照先、結合キーの存在・一意性・型の一致を検査する。`expand_relation_reference.go`は結合キーのあるRelationと固定済み`std.op.expand`契約を照合する。`relation_path_reference.go`は複数Relationにおける多重度を、各段の妥当性を確認しながら伝播する。
 
-試験する例：
+### 検証できること
 
-```text
-rows/order |> std.op.where |> std.op.expand |> std.op.summarize
-```
+- 同じOperator名でも、契約バージョンやfingerprintが一致しなければ採用しない。
+- Operatorの入出力型が連続しない場合や、副作用を含む契約を拒否する。
+- Data・Attribute・Relationの欠落、重複、未定義の多重度、結合キーの欠陥を拒否する。
+- Relationの一段または複数段の連鎖で、`one`と`many`の合成を検証する。得られる多重度は**起点1件あたりに想定される結果の多重性**であり、存在保証や実レコード件数ではない。
 
-これは`where`の条件式、`expand`のRelation、`summarize`の集計式を解析・実行するものではない。空の引数を伴う識別子列の型のつながりだけを検証する。設計文書に示した`flow { ... }`構文や、NULL、欠損、多重度、順序、精度、集計の意味が実装済みであると解釈してはならない。
+### まだ検証できないこと
 
-### 既存機構への統合に必要な確認
+- 本物のAccepted Semantic Setからのpin取得、Source Index、実Pluginの実現方式、実行権限
+- Alias型の展開、型の幅・精度、NULLと欠損、外部結合、順序・重複、集計の同値性
+- 構文引数とSource spanの共通表現、DSLとNative SQLの同値性
+- 実データの結合。結合キーの整合性は、参照先レコードの存在やキーの一意性を証明しない
+- 属性とRelationの完全な意味型を伝える正式な型体系。`rows/<dataID>`は移行用の文字列表現にすぎない
 
-1. Languageの選択、Operatorの意味契約、実現方式の解決を、既存Semantic Extensionとプラグイン依存解決の正本に接続する。Reference独自のCatalogを恒久的な第二正本にしない。
-2. `Data`だけでなく`Attribute`と`Relation`のCanonical ID、型、Cardinalityを検証する。文字列型`rows/...`は本番の型体系へ昇格させない。
-3. `where`・`expand`・`summarize`の引数、NULL、重複、順序、空集合、精度、時点を、既存`positive`と`relation-unique`の結果と比較できるConformance fixtureで確認する。
-4. Source spanと診断、Canonical候補への変換、Shared Acceptance Boundary、実現方式への引渡しを接続する。Native SQLの正本は維持する。
-5. 副作用のある`invoke`等は、型が合っていても既存Capability・Permission境界で別途承認する。純粋Operatorから実行権限を推定しない。
+### 実行・統合の停止条件
 
-`go test ./reference/dsl-language-plugin`で試作のテストを実行できる設計だが、追加したE2テストのリポジトリ上での実行結果は未確認である。main統合にはexact-headの完全な`tools/repository-health-check.sh` PASSを必須とし、それまではDraft PRを維持する。
+参照パッケージ単体は`go test ./reference/dsl-language-plugin`で確認できる。コードをmainへ統合するには、`AGENTS.md`に従い、**exact-headのクリーンなチェックアウトで完全な`tools/repository-health-check.sh`のPASS**を記録する。Draft PR、部分テスト、未実行のテストコードを統合根拠としない。
+
+次の実装判断では、既存のAccepted Semantic Setから契約pinを得る接続と、入力DSL中の演算引数・Source spanの意味付けを優先する。NULLや多重度に関する推論結果を実行挙動と混同しない。
