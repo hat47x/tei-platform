@@ -140,3 +140,46 @@ Evidenceには次を含めます。
 - authorityを付与しないことを示すlimit
 
 runnerの出力が成立してもproduction Build model採用やAcceptance成立とは扱いません。
+
+## Build-only DAG
+
+#1103のpressureも同じReferenceへ接続します。Runtime Plugin dependencyとは別に、resolved Build execution間のproducer / consumer因果だけを`BuildGraph`で表します。
+
+```text
+BuildGraphNode
+  node-local ID
+  exact BuildExecutionPlan fingerprint
+
+BuildGraphEdge
+  producer node
+  output role
+  consumer node
+  dependency binding ID
+
+BuildGraphSeed
+  exact external artifact
+  trust boundary
+  consumer node
+  dependency binding ID
+```
+
+Graph identityはnode宣言順やschedulerの実行順に依存しません。一方、node execution fingerprint、edgeのoutput selector、stage0 seed artifact、trust boundaryを変えればidentityが変わります。
+
+通常のdependency cycleはfail-closedで拒否し、診断にはcycle pathを残します。
+
+```text
+a -> b -> c -> a
+```
+
+self-hostingはcycle例外にしません。
+
+```text
+stage0 exact trusted seed
+  -> stage1 node
+stage1 builder-artifact
+  -> stage2 node
+```
+
+stage0はBuild nodeへ偽装せず、`BuildGraphSeed`として明示します。Reference runnerもこのstage0 / stage1 / stage2境界をEvidenceへ出力します。
+
+既存`Definition.Requires`のRuntime Plugin dependencyからBuild edgeを暗黙生成しません。既存Plugin resolverのversion resolution / Runtime semanticsとも統合していません。
