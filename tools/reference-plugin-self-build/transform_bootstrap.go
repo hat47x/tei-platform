@@ -57,6 +57,8 @@ func runTransformBootstrap(
 		"internal/plugin/transform/model.go",
 		"internal/plugin/transform/eval.go",
 		"internal/plugin/transform/source.go",
+		"internal/core/id.go",
+		"internal/core/version.go",
 	})
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("hash deterministic transform Runtime Engine source closure: %w", err)
