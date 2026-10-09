@@ -83,4 +83,6 @@ shape名だけの一致では不十分です。同じshape名でwire schemaが�
 
 ただし、shape fingerprintが参照するschema artifactの保管場所、発行Authority、schema validation engineはまだReference化していません。fingerprintだけをschema本体の代わりには扱いません。
 
+Referenceで使うJSON adapterは、現在のshapeより緩い入力を受け入れないよう、未知fieldとtrailing JSON valueを拒否します。これはReference JSON codecの局所的な検査であり、汎用schema validation engineの代替ではありません。
+
 Invocation成功も新しいAuthorityを与えません。Canonical Acceptance、Application Runtime Authority、Database Provider binding、Permission / Resource境界は既存の責務として残ります。
