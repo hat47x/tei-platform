@@ -278,11 +278,11 @@ func jsonEncodedSizeWithin(v Value, maxBytes, depth int) (int, error) {
 		}
 		return add(0, len(v.Number))
 	case ValueString:
-		if !utf8.ValidString(v.String) {
-			return 0, fmt.Errorf("string value is not valid UTF-8")
+		size, err := jsonStringEncodedSize(v.String, maxBytes)
+		if err != nil {
+			return 0, err
 		}
-		raw, _ := json.Marshal(v.String)
-		return add(0, len(raw))
+		return add(0, size)
 	case ValueBytes:
 		return 0, fmt.Errorf("byte value cannot be encoded as JSON directly")
 	case ValueArray:
@@ -331,8 +331,11 @@ func jsonEncodedSizeWithin(v Value, maxBytes, depth int) (int, error) {
 					return 0, err
 				}
 			}
-			name, _ := json.Marshal(field.Name)
-			total, err = add(total, len(name)+1)
+			nameSize, err := jsonStringEncodedSize(field.Name, maxBytes-total)
+			if err != nil {
+				return 0, err
+			}
+			total, err = add(total, nameSize+1)
 			if err != nil {
 				return 0, err
 			}
@@ -350,6 +353,46 @@ func jsonEncodedSizeWithin(v Value, maxBytes, depth int) (int, error) {
 	default:
 		return 0, fmt.Errorf("unknown value kind %q", v.Kind)
 	}
+}
+
+func jsonStringEncodedSize(value string, maxBytes int) (int, error) {
+	if !utf8.ValidString(value) {
+		return 0, fmt.Errorf("string value is not valid UTF-8")
+	}
+	if maxBytes < 2 {
+		return 0, fmt.Errorf("JSON encoding exceeds byte limit")
+	}
+	total := 2 // surrounding quotes
+	add := func(amount int) error {
+		if amount < 0 || amount > maxBytes-total {
+			return fmt.Errorf("JSON encoding exceeds byte limit")
+		}
+		total += amount
+		return nil
+	}
+	for _, r := range value {
+		switch r {
+		case '"', '\\', '\b', '\f', '\n', '\r', '\t':
+			if err := add(2); err != nil {
+				return 0, err
+			}
+		case '<', '>', '&', '\u2028', '\u2029':
+			if err := add(6); err != nil {
+				return 0, err
+			}
+		default:
+			if r < 0x20 {
+				if err := add(6); err != nil {
+					return 0, err
+				}
+				continue
+			}
+			if err := add(utf8.RuneLen(r)); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return total, nil
 }
 
 func writeJSON(out *bytes.Buffer, v Value, depth int) error {
