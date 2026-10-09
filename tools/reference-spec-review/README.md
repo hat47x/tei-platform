@@ -29,7 +29,7 @@ go run ./tools/reference-business-procedure-check \
   > /tmp/cross-view.json
 ```
 
-staleなProposalも同時に確認する場合は、Shared Acceptanceが返したDecision等をJSONで用意します。
+Shared AcceptanceのPreview / Decisionを入力すると、明示された`stale`に加えて`unresolved`もreview packetへ残します。staleなProposalを確認する場合は、Shared Acceptanceが返したJSONを用意します。
 
 ```bash
 go run ./tools/reference-spec-review \
@@ -57,7 +57,7 @@ review packetの`evidence`には、入力側がすでに持っていたSource tr
 
 findingの`class`は、現在次を使います。
 
-- `ambiguity`: Knowledge Contextやcross-view側に未解決事項がある
+- `ambiguity`: Knowledge Context、Shared Acceptance、cross-view側に明示された未解決事項がある
 - `inconsistency`: Accepted側と変更要求の明示的な衝突
 - `cross-view-difference`: 二つのviewの参照集合などに差があり、人の確認が必要
 - `stale-premise`: Proposalの基準revisionが現在と一致しない
