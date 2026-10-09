@@ -43,7 +43,17 @@ func Bool(v bool) Value           { return Value{Kind: ValueBool, Bool: v} }
 func Number(v string) Value       { return Value{Kind: ValueNumber, Number: v} }
 func String(v string) Value       { return Value{Kind: ValueString, String: v} }
 func Bytes(v []byte) Value        { return Value{Kind: ValueBytes, Bytes: append([]byte(nil), v...)} }
-func Array(values ...Value) Value { return Value{Kind: ValueArray, Array: append([]Value(nil), values...)} }
+func Array(values ...Value) Value {
+	out := Value{Kind: ValueArray, Array: make([]Value, len(values))}
+	for i := range values {
+		out.Array[i] = values[i].Clone()
+	}
+	return out
+}
+
+func arrayShared(values []Value) Value {
+	return Value{Kind: ValueArray, Array: append([]Value(nil), values...)}
+}
 
 func Object(fields ...Field) (Value, error) {
 	seen := map[string]struct{}{}
@@ -199,7 +209,7 @@ func decodeJSONValue(decoder *json.Decoder, depth int) (Value, error) {
 			if closeToken != json.Delim(']') {
 				return Value{}, fmt.Errorf("JSON array is not terminated")
 			}
-			return Array(values...), nil
+			return arrayShared(values), nil
 		default:
 			return Value{}, fmt.Errorf("unexpected JSON delimiter %q", value)
 		}
