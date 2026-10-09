@@ -39,3 +39,21 @@ func TestPinnedPipelineFailsClosed(t *testing.T) {
 		})
 	}
 }
+
+func TestPinnedPipelineCoexistingVersions(t *testing.T) {
+	v1 := OperatorContract{ID: "std.where", Version: "1", Fingerprint: "where-v1", Effect: "pure", InputType: "rows/order", OutputType: "rows/order"}
+	v2 := OperatorContract{ID: "std.where", Version: "2", Fingerprint: "where-v2", Effect: "pure", InputType: "rows/order", OutputType: "rows/filtered"}
+	for _, catalog := range [][]OperatorContract{{v1, v2}, {v2, v1}} {
+		input, calls, err := ParsePinnedPipeline("rows/order |> std.where", []OperatorContract{v1}, catalog)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := ComposePinned(input, calls, catalog)
+		if err != nil || out != "rows/order" {
+			t.Fatalf("pin drift: output %q, %v", out, err)
+		}
+	}
+	if _, _, err := ParsePinnedPipeline("rows/order |> std.where", []OperatorContract{v1}, []OperatorContract{v2}); err == nil {
+		t.Fatal("version was silently upgraded")
+	}
+}
