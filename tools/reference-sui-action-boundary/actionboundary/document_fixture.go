@@ -30,9 +30,10 @@ func NewJSONDocumentStore(revision string, document []byte) *JSONDocumentStore {
  return &JSONDocumentStore{revision:revision,document:append([]byte(nil),document...)}
 }
 
-// BindDocument scopes this reference store to one document. It must be set
-// before the store is exposed to concurrent callers.
-func (s *JSONDocumentStore) BindDocument(id string) { s.mu.Lock(); defer s.mu.Unlock(); s.documentID=id }
+// NewScopedJSONDocumentStore binds a document identity at construction.
+func NewScopedJSONDocumentStore(documentID, revision string, document []byte) *JSONDocumentStore {
+ return &JSONDocumentStore{documentID:documentID,revision:revision,document:append([]byte(nil),document...)}
+}
 
 // Snapshot returns a copy so a caller cannot mutate the stored document.
 func (s *JSONDocumentStore) Snapshot() (string,[]byte,int) {
