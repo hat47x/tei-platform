@@ -185,14 +185,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		if len(source.Array) > e.limits.MaxCollection {
 			return Value{}, fmt.Errorf("sort-array collection exceeds maxCollection")
 		}
-		type keyed struct {
-			value Value
-			keys  []string
-		}
-		if err := e.consume(sortWorkBudget(len(source.Array))); err != nil {
-			return Value{}, err
-		}
-		items := make([]keyed, len(source.Array))
+		items := make([]sortItem, len(source.Array))
 		for i, item := range source.Array {
 			local := cloneEnv(env)
 			local[expr.Item] = item
@@ -207,17 +200,11 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 				}
 				keys[k] = key.String
 			}
-			items[i] = keyed{value: item, keys: keys}
+			items[i] = sortItem{value: item, keys: keys}
 		}
-		sort.Slice(items, func(i, j int) bool {
-			for k := range items[i].keys {
-				if items[i].keys[k] == items[j].keys[k] {
-					continue
-				}
-				return items[i].keys[k] < items[j].keys[k]
-			}
-			return false
-		})
+		if err := stableSortItems(e, items); err != nil {
+			return Value{}, err
+		}
 		out := make([]Value, len(items))
 		for i := range items {
 			out[i] = items[i].value
@@ -354,15 +341,94 @@ func encodedOutputSize(value Value, maxBytes int) (int, error) {
 	return len(raw), nil
 }
 
-func sortWorkBudget(n int) int {
-	if n <= 1 {
-		return 0
+type sortItem struct {
+	value Value
+	keys  []string
+}
+
+func stableSortItems(e *evaluator, items []sortItem) error {
+	if len(items) < 2 {
+		return nil
 	}
-	levels := 0
-	for size := 1; size < n; size <<= 1 {
-		levels++
+	buffer := make([]sortItem, len(items))
+	src := items
+	dst := buffer
+	srcIsItems := true
+	for width := 1; width < len(items); width *= 2 {
+		for left := 0; left < len(items); left += 2 * width {
+			mid := left + width
+			if mid > len(items) {
+				mid = len(items)
+			}
+			right := left + 2*width
+			if right > len(items) {
+				right = len(items)
+			}
+			i, j, k := left, mid, left
+			for i < mid && j < right {
+				cmp, err := compareSortKeys(e, src[i].keys, src[j].keys)
+				if err != nil {
+					return err
+				}
+				if err := e.consume(1); err != nil {
+					return err
+				}
+				if cmp <= 0 {
+					dst[k] = src[i]
+					i++
+				} else {
+					dst[k] = src[j]
+					j++
+				}
+				k++
+			}
+			for i < mid {
+				if err := e.consume(1); err != nil {
+					return err
+				}
+				dst[k] = src[i]
+				i++
+				k++
+			}
+			for j < right {
+				if err := e.consume(1); err != nil {
+					return err
+				}
+				dst[k] = src[j]
+				j++
+				k++
+			}
+		}
+		src, dst = dst, src
+		srcIsItems = !srcIsItems
 	}
-	return n * (levels + 1)
+	if !srcIsItems {
+		for i := range items {
+			if err := e.consume(1); err != nil {
+				return err
+			}
+			items[i] = src[i]
+		}
+	}
+	return nil
+}
+
+func compareSortKeys(e *evaluator, a, b []string) (int, error) {
+	if len(a) != len(b) {
+		return 0, fmt.Errorf("sort-array key tuple length mismatch")
+	}
+	for i := range a {
+		if err := e.consume(1); err != nil {
+			return 0, err
+		}
+		if a[i] < b[i] {
+			return -1, nil
+		}
+		if a[i] > b[i] {
+			return 1, nil
+		}
+	}
+	return 0, nil
 }
 
 
