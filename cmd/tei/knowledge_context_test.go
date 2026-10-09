@@ -184,6 +184,9 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 	if ctx.DataDesign == nil {
 		t.Fatal("Data Design Context is missing")
 	}
+	if ctx.DataDesign.ProjectionRevision != "tei.knowledge.data-design/v6" {
+		t.Fatalf("data design projection revision=%q", ctx.DataDesign.ProjectionRevision)
+	}
 	want := []string{
 		"resolve-current-semantic-data-and-source-evidence-before-design-change",
 		"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
@@ -202,6 +205,14 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 		"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
 	) {
 		t.Fatalf("review protocol authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
+	}
+
+	disclosure, err := buildKnowledgeDisclosure(ctx, "data-design")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disclosure.DataDesign == nil || !reflect.DeepEqual(disclosure.DataDesign.DesignReviewProtocol, want) {
+		t.Fatalf("data-design disclosure lost review protocol: %+v", disclosure.DataDesign)
 	}
 }
 
