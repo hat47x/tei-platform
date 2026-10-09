@@ -226,3 +226,22 @@ candidateでは`InspectWithContract`へsource profile Gateを追加した。転�
 この段階でJSONやRPCをproduction標準として固定しない。Source Adapter以外のCapability consumerでも同じ呼出しprimitiveを再利用できるか確認したうえで、共通Contractへ昇格するかを判断する。
 
 今回のPRでは、このGapを解消済みとは扱わない。実consumerを追加した目的は、resolverだけでは見えなかった次の固定点を具体化することである。
+
+
+## E2 汎用Invocation candidate — 2026-10-09
+
+E1で実Source Adapterを呼び出した結果、Capability Contractの解決を一般化するだけでは不十分だと分かった。実行側がCapabilityごとに専用Registryと専用dispatchを追加する構造では、Core固定enumを減らしても、新しい固定点がHostの呼出しcodeへ移る。
+
+このため、Referenceへ`InvocationRegistry`を追加した。Registryはdomain型を扱わず、resolverが選んだexact Provider、request / result shape identity、shape fingerprint、payload codec identity、opaque payloadだけを扱う。request / result bytesのdigestも実行結果へ残す。
+
+既存のSource Adapter consumerは、このRegistryを内部利用する形へ変更した。Provider選択、Conformance確認、exact artifact lookupをSource Adapter専用Registryへ重複実装しない。Source Adapter固有のsource digest確認やunknown保持はtyped wrapper側に残す。
+
+第二consumerには既存の`driver.ContractQueryExecutor`を接続した。`authoring-tool`のSource Adapterと`application-runtime`のContract Queryを同じInvocation Registryへ登録し、それぞれ元のAuthority scopeを維持したまま呼び出す。共通Registryを使うことはAuthorityの統合を意味しない。
+
+payload codecはContract scopedとした。ReferenceではSource AdapterとContract QueryにJSONを使うが、Registry自体はcodecを解釈しない。opaque binary payloadを往復するtestも追加し、JSONやRPCをproduction標準として固定しない。
+
+敵対的に確認したところ、shape identityを文字列だけで照合すると、同じshape名のままwire schemaを変更できる。このためrequest / result shapeへexact fingerprintを追加し、ImplementationとContractで一致を要求した。ProviderのConformance EvidenceはContract fingerprintへ結び付くため、shape fingerprintの変更も再Conformanceが必要なContract変更として扱える。
+
+ここで使うshape fingerprintは、exact schema artifactへ戻るためのidentity候補である。schema artifactの正本、発行Authority、schema validation engineは未実証であり、fingerprintだけを型検証の成立Evidenceにはしない。
+
+このE2で、generic resolutionからgeneric invocationまでCore固定Capability enumへ依存しないReference経路ができた。ただしproduction Permission / Resource / Sandbox、Targetごとの実行方式、process / Wasm transport、schema artifact管理は未接続である。コード変更を含むため、exact-head focused testとfull Repository healthが得られるまでPRはDraftのまま維持する。
