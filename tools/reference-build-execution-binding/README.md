@@ -156,13 +156,17 @@ BuildGraphEdge
   producer node
   output role
   consumer node
-  dependency binding ID
+  exact consumer input binding
+    - builder
+    - or BuildDependency(kind / id / version)
 
 BuildGraphSeed
   exact external artifact
-  trust boundary
+  external boundary
   consumer node
-  dependency binding ID
+  exact consumer input binding
+    - builder
+    - or BuildDependency(kind / id / version)
 ```
 
 Graph identityはnode宣言順やschedulerの実行順に依存しません。一方、node execution fingerprint、edgeのoutput selector、stage0 seed artifact、trust boundaryを変えればidentityが変わります。
@@ -191,3 +195,7 @@ stage0はBuild nodeへ偽装せず、`BuildGraphSeed`として明示します。
 `BuildGraphSeed.TrustBoundary`は「ここから先が外部seedに依存する」という境界を記録するためのfieldです。Referenceの値は`external-stage0-seed`とし、stage0 seedが信頼済みであること自体は主張しません。
 
 seed issuer、attestation、現在のTrust受理・失効は#1104の責務です。Build graphの存在やstage convergenceだけでstage0 trustを証明しません。
+
+Build graphのedgeは順序だけを表すものではありません。`verifyBuildGraphBindings`はproducerのArtifact Setから指定Roleを選び、そのdigestがconsumerのexact `Builder.ArtifactDigest`またはexact `BuildDependency(kind/id/version).ArtifactDigest`と一致することを確認します。
+
+これにより「graph上は依存しているが、実際のconsumerが別artifactを使った」という偽のprovenanceを拒否します。stage0 seedも同じinput bindingを通し、stage1が実際にそのexact seed builderを使うことをcross-checkします。
