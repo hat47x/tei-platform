@@ -116,6 +116,37 @@ func TestEpistemicDetailUnknownAndInaccessibleAreIndistinguishable(t *testing.T)
 	}
 }
 
+func TestEpistemicDetailGrantedEvidenceDoesNotExposeAccessRefs(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "ai-unreviewed" {
+			continue
+		}
+		corpus.Assertions[i].AccessRefs = []string{"policy:assertion"}
+		corpus.Assertions[i].Evidence[0].AccessRefs = []string{"policy:evidence"}
+	}
+	granted := []string{"policy:assertion", "policy:evidence"}
+	query := detailQueryFor(t, corpus, context, "ai-unreviewed", granted)
+
+	result, err := resolveEpistemicDetail(corpus, context, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Content.Evidence) != 1 ||
+		result.Content.Evidence[0].Ref != "conversation://tei/release-assumption" {
+		t.Fatalf("granted Evidence was not returned: %+v", result.Content.Evidence)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "\"accessRefs\"") ||
+		strings.Contains(string(encoded), "policy:assertion") ||
+		strings.Contains(string(encoded), "policy:evidence") {
+		t.Fatalf("detail result exposed access refs: %s", encoded)
+	}
+}
+
 func TestEpistemicDetailRedactsEvidenceAndMarksMetadataPartial(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
@@ -267,6 +298,23 @@ func TestEpistemicDetailInstructionRemainsDataNotPromptControl(t *testing.T) {
 		result.ContentRole != "epistemic-data" ||
 		result.ControlAuthority {
 		t.Fatalf("instruction-kind content became prompt control: %+v", result)
+	}
+}
+
+func TestCLIDetailAndReviewModesAreMutuallyExclusive(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runCLI(
+		[]string{
+			"-corpus", filepath.Join("testdata", "epistemic-fixture-v0.json"),
+			"-context", filepath.Join("testdata", "context-current.json"),
+			"-detail-query", "detail.json",
+			"-review-command", "review.json",
+		},
+		&stdout,
+		&stderr,
+	)
+	if code != 2 || !strings.Contains(stderr.String(), "mutually exclusive") {
+		t.Fatalf("detail and review modes were not rejected together: code=%d stderr=%s", code, stderr.String())
 	}
 }
 
