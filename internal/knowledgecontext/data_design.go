@@ -123,7 +123,7 @@ type DataDesignPersistenceRealization struct {
 	Authority  string                            `json:"authority"`
 }
 
-const dataDesignProjectionRevision = "tei.knowledge.data-design/v5"
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v6"
 
 type DataDesignContext struct {
 	ProjectionRevision                         string                                    `json:"projectionRevision"`
