@@ -57,6 +57,7 @@ func TestReviewPacketClassifiesAmbiguityConflictAndStalePremise(t *testing.T) {
 		},
 	})
 	acceptancePath := writeReviewJSON(t, dir, "acceptance.json", map[string]any{
+		"schema":   "tei.reference.change-decision/v0",
 		"decision": "rejected",
 		"stale": map[string]any{
 			"baseModelRevision":    "sha256:old",
@@ -116,6 +117,7 @@ func TestReviewPacketClassifiesAmbiguityConflictAndStalePremise(t *testing.T) {
 func TestReviewPacketKeepsSharedAcceptanceUnresolvedAsAmbiguity(t *testing.T) {
 	dir := t.TempDir()
 	acceptancePath := writeReviewJSON(t, dir, "acceptance.json", map[string]any{
+		"schema":   "tei.reference.change-preview/v0",
 		"decision": "preview",
 		"unresolved": []map[string]any{
 			{
@@ -206,6 +208,7 @@ func TestReviewPacketTreatsMissingInputsAsCoverageGapNotNegativeEvidence(t *test
 func TestReviewPacketKeepsUnknownCrossViewDiagnosticSourceOwned(t *testing.T) {
 	dir := t.TempDir()
 	crossViewPath := writeReviewJSON(t, dir, "cross-view.json", map[string]any{
+		"procedure": "order-entry.order-handling",
 		"diagnostics": []map[string]any{
 			{
 				"code":     "BUSINESS_APPLICATION_PATTERN_REF_NOT_FOUND",
@@ -224,6 +227,31 @@ func TestReviewPacketKeepsUnknownCrossViewDiagnosticSourceOwned(t *testing.T) {
 		got.Findings[0].Class != "source-diagnostic" ||
 		got.Findings[0].Code != "BUSINESS_APPLICATION_PATTERN_REF_NOT_FOUND" {
 		t.Fatalf("unknown diagnostic was reinterpreted: %+v", got.Findings)
+	}
+}
+
+func TestReviewPacketRejectsMismatchedInputContracts(t *testing.T) {
+	dir := t.TempDir()
+
+	badKnowledge := writeReviewJSON(t, dir, "bad-knowledge.json", map[string]any{
+		"subject": map[string]any{"kind": "", "id": ""},
+	})
+	if _, err := buildReviewPacket("bad-knowledge", badKnowledge, "", ""); err == nil {
+		t.Fatal("knowledge input without subject identity was accepted")
+	}
+
+	badCrossView := writeReviewJSON(t, dir, "bad-cross-view.json", map[string]any{
+		"diagnostics": []any{},
+	})
+	if _, err := buildReviewPacket("bad-cross-view", "", badCrossView, ""); err == nil {
+		t.Fatal("cross-view input without procedure identity was accepted")
+	}
+
+	badAcceptance := writeReviewJSON(t, dir, "bad-acceptance.json", map[string]any{
+		"schema": "tei.reference.decision-index/v0",
+	})
+	if _, err := buildReviewPacket("bad-acceptance", "", "", badAcceptance); err == nil {
+		t.Fatal("unsupported Shared Acceptance schema was accepted")
 	}
 }
 
