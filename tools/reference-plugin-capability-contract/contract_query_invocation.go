@@ -66,7 +66,7 @@ func ContractQueryInvocationImplementation(
 				return nil, err
 			}
 			var request ContractQueryInvocationRequest
-			if err := json.Unmarshal(payload, &request); err != nil {
+			if err := decodeReferenceJSONExact(payload, &request); err != nil {
 				return nil, fmt.Errorf("decode contract query request: %w", err)
 			}
 			if !request.Target.Valid() {
