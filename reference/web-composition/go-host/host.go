@@ -14,7 +14,7 @@ type Principal struct {
 	ProviderID    string
 	Issuer        string
 	Subject       string
-	ApplicationID string
+	PrincipalID   string
 }
 
 // Policy is host-owned: callers must not derive its contents from a browser request.
@@ -55,6 +55,13 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 			return nil, errors.New("provider ID and issuer must be explicit")
 		}
 	}
+	// Freeze provider selection at compilation time; callers must not be able to
+	// change the accepted issuer through a shared map after NewHost returns.
+	selected := make(map[string]string, len(p.Providers))
+	for id, issuer := range p.Providers {
+		selected[id] = issuer
+	}
+	p.Providers = selected
 	if d.VerifySession == nil || d.VerifyCSRF == nil || d.Authorize == nil || d.Invoke == nil || d.Audit == nil {
 		return nil, errors.New("host-owned protections and audit must all be wired")
 	}
@@ -94,7 +101,7 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 			return
 		}
 		subject, err := d.VerifySession(r)
-		if err != nil || subject.ProviderID == "" || subject.Issuer == "" || subject.Subject == "" || subject.ApplicationID == "" {
+		if err != nil || subject.ProviderID == "" || subject.Issuer == "" || subject.Subject == "" || subject.PrincipalID == "" {
 			http.Error(tw, "authentication required", http.StatusUnauthorized)
 			return
 		}
