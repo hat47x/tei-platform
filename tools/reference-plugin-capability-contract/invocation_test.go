@@ -468,3 +468,62 @@ func TestReferenceJSONInvocationRejectsTrailingJSONValue(t *testing.T) {
 		t.Fatalf("trailing Reference JSON value was accepted: %v", err)
 	}
 }
+
+
+func TestGenericInvocationRejectsResolvedContractWithoutInvocationShape(t *testing.T) {
+	contract := sourceAdapterContract()
+	contract.RequestShape = ""
+	contract.RequestShapeFingerprint = ""
+	contract.ResultShape = ""
+	contract.ResultShapeFingerprint = ""
+	contract.PayloadCodec = ""
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = registry.ResolveAndInvoke(
+		context.Background(),
+		sourceAdapterResolveInput(contract, provider),
+		nil,
+	)
+	if err == nil || !strings.Contains(err.Error(), "machine-readable invocation shape") {
+		t.Fatalf("resolved contract without invocation shape was executed: %v", err)
+	}
+}
+
+func TestInvocationRegistryRejectsMalformedShapeFingerprint(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation.RequestShapeFingerprint = "not-a-sha256"
+	if _, err := NewInvocationRegistry([]InvocationImplementation{implementation}); err == nil ||
+		!strings.Contains(err.Error(), "incomplete invocation shape") {
+		t.Fatalf("malformed invocation shape fingerprint was accepted: %v", err)
+	}
+}
