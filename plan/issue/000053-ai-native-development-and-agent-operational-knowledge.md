@@ -311,7 +311,7 @@ Data Design Review Protocol
   != write / runtime authority
 ```
 
-Review Planはrouting identity用のfingerprintを持つ。ただし、その一致をKnowledge内容のfreshness proofへ昇格させない。Data Designや選択的Disclosure等の内容を再利用するときは、それぞれのfingerprintとEvidence境界を別に確認する。
+Review Planはrouting identity用のfingerprintを持つ。ただし、その一致をKnowledge内容のfreshness proofへ昇格させない。また、`recommendedDisclosureSections`はselection候補であってQualification結果やDisclosure結果ではない。既存R6の `available != selected != qualified != disclosed` を維持し、必要なQualificationを経てからsemantic useへ進む。Data Designや選択的Disclosure等の内容を再利用するときは、それぞれのfingerprintとEvidence境界を別に確認する。
 
 この段階ではproduction prompt形式、model別prompt、埋め込みrouter、万能Context Packetを追加しない。R1以降のchallengeでは、自由探索baselineに対し、この共通入口から必要Knowledgeへ到達できるかを比較する。
 
