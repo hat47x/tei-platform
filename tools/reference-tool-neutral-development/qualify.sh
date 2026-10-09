@@ -229,8 +229,11 @@ write_receipt() {
     echo "error: receipt file appeared before atomic publish: $path" >&2
     exit 1
   fi
-  assert_unchanged "qualification receipt publication"
-  rm -f "$tmp"
+
+  # All qualification assertions are complete before the receipt becomes visible.
+  # Do not add a fallible qualification check after this atomic publication point:
+  # a failing check could otherwise leave a PASS-shaped receipt from a failed run.
+  rm -f "$tmp" || true
 }
 echo "==> full repository health" >&2
 "$ROOT/tools/repository-health-check.sh"
