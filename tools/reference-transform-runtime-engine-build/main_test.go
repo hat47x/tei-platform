@@ -164,6 +164,89 @@ func TestEvidenceFingerprintBindsBuildInputsAndArtifact(t *testing.T) {
 	}
 }
 
+func TestBuildEnvironmentDropsAmbientHostVariables(t *testing.T) {
+	state := t.TempDir()
+	env, err := buildEnvironment([]string{
+		"PATH=/ambient/bin",
+		"HOME=/ambient/home",
+		"LANG=ja_JP.UTF-8",
+		"HTTPS_PROXY=https://proxy.example",
+		"AWS_SECRET_ACCESS_KEY=secret",
+		"GOFLAGS=-mod=mod",
+	}, state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{
+		"PATH=/ambient/bin",
+		"HOME=/ambient/home",
+		"LANG=ja_JP.UTF-8",
+		"HTTPS_PROXY=https://proxy.example",
+		"AWS_SECRET_ACCESS_KEY=secret",
+		"GOFLAGS=-mod=mod",
+	} {
+		for _, got := range env {
+			if got == forbidden {
+				t.Fatalf("ambient environment leaked into build: %s", forbidden)
+			}
+		}
+	}
+	requiredPrefixes := []string{
+		"CGO_ENABLED=0",
+		"GOENV=off",
+		"GOPROXY=off",
+		"GOTOOLCHAIN=local",
+		"GOWORK=off",
+		"GOCACHE=",
+		"GOMODCACHE=",
+		"GOPATH=",
+		"HOME=",
+		"USERPROFILE=",
+		"TMPDIR=",
+		"TMP=",
+		"TEMP=",
+	}
+	for _, prefix := range requiredPrefixes {
+		found := false
+		for _, got := range env {
+			if strings.HasPrefix(got, prefix) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("isolated build environment is missing %q in %#v", prefix, env)
+		}
+	}
+}
+
+func TestRecordedBuildSettingsDescribeIsolationWithoutInjectingPolicyVariable(t *testing.T) {
+	recorded := recordedBuildSettings()
+	foundIsolation := false
+	foundPolicy := false
+	for _, setting := range recorded {
+		if setting == "STATE_ISOLATION=GOCACHE,GOMODCACHE,GOPATH,HOME,USERPROFILE,TMPDIR,TMP,TEMP" {
+			foundIsolation = true
+		}
+		if setting == "HOST_ENVIRONMENT=deny-by-default" {
+			foundPolicy = true
+		}
+	}
+	if !foundIsolation || !foundPolicy {
+		t.Fatalf("recorded build settings do not describe isolation: %#v", recorded)
+	}
+
+	env, err := buildEnvironment(nil, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, setting := range env {
+		if strings.HasPrefix(setting, "STATE_ISOLATION=") || strings.HasPrefix(setting, "HOST_ENVIRONMENT=") {
+			t.Fatalf("Evidence-only policy marker leaked into subprocess environment: %s", setting)
+		}
+	}
+}
+
 func TestFixedGoBuildSettingsPinTargetAndAmbientGoControls(t *testing.T) {
 	settings := fixedGoBuildSettings()
 	required := []string{
