@@ -55,7 +55,7 @@ Gate / Product claim
 | `docs/status.md` | 現在の実装・Evidence状態を示す | 可変のcurrent snapshot |
 | `reference/` / `tools/` | 設計仮説を実例・checkerで圧力試験する | Reference / executable Evidence surface |
 | `docs/conformance/` | 実装と設計上の不変条件の対応を示す | 対象範囲ごとのConformance説明 |
-| `docs/audits/` | 特定時点の監査結果を残す | 監査記録。current architectureの第二正本ではない |
+| [`docs/audits/`](audits/README.md) | 特定時点の監査結果を残す | 監査記録。current architectureの第二正本ではない |
 
 `architecture-reading-guide.md`、`business-system-design-reading-guide.md`、`design-synthesis-reading-guide.md`、`requirements/README.md`は、正本の内容を置き換える文書ではありません。前提知識の少ない読者が、背景・失敗例・要求群のつながりを理解してから正本やplanning文書へ進むための補助入口です。
 
