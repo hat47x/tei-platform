@@ -120,6 +120,18 @@ construct-array(values: Expr[])
 
 この試験の実施結果は、全Repository Healthの資格とは分けて記録する。構造が表現できることと、実業務への適用が正しいことは異なる。
 
+## E7：実際の受注業務仕様からの投影
+
+[受注アプリケーションの実ソースを使う試験](semantic_validation_source_test.go)では、`workspace.Load`で既存の業務意味モデルを読み取り、`validation.Validate`で意味の整合性を検査したうえで、アプリケーションが参照する`semantic.Validation`を取得する。各規則の出所はSource Indexで確認する。これらを[変換Source](semantic-validation-projection.transform.json)へ渡し、既存の配列写像だけで検証計画の**記述**を得る。
+
+元となる受注の正本には、`positive`と`relation-unique`という性質の異なる規則がある。合成例の`required-text`や`nonnegative-safe-integer`へ置き換えない。規則の識別子・種別・対象属性・対象関係を揃えて保存することで、「正の数」を「非負整数」に弱めたり、関係内の一意性を単一項目の制約と混同したりすることを防ぐ。
+
+この試験では、規則配列自体を案件別ジェネレータで再構築せず、既存のアプリケーション参照と業務意味モデルから得る。ただし、**Sourceを読み込めること、検証エラーがないこと、生成結果が一致することは、業務仕様が人間に正式受理されたことと同義ではない**。採用状態・検証根拠と実行権限は別途管理する。
+
+また、変換した結果は元の意味を写した派生情報であり、業務規則を評価する実行器そのものではない。出力先の実Consumerが派生計画を必要としないなら、元の`semantic.Validation`を直接参照する方が簡潔である。**何か生成できるからといって、生成物を新たな第二正本にしない。**
+
+この実証で既存Transformを再利用できれば、新しい`construct-array`演算子を追加する前に「既存モデルを消費するだけで十分か」を判断できる。ただし今ある実Consumerは受注一件であり、複数案件の共通化が成立したとは扱わない。実テストとfull Repository Healthは独立して確認する。
+
 ## なぜCapabilityへ直接接続しないか
 
 PR #1058のGeneric Invocationは、Source AdapterやContract Queryのような**実行サービス**を扱います。Contract / Provider / artifact / Authority scopeを解決し、opaque requestを実装へ渡す境界です。
