@@ -42,6 +42,22 @@ Execution Profileが要求するPermissionとEnvironmentのGrantはexactに一�
 
 別のRuntime Capability Ref向けにAuthorityが追加されても、既存Planのidentityは変えません。
 
+## legacy Capabilityからの一方向migration
+
+既存の`CapabilityKind + CapabilityID`は、このReferenceで直ちに削除しません。ただし、generic Runtime Capability Refと並ぶ第二のAuthorityとして残し続けることもしません。
+
+`LegacyRuntimeProjection`は、authoritativeな旧`plugin.Definition`から対象Capabilityを一件だけ取り出し、Accepted Runtime CandidateとExecution Profileへ結び付けます。旧PluginのID / versionとexact artifactがAccepted Providerと一致し、旧Capabilityが宣言するPermissionとExecution Profileが一致する場合だけRuntime Capability Refへ投影します。
+
+projectionは旧Capability declarationのfingerprintを保持します。旧宣言が変わった場合は、保存済みprojectionをcurrentとして扱いません。
+
+Environment側は`LegacyEnvironmentAuthorityProjection`として分けます。旧Environmentの対象Capabilityに結び付いたPermission Grant、Resource Binding、Lease Policyだけをgeneric Runtime Capability Refへ投影します。別Capability向けの設定はprojection identityへ含めません。
+
+legacy Environmentの存在だけからExecution Authorityを作ることはありません。migrationには、別途AcceptedなExecution Authority Evidenceが必要です。
+
+projection結果のgeneric Authorityにはlegacy claimを残しません。旧Authorityとgeneric Authorityを同時に有効化する状態は`RuntimeEnvironmentPlan`が拒否します。migrationは旧設定を読み取って新Authority候補を作る一方向の操作であり、新旧の設定を二つの独立正本として同期する仕組みではありません。
+
+保存済みmigrationを再利用するときは、Plugin declarationとEnvironment Authorityの両projectionをcurrent sourceへreplayします。
+
 ## 既存Resource BrokerとHost Sandboxの再利用
 
 最初の実行pressureは`host-enforced-sandbox`のprocess realizationだけを対象にします。
