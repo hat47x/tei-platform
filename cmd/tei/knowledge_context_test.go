@@ -241,6 +241,89 @@ func TestBuildBuilderReviewPlanRoutesApplicationPatternAcrossViews(t *testing.T)
 	}
 }
 
+func TestBuildBuilderReviewHandoffQualifiesBeforeDisclosure(t *testing.T) {
+	root := testRepositoryRoot(t)
+	handoff, err := buildBuilderReviewHandoff(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "order_entry",
+			RequiredDependencies: []knowledgecontext.DependencyRequirement{
+				{
+					Direction: "outgoing",
+					Relation:  "contract-query",
+					Kind:      "database-contract-query",
+					ID:        "master_data.customer/find_by_id",
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.ProjectionRevision != "tei.knowledge.builder-review-handoff/v1" ||
+		handoff.Status != "qualified-for-disclosure" ||
+		handoff.Fingerprint == "" ||
+		handoff.ReviewPlanFingerprint == "" {
+		t.Fatalf("builder review handoff identity is incomplete: %+v", handoff)
+	}
+	if handoff.Qualification.Status != knowledgecontext.QualificationApplicable ||
+		len(handoff.Qualification.Evidence) == 0 ||
+		len(handoff.Qualification.DependencyEvidence) == 0 {
+		t.Fatalf("builder review handoff lost qualification Evidence: %+v", handoff.Qualification)
+	}
+	for _, section := range []string{"source", "definition", "data-design", "dependencies"} {
+		if !containsKnowledgeContextString(handoff.SelectedSections, section) {
+			t.Fatalf("qualified review section %q is missing: %+v", section, handoff.SelectedSections)
+		}
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, ""); err != nil {
+		t.Fatalf("empty expected handoff fingerprint enabled the guard: %v", err)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, handoff.Fingerprint); err != nil {
+		t.Fatalf("current handoff fingerprint was rejected: %v", err)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale handoff fingerprint was not rejected: %v", err)
+	}
+}
+
+func TestBuildBuilderReviewHandoffKeepsUnknownQualificationBlocked(t *testing.T) {
+	root := testRepositoryRoot(t)
+	handoff, err := buildBuilderReviewHandoff(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"missing.example",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "blocked-unresolved" ||
+		handoff.Qualification.Status != knowledgecontext.QualificationUnknown {
+		t.Fatalf("unknown qualification became disclosable: %+v", handoff)
+	}
+	if len(handoff.Qualification.Reasons) == 0 {
+		t.Fatalf("blocked handoff lost qualification reasons: %+v", handoff.Qualification)
+	}
+}
+
+func TestBuildBuilderReviewHandoffRequiresQualificationRequirements(t *testing.T) {
+	if _, err := buildBuilderReviewHandoffFromFile(
+		"unused",
+		"application-pattern",
+		"order_entry.customer_reference",
+		"",
+	); err == nil || !strings.Contains(err.Error(), "requires -qualification-requirements") {
+		t.Fatalf("missing qualification requirements were accepted: %v", err)
+	}
+}
+
 func TestBuildBuilderReviewPlanRequiresWorkspaceAndSubject(t *testing.T) {
 	if _, err := buildBuilderReviewPlan("", "semantic-data", "sales.order_line"); err == nil ||
 		!strings.Contains(err.Error(), "knowledge-review-plan requires -workspace") {
