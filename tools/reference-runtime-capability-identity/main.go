@@ -17,16 +17,16 @@ import (
 )
 
 const (
-	runtimeCapabilityRefSchema = "tei.reference.runtime-capability-ref/v0"
+	runtimeCapabilityRefSchema   = "tei.reference.runtime-capability-ref/v0"
 	runtimeEnvironmentPlanSchema = "tei.reference.runtime-capability-environment-plan/v0"
 	genericResourceAuthorityKind = "generic-runtime-authority"
-	genericProcessDispatchKind = "generic-runtime-dispatch"
+	genericProcessDispatchKind   = "generic-runtime-dispatch"
 )
 
 type RuntimeIsolationPolicy string
 
 const (
-	RuntimeIsolationHostTrusted RuntimeIsolationPolicy = "host-trusted"
+	RuntimeIsolationHostTrusted         RuntimeIsolationPolicy = "host-trusted"
 	RuntimeIsolationHostEnforcedSandbox RuntimeIsolationPolicy = "host-enforced-sandbox"
 )
 
@@ -35,10 +35,10 @@ func (p RuntimeIsolationPolicy) valid() bool {
 }
 
 type ExecutionProfile struct {
-	RealizationTarget string `json:"realizationTarget"`
-	IsolationPolicy RuntimeIsolationPolicy `json:"isolationPolicy"`
-	Permissions []permission.Spec `json:"permissions,omitempty"`
-	Fingerprint string `json:"fingerprint"`
+	RealizationTarget string                 `json:"realizationTarget"`
+	IsolationPolicy   RuntimeIsolationPolicy `json:"isolationPolicy"`
+	Permissions       []permission.Spec      `json:"permissions,omitempty"`
+	Fingerprint       string                 `json:"fingerprint"`
 }
 
 func newExecutionProfile(
@@ -59,8 +59,8 @@ func newExecutionProfile(
 	}
 	profile := ExecutionProfile{
 		RealizationTarget: target,
-		IsolationPolicy: isolation,
-		Permissions: normalized,
+		IsolationPolicy:   isolation,
+		Permissions:       normalized,
 	}
 	profile.Fingerprint = executionProfileFingerprint(profile)
 	return profile, nil
@@ -94,30 +94,30 @@ func executionProfileFingerprint(profile ExecutionProfile) string {
 }
 
 type AcceptedRuntimeCandidate struct {
-	ContractID string `json:"contractId"`
-	ContractVersion string `json:"contractVersion"`
-	ContractFingerprint string `json:"contractFingerprint"`
-	Plugin plugin.Identity `json:"plugin"`
-	ImplementationID string `json:"implementationId"`
-	ArtifactDigest string `json:"artifactDigest"`
-	RealizationTarget string `json:"realizationTarget"`
-	ExecutionProfileFingerprint string `json:"executionProfileFingerprint"`
-	CapabilityResolutionLockFingerprint string `json:"capabilityResolutionLockFingerprint"`
+	ContractID                          string          `json:"contractId"`
+	ContractVersion                     string          `json:"contractVersion"`
+	ContractFingerprint                 string          `json:"contractFingerprint"`
+	Plugin                              plugin.Identity `json:"plugin"`
+	ImplementationID                    string          `json:"implementationId"`
+	ArtifactDigest                      string          `json:"artifactDigest"`
+	RealizationTarget                   string          `json:"realizationTarget"`
+	ExecutionProfileFingerprint         string          `json:"executionProfileFingerprint"`
+	CapabilityResolutionLockFingerprint string          `json:"capabilityResolutionLockFingerprint"`
 }
 
 type RuntimeCapabilityRef struct {
-	Schema string `json:"schema"`
-	ContractID string `json:"contractId"`
-	ContractVersion string `json:"contractVersion"`
-	ContractFingerprint string `json:"contractFingerprint"`
-	PluginID core.CanonicalID `json:"pluginId"`
-	PluginVersion string `json:"pluginVersion"`
-	ImplementationID string `json:"implementationId"`
-	ArtifactDigest string `json:"artifactDigest"`
-	RealizationTarget string `json:"realizationTarget"`
-	ExecutionProfileFingerprint string `json:"executionProfileFingerprint"`
-	CapabilityResolutionLockFingerprint string `json:"capabilityResolutionLockFingerprint"`
-	Fingerprint string `json:"fingerprint"`
+	Schema                              string           `json:"schema"`
+	ContractID                          string           `json:"contractId"`
+	ContractVersion                     string           `json:"contractVersion"`
+	ContractFingerprint                 string           `json:"contractFingerprint"`
+	PluginID                            core.CanonicalID `json:"pluginId"`
+	PluginVersion                       string           `json:"pluginVersion"`
+	ImplementationID                    string           `json:"implementationId"`
+	ArtifactDigest                      string           `json:"artifactDigest"`
+	RealizationTarget                   string           `json:"realizationTarget"`
+	ExecutionProfileFingerprint         string           `json:"executionProfileFingerprint"`
+	CapabilityResolutionLockFingerprint string           `json:"capabilityResolutionLockFingerprint"`
+	Fingerprint                         string           `json:"fingerprint"`
 }
 
 func deriveRuntimeCapabilityRef(
@@ -164,16 +164,16 @@ func deriveRuntimeCapabilityRef(
 	}
 
 	ref := RuntimeCapabilityRef{
-		Schema: runtimeCapabilityRefSchema,
-		ContractID: candidate.ContractID,
-		ContractVersion: candidate.ContractVersion,
-		ContractFingerprint: candidate.ContractFingerprint,
-		PluginID: candidate.Plugin.ID,
-		PluginVersion: candidate.Plugin.Version,
-		ImplementationID: candidate.ImplementationID,
-		ArtifactDigest: candidate.ArtifactDigest,
-		RealizationTarget: candidate.RealizationTarget,
-		ExecutionProfileFingerprint: candidate.ExecutionProfileFingerprint,
+		Schema:                              runtimeCapabilityRefSchema,
+		ContractID:                          candidate.ContractID,
+		ContractVersion:                     candidate.ContractVersion,
+		ContractFingerprint:                 candidate.ContractFingerprint,
+		PluginID:                            candidate.Plugin.ID,
+		PluginVersion:                       candidate.Plugin.Version,
+		ImplementationID:                    candidate.ImplementationID,
+		ArtifactDigest:                      candidate.ArtifactDigest,
+		RealizationTarget:                   candidate.RealizationTarget,
+		ExecutionProfileFingerprint:         candidate.ExecutionProfileFingerprint,
 		CapabilityResolutionLockFingerprint: candidate.CapabilityResolutionLockFingerprint,
 	}
 	ref.Fingerprint = runtimeCapabilityRefFingerprint(ref)
@@ -225,51 +225,51 @@ func runtimeCapabilityRefFingerprint(ref RuntimeCapabilityRef) string {
 
 type RuntimeExecutionGrant struct {
 	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	ExecutionProfileFingerprint string `json:"executionProfileFingerprint"`
+	ExecutionProfileFingerprint  string `json:"executionProfileFingerprint"`
 	AuthorityEvidenceFingerprint string `json:"authorityEvidenceFingerprint"`
 }
 
 type RuntimePermissionGrant struct {
-	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	Permission permission.Spec `json:"permission"`
+	RuntimeCapabilityFingerprint string          `json:"runtimeCapabilityFingerprint"`
+	Permission                   permission.Spec `json:"permission"`
 }
 
 type RuntimeResourceBinding struct {
-	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	Binding resource.Binding `json:"binding"`
+	RuntimeCapabilityFingerprint string           `json:"runtimeCapabilityFingerprint"`
+	Binding                      resource.Binding `json:"binding"`
 }
 
 type RuntimeLeasePolicy struct {
-	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	Policy resource.LeasePolicy `json:"policy"`
+	RuntimeCapabilityFingerprint string               `json:"runtimeCapabilityFingerprint"`
+	Policy                       resource.LeasePolicy `json:"policy"`
 }
 
 type LegacyAuthorityClaim struct {
-	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	CapabilityKind string `json:"capabilityKind"`
-	CapabilityID core.CanonicalID `json:"capabilityId"`
+	RuntimeCapabilityFingerprint string           `json:"runtimeCapabilityFingerprint"`
+	CapabilityKind               string           `json:"capabilityKind"`
+	CapabilityID                 core.CanonicalID `json:"capabilityId"`
 }
 
 type RuntimeEnvironmentAuthority struct {
-	Environment core.CanonicalID `json:"environment"`
-	ExecutionGrants []RuntimeExecutionGrant `json:"executionGrants,omitempty"`
+	Environment      core.CanonicalID         `json:"environment"`
+	ExecutionGrants  []RuntimeExecutionGrant  `json:"executionGrants,omitempty"`
 	PermissionGrants []RuntimePermissionGrant `json:"permissionGrants,omitempty"`
 	ResourceBindings []RuntimeResourceBinding `json:"resourceBindings,omitempty"`
-	LeasePolicies []RuntimeLeasePolicy `json:"leasePolicies,omitempty"`
-	LegacyClaims []LegacyAuthorityClaim `json:"legacyClaims,omitempty"`
+	LeasePolicies    []RuntimeLeasePolicy     `json:"leasePolicies,omitempty"`
+	LegacyClaims     []LegacyAuthorityClaim   `json:"legacyClaims,omitempty"`
 }
 
 type RuntimeEnvironmentPlan struct {
-	Schema string `json:"schema"`
-	Environment core.CanonicalID `json:"environment"`
-	RuntimeCapability RuntimeCapabilityRef `json:"runtimeCapability"`
-	ExecutionProfileFingerprint string `json:"executionProfileFingerprint"`
-	ExecutionAuthorityEvidenceFingerprint string `json:"executionAuthorityEvidenceFingerprint"`
-	IsolationPolicy RuntimeIsolationPolicy `json:"isolationPolicy"`
-	Permissions []permission.Spec `json:"permissions,omitempty"`
-	ResourceBindings []resource.Binding `json:"resourceBindings,omitempty"`
-	LeasePolicy resource.LeasePolicy `json:"leasePolicy,omitempty"`
-	RuntimePolicyFingerprint string `json:"runtimePolicyFingerprint"`
+	Schema                                string                 `json:"schema"`
+	Environment                           core.CanonicalID       `json:"environment"`
+	RuntimeCapability                     RuntimeCapabilityRef   `json:"runtimeCapability"`
+	ExecutionProfileFingerprint           string                 `json:"executionProfileFingerprint"`
+	ExecutionAuthorityEvidenceFingerprint string                 `json:"executionAuthorityEvidenceFingerprint"`
+	IsolationPolicy                       RuntimeIsolationPolicy `json:"isolationPolicy"`
+	Permissions                           []permission.Spec      `json:"permissions,omitempty"`
+	ResourceBindings                      []resource.Binding     `json:"resourceBindings,omitempty"`
+	LeasePolicy                           resource.LeasePolicy   `json:"leasePolicy,omitempty"`
+	RuntimePolicyFingerprint              string                 `json:"runtimePolicyFingerprint"`
 }
 
 func buildRuntimeEnvironmentPlan(
@@ -386,15 +386,15 @@ func buildRuntimeEnvironmentPlan(
 	}
 
 	plan := RuntimeEnvironmentPlan{
-		Schema: runtimeEnvironmentPlanSchema,
-		Environment: authority.Environment,
-		RuntimeCapability: ref,
-		ExecutionProfileFingerprint: profile.Fingerprint,
+		Schema:                                runtimeEnvironmentPlanSchema,
+		Environment:                           authority.Environment,
+		RuntimeCapability:                     ref,
+		ExecutionProfileFingerprint:           profile.Fingerprint,
 		ExecutionAuthorityEvidenceFingerprint: executionGrant.AuthorityEvidenceFingerprint,
-		IsolationPolicy: profile.IsolationPolicy,
-		Permissions: normalizedGrants,
-		ResourceBindings: resource.NormalizeBindings(matchedBindings),
-		LeasePolicy: leasePolicy,
+		IsolationPolicy:                       profile.IsolationPolicy,
+		Permissions:                           normalizedGrants,
+		ResourceBindings:                      resource.NormalizeBindings(matchedBindings),
+		LeasePolicy:                           leasePolicy,
 	}
 	plan.RuntimePolicyFingerprint = runtimeEnvironmentPlanFingerprint(plan)
 	return plan, nil
@@ -417,9 +417,9 @@ func validateRuntimeEnvironmentPlan(plan RuntimeEnvironmentPlan) error {
 	}
 	profileSnapshot := ExecutionProfile{
 		RealizationTarget: plan.RuntimeCapability.RealizationTarget,
-		IsolationPolicy: plan.IsolationPolicy,
-		Permissions: append([]permission.Spec(nil), plan.Permissions...),
-		Fingerprint: plan.ExecutionProfileFingerprint,
+		IsolationPolicy:   plan.IsolationPolicy,
+		Permissions:       append([]permission.Spec(nil), plan.Permissions...),
+		Fingerprint:       plan.ExecutionProfileFingerprint,
 	}
 	if err := validateExecutionProfile(profileSnapshot); err != nil {
 		return fmt.Errorf("runtime Environment Plan Execution Profile snapshot: %w", err)
@@ -536,15 +536,15 @@ func processDispatchID(
 		return "", fmt.Errorf("process dispatch Contract fingerprint is invalid")
 	}
 	dispatchFingerprint := fingerprint(struct {
-		ContractID string `json:"contractId"`
-		ContractVersion string `json:"contractVersion"`
+		ContractID          string `json:"contractId"`
+		ContractVersion     string `json:"contractVersion"`
 		ContractFingerprint string `json:"contractFingerprint"`
-		ImplementationID string `json:"implementationId"`
+		ImplementationID    string `json:"implementationId"`
 	}{
-		ContractID: contractID,
-		ContractVersion: contractVersion,
+		ContractID:          contractID,
+		ContractVersion:     contractVersion,
 		ContractFingerprint: contractFingerprint,
-		ImplementationID: implementationID,
+		ImplementationID:    implementationID,
 	})
 	hexPart := strings.TrimPrefix(dispatchFingerprint, "sha256:")
 	return core.ParseCanonicalID("runtime_dispatch.d_" + hexPart)
@@ -559,42 +559,42 @@ func resourceAcquireRequest(plan RuntimeEnvironmentPlan) (resource.AcquireReques
 		return resource.AcquireRequest{}, err
 	}
 	return resource.AcquireRequest{
-		Environment: plan.Environment,
-		CapabilityKind: genericResourceAuthorityKind,
-		CapabilityID: capabilityID,
+		Environment:              plan.Environment,
+		CapabilityKind:           genericResourceAuthorityKind,
+		CapabilityID:             capabilityID,
 		RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
-		Permissions: append([]permission.Spec(nil), plan.Permissions...),
-		Bindings: append([]resource.Binding(nil), plan.ResourceBindings...),
-		LeasePolicy: plan.LeasePolicy,
+		Permissions:              append([]permission.Spec(nil), plan.Permissions...),
+		Bindings:                 append([]resource.Binding(nil), plan.ResourceBindings...),
+		LeasePolicy:              plan.LeasePolicy,
 	}, nil
 }
 
 type RuntimeProcessRealization struct {
-	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	Plugin plugin.Identity `json:"plugin"`
-	Artifact plugin.Artifact `json:"artifact"`
-	Command pruntime.ProcessCommand `json:"command"`
+	RuntimeCapabilityFingerprint string                  `json:"runtimeCapabilityFingerprint"`
+	Plugin                       plugin.Identity         `json:"plugin"`
+	Artifact                     plugin.Artifact         `json:"artifact"`
+	Command                      pruntime.ProcessCommand `json:"command"`
 }
 
 type GenericInvocation struct {
-	Response pruntime.Response `json:"response"`
+	Response   pruntime.Response           `json:"response"`
 	Provenance GenericInvocationProvenance `json:"provenance"`
 }
 
 type GenericInvocationProvenance struct {
-	Environment core.CanonicalID `json:"environment"`
-	RuntimeCapability RuntimeCapabilityRef `json:"runtimeCapability"`
-	RuntimePolicyFingerprint string `json:"runtimePolicyFingerprint"`
-	ExecutionAuthorityEvidenceFingerprint string `json:"executionAuthorityEvidenceFingerprint"`
-	ArtifactVerification *pruntime.ArtifactVerification `json:"artifactVerification,omitempty"`
-	ResourceAuthorityKind string `json:"resourceAuthorityKind"`
-	ResourceAuthoritySubjectID core.CanonicalID `json:"resourceAuthoritySubjectId"`
-	ProcessDispatchKind string `json:"processDispatchKind"`
-	ProcessDispatchID core.CanonicalID `json:"processDispatchId"`
-	Sandboxed bool `json:"sandboxed"`
-	ResourceLeaseID string `json:"resourceLeaseId,omitempty"`
-	ResourceLeaseReleased bool `json:"resourceLeaseReleased,omitempty"`
-	Resources []resource.Record `json:"resources,omitempty"`
+	Environment                           core.CanonicalID               `json:"environment"`
+	RuntimeCapability                     RuntimeCapabilityRef           `json:"runtimeCapability"`
+	RuntimePolicyFingerprint              string                         `json:"runtimePolicyFingerprint"`
+	ExecutionAuthorityEvidenceFingerprint string                         `json:"executionAuthorityEvidenceFingerprint"`
+	ArtifactVerification                  *pruntime.ArtifactVerification `json:"artifactVerification,omitempty"`
+	ResourceAuthorityKind                 string                         `json:"resourceAuthorityKind"`
+	ResourceAuthoritySubjectID            core.CanonicalID               `json:"resourceAuthoritySubjectId"`
+	ProcessDispatchKind                   string                         `json:"processDispatchKind"`
+	ProcessDispatchID                     core.CanonicalID               `json:"processDispatchId"`
+	Sandboxed                             bool                           `json:"sandboxed"`
+	ResourceLeaseID                       string                         `json:"resourceLeaseId,omitempty"`
+	ResourceLeaseReleased                 bool                           `json:"resourceLeaseReleased,omitempty"`
+	Resources                             []resource.Record              `json:"resources,omitempty"`
 }
 
 func invokeWithExistingHostBoundary(
@@ -662,16 +662,16 @@ func invokeWithExistingHostBoundary(
 		return inv, err
 	}
 	inv.Provenance = GenericInvocationProvenance{
-		Environment: plan.Environment,
-		RuntimeCapability: plan.RuntimeCapability,
-		RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
+		Environment:                           plan.Environment,
+		RuntimeCapability:                     plan.RuntimeCapability,
+		RuntimePolicyFingerprint:              plan.RuntimePolicyFingerprint,
 		ExecutionAuthorityEvidenceFingerprint: plan.ExecutionAuthorityEvidenceFingerprint,
-		ArtifactVerification: &verified,
-		ResourceAuthorityKind: genericResourceAuthorityKind,
-		ResourceAuthoritySubjectID: resourceAuthoritySubjectID,
-		ProcessDispatchKind: genericProcessDispatchKind,
-		ProcessDispatchID: processDispatchID,
-		Sandboxed: true,
+		ArtifactVerification:                  &verified,
+		ResourceAuthorityKind:                 genericResourceAuthorityKind,
+		ResourceAuthoritySubjectID:            resourceAuthoritySubjectID,
+		ProcessDispatchKind:                   genericProcessDispatchKind,
+		ProcessDispatchID:                     processDispatchID,
+		Sandboxed:                             true,
 	}
 
 	var lease *resource.Lease
@@ -709,23 +709,23 @@ func invokeWithExistingHostBoundary(
 	}
 	req := pruntime.Request{
 		ProtocolVersion: pruntime.ProtocolVersion,
-		RequestID: requestID,
-		Plugin: realization.Plugin,
-		CapabilityKind: plugin.CapabilityKind(genericProcessDispatchKind),
-		CapabilityID: processDispatchID,
-		Permissions: append([]permission.Spec(nil), plan.Permissions...),
-		ResourceLease: lease,
-		Operation: operation,
-		Payload: raw,
+		RequestID:       requestID,
+		Plugin:          realization.Plugin,
+		CapabilityKind:  plugin.CapabilityKind(genericProcessDispatchKind),
+		CapabilityID:    processDispatchID,
+		Permissions:     append([]permission.Spec(nil), plan.Permissions...),
+		ResourceLease:   lease,
+		Operation:       operation,
+		Payload:         raw,
 	}
 	resp, err := sandbox.Invoke(ctx, pruntime.SandboxSpec{
-		Command: realization.Command,
-		Plugin: realization.Plugin,
-		Artifact: realization.Artifact,
-		Permissions: append([]permission.Spec(nil), plan.Permissions...),
+		Command:       realization.Command,
+		Plugin:        realization.Plugin,
+		Artifact:      realization.Artifact,
+		Permissions:   append([]permission.Spec(nil), plan.Permissions...),
 		ResourceLease: lease,
-		LeasePolicy: plan.LeasePolicy,
-		Profile: pruntime.SandboxProfileForLease(lease),
+		LeasePolicy:   plan.LeasePolicy,
+		Profile:       pruntime.SandboxProfileForLease(lease),
 	}, req)
 	inv.Response = resp
 	if err != nil {
