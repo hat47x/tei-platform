@@ -775,6 +775,34 @@ testには、既知のS4 candidateと同じsemantic deltaになるpositive case�
 
 この段階でも探索結果の自動採用やReference Patternの自動適用は行わない。destination-ownedな情報は明示入力のままであり、Proposal生成後もAcceptanceは別である。
 
+### 2026-10-10 Data Design candidate review packet
+
+Data Design Contextは、acceptedなscoped uniquenessから`businessIdentityCandidates`と`functionalDependencyCandidates`を導出できる。各candidateには意味のidentityを表す`fingerprint`と、追加確認が必要なEvidence集合のidentityを表す`evidenceRequirementFingerprint`もある。ただし、この2つだけでは、人やAIが「どの候補について、何を確認すればよいか」を独立したreview単位として扱えなかった。
+
+そこで、current Data Design Contextから候補を再解決して作る`DataDesignCandidateReviewPacket`をReferenceとして追加する。入力はworkspace、subject、candidate kind、candidate fingerprintであり、保存済みcandidate本文を入力にはしない。candidate fingerprintがcurrent Contextに存在しない場合はpacketを作らない。Evidence requirement fingerprintも期待値として指定でき、current candidateと一致しない場合は停止する。
+
+packetは、候補のrelation、determinant / component、target occurrence、basis constraint、scope、natureをreview用Projectionとして保持する。同時に、候補に直接関係するSemantic Data、Attribute、Relation、ValidationのSource Evidenceだけを抽出する。Source pathとfingerprintが揃っていても、business meaningのEvidenceが満たされたとは扱わない。`EvidenceNeeded`は`BusinessEvidenceRequirements`へ写し、current Referenceでは各項目を`unresolved`として返す。
+
+`reviewStatus`は、Data Design Contextの構造が曖昧な場合、またはその候補に必要なSource Evidenceが欠ける場合に`blocked-context-unresolved`となる。それ以外でも候補自体は未採用なので`evidence-required`である。Data Design Context全体のEvidence coverageが不完全でも、候補に必要なSource Evidenceが揃っていれば候補reviewを進められる。ただし、globalなData Design completenessを意味しない。
+
+packetには独自のfingerprintを付ける。これは同じreview snapshotを再利用しているかを確認するためのidentityであり、candidateのAcceptanceやbusiness Evidenceの充足を表さない。CLIでは`-expected-data-design-fingerprint`、candidate fingerprint、Evidence requirement fingerprint、candidate review fingerprintを別々にguardできるため、異なる時点のContext / candidate / review contractを混ぜない。
+
+CLI候補は次とする。
+
+```bash
+tei knowledge-data-design-candidate-review \
+  -workspace reference/workspace \
+  -subject-kind semantic-data \
+  -subject-id sales.order_line \
+  -data-design-candidate-kind business-identity \
+  -data-design-candidate-fingerprint <current-candidate-fingerprint> \
+  -expected-data-design-candidate-evidence-requirement-fingerprint <current-requirement-fingerprint>
+```
+
+Builder Review Planも、Data Design candidateが存在する場合だけ`review-data-design-candidates-by-stable-fingerprint-and-evidence-contract`をreview sequenceへ追加する。candidateが無いsubjectにはこの手順を追加しない。候補本文が変わっても「候補reviewが必要」というrouting自体が同じならReview Plan fingerprintは変えず、候補内容の鮮度はcandidate review packet側で判定する。
+
+このpacketはfirst-classなbusiness occurrence identifier、candidate key、functional dependencyを新設しない。current Data Design contractでは、それらをauthoritativeにauthorする契約が未確定であるため、packetの`firstClassAuthoringContractStatus`は`unresolved`とする。business Evidenceを解決した後も、authoring contractが定まるまではcandidateをCanonical meaningへ昇格しない。Shared Acceptanceへ進むのは、authoritative changeとして表現できる契約が存在した後である。
+
 ### 現在のEvidence境界 — 2026-10-09
 
 Data Design Context、Knowledge Qualification、selective Disclosure、qualificationからexplicit-reference Proposalへ接続するReference実装は、PR #960までの変更としてmainへ反映されている。その後もProjection revision、candidate fingerprint、Evidence requirement fingerprint、SQL Realization / runtime identityのnegative pressureまでmain側で拡張された。
@@ -785,8 +813,8 @@ Data Design Context、Knowledge Qualification、selective Disclosure、qualifica
 
 | 状態 | 対象 |
 | --- | --- |
-| 実装・Referenceがmainに存在し、再検証待ち | Data Design Context、scoped uniqueness、business identity / FD candidate、composite domain / temporal unresolved、Source Evidence、Persistence / Target / runtime identityのnegative boundary、Data Design / Disclosure fingerprint guard、Knowledge Qualification、selective Disclosure、explicit-reference Proposal、Shared Acceptance handoff |
-| 進行中 | AI BuilderがKnowledgeを読む順序、task-local Qualification、qualified DisclosureをShared Acceptanceへ接続する境界。PR #1059で継続中 |
+| 実装・Referenceがmainに存在し、再検証待ち | Data Design Context、scoped uniqueness、business identity / FD candidate、composite domain / temporal unresolved、Source Evidence、Persistence / Target / runtime identityのnegative boundary、Data Design / Disclosure fingerprint guard、Knowledge Qualification、selective Disclosure、explicit-reference Proposal、Shared Acceptance handoff、AI Builder Review Plan / Handoff / qualified Disclosure |
+| 進行中 | Data Design candidateをstable fingerprintとEvidence requirement contractでreviewする境界。別laneでは仕様review packetもPR #1061で進行中 |
 | なお本質的な未解決が残る | first-classなbusiness occurrence identifier / candidate key / functional dependencyをいつCore contractへ上げるかのEvidence、Derived Experience Knowledgeの検証済み候補をExecution / Observation / revisionへ戻す経路、routing / learned rankingを交換・削除してもCanonical meaningが変わらないことの実証 |
 
 この区別により、「実装済みだがqualification未取得」と「そもそも意味契約が未確定」を混同しない。
