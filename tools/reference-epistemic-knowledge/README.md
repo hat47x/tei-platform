@@ -260,9 +260,11 @@ result identity:
 - semantic contract: `tei.epistemic-detail/v0`
 - representation schema: `tei.reference.epistemic-detail/v0`
 
-queryはassertion IDに加え、表示・選択時点のmeaning fingerprint、review subject fingerprint、target binding、review log sequenceを持ちます。callerが利用できるaccess refも渡しますが、Referenceはそのrefをauthorization Authorityとして解釈しません。既存のauthorization境界が決めたopaqueな入力として完全一致だけを使います。
+queryはassertion IDに加え、表示・選択時点のmeaning fingerprint、review subject fingerprint、target binding、review log sequenceだけを持ちます。authorization情報はsemantic queryへ入れません。
 
-resolverは最初に既存transportと同じaccess filterを通し、その可視範囲を現在のContextQueryで再評価します。receiptのどれかが変わっていれば古いqueryとして拒否します。
+access範囲は別の`TransportAccess`として、既存authorization adapter / server境界からresolverへ注入します。UIや認知consumerがpolicy refをqueryの意味として扱う必要はありません。Referenceは渡されたopaqueなaccess refの意味を推測せず、既存transportと同じ完全一致semanticsだけで可視範囲を絞ります。
+
+resolverはそのaccess contextで既存transportと同じfilterを通し、可視範囲を現在のContextQueryで再評価します。receiptのどれかが変わっていれば古いqueryとして拒否します。
 
 取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationです。resultにはaccess refを含めません。
 
@@ -280,7 +282,8 @@ CLIでは次の読み取り専用modeを使います。
 go run ./tools/reference-epistemic-knowledge \
   -corpus corpus.json \
   -context context.json \
-  -detail-query detail-query.json
+  -detail-query detail-query.json \
+  -detail-access detail-access.json
 ```
 
 ## fixture
