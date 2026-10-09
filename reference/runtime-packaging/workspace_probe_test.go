@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"tei/internal/application"
-	"tei/internal/core"
 	"tei/internal/environment"
 	"tei/internal/ir"
 	"tei/internal/plugin"
@@ -123,6 +122,3 @@ func TestRejectsWrongApplicationAndEnvironment(t *testing.T) {
 	}
 }
 
-// Force references to the proper Canonical ID in sample fixtures rather than
-// constructing a second identity type inside the packaging reference.
-var _ core.CanonicalID = "app"
