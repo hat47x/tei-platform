@@ -191,6 +191,9 @@ func TestCopyVerifiedArtifactRejectsUnexpectedDigest(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected unexpected artifact digest to fail")
 	}
+	if _, statErr := os.Stat(outside); !os.IsNotExist(statErr) {
+		t.Fatalf("artifact-out remained after digest failure: %v", statErr)
+	}
 }
 
 
