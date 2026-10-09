@@ -339,6 +339,9 @@ func TestKnowledgeReviewHandoffCLIOutputFlowsThroughSharedAcceptance(t *testing.
 	if err != nil {
 		t.Fatalf("review handoff attachment output is not a candidate: %v\noutput=%s", err, attachOut.String())
 	}
+	if len(grounded.Evidence) == 0 {
+		t.Fatalf("grounded candidate lacks Evidence: %+v", grounded)
+	}
 	if err := os.WriteFile(groundedPath, attachOut.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
 	}
