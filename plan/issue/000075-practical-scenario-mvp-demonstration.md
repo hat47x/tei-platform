@@ -149,6 +149,8 @@ intentの変更はcandidate fingerprintには現れず、review fingerprintに�
 
 **REF-SPEC-01との接続（2026-10-09、静的なSource照合のみ）。** 受理されたApplication側のValidationは3件となった。一方、現時点のBusiness Procedure authoring fixture（BP-05）は、数量の正値と行番号の一意性の2件を明示したままである。BP-05はCanonical Worldの第二正本ではなく、ここから直ちに業務上の不整合を断定しない。ただし、三視点をまたぐ変更影響として**人が確認すべき差**であり、現行checkerがこの差を自動検出したとも主張しない。既存Sourceと診断を使った読み取り専用の確認案は[技術リサーチ統合方針 §9.5](../TECH_RESEARCH_INTEGRATION_2026-10.md)で扱う。
 
+**REF-SPEC-01との接続（2026-10-09、静的なSource照合のみ）。** 受理されたApplication側のValidationは3件となった。一方、現時点のBusiness Procedure authoring fixture（BP-05）は、数量の正値と行番号の一意性の2件を明示したままである。BP-05はCanonical Worldの第二正本ではなく、ここから直ちに業務上の不整合を断定しない。ただし、三視点をまたぐ変更影響として**人が確認すべき差**であり、現行checkerがこの差を自動検出したとも主張しない。既存Sourceと診断を使った読み取り専用の確認案は[技術リサーチ統合方針 §9.5](../TECH_RESEARCH_INTEGRATION_2026-10.md)で扱う。
+
 **証明していないこと。**
 
 - owner による受理の事実の検証。受理の根拠は、この会話での回答であり、ownerが`review.txt`の全文を読んだという記録はない。
