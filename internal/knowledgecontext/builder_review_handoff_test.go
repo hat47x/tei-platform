@@ -5,54 +5,37 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/index"
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
 )
 
-func TestBuildBuilderReviewHandoffRequiresApplicableQualificationBeforeDisclosure(t *testing.T) {
-	plan := BuildBuilderReviewPlan(Context{
-		Subject: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-		References: []sourceindex.Reference{
-			{
-				Subject:      subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-				Role:         sourceindex.RoleDefinition,
-				ArtifactPath: "applications/order-entry/patterns/customer-reference.tei",
-			},
-		},
-		Artifacts: []sourceindex.Artifact{
-			{
-				Path:        "applications/order-entry/patterns/customer-reference.tei",
-				Fingerprint: "sha256:pattern",
-			},
-		},
-	})
-	qualification := QualificationResult{
-		Candidate: plan.Subject,
-		Status:    QualificationApplicable,
-		Requirements: QualificationRequirements{
+func TestBuildBuilderReviewHandoffQualifiesCurrentContextBeforeDisclosure(t *testing.T) {
+	ctx, sources := builderReviewHandoffApplicationFixture("sha256:pattern", "sha256:dependency")
+
+	got, err := BuildBuilderReviewHandoff(
+		ctx,
+		sources,
+		QualificationRequirements{
 			ExpectedKind: "application-pattern",
 			Application:  "order_entry",
-		},
-		Evidence: []QualificationEvidence{
-			{
-				SubjectKind:       "application-pattern",
-				Subject:           "order_entry.customer_reference",
-				Source:            "applications/order-entry/patterns/customer-reference.tei",
-				SourceFingerprint: "sha256:pattern",
+			RequiredDependencies: []DependencyRequirement{
+				{
+					Direction: "outgoing",
+					Relation:  "contract-query",
+					Kind:      "database-contract-query",
+					ID:        "master_data.customer/find_by_id",
+				},
 			},
 		},
-		AuthorityLimits: []string{
-			"qualification-is-not-acceptance",
-		},
-	}
-
-	got, err := BuildBuilderReviewHandoff(plan, qualification)
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
+	plan := BuildBuilderReviewPlan(ctx)
 	if got.ProjectionRevision != builderReviewHandoffProjectionRevision ||
 		got.Purpose != "design-change" ||
-		got.Subject != plan.Subject ||
+		got.Subject != ctx.Subject ||
 		got.ReviewPlanProjectionRevision != plan.ProjectionRevision ||
 		got.ReviewPlanFingerprint != plan.Fingerprint ||
 		got.RoutingScope != plan.RoutingScope ||
@@ -62,6 +45,11 @@ func TestBuildBuilderReviewHandoffRequiresApplicableQualificationBeforeDisclosur
 	}
 	if !reflect.DeepEqual(got.SelectedSections, plan.RecommendedDisclosureSections) {
 		t.Fatalf("handoff selection drifted: got=%+v want=%+v", got.SelectedSections, plan.RecommendedDisclosureSections)
+	}
+	if got.Qualification.Status != QualificationApplicable ||
+		len(got.Qualification.Evidence) != 1 ||
+		len(got.Qualification.DependencyEvidence) != 1 {
+		t.Fatalf("qualified handoff lost exact Evidence: %+v", got.Qualification)
 	}
 	for _, limit := range []string{
 		"builder-review-handoff-is-derived-not-semantic-authority",
@@ -79,55 +67,50 @@ func TestBuildBuilderReviewHandoffRequiresApplicableQualificationBeforeDisclosur
 	}
 }
 
-func TestBuildBuilderReviewHandoffBlocksUnknownAndIncompatibleQualification(t *testing.T) {
-	plan := BuildBuilderReviewPlan(Context{
-		Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
-	})
-
-	for _, tc := range []struct {
-		status QualificationStatus
-		want   string
-	}{
-		{status: QualificationUnknown, want: "blocked-unresolved"},
-		{status: QualificationIncompatible, want: "blocked-incompatible"},
-	} {
-		t.Run(string(tc.status), func(t *testing.T) {
-			got, err := BuildBuilderReviewHandoff(plan, QualificationResult{
-				Candidate: plan.Subject,
-				Status:    tc.status,
-				Requirements: QualificationRequirements{
-					ExpectedKind: "semantic-data",
-				},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.Status != tc.want {
-				t.Fatalf("handoff status=%q want=%q", got.Status, tc.want)
-			}
-		})
+func TestBuildBuilderReviewHandoffKeepsUnknownQualificationBlocked(t *testing.T) {
+	ctx := Context{
+		Subject:    subject.Subject{Kind: "semantic-data", ID: "missing.example"},
+		Unresolved: []string{"source-reference-unavailable"},
+	}
+	got, err := BuildBuilderReviewHandoff(
+		ctx,
+		sourceindex.Index{},
+		QualificationRequirements{ExpectedKind: "semantic-data"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "blocked-unresolved" ||
+		got.Qualification.Status != QualificationUnknown ||
+		len(got.Qualification.Reasons) == 0 {
+		t.Fatalf("unknown qualification became usable: %+v", got)
 	}
 }
 
-func TestBuildBuilderReviewHandoffRejectsUnsubstantiatedApplicableQualification(t *testing.T) {
-	plan := BuildBuilderReviewPlan(Context{
-		Subject: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-		References: []sourceindex.Reference{
-			{
-				Subject:      subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-				Role:         sourceindex.RoleDefinition,
-				ArtifactPath: "applications/order-entry/patterns/customer-reference.tei",
-			},
+func TestBuildBuilderReviewHandoffKeepsIncompatibleQualificationBlocked(t *testing.T) {
+	ctx, sources := builderReviewHandoffApplicationFixture("sha256:pattern", "sha256:dependency")
+	got, err := BuildBuilderReviewHandoff(
+		ctx,
+		sources,
+		QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "repair_intake",
 		},
-		Artifacts: []sourceindex.Artifact{
-			{
-				Path:        "applications/order-entry/patterns/customer-reference.tei",
-				Fingerprint: "sha256:pattern",
-			},
-		},
-	})
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "blocked-incompatible" ||
+		got.Qualification.Status != QualificationIncompatible {
+		t.Fatalf("incompatible qualification became usable: %+v", got)
+	}
+}
 
-	_, err := BuildBuilderReviewHandoff(plan, QualificationResult{
+func TestBuilderReviewHandoffCompositionRejectsUnsubstantiatedApplicableQualification(t *testing.T) {
+	ctx, _ := builderReviewHandoffApplicationFixture("sha256:pattern", "sha256:dependency")
+	plan := BuildBuilderReviewPlan(ctx)
+
+	_, err := buildBuilderReviewHandoffFromQualification(plan, QualificationResult{
 		Candidate: plan.Subject,
 		Status:    QualificationApplicable,
 		Requirements: QualificationRequirements{
@@ -138,7 +121,7 @@ func TestBuildBuilderReviewHandoffRejectsUnsubstantiatedApplicableQualification(
 		t.Fatalf("applicable qualification without Evidence was not rejected: %v", err)
 	}
 
-	_, err = BuildBuilderReviewHandoff(plan, QualificationResult{
+	_, err = buildBuilderReviewHandoffFromQualification(plan, QualificationResult{
 		Candidate: plan.Subject,
 		Status:    QualificationApplicable,
 		Requirements: QualificationRequirements{
@@ -166,16 +149,15 @@ func TestBuildBuilderReviewHandoffRejectsUnsubstantiatedApplicableQualification(
 	}
 }
 
-func TestBuildBuilderReviewHandoffRejectsMismatchedOrModifiedPlan(t *testing.T) {
-	plan := BuildBuilderReviewPlan(Context{
-		Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
-	})
+func TestBuilderReviewHandoffCompositionRejectsMismatchedOrModifiedPlan(t *testing.T) {
+	ctx, _ := builderReviewHandoffApplicationFixture("sha256:pattern", "sha256:dependency")
+	plan := BuildBuilderReviewPlan(ctx)
 
-	_, err := BuildBuilderReviewHandoff(plan, QualificationResult{
-		Candidate: subject.Subject{Kind: "semantic-data", ID: "sales.order"},
+	_, err := buildBuilderReviewHandoffFromQualification(plan, QualificationResult{
+		Candidate: subject.Subject{Kind: "application-pattern", ID: "other.pattern"},
 		Status:    QualificationApplicable,
 		Requirements: QualificationRequirements{
-			ExpectedKind: "semantic-data",
+			ExpectedKind: "application-pattern",
 		},
 	})
 	if err == nil || !strings.Contains(err.Error(), "subject mismatch") {
@@ -185,11 +167,11 @@ func TestBuildBuilderReviewHandoffRejectsMismatchedOrModifiedPlan(t *testing.T) 
 	modified := plan
 	modified.ReviewSequence = append([]string(nil), plan.ReviewSequence...)
 	modified.ReviewSequence[0] = "modified"
-	_, err = BuildBuilderReviewHandoff(modified, QualificationResult{
+	_, err = buildBuilderReviewHandoffFromQualification(modified, QualificationResult{
 		Candidate: modified.Subject,
 		Status:    QualificationApplicable,
 		Requirements: QualificationRequirements{
-			ExpectedKind: "semantic-data",
+			ExpectedKind: "application-pattern",
 		},
 	})
 	if err == nil || !strings.Contains(err.Error(), "modified Builder Review Plan") {
@@ -197,63 +179,35 @@ func TestBuildBuilderReviewHandoffRejectsMismatchedOrModifiedPlan(t *testing.T) 
 	}
 }
 
-func TestBuilderReviewHandoffFingerprintTracksQualificationEvidence(t *testing.T) {
-	plan := BuildBuilderReviewPlan(Context{
-		Subject: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-		References: []sourceindex.Reference{
+func TestBuilderReviewHandoffFingerprintTracksQualificationEvidenceRevision(t *testing.T) {
+	ctx, firstSources := builderReviewHandoffApplicationFixture("sha256:pattern", "sha256:dependency-first")
+	requirements := QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []DependencyRequirement{
 			{
-				Subject:      subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-				Role:         sourceindex.RoleDefinition,
-				ArtifactPath: "applications/order-entry/patterns/customer-reference.tei",
-			},
-		},
-		Artifacts: []sourceindex.Artifact{
-			{
-				Path:        "applications/order-entry/patterns/customer-reference.tei",
-				Fingerprint: "sha256:pattern",
-			},
-		},
-	})
-	base := QualificationResult{
-		Candidate: plan.Subject,
-		Status:    QualificationApplicable,
-		Requirements: QualificationRequirements{
-			ExpectedKind: "application-pattern",
-			Application:  "order_entry",
-		},
-		Evidence: []QualificationEvidence{
-			{
-				SubjectKind:       "application-pattern",
-				Subject:           "order_entry.customer_reference",
-				Source:            "applications/order-entry/patterns/customer-reference.tei",
-				SourceFingerprint: "sha256:first",
+				Direction: "outgoing",
+				Relation:  "contract-query",
+				Kind:      "database-contract-query",
+				ID:        "master_data.customer/find_by_id",
 			},
 		},
 	}
-	first, err := BuildBuilderReviewHandoff(plan, base)
+	first, err := BuildBuilderReviewHandoff(ctx, firstSources, requirements)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	changedEvidence := base
-	changedEvidence.Evidence = append([]QualificationEvidence(nil), base.Evidence...)
-	changedEvidence.Evidence[0].SourceFingerprint = "sha256:second"
-	second, err := BuildBuilderReviewHandoff(plan, changedEvidence)
+	_, secondSources := builderReviewHandoffApplicationFixture("sha256:pattern", "sha256:dependency-second")
+	second, err := BuildBuilderReviewHandoff(ctx, secondSources, requirements)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if first.ReviewPlanFingerprint != second.ReviewPlanFingerprint {
+		t.Fatalf("dependency Evidence revision changed routing identity: first=%s second=%s", first.ReviewPlanFingerprint, second.ReviewPlanFingerprint)
 	}
 	if first.Fingerprint == second.Fingerprint {
-		t.Fatalf("qualification Evidence revision did not change handoff fingerprint: %s", first.Fingerprint)
-	}
-
-	changedRequirement := base
-	changedRequirement.Requirements.Application = "repair_intake"
-	third, err := BuildBuilderReviewHandoff(plan, changedRequirement)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if first.Fingerprint == third.Fingerprint {
-		t.Fatalf("qualification requirement change did not change handoff fingerprint: %s", first.Fingerprint)
+		t.Fatalf("dependency Evidence revision did not change handoff fingerprint: %s", first.Fingerprint)
 	}
 }
 
@@ -274,4 +228,60 @@ func TestBuilderReviewHandoffIsNotAUniversalContextPacket(t *testing.T) {
 			t.Fatalf("Builder Review Handoff introduced forbidden universal/authority field %q", forbidden)
 		}
 	}
+}
+
+func builderReviewHandoffApplicationFixture(
+	patternFingerprint,
+	dependencyFingerprint string,
+) (Context, sourceindex.Index) {
+	pattern := subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"}
+	dependency := subject.Subject{
+		Kind: "database-contract-query",
+		ID:   "master_data.customer/find_by_id",
+	}
+	patternPath := "applications/order-entry/patterns/customer-reference.tei"
+	dependencyPath := "database-contracts/master_data/customer.tei"
+
+	ctx := Context{
+		Subject: pattern,
+		References: []sourceindex.Reference{
+			{
+				Subject:      pattern,
+				Role:         sourceindex.RoleDefinition,
+				ArtifactPath: patternPath,
+			},
+		},
+		Artifacts: []sourceindex.Artifact{
+			{Path: patternPath, Fingerprint: patternFingerprint},
+		},
+		ApplicationPattern: &index.ApplicationPatternIndexEntry{
+			Application: "order_entry",
+		},
+		Outgoing: []Edge{
+			{
+				From:     pattern,
+				Relation: "contract-query",
+				To:       dependency,
+			},
+		},
+	}
+	sources := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{
+			{Path: patternPath, Fingerprint: patternFingerprint},
+			{Path: dependencyPath, Fingerprint: dependencyFingerprint},
+		},
+		References: []sourceindex.Reference{
+			{
+				Subject:      pattern,
+				Role:         sourceindex.RoleDefinition,
+				ArtifactPath: patternPath,
+			},
+			{
+				Subject:      dependency,
+				Role:         sourceindex.RoleDefinition,
+				ArtifactPath: dependencyPath,
+			},
+		},
+	}
+	return ctx, sources
 }
