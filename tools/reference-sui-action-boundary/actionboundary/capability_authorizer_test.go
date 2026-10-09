@@ -70,3 +70,27 @@ func TestCapabilityAuthorizer(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthorizationResourceDoesNotConflateIdentitySegments(t *testing.T) {
+ first:=authorizationResource("a/b","c","move")
+ second:=authorizationResource("a","b/c","move")
+ if first==second || first!="a%2Fb/c/move" || second!="a/b%2Fc/move" {
+  t.Fatalf("resource collision or unexpected encoding: %q / %q",first,second)
+ }
+ if authorizationResource("sui","doc","sui.move")!="sui/doc/sui.move" {
+  t.Fatal("simple resource identifiers must remain compatible")
+ }
+ cap:=semantic.Capability{ID:legacyauthorization.AuthorizationCapability,Outcomes:[]semantic.Outcome{{Name:"allowed",Payload:"auth.grant"},{Name:"denied",Payload:"auth.denial"}}}
+ a:=CapabilityAuthorizer{
+  Subjects:fixedSubject{id:"trusted-subject"},Capability:cap,
+  Adapter:authorizationAdapter{grant:legacyauthorization.AuthorizationGrant{
+   SubjectID:"trusted-subject",Action:"execute",Resource:first,
+  }},
+ }
+ if err:=a.Authorize(context.Background(),"a","b/c","move");!errors.Is(err,ErrDenied) {
+  t.Fatalf("grant for another identity must be denied: %v",err)
+ }
+ if err:=a.Authorize(context.Background(),"a/b","c","move");err!=nil {
+  t.Fatalf("matching encoded resource must be allowed: %v",err)
+ }
+}
