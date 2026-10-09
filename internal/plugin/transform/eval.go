@@ -53,15 +53,25 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 
 func validateInputs(specs []InputSpec, inputs map[string]Value) error {
 	expected := map[string]InputKind{}
+	expectedNames := make([]string, 0, len(specs))
 	for _, spec := range specs {
 		expected[spec.Name] = spec.Kind
+		expectedNames = append(expectedNames, spec.Name)
 	}
+	sort.Strings(expectedNames)
+
+	actualNames := make([]string, 0, len(inputs))
 	for name := range inputs {
+		actualNames = append(actualNames, name)
+	}
+	sort.Strings(actualNames)
+	for _, name := range actualNames {
 		if _, ok := expected[name]; !ok {
 			return fmt.Errorf("undeclared transform input %q", name)
 		}
 	}
-	for name, kind := range expected {
+	for _, name := range expectedNames {
+		kind := expected[name]
 		value, ok := inputs[name]
 		if !ok {
 			return fmt.Errorf("required transform input %q is missing", name)
@@ -421,7 +431,13 @@ type inputBudget struct {
 
 func validateInputBudgets(limits Limits, inputs map[string]Value) error {
 	budget := inputBudget{}
-	for name, value := range inputs {
+	names := make([]string, 0, len(inputs))
+	for name := range inputs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		value := inputs[name]
 		budget.bytes += len(name)
 		if budget.bytes > limits.MaxInputBytes {
 			return fmt.Errorf("transform inputs exceed maxInputBytes")
