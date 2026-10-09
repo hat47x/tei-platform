@@ -4,6 +4,7 @@ import (
  "context"
  "encoding/json"
  "errors"
+ "math"
  "sync"
  "testing"
 )
@@ -62,4 +63,24 @@ func TestJSONDocumentStoreConcurrentRevision(t *testing.T){
  for err:=range results {if err==nil {successes++}else if errors.Is(err,ErrConflict){conflicts++}else{t.Fatalf("unexpected %v",err)}}
  _,_,writes:=s.Snapshot()
  if successes!=1||conflicts!=1||writes!=1 {t.Fatalf("success=%d conflict=%d writes=%d",successes,conflicts,writes)}
+}
+
+func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
+ cases:=[]struct{name string;document string;payload MovePayload}{
+  {"null document","null",MovePayload{CardID:"a",X:1,Y:2}},
+  {"null cards",`{"cards":null}`,MovePayload{CardID:"a",X:1,Y:2}},
+  {"missing cards",`{"reviewer":"u1"}`,MovePayload{CardID:"a",X:1,Y:2}},
+  {"non finite x",documentFixture,MovePayload{CardID:"a",X:math.NaN(),Y:2}},
+  {"non finite y",documentFixture,MovePayload{CardID:"a",X:1,Y:math.Inf(1)}},
+  {"duplicate card ids",`{"cards":[{"id":"a"},{"id":"a"}]}`,MovePayload{CardID:"a",X:1,Y:2}},
+ }
+ for _,tc:=range cases {
+  t.Run(tc.name,func(t *testing.T){
+   store:=NewJSONDocumentStore("r1",[]byte(tc.document))
+   _,err:=store.Commit(context.Background(),Intent{ActionID:"sui.move",ExpectedRevision:"r1",Payload:tc.payload})
+   if !errors.Is(err,ErrInvalid){t.Fatalf("expected invalid, got %v",err)}
+   revision,document,writes:=store.Snapshot()
+   if revision!="r1"||writes!=0||string(document)!=tc.document {t.Fatal("invalid input mutated state")}
+  })
+ }
 }
