@@ -273,6 +273,9 @@ func TestValidationScopeReviewSourceEvidence(t *testing.T) {
 		t.Fatalf("対象の比較行がありません: %+v", result.ValidationScopeReview)
 	}
 	row := result.ValidationScopeReview[0]
+	if row.ProcedureSource != fixturePath {
+		t.Fatalf("業務手順の明示参照元へ戻れません: have=%q want=%q", row.ProcedureSource, fixturePath)
+	}
 	if row.Status != "review-needed" || len(row.UnresolvedSource) != 0 {
 		t.Fatalf("比較の意味または出典が未解決です: %+v", row)
 	}
