@@ -1,0 +1,97 @@
+{
+  "formatVersion": 1,
+  "identity": {
+    "id": "tei.reference.semantic-validation-projection",
+    "version": "1.0.0",
+    "contractVersion": "tei.reference.semantic-validation-plan/v0"
+  },
+  "profile": "deterministic-transform-v1",
+  "limits": {
+    "maxSteps": 256,
+    "maxCollection": 32,
+    "maxInputNodes": 256,
+    "maxInputBytes": 8192,
+    "maxOutputBytes": 8192,
+    "maxNestingDepth": 24
+  },
+  "inputs": [
+    {
+      "name": "validations",
+      "kind": "array"
+    }
+  ],
+  "program": {
+    "output": {
+      "op": "construct-object",
+      "fields": [
+        {
+          "name": "format",
+          "value": {
+            "op": "literal",
+            "literal": "tei.reference.semantic-validation-plan/v0"
+          }
+        },
+        {
+          "name": "rules",
+          "value": {
+            "op": "map-array",
+            "from": {
+              "op": "input",
+              "name": "validations"
+            },
+            "item": "validation",
+            "body": {
+              "op": "construct-object",
+              "fields": [
+                {
+                  "name": "id",
+                  "value": {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "validation"
+                    },
+                    "field": "id"
+                  }
+                },
+                {
+                  "name": "kind",
+                  "value": {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "validation"
+                    },
+                    "field": "kind"
+                  }
+                },
+                {
+                  "name": "attribute",
+                  "value": {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "validation"
+                    },
+                    "field": "attribute"
+                  }
+                },
+                {
+                  "name": "relation",
+                  "value": {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "validation"
+                    },
+                    "field": "relation"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
