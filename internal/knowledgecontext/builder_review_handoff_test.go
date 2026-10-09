@@ -71,6 +71,65 @@ func TestBuildBuilderReviewHandoffQualifiesCurrentContextBeforeDisclosure(t *tes
 	}
 }
 
+func TestValidateBuilderReviewHandoffRejectsReFingerprintingUnsupportedSemantics(t *testing.T) {
+	ctx, sources := builderReviewHandoffApplicationFixture(
+		"sha256:pattern",
+		"sha256:dependency",
+	)
+	base, err := BuildBuilderReviewHandoff(
+		ctx,
+		sources,
+		QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "order_entry",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateBuilderReviewHandoff(base); err != nil {
+		t.Fatalf("valid handoff was rejected: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		mutate func(*BuilderReviewHandoff)
+		want   string
+	}{
+		{
+			name: "purpose",
+			mutate: func(h *BuilderReviewHandoff) {
+				h.Purpose = "automatic-acceptance"
+			},
+			want: "purpose",
+		},
+		{
+			name: "routing scope",
+			mutate: func(h *BuilderReviewHandoff) {
+				h.RoutingScope = "all-knowledge"
+			},
+			want: "routing scope",
+		},
+		{
+			name: "projection revision",
+			mutate: func(h *BuilderReviewHandoff) {
+				h.ProjectionRevision = "tei.knowledge.builder-review-handoff/v999"
+			},
+			want: "projection revision",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changed := base
+			tc.mutate(&changed)
+			changed.Fingerprint = builderReviewHandoffFingerprint(changed)
+			if err := ValidateBuilderReviewHandoff(changed); err == nil ||
+				!strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("re-fingerprinted unsupported handoff semantics were accepted: %v", err)
+			}
+		})
+	}
+}
+
 func TestBuildBuilderReviewHandoffKeepsUnknownQualificationBlocked(t *testing.T) {
 	ctx := Context{
 		Subject:    subject.Subject{Kind: "semantic-data", ID: "missing.example"},
