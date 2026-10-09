@@ -200,10 +200,16 @@ func dataDesignEvidenceSearchSubjects(
 	requirement string,
 ) []subject.Subject {
 	sourceData := core.CanonicalID("")
+	var attributeSubjects []subject.Subject
 	for _, term := range candidate.Terms {
 		if term.Kind == "relation-source-occurrence" && term.Data != "" {
 			sourceData = term.Data
-			break
+		}
+		if term.Attribute != "" {
+			attributeSubjects = append(
+				attributeSubjects,
+				subject.Subject{Kind: "semantic-attribute", ID: string(term.Attribute)},
+			)
 		}
 	}
 	relationSubject := subject.Subject{Kind: "semantic-relation", ID: string(candidate.Relation)}
@@ -222,6 +228,7 @@ func dataDesignEvidenceSearchSubjects(
 		out = append(out, relationSubject, targetSubject)
 	case "identifier-stability", "history-version-identity", "identifier-reuse-policy":
 		out = append(out, targetSubject)
+		out = append(out, attributeSubjects...)
 	case "temporal-validity", "temporal-dependency-scope":
 		out = append(out, relationSubject, targetSubject)
 	default:
