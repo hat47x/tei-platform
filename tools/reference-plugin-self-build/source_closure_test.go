@@ -191,3 +191,19 @@ func TestGoPackageBuildFilesIncludesSelectedCompilerAndEmbedInputs(t *testing.T)
 		}
 	}
 }
+
+
+func TestRepositoryTreeSnapshotDigestTracksGitTreeListingNotWorktreeSemantics(t *testing.T) {
+	first := []byte("100644 blob aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\tREADME.md\x00" +
+		"120000 blob bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\tlink\x00")
+	second := append([]byte(nil), first...)
+	if repositoryTreeSnapshotDigest(first) != repositoryTreeSnapshotDigest(second) {
+		t.Fatal("repository tree snapshot digest is not stable for identical Git tree listings")
+	}
+
+	changed := append([]byte(nil), first...)
+	changed[len(changed)-2] = '2'
+	if repositoryTreeSnapshotDigest(first) == repositoryTreeSnapshotDigest(changed) {
+		t.Fatal("repository tree snapshot digest ignored Git tree listing change")
+	}
+}
