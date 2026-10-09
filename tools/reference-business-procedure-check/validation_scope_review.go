@@ -17,6 +17,8 @@ type validationScopeReviewRow struct {
 	ApplicationOnly []string `json:"applicationOnly,omitempty"`
 	ProcedureOnly   []string `json:"procedureOnly,omitempty"`
 	Reason          string   `json:"reason"`
+	SourceEvidence   []validationReviewSource `json:"sourceEvidence,omitempty"`
+	UnresolvedSource []string `json:"unresolvedSource,omitempty"`
 }
 
 // compareValidationScopes は業務手順の validation-support に限って比較する。
