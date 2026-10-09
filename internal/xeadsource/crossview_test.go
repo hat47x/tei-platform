@@ -7,7 +7,15 @@ import (
 )
 
 func crossViewMappingFingerprint() string {
-	return "sha256:" + strings.Repeat("a", 64)
+	return strings.Repeat("a", 64)
+}
+
+func crossViewInspection(t *testing.T, source string, fingerprint string) Inspection {
+	t.Helper()
+	return Inspection{
+		Document:                         parseCrossViewFixture(t, source),
+		TranscriptionContractFingerprint: fingerprint,
+	}
 }
 
 func parseCrossViewFixture(t *testing.T, source string) Document {
@@ -35,7 +43,7 @@ func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
   </Task>
 </System>`)
 
-	projection, err := BuildCrossViewProjection(doc, crossViewMappingFingerprint())
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +119,7 @@ func TestCrossViewFailsClosedOnAmbiguousFunctionIdentity(t *testing.T) {
     <TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="P1"/></TaskAction>
   </Task>
 </System>`)
-	projection, err := BuildCrossViewProjection(doc, crossViewMappingFingerprint())
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +141,7 @@ func TestCrossViewKeepsUnresolvedIOTableInSourceTotals(t *testing.T) {
   <Function ID="F1"><IOTable ID="IO1" TableID="T1" OpU="+"/></Function>
   <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="0"/></TaskAction></Task>
 </System>`)
-	projection, err := BuildCrossViewProjection(doc, crossViewMappingFingerprint())
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +171,7 @@ func TestCrossViewDoesNotPromoteNamespacedLookalike(t *testing.T) {
     <TaskAction ID="A1"><x:TaskFunctionIO FunctionID="F1" IOID="P1"/></TaskAction>
   </Task>
 </System>`)
-	projection, err := BuildCrossViewProjection(doc, crossViewMappingFingerprint())
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +194,7 @@ func TestCrossViewDoesNotTreatNamespacedAttributeAsFunctionID(t *testing.T) {
     <TaskAction ID="A1"><TaskFunctionIO x:FunctionID="F1" IOID="P1"/></TaskAction>
   </Task>
 </System>`)
-	projection, err := BuildCrossViewProjection(doc, crossViewMappingFingerprint())
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,15 +209,15 @@ func TestCrossViewDoesNotTreatNamespacedAttributeAsFunctionID(t *testing.T) {
 func TestCrossViewBindsProjectionToSourceContractAndRule(t *testing.T) {
 	sourceA := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpR="+"/></Function></System>`
 	sourceB := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpU="+"/></Function></System>`
-	left, err := BuildCrossViewProjection(parseCrossViewFixture(t, sourceA), "sha256:"+strings.Repeat("1", 64))
+	left, err := BuildCrossViewProjection(crossViewInspection(t, sourceA, strings.Repeat("1", 64)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	contractChanged, err := BuildCrossViewProjection(parseCrossViewFixture(t, sourceA), "sha256:"+strings.Repeat("2", 64))
+	contractChanged, err := BuildCrossViewProjection(crossViewInspection(t, sourceA, strings.Repeat("2", 64)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	sourceChanged, err := BuildCrossViewProjection(parseCrossViewFixture(t, sourceB), "sha256:"+strings.Repeat("1", 64))
+	sourceChanged, err := BuildCrossViewProjection(crossViewInspection(t, sourceB, strings.Repeat("1", 64)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +240,7 @@ func TestCrossViewPublicAccountingOmitsIndividualRelationTokens(t *testing.T) {
   <Function ID="private-function"><IOTable ID="private-io" TableID="private-table" OpR="+"/></Function>
   <Task ID="private-task"><TaskAction ID="private-action"><TaskFunctionIO FunctionID="private-function" IOID="0"/></TaskAction></Task>
 </System>`)
-	projection, err := BuildCrossViewProjection(doc, crossViewMappingFingerprint())
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,10 +256,13 @@ func TestCrossViewPublicAccountingOmitsIndividualRelationTokens(t *testing.T) {
 	}
 }
 
-func TestCrossViewRejectsInvalidMappingFingerprint(t *testing.T) {
+func TestCrossViewRejectsInspectionWithoutExactContractBinding(t *testing.T) {
 	doc := parseCrossViewFixture(t, `<System/>`)
 	for _, fingerprint := range []string{"", "abc", "sha256:" + strings.Repeat("A", 64), "sha256:" + strings.Repeat("1", 63)} {
-		if _, err := BuildCrossViewProjection(doc, fingerprint); err == nil {
+		if _, err := BuildCrossViewProjection(Inspection{
+			Document:                         doc,
+			TranscriptionContractFingerprint: fingerprint,
+		}); err == nil {
 			t.Fatalf("invalid mapping fingerprint accepted: %q", fingerprint)
 		}
 	}
