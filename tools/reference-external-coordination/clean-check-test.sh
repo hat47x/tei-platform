@@ -6,6 +6,41 @@ RUNNER="$ROOT/tools/reference-external-coordination/run.sh"
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
+# Interpose Git and rm commands used by the actual E1 runner.
+# Inject changes only while executing synthetic fixtures.
+SHIM_DIR="$TMP_ROOT/shims"
+mkdir -p "$SHIM_DIR"
+REAL_GIT="$(command -v git)"
+REAL_RM="$(command -v rm)"
+cat > "$SHIM_DIR/git" <<'SHIM_GIT'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${INJECTION_KIND:-}" == post-ignored || "${INJECTION_KIND:-}" == post-hidden ]]; then
+  if [[ "$*" == *"commit -qm coordination: create human work"* && ! -f "$INJECTION_MARKER" ]]; then
+    : > "$INJECTION_MARKER"
+    if [[ "$INJECTION_KIND" == post-ignored ]]; then
+      printf 'unexpected\n' > "$PRODUCT_REPO/ignored.txt"
+    else
+      "$REAL_GIT" -C "$PRODUCT_REPO" update-index --skip-worktree README.md
+      printf 'unexpected\n' >> "$PRODUCT_REPO/README.md"
+    fi
+  fi
+fi
+exec "$REAL_GIT" "$@"
+SHIM_GIT
+
+cat > "$SHIM_DIR/rm" <<'SHIM_RM'
+#!/usr/bin/env bash
+set -euo pipefail
+"$REAL_RM" "$@"
+if [[ "${INJECTION_KIND:-}" == after-delete-ignored && "$#" -eq 2 &&
+      "$1" == -rf && "$2" == */coordination-store && ! -f "$INJECTION_MARKER" ]]; then
+  : > "$INJECTION_MARKER"
+  printf 'unexpected\n' > "$PRODUCT_REPO/ignored.txt"
+fi
+SHIM_RM
+chmod +x "$SHIM_DIR/git" "$SHIM_DIR/rm"
+
 make_fixture() {
   local repo="$1"
   mkdir -p "$repo/tools/reference-external-coordination"
@@ -31,6 +66,7 @@ check_case() {
     ignored) printf 'cache\n' > "$repo/ignored.txt" ;;
     assume-unchanged) git -C "$repo" update-index --assume-unchanged README.md; printf 'masked\n' >> "$repo/README.md" ;;
     skip-worktree) git -C "$repo" update-index --skip-worktree README.md; printf 'masked\n' >> "$repo/README.md" ;;
+    post-ignored|post-hidden|after-delete-ignored) ;;
     *) echo "unknown fixture: $name" >&2; exit 1 ;;
   esac
 
@@ -39,7 +75,9 @@ check_case() {
     test -z "$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
   fi
 
-  bash "$repo/tools/reference-external-coordination/run.sh" > "$output" 2>&1 || actual=$?
+  PATH="$SHIM_DIR:$PATH" INJECTION_KIND="$name" PRODUCT_REPO="$repo" \
+    REAL_GIT="$REAL_GIT" REAL_RM="$REAL_RM" INJECTION_MARKER="$TMP_ROOT/$name.marker" \
+    bash "$repo/tools/reference-external-coordination/run.sh" > "$output" 2>&1 || actual=$?
   if [[ "$actual" -ne "$expected" ]]; then
     echo "$name: expected exit $expected, got $actual" >&2
     cat "$output" >&2
@@ -51,6 +89,14 @@ check_case() {
     test -z "$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
   else
     grep -Fq 'requires a clean product checkout' "$output"
+    if [[ "$name" == post-ignored || "$name" == post-hidden || "$name" == after-delete-ignored ]]; then
+      test -f "$TMP_ROOT/$name.marker"
+      if [[ "$name" == after-delete-ignored ]]; then
+        grep -Fq '(after coordination store deletion)' "$output"
+      else
+        grep -Fq '(after coordination)' "$output"
+      fi
+    fi
     if grep -Fq 'external coordination git-text reference: PASS' "$output"; then
       echo "$name: reported PASS despite a rejected checkout" >&2
       exit 1
@@ -65,6 +111,9 @@ check_case untracked 2
 check_case ignored 2
 check_case assume-unchanged 2
 check_case skip-worktree 2
+check_case post-ignored 1
+check_case post-hidden 1
+check_case after-delete-ignored 1
 
 NON_GIT="$TMP_ROOT/non-git"
 mkdir -p "$NON_GIT/tools/reference-external-coordination"
