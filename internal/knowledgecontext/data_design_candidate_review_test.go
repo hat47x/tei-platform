@@ -144,6 +144,7 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 		}
 	}
 	for _, step := range []string{
+		"rebuild-current-data-design-context-and-verify-fingerprint",
 		"review-first-class-authoring-contract-gaps",
 		"select-core-or-semantic-extension-authoring-route-with-evidence",
 		"require-lossless-authoring-contract-before-promoting-derived-candidate",
@@ -155,6 +156,7 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 	}
 	for _, limit := range []string{
 		"candidate-review-packet-is-derived-not-authority",
+		"data-design-context-fingerprint-is-snapshot-identity-not-source-freshness-proof",
 		"source-evidence-proves-traceability-not-business-meaning",
 		"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
 		"semantic-extension-reference-is-not-current-lossless-authoring-contract",
