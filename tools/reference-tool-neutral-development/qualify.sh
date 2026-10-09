@@ -54,6 +54,26 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 2
 fi
 
+assert_clean_checkout() {
+  local phase="$1"
+  local status ignored
+
+  status="$(git status --porcelain=v1 --untracked-files=all)"
+  ignored="$(git ls-files --others --ignored --exclude-standard)"
+
+  if [[ -n "$status" || -n "$ignored" ]]; then
+    echo "error: qualification checkout is not clean during $phase" >&2
+    if [[ -n "$status" ]]; then
+      git status --short --untracked-files=all >&2
+    fi
+    if [[ -n "$ignored" ]]; then
+      echo "ignored artifacts:" >&2
+      printf '%s\n' "$ignored" >&2
+    fi
+    exit 1
+  fi
+}
+
 CANDIDATE_HEAD="$(git rev-parse HEAD)"
 
 if [[ -n "$EXPECTED_HEAD" && "$CANDIDATE_HEAD" != "$EXPECTED_HEAD" ]]; then
@@ -63,11 +83,7 @@ if [[ -n "$EXPECTED_HEAD" && "$CANDIDATE_HEAD" != "$EXPECTED_HEAD" ]]; then
   exit 1
 fi
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "error: qualification requires clean pre-state" >&2
-  git status --short >&2
-  exit 1
-fi
+assert_clean_checkout "pre-state"
 
 ORIGIN_MAIN=""
 if git rev-parse --verify origin/main >/dev/null 2>&1; then
@@ -105,11 +121,7 @@ assert_unchanged() {
     exit 1
   fi
 
-  if [[ -n "$(git status --porcelain)" ]]; then
-    echo "error: repository became dirty during $phase" >&2
-    git status --short >&2
-    exit 1
-  fi
+  assert_clean_checkout "$phase"
 
   if [[ -n "$EXPECTED_MAIN" ]]; then
     local current_main
