@@ -103,7 +103,7 @@ TEIがGit mergeを置き換えるのではなく、**Gitが正常に統合した
 
 `run.sh`はRQ-034のExecutable Referenceです。ただし、code-changing PRをmainへ統合してよいというmerge authorityは、これだけでは得られません。
 
-Repositoryの開発ルールでは、code変更を含むcandidateについて、**そのexact headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post state**が必要です。ここでcleanとは、tracked変更とuntracked fileが無いだけでなく、`.gitignore`等で無視されるartifactも残っていない状態を指します。
+Repositoryの開発ルールでは、code変更を含むcandidateについて、**そのexact headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post state**が必要です。ここでcleanとは、tracked変更とuntracked fileが無いだけでなく、`.gitignore`等で無視されるartifactも残っておらず、`assume-unchanged` / `skip-worktree`のようにtracked worktree内容を隠せるindex flagも使われていない状態を指します。
 
 その取り違えを減らすため、薄いwrapperを用意しています。
 
@@ -156,6 +156,7 @@ receiptは少なくとも次を固定します。
 - exact `origin/main` / expected main
 - candidateがexpected mainを含むこと
 - tracked / untracked / ignored clean pre/post
+- `assume-unchanged` / `skip-worktree`等、tracked内容を隠せるindex flagが無いこと
 - full Repository Health PASS
 - RQ-034 Reference PASS
 - `repository-health-check.sh` / `qualify.sh` / `run.sh` / `integration-preflight.sh` のcandidate上のGit blob SHA
@@ -190,7 +191,7 @@ preflightはmerge / commit / push / ref更新を行いません。次をfail clo
 - receiptの全PASS条件
 - receiptに記録された4つのrunner blob == candidate上の現在のblob
 - 実行中の`integration-preflight.sh`自身 == candidate上のpreflight blob
-- candidate checkoutとintegration checkoutの双方がtracked / untracked / ignored clean
+- candidate checkoutとintegration checkoutの双方がtracked / untracked / ignored cleanで、tracked内容を隠せるindex flagも持たない
 - preflightの開始から終了までcandidate HEAD / candidate ref / integration HEAD / `origin/main`が不変
 
 mainがreceipt取得後に動いた場合、candidateやrunnerが変わった場合、preflight自身がreceipt取得時と異なる場合、またreceiptを書き換えた場合は失敗します。その場合は新しいmainをcandidateへ取り込み、**新しいexact candidateでqualificationから取り直します**。
