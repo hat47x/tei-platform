@@ -226,11 +226,14 @@ func TestContractFingerprintMismatchFailsClosed(t *testing.T) {
 
 func runtimeContract() Contract {
 	return Contract{
-		ID:                 "runtime.contract-query-executor",
+		ID:                 contractQueryCapabilityContractID,
 		Version:            "1.0.0",
 		RequestSemantics:   "contract-query-with-bound-parameters",
 		ResultSemantics:    "rows-or-explicit-unresolved",
 		FailureSemantics:   "execution-error-is-not-empty-result",
+		RequestShape:       contractQueryRequestShape,
+		ResultShape:        contractQueryResultShape,
+		PayloadCodec:       referenceJSONPayloadCodec,
 		ConformanceProfile: "tei.reference.contract-query-executor/v0",
 	}
 }
