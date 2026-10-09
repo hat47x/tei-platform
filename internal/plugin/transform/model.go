@@ -165,7 +165,14 @@ func (s Source) Validate() error {
 	if len(s.Inputs) == 0 {
 		return fmt.Errorf("transform source requires at least one input")
 	}
+	scope := make(map[string]struct{}, len(inputs))
+	for name := range inputs {
+		scope[name] = struct{}{}
+	}
 	for i := range s.Program.Assertions {
+		if err := validateExprBindings(s.Program.Assertions[i], scope); err != nil {
+			return fmt.Errorf("transform assertion %d bindings: %w", i, err)
+		}
 		if err := validateExpr(s.Program.Assertions[i], 0); err != nil {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
@@ -177,6 +184,9 @@ func (s Source) Validate() error {
 	}
 	if err := validateExpr(s.Program.Output, 0); err != nil {
 		return fmt.Errorf("transform output: %w", err)
+	}
+	if err := validateExprBindings(s.Program.Output, scope); err != nil {
+		return fmt.Errorf("transform output bindings: %w", err)
 	}
 	return nil
 }
@@ -193,10 +203,16 @@ func validateExpr(expr Expr, depth int) error {
 	}
 	switch expr.Op {
 	case OpInput:
+		if err := rejectUnexpectedExprFields(expr, "name"); err != nil {
+			return err
+		}
 		if strings.TrimSpace(expr.Name) == "" {
 			return fmt.Errorf("input name is required")
 		}
 	case OpLiteral:
+		if err := rejectUnexpectedExprFields(expr, "literal"); err != nil {
+			return err
+		}
 		if len(bytes.TrimSpace(expr.Literal)) == 0 {
 			return fmt.Errorf("literal JSON is required")
 		}
@@ -204,6 +220,9 @@ func validateExpr(expr Expr, depth int) error {
 			return fmt.Errorf("literal JSON: %w", err)
 		}
 	case OpSelectField:
+		if err := rejectUnexpectedExprFields(expr, "from", "field", "optional"); err != nil {
+			return err
+		}
 		if err := child(expr.From, "select-field source"); err != nil {
 			return err
 		}
@@ -211,6 +230,9 @@ func validateExpr(expr Expr, depth int) error {
 			return fmt.Errorf("select-field field is required")
 		}
 	case OpConstructObject:
+		if err := rejectUnexpectedExprFields(expr, "fields"); err != nil {
+			return err
+		}
 		if len(expr.Fields) == 0 {
 			return fmt.Errorf("construct-object requires at least one field")
 		}
@@ -229,6 +251,9 @@ func validateExpr(expr Expr, depth int) error {
 			}
 		}
 	case OpMapArray:
+		if err := rejectUnexpectedExprFields(expr, "from", "item", "body"); err != nil {
+			return err
+		}
 		if err := child(expr.From, "map-array source"); err != nil {
 			return err
 		}
@@ -239,6 +264,9 @@ func validateExpr(expr Expr, depth int) error {
 			return err
 		}
 	case OpSortArrayBy:
+		if err := rejectUnexpectedExprFields(expr, "from", "item", "keys"); err != nil {
+			return err
+		}
 		if err := child(expr.From, "sort-array source"); err != nil {
 			return err
 		}
@@ -254,6 +282,9 @@ func validateExpr(expr Expr, depth int) error {
 			}
 		}
 	case OpReplaceField:
+		if err := rejectUnexpectedExprFields(expr, "from", "field", "value"); err != nil {
+			return err
+		}
 		if err := child(expr.From, "replace-field source"); err != nil {
 			return err
 		}
@@ -264,6 +295,9 @@ func validateExpr(expr Expr, depth int) error {
 			return err
 		}
 	case OpOmitField:
+		if err := rejectUnexpectedExprFields(expr, "from", "field"); err != nil {
+			return err
+		}
 		if err := child(expr.From, "omit-field source"); err != nil {
 			return err
 		}
@@ -271,6 +305,9 @@ func validateExpr(expr Expr, depth int) error {
 			return fmt.Errorf("omit-field field is required")
 		}
 	case OpAssertEqual:
+		if err := rejectUnexpectedExprFields(expr, "actual", "expected"); err != nil {
+			return err
+		}
 		if err := child(expr.Actual, "assert-equal actual"); err != nil {
 			return err
 		}
@@ -278,6 +315,9 @@ func validateExpr(expr Expr, depth int) error {
 			return err
 		}
 	case OpAssertEnum:
+		if err := rejectUnexpectedExprFields(expr, "actual", "allowed"); err != nil {
+			return err
+		}
 		if err := child(expr.Actual, "assert-enum actual"); err != nil {
 			return err
 		}
@@ -290,14 +330,26 @@ func validateExpr(expr Expr, depth int) error {
 			}
 		}
 	case OpCanonicalJSON, OpSHA256:
+		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
+			return err
+		}
 		if err := child(expr.From, string(expr.Op)+" source"); err != nil {
 			return err
 		}
 	case OpAppendBytes:
+		if err := rejectUnexpectedExprFields(expr, "from", "suffix"); err != nil {
+			return err
+		}
 		if err := child(expr.From, "append-bytes source"); err != nil {
 			return err
 		}
+		if expr.Suffix == "" {
+			return fmt.Errorf("append-bytes suffix is required")
+		}
 	case OpJoinStrings:
+		if err := rejectUnexpectedExprFields(expr, "values", "separator"); err != nil {
+			return err
+		}
 		if len(expr.Values) == 0 {
 			return fmt.Errorf("join-strings requires values")
 		}
@@ -310,6 +362,118 @@ func validateExpr(expr Expr, depth int) error {
 		return fmt.Errorf("unsupported transform operation %q", expr.Op)
 	}
 	return nil
+}
+
+
+
+func rejectUnexpectedExprFields(expr Expr, allowed ...string) error {
+	ok := make(map[string]struct{}, len(allowed))
+	for _, field := range allowed {
+		ok[field] = struct{}{}
+	}
+	present := []struct {
+		name string
+		set  bool
+	}{
+		{"name", expr.Name != ""},
+		{"literal", len(expr.Literal) != 0},
+		{"from", expr.From != nil},
+		{"field", expr.Field != ""},
+		{"optional", expr.Optional},
+		{"fields", len(expr.Fields) != 0},
+		{"item", expr.Item != ""},
+		{"body", expr.Body != nil},
+		{"keys", len(expr.Keys) != 0},
+		{"value", expr.Value != nil},
+		{"actual", expr.Actual != nil},
+		{"expected", expr.Expected != nil},
+		{"allowed", len(expr.Allowed) != 0},
+		{"values", len(expr.Values) != 0},
+		{"separator", expr.Separator != ""},
+		{"suffix", expr.Suffix != ""},
+	}
+	for _, field := range present {
+		if !field.set {
+			continue
+		}
+		if _, allowed := ok[field.name]; !allowed {
+			return fmt.Errorf("%s does not accept field %s", expr.Op, field.name)
+		}
+	}
+	return nil
+}
+
+func validateExprBindings(expr Expr, scope map[string]struct{}) error {
+	check := func(child *Expr) error {
+		if child == nil {
+			return nil
+		}
+		return validateExprBindings(*child, scope)
+	}
+	switch expr.Op {
+	case OpInput:
+		if _, ok := scope[expr.Name]; !ok {
+			return fmt.Errorf("input or local binding %q is not declared", expr.Name)
+		}
+		return nil
+	case OpMapArray:
+		if err := check(expr.From); err != nil {
+			return err
+		}
+		if _, exists := scope[expr.Item]; exists {
+			return fmt.Errorf("map-array item binding %q shadows an existing binding", expr.Item)
+		}
+		local := copyBindingScope(scope)
+		local[expr.Item] = struct{}{}
+		if expr.Body != nil {
+			return validateExprBindings(*expr.Body, local)
+		}
+		return nil
+	case OpSortArrayBy:
+		if err := check(expr.From); err != nil {
+			return err
+		}
+		if _, exists := scope[expr.Item]; exists {
+			return fmt.Errorf("sort-array item binding %q shadows an existing binding", expr.Item)
+		}
+		local := copyBindingScope(scope)
+		local[expr.Item] = struct{}{}
+		for i := range expr.Keys {
+			if err := validateExprBindings(expr.Keys[i], local); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, child := range []*Expr{expr.From, expr.Body, expr.Value, expr.Actual, expr.Expected} {
+		if err := check(child); err != nil {
+			return err
+		}
+	}
+	for i := range expr.Fields {
+		if err := validateExprBindings(expr.Fields[i].Value, scope); err != nil {
+			return err
+		}
+	}
+	for i := range expr.Keys {
+		if err := validateExprBindings(expr.Keys[i], scope); err != nil {
+			return err
+		}
+	}
+	for i := range expr.Values {
+		if err := validateExprBindings(expr.Values[i], scope); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyBindingScope(in map[string]struct{}) map[string]struct{} {
+	out := make(map[string]struct{}, len(in)+1)
+	for name := range in {
+		out[name] = struct{}{}
+	}
+	return out
 }
 
 func NormalizeSource(source Source) (Source, error) {
