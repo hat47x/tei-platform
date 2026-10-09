@@ -123,7 +123,7 @@ func TestBuildBuilderReviewDisclosureRejectsModifiedHandoff(t *testing.T) {
 	handoff.SelectedSections[0] = "modified"
 
 	_, err = BuildBuilderReviewDisclosure(ctx, sources, handoff)
-	if err == nil || !strings.Contains(err.Error(), "modified Builder Review Handoff") {
+	if err == nil || !strings.Contains(err.Error(), "fingerprint does not match content") {
 		t.Fatalf("modified handoff disclosed Knowledge: %v", err)
 	}
 }
