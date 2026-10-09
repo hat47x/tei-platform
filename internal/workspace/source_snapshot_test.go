@@ -155,10 +155,10 @@ func TestStandaloneResultContinuesToReadCurrentFile(t *testing.T) {
 
 func TestLoadedSnapshotAcceptsRelativeAbsoluteAndSymlinkedRoot(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\\n  sources:\\n    - applications\\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	writeSource(t, root, "applications/demo/application.tei", []byte("application demo {}\\n"))
+	writeSource(t, root, "applications/demo/application.tei", []byte("application demo {}\n"))
 
 	cwd, err := os.Getwd()
 	if err != nil {
