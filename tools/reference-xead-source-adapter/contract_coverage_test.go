@@ -1,8 +1,11 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
+
+	"tei/tools/internal/rmtevidence"
 )
 
 func TestClassificationCoverageSeparatesAccountingFromAcceptance(t *testing.T) {
@@ -53,5 +56,60 @@ func TestClassificationCoverageRejectsNamespacedLookalike(t *testing.T) {
 	}
 	if coverage.Complete || coverage.UnknownObservedElements != 1 {
 		t.Fatalf("namespaced lookalike was hidden by local-name mapping: %+v", coverage)
+	}
+}
+
+
+func TestPublicEvidenceVocabularyMatchesSourceAdapterAndContract(t *testing.T) {
+	contractBytes, err := os.ReadFile("../../reference/reference-model-transfer/transcription-contract-v0.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, format := range []SourceFormat{FormatXead, FormatXeaf} {
+		mapped, err := parseConstructMappings(format, contractBytes)
+		if err != nil {
+			t.Fatalf("%s contract: %v", format, err)
+		}
+		known := knownElements[format]
+		publicKinds := rmtevidence.StandardConstructs(string(format))
+
+		if len(mapped) != len(known) || len(publicKinds) != len(known) {
+			t.Fatalf(
+				"%s vocabulary size drift: contract=%d reader=%d evidence=%d",
+				format,
+				len(mapped),
+				len(known),
+				len(publicKinds),
+			)
+		}
+
+		for kind, mapping := range mapped {
+			if _, ok := known[kind]; !ok {
+				t.Fatalf("%s contract kind %q is not known by the Source Adapter", format, kind)
+			}
+			if !rmtevidence.IsStandardConstruct(string(format), kind) {
+				t.Fatalf("%s contract kind %q is not public typed-Evidence vocabulary", format, kind)
+			}
+			for _, classification := range mapping.Classification {
+				if !rmtevidence.IsSupportedClassification(classification) {
+					t.Fatalf(
+						"%s/%s classification %q is not public typed-Evidence vocabulary",
+						format,
+						kind,
+						classification,
+					)
+				}
+			}
+		}
+
+		for kind := range known {
+			if _, ok := mapped[kind]; !ok {
+				t.Fatalf("%s reader kind %q has no transcription mapping", format, kind)
+			}
+			if !rmtevidence.IsStandardConstruct(string(format), kind) {
+				t.Fatalf("%s reader kind %q is missing from typed-Evidence vocabulary", format, kind)
+			}
+		}
 	}
 }
