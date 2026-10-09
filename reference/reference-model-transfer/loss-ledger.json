@@ -278,6 +278,15 @@
       "risk": "integrity can be mistaken for provenance/observer authority and a self-authored mapped claim can influence review as if it were qualified observation.",
       "owner": "ISSUE-000078 / GitHub #1008; observer/provider authority handoff to GitHub #951",
       "stopCondition": "mandatory authority limits survive producer omission; Shared Acceptance displays observerConformance and external-source freshness as not verified; any future qualified-observer claim must bind separately to current Provider/Conformance authority and source replay Evidence"
+    },
+    {
+      "id": "RML-031",
+      "topic": "self-asserted-known-construct-in-typed-rmt-evidence",
+      "nature": "unsupported",
+      "evidence": "Before RMP-056 hardening, rmtevidence only required sourceConstructKnown=true plus a non-empty sourceConstruct. A hand-authored artifact could name a private construct, recompute its fingerprint, and pass typed decoding without Source Adapter participation.",
+      "risk": "unknown/private source vocabulary can cross the public Evidence boundary and a nonstandard construct can be presented as known even though the content fingerprint is valid.",
+      "owner": "GitHub #1008 / Draft PR #1011",
+      "stopCondition": "typed Evidence validates sourceConstruct against the standard vocabulary for its declared xead/xeaf format, validates classification against the controlled RMT vocabulary, forces unmapped Evidence to classification=unresolved, and adversarial tests reject private names, cross-format known names, free-text source versions, and contradictory unmapped classifications"
     }
   ],
   "claimsNotEstablished": [
