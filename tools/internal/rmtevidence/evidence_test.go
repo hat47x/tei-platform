@@ -193,3 +193,45 @@ func TestUnmappedEvidenceCannotClaimMappedClassification(t *testing.T) {
 		t.Fatalf("unmapped Evidence claimed mapped classification: %v", err)
 	}
 }
+
+
+func TestPublicFreeTextFieldsUseSafeTokenSyntax(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*Evidence)
+	}{
+		{
+			name: "extension prose",
+			mutate: func(value *Evidence) {
+				value.Extension = "private customer name"
+			},
+		},
+		{
+			name: "extension unicode",
+			mutate: func(value *Evidence) {
+				value.Extension = "reference.顧客"
+			},
+		},
+		{
+			name: "authority limit prose",
+			mutate: func(value *Evidence) {
+				value.AuthorityLimits = []string{"private customer name"}
+			},
+		},
+		{
+			name: "authority limit too long",
+			mutate: func(value *Evidence) {
+				value.AuthorityLimits = []string{"a" + strings.Repeat("b", publicTokenMaxLength)}
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			value := fixture()
+			tc.mutate(&value)
+			if _, err := Prepare(value); err == nil || !strings.Contains(err.Error(), "token") {
+				t.Fatalf("unsafe public string was accepted: %v", err)
+			}
+		})
+	}
+}
