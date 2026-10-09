@@ -19,9 +19,8 @@ type DetailQuery struct {
 	AssertionID                      string   `json:"assertionId"`
 	ExpectedMeaningFingerprint       string   `json:"expectedMeaningFingerprint"`
 	ExpectedReviewSubjectFingerprint string   `json:"expectedReviewSubjectFingerprint"`
-	ExpectedTargetBinding            string   `json:"expectedTargetBinding"`
-	ExpectedReviewLogSequence        int      `json:"expectedReviewLogSequence"`
-	GrantedAccessRefs                []string `json:"grantedAccessRefs,omitempty"`
+	ExpectedTargetBinding            string `json:"expectedTargetBinding"`
+	ExpectedReviewLogSequence        int    `json:"expectedReviewLogSequence"`
 }
 
 type DetailEvidenceRef struct {
@@ -56,6 +55,7 @@ func resolveEpistemicDetail(
 	rawCorpus Corpus,
 	rawContext ContextQuery,
 	rawQuery DetailQuery,
+	access TransportAccess,
 ) (DetailResult, error) {
 	corpus, err := normalizeCorpus(rawCorpus)
 	if err != nil {
@@ -71,7 +71,7 @@ func resolveEpistemicDetail(
 	}
 
 	granted := make(map[string]struct{})
-	for _, ref := range query.GrantedAccessRefs {
+	for _, ref := range normalizeStrings(access.GrantedAccessRefs) {
 		granted[ref] = struct{}{}
 	}
 	targetVisible := false
@@ -89,9 +89,7 @@ func resolveEpistemicDetail(
 		return DetailResult{}, fmt.Errorf("epistemic detail target is unavailable")
 	}
 
-	envelope, err := exportCorpusForAccess(corpus, TransportAccess{
-		GrantedAccessRefs: query.GrantedAccessRefs,
-	})
+	envelope, err := exportCorpusForAccess(corpus, access)
 	if err != nil {
 		return DetailResult{}, err
 	}
@@ -161,7 +159,8 @@ func resolveEpistemicDetail(
 		ContentRole:      "epistemic-data",
 		ControlAuthority: false,
 		AuthorityLimits: []string{
-			"detail-query-access-refs-are-opaque-input-not-authorization-authority",
+			"detail-access-context-is-not-part-of-semantic-query",
+			"detail-access-refs-are-opaque-input-not-authorization-authority",
 			"detail-query-does-not-broaden-source-access",
 			"detail-query-requires-current-binding-receipts",
 			"detail-query-is-bounded-by-context-as-of",
@@ -193,7 +192,6 @@ func normalizeDetailQuery(input DetailQuery) (DetailQuery, error) {
 	input.ExpectedMeaningFingerprint = strings.TrimSpace(input.ExpectedMeaningFingerprint)
 	input.ExpectedReviewSubjectFingerprint = strings.TrimSpace(input.ExpectedReviewSubjectFingerprint)
 	input.ExpectedTargetBinding = strings.TrimSpace(input.ExpectedTargetBinding)
-	input.GrantedAccessRefs = normalizeStrings(input.GrantedAccessRefs)
 
 	if input.Contract != detailQueryContract {
 		return input, fmt.Errorf("unsupported epistemic detail query contract %q", input.Contract)
