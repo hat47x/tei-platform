@@ -189,6 +189,10 @@ cross-view / execution Evidence
 
 [000082](000082-context-scoped-epistemic-knowledge.md)は、生成AIが扱う情報を文脈付きの認識状態として保持し、Project Knowledge Healthを実証する作業です（ADR-0030）。2026-10-06に、先に存在した000081（EKI Fabric評価）と番号が重複したため、後から追加した本Issueを000082、対応するADRを0030へ改番しました。GitHub Issue #958の本文にはISSUE-000081の表記が残る場合があります。
 
+### 5. 他製品との境界
+
+[000085](000085-declare-digest-byte-rules.md)は、TEIが出す`sha256:`の値ごとに、ハッシュ対象のbyte規則を宣言することを求めます。Shared Acceptance Boundaryだけで7種の値があり、規則は4系統に分かれます。SEIやMMIも別の規則を持つため、見た目の一致から製品間の比較可能性を推定しないための宣言です。値は変えません。評価待ちで、Requirementの変更とGate判定条件の変更は含みません。
+
 ## 外部資産・Providerの継続課題
 
 | 担当Issue | 統合した課題 | 分けて扱う理由 |
