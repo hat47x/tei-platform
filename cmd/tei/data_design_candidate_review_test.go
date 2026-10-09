@@ -46,9 +46,9 @@ func TestBuildDataDesignCandidateReviewFromReferenceWorkspace(t *testing.T) {
 	}
 	for _, reason := range []string{
 		"current-core-has-no-first-class-business-identity-authoring-contract",
-		"semantic-extension-v0-constraint-cannot-losslessly-encode-composite-identity-components-and-scope",
+		"semantic-extension-route-cannot-yet-losslessly-author-composite-identity-components-and-scope",
 		"first-class-promotion-route-core-vs-semantic-extension-not-selected",
-		"semantic-extension-v0-is-reference-not-production-authoring-contract",
+		"semantic-extension-route-is-not-accepted-production-authoring-contract",
 		"authoritative-declaration-source-not-selected",
 		"semantic-extension-namespace-authority-not-selected",
 	} {
