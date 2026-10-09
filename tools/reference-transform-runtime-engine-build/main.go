@@ -87,9 +87,10 @@ type goListPackage struct {
 func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
 	artifactOut := flag.String("artifact-out", "", "optional path outside the repository for the verified engine artifact")
+	goExecutable := flag.String("go", "", "optional exact Go executable path; defaults to the current runtime GOROOT")
 	flag.Parse()
 
-	evidence, err := run(*repo, *artifactOut)
+	evidence, err := run(*repo, *artifactOut, *goExecutable)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -106,7 +107,7 @@ func main() {
 	}
 }
 
-func run(repo, artifactOut string) (buildEvidence, error) {
+func run(repo, artifactOut, goExecutable string) (buildEvidence, error) {
 	root, err := filepath.Abs(repo)
 	if err != nil {
 		return buildEvidence{}, err
@@ -122,12 +123,9 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 		return buildEvidence{}, err
 	}
 
-	goPath, err := exec.LookPath("go")
+	goPath, err := selectGoExecutable(goExecutable)
 	if err != nil {
-		return buildEvidence{}, fmt.Errorf("locate Go builder: %w", err)
-	}
-	if resolved, resolveErr := filepath.EvalSymlinks(goPath); resolveErr == nil {
-		goPath = resolved
+		return buildEvidence{}, err
 	}
 	hostEnvironment := allowedHostEnvironment(os.Environ())
 	goVersion, goRoot, goBinaryDigest, goToolchainDigest, err := identifyGoToolchain(root, goPath)
@@ -220,6 +218,29 @@ func run(repo, artifactOut string) (buildEvidence, error) {
 	}
 	_ = goRoot
 	return out, nil
+}
+
+func selectGoExecutable(explicit string) (string, error) {
+	path := strings.TrimSpace(explicit)
+	if path == "" {
+		path = filepath.Join(runtime.GOROOT(), "bin", executableName("go"))
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	resolved, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return "", fmt.Errorf("resolve Go executable: %w", err)
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return "", fmt.Errorf("stat Go executable: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("Go executable is not a regular file: %s", resolved)
+	}
+	return resolved, nil
 }
 
 func identifyGoToolchain(repo, goPath string) (version, goRoot, binaryDigest, toolchainDigest string, err error) {
