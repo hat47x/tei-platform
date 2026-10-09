@@ -163,6 +163,53 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 			t.Fatalf("business Evidence was inferred as satisfied: %+v", requirement)
 		}
 	}
+	for _, tc := range []struct {
+		requirement string
+		subjects    []subject.Subject
+	}{
+		{
+			requirement: "source-occurrence-business-identifier",
+			subjects: []subject.Subject{
+				{Kind: "semantic-data", ID: "sales.order"},
+			},
+		},
+		{
+			requirement: "relation-business-meaning",
+			subjects: []subject.Subject{
+				{Kind: "semantic-relation", ID: "sales.order.lines"},
+			},
+		},
+		{
+			requirement: "target-membership-exclusivity",
+			subjects: []subject.Subject{
+				{Kind: "semantic-data", ID: "sales.order_line"},
+				{Kind: "semantic-relation", ID: "sales.order.lines"},
+			},
+		},
+		{
+			requirement: "identifier-stability",
+			subjects: []subject.Subject{
+				{Kind: "semantic-attribute", ID: "sales.order_line.line_number"},
+				{Kind: "semantic-data", ID: "sales.order_line"},
+			},
+		},
+	} {
+		requirement, ok := findDataDesignReviewRequirement(
+			packet.BusinessEvidenceRequirements,
+			tc.requirement,
+		)
+		if !ok {
+			t.Fatalf("business Evidence requirement %q is missing", tc.requirement)
+		}
+		if !reflect.DeepEqual(requirement.SuggestedSubjects, tc.subjects) {
+			t.Fatalf(
+				"search starts for %q=%+v want=%+v",
+				tc.requirement,
+				requirement.SuggestedSubjects,
+				tc.subjects,
+			)
+		}
+	}
 	for _, step := range []string{
 		"rebuild-current-data-design-context-and-verify-fingerprint",
 		"review-first-class-authoring-contract-gaps",
@@ -180,6 +227,7 @@ func TestDataDesignCandidateReviewBindsCurrentBusinessIdentityCandidate(t *testi
 		"promotion-status-is-derived-readiness-not-acceptance-or-write-authority",
 		"data-design-context-fingerprint-is-snapshot-identity-not-source-freshness-proof",
 		"source-evidence-proves-traceability-not-business-meaning",
+		"suggested-evidence-subject-is-search-start-not-evidence-or-authority",
 		"candidate-review-does-not-create-first-class-business-identity-or-functional-dependency",
 		"semantic-extension-reference-is-not-current-lossless-authoring-contract",
 	} {
@@ -487,6 +535,18 @@ func dataDesignCandidateReviewSources() sourceindex.Index {
 		Artifacts:  []sourceindex.Artifact{artifact},
 		References: references,
 	}
+}
+
+func findDataDesignReviewRequirement(
+	values []DataDesignCandidateReviewRequirement,
+	id string,
+) (DataDesignCandidateReviewRequirement, bool) {
+	for _, value := range values {
+		if value.ID == id {
+			return value, true
+		}
+	}
+	return DataDesignCandidateReviewRequirement{}, false
 }
 
 func containsDataDesignReviewString(values []string, want string) bool {
