@@ -485,6 +485,16 @@ func TestTransformRejectsMalformedProgrammaticInputValue(t *testing.T) {
 				}},
 			},
 		},
+		{
+			name: "invalid nested number",
+			value: transform.Value{
+				Kind: transform.ValueObject,
+				Object: []transform.Field{{
+					Name:  "number",
+					Value: transform.Number("NaN"),
+				}},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -498,7 +508,7 @@ func TestTransformRejectsMalformedProgrammaticInputValue(t *testing.T) {
 	numberSource.Inputs = []transform.InputSpec{{Name: "value", Kind: transform.InputString}}
 	numberSource.Program.Output = transform.Expr{Op: transform.OpInput, Name: "value"}
 	if _, err := transform.Evaluate(numberSource, map[string]transform.Value{
-		"value": {Kind: transform.ValueString, String: "ok", Number: "1"},
+		"value": transform.Value{Kind: transform.ValueString, String: "ok", Number: "1"},
 	}); err == nil {
 		t.Fatal("expected string value with hidden number field to fail")
 	}
