@@ -21,7 +21,13 @@ go run ./cmd/tei knowledge-context \
   -workspace reference/workspace \
   -subject-kind application-pattern \
   -subject-id order_entry.customer_reference \
-  > /tmp/knowledge.json
+  > /tmp/pattern-knowledge.json
+
+go run ./cmd/tei knowledge-context \
+  -workspace reference/workspace \
+  -subject-kind application \
+  -subject-id order_entry \
+  > /tmp/application-knowledge.json
 
 go run ./tools/reference-business-procedure-check \
   -workspace reference/workspace \
@@ -36,7 +42,8 @@ Shared AcceptanceのPreview / Decisionを入力すると、明示された`stale
 ```bash
 go run ./tools/reference-spec-review \
   -case-id ref-spec-01-customer-edit \
-  -knowledge-context /tmp/knowledge.json \
+  -knowledge-context /tmp/pattern-knowledge.json \
+  -knowledge-context /tmp/application-knowledge.json \
   -cross-view /tmp/cross-view.json \
   -shared-acceptance /tmp/decision.json
 ```
@@ -53,7 +60,7 @@ Shared Acceptanceの入力が無い場合も実行できます。その場合は
 
 最後の状態も仕様の完全性を証明しません。新しいSourceや別の観点を調べれば、追加の問題が見つかる可能性があります。
 
-review packetの`evidence`には、入力側がすでに持っていたSource traceを残します。Knowledge Contextからはsubject、workspace相対source、artifact fingerprint、roleを引き継ぎます。Shared Acceptanceのcandidate EvidenceにSourceがある場合も、subjectとsource fingerprintを保持します。
+review packetの`evidence`には、入力側がすでに持っていたSource traceを残します。`-knowledge-context`は複数回指定できるため、一件の変更要求で関係する複数subjectのContextを同じpacketへまとめられます。Knowledge Contextからはsubject、workspace相対source、artifact fingerprint、roleを引き継ぎます。Shared Acceptanceのcandidate EvidenceにSourceがある場合も、subjectとsource fingerprintを保持します。
 
 この`evidence`は新しい根拠を生成するfieldではありません。findingを確認した人やAIが、もう一度Repository全体を検索せず元Sourceへ戻るための導線です。同じsubject・source・fingerprint・roleが重複して届いた場合だけ、完全一致する行を一件へ正規化します。fingerprintが入力に無ければ、集約tool側で推測して補いません。
 
