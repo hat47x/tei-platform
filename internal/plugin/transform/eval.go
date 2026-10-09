@@ -25,10 +25,13 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 	if err := validateInputs(source.Inputs, inputs); err != nil {
 		return EvaluationResult{}, err
 	}
+	if err := validateInputBudgets(source.Limits, inputs); err != nil {
+		return EvaluationResult{}, err
+	}
 	e := evaluator{limits: source.Limits}
 	env := make(map[string]Value, len(inputs))
 	for name, value := range inputs {
-		env[name] = value.Clone()
+		env[name] = value
 	}
 	for i := range source.Program.Assertions {
 		if _, err := e.eval(source.Program.Assertions[i], env, 0); err != nil {
@@ -82,15 +85,19 @@ func inputKindMatches(expected InputKind, actual ValueKind) bool {
 	}
 }
 
-func (e *evaluator) tick(depth int) error {
-	e.steps++
-	if e.steps > e.limits.MaxSteps {
+func (e *evaluator) consume(count int) error {
+	if count < 0 || count > e.limits.MaxSteps-e.steps {
 		return fmt.Errorf("transform exceeded maxSteps")
 	}
+	e.steps += count
+	return nil
+}
+
+func (e *evaluator) tick(depth int) error {
 	if depth > e.limits.MaxNestingDepth {
 		return fmt.Errorf("transform exceeded maxNestingDepth")
 	}
-	return nil
+	return e.consume(1)
 }
 
 func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, error) {
@@ -146,7 +153,7 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 		out := make([]Value, len(source.Array))
 		for i, item := range source.Array {
 			local := cloneEnv(env)
-			local[expr.Item] = item.Clone()
+			local[expr.Item] = item
 			value, err := e.eval(*expr.Body, local, depth+1)
 			if err != nil {
 				return Value{}, fmt.Errorf("map-array item %d: %w", i, err)
@@ -169,10 +176,13 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 			value Value
 			keys  []string
 		}
+		if err := e.consume(sortWorkBudget(len(source.Array))); err != nil {
+			return Value{}, err
+		}
 		items := make([]keyed, len(source.Array))
 		for i, item := range source.Array {
 			local := cloneEnv(env)
-			local[expr.Item] = item.Clone()
+			local[expr.Item] = item
 			keys := make([]string, len(expr.Keys))
 			for k := range expr.Keys {
 				key, err := e.eval(expr.Keys[k], local, depth+1)
@@ -306,10 +316,87 @@ func (e *evaluator) eval(expr Expr, env map[string]Value, depth int) (Value, err
 	}
 }
 
+func sortWorkBudget(n int) int {
+	if n <= 1 {
+		return 0
+	}
+	levels := 0
+	for size := 1; size < n; size <<= 1 {
+		levels++
+	}
+	return n * (levels + 1)
+}
+
+type inputBudget struct {
+	nodes int
+	bytes int
+}
+
+func validateInputBudgets(limits Limits, inputs map[string]Value) error {
+	budget := inputBudget{}
+	for name, value := range inputs {
+		budget.bytes += len(name)
+		if budget.bytes > limits.MaxInputBytes {
+			return fmt.Errorf("transform inputs exceed maxInputBytes")
+		}
+		if err := walkInputBudget(value, 0, &budget, limits); err != nil {
+			return fmt.Errorf("transform input %q: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func walkInputBudget(value Value, depth int, budget *inputBudget, limits Limits) error {
+	if depth > limits.MaxNestingDepth {
+		return fmt.Errorf("input exceeds maxNestingDepth")
+	}
+	budget.nodes++
+	if budget.nodes > limits.MaxInputNodes {
+		return fmt.Errorf("inputs exceed maxInputNodes")
+	}
+	switch value.Kind {
+	case ValueNull, ValueBool:
+	case ValueNumber:
+		budget.bytes += len(value.Number)
+	case ValueString:
+		budget.bytes += len(value.String)
+	case ValueBytes:
+		budget.bytes += len(value.Bytes)
+	case ValueArray:
+		if len(value.Array) > limits.MaxCollection {
+			return fmt.Errorf("array exceeds maxCollection")
+		}
+		for _, item := range value.Array {
+			if err := walkInputBudget(item, depth+1, budget, limits); err != nil {
+				return err
+			}
+		}
+	case ValueObject:
+		if len(value.Object) > limits.MaxCollection {
+			return fmt.Errorf("object exceeds maxCollection")
+		}
+		for _, field := range value.Object {
+			budget.bytes += len(field.Name)
+			if budget.bytes > limits.MaxInputBytes {
+				return fmt.Errorf("inputs exceed maxInputBytes")
+			}
+			if err := walkInputBudget(field.Value, depth+1, budget, limits); err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("unsupported input value kind %q", value.Kind)
+	}
+	if budget.bytes > limits.MaxInputBytes {
+		return fmt.Errorf("inputs exceed maxInputBytes")
+	}
+	return nil
+}
+
 func cloneEnv(in map[string]Value) map[string]Value {
 	out := make(map[string]Value, len(in)+1)
 	for name, value := range in {
-		out[name] = value.Clone()
+		out[name] = value
 	}
 	return out
 }
