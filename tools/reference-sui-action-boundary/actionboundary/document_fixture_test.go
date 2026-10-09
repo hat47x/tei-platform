@@ -73,6 +73,9 @@ func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
   {"non finite x",documentFixture,MovePayload{CardID:"a",X:math.NaN(),Y:2}},
   {"non finite y",documentFixture,MovePayload{CardID:"a",X:1,Y:math.Inf(1)}},
   {"duplicate card ids",`{"cards":[{"id":"a"},{"id":"a"}]}`,MovePayload{CardID:"a",X:1,Y:2}},
+  {"duplicate unrelated card ids",`{"cards":[{"id":"a"},{"id":"b"},{"id":"b"}]}`,MovePayload{CardID:"a",X:1,Y:2}},
+  {"null card",`{"cards":[null,{"id":"a"}]}`,MovePayload{CardID:"a",X:1,Y:2}},
+  {"missing unrelated card id",`{"cards":[{"id":"a"},{}]}`,MovePayload{CardID:"a",X:1,Y:2}},
  }
  for _,tc:=range cases {
   t.Run(tc.name,func(t *testing.T){
