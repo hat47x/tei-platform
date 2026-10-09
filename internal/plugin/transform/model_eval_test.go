@@ -240,3 +240,22 @@ func TestOrderedValueRejectsInvalidManuallyConstructedNumber(t *testing.T) {
 		t.Fatalf("number lexeme changed: %s", raw)
 	}
 }
+
+
+func TestTransformSourceFingerprintIgnoresInputDeclarationOrder(t *testing.T) {
+	a := transform.PluginPackageSourceV1()
+	b := transform.PluginPackageSourceV1()
+	b.Inputs[0], b.Inputs[1] = b.Inputs[1], b.Inputs[0]
+
+	aFP, err := transform.SourceFingerprint(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bFP, err := transform.SourceFingerprint(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if aFP != bFP {
+		t.Fatalf("input declaration order changed Source fingerprint: %s != %s", aFP, bFP)
+	}
+}
