@@ -1,36 +1,23 @@
 package languagereference
 
-import (
-	"fmt"
-	"strings"
-	"unicode"
-)
+import "fmt"
 
-// ParsePinnedPipeline separates syntax from meaning. Pins must be supplied by
-// the caller from an already accepted semantic set. The parser cannot choose
-// an operator version or fingerprint by name alone.
+// ParsePinnedPipeline validates already accepted operator pins against a
+// syntax-only candidate, without silently choosing a registered version.
 func ParsePinnedPipeline(source string, pins []OperatorContract, catalog []OperatorContract) (string, []PinnedCall, error) {
-	parts := strings.Split(source, "|>")
-	if len(parts) < 2 {
-		return "", nil, fmt.Errorf("pipeline requires at least one operator")
+	syntax, err := ParsePipelineSyntax(source)
+	if err != nil {
+		return "", nil, err
 	}
-	input := strings.TrimSpace(parts[0])
-	if input == "" || strings.IndexFunc(input, unicode.IsSpace) >= 0 {
-		return "", nil, fmt.Errorf("invalid pipeline input type")
+	if len(pins) != len(syntax.Operators) {
+		return "", nil, fmt.Errorf("pipeline has %d operators but %d accepted pins", len(syntax.Operators), len(pins))
 	}
-	if len(pins) != len(parts)-1 {
-		return "", nil, fmt.Errorf("pipeline has %d operators but %d accepted pins", len(parts)-1, len(pins))
-	}
-	current := input
+	current := syntax.Input.ID
 	calls := make([]PinnedCall, 0, len(pins))
-	for i, raw := range parts[1:] {
-		id := strings.TrimSpace(raw)
-		if id == "" || strings.IndexFunc(id, unicode.IsSpace) >= 0 {
-			return "", nil, fmt.Errorf("step %d: invalid operator name", i)
-		}
+	for i, token := range syntax.Operators {
 		pin := pins[i]
-		if pin.ID != id {
-			return "", nil, fmt.Errorf("step %d: pinned operator %q does not match source %q", i, pin.ID, id)
+		if pin.ID != token.ID {
+			return "", nil, fmt.Errorf("step %d: pinned operator %q does not match source %q", i, pin.ID, token.ID)
 		}
 		resolved, err := ResolveOperator(pin, catalog)
 		if err != nil {
@@ -42,5 +29,5 @@ func ParsePinnedPipeline(source string, pins []OperatorContract, catalog []Opera
 		calls = append(calls, PinnedCall{Contract: resolved, InputType: current})
 		current = resolved.OutputType
 	}
-	return input, calls, nil
+	return syntax.Input.ID, calls, nil
 }
