@@ -50,6 +50,10 @@ type CrossViewProjection struct {
 	MappingContractFingerprint    string                       `json:"mappingContractFingerprint"`
 	DerivationPolicyRevision      string                       `json:"derivationPolicyRevision"`
 	DerivationPolicyFingerprint   string                       `json:"derivationPolicyFingerprint"`
+	TaskCount                     int                          `json:"taskCount"`
+	TaskFunctionIOCount           int                          `json:"taskFunctionIoCount"`
+	TaskFunctionIONoTargetCount   int                          `json:"taskFunctionIoNoTargetCount"`
+	IOTableCount                  int                          `json:"ioTableCount"`
 	SourceEdges                   []CrossViewEdge              `json:"sourceEdges"`
 	DerivedEdges                  []CrossViewEdge              `json:"derivedEdges"`
 	Actions                       []CrossViewActionObservation `json:"actions"`
@@ -116,7 +120,7 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 	targetsByFunction := map[string]map[string][]crossViewNode{}
 	functionIOTables := map[string][]crossViewNode{}
 	actions := map[string]*CrossViewActionObservation{}
-	taskTokens := map[string]struct{}{}
+	taskCount := 0
 	taskFunctionIOCount := 0
 	ioTableCount := 0
 
@@ -126,9 +130,9 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 		}
 		switch ref.node.Name {
 		case "Task":
-			taskTokens[ref.token] = struct{}{}
+			taskCount++
 		case "TaskAction":
-			_, hasID := exactAttribute(ref.node, "ID")
+			_, hasID := nonEmptyExactAttribute(ref.node, "ID")
 			actions[ref.token] = &CrossViewActionObservation{
 				ActionToken:               ref.token,
 				TaskToken:                 ref.taskToken,
@@ -177,6 +181,9 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 		MappingContractFingerprint:  mappingContractFingerprint,
 		DerivationPolicyRevision:    CrossViewDerivationPolicyRevision,
 		DerivationPolicyFingerprint: crossViewDerivationPolicyFingerprint(),
+		TaskCount:                   taskCount,
+		TaskFunctionIOCount:         taskFunctionIOCount,
+		IOTableCount:                ioTableCount,
 		AuthorityLimits: []string{
 			"cross-view-projection-is-not-canonical-authority",
 			"source-reachability-is-not-runtime-effect",
@@ -266,6 +273,7 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 				continue
 			}
 			if ioID == "0" {
+				projection.TaskFunctionIONoTargetCount++
 				continue
 			}
 			targets := targetsByFunction[function.token][ioID]
@@ -416,12 +424,14 @@ func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounti
 		if action.FunctionIOCount == 0 {
 			out.TaskActionWithoutFunctionIOCount++
 		}
-		out.TaskFunctionIOCount += action.FunctionIOCount
 		if action.MissingLegacyID {
 			out.TaskActionMissingIDCount++
 		}
 	}
-	out.TaskCount = len(taskTokens)
+	out.TaskCount = projection.TaskCount
+	out.TaskFunctionIOCount = projection.TaskFunctionIOCount
+	out.TaskFunctionIONoTargetCount = projection.TaskFunctionIONoTargetCount
+	out.IOTableCount = projection.IOTableCount
 	for _, edge := range projection.SourceEdges {
 		out.SourceEdgeCounts[edge.Kind]++
 		switch edge.Kind {
@@ -429,8 +439,6 @@ func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounti
 			actionFunctionPairs[edge.FromToken+"\x00"+edge.ToToken] = struct{}{}
 		case "task-function-io-target":
 			out.TaskFunctionIOTargetKindCounts[edge.TargetKind]++
-		case "function-table-operation":
-			out.IOTableCount++
 		}
 	}
 	out.DistinctActionFunctionPairCount = len(actionFunctionPairs)
@@ -642,8 +650,4 @@ func crossViewFingerprint(value any) string {
 func crossViewDigest(value string) string {
 	sum := sha256.Sum256([]byte(value))
 	return "sha256:" + hex.EncodeToString(sum[:])
-}
-
-func ioTableCode(code string) string {
-	return code
 }
