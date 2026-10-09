@@ -43,7 +43,8 @@ async function assertPinnedArtifact(pin, source = new URL('./shared/required-fie
 }
 
 async function preview(projectId, selection, artifactSource) {
-  const consumer = projects[projectId];
+  const consumer = typeof projectId === 'string' && Object.hasOwn(projects, projectId)
+    ? projects[projectId] : null;
   if (!consumer) throw new Error('UNKNOWN_PROJECT');
   if (selection?.mode === 'local' && Object.keys(selection).length === 1) {
     return consumer.before();
@@ -110,6 +111,7 @@ test('artifact drift is rejected even when the logical id and version remain unc
 
 test('unresolved consumer or implicit fallback never authorizes a choice', async () => {
   await assert.rejects(() => preview('unknown', shared), /UNKNOWN_PROJECT/);
+  await assert.rejects(() => preview('constructor', shared), /UNKNOWN_PROJECT/);
   await assert.rejects(() => preview('order', { mode: 'shared' }), /UNSUPPORTED_SELECTION/);
   await assert.rejects(() => preview('order', { mode: 'newest' }), /UNSUPPORTED_SELECTION/);
   await assert.rejects(() => preview('invoice', { mode: 'local', pin: ARTIFACT }), /UNSUPPORTED_SELECTION/);
