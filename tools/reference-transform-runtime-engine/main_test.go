@@ -121,6 +121,28 @@ func TestDecodeRequestRejectsAmbiguousOrUnknownJSON(t *testing.T) {
 	}
 }
 
+func TestDecodeRequestRejectsExplicitNullForWrongOrRequiredWireField(t *testing.T) {
+	limits := transform.TransformSourceRealizerV1().Limits
+	tests := []string{
+		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[{"name":"x","value":{"kind":"null","bool":null}}]}`,
+		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[{"name":"x","value":{"kind":"bool","bool":null}}]}`,
+		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[{"name":"x","value":{"kind":"string","string":null}}]}`,
+		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[{"name":"x","value":{"kind":"bytes","bytesBase64":null}}]}`,
+	}
+	for _, raw := range tests {
+		request, err := decodeRequest([]byte(raw), limits)
+		if err != nil {
+			t.Fatalf("request envelope unexpectedly failed before wire validation: %v", err)
+		}
+		if len(request.Inputs) != 1 {
+			t.Fatalf("decoded inputs: %#v", request.Inputs)
+		}
+		if _, err := decodeWireValue(request.Inputs[0].Value, limits, 0, &wireBudget{}); err == nil {
+			t.Fatalf("expected explicit null wire field to fail: %s", raw)
+		}
+	}
+}
+
 func TestExecuteRejectsDuplicateInputNames(t *testing.T) {
 	source := transform.TransformSourceRealizerV1()
 	null := wireValue{Kind: transform.ValueNull}
