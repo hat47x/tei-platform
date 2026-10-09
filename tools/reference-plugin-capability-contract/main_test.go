@@ -5,6 +5,40 @@ import (
 	"testing"
 )
 
+func TestNonInvocationContractFingerprintDoesNotGainEmptyShapeIssuer(t *testing.T) {
+	contract := Contract{
+		ID:                 "reference.no-invocation",
+		Version:            "1.0.0",
+		RequestSemantics:   "none",
+		ResultSemantics:    "none",
+		FailureSemantics:   "none",
+		ConformanceProfile: "tei.reference.no-invocation/v0",
+	}
+	legacy := struct {
+		ID                      string `json:"id"`
+		Version                 string `json:"version"`
+		RequestSemantics        string `json:"requestSemantics"`
+		ResultSemantics         string `json:"resultSemantics"`
+		FailureSemantics        string `json:"failureSemantics"`
+		RequestShape            string `json:"requestShape,omitempty"`
+		RequestShapeFingerprint string `json:"requestShapeFingerprint,omitempty"`
+		ResultShape             string `json:"resultShape,omitempty"`
+		ResultShapeFingerprint  string `json:"resultShapeFingerprint,omitempty"`
+		PayloadCodec            string `json:"payloadCodec,omitempty"`
+		ConformanceProfile      string `json:"conformanceProfile"`
+	}{
+		ID:                 contract.ID,
+		Version:            contract.Version,
+		RequestSemantics:   contract.RequestSemantics,
+		ResultSemantics:    contract.ResultSemantics,
+		FailureSemantics:   contract.FailureSemantics,
+		ConformanceProfile: contract.ConformanceProfile,
+	}
+	if got, want := fingerprint(contract), fingerprint(legacy); got != want {
+		t.Fatalf("optional shape issuer changed non-invocation contract identity: got=%s want=%s", got, want)
+	}
+}
+
 func sourceAdapterContract() Contract {
 	return Contract{
 		ID:                 "authoring.source-adapter.xead",
