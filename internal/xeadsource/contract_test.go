@@ -3,10 +3,10 @@ package xeadsource
 import (
 	"encoding/json"
 	"os"
-	"strings"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 )
 
