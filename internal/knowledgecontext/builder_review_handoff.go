@@ -48,6 +48,27 @@ func BuildBuilderReviewHandoff(
 	status := ""
 	switch qualification.Status {
 	case QualificationApplicable:
+		if qualification.Requirements.ExpectedKind != plan.Subject.Kind {
+			return BuilderReviewHandoff{}, fmt.Errorf(
+				"builder review handoff rejects applicable qualification for a different expected kind",
+			)
+		}
+		if len(qualification.Evidence) == 0 {
+			return BuilderReviewHandoff{}, fmt.Errorf(
+				"builder review handoff rejects applicable qualification without authoritative Evidence",
+			)
+		}
+		if len(qualification.Requirements.RequiredDependencies) != 0 &&
+			len(qualification.DependencyEvidence) == 0 {
+			return BuilderReviewHandoff{}, fmt.Errorf(
+				"builder review handoff rejects applicable qualification without dependency Evidence",
+			)
+		}
+		if len(plan.RecommendedDisclosureSections) == 0 {
+			return BuilderReviewHandoff{}, fmt.Errorf(
+				"builder review handoff rejects applicable qualification without selected Knowledge",
+			)
+		}
 		status = "qualified-for-disclosure"
 	case QualificationIncompatible:
 		status = "blocked-incompatible"
