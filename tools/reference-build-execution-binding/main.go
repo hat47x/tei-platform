@@ -110,9 +110,14 @@ type referenceEvidence struct {
 	MultiOutputComparison          ArtifactSetComparison       `json:"multiOutputComparison"`
 	RuntimeEnginePlan              BuildExecutionPlan          `json:"runtimeEnginePlan"`
 	RuntimeEngineArtifactSet       ArtifactSet                 `json:"runtimeEngineArtifactSet"`
-	RuntimeEngineBinding           RuntimeEngineSubjectBinding `json:"runtimeEngineBinding"`
-	RuntimeEngineBindingFingerprint string                     `json:"runtimeEngineBindingFingerprint"`
-	AuthorityLimits                []string                    `json:"authorityLimits"`
+	RuntimeEngineBinding             RuntimeEngineSubjectBinding `json:"runtimeEngineBinding"`
+	RuntimeEngineBindingFingerprint  string                     `json:"runtimeEngineBindingFingerprint"`
+	BuildGraph                       BuildGraph                 `json:"buildGraph"`
+	BuildGraphFingerprint            string                     `json:"buildGraphFingerprint"`
+	BuildGraphOrder                  []string                   `json:"buildGraphOrder"`
+	BootstrapStage1Plan              BuildExecutionPlan         `json:"bootstrapStage1Plan"`
+	BootstrapStage2Plan              BuildExecutionPlan         `json:"bootstrapStage2Plan"`
+	AuthorityLimits                  []string                   `json:"authorityLimits"`
 }
 
 func main() {
@@ -302,6 +307,70 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		return referenceEvidence{}, err
 	}
 
+	stage0Builder := plugin.BuilderIdentity{
+		ID: core.MustCanonicalID("tei.builder.stage0_reference"),
+		Version: "1.0.0",
+		ContractVersion: "tei.reference.build/v1",
+		ArtifactDigest: sourceDigest,
+	}
+	stage1Plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "builder-source", ID: "self-hosted-builder", Locator: "source://self-hosted-builder", Digest: builderDigest,
+		}},
+		Builder: stage0Builder,
+		Recipe: plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "self-hosted-builder"},
+		OutputContract: "builder-artifact",
+		Target: "host/reference",
+	}
+	stage1Fingerprint, err := buildExecutionPlanFingerprint(stage1Plan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1Output := plugin.BuilderIdentity{
+		ID: core.MustCanonicalID("tei.builder.self_hosted_reference"),
+		Version: "1.0.0",
+		ContractVersion: stage0Builder.ContractVersion,
+		ArtifactDigest: artifactDigest,
+	}
+	stage2Plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: append([]plugin.BuildSource(nil), stage1Plan.Sources...),
+		Builder: stage1Output,
+		Recipe: stage1Plan.Recipe,
+		OutputContract: stage1Plan.OutputContract,
+		Target: stage1Plan.Target,
+	}
+	stage2Fingerprint, err := buildExecutionPlanFingerprint(stage2Plan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{
+			{ID: "stage2", ExecutionPlanFingerprint: stage2Fingerprint},
+			{ID: "stage1", ExecutionPlanFingerprint: stage1Fingerprint},
+		},
+		Edges: []BuildGraphEdge{{
+			FromNode: "stage1", OutputRole: "builder-artifact",
+			ToNode: "stage2", DependencyID: "builder",
+		}},
+		Seeds: []BuildGraphSeed{{
+			ID: string(stage0Builder.ID), Kind: "builder-seed", Version: stage0Builder.Version,
+			ArtifactDigest: stage0Builder.ArtifactDigest,
+			TrustBoundary: "trusted-stage0-seed",
+			ToNode: "stage1", DependencyID: "builder",
+		}},
+	}
+	graphFingerprint, err := buildGraphFingerprint(graph)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	graphOrder, err := topologicalBuildOrder(graph)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+
 	return referenceEvidence{
 		Schema: "tei.reference.build-execution-binding/v0",
 		SharedPlan: sharedPlan,
@@ -318,6 +387,11 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		RuntimeEngineArtifactSet: engineSet,
 		RuntimeEngineBinding: engineBinding,
 		RuntimeEngineBindingFingerprint: engineBindingFingerprint,
+		BuildGraph: graph,
+		BuildGraphFingerprint: graphFingerprint,
+		BuildGraphOrder: graphOrder,
+		BootstrapStage1Plan: stage1Plan,
+		BootstrapStage2Plan: stage2Plan,
 		AuthorityLimits: []string{
 			"build-binding-is-not-acceptance-authority",
 			"build-binding-is-not-runtime-authority",
