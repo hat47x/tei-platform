@@ -96,6 +96,19 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 実装の一部について独立した小型Go検証環境で`go test`、`go test -race`、`go vet`と`gofmt`の実行を確認した。ただし、その検証環境にはTEIリポジトリ全体のファイルがなく、PR headに対する正規のテストPASSの証拠ではない。統合条件を満たすには、リモートのPR headそのものからクリーンなチェックアウトを用意する必要がある。
 
+### 診断位置と局所検証（2026-10-10）
+
+`PipelineDiagnostic`は構文と意味照合の失敗を元Sourceの半開区間（UTF-8バイト位置）へ対応付け、原因を`Unwrap`で保持する。`errors.Is` / `errors.As`によって、契約不在・不正契約の種類と位置を独立に利用できる。これはReference専用表現であり、TEIの共通Source Indexや診断ABIの置換ではない。
+
+次の8ファイルは、GitHub側のBlob SHAと試験環境に配置した`git hash-object`の結果が完全一致した状態で、Go 1.23.2による局所検証を行った。
+
+- `operator.go` / `operator_test.go`
+- `pipeline_syntax.go` / `pipeline_syntax_test.go`
+- `pipeline_diagnostic.go` / `pipeline_diagnostic_test.go`
+- `pinned_lowering.go` / `pinned_lowering_test.go`
+
+この8ファイルのみからなる試験用Go moduleで`go test -count=1 ./...`、`go test -race -count=1 ./...`、`go vet ./...`がPASSし、`gofmt -l .`は空だった。試験には`selection`、`semantic`、既存`syntax`、他のReferenceコード、repository health checkは含まれない。**PR exact-head全体の統合資格は未取得**である。
+
 ### 既存Semantic Extensionへの接続条件（調査結果）
 
 `tools/reference-semantic-extension-catalog/`は現在`package main`の独立した検証器であり、Language Referenceから直接importできる共通APIではない。ここに別の契約解決器を設けるのではなく、**既存Semantic Catalogの解決・Lock照合が成功した後の読み取り専用Projection**を、呼び出し側から受け取る形を第一候補とする。
