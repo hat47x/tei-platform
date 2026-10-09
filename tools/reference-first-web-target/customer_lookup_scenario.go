@@ -129,6 +129,7 @@ func (r *referenceCustomerLookupScenarioRunner) RunCustomerLookup(
 			"requested-customer-id-is-runtime-input-not-business-identity-proof",
 			"mapped-intake-row-is-runtime-carrier-not-business-occurrence-authority",
 			"contract-result-row-is-runtime-observation-not-business-identity-authority",
+			"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
 			"customer-meaning-and-contract-query-are-reused-from-order-entry-not-copied",
 			"lookup-does-not-imply-authorization-or-command-readiness",
 			"http-interaction-does-not-define-semantic-outcome",
