@@ -81,8 +81,21 @@ ReferenceのJSON codecは一つの実装例です。汎用Registryはcodecの内
 
 shape名だけの一致では不十分です。同じshape名でwire schemaが変わっても検出できるよう、ContractとImplementationをexact shape fingerprintへ結び付けています。Provider ConformanceはContract fingerprintへ結び付くため、shape fingerprintの変更もContract driftとして扱われます。
 
-ただし、shape fingerprintが参照するschema artifactの保管場所、発行Authority、schema validation engineはまだReference化していません。fingerprintだけをschema本体の代わりには扱いません。
+shape fingerprintは文字列だけで管理しません。Referenceではrequest / resultのshapeを埋め込みJSON artifactとして保持し、Contractがshape ID、exact fingerprint、issuer identityを参照します。Implementationも同じartifactを提示しなければ実行できません。
 
-Referenceで使うJSON adapterは、現在のshapeより緩い入力を受け入れないよう、未知fieldとtrailing JSON valueを拒否します。これはReference JSON codecの局所的な検査であり、汎用schema validation engineの代替ではありません。
+Invocation Registryは、requestを実装呼出し前に検証し、resultを呼出し後に検証します。Referenceのshape languageは、JSON object / array / map / scalarとopaque bytesだけを扱う小さなものです。未知field、必須field欠落、JSON型の不一致を共通境界で拒否します。Source AdapterやContract Queryの業務意味はdomain adapter側に残し、schema validationへ移しません。
+
+実Source AdapterとContract Queryのshape artifactは`tools/reference-plugin-capability-contract/shapes/`のJSONを正本とし、Go側は埋め込んで読み込みます。Go literalとJSONを二つの正本にはしません。shape artifact内のissuer変更もfingerprint変更として検出されます。
+
+一方、issuer identityを誰が信頼してよいかを決めるpublisher trust、署名、組織ごとの発行Authorityはまだ未実証です。Referenceのshape languageもproduction標準ではありません。深いdomain構造で明示的に`any`とした部分は、domain adapterの検証責務として残します。
 
 Invocation成功も新しいAuthorityを与えません。Canonical Acceptance、Application Runtime Authority、Database Provider binding、Permission / Resource境界は既存の責務として残ります。
+
+
+### shape artifactのAuthority境界
+
+Contract側の`shapeIssuer`は、request / result schemaを誰が発行したものとして扱うかを示すidentityです。shape artifact自体にも同じissuerを含め、そのidentityを含むartifact全体からfingerprintを計算します。
+
+このため、Providerが同じshape名だけを名乗って別schemaを持ち込むことはできません。artifact本文を変えた場合も、issuerだけを変えた場合もfingerprintが変わり、Contractとの照合で停止します。
+
+ただし、Referenceが確認したのはissuer identityの結び付けまでです。署名検証や組織横断のpublisher trust policyは別のEvidenceとして扱います。
