@@ -301,29 +301,25 @@ Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application Targe
 
 ## knowledge-first / AI
 
-現時点ではDesign Onlyです。
+Knowledge-first explorationとAI Proposalの基盤実装はmainに存在します。ただし、ISSUE-000055のRepository verification gateは再開中であり、mainに実装があることをcurrent Product Evidence成立とは扱いません。
 
 ### knowledge-first exploration
 
-`ISSUE-000047`でGate C後に実証します。
+`ISSUE-000047`では、Human / AIが同じauthoritative Source / Canonical referenceへ戻るread-only Knowledge Context、`applicable / incompatible / unknown`を分けるQualification、available Knowledgeとselected / disclosed Knowledgeを分けるselective Disclosureを実装しました。
 
-Human / AIが同じauthoritative source / Canonical / Evidenceをread-only探索し、次を分けます。
+Data設計ではbusiness occurrence identifier、candidate key、functional dependency、複合domain constraint、時間・履歴条件を、確定事実・候補・unresolvedに分けて返します。Application Pattern、Target、runtime object、Persistence上のprimary key等からbusiness identityを逆算しません。Data Design ContextとDisclosureには決定論的なfingerprint guardがあり、staleなderived contextの再利用をfail closedにします。search ranking / similarity / embedding / model confidenceもSemantic Evidenceへ格上げしません。
 
-- applicable
-- incompatible
-- unknown
-
-search ranking / similarity / embedding / model confidenceをSemantic Evidenceへ格上げしません。
+AI Builder向けには、何を読むかを決めるReview Plan、task-local Qualification、qualified DisclosureをShared Acceptanceへ接続する境界をPR #1059で継続しています。
 
 ### AI Proposal
 
-`ISSUE-000027` / ADR-0022で扱います。AIによるcandidateの生成は未着手ですが、受け取る側の境界は上記のReferenceとして存在し、AI由来のcandidate（`origin.kind = ai`）も同じ経路を通ります。
+`ISSUE-000027` / ADR-0022では、file-native / Studio / CLI / AI由来のcandidateをShared Acceptance Boundaryへ収束させています。candidateのPreview / Review、explicit Accept / Reject、Decision provenance、stale guardに加え、Knowledge QualificationのEvidenceをcandidateへ接続できます。
 
-AI ProposalはCanonical authorityではありません。
+`ISSUE-000047`のReferenceでは、qualifiedな既存Application PatternからContract Query選択だけを再利用し、destination側のPattern ID、Application、Relation、datasource、placementを明示するexplicit-reference Proposalを生成します。探索結果の自動採用やReference Patternの自動適用は行いません。Proposal生成後もAcceptanceは別です。
 
-file-native / Studio / CLI / AIをShared Acceptance Boundaryへ収束させます。
+AI ProposalやKnowledge ContextはCanonical authorityではありません。AI provider、vector database、汎用のProposal生成方式、chat-first UXは未固定です。
 
-AI provider、vector database、Proposal最終schema、chat-first UXは未固定です。
+これらのcode-changing incrementについては、trusted actual checkoutでcurrent exact headのfull Repository Healthとclean pre/post stateを確認できるまで、現行規則上のProduct Evidence成立を主張しません。
 
 ## Reference Model Transfer
 
