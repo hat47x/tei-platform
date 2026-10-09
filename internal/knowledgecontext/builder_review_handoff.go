@@ -15,7 +15,9 @@ type BuilderReviewHandoff struct {
 	Fingerprint           string              `json:"fingerprint"`
 	Purpose               string              `json:"purpose"`
 	Subject               subject.Subject     `json:"subject"`
-	ReviewPlanFingerprint string              `json:"reviewPlanFingerprint"`
+	ReviewPlanProjectionRevision string              `json:"reviewPlanProjectionRevision"`
+	ReviewPlanFingerprint          string              `json:"reviewPlanFingerprint"`
+	RoutingScope                   string              `json:"routingScope"`
 	SelectedSections      []string            `json:"selectedSections,omitempty"`
 	Status                string              `json:"status"`
 	Qualification         QualificationResult `json:"qualification"`
@@ -85,7 +87,9 @@ func BuildBuilderReviewHandoff(
 		ProjectionRevision:    builderReviewHandoffProjectionRevision,
 		Purpose:               plan.Purpose,
 		Subject:               plan.Subject,
-		ReviewPlanFingerprint: plan.Fingerprint,
+		ReviewPlanProjectionRevision: plan.ProjectionRevision,
+		ReviewPlanFingerprint:          plan.Fingerprint,
+		RoutingScope:                   plan.RoutingScope,
 		SelectedSections:      append([]string(nil), plan.RecommendedDisclosureSections...),
 		Status:                status,
 		Qualification:         qualification,
