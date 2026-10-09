@@ -111,3 +111,13 @@ BP-05の明示参照は、Application全体のValidation宣言を網羅する義
 条件分岐について、比較行なし、文脈未解決、Validation未解決、集合の差、集合一致、混合ケースを対象とする**新規Go回帰テストのソースを追加**した。この変更を含む現在のGoソース `validation_scope_review_sources.go` のGitHub blob SHAは `9ebb22754a53444ff272cfdca35fa7a41979b778`。上節までの隔離実行は、それぞれの節が指定する**過去のblob**に対する記録であり、今回変更後のGo実行を示すものではない。
 
 実際のTEI全体のテスト、exact-headのfull Repository healthとclean pre/postは引き続き未実施。Draft PRの検証・統合状態を変更する証拠はない。
+
+## 出典の再解析による古い根拠の混入を防ぐ（2026-10-10）
+
+レビュー補助関数`attachValidationScopeSources`を同じ比較行に繰り返し適用したとき、Source Indexが変わっても以前の`sourceEvidence`が残り、新しい`unresolvedSource`と同時に表示される問題を発見した。現在のCLIは一回の実行内で一度だけこの補助関数を呼ぶため、これは**再解析や呼出側の将来的な再利用で生じる状態混入**の負例であり、本番利用で発生した事象とは記録しない。
+
+対象のGitHub原文`validation_scope_review_sources.go`（blob `9ebb22754a53444ff272cfdca35fa7a41979b778`）を隔離Go 1.23.2モジュールに複製し、`git hash-object`で完全一致を確認した。出典を取得した後に空のSource Indexで再解析するテストが、修正前に期待どおりFAILした。実際には、古い1件の`sourceEvidence`と現在の`unresolvedSource`が同時に残った。
+
+この補助処理を、各再解析で`sourceEvidence`と`unresolvedSource`を初期化する方式へ修正した。修正後のGitHub blobは`8116f2bf5fb3d119572c94430cd483179b0f72af`であり、隔離モジュールの`git hash-object`も一致した。同じ隔離モジュールでは、出典を失う再解析と、同じIndexでの繰り返し・意味状態変化の2テストがPASSし、`go vet ./...`はPASS、対象原文の`gofmt -l`は出力なしだった。
+
+GitHubのPRに加えた回帰テストは、既知→不明→繰り返し不明→再解決→文脈未解決の遷移を確認する。**このPR本体のGoテストは未実施である。** 隔離試験は比較ツールの完全な型・Workspace・Source Index実装を代替しない。PR exact-headに対する全Repository health・前後cleanの記録が取得できるまで、mainへの統合資格とは扱わない。
