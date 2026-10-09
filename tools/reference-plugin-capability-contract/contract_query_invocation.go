@@ -11,11 +11,18 @@ import (
 )
 
 const (
-	contractQueryCapabilityContractID    = "runtime.contract-query-executor"
-	contractQueryRequestShape            = "tei.reference.contract-query-execution.request/v0"
-	contractQueryRequestShapeFingerprint = "sha256:0330a35c02b4dc896ecaeb670def82329acba42dc25853236dde0fd011476f64"
-	contractQueryResultShape             = "tei.reference.contract-query-execution.result/v0"
-	contractQueryResultShapeFingerprint  = "sha256:79160ba679f35aad8fdbbc107199711e4d75f18e9feadc40e0b5f3da82e32240"
+	contractQueryCapabilityContractID = "runtime.contract-query-executor"
+	contractQueryRequestShape         = "tei.reference.contract-query-execution.request/v0"
+	contractQueryResultShape          = "tei.reference.contract-query-execution.result/v0"
+)
+
+var (
+	contractQueryRequestShapeFingerprint = invocationShapeFingerprint(
+		contractQueryRequestShapeArtifact(),
+	)
+	contractQueryResultShapeFingerprint = invocationShapeFingerprint(
+		contractQueryResultShapeArtifact(),
+	)
 )
 
 type ContractQueryInvocationRequest struct {
@@ -53,8 +60,10 @@ func ContractQueryInvocationImplementation(
 		Provider:                provider,
 		RequestShape:            contractQueryRequestShape,
 		RequestShapeFingerprint: contractQueryRequestShapeFingerprint,
+		RequestShapeArtifact:    contractQueryRequestShapeArtifact(),
 		ResultShape:             contractQueryResultShape,
 		ResultShapeFingerprint:  contractQueryResultShapeFingerprint,
+		ResultShapeArtifact:     contractQueryResultShapeArtifact(),
 		PayloadCodec:            referenceJSONPayloadCodec,
 		AuthorityLimits: []string{
 			"application-runtime-capability-does-not-grant-authoring-authority",
