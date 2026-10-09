@@ -168,12 +168,20 @@ func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
 }
 
 func TestJSONDocumentStoreNeverReusesInitialRevision(t *testing.T) {
- s:=NewScopedJSONDocumentStore("doc","r2",[]byte(documentFixture))
- first,err:=s.Commit(context.Background(),documentIntent("r2",MovePayload{CardID:"a",X:1,Y:2}))
- if err!=nil {t.Fatal(err)}
- if first=="r2" || first=="" {t.Fatalf("revision did not advance: %q",first)}
- _,err=s.Commit(context.Background(),documentIntent("r2",MovePayload{CardID:"a",X:3,Y:4}))
- if !errors.Is(err,ErrConflict) {t.Fatalf("old revision replay accepted: %v",err)}
- second,err:=s.Commit(context.Background(),documentIntent(first,MovePayload{CardID:"a",X:3,Y:4}))
- if err!=nil||second==first||second=="r2" {t.Fatalf("revision did not advance: %q err=%v",second,err)}
+	s := NewScopedJSONDocumentStore("doc", "r2", []byte(documentFixture))
+	first, err := s.Commit(context.Background(), documentIntent("r2", MovePayload{CardID: "a", X: 1, Y: 2}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == "r2" || first == "" {
+		t.Fatalf("revision did not advance: %q", first)
+	}
+	_, err = s.Commit(context.Background(), documentIntent("r2", MovePayload{CardID: "a", X: 3, Y: 4}))
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("old revision replay accepted: %v", err)
+	}
+	second, err := s.Commit(context.Background(), documentIntent(first, MovePayload{CardID: "a", X: 3, Y: 4}))
+	if err != nil || second == first || second == "r2" {
+		t.Fatalf("revision did not advance: %q err=%v", second, err)
+	}
 }
