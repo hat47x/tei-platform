@@ -100,6 +100,14 @@ go test ./reference/cross-project-extraction -run 'TestActualOrderEntrySemantic|
 
 この経路で確認できるのは受注アプリケーション一つです。独立した二番目のConsumerと、実際の業務検証ロジックを共通化できるという証拠は引き続き必要です。
 
+## 既存の実行機構を優先する判断
+
+[実行境界の整理](transform-boundary.md)のE8では、TEI本体にすでにある`driver.ResolveApplicationValidations`と`validationeval.Evaluate`、First Web Targetの実際の検証経路を確認しています。
+
+受注アプリケーションの現在の業務検証では、これらの機構が**正本の検証規則を直接消費**します。したがって、受注の実行のために、別の規則計画を生成する共通ジェネレータを追加しません。
+
+このReferenceの[意味規則の投影試験](semantic_validation_source_test.go)も、規則の選択を独自に再実装せず、既存Driverの解決結果を入力として使う形に修正しました。元の業務規則を異なる形式で必要とする明確な消費側が見つかるまでは、投影した計画は製品の実装対象ではなく、**既存Transformで表現可能かを確かめる試作**として扱います。
+
 ## 共通化の効果測定
 
 [共通化の効果測定](sharing-economics.md)では、現在の二案件fixtureについて、抽出前後の生成処理の記述量を比較しています。
