@@ -1,5 +1,7 @@
 package transform
 
+const MaxSerializedSourceBytes = 8 << 20
+
 import (
 	"bytes"
 	"encoding/json"
@@ -11,6 +13,9 @@ import (
 // deterministic transform IR. JSON is only a serialization of the TEI-owned
 // IR; it is not a general-purpose Plugin language or an authority boundary.
 func ParseSourceJSON(raw []byte) (Source, error) {
+	if len(raw) > MaxSerializedSourceBytes {
+		return Source{}, fmt.Errorf("transform Source exceeds serialized size limit")
+	}
 	if _, err := ParseJSON(raw); err != nil {
 		return Source{}, fmt.Errorf("transform source JSON: %w", err)
 	}
