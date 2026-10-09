@@ -93,3 +93,13 @@ go test -race -count=1 ./reference/web-composition/go-host
 また、現行`webTargetServer.Handler()`が`/scenario/submit`を登録するため、新しい保護済みHandlerと併用する際には**同一経路を二重に公開しない**ことが必要です。既存Handlerの上から認証だけを付け足す方式では、迂回経路が残り得ます。公開経路の所有者はHost側で一意に決定し、既存経路の互換性は明示的な移行条件として検証します。
 
 2026-10-09時点では、この接続契約は調査結果に基づく候補であり、既存Web Targetへのコード変更や結合テストは未実施です。
+
+## E2接続調査：実行入口の確認
+
+`tools/reference-first-web-target/main.go`を確認すると、`order_entry`では`newReferenceCommandScenarioRunner(loaded.World, legacyUsers, legacyAuthz)`を生成し、`newWebTargetServer`へ渡しています。RunnerはWebサーバの構成時にApplication ID一致を確認されます。一方、`server.go`の`handleCommandScenario`は`commandScenarioInput{LoginID, Credential, From, RowIndex}`を生成して`RunCommand`へ渡し、結果と実行エラーを区別してHTTP応答に写しています。
+
+したがって、セッション認証方式を導入するときの変更点は**単なるHTTP経路の保護だけではなく、Runnerの入力契約と内部の本人確認・権限判定の分離**にあります。従来の`RunCommand`へ架空のCredentialを渡して認証を通過させる方式は採用しません。既存RunnerがPrincipal入力を受け取れるか、Runner内部で既存の`security.authenticate`と`security.authorize`をどこで呼び出しているかは、さらに実装の追跡が必要です。
+
+構成上は、旧来の認証情報を含む経路と、セッションを用いる保護済み経路を**暗黙に同一視しない**ことを受入条件とします。移行期間に両者を併存させる場合も、公開する経路・認証方式・許可されるAction・監査対象をそれぞれ明示し、認証失敗時に弱い方式へ自動的に切り替えません。
+
+現段階ではRunnerを改造しておらず、実際の認証方式の置換・共存は未検証です。
