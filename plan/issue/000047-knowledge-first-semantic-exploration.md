@@ -403,6 +403,20 @@ Persistence RealizationもData Design Contextへ接続した。`sales.order_line
 
 このincrementでも`BusinessKey`や`FunctionalDependency`を新しいCore primitiveとして追加しない。まずexisting primitiveからlosslessに説明できる範囲と、なお不足するEvidenceをReferenceで分離する。exact-headのRepository Healthは現在の実行環境では取得できないため、Product Evidence成立や完了条件充足はまだ主張しない。
 
+### 2026-10-09 version / history identity negative pressure
+
+時間・履歴条件については、日時型Attributeがあるだけでは意味を確定しないnegative testを既に持っている。ただし完了条件では、適用開始日、履歴番号、version番号、最新フラグ、履歴行の物理キーが同時に存在する場合でも、それらをbusiness occurrence identifierへ自動昇格しないことを求めている。
+
+この境界を直接固定するため、`sales.order_line`へ`order_line_id`、`version_no`、`valid_from`、`valid_to`、`is_latest`を追加し、Persistence Mappingでは`order_line_id + version_no`を履歴行の複合primary keyとするpressureを追加した。
+
+このcaseでも、Data Design Contextの`businessOccurrenceIdentifier`と`candidateKeys`は`unresolved`のままとし、`temporalHistoryConditions`も`temporal-history-condition-not-first-class-in-current-canonical-model`として未確定を維持する。物理primary keyは`database-owned-realization`として観測できるが、同一business occurrenceのversionを表すのか、別occurrenceを表すのかは決めない。
+
+既存の`sales.order.lines.line_number_unique`から得られるbusiness identity候補も、履歴用columnやversion番号では置換しない。候補componentへ`version_no`、`valid_from`、`valid_to`、`is_latest`を自動追加しないことをtestで固定する。
+
+このpressureが防ぐのは、既存DBやORMを読み取った生成AIが「version番号を含むprimary keyだから、これが業務上の識別子である」「最新フラグがあるから履歴意味は確定している」と短絡することだ。現在のSource / Contractから確認できない限り、同一occurrenceのversionか別occurrenceか、validityの重複可否、最新状態の定義、識別子再利用可否はEvidence questionとして残す。
+
+この変更は新しいTemporal modelやHistory primitiveを導入しない。現行Canonicalで表現できていない意味を、physical schemaや命名から補完しないためのnegative Referenceである。exact-headのfull Repository-healthは未取得なので、該当完了条件を完了扱いにはしない。
+
 ### experienceからのlocal learning
 
 将来、過去のaccept / reject結果をcandidate rankingへ反映する場合、まず次のような局所的更新を比較します。
