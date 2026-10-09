@@ -240,7 +240,31 @@ UnitBuildInput (概念上)
 
 特にビルド前のProvider選択では成果物digestがまだ存在しない。その場合は既存の`BuildPlanFingerprint`を用い、ビルド後の`ArtifactDigest`と混ぜずに保持する。ビルド前に成果物digestを必須とすると、生成しようとしている成果物の識別子が未生成であるという循環が発生するためである。
 
-## 11. 判断を保留するもの
+## 11. 既存order_entryとの接続で見えた境界
+
+[実Workspaceの読取り参照](../../reference/runtime-packaging/README.md)を追加し、`workspace.Load`から読み取ったApplication/Environmentと、既存`plugin.Catalog.ResolveEnvironmentWithLock`による確定済みPlugin集合の対応を観測できるようにした。実行時のProvider呼出しやDB接続は行わない。
+
+`order_entry`では、開発環境について少なくとも次の参照を確認する必要がある。
+
+| Application上の要件 | Environmentの接続 | Runtime Plugin Lockから解決する候補 |
+| --- | --- | --- |
+| `sales` / `sales_core` / read-write | `sales_core.dev`（PostgreSQL） | `tei.database.postgres@1.0.0` |
+| `master` / `master_data` / read | `master_data.dev`（Oracle） | `tei.database.oracle@1.0.0` |
+
+ここで得られるのは**DB接続の構成情報だけ**である。これをそのまま二層・三層アプリケーション用のBuild Planへ変換すると、次の情報が欠落する。
+
+- `order_entry.submit_order`などの実行入口と、`sales.order.submit`のCustom Go実現との具体的な依存辺。
+- Web Targetの画面・HTML・React等の資産と、それらを参照するHost側の実装。
+- 認証、認可、環境別の秘密情報・通信方式・信頼境界の配置。
+- 生成後のバイナリ内に、実際にどのGo実装と依存ライブラリが結合されるか。
+
+また、既存のformat 2 Plugin LockではBuiltin Pluginが成果物digestを持たず、**Plugin descriptor fingerprintだけで固定される**場合がある。そこで参照実装のBinding候補は、`PluginFingerprint`、`BuildPlanFingerprint`、`ArtifactDigest`を別々に扱うよう修正した。既存のPlugin定義指紋を、まだ正式化されていないCapability Contract fingerprintとして再利用しない。
+
+この結果、現状の最小ランタイム設計で最も大きな不足は「別のプラグイン解決器」ではなく、**既存のApplication Pattern / Realization / Target実装から、配備時の実装参照へつながる正しい依存辺の取得**であると整理できる。
+
+次の実証では、その参照辺が既存のDriver/Realization/Targetコードから導出可能かを確認し、導出できない部分にだけ追加の構成指定を検討する。現時点で実Workspace全体のpackage readinessは成立していない。試験結果は局所的なReferenceの範囲に限り、全Repositoryに対するexact-headテスト完了前に正式仕様へ昇格しない。
+
+## 12. 判断を保留するもの
 
 - `tei.deploy.yaml`という新たな正本を本当に必要とするか（既存Project/Profile/Environment定義への小さな追加で済む可能性がある）。
 - Closure Plannerを独立したPackageとするか、既存のTarget packagingへ統合するか。
