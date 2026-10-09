@@ -185,6 +185,8 @@ Semantic Lock candidateではsemantic replayとcurrent Evidence bindingも分離
 2026-10-09のE3 candidateでは、shape fingerprintの参照先を埋め込みJSON artifactとして明示した。Capability Contractはshape ID / fingerprint / issuerを保持し、Implementationが提示するartifactと一致する場合だけ実行する。Invocation Registryはrequestを呼出し前、resultを呼出し後にReferenceのgeneric shape validatorで検査する。未知field、必須field欠落、JSON型不一致、artifact drift、issuer driftをnegative controlにした。shape artifactはJSONを正本とし、Go literalとの二重管理を避ける。ただしpublisher trust、署名、組織ごとのschema発行Authority、production schema formatは未実証であり、exact-head Gateも未取得のためRQ-032 / RQ-033のtierは変更しない。
 
 同日のE4 candidateでは、result schema validationが実装呼出し後になる点を敵対的に評価した。書込みCapabilityでは、result reject後に外部副作用だけが残り得る。このためReferenceのgeneric Invocationは`read-only` effectだけを実行し、`mutating` contractはdomain implementation呼出し前に拒否する。mutating Capabilityを製品として禁止する決定ではなく、transaction / prepare-commit / compensation / retry / result validation failureの扱いが未設計であることを明示する停止条件である。production Permission / Sandboxはこの原子性問題の代替にならない。Evidence tierは変更しない。
+
+同日のE5 candidateでは、shape artifact内のissuer自己申告をAuthorityへ昇格させないため、issuer / shape ID / exact fingerprintへ結び付くAccepted Shape Authority EvidenceをInvocation Registryの別入力として要求した。Evidence無し、stale shape fingerprint、同一shapeへの競合Evidenceをfail closedにし、実行結果へ利用Evidence fingerprintを残す。Evidence更新だけではCapability resolution identityを変えない。一方、Evidenceの発行Authority、署名、publisher trust、freshness / revocationは未実証であり、Evidence fingerprintだけをtrust proofにはしない。RQ-032 / RQ-033のtierは変更しない。
 ## 6. Cross-cutting Product Quality監査
 
 Quality concernを新しいRequirementへ分割せず、既存RequirementのEvidence completenessとして監査します。
