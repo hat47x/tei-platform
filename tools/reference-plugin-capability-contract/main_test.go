@@ -17,7 +17,8 @@ func sourceAdapterContract() Contract {
 		ResultShape:             sourceAdapterResultShape,
 		ResultShapeFingerprint:  sourceAdapterResultShapeFingerprint,
 		PayloadCodec:            referenceJSONPayloadCodec,
-		ConformanceProfile: "tei.reference.source-adapter/v0",
+		ShapeIssuer:             referenceInvocationShapeIssuer(),
+		ConformanceProfile:      "tei.reference.source-adapter/v0",
 	}
 }
 
@@ -238,7 +239,8 @@ func runtimeContract() Contract {
 		ResultShape:             contractQueryResultShape,
 		ResultShapeFingerprint:  contractQueryResultShapeFingerprint,
 		PayloadCodec:            referenceJSONPayloadCodec,
-		ConformanceProfile: "tei.reference.contract-query-executor/v0",
+		ShapeIssuer:             referenceInvocationShapeIssuer(),
+		ConformanceProfile:      "tei.reference.contract-query-executor/v0",
 	}
 }
 
