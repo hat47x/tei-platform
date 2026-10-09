@@ -101,6 +101,58 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。current Referenceでは`decisionActorStatus`と`decisionAuthorityStatus`をともに`unresolved`として返し、Proposal originやReview identityから判断者を補完しません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
 
+### 確認の記録 — 一度答えた確認を繰り返さない
+
+確認とその答えを`.tei/confirmations/`へ派生物として記録し、同じ確認を理由なく繰り返さないための入口です（ISSUE-000074、RQ-016）。決定記録と同じく、managed sourceではなくmodel revisionに入らず、消しても意味は変わりません。消すと確認がもう一度出るだけです。
+
+```bash
+go run ./tools/reference-shared-acceptance confirm-record -workspace DIR -input answer.json
+go run ./tools/reference-shared-acceptance confirm-check  -workspace DIR -input query.json
+go run ./tools/reference-shared-acceptance confirmations  -workspace DIR
+```
+
+`confirm-check`は`ask: true / false`と理由を返します。判定に使うのは確認の種類と対象、答えた時点の前提(subjectを宣言しているfileのfingerprint)が今も同じかだけで、確認の文面と記録の古さは使いません。記録が無い、前提が変わった、記録が読めない、履歴が分岐している、答えが人によるものでない場合は、確認を出す側へ倒します。答えを変えるときは`supersedes`で先頭の記録を指定します。詳細と暫定判断は[ISSUE-000074](../../plan/issue/000074-answered-confirmation-history.md)を参照します。
+
+退けた提案は、`reject`が書いた決定記録へ`linkedDecision`で結び、人が退けた提案を、前提が変わるまで再び出さないための記録として残せます（`rejected-proposal`、暫定）。`reject`の出力と決定記録の形は変えていません。流れは次のとおりです。`jq`が無ければ、`reject.json`から`candidateFingerprint`と`recordPath`を読み取り、同じ値を入れてください。
+
+```bash
+# 1. 候補を退ける（既存の動作。.tei/decisions/ に決定記録が残り、出力に recordPath と candidateFingerprint が入る）
+go run ./tools/reference-shared-acceptance reject -workspace DIR -candidate candidate.json -reason "今回は見送る" -out reject.json
+
+# 2. 人の退けを、決定記録と候補のfingerprintへ結んで記録する
+#    identity.subject = candidateFingerprint / linkedDecision = recordPath / basisSubjects = 候補が触るCanonical subject（一つ以上）
+FP=$(jq -r .candidateFingerprint reject.json)
+REC=$(jq -r .recordPath reject.json)
+cat > rejected.json <<EOF
+{
+  "outcome": "rejected-proposal",
+  "identity": {"kind": "proposal", "subject": "$FP"},
+  "basisSubjects": [{"kind": "semantic-attribute", "id": "sales.order_line.unit_price"}],
+  "answer": "rejected",
+  "reason": "今回は見送る",
+  "decidedBy": {"kind": "human", "id": "owner"},
+  "linkedDecision": "$REC"
+}
+EOF
+go run ./tools/reference-shared-acceptance confirm-record -workspace DIR -input rejected.json
+
+# 3. 同じ候補を再び出す前に確認する（前提が同じで人が退けていれば ask: false）
+cat > query.json <<EOF
+{"kind": "proposal", "subject": "$FP"}
+EOF
+go run ./tools/reference-shared-acceptance confirm-check -workspace DIR -input query.json
+```
+
+注意点は次のとおりです。
+
+- `candidateFingerprint`は`baseModelRevision`を含みます。model revisionが変わった後に同じdeltaを出し直すと別のidentityになり、古い記録では抑制されず、確認が再び出ます（安全側）。
+- `reference/workspace`へは、`-allow-reference-baseline`なしでは`confirm-record`で書けません。
+- `linkedDecision`は、`.tei/decisions/<64桁の16進>.json`の形で、その決定記録が`reject`の決定（`decision: rejected`）であり、`candidateFingerprint`が`identity.subject`と一致するものだけを受け付けます。書くときも読むときも同じ確かめ方をします。決定記録が後から消された場合でも、確認の抑制は止まりません（決定記録は消せる派生物のため）。
+- `basisSubjects`は運用者が入力するもので、候補が実際に触れたsubjectとは照合していません。`reject`の決定記録は触れたsubjectを持たないため、この照合は今の形では行えません（ISSUE-000074のowner判断）。
+- `decidedBy`は呼び出し側の自己申告です。CLIは記録する人が人であることを検証しません。AIが`human`と書いた記録は、人の答えとして扱われます。
+- 前提のsubjectが宣言から消えた場合も、前提が変わったものとして`basis-changed`で確認を出します。
+- AIが退けた記録は抑制に使いません（`answer-not-by-human`）。
+
 ### knowledge qualificationからcandidateへの接続
 
 `tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Source Index identity、source path、source fingerprintが含まれます。required dependencyを明示した場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintを`dependencyEvidence`へ含めます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。requirementsは同じ共有正規化を通すため、空の`expectedKind`、不正なdependency指定、重複dependency、`expectedKind`と`subjectKind`の不一致をgrounded candidateとして出力する前にfail closedで拒否します。required dependencyのEvidenceが欠ける場合や、requirementsに無いdependency Evidenceが混入した場合も拒否します。
