@@ -11,7 +11,7 @@ import (
 	"tei/internal/subject"
 )
 
-const knowledgeDisclosureProjectionRevision = "tei.knowledge.disclosure/v2"
+const knowledgeDisclosureProjectionRevision = "tei.knowledge.disclosure/v1"
 
 var selectableDisclosureSections = []string{
 	"data-design",
@@ -35,7 +35,6 @@ type DisclosureProjection struct {
 	SemanticElement          *index.SemanticElementEntry         `json:"semanticElement,omitempty"`
 	ApplicationPattern       *index.ApplicationPatternIndexEntry `json:"applicationPattern,omitempty"`
 	DataDesign               *DataDesignContext                  `json:"dataDesign,omitempty"`
-	BuilderReviewPlan        BuilderReviewPlan                   `json:"builderReviewPlan"`
 	Outgoing                 []Edge                              `json:"outgoing,omitempty"`
 	Incoming                 []Edge                              `json:"incoming,omitempty"`
 	Unresolved               []string                            `json:"unresolved,omitempty"`
@@ -48,7 +47,7 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 		return DisclosureProjection{}, err
 	}
 
-	available := availableKnowledgeSections(ctx)
+	available := availableDisclosureSections(ctx)
 	availableSet := make(map[string]struct{}, len(available))
 	for _, section := range available {
 		availableSet[section] = struct{}{}
@@ -58,15 +57,12 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 		selectedSet[section] = struct{}{}
 	}
 
-	reviewPlan := buildBuilderReviewPlan(ctx)
-
 	result := DisclosureProjection{
 		ProjectionRevision: knowledgeDisclosureProjectionRevision,
 		Status:             "complete",
 		Subject:            ctx.Subject,
 		AvailableSections:  append([]string(nil), available...),
 		SelectedSections:   append([]string(nil), normalized...),
-		BuilderReviewPlan:  cloneBuilderReviewPlan(reviewPlan),
 		Unresolved:         append([]string(nil), ctx.Unresolved...),
 		AuthorityLimits: append(
 			append([]string(nil), ctx.AuthorityLimits...),
@@ -179,6 +175,24 @@ func normalizeDisclosureSections(values []string) ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
+}
+
+func availableDisclosureSections(ctx Context) []string {
+	var result []string
+	if ctx.DataDesign != nil {
+		result = append(result, "data-design")
+	}
+	if ctx.SemanticElement != nil || ctx.ApplicationPattern != nil {
+		result = append(result, "definition")
+	}
+	if len(ctx.Outgoing) != 0 || len(ctx.Incoming) != 0 {
+		result = append(result, "dependencies")
+	}
+	if len(ctx.Artifacts) != 0 || len(ctx.References) != 0 {
+		result = append(result, "source")
+	}
+	sort.Strings(result)
+	return result
 }
 
 func disclosureFingerprint(value DisclosureProjection) string {
