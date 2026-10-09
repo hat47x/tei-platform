@@ -185,6 +185,7 @@ func (r *SourceAdapterRegistry) ResolveAndInvoke(
 		"capability-resolution-is-not-canonical-acceptance",
 		"authoring-tool-capability-is-not-application-runtime-authority",
 		"source-adapter-execution-is-read-only-observation",
+		"source-adapter-inspection-does-not-replace-rmt-publication-receipt",
 	)
 	limits = uniqueSortedSourceAdapterStrings(limits)
 
