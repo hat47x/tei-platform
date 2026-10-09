@@ -98,7 +98,7 @@ go run ./cmd/tei source-index \
 
 この出力は派生した表示であり、意味の正本ではありません。
 
-M0.23で直接検証した不変条件と実装・テストの対応は、[入力元と意味の正本の対応に関する適合性資料](conformance/source-traceability-m0.23.md)に整理しています。
+M0.23で直接検証している不変条件と実装・テストの対応は、[入力元と意味の正本の対応に関する適合性資料](conformance/source-traceability-m0.23.md)に整理しています。
 
 ## 既存資産の利用と正本の移管
 
