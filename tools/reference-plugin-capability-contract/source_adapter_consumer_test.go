@@ -9,6 +9,16 @@ import (
 
 func sourceAdapterTranscriptionContract() []byte {
 	return []byte(`{
+  "sourceProfiles": {
+    "xead": {
+      "rootKind": "System",
+      "supportedFormatVersions": ["1.2"]
+    },
+    "xeaf": {
+      "rootKind": "System",
+      "supportedFormatVersions": ["1.2"]
+    }
+  },
   "constructMappings": {
     "xead": {
       "System": {
@@ -320,5 +330,21 @@ func TestSourceAdapterRegistryRejectsDuplicatePhysicalImplementation(t *testing.
 		implementation,
 	}); err == nil || !strings.Contains(err.Error(), "registered more than once") {
 		t.Fatalf("duplicate physical implementation was accepted: %v", err)
+	}
+}
+
+
+func TestSourceAdapterConsumerRejectsUnsupportedSourceProfile(t *testing.T) {
+	contract, provider, registry := sourceAdapterRegistryFixture(t)
+	_, err := registry.ResolveAndInvoke(
+		sourceAdapterResolveInput(contract, provider),
+		SourceAdapterRequest{
+			Format:                xeadsource.FormatXead,
+			SourceBytes:           []byte(`<System FormatVersion="9.9"><Table/></System>`),
+			TranscriptionContract: sourceAdapterTranscriptionContract(),
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "not supported") {
+		t.Fatalf("unsupported source profile reached semantic inspection: %v", err)
 	}
 }
