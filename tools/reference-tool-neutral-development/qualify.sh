@@ -165,8 +165,9 @@ write_receipt() {
   local path="$1"
   local tmp
   local git_version go_version python_version
+  local health_blob qualify_blob reference_blob
 
-  tmp="${path}.tmp.${BASHPID}"
+  tmp="$(mktemp "${path}.tmp.XXXXXX")"
   git_version="$(git --version | tr '\n' ' ')"
   go_version="$(go version | tr '\n' ' ')"
   if command -v python3 >/dev/null 2>&1; then
@@ -174,6 +175,9 @@ write_receipt() {
   else
     python_version="unavailable"
   fi
+  health_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/repository-health-check.sh")"
+  qualify_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/qualify.sh")"
+  reference_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/run.sh")"
 
   {
     printf 'format=tei-rq034-qualification-v1\n'
@@ -186,9 +190,9 @@ write_receipt() {
     printf 'tool-neutral-development-reference=PASS\n'
     printf 'clean-post=PASS\n'
     printf 'qualification=PASS\n'
-    printf 'repository-health-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/repository-health-check.sh")"
-    printf 'qualify-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/qualify.sh")"
-    printf 'reference-runner-blob=%s\n' "$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/run.sh")"
+    printf 'repository-health-runner-blob=%s\n' "$health_blob"
+    printf 'qualify-runner-blob=%s\n' "$qualify_blob"
+    printf 'reference-runner-blob=%s\n' "$reference_blob"
     printf 'git-version=%s\n' "$git_version"
     printf 'go-version=%s\n' "$go_version"
     printf 'python-version=%s\n' "$python_version"
@@ -212,8 +216,8 @@ if [[ -n "$EXPECTED_MAIN" ]]; then
 fi
 printf 'repository-health=PASS\n'
 printf 'tool-neutral-development-reference=PASS\n'
-printf 'qualification=PASS\n'
 if [[ -n "$RECEIPT_FILE" ]]; then
   write_receipt "$RECEIPT_FILE"
   printf 'receipt-file=%s\n' "$RECEIPT_FILE"
 fi
+printf 'qualification=PASS\n'
