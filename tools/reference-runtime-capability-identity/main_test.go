@@ -309,6 +309,32 @@ func TestUnrelatedEnvironmentAuthorityDoesNotStaleAcceptedRuntimeRef(t *testing.
 	if base.RuntimePolicyFingerprint != after.RuntimePolicyFingerprint {
 		t.Fatal("unrelated Runtime Authority changed accepted Runtime Environment Plan")
 	}
+	if err := verifyRuntimeEnvironmentPlan(base, ref, profile, authority); err != nil {
+		t.Fatalf("unrelated Runtime Authority made accepted Plan stale: %v", err)
+	}
+}
+
+func TestEnvironmentExecutionAuthorityRefreshStalesPlanButNotRuntimeRef(t *testing.T) {
+	profile := referenceExecutionProfile(t, "web-browser", nil)
+	ref := referenceRuntimeRef(t, profile)
+	authority := referenceAuthority(ref, nil)
+	plan, err := buildRuntimeEnvironmentPlan(ref, profile, authority)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyRuntimeEnvironmentPlan(plan, ref, profile, authority); err != nil {
+		t.Fatal(err)
+	}
+
+	authority.ExecutionGrants[0].AuthorityEvidenceFingerprint =
+		fingerprint("refreshed-environment-execution-authority")
+	if ref.Fingerprint != referenceRuntimeRef(t, profile).Fingerprint {
+		t.Fatal("Environment Authority refresh changed Runtime Capability identity")
+	}
+	if err := verifyRuntimeEnvironmentPlan(plan, ref, profile, authority); err == nil ||
+		!strings.Contains(err.Error(), "differs from current Environment Authority") {
+		t.Fatalf("stale Runtime Environment Plan survived Authority refresh: %v", err)
+	}
 }
 
 func TestRuntimeCapabilityRefDoesNotContainConcreteResourceAuthority(t *testing.T) {
