@@ -155,7 +155,7 @@ GOARCH=<target arch>
 
 Unix系ReferenceではHost environmentを原則継承しません。Windowsではprocess起動上必要となり得る`COMSPEC`、`PATHEXT`、`SYSTEMROOT`、`WINDIR`だけをcase-insensitive allowlistとし、実際に継承した値はBuild Evidenceの`hostEnvironment`へ残します。allowlist外のPATH、locale、proxy、credential等はbuild subprocessへ渡しません。
 
-`-artifact-out`を指定すると、二回のbuildでdigest一致を確認したfirst artifactをRepository外へコピーします。既存fileは上書きしません。これにより、Evidenceでdigestを固定した同じexecutableをprocess smokeや後続のRuntime Engine bindingで利用できます。
+`-artifact-out`を指定すると、二回のbuildでdigest一致を確認したfirst artifactをRepository外へコピーします。既存fileは上書きしません。publishはdestinationと同じdirectoryに作ったverified temp artifactからno-clobber hard linkで行い、publish時点でdestinationが既に存在すれば失敗します。hard linkを利用できないHost / filesystemでもoverwrite-proneなrenameへfallbackせずfail-closedです。これにより、Evidenceでdigestを固定した同じexecutableをprocess smokeや後続のRuntime Engine bindingで利用できます。
 
 二回のbuild digestが一致しなかった場合もEvidence自体は失いません。`firstArtifactDigest`と`secondArtifactDigest`、`reproducible=false`を出力し、canonicalな`artifactDigest`は空のままにします。この場合はartifactをexportせず、CLIもnon-zeroで停止します。
 
