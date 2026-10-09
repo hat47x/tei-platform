@@ -431,9 +431,9 @@ candidate exact head
 
 これはTEIへ新しい`verified`状態を追加する仕組みではありません。Gate実行時の一時的なEvidenceを取り違えにくくするためのRepository Toolです。
 
-#1027の未資格統合では、文書上の停止条件が存在していても通常Git mergeでmainへ入れられることが実際に起きました。このため`qualify.sh --receipt-file`は、成功時にRepository外へmachine-readable receiptを出せるようにします。receiptはcandidate / expected main、clean pre/post、Repository Health / RQ-034 Reference PASS、およびhealth / qualify / Reference runnerのGit blob SHAを固定します。
+#1027の未資格統合では、文書上の停止条件が存在していても通常Git mergeでmainへ入れられることが実際に起きました。このため`qualify.sh --receipt-file`は、成功時にRepository外へmachine-readable receiptを出せるようにします。receiptはcandidate / expected main、clean pre/post、Repository Health / RQ-034 Reference PASS、およびhealth / qualify / Reference / integration-preflight runnerのGit blob SHAを固定します。
 
-統合直前は`integration-preflight.sh`をread-onlyで実行し、integration checkout HEADとlocal `origin/main`がreceiptのexpected mainと一致すること、candidate HEADがreceiptと一致しexpected mainを含むこと、runner blobがreceipt取得時から変わっていないことを確認します。main移動、candidate変更、receipt書換え、runner変更ではfail closedします。このpreflight自体はmerge / commit / push / ref更新を行いません。
+統合直前は`integration-preflight.sh`をread-onlyで実行します。preflight自身がcandidateで初めて追加・変更される場合にも自己適用できるよう、**exact candidateのclean checkoutからcandidate版preflightを実行し、`--integration-root`でexact expected mainの別clean checkoutを指定します。** candidate checkoutとintegration checkoutを同一にせず、実行中のpreflight file自身もcandidate上のblobおよびreceiptへ結び付けます。integration checkout HEADとlocal `origin/main`、candidate HEAD / ref、4つのrunner blob、双方のclean stateが一致し続けることを確認し、main移動、candidate変更、receipt書換え、runner変更、preflight自身の差替えではfail closedします。このpreflight自体はfetch / merge / commit / push / ref更新を行いません。
 
 receiptは署名済みAuthorityやTEI Product stateではありません。通常Gitを使うHuman / AI間で、別revisionのPASSをmerge authorityとして誤流用しないためのhandoff Evidenceです。強いwitnessが必要な環境では別Providerを重ねられますが、RQ-034の通常開発経路に必須化しません。
 
@@ -450,12 +450,16 @@ normal=PASS
 tamper=PASS
 runner_mutation=PASS
 main_movement=PASS
+bootstrap_separate_integration=PASS
+preflight_self_mutation=PASS
 ```
 
 - 正常系: exact candidate / mainからreceiptを作成し、integration checkoutをexact mainへ置いたpreflightがPASS。
 - receipt改ざん: `qualification=PASS`を書き換えたreceiptを拒否。
 - candidate runner変更: receipt取得後にReference runnerを変更したcandidateをrunner blob不一致で拒否。
 - main移動: receipt取得後に`origin/main`が進んだ状態をstaleとして拒否。
+- bootstrap: candidate版preflightをexact candidate checkoutから実行し、別のexact-main integration checkoutを検査できる。
+- preflight自己変更: receipt取得後に実行中preflightのbytesを変えた場合、candidate blobとの不一致で拒否。
 
 また、detached HEADのsource checkoutから`git clone --local --no-hardlinks`した場合、cloneも同じdetached commitから始まることをlocal Gitで確認しました。source checkoutにignored / untracked artifactが存在してもclone側へは複製されないため、source側のignored-clean検査は省略できません。
 
