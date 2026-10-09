@@ -8,6 +8,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/sourceindex"
+	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
 
@@ -107,6 +108,11 @@ func TestValidationScopeReviewTreatsUnknownReferenceAsUnresolved(t *testing.T) {
 		len(rows[0].ApplicationOnly) != 0 || len(rows[0].ProcedureOnly) != 0 {
 		t.Fatalf("未解決参照を集合差の確定結果にしました: %+v", rows)
 	}
+	if !reflect.DeepEqual(rows[0].ReferenceIssues, []validationReferenceIssue{{
+		Side: "procedure", ID: "sales.nonexistent.validation", Reason: "missing-definition",
+	}}) {
+		t.Fatalf("未解決Validationの位置と原因を説明できません: %+v", rows[0].ReferenceIssues)
+	}
 }
 
 func TestValidationScopeReviewEqualSetsDoNotClaimBusinessEquivalence(t *testing.T) {
@@ -183,6 +189,56 @@ func TestValidationScopeReviewDoesNotHideDuplicateDeclarations(t *testing.T) {
 			t.Fatalf("Application内の重複を集合で消しました: %+v", rows)
 		}
 	})
+}
+
+func TestValidationScopeReviewReferenceIssuesIdentifyBothSides(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The same semantic definition is now ambiguous in both declaration lists.
+	ambiguous := loaded.World
+	ambiguous.Semantics = append(append([]semantic.Namespace(nil), loaded.World.Semantics...), semantic.Namespace{
+		ID: core.CanonicalID("review_only_duplicate"),
+		Validations: []semantic.Validation{{
+			ID: core.CanonicalID("sales.order_line.quantity_positive"),
+		}},
+	})
+	rows := compareValidationScopes(ambiguous, fixture)
+	want := []validationReferenceIssue{
+		{Side: "application", ID: "sales.order_line.quantity_positive", Reason: "ambiguous-definition"},
+		{Side: "procedure", ID: "sales.order_line.quantity_positive", Reason: "ambiguous-definition"},
+	}
+	if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+		!reflect.DeepEqual(rows[0].ReferenceIssues, want) ||
+		len(rows[0].ApplicationOnly)+len(rows[0].ProcedureOnly) != 0 ||
+		validationScopeSourcesNeeded(rows) {
+		t.Fatalf("曖昧なSemantic定義を比較結果へ昇格しました: %+v", rows)
+	}
+
+	// Three references to one Validation represent one distinct issue.
+	duplicate := fixture
+	duplicate.Steps = append([]step(nil), fixture.Steps...)
+	for i := range duplicate.Steps {
+		if duplicate.Steps[i].ID == "BP-05" {
+			duplicate.Steps[i].Validations = append(append([]string(nil), fixture.Steps[i].Validations...),
+				"sales.order_line.quantity_positive", "sales.order_line.quantity_positive")
+		}
+	}
+	rows = compareValidationScopes(loaded.World, duplicate)
+	want = []validationReferenceIssue{{
+		Side: "procedure", ID: "sales.order_line.quantity_positive", Reason: "duplicate-declaration",
+	}}
+	if len(rows) != 1 || !reflect.DeepEqual(rows[0].ReferenceIssues, want) ||
+		validationScopeSourcesNeeded(rows) {
+		t.Fatalf("重複参照を出典別に一度だけ示せません: %+v", rows)
+	}
 }
 
 func TestValidationScopeReviewShowsBothDifferenceDirections(t *testing.T) {
