@@ -425,3 +425,46 @@ func TestGenericInvocationDoesNotAddAuthorityBeyondResolvedCapability(t *testing
 		}
 	}
 }
+
+
+func TestReferenceJSONInvocationRejectsUnknownRequestField(t *testing.T) {
+	registry, contract, provider, _, _, _ := genericInvocationRegistryFixture(t)
+	payload, err := json.Marshal(map[string]any{
+		"Format":                xeadsource.FormatXead,
+		"SourceBytes":           []byte(`<System FormatVersion="1.2"/>`),
+		"TranscriptionContract": sourceAdapterTranscriptionContract(),
+		"Unexpected":            true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = registry.ResolveAndInvoke(
+		context.Background(),
+		sourceAdapterResolveInput(contract, provider),
+		payload,
+	)
+	if err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("unknown Reference JSON field was accepted: %v", err)
+	}
+}
+
+func TestReferenceJSONInvocationRejectsTrailingJSONValue(t *testing.T) {
+	registry, contract, provider, _, _, _ := genericInvocationRegistryFixture(t)
+	payload, err := json.Marshal(SourceAdapterRequest{
+		Format:                xeadsource.FormatXead,
+		SourceBytes:           []byte(`<System FormatVersion="1.2"/>`),
+		TranscriptionContract: sourceAdapterTranscriptionContract(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload = append(payload, []byte(" {}")...)
+	_, err = registry.ResolveAndInvoke(
+		context.Background(),
+		sourceAdapterResolveInput(contract, provider),
+		payload,
+	)
+	if err == nil || !strings.Contains(err.Error(), "trailing JSON value") {
+		t.Fatalf("trailing Reference JSON value was accepted: %v", err)
+	}
+}
