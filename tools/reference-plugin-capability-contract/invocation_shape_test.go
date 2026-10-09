@@ -101,7 +101,10 @@ func TestInvocationRegistryRejectsShapeArtifactDriftAtRegistration(t *testing.T)
 	implementation.RequestShapeArtifact.Root.Required = append(
 		implementation.RequestShapeArtifact.Root.Required, "NewRequiredField",
 	)
-	_, err = NewInvocationRegistry([]InvocationImplementation{implementation})
+	_, err = NewInvocationRegistry(
+		[]InvocationImplementation{implementation},
+		invocationShapeAuthoritiesForTest([]InvocationImplementation{implementation}),
+	)
 	if err == nil || !strings.Contains(err.Error(), "artifact does not match declaration") {
 		t.Fatalf("mutated shape artifact was registered: %v", err)
 	}
@@ -117,8 +120,10 @@ func TestGenericInvocationRejectsShapeIssuerDriftBeforeDomainCall(t *testing.T) 
 	if err != nil { t.Fatal(err) }
 	implementation, err := sourceAdapterInvocationImplementation(typed)
 	if err != nil { t.Fatal(err) }
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil { t.Fatal(err) }
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	payload, err := json.Marshal(SourceAdapterRequest{
 		Format: "xead",
 		SourceBytes: []byte("<System FormatVersion=\"1.2\"/>"),
@@ -146,8 +151,10 @@ func TestGenericInvocationValidatesRequestBeforeInvoker(t *testing.T) {
 		PayloadCodec: referenceJSONPayloadCodec,
 		Invoke: func(context.Context, []byte) ([]byte, error) { calls++; return nil, nil },
 	}
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil { t.Fatal(err) }
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	_, err = registry.ResolveAndInvoke(context.Background(), ResolveInput{
 		Scope: ScopeAuthoringTool,
 		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
@@ -176,8 +183,10 @@ func TestGenericInvocationValidatesResultAfterInvoker(t *testing.T) {
 		PayloadCodec: referenceJSONPayloadCodec,
 		Invoke: func(context.Context, []byte) ([]byte, error) { calls++; return []byte("{\"unexpected\":true}"), nil },
 	}
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil { t.Fatal(err) }
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	requestPayload, err := json.Marshal(SourceAdapterRequest{
 		Format: "xead",
 		SourceBytes: []byte("<System FormatVersion=\"1.2\"/>"),
@@ -222,10 +231,10 @@ func TestGenericInvocationRejectsMutatingEffectBeforeInvoker(t *testing.T) {
 			return []byte("{}"), nil
 		},
 	}
-	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
-	if err != nil {
-		t.Fatal(err)
-	}
+	registry := newInvocationRegistryForTest(
+		t,
+		[]InvocationImplementation{implementation},
+	)
 	payload, err := json.Marshal(SourceAdapterRequest{
 		Format:                "xead",
 		SourceBytes:           []byte("<System FormatVersion=\"1.2\"/>"),
