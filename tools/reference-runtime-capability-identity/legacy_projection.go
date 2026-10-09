@@ -252,6 +252,12 @@ func projectLegacyEnvironmentAuthority(
 			runtimeProjection.LegacyCapabilityID,
 		)
 	}
+	if len(policies) == 1 {
+		policies[0] = policies[0].WithDefaults()
+		if err := policies[0].Validate(); err != nil {
+			return LegacyEnvironmentAuthorityProjection{}, err
+		}
+	}
 
 	authority := RuntimeEnvironmentAuthority{
 		Environment: env.ID,
@@ -338,6 +344,36 @@ func verifyLegacyEnvironmentAuthorityProjection(
 		return fmt.Errorf(
 			"legacy Environment Authority projection differs from current authoritative Environment",
 		)
+	}
+	return nil
+}
+
+func verifyLegacyRuntimeMigration(
+	runtimeProjection LegacyRuntimeProjection,
+	environmentProjection LegacyEnvironmentAuthorityProjection,
+	ref RuntimeCapabilityRef,
+	definition plugin.Definition,
+	candidate AcceptedRuntimeCandidate,
+	profile ExecutionProfile,
+	env environment.Environment,
+) error {
+	if err := verifyLegacyRuntimeProjection(
+		runtimeProjection,
+		ref,
+		definition,
+		candidate,
+		profile,
+	); err != nil {
+		return err
+	}
+	if err := verifyLegacyEnvironmentAuthorityProjection(
+		environmentProjection,
+		env,
+		runtimeProjection,
+		ref,
+		profile,
+	); err != nil {
+		return err
 	}
 	return nil
 }
