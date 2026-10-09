@@ -13,6 +13,7 @@ import (
 type validationScopeReviewRow struct {
 	Step             string                   `json:"step"`
 	Application      string                   `json:"applicationContext,omitempty"`
+	ProcedureSource  string                   `json:"procedureSource,omitempty"`
 	Status           string                   `json:"status"`
 	ApplicationOnly  []string                 `json:"applicationOnly,omitempty"`
 	ProcedureOnly    []string                 `json:"procedureOnly,omitempty"`
