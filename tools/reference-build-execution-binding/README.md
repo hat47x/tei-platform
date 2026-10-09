@@ -30,6 +30,12 @@ PluginSubjectBinding
   ExecutionPlan fingerprint
   ArtifactSet fingerprint
   consumed output roles
+
+RuntimeEngineSubjectBinding
+  Runtime Engine identity
+  ExecutionPlan fingerprint
+  ArtifactSet fingerprint
+  consumed output role
 ```
 
 Sourceの`Locator`もcontent identityとは分けます。exact digestが同じであれば、Repository pathやstore locatorが変わっただけではBuildExecutionPlan fingerprintを変えません。Locatorは再取得・観測のために保持しますが、artifact-affecting input identityではありません。
@@ -106,3 +112,11 @@ Referenceは次を別々に保持します。
 Locatorだけの変更はcontent driftに数えません。
 
 これにより`reproducible=false`でも差分Evidenceを失わず、どのphysical outputが変わったかを追跡できます。
+
+## 非Plugin artifact
+
+#1080のpressureとして、既存`internal/plugin/runtime.RuntimeEngineIdentity`をfake Pluginへ変換せず、`RuntimeEngineSubjectBinding`で同じBuildExecutionPlan / ArtifactSetへ結べることも確認します。
+
+Runtime Engine bindingはselected output roleのdigestと`ImplementationDigest`、Build TargetとEngine Targetをcross-checkします。
+
+このReferenceにより、共通化の単位は「Plugin Build」ではなくbuild execution / physical outputであり、PluginやRuntime Engineは後段のtyped subject bindingとして分けられる候補が得られます。
