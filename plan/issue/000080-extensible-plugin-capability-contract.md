@@ -207,3 +207,22 @@ candidateでは`InspectWithContract`へsource profile Gateを追加した。転�
 長期的には二つのreaderが別々のXML解釈を持ち続けるとdriftの原因になる。共通化するsource observation kernelと、RMT固有のpublic Evidence projectionを分離できるかを後続pressureで確認する。
 
 現headのfocused testとfull`tools/repository-health-check.sh`は未取得である。コード変更を含むためDraftのまま保持し、exact-head full Gate PASS前にmainへ統合しない。
+
+
+### E1から見えた次のGap — generic invocation
+
+実Source Adapter consumerを通したことで、resolverのgeneric性と実行dispatchのgeneric性は別問題だと分かった。
+
+現在のReferenceでは、Capability ContractとProviderの解決自体はCore固定enumへ依存しない。一方、実行側の`SourceAdapterRegistry`は`SourceAdapterRequest`と`xeadsource.Inspection`をGo型として知っている。新しいCapability Contractを追加したとき、同じ方法でContract専用Registryやrequest / result型をHostへ書き足す必要があるなら、Core enumを消しても拡張点が実行dispatchへ移っただけになる。
+
+したがって、ISSUE-000080の次段では、少なくとも次を分けて検証する必要がある。
+
+- Contractが要求するrequest / resultの機械可読な形
+- exact Provider implementationを呼ぶgeneric dispatch境界
+- in-process / process / Wasm等の物理transport
+- request / resultのcodecやschema identity
+- Permission / Resource / Target Authority
+
+ここでJSONやRPCをproduction標準として先に固定しない。Source Adapterを第二例とし、別種のCapability consumerでも同じdispatch primitiveを再利用できるかをpressureしてからContractへ昇格する。
+
+今回のPRでは、このGapを解消済みとは扱わない。実consumerを追加した目的は、resolverだけでは見えなかった次の固定点を具体化することである。
