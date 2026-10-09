@@ -36,7 +36,7 @@ func fixture(t *testing.T, principal Principal, sessionErr error, authorizeErr e
 			}
 			return allowed, authorizeErr
 		},
-		Invoke: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { obs.calls++; w.WriteHeader(http.StatusAccepted) }),
+		Invoke:        http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { obs.calls++; w.WriteHeader(http.StatusAccepted) }),
 		Audit:  func(record AuditRecord) { obs.records = append(obs.records, record) },
 	})
 	if err != nil {
@@ -196,15 +196,17 @@ func TestPanicAfterResponseStartedRemainsAuditError(t *testing.T) {
 		Providers: map[string]string{"legacy": "legacy:order_entry"},
 	}, Dependencies{
 		VerifySession: func(*http.Request) (Principal, error) { return p, nil },
-		VerifyCSRF: func(*http.Request, Principal) bool { return true },
-		Authorize: func(context.Context, Principal, string) (bool, error) { return true, nil },
+		VerifyCSRF:    func(*http.Request, Principal) bool { return true },
+		Authorize:     func(context.Context, Principal, string) (bool, error) { return true, nil },
 		Invoke: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusAccepted)
 			panic("test panic")
 		}),
-		Audit: func(a AuditRecord) { records = append(records, a) },
+		Audit:         func(a AuditRecord) { records = append(records, a) },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	w := request(h, "/scenario/submit", http.MethodPost, "matching")
 	if w.Code != http.StatusAccepted || len(records) != 1 || records[0].Stage != "error" {
 		t.Fatalf("panic after response must be audited as error: status=%d audit=%+v", w.Code, records)
