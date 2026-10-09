@@ -66,7 +66,12 @@ if [[ -n "$RECEIPT_FILE" ]]; then
     echo "error: receipt parent directory does not exist" >&2
     exit 2
   }
-  RECEIPT_FILE="$RECEIPT_DIR/$(basename "$RECEIPT_FILE")"
+  RECEIPT_NAME="$(basename "$RECEIPT_FILE")"
+  if [[ "$RECEIPT_NAME" == -* ]]; then
+    echo "error: receipt file name must not begin with '-'" >&2
+    exit 2
+  fi
+  RECEIPT_FILE="$RECEIPT_DIR/$RECEIPT_NAME"
   case "$RECEIPT_FILE" in
     "$ROOT"|"$ROOT"/*)
       echo "error: receipt file must be outside the TEI checkout" >&2
@@ -215,16 +220,17 @@ write_receipt() {
   assert_unchanged "qualification receipt preparation"
 
   if [[ -e "$path" || -L "$path" ]]; then
-    rm -f -- "$tmp"
+    rm -f "$tmp"
     echo "error: receipt file appeared during qualification: $path" >&2
     exit 1
   fi
-  if ! (cd "$RECEIPT_DIR" && ln -- "$(basename "$tmp")" "$receipt_name"); then
-    rm -f -- "$tmp"
+  if ! (cd "$RECEIPT_DIR" && ln "$(basename "$tmp")" "$receipt_name"); then
+    rm -f "$tmp"
     echo "error: receipt file appeared before atomic publish: $path" >&2
     exit 1
   fi
-  rm -f -- "$tmp"
+  assert_unchanged "qualification receipt publication"
+  rm -f "$tmp"
 }
 echo "==> full repository health" >&2
 "$ROOT/tools/repository-health-check.sh"
