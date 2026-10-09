@@ -66,6 +66,12 @@ func BuildDataDesignCandidateReview(
 			ctx.Subject.ID,
 		)
 	}
+	if ctx.DataDesign.Fingerprint == "" ||
+		dataDesignFingerprint(ctx.DataDesign) != ctx.DataDesign.Fingerprint {
+		return DataDesignCandidateReviewPacket{}, fmt.Errorf(
+			"data-design candidate review requires an unmodified current Data Design Context",
+		)
+	}
 	kind := strings.TrimSpace(candidateKind)
 	fingerprint := strings.TrimSpace(candidateFingerprint)
 	if kind == "" || fingerprint == "" {
@@ -186,6 +192,20 @@ func resolveDataDesignReviewCandidate(
 			if value.Fingerprint != fingerprint {
 				continue
 			}
+			if businessIdentityCandidateFingerprint(value) != value.Fingerprint {
+				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+					"data-design business identity candidate fingerprint does not match current candidate content",
+				)
+			}
+			if dataDesignCandidateEvidenceRequirementFingerprint(
+				"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+				value.Fingerprint,
+				value.EvidenceNeeded,
+			) != value.EvidenceRequirementFingerprint {
+				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+					"data-design business identity Evidence requirement fingerprint does not match current requirement content",
+				)
+			}
 			relevant := dataDesignReviewSubjects(
 				value.Relation,
 				value.BasisConstraint,
@@ -208,6 +228,20 @@ func resolveDataDesignReviewCandidate(
 		for _, value := range ctx.FunctionalDependencyCandidates {
 			if value.Fingerprint != fingerprint {
 				continue
+			}
+			if functionalDependencyCandidateFingerprint(value) != value.Fingerprint {
+				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+					"data-design functional dependency candidate fingerprint does not match current candidate content",
+				)
+			}
+			if dataDesignCandidateEvidenceRequirementFingerprint(
+				"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+				value.Fingerprint,
+				value.EvidenceNeeded,
+			) != value.EvidenceRequirementFingerprint {
+				return DataDesignCandidateReviewCandidate{}, nil, nil, fmt.Errorf(
+					"data-design functional dependency Evidence requirement fingerprint does not match current requirement content",
+				)
 			}
 			relevant := dataDesignReviewSubjects(
 				value.Relation,
