@@ -289,3 +289,73 @@ func TestTransformRejectsOutputByteBudget(t *testing.T) {
 		t.Fatal("expected maxOutputBytes overflow")
 	}
 }
+
+
+func TestJSONWithinLimitRejectsAggregateExpansion(t *testing.T) {
+	value, err := transform.Object(
+		transform.Field{Name: "a", Value: transform.String("0123456789abcdef")},
+		transform.Field{Name: "b", Value: transform.String("0123456789abcdef")},
+		transform.Field{Name: "c", Value: transform.String("0123456789abcdef")},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := value.JSONWithinLimit(32); err == nil {
+		t.Fatal("expected aggregate JSON expansion to exceed byte limit")
+	}
+	raw, err := value.JSONWithinLimit(128)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(raw) > 128 {
+		t.Fatalf("bounded JSON exceeded declared limit: %d", len(raw))
+	}
+}
+
+func TestTransformInputIsolationSurvivesInternalValueSharing(t *testing.T) {
+	input, err := transform.Object(
+		transform.Field{Name: "keep", Value: transform.String("original")},
+		transform.Field{Name: "nested", Value: transform.Array(transform.String("a"), transform.String("b"))},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	from := transform.Expr{Op: transform.OpInput, Name: "value"}
+	replacement := transform.Expr{Op: transform.OpLiteral, Literal: json.RawMessage(`"changed"`)}
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.input_isolation_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        64,
+			MaxCollection:   16,
+			MaxInputNodes:   64,
+			MaxInputBytes:   1024,
+			MaxOutputBytes:  1024,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{{Name: "value", Kind: transform.InputObject}},
+		Program: transform.Program{Output: transform.Expr{
+			Op:    transform.OpReplaceField,
+			From:  &from,
+			Field: "keep",
+			Value: &replacement,
+		}},
+	}
+	result, err := transform.Evaluate(source, map[string]transform.Value{"value": input})
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed, ok := result.Output.Field("keep")
+	if !ok || changed.Kind != transform.ValueString || changed.String != "changed" {
+		t.Fatalf("unexpected output: %#v", result.Output)
+	}
+	original, ok := input.Field("keep")
+	if !ok || original.String != "original" {
+		t.Fatalf("caller-owned input was mutated: %#v", input)
+	}
+}
