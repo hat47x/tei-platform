@@ -82,6 +82,7 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 6. JSONの後ろに追加valueがある不正入力を拒否する。
 7. Knowledge ContextとShared Acceptanceが持つSource Evidenceをpacketへ保持し、完全一致する重複だけを除く。
 8. 既存Practical-B candidateのbase revisionだけをscratchで古くし、実Shared Acceptance Previewが返す`stale`をpacketへ取り込む。
+9. subject / procedure identityが欠けた入力や、未対応のShared Acceptance schemaを拒否し、別toolのJSONを誤ってreview inputへ読み替えない。
 
 ## 非目標
 
@@ -90,6 +91,7 @@ PR #1040は、Business Procedure側のValidation参照とApplication側の受理
 - Shared Acceptanceのstale判定を再実装すること
 - findingを自動修正すること
 - Review packetをAcceptance authorityへすること
+- field名が似ている別schemaを自動推定して入力へ変換すること
 - REF-SPEC-01の比較実験が完了したと主張すること
 
 ## 完了条件
