@@ -55,6 +55,24 @@ func arrayShared(values []Value) Value {
 	return Value{Kind: ValueArray, Array: append([]Value(nil), values...)}
 }
 
+func objectShared(fields []Field) (Value, error) {
+	seen := map[string]struct{}{}
+	out := Value{Kind: ValueObject, Object: append([]Field(nil), fields...)}
+	for _, field := range out.Object {
+		if field.Name == "" {
+			return Value{}, fmt.Errorf("object field name is required")
+		}
+		if !utf8.ValidString(field.Name) {
+			return Value{}, fmt.Errorf("object field name is not valid UTF-8")
+		}
+		if _, exists := seen[field.Name]; exists {
+			return Value{}, fmt.Errorf("object field %q is declared more than once", field.Name)
+		}
+		seen[field.Name] = struct{}{}
+	}
+	return out, nil
+}
+
 func Object(fields ...Field) (Value, error) {
 	seen := map[string]struct{}{}
 	out := Value{Kind: ValueObject, Object: make([]Field, len(fields))}
@@ -192,7 +210,7 @@ func decodeJSONValue(decoder *json.Decoder, depth int) (Value, error) {
 			if closeToken != json.Delim('}') {
 				return Value{}, fmt.Errorf("JSON object is not terminated")
 			}
-			return Object(fields...)
+			return objectShared(fields)
 		case '[':
 			var values []Value
 			for decoder.More() {
