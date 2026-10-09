@@ -301,7 +301,6 @@ func sourceAdapterRequestShapeArtifact() InvocationShapeArtifact {
 }
 
 func sourceAdapterResultShapeArtifact() InvocationShapeArtifact {
-	stringItems := InvocationShapeNode{Kind: "string"}
 	anyItems := InvocationShapeNode{Kind: "any"}
 	return InvocationShapeArtifact{
 		Schema:       invocationShapeArtifactSchema,
@@ -371,7 +370,6 @@ func contractQueryRequestShapeArtifact() InvocationShapeArtifact {
 					Kind:                 "object",
 					AdditionalProperties: &anyValue,
 				},
-				"_referenceReserved": {Kind: "array", Items: &stringItems},
 			},
 		},
 	}
