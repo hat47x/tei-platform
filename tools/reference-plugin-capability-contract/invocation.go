@@ -15,14 +15,16 @@ import (
 const referenceJSONPayloadCodec = "application/json;profile=tei-reference-v0"
 
 type InvocationImplementation struct {
-	Provider        Provider
+	Provider                Provider
 	RequestShape            string
 	RequestShapeFingerprint string
+	RequestShapeArtifact    InvocationShapeArtifact
 	ResultShape             string
 	ResultShapeFingerprint  string
+	ResultShapeArtifact     InvocationShapeArtifact
 	PayloadCodec            string
-	AuthorityLimits []string
-	Invoke          func(context.Context, []byte) ([]byte, error)
+	AuthorityLimits         []string
+	Invoke                  func(context.Context, []byte) ([]byte, error)
 }
 
 type InvocationExecution struct {
@@ -77,6 +79,44 @@ func NewInvocationRegistry(
 				i,
 			)
 		}
+		if err := validateInvocationShapeArtifact(
+			implementation.RequestShapeArtifact,
+		); err != nil {
+			return nil, fmt.Errorf(
+				"capability implementation[%d] request shape artifact: %w",
+				i,
+				err,
+			)
+		}
+		if err := validateInvocationShapeArtifact(
+			implementation.ResultShapeArtifact,
+		); err != nil {
+			return nil, fmt.Errorf(
+				"capability implementation[%d] result shape artifact: %w",
+				i,
+				err,
+			)
+		}
+		if implementation.RequestShapeArtifact.ID != implementation.RequestShape ||
+			invocationShapeFingerprint(implementation.RequestShapeArtifact) !=
+				implementation.RequestShapeFingerprint ||
+			implementation.RequestShapeArtifact.PayloadCodec !=
+				implementation.PayloadCodec {
+			return nil, fmt.Errorf(
+				"capability implementation[%d] request shape artifact does not match declaration",
+				i,
+			)
+		}
+		if implementation.ResultShapeArtifact.ID != implementation.ResultShape ||
+			invocationShapeFingerprint(implementation.ResultShapeArtifact) !=
+				implementation.ResultShapeFingerprint ||
+			implementation.ResultShapeArtifact.PayloadCodec !=
+				implementation.PayloadCodec {
+			return nil, fmt.Errorf(
+				"capability implementation[%d] result shape artifact does not match declaration",
+				i,
+			)
+		}
 		key := providerKey(provider)
 		if _, duplicate := registry.implementations[key]; duplicate {
 			return nil, fmt.Errorf(
@@ -116,6 +156,13 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 			contract.Version,
 		)
 	}
+	if contract.ShapeIssuer.ID == "" || contract.ShapeIssuer.Version == "" {
+		return InvocationExecution{}, fmt.Errorf(
+			"capability contract %s@%s has no invocation shape issuer",
+			contract.ID,
+			contract.Version,
+		)
+	}
 
 	implementation, ok := r.implementations[providerKey(resolution.Provider)]
 	if !ok {
@@ -143,10 +190,38 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 			contract.Version,
 		)
 	}
+	if implementation.RequestShapeArtifact.Issuer != contract.ShapeIssuer ||
+		implementation.ResultShapeArtifact.Issuer != contract.ShapeIssuer {
+		return InvocationExecution{}, fmt.Errorf(
+			"capability invocation shape issuer does not match contract %s@%s",
+			contract.ID,
+			contract.Version,
+		)
+	}
+	if err := validateInvocationPayload(
+		implementation.RequestShapeArtifact,
+		requestPayload,
+	); err != nil {
+		return InvocationExecution{}, fmt.Errorf(
+			"capability request does not conform to shape %s: %w",
+			contract.RequestShape,
+			err,
+		)
+	}
 
 	resultPayload, err := implementation.Invoke(ctx, append([]byte(nil), requestPayload...))
 	if err != nil {
 		return InvocationExecution{}, err
+	}
+	if err := validateInvocationPayload(
+		implementation.ResultShapeArtifact,
+		resultPayload,
+	); err != nil {
+		return InvocationExecution{}, fmt.Errorf(
+			"capability result does not conform to shape %s: %w",
+			contract.ResultShape,
+			err,
+		)
 	}
 	requestSum := sha256.Sum256(requestPayload)
 	resultSum := sha256.Sum256(resultPayload)
