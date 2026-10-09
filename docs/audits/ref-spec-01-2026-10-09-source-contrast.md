@@ -121,3 +121,25 @@ BP-05の明示参照は、Application全体のValidation宣言を網羅する義
 この補助処理を、各再解析で`sourceEvidence`と`unresolvedSource`を初期化する方式へ修正した。修正後のGitHub blobは`8116f2bf5fb3d119572c94430cd483179b0f72af`であり、隔離モジュールの`git hash-object`も一致した。同じ隔離モジュールでは、出典を失う再解析と、同じIndexでの繰り返し・意味状態変化の2テストがPASSし、`go vet ./...`はPASS、対象原文の`gofmt -l`は出力なしだった。
 
 GitHubのPRに加えた回帰テストは、既知→不明→繰り返し不明→再解決→文脈未解決の遷移を確認する。**このPR本体のGoテストは未実施である。** 隔離試験は比較ツールの完全な型・Workspace・Source Index実装を代替しない。PR exact-headに対する全Repository health・前後cleanの記録が取得できるまで、mainへの統合資格とは扱わない。
+
+## 二つの実ソースを組み合わせた隔離検査（2026-10-10）
+
+以前の個別スモークテストに加え、PRの次のGoソースを**一切変更せず同一の隔離モジュール内で組み合わせて実行**した。
+
+| 対象 | GitHub原文と一致したGit blob |
+| --- | --- |
+| `validation_scope_review.go` | `7f5c2ed7f0e6599173706b54d65ef93442265526` |
+| `validation_scope_review_sources.go` | `8116f2bf5fb3d119572c94430cd483179b0f72af` |
+
+実行環境は `go version go1.23.2 linux/amd64`。`internal/application`、`internal/core`、`internal/ir`、`internal/subject`、`internal/sourceindex` の型と、`semanticCounts`、`fixture`、`step`は、**隔離した最小代替実装**であり、TEIの実Repositoryをチェックアウトしたものではない。
+
+同じモジュール内で次の4件を実行した。
+
+1. Applicationに3件、BP-05に2件のValidationがあるケースで、`applicationOnly`に残る1件を検出する。
+2. 比較結果から、Applicationと差分Validation定義の二つのSource位置・指紋を解決する。その後の空Index再解析では、古い根拠を破棄し未解決に戻す。
+3. Application文脈が消えた場合、暗黙の所属を推測せず`unresolved-context`とし、不要なSource照合を要求しない。
+4. 一つのValidationの定義件数が2件の場合、`unresolved-reference`へ保留する。既知→不明の再解析と未解決状態での冪等性も確認する。
+
+`GOENV=off GOWORK=off GOFLAGS= go test -count=1 ./...`は4件PASS、`go vet ./...`はPASS、二つの原文に対する`gofmt -l`は出力なしだった。比較処理と出典追跡処理を同一ビルドで呼び出すことまでは確認したが、**本体の既存`main.go`、実Workspace Loader、実Source Index実装、Repository回帰テスト、全体health checkの動作を確認したものではない。**
+
+また、現在のPR head `864d0502dc45388cc3c07a7b7de7eb6bc8fec001`は、点検時のmain `02e4160a529d69835916193aec83b5f932fef46e`から491コミットbehindである。両者の再統合・全Repositoryテスト・前後cleanのreceiptは未取得なので、Draftの停止条件は変わらない。
