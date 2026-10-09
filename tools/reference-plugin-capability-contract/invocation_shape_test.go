@@ -309,6 +309,8 @@ func TestInvocationRegistryRejectsStaleShapeAuthorityEvidence(t *testing.T) {
 		[]InvocationImplementation{implementation},
 	)
 	authorities[0].ShapeFingerprint = "sha256:" + strings.Repeat("f", 64)
+	authorities[0].EvidenceFingerprint =
+		invocationShapeAuthorityEvidenceFingerprint(authorities[0])
 	if _, err := NewInvocationRegistry(
 		[]InvocationImplementation{implementation},
 		authorities,
@@ -413,5 +415,22 @@ func TestShapeAuthorityEvidenceRefreshDoesNotChangeCapabilityResolutionIdentity(
 		oldExecution.ResultShapeAuthorityEvidenceFingerprint ==
 			newExecution.ResultShapeAuthorityEvidenceFingerprint {
 		t.Fatal("Shape Authority Evidence refresh was not observable")
+	}
+}
+
+
+func TestInvocationRegistryRejectsTamperedShapeAuthorityEvidence(t *testing.T) {
+	artifact := sourceAdapterRequestShapeArtifact()
+	evidence := invocationShapeAuthorityEvidenceForTest(
+		artifact,
+		"authority-source",
+	)
+	evidence.AuthoritySourceFingerprint =
+		"sha256:" + strings.Repeat("f", 64)
+	if _, err := NewInvocationRegistry(
+		nil,
+		[]InvocationShapeAuthorityEvidence{evidence},
+	); err == nil || !strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("tampered Shape Authority Evidence was accepted: %v", err)
 	}
 }
