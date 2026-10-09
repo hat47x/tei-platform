@@ -287,6 +287,15 @@
       "risk": "unknown/private source vocabulary can cross the public Evidence boundary and a nonstandard construct can be presented as known even though the content fingerprint is valid.",
       "owner": "GitHub #1008 / Draft PR #1011",
       "stopCondition": "typed Evidence validates sourceConstruct against the standard vocabulary for its declared xead/xeaf format, validates classification against the controlled RMT vocabulary, forces unmapped Evidence to classification=unresolved, and adversarial tests reject private names, cross-format known names, free-text source versions, and contradictory unmapped classifications"
+    },
+    {
+      "id": "RML-032",
+      "topic": "reader-contract-typed-evidence-vocabulary-drift",
+      "nature": "unresolved",
+      "evidence": "Source Adapter knownElements, transcription-contract constructMappings, and rmtevidence standardConstructsByFormat/allowedClassifications are separate declarations. Before RMP-057 hardening there was no executable check that all three remained aligned.",
+      "risk": "parser support, candidate mapping, and typed Evidence acceptance can diverge after an otherwise local schema update.",
+      "owner": "GitHub #1008 / Draft PR #1011",
+      "stopCondition": "the Source Adapter test suite reads the current transcription contract and fails unless reader known constructs, mapped construct kinds, and typed Evidence public constructs have equal coverage for both source formats; every contract classification must also be supported by rmtevidence"
     }
   ],
   "claimsNotEstablished": [
