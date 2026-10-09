@@ -36,14 +36,14 @@ type coverage struct {
 }
 
 type reviewPacket struct {
-	Schema          string    `json:"schema"`
-	CaseID          string    `json:"caseId,omitempty"`
-	Status          string    `json:"status"`
-	Coverage        coverage  `json:"coverage"`
+	Schema          string        `json:"schema"`
+	CaseID          string        `json:"caseId,omitempty"`
+	Status          string        `json:"status"`
+	Coverage        coverage      `json:"coverage"`
 	Findings        []finding     `json:"findings,omitempty"`
 	Evidence        []evidenceRef `json:"evidence,omitempty"`
 	MissingInputs   []string      `json:"missingInputs,omitempty"`
-	AuthorityLimits []string  `json:"authorityLimits"`
+	AuthorityLimits []string      `json:"authorityLimits"`
 }
 
 type knowledgeContextInput struct {
@@ -109,6 +109,10 @@ type acceptanceInput struct {
 		Source            string `json:"source,omitempty"`
 		SourceFingerprint string `json:"sourceFingerprint,omitempty"`
 	} `json:"evidence,omitempty"`
+	Unresolved []struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"unresolved,omitempty"`
 }
 
 func main() {
@@ -267,6 +271,19 @@ func buildReviewPacket(caseID, knowledgePath, crossViewPath, acceptancePath stri
 					input.Stale.BaseModelRevision,
 					input.Stale.CurrentModelRevision,
 				),
+			})
+		}
+		for _, unresolved := range input.Unresolved {
+			if strings.TrimSpace(unresolved.Code) == "" &&
+				strings.TrimSpace(unresolved.Message) == "" {
+				continue
+			}
+			packet.Findings = append(packet.Findings, finding{
+				Class:   "ambiguity",
+				Source:  "shared-acceptance",
+				Code:    unresolved.Code,
+				Subject: input.Decision,
+				Message: unresolved.Message,
 			})
 		}
 	}
