@@ -135,6 +135,61 @@ wrapper自身がpre/postのtracked / untracked / ignored stateを確認するた
 
 PASS時には`candidate-head`、`origin-main`、`candidate-contains-expected-main=true`、Repository health / Reference / qualification結果をstdoutへ出します。これは永続的なTEI Product stateではなく、その時点のexact Git relationとGate結果を示すreceiptです。必要なGate handoffで、通常のIssue / PR Evidenceとして記録できます。
 
+### machine-readable qualification receipt
+
+通常Git mergeによる統合でもGateを取り違えないため、`--receipt-file`を指定すると、すべてのGateが成功した後だけmachine-readable receiptをRepository外へ出力します。
+
+```bash
+CANDIDATE_HEAD="$(git rev-parse HEAD)"
+TESTED_MAIN="$(git rev-parse origin/main)"
+RECEIPT="$(mktemp)"
+
+tools/reference-tool-neutral-development/qualify.sh \
+  --expected-head "$CANDIDATE_HEAD" \
+  --expected-main "$TESTED_MAIN" \
+  --receipt-file "$RECEIPT"
+```
+
+receiptは少なくとも次を固定します。
+
+- exact candidate HEAD
+- exact `origin/main` / expected main
+- candidateがexpected mainを含むこと
+- tracked / untracked / ignored clean pre/post
+- full Repository Health PASS
+- RQ-034 Reference PASS
+- `repository-health-check.sh` / `qualify.sh` / `run.sh` のcandidate上のGit blob SHA
+- Git / Go / Python version
+
+receiptはRepository内へ書けません。receipt出力自体によってqualification checkoutをdirtyにしないためです。
+
+### integration preflight
+
+統合直前にはremoteを再取得し、統合側checkoutをreceiptが固定したexact mainへ合わせてから、read-only preflightを実行します。
+
+```bash
+git fetch --prune origin main
+
+bash tools/reference-tool-neutral-development/integration-preflight.sh \
+  --receipt-file "$RECEIPT" \
+  --candidate <candidate-ref> \
+  --expected-main "$TESTED_MAIN"
+```
+
+preflightはmerge / commit / push / ref更新を行いません。次をfail closedで照合します。
+
+- integration checkoutのHEAD == expected main
+- local `origin/main` == expected main
+- candidate HEAD == receiptのcandidate
+- candidateがexpected mainを含む
+- receiptの全PASS条件
+- receiptに記録された3つのrunner blob == candidate上の現在のblob
+- tracked / untracked / ignored clean state
+
+mainがreceipt取得後に動いた場合、candidateやrunnerが変わった場合、またreceiptを書き換えた場合は失敗します。その場合は新しいmainをcandidateへ取り込み、**新しいexact candidateでqualificationから取り直します**。
+
+このreceiptは暗号学的な署名やGitHub branch protectionの代替ではありません。人間・AIが通常Gitで統合するときに、別revisionの成功記録を誤って流用しないための機械的なhandoffです。TEI Product state、Agent Session、独自Change Setへ昇格させません。
+
 ## Run
 
 ```bash
