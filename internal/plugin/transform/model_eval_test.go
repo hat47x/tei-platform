@@ -408,3 +408,26 @@ func TestAppendBytesRejectsBeforeOversizedResultConstruction(t *testing.T) {
 		t.Fatal("expected append-bytes output budget overflow")
 	}
 }
+
+
+func TestPublicValueFieldKeepsCopySemantics(t *testing.T) {
+	value, err := transform.Object(
+		transform.Field{Name: "items", Value: transform.Array(transform.String("a"), transform.String("b"))},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, ok := value.Field("items")
+	if !ok {
+		t.Fatal("missing items field")
+	}
+	items.Array[0] = transform.String("changed")
+
+	again, ok := value.Field("items")
+	if !ok {
+		t.Fatal("missing items field on second read")
+	}
+	if again.Array[0].String != "a" {
+		t.Fatalf("public Field leaked internal alias: %#v", again)
+	}
+}
