@@ -73,9 +73,9 @@ func Load(root string) (Result, error) {
 		return Result{}, err
 	}
 	// Bind retained loader bytes to the physical Workspace identity.
-	rootReal, err := filepath.EvalSymlinks(root)
+	rootReal, err := canonicalWorkspaceRoot(root)
 	if err != nil {
-		return Result{}, fmt.Errorf("resolve Workspace root: %w", err)
+		return Result{}, err
 	}
 	// Inventory and verify the physical boundary before any domain loader can
 	// read a Source file or parse a symlink to an outside target.
