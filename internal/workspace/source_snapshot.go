@@ -9,6 +9,20 @@ import (
 	"tei/internal/sourceindex"
 )
 
+// canonicalWorkspaceRoot identifies a Workspace independently of its caller's
+// relative/absolute spelling. It does not freeze the underlying filesystem.
+func canonicalWorkspaceRoot(root string) (string, error) {
+	absolute, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("absolute Workspace root: %w", err)
+	}
+	resolved, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return "", fmt.Errorf("resolve Workspace root: %w", err)
+	}
+	return resolved, nil
+}
+
 // readSourceForLoad retains exactly the bytes consumed by a domain loader.
 // It does not provide an open-time containment guarantee: the shared
 // race-free Source Reader remains tracked by issue #1017.
