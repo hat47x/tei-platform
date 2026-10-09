@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/database/migration"
 	"tei/internal/deployment"
+	"tei/internal/environment"
 	"tei/internal/permission"
 	"tei/internal/plugin"
 	"tei/internal/plugin/transform"
@@ -27,7 +29,11 @@ func transformPackageFixture() (plugin.Definition, plugin.BuildPlan) {
 			{
 				Kind:         plugin.CapabilityObservationProvider,
 				ID:           core.MustCanonicalID("runtime.z_observer"),
-				Observations: []deployment.ObservationKind{deployment.ObservationDatabaseState, deployment.ObservationApplicationRuntime},
+				Observations:      []deployment.ObservationKind{deployment.ObservationDatabaseState, deployment.ObservationApplicationRuntime},
+				Evidence:          []deployment.EvidenceKind{deployment.EvidenceRolloutHealth},
+				DatabaseProviders: []environment.DatabaseProvider{environment.ProviderSQLite, environment.ProviderPostgres},
+				MigrationTools:    []migration.Tool{migration.ToolLiquibase, migration.ToolAtlas},
+				Features:          []environment.Feature{environment.FeatureDatabaseWorkbench, environment.FeatureSQLAnalysis},
 			},
 			{
 				Kind:    plugin.CapabilityDeploymentExecutor,
