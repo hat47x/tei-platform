@@ -161,7 +161,7 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 	if len(read.OrderLineRows) < 2 {
 		t.Fatal("order line fixture is empty")
 	}
-	// Two existing rules are satisfied; a zero price in the second line exercises only the new rule.
+	// Three existing rules are satisfied; a zero price in the second line exercises only the new rule.
 	if !setSemanticRowValue(&read.OrderLineRows[1], "sales.order_line.unit_price", "0") {
 		t.Fatal("unit price not present in read result")
 	}
@@ -180,7 +180,7 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prior.Stage != "completed" || len(prior.Validations) != 2 {
+	if prior.Stage != "completed" || len(prior.Validations) != 3 {
 		t.Fatalf("before change stage=%s validations=%+v", prior.Stage, prior.Validations)
 	}
 
@@ -199,9 +199,9 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 		t.Fatalf("business validation failure became execution error: %v", err)
 	}
 	if rejected.Stage != "validation-not-satisfied" ||
-		len(rejected.Validations) != 3 ||
-		rejected.Validations[2].Validation != "sales.order_line.unit_price_positive" ||
-		rejected.Validations[2].Result != "not-satisfied" {
+		len(rejected.Validations) != 4 ||
+		rejected.Validations[3].Validation != "sales.order_line.unit_price_positive" ||
+		rejected.Validations[3].Result != "not-satisfied" {
 		t.Fatalf("new rule not evaluated via Canonical selection: %+v", rejected)
 	}
 	if rejected.Authorization != nil || rejected.Command != nil || rejected.Observation != nil {
@@ -236,7 +236,7 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 		t.Fatal(err)
 	}
 	if response.Result.Stage != "validation-not-satisfied" ||
-		len(response.Result.Validations) != 3 ||
+		len(response.Result.Validations) != 4 ||
 		response.Result.Command != nil || response.Result.Observation != nil {
 		t.Fatalf("Web did not preserve the Driver validation outcome: %+v", response.Result)
 	}
@@ -250,7 +250,7 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if positive.Stage != "completed" || len(positive.Validations) != 3 {
+	if positive.Stage != "completed" || len(positive.Validations) != 4 {
 		t.Fatalf("valid price was not accepted: %+v", positive)
 	}
 }

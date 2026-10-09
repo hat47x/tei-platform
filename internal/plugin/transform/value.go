@@ -38,12 +38,40 @@ type Value struct {
 	Bytes  []byte
 }
 
-func Null() Value                 { return Value{Kind: ValueNull} }
-func Bool(v bool) Value           { return Value{Kind: ValueBool, Bool: v} }
-func Number(v string) Value       { return Value{Kind: ValueNumber, Number: v} }
-func String(v string) Value       { return Value{Kind: ValueString, String: v} }
-func Bytes(v []byte) Value        { return Value{Kind: ValueBytes, Bytes: append([]byte(nil), v...)} }
-func Array(values ...Value) Value { return Value{Kind: ValueArray, Array: append([]Value(nil), values...)} }
+func Null() Value           { return Value{Kind: ValueNull} }
+func Bool(v bool) Value     { return Value{Kind: ValueBool, Bool: v} }
+func Number(v string) Value { return Value{Kind: ValueNumber, Number: v} }
+func String(v string) Value { return Value{Kind: ValueString, String: v} }
+func Bytes(v []byte) Value  { return Value{Kind: ValueBytes, Bytes: append([]byte(nil), v...)} }
+func Array(values ...Value) Value {
+	out := Value{Kind: ValueArray, Array: make([]Value, len(values))}
+	for i := range values {
+		out.Array[i] = values[i].Clone()
+	}
+	return out
+}
+
+func arrayShared(values []Value) Value {
+	return Value{Kind: ValueArray, Array: append([]Value(nil), values...)}
+}
+
+func objectShared(fields []Field) (Value, error) {
+	seen := map[string]struct{}{}
+	out := Value{Kind: ValueObject, Object: append([]Field(nil), fields...)}
+	for _, field := range out.Object {
+		if field.Name == "" {
+			return Value{}, fmt.Errorf("object field name is required")
+		}
+		if !utf8.ValidString(field.Name) {
+			return Value{}, fmt.Errorf("object field name is not valid UTF-8")
+		}
+		if _, exists := seen[field.Name]; exists {
+			return Value{}, fmt.Errorf("object field %q is declared more than once", field.Name)
+		}
+		seen[field.Name] = struct{}{}
+	}
+	return out, nil
+}
 
 func Object(fields ...Field) (Value, error) {
 	seen := map[string]struct{}{}
@@ -182,7 +210,7 @@ func decodeJSONValue(decoder *json.Decoder, depth int) (Value, error) {
 			if closeToken != json.Delim('}') {
 				return Value{}, fmt.Errorf("JSON object is not terminated")
 			}
-			return Object(fields...)
+			return objectShared(fields)
 		case '[':
 			var values []Value
 			for decoder.More() {
@@ -199,7 +227,7 @@ func decodeJSONValue(decoder *json.Decoder, depth int) (Value, error) {
 			if closeToken != json.Delim(']') {
 				return Value{}, fmt.Errorf("JSON array is not terminated")
 			}
-			return Array(values...), nil
+			return arrayShared(values), nil
 		default:
 			return Value{}, fmt.Errorf("unexpected JSON delimiter %q", value)
 		}
@@ -210,13 +238,167 @@ func decodeJSONValue(decoder *json.Decoder, depth int) (Value, error) {
 
 func (v Value) JSON() ([]byte, error) {
 	var out bytes.Buffer
-	if err := writeJSON(&out, v); err != nil {
+	if err := writeJSON(&out, v, 0); err != nil {
 		return nil, err
 	}
 	return out.Bytes(), nil
 }
 
-func writeJSON(out *bytes.Buffer, v Value) error {
+func (v Value) JSONWithinLimit(maxBytes int) ([]byte, error) {
+	if maxBytes < 0 {
+		return nil, fmt.Errorf("JSON byte limit must be non-negative")
+	}
+	if _, err := jsonEncodedSizeWithin(v, maxBytes, 0); err != nil {
+		return nil, err
+	}
+	return v.JSON()
+}
+
+func jsonEncodedSizeWithin(v Value, maxBytes, depth int) (int, error) {
+	if depth > 128 {
+		return 0, fmt.Errorf("JSON value nesting exceeds 128 levels")
+	}
+	add := func(total, amount int) (int, error) {
+		if amount < 0 || total < 0 || total > maxBytes || amount > maxBytes-total {
+			return 0, fmt.Errorf("JSON encoding exceeds byte limit")
+		}
+		return total + amount, nil
+	}
+	switch v.Kind {
+	case ValueNull:
+		return add(0, len("null"))
+	case ValueBool:
+		if v.Bool {
+			return add(0, len("true"))
+		}
+		return add(0, len("false"))
+	case ValueNumber:
+		if !validJSONNumber(v.Number) {
+			return 0, fmt.Errorf("invalid JSON number %q", v.Number)
+		}
+		return add(0, len(v.Number))
+	case ValueString:
+		size, err := jsonStringEncodedSize(v.String, maxBytes)
+		if err != nil {
+			return 0, err
+		}
+		return add(0, size)
+	case ValueBytes:
+		return 0, fmt.Errorf("byte value cannot be encoded as JSON directly")
+	case ValueArray:
+		total, err := add(0, 2)
+		if err != nil {
+			return 0, err
+		}
+		for i, item := range v.Array {
+			if i > 0 {
+				total, err = add(total, 1)
+				if err != nil {
+					return 0, err
+				}
+			}
+			remaining := maxBytes - total
+			size, err := jsonEncodedSizeWithin(item, remaining, depth+1)
+			if err != nil {
+				return 0, err
+			}
+			total, err = add(total, size)
+			if err != nil {
+				return 0, err
+			}
+		}
+		return total, nil
+	case ValueObject:
+		total, err := add(0, 2)
+		if err != nil {
+			return 0, err
+		}
+		seen := map[string]struct{}{}
+		for i, field := range v.Object {
+			if field.Name == "" {
+				return 0, fmt.Errorf("object field name is required")
+			}
+			if !utf8.ValidString(field.Name) {
+				return 0, fmt.Errorf("object field name is not valid UTF-8")
+			}
+			if _, exists := seen[field.Name]; exists {
+				return 0, fmt.Errorf("object field %q is declared more than once", field.Name)
+			}
+			seen[field.Name] = struct{}{}
+			if i > 0 {
+				total, err = add(total, 1)
+				if err != nil {
+					return 0, err
+				}
+			}
+			nameSize, err := jsonStringEncodedSize(field.Name, maxBytes-total)
+			if err != nil {
+				return 0, err
+			}
+			total, err = add(total, nameSize+1)
+			if err != nil {
+				return 0, err
+			}
+			remaining := maxBytes - total
+			size, err := jsonEncodedSizeWithin(field.Value, remaining, depth+1)
+			if err != nil {
+				return 0, err
+			}
+			total, err = add(total, size)
+			if err != nil {
+				return 0, err
+			}
+		}
+		return total, nil
+	default:
+		return 0, fmt.Errorf("unknown value kind %q", v.Kind)
+	}
+}
+
+func jsonStringEncodedSize(value string, maxBytes int) (int, error) {
+	if !utf8.ValidString(value) {
+		return 0, fmt.Errorf("string value is not valid UTF-8")
+	}
+	if maxBytes < 2 {
+		return 0, fmt.Errorf("JSON encoding exceeds byte limit")
+	}
+	total := 2 // surrounding quotes
+	add := func(amount int) error {
+		if amount < 0 || amount > maxBytes-total {
+			return fmt.Errorf("JSON encoding exceeds byte limit")
+		}
+		total += amount
+		return nil
+	}
+	for _, r := range value {
+		switch r {
+		case '"', '\\', '\b', '\f', '\n', '\r', '\t':
+			if err := add(2); err != nil {
+				return 0, err
+			}
+		case '<', '>', '&', '\u2028', '\u2029':
+			if err := add(6); err != nil {
+				return 0, err
+			}
+		default:
+			if r < 0x20 {
+				if err := add(6); err != nil {
+					return 0, err
+				}
+				continue
+			}
+			if err := add(utf8.RuneLen(r)); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return total, nil
+}
+
+func writeJSON(out *bytes.Buffer, v Value, depth int) error {
+	if depth > 128 {
+		return fmt.Errorf("JSON value nesting exceeds 128 levels")
+	}
 	switch v.Kind {
 	case ValueNull:
 		out.WriteString("null")
@@ -232,6 +414,9 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 		}
 		out.WriteString(v.Number)
 	case ValueString:
+		if !utf8.ValidString(v.String) {
+			return fmt.Errorf("string value is not valid UTF-8")
+		}
 		raw, _ := json.Marshal(v.String)
 		out.Write(raw)
 	case ValueArray:
@@ -240,7 +425,7 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 			if i > 0 {
 				out.WriteByte(',')
 			}
-			if err := writeJSON(out, item); err != nil {
+			if err := writeJSON(out, item, depth+1); err != nil {
 				return err
 			}
 		}
@@ -252,6 +437,9 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 			if field.Name == "" {
 				return fmt.Errorf("object field name is required")
 			}
+			if !utf8.ValidString(field.Name) {
+				return fmt.Errorf("object field name is not valid UTF-8")
+			}
 			if _, exists := seen[field.Name]; exists {
 				return fmt.Errorf("object field %q is declared more than once", field.Name)
 			}
@@ -262,7 +450,7 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 			name, _ := json.Marshal(field.Name)
 			out.Write(name)
 			out.WriteByte(':')
-			if err := writeJSON(out, field.Value); err != nil {
+			if err := writeJSON(out, field.Value, depth+1); err != nil {
 				return err
 			}
 		}
@@ -274,8 +462,6 @@ func writeJSON(out *bytes.Buffer, v Value) error {
 	}
 	return nil
 }
-
-
 
 func validJSONNumber(raw string) bool {
 	if strings.TrimSpace(raw) != raw || raw == "" {

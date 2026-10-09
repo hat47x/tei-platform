@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "identity": {
+    "id": "tei.runtime.engine.echo_string_test",
+    "version": "1.0.0",
+    "contractVersion": "tei.plugin-transform/v1"
+  },
+  "profile": "deterministic-transform-v1",
+  "limits": {
+    "maxSteps": 32,
+    "maxCollection": 16,
+    "maxInputNodes": 16,
+    "maxInputBytes": 1024,
+    "maxOutputBytes": 1024,
+    "maxNestingDepth": 16
+  },
+  "inputs": [
+    {
+      "name": "message",
+      "kind": "string"
+    }
+  ],
+  "program": {
+    "output": {
+      "op": "input",
+      "name": "message"
+    }
+  }
+}

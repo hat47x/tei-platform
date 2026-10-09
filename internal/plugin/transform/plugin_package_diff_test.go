@@ -30,8 +30,8 @@ func transformPackageFixture() (plugin.Definition, plugin.BuildPlan) {
 		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
 		Provides: []plugin.Capability{
 			{
-				Kind:         plugin.CapabilityObservationProvider,
-				ID:           core.MustCanonicalID("runtime.z_observer"),
+				Kind:              plugin.CapabilityObservationProvider,
+				ID:                core.MustCanonicalID("runtime.z_observer"),
 				Observations:      []deployment.ObservationKind{deployment.ObservationDatabaseState, deployment.ObservationApplicationRuntime},
 				Evidence:          []deployment.EvidenceKind{deployment.EvidenceRolloutHealth},
 				DatabaseProviders: []environment.DatabaseProvider{environment.ProviderSQLite, environment.ProviderPostgres},
@@ -72,7 +72,7 @@ func transformPackageFixture() (plugin.Definition, plugin.BuildPlan) {
 			ContractVersion: "tei.plugin-build/v1",
 			ArtifactDigest:  transformDigestC,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "plugin.tei"},
+		Recipe:     plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "plugin.tei"},
 		OutputKind: plugin.BuildOutputPluginPackage,
 		Dependencies: []plugin.BuildDependency{
 			{Kind: "tool", ID: "z-tool", Version: "2", ArtifactDigest: transformDigestA},
@@ -100,7 +100,6 @@ func valueFromGoJSON(t *testing.T, value any) transform.Value {
 	}
 	return got
 }
-
 
 func referencePluginPackageTransformSource(t *testing.T) transform.Source {
 	t.Helper()
@@ -140,7 +139,6 @@ func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 		t.Fatalf("TEI-native transform differs from Go oracle")
 	}
 }
-
 
 func TestReferenceTransformSourceMatchesProgrammaticConstruction(t *testing.T) {
 	fromFile := referencePluginPackageTransformSource(t)

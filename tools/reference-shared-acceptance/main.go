@@ -30,6 +30,9 @@ const usage = `usage:
   reference-shared-acceptance attach-rmt-transcription -candidate FILE -rmt-transcription FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
   reference-shared-acceptance decisions -workspace DIR [-out FILE]
+  reference-shared-acceptance confirm-record -workspace DIR -input FILE [-out FILE] [-allow-reference-baseline]
+  reference-shared-acceptance confirm-check -workspace DIR -input FILE [-out FILE]
+  reference-shared-acceptance confirmations -workspace DIR [-out FILE]
 `
 
 func runCLI(args []string, stdout, stderr io.Writer) int {
@@ -39,7 +42,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "attach-rmt-transcription", "revision", "decisions":
+	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "attach-rmt-transcription", "revision", "decisions", "confirm-record", "confirm-check", "confirmations":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -49,10 +52,11 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	workspacePath := flags.String("workspace", "", "対象workspace directory")
 	candidatePath := flags.String("candidate", "", "candidate JSON file")
-	qualificationPath := flags.String("qualification", "", "knowledge qualification result JSON file")
+	qualificationPath := flags.String("qualification", "", "Knowledge Qualification ResultまたはBuilder Review Handoff JSON file")
 	referenceReusePath := flags.String("reference-reuse", "", "qualified reference Patternのdestination-owned fields JSON file")
 	semanticEvaluationPath := flags.String("semantic-evaluation", "", "semantic evaluation Evidence JSON file")
 	rmtTranscriptionPath := flags.String("rmt-transcription", "", "RMT transcription candidate Evidence JSON file")
+	inputPath := flags.String("input", "", "confirm-record / confirm-checkの入力JSON file")
 	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
 	format := flags.String("format", "text", "reviewの出力形式（text / json / html）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
@@ -63,8 +67,9 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	needsWorkspace := command != "attach-qualification" && command != "attach-semantic-evaluation" && command != "attach-rmt-transcription"
-	needsCandidate := command != "revision" && command != "decisions"
+	needsCandidate := command != "revision" && command != "decisions" && !strings.HasPrefix(command, "confirm")
 	if (needsWorkspace && *workspacePath == "") ||
+		((command == "confirm-record" || command == "confirm-check") && *inputPath == "") ||
 		(needsCandidate && *candidatePath == "") ||
 		(command == "attach-qualification" && *qualificationPath == "") ||
 		(command == "propose-qualified-reference-pattern" && (*qualificationPath == "" || *referenceReusePath == "")) ||
@@ -114,7 +119,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		qualification, err := decodeQualificationResult(qualificationData)
+		qualification, err := decodeQualificationInput(qualificationData)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
@@ -210,6 +215,57 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return emit(index)
+	}
+
+	if command == "confirmations" {
+		index, err := listConfirmations(*workspacePath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return emit(index)
+	}
+
+	if command == "confirm-check" {
+		raw, err := os.ReadFile(*inputPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		var query ConfirmationQuery
+		if err := decodeStrict(raw, &query); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		result, err := checkConfirmation(*workspacePath, query)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return emit(result)
+	}
+
+	if command == "confirm-record" {
+		if !*allowBaseline && isReferenceBaseline(*workspacePath) {
+			fmt.Fprintln(stderr, "reference/workspaceはGate B / Gate Cが固定したbaselineなので、確認記録を書きませんでした（意図的に書く場合は -allow-reference-baseline）")
+			return 2
+		}
+		raw, err := os.ReadFile(*inputPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		var input ConfirmationInput
+		if err := decodeStrict(raw, &input); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		path, err := recordConfirmation(*workspacePath, input)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return emit(map[string]string{"record": path})
 	}
 
 	// Decision記録はCanonical sourceではないがworkspaceへ派生物を書き込むため、baselineの保護を共有する。
