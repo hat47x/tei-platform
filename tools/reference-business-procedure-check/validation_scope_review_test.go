@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -258,5 +259,60 @@ func TestValidationScopeReviewJSONIsOptIn(t *testing.T) {
 	delete(withReview, "validationScopeReview")
 	if !reflect.DeepEqual(withReview, existing) {
 		t.Fatalf("任意表示が従来のJSON項目を書き換えました: before=%v after=%v", existing, withReview)
+	}
+}
+
+func TestValidationScopeReviewSourceEvidence(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	before := ref01TreeDigest(t, workspacePath)
+	result, err := runWithOptions(workspacePath, fixturePath, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.ValidationScopeReview) != 1 {
+		t.Fatalf("対象の比較行がありません: %+v", result.ValidationScopeReview)
+	}
+	row := result.ValidationScopeReview[0]
+	if row.Status != "review-needed" || len(row.UnresolvedSource) != 0 {
+		t.Fatalf("比較の意味または出典が未解決です: %+v", row)
+	}
+	want := map[string]string{
+		"application:order_entry": "applications/order-entry/application.tei",
+		"semantic-validation:sales.order_line.line_number_positive": "semantic/sales/validation.tei",
+	}
+	if len(row.SourceEvidence) != len(want) {
+		t.Fatalf("正本Sourceに戻るための情報が不足しています: %+v", row.SourceEvidence)
+	}
+	for _, evidence := range row.SourceEvidence {
+		key := evidence.Kind + ":" + evidence.ID
+		if evidence.Path != want[key] || evidence.Fingerprint == "" || evidence.Line < 1 {
+			t.Fatalf("出典に戻るための情報が不正です: %+v", evidence)
+		}
+		delete(want, key)
+	}
+	if len(want) != 0 {
+		t.Fatalf("出典を返していないidentityがあります: %v", want)
+	}
+	if after := ref01TreeDigest(t, workspacePath); after != before {
+		t.Fatal("Source Indexの追跡が正本Workspaceを変更しました")
+	}
+}
+
+func TestValidationScopeReviewKeepsMissingSourceUnresolved(t *testing.T) {
+	rows := []validationScopeReviewRow{{
+		Step: "BP-05",
+		Application: "order_entry",
+		Status: "review-needed",
+		ApplicationOnly: []string{"sales.order_line.line_number_positive"},
+	}}
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{
+		"application:order_entry",
+		"semantic-validation:sales.order_line.line_number_positive",
+	}) {
+		t.Fatalf("不在のSourceを推測で補完しました: %+v", rows[0])
+	}
+	if len(rows[0].SourceEvidence) != 0 || rows[0].Status != "review-needed" {
+		t.Fatalf("出典が無いときに根拠を作りました: %+v", rows[0])
 	}
 }
