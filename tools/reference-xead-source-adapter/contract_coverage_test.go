@@ -101,6 +101,14 @@ func TestPublicEvidenceVocabularyMatchesSourceAdapterAndContract(t *testing.T) {
 					)
 				}
 			}
+			if mapping.Extension != "" && !rmtevidence.IsPublicToken(mapping.Extension) {
+				t.Fatalf("%s/%s extension %q is not a public token", format, kind, mapping.Extension)
+			}
+			for _, limit := range mapping.AuthorityLimits {
+				if !rmtevidence.IsPublicToken(limit) {
+					t.Fatalf("%s/%s authority limit %q is not a public token", format, kind, limit)
+				}
+			}
 		}
 
 		for kind := range known {
