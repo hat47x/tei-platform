@@ -51,6 +51,10 @@ Shared Acceptanceの入力が無い場合も実行できます。その場合は
 
 最後の状態も仕様の完全性を証明しません。新しいSourceや別の観点を調べれば、追加の問題が見つかる可能性があります。
 
+review packetの`evidence`には、入力側がすでに持っていたSource traceを残します。Knowledge Contextからはsubject、workspace相対source、artifact fingerprint、roleを引き継ぎます。Shared Acceptanceのcandidate EvidenceにSourceがある場合も、subjectとsource fingerprintを保持します。
+
+この`evidence`は新しい根拠を生成するfieldではありません。findingを確認した人やAIが、もう一度Repository全体を検索せず元Sourceへ戻るための導線です。同じsubject・source・fingerprint・roleが重複して届いた場合だけ、完全一致する行を一件へ正規化します。fingerprintが入力に無ければ、集約tool側で推測して補いません。
+
 findingの`class`は、現在次を使います。
 
 - `ambiguity`: Knowledge Contextやcross-view側に未解決事項がある
@@ -68,6 +72,7 @@ findingの`class`は、現在次を使います。
 - Knowledge Contextの`unresolved`を自動解決する
 - Business Procedure checkerのdiagnosticを別の業務規則へ読み替える
 - findingが無いことから仕様の完全性を推論する
+- Source pathだけからfingerprintやAuthorityを補完する
 - Review結果をAcceptanceやwrite authorityへ昇格する
 - 不足した入力を「問題なし」のEvidenceとして扱う
 
