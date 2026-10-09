@@ -121,6 +121,7 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 	actions := map[string]*CrossViewActionObservation{}
 	taskCount := 0
 	taskFunctionIOCount := 0
+	taskFunctionIONoTargetCount := 0
 	ioTableCount := 0
 
 	for _, ref := range nodes {
@@ -145,6 +146,9 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 			}
 		case "TaskFunctionIO":
 			taskFunctionIOCount++
+			if ioID, ok := exactAttribute(ref.node, "IOID"); ok && strings.TrimSpace(ioID) == "0" {
+				taskFunctionIONoTargetCount++
+			}
 			if action := actions[ref.actionToken]; action != nil {
 				action.FunctionIOCount++
 				action.ManualOrExternalCandidate = false
@@ -181,6 +185,7 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 		DerivationPolicyFingerprint: crossViewDerivationPolicyFingerprint(),
 		TaskCount:                   taskCount,
 		TaskFunctionIOCount:         taskFunctionIOCount,
+		TaskFunctionIONoTargetCount: taskFunctionIONoTargetCount,
 		IOTableCount:                ioTableCount,
 		AuthorityLimits: []string{
 			"cross-view-projection-is-not-canonical-authority",
@@ -271,7 +276,6 @@ func BuildCrossViewProjection(doc Document, mappingContractFingerprint string) (
 				continue
 			}
 			if ioID == "0" {
-				projection.TaskFunctionIONoTargetCount++
 				continue
 			}
 			targets := targetsByFunction[function.token][ioID]
