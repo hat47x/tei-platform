@@ -171,6 +171,68 @@ func TestCheckKnowledgeDisclosureFingerprint(t *testing.T) {
 	}
 }
 
+func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
+	root := testRepositoryRoot(t)
+	ctx, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx.DataDesign == nil {
+		t.Fatal("Data Design Context is missing")
+	}
+	if ctx.DataDesign.ProjectionRevision != "tei.knowledge.data-design/v6" {
+		t.Fatalf("data design projection revision=%q", ctx.DataDesign.ProjectionRevision)
+	}
+	want := []string{
+		"resolve-current-semantic-data-and-source-evidence-before-design-change",
+		"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+		"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
+		"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
+		"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
+		"distinguish-functional-dependency-from-composite-domain-constraint",
+		"treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
+		"preserve-unresolved-when-required-business-evidence-is-missing",
+		"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
+	}
+	if !reflect.DeepEqual(ctx.DataDesign.DesignReviewProtocol, want) {
+		t.Fatalf("data design review protocol drifted:\n got=%+v\nwant=%+v", ctx.DataDesign.DesignReviewProtocol, want)
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.AuthorityLimits,
+		"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
+	) {
+		t.Fatalf("review protocol authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
+	}
+	for _, limit := range []string{
+		"current-data-uniqueness-is-not-functional-dependency-proof",
+		"statistical-correlation-is-not-functional-dependency",
+		"functional-dependency-direction-is-not-symmetric-by-default",
+		"discovered-functional-dependency-is-proposal-not-accepted-business-semantics",
+	} {
+		if !containsKnowledgeContextString(ctx.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("functional dependency authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
+		}
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.FunctionalDependencyEvidenceQuestions,
+		"is-the-dependency-an-accepted-business-rule-or-only-observed-in-current-data",
+	) {
+		t.Fatalf("functional dependency evidence question is missing: %+v", ctx.DataDesign.FunctionalDependencyEvidenceQuestions)
+	}
+
+	disclosure, err := buildKnowledgeDisclosure(ctx, "data-design")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disclosure.DataDesign == nil || !reflect.DeepEqual(disclosure.DataDesign.DesignReviewProtocol, want) {
+		t.Fatalf("data-design disclosure lost review protocol: %+v", disclosure.DataDesign)
+	}
+}
+
 func TestCheckDataDesignFingerprint(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(

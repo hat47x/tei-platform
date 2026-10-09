@@ -324,6 +324,34 @@ similarity  != applicability
 
 最終的にはShared Acceptance Boundaryを通してauthoritative sourceへ戻します。
 
+### AIがData設計を変更するときの入口
+
+Data、Relation、Validation、Persistence、record系Patternに関わる変更をAIが検討するときは、設計資料を自由検索するだけでなく、対象DataのKnowledge Contextを先に取得します。
+
+```text
+tei knowledge-context
+  -workspace <workspace>
+  -subject-kind semantic-data
+  -subject-id <data-id>
+  -disclose data-design
+```
+
+`data-design`には、現在のData / Relation / Constraint / Persistenceの対応関係だけでなく、識別子、候補キー、関数従属性、複合的な値制約、履歴・有効期間について確認すべき問いと、誤って意味を確定しないための制約が含まれます。
+
+さらに、`designReviewProtocol`が設計レビューの順序を機械可読な形で返します。AIは少なくとも、次の順序を崩しません。
+
+1. 対象Dataと、その根拠となる現在のSource / Evidenceを特定する。
+2. 業務上の同一性を、Databaseの主キー、画面やRuntimeのIDから分離する。
+3. 識別子と候補キーについて、重複不可の範囲、時点・期間、同値性の扱いをEvidenceから確認する。
+4. surrogate IDを採用する場合も、業務上必要な一意性を消さない。
+5. 関数従属性は業務上の意味・規約として確認し、現在のデータでたまたま一意であることや統計的な相関から確定しない。
+6. 関数従属性と、単なる複合的な値制約を分ける。
+7. Relation key、局所的な一意制約、Persistenceの主キー・UNIQUEを、業務上の識別子や関数従属性へ自動昇格しない。
+8. 根拠が足りなければ`unresolved`を残す。
+9. 導出した識別子・従属性候補はProposalとして扱い、Shared Acceptanceを経ずにaccepted meaningへ変えない。
+
+この手順自体もCanonicalな業務意味ではありません。現在のKnowledgeから導いた設計支援の手順であり、`authorityLimits`でもその境界を明示します。Knowledge Contextのfingerprintが変わった場合は、古い文脈をそのまま再利用せず、現在のData Design Contextを取り直します。
+
 ## 10. 一つの業務例を縦に追う
 
 受注登録から出荷準備までを簡略化すると、三視点は次のように重なります。

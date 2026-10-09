@@ -68,6 +68,23 @@ reload / conformance
 
 AI Builderが高い自律性を持っていても、Canonical authorityを暗黙には得ない。
 
+AI Builderへ渡す理解用Contextは、Repository断片の単純な列挙に限定しない。対象subjectについて、現在のSource / Evidence、未解決事項、authority limit、設計判断に必要な確認順序を、用途別のderived Projectionとしてまとめてよい。
+
+Data設計では、`tei knowledge-context ... -disclose data-design` がこの境界を担う。識別子、候補キー、関数従属性等について、PersistenceやUIの構造から業務意味を推測せず、根拠が不足する場合は`unresolved`を保持する。投影が返すreview protocolや設計候補はAIへの作業指針であって、Canonical authorityやAcceptanceそのものではない。
+
+```text
+derived review protocol
+  -> AI Builderの確認順序
+
+derived candidate
+  -> Proposal / review input
+
+review protocol / candidate
+  != accepted business meaning
+  != write authority
+```
+
+
 #### Operational Plane
 
 AI Business Actorが受入済みの業務知識に従って仕事をするときは、次の経路を基本とする。
