@@ -9,6 +9,8 @@
   "limits": {
     "maxSteps": 100000,
     "maxCollection": 10000,
+    "maxInputNodes": 200000,
+    "maxInputBytes": 16777216,
     "maxOutputBytes": 8388608,
     "maxNestingDepth": 96
   },
