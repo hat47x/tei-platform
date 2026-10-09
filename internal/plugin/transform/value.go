@@ -56,7 +56,7 @@ func Object(fields ...Field) (Value, error) {
 			return Value{}, fmt.Errorf("object field %q is declared more than once", field.Name)
 		}
 		seen[field.Name] = struct{}{}
-		out.Object[i] = Field{Name: field.Name, Value: field.Value}
+		out.Object[i] = Field{Name: field.Name, Value: field.Value.Clone()}
 	}
 	return out, nil
 }
@@ -81,7 +81,7 @@ func (v Value) Field(name string) (Value, bool) {
 	}
 	for _, field := range v.Object {
 		if field.Name == name {
-			return field.Value, true
+			return field.Value.Clone(), true
 		}
 	}
 	return Value{}, false
@@ -91,11 +91,10 @@ func (v Value) ReplaceField(name string, replacement Value) (Value, bool, error)
 	if v.Kind != ValueObject {
 		return Value{}, false, fmt.Errorf("replace-field requires object, got %s", v.Kind)
 	}
-	out := v
-	out.Object = append([]Field(nil), v.Object...)
+	out := v.Clone()
 	for i := range out.Object {
 		if out.Object[i].Name == name {
-			out.Object[i].Value = replacement
+			out.Object[i].Value = replacement.Clone()
 			return out, true, nil
 		}
 	}
@@ -111,7 +110,7 @@ func (v Value) OmitField(name string) (Value, error) {
 		if field.Name == name {
 			continue
 		}
-		out.Object = append(out.Object, field)
+		out.Object = append(out.Object, Field{Name: field.Name, Value: field.Value.Clone()})
 	}
 	return out, nil
 }
