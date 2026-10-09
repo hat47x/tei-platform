@@ -1,25 +1,6 @@
 package transform
 
-import (
-	"encoding/json"
-
-	"tei/internal/core"
-)
-
-// SourceValue is the Runtime Engine's typed input projection for a validated,
-// normalized transform Source. Normalization is part of the engine contract,
-// not ambient builder state.
-func SourceValue(source Source) (Value, error) {
-	normalized, err := NormalizeSource(source)
-	if err != nil {
-		return Value{}, err
-	}
-	raw, err := json.Marshal(normalized)
-	if err != nil {
-		return Value{}, err
-	}
-	return ParseJSON(raw)
-}
+import "tei/internal/core"
 
 // TransformSourceRealizerV1 is the smallest meta-builder used for SB-3.
 // It does not interpret filesystem paths or invoke another tool. Given the
