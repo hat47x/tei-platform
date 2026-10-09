@@ -11,12 +11,12 @@ import (
 // validationScopeReviewRow は、Application 全体の評価宣言と業務手順の明示参照を
 // 比較するための読み取り専用の表示情報である。集合の差は不整合の証拠ではない。
 type validationScopeReviewRow struct {
-	Step              string   `json:"step"`
-	Application       string   `json:"applicationContext,omitempty"`
-	Status            string   `json:"status"`
-	ApplicationOnly   []string `json:"applicationOnly,omitempty"`
-	ProcedureOnly     []string `json:"procedureOnly,omitempty"`
-	Reason            string   `json:"reason"`
+	Step            string   `json:"step"`
+	Application     string   `json:"applicationContext,omitempty"`
+	Status          string   `json:"status"`
+	ApplicationOnly []string `json:"applicationOnly,omitempty"`
+	ProcedureOnly   []string `json:"procedureOnly,omitempty"`
+	Reason          string   `json:"reason"`
 }
 
 // compareValidationScopes は業務手順の validation-support に限って比較する。
