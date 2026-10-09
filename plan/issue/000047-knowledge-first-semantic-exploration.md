@@ -803,6 +803,12 @@ Builder Review Planも、Data Design candidateが存在する場合だけ`review
 
 このpacketはfirst-classなbusiness occurrence identifier、candidate key、functional dependencyを新設しない。current Data Design contractでは、それらをauthoritativeにauthorする契約が未確定であるため、packetの`firstClassAuthoringContractStatus`は`unresolved`とする。business Evidenceを解決した後も、authoring contractが定まるまではcandidateをCanonical meaningへ昇格しない。Shared Acceptanceへ進むのは、authoritative changeとして表現できる契約が存在した後である。
 
+first-class化の経路としてはCore追加だけでなくSemantic Extensionも候補になる。既存のSemantic Extension Referenceは、Core subjectへConstraintを後付けし、Source、version、namespace authority、Evaluatorを分離できる。この性質はData Designの拡張にも適している。一方、current v0の`ExtensionConstraint`が保持するのはID、subject、validator reference、任意のEvaluator Interfaceまでである。business identity candidateの複合componentとscope、またはfunctional dependency candidateのdeterminant、dependent occurrence、scopeをlosslessにauthorする契約はまだ無い。Reference descriptor自体もproduction DSLやCanonical authoring contractではない。
+
+このためpacketには、`firstClassAuthoringContractReasons`を追加する。Coreに対象概念のfirst-class authoring contractが無いこと、CoreとSemantic Extensionのどちらへ昇格するか未選定であること、Semantic Extension v0がReference専用であること、current constraint形状ではcandidateをlosslessに表現できないこと、authoritative declaration sourceが未選定であること、Semantic Extensionを採る場合のnamespace authorityが未選定であることを別々に示す。
+
+first-class化の判断では、少なくともcandidate shapeとscopeをlosslessに表現できること、authoritative Sourceへ戻れること、unknown / conflictをfail closedで保持できること、Tool / AIがsubjectから発見できること、Evaluator実装と意味宣言を分離できることを必要条件とする。標準namespaceやCoreへの昇格は、一つのData Design caseだけでは決めない。独立した第二Referenceでも同じ意味契約が必要かを確認し、Semantic Extensionとして局所的に保つべき意味とCoreで共有すべき意味を分ける。
+
 ### 現在のEvidence境界 — 2026-10-09
 
 Data Design Context、Knowledge Qualification、selective Disclosure、qualificationからexplicit-reference Proposalへ接続するReference実装は、PR #960までの変更としてmainへ反映されている。その後もProjection revision、candidate fingerprint、Evidence requirement fingerprint、SQL Realization / runtime identityのnegative pressureまでmain側で拡張された。
@@ -815,7 +821,7 @@ Data Design Context、Knowledge Qualification、selective Disclosure、qualifica
 | --- | --- |
 | 実装・Referenceがmainに存在し、再検証待ち | Data Design Context、scoped uniqueness、business identity / FD candidate、composite domain / temporal unresolved、Source Evidence、Persistence / Target / runtime identityのnegative boundary、Data Design / Disclosure fingerprint guard、Knowledge Qualification、selective Disclosure、explicit-reference Proposal、Shared Acceptance handoff、AI Builder Review Plan / Handoff / qualified Disclosure |
 | 進行中 | Data Design candidateをstable fingerprintとEvidence requirement contractでreviewする境界。別laneでは仕様review packetもPR #1061で進行中 |
-| なお本質的な未解決が残る | first-classなbusiness occurrence identifier / candidate key / functional dependencyをいつCore contractへ上げるかのEvidence、Derived Experience Knowledgeの検証済み候補をExecution / Observation / revisionへ戻す経路、routing / learned rankingを交換・削除してもCanonical meaningが変わらないことの実証 |
+| なお本質的な未解決が残る | first-classなbusiness occurrence identifier / candidate key / functional dependencyをCoreまたはSemantic Extensionのどちらへauthoritativeに昇格するかを判断するEvidenceとlossless contract、Derived Experience Knowledgeの検証済み候補をExecution / Observation / revisionへ戻す経路、routing / learned rankingを交換・削除してもCanonical meaningが変わらないことの実証 |
 
 この区別により、「実装済みだがqualification未取得」と「そもそも意味契約が未確定」を混同しない。
 
