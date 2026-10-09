@@ -10,32 +10,8 @@ import (
 	"strings"
 )
 
-var sha256Digest = regexp.MustCompile(`^sha256:[0-9a-f]{64}// Package runtimepackaging is a read-only reference for deriving the minimum
-// runtime dependency closure from already-resolved TEI plugin bindings.
-// It does not resolve providers, grant permissions or produce binaries.
-package runtimepackaging
-
-import (
-	"fmt"
-	"regexp"
-	"sort"
-	"strings"
-)
-
-)
-var buildPlanFingerprint = regexp.MustCompile(`^[0-9a-f]{64}// Package runtimepackaging is a read-only reference for deriving the minimum
-// runtime dependency closure from already-resolved TEI plugin bindings.
-// It does not resolve providers, grant permissions or produce binaries.
-package runtimepackaging
-
-import (
-	"fmt"
-	"regexp"
-	"sort"
-	"strings"
-)
-
-)
+var sha256Digest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+var buildPlanFingerprint = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // Unit describes one separately deployed and updated execution boundary.
 // AvailableImports is supplied by the trusted target/host profile, not by an
