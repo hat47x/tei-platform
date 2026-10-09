@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"tei/internal/core"
 	"tei/internal/plugin"
@@ -24,14 +25,26 @@ const (
 )
 
 
+type transformBootstrapExecutionKind string
+
+const (
+	transformBootstrapExecutionNativeSeed  transformBootstrapExecutionKind = "native-seed-executable"
+	transformBootstrapExecutionInterpreted transformBootstrapExecutionKind = "interpreted-transform"
+)
+
+type transformBootstrapStageExecution struct {
+	Kind          transformBootstrapExecutionKind  `json:"kind"`
+	Target        string                           `json:"target"`
+	RuntimeEngine *pruntime.RuntimeEngineIdentity `json:"runtimeEngine,omitempty"`
+}
+
 type transformBootstrapStagePlan struct {
-	Stage               plugin.BootstrapStageName     `json:"stage"`
-	Builder             plugin.BuilderIdentity        `json:"builder"`
-	SourceClosureDigest string                        `json:"sourceClosureDigest"`
-	SourceFingerprint   string                        `json:"sourceFingerprint"`
-	RuntimeEngine       pruntime.RuntimeEngineIdentity `json:"runtimeEngine"`
-	Target              string                        `json:"target"`
-	Output              transform.SourceIdentity      `json:"output"`
+	Stage               plugin.BootstrapStageName       `json:"stage"`
+	Builder             plugin.BuilderIdentity          `json:"builder"`
+	SourceClosureDigest string                          `json:"sourceClosureDigest"`
+	SourceFingerprint   string                          `json:"sourceFingerprint"`
+	Execution           transformBootstrapStageExecution `json:"execution"`
+	Output              transform.SourceIdentity        `json:"output"`
 }
 
 type transformBootstrapEvidence struct {
@@ -240,32 +253,48 @@ func runTransformBootstrap(
 		ArtifactDigest:  seedFirstDigest,
 	}
 	stage1Output := builderIdentityFromTransformSource(metaSource, stage1FirstDigest)
-	buildInputFingerprint := transformBootstrapInputFingerprint(
+	buildInputFingerprint := transformBootstrapComparisonFingerprint(
 		metaSourceClosureDigest,
 		metaSourceFingerprint,
-		engineFingerprint,
-		engine.Target,
+		metaSource.Identity,
 	)
 	stage1Plan := transformBootstrapStagePlan{
 		Stage:               plugin.BootstrapStage1,
 		Builder:             seedIdentity,
 		SourceClosureDigest: metaSourceClosureDigest,
 		SourceFingerprint:   metaSourceFingerprint,
-		RuntimeEngine:       engine,
-		Target:              engine.Target,
-		Output:              metaSource.Identity,
+		Execution: transformBootstrapStageExecution{
+			Kind:   transformBootstrapExecutionNativeSeed,
+			Target: "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+		},
+		Output: metaSource.Identity,
 	}
-	stage2Plan := stage1Plan
-	stage2Plan.Stage = plugin.BootstrapStage2
-	stage2Plan.Builder = stage1Output
-	stage1PlanFingerprint := transformBootstrapStagePlanFingerprint(stage1Plan)
-	stage2PlanFingerprint := transformBootstrapStagePlanFingerprint(stage2Plan)
+	stage2Plan := transformBootstrapStagePlan{
+		Stage:               plugin.BootstrapStage2,
+		Builder:             stage1Output,
+		SourceClosureDigest: metaSourceClosureDigest,
+		SourceFingerprint:   metaSourceFingerprint,
+		Execution: transformBootstrapStageExecution{
+			Kind:          transformBootstrapExecutionInterpreted,
+			Target:        engine.Target,
+			RuntimeEngine: &engine,
+		},
+		Output: metaSource.Identity,
+	}
+	stage1PlanFingerprint, err := transformBootstrapStagePlanFingerprint(stage1Plan)
+	if err != nil {
+		return transformBootstrapEvidence{}, err
+	}
+	stage2PlanFingerprint, err := transformBootstrapStagePlanFingerprint(stage2Plan)
+	if err != nil {
+		return transformBootstrapEvidence{}, err
+	}
 
 	convergenceEvidence := plugin.BootstrapConvergenceEvidence{
 		FormatVersion: plugin.BootstrapConvergenceFormatVersion,
 		Stage0Seed: plugin.BootstrapSeedEvidence{
 			Builder:       seedIdentity,
-			TrustBoundary: "external-go-seed-and-deterministic-transform-runtime-engine",
+			TrustBoundary: "external-go-seed-builder-and-toolchain",
 		},
 		Stage1: plugin.BootstrapStageEvidence{
 			Stage:                 plugin.BootstrapStage1,
@@ -479,16 +508,74 @@ func transformValueFromJSON(value any) (transform.Value, error) {
 	return transform.ParseJSON(raw)
 }
 
-func transformBootstrapInputFingerprint(
-	sourceClosureDigest, sourceFingerprint, engineFingerprint, target string,
+func transformBootstrapComparisonFingerprint(
+	sourceClosureDigest, sourceFingerprint string,
+	output transform.SourceIdentity,
 ) string {
-	raw := sourceClosureDigest + "\n" + sourceFingerprint + "\n" + engineFingerprint + "\n" + target + "\n"
+	raw := strings.Join([]string{
+		"tei.bootstrap-comparison/transform-source-v1",
+		sourceClosureDigest,
+		sourceFingerprint,
+		string(output.ID),
+		output.Version,
+		output.ContractVersion,
+		"",
+	}, "\n")
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
 
-func transformBootstrapStagePlanFingerprint(plan transformBootstrapStagePlan) string {
-	raw, _ := json.Marshal(plan)
+func transformBootstrapStagePlanFingerprint(plan transformBootstrapStagePlan) (string, error) {
+	if err := validateTransformBootstrapStagePlan(plan); err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		return "", err
+	}
 	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func validateTransformBootstrapStagePlan(plan transformBootstrapStagePlan) error {
+	if err := plan.Builder.Validate(); err != nil {
+		return fmt.Errorf("%s execution builder: %w", plan.Stage, err)
+	}
+	if strings.TrimSpace(plan.Execution.Target) == "" {
+		return fmt.Errorf("%s execution target is required", plan.Stage)
+	}
+	if _, err := core.ParseCanonicalID(string(plan.Output.ID)); err != nil {
+		return fmt.Errorf("%s output builder id: %w", plan.Stage, err)
+	}
+	if !core.ValidNumericVersion(plan.Output.Version) {
+		return fmt.Errorf("%s output builder version %q must be major.minor.patch", plan.Stage, plan.Output.Version)
+	}
+	if strings.TrimSpace(plan.Output.ContractVersion) == "" {
+		return fmt.Errorf("%s output builder contract is required", plan.Stage)
+	}
+	switch plan.Stage {
+	case plugin.BootstrapStage1:
+		if plan.Execution.Kind != transformBootstrapExecutionNativeSeed {
+			return fmt.Errorf("stage1 execution must be %s", transformBootstrapExecutionNativeSeed)
+		}
+		if plan.Execution.RuntimeEngine != nil {
+			return fmt.Errorf("stage1 native seed execution must not declare a Runtime Engine")
+		}
+	case plugin.BootstrapStage2:
+		if plan.Execution.Kind != transformBootstrapExecutionInterpreted {
+			return fmt.Errorf("stage2 execution must be %s", transformBootstrapExecutionInterpreted)
+		}
+		if plan.Execution.RuntimeEngine == nil {
+			return fmt.Errorf("stage2 interpreted execution requires exact Runtime Engine identity")
+		}
+		if err := plan.Execution.RuntimeEngine.Validate(); err != nil {
+			return fmt.Errorf("stage2 Runtime Engine: %w", err)
+		}
+		if plan.Execution.Target != plan.Execution.RuntimeEngine.Target {
+			return fmt.Errorf("stage2 execution target does not match Runtime Engine target")
+		}
+	default:
+		return fmt.Errorf("unsupported bootstrap stage %q", plan.Stage)
+	}
+	return nil
 }
