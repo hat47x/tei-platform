@@ -414,6 +414,15 @@ func validateRuntimeEnvironmentPlan(plan RuntimeEnvironmentPlan) error {
 	if plan.ExecutionProfileFingerprint != plan.RuntimeCapability.ExecutionProfileFingerprint {
 		return fmt.Errorf("runtime Environment Plan execution profile differs from runtime Capability Ref")
 	}
+	profileSnapshot := ExecutionProfile{
+		RealizationTarget: plan.RuntimeCapability.RealizationTarget,
+		IsolationPolicy: plan.IsolationPolicy,
+		Permissions: append([]permission.Spec(nil), plan.Permissions...),
+		Fingerprint: plan.ExecutionProfileFingerprint,
+	}
+	if err := validateExecutionProfile(profileSnapshot); err != nil {
+		return fmt.Errorf("runtime Environment Plan Execution Profile snapshot: %w", err)
+	}
 	if !validSHA256Fingerprint(plan.ExecutionAuthorityEvidenceFingerprint) {
 		return fmt.Errorf("runtime Environment Plan Execution Authority Evidence fingerprint is invalid")
 	}
@@ -462,6 +471,27 @@ func validateRuntimeEnvironmentPlan(plan RuntimeEnvironmentPlan) error {
 	return nil
 }
 
+func verifyRuntimeEnvironmentPlan(
+	plan RuntimeEnvironmentPlan,
+	ref RuntimeCapabilityRef,
+	profile ExecutionProfile,
+	authority RuntimeEnvironmentAuthority,
+) error {
+	if err := validateRuntimeEnvironmentPlan(plan); err != nil {
+		return err
+	}
+	current, err := buildRuntimeEnvironmentPlan(ref, profile, authority)
+	if err != nil {
+		return err
+	}
+	if plan.RuntimePolicyFingerprint != current.RuntimePolicyFingerprint {
+		return fmt.Errorf(
+			"runtime Environment Plan differs from current Environment Authority",
+		)
+	}
+	return nil
+}
+
 func genericTransportCapabilityID(ref RuntimeCapabilityRef) (core.CanonicalID, error) {
 	if err := validateRuntimeCapabilityRef(ref); err != nil {
 		return "", err
@@ -500,6 +530,7 @@ type GenericInvocationProvenance struct {
 	Environment core.CanonicalID `json:"environment"`
 	RuntimeCapability RuntimeCapabilityRef `json:"runtimeCapability"`
 	RuntimePolicyFingerprint string `json:"runtimePolicyFingerprint"`
+	ExecutionAuthorityEvidenceFingerprint string `json:"executionAuthorityEvidenceFingerprint"`
 	TransportCapabilityKind string `json:"transportCapabilityKind"`
 	TransportCapabilityID core.CanonicalID `json:"transportCapabilityId"`
 	Sandboxed bool `json:"sandboxed"`
@@ -554,6 +585,7 @@ func invokeWithExistingHostBoundary(
 		Environment: plan.Environment,
 		RuntimeCapability: plan.RuntimeCapability,
 		RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
+		ExecutionAuthorityEvidenceFingerprint: plan.ExecutionAuthorityEvidenceFingerprint,
 		TransportCapabilityKind: genericResourceTransportKind,
 		TransportCapabilityID: capabilityID,
 		Sandboxed: true,
