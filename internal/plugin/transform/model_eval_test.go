@@ -552,3 +552,17 @@ func TestTransformInputValidationDiagnosticsUseDeterministicNameOrder(t *testing
 		t.Fatalf("expected deterministic first missing input, got %v", err)
 	}
 }
+
+
+func TestJSONBoundaryRejectsCyclicProgrammaticValue(t *testing.T) {
+	items := make([]transform.Value, 1)
+	value := transform.Value{Kind: transform.ValueArray, Array: items}
+	items[0] = value
+
+	if _, err := value.JSONWithinLimit(1024); err == nil {
+		t.Fatal("expected cyclic Value to exceed JSON nesting limit")
+	}
+	if _, err := value.JSON(); err == nil {
+		t.Fatal("expected cyclic Value to fail unbounded JSON encoding")
+	}
+}
