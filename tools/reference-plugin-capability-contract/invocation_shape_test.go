@@ -196,3 +196,61 @@ func TestGenericInvocationValidatesResultAfterInvoker(t *testing.T) {
 	}
 	if calls != 1 { t.Fatalf("valid request did not invoke domain implementation exactly once: %d", calls) }
 }
+
+
+func TestGenericInvocationRejectsMutatingEffectBeforeInvoker(t *testing.T) {
+	contract := sourceAdapterContract()
+	contract.InvocationEffect = "mutating"
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.mutating-pressure",
+		"mutating.reader.v1",
+	)
+	calls := 0
+	implementation := InvocationImplementation{
+		Provider:                provider,
+		RequestShape:            sourceAdapterRequestShape,
+		RequestShapeFingerprint: sourceAdapterRequestShapeFingerprint,
+		RequestShapeArtifact:    sourceAdapterRequestShapeArtifact(),
+		ResultShape:             sourceAdapterResultShape,
+		ResultShapeFingerprint:  sourceAdapterResultShapeFingerprint,
+		ResultShapeArtifact:     sourceAdapterResultShapeArtifact(),
+		PayloadCodec:            referenceJSONPayloadCodec,
+		Invoke: func(context.Context, []byte) ([]byte, error) {
+			calls++
+			return []byte("{}"), nil
+		},
+	}
+	registry, err := NewInvocationRegistry([]InvocationImplementation{implementation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(SourceAdapterRequest{
+		Format:                "xead",
+		SourceBytes:           []byte("<System FormatVersion=\"1.2\"/>"),
+		TranscriptionContract: []byte("{}"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = registry.ResolveAndInvoke(
+		context.Background(),
+		ResolveInput{
+			Scope:       ScopeAuthoringTool,
+			Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+			Contracts:   []Contract{contract},
+			Providers:   []Provider{provider},
+			Evidence: []ConformanceEvidence{
+				evidenceFor(provider, contract, "mutating-pressure-conformance"),
+			},
+		},
+		payload,
+	)
+	if err == nil || !strings.Contains(err.Error(), "invocation effect") {
+		t.Fatalf("mutating invocation was not rejected: %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("mutating implementation was invoked %d times", calls)
+	}
+}
