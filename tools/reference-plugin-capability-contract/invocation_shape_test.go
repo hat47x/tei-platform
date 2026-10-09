@@ -7,6 +7,27 @@ import (
 	"testing"
 )
 
+func TestReferenceInvocationShapesShareCanonicalIssuer(t *testing.T) {
+	shapes := []InvocationShapeArtifact{
+		sourceAdapterRequestShapeArtifact(),
+		sourceAdapterResultShapeArtifact(),
+		contractQueryRequestShapeArtifact(),
+		contractQueryResultShapeArtifact(),
+	}
+	want := shapes[0].Issuer
+	if want.ID == "" || want.Version == "" {
+		t.Fatalf("canonical issuer is incomplete: %+v", want)
+	}
+	for _, shape := range shapes {
+		if shape.Issuer != want {
+			t.Fatalf("shape %s issuer=%+v want=%+v", shape.ID, shape.Issuer, want)
+		}
+		if invocationShapeFingerprint(shape) == "" {
+			t.Fatalf("shape %s fingerprint is empty", shape.ID)
+		}
+	}
+}
+
 func TestInvocationShapeFingerprintNormalizesRequiredOrdering(t *testing.T) {
 	left := sourceAdapterRequestShapeArtifact()
 	right := sourceAdapterRequestShapeArtifact()
