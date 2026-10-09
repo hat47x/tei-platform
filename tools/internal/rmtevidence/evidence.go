@@ -37,7 +37,116 @@ type Evidence struct {
 	EvidenceFingerprint        string        `json:"evidenceFingerprint"`
 }
 
-var fingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+var fingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}package rmtevidence
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"regexp"
+	"sort"
+	"strings"
+
+	"tei/internal/sourceindex"
+)
+
+const Schema = "tei.reference.rmt-transcription-candidate-evidence/v0"
+
+type MappingStatus string
+
+const (
+	MappingMapped   MappingStatus = "mapped"
+	MappingUnmapped MappingStatus = "unmapped"
+)
+
+type Evidence struct {
+	Schema                     string        `json:"schema"`
+	SourceFormat               string        `json:"sourceFormat"`
+	SourceFormatVersion        string        `json:"sourceFormatVersion"`
+	SourceArtifactDigest       string        `json:"sourceArtifactDigest"`
+	SourceToken                string        `json:"sourceToken"`
+	SourceConstructKnown       bool          `json:"sourceConstructKnown"`
+	SourceConstruct            string        `json:"sourceConstruct,omitempty"`
+	MappingContractFingerprint string        `json:"mappingContractFingerprint"`
+	MappingStatus              MappingStatus `json:"mappingStatus"`
+	Classification             []string      `json:"classification"`
+	Extension                  string        `json:"extension,omitempty"`
+	AuthorityLimits            []string      `json:"authorityLimits"`
+	EvidenceFingerprint        string        `json:"evidenceFingerprint"`
+}
+
+)
+
+var sourceFormatVersionPattern = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)*package rmtevidence
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"regexp"
+	"sort"
+	"strings"
+
+	"tei/internal/sourceindex"
+)
+
+const Schema = "tei.reference.rmt-transcription-candidate-evidence/v0"
+
+type MappingStatus string
+
+const (
+	MappingMapped   MappingStatus = "mapped"
+	MappingUnmapped MappingStatus = "unmapped"
+)
+
+type Evidence struct {
+	Schema                     string        `json:"schema"`
+	SourceFormat               string        `json:"sourceFormat"`
+	SourceFormatVersion        string        `json:"sourceFormatVersion"`
+	SourceArtifactDigest       string        `json:"sourceArtifactDigest"`
+	SourceToken                string        `json:"sourceToken"`
+	SourceConstructKnown       bool          `json:"sourceConstructKnown"`
+	SourceConstruct            string        `json:"sourceConstruct,omitempty"`
+	MappingContractFingerprint string        `json:"mappingContractFingerprint"`
+	MappingStatus              MappingStatus `json:"mappingStatus"`
+	Classification             []string      `json:"classification"`
+	Extension                  string        `json:"extension,omitempty"`
+	AuthorityLimits            []string      `json:"authorityLimits"`
+	EvidenceFingerprint        string        `json:"evidenceFingerprint"`
+}
+
+)
+
+var standardConstructsByFormat = map[string]map[string]struct{}{
+	"xead": stringSet(
+		"System", "Subsystem", "Department", "DataType",
+		"Table", "TableField", "TableKey", "TableKeyField", "Relationship",
+		"FunctionType", "Function", "FunctionUsedByThis", "IOTable",
+		"IOPanel", "IOPanelField", "IOPanelStyle", "IOSpool", "IOSpoolStyle",
+		"Role", "Task", "TaskAction", "TaskFunctionIO", "SubjectArea",
+		"DataflowNode", "DataflowLine", "Instance",
+		"TableType", "SubsystemTable", "SubsystemRelationship", "MaintenanceLog",
+	),
+	"xeaf": stringSet(
+		"System", "Subsystem", "Table", "Function", "Script",
+		"Field", "Column", "Button", "Filter", "Refer", "Detail", "Key", "Menu",
+		"HeaderPhrase", "Phrase", "Option", "PrintFont", "BatchField",
+		"AddRowListColumn", "AddRowListButton", "MaintenanceLog",
+	),
+}
+
+var allowedClassifications = stringSet(
+	"canonical-candidate",
+	"derived-projection",
+	"native-preserved",
+	"presentation-only",
+	"provenance",
+	"realization",
+	"source-metadata",
+	"unresolved",
+)
 
 var RequiredAuthorityLimits = []string{
 	"source-observation-is-not-canonical-authority",
@@ -127,8 +236,11 @@ func normalize(value Evidence) (Evidence, error) {
 	default:
 		return value, fmt.Errorf("RMT transcription Evidence.sourceFormat %q は xead / xeaf のいずれかである必要があります", value.SourceFormat)
 	}
-	if value.SourceFormatVersion == "" {
-		return value, fmt.Errorf("RMT transcription Evidence.sourceFormatVersion が空です")
+	if !sourceFormatVersionPattern.MatchString(value.SourceFormatVersion) {
+		return value, fmt.Errorf(
+			"RMT transcription Evidence.sourceFormatVersion %q は公開Evidenceで扱える数値versionではありません",
+			value.SourceFormatVersion,
+		)
 	}
 	for _, item := range []struct {
 		name  string
@@ -153,6 +265,14 @@ func normalize(value Evidence) (Evidence, error) {
 		if value.SourceConstruct == "" {
 			return value, fmt.Errorf("known source constructにはsourceConstructが必要です")
 		}
+		known := standardConstructsByFormat[value.SourceFormat]
+		if _, ok := known[value.SourceConstruct]; !ok {
+			return value, fmt.Errorf(
+				"sourceConstruct %q はsourceFormat %sの公開可能な標準constructではありません",
+				value.SourceConstruct,
+				value.SourceFormat,
+			)
+		}
 	} else if value.SourceConstruct != "" {
 		return value, fmt.Errorf("unknown source constructの名前をRMT transcription Evidenceへ公開できません")
 	}
@@ -160,6 +280,11 @@ func normalize(value Evidence) (Evidence, error) {
 	classification, err := normalizeStrings("classification", value.Classification)
 	if err != nil {
 		return value, err
+	}
+	for _, item := range classification {
+		if _, ok := allowedClassifications[item]; !ok {
+			return value, fmt.Errorf("RMT transcription Evidence.classification %q は未対応です", item)
+		}
 	}
 	value.Classification = classification
 	limits, err := normalizeStrings("authorityLimits", append(append([]string(nil), value.AuthorityLimits...), RequiredAuthorityLimits...))
@@ -175,8 +300,13 @@ func normalize(value Evidence) (Evidence, error) {
 		if value.Extension == "" {
 			return value, fmt.Errorf("mapped EvidenceにはExtensionが必要です")
 		}
-	} else if value.Extension != "" {
-		return value, fmt.Errorf("unmapped EvidenceへExtensionを割り当てられません")
+	} else {
+		if value.Extension != "" {
+			return value, fmt.Errorf("unmapped EvidenceへExtensionを割り当てられません")
+		}
+		if len(value.Classification) != 1 || value.Classification[0] != "unresolved" {
+			return value, fmt.Errorf("unmapped Evidenceのclassificationはunresolvedだけである必要があります")
+		}
 	}
 
 	return value, nil
@@ -201,4 +331,12 @@ func normalizeStrings(name string, values []string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+func stringSet(values ...string) map[string]struct{} {
+	out := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		out[value] = struct{}{}
+	}
+	return out
 }
