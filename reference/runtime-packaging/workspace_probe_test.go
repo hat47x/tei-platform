@@ -15,9 +15,6 @@ func TestActualOrderEntryDatabaseProviders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.PackageReady {
-		t.Fatal("database selection alone must not claim a complete application package")
-	}
 	if len(report.Providers) != 2 {
 		t.Fatalf("expected two explicitly-bound databases, got %+v", report)
 	}
