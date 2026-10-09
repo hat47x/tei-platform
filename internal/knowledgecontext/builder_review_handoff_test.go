@@ -53,7 +53,9 @@ func TestBuildBuilderReviewHandoffRequiresApplicableQualificationBeforeDisclosur
 	if got.ProjectionRevision != builderReviewHandoffProjectionRevision ||
 		got.Purpose != "design-change" ||
 		got.Subject != plan.Subject ||
+		got.ReviewPlanProjectionRevision != plan.ProjectionRevision ||
 		got.ReviewPlanFingerprint != plan.Fingerprint ||
+		got.RoutingScope != plan.RoutingScope ||
 		got.Status != "qualified-for-disclosure" ||
 		got.Fingerprint == "" {
 		t.Fatalf("builder review handoff identity drifted: %+v", got)
