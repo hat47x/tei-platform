@@ -48,9 +48,12 @@ func (s *JSONDocumentStore) Commit(_ context.Context,in Intent)(string,error) {
  var cards []map[string]json.RawMessage
  if err:=json.Unmarshal(doc["cards"],&cards);err!=nil || cards==nil {return "",fmt.Errorf("%w: invalid cards: %v",ErrInvalid,err)}
  found:=false
+ seen:=map[string]bool{}
  for i:=range cards {
+  if cards[i]==nil {return "",ErrInvalid}
   var id string
-  if err:=json.Unmarshal(cards[i]["id"],&id);err!=nil {return "",ErrInvalid}
+  if err:=json.Unmarshal(cards[i]["id"],&id);err!=nil || id=="" || seen[id] {return "",ErrInvalid}
+  seen[id]=true
   if id!=payload.CardID {continue}
   if found {return "",fmt.Errorf("%w: duplicate card identity",ErrInvalid)}
   found=true
