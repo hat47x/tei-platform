@@ -11,7 +11,7 @@ import (
 	"tei/internal/subject"
 )
 
-const knowledgeDisclosureProjectionRevision = "tei.knowledge.disclosure/v1"
+const knowledgeDisclosureProjectionRevision = "tei.knowledge.disclosure/v2"
 
 var selectableDisclosureSections = []string{
 	"data-design",
@@ -35,6 +35,7 @@ type DisclosureProjection struct {
 	SemanticElement          *index.SemanticElementEntry         `json:"semanticElement,omitempty"`
 	ApplicationPattern       *index.ApplicationPatternIndexEntry `json:"applicationPattern,omitempty"`
 	DataDesign               *DataDesignContext                  `json:"dataDesign,omitempty"`
+	BuilderReviewPlan        BuilderReviewPlan                    `json:"builderReviewPlan"`
 	Outgoing                 []Edge                              `json:"outgoing,omitempty"`
 	Incoming                 []Edge                              `json:"incoming,omitempty"`
 	Unresolved               []string                            `json:"unresolved,omitempty"`
@@ -57,12 +58,18 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 		selectedSet[section] = struct{}{}
 	}
 
+	reviewPlan := ctx.BuilderReviewPlan
+	if reviewPlan.ProjectionRevision == "" {
+		reviewPlan = buildBuilderReviewPlan(ctx)
+	}
+
 	result := DisclosureProjection{
 		ProjectionRevision: knowledgeDisclosureProjectionRevision,
 		Status:             "complete",
 		Subject:            ctx.Subject,
 		AvailableSections:  append([]string(nil), available...),
 		SelectedSections:   append([]string(nil), normalized...),
+		BuilderReviewPlan:  cloneBuilderReviewPlan(reviewPlan),
 		Unresolved:         append([]string(nil), ctx.Unresolved...),
 		AuthorityLimits: append(
 			append([]string(nil), ctx.AuthorityLimits...),
