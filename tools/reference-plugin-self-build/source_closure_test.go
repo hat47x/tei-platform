@@ -269,3 +269,10 @@ func runSnapshotGit(t *testing.T, repo string, args ...string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
+
+func TestRepositoryTreeDigestAlgorithmIsExplicit(t *testing.T) {
+	if repositoryTreeDigestAlgorithm != "git-ls-tree-sha256-v1" {
+		t.Fatalf("repository tree digest algorithm: %s", repositoryTreeDigestAlgorithm)
+	}
+}
