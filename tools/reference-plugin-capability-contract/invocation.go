@@ -13,15 +13,18 @@ import (
 )
 
 const (
-	referenceJSONPayloadCodec = "application/json;profile=tei-reference-v0"
-	invocationEffectReadOnly  = "read-only"
+	referenceJSONPayloadCodec              = "application/json;profile=tei-reference-v0"
+	invocationEffectReadOnly               = "read-only"
+	invocationShapeAuthorityEvidenceSchema = "tei.reference.invocation-shape-authority-evidence/v0"
 )
 
 type InvocationShapeAuthorityEvidence struct {
-	Issuer              InvocationShapeIssuer `json:"issuer"`
-	ShapeID             string                `json:"shapeId"`
-	ShapeFingerprint    string                `json:"shapeFingerprint"`
-	EvidenceFingerprint string                `json:"evidenceFingerprint"`
+	Schema                     string                `json:"schema"`
+	Issuer                     InvocationShapeIssuer `json:"issuer"`
+	ShapeID                    string                `json:"shapeId"`
+	ShapeFingerprint           string                `json:"shapeFingerprint"`
+	AuthoritySourceFingerprint string                `json:"authoritySourceFingerprint"`
+	EvidenceFingerprint        string                `json:"evidenceFingerprint"`
 }
 
 type InvocationImplementation struct {
@@ -323,18 +326,33 @@ func normalizeInvocationShapeAuthorities(
 ) (map[string]InvocationShapeAuthorityEvidence, error) {
 	out := map[string]InvocationShapeAuthorityEvidence{}
 	for i, value := range values {
+		value.Schema = strings.TrimSpace(value.Schema)
 		value.Issuer.ID = strings.TrimSpace(value.Issuer.ID)
 		value.Issuer.Version = strings.TrimSpace(value.Issuer.Version)
 		value.ShapeID = strings.TrimSpace(value.ShapeID)
 		value.ShapeFingerprint = strings.TrimSpace(value.ShapeFingerprint)
+		value.AuthoritySourceFingerprint = strings.TrimSpace(
+			value.AuthoritySourceFingerprint,
+		)
 		value.EvidenceFingerprint = strings.TrimSpace(value.EvidenceFingerprint)
-		if value.Issuer.ID == "" || value.Issuer.Version == "" ||
+		if value.Schema != invocationShapeAuthorityEvidenceSchema ||
+			value.Issuer.ID == "" || value.Issuer.Version == "" ||
 			value.ShapeID == "" ||
 			!validInvocationShapeFingerprint(value.ShapeFingerprint) ||
+			!validInvocationShapeFingerprint(value.AuthoritySourceFingerprint) ||
 			!validInvocationShapeFingerprint(value.EvidenceFingerprint) {
 			return nil, fmt.Errorf(
 				"shape authority evidence[%d] is incomplete or invalid",
 				i,
+			)
+		}
+		if calculated := invocationShapeAuthorityEvidenceFingerprint(value);
+			calculated != value.EvidenceFingerprint {
+			return nil, fmt.Errorf(
+				"shape authority evidence[%d] fingerprint mismatch: recorded=%s calculated=%s",
+				i,
+				value.EvidenceFingerprint,
+				calculated,
 			)
 		}
 		if _, err := parseVersion(value.Issuer.Version); err != nil {
@@ -360,6 +378,13 @@ func normalizeInvocationShapeAuthorities(
 		out[key] = value
 	}
 	return out, nil
+}
+
+func invocationShapeAuthorityEvidenceFingerprint(
+	value InvocationShapeAuthorityEvidence,
+) string {
+	value.EvidenceFingerprint = ""
+	return fingerprint(value)
 }
 
 func invocationShapeAuthorityKey(
