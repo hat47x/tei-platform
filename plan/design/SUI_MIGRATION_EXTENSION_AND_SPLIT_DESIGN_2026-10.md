@@ -284,8 +284,8 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 実装に入る前に、費用の小さい順で次の三つを提案します。
 
 1. **越境試験の棚卸し。**（2026-10-09に実施済み。結果は付録A） SUIの`test_*tenant*`、`test_saas_*`を、ADR-0059のgate 5のマトリクス（14経路）へ対応付け、欠けている経路を洗い出す。コードは書かない
-2. **Disclosure Projectionの紙上評価。** `DocumentV1`の全項目について、現在の`redact / preserve / omit`の判断を表にし、一つの宣言から export、共有、AI入力が導けるかを手で確認する
-3. **`If-Match`の扱いの決定。** SUI側の小さな変更として、必須化するか、後勝ちを明示するかを決める
+2. **Disclosure Projectionの紙上評価。**（2026-10-09に実施済み。結果は付録B） `DocumentV1`の全項目について、現在の`redact / preserve / omit`の判断を表にし、一つの宣言から export、共有、AI入力が導けるかを手で確認する
+3. **`If-Match`の扱いの決定。**（選択肢と推奨は付録C。決定はSUIの保守担当者） SUI側の小さな変更として、必須化するか、後勝ちを明示するかを決める
 
 いずれもTEIのCore、Plugin契約、`CapabilityKind`を変更しません。
 
@@ -340,3 +340,68 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 4. MCPは「閉じている」が、解除条件がない。共通部品のconformanceには「credentialをtenantと文書へ束縛する」項目が要る
 
 この結果は、14経路を適合条件にするというL3の案が実在のコードに対して意味を持つことを示す。一方で、14経路のうち4経路はSUIにも機能がないため、共通のconformanceは「該当機能があれば必須」の形で書く必要がある。
+
+## 付録B. Disclosure Projectionの紙上評価
+
+- 日付: 2026-10-09
+- 方法: SUIのfrontend（`inquiry_bundle_safe_mode.ts`、`policy/safe_mode.ts`、`export/`）、backend（`llm_input_ir.py`）、`schemas.md`を読み、項目ごとの開示判断がどこに書かれているかを数えた。コードは変更していない
+- 問い: 項目ごとの`preserve / redact / omit`を一か所に宣言し、export・共有・AI入力をそこから導けるか
+
+### B.1 現状
+
+SUIの開示判断は、種類の違う三つの形で書かれています。
+
+| 形 | 場所 | 規模 | 網羅性の担保 |
+| --- | --- | --- | --- |
+| **項目表** | `inquiry_bundle_safe_mode.ts`の`*_FIELDS` | 44表・282項目。内訳は`preserve` 174、`rebuild` 54、`redact` 45、`omit` 9 | あり。`satisfies Record<keyof T, FieldPolicy>`により、型に項目が増えると`typecheck`が失敗する |
+| **実体×文脈の判定** | `SafeModePolicy.canExposeText(entity, context, safeMode)` | 実体5種（`card.text`、`island.summary`、`relation.summary`、`trace.text`、`diagnostics.detail`）。`export/`などに計27箇所の呼び出し | なし。実体の種類を足したとき、呼び出し側に判断が散る |
+| **別の軸の判定** | backend `llm_input_ir.py`の`_enforce_safe_mode`、routeの`_reject_unreviewed_*`（`textReviewed`、`titleReviewed`） | 「SafeMode」ではなく「人がレビュー済みか」という別の軸 | Python側。TS側の表と自動では突き合わせていない |
+
+もう一つ、`schemas.md`の文章にも方針が書かれています（例: `affiliations`は`omit`）。
+
+### B.2 読み取れること
+
+1. **「宣言し、網羅性を型で縛る」仕組みは、SUIですでに機能している。** 直近の修正（`affiliations`の追加で`typecheck`が失敗し、方針表に`omit`を明示した）が実例で、項目の追加時に判断を忘れられない。TEIの`Attribute`へ`disclosure`注釈を付け、「宣言のないAttributeはUnresolved」とValidationで扱う形は、この仕組みを一般化したものに当たる
+2. **ただし、この表を使うのは投影の一経路（inquiry bundleのexportとshare）だけで、他の出力は別の判定を使っている。** `narrative_export.ts`、`abstract_map_export.ts`、`agent_task_export.ts`、`context_bundle_projection.ts`は実体単位の判定で、項目表を参照しない。つまり「一つの宣言から全出力を導く」はまだ実現していない
+3. **開示は項目だけでなく文脈で変わる。** `canExposeText`は`ui / share / review-pack / diff`で結果が違い（たとえば`diff`では`trace.text`を出すが`card.text`は出さない）、現在の項目表は文脈を一つしか持たない。宣言は「項目 × 開示先（audience）」の表になる必要がある
+4. **`rebuild`は葉の方針ではなく「中へ入って再帰する」という意味に近い。** 54項目がこれに当たる。TEIの宣言では、leafの`preserve / redact / omit`と、入れ子の構造を辿る`derive`を区別した方が正確になる
+5. **SUI固有の軸がある。** 「人がレビュー済みか」（`human_reviewed`）はSafeModeと別軸で、共通部品へ入れるとSUIの語彙が流入する。共通部品は「開示先ごとの方針」までを扱い、レビュー状態は条件として外から与える形が妥当
+6. **`omit`は「無い」と区別できない。** SEI ADR-0030は、開示しないこと（`withheld`）と、存在しない・不明なこと（`unknown`）を分けます。SUIの`redact`は`[REDACTED] (len:N)`と秘匿の事実を残しますが、`omit`は項目ごと消えるため、受け手には「無い」ように見えます。共通部品では、`omit`の結果に「項目が伏せられた」ことを示す印を持たせるかを決める必要がある（SUIの現行動作は変えない）
+7. **`redact`の副作用に注意が要る。** `[REDACTED] (len:N)`は文字数を、`summarizeForSafeMode`は短いハッシュを出す。`schemas.md`の別の節は、相関に使えるため短縮ハッシュのプレースホルダを避けると書いている。両者は用途が違う可能性があるが、共通部品の`redact`の定義では、何を残すか（長さ、ハッシュ、印のみ）を契約に含める必要がある
+
+### B.3 判断
+
+- 構造から導出する利点は実在する。ただし証拠は**SUI一件**で、SEIは概念の合意（`withheld`とProjection）にとどまる。**標準化は時期尚早**で、ISSUE-000052の基準どおり、第二のApplicationで同じ形が再現するのを待つ
+- 次の一歩として、TEIのReference Workspaceにある`order_entry`などで、`disclosure`注釈を付けた場合に、項目の網羅性検査が既存のValidationの枠で書けるかを小さく試す。TEI Coreは変更しない
+- SUI側の小さな改善候補（TEI移管と独立）: 実体単位の判定（`canExposeText`）の呼び出し27箇所と項目表の関係を、どちらかが他方から導かれる形に寄せられるか
+
+## 付録C. `PUT /docs/{id}`の`If-Match`の扱い
+
+- 日付: 2026-10-09
+- 決定者: SUIの保守担当者。本付録は選択肢と推奨だけを示す
+
+### C.1 現状
+
+- `If-Match`が無い場合は後勝ち（LWW）。これは`api.md`に仕様として明記されている。指定時は`ETag`が一致したときだけ更新する
+- `If-Match: *`は更新で受理され、競合検査を迂回できる
+- `If-Match`があって文書が無い場合は409を返す
+- 同じバックエンドの他の更新経路は、すでに**必須化済み**。`inquiry_bundles`のPUT/DELETE、`document_access`の更新、model allowlistの更新は、欠落を`428 Precondition Required`で拒否する（model allowlistは「意図的な破壊的変更・移行期間なし」と記録されている）
+- frontend（`api/client.ts`）は、既存文書の保存で`If-Match`を送っている。新規作成の経路は別
+
+つまり、`PUT /docs/{id}`だけが、同じバックエンドの中で例外になっています。
+
+### C.2 選択肢
+
+| 案 | 内容 | 利点 | 費用・危険 |
+| --- | --- | --- | --- |
+| A | 現状維持（LWWを明記したまま） | 変更なし | 共有SaaSで同時編集が静かに上書きされる。TEIの`expectedRevision`比較（E1 bridge）に載せられない |
+| B | すべてのプロファイルで必須化（欠落は428、更新で`*`は拒否、作成は`If-None-Match: *`） | 他の経路と一貫する。TEIへ移す境界が単純になる | 外部クライアントやスクリプトが壊れる。新規作成経路の変更が要る。single-tenantの互換（ADR-0059 D10）を崩す |
+| **C（推奨）** | `saas-multitenant`プロファイルだけ必須化。`single-tenant`はLWWを維持し、挙動をプロファイルとして明記する。どちらも更新での`*`は拒否する案を別途検討 | 共有SaaSの安全を先に確保し、既存利用者を壊さない。ADR-0059 D10の「互換と移行を分ける」に沿う | 二つの挙動が並ぶ。プロファイル間の差を試験とapi.mdで固定する必要がある |
+
+### C.3 推奨の理由
+
+SaaSの越境境界と同じく、「共有環境でだけ必要な保証」はプロファイルで分けるのがSUIの既存の方針です。単一利用者の端末で`If-Match`を必須にしても守るものは少なく、外部クライアントを壊す費用だけが残ります。一方、共有SaaSでは、同じ文書を複数人が編集する前提のため、LWWは「静かな上書き」を許します。
+
+必須化の実装は、既存の`428 document_access_precondition_required`と同じ形状のコード（例: `document_precondition_required`）で足せる見込みです。新規作成の経路（`If-None-Match: *`）の扱いは、`inquiry_bundles`の既存契約に合わせられます。
+
+なお、これは`api.md`のAPI契約の変更であり、SUIのAGENTS.mdに従って契約・実装・関連テストを同時に更新する必要があります。長期的な設計判断にあたるため、実施する場合はADRに「価値への寄与」とともに記録することになります。
