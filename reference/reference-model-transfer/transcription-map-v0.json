@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "evidenceKind": "reference-model-transfer-transcription-map",
-  "status": "aggregate-candidate",
+  "status": "historical-aggregate-candidate",
   "benchmarkId": "xtea.conceptware.mfg-order.20160627",
   "sourceInventoryBlob": "52fd3a6b30c7658626faa2956880320319d731a2",
   "transcriptionContractBlob": "6e658b10b526a6a5b84f7e9adcf7355ecbaeb375",
@@ -10,7 +10,9 @@
     "classificationTotalsAreNonExclusive": true,
     "extensionTotalsAreExclusiveByConstructMapping": true,
     "unresolvedMeaning": "count of observed elements whose construct mapping includes the unresolved classification; not a source parse failure and not semantic rejection",
-    "authority": "candidate mapping evidence only; does not grant canonical acceptance or runtime authority"
+    "authority": "candidate mapping evidence only; does not grant canonical acceptance or runtime authority",
+    "contractBinding": "transcriptionContractBlob is the exact historical contract used for this aggregate; do not rebind this Evidence to a newer contract path or fingerprint without regeneration/revalidation",
+    "currentContractSourceProfileValidation": "NOT_RUN"
   },
   "xead": {
     "sourceArtifactSha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
@@ -608,6 +610,7 @@
     "per-node transcription accepted",
     "cross-source design/runtime reconciliation complete",
     "original runtime behavior equivalence",
-    "production Source Adapter Plugin contract"
+    "production Source Adapter Plugin contract",
+    "coverage under the current source-profile-aware transcription contract"
   ]
 }

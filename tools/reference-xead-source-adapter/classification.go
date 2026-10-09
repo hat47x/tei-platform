@@ -39,14 +39,15 @@ type PublishedClassification struct {
 type ClassificationProjection struct {
 	ContractSHA256               string                    `json:"contractSha256"`
 	Format                       SourceFormat              `json:"format"`
+	SourceFormatVersion          string                    `json:"sourceFormatVersion"`
 	Kinds                        []PublishedClassification `json:"kinds"`
 	RedactedUnknownObservedCount int                       `json:"redactedUnknownObservedCount,omitempty"`
 	AuthorityLimits              []string                  `json:"authorityLimits"`
 }
 
 func ClassifyObservedDocument(format SourceFormat, doc ObservedDocument, contractBytes []byte) ([]LocalTranscriptionCandidate, error) {
-	if format != doc.Format {
-		return nil, fmt.Errorf("observed document format %s does not match requested format %s", doc.Format, format)
+	if _, err := validateSourceProfile(format, doc, contractBytes); err != nil {
+		return nil, err
 	}
 	mappings, err := parseConstructMappings(format, contractBytes)
 	if err != nil {
@@ -82,8 +83,9 @@ func ClassifyObservedDocument(format SourceFormat, doc ObservedDocument, contrac
 }
 
 func BuildClassificationProjection(format SourceFormat, doc ObservedDocument, contractBytes []byte) (ClassificationProjection, error) {
-	if format != doc.Format {
-		return ClassificationProjection{}, fmt.Errorf("observed document format %s does not match requested format %s", doc.Format, format)
+	profile, err := validateSourceProfile(format, doc, contractBytes)
+	if err != nil {
+		return ClassificationProjection{}, err
 	}
 	mappings, err := parseConstructMappings(format, contractBytes)
 	if err != nil {
@@ -91,8 +93,9 @@ func BuildClassificationProjection(format SourceFormat, doc ObservedDocument, co
 	}
 	sum := sha256.Sum256(contractBytes)
 	out := ClassificationProjection{
-		ContractSHA256: hex.EncodeToString(sum[:]),
-		Format:         format,
+		ContractSHA256:      hex.EncodeToString(sum[:]),
+		Format:              format,
+		SourceFormatVersion: profile.FormatVersion,
 		AuthorityLimits: []string{
 			"classification-projection-is-candidate-evidence-not-semantic-acceptance",
 			"kind-level-public-projection-does-not-disclose-source-values-or-source-locators",

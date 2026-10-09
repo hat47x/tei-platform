@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "evidenceKind": "reference-model-transfer-transcription-contract",
   "status": "candidate",
   "benchmarkId": "xtea.conceptware.mfg-order.20160627",
@@ -12,6 +12,7 @@
     "no source construct may be silently dropped",
     "legacy ID, SortKey, XML position, or display order is not canonical identity",
     "source parsing does not grant canonical or runtime authority",
+    "semantic classification and coverage require an explicitly supported source format profile; source observation alone does not authorize mapping an unknown format version",
     "prose extraction is proposal or unresolved until explicitly accepted",
     "target-specific interaction is not business action meaning",
     "function-level potential CRUD is not business-action-specific CRUD",
@@ -796,5 +797,19 @@
     "original runtime equivalence",
     "permission to republish reference model content",
     "AI-reconstructed semantic graph equivalent to original accepted meaning"
-  ]
+  ],
+  "sourceProfiles": {
+    "xead": {
+      "rootKind": "System",
+      "supportedFormatVersions": [
+        "1.2"
+      ]
+    },
+    "xeaf": {
+      "rootKind": "System",
+      "supportedFormatVersions": [
+        "1.2"
+      ]
+    }
+  }
 }

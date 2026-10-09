@@ -30,11 +30,12 @@ Publication Receiptはpublic Evidenceとして扱える範囲に情報を減ら�
 
 - source artifactのSHA-256
 - source format
-- element kindごとの件数
-- attribute名ごとの件数
+- 既知の標準constructごとの件数
+- 既知constructごとのattribute出現数
+- unknown element / unknown側attributeの総数
 - exact snapshotに結び付いたlocator総数と集合fingerprint
-- source factの種類と、追跡が必要なfactだけに付与するlocator digest、authority limit
-- unresolvedの種類とlocator digest
+- source factの種類と、追跡が必要なfactだけに付与するname-independent locator token、authority limit
+- unresolvedの種類とname-independent locator token
 - receipt全体のfingerprint
 
 属性値、要素内テキスト、legacy IDの値、説明文、Script本文は含めない。全要素のlocator digest一覧も公開せず、全体は件数と集合fingerprintへ集約する。
@@ -43,7 +44,9 @@ Publication Receiptはpublic Evidenceとして扱える範囲に情報を減ら�
 
 Source Locatorは、exact source snapshot内の位置を示す。
 
-構造上のpathは、親子関係と同種の兄弟要素内でのordinalから作る。artifact SHA-256と組み合わせることで、どのsnapshotのどの位置を指していたかを区別する。
+ローカルのSource Locatorでは、親子関係と同種の兄弟要素内でのordinalから構造pathを作る。artifact SHA-256と組み合わせることで、どのsnapshotのどの位置を指していたかを区別する。
+
+public Evidenceでは、element名を含む構造pathそのものも、そのpathのhashも公開しない。public locator tokenはexact artifactとtraversal ordinalから導出し、unknownなschema名を辞書推測できる経路を作らない。
 
 legacy IDやSortKeyはローカル観測の補助情報として保持できるが、Canonical identityにはしない。
 
@@ -195,3 +198,37 @@ Publication Receipt v2 candidateでは、exact unknown element / attribute名の
 この分離により、`PublicationReceipt`を受け取った後段処理はprivate schema名へアクセスできない。詳細が必要な処理は、公開artifactではなく明示的にlocal authorityを持つObserved Documentを要求する。
 
 RMP-050 / RML-025をこの境界のEvidenceとする。
+
+## Source format profile
+
+XMLとして読めることと、転写契約の意味を適用できることを分ける。
+
+`Observe`は、未知・将来versionのsourceでもローカルEvidenceとして内容を保持できる。一方、candidate classification、classification coverage、`-local-candidates`は、転写契約の`sourceProfiles`に明示されたroot kindと`FormatVersion`へ一致したsourceだけを対象とする。
+
+現在のReference contractはXead / Xeafともroot `System`、`FormatVersion = 1.2`を対応profileとして宣言する。これはCore固定enumではなく`reference.compat.xead.source`側の契約である。別versionを扱う場合は、source schemaの互換性を確認したうえでPlugin / contract側のprofileを追加する。
+
+FormatVersion欠落、未対応version、root kind不一致、namespace付きroot lookalikeは、XML観測を破棄する理由にはしない。ただし転写mappingの適用はfail closedとする。RMP-052 / RML-027の停止線である。
+
+### Contract更新と既存Evidence
+
+`sourceProfiles`追加により`transcription-contract-v0.json`のbytes / fingerprintは変わる。既存`transcription-map-v0.json`とR0 classification coverageは、旧contract blobで実行した履歴Evidenceとして保持する。
+
+construct mappingの件数が同じでも、新contractへ自動的に付け替えない。current contractでのcoverageは、exact sourceを再実行してprofile Gateを通した後にだけ主張する。RMP-053 / RML-028でこの境界を管理する。
+
+## Malformed XML ambiguity
+
+source-faithfulであることは、不正なXMLを任意の規則で正規化することではない。
+
+Go 1.23.2の`encoding/xml`は、同じexpanded nameを持つattributeが重複していても`StartElement.Attr`へ複数件を渡す。これを`map[string]string`へそのまま格納すると、後の値が前の値を黙って上書きする。`System.FormatVersion`でも同じ現象が起こる。
+
+Source Adapterはmap化の前にduplicate expanded attribute nameを検出し、Observeをfail closedにする。first-wins / last-winsで解決しない。これは意味が未確定な`Unresolved`ではなく、source observationの入力不正である。
+
+namespaceが異なる同名attributeはexpanded nameが異なるため別attributeとして保持する。同じnamespace / local nameの重複だけをparser-invalidとする。RMP-054 / RML-029でこの境界を管理する。
+
+## Single XML document boundary
+
+`encoding/xml`はwell-formedな単一XML documentだけを受け付けるparserではなく、複数のtop-level elementやroot外CharDataもtoken streamとして返せる。
+
+Xead / Xeaf Source Adapterでは、一つのartifactを一つのsource documentとして扱う。root elementはちょうど一つ必要で、二つ目のtop-level element、root外の非空白text、root elementの無い入力はparser-invalidとして拒否する。root前後の空白は許容する。
+
+comment / processing instruction等のmarkup観測は別であり、parser-invalid構造を`Unresolved`へ丸める理由にはしない。RMP-055 / RML-030でこの境界を管理する。

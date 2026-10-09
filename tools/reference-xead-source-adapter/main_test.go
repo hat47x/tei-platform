@@ -240,3 +240,39 @@ func TestPublicLocatorDigestDoesNotHashSourceDerivedPath(t *testing.T) {
 		t.Fatal("public locator digest still hashes source-derived structural path")
 	}
 }
+
+func TestObserveRejectsDuplicateExpandedAttribute(t *testing.T) {
+	_, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" FormatVersion="9.9"/>`))
+	if err == nil || !strings.Contains(err.Error(), "duplicate attribute FormatVersion") {
+		t.Fatalf("duplicate unqualified attribute was silently normalized: %v", err)
+	}
+
+	_, err = Observe(FormatXead, []byte(`<System xmlns:x="urn:private" x:A="1" x:A="2"/>`))
+	if err == nil || !strings.Contains(err.Error(), "duplicate attribute {urn:private}A") {
+		t.Fatalf("duplicate namespaced attribute was silently normalized: %v", err)
+	}
+}
+
+func TestObserveRejectsMultipleRootsAndTextOutsideRoot(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "multiple-roots", input: `<System FormatVersion="1.2"/><System FormatVersion="1.2"/>`, want: "multiple root elements"},
+		{name: "leading-text", input: `private<System FormatVersion="1.2"/>`, want: "character data outside root"},
+		{name: "trailing-text", input: `<System FormatVersion="1.2"/>private`, want: "character data outside root"},
+		{name: "missing-root", input: `<!-- comment only -->`, want: "no root element"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Observe(FormatXead, []byte(tc.input))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ambiguous XML document was accepted: %v", err)
+			}
+		})
+	}
+
+	if _, err := Observe(FormatXead, []byte(" \n<System FormatVersion=\"1.2\"/>\n\t")); err != nil {
+		t.Fatalf("whitespace around the single root must remain valid: %v", err)
+	}
+}

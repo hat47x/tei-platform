@@ -229,7 +229,7 @@ source factの存在だけでlowering可能と判断しない。relational diagn
 
 ### R1 Source Adapter projection
 
-GitHub #950 / Draft PR #968では、source observationに加えてcandidate classificationと未解決状態のprojectionまで進めた。
+GitHub #950では、source observationに加えてcandidate classificationと未解決状態のprojectionまで進めた。旧Draft PR #968由来の実装は並行統合を経てmainへ取り込まれている。
 
 `ClassificationProjection`は、source kindごとにmappingの有無、mapped / unresolved件数、候補classification、担当Extensionを返す。mappingの存在とsemanticな確定状態は分けて扱う。
 
@@ -237,7 +237,7 @@ GitHub #950 / Draft PR #968では、source observationに加えてcandidate clas
 
 exact locator付きの`LocalTranscriptionCandidate`はローカル調査用に限定し、public Evidenceへ保存しない。
 
-R1追加後のexact-head focused testとfull repository healthは未取得である。R0のPASSをR1 headへ流用しない。
+R1以降のcurrent implementationに対するexact-head focused testとfull repository healthは未取得である。R0のPASSをcurrent headへ流用しない。
 
 ### Phase 2 exact-source cross-view accounting
 
@@ -318,4 +318,52 @@ FunctionUsedByThisは289 edgeすべてがstructurally resolveする一方、9 Fu
 
 両方を同じbranchへ先に混ぜない。exact-head Gateを先に通過したPRをmainへ統合し、後続PRはそのmainへ同期して共有JSONを機械的に統合した後、focused / full Gate Evidenceを取り直す。
 
-現時点では#968にRMP-040〜049とRML-022〜024、#964にRMP-037〜039・RMP-051とRML-019〜021・RML-026が割り当てられており、IDを再利用しない。同期時にRMP-040・RMP-050とRML-022・RML-025が衝突したため、#964側の2件をRMP-051とRML-026へ付け替えた。loss ledgerも既存IDを上書きせず、main同期時に双方の項目を保持する。
+Source Adapter / RMT転写レーンはRMP-040〜050・052〜055、RML-022〜025・027〜030を使用する。既存`internal/xeadsource` hardeningレーンはRMP-037〜039・051、RML-019〜021・026を使用する。IDを再利用せず、main同期時にも双方のEvidenceを保持する。
+
+### Source format profile Gate
+
+benchmarkはXead / Xeafとも`FormatVersion 1.2`である。従来のSource Adapterはformat labelとknown construct名を確認したが、`System.FormatVersion`とtranscription contractの互換性をGateにしていなかった。
+
+RMP-052 / RML-027として、raw observationとmapping authorityを分離する。`Observe`は未対応versionでもforensic Evidenceを保持できる。一方、classification / coverage / local candidate mappingは、contract `sourceProfiles`のroot kindとsupported FormatVersionへ一致した場合だけ実行する。
+
+`transcription-contract-v0.json`はschema v2としてXead / Xeaf `System` / `1.2`を宣言する。このversion集合はCore enumではなくSource Adapter / Plugin contract責務である。
+
+RMP-053 / RML-028として、contract更新前に作った`transcription-map-v0.json`とR0 coverageは旧blobへ固定した履歴Evidenceとして扱う。mapping件数が同一でもcurrent contractへ付け替えず、source profile Gateを含むactual再実行後にだけcurrent coverageを更新する。
+
+
+### RMT-3 bounded Acceptance Evidence
+
+RMT-2のSource Adapterがsource全体を観測できても、その結果をCanonicalへ直接writeしない。RMT-3では、一つのsource nodeを一つのsemantic candidateの根拠としてShared Acceptanceへ渡す境界を追加する。
+
+共有contractは`tools/internal/rmtevidence`の`tei.reference.rmt-transcription-candidate-evidence/v0`とする。これはPlatform全体のProposal schemaではなく、external source observationをtyped artifact Evidenceとして運ぶReference contractである。
+
+Evidenceは次を固定する。
+
+- source format / FormatVersion
+- exact source artifact digest
+- source nodeのname-independent token
+- mapping contract fingerprint
+- known standard constructかどうか
+- mapped / unmapped
+- candidate classification /担当Extension
+- authority limit
+
+source value、text、legacy ID値、exact structural locator、arbitrary unknown schema名は含めない。unknown / namespaced constructはsource名をredactし、unmappedのまま保持する。
+
+Evidence fingerprintはcontent identityであり、Source Adapter Conformance、publisher trust、human Acceptance witness、Runtime Authorityではない。external sourceのcurrent性を要求する処理では、Source AdapterがEvidenceに保存されたname-independent `SourceToken`をexact source内で再解決し、そのnodeからEvidenceを再構成してsource bytesとmapping contractのdriftを検出する。replayのために会話や一時状態へnode ordinalを別保存しない。
+
+Shared Acceptance側ではGitHub #267のtyped `EvidenceArtifact`へRMT kindを追加する。generic arbitrary JSON artifactを許可せず、`tools/internal/rmtevidence`のdecoder / canonical bytesを共用する。RMT Evidenceの添付だけでCandidateを自動生成・Acceptしない。
+
+GitHub #1008がこのwork unitを所有する。RMT側のtyped Evidence生成とreplayを本レーンで進め、Shared Acceptanceへのattach / review表示 / Decision provenanceは#267へ引き渡す。
+
+### XML ambiguity fail-closed
+
+Go `encoding/xml`がduplicate attributeをtoken化しても、Source Adapter側でmap overwriteへ正規化しない。同じexpanded nameのattribute重複はObserve時点でparser-invalidとして拒否する。
+
+RMP-054 / RML-029として、`FormatVersion`重複とnamespace-qualified duplicate attributeをadversarial caseに固定する。first/last valueの選択は行わない。
+
+### Single XML document Gate
+
+Go `encoding/xml`は複数top-level elementやroot外CharDataをtoken streamとして受理できる。Source Adapterは一つのartifactを一つのXead / Xeaf documentとして扱うため、root elementをちょうど一つに制限する。
+
+RMP-055 / RML-030として、multiple root、leading/trailing non-whitespace text、rootless inputをparser-invalidとして拒否し、root前後の空白だけを許容する。source profile判定対象とclassification対象node集合を分裂させない。

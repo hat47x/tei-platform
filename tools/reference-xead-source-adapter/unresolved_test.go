@@ -7,7 +7,7 @@ import (
 )
 
 func TestUnresolvedProjectionAggregatesSourceMappingAndSemanticUnresolved(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System><Table/><Mystery/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table/><Mystery/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestUnresolvedProjectionAggregatesSourceMappingAndSemanticUnresolved(t *tes
 }
 
 func TestUnresolvedProjectionDoesNotLeakSourceLocatorOrValues(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System ID="private-system"><Mystery Secret="private-value"/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" ID="private-system"><Mystery Secret="private-value"/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestUnresolvedProjectionRejectsFormatMismatch(t *testing.T) {
 }
 
 func TestMappingUnresolvedDoesNotClaimMappedExtension(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:ext"><Table/><x:Table/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" xmlns:x="urn:ext"><Table/><x:Table/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}

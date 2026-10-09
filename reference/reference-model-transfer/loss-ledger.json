@@ -242,6 +242,69 @@
       "risk": "alternate serialization, logs, debugging or reuse of the public artifact object can disclose local schema detail despite JSON tests passing.",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "PublicationReceipt and other public Evidence structs contain publication-approved fields only; classification/coverage use ObservedDocument or an explicitly local accounting type, and repository tests contain no dependency on hidden private fields inside public artifacts"
+    },
+    {
+      "id": "RML-027",
+      "topic": "unsupported-source-format-mapped-by-familiar-construct-names",
+      "nature": "unresolved",
+      "evidence": "Before source profile validation, classification and coverage checked the requested xead/xeaf label and known construct names but did not require System.FormatVersion to match a contract-declared supported version. The benchmark itself is FormatVersion 1.2.",
+      "risk": "unknown source-format semantics can be promoted into known transcription mappings solely because names still parse.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "transcription contract declares supported source profiles; classification/local-candidate/coverage reject missing, wrong-root, namespaced-root, and unsupported FormatVersion while raw Observe can still retain unsupported source for local forensic Evidence"
+    },
+    {
+      "id": "RML-028",
+      "topic": "derived-evidence-stale-after-transcription-contract-change",
+      "nature": "unresolved",
+      "evidence": "transcription-map-v0 and historical R0 classification Evidence bind to the prior transcription contract blob. Source profile support changes the current contract fingerprint without rerunning those historical derivations.",
+      "risk": "old aggregate counts can be misrepresented as current-contract validation, or historical provenance can be overwritten to make the artifacts appear current.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "historical artifacts retain their exact old contract fingerprint/blob; current-contract coverage is only claimed after regeneration/revalidation, and planning/docs explicitly distinguish historical mapping counts from current source-profile validation"
+    },
+    {
+      "id": "RML-029",
+      "topic": "duplicate-source-attribute-overwritten-before-evidence",
+      "nature": "unsupported",
+      "evidence": "encoding/xml exposes duplicate attributes to the caller; the prior adapter map assignment silently retained only the last value for the same expanded attribute name, including System.FormatVersion.",
+      "risk": "conflicting source bytes can be reduced to an apparently unambiguous ObservedDocument before profile validation or loss accounting.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "Observe rejects duplicate expanded attribute names before map assignment; tests cover unqualified FormatVersion duplication and duplicate namespaced attributes, and no first/last-value fallback is introduced"
+    },
+    {
+      "id": "RML-030",
+      "topic": "fingerprint-valid-rmt-artifact-treated-as-qualified-observation",
+      "nature": "unresolved",
+      "evidence": "rmtevidence content and outer EvidenceArtifact fingerprints prove deterministic content identity, not that the payload was produced by a conformant Source Adapter or replayed against the current external source. A caller can prepare a valid artifact from self-asserted fields.",
+      "risk": "integrity can be mistaken for provenance/observer authority and a self-authored mapped claim can influence review as if it were qualified observation.",
+      "owner": "ISSUE-000078 / GitHub #1008; observer/provider authority handoff to GitHub #951",
+      "stopCondition": "mandatory authority limits survive producer omission; Shared Acceptance displays observerConformance and external-source freshness as not verified; any future qualified-observer claim must bind separately to current Provider/Conformance authority and source replay Evidence"
+    },
+    {
+      "id": "RML-031",
+      "topic": "self-asserted-known-construct-in-typed-rmt-evidence",
+      "nature": "unsupported",
+      "evidence": "Before RMP-056 hardening, rmtevidence only required sourceConstructKnown=true plus a non-empty sourceConstruct. A hand-authored artifact could name a private construct, recompute its fingerprint, and pass typed decoding without Source Adapter participation.",
+      "risk": "unknown/private source vocabulary can cross the public Evidence boundary and a nonstandard construct can be presented as known even though the content fingerprint is valid.",
+      "owner": "GitHub #1008 / Draft PR #1011",
+      "stopCondition": "typed Evidence validates sourceConstruct against the standard vocabulary for its declared xead/xeaf format, validates classification against the controlled RMT vocabulary, forces unmapped Evidence to classification=unresolved, and adversarial tests reject private names, cross-format known names, free-text source versions, and contradictory unmapped classifications"
+    },
+    {
+      "id": "RML-032",
+      "topic": "reader-contract-typed-evidence-vocabulary-drift",
+      "nature": "unresolved",
+      "evidence": "Source Adapter knownElements, transcription-contract constructMappings, and rmtevidence standardConstructsByFormat/allowedClassifications are separate declarations. Before RMP-057 hardening there was no executable check that all three remained aligned.",
+      "risk": "parser support, candidate mapping, and typed Evidence acceptance can diverge after an otherwise local schema update.",
+      "owner": "GitHub #1008 / Draft PR #1011",
+      "stopCondition": "the Source Adapter test suite reads the current transcription contract and fails unless reader known constructs, mapped construct kinds, and typed Evidence public constructs have equal coverage for both source formats; every contract classification must also be supported by rmtevidence"
+    },
+    {
+      "id": "RML-033",
+      "topic": "arbitrary-prose-in-rmt-extension-or-authority-limit",
+      "nature": "unresolved",
+      "evidence": "Before RMP-058 hardening, rmtevidence accepted any non-empty Extension for mapped Evidence and arbitrary non-empty authorityLimits. Both survive canonical serialization; Extension is also shown in the Shared Acceptance review summary.",
+      "risk": "source-derived prose or arbitrary private strings can cross a public-safe typed Evidence boundary through fields that are intended to carry TEI identifiers/codes.",
+      "owner": "GitHub #1008 / Draft PR #1011",
+      "stopCondition": "Extension and authorityLimits use a bounded public token syntax, adversarial tests reject whitespace/Unicode/overlength prose-like values, and the current transcription contract is checked so every emitted Extension and authority limit satisfies the same token boundary"
     }
   ],
   "claimsNotEstablished": [
