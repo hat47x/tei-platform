@@ -173,7 +173,7 @@ func (s Source) Validate() error {
 		if err := validateExprBindings(s.Program.Assertions[i], scope); err != nil {
 			return fmt.Errorf("transform assertion %d bindings: %w", i, err)
 		}
-		if err := validateExpr(s.Program.Assertions[i], 0); err != nil {
+		if err := validateExpr(s.Program.Assertions[i], 0, s.Limits.MaxNestingDepth); err != nil {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
 		switch s.Program.Assertions[i].Op {
@@ -182,7 +182,7 @@ func (s Source) Validate() error {
 			return fmt.Errorf("transform assertion %d must use assert operation, got %s", i, s.Program.Assertions[i].Op)
 		}
 	}
-	if err := validateExpr(s.Program.Output, 0); err != nil {
+	if err := validateExpr(s.Program.Output, 0, s.Limits.MaxNestingDepth); err != nil {
 		return fmt.Errorf("transform output: %w", err)
 	}
 	if err := validateExprBindings(s.Program.Output, scope); err != nil {
@@ -191,15 +191,15 @@ func (s Source) Validate() error {
 	return nil
 }
 
-func validateExpr(expr Expr, depth int) error {
-	if depth > 128 {
-		return fmt.Errorf("transform expression nesting exceeds 128 levels")
+func validateExpr(expr Expr, depth, maxDepth int) error {
+	if depth > maxDepth {
+		return fmt.Errorf("transform expression nesting exceeds maxNestingDepth")
 	}
 	child := func(e *Expr, name string) error {
 		if e == nil {
 			return fmt.Errorf("%s expression is required", name)
 		}
-		return validateExpr(*e, depth+1)
+		return validateExpr(*e, depth+1, maxDepth)
 	}
 	switch expr.Op {
 	case OpInput:
@@ -246,7 +246,7 @@ func validateExpr(expr Expr, depth int) error {
 				return fmt.Errorf("construct-object field %q is declared more than once", field.Name)
 			}
 			seen[field.Name] = struct{}{}
-			if err := validateExpr(field.Value, depth+1); err != nil {
+			if err := validateExpr(field.Value, depth+1, maxDepth); err != nil {
 				return fmt.Errorf("construct-object field %q: %w", field.Name, err)
 			}
 		}
@@ -277,7 +277,7 @@ func validateExpr(expr Expr, depth int) error {
 			return fmt.Errorf("sort-array requires at least one key")
 		}
 		for i := range expr.Keys {
-			if err := validateExpr(expr.Keys[i], depth+1); err != nil {
+			if err := validateExpr(expr.Keys[i], depth+1, maxDepth); err != nil {
 				return fmt.Errorf("sort-array key %d: %w", i, err)
 			}
 		}
@@ -354,7 +354,7 @@ func validateExpr(expr Expr, depth int) error {
 			return fmt.Errorf("join-strings requires values")
 		}
 		for i := range expr.Values {
-			if err := validateExpr(expr.Values[i], depth+1); err != nil {
+			if err := validateExpr(expr.Values[i], depth+1, maxDepth); err != nil {
 				return fmt.Errorf("join-strings value %d: %w", i, err)
 			}
 		}
