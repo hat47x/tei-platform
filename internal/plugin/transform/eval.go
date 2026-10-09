@@ -505,21 +505,6 @@ func bytesShared(raw []byte) Value {
 	return Value{Kind: ValueBytes, Bytes: raw}
 }
 
-func objectShared(fields []Field) (Value, error) {
-	seen := map[string]struct{}{}
-	out := Value{Kind: ValueObject, Object: append([]Field(nil), fields...)}
-	for _, field := range out.Object {
-		if field.Name == "" {
-			return Value{}, fmt.Errorf("object field name is required")
-		}
-		if _, exists := seen[field.Name]; exists {
-			return Value{}, fmt.Errorf("object field %q is declared more than once", field.Name)
-		}
-		seen[field.Name] = struct{}{}
-	}
-	return out, nil
-}
-
 func fieldShared(value Value, name string) (Value, bool) {
 	if value.Kind != ValueObject {
 		return Value{}, false
