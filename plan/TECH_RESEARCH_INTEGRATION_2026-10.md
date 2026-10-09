@@ -319,6 +319,30 @@ TEIへの翻訳:
 | 2 | 画面の各操作が業務上の結果につながる | #997 / #1000 / #259 | REF-INTERACTION-01で機能・視覚・観測を別々に測れるか |
 | 3 | 実行環境を替えても、同じ意味と権限条件を保てる | #259 / #943 / #973 / #976 | REF-PORTABLE-01でexact Host/ABIを記録し、既存権限機構を再利用できるか |
 
-この順番は既存Issueの着手承認・統合手順・実装優先順位を上書きしない。特にISSUE-000075の次候補Bは、着手判断が未確定である。
+この順番は既存Issueの着手承認・統合手順・実装優先順位を上書きしない。ISSUE-000075の候補Bでは、2026-10-08に業務規則の変更が受理されている。ただし、Web画面まで含めた一周の実証や全明細への規則適用を完了したわけではない。REF-SPEC-01はこの受理をやり直す作業ではなく、受理済みの意味と別の設計視点に残る差を読み取り専用で検査する候補である。
 
 **完了の扱い:** この文書の更新は研究の計画への反映にとどまる。REFの実装、比較実験、利用者レビュー、性能測定、適合性の判定は未実施である。どの候補でも、baseline revision、Source、実行環境、期待結果、実測値、反例を残せたときに初めて対応RequirementのEvidence更新を検討する。
+
+### 9.5 REF-SPEC-01の最初の実施手順（静的確認済み／コマンド実行未確認）
+
+第一段階では、新しい仕様生成器を作らない。既存の受注ReferenceとBusiness Procedure checkerを使い、**確認できる問題と、まだ判定できない問題**を分ける。2026-10-09にリポジトリのSourceを読み取り、次の境界を確認した。以下のコマンドの実行結果や時間計測は取得していない。
+
+| 確認対象 | Source上で確認できる事実 | 実行時に確かめること |
+| --- | --- | --- |
+| 明示された規則 | 受注ProcedureのBP-05には数量の正値と行番号の一意性という二つのValidation参照がある | 現行checkerがどの参照を解決し、どの参照を未解決として返すか |
+| 反する更新要求 | Customer参照のBP-02に対する編集要求のprobeはread-only datasourceにread-writeを求める | 期待するアクセス衝突だけを検出し、更新権限を推測で作らないか |
+| 三視点間の差 | 2026-10-08に受理した行番号の正値規則はApplication側の三つ目のValidationである。一方、Business ProcedureのBP-05は二つの参照のままである | 意図した独立性か変更影響の見落としかを人が判断できるか。checkerが必ず不整合判定するとは仮定しない |
+| 古い基準版の提案 | 候補Bの保存済みcandidateは受理前のbaseModelRevisionを指す | 現行版へ黙って適用しないか。旧Reviewを現在の受理根拠に流用しないか |
+| Source上の不在 | Source検索で記述が見つからないだけでは、禁止・不存在を証明できない | 必須参照先の契約違反と未発見を区別できるか |
+
+読み取り専用の再現入口:
+
+    go run ./tools/reference-business-procedure-check
+
+    go run ./tools/reference-business-procedure-check -probe reference/business-system-design/order-entry-customer-edit-conflict.json -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
+
+既存の説明は [Business-system design Reference](../reference/business-system-design/README.md)、受理履歴は [ISSUE-000075](issue/000075-practical-scenario-mvp-demonstration.md)を参照する。過去のcandidate／preview／reviewファイルは**当時の基準版に対する証拠**であり、現在のWorldへ再受理可能という証明ではない。
+
+最初に作る読取結果は、(1) exact Source・意味identity・衝突根拠から**判定できた事項**、(2) 不在・古い前提・Procedure固有の意図など**人の判断が残る事項**、(3) 実Provider・画面・未実行のDriverなど**根拠が届かない事項**、(4) 変更を提案するか保留・追加調査するかという**人が選ぶ事項**を分ける。
+
+**停止条件:** Customer編集の衝突を既存checkerで再現できない場合、または別視点の差を示すために受理済み業務定義を勝手に書き換える必要がある場合は、実装を増やさず原因を既存Issueへ返す。成功を記録する際は、exact revision、実行環境、コマンド、診断、実行前後のSource不変を残す。今回の静的Source確認だけでは成功扱いにしない。
