@@ -165,7 +165,7 @@ write_receipt() {
   local path="$1"
   local tmp
   local git_version go_version python_version
-  local health_blob qualify_blob reference_blob
+  local health_blob qualify_blob reference_blob preflight_blob
 
   tmp="$(mktemp "${path}.tmp.XXXXXX")"
   git_version="$(git --version | tr '\n' ' ')"
@@ -178,9 +178,10 @@ write_receipt() {
   health_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/repository-health-check.sh")"
   qualify_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/qualify.sh")"
   reference_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/run.sh")"
+  preflight_blob="$(git rev-parse "$CANDIDATE_HEAD:tools/reference-tool-neutral-development/integration-preflight.sh")"
 
   {
-    printf 'format=tei-rq034-qualification-v1\n'
+    printf 'format=tei-rq034-qualification-v2\n'
     printf 'candidate-head=%s\n' "$CANDIDATE_HEAD"
     printf 'origin-main=%s\n' "$ORIGIN_MAIN"
     printf 'expected-main=%s\n' "$EXPECTED_MAIN"
@@ -193,6 +194,7 @@ write_receipt() {
     printf 'repository-health-runner-blob=%s\n' "$health_blob"
     printf 'qualify-runner-blob=%s\n' "$qualify_blob"
     printf 'reference-runner-blob=%s\n' "$reference_blob"
+    printf 'integration-preflight-runner-blob=%s\n' "$preflight_blob"
     printf 'git-version=%s\n' "$git_version"
     printf 'go-version=%s\n' "$go_version"
     printf 'python-version=%s\n' "$python_version"
