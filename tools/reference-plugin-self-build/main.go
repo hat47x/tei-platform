@@ -39,11 +39,13 @@ const (
 	packageWorkspace       = "reference/workspace"
 	packageDescriptor      = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
 	packageBuilderPackage  = "./tools/reference-plugin-package-builder"
+	packageBuilderVersion  = "1.0.0"
 	nativePluginID         = "tei.native.runtime.reference"
 	nativePluginVersion    = "1.0.0"
 	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
 	nativeImplementation   = "reference/plugin-self-build/workspace/plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
 	nativeBuilderPackage   = "./tools/reference-native-plugin-builder"
+	nativeBuilderVersion   = "1.0.0"
 )
 
 type evidence struct {
@@ -53,6 +55,8 @@ type evidence struct {
 	GoVersion                          string                         `json:"goVersion"`
 	GoBinaryDigest                     string                         `json:"goBinaryDigest"`
 	GoToolchainDigest                  string                         `json:"goToolchainDigest"`
+	ProcessSourceClosure               []goSourceMember               `json:"processSourceClosure"`
+	ProcessSourceClosureDigest         string                         `json:"processSourceClosureDigest"`
 	TransformBootstrap                  transformBootstrapEvidence     `json:"transformBootstrap"`
 	PackageBuilderFirstDigest          string                         `json:"packageBuilderFirstDigest"`
 	PackageBuilderSecondDigest         string                         `json:"packageBuilderSecondDigest"`
@@ -92,6 +96,35 @@ type evidence struct {
 	RuntimeDefinitionFingerprint       string                         `json:"runtimeDefinitionFingerprint"`
 	RuntimePluginLockFingerprint       string                         `json:"runtimePluginLockFingerprint"`
 	RuntimePluginLock                  plugin.Lock                    `json:"runtimePluginLock"`
+}
+
+type goSourceMember struct {
+	Path   string `json:"path"`
+	Digest string `json:"digest"`
+}
+
+type goListModule struct {
+	Path string
+	Dir  string
+}
+
+type goListPackage struct {
+	Dir          string
+	ImportPath   string
+	Standard     bool
+	Module       *goListModule
+	GoFiles      []string
+	CgoFiles     []string
+	CFiles       []string
+	CXXFiles     []string
+	MFiles       []string
+	HFiles       []string
+	FFiles       []string
+	SFiles       []string
+	SwigFiles    []string
+	SwigCXXFiles []string
+	SysoFiles    []string
+	EmbedFiles   []string
 }
 
 func main() {
@@ -207,6 +240,20 @@ func run(repo string) (evidence, error) {
 	if err := requireNoExternalModules(root, goPath, referencePackage, packageBuilderPackage, nativeBuilderPackage); err != nil {
 		return evidence{}, err
 	}
+	processClosureDir, err := os.MkdirTemp("", "tei-process-source-closure-*")
+	if err != nil {
+		return evidence{}, err
+	}
+	defer os.RemoveAll(processClosureDir)
+	processSourceClosure, processSourceClosureDigest, err := resolveGoPackageSourceClosure(
+		root,
+		goPath,
+		referencePackage,
+		filepath.Join(processClosureDir, "state"),
+	)
+	if err != nil {
+		return evidence{}, fmt.Errorf("resolve process Plugin Go source closure: %w", err)
+	}
 
 	packageLoaded, err := workspace.Load(filepath.Join(root, filepath.FromSlash(packageWorkspace)))
 	if err != nil {
@@ -276,26 +323,8 @@ func run(repo string) (evidence, error) {
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(packageDefinition),
-		Sources: []plugin.BuildSource{
-			{
-				Kind:    "git-tree",
-				ID:      "tei-repository",
-				Locator: "git:HEAD",
-				Digest:  treeDigest,
-			},
-			{
-				Kind:    "plugin-definition",
-				ID:      "tei-runtime-reference-definition",
-				Locator: packageDescriptor,
-				Digest:  packageDescriptorDigest,
-			},
-		},
-		Builder: plugin.BuilderIdentity{
-			ID:              core.MustCanonicalID("tei.builder.package.reference.seed"),
-			Version:         revision,
-			ContractVersion: "tei.plugin-build/v1",
-			ArtifactDigest:  packageBuilderFirstDigest,
-		},
+		Sources: packagePlanSources(packageDescriptor, packageDescriptorDigest),
+		Builder: packageBuilderIdentity(packageBuilderFirstDigest),
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
 			Entrypoint: packageDescriptor,
@@ -448,32 +477,13 @@ func run(repo string) (evidence, error) {
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      nativeSource.Plugin,
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(nativeDefinition),
-		Sources: []plugin.BuildSource{
-			{
-				Kind:    "git-tree",
-				ID:      "tei-repository",
-				Locator: "git:HEAD",
-				Digest:  treeDigest,
-			},
-			{
-				Kind:    "plugin-definition",
-				ID:      "tei-native-runtime-reference-definition",
-				Locator: nativeDescriptor,
-				Digest:  nativeDescriptorDigest,
-			},
-			{
-				Kind:    "plugin-implementation",
-				ID:      "tei-native-runtime-reference-implementation",
-				Locator: nativeImplementation,
-				Digest:  nativeImplementationDigest,
-			},
-		},
-		Builder: plugin.BuilderIdentity{
-			ID:              core.MustCanonicalID("tei.builder.native.reference.seed"),
-			Version:         revision,
-			ContractVersion: "tei.plugin-build/v1",
-			ArtifactDigest:  nativeBuilderFirstDigest,
-		},
+		Sources: nativePlanSources(
+			nativeDescriptor,
+			nativeDescriptorDigest,
+			nativeImplementation,
+			nativeImplementationDigest,
+		),
+		Builder: nativeBuilderIdentity(nativeBuilderFirstDigest),
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-native-static-response",
 			Entrypoint: nativeImplementation,
@@ -547,20 +557,12 @@ func run(repo string) (evidence, error) {
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      plugin.Identity{ID: definition.ID, Version: definition.Version},
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(definition),
-		Sources: []plugin.BuildSource{
-			{
-				Kind:    "git-tree",
-				ID:      "tei-repository",
-				Locator: "git:HEAD",
-				Digest:  treeDigest,
-			},
-			{
-				Kind:    "plugin-definition",
-				ID:      "tei-process-reference-definition",
-				Locator: referenceDescriptor,
-				Digest:  descriptorDigest,
-			},
-		},
+		Sources: processPlanSources(
+			referencePackage,
+			processSourceClosureDigest,
+			referenceDescriptor,
+			descriptorDigest,
+		),
 		Builder: plugin.BuilderIdentity{
 			ID:              core.MustCanonicalID("tei.builder.go.seed"),
 			Version:         goVersion,
@@ -783,6 +785,8 @@ func run(repo string) (evidence, error) {
 		GoVersion:                          goVersion,
 		GoBinaryDigest:                     goBinaryDigest,
 		GoToolchainDigest:                  goToolchainDigest,
+		ProcessSourceClosure:               processSourceClosure,
+		ProcessSourceClosureDigest:         processSourceClosureDigest,
 		TransformBootstrap:                  transformBootstrap,
 		PackageBuilderFirstDigest:          packageBuilderFirstDigest,
 		PackageBuilderSecondDigest:         packageBuilderSecondDigest,
@@ -939,6 +943,222 @@ func hashTrackedSourceTree(repo string) (string, error) {
 		}
 	}
 	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
+}
+
+func packageBuilderIdentity(artifactDigest string) plugin.BuilderIdentity {
+	return plugin.BuilderIdentity{
+		ID:              core.MustCanonicalID("tei.builder.package.reference.seed"),
+		Version:         packageBuilderVersion,
+		ContractVersion: "tei.plugin-build/v1",
+		ArtifactDigest:  artifactDigest,
+	}
+}
+
+func nativeBuilderIdentity(artifactDigest string) plugin.BuilderIdentity {
+	return plugin.BuilderIdentity{
+		ID:              core.MustCanonicalID("tei.builder.native.reference.seed"),
+		Version:         nativeBuilderVersion,
+		ContractVersion: "tei.plugin-build/v1",
+		ArtifactDigest:  artifactDigest,
+	}
+}
+
+func packagePlanSources(descriptor, descriptorDigest string) []plugin.BuildSource {
+	return []plugin.BuildSource{{
+		Kind:    "plugin-definition",
+		ID:      "tei-runtime-reference-definition",
+		Locator: descriptor,
+		Digest:  descriptorDigest,
+	}}
+}
+
+func nativePlanSources(
+	descriptor, descriptorDigest, implementationPath, implementationDigest string,
+) []plugin.BuildSource {
+	return []plugin.BuildSource{
+		{
+			Kind:    "plugin-definition",
+			ID:      "tei-native-runtime-reference-definition",
+			Locator: descriptor,
+			Digest:  descriptorDigest,
+		},
+		{
+			Kind:    "plugin-implementation",
+			ID:      "tei-native-runtime-reference-implementation",
+			Locator: implementationPath,
+			Digest:  implementationDigest,
+		},
+	}
+}
+
+func processPlanSources(
+	packagePath, sourceClosureDigest, descriptor, descriptorDigest string,
+) []plugin.BuildSource {
+	return []plugin.BuildSource{
+		{
+			Kind:    "go-source-closure",
+			ID:      "tei-process-reference-go",
+			Locator: packagePath,
+			Digest:  sourceClosureDigest,
+		},
+		{
+			Kind:    "plugin-definition",
+			ID:      "tei-process-reference-definition",
+			Locator: descriptor,
+			Digest:  descriptorDigest,
+		},
+	}
+}
+
+func resolveGoPackageSourceClosure(
+	repo, goPath, packagePath, stateDir string,
+) ([]goSourceMember, string, error) {
+	cmd := exec.Command(
+		goPath,
+		"list",
+		"-deps",
+		"-json",
+		"-mod=readonly",
+		packagePath,
+	)
+	cmd.Dir = repo
+	cmd.Env = buildEnvironment(os.Environ(), stateDir)
+	raw, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return nil, "", fmt.Errorf(
+				"resolve Go package source closure: %w: %s",
+				err,
+				strings.TrimSpace(string(exitErr.Stderr)),
+			)
+		}
+		return nil, "", fmt.Errorf("resolve Go package source closure: %w", err)
+	}
+
+	root, err := filepath.EvalSymlinks(repo)
+	if err != nil {
+		root = filepath.Clean(repo)
+	}
+	tracked, err := trackedSourcePaths(repo)
+	if err != nil {
+		return nil, "", err
+	}
+	paths := map[string]struct{}{"go.mod": {}}
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	for {
+		var pkg goListPackage
+		if err := decoder.Decode(&pkg); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, "", fmt.Errorf("decode Go package source closure: %w", err)
+		}
+		if pkg.Standard {
+			continue
+		}
+		if pkg.Module == nil {
+			return nil, "", fmt.Errorf("Go dependency %s has no module identity", pkg.ImportPath)
+		}
+		moduleDir, err := filepath.EvalSymlinks(pkg.Module.Dir)
+		if err != nil {
+			moduleDir = filepath.Clean(pkg.Module.Dir)
+		}
+		if moduleDir != root {
+			return nil, "", fmt.Errorf(
+				"Go package source closure contains external module %s from %s",
+				pkg.Module.Path,
+				pkg.Module.Dir,
+			)
+		}
+		for _, name := range goPackageBuildFiles(pkg) {
+			full := filepath.Join(pkg.Dir, name)
+			rel, err := filepath.Rel(repo, full)
+			if err != nil {
+				return nil, "", err
+			}
+			rel = filepath.ToSlash(rel)
+			if rel == ".." || strings.HasPrefix(rel, "../") {
+				return nil, "", fmt.Errorf("Go package source escapes repository: %s", full)
+			}
+			paths[rel] = struct{}{}
+		}
+	}
+
+	ordered := make([]string, 0, len(paths))
+	for path := range paths {
+		ordered = append(ordered, path)
+	}
+	sort.Strings(ordered)
+	members := make([]goSourceMember, 0, len(ordered))
+	for _, rel := range ordered {
+		if _, ok := tracked[rel]; !ok {
+			return nil, "", fmt.Errorf("Go package source closure member is not Git-tracked: %s", rel)
+		}
+		path := filepath.Join(repo, filepath.FromSlash(rel))
+		info, err := os.Lstat(path)
+		if err != nil {
+			return nil, "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return nil, "", fmt.Errorf("Go package source closure member is not a regular file: %s", rel)
+		}
+		digest, err := hashFile(path)
+		if err != nil {
+			return nil, "", err
+		}
+		members = append(members, goSourceMember{Path: rel, Digest: digest})
+	}
+	return members, goSourceClosureDigest(members), nil
+}
+
+func goPackageBuildFiles(pkg goListPackage) []string {
+	var out []string
+	for _, files := range [][]string{
+		pkg.GoFiles,
+		pkg.CgoFiles,
+		pkg.CFiles,
+		pkg.CXXFiles,
+		pkg.MFiles,
+		pkg.HFiles,
+		pkg.FFiles,
+		pkg.SFiles,
+		pkg.SwigFiles,
+		pkg.SwigCXXFiles,
+		pkg.SysoFiles,
+		pkg.EmbedFiles,
+	} {
+		out = append(out, files...)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func goSourceClosureDigest(members []goSourceMember) string {
+	ordered := append([]goSourceMember(nil), members...)
+	sort.Slice(ordered, func(i, j int) bool {
+		return ordered[i].Path < ordered[j].Path
+	})
+	sum := sha256.New()
+	for _, member := range ordered {
+		fmt.Fprintf(sum, "%s\x00%s\n", member.Path, member.Digest)
+	}
+	return "sha256:" + hex.EncodeToString(sum.Sum(nil))
+}
+
+func trackedSourcePaths(repo string) (map[string]struct{}, error) {
+	raw, err := gitOutputBytes(repo, "ls-files", "-z")
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]struct{}{}
+	for _, path := range strings.Split(string(raw), "\x00") {
+		if path == "" {
+			continue
+		}
+		out[filepath.ToSlash(path)] = struct{}{}
+	}
+	return out, nil
 }
 
 func requireNoExternalModules(repo, goPath string, packages ...string) error {
