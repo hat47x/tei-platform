@@ -8,6 +8,8 @@
 - `tools/reference-business-procedure-check`の出力
 - Shared AcceptanceのPreview / Decision出力
 
+入力の取り違えを避けるため、Knowledge Contextはsubject kind / id、cross-view reportはprocedure identityを必須とします。Shared Acceptanceは`tei.reference.change-preview/v0`または`tei.reference.change-decision/v0`だけを受け付けます。
+
 それぞれの判定責務は元のtoolに残します。このtoolが行うのは、未解決事項、cross-viewの差や衝突、古い基準revisionを同じreview packetへ並べることだけです。
 
 ## 使い方
@@ -73,6 +75,7 @@ findingの`class`は、現在次を使います。
 - Business Procedure checkerのdiagnosticを別の業務規則へ読み替える
 - findingが無いことから仕様の完全性を推論する
 - Source pathだけからfingerprintやAuthorityを補完する
+- 別schemaのJSONを内容の似たfieldだけでreview inputへ読み替える
 - Review結果をAcceptanceやwrite authorityへ昇格する
 - 不足した入力を「問題なし」のEvidenceとして扱う
 
