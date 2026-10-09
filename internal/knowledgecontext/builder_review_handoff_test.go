@@ -57,6 +57,7 @@ func TestBuildBuilderReviewHandoffQualifiesCurrentContextBeforeDisclosure(t *tes
 		"qualification-applicable-is-not-acceptance",
 		"qualification-applicable-is-not-write-or-runtime-authority",
 		"qualified-for-disclosure-does-not-prove-selected-knowledge-complete",
+		"qualified-for-disclosure-does-not-prove-section-local-evidence-complete",
 		"handoff-does-not-materialize-knowledge",
 		"current-disclosure-must-be-built-after-handoff",
 		"disclosure-fingerprint-not-handoff-fingerprint-governs-disclosed-content-reuse",
