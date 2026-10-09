@@ -123,7 +123,7 @@ type DataDesignPersistenceRealization struct {
 	Authority  string                            `json:"authority"`
 }
 
-const dataDesignProjectionRevision = "tei.knowledge.data-design/v5"
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v6"
 
 type DataDesignContext struct {
 	ProjectionRevision                         string                                    `json:"projectionRevision"`
@@ -152,6 +152,7 @@ type DataDesignContext struct {
 	CompositeDomainConstraintEvidenceQuestions []string                                  `json:"compositeDomainConstraintEvidenceQuestions"`
 	TemporalHistoryEvidenceQuestions           []string                                  `json:"temporalHistoryEvidenceQuestions"`
 	RelationEvidenceQuestions                  []string                                  `json:"relationEvidenceQuestions"`
+	DesignReviewProtocol                       []string                                  `json:"designReviewProtocol"`
 	AuthorityLimits                            []string                                  `json:"authorityLimits"`
 }
 
@@ -339,10 +340,21 @@ func buildDataDesignContext(
 			"what-history-or-validity-period-must-be-preserved",
 			"which-source-or-contract-owns-the-relation",
 		},
+		DesignReviewProtocol: []string{
+			"resolve-current-semantic-data-and-source-evidence-before-design-change",
+			"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+			"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
+			"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
+			"distinguish-functional-dependency-from-composite-domain-constraint",
+			"treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
+			"preserve-unresolved-when-required-business-evidence-is-missing",
+			"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
+		},
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
 			"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
 			"data-design-resolution-status-is-structural-not-business-certainty",
+			"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
 			"ambiguous-data-design-context-blocks-cache-reuse",
 			"data-design-evidence-coverage-is-not-source-freshness-proof",
 			"incomplete-data-design-evidence-blocks-complete-cache-reuse",
