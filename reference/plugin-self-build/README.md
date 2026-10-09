@@ -389,3 +389,25 @@ ReferenceではRuntime Engine Source closureとGo toolchain digestからengine i
 - BuildArtifactLock fingerprint
 
 このv2候補は#971のcurrent-main forward qualificationを置き換えません。#971はmain上のv1を先に検証するGateです。#979のbranchは、そのGateを越えるまでmainへ統合しません。
+
+
+### input validationの責務
+
+deterministic transform IRは、TEI CoreのBuild PlanやPlugin DefinitionのValidation規則を複製しません。
+
+Reference runnerはtransform executionより前に、既存のCanonical contractを通します。
+
+- Plugin Definition: Workspace load +既存Validation
+- Build Plan: `BuildPlanFingerprint`による`BuildPlan.Validate`
+- transform Source: strict parse + `Source.Validate`
+
+transform Source内のassertionは、これらを置き換えるものではありません。package固有のcross-input条件を確認します。
+
+- Plugin identityがBuild PlanとDefinitionで一致する
+- authoritative Definitionがartifact-free
+- output kindが`plugin-package`
+- Definition fingerprintがBuild Planへ正しく束縛されている
+
+したがって、Hostがdomain-specificなpackage materializerを呼ぶことなく、既存Canonical validationとgeneric transform Runtime Engineを組み合わせます。
+
+TEI-native package生成後は、manifest内の`buildPlanFingerprint`が、事前にvalidateしたexact Build Plan fingerprintと一致することも直接確認します。
