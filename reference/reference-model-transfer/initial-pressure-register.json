@@ -395,6 +395,13 @@
       "observed": "The RMT typed Evidence decoder originally accepted any non-empty sourceConstruct whenever sourceConstructKnown=true, and accepted arbitrary classification strings. A caller could therefore bypass the Source Adapter, recompute the content fingerprint, and carry a private or non-Xead/Xeaf name as a supposedly known construct.",
       "risk": "A public-safe typed artifact can reintroduce redacted source vocabulary or present an unmapped/private construct as standard evidence. Content integrity then protects a misleading self-assertion rather than constraining what the artifact is allowed to claim.",
       "teiDirection": "make the typed Evidence schema validate the public standard construct vocabulary per source format and the controlled classification vocabulary; unmapped Evidence must remain exactly unresolved. Keep this validation separate from observer Conformance, because vocabulary validity still does not prove that a qualified adapter observed the source."
+    },
+    {
+      "id": "RMP-057",
+      "topic": "source-adapter-contract-evidence-vocabulary-drift",
+      "observed": "The Source Adapter reader, transcription contract, and typed RMT Evidence schema each need a public construct/classification vocabulary. Without a cross-check, adding or renaming a construct in only one layer can make parsing, mapping, and Shared Acceptance decoding disagree while each component remains internally valid.",
+      "risk": "A newly supported source construct can be parsed but fail typed Evidence generation, or a typed Evidence construct can remain accepted after the adapter/contract no longer recognizes it. The three layers then form independent partial authorities over the same source vocabulary.",
+      "teiDirection": "keep the responsibilities separate but add executable conformance that compares Source Adapter known constructs, current transcription mappings, and typed Evidence public vocabulary for both Xead and Xeaf; also require every contract classification to be accepted by the typed Evidence vocabulary"
     }
   ]
 }
