@@ -74,3 +74,13 @@ test('issuer mismatch is rejected', () => {
   const p=clone(authentication);p.subjectLinks[0].issuer='https://other.invalid';
   assert.throws(()=>validateAuthenticationPlan(p),/issuer/);
 });
+
+test('action cannot invoke without authorization dependency', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='invoke').requires=['csrf.checked'];
+  assert.throws(()=>composeRequestPlan(p),/invocation must depend on authorization/);
+});
+test('host contracts must be unambiguous', () => {
+  const p=clone(base);p.hostContracts.push('action.identity');
+  assert.throws(()=>composeRequestPlan(p),/duplicate host contract/);
+});
