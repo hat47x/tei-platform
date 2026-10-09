@@ -25,6 +25,38 @@ type BuilderReviewHandoff struct {
 	AuthorityLimits       []string            `json:"authorityLimits"`
 }
 
+func ValidateBuilderReviewHandoff(handoff BuilderReviewHandoff) error {
+	if handoff.ProjectionRevision != builderReviewHandoffProjectionRevision {
+		return fmt.Errorf(
+			"builder review handoff projection revision %q is unsupported",
+			handoff.ProjectionRevision,
+		)
+	}
+	if handoff.Purpose != "design-change" {
+		return fmt.Errorf("builder review handoff purpose %q is unsupported", handoff.Purpose)
+	}
+	if handoff.RoutingScope != "current-knowledge-context" {
+		return fmt.Errorf(
+			"builder review handoff routing scope %q is unsupported",
+			handoff.RoutingScope,
+		)
+	}
+	if handoff.Subject.Kind == "" || handoff.Subject.ID == "" {
+		return fmt.Errorf("builder review handoff subject is incomplete")
+	}
+	if handoff.ReviewPlanProjectionRevision != builderReviewPlanProjectionRevision ||
+		handoff.ReviewPlanFingerprint == "" {
+		return fmt.Errorf("builder review handoff review-plan identity is incomplete")
+	}
+	if handoff.Fingerprint == "" {
+		return fmt.Errorf("builder review handoff fingerprint is empty")
+	}
+	if builderReviewHandoffFingerprint(handoff) != handoff.Fingerprint {
+		return fmt.Errorf("builder review handoff fingerprint does not match content")
+	}
+	return nil
+}
+
 func BuildBuilderReviewHandoff(
 	ctx Context,
 	sources sourceindex.Index,
