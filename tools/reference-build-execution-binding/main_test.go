@@ -457,3 +457,53 @@ func TestRuntimeEngineSubjectBindingDoesNotRequirePluginIdentity(t *testing.T) {
 		t.Fatal("runtime engine binding accepted an artifact member with a different implementation digest")
 	}
 }
+
+
+func TestReferenceEvidenceIsDeterministicAndKeepsAuthoritySeparated(t *testing.T) {
+	first, err := buildReferenceEvidence()
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := buildReferenceEvidence()
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstJSON, err := fingerprintJSON(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondJSON, err := fingerprintJSON(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstJSON != secondJSON {
+		t.Fatal("reference Evidence is not deterministic")
+	}
+	if first.Schema != "tei.reference.build-execution-binding/v0" {
+		t.Fatalf("unexpected Evidence schema %q", first.Schema)
+	}
+	if len(first.SharedPluginBindings) != 2 || len(first.SharedPluginBindingFingerprints) != 2 {
+		t.Fatalf("shared Plugin binding evidence: %#v", first.SharedPluginBindings)
+	}
+	if first.SharedPluginBindingFingerprints[0] == first.SharedPluginBindingFingerprints[1] {
+		t.Fatal("distinct logical Plugins share one binding fingerprint")
+	}
+	if first.MultiOutputComparison.Reproducible {
+		t.Fatal("divergent multi-output fixture was reported as reproducible")
+	}
+	if len(first.MultiOutputComparison.MissingFromSecond) == 0 ||
+		len(first.MultiOutputComparison.ExtraInSecond) == 0 ||
+		len(first.MultiOutputComparison.Changed) == 0 {
+		t.Fatalf("multi-output difference Evidence is incomplete: %#v", first.MultiOutputComparison)
+	}
+	if first.RuntimeEngineBinding.Engine.ID == "" || first.RuntimeEngineBindingFingerprint == "" {
+		t.Fatalf("Runtime Engine binding Evidence is incomplete: %#v", first.RuntimeEngineBinding)
+	}
+	for _, forbidden := range []string{"accepted", "runtime-authorized"} {
+		for _, limit := range first.AuthorityLimits {
+			if limit == forbidden {
+				t.Fatalf("Reference Evidence claims forbidden authority marker %q", limit)
+			}
+		}
+	}
+}
