@@ -74,6 +74,14 @@ go test ./reference/cross-project-extraction
 
 汎用Capability ContractのReferenceは[#951](https://github.com/hat47x/tei-platform/issues/951)で進めています。並行PR #1058のGeneric Invocationは、Source AdapterやContract Queryなど実行サービスの境界として利用し、今回の純粋生成器の必須依存にはしません。将来、外部schema取得やDB introspection等が必要になった場合だけ、そのreadをCapabilityへ分離します。
 
+## 共通化の効果測定
+
+[共通化の効果測定](sharing-economics.md)では、現在の二案件fixtureについて、抽出前後の生成処理の記述量を比較しています。
+
+現在の実装をそのまま数えると、抽出前は非空18行、共有化後は31行で、二案件だけでは約72%増えています。重複したrule宣言は4個から2個へ減りますが、共有契約の検査という固定費が上回ります。単純な行数モデルでは現在の構造の損益分岐は概ね7案件目です。
+
+この値を一般的な閾値にはしません。重要なのは、共通化候補が見つかったことと、共通化する価値があることを分けることです。変更箇所・試験・レビュー負担まで含めて利益が出なければ、案件内の小さな重複を維持することも正常な判断とします。
+
 ## この試作では分からないこと
 
 今回の接続により、案件別の版固定とBuild入力の追跡を既存TEI機構で表現できることは検証対象に入りました。一方、Node.js側の簡単な評価器はTEIの決定論的Transform実行機構とは異なり、共有生成器をTEI-native Transformとして実行したわけではありません。
