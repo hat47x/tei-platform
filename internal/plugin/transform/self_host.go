@@ -28,10 +28,9 @@ func TransformSourceRealizerV1() Source {
 		Program: Program{
 			Assertions: []Expr{
 				assertEqual(selectRequired(sourceInput, "formatVersion"), literalExpr("1")),
-				assertEnum(selectRequired(sourceInput, "profile"), ""deterministic-transform-v1""),
+				assertEnum(selectRequired(sourceInput, "profile"), "\"deterministic-transform-v1\""),
 			},
-			Output: appendBytesExpr(canonicalJSONExpr(sourceInput), "
-"),
+			Output: appendBytesExpr(canonicalJSONExpr(sourceInput), "\n"),
 		},
 	}
 }
