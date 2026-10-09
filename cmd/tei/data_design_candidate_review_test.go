@@ -40,9 +40,21 @@ func TestBuildDataDesignCandidateReviewFromReferenceWorkspace(t *testing.T) {
 		packet.Candidate.EvidenceRequirementFingerprint != candidate.EvidenceRequirementFingerprint {
 		t.Fatalf("review packet did not bind current Reference candidate: %+v", packet)
 	}
-	if packet.ReviewStatus != "evidence-required" ||
+	if packet.SourceEvidenceStatus != "complete" ||
+		packet.CandidateAmbiguityStatus != "clear" ||
+		packet.BusinessEvidenceStatus != "unresolved" ||
+		packet.ReviewStatus != "evidence-required" ||
+		packet.PromotionStatus != "blocked" ||
 		packet.FirstClassAuthoringContractStatus != "unresolved" {
-		t.Fatalf("review status=%q authoring=%q", packet.ReviewStatus, packet.FirstClassAuthoringContractStatus)
+		t.Fatalf(
+			"source=%q ambiguity=%q business=%q review=%q promotion=%q authoring=%q",
+			packet.SourceEvidenceStatus,
+			packet.CandidateAmbiguityStatus,
+			packet.BusinessEvidenceStatus,
+			packet.ReviewStatus,
+			packet.PromotionStatus,
+			packet.FirstClassAuthoringContractStatus,
+		)
 	}
 	for _, reason := range []string{
 		"current-core-has-no-first-class-business-identity-authoring-contract",
