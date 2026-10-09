@@ -35,6 +35,7 @@ human ownerは一人ですが、複数のAI session / processが同時に作業�
 - `main`へforce pushしない。並行更新でexpected head / fast-forward条件が外れた場合は、forceで突破せずremote stateを再取得してreconcileする。
 - コードを変えたときは、`main`へ統合する前に`tools/repository-health-check.sh`を通す。文書だけの変更は、リンク・正本性・状態表現・Gate / Evidence claimを壊していないかを確認する。
 - code変更を含むDraft PRは、GitHub上でmerge可能でも統合しない。**そのexact headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post stateの記録**がmerge authorityであり、focused test、static tree audit、PRのmergeable判定は代用しない。
+- qualification toolがmachine-readable receipt / integration preflightを提供するlaneでは、通常の`git merge`やPR mergeの直前にそのpreflightを通す。receiptが固定したcandidate / main / runnerと現在のGit stateが一致しない場合は統合せず、最新mainを取り込んだcandidateでqualificationから取り直す。
 - exact-head / exact-main qualification中は、そのreceiptを無効にする`main`移動を避ける。無関係な文書PRでも`main`を動かす場合はexisting laneにparkし、必要ならPRをcloseして、protected integrationが安定してから同じbranch/PRを再開する。Draftだけをmerge防止策にしない。
 - 必須PASSなしにcode-changing PRがmergeされた場合、GitHubの`merged`状態をqualificationへ読み替えない。protected candidateを動かさず、current `main` exact headのtrusted full Repository healthを取得してからforward reconciliationを再開する。
 - open PRを一括mergeしない。各PRのGate authority、exact head、main movement、並行laneを個別に確認する。
