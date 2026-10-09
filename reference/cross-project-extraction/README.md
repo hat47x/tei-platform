@@ -2,7 +2,7 @@
 
 この参照実装は、[Issue #1067](https://github.com/hat47x/tei-platform/issues/1067)の最初の検証に使うものです。二つの案件で個別に作られた小さな生成処理から、共通する検証規則だけを取り出し、元の期待結果と振る舞いが保たれるかを確かめます。
 
-**現在の状態は、合成データを中心とした段階的な試作です。** 共通契約の抽出と案件別採用はReference内で検証し、その採用・版固定・Build入力追跡をTEI既存のPlugin Lock／Build機構へ接続する試験も追加しています。一方、二つの実案件へ同じ共有Pluginを導入した実証、正式な汎用Capability Contractへの接続、実配備はまだ行っていません。
+**現在の状態は、合成データを中心とした段階的な試作です。** 共通契約の抽出と案件別採用はReference内で検証し、その採用・版固定・Build入力追跡をTEI既存のPlugin Lock／Build機構へ接続する試験も追加しています。共有生成器そのものは外部Authorityを必要とするCapabilityではなく、まず決定論的Transformとして扱う方針へ整理しました。一方、二つの実案件への導入、Transformによる実生成、実配備はまだ行っていません。
 
 ## 確かめること
 
@@ -64,18 +64,22 @@ go test ./reference/cross-project-extraction
 
 このGo試験を追加した時点では、trustedな完全checkoutでの実行結果はまだ取得していません。PR統合資格として扱うには、exact headを固定した`tools/repository-health-check.sh`の全項目PASSと、実行前後のclean状態が別途必要です。
 
-## Capability契約との境界
+## 共有生成器の実行境界
 
-共有した検証生成器を、既存の`editor-intelligence`など別のCapabilityへ便宜的に押し込めません。現行productionの`internal/plugin.CapabilityKind`は固定列挙であり、任意の新しい意味契約を追加する正本にはまだなっていません。
+[実行境界の整理](transform-boundary.md)では、現在の共有生成器を汎用Capabilityではなく、まず決定論的Transformとして扱う理由を整理しています。
 
-汎用Capability ContractのReferenceは[#951](https://github.com/hat47x/tei-platform/issues/951)で進めています。並行PR #1058では、その契約を独立したConsumerから呼び出す検証が進行中です。本ReferenceはPlugin Lock／Buildとの接続だけを先に行い、Capability契約がproductionへ収束する前に独自のCapability表現を増やしません。
+現行JS候補は、契約identity・項目名・項目の重複を検査する責務と、検証計画を組み立てる責務を一つに持っています。TEI本体へ接続するときは、前者をSemantic／Authoring側のtyped reference検証へ残し、後者だけを`internal/plugin/transform`へ移します。外部read/writeを必要としない純粋変換に、Provider ResolutionやRuntime Authorityを持ち込みません。
+
+現行Transform IRで今回の生成を表すには、複数の式から配列を組み立てる最小primitiveが不足しています。#979側へ`construct-array(values: Expr[])`相当のpressureを引き渡します。条件分岐や正規表現をTransformへ追加してJS側の意味検査を複製するのではなく、受理済みtyped inputからderived planを作る範囲へ限定します。
+
+汎用Capability ContractのReferenceは[#951](https://github.com/hat47x/tei-platform/issues/951)で進めています。並行PR #1058のGeneric Invocationは、Source AdapterやContract Queryなど実行サービスの境界として利用し、今回の純粋生成器の必須依存にはしません。将来、外部schema取得やDB introspection等が必要になった場合だけ、そのreadをCapabilityへ分離します。
 
 ## この試作では分からないこと
 
-今回の接続により、案件別の版固定とBuild入力の追跡を既存TEI機構で表現できることは検証対象に入りました。一方、Node.js側の簡単な評価器はTEI実行機構とは異なり、共有生成器を正式なCapabilityとして呼び出しているわけでもありません。
+今回の接続により、案件別の版固定とBuild入力の追跡を既存TEI機構で表現できることは検証対象に入りました。一方、Node.js側の簡単な評価器はTEIの決定論的Transform実行機構とは異なり、共有生成器をTEI-native Transformとして実行したわけではありません。
 
 また、実際の二つの案件リポジトリへ同じ共有Pluginを導入し、それぞれの所有者が独立して受理・切り戻しを行った事実はまだありません。実Provider、署名・権限、配備、Runtime AuthorityもこのReferenceだけでは確認できません。
 
-次の正の実証では、同一の意味契約を本当に共有できる二つの独立Consumerを固定し、それぞれの受入試験を保持したまま、共有Pluginの採用差分とLock更新を比較します。Capability契約については#951の既存機構へ収束させ、新しい並行正本を作りません。
+次の正の実証では、まず#979側の最小Transform表現が成立した後、JS共有生成器とTEI Transformの出力を受注・請求双方で比較します。そのうえで同一の意味契約を本当に共有できる二つの独立Consumerを固定し、それぞれの受入試験を保持したまま採用差分とLock更新を比較します。外部Authorityが必要になった場合だけ#951のCapability契約へ接続し、新しい並行正本を作りません。
 
 生成コードの単体試験を機械的に案件ごとへ複製することは目的ではありません。共通部分の契約試験は共有側へ寄せ、案件ごとの業務上の期待値と接続検証は引き続き保持します。定義量と保守負担の削減効果は、実案件の比較が可能になってから測定します。
