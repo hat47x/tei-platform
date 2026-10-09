@@ -115,3 +115,128 @@ func TestTransformSourceMaterializationIsDeterministic(t *testing.T) {
 		t.Fatal("transform Source realization must end with newline")
 	}
 }
+
+
+func TestTransformSourceRejectsUndeclaredAndShadowedBindings(t *testing.T) {
+	t.Run("undeclared input", func(t *testing.T) {
+		source := transform.TransformSourceRealizerV1()
+		source.Program.Output = transform.Expr{Op: transform.OpInput, Name: "missing"}
+		if err := source.Validate(); err == nil {
+			t.Fatal("expected undeclared input binding to fail")
+		}
+	})
+	t.Run("local shadows input", func(t *testing.T) {
+		source := transform.TransformSourceRealizerV1()
+		from := transform.Expr{Op: transform.OpInput, Name: "transformSource"}
+		body := transform.Expr{Op: transform.OpInput, Name: "transformSource"}
+		source.Program.Output = transform.Expr{
+			Op:   transform.OpMapArray,
+			From: &from,
+			Item: "transformSource",
+			Body: &body,
+		}
+		if err := source.Validate(); err == nil {
+			t.Fatal("expected local binding shadowing to fail")
+		}
+	})
+}
+
+func TestTransformSourceRejectsIgnoredExpressionFields(t *testing.T) {
+	source := transform.TransformSourceRealizerV1()
+	source.Program.Output = transform.Expr{
+		Op:     transform.OpInput,
+		Name:   "transformSource",
+		Suffix: "ignored",
+	}
+	if err := source.Validate(); err == nil {
+		t.Fatal("expected operation-irrelevant field to fail")
+	}
+}
+
+func TestTransformRejectsInputResourceBudgetOverflow(t *testing.T) {
+	definition, plan := transformPackageFixture()
+	inputs := map[string]transform.Value{
+		"buildPlan":        valueFromGoJSON(t, plan),
+		"pluginDefinition": valueFromGoJSON(t, definition),
+	}
+	tests := []struct {
+		name string
+		edit func(*transform.Source)
+	}{
+		{"nodes", func(source *transform.Source) {
+			source.Limits.MaxInputNodes = 2
+		}},
+		{"bytes", func(source *transform.Source) {
+			source.Limits.MaxInputBytes = 16
+		}},
+		{"collection", func(source *transform.Source) {
+			source.Limits.MaxCollection = 1
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := transform.PluginPackageSourceV1()
+			tt.edit(&source)
+			if _, err := transform.Evaluate(source, inputs); err == nil {
+				t.Fatal("expected input resource budget overflow")
+			}
+		})
+	}
+}
+
+func TestTransformRejectsSortWorkBeyondStepBudget(t *testing.T) {
+	source := transform.Source{
+		FormatVersion: transform.SourceFormatVersion,
+		Identity: transform.SourceIdentity{
+			ID:              core.MustCanonicalID("tei.builder.sort_budget_test"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-transform/v1",
+		},
+		Profile: transform.ProfileV1,
+		Limits: transform.Limits{
+			MaxSteps:        8,
+			MaxCollection:   16,
+			MaxInputNodes:   64,
+			MaxInputBytes:   1024,
+			MaxOutputBytes:  1024,
+			MaxNestingDepth: 16,
+		},
+		Inputs: []transform.InputSpec{{Name: "items", Kind: transform.InputArray}},
+	}
+	from := transform.Expr{Op: transform.OpInput, Name: "items"}
+	key := transform.Expr{Op: transform.OpInput, Name: "item"}
+	source.Program.Output = transform.Expr{
+		Op:   transform.OpSortArrayBy,
+		From: &from,
+		Item: "item",
+		Keys: []transform.Expr{key},
+	}
+	inputs := map[string]transform.Value{
+		"items": transform.Array(
+			transform.String("d"),
+			transform.String("c"),
+			transform.String("b"),
+			transform.String("a"),
+		),
+	}
+	if _, err := transform.Evaluate(source, inputs); err == nil {
+		t.Fatal("expected conservative sort work budget to fail")
+	}
+}
+
+func TestOrderedValueRejectsInvalidManuallyConstructedNumber(t *testing.T) {
+	if _, err := transform.Number("NaN").JSON(); err == nil {
+		t.Fatal("expected invalid JSON number to fail")
+	}
+	value, err := transform.ParseJSON([]byte("1e9999"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := value.JSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "1e9999" {
+		t.Fatalf("number lexeme changed: %s", raw)
+	}
+}
