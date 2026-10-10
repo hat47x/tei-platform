@@ -93,6 +93,21 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// Accept emits the derived Canonical World before writing its Decision
+	// output. When the two flags name the same file (even via aliases), the
+	// later Decision JSON would silently overwrite the generated World.
+	// This collision is invalid even with explicit baseline write permission.
+	if command == "accept" && *outPath != "" && *derivedOut != "" {
+		outDestination, outErr := resolveOutputDestination(*outPath)
+		derivedDestination, derivedErr := resolveOutputDestination(*derivedOut)
+		if outErr != nil || derivedErr != nil ||
+			referencePathText(outDestination) == referencePathText(derivedDestination) {
+			fmt.Fprintln(stderr, "acceptの-outと-derived-outは、同じ出力ファイルを指定できません（別名・シンボリックリンクも含みます）")
+			return 2
+		}
+	}
+
+
 	emit := func(value any) int {
 		encoded, err := encodeJSON(value)
 		if err != nil {
@@ -440,18 +455,21 @@ func isReferenceBaselineOutput(path string) bool {
 	if protected(abs) {
 		return true
 	}
-	// An existing output-file symlink is safe only when its final target
-	// can be resolved and is outside the protected Reference. The resolver
-	// below checks that target. Keep dangling/looping links fail-closed
-	// instead of rejecting every legitimate scratch output symlink.
+	resolved, err := resolveOutputDestination(path)
+	return err != nil || protected(resolved)
+}
+
+// resolveOutputDestination identifies the file an output path would write,
+// including existing file links and newly created files under linked dirs.
+// Calling EvalSymlinks on the original path spelling (before filepath.Abs)
+// preserves symlink/.. traversal. An unresolved output-file symlink is an
+// error rather than silently identifying the link's own pathname.
+func resolveOutputDestination(path string) (string, error) {
 	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
 		if _, err := filepath.EvalSymlinks(path); err != nil {
-			return true
+			return "", err
 		}
 	}
-	// Resolve the original spelling before cleaning "..". Output files and
-	// their parents may not exist yet, so resolve the nearest existing
-	// ancestor and append the remaining components.
 	missing := []string{}
 	current := path
 	for {
@@ -460,17 +478,16 @@ func isReferenceBaselineOutput(path string) bool {
 			for i := len(missing) - 1; i >= 0; i-- {
 				resolved = filepath.Join(resolved, missing[i])
 			}
-			resolvedAbs, err := filepath.Abs(resolved)
-			return err != nil || protected(resolvedAbs)
+			return filepath.Abs(resolved)
 		}
 		// Split preserves unclean parent segments, unlike filepath.Dir.
 		trimmed := strings.TrimRight(current, string(os.PathSeparator))
 		if trimmed == "" {
-			return true
+			return "", fmt.Errorf("出力先 %q を解決できません: %w", path, err)
 		}
 		parent, leaf := filepath.Split(trimmed)
 		if leaf == "" {
-			return true
+			return "", fmt.Errorf("出力先 %q を解決できません: %w", path, err)
 		}
 		missing = append(missing, leaf)
 		if parent == "" {
