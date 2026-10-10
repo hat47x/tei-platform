@@ -91,7 +91,7 @@ func TestInspectSubjectReferenceWorkspaceUsesSourceIndex(t *testing.T) {
 			t.Fatalf("inspect %v: %v", subject, err)
 		}
 		if result.Subject != subject || result.Effect != "read-only" ||
-			result.SchemaVersion != "tei.cli.inspect/v0" || result.WorldFingerprint == "" ||
+			result.SchemaVersion != "tei.operations.inspect/v0" || result.WorldFingerprint == "" ||
 			result.SourceStatus != "indexed" || len(result.Sources.References) == 0 ||
 			len(result.Sources.Artifacts) == 0 || !json.Valid(result.Canonical) {
 			t.Fatalf("invalid inspection: %+v", result)
