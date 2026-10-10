@@ -24,10 +24,16 @@ go run ./cmd/tei world -workspace examples/first-workspace
 
 ## 2. 自分のWorkspaceで最初の変更を行う
 
-以下の`cp`はUnix系シェルの例です（ほかの環境では同等のディレクトリコピーを使用）。
+以下の`cp`はUnix系シェルの例です。Windows PowerShellでは後述の`Copy-Item`を使用できます。
 
 ```sh
 cp -R examples/first-workspace /tmp/tei-first
+```
+
+Windows PowerShellでは次のようにコピーし、以後の`/tmp/tei-first`を`$env:TEMP/tei-first`に読み替えてください。
+
+```powershell
+Copy-Item -Path examples/first-workspace -Destination "$env:TEMP/tei-first" -Recurse
 ```
 
 `/tmp/tei-first/semantic/intake/request.tei`の`data Request`に、属性を一行追加します。
@@ -57,6 +63,8 @@ go run ./cmd/tei validate -workspace /tmp/tei-first
 ```
 
 `UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`のエラーと、`semantic/intake/request.tei`の定義位置が表示され、非0終了になることが期待結果です。「うまく推定して通す」ことはしません。型を`std.code`に戻してValidationが成功することを確認します。
+
+関連先を誤記した場合も確認できます。例えば同じ `data Request` に `relation parent to intake.unknown_request one` を追加すると、`UNKNOWN_SEMANTIC_RELATION_TARGET` と `parent` の定義位置が表示されるべきです。`intake.unknown_request` を実在する `intake.request` へ訂正し、再検証します。この自己関連が検証できても、永続化、選択画面、CRUDの実行が成立したことにはなりません。
 
 Applicationが参照するSemanticの名前を誤記した場合は、`UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE`としてApplication定義の位置を示します。構文エラーは`PARSE_ERROR`となります。いずれも元の定義を修復したうえで再検証します。
 
