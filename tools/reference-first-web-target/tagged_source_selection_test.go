@@ -53,6 +53,7 @@ func TestFirstWebTargetApplicationBuildTagsSelectDisjointBusinessSources(t *test
 	orderSources := []string{
 		"read_scenario.go", "command_scenario.go", "custom_ui.go",
 		"order_scenario_http.go", "main_order_only.go", "order_only_wiring.go",
+		"reference_order_contract_query_fixture.go",
 	}
 	repairSources := []string{
 		"customer_lookup_scenario.go", "repair_scenario_http.go",
@@ -70,7 +71,8 @@ func TestFirstWebTargetApplicationBuildTagsSelectDisjointBusinessSources(t *test
 			name: "combined Gate C default",
 			include: append(append(append([]string(nil), common...), legacySources...),
 				"read_scenario.go", "command_scenario.go", "custom_ui.go",
-				"order_scenario_http.go", "customer_lookup_scenario.go", "repair_scenario_http.go"),
+				"order_scenario_http.go", "customer_lookup_scenario.go", "repair_scenario_http.go",
+				"reference_order_contract_query_fixture.go"),
 			exclude: []string{"main_order_only.go", "main_repair_only.go", "order_only_wiring.go", "repair_only_wiring.go",
 				"single_application_startup.go"},
 		},
