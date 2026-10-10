@@ -18,7 +18,7 @@
 ## 内容
 
 - `plan-check.mjs`：**既に採用済みの処理点**を入力として、依存グラフと保護条件を検査し、決定的な順序を作ります。同じ名前の機能を提供する実装が二つあれば拒否します。
-- `plan-check.test.mjs`：保護された受注操作、認証主体の対応付け、保護の欠落、循環、衝突に加え、Guardの因果依存・証拠契約・プラグイン拡張など28件の正常・異常例を固定しています。
+- `plan-check.test.mjs`：保護された受注操作、認証主体の対応付け、保護の欠落、循環、衝突に加え、Guardの因果依存・証拠契約・プラグイン拡張など33件の正常・異常例を固定しています。
 
 既存の#951のProvider解決は行いません。処理点は**解決済みであるものとして受け取る**ため、この試作が返す順序は実行権限やProviderの適合性を保証しません。
 
@@ -59,7 +59,7 @@ E1.2ではHost Policyが指定したGuard名と証拠契約を検査しますが
 
 認証主体リンクの重複判定キーも、Go Hostの既存`ExternalSubject`契約と同じ`(ProviderID, Issuer, Subject)`に統一しました。異なるProviderを明示しているなら、IssuerとSubjectの文字列が同じでも独立した対応付けとして扱います。全く同じ外部主体の二重定義は引き続き拒否します。
 
-**実行済みNodeテスト：** GitHub上の`plan-check.mjs`（Blob `86ae421231bbaf59b847f569f6070d8ce28735cd`）と`plan-check.test.mjs`（Blob `eba3cf619cd632936e09d9117a3580bfcf7d9c79`）のbyte一致コピーで、Node.js 22.16.0の`node --test`を実行し、**32件PASS、0件FAIL**でした。以前の28件に4件（認証Guard省略、CSRF Guard省略、終端監査省略、Provider名前空間の独立性）を追加しています。これは静的構成検査の証拠であり、実HTTP Hostや実Providerの適合性の証拠ではありません。
+**実行済みNodeテスト：** GitHub上の`plan-check.mjs`（Blob `563f429474a1de65136bb6ae7d477f100ab6cab8`）と`plan-check.test.mjs`（Blob `48772184fc60e40df9df5390eaa32974527a3e56`）のbyte一致コピーで、Node.js 22.16.0の`node --test`を実行し、**33件PASS、0件FAIL**でした。以前の28件に5件（認証Guard省略、CSRF Guard省略、終端監査省略、Provider名前空間の独立性、同一主体のPrincipalID衝突）を追加しています。これは静的構成検査の証拠であり、実HTTP Hostや実Providerの適合性の証拠ではありません。
 
 ### E1/E2手動横断検証コマンド
 
@@ -85,7 +85,7 @@ tools/repository-health-check.sh
 
 ## 次の検証
 
-1. Nodeテストは実ファイル28件PASSを取得しました。次に、正確なブランチ先端に対するTEI全体のヘルスチェックを実施します。
+1. Nodeテストは実ファイル33件PASSを取得しました。次に、正確なブランチ先端に対するTEI全体のヘルスチェックを実施します。
 2. 既存First Web Targetの`http.ServeMux`と`security.authenticate`/`security.authorize`の間に、保護条件を一つずつ接続します。別のProvider Resolverを作らず、#951の契約へ戻します。
 3. 拒否・例外・短絡を含むHTTP試験で、保護と監査が**実際に呼ばれたこと**を検証します。
 4. 合成OIDC相当と既存認証相当を共存させ、セッションと業務認可を別に確認します。その後に実IdPを使った検証へ進みます。
