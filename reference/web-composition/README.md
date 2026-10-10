@@ -53,6 +53,14 @@ node --test reference/web-composition/plan-check.test.mjs
 
 これは静的な構成検査であり、Guardに対応したProviderが実際に暗号学的検証・CSRF・業務認可を正しく実行する証拠にはなりません。特にプラグイン定義の`guardEvidence`は**合成された宣言上の制約**であり、実体の適格性は将来のHost / Plugin Conformanceで確認する必要があります。実Repository全体の`tools/repository-health-check.sh`は未実行のため、本PRのDraft維持・統合保留は変わりません。
 
+### E1.3：Actionに必須の保護とProvider主体のスコープ（2026-10-10）
+
+E1.2ではHost Policyが指定したGuard名と証拠契約を検査しますが、Host Policy側が必要な`authenticated`または`csrf-protected`を**そもそも省略した**場合は、保護Actionの構成が成立してしまう抜け道が残っていました。E1.3では`route.actionId`がある場合、信頼済みHost Policyであっても`authenticated`・`csrf-protected`・`action-authorized`の3 Guardと、監査上の`completed`・`rejected`・`error`の3終端を必須とします。Providerによる実行保証とは別の、計画を誤って弱めないための最低条件です。
+
+認証主体リンクの重複判定キーも、Go Hostの既存`ExternalSubject`契約と同じ`(ProviderID, Issuer, Subject)`に統一しました。異なるProviderを明示しているなら、IssuerとSubjectの文字列が同じでも独立した対応付けとして扱います。全く同じ外部主体の二重定義は引き続き拒否します。
+
+**実行済みNodeテスト：** GitHub上の`plan-check.mjs`（Blob `86ae421231bbaf59b847f569f6070d8ce28735cd`）と`plan-check.test.mjs`（Blob `eba3cf619cd632936e09d9117a3580bfcf7d9c79`）のbyte一致コピーで、Node.js 22.16.0の`node --test`を実行し、**32件PASS、0件FAIL**でした。以前の28件に4件（認証Guard省略、CSRF Guard省略、終端監査省略、Provider名前空間の独立性）を追加しています。これは静的構成検査の証拠であり、実HTTP Hostや実Providerの適合性の証拠ではありません。
+
 ### E1/E2手動横断検証コマンド
 
 `reference/web-composition/verify.sh`は、Web構成の静的Node検査と、Web Host・First Web Target・Legacy User StoreのGo package検査をひとつの**手動実行コマンド**にまとめます。
@@ -346,3 +354,18 @@ GitHub Blob SHA=`cf4de5774d534805b156832f3f40276020813b6d`と完全一致する*
 HTTP 200正常完了、403の業務認可拒否／主体リンク失効、503の主体Store障害と内部詳細秘匿、422の通常Command Execution Error、400のJSON `null`／Credential注入を個別に確認しました。
 
 **残る検証境界:** これはHostとRunnerのモックを使うHTTP結果処理の局所試験であり、実`reference/workspace`、実`security.authorize`、Go HostのAuditイベント配信を含む結合試験は未実行です。追加した実Workspace回帰ケースのPASSも未取得です。PR #1114はDraftを維持し、candidate exact-headの全体Repository Healthを統合条件とします。
+
+## E2.9：exact-headでのローカル統合資格判定
+
+前段の局所テストがPASSしても、PRのheadとmainが検証中に変わったり、過去のmainを基にしたまま全体検査をPASSした場合、統合資格にはなりません。参照用`qualify.sh`は次の入力を必須とする**読み取り専用の手動Gate**です。
+
+~~~sh
+# 引数は、確認する正確な40桁のGitコミットSHAと、その時点のmain SHA
+bash reference/web-composition/qualify.sh <candidate-head-sha> <current-main-sha>
+~~~
+
+スクリプトは`HEAD`と`refs/remotes/origin/main`がそれぞれ指定SHAであること、Git作業ツリーがテスト前後ともcleanであること、およびcurrent mainがcandidateの祖先であることを検査します。そのうえで`verify.sh --race`（E1 Node + 対象Goパッケージ・race）と、**省略なしの**`tools/repository-health-check.sh`（リポジトリ全体のGo vet/test・Workspace検証等）を実行し、途中で失敗・差分生成・HEAD変更があれば非0終了します。必要に応じてログを保存し、統合直前にはGitHub上のPR headとcurrent mainを再取得して照合します。自動`fetch`や`merge`、GitHub Actionsの再開は行いません。
+
+**スクリプトの局所検証:** `qualify.sh`はGitHub Blob `aeebb93e091a3e8ac835f1daade84b947628fc20`とbyte一致するローカルコピーで`bash -n` PASS。隔離した一時Gitリポジトリで、正しいSHA＋cleanの正常経路、間違ったmain SHA、dirtyなチェックアウト、mainを含まないcandidate、検証中に生成された未追跡ファイルの5ケースを検査しました。正常経路ではテスト実行体をstubにしたため、**これは検証スクリプトのGate条件を確認したもので、TEI全体のテストPASSを意味しません。**
+
+2026-10-10現在、PR #1114はまだmainの更新を含んでおらず、このGateの統合資格は**未取得**です。正確なhead・main上でのクリーンなフルチェックアウトおよびすべてのテストの実行記録が得られるまでDraftを維持します。
