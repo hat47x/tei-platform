@@ -28,7 +28,7 @@ func TestReadEvidenceFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 		{"trailing-non-json", string(raw) + " garbage", false},
 		{"truncated", string(raw[:len(raw)-1]), false},
 		{"duplicate-root-property", string(raw[:len(raw)-1]) + `,"entry":"tei/cmd/other"}`, false},
-		{"escaped-duplicate-root-property", string(raw[:len(raw)-1]) + `,"\\u0065ntry":"tei/cmd/other"}`, false},
+		{"escaped-duplicate-root-property", string(raw[:len(raw)-1]) + `,"\u0065ntry":"tei/cmd/other"}`, false},
 		{"duplicate-nested-package-property", strings.Replace(string(raw), `"goFiles":["main.go"]`, `"goFiles":["main.go"],"goFiles":["evil.go"]`, 1), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestReadEvidenceRejectsDuplicateJSONKeysAtAnyDepth(t *testing.T) {
 	}
 	for _, ambiguous := range []string{
 		string(raw[:len(raw)-1]) + `,"entry":"tei/cmd/other"}`,
-		string(raw[:len(raw)-1]) + `,"\\u0065ntry":"tei/cmd/other"}`,
+		string(raw[:len(raw)-1]) + `,"\u0065ntry":"tei/cmd/other"}`,
 		strings.Replace(string(raw), `"goFiles":["main.go"]`,
 			`"goFiles":["main.go"],"goFiles":["evil.go"]`, 1),
 	} {
