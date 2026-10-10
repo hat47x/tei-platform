@@ -17,8 +17,10 @@ import (
 )
 
 type listedModule struct {
-	Path string `json:"Path"`
-	Main bool   `json:"Main"`
+	Path  string `json:"Path"`
+	Main  bool   `json:"Main"`
+	Dir   string `json:"Dir"`
+	GoMod string `json:"GoMod"`
 }
 
 type listedPackage struct {
@@ -206,6 +208,23 @@ func validateTrackedSources(raw []byte, root string, tracked map[string]struct{}
 		}
 		if p.Module == nil || !p.Module.Main {
 			continue
+		}
+		// The observed main module must be the tracked repository module,
+		// not a nested or external module selected by the entry point.
+		if _, ok := tracked["go.mod"]; !ok {
+			return fmt.Errorf("root go.mod is not tracked by Git")
+		}
+		moduleDir, err := filepath.EvalSymlinks(p.Module.Dir)
+		if err != nil || filepath.Clean(moduleDir) != filepath.Clean(canonicalRoot) {
+			return fmt.Errorf("package %s belongs to another main module directory", p.ImportPath)
+		}
+		goMod, err := filepath.EvalSymlinks(p.Module.GoMod)
+		if err != nil || filepath.Clean(goMod) != filepath.Join(canonicalRoot, "go.mod") {
+			return fmt.Errorf("package %s has an unexpected module file", p.ImportPath)
+		}
+		modStat, err := os.Lstat(filepath.Join(canonicalRoot, "go.mod"))
+		if err != nil || !modStat.Mode().IsRegular() {
+			return fmt.Errorf("root go.mod is not a regular file")
 		}
 		if !filepath.IsAbs(p.Dir) {
 			return fmt.Errorf("package %s has no absolute source directory", p.ImportPath)
