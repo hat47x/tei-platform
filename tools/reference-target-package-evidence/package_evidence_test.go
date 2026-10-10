@@ -40,6 +40,9 @@ func TestMissingOrMalformedSourceFailsClosed(t *testing.T) {
 		{"missing-dependency", jsonA + "\n" + jsonStd, "tei/tools/sample"},
 		{"duplicate", jsonA + "\n" + jsonA + "\n" + jsonB + "\n" + jsonStd + "\n" + jsonStrings, "tei/tools/sample"},
 		{"package-error", `{"ImportPath":"tei/tools/sample","Module":{"Path":"tei","Main":true},"Error":{"Err":"broken"}}`, "tei/tools/sample"},
+		{"empty-package-error", `{"ImportPath":"tei/tools/sample","Module":{"Path":"tei","Main":true},"Error":{}}`, "tei/tools/sample"},
+		{"incomplete", `{"ImportPath":"tei/tools/sample","Module":{"Path":"tei","Main":true},"Incomplete":true}`, "tei/tools/sample"},
+		{"entry-not-main-module", jsonStd+"\n"+jsonB+"\n"+jsonStrings, "fmt"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			if _, err := parseGoList(strings.NewReader(scenario.raw), scenario.entry, ""); err == nil {
