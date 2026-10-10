@@ -54,6 +54,8 @@ type Web struct {
 	Application              string `json:"application"`
 	Target                   string `json:"target"`
 	SelectedValidation       string `json:"selectedValidation"`
+	NegativeValidation       string `json:"negativeValidation"`   // asserted failing rule, not independently verified
+	NegativeEvidenceMode     string `json:"negativeEvidenceMode"` // running-server, handler-only
 	ProviderKind             string `json:"providerKind"` // synthetic, actual-db
 	RunMode                  string `json:"runMode"`      // running-server, handler-only
 	PositiveReceipt          string `json:"positiveReceipt"`
@@ -157,6 +159,13 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		if w.UnobservedControlReceipt == "" || w.UnobservedControlReceipt == w.PositiveReceipt ||
 			w.UnobservedControlReceipt == w.NegativeReceipt {
 			add("N11_UNOBSERVED_CONTROL_MISSING")
+		}
+		// The existing synthetic normal fixture rejects an invalid quantity, not
+		// the newly selected unit-price rule. A handler-only negative test is
+		// valuable E0 evidence but cannot prove a running Web Target refused it.
+		if w.NegativeValidation != w.SelectedValidation ||
+			w.NegativeEvidenceMode != "running-server" {
+			add("E1_NEGATIVE_SELECTED_RULE_RUNNING_WEB_EVIDENCE_REQUIRED")
 		}
 	}
 	if p.Claim == "E2" {
