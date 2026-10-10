@@ -236,6 +236,19 @@ bash tools/reference-first-web-target/measure_tagged_targets.sh \
   /tmp/tei-first-web-e1-evidence-NEW
 ```
 
+同じApplicationの**実バイナリ間のHTTP応答同等性**を検証する統合テストも別途用意しました。通常の`go test`ではスキップされますが、下記で3種類の実バイナリをビルドし、127.0.0.1上で同じB/R/Tと同じFixtureを与えて起動し、正常応答・認証拒否・認可拒否・Execution Error・入力エラー・未公開Route 404を確認します。
+
+```sh
+TEI_E1_BINARY_PARITY=1 go test -count=1 -run '^TestTaggedBinariesPreserveFirstWebBusinessHTTPParity計測スクリプトは前後のcheckout clean、HEAD不変、実`go list`によるGoFile選択、3種類の`go build`、`go tool nm`、byte数、SHA-256、およびE0比較JSONを記録します。失敗時は結果を正規Evidenceとみなしません。Goコードによる`tagged_source_selection_test.go`でも、3種類のGoFile集合と相手Applicationの実装除外を検証します。
+
+`repair_intake`では顧客参照用Oracle実装のみをリンク対象にするため、PostgreSQL明細Queryの実装は別ソース`reference_order_contract_query_fixture.go`へ移しました。両Applicationで共用するOracle実装を複製せず、DriverのBinding identityも変えていません。
+
+**現時点の限界**：GitHubへコードとテストをコミットしましたが、最新HEADのタグ別ビルド・回帰テスト・実シンボル観測・全体Repository HealthのPASSは取得していません。原Goソースの区別だけでlink後の完全なSecret/Authority除外は示せません。Workspace Loader/Driverを使う合成Referenceであり、Build Artifact Lockを承認する権限、Production認証認可、Browser/API二単位配備、同じ受理済みHandover B/R/Tでの実Business Result/Execution Error/Observationの完全同等性も未実証です。これらのE1受入条件は[#1167](https://github.com/hat47x/tei-platform/issues/1167)に残します。
+ ./tools/reference-first-web-target
+```
+
+実行にはGitが識別できるクリーンなチェックアウトを要求し、開始HEADと終了HEADの一致を判定します。これはReference Fixture間のHTTP結果比較であり、Production認証認可、Provider接続、実環境Observation、画面のVisual Evidenceを代替しません。
+
 出力先は未作成の絶対パス、リポジトリ外にしてください。計測スクリプトは前後のcheckout clean、HEAD不変、実`go list`によるGoFile選択、3種類の`go build`、`go tool nm`、byte数、SHA-256、およびE0比較JSONを記録します。失敗時は結果を正規Evidenceとみなしません。Goコードによる`tagged_source_selection_test.go`でも、3種類のGoFile集合と相手Applicationの実装除外を検証します。
 
 `repair_intake`では顧客参照用Oracle実装のみをリンク対象にするため、PostgreSQL明細Queryの実装は別ソース`reference_order_contract_query_fixture.go`へ移しました。両Applicationで共用するOracle実装を複製せず、DriverのBinding identityも変えていません。
