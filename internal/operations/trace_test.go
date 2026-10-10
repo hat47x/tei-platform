@@ -3,6 +3,7 @@ package operations
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"tei/internal/sourceindex"
@@ -25,7 +26,7 @@ func TestTraceSubjectSourcesMatchesExistingIndex(t *testing.T) {
 		t.Fatalf("trace references=%d expected=%d", len(got.References), len(expected))
 	}
 	for i := range expected {
-		if got.References[i] != expected[i] {
+		if !reflect.DeepEqual(got.References[i], expected[i]) {
 			t.Fatalf("reference %d mismatch", i)
 		}
 	}
