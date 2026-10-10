@@ -206,7 +206,7 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 		t.Fatal("first-workspace data declaration has an unexpected shape")
 	}
 	badRelation := strings.Replace(
-		modified, "\n}\n", "    relation parent to intake.unknown_request one\n}\n", 1,
+		modified, "\n}\n", "\n    relation parent to intake.unknown_request one\n}\n", 1,
 	)
 	if err := os.WriteFile(srcPath, []byte(badRelation), 0o644); err != nil {
 		t.Fatal(err)
