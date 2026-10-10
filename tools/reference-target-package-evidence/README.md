@@ -21,6 +21,23 @@ go run ./tools/reference-target-package-evidence \
 - `GOENV=off`、`GOWORK=off`、`GOFLAGS=`を`go list`に適用し、隠れたユーザー設定・Workspace・build flagによる入力変化を避けます。必要なbuild tagsは`-tags`で明示し、GOOS／GOARCH／CGO_ENABLED／Go版を結果に記録します。さらに、`GOAMD64`・`GOARM`・`GOARM64`・`GO386`・`GOMIPS`・`GOPPC64`・`GOWASM`・`GOEXPERIMENT`等の有効なアーキテクチャ特性を`targetFeatures`に保持します。たとえば同じ`linux/amd64`でも`GOAMD64=v1`と`v3`では`//go:build amd64.v3`のGoソース選択が異なるため、GOOS/GOARCHだけを比較キーにしません。
 - Goのツールチェーンが依存を解決できない、JSONが不正、参照先パッケージが欠落している等の場合には不完全な結果を成功として出力しません。
 
+## 二つの起動点の閉包比較（E1の前処理）
+
+**異なるGoビルド入口から生成した二つのE0 JSON**がある場合、次のように読み取り専用で比較できます。現状の第一Web Targetは一つの実行時選択入口だけであり、このコマンドを加えただけでApplication別のビルド入口が成立するわけではありません。
+
+```sh
+go run ./tools/reference-target-package-evidence \
+  -compare-before /tmp/tei-unified-e0.json \
+  -compare-after /tmp/tei-application-e0.json \
+  > /tmp/tei-package-closure-delta.json
+```
+
+比較は`SourceRevision`、メインGoモジュール、Go版、GOOS、GOARCH、CGO、`GOFLAGS`、`targetFeatures`が一致しない場合に拒否します。`-tags`による意図的なソースの差は許容しますが、指定されたbuild tagsは結果へ明示し、同一ビルド条件の成果物であるとは主張しません。
+
+結果は、片方にしかないパッケージ（`beforeOnly`・`afterOnly`）と、共通パッケージでコンパイル対象Go/Cgoファイル、埋込・補助入力、import辺が変わったもの（`changed`）を区別して返します。パッケージやファイルの列挙順序の差だけでは変更とは判定しません。取り込むJSONは厳格にデコードしますが、**入力JSONの真正性を検証するAuthorityではありません**。作成元のclean checkout／exact HEADと、実際に使ったビルド条件を独立して確認する必要があります。
+
+E1の最終判定には、さらに`go build`後のbytes、digest、link済みsymbol、機能・認可の回帰試験が必要です。共通パッケージに未使用コードが残っているか、リンク時に削除されたかは、この比較だけでは分かりません。
+
 ## この証拠で言えること／言えないこと
 
 **観測対象**は一つの静的なGoビルド入口です。第一Web Targetの`-application`はサーバーの**実行時引数**なので、それを二通りにしても別のGo package closureにはなりません。アプリごとに異なる実装を物理的に除外したければ、異なるcompile-time入口を作り、同じ条件でそれぞれを測る必要があります。
