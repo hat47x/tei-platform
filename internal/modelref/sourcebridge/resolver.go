@@ -29,7 +29,22 @@ func NewResolver(graph modelref.Graph, idx sourceindex.Index, read func(string) 
 	if graph.Schema != "tei.modelref.v0" {
 		return nil, fmt.Errorf("unsupported source navigation graph schema %q", graph.Schema)
 	}
-	if err := idx.Validate(read); err != nil {
+	// Validate each distinct artifact against one copied byte snapshot.
+	// A pinned reader is still required: this is neither a filesystem lock
+	// nor a replacement for Shared Acceptance's revision check.
+	contents := make(map[string][]byte, len(idx.Artifacts))
+	readSnapshot := func(path string) ([]byte, error) {
+		if data, ok := contents[path]; ok {
+			return data, nil
+		}
+		data, err := read(path)
+		if err != nil {
+			return nil, err
+		}
+		contents[path] = append([]byte(nil), data...)
+		return contents[path], nil
+	}
+	if err := idx.Validate(readSnapshot); err != nil {
 		return nil, err
 	}
 	r := &Resolver{
