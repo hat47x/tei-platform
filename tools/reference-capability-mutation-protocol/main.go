@@ -52,11 +52,11 @@ type PreparedMutation struct {
 }
 
 type CommitRequest struct {
-	Protocol         string
-	PreparationID   string
-	InvocationKey   string
-	RequestDigest   string
-	ResultDigest    string
+	Protocol          string
+	PreparationID    string
+	InvocationKey    string
+	RequestDigest    string
+	ResultDigest     string
 	ConcurrencyToken string
 }
 
@@ -576,4 +576,5 @@ func digest(value []byte) string {
 	sum := sha256.Sum256(value)
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
+
 func main() {}
