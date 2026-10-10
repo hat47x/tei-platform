@@ -2,13 +2,13 @@
 // Opt-in parent-lane cross-PR E1-A probe. Test-only Acceptance, synthetic provider.
 // Run only in a trusted, clean, TEMPORARY integration worktree that contains #1124.
 import assert from "node:assert/strict";
-import { cpSync, openSync, closeSync, lstatSync, mkdtempSync, readFileSync,
-  readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, openSync, closeSync, lstatSync, mkdirSync, mkdtempSync,
+  readFileSync, realpathSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawn, execFileSync } from "node:child_process";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 if (process.env.TEI_CP_LIVE_R1_SMOKE !== "1") {
@@ -88,6 +88,31 @@ async function ready(base) {
   }
   throw new Error("Web Target did not become healthy");
 }
+
+// Optional evidence is published outside the checkout only after all assertions.
+// A receipt is a bounded observation of a test-harness run, not real Authority.
+function publishReceipts(submissions) {
+  const requested = process.env.TEI_CP_EVIDENCE_DIR;
+  if (!requested) return null;
+  assert.ok(isAbsolute(requested), "evidence directory must be absolute");
+  const target = resolve(requested);
+  const parent = realpathSync(dirname(target)); // parent must already exist
+  const sourceRoot = realpathSync(root);
+  const scratchRoot = realpathSync(temp);
+  for (const forbidden of [sourceRoot, scratchRoot]) {
+    assert.ok(parent !== forbidden && !parent.startsWith(forbidden + sep),
+      "evidence directory must be outside repository and ephemeral scratch");
+  }
+  mkdirSync(target, { mode: 0o700 }); // refuse existing dirs, never overwrite
+  for (const [name, data] of Object.entries(submissions)) {
+    const safe = JSON.stringify(data, null, 2) + "\n";
+    assert.equal(safe.includes("editor-secret"), false, "credential in evidence");
+    assert.equal(safe.includes("wrong-secret"), false, "credential in evidence");
+    writeFileSync(join(target, name), safe, { flag: "wx", mode: 0o600 });
+  }
+  return target;
+}
+
 async function main() {
   files(baseline); // reject symlinks/irregular fixtures before copying
   cpSync(baseline, workspace, { recursive: true, errorOnExist: true });
@@ -184,6 +209,39 @@ async function main() {
   assert.deepEqual(changed(beforeFiles, files(workspace)), [
     "applications/order-entry/application.tei", "semantic/sales/validation.tei"
   ]);
+  const evidenceDir = publishReceipts({
+    "workspace-r1.json": {
+      evidenceNature: "test-only-managed-source-lineage",
+      integrationHead: head, sourceBefore: r0, sourceAfter: r1,
+      observedBeforeLaunch: true, observedAfterHttp: true,
+      changedManagedSourceFiles: changed(beforeFiles, files(workspace)),
+      candidateFingerprint: preview.candidateFingerprint,
+      reviewFingerprint: review.reviewFingerprint,
+      decision: "automated-scratch-test-only", humanApproval: false,
+      expiresWithScratchWorkspace: true
+    },
+    "target-launch.json": {
+      evidenceNature: "running-first-web-target-with-synthetic-provider",
+      integrationHead: head, targetBuildRevision: head,
+      baselineRepositoryRevision: expectedR, application: "order_entry",
+      loopbackAddress: addr, targetProcessID: child.pid,
+      targetBinarySHA256: createHash("sha256").update(readFileSync(binary)).digest("hex"),
+      workspaceSourceRevisionBeforeLaunch: r1,
+      healthResponseWasOK: true, runtimeAuthorityVerified: false
+    },
+    "web-positive.json": {
+      evidenceNature: "running-web-http-positive-synthetic-provider",
+      integrationHead: head, acceptedSourceRevisionClaim: r1,
+      selectedValidationIDs: receipt.result.validations.map(v => v.validation),
+      validationResults: receipt.result.validations.map(v => v.result),
+      stage: receipt.result.stage,
+      httpStatus: submitResponse.status,
+      commandObserved: Boolean(receipt.result.command),
+      observationNature: receipt.result.observation.nature,
+      independentDatabaseRead: false,
+      negativeUnitPriceTest: "NOT_RUN"
+    }
+  });
   process.stdout.write(JSON.stringify({
     status: "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY",
     authority: "test-harness-acceptance-not-human",
@@ -192,6 +250,8 @@ async function main() {
     validationCount: receipt.result.validations.length,
     httpStatus: submitResponse.status, commandObserved: true,
     independentDatabaseRead: false, negativeUnitPriceRunningWeb: "NOT_TESTED",
+    evidenceDirectory: evidenceDir,
+    evidenceFiles: evidenceDir ? ["workspace-r1.json", "target-launch.json", "web-positive.json"] : [],
     limits: ["temporary-scratch", "synthetic-provider", "no-real-db",
       "not-human-approved", "not-E1-complete", "not-product-gate"]
   }, null, 2) + "\n");
