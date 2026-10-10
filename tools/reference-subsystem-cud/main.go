@@ -54,10 +54,11 @@ type ProcedureStep struct {
 }
 
 type Facts struct {
-	SchemaVersion  string          `json:"schemaVersion"`
-	Owners         []Owner         `json:"owners"`
-	FunctionIO     []FunctionIO    `json:"functionIO"`
-	ProcedureSteps []ProcedureStep `json:"procedureSteps"`
+	SchemaVersion        string          `json:"schemaVersion"`
+	WorldJSONFingerprint string          `json:"worldJSONFingerprint,omitempty"`
+	Owners               []Owner         `json:"owners"`
+	FunctionIO           []FunctionIO    `json:"functionIO"`
+	ProcedureSteps       []ProcedureStep `json:"procedureSteps"`
 }
 
 type Diagnostic struct {
@@ -76,8 +77,7 @@ type Coverage struct {
 	ProcedureSteps  int `json:"procedureSteps"`
 }
 
-// InputFingerprints bind this report to the exact supplied bytes. They are not
-// proof of an authoritative Workspace or of accepted candidate facts.
+// InputFingerprints identify exact caller-supplied bytes, not acceptance.
 type InputFingerprints struct {
 	WorldJSON string `json:"worldJSON"`
 	FactsJSON string `json:"factsJSON"`
@@ -167,8 +167,7 @@ func Inspect(w World, f Facts) Report {
 		if !dataResolved {
 			add("IO_DATA_UNRESOLVED", "unresolved", subject, op.Source, "Data must resolve to exactly one World Data")
 		}
-		// Do not assign ownership violations to a Function whose Pattern
-		// is missing or ambiguous. Its declared CUD is not addressable.
+		// A missing or ambiguous writer is not evidence for a CUD violation.
 		if !patternResolved || !dataResolved {
 			continue
 		}
@@ -230,6 +229,32 @@ func Inspect(w World, f Facts) Report {
 	return r
 }
 
+// InspectSnapshot adds exact input binding to the pure, candidate-only
+// consistency check. A matching digest never confers accepted-source authority.
+func InspectSnapshot(w World, f Facts, worldBytes, factsBytes []byte) Report {
+	r := Inspect(w, f)
+	r.InputFingerprints = &InputFingerprints{WorldJSON: snapshotDigest(worldBytes), FactsJSON: snapshotDigest(factsBytes)}
+	switch {
+	case f.WorldJSONFingerprint == "":
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "WORLD_SNAPSHOT_UNBOUND", Severity: "unresolved", Subject: "world", Explanation: "candidate facts must bind the exact supplied World JSON byte digest"})
+		r.Status = "unresolved"
+	case f.WorldJSONFingerprint != r.InputFingerprints.WorldJSON:
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "WORLD_SNAPSHOT_STALE", Severity: "unresolved", Subject: "world", Explanation: "facts were prepared for a different World JSON byte snapshot"})
+		r.Status = "unresolved"
+	}
+	sort.Slice(r.Diagnostics, func(i, j int) bool {
+		a, b := r.Diagnostics[i], r.Diagnostics[j]
+		for k, v := range []string{a.Code, a.Subject, a.Source, a.Explanation} {
+			y := []string{b.Code, b.Subject, b.Source, b.Explanation}[k]
+			if v != y {
+				return v < y
+			}
+		}
+		return false
+	})
+	return r
+}
+
 func main() {
 	worldPath := flag.String("world", "", "path to tei world JSON (read-only)")
 	factsPath := flag.String("facts", "", "path to candidate declared cross-view facts JSON")
@@ -254,11 +279,7 @@ func main() {
 	if err := json.Unmarshal(factsBytes, &f); err != nil {
 		fail(err)
 	}
-	out := Inspect(w, f)
-	out.InputFingerprints = &InputFingerprints{
-		WorldJSON: snapshotDigest(worldBytes),
-		FactsJSON: snapshotDigest(factsBytes),
-	}
+	out := InspectSnapshot(w, f, worldBytes, factsBytes)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(out); err != nil {
@@ -271,8 +292,6 @@ func main() {
 	}
 }
 
-// snapshotDigest identifies the exact supplied JSON bytes, not whether the
-// content came from the current accepted Source or was altered by the caller.
 func snapshotDigest(raw []byte) string {
 	return fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
 }
