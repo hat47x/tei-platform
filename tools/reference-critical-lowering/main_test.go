@@ -526,6 +526,9 @@ func TestStructurallyForgedPlansFailBeforeTrustedDispatch(t *testing.T) {
 		{"mixed-targets", func(p *Plan) { p.Steps[1].Target = "desktop" }, "invalid-plan-step"},
 		{"duplicate-capability", func(p *Plan) { p.Steps[1] = p.Steps[0] }, "duplicate-capability"},
 		{"invalid-runtime-dependency", func(p *Plan) { p.Steps[0].RuntimeDeps = []Ref{{}} }, "invalid-runtime-dependency"},
+		{"duplicate-runtime-dependency", func(p *Plan) {
+			p.Steps[0].RuntimeDeps = append(p.Steps[0].RuntimeDeps, p.Steps[0].RuntimeDeps[0])
+		}, "invalid-runtime-dependency"},
 		{"erased-required-context", func(p *Plan) { p.Steps[1].RequiredSlots = []Ref{{}} }, "invalid-context-declaration"},
 		{"corrupt-data-contract", func(p *Plan) { p.Steps[1].DataContracts = []DataNeed{{}} }, "invalid-data-requirement"},
 		{"duplicate-data-contract", func(p *Plan) {
