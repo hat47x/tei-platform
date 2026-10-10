@@ -182,3 +182,20 @@ GitHubのPRに加えた回帰テストは、既知→不明→繰り返し不明
 - 一意のIDを持つ複数の`validation-support`が独立して比較できる場合
 
 **資格上の限界**：ここで報告するのはGitHub上のコードとテスト、READMEの更新であり、更新後のGoファイルを含むテストの実行やexact-head full Repository healthはまだ確認していない。以前の比較処理の隔離PASSはこの新しい条件分岐に対する実行結果ではない。
+
+## Step ID境界の隔離実測と混合ステップへの回帰テスト（2026-10-10）
+
+GitHub上の実装と内容一致を確認した次の二つのGo原文ファイルを、同じ一時Goモジュールに配置して隔離実行した。
+
+| ファイル | Git blob SHA |
+| --- | --- |
+| `tools/reference-business-procedure-check/validation_scope_review.go` | `dea1f479be6bcd2604eb6d785985bf38ecd2e5d1` |
+| `tools/reference-business-procedure-check/validation_scope_review_sources.go` | `8116f2bf5fb3d119572c94430cd483179b0f72af` |
+
+`git hash-object`の出力は両方とも上記と一致。`gofmt -l`は両原文とも出力なし。`go version go1.23.2 linux/amd64`で`GOENV=off GOWORK=off GOFLAGS= go test -count=1 ./...`は**3トップレベルテスト、うちStep ID境界6サブテスト**をすべてPASS。`go vet ./...`もPASSした。
+
+実行で確認した条件は、BP-05のValidation差分、Application/Validation双方のSource証拠、Index消失時の古い証拠破棄、Step IDが通常・重複（異種ステップを含む）・空欄・異なる複数・同一複数・未解決と正常の混在、未定義と曖昧なValidation参照の理由とソート順である。**最後の混合Stepのケースを本体Repository回帰テストにも追加した**。
+
+制約：`application`、`semantic`、`ir`、`core`、`sourceindex`、`subject`の各型と`fixture`/`step`/`semanticCounts`は隔離用代替実装。したがって、本体の`workspace.Load`・`BuildSourceIndex`・実Source Index制約・`main.go`・既存診断・Repository回帰テスト本体を実行したものではない。これは**変更対象の原文二ファイルを直接組み合わせて実行した限定的検証**であり、trusted checkoutのfull `tools/repository-health-check.sh`とclean pre/postの統合資格を代替しない。
+
+2026-10-10のmain追随は2親の通常merge `6cd08baeb4a7636f1dc4183204c77942bfc3f17e`で完了し、その時点ではmainからbehind 0となった。その後mainに追加commitがあり、検証時点ではbranchが再びbehind 1だった。対象main SHAが変わった場合は、統合資格の再取得が必要である。
