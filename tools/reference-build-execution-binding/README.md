@@ -70,6 +70,28 @@ current BuildPlanの`OutputKind`は消しません。Referenceではdomain-neutr
 
 これはcurrent BuildPlanを新しい型へ移行したことを意味しません。production modelの変更可否は、Referenceのpressureが十分に揃ってから判断します。
 
+### projectionの停止条件
+
+Plugin IDやPlugin definition fingerprintをdomain-neutral execution identityから外すことは、「definitionはbuild inputではない」という一般則を意味しません。
+
+このReferenceのprojectionが妥当なのは、artifact bytesへ影響するdefinition内容がすでに次のいずれかへexactに閉じている場合です。
+
+- Build Source closure
+- Recipe / Entrypoint
+- build Parameter
+- exact Builder / build-only Dependency
+
+たとえばPlugin descriptorの内容をbuilderがartifact生成へ使うなら、そのdescriptor bytesまたは同等のsemantic fingerprintがBuild Source identityへ現れなければなりません。
+
+```text
+PluginDefinitionFingerprint changed
+but artifact-affecting input identity unchanged
+```
+
+という状態を自動的に安全とはみなしません。
+
+current `BuildPlan`からこのReferenceへ射影する処理は候補モデルのpressureであり、production化する際には「artifact-affecting definition closureが完全である」というEvidenceまたはcontractが必要です。
+
 ## Artifact Set
 
 #1102の最小pressureとして、複数physical outputを一つのcontent setとして扱います。
