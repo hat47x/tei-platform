@@ -155,6 +155,7 @@ func TestWebTargetProtectedSessionRouteDeniesUntrustedAndMalformedRequests(t *te
 		{"credential rejected on session route", "corporate-editor", "matching", `{"loginId":"legacy-order-editor","credential":"editor-secret","row":0}`, http.StatusBadRequest},
 		{"subject cannot come from JSON", "corporate-editor", "matching", `{"subjectId":"subject-order-editor","row":0}`, http.StatusBadRequest},
 		{"two JSON objects rejected", "corporate-editor", "matching", `{"row":0} {"row":0}`, http.StatusBadRequest},
+		{"JSON null must not invoke a command", "corporate-editor", "matching", `null`, http.StatusBadRequest},
 		{"negative row rejected", "corporate-editor", "matching", `{"row":-1}`, http.StatusBadRequest},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
