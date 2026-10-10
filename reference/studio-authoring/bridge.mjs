@@ -155,7 +155,7 @@ function sourceLens(sourceIndex, kind, id) {
 // Consume #1125's read-only Business DFD JSON projection if explicitly supplied.
 // This adapter intentionally does not parse Business Procedure fixtures or claim
 // that their reference-local Step IDs belong to accepted Canonical meaning.
-function businessLens(dfd, patterns, index) {
+function businessLens(dfd, patterns, index, focus) {
   if (!dfd || dfd.schemaVersion !== "business-dfd-projection-v0" ||
       dfd.authority !== "derived-read-only" ||
       dfd.canonicalProcedureUsed !== false ||
@@ -164,6 +164,17 @@ function businessLens(dfd, patterns, index) {
     throw new Error("UNSUPPORTED_BUSINESS_DFD_AUTHORITY_OR_SCHEMA");
   }
   const inFocus = new Set(patterns.map(p => p.id));
+  // Direct authoring references may be displayed only when the producer's
+  // exact typed kind/ID is still present in this World. Never turn a
+  // reference-local Step into an accepted Business or executable Function.
+  const explicitKind = {
+    data: "semantic-data", relation: "semantic-relation",
+    validation: "semantic-validation"
+  }[focus.kind];
+  const explicitMap = {
+    data: index.data, relation: index.relations,
+    validation: index.validations
+  }[focus.kind];
   const seenSteps = new Set(), matching = [], manual = [];
   const diagnostics = [];
   for (const step of dfd.steps) {
@@ -195,14 +206,32 @@ function businessLens(dfd, patterns, index) {
         stepID: step.id, patternID: r.id
       });
     }
-    if (links.length) matching.push({
+    const directLinks = [];
+    for (const r of array(step.explicitMeaning, "step.explicitMeaning")) {
+      if (!r || !isText(r.kind) || !isText(r.id))
+        throw new Error("INVALID_BUSINESS_DIRECT_MEANING");
+      if (r.kind !== explicitKind || r.id !== focus.id) continue;
+      const current = r.status === "resolved-id-not-accepted" &&
+        r.authority === "procedure-reference-only" &&
+        !!explicitMap?.has(r.id);
+      directLinks.push({
+        kind: r.kind, id: r.id, subject: focus.kind + ":" + r.id,
+        status: current ? "exact-id-matches-current-world" : "unresolved",
+        authority: "reference-only", source: r.source || null
+      });
+      if (!current) diagnostics.push({
+        code: "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED",
+        stepID: step.id, kind: r.kind, id: r.id
+      });
+    }
+    if (links.length || directLinks.length) matching.push({
       stepID: step.id, procedureID: dfd.procedureId,
       status: "reference-only", functionRefs: links,
-      source: step.source || null
+      explicitMeaning: directLinks, source: step.source || null
     });
     if (step.noApplicationFunction === true && manual.length < 20) {
       manual.push({ stepID: step.id, realization: step.realization,
-        status: "reference-only-unlinked", source: step.source || null });
+        status: "reference-only-no-application-function", source: step.source || null });
     }
   }
   const hasProducerErrors = dfd.diagnostics.some(d => d.severity === "error");
@@ -215,7 +244,7 @@ function businessLens(dfd, patterns, index) {
     manualOrExternalUnlinked: manual,
     manualOrExternalTruncated: dfd.steps.filter(s => s.noApplicationFunction === true).length > 20,
     diagnostics: [...dfd.diagnostics, ...diagnostics],
-    note: "Exact Pattern IDs match this World where stated. The Procedure/DFD is not accepted Canonical meaning; unlinked manual steps imply no dependency on the focus."
+    note: "Only explicit Pattern and typed semantic ID matches are shown. Manual/external steps can directly refer to semantic Data/Relation/Validation without becoming Functions. DFD remains noncanonical, and no same-revision binding or Source Acceptance is implied."
   };
 }
 
@@ -288,7 +317,7 @@ export function projectWorld(world, revision, focus, options = {}) {
           unresolvedRelationID: p.relation && !ix.relations.has(p.relation) ? p.relation : null
         })) },
       business: options.businessDFD
-        ? businessLens(options.businessDFD, relatedPatterns, ix)
+        ? businessLens(options.businessDFD, relatedPatterns, ix, s)
         : { status: "unresolved", items: [],
           reason: "Accepted Procedure is not in World. Optional #1125 read-only DFD is not an accepted Procedure." }
     },
