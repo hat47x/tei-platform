@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	dispatchSchema = "tei.reference.capability-transport-dispatch/v0"
-	resultSchema   = "tei.reference.capability-transport-result/v0"
-	receiptSchema  = "tei.reference.capability-transport-receipt/v0"
+	dispatchSchema      = "tei.reference.capability-transport-dispatch/v0"
+	resultSchema        = "tei.reference.capability-transport-result/v0"
+	receiptSchema       = "tei.reference.capability-transport-receipt/v0"
+	dispatchPlanSchema  = "tei.reference.capability-transport-dispatch-plan/v0"
 )
 
 type GenericProviderIdentity struct {
@@ -35,6 +36,12 @@ type GenericInvocationIdentity struct {
 	RequestShapeFingerprint string                  `json:"requestShapeFingerprint"`
 	ResultShapeFingerprint  string                  `json:"resultShapeFingerprint"`
 	PayloadCodec             string                  `json:"payloadCodec"`
+}
+
+type TransportDispatchPlan struct {
+	Schema             string                    `json:"schema"`
+	InvocationIdentity GenericInvocationIdentity `json:"invocationIdentity"`
+	PlanFingerprint    string                    `json:"planFingerprint"`
 }
 
 type GenericDispatch struct {
@@ -77,8 +84,9 @@ type TransportCarrierReceipt struct {
 }
 
 type TransportReceipt struct {
-	Schema             string                    `json:"schema"`
-	Transport          string                    `json:"transport"`
+	Schema                  string                    `json:"schema"`
+	Transport               string                    `json:"transport"`
+	DispatchPlanFingerprint string                    `json:"dispatchPlanFingerprint,omitempty"`
 	Carrier            TransportCarrierReceipt   `json:"carrier"`
 	RequestID          string                    `json:"requestId"`
 	InvocationIdentity GenericInvocationIdentity `json:"invocationIdentity"`
@@ -90,6 +98,98 @@ type TransportReceipt struct {
 type TransportExecution struct {
 	ResultPayload []byte           `json:"resultPayload"`
 	Receipt       TransportReceipt `json:"receipt"`
+}
+
+func buildTransportDispatchPlan(
+	identity GenericInvocationIdentity,
+) (TransportDispatchPlan, error) {
+	if err := validateGenericInvocationIdentity(identity); err != nil {
+		return TransportDispatchPlan{}, err
+	}
+	plan := TransportDispatchPlan{
+		Schema:             dispatchPlanSchema,
+		InvocationIdentity: identity,
+	}
+	plan.PlanFingerprint = transportDispatchPlanFingerprint(plan)
+	return plan, nil
+}
+
+func validateTransportDispatchPlan(plan TransportDispatchPlan) error {
+	if plan.Schema != dispatchPlanSchema {
+		return fmt.Errorf("transport dispatch plan schema %q is not supported", plan.Schema)
+	}
+	if err := validateGenericInvocationIdentity(plan.InvocationIdentity); err != nil {
+		return fmt.Errorf("transport dispatch plan identity: %w", err)
+	}
+	if !validSHA256(plan.PlanFingerprint) {
+		return fmt.Errorf("transport dispatch plan fingerprint is invalid")
+	}
+	if transportDispatchPlanFingerprint(plan) != plan.PlanFingerprint {
+		return fmt.Errorf("transport dispatch plan fingerprint is stale")
+	}
+	return nil
+}
+
+func transportDispatchPlanFingerprint(plan TransportDispatchPlan) string {
+	plan.PlanFingerprint = ""
+	payload, _ := json.Marshal(plan)
+	return digestBytes(payload)
+}
+
+func validateDispatchAgainstPlan(
+	plan TransportDispatchPlan,
+	dispatch GenericDispatch,
+) error {
+	if err := validateTransportDispatchPlan(plan); err != nil {
+		return err
+	}
+	if err := validateGenericDispatch(dispatch); err != nil {
+		return err
+	}
+	if genericDispatchIdentity(dispatch) != plan.InvocationIdentity {
+		return fmt.Errorf("generic dispatch identity differs from transport dispatch plan")
+	}
+	return nil
+}
+
+func bindExecutionToTransportPlan(
+	execution TransportExecution,
+	plan TransportDispatchPlan,
+) TransportExecution {
+	execution.Receipt.DispatchPlanFingerprint = plan.PlanFingerprint
+	execution.Receipt.AuthorityLimits = append(
+		execution.Receipt.AuthorityLimits,
+		"dispatch-plan-is-not-capability-conformance",
+		"dispatch-plan-is-not-runtime-authority",
+		"dispatch-plan-is-not-canonical-acceptance",
+	)
+	return execution
+}
+
+func invokeAuthorizedOverProcessTransport(
+	ctx context.Context,
+	launcher pruntime.ProcessLauncher,
+	command pruntime.ProcessCommand,
+	plan TransportDispatchPlan,
+	carrier LegacyCarrier,
+	requestID string,
+	dispatch GenericDispatch,
+) (TransportExecution, error) {
+	if err := validateDispatchAgainstPlan(plan, dispatch); err != nil {
+		return TransportExecution{}, err
+	}
+	execution, err := invokeOverProcessTransport(
+		ctx,
+		launcher,
+		command,
+		carrier,
+		requestID,
+		dispatch,
+	)
+	if err != nil {
+		return TransportExecution{}, err
+	}
+	return bindExecutionToTransportPlan(execution, plan), nil
 }
 
 func invokeOverProcessTransport(
