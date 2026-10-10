@@ -9,6 +9,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/driver"
+	"tei/internal/plugin"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -92,6 +93,53 @@ func TestExistingOrderEntrySourceToDriverTrace(t *testing.T) {
 				t.Fatalf("synthetic lowering added a DB requirement not declared in real Source: %s", key)
 			}
 		}
+	}
+
+	// Observe the actual Environment-to-Instance selection. This checks
+	// declared identity wiring only, not connectivity or current schema compatibility.
+	var foundEnvironment bool
+	for _, env := range loaded.World.Environments {
+		if env.ID != "development" {
+			continue
+		}
+		if foundEnvironment {
+			t.Fatal("duplicate development Environment")
+		}
+		foundEnvironment = true
+		plugins, err := (plugin.Catalog{
+			Plugins: loaded.World.Plugins,
+			Bundles: loaded.World.Bundles,
+		}).ResolveEnvironment(env)
+		if err != nil {
+			t.Fatalf("existing Plugin resolver rejected development: %v", err)
+		}
+		if plugins.Environment != env.ID || len(plugins.Plugins) == 0 {
+			t.Fatalf("development plugin resolution missing: %+v", plugins)
+		}
+		for _, requirement := range f.c.Requirements {
+			for _, need := range requirement.DataContracts {
+				var instanceID core.CanonicalID
+				for _, binding := range env.Bindings {
+					if binding.Application != app.ID || string(binding.Alias) != need.Datasource {
+						continue
+					}
+					if instanceID != "" {
+						t.Fatalf("ambiguous Environment binding for %s", need.Datasource)
+					}
+					instanceID = binding.Instance
+				}
+				if instanceID == "" {
+					t.Fatalf("missing Environment binding for %s", need.Datasource)
+				}
+				instance, ok := env.InstanceByID(instanceID)
+				if !ok || string(instance.Definition) != need.Database {
+					t.Fatalf("Datasource %s bound to incompatible database definition: %+v", need.Datasource, instance)
+				}
+			}
+		}
+	}
+	if !foundEnvironment {
+		t.Fatal("reference development Environment missing")
 	}
 
 	// Bind illustrative Candidate origin refs to Source Index fingerprints,
