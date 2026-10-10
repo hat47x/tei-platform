@@ -109,8 +109,23 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(review.previewAcceptable === true &&
     /^sha256:[0-9a-f]{64}$/.test(review.reviewFingerprint),
     label + ": review binding");
+  const editPath = input(label, ".edit.json", edit);
+  const studioReview = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"),
+    "review-edit", "-workspace", workspace, "-edit-file", editPath
+  ]).stdout);
+  checked(studioReview.schema === "tei.reference.studio-review-edit/v0" &&
+    studioReview.explicitAcceptance === "not-performed" &&
+    studioReview.sourceWriteByThisCommand === false &&
+    studioReview.modelRevision === beforeRevision,
+    label + ": one-shot Studio review is read-only, not Acceptance");
+  checked(studioReview.preview.acceptable === true &&
+    studioReview.review.reviewFingerprint === review.reviewFingerprint,
+    label + ": Studio review delegates exactly to Shared Acceptance");
+  checked(JSON.stringify(studioReview.candidate.delta) === JSON.stringify(proposal.delta),
+    label + ": Studio review does not alter the proposed delta");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
-    label + ": Preview and Review do not mutate Source");
+    label + ": Preview, Review and Studio review do not mutate Source");
 
   // This is an intentional, automated TEST decision in an isolated scratch.
   // It is not evidence that a person approved the content.
