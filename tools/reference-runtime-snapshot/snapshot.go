@@ -31,6 +31,69 @@ type Snapshot struct {
 	manifest []byte
 }
 
+// checkUniqueJSONKeys inspects all nested objects without imposing a schema on
+// the derived Projection. Different JSON consumers must never disagree about
+// which value a repeated nested field represents.
+func checkUniqueJSONKeys(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	var readValue func(int) error
+	readValue = func(depth int) error {
+		if depth > 128 {
+			return fmt.Errorf("manifest JSON nesting exceeds 128 levels")
+		}
+		token, err := decoder.Token()
+		if err != nil {
+			return fmt.Errorf("read manifest JSON: %w", err)
+		}
+		delim, ok := token.(json.Delim)
+		if !ok {
+			return nil
+		}
+		switch delim {
+		case '{':
+			seen := make(map[string]bool)
+			for decoder.More() {
+				keyToken, err := decoder.Token()
+				if err != nil {
+					return fmt.Errorf("read manifest JSON key: %w", err)
+				}
+				key, ok := keyToken.(string)
+				if !ok || seen[key] {
+					return fmt.Errorf("duplicate or invalid nested manifest JSON key %q", keyToken)
+				}
+				seen[key] = true
+				if err := readValue(depth + 1); err != nil {
+					return err
+				}
+			}
+			closing, err := decoder.Token()
+			if err != nil || closing != json.Delim('}') {
+				return fmt.Errorf("manifest JSON object is not closed")
+			}
+		case '[':
+			for decoder.More() {
+				if err := readValue(depth + 1); err != nil {
+					return err
+				}
+			}
+			closing, err := decoder.Token()
+			if err != nil || closing != json.Delim(']') {
+				return fmt.Errorf("manifest JSON array is not closed")
+			}
+		default:
+			return fmt.Errorf("unexpected manifest JSON delimiter %q", delim)
+		}
+		return nil
+	}
+	if err := readValue(0); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return fmt.Errorf("manifest JSON has trailing content")
+	}
+	return nil
+}
+
 func readTopLevelStrings(data []byte) (map[string]string, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	start, err := dec.Token()
@@ -87,9 +150,15 @@ func Accept(raw []byte, expected Identity) (Snapshot, error) {
 	if err != nil || len(decodedDigest) != sha256.Size {
 		return Snapshot{}, fmt.Errorf("expected manifest SHA-256 is invalid")
 	}
+	if len(raw) == 0 || len(raw) > 8<<20 {
+		return Snapshot{}, fmt.Errorf("manifest must contain between 1 and 8388608 bytes")
+	}
 	actual := sha256.Sum256(raw)
 	if !bytes.Equal(actual[:], decodedDigest) {
 		return Snapshot{}, fmt.Errorf("manifest bytes do not match pinned SHA-256")
+	}
+	if err := checkUniqueJSONKeys(raw); err != nil {
+		return Snapshot{}, err
 	}
 	values, err := readTopLevelStrings(raw)
 	if err != nil {
