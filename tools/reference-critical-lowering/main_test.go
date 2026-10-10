@@ -38,6 +38,7 @@ func orderFixture(language string) fixture {
 		{Contract: ref("tei.test.order-submit"), Scope: "application-runtime", Effect: "write", RequiredSlots: slots},
 	}
 	c := Candidate{
+		Schema: CandidateSchema,
 		Source: ref("reference/workspace/applications/order-entry/application.tei"),
 		Language: ref(language),
 		Subjects: []Subject{
@@ -64,13 +65,13 @@ func orderFixture(language string) fixture {
 			Identity: wiring[1].Provider, Contract: need[1].Contract, Scope: need[1].Scope,
 			Target: "web", Conformance: ref("test.submit.conformance"),
 			ResolutionLock: ref("existing.capability-lock.submit"),
-			Artifact: ref("existing.artifact.submit"), Slots: slots,
+			Artifact: ref("existing.artifact.submit"), Slots: append([]Ref(nil), slots...),
 			RuntimeDeps: []Ref{ref("runtime.order-service")},
 			BuildOnlyDeps: []Ref{ref("build.compiler")},
 		},
 	}
 	return fixture{
-		c: c, a: Acceptance{CandidateDigest: Digest(c), Snapshot: ref("accepted.order_entry.snapshot"), Receipt: ref("test.trusted.receipt")},
+		c: c, a: Acceptance{Schema: AcceptanceSchema, CandidateDigest: Digest(c), Snapshot: ref("accepted.order_entry.snapshot"), Receipt: ref("test.trusted.receipt")},
 		wiring: wiring, providers: providers, target: Target{ID: "web", Effects: []string{"read", "write"}},
 	}
 }
@@ -94,6 +95,10 @@ func TestWebOrderScenarioWithTwoLanguageProducers(t *testing.T) {
 	for _, language := range []string{"tei.language.dsl", "tei.language.sql-projection"} {
 		t.Run(language, func(t *testing.T) {
 			f := orderFixture(language)
+			neutral, err := Neutralize(f.c, f.a, stubTrust{})
+			if err != nil || neutral.Schema != NeutralSchema || len(neutral.Intents) != 2 {
+				t.Fatalf("neutral boundary: %v", err)
+			}
 			got, err := f.lower(stubTrust{})
 			if err != nil {
 				t.Fatal(err)
@@ -142,6 +147,7 @@ func TestFailClosedNegativeControls(t *testing.T) {
 		{"ambiguous-provider", func(f *fixture) { f.providers = append(f.providers, f.providers[0]) }, stubTrust{}, "ambiguous-provider"},
 		{"unsupported-effect", func(f *fixture) { f.target.Effects = []string{"read"} }, stubTrust{}, "unsupported-target"},
 		{"wrong-target", func(f *fixture) { f.target.ID = "desktop" }, stubTrust{}, "unsupported-target"},
+		{"wrong-candidate-schema", func(f *fixture) { f.c.Schema = "tei.lowering-candidate/v99" }, stubTrust{}, "invalid-boundary"},
 		{"unaccepted-candidate", func(f *fixture) { f.c.Source = ref("changed.file") }, stubTrust{}, "unaccepted-meaning"},
 		{"acceptance-authority", func(f *fixture) {}, stubTrust{denyAcceptance: true}, "unaccepted-meaning"},
 		{"publisher-authority", func(f *fixture) {}, stubTrust{denyPublisher: true}, "unverified-provider"},
@@ -175,6 +181,8 @@ func TestCurrentAuthorizationIsNotCachedIntoPlan(t *testing.T) {
 
 func TestSecondTargetIsConceptOnly(t *testing.T) {
 	f := orderFixture("tei.language.dsl")
+	neutralBefore, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil { t.Fatal(err) }
 	web, err := f.lower(stubTrust{})
 	if err != nil {
 		t.Fatal(err)
@@ -185,6 +193,8 @@ func TestSecondTargetIsConceptOnly(t *testing.T) {
 		f.providers[i].Identity.ID += ".desktop"
 		f.wiring[i].Provider = f.providers[i].Identity
 	}
+	neutralAfter, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil || Digest(neutralBefore) != Digest(neutralAfter) { t.Fatal("Target changed neutral intent", err) }
 	desktop, err := f.lower(stubTrust{})
 	if err != nil || desktop.Snapshot != web.Snapshot {
 		t.Fatalf("meaning changed with Target: %v", err)
