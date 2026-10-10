@@ -39,9 +39,20 @@ go test ./reference/application-composition
 go run ./reference/application-composition/e5-world-index.go -workspace reference/workspace -application order_entry
 ```
 
-- [21件のGo回帰テスト](e5-world-index_test.go)を追加した。正常例のほか、欠落・重複・誤ったDatabase Contract、異なるメジャー、同じContract IDの別Databaseからの重複、Semantic Namespaceの欠落・重複参照、Pattern定義Sourceの欠落・重複、Authoring出典の不適切な代用、対象外Source変更などを含む。
+- [23件のGo回帰テスト](e5-world-index_test.go)を追加した。正常例のほか、欠落・重複・誤ったDatabase Contract、異なるメジャー、同じContract IDの別Databaseからの重複、Semantic Namespaceの欠落・重複参照、Pattern定義Sourceの欠落・重複、Authoring出典の不適切な代用、対象外Source変更などを含む。
 - 2026-10-10の時点で**GitHubへGoコードとテストを登録したことは確認したが、このheadのGoテスト、Go fmt、go vet、実WorkspaceでのCLI実行は未実施**。成功件数として数えない。
 - `tools/repository-health-check.sh`も未実施。trusted full checkoutのexact-head、実行前後clean、最新mainとの調整が済むまで[PR #1051](https://github.com/hat47x/tei-platform/pull/1051)はDraftのまま、mainへマージしない。
+
+## E7用のオプトイン出力
+
+従来のデフォルトJSON出力は維持する。E6へ渡す診断とSource Indexを同一呼び出しで採取したい場合だけ`-paired-evidence`を指定する。
+
+```sh
+go run ./reference/application-composition/e5-world-index.go \
+  -workspace reference/workspace -application order_entry -paired-evidence > current.json
+```
+
+これにより`format`・`report`・`index`・限定的`qualification`を持つJSONを返す。詳しくは[E7の接続手順](E7_PAIRED_OBSERVATION.md)。Source IndexにはWorkspace相対パスが含まれる。信頼できる解析済みbytesの同一性や改ざん防止、実権限をこのEnvelopeで保証するわけではない。Goテスト2件を追加したが、このheadでのGoテスト実行は未確認。
 
 ## E4から確定できる改善と今後の境界
 
