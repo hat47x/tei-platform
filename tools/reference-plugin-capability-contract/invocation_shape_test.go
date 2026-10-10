@@ -105,9 +105,13 @@ func TestInvocationRegistryRejectsShapeArtifactDriftAtRegistration(t *testing.T)
 	implementation.RequestShapeArtifact.Root.Required = append(
 		implementation.RequestShapeArtifact.Root.Required, "NewRequiredField",
 	)
+	authorities := invocationShapeAuthoritiesForTest(
+		[]InvocationImplementation{implementation},
+	)
 	_, err = NewInvocationRegistry(
 		[]InvocationImplementation{implementation},
-		invocationShapeAuthoritiesForTest([]InvocationImplementation{implementation}),
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	)
 	if err == nil || !strings.Contains(err.Error(), `requires undeclared property "NewRequiredField"`) {
 		t.Fatalf("mutated shape artifact was registered: %v", err)
@@ -328,6 +332,7 @@ func TestInvocationRegistryRejectsStaleShapeAuthorityEvidence(t *testing.T) {
 	if _, err := NewInvocationRegistry(
 		[]InvocationImplementation{implementation},
 		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	); err == nil || !strings.Contains(err.Error(), "no accepted Shape Authority Evidence") {
 		t.Fatalf("stale shape authority Evidence was accepted: %v", err)
 	}
@@ -340,9 +345,11 @@ func TestInvocationRegistryRejectsAmbiguousShapeAuthorityEvidence(t *testing.T) 
 	if left.EvidenceFingerprint == right.EvidenceFingerprint {
 		t.Fatal("test authority fingerprints unexpectedly match")
 	}
+	authorities := []InvocationShapeAuthorityEvidence{left, right}
 	if _, err := NewInvocationRegistry(
 		nil,
-		[]InvocationShapeAuthorityEvidence{left, right},
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	); err == nil || !strings.Contains(err.Error(), "ambiguous") {
 		t.Fatalf("ambiguous accepted Shape Authority Evidence was accepted: %v", err)
 	}
@@ -386,11 +393,19 @@ func TestShapeAuthorityEvidenceRefreshDoesNotChangeCapabilityResolutionIdentity(
 			"authority-new-result",
 		),
 	}
-	oldRegistry, err := NewInvocationRegistry(implementations, oldAuthorities)
+	oldRegistry, err := NewInvocationRegistry(
+		implementations,
+		oldAuthorities,
+		invocationShapePublisherTrustForTest(t, oldAuthorities),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	newRegistry, err := NewInvocationRegistry(implementations, newAuthorities)
+	newRegistry, err := NewInvocationRegistry(
+		implementations,
+		newAuthorities,
+		invocationShapePublisherTrustForTest(t, newAuthorities),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
