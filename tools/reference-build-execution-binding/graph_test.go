@@ -58,6 +58,30 @@ func externalBuilderSeed(node string, plan BuildExecutionPlan) BuildGraphSeed {
 	}
 }
 
+func graphNodeOutputForPlan(t *testing.T, plan BuildExecutionPlan, set ArtifactSet) BuildGraphNodeOutput {
+	t.Helper()
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return BuildGraphNodeOutput{
+		ArtifactSet:                     set,
+		BuildExecutionResultFingerprint: resultFingerprint,
+	}
+}
+
 func TestBuildGraphFingerprintIsDeclarationOrderIndependent(t *testing.T) {
 	generator := graphNodeForPlan(t, "generator", graphPlan(t, "generator", digestA, digestB))
 	consumer := graphNodeForPlan(t, "consumer", graphPlan(t, "consumer", digestC, digestB))
@@ -201,13 +225,13 @@ func TestBuildGraphAllowsOneProducerToFeedMultipleConsumers(t *testing.T) {
 			externalBuilderSeed("right", rightPlan),
 		},
 	}
-	outputs := map[string]ArtifactSet{
-		"producer": {
+	outputs := map[string]BuildGraphNodeOutput{
+		"producer": graphNodeOutputForPlan(t, producerPlan, ArtifactSet{
 			FormatVersion: artifactSetFormatVersion,
 			Members: []ArtifactMember{{
 				Role: "generated-source", Format: "application/octet-stream", Digest: digestC,
 			}},
-		},
+		}),
 	}
 	plans := map[string]BuildExecutionPlan{
 		"producer": producerPlan,
@@ -256,15 +280,15 @@ func TestBuildGraphBindsProducerOutputToExactConsumerDependency(t *testing.T) {
 			externalBuilderSeed("consumer", consumerPlan),
 		},
 	}
-	outputs := map[string]ArtifactSet{
-		"producer": {
+	outputs := map[string]BuildGraphNodeOutput{
+		"producer": graphNodeOutputForPlan(t, producerPlan, ArtifactSet{
 			FormatVersion: artifactSetFormatVersion,
 			Members: []ArtifactMember{{
 				Role: "generated-source",
 				Format: "application/octet-stream",
 				Digest: digestC,
 			}},
-		},
+		}),
 	}
 	plans := map[string]BuildExecutionPlan{
 		"producer": producerPlan,
@@ -322,15 +346,15 @@ func TestBootstrapSeedIsExternalBoundaryNotCycleNode(t *testing.T) {
 			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
-	outputs := map[string]ArtifactSet{
-		"stage1": {
+	outputs := map[string]BuildGraphNodeOutput{
+		"stage1": graphNodeOutputForPlan(t, stage1Plan, ArtifactSet{
 			FormatVersion: artifactSetFormatVersion,
 			Members: []ArtifactMember{{
 				Role: "builder-artifact",
 				Format: "application/octet-stream",
 				Digest: stage1Output.ArtifactDigest,
 			}},
-		},
+		}),
 	}
 	plans := map[string]BuildExecutionPlan{
 		"stage1": stage1Plan,
@@ -621,5 +645,72 @@ func TestVerifyBuildGraphBindingsRejectsUnboundDependency(t *testing.T) {
 		nil,
 	); err == nil {
 		t.Fatal("Build graph accepted a BuildDependency with no producer or external seed")
+	}
+}
+
+
+func TestBuildGraphRejectsOutputFromDifferentBuildExecutionResult(t *testing.T) {
+	producerPlan := graphPlan(t, "producer", digestA, digestB)
+	consumerPlan := graphPlan(t, "consumer", digestB, digestD)
+	consumerPlan.Dependencies = []plugin.BuildDependency{{
+		Kind:           "generated-source",
+		ID:             "generated-input",
+		Version:        "1.0.0",
+		ArtifactDigest: digestC,
+	}}
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{
+			graphNodeForPlan(t, "producer", producerPlan),
+			graphNodeForPlan(t, "consumer", consumerPlan),
+		},
+		Edges: []BuildGraphEdge{{
+			FromNode: "producer",
+			OutputRole: "generated-source",
+			ToNode: "consumer",
+			Input: dependencyInput("generated-source", "generated-input", "1.0.0"),
+		}},
+		Seeds: []BuildGraphSeed{
+			externalBuilderSeed("producer", producerPlan),
+			externalBuilderSeed("consumer", consumerPlan),
+		},
+	}
+	set := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "generated-source",
+			Format: "application/octet-stream",
+			Digest: digestC,
+		}},
+	}
+	output := graphNodeOutputForPlan(t, producerPlan, set)
+	otherPlan := producerPlan
+	otherPlan.Sources = append([]plugin.BuildSource(nil), producerPlan.Sources...)
+	otherPlan.Sources[0].Digest = digestD
+	otherExecutionFingerprint, err := buildExecutionPlanFingerprint(otherPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output.BuildExecutionResultFingerprint, err = buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: otherExecutionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyBuildGraphBindings(
+		graph,
+		map[string]BuildExecutionPlan{
+			"producer": producerPlan,
+			"consumer": consumerPlan,
+		},
+		map[string]BuildGraphNodeOutput{"producer": output},
+	); err == nil {
+		t.Fatal("Build graph accepted producer output Evidence from a different build execution")
 	}
 }
