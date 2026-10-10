@@ -44,7 +44,7 @@ TEI_CP_EXPECTED_MAIN=<current-origin-main-40hex> \
 bash tools/reference-critical-path-evidence-audit/qualify.sh
 ```
 
-`qualify.sh`は最新remoteをfetchし、候補HEADとmainのexact一致・main ancestry・変更path、pre/postの未追跡/ignoredおよび非標準index状態を照合する。監査Goのrace test/vet/gofmt、既存Shared AcceptanceとWeb Driverのfocused conformance、既存`tools/repository-health-check.sh`全体を実施し、最後に再fetchして変化を拒否する。失敗時に部分的な成功をPASSとして出さない。
+`qualify.sh`は**正規のGitHub `hat47x/tei-platform` remote URLのみを許容**（ローカル偽remote・forkのcurrent mainを採用しない）。そのremoteをfetchし、候補HEADとmainのexact一致・main ancestry・変更path、pre/postの未追跡/ignoredおよび非標準index状態を照合する。監査Goのrace test/vet/gofmt、既存Shared AcceptanceとWeb Driverのfocused conformance、既存`tools/repository-health-check.sh`全体を実施し、最後に再fetchして変化を拒否する。失敗時に部分的な成功をPASSとして出さない。
 
 成功出力は`CRITICAL_PATH_LOCAL_SOURCE_QUALIFIED_ONLY`であり、**Product Gate PASSではない**。これは他Draft（#1124/#1121）の未統合Sourceをtestするものではなく、R0→R1を使用した実running Webの新単価負例、実DB保存、独立read、人間の受入を検証しない。またリモート取得・Go/Node等が使えない環境では実行できない。作業済みの単独Go試験を、これらのtrusted full checkout資格と取り違えない。
 
