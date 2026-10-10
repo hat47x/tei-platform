@@ -28,17 +28,66 @@ type listedPackage struct {
 	Module     *listedModule          `json:"Module"`
 	GoFiles    []string               `json:"GoFiles"`
 	CgoFiles   []string               `json:"CgoFiles"`
+	EmbedFiles []string              `json:"EmbedFiles"`
+	CFiles     []string              `json:"CFiles"`
+	CXXFiles   []string              `json:"CXXFiles"`
+	MFiles     []string              `json:"MFiles"`
+	HFiles     []string              `json:"HFiles"`
+	FFiles     []string              `json:"FFiles"`
+	SFiles     []string              `json:"SFiles"`
+	SwigFiles  []string              `json:"SwigFiles"`
+	SwigCXXFiles []string            `json:"SwigCXXFiles"`
+	SysoFiles  []string              `json:"SysoFiles"`
 	Imports    []string               `json:"Imports"`
 	Error      *struct{ Err string }  `json:"Error"`
 	Incomplete bool                   `json:"Incomplete"`
 	DepsErrors []struct{ Err string } `json:"DepsErrors"`
 }
 
+type SourceInput struct {
+	Kind string `json:"kind"`
+	Path string `json:"path"`
+}
+
 type SourcePackage struct {
-	ImportPath string   `json:"importPath"`
-	GoFiles    []string `json:"goFiles,omitempty"`
-	CgoFiles   []string `json:"cgoFiles,omitempty"`
-	Imports    []string `json:"imports,omitempty"`
+	ImportPath       string        `json:"importPath"`
+	GoFiles          []string      `json:"goFiles,omitempty"`
+	CgoFiles         []string      `json:"cgoFiles,omitempty"`
+	AuxiliaryInputs  []SourceInput `json:"auxiliaryInputs,omitempty"`
+	Imports          []string      `json:"imports,omitempty"`
+}
+
+// auxiliaryInputs records source and embedded inputs not represented by
+// GoFiles/CgoFiles. These Go-list fields are not an exhaustive inventory of
+// external compiler, linker, pkg-config, or C-include dependencies.
+func (p listedPackage) auxiliaryInputs() []SourceInput {
+	var inputs []SourceInput
+	for _, group := range []struct {
+		kind string
+		files []string
+	}{
+		{"embed", p.EmbedFiles},
+		{"c", p.CFiles},
+		{"cxx", p.CXXFiles},
+		{"objective-c", p.MFiles},
+		{"header", p.HFiles},
+		{"fortran", p.FFiles},
+		{"assembly", p.SFiles},
+		{"swig", p.SwigFiles},
+		{"swig-cxx", p.SwigCXXFiles},
+		{"syso", p.SysoFiles},
+	} {
+		for _, file := range group.files {
+			inputs = append(inputs, SourceInput{Kind: group.kind, Path: file})
+		}
+	}
+	sort.Slice(inputs, func(i, j int) bool {
+		if inputs[i].Kind == inputs[j].Kind {
+			return inputs[i].Path < inputs[j].Path
+		}
+		return inputs[i].Kind < inputs[j].Kind
+	})
+	return inputs
 }
 
 type Report struct {
@@ -117,7 +166,7 @@ func parseGoList(reader io.Reader, entry, tags string) (Report, error) {
 		sort.Strings(files)
 		sort.Strings(cgoFiles)
 		sort.Strings(imports)
-		result.Packages = append(result.Packages, SourcePackage{ImportPath: p.ImportPath, GoFiles: files, CgoFiles: cgoFiles, Imports: imports})
+		result.Packages = append(result.Packages, SourcePackage{ImportPath: p.ImportPath, GoFiles: files, CgoFiles: cgoFiles, AuxiliaryInputs: p.auxiliaryInputs(), Imports: imports})
 	}
 	sort.Slice(result.Packages, func(i, j int) bool { return result.Packages[i].ImportPath < result.Packages[j].ImportPath })
 	if len(result.Packages) == 0 {
@@ -165,9 +214,17 @@ func validateTrackedSources(raw []byte, root string, tracked map[string]struct{}
 		if err != nil || relDir == ".." || strings.HasPrefix(relDir, ".."+string(filepath.Separator)) || filepath.IsAbs(relDir) {
 			return fmt.Errorf("main-module package %s is outside repository", p.ImportPath)
 		}
-		for _, file := range append(append([]string(nil), p.GoFiles...), p.CgoFiles...) {
-			if file == "" || file == "." || file == ".." || filepath.IsAbs(file) || filepath.Base(file) != file {
-				return fmt.Errorf("package %s has unsafe compiled file name %q", p.ImportPath, file)
+		inputFiles := append(append([]string(nil), p.GoFiles...), p.CgoFiles...)
+		for _, auxiliary := range p.auxiliaryInputs() {
+			inputFiles = append(inputFiles, auxiliary.Path)
+		}
+		for _, file := range inputFiles {
+			// Embedded files may contain nested paths, unlike GoFiles. Keep
+			// that relative path but reject traversal and noncanonical forms.
+			clean := path.Clean(file)
+			if file == "" || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") ||
+				strings.HasPrefix(file, "/") || strings.Contains(file, "\\") || clean != file {
+				return fmt.Errorf("package %s has unsafe source input path %q", p.ImportPath, file)
 			}
 			rel := filepath.ToSlash(filepath.Join(relDir, file))
 			if _, ok := tracked[rel]; !ok {
