@@ -22,6 +22,7 @@ import (
 	"tei/internal/semantic/validationeval"
 	"tei/internal/workspace"
 	"tei/tools/internal/rmtevidence"
+	"tei/tools/internal/rmtlink"
 )
 
 // rmtSyntheticReadOnlyExecutor is a test-only provider. Its result is NOT
@@ -95,9 +96,10 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 		t.Fatal("fixture unexpectedly contains the rule before Acceptance")
 	}
 	candidate := unitPriceWithSelectionCandidate(revisionOfDir(t, dir))
+	sourceEvidenceData := rmtIndependentSyntheticSourceEvidence(t)
 	grounded, err := attachRMTTranscriptionEvidence(
 		mustJSON(t, candidate),
-		rmtIndependentSyntheticSourceEvidence(t),
+		sourceEvidenceData,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +118,45 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 	if !review.PreviewAcceptable || review.ReviewFingerprint == "" {
 		t.Fatalf("no exact Review for explicit Decision: %+v", review)
 	}
+	// The separate semantic link only correlates a source Evidence token
+	// with the actual Review delta; it cannot assert that Table means
+	// unit-price positivity, or claim human approval or original equivalence.
+	sourceEvidence, err := rmtevidence.Decode(sourceEvidenceData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ev.preview.SemanticDiff) != 1 ||
+		ev.preview.SemanticDiff[0].ID != "sales.order_line.unit_price_positive" {
+		t.Fatalf("expected exact added Validation in Review: %+v", ev.preview.SemanticDiff)
+	}
+	change := ev.preview.SemanticDiff[0]
+	linkContext := rmtlink.Context{
+		Source: sourceEvidence,
+		CandidateFingerprint: review.CandidateFingerprint,
+		BaseModelRevision: candidate.BaseModelRevision,
+		ReviewFingerprint: review.ReviewFingerprint,
+		Target: rmtlink.SemanticTarget{
+			Kind: change.Kind,
+			ID: string(change.ID),
+			Change: change.Change,
+		},
+	}
+	link, err := rmtlink.Prepare(linkContext)
+	if err != nil {
+		t.Fatalf("RMT interpretation link cannot be prepared: %v", err)
+	}
+	if link.Status != rmtlink.StatusProposed || link.MeaningStatus != rmtlink.MeaningUnresolved {
+		t.Fatalf("source correlation was promoted to semantic authority: %+v", link)
+	}
+	if err := rmtlink.Verify(link, linkContext); err != nil {
+		t.Fatal(err)
+	}
+	stale := linkContext
+	stale.ReviewFingerprint = "sha256:" + strings.Repeat("0", 64)
+	if err := rmtlink.Verify(link, stale); err == nil {
+		t.Fatal("stale Review was allowed to reuse a semantic interpretation link")
+	}
+
 	decision, err := accept(dir, mustJSON(t, grounded), acceptOptions{
 		ExpectedReviewFingerprint: review.ReviewFingerprint,
 	})
