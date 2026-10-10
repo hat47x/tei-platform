@@ -14,6 +14,8 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E4：Subject単位の変更検査](e4-index-scope.mjs)／[合成試験](e4-index-scope.test.mjs) — 既存IndexのJSON形状に沿って、呼び出し側が選択したSubjectのみを再確認する。依存辺を自動導出した証拠ではない。
 - [E5：解析済みApplicationの依存とSource Indexの接続](E5_PARSED_WORLD_SOURCE_JOIN.md) — Goの既存Loader／型付きWorldを使い、明示Validation・Database Contractの出典を検査する。
 - [E5：読み取り専用Go検証器](e5-world-index.go)／[Go回帰テスト](e5-world-index_test.go) — 実Workspaceでの動作と全体Healthは未実施。合成fixtureのテストは追加済みだが実行結果は未取得。
+- [E6：解析済み参照とSource Indexの接続](E6_TYPED_INDEX_BRIDGE.md) — E5の部分的な明示依存をE4の既存変更検査へ結び、Source出典と宣言集合の変化を検出する。
+- [E6：限定的な変更検査の接着部分](e6-typed-index-bridge.mjs)／[合成試験](e6-typed-index-bridge.test.mjs) — 依存集合変化、指紋取り違え、出典曖昧化を未解決にする。実Workspaceの統合実行は未実施。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
