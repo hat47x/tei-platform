@@ -306,11 +306,13 @@ Go ReferenceではProvider callbackがContext Slot Viewと同じpackageで動く
 
 Goの`error`は`Error()`文字列だけではない。たとえば`Error()`が安全な固定文言でも、具体的なerror型のfieldや`errors.As` / `Unwrap`経由でcurrent credentialを取り出せる。文字列の直接反射チェック後にdownstream errorをそのまま返す構造は、Execution Contextの秘匿境界を満たさない。
 
-現Referenceでは、直接反射を検出した場合の拒否に加え、機密扱いのrequired slotがある呼出しではdownstream error objectの外部流出を防ぐため、原errorをwrapせず固定のfailureへ変換する。非機密のrequired slotだけの場合はdownstream errorの型を維持する。
+現Referenceでは、成功resultのraw slot bytes直接反射を検出した場合に拒否する。機密扱いのrequired slotがある呼出しでdownstream errorが返った場合には、`Error()`・`Unwrap()`・formatting等の実行自体に任意のコードやpanicを伴うため、**error文字列の直接反射検査はせず**、原error objectを評価・wrapせず固定failureへ変換する。同じ呼出し中の同期的なProvider panicも値をformatせず固定failureへ変換する。Goのpanicはそのまま上位へ伝播すると秘密をpanic payload/stack logに含める経路となるため、実際の負例で再現して対策した。非機密のrequired slotだけの場合は、従来のerror型およびpanic伝播を維持する。
 
 また、固定failureへ変換するだけでは、下流実行中に発生したControl Contextのcancellation / deadlineが失われる。Referenceで再現・修正したため、trustedなControl Context自身の`Err()`が終了状態を示す場合には、その状態を返す。Providerのerror objectに含まれる`context.Canceled`相当の値だけではキャンセルを認定しない。この区別をしないと、Providerが偽の制御状態を報告できてしまう。
 
 さらに、Providerが`nil` errorと成功結果を返しても、呼出し中にControl Contextが終了していれば旧Referenceは結果とreceiptを返していた。テストで再現したため、Provider callbackが戻った直後にtrusted Control Contextの終了状態を調べ、cancel / deadlineが成立していれば結果とreceiptを空にして終了する。ContextのないCapabilityも同じcontrol判定を使う。これは同期的な境界確認であって、検査後に生じる競合、外部副作用の取消し、実行中のProvider強制停止を保証しない。
+
+panicやerrorのopaque変換は、Capabilityの失敗分類（たとえばaccess unavailableとunknownの等価性）をgeneric gateで確定することを意味しない。Go以外への可搬性を重視し、productionではProvider実行境界とContract/Hostのpublic failure mappingの分担を判断する。別goroutineのpanic、runtime fatal、Provider内部log、同期的なpanic抑止によって隠されるprogramming defect、外部副作用の巻戻しは今回の保証対象外である。
 
 これは**Referenceの漏えい経路を閉じる暫定措置**である。固定文言を製品のfailure semanticsとみなさない。製品化時には、Capability Contractで定義された公開可能な失敗分類を、Hostが既存Security policyに照らして変換する必要がある。特にunknown / access deniedの同一外部表現を求めるconsumerでは、汎用gateがその違いを新しいoracleにしないよう確認する。下流のlogging、間接漏えい、timing / side channel、mutating effectの安全性はこれだけでは保証できない。
 
