@@ -368,8 +368,8 @@ func main() {
 		if err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
 		// Revalidate both source inputs after the comparison; do not silently
 		// reuse source positions if another editor changed either fixture.
-		if _,err:=navigateGuarded(p,"step:"+p.Steps[0].ID,sourceSnapshot);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
-		if _,err:=navigateGuarded(nextProjection,"step:"+nextProjection.Steps[0].ID,nextSnapshots);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		if err:=verifySnapshots(sourceSnapshot);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		if err:=verifySnapshots(nextSnapshots);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
 		enc:=json.NewEncoder(os.Stdout);enc.SetIndent("","  ")
 		if err:=enc.Encode(compared);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
 		if compared.AcceptanceStatus=="blocked-unresolved-diagnostic" {os.Exit(2)}
