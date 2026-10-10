@@ -56,6 +56,8 @@ go run ./cmd/tei validate -workspace /tmp/tei-first
 
 `UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`のエラーと、`semantic/intake/request.tei`の定義位置が表示され、非0終了になることが期待結果です。「うまく推定して通す」ことはしません。型を`std.code`に戻してValidationが成功することを確認します。
 
+Applicationが参照するSemanticの名前を誤記した場合は、`UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE`としてApplication定義の位置を示します。構文エラーは`PARSE_ERROR`となります。いずれも元の定義を修復したうえで再検証します。
+
 ## 第1段階の完了と次の課題
 
 この例は、(a) 独立Workspaceの作成、(b) 一か所の編集、(c) Source位置とCanonical意味の確認、(d) 不正な参照の検出・修復までを扱います。回帰テストは`go test ./internal/workspace -run TestFirstModelChange -count=1`で実行できます。実際の`tei` CLIをbuildして、正常→編集→エラー→修復の操作を確認するテストは`go test ./cmd/tei -run TestFirstModelChangeCLIEndToEnd -count=1`です。
