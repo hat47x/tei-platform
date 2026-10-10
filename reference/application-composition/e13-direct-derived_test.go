@@ -4,10 +4,12 @@ package main
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	"tei/internal/index"
+	"tei/internal/workspace"
 )
 
 func TestE13DirectIndexUsesExistingWorldProjection(t *testing.T) {
@@ -76,5 +78,41 @@ func TestE13DerivedEvidenceIsBoundToTheSameInMemoryWorld(t *testing.T) {
 	}
 	if envelope.Qualification != "read-only-paired-input-not-an-authority" {
 		t.Fatal("projection must not acquire authority")
+	}
+}
+
+func TestE13ReferenceWorkspaceApplicationPatternMembership(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load reference workspace: %v", err)
+	}
+	sources, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		t.Fatalf("build source index: %v", err)
+	}
+	report := inspectE5(loaded.World, sources, "order_entry")
+	if report.Status != "observed" {
+		t.Fatalf("real E5 source observation unresolved: %+v", report.Issues)
+	}
+	patterns := map[string]bool{}
+	for _, dependency := range report.Dependencies {
+		if dependency.Relation == "application-pattern" {
+			patterns[dependency.Subject.ID] = true
+		}
+	}
+	derived := e13FromWorld(loaded.World)
+	indexPatterns := map[string]bool{}
+	for _, pattern := range derived.ApplicationPatterns {
+		if string(pattern.Application) == "order_entry" {
+			id := string(pattern.Pattern)
+			if indexPatterns[id] {
+				t.Fatalf("duplicate derived Application Pattern %s", id)
+			}
+			indexPatterns[id] = true
+		}
+	}
+	if len(patterns) == 0 || !reflect.DeepEqual(patterns, indexPatterns) {
+		t.Fatalf("E5 and existing Derived Index disagree on order_entry Pattern membership: E5=%v Derived=%v", patterns, indexPatterns)
 	}
 }
