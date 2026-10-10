@@ -17,21 +17,21 @@ type PackageChange struct {
 // ClosureComparison describes E0 source-level differences, not which symbols
 // survive linking or whether a runtime capability has been safely removed.
 type ClosureComparison struct {
-	SourceRevision  string             `json:"sourceRevision"`
-	Module          string             `json:"module"`
-	GoVersion       string             `json:"goVersion"`
-	GOOS            string             `json:"goos"`
-	GOARCH          string             `json:"goarch"`
-	CGOEnabled      string             `json:"cgoEnabled"`
-	GoFlags         string             `json:"goFlags"`
-	TargetFeatures  map[string]string  `json:"targetFeatures,omitempty"`
-	BeforeEntry     string             `json:"beforeEntry"`
-	AfterEntry      string             `json:"afterEntry"`
-	BeforeBuildTags string             `json:"beforeBuildTags,omitempty"`
-	AfterBuildTags  string             `json:"afterBuildTags,omitempty"`
-	BeforeOnly      []string           `json:"beforeOnly"`
-	AfterOnly       []string           `json:"afterOnly"`
-	Changed         []PackageChange    `json:"changed"`
+	SourceRevision  string            `json:"sourceRevision"`
+	Module          string            `json:"module"`
+	GoVersion       string            `json:"goVersion"`
+	GOOS            string            `json:"goos"`
+	GOARCH          string            `json:"goarch"`
+	CGOEnabled      string            `json:"cgoEnabled"`
+	GoFlags         string            `json:"goFlags"`
+	TargetFeatures  map[string]string `json:"targetFeatures,omitempty"`
+	BeforeEntry     string            `json:"beforeEntry"`
+	AfterEntry      string            `json:"afterEntry"`
+	BeforeBuildTags string            `json:"beforeBuildTags,omitempty"`
+	AfterBuildTags  string            `json:"afterBuildTags,omitempty"`
+	BeforeOnly      []string          `json:"beforeOnly"`
+	AfterOnly       []string          `json:"afterOnly"`
+	Changed         []PackageChange   `json:"changed"`
 }
 
 func packageMap(report Report) (map[string]SourcePackage, error) {
