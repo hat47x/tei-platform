@@ -525,6 +525,8 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 	want := []string{
 		"resolve-current-semantic-data-and-source-evidence-before-design-change",
 		"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+		"classify-relation-archetype-before-promoting-business-identity-or-functional-dependency",
+		"require-source-backed-association-semantics-before-composite-identity",
 		"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
 		"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
 		"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
@@ -541,6 +543,12 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 		"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
 	) {
 		t.Fatalf("review protocol authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.AuthorityLimits,
+		"relation-archetype-review-is-guidance-not-semantic-proof",
+	) {
+		t.Fatalf("relation archetype authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
 	}
 	for _, limit := range []string{
 		"current-data-uniqueness-is-not-functional-dependency-proof",
@@ -1053,6 +1061,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	for _, question := range []string{
 		"what-business-meaning-does-the-relation-express",
 		"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+		"does-this-relation-archetype-support-business-identity-or-functional-dependency-or-only-topology",
 		"what-cardinality-is-required",
 		"is-the-relation-current-only-or-temporal",
 		"what-history-or-validity-period-must-be-preserved",
