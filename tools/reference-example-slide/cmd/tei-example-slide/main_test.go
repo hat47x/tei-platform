@@ -96,6 +96,14 @@ func TestCLIExportsOnlyUnverifiedAnswerHandoff(t *testing.T) {
 		handoff.Answers[0].Status!="unverified" {
 		t.Fatalf("CLI incorrectly promoted answer: %+v", handoff)
 	}
+	triageRaw, err := os.ReadFile(filepath.Join(output, "change-triage.json"))
+	if err != nil { t.Fatal(err) }
+	var triage example.ChangeTriage
+	if err := json.Unmarshal(triageRaw, &triage); err != nil { t.Fatal(err) }
+	if triage.AnswerFingerprint != handoff.Fingerprint || len(triage.Items)!=1 ||
+		triage.Items[0].CandidateReady {
+		t.Fatalf("CLI incorrectly generated accepted semantic change: %+v", triage)
+	}
 }
 
 func TestCLIRejectsUnboundAnswersBeforeWriting(t *testing.T) {
