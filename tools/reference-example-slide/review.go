@@ -13,6 +13,10 @@ import (
 type ReviewPacket struct {
 	CaseID        string          `json:"caseId"`
 	ModelRevision string          `json:"modelRevision"`
+	// Bind review responses to exact example records and the actual Catalog,
+	// not just the names of unresolved questions.
+	ExampleFingerprint string `json:"exampleFingerprint"`
+	CatalogFingerprint string `json:"catalogFingerprint"`
 	// Fingerprint binds all authored and derived questions to this exact review.
 	Fingerprint string          `json:"fingerprint"`
 	Authored      []Question      `json:"authoredQuestions,omitempty"`
@@ -43,8 +47,16 @@ func Review(input Input) (ReviewPacket, error) {
 }
 
 func reviewProjection(input Input, projection Projection) ReviewPacket {
+	// JSON encoding of known, validated model structs is deterministic:
+	// map keys are sorted by encoding/json, and no functions or channels exist.
+	caseBytes, _ := json.Marshal(input.Example)
+	catalogBytes, _ := json.Marshal(input.Catalog)
+	caseSum := sha256.Sum256(caseBytes)
+	catalogSum := sha256.Sum256(catalogBytes)
 	packet := ReviewPacket{
 		CaseID: input.Example.ID, ModelRevision: input.Catalog.Revision,
+		ExampleFingerprint: "sha256:" + hex.EncodeToString(caseSum[:]),
+		CatalogFingerprint: "sha256:" + hex.EncodeToString(catalogSum[:]),
 		Authored: append([]Question(nil), input.Example.Questions...),
 	}
 	byID := map[string]int{}
