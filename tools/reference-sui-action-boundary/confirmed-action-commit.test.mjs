@@ -153,6 +153,7 @@ test('application may reject an atomic apply with false without reporting confir
   assert.equal(h.state.applications, 0);
 });
 
+
 test('application must explicitly acknowledge an atomic snapshot apply', async () => {
   const h = harness({ applySnapshot: async () => undefined });
   await assert.rejects(h.controller(base), failure('snapshot_apply_failed', 'r2'));
