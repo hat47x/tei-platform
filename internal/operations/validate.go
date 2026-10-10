@@ -1,8 +1,6 @@
 package operations
 
 import (
-	"fmt"
-
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -45,7 +43,8 @@ func (f *ValidationFailure) Error() string {
 	if f == nil {
 		return "validation failure"
 	}
-	return fmt.Sprintf("%s: %v", f.Stage, f.Err)
+	// Preserve legacy human-facing error text; callers inspect Stage via errors.As.
+	return f.Err.Error()
 }
 
 func (f *ValidationFailure) Unwrap() error {
