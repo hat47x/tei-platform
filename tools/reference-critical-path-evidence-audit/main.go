@@ -20,6 +20,14 @@ const schema = "tei.critical-path-evidence/v0"
 var sha40 = regexp.MustCompile(`^[0-9a-f]{40}$`)
 var revision = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
+type Contract struct {
+	ProducerPath  string `json:"producerPath"`
+	ConsumerPath  string `json:"consumerPath"`
+	PositiveTest  string `json:"positiveTest"`
+	NegativeTest  string `json:"negativeTest"`
+	EvidenceClass string `json:"evidenceClass"` // source-only, synthetic-tested, actual-observed
+}
+
 type Qualification struct {
 	Head        string `json:"head"`
 	Main        string `json:"main"`
@@ -45,6 +53,7 @@ type Web struct {
 	Target                   string `json:"target"`
 	SelectedValidation       string `json:"selectedValidation"`
 	ProviderKind             string `json:"providerKind"` // synthetic, actual-db
+	RunMode                  string `json:"runMode"`      // running-server, handler-only
 	PositiveReceipt          string `json:"positiveReceipt"`
 	NegativeReceipt          string `json:"negativeReceipt"`
 	UnobservedControlReceipt string `json:"unobservedControlReceipt"` // N11
@@ -66,6 +75,7 @@ type Physical struct {
 type Packet struct {
 	Schema        string        `json:"schema"`
 	Claim         string        `json:"claim"` // E0, E1, E2: evidence tier requested, not a Gate PASS
+	Contract      Contract      `json:"contract"`
 	Qualification Qualification `json:"qualification"`
 	Acceptance    Acceptance    `json:"acceptance"`
 	Web           Web           `json:"web"`
@@ -92,6 +102,11 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	add := func(code string) { r.Diagnostics = append(r.Diagnostics, code) }
 	if p.Schema != schema {
 		add("UNSUPPORTED_PACKET_SCHEMA")
+	}
+	if p.Contract.ProducerPath == "" || p.Contract.ConsumerPath == "" ||
+		p.Contract.PositiveTest == "" || p.Contract.NegativeTest == "" ||
+		(p.Contract.EvidenceClass != "source-only" && p.Contract.EvidenceClass != "synthetic-tested" && p.Contract.EvidenceClass != "actual-observed") {
+		add("E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING")
 	}
 	if p.Claim != "E0" && p.Claim != "E1" && p.Claim != "E2" {
 		add("UNSUPPORTED_EVIDENCE_TIER")
@@ -126,6 +141,9 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		}
 		if w.ProviderKind != "synthetic" && w.ProviderKind != "actual-db" {
 			add("WEB_PROVIDER_KIND_UNRESOLVED")
+		}
+		if w.RunMode != "running-server" {
+			add("E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED")
 		}
 		if w.PositiveReceipt == "" || w.NegativeReceipt == "" ||
 			w.PositiveReceipt == w.NegativeReceipt {
