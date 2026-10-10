@@ -65,7 +65,7 @@ CLIや同一プロセス内の実行では、`Host.Commit`を直接呼べます�
 
 `POST`には`Content-Type: application/json`と`X-TEI-Action: commit`が必要です。許可された同一オリジンの要求だけを受け付け、クロスサイトの利用を禁止します。成功時は`{"revision":"..."}`、拒否時は`{"error":"..."}`を返します。`403 action_denied`と`409 revision_conflict`はブラウザーでも区別して通知できます。この同一オリジン検査とカスタムヘッダーは、**本番向けのCSRF対策・セッション検証・永続化を代替しません**。
 
-HTTP接続口とブラウザー側Dispatcherの動作は模擬Store・模擬fetchを使ったテストの範囲です。SUIの本番サーバーにこのHandlerを登録した状態ではありません。
+HTTP接続口とブラウザー側Dispatcherの動作は模擬Store・模擬fetchを使ったテストの範囲です。HTTP→Host→SUI形式JSONDocumentStoreで正常更新と再送時の競合を確認する統合テストも追加しましたが、このテストはまだ実リポジトリで実行していません。SUIの本番サーバーにこのHandlerを登録した状態ではありません。
 
 ## 実行
 
