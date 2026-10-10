@@ -305,6 +305,24 @@
       "risk": "source-derived prose or arbitrary private strings can cross a public-safe typed Evidence boundary through fields that are intended to carry TEI identifiers/codes.",
       "owner": "GitHub #1008 / Draft PR #1011",
       "stopCondition": "Extension and authorityLimits use a bounded public token syntax, adversarial tests reject whitespace/Unicode/overlength prose-like values, and the current transcription contract is checked so every emitted Extension and authority limit satisfies the same token boundary"
+    },
+    {
+      "id": "RML-034",
+      "topic": "cross-view-derived-from-unvalidated-source-profile",
+      "nature": "unsupported",
+      "evidence": "The initial RMT-4 API accepted an Inspection value and a syntactically valid transcription-contract fingerprint without proving that InspectWithContract had validated the document root and FormatVersion against that exact contract.",
+      "risk": "unsupported source-format semantics can enter the Data/Function/Business cross-view graph through a hand-assembled Inspection even when the Source Adapter profile Gate would reject the source.",
+      "owner": "GitHub #1031 / Draft PR #1077",
+      "stopCondition": "the exported cross-view builder takes exact source bytes and exact transcription contract, invokes InspectWithContract internally, and adversarial tests reject missing/unsupported FormatVersion, wrong root, namespaced root, and contracts without a source profile"
+    },
+    {
+      "id": "RML-035",
+      "topic": "iotable-without-crud-emitted-as-resolved-operation",
+      "nature": "unsupported",
+      "evidence": "The initial RMT-4 IOTable projection treated a uniquely resolved Function/Table pair as function-table-operation even when all CRUD markers were absent or empty, yielding operations=\"\" and allowing a derived potential path.",
+      "risk": "cross-view accounting can invent a declared operation from structural presence alone and blur the boundary between Table participation and explicit CRUD authority.",
+      "owner": "GitHub #1031 / Draft PR #1077",
+      "stopCondition": "function-table-operation is emitted only when at least one recognized C/R/U/D marker is present; zero recognized markers produce iotable-operation-missing unresolved Evidence, and unsupported markers never yield partial CRUD"
     }
   ],
   "claimsNotEstablished": [
