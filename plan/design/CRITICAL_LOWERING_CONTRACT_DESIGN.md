@@ -205,3 +205,13 @@ main `01f70b37398eed122e41ada3abdf8e9f7fd6adbb`で、評価待ちの[Generic Cap
 専用negative testは、別のlegacy Providerが存在していても、pin済みProviderを除去／Contract fingerprintを変更すると自動fallbackせず停止することを検査する。Dual Authorityを許していないことの**production実証**には、この合成テストだけでは不足する。
 
 既存`contract-query-executor`を使ったL1/L2実連携を#951側が導入したときは、Source revision→accepted generic projection→legacy-authoritative Environment Plan→実Invokerを同一traceで追跡し、#1121にidentity/evidenceの連結を追加する。これは現在未実装であり、提案段階の移行設計を先回りして採用済み扱いしない。
+
+## 12. 現行mainの祖先性とQualification
+
+PR #1150の評価待ちGeneric Capability移行文書を取り込むため、`01f70b37398eed122e41ada3abdf8e9f7fd6adbb`（main）を作業branchへ**非forceのmerge commit**として取り込んだ。これはPR #1141をmainへ統合したことではない。双方の変更pathは重複しておらず、取り込み前の親mainの追加ファイル1件と#1121レーンの新規7ファイルを保持している。
+
+今回、`SourceInputs=[]`（本当に自己完結したSource）と`SourceInputs=nil`（依存閉包の宣言がない）の差を明示した。余分な依存Sourceを最低1件要求する旧検査は本質的でないため修正し、明示的な空配列はAccepted OriginとTarget Planまで保持する。現在も実Sourceでの依存閉包の網羅性は別途検証が必要である。
+
+`workspace_trace_test.go`ではApplication宣言にあるDatasource alias・DB Contract・Compatible Majorの集合とReferenceのDataNeedの集合が**双方向一致**することを検査する。Referenceの一部subsetだけを照合し、宣言済みのContractを黙って落とす抜け道を残さない。
+
+`qualify.sh`は、実行前後にExpected HEAD / current origin/main / clean checkoutとmain ancestor条件を確認する。対象は局所Test、既設Acceptance→Driver/Web Test、実WebバイナリのHTTP Smoke、全Repository Health。ただし、**このスクリプトの追加自体は実行済み証跡ではない**。各チェックのExit Code、実行日時、Go version、HEAD/mainを信頼する実Checkout上で取得し、独立したGate reviewで判定する。現時点でPASS証跡がないため、PRはDraft、Issueもopenのままとする。
