@@ -351,11 +351,11 @@ func main() {
 	format:=flag.String("format","json","json or dot")
 	selectElement:=flag.String("select","","optional exact read-only navigation selector kind:id")
 	flag.Parse()
-	p,err:=run(*procedureFile,*reviewFile,*setFile,*workspaceDir)
+	p,sourceSnapshot,err:=runGuarded(*procedureFile,*reviewFile,*setFile,*workspaceDir)
 	if err!=nil { fmt.Fprintln(os.Stderr,err); os.Exit(1) }
 	if *selectElement!="" {
 		if *format!="json" {fmt.Fprintln(os.Stderr,"navigation selection requires -format json");os.Exit(1)}
-		selected,navErr:=navigate(p,*selectElement,*procedureFile,*reviewFile,*setFile)
+		selected,navErr:=navigateGuarded(p,*selectElement,sourceSnapshot)
 		if navErr!=nil {fmt.Fprintln(os.Stderr,navErr);os.Exit(1)}
 		enc:=json.NewEncoder(os.Stdout)
 		enc.SetIndent("","  ")
