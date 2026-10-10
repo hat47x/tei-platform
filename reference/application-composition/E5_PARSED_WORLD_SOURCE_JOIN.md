@@ -32,6 +32,14 @@ Source Index内の`RoleDefinition`だけを定義出典として扱い、`author
 
 Versionのメジャー照合は明白な不一致の検出のみであり、実際のContract Conformanceや実装のバージョン選択は既存検証とLockへ委譲する。`SemanticUses`とPattern自身の定義出典は追加したが、**Patternが参照するData・Relation・Query・Capability等の推移的な依存**、外部認証、Environment接続、SUI Native依存を自動的に完全列挙したわけではないため、**全依存Closureの成立を主張しない**。
 
+### 同一Databaseへの複数aliasとSourceの一意性
+
+E5の初期実装では、`target database + contract ID` が二度現れると、**異なる正当なdatasource aliasからの利用まで重複エラーとして扱っていた**。これは参照元のaliasとSource Index Subjectを混同した判定だった。
+
+修正後は、**一つのalias内の同じContract要求の重複だけを拒否**し、別aliasから同じDatabase/Contractを選ぶことは許す。必要Contractの存在とCompatibleMajorは**aliasごとに再評価**する。一方、E6へ渡すDatabase/Contractの`definition`出典は同じSubjectなら**一回だけ列挙**する。異なるaliasの一方にメジャー不一致があれば`unresolved`となり、適合するもう一方に隠されない。
+
+追加の回帰試験は3件で、合計26件を記述した。これはGoの既存`DatabaseByAliasExact`が許す「異なるaliasで同一Targetを参照する」設計を構成診断側で勝手に禁止しないための修正である。Goテストは依然として未実行。
+
 ## 実行手順と検証Gate
 
 ```sh
@@ -39,7 +47,7 @@ go test ./reference/application-composition
 go run ./reference/application-composition/e5-world-index.go -workspace reference/workspace -application order_entry
 ```
 
-- [23件のGo回帰テスト](e5-world-index_test.go)を追加した。正常例のほか、欠落・重複・誤ったDatabase Contract、異なるメジャー、同じContract IDの別Databaseからの重複、Semantic Namespaceの欠落・重複参照、Pattern定義Sourceの欠落・重複、Authoring出典の不適切な代用、対象外Source変更などを含む。
+- [26件のGo回帰テスト](e5-world-index_test.go)を追加した。正常例のほか、欠落・重複・誤ったDatabase Contract、異なるメジャー、同じContract IDの別Databaseからの重複、Semantic Namespaceの欠落・重複参照、Pattern定義Sourceの欠落・重複、Authoring出典の不適切な代用、対象外Source変更などを含む。
 - 2026-10-10の時点で**GitHubへGoコードとテストを登録したことは確認したが、このheadのGoテスト、Go fmt、go vet、実WorkspaceでのCLI実行は未実施**。成功件数として数えない。
 - `tools/repository-health-check.sh`も未実施。trusted full checkoutのexact-head、実行前後clean、最新mainとの調整が済むまで[PR #1051](https://github.com/hat47x/tei-platform/pull/1051)はDraftのまま、mainへマージしない。
 
