@@ -12,7 +12,7 @@
 # 参照パッケージとCLIを対象に試験
 go test ./tools/reference-example-slide/...
 
-# 合成Caseを指定して三枚のSVGと投影JSONを出力
+# 合成Caseを指定して三枚のSVG、投影JSON、設計レビューJSONを出力
 go run ./tools/reference-example-slide/cmd/tei-example-slide \
   -input tools/reference-example-slide/testdata/partial_inspection.json \
   -out /tmp/tei-example-slides
@@ -69,3 +69,17 @@ Composite RelationKeyもキー対を順番どおり照合する。整数や小�
 `world_adapter_test.go`では、実際の正規化済みWorldの`sales.order.customer`を合成レコード値で照合し、同じWorldにあるKeylessな`sales.order.lines`が安易に合格しないことを確認する。どちらも実Providerや本番データの検証ではない。
 
 **検証実行の状態:** Go test / gofmt / full Repository-healthは未実行。これらを実行したというEvidenceは存在しない。
+
+## 設計レビューへの接続（Review Packet）
+
+`Review(input)`は、同じCaseを再検証した結果から、レコード・関連・ステージ単位の診断を**設計者への質問**に変換する。CLIで`-out`を指定すると`review.json`も生成する。
+
+- `authoredQuestions`: 設計者やAIがCaseに記載した既存の未解決の問いを、そのまま保管・表示する。
+- `issues`: `supported`以外のRelationFindingから決定論的に導出するレビュー候補。モデルrevision、Stage、Relation、Source Record、Frame IDs、判定理由、必要なEvidence、確認すべき設計対象を含む。
+- Frameが重複しても同じStageの同じ論点を増殖させない。スライド順序の変更でも同じIDに収束し、revision変更では古いレビューIDを使い回せない。
+- 対応先は`example-data`、`example-completeness`、`semantic-relation`、`business-meaning`、`cross-view-contradiction`などを示す**レビューの手掛かり**であり、書き込み命令ではない。
+- `contradiction`も、AIが勝手にKeyやCardinalityを書き換えるのではなく、どちらが誤っているか確認を要求する。
+
+このReview Packetは、確認済みの設計判断やSemantic Patchそのものではない。確認者、適用対象、根拠を確定する作業と、既存Shared Acceptanceによる正本変更は別段階として扱う。`relation-keys-not-declared`から`AddRelationKey`のような操作が必要だと自動決定することもない。
+
+`Review(input)`自体も入力のWorld、Case、Diagramを変更しない。局所のunit testでは、質問の出典参照、安定ID、スライドの重複排除、回答・Patchの捏造防止などを受入対象とした。**対象PR全体のGoテストは未実行。**
