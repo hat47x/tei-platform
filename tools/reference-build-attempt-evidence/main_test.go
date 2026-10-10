@@ -170,13 +170,16 @@ func TestRetryHistoryPreservesFailuresAfterSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := history.AppendFailure(first); err != nil {
+	if err := history.AppendFailure(plan, first); err != nil {
 		t.Fatal(err)
 	}
-	if err := history.AppendFailure(second); err != nil {
+	if err := history.AppendFailure(plan, second); err != nil {
 		t.Fatal(err)
 	}
-	history.SuccessfulResultFingerprint = strings.Repeat("e", 64)
+	history.SuccessfulResult = &successfulResultReference{
+		BuildPlanFingerprint: first.BuildPlanFingerprint,
+		ResultFingerprint:    strings.Repeat("e", 64),
+	}
 	if err := history.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +210,7 @@ func TestAttemptHistoryRejectsFailureFromDifferentPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := history.AppendFailure(attempt); err == nil {
+	if err := history.AppendFailure(firstPlan, attempt); err == nil {
 		t.Fatal("Attempt History mixed failures from different BuildPlans")
 	}
 }
@@ -285,7 +288,8 @@ func TestReferenceEvidenceDoesNotInlineSensitiveDiagnostic(t *testing.T) {
 		t.Fatalf("attempt outcome=%s", evidence.Attempt.Outcome)
 	}
 	if len(evidence.History.FailedAttemptFingerprints) != 1 ||
-		evidence.History.SuccessfulResultFingerprint == "" {
+		evidence.History.SuccessfulResult == nil ||
+		evidence.History.SuccessfulResult.ResultFingerprint == "" {
 		t.Fatalf("retry history: %#v", evidence.History)
 	}
 }
@@ -342,4 +346,52 @@ func digestForTest(value []byte) string {
 
 func uppercaseDigest(value string) string {
 	return "sha256:" + strings.ToUpper(strings.TrimPrefix(value, "sha256:"))
+}
+
+
+func TestAttemptHistoryRejectsTamperedFailureEvidence(t *testing.T) {
+	plan := referenceBuildPlan()
+	exitCode := 2
+	attempt, _, err := newFailedAttempt(
+		plan, 1,
+		fakeFailure{
+			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
+			DiagnosticSummary: "original", Stderr: []byte("diagnostic"),
+		},
+		8,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	history, err := newAttemptHistory(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tampered := attempt
+	tampered.DiagnosticSummary = "tampered after fingerprint"
+	if err := history.AppendFailure(plan, tampered); err == nil {
+		t.Fatal("Attempt History accepted Evidence whose fingerprint no longer matches its content")
+	}
+}
+
+func TestAttemptHistoryRejectsSuccessfulResultFromDifferentPlan(t *testing.T) {
+	plan := referenceBuildPlan()
+	other := referenceBuildPlan()
+	other.Sources = append([]plugin.BuildSource(nil), other.Sources...)
+	other.Sources[0].Digest = "sha256:" + strings.Repeat("f", 64)
+	otherFingerprint, err := plugin.BuildPlanFingerprint(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	history, err := newAttemptHistory(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	history.SuccessfulResult = &successfulResultReference{
+		BuildPlanFingerprint: otherFingerprint,
+		ResultFingerprint:    strings.Repeat("e", 64),
+	}
+	if err := history.Validate(); err == nil {
+		t.Fatal("Attempt History accepted a successful result from a different BuildPlan")
+	}
 }
