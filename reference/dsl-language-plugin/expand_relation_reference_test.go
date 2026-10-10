@@ -31,7 +31,9 @@ func TestExpandRelationReference(t *testing.T) {
 		catalog []OperatorContract
 	}{
 		{"conceptual relation", func(n *semantic.Namespace, c *PinnedCall) { n.Data[0].Relations[0].Keys = nil }, []OperatorContract{pin}},
-		{"wrong target", func(n *semantic.Namespace, c *PinnedCall) { n.Data[0].Relations[0].Target = core.CanonicalID("sales.missing") }, []OperatorContract{pin}},
+		{"wrong target", func(n *semantic.Namespace, c *PinnedCall) {
+			n.Data[0].Relations[0].Target = core.CanonicalID("sales.missing")
+		}, []OperatorContract{pin}},
 		{"wrong operator", func(n *semantic.Namespace, c *PinnedCall) { c.Contract.ID = "std.op.where" }, []OperatorContract{pin}},
 		{"wrong output", func(n *semantic.Namespace, c *PinnedCall) { c.Contract.OutputType = "rows/other" }, []OperatorContract{pin}},
 		{"unavailable pin", func(n *semantic.Namespace, c *PinnedCall) {}, nil},
