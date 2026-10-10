@@ -8,7 +8,10 @@ import (
 
 func ref(id string) Ref { return Ref{ID: id, Version: "1.0.0", Fingerprint: "sha256:" + id} }
 
-type stubTrust struct{ denyAcceptance, denyPublisher, denyConformance, denyContext, denyInvocation bool }
+type stubTrust struct {
+	denyAcceptance, denyPublisher, denyConformance bool
+	denyRuntimeBinding, denyData, denyContext, denyInvocation bool
+}
 
 func (s stubTrust) Accepted(d string, receipt, snapshot Ref) bool {
 	return !s.denyAcceptance && d != "" && receipt.valid() && snapshot.valid()
@@ -17,6 +20,8 @@ func (s stubTrust) Published(r Ref) bool { return !s.denyPublisher && r.valid() 
 func (s stubTrust) Conformant(p Provider) bool {
 	return !s.denyConformance && p.Conformance.valid()
 }
+func (s stubTrust) RuntimeBindingCurrent(step Step) bool { return !s.denyRuntimeBinding }
+func (s stubTrust) DataCompatible(step Step) bool { return !s.denyData }
 func (s stubTrust) ContextBound(step Step) bool { return !s.denyContext }
 func (s stubTrust) Authorized(step Step) bool {
 	return !s.denyInvocation && step.Contract.valid()
@@ -35,8 +40,13 @@ func orderFixture(language string) fixture {
 	// provider refs below are deliberately synthetic until #951 production wiring exists.
 	slots := []Ref{ref("tei.context.verified-principal")}
 	need := []Requirement{
-		{Contract: ref("tei.test.customer-query"), Scope: "application-runtime", Effect: "read"},
-		{Contract: ref("tei.test.order-submit"), Scope: "application-runtime", Effect: "write", RequiredSlots: slots},
+		{Contract: ref("tei.test.customer-query"), Scope: "application-runtime", Effect: "read",
+			DataContracts: []DataNeed{{Database: "master_data", Contract: "master_data.customer", VersionConstraint: "^2"}}},
+		{Contract: ref("tei.test.order-submit"), Scope: "application-runtime", Effect: "write", RequiredSlots: slots,
+			DataContracts: []DataNeed{
+				{Database: "sales_core", Contract: "sales_core.order", VersionConstraint: "^4"},
+				{Database: "sales_core", Contract: "sales_core.order_line", VersionConstraint: "^1"},
+			}},
 	}
 	c := Candidate{
 		Schema: CandidateSchema,
@@ -108,7 +118,9 @@ func TestWebOrderScenarioWithTwoLanguageProducers(t *testing.T) {
 				got.Origin.CandidateDigest != Digest(f.c) || got.Origin.Source != f.c.Source || len(got.Steps) != 2 {
 				t.Fatalf("bad plan: %+v", got)
 			}
-			if got.Steps[1].Effect != "write" || !equalSlots(got.Steps[1].RequiredSlots, f.c.Requirements[1].RequiredSlots) {
+			if got.Steps[1].Effect != "write" ||
+				!equalSlots(got.Steps[1].RequiredSlots, f.c.Requirements[1].RequiredSlots) ||
+				len(got.Steps[1].DataContracts) != 2 {
 				t.Fatalf("lost effect or context declaration: %+v", got.Steps)
 			}
 			b, _ := json.Marshal(got)
@@ -172,6 +184,12 @@ func TestCurrentAuthorizationIsNotCachedIntoPlan(t *testing.T) {
 	plan, err := f.lower(stubTrust{denyInvocation: true})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got := code(AuthorizeInvocation(plan, stubTrust{denyRuntimeBinding: true})); got != "runtime-binding-unavailable" {
+		t.Fatalf("current provider/target binding was not checked: %s", got)
+	}
+	if got := code(AuthorizeInvocation(plan, stubTrust{denyData: true})); got != "data-contract-incompatible" {
+		t.Fatalf("current database schema incompatibility was not checked: %s", got)
 	}
 	if got := code(AuthorizeInvocation(plan, stubTrust{denyContext: true})); got != "missing-execution-context" {
 		t.Fatalf("missing invocation context was not fail-closed: %s", got)
@@ -260,5 +278,75 @@ func TestMalformedContextDeclarationRejected(t *testing.T) {
 	_, err := Neutralize(f.c, f.a, stubTrust{})
 	if got := code(err); got != "invalid-context-declaration" {
 		t.Fatalf("got %s, want invalid-context-declaration", got)
+	}
+}
+
+func TestS05PreviewCannotGrantExecutionAuthority(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	plan, err := f.lower(stubTrust{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Synthetic rehearsal: a preview is resolved, then one current condition
+	// changes before invocation. None of the following reuses that preview.
+	tests := []struct {
+		name string
+		trust stubTrust
+		code string
+	}{
+		{"provider-unbound", stubTrust{denyRuntimeBinding: true}, "runtime-binding-unavailable"},
+		{"schema-incompatible", stubTrust{denyData: true}, "data-contract-incompatible"},
+		{"required-context-lost", stubTrust{denyContext: true}, "missing-execution-context"},
+		{"grant-revoked", stubTrust{denyInvocation: true}, "authorization-denied"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := code(AuthorizeInvocation(plan, tc.trust)); got != tc.code {
+				t.Fatalf("preview was used as authority: got %q, expected %q", got, tc.code)
+			}
+		})
+	}
+	// The plan is an immutable witness. Re-authorization does not edit it.
+	pinned := Digest(plan)
+	_ = AuthorizeInvocation(plan, stubTrust{denyInvocation: true})
+	if Digest(plan) != pinned {
+		t.Fatal("invocation changed resolved witness")
+	}
+}
+
+func TestDataRequirementRetainsSourceMeaningAndIsImmutable(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	neutral, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := Digest(neutral)
+	f.c.Requirements[1].DataContracts[0].VersionConstraint = "^99"
+	if Digest(neutral) != before {
+		t.Fatal("neutral data contract aliases authoring input")
+	}
+}
+
+func TestInvalidDataRequirementsFailClosed(t *testing.T) {
+	tests := []struct {
+		name string
+		edit func(*fixture)
+		want string
+	}{
+		{"empty-constraint", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "" }, "invalid-data-requirement"},
+		{"duplicate-contract", func(f *fixture) {
+			f.c.Requirements[0].DataContracts = append(f.c.Requirements[0].DataContracts, f.c.Requirements[0].DataContracts[0])
+		}, "duplicate-data-requirement"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := orderFixture("tei.language.dsl")
+			tc.edit(&f)
+			f.a.CandidateDigest = Digest(f.c)
+			_, err := Neutralize(f.c, f.a, stubTrust{})
+			if got := code(err); got != tc.want {
+				t.Fatalf("got %q; expected %q", got, tc.want)
+			}
+		})
 	}
 }
