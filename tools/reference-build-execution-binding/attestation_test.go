@@ -260,6 +260,12 @@ func TestTrustEvaluationRejectsMismatchedVerificationEvidence(t *testing.T) {
 	}
 
 	tampered = verification
+	tampered.ArtifactSetFingerprint = strings.Repeat("e", 64)
+	if _, err := evaluateAttestationTrust(attestation, tampered, policy); err == nil {
+		t.Fatal("trust evaluation accepted verification Evidence for a different Artifact Set")
+	}
+
+	tampered = verification
 	tampered.Issuer = "tei.reference.other_issuer"
 	if _, err := evaluateAttestationTrust(attestation, tampered, policy); err == nil {
 		t.Fatal("trust evaluation accepted verification Evidence for a different issuer")
