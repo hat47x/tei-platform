@@ -92,11 +92,16 @@ func ReviewMigration(before, after Graph, t Transition, retargets []EdgeRetarget
 		to       Ref
 	}
 	oldCounts, newCounts := map[edgeID]int{}, map[edgeID]int{}
+	oldEvidence, newEvidence := map[edgeID]string{}, map[edgeID]string{}
 	for _, e := range before.Edges {
-		oldCounts[edgeID{e.From, e.Relation, e.To}]++
+		id := edgeID{e.From, e.Relation, e.To}
+		oldCounts[id]++
+		oldEvidence[id] = evidenceKey(e.Evidence)
 	}
 	for _, e := range after.Edges {
-		newCounts[edgeID{e.From, e.Relation, e.To}]++
+		id := edgeID{e.From, e.Relation, e.To}
+		newCounts[id]++
+		newEvidence[id] = evidenceKey(e.Evidence)
 	}
 	claimed := make(map[edgeID]bool)
 	for i, move := range retargets {
@@ -113,6 +118,8 @@ func ReviewMigration(before, after Graph, t Transition, retargets []EdgeRetarget
 			add("retarget-edge-ambiguous-or-absent", at)
 		case claimed[oldID]:
 			add("duplicate-retarget", at)
+		case oldEvidence[oldID] != newEvidence[newID]:
+			add("retarget-evidence-changed", at)
 		default:
 			claimed[oldID] = true
 		}
@@ -135,6 +142,8 @@ func ReviewMigration(before, after Graph, t Transition, retargets []EdgeRetarget
 			}
 		} else if newCounts[id] != count {
 			add("unrelated-reference-changed", at)
+		} else if oldEvidence[id] != newEvidence[id] {
+			add("unreviewed-reference-evidence", at)
 		}
 	}
 	for id, count := range newCounts {
