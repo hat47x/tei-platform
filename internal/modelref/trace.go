@@ -120,8 +120,8 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 		}
 	}
 	lookup := newLookup(graph.Nodes)
-	rows := make([]TraceRow, 0)
-	unresolved := 0
+	var rows []TraceRow
+	total, unresolved := 0, 0
 	for _, edge := range graph.Edges {
 		outgoing := edge.From == subject
 		// A scope-less ref may or may not resolve to the requested subject.
@@ -134,19 +134,6 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 			continue
 		}
 		row := TraceRow{Status: "unresolved", Edge: edge}
-		// Evidence has set semantics in modelref. Normalize a copy so two
-		// equivalent inputs produce byte-stable JSON, without mutating Graph.
-		row.Edge.Evidence = append([]Evidence(nil), edge.Evidence...)
-		sort.Slice(row.Edge.Evidence, func(i, j int) bool {
-			a, b := row.Edge.Evidence[i], row.Edge.Evidence[j]
-			if a.Authority != b.Authority { return a.Authority < b.Authority }
-			if a.Context != b.Context { return a.Context < b.Context }
-			if a.SourceToken != b.SourceToken { return a.SourceToken < b.SourceToken }
-			if a.ArtifactFingerprint != b.ArtifactFingerprint {
-				return a.ArtifactFingerprint < b.ArtifactFingerprint
-			}
-			return a.RuleFingerprint < b.RuleFingerprint
-		})
 		switch {
 		case counts[edge.From] == 0:
 			row.Issue = "invalid-source"
@@ -174,21 +161,46 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 				}
 			}
 		}
+		total++
 		if row.Status == "unresolved" {
 			unresolved++
 		}
+		if options.Mode == "summary" {
+			continue // count the entire graph without allocating result rows
+		}
+		// Evidence has set semantics in modelref. Normalize a copy so
+		// equivalent input produces stable JSON without mutating Graph.
+		row.Edge.Evidence = append([]Evidence(nil), edge.Evidence...)
+		sort.Slice(row.Edge.Evidence, func(i, j int) bool {
+			a, b := row.Edge.Evidence[i], row.Edge.Evidence[j]
+			if a.Authority != b.Authority {
+				return a.Authority < b.Authority
+			}
+			if a.Context != b.Context {
+				return a.Context < b.Context
+			}
+			if a.SourceToken != b.SourceToken {
+				return a.SourceToken < b.SourceToken
+			}
+			if a.ArtifactFingerprint != b.ArtifactFingerprint {
+				return a.ArtifactFingerprint < b.ArtifactFingerprint
+			}
+			return a.RuleFingerprint < b.RuleFingerprint
+		})
 		rows = append(rows, row)
 	}
-	// Deterministic traversal is independent of insertion order, physical file
-	// location, and iteration order of any maps used for rule resolution.
-	sort.Slice(rows, func(i, j int) bool {
-		return traceRowKey(rows[i]) < traceRowKey(rows[j])
-	})
+	if options.Mode == "full" {
+		// Sorting only applies to returned rows. Summary can count without
+		// constructing or sorting a potentially large result set.
+		sort.Slice(rows, func(i, j int) bool {
+			return traceRowKey(rows[i]) < traceRowKey(rows[j])
+		})
+	}
 	result := TraceResult{
 		SchemaVersion: "tei.modelref.trace/v0", Subject: subject,
 		SnapshotFingerprint: snapshotFingerprint, RuleFingerprint: policyFingerprint,
 		Direction: options.Direction, Mode: options.Mode, Authority: "candidate-read-only",
-		Total: len(rows), Unresolved: unresolved,
+		Total: total, Unresolved: unresolved,
 	}
 	if options.Mode == "summary" {
 		return result, nil
