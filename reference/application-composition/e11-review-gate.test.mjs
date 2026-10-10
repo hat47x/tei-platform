@@ -8,7 +8,13 @@ const relation=k('semantic-relation','sales.order.customer');
 const other=k('application-pattern','repair_intake.lookup');
 const src={status:'limited-unchanged',qualification:'application-declaration-and-direct-source-definitions-only',fullClosure:false,authority:'none',dependencyCount:12};
 const typed=()=>({schema:'tei.modelref.v0',scope,application:app,nodes:[appKey,pat,relation,other].map(key=>({key})),diagnostics:[],unresolved:[],affected:[]});
-const check=(s=src,t=typed(),params={})=>qualify({sourceDrift:s,typedProjection:t,application:app,scope,...params});
+const sourceReport=()=>({application:app,status:'observed',
+ qualification:'declaration-and-source-index-only',issues:[],dependencies:[
+  {relation:'application',subject:{kind:'application',id:app}},
+  {relation:'application-pattern',subject:{kind:'application-pattern',id:pat.subject.id}},
+ ]});
+const check=(s=src,t=typed(),params={})=>qualify({
+ sourceDrift:s,sourceReport:sourceReport(),typedProjection:t,application:app,scope,...params});
 test('read-only unchanged observations cannot become full closure or authorization',()=>{
  const r=check();assert.equal(r.status,'limited-unchanged');assert.equal(r.authority,'none');
  assert.equal(r.fullClosure,false);assert.equal(r.adoption,'not-decided');
@@ -67,4 +73,48 @@ test('forged authoritative Source report and mismatched projection are refused',
 test('unspecified inputs and unverified graph do not infer deployment permission',()=>{
  const r=qualify({});assert.equal(r.status,'unresolved');assert.equal(r.authority,'none');
  const t=typed();t.schema='other';assert.equal(check(src,t).reason,'unqualified_typed_projection');
+});
+
+test('a Pattern with matching ID prefix is excluded unless E5 owns it',()=>{
+ const t=typed(),impostor=k('application-pattern',app+'.unowned');
+ t.nodes.push({key:impostor});
+ t.affected=[{changed:relation,consumer:impostor,reason:'reference-version-changed'}];
+ const r=check(src,t);
+ assert.equal(r.status,'limited-unchanged');assert.equal(r.reviewCandidates.length,0);
+});
+test('a Pattern with different spelling belongs when typed E5 Application owns it',()=>{
+ const t=typed();
+ t.affected=[{changed:relation,consumer:other,reason:'reference-version-changed'}];
+ const report=sourceReport();
+ report.dependencies.push({relation:'application-pattern',subject:{kind:'application-pattern',id:other.subject.id}});
+ const r=check(src,t,{sourceReport:report});
+ assert.equal(r.status,'review-candidate');
+ assert.equal(r.reviewCandidates.length,1);
+ assert.equal(r.fullClosure,false);assert.equal(r.authority,'none');
+});
+test('missing or mismatched E5 Application witness cannot use naming convention',()=>{
+ const t=typed();t.affected=[{changed:relation,consumer:pat,reason:'version-changed'}];
+ assert.equal(check(src,t,{sourceReport:undefined}).reason,'unqualified_application_source_report');
+ const report=sourceReport();report.application='repair_intake';
+ assert.equal(check(src,t,{sourceReport:report}).reason,'unqualified_application_source_report');
+ const incomplete=sourceReport();incomplete.dependencies.shift();
+ assert.equal(check(src,t,{sourceReport:incomplete}).reason,'unqualified_application_source_report');
+});
+test('E5 duplicate Pattern owner or unresolved Report refuses a selected winner',()=>{
+ const duplicate=sourceReport();
+ duplicate.dependencies.push(structuredClone(duplicate.dependencies[1]));
+ assert.equal(check(src,typed(),{sourceReport:duplicate}).reason,'unqualified_application_source_report');
+ const bad=sourceReport();bad.status='unresolved';bad.issues=[{reason:'missing_definition'}];
+ assert.equal(check(src,typed(),{sourceReport:bad}).reason,'unqualified_application_source_report');
+});
+test('missing declared Pattern in projection prevents a false unchanged result',()=>{
+ const t=typed();t.nodes=t.nodes.filter(n=>JSON.stringify(n.key)!==JSON.stringify(pat));
+ assert.equal(check(src,t).reason,'declared_pattern_missing_from_projection');
+});
+test('unresolved Source drift still remains unresolved with explicit Pattern membership',()=>{
+ const t=typed();t.affected=[{changed:relation,consumer:pat,reason:'version-changed'}];
+ const r=check({...src,status:'unresolved',reason:'source_fingerprint_changed'},t);
+ assert.equal(r.status,'unresolved');
+ assert.equal(r.sourceReason,'source_fingerprint_changed');
+ assert.equal(r.reviewCandidates.length,1);
 });
