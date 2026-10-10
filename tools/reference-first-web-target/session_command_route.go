@@ -57,9 +57,9 @@ func (s *webTargetServer) configureProtectedSessionCommand() error {
 		return fmt.Errorf("session command authorization cannot be constructed: %w", err)
 	}
 	handler, err := webcomposition.NewHost(webcomposition.Policy{
-		Path:     "/scenario/session-submit",
-		Method:   http.MethodPost,
-		ActionID: "order_entry.submit_order",
+		Path:      "/scenario/session-submit",
+		Method:    http.MethodPost,
+		ActionID:  "order_entry.submit_order",
 		Providers: config.Providers,
 	}, webcomposition.Dependencies{
 		VerifySession: config.VerifySession,
