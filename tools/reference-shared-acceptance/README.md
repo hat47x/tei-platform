@@ -11,6 +11,8 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 - AIによる候補生成、Studio UI、read-only探索そのものは含みません。これらはcandidateの生成側です。一方、`ISSUE-000047`で`applicable`になったqualification結果は、exactなsubject・source・fingerprint・requirementsをEvidenceとしてcandidateへ付与できます。requirementsが明示的なdependencyを含む場合は、そのdependencyのauthoritative sourceとfingerprintも必要な範囲だけ保持します。このtoolはPreview時に同じrequirementsで再qualificationし、現在も適用可能かを確認します。
 - Gate B / Gate CのBaseline Evidenceは、その判定時のrevisionに固定されたhistorical Evidenceです。current `reference/workspace`を永久凍結する意味ではありませんが、baseline名のworkspaceへの誤書込みを避けるため、`accept`は`-allow-reference-baseline`が無い限り拒否します。通常はscratch copyで検証し、post-Gate-CのintentionalなReference更新だけをexplicit decision + flagで行います。Second Applicationの別生成AIレビューは2026-09-21に完了し、`review-clear-with-conditions`となりました。実際の`reference/workspace`へのacceptには、なおexact Proposalに対するexplicit human Acceptance decisionが必要です（`ISSUE-000040`）。
 
+`-workspace`に`reference/workspace`を指すシンボリックリンクを渡した場合も、同じbaseline書込み保護を適用します。パスの字面だけでなく、存在するworkspace rootのリンク解決先を確認します。このガードは意図しないbaseline更新を避けるためのもので、任意の不正なfilesystem構成を隔離するセキュリティサンドボックスではありません。受理に必要な人の判断・review fingerprint・明示フラグはそれぞれ別の条件です。
+
 ## 受入境界
 
 ```text
