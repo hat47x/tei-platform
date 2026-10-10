@@ -66,6 +66,9 @@ type BuilderConformanceEvidence struct {
 	ArtifactDigest      string           `json:"artifactDigest"`
 	ContractFingerprint string           `json:"contractFingerprint"`
 	ConformanceProfile  string           `json:"conformanceProfile"`
+	RecipeKind          string           `json:"recipeKind"`
+	Target              string           `json:"target"`
+	Profile             string           `json:"profile"`
 	EvidenceFingerprint string           `json:"evidenceFingerprint"`
 }
 
@@ -486,7 +489,10 @@ func validateEligibleProvider(
 			item.ImplementationID == provider.ImplementationID &&
 			digestEqual(item.ArtifactDigest, provider.ArtifactDigest) &&
 			canonicalFingerprint(item.ContractFingerprint) == canonicalFingerprint(contractFingerprint) &&
-			item.ConformanceProfile == contract.ConformanceProfile {
+			item.ConformanceProfile == contract.ConformanceProfile &&
+			item.RecipeKind == intent.RecipeKind &&
+			item.Target == intent.Target &&
+			item.Profile == intent.Profile {
 			if err := validateEvidence(item); err != nil {
 				return BuilderConformanceEvidence{}, err
 			}
@@ -625,7 +631,10 @@ func validateProvider(provider BuilderProvider) error {
 func validateEvidence(evidence BuilderConformanceEvidence) error {
 	if evidence.ProviderID == "" || !core.ValidNumericVersion(evidence.ProviderVersion) ||
 		strings.TrimSpace(evidence.ImplementationID) == "" ||
-		strings.TrimSpace(evidence.ConformanceProfile) == "" {
+		strings.TrimSpace(evidence.ConformanceProfile) == "" ||
+		strings.TrimSpace(evidence.RecipeKind) == "" ||
+		strings.TrimSpace(evidence.Target) == "" ||
+		strings.TrimSpace(evidence.Profile) == "" {
 		return fmt.Errorf("invalid builder Conformance Evidence identity")
 	}
 	if _, err := canonicalDigestChecked(evidence.ArtifactDigest); err != nil {
@@ -838,12 +847,14 @@ func referenceFixture() (BuilderContract, []BuilderProvider, []BuilderConformanc
 			ProviderID: providers[0].ProviderID, ProviderVersion: providers[0].ProviderVersion,
 			ImplementationID: providers[0].ImplementationID, ArtifactDigest: providers[0].ArtifactDigest,
 			ContractFingerprint: contractFingerprint, ConformanceProfile: contract.ConformanceProfile,
+			RecipeKind: "deterministic-copy", Target: "host/reference", Profile: "reference",
 			EvidenceFingerprint: strings.Repeat("c", 64),
 		},
 		{
 			ProviderID: providers[1].ProviderID, ProviderVersion: providers[1].ProviderVersion,
 			ImplementationID: providers[1].ImplementationID, ArtifactDigest: providers[1].ArtifactDigest,
 			ContractFingerprint: contractFingerprint, ConformanceProfile: contract.ConformanceProfile,
+			RecipeKind: "deterministic-copy", Target: "host/reference", Profile: "reference",
 			EvidenceFingerprint: strings.Repeat("d", 64),
 		},
 	}
