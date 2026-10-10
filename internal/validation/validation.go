@@ -239,7 +239,7 @@ func Validate(w ir.World) []Diagnostic {
 
 	for _, a := range semanticAttributes {
 		if _, ok := semanticTypes[a.TypeRef]; !ok {
-			out = append(out, errd("UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
 		}
 	}
 	for _, r := range semanticRelations {
