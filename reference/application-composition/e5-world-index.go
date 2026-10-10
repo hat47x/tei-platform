@@ -102,6 +102,43 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
     app := world.Applications[appIndex]
     attach("application", appSubject)
 
+    // Semantic namespace selection belongs to the Application. A Source Index
+    // reference to the namespace is only its declaration anchor; nested meanings
+    // may have separate source files and remain outside this bounded probe.
+    namespaces := map[string]int{}
+    for _, ns := range world.Semantics {
+        namespaces[string(ns.ID)]++
+    }
+    seenNamespaces := map[string]bool{}
+    for _, id := range app.SemanticUses {
+        name := string(id)
+        subject := sourceindex.Subject{Kind: "semantic", ID: name}
+        if seenNamespaces[name] {
+            record("uses-semantic", subject, "duplicate_semantic_use")
+            continue
+        }
+        seenNamespaces[name] = true
+        if namespaces[name] != 1 {
+            record("uses-semantic", subject, "semantic_namespace_missing_or_ambiguous")
+            continue
+        }
+        attach("uses-semantic", subject)
+    }
+
+    // Pattern declarations are Application-owned; no extra manifest of these
+    // dependency subjects is introduced by Composition.
+    seenPatterns := map[string]bool{}
+    for _, pattern := range app.Patterns {
+        name := string(pattern.ID)
+        subject := sourceindex.Subject{Kind: "application-pattern", ID: name}
+        if name == "" || seenPatterns[name] {
+            record("application-pattern", subject, "duplicate_or_empty_pattern")
+            continue
+        }
+        seenPatterns[name] = true
+        attach("application-pattern", subject)
+    }
+
     validations := map[string]int{}
     for _, ns := range world.Semantics {
         for _, rule := range ns.Validations {
