@@ -2,6 +2,7 @@ package main
 
 import (
 	"sort"
+	"strings"
 
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
@@ -81,7 +82,7 @@ func attachValidationScopeSources(rows []validationScopeReviewRow, index sourcei
 			}
 			ref := definitions[0]
 			fingerprint := artifacts[ref.ArtifactPath]
-			if ref.ArtifactPath == "" || fingerprint == "" || ref.Range.Start.Line < 1 {
+			if strings.TrimSpace(ref.ArtifactPath) == "" || strings.TrimSpace(fingerprint) == "" || ref.Range.Start.Line < 1 {
 				row.UnresolvedSource = append(row.UnresolvedSource, target.Kind+":"+target.ID)
 				continue
 			}
