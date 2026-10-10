@@ -60,6 +60,18 @@ go test ./reference/application-composition
 - **限定したSource出力 ≠ 機密性**：今回の`derived`は全`index.Derived`より狭いが、従来の`index`にはWorkspace内の広いSource pathが含まれ得る。機微のIDやSourceを外部AI・共有サービスへそのまま送ってよいわけではない。出典の限定公開はE7aを用い、実ACL・共有可否は別の所有機構へ委譲する。
 - **SUIを正式な第二Applicationへ昇格しない**：現行SUI Stage 0にはSemantic Sourceの一部しか存在しない。E13によって正式なApplicationが生成・採用されたことにはならない。
 
+
+## ローカル引継ぎ用の厳格な検証スクリプト
+
+```sh
+git fetch origin main
+bash reference/application-composition/qualify-e13-local.sh
+```
+
+[qualify-e13-local.sh](qualify-e13-local.sh)は、対象の**完全なローカルチェックアウト**で、candidate headと`origin/main`のSHA、Go/NodeのVersion、前後cleanを記録する。Focused Goの`gofmt / go test / go vet`、既存の全Node標準テスト、実`order_entry`のオプトインJSON生成・形状確認、最後に省略なしの`tools/repository-health-check.sh`を順番に行う。Git push、PRのDraft解除、mainへのマージは行わない。
+
+**2026-10-10時点では、このスクリプトをTEI完全チェックアウト上で実行していない。** 今回この環境で取得できたのは、新スクリプトとGitHub登録blobが一致する`bash -n`構文確認のみ（blob `382211c3a61995db2840220a0d1ddc30f6ba3d64`）。スクリプトがテストを自動的に走らせる設計であることは、テストPASSのEvidenceにはならない。既存E5 Go実装には`gofmt`非準拠の箇所が残っている可能性があり、スクリプトは最初の書式検査で停止し得る。その際は欠落した証拠を成功扱いせず、変更をコミットし直した**新しいexact head**について実行をやり直す。
+
 ### 次の受入条件
 
 trusted full checkoutのexact candidate headにて`go test ./reference/application-composition`・Go vet・gofmt・実`order_entry` CLI出力を確認し、必要なら#1120の`derivedbridge.FromIndex`を**同じGoプロセスと同じ`loaded.World`**へ結ぶ。最終的には実E7→E11レビューと実SUI第二Consumerの契約・実行Evidenceが揃った場合だけ、E10のComposition Profile採否判断を行う。
