@@ -111,3 +111,9 @@ bash tools/reference-critical-lowering/qualify_gate_test.sh
 2026-10-10にこの2件を**隔離ローカル**で実行し、構文検査成功・`QUALIFY_GUARD_PASS`を確認した。隔離実行したスクリプトのGit blob SHAは`qualify.sh=0706c5af28a4eaf08f5086add47d6c4baa4b68ae`、`qualify_gate_test.sh=2a6e6e7583deafc1c8814fb81d3621d6bcecc160`で、GitHub source blobと一致する。これはshellのpreflightに限定した証拠であり、**Go test / gofmt / full Repository Health / production Authorityの成功ではない**。
 
 #1119が保有する`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`は、scratchのR0→R1 Test-only Acceptanceからrunning WebのE1-A正例を構成するが、`humanApproval=false`・Providerがsyntheticである。そこで発行する`workspace-r1.json`・`target-launch.json`・`web-positive.json`も**実Authorityへ変換可能なTicketではない**。#1121が今後受け取る場合はSource Revision / Capability / Target identityを照合する監査証拠としてのみ消費し、Trusted Acceptance receipt・Runtime execution grantの代用にはしない。独立DB Read、既存Host Permission、第二Targetのactual実行は未証明。
+
+## Web E2E: Gate B R / Target T と権限拒否の独立性
+
+running Web TargetのBlack-box Testでは、既存Web側のGate B R (`e5231839a5dcc62cce1181a2731fcb7c70d16736`) と当該CheckoutのTarget T (exact HEAD)を別々のCLI引数として渡す。以前のTestは両方へHEADを渡していたため、`targetBuildRevision`のみ正常であれば、**誤ったBaselineを検出できなかった**。修正後はManifestおよび各HTTP Scenario Responseの双方で`baselineRepositoryRevision=R`かつ`targetBuildRevision=T`を検査する。
+
+認証拒否（無効Credential）に加え、正当にAuthenticationされたViewerがAuthorizationで拒否され、Command/Observationに進まない経路をHTTP経由で検査する。実Web実装が現時点で保有するfixtureに対する証拠であり、実Host Grantの独立した運用確認・実DBへの保存の証拠ではない。テスト実行に成功していなければPASSとは呼ばない。
