@@ -94,10 +94,8 @@ func (s *JSONDocumentStore) Commit(_ context.Context, in Intent) (string, error)
 			return "", fmt.Errorf("%w: invalid or duplicate card identity", ErrInvalid)
 		}
 		seen[id] = true
-		if id != payload.CardID {
-			continue
-		}
-		found = true
+		// Validate every card before accepting a mutation. Incomplete unrelated
+		// cards must not be silently accepted by this reference document store.
 		var currentX, currentY float64
 		// json.Unmarshal(nil, &float64) succeeds and leaves a zero value.
 		// Validate field presence before decoding; otherwise missing x/y
@@ -117,6 +115,10 @@ func (s *JSONDocumentStore) Commit(_ context.Context, in Intent) (string, error)
 			math.IsNaN(currentY) || math.IsInf(currentY, 0) {
 			return "", ErrInvalid
 		}
+		if id != payload.CardID {
+			continue
+		}
+		found = true
 		x, err := json.Marshal(payload.X)
 		if err != nil {
 			return "", ErrInvalid
