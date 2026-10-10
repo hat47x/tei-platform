@@ -800,6 +800,8 @@ independent association
 
 `internal/knowledgecontext/context_test.go`には、この三類型を同じData Design Contextへ通すnegative pressureを追加した。contained repeatだけがaccepted scoped uniquenessを根拠にcandidateを持ち、reference / association shapeはbusiness meaningとdeterminantを`unresolved`へ残す。
 
+さらにactual Source-backed negative caseとして`security.authorization_grant`を`knowledge-context`へ通す。`subjectId / action / resource`の3 Attributeと`semantic/security/authorization.tei`のSource Evidenceは取得できるが、acceptedなcomposite uniqueness / occurrence identityが無いためbusiness identity / FD candidateは生成しない。identifier-like fieldの複数存在を、そのまま複合keyの根拠へ昇格しない。
+
 これにより、salesの一例から「親ID + 連番」等をCore規則へ一般化しないことを固定する。次段は新しいCore syntaxではなく、association Dataについてbusiness occurrence、組合せidentity、Relation差し替え、時間再利用、Persistence差をSource-backedに説明できるReferenceを一つ作ることである。そのReferenceが成立した後に、contained repeatとの共通部分だけをCore contract候補として再評価する。
 
 ### 現在のEvidence境界 — 2026-10-09
