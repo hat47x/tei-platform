@@ -206,3 +206,19 @@ First Web Targetの`newWebTargetServer`に、信頼済みHostだけが構成す�
 - 同じPRへの並行変更を監視しており、2026-10-10時点のmain更新が対象とした`plan/issue/001067-cross-project-plugin-promotion.md`は本PRの変更ファイルと重複しません。ただしheadが最新mainの1コミット後方なので、統合時の資格判断には最新mainを含むexact head再検証が必要です。
 
 これは、本番配備時に利用できるSession管理、実IdP検証、Secure Cookie、CSRF Token発行・検証、subject-link管理・失効、Trusted Proxyの検証を実装したものではありません。新経路は明示的にHost構成した場合に限るReference機構であり、現行`main.go`の通常起動経路では未選択です。安全性宣言と実証を混同せず、導入前には実Provider・ブラウザを使うE3検証が必要です。
+
+## E2.4追試：曖昧な経路構成とJSON入力の拒否
+
+追加の負例で二つの問題を修正しました。
+
+- Session経路を同じWeb Serverへ二重に宣言した場合、最後に宣言された設定で黙って上書きせず、Hostの構成自体を拒否します。処理チェーンのセキュリティ設定を登録順に依存させないためです。
+- `encoding/json.Decoder`はstructへの`null`入力をエラーにしないため、Session経路では`*webSessionCommandRequest`として受け、nilの場合は400で拒否します。これにより、暗黙の既定値だけでCommandへ進むケースを防ぎます。
+
+GitHub Blobとbyte一致するローカルコピーで`gofmt -l`（出力なし）およびGo構文検査を行った対象は次のとおりです。
+
+- `session_command_route.go`: `a24077ce7a532012ad321f304498ef9468e88030`
+- `session_command_route_test.go`: `ba68f1f49a7fdeac4343945fb875f0e56c363b97`
+
+この二つの**実際の新規ファイル**と、必要な他パッケージを置き換えた一時的な隔離Goモジュール（Go 1.23.2）を使い、`go test -count=1`、`go vet`、`go test -race -count=1`がPASSしました。認証不成立、CSRF失敗、閲覧者の業務拒否、本文からの資格情報／Subject ID注入、二つのJSON文書、`null`、構成欠落、二重宣言等のテストコードを実行しています。
+
+**重要な証拠の限界:** この隔離ハーネスは`workspace.Load`、`webTargetServer`、認証Host、`security.authorize`、既存Runner等をスタブに差し替えています。新規ルートのGo構文と制御分岐は確認できますが、旧Web Target本体やCanonical Resolver、実`reference/workspace`との結合成功の証拠ではありません。統合には、実Repositoryのexact headをクリーンにチェックアウトし、既存および新しいすべてのGoテストと`tools/repository-health-check.sh`を実行する必要があります。未完のためPRはDraftです。
