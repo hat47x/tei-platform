@@ -25,6 +25,7 @@ type ledgerProvider struct {
 	commitCount              int
 	effectCount              int
 	abortCount               int
+	abortSawCanceledContext  bool
 	commitErrorAfterApply    bool
 	malformedReceiptAfterApply bool
 	forceNotCommitted        bool
@@ -143,8 +144,11 @@ func (p *ledgerProvider) Status(_ context.Context, request StatusRequest) (Provi
 	), nil
 }
 
-func (p *ledgerProvider) Abort(_ context.Context, handle MutationHandle) error {
+func (p *ledgerProvider) Abort(ctx context.Context, handle MutationHandle) error {
 	p.abortCount++
+	if ctx.Err() != nil {
+		p.abortSawCanceledContext = true
+	}
 	record, ok := p.records[handle.InvocationKey]
 	if !ok {
 		return nil
@@ -668,5 +672,76 @@ func TestReconcileByInvocationKeyUsesJournaledOutcomeWithoutProviderReplay(t *te
 	}
 	if provider.commitCount != beforeCommits {
 		t.Fatalf("journaled outcome triggered provider commit replay: before=%d after=%d", beforeCommits, provider.commitCount)
+	}
+}
+
+
+func TestCancellationAfterPrepareUsesNonCanceledCleanupContext(t *testing.T) {
+	provider := newLedgerProvider()
+	journal := newMemoryJournal()
+	executor := newExecutor(provider, journal)
+	ctx, cancel := context.WithCancel(context.Background())
+	executor.Validate = func([]byte) error {
+		cancel()
+		return nil
+	}
+
+	execution, err := executor.Invoke(ctx, MutationRequest{
+		InvocationKey: "order-cancel-after-prepare",
+		Payload:       []byte("16"),
+	})
+	if !errors.Is(err, context.Canceled) ||
+		execution.Outcome != OutcomeNotCommitted {
+		t.Fatalf("post-prepare cancellation outcome=%+v err=%v", execution, err)
+	}
+	if provider.commitCount != 0 ||
+		provider.effectCount != 0 ||
+		provider.abortCount != 1 {
+		t.Fatalf("post-prepare cancellation crossed commit boundary: %+v", provider)
+	}
+	if provider.abortSawCanceledContext {
+		t.Fatal("Abort cleanup received the canceled request context")
+	}
+}
+
+func TestDurableMutationHandleDoesNotContainPreparedResultPayload(t *testing.T) {
+	prepared := NewPreparedMutation(
+		"prep-sensitive",
+		"sensitive-invocation",
+		digest([]byte("request")),
+		[]byte("sensitive-result-payload"),
+		"version-1",
+	)
+	handle := preparedHandle(prepared)
+	rendered := fmt.Sprintf("%+v", handle)
+	if strings.Contains(rendered, "sensitive-result-payload") {
+		t.Fatalf("durable handle leaked prepared result payload: %s", rendered)
+	}
+	if handle.ResultDigest != digest(prepared.ResultPayload) {
+		t.Fatalf("durable handle lost result identity: %+v", handle)
+	}
+}
+
+func TestPreparedFingerprintDoesNotCollideAcrossFieldBoundaries(t *testing.T) {
+	common := PreparedMutation{
+		Protocol:         mutationProtocol,
+		RequestDigest:    digest([]byte("request")),
+		ResultDigest:     digest([]byte("result")),
+		ConcurrencyToken: "version-1",
+	}
+	left := common
+	left.PreparationID = "a\x00b"
+	left.InvocationKey = "c"
+
+	right := common
+	right.PreparationID = "a"
+	right.InvocationKey = "b\x00c"
+
+	if preparedFingerprint(left) == preparedFingerprint(right) {
+		t.Fatalf(
+			"structured fingerprint collapsed distinct field boundaries: left=%q right=%q",
+			left.PreparationID,
+			right.InvocationKey,
+		)
 	}
 }
