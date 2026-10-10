@@ -307,7 +307,7 @@ blocked_by=<issue/pr/revision or none>; next=<consumer action>
 
 G2は単なる21ケースのチェック数ではなく、**一つの受注明細業務について、同一Accepted meaning revisionをSource・Projection・Action binding・Driver request・separate Observationまで追えるか**で判断する。最初のハッピーパスは `V00→V03→V04→V05→V08`、最少否定経路は `N05/N06`（Source）、`N08`（Capability/Authorization）、`N11`（Observation）とし、現時点の具体的な変更対象・実装可能なvalidation変更は#1124/#1127が既存Schemaと照合して確定させる。合成例に一回だけ一致したことは、実Targetの独立した成功観測ではない。
 
-## 11. G1→G2接合部：設計の受理と実DBへの適用を分離する
+## 12. G1→G2接合部：設計の受理と実DBへの適用を分離する
 
 ### 問題：V04が成功してもV05は実行可能とは限らない
 
