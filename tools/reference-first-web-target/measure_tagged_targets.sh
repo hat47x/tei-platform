@@ -106,11 +106,11 @@ done
 # A linked business Runner symbol in an excluded Application is a hard fail.
 # The reverse (no symbol) is only limited diagnostic evidence: Go may inline
 # functions, so absence of names is NOT an exhaustive secret/authorization audit.
-if grep -E 'main[.]((\*referenceCustomerLookupScenarioRunner)|newReferenceCustomerLookupScenarioRunner)' "$temp/order.nm" >/dev/null; then
+if grep -E 'main[.](\(\*referenceCustomerLookupScenarioRunner\)|newReferenceCustomerLookupScenarioRunner)' "$temp/order.nm" >/dev/null; then
   echo "order-only binary retained a repair_intake business Runner symbol" >&2
   exit 1
 fi
-if grep -E 'main[.]((\*referenceCommandScenarioRunner)|newReferenceCommandScenarioRunner|newReferenceReadScenarioRunner)' "$temp/repair.nm" >/dev/null; then
+if grep -E 'main[.](\(\*referenceCommandScenarioRunner\)|newReferenceCommandScenarioRunner|newReferenceReadScenarioRunner)' "$temp/repair.nm" >/dev/null; then
   echo "repair-only binary retained an order_entry business Runner symbol" >&2
   exit 1
 fi
