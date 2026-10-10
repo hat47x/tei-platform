@@ -302,6 +302,8 @@ generic Invocation Context層がaccess deniedやnot foundの外部表現を一�
 
 ### Go error objectの情報漏えいとReferenceの暫定境界
 
+Go ReferenceではProvider callbackがContext Slot Viewと同じpackageで動くため、公開API上の`Lookup`がcopyを返していても、callbackがunexported map / value sliceへ直接アクセスして比較元を破壊できた。特にcallbackが秘匿slotを消去した後、その元の値をresultへ反射する経路は、以前のdirect-reflection detectorを迂回した。負例を修正し、Hostの照合用snapshotとcallbackへ渡す独立したmap・byte sliceを分離した。契約意味は「Host保持の証拠をProviderの可変状態から隔離する」ことであり、Go package内の非公開fieldをsecurity boundaryと見なさない。Providerに渡す文脈の複製コストはrequired slot数と値サイズに比例するため、productionでの最小契約・コピー戦略は別途検討する。
+
 Goの`error`は`Error()`文字列だけではない。たとえば`Error()`が安全な固定文言でも、具体的なerror型のfieldや`errors.As` / `Unwrap`経由でcurrent credentialを取り出せる。文字列の直接反射チェック後にdownstream errorをそのまま返す構造は、Execution Contextの秘匿境界を満たさない。
 
 現Referenceでは、直接反射を検出した場合の拒否に加え、機密扱いのrequired slotがある呼出しではdownstream error objectの外部流出を防ぐため、原errorをwrapせず固定のfailureへ変換する。非機密のrequired slotだけの場合はdownstream errorの型を維持する。
