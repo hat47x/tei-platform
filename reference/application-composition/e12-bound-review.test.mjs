@@ -1,95 +1,105 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assessBoundCompositionReview as assess} from './e12-bound-review.mjs';
+import {spawnSync} from 'node:child_process';
+import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {inspectEvidenceFiles} from './e12-bound-review.mjs';
+
 const app='order_entry',scope='order-entry-reference';
-const k=(kind,id)=>({scope,subject:{kind,id}});
-const application=k('application',app);
-const pattern=k('application-pattern',app+'.customer_reference');
-const relation=k('semantic-relation','sales.order.customer');
-const sha=x=>'sha256:'+x.repeat(64);
-const fixtures=[
-  {relation:'application',subject:application.subject,path:'applications/order-entry/application.tei',fingerprint:sha('a')},
-  {relation:'application-pattern',subject:pattern.subject,path:'applications/order-entry/patterns/customer-reference.tei',fingerprint:sha('b')},
-  {relation:'pattern-relation',subject:relation.subject,path:'semantic/sales/order.tei',fingerprint:sha('c')},
-];
-function envelope(){return {
-  format:'tei.e5-paired-source-observation.v1',
-  qualification:'read-only-paired-input-not-an-authority',
-  report:{application:app,status:'observed',qualification:'declaration-and-source-index-only',issues:[],
-    dependencies:fixtures.map(f=>({relation:f.relation,subject:structuredClone(f.subject),
-      source:{path:f.path,fingerprint:f.fingerprint}}))},
-  index:{artifacts:fixtures.map(f=>({path:f.path,fingerprint:f.fingerprint})),
-    references:fixtures.map(f=>({subject:structuredClone(f.subject),artifactPath:f.path,role:'definition'}))},
-};}
-function typed(){return {schema:'tei.modelref.v0',scope,application:app,nodes:[application,pattern,relation].map(key=>({key})),diagnostics:[],unresolved:[],affected:[]};}
-const inspect=(a=envelope(),b=envelope(),p=typed(),opts={})=>assess({baseline:a,current:b,typedProjection:p,application:app,scope,...opts});
-test('identical E7 report/index and modelref candidate: only limited-unchanged',()=>{
- const r=inspect();assert.equal(r.status,'limited-unchanged');
- assert.equal(r.fullClosure,false);assert.equal(r.authority,'none');
- assert.equal(r.modelrefSnapshotBound,false);assert.equal(r.adoption,'not-decided');
+const key=(kind,id)=>({scope,subject:{kind,id}});
+const application=key('application',app);
+const pattern=key('application-pattern',app+'.customer_reference');
+const relation=key('semantic-relation','sales.order.customer');
+const sha=c=>'sha256:'+c.repeat(64);
+const f=[{relation:'application',subject:application.subject,path:'applications/order-entry/application.tei',fingerprint:sha('a')},
+ {relation:'application-pattern',subject:pattern.subject,path:'applications/order-entry/patterns/customer-reference.tei',fingerprint:sha('b')}];
+const paired=()=>({format:'tei.e5-paired-source-observation.v1',
+ qualification:'read-only-paired-input-not-an-authority',
+ report:{application:app,status:'observed',qualification:'declaration-and-source-index-only',issues:[],
+  dependencies:f.map(x=>({relation:x.relation,subject:structuredClone(x.subject),source:{path:x.path,fingerprint:x.fingerprint}}))},
+ index:{artifacts:f.map(x=>({path:x.path,fingerprint:x.fingerprint})),
+  references:f.map(x=>({subject:structuredClone(x.subject),artifactPath:x.path,role:'definition'}))}});
+const modelref=()=>({projection:{graph:{schema:'tei.modelref.v0',nodes:[application,pattern,relation].map(k=>({key:k})),edges:[]},
+ rules:[],unresolved:[],authorityLimits:['source-evidence-not-bound']},diagnostics:[],affected:[]});
+const cmd=fileURLToPath(new URL('./e12-bound-review.mjs',import.meta.url));
+const writeInputs=(fn, {baseline=paired(),current=paired(),typed=modelref()}={})=>{
+ const folder=mkdtempSync(join(tmpdir(),'tei-e12-'));
+ const files=['baseline.json','current.json','modelref.json'].map(name=>join(folder,name));
+ [baseline,current,typed].forEach((x,i)=>writeFileSync(files[i],JSON.stringify(x)));
+ try {return fn({files,folder});}finally {rmSync(folder,{recursive:true,force:true});}
+};
+const run=(params={})=>writeInputs(({files})=>spawnSync(process.execPath,[cmd,...files,app,scope],{encoding:'utf8'}),params);
+
+test('CLI consumes E7 paired Source and Go-shaped modelref; never certifies shared snapshot',()=>{
+ const r=run(),out=JSON.parse(r.stdout);
+ assert.equal(r.status,2);assert.equal(out.status,'unresolved');
+ assert.equal(out.reason,'unverified_shared_snapshot');assert.equal(out.authority,'none');
+ assert.equal(out.fullClosure,false);assert.equal(out.adoption,'not-decided');
 });
-test('typed Relation to owned Pattern is a review candidate, not authorized change',()=>{
- const p=typed();p.affected=[{changed:relation,consumer:pattern,reason:'version-changed'}];
- const r=inspect(undefined,undefined,p);assert.equal(r.status,'review-candidate');assert.equal(r.reviewCandidates.length,1);
- assert.equal(r.authority,'none');
+test('typed Relation impact yields a review lead while rejecting success',()=>{
+ const t=modelref();t.affected=[{changed:relation,consumer:pattern,reason:'version-changed'}];
+ const r=run({typed:t}),out=JSON.parse(r.stdout);
+ assert.equal(r.status,2);assert.equal(out.reviewCandidates.length,1);
+ assert.equal(out.reviewCandidates[0].consumer.subject.id,pattern.subject.id);
 });
-test('Source fingerprint change always makes review unresolved even with typed unchanged',()=>{
- const b=envelope();b.report.dependencies[2].source.fingerprint=sha('d');b.index.artifacts[2].fingerprint=sha('d');
- const r=inspect(envelope(),b);assert.equal(r.status,'unresolved');assert.equal(r.reason,'source_requalification_required');
- assert.equal(r.sourceReason,'indexed_source_changed');
+test('Source definition fingerprint drift wins over an unchanged Go projection',()=>{
+ const current=paired();current.report.dependencies[1].source.fingerprint=sha('f');current.index.artifacts[1].fingerprint=sha('f');
+ const r=run({current}),out=JSON.parse(r.stdout);
+ assert.equal(out.status,'unresolved');assert.equal(out.sourceReason,'indexed_source_changed');
 });
-test('unrelated Source Index entry changed is not a source drift for this limited set',()=>{
- const b=envelope();b.index.artifacts.push({path:'semantic/unrelated/source.tei',fingerprint:sha('e')});
- assert.equal(inspect(envelope(),b).status,'limited-unchanged');
+test('changing Application identity in one envelope never silently chooses a winner',()=>{
+ const current=paired();current.report.application='other';
+ const out=JSON.parse(run({current}).stdout);
+ assert.equal(out.status,'unresolved');
 });
-test('baseline/current Application mismatch cannot be used to change owner',()=>{
- const b=envelope();b.report.application='other';
- assert.equal(inspect(envelope(),b).reason,'selected_application_mismatch');
+test('malformed index to E5 definition cannot become an E11 review success',()=>{
+ const current=paired();current.report.dependencies[1].source.path='private/other.tei';
+ const out=JSON.parse(run({current}).stdout);
+ assert.equal(out.status,'unresolved');assert.equal(out.sourceReason,'report_index_source_mismatch');
 });
-test('changed pattern ownership set in E5 report requires requalification',()=>{
- const b=envelope();b.report.dependencies.splice(1,1);b.index.references.splice(1,1);
- const r=inspect(envelope(),b);assert.equal(r.status,'unresolved');assert.equal(r.sourceReason,'declared_dependency_set_changed');
+test('unrecognized E5 dependency relation is not accepted',()=>{
+ const current=paired();current.report.dependencies[1].relation='fabricated-secret';
+ const out=JSON.parse(run({current}).stdout);
+ assert.equal(out.sourceReason,'invalid_dependency_claim');
 });
-test('forged current source location that disagrees with its index is not accepted',()=>{
- const b=envelope();b.report.dependencies[1].source.path='secret/not-a-definition.tei';
- assert.equal(inspect(envelope(),b).sourceReason,'report_index_source_mismatch');
+test('Go projection missing selected Pattern fails closed',()=>{
+ const typed=modelref();typed.projection.graph.nodes.splice(1,1);
+ const out=JSON.parse(run({typed}).stdout);
+ assert.equal(out.reason,'declared_pattern_missing_from_projection');
 });
-test('unrecognized E5 relation cannot bypass E7 validator',()=>{
- const b=envelope();b.report.dependencies[1].relation='fabricated-secret';
- assert.equal(inspect(envelope(),b).sourceReason,'invalid_dependency_claim');
+test('Go unresolved and Validate diagnostics stop review regardless of E7 input',()=>{
+ const t=modelref();t.projection.unresolved=['missing-reference'];
+ assert.equal(JSON.parse(run({typed:t}).stdout).reason,'unresolved_typed_references');
+ const other=modelref();other.diagnostics=[{code:'version-mismatch',at:'pattern'}];
+ assert.equal(JSON.parse(run({typed:other}).stdout).reason,'unresolved_typed_references');
 });
-test('report claiming observed without one Application definition cannot authorize review',()=>{
- const b=envelope();b.report.dependencies.shift();b.index.references.shift();
- assert.equal(inspect(envelope(),b).status,'unresolved');
+test('extra JSON value with secret token is not echoed to standard output',()=>{
+ const current=paired();current.unexpectedCredential='LEAK_TEST_SECRET_123';
+ const result=run({current});
+ assert.ok(!result.stdout.includes('LEAK_TEST_SECRET_123'));
+ assert.ok(!result.stderr.includes('LEAK_TEST_SECRET_123'));
 });
-test('a spoofed paired format cannot be requalified as E7 evidence',()=>{
- const b=envelope();b.format='tei-claims-runtime-authority';
- assert.equal(inspect(envelope(),b).reason,'invalid_or_unqualified_paired_evidence');
+test('invalid/missing JSON exits 1 and never echoes source filename or raw JSON',()=>{
+ writeInputs(({files})=>{
+  writeFileSync(files[1],'{secretBrokenJson');
+  const r=spawnSync(process.execPath,[cmd,...files,app,scope],{encoding:'utf8'});
+  assert.equal(r.status,1);assert.equal(r.stdout,'');
+  assert.ok(!r.stderr.includes(files[1]));assert.ok(!r.stderr.includes('secretBrokenJson'));
+ });
 });
-test('typed projection with unresolved references remains unresolved despite E7 unchanged',()=>{
- const p=typed();p.unresolved=['unbound-source-evidence'];
- assert.equal(inspect(undefined,undefined,p).reason,'unresolved_typed_references');
+test('missing CLI arguments return usage error before source file reads',()=>{
+ const r=spawnSync(process.execPath,[cmd],{encoding:'utf8'});
+ assert.equal(r.status,1);assert.match(r.stderr,/Usage/);assert.equal(r.stdout,'');
 });
-test('missing paired input does not pretend to be an unchanged Application',()=>{
- const r=inspect(undefined,null);assert.equal(r.status,'unresolved');
- assert.equal(r.authority,'none');
+test('oversized input is rejected before JSON parsing and never echoed',()=>{
+ writeInputs(({files})=>{
+  writeFileSync(files[2], 'x'.repeat(16*1024*1024+1));
+  const r=spawnSync(process.execPath,[cmd,...files,app,scope],{encoding:'utf8'});
+  assert.equal(r.status,1);assert.equal(r.stdout,'');assert.match(r.stderr,/Invalid review evidence input/);
+ });
 });
-test('invented caller-supplied sourceDrift cannot bypass internally computed E7',()=>{
- const b=envelope();b.report.dependencies[2].source.fingerprint=sha('f');
- b.index.artifacts[2].fingerprint=sha('f');
- const r=inspect(envelope(),b,typed(),{sourceDrift:{status:'limited-unchanged'}});
- assert.equal(r.status,'unresolved');assert.equal(r.sourceReason,'indexed_source_changed');
-});
-test('caller cannot substitute a different standalone E5 report for owner selection',()=>{
- const forged={application:app,status:'observed',qualification:'declaration-and-source-index-only',issues:[],dependencies:[
-  {relation:'application',subject:application.subject},
-  {relation:'application-pattern',subject:{kind:'application-pattern',id:'foreign.owned'}}]};
- const p=typed(),foreign=k('application-pattern','foreign.owned');
- p.nodes.push({key:foreign});p.affected=[{changed:relation,consumer:foreign,reason:'version-changed'}];
- const r=inspect(undefined,undefined,p,{sourceReport:forged});
- assert.equal(r.status,'limited-unchanged');assert.equal(r.reviewCandidates.length,0);
-});
-test('missing typed projection is never filled from Source report alone',()=>{
- const r=assess({baseline:envelope(),current:envelope(),application:app,scope});
- assert.equal(r.status,'unresolved');assert.equal(r.reason,'unqualified_typed_projection');
+test('library API rejects missing inputs as errors, not positive evidence',async()=>{
+ await assert.rejects(()=>inspectEvidenceFiles({application:app,scope}),/invalid_arguments/);
 });
