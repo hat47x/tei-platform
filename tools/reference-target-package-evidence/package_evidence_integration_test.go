@@ -85,6 +85,25 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	if base.GoVersion == "" || base.GOOS == "" || base.GOARCH == "" {
 		t.Fatalf("missing toolchain identity: %+v", base)
 	}
+	if base.CGOEnabled == "1" {
+		if base.CgoToolchain["CC"] == "" || base.CgoToolchain["PKG_CONFIG"] == "" {
+			t.Fatalf("missing effective cgo compiler profile: %+v", base.CgoToolchain)
+		}
+		// The code graph can be identical while the native compiler flags
+		// differ. Such reports must not be compared as equivalent builds.
+		t.Setenv("CGO_CFLAGS", base.CgoToolchain["CGO_CFLAGS"]+" -DTEI_E0_PROFILE=1")
+		withCgoFlag, err := produceEvidence("./cmd/app", "")
+		if err != nil {
+			t.Fatalf("observe native compiler profile: %v", err)
+		}
+		if withCgoFlag.CgoToolchain["CGO_CFLAGS"] == base.CgoToolchain["CGO_CFLAGS"] {
+			t.Fatal("Cgo compiler flag drift missing from E0 report")
+		}
+		if _, err := compareReports(base, withCgoFlag); err == nil {
+			t.Fatal("comparing different cgo compiler settings was accepted")
+		}
+		t.Setenv("CGO_CFLAGS", base.CgoToolchain["CGO_CFLAGS"])
+	}
 	// Observe two independent compile-time entry packages from the same
 	// Git HEAD, rather than rerunning a unified executable with different
 	// runtime -application flags.
