@@ -172,3 +172,25 @@ test('standard guard evidence cannot be redefined by a plugin', () => {
   p.hostPolicy.guardEvidence={'authenticated':'request.context'};
   assert.throws(()=>composeRequestPlan(p),/standard guard evidence cannot be overridden/);
 });
+
+test('action route cannot drop authenticated host guard', () => {
+  const p=clone(base);p.hostPolicy.requiredGuards=p.hostPolicy.requiredGuards.filter(g=>g!=='authenticated');
+  assert.throws(()=>composeRequestPlan(p),/mandatory protection: authenticated/);
+});
+test('action route cannot drop csrf host guard', () => {
+  const p=clone(base);p.hostPolicy.requiredGuards=p.hostPolicy.requiredGuards.filter(g=>g!=='csrf-protected');
+  assert.throws(()=>composeRequestPlan(p),/mandatory protection: csrf-protected/);
+});
+test('action route cannot omit denied or failed audit events', () => {
+  for(const terminal of ['completed','rejected','error']){
+    const p=clone(base);p.hostPolicy.terminalEvents=p.hostPolicy.terminalEvents.filter(e=>e!==terminal);
+    assert.throws(()=>composeRequestPlan(p),new RegExp('mandatory terminal audit: '+terminal));
+  }
+});
+test('different providers with the same issuer and subject may have separate explicit principals', () => {
+  const p=clone(authentication);
+  p.providers.push({id:'second-oidc',kind:'oidc',issuer:'https://example.invalid/issuer'});
+  p.policies[0].allowedProviders.push('second-oidc');
+  p.subjectLinks.push({providerId:'second-oidc',issuer:'https://example.invalid/issuer',subject:'fixed-sub-001',principalId:'separate-principal'});
+  assert.equal(validateAuthenticationPlan(p).linkedSubjectCount,3);
+});
