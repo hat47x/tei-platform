@@ -117,3 +117,17 @@ go vet ./internal/modelref/...
 ```
 
 **実行範囲:** Go 1.23.2の隔離ミラーで `modelref` と `sourcebridge` をテストした。後者の隔離環境では `sourceindex` の最小同型shimを使用したため、trusted full checkoutでの実Package間試験と `tools/repository-health-check.sh` の資格確認は依然として未実施である。合格証跡を混同しない。現在のStageはReference Contract + source navigation adapter candidateであり、Accepted Worldの三視点実データ接続やStudio E2Eが成立したわけではない。
+
+## R2 — 現行Derived Indexからの型付き投影（2026-10-10）
+
+`internal/modelref/derivedbridge.FromIndex(index.Derived, scope)` を追加した。現行の `index.Build(World)` が作る `SemanticElements`、`SemanticDependencies`、`DeclaredDependencies`、`ApplicationPatterns`、`Queries` を**読み取り専用**で使う。既存のWorldとIndexに新しいschema、Dependency、Write-pathを追加しない。
+
+- 元のsemantic definition / Application PatternのIDを保持し、`subject.Kind` を既存Source Indexの種類に合わせて `semantic-data`、`semantic-relation`、`application-pattern` 等へ変換する。
+- `application-pattern -> semantic-data`、`semantic-relation -> semantic-data`、`application -> application-pattern` など、**既存Indexに明記されたedgeのみ** を投影する。一般的な `semantic-element` 参照は候補が一意に解決できる場合だけ具体化する。
+- 導出Index内に表示されないunknown target、duplicate semantic definition、必要なscope欠落は `Unresolved` に残す。Sourceで確認できない対象、Function-level CRUDからのBusiness Action実更新、Accepted Business Procedureは生成しない。
+- Relation Kindに対応する `Rule` はDerived Indexからの**観測用型組**として返す（cycle policyや実行/認可権限を与えない）。`Graph` のversion / Evidence bindingは空のままとし、原Source fingerprintは `sourcebridge` と既存Source Indexに委ねる。
+- `index.Derived` だけでは既存Canonicalモデルのrevision・Acceptance履歴・original Sourceの全意味が確定しない。正式なconsumerはWorldとIndexを同一base revisionから取得し、その整合をShared Acceptanceで確認すること。
+
+Referenceの最小試験では、受注/明細RelationとApplication Patternの機能/データ参照を5 node / 3 edgeとして再投影する正例と、未知のData参照およびscope欠落の負例を用意した。これは**実Workspaceで三視点モデルを一往復編集した証跡ではない**。Business Procedureが現在のCanonical Worldへ未収容という不足を残したまま、非対応事項を隠さず#1125と#1124へ渡す。
+
+`go test -race -count=1 ./internal/modelref/...` と `go vet ./internal/modelref/...` をGo 1.23.2の**隔離ミラー**で実行してPASS。`derivedbridge` は現在、そのミラーでは `index.Derived` の最小同型shimに対してテストしている。GitHub上のSource Bridge/Derived BridgeのGoファイルと、対応する隔離ミラー内ファイル4本のGit blob SHA一致を確認したが、`modelref/model.go` とその依存はexact-headのfull checkoutで再度検証する必要がある。Repository Healthは未実施であり、PRをDraftに維持する。
