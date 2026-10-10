@@ -42,7 +42,7 @@ func TestOrderOnlyBinaryRetainsOrderRoutesWithoutRepairLookup(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		method, path string
-		status int
+		status       int
 	}{
 		{http.MethodGet, "/manifest.json", http.StatusOK},
 		{http.MethodGet, "/scenario/read?from=2026-09-18T08:30:00Z&row=0", http.StatusOK},
