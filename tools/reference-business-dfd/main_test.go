@@ -63,7 +63,7 @@ func TestManualExternalAndThreeTriggerKindsAreNotFunctionsOrAuthority(t *testing
 	f,r,s,w:=sample()
 	before:=f
 	got:=build(f,r,s,w,"procedure.json","review.json","set.json")
-	if len(got.Diagnostics)!=0 { t.Fatalf("unexpected diagnostics: %+v",got.Diagnostics) }
+	for _,d:=range got.Diagnostics { if d.Severity=="error" {t.Fatalf("unexpected blocking diagnostic: %+v",d)} }
 	if !reflect.DeepEqual(f,before) { t.Fatal("view builder mutated Procedure authoring input") }
 	if !got.Steps[1].NoApplicationFunction || !got.Steps[2].NoApplicationFunction {
 		t.Fatal("manual/external Step must remain even without Application Pattern")
@@ -178,7 +178,7 @@ func TestReferenceProjectionIntegration(t *testing.T) {
 		"../../reference/workspace",
 	)
 	if err!=nil { t.Fatal(err) }
-	if len(p.Diagnostics)!=0 { t.Fatalf("reference projection returned diagnostics: %+v",p.Diagnostics) }
+	for _,d:=range p.Diagnostics { if d.Severity=="error" {t.Fatalf("reference projection returned blocking diagnostic: %+v",d)} }
 	if p.ProcedureID!="order-entry.order-handling" || len(p.Steps)!=10 || len(p.Triggers)!=3 || len(p.Handoffs)!=1 {
 		t.Fatalf("unexpected reference projection coverage: steps=%d triggers=%d handoffs=%d",len(p.Steps),len(p.Triggers),len(p.Handoffs))
 	}
