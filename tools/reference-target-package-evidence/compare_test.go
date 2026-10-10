@@ -60,6 +60,7 @@ func TestCompareRejectsMixedSourceRevisionAndTargetProfile(t *testing.T) {
 		{"goarch-drift", func(r *Report) { r.GOARCH = "arm64" }},
 		{"cgo-drift", func(r *Report) { r.CGOEnabled = "1" }},
 		{"goflags-drift", func(r *Report) { r.GoFlags = "-race" }},
+		{"goamd64-drift", func(r *Report) { r.TargetFeatures = map[string]string{"GOAMD64": "v3"} }},
 		{"module-drift", func(r *Report) { r.Module = "other" }},
 		{"empty-entry", func(r *Report) { r.Entry = "" }},
 		{"duplicate-package", func(r *Report) { r.Packages = append(r.Packages, r.Packages[0]) }},
