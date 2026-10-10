@@ -489,3 +489,25 @@ Session要求入力`from`は既存のRead Runnerと同じRFC3339形式をHTTP入
 - `session_result_contract_test.go`: GitHub Blob `e2fe909ff198b4c551e9167db4af157f2e713e82`
 
 **検証可能な根拠：** GitHub上の実ファイル定義、型、期待エラー文言、HTTP分岐と各ケースを静的照合しました。**未取得の根拠：** このPR exact-headのclean full checkout上での`gofmt`、`go vet`、`go test`、race、実WorkspaceのGo結合、`tools/repository-health-check.sh`全PASS、実IdPと実永続化Providerの実行証拠。過去の隔離ハーネスのPASSを新しいソースへ転用しません。現行main包含も未達のためDraftを維持します。
+
+
+## E2.16：main包含とSession結果分類の限定Go再検証
+
+### 最新mainの履歴保持マージ
+
+`work/issue-1043-web-principal-handoff`の以前の先端`fd937f9dc87f917fdc792a85df089c477f7a4dfd`とmain `2796703ed4549838dc82f94aa98aea95d1854bed` を親とする通常の二親マージコミット `05efd71d42f3e6cc664eba75b74375f0c2003126`を作成し、作業ブランチへfast-forwardした。`rebase`・`reset`・`force`は行っていない。main由来の計画文書3ファイルは新ブランチとmainで同じGit Blob SHAであり、前段のWeb関連22変更ファイルとは重複しない。比較時点ではmainより109コミット進み、0コミット後方。
+
+### Session HTTP分類：実Blobを用いた限定テスト
+
+GitHub上の`tools/reference-first-web-target/session_result_contract_test.go`（Blob **`e2fe909ff198b4c551e9167db4af157f2e713e82`**）を、ローカルの隔離`module tei-session-contract`へ**完全一致するbyte列**で取り込み、`git hash-object`の一致を確認した。Go 1.23.2で次の確認がPASSした。
+
+- `gofmt -l`：実テストファイルでは出力なし。
+- `go vet ./...`：PASS。
+- `go test -count=1 ./...`：15サブケースPASS。
+- `go test -race -count=1 ./...`：PASS。
+
+これら15ケースは、完了、Validation不成立、主体／業務認可拒否、認可基盤障害、Command／Observation障害、予期しない非終端・矛盾した完了状態、Adapter内部Errorの秘匿を検査する。HTTP結果分類関数`writeProtectedSessionCommandHTTPResult`はGitHub上の実装を同じ制御条件で隔離ハーネスへ写し、**周辺のResult型と既存`writeCommandScenarioHTTPResult`はスタブ**にしている。これは新たなビジネス・認証Providerを呼ばないテストであり、当該関数の制御分岐を検証する範囲に限定される。
+
+**統合資格ではない：** この局所テストは実Web Host、`workspace.Load`、`driver.Resolver`、`security.authorize`、実HTTP監査を呼んでいない。実リポジトリの`go test ./...`、Race、`go vet ./...`、`reference/web-composition/qualify.sh`と`tools/repository-health-check.sh`の全PASS・前後cleanは未取得。現在の実行Containerからは`github.com`のDNS名前解決ができないため、実チェックアウトを取得できない。資格確認まではPR #1114をDraft・未マージとする。
+
+資格取得時はPrivate Repoの完全なクリーンチェックアウトで最新head／main SHAを確認し、`bash reference/web-composition/qualify.sh <candidate-head-sha> <current-main-sha>`を実行する。その結果とGitHub上の現在head/mainを再照合してからDraft解消・統合を判断する。
