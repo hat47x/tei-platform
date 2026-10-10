@@ -95,6 +95,29 @@ func TestWorldRelationPathRejectsLaterHopIdentityCollision(t *testing.T) {
 	}
 }
 
+func TestWorldRelationPathLocatesCanonicalKeyFailureAtLaterHop(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	// The first relation is valid, while the key type of the second
+	// relation no longer agrees with its target attribute.
+	w.Semantics[2].Data[0].Attributes[0].TypeRef = "address.invalid_type"
+	canonicalCode := "SEMANTIC_RELATION_KEY_TYPE_MISMATCH"
+	found := false
+	for _, d := range validation.ValidateSemanticRelationKeys(w) {
+		if d.Code == canonicalCode && d.Subject != nil && d.Subject.ID == "customer.customer.addresses" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected the canonical second-hop key diagnostic")
+	}
+	_, err := TraceRelationPath(w, "sales.order", []core.CanonicalID{
+		"sales.order.customer", "customer.customer.addresses",
+	})
+	if err == nil || !strings.Contains(err.Error(), "step 1") || !strings.Contains(err.Error(), canonicalCode) {
+		t.Fatalf("canonical second-hop error lost its location: %v", err)
+	}
+}
+
 // TestWorldRelationRejectsGlobalRelationIdentityCollision verifies that a
 // relation ID cannot also refer to a relation under another Data.
 func TestWorldRelationRejectsGlobalRelationIdentityCollision(t *testing.T) {
