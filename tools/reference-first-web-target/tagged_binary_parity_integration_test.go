@@ -25,7 +25,8 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 		t.Skip("set TEI_E1_BINARY_PARITY=1 to build/run combined, order-only and repair-only executables")
 	}
 	root := filepath.Dir(filepath.Dir(referenceWorkspacePath(t)))
-	if err := requireCleanCheckoutAtHead(root); err != nil {
+	startHead, err := requireCleanCheckoutAtHead(root)
+	if err != nil {
 		t.Fatalf("binary parity requires a clean, identified checkout: %v", err)
 	}
 	outputDir := t.TempDir()
@@ -119,8 +120,12 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 			}
 		})
 	}
-	if err := requireCleanCheckoutAtHead(root); err != nil {
+	endHead, err := requireCleanCheckoutAtHead(root)
+	if err != nil {
 		t.Fatalf("source checkout changed during business parity: %v", err)
+	}
+	if endHead != startHead {
+		t.Fatalf("binary parity crossed source revisions: before=%s after=%s", startHead, endHead)
 	}
 }
 
@@ -218,7 +223,8 @@ func launchTaggedParityBinary(t *testing.T, root, binary, app string) string {
 	return ""
 }
 
-func requireCleanCheckoutAtHead(root string) error {
+func requireCleanCheckoutAtHead(root string) (string, error) {
+	var head string
 	for _, args := range [][]string{
 		{"rev-parse", "--verify", "HEAD"},
 		{"status", "--porcelain", "--untracked-files=all"},
@@ -227,11 +233,17 @@ func requireCleanCheckoutAtHead(root string) error {
 		cmd.Dir = root
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("git %v: %w: %s", args, err, output)
+			return "", fmt.Errorf("git %v: %w: %s", args, err, output)
 		}
 		if args[0] == "status" && len(bytes.TrimSpace(output)) != 0 {
-			return fmt.Errorf("dirty checkout cannot be used for binary parity evidence")
+			return "", fmt.Errorf("dirty checkout cannot be used for binary parity evidence")
+		}
+		if args[0] == "rev-parse" {
+			head = strings.TrimSpace(string(output))
 		}
 	}
-	return nil
+	if len(head) != 40 {
+		return "", fmt.Errorf("unexpected Git revision %q", head)
+	}
+	return head, nil
 }
