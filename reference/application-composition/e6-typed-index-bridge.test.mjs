@@ -130,3 +130,22 @@ test('missing typed Pattern or Semantic source cannot be inferred from a success
   stale.report.dependencies.pop();
   assert.equal(check(old,stale).reason,'declared_dependency_set_changed');
 });
+
+test('Pattern capability dependency is not falsely treated as part of the covered closure',()=>{
+  const old=fixture([...subjects,{
+    relation:'application-pattern',subject:{kind:'application-pattern',id:'order_entry.submit_order'},
+    path:'applications/order-entry/patterns/submit-order.tei',digit:'e',
+  }]);
+  const current=structuredClone(old);
+  // A Pattern may refer to a Capability in a separate Source. E5 does not
+  // derive this edge. The unchanged result must explicitly remain limited.
+  current.index.artifacts.push({path:'semantic/sales/action.tei',fingerprint:sha('f')});
+  current.index.references.push({
+    subject:{kind:'semantic-capability',id:'sales.order.submit'},
+    artifactPath:'semantic/sales/action.tei',role:'definition',
+  });
+  const result=check(old,current);
+  assert.equal(result.status,'limited-unchanged');
+  assert.equal(result.fullClosure,false);
+  assert.equal(result.authority,'none');
+});
