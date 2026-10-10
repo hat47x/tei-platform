@@ -212,6 +212,13 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 			cleanupErr,
 		)
 	}
+	if err := ctx.Err(); err != nil {
+		cleanupErr := abortPrepared(e.Provider, ctx, handle)
+		return MutationExecution{
+			Outcome: OutcomeNotCommitted,
+			Handle:  handle,
+		}, errors.Join(err, cleanupErr)
+	}
 
 	providerReceipt, commitErr := e.Provider.Commit(ctx, CommitRequest{
 		Protocol:           mutationProtocol,
