@@ -316,3 +316,44 @@ func TestReferenceAcceptRejectsCollidingOutputDestinations(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceAcceptPreventsCandidateOutputOverwrite(t *testing.T) {
+	dir := t.TempDir()
+	candidate := filepath.Join(dir, "candidate.json")
+	if err := os.WriteFile(candidate, []byte("original-candidate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(dir, "candidate-alias.json")
+	if err := os.Symlink(candidate, alias); err != nil {
+		t.Skipf("output symlinks are unavailable: %v", err)
+	}
+	for _, tc := range []struct {
+		name string
+		flag string
+		path string
+	}{
+		{name: "decision output", flag: "-out", path: candidate},
+		{name: "derived output", flag: "-derived-out", path: candidate},
+		{name: "decision alias", flag: "-out", path: alias},
+		{name: "derived alias", flag: "-derived-out", path: alias},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := runCLI([]string{
+				"accept", "-workspace", dir, "-candidate", candidate,
+				"-expected-review-fingerprint", "synthetic-review",
+				tc.flag, tc.path,
+			}, &stdout, &stderr)
+			if code != 2 || !strings.Contains(stderr.String(), "candidate") {
+				t.Fatalf("candidate overwrite not rejected before acceptance: code=%d output=%s stderr=%s", code, stdout.String(), stderr.String())
+			}
+			content, err := os.ReadFile(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(content) != "original-candidate" {
+				t.Fatalf("candidate overwritten: %q", content)
+			}
+		})
+	}
+}
