@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"strconv"
 	"testing"
 )
 
@@ -325,5 +326,32 @@ func TestCurrentP0FixtureCannotBeSubmittedAsEvidence(t *testing.T) {
 		if !has(result, code) {
 			t.Fatalf("P0 coverage fixture lost expected gap %q: %+v", code, result)
 		}
+	}
+}
+
+// The preflight receives untrusted packets. Keep the duplicate-key scan linear
+// in the number of distinct keys (the input is also bounded to 1 MiB by run).
+func TestStrictJSONManyDistinctKeysWithoutQuadraticScan(t *testing.T) {
+	var doc strings.Builder
+	doc.WriteByte('{')
+	for i := 0; i < 10000; i++ {
+		if i != 0 {
+			doc.WriteByte(',')
+		}
+		doc.WriteString(strconv.Quote("field" + strconv.Itoa(i)))
+		doc.WriteString(":null")
+	}
+	doc.WriteByte('}')
+	if err := rejectDuplicateJSONKeys([]byte(doc.String())); err != nil {
+		t.Fatalf("distinct keys rejected: %v", err)
+	}
+}
+
+func TestStrictJSONUnicodeFoldedAliasRejected(t *testing.T) {
+	if !strings.EqualFold("Key", "key") {
+		t.Fatal("unexpected Go unicode folding semantics")
+	}
+	if err := rejectDuplicateJSONKeys([]byte(`{"Key":1,"key":2}`)); err == nil {
+		t.Fatal("Unicode folded key shadowing was accepted")
 	}
 }
