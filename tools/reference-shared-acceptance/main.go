@@ -384,5 +384,16 @@ func isReferenceBaseline(workspacePath string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.HasSuffix(filepath.ToSlash(abs), "/reference/workspace")
+	// Keep the lexical guard, then resolve aliases to the protected baseline.
+	// Otherwise -workspace may name a symlink whose last components do not
+	// contain reference/workspace, bypassing the explicit write opt-in.
+	if strings.HasSuffix(filepath.ToSlash(abs), "/reference/workspace") {
+		return true
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		// A nonexistent workspace cannot be a successfully loaded target.
+		return false
+	}
+	return strings.HasSuffix(filepath.ToSlash(resolved), "/reference/workspace")
 }
