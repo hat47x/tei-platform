@@ -301,6 +301,7 @@ func evaluateAttestationTrust(
 	}
 	if verification.AttestationFingerprint != attestationFingerprint ||
 		normalizeFingerprint(verification.BuildExecutionResultFingerprint) != normalizeFingerprint(a.BuildExecutionResultFingerprint) ||
+		normalizeFingerprint(verification.ArtifactSetFingerprint) != normalizeFingerprint(a.Subject.ArtifactSetFingerprint) ||
 		verification.Issuer != a.Issuer ||
 		verification.SignatureProfile != a.SignatureProfile ||
 		verification.Predicate != a.Predicate {
