@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	runtimesnapshot "tei/tools/reference-runtime-snapshot"
 )
@@ -83,7 +84,14 @@ func serve(args []string, output io.Writer) error {
 	}
 	defer listener.Close()
 	fmt.Fprintf(output, "Read-only frozen manifest Reference on http://%s (no business endpoints)\n", listener.Addr())
-	return http.Serve(listener, snapshot.Handler())
+	// The listener is loopback-only, but idle connections must not hold
+	// unbounded resources in this diagnostic HTTP process.
+	server := &http.Server{
+		Handler: snapshot.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout: 30 * time.Second,
+	}
+	return server.Serve(listener)
 }
 
 func main() {
