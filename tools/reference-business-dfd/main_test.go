@@ -42,6 +42,10 @@ func sample() (fixture, review, procedureSet, ir.World) {
 	s:=procedureSet{Handoffs:[]handoff{
 		{From:endpoint{Procedure:f.Procedure.ID,Step:"BP-09"},To:endpoint{Procedure:"warehouse.receive",Step:"WH-00"},Condition:"accepted"},
 	}}
+	s.Procedures=append(s.Procedures,
+		struct{ID string `json:"id"`; Artifact string `json:"artifact"`}{ID:f.Procedure.ID,Artifact:"current.json"},
+		struct{ID string `json:"id"`; Artifact string `json:"artifact"`}{ID:"warehouse.receive",Artifact:"warehouse.json"},
+	)
 	w:=ir.World{Applications:[]application.Application{{ID:"order_entry",Patterns:[]application.Pattern{
 		{ID:"order_entry.order_record",Kind:application.PatternRecord},
 		{ID:"order_entry.submit_order",Kind:application.PatternCommand},
@@ -116,6 +120,20 @@ func TestBadTriggerFlowAndHandoffFailAsDiagnostics(t *testing.T) {
 	for _,want:=range []string{"DFD_TRIGGER_KIND_INVALID","DFD_TRIGGER_TARGET_MISSING","DFD_CONDITION_MISSING","DFD_FLOW_ENDPOINT_MISSING","DFD_HANDOFF_FROM_MISSING"} {
 		if !codes(got)[want] { t.Errorf("missing diagnostic %s: %+v",want,got.Diagnostics) }
 	}
+}
+
+func TestHandoffMustResolveToExactlyOneDeclaredProcedure(t *testing.T) {
+	f,r,s,w:=sample()
+	s.Procedures=s.Procedures[:1] // target Procedure does not belong to this reference set
+	got:=build(f,r,s,w,"procedure.json","review.json","set.json")
+	if !codes(got)["DFD_HANDOFF_TO_PROCEDURE_NOT_EXACT"] { t.Fatal("missing Handoff Procedure was silently treated as valid") }
+	seen:=false
+	for _,d:=range got.Diagnostics {
+		if d.Code=="DFD_HANDOFF_TO_PROCEDURE_NOT_EXACT" {
+			seen=d.Source.File=="set.json" && d.Source.Pointer=="/handoffs/0/to/procedure"
+		}
+	}
+	if !seen { t.Fatal("Handoff diagnostic does not point at the authoring set") }
 }
 
 func TestProposalRoutesAreNotInferredFromStepOrder(t *testing.T) {
