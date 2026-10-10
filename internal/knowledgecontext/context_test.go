@@ -908,7 +908,9 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	}
 	identityCandidate := ctx.DataDesign.BusinessIdentityCandidates[0]
 	if len(identityCandidate.Components) != 2 ||
-		identityCandidate.Components[0].Kind != "relation-source-occurrence" ||
+		identityCandidate.Components[0].Kind != "related-occurrence" ||
+		identityCandidate.Components[0].Relation != "sales.order.lines" ||
+		identityCandidate.Components[0].End != "source" ||
 		identityCandidate.Components[0].Data != "sales.order" ||
 		identityCandidate.Components[1].Kind != "attribute" ||
 		identityCandidate.Components[1].Attribute != "sales.order_line.line_number" ||
@@ -923,7 +925,9 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	}
 	fdCandidate := ctx.DataDesign.FunctionalDependencyCandidates[0]
 	if len(fdCandidate.Determinants) != 2 ||
-		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Kind != "related-occurrence" ||
+		fdCandidate.Determinants[0].Relation != "sales.order.lines" ||
+		fdCandidate.Determinants[0].End != "source" ||
 		fdCandidate.Determinants[0].Data != "sales.order" ||
 		fdCandidate.Determinants[1].Kind != "attribute" ||
 		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
