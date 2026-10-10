@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"strings"
 
+	"tei/internal/operations"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
-type sourceIndexSubjectView struct {
+type sourceIndexSubjectView = operations.SubjectSources
+
+/* type sourceIndexSubjectView struct {
 	Subject    sourceindex.Subject     `json:"subject"`
 	Artifacts  []sourceindex.Artifact  `json:"artifacts,omitempty"`
 	References []sourceindex.Reference `json:"references"`
 }
-
+ */
 func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, fmt.Errorf("source-index requires -workspace")
@@ -36,21 +39,5 @@ func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error
 		return index, nil
 	}
 
-	subject := sourceindex.Subject{Kind: kind, ID: id}
-	references := index.ReferencesFor(subject)
-	paths := make(map[string]struct{}, len(references))
-	for _, ref := range references {
-		paths[ref.ArtifactPath] = struct{}{}
-	}
-	artifacts := make([]sourceindex.Artifact, 0, len(paths))
-	for _, artifact := range index.Artifacts {
-		if _, ok := paths[artifact.Path]; ok {
-			artifacts = append(artifacts, artifact)
-		}
-	}
-	return sourceIndexSubjectView{
-		Subject:    subject,
-		Artifacts:  artifacts,
-		References: references,
-	}, nil
+	return operations.TraceSubjectSources(root, sourceindex.Subject{Kind: kind, ID: id})
 }
