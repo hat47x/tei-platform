@@ -3,17 +3,17 @@ package main
 // Command discovery is deliberately limited to the CLI's initial read-only
 // integration surface. It is not a second plugin or capability registry.
 type cliCommandCatalog struct {
-	SchemaVersion string             `json:"schemaVersion"`
-	Scope         string             `json:"scope"`
-	Commands      []cliCommandRecord `json:"commands"`
+	SchemaVersion	string	`json:"schemaVersion"`
+	Scope	string	`json:"scope"`
+	Commands	[]cliCommandRecord	`json:"commands"`
 }
 
 type cliCommandRecord struct {
-	Name     string   `json:"name"`
-	Effect   string   `json:"effect"`
-	Required []string `json:"required"`
-	Optional []string `json:"optional,omitempty"`
-	Output   string   `json:"output"`
+	Name	string	`json:"name"`
+	Effect	string	`json:"effect"`
+	Required	[]string	`json:"required"`
+	Optional	[]string	`json:"optional,omitempty"`
+	Output	string	`json:"output"`
 }
 
 func commandCatalog() cliCommandCatalog {
