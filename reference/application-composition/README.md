@@ -12,6 +12,8 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E3：対象Source単位の再検証試作](e3-requalification.mjs)／[合成試験](e3-requalification.test.mjs) — Source指紋を比較し、無関係な利用先を一律失効させず、不明な互換性を未解決として残す。
 - [E4：Source Indexと構成の接続境界](E4_SOURCE_INDEX_JOIN.md) — Source Indexが示す所在・内容と、別途必要な意味依存辺を区別する。
 - [E4：Subject単位の変更検査](e4-index-scope.mjs)／[合成試験](e4-index-scope.test.mjs) — 既存IndexのJSON形状に沿って、呼び出し側が選択したSubjectのみを再確認する。依存辺を自動導出した証拠ではない。
+- [E5：解析済みApplicationの依存とSource Indexの接続](E5_PARSED_WORLD_SOURCE_JOIN.md) — Goの既存Loader／型付きWorldを使い、明示Validation・Database Contractの出典を検査する。
+- [E5：読み取り専用Go検証器](e5-world-index.go)／[Go回帰テスト](e5-world-index_test.go) — 実Workspaceでの動作と全体Healthは未実施。合成fixtureのテストは追加済みだが実行結果は未取得。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
