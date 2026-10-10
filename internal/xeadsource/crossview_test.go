@@ -214,6 +214,37 @@ func TestCrossViewRejectsPartialCRUDWhenMarkerIsUnsupported(t *testing.T) {
 }
 
 
+func TestCrossViewRejectsIOTableWithoutDeclaredOperation(t *testing.T) {
+	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
+  <Table ID="T1"/>
+  <Function ID="F1"><IOTable ID="IO1" TableID="T1"/></Function>
+  <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="0"/></TaskAction></Task>
+</System>`, crossViewContractFixture())
+	if hasCrossViewEdge(projection.SourceEdges, "function-table-operation") {
+		t.Fatalf("IOTable without CRUD marker produced a resolved edge: %+v", projection.SourceEdges)
+	}
+	if len(projection.DerivedEdges) != 0 {
+		t.Fatalf("IOTable without CRUD marker produced a derived path: %+v", projection.DerivedEdges)
+	}
+	if !hasCrossViewUnresolved(projection.Unresolved, "iotable-operation-missing") {
+		t.Fatalf("missing CRUD declaration was not retained as unresolved: %+v", projection.Unresolved)
+	}
+}
+
+func TestCrossViewNormalizesNoTargetSentinel(t *testing.T) {
+	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
+  <Function ID="F1"/>
+  <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID=" 0 "/></TaskAction></Task>
+</System>`, crossViewContractFixture())
+	accounting := CrossViewPublicAccounting(projection)
+	if accounting.TaskFunctionIONoTargetCount != 1 {
+		t.Fatalf("trimmed IOID=0 count=%d want=1", accounting.TaskFunctionIONoTargetCount)
+	}
+	if hasCrossViewUnresolved(projection.Unresolved, "task-function-io-target-not-found") {
+		t.Fatalf("trimmed IOID=0 was treated as a target reference: %+v", projection.Unresolved)
+	}
+}
+
 func TestCrossViewBindsProjectionToSourceContractAndRule(t *testing.T) {
 	sourceA := `<System FormatVersion="1.2"><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpR="+"/></Function></System>`
 	sourceB := `<System FormatVersion="1.2"><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpU="+"/></Function></System>`
