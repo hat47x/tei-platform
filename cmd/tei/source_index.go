@@ -11,12 +11,7 @@ import (
 
 type sourceIndexSubjectView = operations.SubjectSources
 
-/* type sourceIndexSubjectView struct {
-	Subject    sourceindex.Subject     `json:"subject"`
-	Artifacts  []sourceindex.Artifact  `json:"artifacts,omitempty"`
-	References []sourceindex.Reference `json:"references"`
-}
- */
+
 func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, fmt.Errorf("source-index requires -workspace")
