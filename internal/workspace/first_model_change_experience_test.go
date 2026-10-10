@@ -28,8 +28,10 @@ func TestFirstModelChangeIndependentWorkspace(t *testing.T) {
 		t.Fatalf("unexpected applications: %#v", loaded.World.Applications)
 	}
 	if len(loaded.World.Databases) != 0 || len(loaded.World.Persistence) != 0 ||
-		len(loaded.World.Migrations) != 0 || len(loaded.World.Environments) != 0 {
-		t.Fatal("model-only first experience must not imply database, migration, or runtime readiness")
+		len(loaded.World.Migrations) != 0 || len(loaded.World.Environments) != 0 ||
+		len(loaded.World.Plugins) != 0 || len(loaded.World.Queries) != 0 ||
+		len(loaded.World.Bindings) != 0 || len(loaded.World.Applications[0].Patterns) != 0 {
+		t.Fatal("model-only first experience must not imply function, database, or runtime readiness")
 	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
@@ -103,6 +105,15 @@ func TestFirstModelChangeEditValidationAndRepair(t *testing.T) {
 	changedIndex, err := workspace.BuildSourceIndex(userRoot, changed)
 	if err != nil {
 		t.Fatal(err)
+	}
+	readUserSource := func(rel string) ([]byte, error) {
+		return os.ReadFile(filepath.Join(userRoot, filepath.FromSlash(rel)))
+	}
+	if err := startIndex.Validate(readUserSource); err == nil {
+		t.Fatal("the original Source Index accepted an edited source without a fingerprint mismatch")
+	}
+	if err := changedIndex.Validate(readUserSource); err != nil {
+		t.Fatalf("the rebuilt Source Index must reflect the current source bytes: %v", err)
 	}
 	assertFirstModelReference(t, changedIndex, "semantic-data", "intake.request", firstModelSemantic)
 	assertFirstModelReference(t, changedIndex, "semantic-attribute", "intake.request.priority", firstModelSemantic)
