@@ -20,7 +20,7 @@ func TestManifestCaptureHasNoAuthoringDependencies(t *testing.T) {
 		t.Fatalf("inspect capture CLI dependencies: %v\n%s", err, out)
 	}
 	expected := map[string]bool{
-		"tei/tools/reference-runtime-snapshot": false,
+		"tei/tools/reference-runtime-snapshot":                  false,
 		"tei/tools/reference-first-web-target-manifest-capture": false,
 	}
 	dec := json.NewDecoder(bytes.NewReader(out))
