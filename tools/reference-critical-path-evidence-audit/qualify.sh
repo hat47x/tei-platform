@@ -3,7 +3,7 @@
 set -euo pipefail
 
 die() { printf 'critical-path qualification blocked: %s\n' "$*" >&2; exit 1; }
-for cmd in git go bash awk gofmt; do
+for cmd in git go node bash awk gofmt; do
   command -v "$cmd" >/dev/null 2>&1 || die "missing required command: $cmd"
 done
 
@@ -63,6 +63,10 @@ while IFS= read -r path; do
     *) die "out-of-scope changed path: $path" ;;
   esac
 done <<< "$changed"
+
+bash -n tools/reference-critical-path-evidence-audit/qualify.sh
+bash -n tools/reference-critical-path-evidence-audit/compose-smoke.sh
+node --check tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs
 
 unformatted="$(gofmt -l tools/reference-critical-path-evidence-audit/*.go)"
 [[ -z "$unformatted" ]] || die "gofmt discrepancy: $unformatted"
