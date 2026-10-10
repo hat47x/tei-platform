@@ -90,6 +90,52 @@ actual token、access ref、session IDなどはContext Slot Contractへ含めな
 
 Provider Conformanceでは、必要slotを受け取った状態でCapability Contractのrequest、result、failure semanticsを守れることを検証する。
 
+## Requirement declarationをCapability Contractへ束縛する
+
+current Referenceは`ContextSlotRequirement`の集合をtrusted Host inputとして受け取る。これはcontext gateの挙動を試すためのReference上の簡略化であり、production Authorityではない。
+
+required slot一覧をCapability Contractから独立したoptional sidecarにすると、sidecar欠落を「required slotなし」と解釈できるdowngrade経路が生じる。
+
+```text
+Accepted Capability Contract
+  + optional requirement sidecar
+
+sidecar missing
+  -> no required slots
+  -> execution context Gateを迂回
+```
+
+そのためproductionでは、required execution context declarationをAccepted Capability Contract identityへ必ず束縛する。
+
+actual session、Principal、access ref等のruntime値をContract fingerprintへ含めるのではない。Contractへ結び付けるのは「どのContext Slot Contractを必要とするか」という宣言だけである。
+
+候補は二つある。
+
+1. Capability ContractがexactなExecution Context Profile artifact identity / fingerprintを参照する。
+2. 他にも独立したContract拡張artifactが必要になる場合、genericなContract Extension referenceを導入し、そのfingerprintをCapability Contract fingerprintへ含める。
+
+#1118一件だけを理由に汎用Extension機構を先回りして作らない。
+
+### ConformanceProfileへ押し込まない
+
+#951の`ConformanceProfile`はCapability Contract fingerprintの一部だが、現在はprofile identityであり、required slot一覧をmachine-readableに保持するartifactではない。
+
+ここへslot名をopaque stringとして詰めても、Hostがrequired slotを列挙できず、profile本文のdriftやProviderのslot適合性をexactに検査できない。
+
+したがってContext Slot requirementの運搬先として`ConformanceProfile`を流用しない。
+
+productionへ進む場合、少なくとも次のchainへ戻れる必要がある。
+
+```text
+Accepted Capability Contract fingerprint
+  -> exact context requirement declaration fingerprint
+  -> Provider conformance
+  -> Host binding receipt
+  -> Invocation receipt
+```
+
+current Referenceは最初の二つをまだ実証していない。receiptの`context-requirements-are-trusted-contract-input-not-consumer-payload`は、この未実証境界を明示するstop lineである。
+
 ## Hostによる注入
 
 Execution Contextの実値はtrusted Hostまたは既存のSecurity / authorization adapterが解決する。
