@@ -176,15 +176,16 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 			w.UnobservedControlReceipt == w.NegativeReceipt {
 			add("N11_UNOBSERVED_CONTROL_MISSING")
 		}
+		// A declared acceptance review must identify the exact candidate being
+		// approved. Equality is necessary but does not prove review authenticity.
+		if revision.MatchString(a.CandidateFingerprint) &&
+			revision.MatchString(a.ReviewFingerprint) &&
+			a.CandidateFingerprint != a.ReviewFingerprint {
+			add("ACCEPTANCE_REVIEW_FINGERPRINT_MISMATCH")
+		}
 		// The existing synthetic normal fixture rejects an invalid quantity, not
 		// the newly selected unit-price rule. A handler-only negative test is
 		// valuable E0 evidence but cannot prove a running Web Target refused it.
-		// A declared acceptance review must identify the exact candidate being
-		// approved. Distinct digests are not proof of matching approval, but
-		// equality is a necessary preflight condition.
-		if a.CandidateFingerprint != a.ReviewFingerprint {
-			add("ACCEPTANCE_REVIEW_FINGERPRINT_MISMATCH")
-		}
 		if w.NegativeValidation != w.SelectedValidation ||
 			w.NegativeEvidenceMode != "running-server" {
 			add("E1_NEGATIVE_SELECTED_RULE_RUNNING_WEB_EVIDENCE_REQUIRED")
