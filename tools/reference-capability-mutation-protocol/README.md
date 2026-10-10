@@ -1,0 +1,135 @@
+# Mutating Capability Protocol Reference
+
+generic Capability Invocationをread-only以外へ広げる前に、副作用とresult validationの順序を検証するReferenceです。
+
+ISSUE-000080 E4では、read-only Capabilityだけをgeneric Invocationへ通しています。実装呼出し後にresult shapeを検査する方式をmutating Capabilityへそのまま使うと、resultをrejectしても外部副作用だけが残るためです。
+
+このReferenceでは、次の順序を候補として検証します。
+
+```text
+semantic request
+  -> prepare
+  -> prepared result
+  -> result validation
+  -> prepared intent journal
+  -> commit
+  -> committed / not-committed / unknown
+  -> reconcile when needed
+```
+
+## prepareとcommitの境界
+
+`Prepare`は外部から観測できる副作用を確定してはいけません。Providerはprepared result、request digest、result digest、Concurrency Tokenを返します。
+
+Hostはprepared resultをcommit前に検査します。resultがshapeやdomain ruleを満たさない場合はcommitせず、prepared stateをabortします。
+
+result検査後はprepared handleをJournalへ記録します。Journalへの記録に失敗した場合もcommitしません。commit後にHost processが停止しても、Invocation Keyからprepared handleを復元し、Providerのstatusへ戻るためです。
+
+ReferenceのJournalはmemory実装です。永続性、暗号化、複製、障害復旧を実証したものではありません。productionでは、commit前に回復可能な記録を残せる保存境界が別途必要です。
+
+## idempotencyとretry
+
+Invocation Keyはrequest digestと組にして扱います。
+
+同じInvocation Keyと同じrequestを再試行した場合、Providerは同じ論理mutationとして扱う必要があります。同じInvocation Keyを別requestへ再利用した場合は、commit前に拒否します。
+
+このReferenceはexactly-onceを保証したとは主張しません。安全なretryにはProvider側のidempotency、prepared state、commit status、durable Journalが必要です。
+
+commit transportが失敗した場合、Hostは`not-committed`へ読み替えません。`unknown`を返し、自動で同じ副作用を再実行しません。
+
+```text
+commit request
+  -> response lost
+  -> unknown
+  -> status / reconcile
+       -> committed
+       -> not-committed
+       -> unknown
+```
+
+statusでも確定できない場合は`unknown`を維持します。
+
+## concurrency
+
+prepared resultはprepare時点の状態に基づきます。
+
+Reference ProviderはConcurrency Tokenを返し、commit時に現在状態と照合します。同じstateから二つのmutationをprepareし、一方が先にcommitした場合、もう一方は古いprepared resultをcommitせず`not-committed`にします。
+
+この仕組みはDatabase transaction方式をCore仕様へ固定するものではありません。optimistic version、transaction handle、lease、fencing token等で同じ境界を実現できる余地を残します。
+
+## commit receipt
+
+committed resultはprepare時に確定したresult bytesとdigestへ結び付けます。commit応答がprepared identityと一致しない場合、Hostは副作用が既に発生した可能性を否定できないため`unknown`として扱います。
+
+Provider receiptには少なくとも次を結びます。
+
+- Invocation Key
+- request digest
+- preparation identity
+- result digest
+- effect digest
+- commit identity
+
+Host側のMutation ReceiptはProvider receiptとprepared fingerprintへ戻れるようにします。
+
+## Journal failure
+
+prepared intentの記録に失敗した場合はcommitしません。
+
+一方、commit成功後にoutcome receiptの保存だけが失敗した場合、副作用を「失敗したから無かった」とは扱いません。Referenceは`committed` outcomeとJournal errorを同時に返します。同じInvocation Keyで再入場すればProviderのidempotencyによって副作用を増やさず回復できるpressureを置いています。
+
+## compensation
+
+compensationをgeneric Invocationの暗黙動作にはしません。
+
+commit済みの業務効果を取り消せるかどうかはCapabilityごとの意味です。補償操作が存在しても、元のcommitが無かったことにはなりません。また、`unknown` outcomeに対して「たぶんcommitした」と判断してcompensationを自動実行すると、実際には未commitだった場合に逆方向の副作用を作れます。
+
+compensationを導入する場合は、独立したCapability / Procedure / Authorityとして扱う必要があります。
+
+## Runtime Authorityとの関係
+
+このReferenceはPermission、Resource Lease、Sandbox、Plugin Lockを実装し直しません。
+
+generic mutating protocolが成立しても、Application Runtimeで実行するにはRQ-019のAuthority境界を別に通る必要があります。逆にRuntime Authorityがあっても、prepare / result validation / commit / reconciliationの原子性問題は解決しません。
+
+```text
+Capability Contract / Provider / Conformance
+  -> Runtime Authority
+  -> mutation protocol
+  -> external effect
+```
+
+各境界は別の責務です。
+
+## Referenceで確認すること
+
+Reference testsでは次をpressureします。
+
+- prepared resultを検査する前にcommitしない
+- prepared intentをJournalへ記録できなければcommitしない
+- commit成功時だけprepared resultを返す
+- 同じInvocation Keyのretryで副作用を重複させない
+- 同じInvocation Keyを別requestへ使わない
+- commit response喪失後は`unknown`を保持する
+- Journalからprepared handleを復元し、process再起動後もreconcileできる
+- malformedなcommit receiptを`not-committed`へ読み替えない
+- statusが`unknown`なら`unknown`を維持する
+- stale Concurrency Tokenでprepared resultをcommitしない
+- commit後のJournal failureをrollback済みと誤認しない
+
+## 非目標
+
+このReferenceだけでは次を成立済みと扱いません。
+
+- production generic mutating Invocation
+- exactly-once delivery / execution
+- durable Journal implementation
+- distributed transaction
+- automatic compensation
+- Database transaction contract
+- process / HTTP / Wasm transport
+- Permission / Resource / Sandbox integration
+- crash-safe fsync / replication
+- actual external serviceとのmutation Evidence
+
+コード変更を含むReference candidateです。exact-head focused testとfull Repository healthが得られるまでproduction contractへ昇格しません。
