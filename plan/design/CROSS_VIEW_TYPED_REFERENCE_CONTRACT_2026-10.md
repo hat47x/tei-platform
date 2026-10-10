@@ -250,3 +250,18 @@ digest自体は署名・確定済みの規則・読み込んだPlugin sourceの�
 Go 1.23.2の隔離作業領域で、これらを含む`go test -race -count=1 ./internal/modelref/...`と`go vet ./internal/modelref/...`はPASS。少なくとも追加した`migration_review.go`および`migration_review_test.go`のGit blob SHAはリモートの追加ファイルと一致した。**これは既存`index/sourceindex`のstubを含む作業領域での試験であり、trusted full checkout exact-headのRepository Health Gateを満たした証拠ではない。**
 
 この変更は#1120のidentity migrationの参照審査を具体化するもので、既存Source書き込みや他レーンのauthoring機能を再実装しない。
+
+## R6 — 移行レビューにおける根拠の置換事故を防ぐ（2026-10-10）
+
+`ReviewMigration`の敵対的な再検討で、`from / relation / to`の置換先が正しくても、**edgeのEvidenceが別の根拠に差し替わる**可能性が残っていた。従来は`reference-evidence-changed`を検出する`Diff`があっても、移行レビュー側はそれを十分に拘束していなかった。
+
+追加した検査は次の二つである。
+
+1. **移行対象edge**: `EdgeRetarget`で指定された旧・新edgeのEvidence集合（出典token、Artifact fingerprint、Rule fingerprint、文脈・種別）が一致しないと`retarget-evidence-changed`。別の根拠へ変更する必要があるなら、その変更を隠さず、別ProposalとShared Acceptanceで審査する。
+2. **移行対象でないedge**: `from / relation / to`が不変でもEvidence集合が変わった場合は`unreviewed-reference-evidence`。再キー設定案の「ついで」に出典・解釈が入れ替わるのを防ぐ。
+
+どちらもEvidenceの配列順だけは差分とみなさない。実装は`migration_review.go`、負例は`migration_more_test.go`の`TestMigrationCannotSilentlyReplaceReferenceEvidence`に記録した。
+
+**検証**: `/mnt/data/tei1120`の隔離Go 1.23.2環境で`go test -race -count=1 ./internal/modelref/...`（3 Package）、`go vet ./internal/modelref/...`が成功し、`gofmt -l internal/modelref`は空だった。変更した2ファイルの`git hash-object`はGitHubに書き込んだblob SHAと一致した。ただし隔離環境には`sourceindex` / `index`の代替実装があり、Repository全体のexact-head Git checkoutではない。
+
+**統合停止条件**: `AGENTS.md`の規則に従い、trusted full checkoutのexact headとcurrent mainを固定した`tools/repository-health-check.sh`の**全項目PASS**、前後のclean state、必要なWorkspace integration testの証拠が揃うまでは、Draftを解除せずmainへ統合しない。実際のSourceの受理やDecision履歴の追跡が未成立なら、#1120の完了判定も行わない。
