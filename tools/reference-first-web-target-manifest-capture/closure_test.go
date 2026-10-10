@@ -27,7 +27,7 @@ func TestManifestCaptureHasNoAuthoringDependencies(t *testing.T) {
 	for {
 		var p struct {
 			ImportPath string
-			Module *struct { Main bool }
+			Module     *struct{ Main bool }
 		}
 		err := dec.Decode(&p)
 		if errors.Is(err, io.EOF) {
