@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"tei/internal/core"
 	"tei/internal/workspace"
@@ -45,11 +46,15 @@ func syntheticProtectedSessionConfiguration(runner *referenceCommandScenarioRunn
 		"corporate-editor": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor", PrincipalID: "employee-1"},
 		"corporate-viewer": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer", PrincipalID: "employee-2"},
 		"legacy-editor":    {ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor", PrincipalID: "employee-1"},
+		"corporate-locked": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked", PrincipalID: "employee-locked"},
+		"corporate-disabled": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-disabled", PrincipalID: "employee-disabled"},
 	}
 	links := map[webcomposition.ExternalSubject]webcomposition.SubjectLink{
 		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor"}:     {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
 		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer"}:     {PrincipalID: "employee-2", SubjectID: "subject-order-viewer"},
 		{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor"}: {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked"}: {PrincipalID: "employee-locked", SubjectID: "subject-order-locked"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-disabled"}: {PrincipalID: "employee-disabled", SubjectID: "subject-order-disabled"},
 	}
 	return protectedSessionCommandConfig{
 		Runner:    runner,
@@ -68,6 +73,7 @@ func syntheticProtectedSessionConfiguration(runner *referenceCommandScenarioRunn
 			link, ok := links[subject]
 			return link, ok, nil
 		},
+		AccountNow: func() time.Time { return runner.now }, // deterministic fixture clock, not production expiry
 		Audit: func(webcomposition.AuditRecord) {},
 	}
 }
@@ -152,6 +158,8 @@ func TestWebTargetProtectedSessionRouteDeniesUntrustedAndMalformedRequests(t *te
 		{"fake principal header alone is not session", "not-a-session", "matching", `{"row":0}`, http.StatusUnauthorized},
 		{"csrf missing", "corporate-editor", "", `{"row":0}`, http.StatusForbidden},
 		{"viewer denied by existing business rule", "corporate-viewer", "matching", `{"row":0}`, http.StatusForbidden},
+		{"locked editor denied before business capability", "corporate-locked", "matching", `{"row":0}`, http.StatusForbidden},
+		{"disabled account denied", "corporate-disabled", "matching", `{"row":0}`, http.StatusForbidden},
 		{"credential rejected on session route", "corporate-editor", "matching", `{"loginId":"legacy-order-editor","credential":"editor-secret","row":0}`, http.StatusBadRequest},
 		{"subject cannot come from JSON", "corporate-editor", "matching", `{"subjectId":"subject-order-editor","row":0}`, http.StatusBadRequest},
 		{"two JSON objects rejected", "corporate-editor", "matching", `{"row":0} {"row":0}`, http.StatusBadRequest},
@@ -196,6 +204,7 @@ func TestWebTargetSessionRouteIsOptInAndFailsClosed(t *testing.T) {
 		{"no subject links", func(c *protectedSessionCommandConfig) { c.SubjectLinks = nil }},
 		{"no audit", func(c *protectedSessionCommandConfig) { c.Audit = nil }},
 		{"no providers", func(c *protectedSessionCommandConfig) { c.Providers = nil }},
+		{"no eligibility clock", func(c *protectedSessionCommandConfig) { c.AccountNow = nil }},
 		{"no runner", func(c *protectedSessionCommandConfig) { c.Runner = nil }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
