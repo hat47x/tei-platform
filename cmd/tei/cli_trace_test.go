@@ -4,7 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"testing"
+
+	"tei/internal/modelref"
+	"tei/internal/operations"
+	"tei/internal/subject"
 )
 
 func parseTraceReport(t *testing.T, payload []byte) cliTraceReport {
@@ -46,6 +51,21 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 		*page.Result.Trace.NextOffset, 1)
 	if !next.OK || next.Result == nil || len(next.Result.Trace.Rows) == 0 {
 		t.Fatalf("bad trace continuation: %+v", next)
+	}
+	// CLI JSON is only a transport projection. For the same Workspace and
+	// selector it must agree with the typed, in-process Go operation.
+	fromGo, err := operations.TraceWorkspace(root, modelref.Key{
+		Scope: "reference-observation",
+		Subject: subject.Subject{Kind: "semantic-relation", ID: "sales.order.customer"},
+	}, modelref.TraceOptions{
+		Direction: "both", Mode: "full",
+		Limit: 1, ExpectedFingerprint: summary.Result.Trace.SnapshotFingerprint,
+	})
+	if err != nil {
+		t.Fatalf("typed operation trace failed: %v", err)
+	}
+	if !reflect.DeepEqual(*page.Result, fromGo) {
+		t.Fatalf("CLI/Go semantic results differ\nCLI: %+v\nGo: %+v", *page.Result, fromGo)
 	}
 	stale := run(1, "both", "full", "sha256:obsolete", 1, 1)
 	if stale.OK || stale.Error == nil || stale.Error.Code != "STALE_SNAPSHOT" {
