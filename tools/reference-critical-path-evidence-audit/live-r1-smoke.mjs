@@ -2,7 +2,7 @@
 // Opt-in parent-lane cross-PR E1-A probe. Test-only Acceptance, synthetic provider.
 // Run only in a trusted, clean, TEMPORARY integration worktree that contains #1124.
 import assert from "node:assert/strict";
-import { cpSync, createWriteStream, lstatSync, mkdtempSync, readFileSync,
+import { cpSync, openSync, closeSync, lstatSync, mkdtempSync, readFileSync,
   readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawn, execFileSync } from "node:child_process";
@@ -141,14 +141,16 @@ async function main() {
   go(["build", "-mod=readonly", "-o", binary, "./tools/reference-first-web-target"]);
   const port = await openPort();
   const addr = "127.0.0.1:" + port;
-  const serverLog = createWriteStream(join(temp, "server.log"), { flags: "wx", mode: 0o600 });
-  child = spawn(binary, [
+  const serverLog = openSync(join(temp, "server.log"), "wx", 0o600);
+  try {
+    child = spawn(binary, [
     "-workspace", workspace, "-application", "order_entry", "-baseline-id", "B",
     "-baseline-revision", expectedR, "-target-revision", head,
     "-legacy-users", "reference/legacy-auth/users.json",
     "-legacy-authorization", "reference/legacy-auth/authorization.json",
     "-listen", addr
-  ], { cwd: root, stdio: ["ignore", serverLog, serverLog] });
+    ], { cwd: root, stdio: ["ignore", serverLog, serverLog] });
+  } finally { closeSync(serverLog); }
   await ready("http://" + addr);
   const manifestResponse = await fetch("http://" + addr + "/manifest.json",
     { signal: AbortSignal.timeout(3000) });
