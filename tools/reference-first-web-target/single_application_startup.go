@@ -59,10 +59,10 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 		return fmt.Errorf("load reference Workspace: %w", err)
 	}
 	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
-		HandoverBaselineID: *baselineID,
+		HandoverBaselineID:         *baselineID,
 		BaselineRepositoryRevision: *baselineRev,
-		TargetBuildRevision: *targetRev,
-		ApplicationID: appID,
+		TargetBuildRevision:        *targetRev,
+		ApplicationID:              appID,
 	})
 	if err != nil {
 		return err
