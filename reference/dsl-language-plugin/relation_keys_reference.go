@@ -45,6 +45,22 @@ func resolveWorldRelation(w ir.World, sourceID, relationID core.CanonicalID) (se
 	if relation == nil {
 		return semantic.Relation{}, fmt.Errorf("unknown relation %q", relationID)
 	}
+	// The canonical identity belongs to the whole Semantic World, not just
+	// the source Data. A collision elsewhere could mix unrelated diagnostics
+	// because the canonical validator reports relation errors by ID.
+	relationMatches := 0
+	for _, ns := range w.Semantics {
+		for _, data := range ns.Data {
+			for _, candidate := range data.Relations {
+				if candidate.ID == relationID {
+					relationMatches++
+				}
+			}
+		}
+	}
+	if relationMatches != 1 {
+		return semantic.Relation{}, fmt.Errorf("relation %q: expected one definition across semantic world, got %d", relationID, relationMatches)
+	}
 	if !relation.Cardinality.Valid() {
 		return semantic.Relation{}, fmt.Errorf("relation %q has invalid cardinality", relationID)
 	}
