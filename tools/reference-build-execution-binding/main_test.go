@@ -983,3 +983,57 @@ func TestBuilderSubjectBindingCanonicalizesDigestHexCase(t *testing.T) {
 		t.Fatal("valid hex case changed Builder subject binding identity")
 	}
 }
+
+
+func TestBuilderHandoffRejectsSameBytesUnderDifferentLogicalBuilder(t *testing.T) {
+	binding := BuilderSubjectBinding{
+		FormatVersion: builderSubjectBindingFormatVersion,
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.self_hosted"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.reference.build/v1",
+			ArtifactDigest:  digestC,
+		},
+		ExecutionPlanFingerprint:        strings.Repeat("a", 64),
+		ArtifactSetFingerprint:          strings.Repeat("b", 64),
+		BuildExecutionResultFingerprint: strings.Repeat("c", 64),
+		OutputRole:                      "builder-artifact",
+	}
+	consumer := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "source", ID: "consumer", Locator: "source://consumer", Digest: digestA,
+		}},
+		Builder: binding.Builder,
+		Recipe: plugin.BuildRecipe{Kind: "reference", Entrypoint: "consumer"},
+		OutputContract: "reference-artifact",
+		Target: "host/reference",
+	}
+	if err := verifyBuilderHandoff(binding, consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	sameBytesDifferentID := consumer
+	sameBytesDifferentID.Builder.ID = core.MustCanonicalID("tei.builder.other")
+	if err := verifyBuilderHandoff(binding, sameBytesDifferentID); err == nil {
+		t.Fatal("Builder handoff accepted the same bytes under a different logical Builder ID")
+	}
+
+	sameBytesDifferentContract := consumer
+	sameBytesDifferentContract.Builder.ContractVersion = "tei.reference.other/v1"
+	if err := verifyBuilderHandoff(binding, sameBytesDifferentContract); err == nil {
+		t.Fatal("Builder handoff accepted the same bytes under a different Builder contract")
+	}
+
+	differentBytes := consumer
+	differentBytes.Builder.ArtifactDigest = digestD
+	if err := verifyBuilderHandoff(binding, differentBytes); err == nil {
+		t.Fatal("Builder handoff accepted a different artifact digest")
+	}
+
+	uppercaseDigestConsumer := consumer
+	uppercaseDigestConsumer.Builder.ArtifactDigest = uppercaseDigest(consumer.Builder.ArtifactDigest)
+	if err := verifyBuilderHandoff(binding, uppercaseDigestConsumer); err != nil {
+		t.Fatalf("valid digest hex case changed Builder handoff identity: %v", err)
+	}
+}
