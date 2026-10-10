@@ -6,8 +6,8 @@
 
 ## 検証する最小境界
 
-- 入力はTEIの既存World JSONと、同じWorkspaceから得たmodelRevision。BridgeはWorldのData/Relation/AttributeとApplication Patternの**元のID**を使い、表・ER・機能の近傍Projectionを読み取り専用で返します。
-- Accepted Business Procedureは現在のWorld JSONに含まれていないので、Business projectionは明示的に `unresolved` です。UIに架空のActor/Step/typed edgeを作りません。Source Indexの正確な位置との結合も未実装で、`sourceNavigation.status=unresolved`とします。
+- 入力はTEIの既存World JSONと、同じWorkspaceから得たmodelRevision。BridgeはWorldのData/Relation/Attribute/ValidationとApplication Patternの**元のID**を使い、表・ER・機能の近傍Projectionを読み取り専用で返します。CLIではWorkspace revisionをWorld取得前後で照合し、読み込み中の変更を検知すればProjectionを拒否します。
+- Accepted Business Procedureは現在のWorld JSONに含まれていないため、Businessは標準で `unresolved` です。#1125 Draft PR #1138のread-only DFD JSONを任意入力として与えた場合に限り、**明示的なApplication Pattern ID**で局所的に結合します。手作業・外部作業はFunctionへ紐付けずに別表示します。この結果は`reference-only`（未受理のFixture由来）で、Sourceとの同一revisionを証明しません。業務意味を勝手にacceptedへ昇格させません。Source Indexの正確な位置との結合も未実装で、`sourceNavigation.status=unresolved`です。
 - ER操作の`add-relation`と表操作の`add-validation/positive`だけを、既存 `tei.reference.change-candidate/v0` に変換します。Derived rowの直接書換え、任意のpatch、layout変更から意味を生成することは禁止します。
 - 実際のValidation、Semantic Diff、Impact、source edit、stale revision、Accept、Rollback、Decisionは**既存Shared Acceptance**が担当します。Bridgeのprecheckは利便性のためだけで、これらの検査を代替しません。
 - file/native CLI/AI/Studioのorigin値はprovenanceにとどめ、meaningを入口により変えません。候補の差分が同じなら最終的な意味の比較はShared Acceptanceへ委譲します。
@@ -74,21 +74,46 @@ node reference/studio-authoring/cli.mjs inspect \
 
 Worldとrevisionを先に取得してCLIへ渡す場合は、`-workspace`の代わりに`-world-file world.json -revision-file revision.json`を同時指定できます。いずれも取得の原子性を保証せず、Accepted Sourceのrevision一致はShared Acceptanceで再確認します。JSONファイルを任意の第三者から受け取った場合、その内容がTEIのauthoritative Sourceと一致することはBridge単独では証明できません。
 
+## Business参照の任意結合（#1125 / Draft PR #1138）
+
+#1125の独立DFD Readerが配置されたcheckoutでは、同じScratch Workspaceを指定してDFD JSONを取得できます。
+
+```sh
+go run ./tools/reference-business-dfd -format json \
+  -workspace "$scratch/workspace" > "$scratch/dfd.json"
+node reference/studio-authoring/cli.mjs inspect \
+  -workspace "$scratch/workspace" \
+  -focus relation:sales.order.lines \
+  -business-dfd "$scratch/dfd.json"
+```
+
+- DFDの`functionRefs[].id`が同じWorldのApplication Pattern IDにexact matchしたStepのみ、そのfocusとの関係を表示します。`data`/`relation`/`capability`参照の相違は`unresolved`にします。
+- 原DFDの`source.file`/`source.pointer`は**非Canonicalな参照Fixtureの位置**であり、Source Indexの編集先ではありません。
+- `manualOrExternalUnlinked`にFunctionなしの手作業等を別掲します。近接していることだけを理由に、選択Dataとの依存辺を捏造しません。大きなProcedureでは20件までとし切詰めを明示します。
+- DFDにはWorkspace revisionのbindingが無いので、たとえ同一IDでも`freshness=unverified-no-model-revision-binding`です。旧DFDがSource revisionと一致すること、Business Procedureがacceptedであることは**証明できません**。最新Worldからの再取得と#1120 contractによる厳密な結合は後続です。
+- #1138は別レーンのDraftであり、本PRへのコードコピーやCore変更は行いません。このコマンドは#1138のツールが存在するcheckoutでのみ動きます。通常のmainではDFDを渡さずBusinessを`unresolved`に保ちます。
+
 ## 試験と境界
+
+`e2e.mjs`のAcceptは**検証用Scratchに限定した自動テスト操作**であり、人間が承認したEvidenceではありません。テストは一時WorkspaceのSource digest、Preview/Review中の不変、受理後の限定変更、再ロード/再投影、旧候補のstale拒否を確認し、一時ファイルを削除します。実行用フラグ`TEI_STUDIO_E2E=1`を意図的に要求します。
 
 ```sh
 node --test reference/studio-authoring/bridge.test.mjs
-# 正確な候補PR headのtrusted full checkoutで、上記に加え
+
+# exact headのfull checkoutを保有する環境で、scratch Workspaceだけを変更する統合試験
+TEI_STUDIO_E2E=1 node reference/studio-authoring/e2e.mjs
+
+# 統合資格の判定では上記だけでなく、以下の完全実行とpre/post clean receiptが必要
 tools/repository-health-check.sh
 ```
 
 | Scenario | 初期実装 | 未検証・未対応 |
 | --- | --- | --- |
-| V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す | BusinessとSource Index locatorは未結合。4Projection受入は**未達** |
+| V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。#1138 JSONの任意参照で非Canonical Businessとのexact Pattern結合を候補実装 | Accepted Businessとの結合/Source Index locatorは未実装。4つのAccepted Projection受入は**未達** |
 | V03 | ERのRelation追加・表のValidation追加をcandidate化 | PreviewのSemantic Diff / ImpactはShared Acceptance実行が必要 |
-| V04 | Shared Acceptance CLIへの手順を定義 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
+| V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
-| N06 | candidateへ基準revisionを保持 | 実Workspaceでのstale/並行変更試験はShared Acceptance側で要確認 |
+| N06 | candidateへ基準revisionを保持。Projection時の前後revision不一致を拒否し、scratch E2Eにstale負例を追加 | 実WorkspaceでのN06実行とaccept途中の並行write試験は未実施 |
 | Invalid ref | exactな入力subject/Relation target不在・重複を拒否、出力の参照切れはunresolved | 全モデルKind・全typed edge・Business参照 |
 | N12 | layout書換えは意味操作へ変換しない | 独立したView Metadataの保持・再生 |
 | 性能 | focus近傍だけを返す、合成増量ケースあり | realistic 1万+件の時間/メモリ実測 |
