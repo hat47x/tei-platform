@@ -130,20 +130,13 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 		t.Fatalf("expected exact added Validation in Review: %+v", ev.preview.SemanticDiff)
 	}
 	change := ev.preview.SemanticDiff[0]
-	linkContext := rmtlink.Context{
-		Source: sourceEvidence,
-		CandidateFingerprint: review.CandidateFingerprint,
-		BaseModelRevision: candidate.BaseModelRevision,
-		ReviewFingerprint: review.ReviewFingerprint,
-		Target: rmtlink.SemanticTarget{
-			Kind: change.Kind,
-			ID: string(change.ID),
-			Change: change.Change,
-		},
-	}
-	link, err := rmtlink.Prepare(linkContext)
+	link, linkContext, err := prepareRMTReviewedLink(ev, sourceEvidence, rmtlink.SemanticTarget{
+		Kind: change.Kind,
+		ID: change.ID,
+		Change: change.Change,
+	})
 	if err != nil {
-		t.Fatalf("RMT interpretation link cannot be prepared: %v", err)
+		t.Fatalf("exact Reviewed Evidence link rejected: %v", err)
 	}
 	if link.Status != rmtlink.StatusProposed || link.MeaningStatus != rmtlink.MeaningUnresolved {
 		t.Fatalf("source correlation was promoted to semantic authority: %+v", link)
