@@ -2,6 +2,7 @@ package sourcebridge
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 
 	"tei/internal/modelref"
@@ -24,6 +25,9 @@ type Resolver struct {
 func NewResolver(graph modelref.Graph, idx sourceindex.Index, read func(string) ([]byte, error)) (*Resolver, error) {
 	if read == nil {
 		return nil, errors.New("source reader unavailable")
+	}
+	if graph.Schema != "tei.modelref.v0" {
+		return nil, fmt.Errorf("unsupported source navigation graph schema %q", graph.Schema)
 	}
 	if err := idx.Validate(read); err != nil {
 		return nil, err
