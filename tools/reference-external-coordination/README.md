@@ -29,7 +29,7 @@ Git text profileの`ready / completed`は共通Work envelopeへ置かず、Adapt
 
 ## 検査内容
 
-runnerは、Product repositoryがcleanなGit checkoutであることを最初に確認します。通常のtracked / untracked変更だけでなく、ignored artifactと、Git indexの`assume-unchanged` / `skip-worktree`によって隠れた状態も拒否します。Coordination処理後とStore削除後にも同じclean判定を行い、Source不変の主張を通常の`git status`のみに依存させません。最初のWorkは`origin.kind=human`として保持し、作成経路を`createdVia`へ分離します。一つのWorkへ二つの独立したAgent Resultを保存し、Result Aからは`origin.kind=agent`のfollow-up Workを生成します。base revisionからcurrent resultとstale resultを区別し、stale resultを自動適用しません。`actorRef=admin`という自己申告もAuthorityとして扱いません。
+runnerは、Product repositoryがcleanなGit checkoutであることを最初に確認します。通常のtracked / untracked変更だけでなく、ignored artifactと、Git indexの`assume-unchanged` / `skip-worktree`によって隠れた状態も拒否します。`GIT_WORK_TREE`、`GIT_DIR`、`GIT_INDEX_FILE`、`GIT_CONFIG_COUNT`などのGit環境変数で対象checkoutをすり替えられる状態も、検査開始前にexit 2で拒否します。Coordination処理後とStore削除後にも同じclean判定を行い、Source不変の主張を通常の`git status`のみに依存させません。最初のWorkは`origin.kind=human`として保持し、作成経路を`createdVia`へ分離します。一つのWorkへ二つの独立したAgent Resultを保存し、Result Aからは`origin.kind=agent`のfollow-up Workを生成します。base revisionからcurrent resultとstale resultを区別し、stale resultを自動適用しません。`actorRef=admin`という自己申告もAuthorityとして扱いません。
 
 Result保存やBackend-native completionの前後でProduct Sourceが変化しないことも確認します。Workのpathと内容はcompletionで変更せず、Git text固有のstateは`native-state/<work>.json`だけに保持します。Work / Result locatorがbackend instanceを含むopaque stringであることに加え、同じ局所IDでも別instanceならlocatorが異なることを検査します。Artifactは本文へ埋め込まず、backend-instance-scoped locatorとSHA-256 digestを分けて保持します。token budget、quota、credential、Agent Session、Checkpoint、Acceptance / Runtime Authorityのfieldは交換文書へ含めません。最後にCoordination repositoryを削除し、Product repositoryのrevisionとclean stateが変化しないことを検査します。
 
@@ -47,7 +47,7 @@ runnerはremote Git、GitHub API、外部SaaS、Go toolchain、TEI CLIを必要�
 bash tools/reference-external-coordination/clean-check-test.sh
 ```
 
-この試験は正常なcheckoutでのE1 round tripと、tracked / untracked / ignored artifact、`assume-unchanged`、`skip-worktree`、non-Git directoryの拒否を確認します。さらに、Coordination Storeへの最初のcommit直前にignored artifactまたはhidden-index状態を挿入し、処理後のclean判定がexit 1で拒否することを確認します。Store削除直後にもignored artifactを挿入し、削除後のclean判定が同様に拒否することを確認します。さらに、`PYTHONOPTIMIZE=2`の条件下でWork envelopeのoriginを一時的に改ざんし、Python側の意味検証が失敗することも確認します。注入は合成fixture内でのみ行い、元のProduct checkoutは変更しません。合成環境での成功は、trustedな実TEI checkout上のfull Repository HealthやCanonical reloadのEvidenceには含めません。
+この試験は正常なcheckoutでのE1 round tripと、tracked / untracked / ignored artifact、`assume-unchanged`、`skip-worktree`、non-Git directoryの拒否を確認します。さらに`GIT_WORK_TREE`で参照先を別のclean treeへ切り替え、実際のProduct checkoutのtracked変更が`git status`から消えるケースを再現して拒否します。`GIT_INDEX_FILE`、`GIT_DIR`、`GIT_CONFIG_COUNT`も拒否を確認します。さらに、Coordination Storeへの最初のcommit直前にignored artifactまたはhidden-index状態を挿入し、処理後のclean判定がexit 1で拒否することを確認します。Store削除直後にもignored artifactを挿入し、削除後のclean判定が同様に拒否することを確認します。さらに、`PYTHONOPTIMIZE=2`の条件下でWork envelopeのoriginを一時的に改ざんし、Python側の意味検証が失敗することも確認します。注入は合成fixture内でのみ行い、元のProduct checkoutは変更しません。合成環境での成功は、trustedな実TEI checkout上のfull Repository HealthやCanonical reloadのEvidenceには含めません。
 
 ## このReferenceが主張しないこと
 
