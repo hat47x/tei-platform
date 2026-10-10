@@ -497,7 +497,7 @@ Business Flow != Data Relation
 
 ## 7. 外部設計資料による裏付け
 
-`BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`では、公開されている三要素分析法の資料をexternal design evidenceとして確認した。
+`BUSINESS_HANDOFF_SECOND_REALISTIC_EXTERNAL_EVIDENCE_PRESSURE_2026-09.md`では、公開されている三要素分析法の資料をexternal design evidenceとして確認した。
 
 Relevant source meaning:
 

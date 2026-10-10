@@ -123,7 +123,7 @@ neither authors the other
 
 ## 4. Second realistic acceptance seedへの更新
 
-`BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`で挙げたminimum questionsを現在Evidenceで分類する。
+`BUSINESS_HANDOFF_SECOND_REALISTIC_EXTERNAL_EVIDENCE_PRESSURE_2026-09.md`で挙げたminimum questionsを現在Evidenceで分類する。
 
 | Question | Current status |
 | --- | --- |
