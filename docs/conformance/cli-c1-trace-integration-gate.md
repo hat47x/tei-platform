@@ -1,0 +1,38 @@
+# CLI C1 trace integration: 検証対象と未確定事項
+
+対象: GitHub Issue #1165 / Draft PR #1172（`feat/cli-c1-typed-trace-integration`）。この記録は**検証指示**であり、PASS receiptではない。
+
+## 検証対象
+
+- 共通Go操作: `operations.InspectSubject`、`operations.TraceWorkspace`。CLIはarg/JSON/終了コードの薄いAdapter。
+- 出所の意味: `worldFingerprint` と `sourceIndexFingerprint` は独立。継続用 `result.snapshotFingerprint` はModelRef Graph/Rule/検索対象/方向/World/Source Indexから求め、`result.trace.snapshotFingerprint`（Graph限定）とは区別する。
+- 入力契約: `trace` と `inspect` の未知・不適切なフラグ、型不正、対象不存在・曖昧、古いfingerprintは機械可読JSONで失敗する。
+- 正規化: GraphのNode/Edge/EvidenceとSource Indexの並び順に依存しないfingerprint。ただし重複宣言・重複edgeは消さず検出対象とする。
+- Source境界: 同じWorldを保った元ファイル移動・非意味的編集でもSource側tokenが変わる。参照不能や逸脱pathはfail-closed。Source Indexを編集権限やShared Acceptanceへ昇格させない。
+
+## 信頼できる検証環境での手順
+
+1. GitHub認証済みのGo 1.23.2以降が利用可能な環境で、**最新のPR #1172 head SHAとcurrent `main` SHAを記録**する。親PR #1169など並行PRのheadも確認し、対象ブランチ名の再解決だけで判断しない。
+2. 新しいクリーンなcheckoutを取得する（共有ワークツリーや未コミット修正済みディレクトリを用いない）。PR headの**正確なコミットSHA**でdetached checkoutし、`git rev-parse HEAD` と `git status --porcelain` を保存する。期待SHAに一致しなければ停止する。
+3. `GOENV=off GOWORK=off GOFLAGS= tools/repository-health-check.sh` を**省略なし**で実行する。これは`gofmt -l .`、`go vet ./...`、`go test -count=1 -timeout 60m ./...`、Reference Workspace検証を含む。標準出力・標準エラー、exit、検証開始/終了のSHAとclean状態を保管する。
+4. 問題を検出した場合、**PR #1172 branch上に通常コミット**で修正する。PR headが動いたら既存PASS証跡はstaleとして破棄し、同じ手順で再検証する。共有branchのforce/rebase/resetや直接main変更はしない。
+5. full PASS後、PRや各親PRの依存、現在mainの差分、正本ドキュメントと必要なGateを確認する。**Draftのまま統合しない**。マージ直前にexact PR head、base、current mainとPASS証跡の一致を再確認する。
+
+### 検証候補（full Repository Healthの代替ではない）
+
+```bash
+go test -count=1 ./internal/modelref/... ./internal/sourceindex/... ./internal/operations/... ./internal/workspace/... ./cmd/tei/...
+go run ./cmd/tei trace -workspace reference/workspace -scope reference-observation -subject-kind semantic-relation -subject-id sales.order.customer -mode summary
+go run ./cmd/tei inspect -workspace reference/workspace -subject-kind semantic-relation -subject-id sales.order.customer
+```
+
+ページ継続時は`trace.result.snapshotFingerprint`を`-expected-fingerprint`として使用する。`trace.result.trace.snapshotFingerprint`は継続用のWorkspace tokenではない。
+
+## 検証していない点
+
+- この環境からのGitHub直接checkoutはDNS解決に失敗しており、**exact-headに対するgofmt/ビルド/vet/test/full Repository HealthのPASSは無い**。
+- Source読取は毎回Source Indexのdigestと範囲を検証するが、モデルload・source索引化・filesystem readを単一のOSトランザクションとして固定しない。symlink-swap raceを含む#1017の課題は別途扱う。
+- Reference Fixtureと合成Workspaceを用いるテストはProvider実動・実環境での書込み権限・人間による意味の採用の証拠にならない。
+- `full` は明示ページ分割しない場合、全候補参照を組み立てる。大規模Workspaceに対する性能・最大メモリの実測は未取得。走査予算による黙った打切りは行わない。
+
+この文書はGate判断の正本を増やすものではなく、`AGENTS.md` / `CONTRIBUTING.md` と対象Issueの合格条件を適用するための補足手順である。
