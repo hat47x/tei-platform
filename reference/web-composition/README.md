@@ -268,3 +268,22 @@ Go 1.23.2の隔離`module tei`に、実際の`session_command_scenario.go`を**G
 また、GitHub上の`command_scenario.go`（Blob `ca37e6fd94e314658c8a7c66945842f6f95c60a4`）を静的に確認し、`security.authorize` → Command Pattern解決 → **effectGuard** → `resolver.InvokeCapability(sales.order.submit)`という順序であること、旧Credential入口が`nil` guardを通すことを確認しました。
 
 **この結果を実Repository全体の結合テスト成功とは扱いません。** 共有ビジネス処理の本体、実`Driver`、実`workspace.Load`、Go Host／HTTPステータス／監査は隔離試験ではスタブまたは対象外です。今回追加した実WorkspaceのHTTP回帰試験はリポジトリ全体のクリーンなチェックアウトで実行する必要があります。
+
+
+## E2.7：Legacy Subject ID重複による業務権限の曖昧さ
+
+セッションからの`security.authorize`接続を追跡した結果、`internal/security/legacyauth/fixture_store.go`の潜在的な主体取違えを発見しました。Loaderは`user_id`重複を拒否していましたが、異なるログインIDが同じ`subject_id`を持つことを許していました。一方`FindBySubject`はGoのmapを線形走査し、一致した最初のユーザーを返していました。このため、同じ`subject_id`に異なる業務Roleが紐付く場合、呼出しごとに違うユーザーを返す可能性があり、既存の認可Capabilityの判定そのものが不定になります。
+
+これを防ぐため、Reference Fixtureを読み込む際に**重複した非空`subject_id`を構成エラーとして拒否**し、`FindBySubject`はLoader構築時に検証した索引`bySubject`から一意に返すよう変更しました。Login IDによる`FindByLogin`は従来どおりです。空`subject_id`のFixture入力は既存互換上ロード自体を変更せず、Subject検索ではヒットさせません。既存`security.authenticate`は実行時に空SubjectをExecution Errorとして拒否します。一般的な企業ディレクトリの複数エイリアス対応を禁止する製品要件を新設したわけではなく、この参照用Storeに**明示されていない1:N対応を推測させない**ためのfail-closed実装です。
+
+### E2.7の検証記録
+
+2026-10-10時点のGitHub Blob SHAとローカルコピーの`git hash-object`が一致することを確認しました。
+
+- `internal/security/legacyauth/fixture_store.go`: `3bced30c25242f402865e804cc0737f13c12e67a`
+- `internal/security/legacyauth/fixture_store_subject_identity_test.go`: `2b673d4ecff9e1d341db5919d3ba46ee430adc6c`
+- `reference/legacy-auth/users.json`: `21b29893e408cfdb58a4a1149c303d5d792ddd18`（既存Fixture、変更なし）
+
+Go 1.23.2の隔離モジュールに**実際の新コード・テスト・既存Fixtureをbyte一致で配置**し、依存する`legacyauth.User`型だけを最小の互換スタブに置換しました。`gofmt -l`は空、`go vet` PASS、`go test -count=1` 3件PASS、`go test -race -count=1` PASSでした。異なるRoleを持つ同一SubjectIDの重複拒否、一意な検索、既存Editor／Viewer／Locked／DisabledのFixtureをそのまま読み込み検索できることを確認しました。
+
+**制限:** 実Repository全体の`legacyauth`／`legacyauthorization`結合テストおよびexact-headのRepository Healthは未実行です。企業Directoryや外部ユーザーStoreがSubject ID一意性を保証するかはこの参照Fixture検査だけでは証明できません。現PRはDraftを維持します。
