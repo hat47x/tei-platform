@@ -528,3 +528,110 @@ func TestReferenceAuxiliaryEvidenceInputsCannotBeOverwritten(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceOutputCannotOverwriteManagedScratchSource(t *testing.T) {
+	// Neither a valid Review fingerprint nor -allow-reference-baseline
+	// authorizes replacing an unrelated Workspace-managed source through
+	// -out or -derived-out after the acceptance checks.
+	workspace := scratchWorkspace(t)
+	source := filepath.Join(workspace, "semantic", "sales", "validation.tei")
+	original, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate := filepath.Join(t.TempDir(), "candidate.json")
+	// The guard must reject before attempting to decode this candidate.
+	if err := os.WriteFile(candidate, []byte("invalid-candidate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rootAlias := filepath.Join(t.TempDir(), "workspace-alias")
+	if err := os.Symlink(workspace, rootAlias); err != nil {
+		t.Skipf("workspace symlink unavailable: %v", err)
+	}
+	aliasedSource := filepath.Join(rootAlias, "semantic", "sales", "validation.tei")
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "revision overwrites source",
+			args: []string{"revision", "-workspace", workspace, "-out", source},
+		},
+		{
+			name: "review through workspace alias",
+			args: []string{"review", "-workspace", workspace, "-candidate", candidate, "-out", aliasedSource},
+		},
+		{
+			name: "accept derived world replaces source with explicit baseline flag",
+			args: []string{"accept", "-workspace", workspace, "-candidate", candidate,
+				"-expected-review-fingerprint", "synthetic-review", "-derived-out", source,
+				"-allow-reference-baseline"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := runCLI(tc.args, &stdout, &stderr); code != 2 ||
+				!strings.Contains(stderr.String(), "Workspace") {
+				t.Fatalf("managed source collision was not blocked: code=%d stdout=%s stderr=%s",
+					code, stdout.String(), stderr.String())
+			}
+			current, err := os.ReadFile(source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(original, current) {
+				t.Fatal("managed source changed despite rejected output")
+			}
+		})
+	}
+}
+
+func TestReferenceOutputPreservesWorkspaceLedgersAndManifest(t *testing.T) {
+	workspace := scratchWorkspace(t)
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "manifest", path: filepath.Join(workspace, "tei.workspace.yaml")},
+		{name: "decision ledger", path: filepath.Join(workspace, ".tei", "decisions", "clobber.json")},
+		{name: "confirmation ledger", path: filepath.Join(workspace, ".tei", "confirmations", "clobber.json")},
+		{name: "plugin lock", path: filepath.Join(workspace, ".tei", "plugin-lock.json")},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			blocked, err := outputTouchesWorkspaceManagedSource(workspace, tc.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !blocked {
+				t.Fatalf("protected Workspace metadata not recognized: %s", tc.path)
+			}
+		})
+	}
+}
+
+func TestReferenceScratchWorkspaceStillAllowsNonSourceOutputs(t *testing.T) {
+	workspace := scratchWorkspace(t)
+	resultDir := filepath.Join(workspace, "review-artifacts")
+	if err := os.Mkdir(resultDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(resultDir, "revision.json")
+	blocked, err := outputTouchesWorkspaceManagedSource(workspace, out)
+	if err != nil || blocked {
+		t.Fatalf("unmanaged report destination blocked: path=%s blocked=%t err=%v", out, blocked, err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := runCLI([]string{"revision", "-workspace", workspace, "-out", out},
+		&stdout, &stderr); code != 0 {
+		t.Fatalf("scratch output failed: code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	received, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(received), "modelRevision") {
+		t.Fatalf("expected revision output, got %q", received)
+	}
+}
