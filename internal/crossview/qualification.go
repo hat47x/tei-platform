@@ -45,6 +45,7 @@ func Evaluate(input []Check) Result {
  })
  outcome := "eligible-for-proposal"
  rank := 0
+ if len(checks)==0 { rank=1 }
  for _, check := range checks {
   if !check.Required { continue }
   status := check.Status
