@@ -240,7 +240,7 @@ N10は既存Runtimeで同等試験が作れない場合、`unresolved`としてG
 
 ### PR競合、推奨統合順序、Gate判定
 
-- **今回確認した変更path**: PR #1135は本計画ファイルのみ。PR #1128は `plan/design/EXAMPLE_ER_SLIDE_M1_2026-10.md` と `tools/reference-example-slide/` の6ファイルであり、#1135との直接path重複なし。#1128はDraftであり、#1126/#1131がその描画器を先取り・複製しない。
+- **今回確認した変更path**: PR #1135は本計画ファイルのみ。PR #1128（調査時head `62f0c98b3f230b11ba09716747ec5e5b4a4dc053`）は `plan/design/EXAMPLE_ER_SLIDE_M1_2026-10.md` と `tools/reference-example-slide/` の10ファイル、PR #1136（head `ec22e36ed3207de6884ca9e0387396f57de8dd3e`）は `tools/reference-subsystem-cud/` の5ファイル。現時点で#1135との直接path重複なし。#1128はDraftであり、#1126/#1131がその描画器を先取り・複製しない。
 - **境界の近い別PR**: #1040はShared Acceptance周辺、#1115はAcceptance source safety、#1114はWeb Host/Auth、#1123はInvocation Contextであり、#1124/#1121/#1127が同じ契約やファイルを変更する前に変更pathとmain採用状況を再照合する。この列挙はpath一致を確認した一覧ではなく衝突候補。
 - **統合wave 0**: #1119の計画候補を独立review・文書検査して資格確認。ここでG0の全Gate合格を宣言しない。
 - **wave 1（並列契約確認）**: #1120はC0最小fixture、#1121は既存Capability/Driver上のC3最小fixtureを別PRで提出。同じ`internal/ir/world.go`や`internal/plugin/model.go`を両者が同時編集しない。必要ならC0の薄いproducer patchを先に採用し、C3はそのmain revisionへ追随。
@@ -263,3 +263,46 @@ blocked_by=<issue/pr/revision or none>; next=<consumer action>
 ```
 
 すべてのV00〜V08/N01〜N12は**設計上の担当あり・このプログラムとしての実行証跡なし**から始める。Issueごとの実証結果を受領した時点で該当caseのみ更新し、別RevisionでのPASSを横滑りさせない。G2の採否判定には、同じSource revision、Provider/Target identity、否定試験結果、別readによるObservationを束ねた受入packetが必要。
+
+## 11. 最新PRを用いた契約の実地監査（2026-10-10）
+
+この節はGitHub上のexact blob / changed paths / Issue申告を照合した**横断レビュー結果**であり、trusted checkoutの検証や採用決定ではない。新規PRの状態は着手時に取り直す。
+
+### #1132 のC2候補: PR #1136
+
+- PR head: `ec22e36ed3207de6884ca9e0387396f57de8dd3e`、base main: `5fc5a0e1cb4fb42897c76dd3334292e2ad4a66e4`、Draft。変更先は `tools/reference-subsystem-cud/` の5ファイルであり、#1135/#1128や他の現時点で確認したPRの編集pathとは一致しない。
+- 提供契約（**Candidate E0のみ**）: `subsystem-cud-candidate-v1`、read-onlyな `tei world` の `semantics[].data[].id` / `applications[].patterns[].id` に加えて、caller-supplied `owners[]`・`functionIO[]`・`procedureSteps[]` を入力にする。outputは `Diagnostic`（code/severity/subject/source）と明示的な `authorityLimit`。実TEI `reference/world.json` に同じJSON shapeが存在することはsource上で確認したが、実Worldをこのtoolでロードして一致を試験したわけではない。
+- 所有者の**隔離環境での報告**: Go 1.23.2、8件のunit test PASS、`go vet ./...` PASS、合成CLI正例PASS。GitHub blob照合済みとIssue #1132へ報告。これは`tested-isolated`であり`tested-trusted-TEI-checkout`でも`actual-target-observed`でもない。
+- **横断ケースに対応する既存テスト名（出典: PR #1136 のpatch）**:
+  - V06 / foreign write review候補: `TestCrossSubsystemWriteRequiresReview`。synthetic factから `CROSS_SUBSYSTEM_WRITE_INTENT` を出す。
+  - N07 / manual step保持候補: `TestOwnerSideDelegationAndCrossSubsystemReadsAllowed`（manual/external stepを含む正例）と `TestNoPatternInferenceOrManualFabrication`（誤ったFunction関係を拒否）。
+  - N04 / actual effect非主張の一部: output `authorityLimit` があることを確認する `TestOwnerSideDelegationAndCrossSubsystemReadsAllowed`。ただしCUD宣言を実際のAction effectと分離する**Accepted Sourceを用いた結合試験は未実施**。
+- **未取得のG0〜G2証跡**: Source Indexで検証された `source` locator、Accepted meaningへのtyped join、同一revisionに対するowner/Function/Procedureのcoverage分母、EditorへのSource navigation、実Runtime effectの観測、trusted full checkout。caller-supplied `source` をVerified Sourceへ自動昇格しない。
+- **軽量レビューで見つかった改善候補（owner判断）**: 空の`facts`で診断0件となっても「診断対象の定義が足りている」とは言えない。G2では`source-backed count / candidate count / unjoined count / omitted-unknown count`等のcoverageを別に要求する。また `FunctionIO`が未知のPatternを参照した場合、現行 `Inspect` は`IO_PATTERN_UNRESOLVED`を出しながら、同じ入力に `CROSS_SUBSYSTEM_WRITE_INTENT`を追加し得る。前提不成立のとき依存診断を抑制するか、その「未解決前提からの候補」性を明示する負例を#1132に委譲する。
+- **判断**: #1136の現行status `no-findings-in-declared-scope` を `G1 PASS` / `G2 PASS` や「権限違反なし」に変換しない。#1120のC0のtyped Source subjectが確定するまでは、C2固有ルールをCore Graphに昇格させない。
+
+### PRごとの衝突・依存の粒度（GitHub変更pathの調査）
+
+| Group | 対象PR / 主な変更先 | 共有契約上の注意とhandoff |
+| --- | --- | --- |
+| Source / Acceptance | #1115 `tools/reference-shared-acceptance/`、#1111 `internal/workspace/` | #1124のSource editは既存baseline alias防御、Loader bytes / Source Index同期を維持。両者の採用済みmain revisionを取り直す |
+| Business / cross-view | #1040 `tools/reference-business-procedure-check/`、#1077 `internal/xeadsource/`、#1136 `tools/reference-subsystem-cud/` | Source/legacy/TEI Accepted WorldはAuthorityが異なる。#1132は新たなGraph正本やAction effectを作らない |
+| ER / Example | #1128 `tools/reference-example-slide/`、#1136 `tools/reference-subsystem-cud/` | 現段階ではpath重複なし。Dataset示例と論理ER編集を別責務にする |
+| Runtime / Invocation | #1114 `reference/web-composition/`・`tools/reference-first-web-target/`、#1123 `tools/reference-capability-invocation-context/`、#1116 `tools/reference-plugin-capability-contract/` | #1121/#1127はProvider resolution、current Host session、Business Resultを一つに圧縮しない。PR間の共通Interface変更時だけ明示的にmerge順を指定 |
+| Semantic/Workspace Pressure | #1049 `reference/dsl-language-plugin/`、#1051 `reference/application-composition/`、#1112 `internal/knowledgecontext/` | #1120/#1124は新DSL/CompositionをCoreへ先行固定せず、必要な既存契約を読み取りで借りる |
+
+ここでの「path重複なし」は**調査したPR headに対する直接ファイル名一致がないことだけ**を意味し、go testの統合互換、semantic interfaceの互換、rebase後の競合不在を示さない。全PRの相互patchを解決していない。各担当はmain追随後に再照合する。
+
+### 第1回G0静的セルフチェック（Repository Healthの代替ではない）
+
+#1135 head `b6d0b1f2eaa16b430a7d95a4bc4f3a9c7fddd106` の文書をGitHubから取得し、次を静的に確認した。
+
+- V00〜V08、N01〜N12の全21 IDが表に各1回現れる（欠番・表内の重複なし）。
+- Markdownのfence開始/終了は各2個で偶数。
+- 本ファイルのrelative link 3件の解決先 `docs/business-system-design.md`、`docs/status.md`、`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md` は取得できた。
+
+これらは`static-doc-check-only`。その他のリンク、Go build、plan guard、repository-health-check、actual executionは未実行。対象headが変更されたので、統合判定では本静的確認のheadと新headを混同しない。
+
+### 決定すべき一つの「到達条件」
+
+G2は単なる21ケースのチェック数ではなく、**一つの受注明細業務について、同一Accepted meaning revisionをSource・Projection・Action binding・Driver request・separate Observationまで追えるか**で判断する。最初のハッピーパスは `V00→V03→V04→V05→V08`、最少否定経路は `N05/N06`（Source）、`N08`（Capability/Authorization）、`N11`（Observation）とし、現時点の具体的な変更対象・実装可能なvalidation変更は#1124/#1127が既存Schemaと照合して確定させる。合成例に一回だけ一致したことは、実Targetの独立した成功観測ではない。
