@@ -265,3 +265,23 @@ Go 1.23.2の隔離作業領域で、これらを含む`go test -race -count=1 ./
 **検証**: `/mnt/data/tei1120`の隔離Go 1.23.2環境で`go test -race -count=1 ./internal/modelref/...`（3 Package）、`go vet ./internal/modelref/...`が成功し、`gofmt -l internal/modelref`は空だった。変更した2ファイルの`git hash-object`はGitHubに書き込んだblob SHAと一致した。ただし隔離環境には`sourceindex` / `index`の代替実装があり、Repository全体のexact-head Git checkoutではない。
 
 **統合停止条件**: `AGENTS.md`の規則に従い、trusted full checkoutのexact headとcurrent mainを固定した`tools/repository-health-check.sh`の**全項目PASS**、前後のclean state、必要なWorkspace integration testの証拠が揃うまでは、Draftを解除せずmainへ統合しない。実際のSourceの受理やDecision履歴の追跡が未成立なら、#1120の完了判定も行わない。
+
+
+## R4 — 型付き参照の読取り用直接追跡（2026-10-10、別Draft候補）
+
+`modelref.TraceDirect(graph, rules, key, options)` を、既存の `Graph` / `Rule` / `Resolve` を消費する操作として設ける。新しいグラフを組み立てる処理ではない。初期範囲は**直接の宣言済み参照**に限り、業務上の依存や実行時の作用を名前の類似から補完しない。
+
+- 対象は `scope + kind + id` の完全一致。対象が存在しない場合と同一キーの多重定義を分けて失敗させる。
+- `direction` は `outgoing / incoming / both`。scope未指定の参照は、全scopeで一意に解決できるときだけ確定する。曖昧・欠落・version不一致・未知edge種別・規則衝突・不正な根拠は `unresolved` とその診断を返し、正しい参照に見せかけない。
+- 行には宣言済み `Edge` と元の `Evidence` を保持する。解決できたときだけ `resolvedTo` を付ける。結果全体も `authority=candidate-read-only` であり、Shared Acceptance済みとは解釈しない。
+- `mode=summary` は合計件数と未解決件数を返し、明細行を省く。`mode=full` は指定がなければ**全件を返す**。暗黙の走査上限・文字数による切捨てを設けない。利用者が `limit` を指定したときだけ `nextOffset` を明示してページを分割する。
+- `snapshotFingerprint` は入力GraphのJSONと拡張規則 `RuleFingerprint` を組み合わせた内容ハッシュ。`expectedFingerprint` を付けてページを続ける場合は一致を要求し、食い違いを `STALE_SNAPSHOT` として拒否する。これは**書込みの楽観的排他、読取のトランザクション整合性、Accepted revisionではない**。Graphの登録順序が変わるだけでもfingerprintは変わり得るが、その場合も不安全な継続より再取得を優先する。
+- 行の順序は種類付きキー・関係・根拠に基づき安定化する。Evidenceは意味上順序を持たないため出力用コピーを正規化し、入力Graphは変更しない。
+
+実装の正本は `internal/modelref/trace.go`。同一のReference Workspaceから `index.Build → derivedbridge.FromIndex` で得た候補Graphを用い、`application-pattern → semantic-relation → semantic-data` の出典付き直接参照を確かめる統合テストも**追加した（未実行）**。この投影に含まれないBusiness Procedure、Acceptedな業務フロー、実行時CRUDの関係を生成したとは扱わない。
+
+### CLIへの接続順序
+
+C1 [#1165](https://github.com/hat47x/tei-platform/issues/1165) の `tei trace` は、`#1139` の本Modelref契約と、`#1169` のCLI inspect/operations境界が双方とも検証・統合された後に接続する。Web/Desktopも同じ型付き操作を呼び、argvやJSONの形式はAdapterが所有する。`Source Index` の元定義への案内は `sourcebridge` の検証済みNavigationを使い、Edgeの存在だけで書込み許可を与えない。
+
+スコープ・Graph版・Policy版、Host側の情報開示・認可、秘匿Evidenceの伏字化、ページ取得間の情報鮮度については、実アダプターでの追加受入検証を必要とする。今回のGoのテストコード追加は実行成功の証明ではない。統合には、対象のexact headにおけるリポジトリ全体のHealth Checkが引き続き必要となる。
