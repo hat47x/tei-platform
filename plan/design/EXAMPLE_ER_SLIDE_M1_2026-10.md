@@ -159,3 +159,39 @@ Reviewから出た質問を、実際のモデル・具体例・適用文脈に�
 4. 確認後の設計変更について、既存Shared Acceptanceの対応するtyped operationだけを使用する。未実装の操作を無条件に生成しない。
 
 今回もProduction、UI、意味モデルの正本は変更していない。
+
+## Confirmationの再確認漏れと設計変更Triage（2026-10-10）
+
+既存ConfirmationはCanonincal Source Indexの`Basis`ファイルのfingerprintによって「前提が変わったか」を判定する。これはそのファイルの意味変更には適するが、データモデルを変えずに**説明用Case内のレコード値だけが変化した**場合は、前提の差異を観測できない。
+
+以前の`confirmationRoute.identity.subject=issue.ID`のままでは、同じRelationと同じ原因を持つ別の具体例に対して、古い確認済み回答を再利用し得る。今回、識別子を`CaseID/ModelRevision/ExampleFingerprint/CatalogFingerprint/IssueID/QuestionText`の安定ハッシュに変更する。RelationのCanonical Source Index Basisはそのまま維持する。例のレコードが変われば再確認し、スライドの表示順だけを変えても不用意に再確認を要求しない。
+
+### 回答後の振り分け
+
+`TriageAnsweredReview`は`BindAnswers`を再実行して現在の質問との一致を確認した後、回答の意図を次の設計操作候補へ振り分ける。
+
+| 回答の意図 | 意味モデル変更を許すか | 次に必要な確認 |
+| --- | --- | --- |
+| `clarify-example` | いいえ | 説明用Caseの修正と再検証 |
+| `retain-model` | いいえ | 根拠の真正性、適用文脈、必要なら既存Confirmation |
+| `investigate` | いいえ | 追加根拠や実務担当者からの確認 |
+| `propose-model-change` | **回答だけでは不可** | 誤りの主体特定、Source Index、current Workspace revision、実装済みtyped operationの資格確認、Shared Acceptance Preview |
+
+Current Shared Acceptanceのtyped operationには`add-relation`が存在する一方、**既存RelationのKeyを更新する操作や、RelationKeyだけを追加する操作はない**。このため、既存Relationのキー不足を理由に、新しいIDのRelationを追加して差し替える案を勝手に作らない。ここは`existing-relation-key-edit-not-supported-by-current-typed-operations`と記録し、原モデル上の意図確認と新しいtyped editの設計判断を先に求める。
+
+また、`one`方向の重複参照が発見された場合、実例のレコードの誤りなのか、RelationKeyの誤りなのか、多重度の業務定義の誤りなのかを確認する。すべての要素がまだ未確定なので`model-versus-example-cause-not-determined`とし、既存Ruleや関係へ即時編集しない。
+
+CLIは`-answers`時に`change-triage.json`を出力するが、全件で`candidateReady=false`とする。既存Shared Acceptanceの`preview`、`review`、`accept`に直接渡せるCandidate、必要な権威ある根拠、本人による承認を生成したとは主張しない。
+
+### ローカル動作検証の制約
+
+Container環境のGoは1.23.2だが、github.comのDNS解決ができず、このブランチのclean checkoutは取得できなかった。したがってPRの正確なソース一式を用いた`go test`、`gofmt`、`go vet`、`Repository-health`は未実施である。欠陥があれば修正し、exact-headのGateを通す前に統合してはならない。
+
+JSON入力で`completeTables`を綴り間違えた場合にも、検査対象の完全性を黙って変更しないよう、Case入力に未知フィールドを拒否する読み込みを追加した。
+
+### 後続で必要な契約
+
+- **Stage単位の網羅性と観測時点**: 現状`completeTables`は全Stageで共有されるため、時点別の観測範囲を厳密に証明できない。
+- **Source Indexの根拠付け**: Caseが示すEvidencePointerの文書・観測結果・Source Indexが実在し、現在の仕様へ適用できることの独立検証。
+- **人間の権限検証**: 申告の`claimedBy.kind=human`を本当のHuman authorizationへ昇格させない。
+- **既存Relationを編集するtyped operationの必要性**: ユースケースを確定した後に、追加・修正・置換の意味的境界と差分検証を検討する。未検証の汎用文字列Patchを代用品にしない。
