@@ -63,23 +63,22 @@ func TestPinnedExpansionKeepsDistinctRelationsWithSameEndpoints(t *testing.T) {
 }
 
 func TestPinnedExpansionRequiresExecutableAndAcceptedContracts(t *testing.T) {
-	w := crossNamespaceRelationFixture()
 	pin := OperatorContract{
 		ID: "std.op.expand", Version: "1", Fingerprint: "expand-v1",
 		Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/customer.customer",
 	}
 	call := PinnedCall{Contract: pin, InputType: pin.InputType}
 	for _, tc := range []struct {
-		name    string
-		prepare func()
-		catalog []OperatorContract
+		name       string
+		conceptual bool
+		catalog    []OperatorContract
 	}{
-		{"unavailable pin", func() {}, nil},
-		{"conceptual relation", func() { w.Semantics[0].Data[0].Relations[0].Keys = nil }, []OperatorContract{pin}},
+		{"unavailable pin", false, nil},
+		{"conceptual relation", true, []OperatorContract{pin}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			world := crossNamespaceRelationFixture()
-			if tc.name == "conceptual relation" {
+			if tc.conceptual {
 				world.Semantics[0].Data[0].Relations[0].Keys = nil
 			}
 			if _, err := InspectPinnedRelationExpansion(world, "sales.order", "sales.order.customer", call, tc.catalog); err == nil {
