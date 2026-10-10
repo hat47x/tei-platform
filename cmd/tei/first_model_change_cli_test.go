@@ -81,6 +81,9 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 	readWorld := func() map[string]json.RawMessage {
 		t.Helper()
 		raw := run(0, "world", "-workspace", workspaceRoot)
+		if strings.Contains(raw, workspaceRoot) || strings.Contains(raw, "semantic/intake/request.tei") {
+			t.Fatal("Canonical World must not embed the physical authoring source location")
+		}
 		var world map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(raw), &world); err != nil {
 			t.Fatalf("unmarshal world: %v", err)
