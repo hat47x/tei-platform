@@ -427,6 +427,61 @@
     {
       "if": {
         "properties": {
+          "teiExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "teiExecution"
+        ]
+      },
+      "then": {
+        "required": [
+          "teiRevision",
+          "acceptedSourceDigest",
+          "acceptanceDecisionReceiptDigest"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "originalExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "originalExecution"
+        ]
+      },
+      "then": {
+        "required": [
+          "sourceBinding"
+        ],
+        "properties": {
+          "origin": {
+            "const": "external-model-private"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
           "comparison": {
             "properties": {
               "status": {
