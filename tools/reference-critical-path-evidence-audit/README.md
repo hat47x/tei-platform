@@ -69,6 +69,14 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 - 正常系の出力 `E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY` は**限定的な実験**。人間の受理ではなく、単価0がlive serverで拒否されるE1-Bも含まない。実DB、current Host Authority、独立DB read、S02/S05、G1四視点、第二Target、製品Gateの証拠ではない。
 - cross-branch compositionそのものは正式なPR mergeでもrelease候補でもない。合成環境が成功しても、各PRの正確なHEADとlatest main上での個別資格試験、独立Reviewは必要である。
 
+**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の3つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
+
+- `workspace-r1.json`：R0→test-only Accept→R1、Preview/Review fingerprint、変更Sourceの相対pathと実行前後の管理対象差分を記録。Human Approvalと主張しない。
+- `target-launch.json`：起動WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。Host権限の確認ではない。
+- `web-positive.json`：HTTP正常系のValidation ID/結果4件、Command観測とsynthetic Observation。認証情報、実DBの値・注文個人情報は含めない。
+
+この3ファイルは同じtest harness由来の**別段階の生存receipt**であり、第三者の独立署名や外部Authorityの証明ではない。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。現段階では新規単価0のlive Web負例とN11がないため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
+
 **実行状況**: このスクリプトとNode smokeのコードを追加しただけ。現ChatGPT環境から正規GitHubを`git fetch`できないため、ここではfull checkout統合実行・live Web HTTP実測・full Healthは**NOT RUN**。両方のscriptが成功出力を返すことを今回の成果として報告してはならない。mainや並走ブランチが更新されればSHAを再取得して再実行する。
 
 ## v0の対象シナリオと判断境界
