@@ -134,3 +134,15 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 本作業は、独立したDraft系列（[#1159](https://github.com/hat47x/tei-platform/pull/1159) → [#1169](https://github.com/hat47x/tei-platform/pull/1169) と [#1139](https://github.com/hat47x/tei-platform/pull/1139) → [#1171](https://github.com/hat47x/tei-platform/pull/1171)）を参照する**統合用Draft候補**である。統合ブランチで履歴を接続していても各元PRがmainへ統合可能と認定されたわけではない。元PRのheadを変更せず、上流の検証・マージ順序を尊重して最終的な差分を再評価する。
 
 具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるexact head/full repository healthが揃うまでDraftを維持し、mainへマージしない。
+
+
+### 8.1 統合候補の静的レビューで修正した境界
+
+- **同じ論理対象をinspectとtraceで扱えるようにする**: 初期 `inspect` は `semantic-data`、`application`、`query` に加えて、`semantic-relation` と `application-pattern` の既存World定義を取得する。関係Graphの再生成はしない。CLIプロセス試験は `sales.order.customer` の両コマンドが同じSubjectと定義元を指すことを確認する。
+- **重複Canonical宣言を誤って一意と判定しない**: `derivedbridge` が同じIDの使用をまとめても、`operations.TraceWorkspace` は対応するCanonical種別について `inspectCanonical` と同じexact resolverを通し、欠落・重複を拒否する。候補Graphの重複排除をCanonicalな重複検証の代用にしない。
+- **ページ継続は検索対象と方向にも結び付く**: `trace.snapshotFingerprint` はGraphとRuleに加え、`scope/kind/id` と `direction` を含める。`summary → full` や `offset/limit` の変更では有効のままとし、対象や方向が異なる要求を以前のページの継続として受理しない。
+- **静的なテスト不備の修正**: `cmd/tei/cli_trace_test.go` 内の未定義な`testRepositoryRoot`参照を、既存CLI試験と同じ相対的なReference Workspaceの指定に変更した。CLI/Go結果の意味一致と、方向を変更したときの `STALE_SNAPSHOT` も回帰テストに含めた。
+
+これらはコードとテスト**候補の変更**であり、テストPASSの報告ではない。Goの書式・コンパイル、actual `go test ./...`、`go vet ./...`、`tools/repository-health-check.sh` については未検証である。
+
+`trace.snapshotFingerprint` は検索条件とGraph/Policyの継続検査用であり、Source Index、Workspace全ファイル、外部Providerの状態を含む単一トランザクションのrevisionではない。Sourceファイル移動・内容変更と併発する場合はSource側のfingerprintも別に確認する必要がある。
