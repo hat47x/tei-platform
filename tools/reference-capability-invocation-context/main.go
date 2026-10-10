@@ -149,6 +149,32 @@ func invokeWithExecutionContext(
 		})
 	}
 
+	// Host-issued receipt identifiers are declared non-secret, but prevent the
+	// simplest misbinding where a required confidential slot's raw value is
+	// embedded verbatim into any field that will appear in the receipt.
+	// This is a defense-in-depth literal check, not proof that the reference
+	// is non-secret (encoded, hashed, or transformed leaks remain possible).
+	for _, requirement := range required {
+		if !contracts[requirement.ContractID].ForbidDirectResultReflection {
+			continue
+		}
+		secret := view.values[requirement.ContractID].Value
+		if bytes.Contains([]byte(host.ReusePartitionRef), secret) {
+			return InvocationContextExecution{}, fmt.Errorf(
+				"execution context slot %s directly exposes a confidential value in reuse partition ref",
+				requirement.ContractID,
+			)
+		}
+		for _, receipt := range receipts {
+			if bytes.Contains([]byte(receipt.BindingReceiptRef), secret) {
+				return InvocationContextExecution{}, fmt.Errorf(
+					"execution context slot %s directly exposes a confidential value in binding receipt ref",
+					requirement.ContractID,
+				)
+			}
+		}
+	}
+
 	// Do not enter the downstream invoker when cancellation is already known.
 	// Cancellation after this check is still conveyed by the control context.
 	if err := parent.Err(); err != nil {
