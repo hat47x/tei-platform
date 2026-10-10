@@ -415,3 +415,52 @@ func TestWebTargetSessionRouteReportsMidRequestBusinessRevocationAsDenial(t *tes
 		t.Fatalf("changed permissions were audited as successful: result=%+v audit=%+v", response.Result, audits)
 	}
 }
+
+func TestWebTargetSessionValidationRejectionIsNotReportedAsCompletedCommand(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	var audits []webcomposition.AuditRecord
+	config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Existing reference Workspace has a selected order whose quantity is
+	// not positive. This is a valid business denial, not an execution error.
+	body := `{"from":"2026-09-18T08:00:00Z","row":1}`
+	rec := postSyntheticSession(server.Handler(), "/scenario/session-submit",
+		"corporate-editor", "matching", body)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("session business validation incorrectly appeared successful: HTTP=%d body=%s",
+			rec.Code, rec.Body.String())
+	}
+	var response webCommandScenarioResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Result.Stage != "validation-not-satisfied" || len(response.Result.Validations) != 1 ||
+		response.Result.Validations[0].Result != "not-satisfied" ||
+		response.Result.Authentication != nil || response.Result.Authorization != nil ||
+		response.Result.EffectAuthorization != nil ||
+		response.Result.Command != nil || response.Result.Observation != nil ||
+		len(audits) != 1 || audits[0].Stage != "rejected" || audits[0].Status != http.StatusUnprocessableEntity {
+		t.Fatalf("validation business denial lost provenance or reached an effect: response=%+v audit=%+v", response, audits)
+	}
+	// Keep the historical Credential endpoint's HTTP envelope unchanged;
+	// only the protected session route has the new business rejection code.
+	legacy := postSyntheticSession(server.Handler(), "/scenario/submit", "", "",
+		`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:00:00Z","row":1}`)
+	if legacy.Code != http.StatusOK {
+		t.Fatalf("legacy Credential HTTP response contract changed: %d body=%s",
+			legacy.Code, legacy.Body.String())
+	}
+	var legacyResponse webCommandScenarioResponse
+	if err := json.Unmarshal(legacy.Body.Bytes(), &legacyResponse); err != nil {
+		t.Fatal(err)
+	}
+	if legacyResponse.Result.Stage != "validation-not-satisfied" ||
+		legacyResponse.Result.Authentication == nil || legacyResponse.Result.Authorization != nil ||
+		legacyResponse.Result.Command != nil {
+		t.Fatalf("legacy business validation behavior changed: %+v", legacyResponse)
+	}
+}
