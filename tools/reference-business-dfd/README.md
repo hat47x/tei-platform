@@ -34,7 +34,7 @@ go run ./tools/reference-business-dfd \
   -select pattern:order_entry.order_record
 ```
 
-選択可能な種類は`step`、`pattern`、`trigger`、`business-role`、`party`、`store`、`information-flow`です。探索できないIDは`unresolved`で返し、別IDを類推しません。既存のGo Worldから参照したPattern、Data、Relationも同一性の照合にとどまり、Source IndexやAcceptanceの書込み先を保証しません。
+選択可能な種類は`step`、`pattern`、`trigger`、`business-role`、`party`、`store`、`information-flow`、`semantic-data`、`semantic-relation`、`semantic-validation`、`semantic-capability`です。Data／Validation側から、そのIDを明示したStepやPattern由来の参照元へ戻ることもできます。ただし逆参照も`reference-only`であり、未受理の業務意味を確定したとは扱いません。探索できないIDは`unresolved`で返し、別IDを類推しません。既存のGo Worldから参照したPattern、Data、Relationも同一性の照合にとどまり、Source IndexやAcceptanceの書込み先を保証しません。
 
 出力の`sourceSnapshots[].sha256`はProcedure・図レビュー案・Handoff setの**具体的な参照ファイルのバイト列**に対する確認用指紋です。実行中に参照ファイルが変化した場合は中断します。ただしWorkspace全体の`modelRevision`、Accepted Sourceとの因果関係、`sourceindex`のScopeを確定するものではなく、`worldRevisionStatus=unverified-no-model-revision-binding`とします。#1120のスコープ付き契約と#1124のStudio側ソース確認に接続するまでは`reference-only`のままです。
 
