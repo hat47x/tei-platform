@@ -43,6 +43,8 @@ Reference shape: `repair.intake -> customer.customer`
 
 Reference pressure shape: association Dataが二つの独立Dataへ`one` Relationを持つ構造。
 
+actual Source-backed negative caseとして、`security.AuthorizationGrant`も確認する。`subjectId`、`action`、`resource`という複数の識別軸を持つが、それらの組合せがbusiness occurrence identityまたはcandidate keyであるというaccepted Constraint / Contractは存在しない。このためData Design Contextは3 AttributeとSource Evidenceを提示しつつ、business identity / FD candidateを生成しない。
+
 - 二つのRelationが存在することだけでは、その組合せがbusiness occurrenceを識別するとは言えない
 - association Dataが独自identityを持つ場合、組合せそのものがidentityである場合、履歴versionを持つ場合を区別する必要がある
 - 現行Canonical modelには、この違いをaccepted meaningとして表す十分なprimitiveが無い
