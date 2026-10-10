@@ -6,12 +6,12 @@ import { tmpdir } from "node:os";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { projectWorld, candidateFromEdit, bindReviewArtifacts } from "./bridge.mjs";
+import { projectWorld, candidateFromEdit, bindReviewArtifacts, navigateReferenceBusinessStep } from "./bridge.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
   "usage:",
-  "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID [-business-dfd FILE]",
+  "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID|step:ID [-business-dfd FILE]",
   "  node reference/studio-authoring/cli.mjs propose -workspace DIR -edit-file FILE",
   "  node reference/studio-authoring/cli.mjs review-edit -workspace DIR -edit-file FILE",
   "  alternatively: -world-file FILE -revision-file FILE [-source-index-file FILE] (read-only artifacts)",
@@ -71,11 +71,17 @@ function main(argv) {
         sourceIndex: opt["-source-index-file"]
           ? jsonFile(opt["-source-index-file"]) : undefined }
     : fromWorkspace(opt["-workspace"], command === "inspect");
-  if (command === "inspect") return projectWorld(
-    world, revision, opt["-focus"],
-    { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
-      ...(sourceIndex ? { sourceIndex } : {}) }
-  );
+  if (command === "inspect") {
+    const focus = opt["-focus"];
+    if (focus.startsWith("step:")) {
+      if (!opt["-business-dfd"]) throw new Error("BUSINESS_STEP_REQUIRES_REFERENCE_DFD");
+      return navigateReferenceBusinessStep(world, revision,
+        jsonFile(opt["-business-dfd"]), focus.slice("step:".length));
+    }
+    return projectWorld(world, revision, focus,
+      { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
+        ...(sourceIndex ? { sourceIndex } : {}) });
+  }
   const candidate = candidateFromEdit(world, revision, jsonFile(opt["-edit-file"]));
   if (command === "propose") return candidate;
   // The Review operation delegates entirely to Shared Acceptance; it does
