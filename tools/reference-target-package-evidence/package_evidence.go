@@ -103,6 +103,7 @@ type Report struct {
 	GoFlags        string            `json:"goFlags"`
 	BuildTags      string            `json:"buildTags,omitempty"`
 	TargetFeatures map[string]string `json:"targetFeatures,omitempty"`
+	CgoToolchain   map[string]string `json:"cgoToolchain,omitempty"`
 	Packages       []SourcePackage   `json:"packages"`
 }
 
@@ -406,11 +407,15 @@ func produceEvidence(entry, tags string) (Report, error) {
 	// GOOS/GOARCH alone do not identify the source-selection profile:
 	// for example, GOAMD64=v3 activates //go:build amd64.v3 sources
 	// while GOAMD64=v1 does not. Capture all Go 1.23 target tunables.
+	// Cgo compiler and pkg-config settings do not prove external library
+	// provenance, but different values must not be silently compared.
 	targetTuning := []string{
 		"GO386", "GOAMD64", "GOARM", "GOARM64", "GOEXPERIMENT",
 		"GOLOONG64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM",
 	}
-	envArgs := append([]string{"env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS"}, targetTuning...)
+	cgoTuning := []string{"CC", "CXX", "CGO_CFLAGS", "CGO_CPPFLAGS", "CGO_CXXFLAGS", "CGO_LDFLAGS", "PKG_CONFIG"}
+	envKeys := append([]string{"env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS"}, targetTuning...)
+	envArgs := append(envKeys, cgoTuning...)
 	envCmd := exec.Command("go", envArgs...)
 	envCmd.Env = goList.Env
 	envOut, err := envCmd.Output()
@@ -432,6 +437,14 @@ func produceEvidence(entry, tags string) (Report, error) {
 				report.TargetFeatures = make(map[string]string)
 			}
 			report.TargetFeatures[key] = value
+		}
+	}
+	if report.CGOEnabled == "1" {
+		report.CgoToolchain = make(map[string]string, len(cgoTuning))
+		for _, key := range cgoTuning {
+			// Include empty values: absence is not the same as a
+			// deliberately empty compiler flag configuration.
+			report.CgoToolchain[key] = env[key]
 		}
 	}
 	revisionAfter, err := repositoryIdentity()
