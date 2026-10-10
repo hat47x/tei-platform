@@ -3,6 +3,8 @@ package languagereference
 import (
 	"errors"
 	"fmt"
+
+	"tei/internal/semantic"
 )
 
 var (
@@ -122,7 +124,7 @@ func ProbePinnedExpansion(candidate RelationExpansionCandidate, policy RelationM
 			}
 			if matched {
 				indices = append(indices, i)
-				if candidate.Cardinality == "one" && len(indices) > 1 {
+				if candidate.Cardinality == semantic.CardinalityOne && len(indices) > 1 {
 					return RelationMatchProbeResult{}, fmt.Errorf("%w: relation %s has multiple targets", ErrMatchCardinality, candidate.RelationID)
 				}
 			}
