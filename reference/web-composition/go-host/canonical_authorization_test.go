@@ -54,29 +54,31 @@ func TestCanonicalAuthorizationUsesExistingBusinessRulesAcrossIdentityProviders(
 	resolver, adapters := referenceAuthorizationDependencies(t)
 	corporateEditor := Principal{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "employee-oidc-sub", PrincipalID: "employee-1"}
 	legacyEditor := Principal{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor", PrincipalID: "employee-1"}
-	// Deliberately share the application PrincipalID with an editor. The
-	// verified origin must link this identity to a viewer, not the editor.
-	corporateViewer := Principal{ProviderID: "corporate", Issuer: corporateEditor.Issuer, Subject: "viewer-oidc-sub", PrincipalID: "employee-1"}
+	// A different external origin links to a different application principal.
+	corporateViewer := Principal{ProviderID: "corporate", Issuer: corporateEditor.Issuer, Subject: "viewer-oidc-sub", PrincipalID: "employee-viewer-1"}
+	// A malformed session principal must not override the authoritative link.
+	spoofedViewer := corporateViewer
+	spoofedViewer.PrincipalID = "employee-1"
 	unknown := Principal{ProviderID: "corporate", Issuer: corporateEditor.Issuer, Subject: "unmapped-sub", PrincipalID: "employee-1"}
-	links := map[ExternalSubject]string{
-		{ProviderID: corporateEditor.ProviderID, Issuer: corporateEditor.Issuer, Subject: corporateEditor.Subject}: "subject-order-editor",
-		{ProviderID: legacyEditor.ProviderID, Issuer: legacyEditor.Issuer, Subject: legacyEditor.Subject}:          "subject-order-editor",
-		{ProviderID: corporateViewer.ProviderID, Issuer: corporateViewer.Issuer, Subject: corporateViewer.Subject}: "subject-order-viewer",
+	links := map[ExternalSubject]SubjectLink{
+		{ProviderID: corporateEditor.ProviderID, Issuer: corporateEditor.Issuer, Subject: corporateEditor.Subject}: {PrincipalID: corporateEditor.PrincipalID, SubjectID: "subject-order-editor"},
+		{ProviderID: legacyEditor.ProviderID, Issuer: legacyEditor.Issuer, Subject: legacyEditor.Subject}:          {PrincipalID: legacyEditor.PrincipalID, SubjectID: "subject-order-editor"},
+		{ProviderID: corporateViewer.ProviderID, Issuer: corporateViewer.Issuer, Subject: corporateViewer.Subject}: {PrincipalID: corporateViewer.PrincipalID, SubjectID: "subject-order-viewer"},
 	}
 	revoked := false
 	lookupError := false
 	lookupCalls := 0
 	authorizer, err := NewCanonicalActionAuthorizer(resolver, "order_entry", "order_entry.submit_order",
-		func(_ context.Context, origin ExternalSubject) (string, bool, error) {
+		func(_ context.Context, origin ExternalSubject) (SubjectLink, bool, error) {
 			lookupCalls++
 			if lookupError {
-				return "", false, errors.New("subject link service unavailable")
+				return SubjectLink{}, false, errors.New("subject link service unavailable")
 			}
 			if revoked && origin.Subject == corporateEditor.Subject {
-				return "", false, nil
+				return SubjectLink{}, false, nil
 			}
-			subject, ok := links[origin]
-			return subject, ok, nil
+			link, ok := links[origin]
+			return link, ok, nil
 		}, adapters)
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +116,8 @@ func TestCanonicalAuthorizationUsesExistingBusinessRulesAcrossIdentityProviders(
 	}{
 		{"corporate editor allowed", corporateEditor, false, false, http.StatusAccepted},
 		{"legacy editor allowed", legacyEditor, false, false, http.StatusAccepted},
-		{"viewer denied despite same PrincipalID", corporateViewer, false, false, http.StatusForbidden},
+		{"viewer denied under existing business rules", corporateViewer, false, false, http.StatusForbidden},
+		{"mismatched verified principal is an integrity error", spoofedViewer, false, false, http.StatusServiceUnavailable},
 		{"missing link denied", unknown, false, false, http.StatusForbidden},
 		{"revoked link denied", corporateEditor, true, false, http.StatusForbidden},
 		{"link service failure is an error", corporateEditor, false, true, http.StatusServiceUnavailable},
@@ -147,7 +150,7 @@ func TestCanonicalAuthorizationUsesExistingBusinessRulesAcrossIdentityProviders(
 func TestCanonicalAuthorizationRejectsUnresolvedCommandsAndMissingDependencies(t *testing.T) {
 	resolver, adapters := referenceAuthorizationDependencies(t)
 	link := SubjectLinkLookup(func(context.Context, ExternalSubject) (string, bool, error) {
-		return "subject-order-editor", true, nil
+		return SubjectLink{PrincipalID: "employee-1", SubjectID: "subject-order-editor"}, true, nil
 	})
 	if _, err := NewCanonicalActionAuthorizer(resolver, "order_entry", "missing.command", link, adapters); err == nil {
 		t.Fatal("accepted missing command Binding")
