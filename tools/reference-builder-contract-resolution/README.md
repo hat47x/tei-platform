@@ -256,3 +256,44 @@ filesystem / network mutationは行いません。
 - #1096 Go adapterの共通化
 - Build scheduler
 - Acceptance / Runtime Authority
+
+
+## 非選択supportはLock identityではない
+
+Providerがselected Intentとは無関係なRecipe / Target / Profileへの対応を後から追加しても、既存locked resolutionをstaleにしません。
+
+```text
+selected Intent
+  recipe = deterministic-copy
+  target = host/reference
+  profile = reference
+```
+
+に対して、同じexact Provider artifactが`host/other`を追加対応しただけなら:
+
+- fresh catalog metadataは増える
+- selected Intentへのeligibilityは維持
+- Resolution fingerprintは不変
+- locked replayは成功
+
+とします。
+
+選択したRecipe / Target / Profile自体はIntent fingerprintへ入っているため、selected semanticsは固定されています。
+
+## Lock前のcross-field再検証
+
+Resolutionは「resolve関数が返した構造だから正しい」と仮定しません。
+
+`lockBuilderResolution`の入口で次を再計算・照合します。
+
+- Contract内容 -> Contract fingerprint
+- Provider Contract ID / version / fingerprint / Conformance profile
+- Provider scope = build-tool
+- Provider identity -> exact BuilderIdentity
+- Resolution fields -> Resolution fingerprint
+
+形式上validな文字列でも、これらの組合せが一致しないResolutionはLock化しません。
+
+Lock側でもProvider ID / version / artifactとBuilderIdentityをcross-checkします。
+
+これにより、resolve後にfieldを差し替えた偽Resolutionや、Providerと無関係なBuilderIdentityをlocked replayへ持ち込むことをfail-closedにします。
