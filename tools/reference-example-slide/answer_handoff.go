@@ -157,9 +157,13 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 			}
 			questionText = issue.Question
 			if issue.RelationID != "" {
+				// The existing Confirmation history checks Source Index
+				// subjects, not the illustrative Example content. Its subject
+				// must therefore change when the Example or Catalog changes,
+				// even if issue.ID and the semantic source stay identical.
 				route = &ConfirmationRoute{
 					IdentityKind: "example-review",
-					IdentitySubject: issue.ID,
+					IdentitySubject: scopedConfirmationSubject(issue, review),
 					BasisKind: "semantic-relation",
 					BasisID: issue.RelationID,
 				}
@@ -220,4 +224,18 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 	digest := sha256.Sum256(encoded)
 	out.Fingerprint = "sha256:" + hex.EncodeToString(digest[:])
 	return out, nil
+}
+
+ // scopedConfirmationSubject supplements existing Confirmation's canonical
+ // basis fingerprint with the exact, immutable illustrative Case context.
+ // Returning the raw issue ID would suppress fresh review when the model
+ // sources are unchanged but the example record values have changed.
+ func scopedConfirmationSubject(issue ReviewIssue, review ReviewPacket) string {
+	fields, _ := json.Marshal([]string{
+		review.CaseID, review.ModelRevision,
+		review.ExampleFingerprint, review.CatalogFingerprint,
+		issue.ID, issue.Question,
+	})
+	sum := sha256.Sum256(fields)
+	return "example-" + hex.EncodeToString(sum[:])
 }
