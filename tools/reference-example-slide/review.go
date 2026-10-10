@@ -13,6 +13,8 @@ import (
 type ReviewPacket struct {
 	CaseID        string          `json:"caseId"`
 	ModelRevision string          `json:"modelRevision"`
+	// Fingerprint binds all authored and derived questions to this exact review.
+	Fingerprint string          `json:"fingerprint"`
 	Authored      []Question      `json:"authoredQuestions,omitempty"`
 	Issues        []ReviewIssue   `json:"issues,omitempty"`
 }
@@ -81,6 +83,10 @@ func reviewProjection(input Input, projection Projection) ReviewPacket {
 	for i := range packet.Issues {
 		sort.Strings(packet.Issues[i].FrameIDs)
 	}
+	// Keep the fingerprint blank while hashing the exact model/review snapshot.
+	encoded, _ := json.Marshal(packet)
+	fingerprint := sha256.Sum256(encoded)
+	packet.Fingerprint = "sha256:" + hex.EncodeToString(fingerprint[:])
 	return packet
 }
 
