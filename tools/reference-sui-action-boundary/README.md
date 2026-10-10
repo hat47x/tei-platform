@@ -51,6 +51,12 @@ SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`s
 
 SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
 
+### 利用側安全性の追補（2026-10-10）
+
+[SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Action成功後のDocument全体照合を追加し、座標・島所属だけが正しくてもSource／Hold／レビュー／未知Edge／Affiliationなどに損失があればローカル反映を拒否するようにしました。サーバー所有の`updatedAt`と任意の`null`／未指定の等価性は許容します。単一テナントの追加認可アダプターがない場合でも、明示的な読取り専用モードのAction更新は拒否します。
+
+また**SUI固有の`POST /docs/{doc_id}/action-commit`はデフォルト無効**としました。`request.app.state.sui_native_action_v1_enabled is True`が明示されない限り404で拒否します。テストだけが局所的に有効化し、未検証の通常配備で新たな書込み経路を開きません。これらの追加修正後のPython／Vitest／Node／全体healthは未実行です。実TEI Hostの認可・呼出委譲・SUI React状態反映が完成するまで、本番有効化を認めません。
+
 ### SUIサーバー側のSUI所有コマンドと既存保存経路
 
 [SUI PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)へ、`card_move_command.py`（DocumentV1内のCard移動、島所属、Affiliation衝突時の拒否）と、既存`PUT /docs/{id}`／`GET /docs/{id}`／ETagを利用するSQLite結合テストを追加しました。フロントエンドの`getAuthoritativeDocument`は`cache:"no-store"`を指定し、セッション前提条件を維持してDocumentとETagを読み直します。
