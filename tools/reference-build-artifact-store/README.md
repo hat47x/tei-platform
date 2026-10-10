@@ -131,3 +131,27 @@ LockedBuild.ArtifactDigest
 Lockが保持するのはcontent identityです。Store rootやrelative LocatorはStore側のretrieval contextであり、Build Lock / Runtime Lockのlogical identityへ混ぜません。
 
 Store missやcorruptionが起きても、Lockを別digestへ暗黙更新しません。
+
+## Evidence runner
+
+```bash
+go run ./tools/reference-build-artifact-store
+```
+
+固定fixtureで次を実行します。
+
+1. 一時Storeを作成
+2. artifact bytesをPut
+3. current BuildPlanからLockedBuildを作成
+4. `LockedBuild.ArtifactDigest`だけでGet
+5. Storeを再open
+6. 同じLock digestから再取得
+7. exact bytes一致を確認
+8. JSON Evidenceをstdoutへ出力
+9. 一時Storeを削除
+
+EvidenceにはStore rootのabsolute pathを含めません。
+
+Receipt Locatorはstore-relative `sha256/<hex>`だけです。
+
+runner成功はStore availability / Build provenance / Acceptance / Runtime Authorityを意味しません。
