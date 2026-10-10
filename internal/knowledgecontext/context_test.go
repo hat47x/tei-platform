@@ -999,7 +999,7 @@ func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequir
 		t.Fatalf("business identity candidate ordering changed identity: have=%s got=%s", identity.Fingerprint, got)
 	}
 	if got := dataDesignCandidateEvidenceRequirementFingerprint(
-		"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+		"tei.knowledge.data-design.business-identity-candidate-evidence/v2",
 		identity.Fingerprint,
 		reorderedIdentity.EvidenceNeeded,
 	); got != identity.EvidenceRequirementFingerprint {
@@ -1015,11 +1015,24 @@ func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequir
 		t.Fatalf("Evidence requirement changed business identity candidate identity: have=%s got=%s", identity.Fingerprint, got)
 	}
 	if got := dataDesignCandidateEvidenceRequirementFingerprint(
-		"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+		"tei.knowledge.data-design.business-identity-candidate-evidence/v2",
 		identity.Fingerprint,
 		changedIdentityEvidence.EvidenceNeeded,
 	); got == identity.EvidenceRequirementFingerprint {
 		t.Fatalf("changed business identity Evidence requirements kept review fingerprint: %s", got)
+	}
+
+	changedIdentityRelation := identity
+	changedIdentityRelation.Components = append([]DataDesignDeterminantTerm(nil), identity.Components...)
+	for index := range changedIdentityRelation.Components {
+		if changedIdentityRelation.Components[index].Kind != "related-occurrence" {
+			continue
+		}
+		changedIdentityRelation.Components[index].Relation = "sales.order.other_lines"
+		break
+	}
+	if got := businessIdentityCandidateFingerprint(changedIdentityRelation); got == identity.Fingerprint {
+		t.Fatalf("different Relation identity kept business identity candidate fingerprint: %s", got)
 	}
 
 	changedIdentity := identity
@@ -1029,7 +1042,7 @@ func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequir
 		t.Fatalf("business identity candidate semantic change kept fingerprint: %s", changedIdentityFingerprint)
 	}
 	if got := dataDesignCandidateEvidenceRequirementFingerprint(
-		"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+		"tei.knowledge.data-design.business-identity-candidate-evidence/v2",
 		changedIdentityFingerprint,
 		changedIdentity.EvidenceNeeded,
 	); got == identity.EvidenceRequirementFingerprint {
@@ -1049,7 +1062,7 @@ func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequir
 		t.Fatalf("FD candidate ordering changed identity: have=%s got=%s", fd.Fingerprint, got)
 	}
 	if got := dataDesignCandidateEvidenceRequirementFingerprint(
-		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v2",
 		fd.Fingerprint,
 		reorderedFD.EvidenceNeeded,
 	); got != fd.EvidenceRequirementFingerprint {
@@ -1065,11 +1078,24 @@ func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequir
 		t.Fatalf("Evidence requirement changed FD candidate identity: have=%s got=%s", fd.Fingerprint, got)
 	}
 	if got := dataDesignCandidateEvidenceRequirementFingerprint(
-		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v2",
 		fd.Fingerprint,
 		changedFDEvidence.EvidenceNeeded,
 	); got == fd.EvidenceRequirementFingerprint {
 		t.Fatalf("changed FD Evidence requirements kept review fingerprint: %s", got)
+	}
+
+	changedFDRelation := fd
+	changedFDRelation.Determinants = append([]DataDesignDeterminantTerm(nil), fd.Determinants...)
+	for index := range changedFDRelation.Determinants {
+		if changedFDRelation.Determinants[index].Kind != "related-occurrence" {
+			continue
+		}
+		changedFDRelation.Determinants[index].End = "target"
+		break
+	}
+	if got := functionalDependencyCandidateFingerprint(changedFDRelation); got == fd.Fingerprint {
+		t.Fatalf("different Relation end kept FD candidate fingerprint: %s", got)
 	}
 
 	changedFD := fd
@@ -1079,7 +1105,7 @@ func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequir
 		t.Fatalf("FD candidate semantic change kept fingerprint: %s", changedFDFingerprint)
 	}
 	if got := dataDesignCandidateEvidenceRequirementFingerprint(
-		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v2",
 		changedFDFingerprint,
 		changedFD.EvidenceNeeded,
 	); got == fd.EvidenceRequirementFingerprint {
