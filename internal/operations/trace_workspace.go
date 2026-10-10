@@ -38,6 +38,21 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageLoad, Err: err}
 	}
+	// The derived bridge intentionally coalesces repeated uses of a Subject.
+	// For kinds that can be selected from Canonical World, first require one
+	// and only one declaration using the same resolver as "inspect". This
+	// prevents duplicate authoritative declarations from masquerading as a
+	// uniquely resolved node in a read-only candidate projection.
+	if supportedInspectionKind(key.Subject.Kind) {
+		if _, err := inspectCanonical(loaded.World, key.Subject); err != nil {
+			if finding, ok := err.(*InspectionError); ok {
+				return WorkspaceTrace{}, &modelref.TraceError{
+					Code: finding.Code, Message: finding.Message,
+				}
+			}
+			return WorkspaceTrace{}, err
+		}
+	}
 	projection := derivedbridge.FromIndex(index.Build(loaded.World), key.Scope)
 	result, err := modelref.TraceDirect(projection.Graph, projection.Rules, key, options)
 	if err != nil {
