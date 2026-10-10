@@ -16,7 +16,7 @@ type FixtureStore struct {
 	users      map[string]User
 	// subject identity is unique across login IDs. A linear map scan could
 	// choose an arbitrary role when two accounts share a SubjectID.
-	bySubject  map[string]User
+	bySubject map[string]User
 }
 
 type fixtureDocument struct {
