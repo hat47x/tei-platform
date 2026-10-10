@@ -153,3 +153,58 @@ func TestSVGEscapesLabels(t *testing.T) {
 		t.Fatal("SVG contains unescaped field or table label")
 	}
 }
+
+func TestSVGIncludesAllRecordsAndReviewCounts(t *testing.T) {
+	slide := Slide{
+		ID: "reviewed", Title: "検収<&", Stage: "after<&",
+		Tables: []ShownTable{{
+			PlacementID: "box", Table: "items<&", X: 315, Y: 30,
+			Fields: []string{"key"},
+			Records: []ShownRecord{
+				{ID: "first", Values: map[string]json.RawMessage{"key": json.RawMessage("\"alpha<&\"")}},
+				{ID: "second", Values: map[string]json.RawMessage{"key": json.RawMessage("\"beta\"")}},
+			},
+		}},
+		RelationFindings: []RelationFinding{{Result: "unresolved"}},
+	}
+	svg := SVG(slide)
+	for _, present := range []string{
+		"first", "second", "alpha&lt;&amp;", "beta",
+		"検収&lt;&amp;", "items&lt;&amp;", "Unresolved: 1", "x=\"315\"",
+	} {
+		if !strings.Contains(svg, present) {
+			t.Fatalf("SVG lost record or review context %q: %s", present, svg)
+		}
+	}
+	for _, unsafe := range []string{"alpha<&", "items<&", "検収<&"} {
+		if strings.Contains(svg, unsafe) {
+			t.Fatalf("SVG contains unescaped label %q", unsafe)
+		}
+	}
+}
+
+func TestSVGShowsSchemaWhenNoExampleRecordExists(t *testing.T) {
+	svg := SVG(Slide{Tables: []ShownTable{{
+		PlacementID: "empty-box", Table: "empty", Fields: []string{"code", "quantity"},
+	}}})
+	for _, expected := range []string{"(no example records)", "code", "quantity"} {
+		if !strings.Contains(svg, expected) {
+			t.Fatalf("empty table lost schema field %q", expected)
+		}
+	}
+}
+
+func TestSVGEdgeLabelDoesNotInjectMarkup(t *testing.T) {
+	svg := SVG(Slide{
+		Tables: []ShownTable{
+			{PlacementID: "parent", X: 0, Y: 0},
+			{PlacementID: "child", X: 315, Y: 0},
+		},
+		Connections: []Connection{{
+			Parent: "parent", Child: "child", RelationID: "edge\"<&",
+		}},
+	})
+	if !strings.Contains(svg, "aria-label=\"edge&#34;&lt;&amp;\"") {
+		t.Fatalf("reference edge label was not escaped: %s", svg)
+	}
+}
