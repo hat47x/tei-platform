@@ -24,6 +24,7 @@ var (
 	ErrCommitNotCommitted = errors.New("mutation was not committed")
 	ErrCommitUnknown      = errors.New("mutation commit outcome is unknown")
 	ErrJournalWrite       = errors.New("mutation journal write failed")
+	ErrAbortCleanup       = errors.New("mutation abort cleanup failed")
 )
 
 type MutationOutcome string
@@ -162,30 +163,36 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 	}
 	handle, preparedResult, err := validatePrepared(request.InvocationKey, requestDigest, prepared)
 	if err != nil {
-		abortPrepared(e.Provider, ctx, preparedHandle(prepared))
-		return MutationExecution{Outcome: OutcomeNotCommitted}, err
+		cleanupErr := abortPrepared(e.Provider, ctx, preparedHandle(prepared))
+		return MutationExecution{Outcome: OutcomeNotCommitted}, errors.Join(err, cleanupErr)
 	}
 
 	if err := e.Validate(preparedResult); err != nil {
-		abortPrepared(e.Provider, ctx, handle)
+		cleanupErr := abortPrepared(e.Provider, ctx, handle)
 		return MutationExecution{
 			Outcome: OutcomeNotCommitted,
 			Handle:  handle,
-		}, fmt.Errorf("%w: %v", ErrResultValidation, err)
+		}, errors.Join(
+			fmt.Errorf("%w: %v", ErrResultValidation, err),
+			cleanupErr,
+		)
 	}
 	if err := ctx.Err(); err != nil {
-		abortPrepared(e.Provider, ctx, handle)
+		cleanupErr := abortPrepared(e.Provider, ctx, handle)
 		return MutationExecution{
 			Outcome: OutcomeNotCommitted,
 			Handle:  handle,
-		}, err
+		}, errors.Join(err, cleanupErr)
 	}
 	if err := e.Journal.RecordPrepared(ctx, handle); err != nil {
-		abortPrepared(e.Provider, ctx, handle)
+		cleanupErr := abortPrepared(e.Provider, ctx, handle)
 		return MutationExecution{
 			Outcome: OutcomeNotCommitted,
 			Handle:  handle,
-		}, fmt.Errorf("%w: prepared intent: %v", ErrJournalWrite, err)
+		}, errors.Join(
+			fmt.Errorf("%w: prepared intent: %v", ErrJournalWrite, err),
+			cleanupErr,
+		)
 	}
 
 	providerReceipt, commitErr := e.Provider.Commit(ctx, CommitRequest{
@@ -484,14 +491,21 @@ func NewProviderReceipt(
 	return receipt
 }
 
-func abortPrepared(provider MutationProvider, ctx context.Context, handle MutationHandle) {
+func abortPrepared(
+	provider MutationProvider,
+	ctx context.Context,
+	handle MutationHandle,
+) error {
 	if provider == nil {
-		return
+		return nil
 	}
 	// Request cancellation must not prevent cleanup of uncommitted prepared state.
 	// Values are preserved for Host authority checks, while cancellation/deadline
-	// are intentionally removed for this best-effort cleanup call.
-	_ = provider.Abort(context.WithoutCancel(ctx), handle)
+	// are intentionally removed for this cleanup call.
+	if err := provider.Abort(context.WithoutCancel(ctx), handle); err != nil {
+		return fmt.Errorf("%w: %v", ErrAbortCleanup, err)
+	}
+	return nil
 }
 
 func preparedFingerprint(prepared PreparedMutation) string {
