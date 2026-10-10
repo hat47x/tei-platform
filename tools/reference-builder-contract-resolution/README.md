@@ -297,3 +297,28 @@ Resolutionは「resolve関数が返した構造だから正しい」と仮定し
 Lock側でもProvider ID / version / artifactとBuilderIdentityをcross-checkします。
 
 これにより、resolve後にfieldを差し替えた偽Resolutionや、Providerと無関係なBuilderIdentityをlocked replayへ持ち込むことをfail-closedにします。
+
+## BuildPlan確定後は再解決しない
+
+ResolverはBuildPlan確定前の責務です。
+
+```text
+fresh Builder resolution
+  -> exact BuilderIdentity
+  -> BuildPlan fingerprint
+```
+
+まで進んだ後、catalogへcompatible Providerが追加されても既存BuildPlanを暗黙再解決しません。
+
+Reference testでは:
+
+1. Provider Aをresolve
+2. AをBuilderとしてBuildPlan fingerprintを確定
+3. Provider Bをcatalogへ追加
+4. fresh resolutionはambiguous
+5. existing Resolution Lockをreplay
+6. replayしたAで構成したBuildPlan fingerprintが元と一致
+
+を確認します。
+
+これによりProvider catalogの現在状態と、既に確定したBuildPlan identityを分離します。
