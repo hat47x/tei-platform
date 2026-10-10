@@ -130,3 +130,24 @@ test('native preview and cancel do not mutate; drop only applies server-confirme
   assert.equal(applied, 1);
   assert.equal(bridge.phase, 'idle');
 });
+
+test('guard must return synchronous true, never a truthy Promise or object', async () => {
+  for (const returnValue of [Promise.resolve(true), { current: true }, 1, undefined]) {
+    const h = harness({ isCurrent: () => returnValue });
+    await assert.rejects(h.controller(base), failure('local_state_changed'));
+    assert.equal(h.state.writes, 0);
+  }
+});
+
+test('throwing local guard after remote acknowledgment retains committed revision', async () => {
+  let calls = 0;
+  const h = harness({ isCurrent: () => { if (++calls === 2) throw new Error('UI unmounted'); return true; } });
+  await assert.rejects(h.controller(base), failure('local_state_changed', 'r2'));
+  assert.equal(h.state.applications, 0);
+});
+
+test('application may reject an atomic apply with false without reporting confirmed UI state', async () => {
+  const h = harness({ applySnapshot: async () => false });
+  await assert.rejects(h.controller(base), failure('snapshot_apply_failed', 'r2'));
+  assert.equal(h.state.applications, 0);
+});
