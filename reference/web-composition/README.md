@@ -18,7 +18,7 @@
 ## 内容
 
 - `plan-check.mjs`：**既に採用済みの処理点**を入力として、依存グラフと保護条件を検査し、決定的な順序を作ります。同じ名前の機能を提供する実装が二つあれば拒否します。
-- `plan-check.test.mjs`：保護された受注操作、認証主体の対応付け、保護の欠落、循環、衝突など12件の正常・異常例を固定しています。
+- `plan-check.test.mjs`：保護された受注操作、認証主体の対応付け、保護の欠落、循環、衝突に加え、Guardの因果依存・証拠契約・プラグイン拡張など28件の正常・異常例を固定しています。
 
 既存の#951のProvider解決は行いません。処理点は**解決済みであるものとして受け取る**ため、この試作が返す順序は実行権限やProviderの適合性を保証しません。
 
@@ -30,6 +30,29 @@ node --test reference/web-composition/plan-check.test.mjs
 
 2026-10-09、構成検査と認証設定検査の関数については、V8隔離実行環境で同等の12例を直接評価し、12件が想定どおり成功／拒否されました。**上記のNodeコマンドをリポジトリの実ファイルに対して実行した記録は未取得です。** さらにTEI全体のヘルスチェック、Go HTTPサーバとの接続、実ブラウザ、実IdP、Cookie・CSRF保護の動作試験は行っていません。
 
+### E1.2：Guardの証拠契約と認証定義の一意性（2026-10-10）
+
+「必須Guardが`invoke`の因果的先行処理点にある」という検査だけでは、`authenticated`等のラベルを、本人確認を実行しない`request.context`取得処理に貼っても受理される余地がありました。これを防ぐため、標準Guard名と証拠となる`provides`契約の組を照合します。
+
+| Guard | 証拠契約 |
+| --- | --- |
+| `authenticated` | `identity.principal` |
+| `csrf-protected` | `csrf.checked` |
+| `action-authorized` | `action.authorized` |
+
+標準Guardの証拠契約はプラグイン側から上書きできません。追加のGuardを必要とするHost Policyは`hostPolicy.guardEvidence`で`Guard名 → 証拠契約`を明示します。例えば`tenant-isolated → tenant.boundary.checked`を宣言し、実際の先行Stepがその契約を`provides`し、`invoke`が`requires`するときだけ、構成上の条件を満たします。単なる`before`の順序指定では不十分です。
+
+また、認証設定では空のProvider/Policy選択、同じPolicy IDの二重定義、同一`ProviderID + Issuer + Subject`のリンク二重定義を拒否します。異なる認証元から同じApplication Principalへ明示的に対応付ける構成は維持します。
+
+**局所テストの確定記録：** Node.js `v22.16.0`を使い、GitHub上の次のBlobと**byte一致する実ファイル2件**を隔離ローカルディレクトリへ配置しました。
+
+- `plan-check.mjs`: `b677347f66acd14e5c47d62afa12cfc263d08e46`
+- `plan-check.test.mjs`: `19d971ba6a185f41b783af63143d3205d86fb986`
+- `node --test plan-check.test.mjs`: **28 PASS / 0 FAIL**（元の18件と、新規の認証・Guard検証10件）
+- `node --check plan-check.mjs`: PASS
+
+これは静的な構成検査であり、Guardに対応したProviderが実際に暗号学的検証・CSRF・業務認可を正しく実行する証拠にはなりません。特にプラグイン定義の`guardEvidence`は**合成された宣言上の制約**であり、実体の適格性は将来のHost / Plugin Conformanceで確認する必要があります。実Repository全体の`tools/repository-health-check.sh`は未実行のため、本PRのDraft維持・統合保留は変わりません。
+
 ## この試作が保証しないこと
 
 `guards`や`onTerminal`は処理点の**宣言**です。実際に要求元検証が行われたこと、拒否時に監査が実行されたこと、認証Providerが真正であることの証拠ではありません。これらを保証するには、信頼できるHostによる処理の強制と、Provider適合性の検査、実HTTP動作試験が別に必要です。
@@ -40,7 +63,7 @@ node --test reference/web-composition/plan-check.test.mjs
 
 ## 次の検証
 
-1. 実際のNodeテストと、正確なブランチ先端に対するTEI全体のヘルスチェックを実施します。
+1. Nodeテストは実ファイル28件PASSを取得しました。次に、正確なブランチ先端に対するTEI全体のヘルスチェックを実施します。
 2. 既存First Web Targetの`http.ServeMux`と`security.authenticate`/`security.authorize`の間に、保護条件を一つずつ接続します。別のProvider Resolverを作らず、#951の契約へ戻します。
 3. 拒否・例外・短絡を含むHTTP試験で、保護と監査が**実際に呼ばれたこと**を検証します。
 4. 合成OIDC相当と既存認証相当を共存させ、セッションと業務認可を別に確認します。その後に実IdPを使った検証へ進みます。
