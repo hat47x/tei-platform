@@ -138,7 +138,11 @@ func TestTrustRevocationChangesDecisionNotImmutableAttestation(t *testing.T) {
 		Predicates: []string{"tei.reference.build-result/v1"},
 		Revision: "policy-1",
 	}
-	accepted, err := evaluateAttestationTrust(attestation, policy)
+	verification, err := verifyBuildAttestation(attestation, plan, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := evaluateAttestationTrust(attestation, verification, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +152,7 @@ func TestTrustRevocationChangesDecisionNotImmutableAttestation(t *testing.T) {
 
 	policy.Revoked = true
 	policy.Revision = "policy-2"
-	revoked, err := evaluateAttestationTrust(attestation, policy)
+	revoked, err := evaluateAttestationTrust(attestation, verification, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +181,11 @@ func TestWrongIssuerOrPredicateDoesNotBecomeTrusted(t *testing.T) {
 		Predicates: []string{"tei.reference.build-result/v1"},
 		Revision: "policy-1",
 	}
-	decision, err := evaluateAttestationTrust(attestation, policy)
+	verification, err := verifyBuildAttestation(attestation, plan, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision, err := evaluateAttestationTrust(attestation, verification, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +195,7 @@ func TestWrongIssuerOrPredicateDoesNotBecomeTrusted(t *testing.T) {
 
 	policy.Issuer = attestation.Issuer
 	policy.Predicates = []string{"tei.reference.other-predicate/v1"}
-	decision, err = evaluateAttestationTrust(attestation, policy)
+	decision, err = evaluateAttestationTrust(attestation, verification, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,11 +224,44 @@ func TestFakeSignatureProfileProvidesNoCryptoAuthorityShortcut(t *testing.T) {
 		Predicates: []string{attestation.Predicate},
 		Revision: "policy-1",
 	}
-	decision, err := evaluateAttestationTrust(attestation, policy)
+	verification, err := verifyBuildAttestation(attestation, plan, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision, err := evaluateAttestationTrust(attestation, verification, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if decision.Trusted {
 		t.Fatal("fake signature presence granted trust without issuer policy")
+	}
+}
+
+
+func TestTrustEvaluationRejectsMismatchedVerificationEvidence(t *testing.T) {
+	plan, set, resultFingerprint := attestationFixture(t)
+	attestation := signedSetAttestation(t, plan, set, resultFingerprint)
+	verification, err := verifyBuildAttestation(attestation, plan, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := AttestationTrustPolicy{
+		FormatVersion: attestationTrustPolicyFormatVersion,
+		Issuer: attestation.Issuer,
+		SignatureProfile: attestation.SignatureProfile,
+		Predicates: []string{attestation.Predicate},
+		Revision: "policy-1",
+	}
+
+	tampered := verification
+	tampered.BuildExecutionResultFingerprint = strings.Repeat("f", 64)
+	if _, err := evaluateAttestationTrust(attestation, tampered, policy); err == nil {
+		t.Fatal("trust evaluation accepted verification Evidence for a different build result")
+	}
+
+	tampered = verification
+	tampered.Issuer = "tei.reference.other_issuer"
+	if _, err := evaluateAttestationTrust(attestation, tampered, policy); err == nil {
+		t.Fatal("trust evaluation accepted verification Evidence for a different issuer")
 	}
 }
