@@ -69,6 +69,9 @@ type Example struct {
 	Base          []Record   `json:"base"`
 	Stages        []Stage    `json:"stages,omitempty"`
 	Questions     []Question `json:"questions,omitempty"`
+	// CompleteTables lists the tables whose records are known to be fully
+	// enumerated at each illustration stage. Omitted tables remain partial.
+	CompleteTables []string `json:"completeTables,omitempty"`
 }
 
 type Placement struct {
@@ -129,6 +132,7 @@ type Slide struct {
 	Stage       string       `json:"stage"`
 	Tables      []ShownTable `json:"tables"`
 	Connections []Connection `json:"connections"`
+	RelationFindings []RelationFinding `json:"relationFindings,omitempty"`
 }
 
 type Projection struct {
@@ -153,6 +157,10 @@ func Build(in Input) (Projection, error) {
 		return empty, err
 	}
 	if err := validateDiagram(in.Catalog, in.Diagram); err != nil {
+		return empty, err
+	}
+	complete, err := completeTableSet(in.Catalog, in.Example.CompleteTables)
+	if err != nil {
 		return empty, err
 	}
 	state := make(map[string]Record)
@@ -278,6 +286,7 @@ func Build(in Input) (Projection, error) {
 				}
 			}
 		}
+		slide.RelationFindings = assessRelations(in.Catalog, snapshot, complete)
 		out.Slides = append(out.Slides, slide)
 	}
 	return out, nil
