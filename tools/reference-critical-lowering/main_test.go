@@ -290,6 +290,32 @@ func TestSelectiveCacheKeys(t *testing.T) {
 	}
 }
 
+func TestTargetSpecificProviderSelectionInvalidatesResolveButNotAcceptedMeaning(t *testing.T) {
+	web := orderFixture("tei.language.dsl")
+	webPlan, err := web.lower(stubTrust{})
+	if err != nil { t.Fatal(err) }
+	webKeys := Keys(web.c, web.a, webPlan, web.target, ref("builder-v1"), []Ref{ref("build.compiler")})
+
+	desktop := orderFixture("tei.language.dsl")
+	desktop.target.ID = "desktop"
+	for i := range desktop.providers {
+		desktop.providers[i].Target = "desktop"
+		desktop.providers[i].Identity.ID += ".desktop"
+		desktop.wiring[i].Provider = desktop.providers[i].Identity
+	}
+	desktopPlan, err := desktop.lower(stubTrust{})
+	if err != nil { t.Fatal(err) }
+	desktopKeys := Keys(desktop.c, desktop.a, desktopPlan, desktop.target, ref("builder-v1"), []Ref{ref("build.compiler")})
+	if desktopKeys.Interpret != webKeys.Interpret || desktopKeys.Accept != webKeys.Accept {
+		t.Fatal("Target-local Provider selection changed accepted semantics")
+	}
+	if desktopKeys.Resolve == webKeys.Resolve || desktopKeys.Target == webKeys.Target {
+		t.Fatal("Target-specific Provider selection must invalidate exact Capability resolution")
+	}
+	// Composition resolution is intentionally target-dependent when Provider
+	// choice changes. Reuse of Accepted meaning does not mean reuse of Lock.
+}
+
 func TestNeutralPlanDoesNotAliasMutableCandidate(t *testing.T) {
 	f := orderFixture("tei.language.dsl")
 	neutral, err := Neutralize(f.c, f.a, stubTrust{})
