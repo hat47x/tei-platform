@@ -176,7 +176,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 				case rule.conflict:
 					row.Issue = "conflicting-rule"
 				default:
-					findings := evidenceDiagnostics("edge", edge.Evidence)
+					findings := evidenceDiagnostics("edge", sortedTraceEvidence(edge.Evidence))
 					if len(findings) != 0 {
 						row.Issue = findings[0].Code
 					} else {
