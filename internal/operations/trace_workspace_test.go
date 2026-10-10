@@ -21,7 +21,7 @@ func TestTraceWorkspaceReadOnlyCrossViewAndSource(t *testing.T) {
 		t.Fatalf("trace summary: %v", err)
 	}
 	if summary.Trace.Total < 2 || len(summary.Trace.Rows) != 0 ||
-		summary.Trace.SnapshotFingerprint == "" ||
+		summary.SnapshotFingerprint == "" ||
 		summary.Source.Status != "located" || len(summary.Source.References) == 0 ||
 		len(summary.RelatedSources) != 0 {
 		t.Fatalf("unexpected summary: %+v", summary)
@@ -37,7 +37,7 @@ func TestTraceWorkspaceReadOnlyCrossViewAndSource(t *testing.T) {
 	}
 	full, err := TraceWorkspace(root, key, modelref.TraceOptions{
 		Mode: "full", Direction: "both",
-		ExpectedFingerprint: summary.Trace.SnapshotFingerprint,
+		ExpectedFingerprint: summary.SnapshotFingerprint,
 	})
 	if err != nil {
 		t.Fatalf("trace full: %v", err)
