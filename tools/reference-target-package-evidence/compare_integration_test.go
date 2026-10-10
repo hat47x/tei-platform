@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -75,6 +76,13 @@ func TestGoBuildStaticEntrySelectionMatchesE0Closure(t *testing.T) {
 	difference, err := compareReports(unified, order)
 	if err != nil {
 		t.Fatalf("same-head Go closure comparison: %v", err)
+	}
+	liveDelta, err := compareLiveEntries("./cmd/unified", "./cmd/order", "")
+	if err != nil {
+		t.Fatalf("observe and compare actual entries in one command: %v", err)
+	}
+	if !reflect.DeepEqual(difference, liveDelta) {
+		t.Fatalf("live two-entry comparison differs from independently captured E0 reports: direct=%+v live=%+v", difference, liveDelta)
 	}
 	if unified.SourceRevision != order.SourceRevision ||
 		!hasPath(difference.BeforeOnly, "example.test/tei-closure-fixture/internal/repair") ||
