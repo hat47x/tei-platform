@@ -1,0 +1,189 @@
+{
+  "schemaVersion": "business-dfd-review-v0",
+  "authority": "proposal",
+  "procedure": "order-entry.approval-and-shipment-prep",
+  "triggers": [
+    {
+      "id": "TR-ORDER",
+      "kind": "event",
+      "targetStep": "APP-00",
+      "label": "external order arrival"
+    },
+    {
+      "id": "TR-OPERATOR",
+      "kind": "human",
+      "targetStep": "APP-00",
+      "label": "coordinator starts manual review"
+    },
+    {
+      "id": "TR-REVIEW",
+      "kind": "schedule",
+      "targetStep": "APP-00",
+      "label": "periodic backlog review (hypothesis)"
+    }
+  ],
+  "flows": [
+    {
+      "from": "APP-00",
+      "to": "APP-10",
+      "kind": "sequence"
+    },
+    {
+      "from": "APP-10",
+      "to": "APP-15",
+      "kind": "sequence"
+    },
+    {
+      "from": "APP-15",
+      "to": "APP-20",
+      "kind": "sequence"
+    },
+    {
+      "from": "APP-20",
+      "to": "APP-40",
+      "kind": "branch",
+      "condition": "business approver accepts order (hypothesis)"
+    },
+    {
+      "from": "APP-20",
+      "to": "APP-30",
+      "kind": "exception",
+      "condition": "business approver requests a correction (hypothesis)"
+    },
+    {
+      "from": "APP-30",
+      "to": "APP-00",
+      "kind": "branch",
+      "condition": "corrected request re-entered for review (hypothesis)"
+    },
+    {
+      "from": "APP-40",
+      "to": "APP-50",
+      "kind": "sequence"
+    },
+    {
+      "from": "APP-50",
+      "to": "APP-60",
+      "kind": "sequence"
+    }
+  ],
+  "businessRoles": [
+    {
+      "id": "sales",
+      "label": "order coordinator business role"
+    },
+    {
+      "id": "approver",
+      "label": "approver business role"
+    }
+  ],
+  "responsibilities": [
+    {
+      "step": "APP-00",
+      "role": "sales"
+    },
+    {
+      "step": "APP-10",
+      "role": "sales"
+    },
+    {
+      "step": "APP-15",
+      "role": "sales"
+    },
+    {
+      "step": "APP-20",
+      "role": "approver"
+    },
+    {
+      "step": "APP-30",
+      "role": "sales"
+    },
+    {
+      "step": "APP-50",
+      "role": "sales"
+    }
+  ],
+  "externalParties": [
+    {
+      "id": "customer",
+      "label": "customer"
+    },
+    {
+      "id": "supplier",
+      "label": "external inventory contact"
+    },
+    {
+      "id": "warehouse",
+      "label": "warehouse team outside approval process boundary"
+    }
+  ],
+  "stores": [
+    {
+      "id": "orders",
+      "label": "conceptual order data",
+      "semanticData": "sales.order"
+    }
+  ],
+  "informationFlows": [
+    {
+      "id": "INFO-ORDER",
+      "from": {
+        "kind": "store",
+        "id": "orders"
+      },
+      "to": {
+        "kind": "step",
+        "id": "APP-00"
+      },
+      "payload": "recorded order details"
+    },
+    {
+      "id": "INFO-DATE",
+      "from": {
+        "kind": "party",
+        "id": "customer"
+      },
+      "to": {
+        "kind": "step",
+        "id": "APP-10"
+      },
+      "payload": "customer delivery preference"
+    },
+    {
+      "id": "INFO-STOCK",
+      "from": {
+        "kind": "party",
+        "id": "supplier"
+      },
+      "to": {
+        "kind": "step",
+        "id": "APP-15"
+      },
+      "payload": "availability and stock readiness"
+    },
+    {
+      "id": "INFO-RETURN",
+      "from": {
+        "kind": "step",
+        "id": "APP-30"
+      },
+      "to": {
+        "kind": "party",
+        "id": "customer"
+      },
+      "payload": "required correction"
+    },
+    {
+      "id": "INFO-PREP",
+      "from": {
+        "kind": "step",
+        "id": "APP-50"
+      },
+      "to": {
+        "kind": "party",
+        "id": "warehouse"
+      },
+      "payload": "conditional shipment preparation request"
+    }
+  ]
+}
