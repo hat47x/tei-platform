@@ -11,7 +11,6 @@ import (
 
 type sourceIndexSubjectView = operations.SubjectSources
 
-
 func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, fmt.Errorf("source-index requires -workspace")
@@ -22,17 +21,12 @@ func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error
 		return nil, fmt.Errorf("-subject-kind and -subject-id must be supplied together")
 	}
 
+	if kind != "" {
+		return operations.TraceSubjectSources(root, sourceindex.Subject{Kind: kind, ID: id})
+	}
 	result, err := workspace.Load(root)
 	if err != nil {
 		return nil, err
 	}
-	index, err := workspace.BuildSourceIndex(root, result)
-	if err != nil {
-		return nil, err
-	}
-	if kind == "" {
-		return index, nil
-	}
-
-	return operations.TraceSubjectSources(root, sourceindex.Subject{Kind: kind, ID: id})
+	return workspace.BuildSourceIndex(root, result)
 }
