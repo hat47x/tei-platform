@@ -418,7 +418,9 @@ type CacheKeys struct {
 	Build     string
 }
 
-func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref) CacheKeys {
+// buildOnly is the selected builder's explicit dependency closure supplied by
+// the existing Build Artifact owner; it stays out of runtime Plan/Step.
+func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref, buildOnly []Ref) CacheKeys {
 	interpret := Digest(struct {
 		Source Ref
 		SourceInputs []Ref
@@ -452,12 +454,23 @@ func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref) Cach
 		Target Target
 		Realization []Step
 	}{resolve, target, plan.Steps})
+	buildInputs := append([]Ref(nil), buildOnly...)
+	sort.Slice(buildInputs, func(i, j int) bool {
+		if buildInputs[i].ID != buildInputs[j].ID {
+			return buildInputs[i].ID < buildInputs[j].ID
+		}
+		if buildInputs[i].Version != buildInputs[j].Version {
+			return buildInputs[i].Version < buildInputs[j].Version
+		}
+		return buildInputs[i].Fingerprint < buildInputs[j].Fingerprint
+	})
 	return CacheKeys{
 		Interpret: interpret, Accept: accept, Resolve: resolve,
 		Target: targetKey, Build: Digest(struct {
 			Target string
 			Builder Ref
-		}{targetKey, builder}),
+			BuildOnlyDependencies []Ref
+		}{targetKey, builder, buildInputs}),
 	}
 }
 
