@@ -227,3 +227,35 @@ test('a missing ContractQuery definition is never inferred from its containing C
   next.index.references.pop();
   assert.equal(check(old,next).reason,'report_index_source_mismatch');
 });
+
+test('a changed ContractQuery input attribute requalifies an unchanged Pattern and Query',()=>{
+  const input={
+    relation:'pattern-contract-query-input-attribute',
+    subject:{kind:'semantic-attribute',id:'customer.customer.customer_id'},
+    path:'semantic/customer/customer.tei',digit:'e',
+  };
+  const query={
+    relation:'pattern-contract-query',
+    subject:{kind:'database-contract-query',id:'master_data.customer/find_by_id'},
+    path:'databases/master-data/contracts/customer.tei',digit:'f',
+  };
+  const older=fixture([...subjects,query,input]),newer=structuredClone(older);
+  assert.equal(check(older,newer).status,'limited-unchanged');
+  newer.report.dependencies[5].source.fingerprint=sha('c');
+  newer.index.artifacts[5].fingerprint=sha('c');
+  const result=check(older,newer);
+  assert.equal(result.status,'unresolved');
+  assert.equal(result.reason,'indexed_source_changed');
+  assert.deepEqual(result.affected.map(x=>x.subject),[input.subject]);
+  assert.equal(result.fullClosure,false);
+});
+test('a missing semantic attribute definition cannot be inferred from the Query',()=>{
+  const input={
+    relation:'pattern-contract-query-input-attribute',
+    subject:{kind:'semantic-attribute',id:'customer.customer.customer_id'},
+    path:'semantic/customer/customer.tei',digit:'e',
+  };
+  const older=fixture([...subjects,input]),newer=structuredClone(older);
+  newer.index.references.pop();
+  assert.equal(check(older,newer).reason,'report_index_source_mismatch');
+});
