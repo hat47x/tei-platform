@@ -346,11 +346,12 @@ func verifyBuildGraphInputCoverage(
 		}
 		required := []BuildGraphInputBinding{{Kind: buildGraphInputBuilder}}
 		for _, dependency := range plan.Dependencies {
-			required = append(required, dependencyInput(
-				dependency.Kind,
-				dependency.ID,
-				dependency.Version,
-			))
+			required = append(required, BuildGraphInputBinding{
+				Kind:              buildGraphInputDependency,
+				DependencyKind:    dependency.Kind,
+				DependencyID:      dependency.ID,
+				DependencyVersion: dependency.Version,
+			})
 		}
 		for _, input := range required {
 			key := node.ID + "\x00" + input.key()
