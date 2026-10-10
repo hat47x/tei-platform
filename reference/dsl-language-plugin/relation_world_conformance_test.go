@@ -12,6 +12,9 @@ import (
 
 func TestWorldRelationAcrossNamespacesMatchesCanonicalValidator(t *testing.T) {
 	w := crossNamespaceRelationFixture()
+	if ds := validation.Validate(w); validation.HasErrors(ds) {
+		t.Fatalf("cross-namespace fixture is not a valid canonical world: %#v", ds)
+	}
 	if ds := validation.ValidateSemanticRelationKeys(w); len(ds) != 0 {
 		t.Fatalf("canonical relation keys invalid: %#v", ds)
 	}
@@ -113,7 +116,8 @@ func crossNamespaceRelationFixture() ir.World {
 			}},
 		},
 		{
-			ID: "customer",
+			ID:    "customer",
+			Types: []semantic.Type{{ID: "customer.customer_id", Symbol: "CustomerId", Kind: semantic.TypePrimitive}},
 			Data: []semantic.Data{{
 				ID: "customer.customer",
 				Attributes: []semantic.Attribute{
