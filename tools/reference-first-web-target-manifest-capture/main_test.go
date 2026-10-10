@@ -84,6 +84,7 @@ func TestCaptureFailsBeforePrintingBytesOnWrongIdentityOrProtocol(t *testing.T) 
 		{name: "duplicate-root", code: 200, contentType: "application/json", body: `{"applicationId":"repair_intake",` + webManifest[1:]},
 		{name: "malformed-json", code: 200, contentType: "application/json", body: "{broken"},
 		{name: "html", code: 200, contentType: "text/html", body: webManifest},
+		{name: "compressed-transport", code: 200, contentType: "application/json", body: webManifest},
 		{name: "redirect", code: 302, contentType: "text/html", body: "redirect"},
 		{name: "not-found", code: 404, contentType: "text/plain", body: "not found"},
 		{name: "oversized", code: 200, contentType: "application/json", body: strings.Repeat("a", maxCaptureBytes+1)},
@@ -92,6 +93,9 @@ func TestCaptureFailsBeforePrintingBytesOnWrongIdentityOrProtocol(t *testing.T) 
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", tc.contentType)
+				if tc.name == "compressed-transport" {
+					w.Header().Set("Content-Encoding", "gzip")
+				}
 				w.WriteHeader(tc.code)
 				fmt.Fprint(w, tc.body)
 			}))
