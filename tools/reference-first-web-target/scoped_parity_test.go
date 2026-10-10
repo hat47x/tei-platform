@@ -37,7 +37,10 @@ func TestScopedBusinessRoutesMatchExistingCombinedTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	type requestCase struct{ method, path, body string }
+	type requestCase struct {
+		method, path, body string
+		status             int
+	}
 	for _, tc := range []struct {
 		name   string
 		server *webTargetServer
@@ -47,27 +50,27 @@ func TestScopedBusinessRoutesMatchExistingCombinedTarget(t *testing.T) {
 			name: "order_entry",
 			server: order,
 			cases: []requestCase{
-				{http.MethodGet, "/manifest.json", ""},
-				{http.MethodGet, "/healthz", ""},
-				{http.MethodGet, "/scenario/read?from=2026-09-18T08:30:00Z&row=0", ""},
-				{http.MethodGet, "/scenario/read?row=-1", ""},
-				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`},
-				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-viewer","credential":"viewer-secret","from":"2026-09-18T08:30:00Z","row":0}`},
-				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"wrong-secret","from":"2026-09-18T08:30:00Z","row":0}`},
-				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}`},
-				{http.MethodPost, "/scenario/submit", `{"unknown":"field"}`},
+				{http.MethodGet, "/manifest.json", "", http.StatusOK},
+				{http.MethodGet, "/healthz", "", http.StatusOK},
+				{http.MethodGet, "/scenario/read?from=2026-09-18T08:30:00Z&row=0", "", http.StatusOK},
+				{http.MethodGet, "/scenario/read?row=-1", "", http.StatusBadRequest},
+				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK},
+				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-viewer","credential":"viewer-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK},
+				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"wrong-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK},
+				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}`, http.StatusUnprocessableEntity},
+				{http.MethodPost, "/scenario/submit", `{"unknown":"field"}`, http.StatusBadRequest},
 			},
 		},
 		{
 			name: "repair_intake",
 			server: repair,
 			cases: []requestCase{
-				{http.MethodGet, "/manifest.json", ""},
-				{http.MethodGet, "/healthz", ""},
-				{http.MethodGet, "/scenario/customer-lookup?customerId=11", ""},
-				{http.MethodGet, "/scenario/customer-lookup?customerId=abc", ""},
-				{http.MethodGet, "/scenario/customer-lookup", ""},
-				{http.MethodPost, "/scenario/customer-lookup?customerId=11", ""},
+				{http.MethodGet, "/manifest.json", "", http.StatusOK},
+				{http.MethodGet, "/healthz", "", http.StatusOK},
+				{http.MethodGet, "/scenario/customer-lookup?customerId=11", "", http.StatusOK},
+				{http.MethodGet, "/scenario/customer-lookup?customerId=abc", "", http.StatusBadRequest},
+				{http.MethodGet, "/scenario/customer-lookup", "", http.StatusBadRequest},
+				{http.MethodPost, "/scenario/customer-lookup?customerId=11", "", http.StatusMethodNotAllowed},
 			},
 		},
 	} {
@@ -90,6 +93,10 @@ func TestScopedBusinessRoutesMatchExistingCombinedTarget(t *testing.T) {
 					}
 					before := invoke(combined)
 					after := invoke(scoped)
+					if before.Code != input.status || after.Code != input.status {
+						t.Fatalf("%s %s: historical HTTP %d, scoped HTTP %d, expected %d",
+							input.method, input.path, before.Code, after.Code, input.status)
+					}
 					if before.Code != after.Code ||
 						before.Body.String() != after.Body.String() ||
 						before.Header().Get("Content-Type") != after.Header().Get("Content-Type") {
