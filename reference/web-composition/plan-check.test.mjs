@@ -108,3 +108,39 @@ test('unused authentication output does not prove Action authentication', () => 
   p.steps.find(step=>step.id==='authorize').requires=['action.identity'];
   assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
 });
+
+test('authentication label on shared context does not prove session identity', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='identity').guards=[];
+  p.steps.find(step=>step.id==='context').guards=['authenticated'];
+  assert.throws(()=>composeRequestPlan(p),/guard declaration lacks corresponding evidence: authenticated/);
+});
+test('CSRF label on unrelated context does not prove origin check', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='csrf').guards=[];
+  p.steps.find(step=>step.id==='context').guards=['csrf-protected'];
+  assert.throws(()=>composeRequestPlan(p),/guard declaration lacks corresponding evidence: csrf-protected/);
+});
+test('authorization label on identity step does not prove business grant', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='authorize').guards=[];
+  p.steps.find(step=>step.id==='identity').guards.push('action-authorized');
+  assert.throws(()=>composeRequestPlan(p),/guard declaration lacks corresponding evidence: action-authorized/);
+});
+test('authentication policy identity cannot be defined twice', () => {
+  const p=clone(authentication);
+  p.policies.push(clone(p.policies[0]));
+  assert.throws(()=>validateAuthenticationPlan(p),/duplicate authentication policy identity/);
+});
+test('duplicate source identity mapping is not silently coalesced', () => {
+  const p=clone(authentication);
+  p.subjectLinks.push(clone(p.subjectLinks[0]));
+  assert.throws(()=>validateAuthenticationPlan(p),/duplicate identity link declaration/);
+});
+test('empty authentication plan is not a viable provider selection', () => {
+  const p=clone(authentication);
+  p.providers=[];
+  p.policies=[];
+  p.subjectLinks=[];
+  assert.throws(()=>validateAuthenticationPlan(p),/active policy and provider/);
+});
