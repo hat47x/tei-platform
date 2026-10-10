@@ -24,6 +24,9 @@ type Table struct {
 type Field struct {
 	ID       string `json:"id"`
 	Type     string `json:"type"`
+	// SemanticType retains the original TEI attribute type identity where known.
+	// Equality of JSON values does not imply equality of semantic domains.
+	SemanticType string `json:"semanticType,omitempty"`
 	Required bool   `json:"required,omitempty"`
 	Visible  bool   `json:"visible,omitempty"`
 	RefTable string `json:"refTable,omitempty"`
