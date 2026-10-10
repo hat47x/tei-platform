@@ -20,6 +20,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Git environment overrides can redirect -C to a different working tree, index,
+# object store or namespace. Cleanliness must refer to this actual checkout.
+# Refuse such overrides rather than silently qualifying a different repository.
+for git_override in \
+  GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_NAMESPACE \
+  GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES \
+  GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT; do
+  if [[ -n "${!git_override:-}" ]]; then
+    echo "external-coordination reference rejects Git environment override: $git_override" >&2
+    exit 2
+  fi
+done
+
 if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "external-coordination reference requires a Git checkout" >&2
   exit 2
