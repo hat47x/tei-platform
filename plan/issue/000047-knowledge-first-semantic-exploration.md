@@ -806,7 +806,11 @@ independent association
 
 positive association pressureとして`reference/business-system-design/data-determinant-association-pressure.md`を追加した。CoverageAssignmentではServiceContract / Assetが独立occurrenceで、同じ組合せを時間を変えて再activationできるため、pairだけでもsurrogate `assignment_id`だけでもbusiness occurrence identityを説明できない。Reference business factとして、ServiceContract occurrence + Asset occurrence + effectiveFromをoccurrence identity候補とし、effectiveToとhistory revisionを別責務へ分ける。二種類のPersistence Realizationでもbusiness meaningを維持する。
 
-このReferenceにより、現行Core contractがSource-backedなbusiness occurrence identity / scoped FDをaccepted meaningとして直接authorできないrepresentational gapが具体化した。次段では、contained repeatとassociationに共通する最小contract shapeを比較し、changeable referenceへ誤適用しない形だけをCore contract候補として再評価する。
+このReferenceにより、現行Core contractがSource-backedなbusiness occurrence identity / scoped FDをaccepted meaningとして直接authorできないrepresentational gapが具体化した。
+
+共通shapeの比較結果は`plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md`へ分離した。第一候補は、determinant term語彙を共有しつつ、business occurrence identity / candidate key / functional dependencyを別assertionにする構造である。contained repeatではRelation source occurrence + local Attribute、associationでは複数のRelation target occurrence + temporal/local Attributeを同じterm vocabularyで表現できる。一方、changeable referenceはRelationが存在するだけではidentity termにしない。
+
+Parser / Canonical IRへの新primitive実装はまだ開始しない。CoverageAssignment Referenceを既存Business System Design review flowへ通し、Relation semanticsのdurable contractが別途必要かを含めて確認した後に再評価する。
 
 ### 現在のEvidence境界 — 2026-10-09
 
