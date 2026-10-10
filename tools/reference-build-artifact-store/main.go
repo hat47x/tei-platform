@@ -31,8 +31,10 @@ var artifactStoreAuthorityLimits = []string{
 }
 
 type localArtifactStore struct {
-	root     string
-	maxBytes int64
+	root             string
+	maxBytes         int64
+	algorithmDir     string
+	algorithmDirInfo os.FileInfo
 }
 
 type artifactStoreReceipt struct {
@@ -66,12 +68,15 @@ func openLocalArtifactStore(root string, maxBytes int64) (localArtifactStore, er
 		return localArtifactStore{}, fmt.Errorf("artifact store root is not a directory")
 	}
 	store := localArtifactStore{
-		root:     resolved,
-		maxBytes: maxBytes,
+		root:         resolved,
+		maxBytes:     maxBytes,
+		algorithmDir: filepath.Join(resolved, artifactDigestAlgorithm),
 	}
-	if err := store.ensureAlgorithmDirectory(); err != nil {
+	algorithmDirInfo, err := store.ensureAlgorithmDirectory()
+	if err != nil {
 		return localArtifactStore{}, err
 	}
+	store.algorithmDirInfo = algorithmDirInfo
 	return store, nil
 }
 
@@ -122,6 +127,9 @@ func (s localArtifactStore) PutBytes(value []byte) (artifactStoreReceipt, error)
 		return artifactStoreReceipt{}, fmt.Errorf("verify artifact store temp file: %w", err)
 	}
 
+	if err := s.verifyAlgorithmDirectory(); err != nil {
+		return artifactStoreReceipt{}, err
+	}
 	if err := os.Link(tempPath, target); err != nil {
 		if !os.IsExist(err) {
 			return artifactStoreReceipt{}, fmt.Errorf("publish artifact store object without overwrite: %w", err)
@@ -155,28 +163,44 @@ func (s localArtifactStore) GetBytes(expectedDigest string) ([]byte, artifactSto
 	return value, s.receipt("get", normalized, int64(len(value)), path), nil
 }
 
-func (s localArtifactStore) ensureAlgorithmDirectory() error {
-	dir := filepath.Join(s.root, artifactDigestAlgorithm)
-	if err := os.Mkdir(dir, 0o755); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("create artifact store algorithm directory: %w", err)
+func (s localArtifactStore) ensureAlgorithmDirectory() (os.FileInfo, error) {
+	if err := os.Mkdir(s.algorithmDir, 0o755); err != nil && !os.IsExist(err) {
+		return nil, fmt.Errorf("create artifact store algorithm directory: %w", err)
 	}
-	info, err := os.Lstat(dir)
+	info, err := os.Lstat(s.algorithmDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-		return fmt.Errorf("artifact store algorithm path is not a real directory")
+		return nil, fmt.Errorf("artifact store algorithm path is not a real directory")
+	}
+	return info, nil
+}
+
+func (s localArtifactStore) verifyAlgorithmDirectory() error {
+	info, err := os.Lstat(s.algorithmDir)
+	if err != nil {
+		return fmt.Errorf("%w: artifact store algorithm directory is unavailable", errArtifactCorrupt)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return fmt.Errorf("%w: artifact store algorithm path is not a real directory", errArtifactCorrupt)
+	}
+	if s.algorithmDirInfo == nil || !os.SameFile(s.algorithmDirInfo, info) {
+		return fmt.Errorf("%w: artifact store algorithm directory was replaced", errArtifactCorrupt)
 	}
 	return nil
 }
 
 func (s localArtifactStore) pathForDigest(digest string) (string, error) {
+	if err := s.verifyAlgorithmDirectory(); err != nil {
+		return "", err
+	}
 	normalized, err := normalizeDigest(digest)
 	if err != nil {
 		return "", err
 	}
 	hexDigest := strings.TrimPrefix(normalized, "sha256:")
-	return filepath.Join(s.root, artifactDigestAlgorithm, hexDigest), nil
+	return filepath.Join(s.algorithmDir, hexDigest), nil
 }
 
 func (s localArtifactStore) readVerified(path, expectedDigest string) ([]byte, error) {
@@ -239,6 +263,9 @@ func (s localArtifactStore) readVerified(path, expectedDigest string) ([]byte, e
 	}
 	if !os.SameFile(opened, afterPath) {
 		return nil, fmt.Errorf("%w: stored object path changed while reading", errArtifactCorrupt)
+	}
+	if err := s.verifyAlgorithmDirectory(); err != nil {
+		return nil, err
 	}
 	return buffer.Bytes(), nil
 }
