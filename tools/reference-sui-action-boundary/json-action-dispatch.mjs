@@ -1,0 +1,40 @@
+// Browser-side same-origin transport for the reference native action boundary.
+// The endpoint must be hosted by the application runtime, not a direct third-party URL.
+export class ActionCommitError extends Error {
+  constructor(code, status) {
+    super(code);
+    this.name = "ActionCommitError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
+export function createJSONActionDispatcher(endpoint, fetchImpl = globalThis.fetch) {
+  if (typeof endpoint !== "string" || !endpoint.startsWith("/") || endpoint.startsWith("//") ||
+      typeof fetchImpl !== "function") {
+    throw new TypeError("same-origin endpoint path and fetch function are required");
+  }
+  return async (intent) => {
+    const result = await fetchImpl(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-TEI-Action": "commit" },
+      credentials: "same-origin",
+      cache: "no-store",
+      body: JSON.stringify(intent),
+    });
+    let body;
+    try {
+      body = await result.json();
+    } catch {
+      throw new ActionCommitError("invalid_response", result.status);
+    }
+    if (!result.ok) {
+      const code = typeof body?.error === "string" ? body.error : "execution_failed";
+      throw new ActionCommitError(code, result.status);
+    }
+    if (typeof body?.revision !== "string" || body.revision.length === 0) {
+      throw new ActionCommitError("invalid_response", result.status);
+    }
+    return body.revision;
+  };
+}
