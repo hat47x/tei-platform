@@ -37,7 +37,7 @@ request
 
 ### Prepare
 
-Prepareは外部から観測できる副作用を確定しない。Providerはpreparation identity、Invocation Key、request digest、prepared result、result digest、concurrency token、preparation fingerprintを返す。
+Prepareは業務上の副作用を確定しない。Providerはpreparation identity、Invocation Key、request digest、prepared result、result digest、concurrency token、preparation fingerprintを返す。transaction handle、lease、lock等の可逆な内部resourceは許容するが、commit前ならAbortまたはtimeoutで解放できることを前提とする。
 
 Hostはprepared resultをcommit前に検査する。検査に失敗した場合はcommitしない。
 
@@ -45,7 +45,11 @@ Hostはprepared resultをcommit前に検査する。検査に失敗した場合�
 
 result validation後、commit前にprepared handleをJournalへ記録する。記録できない場合はcommitしない。
 
-process停止後もInvocation Keyからprepared handleを復元し、Providerのstatusへ戻れる必要がある。Referenceのmemory Journalは永続性Evidenceではない。productionではdurable storage、暗号化、複製、retention等を別に決める必要がある。
+process停止後もInvocation Keyからprepared handleを復元し、Providerのstatusへ戻れる必要がある。
+
+durable handleへprepared result payloadの生bytesは入れない。Journalはrequest / result digest、preparation identity、concurrency token等の回復情報を保持する。再起動後のreconcileはcommit outcomeを確定し、result payloadの再取得が必要な場合は別のObservation / Query境界へ委ねる。
+
+Referenceのmemory Journalは永続性Evidenceではない。productionではdurable storage、暗号化、複製、retention等を別に決める必要がある。
 
 ### Commit / Reconcile
 
@@ -57,7 +61,7 @@ Provider receiptがprepared identityと一致しない場合も、副作用が�
 
 `unknown`になったmutationは、Journalからprepared handleを復元してProvider statusへ戻る。statusでも確定できなければ`unknown`を維持する。
 
-Journalにcommitted / not-committed receiptが既にあれば、Provider commitを再実行せずJournalから結果を再構築する。
+Journalにcommitted / not-committed receiptが既にあれば、Provider commitを再実行せずJournalからoutcomeを再構築する。
 
 ## Idempotency
 
@@ -78,6 +82,14 @@ prepared resultはprepare時点のstateに基づく。ReferenceではConcurrency
 `unknown`は失敗の言い換えではない。外部状態を確認できるまで副作用の有無を断定しない。
 
 commit後にoutcome receiptのJournal保存だけが失敗した場合も、副作用をrollback済みとは扱わない。current callerにはcommitted outcomeとJournal errorを同時に返し、同じInvocation Keyから再入場できる余地を保つ。
+
+## Fingerprint / cleanup
+
+request / result digestはraw bytesへSHA-256を適用する。prepared / Provider receipt / Mutation receiptのfingerprintはfield境界を保ったstructをJSONへmarshalしてからSHA-256を適用する。NUL区切り連結等の曖昧なfield結合は使わない。
+
+prepare後にrequestがcancelされた場合も、Abort cleanupへ同じcancel済みContextを渡さない。Hostの値を保ちつつcancel / deadlineを外したcleanup Contextで、未commit stateの解放をbest-effort実行する。
+
+このAbortはcommit済み効果を打ち消すcompensationではない。
 
 ## Compensation
 
@@ -112,7 +124,7 @@ Application Runtimeでmutating Capabilityを実行する場合はRQ-019のAuthor
 - prepare / validate / journal / commitの順序をExecutable Referenceで確認できる
 - idempotency keyとrequest identityを固定できる
 - commit transport failureを`unknown`として保持できる
-- Journalからprocess再起動後のreconcileへ戻れる
+- payload-freeなJournal handleからprocess再起動後のoutcome reconcileへ戻れる
 - stale prepared resultをcommitしない
 - committed effectとJournal / receipt failureを混同しない
 - compensationを暗黙recoveryとして扱わない
