@@ -158,6 +158,12 @@ func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r
 	if request.From == "" {
 		request.From = "2026-09-01T00:00:00Z"
 	}
+	// The shared Read Runner requires RFC3339. Reject malformed client input
+	// before making a business read instead of reporting it as a backend fault.
+	if _, err := time.Parse(time.RFC3339, request.From); err != nil {
+		http.Error(w, "from must be RFC3339", http.StatusBadRequest)
+		return
+	}
 	result, err := s.protectedSessionConfig.Runner.RunVerifiedSessionCommand(
 		r.Context(), s.protectedSessionConfig.SubjectLinks, request.From, request.RowIndex)
 	// A successful HTTP authorization is not evidence of a completed Action.
