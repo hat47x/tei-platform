@@ -57,7 +57,7 @@ SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一�
 
 この段階は、SUIが自身のDomain MutationとDocument保存を所有する構造の確認です。**TEI Go Hostからこのコマンドを実際に呼ぶ経路、及びSUI側の純粋コマンドと原子的CASを同一実行境界に結ぶ処理は未完成**です。Pythonの追加テスト、TypeScriptの追加テストと全体健全性検査も未実施です。SUIの現在のPUTに存在するテナント分離・SafeMode・レビュー帰属・アーカイブ判定の手続きを、独立したTEI Action経路から迂回してはいけません。
 
-SUI側のTypeScriptとPythonで島境界判定を実装するため、次の段階で同一fixtureを双方に通し差分を検出する検証が必須です。差異が残る間はUIからのAction確定を本番経路として有効にしません。
+SUI側のTypeScriptとPythonで島境界判定を実装するため、同じ入力と期待状態を使う`card_move_parity_v1.json`を[SUI PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)へ追加しました。矩形加入、通常移動、グリッド吸着、多角形境界の4ケースを双方のテストから参照します。**まだ実行結果は確認できていません。** 追加の敵対的ケース・性能比較・本番E2Eで差異を検出できるまで、UIからのAction確定を本番経路として有効にしません。
 
 ## SUI実接続の条件（2026-10-10時点）
 
