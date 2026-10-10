@@ -706,3 +706,57 @@ func TestNonConfidentialDownstreamErrorPreservesType(t *testing.T) {
 		t.Fatalf("nonconfidential downstream error changed identity: %v", err)
 	}
 }
+
+func TestConfidentialDownstreamErrorPreservesTrustedControlCancellation(t *testing.T) {
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := invokeWithExecutionContext(
+		parent, accessSlotContracts(), accessRequirement(),
+		accessHost("secret-access"), []byte("request"),
+		func(ctx context.Context, _ ContextSlotView, _ []byte) ([]byte, error) {
+			cancel()
+			<-ctx.Done()
+			return nil, fmt.Errorf("provider canceled: %w", ctx.Err())
+		},
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("trusted control cancellation was erased: %v", err)
+	}
+}
+
+func TestConfidentialDownstreamErrorPreservesTrustedControlDeadline(t *testing.T) {
+	parent, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
+	defer cancel()
+	_, err := invokeWithExecutionContext(
+		parent, accessSlotContracts(), accessRequirement(),
+		accessHost("secret-access"), []byte("request"),
+		func(ctx context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			<-ctx.Done()
+			secret, _ := slots.Lookup(testAccessSlot)
+			return nil, &hiddenCredentialError{credential: string(secret)}
+		},
+	)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("trusted control deadline was erased: %v", err)
+	}
+	var secret *hiddenCredentialError
+	if errors.As(err, &secret) {
+		t.Fatal("typed downstream error escaped during deadline cancellation")
+	}
+}
+
+func TestConfidentialDownstreamCannotSpoofControlCancellation(t *testing.T) {
+	_, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost("secret-access"), []byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			return nil, fmt.Errorf("forged cancel: %w", context.Canceled)
+		},
+	)
+	if err == nil || errors.Is(err, context.Canceled) {
+		t.Fatalf("untrusted downstream error forged trusted cancellation: %v", err)
+	}
+	if !strings.Contains(err.Error(), "confidential error detail withheld") {
+		t.Fatalf("expected opaque error rather than downstream detail: %v", err)
+	}
+}
