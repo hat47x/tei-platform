@@ -239,3 +239,26 @@ func TestSelectiveCacheKeys(t *testing.T) {
 		t.Fatal("source change must invalidate interpretation and acceptance")
 	}
 }
+
+func TestNeutralPlanDoesNotAliasMutableCandidate(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	neutral, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := Digest(neutral)
+	f.c.Requirements[1].RequiredSlots[0].ID = "mutated.slot"
+	if Digest(neutral) != before {
+		t.Fatal("neutral plan shared mutable context slot backing array")
+	}
+}
+
+func TestMalformedContextDeclarationRejected(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	f.c.Requirements[1].RequiredSlots = append(f.c.Requirements[1].RequiredSlots, f.c.Requirements[1].RequiredSlots[0])
+	f.a.CandidateDigest = Digest(f.c)
+	_, err := Neutralize(f.c, f.a, stubTrust{})
+	if got := code(err); got != "invalid-context-declaration" {
+		t.Fatalf("got %s, want invalid-context-declaration", got)
+	}
+}
