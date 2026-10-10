@@ -35,6 +35,7 @@ type SubjectInspection struct {
 	Subject          sourceindex.Subject `json:"subject"`
 	Canonical        json.RawMessage     `json:"canonical"`
 	WorldFingerprint string              `json:"worldFingerprint"`
+	SourceIndexFingerprint string          `json:"sourceIndexFingerprint"`
 	SourceStatus     string              `json:"sourceStatus"`
 	Sources          SubjectSources      `json:"sources"`
 }
@@ -72,9 +73,9 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 	if err != nil {
 		return SubjectInspection{}, err
 	}
-	worldJSON, err := json.Marshal(loaded.World)
+	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, idx)
 	if err != nil {
-		return SubjectInspection{}, fmt.Errorf("serialize normalized World: %w", err)
+		return SubjectInspection{}, err
 	}
 	status := "not-indexed"
 	if len(sources.References) > 0 {
@@ -85,7 +86,8 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 		Effect: "read-only",
 		Subject: subject,
 		Canonical: canonical,
-		WorldFingerprint: sourceindex.Fingerprint(worldJSON),
+		WorldFingerprint: worldFP,
+		SourceIndexFingerprint: sourceFP,
 		SourceStatus: status,
 		Sources: sources,
 	}, nil
