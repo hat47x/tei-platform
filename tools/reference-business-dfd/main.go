@@ -114,6 +114,7 @@ type stepNode struct {
 	Realization string `json:"realization"`
 	NoApplicationFunction bool `json:"noApplicationFunction"`
 	FunctionRefs []functionRef `json:"functionRefs"`
+	ExplicitMeaning []directMeaningRef `json:"explicitMeaning"`
 	Source location `json:"source"`
 }
 type triggerNode struct {
@@ -227,7 +228,12 @@ func build(f fixture, r review, set procedureSet, world ir.World, procedureFile,
 		ids[s.ID] = true
 		node := stepNode{ID:s.ID,Label:s.BusinessAction,Realization:s.Realization,
 			NoApplicationFunction:len(s.ApplicationPatterns)==0,
-			FunctionRefs:[]functionRef{},Source:loc}
+			FunctionRefs:[]functionRef{},ExplicitMeaning:[]directMeaningRef{},Source:loc}
+		// Exact direct semantic refs are the authoring input of a Business
+		// Step; they must remain visible even with no Application Function.
+		direct, directDiagnostics:=explicitMeaningRefs(s,world,procedureFile,i)
+		node.ExplicitMeaning=direct
+		p.Diagnostics=append(p.Diagnostics,directDiagnostics...)
 		for j, ref := range s.ApplicationPatterns {
 			used[ref] = true
 			resolved := patterns[ref]
