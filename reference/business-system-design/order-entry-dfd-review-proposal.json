@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "business-dfd-review-v0",
+  "authority": "proposal",
+  "procedure": "order-entry.order-handling",
+  "triggers": [
+    {
+      "id": "TR-HUMAN",
+      "kind": "human",
+      "targetStep": "BP-00",
+      "label": "sales operator starts a pending order review"
+    },
+    {
+      "id": "TR-EVENT",
+      "kind": "event",
+      "targetStep": "BP-00",
+      "label": "an external order notification arrives (hypothesis)"
+    },
+    {
+      "id": "TR-SCHEDULE",
+      "kind": "schedule",
+      "targetStep": "BP-00",
+      "label": "periodic order queue review (hypothesis)"
+    }
+  ],
+  "flows": [
+    {
+      "from": "BP-00",
+      "to": "BP-01",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-01",
+      "to": "BP-02",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-02",
+      "to": "BP-03",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-03",
+      "to": "BP-04",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-04",
+      "to": "BP-05",
+      "kind": "branch",
+      "condition": "manual review found no outstanding issue (hypothesis)"
+    },
+    {
+      "from": "BP-04",
+      "to": "BP-01",
+      "kind": "exception",
+      "condition": "order requires correction or clarification (hypothesis)"
+    },
+    {
+      "from": "BP-05",
+      "to": "BP-06",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-06",
+      "to": "BP-07",
+      "kind": "branch",
+      "condition": "authorization permits submit (hypothesis)"
+    },
+    {
+      "from": "BP-06",
+      "to": "BP-09",
+      "kind": "exception",
+      "condition": "authorization denied (hypothesis)"
+    },
+    {
+      "from": "BP-07",
+      "to": "BP-08",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-08",
+      "to": "BP-09",
+      "kind": "sequence"
+    }
+  ]
+}
