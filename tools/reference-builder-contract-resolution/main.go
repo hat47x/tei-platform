@@ -354,8 +354,24 @@ func validateResolution(resolution BuilderResolution) error {
 	if err := validateFingerprint("contract fingerprint", resolution.ContractFingerprint); err != nil {
 		return err
 	}
+	expectedContractFingerprint, err := builderContractFingerprint(resolution.Contract)
+	if err != nil {
+		return err
+	}
+	if canonicalFingerprint(expectedContractFingerprint) != canonicalFingerprint(resolution.ContractFingerprint) {
+		return fmt.Errorf("resolution contract fingerprint does not match Contract")
+	}
 	if err := validateProvider(resolution.Provider); err != nil {
 		return err
+	}
+	if resolution.Provider.Scope != scopeBuildTool {
+		return fmt.Errorf("resolution provider scope %q is not build-tool", resolution.Provider.Scope)
+	}
+	if resolution.Provider.ContractID != resolution.Contract.ID ||
+		resolution.Provider.ContractVersion != resolution.Contract.Version ||
+		canonicalFingerprint(resolution.Provider.ContractFingerprint) != canonicalFingerprint(resolution.ContractFingerprint) ||
+		resolution.Provider.ConformanceProfile != resolution.Contract.ConformanceProfile {
+		return fmt.Errorf("resolution Provider does not match Contract")
 	}
 	if err := validateFingerprint("Evidence fingerprint", resolution.EvidenceFingerprint); err != nil {
 		return err
@@ -363,8 +379,24 @@ func validateResolution(resolution BuilderResolution) error {
 	if err := resolution.Builder.Validate(); err != nil {
 		return err
 	}
+	expectedBuilder := plugin.BuilderIdentity{
+		ID:              resolution.Provider.ProviderID,
+		Version:         resolution.Provider.ProviderVersion,
+		ContractVersion: resolution.Contract.ID + "@" + resolution.Contract.Version,
+		ArtifactDigest:  canonicalDigest(resolution.Provider.ArtifactDigest),
+	}
+	if canonicalBuilderIdentity(resolution.Builder) != canonicalBuilderIdentity(expectedBuilder) {
+		return fmt.Errorf("resolution BuilderIdentity does not match selected Provider")
+	}
 	if err := validateFingerprint("resolution fingerprint", resolution.ResolutionFingerprint); err != nil {
 		return err
+	}
+	expectedResolutionFingerprint, err := resolutionFingerprint(resolution)
+	if err != nil {
+		return err
+	}
+	if canonicalFingerprint(expectedResolutionFingerprint) != canonicalFingerprint(resolution.ResolutionFingerprint) {
+		return fmt.Errorf("resolution fingerprint does not match resolution fields")
 	}
 	return nil
 }
@@ -388,6 +420,9 @@ func validateLock(lock BuilderResolutionLock) error {
 	if lock.ProviderID == "" || !core.ValidNumericVersion(lock.ProviderVersion) || strings.TrimSpace(lock.ImplementationID) == "" {
 		return fmt.Errorf("invalid locked builder provider identity")
 	}
+	if _, err := core.ParseCanonicalID(string(lock.ProviderID)); err != nil {
+		return fmt.Errorf("lock provider id: %w", err)
+	}
 	if _, err := canonicalDigestChecked(lock.ArtifactDigest); err != nil {
 		return err
 	}
@@ -396,6 +431,15 @@ func validateLock(lock BuilderResolutionLock) error {
 	}
 	if err := lock.Builder.Validate(); err != nil {
 		return err
+	}
+	expectedBuilder := plugin.BuilderIdentity{
+		ID:              lock.ProviderID,
+		Version:         lock.ProviderVersion,
+		ContractVersion: lock.ContractID + "@" + lock.ContractVersion,
+		ArtifactDigest:  canonicalDigest(lock.ArtifactDigest),
+	}
+	if canonicalBuilderIdentity(lock.Builder) != canonicalBuilderIdentity(expectedBuilder) {
+		return fmt.Errorf("lock BuilderIdentity does not match locked Provider")
 	}
 	if err := validateFingerprint("lock resolution fingerprint", lock.ResolutionFingerprint); err != nil {
 		return err
