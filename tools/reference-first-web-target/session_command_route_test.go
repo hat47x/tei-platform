@@ -43,18 +43,18 @@ func sessionWebProjectionAndRunner(t *testing.T) (webTargetProjection, *referenc
 func syntheticProtectedSessionConfiguration(runner *referenceCommandScenarioRunner) protectedSessionCommandConfig {
 	corporateIssuer := "https://issuer.example.invalid/tenant1"
 	identities := map[string]webcomposition.Principal{
-		"corporate-editor": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor", PrincipalID: "employee-1"},
-		"corporate-viewer": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer", PrincipalID: "employee-2"},
-		"legacy-editor":    {ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor", PrincipalID: "employee-1"},
-		"corporate-locked": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked", PrincipalID: "employee-locked"},
+		"corporate-editor":   {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor", PrincipalID: "employee-1"},
+		"corporate-viewer":   {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer", PrincipalID: "employee-2"},
+		"legacy-editor":      {ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor", PrincipalID: "employee-1"},
+		"corporate-locked":   {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked", PrincipalID: "employee-locked"},
 		"corporate-disabled": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-disabled", PrincipalID: "employee-disabled"},
 	}
 	links := map[webcomposition.ExternalSubject]webcomposition.SubjectLink{
 		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor"}:     {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
 		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer"}:     {PrincipalID: "employee-2", SubjectID: "subject-order-viewer"},
 		{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor"}: {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
-		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked"}: {PrincipalID: "employee-locked", SubjectID: "subject-order-locked"},
-		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-disabled"}: {PrincipalID: "employee-disabled", SubjectID: "subject-order-disabled"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked"}:     {PrincipalID: "employee-locked", SubjectID: "subject-order-locked"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-disabled"}:   {PrincipalID: "employee-disabled", SubjectID: "subject-order-disabled"},
 	}
 	return protectedSessionCommandConfig{
 		Runner:    runner,
@@ -74,7 +74,7 @@ func syntheticProtectedSessionConfiguration(runner *referenceCommandScenarioRunn
 			return link, ok, nil
 		},
 		AccountNow: func() time.Time { return runner.now }, // deterministic fixture clock, not production expiry
-		Audit: func(webcomposition.AuditRecord) {},
+		Audit:      func(webcomposition.AuditRecord) {},
 	}
 }
 
