@@ -342,6 +342,9 @@ func TestInvalidDataRequirementsFailClosed(t *testing.T) {
 		want string
 	}{
 		{"empty-constraint", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "" }, "invalid-data-requirement"},
+		{"unknown-constraint", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "latest" }, "invalid-data-requirement"},
+		{"zero-major", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "^0" }, "invalid-data-requirement"},
+		{"non-canonical-major", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "^02" }, "invalid-data-requirement"},
 		{"duplicate-contract", func(f *fixture) {
 			f.c.Requirements[0].DataContracts = append(f.c.Requirements[0].DataContracts, f.c.Requirements[0].DataContracts[0])
 		}, "duplicate-data-requirement"},
