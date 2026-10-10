@@ -1,0 +1,113 @@
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func gitTest(t *testing.T, root string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	data, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v: %s", args, err, data)
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func exampleCheckout(t *testing.T) (string, string) {
+	t.Helper()
+	root := t.TempDir()
+	gitTest(t, root, "init", "-q")
+	gitTest(t, root, "config", "user.name", "TEI Probe Test")
+	gitTest(t, root, "config", "user.email", "test@invalid.example")
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("fixture\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	gitTest(t, root, "add", "README.md")
+	gitTest(t, root, "commit", "-qm", "fixture")
+	head := gitTest(t, root, "rev-parse", "HEAD")
+	gitTest(t, root, "update-ref", "refs/remotes/origin/main", head)
+	return root, head
+}
+
+func TestProbeMatchesLocalCheckoutButNeverClaimsFullQualification(t *testing.T) {
+	root, head := exampleCheckout(t)
+	gitTest(t, root, "remote", "add", "origin", "https://token:SECRET@github.com/example/repo.git")
+	before := gitTest(t, root, "status", "--porcelain=v1", "--untracked-files=all")
+	got := probe(root, head, head)
+	if got.Git != "available" || got.Go != "available" || got.Checkout != "present" ||
+		got.ExpectedHeadMatch != "match" || got.TrackingMainMatch != "match" ||
+		got.MainAncestor != "match" || !got.EligibleForLocalGate {
+		t.Fatalf("unexpected preflight: %#v", got)
+	}
+	if got.RepositoryHealth != "not-run" || got.LiveRemoteMain != "not-checked" || got.Credentials != "not-checked" {
+		t.Fatalf("preflight claimed more evidence than measured: %#v", got)
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil || strings.Contains(string(encoded), "SECRET") || strings.Contains(string(encoded), "github.com") {
+		t.Fatalf("secret or remote location disclosed: %s: %v", encoded, err)
+	}
+	after := gitTest(t, root, "status", "--porcelain=v1", "--untracked-files=all")
+	if before != after {
+		t.Fatalf("read-only probe changed checkout: %q -> %q", before, after)
+	}
+}
+
+func TestProbeRejectsMissingOrStaleSourceState(t *testing.T) {
+	root, head := exampleCheckout(t)
+	wrong := strings.Repeat("a", 40)
+	if got := probe(root, wrong, head); got.EligibleForLocalGate || got.ExpectedHeadMatch != "mismatch" {
+		t.Fatalf("stale expected head accepted: %#v", got)
+	}
+	if got := probe(root, head, wrong); got.EligibleForLocalGate || got.TrackingMainMatch != "mismatch" {
+		t.Fatalf("stale origin/main accepted: %#v", got)
+	}
+	gitTest(t, root, "update-ref", "-d", "refs/remotes/origin/main")
+	if got := probe(root, head, head); got.EligibleForLocalGate || got.TrackingMainMatch != "unavailable" {
+		t.Fatalf("missing origin/main accepted: %#v", got)
+	}
+	sub := filepath.Join(root, "sub")
+	if err := os.Mkdir(sub, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if got := probe(sub, head, head); got.EligibleForLocalGate || got.Checkout != "unavailable" {
+		t.Fatalf("subdirectory impersonated repo root: %#v", got)
+	}
+	if got := probe(t.TempDir(), head, head); got.EligibleForLocalGate || got.Checkout != "unavailable" {
+		t.Fatalf("directory without Git accepted: %#v", got)
+	}
+}
+
+func TestProbeRequiresMainAncestry(t *testing.T) {
+	root, original := exampleCheckout(t)
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("changed\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	gitTest(t, root, "add", "README.md")
+	gitTest(t, root, "commit", "-qm", "second")
+	head := gitTest(t, root, "rev-parse", "HEAD")
+	// An unrelated commit cannot be a valid ancestor of the candidate.
+	if got := probe(root, head, original); !got.EligibleForLocalGate || got.MainAncestor != "match" {
+		t.Fatalf("proper ancestor rejected: %#v", got)
+	}
+	gitTest(t, root, "update-ref", "refs/remotes/origin/main", head)
+	gitTest(t, root, "checkout", "-q", "--detach", original)
+	if got := probe(root, original, head); got.EligibleForLocalGate || got.MainAncestor != "mismatch" {
+		t.Fatalf("candidate missing main accepted: %#v", got)
+	}
+}
+
+func TestArgumentsRejectMissingSHAAndUnknownCommands(t *testing.T) {
+	root, head := exampleCheckout(t)
+	if code := run([]string{"--root", root, "--expected-head", "123", "--expected-main", head}); code != 2 {
+		t.Fatalf("malformed sha exit %d", code)
+	}
+	if code := run([]string{"--root", root, "--expected-head", head, "--expected-main", head, "--command", "rm -rf"}); code != 2 {
+		t.Fatalf("unknown executable argument exit %d", code)
+	}
+}
