@@ -483,3 +483,42 @@ func TestPublishVerifiedArtifactNoClobberPublishesSameArtifact(t *testing.T) {
 		t.Fatalf("published artifact digest changed: got %s want %s", destinationDigest, tempDigest)
 	}
 }
+
+
+func TestNoClobberPublishSurvivesVerifiedTempCleanup(t *testing.T) {
+	dir := t.TempDir()
+	tempPath := filepath.Join(dir, ".verified-temp")
+	destination := filepath.Join(dir, "engine")
+	if err := os.WriteFile(tempPath, []byte("verified"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := publishVerifiedArtifactNoClobber(tempPath, destination); err != nil {
+		t.Fatal(err)
+	}
+	tempInfo, err := os.Stat(tempPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destinationInfo, err := os.Stat(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(tempInfo, destinationInfo) {
+		t.Fatal("no-clobber publish did not create a hard link to the verified temp artifact")
+	}
+
+	if err := os.Remove(tempPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(tempPath); !os.IsNotExist(err) {
+		t.Fatalf("verified temp path still exists after cleanup: %v", err)
+	}
+	raw, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "verified" {
+		t.Fatalf("published destination changed after temp cleanup: %q", raw)
+	}
+}
