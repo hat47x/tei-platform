@@ -332,6 +332,24 @@
       "risk": "attribute-presence accounting can make 113 TaskActions appear durably identifiable and can hide pressure to preserve source-token addressability without synthesizing identity.",
       "owner": "GitHub #1031 / Draft PR #1077",
       "stopCondition": "current source inventory distinguishes absent / present-empty / non-empty IDs; cross-view MissingLegacyID treats empty and absent identically; exact-source v1 accounting expects missing-or-empty=148 and tests reject empty ID as usable identity"
+    },
+    {
+      "id": "RML-037",
+      "topic": "cross-view-derivation-algorithm-changed-without-policy-version",
+      "nature": "unsupported",
+      "evidence": "The initial RMT-4 policy remained tei.xeadsource.cross-view/v1 after source-profile gating and empty-CRUD handling changed which inputs produce relations.",
+      "risk": "derived relation Evidence can reuse a policy identity whose algorithm no longer means the same thing, weakening stale detection and provenance.",
+      "owner": "GitHub #1031 / Draft PR #1077",
+      "stopCondition": "current behavior is represented by a new policy revision and deterministic rule fingerprint; tests assert the revision/fingerprint, and future outcome-affecting changes require another policy identity change"
+    },
+    {
+      "id": "RML-038",
+      "topic": "unvalidated-cross-view-projection-published-as-safe-accounting",
+      "nature": "unsupported",
+      "evidence": "CrossViewPublicAccounting originally trusted its CrossViewProjection argument and copied relation kinds, target kinds, operation combinations and unresolved codes into aggregate map keys without a public vocabulary check.",
+      "risk": "hand-authored or stale projections can leak arbitrary strings or create misleading aggregate Evidence while still using the public accounting type.",
+      "owner": "GitHub #1031 / Draft PR #1077",
+      "stopCondition": "public accounting returns an error unless the projection has valid source-profile fields, exact/current fingerprints, a self-consistent projection fingerprint, exact source tokens and only approved RMT-4 relation/target/CRUD/unresolved vocabulary"
     }
   ],
   "claimsNotEstablished": [
