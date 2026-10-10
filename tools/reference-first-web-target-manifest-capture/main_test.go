@@ -154,11 +154,11 @@ func TestCapturedProjectionReplaysReadOnlyWithIndependentFixturePin(t *testing.T
 		t.Fatalf("captured bytes differ from pinned fixture: %q", observed.String())
 	}
 	snapshot, err := runtimesnapshot.Accept(observed.Bytes(), runtimesnapshot.Identity{
-		ApplicationID: "order_entry",
-		HandoverBaselineID: "B",
+		ApplicationID:              "order_entry",
+		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: "R",
-		TargetBuildRevision: "T",
-		ManifestSHA256: independentlyPinnedSHA256,
+		TargetBuildRevision:        "T",
+		ManifestSHA256:             independentlyPinnedSHA256,
 	})
 	if err != nil {
 		t.Fatalf("replay with independent fixture pin failed: %v", err)
