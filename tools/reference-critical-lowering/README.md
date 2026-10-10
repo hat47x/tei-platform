@@ -90,3 +90,9 @@ bash tools/reference-critical-lowering/qualify.sh
 スクリプトは実行前後にHEAD、origin/mainのSHA、clean状態を検査する。また**mainが受検HEADのancestorであること**を要求する。古いbranchをそのまま検証して「現在のmainへの統合準備完了」と誤判定しないためである。Formatter検査、`go vet`、局所Unit/Integration、既設Acceptance/Web contract、独立serverのHTTP Smoke、`repository-health-check.sh`をすべて実行する。ただし、ここで得る結果はlocal test evidenceであり、current Host Authority/DB Schema/独立Observation実測・第二Target・親IssueのGate審査の代替ではない。
 
 Source側依存の`SourceInputs`は、プロデューサがClosureを検討したことを表す**非nil**リストである。値`[]`はそのSource自身に外部依存がない正常なケース、`null`/未報告は検討していない状態として拒否する。実WorkspaceのCandidateには代表的な依存を登録しているが、完全集合の証明には依然としてProducerの真正な閉包計算が必要となる。
+
+### Test Evidenceの偽陽性対策
+
+`go test -run`はテスト名が一致せず**0件実行**でも終了コード0となる。また`t.Skip`したテストも通常は成功扱いとなる。このため`qualify.sh`の必須シナリオ3件は、プロセスの終了コードだけでなく、`-v`ログに対象名の`--- PASS: ...`が明示されていることを確認する。命名の変化・無実行・opt-inのskipはQualification失敗となる。
+
+シェルのPASSマーカー判定部分だけについては、ローカルの独立した小型fixtureで「0件実行」「SKIP」「PASS」を模擬して想定どおり判別できることを確認した（`GUARD_SMOKE_OK`）。ただし、これはGitHubの実Checkoutにあるスクリプト全体やTEIのGo Testを走らせた証拠ではない。実際のQualificationをPASSしたと誤記しない。
