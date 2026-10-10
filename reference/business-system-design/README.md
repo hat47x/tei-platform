@@ -169,6 +169,33 @@ git rev-parse HEAD
 
 この節は**実装候補の使い方**です。変更を含むPRのexact-headで`tools/repository-health-check.sh`がPASSし、実行記録が残るまでは「利用可能になった」とは主張しません。実証の入口と停止条件は[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)にまとめています。
 
+## Validation比較のレビュー価値を測る実験（未実施）
+
+この任意表示を製品機能として採用する判断は、集合差の正確さだけでは行わない。**実際の設計者が、追加されたValidationの適用先と出典をより少ない手間で確認できるか**を測る。
+
+### 比較する二つの作業方法
+
+同じReference Workspace、同じBusiness Procedure fixture、同じ確認課題を使い、以下を比較する。
+
+| 条件 | 設計者へ渡す情報 | 禁止する近道 |
+| --- | --- | --- |
+| A：従来方式 | Application定義、Business Procedure fixture、Semantic定義、通常checker出力 | 任意の`validationScopeReview`表示 |
+| B：補助表示あり | Aと同じ情報に加え、`-review-validation-scope`のJSON出力 | 自動生成した結論を人の承認とみなすこと |
+
+課題は「`sales.order_line.line_number_positive`がApplicationに追加されたがBP-05に明示されていない。これは業務手順の欠陥と断定できるか。確認すべき出典と未解決事項を示せ」とする。**正答は一律に『欠陥』でも『問題なし』でもない**。両側の参照集合と定義の出典を特定し、適用範囲の判断を保留できることを要求する。
+
+### 測定方法
+
+- 開始時刻：確認課題と入力一式を渡した時点。終了時刻：調査メモを提出した時点。
+- 記録：所要時間（秒）、手動で開いたSourceファイル数、Sourceの再検索回数、参照IDの取り違え数、確認できた出典の数、未解決事項の記載漏れ数。
+- 成功条件：Applicationの3件とBP-05の2件を区別し、共通2件とApplicationのみ1件を示す。出典の所在を確認し、集合差だけで業務上の不整合・Acceptanceを断定しない。
+- 反証条件：BがAより速くても誤断定・根拠誤認が増える場合は改善と認めない。Bの出典パスが欠落・重複している場合は`unresolvedSource`を確認し、推測で補わない。
+- 実験順序：順序効果を抑えるため、複数の評価者または同等難度の別ケースを用意してA/Bの順序を入れ替える。同一人物に同じ課題を連続実施させた結果を独立試行として扱わない。
+
+結果は各試行の対象commit、Workspace/fixtureのfingerprint、実行環境、A/B条件、開始・終了時刻、正誤判定根拠とともに記録する。単独の試行や合成fixtureの成功から、実案件での工数削減を一般化しない。
+
+**実施状況：実験計画のみ。実測値は未取得。** CI停止中でも手動で実施できるが、実行したときはRepository healthの検証記録とは別に保存する。
+
 ## `order-entry-follow-up-procedure.json`
 
 同じ`order_entry.order_record`を別のBusiness Procedure文脈から利用するReference authoring fixtureです。
