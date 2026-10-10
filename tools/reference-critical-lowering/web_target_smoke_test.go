@@ -131,7 +131,7 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		}
 	}
 	if !ready {
-		t.Fatalf("Web Target did not become healthy\n%s", serverLog.String())
+		t.Fatalf("Web Target did not become healthy\n%s", readLog())
 	}
 
 	get := func(path string) ([]byte, int) {
