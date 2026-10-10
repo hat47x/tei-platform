@@ -54,7 +54,7 @@ func TestMissingOrMalformedSourceFailsClosed(t *testing.T) {
 }
 
 func TestEntryRejectsNonLiteralAndTraversal(t *testing.T) {
-	for _, s := range []string{"tei/tools/app", "../app", "./tools/../app", "./tools/...", "./tools/*", "./tools//app", "./", "./tools/app "} {
+	for _, s := range []string{"tei/tools/app", "../app", "./tools/../app", "./tools/...", "./tools/*", "./tools/a...b", "./tools/foo...bar", "./tools//app", "./", "./tools/app "} {
 		if validEntry(s) {
 			t.Fatalf("unexpected accepted entry %q", s)
 		}
