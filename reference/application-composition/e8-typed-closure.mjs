@@ -7,7 +7,19 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
   if (!world || !Array.isArray(world.applications) ||
       !Array.isArray(world.semantics) ||
       !index || !Array.isArray(index.artifacts) ||
-      !Array.isArray(index.references)) {
+      !Array.isArray(index.references) ||
+      world.applications.some(a => !a || typeof a !== 'object' ||
+        (a.patterns != null && !Array.isArray(a.patterns)) ||
+        (Array.isArray(a.patterns) && a.patterns.some(p => !p || typeof p !== 'object'))) ||
+      world.semantics.some(ns => !ns || typeof ns !== 'object' ||
+        (ns.capabilities != null && !Array.isArray(ns.capabilities)) ||
+        (ns.types != null && !Array.isArray(ns.types)) ||
+        (Array.isArray(ns.capabilities) && ns.capabilities.some(c =>
+          !c || typeof c !== 'object' || (c.inputs != null && !Array.isArray(c.inputs)) ||
+          (Array.isArray(c.inputs) && c.inputs.some(i => !i || typeof i !== 'object')))) ||
+        (Array.isArray(ns.types) && ns.types.some(t => !t || typeof t !== 'object'))) ||
+      index.artifacts.some(a => !a || typeof a !== 'object') ||
+      index.references.some(ref => !ref || typeof ref !== 'object')) {
     return {status:"unresolved",qualification:"declaration-only-not-semantic-acceptance",
       dependencies,issues:["invalid_snapshot_shape"]};
   }
@@ -53,5 +65,5 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
     }
   }
   dependencies.sort((a,b)=>a.subject.id.localeCompare(b.subject.id));
-  return {status:issues.length?"unresolved":inspected?"observed-limited":"no-capability-references",qualification:"declaration-only-not-semantic-acceptance",dependencies,issues};
+  return {status:issues.length?"unresolved":dependencies.length?"observed-limited":inspected?"no-input-types":"no-capability-references",qualification:"declaration-only-not-semantic-acceptance",dependencies,issues};
 }
