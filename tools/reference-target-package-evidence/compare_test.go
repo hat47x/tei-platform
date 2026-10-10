@@ -98,3 +98,46 @@ func TestCompareBuildTagsAndEmbeddedInputsWithinOnePackage(t *testing.T) {
 		t.Fatalf("lost shared package file/embedded-source delta: %+v", got)
 	}
 }
+
+func TestCompareRejectsUnreachableOrDanglingMainModulePackages(t *testing.T) {
+	base := comparisonFixture("tei/cmd/one",
+		SourcePackage{ImportPath: "tei/cmd/one", GoFiles: []string{"main.go"}, Imports: []string{"tei/impl/used"}},
+		SourcePackage{ImportPath: "tei/impl/used", GoFiles: []string{"used.go"}},
+	)
+	tests := []struct {
+		name   string
+		mutate func(*Report)
+	}{
+		{"unreachable-phantom", func(r *Report) {
+			r.Packages = append(r.Packages, SourcePackage{ImportPath: "tei/impl/phantom", GoFiles: []string{"phantom.go"}})
+		}},
+		{"dangling-module-import", func(r *Report) {
+			r.Packages[0].Imports = append(r.Packages[0].Imports, "tei/impl/missing")
+		}},
+		{"missing-transitive-node", func(r *Report) {
+			r.Packages = r.Packages[:1]
+		}},
+		{"foreign-node", func(r *Report) {
+			r.Packages = append(r.Packages, SourcePackage{ImportPath: "elsewhere/phantom", GoFiles: []string{"phantom.go"}})
+		}},
+		{"empty-source", func(r *Report) {
+			r.Packages[1].GoFiles = nil
+		}},
+		{"invalid-cgo-pseudo-import", func(r *Report) {
+			r.Packages[0].Imports = append(r.Packages[0].Imports, "C")
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := base
+			r.Packages = append([]SourcePackage(nil), base.Packages...)
+			tc.mutate(&r)
+			if _, err := compareReports(base, r); err == nil {
+				t.Fatal("structurally impossible source-level closure was accepted")
+			}
+		})
+	}
+	if _, err := compareReports(base, base); err != nil {
+		t.Fatalf("valid reachable source closure rejected: %v", err)
+	}
+}
