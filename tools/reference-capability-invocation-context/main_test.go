@@ -274,8 +274,8 @@ func TestControlContextPreservesCancellation(t *testing.T) {
 			return []byte("result"), nil
 		},
 	)
-	if err != nil {
-		t.Fatal(err)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("trusted cancellation after dispatch was not enforced: %v", err)
 	}
 	if !invoked {
 		t.Fatal("downstream was not invoked with an active control context")
@@ -842,5 +842,43 @@ func TestUnrequiredReceiptReferenceDoesNotBlockInvocation(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("undeclared binding affected invocation: %v", err)
+	}
+}
+
+func TestContextFreeCancellationAfterProviderSuccessFailsClosed(t *testing.T) {
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	execution, err := invokeWithExecutionContext(
+		parent, nil, nil, HostExecutionContext{}, []byte("request"),
+		func(_ context.Context, _ ContextSlotView, _ []byte) ([]byte, error) {
+			cancel()
+			return []byte("stale-result"), nil
+		},
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("result escaped after trusted cancellation: %v", err)
+	}
+	if len(execution.ResultPayload) != 0 || execution.Receipt.Schema != "" {
+		t.Fatalf("canceled invocation returned result or receipt: %+v", execution)
+	}
+}
+
+func TestControlCancellationPreemptsConfidentialErrorReflection(t *testing.T) {
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := invokeWithExecutionContext(
+		parent, accessSlotContracts(), accessRequirement(),
+		accessHost("secret-access"), []byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			secret, _ := slots.Lookup(testAccessSlot)
+			cancel()
+			return nil, fmt.Errorf("provider returned %s", secret)
+		},
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("trusted cancellation was lost to provider error: %v", err)
+	}
+	if strings.Contains(err.Error(), "secret-access") {
+		t.Fatalf("cancellation leaked confidential context: %v", err)
 	}
 }
