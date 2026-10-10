@@ -467,7 +467,6 @@ func TestWebTargetSessionValidationRejectionIsNotReportedAsCompletedCommand(t *t
 	}
 }
 
-
 func TestWebTargetSessionCommandFailureDoesNotClaimEffectWasRejected(t *testing.T) {
 	projection, runner, read := sessionWebProjectionAndRunner(t)
 	config := syntheticProtectedSessionConfiguration(runner)
