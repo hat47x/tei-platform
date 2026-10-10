@@ -50,6 +50,9 @@ export function composeRequestPlan(plan){
   for(const g of hostPolicy.requiredGuards) if(!guards.has(g)) throw new Error("required host protection missing: "+g);
   for(const event of hostPolicy.terminalEvents) if(!terminalEvents.has(event)) throw new Error("required terminal coverage missing: "+event);
   const after=new Map([...ids.keys()].map(id=>[id,new Set()]));
+  // Only required contracts establish a causal prerequisite. Ordering hints
+  // alone cannot prove a guard is executed before an Action.
+  const requiredBy=new Map([...ids.keys()].map(id=>[id,new Set()]));
   for(const p of steps){
     for(const contract of p.requires||[]){
       if(hostContracts.includes(contract)) continue;
@@ -57,6 +60,7 @@ export function composeRequestPlan(plan){
       if(!source) throw new Error("unsatisfied step contract: "+contract);
       if(source===p.id) throw new Error("self-dependency for contract: "+contract);
       after.get(p.id).add(source);
+      requiredBy.get(p.id).add(source);
     }
     for(const id of p.after||[]){
       if(!ids.has(id)) throw new Error("unknown predecessor: "+id);
@@ -72,6 +76,19 @@ export function composeRequestPlan(plan){
     const ready=[...remaining].filter(id=>[...after.get(id)].every(prev=>!remaining.has(prev))).sort();
     if(!ready.length) throw new Error("middleware ordering cycle");
     for(const id of ready){order.push(id);remaining.delete(id)}
+  }
+  if(route.actionId){
+    const ancestors=new Set();
+    const visit=id=>{
+      for(const prerequisite of requiredBy.get(id)||[]){
+        if(!ancestors.has(prerequisite)){ancestors.add(prerequisite);visit(prerequisite)}
+      }
+    };
+    visit("invoke");
+    for(const guard of hostPolicy.requiredGuards){
+      if(![...ancestors].some(id=>(ids.get(id).guards||[]).includes(guard)))
+        throw new Error("required guard is not a prerequisite of Action: "+guard);
+    }
   }
   return {routeId:route.id,order,requiredGuards:[...hostPolicy.requiredGuards],terminalEvents:[...hostPolicy.terminalEvents]};
 }
