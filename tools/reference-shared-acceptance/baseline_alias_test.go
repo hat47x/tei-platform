@@ -120,6 +120,18 @@ func TestReferenceBaselineOutputPaths(t *testing.T) {
 	if err := os.Symlink(filepath.Join(baseline, "new-output.json"), dangling); err != nil {
 		t.Skipf("output symlink is unavailable: %v", err)
 	}
+	safeFile := filepath.Join(root, "unrelated-result.json")
+	if err := os.WriteFile(safeFile, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	safeAlias := filepath.Join(root, "safe-output-alias")
+	if err := os.Symlink(safeFile, safeAlias); err != nil {
+		t.Skipf("scratch output symlink is unavailable: %v", err)
+	}
+	goldenAlias := filepath.Join(root, "golden-output-alias")
+	if err := os.Symlink(golden, goldenAlias); err != nil {
+		t.Skipf("Golden output symlink is unavailable: %v", err)
+	}
 	sep := string(os.PathSeparator)
 	cases := []struct {
 		name string
@@ -133,6 +145,8 @@ func TestReferenceBaselineOutputPaths(t *testing.T) {
 		{name: "output through workspace alias", path: filepath.Join(alias, "new-output.json"), want: true},
 		{name: "output through alias and parent", path: alias + sep + ".." + sep + "workspace" + sep + "new-output.json", want: true},
 		{name: "dangling output symlink", path: dangling, want: true},
+		{name: "existing safe scratch symlink", path: safeAlias, want: false},
+		{name: "existing Golden symlink", path: goldenAlias, want: true},
 		{name: "ordinary scratch output", path: filepath.Join(root, "scratch", "new.json"), want: false},
 	}
 	for _, tc := range cases {
