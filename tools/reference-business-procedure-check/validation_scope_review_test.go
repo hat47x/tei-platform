@@ -950,3 +950,23 @@ func TestValidationScopeReviewMissingSourceDoesNotSuppressOtherEvidence(t *testi
 		t.Fatalf("欠落したValidation出典がApplicationの正当な根拠まで消しました: %+v", rows[0])
 	}
 }
+
+func TestValidationScopeReviewEmptyArtifactLocatorIsUnresolved(t *testing.T) {
+	// Even a malformed index containing an empty-path artifact must not
+	// turn an empty source locator into review evidence.
+	index := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{{Path: "", Fingerprint: "sha256:nonempty"}},
+		References: []sourceindex.Reference{{
+			Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+			Role: sourceindex.RoleDefinition,
+			ArtifactPath: "",
+			Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+		}},
+	}
+	rows := []validationScopeReviewRow{{Step: "BP-05", Application: "order_entry", Status: "no-set-difference"}}
+	attachValidationScopeSources(rows, index)
+	if len(rows[0].SourceEvidence) != 0 ||
+		!reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+		t.Fatalf("空のartifact locatorを出典として採用しました: %+v", rows[0])
+	}
+}
