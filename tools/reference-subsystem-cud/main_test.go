@@ -118,3 +118,14 @@ func TestOutputStableAcrossFactOrder(t *testing.T) {
 		t.Fatalf("order instability: %v vs %v", a, b)
 	}
 }
+
+func TestEmptyCandidateScopeCannotReportClean(t *testing.T) {
+	w, _ := fixture(t)
+	r := Inspect(w, Facts{SchemaVersion: factsSchema})
+	if r.Status != "unresolved" || codeCount(r, "EMPTY_CANDIDATE_SCOPE") != 1 {
+		t.Fatalf("unexpected: %+v", r)
+	}
+	if r.Coverage.WorldData != 2 || r.Coverage.OwnerFacts != 0 {
+		t.Fatalf("incorrect coverage: %+v", r.Coverage)
+	}
+}
