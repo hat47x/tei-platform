@@ -38,7 +38,6 @@ func TestSessionCommandRechecksBusinessPermissionAtEffectBoundary(t *testing.T) 
 				if err != nil {
 					t.Fatal(err)
 				}
-				t.Cleanup(func() { _ = revoked.SourcePath() })
 				// The actual pointer is assigned at the third live SubjectLink lookup.
 				configureAndAssertEffectReauthorization(t, projection, runner, read, tc, func() {
 					runner.authorization = revoked
