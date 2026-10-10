@@ -46,6 +46,19 @@ export function composeRequestPlan(plan){
     ['csrf-protected','csrf.checked'],
     ['action-authorized','action.authorized']
   ]);
+  // Plugin-defined guards are admissible only with an explicit evidence
+  // contract; a newly named guard alone cannot satisfy a host policy.
+  const custom=hostPolicy.guardEvidence||{};
+  if(typeof custom!=='object' || Array.isArray(custom)) throw new Error("guard evidence bindings must be a map");
+  for(const [guard,evidence] of Object.entries(custom)){
+    if(!guard || typeof evidence!=='string' || !evidence.trim()) throw new Error("custom guard requires an evidence contract");
+    if(standardGuardEvidence.has(guard) && standardGuardEvidence.get(guard)!==evidence)
+      throw new Error("standard guard evidence cannot be overridden: "+guard);
+    standardGuardEvidence.set(guard,evidence);
+  }
+  for(const guard of hostPolicy.requiredGuards){
+    if(!standardGuardEvidence.has(guard)) throw new Error("required guard has no declared evidence contract: "+guard);
+  }
   for(const p of steps){
     if(!p.id || ids.has(p.id) || p.scope!=="server") throw new Error("step identity is duplicated or scope is not server");
     ids.set(p.id,p);
