@@ -66,10 +66,15 @@ type buildAttemptEvidence struct {
 }
 
 type buildAttemptHistory struct {
-	Schema                      string   `json:"schema"`
-	BuildPlanFingerprint        string   `json:"buildPlanFingerprint"`
-	FailedAttemptFingerprints   []string `json:"failedAttemptFingerprints"`
-	SuccessfulResultFingerprint string   `json:"successfulResultFingerprint,omitempty"`
+	Schema                    string                     `json:"schema"`
+	BuildPlanFingerprint      string                     `json:"buildPlanFingerprint"`
+	FailedAttemptFingerprints []string                   `json:"failedAttemptFingerprints"`
+	SuccessfulResult          *successfulResultReference `json:"successfulResult,omitempty"`
+}
+
+type successfulResultReference struct {
+	BuildPlanFingerprint string `json:"buildPlanFingerprint"`
+	ResultFingerprint    string `json:"resultFingerprint"`
 }
 
 type buildGraphAttemptState struct {
@@ -147,10 +152,13 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	if err != nil {
 		return referenceEvidence{}, err
 	}
-	if err := history.AppendFailure(attempt); err != nil {
+	if err := history.AppendFailure(plan, attempt); err != nil {
 		return referenceEvidence{}, err
 	}
-	history.SuccessfulResultFingerprint = strings.Repeat("a", 64)
+	history.SuccessfulResult = &successfulResultReference{
+		BuildPlanFingerprint: attempt.BuildPlanFingerprint,
+		ResultFingerprint:    strings.Repeat("a", 64),
+	}
 	if err := history.Validate(); err != nil {
 		return referenceEvidence{}, err
 	}
@@ -272,6 +280,9 @@ func newFailedAttempt(
 	if err != nil {
 		return buildAttemptEvidence{}, retainedDiagnostics{}, err
 	}
+	if err := evidence.ValidateAgainst(plan); err != nil {
+		return buildAttemptEvidence{}, retainedDiagnostics{}, err
+	}
 	return evidence, retainedDiagnostics{
 		Stdout: stdoutRetained,
 		Stderr: stderrRetained,
@@ -324,6 +335,18 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 	}
 	if err := requireAuthorityLimits(e.AuthorityLimits, attemptAuthorityLimits); err != nil {
 		return err
+	}
+	if e.EvidenceFingerprint != "" {
+		if err := validateFingerprint(e.EvidenceFingerprint); err != nil {
+			return fmt.Errorf("Build Attempt Evidence fingerprint: %w", err)
+		}
+		expected, err := buildAttemptEvidenceFingerprint(e)
+		if err != nil {
+			return err
+		}
+		if normalizeFingerprint(e.EvidenceFingerprint) != expected {
+			return fmt.Errorf("Build Attempt Evidence fingerprint does not match its content")
+		}
 	}
 	return nil
 }
@@ -414,17 +437,27 @@ func newAttemptHistory(plan plugin.BuildPlan) (buildAttemptHistory, error) {
 	}, nil
 }
 
-func (h *buildAttemptHistory) AppendFailure(e buildAttemptEvidence) error {
+func (h *buildAttemptHistory) AppendFailure(
+	plan plugin.BuildPlan,
+	e buildAttemptEvidence,
+) error {
 	if h == nil {
 		return fmt.Errorf("Build Attempt History is nil")
 	}
-	if normalizeFingerprint(h.BuildPlanFingerprint) != normalizeFingerprint(e.BuildPlanFingerprint) {
-		return fmt.Errorf("Build Attempt History cannot mix different BuildPlans")
+	planFingerprint, err := plugin.BuildPlanFingerprint(plan)
+	if err != nil {
+		return err
 	}
-	if err := validateFingerprint(e.EvidenceFingerprint); err != nil {
-		return fmt.Errorf("Build Attempt Evidence fingerprint: %w", err)
+	if normalizeFingerprint(h.BuildPlanFingerprint) != normalizeFingerprint(planFingerprint) {
+		return fmt.Errorf("Build Attempt History does not match exact BuildPlan")
 	}
-	h.FailedAttemptFingerprints = append(h.FailedAttemptFingerprints, normalizeFingerprint(e.EvidenceFingerprint))
+	if err := e.ValidateAgainst(plan); err != nil {
+		return fmt.Errorf("Build Attempt History failure Evidence: %w", err)
+	}
+	h.FailedAttemptFingerprints = append(
+		h.FailedAttemptFingerprints,
+		normalizeFingerprint(e.EvidenceFingerprint),
+	)
 	return nil
 }
 
@@ -440,9 +473,15 @@ func (h buildAttemptHistory) Validate() error {
 			return err
 		}
 	}
-	if h.SuccessfulResultFingerprint != "" {
-		if err := validateFingerprint(h.SuccessfulResultFingerprint); err != nil {
-			return err
+	if h.SuccessfulResult != nil {
+		if err := validateFingerprint(h.SuccessfulResult.BuildPlanFingerprint); err != nil {
+			return fmt.Errorf("successful result BuildPlan fingerprint: %w", err)
+		}
+		if normalizeFingerprint(h.SuccessfulResult.BuildPlanFingerprint) != normalizeFingerprint(h.BuildPlanFingerprint) {
+			return fmt.Errorf("successful result belongs to a different BuildPlan")
+		}
+		if err := validateFingerprint(h.SuccessfulResult.ResultFingerprint); err != nil {
+			return fmt.Errorf("successful result fingerprint: %w", err)
 		}
 	}
 	return nil
