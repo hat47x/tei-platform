@@ -48,6 +48,29 @@ bash tools/reference-critical-path-evidence-audit/qualify.sh
 
 成功出力は`CRITICAL_PATH_LOCAL_SOURCE_QUALIFIED_ONLY`であり、**Product Gate PASSではない**。これは他Draft（#1124/#1121）の未統合Sourceをtestするものではなく、R0→R1を使用した実running Webの新単価負例、実DB保存、独立read、人間の受入を検証しない。またリモート取得・Go/Node等が使えない環境では実行できない。作業済みの単独Go試験を、これらのtrusted full checkout資格と取り違えない。
 
+## 並走Draftの一時統合とR1の実Web正常系
+
+`compose-smoke.sh` は #1119/#1120/#1124/#1121 の**正確なDraft branch tip**をcurrent mainへ一時統合してconsumerを試す手動Reference。各branch/PR/mainは**一切書き換えず**、専用のdetached temporary Git worktree内でだけmerge commitを作り、終了時に消去する。#1127・#1126の実装やBusiness ProcedureのAccepted authorityをこのスクリプトで捏造しない。
+
+完全cleanなリポジトリrootで、**その時点でGitHubから確認したSHA40**を入力する。
+
+```bash
+TEI_CP_COMPOSE_MAIN=<current-origin-main-SHA40> \
+TEI_CP_COMPOSE_1119=<PR-1135-HEAD-SHA40> \
+TEI_CP_COMPOSE_1120=<PR-1139-HEAD-SHA40> \
+TEI_CP_COMPOSE_1124=<PR-1137-HEAD-SHA40> \
+TEI_CP_COMPOSE_1121=<PR-1141-HEAD-SHA40> \
+bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+```
+
+- canonical GitHub remote/current mainと各branch tipの一致、cleanと非標準indexを確認し、競合があればfail-closed。merge結果はdetachedの**一時的な合成HEAD**であり、単体PRのexact HEAD試験とは区別。
+- #1124のNode test/scratch E2E、#1120 scoped modelref、#1121 lowering、既存mainの受注明細Web Goテスト、親#1119 preflight、full repository-health-checkを実行する。
+- さらに `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs` を一時統合worktree内で実行する。Scratchの`reference/workspace` copyを作り、**Studioの一候補2操作→Shared Acceptance Preview/Review/test-only Accept→R1→既存Web Targetを実起動→loopback HTTP submit**を通す。Webへ変更後のApplication Validation 4件が届き、全件satisfied、Commandと**synthetic** Observationを報告する。受理時に管理対象Source2ファイルのみ変更されたこと、起動前後のscratch R1一致も検査。
+- 正常系の出力 `E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY` は**限定的な実験**。人間の受理ではなく、単価0がlive serverで拒否されるE1-Bも含まない。実DB、current Host Authority、独立DB read、S02/S05、G1四視点、第二Target、製品Gateの証拠ではない。
+- cross-branch compositionそのものは正式なPR mergeでもrelease候補でもない。合成環境が成功しても、各PRの正確なHEADとlatest main上での個別資格試験、独立Reviewは必要である。
+
+**実行状況**: このスクリプトとNode smokeのコードを追加しただけ。現ChatGPT環境から正規GitHubを`git fetch`できないため、ここではfull checkout統合実行・live Web HTTP実測・full Healthは**NOT RUN**。両方のscriptが成功出力を返すことを今回の成果として報告してはならない。mainや並走ブランチが更新されればSHAを再取得して再実行する。
+
 ## v0の対象シナリオと判断境界
 
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
