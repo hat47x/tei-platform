@@ -11,6 +11,8 @@ func TestEvaluateRequiredChecks(t *testing.T) {
   checks []Check
   want string
  }{
+  {"no checks", nil, "blocked-unresolved"},
+  {"only optional", []Check{{Subject:"function:reference",Relation:"read-contract",Owner:"validation",Evidence:"r1",Status:Applicable,Required:false}}, "blocked-unresolved"},
   {"read-only applicable", []Check{{Subject:"function:customer-reference",Relation:"read-contract",Owner:"validation",Evidence:"source@rev1",Status:Applicable,Required:true}}, "eligible-for-proposal"},
   {"edit incompatible", []Check{{Subject:"datasource:customer",Relation:"write-authority",Owner:"datasource",Evidence:"source@rev1",Status:Incompatible,Required:true}}, "blocked-incompatible"},
   {"missing business owner", []Check{{Subject:"business:customer-maintenance",Relation:"responsibility",Status:Unresolved,Required:true}}, "blocked-unresolved"},
@@ -35,4 +37,14 @@ func TestEvaluateDeterministicAndNoMutation(t *testing.T) {
  second:=Evaluate([]Check{b,a})
  if !reflect.DeepEqual(first,second) {t.Fatalf("order-dependent result: %#v %#v",first,second)}
  if !reflect.DeepEqual(input,[]Check{a,b}) {t.Fatal("mutated caller input")}
+}
+
+func TestEvaluateStableWhenOnlyRequiredFlagDiffers(t *testing.T) {
+ base := Check{Subject:"a", Relation:"dependency", Owner:"validation", Evidence:"r1", Status:Applicable}
+ optional := base
+ required := base
+ required.Required = true
+ first := Evaluate([]Check{optional, required})
+ second := Evaluate([]Check{required, optional})
+ if !reflect.DeepEqual(first, second) { t.Fatalf("unstable tied checks: %#v vs %#v", first, second) }
 }
