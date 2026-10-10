@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:tei:reference:rmt-executable-scenario-manifest:v0",
   "title": "RMT executable scenario manifest — public candidate",
-  "description": "Candidate public metadata only. Schema-valid data is not proof of observer conformance, runtime execution, acceptance or equivalence.",
+  "description": "Candidate public metadata only. Schema-valid data is not proof of observer conformance, runtime execution, acceptance or equivalence. Publication PASS and observer/issuer authority cannot be asserted by this candidate.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -59,7 +59,9 @@
         },
         "sourceProfile": {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9._/-]{1,128}$"
+          "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$",
+          "maxLength": 128,
+          "description": "Public token only; no source path or free text."
         },
         "transcriptionContractDigest": {
           "type": "string",
@@ -371,16 +373,37 @@
         "status": {
           "enum": [
             "pending",
-            "passed",
             "blocked"
           ]
         },
         "receiptDigest": {
           "type": "string",
-          "pattern": "^sha256:[0-9a-f]{64}$"
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Only a separate verifier can authorize publication; this self-asserted candidate cannot express passed."
         }
       },
-      "description": "Self-asserted receipt requires independent policy enforcement before publication."
+      "description": "Candidate-only review tracking. A publication PASS must be recorded outside the untrusted manifest by a qualified reviewer.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "pending"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "receiptDigest"
+              ]
+            }
+          }
+        }
+      ]
     }
   },
   "allOf": [
@@ -533,6 +556,43 @@
           "acceptedSourceDigest",
           "acceptanceDecisionReceiptDigest"
         ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preconditionAlignment": {
+            "properties": {
+              "status": {
+                "const": "aligned"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "preconditionAlignment"
+        ]
+      },
+      "then": {
+        "properties": {
+          "teiExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            }
+          },
+          "originalExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            }
+          }
+        }
       }
     }
   ]
