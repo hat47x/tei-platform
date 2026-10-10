@@ -21,12 +21,19 @@ func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error
 		return nil, fmt.Errorf("-subject-kind and -subject-id must be supplied together")
 	}
 
-	if kind != "" {
-		return operations.TraceSubjectSources(root, sourceindex.Subject{Kind: kind, ID: id})
-	}
 	result, err := workspace.Load(root)
 	if err != nil {
 		return nil, err
 	}
-	return workspace.BuildSourceIndex(root, result)
+	index, err := workspace.BuildSourceIndex(root, result)
+	if err != nil {
+		return nil, err
+	}
+	if kind == "" {
+		return index, nil
+	}
+
+	// Reuse the index built for this invocation, rather than reloading the
+	// Workspace and potentially mixing two different source snapshots.
+	return operations.TraceSubjectSourcesFromIndex(index, sourceindex.Subject{Kind: kind, ID: id})
 }
