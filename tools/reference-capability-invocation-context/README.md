@@ -34,6 +34,14 @@ Provider callbackへは、required slotだけを含む`ContextSlotView`とcontro
 
 productionでは、Context Slot Contractのexposure policy、Provider Conformance、result schema、Security policy等との分担を別途判断します。
 
+## Downstream invocation effect
+
+このcontext gateは、下流Capabilityがread-onlyであることを検証しません。#951のgeneric Invocation Referenceはread-only effectだけを許可しており、本Referenceはその手前へ置く前提です。
+
+direct reflection検査は下流呼出しのresultを受け取った後に行います。mutating Capabilityへ単独で使うと、検査失敗時にも外部副作用が残る可能性があります。
+
+そのためreceiptには`context-gate-does-not-prove-downstream-invocation-is-read-only`を残します。mutating Capabilityのprepare / commit、補償、result validation失敗時の扱いは本Referenceの対象外です。
+
 ## Cache boundary
 
 Execution Contextを要求する呼出しでは`ReusePartitionRef`を必須にします。
