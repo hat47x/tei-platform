@@ -242,3 +242,15 @@ Web Server側は`AccountNow`という明示的なClock依存を必須にし、**
 - 主体リンクの二重検査、HTTP 403/503への変換、エラー文言の秘匿、ロック／失効のHTTP負例はコードとテストを追加しましたが、それらの**actual full repository実行は未実施**です。現行mainとPR headの差分を再確認し、`tools/repository-health-check.sh`全項目PASS、実行前後cleanをexact headへ結び付けるまでDraft維持・統合禁止です。
 
 このReferenceは実IdP、Session Cookie、CSRF Provider、企業Directoryの現在性、分散Host間の失効伝播を提供しません。とくにAccount Storeが古いSnapshotである場合、Clockだけが最新でも本番の適格性は保証できません。
+
+## E2.6：副作用直前の主体リンク再確認
+
+E2.5ではHostの早期認可後にRunnerの入口でアカウント状態を再検証しました。しかしその後のRead・Validation・`security.authorize`を実行している間にも主体リンクが失効し得ます。**Runner入口での再検証だけでは、実際のCommand実行時点のauthorityを保証できません。**
+
+このため、`command_scenario.go`に`runAuthenticatedSubjectCommandWithEffectGuard`を追加しました。旧Credential入口は従来どおり`nil` guardで共通業務処理を呼び、業務の意味と既存認証フローは維持します。Session入口だけ、認証元`ProviderID/Issuer/Subject`とセッション`PrincipalID`を閉包に保持し、**Command Capability呼出し直前**に信頼済みSubject Linkを引き直します。見つからない／失効したリンク、または変化した`PrincipalID/SubjectID`ではCommandもObservationも実行しません。既存の`security.authorize`は従来の流れの中で実行され、Web側に二つ目の権限ルールは作りません。
+
+同じ`SubjectLinkLookup`はE2.5でAccount状態の現在性を検査するラッパーに包まれるため、Session経路は**Hostの早期認可 → Runner入口 → 副作用直前**の3つの境界でリンクとAccount適格性を確認します。実Store／Clockが古い場合まで保証するものではありません。
+
+HTTP負例には、(1) Validationと業務認可完了後、Command直前のClockでAccountが期限外になる場合、(2) 同じタイミングでSource Linkが別の業務`SubjectID`に変わる場合を追加しました。前者はHTTP 403かつ`identity-link-denied`、後者は503かつ`identity-link` Execution Errorで停止する設計です。後者の内部対応関係はHTTPへ露出させず、固定文言に置き換えます。いずれもCommand／Observationが空で、監査記録が拒否／エラーとなることを要求します。
+
+**検証状態：** コードと回帰テストをPRへコミットしましたが、これら追加分を含む実Workspace結合テストはまだ実行していません。以前の隔離GoテストはE2.5以前の状態を対象とするため、この変更に合格した証拠にはなりません。正確なPR headのクリーンなフルチェックアウトで`go test`、`go test -race`、`go vet`、`tools/repository-health-check.sh`を実行し、前後cleanを記録するまで統合禁止です。
