@@ -27,12 +27,18 @@ type protectedSessionCommandConfig struct {
 }
 
 func withProtectedSessionCommand(config protectedSessionCommandConfig) webTargetOption {
-	return func(s *webTargetServer) { s.protectedSessionConfig = &config }
+	return func(s *webTargetServer) {
+		s.protectedSessionOptionCount++
+		s.protectedSessionConfig = &config
+	}
 }
 
 // configureProtectedSessionCommand composes a protected route exactly once.
 // A caller cannot insert a bare http.Handler in place of the required guards.
 func (s *webTargetServer) configureProtectedSessionCommand() error {
+	if s.protectedSessionOptionCount > 1 {
+		return errors.New("duplicate protected session command route configuration")
+	}
 	config := s.protectedSessionConfig
 	if config == nil {
 		return nil
