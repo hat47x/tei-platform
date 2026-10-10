@@ -84,7 +84,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 以前のReferenceは、結合キーの型一致や重複を独自に実装しており、Relationの参照元と参照先が**同じNamespaceにあること**を前提としていた。この方式では既存World上の正当なNamespace間Relationを拒否しかねなかったため、独自のキー規則を廃止した。
 
-現在は`ValidateRelationKeys(ir.World, sourceID, relationID)`で対象のData・Relation・Targetの一意性とCardinalityを確認し、結合キーの参照先・所属・Semantic型同一性・重複については既存`internal/validation/semantic_relation_keys.go`の`ValidateSemanticRelationKeys`が返す対象RelationのDiagnosticを使用する。`ExpandRelationReference`と`TraceRelationPath`も同じWorldを受け取る。これにより、DSL Referenceが独自に別のキー意味論を採用する危険を抑える。
+現在は`ValidateRelationKeys(ir.World, sourceID, relationID)`で対象のData・Relation・Targetの一意性とCardinalityを確認し、RelationのCanonical IDが**World内の別Dataと衝突しないこと**も検査する。結合キーの参照先・所属・Semantic型同一性・重複については既存の`ValidateSemanticRelationKeys`に委ねる。なお、`internal/validation/semantic_relation_keys.go`が返す対象RelationのDiagnosticを使用する。`ExpandRelationReference`と`TraceRelationPath`も同じWorldを受け取る。これにより、DSL Referenceが独自に別のキー意味論を採用する危険を抑える。
 
 `relation_world_conformance_test.go`はsales・customer・addressの3つのNamespaceをまたぐRelationと、既存検証器が拒否する不正キーのDiagnostic同一性を試験対象とする。**この追加テストは関連Referenceソースと既存Semanticキー検証器を取り出した局所Go検証環境でPASSした**。ただし正規のTEI全ソースではなく、周辺型定義は検証用stubである。また、関数へWorldを渡した事実はShared AcceptanceやWorld全体のValidationの完了を示さない。呼び出し側が正式に受理したSemantic Worldを供給する責務は変わらない。
 
