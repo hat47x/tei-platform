@@ -148,7 +148,7 @@ func TestDefaultValidationPreservesWellTypedRelationKeyAndRejectsMismatch(t *tes
 			w.Semantics[i].Data[0].Relations[0].Keys[0].SourceAttribute = cid("sales.order.status")
 		}
 	}
-	found := false
+	count := 0
 	for _, d := range validation.Validate(w) {
 		if d.Code != "SEMANTIC_RELATION_KEY_TYPE_MISMATCH" {
 			continue
@@ -157,10 +157,10 @@ func TestDefaultValidationPreservesWellTypedRelationKeyAndRejectsMismatch(t *tes
 			d.Subject.Kind != "semantic-relation" || d.Subject.ID != "sales.order.customer" {
 			t.Fatalf("invalid Relation key diagnostic lacks its canonical Subject: %+v", d)
 		}
-		found = true
+		count++
 	}
-	if !found {
-		t.Fatal("default Validation silently accepted an explicit Relation key type mismatch")
+	if count != 1 {
+		t.Fatalf("default Validation must report exactly one Relation key mismatch, got %d", count)
 	}
 }
 
