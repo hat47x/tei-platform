@@ -42,3 +42,13 @@ relational factの存在はlowering可能性の証明にも使いません。内
 raw `Observe`は未対応versionでもローカルEvidenceとして読み取りを試みるが、classification / coverage / local candidate mappingは、contract-declared profileへ一致しなければfail closedとする。
 
 `transcription-map-v0.json`とR0 coverageは旧contract blobに結び付いた履歴Evidenceである。current contractへ自動的に再帰属させず、source profile Gateを含む再実行前にはcurrent coverageを主張しない。
+
+## Executable scenario Evidence candidate
+
+GitHub [#1142](https://github.com/hat47x/tei-platform/issues/1142) は、Evidence Gate側のRMT-4（代表シナリオの実行比較）を扱う。
+
+- [executable-slice-plan-v0.md](executable-slice-plan-v0.md) — source observation、Acceptance、TEI実行、旧Runtime実測、比較を混同しない初期契約
+- [scenario-manifest-v0.schema.json](scenario-manifest-v0.schema.json) — 公開可能なScenario manifestの構造候補。観測なしで同等性を宣言しない条件を含む
+- [scenario-manifest-v0.example.json](scenario-manifest-v0.example.json) — synthetic、未実行、比較未評価の例。PASS結果ではない
+
+ここに追加したのは設計候補と未実行のfixtureである。旧Runtimeの挙動やTEI側の実行・受理・同等性について、新しいEvidenceを取得したことを意味しない。
