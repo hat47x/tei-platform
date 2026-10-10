@@ -61,11 +61,11 @@ go run ./cmd/tei trace \
   -direction both -mode full
 ```
 
-`-scope`は呼出し元が指定する**候補グラフの文脈識別子**です。Workspace名、業務上の所属namespace、受理状態や認可scopeを自動的に証明する値ではありません。`-mode summary`は件数・未解決件数を取得し、`-mode full`では宣言された直接の参照を省略せず返します。大規模な結果を分割する場合のみ`-limit 100`のように指定し、返された`nextOffset`と`snapshotFingerprint`を次回の`-offset`、`-expected-fingerprint`へ渡してください。入力グラフや規則が変化している場合、`STALE_SNAPSHOT`で継続を拒否します。
+`-scope`は呼出し元が指定する**候補グラフの文脈識別子**です。Workspace名、業務上の所属namespace、受理状態や認可scopeを自動的に証明する値ではありません。`-mode summary`は件数・未解決件数を取得し、`-mode full`では宣言された直接の参照を省略せず返します。大規模な結果を分割する場合のみ`-limit 100`のように指定し、`result.trace.nextOffset`と**`result.snapshotFingerprint`（Workspace全体の継続用トークン）**を次回の`-offset`、`-expected-fingerprint`へ渡してください。`result.trace.snapshotFingerprint`はGraphと関係規則・選択条件だけの識別子であり、CLIの継続には使いません。入力Graph、対象や方向、正規化World、Source Index（元ファイルの内容や場所を含む）が変化している場合、`STALE_SNAPSHOT`で継続を拒否します。
 
-結果の`source`は選択要素の元定義、`relatedSources`はFull出力のそのページに登場した参照先・参照元の出所候補を示します。`projectionUnresolved`はDerived Indexの投影時点で解決できなかった参照です。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。Source Indexと原ファイルの間で生じる同時更新は、トランザクション的に固定できていません。
+結果の`worldFingerprint`と`sourceIndexFingerprint`は、`inspect`が返す同名のフィールドと比較できます。前者が一致しても、Source移動・注記変更などがあれば後者は変わります。結果の`source`は選択要素の元定義、`relatedSources`はFull出力のそのページに登場した参照先・参照元の出所候補を示します。`projectionUnresolved`はDerived Indexの投影時点で解決できなかった参照です。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。Source Indexと原ファイルの間で生じる同時更新は、トランザクション的に固定できていません。
 
-成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応kind・Workspace読込み失敗などは`2`です。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点では関連グラフの探索（入力・出力・逆参照）や全種類の要素取得には対応しません。
+成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応kind・Workspace読込み失敗などは`2`です。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点で対応するのは宣言済みの直接参照であり、複数段の依存探索、全種類の要素取得、受理済み業務フローとの完全な横断参照には対応しません。
 
 ## 1. テスト
 
