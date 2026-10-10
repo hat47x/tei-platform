@@ -255,3 +255,61 @@ func TestReferenceBaselineOutputFlagAllowsResolvedScratchSymlink(t *testing.T) {
 		t.Fatalf("revision output was not written through safe alias: %q", content)
 	}
 }
+
+func TestReferenceAcceptRejectsCollidingOutputDestinations(t *testing.T) {
+	root := t.TempDir()
+	existing := filepath.Join(root, "existing.json")
+	if err := os.WriteFile(existing, []byte("unchanged"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fileAlias := filepath.Join(root, "existing-alias.json")
+	if err := os.Symlink(existing, fileAlias); err != nil {
+		t.Skipf("output symlinks are unavailable: %v", err)
+	}
+	directoryAlias := filepath.Join(root, "directory-alias")
+	if err := os.Symlink(root, directoryAlias); err != nil {
+		t.Skipf("directory symlinks are unavailable: %v", err)
+	}
+	newFile := filepath.Join(root, "new-output.json")
+	cases := []struct {
+		name       string
+		out        string
+		derivedOut string
+		allow      bool
+	}{
+		{name: "identical output", out: existing, derivedOut: existing},
+		{name: "existing file alias", out: fileAlias, derivedOut: existing},
+		{name: "new file under linked directory", out: filepath.Join(directoryAlias, "new-output.json"), derivedOut: newFile},
+		{name: "same destination via dot segments", out: filepath.Join(root, "nested", "..", "new-output.json"), derivedOut: newFile},
+		{name: "case variation", out: existing, derivedOut: strings.ToUpper(existing)},
+		{name: "explicit baseline override does not permit collision", out: existing, derivedOut: fileAlias, allow: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := []string{
+				"accept", "-workspace", root, "-candidate", filepath.Join(root, "not-present.json"),
+				"-expected-review-fingerprint", "synthetic-review",
+				"-out", tc.out, "-derived-out", tc.derivedOut,
+			}
+			if tc.allow {
+				args = append(args, "-allow-reference-baseline")
+			}
+			var stdout, stderr bytes.Buffer
+			if code := runCLI(args, &stdout, &stderr); code != 2 ||
+				!strings.Contains(stderr.String(), "-derived-out") {
+				t.Fatalf("colliding outputs were not rejected before candidate loading: code=%d stdout=%s stderr=%s",
+					code, stdout.String(), stderr.String())
+			}
+			content, err := os.ReadFile(existing)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(content) != "unchanged" {
+				t.Fatalf("existing output overwritten: %q", content)
+			}
+			if _, err := os.Stat(newFile); !os.IsNotExist(err) {
+				t.Fatalf("new output unexpectedly created: %v", err)
+			}
+		})
+	}
+}
