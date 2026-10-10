@@ -99,6 +99,10 @@ func invokeWithExecutionContext(
 		return InvocationContextExecution{}, fmt.Errorf("invocation context requires a downstream invoker")
 	}
 
+	// Keep the request identity tied to the bytes handed to the downstream
+	// invoker, even if the caller changes its own slice during invocation.
+	semanticRequestSnapshot := append([]byte(nil), semanticRequest...)
+
 	contracts, err := normalizeContextSlotContracts(slotContracts)
 	if err != nil {
 		return InvocationContextExecution{}, err
@@ -145,11 +149,16 @@ func invokeWithExecutionContext(
 		})
 	}
 
+	// Do not enter the downstream invoker when cancellation is already known.
+	// Cancellation after this check is still conveyed by the control context.
+	if err := parent.Err(); err != nil {
+		return InvocationContextExecution{}, fmt.Errorf("invocation control context ended before dispatch: %w", err)
+	}
 	control := controlOnlyContext{parent: parent}
 	resultPayload, err := next(
 		control,
 		view,
-		append([]byte(nil), semanticRequest...),
+		append([]byte(nil), semanticRequestSnapshot...),
 	)
 	if err != nil {
 		if leak := directContextReflection(required, contracts, view, []byte(err.Error()), "downstream error"); leak != nil {
@@ -162,7 +171,7 @@ func invokeWithExecutionContext(
 		return InvocationContextExecution{}, leak
 	}
 
-	requestSum := sha256.Sum256(semanticRequest)
+	requestSum := sha256.Sum256(semanticRequestSnapshot)
 	resultSum := sha256.Sum256(resultPayload)
 	sort.Slice(receipts, func(i, j int) bool {
 		return receipts[i].ContractID < receipts[j].ContractID
