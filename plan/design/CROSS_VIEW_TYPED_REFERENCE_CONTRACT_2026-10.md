@@ -199,3 +199,54 @@ digest自体は署名・確定済みの規則・読み込んだPlugin sourceの�
 `sourcebridge.NewResolver`では、`Index.Validate`が同じArtifactを複数のDefinition/Authoring anchorから検査する際、1回の構築内で読み取ったbytesをパス別にコピーして再利用する。これによりSourceファイル数に応じた実I/Oに抑え、各anchorごとのファイル再読込を避ける。既存のSource Indexによるfingerprint/Range整合性は省略しない。
 
 追加したテストでは1 Artifactと1 Definition Referenceについて、構築時のreader呼出しが**厳密に1回**となり、以後の1000件Navigationは0回であることを確認する（隔離ミラーでPASS）。なお一度のキャッシュ検証は時点間のAtomic Snapshotや同時編集排除を保証しない。呼出し元が同じimmutable Source revisionを渡し、Acceptの直前にShared Acceptanceで競合を再検査することが必須である。
+
+## R5 — rename・split・mergeの参照網羅性をread-onlyで審査（2026-10-10）
+
+最初の`ValidateTransition`は旧・新IDの存在と基数を調べるだけだったため、論理IDの変更時に**参照するFunction/Business要素の更新が省略されたままでも**、移行自体を「有効な形」と評価できる問題があった。
+
+`internal/modelref/migration_review.go` に`ReviewMigration(before, after, transition, retargets, rules, baselineRevision)`を追加した。正本への書き込みもalias追加も行わない。元・新Graphは呼び出し元が準備する候補であり、個々の参照変更を`EdgeRetarget{from,relation,old,new}`として明示する。
+
+### 受入前の確認内容
+
+- `ValidateTransition`だけでなく、変更前後両方の`Validate`を実行する。不正な参照を「移行中だから」と認めない。
+- 旧IDを参照する**すべてのincoming edge**について、元の`from/relation/oldRef`と新しい`from/relation/newRef`が一致する明示的な`EdgeRetarget`を要求する。
+- 同じedgeへの重複Retarget、存在しない移行先、意図しないedge削除・追加、移行対象以外のNode変更は不整合とする。array offsetによる参照の同定は行わない。
+- splitでは個々のConsumerがどちらの新IDへ向かうかを推定しない。mergeでは二つの異なる旧IDから同じ新IDへ集約しても、Consumerごとに承認候補の再束縛が必要。
+- **移行元Nodeが参照元でもある場合（outgoing edge）**、現契約ではそのSource自身の移動／分割を自動処理せず`outgoing-reference-requires-own-review`で止める。別の編集レーンが明示的に意味継承を審査する。
+- baseline revisionが空なら診断する。ただし文字列があることはそのRevisionを検証できたことではない。
+- `RuleFingerprint`、`Diff`、`Impact`、根拠と同じ構造の`MigrationReview`を返す。`Consistent=true`は**与えられた候補内での参照整合**であり、human confirmation / Shared Acceptance / 本番データ移行の完了ではない。
+
+### 参照変更の例（擬似受注明細）
+
+```json
+{
+  "transition": {
+    "kind": "rekey",
+    "from": [{"scope":"orders-v1","subject":{"kind":"data","id":"order-line"}}],
+    "to": [{"scope":"orders-v1","subject":{"kind":"data","id":"order-detail"}}]
+  },
+  "retargets": [{
+    "from": {"scope":"orders-v1","subject":{"kind":"function","id":"submit-order"}},
+    "relation": "reads",
+    "old": {"scope":"orders-v1","subject":{"kind":"data","id":"order-line"},"version":"1"},
+    "new": {"scope":"orders-v1","subject":{"kind":"data","id":"order-detail"},"version":"1"}
+  }]
+}
+```
+
+上記の例だけでは変更先Graphを自動生成しない。実際には同一snapshotのold/new Graph候補とPolicy一式、baseRevisionが必要になる。Studio/AI/CLIが生成した変更案も#267のShared Acceptanceがrevision再検証・明示受理・Source更新・reload・Conformanceを実行する必要がある。
+
+### 回帰試験
+
+`migration_review_test.go`と`migration_more_test.go`に次を実装した。
+
+- DataのID変更に伴うFunction参照の明示Retargetと、Business task / Formまでの影響候補。
+- 欠落・重複Retarget、baseline欠落、意図しないFunction→Formの削除を拒否。
+- 別scopeへの論理要素移動は同一IDでも明示Retargetを要求。
+- 複数の旧Dataを1つにmergeする際、各Functionの別々の参照移行を要求。
+- 移行対象以外の表示ラベルの変更は、本処理だけで認可せず別のProposalへ戻す。
+- preview実行で渡された旧GraphのJSON内容が変化しないことを検査。
+
+Go 1.23.2の隔離作業領域で、これらを含む`go test -race -count=1 ./internal/modelref/...`と`go vet ./internal/modelref/...`はPASS。少なくとも追加した`migration_review.go`および`migration_review_test.go`のGit blob SHAはリモートの追加ファイルと一致した。**これは既存`index/sourceindex`のstubを含む作業領域での試験であり、trusted full checkout exact-headのRepository Health Gateを満たした証拠ではない。**
+
+この変更は#1120のidentity migrationの参照審査を具体化するもので、既存Source書き込みや他レーンのauthoring機能を再実装しない。
