@@ -51,6 +51,13 @@ generic payloadは`[]byte`として扱います。Reference carrierがJSONなの
 
 testでは非UTF-8 byteを含むpayloadをprocess round tripし、元のbytesとdigestが一致することを確認します。
 
+ISSUE-000085の方針に合わせ、このReferenceが新しく計算するSHA-256にはbyte規則を明示します。
+
+- request / result payload digest: `tei.reference.raw-bytes+sha256/v0`。opaque payloadのbytesそのものへSHA-256を掛ける。
+- Transport Dispatch Plan fingerprint: `tei.reference.go-json-marshal-struct+sha256/v0`。Planの`PlanFingerprint`を空にし、Goの`json.Marshal`で得たbytesへSHA-256を掛ける。JCSではない。
+
+testは両規則を実装helperとは別経路で再計算します。これらはReference profileであり、TEI全体の標準digest profileを決めるものではありません。
+
 ## stderr境界
 
 process failure時は、既存`StdioProcessLauncher`のstderr redactionをそのまま使います。
