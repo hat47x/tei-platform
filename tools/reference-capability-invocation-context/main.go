@@ -268,13 +268,20 @@ func invokeConfidentialProvider(
 	view ContextSlotView,
 	request []byte,
 ) (payload []byte, err error) {
+	// A bare recover() != nil check misses panic(nil) under the legacy
+	// panicnil setting (including GO111MODULE=off builds). Record whether
+	// the provider returned normally rather than trusting the panic value.
+	completed := false
 	defer func() {
-		if recover() != nil {
+		if !completed {
+			_ = recover() // Do not inspect or format the panic payload.
 			payload = nil
 			err = fmt.Errorf("downstream invocation failed (confidential error detail withheld)")
 		}
 	}()
-	return next(control, view, request)
+	payload, err = next(control, view, request)
+	completed = true
+	return payload, err
 }
 
 func directContextReflection(
