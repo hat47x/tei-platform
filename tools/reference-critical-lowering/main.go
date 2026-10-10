@@ -10,7 +10,12 @@ import (
 	"sort"
 )
 
-const Schema = "tei.lowering-witness/v0"
+const (
+	Schema = "tei.lowering-witness/v0"
+	CandidateSchema = "tei.lowering-candidate/v0"
+	AcceptanceSchema = "tei.lowering-acceptance-link/v0"
+	NeutralSchema = "tei.lowering-neutral-plan/v0"
+)
 
 // Ref is an exact, externally defined identity. A digest does not establish Authority.
 type Ref struct {
@@ -42,6 +47,7 @@ type Wiring struct {
 }
 
 type Candidate struct {
+	Schema       string        `json:"schema"`
 	Source       Ref           `json:"source"`
 	Language     Ref           `json:"language"`
 	Subjects     []Subject     `json:"subjects"`
@@ -49,6 +55,7 @@ type Candidate struct {
 }
 
 type Acceptance struct {
+	Schema          string `json:"schema"`
 	CandidateDigest string `json:"candidateDigest"`
 	Snapshot        Ref    `json:"acceptedSnapshot"`
 	Receipt         Ref    `json:"trustedAcceptanceReceipt"`
@@ -83,6 +90,14 @@ type Step struct {
 	RequiredSlots  []Ref  `json:"requiredContextSlots"`
 	RuntimeDeps    []Ref  `json:"runtimeDependencies"`
 	Target         string `json:"target"`
+}
+
+// NeutralPlan records the minimum executable intent without Target, Provider or
+// Environment Authority. It references accepted subjects; it is never authored.
+type NeutralPlan struct {
+	Schema   string        `json:"schema"`
+	Snapshot Ref           `json:"snapshot"`
+	Intents  []Requirement `json:"intents"`
 }
 
 type Plan struct {
@@ -145,29 +160,45 @@ func has(values []string, wanted string) bool {
 	return false
 }
 
-// Lower checks stage crossings only. Existing parsers, resolvers, and Driver still
-// own meaning, capability selection, effect realization, and execution.
-func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, target Target, trust Trust) (Plan, error) {
-	if trust == nil || !c.Source.valid() || !c.Language.valid() || !a.Snapshot.valid() || !a.Receipt.valid() {
-		return Plan{}, reject("invalid-boundary")
+// Neutralize verifies that externally Accepted meaning is the source of intent.
+// It cannot itself issue an acceptance receipt or validate a semantic graph.
+func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
+	if trust == nil || c.Schema != CandidateSchema || a.Schema != AcceptanceSchema ||
+		!c.Source.valid() || !c.Language.valid() || !a.Snapshot.valid() || !a.Receipt.valid() {
+		return NeutralPlan{}, reject("invalid-boundary")
 	}
 	d := Digest(c)
 	if a.CandidateDigest != d || !trust.Accepted(d, a.Receipt, a.Snapshot) {
-		return Plan{}, reject("unaccepted-meaning")
+		return NeutralPlan{}, reject("unaccepted-meaning")
+	}
+	if len(c.Subjects) == 0 || len(c.Requirements) == 0 {
+		return NeutralPlan{}, reject("invalid-boundary")
+	}
+	seen := make(map[string]bool)
+	for _, s := range c.Subjects {
+		if !s.Ref.valid() || s.Kind == "" || seen[s.Kind+":"+s.Ref.ID] {
+			return NeutralPlan{}, reject("invalid-boundary")
+		}
+		seen[s.Kind+":"+s.Ref.ID] = true
+	}
+	intents := append([]Requirement(nil), c.Requirements...)
+	sort.Slice(intents, func(i, j int) bool {
+		return intents[i].Scope+":"+intents[i].Contract.ID < intents[j].Scope+":"+intents[j].Contract.ID
+	})
+	return NeutralPlan{Schema: NeutralSchema, Snapshot: a.Snapshot, Intents: intents}, nil
+}
+
+// Lower checks stage crossings only. Existing parsers, resolvers, and Driver still
+// own meaning, capability selection, effect realization, and execution.
+func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, target Target, trust Trust) (Plan, error) {
+	neutral, err := Neutralize(c, a, trust)
+	if err != nil {
+		return Plan{}, err
 	}
 	if target.ID == "" {
 		return Plan{}, reject("unsupported-target")
 	}
-	if len(c.Subjects) == 0 || len(c.Requirements) == 0 {
-		return Plan{}, reject("invalid-boundary")
-	}
-	seenSubjects := make(map[string]bool)
-	for _, s := range c.Subjects {
-		if !s.Ref.valid() || s.Kind == "" || seenSubjects[s.Kind+":"+s.Ref.ID] {
-			return Plan{}, reject("invalid-boundary")
-		}
-		seenSubjects[s.Kind+":"+s.Ref.ID] = true
-	}
+	_ = neutral // the neutral stage is reusable by additional Target realizations
 	steps := make([]Step, 0, len(c.Requirements))
 	seen := make(map[string]bool)
 	for _, r := range c.Requirements {
@@ -282,14 +313,29 @@ func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref) Cach
 		Candidate string
 		Acceptance Acceptance
 	}{Digest(c), a})
+	// Artifacts and Target are part of realization, not semantic composition.
+	type resolvedStep struct {
+		Contract, Provider, Conformance, ResolutionLock Ref
+		Scope, Effect string
+		RequiredSlots, RuntimeDeps []Ref
+	}
+	resolved := make([]resolvedStep, 0, len(plan.Steps))
+	for _, s := range plan.Steps {
+		resolved = append(resolved, resolvedStep{
+			Contract: s.Contract, Provider: s.Provider, Conformance: s.Conformance,
+			ResolutionLock: s.ResolutionLock, Scope: s.Scope, Effect: s.Effect,
+			RequiredSlots: s.RequiredSlots, RuntimeDeps: s.RuntimeDeps,
+		})
+	}
 	resolve := Digest(struct {
 		Accepted string
-		Steps    []Step
-	}{accept, plan.Steps})
+		Steps []resolvedStep
+	}{accept, resolved})
 	targetKey := Digest(struct {
 		Resolved string
-		Target   Target
-	}{resolve, target})
+		Target Target
+		Realization []Step
+	}{resolve, target, plan.Steps})
 	return CacheKeys{
 		Interpret: interpret, Accept: accept, Resolve: resolve,
 		Target: targetKey, Build: Digest(struct {
