@@ -15,10 +15,12 @@ import (
 )
 
 const (
-	dispatchSchema      = "tei.reference.capability-transport-dispatch/v0"
-	resultSchema        = "tei.reference.capability-transport-result/v0"
-	receiptSchema       = "tei.reference.capability-transport-receipt/v0"
-	dispatchPlanSchema  = "tei.reference.capability-transport-dispatch-plan/v0"
+	dispatchSchema                 = "tei.reference.capability-transport-dispatch/v0"
+	resultSchema                   = "tei.reference.capability-transport-result/v0"
+	receiptSchema                  = "tei.reference.capability-transport-receipt/v0"
+	dispatchPlanSchema             = "tei.reference.capability-transport-dispatch-plan/v0"
+	rawPayloadDigestRule           = "tei.reference.raw-bytes+sha256/v0"
+	dispatchPlanFingerprintRule    = "tei.reference.go-json-marshal-struct+sha256/v0"
 )
 
 type GenericProviderIdentity struct {
@@ -40,6 +42,7 @@ type GenericInvocationIdentity struct {
 
 type TransportDispatchPlan struct {
 	Schema             string                    `json:"schema"`
+	FingerprintRule    string                    `json:"fingerprintRule"`
 	InvocationIdentity GenericInvocationIdentity `json:"invocationIdentity"`
 	PlanFingerprint    string                    `json:"planFingerprint"`
 }
@@ -87,6 +90,7 @@ type TransportReceipt struct {
 	Schema                  string                    `json:"schema"`
 	Transport               string                    `json:"transport"`
 	DispatchPlanFingerprint string                    `json:"dispatchPlanFingerprint,omitempty"`
+	PayloadDigestRule       string                    `json:"payloadDigestRule"`
 	Carrier            TransportCarrierReceipt   `json:"carrier"`
 	RequestID          string                    `json:"requestId"`
 	InvocationIdentity GenericInvocationIdentity `json:"invocationIdentity"`
@@ -108,6 +112,7 @@ func buildTransportDispatchPlan(
 	}
 	plan := TransportDispatchPlan{
 		Schema:             dispatchPlanSchema,
+		FingerprintRule:    dispatchPlanFingerprintRule,
 		InvocationIdentity: identity,
 	}
 	plan.PlanFingerprint = transportDispatchPlanFingerprint(plan)
@@ -117,6 +122,12 @@ func buildTransportDispatchPlan(
 func validateTransportDispatchPlan(plan TransportDispatchPlan) error {
 	if plan.Schema != dispatchPlanSchema {
 		return fmt.Errorf("transport dispatch plan schema %q is not supported", plan.Schema)
+	}
+	if plan.FingerprintRule != dispatchPlanFingerprintRule {
+		return fmt.Errorf(
+			"transport dispatch plan fingerprint rule %q is not supported",
+			plan.FingerprintRule,
+		)
 	}
 	if err := validateGenericInvocationIdentity(plan.InvocationIdentity); err != nil {
 		return fmt.Errorf("transport dispatch plan identity: %w", err)
@@ -322,6 +333,7 @@ func newTransportReceipt(
 	return TransportReceipt{
 		Schema:             receiptSchema,
 		Transport:          transport,
+		PayloadDigestRule: rawPayloadDigestRule,
 		Carrier:            carrier,
 		RequestID:          requestID,
 		InvocationIdentity: genericDispatchIdentity(dispatch),
