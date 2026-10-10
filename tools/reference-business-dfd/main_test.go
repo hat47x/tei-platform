@@ -97,6 +97,27 @@ func TestManualExternalAndThreeTriggerKindsAreNotFunctionsOrAuthority(t *testing
 	}
 }
 
+func TestUnreferencedFunctionIsScopedSourceAwareReviewQuestion(t *testing.T) {
+	f,r,s,w:=sample()
+	_ = r
+	p:=build(f,r,s,w,"procedure.json","review.json","set.json")
+	if len(p.UnreferencedPatterns)!=1 || p.UnreferencedPatterns[0]!="order_entry.submit_order" {
+		t.Fatalf("scoped unreferenced Function was lost: %+v",p.UnreferencedPatterns)
+	}
+	found:=false
+	for _,d:=range p.Diagnostics {
+		if d.Code=="DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED" &&
+			d.Severity=="review-question" &&
+			d.Source.File=="procedure.json" && d.Source.Pointer=="/application" {
+			found=true
+		}
+		if d.Code=="DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED" && d.Severity=="error" {
+			t.Fatalf("lack of Procedure reference was incorrectly made a global error: %+v",d)
+		}
+	}
+	if !found {t.Fatalf("source-aware Pattern review question missing: %+v",p.Diagnostics)}
+}
+
 func TestMissingFunctionIsSourceAware(t *testing.T) {
 	f,r,s,w:=sample()
 	f.Steps[0].ApplicationPatterns=[]string{"order_entry.missing"}
