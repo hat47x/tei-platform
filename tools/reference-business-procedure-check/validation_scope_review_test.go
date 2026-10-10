@@ -38,8 +38,13 @@ func TestValidationScopeReviewKeepsOriginalCheckerAndWorkspaceUnchanged(t *testi
 	if row.Step != "BP-05" || row.Application != "order_entry" || row.Status != "review-needed" {
 		t.Fatalf("比較文脈または判定が不正です: %+v", row)
 	}
-	if !reflect.DeepEqual(row.ApplicationOnly, []string{"sales.order_line.line_number_positive"}) || len(row.ProcedureOnly) != 0 {
-		t.Fatalf("受理済みValidationと業務手順の差を検出できません: %+v", row)
+	if !reflect.DeepEqual(row.ApplicationOnly, []string{"sales.order_line.line_number_positive"}) ||
+		len(row.ProcedureOnly) != 0 ||
+		!reflect.DeepEqual(row.SharedValidations, []string{
+			"sales.order.lines.line_number_unique",
+			"sales.order_line.quantity_positive",
+		}) {
+		t.Fatalf("受理済みValidationと業務手順の差・共通参照を検出できません: %+v", row)
 	}
 
 	probed, err := runWithOptions(workspacePath, fixturePath, probePath, true)
@@ -131,8 +136,14 @@ func TestValidationScopeReviewEqualSetsDoNotClaimBusinessEquivalence(t *testing.
 		}
 	}
 	rows := compareValidationScopes(loaded.World, f)
-	if len(rows) != 1 || rows[0].Status != "no-set-difference" {
-		t.Fatalf("同じ参照集合の扱いが不正です: %+v", rows)
+	if len(rows) != 1 || rows[0].Status != "no-set-difference" ||
+		!reflect.DeepEqual(rows[0].SharedValidations, []string{
+			"sales.order.lines.line_number_unique",
+			"sales.order_line.line_number_positive",
+			"sales.order_line.quantity_positive",
+		}) ||
+		len(rows[0].ApplicationOnly)+len(rows[0].ProcedureOnly) != 0 {
+		t.Fatalf("同じ参照集合とその明示的な根拠IDの扱いが不正です: %+v", rows)
 	}
 	if rows[0].Reason == "" {
 		t.Fatal("意味の適用範囲は別途確認が必要である旨を表示していません")
@@ -346,6 +357,8 @@ func TestValidationScopeReviewSourceEvidence(t *testing.T) {
 	want := map[string]string{
 		"application:order_entry": "applications/order-entry/application.tei",
 		"semantic-validation:sales.order_line.line_number_positive": "semantic/sales/validation.tei",
+		"semantic-validation:sales.order_line.quantity_positive": "semantic/sales/validation.tei",
+		"semantic-validation:sales.order.lines.line_number_unique": "semantic/sales/validation.tei",
 	}
 	if len(row.SourceEvidence) != len(want) {
 		t.Fatalf("正本Sourceに戻るための情報が不足しています: %+v", row.SourceEvidence)
@@ -362,6 +375,65 @@ func TestValidationScopeReviewSourceEvidence(t *testing.T) {
 	}
 	if after := ref01TreeDigest(t, workspacePath); after != before {
 		t.Fatal("Source Indexの追跡が正本Workspaceを変更しました")
+	}
+}
+
+func TestValidationScopeReviewEqualSetsTraceAllValidationSources(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// BP-05 declares all three accepted Application validations.
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = append(f.Steps[i].Validations, "sales.order_line.line_number_positive")
+		}
+	}
+	rows := compareValidationScopes(loaded.World, f)
+	if len(rows) != 1 || rows[0].Status != "no-set-difference" ||
+		len(rows[0].SharedValidations) != 3 || !validationScopeSourcesNeeded(rows) {
+		t.Fatalf("集合が等しいときの全Validation IDが見えません: %+v", rows)
+	}
+	sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attachValidationScopeSources(rows, sources)
+	if len(rows[0].UnresolvedSource) != 0 || len(rows[0].SourceEvidence) != 4 {
+		t.Fatalf("共通集合の出典が不足しています: %+v", rows)
+	}
+	want := map[string]bool{
+		"application:order_entry": true,
+		"semantic-validation:sales.order_line.quantity_positive": true,
+		"semantic-validation:sales.order.lines.line_number_unique": true,
+		"semantic-validation:sales.order_line.line_number_positive": true,
+	}
+	for _, evidence := range rows[0].SourceEvidence {
+		k := evidence.Kind + ":" + evidence.ID
+		if !want[k] || evidence.Fingerprint == "" || evidence.Line < 1 {
+			t.Fatalf("確定できない出典または重複出典です: %+v", evidence)
+		}
+		delete(want, k)
+	}
+	if len(want) != 0 {
+		t.Fatalf("共通Validationの出典が取得できません: %+v", want)
+	}
+
+	// Dropping the index must clear old evidence and show all unresolved identities.
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if len(rows[0].SourceEvidence) != 0 ||
+		!reflect.DeepEqual(rows[0].UnresolvedSource, []string{
+			"application:order_entry",
+			"semantic-validation:sales.order.lines.line_number_unique",
+			"semantic-validation:sales.order_line.line_number_positive",
+			"semantic-validation:sales.order_line.quantity_positive",
+		}) {
+		t.Fatalf("共通集合のSourceが失われても古い出典を残しました: %+v", rows)
 	}
 }
 
