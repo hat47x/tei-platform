@@ -24,7 +24,8 @@ go test -count=1 ./tools/reference-critical-path-evidence-audit
 
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
 - 全区分で exact candidate `head` / reviewed `main`、full Repository Health PASS、実行前後clean、検証receiptの**申告**を要求する。この条件はあくまで提出に必要な情報で、受領側がcheckoutとreceiptを検証する必要がある。
-- `E1` は `R0 != R1`、Candidate/Review fingerprint、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、**実Web操作receipt**が必要。
+- `E0` でもProducer/Consumerの実装箇所、正負のテスト名、証拠の性質（`source-only`、`synthetic-tested`、`actual-observed`）が必要。単なるCase名では不足とする。
+- `E1` は `R0 != R1`、Candidate/Review fingerprint、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。`handler-only` / `httptest` の結果だけではE1の実サーバ操作を実証しない。
 - `E2` はE1に加え `actual-db` Provider、R1に対するDatasource/schema互換性証跡、current Host Authority、Commandと独立readの**別receipt**、同一record、S02/S05の拒否試験を要求する。Web synthetic Providerを `E2` として提出すると拒否する。
 - Source、Target、DB schema、Git revisionを値の一致だけで同一視しない。DB schemaとApplicationは別のライフサイクルであり、`schemaCompatibility=compatible` は**提出された判定結果の表明**に過ぎない。Providerの実状態・readの独立性・記録時点はreviewerが確認する。
 - `E0` のフォーム検査が通っても、C0/Studio/Business/Loweringの本当のproducer-consumer接続や製品上の動作を証明しない。
@@ -35,6 +36,10 @@ go test -count=1 ./tools/reference-critical-path-evidence-audit
 {
   "schema": "tei.critical-path-evidence/v0",
   "claim": "E1",
+  "contract": {
+    "producerPath": "", "consumerPath": "", "positiveTest": "",
+    "negativeTest": "", "evidenceClass": "source-only"
+  },
   "qualification": {
     "head": "", "main": "", "fullHealth": "NOT_RUN",
     "cleanBefore": false, "cleanAfter": false, "receipt": ""
@@ -47,7 +52,7 @@ go test -count=1 ./tools/reference-critical-path-evidence-audit
   "web": {
     "acceptedRevision": "", "application": "order_entry", "target": "web",
     "selectedValidation": "sales.order_line.unit_price_positive",
-    "providerKind": "synthetic", "positiveReceipt": "",
+    "providerKind": "synthetic", "runMode": "handler-only", "positiveReceipt": "",
     "negativeReceipt": "", "unobservedControlReceipt": ""
   },
   "physical": {}
