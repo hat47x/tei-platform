@@ -186,6 +186,12 @@ func invokeWithExecutionContext(
 		view,
 		append([]byte(nil), semanticRequestSnapshot...),
 	)
+	// Do not return a result, error object, or receipt after trusted control
+	// cancellation. Check before inspecting a potentially untrusted provider
+	// error; a provider cannot forge this state by wrapping context.Canceled.
+	if controlErr := control.Err(); controlErr != nil {
+		return InvocationContextExecution{}, controlErr
+	}
 	if err != nil {
 		if leak := directContextReflection(required, contracts, view, []byte(err.Error()), "downstream error"); leak != nil {
 			return InvocationContextExecution{}, leak
@@ -195,11 +201,6 @@ func invokeWithExecutionContext(
 		// Do not allow the original error object to cross this boundary.
 		for _, requirement := range required {
 			if contracts[requirement.ContractID].ForbidDirectResultReflection {
-				// Only the trusted control context may attest cancellation.
-				// Do not trust an unwrapped downstream error as evidence of it.
-				if controlErr := control.Err(); controlErr != nil {
-					return InvocationContextExecution{}, controlErr
-				}
 				return InvocationContextExecution{}, fmt.Errorf(
 					"downstream invocation failed (confidential error detail withheld)",
 				)
