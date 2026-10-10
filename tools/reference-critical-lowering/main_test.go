@@ -55,6 +55,11 @@ func orderFixture(language string) fixture {
 	c := Candidate{
 		Schema: CandidateSchema,
 		Source: ref("reference/workspace/applications/order-entry/application.tei"),
+		SourceInputs: []Ref{
+			ref("reference/workspace/applications/order-entry/patterns/submit-order.tei"),
+			ref("reference/workspace/semantic/sales/order.tei"),
+			ref("reference/workspace/semantic/sales/validation.tei"),
+		},
 		Language: ref(language),
 		Subjects: []Subject{
 			{Kind: "business", Ref: ref("order_entry.submit_order")},
@@ -394,5 +399,56 @@ func TestUndeclaredContextAndDataDoNotGate(t *testing.T) {
 	}
 	if err := AuthorizeInvocation(plan, stubTrust{denyContext: true, denyData: true}); err != nil {
 		t.Fatalf("unrelated Host context/schema status invalidated unrelated operation: %v", err)
+	}
+}
+
+func TestSourceDependenciesInvalidateInterpretation(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	plan, err := f.lower(stubTrust{})
+	if err != nil { t.Fatal(err) }
+	before := Keys(f.c, f.a, plan, f.target, ref("builder-v1"))
+	neutral, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil { t.Fatal(err) }
+	origin := Digest(neutral.Origin)
+	f.c.SourceInputs[1].Fingerprint = "sha256:changed-definition"
+	if Digest(neutral.Origin) != origin {
+		t.Fatal("accepted Origin aliases mutable source dependencies")
+	}
+	after := Keys(f.c, f.a, plan, f.target, ref("builder-v1"))
+	if before.Interpret == after.Interpret || before.Accept == after.Accept {
+		t.Fatal("dependent semantic Source did not invalidate interpretation and acceptance")
+	}
+	if got, err := Neutralize(f.c, f.a, stubTrust{}); code(err) != "unaccepted-meaning" {
+		t.Fatalf("modified source entered an old accepted snapshot: %+v %v", got, err)
+	}
+}
+
+func TestInvalidSourceDependencyWitnessFailsClosed(t *testing.T) {
+	tests := []struct{
+		name string
+		edit func(*fixture)
+		want string
+	}{
+		{"empty-closure", func(f *fixture) { f.c.SourceInputs = nil }, "missing-source-dependencies"},
+		{"duplicate-dependency", func(f *fixture) {
+			f.c.SourceInputs = append(f.c.SourceInputs, f.c.SourceInputs[0])
+		}, "invalid-source-dependencies"},
+		{"wrong-order", func(f *fixture) {
+			f.c.SourceInputs[0], f.c.SourceInputs[1] = f.c.SourceInputs[1], f.c.SourceInputs[0]
+		}, "invalid-source-dependencies"},
+		{"unfingerprinted", func(f *fixture) {
+			f.c.SourceInputs[0].Fingerprint = ""
+		}, "invalid-source-dependencies"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := orderFixture("tei.language.dsl")
+			tc.edit(&f)
+			f.a.CandidateDigest = Digest(f.c)
+			_, err := Neutralize(f.c, f.a, stubTrust{})
+			if got := code(err); got != tc.want {
+				t.Fatalf("got %q, expected %q", got, tc.want)
+			}
+		})
 	}
 }
