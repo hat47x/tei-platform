@@ -9,22 +9,52 @@ const LIMIT = 'read-only-cross-view-review-candidates';
 const base = {qualification:LIMIT,fullClosure:false,authority:'none',adoption:'not-decided'};
 const unresolved = reason => ({...base,status:'unresolved',reason});
 
+// E5 already owns Application -> Pattern source membership. Use its observed
+// definitions, not an ID prefix, as the read-only ownership witness.
+// Shape checks cannot authenticate the report or prove a common snapshot.
+function declaredPatterns(report,application) {
+  if (!obj(report) || report.application !== application ||
+      report.status !== 'observed' ||
+      report.qualification !== 'declaration-and-source-index-only' ||
+      !Array.isArray(report.issues) || report.issues.length !== 0 ||
+      !Array.isArray(report.dependencies)) return null;
+  let appCount=0;
+  const patterns=new Set();
+  for (const item of report.dependencies) {
+    if (!obj(item) || !obj(item.subject)) return null;
+    if (item.relation === 'application') {
+      if (item.subject.kind !== 'application' || item.subject.id !== application) return null;
+      appCount++;
+    } else if (item.relation === 'application-pattern') {
+      if (item.subject.kind !== 'application-pattern' ||
+          !nonempty(item.subject.id) || patterns.has(item.subject.id)) return null;
+      patterns.add(item.subject.id);
+    }
+  }
+  return appCount === 1 ? patterns : null;
+}
+
+
 /**
  * E7 is the authority *for its own limited Source Index observation*.
  * #1120 modelref owns typed reference validation and candidate Impact traversal.
  * This adapter never claims either input has authenticated provenance.
  *
  * @param {object} input.sourceDrift Output of E6/E7, NOT reimplemented here.
+ * @param {object} input.sourceReport E5 parsed Application report from the
+ *   same qualified Source observation (caller must establish snapshot binding).
  * @param {object} input.typedProjection Candidate #1120 graph projection + its
  *   Validate diagnostics and Impact output, supplied by a trusted caller.
  */
-export function qualifyCompositionReview({sourceDrift,typedProjection,application,scope}={}) {
+export function qualifyCompositionReview({sourceDrift,sourceReport,typedProjection,application,scope}={}) {
   if (!nonempty(application) || !nonempty(scope) || !obj(sourceDrift) ||
       sourceDrift.authority !== 'none' || sourceDrift.fullClosure !== false ||
       sourceDrift.qualification !== 'application-declaration-and-direct-source-definitions-only' ||
       !['limited-unchanged','unresolved'].includes(sourceDrift.status)) {
     return unresolved('unqualified_source_observation');
   }
+  const patterns = declaredPatterns(sourceReport,application);
+  if (!patterns) return unresolved('unqualified_application_source_report');
   if (!obj(typedProjection) || typedProjection.schema !== 'tei.modelref.v0' ||
       typedProjection.scope !== scope || typedProjection.application !== application ||
       !Array.isArray(typedProjection.nodes) || !Array.isArray(typedProjection.unresolved) ||
@@ -42,6 +72,11 @@ export function qualifyCompositionReview({sourceDrift,typedProjection,applicatio
     known.add(keyText(node.key));
   }
   if (!known.has(keyText(appKey))) return unresolved('application_not_in_typed_projection');
+  for (const patternID of patterns) {
+    if (!known.has(keyText({scope,subject:{kind:'application-pattern',id:patternID}}))) {
+      return unresolved('declared_pattern_missing_from_projection');
+    }
+  }
   const refs = new Set();
   const review = [];
   for (const candidate of typedProjection.affected) {
@@ -54,12 +89,11 @@ export function qualifyCompositionReview({sourceDrift,typedProjection,applicatio
     const unique = JSON.stringify([keyText(candidate.changed),keyText(candidate.consumer),candidate.reason]);
     if (refs.has(unique)) return unresolved('duplicate_typed_impact');
     refs.add(unique);
-    // Show impact only when the candidate is the selected Application or a
-    // scoped Pattern belonging to it; project-wide unrelated consumers are
-    // intentionally not claimed as effects on this Application.
+    // Pattern ownership is obtained from E5 typed World declarations, never
+    // guessed from a naming prefix. Unrelated scoped patterns remain excluded.
     const selected = keyText(candidate.consumer) === keyText(appKey) ||
       (candidate.consumer.subject.kind === 'application-pattern' &&
-       candidate.consumer.subject.id.startsWith(application+'.'));
+       patterns.has(candidate.consumer.subject.id));
     if (selected) review.push({changed:candidate.changed,consumer:candidate.consumer,reason:candidate.reason});
   }
   review.sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
