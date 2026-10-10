@@ -196,6 +196,26 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 		seen[s.Kind+":"+s.Ref.ID] = true
 	}
 	intents := append([]Requirement(nil), c.Requirements...)
+	seenRequirements := make(map[string]bool)
+	for i := range intents {
+		req := &intents[i]
+		if !req.Contract.valid() || req.Scope == "" || req.Effect == "" {
+			return NeutralPlan{}, reject("invalid-boundary")
+		}
+		key := req.Scope + ":" + req.Contract.ID
+		if seenRequirements[key] {
+			return NeutralPlan{}, reject("duplicate-capability")
+		}
+		seenRequirements[key] = true
+		slots := make(map[string]bool)
+		for _, slot := range req.RequiredSlots {
+			if !slot.valid() || slots[slot.ID] {
+				return NeutralPlan{}, reject("invalid-context-declaration")
+			}
+			slots[slot.ID] = true
+		}
+		req.RequiredSlots = append([]Ref(nil), req.RequiredSlots...)
+	}
 	sort.Slice(intents, func(i, j int) bool {
 		return intents[i].Scope+":"+intents[i].Contract.ID < intents[j].Scope+":"+intents[j].Contract.ID
 	})
