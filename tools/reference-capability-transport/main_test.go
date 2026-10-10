@@ -170,8 +170,11 @@ func TestProcessTransportRoundTripPreservesGenericIdentityAndOpaquePayload(t *te
 		receipt.ResultDigest != digestBytes(payload) {
 		t.Fatalf("payload digests=%+v", receipt)
 	}
-	if receipt.LegacyCapabilityKind != plugin.CapabilityContractQueryExecutor ||
-		receipt.LegacyCapabilityID != core.MustCanonicalID("transport.legacy-carrier") {
+	if receipt.Carrier.Kind != "tei-runtime-legacy-capability" ||
+		receipt.Carrier.Plugin == nil ||
+		*receipt.Carrier.Plugin != transportCarrier().Plugin ||
+		receipt.Carrier.LegacyCapabilityKind != plugin.CapabilityContractQueryExecutor ||
+		receipt.Carrier.LegacyCapabilityID != core.MustCanonicalID("transport.legacy-carrier") {
 		t.Fatalf("legacy carrier identity was hidden: %+v", receipt)
 	}
 }
