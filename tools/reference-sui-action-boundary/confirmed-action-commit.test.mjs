@@ -131,6 +131,7 @@ test('native preview and cancel do not mutate; drop only applies server-confirme
   assert.equal(bridge.phase, 'idle');
 });
 
+
 test('guard must return synchronous true, never a truthy Promise or object', async () => {
   for (const returnValue of [Promise.resolve(true), { current: true }, 1, undefined]) {
     const h = harness({ isCurrent: () => returnValue });
