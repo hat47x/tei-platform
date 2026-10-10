@@ -63,7 +63,9 @@ func TestSessionCommandUsesExistingBusinessExecutionWithoutCredentials(t *testin
 		Providers: map[string]string{"corporate": corporate.Issuer, "legacy": legacy.Issuer},
 	}, webcomposition.Dependencies{
 		VerifySession: func(*http.Request) (webcomposition.Principal, error) { return current, nil },
-		VerifyCSRF: func(r *http.Request, _ webcomposition.Principal) bool { return r.Header.Get("X-CSRF-Fixture") == "matching" },
+		VerifyCSRF: func(r *http.Request, _ webcomposition.Principal) bool {
+			return r.Header.Get("X-CSRF-Fixture") == "matching"
+		},
 		Authorize: authorize,
 		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			actual, actualErr = runner.RunVerifiedSessionCommand(r.Context(), links, "2026-09-18T08:30:00Z", 0)
@@ -134,7 +136,7 @@ func TestSessionCommandStillAuthorizesAtBusinessBoundary(t *testing.T) {
 				Providers: map[string]string{"corporate": principal.Issuer},
 			}, webcomposition.Dependencies{
 				VerifySession: func(*http.Request) (webcomposition.Principal, error) { return principal, nil },
-				VerifyCSRF: func(*http.Request, webcomposition.Principal) bool { return true },
+				VerifyCSRF:    func(*http.Request, webcomposition.Principal) bool { return true },
 				// Deliberately permissive HTTP hook: the Runner must not treat it as
 				// permission to skip the canonical business authorization.
 				Authorize: func(context.Context, webcomposition.Principal, string) (bool, error) { return true, nil },
