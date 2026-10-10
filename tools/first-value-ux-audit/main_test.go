@@ -70,16 +70,16 @@ func TestE1ReadIsClaimOnly(t *testing.T) {
 func TestRejectInvalidAndMisleadingRecords(t *testing.T) {
 	tests := map[string]string{
 		"invalid-revision": strings.Replace(exampleSession, `0000000000000000000000000000000000000000`, `not-a-git-commit`, 1),
-		"too-large": strings.Repeat(" ", 1<<20) + exampleSession,
-		"unknown-schema":  strings.Replace(exampleSession, `tei.first-value-ux-session/v1`, `unknown`, 1),
-		"unknown-actor":   strings.Replace(exampleSession, `"new-agent"`, `"expert"`, 1),
-		"unknown-field":   strings.Replace(exampleSession, `"phase":"E0"`, `"phase":"E0","succeeded":true`, 1),
-		"exit-missing":    strings.Replace(exampleSession, `"kind":"command","exitCode":0`, `"kind":"command"`, 1),
-		"negative-count":  strings.Replace(exampleSession, `"count":1`, `"count":-1`, 1),
-		"backwards-clock": strings.Replace(exampleSession, `2026-10-10T08:00:39Z`, `2026-10-10T07:00:39Z`, 1),
-		"out-of-order":    strings.Replace(exampleSession, `2026-10-10T08:00:39Z`, `2026-10-10T08:00:01Z`, 1),
-		"trailing-json":   exampleSession + ` {}`,
-		"e0-read":         strings.Replace(exampleSession, `"kind":"recovery"`, `"kind":"independent-read","evidenceRef":"read.json"`, 1),
+		"too-large":        strings.Repeat(" ", 1<<20) + exampleSession,
+		"unknown-schema":   strings.Replace(exampleSession, `tei.first-value-ux-session/v1`, `unknown`, 1),
+		"unknown-actor":    strings.Replace(exampleSession, `"new-agent"`, `"expert"`, 1),
+		"unknown-field":    strings.Replace(exampleSession, `"phase":"E0"`, `"phase":"E0","succeeded":true`, 1),
+		"exit-missing":     strings.Replace(exampleSession, `"kind":"command","exitCode":0`, `"kind":"command"`, 1),
+		"negative-count":   strings.Replace(exampleSession, `"count":1`, `"count":-1`, 1),
+		"backwards-clock":  strings.Replace(exampleSession, `2026-10-10T08:00:39Z`, `2026-10-10T07:00:39Z`, 1),
+		"out-of-order":     strings.Replace(exampleSession, `2026-10-10T08:00:39Z`, `2026-10-10T08:00:01Z`, 1),
+		"trailing-json":    exampleSession + ` {}`,
+		"e0-read":          strings.Replace(exampleSession, `"kind":"recovery"`, `"kind":"independent-read","evidenceRef":"read.json"`, 1),
 	}
 	for name, src := range tests {
 		t.Run(name, func(t *testing.T) {
