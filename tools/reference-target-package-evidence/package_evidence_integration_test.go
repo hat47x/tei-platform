@@ -117,22 +117,20 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 		{"assume-unchanged", "--assume-unchanged", "--no-assume-unchanged"},
 		{"skip-worktree", "--skip-worktree", "--no-skip-worktree"},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			git("update-index", tc.setFlag, trackedSource)
-			writeFixture(trackedSource, "package calc\nfunc Result() int { return 999 }\n")
-			if status := git("status", "--porcelain", "--untracked-files=all"); status != "" {
-				t.Fatalf("hidden index flag unexpectedly exposed source changes: %q", status)
-			}
-			if _, err := produceEvidence("./cmd/app", ""); err == nil ||
-				!strings.Contains(err.Error(), "hidden Git index flag") {
-				t.Fatalf("modified tracked source hidden by %s was accepted: %v", tc.name, err)
-			}
-			git("update-index", tc.clearFlag, trackedSource)
-			writeFixture(trackedSource, originalCalc)
-			if status := git("status", "--porcelain", "--untracked-files=all"); status != "" {
-				t.Fatalf("fixture was not restored after %s: %q", tc.name, status)
-			}
-		})
+		git("update-index", tc.setFlag, trackedSource)
+		writeFixture(trackedSource, "package calc\nfunc Result() int { return 999 }\n")
+		if status := git("status", "--porcelain", "--untracked-files=all"); status != "" {
+			t.Fatalf("hidden index flag unexpectedly exposed source changes: %q", status)
+		}
+		if _, err := produceEvidence("./cmd/app", ""); err == nil ||
+			!strings.Contains(err.Error(), "hidden Git index flag") {
+			t.Fatalf("modified tracked source hidden by %s was accepted: %v", tc.name, err)
+		}
+		git("update-index", tc.clearFlag, trackedSource)
+		writeFixture(trackedSource, originalCalc)
+		if status := git("status", "--porcelain", "--untracked-files=all"); status != "" {
+			t.Fatalf("fixture was not restored after %s: %q", tc.name, status)
+		}
 	}
 
 	// Embedded assets also alter the package bytes without appearing in
