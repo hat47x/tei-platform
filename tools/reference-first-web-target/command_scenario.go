@@ -33,6 +33,7 @@ type commandScenarioResult struct {
 	Read            *readScenarioResult          `json:"read,omitempty"`
 	Validations     []validationResultProjection `json:"validations,omitempty"`
 	Authorization   *businessResultProjection    `json:"authorization,omitempty"`
+	EffectAuthorization *businessResultProjection `json:"effectAuthorization,omitempty"`
 	Command         *businessResultProjection    `json:"command,omitempty"`
 	Observation     *observationProjection       `json:"observation,omitempty"`
 	AuthorityLimits []string                     `json:"authorityLimits"`
@@ -235,35 +236,16 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	}
 
 	result.Stage = "authorization"
-	authorizationAdapter := legacyauthorization.Adapter{
-		Store: r.store,
-		Rule:  r.authorization,
-	}
-	authorization, err := r.resolver.InvokeCapability(
-		ctx,
-		core.MustCanonicalID("order_entry"),
-		core.MustCanonicalID("security.authorize"),
-		bindingAdapterResolverFunc(func(_ context.Context, binding realization.CustomGoBinding) (capabilityinvoke.Adapter, error) {
-			if binding.Identity() != "order_entry/security.authorize" {
-				return nil, fmt.Errorf("unexpected Authorization Binding %s", binding.Identity())
-			}
-			return authorizationAdapter, nil
-		}),
-		legacyauthorization.Input{
-			SubjectID: subjectID,
-			Action:    "execute",
-			Resource:  "order_entry.submit_order",
-		},
-	)
+	authorization, err := r.invokeBusinessAuthorization(ctx, subjectID)
 	if err != nil {
 		return result, err
 	}
-	projectedAuthorization, err := projectBusinessResult(authorization.Result)
+	projectedAuthorization, err := projectBusinessResult(authorization)
 	if err != nil {
 		return result, err
 	}
 	result.Authorization = &projectedAuthorization
-	if authorization.Result.Outcome != "allowed" {
+	if authorization.Outcome != "allowed" {
 		result.Stage = "authorization-denied"
 		return result, nil
 	}
@@ -329,6 +311,37 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 			result.Stage = "identity-link-denied"
 			return result, nil
 		}
+		// The identity/account link may still be current while the subject's
+		// business permissions have changed since the initial authorization.
+		// Re-evaluate through the same canonical security.authorize Capability,
+		// rather than introducing a target-specific permission evaluator.
+		result.Stage = "effect-authorization"
+		effectAuthorization, err := r.invokeBusinessAuthorization(ctx, subjectID)
+		if err != nil {
+			return result, fmt.Errorf("effect-time authorization unavailable: %w", err)
+		}
+		projected, err := projectBusinessResult(effectAuthorization)
+		if err != nil {
+			return result, err
+		}
+		result.EffectAuthorization = &projected
+		if effectAuthorization.Mode != capabilityinvoke.ResultOutcome {
+			return result, fmt.Errorf("effect-time authorization returned an unexpected result mode")
+		}
+		switch effectAuthorization.Outcome {
+		case "denied":
+			result.Stage = "authorization-denied"
+			return result, nil
+		case "allowed":
+			grant, ok := effectAuthorization.Payload.(legacyauthorization.AuthorizationGrant)
+			if !ok || grant.SubjectID != subjectID || grant.Action != "execute" ||
+				grant.Resource != "order_entry.submit_order" {
+				return result, fmt.Errorf("effect-time authorization returned a mismatched grant")
+			}
+		default:
+			return result, fmt.Errorf("effect-time authorization returned an unexpected outcome %q", effectAuthorization.Outcome)
+		}
+		result.Stage = "command"
 	}
 	command, err := r.resolver.InvokeCapability(
 		ctx,
@@ -374,6 +387,39 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	}
 	result.Stage = "completed"
 	return result, nil
+}
+
+
+// invokeBusinessAuthorization resolves the accepted canonical authorization
+// Capability at every requested boundary. Both the first decision and the
+// session-only final decision use the same adapter, input and Binding.
+func (r *referenceCommandScenarioRunner) invokeBusinessAuthorization(
+	ctx context.Context, subjectID string,
+) (capabilityinvoke.BusinessResult, error) {
+	authorizationAdapter := legacyauthorization.Adapter{
+		Store: r.store,
+		Rule:  r.authorization,
+	}
+	invocation, err := r.resolver.InvokeCapability(
+		ctx,
+		core.MustCanonicalID("order_entry"),
+		legacyauthorization.AuthorizationCapability,
+		bindingAdapterResolverFunc(func(_ context.Context, binding realization.CustomGoBinding) (capabilityinvoke.Adapter, error) {
+			if binding.Identity() != "order_entry/security.authorize" {
+				return nil, fmt.Errorf("unexpected Authorization Binding %s", binding.Identity())
+			}
+			return authorizationAdapter, nil
+		}),
+		legacyauthorization.Input{
+			SubjectID: subjectID,
+			Action:    "execute",
+			Resource:  "order_entry.submit_order",
+		},
+	)
+	if err != nil {
+		return capabilityinvoke.BusinessResult{}, err
+	}
+	return invocation.Result, nil
 }
 
 type referenceCredentialVerifier struct{}
