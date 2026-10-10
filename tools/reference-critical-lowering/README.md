@@ -96,3 +96,18 @@ Source側依存の`SourceInputs`は、プロデューサがClosureを検討し�
 `go test -run`はテスト名が一致せず**0件実行**でも終了コード0となる。また`t.Skip`したテストも通常は成功扱いとなる。このため`qualify.sh`の必須シナリオ3件は、プロセスの終了コードだけでなく、`-v`ログに対象名の`--- PASS: ...`が明示されていることを確認する。命名の変化・無実行・opt-inのskipはQualification失敗となる。
 
 シェルのPASSマーカー判定部分だけについては、ローカルの独立した小型fixtureで「0件実行」「SKIP」「PASS」を模擬して想定どおり判別できることを確認した（`GUARD_SMOKE_OK`）。ただし、これはGitHubの実Checkoutにあるスクリプト全体やTEIのGo Testを走らせた証拠ではない。実際のQualificationをPASSしたと誤記しない。
+
+## Qualification Runnerの回帰防止とE1証拠の扱い
+
+`qualify.sh`は単なる`origin/main`ローカル追跡refの一致では合格としない。開始時と終了時に`git ls-remote --exit-code origin refs/heads/main`で**実リモートmain**のSHAを照合し、実リモートが動いた／到達不能／HEADがmainを含まない場合は停止する。script全体の`bash -n`構文検査を実行前に行い、対象Testの`--- PASS:`を確認する（`go test -run`の0件一致・Skipは合格させない）。
+
+`qualify_gate_test.sh`は、模擬gitと空の隔離ディレクトリを使い、実Network・Source変更・GitHub Actionsなしで検査する回帰テストである。
+
+```bash
+bash -n tools/reference-critical-lowering/qualify.sh
+bash tools/reference-critical-lowering/qualify_gate_test.sh
+```
+
+2026-10-10にこの2件を**隔離ローカル**で実行し、構文検査成功・`QUALIFY_GUARD_PASS`を確認した。隔離実行したスクリプトのGit blob SHAは`qualify.sh=0706c5af28a4eaf08f5086add47d6c4baa4b68ae`、`qualify_gate_test.sh=2a6e6e7583deafc1c8814fb81d3621d6bcecc160`で、GitHub source blobと一致する。これはshellのpreflightに限定した証拠であり、**Go test / gofmt / full Repository Health / production Authorityの成功ではない**。
+
+#1119が保有する`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`は、scratchのR0→R1 Test-only Acceptanceからrunning WebのE1-A正例を構成するが、`humanApproval=false`・Providerがsyntheticである。そこで発行する`workspace-r1.json`・`target-launch.json`・`web-positive.json`も**実Authorityへ変換可能なTicketではない**。#1121が今後受け取る場合はSource Revision / Capability / Target identityを照合する監査証拠としてのみ消費し、Trusted Acceptance receipt・Runtime execution grantの代用にはしない。独立DB Read、既存Host Permission、第二Targetのactual実行は未証明。
