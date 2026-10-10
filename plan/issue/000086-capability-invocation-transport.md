@@ -43,6 +43,8 @@ Referenceでは次を確認する。
 - opaque payload bytesがprocess round tripで変わらない
 - Contract / Provider / Target / shape metadataが応答時にexactに一致する
 - metadata driftを成功へ畳まない
+- dispatch / result framingを別schemaとして扱う
+- generic ProviderのPlugin ID / versionとlegacy carrier Pluginをprocess起動前に照合する
 - Request / ResponseのPlugin / request ID / descriptor identityが一致する
 - process stderrのraw内容をHost errorへ複製しない既存境界を維持する
 - transport成功をCapability Conformance、Runtime Authority、Canonical Acceptanceへ昇格させない
@@ -51,6 +53,8 @@ Referenceでは次を確認する。
 ## 最初の停止条件
 
 process transportにgeneric metadataを載せられても、現行production protocolのtop-level identityはlegacy CapabilityKind / CapabilityIDのままである。このReferenceだけを根拠に、generic Capabilityがproduction process protocolへ統合済みとは扱わない。
+
+legacy carrierはgeneric Implementation ID / artifact digestをtop-levelで持たない。package identityを照合できても、exact implementation artifactのRuntime Authorityを証明できない。そこは#1116のEnvironment Plan / Runtime Registry側へ残す。
 
 generic Contract identityをHostがtransport envelopeのtop-levelで検証する必要が二つ目のtransportでも再現した場合に、production protocol変更を検討する。
 
