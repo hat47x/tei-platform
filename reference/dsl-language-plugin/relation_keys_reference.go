@@ -81,21 +81,30 @@ func resolveWorldRelation(w ir.World, sourceID, relationID core.CanonicalID) (se
 	return *relation, nil
 }
 
+// checkedWorldRelation reuses diagnostics produced by TEI's canonical key
+// validator. It only owns identity lookup and association of existing errors
+// with a requested Relation; it does not define a second key rule set.
+func checkedWorldRelation(w ir.World, sourceID, relationID core.CanonicalID, diagnostics []validation.Diagnostic) (semantic.Relation, error) {
+	relation, err := resolveWorldRelation(w, sourceID, relationID)
+	if err != nil {
+		return semantic.Relation{}, err
+	}
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == validation.Error &&
+			diagnostic.Subject != nil &&
+			diagnostic.Subject.Kind == "semantic-relation" &&
+			diagnostic.Subject.ID == string(relationID) {
+			return semantic.Relation{}, fmt.Errorf("relation %q: %s: %s", relationID, diagnostic.Code, diagnostic.Message)
+		}
+	}
+	return relation, nil
+}
+
 // ValidateRelationKeys uses TEI's existing Semantic Relation key validator for
 // key ownership, type identity and mapping constraints. Its only additional
 // responsibility is identifying an unambiguous source/relation/target in the
 // supplied world. Keyless conceptual relations remain valid here.
 func ValidateRelationKeys(w ir.World, sourceID, relationID core.CanonicalID) error {
-	if _, err := resolveWorldRelation(w, sourceID, relationID); err != nil {
-		return err
-	}
-	for _, diagnostic := range validation.ValidateSemanticRelationKeys(w) {
-		if diagnostic.Severity == validation.Error &&
-			diagnostic.Subject != nil &&
-			diagnostic.Subject.Kind == "semantic-relation" &&
-			diagnostic.Subject.ID == string(relationID) {
-			return fmt.Errorf("relation %q: %s: %s", relationID, diagnostic.Code, diagnostic.Message)
-		}
-	}
-	return nil
+	_, err := checkedWorldRelation(w, sourceID, relationID, validation.ValidateSemanticRelationKeys(w))
+	return err
 }
