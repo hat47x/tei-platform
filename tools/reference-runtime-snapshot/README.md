@@ -6,7 +6,7 @@
 
 受理した `Snapshot.Handler()` は `GET /manifest.json` と `GET /healthz` のみを提供する。既存の `/scenario/read`、`/scenario/submit`、`/scenario/customer-lookup` 等は未実装で404となり、未実装の業務処理・認証・認可を成功したものとして表示しない。HTTP Serverのlisten/TLS/identity/authorization、実ビルドへの組込みは呼出し側の責任であり、このReferenceからProduction公開してはならない。
 
-`ManifestSHA256`は呼出し側が**独立に確定した値**であることが前提で、未信頼のmanifest自身から期待digestを計算して与えてもprovenanceの証明にならない。SHA-256だけでは、Source revision・Builder・署名・権限・Secret不在・機能同等性を保証しない。また現在のReferenceはtop-levelの4つのIDの構文と一意性だけを要求し、追加のProjection schemaを確定しない。
+`ManifestSHA256`は呼出し側が**独立に確定した値**であることが前提で、未信頼のmanifest自身から期待digestを計算して与えてもprovenanceの証明にならない。SHA-256だけでは、Source revision・Builder・署名・権限・Secret不在・機能同等性を保証しない。このReferenceはtop-levelの4つのIDを照合するほか、JSON全体の**ネストしたobjectを含む重複キー**を拒否し、ネスト深度128を超える入力と8MiBを超える入力を拒否する。異なるJSON Consumer間で曖昧な解釈が生じないようにする検査であり、追加のProjection schemaや業務意味を新たに定義するものではない。
 
 ```sh
 go test -count=1 ./tools/reference-runtime-snapshot
