@@ -16,6 +16,8 @@ func e5Fixture() (ir.World, sourceindex.Index) {
     world := ir.World{
         Applications: []application.Application{{
             ID: core.CanonicalID("order_entry"),
+            SemanticUses: []core.CanonicalID{"sales"},
+            Patterns: []application.Pattern{{ID:"order_entry.submit_order",Kind:application.PatternCommand}},
             Validations: []core.CanonicalID{"sales.order_line.quantity_positive"},
             Databases: []application.DatabaseRequirement{{
                 Alias: "sales",
@@ -33,12 +35,16 @@ func e5Fixture() (ir.World, sourceindex.Index) {
             {Path:"applications/order-entry/application.tei",Fingerprint:"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
             {Path:"semantic/sales/validation.tei",Fingerprint:"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
             {Path:"databases/sales-core/database.tei",Fingerprint:"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+            {Path:"applications/order-entry/patterns/submit-order.tei",Fingerprint:"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"},
+            {Path:"semantic/sales/order.tei",Fingerprint:"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
             {Path:"databases/sales-core/contracts/order.tei",Fingerprint:"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
         },
         References: []sourceindex.Reference{
             {Subject:sourceindex.Subject{Kind:"application",ID:"order_entry"},ArtifactPath:"applications/order-entry/application.tei",Role:sourceindex.RoleDefinition},
             {Subject:sourceindex.Subject{Kind:"semantic-validation",ID:"sales.order_line.quantity_positive"},ArtifactPath:"semantic/sales/validation.tei",Role:sourceindex.RoleDefinition},
             {Subject:sourceindex.Subject{Kind:"database",ID:"sales_core"},ArtifactPath:"databases/sales-core/database.tei",Role:sourceindex.RoleDefinition},
+            {Subject:sourceindex.Subject{Kind:"application-pattern",ID:"order_entry.submit_order"},ArtifactPath:"applications/order-entry/patterns/submit-order.tei",Role:sourceindex.RoleDefinition},
+            {Subject:sourceindex.Subject{Kind:"semantic",ID:"sales"},ArtifactPath:"semantic/sales/order.tei",Role:sourceindex.RoleDefinition},
             {Subject:sourceindex.Subject{Kind:"database-contract",ID:"sales_core.order"},ArtifactPath:"databases/sales-core/contracts/order.tei",Role:sourceindex.RoleDefinition},
         },
     }
@@ -55,7 +61,7 @@ func e5HasIssue(report e5Report, reason string) bool {
 func TestE5ResolvesTypedWorldToSourceDefinitions(t *testing.T) {
     world,index:=e5Fixture()
     got:=inspectE5(world,index,"order_entry")
-    if got.Status!="observed" || len(got.Dependencies)!=4 || len(got.Issues)!=0 {
+    if got.Status!="observed" || len(got.Dependencies)!=6 || len(got.Issues)!=0 {
         t.Fatalf("unexpected report: %+v",got)
     }
     hasContract:=false
@@ -159,4 +165,46 @@ func TestE5DoesNotUseAuthoringAsDefinition(t *testing.T) {
     world,index:=e5Fixture()
     index.References[len(index.References)-1].Role=sourceindex.RoleAuthoring
     if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous"){t.Fatal("authoring reference used as definition")}
+}
+
+func TestE5RejectsMissingSemanticNamespace(t *testing.T) {
+    world,index:=e5Fixture()
+    world.Semantics[0].ID="other"
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"semantic_namespace_missing_or_ambiguous") {
+        t.Fatal("missing semantic namespace accepted")
+    }
+}
+
+func TestE5RejectsDuplicateApplicationSemanticUse(t *testing.T) {
+    world,index:=e5Fixture()
+    world.Applications[0].SemanticUses=append(world.Applications[0].SemanticUses,world.Applications[0].SemanticUses[0])
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"duplicate_semantic_use") {
+        t.Fatal("duplicate semantic use accepted")
+    }
+}
+
+func TestE5RejectsMissingPatternDefinitionReference(t *testing.T) {
+    world,index:=e5Fixture()
+    // The fourth reference is the Application Pattern Source definition.
+    index.References=append(index.References[:3],index.References[4:]...)
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous") {
+        t.Fatal("pattern source without definition accepted")
+    }
+}
+
+func TestE5RejectsDuplicateApplicationPattern(t *testing.T) {
+    world,index:=e5Fixture()
+    world.Applications[0].Patterns=append(world.Applications[0].Patterns,world.Applications[0].Patterns[0])
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"duplicate_or_empty_pattern") {
+        t.Fatal("duplicate pattern accepted")
+    }
+}
+
+func TestE5RejectsMissingSemanticNamespaceSourceReference(t *testing.T) {
+    world,index:=e5Fixture()
+    // Namespace declaration and its Source Index reference are separate checks.
+    index.References=append(index.References[:4],index.References[5:]...)
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous") {
+        t.Fatal("semantic source without a definition reference accepted")
+    }
 }
