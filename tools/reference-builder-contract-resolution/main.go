@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -159,25 +160,11 @@ func main() {
 		ExpandedFreshError: freshErr.Error(),
 		AuthorityLimits:    append([]string(nil), authorityLimits...),
 	}
-	encoder := json.NewEncoder(jsonOutput())
+	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(out); err != nil {
 		panic(err)
 	}
-}
-
-var jsonOutput = func() jsonWriter {
-	return stdJSONWriter{}
-}
-
-type jsonWriter interface {
-	Write([]byte) (int, error)
-}
-
-type stdJSONWriter struct{}
-
-func (stdJSONWriter) Write(p []byte) (int, error) {
-	return fmt.Print(string(p))
 }
 
 func resolveBuilder(
@@ -202,6 +189,9 @@ func resolveBuilder(
 	}
 
 	if wiring != nil {
+		if err := validateWiring(*wiring); err != nil {
+			return BuilderResolution{}, err
+		}
 		if wiring.ContractID != intent.ContractID {
 			return BuilderResolution{}, fmt.Errorf("builder wiring contract %s does not match intent contract %s", wiring.ContractID, intent.ContractID)
 		}
@@ -498,6 +488,30 @@ func exactContract(contracts []BuilderContract, id, version string) (BuilderCont
 	return matches[0], nil
 }
 
+func validateWiring(wiring BuilderWiring) error {
+	if _, err := core.ParseCanonicalID(wiring.ContractID); err != nil {
+		return fmt.Errorf("builder wiring contract id: %w", err)
+	}
+	if wiring.ProviderID == "" {
+		return fmt.Errorf("builder wiring provider id is required")
+	}
+	if _, err := core.ParseCanonicalID(string(wiring.ProviderID)); err != nil {
+		return fmt.Errorf("builder wiring provider id: %w", err)
+	}
+	if !core.ValidNumericVersion(wiring.ProviderVersion) {
+		return fmt.Errorf("builder wiring provider version %q must be major.minor.patch", wiring.ProviderVersion)
+	}
+	if strings.TrimSpace(wiring.ImplementationID) == "" {
+		return fmt.Errorf("builder wiring implementation id is required")
+	}
+	if wiring.ArtifactDigest != "" {
+		if _, err := canonicalDigestChecked(wiring.ArtifactDigest); err != nil {
+			return fmt.Errorf("builder wiring artifact digest: %w", err)
+		}
+	}
+	return nil
+}
+
 func validateIntent(intent BuilderIntent) error {
 	if _, err := core.ParseCanonicalID(intent.ContractID); err != nil {
 		return fmt.Errorf("builder intent contract id: %w", err)
@@ -597,14 +611,41 @@ func builderIntentFingerprint(intent BuilderIntent) (string, error) {
 }
 
 func resolutionFingerprint(resolution BuilderResolution) (string, error) {
-	value := resolution
-	value.ResolutionFingerprint = ""
-	value.IntentFingerprint = canonicalFingerprint(value.IntentFingerprint)
-	value.ContractFingerprint = canonicalFingerprint(value.ContractFingerprint)
-	value.Provider = normalizeProvider(value.Provider)
-	value.EvidenceFingerprint = canonicalFingerprint(value.EvidenceFingerprint)
-	value.Builder = canonicalBuilderIdentity(value.Builder)
-	return fingerprint(value)
+	type providerIdentity struct {
+		ProviderID          core.CanonicalID `json:"providerId"`
+		ProviderVersion     string           `json:"providerVersion"`
+		ImplementationID    string           `json:"implementationId"`
+		ArtifactDigest      string           `json:"artifactDigest"`
+		Scope               string           `json:"scope"`
+		ContractID          string           `json:"contractId"`
+		ContractVersion     string           `json:"contractVersion"`
+		ContractFingerprint string           `json:"contractFingerprint"`
+		ConformanceProfile  string           `json:"conformanceProfile"`
+	}
+	provider := normalizeProvider(resolution.Provider)
+	return fingerprint(struct {
+		IntentFingerprint   string                 `json:"intentFingerprint"`
+		ContractFingerprint string                 `json:"contractFingerprint"`
+		Provider            providerIdentity       `json:"provider"`
+		EvidenceFingerprint string                 `json:"evidenceFingerprint"`
+		Builder             plugin.BuilderIdentity `json:"builder"`
+	}{
+		IntentFingerprint:   canonicalFingerprint(resolution.IntentFingerprint),
+		ContractFingerprint: canonicalFingerprint(resolution.ContractFingerprint),
+		Provider: providerIdentity{
+			ProviderID:          provider.ProviderID,
+			ProviderVersion:     provider.ProviderVersion,
+			ImplementationID:    provider.ImplementationID,
+			ArtifactDigest:      provider.ArtifactDigest,
+			Scope:               provider.Scope,
+			ContractID:          provider.ContractID,
+			ContractVersion:     provider.ContractVersion,
+			ContractFingerprint: provider.ContractFingerprint,
+			ConformanceProfile:  provider.ConformanceProfile,
+		},
+		EvidenceFingerprint: canonicalFingerprint(resolution.EvidenceFingerprint),
+		Builder:             canonicalBuilderIdentity(resolution.Builder),
+	})
 }
 
 func normalizeContract(contract BuilderContract) BuilderContract {
