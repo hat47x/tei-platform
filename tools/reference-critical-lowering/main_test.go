@@ -104,7 +104,8 @@ func TestWebOrderScenarioWithTwoLanguageProducers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.Schema != Schema || got.Snapshot != f.a.Snapshot || len(got.Steps) != 2 {
+			if got.Schema != Schema || got.Snapshot != f.a.Snapshot || got.Origin.AcceptanceReceipt != f.a.Receipt ||
+				got.Origin.CandidateDigest != Digest(f.c) || got.Origin.Source != f.c.Source || len(got.Steps) != 2 {
 				t.Fatalf("bad plan: %+v", got)
 			}
 			if got.Steps[1].Effect != "write" || !equalSlots(got.Steps[1].RequiredSlots, f.c.Requirements[1].RequiredSlots) {
