@@ -516,6 +516,25 @@ func TestReferenceEvidenceIsDeterministicAndKeepsAuthoritySeparated(t *testing.T
 	if first.MultiOutputComparison.Reproducible {
 		t.Fatal("divergent multi-output fixture was reported as reproducible")
 	}
+	if first.BuildAttestationFingerprint == "" {
+		t.Fatal("Reference Evidence has no immutable build attestation fingerprint")
+	}
+	if first.BuildAttestationVerification.AttestationFingerprint != first.BuildAttestationFingerprint {
+		t.Fatal("attestation verification does not refer to immutable attestation fingerprint")
+	}
+	if !first.CurrentTrustDecision.Trusted {
+		t.Fatalf("current trust policy did not trust verified Reference attestation: %#v", first.CurrentTrustDecision)
+	}
+	if first.RevokedTrustDecision.Trusted || first.RevokedTrustDecision.Reason != "issuer-revoked" {
+		t.Fatalf("revoked trust policy still trusts Reference attestation: %#v", first.RevokedTrustDecision)
+	}
+	if first.CurrentTrustDecision.AttestationFingerprint != first.RevokedTrustDecision.AttestationFingerprint ||
+		first.CurrentTrustDecision.AttestationFingerprint != first.BuildAttestationFingerprint {
+		t.Fatal("trust policy change changed immutable attestation identity")
+	}
+	if first.CurrentTrustDecision.PolicyFingerprint == first.RevokedTrustDecision.PolicyFingerprint {
+		t.Fatal("trust policy revocation did not change fresh policy identity")
+	}
 	if len(first.MultiOutputComparison.MissingFromSecond) == 0 ||
 		len(first.MultiOutputComparison.ExtraInSecond) == 0 ||
 		len(first.MultiOutputComparison.Changed) == 0 {
