@@ -32,7 +32,7 @@ export function indexWorld(world) {
       !Array.isArray(world.applications)) throw new Error("INVALID_WORLD");
   const data = new Map(), relations = new Map(), attributes = new Map();
   const patterns = new Map(), namespaces = new Map(), validations = new Map();
-  const applications = new Map();
+  const applications = new Map(), validationConsumers = new Map();
   for (const ns of world.semantics) {
     insert(namespaces, ns.id, ns, "namespace");
     for (const validation of array(ns.validations, "namespace.validations")) {
@@ -50,11 +50,19 @@ export function indexWorld(world) {
   }
   for (const app of world.applications) {
     insert(applications, app.id, app, "application");
+    for (const validationID of array(app.validations, "application.validations")) {
+      requireID(validationID, "application.validation");
+      const users = validationConsumers.get(validationID) || [];
+      if (users.some(u => u.application === app.id))
+        throw new Error("DUPLICATE_APPLICATION_VALIDATION_USE: " + app.id + ":" + validationID);
+      users.push({ application: app.id, status: "source-declared" });
+      validationConsumers.set(validationID, users);
+    }
     for (const pattern of array(app.patterns, "application.patterns")) {
       insert(patterns, pattern.id, { ...pattern, application: app.id }, "pattern");
     }
   }
-  return { data, relations, attributes, patterns, namespaces, validations, applications };
+  return { data, relations, attributes, patterns, namespaces, validations, applications, validationConsumers };
 }
 function selected(index, subject) {
   if (typeof subject !== "string") throw new Error("INVALID_SUBJECT");
@@ -243,9 +251,7 @@ export function projectWorld(world, revision, focus, options = {}) {
     relations: array(node.relations, "data.relations").map(r => link("relation", r.id)),
     validations: relevantValidations.map(v => ({
       ...link("validation", v.id), kind: v.kind,
-      applicationSelection: [...ix.applications.values()].filter(a =>
-        array(a.validations, "application.validations").includes(v.id)
-      ).map(a => ({ application: a.id, status: "source-declared" })),
+      applicationSelection: ix.validationConsumers.get(v.id) || [],
       evaluationAuthority: "not-verified-by-projection",
       attribute: v.attribute && ix.attributes.has(v.attribute)
         ? link("attribute", v.attribute) : null,
