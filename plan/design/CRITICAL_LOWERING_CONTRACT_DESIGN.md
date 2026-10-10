@@ -150,3 +150,27 @@ Reference `Keys`は`Builder`に加え、既存Build Artifact ownerが解決し�
 3. `order_entry` Web HTTP実行でactual Target trace（Auth/Validation/Business Result/Separate Observation）を獲得する。
 4. 第二Targetは意味の不変条件、Capability非対応の失敗または具体的実行差分を実証する。
 5. exact-head clean checkoutでGo test・gofmt・repository-health-checkを実行し、証跡を残す。現時点でこれらは未実行。
+
+## 8. 既存Web Target実行レーンの準備と証拠区分
+
+新たなWeb実装やHTTP Driverを#1121へ複製せず、既存`tools/reference-first-web-target`の実行バイナリを対象とする、opt-inのBlack-box smoke testを新規Reference内に追加した。試験環境は`TEI_LOWERING_WEB_SMOKE=1`でのみ起動し、信頼する**実CheckoutのHEAD**を取得し、Gitの前後clean状態を照合する。RuntimeはLoopback ephemeral portで起動し、持続的なproduction serverとは別とする。
+
+試験する三段階は次のとおりである。
+
+| 段階 | 実装済みテストの観測契約 | 証拠の限界 |
+| --- | --- | --- |
+| Source→Canonical→Composition | `workspace.Load`、既存DriverのCommand/Browse/Reference/Header-Detail、Source Indexの実Fingerprint、ApplicationのDatasource/DB要求、Environment Instance binding、既存`plugin.Catalog.ResolveEnvironment` | current DB Schemaやproduction Capability Authorizeの実証ではない |
+| Canonical→Web Target | 既存Webバイナリを実際に`go build`しHTTP `/manifest.json`を読み、Application/Pattern/Data/Command IDをReference意味主体と照合 | Synthetic `Acceptance`を実Webが消費したことにはならない |
+| Web runtime scenario | `POST /scenario/submit`で認証→3件のValidation→Authorization→Command Result→別Observation、認証拒否、Command実行エラー、Credential非露出を観測 | 既存fixtureとsynthetic Observationであり、外部DBへの永続書込や実Principalの権限ではない |
+
+以上は**真正のHTTP実走査を再現できるテストソースを作成した**段階であり、Tool実行環境にtrusted完全Checkoutがないため、実走査結果をまだ得ていない。既存Web Target自身の既設単体テストと取り違えない。
+
+### Contextと実行権限の結合で残る危険
+
+現状のReferenceで`AuthorizeInvocation(plan, trust)`を呼んでも、その結果を実HostがExecution Dispatcherと同一のrevocation/lease boundaryで確認したわけではない。実権限、datasource instance、Plugin、artifactが検査と実行の間に変わるTOCTOUは、独立したProduction側の課題である。ここへ新しいstandalone Authorize APIを追加するのではなく、#951/#1118の既存Host/Capability Invocationを拡張・検証する形に寄せる。
+
+またPlugin環境解決`plugin.Catalog.ResolveEnvironment`と、#951のGeneric Capability Contract Resolverは別の責務である。前者の成功をもって後者のConformance・Contract fingerprint・実Artifact/Lockの証明とはしない。
+
+### Gate判断
+
+新Web smoke testは通常の`go test`からはskipされ、明示実行でのみバイナリをbuildし起動する。これを含め、focused/full testが**実行済みであるという記録は存在しない**。次に必要なのはtrusted checkoutでのSmoke実行・Go formatter・full Health Check、actual Shared Acceptance/Generic Resolver接続、および二つ目のTargetからの独立した実測証拠である。
