@@ -19,12 +19,15 @@ import (
 // WorkspaceTrace is a read-only projection, not an accepted Canonical graph,
 // a proposal, or authority to edit any located source.
 type WorkspaceTrace struct {
-	SchemaVersion        string                    `json:"schemaVersion"`
-	Trace                modelref.TraceResult      `json:"trace"`
-	Source               sourcebridge.Navigation   `json:"source"`
-	RelatedSources       []sourcebridge.Navigation `json:"relatedSources,omitempty"`
-	ProjectionUnresolved []string                  `json:"projectionUnresolved,omitempty"`
-	AuthorityLimits      []string                  `json:"authorityLimits"`
+	SchemaVersion          string                    `json:"schemaVersion"`
+	SnapshotFingerprint    string                    `json:"snapshotFingerprint"`
+	WorldFingerprint       string                    `json:"worldFingerprint"`
+	SourceIndexFingerprint string                    `json:"sourceIndexFingerprint"`
+	Trace                  modelref.TraceResult      `json:"trace"`
+	Source                 sourcebridge.Navigation   `json:"source"`
+	RelatedSources         []sourcebridge.Navigation `json:"relatedSources,omitempty"`
+	ProjectionUnresolved   []string                  `json:"projectionUnresolved,omitempty"`
+	AuthorityLimits        []string                  `json:"authorityLimits"`
 }
 
 // TraceWorkspace joins the established Derived Index modelref projection and
@@ -54,6 +57,10 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		}
 	}
 	projection := derivedbridge.FromIndex(index.Build(loaded.World), key.Scope)
+	// The operation-level expected fingerprint includes the Source Index and
+	// normalized World, unlike modelref's graph-only candidate token.
+	expected := options.ExpectedFingerprint
+	options.ExpectedFingerprint = ""
 	result, err := modelref.TraceDirect(projection.Graph, projection.Rules, key, options)
 	if err != nil {
 		return WorkspaceTrace{}, err
@@ -70,8 +77,22 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
+	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, sources)
+	if err != nil {
+		return WorkspaceTrace{}, err
+	}
+	snapshotFP := workspaceTraceFingerprint(worldFP, sourceFP, result.SnapshotFingerprint)
+	if expected != "" && expected != snapshotFP {
+		return WorkspaceTrace{}, &modelref.TraceError{
+			Code: "STALE_SNAPSHOT",
+			Message: "trace graph, selector, World, or Source Index differs from the prior page",
+		}
+	}
 	out := WorkspaceTrace{
-		SchemaVersion: "tei.operations.trace/v0",
+		SchemaVersion:          "tei.operations.trace/v0",
+		SnapshotFingerprint:    snapshotFP,
+		WorldFingerprint:       worldFP,
+		SourceIndexFingerprint: sourceFP,
 		Trace: result,
 		Source: resolver.Locate(key),
 		ProjectionUnresolved: append([]string(nil), projection.Unresolved...),
