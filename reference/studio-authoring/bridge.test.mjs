@@ -86,6 +86,7 @@ test("accepted validations reappear in the table lens with their original ID", (
   assert.deepEqual(projected.views.table.value.validations, [{
     subject: "validation:sales.order_line.price_positive",
     id: "sales.order_line.price_positive", kind: "positive",
+    applicationSelection: [], evaluationAuthority: "not-verified-by-projection",
     attribute: { subject: "attribute:sales.order_line.price", id: "sales.order_line.price" },
     relation: null
   }]);
