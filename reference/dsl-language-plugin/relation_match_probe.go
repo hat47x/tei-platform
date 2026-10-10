@@ -92,9 +92,8 @@ func ProbePinnedExpansion(candidate RelationExpansionCandidate, policy RelationM
 	if candidate.SourceID == "" || candidate.RelationID == "" || candidate.TargetID == "" ||
 		candidate.Operator.ID != "std.op.expand" || candidate.Operator.Version == "" ||
 		candidate.Operator.Fingerprint == "" || candidate.Operator.Effect != "pure" ||
-		candidate.Operator.InputType != "rows/"+string(candidate.SourceID) ||
-		candidate.Operator.OutputType != "rows/"+string(candidate.TargetID) ||
-		candidate.OutputType != candidate.Operator.OutputType ||
+		!expandTypesMatch(candidate.Operator, candidate.SourceID, candidate.TargetID) ||
+		candidate.OutputType != "rows/"+string(candidate.TargetID) ||
 		!candidate.Cardinality.Valid() || len(candidate.Keys) == 0 {
 		return RelationMatchProbeResult{}, fmt.Errorf("%w: invalid expansion candidate", ErrMatchPolicyInvalid)
 	}
