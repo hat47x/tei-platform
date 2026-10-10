@@ -293,6 +293,7 @@ func TestBootstrapSeedIsExternalBoundaryNotCycleNode(t *testing.T) {
 			ID: string(stage0.ID),
 			Kind: "builder-seed",
 			Version: stage0.Version,
+			ContractVersion: stage0.ContractVersion,
 			ArtifactDigest: stage0.ArtifactDigest,
 			TrustBoundary: "external-stage0-seed",
 			ToNode: "stage1",
@@ -353,6 +354,7 @@ func TestBuildGraphFingerprintBindsOutputSelectorAndSeedBoundary(t *testing.T) {
 			ID: "seed",
 			Kind: "builder-seed",
 			Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1",
 			ArtifactDigest: digestD,
 			TrustBoundary: "external-stage0-seed",
 			ToNode: "producer",
@@ -405,8 +407,9 @@ func TestBuildGraphDigestIdentityCanonicalizesHexCase(t *testing.T) {
 		Nodes: []BuildGraphNode{node},
 		Seeds: []BuildGraphSeed{{
 			ID: "seed",
-			Kind: "sdk",
+			Kind: "builder-seed",
 			Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1",
 			ArtifactDigest: digestC,
 			TrustBoundary: "external-exact-artifact",
 			ToNode: "node",
@@ -447,5 +450,110 @@ func TestBuildGraphInputBindingRejectsIncompleteDependency(t *testing.T) {
 	}
 	if err := builder.Validate(); err == nil {
 		t.Fatal("builder input binding accepted dependency identity fields")
+	}
+}
+
+
+func TestBuildGraphRejectsMultipleProducersForSameConsumerInput(t *testing.T) {
+	producerA := graphNodeForPlan(t, "producer-a", graphPlan(t, "producer_a", digestA, digestB))
+	producerB := graphNodeForPlan(t, "producer-b", graphPlan(t, "producer_b", digestB, digestC))
+	consumerPlan := graphPlan(t, "consumer", digestC, digestD)
+	consumerPlan.Dependencies = []plugin.BuildDependency{{
+		Kind: "generated-source",
+		ID: "generated-input",
+		Version: "1.0.0",
+		ArtifactDigest: digestA,
+	}}
+	consumer := graphNodeForPlan(t, "consumer", consumerPlan)
+	input := dependencyInput("generated-source", "generated-input", "1.0.0")
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{producerA, producerB, consumer},
+		Edges: []BuildGraphEdge{
+			{FromNode: "producer-a", OutputRole: "primary", ToNode: "consumer", Input: input},
+			{FromNode: "producer-b", OutputRole: "primary", ToNode: "consumer", Input: input},
+		},
+	}
+	if err := graph.Validate(); err == nil {
+		t.Fatal("same exact consumer input was satisfied by multiple producers")
+	}
+}
+
+func TestBuildGraphRejectsSeedAndProducerForSameConsumerInput(t *testing.T) {
+	producer := graphNodeForPlan(t, "producer", graphPlan(t, "producer", digestA, digestB))
+	consumerPlan := graphPlan(t, "consumer", digestC, digestD)
+	consumerPlan.Dependencies = []plugin.BuildDependency{{
+		Kind: "sdk",
+		ID: "sdk",
+		Version: "1.0.0",
+		ArtifactDigest: digestA,
+	}}
+	consumer := graphNodeForPlan(t, "consumer", consumerPlan)
+	input := dependencyInput("sdk", "sdk", "1.0.0")
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{producer, consumer},
+		Edges: []BuildGraphEdge{{
+			FromNode: "producer", OutputRole: "primary", ToNode: "consumer", Input: input,
+		}},
+		Seeds: []BuildGraphSeed{{
+			ID: "sdk", Kind: "sdk", Version: "1.0.0", ArtifactDigest: digestA,
+			TrustBoundary: "external-exact-artifact", ToNode: "consumer", Input: input,
+		}},
+	}
+	if err := graph.Validate(); err == nil {
+		t.Fatal("same exact consumer input was satisfied by both seed and producer")
+	}
+}
+
+func TestBuildGraphRejectsBuilderSeedIdentityMismatch(t *testing.T) {
+	plan := graphPlan(t, "consumer", digestA, digestB)
+	node := graphNodeForPlan(t, "consumer", plan)
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{node},
+		Seeds: []BuildGraphSeed{{
+			ID: "tei.builder.other",
+			Kind: "builder-seed",
+			Version: plan.Builder.Version,
+			ContractVersion: plan.Builder.ContractVersion,
+			ArtifactDigest: plan.Builder.ArtifactDigest,
+			TrustBoundary: "external-stage0-seed",
+			ToNode: "consumer",
+			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+		}},
+	}
+	if err := verifyBuildGraphBindings(
+		graph,
+		map[string]BuildExecutionPlan{"consumer": plan},
+		nil,
+	); err == nil {
+		t.Fatal("builder seed with mismatched logical identity was accepted because digest matched")
+	}
+}
+
+func TestBuildGraphRejectsBuilderSeedContractMismatch(t *testing.T) {
+	plan := graphPlan(t, "consumer", digestA, digestB)
+	node := graphNodeForPlan(t, "consumer", plan)
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{node},
+		Seeds: []BuildGraphSeed{{
+			ID: string(plan.Builder.ID),
+			Kind: "builder-seed",
+			Version: plan.Builder.Version,
+			ContractVersion: "different-contract/v1",
+			ArtifactDigest: plan.Builder.ArtifactDigest,
+			TrustBoundary: "external-stage0-seed",
+			ToNode: "consumer",
+			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+		}},
+	}
+	if err := verifyBuildGraphBindings(
+		graph,
+		map[string]BuildExecutionPlan{"consumer": plan},
+		nil,
+	); err == nil {
+		t.Fatal("builder seed with mismatched contract version was accepted because digest matched")
 	}
 }
