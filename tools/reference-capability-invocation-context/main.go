@@ -180,7 +180,16 @@ func invokeWithExecutionContext(
 	if err := parent.Err(); err != nil {
 		return InvocationContextExecution{}, fmt.Errorf("invocation control context ended before dispatch: %w", err)
 	}
-	control := controlOnlyContext{parent: parent}
+	// Snapshot only control signals, not the original parent Context object.
+	// A Provider callback may share this Go package and inspect concrete fields;
+	// storing parent here would let it bypass Value() and read ambient secrets.
+	deadline, hasDeadline := parent.Deadline()
+	control := controlOnlyContext{
+		deadline:    deadline,
+		hasDeadline: hasDeadline,
+		done:        parent.Done(),
+		errFn:       parent.Err,
+	}
 	// Keep the Host snapshot used for leak detection inaccessible from a
 	// potentially mutable same-package callback. Copy both map and bytes;
 	// a shallow copy lets the Provider erase the original comparison value.
@@ -396,19 +405,22 @@ func normalizeRequiredHostBindings(
 }
 
 type controlOnlyContext struct {
-	parent context.Context
+	deadline    time.Time
+	hasDeadline bool
+	done        <-chan struct{}
+	errFn       func() error
 }
 
 func (c controlOnlyContext) Deadline() (time.Time, bool) {
-	return c.parent.Deadline()
+	return c.deadline, c.hasDeadline
 }
 
 func (c controlOnlyContext) Done() <-chan struct{} {
-	return c.parent.Done()
+	return c.done
 }
 
 func (c controlOnlyContext) Err() error {
-	return c.parent.Err()
+	return c.errFn()
 }
 
 func (c controlOnlyContext) Value(any) any {
