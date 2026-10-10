@@ -661,3 +661,48 @@ func TestDownstreamRequestMutationDoesNotChangeReceiptIdentity(t *testing.T) {
 			execution.Receipt.SemanticRequestDigest, request)
 	}
 }
+
+func TestConfidentialDownstreamErrorDropsTypedCause(t *testing.T) {
+	_, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost("top-secret-value"), []byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			value, _ := slots.Lookup(testAccessSlot)
+			return nil, &hiddenCredentialError{credential: string(value)}
+		},
+	)
+	if err == nil {
+		t.Fatal("downstream error disappeared")
+	}
+	var secret *hiddenCredentialError
+	if errors.As(err, &secret) {
+		t.Fatal("typed downstream error leaked confidential context through errors.As")
+	}
+	if strings.Contains(fmt.Sprintf("%+v", err), "top-secret-value") {
+		t.Fatal("confidential context leaked through error formatting")
+	}
+	if !strings.Contains(err.Error(), "confidential error detail withheld") {
+		t.Fatalf("opaque failure classification was lost: %v", err)
+	}
+}
+
+type hiddenCredentialError struct{ credential string }
+
+func (e *hiddenCredentialError) Error() string { return "temporary provider failure" }
+
+func TestNonConfidentialDownstreamErrorPreservesType(t *testing.T) {
+	original := &hiddenCredentialError{credential: "diagnostic-only"}
+	_, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(),
+		[]ContextSlotRequirement{{ContractID: testTraceSlot, ContractVersion: "0.1.0"}},
+		HostExecutionContext{
+			Bindings:          []ContextSlotBinding{{ContractID: testTraceSlot, ContractVersion: "0.1.0", BindingReceiptRef: "trace:1", Value: []byte("trace")}},
+			ReusePartitionRef: "trace-partition:1",
+		},
+		[]byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) { return nil, original },
+	)
+	if err != original {
+		t.Fatalf("nonconfidential downstream error changed identity: %v", err)
+	}
+}
