@@ -184,7 +184,7 @@ func (e *RuntimeAuthorizedContractQueryExecutor) ExecuteContractQuery(
 	if err != nil {
 		return driver.ContractQueryResult{}, err
 	}
-	if invocation.Provenance.Plugin.ID.String() != e.provider.PluginID ||
+	if string(invocation.Provenance.Plugin.ID) != e.provider.PluginID ||
 		invocation.Provenance.Plugin.Version != e.provider.PluginVersion ||
 		invocation.Provenance.CapabilityKind != plugin.CapabilityContractQueryExecutor ||
 		invocation.Provenance.CapabilityID != e.binding.CapabilityID {
