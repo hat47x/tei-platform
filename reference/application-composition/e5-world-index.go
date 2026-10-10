@@ -9,6 +9,7 @@ import (
     "os"
     "sort"
 
+    "tei/internal/index"
     "tei/internal/ir"
     "tei/internal/sourceindex"
     "tei/internal/workspace"
@@ -368,6 +369,18 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
 }
 
 
+type e13DirectDerived struct {
+ SemanticElements []index.SemanticElementEntry `json:"semanticElements"`
+ SemanticDependencies []index.SemanticDependency `json:"semanticDependencies"`
+ DeclaredDependencies []index.DeclaredDependency `json:"declaredDependencies"`
+ ApplicationPatterns []index.ApplicationPatternIndexEntry `json:"applicationPatterns"`
+ Queries []index.QueryIndexEntry `json:"queries"`
+}
+func e13FromWorld(w ir.World) e13DirectDerived {
+ d:=index.Build(w)
+ return e13DirectDerived{SemanticElements:d.SemanticElements,SemanticDependencies:d.SemanticDependencies,DeclaredDependencies:d.DeclaredDependencies,ApplicationPatterns:d.ApplicationPatterns,Queries:d.Queries}
+}
+
 // e5PairedEvidence provides one transport envelope for the diagnostic and the
 // Source Index obtained from the same Load/BuildSourceIndex operation.
 // It is not cryptographic provenance, complete dependency closure, or authority.
@@ -376,6 +389,7 @@ type e5EvidenceEnvelope struct {
     Report e5Report `json:"report"`
     Index sourceindex.Index `json:"index"`
     Qualification string `json:"qualification"`
+    Derived *e13DirectDerived `json:"derived,omitempty"`
 }
 
 func e5PairedEvidence(report e5Report, index sourceindex.Index) e5EvidenceEnvelope {
@@ -391,7 +405,9 @@ func main() {
     root := flag.String("workspace", "reference/workspace", "workspace directory for read-only inspection")
     applicationID := flag.String("application", "order_entry", "existing Application ID")
     pairedEvidence := flag.Bool("paired-evidence", false, "emit diagnostic and Source Index from the same load operation; paths may be sensitive")
+    includeDerived := flag.Bool("include-direct-derived", false, "include bounded Derived Index from same in-memory World; sensitive metadata")
     flag.Parse()
+    if *includeDerived && !*pairedEvidence { fmt.Fprintln(os.Stderr, "include-direct-derived requires paired-evidence"); os.Exit(1) }
     loaded, err := workspace.Load(*root)
     if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
     index, err := workspace.BuildSourceIndex(*root, loaded)
@@ -399,7 +415,9 @@ func main() {
     report := inspectE5(loaded.World, index, *applicationID)
     var output any = report
     if *pairedEvidence {
-        output = e5PairedEvidence(report, index)
+        evidence := e5PairedEvidence(report,index)
+        if *includeDerived { d:=e13FromWorld(loaded.World); evidence.Derived=&d }
+        output=evidence
     }
     if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
         fmt.Fprintln(os.Stderr, err)
