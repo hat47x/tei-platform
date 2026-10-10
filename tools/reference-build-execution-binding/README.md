@@ -221,3 +221,33 @@ binding verificationでは、指定されたplan / setからResult fingerprint�
 これによりsubjectは「このplan」と「このartifact set」を独立に参照するのではなく、その組合せとして観測されたbuild resultへ束縛されます。
 
 ただし、このReferenceはbuild executionの実行時刻やHost observationまで署名済みEvidenceにしたものではありません。Attestation / Trustは#1104の別責務です。
+
+## Attestation / Trust
+
+#1104の最初のReference pressureも同じread-only toolへ接続します。
+
+```text
+BuildExecutionResult
+  -> BuildAttestation
+       exact result fingerprint
+       Artifact Set / member subject
+       Issuer
+       Signature Profile
+  -> BuildAttestationVerification
+  -> current Trust Policy
+  -> AttestationTrustDecision
+```
+
+Referenceの署名profileは`tei.reference.fake-signature/v1`です。これはbinding semanticsを検証するための決定論的fake署名であり、暗号的安全性を一切証明しません。
+
+重要な分離:
+
+- reproducible build != trusted build
+- signed attestation != trusted issuer
+- immutable attestation != immutable trust
+- policy revocationでTrust decisionは変わる
+- policy revocationでAttestation fingerprint自体は変わらない
+
+Trust評価はraw Attestationだけでは行いません。先にBuildExecutionResult / Artifact Set / fake signatureを検証して`BuildAttestationVerification`を得て、そのverification Evidenceと一致するAttestationだけをcurrent policyへ渡します。
+
+Artifact Set全体へのattestationと、特定member role/digestへのattestationも区別します。
