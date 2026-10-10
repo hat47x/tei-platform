@@ -19,7 +19,7 @@ func TestRelationKeysReference(t *testing.T) {
 		{ID: core.CanonicalID("sales.line.order_id"), TypeRef: core.CanonicalID("std.int")},
 	}}
 	ns := semantic.Namespace{ID: core.CanonicalID("sales"), Data: []semantic.Data{source, target}}
-	if err := ValidateRelationKeys(ir.World{Semantics: []semantic.Namespace{ns}},  source.ID, source.Relations[0].ID); err != nil {
+	if err := ValidateRelationKeys(ir.World{Semantics: []semantic.Namespace{ns}}, source.ID, source.Relations[0].ID); err != nil {
 		t.Fatal(err)
 	}
 	tests := []struct {
@@ -39,7 +39,7 @@ func TestRelationKeysReference(t *testing.T) {
 			clone.Data[0].Relations[0].Keys = append([]semantic.RelationKey(nil), ns.Data[0].Relations[0].Keys...)
 			clone.Data[1].Attributes = append([]semantic.Attribute(nil), ns.Data[1].Attributes...)
 			tc.change(&clone)
-			if err := ValidateRelationKeys(ir.World{Semantics: []semantic.Namespace{clone}},  source.ID, source.Relations[0].ID); err == nil {
+			if err := ValidateRelationKeys(ir.World{Semantics: []semantic.Namespace{clone}}, source.ID, source.Relations[0].ID); err == nil {
 				t.Fatal("expected rejection")
 			}
 		})
