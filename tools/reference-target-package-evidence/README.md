@@ -2,7 +2,7 @@
 
 このツールは、既存の[配備単位の設計](../../plan/design/RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)における **E0（実際のGoソース依存の観測）** を補助する読み取り専用Referenceです。[Issue #259](https://github.com/hat47x/tei-platform/issues/259)のTarget／実行境界検証に属します。
 
-Plugin Lock、Build Plan、Provider、Capabilityの選択は**行いません**。`go list -deps -json`の結果から、現在のGoメインモジュールに含まれるコンパイル対象パッケージのImportPath、Go/Cgoファイル、直接import先を整列したJSONへ変換するだけです。標準ライブラリと外部モジュールのpackage情報は出力から省きますが、import辺には保持します。
+Plugin Lock、Build Plan、Provider、Capabilityの選択は**行いません**。`go list -deps -json`の結果から、現在のGoメインモジュールに含まれるコンパイル対象パッケージのImportPath、Go/Cgoファイル、直接import先を整列したJSONへ変換するだけです。標準ライブラリと外部モジュールのpackage情報は出力から省きますが、import辺には保持します。Cgoの`import "C"`は`go list`が独立packageとして出力しない疑似importなので、Cgo対象ファイルがある場合に限り例外として許容し、その辺を出力に残します。
 
 ## 実行手順
 
@@ -16,7 +16,7 @@ go run ./tools/reference-target-package-evidence \
   > /tmp/tei-first-web-go-packages.json
 ```
 
-- 開始・終了時に`git status --porcelain --untracked-files=all`とHEADを確認し、変更があれば失敗します。ただしこれを`tools/repository-health-check.sh`のexact-head full PASS／統合資格として扱いません。
+- 開始・終了時に`git status --porcelain --untracked-files=all`とHEADを確認し、変更があれば失敗します。さらに、`go list`がコンパイル対象として挙げたメインモジュールのGo/CgoソースがGitの追跡対象であることを検査します。通常の`git status`では見えない**ignore対象の未追跡Goファイル**も、コンパイルに使われるなら失敗させます。ただしこの検査は全入力の改ざん防止や`tools/repository-health-check.sh`のexact-head full PASS／統合資格を保証しません。
 - `GOENV=off`、`GOWORK=off`、`GOFLAGS=`を`go list`に適用し、隠れたユーザー設定・Workspace・build flagによる入力変化を避けます。必要なbuild tagsは`-tags`で明示し、GOOS／GOARCH／CGO_ENABLED／Go版を結果に記録します。
 - Goのツールチェーンが依存を解決できない、JSONが不正、参照先パッケージが欠落している等の場合には不完全な結果を成功として出力しません。
 
