@@ -83,3 +83,59 @@ Composite RelationKeyもキー対を順番どおり照合する。整数や小�
 このReview Packetは、確認済みの設計判断やSemantic Patchそのものではない。確認者、適用対象、根拠を確定する作業と、既存Shared Acceptanceによる正本変更は別段階として扱う。`relation-keys-not-declared`から`AddRelationKey`のような操作が必要だと自動決定することもない。
 
 `Review(input)`自体も入力のWorld、Case、Diagramを変更しない。局所のunit testでは、質問の出典参照、安定ID、スライドの重複排除、回答・Patchの捏造防止などを受入対象とした。**対象PR全体のGoテストは未実行。**
+
+## 回答を検討資料として受け渡す（M1回答Handoff候補）
+
+元の`review.json`には、モデルrevision、Example / Catalogの内容fingerprint、Review全体のfingerprintが入る。回答を記録する前に、**必ずその時点の`reviewFingerprint`を入力へコピーする**。元のCase、Catalog、質問内容が変われば古い回答は拒否する。同じCaseの同じStageを複数フレームで表示する順番だけの変更では、Reviewの意味を変えない。
+
+回答JSONの例（`<...>`は`review.json`から実際の値へ置換する。固定fixtureとしては使わない）:
+
+~~~json
+{
+  "schema": "tei.reference.example-review-answer/v0",
+  "caseId": "multi-key",
+  "modelRevision": "<review.json:modelRevision>",
+  "reviewFingerprint": "<review.json:fingerprint>",
+  "answers": [
+    {
+      "question": {"kind": "derived", "id": "<review.json:issues[0].id>"},
+      "response": "このCaseでは一部の顧客レコードだけを例示している",
+      "disposition": "clarify-example",
+      "context": "当該Caseのbaseステージに限る",
+      "claimedBy": {"kind": "human", "id": "reviewer-id"},
+      "evidence": [{"kind": "document", "ref": "design-review-notes"}]
+    }
+  ]
+}
+~~~
+
+`question.kind`は`authored`（人やAIがCaseに記載した問い）または`derived`（RelationFindingから導出した問い）。`disposition`は`clarify-example`、`propose-model-change`、`retain-model`、`investigate`の候補に限定する。いずれも**最終採否・変更操作を意味しない**。
+
+実行例:
+
+~~~sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input tools/reference-example-slide/testdata/partial_inspection.json \
+  -out /tmp/tei-slide-review
+
+# review.json内のcaseId / modelRevision / fingerprint /
+# authoredQuestionsまたはissuesを見て、対応するanswers.jsonを作る。
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input tools/reference-example-slide/testdata/partial_inspection.json \
+  -answers /tmp/answers.json \
+  -out /tmp/tei-slide-answered
+~~~
+
+出力に`answer-handoff.json`を追加する。回答、主張された回答者、適用文脈、根拠参照、質問への厳密な対応、未検証状態、次に必要なレビューを保持する。`confirmationRoute`は既存Confirmationの`identity.kind=example-review` / `identity.subject=issue.id` / `basisSubjects=[{kind:semantic-relation,id:relation-id}]`へ対応させる**入力候補**である。独自の回答台帳は増やさない。
+
+### 複数の権限境界
+
+1. **回答案の束縛:** `BindAnswers`は古いReview fingerprint、存在しない質問、重複回答、未知のdisposition、根拠参照なしの項目等を検出する。正本は更新しない。
+2. **根拠照合と確認記録:** 既存`tools/reference-shared-acceptance confirm-record`が、WorkspaceのSource Indexへ`basisSubjects`を解決して記録する。回答Handoffから**自動でconfirm-recordを実行してはいけない**。既存Confirmation自体もactor種別を自己申告で受け取るため、第三者による人間認証まで成立しているわけではない。
+3. **意味モデルの変更:** 確認記録を作成してもモデルは変更されない。必要になった具体的なdeltaだけを既存Shared Acceptanceで改めてpreview / review / acceptする。
+
+`claimedBy.kind=human`は回答JSON上の申告であり、実際に人間が判断した証明ではない。AI回答は人間レビューを要する。`evidence`の参照やfingerprintもこの段階では自己申告であり、対応する原本の現在性・文脈適合性を検証したEvidenceではない。根拠無しでは`evidence-needed`、調査継続なら`investigation-needed`として返す。
+
+注: この参照機能が使う`ModelRevision`はSemantic Worldのハッシュであり、Shared Acceptanceの管理対象Workspace全ファイルから計算した`baseModelRevision`とは同一ではない。変更候補を作る際は**後者を現在のWorkspaceから改めて取得**しなければならない。
+
+GoコードとテストはPR #1128に追加したが、対象BranchのGoテスト・Format・Repository Health Checkはまだ実行していない。
