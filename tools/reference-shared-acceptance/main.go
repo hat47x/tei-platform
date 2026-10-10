@@ -157,6 +157,34 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+
+	// Auxiliary evidence/config files are inputs, never targets for an
+	// emitted proposal. Unlike the primary -candidate, which attach commands
+	// may intentionally update in place, qualification and evidence must
+	// remain available for review and reproducibility.
+	if *outPath != "" {
+		for _, input := range []struct {
+			flag string
+			path string
+		}{
+			{flag: "-qualification", path: *qualificationPath},
+			{flag: "-reference-reuse", path: *referenceReusePath},
+			{flag: "-semantic-evaluation", path: *semanticEvaluationPath},
+			{flag: "-rmt-transcription", path: *rmtTranscriptionPath},
+		} {
+			if input.path == "" {
+				continue
+			}
+			inputDestination, inputErr := resolveOutputDestination(input.path)
+			outputDestination, outputErr := resolveOutputDestination(*outPath)
+			if inputErr != nil || outputErr != nil ||
+				referencePathText(inputDestination) == referencePathText(outputDestination) {
+				fmt.Fprintln(stderr, command+"の-outは"+input.flag+"の入力ファイルを上書きできません（別名・シンボリックリンクも含みます）")
+				return 2
+			}
+		}
+	}
+
 	emit := func(value any) int {
 		encoded, err := encodeJSON(value)
 		if err != nil {
