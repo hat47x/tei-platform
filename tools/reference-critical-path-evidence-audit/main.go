@@ -59,6 +59,8 @@ type Web struct {
 	NegativeEvidenceMode     string `json:"negativeEvidenceMode"` // running-server, handler-only
 	ProviderKind             string `json:"providerKind"`         // synthetic, actual-db
 	RunMode                  string `json:"runMode"`              // running-server, handler-only
+	WorkspaceRevisionReceipt string `json:"workspaceRevisionReceipt"` // independent revision observation of Web workspace
+	TargetLaunchReceipt      string `json:"targetLaunchReceipt"`      // workspace, target build, start/stop, no credentials
 	PositiveReceipt          string `json:"positiveReceipt"`
 	NegativeReceipt          string `json:"negativeReceipt"`
 	UnobservedControlReceipt string `json:"unobservedControlReceipt"` // N11
@@ -152,6 +154,19 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		}
 		if w.RunMode != "running-server" {
 			add("E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED")
+		}
+		// The old B/R/T Web envelope exposes repository baseline and Target
+		// build identities, but not the managed-source R1 actually loaded.
+		// An E1 reporter must supply independent provenance for both the
+		// workspace revision and the exact launched Target instance.
+		if strings.TrimSpace(w.WorkspaceRevisionReceipt) == "" ||
+			strings.TrimSpace(w.TargetLaunchReceipt) == "" ||
+			w.WorkspaceRevisionReceipt == w.TargetLaunchReceipt ||
+			w.WorkspaceRevisionReceipt == w.PositiveReceipt ||
+			w.WorkspaceRevisionReceipt == w.NegativeReceipt ||
+			w.TargetLaunchReceipt == w.PositiveReceipt ||
+			w.TargetLaunchReceipt == w.NegativeReceipt {
+			add("E1_WEB_WORKSPACE_R1_AND_TARGET_LAUNCH_PROVENANCE_MISSING")
 		}
 		if w.PositiveReceipt == "" || w.NegativeReceipt == "" ||
 			w.PositiveReceipt == w.NegativeReceipt {
