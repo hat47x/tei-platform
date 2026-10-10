@@ -292,7 +292,7 @@ func Validate(w ir.World) []Diagnostic {
 	for _, a := range w.Applications {
 		for _, ns := range a.SemanticUses {
 			if _, ok := semanticNamespaces[ns]; !ok {
-				out = append(out, errd("UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE", "application %s uses unknown semantic namespace %s", a.ID, ns))
+				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE", "application %s uses unknown semantic namespace %s", a.ID, ns))
 			}
 		}
 	}
