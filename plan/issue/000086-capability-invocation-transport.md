@@ -3,7 +3,7 @@
 - 状態: In Progress
 - 起票日: 2026-10-10
 - GitHub Issue: #1145
-- 関連: ISSUE-000080 / #951 / #1116 / #1118 / RQ-019 / RQ-024 / RQ-032 / RQ-033
+- 関連: ISSUE-000080 / #951 / ISSUE-000085 / #1116 / #1118 / RQ-019 / RQ-024 / RQ-032 / RQ-033
 
 ## 背景
 
@@ -108,3 +108,15 @@ receiptにはPlan fingerprintを残す。同じPlanをprocessとHTTPで実行し
 Plan fingerprintだけをAuthority Evidenceにはしない。PlanはCapability Conformance、Runtime Authority、Canonical Acceptanceのいずれでもない。現在のReferenceでは呼出し側がPlanを構築できるため、production候補の次Gateは上流のCapability resolution / Runtime AuthorityからPlanを導出し、transport層が独自にidentityを選べないことを確認することとする。
 
 このP3により、二transportで共通化すべき最小候補はdispatch / result / receipt identityだけでなく、上流identityをtransport前に固定するPlan境界まで広がった。ただしactual browser / Wasm consumerとproduction provenance接続は未実証であり、production schemaへは昇格しない。
+
+
+## Digest byte rules
+
+このReferenceで新しく計算するpayload digestとDispatch Plan fingerprintは、ISSUE-000085が指摘する「同じ`sha256:`表記でもbyte規則が異なる」問題を持つ。
+
+後からコードを読んで逆算しなくてよいよう、Reference schema / READMEで規則名を明示する。
+
+- payload: raw bytes + SHA-256
+- Plan: Go `json.Marshal`したPlan（fingerprint fieldを空にする）+ SHA-256
+
+両方を独立再計算するtestを置く。000085が対象とする既存Shared Acceptanceの7値を変更したり、その完了条件へ000086を追加したりはしない。
