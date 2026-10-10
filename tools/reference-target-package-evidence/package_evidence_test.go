@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const jsonA = `{"ImportPath":"tei/tools/sample","Module":{"Path":"tei","Main":true},"GoFiles":["z.go","a.go"],"Imports":["fmt","tei/internal/a"]}`
+const jsonA = `{"ImportPath":"tei/tools/sample","Name":"main","Module":{"Path":"tei","Main":true},"GoFiles":["z.go","a.go"],"Imports":["fmt","tei/internal/a"]}`
 const jsonB = `{"ImportPath":"tei/internal/a","Module":{"Path":"tei","Main":true},"GoFiles":["x.go"],"Imports":["strings"]}`
 const jsonStd = `{"ImportPath":"fmt","GoFiles":["print.go"]}`
 const jsonStrings = `{"ImportPath":"strings","GoFiles":["strings.go"]}`
@@ -40,9 +40,10 @@ func TestMissingOrMalformedSourceFailsClosed(t *testing.T) {
 		{"truncated-json", jsonA[:len(jsonA)-1], "tei/tools/sample"},
 		{"missing-dependency", jsonA + "\n" + jsonStd, "tei/tools/sample"},
 		{"duplicate", jsonA + "\n" + jsonA + "\n" + jsonB + "\n" + jsonStd + "\n" + jsonStrings, "tei/tools/sample"},
-		{"package-error", `{"ImportPath":"tei/tools/sample","Module":{"Path":"tei","Main":true},"Error":{"Err":"broken"}}`, "tei/tools/sample"},
-		{"empty-package-error", `{"ImportPath":"tei/tools/sample","Module":{"Path":"tei","Main":true},"Error":{}}`, "tei/tools/sample"},
-		{"incomplete", `{"ImportPath":"tei/tools/sample","Module":{"Path":"tei","Main":true},"Incomplete":true}`, "tei/tools/sample"},
+		{"package-error", `{"ImportPath":"tei/tools/sample","Name":"main","Module":{"Path":"tei","Main":true},"Error":{"Err":"broken"}}`, "tei/tools/sample"},
+		{"empty-package-error", `{"ImportPath":"tei/tools/sample","Name":"main","Module":{"Path":"tei","Main":true},"Error":{}}`, "tei/tools/sample"},
+		{"incomplete", `{"ImportPath":"tei/tools/sample","Name":"main","Module":{"Path":"tei","Main":true},"Incomplete":true}`, "tei/tools/sample"},
+		{"non-executable-entry", `{"ImportPath":"tei/tools/sample","Name":"library","Module":{"Path":"tei","Main":true},"GoFiles":["lib.go"]}`, "tei/tools/sample"},
 		{"entry-not-main-module", jsonStd+"\n"+jsonB+"\n"+jsonStrings, "fmt"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -67,7 +68,7 @@ func TestEntryRejectsNonLiteralAndTraversal(t *testing.T) {
 func TestCgoPseudoImportIsNotAListedGoPackage(t *testing.T) {
 	// Real go list -deps -json includes "C" in Imports for a cgo package,
 	// but does not emit a package object with ImportPath "C".
-	cgo := `{"ImportPath":"tei/tools/cgo-sample","Module":{"Path":"tei","Main":true},"CgoFiles":["main.go"],"Imports":["C","fmt"]}`
+	cgo := `{"ImportPath":"tei/tools/cgo-sample","Name":"main","Module":{"Path":"tei","Main":true},"CgoFiles":["main.go"],"Imports":["C","fmt"]}`
 	got, err := parseGoList(strings.NewReader(cgo+"\n"+jsonStd), "tei/tools/cgo-sample", "")
 	if err != nil {
 		t.Fatalf("valid cgo dependency graph rejected: %v", err)
@@ -76,7 +77,7 @@ func TestCgoPseudoImportIsNotAListedGoPackage(t *testing.T) {
 		t.Fatalf("lost cgo source or import edge: %+v", got)
 	}
 
-	nonCgo := `{"ImportPath":"tei/tools/cgo-sample","Module":{"Path":"tei","Main":true},"GoFiles":["main.go"],"Imports":["C","fmt"]}`
+	nonCgo := `{"ImportPath":"tei/tools/cgo-sample","Name":"main","Module":{"Path":"tei","Main":true},"GoFiles":["main.go"],"Imports":["C","fmt"]}`
 	if _, err := parseGoList(strings.NewReader(nonCgo+"\n"+jsonStd), "tei/tools/cgo-sample", ""); err == nil {
 		t.Fatal("pseudo import C must not excuse a missing Go dependency for non-cgo sources")
 	}
@@ -192,6 +193,7 @@ func TestTrackedCompiledSymlinkCannotSupplyUntrackedBytes(t *testing.T) {
 func TestAuxiliaryPackageInputsAreRecordedInStableOrder(t *testing.T) {
 	base := listedPackage{
 		ImportPath: "tei/module",
+		Name:       "main",
 		Module:     &listedModule{Path: "tei", Main: true},
 		GoFiles:    []string{"main.go"},
 		EmbedFiles: []string{"assets/z.txt", "assets/a.txt"},
