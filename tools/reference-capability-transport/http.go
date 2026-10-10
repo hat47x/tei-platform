@@ -27,6 +27,16 @@ func isJSONMediaType(raw string) bool {
 	return err == nil && mediaType == httpTransportContentType
 }
 
+func NewAuthorizedHTTPTransportHandler(
+	plan TransportDispatchPlan,
+	implementation HTTPTransportImplementation,
+) (http.Handler, error) {
+	if err := validateTransportDispatchPlan(plan); err != nil {
+		return nil, err
+	}
+	return NewHTTPTransportHandler(plan.InvocationIdentity, implementation)
+}
+
 func NewHTTPTransportHandler(
 	expectedIdentity GenericInvocationIdentity,
 	implementation HTTPTransportImplementation,
@@ -92,6 +102,30 @@ func NewHTTPTransportHandler(
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(payload)
 	}), nil
+}
+
+func invokeAuthorizedOverHTTPTransport(
+	ctx context.Context,
+	client *http.Client,
+	endpoint string,
+	plan TransportDispatchPlan,
+	requestID string,
+	dispatch GenericDispatch,
+) (TransportExecution, error) {
+	if err := validateDispatchAgainstPlan(plan, dispatch); err != nil {
+		return TransportExecution{}, err
+	}
+	execution, err := invokeOverHTTPTransport(
+		ctx,
+		client,
+		endpoint,
+		requestID,
+		dispatch,
+	)
+	if err != nil {
+		return TransportExecution{}, err
+	}
+	return bindExecutionToTransportPlan(execution, plan), nil
 }
 
 func invokeOverHTTPTransport(
