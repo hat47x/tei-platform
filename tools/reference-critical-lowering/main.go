@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 )
 
 const (
@@ -40,7 +41,12 @@ type DataNeed struct {
 }
 
 func (n DataNeed) valid() bool {
-	return n.Database != "" && n.Contract != "" && n.VersionConstraint != ""
+	if n.Database == "" || n.Contract == "" || len(n.VersionConstraint) < 2 ||
+		n.VersionConstraint[0] != '^' {
+		return false
+	}
+	major, err := strconv.Atoi(n.VersionConstraint[1:])
+	return err == nil && major > 0 && n.VersionConstraint == "^"+strconv.Itoa(major)
 }
 
 type Requirement struct {
