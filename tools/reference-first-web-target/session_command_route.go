@@ -164,7 +164,12 @@ func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r
 	// between the Host's early authorization and the Runner's fresh check.
 	// Preserve the Business Result / Execution Error envelope while making
 	// the HTTP status reflect that the request was not completed.
-	if (result.Stage == "identity-link-denied" || result.Stage == "authorization-denied") && err == nil {
+	if result.Stage == "validation-not-satisfied" && err == nil {
+		// Validation is a business rejection, not evidence of a completed
+		// Command. Preserve the business result while rejecting at HTTP/Audit.
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	} else if (result.Stage == "identity-link-denied" || result.Stage == "authorization-denied") && err == nil {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)
 	} else if err != nil && (result.Stage == "identity-link" ||
