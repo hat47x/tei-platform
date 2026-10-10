@@ -246,9 +246,12 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 		return result, err
 	}
 	result.Authorization = &projectedAuthorization
-	if authorization.Outcome != "allowed" {
+	if authorization.Outcome == "denied" {
 		result.Stage = "authorization-denied"
 		return result, nil
+	}
+	if err := requireMatchingBusinessGrant(authorization, subjectID); err != nil {
+		return result, fmt.Errorf("initial authorization does not grant the requested action: %w", err)
 	}
 
 	orderIDValue, ok := semanticRowValueByAttribute(
@@ -315,10 +318,8 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 				result.Stage = "authorization-denied"
 				return capabilityinvoke.BusinessResult{}, errEffectBusinessDenied
 			case "allowed":
-				grant, ok := final.Payload.(legacyauthorization.AuthorizationGrant)
-				if !ok || grant.SubjectID != subjectID || grant.Action != "execute" ||
-					grant.Resource != "order_entry.submit_order" {
-					return capabilityinvoke.BusinessResult{}, errors.New("effect-time authorization returned mismatched grant")
+				if err := requireMatchingBusinessGrant(final, subjectID); err != nil {
+					return capabilityinvoke.BusinessResult{}, fmt.Errorf("effect-time authorization returned mismatched grant: %w", err)
 				}
 			default:
 				return capabilityinvoke.BusinessResult{}, fmt.Errorf("effect-time authorization returned unexpected outcome %q", final.Outcome)
@@ -396,6 +397,26 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	return result, nil
 }
 
+
+// requireMatchingBusinessGrant verifies the decision and its authority tuple.
+// This rule is independent of the HTTP Provider and is shared by the legacy
+// and verified-session paths.
+func requireMatchingBusinessGrant(
+	authorization capabilityinvoke.BusinessResult,
+	subjectID string,
+) error {
+	if authorization.Capability != legacyauthorization.AuthorizationCapability ||
+		authorization.Mode != capabilityinvoke.ResultOutcome ||
+		authorization.Outcome != "allowed" {
+		return errors.New("authorization is not an allowed canonical outcome")
+	}
+	grant, ok := authorization.Payload.(legacyauthorization.AuthorizationGrant)
+	if !ok || grant.SubjectID != subjectID || grant.Action != "execute" ||
+		grant.Resource != "order_entry.submit_order" {
+		return errors.New("authorization grant does not match subject, action and resource")
+	}
+	return nil
+}
 
 // invokeBusinessAuthorization resolves the accepted canonical authorization
 // Capability at every requested boundary. Both the first decision and the
