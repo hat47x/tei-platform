@@ -125,6 +125,48 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
         attach("uses-semantic", subject)
     }
 
+    // A Pattern's direct typed targets are dependencies as well as its own
+    // declaration Source. Reuse World identities, never parse a second DSL.
+    patternTargets := map[string]map[string]int{
+        "pattern-data": {}, "pattern-relation": {},
+        "pattern-capability": {}, "pattern-query": {},
+    }
+    queryOwners := map[string]string{}
+    for _, ns := range world.Semantics {
+        for _, data := range ns.Data {
+            patternTargets["pattern-data"][string(data.ID)]++
+            for _, relation := range data.Relations {
+                patternTargets["pattern-relation"][string(relation.ID)]++
+            }
+        }
+        for _, capability := range ns.Capabilities {
+            patternTargets["pattern-capability"][string(capability.ID)]++
+        }
+    }
+    for _, query := range world.Queries {
+        id := string(query.ID)
+        patternTargets["pattern-query"][id]++
+        queryOwners[id] = string(query.Application)
+    }
+    attachedPatternTargets := map[string]bool{}
+    addPatternTarget := func(relation, kind, id string) {
+        if id == "" { return }
+        subject := sourceindex.Subject{Kind: kind, ID: id}
+        if patternTargets[relation][id] != 1 {
+            record(relation, subject, "pattern_target_missing_or_ambiguous")
+            return
+        }
+        if relation == "pattern-query" && queryOwners[id] != applicationID {
+            record(relation, subject, "pattern_query_wrong_application")
+            return
+        }
+        key := relation + ":" + id
+        if !attachedPatternTargets[key] {
+            attach(relation, subject)
+            attachedPatternTargets[key] = true
+        }
+    }
+
     // Pattern declarations are Application-owned; no extra manifest of these
     // dependency subjects is introduced by Composition.
     seenPatterns := map[string]bool{}
@@ -137,6 +179,10 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
         }
         seenPatterns[name] = true
         attach("application-pattern", subject)
+        addPatternTarget("pattern-data", "semantic-data", string(pattern.Data))
+        addPatternTarget("pattern-relation", "semantic-relation", string(pattern.Relation))
+        addPatternTarget("pattern-capability", "semantic-capability", string(pattern.Capability))
+        addPatternTarget("pattern-query", "query", string(pattern.Query))
     }
 
     validations := map[string]int{}
