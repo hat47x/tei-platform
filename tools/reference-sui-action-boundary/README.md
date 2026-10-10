@@ -39,9 +39,11 @@ SUI `03_Implement/frontend/src/domain/types.ts` の`DocumentV1`では、Cardの�
 - `cancel`: プレビューを破棄します。書き込みは行いません。
 - `drop`: 最後のPayloadで1回だけ`dispatchCommit`を呼び、処理中の二重操作を拒否します。拒否や競合を勝手に再実行せず、例外を呼出元へ戻します。
 
-SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) で、`CardView`の局所プレビューと`pointerup`のみの確定コールバック、および`CanvasShell`の任意の`onCardMoveCommit`を実装しました。これは**任意選択のUI接続口**であり、現行`App.tsx`は利用していません。TEIの`native-action-bridge.mjs`や実行時の`Host.Commit`と結線した状態でもありません。SUI側のVitestと実ブラウザー検証は未実施です。
+SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) で、`CardView`の局所プレビュー、`pointerup`のみの確定コールバック、`CanvasShell`の`onCardMoveCommit`、そして`App.tsx`の確定処理への接続を追加しました。`domain/card_drag_commit.ts`は、従来の位置変更とドロップ先の島への所属変更を一つのDocument更新へまとめます。Appは`applyDocumentChange`を一回呼ぶため、Undo履歴も一単位になります。既存の`onMove`経路は別の利用者との互換用に保持しています。
 
-**既存SUIのReact CanvasとTEI Actionを接続した状態ではありません。** ドラッグ中の描画と取消しをSUIの局所状態へ切り分け、SUI自身の島所属変更・履歴確定と統合する仕事が残ります。ブラウザーではこのES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。永続化用通信と認証セッションは別途接続します。
+ただし、**SUI内の局所的な確定と、TEIランタイムのAction実行は別段階です。** このPRでは、SUIからTEIの`native-action-bridge.mjs`、`Host.Commit`、実セッション認可を呼び出していません。DocumentのRevisionを操作開始時に捕捉して送信する経路も未実装です。現行のSUI保存は引き続きSUI自身が所有しています。
+
+現段階の変更量はSUIの既存3ファイル（App、CanvasShell、CardView）への編集と、新規ドメイン実装1ファイル・テスト2ファイルです。SUI側のVitest・typecheck・build・実ブラウザー確認は未実行のため、UIの動作互換が実証された状態ではありません。ブラウザーではTEI側のES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。
 
 ## 実行
 
@@ -56,6 +58,6 @@ node --test tools/reference-sui-action-boundary/native-action-bridge.test.mjs
 
 参照テストは正常更新、認可拒否、Revision競合、同時更新、Document IDの不一致、未知Card、非有限座標、不正Document構造、無関係な情報の保持を対象にします。第二Applicationのテストは模擬Storeを用いており、汎用プラグインの本番動作を証明しません。
 
-未実装：実際のReact Canvasとの接続、SUIのDocumentV1検証器と保存機構の呼出し、実セッションからのSubject解決、実ランタイム権限、ブラウザー配備、SafeModeとExport保護、性能測定、変更箇所数の比較。
+未実装：SUIの確定コールバックからTEIランタイムへのAction dispatch、操作開始時のRevision捕捉と権限照合、SUIのDocumentV1検証器とTEI保存機構の実連携、実セッションからのSubject解決、実ランタイム権限、ブラウザー配備、SafeModeとExport保護の統合確認、性能測定。
 
 作業窓口はGitHub Issue #993、設計の正本は`plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`です。GitHub Issue #52は別件です。
