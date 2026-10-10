@@ -48,3 +48,20 @@ func TestMigrationRejectsUnrelatedNodeChange(t *testing.T) {
 		t.Fatalf("unrelated edit was approved by narrow review: %+v", out.Diagnostics)
 	}
 }
+
+func TestMigrationCannotSilentlyReplaceReferenceEvidence(t *testing.T) {
+	before, after, transition, move := rekeyFixture()
+	before.Edges[0].Evidence = []modelref.Evidence{{Authority: "source-observation", SourceToken: "old", ArtifactFingerprint: "sha256:source"}}
+	after.Edges[0].Evidence = []modelref.Evidence{{Authority: "derived", ArtifactFingerprint: "sha256:other", RuleFingerprint: "sha256:rule"}}
+	r := modelref.ReviewMigration(before, after, transition, []modelref.EdgeRetarget{move}, rules(), "revision")
+	if r.Consistent || !hasCode(r.Diagnostics, "retarget-evidence-changed") {
+		t.Fatalf("evidence substitution concealed by retarget: %+v", r.Diagnostics)
+	}
+	after.Edges[0].Evidence = append([]modelref.Evidence(nil), before.Edges[0].Evidence...)
+	before.Edges[1].Evidence = []modelref.Evidence{{Authority: "proposal", Context: "before"}}
+	after.Edges[1].Evidence = []modelref.Evidence{{Authority: "proposal", Context: "after"}}
+	r = modelref.ReviewMigration(before, after, transition, []modelref.EdgeRetarget{move}, rules(), "revision")
+	if r.Consistent || !hasCode(r.Diagnostics, "unreviewed-reference-evidence") {
+		t.Fatalf("unrelated edge proof substitution concealed: %+v", r.Diagnostics)
+	}
+}
