@@ -591,3 +591,25 @@ func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.
 		t.Fatalf("selected Target used wrong Conformance Evidence: %s", resolution.EvidenceFingerprint)
 	}
 }
+
+
+func TestConformanceEvidenceFingerprintBindsSelectedClaims(t *testing.T) {
+	contract, providers, evidence, wiring := referenceFixture()
+	provider := providers[0]
+	provider.Targets = append(append([]string(nil), provider.Targets...), "host/other")
+
+	intent := referenceIntent(contract)
+	intent.Target = "host/other"
+
+	tampered := evidence[0]
+	tampered.Target = "host/other"
+	// Keep the original EvidenceFingerprint intentionally. The claims changed.
+	_, err := resolveBuilder(intent, BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: []BuilderProvider{provider},
+		Evidence:  []BuilderConformanceEvidence{tampered},
+	}, &wiring)
+	if err == nil || !strings.Contains(err.Error(), "Evidence fingerprint does not match") {
+		t.Fatalf("tampered Conformance Evidence claims were accepted: %v", err)
+	}
+}
