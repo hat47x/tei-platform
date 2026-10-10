@@ -56,7 +56,7 @@ SVGは最小の描画確認であり、完全な専用ER記号・衝突回避・
 | `contradiction` | `cardinality=one`の関連で、一つのSourceレコードから**複数の一致Target**が観測されるなど、手元の具体例だけで否定できる条件 |
 | `unresolved` | 対象テーブルが部分的、RelationKey未定義、キー値不足、比較不能、ゼロ件の場合の必須性不明など、成立も不成立も証明できない |
 
-`Example.completeTables`で、説明用Snapshotの対象テーブルが全件列挙されていると申告できる。省略時はすべて部分抜粋として扱う。これはユーザーまたは生成AIが供給した**例に対する仮定**であり、実環境から確認された網羅性のEvidenceではない。Source Indexや実データ観測から正当化されない限り、Productionの完全性保証へ昇格しない。
+`Example.completeTables`は**基底（base）Snapshotに限る**完全性申告である。後続のStageは各自の`Stage.completeTables`で申告する。後続Stageで無指定の場合、基底Snapshotが全件を含むとしても完全性を引き継がず部分抜粋と扱う。これはユーザーまたは生成AIが供給した**例に対する仮定**であり、実環境から確認された網羅性のEvidenceではない。Source Indexや実データ観測から正当化されない限り、Productionの完全性保証へ昇格しない。
 
 RelationKeyがない（あるいは対象の属性値を比較できない）場合は、自動結合を試みず`unresolved`とする。`one`で一致Targetが複数見つかった場合だけ、Datasetが部分的でも矛盾が確定する。一致Targetが0件でも、意味モデルに必須性が無ければ、欠如を直ちに`contradiction`にはしない。
 
@@ -170,3 +170,9 @@ CLIのCase入力も未知fieldを拒否する。例えば`completeTables`の綴�
 これはCanonicalな型IDの**同一性に関する保守的な条件**であり、異なるAliasが認証済み変換で相互運用できるか、あるいは型が同一なら実値のドメイン制約を満たすかは判断しない。ValueやReferential Integrityの完全検証に読み替えない。
 
 `relation_assessment_test.go`へ、文字列一致なのに意味的な型が異なる場合、双方の型IDが同じ場合、片側の型IDだけがある場合の否定・肯定試験を追加した。対象PR全体のGoテストは未実行。
+
+## 段階ごとに独立した網羅性申告
+
+同じモデルの説明であっても、基底時点で抽出した全件データが、受入・検収など別Stageでも全件の根拠になるとは限らない。従来のCase全体の`completeTables`を基底Stage専用へ限定し、後続Stageでは`Stage.completeTables`を独立して指定する契約へ変更した。**Stageの無指定を自動的な継承に解釈しない**。同じ明細が図に載っていても完全性の根拠が別であれば三値評価は`unresolved`に留まる。
+
+追補したテストでは、後続Stageへ基底の申告が漏れないこと、後続Stage独自の申告でのみ`supported`が許されること、未定義テーブルへのStage申告を拒否することを確認対象とした。これは説明用Case内での申告であり、各時点の実Providerを完全観測したEvidenceにはならない。
