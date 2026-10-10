@@ -24,7 +24,7 @@ go test -count=1 ./tools/reference-critical-path-evidence-audit
 
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
 - 全区分で exact candidate `head` / reviewed `main`、full Repository Health PASS、実行前後clean、検証receiptの**申告**を要求する。この条件はあくまで提出に必要な情報で、受領側がcheckoutとreceiptを検証する必要がある。
-- `E0` でもProducer/Consumerの実装箇所、正負のテスト名、証拠の性質（`source-only`、`synthetic-tested`、`actual-observed`）が必要。単なるCase名では不足とする。
+- `E0` でもProducer/Consumerの実装箇所、正負のテスト名、証拠の性質（`source-only`、`synthetic-tested`、`actual-observed`）が必要。単なるCase名では不足とする。**E1/E2で `evidenceClass=source-only` または `synthetic-tested` を指定すると、他の欄がそろっていても `E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED` で拒否する。** WebのProviderがsyntheticでも、E1では *Webサーバの実行* が必要という意味である。
 - `E1` は `R0 != R1`、Candidate/Review fingerprint、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。`handler-only` / `httptest` の結果だけではE1の実サーバ操作を実証しない。
 - `E2` はE1に加え `actual-db` Provider、R1に対するDatasource/schema互換性証跡、current Host Authority、Commandと独立readの**別receipt**、同一record、S02/S05の拒否試験を要求する。Web synthetic Providerを `E2` として提出すると拒否する。
 - Source、Target、DB schema、Git revisionを値の一致だけで同一視しない。DB schemaとApplicationは別のライフサイクルであり、`schemaCompatibility=compatible` は**提出された判定結果の表明**に過ぎない。Providerの実状態・readの独立性・記録時点はreviewerが確認する。
@@ -60,6 +60,13 @@ go test -count=1 ./tools/reference-critical-path-evidence-audit
 ```
 
 本Referenceは実際の証拠ファイルを自動取得・検証しないため、`receipt`にパスを記述しただけでは検証済みにはならない。提出物にはsecret、credentials、個人情報を含めない。
+
+## 入力の取り扱いとpreflightの追加負例
+
+- JSONは最大1 MiB、UTF-8の厳密な入力のみを受ける。ファイル先頭1 MiBが妥当でも、その後に隠れたJSON・テキストがあれば受け付けない。
+- 未知field、トップレベルと入れ子の重複key、`claim`/`Claim`のような大文字・小文字だけ異なるalias、64階層を超える深い入れ子は拒否する。Goの通常のJSON decoderが最後の同名fieldを採用する挙動で権限・証跡を上書きさせない。
+- `run` のCLI全体に対しても `INCOMPLETE`時の非ゼロ終了と機械可読JSON、`REVIEW_REQUIRED`時でも常に `productGate=UNQUALIFIED` を確認する。
+- focused testは `go test -race -count=1 ./tools/reference-critical-path-evidence-audit` で検査できるが、必須のfull `tools/repository-health-check.sh` を置き換えない。
 
 ## このtoolが検証しないこと
 
