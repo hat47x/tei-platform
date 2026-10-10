@@ -57,6 +57,12 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string) error
 	if err != nil {
 		return err
 	}
+	// A Review Packet is derived from the same immutable source Case.
+	// It contains no accepted decisions or Semantic Patch.
+	review, err := example.Review(input)
+	if err != nil {
+		return fmt.Errorf("derive review: %w", err)
+	}
 	if outputPath == "" {
 		return printJSON(projection)
 	}
@@ -71,6 +77,14 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string) error
 	}
 	content = append(content, '\n')
 	if err := os.WriteFile(filepath.Join(outputPath, "projection.json"), content, 0600); err != nil {
+		return err
+	}
+	reviewData, err := json.MarshalIndent(review, "", "  ")
+	if err != nil {
+		return err
+	}
+	reviewData = append(reviewData, '\n')
+	if err := os.WriteFile(filepath.Join(outputPath, "review.json"), reviewData, 0600); err != nil {
 		return err
 	}
 	for i, slide := range projection.Slides {
