@@ -624,7 +624,16 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
           end: { offset: 7, line: 1, column: 8 } }
       }]
     }));
-    const paths = [worldPath, revPath, editPath, sourcePath];
+    const dfdPath = join(dir, "reference-dfd.json");
+    writeFileSync(dfdPath, JSON.stringify({
+      schemaVersion: "business-dfd-projection-v0",
+      authority: "derived-read-only", canonicalProcedureUsed: false,
+      procedureId: "order-entry.order-handling", diagnostics: [],
+      steps: [{ id: "BP-01", functionRefs: [{
+        id: "order_entry.record", status: "resolved", data: "sales.order"
+      }] }]
+    }));
+    const paths = [worldPath, revPath, editPath, sourcePath, dfdPath];
     const before = paths.map(p => readFileSync(p, "utf8"));
     const cli = fileURLToPath(new URL("./cli.mjs", import.meta.url));
     const inspect = spawnSync(process.execPath, [cli, "inspect", "-world-file", worldPath,
@@ -637,6 +646,20 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
     { encoding: "utf8" });
     assert.equal(inspectIndexed.status, 0, inspectIndexed.stderr);
     assert.equal(JSON.parse(inspectIndexed.stdout).sourceNavigation.status, "source-index-backed");
+    const businessStep = spawnSync(process.execPath, [cli, "inspect",
+      "-world-file", worldPath, "-revision-file", revPath,
+      "-focus", "step:BP-01", "-business-dfd", dfdPath], { encoding: "utf8" });
+    assert.equal(businessStep.status, 0, businessStep.stderr);
+    const businessResult = JSON.parse(businessStep.stdout);
+    assert.equal(businessResult.subject.scope,
+      "reference-procedure:order-entry.order-handling");
+    assert.equal(businessResult.candidates[0].focus, "pattern:order_entry.record");
+    assert.equal(businessResult.candidates[0].status, "identity-match-only");
+    assert.equal(businessResult.editable, false);
+    const noBusinessDFD = spawnSync(process.execPath, [cli, "inspect",
+      "-world-file", worldPath, "-revision-file", revPath,
+      "-focus", "step:BP-01"], { encoding: "utf8" });
+    assert.notEqual(noBusinessDFD.status, 0);
     const propose = spawnSync(process.execPath, [cli, "propose", "-world-file", worldPath,
       "-revision-file", revPath, "-edit-file", editPath], { encoding: "utf8" });
     assert.equal(propose.status, 0, propose.stderr);
