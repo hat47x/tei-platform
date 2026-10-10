@@ -60,6 +60,9 @@ type Change struct {
 type Stage struct {
 	ID      string   `json:"id"`
 	Changes []Change `json:"changes"`
+	// A later stage must independently assert its complete tables. The
+	// base snapshot's completeness is never implicitly carried forward.
+	CompleteTables []string `json:"completeTables,omitempty"`
 }
 
 type Question struct {
@@ -73,8 +76,8 @@ type Example struct {
 	Base          []Record   `json:"base"`
 	Stages        []Stage    `json:"stages,omitempty"`
 	Questions     []Question `json:"questions,omitempty"`
-	// CompleteTables lists the tables whose records are known to be fully
-	// enumerated at each illustration stage. Omitted tables remain partial.
+	// CompleteTables declares the tables fully represented in the base
+	// snapshot only. Each later stage must independently declare completeness.
 	CompleteTables []string `json:"completeTables,omitempty"`
 }
 
@@ -163,7 +166,7 @@ func Build(in Input) (Projection, error) {
 	if err := validateDiagram(in.Catalog, in.Diagram); err != nil {
 		return empty, err
 	}
-	complete, err := completeTableSet(in.Catalog, in.Example.CompleteTables)
+	baseComplete, err := completeTableSet(in.Catalog, in.Example.CompleteTables)
 	if err != nil {
 		return empty, err
 	}
@@ -181,6 +184,7 @@ func Build(in Input) (Projection, error) {
 		return empty, fmt.Errorf("base: %w", err)
 	}
 	snapshots := map[string]map[string]Record{"base": copyState(state)}
+	stageComplete := map[string]map[string]bool{"base": baseComplete}
 	for _, stage := range in.Example.Stages {
 		if stage.ID == "" || stage.ID == "base" {
 			return empty, fmt.Errorf("invalid stage ID %q", stage.ID)
@@ -219,6 +223,9 @@ func Build(in Input) (Projection, error) {
 			return empty, fmt.Errorf("stage %s: %w", stage.ID, err)
 		}
 		snapshots[stage.ID] = copyState(state)
+		complete, err := completeTableSet(in.Catalog, stage.CompleteTables)
+		if err != nil { return empty, fmt.Errorf("stage %s: %w", stage.ID, err) }
+		stageComplete[stage.ID] = complete
 	}
 	out := Projection{
 		ExampleID: in.Example.ID, DiagramID: in.Diagram.ID,
@@ -290,7 +297,7 @@ func Build(in Input) (Projection, error) {
 				}
 			}
 		}
-		slide.RelationFindings = assessRelations(in.Catalog, snapshot, complete)
+		slide.RelationFindings = assessRelations(in.Catalog, snapshot, stageComplete[frame.Stage])
 		out.Slides = append(out.Slides, slide)
 	}
 	return out, nil
