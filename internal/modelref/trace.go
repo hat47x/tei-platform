@@ -83,9 +83,9 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	}
 	// The token binds pages to the exact graph bytes and extension policy.
 	// It is descriptive, not Shared Acceptance, nor an optimistic write token.
-	raw, err := json.Marshal(graph)
+	raw, err := traceGraphSnapshotBytes(graph)
 	if err != nil {
-		return TraceResult{}, fmt.Errorf("serialize graph snapshot: %w", err)
+		return TraceResult{}, fmt.Errorf("serialize canonical graph snapshot: %w", err)
 	}
 	policyFingerprint := RuleFingerprint(rules)
 	// A page belongs to a specific subject and direction. Changing either
@@ -100,7 +100,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	if err != nil {
 		return TraceResult{}, fmt.Errorf("serialize trace selector: %w", err)
 	}
-	snapshotBytes := []byte("tei.modelref.trace.snapshot/v1\n")
+	snapshotBytes := []byte("tei.modelref.trace.snapshot/v2\n")
 	snapshotBytes = append(snapshotBytes, raw...)
 	snapshotBytes = append(snapshotBytes, '\n')
 	snapshotBytes = append(snapshotBytes, policyFingerprint...)
@@ -195,23 +195,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 		}
 		// Evidence has set semantics in modelref. Normalize a copy so
 		// equivalent input produces stable JSON without mutating Graph.
-		row.Edge.Evidence = append([]Evidence(nil), edge.Evidence...)
-		sort.Slice(row.Edge.Evidence, func(i, j int) bool {
-			a, b := row.Edge.Evidence[i], row.Edge.Evidence[j]
-			if a.Authority != b.Authority {
-				return a.Authority < b.Authority
-			}
-			if a.Context != b.Context {
-				return a.Context < b.Context
-			}
-			if a.SourceToken != b.SourceToken {
-				return a.SourceToken < b.SourceToken
-			}
-			if a.ArtifactFingerprint != b.ArtifactFingerprint {
-				return a.ArtifactFingerprint < b.ArtifactFingerprint
-			}
-			return a.RuleFingerprint < b.RuleFingerprint
-		})
+		row.Edge.Evidence = sortedTraceEvidence(edge.Evidence)
 		rows = append(rows, row)
 	}
 	if options.Mode == "full" {
