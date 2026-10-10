@@ -1,5 +1,6 @@
 {
   "schemaVersion": "subsystem-cud-candidate-v1",
+  "worldJSONFingerprint": "sha256:b21ed42b17ca10937dcf7020d27fce1546a389327375f2ceb958b0a09937d51c",
   "owners": [
     {"data": "sales.order", "subsystem": "sales", "source": "fixture:sales-owner"},
     {"data": "stock.reservation", "subsystem": "stock", "source": "fixture:stock-owner"}
