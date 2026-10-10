@@ -136,6 +136,20 @@ func TestHandoffMustResolveToExactlyOneDeclaredProcedure(t *testing.T) {
 	if !seen { t.Fatal("Handoff diagnostic does not point at the authoring set") }
 }
 
+func TestNoStepsOrDuplicateAnonymousTransitionsAreNotValidDFD(t *testing.T) {
+	f,r,s,w:=sample()
+	r.Flows=append(r.Flows,r.Flows[0])
+	p:=build(f,r,s,w,"procedure.json","review.json","set.json")
+	if !codes(p)["DFD_CONTROL_TRANSITION_DUPLICATE"] {
+		t.Fatal("duplicate anonymous transition was silently treated as one semantic edge")
+	}
+	f.Steps=nil
+	p=build(f,r,s,w,"procedure.json","review.json","set.json")
+	if !codes(p)["DFD_PROCEDURE_STEPS_MISSING"] {
+		t.Fatal("empty Business Procedure was displayed as complete DFD")
+	}
+}
+
 func TestProposalRoutesAreNotInferredFromStepOrder(t *testing.T) {
 	f,r,s,w:=sample()
 	r.Flows=nil
