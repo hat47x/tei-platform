@@ -65,3 +65,14 @@ TEI_LOWERING_WEB_SMOKE=1 go test -count=1 -run '^TestWebTargetHTTPBlackBoxTrace$
 ```
 
 このテストは、**実Sourceを読み込む既存WebのHTTP実行**を検証する一方、Loweringの`Trust`がProduction Host/Shared Acceptanceを通過することを検証しない。HTTPの成功を「外部実DBへ保存した」「二つの実DSLからAcceptedされた」「第二Targetを実行した」と読み替えない。Serverはfixtureを使用し、観測も合成。実行していなければ成功証跡は存在しない。実行の際はexact checkout SHA、Go version、pre/post clean、Exit Code、主要Stageの観測を別途Evidenceとして保存する。
+
+## 横断E1証拠で再利用する既設テスト
+
+#1119の検討により、実際の`Source R0→candidate→review→accept→reload`と既存Driver/Webへの意味反映は、すでに以下に存在することを確認した。#1121内に第二のAcceptance実装やfixture injectorを作らず、trusted checkoutでこれらを呼び出して証拠を結ぶ。
+
+```bash
+go test -count=1 -run '^TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection$' ./tools/reference-shared-acceptance
+go test -count=1 -run '^TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList$' ./tools/reference-first-web-target
+```
+
+**実装経路・証拠階層の差**: 既存`TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList`はscratch Workspaceを受理してDriverと`httptest`のWeb handlerを検査する。今回追加した`TestWebTargetHTTPBlackBoxTrace`は**running-server**だが基線fixtureのままであり、scratchで増設した`unit_price_positive`の負例をrunning-serverで確認しない。両者を組み合わせて「新規ルールのrunning Web拒否は観測済み」と報告することはできない。この差は#1119 E1で別々に報告し、実演証拠の完成は該当Consumer Laneに委ねる。
