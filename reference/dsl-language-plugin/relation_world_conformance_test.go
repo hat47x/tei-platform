@@ -76,7 +76,6 @@ func TestWorldRelationRejectsAmbiguousTarget(t *testing.T) {
 	}
 }
 
-
 // TestWorldRelationDoesNotAddStricterKeyRules ensures the reference does not
 // invent a source-key uniqueness restriction absent from the canonical
 // validator. Distinct target attributes remain independently mapped.
