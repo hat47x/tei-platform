@@ -282,6 +282,26 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		t.Fatalf("business denial continued into command: %+v", denial)
 	}
 
+	// A valid Principal can still be denied the current Command grant. That
+	// business denial must not dispatch or fabricate an execution observation.
+	viewer := post(`{"loginId":"legacy-order-viewer","credential":"viewer-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK)
+	var authDenied struct {
+		Stage string `json:"stage"`
+		Authentication *struct { Outcome string `json:"outcome"` } `json:"authentication"`
+		Authorization *struct { Outcome string `json:"outcome"` } `json:"authorization"`
+		Command json.RawMessage `json:"command"`
+		Observation json.RawMessage `json:"observation"`
+	}
+	if err := json.Unmarshal(viewer["result"], &authDenied); err != nil {
+		t.Fatal(err)
+	}
+	if authDenied.Stage != "authorization-denied" || authDenied.Authentication == nil ||
+		authDenied.Authentication.Outcome != "authenticated" || authDenied.Authorization == nil ||
+		authDenied.Authorization.Outcome != "denied" || len(authDenied.Command) != 0 ||
+		len(authDenied.Observation) != 0 {
+		t.Fatalf("authorization-denied Principal crossed Command boundary: %+v", authDenied)
+	}
+
 	failed := post(`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}`, http.StatusUnprocessableEntity)
 	var errorResult struct { Stage string `json:"stage"` }
 	if err := json.Unmarshal(failed["result"], &errorResult); err != nil {
