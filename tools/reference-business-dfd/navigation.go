@@ -106,6 +106,10 @@ func navigate(p projection, selector string, sourcePaths ...string) (navigationR
 			if s.ID!=id {continue}
 			count++
 			setSource(s.Source)
+			for _,explicit:=range s.ExplicitMeaning {
+				worldLink("explicit-business-semantic-reference",
+					explicit.Kind,explicit.ID,explicit.Status)
+			}
 			for _,f:=range s.FunctionRefs {
 				worldLink("explicit-application-pattern","application-pattern",f.ID,
 					map[bool]string{true:"resolved-id-not-accepted",false:"unresolved"}[f.Status=="resolved"])
