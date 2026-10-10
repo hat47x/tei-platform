@@ -3,7 +3,6 @@
 package sourcebridge
 
 import (
-
 	"tei/internal/modelref"
 	"tei/internal/sourceindex"
 )
