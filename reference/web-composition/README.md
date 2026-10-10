@@ -287,3 +287,25 @@ Go 1.23.2の隔離`module tei`に、実際の`session_command_scenario.go`を**G
 Go 1.23.2の隔離モジュールに**実際の新コード・テスト・既存Fixtureをbyte一致で配置**し、依存する`legacyauth.User`型だけを最小の互換スタブに置換しました。`gofmt -l`は空、`go vet` PASS、`go test -count=1` 3件PASS、`go test -race -count=1` PASSでした。異なるRoleを持つ同一SubjectIDの重複拒否、一意な検索、既存Editor／Viewer／Locked／DisabledのFixtureをそのまま読み込み検索できることを確認しました。
 
 **制限:** 実Repository全体の`legacyauth`／`legacyauthorization`結合テストおよびexact-headのRepository Healthは未実行です。企業Directoryや外部ユーザーStoreがSubject ID一意性を保証するかはこの参照Fixture検査だけでは証明できません。現PRはDraftを維持します。
+
+
+## E2.8：業務認可失効のHTTP結果と監査の整合性
+
+Hostの早期認可に成功しても、後段の業務処理で権限が変化する場合があります。従来のSession経路では、Runnerが正しく`Stage=authorization-denied`を返しても、共通HTTP Result Writerが200を返し、HostのAuditが`completed`になり得ました。**業務操作を拒否したのに、HTTP／監査の両方が成功として記録される不整合**を修正しました。
+
+`tools/reference-first-web-target/session_command_route.go`では、セッション専用の結果変換時だけ、`authorization-denied`または`identity-link-denied`かつExecution ErrorなしをHTTP 403にします。既存のCredential経路の応答契約や、`security.authorize`のBusiness Resultは変更しません。Hostの`statusWriter`が最初のHTTP statusをAuditへ採用するため、これらの拒否は`Stage=rejected`として監査されます。`identity-link`でStore等のExecution Errorが発生した場合は503とし、内部エラー内容をブラウザへ露出させず固定文言へ変換します。
+
+新たに、Hostの認可直後にSubject Linkが`subject-order-editor`から`subject-order-viewer`へ変化し、後段の既存認可Capabilityが拒否するケースを、実Workspaceを使用する`session_command_route_test.go`へ追加しました。この場合の受入条件は、HTTP 403、`Authorization.Outcome=denied`、Command／Observationなし、Audit=`rejected`です。
+
+### 実施した局所試験（E2.8）
+
+GitHub Blob SHA=`cf4de5774d534805b156832f3f40276020813b6d`と完全一致する**実際の`session_command_route.go`**をGo 1.23.2の隔離`module tei`へ配置し、既存`server.go`の`writeCommandScenarioHTTPResult`の実ロジックを複写、周辺依存（Host／Resolver／Runner／Web Server構成）だけをスタブへ置換して直接検証しました。
+
+- `gofmt -l`：出力なし
+- `go vet`：PASS
+- `go test -count=1 -v`：2テスト、うち7つのHTTP結果・入力負例すべてPASS
+- `go test -race -count=1`：PASS
+
+HTTP 200正常完了、403の業務認可拒否／主体リンク失効、503の主体Store障害と内部詳細秘匿、422の通常Command Execution Error、400のJSON `null`／Credential注入を個別に確認しました。
+
+**残る検証境界:** これはHostとRunnerのモックを使うHTTP結果処理の局所試験であり、実`reference/workspace`、実`security.authorize`、Go HostのAuditイベント配信を含む結合試験は未実行です。追加した実Workspace回帰ケースのPASSも未取得です。PR #1114はDraftを維持し、candidate exact-headの全体Repository Healthを統合条件とします。
