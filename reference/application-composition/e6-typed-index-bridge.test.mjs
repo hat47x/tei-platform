@@ -27,7 +27,7 @@ const check=(old,newer)=>assessParsedApplicationSourceDrift({
 
 test('identical explicit declarations produce only limited unchanged, never full closure',()=>{
   const v=fixture(),result=check(v,v);
-  assert.deepEqual(result,{qualification:'application-validation-and-database-contract-definitions-only',
+  assert.deepEqual(result,{qualification:'application-declaration-and-direct-source-definitions-only',
     fullClosure:false,authority:'none',status:'limited-unchanged',dependencyCount:4});
 });
 test('changed Validation source makes application review unresolved',()=>{
