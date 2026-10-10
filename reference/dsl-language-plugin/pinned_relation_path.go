@@ -6,6 +6,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
+	"tei/internal/validation"
 )
 
 // PinnedRelationStep binds an authored relation identity to an externally
@@ -40,12 +41,15 @@ func InspectPinnedRelationPath(w ir.World, sourceID core.CanonicalID, steps []Pi
 		},
 		Expansions: make([]RelationExpansionCandidate, 0, len(steps)),
 	}
+	// Canonical key semantics are checked once for the same immutable World.
+	// Every hop still checks its own source/relation/target identities.
+	diagnostics := validation.ValidateSemanticRelationKeys(w)
 	current := sourceID
 	for i, step := range steps {
 		if step.RelationID == "" {
 			return PinnedRelationPathCandidate{}, fmt.Errorf("step %d: relation identity is required", i)
 		}
-		expansion, err := InspectPinnedRelationExpansion(w, current, step.RelationID, step.Call, catalog)
+		expansion, err := inspectPinnedRelationExpansionChecked(w, current, step.RelationID, step.Call, catalog, diagnostics)
 		if err != nil {
 			return PinnedRelationPathCandidate{}, fmt.Errorf("step %d: %w", i, err)
 		}
