@@ -87,9 +87,9 @@ func serve(args []string, output io.Writer) error {
 	// The listener is loopback-only, but idle connections must not hold
 	// unbounded resources in this diagnostic HTTP process.
 	server := &http.Server{
-		Handler: snapshot.Handler(),
+		Handler:           snapshot.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout: 30 * time.Second,
+		IdleTimeout:       30 * time.Second,
 	}
 	return server.Serve(listener)
 }
