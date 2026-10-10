@@ -42,12 +42,12 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 		summary.Result.Trace.Total < 2 || len(summary.Result.Trace.Rows) != 0 {
 		t.Fatalf("bad trace summary: %+v", summary)
 	}
-	page := run(0, "both", "full", summary.Result.Trace.SnapshotFingerprint, 0, 1)
+	page := run(0, "both", "full", summary.Result.SnapshotFingerprint, 0, 1)
 	if !page.OK || page.Result == nil || len(page.Result.Trace.Rows) != 1 ||
 		page.Result.Trace.NextOffset == nil {
 		t.Fatalf("bad trace page: %+v", page)
 	}
-	next := run(0, "both", "full", page.Result.Trace.SnapshotFingerprint,
+	next := run(0, "both", "full", page.Result.SnapshotFingerprint,
 		*page.Result.Trace.NextOffset, 1)
 	if !next.OK || next.Result == nil || len(next.Result.Trace.Rows) == 0 {
 		t.Fatalf("bad trace continuation: %+v", next)
@@ -59,7 +59,7 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 		Subject: subject.Subject{Kind: "semantic-relation", ID: "sales.order.customer"},
 	}, modelref.TraceOptions{
 		Direction: "both", Mode: "full",
-		Limit: 1, ExpectedFingerprint: summary.Result.Trace.SnapshotFingerprint,
+		Limit: 1, ExpectedFingerprint: summary.Result.SnapshotFingerprint,
 	})
 	if err != nil {
 		t.Fatalf("typed operation trace failed: %v", err)
@@ -68,7 +68,7 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 		t.Fatalf("CLI/Go semantic results differ\nCLI: %+v\nGo: %+v", *page.Result, fromGo)
 	}
 	changedDirection := run(1, "incoming", "full",
-		summary.Result.Trace.SnapshotFingerprint, 1, 1)
+		summary.Result.SnapshotFingerprint, 1, 1)
 	if changedDirection.OK || changedDirection.Error == nil ||
 		changedDirection.Error.Code != "STALE_SNAPSHOT" {
 		t.Fatalf("trace continuation changed direction without detection: %+v", changedDirection)
