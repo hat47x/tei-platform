@@ -183,6 +183,99 @@ func TestFirstModelChangeEditValidationAndRepair(t *testing.T) {
 	}
 }
 
+// A missing Data relation is a common first step toward standard CRUD.
+// It must have a stable model identity and an actionable exact Source token.
+func TestFirstModelChangeRelationTargetDiagnosticAndRepair(t *testing.T) {
+	base := filepath.Join(repoRoot(t), filepath.FromSlash(firstModelRoot))
+	userRoot := t.TempDir()
+	for _, file := range []string{
+		"tei.workspace.yaml",
+		firstModelSemantic,
+		"applications/request-log/application.tei",
+	} {
+		content, err := os.ReadFile(filepath.Join(base, filepath.FromSlash(file)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		dst := filepath.Join(userRoot, filepath.FromSlash(file))
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dst, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	path := filepath.Join(userRoot, filepath.FromSlash(firstModelSemantic))
+	src, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const attribute = "    attribute status type std.code\n"
+	const relation = "    relation parent to intake.unknown_request one\n"
+	if strings.Count(string(src), attribute) != 1 {
+		t.Fatal("first-workspace status declaration must be unique")
+	}
+	brokenSource := strings.Replace(string(src), attribute, attribute+relation, 1)
+	if err := os.WriteFile(path, []byte(brokenSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	broken, err := workspace.Load(userRoot)
+	if err != nil {
+		t.Fatalf("unknown related Data must remain an authorable validation finding: %v", err)
+	}
+	idx, err := workspace.BuildSourceIndex(userRoot, broken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var located bool
+	for _, result := range workspace.ProjectDiagnostics(validation.Validate(broken.World), idx) {
+		d := result.Diagnostic
+		if d.Code != "UNKNOWN_SEMANTIC_RELATION_TARGET" {
+			continue
+		}
+		if d.Severity != validation.Error || d.Subject == nil ||
+			*d.Subject != (sourceindex.Subject{Kind: "semantic-relation", ID: "intake.request.parent"}) {
+			t.Fatalf("missing relation target lacks a stable semantic Subject: %+v", d)
+		}
+		if len(result.Sources) != 1 || result.Sources[0].ArtifactPath != firstModelSemantic {
+			t.Fatalf("missing relation target lost its source location: %+v", result.Sources)
+		}
+		anchor := result.Sources[0].Range
+		if anchor.Start.Offset < 0 || anchor.Start.Offset >= anchor.End.Offset ||
+			anchor.End.Offset > len(brokenSource) ||
+			brokenSource[anchor.Start.Offset:anchor.End.Offset] != "parent" {
+			t.Fatalf("missing relation target must point at its declaration identifier: %+v", anchor)
+		}
+		located = true
+	}
+	if !located {
+		t.Fatal("missing relation target was silently accepted")
+	}
+
+	repairedSource := strings.Replace(brokenSource, "intake.unknown_request", "intake.request", 1)
+	if err := os.WriteFile(path, []byte(repairedSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	repaired, err := workspace.Load(userRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ds := validation.Validate(repaired.World); validation.HasErrors(ds) {
+		t.Fatalf("a corrected self-relation must validate: %+v", ds)
+	}
+	repairedIndex, err := workspace.BuildSourceIndex(userRoot, repaired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFirstModelReference(t, repairedIndex, "semantic-relation", "intake.request.parent", firstModelSemantic)
+	if err := idx.Validate(func(rel string) ([]byte, error) {
+		return os.ReadFile(filepath.Join(userRoot, filepath.FromSlash(rel)))
+	}); err == nil {
+		t.Fatal("a Source Index for the incorrect relation was accepted after repair")
+	}
+}
+
 func assertFirstModelReference(t *testing.T, idx sourceindex.Index, kind, id, path string) {
 	t.Helper()
 	refs := idx.ReferencesFor(sourceindex.Subject{Kind: kind, ID: id})
