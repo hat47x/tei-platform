@@ -12,27 +12,27 @@ import (
 // cliValidationReport is a projection for automation, not a second semantic
 // validation model or a grant of authority to modify accepted source.
 type cliValidationReport struct {
-	SchemaVersion string                          `json:"schemaVersion"`
-	OK            bool                            `json:"ok"`
-	Diagnostics   []cliValidationItem             `json:"diagnostics"`
-	Error         *cliValidationFailure           `json:"error,omitempty"`
+	SchemaVersion	string	`json:"schemaVersion"`
+	OK	bool	`json:"ok"`
+	Diagnostics	[]cliValidationItem	`json:"diagnostics"`
+	Error	*cliValidationFailure	`json:"error,omitempty"`
 }
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
 type cliValidationItem struct {
-	Diagnostic validation.Diagnostic `json:"diagnostic"`
-	Sources    []cliValidationSource `json:"sources,omitempty"`
+	Diagnostic	validation.Diagnostic	`json:"diagnostic"`
+	Sources	[]cliValidationSource	`json:"sources,omitempty"`
 }
 
 type cliValidationSource struct {
-	ArtifactPath string           `json:"artifactPath"`
-	Range        sourceindex.Range `json:"range"`
-	Role         sourceindex.Role  `json:"role,omitempty"`
+	ArtifactPath	string	`json:"artifactPath"`
+	Range	sourceindex.Range	`json:"range"`
+	Role	sourceindex.Role	`json:"role,omitempty"`
 }
 
 type cliValidationFailure struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code	string	`json:"code"`
+	Message	string	`json:"message"`
 }
 
 // validateWorkspaceJSON preserves the existing text command and exit codes:
