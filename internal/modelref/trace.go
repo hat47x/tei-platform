@@ -109,7 +109,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	digest := sha256.Sum256(snapshotBytes)
 	snapshotFingerprint := "sha256:" + hex.EncodeToString(digest[:])
 	if options.ExpectedFingerprint != "" && options.ExpectedFingerprint != snapshotFingerprint {
-		return TraceResult{}, &TraceError{Code: "STALE_SNAPSHOT", Message: "graph or rule fingerprint changed since the prior page"}
+		return TraceResult{}, &TraceError{Code: "STALE_SNAPSHOT", Message: "trace subject, direction, graph, or rule fingerprint differs from the prior page"}
 	}
 	counts := make(map[Key]int, len(graph.Nodes))
 	for _, node := range graph.Nodes {
