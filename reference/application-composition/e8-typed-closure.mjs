@@ -112,6 +112,16 @@ export function compareCapabilityInputDefinitionSources({
     return {...limit,status:"unresolved",reason:"capability_set_changed"};
   }
   const capabilitySubjects=beforeCaps.map(id=>({kind:"semantic-capability",id}));
+  // Missing Capability Source evidence must not make the cross-revision
+  // comparison report unchanged. Some older synthetic Index fixtures omit
+  // capability definitions; these are deliberately unresolved now.
+  const uniqueCapabilityDefinition = (idx,id) =>
+    idx.references.filter(ref=>ref?.role==="definition" &&
+      ref.subject?.kind==="semantic-capability" && ref.subject?.id===id).length===1;
+  if (!beforeCaps.every(id=>uniqueCapabilityDefinition(baselineIndex,id) &&
+    uniqueCapabilityDefinition(currentIndex,id))) {
+    return {...limit,status:"unresolved",reason:"capability_source_missing_or_ambiguous"};
+  }
   let capabilityScope;
   try {
     capabilityScope=assessIndexedSubjects({baselineIndex,currentIndex,
