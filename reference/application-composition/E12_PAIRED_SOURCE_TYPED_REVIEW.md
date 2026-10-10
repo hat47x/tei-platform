@@ -1,59 +1,61 @@
-# E12：E7実診断とE11再レビュー候補を同じSource報告へ結ぶ
+# E12：実E7/E11を組み合わせた読取り専用CLI
 
-- **状態**：読み取り専用の局所接続Reference。実Go modelref統合、アプリケーション実行、採用済み業務意味、Runtime Authority、全依存閉包を示すものではない。
+- **状態**：検証用CLI。Goの完全な構成判定、Production用Composer、受理済み業務意味、Runtime権限、全依存閉包ではない。
 - **管理**：[Issue #1016](https://github.com/hat47x/tei-platform/issues/1016)／[Draft PR #1051](https://github.com/hat47x/tei-platform/pull/1051)。
-- **前段**：[E7のSource Index対比較](E7_PAIRED_OBSERVATION.md)と[E11のImpactレビュー](E11_TYPED_IMPACT_REVIEW_GATE.md)。関連する型付き参照・Impactの正本候補は[#1120 / PR #1139](https://github.com/hat47x/tei-platform/pull/1139)。
+- **前段**：[E7：Source出典比較](E7_PAIRED_OBSERVATION.md)、[E11：型付きImpactのレビュー接続](E11_TYPED_IMPACT_REVIEW_GATE.md)、[#1120のGo候補](https://github.com/hat47x/tei-platform/pull/1139)。
 
-## 実装した接続
+## なぜCLIが必要か
 
-[E12の接着関数](e12-bound-review.mjs)は、変更前後のE7 Envelope（各々E5 ReportとSource Indexの組）、選択Application／scope、別の型付きImpact候補を受け取り、以下を行う。
+E11には、E7の`{report,index}` Envelopeと#1120のGo `derivedbridge.Projection`／`Validate`／`Impact`のJSON形状を**一つの読取り専用レビュー候補へ渡す関数**が既にある。E12は同じ照合関数を複製しない。
 
-1. 変更前後のE5 Reportと、明示されたApplicationの同一性を確認。別ApplicationのReportを選択結果へ流用しない。
-2. **E7の実関数 `assessPairedEvidence(baseline,current)` を呼ぶ**。Source ReportとIndexの定義出典・指紋・対象集合の照合はE7→E6→E4に任せる。E12はここに独自のIndex比較器を持たない。
-3. **E11に渡すApplication→Pattern所有情報は、E7で検査対象とした `current.report` から直接取得**する。別々に渡された`sourceDrift`や独立した`sourceReport`を利用しない。以前のE11単体のCallerが異なる時点のReportを取り違える余地を、少なくともこの接続APIでは閉じる。
-4. E11に既存の型付きImpact候補を渡す。関係するPatternとApplicationの候補だけを返す。E7のSource変更・定義不一致があれば、型付きImpactが空でも`unresolved`を保持する。
-5. どの状態でも`authority:none`／`adoption:not-decided`／`fullClosure:false`を維持し、`evidenceBoundary:unverified-caller-supplied-snapshots`と`modelrefSnapshotBound:false`を返す。
+[E12 CLI](e12-bound-review.mjs)の責務は、**実際のJSONファイルを読む手順、入力制限、出力と終了コードの境界**だけである。E7のSource指紋比較とApplication→Patternの所有検査は既存E11→E7→E6→E4へ委譲する。Goの`modelref.Impact`と`Validate`はまだ別Draftのため、E12はそれらの結果を新たに計算しない。
 
-**重要**：E7のJSONは同一Workspaceから生成されたと**形式上称している**だけであり、形式検証だけでは改ざんや別時点の混入を検出できない。E12の「束ねた」という語は、同じ**入力Envelope**の中のSource Reportを再利用するという意味に限定する。#1120の`typedProjection`がそのSourceと同じWorkspace revisionから生成された証拠も、現段階では無い。
+以前のE12試作はE11の基本関数とE7を直接呼び、同一の根拠がない場合でも`limited-unchanged`を返し得る別経路を増やしていた。並行作業によりE11に**Go実JSON形式を受ける`qualifyPairedCompositionReview`**が追加されたため、重複する判断ロジックを削り、E12をこの**単一E11判定器を呼び出すCLI**へ改めた。E11の新しい判定器はGo Sourceと型付きProjectionの同一snapshotが未立証なら`unverified_shared_snapshot`を返す。E12もこれを尊重し、「変更なし」を偽の合格へ昇格させない。
 
-## 実装した負例
+## 入力の形式と操作
 
-| 操作 | 判定 |
-| --- | --- |
-| E5 ReportとIndex／Application／Pattern所有に矛盾なし | `limited-unchanged`（ただし限定Source集合のみ） |
-| 既知のRelationの型付きImpactがApplication所有Patternに到達 | `review-candidate`（適用許可ではない） |
-| PatternのSource指紋や依存集合が変わった | `unresolved` |
-| Source Reportが別Applicationを名乗る、Formatを偽装する、定義SourceとIndexが食い違う | `unresolved` |
-| E7が認識しないRelationをReportに挿入する | `unresolved` |
-| Callerが偽`sourceDrift`や別の`sourceReport`を同時に渡す | E12は**それらの外部入力を受け取らず**E7実結果を使用する |
-| #1120候補に未解決の型付き参照がある | `unresolved` |
-| 無関係なSource Index Artifactだけが変わる | 列挙済みの直接依存について`limited-unchanged`のまま（完全性は非主張） |
+```sh
+node reference/application-composition/e12-bound-review.mjs \
+  <baseline-e5-e7.json> <current-e5-e7.json> \
+  <modelref.json> order_entry order-entry-reference
+```
 
-## 実際の局所実行と出典
+- 第一・第二ファイル：E5の`-paired-evidence`により出力できるE7 Envelope（`{format,qualification,report,index}`）。
+- 第三ファイル：Go候補のJSONを呼出し元が`{projection,diagnostics,affected}`に**まとめた未承認の交通整理用Carrier**。正式な永続Schema／Lockを追加するものではない。`projection.graph`は`tei.modelref.v0`、`projection.rules / unresolved / authorityLimits`は#1120のDerived Bridge、`diagnostics`は`modelref.Validate`、`affected`は`modelref.Impact`から提供される想定だが、**現在は同じWorkspace snapshotからの実出力をまだ取得していない**。
+- 第四・第五引数：対象Application IDとscopeを明示的に選択する。名前から他Applicationへ自動fallbackしない。
+
+**終了コード**：`1`は引数／入力ファイル／JSONの不正、`2`はレビューがまだ合格できない判定。現在の仕様では**終了コード0を返さない**。たとえ見かけ上のSource/Graphが一致しても、E11が`unverified_shared_snapshot`を返す。CLIの戻り値でCI、deploy、Shared Acceptanceを通過させない。
+
+CLIは入力を変更しない。各入力を16 MiBまでに制限し、失敗時には元のJSON、秘密情報、ファイル名を標準エラーへそのまま表示しない。**この制限自体はReader権限、Source Indexの秘匿、ファイルシステムアクセス制御、改ざん防止を保証しない。** 実機の機微ファイルは使用・共有許可を別途確認する。
+
+## 実行済み局所テスト
 
 ```sh
 node --test reference/application-composition/e12-bound-review.test.mjs
 ```
 
-2026-10-10、Node.js **22.16.0の標準`node:test`**で**15件成功、失敗0件**。受け渡し先のGitHub原文を一切編集せず、同一の隔離ディレクトリへ再現して実行した。実行した6ファイルとGitHubのGit blob SHAはそれぞれ一致した。
+2026-10-10、Node.js v22.16.0の標準テストランナーで**13件PASS、0件失敗**。テストはE12のCLIを実際に子プロセスで起動し、合成JSONファイルの読取りからE11→E7→E6→E4の実モジュール呼出し、終了コード、出力を確認した。
+
+検査した内容：Go候補のJSON形状、Relation→Application所有Patternのレビュー候補、指紋変更、Application不一致、Source定義の食い違い、未知Relation、Graph内のPattern欠落、型付き診断、ファイルサイズ上限、不正JSON、機微文字列の出力抑止。
+
+隔離環境で実際に読み込んだ6ファイルのGit blob SHAを、GitHub上の担当ブランチと照合した。
 
 | ファイル | Git blob SHA |
 | --- | --- |
 | `e4-index-scope.mjs` | `d2a61dac60b1641e453513e3f72b7c6c2ef43501` |
 | `e6-typed-index-bridge.mjs` | `9ca7f39a91a89503a7955940b254754b02581666` |
 | `e7-paired-evidence.mjs` | `910ef058ed96d5830f026c0552196682580a20eb` |
-| `e11-review-gate.mjs` | `afe66251af87a9cfe587aa99030539ad4453c17f` |
-| `e12-bound-review.mjs` | `3e53b85f970900279ede3f8e47d04a79075aabd0` |
-| `e12-bound-review.test.mjs` | `7274756d7be9f02b59c4fb14fc38126c5ccb3241` |
+| `e11-review-gate.mjs` | `512b7b9711c04306fa11d581b2f8e12d3c63617c` |
+| `e12-bound-review.mjs` | `bc245d5469a27bde314c1e2a979769bfb1a6081b` |
+| `e12-bound-review.test.mjs` | `f0f2dd807973852c6d57d7dfe4bfa047e6550a37` |
 
-これは**実E7/E11/E6/E4モジュールのJavaScript結合テスト**ではあるが、**E5 Goの実Workspace読取り、#1120 Go Impact出力、実SUI、実Runtimeの結合テストではない**。テスト対象は合成JSONである。クリーンなfull checkoutのexact-head `tools/repository-health-check.sh`、Go test、go vet、gofmt、実Workspace CLI、実行前後cleanの証拠は未取得。Draftを保持する。
+**局所テストの範囲**：合成のEnvelopeと合成のGo形式候補を用いており、`workspace.Load`・E5のGo CLI・#1120のGo Impact・実SUI・Provider・Browserへの結合は未実施。実Repositoryのexact-head Goテスト／全Repository Health／pre-post cleanも未取得。これらのため、Draft PRをmainへマージできる資格はない。
 
-## 次のGate：Go側の同じsnapshotから証跡を供給する
+## 次の技術的な受入条件
 
-E12はScope/所有者の推測を増やさず、**どこで実証が不足しているかを公開すること**を目的とする。Product用に進めるには、次の三つが必要となる。
+1. #1120の`derivedbridge`／`Impact`のGo実出力とE5のSource出典を、**同じ固定Workspace・Loader解析済みrevision**から採取する。#1017の解析bytes一貫性を既存Loaderの責務として確認し、Composition専用の第二Resolverを作らない。
+2. `order_entry.customer_reference → sales.order.customer → customer.customer`のSource変更について、**実GoによるImpact候補とE7によるSource変更を同じrevisionに結ぶ**。Localな文字列一致やCLIのJSON形状一致だけでは同一snapshotの証明にならない。
+3. SUIはSemantic Stage 0の一部だけでは第二Applicationが実装済みとはいえない。Native Commit、CAS、権限に関する既存の実Sourceと接続実行を別Gateで検査する。
+4. Go／Nodeの実Workspace focused tests、`tools/repository-health-check.sh`全項目PASS、pre/post clean、current mainとexact headの一致を確認してからDraft統合可否を判断する。
 
-1. `workspace.Load`＋Source Index生成と`index.Build(loaded.World)`＋`derivedbridge.FromIndex`＋`Validate`＋`Impact`を、同じ解析済みWorld／同じ固定revisionから実行する**信頼されたGoの呼出し元**。既存#1017のLoader解析bytes対策も確認し、別のResolverを増やさない。
-2. 対象Applicationとtyped scope、業務/Nativeの所有関係を、既存の型付きWorld／Declared Edgeから照合する。E11の`sourceReport`と#1120候補の`nodes`が、同じ時点・完全な所有関係であることを実データで確認する。
-3. 実`order_entry`でRelation変更によりPattern・Applicationの再レビュー候補が出ることと、実SUIではまだ完全なTEI Applicationになっていない不足を、同じ基準で明示する。
-
-Goの`#1120`は別Draftであり、承認されていない製品契約をこのブランチから直接importする新しいGo product実装はまだ作らない。これにより、並行ブランチのCoreへの依存や二重Graphを増やさず、次の資格確認に必要な**結合点**を限定する。
+**結論**：E12は既存のSource変更検査と型付きImpactレビューをCLIから試すための道具であり、Application Composition Profileが製品に必要だという結論、あるいはその採用を先取りするものではない。
