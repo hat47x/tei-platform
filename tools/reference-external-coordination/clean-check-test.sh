@@ -86,6 +86,8 @@ make_fixture() {
 
 check_case() {
   local name="$1" expected="$2" repo output actual=0
+  local -a extra_env=()
+  local override_label=""
   repo="$TMP_ROOT/$name"
   output="$TMP_ROOT/$name.log"
   make_fixture "$repo"
@@ -96,6 +98,31 @@ check_case() {
     ignored) printf 'cache\n' > "$repo/ignored.txt" ;;
     assume-unchanged) git -C "$repo" update-index --assume-unchanged README.md; printf 'masked\n' >> "$repo/README.md" ;;
     skip-worktree) git -C "$repo" update-index --skip-worktree README.md; printf 'masked\n' >> "$repo/README.md" ;;
+    git-work-tree)
+      mkdir -p "$TMP_ROOT/shadow-work-tree"
+      cp -R "$repo/." "$TMP_ROOT/shadow-work-tree/"
+      printf 'masked\n' >> "$repo/README.md"
+      test -n "$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
+      test -z "$(GIT_WORK_TREE="$TMP_ROOT/shadow-work-tree" git -C "$repo" status --porcelain=v1 --untracked-files=all)"
+      extra_env=("GIT_WORK_TREE=$TMP_ROOT/shadow-work-tree")
+      override_label=GIT_WORK_TREE
+      ;;
+    git-index-file)
+      cp "$repo/.git/index" "$TMP_ROOT/alternate-index"
+      extra_env=("GIT_INDEX_FILE=$TMP_ROOT/alternate-index")
+      override_label=GIT_INDEX_FILE
+      ;;
+    git-dir)
+      git init -q "$TMP_ROOT/foreign-repo"
+      extra_env=("GIT_DIR=$TMP_ROOT/foreign-repo/.git")
+      override_label=GIT_DIR
+      ;;
+    git-config-count)
+      mkdir -p "$TMP_ROOT/config-shadow"
+      cp -R "$repo/." "$TMP_ROOT/config-shadow/"
+      extra_env=("GIT_CONFIG_COUNT=1" "GIT_CONFIG_KEY_0=core.worktree" "GIT_CONFIG_VALUE_0=$TMP_ROOT/config-shadow")
+      override_label=GIT_CONFIG_COUNT
+      ;;
     post-ignored|post-hidden|after-delete-ignored|python-optimized-clean|python-optimized-tamper) ;;
     *) echo "unknown fixture: $name" >&2; exit 1 ;;
   esac
@@ -109,7 +136,7 @@ check_case() {
   if [[ "$name" == python-optimized-clean || "$name" == python-optimized-tamper ]]; then
     python_optimize=2
   fi
-  PATH="$SHIM_DIR:$PATH" INJECTION_KIND="$name" PRODUCT_REPO="$repo" \
+  env "${extra_env[@]}" PATH="$SHIM_DIR:$PATH" INJECTION_KIND="$name" PRODUCT_REPO="$repo" \
     REAL_GIT="$REAL_GIT" REAL_RM="$REAL_RM" REAL_PYTHON="$REAL_PYTHON" \
     PYTHONOPTIMIZE="$python_optimize" INJECTION_MARKER="$TMP_ROOT/$name.marker" \
     bash "$repo/tools/reference-external-coordination/run.sh" > "$output" 2>&1 || actual=$?
@@ -123,7 +150,9 @@ check_case() {
     test -z "$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
     test -z "$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
   else
-    if [[ "$name" == python-optimized-tamper ]]; then
+    if [[ -n "$override_label" ]]; then
+      grep -Fq "rejects Git environment override: $override_label" "$output"
+    elif [[ "$name" == python-optimized-tamper ]]; then
       # Semantic validation must fail, not the Git checkout cleanliness guard.
       test -f "$TMP_ROOT/$name.marker"
       grep -Fq 'AssertionError' "$output"
@@ -152,6 +181,10 @@ check_case untracked 2
 check_case ignored 2
 check_case assume-unchanged 2
 check_case skip-worktree 2
+check_case git-work-tree 2
+check_case git-index-file 2
+check_case git-dir 2
+check_case git-config-count 2
 check_case post-ignored 1
 check_case post-hidden 1
 check_case after-delete-ignored 1
