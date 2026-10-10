@@ -190,6 +190,61 @@ generic Invocation Context層がaccess deniedやnot foundの外部表現を一�
 
 #1043の認証・認可機構をContext Slot Contractへ置き換えない。既存Security contractが作った結果をgeneric Invocationへ安全に受け渡せるかだけを評価する。
 
+## Web要求経路へ当てた結果
+
+#1043 / Draft PR #1114へこの設計を当てると、Execution Contextとsemantic requestの境界をさらに絞れる。
+
+現在のWeb Referenceでは、Hostがsession、issuer、CSRFを確認した後、検証済みPrincipalをprivateなGo contextへ格納して後段へ渡している。browserのheader、query、JSONから同じ値を設定する経路はない。
+
+```text
+browser request
+  -> Host VerifySession / issuer / CSRF
+  -> verified Principal
+  -> trusted SubjectLink mapping
+  -> business SubjectID
+  -> security.authorize
+       SubjectID / Action / Resource
+  -> allowed / denied
+```
+
+このverified PrincipalはExecution Contextの候補になる。現在の呼出しでHostが検証したidentityであり、Application Actionのsemantic payloadとしてbrowserに自己申告させる値ではない。
+
+一方、trusted SubjectLinkで得たbusiness SubjectIDまでExecution Contextへ移すべきではない。既存`security.authorize`に渡すSubjectID、Action、Resourceは、Authorization Capabilityが何を判定するかを表すsemantic requestである。
+
+したがって、認証・認可に関わる値を一つのsecurity contextへまとめない。
+
+```text
+verified Principal
+  -> Execution Context候補
+
+SubjectLink
+  -> trusted identity mapping / currentness境界
+
+SubjectID + Action + Resource
+  -> security.authorizeのSemantic Request
+
+allowed / denied
+  -> Authorization Capabilityのresult
+```
+
+authorization resultをContext Slotへ保存して別のCapabilityへ配る構造も、初期候補にはしない。結果には独自の意味、対象、鮮度があるため、単なるambient execution stateへ変えるとAuthorityの由来を失う。
+
+現在の実装で使うGoの`context.WithValue`とprivate keyは、一つのlocal realizationである。Context Slot ContractをGo contextへ固定しない。Desktop、Web、Wasm、remote Provider等でも同じ意味境界を保てる必要がある。
+
+Web Referenceの`SubjectLinkLookup`は、current linkとaccount lifecycleを確認し、unknown / revokedをfail closedする。この構造は、Execution ContextのcurrentnessをPlugin LockやProvider resolutionで代替できないことも示している。
+
+また、Web HostのAuditRecordはcredential、token、cookie、request bodyを保存しない。この方針は、Invocation auditへraw Execution Contextを複製しない設計と整合する。
+
+#1045と#1043を比較すると、共通化すべきものは認証・認可の業務意味ではなく、次の小さい境界である。
+
+```text
+semantic input
+  != trusted Hostが注入するcurrent execution input
+  != Capabilityが返すAuthority / decision result
+```
+
+この結果だけでContext Slot Contractのproduction shapeは固定しない。最初のReferenceでは、slot requirement、Host binding、missing / undeclared contextのfail-close、result / cacheへの漏えい防止に絞る。
+
 ## 必須の反例
 
 Referenceでは少なくとも次を拒否する必要がある。
