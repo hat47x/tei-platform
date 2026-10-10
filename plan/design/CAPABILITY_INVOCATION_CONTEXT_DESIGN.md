@@ -175,7 +175,7 @@ Plugin LockやCapability resolutionはContractとProviderのidentityを固定す
 
 Lock fingerprintが一致していても、現在のsessionやaccessが有効であるとは扱わない。Execution Contextの実値をLockへ埋め込んで再現性を作ろうとしない。
 
-必要な監査情報は、Security subsystemが発行するopaqueなreceipt reference等で別に扱う候補とする。raw credentialやaccess ref集合を通常のInvocation receiptへ保存しない。
+必要な監査情報は、Security subsystemが発行する非secretで記録可能なopaque receipt reference等で別に扱う候補とする。raw credentialやaccess ref集合を通常のInvocation receiptへ保存しない。receipt reference自体へtoken、cookie、Principal payload等を流用しない。
 
 ## cacheとreuse partition
 
