@@ -79,9 +79,76 @@ function ownerData(s, index) {
   return null;
 }
 
+// Consume #1125's read-only Business DFD JSON projection if explicitly supplied.
+// This adapter intentionally does not parse Business Procedure fixtures or claim
+// that their reference-local Step IDs belong to accepted Canonical meaning.
+function businessLens(dfd, patterns, index) {
+  if (!dfd || dfd.schemaVersion !== "business-dfd-projection-v0" ||
+      dfd.authority !== "derived-read-only" ||
+      dfd.canonicalProcedureUsed !== false ||
+      typeof dfd.procedureId !== "string" ||
+      !Array.isArray(dfd.steps) || !Array.isArray(dfd.diagnostics)) {
+    throw new Error("UNSUPPORTED_BUSINESS_DFD_AUTHORITY_OR_SCHEMA");
+  }
+  const inFocus = new Set(patterns.map(p => p.id));
+  const seenSteps = new Set(), matching = [], manual = [];
+  const diagnostics = [];
+  for (const step of dfd.steps) {
+    if (typeof step.id !== "string" || !step.id ||
+        seenSteps.has(step.id) || !Array.isArray(step.functionRefs)) {
+      throw new Error("INVALID_OR_DUPLICATE_BUSINESS_STEP");
+    }
+    seenSteps.add(step.id);
+    const links = [];
+    for (const r of step.functionRefs) {
+      if (typeof r.id !== "string" || !r.id ||
+          !["resolved", "unresolved"].includes(r.status)) {
+        throw new Error("INVALID_BUSINESS_FUNCTION_REFERENCE");
+      }
+      if (!inFocus.has(r.id)) continue;
+      const canonical = index.patterns.get(r.id);
+      const current = !!canonical &&
+        r.status === "resolved" &&
+        (r.data || "") === (canonical.data || "") &&
+        (r.relation || "") === (canonical.relation || "") &&
+        (r.capability || "") === (canonical.capability || "");
+      links.push({
+        subject: "pattern:" + r.id,
+        id: r.id,
+        status: current ? "exact-id-matches-current-world" : "unresolved"
+      });
+      if (!current) diagnostics.push({
+        code: "BUSINESS_PATTERN_REFERENCE_STALE_OR_UNRESOLVED",
+        stepID: step.id, patternID: r.id
+      });
+    }
+    if (links.length) matching.push({
+      stepID: step.id, procedureID: dfd.procedureId,
+      status: "reference-only", functionRefs: links,
+      source: step.source || null
+    });
+    if (step.noApplicationFunction === true && manual.length < 20) {
+      manual.push({ stepID: step.id, realization: step.realization,
+        status: "reference-only-unlinked", source: step.source || null });
+    }
+  }
+  const hasProducerErrors = dfd.diagnostics.some(d => d.severity === "error");
+  return {
+    status: hasProducerErrors || diagnostics.length ? "unresolved" : "reference-only",
+    authority: "noncanonical-reference",
+    procedureID: dfd.procedureId,
+    freshness: "unverified-no-model-revision-binding",
+    items: matching,
+    manualOrExternalUnlinked: manual,
+    manualOrExternalTruncated: dfd.steps.filter(s => s.noApplicationFunction === true).length > 20,
+    diagnostics: [...dfd.diagnostics, ...diagnostics],
+    note: "Exact Pattern IDs match this World where stated. The Procedure/DFD is not accepted Canonical meaning; unlinked manual steps imply no dependency on the focus."
+  };
+}
+
 // Each view is a projection, not another editable copy of World.
 // All IDs are original exact Canonical IDs; no label matching or synthetic edges.
-export function projectWorld(world, revision, focus) {
+export function projectWorld(world, revision, focus, options = {}) {
   exactRevision(revision);
   const ix = indexWorld(world);
   const s = selected(ix, focus);
@@ -145,8 +212,10 @@ export function projectWorld(world, revision, focus) {
           unresolvedDataID: p.data && !ix.data.has(p.data) ? p.data : null,
           unresolvedRelationID: p.relation && !ix.relations.has(p.relation) ? p.relation : null
         })) },
-      business: { status: "unresolved", items: [],
-        reason: "Accepted Procedure projection is not present in this World; #1125 adapter required" }
+      business: options.businessDFD
+        ? businessLens(options.businessDFD, relatedPatterns, ix)
+        : { status: "unresolved", items: [],
+          reason: "Accepted Procedure is not in World. Optional #1125 read-only DFD is not an accepted Procedure." }
     },
     sourceNavigation: { status: "unresolved",
       reason: "Exact Source Index anchors have not been joined to this World" },
