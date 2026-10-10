@@ -24,7 +24,7 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
       dependencies,issues:["invalid_snapshot_shape"]};
   }
   const apps = (world.applications ?? []).filter(a => a.id === applicationId);
-  if (apps.length !== 1) return {status:"unresolved", qualification:"declaration-only", dependencies, issues:["application_missing_or_ambiguous"]};
+  if (apps.length !== 1) return {status:"unresolved", qualification:"declaration-only-not-semantic-acceptance", dependencies, issues:["application_missing_or_ambiguous"]};
   const definitions = (kind,id) => (index.references ?? []).filter(r => r.subject?.kind === kind && r.subject?.id === id && r.role === "definition");
   const evidence = (kind,id) => {
     const refs = definitions(kind,id);
