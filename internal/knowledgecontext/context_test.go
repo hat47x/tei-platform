@@ -60,6 +60,114 @@ func TestDataDesignContextDoesNotPromoteInvalidRelationUnique(t *testing.T) {
 	}
 }
 
+func TestDataDesignContextDoesNotGeneralizeContainedRepeatIdentityAcrossRelationArchetypes(t *testing.T) {
+	contained := Build(
+		dataDesignRelationUniqueWorld(),
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if contained.DataDesign == nil ||
+		len(contained.DataDesign.BusinessIdentityCandidates) != 1 ||
+		len(contained.DataDesign.FunctionalDependencyCandidates) != 1 {
+		t.Fatalf("contained repeat candidate pressure is missing: %+v", contained.DataDesign)
+	}
+
+	changeableReferenceWorld := ir.World{
+		Semantics: []semantic.Namespace{
+			{
+				ID: "repair",
+				Data: []semantic.Data{
+					{
+						ID:     "repair.intake",
+						Symbol: "Intake",
+						Relations: []semantic.Relation{
+							{
+								ID:          "repair.intake.customer",
+								Symbol:      "customer",
+								Target:      "customer.customer",
+								Cardinality: semantic.CardinalityOne,
+							},
+						},
+					},
+					{
+						ID:     "customer.customer",
+						Symbol: "Customer",
+					},
+				},
+			},
+		},
+	}
+	reference := Build(
+		changeableReferenceWorld,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "repair.intake"},
+	)
+	if reference.DataDesign == nil {
+		t.Fatal("changeable reference Data Design Context is missing")
+	}
+	if len(reference.DataDesign.BusinessIdentityCandidates) != 0 ||
+		len(reference.DataDesign.FunctionalDependencyCandidates) != 0 {
+		t.Fatalf("reference relation shape was generalized into identity or FD candidates: %+v", reference.DataDesign)
+	}
+	if len(reference.DataDesign.Relations) != 1 ||
+		reference.DataDesign.Relations[0].BusinessMeaning.Nature != "unresolved" {
+		t.Fatalf("reference relation business meaning was guessed: %+v", reference.DataDesign.Relations)
+	}
+
+	independentAssociationWorld := ir.World{
+		Semantics: []semantic.Namespace{
+			{
+				ID: "access",
+				Data: []semantic.Data{
+					{
+						ID:     "access.membership",
+						Symbol: "Membership",
+						Relations: []semantic.Relation{
+							{
+								ID:          "access.membership.subject",
+								Symbol:      "subject",
+								Target:      "access.subject",
+								Cardinality: semantic.CardinalityOne,
+							},
+							{
+								ID:          "access.membership.resource",
+								Symbol:      "resource",
+								Target:      "access.resource",
+								Cardinality: semantic.CardinalityOne,
+							},
+						},
+					},
+					{ID: "access.subject", Symbol: "Subject"},
+					{ID: "access.resource", Symbol: "Resource"},
+				},
+			},
+		},
+	}
+	association := Build(
+		independentAssociationWorld,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "access.membership"},
+	)
+	if association.DataDesign == nil {
+		t.Fatal("independent association Data Design Context is missing")
+	}
+	if len(association.DataDesign.Relations) != 2 {
+		t.Fatalf("association topology is incomplete: %+v", association.DataDesign.Relations)
+	}
+	if len(association.DataDesign.BusinessIdentityCandidates) != 0 ||
+		len(association.DataDesign.FunctionalDependencyCandidates) != 0 ||
+		association.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		association.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		association.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("independent association shape was generalized into accepted or candidate determinants: %+v", association.DataDesign)
+	}
+	for _, relation := range association.DataDesign.Relations {
+		if relation.BusinessMeaning.Nature != "unresolved" {
+			t.Fatalf("association relation business meaning was guessed: %+v", relation)
+		}
+	}
+}
+
 func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
