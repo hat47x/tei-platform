@@ -14,6 +14,11 @@ GO111MODULE=off go vet ./tools/first-value-ux-audit
 
 `testdata/synthetic-session.json` は**架空のイベント・架空の経過時間・架空のSHA**で構成した、Schemaと集計ロジックの見本です。実ユーザーの測定値や動作実証ではありません。
 
+
+## 独立セッションの始め方
+
+参加者へは [E0参加者向け依頼](tasks/E0-participant.md)、観測担当へは [E0観測者向けプロトコル](tasks/E0-observer.md) を渡してください。完成済みの編集差分を初見参加者に事前開示しないこと、途中で分からなかった操作もそのまま測定することが重要です。
+
 ## 記録Schema（v1）
 
 1回の作業セッションを1つのJSONにします。トップレベル:
