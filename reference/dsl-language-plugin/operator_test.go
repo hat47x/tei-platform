@@ -5,20 +5,22 @@ import (
 	"testing"
 )
 
-func TestOperatorResolutionAndComposition(t *testing.T) {
-	where := OperatorContract{"std.where", "1", "where-v1", "pure", "rows", "rows"}
-	expand := OperatorContract{"std.expand", "1", "expand-v1", "pure", "rows", "expanded"}
-	summarize := OperatorContract{"std.summarize", "1", "summary-v1", "pure", "expanded", "summary"}
-	catalog := []OperatorContract{summarize, expand, where}
-	for _, pin := range []OperatorContract{where, expand, summarize} {
-		got, err := ResolveOperator(pin, catalog)
-		if err != nil || got != pin {
-			t.Fatalf("resolution %v: %v", pin, err)
+func TestOperatorResolutionAndPinnedComposition(t *testing.T) {
+	where := OperatorContract{ID: "std.where", Version: "1", Fingerprint: "where-v1", Effect: "pure", InputType: "rows", OutputType: "rows"}
+	expand := OperatorContract{ID: "std.expand", Version: "1", Fingerprint: "expand-v1", Effect: "pure", InputType: "rows", OutputType: "expanded"}
+	summarize := OperatorContract{ID: "std.summarize", Version: "1", Fingerprint: "summary-v1", Effect: "pure", InputType: "expanded", OutputType: "summary"}
+	calls := []PinnedCall{{Contract: where, InputType: "rows"}, {Contract: expand, InputType: "rows"}, {Contract: summarize, InputType: "expanded"}}
+	for _, catalog := range [][]OperatorContract{{summarize, expand, where}, {where, summarize, expand}} {
+		for _, pin := range []OperatorContract{where, expand, summarize} {
+			got, err := ResolveOperator(pin, catalog)
+			if err != nil || got != pin {
+				t.Fatalf("resolution %v: %v", pin, err)
+			}
 		}
-	}
-	out, err := ComposePure([]OperatorContract{where, expand, summarize})
-	if err != nil || out != "summary" {
-		t.Fatalf("composition: %q %v", out, err)
+		out, err := ComposePinned("rows", calls, catalog)
+		if err != nil || out != "summary" {
+			t.Fatalf("composition: %q %v", out, err)
+		}
 	}
 }
 
@@ -45,10 +47,28 @@ func TestOperatorFailures(t *testing.T) {
 			}
 		})
 	}
-	if _, err := ComposePure([]OperatorContract{pure, {"std.invoke", "1", "v1", "write", "rows", "rows"}}); !errors.Is(err, ErrEffectEscalation) {
-		t.Fatalf("effect escalation: %v", err)
+}
+
+func TestPinnedCompositionCannotBypassCatalog(t *testing.T) {
+	pure := OperatorContract{"std.where", "1", "v1", "pure", "rows", "rows"}
+	effectful := OperatorContract{"std.invoke", "1", "v1", "invoke", "rows", "rows"}
+	badType := OperatorContract{"std.summary", "1", "v1", "pure", "other", "summary"}
+	cases := []struct {
+		name    string
+		calls   []PinnedCall
+		catalog []OperatorContract
+		want    error
+	}{
+		{"missing accepted catalog", []PinnedCall{{Contract: pure, InputType: "rows"}}, nil, ErrOperatorMissing},
+		{"effect escalation", []PinnedCall{{Contract: effectful, InputType: "rows"}}, []OperatorContract{effectful}, ErrEffectEscalation},
+		{"type discontinuity", []PinnedCall{{Contract: pure, InputType: "rows"}, {Contract: badType, InputType: "other"}}, []OperatorContract{pure, badType}, ErrOperatorInvalid},
 	}
-	if _, err := ComposePure([]OperatorContract{pure, {"std.summary", "1", "v1", "pure", "other", "summary"}}); !errors.Is(err, ErrOperatorInvalid) {
-		t.Fatalf("type mismatch: %v", err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ComposePinned("rows", tc.calls, tc.catalog)
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("expected %v, got %v", tc.want, err)
+			}
+		})
 	}
 }
