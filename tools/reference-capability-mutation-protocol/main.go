@@ -215,7 +215,6 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 		if err := e.Journal.RecordOutcome(ctx, receipt); err != nil {
 			return MutationExecution{
 				Outcome: OutcomeCommitted,
-				Result:  append([]byte(nil), preparedResult...),
 				Handle:  handle,
 				Receipt: &receipt,
 			}, fmt.Errorf("%w: committed receipt: %v", ErrJournalWrite, err)
@@ -270,7 +269,6 @@ func (e Executor) ReconcileByInvocationKey(
 		if receipt.Outcome == OutcomeCommitted {
 			return MutationExecution{
 				Outcome: OutcomeCommitted,
-				Result:  append([]byte(nil), preparedResult...),
 				Handle:  handle,
 				Receipt: &receipt,
 			}, nil
@@ -338,7 +336,6 @@ func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (Mutatio
 	}
 	return MutationExecution{
 		Outcome: OutcomeCommitted,
-		Result:  append([]byte(nil), preparedResult...),
 		Handle:  handle,
 		Receipt: &receipt,
 	}, nil
