@@ -47,6 +47,7 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	writeFixture("cmd/app/main.go", "package main\nimport (\"embed\"; \"example.test/tei-e0/internal/calc\")\n//go:embed assets/*\nvar assets embed.FS\nfunc main() { _ = calc.Result(); _,_ = assets.ReadFile(\"assets/payload.txt\") }\n")
 	writeFixture("cmd/app/assets/payload.txt", "versioned asset\n")
 	writeFixture("cmd/app/optional.go", "//go:build optional\n\npackage main\nfunc optional() {}\n")
+	writeFixture("cmd/app/amd64v3.go", "//go:build amd64.v3\n\npackage main\nfunc tuned() {}\n")
 	writeFixture("internal/calc/calc.go", "package calc\nfunc Result() int { return 42 }\n")
 	git("init", "-q")
 	git("add", "-A")
@@ -69,6 +70,8 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	// Do not require the network, a user Go workspace, or user-local Go flags.
 	t.Setenv("GOPROXY", "off")
 	t.Setenv("GOTOOLCHAIN", "local")
+	// A nondefault machine feature level must not leak from the host.
+	t.Setenv("GOAMD64", "v1")
 
 	base, err := produceEvidence("./cmd/app", "")
 	if err != nil {
@@ -105,6 +108,27 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	if tagged.SourceRevision != exactHead || tagged.BuildTags != "optional" ||
 		!slices.Contains(findEntry(tagged).GoFiles, "optional.go") {
 		t.Fatalf("build tag failed to select source: %+v", tagged)
+	}
+	// Explicit build tags are not the only Go source selector. Architecture
+	// feature levels change implicit build tags even when GOARCH is fixed.
+	if base.GOARCH == "amd64" {
+		if slices.Contains(findEntry(base).GoFiles, "amd64v3.go") {
+			t.Fatal("GOAMD64=v1 unexpectedly compiled v3 source")
+		}
+		if base.TargetFeatures["GOAMD64"] != "v1" {
+			t.Fatalf("missing source-selection feature profile: %+v", base.TargetFeatures)
+		}
+		t.Setenv("GOAMD64", "v3")
+		tuned, err := produceEvidence("./cmd/app", "")
+		if err != nil {
+			t.Fatalf("actual go list with GOAMD64=v3: %v", err)
+		}
+		if tuned.GOARCH != base.GOARCH || tuned.SourceRevision != base.SourceRevision ||
+			tuned.TargetFeatures["GOAMD64"] != "v3" ||
+			!slices.Contains(findEntry(tuned).GoFiles, "amd64v3.go") {
+			t.Fatalf("architecture feature level did not change evidence: %+v", tuned)
+		}
+		t.Setenv("GOAMD64", "v1")
 	}
 
 	// Git index flags can make an edited tracked Go source invisible to
