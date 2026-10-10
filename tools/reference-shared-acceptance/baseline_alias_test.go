@@ -357,3 +357,48 @@ func TestReferenceAcceptPreventsCandidateOutputOverwrite(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceAcceptRejectsCandidateInputAliasWithOverride(t *testing.T) {
+	dir := t.TempDir()
+	candidate := filepath.Join(dir, "candidate.json")
+	if err := os.WriteFile(candidate, []byte("original-candidate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	candidateAlias := filepath.Join(dir, "candidate-input-alias.json")
+	if err := os.Symlink(candidate, candidateAlias); err != nil {
+		t.Skipf("candidate symlinks are unavailable: %v", err)
+	}
+	directoryAlias := filepath.Join(dir, "directory-alias")
+	if err := os.Symlink(dir, directoryAlias); err != nil {
+		t.Skipf("directory symlinks are unavailable: %v", err)
+	}
+	for _, tc := range []struct {
+		name string
+		candidatePath string
+		output string
+		flag string
+	}{
+		{name: "input alias", candidatePath: candidateAlias, output: candidate, flag: "-out"},
+		{name: "directory alias", candidatePath: candidate, output: filepath.Join(directoryAlias, "candidate.json"), flag: "-derived-out"},
+		{name: "case folded", candidatePath: candidate, output: strings.ToUpper(candidate), flag: "-out"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := runCLI([]string{
+				"accept", "-workspace", dir, "-candidate", tc.candidatePath,
+				"-expected-review-fingerprint", "synthetic-review",
+				tc.flag, tc.output, "-allow-reference-baseline",
+			}, &stdout, &stderr)
+			if code != 2 || !strings.Contains(stderr.String(), "candidate") {
+				t.Fatalf("alias was not rejected before candidate loading: code=%d out=%s err=%s", code, stdout.String(), stderr.String())
+			}
+			unchanged, err := os.ReadFile(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(unchanged) != "original-candidate" {
+				t.Fatalf("input candidate overwritten: %q", unchanged)
+			}
+		})
+	}
+}
