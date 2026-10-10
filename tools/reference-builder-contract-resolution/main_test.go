@@ -226,11 +226,12 @@ func TestWiringWithoutArtifactDigestRejectsPhysicalArtifactAmbiguity(t *testing.
 	clone.ArtifactDigest = "sha256:" + strings.Repeat("e", 64)
 	e2 := evidence[0]
 	e2.ArtifactDigest = clone.ArtifactDigest
-	e2FP, err := conformanceEvidenceFingerprint(e2)
+	e2ClaimsFP, err := conformanceClaimsFingerprint(e2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e2.EvidenceFingerprint = e2FP
+	e2.ClaimsFingerprint = e2ClaimsFP
+	e2.EvidenceFingerprint = strings.Repeat("f", 64)
 
 	wiring.ArtifactDigest = ""
 	_, err = resolveBuilder(referenceIntent(contract), BuilderCatalog{
@@ -249,11 +250,12 @@ func TestExactArtifactWiringDisambiguatesPhysicalRealizations(t *testing.T) {
 	clone.ArtifactDigest = "sha256:" + strings.Repeat("e", 64)
 	e2 := evidence[0]
 	e2.ArtifactDigest = clone.ArtifactDigest
-	e2FP, err := conformanceEvidenceFingerprint(e2)
+	e2ClaimsFP, err := conformanceClaimsFingerprint(e2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e2.EvidenceFingerprint = e2FP
+	e2.ClaimsFingerprint = e2ClaimsFP
+	e2.EvidenceFingerprint = strings.Repeat("f", 64)
 
 	resolution, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
 		Contracts: []BuilderContract{contract},
@@ -573,11 +575,12 @@ func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.
 
 	targetEvidence := evidence[0]
 	targetEvidence.Target = "host/unverified"
-	targetEvidenceFP, err := conformanceEvidenceFingerprint(targetEvidence)
+	targetClaimsFP, err := conformanceClaimsFingerprint(targetEvidence)
 	if err != nil {
 		t.Fatal(err)
 	}
-	targetEvidence.EvidenceFingerprint = targetEvidenceFP
+	targetEvidence.ClaimsFingerprint = targetClaimsFP
+	targetEvidence.EvidenceFingerprint = strings.Repeat("e", 64)
 	catalog.Evidence = append(catalog.Evidence, targetEvidence)
 
 	resolution, err := resolveBuilder(intent, catalog, &wiring)
@@ -609,7 +612,7 @@ func TestConformanceEvidenceFingerprintBindsSelectedClaims(t *testing.T) {
 		Providers: []BuilderProvider{provider},
 		Evidence:  []BuilderConformanceEvidence{tampered},
 	}, &wiring)
-	if err == nil || !strings.Contains(err.Error(), "Evidence fingerprint does not match") {
+	if err == nil || !strings.Contains(err.Error(), "Conformance claims fingerprint does not match") {
 		t.Fatalf("tampered Conformance Evidence claims were accepted: %v", err)
 	}
 }
