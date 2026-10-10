@@ -42,7 +42,7 @@ E5の初期実装では、`target database + contract ID` が二度現れると�
 
 修正後は、**一つのalias内の同じContract要求の重複だけを拒否**し、別aliasから同じDatabase/Contractを選ぶことは許す。必要Contractの存在とCompatibleMajorは**aliasごとに再評価**する。一方、E6へ渡すDatabase/Contractの`definition`出典は同じSubjectなら**一回だけ列挙**する。異なるaliasの一方にメジャー不一致があれば`unresolved`となり、適合するもう一方に隠されない。
 
-alias修正の回帰試験は3件で、その後Patternの直接参照追跡を6件追加し、**現在合計32件**を記述した。これはGoの既存`DatabaseByAliasExact`が許す「異なるaliasで同一Targetを参照する」設計を構成診断側で勝手に禁止しないための修正である。Goテストは依然として未実行。
+alias修正の回帰試験は3件で、その後Patternの直接参照追跡を6件追加し、**当時32件**を記述した。これはGoの既存`DatabaseByAliasExact`が許す「異なるaliasで同一Targetを参照する」設計を構成診断側で勝手に禁止しないための修正である。Goテストは依然として未実行。
 
 ### Pattern直接参照のSource追跡
 
@@ -52,6 +52,12 @@ E5の以前の定義では、`order_entry.submit_order`のPatternファイルが
 
 これはPatternからの**1段の直接依存**のみ。既存のCanonical意味検証を置き換えず、ContractQuery・Datasourceの解決やData／Relation／Capabilityからの推移的な型依存、実現アセットの依存は未解決。**全依存閉包や受理済み業務互換を主張しない。** Goテストは6件追加したが、このheadのGoテスト実行は未確認。
 
+### Source Indexの共有Artifactとfixture修正
+
+実際のSource Indexは**Artifact（物理Sourceファイル）とSubject（論理定義）を分ける**。同じ`semantic/sales/order.tei`にNamespaceとDataの定義があっても、Artifactを二件作るのではなく、**Artifact一件へ複数のdefinition Reference**を結ぶ。E5の`e5UniqueSource`は、同じArtifact Pathの二重登録を曖昧として拒否するため、Go回帰テストの`e5PatternTargetsFixture`がArtifactを二度appendしていた旧形状は正常系として成立しなかった。
+
+fixtureを修正し、既に登録されたArtifact Pathを再追加せずSubject Referenceだけ追加するようにした。加えて「同一Artifact・複数Subjectを正常扱い」と「同一PathのArtifactを重複登録すると未解決」の2件の回帰テストを記述した。**この修正はGoでの実行未確認であり、GoのPASS数には加えない**。コードの正式検証Gateは従来どおり維持する。
+
 ## 実行手順と検証Gate
 
 ```sh
@@ -59,7 +65,7 @@ go test ./reference/application-composition
 go run ./reference/application-composition/e5-world-index.go -workspace reference/workspace -application order_entry
 ```
 
-- [32件のGo回帰テスト](e5-world-index_test.go)を追加した。正常例のほか、欠落・重複・誤ったDatabase Contract、異なるメジャー、同じContract IDの別Databaseからの重複、Semantic Namespaceの欠落・重複参照、Pattern定義Sourceの欠落・重複、Authoring出典の不適切な代用、対象外Source変更などを含む。
+- [40件のGo回帰テスト](e5-world-index_test.go)を追加した。正常例のほか、欠落・重複・誤ったDatabase Contract、異なるメジャー、同じContract IDの別Databaseからの重複、Semantic Namespaceの欠落・重複参照、Pattern定義Sourceの欠落・重複、Authoring出典の不適切な代用、対象外Source変更などを含む。
 - 2026-10-10の時点で**GitHubへGoコードとテストを登録したことは確認したが、このheadのGoテスト、Go fmt、go vet、実WorkspaceでのCLI実行は未実施**。成功件数として数えない。
 - `tools/repository-health-check.sh`も未実施。trusted full checkoutのexact-head、実行前後clean、最新mainとの調整が済むまで[PR #1051](https://github.com/hat47x/tei-platform/pull/1051)はDraftのまま、mainへマージしない。
 
