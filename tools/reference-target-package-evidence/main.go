@@ -27,12 +27,36 @@ func readEvidenceFile(file string) (Report, error) {
 	return report, nil
 }
 
+// compareLiveEntries observes two real Go entry points from the same clean
+// checkout and target profile. Source drift between observations is rejected
+// by the existing sourceRevision and build-environment comparison.
+func compareLiveEntries(beforeEntry, afterEntry, tags string) (ClosureComparison, error) {
+	before, err := produceEvidence(beforeEntry, tags)
+	if err != nil {
+		return ClosureComparison{}, fmt.Errorf("observe before entry: %w", err)
+	}
+	after, err := produceEvidence(afterEntry, tags)
+	if err != nil {
+		return ClosureComparison{}, fmt.Errorf("observe after entry: %w", err)
+	}
+	return compareReports(before, after)
+}
+
 func main() {
 	entry := flag.String("entry", "./tools/reference-first-web-target", "literal Go entry package")
 	tags := flag.String("tags", "", "optional Go build tags")
+	compareEntry := flag.String("compare-entry", "", "second literal Go entry to observe and compare against -entry in this checkout")
 	beforePath := flag.String("compare-before", "", "existing E0 JSON report for source-closure comparison")
 	afterPath := flag.String("compare-after", "", "existing E0 JSON report for source-closure comparison")
 	flag.Parse()
+	if flag.NArg() != 0 {
+		fmt.Fprintln(os.Stderr, "unexpected positional arguments")
+		os.Exit(2)
+	}
+	if *compareEntry != "" && (*beforePath != "" || *afterPath != "") {
+		fmt.Fprintln(os.Stderr, "-compare-entry cannot be combined with -compare-before/-compare-after")
+		os.Exit(2)
+	}
 
 	var output any
 	if *beforePath != "" || *afterPath != "" {
@@ -51,6 +75,13 @@ func main() {
 			os.Exit(1)
 		}
 		comparison, err := compareReports(before, after)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		output = comparison
+	} else if *compareEntry != "" {
+		comparison, err := compareLiveEntries(*entry, *compareEntry, *tags)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
