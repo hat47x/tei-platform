@@ -21,7 +21,7 @@ func TestExpandRelationReference(t *testing.T) {
 	ns := semantic.Namespace{ID: core.CanonicalID("sales"), Data: []semantic.Data{src, target}}
 	pin := OperatorContract{ID: "std.op.expand", Version: "1", Fingerprint: "expand-v1", Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/sales.line"}
 	call := PinnedCall{Contract: pin, InputType: pin.InputType}
-	out, err := ExpandRelationReference(ir.World{Semantics: []semantic.Namespace{ns}},  src.ID, src.Relations[0].ID, call, []OperatorContract{pin})
+	out, err := ExpandRelationReference(ir.World{Semantics: []semantic.Namespace{ns}}, src.ID, src.Relations[0].ID, call, []OperatorContract{pin})
 	if err != nil || out != pin.OutputType {
 		t.Fatalf("got %q: %v", out, err)
 	}
@@ -43,7 +43,7 @@ func TestExpandRelationReference(t *testing.T) {
 			clone.Data[0].Relations[0].Keys = append([]semantic.RelationKey(nil), src.Relations[0].Keys...)
 			c := call
 			tc.mutate(&clone, &c)
-			if _, err := ExpandRelationReference(ir.World{Semantics: []semantic.Namespace{clone}},  src.ID, src.Relations[0].ID, c, tc.catalog); err == nil {
+			if _, err := ExpandRelationReference(ir.World{Semantics: []semantic.Namespace{clone}}, src.ID, src.Relations[0].ID, c, tc.catalog); err == nil {
 				t.Fatal("expected rejection")
 			}
 		})
