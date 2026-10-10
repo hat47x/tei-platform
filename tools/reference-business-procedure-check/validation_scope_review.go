@@ -19,16 +19,17 @@ type validationReferenceIssue struct {
 // validationScopeReviewRow は、Application 全体の評価宣言と業務手順の明示参照を
 // 比較するための読み取り専用の表示情報である。集合の差は不整合の証拠ではない。
 type validationScopeReviewRow struct {
-	Step             string                     `json:"step"`
-	Application      string                     `json:"applicationContext,omitempty"`
-	ProcedureSource  string                     `json:"procedureSource,omitempty"`
-	Status           string                     `json:"status"`
-	ApplicationOnly  []string                   `json:"applicationOnly,omitempty"`
-	ProcedureOnly    []string                   `json:"procedureOnly,omitempty"`
-	Reason           string                     `json:"reason"`
-	SourceEvidence   []validationReviewSource   `json:"sourceEvidence,omitempty"`
-	UnresolvedSource []string                   `json:"unresolvedSource,omitempty"`
-	ReferenceIssues  []validationReferenceIssue `json:"referenceIssues,omitempty"`
+	Step               string                     `json:"step"`
+	Application        string                     `json:"applicationContext,omitempty"`
+	ProcedureSource    string                     `json:"procedureSource,omitempty"`
+	Status             string                     `json:"status"`
+	ApplicationOnly    []string                   `json:"applicationOnly,omitempty"`
+	ProcedureOnly      []string                   `json:"procedureOnly,omitempty"`
+	SharedValidations  []string                   `json:"sharedValidations,omitempty"`
+	Reason             string                     `json:"reason"`
+	SourceEvidence     []validationReviewSource   `json:"sourceEvidence,omitempty"`
+	UnresolvedSource   []string                   `json:"unresolvedSource,omitempty"`
+	ReferenceIssues    []validationReferenceIssue `json:"referenceIssues,omitempty"`
 }
 
 // compareValidationScopes は業務手順の validation-support に限って比較する。
@@ -132,7 +133,9 @@ func compareValidationScopes(world ir.World, f fixture) []validationScopeReviewR
 			continue
 		}
 		for id := range inApplication {
-			if _, ok := inProcedure[id]; !ok {
+			if _, ok := inProcedure[id]; ok {
+				row.SharedValidations = append(row.SharedValidations, id)
+			} else {
 				row.ApplicationOnly = append(row.ApplicationOnly, id)
 			}
 		}
@@ -143,6 +146,7 @@ func compareValidationScopes(world ir.World, f fixture) []validationScopeReviewR
 		}
 		sort.Strings(row.ApplicationOnly)
 		sort.Strings(row.ProcedureOnly)
+		sort.Strings(row.SharedValidations)
 		if len(row.ApplicationOnly)+len(row.ProcedureOnly) > 0 {
 			row.Status = "review-needed"
 			row.Reason = "Application全体の宣言と業務手順の明示参照に差があります。適用範囲が同じかを人が確認する必要があり、差だけで不整合とは判定しません"
