@@ -213,3 +213,31 @@ go run ./tools/reference-first-web-target \
 これは**HTTPルートの公開面積を狭めるだけ**です。同じ実行ファイル内の未選択Application実装のGo依存・権限・Secretが消えたわけではないため、E1の物理除外や本番のAuthorization境界として受け入れないでください。
 
 E1で異なるApplication向けバイナリを成立させるには、共通Transportの契約とApplication固有Route/Runnerの依存を**別Goパッケージとcompile-time entry**へ分離し、その上で既存Gate CのBusiness Result・Execution Error・Observation・Authorizationについて差分回帰を行う必要があります。物理除外は`go list`だけでなく実`go build`・`go tool nm`・成果物digestで確認します。実配備機構や第二のProvider Resolverをここで増設しません。
+
+## Application別コンパイル時Go入口（E1実装・要実行検証）
+
+従来のタグなし`package main`はGate C用の複合Reference Targetとして残しています。
+試験用の`tei_order_only` / `tei_repair_only`で、それぞれのApplication固有Runner・HTTPルート・画面Template・単独`main`をコンパイル時に選択します。
+
+```sh
+# 通常の複合Target: 従来のGate C互換を維持
+go test -count=1 ./tools/reference-first-web-target
+
+# 専用Target: Applicationを別の起動引数へ変更することはできない
+go test -count=1 -tags=tei_order_only ./tools/reference-first-web-target
+go test -count=1 -tags=tei_repair_only ./tools/reference-first-web-target
+go build -trimpath -ldflags=-buildid= -tags=tei_order_only \
+  -o /tmp/tei-order-entry ./tools/reference-first-web-target
+go build -trimpath -ldflags=-buildid= -tags=tei_repair_only \
+  -o /tmp/tei-repair-intake ./tools/reference-first-web-target
+
+# 同じclean HEAD / Goプロファイルでsource closure・バイナリ・SHA・nmを一括観測
+bash tools/reference-first-web-target/measure_tagged_targets.sh \
+  /tmp/tei-first-web-e1-evidence-NEW
+```
+
+出力先は未作成の絶対パス、リポジトリ外にしてください。計測スクリプトは前後のcheckout clean、HEAD不変、実`go list`によるGoFile選択、3種類の`go build`、`go tool nm`、byte数、SHA-256、およびE0比較JSONを記録します。失敗時は結果を正規Evidenceとみなしません。Goコードによる`tagged_source_selection_test.go`でも、3種類のGoFile集合と相手Applicationの実装除外を検証します。
+
+`repair_intake`では顧客参照用Oracle実装のみをリンク対象にするため、PostgreSQL明細Queryの実装は別ソース`reference_order_contract_query_fixture.go`へ移しました。両Applicationで共用するOracle実装を複製せず、DriverのBinding identityも変えていません。
+
+**現時点の限界**：GitHubへコードとテストをコミットしましたが、最新HEADのタグ別ビルド・回帰テスト・実シンボル観測・全体Repository HealthのPASSは取得していません。原Goソースの区別だけでlink後の完全なSecret/Authority除外は示せません。Workspace Loader/Driverを使う合成Referenceであり、Build Artifact Lockを承認する権限、Production認証認可、Browser/API二単位配備、同じ受理済みHandover B/R/Tでの実Business Result/Execution Error/Observationの完全同等性も未実証です。これらのE1受入条件は[#1167](https://github.com/hat47x/tei-platform/issues/1167)に残します。
