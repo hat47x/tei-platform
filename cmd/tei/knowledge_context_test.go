@@ -519,7 +519,7 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 	if ctx.DataDesign == nil {
 		t.Fatal("Data Design Context is missing")
 	}
-	if ctx.DataDesign.ProjectionRevision != "tei.knowledge.data-design/v6" {
+	if ctx.DataDesign.ProjectionRevision != "tei.knowledge.data-design/v7" {
 		t.Fatalf("data design projection revision=%q", ctx.DataDesign.ProjectionRevision)
 	}
 	want := []string{
@@ -948,7 +948,9 @@ func TestRelationUniqueValidationResolvesScopedDataDesignWithoutInventingIdentit
 	}
 	fdCandidate := got.DataDesign.FunctionalDependencyCandidates[0]
 	if len(fdCandidate.Determinants) != 2 ||
-		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Kind != "related-occurrence" ||
+		fdCandidate.Determinants[0].Relation != "sales.order.lines" ||
+		fdCandidate.Determinants[0].End != "source" ||
 		fdCandidate.Determinants[0].Data != "sales.order" ||
 		fdCandidate.Determinants[1].Kind != "attribute" ||
 		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
@@ -1024,7 +1026,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.Focus.ID != "sales.order_line" {
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
-	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v6" ||
+	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v7" ||
 		len(dataDesign.Fingerprint) <= len("sha256:") ||
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" ||
 		dataDesign.ResolutionStatus != "resolved" ||
@@ -1179,7 +1181,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("business identity candidate drifted: %+v", identityCandidate)
 	}
 	if len(identityCandidate.Components) != 2 ||
-		identityCandidate.Components[0].Kind != "relation-source-occurrence" ||
+		identityCandidate.Components[0].Kind != "related-occurrence" ||
+		identityCandidate.Components[0].Relation != "sales.order.lines" ||
+		identityCandidate.Components[0].End != "source" ||
 		identityCandidate.Components[0].Data != "sales.order" ||
 		identityCandidate.Components[1].Kind != "attribute" ||
 		identityCandidate.Components[1].Data != "sales.order_line" ||
@@ -1219,7 +1223,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("functional dependency candidate drifted: %+v", fdCandidate)
 	}
 	if len(fdCandidate.Determinants) != 2 ||
-		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Kind != "related-occurrence" ||
+		fdCandidate.Determinants[0].Relation != "sales.order.lines" ||
+		fdCandidate.Determinants[0].End != "source" ||
 		fdCandidate.Determinants[0].Data != "sales.order" ||
 		fdCandidate.Determinants[0].Attribute != "" ||
 		fdCandidate.Determinants[1].Kind != "attribute" ||
