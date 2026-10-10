@@ -137,6 +137,9 @@ type Trust interface {
 	Accepted(candidateDigest string, receipt, snapshot Ref) bool
 	Published(contract Ref) bool
 	Conformant(provider Provider) bool
+	// Trusted runtime checks the accepted snapshot, exact resolution lock and
+	// artifact binding against this entire plan. A caller-supplied Plan is not Authority.
+	ResolutionCurrent(plan Plan) bool
 	// Host checks the current selected provider/artifact, not an earlier preview.
 	RuntimeBindingCurrent(step Step) bool
 	// Existing Data/Driver owner verifies current instance + contract version compatibility.
@@ -266,9 +269,9 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 	if target.ID == "" {
 		return Plan{}, reject("unsupported-target")
 	}
-	steps := make([]Step, 0, len(c.Requirements))
+	steps := make([]Step, 0, len(neutral.Intents))
 	seen := make(map[string]bool)
-	for _, r := range c.Requirements {
+	for _, r := range neutral.Intents {
 		if !r.Contract.valid() || r.Scope == "" || r.Effect == "" {
 			return Plan{}, reject("invalid-boundary")
 		}
@@ -358,6 +361,9 @@ func AuthorizeInvocation(plan Plan, trust Trust) error {
 		!plan.Origin.Language.valid() || !plan.Origin.AcceptanceReceipt.valid() ||
 		plan.Origin.CandidateDigest == "" || len(plan.Steps) == 0 {
 		return reject("invalid-boundary")
+	}
+	if !trust.ResolutionCurrent(plan) {
+		return reject("stale-or-untrusted-resolution")
 	}
 	for _, s := range plan.Steps {
 		if !trust.RuntimeBindingCurrent(s) {
