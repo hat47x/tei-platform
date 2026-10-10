@@ -1,0 +1,226 @@
+package main
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+func ref(id string) Ref { return Ref{ID: id, Version: "1.0.0", Fingerprint: "sha256:" + id} }
+
+type stubTrust struct{ denyAcceptance, denyPublisher, denyConformance, denyInvocation bool }
+
+func (s stubTrust) Accepted(d string, receipt, snapshot Ref) bool {
+	return !s.denyAcceptance && d != "" && receipt.valid() && snapshot.valid()
+}
+func (s stubTrust) Published(r Ref) bool { return !s.denyPublisher && r.valid() }
+func (s stubTrust) Conformant(p Provider) bool {
+	return !s.denyConformance && p.Conformance.valid()
+}
+func (s stubTrust) Authorized(step Step) bool {
+	return !s.denyInvocation && step.Contract.valid()
+}
+
+type fixture struct {
+	c         Candidate
+	a         Acceptance
+	wiring    []Wiring
+	providers []Provider
+	target    Target
+}
+
+func orderFixture(language string) fixture {
+	// Subject IDs are references to the existing order_entry scenario; contract and
+	// provider refs below are deliberately synthetic until #951 production wiring exists.
+	slots := []Ref{ref("tei.context.verified-principal")}
+	need := []Requirement{
+		{Contract: ref("tei.test.customer-query"), Scope: "application-runtime", Effect: "read"},
+		{Contract: ref("tei.test.order-submit"), Scope: "application-runtime", Effect: "write", RequiredSlots: slots},
+	}
+	c := Candidate{
+		Source: ref("reference/workspace/applications/order-entry/application.tei"),
+		Language: ref(language),
+		Subjects: []Subject{
+			{Kind: "business", Ref: ref("order_entry.submit")},
+			{Kind: "data", Ref: ref("sales.order")},
+			{Kind: "function", Ref: ref("sales.order.submit")},
+		},
+		Requirements: need,
+	}
+	wiring := []Wiring{
+		{Scope: need[0].Scope, Contract: need[0].Contract, Provider: ref("tei.test.customer-reader.web")},
+		{Scope: need[1].Scope, Contract: need[1].Contract, Provider: ref("tei.test.order-writer.web")},
+	}
+	providers := []Provider{
+		{
+			Identity: wiring[0].Provider, Contract: need[0].Contract, Scope: need[0].Scope,
+			Target: "web", Conformance: ref("test.customer.conformance"),
+			ResolutionLock: ref("existing.capability-lock.customer"),
+			Artifact: ref("existing.artifact.customer"),
+			RuntimeDeps: []Ref{ref("runtime.customer-service")},
+			BuildOnlyDeps: []Ref{ref("build.codegen-tool")},
+		},
+		{
+			Identity: wiring[1].Provider, Contract: need[1].Contract, Scope: need[1].Scope,
+			Target: "web", Conformance: ref("test.submit.conformance"),
+			ResolutionLock: ref("existing.capability-lock.submit"),
+			Artifact: ref("existing.artifact.submit"), Slots: slots,
+			RuntimeDeps: []Ref{ref("runtime.order-service")},
+			BuildOnlyDeps: []Ref{ref("build.compiler")},
+		},
+	}
+	return fixture{
+		c: c, a: Acceptance{CandidateDigest: Digest(c), Snapshot: ref("accepted.order_entry.snapshot"), Receipt: ref("test.trusted.receipt")},
+		wiring: wiring, providers: providers, target: Target{ID: "web", Effects: []string{"read", "write"}},
+	}
+}
+
+func (f fixture) lower(trust Trust) (Plan, error) {
+	return Lower(f.c, f.a, f.wiring, f.providers, f.target, trust)
+}
+
+func code(err error) string {
+	if err == nil {
+		return ""
+	}
+	f, ok := err.(Failure)
+	if !ok {
+		return "unexpected-error-type"
+	}
+	return f.Code
+}
+
+func TestWebOrderScenarioWithTwoLanguageProducers(t *testing.T) {
+	for _, language := range []string{"tei.language.dsl", "tei.language.sql-projection"} {
+		t.Run(language, func(t *testing.T) {
+			f := orderFixture(language)
+			got, err := f.lower(stubTrust{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Schema != Schema || got.Snapshot != f.a.Snapshot || len(got.Steps) != 2 {
+				t.Fatalf("bad plan: %+v", got)
+			}
+			if got.Steps[1].Effect != "write" || !equalSlots(got.Steps[1].RequiredSlots, f.c.Requirements[1].RequiredSlots) {
+				t.Fatalf("lost effect or context declaration: %+v", got.Steps)
+			}
+			b, _ := json.Marshal(got)
+			if strings.Contains(string(b), "build.compiler") || strings.Contains(string(b), "build.codegen-tool") ||
+				strings.Contains(string(b), "session") || strings.Contains(string(b), "credential") {
+				t.Fatalf("lowering leaked runtime/build-only information: %s", b)
+			}
+			if err := AuthorizeInvocation(got, stubTrust{}); err != nil {
+				t.Fatal(err)
+			}
+			reordered := f
+			reordered.providers = []Provider{f.providers[1], f.providers[0]}
+			again, err := reordered.lower(stubTrust{})
+			if err != nil || Digest(again) != Digest(got) {
+				t.Fatalf("provider registration order changed resolution: %v", err)
+			}
+		})
+	}
+}
+
+func TestFailClosedNegativeControls(t *testing.T) {
+	tests := []struct {
+		name string
+		edit func(*fixture)
+		trust stubTrust
+		want string
+	}{
+		{"missing-capability", func(f *fixture) { f.providers = f.providers[1:] }, stubTrust{}, "missing-capability"},
+		{"provider-version", func(f *fixture) { f.providers[0].Identity.Version = "2.0.0" }, stubTrust{}, "incompatible-version"},
+		{"contract-version", func(f *fixture) { f.providers[0].Contract.Version = "2.0.0" }, stubTrust{}, "incompatible-version"},
+		{"contract-fingerprint", func(f *fixture) { f.providers[0].Contract.Fingerprint = "drift" }, stubTrust{}, "contract-drift"},
+		{"provider-scope", func(f *fixture) { f.providers[0].Scope = "authoring-tool" }, stubTrust{}, "conformance-or-context-drift"},
+		{"required-context", func(f *fixture) { f.providers[1].Slots = nil }, stubTrust{}, "conformance-or-context-drift"},
+		{"context-version", func(f *fixture) { f.providers[1].Slots[0].Version = "2.0.0" }, stubTrust{}, "conformance-or-context-drift"},
+		{"conformance", func(f *fixture) { f.providers[0].Conformance = Ref{} }, stubTrust{}, "conformance-or-context-drift"},
+		{"missing-wiring", func(f *fixture) { f.wiring = f.wiring[1:] }, stubTrust{}, "missing-wiring"},
+		{"ambiguous-wiring", func(f *fixture) { f.wiring = append(f.wiring, f.wiring[0]) }, stubTrust{}, "ambiguous-wiring"},
+		{"ambiguous-provider", func(f *fixture) { f.providers = append(f.providers, f.providers[0]) }, stubTrust{}, "ambiguous-provider"},
+		{"unsupported-effect", func(f *fixture) { f.target.Effects = []string{"read"} }, stubTrust{}, "unsupported-target"},
+		{"wrong-target", func(f *fixture) { f.target.ID = "desktop" }, stubTrust{}, "unsupported-target"},
+		{"unaccepted-candidate", func(f *fixture) { f.c.Source = ref("changed.file") }, stubTrust{}, "unaccepted-meaning"},
+		{"acceptance-authority", func(f *fixture) {}, stubTrust{denyAcceptance: true}, "unaccepted-meaning"},
+		{"publisher-authority", func(f *fixture) {}, stubTrust{denyPublisher: true}, "unverified-provider"},
+		{"provider-conformance", func(f *fixture) {}, stubTrust{denyConformance: true}, "unverified-provider"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := orderFixture("tei.language.dsl")
+			tc.edit(&f)
+			_, err := f.lower(tc.trust)
+			if got := code(err); got != tc.want {
+				t.Fatalf("got %q; want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCurrentAuthorizationIsNotCachedIntoPlan(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	plan, err := f.lower(stubTrust{denyInvocation: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := code(AuthorizeInvocation(plan, stubTrust{denyInvocation: true})); got != "authorization-denied" {
+		t.Fatalf("authorization was not fail-closed: %s", got)
+	}
+	if err := AuthorizeInvocation(plan, stubTrust{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSecondTargetIsConceptOnly(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	web, err := f.lower(stubTrust{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.target.ID = "desktop"
+	for i := range f.providers {
+		f.providers[i].Target = "desktop"
+		f.providers[i].Identity.ID += ".desktop"
+		f.wiring[i].Provider = f.providers[i].Identity
+	}
+	desktop, err := f.lower(stubTrust{})
+	if err != nil || desktop.Snapshot != web.Snapshot {
+		t.Fatalf("meaning changed with Target: %v", err)
+	}
+	if Digest(desktop) == Digest(web) {
+		t.Fatal("target difference lost")
+	}
+	// No desktop binary, desktop UI, or actual desktop behavior was executed.
+}
+
+func TestSelectiveCacheKeys(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	plan, err := f.lower(stubTrust{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	k := Keys(f.c, f.a, plan, f.target, ref("builder-v1"))
+	unrelated := f
+	unrelated.providers = append(unrelated.providers, Provider{Identity: ref("unrelated")})
+	again, err := unrelated.lower(stubTrust{})
+	if err != nil || Keys(unrelated.c, unrelated.a, again, unrelated.target, ref("builder-v1")) != k {
+		t.Fatal("unrelated Provider invalidated accepted resolution")
+	}
+	changedTarget := Keys(f.c, f.a, plan, Target{ID: "alternate", Effects: f.target.Effects}, ref("builder-v1"))
+	if changedTarget.Interpret != k.Interpret || changedTarget.Accept != k.Accept ||
+		changedTarget.Resolve != k.Resolve || changedTarget.Target == k.Target || changedTarget.Build == k.Build {
+		t.Fatal("Target changes must not invalidate prior stages")
+	}
+	newBuilder := Keys(f.c, f.a, plan, f.target, ref("builder-v2"))
+	if newBuilder.Target != k.Target || newBuilder.Build == k.Build {
+		t.Fatal("builder change must only invalidate artifact stage")
+	}
+	changedSource := f.c
+	changedSource.Source = ref("changed-source")
+	recomputed := Keys(changedSource, f.a, plan, f.target, ref("builder-v1"))
+	if recomputed.Interpret == k.Interpret || recomputed.Accept == k.Accept {
+		t.Fatal("source change must invalidate interpretation and acceptance")
+	}
+}
