@@ -149,7 +149,7 @@ func TestCanonicalAuthorizationUsesExistingBusinessRulesAcrossIdentityProviders(
 
 func TestCanonicalAuthorizationRejectsUnresolvedCommandsAndMissingDependencies(t *testing.T) {
 	resolver, adapters := referenceAuthorizationDependencies(t)
-	link := SubjectLinkLookup(func(context.Context, ExternalSubject) (string, bool, error) {
+	link := SubjectLinkLookup(func(context.Context, ExternalSubject) (SubjectLink, bool, error) {
 		return SubjectLink{PrincipalID: "employee-1", SubjectID: "subject-order-editor"}, true, nil
 	})
 	if _, err := NewCanonicalActionAuthorizer(resolver, "order_entry", "missing.command", link, adapters); err == nil {
