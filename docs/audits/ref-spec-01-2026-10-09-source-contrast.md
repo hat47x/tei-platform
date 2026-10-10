@@ -167,3 +167,18 @@ GitHubのPRに加えた回帰テストは、既知→不明→繰り返し不明
 `GOENV=off GOWORK=off GOFLAGS= go test -count=1 -v ./...`の実測は4個のトップレベルテストがPASS。分類のテーブルテスト7例はすべてPASSした。対象は正常な差分、一致、手順側とApplication側の定義不在、両側の重複明示、両側の意味定義曖昧、定義不在と三重明示の併発、入力順に依存しない出力、文脈未解決、非validation-support行のスキップである。`GOENV=off GOWORK=off GOFLAGS= go vet ./...`もPASS。
 
 一方、**これは実Repositoryの単体テストではない**。テスト自身は隔離用の独立データを使い、実`workspace.Load`、実Source Index、実`main.go`、既存診断の互換性を検証していない。併発理由と三重明示の確認はRepositoryの回帰テストにも追加したが、そちらの実行結果は未取得。隔離試験のPASSをPRのqualificationに利用しない。
+
+## Business Procedure Step IDの重複と比較文脈（2026-10-10）
+
+既存の`evaluate`にはBusiness Procedureの重複Step IDを示すblocking診断があるが、今回の任意Validation比較では、同じIDが異なるステップに使用されている場合でも、Validation集合の差を独立した確認結果として表示し得た。これでは`step`をキーに検査行を開く利用者が、比較対象の一意性を誤認するおそれがある。
+
+**修正内容**：まず業務手順の全ステップ（`validation-support`以外を含む）のID出現数を取得する。比較対象`validation-support`のStep IDが空白だけ、または出現数が1でなければ`unresolved-context`へ保留する。Applicationの暗黙解決・Validation集合差の確定・追加Source Index探索は行わず、理由にStep IDの問題を明示する。ステップIDが互いに異なる複数の`validation-support`は従来どおり別々に比較する。従来のblocking診断は変更しない。
+
+リポジトリへ4条件の回帰テストを追加した。
+
+- Step IDが空白だけの場合
+- `validation-support`と異種ステップでIDが重複する場合
+- 複数の`validation-support`でIDが重複する場合
+- 一意のIDを持つ複数の`validation-support`が独立して比較できる場合
+
+**資格上の限界**：ここで報告するのはGitHub上のコードとテスト、READMEの更新であり、更新後のGoファイルを含むテストの実行やexact-head full Repository healthはまだ確認していない。以前の比較処理の隔離PASSはこの新しい条件分岐に対する実行結果ではない。
