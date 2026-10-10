@@ -315,7 +315,11 @@ func build(f fixture, r review, set procedureSet, world ir.World, procedureFile,
 	for _, a := range world.Applications {
 		if string(a.ID)!=f.Application { continue }
 		for _, pattern := range a.Patterns {
-			if !used[string(pattern.ID)] { p.UnreferencedPatterns=append(p.UnreferencedPatterns,string(pattern.ID)) }
+			if !used[string(pattern.ID)] {
+				p.UnreferencedPatterns=append(p.UnreferencedPatterns,string(pattern.ID))
+				add("DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED","review-question",procedureFile,
+					"/application",fmt.Sprintf("Pattern %q is not referenced by this Procedure; this does not prove it is unused by the Application",pattern.ID))
+			}
 		}
 	}
 	sort.Strings(p.UnreferencedPatterns)
