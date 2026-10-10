@@ -96,6 +96,15 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   const path = input(label, ".candidate.json", proposal);
   checked(proposal.baseModelRevision === beforeRevision, label + ": base revision");
 
+  const derivedEdit = input(label, ".derived-edit.json", {
+    ...edit, derived: true
+  });
+  command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"),
+    "review-edit", "-workspace", workspace, "-edit-file", derivedEdit
+  ], false);
+  checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
+    label + ": Derived edit cannot produce Source changes (N05)");
   const preview = JSON.parse(acceptance([
     "preview", "-workspace", workspace, "-candidate", path
   ]).stdout);
@@ -188,10 +197,14 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(staleJSON.acceptable === false &&
     (staleJSON.stages || []).some(v => v.name === "base-revision" && v.status === "fail"),
     label + ": stale revision fails closed (N06)");
-  acceptance([
+  const staleAccept = acceptance([
     "accept", "-workspace", workspace, "-candidate", path,
     "-expected-review-fingerprint", review.reviewFingerprint
   ], false);
+  const staleDecision = JSON.parse(staleAccept.stdout);
+  checked(staleDecision.decision === "refused" && staleDecision.sourceChanged === false &&
+    (staleDecision.refusals || []).some(d => d.code === "STALE_BASE_MODEL_REVISION"),
+    label + ": stale Accepted Decision is explicitly refused (N06)");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
     label + ": stale Preview and stale Accept cannot modify newer Source");
   return {
