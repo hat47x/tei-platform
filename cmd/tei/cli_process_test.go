@@ -119,6 +119,23 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		traceSummary.Result.Trace.Total < 2 || len(traceSummary.Result.Trace.Rows) != 0 {
 		t.Fatalf("unexpected typed trace summary: %+v", traceSummary)
 	}
+	var inspectRelation cliInspectionReport
+	if err := json.Unmarshal(run(0,
+		"inspect", "-workspace", reference,
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+	), &inspectRelation); err != nil {
+		t.Fatalf("inspect relation must be JSON: %v", err)
+	}
+	if !inspectRelation.OK || inspectRelation.Result == nil ||
+		inspectRelation.Result.Subject != traceSummary.Result.Trace.Subject.Subject {
+		t.Fatalf("inspect and trace disagree on subject: inspect=%+v trace=%+v", inspectRelation, traceSummary)
+	}
+	if len(traceSummary.Result.Source.References) == 0 ||
+		len(inspectRelation.Result.Sources.References) == 0 ||
+		traceSummary.Result.Source.References[0].ArtifactPath !=
+			inspectRelation.Result.Sources.References[0].ArtifactPath {
+		t.Fatalf("inspect and trace disagree on provenance: inspect=%+v trace=%+v", inspectRelation.Result.Sources, traceSummary.Result.Source)
+	}
 	var traceFull cliTraceReport
 	if err := json.Unmarshal(run(0,
 		"trace", "-workspace", reference, "-scope", "reference-observation",
