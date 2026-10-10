@@ -77,7 +77,7 @@ func TestCaptureRejectsOffLoopbackOrNonLiteralURL(t *testing.T) {
 func TestCaptureFailsBeforePrintingBytesOnWrongIdentityOrProtocol(t *testing.T) {
 	for _, tc := range []struct {
 		name, status, contentType, body string
-		code                          int
+		code                            int
 	}{
 		{name: "wrong-app", code: 200, contentType: "application/json", body: strings.Replace(webManifest, "order_entry", "repair_intake", 1)},
 		{name: "wrong-build", code: 200, contentType: "application/json", body: strings.Replace(webManifest, `"T"`, `"T2"`, 1)},
