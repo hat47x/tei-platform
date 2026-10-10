@@ -1,6 +1,7 @@
 package main
 
 import (
+    "encoding/json"
     "reflect"
     "testing"
 
@@ -206,5 +207,42 @@ func TestE5RejectsMissingSemanticNamespaceSourceReference(t *testing.T) {
     index.References=append(index.References[:4],index.References[5:]...)
     if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous") {
         t.Fatal("semantic source without a definition reference accepted")
+    }
+}
+
+func TestE5PairedEvidenceIncludesMatchedReportAndIndex(t *testing.T) {
+    world, index := e5Fixture()
+    report := inspectE5(world, index, "order_entry")
+    envelope := e5PairedEvidence(report, index)
+    if envelope.Format != "tei.e5-paired-source-observation.v1" ||
+        envelope.Qualification != "read-only-paired-input-not-an-authority" {
+        t.Fatalf("unexpected evidence contract: %+v", envelope)
+    }
+    if !reflect.DeepEqual(envelope.Report, report) || !reflect.DeepEqual(envelope.Index, index) {
+        t.Fatal("paired evidence changed the provided report or source index")
+    }
+    raw, err := json.Marshal(envelope)
+    if err != nil { t.Fatal(err) }
+    var decoded struct {
+        Format string `json:"format"`
+        Report e5Report `json:"report"`
+        Index sourceindex.Index `json:"index"`
+        Qualification string `json:"qualification"`
+    }
+    if err := json.Unmarshal(raw, &decoded); err != nil { t.Fatal(err) }
+    if decoded.Format != envelope.Format || !reflect.DeepEqual(decoded.Report, report) ||
+        !reflect.DeepEqual(decoded.Index, index) {
+        t.Fatalf("serialized transport does not preserve evidence fields: %+v", decoded)
+    }
+}
+
+func TestE5PairedEvidenceCannotPromoteAnUnresolvedReport(t *testing.T) {
+    world, index := e5Fixture()
+    world.Applications = nil
+    report := inspectE5(world, index, "order_entry")
+    paired := e5PairedEvidence(report, index)
+    if paired.Report.Status != "unresolved" || len(paired.Report.Issues) == 0 ||
+        paired.Qualification != "read-only-paired-input-not-an-authority" {
+        t.Fatalf("diagnostic was promoted by pairing: %+v", paired)
     }
 }
