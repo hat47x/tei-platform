@@ -28,6 +28,19 @@ go run ./cmd/tei validate \\
   -json > /tmp/tei-validation.json
 ```
 
+正規化済みの業務モデルから特定の要素だけを読む場合、`inspect`を利用できます。初期対応は`semantic-data`、`application`、`query`の3種類です。kindとCanonical IDを完全一致で指定します。
+
+```bash
+go run ./cmd/tei inspect \
+  -workspace reference/workspace \
+  -subject-kind semantic-data \
+  -subject-id sales.order
+```
+
+`inspect`は`tei.cli.inspect/v0`形式のJSONを返します。成功時の`result.canonical`は既存のNormalized Worldから選択した要素そのもの、`result.sources`は既存Source Indexの参照とArtifact fingerprintです。`worldFingerprint`は読取り時点のCanonical Worldの内容を識別するためのハッシュであり、競合更新を防ぐrevisionや変更の受理証跡ではありません。`sourceStatus=not-indexed`はSource Indexに参照がないことを意味し、Canonicalの不存在とは区別します。
+
+成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応kind・Workspace読込み失敗などは`2`です。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点では関連グラフの探索（入力・出力・逆参照）や全種類の要素取得には対応しません。
+
 結果には`schemaVersion`、`ok`、`diagnostics`が含まれます。構文エラーでは元ファイルの位置を、意味上の検証では可能な範囲でSubjectとSource Indexの位置を返します。従来の`validate -workspace`はテキスト形式のままです。
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドやPlugin機能を列挙する完全な登録簿ではありません。詳細とWeb／デスクトップへの接続方針は[CLI優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
