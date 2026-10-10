@@ -90,4 +90,4 @@ Versionは文字列のメジャー番号です。今後の変更では、既存�
 
 Go参照Storeの`documentID`は、SUI固有の文書保存アダプター内部の識別子として残します。汎用Hostと通信境界には持ち込みません。
 
-検証するときは正確なCommitを固定し、`go test -race`、`tools/repository-health-check.sh`、ブラウザーとSUIの現物テストを実行してください。テストコードの追加とPASS証拠は区別します。ブラウザー側の参照ファイルと要求JSON SchemaのGit Blob SHAを照合したローカルNodeテスト15件はPASSしましたが、応答JSON Schemaの追加後のテストはまだ未実行です。実TEIリポジトリ全体の健全性検査はまだ実施できていません。
+検証するときは正確なCommitを固定し、`go test -race`、`tools/repository-health-check.sh`、ブラウザーとSUIの現物テストを実行してください。テストコードの追加とPASS証拠は区別します。Git Blob SHAでGitHub側のファイルと一致することを確認したローカルコピーで、Node.js 22のテスト16件を実行し、全件PASSしました。要求・応答のJSON SchemaはDraft 2020-12として検証しました。実TEIリポジトリ全体の健全性検査はまだ実施できていません。
