@@ -26,7 +26,7 @@ type JSONCommitHandler struct {
 // Protocol version 1 is a generic resource-scoped conditional Action,
 // not a SUI DocumentV1 mutation schema. Each Application owns its payload.
 type httpCommitIntent struct {
-	ProtocolVersion   string          `json:"protocolVersion"`
+	ProtocolVersion  string          `json:"protocolVersion"`
 	ApplicationID    string          `json:"applicationID"`
 	ResourceID       string          `json:"resourceID"`
 	ActionID         string          `json:"actionID"`
