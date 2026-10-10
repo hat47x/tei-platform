@@ -59,6 +59,7 @@ function validate(base, procedure) {
     throw new Error("PROCEDURE_IDENTITY_OR_AUTHORITY_MISMATCH");
   }
   const steps = uniqueIds(list(procedure.steps, "steps"), "steps");
+  if (steps.size===0) throw new Error("EMPTY_PROCEDURE_NOT_EDITABLE");
   const triggers = uniqueIds(list(base.triggers,"triggers"), "triggers");
   const roles = uniqueIds(list(base.businessRoles,"businessRoles"), "businessRoles");
   const parties = uniqueIds(list(base.externalParties,"externalParties"), "externalParties");
