@@ -126,6 +126,12 @@ function sourceLens(sourceIndex, kind, id) {
     status: "unresolved", subject: { kind: canonicalKind, id },
     reason: "No exact definition anchor in current Source Index"
   };
+  // #1120 identifies a node by scope + kind + ID. Source Index today has
+  // no scoped model reference; a caller-added scope tag is not enough to
+  // establish the same accepted meaning. Refuse to silently drop scope.
+  if (refs.some(r => r.scope !== undefined && r.scope !== null && r.scope !== ""))
+    return { status: "unresolved", subject: { kind: canonicalKind, id },
+      reason: "Scoped locator requires #1120 typed Source Resolver" };
   if (refs.length !== 1) throw new Error("AMBIGUOUS_SOURCE_DEFINITION: " + kind + ":" + id);
   const ref = refs[0], fingerprint = artifacts.get(ref.artifactPath);
   const begin = ref.range?.start, end = ref.range?.end;
