@@ -22,6 +22,7 @@
     "selectedValidation": "sales.order_line.unit_price_positive",
     "negativeValidation": "sales.order_line.unit_price_positive", "negativeEvidenceMode": "handler-only",
     "providerKind": "synthetic", "runMode": "handler-only",
+    "workspaceRevisionReceipt": "", "targetLaunchReceipt": "",
     "positiveReceipt": "", "negativeReceipt": "", "unobservedControlReceipt": ""
   },
   "physical": {}
