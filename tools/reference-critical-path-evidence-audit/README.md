@@ -80,7 +80,7 @@ go run ./tools/reference-critical-path-evidence-audit \
 ## 入力の取り扱いとpreflightの追加負例
 
 - JSONは最大1 MiB、UTF-8の厳密な入力のみを受ける。ファイル先頭1 MiBが妥当でも、その後に隠れたJSON・テキストがあれば受け付けない。
-- 未知field、トップレベルと入れ子の重複key、`claim`/`Claim`のような大文字・小文字だけ異なるalias、64階層を超える深い入れ子は拒否する。Goの通常のJSON decoderが最後の同名fieldを採用する挙動で権限・証跡を上書きさせない。
+- 未知field、トップレベルと入れ子の重複key、`claim`/`Claim`やUnicodeの`Key`/`key`のようなcase-folded alias、64階層を超える深い入れ子は拒否する。Goの通常のJSON decoderが最後の同名fieldを採用する挙動で権限・証跡を上書きさせない。異なるkeyを大量に渡されても、従来の全既出key走査（最悪二乗時間）ではなく、Unicode simple foldしたkeyのmap照合で線形の検査コストに抑える。
 - `run` のCLI全体に対しても `INCOMPLETE`時の非ゼロ終了と機械可読JSON、`REVIEW_REQUIRED`時でも常に `productGate=UNQUALIFIED` を確認する。
 - focused testは `go test -race -count=1 ./tools/reference-critical-path-evidence-audit` で検査できるが、必須のfull `tools/repository-health-check.sh` を置き換えない。
 
