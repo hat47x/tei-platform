@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 TMP_ROOT="$(mktemp -d)"
 STORE="$TMP_ROOT/coordination-store"
 WORK_ID="TW-0001"
@@ -41,7 +41,16 @@ fi
 # Reject non-standard index flags and ignored files as well as ordinary changes.
 # An assume-unchanged / skip-worktree entry can hide edits from git status.
 assert_product_clean() {
-  local phase="$1" failure_code="$2" status ignored index_flags hidden_index
+  local phase="$1" failure_code="$2" status ignored index_flags hidden_index actual_root
+  actual_root="$(git -C "$ROOT" rev-parse --show-toplevel)" || {
+    echo "external-coordination reference cannot resolve product Git worktree root ($phase)" >&2
+    exit "$failure_code"
+  }
+  if [[ "$actual_root" != "$ROOT" ]]; then
+    echo "external-coordination reference Git worktree root mismatch ($phase)" >&2
+    printf 'script checkout: %s\\nGit worktree: %s\\n' "$ROOT" "$actual_root" >&2
+    exit "$failure_code"
+  fi
   status="$(git -C "$ROOT" status --porcelain=v1 --untracked-files=all)"
   ignored="$(git -C "$ROOT" ls-files --others --ignored --exclude-standard)"
   index_flags="$(git -C "$ROOT" ls-files -v)"
