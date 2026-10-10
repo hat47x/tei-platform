@@ -105,8 +105,22 @@ func Parse(format Format, source []byte) (Document, error) {
 			isKnown = isKnown && t.Name.Space == ""
 			n := Node{Name: name, Known: isKnown}
 			n.Attributes = make([]Attribute, 0, len(t.Attr))
+			seenAttributes := map[string]struct{}{}
 			for _, attr := range t.Attr {
-				n.Attributes = append(n.Attributes, Attribute{Name: qualifiedName(attr.Name), Value: attr.Value})
+				attributeName := qualifiedName(attr.Name)
+				if _, duplicate := seenAttributes[attributeName]; duplicate {
+					return Document{}, fmt.Errorf(
+						"parse %s source: duplicate attribute %s on %s",
+						format,
+						attributeName,
+						name,
+					)
+				}
+				seenAttributes[attributeName] = struct{}{}
+				n.Attributes = append(
+					n.Attributes,
+					Attribute{Name: attributeName, Value: attr.Value},
+				)
 			}
 			sort.Slice(n.Attributes, func(i, j int) bool {
 				if n.Attributes[i].Name != n.Attributes[j].Name {
@@ -135,6 +149,13 @@ func Parse(format Format, source []byte) (Document, error) {
 		case xml.CharData:
 			if len(stack) > 0 {
 				stack[len(stack)-1].node.Text += string(t)
+				continue
+			}
+			if strings.TrimSpace(string(t)) != "" {
+				return Document{}, fmt.Errorf(
+					"parse %s source: non-whitespace character data outside root element",
+					format,
+				)
 			}
 
 		case xml.EndElement:

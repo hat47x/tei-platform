@@ -89,6 +89,10 @@ Profile間の派生は候補として考えられるが、Profileの`extends`、
 
 同一slotを二つのAddonが交換する場合、同名別artifact、別Framework、期待する旧実装の不一致、契約の意味的互換性の不明などは、明示選択・再検査が必要な衝突である。ScopeをまたぐProvider fallback、AIが作った未確認の業務規則の自動Acceptance、UI側の認可変更は認めない。
 
+## Web構成キットでの要求経路と認証方式
+
+Webアプリケーションでは、UI構成キットだけでなく、HTTP要求・応答、経路別の保護、認証方式の選択・共存をつなぐ構成規則が必要となる。この部分は[#1043](https://github.com/hat47x/tei-platform/issues/1043)と[Webアプリケーション構成キットの設計候補](WEB_APPLICATION_COMPOSITION_DESIGN.md)で評価する。構成プロファイルはWeb構成を**選択**するだけであり、Plugin Providerの解決やRuntime Authorityを重複管理しない。複数認証方式の共存を、業務権限の自動統合と混同しない。
+
 ## 二つの実Consumerで試す
 
 **A. 受注明細を持つWeb業務Application** — 既存`order_entry`を用い、Semantic / Data / Action / Validationは既存のAccepted Source、UIはWeb/React Kit、DBと外部接続はEnvironment Bindingを使用する。案件固有の右側編集PanelはProject UI Layerに保持する。UI Kit更新で業務上の識別子やValidationの意味が変わっていないことを確認する。

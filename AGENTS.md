@@ -35,7 +35,8 @@
 ## 統合の原則
 
 - `main`への直接変更を避け、既存の作業ブランチを再利用する。書き込む前にリモートの最新状態、並行PR、変更するファイルを確認する。共有ブランチでrebase・reset・force更新は行わない。規則や設計判断が矛盾している場合は、解決するまで統合しない。
-- コードを変更した場合は、統合対象ブランチの最新コミット（exact head）を特定する。信頼できる環境のクリーンなチェックアウトで`tools/repository-health-check.sh`を省略せずに実行し、全項目のPASSと実行前後のclean状態を記録してから統合する。一部のテストやGitHubのmergeable判定では代用しない。
+- **Draft PRは変更種別にかかわらず統合しない。** merge操作やmerge APIを呼ぶ直前にPRを再取得し、`draft=false`、exact head、base、変更path、current `main`を確認する。GitHubの`mergeable` / `merged`表示や、以前取得したPR状態を統合権限の代わりにしない。
+- コードを変更した場合は、統合対象ブランチの最新コミット（exact head）を特定する。信頼できる環境のクリーンなチェックアウトで`tools/repository-health-check.sh`を省略せずに実行し、全項目のPASSと実行前後のclean状態を記録してから統合する。統合直前に、その記録のcandidate headと対象`main`が現在のPR head / current `main`と一致することを再確認する。一部のテストやstatic auditでは代用しない。記録が無い、またはhead / `main`が動いてstaleになった場合はmergeせず停止する。
 - 検証やEvidenceの取得中は、判定に必要なブランチや`main`を不用意に更新しない。特別な統合手順は担当Issueに従う。文書だけを変更するときも、正本・リンク・並行作業への影響を確認する。
 
 具体的な開発手順は[`CONTRIBUTING.md`](CONTRIBUTING.md)と各Issue・ADR・検証計画に従う。

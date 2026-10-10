@@ -67,7 +67,7 @@ func proposeQualifiedReferencePattern(
 	if err != nil {
 		return Candidate{}, err
 	}
-	qualification, err := decodeQualificationResult(qualificationData)
+	qualification, err := decodeQualificationInput(qualificationData)
 	if err != nil {
 		return Candidate{}, err
 	}

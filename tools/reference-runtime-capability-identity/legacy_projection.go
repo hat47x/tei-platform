@@ -12,18 +12,18 @@ import (
 )
 
 const (
-	legacyRuntimeProjectionSchema = "tei.reference.legacy-runtime-capability-projection/v0"
+	legacyRuntimeProjectionSchema     = "tei.reference.legacy-runtime-capability-projection/v0"
 	legacyEnvironmentProjectionSchema = "tei.reference.legacy-runtime-environment-projection/v0"
 )
 
 type LegacyRuntimeProjection struct {
-	Schema string `json:"schema"`
-	LegacyCapabilityKind plugin.CapabilityKind `json:"legacyCapabilityKind"`
-	LegacyCapabilityID core.CanonicalID `json:"legacyCapabilityId"`
-	Plugin plugin.Identity `json:"plugin"`
-	SourceDeclarationFingerprint string `json:"sourceDeclarationFingerprint"`
-	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	ProjectionFingerprint string `json:"projectionFingerprint"`
+	Schema                       string                `json:"schema"`
+	LegacyCapabilityKind         plugin.CapabilityKind `json:"legacyCapabilityKind"`
+	LegacyCapabilityID           core.CanonicalID      `json:"legacyCapabilityId"`
+	Plugin                       plugin.Identity       `json:"plugin"`
+	SourceDeclarationFingerprint string                `json:"sourceDeclarationFingerprint"`
+	RuntimeCapabilityFingerprint string                `json:"runtimeCapabilityFingerprint"`
+	ProjectionFingerprint        string                `json:"projectionFingerprint"`
 }
 
 func projectLegacyRuntimeCapabilityRef(
@@ -72,10 +72,10 @@ func projectLegacyRuntimeCapabilityRef(
 		return LegacyRuntimeProjection{}, RuntimeCapabilityRef{}, err
 	}
 	projection := LegacyRuntimeProjection{
-		Schema: legacyRuntimeProjectionSchema,
-		LegacyCapabilityKind: kind,
-		LegacyCapabilityID: id,
-		Plugin: plugin.Identity{ID: definition.ID, Version: definition.Version},
+		Schema:                       legacyRuntimeProjectionSchema,
+		LegacyCapabilityKind:         kind,
+		LegacyCapabilityID:           id,
+		Plugin:                       plugin.Identity{ID: definition.ID, Version: definition.Version},
 		SourceDeclarationFingerprint: sourceFingerprint,
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
 	}
@@ -178,15 +178,15 @@ func legacyCapabilityDeclarationFingerprint(
 }
 
 type LegacyEnvironmentAuthorityProjection struct {
-	Schema string `json:"schema"`
-	Environment core.CanonicalID `json:"environment"`
-	LegacyCapabilityKind plugin.CapabilityKind `json:"legacyCapabilityKind"`
-	LegacyCapabilityID core.CanonicalID `json:"legacyCapabilityId"`
-	RuntimeCapabilityFingerprint string `json:"runtimeCapabilityFingerprint"`
-	LegacyAuthorityFingerprint string `json:"legacyAuthorityFingerprint"`
-	ExecutionAuthorityEvidenceFingerprint string `json:"executionAuthorityEvidenceFingerprint"`
-	Authority RuntimeEnvironmentAuthority `json:"authority"`
-	ProjectionFingerprint string `json:"projectionFingerprint"`
+	Schema                                string                      `json:"schema"`
+	Environment                           core.CanonicalID            `json:"environment"`
+	LegacyCapabilityKind                  plugin.CapabilityKind       `json:"legacyCapabilityKind"`
+	LegacyCapabilityID                    core.CanonicalID            `json:"legacyCapabilityId"`
+	RuntimeCapabilityFingerprint          string                      `json:"runtimeCapabilityFingerprint"`
+	LegacyAuthorityFingerprint            string                      `json:"legacyAuthorityFingerprint"`
+	ExecutionAuthorityEvidenceFingerprint string                      `json:"executionAuthorityEvidenceFingerprint"`
+	Authority                             RuntimeEnvironmentAuthority `json:"authority"`
+	ProjectionFingerprint                 string                      `json:"projectionFingerprint"`
 }
 
 func projectLegacyEnvironmentAuthority(
@@ -263,26 +263,26 @@ func projectLegacyEnvironmentAuthority(
 		Environment: env.ID,
 		ExecutionGrants: []RuntimeExecutionGrant{{
 			RuntimeCapabilityFingerprint: ref.Fingerprint,
-			ExecutionProfileFingerprint: profile.Fingerprint,
+			ExecutionProfileFingerprint:  profile.Fingerprint,
 			AuthorityEvidenceFingerprint: executionAuthorityEvidenceFingerprint,
 		}},
 	}
 	for _, grant := range normalizedGrants {
 		authority.PermissionGrants = append(authority.PermissionGrants, RuntimePermissionGrant{
 			RuntimeCapabilityFingerprint: ref.Fingerprint,
-			Permission: grant,
+			Permission:                   grant,
 		})
 	}
 	for _, binding := range bindings {
 		authority.ResourceBindings = append(authority.ResourceBindings, RuntimeResourceBinding{
 			RuntimeCapabilityFingerprint: ref.Fingerprint,
-			Binding: binding,
+			Binding:                      binding,
 		})
 	}
 	if len(policies) == 1 {
 		authority.LeasePolicies = []RuntimeLeasePolicy{{
 			RuntimeCapabilityFingerprint: ref.Fingerprint,
-			Policy: policies[0],
+			Policy:                       policies[0],
 		}}
 	}
 
@@ -290,29 +290,29 @@ func projectLegacyEnvironmentAuthority(
 		return LegacyEnvironmentAuthorityProjection{}, err
 	}
 	legacyAuthorityFingerprint := fingerprint(struct {
-		Environment core.CanonicalID `json:"environment"`
-		CapabilityKind plugin.CapabilityKind `json:"capabilityKind"`
-		CapabilityID core.CanonicalID `json:"capabilityId"`
-		Permissions []permission.Spec `json:"permissions,omitempty"`
-		Bindings []resource.Binding `json:"bindings,omitempty"`
-		LeasePolicies []resource.LeasePolicy `json:"leasePolicies,omitempty"`
+		Environment    core.CanonicalID       `json:"environment"`
+		CapabilityKind plugin.CapabilityKind  `json:"capabilityKind"`
+		CapabilityID   core.CanonicalID       `json:"capabilityId"`
+		Permissions    []permission.Spec      `json:"permissions,omitempty"`
+		Bindings       []resource.Binding     `json:"bindings,omitempty"`
+		LeasePolicies  []resource.LeasePolicy `json:"leasePolicies,omitempty"`
 	}{
-		Environment: env.ID,
+		Environment:    env.ID,
 		CapabilityKind: runtimeProjection.LegacyCapabilityKind,
-		CapabilityID: runtimeProjection.LegacyCapabilityID,
-		Permissions: normalizedGrants,
-		Bindings: resource.NormalizeBindings(bindings),
-		LeasePolicies: policies,
+		CapabilityID:   runtimeProjection.LegacyCapabilityID,
+		Permissions:    normalizedGrants,
+		Bindings:       resource.NormalizeBindings(bindings),
+		LeasePolicies:  policies,
 	})
 	projection := LegacyEnvironmentAuthorityProjection{
-		Schema: legacyEnvironmentProjectionSchema,
-		Environment: env.ID,
-		LegacyCapabilityKind: runtimeProjection.LegacyCapabilityKind,
-		LegacyCapabilityID: runtimeProjection.LegacyCapabilityID,
-		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		LegacyAuthorityFingerprint: legacyAuthorityFingerprint,
+		Schema:                                legacyEnvironmentProjectionSchema,
+		Environment:                           env.ID,
+		LegacyCapabilityKind:                  runtimeProjection.LegacyCapabilityKind,
+		LegacyCapabilityID:                    runtimeProjection.LegacyCapabilityID,
+		RuntimeCapabilityFingerprint:          ref.Fingerprint,
+		LegacyAuthorityFingerprint:            legacyAuthorityFingerprint,
 		ExecutionAuthorityEvidenceFingerprint: executionAuthorityEvidenceFingerprint,
-		Authority: authority,
+		Authority:                             authority,
 	}
 	projection.ProjectionFingerprint = legacyEnvironmentProjectionFingerprint(projection)
 	return projection, nil

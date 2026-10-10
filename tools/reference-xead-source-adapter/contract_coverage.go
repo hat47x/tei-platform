@@ -30,7 +30,7 @@ func CheckClassificationCoverage(format SourceFormat, doc ObservedDocument, cont
 		return ClassificationCoverage{}, err
 	}
 	coverage := ClassificationCoverage{
-		Format:               format,
+		Format:              format,
 		SourceFormatVersion: profile.FormatVersion,
 		AuthorityLimits: []string{
 			"mapping-entry-existence-is-not-semantic-acceptance",
