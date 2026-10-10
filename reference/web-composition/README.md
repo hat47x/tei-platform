@@ -424,7 +424,7 @@ E2.11の最終認可はCommandの`resolver.InvokeCapability`を呼ぶ**前**に�
 
 ### 境界と検証保留
 
-- `command_scenario.go`: GitHub Blob `765cc05768493f706cddbca1ef10a55118a171ac`
+- `command_scenario.go`: GitHub Blob `500ba27ffc2d2e9ce5a86b3b9924c0a57b363335`
 - `session_effect_grant_contract_test.go`: 今回追加したCapability Grantと構文木の契約試験
 - **実WorkspaceのGoテスト、Race、Repository Healthは未実行です。** GitHubへ変更したファイルはリポジトリ上で確認しましたが、actual full checkoutでの`go test`成功は取得していません。
 - これはConcrete Adapter内までチェックを近づけた変更であり、**認可の版条件と副作用Commitが同じトランザクションになったことを意味しません**。外部DB・SaaS API・Queue等の本番相当で原子的に失効を扱うには、プラグインに対応可能なEffect Fence／版条件／再試行保証が必要です。共通要件と競合試験は独立した[Issue #1174](https://github.com/hat47x/tei-platform/issues/1174)へ起票済みです。
