@@ -36,6 +36,12 @@ Referenceは、呼出し開始時にSemantic Requestのbytesを複製し、下�
 
 この検査はresult / errorへの直接反射だけを検出します。encoding、hash、派生情報、Provider内部log、side channel等の一般的な情報漏えいを証明しません。そのためreceiptには`direct-reflection-check-does-not-prove-general-non-disclosure`を残します。
 
+downstream errorの`Error()`文字列が安全に見えても、元のGo error objectをそのまま返すと、`errors.As`、`Unwrap`、custom formatting、構造体fieldから秘匿情報を回収できる。実際に、秘密をfieldへ保持し`Error()`は無害な文字列を返す型の漏えいを負例で再現した。
+
+現Referenceでは、直接反射を検出した場合は従来どおり拒否する。それ以外でも`ForbidDirectResultReflection`のあるrequired slotが存在し、下流がerrorを返した場合は**原error objectを返さず**固定の汎用failureへ置き換える。非機密slotだけの呼出しでは元のerrorを保持する。
+
+これはReference上の防御策であり、製品のerror codeやCapability固有のfailure semanticsを決定するものではない。productionではContractに従う公開可能なfailure表現を別途設計する。固定メッセージへの変換だけで間接漏えいやProvider内部logを排除したとは主張しない。
+
 productionでは、Context Slot Contractのexposure policy、Provider Conformance、result schema、Security policy等との分担を別途判断します。
 
 ## Semantic Request shapeとの分担
