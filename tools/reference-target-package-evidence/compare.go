@@ -26,6 +26,7 @@ type ClosureComparison struct {
 	CGOEnabled      string            `json:"cgoEnabled"`
 	GoFlags         string            `json:"goFlags"`
 	TargetFeatures  map[string]string `json:"targetFeatures,omitempty"`
+	CgoToolchain    map[string]string `json:"cgoToolchain,omitempty"`
 	BeforeEntry     string            `json:"beforeEntry"`
 	AfterEntry      string            `json:"afterEntry"`
 	BeforeBuildTags string            `json:"beforeBuildTags,omitempty"`
@@ -137,14 +138,15 @@ func compareReports(before, after Report) (ClosureComparison, error) {
 	if before.SourceRevision != after.SourceRevision || before.Module != after.Module ||
 		before.GoVersion != after.GoVersion || before.GOOS != after.GOOS ||
 		before.GOARCH != after.GOARCH || before.CGOEnabled != after.CGOEnabled ||
-		before.GoFlags != after.GoFlags || !reflect.DeepEqual(before.TargetFeatures, after.TargetFeatures) {
+		before.GoFlags != after.GoFlags || !reflect.DeepEqual(before.TargetFeatures, after.TargetFeatures) ||
+		!reflect.DeepEqual(before.CgoToolchain, after.CgoToolchain) {
 		return ClosureComparison{}, fmt.Errorf("source revision, module, or Go build environment differs")
 	}
 	out := ClosureComparison{
 		SourceRevision: before.SourceRevision, Module: before.Module,
 		GoVersion: before.GoVersion, GOOS: before.GOOS, GOARCH: before.GOARCH,
 		CGOEnabled: before.CGOEnabled, GoFlags: before.GoFlags,
-		TargetFeatures: before.TargetFeatures,
+		TargetFeatures: before.TargetFeatures, CgoToolchain: before.CgoToolchain,
 		BeforeEntry: before.Entry, AfterEntry: after.Entry,
 		BeforeBuildTags: before.BuildTags, AfterBuildTags: after.BuildTags,
 		BeforeOnly: []string{}, AfterOnly: []string{}, Changed: []PackageChange{},
