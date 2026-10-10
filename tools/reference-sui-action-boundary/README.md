@@ -45,6 +45,20 @@ SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) が
 
 現段階の変更量はSUIの既存3ファイル（App、CanvasShell、CardView）への編集と、新規ドメイン実装1ファイル・テスト2ファイルです。SUI側のVitest・typecheck・build・実ブラウザー確認は未実行のため、UIの動作互換が実証された状態ではありません。ブラウザーではTEI側のES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。
 
+## SUI実接続の条件（2026-10-10時点）
+
+SUI main の`App.tsx`は、`handleCardMoveBegin`で`DocumentV1`の参照と`docEtag`を捕捉し、`handleCardMoveCommit`から`commitCardDrag`を呼んで`applyDocumentChange`へ**ローカル変更**を渡しています。現行の`CanvasShell.onCardMoveCommit`は同期的な`void`コールバックです。このまま同じ確定処理にHTTP dispatchを足すと、サーバー側の拒否より先にSUIのUndo履歴・dirty状態を書き換える二重の更新経路ができてしまいます。
+
+実接続では、次の境界を一つずつ確定します。
+
+1. **保存先の一本化**：通常のSUIローカル編集と、試験用のTEIサーバー確定モードを明示的に分離する。後者では承認済みのサーバー応答を受ける前に`applyDocumentChange`を呼ばない。失敗時にローカル保存へ黙ってフォールバックしない。
+2. **Revisionの同一性**：TEI要求の`expectedRevision`は実際にCASする保存先のRevisionを使用する。SUIの`docEtag`を採用する場合は、サーバー側のSUI保存Revisionと同一条件であることを実証する。値がない場合や、ドラッグ開始後に未保存編集が入った場合は送信しない。
+3. **SUIの意味論の保持**：最終位置だけを書き換える模擬`JSONDocumentStore`は、島への所属変更とUndo/Redoを再現できない。本番アダプターではSUI所有の`commitCardDrag`相当の処理をSUIの権威ある保存境界で原子的に実行し、TEI HostにはCardやIslandの業務規則を実装しない。
+4. **確定後の再取得**：成功時は保存側のRevisionとDocumentを再取得し、失敗・競合時はプレビューを破棄して差分を表示する。通信断の場合は成功／失敗を推測せず、保存先を照会する。
+5. **保護の継承**：SUIのReadOnly、SafeMode、未レビュー情報、Export制限、テナント境界、監査を既存より弱めない。認証セッション・CSRF・認可・冪等性はTEI実配備側で検証する。
+
+まず`SUI CardView → SUI commit callback → Action dispatcher → TEI Host → SUI所有の保存処理 → 再読込`を一本の接続テストで検証します。旧Revision、認可拒否、通信断、島所属、Undo、来歴保持を合否条件とします。**現時点では未接続・未検証**であり、この文書は実装完了の証拠ではありません。
+
 ## Web向けのJSON Action接続口（参照実装）
 
 CLIや同一プロセス内の実行では、`Host.Commit`を直接呼べます。Webではオプションとして、`JSONCommitHandler`（Go標準`net/http`）と`json-action-dispatch.mjs`（ブラウザーの`fetch`）を利用できます。外部Pluginプロセスを必須にしません。
