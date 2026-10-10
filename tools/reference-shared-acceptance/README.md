@@ -15,15 +15,15 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 
 `-out`と`accept -derived-out`も書き込み先です。たとえ`-workspace`がscratchであっても、出力先が`reference/workspace`配下のファイル、または派生Golden `reference/world.json`を指す場合は、`-allow-reference-baseline`なしでは実行前に拒否します。既存ファイル、新規出力先、workspaceへのシンボリックリンクや`..`を経由する表記も対象です。一方、**解決先が保護対象外と確認できる通常の出力ファイルへのシンボリックリンクは許可**します。宛先を解決できないdangling / cyclicな出力ファイルのリンクは安全を確認できないため拒否します。実際にbaselineを更新する場合は、ファイルの用途と受理判断を確認したうえで明示フラグを指定します。保護対象のパス表記では大小文字を保守的に同一視するため、大文字・小文字を区別するfilesystemでは似た名称の無関係な出力先まで拒否することがあります。この判定は誤操作防止であり、並行したファイル差替えやHard Linkを含む敵対的なfilesystemへの完全な隔離保証ではありません。
 
-`accept`の`-out`と`-derived-out`を同じ実ファイルに向けると、受理後に生成したWorld JSONをDecision JSONが上書きしてしまいます。そのため両出力先が同一なら、別名パスやシンボリックリンク経由も含めて実行前に拒否します。この判定は`-allow-reference-baseline`を指定しても解除できません。WorldとDecisionは別々の出力先に指定してください。
+`accept`の`-out`と`-derived-out`を同じ実ファイルに向けると、受理後に生成したWorld JSONをDecision JSONが上書きしてしまいます。そのため両出力先が同一なら、別名パス・シンボリックリンク・既存ファイルのハードリンクによる同一実体も含めて実行前に拒否します。この判定は`-allow-reference-baseline`を指定しても解除できません。WorldとDecisionは別々の出力先に指定してください。
 
-また、`accept -out`と`accept -derived-out`のいずれも、入力candidateと同一の実ファイルを指定できません。受理後にDecisionやWorldで候補JSONが上書きされると、検査した候補の再参照・再試行ができなくなるためです。リンクや大小文字の異なる表記を含めて出力前に検査し、`-allow-reference-baseline`でも解除しません。
+また、`accept -out`と`accept -derived-out`のいずれも、入力candidateと同一の実ファイルを指定できません。受理後にDecisionやWorldで候補JSONが上書きされると、検査した候補の再参照・再試行ができなくなるためです。シンボリックリンク、既存ファイルのハードリンク、大小文字の異なる表記を含めて出力前に検査し、`-allow-reference-baseline`でも解除しません。
 
-`preview`・`review`・`reject`の`-out`も入力`-candidate`と同じ実ファイルを指定できません。`confirm-check`・`confirm-record`では同様に入力`-input`を保護します。読み取り・判断記録の出力が提案や確認入力を破壊しないよう、candidateの解析やDecisionの記録に入る**前**に拒否します。この制約は明示的なbaseline更新フラグでも解除できません。候補を意図的に変換する`attach-*`・`propose-qualified-reference-pattern`等の操作では、従来の出力指定を維持します。
+`preview`・`review`・`reject`の`-out`も入力`-candidate`と同じ実ファイルを指定できません。`confirm-check`・`confirm-record`では同様に入力`-input`を保護します。読み取り・判断記録の出力が提案や確認入力を破壊しないよう、同じinodeを指すハードリンクも含めて、candidateの解析やDecisionの記録に入る**前**に拒否します。この制約は明示的なbaseline更新フラグでも解除できません。候補を意図的に変換する`attach-*`・`propose-qualified-reference-pattern`等の操作では、従来の出力指定を維持します。
 
 `-workspace`がscratchであっても、`-out`・`accept -derived-out`を同じWorkspace内の**管理対象Source**（Source Indexに記録された`.tei` / JSON / YAML等）や`tei.workspace.yaml`、`.tei/plugin-lock.json`、`.tei/decisions/`、`.tei/confirmations/`に向けることはできません。これはBaseline固有の保護とは別の正本・Decision根拠保全規則で、`-allow-reference-baseline`でも解除されません。Acceptは受理後の再読込検査が終わってから派生物を出力するため、その出力でSourceを破壊すると検査済みのRevisionが失われます。逆に、Workspace内でも**管理対象ではない通常のレポート出力**は引き続き許可します。判定は既存のSource Indexから導出し、型別のSource拡張子をCLIへ二重登録しません。また、Source Indexに管理対象ファイルが存在するトップレベルのSourceルート配下では、**まだ存在しない新規ファイル**も出力として作成しないようにします。まだファイルが一つも存在せずSource Indexに現れない空のSourceルートについては、現段階でこの方法による推論はできません。この出力ガードは同時書換えへの原子的保証ではありません。
 
-入力candidateを意図的に置換する変換操作でも、**独立した根拠の入力**は保護します。`attach-qualification`の`-qualification`、`propose-qualified-reference-pattern`の`-qualification`と`-reference-reuse`、`attach-semantic-evaluation`の`-semantic-evaluation`、`attach-rmt-transcription`の`-rmt-transcription`と同じ実ファイルを`-out`に指定した場合は事前に拒否します。候補とEvidenceを区別し、提案生成時に資格確認・評価・転写の原本を消さないためです。候補自身への意図的なin-place変換は引き続き許可します。
+入力candidateを意図的に置換する変換操作でも、**独立した根拠の入力**は保護します。`attach-qualification`の`-qualification`、`propose-qualified-reference-pattern`の`-qualification`と`-reference-reuse`、`attach-semantic-evaluation`の`-semantic-evaluation`、`attach-rmt-transcription`の`-rmt-transcription`と同じ実ファイルを`-out`に指定した場合は事前に拒否します。既存ファイルのハードリンクで同じ実体を指す場合も拒否します。候補とEvidenceを区別し、提案生成時に資格確認・評価・転写の原本を消さないためです。候補自身への意図的なin-place変換は引き続き許可します。
 
 ## 受入境界
 
