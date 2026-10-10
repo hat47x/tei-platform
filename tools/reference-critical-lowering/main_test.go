@@ -10,7 +10,8 @@ func ref(id string) Ref { return Ref{ID: id, Version: "1.0.0", Fingerprint: "sha
 
 type stubTrust struct {
 	denyAcceptance, denyPublisher, denyConformance bool
-	denyRuntimeBinding, denyData, denyContext, denyInvocation bool
+	denyResolution, denyRuntimeBinding, denyData, denyContext, denyInvocation bool
+	expectedPlan string
 }
 
 func (s stubTrust) Accepted(d string, receipt, snapshot Ref) bool {
@@ -19,6 +20,9 @@ func (s stubTrust) Accepted(d string, receipt, snapshot Ref) bool {
 func (s stubTrust) Published(r Ref) bool { return !s.denyPublisher && r.valid() }
 func (s stubTrust) Conformant(p Provider) bool {
 	return !s.denyConformance && p.Conformance.valid()
+}
+func (s stubTrust) ResolutionCurrent(p Plan) bool {
+	return !s.denyResolution && (s.expectedPlan == "" || Digest(p) == s.expectedPlan)
 }
 func (s stubTrust) RuntimeBindingCurrent(step Step) bool { return !s.denyRuntimeBinding }
 func (s stubTrust) DataCompatible(step Step) bool { return !s.denyData }
@@ -185,6 +189,9 @@ func TestCurrentAuthorizationIsNotCachedIntoPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got := code(AuthorizeInvocation(plan, stubTrust{denyResolution: true})); got != "stale-or-untrusted-resolution" {
+		t.Fatalf("stale plan was accepted: %s", got)
+	}
 	if got := code(AuthorizeInvocation(plan, stubTrust{denyRuntimeBinding: true})); got != "runtime-binding-unavailable" {
 		t.Fatalf("current provider/target binding was not checked: %s", got)
 	}
@@ -294,6 +301,7 @@ func TestS05PreviewCannotGrantExecutionAuthority(t *testing.T) {
 		trust stubTrust
 		code string
 	}{
+		{"locked-resolution-revoked", stubTrust{denyResolution: true}, "stale-or-untrusted-resolution"},
 		{"provider-unbound", stubTrust{denyRuntimeBinding: true}, "runtime-binding-unavailable"},
 		{"schema-incompatible", stubTrust{denyData: true}, "data-contract-incompatible"},
 		{"required-context-lost", stubTrust{denyContext: true}, "missing-execution-context"},
@@ -348,5 +356,20 @@ func TestInvalidDataRequirementsFailClosed(t *testing.T) {
 				t.Fatalf("got %q; expected %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestForgedPlanDoesNotBypassTrustedResolution(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	p, err := f.lower(stubTrust{})
+	if err != nil { t.Fatal(err) }
+	trust := stubTrust{expectedPlan: Digest(p)}
+	if err := AuthorizeInvocation(p, trust); err != nil { t.Fatal(err) }
+
+	forged := p
+	forged.Steps = append([]Step(nil), p.Steps...)
+	forged.Steps[1].Effect = "write-all"
+	if got := code(AuthorizeInvocation(forged, trust)); got != "stale-or-untrusted-resolution" {
+		t.Fatalf("forged plan unexpectedly gained invoke authority: %s", got)
 	}
 }
