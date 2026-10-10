@@ -148,6 +148,27 @@ func TestTraceDirectPaginationAndDeterministicOrder(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(withPrecondition.Rows, second.Rows) {
 		t.Fatalf("valid continuation differs: %+v %v", withPrecondition, err)
 	}
+	// Continuation is bound to the query selector as well as Graph and Rule
+	// contents. It must not mix rows from another subject or direction.
+	for _, alternative := range []struct {
+		key     modelref.Key
+		options modelref.TraceOptions
+	}{
+		{fn, modelref.TraceOptions{
+			Direction: "incoming", Mode: "full", Offset: 1, Limit: 1,
+			ExpectedFingerprint: first.SnapshotFingerprint,
+		}},
+		{traceKey("orders", "data", "order-line"), modelref.TraceOptions{
+			Direction: "both", Mode: "full", Offset: 1, Limit: 1,
+			ExpectedFingerprint: first.SnapshotFingerprint,
+		}},
+	} {
+		_, err := modelref.TraceDirect(g, rules, alternative.key, alternative.options)
+		var mismatch *modelref.TraceError
+		if !errors.As(err, &mismatch) || mismatch.Code != "STALE_SNAPSHOT" {
+			t.Fatalf("different trace selector reused a continuation token: %+v err=%v", alternative, err)
+		}
+	}
 	combined := append(append([]modelref.TraceRow{}, first.Rows...), second.Rows...)
 	combined = append(combined, last.Rows...)
 	if !reflect.DeepEqual(all.Rows, combined) {
