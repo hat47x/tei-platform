@@ -54,3 +54,11 @@ type DependencySnapshot struct {
 - E5/E6/E7 existing output and exit codes remain backward compatible.
 
 This document does not claim these tests have been implemented or executed. The E8 interface should be implemented only after identifying the concrete authoritative validator entry points and confirming that their behavior can be reused without duplicated meaning.
+
+## Interface design review: completeness and evidence
+
+A plain `Complete bool` is not independently auditable. Before implementation, require a declared coverage manifest containing supported reference kinds, excluded kinds, validator version, and input snapshot identity. The caller must reject a claimed complete result when its coverage manifest does not cover the requested analysis scope. `ResolutionIssue` should carry a stable reason code and, when available, a source Subject; free-form text alone is unsuitable for regression assertions. Edge identity must include the fully resolved target and relation, not a local alias or query name.
+
+The existing `sourceindex.Index.Validate(read)` checks artifact hashes and ranges against bytes supplied to its callback, but this alone does not establish that the `ir.World` parser consumed those same bytes. Keep the source-byte identity requirement explicit. The existing `sourceindex.Subject` is an alias of `internal/subject.Subject`, a path-independent `(Kind, ID)` pair; scoped names must be resolved before constructing that pair.
+
+No runtime API is changed by this review. The concrete semantic validator entry points have not yet been located or executed, so the proposed adapter remains conditional.
