@@ -10,8 +10,8 @@ export class ActionCommitError extends Error {
 }
 
 export function createJSONActionDispatcher(endpoint, fetchImpl = globalThis.fetch) {
-  if (typeof endpoint !== "string" || !endpoint.startsWith("/") || endpoint.startsWith("//") ||
-      typeof fetchImpl !== "function") {
+  if (typeof endpoint !== "string" || !endpoint.startsWith("/") || endpoint.startsWith("//") || endpoint.includes("\\") ||
+      /[\u0000-\u001f\u007f]/.test(endpoint) || typeof fetchImpl !== "function") {
     throw new TypeError("same-origin endpoint path and fetch function are required");
   }
   return async (intent) => {
