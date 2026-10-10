@@ -81,6 +81,8 @@ printf 'CANDIDATE_COMPOSITION_BEGIN main=%s merged-head=%s tree=%s\n' \
 (
   cd "$wt"
   export GOENV=off GOWORK=off GOFLAGS=
+  export TEI_CP_ORIGINAL_REPOSITORY_ROOT="$root"
+  export TEI_CP_INTEGRATION_TEMP_DIR="$scratch"
   node --check tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs
   node --test reference/studio-authoring/bridge.test.mjs
   TEI_STUDIO_E2E=1 node reference/studio-authoring/e2e.mjs
