@@ -13,7 +13,7 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 
 `-workspace`に`reference/workspace`を指すシンボリックリンクを渡した場合も、同じbaseline書込み保護を適用します。パスの字面だけでなく、存在するworkspace rootのリンク解決先を確認します。このガードは意図しないbaseline更新を避けるためのもので、任意の不正なfilesystem構成を隔離するセキュリティサンドボックスではありません。受理に必要な人の判断・review fingerprint・明示フラグはそれぞれ別の条件です。
 
-`-out`と`accept -derived-out`も書き込み先です。たとえ`-workspace`がscratchであっても、出力先が`reference/workspace`配下のファイル、または派生Golden `reference/world.json`を指す場合は、`-allow-reference-baseline`なしでは実行前に拒否します。既存ファイル、新規出力先、workspaceへのシンボリックリンクや`..`を経由する表記も対象です。実際にbaselineを更新する場合は、ファイルの用途と受理判断を確認したうえで明示フラグを指定します。この判定は誤操作防止であり、並行したファイル差替えやHard Linkを含む敵対的なfilesystemへの完全な隔離保証ではありません。
+`-out`と`accept -derived-out`も書き込み先です。たとえ`-workspace`がscratchであっても、出力先が`reference/workspace`配下のファイル、または派生Golden `reference/world.json`を指す場合は、`-allow-reference-baseline`なしでは実行前に拒否します。既存ファイル、新規出力先、workspaceへのシンボリックリンクや`..`を経由する表記も対象です。実際にbaselineを更新する場合は、ファイルの用途と受理判断を確認したうえで明示フラグを指定します。保護対象のパス表記では大小文字を保守的に同一視するため、大文字・小文字を区別するfilesystemでは似た名称の無関係な出力先まで拒否することがあります。この判定は誤操作防止であり、並行したファイル差替えやHard Linkを含む敵対的なfilesystemへの完全な隔離保証ではありません。
 
 ## 受入境界
 
