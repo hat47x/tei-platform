@@ -36,7 +36,7 @@ func TestTransportHelperProcess(t *testing.T) {
 		os.Exit(21)
 	}
 	result := GenericTransportResult{
-		Schema:                  dispatch.Schema,
+		Schema:                  resultSchema,
 		ContractID:              dispatch.ContractID,
 		ContractFingerprint:     dispatch.ContractFingerprint,
 		Target:                  dispatch.Target,
@@ -54,6 +54,8 @@ func TestTransportHelperProcess(t *testing.T) {
 		result.ContractFingerprint = "sha256:" + strings.Repeat("f", 64)
 	case "tamper-provider":
 		result.Provider.ImplementationID = "tampered.implementation"
+	case "tamper-result-schema":
+		result.Schema = dispatchSchema
 	case "tamper-request-id":
 	case "tamper-plugin":
 	case "tamper-capability-id":
@@ -216,6 +218,21 @@ func TestProcessTransportRejectsGenericProviderDrift(t *testing.T) {
 	)
 	if err == nil || !strings.Contains(err.Error(), "identity drifted") {
 		t.Fatalf("generic Provider drift was accepted: %v", err)
+	}
+}
+
+func TestProcessTransportRejectsDispatchSchemaAsResultSchema(t *testing.T) {
+	launcher, command := helperLauncher("tamper-result-schema")
+	_, err := invokeOverProcessTransport(
+		context.Background(),
+		launcher,
+		command,
+		transportCarrier(),
+		"transport-direction-drift",
+		genericDispatch([]byte("payload")),
+	)
+	if err == nil || !strings.Contains(err.Error(), "identity drifted") {
+		t.Fatalf("dispatch framing was accepted as result framing: %v", err)
 	}
 }
 
