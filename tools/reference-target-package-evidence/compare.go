@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path"
 	"reflect"
 	"sort"
 	"strings"
@@ -36,6 +37,77 @@ type ClosureComparison struct {
 	Changed         []PackageChange   `json:"changed"`
 }
 
+// normalizeEvidencePackage rejects inventories impossible for a single
+// go list package. Canonicalizing order is safe; silently dropping duplicate
+// or unsafe paths would turn fabricated JSON into apparent source removal.
+func normalizeEvidencePackage(p SourcePackage) (SourcePackage, error) {
+	validPath := func(name string) bool {
+		return name != "" && name != "." && !strings.HasPrefix(name, "/") &&
+			!strings.Contains(name, "\\") && path.Clean(name) == name
+	}
+	if !validPath(p.ImportPath) {
+		return SourcePackage{}, fmt.Errorf("unsafe package import path %q", p.ImportPath)
+	}
+	seenCompiled := make(map[string]bool)
+	normalizeSource := func(files []string, kind string) ([]string, error) {
+		out := append([]string(nil), files...)
+		for _, name := range out {
+			if !validPath(name) || name == ".." || strings.HasPrefix(name, "../") {
+				return nil, fmt.Errorf("package %q has unsafe %s input %q", p.ImportPath, kind, name)
+			}
+			if seenCompiled[name] {
+				return nil, fmt.Errorf("package %q lists compiled source %q more than once", p.ImportPath, name)
+			}
+			seenCompiled[name] = true
+		}
+		sort.Strings(out)
+		return out, nil
+	}
+	var err error
+	if p.GoFiles, err = normalizeSource(p.GoFiles, "go"); err != nil {
+		return SourcePackage{}, err
+	}
+	if p.CgoFiles, err = normalizeSource(p.CgoFiles, "cgo"); err != nil {
+		return SourcePackage{}, err
+	}
+	allowedKinds := map[string]bool{
+		"embed": true, "c": true, "cxx": true, "objective-c": true,
+		"header": true, "fortran": true, "assembly": true,
+		"swig": true, "swig-cxx": true, "syso": true,
+	}
+	seenAuxiliary := make(map[SourceInput]bool)
+	p.AuxiliaryInputs = append([]SourceInput(nil), p.AuxiliaryInputs...)
+	for _, input := range p.AuxiliaryInputs {
+		if !allowedKinds[input.Kind] || !validPath(input.Path) ||
+			input.Path == ".." || strings.HasPrefix(input.Path, "../") {
+			return SourcePackage{}, fmt.Errorf("package %q has unsupported or unsafe auxiliary input %+v", p.ImportPath, input)
+		}
+		if seenAuxiliary[input] {
+			return SourcePackage{}, fmt.Errorf("package %q repeats auxiliary input %+v", p.ImportPath, input)
+		}
+		seenAuxiliary[input] = true
+	}
+	sort.Slice(p.AuxiliaryInputs, func(i, j int) bool {
+		if p.AuxiliaryInputs[i].Kind != p.AuxiliaryInputs[j].Kind {
+			return p.AuxiliaryInputs[i].Kind < p.AuxiliaryInputs[j].Kind
+		}
+		return p.AuxiliaryInputs[i].Path < p.AuxiliaryInputs[j].Path
+	})
+	p.Imports = append([]string(nil), p.Imports...)
+	seenImport := make(map[string]bool)
+	for _, dep := range p.Imports {
+		if dep != "C" && !validPath(dep) {
+			return SourcePackage{}, fmt.Errorf("package %q has unsafe import path %q", p.ImportPath, dep)
+		}
+		if seenImport[dep] {
+			return SourcePackage{}, fmt.Errorf("package %q repeats import edge %q", p.ImportPath, dep)
+		}
+		seenImport[dep] = true
+	}
+	sort.Strings(p.Imports)
+	return p, nil
+}
+
 func packageMap(report Report) (map[string]SourcePackage, error) {
 	if report.Entry == "" || report.Module == "" || report.SourceRevision == "" ||
 		report.GoVersion == "" || report.GOOS == "" || report.GOARCH == "" || report.CGOEnabled == "" {
@@ -64,20 +136,11 @@ func packageMap(report Report) (map[string]SourcePackage, error) {
 		if _, exists := pkgs[p.ImportPath]; exists {
 			return nil, fmt.Errorf("duplicate package %q", p.ImportPath)
 		}
-		p.GoFiles = append([]string(nil), p.GoFiles...)
-		p.CgoFiles = append([]string(nil), p.CgoFiles...)
-		p.Imports = append([]string(nil), p.Imports...)
-		p.AuxiliaryInputs = append([]SourceInput(nil), p.AuxiliaryInputs...)
-		sort.Strings(p.GoFiles)
-		sort.Strings(p.CgoFiles)
-		sort.Strings(p.Imports)
-		sort.Slice(p.AuxiliaryInputs, func(i, j int) bool {
-			if p.AuxiliaryInputs[i].Kind != p.AuxiliaryInputs[j].Kind {
-				return p.AuxiliaryInputs[i].Kind < p.AuxiliaryInputs[j].Kind
-			}
-			return p.AuxiliaryInputs[i].Path < p.AuxiliaryInputs[j].Path
-		})
-		pkgs[p.ImportPath] = p
+		normalized, err := normalizeEvidencePackage(p)
+		if err != nil {
+			return nil, err
+		}
+		pkgs[p.ImportPath] = normalized
 	}
 	if len(pkgs) == 0 {
 		return nil, fmt.Errorf("empty Go package closure")
