@@ -63,6 +63,10 @@ check_remotes() {
 }
 check_remotes
 
+if [[ -e "$receipt_abs/receipt.txt" || -e "$receipt_abs/repository-health.log" ]]; then
+  echo "receipt files already exist; select a fresh external directory to preserve earlier evidence" >&2
+  exit 2
+fi
 mkdir -p "$receipt_abs"
 chmod 700 "$receipt_abs"
 {
