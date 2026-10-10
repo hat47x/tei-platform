@@ -194,3 +194,9 @@ test('different providers with the same issuer and subject may have separate exp
   p.subjectLinks.push({providerId:'second-oidc',issuer:'https://example.invalid/issuer',subject:'fixed-sub-001',principalId:'separate-principal'});
   assert.equal(validateAuthenticationPlan(p).linkedSubjectCount,3);
 });
+
+test('the same external identity cannot change application PrincipalID', () => {
+  const p=clone(authentication);
+  p.subjectLinks.push({...p.subjectLinks[0],principalId:'attacker-principal'});
+  assert.throws(()=>validateAuthenticationPlan(p),/conflicting principal mapping/);
+});
