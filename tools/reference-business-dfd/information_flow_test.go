@@ -28,7 +28,9 @@ func TestBusinessDFDInformationFlowsAndResponsibilityRemainProposed(t *testing.T
 		t.Fatalf("missing one-level DFD elements: %+v",got)
 	}
 	if got.Stores[0].DataStatus!="not-declared" { t.Fatal("unspecified semantic Store reference was inferred") }
-	if got.Responsibilities[0].Authority!="proposal" || got.InformationFlows[0].Authority!="proposal" {
+	if got.Responsibilities[0].Authority!="proposal" || got.InformationFlows[0].Authority!="proposal" ||
+		got.Roles[0].Authority!="proposal" || got.ExternalParties[0].Authority!="proposal" ||
+		got.Stores[0].Authority!="proposal" {
 		t.Fatal("Business DFD proposal promoted to accepted authority")
 	}
 	if got.InformationFlows[0].From.Kind!="party" || got.InformationFlows[0].To.Kind!="step" {
