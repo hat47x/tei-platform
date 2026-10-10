@@ -1,36 +1,54 @@
-// #1016 E12: pass an actual E7 paired comparison and its current E5 report
-// to E11. No second Source Index, graph resolver, or runtime authority.
-import {assessPairedEvidence} from './e7-paired-evidence.mjs';
-import {qualifyCompositionReview} from './e11-review-gate.mjs';
+// #1016 E12: read-only CLI for E7 paired evidence and #1120 Go-shaped output.
+// E11 is the sole owner of the combined review decision; no parallel resolver.
+import {readFile,stat} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {qualifyPairedCompositionReview} from './e11-review-gate.mjs';
 
-const obj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-const nonempty = x => typeof x === 'string' && !!x.trim() && x === x.trim();
-const limit = {fullClosure:false,authority:'none',adoption:'not-decided',
-  evidenceBoundary:'unverified-caller-supplied-snapshots'};
-const unresolved = reason => ({...limit,status:'unresolved',reason});
+const MAX_BYTES = 16*1024*1024;
+const validId = s => typeof s === 'string' && !!s.trim() && s === s.trim();
 
-// The current Source report MUST be taken from the compared E7 envelope, not
-// supplied independently by the caller (prevents a stale-owner mixup).
-// Modelref projection remains separately supplied and is NOT source-bound yet.
-export function assessBoundCompositionReview({baseline,current,typedProjection,application,scope}={}) {
-  if (!nonempty(application) || !nonempty(scope) || !obj(baseline) ||
-      !obj(current) || !obj(baseline.report) || !obj(current.report)) {
-    return unresolved('missing_paired_evidence');
+// Inputs are external JSON and NOT proof of common source revision, provenance,
+// permission, or correctness of Go Validate/Impact. No secret data is printed.
+export async function inspectEvidenceFiles({baselinePath,currentPath,modelrefPath,application,scope}={}) {
+  if (![baselinePath,currentPath,modelrefPath,application,scope].every(validId)) {
+    throw new TypeError('invalid_arguments');
   }
-  if (baseline.report.application !== application || current.report.application !== application) {
-    return unresolved('selected_application_mismatch');
-  }
-  const drift = assessPairedEvidence(baseline,current);
-  if (drift.qualification !== 'application-declaration-and-direct-source-definitions-only' ||
-      !['limited-unchanged','unresolved'].includes(drift.status)) {
-    return {...unresolved('invalid_or_unqualified_paired_evidence'),sourceReason:drift.reason};
-  }
-  const result = qualifyCompositionReview({
-    sourceDrift:drift,
-    sourceReport:current.report,
-    typedProjection,application,scope,
+  const read = async path => {
+    const info=await stat(path);
+    if (!info.isFile() || info.size > MAX_BYTES) throw new TypeError('invalid_evidence_file');
+    const body=await readFile(path);
+    if (body.byteLength > MAX_BYTES) throw new TypeError('invalid_evidence_file');
+    return JSON.parse(body.toString('utf8'));
+  };
+  const [baseline,current,typed] = await Promise.all([
+    read(baselinePath),read(currentPath),read(modelrefPath),
+  ]);
+  // The Go JSON carrier is a caller-generated grouping, not a new Lock/DSL.
+  return qualifyPairedCompositionReview({
+    baseline,current,projection:typed?.projection,
+    diagnostics:typed?.diagnostics,affected:typed?.affected,application,scope,
   });
-  // E7 checks each supplied pair internally. No proof that #1120 projection
-  // came from that same Workspace revision, nor that the JSON was trusted.
-  return {...result,evidenceBoundary:limit.evidenceBoundary,modelrefSnapshotBound:false};
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  if (process.argv.length !== 7) {
+    process.stderr.write('Usage: node e12-bound-review.mjs <baseline.json> <current.json> <modelref.json> <application> <scope>\n');
+    process.exitCode=1;
+  } else {
+    try {
+      const result=await inspectEvidenceFiles({
+        baselinePath:process.argv[2], currentPath:process.argv[3],
+        modelrefPath:process.argv[4],application:process.argv[5],scope:process.argv[6],
+      });
+      process.stdout.write(JSON.stringify(result,null,2)+'\n');
+      // Until shared Go snapshot provenance is proven, review never authorizes
+      // a successful build/deployment (no current result may exit 0).
+      process.exitCode=2;
+    } catch {
+      // Never echo raw JSON, source paths or private values from errors.
+      process.stderr.write('Invalid review evidence input\n');
+      process.exitCode=1;
+    }
+  }
 }
