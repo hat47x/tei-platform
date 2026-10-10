@@ -55,7 +55,7 @@ SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一�
 
 [SUI PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)へ、`card_move_command.py`（DocumentV1内のCard移動、島所属、Affiliation衝突時の拒否）と、既存`PUT /docs/{id}`／`GET /docs/{id}`／ETagを利用するSQLite結合テストを追加しました。フロントエンドの`getAuthoritativeDocument`は`cache:"no-store"`を指定し、セッション前提条件を維持してDocumentとETagを読み直します。
 
-この段階は、SUIが自身のDomain MutationとDocument保存を所有する構造の確認です。**TEI Go Hostからこのコマンドを実際に呼ぶ経路、及びSUI側の純粋コマンドと原子的CASを同一実行境界に結ぶ処理は未完成**です。Pythonの追加テスト、TypeScriptの追加テストと全体健全性検査も未実施です。SUIの現在のPUTに存在するテナント分離・SafeMode・レビュー帰属・アーカイブ判定の手続きを、独立したTEI Action経路から迂回してはいけません。
+この段階は、SUIが自身のDomain MutationとDocument保存を所有する構造の確認です。**SUI側には`POST /docs/{doc_id}/action-commit`というApplication-owned v1受信経路を追加し、既存の`_authorize_request`、DocumentContentStoreの保存トランザクションとRevision Head CASへ接続しました。** ただし、TEI Go HostからそのSUI経路を実際に呼ぶ部分、Host側の実セッション権限照合・委譲と監査、React側のatomic Undo/dirty反映は**未完成**です。SUI側のAction endpointはTEI Go Hostの実装完了を意味しません。Python／SQLiteのAction受付結合テスト、Action JSON厳格性とBodyサイズ制限の試験、TypeScript側の同一オリジン通信テストを追加しましたが、**今回の追加分は実行未確認**です。SUIのテナント境界とルート一覧を静的に検査する既存のテストも実行が必要です。全体健全性検査も未実施です。SUIの現在のPUTに存在するテナント分離・SafeMode・レビュー帰属・アーカイブ判定の手続きを、独立したTEI Action経路から迂回してはいけません。
 
 SUI側のTypeScriptとPythonで島境界判定を実装するため、同じ入力と期待状態を使う`card_move_parity_v1.json`を[SUI PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)へ追加しました。矩形加入、通常移動、グリッド吸着、多角形境界の4ケースを双方のテストから参照します。**まだ実行結果は確認できていません。** 追加の敵対的ケース・性能比較・本番E2Eで差異を検出できるまで、UIからのAction確定を本番経路として有効にしません。
 
