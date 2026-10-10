@@ -84,3 +84,27 @@ test('host contracts must be unambiguous', () => {
   const p=clone(base);p.hostContracts.push('action.identity');
   assert.throws(()=>composeRequestPlan(p),/duplicate host contract/);
 });
+
+test('guard declaration in audit does not protect Action', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='identity').guards=[];
+  p.steps.find(step=>step.id==='audit').guards=['authenticated'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('guard declaration on Action itself does not protect earlier execution', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='csrf').guards=[];
+  p.steps.find(step=>step.id==='invoke').guards=['csrf-protected'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('ordering hints cannot replace required guard contracts', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='invoke').requires=['action.authorized'];
+  p.steps.find(step=>step.id==='csrf').before=['invoke'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('unused authentication output does not prove Action authentication', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='authorize').requires=['action.identity'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
