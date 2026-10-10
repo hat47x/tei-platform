@@ -43,14 +43,15 @@ go test ./reference/application-composition
 
 ## テストとして追加したもの
 
-[e13-direct-derived_test.go](e13-direct-derived_test.go)に、Goの4件の試験を追加した。
+[e13-direct-derived_test.go](e13-direct-derived_test.go)に、Goの5件の試験を追加した。
 
 1. E13で抽出した5つの配列が`index.Build(World)`の同じフィールドと一致すること。
 2. 既存E5 EnvelopeのデフォルトJSONに`derived`が無く、`report`／`index`が保存されること。
 3. オプトイン後のJSONに5つの許可フィールドだけが入り、Environment Grant／Provider／Bundle等を追加しないこと。
 4. **実`reference/workspace`の`order_entry`**を`workspace.Load`＋`BuildSourceIndex`で一回読み、E5のApplication Pattern所属集合と、同じ`loaded.World`から作ったDerived IndexのApplication Pattern集合が一致すること。
+5. **SUI Stage 0の実Workspace**がSemanticの部分参照のままであり、`sui_reference_adoption_stage0`という架空のApplication Patternへ昇格していないこと。
 
-**4件はGoテストとして記述したもので、PASSとは主張しない**。この環境では非公開Repositoryのtrusted full checkoutを取得できず、Goの対象Packageや`tools/repository-health-check.sh`をexact-headで実行していない。新規テストの個別Go構文はローカル`gofmt`で確認したが、既存E5全体のGo Buildが成立することを証明しない。
+**5件はGoテストとして記述したもので、PASSとは主張しない**。この環境では非公開Repositoryのtrusted full checkoutを取得できず、Goの対象Packageや`tools/repository-health-check.sh`をexact-headで実行していない。新規テストの個別Go構文はローカル`gofmt`で確認したが、既存E5全体のGo Buildが成立することを証明しない。
 
 ## 残る未解決
 
