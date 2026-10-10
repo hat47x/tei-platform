@@ -76,3 +76,17 @@ go test -count=1 -run '^TestPracticalBusinessRuleChangeReachesDriverAndWebWithou
 ```
 
 **実装経路・証拠階層の差**: 既存`TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList`はscratch Workspaceを受理してDriverと`httptest`のWeb handlerを検査する。今回追加した`TestWebTargetHTTPBlackBoxTrace`は**running-server**だが基線fixtureのままであり、scratchで増設した`unit_price_positive`の負例をrunning-serverで確認しない。両者を組み合わせて「新規ルールのrunning Web拒否は観測済み」と報告することはできない。この差は#1119 E1で別々に報告し、実演証拠の完成は該当Consumer Laneに委ねる。
+
+## Exact-head統合検証の手順
+
+通常のTest・既設Shared Acceptance/Driver/Web Test・opt-in running HTTP Test・全Repository Healthをまとめて検査する[qualify.sh](qualify.sh)を追加した。**PRマージを行うスクリプトではない。** 信頼する完全Checkoutの`origin/main`を事前に更新してから、PR headとmainの40桁SHAを明示して実行する。
+
+```bash
+EXPECTED_HEAD="$(git rev-parse HEAD)" \
+EXPECTED_MAIN="$(git rev-parse origin/main)" \
+bash tools/reference-critical-lowering/qualify.sh
+```
+
+スクリプトは実行前後にHEAD、origin/mainのSHA、clean状態を検査する。また**mainが受検HEADのancestorであること**を要求する。古いbranchをそのまま検証して「現在のmainへの統合準備完了」と誤判定しないためである。Formatter検査、`go vet`、局所Unit/Integration、既設Acceptance/Web contract、独立serverのHTTP Smoke、`repository-health-check.sh`をすべて実行する。ただし、ここで得る結果はlocal test evidenceであり、current Host Authority/DB Schema/独立Observation実測・第二Target・親IssueのGate審査の代替ではない。
+
+Source側依存の`SourceInputs`は、プロデューサがClosureを検討したことを表す**非nil**リストである。値`[]`はそのSource自身に外部依存がない正常なケース、`null`/未報告は検討していない状態として拒否する。実WorkspaceのCandidateには代表的な依存を登録しているが、完全集合の証明には依然としてProducerの真正な閉包計算が必要となる。
