@@ -87,14 +87,14 @@ func TestCanonicalAuthorizationUsesExistingBusinessRulesAcrossIdentityProviders(
 	audits := []AuditRecord{}
 	calls := 0
 	host, err := NewHost(Policy{
-		Path: "/scenario/submit",
-		Method: http.MethodPost,
-		ActionID: "order_entry.submit_order",
+		Path:      "/scenario/submit",
+		Method:    http.MethodPost,
+		ActionID:  "order_entry.submit_order",
 		Providers: map[string]string{"corporate": corporateEditor.Issuer, "legacy": legacyEditor.Issuer},
 	}, Dependencies{
 		VerifySession: func(*http.Request) (Principal, error) { return current, nil }, // synthetic verifier, not real IdP
-		VerifyCSRF: func(*http.Request, Principal) bool { return true }, // synthetic only
-		Authorize: authorizer,
+		VerifyCSRF:    func(*http.Request, Principal) bool { return true },            // synthetic only
+		Authorize:     authorizer,
 		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			calls++
 			verified, ok := PrincipalFromContext(r.Context())
@@ -109,10 +109,10 @@ func TestCanonicalAuthorizationUsesExistingBusinessRulesAcrossIdentityProviders(
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
-		name string
-		principal Principal
+		name                 string
+		principal            Principal
 		revoked, lookupError bool
-		want int
+		want                 int
 	}{
 		{"corporate editor allowed", corporateEditor, false, false, http.StatusAccepted},
 		{"legacy editor allowed", legacyEditor, false, false, http.StatusAccepted},
