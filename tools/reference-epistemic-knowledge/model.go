@@ -788,11 +788,21 @@ func normalizeStrings(values []string) []string {
 	return out
 }
 
+func evidenceWithoutAccessRefs(values []EvidenceRef) []EvidenceRef {
+	out := make([]EvidenceRef, len(values))
+	copy(out, values)
+	for i := range out {
+		out[i].AccessRefs = nil
+	}
+	return out
+}
+
 func reviewSubjectFingerprint(assertion Assertion) string {
 	subject := assertion
 	subject.ReviewEvents = nil
 	subject.ReviewerCandidates = nil
 	subject.AccessRefs = nil
+	subject.Evidence = evidenceWithoutAccessRefs(assertion.Evidence)
 	encoded, _ := json.Marshal(subject)
 	sum := sha256.Sum256(encoded)
 	return fmt.Sprintf("sha256:%x", sum[:])
@@ -816,7 +826,7 @@ func freshnessSubjectFingerprint(assertion Assertion) string {
 		Context:            append([]ScopeBinding{}, assertion.Context...),
 		ValidFrom:          assertion.ValidFrom,
 		ValidUntil:         assertion.ValidUntil,
-		Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
+		Evidence:           evidenceWithoutAccessRefs(assertion.Evidence),
 	}
 	encoded, _ := json.Marshal(subject)
 	sum := sha256.Sum256(encoded)
