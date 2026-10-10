@@ -235,8 +235,12 @@ func rejectDuplicateJSONKeys(data []byte) error {
 				if !ok {
 					return errors.New("packet has non-string JSON object key")
 				}
-				if _, duplicate := keys[key]; duplicate {
-					return fmt.Errorf("duplicate JSON object key %q", key)
+				// encoding/json matches struct fields case-insensitively. Reject
+				// folded aliases as duplicates too (claim vs Claim).
+				for existing := range keys {
+					if strings.EqualFold(existing, key) {
+						return fmt.Errorf("duplicate JSON object key %q (alias of %q)", key, existing)
+					}
 				}
 				keys[key] = struct{}{}
 				if err := walk(depth + 1); err != nil {
