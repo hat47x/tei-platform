@@ -1,0 +1,159 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
+	repo := testRepositoryRoot(t)
+	binary := filepath.Join(t.TempDir(), "tei")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	build := exec.Command("go", "build", "-o", binary, "./cmd/tei")
+	build.Dir = repo
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build tei CLI: %v\n%s", err, out)
+	}
+
+	const (
+		example = "examples/first-workspace"
+		source  = "semantic/intake/request.tei"
+	)
+	workspaceRoot := t.TempDir()
+	for _, relative := range []string{
+		"tei.workspace.yaml",
+		source,
+		"applications/request-log/application.tei",
+	} {
+		original, err := os.ReadFile(filepath.Join(repo, filepath.FromSlash(example), filepath.FromSlash(relative)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		destination := filepath.Join(workspaceRoot, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(destination, original, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(expectedExit int, args ...string) string {
+		t.Helper()
+		command := exec.Command(binary, args...)
+		command.Dir = repo
+		var stdout, stderr bytes.Buffer
+		command.Stdout, command.Stderr = &stdout, &stderr
+		err := command.Run()
+		exit := 0
+		if err != nil {
+			var exitError *exec.ExitError
+			if e, ok := err.(*exec.ExitError); ok {
+				exitError = e
+			}
+			if exitError == nil {
+				t.Fatalf("run tei %v: %v", args, err)
+			}
+			exit = exitError.ExitCode()
+		}
+		if exit != expectedExit {
+			t.Fatalf("tei %v: exit=%d want=%d stdout=%q stderr=%q", args, exit, expectedExit, stdout.String(), stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Fatalf("tei %v wrote unexpected stderr: %q", args, stderr.String())
+		}
+		return stdout.String()
+	}
+	assertValid := func() {
+		t.Helper()
+		got := run(0, "validate", "-workspace", workspaceRoot)
+		if got != "ok\n" {
+			t.Fatalf("unexpected Validation output: %q", got)
+		}
+	}
+	readWorld := func() map[string]json.RawMessage {
+		t.Helper()
+		raw := run(0, "world", "-workspace", workspaceRoot)
+		var world map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(raw), &world); err != nil {
+			t.Fatalf("unmarshal world: %v", err)
+		}
+		return world
+	}
+	readSourceIndex := func(id string) sourceIndexSubjectView {
+		t.Helper()
+		raw := run(0, "source-index", "-workspace", workspaceRoot,
+			"-subject-kind", "semantic-attribute", "-subject-id", id)
+		var result sourceIndexSubjectView
+		if err := json.Unmarshal([]byte(raw), &result); err != nil {
+			t.Fatalf("unmarshal source-index %s: %v", id, err)
+		}
+		if len(result.References) != 1 || result.References[0].ArtifactPath != source {
+			t.Fatalf("source-index for %s lost its definition path: %+v", id, result.References)
+		}
+		return result
+	}
+
+	assertValid()
+	before := readWorld()
+	originalReference := readSourceIndex("intake.request.status")
+
+	srcPath := filepath.Join(workspaceRoot, filepath.FromSlash(source))
+	src, err := os.ReadFile(srcPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const old = "    attribute status type std.code\n"
+	const replacement = old + "    attribute priority type std.code\n"
+	if strings.Count(string(src), old) != 1 {
+		t.Fatal("unexpected first-workspace source; cannot perform the documented one-line edit")
+	}
+	modified := strings.Replace(string(src), old, replacement, 1)
+	if err := os.WriteFile(srcPath, []byte(modified), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	assertValid()
+	after := readWorld()
+	if bytes.Equal(before["semantics"], after["semantics"]) {
+		t.Fatal("the added business attribute was not reflected in Canonical semantics")
+	}
+	if !bytes.Equal(before["applications"], after["applications"]) {
+		t.Fatal("unchanged application definition was modified by the semantic edit")
+	}
+	if !bytes.Contains(after["semantics"], []byte("intake.request.priority")) {
+		t.Fatal("Canonical semantics do not contain the added business attribute")
+	}
+	if got := readSourceIndex("intake.request.status"); got.References[0].ArtifactPath != originalReference.References[0].ArtifactPath {
+		t.Fatal("existing attribute identity lost its source locator")
+	}
+	added := readSourceIndex("intake.request.priority")
+	if len(added.Artifacts) != 1 || added.Artifacts[0].Fingerprint == "" {
+		t.Fatalf("new attribute has no source fingerprint: %+v", added.Artifacts)
+	}
+
+	invalid := strings.Replace(modified, "priority type std.code", "priority type std.not_defined", 1)
+	if err := os.WriteFile(srcPath, []byte(invalid), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	diagnostic := run(1, "validate", "-workspace", workspaceRoot)
+	if !strings.Contains(diagnostic, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE") || !strings.Contains(diagnostic, source) {
+		t.Fatalf("invalid type was not reported with source evidence: %q", diagnostic)
+	}
+
+	if err := os.WriteFile(srcPath, []byte(modified), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
+	repaired := readWorld()
+	if !bytes.Equal(after["semantics"], repaired["semantics"]) {
+		t.Fatal("the corrected model differs from the previously valid semantic meaning")
+	}
+}
