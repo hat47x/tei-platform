@@ -69,7 +69,7 @@ export function createConfirmedActionCommit({ dispatchCommit, readResource, appl
       try {
         // The application owns state and Undo semantics. This must be an
         // atomic guarded apply: never replace edits made after isCurrent.
-        if (await applySnapshot(resource, intent) === false) {
+        if (await applySnapshot(resource, intent) !== true) {
           throw new ActionConfirmationError('snapshot_apply_failed', committedRevision);
         }
       } catch {
