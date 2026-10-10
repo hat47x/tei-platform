@@ -231,7 +231,15 @@ func Inspect(w World, f Facts) Report {
 
 // InspectSnapshot adds exact input binding to the pure, candidate-only
 // consistency check. A matching digest never confers accepted-source authority.
-func InspectSnapshot(w World, f Facts, worldBytes, factsBytes []byte) Report {
+func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
+	var w World
+	if err := json.Unmarshal(worldBytes, &w); err != nil {
+		return Report{}, fmt.Errorf("decode World JSON: %w", err)
+	}
+	var f Facts
+	if err := json.Unmarshal(factsBytes, &f); err != nil {
+		return Report{}, fmt.Errorf("decode candidate facts JSON: %w", err)
+	}
 	r := Inspect(w, f)
 	r.InputFingerprints = &InputFingerprints{WorldJSON: snapshotDigest(worldBytes), FactsJSON: snapshotDigest(factsBytes)}
 	switch {
@@ -252,7 +260,7 @@ func InspectSnapshot(w World, f Facts, worldBytes, factsBytes []byte) Report {
 		}
 		return false
 	})
-	return r
+	return r, nil
 }
 
 func main() {
@@ -271,15 +279,10 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	var w World
-	if err := json.Unmarshal(worldBytes, &w); err != nil {
+	out, err := InspectSnapshot(worldBytes, factsBytes)
+	if err != nil {
 		fail(err)
 	}
-	var f Facts
-	if err := json.Unmarshal(factsBytes, &f); err != nil {
-		fail(err)
-	}
-	out := InspectSnapshot(w, f, worldBytes, factsBytes)
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(out); err != nil {
