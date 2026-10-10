@@ -144,3 +144,31 @@ test('empty authentication plan is not a viable provider selection', () => {
   p.subjectLinks=[];
   assert.throws(()=>validateAuthenticationPlan(p),/active policy and provider/);
 });
+
+test('unknown plugin guard without an evidence binding is rejected', () => {
+  const p=clone(base);
+  p.hostPolicy.requiredGuards.push('tenant-isolated');
+  p.steps.find(step=>step.id==='context').guards=['tenant-isolated'];
+  assert.throws(()=>composeRequestPlan(p),/required guard has no declared evidence contract/);
+});
+test('plugin guard with explicit evidence is a causal Action prerequisite', () => {
+  const p=clone(base);
+  p.hostPolicy.requiredGuards.push('tenant-isolated');
+  p.hostPolicy.guardEvidence={'tenant-isolated':'tenant.boundary.checked'};
+  p.steps.push({id:'tenant-check',scope:'server',requires:['identity.principal'],provides:['tenant.boundary.checked'],guards:['tenant-isolated']});
+  p.steps.find(step=>step.id==='invoke').requires.push('tenant.boundary.checked');
+  const result=composeRequestPlan(p);
+  assert.ok(result.order.indexOf('tenant-check')<result.order.indexOf('invoke'));
+});
+test('plugin guard with only a declared before hint cannot guard an Action', () => {
+  const p=clone(base);
+  p.hostPolicy.requiredGuards.push('tenant-isolated');
+  p.hostPolicy.guardEvidence={'tenant-isolated':'tenant.boundary.checked'};
+  p.steps.push({id:'tenant-check',scope:'server',requires:['identity.principal'],provides:['tenant.boundary.checked'],guards:['tenant-isolated'],before:['invoke']});
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('standard guard evidence cannot be redefined by a plugin', () => {
+  const p=clone(base);
+  p.hostPolicy.guardEvidence={'authenticated':'request.context'};
+  assert.throws(()=>composeRequestPlan(p),/standard guard evidence cannot be overridden/);
+});
