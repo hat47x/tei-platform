@@ -141,3 +141,39 @@ func TestCompareRejectsUnreachableOrDanglingMainModulePackages(t *testing.T) {
 		t.Fatalf("valid reachable source closure rejected: %v", err)
 	}
 }
+
+func TestCompareRejectsCgoCompilerConfigurationDrift(t *testing.T) {
+	before := comparisonFixture("tei/cmd/cgo", SourcePackage{
+		ImportPath: "tei/cmd/cgo", CgoFiles: []string{"main.go"}, Imports: []string{"C"},
+	})
+	before.CGOEnabled = "1"
+	before.CgoToolchain = map[string]string{
+		"CC": "gcc", "CXX": "g++", "CGO_CFLAGS": "-O2 -g",
+		"CGO_CPPFLAGS": "", "CGO_CXXFLAGS": "-O2 -g",
+		"CGO_LDFLAGS": "-O2 -g", "PKG_CONFIG": "pkg-config",
+	}
+	after := before
+	// Clone the map so both reports retain distinct captured toolchains.
+	after.CgoToolchain = make(map[string]string, len(before.CgoToolchain))
+	for name, value := range before.CgoToolchain {
+		after.CgoToolchain[name] = value
+	}
+	if _, err := compareReports(before, after); err != nil {
+		t.Fatalf("identical cgo build profile rejected: %v", err)
+	}
+	for _, tc := range []struct {
+		key, alternate string
+	}{
+		{"CC", "clang"}, {"CGO_CFLAGS", "-O0"}, {"CGO_LDFLAGS", "-static"},
+		{"PKG_CONFIG", "another-pkg-config"},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			original := after.CgoToolchain[tc.key]
+			after.CgoToolchain[tc.key] = tc.alternate
+			if _, err := compareReports(before, after); err == nil {
+				t.Fatalf("%s drift accepted as identical Go build profile", tc.key)
+			}
+			after.CgoToolchain[tc.key] = original
+		})
+	}
+}
