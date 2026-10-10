@@ -62,7 +62,7 @@ func newReferenceCustomerLookupScenarioRunner(world ir.World) *referenceCustomer
 		environmentID: core.MustCanonicalID("development"),
 		applicationID: core.MustCanonicalID("repair_intake"),
 		patternID:     core.MustCanonicalID("repair_intake.customer_reference"),
-		contracts:     referenceContractQueryExecutors(),
+		contracts:     referenceCustomerContractQueryExecutors(),
 	}
 }
 

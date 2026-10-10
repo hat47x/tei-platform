@@ -11,24 +11,28 @@ import (
 	"tei/internal/realization"
 )
 
-// Shared synthetic Contract Query adapters are kept outside the order-specific
-// read scenario. Repair lookup uses the same implementation and contract meaning.
-// referenceContractQueryExecutors is the development runtime composition shared by every
-// Reference scenario runner, so the Executor-to-instance binding is written once.
-// The Executors are synthetic fixtures, not connections to a real Database.
-func referenceContractQueryExecutors() driver.ContractQueryExecutorMap {
+// These are synthetic Query adapters, not live database connections.
+// Compose only capabilities required by the requesting Application; a repair
+// lookup must not inherit the order-line PostgreSQL runtime binding.
+func referenceCustomerContractQueryExecutors() driver.ContractQueryExecutorMap {
 	return driver.ContractQueryExecutorMap{
 		{
 			Environment: core.MustCanonicalID("development"),
 			Instance:    core.MustCanonicalID("master_data.dev"),
 			Capability:  core.MustCanonicalID("database.query.oracle"),
 		}: referenceContractQueryExecutor{provider: environment.ProviderOracle},
-		{
-			Environment: core.MustCanonicalID("development"),
-			Instance:    core.MustCanonicalID("sales_core.dev"),
-			Capability:  core.MustCanonicalID("database.query.postgres"),
-		}: referenceContractQueryExecutor{provider: environment.ProviderPostgres},
 	}
+}
+
+// order_entry requires both customer reference and PostgreSQL order-line reads.
+func referenceContractQueryExecutors() driver.ContractQueryExecutorMap {
+	executors := referenceCustomerContractQueryExecutors()
+	executors[driver.ContractQueryExecutorRuntimeKey{
+		Environment: core.MustCanonicalID("development"),
+		Instance:    core.MustCanonicalID("sales_core.dev"),
+		Capability:  core.MustCanonicalID("database.query.postgres"),
+	}] = referenceContractQueryExecutor{provider: environment.ProviderPostgres}
+	return executors
 }
 
 type referenceContractQueryExecutor struct {
