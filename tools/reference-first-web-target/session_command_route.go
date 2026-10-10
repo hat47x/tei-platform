@@ -167,12 +167,14 @@ func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r
 	if (result.Stage == "identity-link-denied" || result.Stage == "authorization-denied") && err == nil {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)
-	} else if result.Stage == "identity-link" && err != nil {
-		// Do not return messages from the account/link backend, which could
-		// contain internal identities or sensitive provider details.
+	} else if err != nil && (result.Stage == "identity-link" ||
+		result.Stage == "authorization" || result.Stage == "effect-authorization") {
+		// Do not return messages from trusted account and permission backends.
+		// Both the initial authorization and the effect-time recheck are
+		// security infrastructure checks, not untrusted input validation.
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		err = errors.New("trusted identity resolution unavailable")
+		err = errors.New("trusted identity or authorization resolution unavailable")
 	}
 	s.writeCommandScenarioHTTPResult(w, result, err)
 }
