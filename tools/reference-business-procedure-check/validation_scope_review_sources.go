@@ -81,7 +81,7 @@ func attachValidationScopeSources(rows []validationScopeReviewRow, index sourcei
 			}
 			ref := definitions[0]
 			fingerprint := artifacts[ref.ArtifactPath]
-			if fingerprint == "" || ref.Range.Start.Line < 1 {
+			if ref.ArtifactPath == "" || fingerprint == "" || ref.Range.Start.Line < 1 {
 				row.UnresolvedSource = append(row.UnresolvedSource, target.Kind+":"+target.ID)
 				continue
 			}
