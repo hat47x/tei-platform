@@ -66,10 +66,15 @@ type buildAttemptEvidence struct {
 }
 
 type buildAttemptHistory struct {
-	Schema                    string                     `json:"schema"`
-	BuildPlanFingerprint      string                     `json:"buildPlanFingerprint"`
-	FailedAttemptFingerprints []string                   `json:"failedAttemptFingerprints"`
-	SuccessfulResult          *successfulResultReference `json:"successfulResult,omitempty"`
+	Schema           string                     `json:"schema"`
+	BuildPlanFingerprint string                  `json:"buildPlanFingerprint"`
+	FailedAttempts   []failedAttemptReference   `json:"failedAttempts"`
+	SuccessfulResult *successfulResultReference `json:"successfulResult,omitempty"`
+}
+
+type failedAttemptReference struct {
+	AttemptOrdinal      int    `json:"attemptOrdinal"`
+	EvidenceFingerprint string `json:"evidenceFingerprint"`
 }
 
 type successfulResultReference struct {
@@ -454,9 +459,22 @@ func (h *buildAttemptHistory) AppendFailure(
 	if err := e.ValidateAgainst(plan); err != nil {
 		return fmt.Errorf("Build Attempt History failure Evidence: %w", err)
 	}
-	h.FailedAttemptFingerprints = append(
-		h.FailedAttemptFingerprints,
-		normalizeFingerprint(e.EvidenceFingerprint),
+	if len(h.FailedAttempts) > 0 {
+		last := h.FailedAttempts[len(h.FailedAttempts)-1]
+		if e.AttemptOrdinal <= last.AttemptOrdinal {
+			return fmt.Errorf(
+				"Build Attempt History ordinal %d must be greater than previous ordinal %d",
+				e.AttemptOrdinal,
+				last.AttemptOrdinal,
+			)
+		}
+	}
+	h.FailedAttempts = append(
+		h.FailedAttempts,
+		failedAttemptReference{
+			AttemptOrdinal:      e.AttemptOrdinal,
+			EvidenceFingerprint: normalizeFingerprint(e.EvidenceFingerprint),
+		},
 	)
 	return nil
 }
@@ -468,10 +486,21 @@ func (h buildAttemptHistory) Validate() error {
 	if err := validateFingerprint(h.BuildPlanFingerprint); err != nil {
 		return err
 	}
-	for _, fingerprint := range h.FailedAttemptFingerprints {
-		if err := validateFingerprint(fingerprint); err != nil {
+	previousOrdinal := 0
+	seenFingerprints := map[string]struct{}{}
+	for _, attempt := range h.FailedAttempts {
+		if attempt.AttemptOrdinal <= previousOrdinal {
+			return fmt.Errorf("failed attempt ordinals must be strictly increasing")
+		}
+		previousOrdinal = attempt.AttemptOrdinal
+		if err := validateFingerprint(attempt.EvidenceFingerprint); err != nil {
 			return err
 		}
+		normalized := normalizeFingerprint(attempt.EvidenceFingerprint)
+		if _, duplicate := seenFingerprints[normalized]; duplicate {
+			return fmt.Errorf("failed Attempt Evidence fingerprint is duplicated")
+		}
+		seenFingerprints[normalized] = struct{}{}
 	}
 	if h.SuccessfulResult != nil {
 		if err := validateFingerprint(h.SuccessfulResult.BuildPlanFingerprint); err != nil {
