@@ -486,3 +486,72 @@ G2 acceptance packet: complete path or explicit UNRESOLVED
 Gate G2の最初の実行は、既存Shared Acceptanceを使ったscratch `R0→R1` と、#1127による**R1互換性を検証した実Driver/Web実行**の接続を優先する。DFDからのBusiness Acceptance、全種類のPlugin解決やself-buildをその一往復の前提へ追加しない。ただし三視点の完成を主張する際は、Business viewが`reference-only`のままでは製品受入不可とする。
 
 **非主張**: この監査は現PRのGitHub source/diffとIssueの報告に基づく。今回の#1119担当からはGo/Nodeのfocused testもfull trusted checkoutも実行していない。scope/kindの橋渡しは設計上の未解決項目であり、製品のG1/G2はPASSしていない。
+
+## 16. P0最短実演の実装済み接点を特定する（2026-10-10）
+
+### 静的照合の結論：新規Validation単独ではWeb Commandの挙動は変わらない
+
+最初の一往復に、**受注明細の単価が正であることのValidationを追加し、`order_entry`が評価対象として採用する**変更を選ぶ。これなら物理DBスキーマ改版を無条件に必要とするRelation追加ではなく、業務上の検証結果というobservableな差を最小実装で確かめやすい。
+
+ただし、#1124のStudio Bridge（Draft PR #1137）の現`candidateFromEdit`は、`table / add-validation / positive`から **`add-validation` 1操作だけ**を生成する。一方、現在のmain上の`tools/reference-first-web-target/command_scenario.go`は`driver.Resolver.ResolveApplicationValidations("order_entry")`で**Applicationが明示的に選択した規則だけ**をCommand前に評価する。現在の`reference/world.json`の`order_entry.validations`は次の3件だけであり、新しい`sales.order_line.unit_price_positive`は含まれない。
+
+- `sales.order_line.quantity_positive`
+- `sales.order.lines.line_number_unique`
+- `sales.order_line.line_number_positive`
+
+**従ってStudioから規則だけを追加してV04が成立しても、V05でその規則の評価まで確認したことにはならない。** この差はWeb側の欠陥ではなく、Data上の規則定義とApplicationでの規則利用を分ける既存ADR-0029の意図である。自動で全Validationを選択する実装はしない。
+
+幸い、**既存main**の`tools/reference-shared-acceptance`には`add-application-validation-use`がある。`practical_validation_loop_test.go`では、`add-validation`と`add-application-validation-use`を**同じcandidate内で受理**し、Previewで`semantics`・`applications`の両方の差分を出し、受理後のDriver resolverで4件の規則を宣言順に取得する試験がすでにある。新しいAcceptanceエンジンや新しいCore Rule選択を作らず、この経路を再利用する。
+
+### 最初のaccepted change候補（Review前提の参考形）
+
+```json
+{
+  "schema": "tei.reference.change-candidate/v0",
+  "id": "critical-order-unit-price-guard",
+  "baseModelRevision": "sha256:<R0: revision -workspace の実値>",
+  "origin": {"kind": "studio"},
+  "intent": "受注明細の単価に正値制約を設け、受注確定前に評価する",
+  "delta": [
+    {
+      "op": "add-validation",
+      "namespace": "sales",
+      "id": "sales.order_line.unit_price_positive",
+      "kind": "positive",
+      "attribute": "sales.order_line.unit_price"
+    },
+    {
+      "op": "add-application-validation-use",
+      "placement": "applications/order-entry/application.tei",
+      "applicationValidationUse": {
+        "application": "order_entry",
+        "validation": "sales.order_line.unit_price_positive"
+      }
+    }
+  ]
+}
+```
+
+この例は**候補の構造**を示す。プレースホルダーのRevisionでは実行できず、Workspaceのcurrent R0を取得してReview/Source変更範囲・未解決事項を確認し、人間が明示的に採用する必要がある。元Workspaceを直接変更せずscratch copyで実施する。二つの操作を分離した二回のacceptは、規則だけ存在してCommandで未使用になる中間状態を作るので、最初の縦断には使わない。
+
+### 実装/検証を再利用する短い順序
+
+| Step | 既存の足場 | 提出する証跡と注意 |
+| --- | --- | --- |
+| A | `reference/studio-authoring/bridge.mjs`（#1137） | 表操作から**規則追加と明示的利用選択**を一つのproposalとして作る最小UI/CLI拡張を#1124 ownerが判断。現Bridgeの1操作変換のまま、V05の新Rule実行達成を主張しない |
+| B | `tools/reference-shared-acceptance/practical_validation_loop_test.go`（main） | scratch R0、Preview時のsource byte不変、Review fingerprint、人間のAccepted Decision、R1再読込。既存testの成立はテスト対象時点の証拠であり、#1137 exact headのactual実行を代用しない |
+| C | `driver.Resolver.ResolveApplicationValidations`（main） | R1の`order_entry`に4件のrule IDが宣言順で現れること。UIの見かけの検証一覧ではなく、Driverの解決結果で確認 |
+| D | `tools/reference-first-web-target/command_scenario.go`（main） | R1由来Worldを読み、`sales.order_line.unit_price`の正/非正値を隔離fixtureで変え、`satisfied`と`validation-not-satisfied`の差・Command未実行を検証。未評価/欠損/不正数値を成功に変えない |
+| E | 同Web Targetの`commandScenarioRunner`とObservation | Context/current Authorization、Command、別readを区別。synthetic storeの成功はactual external DB writeやS02 schema互換を証明しない |
+
+**既存のactual実装に関する重要な制約**: `command_scenario.go`はOrderLineの各行を個別に`validationeval.Evaluate`し、値が無い場合や評価不能なときに失敗を返す。mainのread fixtureは`sales.order_line.unit_price`を保持する。ただしWeb Commandの送信処理は**synthetic store**を利用し、Observationも`driver.ObservationEvidenceSynthetic`を用いる。従って、Webサーバを実際に起動して操作しても、外部実DBの更新が成立したことにはならない。
+
+### 製品Gateへ変換できるEvidenceの上限
+
+- **E0 — Contract only**: 同じcandidate内の2操作とDriver選択の既存単体試験を確認。契約形の整合まで。StudioやWebの横断動作を証明しない。
+- **E1 — Actual scratch + Web / synthetic Provider**: R0→R1のAcceptanceをtrusted checkoutで実行し、R1 WorldのWeb Commandを正例/負例で操作したEvidence。これで**設計→選択→検証→Command境界**の一往復を示せる。ただしDBは合成、実データ永続化/外部観測の製品Gateは未達。
+- **E2 — Actual DB Provider + independent read**: #1126/#1127が実ProviderへR1互換のData contractを結び、write resultと独立したDB readを取得、S02/S05とN11を同じ実行packetへ付ける。E1からE2への自動昇格は禁止。E2は現在のWeb synthetic fixtureを本番DBと呼び替えることでは得られない。
+
+**次の実装Owner判断**: #1124はPR #1137で1操作候補を2操作の明示的選択へ拡張するか、Reference CLIへ既存Shared Acceptanceの2操作候補をそのまま渡す薄いconsumerを置くかを決める。#1127はE1のWeb統合試験と、E2に必要なactual Providerを接続する実機構を区別する。#1121はR1のAccepted Source系譜を合成`trustedAcceptanceReceipt`で置換しない。#1119はE0/E1/E2を別欄で管理し、PR #1137/#1141のDraftを合格と数えない。
+
+**今回の実測範囲**: main上の`reference/world.json`、`tools/reference-shared-acceptance`のREADME/試験ソース、`tools/reference-first-web-target`のCommand/Read実装、PR #1137のBridgeソースをGitHubから読み取って比較した。ここに記した`R0→R1→Web`操作を、この作業環境で実行したわけではない。trusted exact-head checkout / Repository Health / current real-DB Evidenceは未取得、G2未合格。
