@@ -4,10 +4,12 @@
 package rmtlink
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"regexp"
 
 	"tei/tools/internal/rmtevidence"
@@ -116,6 +118,25 @@ func Verify(link Link, ctx Context) error {
 		return fmt.Errorf("link does not belong to current exact source Evidence / candidate / Review / target")
 	}
 	return nil
+}
+
+// Decode rejects unknown fields, trailing input and reconstructed fingerprints.
+// It cannot replace a fresh source replay or human acceptance verification.
+func Decode(data []byte, ctx Context) (Link, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var proposal Link
+	if err := decoder.Decode(&proposal); err != nil {
+		return Link{}, fmt.Errorf("decode RMT semantic link: %w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return Link{}, fmt.Errorf("RMT semantic link contains trailing content")
+	}
+	if err := Verify(proposal, ctx); err != nil {
+		return Link{}, err
+	}
+	return proposal, nil
 }
 
 func fingerprint(value Link) string {
