@@ -64,6 +64,220 @@ stage0 trusted seed
 
 stage0を隠しません。seedのidentity、version、artifact digest、trust boundaryをEvidenceに残します。
 
+## 2026-10-10 現在の設計収束
+
+ここまでのReferenceと敵対的評価から、Plugin self-buildは「Plugin専用のbuild機構を増やす」方向ではなく、buildの因果と、そこから実現されるlogical subjectを分ける方向へ収束しています。
+
+現時点の全体像は次のとおりです。
+
+```text
+Authoritative Source
+        ↓
+Build request / unresolved intent
+        ↓
+Builder Contract / Provider resolution
+        ↓
+language-specific Builder Adapter
+        ↓
+Build Execution Plan / Build Graph
+        ↓
+Artifact / Artifact Set
+        ↓
+typed Domain Subject Binding
+   ├─ Plugin
+   ├─ Runtime Engine
+   └─ Builder / future portable component
+        ↓
+Attestation / current Trust
+        ↓
+Artifact Store / retrieval
+        ↓
+Acceptance / Runtime Authority
+```
+
+この分離は、Go以外の実装を許すためだけではありません。複数Pluginを一つのphysical artifactへまとめるTarget最適化、一回のbuildから複数artifactを生成するWeb / Wasm / Embedded Target、Runtime Engineのような非Plugin artifact、builder自身のself-hostingを、同じ因果モデルで追跡するために必要です。
+
+以下は、2026-10-10時点で計画へ反映する設計上の結論です。ReferenceやDraftが存在していても、trusted qualificationを通過していないものは採用済みとは扱いません。
+
+### Repository snapshotとBuild Source closureを分ける
+
+Repository全体のrevisionやtree digestは、「どのcheckoutでEvidenceを得たか」を示すprovenanceです。artifactのbytesへ実際に影響したBuild Source closureとは役割が異なります。
+
+したがって、Build PlanのSourceにはactual build inputだけを入れます。文書だけの変更や、buildに使われないRepository fileまで一律にBuild identityへ入れません。
+
+一方、Sourceのphysical pathやstore URLはlocatorとして保持できますが、exact bytesが同じならcontent identityそのものにはしません。
+
+```text
+Repository snapshot
+  = Evidenceを得たRepository状態
+
+Build Source identity
+  = Kind / logical ID / exact digest
+
+Source locator
+  = そのbytesをどこから取得したか
+```
+
+この圧力は#1090、Draft #1093で扱っています。
+
+### Build executionとdomain subjectを分ける
+
+現行の`BuildPlan`は、一つのPlugin artifact buildを表す契約として維持します。ただし、将来の共通primitiveまでPlugin identityへ固定しません。
+
+候補となる分離は次です。
+
+```text
+BuildExecutionPlan
+  exact Source identities
+  exact Builder
+  Recipe
+  Output Contract
+  build-only Dependencies
+  Target / Profile / Parameters
+
+BuildExecutionResult
+  BuildExecutionPlan fingerprint
+  produced Artifact / Artifact Set identity
+
+typed Subject Binding
+  logical subject identity
+  subject-specific definition fingerprint
+  BuildExecution identity
+  consumed output identity
+```
+
+この構造なら、同じbuild executionへ複数Pluginを結び付ける場合も、Runtime Engineをfake Pluginとして扱うことなくbuild provenanceへ結び付ける場合も、共通のexecution identityを利用できます。
+
+#1080 / #1097 / #1102の圧力をまとめたread-only Reference候補をDraft #1106で進めています。production `BuildPlan`を置き換えたわけではありません。
+
+### 一回のbuildと成果物の多重度を固定しない
+
+二つの方向を別々に扱います。
+
+```text
+one build execution
+  -> one physical artifact
+  -> N logical subjects
+```
+
+これは#1097で扱います。
+
+一方、Web、Desktop、Wasm、Embedded等では次も自然です。
+
+```text
+one build execution
+  -> N physical artifacts
+  -> one or more logical subjects
+```
+
+これは#1102で扱います。
+
+複数artifactを扱う場合は、最初からarchive一個へ押し込めず、Artifact SetとしてmemberごとのRole / Format / Digestを追跡する候補を検証します。filesystem pathやURLはlocatorであり、content identityへ含めません。
+
+二回buildの結果が一致しない場合も、aggregate fingerprintの不一致だけにせず、missing / extra / changed memberをEvidenceへ残します。
+
+### Builderの実装とBuilderの解決を分ける
+
+Go builder adapterの内部で必要なのは、Source closure、toolchain identity、deny-by-default environment、isolated state、actual build execution、reproducibility Evidenceです。これは#1096で扱います。
+
+一方、「どのBuilder Providerを使うか」は別の責務です。#1101では、Builder Contract / Provider / physical artifact / toolchainを分離し、Build Planを確定する前にexplicit wiringでexact Builderを選ぶ境界を検討します。
+
+複数のcompatible Providerが存在するとき、PATH順、install順、catalog列挙順で暗黙選択しません。曖昧ならfail-closedです。
+
+builder専用の固定`CapabilityKind`も追加しません。Builder ProviderをCapabilityとして扱う場合は、ISSUE-000080 / #951の拡張可能Capability Contractを`build-tool` scopeで再利用する方向とします。
+
+### Build graphとbootstrap stageを分ける
+
+`BuildDependency`は、一つのBuild Planが使ったexact dependencyを記録できます。しかし、generator → generated Source → implementation build → package buildのような複数stepの因果は別途Build graphとして扱う必要があります。
+
+#1103では、Runtime dependency graphとは別のbuild-only DAGを検討します。
+
+通常のcycle:
+
+```text
+A -> B -> A
+```
+
+はfail-closedです。
+
+self-hostingはcycle例外として扱わず、stage transitionとして表します。
+
+```text
+stage0 exact seed
+  -> stage1 builder
+  -> stage2 builder
+```
+
+同じlogical builderを再構築しても、stage0へ逆向きedgeを作りません。stage0 seedのidentityとtrust boundaryはEvidenceから消しません。
+
+### Reproducibility、Attestation、Trustを同一視しない
+
+Buildを二回実行して同じbytesを得られることと、そのartifactを信頼してよいことは別です。
+
+```text
+reproducible
+  != signed
+  != trusted
+  != accepted
+```
+
+#1104では、immutable Build EvidenceとArtifact Attestation、現在のTrust / revocation / rotationを分離します。
+
+`SignatureRef`や`Provenance`が存在するだけでAcceptanceやRuntime Authorityを付与しません。signing secretもBuild Planへ入れず、artifact生成後の別Authority stepとして扱います。
+
+### Artifact identityとArtifact Storeを分ける
+
+digestはartifact bytesのidentityですが、そのbytesを取得できる場所までは示しません。
+
+#1105では、content identityとstore locator / backendを分離し、exact digestからartifactを再取得する境界を検討します。
+
+```text
+Artifact identity
+  = exact digest
+
+Artifact location
+  = local CAS / object store / registry / filesystem adapter
+```
+
+fetch時にはdigestを再検証します。mutable tagやfilenameをLock identityの代わりにしません。
+
+Artifact Storeのavailabilityと、#1104のTrust / Acceptanceも別です。
+
+### Artifact publicationはno-clobberを要求する
+
+build後にverified artifactをRepository外へpublishする場合、事前に「出力先が存在しない」と確認するだけでは不十分です。確認後に別processが同じpathを作る競合を考慮します。
+
+#1098 / Draft #1099 / Qualification #1100では、exact Runtime Engine artifact exportをpublish時点までno-clobberにするReferenceを進めています。
+
+最初のReferenceでは、same-directoryのhard link等、destinationが既に存在すればOS primitiveが失敗する方式を使い、overwrite-proneなrenameへfallbackしません。
+
+これはartifact reproducibilityとは別のfilesystem publication safetyです。
+
+### current mainの状態とGate
+
+self-build関連のReferenceや候補実装がmainに存在していても、それだけでqualification済みとは扱いません。
+
+#971はcurrent mainのforward qualificationを正本として扱います。過去にDraft状態で統合された変更があっても、merged状態をtrusted receiptへ読み替えません。
+
+各新規Draftは、current mainのforward Gateに加え、自身のexact headで必要なfocused test、actual Evidence、full Repository Health、clean pre/post stateを満たしてから統合判断を行います。
+
+### 追跡Issueの責務
+
+2026-10-10時点では、次のように責務を分けます。
+
+| 対象 | 追跡先 | 主な責務 |
+| --- | --- | --- |
+| current main forward qualification | #971 | merged状態とqualified状態を分ける |
+| Source closure / Repository snapshot | #1090 / #1093 / #1094 | actual build inputとRepository provenanceの分離 |
+| Go builder adapter | #1096 | Go固有Source closure、toolchain、hermetic execution |
+| Build execution / subject binding | #1080 / #1097 / #1106 | domain-neutral executionとtyped subject binding |
+| Builder resolver | #1101 | Contract / Provider / artifactのexplicit resolution |
+| multi-output Artifact Set | #1102 | 一回のbuildから複数artifactを追跡 |
+| Build graph | #1103 | build-only DAG、cycle、generated intermediate、bootstrap stage |
+| Attestation / Trust | #1104 | Build Evidence、署名、issuer、fresh trustの分離 |
+| Artifact Store | #1105 | digestからexact bytesを再取得する境界 |
+| artifact publication safety | #1098 / #1099 / #1100 | no-clobber exportと競合時fail-closed |
+
 ## 不足している設計要素
 
 ### Build Source closure
@@ -164,6 +378,42 @@ TEI-native implementation SourceとBuiltin realizationの不足はGitHub #957で
 
 builderのstage0 / stage1 / stage2を実行し、同一Sourceからのconvergenceを確認します。stage0 seedをRepository外に置く場合も、そのidentityをBuild Evidenceへ残します。
 
+### E5 — Build execution / Subject binding Reference
+
+現行`BuildPlan`を変更せず、Plugin固有identityを除いたBuild execution identityと、Plugin / Runtime Engine等のtyped subject bindingをread-only Referenceで検証します。
+
+single Plugin build、shared artifact / multiple Plugins、non-Plugin Runtime Engine、multi-output Artifact Setを同じ構造で説明できるかを確認します。Draft #1106がこのpressureを担当します。
+
+### E6 — Builder Adapter / Resolver
+
+Go固有のSource closure、toolchain、environment isolation、actual build executionを#1096で共通adapterへ整理します。
+
+その上で#1101により、Builder ContractとProviderを明示的に解決し、exact Builder identityをBuild Plan確定前に固定できることを確認します。Go固有のRecipeやPATH探索規則を上位contractへ持ち込みません。
+
+### E7 — Build graph / Artifact Set
+
+#1103でbuild-only dependency DAGをReference化し、normal cycleとbootstrap stageを分けます。
+
+#1102ではmulti-output Artifact SetをReference化し、member role、format、digest、差分Evidenceを検証します。scheduler、distributed execution、packaging optimizerはこの段階では実装しません。
+
+### E8 — Attestation / Artifact Store
+
+#1104でBuild EvidenceからAttestation、Issuer、fresh TrustへつながるAuthority境界を検証します。
+
+#1105ではexact artifact digestからbytesを再取得するlocal content-addressed Referenceを検討します。availability、Trust、Acceptanceを同じ状態へまとめません。
+
+### E9 — Production primitive抽出
+
+E5〜E8の複数Referenceで同じ意味境界が再確認できた段階で、production Coreへ抽出する最小primitiveを決めます。
+
+Reference名や一時的な構造体をそのまま昇格させません。少なくとも次を満たす場合だけCore化を検討します。
+
+- Plugin以外のsubjectでも同じexecution primitiveが必要
+- single / shared / multi-outputの各ケースを説明できる
+- Go以外のbuilderを追加してもCore enum変更が不要
+- Runtime / Acceptance AuthorityをBuild成功へ混ぜない
+- exact Evidenceから逆追跡できる
+
 ## Acceptance
 
 - Plugin artifactからSource closure / builder / Target / build definitionへ戻れる。
@@ -182,6 +432,18 @@ builderのstage0 / stage1 / stage2を実行し、同一Sourceからのconvergenc
 - clean checkoutから再実行できるRepository Evidenceを残す。
 - TEI StudioやAgent Adapterなしに、通常のCLI / Repository Toolから同じself-build経路を実行できる。
 - Agent Session、Workspace、一般的な検証状態をBuild Plan / Build Lockのidentityへ混ぜない。
+- Repository snapshot provenanceとartifact-affecting Build Source closureを分離できる。
+- SourceやArtifactのlocatorが変わっても、exact bytesとbuild semanticsが同じならcontent / execution identityを不用意に変えない。
+- 一回のBuild executionから複数logical subjectを別々のAuthorityでbindできる。
+- Runtime Engine等の非Plugin artifactへfake Plugin identityを与えずBuild provenanceへ結び付けられる。
+- 一回のBuild executionから複数physical artifactを生成し、member単位のRole / Format / Digestを追跡できる。
+- multi-output buildが非再現の場合、missing / extra / changed memberをEvidenceとして保持できる。
+- Builder Contract / Provider / artifact / toolchainを分離し、compatible Providerが複数ある場合は明示wiringなしに選ばない。
+- build-only dependency graphをRuntime graphと分離し、normal cycleをfail-closedで扱える。
+- bootstrap stageを通常cycleの例外にせず、stage0 trust boundaryを明示できる。
+- reproducibility、Attestation、current Trust、Acceptanceを別の状態として扱える。
+- exact artifact digestからbytesを再取得する場合、取得先locatorをidentityにせず、fetch後にdigestを再検証できる。
+- verified artifactのpublicationで既存出力を競合時にも上書きせず、no-clobber失敗を成功へ丸めない。
 
 ## 非目標
 
