@@ -23,14 +23,15 @@ go test ./tools/reference-example-slide
 - フィールドを非表示にしても、定義済みの参照関係が図から消えない。
 - スライド表示順とStage差分の順序を区別する。
 - 元の入力を変更しない。疑問に勝手に回答せず、Questionを出力へ引き継ぐ。
+- `CatalogFromWorld`で、実際の`reference/world.json`の`ir.World.Semantics`からData・Attribute・Relation・RelationKeyを読み取り専用で導出する。複合のRelationKeyやKeys未定義のRelationを単純なFKに変換しない。
 - SVGでは文字列をエスケープする。
 
 ## 非対応・今後の検証課題
 
-このCatalogは合成物であり、まだTEIの実World・Source Indexから抽出していません。単純化したrefTableは親子関係、派生関係、複合キー、任意・条件付き関連をすべて表せるわけではありません。
+合成Catalogによるスライド実験に加え、実TEIの正規化済みWorldのSemantic部分から読み取るAdapterを実装候補として追加しました。ただしSource Indexの根拠まで結び付けるものではなく、実World由来の型については`std.identifier`、`std.decimal`、`std.money`等を安易にstring/float64へ狭めず`opaque`とします。これは型検証済みを意味しません。またWorldのAttribute定義に無い必須性や表示既定値を推測しません。
 
 SVGは最小の描画確認であり、完全な専用ER記号・衝突回避・印刷調整・ブラウザ表示・WASM動作を保証しません。各テーブルの例示値は先頭レコードのみを表示しますが、Projectionは表示対象の全レコードを保持します。
 
-実データの安全な利用、AI候補生成、業務上の整合性の判定、詳細設計への提案とShared Acceptance接続は後続の検証対象です。この参照実装は独立した`std.*` Semantic Extensionの採用根拠にもなりません。
+実データの安全な利用、AI候補生成、業務上の整合性の判定、詳細設計への提案とShared Acceptance接続は後続の検証対象です。WorldのRelationKeyが存在しても、説明用Caseのレコード間で業務キーを検査する機構は未実装です。**関係線を描けたことを参照整合性検証済みと読んではいけません。** この参照実装は独立した`std.*` Semantic Extensionの採用根拠にもなりません。
 
 設計の詳細は [M1設計候補](../../plan/design/EXAMPLE_ER_SLIDE_M1_2026-10.md) を参照してください。
