@@ -299,7 +299,7 @@ func evaluateAttestationTrust(
 	if err != nil {
 		return AttestationTrustDecision{}, err
 	}
-	if verification.AttestationFingerprint != attestationFingerprint ||
+	if normalizeFingerprint(verification.AttestationFingerprint) != attestationFingerprint ||
 		normalizeFingerprint(verification.BuildExecutionResultFingerprint) != normalizeFingerprint(a.BuildExecutionResultFingerprint) ||
 		normalizeFingerprint(verification.ArtifactSetFingerprint) != normalizeFingerprint(a.Subject.ArtifactSetFingerprint) ||
 		verification.Issuer != a.Issuer ||
