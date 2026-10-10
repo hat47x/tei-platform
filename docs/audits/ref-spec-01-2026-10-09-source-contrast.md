@@ -157,3 +157,13 @@ GitHubのPRに加えた回帰テストは、既知→不明→繰り返し不明
 両側で同じValidationを参照し、そのValidation定義が複数あれば、両側の問題として表示する。同じ側・ID・原因の重複は取り除き、表示順を固定する。問題が解決されない限り、集合差の結果は返さない。これは出典ファイルの所在を解決できない`unresolvedSource`とは独立の意味レベルの情報である。
 
 コードと回帰テストはPR #1040に追加した。テストは、手順側の未定義ID、手順側・Application側の参照重複、両側での意味定義の曖昧性、3回の参照重複を含む。**この新しい変更に対するGoテスト、full Repository health、およびclean pre/postはまだ実行していない。** 以前の隔離モジュールのPASSをこの変更の成功と読み替えず、PRをDraftで保持する。
+
+## 未解決理由の分類を原文Goで隔離実行（2026-10-10）
+
+`validation_scope_review.go`のGitHub blob `cad187b3e155ab21140048fe5fc65d84ce823432`と同一のGo原文を、Linuxの一時Go moduleに配置した。`git hash-object review/validation_scope_review.go`の出力は上記SHAと一致し、`gofmt -l`は出力なし。Goの実行環境は`go1.23.2 linux/amd64`である。
+
+代替したのは`core.CanonicalID`、`application.Application`、`semantic.Namespace/Validation`、`ir.World`の最小型、`fixture/step`、`semanticCounts`、レビュー出典の表示用型。**比較関数と`validationReferenceIssue`の実装は原文のまま**利用した。
+
+`GOENV=off GOWORK=off GOFLAGS= go test -count=1 -v ./...`の実測は4個のトップレベルテストがPASS。分類のテーブルテスト7例はすべてPASSした。対象は正常な差分、一致、手順側とApplication側の定義不在、両側の重複明示、両側の意味定義曖昧、定義不在と三重明示の併発、入力順に依存しない出力、文脈未解決、非validation-support行のスキップである。`GOENV=off GOWORK=off GOFLAGS= go vet ./...`もPASS。
+
+一方、**これは実Repositoryの単体テストではない**。テスト自身は隔離用の独立データを使い、実`workspace.Load`、実Source Index、実`main.go`、既存診断の互換性を検証していない。併発理由と三重明示の確認はRepositoryの回帰テストにも追加したが、そちらの実行結果は未取得。隔離試験のPASSをPRのqualificationに利用しない。
