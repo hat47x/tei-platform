@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	pruntime "tei/internal/plugin/runtime"
 )
 
 func transportDispatchPlanForTest(
