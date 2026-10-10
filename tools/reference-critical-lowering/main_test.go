@@ -253,6 +253,13 @@ func TestSelectiveCacheKeys(t *testing.T) {
 	if err != nil || Keys(unrelated.c, unrelated.a, again, unrelated.target, ref("builder-v1"), []Ref{ref("build.compiler"), ref("build.codegen-tool")}) != k {
 		t.Fatal("unrelated Provider invalidated accepted resolution")
 	}
+
+	reorderedEffects := Keys(f.c, f.a, plan,
+		Target{ID: f.target.ID, Effects: []string{"write", "read"}},
+		ref("builder-v1"), []Ref{ref("build.compiler"), ref("build.codegen-tool")})
+	if reorderedEffects != k {
+		t.Fatal("Target effect set ordering caused needless cache invalidation")
+	}
 	changedTarget := Keys(f.c, f.a, plan, Target{ID: "alternate", Effects: f.target.Effects}, ref("builder-v1"), []Ref{ref("build.compiler"), ref("build.codegen-tool")})
 	if changedTarget.Interpret != k.Interpret || changedTarget.Accept != k.Accept ||
 		changedTarget.Resolve != k.Resolve || changedTarget.Target == k.Target || changedTarget.Build == k.Build {
@@ -459,4 +466,21 @@ func TestInvalidSourceDependencyWitnessFailsClosed(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeclaredLanguageWitnessSemanticEqualityIsNotAuthorityEquality(t *testing.T) {
+	a := orderFixture("tei.language.dsl")
+	b := orderFixture("tei.language.sql-projection")
+	left, err := Neutralize(a.c, a.a, stubTrust{})
+	if err != nil { t.Fatal(err) }
+	right, err := Neutralize(b.c, b.a, stubTrust{})
+	if err != nil { t.Fatal(err) }
+	if Digest(left.Intents) != Digest(right.Intents) || left.Snapshot != right.Snapshot {
+		t.Fatal("synthetic producers changed the accepted semantic intent")
+	}
+	if left.Origin.CandidateDigest == right.Origin.CandidateDigest ||
+		left.Origin.Language == right.Origin.Language {
+		t.Fatal("distinct Language provenance was collapsed into a shared Acceptance identity")
+	}
+	// These are declared Language identities, not two real Parser executions.
 }
