@@ -819,4 +819,18 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 
 **G1**では#1120 scoped RefとStudioのLocal IDを暗黙に等価扱いせず、Producer/Consumerの正負検証とBusiness DFDのAccepted Authorityを後続で接続する。**G2**ではE1-B（live Webで新規単価規則が拒否）、current Provider/HostのS02/S05、実DBへの変更と独立readのE2を別に取得する。合成worktreeのSource-to-Web正常系を得てもこれらのGateのPASSには昇格しない。
 
+### Source R1/Target/HTTPの限定receipt（提出前検査）
+
+実行後にすべてのscratchを破棄していた最初のE1-A試験では、報告者が同じworktreeの**Source R1、起動Target T、実HTTP結果**を別々に再検査するためのファイルを提出できなかった。これは§23で定めた証拠連結の不足であり、`web.acceptedRevision=R1`との自己申告だけでは埋められない。
+
+修正後の`live-r1-smoke.mjs`は任意の`TEI_CP_EVIDENCE_DIR`（**リポジトリ・一時scratch外、存在しない絶対path**）に、実験成功後だけ`workspace-r1.json`、`target-launch.json`、`web-positive.json`を新規作成する。Sourceでは変更2ファイルの**受理前後のSHA256**、Source R0/R1とfingerprintを保存。Targetは起動バイナリSHA256・基準R・Build T・loopback実起動情報、Webは全4件のValidation ID/結果とCommand/合成Observationのみを保存する。Secret/credentialや応答原文は出力しない。保存はオプションであり、デフォルトのCI相当試験はファイルを残さない。
+
+これらは**同一のテスト実行が記録した相異なる段階のreceipt**である。外部署名、Human Approval、Host権限、DB実永続化、第三者の独立Readを意味しない。途中失敗で残った不完全なファイル、または3件のreceiptを使い回した申告はE1合格に数えない。さらにE1-B（実Webで新たな単価0を拒否）が依然欠落し、G2は未合格。
+
+### 親ブランチへのmain同期（今回の実操作）
+
+Issue #1119の現Draft作業branchだけに、current main `e084b89f19d4ce53047906c03e28746af56afa4d` を**非force・2親の通常merge commit**として取り込んだ。事前にmainの変更2 path（`plan/design/GENERIC_CAPABILITY_MIGRATION_DESIGN.md`と`plan/issue/001067-cross-project-plugin-promotion.md`）が親PRの8変更pathと重ならないことをGitHubで照合し、mainの2 blobを既存branchのtreeへ載せた。作業branch head `1c8cd60699d5eaff98df452ee651c7f63f7bb3c5`は第1親が旧head、第2親がmainとなり、GitHub compareは**behind 0**。正本mainや他Ownerのbranchを変更していない。
+
+これは**Gitの系譜/変更pathが整合したことの確認のみ**である。統合後の最新HEADでtrusted full checkout/Go/Node/full Repository Healthは実行できていないため、資格PASSやmainへのPR mergeを意味しない。mainが再び進めば最新pinと統合結果を再確認する。
+
 **実際の資格と証跡**: この節の更新はGitHub上の新しいtest-only Node/Bashスクリプトとsource契約の静的照合による。V8ではESM importを除いたNode本体の構文が解析可能なことを確認したが、これは`node --check`の代わりではない。ネットワークが使用できない現セッションで合成worktreeを作って実Go/Node/Web/Repository Healthを実行したわけではない。親PRはDraft/未統合、G1〜G4未合格。
