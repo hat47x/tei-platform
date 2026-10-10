@@ -34,8 +34,12 @@ type WorkspaceTrace struct {
 // Source Index navigation. The only edge semantics are those provided by
 // derivedbridge, which itself consumes existing declared dependencies.
 func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions) (WorkspaceTrace, error) {
-	if strings.TrimSpace(key.Scope) == "" || key.Scope != strings.TrimSpace(key.Scope) {
-		return WorkspaceTrace{}, &modelref.TraceError{Code: "INVALID_SUBJECT", Message: "exact nonempty scope is required"}
+	if strings.TrimSpace(key.Scope) == "" || key.Scope != strings.TrimSpace(key.Scope) ||
+		strings.TrimSpace(key.Subject.Kind) == "" || key.Subject.Kind != strings.TrimSpace(key.Subject.Kind) ||
+		strings.TrimSpace(key.Subject.ID) == "" || key.Subject.ID != strings.TrimSpace(key.Subject.ID) {
+		return WorkspaceTrace{}, &modelref.TraceError{
+			Code: "INVALID_SUBJECT", Message: "exact nonempty scope, subject kind and subject id are required",
+		}
 	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
