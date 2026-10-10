@@ -26,7 +26,7 @@ test("denial and conflict are distinguishable and cannot be swallowed", async ()
 });
 
 test("rejects network-path and absolute URLs to avoid sending session credentials elsewhere", () => {
-  for (const path of ["https://bad.example/commit", "//bad.example/commit", "commit", ""]) {
+  for (const path of ["https://bad.example/commit", "//bad.example/commit", "/\\bad.example/commit", "/\t/bad.example/commit", "commit", ""]) {
     assert.throws(() => createJSONActionDispatcher(path, async () => ({})), TypeError);
   }
 });
