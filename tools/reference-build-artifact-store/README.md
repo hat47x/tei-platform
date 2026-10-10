@@ -10,10 +10,12 @@ production Artifact Registry、cache、Acceptance Authorityではありません
 
 ```text
 Artifact identity = exact SHA-256 digest
-Locator           = local store path
+Locator           = store-relative content-addressed locator
 ```
 
-同じbytesを異なるstoreへ置いてもdigestは同じです。store rootやfilenameをartifact identityへ含めません。
+同じbytesを異なるstoreへ置いてもdigestは同じです。store rootやabsolute Host pathをartifact identityへ含めません。
+
+Receiptの`Locator`は`sha256/<64-lowercase-hex>`のstore-relative形式です。別Host / 別store rootへEvidenceを持ち運んでもabsolute pathを持ち込みません。
 
 ## Layout
 
