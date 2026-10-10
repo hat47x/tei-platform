@@ -58,8 +58,26 @@ func (r *referenceCommandScenarioRunner) RunVerifiedSessionCommand(
 	if link.PrincipalID == "" || link.SubjectID == "" || link.PrincipalID != principal.PrincipalID {
 		return result, fmt.Errorf("session command subject link does not match verified Principal")
 	}
-	// No credential is injected and the legacy authentication Capability is
-	// not misreported as invoked. The shared implementation executes the
-	// canonical business authorization again immediately before the command.
-	return r.runAuthenticatedSubjectCommand(ctx, link.SubjectID, from, rowIndex, result)
+	// No credential is injected and legacy authentication is not misreported
+	// as invoked. Recheck the live identity link at the effect boundary, after
+	// Read, Validation and canonical authorization have completed.
+	effectGuard := func(ctx context.Context) (bool, error) {
+		current, stillLinked, err := links(ctx, webcomposition.ExternalSubject{
+			ProviderID: principal.ProviderID,
+			Issuer:     principal.Issuer,
+			Subject:    principal.Subject,
+		})
+		if err != nil {
+			return false, err
+		}
+		if !stillLinked {
+			return false, nil
+		}
+		if current.PrincipalID == "" || current.SubjectID == "" ||
+			current.PrincipalID != principal.PrincipalID || current != link {
+			return false, fmt.Errorf("effect-time subject link differs from verified session identity")
+		}
+		return true, nil
+	}
+	return r.runAuthenticatedSubjectCommandWithEffectGuard(ctx, link.SubjectID, from, rowIndex, result, effectGuard)
 }
