@@ -152,6 +152,40 @@ func navigate(p projection, selector string, sourcePaths ...string) (navigationR
 			}
 		}}
 		if count>0 && result.Reason=="" {result.Status="reference-only"}
+	case "semantic-data","semantic-relation","semantic-validation","semantic-capability":
+		result.Subject=navigationSubject{
+			Kind:kind,ID:id,Scope:"unverified-current-world",Authority:"identity-match-only"}
+		matchCount:=0
+		for _,node:=range p.Steps {
+			for _,explicit:=range node.ExplicitMeaning {
+				if explicit.Kind==kind && explicit.ID==id && explicit.Status=="resolved-id-not-accepted" {
+					localLink("explicitly-referenced-by-step","step",node.ID)
+					matchCount++
+				}
+			}
+			for _,f:=range node.FunctionRefs {
+				if f.Status!="resolved" {continue}
+				var referenced string
+				switch kind {
+				case "semantic-data":referenced=f.Data
+				case "semantic-relation":referenced=f.Relation
+				case "semantic-capability":referenced=f.Capability
+				}
+				if referenced==id && referenced!="" {
+					localLink("pattern-derived-step-reference","step",node.ID)
+					matchCount++
+				}
+			}
+		}
+		if kind=="semantic-data" {
+			for _,store:=range p.Information.Stores {
+				if store.SemanticData==id && store.DataStatus=="resolved" {
+					localLink("proposed-conceptual-store","store",store.ID)
+					matchCount++
+				}
+			}
+		}
+		if matchCount>0 {result.Status="reference-only"}
 	case "trigger":
 		for _,t:=range p.Triggers {if t.ID==id {
 			setSource(t.Source)
