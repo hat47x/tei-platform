@@ -373,10 +373,10 @@ func TestReferenceAcceptRejectsCandidateInputAliasWithOverride(t *testing.T) {
 		t.Skipf("directory symlinks are unavailable: %v", err)
 	}
 	for _, tc := range []struct {
-		name string
+		name          string
 		candidatePath string
-		output string
-		flag string
+		output        string
+		flag          string
 	}{
 		{name: "input alias", candidatePath: candidateAlias, output: candidate, flag: "-out"},
 		{name: "directory alias", candidatePath: candidate, output: filepath.Join(directoryAlias, "candidate.json"), flag: "-derived-out"},
