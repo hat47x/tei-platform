@@ -116,6 +116,10 @@ func proposedQuestion(f RelationFinding) (string, []string, string) {
 		return "この関連で、データ間の対応を決める属性は確定していますか。キーを定義すべき関連ですか。",
 			[]string{"accepted Relation/RelationKey definition", "business identity and correspondence rule"},
 			"semantic-relation"
+	case "relation-key-type-not-confirmed":
+		return "関連の両端の属性が同じ意味的な型であると確認できますか。値の文字列表現が一致するだけでは足りません。",
+			[]string{"canonical source and target attribute type identities", "verified domain equivalence rule"},
+			"semantic-relation"
 	case "source-key-missing-or-unusable":
 		return "このレコードの対応キーが不足しています。Caseの省略ですか、業務上の任意値ですか。",
 			[]string{"example record source", "requiredness / optionality decision"},
