@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	runtimesnapshot "tei/tools/reference-runtime-snapshot"
 )
 
 const webManifest = `{"handoverBaselineId":"B","baselineRepositoryRevision":"R","targetBuildRevision":"T","targetAdapter":"reference-first-web-target","applicationId":"order_entry","patterns":[],"unresolved":["not-accepted"]}`
@@ -129,5 +131,55 @@ func TestCaptureRejectsRedirectToExternalHost(t *testing.T) {
 	}
 	if remoteCalled {
 		t.Fatal("off-origin URL contacted")
+	}
+}
+
+func TestCapturedProjectionReplaysReadOnlyWithIndependentFixturePin(t *testing.T) {
+	const independentlyPinnedSHA256 = "24b6cf5849bfe103a7d3e4a52b80849e7ef9f947a94fb9c0851f7613df0a0ded"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, _ = w.Write([]byte(webManifest))
+	}))
+	defer server.Close()
+
+	// The pin is a hard-coded property of the checked-in fixture, not
+	// derived from the capture tool's reported observed digest.
+	var observed, notices bytes.Buffer
+	if err := runCapture(captureArguments(server.URL), &observed, &notices); err != nil {
+		t.Fatalf("capture synthetic First Web Projection: %v", err)
+	}
+	if observed.String() != webManifest {
+		t.Fatalf("captured bytes differ from pinned fixture: %q", observed.String())
+	}
+	snapshot, err := runtimesnapshot.Accept(observed.Bytes(), runtimesnapshot.Identity{
+		ApplicationID: "order_entry",
+		HandoverBaselineID: "B",
+		BaselineRepositoryRevision: "R",
+		TargetBuildRevision: "T",
+		ManifestSHA256: independentlyPinnedSHA256,
+	})
+	if err != nil {
+		t.Fatalf("replay with independent fixture pin failed: %v", err)
+	}
+	for _, tc := range []struct {
+		method, path string
+		status       int
+	}{
+		{http.MethodGet, "/manifest.json", http.StatusOK},
+		{http.MethodGet, "/healthz", http.StatusNoContent},
+		{http.MethodPost, "/scenario/submit", http.StatusNotFound},
+	} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(tc.method, tc.path, nil)
+		snapshot.Handler().ServeHTTP(response, request)
+		if response.Code != tc.status {
+			t.Fatalf("replay route %s %s returned %d, expected %d", tc.method, tc.path, response.Code, tc.status)
+		}
+		if tc.path == "/manifest.json" && response.Body.String() != webManifest {
+			t.Fatal("frozen runtime did not preserve exact captured JSON bytes")
+		}
+	}
+	if !strings.Contains(notices.String(), independentlyPinnedSHA256) {
+		t.Fatal("capture did not report the fixture digest")
 	}
 }
