@@ -1,0 +1,7 @@
+namespace intake
+
+data Request {
+    attribute requestId type std.identifier
+    attribute summary type std.text
+    attribute status type std.code
+}
