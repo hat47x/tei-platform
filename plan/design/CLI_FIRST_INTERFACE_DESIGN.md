@@ -32,7 +32,7 @@ LLM / human / automation        Browser                 Desktop/WebView
                     Evidence / observation / state
 ```
 
-この図は**目標とする依存方向**であり、共通Application Serviceがすべて完成しているという説明ではない。現行`cmd/tei/main.go`には直接各パッケージを呼んでいる箇所が多い。移し替えが必要になった操作から、小さなGo関数・型付きの要求／結果として切り出す。
+この図は**目標とする依存方向**であり、共通Application Serviceがすべて完成しているという説明ではない。現行`cmd/tei/main.go`には直接各パッケージを呼んでいる箇所が多い。C0では最初の対象として`internal/operations.ValidateWorkspace`を設け、ソース読込み、既存Validation、Source Indexへの投影をCLIの表示処理から切り離した。CLIのテキスト表示とJSON表示は、同じ型付き結果を受け取る。ただし、これは共通Application Service全体が完成したという意味ではない。次に必要な操作から同様の境界を検証する。
 
 共通にするのは、業務上の対象ID、版・fingerprint、Validation結果、Proposal／Acceptanceの成否、権限評価を求める対象、業務Action結果などの**意味**である。CLIのargv、HTTPのstatus・Cookie、WebViewのIPCメッセージ、画面の選択状態は共通契約へ持ち込まない。
 
@@ -60,7 +60,7 @@ go run ./cmd/tei validate -workspace reference/workspace -json
 
 `validate -workspace`の従来のテキスト出力は互換性のため維持する。初版の`-json`はこの経路だけに対応する。既存`world`等のJSON結果を共通の`result`形式へ一斉に包み直さない。
 
-終了コードは当面、`0`がValidation成功（Warningを含む）、`1`がValidation findingによる失敗、`2`が入力・読込み・出力等の実行上の失敗を意味する。JSONモードでは、読込み失敗も可能な限りstdoutの一つのJSON文書で返し、人間向けエラー行や進行表示を混ぜない。パイプラインでは終了コードと`ok`の**両方**を確認する。
+終了コードは当面、`0`がValidation成功（Warningを含む）、`1`がValidation findingによる失敗、`2`が入力・読込み・出力等の実行上の失敗を意味する。JSONモードでは、読込み失敗に加え、不足・衝突した引数も可能な範囲でstdoutの一つのJSON文書として返し、人間向けエラー行や進行表示を混ぜない。Goのフラグパーサー自体が拒否した入力など、まだJSON化していない経路もある。パイプラインでは終了コードと`ok`の**両方**を確認する。
 
 ### 3.3 入力と副作用の条件
 
@@ -98,7 +98,7 @@ C1以降の名称・階層は候補であり、現行コマンドを大量に改
 
 ## 6. 受入条件と未検証範囲
 
-C0の受入は、正常系・構文エラー・意味エラー・入力読込み障害について、`-json`が一つの構造化結果を返し、従来のテキスト表示を壊さず、`commands`の契約がテストできることとする。
+C0の受入は、正常系・構文エラー・意味エラー・入力読込み障害・不正な組合せの引数について、`-json`が一つの構造化結果を返し、従来のテキスト表示を壊さず、`commands`の契約がテストできることとする。加えて、独立したGoの読取り操作から同じValidation結果を取得できること、実バイナリのstdout・stderr・exit codeをプロセステストで確認できることを条件にする。
 
 実装PRをmainへ取り込むには、対象exact headとcurrent mainについて、[リポジトリの統合規則](../../AGENTS.md)が要求するactual full Repository Healthの証拠が必要となる。コードの存在、合成テスト、レビュー、GitHub上のPR作成をその代用としない。
 
