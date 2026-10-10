@@ -1,6 +1,6 @@
 # 具体例からER図スライドへつなぐ参照実装（M1）
 
-状態: 実装候補。Goテスト・統合Gate・実TEI World連携は未確認。
+状態: 実装候補。読み取り専用World Adapterは実装候補として追加済み。PR全体のGoテスト・整形・統合Gateは未実施。
 
 ## なぜ必要か
 
@@ -39,7 +39,7 @@
 ## 先に潰す反例
 
 - 同じテーブルを複数の図に配置しても表示項目を独立指定できる。
-- 参照先の無い明細は拒否する。隠した外部キーの関係は消さない。
+- 合成Caseの明示的なrecord-ID参照が欠落した場合は拒否する。一方、Semantic RelationKeyの照合では部分抜粋や任意性を区別し、不明を矛盾と誤判定しない。隠した外部キーの関連線も消さない。
 - モデルrevisionを変えた例を従来のPassとして表示しない。
 - スライド順を入れ替えてもデータの変化順は変わらない。
 - 必須項目欠落、型不一致、存在しないStage、重複IDを検出する。
@@ -72,7 +72,7 @@
 
 - Worldの`Attribute`だけでは必須性は導出できない。`Required=false`が業務上任意である証拠ではない。
 - `std.identifier`、`std.decimal`、`std.money`等は、このReferenceの基本型検証では`opaque`とし、厳密な値の妥当性を主張しない。
-- Semantic RelationKeyによる**具体レコードの対応・参照整合性検証**は未実装である。図面に線を引けることと検証済みは別である。
+- Semantic RelationKeyを使う具体レコードの照合は**候補実装として追加した**。部分抜粋・未定義Key・不明な必須性では`unresolved`とし、元の業務仕様や実データの整合性を証明しない。図面に線を引けることと検証済みは別である。
 - Catalog revisionはWorld内のSemantic名前空間のハッシュであり、業務の実データの観測・時点、Application、Target/Provider状態を含まない。
 - 現段階ではReferenceが意味定義の必須性・データ型を完全再現するわけではなく、Studioの正本受理経路も使っていない。
 
@@ -128,3 +128,34 @@ CLI出力先へ`projection.json`とSVGに加えて`review.json`を生成する�
 `many`の関連で一致先が0件しかないときも、具体的な対応関係を確認できたという`supported`にしない。最小多重度の意味は自動決定せず、`unresolved`とする。
 
 **状態**: 該当コード・テスト・文書はPR #1128の作業ブランチにコミットした。対象PRのGoテスト、format、Repository-health Gateは依然として未実施。レビュー質問の生成結果を承認済みの業務仕様と混同しない。
+
+## 回答Handoffへの縦断拡張（2026-10-10）
+
+Reviewから出た質問を、実際のモデル・具体例・適用文脈に結び付けるため、次を候補実装とした。
+
+- `ReviewPacket`へ正規化JSON由来の`exampleFingerprint`、`catalogFingerprint`、`fingerprint`を追加。既存のモデルrevisionだけでは、同じ診断を生んだ別の実例を区別できないためである。表示順だけを変更した場合は同じレビューとして扱う。
+- `AnswerInput`は`schema`、`caseId`、`modelRevision`、`reviewFingerprint`と質問ごとの`question.kind/id`を必須にする。無関係・旧版・重複した回答は拒否する。
+- 各回答はテキストだけでなく、`disposition`、適用範囲を表す`context`、自己申告の`claimedBy`、文書や観測結果への参照である`evidence`を持つ。**回答と根拠の真正性はまだ確認していない**。
+- `BindAnswers`は入力CaseからReviewを再生成して厳密に照合し、`AnswerHandoff`を返す。出力は常に`status=unverified`であり、Confirmation、Decision、Semantic Patchへ昇格させない。
+- Relation由来の質問に限り、`confirmationRoute`として既存`confirm-record`での対象identityと`semantic-relation`のBasis subjectを候補提示する。自由記述の質問にはCanonical subjectを無根拠に作らず、route無しとする。
+- CLIは`-answers FILE -out DIR`で`answer-handoff.json`を出力できる。不正・古い回答は生成物を書き始める前に拒否する。
+
+### 既存のConfirmationと共有Acceptanceを再利用する
+
+既存のShared Acceptanceには、`confirm-record`/`confirm-check`、変更候補への`preview`/`review`/`accept`が存在する。新しい回答の保存台帳や承認エンジンを`exampleslide`に重ねて実装してはならない。
+
+**回答案→確認候補→根拠と権限の確認→既存Confirmationでの記録→必要な場合だけ新しい変更candidate**という順を維持する。
+
+- `AnswerHandoff`は必ずしも人間の回答を表さない。`claimedBy.kind=human`は自己申告である。既存Confirmationでもactorの実証は行わないため、両者の自己申告を合成して認証済みの判断へ格上げしない。
+- Source IndexのBasisはWorkspaceから取得し直す。Handoffに記載された任意のevidence pointerをそのまま権威あるEvidenceとして扱わない。
+- `ReviewPacket.ModelRevision`はSemantic Worldのfingerprintであり、Shared Acceptanceが要求するWorkspace全体の`baseModelRevision`とは異なる。後者は変更候補作成時に再取得する。
+- RelationKeyの有無や表示条件が変われば、回答・質問とモデルの関係を再評価する。Reviewの固定化は、記録の同一性を示すだけで業務的な採否を決めない。
+
+### M1で残る実証
+
+1. 対象PR exact-headのGoテスト、gofmt、Go vet、必須Repository Health Check。
+2. Source Indexから実RelationへBasis subjectが正しく解決できるかの、実Workspaceを使った読み取り専用縦断検査。
+3. `completeTables`が現在はCase全Stageに一括適用されることを踏まえた、Stageごとの完全性・時点・データ出典の表現。
+4. 確認後の設計変更について、既存Shared Acceptanceの対応するtyped operationだけを使用する。未実装の操作を無条件に生成しない。
+
+今回もProduction、UI、意味モデルの正本は変更していない。
