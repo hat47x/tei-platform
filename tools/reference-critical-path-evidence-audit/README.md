@@ -32,6 +32,22 @@ go run ./tools/reference-critical-path-evidence-audit \
 
 正しい動作は`INCOMPLETE`・`productGate=UNQUALIFIED`・非ゼロ終了である。欠けている証拠には`R0→R1`、実Webの新規単価負例、Repository Health、独立Observationが含まれる。テスト`TestCurrentP0FixtureCannotBeSubmittedAsEvidence`が、「既存テストがある」という事実だけでE1を認定してしまう回帰を防止する。
 
+## 親#1119のexact-head資格確認（手動・任意）
+
+本Reference専用の`qualify.sh`は、このDraft PRの**ソース自体**をcurrent remote main上のtrusted full checkoutで検査するための実行手順である。E1/E2の製品実行を自動完了させるコマンドではない。
+
+```bash
+# 実際のGitHub current SHAを確認し、この2変数へ正確に指定する。
+# コマンドはrepo rootで実行。checkoutはPR #1135のbranch・完全clean必須。
+TEI_CP_EXPECTED_HEAD=<exact-PR-HEAD-40hex> \
+TEI_CP_EXPECTED_MAIN=<current-origin-main-40hex> \
+bash tools/reference-critical-path-evidence-audit/qualify.sh
+```
+
+`qualify.sh`は最新remoteをfetchし、候補HEADとmainのexact一致・main ancestry・変更path、pre/postの未追跡/ignoredおよび非標準index状態を照合する。監査Goのrace test/vet/gofmt、既存Shared AcceptanceとWeb Driverのfocused conformance、既存`tools/repository-health-check.sh`全体を実施し、最後に再fetchして変化を拒否する。失敗時に部分的な成功をPASSとして出さない。
+
+成功出力は`CRITICAL_PATH_LOCAL_SOURCE_QUALIFIED_ONLY`であり、**Product Gate PASSではない**。これは他Draft（#1124/#1121）の未統合Sourceをtestするものではなく、R0→R1を使用した実running Webの新単価負例、実DB保存、独立read、人間の受入を検証しない。またリモート取得・Go/Node等が使えない環境では実行できない。作業済みの単独Go試験を、これらのtrusted full checkout資格と取り違えない。
+
 ## v0の対象シナリオと判断境界
 
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
