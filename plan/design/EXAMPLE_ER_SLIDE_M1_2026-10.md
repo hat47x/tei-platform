@@ -56,3 +56,24 @@
 - [Business System Design](../../docs/business-system-design.md)
 - [実務シナリオ縦断実証](../issue/000075-practical-scenario-mvp-demonstration.md)
 - [Definition-centered Feedback Loop](../../docs/definition-centered-feedback-loop.md)
+
+## 2026-10-10の候補実装（未検証）
+
+独立した`tools/reference-example-slide/`とCLI候補を追加した。既存の`internal/`や`reference/workspace`には書き込んでいない。
+
+- `CatalogFromWorld(ir.World)`: 既存の正規化済みSemantic Worldを読み取り、Canonical Data / Attribute / Relation / RelationKeyを表示用Catalogへ導出する。RelationのKeysなしはKeysなしのまま残す。単一・複合のキーを、物理FKや文字列のRecord ID参照へ勝手に変換しない。
+- 合成Caseの`Build`: 段階差分を検証しSnapshot化する。Relationの向きを保った接続情報と手動座標を投影する。
+- CLI: 合成Caseの`projection.json`と`slide-001.svg`等を明示的な出力先に書く。正規化済みWorldからCatalog/revisionを表示する別モードを持つ。
+- 回帰試験: Checked `reference/world.json`のCustomer/Order/OrderLineにある現実のRelation、RelationKey、KeysなしのRelation、型alias、revision、古いCase拒否を検査対象とした。
+
+### テスト結果と残余の境界
+
+上記は**コミット済みの実装候補**であり、Goテスト・gofmt・全Repository-healthがPASSしたと確認したものではない。Draft PRを閉じず、実行確認とコード整形、exact-head Gateが揃うまでmergeしない。
+
+- Worldの`Attribute`だけでは必須性は導出できない。`Required=false`が業務上任意である証拠ではない。
+- `std.identifier`、`std.decimal`、`std.money`等は、このReferenceの基本型検証では`opaque`とし、厳密な値の妥当性を主張しない。
+- Semantic RelationKeyによる**具体レコードの対応・参照整合性検証**は未実装である。図面に線を引けることと検証済みは別である。
+- Catalog revisionはWorld内のSemantic名前空間のハッシュであり、業務の実データの観測・時点、Application、Target/Provider状態を含まない。
+- 現段階ではReferenceが意味定義の必須性・データ型を完全再現するわけではなく、Studioの正本受理経路も使っていない。
+
+この境界を維持しながら、次は実際のCaseをSemantic RelationKeyへ適合させて検証可能にするか、未知・不完全を返すかの最小契約を反証例から定める。データ例が一部しかない説明用スライドで、参照先が存在しないことを不整合と即断してはいけない。
