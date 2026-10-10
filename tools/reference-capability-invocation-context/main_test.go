@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -451,5 +454,83 @@ func TestNoRequiredExecutionContextNeedsNoReusePartition(t *testing.T) {
 	}
 	if execution.Receipt.ReusePartitionRef != "" {
 		t.Fatalf("context-free invocation gained reuse partition: %+v", execution.Receipt)
+	}
+}
+
+func TestSemanticRequestDigestUsesDispatchSnapshot(t *testing.T) {
+	request := []byte("original-request")
+	sum := sha256.Sum256(request)
+	expected := "sha256:" + hex.EncodeToString(sum[:])
+
+	execution, err := invokeWithExecutionContext(
+		context.Background(),
+		accessSlotContracts(),
+		accessRequirement(),
+		accessHost("trusted-access"),
+		request,
+		func(_ context.Context, _ ContextSlotView, got []byte) ([]byte, error) {
+			if string(got) != "original-request" {
+				t.Fatalf("downstream did not receive the original request: %q", got)
+			}
+			// Mutation is intentionally sequenced during the callback, not
+			// concurrent with snapshot creation.
+			request[0] = 'X'
+			return []byte("result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if execution.Receipt.SemanticRequestDigest != expected {
+		t.Fatalf("request receipt changed after caller mutation: got=%s want=%s",
+			execution.Receipt.SemanticRequestDigest, expected)
+	}
+}
+
+func TestAlreadyCanceledControlContextSkipsDownstream(t *testing.T) {
+	parent, cancel := context.WithCancel(context.Background())
+	cancel()
+	invoked := false
+	_, err := invokeWithExecutionContext(
+		parent,
+		accessSlotContracts(),
+		accessRequirement(),
+		accessHost("trusted-access"),
+		[]byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			invoked = true
+			return []byte("result"), nil
+		},
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled context was not rejected before dispatch: %v", err)
+	}
+	if invoked {
+		t.Fatal("downstream invoker ran after context cancellation")
+	}
+}
+
+func TestContextSlotLookupReturnsIndependentBytes(t *testing.T) {
+	_, err := invokeWithExecutionContext(
+		context.Background(),
+		accessSlotContracts(),
+		accessRequirement(),
+		accessHost("trusted-access"),
+		[]byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			first, ok := slots.Lookup(testAccessSlot)
+			if !ok {
+				t.Fatal("required slot missing")
+			}
+			first[0] = 'X'
+			second, ok := slots.Lookup(testAccessSlot)
+			if !ok || string(second) != "trusted-access" {
+				t.Fatalf("slot value mutated through lookup: %q ok=%v", second, ok)
+			}
+			return []byte("result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
