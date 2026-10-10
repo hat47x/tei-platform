@@ -19,7 +19,7 @@ func TestCombinedReferenceRouteRegistrationKeepsGateCStatuses(t *testing.T) {
 			handler := server.Handler()
 			for _, tc := range []struct {
 				method, path string
-				status int
+				status       int
 			}{
 				{http.MethodGet, "/scenario/read", http.StatusServiceUnavailable},
 				{http.MethodPost, "/scenario/read", http.StatusMethodNotAllowed},
