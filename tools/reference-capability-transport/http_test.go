@@ -30,7 +30,10 @@ func echoHTTPTransportImplementation(
 
 func newHTTPTransportServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	handler, err := NewHTTPTransportHandler(echoHTTPTransportImplementation)
+	handler, err := NewHTTPTransportHandler(
+		genericDispatchIdentity(genericDispatch(nil)),
+		echoHTTPTransportImplementation,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,13 +68,7 @@ func TestHTTPTransportRoundTripPreservesGenericIdentityAndOpaquePayload(t *testi
 		receipt.Carrier.LegacyCapabilityID != "" {
 		t.Fatalf("HTTP carrier leaked legacy process identity: %+v", receipt.Carrier)
 	}
-	if receipt.GenericContractID != dispatch.ContractID ||
-		receipt.ContractFingerprint != dispatch.ContractFingerprint ||
-		receipt.Target != dispatch.Target ||
-		receipt.Provider != dispatch.Provider ||
-		receipt.RequestShapeFingerprint != dispatch.RequestShapeFingerprint ||
-		receipt.ResultShapeFingerprint != dispatch.ResultShapeFingerprint ||
-		receipt.PayloadCodec != dispatch.PayloadCodec ||
+	if receipt.InvocationIdentity != genericDispatchIdentity(dispatch) ||
 		receipt.RequestDigest != digestBytes(payload) ||
 		receipt.ResultDigest != digestBytes(payload) {
 		t.Fatalf("HTTP generic identity drifted: %+v", receipt)
@@ -108,13 +105,7 @@ func TestProcessAndHTTPReceiptsPreserveSameGenericIdentity(t *testing.T) {
 
 	left := processExecution.Receipt
 	right := httpExecution.Receipt
-	if left.GenericContractID != right.GenericContractID ||
-		left.ContractFingerprint != right.ContractFingerprint ||
-		left.Target != right.Target ||
-		left.Provider != right.Provider ||
-		left.RequestShapeFingerprint != right.RequestShapeFingerprint ||
-		left.ResultShapeFingerprint != right.ResultShapeFingerprint ||
-		left.PayloadCodec != right.PayloadCodec ||
+	if left.InvocationIdentity != right.InvocationIdentity ||
 		left.RequestDigest != right.RequestDigest ||
 		left.ResultDigest != right.ResultDigest {
 		t.Fatalf(
@@ -133,17 +124,20 @@ func TestProcessAndHTTPReceiptsPreserveSameGenericIdentity(t *testing.T) {
 }
 
 func TestHTTPTransportRejectsImplementationIdentityDriftBeforeResponse(t *testing.T) {
-	handler, err := NewHTTPTransportHandler(func(
-		_ context.Context,
-		dispatch GenericDispatch,
-	) (GenericTransportResult, error) {
+	handler, err := NewHTTPTransportHandler(
+		genericDispatchIdentity(genericDispatch(nil)),
+		func(
+			_ context.Context,
+			dispatch GenericDispatch,
+		) (GenericTransportResult, error) {
 		result, err := echoHTTPTransportImplementation(context.Background(), dispatch)
 		if err != nil {
 			return GenericTransportResult{}, err
 		}
-		result.Provider.ImplementationID = "tampered.implementation"
-		return result, nil
-	})
+			result.Provider.ImplementationID = "tampered.implementation"
+			return result, nil
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +153,42 @@ func TestHTTPTransportRejectsImplementationIdentityDriftBeforeResponse(t *testin
 	)
 	if err == nil || !strings.Contains(err.Error(), "status 502") {
 		t.Fatalf("HTTP implementation identity drift was accepted: %v", err)
+	}
+}
+
+func TestHTTPTransportHostRejectsClientSelectedProviderBeforeImplementation(t *testing.T) {
+	calls := 0
+	expected := genericDispatchIdentity(genericDispatch(nil))
+	handler, err := NewHTTPTransportHandler(
+		expected,
+		func(
+			_ context.Context,
+			dispatch GenericDispatch,
+		) (GenericTransportResult, error) {
+			calls++
+			return echoHTTPTransportImplementation(context.Background(), dispatch)
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	dispatch := genericDispatch([]byte("payload"))
+	dispatch.Provider.PluginID = "tei.reference.client-selected"
+	_, err = invokeOverHTTPTransport(
+		context.Background(),
+		server.Client(),
+		server.URL,
+		"http-client-selected-provider",
+		dispatch,
+	)
+	if err == nil || !strings.Contains(err.Error(), "status 409") {
+		t.Fatalf("client-selected Provider identity was accepted: %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("implementation ran before Host identity gate: calls=%d", calls)
 	}
 }
 
@@ -265,7 +295,10 @@ func TestHTTPTransportDoesNotClaimAuthenticationOrRuntimeAuthority(t *testing.T)
 }
 
 func TestHTTPTransportHandlerRejectsMalformedBoundaryInputs(t *testing.T) {
-	handler, err := NewHTTPTransportHandler(echoHTTPTransportImplementation)
+	handler, err := NewHTTPTransportHandler(
+		genericDispatchIdentity(genericDispatch(nil)),
+		echoHTTPTransportImplementation,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
