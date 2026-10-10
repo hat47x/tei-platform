@@ -1,3 +1,4 @@
+import {assessPairedEvidence} from './e7-paired-evidence.mjs';
 // #1016 E11: combine two pre-computed, read-only candidate diagnostics.
 // Do not resolve a dependency graph, create a lock or infer runtime authority.
 const obj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -103,4 +104,50 @@ export function qualifyCompositionReview({sourceDrift,sourceReport,typedProjecti
   return {...base,status:review.length?'review-candidate':'limited-unchanged',reviewCandidates:review,
     dependencyProvenance:'caller-supplied-typed-candidates',
     sourceQualification:'direct-definitions-only'};
+}
+
+
+/**
+ * Consume the real JSON shapes emitted by E5/E7 and #1120 derivedbridge:
+ *  - baseline/current: E7 paired evidence envelopes
+ *  - projection: derivedbridge.Projection, with graph/rules/unresolved/authorityLimits
+ *  - diagnostics: modelref.Validate output
+ *  - affected: modelref.Impact output
+ *
+ * This does NOT run Go's Validate/Impact, certify the caller-provided results,
+ * or prove that the Go projection and the E5/E7 snapshot refer to the same
+ * source revision. Until there is such a verified join, no "unchanged" verdict
+ * can be given by this combined entry point.
+ */
+export function qualifyPairedCompositionReview({
+  baseline,current,projection,diagnostics,affected,application,scope,
+}={}) {
+  if (!obj(baseline) || !obj(current) || !obj(current.report) ||
+      !obj(current.index) || !obj(projection) || !obj(projection.graph) ||
+      !Array.isArray(projection.unresolved) ||
+      !Array.isArray(projection.authorityLimits) ||
+      !Array.isArray(projection.rules) ||
+      !Array.isArray(projection.graph.nodes) ||
+      !Array.isArray(projection.graph.edges) ||
+      !Array.isArray(diagnostics) || !Array.isArray(affected)) {
+    return unresolved('incomplete_paired_or_typed_evidence');
+  }
+  const drift = assessPairedEvidence(baseline,current);
+  const candidate = qualifyCompositionReview({
+    sourceDrift:drift,
+    sourceReport:current.report,
+    typedProjection:{
+      schema:projection.graph.schema,scope,application,
+      nodes:projection.graph.nodes,unresolved:projection.unresolved,
+      diagnostics,affected,
+    },
+    application,scope,
+  });
+  if (candidate.status === 'unresolved') return candidate;
+  // E5/E7 source collection and #1120 projection are currently separate.
+  // Do not turn a matching caller-supplied shape into snapshot provenance.
+  return {...unresolved('unverified_shared_snapshot'),
+    reviewCandidates:candidate.reviewCandidates,
+    sourceQualification:candidate.sourceQualification,
+    typedQualification:'caller-supplied-modelref-projection'};
 }
