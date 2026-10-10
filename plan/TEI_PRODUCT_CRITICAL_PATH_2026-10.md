@@ -493,7 +493,7 @@ Gate G2の最初の実行は、既存Shared Acceptanceを使ったscratch `R0→
 
 最初の一往復に、**受注明細の単価が正であることのValidationを追加し、`order_entry`が評価対象として採用する**変更を選ぶ。これなら物理DBスキーマ改版を無条件に必要とするRelation追加ではなく、業務上の検証結果というobservableな差を最小実装で確かめやすい。
 
-ただし、#1124のStudio Bridge（Draft PR #1137）の現`candidateFromEdit`は、`table / add-validation / positive`から **`add-validation` 1操作だけ**を生成する。一方、現在のmain上の`tools/reference-first-web-target/command_scenario.go`は`driver.Resolver.ResolveApplicationValidations("order_entry")`で**Applicationが明示的に選択した規則だけ**をCommand前に評価する。現在の`reference/world.json`の`order_entry.validations`は次の3件だけであり、新しい`sales.order_line.unit_price_positive`は含まれない。
+設計上の注意として、#1124のStudio Bridge（Draft PR #1137）の初期版では`applicationUse`が指定されない限り、`table / add-validation / positive`から **`add-validation` 1操作だけ**を生成した。更新後のPRには、明示的な利用選択を伴う二操作候補が追加されている（§20）。一方、現在のmain上の`tools/reference-first-web-target/command_scenario.go`は`driver.Resolver.ResolveApplicationValidations("order_entry")`で**Applicationが明示的に選択した規則だけ**をCommand前に評価する。現在の`reference/world.json`の`order_entry.validations`は次の3件だけであり、新しい`sales.order_line.unit_price_positive`は含まれない。
 
 - `sales.order_line.quantity_positive`
 - `sales.order.lines.line_number_unique`
@@ -538,7 +538,7 @@ Gate G2の最初の実行は、既存Shared Acceptanceを使ったscratch `R0→
 
 | Step | 既存の足場 | 提出する証跡と注意 |
 | --- | --- | --- |
-| A | `reference/studio-authoring/bridge.mjs`（#1137） | 表操作から**規則追加と明示的利用選択**を一つのproposalとして作る最小UI/CLI拡張を#1124 ownerが判断。現Bridgeの1操作変換のまま、V05の新Rule実行達成を主張しない |
+| A | `reference/studio-authoring/bridge.mjs`（#1137） | PR #1137の更新版は`applicationUse`指定で2操作候補を生成できる。次はscratch E2Eのactual試験・Review/Source再投影・G1 consumer証跡を取得。単独ルール追加はRuntime利用と混同しない |
 | B | `tools/reference-shared-acceptance/practical_validation_loop_test.go`（main） | scratch R0、Preview時のsource byte不変、Review fingerprint、人間のAccepted Decision、R1再読込。既存testの成立はテスト対象時点の証拠であり、#1137 exact headのactual実行を代用しない |
 | C | `driver.Resolver.ResolveApplicationValidations`（main） | R1の`order_entry`に4件のrule IDが宣言順で現れること。UIの見かけの検証一覧ではなく、Driverの解決結果で確認 |
 | D | `tools/reference-first-web-target/command_scenario.go`（main） | R1由来Worldを読み、`sales.order_line.unit_price`の正/非正値を隔離fixtureで変え、`satisfied`と`validation-not-satisfied`の差・Command未実行を検証。未評価/欠損/不正数値を成功に変えない |
@@ -552,7 +552,7 @@ Gate G2の最初の実行は、既存Shared Acceptanceを使ったscratch `R0→
 - **E1 — Actual scratch + Web / synthetic Provider**: R0→R1のAcceptanceをtrusted checkoutで実行し、R1 WorldのWeb Commandを正例/負例で操作したEvidence。これで**設計→選択→検証→Command境界**の一往復を示せる。ただしDBは合成、実データ永続化/外部観測の製品Gateは未達。
 - **E2 — Actual DB Provider + independent read**: #1126/#1127が実ProviderへR1互換のData contractを結び、write resultと独立したDB readを取得、S02/S05とN11を同じ実行packetへ付ける。E1からE2への自動昇格は禁止。E2は現在のWeb synthetic fixtureを本番DBと呼び替えることでは得られない。
 
-**次の実装Owner判断**: #1124はPR #1137で1操作候補を2操作の明示的選択へ拡張するか、Reference CLIへ既存Shared Acceptanceの2操作候補をそのまま渡す薄いconsumerを置くかを決める。#1127はE1のWeb統合試験と、E2に必要なactual Providerを接続する実機構を区別する。#1121はR1のAccepted Source系譜を合成`trustedAcceptanceReceipt`で置換しない。#1119はE0/E1/E2を別欄で管理し、PR #1137/#1141のDraftを合格と数えない。
+**現在の実装Owner判断（初期提案から更新）**: #1124 PR #1137は明示的`applicationUse`付きで2操作候補を既に生成可能となった。次は同PRのNode/Go scratch E2Eをtrusted exact-headで実行し、その受理系譜とSource/Driver結果を提出する。#1127はE1のWeb統合試験と、E2に必要なactual Providerを接続する実機構を区別する。#1121はR1のAccepted Source系譜を合成`trustedAcceptanceReceipt`で置換しない。#1119はE0/E1/E2を別欄で管理し、PR #1137/#1141のDraftを合格と数えない。
 
 **今回の実測範囲**: main上の`reference/world.json`、`tools/reference-shared-acceptance`のREADME/試験ソース、`tools/reference-first-web-target`のCommand/Read実装、PR #1137のBridgeソースをGitHubから読み取って比較した。ここに記した`R0→R1→Web`操作を、この作業環境で実行したわけではない。trusted exact-head checkout / Repository Health / current real-DB Evidenceは未取得、G2未合格。
 
@@ -600,7 +600,7 @@ E1-Bでは、既存の数量0が単価の不満足を**隠さない**よう、�
 
 | Owner | 既存テストで足りること | 新たに必要な接合 |
 | --- | --- | --- |
-| #1124 | Shared Acceptance側の2操作受理 | PR #1137の1操作Studio候補を明示的利用選択と結び、同じscratch R0→R1を通す。UIの候補生成だけでV04合格にしない |
+| #1124 | Shared Acceptance側の2操作受理 | PR #1137の更新版は明示的Application useの2操作候補に対応。次は既存scratch E2Eのactual試験を実施し、R0→R1とSource/Driver連結を示す |
 | #1127 | scratch R1由来のWeb handlerで正/負/欠損のValidation実行 | 同じR1のProvider/Target readinessとreal Observationを後続で実証。別のunit-price用Runnerは作らない |
 | #1121 | lower段階のversion/capability候補 | R1の真正なAccepted Sourceを受け取り、実行時ContextやAuthorityを合成のTrustへ置き換えない |
 | #1119 | 既存試験のSourceとP0 Caseへの対応 | trusted exact HEADでの実テストreceipt、R0/R1/target/observationの証跡を収集し、E1/E2を分ける |
@@ -636,3 +636,33 @@ G2に残るのはStudio #1137の実consumer経路、accepted R1からのLowering
 - `REVIEW_REQUIRED`になったpacketであっても**未取得な証拠の空欄を「PASS」で埋めることは禁止**。#1124/#1127が実験と根拠を別々に提出し、#1119は同一R0→R1系譜とScope/Authorityの実consumer確認を担当する。
 
 **現状判定**: 横断レーンの証拠申告を検査する仕組みが増えたに過ぎず、G0はconsumer合意待ち、G1/G2/G3/G4の合格はなお未取得。このツールが合格を出せない設計は、意図的な製品安全境界である。
+
+## 20. Studio 2操作接続の進捗反映とWeb負例のE1境界（2026-10-10）
+
+### Studioの設計ギャップは一段解消したが、E1実行証拠とは別
+
+§16/§18の「Studio Bridgeが1操作しか出せない」という記載は、その時点の候補についての監査履歴である。#1124のDraft PR #1137はその後更新され、現在の `candidateFromEdit` は `applicationUse:{application,placement}` が明示されたとき、既存Shared Acceptance向けの `add-validation` と `add-application-validation-use` を**同一candidateの二つのdelta**として生成する。対象Applicationが該当Semantic Namespaceを使うこと、既存重複選択がないこと、危険な配置pathでないことをReferenceで確認し、実際のSource更新権限は既存Shared Acceptanceへ委譲する。
+
+さらにPR #1137の `e2e.mjs` はscratchで同じ受理系譜を確認し、再投影でApplicationの利用宣言と変更対象Source二件を確認するテストを持つ。ただし **trusted exact-head Node+Go実行は未取得**。Sourceの2操作を表現できるようになったことだけで、実動作のV04/ G1 PASSとしない。#1124へは新機構の重複開発ではなく**既存E2Eスクリプトを資格実行してreceiptを提出すること**を次の作業として渡す。
+
+### E1: running-serverとHTTP handlerの負例を同一視しない
+
+mainの通常Web fixtureでは新規`unit_price_positive`を失敗させる単価0が用意されておらず、受注1002の失敗原因は数量0である。一方、既存`TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList`はGo test内の `staticReadScenarioRunner` で単価0を注入し、新規4番目のValidationによる拒否を確かめる。**これは有益なhandler-level証拠だが、実行中のWebサーバが新規単価規則を拒否したことはまだ示さない**。
+
+横断E1の「actual running Web正例・負例」という要件に対し、従来preflightは正負receipt名と共通 `web.runMode=running-server` だけを確認しており、**負例が数量検証なのか新規単価検証なのか**、**negativeだけhandler-onlyなのか**を形式的に分離できなかった。そこで`tools/reference-critical-path-evidence-audit/` のE1申告欄に次の二項目を追加した。
+
+- `web.negativeValidation`: 実Web負例として申告する**失敗規則**。新規単価規則と一致しないと `E1_NEGATIVE_SELECTED_RULE_RUNNING_WEB_EVIDENCE_REQUIRED`。
+- `web.negativeEvidenceMode`: **負例側個別**の実行形態。`handler-only`を`running-server`と申告しない。E1提出としては`running-server`を要求し、異なれば同じ診断を出す。
+
+これらはあくまで**申告の整合性を検査する欄**である。値を`running-server`と記述しただけでは実行・証跡の真正性を証明できず、ProductGateは従来どおり常に`UNQUALIFIED`。人が実Web receiptとProvider/Ruleの根拠を検査する必要がある。
+
+#1127への次の実装要求は、通常Web APIへテスト専用の単価上書きparameterを足すこと**ではない**。隔離されたReference起動構成または環境内のtest-only fixture selectionを用いて、R1の同一World・Ruleのまま、actual running Webで単価0を観測可能にする**最小手段**を調べる。実Provider・Production Targetへこの試験機構を混入させず、合成Providerだと明示する。実現までE1のrunning-Web負例は`NOT_RUN`であり、既存httptestをE1実サーバ証拠に繰り上げない。
+
+### 次に取得すべき証跡（作業順）
+
+1. #1124 PR #1137: exact-head `node --test reference/studio-authoring/bridge.test.mjs` と `TEI_STUDIO_E2E=1 node reference/studio-authoring/e2e.mjs`、R0→R1とN06、source digest。mainへ無資格統合しない。
+2. #1127: 既存Go `TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList` をtrusted current mainで実行し、Webの正例と単価0のhandler負例を分けて報告。
+3. #1127/#1121: R1との互換根拠つき`running-server`正例を取得。新規単価負例もrunning-serverで実施できる安全なfixture接続を確立してから、負例receiptを記録。
+4. #1126/#1127: E2は別途actual DB、同じR1に対するDB互換性・current Host Authority・Commandと独立read、S02/S05/N11を実証する。
+
+**現状**: §20は更新後のGitHub source/PRに基づく設計・実装照合およびpreflight code/testの変更。新規のGoテストはこの横断担当でtrusted full TEI checkout実行していない。Node E2E、running Web、actual DB、Repository Healthも未実行。#1119 G1/G2は未合格、親PR #1135はDraft継続。
