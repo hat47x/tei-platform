@@ -18,6 +18,10 @@ func openTestStore(t *testing.T, maxBytes int64) localArtifactStore {
 	return store
 }
 
+func receiptPath(store localArtifactStore, receipt artifactStoreReceipt) string {
+	return filepath.Join(store.root, filepath.FromSlash(receipt.Locator))
+}
+
 func TestPutAndGetByExactDigest(t *testing.T) {
 	store := openTestStore(t, 1<<20)
 	value := []byte("exact artifact bytes")
@@ -48,7 +52,7 @@ func TestRepeatedPutOfSameBytesIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := os.Stat(first.Locator)
+	before, err := os.Stat(receiptPath(store, first))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +60,7 @@ func TestRepeatedPutOfSameBytesIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := os.Stat(second.Locator)
+	after, err := os.Stat(receiptPath(store, second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,10 +112,10 @@ func TestGetRejectsCorruptedStoredBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(receipt.Locator, 0o644); err != nil {
+	if err := os.Chmod(receiptPath(store, receipt), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(receipt.Locator, []byte("tampered"), 0o644); err != nil {
+	if err := os.WriteFile(receiptPath(store, receipt), []byte("tampered"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -146,8 +150,11 @@ func TestDigestIdentityDoesNotDependOnStoreLocator(t *testing.T) {
 	if leftReceipt.Digest != rightReceipt.Digest {
 		t.Fatal("store locator changed artifact content identity")
 	}
-	if leftReceipt.Locator == rightReceipt.Locator {
-		t.Fatal("different stores unexpectedly reported the same locator")
+	if leftReceipt.Locator != rightReceipt.Locator {
+		t.Fatalf("same content-addressed layout produced different relative locators: %q != %q", leftReceipt.Locator, rightReceipt.Locator)
+	}
+	if receiptPath(left, leftReceipt) == receiptPath(right, rightReceipt) {
+		t.Fatal("different stores unexpectedly resolved the same physical path")
 	}
 }
 
@@ -322,5 +329,24 @@ func TestConcurrentPutLeavesNoTemporaryObjects(t *testing.T) {
 	wantName := strings.TrimPrefix(digestBytes(value), "sha256:")
 	if entries[0].Name() != wantName {
 		t.Fatalf("stored object name=%q want=%q", entries[0].Name(), wantName)
+	}
+}
+
+
+func TestReceiptLocatorDoesNotLeakStoreRoot(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	receipt, err := store.PutBytes([]byte("portable receipt locator"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.IsAbs(receipt.Locator) {
+		t.Fatalf("receipt locator leaked an absolute Host path: %q", receipt.Locator)
+	}
+	if strings.Contains(filepath.ToSlash(receipt.Locator), filepath.ToSlash(store.root)) {
+		t.Fatalf("receipt locator leaked store root: %q", receipt.Locator)
+	}
+	want := filepath.ToSlash(filepath.Join(artifactDigestAlgorithm, strings.TrimPrefix(receipt.Digest, "sha256:")))
+	if receipt.Locator != want {
+		t.Fatalf("receipt locator=%q want=%q", receipt.Locator, want)
 	}
 }
