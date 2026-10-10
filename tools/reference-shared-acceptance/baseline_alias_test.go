@@ -635,3 +635,24 @@ func TestReferenceScratchWorkspaceStillAllowsNonSourceOutputs(t *testing.T) {
 		t.Fatalf("expected revision output, got %q", received)
 	}
 }
+
+func TestReferenceRejectsNewOutputUnderIndexedSourceRoot(t *testing.T) {
+	workspace := scratchWorkspace(t)
+	// Even a new file can become authoritative when the Workspace is next
+	// loaded. Reject output under an existing Source root, not only a
+	// collision with files already present in the Source Index.
+	untrackedSource := filepath.Join(workspace, "semantic", "sales", "new-revision.tei")
+	blocked, err := outputTouchesWorkspaceManagedSource(workspace, untrackedSource)
+	if err != nil || !blocked {
+		t.Fatalf("untracked output in managed source root: blocked=%t err=%v", blocked, err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := runCLI([]string{"revision", "-workspace", workspace, "-out", untrackedSource},
+		&stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "Workspace") {
+		t.Fatalf("untracked Source was not protected: code=%d out=%s err=%s",
+			code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(untrackedSource); !os.IsNotExist(err) {
+		t.Fatalf("rejected Source file unexpectedly created: %v", err)
+	}
+}
