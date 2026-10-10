@@ -219,3 +219,46 @@ func TestManyWithNoMatchedTargetIsNotSupported(t *testing.T) {
 		t.Fatalf("empty correspondence was treated as supported: %+v", result)
 	}
 }
+
+func TestLexicalMatchDoesNotProveCrossDomainRelation(t *testing.T) {
+	in := keyedInput()
+	source := in.Catalog.Tables["child"]
+	target := in.Catalog.Tables["parent"]
+	// Both values remain lexically equal. But a supplier code cannot
+	// automatically be treated as a customer code.
+	source.Fields[1].SemanticType = "sales.supplier_code"
+	target.Fields[1].SemanticType = "customer.customer_code"
+	in.Catalog.Tables["child"] = source
+	in.Catalog.Tables["parent"] = target
+	result := oneFinding(t,in)
+	if result.Result != "unresolved" || result.Reason != "relation-key-type-not-confirmed" {
+		t.Fatalf("lexical match crossed semantic domains: %+v",result)
+	}
+}
+
+func TestMatchingCanonicalTypesAllowScopedKeyEvidence(t *testing.T) {
+	in := keyedInput()
+	source := in.Catalog.Tables["child"]
+	target := in.Catalog.Tables["parent"]
+	source.Fields[0].SemanticType = "business.customer_number"
+	target.Fields[0].SemanticType = "business.customer_number"
+	source.Fields[1].SemanticType = "business.order_code"
+	target.Fields[1].SemanticType = "business.order_code"
+	in.Catalog.Tables["child"] = source
+	in.Catalog.Tables["parent"] = target
+	result := oneFinding(t,in)
+	if result.Result != "supported" || len(result.MatchedTargetIDs)!=1 {
+		t.Fatalf("same Canonical type identities rejected: %+v",result)
+	}
+}
+
+func TestTypeEvidencePartialIsUnresolved(t *testing.T) {
+	in := keyedInput()
+	source := in.Catalog.Tables["child"]
+	source.Fields[0].SemanticType="business.customer_number"
+	in.Catalog.Tables["child"]=source
+	result := oneFinding(t,in)
+	if result.Result != "unresolved" || result.Reason != "relation-key-type-not-confirmed" {
+		t.Fatalf("one-sided type identity was ignored: %+v",result)
+	}
+}
