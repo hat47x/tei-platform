@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {qualifyCompositionReview as qualify} from './e11-review-gate.mjs';
+import {qualifyCompositionReview as qualify, qualifyPairedCompositionReview as qualifyPaired} from './e11-review-gate.mjs';
 const scope='order-entry-reference',app='order_entry';
 const k=(kind,id,at=scope)=>({scope:at,subject:{kind,id}});
 const appKey=k('application',app),pat=k('application-pattern',app+'.customer_reference');
@@ -117,4 +117,102 @@ test('unresolved Source drift still remains unresolved with explicit Pattern mem
  assert.equal(r.status,'unresolved');
  assert.equal(r.sourceReason,'source_fingerprint_changed');
  assert.equal(r.reviewCandidates.length,1);
+});
+
+const sha = x => 'sha256:'+x.repeat(64);
+const paired = () => ({
+ format:'tei.e5-paired-source-observation.v1',
+ qualification:'read-only-paired-input-not-an-authority',
+ report:{application:app,status:'observed',qualification:'declaration-and-source-index-only',
+  issues:[],dependencies:[
+   {relation:'application',subject:{kind:'application',id:app},
+    source:{path:'applications/order-entry/application.tei',fingerprint:sha('a')}},
+   {relation:'application-pattern',subject:{kind:'application-pattern',id:pat.subject.id},
+    source:{path:'applications/order-entry/patterns/customer-reference.tei',fingerprint:sha('b')}},
+  ]},
+ index:{artifacts:[
+  {path:'applications/order-entry/application.tei',fingerprint:sha('a')},
+  {path:'applications/order-entry/patterns/customer-reference.tei',fingerprint:sha('b')},
+ ],references:[
+  {subject:{kind:'application',id:app},
+   artifactPath:'applications/order-entry/application.tei',role:'definition'},
+  {subject:{kind:'application-pattern',id:pat.subject.id},
+   artifactPath:'applications/order-entry/patterns/customer-reference.tei',role:'definition'},
+ ]},
+});
+const goProjection=()=>({
+ graph:{schema:'tei.modelref.v0',nodes:typed().nodes,edges:[]},
+ rules:[],unresolved:[],authorityLimits:['source-evidence-not-bound'],
+});
+const pairedReview=({baseline=paired(),current=paired(),projection=goProjection(),
+ diagnostics=[],affected=[],...rest}={})=>qualifyPaired({
+ baseline,current,projection,diagnostics,affected,application:app,scope,...rest,
+});
+
+test('actual E7 and Go derivedbridge JSON shapes cannot assert a shared snapshot',()=>{
+ const result=pairedReview();
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'unverified_shared_snapshot');
+ assert.equal(result.fullClosure,false);
+ assert.equal(result.authority,'none');
+ assert.equal(result.adoption,'not-decided');
+ assert.equal(result.reviewCandidates.length,0);
+});
+test('Go Impact candidates survive as review leads without claiming same snapshot',()=>{
+ const result=pairedReview({affected:[
+  {changed:relation,consumer:pat,reason:'reference-version-changed'},
+ ]});
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'unverified_shared_snapshot');
+ assert.equal(result.reviewCandidates.length,1);
+ assert.equal(result.reviewCandidates[0].consumer.subject.id,pat.subject.id);
+});
+test('E7 actual Source fingerprint mismatch takes precedence over typed review',()=>{
+ const current=paired();
+ current.report.dependencies[1].source.fingerprint=sha('c');
+ current.index.artifacts[1].fingerprint=sha('c');
+ const result=pairedReview({current,affected:[
+  {changed:relation,consumer:pat,reason:'version-changed'},
+ ]});
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'source_requalification_required');
+ assert.equal(result.sourceReason,'indexed_source_changed');
+ assert.equal(result.reviewCandidates.length,1);
+});
+test('a missing or inconsistent E5 report refuses typed review candidates',()=>{
+ const current=paired();delete current.report;
+ assert.equal(pairedReview({current}).reason,'incomplete_paired_or_typed_evidence');
+ const changed=paired();changed.report.application='repair_intake';
+ assert.equal(pairedReview({current:changed}).reason,'unqualified_application_source_report');
+});
+test('missing Go graph outputs and malformed projection cannot be treated as empty impact',()=>{
+ assert.equal(pairedReview({projection:{graph:{schema:'tei.modelref.v0'}}}).reason,
+  'incomplete_paired_or_typed_evidence');
+ assert.equal(pairedReview({diagnostics:null}).reason,'incomplete_paired_or_typed_evidence');
+ const invalid=goProjection();invalid.graph.schema='tei.modelref.fake';
+ assert.equal(pairedReview({projection:invalid}).reason,'unqualified_typed_projection');
+});
+test('Go-derived projection with unresolved references cannot return unchanged',()=>{
+ const projection=goProjection();projection.unresolved=['unmaterialized-to:semantic-relation:sales.order.customer'];
+ assert.equal(pairedReview({projection}).reason,'unresolved_typed_references');
+ const diagnostics=[{code:'invalid-edge-type',at:'edges/0'}];
+ assert.equal(pairedReview({diagnostics}).reason,'unresolved_typed_references');
+});
+test('typed impact on an unowned Pattern is excluded even when it shares prefix',()=>{
+ const projection=goProjection();
+ const counterfeit=k('application-pattern',app+'.impostor');
+ projection.graph.nodes.push({key:counterfeit});
+ const result=pairedReview({projection,affected:[
+  {changed:relation,consumer:counterfeit,reason:'version-changed'},
+ ]});
+ assert.equal(result.reason,'unverified_shared_snapshot');
+ assert.equal(result.reviewCandidates.length,0);
+});
+test('inconsistent current E7 definition source cannot be promoted by Go shape',()=>{
+ const current=paired();
+ current.report.dependencies[1].source.path='private/unindexed.tei';
+ const result=pairedReview({current});
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'source_requalification_required');
+ assert.equal(result.sourceReason,'report_index_source_mismatch');
 });
