@@ -146,3 +146,17 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 これらはコードとテスト**候補の変更**であり、テストPASSの報告ではない。Goの書式・コンパイル、actual `go test ./...`、`go vet ./...`、`tools/repository-health-check.sh` については未検証である。
 
 `trace.snapshotFingerprint` は検索条件とGraph/Policyの継続検査用であり、Source Index、Workspace全ファイル、外部Providerの状態を含む単一トランザクションのrevisionではない。Sourceファイル移動・内容変更と併発する場合はSource側のfingerprintも別に確認する必要がある。
+
+
+### 8.2 Canonical/Sourceの複合スナップショット（2026-10-10）
+
+`tei trace` がSource Indexを含めずGraphだけで継続判定すると、同じCanonical Worldで元ファイルが移動した場合や、コメントだけが変わった場合に、古いページの位置・根拠と新しいページの元定義が混在する。この欠落を以下のように修正した。
+
+1. `workspaceProjectionFingerprints` は正規化 `ir.World` と、既存 `workspace.BuildSourceIndex` で生成・Normalizeした `sourceindex.Index` のJSONを、それぞれ独立してfingerprint化する。前者はSourceファイル移動では不変、後者はArtifact path/digest/Source Referenceの変化で変わる。
+2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.snapshotFingerprint` はGraph限定の内部読取識別子として残す。
+3. CLIの `-expected-fingerprint` は**Workspaceレベルの`result.snapshotFingerprint`**のみを受け付ける。違う場合は `STALE_SNAPSHOT`、終了コード1。`summary→full`やoffset/limitだけの変更は同じWorkspace状態であれば許容し、同じWorldに対するSource移動や非意味的な原文変更は拒否する。
+4. `operations.InspectSubject` も `worldFingerprint` と `sourceIndexFingerprint` を共通ヘルパーから取得する。CLIから両操作を別々に呼んだ場合に、観測したCanonicalとSourceのスナップショットが一致したか検証できるようにする。
+
+回帰試験には、合成WorkspaceのSemantic Dataについて `order.tei→renamed.tei` の移動、およびファイル末尾空行の追加を組み込む。どちらも意味情報とmodelref graphが変わらないことを確認しながら、Source Index fingerprintと継続用トークンの変更、および古いトークンの拒否を検証する（テストコード追加、**actual PASS未確認**）。
+
+なお、`BuildSourceIndex` と `sourcebridge.NewResolver` における原ファイル検証は同時読取の競合を完全には閉じない。複合トークンは複数CLI呼出し間の**観測結果の変化検出**であり、単一読取トランザクションの保証、OSのatomic open、Shared Acceptanceの書込み排他ではない。Source全体を本文に展開して後解析する方式にも、同じスナップショット固定・情報開示制御が別途必要となる。
