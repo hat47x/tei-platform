@@ -390,6 +390,7 @@ func buildDataDesignContext(
 		RelationEvidenceQuestions: []string{
 			"what-business-meaning-does-the-relation-express",
 			"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+			"does-this-relation-archetype-support-business-identity-or-functional-dependency-or-only-topology",
 			"what-cardinality-is-required",
 			"is-the-relation-current-only-or-temporal",
 			"what-history-or-validity-period-must-be-preserved",
@@ -398,6 +399,8 @@ func buildDataDesignContext(
 		DesignReviewProtocol: []string{
 			"resolve-current-semantic-data-and-source-evidence-before-design-change",
 			"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+			"classify-relation-archetype-before-promoting-business-identity-or-functional-dependency",
+			"require-source-backed-association-semantics-before-composite-identity",
 			"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
 			"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
 			"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
@@ -411,6 +414,7 @@ func buildDataDesignContext(
 			"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
 			"data-design-resolution-status-is-structural-not-business-certainty",
 			"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
+			"relation-archetype-review-is-guidance-not-semantic-proof",
 			"ambiguous-data-design-context-blocks-cache-reuse",
 			"data-design-evidence-coverage-is-not-source-freshness-proof",
 			"incomplete-data-design-evidence-blocks-complete-cache-reuse",
