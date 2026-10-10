@@ -81,6 +81,32 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		}
 	}
 
+	// Inspect operates over the same normalized Canonical World and Source
+	// Index, but reports not-found and invalid requests as structured JSON.
+	reference := filepath.Join("..", "..", "reference", "workspace")
+	var inspected cliInspectionReport
+	if err := json.Unmarshal(run(0, "inspect", "-workspace", reference, "-subject-kind", "semantic-data", "-subject-id", "sales.order"), &inspected); err != nil {
+		t.Fatalf("inspect success must be JSON: %v", err)
+	}
+	if !inspected.OK || inspected.Result == nil || inspected.Result.SourceStatus != "indexed" ||
+		inspected.Result.Subject.Kind != "semantic-data" || inspected.Result.Subject.ID != "sales.order" {
+		t.Fatalf("unexpected inspect success: %+v", inspected)
+	}
+	var absent cliInspectionReport
+	if err := json.Unmarshal(run(1, "inspect", "-workspace", reference, "-subject-kind", "semantic-data", "-subject-id", "sales.not_found"), &absent); err != nil {
+		t.Fatalf("inspect missing subject not JSON: %v", err)
+	}
+	if absent.OK || absent.Error == nil || absent.Error.Code != "SUBJECT_NOT_FOUND" {
+		t.Fatalf("wrong missing subject result: %+v", absent)
+	}
+	var invalidInspect cliInspectionReport
+	if err := json.Unmarshal(run(2, "inspect", "-workspace", reference, "-subject-kind", "semantic-data"), &invalidInspect); err != nil {
+		t.Fatalf("inspect invalid argument not JSON: %v", err)
+	}
+	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_SUBJECT" {
+		t.Fatalf("wrong inspect invalid argument result: %+v", invalidInspect)
+	}
+
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n\ndata Order {\n    attribute orderId type }\n}\n")
 	var broken cliValidationReport
 	if err := json.Unmarshal(run(1, "validate", "-workspace", root, "-json"), &broken); err != nil {
