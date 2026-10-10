@@ -39,6 +39,7 @@ type SubjectInspection struct {
 	SourceStatus           string              `json:"sourceStatus"`
 	Sources                SubjectSources      `json:"sources"`
 }
+
 // InspectSubject reads one Workspace, then projects its already-normalized World
 // and Source Index. It must not infer a subject from a source path or synthesize
 // canonical meaning from a Source Index reference.
