@@ -6,6 +6,8 @@ const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const subjectKey = s => JSON.stringify([s.kind,s.id]);
 const targetKinds = Object.freeze({
   application:'application',
+  'uses-semantic':'semantic',
+  'application-pattern':'application-pattern',
   'uses-validation':'semantic-validation',
   'database-target':'database',
   'requires-contract':'database-contract',
