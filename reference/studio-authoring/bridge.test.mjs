@@ -101,6 +101,16 @@ test("broken Relation target is unresolved, never silently materialized as Data"
   assert.equal(p.views.er.edges[0].target, null);
 });
 
+test("dangling Function relation stays unresolved rather than becoming absent", () => {
+  const world = fixture();
+  world.applications[0].patterns[0].relation = "sales.unknown_relation";
+  const result = projectWorld(world, revision, "pattern:order_entry.order_lines");
+  const selected = result.views.function.items[0];
+  assert.equal(selected.relationReferenceStatus, "unresolved");
+  assert.equal(selected.unresolvedRelationID, "sales.unknown_relation");
+  assert.equal(selected.relation, null);
+});
+
 test("local selection never expands into a global dense matrix", () => {
   const world = fixture();
   for (let i = 0; i < 2000; i++) {
