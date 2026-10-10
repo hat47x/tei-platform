@@ -14,6 +14,8 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
       world.semantics.some(ns => !ns || typeof ns !== 'object' ||
         (ns.capabilities != null && !Array.isArray(ns.capabilities)) ||
         (ns.types != null && !Array.isArray(ns.types)) ||
+        (ns.data != null && !Array.isArray(ns.data)) ||
+        (Array.isArray(ns.data) && ns.data.some(d => !d || typeof d !== 'object')) ||
         (Array.isArray(ns.capabilities) && ns.capabilities.some(c =>
           !c || typeof c !== 'object' || (c.inputs != null && !Array.isArray(c.inputs)) ||
           (Array.isArray(c.inputs) && c.inputs.some(i => !i || typeof i !== 'object')))) ||
@@ -34,7 +36,12 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
     dependencies.push({subject:{kind,id},path:artifacts[0].path,fingerprint:artifacts[0].fingerprint});
   };
   const capabilities = (world.semantics ?? []).flatMap(ns => ns.capabilities ?? []);
-  const types = (world.semantics ?? []).flatMap(ns => ns.types ?? []);
+  // Semantic Parameter.Type is a canonical identity of a Semantic Type *or*
+  // Data. In reference/workspace, sales.order.submit's input 'sales.order'
+  // denotes Data, not a Type declaration. Never silently prefer either kind
+  // if duplicate identities appear across these declaration categories.
+  const types = world.semantics.flatMap(ns => ns.types ?? []);
+  const data = world.semantics.flatMap(ns => ns.data ?? []);
   const seen = new Set();
   let inspected = 0;
   for (const pattern of apps[0].patterns ?? []) {
@@ -45,8 +52,15 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
     for (const input of matches[0].inputs ?? []) {
       const id = input.type;
       if (!id) {issues.push("input_type_missing:"+matches[0].id);continue;}
-      if (types.filter(t => t.id === id).length !== 1) {issues.push("type_missing_or_ambiguous:"+id);continue;}
-      if (!seen.has(id)) {seen.add(id); evidence("semantic-type",id);}
+      const typeCount = types.filter(t => t.id === id).length;
+      const dataCount = data.filter(d => d.id === id).length;
+      if (typeCount + dataCount !== 1) {
+        issues.push("input_definition_missing_or_ambiguous:"+id);
+        continue;
+      }
+      const kind = typeCount === 1 ? "semantic-type" : "semantic-data";
+      const key = JSON.stringify([kind,id]);
+      if (!seen.has(key)) {seen.add(key); evidence(kind,id);}
     }
   }
   // E4 checks all indexed Artifact paths, SHA-256s, roles and references.
@@ -64,6 +78,7 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
       issues.push('invalid_source_index');
     }
   }
-  dependencies.sort((a,b)=>a.subject.id.localeCompare(b.subject.id));
+  dependencies.sort((a,b)=>a.subject.kind.localeCompare(b.subject.kind) ||
+    a.subject.id.localeCompare(b.subject.id));
   return {status:issues.length?"unresolved":dependencies.length?"observed-limited":inspected?"no-input-types":"no-capability-references",qualification:"declaration-only-not-semantic-acceptance",dependencies,issues};
 }
