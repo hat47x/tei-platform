@@ -39,7 +39,7 @@ SUI `03_Implement/frontend/src/domain/types.ts` の`DocumentV1`では、Cardの�
 - `cancel`: プレビューを破棄します。書き込みは行いません。
 - `drop`: 最後のPayloadで1回だけ`dispatchCommit`を呼び、処理中の二重操作を拒否します。拒否や競合を勝手に再実行せず、例外を呼出元へ戻します。
 
-SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) で、`CardView`の局所プレビュー、`pointerup`のみの確定コールバック、`CanvasShell`の`onCardMoveCommit`、そして`App.tsx`の確定処理への接続を追加しました。`domain/card_drag_commit.ts`は、従来の位置変更とドロップ先の島への所属変更を一つのDocument更新へまとめます。Appは`applyDocumentChange`を一回呼ぶため、Undo履歴も一単位になります。既存の`onMove`経路は別の利用者との互換用に保持しています。
+SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) で、`CardView`の局所プレビュー、`pointerup`のみの確定コールバック、`CanvasShell`の`onCardMoveCommit`、そして`App.tsx`の確定処理への接続を追加しました。`domain/card_drag_commit.ts`は、従来の位置変更とドロップ先の島への所属変更を一つのDocument更新へまとめます。Appは`applyDocumentChange`を一回呼ぶため、Undo履歴も一単位になります。Cardのポインター操作開始時にはSUI Documentの参照とETagを保持し、確定時にいずれかが変化していれば操作を拒否します。これはSUI内部のローカル整合性ガードであり、TEIサーバーでのRevision照合や認可の代用にはなりません。既存の`onMove`経路は別の利用者との互換用に保持しています。
 
 ただし、**SUI内の局所的な確定と、TEIランタイムのAction実行は別段階です。** このPRでは、SUIからTEIの`native-action-bridge.mjs`、`Host.Commit`、実セッション認可を呼び出していません。DocumentのRevisionを操作開始時に捕捉して送信する経路も未実装です。現行のSUI保存は引き続きSUI自身が所有しています。
 
