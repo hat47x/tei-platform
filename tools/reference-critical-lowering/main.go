@@ -31,10 +31,24 @@ type Subject struct {
 	Ref  Ref    `json:"ref"`
 }
 
+// DataNeed describes a logical database Contract requirement, not a bound instance
+// or a claim that a physical schema is currently compatible.
+type DataNeed struct {
+	Database string `json:"database"`
+	Contract string `json:"contract"`
+	VersionConstraint string `json:"versionConstraint"`
+}
+
+func (n DataNeed) valid() bool {
+	return n.Database != "" && n.Contract != "" && n.VersionConstraint != ""
+}
+
 type Requirement struct {
-	Contract Ref    `json:"contract"`
-	Scope    string `json:"scope"`
-	Effect   string `json:"effect"`
+	Contract Ref `json:"contract"`
+	Scope string `json:"scope"`
+	Effect string `json:"effect"`
+	// Exact requirement belongs to Accepted meaning; current instance binding is Host-owned.
+	DataContracts []DataNeed `json:"dataContracts,omitempty"`
 	// This identity is a mandatory part of the accepted contract, not an optional sidecar.
 	RequiredSlots []Ref `json:"requiredContextSlots"`
 }
@@ -82,6 +96,7 @@ type Target struct {
 type Step struct {
 	Contract       Ref    `json:"contract"`
 	Provider       Ref    `json:"provider"`
+	DataContracts []DataNeed `json:"dataContracts,omitempty"`
 	Scope          string `json:"scope"`
 	Effect         string `json:"effect"`
 	Conformance    Ref    `json:"conformance"`
@@ -122,6 +137,11 @@ type Trust interface {
 	Accepted(candidateDigest string, receipt, snapshot Ref) bool
 	Published(contract Ref) bool
 	Conformant(provider Provider) bool
+	// Host checks the current selected provider/artifact, not an earlier preview.
+	RuntimeBindingCurrent(step Step) bool
+	// Existing Data/Driver owner verifies current instance + contract version compatibility.
+	// The callback must not infer equivalence from application and DB version numbers.
+	DataCompatible(step Step) bool
 	ContextBound(step Step) bool // trusted Host validates current, declared slot bindings
 	Authorized(step Step) bool // call again at each invocation; not a cached grant
 }
@@ -215,6 +235,18 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 			slots[slot.ID] = true
 		}
 		req.RequiredSlots = append([]Ref(nil), req.RequiredSlots...)
+		data := make(map[string]bool)
+		for _, need := range req.DataContracts {
+			if !need.valid() {
+				return NeutralPlan{}, reject("invalid-data-requirement")
+			}
+			k := need.Database + ":" + need.Contract
+			if data[k] {
+				return NeutralPlan{}, reject("duplicate-data-requirement")
+			}
+			data[k] = true
+		}
+		req.DataContracts = append([]DataNeed(nil), req.DataContracts...)
 	}
 	sort.Slice(intents, func(i, j int) bool {
 		return intents[i].Scope+":"+intents[i].Contract.ID < intents[j].Scope+":"+intents[j].Contract.ID
@@ -307,6 +339,7 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 		// must never appear in this target-neutral witness.
 		steps = append(steps, Step{
 			Contract: p.Contract, Provider: p.Identity, Scope: p.Scope, Effect: r.Effect,
+			DataContracts: append([]DataNeed(nil), r.DataContracts...),
 			Conformance: p.Conformance, ResolutionLock: p.ResolutionLock,
 			Artifact: p.Artifact, RequiredSlots: append([]Ref(nil), r.RequiredSlots...),
 			RuntimeDeps: append([]Ref(nil), p.RuntimeDeps...), Target: target.ID,
@@ -327,6 +360,12 @@ func AuthorizeInvocation(plan Plan, trust Trust) error {
 		return reject("invalid-boundary")
 	}
 	for _, s := range plan.Steps {
+		if !trust.RuntimeBindingCurrent(s) {
+			return reject("runtime-binding-unavailable")
+		}
+		if len(s.DataContracts) > 0 && !trust.DataCompatible(s) {
+			return reject("data-contract-incompatible")
+		}
 		if !trust.ContextBound(s) {
 			return reject("missing-execution-context")
 		}
@@ -357,6 +396,7 @@ func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref) Cach
 	type resolvedStep struct {
 		Contract, Provider, Conformance, ResolutionLock Ref
 		Scope, Effect string
+		DataContracts []DataNeed
 		RequiredSlots, RuntimeDeps []Ref
 	}
 	resolved := make([]resolvedStep, 0, len(plan.Steps))
@@ -364,7 +404,7 @@ func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref) Cach
 		resolved = append(resolved, resolvedStep{
 			Contract: s.Contract, Provider: s.Provider, Conformance: s.Conformance,
 			ResolutionLock: s.ResolutionLock, Scope: s.Scope, Effect: s.Effect,
-			RequiredSlots: s.RequiredSlots, RuntimeDeps: s.RuntimeDeps,
+			DataContracts: s.DataContracts, RequiredSlots: s.RequiredSlots, RuntimeDeps: s.RuntimeDeps,
 		})
 	}
 	resolve := Digest(struct {
