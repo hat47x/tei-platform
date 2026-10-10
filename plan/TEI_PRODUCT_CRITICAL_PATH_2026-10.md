@@ -780,3 +780,43 @@ bash tools/reference-critical-path-evidence-audit/qualify.sh
 この手順はcurrent mainが更新された後で古い親ブランチをそのまま合格扱いにしない。mainの新コミットを通常の安全な方法で取り込み、exact HEADを再指定したtrusted完全checkoutで再実行する必要がある。差分の形式上の非競合は資格試験の代わりにならない。
 
 **未取得Evidence**: 今回はGitHubに資格スクリプトとrunbookを追加した段階。直接gitアクセスできない現セッションでは、このスクリプトの実full checkoutは走らせていない。親PR #1135はDraft/Gate未合格を維持し、完了時にのみmain統合とIssue完了を判定する。
+
+
+## 25. 合成worktreeでStudio→R1→Webの実接続を圧力試験する（2026-10-10）
+
+### 無関係なDraft owner branchを改変せず横断試験する方法
+
+並走#1120/#1124/#1121の単体Contract候補が増えても、各レーンが**同一Workspace・同一Source Revision・同じDriver**で動く証跡がないままではG1/G2を宣言できない。4本のDraftをmainへ先行mergeしてから不整合を発見する方法は避ける。
+
+親#1119の`tools/reference-critical-path-evidence-audit/compose-smoke.sh` を追加した。GitHub正規remoteの **current main + #1119/#1120/#1124/#1121のexact tip SHA** を引数に、`git worktree add --detach`で一時的なworktreeを作り、その中だけで4つの候補Commitをmergeする。競合時はそこで終了し、常設branchのref/Source/mainには書き込まない。テスト完了・失敗時の双方で一時worktreeを回収する。合成したHEAD/TREEと元SHAを区別する。
+
+合成環境で実行する既存の検査は、Studio Nodeテストとscratch E2E、typed modelref/Workspace Goテスト、Lowering候補、既存Web/Shared Acceptanceの正負、親Evidence preflight、full Repository Healthとする。この手順は**mainへ統合するPRの資格検査そのものではない**。各Ownerがexact-head/mainで改めて資格を通す必要がある。
+
+### E1-Aの不足を埋めるtest-only live Web正常系
+
+`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs` を追加し、上記合成環境に閉じた一つの実行経路を実装した。
+
+1. 基準Source `reference/workspace` をsymlink拒否後に**一時scratchへコピー**。Shared Acceptanceの`revision`で変更前のR0を取得する。
+2. #1124 Studio CLI `propose`で`unit_price_positive`の`add-validation`と`order_entry`への明示`add-application-validation-use`を一つの候補にまとめる。Preview/ReviewはSource bytes不変。
+3. Shared Acceptanceを**テスト用判断**でAcceptし、Source2ファイルだけが変更されたこと、再読込R1がR0と異なること、`tei world`のApplication Rule選択が4件であることを検査する。**人間の受理ではない**。
+4. 既存 `tools/reference-first-web-target` を同じ合成HEADでビルドし、scratch R1の`-workspace`で**実際のloopback Web process**を起動する。固定B/Rと合成Target Tを独立値として渡す。
+5. manifestのApplication/Baseline/Targetを照合し、`POST /scenario/submit`で受注1001のCommandを実行。**4件のValidation ID/順序/結果**、Command stage、synthetic Observation、credential非漏出を検査する。実行後もSource revision R1と管理対象Source2件だけの差分を再確認する。
+
+成功時の表示は **`E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY`**。これまでの`httptest`でなく実プロセスのHTTP正常系を対象にできるが、実行時のSnapshot同一性・current Host Authorityの絶対証明ではなく、**E1の単価0のlive Web負例は未実装**。普通のWeb APIへ任意の価格注入パラメータは追加しない。実DB Provider・独立再読込・S02/S05・Business DFDのAccepted接合も別Gateである。
+
+起動は**full checkoutでの手動実行のみ**。4つのDraft SHAとcurrent main SHAをその都度取得し、以下を実行する。詳細はtoolのREADME参照。
+
+```bash
+TEI_CP_COMPOSE_MAIN=<current-main-SHA40> \
+TEI_CP_COMPOSE_1119=<PR-1135-HEAD-SHA40> \
+TEI_CP_COMPOSE_1120=<PR-1139-HEAD-SHA40> \
+TEI_CP_COMPOSE_1124=<PR-1137-HEAD-SHA40> \
+TEI_CP_COMPOSE_1121=<PR-1141-HEAD-SHA40> \
+bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+```
+
+### 未解消の真のクリティカルパス
+
+**G1**では#1120 scoped RefとStudioのLocal IDを暗黙に等価扱いせず、Producer/Consumerの正負検証とBusiness DFDのAccepted Authorityを後続で接続する。**G2**ではE1-B（live Webで新規単価規則が拒否）、current Provider/HostのS02/S05、実DBへの変更と独立readのE2を別に取得する。合成worktreeのSource-to-Web正常系を得てもこれらのGateのPASSには昇格しない。
+
+**実際の資格と証跡**: この節の更新はGitHub上の新しいtest-only Node/Bashスクリプトとsource契約の静的照合による。V8ではESM importを除いたNode本体の構文が解析可能なことを確認したが、これは`node --check`の代わりではない。ネットワークが使用できない現セッションで合成worktreeを作って実Go/Node/Web/Repository Healthを実行したわけではない。親PRはDraft/未統合、G1〜G4未合格。
