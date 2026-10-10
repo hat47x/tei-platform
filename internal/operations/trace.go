@@ -16,16 +16,30 @@ type SubjectSources struct {
 	References []sourceindex.Reference `json:"references"`
 }
 
+// TraceSubjectSources obtains source references from one Workspace load and
+// one Source Index projection. It does not infer a Canonical Subject from paths.
 func TraceSubjectSources(root string, subject sourceindex.Subject) (SubjectSources, error) {
-	if strings.TrimSpace(subject.Kind) == "" || strings.TrimSpace(subject.ID) == "" {
-		return SubjectSources{}, fmt.Errorf("subject kind and id are required")
+	if err := validateTraceSubject(subject); err != nil {
+		return SubjectSources{}, err
 	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
 		return SubjectSources{}, err
 	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
-	if err != nil { return SubjectSources{}, err }
+	if err != nil {
+		return SubjectSources{}, err
+	}
+	return TraceSubjectSourcesFromIndex(idx, subject)
+}
+
+// TraceSubjectSourcesFromIndex is the same read-only operation over a
+// previously projected index. The CLI may request the full index or one
+// subject without loading and rebuilding the Workspace a second time.
+func TraceSubjectSourcesFromIndex(idx sourceindex.Index, subject sourceindex.Subject) (SubjectSources, error) {
+	if err := validateTraceSubject(subject); err != nil {
+		return SubjectSources{}, err
+	}
 	refs := idx.ReferencesFor(subject)
 	paths := make(map[string]bool, len(refs))
 	for _, ref := range refs {
@@ -38,4 +52,11 @@ func TraceSubjectSources(root string, subject sourceindex.Subject) (SubjectSourc
 		}
 	}
 	return SubjectSources{Subject: subject, Artifacts: artifacts, References: refs}, nil
+}
+
+func validateTraceSubject(subject sourceindex.Subject) error {
+	if strings.TrimSpace(subject.Kind) == "" || strings.TrimSpace(subject.ID) == "" {
+		return fmt.Errorf("subject kind and id are required")
+	}
+	return nil
 }
