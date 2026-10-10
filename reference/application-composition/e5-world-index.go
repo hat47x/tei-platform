@@ -126,6 +126,7 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
 
     databases := map[string]int{}
     contracts := map[string]map[string]int{}
+    contractOwners := map[string]int{}
     majors := map[string]map[string]int{}
     for _, db := range world.Databases {
         name := string(db.ID)
@@ -137,6 +138,7 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
         for _, contract := range db.Contracts {
             id := string(contract.ID)
             contracts[name][id]++
+            contractOwners[id]++
             majors[name][id] = contract.Version.Major
         }
     }
@@ -164,7 +166,7 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
                 continue
             }
             seenContracts[key] = true
-            if contracts[target][id] != 1 {
+            if contracts[target][id] != 1 || contractOwners[id] != 1 {
                 record("requires-contract", subject, "target_contract_missing_or_ambiguous")
                 continue
             }
