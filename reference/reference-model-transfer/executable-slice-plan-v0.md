@@ -111,3 +111,32 @@ TEIが生成したsynthetic fixtureにもoriginal modelの翻案が混入して�
 ### 停止線
 
 初期段階の達成は**TEI-only end-to-end witness 1件**であり、originalとの一致は別に実証する。形式が似たこと、画面が出たこと、生成AIが説明できたことを「移植できた」の代わりにしない。
+
+## 8. Candidateのadversarial qualification（2026-10-10）
+
+本契約のJSON Schemaは**untrusted manifestに書ける内容の上限**を定めるものであり、第三者が報告したdigestや観測結果を信頼済みにする仕組みではない。特に`teiExecution.status=observed`や`comparison.status=consistent-on-observed-axes`は、Schema上の整合条件を満たしても単なる自己申告である。実際にclaimとして発行するには別のEvidence resolver / witness検証が必要である。
+
+- `comparison`の一致・差異判定には、TEIと旧Runtimeのactual trace、受理済みsource、比較軸、整合したpreconditionを要求する。
+- `preconditionAlignment.status=aligned`は両Runtimeの観測が存在する場合に限り、片側実行前に一致を先取りしない。
+- `publicationReview.status=passed`をmanifest自身から宣言することを禁止する。公開承認は別Authorityが実施し、candidate外で記録する。
+- 公開`sourceProfile`は構造的なtokenに限定し、local pathや本文を許さない。ただし識別子への意図的な埋込みは構文制限で検出できないため、独立した公開検査が必要である。
+- negative fixtureは出典digest、受理Decision、実行receipt、precondition、比較軸、原model配布情報の漏洩を中心に作る。
+
+`tools/reference-rmt-scenario-manifest/test_manifest_schema.py`にSchema適合・不適合のadversarial testを追加した。Python実行時には`jsonschema>=4.18`が必要である。外部依存をTEI productionへ追加しない。
+
+~~~bash
+python3 -m unittest discover -s tools/reference-rmt-scenario-manifest -p 'test_*.py'
+go test -count=1 ./tools/reference-shared-acceptance -run '^TestRMTSyntheticReadOnlySlice'
+~~~
+
+**既存TEI機構を再利用する合成縦断候補**として、Shared Acceptanceの既存scratch workspaceとDriverのread-only Query実行を接続するGo testを追加した。RMT Evidenceのtyped attachment、明示ReviewにbindしたDecision、source reload、明示Query mapping、合成Storeの前後観測、およびmapping欠落の拒否を一つのtestで確認する構成である。
+
+このtestがPASSしても次は未達として残す。
+
+1. RMT Source Adapterで実際に構成した三要素のsource-backed relationから、受理する候補意味までの一貫した対応づけ。
+2. 実Databaseのread-only state / transaction / security boundaryのactual観測。
+3. 旧Runtimeを実行した結果との同一条件での比較。
+4. 複数Evidence receiptに対する独立したobserver / producer authority検証。
+5. trusted full checkoutのexact-head focused test / full `tools/repository-health-check.sh` PASS。
+
+既存の合成fixtureで実行できる範囲を最初に使うが、これを新規のReference Model全体の転写成功へ拡大解釈しない。actual Gate未取得のPRはDraftのまま保持する。
