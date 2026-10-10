@@ -223,6 +223,55 @@ First Web Targetも同じ規則を利用しており、別のvalidation planを�
 
 採らない。既存Driver/Evaluatorが正本を直接使える場合は、その経路を優先する。
 
+## 2026-10-10 追加調査：実Producer二系統の候補（昇格未承認）
+
+### 比較対象を固定した
+
+次の二つは、合成の受注・請求とは違い、別リポジトリで実装されている**独立したProducer**である。
+
+| | MMI | Excel方眼紙Normalizer |
+| --- | --- | --- |
+| repository | `hat47x/markdown-matrix-injector` | `hat47x/excel-houganshi-normalizer` |
+| 比較したmain revision | `1dc3ae9ad546e61a10e6724fcd3f17bdc4b3abd0` | `1be6cdfd4992925d9362fac0756952b60a00c007` |
+| 実装 | [`structuredArtifactSai2CandidateSet.ts`](https://github.com/hat47x/markdown-matrix-injector/blob/1dc3ae9ad546e61a10e6724fcd3f17bdc4b3abd0/03_Implement/src/experimental/structuredArtifactSai2CandidateSet.ts) | [`structured_artifact_sai2_candidate_set.py`](https://github.com/hat47x/excel-houganshi-normalizer/blob/1be6cdfd4992925d9362fac0756952b60a00c007/03_Implement/excel_normalizer/research/structured_artifact_sai2_candidate_set.py) |
+| 入力 | MMIの`SheetSource`、used rangeと宣言済みmerge | `openpyxl.Worksheet`、セルとmerge |
+| 出力 | `hat47x.structured-artifact-sai2-candidate-set/v0` | 同左 |
+| generator ID | `sai2-occupancy-blocks-v0` | 同左 |
+| 実装言語 | TypeScript | Python |
+
+双方とも、1始まり・両端を含む座標、昇順で番号を付けた候補矩形、`ok`／`generator_ood`、上限32件、`target_fields_supplied=false`・`ranking_performed=false`等の研究境界を持つ。候補から局所特徴量を作る別実装もあり、`hat47x.structured-artifact-sai2-candidate-local-features/v0`と、五つの同じ特徴キーを用いている。
+
+同じJSON schemaやgenerator IDであっても、同一のアルゴリズムを共有ライブラリとして使っている証拠ではない。
+
+### 記録済みの比較Evidence
+
+Excel側に保持される[fit候補矩形の比較記録](https://github.com/hat47x/excel-houganshi-normalizer/blob/1be6cdfd4992925d9362fac0756952b60a00c007/03_Implement/excel_normalizer/tests/fixtures/structured-artifact-sai2-fit-cross-producer-candidate-parity-v0.json)は**10 source families / 16 candidates**の矩形・順序一致を記録する。[model-selection](https://github.com/hat47x/excel-houganshi-normalizer/blob/1be6cdfd4992925d9362fac0756952b60a00c007/03_Implement/excel_normalizer/tests/fixtures/structured-artifact-sai2-model-selection-cross-producer-candidate-parity-v0.json)は4 family、[final holdout](https://github.com/hat47x/excel-houganshi-normalizer/blob/1be6cdfd4992925d9362fac0756952b60a00c007/03_Implement/excel_normalizer/tests/fixtures/structured-artifact-sai2-final-holdout-cross-producer-candidate-parity-v0.json)も4 familyで、保存された判定は双方の候補矩形と順序の一致を示す。
+
+五つの候補局所特徴量についても、[fit 16行](https://github.com/hat47x/excel-houganshi-normalizer/blob/1be6cdfd4992925d9362fac0756952b60a00c007/03_Implement/excel_normalizer/tests/fixtures/structured-artifact-sai2-fit-candidate-local-feature-parity-v0.json)、[model-selection 8行](https://github.com/hat47x/excel-houganshi-normalizer/blob/1be6cdfd4992925d9362fac0756952b60a00c007/03_Implement/excel_normalizer/tests/fixtures/structured-artifact-sai2-model-selection-candidate-local-feature-parity-v0.json)、[final holdout 7行](https://github.com/hat47x/excel-houganshi-normalizer/blob/1be6cdfd4992925d9362fac0756952b60a00c007/03_Implement/excel_normalizer/tests/fixtures/structured-artifact-sai2-final-holdout-candidate-local-feature-parity-v0.json)が、全行で可搬意味の一致を記録している。
+
+**証拠の限界**：以上は既に保存された比較記録を読み取った結果であり、今回二リポジトリのexact-headチェックアウトで独立に再実行した結果ではない。同一の比較JSONが両リポジトリに存在する場合も、それを独立した二回の試験実行とは数えない。
+
+### 共通化前に確認すべき意味の差
+
+1. **走査限界**：MMIの[`detectRegions`](https://github.com/hat47x/markdown-matrix-injector/blob/1dc3ae9ad546e61a10e6724fcd3f17bdc4b3abd0/03_Implement/src/search/regionDetector.ts)には既定で100万cellのscan budgetがあり、行が打ち切られた場合の扱いを持つ。Excel側の候補生成関数は同等の制限を明示していない。
+2. **値の観測**：MMIの`SheetSource.cellAt`はExcelの表示結果を表す`text`を含む。Excel側は`Worksheet.cell.value`を文字列化して占有を判定する。数式・書式・空白について、固定fixture外で同じ結果になるとは限らない。
+3. **入力境界**：MMIはSheetSourceの`usedRange`を起点にし、Excel側はWorksheetを走査する。非表示の行・列、巨大シート、merge、欠損値を含む境界の互換性がまだ不明。
+4. **実行形態**：一方はTypeScript、他方はPythonで動く。共通Go／WASM等への置換には両案件のbuild・runtime依存が増える可能性がある。単にschemaと出力の形が揃うという理由で共通Pluginにしない。
+
+### #1067の判定
+
+| 再開判定 | 現在地 |
+| --- | --- |
+| 独立した実Producerが二系統存在する | **確認** |
+| 両者が同じ派生情報を必要とする | **部分確認**：研究用の候補矩形・局所特徴量を両方が生成する |
+| 意味契約全体が一致する | **未確認**：走査予算、入力値、非表示要素、失敗などの境界に差が残る |
+| 共有Pluginで実Consumerの負担が減る | **未計測**：言語横断の移植・保守費も含める必要がある |
+| 独立採用・版固定・切戻しが成立する | **未実証**：この二リポジトリでTEI Pluginは未採用 |
+
+**次の実証を一つに絞る**：同じfreeze済みワークブックを両方の本来の入力Adapterから処理し、少なくとも巨大なused range、隠し行・列、数式と書式、merge境界、空入力／候補上限超過の負例を加え、Producer別の元期待値と生成結果を照合する。その後、共通化による定義量・テスト・レビュー負担とbuild/runtime負担を比較する。
+
+この段階では「候補を発見した」のであって、「同じ実装に統合すべき」という結論には達していない。**Trigger Waitingを維持し、対象リポジトリの実装やTEI製品コードを変更しない。** 本比較は、共通化の条件を新しい実例へ適用した読み取り専用の一次スクリーニングである。
+
 ## 受入条件の現在地
 
 | 条件 | 状態 | 根拠 |
