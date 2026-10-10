@@ -44,12 +44,23 @@ func InspectPinnedRelationExpansion(w ir.World, sourceID, relationID core.Canoni
 	}
 	input := "rows/" + string(sourceID)
 	expectedOutput := "rows/" + string(relation.Target)
-	if call.Contract.InputType != input || call.Contract.OutputType != expectedOutput {
+	if call.InputType != input || !expandTypesMatch(call.Contract, sourceID, relation.Target) {
 		return RelationExpansionCandidate{}, fmt.Errorf("expand contract does not match semantic relation endpoints")
 	}
-	output, err := ComposePinned(input, []PinnedCall{call}, catalog)
-	if err != nil {
-		return RelationExpansionCandidate{}, err
+	// A parametric signature is pinned once and applied to each validated
+	// Relation independently. Its two type variables are bound only from
+	// the canonical source and target, never from provider registration order.
+	output := expectedOutput
+	if isParametricExpand(call.Contract) {
+		if _, err := ResolveOperator(call.Contract, catalog); err != nil {
+			return RelationExpansionCandidate{}, err
+		}
+	} else {
+		resolvedOutput, err := ComposePinned(input, []PinnedCall{call}, catalog)
+		if err != nil {
+			return RelationExpansionCandidate{}, err
+		}
+		output = resolvedOutput
 	}
 	return RelationExpansionCandidate{
 		SourceID:    sourceID,
@@ -60,4 +71,24 @@ func InspectPinnedRelationExpansion(w ir.World, sourceID, relationID core.Canoni
 		Operator:    call.Contract,
 		OutputType:  output,
 	}, nil
+}
+
+const (
+	expandSourceTypeVariable = "rows/$Source"
+	expandTargetTypeVariable = "rows/$Target"
+)
+
+// This Reference recognizes only the exact two-variable expand shape.
+// It does not implement general-purpose type inference or issue pins.
+func isParametricExpand(contract OperatorContract) bool {
+	return contract.InputType == expandSourceTypeVariable &&
+		contract.OutputType == expandTargetTypeVariable
+}
+
+func expandTypesMatch(contract OperatorContract, sourceID, targetID core.CanonicalID) bool {
+	if isParametricExpand(contract) {
+		return true
+	}
+	return contract.InputType == "rows/"+string(sourceID) &&
+		contract.OutputType == "rows/"+string(targetID)
 }
