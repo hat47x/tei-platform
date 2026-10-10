@@ -69,7 +69,7 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
@@ -82,8 +82,11 @@ func main() {
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
+	expectedReviewPlanFingerprint := fs.String("expected-review-plan-fingerprint", "", "expected Builder Review Plan fingerprint; knowledge-review-plan fails on mismatch")
+	expectedReviewHandoffFingerprint := fs.String("expected-review-handoff-fingerprint", "", "expected Builder Review Handoff fingerprint; review handoff commands fail on mismatch")
+	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
 	knowledgeDisclosure := fs.String("disclose", "", "comma-separated Knowledge sections to disclose: source,definition,dependencies,data-design")
-	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; requires -disclose")
+	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; valid for disclosure-producing commands")
 	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
@@ -143,6 +146,80 @@ func main() {
 			os.Exit(2)
 		}
 		writeJSON(inspection)
+		return
+	}
+	if command == "knowledge-review-plan" {
+		if *workspacePath == "" || *worldPath != "" {
+			fmt.Fprintln(os.Stderr, "knowledge-review-plan requires -workspace and does not accept -world")
+			os.Exit(2)
+		}
+		plan, err := buildBuilderReviewPlan(*workspacePath, *subjectKind, *subjectID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := checkBuilderReviewPlanFingerprint(plan, *expectedReviewPlanFingerprint); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		writeJSON(plan)
+		return
+	}
+	if command == "knowledge-review-handoff" {
+		if *workspacePath == "" || *worldPath != "" {
+			fmt.Fprintln(os.Stderr, "knowledge-review-handoff requires -workspace and does not accept -world")
+			os.Exit(2)
+		}
+		handoff, err := buildBuilderReviewHandoffFromFile(
+			*workspacePath,
+			*subjectKind,
+			*subjectID,
+			*qualificationRequirementsPath,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := checkBuilderReviewHandoffFingerprint(
+			handoff,
+			*expectedReviewHandoffFingerprint,
+		); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		writeJSON(handoff)
+		return
+	}
+	if command == "knowledge-review-disclose" {
+		if *workspacePath == "" || *worldPath != "" {
+			fmt.Fprintln(os.Stderr, "knowledge-review-disclose requires -workspace and does not accept -world")
+			os.Exit(2)
+		}
+		disclosure, handoff, err := buildBuilderReviewDisclosureFromFile(
+			*workspacePath,
+			*subjectKind,
+			*subjectID,
+			*reviewHandoffPath,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := checkBuilderReviewHandoffFingerprint(
+			handoff,
+			*expectedReviewHandoffFingerprint,
+		); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := checkKnowledgeDisclosureFingerprint(
+			disclosure,
+			*expectedDisclosureFingerprint,
+		); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		writeJSON(disclosure)
 		return
 	}
 	if command == "knowledge-context" {

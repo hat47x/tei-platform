@@ -12,7 +12,7 @@ Related:
 - `plan/design/DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`
 - `docs/product-quality-architecture.md`
 - `docs/business-system-design.md`
-- `plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
+- `plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
 
 ## 1. 目的
 

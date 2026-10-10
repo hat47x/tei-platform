@@ -114,7 +114,6 @@ func TestBuildTranscriptionCandidateEvidenceRejectsInvalidOrdinal(t *testing.T) 
 	}
 }
 
-
 func TestVerifyTranscriptionCandidateEvidenceRejectsSourceOrContractDrift(t *testing.T) {
 	contract := classificationContractFixture()
 	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table ID="a"/></System>`))
@@ -143,7 +142,6 @@ func TestVerifyTranscriptionCandidateEvidenceRejectsSourceOrContractDrift(t *tes
 		t.Fatalf("mapping contract drift was accepted: %v", err)
 	}
 }
-
 
 func TestVerifyTranscriptionCandidateEvidenceResolvesRecordedTokenWithoutOrdinal(t *testing.T) {
 	contract := classificationContractFixture()

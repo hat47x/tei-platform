@@ -145,6 +145,7 @@ intentの変更はcandidate fingerprintには現れず、review fingerprintに�
 - 期待値の更新: 宣言数が二件から三件になったため、宣言数に依存するtestの期待値を同じbranchで直した。assertionは弱めていない。
 - ADR-0029の影響節は「Evidence auditの期待値（Validation 2件）は変えない」と述べている。この受理後は成功経路の期待値が3件になっている。採用済みADRの本文は書き換えず、この記録で補う。
 - 残る制限: Commandの評価は、読み取った一覧の最初の受注明細だけを見る（`quantity_positive`と同じ制限）。全明細への適用は、この受理では主張しない。
+- 2026-10-09追記: 上の「先頭明細のみ」は受理時点のrevisionの記述であり、owner判断（2026-10-08）の経緯として残す。その後 main の `6809b947`（fix: evaluate line-level validation across all order lines）で、positive kindのCommand評価は読み取った全明細に適用されるようになった（`evaluateCommandValidation`、`TestReferenceCommandScenarioEvaluatesPositiveRuleOnEveryOrderLine`）。全明細化の判断をownerが改めて確認したかどうかは、この追記からは分からない。
 
 **REF-SPEC-01との接続（2026-10-09、静的なSource照合のみ）。** 受理されたApplication側のValidationは3件となった。一方、現時点のBusiness Procedure authoring fixture（BP-05）は、数量の正値と行番号の一意性の2件を明示したままである。BP-05はCanonical Worldの第二正本ではなく、ここから直ちに業務上の不整合を断定しない。ただし、三視点をまたぐ変更影響として**人が確認すべき差**であり、現行checkerがこの差を自動検出したとも主張しない。既存Sourceと診断を使った読み取り専用の確認案は[技術リサーチ統合方針 §9.5](../TECH_RESEARCH_INTEGRATION_2026-10.md)で扱う。
 
