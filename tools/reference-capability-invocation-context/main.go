@@ -164,6 +164,16 @@ func invokeWithExecutionContext(
 		if leak := directContextReflection(required, contracts, view, []byte(err.Error()), "downstream error"); leak != nil {
 			return InvocationContextExecution{}, leak
 		}
+		// A typed error can expose credentials through errors.As, Unwrap,
+		// custom formatting, or exported fields even when Error() is safe.
+		// Do not allow the original error object to cross this boundary.
+		for _, requirement := range required {
+			if contracts[requirement.ContractID].ForbidDirectResultReflection {
+				return InvocationContextExecution{}, fmt.Errorf(
+					"downstream invocation failed (confidential error detail withheld)",
+				)
+			}
+		}
 		return InvocationContextExecution{}, err
 	}
 
