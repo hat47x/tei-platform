@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/plugin"
 )
 
 func referenceIntent(contract BuilderContract) BuilderIntent {
@@ -14,6 +15,28 @@ func referenceIntent(contract BuilderContract) BuilderIntent {
 		RecipeKind:      "deterministic-copy",
 		Target:          "host/reference",
 		Profile:         "reference",
+	}
+}
+
+func buildPlanFromResolution(resolution BuilderResolution) plugin.BuildPlan {
+	return plugin.BuildPlan{
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      plugin.Identity{ID: core.MustCanonicalID("tei.reference.resolved_builder_plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint: strings.Repeat("a", 64),
+		Sources: []plugin.BuildSource{{
+			Kind:    "reference-source",
+			ID:      "plugin-source",
+			Locator: "reference://plugin-source",
+			Digest:  "sha256:" + strings.Repeat("b", 64),
+		}},
+		Builder: resolution.Builder,
+		Recipe: plugin.BuildRecipe{
+			Kind:       "deterministic-copy",
+			Entrypoint: "plugin-source",
+		},
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
+		Target:     "host/reference",
+		Profile:    "reference",
 	}
 }
 
@@ -471,5 +494,52 @@ func TestReplayRejectsLockWhoseBuilderDoesNotMatchLockedProvider(t *testing.T) {
 	if _, err := replayBuilderResolution(intent, catalog, lock); err == nil ||
 		!strings.Contains(err.Error(), "BuilderIdentity does not match locked Provider") {
 		t.Fatalf("mismatched lock BuilderIdentity error: %v", err)
+	}
+}
+
+
+func TestResolvedBuildPlanDoesNotImplicitlyChangeAfterCatalogExpansion(t *testing.T) {
+	contract, providers, evidence, wiring := referenceFixture()
+	intent := referenceIntent(contract)
+	initial := BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: []BuilderProvider{providers[0]},
+		Evidence:  []BuilderConformanceEvidence{evidence[0]},
+	}
+	resolution, err := resolveBuilder(intent, initial, &wiring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := lockBuilderResolution(resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := buildPlanFromResolution(resolution)
+	before, err := plugin.BuildPlanFingerprint(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expanded := initial
+	expanded.Providers = append(append([]BuilderProvider(nil), initial.Providers...), providers[1])
+	expanded.Evidence = append(append([]BuilderConformanceEvidence(nil), initial.Evidence...), evidence[1])
+	if _, err := resolveBuilder(intent, expanded, nil); err == nil {
+		t.Fatal("fresh resolution unexpectedly remained unambiguous")
+	}
+
+	replayed, err := replayBuilderResolution(intent, expanded, lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayedPlan := buildPlanFromResolution(replayed)
+	after, err := plugin.BuildPlanFingerprint(replayedPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Fatalf("catalog expansion changed exact resolved BuildPlan fingerprint: %s != %s", before, after)
+	}
+	if plan.Builder != replayedPlan.Builder {
+		t.Fatalf("catalog expansion changed exact BuildPlan Builder: %#v != %#v", plan.Builder, replayedPlan.Builder)
 	}
 }
