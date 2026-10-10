@@ -39,11 +39,13 @@ function fromWorkspace(workspace) {
   const run = (...args) => execFileSync("go", ["run", ...args], {
     cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024
   });
-  return {
-    world: JSON.parse(run("./cmd/tei", "world", "-workspace", workspace)),
-    revision: JSON.parse(run("./tools/reference-shared-acceptance",
-      "revision", "-workspace", workspace)).modelRevision
-  };
+  const getRevision = () => JSON.parse(run("./tools/reference-shared-acceptance",
+    "revision", "-workspace", workspace)).modelRevision;
+  const before = getRevision();
+  const world = JSON.parse(run("./cmd/tei", "world", "-workspace", workspace));
+  const after = getRevision();
+  if (before !== after) throw new Error("SOURCE_CHANGED_DURING_PROJECTION");
+  return { world, revision: after };
 }
 function main(argv) {
   const [command, ...rest] = argv;
