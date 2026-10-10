@@ -159,3 +159,21 @@ Source Adapterの既存`BuildTranscriptionCandidateEvidence` / `VerifyTranscript
 次の本質的なGateは、選んだBusiness Action / Function / Dataのsource-backed graphに対し、局所のselect理由、受理対象となるTEI semantic subject、Mappingの候補と限界、Review fingerprint、explicit human acceptance receiptを**対応関係として別に**記録し、original sourceのdrift時には対応を無効化することである。単一nodeのsource tokenの存在だけで`source-derived meaning`や`runtime equivalence`を承認しない。#1031 / PR #1077のcross-view機構が適格化するまでGraphの意味を複製実装しない。
 
 コードとSchemaの実行結果は依然未取得であり、この変更はDraft PRの候補である。#1146にcurrent headでのfocused/full qualificationを委譲する。
+
+
+## 10. Source→Semantic相関の独立した候補Link
+
+`tools/internal/rmtlink`の`rmt-semantic-link-candidate/v0`は、次の**確認可能なidentity**を束ねる参照実装の候補である。
+
+- source artifact digest、source token、typed RMT Evidence fingerprint、mapping contract fingerprint。
+- Shared Acceptanceのcandidate fingerprintとbase workspace revision。
+- current Review Projectionのreview fingerprint、ReviewのSemantic Diffで実際に確認した`added validation`のsubject。
+- `status=proposed`、`meaningStatus=unresolved`という強制的な保留状態。自動`accepted`や`equivalent`は存在しない。
+
+`rmtlink.Prepare`はtyped Evidence fingerprintと入力identityを確認し、Sourceを勝手にSemantic meaningへ変換しない。`rmtlink.Verify`はcurrent Evidence、candidate、base revision、Review、対象差分のどれかが変わったら古いLinkを拒否する。`rmtlink.Decode`はunknown field / 追加JSON / 改変Linkを拒否する。合成縦断testでは**実Source Adapterから取得したEvidence**と**実Review上の追加Validation差分**からLinkを組み立て、stale Reviewでは検証不可であることを確認する構成を追加した。
+
+**Linkを作れたことは「元sourceが変更内容を正当化する」ことではない。** 現行合成XMLの`Table`と追加する`unit_price_positive`には意味的な対応が無いため、Linkの状態は依然`unresolved`である。Cross-view graphへアクセスできても、Source構造上の到達可能性はAction固有の実動効果ではなく、同様に直接Accepted meaningへ昇格させられない。
+
+次に満たすべき条件は、(a) Source Adapterとcross-view Projectionを**同じexact source/contract/policy**で読み直すこと、(b) 業務上の選択理由とData/Function/Business対応をReviewへ明示すること、(c) 推測した意味へ独立したAcceptance decisionがあること、(d) 実行結果は観測者資格と外部stateのEvidenceに基づき別途照合すること、である。現在のLinkには`humanApproved`や`originalEquivalent`というfield自体を設けず、fingerprintを署名・承認の代わりにしない。
+
+実行資格はIssue #1146で取得する。`go test -count=1 ./tools/internal/rmtlink`は追加のfocused testであり、trusted checkout上での実行PASSは未取得。
