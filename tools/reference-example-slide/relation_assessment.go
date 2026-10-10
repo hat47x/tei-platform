@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -153,7 +154,7 @@ func equalScalar(a, b json.RawMessage) (equal bool, comparable bool) {
 		return ok && left == right, ok
 	case json.Number:
 		right, ok := bv.(json.Number)
-		if !ok {
+		if !ok || !boundedNumber(left.String()) || !boundedNumber(right.String()) {
 			return false, false
 		}
 		lr, lok := new(big.Rat).SetString(left.String())
@@ -165,6 +166,24 @@ func equalScalar(a, b json.RawMessage) (equal bool, comparable bool) {
 	default:
 		return false, false
 	}
+}
+
+// Reject unreasonably long numbers and extreme exponents before allocating
+// arbitrary precision rational values. Uncomparable keys become unresolved.
+func boundedNumber(value string) bool {
+	if len(value) > 128 {
+		return false
+	}
+	at := strings.IndexAny(value, "eE")
+	if at < 0 {
+		return true
+	}
+	exponent := value[at+1:]
+	if len(exponent) > 6 {
+		return false
+	}
+	power, err := strconv.Atoi(exponent)
+	return err == nil && power >= -1024 && power <= 1024
 }
 
 func completeTableSet(catalog Catalog, names []string) (map[string]bool, error) {
