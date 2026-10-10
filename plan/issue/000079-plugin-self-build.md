@@ -261,22 +261,33 @@ self-build関連のReferenceや候補実装がmainに存在していても、そ
 
 各新規Draftは、current mainのforward Gateに加え、自身のexact headで必要なfocused test、actual Evidence、full Repository Health、clean pre/post stateを満たしてから統合判断を行います。
 
+### 2026-10-11 実装・検証の現在地
+
+設計境界だけでなく、read-only Referenceも複数の経路で具体化しています。ただし、以下のDraftはtrusted full checkoutによるexact-head qualificationを通過していません。存在するコードや局所テストを、main統合可能なEvidenceへ読み替えません。
+
+- Draft #1106では、`BuildExecutionPlan`、`ArtifactSet`、`BuildExecutionResult`、Plugin / Runtime Engineのtyped subject bindingを同じReferenceに置きました。さらに#1103のbuild-only DAG、stage0 seedの外部境界、consumer inputへのexact binding、#1104のAttestation / current Trust分離までpressureしています。production型へはまだ昇格していません。
+- Draft #1151では、#1101のBuilder Contract / Provider resolutionをReference化しました。compatible Providerが複数ある場合は暗黙選択せず、explicit wiring、Conformance Evidence、exact BuilderIdentity、Resolution Lockを分離します。fresh resolutionとlocked replayも別の操作として扱います。
+- Draft #1148では、#1105のlocal content-addressed Artifact StoreをReference化しました。digestをcontent identityとし、store-relative locator、no-clobber put、fetch後のdigest再検証、`LockedBuild.ArtifactDigest`からの再取得を扱います。Store availabilityをTrustやRuntime Authorityへ昇格しません。
+- Draft #1093と#1099は、それぞれRepository snapshot provenanceとSource closureの残差、verified artifact publicationのno-clobber安全性を扱います。current mainが進んだ場合は、古いbaseや過去receiptを使わず、再同期後のexact headで再qualificationします。
+- #1096のGo builder adapterはまだ共通production adapterへ抽出していません。隣接Reference #1122で得られた`go list`、Git追跡入力、embed / Cgo / hidden index状態等のpressureは再利用できますが、Target packagingのReferenceとPlugin self-build adapterの責務は統合しません。
+- qualificationの実行経路そのものが横断的な停止要因です。#1173 / Draft #1175では、ChatGPT起点でも信頼済みGit/Go Hostの能力を明示確認し、exact candidate / current main / clean stateを固定して既存qualification runnerへ渡す経路を進めています。Host probeや局所package testだけでは#971や各DraftのPASSにはなりません。
+
 ### 追跡Issueの責務
 
-2026-10-10時点では、次のように責務を分けます。
+2026-10-11時点では、次のように責務を分けます。
 
-| 対象 | 追跡先 | 主な責務 |
-| --- | --- | --- |
-| current main forward qualification | #971 | merged状態とqualified状態を分ける |
-| Source closure / Repository snapshot | #1090 / #1093 / #1094 | actual build inputとRepository provenanceの分離 |
-| Go builder adapter | #1096 | Go固有Source closure、toolchain、hermetic execution |
-| Build execution / subject binding | #1080 / #1097 / #1106 | domain-neutral executionとtyped subject binding |
-| Builder resolver | #1101 | Contract / Provider / artifactのexplicit resolution |
-| multi-output Artifact Set | #1102 | 一回のbuildから複数artifactを追跡 |
-| Build graph | #1103 | build-only DAG、cycle、generated intermediate、bootstrap stage |
-| Attestation / Trust | #1104 | Build Evidence、署名、issuer、fresh trustの分離 |
-| Artifact Store | #1105 | digestからexact bytesを再取得する境界 |
-| artifact publication safety | #1098 / #1099 / #1100 | no-clobber exportと競合時fail-closed |
+| 対象 | 追跡先 | 主な責務 | 現在地 |
+| --- | --- | --- | --- |
+| current main forward qualification | #971 / #1173 / #1175 | merged状態とqualified状態を分け、trusted Git/CLI実行経路を確立する | Host事前診断のDraftあり。actual full checkout qualificationは未達 |
+| Source closure / Repository snapshot | #1090 / #1093 / #1094 | actual build inputとRepository provenanceの分離 | 主要pressureはmain側にも反映。残差Draftは再qualification待ち |
+| Go builder adapter | #1096 / 関連 #1122 | Go固有Source closure、toolchain、hermetic execution | Source選択の実測pressureあり。共通adapter抽出は未完了 |
+| Build execution / subject binding | #1080 / #1097 / #1106 | domain-neutral executionとtyped subject binding | read-only Draft Referenceあり |
+| Builder resolver | #1101 / #1151 | Contract / Provider / artifactのexplicit resolution | read-only Draft Referenceあり |
+| multi-output Artifact Set | #1102 / #1106 | 一回のbuildから複数artifactを追跡 | #1106でmember identityと差分Evidenceをpressure中 |
+| Build graph | #1103 / #1106 | build-only DAG、cycle、generated intermediate、bootstrap stage | #1106でReference-local DAGをpressure中 |
+| Attestation / Trust | #1104 / #1106 | Build Evidence、署名、issuer、fresh trustの分離 | deterministic fake-signature profileによるbinding pressureあり。実cryptoは未着手 |
+| Artifact Store | #1105 / #1148 | digestからexact bytesを再取得する境界 | local CAS Draft Referenceあり |
+| artifact publication safety | #1098 / #1099 / #1100 | no-clobber exportと競合時fail-closed | DraftとQualificationあり。current headでのtrusted PASS待ち |
 
 ## 不足している設計要素
 
@@ -382,25 +393,79 @@ builderのstage0 / stage1 / stage2を実行し、同一Sourceからのconvergenc
 
 現行`BuildPlan`を変更せず、Plugin固有identityを除いたBuild execution identityと、Plugin / Runtime Engine等のtyped subject bindingをread-only Referenceで検証します。
 
-single Plugin build、shared artifact / multiple Plugins、non-Plugin Runtime Engine、multi-output Artifact Setを同じ構造で説明できるかを確認します。Draft #1106がこのpressureを担当します。
+Draft #1106では、single Plugin build、shared artifact / multiple Plugins、non-Plugin Runtime Engine、multi-output Artifact Setを同じ構造で表す候補まで具体化しています。
+
+subject bindingはplan fingerprintとArtifact Set fingerprintを別々に持つだけでなく、両者から導出した`BuildExecutionResult`へbindします。別runのplanとartifact setを後から組み合わせる余地を残さないためです。
+
+Source / ArtifactのLocatorは、それ自体がbuild semanticsでない限りcontent identityから外します。ただしpathやrelative layoutがartifactへ影響するbuilderでは、その意味をRecipe / Parameter / Source closure等の明示入力へ戻します。「Locatorは常にidentity外」という一般則にはしません。
 
 ### E6 — Builder Adapter / Resolver
 
 Go固有のSource closure、toolchain、environment isolation、actual build executionを#1096で共通adapterへ整理します。
 
-その上で#1101により、Builder ContractとProviderを明示的に解決し、exact Builder identityをBuild Plan確定前に固定できることを確認します。Go固有のRecipeやPATH探索規則を上位contractへ持ち込みません。
+Builderの**実装**と**解決**は分けます。Draft #1151では#1101のresolver境界をread-only Reference化し、次を分離します。
+
+- Builder Contract
+- logical Provider
+- Provider implementation identity
+- exact physical artifact
+- selected IntentへbindしたConformance Evidence
+- exact `BuilderIdentity`
+- fresh Resolution
+- Resolution Lock
+
+compatible Providerが複数ある場合はPATH順やcatalog順で選びません。explicit wiringがなければambiguousとしてfail-closedにします。BuildPlan確定後はcatalogが増えても暗黙再解決せず、locked replayでexact Providerを維持します。
+
+Go固有のRecipe、package path、Cargoやnpm等のtoolchain固有概念は上位resolver contractへ固定しません。#1122で得られたGo Source選択の実測pressureは#1096へ再利用しますが、Target packagingの責務までbuilder adapterへ取り込みません。
 
 ### E7 — Build graph / Artifact Set
 
-#1103でbuild-only dependency DAGをReference化し、normal cycleとbootstrap stageを分けます。
+#1103のbuild-only DAGと#1102のmulti-output Artifact Setは、Draft #1106でも共通execution primitive上のpressureとして具体化しています。
 
-#1102ではmulti-output Artifact SetをReference化し、member role、format、digest、差分Evidenceを検証します。scheduler、distributed execution、packaging optimizerはこの段階では実装しません。
+Build graphでは、単なるtopological orderではなく、producer outputのRoleとdigestがconsumer側のexact Builder / BuildDependency inputを満たすことまでcross-checkします。同じconsumer input slotへ複数producerやseedが入る曖昧性を許しません。
+
+stage0は通常nodeへ偽装せずexternal seedとして表し、通常cycleはfail-closedにします。bootstrapはcycle例外ではなくstage transitionです。
+
+Artifact SetではmemberのRole / Format / Digestをcontent identityとし、Locatorは分離します。二回buildが一致しない場合は、missing / extra / changed memberをEvidenceへ残します。
+
+scheduler、distributed execution、packaging optimizerはこの段階では実装しません。
 
 ### E8 — Attestation / Artifact Store
 
-#1104でBuild EvidenceからAttestation、Issuer、fresh TrustへつながるAuthority境界を検証します。
+#1104では、immutable Build Attestationとcurrent Trust Policyを分けます。Draft #1106では、`BuildExecutionResult`へexact bindするdeterministic fake-signature profileを用いて、subject、issuer、predicate、revocationの意味境界をpressureしています。これはcrypto security Evidenceではありません。
 
-#1105ではexact artifact digestからbytesを再取得するlocal content-addressed Referenceを検討します。availability、Trust、Acceptanceを同じ状態へまとめません。
+#1105のArtifact StoreについてはDraft #1148でlocal CAS Referenceまで具体化しています。
+
+```text
+PutBytes(bytes)
+  -> exact digest
+  -> store-relative locator
+
+GetBytes(expected digest)
+  -> bytes
+  -> digest reverify
+```
+
+Store rootやabsolute Host pathをartifact identityへ入れず、`LockedBuild.ArtifactDigest`からexact bytesを再取得できることをpressureします。same-digest concurrent putはidempotentに扱い、corrupted objectを暗黙修復しません。availability、Trust、Acceptanceは別の状態です。
+
+### 横断Gate — trusted qualification実行経路
+
+E5以降のReferenceを増やしても、exact-headのtrusted executionを実行できなければ統合判断は進みません。#1173 / Draft #1175を、self-build固有機能ではなく横断的な開発Gateとして扱います。
+
+必要なのは、チャットやAgentが任意shell権限を持つことではありません。
+
+```text
+candidate / current mainを指定
+  -> trusted Host capabilityを確認
+  -> 正規full checkout
+  -> exact SHA / ancestry / clean state確認
+  -> 既存qualification runnerをactual実行
+  -> stdout / stderr / exit / receiptを保持
+```
+
+という狭い経路です。
+
+Host probe、Git/Goの存在確認、局所package testは前提確認に過ぎません。それらを`tools/repository-health-check.sh`のPASSや#971のreceiptとして扱いません。
 
 ### E9 — Production primitive抽出
 
@@ -413,6 +478,20 @@ Reference名や一時的な構造体をそのまま昇格させません。少�
 - Go以外のbuilderを追加してもCore enum変更が不要
 - Runtime / Acceptance AuthorityをBuild成功へ混ぜない
 - exact Evidenceから逆追跡できる
+
+### 現在のクリティカルパス
+
+当面は、新しいproduction型を増やすより次の順序を優先します。
+
+1. #1173 / #1175でtrusted Git/CLI execution pathを成立させ、current mainを#971でactual qualificationできる状態にする。
+2. #1093、#1099など安全性の残差Draftをcurrent mainへ再同期し、各exact headでfocused testとfull Repository Healthを取り直す。
+3. #1106、#1151、#1148のread-only Referenceをactual runnerまで含めてqualificationし、execution / resolution / storageの意味境界を比較する。
+4. #1096でGo builder adapterを共通化する。#1122等で得た実Go/GitのSource選択pressureを利用するが、Go固有規則をCoreへ昇格させない。
+5. #1103 / #1104で残るBuild graphとAttestation / Trustの不足を、#1106のReference結果を踏まえて補完する。
+6. 複数Referenceで同じ境界が再確認できたものだけをE9でproduction primitiveへ抽出する。
+7. そのprimitive上でSB-3のactual stage0 → stage1 → stage2 convergenceを再実行し、standard Plugin self-buildへ接続する。
+
+この順序では、Referenceの数を増やすこと自体を進捗とみなしません。Gateを通して「どの意味境界が再利用可能か」を確定することを進捗とします。
 
 ## Acceptance
 
@@ -444,6 +523,9 @@ Reference名や一時的な構造体をそのまま昇格させません。少�
 - reproducibility、Attestation、current Trust、Acceptanceを別の状態として扱える。
 - exact artifact digestからbytesを再取得する場合、取得先locatorをidentityにせず、fetch後にdigestを再検証できる。
 - verified artifactのpublicationで既存出力を競合時にも上書きせず、no-clobber失敗を成功へ丸めない。
+- trusted Hostでexact candidate / current main / clean pre-post stateを固定し、既存qualification runnerをactual実行できる。Host capability probeや局所testだけをqualification receiptへ昇格しない。
+- Builder resolutionのfresh結果とlocked replayを区別し、catalog追加だけで既存BuildPlanのBuilderを暗黙差替えしない。
+- Artifact Storeのreceiptやlocatorにabsolute Host pathを必須化せず、別Hostでもdigest identityを維持できる。
 
 ## 非目標
 
