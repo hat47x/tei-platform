@@ -136,13 +136,26 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	if manifest.ApplicationID != "order_entry" || manifest.TargetBuildRevision != head {
 		t.Fatalf("Web Target manifest identity mismatch: %+v", manifest)
 	}
+	// Compare real Web projection to the same semantic subject references
+	// used by the synthetic lowering contract; the Acceptance receipt remains a stub.
+	f := orderFixture("tei.language.dsl")
+	neutral, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if neutral.Snapshot != f.a.Snapshot || len(f.c.Subjects) != 3 {
+		t.Fatal("lowering scenario semantic boundary lost")
+	}
+	businessID := f.c.Subjects[0].Ref.ID
+	dataID := f.c.Subjects[1].Ref.ID
+	functionID := f.c.Subjects[2].Ref.ID
 	seen := map[string]string{}
 	for _, pattern := range manifest.Patterns {
 		seen[pattern.ID] = pattern.Kind
-		if pattern.ID == "order_entry.submit_order" && pattern.Capability != "sales.order.submit" {
+		if pattern.ID == businessID && pattern.Capability != functionID {
 			t.Fatalf("Source->Web command capability changed: %+v", pattern)
 		}
-		if pattern.ID == "order_entry.recent_orders" && pattern.Data != "sales.order" {
+		if pattern.ID == "order_entry.recent_orders" && pattern.Data != dataID {
 			t.Fatalf("Source->Web data identity changed: %+v", pattern)
 		}
 	}
