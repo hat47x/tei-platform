@@ -60,7 +60,7 @@ bash tools/reference-target-package-evidence/measure_first_vs_frozen.sh \
   /tmp/tei-first-vs-frozen-measure-001
 ```
 
-このスクリプトは同一のGit HEADと`GOOS=linux`・`CGO_ENABLED=0`の条件で、`-compare-entry`からのE0依存差分、二つの`go build -trimpath -ldflags=-buildid=`成果物、SHA-256、byte数、`go tool nm`によるシンボル一覧を採取します。ビルド前後にGit checkoutがcleanかつHEAD不変であることを確認し、凍結専用バイナリにWorkspace/Driverのシンボルがあれば失敗させます。出力先はリポジトリ外かつ未作成である必要があります。成果物と`measurement.json`は出力先に残し、保存前に検査が失敗した場合は一時ファイルを削除します。
+このスクリプトは同一のGit HEADと`GOOS=linux`・`CGO_ENABLED=0`の条件で、`-compare-entry`からのE0依存差分、二つの`go build -trimpath -ldflags=-buildid=`成果物、SHA-256、byte数、`go tool nm`によるシンボル一覧を採取します。`measurement.json`には実Go版、GOOS/GOARCH、GOAMD64、GOEXPERIMENT、ビルドフラグも記録します。ビルド前後にGit checkoutがcleanかつHEAD不変であることを確認し、凍結専用バイナリにWorkspace/Driverのシンボルがあれば失敗させます。出力先はリポジトリ外かつ未作成である必要があります。検査後、出力先の新規ディレクトリを`mkdir`で排他的に確保し、他のプロセスが既存ディレクトリを作った場合は上書きせず失敗します。成果物と`measurement.json`は出力先に残し、保存前に検査が失敗した場合は一時ファイルを削除します。
 
 **比較対象は同等の業務機能を持ちません。** 第一Web Targetは業務シナリオを含む既存の統合Referenceですが、凍結版はProjectionの読取り配信だけです。バイナリサイズ・シンボル数の差は**Authoring依存を持たない実行入口が構築できるというE0→E1の限定証拠**であり、`order_entry`の機能・契約・認証認可を維持した実配備最適化の証拠ではありません。またこの手動スクリプトの成功は、`tools/repository-health-check.sh`のtrusted exact-head full PASSに代わりません。
 
