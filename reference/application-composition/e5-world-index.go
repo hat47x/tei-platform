@@ -286,6 +286,18 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
             requiredByAlias[alias][string(needed.ContractID)] = true
         }
     }
+    // A Pattern's ContractQuery input mapping names an existing Semantic
+    // Attribute. Observe its definition Source without re-validating the
+    // binding's type, cardinality, Query signature, or application acceptance.
+    attributeDefinitions := map[string]int{}
+    for _, namespace := range world.Semantics {
+        for _, data := range namespace.Data {
+            for _, attribute := range data.Attributes {
+                attributeDefinitions[string(attribute.ID)]++
+            }
+        }
+    }
+    attachedInputAttributes := map[string]bool{}
     observedContractQueries := map[string]bool{}
     for _, pattern := range app.Patterns {
         if pattern.ContractQuery == nil {
@@ -322,6 +334,18 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
         if !observedContractQueries[querySubject.ID] {
             attach("pattern-contract-query", querySubject)
             observedContractQueries[querySubject.ID] = true
+        }
+        for _, mapping := range pattern.ContractQuery.Inputs {
+            id := string(mapping.TargetAttribute)
+            subject := sourceindex.Subject{Kind: "semantic-attribute", ID: id}
+            if id == "" || attributeDefinitions[id] != 1 {
+                record("pattern-contract-query-input-attribute", subject, "contract_query_input_attribute_missing_or_ambiguous")
+                continue
+            }
+            if !attachedInputAttributes[id] {
+                attach("pattern-contract-query-input-attribute", subject)
+                attachedInputAttributes[id] = true
+            }
         }
     }
     sort.Slice(out.Dependencies, func(i, j int) bool {
