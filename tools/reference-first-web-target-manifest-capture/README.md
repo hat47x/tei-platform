@@ -30,7 +30,7 @@ go run ./tools/reference-first-web-target-manifest-capture \
 
 `$FIRST_WEB_TARGET_T`は第一Web Targetを**実際に起動した**checkoutのコミットです。取得時に計算したraw bytesのSHA-256を**observed hash**として標準エラーへ表示します。呼出し側が独立のAcceptance/Build Artifact記録で照合して確定しない限り、その値は**受理済みのdigestや署名ではありません**。
 
-- 取得URLは正確に`http://127.0.0.1:<port>/manifest.json`だけを許可します。HTTPS、hostname、別IP、query、fragment、userinfo、redirectを拒否します。OSのHTTP proxy設定を使わず、10秒のtimeoutを設定します。
+- 取得URLは正確に`http://127.0.0.1:<port>/manifest.json`だけを許可します。HTTPS、hostname、別IP、query、fragment、userinfo、redirectを拒否します。OSのHTTP proxy設定を使わず、10秒のtimeoutを設定します。 HTTPによる自動gzip展開も無効にし、Content-Encodingが`identity`以外の場合は拒否します。
 - HTTP 200、`application/json`、8 MiB以下の本文、Application・B/R/T一致、およびJSON構文とtop-level IDの重複なしを確認します。失敗時は内容を標準出力しません。
 - 検証後のJSONを再シリアライズせず、受信したbytesをそのまま出力します。出力先はcheckout外にしてください。Shellの`>`リダイレクトは事前に空ファイルを作るため、失敗時に残る可能性があります。これを受理済み成果物に見せず、取得成功時にのみ次の承認段階へ渡してください。
 - E0源泉依存のテストで、当CLIはTEIメインモジュールの`reference-runtime-snapshot`だけをimportします。Workspace/Driver/DSLを直接起動しません。
