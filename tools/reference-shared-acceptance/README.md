@@ -17,6 +17,8 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 
 `accept`の`-out`と`-derived-out`を同じ実ファイルに向けると、受理後に生成したWorld JSONをDecision JSONが上書きしてしまいます。そのため両出力先が同一なら、別名パスやシンボリックリンク経由も含めて実行前に拒否します。この判定は`-allow-reference-baseline`を指定しても解除できません。WorldとDecisionは別々の出力先に指定してください。
 
+また、`accept -out`と`accept -derived-out`のいずれも、入力candidateと同一の実ファイルを指定できません。受理後にDecisionやWorldで候補JSONが上書きされると、検査した候補の再参照・再試行ができなくなるためです。リンクや大小文字の異なる表記を含めて出力前に検査し、`-allow-reference-baseline`でも解除しません。
+
 ## 受入境界
 
 ```text
