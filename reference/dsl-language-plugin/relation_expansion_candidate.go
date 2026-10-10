@@ -12,7 +12,7 @@ import (
 // the operator pin. The output type alone cannot distinguish two relations
 // with the same source and target Data.
 //
-// The candidate is a read-only snapshot for inspection, not an accepted
+// The candidate is a detached snapshot for inspection, not an accepted
 // execution plan or an independent authority over Semantic relations.
 type RelationExpansionCandidate struct {
 	SourceID    core.CanonicalID
