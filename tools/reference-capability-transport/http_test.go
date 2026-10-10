@@ -294,6 +294,49 @@ func TestHTTPTransportDoesNotClaimAuthenticationOrRuntimeAuthority(t *testing.T)
 	}
 }
 
+func TestHTTPTransportHandlerRequiresHostOwnedValidIdentity(t *testing.T) {
+	if _, err := NewHTTPTransportHandler(
+		GenericInvocationIdentity{},
+		echoHTTPTransportImplementation,
+	); err == nil || !strings.Contains(err.Error(), "expected identity") {
+		t.Fatalf("invalid Host-owned identity was accepted: %v", err)
+	}
+}
+
+func TestHTTPTransportAcceptsEquivalentJSONMediaTypeParameters(t *testing.T) {
+	expected := genericDispatchIdentity(genericDispatch(nil))
+	handler, err := NewHTTPTransportHandler(expected, echoHTTPTransportImplementation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	dispatch := genericDispatch([]byte("payload"))
+	payload, err := json.Marshal(dispatch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(
+		http.MethodPost,
+		server.URL,
+		bytes.NewReader(payload),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set(httpTransportRequestID, "media-type-params")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	resp, err := server.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("equivalent JSON media type status=%d", resp.StatusCode)
+	}
+}
+
 func TestHTTPTransportHandlerRejectsMalformedBoundaryInputs(t *testing.T) {
 	handler, err := NewHTTPTransportHandler(
 		genericDispatchIdentity(genericDispatch(nil)),
