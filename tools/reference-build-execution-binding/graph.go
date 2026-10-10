@@ -80,6 +80,11 @@ type BuildGraph struct {
 	Seeds         []BuildGraphSeed `json:"seeds,omitempty"`
 }
 
+type BuildGraphNodeOutput struct {
+	ArtifactSet                     ArtifactSet `json:"artifactSet"`
+	BuildExecutionResultFingerprint string      `json:"buildExecutionResultFingerprint"`
+}
+
 func (g BuildGraph) Validate() error {
 	if g.FormatVersion != buildGraphFormatVersion {
 		return fmt.Errorf("unsupported build graph format %d", g.FormatVersion)
@@ -266,7 +271,7 @@ func buildGraphFingerprint(g BuildGraph) (string, error) {
 func verifyBuildGraphBindings(
 	g BuildGraph,
 	plans map[string]BuildExecutionPlan,
-	outputs map[string]ArtifactSet,
+	outputs map[string]BuildGraphNodeOutput,
 ) error {
 	if err := g.Validate(); err != nil {
 		return err
@@ -282,6 +287,37 @@ func verifyBuildGraphBindings(
 		}
 		if normalizeFingerprint(node.ExecutionPlanFingerprint) != fingerprint {
 			return fmt.Errorf("build graph node %s execution plan fingerprint does not match plan", node.ID)
+		}
+	}
+	for nodeID, output := range outputs {
+		plan, ok := plans[nodeID]
+		if !ok {
+			return fmt.Errorf("build graph output references node %s without an exact BuildExecutionPlan", nodeID)
+		}
+		if _, ok := findBuildGraphNode(g, nodeID); !ok {
+			return fmt.Errorf("build graph output references unknown node %s", nodeID)
+		}
+		if err := output.ArtifactSet.Validate(); err != nil {
+			return fmt.Errorf("build graph producer node %s output: %w", nodeID, err)
+		}
+		executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+		if err != nil {
+			return fmt.Errorf("build graph producer node %s plan: %w", nodeID, err)
+		}
+		setFingerprint, err := artifactSetFingerprint(output.ArtifactSet)
+		if err != nil {
+			return fmt.Errorf("build graph producer node %s output fingerprint: %w", nodeID, err)
+		}
+		resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+			FormatVersion:            buildExecutionResultFormatVersion,
+			ExecutionPlanFingerprint: executionFingerprint,
+			ArtifactSetFingerprint:   setFingerprint,
+		})
+		if err != nil {
+			return fmt.Errorf("build graph producer node %s result: %w", nodeID, err)
+		}
+		if normalizeFingerprint(output.BuildExecutionResultFingerprint) != resultFingerprint {
+			return fmt.Errorf("build graph producer node %s output is not bound to its exact BuildExecutionResult", nodeID)
 		}
 	}
 	for _, seed := range g.Seeds {
@@ -305,14 +341,11 @@ func verifyBuildGraphBindings(
 		}
 	}
 	for _, edge := range g.Edges {
-		set, ok := outputs[edge.FromNode]
+		output, ok := outputs[edge.FromNode]
 		if !ok {
 			return fmt.Errorf("build graph producer node %s has no ArtifactSet output", edge.FromNode)
 		}
-		if err := set.Validate(); err != nil {
-			return fmt.Errorf("build graph producer node %s output: %w", edge.FromNode, err)
-		}
-		member, ok := artifactMemberByRole(set, edge.OutputRole)
+		member, ok := artifactMemberByRole(output.ArtifactSet, edge.OutputRole)
 		if !ok {
 			return fmt.Errorf("build graph producer node %s has no output role %s", edge.FromNode, edge.OutputRole)
 		}
@@ -365,6 +398,15 @@ func verifyBuildGraphInputCoverage(
 		}
 	}
 	return nil
+}
+
+func findBuildGraphNode(g BuildGraph, id string) (BuildGraphNode, bool) {
+	for _, node := range g.Nodes {
+		if node.ID == id {
+			return node, true
+		}
+	}
+	return BuildGraphNode{}, false
 }
 
 func verifyBuildGraphConsumerInput(
