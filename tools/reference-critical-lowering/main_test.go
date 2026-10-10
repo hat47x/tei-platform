@@ -562,3 +562,39 @@ func TestRuntimeDependencyOrderDoesNotChangeResolvedPlan(t *testing.T) {
 		t.Fatal("runtime dependency registration order changed the target-bound witness")
 	}
 }
+
+func TestPinnedProviderFailureNeverFallsBackToAnotherAuthority(t *testing.T) {
+	tests := []struct {
+		name string
+		breakSelected func(*fixture)
+		want string
+	}{
+		{"pinned-provider-removed", func(f *fixture) { f.providers = f.providers[1:] }, "missing-capability"},
+		{"pinned-contract-drift", func(f *fixture) {
+			f.providers[0].Contract.Fingerprint = "sha256:unaccepted-contract"
+		}, "contract-drift"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := orderFixture("tei.language.dsl")
+			legacy := f.providers[0]
+			legacy.Identity = ref("legacy.customer-reader.web")
+			legacy.Conformance = ref("legacy.customer.evidence")
+			legacy.ResolutionLock = ref("legacy.capability-lock.customer")
+			legacy.Artifact = ref("legacy.artifact.customer")
+			tc.breakSelected(&f)
+			// A legacy-capable alternative exists in the provider catalog, but
+			// accepted wiring still pins the generic candidate. Changing
+			// Authority requires a separate accepted transition.
+			f.providers = append(f.providers, legacy)
+			if got := codeErrorFromFixture(f); got != tc.want {
+				t.Fatalf("exact Provider pin changed via implicit fallback: got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func codeErrorFromFixture(f fixture) string {
+	_, err := f.lower(stubTrust{})
+	return code(err)
+}
