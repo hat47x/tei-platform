@@ -20,7 +20,7 @@ if [[ "$name" == "." || "$name" == ".." || "$parent/$name" == "$repo" || "$paren
   echo "output must be outside the TEI checkout" >&2
   exit 2
 fi
-if [[ -e "$parent/$name" ]]; then
+if [[ -e "$parent/$name" || -L "$parent/$name" ]]; then
   echo "refusing to overwrite an existing evidence destination" >&2
   exit 2
 fi
