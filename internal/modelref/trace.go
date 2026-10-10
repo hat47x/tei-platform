@@ -1,6 +1,9 @@
 package modelref
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 )
@@ -12,6 +15,7 @@ type TraceOptions struct {
 	Mode      string `json:"mode"`      // summary, full
 	Offset    int    `json:"offset,omitempty"`
 	Limit     int    `json:"limit,omitempty"`
+	ExpectedFingerprint string `json:"expectedFingerprint,omitempty"`
 }
 
 type TraceError struct {
@@ -36,6 +40,8 @@ type TraceRow struct {
 // enables explicit paging through NextOffset.
 type TraceResult struct {
 	SchemaVersion string      `json:"schemaVersion"`
+	SnapshotFingerprint string `json:"snapshotFingerprint"`
+	RuleFingerprint string `json:"ruleFingerprint"`
 	Subject       Key         `json:"subject"`
 	Direction     string      `json:"direction"`
 	Mode          string      `json:"mode"`
@@ -73,6 +79,18 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	}
 	if options.Offset < 0 || options.Limit < 0 || options.Mode == "summary" && (options.Offset != 0 || options.Limit != 0) {
 		return TraceResult{}, &TraceError{Code: "INVALID_ARGUMENT", Message: "offset/limit require nonnegative values and full mode"}
+	}
+	// The token binds pages to the exact graph bytes and extension policy.
+	// It is descriptive, not Shared Acceptance, nor an optimistic write token.
+	raw, err := json.Marshal(graph)
+	if err != nil {
+		return TraceResult{}, fmt.Errorf("serialize graph snapshot: %w", err)
+	}
+	policyFingerprint := RuleFingerprint(rules)
+	digest := sha256.Sum256(append([]byte("tei.modelref.trace.snapshot/v0\n"), append(raw, []byte("\n"+policyFingerprint)...)...))
+	snapshotFingerprint := "sha256:" + hex.EncodeToString(digest[:])
+	if options.ExpectedFingerprint != "" && options.ExpectedFingerprint != snapshotFingerprint {
+		return TraceResult{}, &TraceError{Code: "STALE_SNAPSHOT", Message: "graph or rule fingerprint changed since the prior page"}
 	}
 	counts := make(map[Key]int, len(graph.Nodes))
 	for _, node := range graph.Nodes {
@@ -168,6 +186,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	})
 	result := TraceResult{
 		SchemaVersion: "tei.modelref.trace/v0", Subject: subject,
+		SnapshotFingerprint: snapshotFingerprint, RuleFingerprint: policyFingerprint,
 		Direction: options.Direction, Mode: options.Mode, Authority: "candidate-read-only",
 		Total: len(rows), Unresolved: unresolved,
 	}
