@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts } from "./bridge.mjs";
+import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts, navigateReferenceBusinessStep } from "./bridge.mjs";
 
 const revision = "sha256:" + "a".repeat(64);
 function fixture() {
@@ -492,6 +492,78 @@ test("local selection never expands into a global dense matrix", () => {
   const result = projectWorld(world, revision, "data:sales.order_line");
   assert.ok(result.views.er.edges.length <= 1);
   assert.ok(result.views.function.items.length <= 1);
+});
+
+test("business-local step navigation returns typed World focus without canonical authority", () => {
+  const world = fixture();
+  world.semantics[0].validations = [
+    { id: "sales.order_line.price_positive", kind: "positive",
+      attribute: "sales.order_line.price" }
+  ];
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "order-entry.order-handling", diagnostics: [],
+    steps: [{
+      id: "BP-05", noApplicationFunction: true, functionRefs: [],
+      source: { file: "ref-business.json", pointer: "/steps/5" },
+      explicitMeaning: [
+        { kind: "semantic-validation", id: "sales.order_line.price_positive",
+          status: "resolved-id-not-accepted", authority: "procedure-reference-only",
+          source: { file: "ref-business.json", pointer: "/steps/5/validations/0" } },
+        { kind: "semantic-capability", id: "security.authorize",
+          status: "unresolved", authority: "procedure-reference-only" }
+      ]
+    }]
+  };
+  const original = JSON.stringify(world);
+  const result = navigateReferenceBusinessStep(world, revision, dfd, "BP-05");
+  assert.equal(result.schema, "tei.reference.studio-business-step-navigation/v0");
+  assert.equal(result.subject.scope, "reference-procedure:order-entry.order-handling");
+  assert.equal(result.status, "reference-only");
+  assert.equal(result.candidates[0].focus, "validation:sales.order_line.price_positive");
+  assert.equal(result.candidates[0].status, "identity-match-only");
+  assert.equal(result.candidates[1].status, "unresolved");
+  assert.equal(result.editable, false);
+  assert.equal(result.acceptanceTargetStatus, "unresolved-use-shared-acceptance");
+  assert.equal(result.freshness, "unverified-no-model-revision-binding");
+  assert.equal(JSON.stringify(world), original);
+  assert.equal(projectWorld(world, revision, result.candidates[0].focus).focus.subject,
+    result.candidates[0].focus);
+  assert.throws(() => navigateReferenceBusinessStep(world, revision, dfd, "BP-MISSING"),
+    /UNRESOLVED_REFERENCE_BUSINESS_STEP/);
+});
+
+test("business-local step navigation fails closed on DFD errors, duplicate IDs and forged authority", () => {
+  const world = fixture();
+  const base = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "local", diagnostics: [],
+    steps: [{ id: "S1", functionRefs: [{ id: "order_entry.record",
+      status: "resolved", data: "sales.order" }] }]
+  };
+  const ok = navigateReferenceBusinessStep(world, revision, base, "S1");
+  assert.equal(ok.candidates[0].focus, "pattern:order_entry.record");
+  assert.equal(ok.candidates[0].status, "identity-match-only");
+  assert.equal(ok.editable, false);
+  const stale = structuredClone(base);
+  stale.steps[0].functionRefs[0].data = "sales.order_line";
+  assert.equal(navigateReferenceBusinessStep(world, revision, stale, "S1")
+    .candidates[0].status, "unresolved");
+  const producerError = structuredClone(base);
+  producerError.diagnostics = [{ code: "INVALID", severity: "error" }];
+  const blocked = navigateReferenceBusinessStep(world, revision, producerError, "S1");
+  assert.equal(blocked.status, "unresolved");
+  assert.equal(blocked.candidates[0].status, "unresolved");
+  const duplicate = structuredClone(base);
+  duplicate.steps.push(structuredClone(duplicate.steps[0]));
+  assert.throws(() => navigateReferenceBusinessStep(world, revision, duplicate, "S1"),
+    /INVALID_OR_DUPLICATE_BUSINESS_STEP/);
+  const forged = structuredClone(base);
+  forged.authority = "accepted";
+  assert.throws(() => navigateReferenceBusinessStep(world, revision, forged, "S1"),
+    /UNSUPPORTED_BUSINESS_DFD_AUTHORITY_OR_SCHEMA/);
 });
 
 test("real Reference World and Procedure fixture retain explicit non-Function Validation step", () => {
