@@ -185,11 +185,17 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	if neutral.Snapshot != f.a.Snapshot || len(f.c.Subjects) != 3 {
 		t.Fatal("lowering scenario semantic boundary lost")
 	}
+	if len(manifest.Patterns) != 5 {
+		t.Fatalf("unexpected Web pattern count: got %d want 5", len(manifest.Patterns))
+	}
 	businessID := f.c.Subjects[0].Ref.ID
 	dataID := f.c.Subjects[1].Ref.ID
 	functionID := f.c.Subjects[2].Ref.ID
 	seen := map[string]string{}
 	for _, pattern := range manifest.Patterns {
+		if _, duplicated := seen[pattern.ID]; duplicated {
+			t.Fatalf("Web manifest contains duplicate pattern ID: %s", pattern.ID)
+		}
 		seen[pattern.ID] = pattern.Kind
 		if pattern.ID == businessID && pattern.Capability != functionID {
 			t.Fatalf("Source->Web command capability changed: %+v", pattern)
@@ -201,6 +207,7 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	for id, kind := range map[string]string{
 		"order_entry.submit_order": "command",
 		"order_entry.recent_orders": "browse",
+		"order_entry.order_record": "record",
 		"order_entry.customer_reference": "reference",
 		"order_entry.order_lines": "header-detail",
 	} {
