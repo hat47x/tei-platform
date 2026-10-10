@@ -197,3 +197,19 @@ func TestReferenceBaselineOutputFlagsRejectProtectedDestinations(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceBaselineGuardMatchesMixedCaseConservatively(t *testing.T) {
+	baseline, _ := baselineAliasFixture(t)
+	// Filesystem case-sensitivity differs among Windows, macOS and Linux
+	// mounts. A baseline guard must not be bypassable on a case-insensitive
+	// mount merely because the spelling uses different case.
+	if !isReferenceBaseline(strings.ToUpper(baseline)) {
+		t.Fatal("case variant bypassed workspace baseline protection")
+	}
+	if !isReferenceBaselineOutput(strings.ToUpper(filepath.Join(baseline, "derived.json"))) {
+		t.Fatal("case variant bypassed source output protection")
+	}
+	if !isReferenceBaselineOutput(strings.ToUpper(filepath.Join(filepath.Dir(baseline), "world.json"))) {
+		t.Fatal("case variant bypassed derived Golden protection")
+	}
+}
