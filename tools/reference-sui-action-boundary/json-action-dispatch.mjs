@@ -15,6 +15,12 @@ export function createJSONActionDispatcher(endpoint, fetchImpl = globalThis.fetc
     throw new TypeError("same-origin endpoint path and fetch function are required");
   }
   return async (intent) => {
+    if (!intent || intent.protocolVersion !== "1" ||
+        [intent.applicationID, intent.resourceID, intent.actionID, intent.expectedRevision]
+          .some((value) => typeof value !== "string" || value.length === 0) ||
+        intent.payload === null || intent.payload === undefined) {
+      throw new TypeError("invalid versioned resource Action intent");
+    }
     const result = await fetchImpl(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-TEI-Action": "commit" },
@@ -28,6 +34,9 @@ export function createJSONActionDispatcher(endpoint, fetchImpl = globalThis.fetc
     try {
       body = await result.json();
     } catch {
+      throw new ActionCommitError("invalid_response", result.status);
+    }
+    if (body?.protocolVersion !== "1") {
       throw new ActionCommitError("invalid_response", result.status);
     }
     if (!result.ok) {
