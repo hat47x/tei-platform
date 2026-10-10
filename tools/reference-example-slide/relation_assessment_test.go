@@ -195,3 +195,17 @@ func TestDuplicateRelationDefinitionFailsClosed(t *testing.T) {
 		t.Fatal("duplicated composite key pair was accepted")
 	}
 }
+
+func TestExactIntegerValidationRejectsRoundedFraction(t *testing.T) {
+	in := keyedInput()
+	// A float64 conversion would round this into an integral value.
+	in.Example.Base[0].Values["tenant"] = json.RawMessage("9007199254740993.5")
+	if _, err := Build(in); err == nil {
+		t.Fatal("fractional integer above float64 exact range accepted")
+	}
+	in = keyedInput()
+	in.Example.Base[0].Values["tenant"] = json.RawMessage("9007199254740993")
+	if _, err := Build(in); err != nil {
+		t.Fatalf("valid precise integer was rejected: %v", err)
+	}
+}
