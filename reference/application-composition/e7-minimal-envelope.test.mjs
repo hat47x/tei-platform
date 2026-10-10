@@ -116,5 +116,6 @@ test('E7a will not export forged private Source via a fabricated report', () => 
     subject:{kind:'semantic-data',id:'private.internal'},
     source:{path:fileExtra,fingerprint:sha('c')},
   }];
+  a.index.references.push(ref({kind:'semantic-data',id:'private.internal'},fileExtra));
   assert.equal(minimizePairedSourceEvidence(a).reason,'unverified_dependency_report');
 });
