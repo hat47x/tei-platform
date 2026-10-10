@@ -30,6 +30,23 @@ func TestReferenceBaselineProtectionFollowsWorkspaceAlias(t *testing.T) {
 	if !isReferenceBaseline(alias) {
 		t.Fatal("symlink alias bypassed reference/workspace protection")
 	}
+	// Keep the unclean spelling: a symlink is resolved before ".." by the
+	// filesystem, whereas filepath.Abs would discard that segment first.
+	aliasThroughParent := alias + string(os.PathSeparator) + ".." + string(os.PathSeparator) + "workspace"
+	aliasInfo, err := os.Stat(aliasThroughParent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baselineInfo, err := os.Stat(baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(aliasInfo, baselineInfo) {
+		t.Fatal("test setup: alias through parent does not refer to baseline")
+	}
+	if !isReferenceBaseline(aliasThroughParent) {
+		t.Fatal("symlink alias with parent segment bypassed baseline protection")
+	}
 	ordinary := filepath.Join(filepath.Dir(alias), "ordinary-scratch")
 	if err := os.Mkdir(ordinary, 0o755); err != nil {
 		t.Fatal(err)
@@ -61,6 +78,16 @@ func TestReferenceBaselineWriteCommandsRejectSymlinkAlias(t *testing.T) {
 		{
 			name: "confirm-record",
 			args: []string{"confirm-record", "-workspace", alias, "-input", input},
+		},
+		{
+			name: "accept alias through parent",
+			args: []string{"accept", "-workspace", alias + string(os.PathSeparator) + ".." + string(os.PathSeparator) + "workspace",
+				"-candidate", candidate, "-expected-review-fingerprint", "synthetic-review"},
+		},
+		{
+			name: "confirm-record alias through parent",
+			args: []string{"confirm-record", "-workspace", alias + string(os.PathSeparator) + ".." + string(os.PathSeparator) + "workspace",
+				"-input", input},
 		},
 	}
 	for _, tc := range cases {
