@@ -254,3 +254,17 @@ E2.5ではHostの早期認可後にRunnerの入口でアカウント状態を再
 HTTP負例には、(1) Validationと業務認可完了後、Command直前のClockでAccountが期限外になる場合、(2) 同じタイミングでSource Linkが別の業務`SubjectID`に変わる場合を追加しました。前者はHTTP 403かつ`identity-link-denied`、後者は503かつ`identity-link` Execution Errorで停止する設計です。後者の内部対応関係はHTTPへ露出させず、固定文言に置き換えます。いずれもCommand／Observationが空で、監査記録が拒否／エラーとなることを要求します。
 
 **検証状態：** コードと回帰テストをPRへコミットしましたが、これら追加分を含む実Workspace結合テストはまだ実行していません。以前の隔離GoテストはE2.5以前の状態を対象とするため、この変更に合格した証拠にはなりません。正確なPR headのクリーンなフルチェックアウトで`go test`、`go test -race`、`go vet`、`tools/repository-health-check.sh`を実行し、前後cleanを記録するまで統合禁止です。
+
+
+### E2.6の局所契約試験（exact Blob）
+
+Go 1.23.2の隔離`module tei`に、実際の`session_command_scenario.go`を**GitHub Blobとbyte同一**でコピーしました（`git hash-object=6e8f10ae6ba9929d1f11d5b1da0b161807b68333`）。`PrincipalFromContext`と、認可済み後段を実行するRunnerの内部関数だけをスタブに置換し、**このSession入口の実コード**が保持する再確認閉包を検査しました。実行結果は次の通りです。
+
+- `gofmt -l tools/reference-first-web-target/session_command_scenario.go`：出力なし。
+- `go test -count=1 -v ./tools/reference-first-web-target`：**2テスト、5サブケースを含めてPASS**。有効リンク、途中失効、`SubjectID`変更、`PrincipalID`変更、リンクStore障害、未認証Contextの拒否を確認。
+- `go vet ./tools/reference-first-web-target`：PASS。
+- `go test -race -count=1 ./tools/reference-first-web-target`：PASS。
+
+また、GitHub上の`command_scenario.go`（Blob `ca37e6fd94e314658c8a7c66945842f6f95c60a4`）を静的に確認し、`security.authorize` → Command Pattern解決 → **effectGuard** → `resolver.InvokeCapability(sales.order.submit)`という順序であること、旧Credential入口が`nil` guardを通すことを確認しました。
+
+**この結果を実Repository全体の結合テスト成功とは扱いません。** 共有ビジネス処理の本体、実`Driver`、実`workspace.Load`、Go Host／HTTPステータス／監査は隔離試験ではスタブまたは対象外です。今回追加した実WorkspaceのHTTP回帰試験はリポジトリ全体のクリーンなチェックアウトで実行する必要があります。
