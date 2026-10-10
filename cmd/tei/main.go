@@ -131,9 +131,18 @@ func main() {
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
 	_ = fs.Parse(os.Args[2:])
-	if *jsonValidation && (command != "validate" || *workspacePath == "") {
-		fmt.Fprintln(os.Stderr, "-json is supported only for validate -workspace")
-		os.Exit(2)
+	if *jsonValidation {
+		if command != "validate" {
+			fmt.Fprintln(os.Stderr, "-json is supported only for validate -workspace")
+			os.Exit(2)
+		}
+		if *workspacePath == "" || *worldPath != "" || fs.NArg() != 0 {
+			code, err := invalidJSONValidationArguments(os.Stdout)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			os.Exit(code)
+		}
 	}
 	if command == "workspace-files" {
 		if *workspacePath == "" || *worldPath != "" {
