@@ -174,6 +174,13 @@ func TestFirstModelChangeEditValidationAndRepair(t *testing.T) {
 	if !reflect.DeepEqual(changed.World, repaired.World) {
 		t.Fatal("repair did not restore the exact canonical meaning")
 	}
+	repairedIndex, err := workspace.BuildSourceIndex(userRoot, repaired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(changedIndex, repairedIndex) {
+		t.Fatal("repair did not restore the same source lineage and fingerprint")
+	}
 }
 
 func assertFirstModelReference(t *testing.T, idx sourceindex.Index, kind, id, path string) {
