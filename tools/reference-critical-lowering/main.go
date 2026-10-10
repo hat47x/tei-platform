@@ -198,6 +198,23 @@ func equalSlots(a, b []Ref) bool {
 	return true
 }
 
+// normalizedRefs treats dependency lists as sets. It rejects incomplete or
+// duplicate identities so provider registration order cannot change the Plan.
+func normalizedRefs(refs []Ref) ([]Ref, error) {
+	out := append([]Ref(nil), refs...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].ID != out[j].ID { return out[i].ID < out[j].ID }
+		if out[i].Version != out[j].Version { return out[i].Version < out[j].Version }
+		return out[i].Fingerprint < out[j].Fingerprint
+	})
+	for i, dep := range out {
+		if !dep.valid() || (i > 0 && out[i-1].ID == dep.ID) {
+			return nil, reject("invalid-provider-dependency")
+		}
+	}
+	return out, nil
+}
+
 func has(values []string, wanted string) bool {
 	for _, v := range values {
 		if v == wanted {
@@ -360,6 +377,11 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 		if p.Target != target.ID {
 			return Plan{}, reject("unsupported-target")
 		}
+		runtimeDeps, err := normalizedRefs(p.RuntimeDeps)
+		if err != nil { return Plan{}, err }
+		if _, err := normalizedRefs(p.BuildOnlyDeps); err != nil {
+			return Plan{}, err
+		}
 		if !trust.Published(p.Contract) || !trust.Conformant(p) {
 			return Plan{}, reject("unverified-provider")
 		}
@@ -370,7 +392,7 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 			DataContracts: append([]DataNeed(nil), r.DataContracts...),
 			Conformance: p.Conformance, ResolutionLock: p.ResolutionLock,
 			Artifact: p.Artifact, RequiredSlots: append([]Ref(nil), r.RequiredSlots...),
-			RuntimeDeps: append([]Ref(nil), p.RuntimeDeps...), Target: target.ID,
+			RuntimeDeps: runtimeDeps, Target: target.ID,
 		})
 	}
 	sort.Slice(steps, func(i, j int) bool {
