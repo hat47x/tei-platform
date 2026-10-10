@@ -56,6 +56,12 @@ func TestIssue1120ReadOnlyReferenceWorldToSourceAndImpact(t *testing.T) {
 	read := func(relative string) ([]byte, error) {
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
 	}
+	// Real Workspace consumers reuse one validated snapshot for all visual
+	// projections instead of repeatedly reading every Source artifact.
+	resolver, err := sourcebridge.NewResolver(projection.Graph, sources, read)
+	if err != nil {
+		t.Fatalf("source snapshot validation: %v", err)
+	}
 	targets := []struct {
 		key  modelref.Key
 		path string
@@ -64,7 +70,7 @@ func TestIssue1120ReadOnlyReferenceWorldToSourceAndImpact(t *testing.T) {
 		{relation, "semantic/sales/order.tei"},
 	}
 	for _, item := range targets {
-		got := sourcebridge.Locate(projection.Graph, sources, item.key, read)
+		got := resolver.Locate(item.key)
 		if got.Status != "located" {
 			t.Fatalf("cannot navigate %v to source: %+v", item.key, got)
 		}
