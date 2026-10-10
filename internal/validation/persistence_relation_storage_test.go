@@ -177,7 +177,7 @@ func TestDefaultValidationRejectsMalformedRelationStorageMapping(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			world := persistenceRelationStorageWorld()
 			tc.mutate(&world)
-			found := false
+			count := 0
 			for _, d := range Validate(world) {
 				if d.Code != tc.code {
 					continue
@@ -187,10 +187,10 @@ func TestDefaultValidationRejectsMalformedRelationStorageMapping(t *testing.T) {
 					d.Subject.ID != "sales_core.order_line" {
 					t.Fatalf("Relation Storage error has no source-resolvable Persistence identity: %+v", d)
 				}
-				found = true
+				count++
 			}
-			if !found {
-				t.Fatalf("default Validation missed %s", tc.code)
+			if count != 1 {
+				t.Fatalf("default Validation must report %s exactly once, got %d", tc.code, count)
 			}
 		})
 	}
