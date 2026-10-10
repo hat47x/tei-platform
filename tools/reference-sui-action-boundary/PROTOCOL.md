@@ -6,7 +6,8 @@
 
 対象はSUIのCard移動に限りません。Inventoryの在庫調整など、異なるアプリケーションも同じ外側の構造を使います。UIのプレビューやドラッグ操作は対象外で、**利用者が変更を確定した時点**にだけ要求を送ります。
 
-- 共通契約の正本：`action-protocol-v1.schema.json`（JSON Schema Draft 2020-12）
+- 要求契約の正本：`action-protocol-v1.schema.json`（JSON Schema Draft 2020-12）
+- 応答契約の正本：`action-result-v1.schema.json`（同規格。成功の`revision`と失敗の`error`は排他的）
 - ブラウザー参照実装：`native-action-bridge.mjs`と`json-action-dispatch.mjs`
 - HTTP参照実装：`actionboundary.JSONCommitHandler`
 - 実行境界：`actionboundary.Host.Commit`
@@ -89,4 +90,4 @@ Versionは文字列のメジャー番号です。今後の変更では、既存�
 
 Go参照Storeの`documentID`は、SUI固有の文書保存アダプター内部の識別子として残します。汎用Hostと通信境界には持ち込みません。
 
-検証するときは正確なCommitを固定し、`go test -race`、`tools/repository-health-check.sh`、ブラウザーとSUIの現物テストを実行してください。テストコードの追加とPASS証拠は区別します。ブラウザーの参照ファイル4点とJSON SchemaのGit Blob SHAを照合したローカルNodeテスト15件はPASSしましたが、実TEIリポジトリ全体の健全性検査はまだ実施できていません。
+検証するときは正確なCommitを固定し、`go test -race`、`tools/repository-health-check.sh`、ブラウザーとSUIの現物テストを実行してください。テストコードの追加とPASS証拠は区別します。ブラウザー側の参照ファイルと要求JSON SchemaのGit Blob SHAを照合したローカルNodeテスト15件はPASSしましたが、応答JSON Schemaの追加後のテストはまだ未実行です。実TEIリポジトリ全体の健全性検査はまだ実施できていません。
