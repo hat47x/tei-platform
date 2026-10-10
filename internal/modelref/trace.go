@@ -81,7 +81,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	if options.Offset < 0 || options.Limit < 0 || options.Mode == "summary" && (options.Offset != 0 || options.Limit != 0) {
 		return TraceResult{}, &TraceError{Code: "INVALID_ARGUMENT", Message: "offset/limit require nonnegative values and full mode"}
 	}
-	// The token binds pages to the exact graph bytes and extension policy.
+	// The token binds pages to normalized graph meaning, selector and extension policy.
 	// It is descriptive, not Shared Acceptance, nor an optimistic write token.
 	raw, err := traceGraphSnapshotBytes(graph)
 	if err != nil {
