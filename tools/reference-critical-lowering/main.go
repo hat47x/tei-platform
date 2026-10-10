@@ -92,17 +92,27 @@ type Step struct {
 	Target         string `json:"target"`
 }
 
+// Origin is trace-only: it never substitutes for the accepted semantic snapshot.
+type Origin struct {
+	Source Ref `json:"source"`
+	Language Ref `json:"language"`
+	CandidateDigest string `json:"candidateDigest"`
+	AcceptanceReceipt Ref `json:"acceptanceReceipt"`
+}
+
 // NeutralPlan records the minimum executable intent without Target, Provider or
 // Environment Authority. It references accepted subjects; it is never authored.
 type NeutralPlan struct {
 	Schema   string        `json:"schema"`
 	Snapshot Ref           `json:"snapshot"`
+	Origin Origin          `json:"origin"`
 	Intents  []Requirement `json:"intents"`
 }
 
 type Plan struct {
 	Schema   string `json:"schema"`
 	Snapshot Ref    `json:"snapshot"`
+	Origin Origin   `json:"origin"`
 	Steps    []Step `json:"steps"`
 }
 
@@ -189,13 +199,16 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 	sort.Slice(intents, func(i, j int) bool {
 		return intents[i].Scope+":"+intents[i].Contract.ID < intents[j].Scope+":"+intents[j].Contract.ID
 	})
-	return NeutralPlan{Schema: NeutralSchema, Snapshot: a.Snapshot, Intents: intents}, nil
+	return NeutralPlan{Schema: NeutralSchema, Snapshot: a.Snapshot, Origin: Origin{
+		Source: c.Source, Language: c.Language, CandidateDigest: d, AcceptanceReceipt: a.Receipt,
+	}, Intents: intents}, nil
 }
 
 // Lower checks stage crossings only. Existing parsers, resolvers, and Driver still
 // own meaning, capability selection, effect realization, and execution.
 func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, target Target, trust Trust) (Plan, error) {
-	if _, err := Neutralize(c, a, trust); err != nil {
+	neutral, err := Neutralize(c, a, trust)
+	if err != nil {
 		return Plan{}, err
 	}
 	if target.ID == "" {
@@ -282,13 +295,15 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 	sort.Slice(steps, func(i, j int) bool {
 		return steps[i].Scope+":"+steps[i].Contract.ID < steps[j].Scope+":"+steps[j].Contract.ID
 	})
-	return Plan{Schema: Schema, Snapshot: a.Snapshot, Steps: steps}, nil
+	return Plan{Schema: Schema, Snapshot: neutral.Snapshot, Origin: neutral.Origin, Steps: steps}, nil
 }
 
 // AuthorizeInvocation is intentionally separate from deterministic lowering.
 // The Host re-evaluates current grants/context bindings immediately before dispatch.
 func AuthorizeInvocation(plan Plan, trust Trust) error {
-	if trust == nil || plan.Schema != Schema || !plan.Snapshot.valid() || len(plan.Steps) == 0 {
+	if trust == nil || plan.Schema != Schema || !plan.Snapshot.valid() || !plan.Origin.Source.valid() ||
+		!plan.Origin.Language.valid() || !plan.Origin.AcceptanceReceipt.valid() ||
+		plan.Origin.CandidateDigest == "" || len(plan.Steps) == 0 {
 		return reject("invalid-boundary")
 	}
 	for _, s := range plan.Steps {
