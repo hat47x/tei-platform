@@ -79,6 +79,20 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// Output flags are write paths even for read-only commands. Reject paths
+	// into the protected Reference source or its derived golden unless the
+	// caller explicitly opts in; guarding -workspace alone is insufficient.
+	if !*allowBaseline {
+		if *outPath != "" && isReferenceBaselineOutput(*outPath) {
+			fmt.Fprintln(stderr, "reference/workspaceまたはreference/world.jsonへの-out書込みには -allow-reference-baseline が必要です")
+			return 2
+		}
+		if command == "accept" && *derivedOut != "" && isReferenceBaselineOutput(*derivedOut) {
+			fmt.Fprintln(stderr, "reference/workspaceまたはreference/world.jsonへの-derived-out書込みには -allow-reference-baseline が必要です")
+			return 2
+		}
+	}
+
 	emit := func(value any) int {
 		encoded, err := encodeJSON(value)
 		if err != nil {
@@ -402,4 +416,63 @@ func isReferenceBaseline(workspacePath string) bool {
 		return false
 	}
 	return strings.HasSuffix(filepath.ToSlash(resolvedAbs), "/reference/workspace")
+}
+
+
+// isReferenceBaselineOutput protects against clobbering managed Reference
+// files through either output flag. The derived golden lives beside the
+// workspace, so it is included explicitly. This is a mistaken-write guard,
+// not a general sandbox against concurrent or hostile filesystem changes.
+func isReferenceBaselineOutput(path string) bool {
+	if path == "" {
+		return false
+	}
+	protected := func(p string) bool {
+		p = filepath.ToSlash(p)
+		return strings.Contains(p, "/reference/workspace/") ||
+			strings.HasSuffix(p, "/reference/workspace") ||
+			strings.HasSuffix(p, "/reference/world.json")
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return true
+	}
+	if protected(abs) {
+		return true
+	}
+	// A dangling file symlink is still a potential output: os.WriteFile
+	// follows the link and may create a protected target.
+	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return true
+	}
+	// Resolve the original spelling before cleaning "..". Output files and
+	// their parents may not exist yet, so resolve the nearest existing
+	// ancestor and append the remaining components.
+	missing := []string{}
+	current := path
+	for {
+		resolved, err := filepath.EvalSymlinks(current)
+		if err == nil {
+			for i := len(missing) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, missing[i])
+			}
+			resolvedAbs, err := filepath.Abs(resolved)
+			return err != nil || protected(resolvedAbs)
+		}
+		// Split preserves unclean parent segments, unlike filepath.Dir.
+		trimmed := strings.TrimRight(current, string(os.PathSeparator))
+		if trimmed == "" {
+			return true
+		}
+		parent, leaf := filepath.Split(trimmed)
+		if leaf == "" {
+			return true
+		}
+		missing = append(missing, leaf)
+		if parent == "" {
+			current = "."
+		} else {
+			current = parent
+		}
+	}
 }
