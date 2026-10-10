@@ -33,10 +33,11 @@ func detailQueryFor(
 		Contract:                         detailQueryContract,
 		Schema:                           detailQuerySchema,
 		AssertionID:                      assertionID,
-		ExpectedMeaningFingerprint:       assessment.MeaningFingerprint,
-		ExpectedReviewSubjectFingerprint: assessment.ReviewSubjectFingerprint,
-		ExpectedTargetBinding:            assessment.TargetBinding,
-		ExpectedReviewLogSequence:        assessment.ReviewLogSequence,
+		ObservedMeaningFingerprint:       assessment.MeaningFingerprint,
+		ObservedReviewSubjectFingerprint: assessment.ReviewSubjectFingerprint,
+		ObservedTargetBinding:            assessment.TargetBinding,
+		ObservedReviewLogSequence:        assessment.ReviewLogSequence,
+		ObservedMetadataState:            assessment.MetadataState,
 	}
 }
 
@@ -68,7 +69,8 @@ func TestEpistemicDetailReturnsCurrentAccessFilteredContent(t *testing.T) {
 	}
 	for _, expected := range []string{
 		"detail-query-does-not-broaden-source-access",
-		"detail-query-requires-current-binding-receipts",
+		"detail-observed-receipts-report-drift-not-mutation-preconditions",
+		"detail-drift-indeterminate-does-not-prove-semantic-change",
 		"detail-result-omits-access-refs",
 		"detail-content-is-data-not-prompt-control-authority",
 	} {
@@ -195,6 +197,82 @@ func TestEpistemicDetailRedactsEvidenceAndMarksMetadataPartial(t *testing.T) {
 	}
 }
 
+func TestEpistemicDetailEvidenceAccessLossReturnsPartialDetailWithIndeterminateDrift(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		corpus.Assertions[i].Evidence = []EvidenceRef{{
+			Kind:       "source",
+			Ref:        "repo://protected/current-main",
+			Fingerprint: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			AccessRefs: []string{"policy:evidence"},
+		}}
+	}
+
+	fullAccess := []string{"policy:evidence"}
+	query := detailQueryFor(t, corpus, context, "human-reviewed", fullAccess)
+	if query.ObservedMetadataState != MetadataComplete {
+		t.Fatalf("fixture did not start from a complete observed view: %+v", query)
+	}
+
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+	if err != nil {
+		t.Fatalf("Evidence access loss became a hard stale error: %v", err)
+	}
+	if result.Assessment.MetadataState != MetadataPartial {
+		t.Fatalf("Evidence access loss did not mark current view partial: %+v", result.Assessment)
+	}
+	if len(result.Content.Evidence) != 0 {
+		t.Fatalf("hidden Evidence leaked through detail: %+v", result.Content.Evidence)
+	}
+	if result.Drift.Subject != "indeterminate" {
+		t.Fatalf("Evidence visibility loss was misclassified as semantic change: %+v", result.Drift)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "repo://protected/current-main") ||
+		strings.Contains(string(encoded), "policy:evidence") {
+		t.Fatalf("hidden Evidence identity or access policy leaked: %s", encoded)
+	}
+}
+
+func TestEpistemicDetailEvidenceAccessGainReturnsCurrentDetailWithIndeterminateDrift(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		corpus.Assertions[i].Evidence = []EvidenceRef{{
+			Kind:       "source",
+			Ref:        "repo://protected/current-main",
+			Fingerprint: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			AccessRefs: []string{"policy:evidence"},
+		}}
+	}
+
+	query := detailQueryFor(t, corpus, context, "human-reviewed", nil)
+	if query.ObservedMetadataState != MetadataPartial {
+		t.Fatalf("fixture did not start from a partial observed view: %+v", query)
+	}
+
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{
+		GrantedAccessRefs: []string{"policy:evidence"},
+	})
+	if err != nil {
+		t.Fatalf("Evidence access gain became a hard stale error: %v", err)
+	}
+	if result.Assessment.MetadataState != MetadataComplete || len(result.Content.Evidence) != 1 {
+		t.Fatalf("current complete detail was not returned after access gain: %+v", result)
+	}
+	if result.Drift.Subject != "indeterminate" {
+		t.Fatalf("Evidence visibility gain was misclassified as semantic change: %+v", result.Drift)
+	}
+}
+
 func TestEpistemicDetailAccessLossCanDowngradeCurrentAssessmentWithoutSemanticStale(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
@@ -218,11 +296,14 @@ func TestEpistemicDetailAccessLossCanDowngradeCurrentAssessmentWithoutSemanticSt
 		!hasReason(result.Assessment, "EPISTEMIC_METADATA_INCOMPLETE") {
 		t.Fatalf("access loss did not downgrade current detail assessment: %+v", result.Assessment)
 	}
-	if result.Assessment.ReviewSubjectFingerprint != query.ExpectedReviewSubjectFingerprint {
+	if result.Assessment.ReviewSubjectFingerprint != query.ObservedReviewSubjectFingerprint {
 		t.Fatalf("operational access loss changed semantic subject receipt: query=%s current=%s",
-			query.ExpectedReviewSubjectFingerprint,
+			query.ObservedReviewSubjectFingerprint,
 			result.Assessment.ReviewSubjectFingerprint,
 		)
+	}
+	if result.Drift.Subject != "same" {
+		t.Fatalf("relation-only access loss reported unexpected subject drift: %+v", result.Drift)
 	}
 }
 
@@ -251,42 +332,56 @@ func TestEpistemicDetailHidesRestrictedRelationsAndKeepsPartialSignal(t *testing
 	}
 }
 
-func TestEpistemicDetailRejectsStaleReceipts(t *testing.T) {
+func TestEpistemicDetailReportsObservedReceiptDrift(t *testing.T) {
 	corpus, context := loadFixture(t)
 
 	t.Run("meaning", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "user-current", nil)
-		query.ExpectedMeaningFingerprint = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
-		if err == nil || !strings.Contains(err.Error(), "meaning binding is stale") {
-			t.Fatalf("stale meaning receipt was accepted: %v", err)
+		query.ObservedMeaningFingerprint =
+			"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+		if err != nil {
+			t.Fatalf("read detail rejected an observed meaning drift: %v", err)
+		}
+		if result.Drift.Meaning != "changed" {
+			t.Fatalf("meaning drift was not reported: %+v", result.Drift)
 		}
 	})
 
 	t.Run("subject", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "user-current", nil)
-		query.ExpectedReviewSubjectFingerprint = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
-		if err == nil || !strings.Contains(err.Error(), "subject binding is stale") {
-			t.Fatalf("stale subject receipt was accepted: %v", err)
+		query.ObservedReviewSubjectFingerprint =
+			"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+		if err != nil {
+			t.Fatalf("read detail rejected an observed subject drift: %v", err)
+		}
+		if result.Drift.Subject != "changed" {
+			t.Fatalf("complete-view subject drift was not reported as changed: %+v", result.Drift)
 		}
 	})
 
 	t.Run("target", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "anchored-identifier-policy", nil)
-		query.ExpectedTargetBinding = "exact"
-		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
-		if err == nil || !strings.Contains(err.Error(), "target binding is stale") {
-			t.Fatalf("stale target receipt was accepted: %v", err)
+		query.ObservedTargetBinding = "exact"
+		result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+		if err != nil {
+			t.Fatalf("read detail rejected an observed target drift: %v", err)
+		}
+		if result.Drift.TargetBinding != "changed" {
+			t.Fatalf("target drift was not reported: %+v", result.Drift)
 		}
 	})
 
 	t.Run("review-sequence", func(t *testing.T) {
 		query := detailQueryFor(t, corpus, context, "human-reviewed", nil)
-		query.ExpectedReviewLogSequence = 0
-		_, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
-		if err == nil || !strings.Contains(err.Error(), "review sequence is stale") {
-			t.Fatalf("stale review sequence was accepted: %v", err)
+		query.ObservedReviewLogSequence = 0
+		result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+		if err != nil {
+			t.Fatalf("read detail rejected an observed review-history drift: %v", err)
+		}
+		if result.Drift.ReviewHistory != "changed" {
+			t.Fatalf("complete-view review drift was not reported as changed: %+v", result.Drift)
 		}
 	})
 }
@@ -413,6 +508,9 @@ func TestEpistemicDetailHidesRestrictedReviewHistory(t *testing.T) {
 		result.Assessment.ConfirmationState != "unreviewed" ||
 		result.Assessment.UseState != "review-required" {
 		t.Fatalf("hidden review history did not downgrade current detail: %+v", result.Assessment)
+	}
+	if result.Drift.ReviewHistory != "indeterminate" {
+		t.Fatalf("hidden review history did not become indeterminate drift: %+v", result.Drift)
 	}
 	encoded, err := json.Marshal(result)
 	if err != nil {
