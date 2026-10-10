@@ -133,6 +133,30 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+
+	// Input-preserving commands must not overwrite their own proposal/query.
+	// This is distinct from accept (checked above): even a read-only review
+	// can destroy its source document if -out points back to -candidate.
+	// Intentional in-place transforms (attach-* / propose-*) are unaffected.
+	if *outPath != "" {
+		var preservedInput string
+		switch command {
+		case "preview", "review", "reject":
+			preservedInput = *candidatePath
+		case "confirm-check", "confirm-record":
+			preservedInput = *inputPath
+		}
+		if preservedInput != "" {
+			inputDestination, inputErr := resolveOutputDestination(preservedInput)
+			outputDestination, outputErr := resolveOutputDestination(*outPath)
+			if inputErr != nil || outputErr != nil ||
+				referencePathText(inputDestination) == referencePathText(outputDestination) {
+				fmt.Fprintln(stderr, command+"の-outは入力ファイルと同一の出力先を指定できません（別名・シンボリックリンクも含みます）")
+				return 2
+			}
+		}
+	}
+
 	emit := func(value any) int {
 		encoded, err := encodeJSON(value)
 		if err != nil {
