@@ -760,3 +760,87 @@ func TestConfidentialDownstreamCannotSpoofControlCancellation(t *testing.T) {
 		t.Fatalf("expected opaque error rather than downstream detail: %v", err)
 	}
 }
+
+func TestConfidentialReceiptReferencesRejectLiteralSlotValue(t *testing.T) {
+	const secret = "raw-secret-value-47"
+	tests := []struct {
+		name         string
+		host         HostExecutionContext
+		requirements []ContextSlotRequirement
+	}{
+		{
+			name: "own binding receipt ref",
+			host: func() HostExecutionContext {
+				h := accessHost(secret)
+				h.Bindings[0].BindingReceiptRef = "binding:" + secret
+				return h
+			}(),
+			requirements: accessRequirement(),
+		},
+		{
+			name: "reuse partition ref",
+			host: func() HostExecutionContext {
+				h := accessHost(secret)
+				h.ReusePartitionRef = "partition:" + secret
+				return h
+			}(),
+			requirements: accessRequirement(),
+		},
+		{
+			name: "another required slot receipt ref",
+			host: func() HostExecutionContext {
+				h := accessHost(secret)
+				h.Bindings = append(h.Bindings, ContextSlotBinding{
+					ContractID: testTraceSlot, ContractVersion: "0.1.0",
+					BindingReceiptRef: "trace:" + secret, Value: []byte("safe-trace"),
+				})
+				return h
+			}(),
+			requirements: append(accessRequirement(), ContextSlotRequirement{
+				ContractID: testTraceSlot, ContractVersion: "0.1.0",
+			}),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			_, err := invokeWithExecutionContext(
+				context.Background(), accessSlotContracts(), tc.requirements,
+				tc.host, []byte("request"),
+				func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+					called = true
+					return []byte("safe-result"), nil
+				},
+			)
+			if err == nil || !strings.Contains(err.Error(), "directly exposes") {
+				t.Fatalf("literal secret in receipt reference was accepted: %v", err)
+			}
+			if strings.Contains(err.Error(), secret) {
+				t.Fatalf("rejection error exposed confidential slot value: %v", err)
+			}
+			if called {
+				t.Fatal("downstream ran after invalid confidential receipt reference")
+			}
+		})
+	}
+}
+
+func TestUnrequiredReceiptReferenceDoesNotBlockInvocation(t *testing.T) {
+	host := accessHost("raw-secret-value-47")
+	host.Bindings = append(host.Bindings, ContextSlotBinding{
+		ContractID: testTraceSlot, BindingReceiptRef: "trace:raw-secret-value-47",
+	})
+	_, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		host, []byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			if _, ok := slots.Lookup(testTraceSlot); ok {
+				t.Fatal("unrequired slot was visible")
+			}
+			return []byte("safe-result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("undeclared binding affected invocation: %v", err)
+	}
+}
