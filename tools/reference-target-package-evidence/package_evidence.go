@@ -285,7 +285,7 @@ func trackedGitFiles() (map[string]struct{}, error) {
 }
 
 func validEntry(entry string) bool {
-	if !strings.HasPrefix(entry, "./") || strings.ContainsAny(entry, "*\\ \t\r\n") {
+	if !strings.HasPrefix(entry, "./") || strings.ContainsAny(entry, "*\\ \t\r\n") || strings.Contains(entry, "...") {
 		return false
 	}
 	for _, segment := range strings.Split(strings.TrimPrefix(entry, "./"), "/") {
