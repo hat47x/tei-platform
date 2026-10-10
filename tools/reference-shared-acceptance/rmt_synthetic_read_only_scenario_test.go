@@ -2,8 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math/big"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"reflect"
 	"testing"
 	"time"
@@ -15,6 +21,7 @@ import (
 	"tei/internal/query"
 	"tei/internal/semantic/validationeval"
 	"tei/internal/workspace"
+	"tei/tools/internal/rmtevidence"
 )
 
 // rmtSyntheticReadOnlyExecutor is a test-only provider. Its result is NOT
@@ -28,6 +35,45 @@ func (e rmtSyntheticReadOnlyExecutor) ExecuteBrowseQuery(
 	parameters map[string]any,
 ) (driver.BrowseQueryResult, error) {
 	return e(ctx, q, db, parameters)
+}
+
+// rmtIndependentSyntheticSourceEvidence invokes the actual local adapter CLI
+// against unrelated, independently written XML. It proves transport of
+// source-bound Evidence, not transcribed equivalence with the TEI rule.
+func rmtIndependentSyntheticSourceEvidence(t *testing.T) []byte {
+	t.Helper()
+	dir := t.TempDir()
+	source := []byte(`<System FormatVersion="1.2"><Table ID="independent_fixture_table_987"/></System>`)
+	input := filepath.Join(dir, "synthetic-source.xead")
+	if err := os.WriteFile(input, source, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(
+		"go", "run", "./tools/reference-xead-source-adapter",
+		"-format", "xead", "-input", input,
+		"-contract", "reference/reference-model-transfer/transcription-contract-v0.json",
+		"-candidate-evidence-node", "2",
+	)
+	cmd.Dir = repositoryRoot(t)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("synthetic source adapter failed: %v: %s", err, output)
+	}
+	evidence, err := rmtevidence.Decode(output)
+	if err != nil {
+		t.Fatalf("adapter produced invalid typed Evidence: %v", err)
+	}
+	sourceSum := sha256.Sum256(source)
+	if evidence.SourceArtifactDigest != "sha256:"+hex.EncodeToString(sourceSum[:]) ||
+		evidence.MappingStatus != rmtevidence.MappingMapped ||
+		evidence.SourceConstruct != "Table" {
+		t.Fatalf("unexpected source evidence identity: %+v", evidence)
+	}
+	if strings.Contains(string(output), "independent_fixture_table_987") ||
+		strings.Contains(string(output), "/System[1]") {
+		t.Fatal("adapter emitted source identity or locator in candidate Evidence")
+	}
+	return output
 }
 
 // This is a bounded TEI-only vertical slice:
@@ -51,7 +97,7 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 	candidate := unitPriceWithSelectionCandidate(revisionOfDir(t, dir))
 	grounded, err := attachRMTTranscriptionEvidence(
 		mustJSON(t, candidate),
-		rmtEvidenceJSON(t, true),
+		rmtIndependentSyntheticSourceEvidence(t),
 	)
 	if err != nil {
 		t.Fatal(err)
