@@ -94,6 +94,16 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `ResolveOperator`では不完全な契約を`ErrOperatorInvalid`、明示された`pure`以外の効果を`ErrEffectEscalation`として区別した。変更後の`operator.go` / `operator_test.go`はGitHub Blob SHAと一致する局所Go 1.23.2環境で`go test`・`go test -race`・`go vet`がPASS、`gofmt -l`は空。**World全体の正例テストは実リポジトリ上で未実行**であり、この局所結果をPR統合の根拠にしない。
 
+### Relation identityを落とさない展開候補（2026-10-10）
+
+`ExpandRelationReference`の従来の返却値`rows/<targetDataID>`だけでは、**同じData間を結ぶ異なるRelation**を区別できない。条件が異なる2つの結合でも、入力型・出力型および汎用`std.op.expand`の契約は同じになり得る。これを実行可能な計画として扱うと、結合キーの取り違えが起こる。
+
+`InspectPinnedRelationExpansion`を追加し、RelationのSource/Relation/TargetのCanonical ID、Cardinality、キーの順序付きスナップショット、固定済みOperator契約、出力型を`RelationExpansionCandidate`として返すようにした。概念上のkeyless Relationと未受理Operator pinは拒否する。キーの検証は引き続き既存のCanonical Validatorへ委譲し、`ExpandRelationReference`は返却型のみを維持する互換Adapterとする。
+
+同じSource/Targetに対してRelation IDと結合キーが異なる2例を用意し、両者の識別とキー配列が元Worldへの後続変更に影響されないことを試験対象とした。これらの候補は**独立した正本でも実行計画でもない**。受理済みWorldのversion / digestを保持しないため、後日の再利用や実行前には既存Semantic Lockによる同一性の確認が別途必要となる。
+
+新規候補とテストはGitHub Blob SHAが一致するGo 1.23.2局所モジュールで`go test -count=1 ./...`、`go test -race -count=1 ./...`、`go vet ./...`がPASSし、対象の`gofmt -l`は空。ただし周辺の`core/ir/semantic/validation`型はテスト用の簡略stubである。**PR exact-headを用いた全体健全性確認の証拠ではない。**
+
 ### まだ検証できないこと
 
 - 本物のAccepted Semantic Setからのpin取得、Source Index、実Pluginの実現方式、実行権限
