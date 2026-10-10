@@ -140,3 +140,9 @@ go test -count=1 ./tools/reference-shared-acceptance -run '^TestRMTSyntheticRead
 5. trusted full checkoutのexact-head focused test / full `tools/repository-health-check.sh` PASS。
 
 既存の合成fixtureで実行できる範囲を最初に使うが、これを新規のReference Model全体の転写成功へ拡大解釈しない。actual Gate未取得のPRはDraftのまま保持する。
+
+### 合成read-only実装の因果関係
+
+初版テストでは受理済みValidationが単にDriverから解決できることしか確認しておらず、照会結果との因果関係が弱かった。そのため、今回の差分では**受理前にそのValidationが存在しないこと**を検査し、受理後に明示的にmappedされた照会結果からOrderを選び、対応する独立した合成明細値へ受理済みValidationを適用する。正値が`satisfied`、ゼロが`not-satisfied`となる両経路と、合成Storeが不変であることを検査する。
+
+この変更で示せるのは「Review/Acceptanceで追加された業務Ruleが、再読込後のread-onlyシナリオで評価可能になり、その判定が合成明細値によって変わること」までである。実DBへの接続、元Reference Modelの具体的なAction/Function/Data relationからのcandidate生成、権限を含む本番相当のread-only照会は**別Gate**である。既存サンプルのorder_entryという名称の一致や、テスト順序の一致をsource/model equivalenceのEvidenceにしない。
