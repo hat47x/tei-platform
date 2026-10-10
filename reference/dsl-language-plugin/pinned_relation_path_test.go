@@ -53,9 +53,9 @@ func TestInspectPinnedRelationPathPreservesEveryRelation(t *testing.T) {
 
 func TestInspectPinnedRelationPathFailsClosedAtExactHop(t *testing.T) {
 	for _, tc := range []struct {
-		name	string
-		change	func(*[]PinnedRelationStep, *[]OperatorContract)
-		wantStep	string
+		name     string
+		change   func(*[]PinnedRelationStep, *[]OperatorContract)
+		wantStep string
 	}{
 		{"missing first operator", func(s *[]PinnedRelationStep, c *[]OperatorContract) {
 			*c = (*c)[1:]
