@@ -14,13 +14,14 @@ const (
 )
 
 type DetailQuery struct {
-	Contract                         string   `json:"contract"`
-	Schema                           string   `json:"schema"`
-	AssertionID                      string   `json:"assertionId"`
-	ExpectedMeaningFingerprint       string   `json:"expectedMeaningFingerprint"`
-	ExpectedReviewSubjectFingerprint string   `json:"expectedReviewSubjectFingerprint"`
-	ExpectedTargetBinding            string   `json:"expectedTargetBinding"`
-	ExpectedReviewLogSequence        int      `json:"expectedReviewLogSequence"`
+	Contract                         string          `json:"contract"`
+	Schema                           string          `json:"schema"`
+	AssertionID                      string          `json:"assertionId"`
+	ObservedMeaningFingerprint       string          `json:"observedMeaningFingerprint"`
+	ObservedReviewSubjectFingerprint string          `json:"observedReviewSubjectFingerprint"`
+	ObservedTargetBinding            string          `json:"observedTargetBinding"`
+	ObservedReviewLogSequence        int             `json:"observedReviewLogSequence"`
+	ObservedMetadataState            MetadataState   `json:"observedMetadataState"`
 }
 
 type DetailEvidenceRef struct {
@@ -60,10 +61,18 @@ type DetailContent struct {
 	ConflictsWith []string            `json:"conflictsWith,omitempty"`
 }
 
+type DetailDrift struct {
+	Meaning       string `json:"meaning"`
+	Subject       string `json:"subject"`
+	ReviewHistory string `json:"reviewHistory"`
+	TargetBinding string `json:"targetBinding"`
+}
+
 type DetailResult struct {
 	Contract         string        `json:"contract"`
 	Schema           string        `json:"schema"`
 	Assessment       Assessment    `json:"assessment"`
+	Drift            DetailDrift   `json:"drift"`
 	Content          DetailContent `json:"content"`
 	ContentRole      string        `json:"contentRole"`
 	ControlAuthority bool          `json:"controlAuthority"`
@@ -139,31 +148,13 @@ func resolveEpistemicDetail(
 		return DetailResult{}, fmt.Errorf("epistemic detail target is unavailable")
 	}
 
-	if assessment.MeaningFingerprint != query.ExpectedMeaningFingerprint {
-		return DetailResult{}, fmt.Errorf("epistemic detail meaning binding is stale")
-	}
-	if assessment.ReviewSubjectFingerprint != query.ExpectedReviewSubjectFingerprint {
-		return DetailResult{}, fmt.Errorf("epistemic detail subject binding is stale")
-	}
-	if assessment.TargetBinding != query.ExpectedTargetBinding {
-		return DetailResult{}, fmt.Errorf(
-			"epistemic detail target binding is stale: expected %s current %s",
-			query.ExpectedTargetBinding,
-			assessment.TargetBinding,
-		)
-	}
-	if assessment.ReviewLogSequence != query.ExpectedReviewLogSequence {
-		return DetailResult{}, fmt.Errorf(
-			"epistemic detail review sequence is stale: expected %d current %d",
-			query.ExpectedReviewLogSequence,
-			assessment.ReviewLogSequence,
-		)
-	}
+	drift := detailDrift(query, *assessment)
 
 	return DetailResult{
 		Contract:   detailResultContract,
 		Schema:     detailResultSchema,
 		Assessment: *assessment,
+		Drift:      drift,
 		Content: DetailContent{
 			Text:          assertion.Text,
 			Target:        assertion.Target,
@@ -182,7 +173,8 @@ func resolveEpistemicDetail(
 			"detail-access-context-is-not-part-of-semantic-query",
 			"detail-access-refs-are-opaque-input-not-authorization-authority",
 			"detail-query-does-not-broaden-source-access",
-			"detail-query-requires-current-binding-receipts",
+			"detail-observed-receipts-report-drift-not-mutation-preconditions",
+			"detail-drift-indeterminate-does-not-prove-semantic-change",
 			"detail-query-is-bounded-by-context-as-of",
 			"detail-result-does-not-change-confirmation-or-use-state",
 			"detail-result-does-not-assert-objective-truth",
@@ -191,6 +183,50 @@ func resolveEpistemicDetail(
 			"detail-content-is-data-not-prompt-control-authority",
 		},
 	}, nil
+}
+
+func detailDrift(query DetailQuery, assessment Assessment) DetailDrift {
+	meaning := "same"
+	if assessment.MeaningFingerprint != query.ObservedMeaningFingerprint {
+		meaning = "changed"
+	}
+
+	subject := detailMetadataAwareDrift(
+		assessment.ReviewSubjectFingerprint == query.ObservedReviewSubjectFingerprint,
+		query.ObservedMetadataState,
+		assessment.MetadataState,
+	)
+	reviewHistory := detailMetadataAwareDrift(
+		assessment.ReviewLogSequence == query.ObservedReviewLogSequence,
+		query.ObservedMetadataState,
+		assessment.MetadataState,
+	)
+
+	targetBinding := "same"
+	if assessment.TargetBinding != query.ObservedTargetBinding {
+		targetBinding = "changed"
+	}
+
+	return DetailDrift{
+		Meaning:       meaning,
+		Subject:       subject,
+		ReviewHistory: reviewHistory,
+		TargetBinding: targetBinding,
+	}
+}
+
+func detailMetadataAwareDrift(
+	equal bool,
+	observed MetadataState,
+	current MetadataState,
+) string {
+	if equal {
+		return "same"
+	}
+	if observed == MetadataComplete && current == MetadataComplete {
+		return "changed"
+	}
+	return "indeterminate"
 }
 
 func detailCheckedAt(assertion Assertion, asOf time.Time) string {
@@ -209,9 +245,9 @@ func normalizeDetailQuery(input DetailQuery) (DetailQuery, error) {
 	input.Contract = strings.TrimSpace(input.Contract)
 	input.Schema = strings.TrimSpace(input.Schema)
 	input.AssertionID = strings.TrimSpace(input.AssertionID)
-	input.ExpectedMeaningFingerprint = strings.TrimSpace(input.ExpectedMeaningFingerprint)
-	input.ExpectedReviewSubjectFingerprint = strings.TrimSpace(input.ExpectedReviewSubjectFingerprint)
-	input.ExpectedTargetBinding = strings.TrimSpace(input.ExpectedTargetBinding)
+	input.ObservedMeaningFingerprint = strings.TrimSpace(input.ObservedMeaningFingerprint)
+	input.ObservedReviewSubjectFingerprint = strings.TrimSpace(input.ObservedReviewSubjectFingerprint)
+	input.ObservedTargetBinding = strings.TrimSpace(input.ObservedTargetBinding)
 
 	if input.Contract != detailQueryContract {
 		return input, fmt.Errorf("unsupported epistemic detail query contract %q", input.Contract)
@@ -222,26 +258,32 @@ func normalizeDetailQuery(input DetailQuery) (DetailQuery, error) {
 	if input.AssertionID == "" {
 		return input, fmt.Errorf("epistemic detail query requires assertionId")
 	}
-	if !sha256Pattern.MatchString(input.ExpectedMeaningFingerprint) {
+	if !sha256Pattern.MatchString(input.ObservedMeaningFingerprint) {
 		return input, fmt.Errorf(
-			"epistemic detail expectedMeaningFingerprint %q is not exact sha256",
-			input.ExpectedMeaningFingerprint,
+			"epistemic detail observedMeaningFingerprint %q is not exact sha256",
+			input.ObservedMeaningFingerprint,
 		)
 	}
-	if !sha256Pattern.MatchString(input.ExpectedReviewSubjectFingerprint) {
+	if !sha256Pattern.MatchString(input.ObservedReviewSubjectFingerprint) {
 		return input, fmt.Errorf(
-			"epistemic detail expectedReviewSubjectFingerprint %q is not exact sha256",
-			input.ExpectedReviewSubjectFingerprint,
+			"epistemic detail observedReviewSubjectFingerprint %q is not exact sha256",
+			input.ObservedReviewSubjectFingerprint,
 		)
 	}
-	if !validTargetBinding(input.ExpectedTargetBinding) {
+	if !validTargetBinding(input.ObservedTargetBinding) {
 		return input, fmt.Errorf(
-			"epistemic detail expectedTargetBinding %q is invalid",
-			input.ExpectedTargetBinding,
+			"epistemic detail observedTargetBinding %q is invalid",
+			input.ObservedTargetBinding,
 		)
 	}
-	if input.ExpectedReviewLogSequence < 0 {
-		return input, fmt.Errorf("epistemic detail expectedReviewLogSequence must be >= 0")
+	if input.ObservedReviewLogSequence < 0 {
+		return input, fmt.Errorf("epistemic detail observedReviewLogSequence must be >= 0")
+	}
+	if !input.ObservedMetadataState.valid() {
+		return input, fmt.Errorf(
+			"epistemic detail observedMetadataState %q is invalid",
+			input.ObservedMetadataState,
+		)
 	}
 	return input, nil
 }
