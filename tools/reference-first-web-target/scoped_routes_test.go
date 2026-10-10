@@ -46,7 +46,7 @@ func TestApplicationScopedRoutesAreDisjoint(t *testing.T) {
 			for _, route := range tc.own {
 				response := httptest.NewRecorder()
 				method := http.MethodGet
-				if route == "/scenario/submit" {
+				if route == "/scenario/submit" || route == "/custom-submit" {
 					method = http.MethodPost
 				}
 				scoped.ServeHTTP(response, httptest.NewRequest(method, route, nil))
