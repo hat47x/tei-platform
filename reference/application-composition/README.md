@@ -10,6 +10,8 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E2：変更提案の検査器](e2-change-probe.mjs)／[合成試験](e2-change-probe.test.mjs) — 許されない上書きや解決不能な参照を未解決として返す。
 - [E3：追加で必要な選択と再検証範囲](E3_REQUALIFICATION_AND_RESIDUAL_CHOICES.md) — 既存Sourceを二重管理せず、選択・参照の不足と更新影響を絞る。
 - [E3：対象Source単位の再検証試作](e3-requalification.mjs)／[合成試験](e3-requalification.test.mjs) — Source指紋を比較し、無関係な利用先を一律失効させず、不明な互換性を未解決として残す。
+- [E4：Source Indexと構成の接続境界](E4_SOURCE_INDEX_JOIN.md) — Source Indexが示す所在・内容と、別途必要な意味依存辺を区別する。
+- [E4：Subject単位の変更検査](e4-index-scope.mjs)／[合成試験](e4-index-scope.test.mjs) — 既存IndexのJSON形状に沿って、呼び出し側が選択したSubjectのみを再確認する。依存辺を自動導出した証拠ではない。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
