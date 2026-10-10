@@ -55,7 +55,7 @@ func TestLinkIsOnlyAnUnresolvedProposal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first != second && first.LinkFingerprint != second.LinkFingerprint {
+	if first.LinkFingerprint != second.LinkFingerprint {
 		t.Fatalf("non-deterministic proposal identity: %+v %+v", first, second)
 	}
 	if first.Status != StatusProposed || first.MeaningStatus != MeaningUnresolved {
@@ -88,7 +88,9 @@ func TestLinkRejectsRetargetingAndStaleContext(t *testing.T) {
 		{"source snapshot changed", func(v *Context) {
 			v.Source.SourceArtifactDigest = "sha256:" + strings.Repeat("a", 64)
 			rebound, err := rmtevidence.Prepare(v.Source)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			v.Source = rebound
 		}},
 		{"source node changed", func(v *Context) {
