@@ -379,14 +379,73 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 	return Plan{Schema: Schema, Snapshot: neutral.Snapshot, Origin: neutral.Origin, Steps: steps}, nil
 }
 
+// ValidatePlan checks the structural integrity of a received witness before
+// delegating cryptographic/current-state evidence to the real Host. This does
+// not prove its fingerprint or grant dispatch permission.
+func ValidatePlan(plan Plan) error {
+	if plan.Schema != Schema || !plan.Snapshot.valid() || !plan.Origin.Source.valid() ||
+		len(plan.Origin.SourceInputs) == 0 || !plan.Origin.Language.valid() ||
+		!plan.Origin.AcceptanceReceipt.valid() || plan.Origin.CandidateDigest == "" ||
+		len(plan.Steps) == 0 {
+		return reject("invalid-boundary")
+	}
+	seenSources := map[string]bool{plan.Origin.Source.ID: true}
+	previous := ""
+	for _, source := range plan.Origin.SourceInputs {
+		if !source.valid() || seenSources[source.ID] || (previous != "" && previous >= source.ID) {
+			return reject("invalid-source-dependencies")
+		}
+		seenSources[source.ID] = true
+		previous = source.ID
+	}
+	seenSteps := make(map[string]bool)
+	targetID := plan.Steps[0].Target
+	for _, step := range plan.Steps {
+		if !step.Contract.valid() || !step.Provider.valid() || !step.Conformance.valid() ||
+			!step.ResolutionLock.valid() || !step.Artifact.valid() ||
+			step.Scope == "" || step.Effect == "" || step.Target == "" || step.Target != targetID {
+			return reject("invalid-plan-step")
+		}
+		key := step.Scope + ":" + step.Contract.ID
+		if seenSteps[key] {
+			return reject("duplicate-capability")
+		}
+		seenSteps[key] = true
+		slots := make(map[string]bool)
+		for _, slot := range step.RequiredSlots {
+			if !slot.valid() || slots[slot.ID] {
+				return reject("invalid-context-declaration")
+			}
+			slots[slot.ID] = true
+		}
+		data := make(map[string]bool)
+		for _, need := range step.DataContracts {
+			if !need.valid() {
+				return reject("invalid-data-requirement")
+			}
+			k := need.Datasource + ":" + need.Database + ":" + need.Contract
+			if data[k] {
+				return reject("duplicate-data-requirement")
+			}
+			data[k] = true
+		}
+		for _, dep := range step.RuntimeDeps {
+			if !dep.valid() {
+				return reject("invalid-runtime-dependency")
+			}
+		}
+	}
+	return nil
+}
+
 // AuthorizeInvocation is intentionally separate from deterministic lowering.
 // The Host re-evaluates current grants/context bindings immediately before dispatch.
 func AuthorizeInvocation(plan Plan, trust Trust) error {
-	if trust == nil || plan.Schema != Schema || !plan.Snapshot.valid() || !plan.Origin.Source.valid() ||
-		len(plan.Origin.SourceInputs) == 0 ||
-		!plan.Origin.Language.valid() || !plan.Origin.AcceptanceReceipt.valid() ||
-		plan.Origin.CandidateDigest == "" || len(plan.Steps) == 0 {
+	if trust == nil {
 		return reject("invalid-boundary")
+	}
+	if err := ValidatePlan(plan); err != nil {
+		return err
 	}
 	if !trust.ResolutionCurrent(plan) {
 		return reject("stale-or-untrusted-resolution")
