@@ -62,6 +62,10 @@ termはRelation identityと、どちら側のoccurrenceを使うかを持つ。
 
 Data IDだけではなくRelation identityを持つ。これにより、同じDataへ複数の業務Relationがある場合を区別する。
 
+Data Design Projection v7では、このpressureを先行して`related-occurrence` termへ反映する。termは`relation`、`end`、`data`を持ち、contained repeatのOrder側occurrenceを`relation=sales.order.lines / end=source / data=sales.order`として区別する。Relation identityまたはendが変わればderived candidate fingerprintも変わる。
+
+ただし、current `DataDesignBusinessIdentityCandidate` / `DataDesignFunctionalDependencyCandidate` wrapperに残る単数の`Relation` / `BasisConstraint`は、`relation-unique`から候補を導く現行Reference実装のprovenanceであり、Core contract候補の最終shapeではない。独立associationは複数Relationや複数basisを持ち得るため、このwrapperをそのままCanonical contractへ昇格しない。
+
 ### 将来候補
 
 外部制度・Contractが直接identity componentを与えるcaseはあり得るが、Referenceなしに追加しない。
@@ -228,6 +232,7 @@ Persistence Mappingは、Core assertionのcomponentsをどのcolumn / constraint
 5. surrogate / composite physical keyの双方でmeaningが変わらない。
 6. Source / Shared Acceptance traceの置き場所が決まる。
 7. first-class Relation semanticsが必要か、既存Source Evidenceで十分かを再評価する。
+8. derived candidate wrapperの単数`Relation` / `BasisConstraint`をCore shapeへ持ち込まず、multi-relation / multi-basis associationをlosslessに表せるprovenance形を再評価する。
 
 ## 12. current decision
 
