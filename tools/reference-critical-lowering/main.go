@@ -372,7 +372,7 @@ func AuthorizeInvocation(plan Plan, trust Trust) error {
 		if len(s.DataContracts) > 0 && !trust.DataCompatible(s) {
 			return reject("data-contract-incompatible")
 		}
-		if !trust.ContextBound(s) {
+		if len(s.RequiredSlots) > 0 && !trust.ContextBound(s) {
 			return reject("missing-execution-context")
 		}
 		if !trust.Authorized(s) {
