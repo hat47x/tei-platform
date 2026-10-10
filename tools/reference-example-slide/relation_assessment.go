@@ -47,6 +47,11 @@ func assessRelations(catalog Catalog, state map[string]Record, completeTables ma
 				findings = append(findings, finding)
 				continue
 			}
+			if !relationKeyTypesCompatible(catalog, relation) {
+				finding.Reason = "relation-key-type-not-confirmed"
+				findings = append(findings, finding)
+				continue
+			}
 			sourceBound := true
 			for _, key := range relation.Keys {
 				if !nonNullScalar(source.Values[key.SourceField]) {
@@ -113,6 +118,32 @@ func assessRelations(catalog Catalog, state map[string]Record, completeTables ma
 		}
 	}
 	return findings
+}
+
+// TypeRef identity is essential when a valid lexical value (e.g. "001")
+// has different meanings in separate business domains. If one side is not
+// resolved to the same semantic type, a lexical match proves nothing.
+func relationKeyTypesCompatible(catalog Catalog, relation SemanticRelation) bool {
+	source := catalog.Tables[relation.SourceTable]
+	target := catalog.Tables[relation.TargetTable]
+	for _, key := range relation.Keys {
+		var left, right Field
+		for _, field := range source.Fields {
+			if field.ID == key.SourceField { left = field; break }
+		}
+		for _, field := range target.Fields {
+			if field.ID == key.TargetField { right = field; break }
+		}
+		if left.SemanticType != "" || right.SemanticType != "" {
+			if left.SemanticType == "" || right.SemanticType == "" ||
+				left.SemanticType != right.SemanticType {
+				return false
+			}
+		} else if left.Type != right.Type {
+			return false
+		}
+	}
+	return true
 }
 
 func nonNullScalar(value json.RawMessage) bool {
