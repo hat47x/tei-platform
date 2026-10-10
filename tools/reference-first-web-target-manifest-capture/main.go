@@ -120,8 +120,8 @@ func runCapture(args []string, out, notices io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client := &http.Client{
-		Timeout:       10 * time.Second,
-		Transport:     &http.Transport{Proxy: nil, DisableCompression: true},
+		Timeout:   10 * time.Second,
+		Transport: &http.Transport{Proxy: nil, DisableCompression: true},
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
