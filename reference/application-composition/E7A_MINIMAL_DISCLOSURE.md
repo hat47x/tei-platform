@@ -20,7 +20,7 @@ node --test reference/application-composition/e7-minimal-envelope.test.mjs
 
 2026-10-10、Node.js v22.16.0で**11件PASS／0件失敗**。実際にNodeの標準テストランナーから対象ファイルを読み込んで実行した。正常例、選択したAuthoring/Implementation Referenceの保持、対象外Sourceの非開示、出典の欠落・重複・不一致、Fingerprint不一致、偽Qualifier、過剰なフィールドが結果へ漏れないことを確認。試験した二ファイルとGitHubに登録したファイルのGit blob SHA一致を確認した。
 
-- 検査関数：`893a76f61801c5152872f6b424e94ca2b9cf3567`
+- 検査関数：`197e4042540c20d76331d4da62e3b24316efcc3d`
 - 回帰試験：`79468bf0dd20015c309cfb8208a8435ac9cb1bb7`
 
 **重要な非保証**：選択したSubjectのSource path・契約IDは依然として含まれる。匿名化や権限判定ではないため、外部AI・共有サービスへそのまま送信してよいという意味ではない。入力JSONが真正なE5出力であることや、Loader解析bytesとIndexが一致したことも証明しない。無関係なSourceの不正な索引があっても、この縮約関数は全Workspace Indexの検査器の代わりにはならない。
