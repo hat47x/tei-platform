@@ -349,3 +349,23 @@ selected Recipe × Target × Profile Conformance Evidence
 ```
 
 既存Intentとは無関係なsupport追加は既存Lockをstaleにしません。一方、新しいIntentを解決するときは、そのsliceに対応する新しいConformance Evidenceを要求します。
+
+## Conformance Evidence fingerprint
+
+Conformance Evidenceは単なるopaqueな64hex IDとして扱いません。
+
+Referenceでは次のclaimsからfingerprintを再計算します。
+
+- Provider ID / version / ImplementationID
+- exact physical ArtifactDigest
+- Contract fingerprint
+- Conformance profile
+- RecipeKind
+- Target
+- Profile
+
+ArtifactDigestとContract fingerprintはcanonicalized formでfingerprintします。
+
+したがって、Providerが同じでもTarget claimだけを書き換え、以前のEvidence fingerprintを使い回すことはできません。
+
+このfingerprintはcrypto Trustそのものではありません。Evidence claimsが自己矛盾していないことを固定するidentityです。Issuer trust / attestationは別責務です。
