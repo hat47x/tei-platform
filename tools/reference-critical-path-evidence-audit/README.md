@@ -37,7 +37,7 @@ go run ./tools/reference-critical-path-evidence-audit \
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
 - 全区分で exact candidate `head` / reviewed `main`、full Repository Health PASS、実行前後clean、検証receiptの**申告**を要求する。この条件はあくまで提出に必要な情報で、受領側がcheckoutとreceiptを検証する必要がある。
 - `E0` でもProducer/Consumerの実装箇所、正負のテスト名、証拠の性質（`source-only`、`synthetic-tested`、`actual-observed`）が必要。単なるCase名では不足とする。**E1/E2で `evidenceClass=source-only` または `synthetic-tested` を指定すると、他の欄がそろっていても `E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED` で拒否する。** WebのProviderがsyntheticでも、E1では *Webサーバの実行* が必要という意味である。
-- `E1` は `R0 != R1`、Candidate/Review fingerprint、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。さらに `web.negativeValidation` は**新しい単価規則そのもの**、`web.negativeEvidenceMode` は `running-server` であることを申告させる。従来の数量0による正常な拒否や、Goの `httptest` による単価0の負例だけでは、実行中Webサーバが新しい単価規則を拒否した証拠にならない。`handler-only` / `httptest` はE0の有用な証跡だが、このE1の実サーバ操作要件を満たさない。
+- `E1` は `R0 != R1`、Candidate/Review fingerprint、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。さらに `web.negativeValidation` は**新しい単価規則そのもの**、`web.negativeEvidenceMode` は `running-server` であることを申告させる。併せて `web.workspaceRevisionReceipt`（実際にWebが使用したWorkspaceのmanaged-source R1再観測）と `web.targetLaunchReceipt`（実際のTarget起動先・build revision・起動前後の記録、認証情報は含めない）を**互いに別のreceipt**として要求する。既存Web JSONの `baselineRepositoryRevision` / `targetBuildRevision` はGit revisionであって、Accepted Sourceの `modelRevision` を証明しない。従来の数量0による正常な拒否や、Goの `httptest` による単価0の負例だけでは、実行中Webサーバが新しい単価規則を拒否した証拠にならない。`handler-only` / `httptest` はE0の有用な証跡だが、このE1の実サーバ操作要件を満たさない。
 - `E2` はE1に加え `actual-db` Provider、R1に対するDatasource/schema互換性証跡、current Host Authority、Commandと独立readの**別receipt**、同一record、S02/S05の拒否試験を要求する。Web synthetic Providerを `E2` として提出すると拒否する。
 - Source、Target、DB schema、Git revisionを値の一致だけで同一視しない。DB schemaとApplicationは別のライフサイクルであり、`schemaCompatibility=compatible` は**提出された判定結果の表明**に過ぎない。Providerの実状態・readの独立性・記録時点はreviewerが確認する。
 - `E0` のフォーム検査が通っても、C0/Studio/Business/Loweringの本当のproducer-consumer接続や製品上の動作を証明しない。
@@ -66,7 +66,8 @@ go run ./tools/reference-critical-path-evidence-audit \
     "selectedValidation": "sales.order_line.unit_price_positive",
     "negativeValidation": "sales.order_line.unit_price_positive",
     "negativeEvidenceMode": "handler-only",
-    "providerKind": "synthetic", "runMode": "handler-only", "positiveReceipt": "",
+    "providerKind": "synthetic", "runMode": "handler-only",
+    "workspaceRevisionReceipt": "", "targetLaunchReceipt": "", "positiveReceipt": "",
     "negativeReceipt": "", "unobservedControlReceipt": ""
   },
   "physical": {}
@@ -76,6 +77,8 @@ go run ./tools/reference-critical-path-evidence-audit \
 本Referenceは実際の証拠ファイルを自動取得・検証しないため、`receipt`にパスを記述しただけでは検証済みにはならない。提出物にはsecret、credentials、個人情報を含めない。
 
 **当面のE1残Gap**: 現在の通常Web用synthetic fixtureは単価が常に正であり、受注1002の拒否理由は数量0。既存 `practical_business_rule_test.go` は `staticReadScenarioRunner` で単価0をテストできるが、これはhandler-onlyである。実行中Web Targetで新規規則の負例を観測するには、#1127がテスト専用の隔離したfixture/Target起動構成を用意する等、**受理済み業務意味・標準API・実Providerを汚さない方法**を追加検討する。このpreflight自身が `running-server` の申告や入力receiptの真偽を確認するわけではない。
+
+**E1のR1連結上の注意**: `tools/reference-first-web-target`の現HTTP envelope/manifestには `handoverBaselineId`、`baselineRepositoryRevision`、`targetBuildRevision` はあるが、使用したscratch Workspaceの **Shared Acceptance `modelRevision` 自体は載らない**。テスト側で実起動時の `-workspace` と、前後に同じWorkspaceで取得した `revision -workspace` の結果を別receiptに固定し、Targetの本当の読込時点と合致するかをレビューする。Preflightはこれらのファイル名を受け取るだけで、競合・起動時のsnapshot・TOCTOUを実証しない。
 
 ## 入力の取り扱いとpreflightの追加負例
 
