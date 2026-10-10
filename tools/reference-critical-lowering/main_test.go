@@ -8,7 +8,7 @@ import (
 
 func ref(id string) Ref { return Ref{ID: id, Version: "1.0.0", Fingerprint: "sha256:" + id} }
 
-type stubTrust struct{ denyAcceptance, denyPublisher, denyConformance, denyInvocation bool }
+type stubTrust struct{ denyAcceptance, denyPublisher, denyConformance, denyContext, denyInvocation bool }
 
 func (s stubTrust) Accepted(d string, receipt, snapshot Ref) bool {
 	return !s.denyAcceptance && d != "" && receipt.valid() && snapshot.valid()
@@ -17,6 +17,7 @@ func (s stubTrust) Published(r Ref) bool { return !s.denyPublisher && r.valid() 
 func (s stubTrust) Conformant(p Provider) bool {
 	return !s.denyConformance && p.Conformance.valid()
 }
+func (s stubTrust) ContextBound(step Step) bool { return !s.denyContext }
 func (s stubTrust) Authorized(step Step) bool {
 	return !s.denyInvocation && step.Contract.valid()
 }
@@ -42,7 +43,7 @@ func orderFixture(language string) fixture {
 		Source: ref("reference/workspace/applications/order-entry/application.tei"),
 		Language: ref(language),
 		Subjects: []Subject{
-			{Kind: "business", Ref: ref("order_entry.submit")},
+			{Kind: "business", Ref: ref("order_entry.submit_order")},
 			{Kind: "data", Ref: ref("sales.order")},
 			{Kind: "function", Ref: ref("sales.order.submit")},
 		},
@@ -170,6 +171,9 @@ func TestCurrentAuthorizationIsNotCachedIntoPlan(t *testing.T) {
 	plan, err := f.lower(stubTrust{denyInvocation: true})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got := code(AuthorizeInvocation(plan, stubTrust{denyContext: true})); got != "missing-execution-context" {
+		t.Fatalf("missing invocation context was not fail-closed: %s", got)
 	}
 	if got := code(AuthorizeInvocation(plan, stubTrust{denyInvocation: true})); got != "authorization-denied" {
 		t.Fatalf("authorization was not fail-closed: %s", got)
