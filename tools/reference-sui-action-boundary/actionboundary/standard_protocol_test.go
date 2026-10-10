@@ -47,7 +47,7 @@ func TestStandardActionProtocolSupportsIndependentApplications(t *testing.T) {
 	handler := JSONCommitHandler{
 		Host: Host{
 			Authorizer: permit(true),
-			Bindings: []Binding{
+			Bindings:   []Binding{
 				{ApplicationID: "sui", ActionID: "sui.move", Store: sui},
 				{ApplicationID: "inventory", ActionID: "inventory.adjust", Store: inventory},
 			},
