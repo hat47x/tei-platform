@@ -83,7 +83,9 @@ reject_source() {
 require_source combined main.go
 require_source combined customer_lookup_scenario.go
 require_source combined command_scenario.go
+require_source combined reference_order_contract_query_fixture.go
 require_source order main_order_only.go
+require_source order reference_order_contract_query_fixture.go
 require_source order command_scenario.go
 require_source order read_scenario.go
 require_source repair main_repair_only.go
@@ -92,7 +94,7 @@ require_source repair repair_scenario_http.go
 for name in customer_lookup_scenario.go repair_scenario_http.go main_repair_only.go; do
   reject_source order "$name"
 done
-for name in command_scenario.go read_scenario.go custom_ui.go order_scenario_http.go main_order_only.go; do
+for name in command_scenario.go read_scenario.go custom_ui.go order_scenario_http.go main_order_only.go reference_order_contract_query_fixture.go; do
   reject_source repair "$name"
 done
 for mode in order repair; do
