@@ -180,7 +180,8 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
         }
     }
     seenAliases := map[string]bool{}
-    seenContracts := map[string]bool{}
+    attachedDatabases := map[string]bool{}
+    attachedContracts := map[string]bool{}
     for _, requirement := range app.Databases {
         alias, target := string(requirement.Alias), string(requirement.TargetDatabase)
         targetSubject := sourceindex.Subject{Kind: "database", ID: target}
@@ -193,16 +194,21 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
             record("database-target", targetSubject, "database_definition_missing_or_ambiguous")
             continue
         }
-        attach("database-target", targetSubject)
+        // Multiple distinct aliases may intentionally use one logical database.
+        // The observation is about unique Source subjects, not alias count.
+        if !attachedDatabases[target] {
+            attach("database-target", targetSubject)
+            attachedDatabases[target] = true
+        }
+        seenRequiredHere := map[string]bool{}
         for _, needed := range requirement.RequiredContracts {
             id := string(needed.ContractID)
             subject := sourceindex.Subject{Kind: "database-contract", ID: id}
-            key := target + "/" + id
-            if seenContracts[key] {
+            if seenRequiredHere[id] {
                 record("requires-contract", subject, "duplicate_contract_requirement")
                 continue
             }
-            seenContracts[key] = true
+            seenRequiredHere[id] = true
             if contracts[target][id] != 1 || contractOwners[id] != 1 {
                 record("requires-contract", subject, "target_contract_missing_or_ambiguous")
                 continue
@@ -211,7 +217,12 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
                 record("requires-contract", subject, "declared_major_mismatch")
                 continue
             }
-            attach("requires-contract", subject)
+            // A second alias may demand the same contract. Check every
+            // requirement, but include its definition Source just once for E6.
+            if !attachedContracts[id] {
+                attach("requires-contract", subject)
+                attachedContracts[id] = true
+            }
         }
     }
     sort.Slice(out.Dependencies, func(i, j int) bool {
