@@ -180,3 +180,18 @@ func TestNumericKeyComparisonIsResourceBounded(t *testing.T) {
 		t.Fatal("out-of-range integer was silently accepted")
 	}
 }
+
+func TestDuplicateRelationDefinitionFailsClosed(t *testing.T) {
+	in := keyedInput()
+	in.Catalog.Relations = append(in.Catalog.Relations, in.Catalog.Relations[0])
+	if _, err := Build(in); err == nil {
+		t.Fatal("duplicated relation ID was accepted")
+	}
+
+	in = keyedInput()
+	first := in.Catalog.Relations[0].Keys[0]
+	in.Catalog.Relations[0].Keys = append(in.Catalog.Relations[0].Keys, first)
+	if _, err := Build(in); err == nil {
+		t.Fatal("duplicated composite key pair was accepted")
+	}
+}
