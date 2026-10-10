@@ -20,7 +20,7 @@ func (s *httpTestStore) Commit(_ context.Context, _ Intent) (string, error) {
 	return "r2", s.err
 }
 func TestJSONCommitHandler(t *testing.T) {
-	good := `{"applicationID":"sui","documentID":"doc","actionID":"move","expectedRevision":"r1","payload":{"x":1}}`
+	good := `{"protocolVersion":"1","applicationID":"sui","resourceID":"doc","actionID":"move","expectedRevision":"r1","payload":{"x":1}}`
 	for _, tt := range []struct {
 		name      string
 		method    string
@@ -39,9 +39,14 @@ func TestJSONCommitHandler(t *testing.T) {
 		{name: "invalid", method: "POST", body: good, header: true, commitErr: ErrInvalid, expected: 400, calls: 1},
 		{name: "unavailable authorization", method: "POST", body: good, header: true, noAuth: true, expected: 403},
 		{name: "unavailable decoder", method: "POST", body: good, header: true, noDecoder: true, expected: 503},
-		{name: "unknown field", method: "POST", body: `{"applicationID":"sui","documentID":"doc","actionID":"move","expectedRevision":"r1","payload":{"x":1},"subject":"admin"}`, header: true, expected: 400},
+		{name: "unknown field", method: "POST", body: `{"protocolVersion":"1","applicationID":"sui","resourceID":"doc","actionID":"move","expectedRevision":"r1","payload":{"x":1},"subject":"admin"}`, header: true, expected: 400},
 		{name: "wrong origin", method: "POST", body: good, origin: "https://evil.example", header: true, expected: 403},
 		{name: "same origin", method: "POST", body: good, origin: "http://example.test", header: true, expected: 200, calls: 1},
+		{name: "scheme mismatch", method: "POST", body: good, origin: "https://example.test", header: true, expected: 403},
+		{name: "protocol missing", method: "POST", body: strings.Replace(good, `"protocolVersion":"1",`, "", 1), header: true, expected: 400},
+		{name: "protocol unsupported", method: "POST", body: strings.Replace(good, `"protocolVersion":"1"`, `"protocolVersion":"2"`, 1), header: true, expected: 400},
+		{name: "missing resource", method: "POST", body: strings.Replace(good, `"resourceID":"doc"`, `"resourceID":""`, 1), header: true, expected: 400},
+		{name: "legacy documentID rejected", method: "POST", body: strings.Replace(good, `"resourceID"`, `"documentID"`, 1), header: true, expected: 400},
 		{name: "missing csrf header", method: "POST", body: good, expected: 403},
 		{name: "method", method: "GET", body: good, expected: 405},
 		{name: "trailing json", method: "POST", body: good + ` {}`, header: true, expected: 400},
@@ -54,8 +59,8 @@ func TestJSONCommitHandler(t *testing.T) {
 			if !tt.noAuth {
 				host.Authorizer = permit(true)
 			}
-			handler := JSONCommitHandler{Host: host, DecodePayload: func(action string, raw json.RawMessage) (any, error) {
-				if action != "move" {
+			handler := JSONCommitHandler{Host: host, DecodePayload: func(application, action string, raw json.RawMessage) (any, error) {
+				if application != "sui" || action != "move" {
 					return nil, errors.New("unknown")
 				}
 				return string(raw), nil
@@ -88,8 +93,8 @@ func TestJSONCommitHandlerSUIRoundTripAndConflict(t *testing.T) {
 	}
 	handler := JSONCommitHandler{
 		Host: host,
-		DecodePayload: func(action string, raw json.RawMessage) (any, error) {
-			if action != "sui.move" {
+		DecodePayload: func(application, action string, raw json.RawMessage) (any, error) {
+			if application != "sui" || action != "sui.move" {
 				return nil, ErrInvalid
 			}
 			var payload MovePayload
@@ -99,7 +104,7 @@ func TestJSONCommitHandlerSUIRoundTripAndConflict(t *testing.T) {
 			return payload, nil
 		},
 	}
-	requestBody := `{"applicationID":"sui","documentID":"doc","actionID":"sui.move","expectedRevision":"r1","payload":{"cardId":"a","x":5,"y":6}}`
+	requestBody := `{"protocolVersion":"1","applicationID":"sui","resourceID":"doc","actionID":"sui.move","expectedRevision":"r1","payload":{"cardId":"a","x":5,"y":6}}`
 	send := func() *httptest.ResponseRecorder {
 		r := httptest.NewRequest("POST", "http://example.test/commit", bytes.NewBufferString(requestBody))
 		r.Header.Set("Content-Type", "application/json")
