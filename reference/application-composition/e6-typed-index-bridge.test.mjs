@@ -98,3 +98,35 @@ test('empty or malformed inputs return unresolved rather than exceptions or succ
   const old=fixture(),next=fixture();next.index.artifacts[0].fingerprint='not-a-sha';
   assert.equal(check(old,next).reason,'report_index_source_mismatch');
 });
+
+test('typed SemanticUses and Application Patterns are joined to E4 index subjects',()=>{
+  const more=[
+    {relation:'uses-semantic',subject:{kind:'semantic',id:'sales'},path:'semantic/sales/order.tei',digit:'e'},
+    {relation:'application-pattern',subject:{kind:'application-pattern',id:'order_entry.submit_order'},
+      path:'applications/order-entry/patterns/submit-order.tei',digit:'f'},
+  ];
+  const old=fixture([...subjects,...more]);
+  const current=structuredClone(old);
+  const result=check(old,current);
+  assert.equal(result.status,'limited-unchanged');
+  assert.equal(result.dependencyCount,6);
+  current.index.artifacts[5].fingerprint=sha('a');
+  current.report.dependencies[5].source.fingerprint=sha('a');
+  const changed=check(old,current);
+  assert.equal(changed.status,'unresolved');
+  assert.deepEqual(changed.affected.map(x=>x.subject),[more[1].subject]);
+});
+test('missing typed Pattern or Semantic source cannot be inferred from a successful E5 declaration alone',()=>{
+  const more=[
+    {relation:'uses-semantic',subject:{kind:'semantic',id:'sales'},path:'semantic/sales/order.tei',digit:'e'},
+    {relation:'application-pattern',subject:{kind:'application-pattern',id:'order_entry.submit_order'},
+      path:'applications/order-entry/patterns/submit-order.tei',digit:'f'},
+  ];
+  const old=fixture([...subjects,...more]);
+  const current=structuredClone(old);
+  current.index.references.splice(5,1);
+  assert.equal(check(old,current).reason,'report_index_source_mismatch');
+  const stale=structuredClone(old);
+  stale.report.dependencies.pop();
+  assert.equal(check(old,stale).reason,'declared_dependency_set_changed');
+});
