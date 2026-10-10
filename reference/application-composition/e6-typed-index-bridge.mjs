@@ -12,7 +12,7 @@ const targetKinds = Object.freeze({
   'database-target':'database',
   'requires-contract':'database-contract',
 });
-const limited = 'application-validation-and-database-contract-definitions-only';
+const limited = 'application-declaration-and-direct-source-definitions-only';
 
 function inspectReport(report, index) {
   if (!object(report) || typeof report.application !== 'string' || !report.application ||
