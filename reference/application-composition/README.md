@@ -19,7 +19,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E7：同じ読取りで得た診断とSource Indexを比較](E7_PAIRED_OBSERVATION.md) — E5のオプトイン出力をE6へ渡す。Sourceの真正性や全依存閉包を保証するものではない。
 - [E7：限定Evidenceの比較器](e7-paired-evidence.mjs)／[合成試験](e7-paired-evidence.test.mjs) — 形式偽装、依存追加、指紋不一致を診断。実Workspaceでの統合実行は未実施。
 - [E7a：選択対象だけのSource Index証跡](E7A_MINIMAL_DISCLOSURE.md) — 対象外のWorkspace Source pathを省き、定義出典の欠落・重複を拒否する。
-- [E8b：Capability入力型の限定Source追跡](E8_TYPED_DEPENDENCY_EDGE_CONTRACT.md)／[診断器](e8-typed-closure.mjs)／[合成テスト](e8-typed-closure.test.mjs) — E4の既存Index検査で不正な指紋・パスを拒否する。型の存在のみの限定確認でありSemantic Validationや全依存Closureではない。
+- [E8b/E8c：Capability入力のType・Dataと変更影響の限定追跡](E8_TYPED_DEPENDENCY_EDGE_CONTRACT.md)／[診断・変更比較器](e8-typed-closure.mjs)／[合成テスト](e8-typed-closure.test.mjs) — 実受注明細のCapability入力がSemantic Dataを参照することを反映。E4の既存Index検査でSource証跡を確認し、2時点で入力定義Source変更だけを比較する。全依存ClosureやSemantic Validationではない。
 - [E8：SUI Native Canvasの第二Consumer評価](E8_SUI_NATIVE_CONSUMER_EVIDENCE.md) — 既存Native操作と未接続のTEI Runtime Actionを区別する。
 - [E9：Contract Query入力属性のSource追跡](E9_CONTRACT_QUERY_INPUT_SOURCE.md) — 実際の顧客参照Patternが参照する意味属性の定義変更を再検証に含める。Goテスト・実Workspaceは未実行。
 - [E10：構成Profileを採用すべきかの判定](E10_COMPOSITION_ADOPTION_DECISION.md) — 受注明細・SUIの二Consumerで、業務意味・Provider/Target・UI・Runtime権限の検証を分離し、Profileへ追加する最少情報と採否の実証条件を定める。
