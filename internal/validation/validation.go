@@ -257,11 +257,11 @@ func Validate(w ir.World) []Diagnostic {
 	for _, c := range semanticCapabilities {
 		for _, in := range c.Inputs {
 			if !semanticValueTypeExists(in.Type) {
-				out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_INPUT", "capability %s input %s refers to unknown semantic value type %s", c.ID, in.Name, in.Type))
+				out = append(out, errFor(subject.Subject{Kind: "semantic-capability", ID: string(c.ID)}, "UNKNOWN_SEMANTIC_CAPABILITY_INPUT", "capability %s input %s refers to unknown semantic value type %s", c.ID, in.Name, in.Type))
 			}
 		}
 		if c.Output != "" && !semanticValueTypeExists(c.Output) {
-			out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-capability", ID: string(c.ID)}, "UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
 		}
 
 	}
