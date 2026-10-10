@@ -10,7 +10,7 @@ import { projectWorld, candidateFromEdit } from "./bridge.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
   "usage:",
-  "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID",
+  "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID [-business-dfd FILE]",
   "  node reference/studio-authoring/cli.mjs propose -workspace DIR -edit-file FILE",
   "  alternatively: -world-file FILE -revision-file FILE (read-only artifact inputs)",
   "  output is JSON on stdout; no command in this CLI writes authoritative source"
@@ -20,7 +20,7 @@ function flags(argv) {
   const result = {};
   for (let i = 0; i < argv.length; i += 2) {
     if (!argv[i].startsWith("-") || !argv[i + 1] || ![
-      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file"
+      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd"
     ].includes(argv[i]) || Object.hasOwn(result, argv[i])) {
       throw new Error("INVALID_FLAG: " + (argv[i] || ""));
     }
@@ -55,13 +55,16 @@ function main(argv) {
   if (!!opt["-workspace"] === fromFiles ||
       (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"])) ||
       (command === "inspect" && (!opt["-focus"] || opt["-edit-file"])) ||
-      (command === "propose" && (!opt["-edit-file"] || opt["-focus"])))
+      (command === "propose" && (!opt["-edit-file"] || opt["-focus"] || opt["-business-dfd"])))
     throw new Error("INVALID_INPUT");
   const { world, revision } = fromFiles
     ? { world: jsonFile(opt["-world-file"]),
         revision: jsonFile(opt["-revision-file"]).modelRevision }
     : fromWorkspace(opt["-workspace"]);
-  if (command === "inspect") return projectWorld(world, revision, opt["-focus"]);
+  if (command === "inspect") return projectWorld(
+    world, revision, opt["-focus"],
+    opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}
+  );
   return candidateFromEdit(world, revision, jsonFile(opt["-edit-file"]));
 }
 try {
