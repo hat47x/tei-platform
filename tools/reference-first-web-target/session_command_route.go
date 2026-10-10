@@ -126,8 +126,11 @@ func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)
 	} else if result.Stage == "identity-link" && err != nil {
+		// Do not return messages from the account/link backend, which could
+		// contain internal identities or sensitive provider details.
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusServiceUnavailable)
+		err = errors.New("trusted identity resolution unavailable")
 	}
 	s.writeCommandScenarioHTTPResult(w, result, err)
 }
