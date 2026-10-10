@@ -150,4 +150,17 @@ func TestReferenceProjectionIntegration(t *testing.T) {
 	if !p.Steps[4].NoApplicationFunction || !p.Steps[9].NoApplicationFunction {
 		t.Fatal("baseline manual Step lost")
 	}
+	if len(p.Information.Roles)!=2 || len(p.Information.ExternalParties)!=2 ||
+		len(p.Information.Stores)!=2 || len(p.Information.Responsibilities)!=3 ||
+		len(p.Information.InformationFlows)!=4 {
+		t.Fatalf("DFD proposal missing typed information semantics: %+v",p.Information)
+	}
+	for _, store:=range p.Information.Stores {
+		if store.DataStatus!="resolved" {
+			t.Fatalf("proposal Store does not resolve an existing semantic Data identity: %+v",store)
+		}
+	}
+	if !strings.Contains(dot(p),"information / proposal:") {
+		t.Fatal("DOT lacks explicit proposed information flow arrows")
+	}
 }
