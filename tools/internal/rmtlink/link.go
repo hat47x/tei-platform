@@ -18,38 +18,38 @@ import (
 const Schema = "tei.reference.rmt-semantic-link-candidate/v0"
 
 const (
-	StatusProposed = "proposed"
+	StatusProposed    = "proposed"
 	MeaningUnresolved = "unresolved"
 )
 
 type SemanticTarget struct {
-	Kind string `json:"kind"`
-	ID string `json:"id"`
+	Kind   string `json:"kind"`
+	ID     string `json:"id"`
 	Change string `json:"change"`
 }
 
 type Link struct {
-	Schema string `json:"schema"`
-	Status string `json:"status"`
-	MeaningStatus string `json:"meaningStatus"`
-	SourceArtifactDigest string `json:"sourceArtifactDigest"`
-	SourceToken string `json:"sourceToken"`
-	SourceEvidenceFingerprint string `json:"sourceEvidenceFingerprint"`
+	Schema                     string `json:"schema"`
+	Status                     string `json:"status"`
+	MeaningStatus              string `json:"meaningStatus"`
+	SourceArtifactDigest       string `json:"sourceArtifactDigest"`
+	SourceToken                string `json:"sourceToken"`
+	SourceEvidenceFingerprint  string `json:"sourceEvidenceFingerprint"`
 	MappingContractFingerprint string `json:"mappingContractFingerprint"`
-	CandidateFingerprint string `json:"candidateFingerprint"`
-	BaseModelRevision string `json:"baseModelRevision"`
-	ReviewFingerprint string `json:"reviewFingerprint"`
-	Target SemanticTarget `json:"target"`
-	AuthorityLimits []string `json:"authorityLimits"`
-	LinkFingerprint string `json:"linkFingerprint"`
+	CandidateFingerprint       string `json:"candidateFingerprint"`
+	BaseModelRevision          string `json:"baseModelRevision"`
+	ReviewFingerprint          string `json:"reviewFingerprint"`
+	Target                     SemanticTarget `json:"target"`
+	AuthorityLimits            []string `json:"authorityLimits"`
+	LinkFingerprint            string `json:"linkFingerprint"`
 }
 
 type Context struct {
-	Source rmtevidence.Evidence
+	Source               rmtevidence.Evidence
 	CandidateFingerprint string
-	BaseModelRevision string
-	ReviewFingerprint string
-	Target SemanticTarget
+	BaseModelRevision    string
+	ReviewFingerprint    string
+	Target               SemanticTarget
 }
 
 var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
