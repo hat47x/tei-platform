@@ -119,3 +119,22 @@ go test -race -count=1 ./reference/web-composition/go-host
 - Validation、Command、Observationの順序と、Business Result／Execution Errorの区別を維持すること。失敗した認証方式から別方式へ暗黙にフォールバックしないこと。
 
 ここで確認できたのはコード上の接続順序であり、Webセッションから既存認可Storeまでの主体対応付けは未実装です。したがって、認証方式の共存を動作確認済みとは扱いません。
+
+## E2.1：認証済み主体のAction引渡し（2026-10-10）
+
+E2の参照用Go Hostに、`PrincipalFromContext(ctx)`を追加しました。Hostは要求の経路、セッション、Issuer、CSRF、Action認可を検証し、すべて通過した要求についてのみ、パッケージ非公開のcontext keyを使って認証済み`Principal`をAction Handlerへ渡します。ブラウザから受け取るヘッダー、クエリ、JSONにこのcontext keyを設定する入口はありません。
+
+`Principal`には`ProviderID`、`Issuer`、`Subject`、`PrincipalID`を残します。**異なる認証元が同じ`PrincipalID`を持っていても、発行元と元の主体識別子を消して一つの認証事実へ畳みません。** また、セッション失効時に別の認証方式へフォールバックする処理は設けません。
+
+**重要な未接続境界：** `PrincipalFromContext`から得られる値はHostが検証した認証結果であって、業務権限ではありません。`PrincipalID`を`legacyauth.AuthenticatedSubject.SubjectID`と等しいと仮定して`RunCommand`へ渡したり、架空のCredentialを渡したりしません。既存`security.authorize` Capabilityによる業務認可を正本として維持します。現在の`go-host`はその既存Capabilityを実際には呼び出していません。`Dependencies.Authorize`は合成テスト用の注入関数です。
+
+### 局所試験の記録
+
+main統合後に残っていた二つの変更を、2026-10-10時点のmainを起点とする後続ブランチ`work/issue-1043-web-principal-handoff`へ移し、異なる認証元の出所保持テストを加えました。GitHub Blob SHAと一致する次の二つのGoファイルを隔離環境へ配置しました。
+
+- `go-host/host.go`: `25cfcee8857193cc052f0e70a5d68321449ccb65`
+- `go-host/host_test.go`: `d1abb5db50ec523c61a784c8a5dad30c1779c93c`
+
+Go 1.23.2、`module tei`の隔離環境で`gofmt -l`（出力なし）、`go vet`、`go test -count=1`、`go test -race -count=1`をいずれもPASSと確認しました。既存の経路・監査・認可拒否試験に加え、認証済み主体だけがAction Contextへ渡ること、Clientが主体ヘッダーを偽装しても保護を迂回できないこと、失効したセッションでActionを呼ばないこと、異なる二つの認証元の主体情報が保持されることを検証しています。Go Hostは本番用認証や実Cookie、実CSRF検証、実IdPを提供するものではありません。
+
+**統合資格は未取得です。** この局所試験はリポジトリ全体の`tools/repository-health-check.sh`、既存First Web Targetの実際の`RunCommand`／`security.authorize`結合試験、既存E1 Nodeテストの実行を代替しません。mainへの追加統合前に、後続PRのexact headで必須の全体検査が必要です。
