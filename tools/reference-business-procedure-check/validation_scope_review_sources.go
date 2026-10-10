@@ -32,9 +32,14 @@ func validationScopeSourcesNeeded(rows []validationScopeReviewRow) bool {
 // 既存Source Indexへ戻す。曖昧・欠落時に名前からSourceを補完しない。
 func attachValidationScopeSources(rows []validationScopeReviewRow, index sourceindex.Index) {
 	artifacts := make(map[string]string, len(index.Artifacts))
+	ambiguousPaths := make(map[string]struct{})
 	for _, artifact := range index.Artifacts {
+		if _, ambiguous := ambiguousPaths[artifact.Path]; ambiguous {
+			continue
+		}
 		if _, duplicated := artifacts[artifact.Path]; duplicated {
-			// An ambiguous artifact path cannot identify a trustworthy fingerprint.
+			// Once duplicated, a path remains ambiguous even if it appears again.
+			ambiguousPaths[artifact.Path] = struct{}{}
 			artifacts[artifact.Path] = ""
 			continue
 		}
