@@ -195,3 +195,31 @@ test('unsupported invented Pattern relation type is not promoted to a known depe
     subject:{kind:'runtime-module',id:'some'},source:{path:'build/module.go',fingerprint:sha('c')}});
   assert.equal(check(old,next).reason,'invalid_dependency_claim');
 });
+
+test('a typed ContractQuery definition is compared as a separate Source Index subject',()=>{
+  const invocation={
+    relation:'pattern-contract-query',
+    subject:{kind:'database-contract-query',id:'sales_core.order/find_by_id'},
+    path:'databases/sales-core/contracts/order.tei',digit:'f',
+  };
+  const old=fixture([...subjects,invocation]),next=structuredClone(old);
+  const stable=check(old,next);
+  assert.equal(stable.status,'limited-unchanged');
+  assert.equal(stable.fullClosure,false);
+  next.report.dependencies[4].source.fingerprint=sha('e');
+  next.index.artifacts[4].fingerprint=sha('e');
+  const changed=check(old,next);
+  assert.equal(changed.status,'unresolved');
+  assert.equal(changed.reason,'indexed_source_changed');
+  assert.deepEqual(changed.affected.map(x=>x.subject),[invocation.subject]);
+});
+test('a missing ContractQuery definition is never inferred from its containing Contract',()=>{
+  const invocation={
+    relation:'pattern-contract-query',
+    subject:{kind:'database-contract-query',id:'sales_core.order/find_by_id'},
+    path:'databases/sales-core/contracts/order.tei',digit:'f',
+  };
+  const old=fixture([...subjects,invocation]),next=structuredClone(old);
+  next.index.references.pop();
+  assert.equal(check(old,next).reason,'report_index_source_mismatch');
+});
