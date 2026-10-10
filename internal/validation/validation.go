@@ -35,8 +35,6 @@ func Validate(w ir.World) []Diagnostic {
 	out := validateApplicationPatterns(w)
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
-	out = append(out, ValidateSemanticRelationKeys(w)...)
-	out = append(out, ValidatePersistenceRelationStorageMappings(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
 	out = append(out, validateBusinessValidationReferences(w)...)
 
