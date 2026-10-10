@@ -126,7 +126,7 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
   -out /tmp/tei-slide-answered
 ~~~
 
-出力に`answer-handoff.json`を追加する。回答、主張された回答者、適用文脈、根拠参照、質問への厳密な対応、未検証状態、次に必要なレビューを保持する。`confirmationRoute`は既存Confirmationの`identity.kind=example-review` / `identity.subject=issue.id` / `basisSubjects=[{kind:semantic-relation,id:relation-id}]`へ対応させる**入力候補**である。独自の回答台帳は増やさない。
+出力に`answer-handoff.json`と`change-triage.json`を追加する。回答、主張された回答者、適用文脈、根拠参照、質問への厳密な対応、未検証状態、次に必要なレビューを保持する。`confirmationRoute`は既存Confirmationの`identity.kind=example-review` / `identity.subject=例とCatalogの内容に束縛したハッシュID` / `basisSubjects=[{kind:semantic-relation,id:relation-id}]`へ対応させる**入力候補**である。同じ質問ID・同じCanonical Relationであっても、例のレコードやCatalogが変われば別の確認対象として再確認する。独自の回答台帳は増やさない。
 
 ### 複数の権限境界
 
@@ -139,3 +139,24 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
 注: この参照機能が使う`ModelRevision`はSemantic Worldのハッシュであり、Shared Acceptanceの管理対象Workspace全ファイルから計算した`baseModelRevision`とは同一ではない。変更候補を作る際は**後者を現在のWorkspaceから改めて取得**しなければならない。
 
 GoコードとテストはPR #1128に追加したが、対象BranchのGoテスト・Format・Repository Health Checkはまだ実行していない。
+
+## 回答案から安全な次の変更経路を選ぶ
+
+`change-triage.json`は、レビューに結び付けられた各回答の`disposition`を次のいずれかへ振り分ける、**read-onlyの進路確認**である。
+
+| 回答の方向 | 次の経路 |
+| --- | --- |
+| `clarify-example` | Case編集案を人間が確認。Canonical Sourceを書き換えない |
+| `retain-model` | 根拠と適用条件を確認し、必要に応じて既存Confirmationへ記録 |
+| `investigate` | 根拠収集。未解決のまま残す |
+| `propose-model-change` | 原因を確定し、Source Index・現在のWorkspace revision・実装済みtyped operationを点検。Shared Acceptanceへ直接投入しない |
+
+この段階では`candidateReady=false`を常に出力する。回答を受け取っただけでSemantic Patchを作ったり、実行可能性を保証したりしない。
+
+既存Shared Acceptanceの現在のtyped operationには`add-relation`があるが、既存RelationのRelationKeyを編集する`update-relation`や`add-relation-key`は無い。そこで、既存Relationのキー不足を理由とした変更希望は`existing-relation-key-edit-not-supported-by-current-typed-operations`と分類する。別のIDのRelationを追加して既存の関係を置き換えることはしない。
+
+また、多重度`one`なのに複数の一致先がある場合、原因は業務モデル、RelationKey、合成Caseのいずれにもあり得る。この段階での変更先は`model-versus-example-cause-not-determined`とし、変更箇所を自動決定しない。
+
+CLIのCase入力も未知fieldを拒否する。例えば`completeTables`の綴り違いを黙って無視すると検証範囲が変わるため、誤入力として扱う。
+
+これらはPR #1128の候補実装であり、対象BranchのGoテストやRepository-health GateのPASSは未確認である。
