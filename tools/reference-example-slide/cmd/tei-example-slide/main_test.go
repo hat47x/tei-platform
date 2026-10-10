@@ -129,3 +129,25 @@ func TestCLIRejectsUnboundAnswersBeforeWriting(t *testing.T) {
 		t.Fatal("unknown answer field was accepted")
 	}
 }
+
+func TestCLIRejectsUnknownCaseInputBeforeOutput(t *testing.T) {
+	source, err := os.ReadFile("../../testdata/partial_inspection.json")
+	if err != nil { t.Fatal(err) }
+	// A misspelled completeness property would silently invalidate
+	// the claim that all target records were included in the Case.
+	var root map[string]any
+	if err := json.Unmarshal(source, &root); err != nil { t.Fatal(err) }
+	ex := root["example"].(map[string]any)
+	ex["completeTable"] = []any{"purchase_order"}
+	encoded, err := json.Marshal(root)
+	if err != nil { t.Fatal(err) }
+	in := filepath.Join(t.TempDir(), "case.json")
+	if err := os.WriteFile(in, encoded, 0600); err != nil { t.Fatal(err) }
+	out := t.TempDir()
+	if err := run(in, "", false, out); err == nil {
+		t.Fatal("unknown case field was silently accepted")
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil { t.Fatal(err) }
+	if len(entries) != 0 { t.Fatal("wrote outputs before validating Case schema") }
+}
