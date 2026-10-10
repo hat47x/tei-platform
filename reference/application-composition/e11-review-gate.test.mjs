@@ -216,3 +216,35 @@ test('inconsistent current E7 definition source cannot be promoted by Go shape',
  assert.equal(result.reason,'source_requalification_required');
  assert.equal(result.sourceReason,'report_index_source_mismatch');
 });
+
+test('non-machine impact reasons cannot become emitted review evidence',()=>{
+  const t=typed();t.affected=[{changed:relation,consumer:pat,reason:'token=PRIVATE_123'}];
+  const out=check(src,t);
+  assert.equal(out.status,'unresolved');
+  assert.equal(out.reason,'invalid_typed_impact');
+  assert.ok(!JSON.stringify(out).includes('PRIVATE_123'));
+});
+test('typed impact reason rejects control chars and oversized labels',()=>{
+  for(const reason of ['version-changed\\nPRIVATE','reason with spaces', 'a'.repeat(97),'']) {
+    const t=typed();t.affected=[{changed:relation,consumer:pat,reason}];
+    const out=check(src,t);
+    assert.equal(out.reason,'invalid_typed_impact');
+  }
+});
+test('known modelref change-kind reasons preserve review hints',()=>{
+  for(const reason of ['added','removed','display-renamed','physical-renamed',
+    'version-changed','evidence-changed','reference-changed','reference-evidence-changed']) {
+    const t=typed();t.affected=[{changed:relation,consumer:pat,reason}];
+    const out=check(src,t);
+    assert.equal(out.status,'review-candidate');
+    assert.equal(out.reviewCandidates[0].reason,reason);
+  }
+});
+test('paired Go-shaped impact cannot echo an invalid reason as a review hint',()=>{
+  const out=pairedReview({affected:[{
+    changed:relation,consumer:pat,reason:'password:secret'
+  }]});
+  assert.equal(out.status,'unresolved');
+  assert.equal(out.reason,'invalid_typed_impact');
+  assert.ok(!JSON.stringify(out).includes('password:secret'));
+});
