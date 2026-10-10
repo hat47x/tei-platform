@@ -15,17 +15,17 @@ export function createNativeActionBridge(dispatchCommit) {
   };
 
   return {
-    begin({ applicationID, documentID, actionID, expectedRevision }) {
+    begin({ applicationID, resourceID, actionID, expectedRevision }) {
       if (interaction) {
         throw new Error("interaction already active or committing");
       }
-      if ([applicationID, documentID, actionID, expectedRevision]
+      if ([applicationID, resourceID, actionID, expectedRevision]
           .some((value) => typeof value !== "string" || value.length === 0)) {
-        throw new TypeError("action identity and expected revision are required");
+        throw new TypeError("application, resource, action, and expected revision are required");
       }
       interaction = {
         phase: "preview",
-        identity: { applicationID, documentID, actionID, expectedRevision },
+        identity: { protocolVersion: "1", applicationID, resourceID, actionID, expectedRevision },
         hasPayload: false,
         payload: undefined,
       };
