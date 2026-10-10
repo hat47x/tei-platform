@@ -228,3 +228,13 @@ PRのDraft解除やmain統合は、既存リポジトリ規約により**full Re
 基底Stageの`Example.completeTables`を、それ以降のStageへ暗黙継承する設計を廃止した。基底と後続Stageが異なる抽出範囲や観測時点を持ち得るため、各`Stage.completeTables`を独立した明示宣言とする。後続Stageで無指定なら部分的なデータセットとして`unresolved`を維持する。既存の基底だけのCaseとの互換性を保つ。
 
 変更は読み取り専用Referenceと否定試験に限定。実Providerの時点・抽出範囲の根拠付けは引き続き未実装であり、例の申告をSource Index Evidenceへ自動昇格しない。対象PRのGoテストは未実行。
+
+## 複数レコードの可視化による矛盾証拠の保持（2026-10-10）
+
+従来のSVGレンダラーは配置テーブルの先頭レコードのみを描画していた。RelationKey検証が二件以上の一致Targetを`contradiction`と判定しても、図面側には二件目の値が載らず、設計レビューで原因を追えない。これは「具体例から設計を検証する」という目的に対して重要な断絶である。
+
+今回、表示を許可したFieldについて全レコードのIDと値を描画し、テーブル枠の高さを自動拡張する構造へ修正した。基底からStage別のレコードSnapshotを維持し、表示順は安定なRecord ID順とする。レコードが存在しないテーブルもスキーマと`(no example records)`を表示する。各スライドのヘッダーにはStageと三値診断の件数を提示する。
+
+図面の手動座標、Field Show/Hide、XML文字escape、Relationの関連線ラベルを保持する。長い文字列はSVGだけで省略表示し、`projection.json`では元値が残る。描画中の重なり、ページ分割、ER図記法の完全なCardinality表現は未着手であり、見た目の整然さを正本の意味変更で実現しない。
+
+新しいレンダラーの同等コードを独立Go 1.23.2 scratch moduleで検証し、複数レコード・XML escape・0件スキーマ・関連線ラベルの3テストと`go vet`がPASS。PR本体のexact-head checkout、全Goテスト、Repository-healthは引き続き未実行のため、統合資格を得たものではない。
