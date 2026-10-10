@@ -42,7 +42,8 @@ type ClosureComparison struct {
 // or unsafe paths would turn fabricated JSON into apparent source removal.
 func normalizeEvidencePackage(p SourcePackage) (SourcePackage, error) {
 	validPath := func(name string) bool {
-		return name != "" && name != "." && !strings.HasPrefix(name, "/") &&
+		return name != "" && name != "." && name != ".." &&
+			!strings.HasPrefix(name, "../") && !strings.HasPrefix(name, "/") &&
 			!strings.Contains(name, "\\") && path.Clean(name) == name
 	}
 	if !validPath(p.ImportPath) {
