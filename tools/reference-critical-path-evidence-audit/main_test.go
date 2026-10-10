@@ -299,3 +299,31 @@ func TestCLIIncompleteEmitsDiagnosticAndFails(t *testing.T) {
 		t.Fatalf("CLI omitted essential incompleteness: %+v", result)
 	}
 }
+
+func TestCurrentP0FixtureCannotBeSubmittedAsEvidence(t *testing.T) {
+	data, err := os.ReadFile("testdata/p0-order-unit-price-incomplete.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rejectDuplicateJSONKeys(data); err != nil {
+		t.Fatal(err)
+	}
+	var p Packet
+	if err := json.Unmarshal(data, &p); err != nil {
+		t.Fatal(err)
+	}
+	result := Audit(p, h, m)
+	if result.Status != "INCOMPLETE" || result.ProductGate != "UNQUALIFIED" {
+		t.Fatalf("existing source-based tests were promoted to actual E1: %+v", result)
+	}
+	for _, code := range []string{
+		"E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED",
+		"ACCEPTED_R0_R1_LINEAGE_MISSING",
+		"E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED",
+		"TRUSTED_FULL_HEALTH_NOT_RECORDED",
+	} {
+		if !has(result, code) {
+			t.Fatalf("P0 coverage fixture lost expected gap %q: %+v", code, result)
+		}
+	}
+}
