@@ -9,7 +9,7 @@
 [E6接続試作](e6-typed-index-bridge.mjs)は、E5のJSON形式のReportを変更前後の二つ受け取り、対応するSource Index二つと照合する。
 
 1. E5 Reportが対象Applicationを一つ特定できており、宣言・Source所在の照合に未解決事項がないことを要求する。E5側の`observed`をそのまま全面的な適合へ読み替えない。
-2. Application・Semantic Namespace・Application Pattern・Validation・論理Database・Database Contractの既知の直接参照種類だけを対象に、Report内の定義SourceとSource Indexの`definition`参照、Artifact指紋が一致することを確認する。出典欠落・重複・取り違えは停止する。
+2. Application・Semantic Namespace・Application Pattern・PatternのData／Relation／Capability／Application所有Query・Validation・論理Database・Database Contractの既知の直接参照種類だけを対象に、Report内の定義SourceとSource Indexの`definition`参照、Artifact指紋が一致することを確認する。出典欠落・重複・取り違えは停止する。
 3. 変更前後の対象Subject集合が変わった場合は`declared_dependency_set_changed`とする。新たに追加されたValidation参照を、旧セットに含まれないという理由で見逃さない。
 4. 集合が一致する場合は、E4の既存`assessIndexedSubjects`へSubject集合を渡す。E6独自のSource指紋比較器は作らない。
 5. 結果が同一でも`limited-unchanged`と返す。これは「この限定的な明示参照集合について、Index上のSource情報が不変」という意味に限り、Application全体の互換性ではない。
@@ -30,7 +30,7 @@ E6は、E5で取得した明示参照をE4の既存検査へ**受け渡す接着
 
 入力されたE5 ReportとSource Indexは、信頼できるWorkspace読み取り境界から得られたことが**別途保証される前提**である。JSONの形と二つの入力同士の一致を検査しても、出典の真正性、完全性、改ざんされていないことは証明できない。LoaderとSource Indexの解析時同一bytes保証を扱う[#1017 / PR #1111](https://github.com/hat47x/tei-platform/pull/1111)の成果も未統合であり、ここで代替しない。
 
-この試作が受け取る依存は**E5で扱ったApplication、Semantic Namespace、Application Pattern、明示Validation、Database、Database Contractの定義出典**に限る。Pattern内部が参照するData・Relation・Query・CapabilityやActionの実装、認証・認可、Environment binding、UI構成キットの選択は含まれない。E5の部分的な`observed`は全依存閉包の成立を意味しない。SUI Stage 0には正式なApplicationがなく、Native Canvas/Document/Actionの契約もこの集合からは導出できないため、**第二Consumerの検証完了とはしない**。
+この試作が受け取る依存は**E5で扱ったApplication、Semantic Namespace、Application Pattern、Patternが直接参照するData・Relation・Capability・Application所有Query、明示Validation、Database、Database Contractの定義出典**に限る。PatternのContractQuery／Datasource／入力BindingやData・Relation・Capabilityの推移的依存、Action実装、認証・認可、Environment binding、UI構成キットの選択は含まれない。E5の部分的な`observed`は全依存閉包の成立を意味しない。SUI Stage 0には正式なApplicationがなく、Native Canvas/Document/Actionの契約もこの集合からは導出できないため、**第二Consumerの検証完了とはしない**。
 
 ## 検証
 
@@ -38,18 +38,19 @@ E6は、E5で取得した明示参照をE4の既存検査へ**受け渡す接着
 node --test reference/application-composition/e6-typed-index-bridge.test.mjs
 ```
 
-Node.jsの隔離実行環境で、E4モジュールとE6モジュール、およびE6の14件の合成試験を実行し、**14 PASS / 0 FAIL**を確認した（初回版）。後続の直接参照拡張に伴うテスト3件（うち1件はPattern内部Capabilityへの推移的依存を未検査と示す負例）は追加したが、変更後の実行確認はまだない。GitHubへ登録したGit blob SHAと手元で試験した内容が一致した。
+E4／E6／E7のGitHub上のSource原文と試験を**V8インメモリ互換ランナー**で実行し、合計**43件成功・失敗0**（うちE6の追加Pattern直接参照テストを含む）。`node:test`、`structuredClone`、基本`assert`を簡易互換実装へ置き換え、import／exportを試験用に変換した**限定的な実行**である。Node.js標準の`node --test`実行証拠ではない。
 
-- E4モジュール：`d2a61dac60b1641e453513e3f72b7c6c2ef43501`（既存ファイル）
-- E6モジュール：`820638daeed5d93b2c4cf3fcca2f643b8e5262aa`
-- E6試験：`9646348b24394a47aa9bd969d9573d5e403da9cb`
+- E4 JS本体：`d2a61dac60b1641e453513e3f72b7c6c2ef43501`
+- E6 JS本体：`2320d51a3c18d741dc5afb1d5adff23826884ec6`
+- E6試験：`32b294e91cea36067538081d3a69d2958291c6af`
+- E7 JS本体：`910ef058ed96d5830f026c0552196682580a20eb`
 
-正常例に加え、依存先Validationの変更、無関係なSource更新、宣言追加、未解決Report、資格の取り違え、Source指紋不一致、定義の重複・欠落、役割のすり替え、不正な参照種類、Applicationの不一致を検査した。後続の変更ではSemantic NamespaceとApplication Patternの直接定義Sourceも受け渡せるようにし、追加した合成テスト2件についてはGo側の変更と併せて未実行のためPASS数に加算していない。
+試験はValidation／Patternの参照先Source変更、無関係なSource更新、宣言依存集合の追加、定義欠落・重複、資格・役割のすり替え、Application不一致などを扱う。ただしE5のGoコードは**一度も実行していない**。E5が全参照を正確に抽出したとする根拠にはできない。
 
 **未実施**：GitHub上の全Goソースを含むクリーンなTEIリポジトリでのE5 Goテスト・CLI実行、E5の出力と実Source Index JSONを使ったE6の一連の実行、実UI・Provider・SUI Target、exact-headの全体Repository Health。このためE6の成功を実Applicationの構成成功とは扱わない。
 
 ## 次に確かめること
 
-既存GoのE5検証器を実Workspaceで起動し、現在のSource Indexと組み合わせてE6へ入力する。さらに、現在対象にしていないSemanticUses、PatternとUI構成／Environment結合の所在を**既存の意味・契約解析へ戻して**明らかにする。第二ConsumerのSUIにおいては、Native操作とApplication Actionの境界・保存先・権限の実在を別途検査する。
+既存GoのE5検証器を実Workspaceで起動し、現在のSource Indexと組み合わせてE6へ入力する。さらに、現在対象にしていないPatternのContractQuery／Datasource・RelationのTarget・Semanticの型参照、UI構成／Environment結合を**既存の意味・契約解析へ戻して**明らかにする。第二ConsumerのSUIにおいては、Native操作とApplication Actionの境界・保存先・権限の実在を別途検査する。
 
 案件構成プロファイルには、現時点では**選択したKit／Target／Framework／案件差分と、それらの正本への参照**以外の新情報を増やす理由がない。汎用DSLや重複Lockの採用判断は実Consumer検証後に限る。
