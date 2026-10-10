@@ -685,3 +685,35 @@ mainの通常Web fixtureでは新規`unit_price_positive`を失敗させる単�
 Go 1.23.2の**独立コピー**で `GO111MODULE=off go test -race -count=1 -v main.go main_test.go` は20件PASS、`GO111MODULE=off go vet main.go main_test.go`はPASS、`gofmt -l`は空。これらの対象コードは、その時点のGitHub blobと一致している：`main.go=84cf10a53fe560cd3595e058e1476a1f6055571c`、`main_test.go=b8e113e63135b6bb203a541afd63cc4fa53bf1e1`、fixture=`7a499e246489b3ef4b8e18263c6c8deb253a39e9`。
 
 **未取得**: trusted full TEI checkoutのexact-head Package test、`tools/repository-health-check.sh`、Web running-server上の単価負例、実DBのCommand＋独立Read、実Human Acceptance。Code/testの孤立実行はこれらに代わらない。E1/E2の形式上の入力に`actual-observed`と記入しただけでは、actual観測の真偽を証明したことにはならず、preflightは常に`productGate=UNQUALIFIED`とする。
+
+## 22. G1 Studio consumerの実Source照合とPreflightコスト上限（2026-10-10）
+
+### #1124 の実装候補を `reference/world.json` で再照合
+
+#1124 の[Draft PR #1137](https://github.com/hat47x/tei-platform/pull/1137) head `1e724dd78d3373ae7ecb3d707df284f00185cdae` の `reference/studio-authoring/bridge.mjs`（Git blob `a3105c8b3feb9defd3e7e1f3b46c8697be4a92d4`）と、main の `reference/world.json`（blob `2e5cb6dbbea562babd82487e32e5b65fa2b5a62b`）をGitHubから取得し、**実際のソース文字列を隔離V8上で評価**して6ケースを照合した。Revisionには形だけの `sha256:aaaa...` を渡したので、この実験をAccepted revision検証に使わない。
+
+| 探索・候補操作 | 観測結果 | 現時点の製品上の意味 |
+| --- | --- | --- |
+| `data:sales.order_line`をread-only投影 | Table/ER/Functionは`available`、BusinessとSourceNavigationは`unresolved` | 現Worldで三つのビュー候補を生成できたが、四視点一致・Source anchor・Acceptanceの証拠ではない |
+| 正値Validationの追加のみ | `add-validation`1操作 | Webの受注確定に新Ruleは採用されない。§16の初期不備は再現可能 |
+| `applicationUse:{application:order_entry,placement:applications/order-entry/application.tei}`を明示 | `add-validation`＋`add-application-validation-use`の同一Candidate | #1124の2操作Proposal拡張を実Worldで確認。**Shared Acceptanceで受理・実Sourceを更新したわけではない** |
+| 危険な`../../escape`配置 | `UNSAFE_APPLICATION_SOURCE_PLACEMENT`で拒否 | Candidate側の局所的な安全検査が存在することを確認 |
+| `repair_intake`に`sales` Ruleを勝手に選択 | `APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE`で拒否 | ApplicationとSemanticの関係を拡大解釈せず拒否 |
+| `canonicalProcedureUsed=true`を僭称したDFD | `UNSUPPORTED_BUSINESS_DFD_AUTHORITY_OR_SCHEMA`で拒否 | Reference-local Business情報をAccepted Procedureへ自動昇格しない |
+
+これはPR #1137の**静的に取得したソースを使う in-memory/isolated smoke**であり、`node --test`や `TEI_STUDIO_E2E=1`、trusted current checkout、Go Workspace Loader、実行Webには接続していない。Scope付きC0 `modelref.Key`とのconsumer統合、Source Index locator検証、R0→R1の受理実走は未解決。#1124 ownerに重複実装を求めず、既存 E2E のexact-head 実行と、出力packetの提出を優先する。
+
+### #1119 の既存Go Evidence preflightを敵対的な大量キー入力に耐えさせる
+
+§19〜21で導入した`rejectDuplicateJSONKeys`は、最初の実装では重複keyの判定に`strings.EqualFold`で既出key**すべて**を順次照合していた。入力1 MiBという制限があっても、互いに異なる大量のkeyを与えられると照合数が**二乗的に増加**する。プロダクト横断の証跡処理で不必要なCPU消費を発生させないため、Go標準`unicode.SimpleFold`の等価クラスを正規キーにし、map検索へ置き換えた。Locale依存の推測や文字列の人為的な正規名寄せはしない。
+
+- 既存の`claim`/`Claim`拒否に加え、Unicode `Key`/`key`を拒否する回帰テストを追加。
+- **異なる10,000 key**の入力を拒否・誤検出なく解析する回帰テストを追加。これは本CLIの1 MiB上限内の入力。
+- **独立 Go 1.23.2**で `GO111MODULE=off go test -race -count=1 main.go main_test.go` を実行して**22件PASS**、`GO111MODULE=off go vet main.go main_test.go` PASS、`gofmt -l`空。GitHubに書き込んだ対象blobは同じローカル実行ソースと一致（`main.go=59dfc5c7b48a98891309b40fd9e11577bc9b6128`、`main_test.go=14b107b12556388c7dfc4c6b6570541422cc7ccf`）。
+- これは証拠検査tool単体の挙動であって、**受注業務の実行・保存・読み直しを実証するものではない**。GitHubへの直接git networkアクセスは現在の隔離環境では利用できず、trusted full checkoutの`tools/repository-health-check.sh`は未実施。
+
+### 残るGate通過への一本
+
+#1124の2-op Proposalを同一scratch Source `R0→R1`で受理し、#1121/#1127の**実Web Target**がR1で選択された4規則を参照することを、正値・新単価0の負値両方で確認する。ここで`httptest`や`handler-only`の負例を`running-server`へ無条件に読み替えない。#1126はDB Schema readiness/actual Providerの独立条件を判定する。どちらも既存Referenceを再利用し、新しい正本・Runner・Synthetic Backendは増やさない。
+
+**Gate**: G0のconsumer交換は増えたが正式接合未取得。G1/G2未合格、G3/G4未合格。§22を含むPRは引き続きDraftとする。
