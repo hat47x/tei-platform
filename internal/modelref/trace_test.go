@@ -39,7 +39,9 @@ func traceGraph() (modelref.Graph, []modelref.Rule, modelref.Key) {
 func TestTraceDirectIncomingOutgoingAndSummary(t *testing.T) {
 	g, rules, fn := traceGraph()
 	result, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "both"})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if result.Total != 2 || result.Unresolved != 0 || len(result.Rows) != 2 ||
 		result.NextOffset != nil || result.Authority != "candidate-read-only" ||
 		result.SnapshotFingerprint == "" || result.RuleFingerprint != modelref.RuleFingerprint(rules) {
@@ -77,7 +79,9 @@ func TestTraceDirectDoesNotInventReferences(t *testing.T) {
 		modelref.Edge{From: fn, To: traceRef(other), Relation: "reads", Evidence: []modelref.Evidence{{Authority: "source-observation"}}},
 	)
 	got, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "outgoing"})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	codes := map[string]bool{}
 	for _, row := range got.Rows {
 		if row.Status == "unresolved" {
@@ -115,7 +119,9 @@ func TestTraceDirectPaginationAndDeterministicOrder(t *testing.T) {
 	g.Edges = append(g.Edges, modelref.Edge{From: fn, To: traceRef(traceKey("orders", "data", "order-line")), Relation: "reads",
 		Evidence: []modelref.Evidence{{Authority: "proposal", Context: "one"}}})
 	all, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	first, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Limit: 1})
 	if err != nil || first.NextOffset == nil || *first.NextOffset != 1 || len(first.Rows) != 1 {
 		t.Fatalf("page 1: %+v %v", first, err)
@@ -181,16 +187,22 @@ func TestTraceDirectPaginationAndDeterministicOrder(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(all.Rows, reordered.Rows) {
 		t.Fatalf("insertion order changed trace: %+v %v", reordered, err)
 	}
-	if all.Total != 3 || all.Unresolved != 0 { t.Fatalf("full trace truncated: %+v", all) }
+	if all.Total != 3 || all.Unresolved != 0 {
+		t.Fatalf("full trace truncated: %+v", all)
+	}
 }
 
 func TestTraceDirectRejectsUnknownOrAmbiguousSubjectAndOptions(t *testing.T) {
 	g, rules, fn := traceGraph()
 	_, err := modelref.TraceDirect(g, rules, traceKey("orders", "data", "absent"), modelref.TraceOptions{})
-	if err == nil || !strings.Contains(err.Error(), "does not exist") { t.Fatalf("missing identity: %v", err) }
+	if err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Fatalf("missing identity: %v", err)
+	}
 	g.Nodes = append(g.Nodes, modelref.Node{Key: fn})
 	_, err = modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{})
-	if err == nil || !strings.Contains(err.Error(), "more than once") { t.Fatalf("duplicate identity: %v", err) }
+	if err == nil || !strings.Contains(err.Error(), "more than once") {
+		t.Fatalf("duplicate identity: %v", err)
+	}
 	g.Nodes = g.Nodes[:len(g.Nodes)-1]
 	for _, options := range []modelref.TraceOptions{
 		{Direction: "sideways"}, {Mode: "digest"}, {Offset: -1},
@@ -225,7 +237,9 @@ func TestTraceDirectNormalizesEvidenceWithoutMutatingGraph(t *testing.T) {
 	g.Edges[0].Evidence = []modelref.Evidence{second, first}
 	before := append([]modelref.Evidence(nil), g.Edges[0].Evidence...)
 	a, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "outgoing"})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(before, g.Edges[0].Evidence) {
 		t.Fatalf("trace mutated its input graph: %+v", g.Edges[0].Evidence)
 	}
