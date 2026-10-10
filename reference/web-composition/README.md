@@ -138,3 +138,14 @@ main統合後に残っていた二つの変更を、2026-10-10時点のmainを�
 Go 1.23.2、`module tei`の隔離環境で`gofmt -l`（出力なし）、`go vet`、`go test -count=1`、`go test -race -count=1`をいずれもPASSと確認しました。既存の経路・監査・認可拒否試験に加え、認証済み主体だけがAction Contextへ渡ること、Clientが主体ヘッダーを偽装しても保護を迂回できないこと、失効したセッションでActionを呼ばないこと、異なる二つの認証元の主体情報が保持されることを検証しています。Go Hostは本番用認証や実Cookie、実CSRF検証、実IdPを提供するものではありません。
 
 **統合資格は未取得です。** この局所試験はリポジトリ全体の`tools/repository-health-check.sh`、既存First Web Targetの実際の`RunCommand`／`security.authorize`結合試験、既存E1 Nodeテストの実行を代替しません。mainへの追加統合前に、後続PRのexact headで必須の全体検査が必要です。
+
+## E1追試と依存経路検査の強化（2026-10-10）
+
+`plan-check.mjs`と`plan-check.test.mjs`のGitHub Blob SHAが一致するファイルをNode.js v22.16.0で直接実行し、従来の14ケースすべてがPASSしました。ここでE1に四つの負例を追加し、最終的に`node --test reference/web-composition/plan-check.test.mjs`で18ケースPASS（fail 0）を確認しました。
+
+- `plan-check.mjs`: `dcd8eeec613e6bc5deff28717c5720310a6e75f3`
+- `plan-check.test.mjs`: `145ea9d9a69426265939bfde48331967c3c32f34`
+
+従来は、必要な`guards`をどこかの処理点が宣言していれば、Actionの実行より後ろや無関係の処理点でも構成検査を通る余地がありました。今回、Actionの`invoke`から`requires`の契約依存を逆にたどり、**必須Guardを宣言した処理点が、その依存経路上の先行処理であること**を検査します。`before`や`after`による表示上の順序指定だけでは、Action保護の証拠として採用しません。Audit処理だけが認証Guardを宣言する構成、Action自身がCSRFを宣言する構成、CSRFを順序指定だけで先行させる構成、認証結果を使わずActionを呼び出す構成を拒否します。
+
+**検証範囲の限界は従来どおりです。** この検査は解決済み処理点の自己申告と依存関係の静的整合性を確認するのみです。Hostによる実保護、条件分岐を含むすべての実行経路でのGuard実行、実Providerの真正性、Actionの業務認可成立は保証しません。正式な製品規則へ採用するには、既存のCapability/Provider適合性と実HTTP経路に結び付けた追加検証が必要です。
