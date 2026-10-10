@@ -25,7 +25,7 @@ Reference: `sales.order.lines -> sales.order_line`
 - Relation cardinalityは`many`
 - `sales.order.lines.line_number_unique`がaccepted Constraintとして存在する
 - 各Relation source occurrenceの範囲で`line_number`が一意であることまでは確定できる
-- Data Design Contextは、`relation-source-occurrence + local attribute`をbusiness identity / FDの**candidate**として提示できる
+- Data Design Contextは、`related-occurrence`にexact Relation identity / source endを持たせ、local attributeと組み合わせたbusiness identity / FDの**candidate**として提示できる
 - 親occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、時間意味は未確定
 
 この類型だけから「子tableの識別は親キー + 連番」と一般化しない。
