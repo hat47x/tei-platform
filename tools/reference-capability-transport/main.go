@@ -27,6 +27,16 @@ type GenericProviderIdentity struct {
 	ArtifactDigest  string `json:"artifactDigest"`
 }
 
+type GenericInvocationIdentity struct {
+	ContractID              string                  `json:"contractId"`
+	ContractFingerprint     string                  `json:"contractFingerprint"`
+	Target                  string                  `json:"target"`
+	Provider                GenericProviderIdentity `json:"provider"`
+	RequestShapeFingerprint string                  `json:"requestShapeFingerprint"`
+	ResultShapeFingerprint  string                  `json:"resultShapeFingerprint"`
+	PayloadCodec             string                  `json:"payloadCodec"`
+}
+
 type GenericDispatch struct {
 	Schema                  string                  `json:"schema"`
 	ContractID              string                  `json:"contractId"`
@@ -67,20 +77,14 @@ type TransportCarrierReceipt struct {
 }
 
 type TransportReceipt struct {
-	Schema                  string                  `json:"schema"`
-	Transport               string                  `json:"transport"`
-	Carrier                 TransportCarrierReceipt `json:"carrier"`
-	RequestID               string                  `json:"requestId"`
-	GenericContractID       string                  `json:"genericContractId"`
-	ContractFingerprint     string                  `json:"contractFingerprint"`
-	Target                  string                  `json:"target"`
-	Provider                GenericProviderIdentity `json:"provider"`
-	RequestShapeFingerprint string                  `json:"requestShapeFingerprint"`
-	ResultShapeFingerprint  string                  `json:"resultShapeFingerprint"`
-	PayloadCodec             string                  `json:"payloadCodec"`
-	RequestDigest            string                  `json:"requestDigest"`
-	ResultDigest             string                  `json:"resultDigest"`
-	AuthorityLimits          []string                `json:"authorityLimits"`
+	Schema             string                    `json:"schema"`
+	Transport          string                    `json:"transport"`
+	Carrier            TransportCarrierReceipt   `json:"carrier"`
+	RequestID          string                    `json:"requestId"`
+	InvocationIdentity GenericInvocationIdentity `json:"invocationIdentity"`
+	RequestDigest       string                    `json:"requestDigest"`
+	ResultDigest        string                    `json:"resultDigest"`
+	AuthorityLimits     []string                  `json:"authorityLimits"`
 }
 
 type TransportExecution struct {
@@ -172,18 +176,36 @@ func invokeOverProcessTransport(
 	}, nil
 }
 
+func genericDispatchIdentity(dispatch GenericDispatch) GenericInvocationIdentity {
+	return GenericInvocationIdentity{
+		ContractID:              dispatch.ContractID,
+		ContractFingerprint:     dispatch.ContractFingerprint,
+		Target:                  dispatch.Target,
+		Provider:                dispatch.Provider,
+		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
+		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
+		PayloadCodec:             dispatch.PayloadCodec,
+	}
+}
+
+func genericResultIdentity(result GenericTransportResult) GenericInvocationIdentity {
+	return GenericInvocationIdentity{
+		ContractID:              result.ContractID,
+		ContractFingerprint:     result.ContractFingerprint,
+		Target:                  result.Target,
+		Provider:                result.Provider,
+		RequestShapeFingerprint: result.RequestShapeFingerprint,
+		ResultShapeFingerprint:  result.ResultShapeFingerprint,
+		PayloadCodec:             result.PayloadCodec,
+	}
+}
+
 func validateGenericTransportResult(
 	dispatch GenericDispatch,
 	result GenericTransportResult,
 ) error {
 	if result.Schema != resultSchema ||
-		result.ContractID != dispatch.ContractID ||
-		result.ContractFingerprint != dispatch.ContractFingerprint ||
-		result.Target != dispatch.Target ||
-		result.Provider != dispatch.Provider ||
-		result.RequestShapeFingerprint != dispatch.RequestShapeFingerprint ||
-		result.ResultShapeFingerprint != dispatch.ResultShapeFingerprint ||
-		result.PayloadCodec != dispatch.PayloadCodec {
+		genericResultIdentity(result) != genericDispatchIdentity(dispatch) {
 		return fmt.Errorf("generic transport result identity drifted")
 	}
 	return nil
@@ -198,20 +220,14 @@ func newTransportReceipt(
 	authorityLimits []string,
 ) TransportReceipt {
 	return TransportReceipt{
-		Schema:                  receiptSchema,
-		Transport:               transport,
-		Carrier:                 carrier,
-		RequestID:               requestID,
-		GenericContractID:       dispatch.ContractID,
-		ContractFingerprint:     dispatch.ContractFingerprint,
-		Target:                  dispatch.Target,
-		Provider:                dispatch.Provider,
-		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
-		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
-		PayloadCodec:             dispatch.PayloadCodec,
-		RequestDigest:            digestBytes(dispatch.Payload),
-		ResultDigest:             digestBytes(result.Payload),
-		AuthorityLimits:          append([]string(nil), authorityLimits...),
+		Schema:             receiptSchema,
+		Transport:          transport,
+		Carrier:            carrier,
+		RequestID:          requestID,
+		InvocationIdentity: genericDispatchIdentity(dispatch),
+		RequestDigest:       digestBytes(dispatch.Payload),
+		ResultDigest:        digestBytes(result.Payload),
+		AuthorityLimits:     append([]string(nil), authorityLimits...),
 	}
 }
 
@@ -248,27 +264,31 @@ func validateCarrierProviderBinding(
 	return nil
 }
 
+func validateGenericInvocationIdentity(identity GenericInvocationIdentity) error {
+	if strings.TrimSpace(identity.ContractID) == "" ||
+		!validSHA256(identity.ContractFingerprint) ||
+		strings.TrimSpace(identity.Target) == "" {
+		return fmt.Errorf("generic dispatch contract identity is incomplete")
+	}
+	if identity.Provider.PluginID == "" ||
+		identity.Provider.PluginVersion == "" ||
+		identity.Provider.ImplementationID == "" ||
+		!validSHA256(identity.Provider.ArtifactDigest) {
+		return fmt.Errorf("generic dispatch provider identity is incomplete")
+	}
+	if !validSHA256(identity.RequestShapeFingerprint) ||
+		!validSHA256(identity.ResultShapeFingerprint) ||
+		strings.TrimSpace(identity.PayloadCodec) == "" {
+		return fmt.Errorf("generic dispatch shape identity is incomplete")
+	}
+	return nil
+}
+
 func validateGenericDispatch(dispatch GenericDispatch) error {
 	if dispatch.Schema != dispatchSchema {
 		return fmt.Errorf("generic dispatch schema %q is not supported", dispatch.Schema)
 	}
-	if strings.TrimSpace(dispatch.ContractID) == "" ||
-		!validSHA256(dispatch.ContractFingerprint) ||
-		strings.TrimSpace(dispatch.Target) == "" {
-		return fmt.Errorf("generic dispatch contract identity is incomplete")
-	}
-	if dispatch.Provider.PluginID == "" ||
-		dispatch.Provider.PluginVersion == "" ||
-		dispatch.Provider.ImplementationID == "" ||
-		!validSHA256(dispatch.Provider.ArtifactDigest) {
-		return fmt.Errorf("generic dispatch provider identity is incomplete")
-	}
-	if !validSHA256(dispatch.RequestShapeFingerprint) ||
-		!validSHA256(dispatch.ResultShapeFingerprint) ||
-		strings.TrimSpace(dispatch.PayloadCodec) == "" {
-		return fmt.Errorf("generic dispatch shape identity is incomplete")
-	}
-	return nil
+	return validateGenericInvocationIdentity(genericDispatchIdentity(dispatch))
 }
 
 func validateProcessResponseIdentity(
