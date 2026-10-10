@@ -349,9 +349,20 @@ func main() {
 	setFile:=flag.String("set","reference/business-system-design/order-entry-procedure-reference-set.json","handoff source set")
 	workspaceDir:=flag.String("workspace","reference/workspace","Workspace for exact Pattern resolution")
 	format:=flag.String("format","json","json or dot")
+	selectElement:=flag.String("select","","optional exact read-only navigation selector kind:id")
 	flag.Parse()
 	p,err:=run(*procedureFile,*reviewFile,*setFile,*workspaceDir)
 	if err!=nil { fmt.Fprintln(os.Stderr,err); os.Exit(1) }
+	if *selectElement!="" {
+		if *format!="json" {fmt.Fprintln(os.Stderr,"navigation selection requires -format json");os.Exit(1)}
+		selected,navErr:=navigate(p,*selectElement,*procedureFile,*reviewFile,*setFile)
+		if navErr!=nil {fmt.Fprintln(os.Stderr,navErr);os.Exit(1)}
+		enc:=json.NewEncoder(os.Stdout)
+		enc.SetIndent("","  ")
+		if encErr:=enc.Encode(selected);encErr!=nil {fmt.Fprintln(os.Stderr,encErr);os.Exit(1)}
+		if selected.Status=="unresolved" {os.Exit(2)}
+		return
+	}
 	switch *format {
 	case "json":
 		enc:=json.NewEncoder(os.Stdout);enc.SetIndent("","  ");err=enc.Encode(p)
