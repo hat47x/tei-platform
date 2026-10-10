@@ -6,6 +6,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
+	"tei/internal/validation"
 )
 
 // RelationExpansionCandidate keeps the semantic relation identity alongside
@@ -29,10 +30,9 @@ type RelationExpansionCandidate struct {
 // Only callers with a previously accepted World can give these values
 // authoritative meaning.
 func InspectPinnedRelationExpansion(w ir.World, sourceID, relationID core.CanonicalID, call PinnedCall, catalog []OperatorContract) (RelationExpansionCandidate, error) {
-	if err := ValidateRelationKeys(w, sourceID, relationID); err != nil {
-		return RelationExpansionCandidate{}, err
-	}
-	relation, err := resolveWorldRelation(w, sourceID, relationID)
+	// Use the existing canonical validator exactly once, then retain the
+	// checked Relation identity and its authored key mapping.
+	relation, err := checkedWorldRelation(w, sourceID, relationID, validation.ValidateSemanticRelationKeys(w))
 	if err != nil {
 		return RelationExpansionCandidate{}, err
 	}
