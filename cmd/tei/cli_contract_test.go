@@ -20,7 +20,7 @@ func TestCommandCatalogReadOnlyDiscovery(t *testing.T) {
 		}
 		seen[cmd.Name] = true
 	}
-	for _, name := range []string{"validate", "world", "source-index", "plugin-lock", "plugin-resolve"} {
+	for _, name := range []string{"validate", "world", "source-index", "inspect", "plugin-lock", "plugin-resolve"} {
 		if !seen[name] {
 			t.Fatalf("discovery omitted %q", name)
 		}
