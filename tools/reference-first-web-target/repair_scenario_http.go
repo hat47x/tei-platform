@@ -1,3 +1,5 @@
+//go:build !tei_order_only
+
 package main
 
 import (
