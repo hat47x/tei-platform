@@ -59,6 +59,21 @@ SUI main の`App.tsx`は、`handleCardMoveBegin`で`DocumentV1`の参照と`docE
 
 まず`SUI CardView → SUI commit callback → Action dispatcher → TEI Host → SUI所有の保存処理 → 再読込`を一本の接続テストで検証します。旧Revision、認可拒否、通信断、島所属、Undo、来歴保持を合否条件とします。**現時点では未接続・未検証**であり、この文書は実装完了の証拠ではありません。
 
+## 確定結果の再照合（ブラウザー参照実装）
+
+`confirmed-action-commit.mjs`は、UIがサーバーの書込み応答だけを根拠にDocumentを更新することを防ぐ、小さな接続部品です。`createNativeActionBridge`の送信先として組み込みます。
+
+- `dispatchCommit(intent)`：`createJSONActionDispatcher`などで一度だけ確定要求を送ります。権限拒否・Revision競合でローカル状態は更新しません。
+- `readResource(intent)`：成功後に、**同じ権威ある保存先**からキャッシュを使わずに取得します。アプリケーション側の読取アダプターは`{applicationID, resourceID, revision, value}`形式へ正規化します。`value`はアプリケーション所有の状態です。
+- `isCurrent(intent)`：送信前と読取後に、操作開始時のローカル状態が現在も有効か検査します。SUIであればDocument参照・ETag・未保存編集状態などを確認します。判定できない場合は成功扱いにしません。
+- `applySnapshot(resource, intent)`：Resource IDとRevisionが確定応答と一致し、ローカル状態も変化していない場合にだけ、アプリケーション自身が確定済みSnapshotを反映します。この処理自身も**最新状態を原子的に再確認**する必要があります。
+
+同じResourceに対する処理中の二重確定は拒否します。別Resourceは同時に処理できます。エラー`ActionConfirmationError`の`committedRevision`が非nullの場合、**サーバーは成功を応答済みですが、UIへの反映は未完了**です。読取失敗、Revisionの不一致、UIの状態変化、反映処理の失敗をサーバー側のロールバックとみなさず、旧Revisionで自動再送しません。通信断など、成功応答そのものを受け取れなかった場合も、保存先に変更済みの可能性があるため再照会が必要です。
+
+SUIの`applyDocumentChange`はローカルUndo履歴とdirty状態を更新するため、そのままサーバー確定Snapshotの反映に使うことはできません。実接続では**サーバー確定Snapshotを履歴・dirty状態と整合させて取り込む別のSUI所有経路**が必要です。TEI側がSUIのUndoやIsland規則を解釈することはありません。
+
+検証用の`confirmed-action-commit.test.mjs`（11ケース）と`action-browser-roundtrip.test.mjs`（4ケース）は、取消し・正常確定・失敗時の非反映・通信応答喪失・第二Applicationへの再利用を対象にします。後者のHTTPサーバーと保存処理は**テスト内の合成実装**であり、実Go Host・本番SUI保存経路・実Canvasの動作証拠ではありません。
+
 ## Web向けのJSON Action接続口（参照実装）
 
 CLIや同一プロセス内の実行では、`Host.Commit`を直接呼べます。Webではオプションとして、`JSONCommitHandler`（Go標準`net/http`）と`json-action-dispatch.mjs`（ブラウザーの`fetch`）を利用できます。外部Pluginプロセスを必須にしません。
