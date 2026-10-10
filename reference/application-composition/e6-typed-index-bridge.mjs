@@ -12,6 +12,7 @@ const targetKinds = Object.freeze({
   'pattern-relation':'semantic-relation',
   'pattern-capability':'semantic-capability',
   'pattern-query':'query',
+  'pattern-contract-query':'database-contract-query',
   'uses-validation':'semantic-validation',
   'database-target':'database',
   'requires-contract':'database-contract',
