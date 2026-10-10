@@ -186,6 +186,8 @@ func invokeWithExecutionContext(
 			AuthorityLimits: []string{
 				"context-gate-does-not-select-capability-provider-or-scope",
 				"context-gate-does-not-prove-downstream-invocation-is-read-only",
+				"context-gate-relies-on-capability-request-shape-to-exclude-execution-context-fields",
+				"context-requirements-are-trusted-contract-input-not-consumer-payload",
 				"context-slot-binding-is-not-canonical-acceptance",
 				"context-slot-binding-is-not-objective-truth",
 				"context-slot-binding-does-not-grant-additional-authority",
