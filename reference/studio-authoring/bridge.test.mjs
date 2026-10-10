@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { projectWorld, candidateFromEdit, indexWorld } from "./bridge.mjs";
+import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts } from "./bridge.mjs";
 
 const revision = "sha256:" + "a".repeat(64);
 function fixture() {
@@ -184,6 +184,40 @@ test("accepted rule selection displays declared use without claiming actual targ
   assert.equal(v.evaluationAuthority, "not-verified-by-projection");
   assert.equal(p.realizationReadiness.status, "not-verified");
   assert.ok(p.realizationReadiness.sourceAcceptedDoesNotImply.includes("provider-write"));
+});
+
+test("review-edit refuses mismatched Preview/Review or stale base; no Approval implied", () => {
+  const candidate = candidateFromEdit(fixture(), revision, edit());
+  const fingerprint = "sha256:" + "b".repeat(64);
+  const reviewFingerprint = "sha256:" + "c".repeat(64);
+  const preview = { schema: "tei.reference.change-preview/v0",
+    candidateId: candidate.id, baseModelRevision: revision,
+    currentModelRevision: revision, candidateFingerprint: fingerprint,
+    acceptable: true };
+  const review = { schema: "tei.reference.approval-review/v0",
+    candidateId: candidate.id, candidateFingerprint: fingerprint,
+    reviewFingerprint, previewAcceptable: true };
+  const coherent = bindReviewArtifacts(candidate, preview, review, revision);
+  assert.equal(coherent.status, "reviewed-consistent");
+  assert.equal(coherent.readyToAccept, false,
+    "showing the reviewed projection does not record approval");
+  assert.throws(() => bindReviewArtifacts(candidate, preview,
+    { ...review, candidateFingerprint: "sha256:" + "f".repeat(64) }, revision),
+    /REVIEW_BINDING_MISMATCH/);
+  assert.throws(() => bindReviewArtifacts(candidate,
+    { ...preview, currentModelRevision: "sha256:" + "d".repeat(64) },
+    review, revision), /REVIEW_BINDING_MISMATCH/);
+  assert.throws(() => bindReviewArtifacts(candidate, preview,
+    { ...review, previewAcceptable: false }, revision),
+    /REVIEW_BINDING_MISMATCH/);
+  assert.throws(() => bindReviewArtifacts(candidate, preview,
+    { ...review, evidenceFingerprint: "sha256:" + "e".repeat(64) }, revision),
+    /REVIEW_BINDING_MISMATCH/);
+  const rejected = bindReviewArtifacts(candidate,
+    { ...preview, acceptable: false },
+    { ...review, previewAcceptable: false }, revision);
+  assert.equal(rejected.status, "not-acceptable");
+  assert.equal(rejected.readyToAccept, false);
 });
 
 test("N05: direct derived-cell edits, arbitrary patches and layout edits fail closed", () => {
