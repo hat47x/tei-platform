@@ -99,3 +99,32 @@
 実際のGitHub PRのcheckoutはこの環境では取得できず、**当該候補ブランチのGoテスト・format・full Repository-healthは未実行**。独立したGo 1.23.2 scratch probe（関係評価の抜粋・型スタブ）では三値評価の主要7ケースがPASSし、`go vet`も完了したが、PRのソース全体・Adapter・CLI・リポジトリの検証Evidenceを代替しない。
 
 未確定: Datasetの網羅性宣言をどのEvidenceで裏付けるか、Source Indexによる業務キーの権威追跡、実Provider観測と説明用スナップショットの区別、複雑なデータ型の比較、完全ER図記法との互換。
+
+## 検証結果から設計者への問いへ — Review Packet（2026-10-10）
+
+三値の関連評価で重要なのは、`unresolved`を放置しないこと。ただしAIがもっともらしい値を補完して`supported`へ変換してはならない。そこで独立した派生資産`ReviewPacket`を作り、同じCaseのStage・Relation・Source Record・Frame IDs・モデルrevisionを固定して、必要な確認を生成する。
+
+`Review(input)`は新しいProjectionを内部で検証してから作る。未検証の外部ProjectionやAIの診断を既存の事実として受け取らない。元のCaseにある`authoredQuestions`と決定論的に生成した`issues`は分離し、提示内容を何も自動受理しない。
+
+| 結果の理由 | 必要になる確認 | まず確認する資産 |
+| --- | --- | --- |
+| RelationKey未定義 | 対応属性を定義する必要があるか。関係そのものが別の意味か | Semantic Relation・Business identity |
+| Sourceキー不足 | 例の記載不足か、業務上の任意値か | Example Dataset・必須性の根拠 |
+| Targetキー不足 | 参照先候補のどの値で照合できるか | Target Dataset・Attribute |
+| Target表が部分的 | 何をもって全件と確認したか | データ抽出範囲・完全性Evidence |
+| Targetが0件 | その業務で参照先の存在は必須か | Business rule・例の目的 |
+| `one`で2件以上が一致 | キー定義の誤りか、実例の重複か、多重度の設計不備か | Relation・具体例・identity evidence |
+
+レビュー候補のIDはCase・モデルrevision・Stage・Relation・Source Record・原因から生成する。同じStageを複数フレームで見せても同一論点とし、Frame IDsだけ増やす。表示順が変わってもIDは変えないが、モデルが変われば古いIDを使い回さない。
+
+導出物に含まれる`ReviewTarget`は担当すべき**検討領域**の手掛かりであり、書き込み操作ではない。例えば「RelationKey未定義」から自動で`AddRelationKey`を作るのは誤りで、キーを持たない関連が意図的である場合もある。真の業務上の問いは、一次資料、業務担当者、設計者の確認を経て、既存のShared Acceptanceで受け入れる差分に初めて変換できる。
+
+CLI出力先へ`projection.json`とSVGに加えて`review.json`を生成する。`review.json`は承認済みのDecision、Semantic Patch、Business Ruleを含まない。対象StageやRelationの変更、根拠の追加後は、再生成して差異を確認する。
+
+### 継続的な品質境界
+
+数値は`float64`へ丸めずJSON numberを正確な有理数として検証する。例えば`9007199254740993.5`を巨大な整数へ丸めて誤って許可しない。
+
+`many`の関連で一致先が0件しかないときも、具体的な対応関係を確認できたという`supported`にしない。最小多重度の意味は自動決定せず、`unresolved`とする。
+
+**状態**: 該当コード・テスト・文書はPR #1128の作業ブランチにコミットした。対象PRのGoテスト、format、Repository-health Gateは依然として未実施。レビュー質問の生成結果を承認済みの業務仕様と混同しない。
