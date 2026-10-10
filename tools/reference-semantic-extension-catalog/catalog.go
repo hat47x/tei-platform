@@ -492,7 +492,17 @@ func resolveSemanticCatalogWithAllInputs(
 	interfaceWirings []SemanticInterfaceWiring,
 	interfaceConformance []SemanticInterfaceConformance,
 	namespaceAuthorities []SemanticNamespaceAuthority,
+	publisherTrustSets ...[]PublisherTrustGrant,
 ) (SemanticCatalog, error) {
+	if len(publisherTrustSets) > 1 {
+		return SemanticCatalog{}, fmt.Errorf(
+			"semantic catalog accepts at most one publisher trust grant set",
+		)
+	}
+	var publisherTrust []PublisherTrustGrant
+	if len(publisherTrustSets) == 1 {
+		publisherTrust = publisherTrustSets[0]
+	}
 	normalized := make([]ExtensionDescriptor, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		value, err := normalizeDescriptor(descriptor)
@@ -569,7 +579,12 @@ func resolveSemanticCatalogWithAllInputs(
 		}
 	}
 	blockedExtensions, namespaceAuthoritiesResolved, namespaceUnresolved, err :=
-		resolveNamespaceAuthorities(selected, coreNamespaces, namespaceAuthorities)
+		resolveNamespaceAuthorities(
+			selected,
+			coreNamespaces,
+			namespaceAuthorities,
+			publisherTrust,
+		)
 	if err != nil {
 		return SemanticCatalog{}, err
 	}
