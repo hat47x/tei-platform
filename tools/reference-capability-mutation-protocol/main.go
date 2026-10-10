@@ -1,0 +1,507 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+)
+
+const (
+	mutationProtocol = "prepare-validate-persist-commit/v0"
+
+	OutcomeCommitted    MutationOutcome = "committed"
+	OutcomeNotCommitted MutationOutcome = "not-committed"
+	OutcomeUnknown      MutationOutcome = "unknown"
+)
+
+var (
+	ErrResultValidation   = errors.New("prepared mutation result validation failed")
+	ErrCommitNotCommitted = errors.New("mutation was not committed")
+	ErrCommitUnknown      = errors.New("mutation commit outcome is unknown")
+	ErrJournalWrite       = errors.New("mutation journal write failed")
+)
+
+type MutationOutcome string
+
+type MutationRequest struct {
+	InvocationKey string
+	Payload       []byte
+}
+
+type PrepareRequest struct {
+	Protocol      string
+	InvocationKey string
+	RequestDigest string
+	Payload       []byte
+}
+
+type PreparedMutation struct {
+	Protocol               string
+	PreparationID          string
+	InvocationKey          string
+	RequestDigest          string
+	ResultPayload          []byte
+	ResultDigest           string
+	ConcurrencyToken       string
+	PreparationFingerprint string
+}
+
+type CommitRequest struct {
+	Protocol         string
+	PreparationID   string
+	InvocationKey   string
+	RequestDigest   string
+	ResultDigest    string
+	ConcurrencyToken string
+}
+
+type ProviderCommitReceipt struct {
+	Protocol          string
+	Outcome           MutationOutcome
+	PreparationID     string
+	InvocationKey     string
+	RequestDigest     string
+	ResultDigest      string
+	EffectDigest      string
+	CommitID          string
+	ReceiptFingerprint string
+}
+
+type StatusRequest struct {
+	Protocol      string
+	PreparationID string
+	InvocationKey string
+	RequestDigest string
+	ResultDigest  string
+}
+
+type MutationHandle struct {
+	Protocol               string
+	PreparationID          string
+	InvocationKey          string
+	RequestDigest          string
+	ResultPayload          []byte
+	ResultDigest           string
+	ConcurrencyToken       string
+	PreparationFingerprint string
+}
+
+type MutationReceipt struct {
+	Protocol                   string
+	Outcome                    MutationOutcome
+	InvocationKey              string
+	RequestDigest              string
+	ResultDigest               string
+	PreparationFingerprint     string
+	ProviderReceiptFingerprint string
+	EffectDigest               string
+	CommitID                   string
+	ReceiptFingerprint         string
+}
+
+type MutationExecution struct {
+	Outcome MutationOutcome
+	Result  []byte
+	Handle  MutationHandle
+	Receipt *MutationReceipt
+}
+
+type ResultValidator func([]byte) error
+
+type MutationProvider interface {
+	Prepare(context.Context, PrepareRequest) (PreparedMutation, error)
+	Commit(context.Context, CommitRequest) (ProviderCommitReceipt, error)
+	Status(context.Context, StatusRequest) (ProviderCommitReceipt, error)
+	Abort(context.Context, MutationHandle) error
+}
+
+type MutationJournal interface {
+	RecordPrepared(context.Context, MutationHandle) error
+	RecordOutcome(context.Context, MutationReceipt) error
+}
+
+type Executor struct {
+	Provider MutationProvider
+	Journal  MutationJournal
+	Validate ResultValidator
+}
+
+func (e Executor) Invoke(ctx context.Context, request MutationRequest) (MutationExecution, error) {
+	if e.Provider == nil {
+		return MutationExecution{}, fmt.Errorf("mutation provider is required")
+	}
+	if e.Journal == nil {
+		return MutationExecution{}, fmt.Errorf("mutation journal is required")
+	}
+	if e.Validate == nil {
+		return MutationExecution{}, fmt.Errorf("result validator is required")
+	}
+	if request.InvocationKey == "" {
+		return MutationExecution{}, fmt.Errorf("invocation key is required")
+	}
+	if err := ctx.Err(); err != nil {
+		return MutationExecution{Outcome: OutcomeNotCommitted}, err
+	}
+
+	payload := append([]byte(nil), request.Payload...)
+	requestDigest := digest(payload)
+	prepared, err := e.Provider.Prepare(ctx, PrepareRequest{
+		Protocol:      mutationProtocol,
+		InvocationKey: request.InvocationKey,
+		RequestDigest: requestDigest,
+		Payload:       payload,
+	})
+	if err != nil {
+		return MutationExecution{Outcome: OutcomeNotCommitted}, err
+	}
+	handle, err := validatePrepared(request.InvocationKey, requestDigest, prepared)
+	if err != nil {
+		_ = e.Provider.Abort(ctx, preparedHandle(prepared))
+		return MutationExecution{Outcome: OutcomeNotCommitted}, err
+	}
+
+	if err := e.Validate(handle.ResultPayload); err != nil {
+		_ = e.Provider.Abort(ctx, handle)
+		return MutationExecution{
+			Outcome: OutcomeNotCommitted,
+			Handle:  handle,
+		}, fmt.Errorf("%w: %v", ErrResultValidation, err)
+	}
+	if err := ctx.Err(); err != nil {
+		_ = e.Provider.Abort(ctx, handle)
+		return MutationExecution{
+			Outcome: OutcomeNotCommitted,
+			Handle:  handle,
+		}, err
+	}
+	if err := e.Journal.RecordPrepared(ctx, handle); err != nil {
+		_ = e.Provider.Abort(ctx, handle)
+		return MutationExecution{
+			Outcome: OutcomeNotCommitted,
+			Handle:  handle,
+		}, fmt.Errorf("%w: prepared intent: %v", ErrJournalWrite, err)
+	}
+
+	providerReceipt, commitErr := e.Provider.Commit(ctx, CommitRequest{
+		Protocol:          mutationProtocol,
+		PreparationID:    handle.PreparationID,
+		InvocationKey:    handle.InvocationKey,
+		RequestDigest:    handle.RequestDigest,
+		ResultDigest:     handle.ResultDigest,
+		ConcurrencyToken: handle.ConcurrencyToken,
+	})
+	if commitErr != nil {
+		return MutationExecution{
+			Outcome: OutcomeUnknown,
+			Handle:  handle,
+		}, fmt.Errorf("%w: %v", ErrCommitUnknown, commitErr)
+	}
+
+	receipt, err := validateProviderReceipt(handle, providerReceipt)
+	if err != nil {
+		return MutationExecution{
+			Outcome: OutcomeUnknown,
+			Handle:  handle,
+		}, fmt.Errorf("%w: invalid provider commit receipt: %v", ErrCommitUnknown, err)
+	}
+	switch receipt.Outcome {
+	case OutcomeCommitted:
+		if err := e.Journal.RecordOutcome(ctx, receipt); err != nil {
+			return MutationExecution{
+				Outcome: OutcomeCommitted,
+				Result:  append([]byte(nil), handle.ResultPayload...),
+				Handle:  handle,
+				Receipt: &receipt,
+			}, fmt.Errorf("%w: committed receipt: %v", ErrJournalWrite, err)
+		}
+		return MutationExecution{
+			Outcome: OutcomeCommitted,
+			Result:  append([]byte(nil), handle.ResultPayload...),
+			Handle:  handle,
+			Receipt: &receipt,
+		}, nil
+	case OutcomeNotCommitted:
+		if err := e.Journal.RecordOutcome(ctx, receipt); err != nil {
+			return MutationExecution{
+				Outcome: OutcomeNotCommitted,
+				Handle:  handle,
+				Receipt: &receipt,
+			}, fmt.Errorf("%w: not-committed receipt: %v", ErrJournalWrite, err)
+		}
+		return MutationExecution{
+			Outcome: OutcomeNotCommitted,
+			Handle:  handle,
+			Receipt: &receipt,
+		}, ErrCommitNotCommitted
+	default:
+		return MutationExecution{
+			Outcome: OutcomeUnknown,
+			Handle:  handle,
+		}, ErrCommitUnknown
+	}
+}
+
+func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (MutationExecution, error) {
+	if e.Provider == nil {
+		return MutationExecution{}, fmt.Errorf("mutation provider is required")
+	}
+	if e.Journal == nil {
+		return MutationExecution{}, fmt.Errorf("mutation journal is required")
+	}
+	if err := validateHandle(handle); err != nil {
+		return MutationExecution{}, err
+	}
+	providerReceipt, err := e.Provider.Status(ctx, StatusRequest{
+		Protocol:      mutationProtocol,
+		PreparationID: handle.PreparationID,
+		InvocationKey: handle.InvocationKey,
+		RequestDigest: handle.RequestDigest,
+		ResultDigest:  handle.ResultDigest,
+	})
+	if err != nil {
+		return MutationExecution{
+			Outcome: OutcomeUnknown,
+			Handle:  handle,
+		}, fmt.Errorf("%w: status: %v", ErrCommitUnknown, err)
+	}
+	receipt, err := validateProviderReceipt(handle, providerReceipt)
+	if err != nil {
+		return MutationExecution{
+			Outcome: OutcomeUnknown,
+			Handle:  handle,
+		}, fmt.Errorf("%w: invalid status receipt: %v", ErrCommitUnknown, err)
+	}
+	if receipt.Outcome == OutcomeUnknown {
+		return MutationExecution{
+			Outcome: OutcomeUnknown,
+			Handle:  handle,
+		}, ErrCommitUnknown
+	}
+	if err := e.Journal.RecordOutcome(ctx, receipt); err != nil {
+		return MutationExecution{
+			Outcome: receipt.Outcome,
+			Result:  resultForOutcome(handle, receipt.Outcome),
+			Handle:  handle,
+			Receipt: &receipt,
+		}, fmt.Errorf("%w: reconciled receipt: %v", ErrJournalWrite, err)
+	}
+	if receipt.Outcome == OutcomeNotCommitted {
+		return MutationExecution{
+			Outcome: OutcomeNotCommitted,
+			Handle:  handle,
+			Receipt: &receipt,
+		}, ErrCommitNotCommitted
+	}
+	return MutationExecution{
+		Outcome: OutcomeCommitted,
+		Result:  append([]byte(nil), handle.ResultPayload...),
+		Handle:  handle,
+		Receipt: &receipt,
+	}, nil
+}
+
+func validatePrepared(invocationKey, requestDigest string, prepared PreparedMutation) (MutationHandle, error) {
+	if prepared.Protocol != mutationProtocol {
+		return MutationHandle{}, fmt.Errorf("prepared mutation protocol %q is unsupported", prepared.Protocol)
+	}
+	if prepared.PreparationID == "" ||
+		prepared.InvocationKey != invocationKey ||
+		prepared.RequestDigest != requestDigest ||
+		prepared.ConcurrencyToken == "" {
+		return MutationHandle{}, fmt.Errorf("prepared mutation identity is inconsistent")
+	}
+	if prepared.ResultDigest != digest(prepared.ResultPayload) {
+		return MutationHandle{}, fmt.Errorf("prepared result digest is stale")
+	}
+	expected := preparedFingerprint(prepared)
+	if prepared.PreparationFingerprint != expected {
+		return MutationHandle{}, fmt.Errorf("prepared mutation fingerprint is stale")
+	}
+	handle := preparedHandle(prepared)
+	if err := validateHandle(handle); err != nil {
+		return MutationHandle{}, err
+	}
+	return handle, nil
+}
+
+func validateHandle(handle MutationHandle) error {
+	if handle.Protocol != mutationProtocol ||
+		handle.PreparationID == "" ||
+		handle.InvocationKey == "" ||
+		handle.RequestDigest == "" ||
+		handle.ResultDigest == "" ||
+		handle.ConcurrencyToken == "" ||
+		handle.PreparationFingerprint == "" {
+		return fmt.Errorf("mutation handle is incomplete")
+	}
+	if handle.ResultDigest != digest(handle.ResultPayload) {
+		return fmt.Errorf("mutation handle result digest is stale")
+	}
+	prepared := PreparedMutation{
+		Protocol:               handle.Protocol,
+		PreparationID:          handle.PreparationID,
+		InvocationKey:          handle.InvocationKey,
+		RequestDigest:          handle.RequestDigest,
+		ResultPayload:          append([]byte(nil), handle.ResultPayload...),
+		ResultDigest:           handle.ResultDigest,
+		ConcurrencyToken:       handle.ConcurrencyToken,
+		PreparationFingerprint: handle.PreparationFingerprint,
+	}
+	if preparedFingerprint(prepared) != handle.PreparationFingerprint {
+		return fmt.Errorf("mutation handle fingerprint is stale")
+	}
+	return nil
+}
+
+func validateProviderReceipt(handle MutationHandle, provider ProviderCommitReceipt) (MutationReceipt, error) {
+	if provider.Protocol != mutationProtocol ||
+		provider.PreparationID != handle.PreparationID ||
+		provider.InvocationKey != handle.InvocationKey ||
+		provider.RequestDigest != handle.RequestDigest ||
+		provider.ResultDigest != handle.ResultDigest {
+		return MutationReceipt{}, fmt.Errorf("provider receipt does not match prepared mutation")
+	}
+	if provider.Outcome != OutcomeCommitted &&
+		provider.Outcome != OutcomeNotCommitted &&
+		provider.Outcome != OutcomeUnknown {
+		return MutationReceipt{}, fmt.Errorf("provider receipt has invalid outcome %q", provider.Outcome)
+	}
+	if provider.Outcome == OutcomeCommitted &&
+		(provider.EffectDigest == "" || provider.CommitID == "") {
+		return MutationReceipt{}, fmt.Errorf("committed provider receipt is incomplete")
+	}
+	if provider.ReceiptFingerprint != providerReceiptFingerprint(provider) {
+		return MutationReceipt{}, fmt.Errorf("provider receipt fingerprint is stale")
+	}
+	receipt := MutationReceipt{
+		Protocol:                   mutationProtocol,
+		Outcome:                    provider.Outcome,
+		InvocationKey:              handle.InvocationKey,
+		RequestDigest:              handle.RequestDigest,
+		ResultDigest:               handle.ResultDigest,
+		PreparationFingerprint:     handle.PreparationFingerprint,
+		ProviderReceiptFingerprint: provider.ReceiptFingerprint,
+		EffectDigest:               provider.EffectDigest,
+		CommitID:                   provider.CommitID,
+	}
+	receipt.ReceiptFingerprint = mutationReceiptFingerprint(receipt)
+	return receipt, nil
+}
+
+func preparedHandle(prepared PreparedMutation) MutationHandle {
+	return MutationHandle{
+		Protocol:               prepared.Protocol,
+		PreparationID:          prepared.PreparationID,
+		InvocationKey:          prepared.InvocationKey,
+		RequestDigest:          prepared.RequestDigest,
+		ResultPayload:          append([]byte(nil), prepared.ResultPayload...),
+		ResultDigest:           prepared.ResultDigest,
+		ConcurrencyToken:       prepared.ConcurrencyToken,
+		PreparationFingerprint: prepared.PreparationFingerprint,
+	}
+}
+
+func resultForOutcome(handle MutationHandle, outcome MutationOutcome) []byte {
+	if outcome != OutcomeCommitted {
+		return nil
+	}
+	return append([]byte(nil), handle.ResultPayload...)
+}
+
+func NewPreparedMutation(
+	preparationID,
+	invocationKey,
+	requestDigest string,
+	resultPayload []byte,
+	concurrencyToken string,
+) PreparedMutation {
+	prepared := PreparedMutation{
+		Protocol:         mutationProtocol,
+		PreparationID:    preparationID,
+		InvocationKey:    invocationKey,
+		RequestDigest:    requestDigest,
+		ResultPayload:    append([]byte(nil), resultPayload...),
+		ResultDigest:     digest(resultPayload),
+		ConcurrencyToken: concurrencyToken,
+	}
+	prepared.PreparationFingerprint = preparedFingerprint(prepared)
+	return prepared
+}
+
+func NewProviderReceipt(
+	outcome MutationOutcome,
+	handle MutationHandle,
+	effectDigest,
+	commitID string,
+) ProviderCommitReceipt {
+	receipt := ProviderCommitReceipt{
+		Protocol:      mutationProtocol,
+		Outcome:       outcome,
+		PreparationID: handle.PreparationID,
+		InvocationKey: handle.InvocationKey,
+		RequestDigest: handle.RequestDigest,
+		ResultDigest:  handle.ResultDigest,
+		EffectDigest:  effectDigest,
+		CommitID:      commitID,
+	}
+	receipt.ReceiptFingerprint = providerReceiptFingerprint(receipt)
+	return receipt
+}
+
+func preparedFingerprint(prepared PreparedMutation) string {
+	copy := prepared
+	copy.ResultPayload = nil
+	copy.PreparationFingerprint = ""
+	return digest([]byte(fmt.Sprintf(
+		"%s\x00%s\x00%s\x00%s\x00%s\x00%s",
+		copy.Protocol,
+		copy.PreparationID,
+		copy.InvocationKey,
+		copy.RequestDigest,
+		copy.ResultDigest,
+		copy.ConcurrencyToken,
+	)))
+}
+
+func providerReceiptFingerprint(receipt ProviderCommitReceipt) string {
+	return digest([]byte(fmt.Sprintf(
+		"%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00%s",
+		receipt.Protocol,
+		receipt.Outcome,
+		receipt.PreparationID,
+		receipt.InvocationKey,
+		receipt.RequestDigest,
+		receipt.ResultDigest,
+		receipt.EffectDigest,
+		receipt.CommitID,
+	)))
+}
+
+func mutationReceiptFingerprint(receipt MutationReceipt) string {
+	return digest([]byte(fmt.Sprintf(
+		"%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00%s",
+		receipt.Protocol,
+		receipt.Outcome,
+		receipt.InvocationKey,
+		receipt.RequestDigest,
+		receipt.ResultDigest,
+		receipt.PreparationFingerprint,
+		receipt.ProviderReceiptFingerprint,
+		receipt.EffectDigest,
+		receipt.CommitID,
+	)))
+}
+
+func digest(value []byte) string {
+	sum := sha256.Sum256(value)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+func equalBytes(left, right []byte) bool {
+	return bytes.Equal(left, right)
+}
+
+func main() {}
