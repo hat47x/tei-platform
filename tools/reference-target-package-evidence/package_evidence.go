@@ -149,6 +149,9 @@ func parseGoList(reader io.Reader, entry, tags string) (Report, error) {
 			if p.Module == nil || !p.Module.Main {
 				return Report{}, fmt.Errorf("entry %s is not in the main module", entry)
 			}
+			if p.Name != "main" {
+				return Report{}, fmt.Errorf("entry %s is not a Go executable package (package main)", entry)
+			}
 			entryFound = true
 		}
 	}
