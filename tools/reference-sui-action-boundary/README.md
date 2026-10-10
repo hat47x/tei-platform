@@ -51,6 +51,14 @@ SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`s
 
 SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
 
+### Action送信前のDocument差分制約と検証入口（2026-10-10）
+
+[SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)に`isPureCardMove`を追加しました。元Documentと移動候補を比較し、**対象Cardのx/yと島への所属変更のみ**を許して、それ以外の情報変更が混入したリクエストは**Action dispatch前**に拒否します。これにより成功済みのSUI保存と画面の再取得結果が食い違う事例を抑制し、SUIのSource／Hold／Edge／レビュー／Affiliationの非改変を守ります。TEI HostがSUIのCardやIslandの意味論を解釈する必要はありません。
+
+SUIの`Island.summaryText`がある場合にPydanticが`summaryReviewed=false`を補完する正規化にも対応しました。`true`など異なるレビュー状態は比較エラーとして保持します。
+
+SUIへ`03_Implement/scripts/verify_native_action_boundary.sh`を追加し、**正確なHEADとクリーンな作業ツリー**を確認してPython SQLite・認可テスト、TypeScript型チェック、Vitest、Nodeアダプターテストを実行する手動検証経路を用意しました。追加実装のNodeテスト23件については、GitHub Blobから取得したソースをV8内で型注釈除去・簡易Assertionで評価する限定的な**23/23 PASS**を得ましたが、これは`node --test`も`tsc`も使わない補助検査であり、正式なNode／Vitest／Go／Pythonテスト完了を意味しません。SUI FastAPI実通信やTEI Go Hostの安全な連結は未完了です。
+
 ### SUI Actionの同期確定とPydantic正規化（2026-10-10）
 
 SUI側の`applyConfirmed`ポートは`Promise<boolean>`を許さず、**同期的に状態反映が完了した場合の`boolean true`だけ**を承認するよう改訂しました。サーバーが確定した後のReact側競合を避けるには、SUIアプリがDocument参照、ETag、未保存編集の有無を同期的に再確認し、履歴・dirty・Undo/Redoを一貫して更新する必要があります。単純な`setState`要求だけを根拠に`true`を返す実装は許容しません。
