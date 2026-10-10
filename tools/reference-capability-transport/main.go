@@ -59,9 +59,17 @@ type LegacyCarrier struct {
 	Operation             string                 `json:"operation"`
 }
 
+type TransportCarrierReceipt struct {
+	Kind                 string                  `json:"kind"`
+	Plugin               *plugin.Identity        `json:"plugin,omitempty"`
+	LegacyCapabilityKind plugin.CapabilityKind   `json:"legacyCapabilityKind,omitempty"`
+	LegacyCapabilityID   core.CanonicalID        `json:"legacyCapabilityId,omitempty"`
+}
+
 type TransportReceipt struct {
 	Schema                  string                  `json:"schema"`
 	Transport               string                  `json:"transport"`
+	Carrier                 TransportCarrierReceipt `json:"carrier"`
 	RequestID               string                  `json:"requestId"`
 	GenericContractID       string                  `json:"genericContractId"`
 	ContractFingerprint     string                  `json:"contractFingerprint"`
@@ -72,8 +80,6 @@ type TransportReceipt struct {
 	PayloadCodec             string                  `json:"payloadCodec"`
 	RequestDigest            string                  `json:"requestDigest"`
 	ResultDigest             string                  `json:"resultDigest"`
-	LegacyCapabilityKind     plugin.CapabilityKind   `json:"legacyCapabilityKind"`
-	LegacyCapabilityID       core.CanonicalID        `json:"legacyCapabilityId"`
 	AuthorityLimits          []string                `json:"authorityLimits"`
 }
 
@@ -149,8 +155,14 @@ func invokeOverProcessTransport(
 	return TransportExecution{
 		ResultPayload: append([]byte(nil), result.Payload...),
 		Receipt: TransportReceipt{
-			Schema:                  receiptSchema,
-			Transport:               "process-stdio-v1",
+			Schema:    receiptSchema,
+			Transport: "process-stdio-v1",
+			Carrier: TransportCarrierReceipt{
+				Kind:                 "tei-runtime-legacy-capability",
+				Plugin:               &carrier.Plugin,
+				LegacyCapabilityKind: carrier.CapabilityKind,
+				LegacyCapabilityID:   carrier.CapabilityID,
+			},
 			RequestID:               requestID,
 			GenericContractID:       dispatch.ContractID,
 			ContractFingerprint:     dispatch.ContractFingerprint,
@@ -161,8 +173,6 @@ func invokeOverProcessTransport(
 			PayloadCodec:             dispatch.PayloadCodec,
 			RequestDigest:            digestBytes(dispatch.Payload),
 			ResultDigest:             digestBytes(result.Payload),
-			LegacyCapabilityKind:     carrier.CapabilityKind,
-			LegacyCapabilityID:       carrier.CapabilityID,
 			AuthorityLimits: []string{
 				"transport-success-is-not-capability-conformance",
 				"transport-success-is-not-runtime-authority",
