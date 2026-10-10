@@ -160,3 +160,14 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 回帰試験には、合成WorkspaceのSemantic Dataについて `order.tei→renamed.tei` の移動、およびファイル末尾空行の追加を組み込む。どちらも意味情報とmodelref graphが変わらないことを確認しながら、Source Index fingerprintと継続用トークンの変更、および古いトークンの拒否を検証する（テストコード追加、**actual PASS未確認**）。
 
 なお、`BuildSourceIndex` と `sourcebridge.NewResolver` における原ファイル検証は同時読取の競合を完全には閉じない。複合トークンは複数CLI呼出し間の**観測結果の変化検出**であり、単一読取トランザクションの保証、OSのatomic open、Shared Acceptanceの書込み排他ではない。Source全体を本文に展開して後解析する方式にも、同じスナップショット固定・情報開示制御が別途必要となる。
+
+
+### 8.3 CLI引数契約と候補Graphの決定性（2026-10-10）
+
+- `inspect`/`trace` は、未知フラグ・型変換不能値・他コマンド用の既知フラグをJSON `INVALID_ARGUMENT` と終了コード2で返す。CLI入力が正当だと確認する前に、正本をロードしない。失敗時に標準エラーだけが唯一の診断経路にならないよう、選択コマンドに限りFlagSetの`ContinueOnError`でparse結果を受け取る。
+- `modelref.TraceDirect` のスナップショットv2は、GraphのNode/Edge/Evidenceを順序に依存しない形で直列化し、Rule fingerprintと選択Subject/Directionを結合する。重複したNode/Edgeは勝手に除去しない。同じgraphを異なる走査順で生成しても`STALE_SNAPSHOT`にならない一方、重複宣言・意味変更ならtokenが変わる。
+- 不正なSource Evidenceが複数ある場合の`Issue`も同じ根拠順序で選択し、全件出力のrow情報とスナップショットの間の整合を保つ。`summary`は未解決件数を全辺に対して数えるがrow自体は構築しない。
+- Source Indexの同開始位置・同roleの参照は終了offset等で正規化順序を決定し、元の入力順によるfingerprint変化を避ける。
+- 上記の静的修正だけでは品質Gateは通過しない。検証実施手順と未証明の境界は `docs/conformance/cli-c1-trace-integration-gate.md` を参照する。
+
+結果の階層は `result.snapshotFingerprint`（CLI継続用のWorkspace合成token）と `result.trace.snapshotFingerprint`（Goモデルの候補Graph限定token）を意図的に区別する。これは生成AIとUI Adapterが継続の対象を誤解しないための契約であり、新たなAuthorityや二重管理を意味しない。
