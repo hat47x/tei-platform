@@ -88,6 +88,9 @@ func TestManualExternalAndThreeTriggerKindsAreNotFunctionsOrAuthority(t *testing
 	if !strings.Contains(d,"style=dashed") || !strings.Contains(d,"shape=note") || !strings.Contains(d,"style=dotted") {
 		t.Fatalf("DOT lost proposal/manual/Function distinction: %s",d)
 	}
+	for _,want:=range []string{"business Handoff (not runtime):","other-procedure:warehouse.receive/WH-00","actor candidate: sales operator"} {
+		if !strings.Contains(d,want) { t.Errorf("DOT lost Business context %q: %s",want,d) }
+	}
 }
 
 func TestMissingFunctionIsSourceAware(t *testing.T) {
