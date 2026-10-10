@@ -82,4 +82,8 @@ process Pluginは、Plugin LockだけでなくPermission Grant、Resource Bindin
 
 processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
 
+generic Capability ContractをApplication Runtimeで使う場合も、Capability resolver自体をRuntime Authorityにしません。Referenceでは、generic Providerを既存Environment PlanのCapabilityへ明示的に対応付け、実呼出しをproduction Runtime Registryへ戻します。これにより、Permission Grant、Resource Lease、artifact verification、Sandbox等の既存境界をgeneric Invocationから迂回しない構造をpressureしています。
+
+この接続はmigration用Referenceであり、productionの`CapabilityKind`を置き換えたものではありません。また、production Runtimeが返すInvocation Provenanceをgeneric Invocationの共通Evidenceとして運ぶ仕組みは未確定です。
+
 詳しくは [Security / Trust Boundary](security.md) を参照してください。
