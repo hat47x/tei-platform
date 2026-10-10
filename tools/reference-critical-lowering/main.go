@@ -32,7 +32,13 @@ type Requirement struct {
 	Effect   string `json:"effect"`
 	// This identity is a mandatory part of the accepted contract, not an optional sidecar.
 	RequiredSlots []Ref `json:"requiredContextSlots"`
-	Provider      Ref   `json:"explicitProvider"`
+}
+
+// Wiring is an application/target choice; it cannot modify Accepted meaning.
+type Wiring struct {
+	Scope    string `json:"scope"`
+	Contract Ref    `json:"contract"`
+	Provider Ref    `json:"provider"`
 }
 
 type Candidate struct {
@@ -141,7 +147,7 @@ func has(values []string, wanted string) bool {
 
 // Lower checks stage crossings only. Existing parsers, resolvers, and Driver still
 // own meaning, capability selection, effect realization, and execution.
-func Lower(c Candidate, a Acceptance, providers []Provider, target Target, trust Trust) (Plan, error) {
+func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, target Target, trust Trust) (Plan, error) {
 	if trust == nil || !c.Source.valid() || !c.Language.valid() || !a.Snapshot.valid() || !a.Receipt.valid() {
 		return Plan{}, reject("invalid-boundary")
 	}
@@ -165,7 +171,7 @@ func Lower(c Candidate, a Acceptance, providers []Provider, target Target, trust
 	steps := make([]Step, 0, len(c.Requirements))
 	seen := make(map[string]bool)
 	for _, r := range c.Requirements {
-		if !r.Contract.valid() || !r.Provider.valid() || r.Scope == "" || r.Effect == "" {
+		if !r.Contract.valid() || r.Scope == "" || r.Effect == "" {
 			return Plan{}, reject("invalid-boundary")
 		}
 		key := r.Scope + ":" + r.Contract.ID
@@ -176,10 +182,25 @@ func Lower(c Candidate, a Acceptance, providers []Provider, target Target, trust
 		if !has(target.Effects, r.Effect) {
 			return Plan{}, reject("unsupported-target")
 		}
+		var pin *Wiring
+		for i := range wiring {
+			if wiring[i].Scope == r.Scope && wiring[i].Contract.ID == r.Contract.ID {
+				if pin != nil {
+					return Plan{}, reject("ambiguous-wiring")
+				}
+				pin = &wiring[i]
+			}
+		}
+		if pin == nil || !pin.Provider.valid() {
+			return Plan{}, reject("missing-wiring")
+		}
+		if pin.Contract != r.Contract {
+			return Plan{}, reject("contract-drift")
+		}
 		var selected *Provider
 		for i := range providers {
-			if providers[i].Identity.ID == r.Provider.ID {
-				if providers[i].Identity.Version != r.Provider.Version {
+			if providers[i].Identity.ID == pin.Provider.ID {
+				if providers[i].Identity.Version != pin.Provider.Version {
 					continue
 				}
 				if selected != nil {
@@ -190,14 +211,14 @@ func Lower(c Candidate, a Acceptance, providers []Provider, target Target, trust
 		}
 		if selected == nil {
 			for _, p := range providers {
-				if p.Identity.ID == r.Provider.ID {
+				if p.Identity.ID == pin.Provider.ID {
 					return Plan{}, reject("incompatible-version")
 				}
 			}
 			return Plan{}, reject("missing-capability")
 		}
 		p := *selected
-		if p.Identity != r.Provider || p.Contract.ID != r.Contract.ID {
+		if p.Identity != pin.Provider || p.Contract.ID != r.Contract.ID {
 			return Plan{}, reject("contract-drift")
 		}
 		if p.Contract.Version != r.Contract.Version {
