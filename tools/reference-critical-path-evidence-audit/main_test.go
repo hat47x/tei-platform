@@ -221,3 +221,55 @@ func TestJSONDepthBoundRejectsPathologicalInput(t *testing.T) {
 		t.Fatal("pathological nesting was accepted")
 	}
 }
+
+func TestCLIReviewRequiredRemainsUnqualified(t *testing.T) {
+	b, err := json.Marshal(fixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "packet.json")
+	if err := os.WriteFile(path, b, 0600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err != nil {
+		t.Fatalf("reviewable packet should emit a report: %v", err)
+	}
+	var result Report
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "REVIEW_REQUIRED" || result.ProductGate != "UNQUALIFIED" {
+		t.Fatalf("CLI accidentally granted Product Gate: %+v", result)
+	}
+}
+
+func TestCLIIncompleteEmitsDiagnosticAndFails(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Contract.EvidenceClass = "source-only"
+	p.Qualification.FullHealth = "NOT_RUN"
+	p.Web.RunMode = "handler-only"
+	b, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "packet.json")
+	if err := os.WriteFile(path, b, 0600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil {
+		t.Fatal("incomplete claim did not fail")
+	}
+	var result Report
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "INCOMPLETE" || result.ProductGate != "UNQUALIFIED" ||
+		!has(result, "E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED") ||
+		!has(result, "E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED") ||
+		!has(result, "TRUSTED_FULL_HEALTH_NOT_RECORDED") {
+		t.Fatalf("CLI omitted essential incompleteness: %+v", result)
+	}
+}
