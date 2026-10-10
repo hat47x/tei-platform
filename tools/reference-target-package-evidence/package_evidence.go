@@ -23,6 +23,7 @@ type listedModule struct {
 
 type listedPackage struct {
 	ImportPath string                 `json:"ImportPath"`
+	Dir        string                 `json:"Dir"`
 	Name       string                 `json:"Name"`
 	Module     *listedModule          `json:"Module"`
 	GoFiles    []string               `json:"GoFiles"`
@@ -130,6 +131,55 @@ func parseGoList(reader io.Reader, entry, tags string) (Report, error) {
 	return result, nil
 }
 
+// validateTrackedSources checks that every compiled main-module Go/Cgo file
+// reported by go list is in the Git index. git status --untracked-files=all
+// alone does not expose ignored source files that Go could still compile.
+func validateTrackedSources(raw []byte, root string, tracked map[string]struct{}) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	for {
+		var p listedPackage
+		if err := dec.Decode(&p); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return fmt.Errorf("decode source inventory: %w", err)
+		}
+		if p.Module == nil || !p.Module.Main {
+			continue
+		}
+		if !filepath.IsAbs(p.Dir) {
+			return fmt.Errorf("package %s has no absolute source directory", p.ImportPath)
+		}
+		relDir, err := filepath.Rel(root, p.Dir)
+		if err != nil || relDir == ".." || strings.HasPrefix(relDir, ".."+string(filepath.Separator)) || filepath.IsAbs(relDir) {
+			return fmt.Errorf("main-module package %s is outside repository", p.ImportPath)
+		}
+		for _, file := range append(append([]string(nil), p.GoFiles...), p.CgoFiles...) {
+			if file == "" || file == "." || file == ".." || filepath.IsAbs(file) || filepath.Base(file) != file {
+				return fmt.Errorf("package %s has unsafe compiled file name %q", p.ImportPath, file)
+			}
+			rel := filepath.ToSlash(filepath.Join(relDir, file))
+			if _, ok := tracked[rel]; !ok {
+				return fmt.Errorf("compiled source %q in package %s is not tracked by Git", rel, p.ImportPath)
+			}
+		}
+	}
+}
+
+func trackedGitFiles() (map[string]struct{}, error) {
+	output, err := exec.Command("git", "ls-files", "--cached", "-z").Output()
+	if err != nil {
+		return nil, fmt.Errorf("git tracked file inventory unavailable: %w", err)
+	}
+	files := make(map[string]struct{})
+	for _, file := range strings.Split(string(output), "\x00") {
+		if file != "" {
+			files[file] = struct{}{}
+		}
+	}
+	return files, nil
+}
+
 func validEntry(entry string) bool {
 	if !strings.HasPrefix(entry, "./") || strings.ContainsAny(entry, "*\\ \t\r\n") {
 		return false
@@ -204,6 +254,17 @@ func produceEvidence(entry, tags string) (Report, error) {
 	}
 	report, err := parseGoList(bytes.NewReader(output), strings.TrimSpace(string(entryOut)), tags)
 	if err != nil {
+		return Report{}, err
+	}
+	tracked, err := trackedGitFiles()
+	if err != nil {
+		return Report{}, err
+	}
+	root, err := os.Getwd()
+	if err != nil {
+		return Report{}, err
+	}
+	if err := validateTrackedSources(output, root, tracked); err != nil {
 		return Report{}, err
 	}
 	envCmd := exec.Command("go", "env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS")
