@@ -39,6 +39,16 @@ func TestCompletePacketNeverGrantsProductGate(t *testing.T) {
 		t.Fatalf("%+v", result)
 	}
 }
+func TestReviewFingerprintMustMatchCandidate(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Acceptance.ReviewFingerprint = "sha256:" + strings.Repeat("f", 64)
+	r := Audit(p, h, m)
+	if !has(r, "ACCEPTANCE_REVIEW_FINGERPRINT_MISMATCH") || r.Status != "INCOMPLETE" {
+		t.Fatalf("review approved a different candidate: %+v", r)
+	}
+}
+
 func TestSyntheticWebCannotClaimE2(t *testing.T) {
 	p := fixture()
 	p.Web.ProviderKind = "synthetic"
