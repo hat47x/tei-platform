@@ -51,7 +51,7 @@ func (s *JSONDocumentStore) Commit(_ context.Context, in Intent) (string, error)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.documentID == "" || in.DocumentID != s.documentID {
+	if s.documentID == "" || in.ResourceID != s.documentID {
 		return "", ErrDenied
 	}
 	if in.ExpectedRevision != s.revision {
