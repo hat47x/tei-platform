@@ -51,6 +51,19 @@ go run ./tools/reference-target-package-evidence \
 
 E1の最終判定には、さらに`go build`後のbytes、digest、link済みsymbol、機能・認可の回帰試験が必要です。共通パッケージに未使用コードが残っているか、リンク時に削除されたかは、この比較だけでは分かりません。
 
+## 実TEIの二つのGoバイナリを局所計測する
+
+検証可能なLinux/Go環境と**追跡外に置く新しい絶対出力先**がある場合は、手動の読取り専用計測を実行できます。既存のGoコードやGit refを変更せず、成果物とJSON証拠だけを指定の外部ディレクトリへ保存します。
+
+```sh
+bash tools/reference-target-package-evidence/measure_first_vs_frozen.sh \
+  /tmp/tei-first-vs-frozen-measure-001
+```
+
+このスクリプトは同一のGit HEADと`GOOS=linux`・`CGO_ENABLED=0`の条件で、`-compare-entry`からのE0依存差分、二つの`go build -trimpath -ldflags=-buildid=`成果物、SHA-256、byte数、`go tool nm`によるシンボル一覧を採取します。ビルド前後にGit checkoutがcleanかつHEAD不変であることを確認し、凍結専用バイナリにWorkspace/Driverのシンボルがあれば失敗させます。出力先はリポジトリ外かつ未作成である必要があります。成果物と`measurement.json`は出力先に残し、保存前に検査が失敗した場合は一時ファイルを削除します。
+
+**比較対象は同等の業務機能を持ちません。** 第一Web Targetは業務シナリオを含む既存の統合Referenceですが、凍結版はProjectionの読取り配信だけです。バイナリサイズ・シンボル数の差は**Authoring依存を持たない実行入口が構築できるというE0→E1の限定証拠**であり、`order_entry`の機能・契約・認証認可を維持した実配備最適化の証拠ではありません。またこの手動スクリプトの成功は、`tools/repository-health-check.sh`のtrusted exact-head full PASSに代わりません。
+
 ## この証拠で言えること／言えないこと
 
 **観測対象**は一つの静的なGo実行可能ビルド入口（`package main`）です。`go list`で単なるGoライブラリを指定して得た依存閉包を、実行バイナリの入口の証拠として採用しないよう拒否します。第一Web Targetの`-application`はサーバーの**実行時引数**なので、それを二通りにしても別のGo package closureにはなりません。アプリごとに異なる実装を物理的に除外したければ、異なるcompile-time入口を作り、同じ条件でそれぞれを測る必要があります。
