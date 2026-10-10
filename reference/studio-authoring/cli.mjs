@@ -84,7 +84,7 @@ function main(argv) {
   const temporary = mkdtempSync(join(tmpdir(), "tei-studio-review-"));
   try {
     const candidatePath = join(temporary, "candidate.json");
-    writeFileSync(candidatePath, JSON.stringify(candidate) + "\\n", { mode: 0o600 });
+    writeFileSync(candidatePath, JSON.stringify(candidate) + "\n", { mode: 0o600 });
     const run = (cmd, extra = []) => {
       const result = spawnSync("go", ["run", "./tools/reference-shared-acceptance",
         cmd, "-workspace", workspace, "-candidate", candidatePath, ...extra],
