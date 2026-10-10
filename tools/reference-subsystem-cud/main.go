@@ -67,10 +67,19 @@ type Diagnostic struct {
 	Explanation string `json:"explanation"`
 }
 
+type Coverage struct {
+	WorldData       int `json:"worldData"`
+	WorldPatterns   int `json:"worldPatterns"`
+	OwnerFacts      int `json:"ownerFacts"`
+	FunctionIOFacts int `json:"functionIOFacts"`
+	ProcedureSteps  int `json:"procedureSteps"`
+}
+
 type Report struct {
 	SchemaVersion  string       `json:"schemaVersion"`
 	AuthorityLimit string       `json:"authorityLimit"`
 	Status         string       `json:"status"`
+	Coverage       Coverage     `json:"coverage"`
 	Diagnostics    []Diagnostic `json:"diagnostics"`
 }
 
@@ -95,6 +104,10 @@ func Inspect(w World, f Facts) Report {
 		for _, p := range a.Patterns {
 			patternCount[p.ID]++
 		}
+	}
+	r.Coverage = Coverage{WorldData: len(dataCount), WorldPatterns: len(patternCount), OwnerFacts: len(f.Owners), FunctionIOFacts: len(f.FunctionIO), ProcedureSteps: len(f.ProcedureSteps)}
+	if len(f.Owners) == 0 && len(f.FunctionIO) == 0 && len(f.ProcedureSteps) == 0 {
+		add("EMPTY_CANDIDATE_SCOPE", "unresolved", "facts", "", "at least one explicit declaration is required before a clean report is possible")
 	}
 	if len(w.Semantics) == 0 || len(dataCount) == 0 {
 		add("WORLD_DATA_UNAVAILABLE", "unresolved", "world", "", "semantic Data must be read from a specified World; do not infer it from fact declarations")
