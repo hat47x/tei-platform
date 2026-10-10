@@ -524,11 +524,15 @@ func TestStructurallyForgedPlansFailBeforeTrustedDispatch(t *testing.T) {
 	}{
 		{"unfingerprinted-contract", func(p *Plan) { p.Steps[0].Contract.Fingerprint = "" }, "invalid-plan-step"},
 		{"mixed-targets", func(p *Plan) { p.Steps[1].Target = "desktop" }, "invalid-plan-step"},
+		{"reversed-step-order", func(p *Plan) { p.Steps[0], p.Steps[1] = p.Steps[1], p.Steps[0] }, "noncanonical-plan-order"},
 		{"duplicate-capability", func(p *Plan) { p.Steps[1] = p.Steps[0] }, "duplicate-capability"},
 		{"invalid-runtime-dependency", func(p *Plan) { p.Steps[0].RuntimeDeps = []Ref{{}} }, "invalid-runtime-dependency"},
 		{"duplicate-runtime-dependency", func(p *Plan) {
 			p.Steps[0].RuntimeDeps = append(p.Steps[0].RuntimeDeps, p.Steps[0].RuntimeDeps[0])
 		}, "invalid-runtime-dependency"},
+		{"reversed-runtime-dependency", func(p *Plan) {
+			p.Steps[0].RuntimeDeps = []Ref{ref("runtime.z"), ref("runtime.a")}
+		}, "noncanonical-runtime-dependency"},
 		{"erased-required-context", func(p *Plan) { p.Steps[1].RequiredSlots = []Ref{{}} }, "invalid-context-declaration"},
 		{"corrupt-data-contract", func(p *Plan) { p.Steps[1].DataContracts = []DataNeed{{}} }, "invalid-data-requirement"},
 		{"duplicate-data-contract", func(p *Plan) {
