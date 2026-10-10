@@ -717,3 +717,40 @@ Go 1.23.2の**独立コピー**で `GO111MODULE=off go test -race -count=1 -v ma
 #1124の2-op Proposalを同一scratch Source `R0→R1`で受理し、#1121/#1127の**実Web Target**がR1で選択された4規則を参照することを、正値・新単価0の負値両方で確認する。ここで`httptest`や`handler-only`の負例を`running-server`へ無条件に読み替えない。#1126はDB Schema readiness/actual Providerの独立条件を判定する。どちらも既存Referenceを再利用し、新しい正本・Runner・Synthetic Backendは増やさない。
 
 **Gate**: G0のconsumer交換は増えたが正式接合未取得。G1/G2未合格、G3/G4未合格。§22を含むPRは引き続きDraftとする。
+
+
+## 23. WebのSource revisionとB/R/Tは異なる証拠である（2026-10-10）
+
+### 実行中WebのHTTP応答だけでは受理済みR1を証明できない
+
+mainの `tools/reference-first-web-target/main.go` は `-workspace` を読み取り、`projection.go` と `server.go` はWeb応答へ `handoverBaselineId`、`baselineRepositoryRevision`、`targetBuildRevision` を出す。一方、**Shared Acceptanceが算出するmanaged-source `modelRevision` は現manifest/Command envelopeに含まれない**。
+
+従って、ブラウザ/HTTPでCommandとValidationの結果を観測しても、`R0→R1`の**どのaccepted SourceをWeb Targetが実際にロードしたか**は応答だけでは立証できない。Git SHAの `T` とSource revision `R1`を文字列一致させるのも誤りである。
+
+PR #1135のE1 preflight `tei.critical-path-evidence/v0` に、以下の**独立した申告欄**を追加した。
+
+| 追加欄 | 最小必要内容 | 証跡上の限界 |
+| --- | --- | --- |
+| `web.workspaceRevisionReceipt` | 実際にWebへ渡したscratch `-workspace`を指定してShared Acceptance `revision -workspace` を観測したR1、Source locatorと観測時点。少なくとも起動前後の一致・変化有無を提示 | Webがロードした正確な瞬間や競合不在を文字列だけでは証明しない |
+| `web.targetLaunchReceipt` | 起動した**実Target**のコマンド引数（credential除外）、使用Workspace、Target artifact/revision `T`、process・loopback endpoint・稼働確認・停止時点 | 起動申告は現行Host Authorityや実DB対応を保証しない |
+
+これらはWeb正負HTTP応答receiptと別物とし、未記入・同一receiptを使い回した場合は `E1_WEB_WORKSPACE_R1_AND_TARGET_LAUNCH_PROVENANCE_MISSING` で `INCOMPLETE`。既存 `web.acceptedRevision` と `acceptance.r1` の一致という**申告だけ**では、Web実行時のR1使用を証明できない。CLIは依然としてファイルの実体や真偽を検査しないため、`productGate` は常に `UNQUALIFIED`。提出された生証拠を別reviewで突合する。
+
+### 並走#1121のWeb HTTP smoke testをE1へ誤転用しない
+
+#1121の[Draft PR #1141](https://github.com/hat47x/tei-platform/pull/1141) には `TEI_LOWERING_WEB_SMOKE=1` で、既存Web実行バイナリを`go build`し、loopback HTTPを起動して3件の既存Validation・Command・合成Observationを観測するopt-in Go試験が追加された。**これは既存Web Targetのlive process接点として有用**だが、変更後scratch R1の4番目の単価Validationを評価しておらず、E1のSource変更→Web効果を実証するものではない。#1127がlive serverの起動やHTTP client処理を重複実装する前に、#1141の実装上の足場と既存Gate C runnerを比較・再利用する。
+
+さらに#1141の現在の `web_target_smoke_test.go` には、横断証跡として確認が必要な二点がある。
+
+1. Web起動で `-baseline-id B -baseline-revision <head>` を渡している。既存Gate B handoverの固定基準 `R=e5231839a5dcc62cce1181a2731fcb7c70d16736` と、今回実行する候補Targetの `T=<head>` は**別identity**。単にsmoke用placeholderとしてB/Rを埋めない。実基準Rを使う、またはBとしての証拠と称さない方法へ改める。
+2. 事前事後clean判定は `git status --porcelain --untracked-files=all` のみ。ignored path、`assume-unchanged`/`skip-worktree` 等の非標準index状態を見落とし得る。trusted qualificationでは既存の検査手順を再利用し、clean判定の高さを別途明示する。
+
+このsmoke testは本レーンで**ソースを静的照合したのみ**であり、追加試験や実Web serverをここで動かしたという意味ではない。
+
+### 最短の実証手順
+
+1. #1124: accepted scratch SourceのR0→R1、review/decision/source reloadを実際のE2Eで証明。
+2. #1121/#1127: 同一scratchを使用するWeb TargetがR1を読んだことを、independent revisionと起動証拠で対応付け、正値4規則と単価0（テスト限定）の拒否を**live Web**で取得。通常のWeb APIへテスト専用mutation機能を混入させない。
+3. #1126/#1127: physical DB/Host Authorization/independent readはE2で別途取得。外部DB効果をsynthetic Observationの結果から推論しない。
+
+**状態**: E1証拠の受渡し欠落を検査するGoコード、負例Goテスト、README、現状fixtureを更新済み。今回の更新分のtrusted full checkout Go test / Repository Health / live Web / actual DBは**NOT RUN**。G1/G2もPASSにしない。
