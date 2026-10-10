@@ -119,6 +119,9 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     studioReview.sourceWriteByThisCommand === false &&
     studioReview.modelRevision === beforeRevision,
     label + ": one-shot Studio review is read-only, not Acceptance");
+  checked(studioReview.reviewConsistency.status === "reviewed-consistent" &&
+    studioReview.reviewConsistency.readyToAccept === false,
+    label + ": Preview and Review agree on R0 without conferring approval");
   checked(studioReview.preview.acceptable === true &&
     studioReview.review.reviewFingerprint === review.reviewFingerprint,
     label + ": Studio review delegates exactly to Shared Acceptance");
