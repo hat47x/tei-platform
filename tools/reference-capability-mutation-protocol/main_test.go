@@ -185,6 +185,19 @@ func (j *memoryJournal) RecordOutcome(_ context.Context, receipt MutationReceipt
 	return nil
 }
 
+func (j *memoryJournal) LoadPrepared(_ context.Context, invocationKey string) (MutationHandle, bool, error) {
+	handle, ok := j.prepared[invocationKey]
+	if !ok {
+		return MutationHandle{}, false, nil
+	}
+	return cloneHandle(handle), true, nil
+}
+
+func (j *memoryJournal) LoadOutcome(_ context.Context, invocationKey string) (MutationReceipt, bool, error) {
+	receipt, ok := j.outcomes[invocationKey]
+	return receipt, ok, nil
+}
+
 func numericResultValidator(value []byte) error {
 	if _, err := strconv.Atoi(string(value)); err != nil {
 		return fmt.Errorf("result is not an integer")
@@ -554,5 +567,73 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 			rightReceipt,
 			provider,
 		)
+	}
+}
+
+
+func TestUnknownCommitCanBeRecoveredFromJournalAfterExecutorRestart(t *testing.T) {
+	provider := newLedgerProvider()
+	provider.commitErrorAfterApply = true
+	journal := newMemoryJournal()
+	firstExecutor := newExecutor(provider, journal)
+
+	execution, err := firstExecutor.Invoke(context.Background(), MutationRequest{
+		InvocationKey: "order-restart",
+		Payload:       []byte("14"),
+	})
+	if err == nil || !errors.Is(err, ErrCommitUnknown) ||
+		execution.Outcome != OutcomeUnknown {
+		t.Fatalf("expected unknown after synthetic transport loss: execution=%+v err=%v", execution, err)
+	}
+
+	provider.commitErrorAfterApply = false
+	restartedExecutor := newExecutor(provider, journal)
+	reconciled, err := restartedExecutor.ReconcileByInvocationKey(
+		context.Background(),
+		"order-restart",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reconciled.Outcome != OutcomeCommitted ||
+		string(reconciled.Result) != "14" ||
+		reconciled.Receipt == nil ||
+		provider.effectCount != 1 {
+		t.Fatalf("restart recovery failed: reconciled=%+v provider=%+v", reconciled, provider)
+	}
+}
+
+func TestReconcileByInvocationKeyUsesJournaledOutcomeWithoutProviderReplay(t *testing.T) {
+	provider := newLedgerProvider()
+	journal := newMemoryJournal()
+	executor := newExecutor(provider, journal)
+
+	first, err := executor.Invoke(context.Background(), MutationRequest{
+		InvocationKey: "order-journaled",
+		Payload:       []byte("15"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Outcome != OutcomeCommitted {
+		t.Fatalf("first execution=%+v", first)
+	}
+	beforeCommits := provider.commitCount
+
+	restarted := newExecutor(provider, journal)
+	reconciled, err := restarted.ReconcileByInvocationKey(
+		context.Background(),
+		"order-journaled",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reconciled.Outcome != OutcomeCommitted ||
+		reconciled.Receipt == nil ||
+		reconciled.Receipt.ReceiptFingerprint != first.Receipt.ReceiptFingerprint {
+		t.Fatalf("journaled outcome was not recovered: %+v", reconciled)
+	}
+	if provider.commitCount != beforeCommits {
+		t.Fatalf("journaled outcome triggered provider commit replay: before=%d after=%d", beforeCommits, provider.commitCount)
 	}
 }
