@@ -378,6 +378,8 @@ func TestEpistemicDetailExplainsCurrentReviewHistory(t *testing.T) {
 		event.Kind != ReviewEventConfirm ||
 		event.Reviewer != "human" ||
 		event.Method != reviewMethodHuman ||
+		event.MeaningFingerprint != "sha256:3333333333333333333333333333333333333333333333333333333333333333" ||
+		event.StatementKind != ModeFact ||
 		event.OccurredAt != "2026-10-06T12:05:00Z" ||
 		event.Binding != "current" {
 		t.Fatalf("unexpected review history summary: %+v", event)
@@ -460,8 +462,10 @@ func TestEpistemicDetailMarksStaleVisibleReviewHistory(t *testing.T) {
 			break
 		}
 	}
-	if stale == nil || stale.Binding != "stale" {
-		t.Fatalf("stale review event was not labeled stale: %+v", result.Content.ReviewHistory)
+	if stale == nil || stale.Binding != "stale" ||
+		stale.MeaningFingerprint != "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ||
+		stale.StatementKind != ModeFact {
+		t.Fatalf("stale review event did not preserve reviewed subject identity: %+v", result.Content.ReviewHistory)
 	}
 }
 
