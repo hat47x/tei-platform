@@ -151,6 +151,8 @@ func TestJSONDocumentStoreMalformedAndNonFinite(t *testing.T) {
 		{"missing y", `{"version":1,"id":"doc","cards":[{"id":"a","x":0}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
 		{"null x", `{"version":1,"id":"doc","cards":[{"id":"a","x":null,"y":0}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
 		{"null y", `{"version":1,"id":"doc","cards":[{"id":"a","x":0,"y":null}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
+		{"unrelated card missing x", `{"version":1,"id":"doc","cards":[{"id":"a","x":0,"y":0},{"id":"b","y":12}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
+		{"unrelated card null y", `{"version":1,"id":"doc","cards":[{"id":"a","x":0,"y":0},{"id":"b","x":10,"y":null}]}`, MovePayload{CardID: "a", X: 1, Y: 2}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
