@@ -317,8 +317,19 @@ func e5PatternTargetsFixture() (ir.World, sourceindex.Index) {
         {sourceindex.Subject{Kind:"query",ID:"order_entry.orders"}, "applications/order-entry/queries/orders.tei"},
     }
     for _, r := range refs {
-        index.Artifacts = append(index.Artifacts,
-            sourceindex.Artifact{Path:r.path,Fingerprint:"sha256:abababababababababababababababababababababababababababababababab"})
+        // A Namespace and its Data can be declared in the same physical file.
+        // The Index stores one Artifact per path but multiple Subject references.
+        found := false
+        for _, artifact := range index.Artifacts {
+            if artifact.Path == r.path {
+                found = true
+                break
+            }
+        }
+        if !found {
+            index.Artifacts = append(index.Artifacts,
+                sourceindex.Artifact{Path:r.path,Fingerprint:"sha256:abababababababababababababababababababababababababababababababab"})
+        }
         index.References = append(index.References,
             sourceindex.Reference{Subject:r.subject,ArtifactPath:r.path,Role:sourceindex.RoleDefinition})
     }
