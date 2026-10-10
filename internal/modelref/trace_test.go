@@ -173,3 +173,22 @@ func TestTraceDirectConflictingRuleIsUnresolved(t *testing.T) {
 		t.Fatalf("conflicting meaning was accepted: %+v %v", got, err)
 	}
 }
+
+func TestTraceDirectNormalizesEvidenceWithoutMutatingGraph(t *testing.T) {
+	g, rules, fn := traceGraph()
+	first := modelref.Evidence{Authority: "proposal", Context: "a"}
+	second := modelref.Evidence{Authority: "proposal", Context: "b"}
+	g.Edges[0].Evidence = []modelref.Evidence{second, first}
+	before := append([]modelref.Evidence(nil), g.Edges[0].Evidence...)
+	a, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "outgoing"})
+	if err != nil { t.Fatal(err) }
+	if !reflect.DeepEqual(before, g.Edges[0].Evidence) {
+		t.Fatalf("trace mutated its input graph: %+v", g.Edges[0].Evidence)
+	}
+	g.Edges[0].Evidence[0], g.Edges[0].Evidence[1] =
+		g.Edges[0].Evidence[1], g.Edges[0].Evidence[0]
+	b, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "outgoing"})
+	if err != nil || !reflect.DeepEqual(a.Rows, b.Rows) {
+		t.Fatalf("unordered evidence changed trace output: %+v versus %+v (%v)", a, b, err)
+	}
+}
