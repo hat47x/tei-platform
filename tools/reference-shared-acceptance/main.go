@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -401,7 +402,7 @@ func isReferenceBaseline(workspacePath string) bool {
 	// Keep the lexical guard, then resolve aliases to the protected baseline.
 	// Otherwise -workspace may name a symlink whose last components do not
 	// contain reference/workspace, bypassing the explicit write opt-in.
-	if strings.HasSuffix(filepath.ToSlash(abs), "/reference/workspace") {
+	if strings.HasSuffix(referencePathText(abs), "/reference/workspace") {
 		return true
 	}
 	// Resolve the original spelling before Abs cleans ".." segments: a symlink
@@ -415,7 +416,7 @@ func isReferenceBaseline(workspacePath string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.HasSuffix(filepath.ToSlash(resolvedAbs), "/reference/workspace")
+	return strings.HasSuffix(referencePathText(resolvedAbs), "/reference/workspace")
 }
 
 
@@ -428,7 +429,7 @@ func isReferenceBaselineOutput(path string) bool {
 		return false
 	}
 	protected := func(p string) bool {
-		p = filepath.ToSlash(p)
+		p = referencePathText(p)
 		return strings.Contains(p, "/reference/workspace/") ||
 			strings.HasSuffix(p, "/reference/workspace") ||
 			strings.HasSuffix(p, "/reference/world.json")
@@ -475,4 +476,16 @@ func isReferenceBaselineOutput(path string) bool {
 			current = parent
 		}
 	}
+}
+
+// referencePathText preserves case-sensitive matching on Unix-like systems,
+// but uses the filesystem's case-insensitive spelling on Windows. Without
+// this normalization a caller could spell REFERENCE/WORKSPACE in different
+// case and bypass an otherwise matching baseline path.
+func referencePathText(path string) string {
+	path = filepath.ToSlash(path)
+	if runtime.GOOS == "windows" {
+		return strings.ToLower(path)
+	}
+	return path
 }
