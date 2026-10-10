@@ -79,6 +79,25 @@ func TestAcceptRejectsInconsistentProjection(t *testing.T) {
 	}
 }
 
+// A pinned digest authenticates bytes, not the interpretation of ambiguous
+// nested JSON objects by every downstream consumer.
+func TestAcceptRejectsNestedDuplicateKeysAndDeepInputs(t *testing.T) {
+	bad := []string{
+		`{ "applicationId":"order_entry", "handoverBaselineId":"B", "baselineRepositoryRevision":"R1", "targetBuildRevision":"T1", "patterns":[{"id":"first", "id":"second"}] }`,
+		`{ "applicationId":"order_entry", "handoverBaselineId":"B", "baselineRepositoryRevision":"R1", "targetBuildRevision":"T1", "patterns":[{"nested":{"x":1,"x":2}}] }`,
+	}
+	bad = append(bad, validManifest[:len(validManifest)-1]+`,"nested":`+strings.Repeat("[", 129)+`null`+strings.Repeat("]", 129)+`}`)
+	for _, raw := range bad {
+		if _, err := Accept([]byte(raw), fixture(raw)); err == nil {
+			t.Fatalf("ambiguous or excessively nested JSON accepted: %s", raw[:min(len(raw), 160)])
+		}
+	}
+	good := validManifest[:len(validManifest)-1] + `,"patternsV2":[{"id":"a"},{"id":"b"}],"metadata":{"x":1,"y":2}}`
+	if _, err := Accept([]byte(good), fixture(good)); err != nil {
+		t.Fatalf("valid extensible nested manifest rejected: %v", err)
+	}
+}
+
 func TestHandlerDoesNotExposeBusinessRoutes(t *testing.T) {
 	s, err := Accept([]byte(validManifest), fixture(validManifest))
 	if err != nil {
