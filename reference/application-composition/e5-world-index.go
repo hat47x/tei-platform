@@ -237,18 +237,15 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
 // e5PairedEvidence provides one transport envelope for the diagnostic and the
 // Source Index obtained from the same Load/BuildSourceIndex operation.
 // It is not cryptographic provenance, complete dependency closure, or authority.
-func e5PairedEvidence(report e5Report, index sourceindex.Index) struct {
+type e5EvidenceEnvelope struct {
     Format string `json:"format"`
     Report e5Report `json:"report"`
     Index sourceindex.Index `json:"index"`
     Qualification string `json:"qualification"`
-} {
-    return struct {
-        Format string `json:"format"`
-        Report e5Report `json:"report"`
-        Index sourceindex.Index `json:"index"`
-        Qualification string `json:"qualification"`
-    }{
+}
+
+func e5PairedEvidence(report e5Report, index sourceindex.Index) e5EvidenceEnvelope {
+    return e5EvidenceEnvelope{
         Format: "tei.e5-paired-source-observation.v1",
         Report: report,
         Index: index,
