@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectCapabilityInputTypes} from "./e8-typed-closure.mjs";
+import {inspectCapabilityInputTypes, compareCapabilityInputDefinitionSources} from "./e8-typed-closure.mjs";
 const sha = c => 'sha256:' + c.repeat(64);
 const world = {applications:[{id:"app",patterns:[{capability:"cap"}]}],semantics:[{capabilities:[{id:"cap",inputs:[{name:"x",type:"type-a"}]}],types:[{id:"type-a"},{id:"type-b"}]}]};
 const index = {references:[{subject:{kind:"semantic-type",id:"type-a"},role:"definition",artifactPath:"a.yaml"},{subject:{kind:"semantic-type",id:"type-b"},role:"definition",artifactPath:"b.yaml"}],artifacts:[{path:"a.yaml",fingerprint:sha('a')},{path:"b.yaml",fingerprint:sha('b')}]};
@@ -126,4 +126,68 @@ test("malformed semantic Data declarations fail closed",()=>{
  const result=inspectCapabilityInputTypes(changed,index,'app');
  assert.equal(result.status,'unresolved');
  assert.ok(result.issues.includes('invalid_snapshot_shape'));
+});
+
+const compare = ({baselineWorld=world,currentWorld=world,baselineIndex=index,currentIndex=index,
+  applicationId='app'}={})=>compareCapabilityInputDefinitionSources({
+  baselineWorld,currentWorld,baselineIndex,currentIndex,applicationId,
+});
+test("directly selected input definition Source unchanged returns limited-only verdict",()=>{
+ const result=compare();
+ assert.equal(result.status,'limited-unchanged');
+ assert.equal(result.dependencyCount,1);
+ assert.equal(result.fullClosure,false);
+ assert.equal(result.authority,'none');
+});
+test("changing only the reached input Type Source requires requalification",()=>{
+ const changed=structuredClone(index);
+ changed.artifacts[0].fingerprint=sha('c');
+ const result=compare({currentIndex:changed});
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'input_definition_source_changed');
+ assert.equal(result.affected.length,1);
+ assert.equal(result.affected[0].reason,'source_fingerprint_changed');
+});
+test("an unrelated valid Type Source change does not invalidate this narrow consumer",()=>{
+ const changed=structuredClone(index);
+ changed.artifacts[1].fingerprint=sha('c');
+ assert.equal(compare({currentIndex:changed}).status,'limited-unchanged');
+});
+test("a Capability switching to another existing input Type changes the selected set",()=>{
+ const changed=structuredClone(world);
+ changed.semantics[0].capabilities[0].inputs[0].type='type-b';
+ const result=compare({currentWorld:changed});
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'input_definition_set_changed');
+});
+test("missing selected current Source evidence never becomes unchanged",()=>{
+ const changed=structuredClone(index);
+ changed.references.splice(0,1);
+ const result=compare({currentIndex:changed});
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'incomplete_input_definition_observation');
+ assert.equal(result.currentStatus,'unresolved');
+});
+test("no input signature or no referenced Capability cannot create closure",()=>{
+ const empty=structuredClone(world);
+ empty.semantics[0].capabilities[0].inputs=[];
+ assert.equal(compare({currentWorld:empty}).reason,'incomplete_input_definition_observation');
+ const absent=structuredClone(world);
+ absent.applications[0].patterns=[];
+ assert.equal(compare({currentWorld:absent}).status,'unresolved');
+});
+test("selected Semantic Data input Source drift is detected through E4",()=>{
+ const dataWorld=structuredClone(world);
+ dataWorld.semantics[0].capabilities[0].inputs[0].type='sales.order';
+ dataWorld.semantics[0].data=[{id:'sales.order'}];
+ const dataIndex={artifacts:[{path:'semantic/sales/order.tei',fingerprint:sha('d')}],
+  references:[{subject:{kind:'semantic-data',id:'sales.order'},
+   artifactPath:'semantic/sales/order.tei',role:'definition'}]};
+ const changed=structuredClone(dataIndex);
+ changed.artifacts[0].fingerprint=sha('e');
+ const result=compare({baselineWorld:dataWorld,currentWorld:dataWorld,
+   baselineIndex:dataIndex,currentIndex:changed});
+ assert.equal(result.status,'unresolved');
+ assert.equal(result.reason,'input_definition_source_changed');
+ assert.equal(result.affected[0].subject.kind,'semantic-data');
 });
