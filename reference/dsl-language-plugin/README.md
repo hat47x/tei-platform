@@ -114,7 +114,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `pinned_relation_path.go`に`InspectPinnedRelationPath`を追加した。各Hopを単なる`rows/<target>`へ畳み込まず、`RelationID`、結合キー、Cardinality、Operator pinを順序付きで残す。1:Nが途中にあれば終端まで`many`を維持するが、NULL許容性・存在保証・外部結合の振る舞いは推定しない。各Hopで`InspectPinnedRelationExpansion`と厳密な契約照合を再利用し、失敗したHop番号と既存Semantic Key検証器の診断を失わずに拒否する。失敗時には途中までのCandidateを返さない。
 
-`pinned_relation_path_test.go`にはNamespace横断の2段経路、キーのスナップショット保持、未固定契約、入出力型の不整合、副作用昇格、後段Relationの型不一致を加えた。これは**未受理の参照候補**に限り、Binding・Execution・権限付与・Semantic Lock照合は行わない。各HopでCanonical Key検証器を再実行するため、長い経路の効率化は今後の課題とする。現時点でこの追加テストのGo実行とPR exact-head全体の健全性確認は未実施。
+`pinned_relation_path_test.go`にはNamespace横断の2段経路、キーのスナップショット保持、未固定契約、入出力型の不整合、副作用昇格、後段Relationの型不一致を加えた。これは**未受理の参照候補**に限り、Binding・Execution・権限付与・Semantic Lock照合は行わない。多段経路のキー検証は既存`ValidateSemanticRelationKeys`を経路全体で1回実行し、その診断を各Hopへ対応付ける。なおRelation identity探索は各Hopで行うため、長い経路でのIdentity索引化は今後の課題とする。現時点でこの追加テストのGo実行とPR exact-head全体の健全性確認は未実施。
 
 ### 単一のOperator pinを複数Relationへ適用する型特殊化（2026-10-10）
 
