@@ -14,6 +14,8 @@ test("same-origin commit serializes one intent and returns server revision", asy
   assert.equal(requests.length, 1);
   assert.equal(requests[0].path, "/actions/commit");
   assert.equal(requests[0].init.credentials, "same-origin");
+  assert.equal(requests[0].init.mode, "same-origin");
+  assert.equal(requests[0].init.redirect, "error");
   assert.equal(requests[0].init.headers["X-TEI-Action"], "commit");
   assert.deepEqual(JSON.parse(requests[0].init.body), intent);
 });
