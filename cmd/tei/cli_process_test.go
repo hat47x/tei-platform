@@ -117,9 +117,9 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		{"inspect", "-limit", "1"},
 	} {
 		var failure struct {
-			SchemaVersion string `json:"schemaVersion"`
-			OK bool `json:"ok"`
-			Error *cliInspectionFailure `json:"error"`
+			SchemaVersion string                `json:"schemaVersion"`
+			OK            bool                  `json:"ok"`
+			Error         *cliInspectionFailure `json:"error"`
 		}
 		if err := json.Unmarshal(run(2, args...), &failure); err != nil {
 			t.Fatalf("argv=%q invalid args must return JSON: %v", args, err)
