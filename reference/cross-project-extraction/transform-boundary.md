@@ -57,110 +57,37 @@ derived validation plan
 
 E3で追加した`plugin_lock_integration_test.go`は、採用・Build入力・artifactの固定を確認するため引き続き有効です。ここで扱うTransform分類は、その前段の「共有生成器の実装方式」を明確にするものです。
 
-## 二つの独立した項目参照から配列を組み立てる場合の不足
+## Transform拡張の検討結果：現時点では追加しない
 
-現行`deterministic-transform-v1`には、objectの構築、field選択、map、sort、assert、canonical JSON等がありますが、**複数の式から固定長arrayを構築する演算がありません**。
+当初は、二つの項目参照から固定長の規則配列を構築するために、`construct-array(values: Expr[])`相当の演算を候補にした。現行Transform IRには同じ形のprimitiveが無いため、純粋な表現能力だけを見れば自然な追加候補である。
 
-今回必要な出力は概念上、次です。
-
-```json
-{
-  "format": "tei.reference.validation-plan/v0",
-  "rules": [
-    { "op": "required-text", "field": "<identityField>" },
-    { "op": "nonnegative-safe-integer", "field": "<amountField>" }
-  ]
-}
-```
-
-`OpLiteral`では動的なfield参照を埋め込めず、`OpConstructObject`はarrayを作れません。`OpMapArray`だけで表そうとすると、異なる二つの`op`を割り当てるために条件分岐等を追加する必要があり、今回の要求に対して過剰です。
-
-最小候補は次の一つです。
+その後、実際のTEI業務検証経路を確認すると、受注アプリケーションでは別の検証計画を生成する必要がなかった。
 
 ```text
-construct-array(values: Expr[])
+Application uses validation
+        ↓
+driver.ResolveApplicationValidations
+        ↓
+semantic.Validation
+        ↓
+validationeval.Evaluate
+        ↓
+既存Target / Web応答
 ```
 
-要求する性質:
+正本の規則を既存Driver/Evaluatorが直接消費している。したがって、現在の受注Consumerを理由に規則配列を新しく生成したり、そのためにTransform IRを拡張したりしない。
 
-- 各要素を宣言順に評価する
-- `maxCollection`を超える要素数をSource validationで拒否する
-- 各子式を通常のbinding / nesting / step budget検査へ通す
-- 出力は既存`ValueArray`と同じ値領域を使う
-- clock / random / filesystem / network / process等のAuthorityを追加しない
-- 新しい条件式や一般目的制御構文を同時に導入しない
+既存`map-array`へ受理済み規則配列を渡せば派生JSONへ投影できることも検討したが、その派生JSONを必要とするConsumer自体が無い。使われない生成物のためのSource・契約・試験を保持すると、第二正本化と保守費を増やす。
 
-このprimitiveだけで、受理済み二つのfield referenceから検証planを組み立てられます。
+このため、#1069で一時的に置いたTransform能力試験は削除し、#979へ渡した`construct-array`要求も**このConsumerからの要求としては取り下げる**。別の具体的Consumerが、既存primitiveでは表現できない固定長配列構築を本当に必要とした場合に、そのConsumerの受入条件を根拠として再提案する。
 
-## E6：既存の配列写像で済む別経路（新規演算子を保留）
+判断規則は次のとおり。
 
-[#1067 の配列写像試験](transform_projection_test.go)では、[変換定義](required-fields-projection.transform.json)をTEIの既存`ParseSourceJSON`経由で読み込み、入力が**すでに意味検査を終えた順序付きの規則記述配列**であれば、既存の`map-array`と`construct-object`だけで受注・請求の検証計画を導出できるかを試す。変換定義をGoの試験コードへ重複して記述しない。
-
-```text
-意味が確定した業務制約
-    ↓ 既存Semantic / Authoringによる規則の型・適用範囲の確定
-[ {op: required-text, field: orderId},
-  {op: nonnegative-safe-integer, field: totalYen} ]
-    ↓ 既存Transform: map-array + construct-object
-{format: validation-plan/v0, rules: [...]}
-```
-
-**元の二項目しか入力にない場合**、出力の二規則をTransform自身が構築する必要があるため、前節の `construct-array` 候補には依然として根拠がある。
-
-**既存の受理済み業務意味から規則記述配列を導出できる場合**、新しい `construct-array` を追加する理由は弱まる。ただし、単にJavaScriptで二規則を組み立てて配列として渡すだけなら、ジェネレータの責務を隠して移したにすぎず、TEI-nativeでの生成が成立したとはいえない。
-
-配列写像の試験は、あくまで**既存Transformの表現能力**を確認するものである。入力の演算子名や項目参照が業務上受理されていること、規則が欠けていないこと、複数の規則の順序が正しいことは証明しない。実際、現行写像は未登録の業務規則名をそのまま写せる。採用済みの意味との照合はTransformに暗黙委任せず、既存のSemantic / Authoring境界で行う。
-
-判断の優先順位は次のとおり。
-
-1. 既存の採用済み意味から必要な規則列を取り出せるかを確かめる。
-2. 取り出せる場合は新規演算子なしの配列写像経路を優先し、出力と生成前の意味を独立して比較する。
-3. 取り出せず、二つの型付き項目から新しい規則列を構築する必要がある場合だけ、`construct-array` の最小追加を#979で検討する。
-4. いずれの場合も、派生生成物の検査成功と、案件がその業務意味を採用したことを区別する。
-
-この試験の実施結果は、全Repository Healthの資格とは分けて記録する。構造が表現できることと、実業務への適用が正しいことは異なる。
-
-## E7：実際の受注業務仕様からの投影
-
-[受注アプリケーションの実ソースを使う試験](semantic_validation_source_test.go)では、`workspace.Load`で既存の業務意味モデルを読み取り、`validation.Validate`で意味の整合性を検査したうえで、アプリケーションが参照する`semantic.Validation`を取得する。各規則の出所はSource Indexで確認する。これらを[変換Source](semantic-validation-projection.transform.json)へ渡し、既存の配列写像だけで検証計画の**記述**を得る。
-
-元となる受注の正本には、`positive`と`relation-unique`という性質の異なる規則がある。合成例の`required-text`や`nonnegative-safe-integer`へ置き換えない。規則の識別子・種別・対象属性・対象関係を揃えて保存することで、「正の数」を「非負整数」に弱めたり、関係内の一意性を単一項目の制約と混同したりすることを防ぐ。
-
-この試験では、規則配列自体を案件別ジェネレータで再構築せず、既存のアプリケーション参照と業務意味モデルから得る。ただし、**Sourceを読み込めること、検証エラーがないこと、生成結果が一致することは、業務仕様が人間に正式受理されたことと同義ではない**。採用状態・検証根拠と実行権限は別途管理する。
-
-また、変換した結果は元の意味を写した派生情報であり、業務規則を評価する実行器そのものではない。出力先の実Consumerが派生計画を必要としないなら、元の`semantic.Validation`を直接参照する方が簡潔である。**何か生成できるからといって、生成物を新たな第二正本にしない。**
-
-この実証で既存Transformを再利用できれば、新しい`construct-array`演算子を追加する前に「既存モデルを消費するだけで十分か」を判断できる。ただし今ある実Consumerは受注一件であり、複数案件の共通化が成立したとは扱わない。実テストとfull Repository Healthは独立して確認する。
-
-## E8：実際の業務実行で生成器は不要
-
-最新の`main`にある次の実装を確認した。
-
-- `internal/driver/application_validations.go`：`ResolveApplicationValidations`は、Applicationの`uses validation`宣言をそのまま選択の正本として、順序を守り、未定義・重複・空の選択を拒否する。
-- `internal/semantic/validationeval/evaluator.go`：`positive`と`relation-unique`を既存の`semantic.Validation`から直接評価する。評価不能は業務上の不成立とは別のエラーとする。
-- `tools/reference-first-web-target/practical_business_rule_test.go`：受理後の規則追加が、受注処理とWeb側の応答へ反映される参照テストを持つ。Targetごとに独自の規則一覧を複製しない。
-- `tools/reference-shared-acceptance/application_validation_use_test.go`：規則の選択変更を既存Applicationのソースに限り、影響関係を説明する試験を持つ。
-
-したがって、**現行の受注実行を理由とする新しい「共有検証計画ジェネレータ」の採用は見送る**。正本の規則と、既存Driver・Evaluatorによる直接利用がより小さい実装である。
-
-E7のGo試験が独自の規則解決関数を持っていたのは、この原則に反するため、`driver.NewResolver(...).ResolveApplicationValidations`を使う形に修正した。新たなReferenceの責務は、既存Driverで選ばれた規則を必要な派生形式へ**表現変換することだけ**に限る。型とスコープの検査は既存Validation側に残し、正本を第二の場所へ作らない。
-
-ただし、`semantic-validation-projection.transform.json`は、まだそれを必要とする具体的な消費側が確認できていない**能力試験**である。実際の画面・外部形式・他Targetが同じ意味規則を別表現へ変換する必要が生じたときだけ、生成の費用対効果を測り、共有機構への昇格を再判定する。
-
-`positive`や`relation-unique`の**評価器自体**を別実行Targetへ移植・差し替える必要が出た場合は、単なるJSONの表現変換では足りない。その場合は、評価の意味契約、値取得の権限、関係の適用範囲、エラーと不成立の区別、実行対象を独立の受入試験で確認する。
-
-## E9：規則投影と評価器拘束計画の契約を区別する
-
-現在の`main`にある`tools/reference-semantic-extension-catalog/validation_plan.go`は、`tei.reference.semantic-validation-plan/v0`を評価器の結び付けに使っている。そこではSemantic Setのフィンガープリント、実装と規則の対応、計画のフィンガープリントを保持し、更新時に古い対応を拒否する。
-
-これに対して、このReferenceの`semantic-validation-projection.transform.json`が出力するのは、Applicationが選んだ既存の業務規則を表示・検査用に並べた**派生記述**だけである。評価器の実装も、Semantic Setとの版整合も、実行を認める根拠も保持しない。
-
-同じ契約名を使うと、派生記述を正規の評価器拘束計画と誤認し得るため、試作用の出力契約とSourceの`contractVersion`を`tei.reference.application-validation-projection/v0`へ変更した。出力を必要とするConsumerがまだないことも変わらない。
-
-- `semantic-validation-plan/v0`：既存の評価器拘束計画。既存の正本・検証機構を使用する。
-- `application-validation-projection/v0`：Applicationの選択規則を並べるだけの参照出力。実行の権限や受理を意味しない。
-
-この区別は、単にフィールド名を変えることではなく、生成物を使う側の**責任と保証範囲**を混同しないためのもの。
+1. 正本を既存機構が直接消費できるなら、派生生成器を追加しない。
+2. 派生形式が必要なら、まず具体的Consumerとその受入条件を固定する。
+3. 既存Transformで表現できる場合は新primitiveを増やさない。
+4. 表現できない場合だけ、最小primitiveをConsumerの負例・resource budgetとともに追加する。
+5. 「生成できる」ことを「採用価値がある」ことの証拠にしない。
 
 ## なぜCapabilityへ直接接続しないか
 
@@ -172,10 +99,10 @@ PR #1058のGeneric Invocationは、Source AdapterやContract Queryのような**
 
 ## 次の実証条件
 
-1. #979側で`construct-array`相当の最小primitiveが妥当か確認する。
-2. primitiveを追加する場合、既存Transformのresource budgetとSource fingerprint規則を維持する。
-3. #1069では、JS共有生成器とTEI Transformの出力をorder / invoice双方でbyteまたは構造的に比較する。
-4. 意味検査はTransformへ複製せず、typed field referenceを供給する上位境界のfixtureを用意する。
-5. 共有生成器が外部副作用を持たない限り、#951のGeneric Capability Invocationを必須依存にしない。
+1. 同じ派生表現を実際に必要とする独立Consumerを二つ以上固定する。
+2. 各Consumerの正本、期待値、Effect、Authority、版を比較し、同じ意味契約かを確認する。
+3. 既存Driver／Evaluator／Transformで直接満たせる場合は、新しい共有生成器や演算子を追加しない。
+4. 追加が必要な場合だけ、共有前後の定義量・試験量・レビュー負担を測り、共有側の固定費を含めて採算を判定する。
+5. 外部read/writeを必要としない限りCapability Invocationを必須依存にしない。
 
-この分離により、#1069は「共通化できる意味」と「その意味を決定論的に実現する機構」と「外部Authorityを必要とする実行」を混同せずに進められます。
+この停止線により、#1069は「共通化できそうだから抽象化する」のではなく、「具体的Consumerがあり、意味と費用対効果が成立したときだけ共通化する」方式を実証対象とする。

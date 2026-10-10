@@ -74,45 +74,17 @@ go test ./reference/cross-project-extraction
 
 汎用Capability ContractのReferenceは[#951](https://github.com/hat47x/tei-platform/issues/951)で進めています。並行PR #1058のGeneric Invocationは、Source AdapterやContract Queryなど実行サービスの境界として利用し、今回の純粋生成器の必須依存にはしません。将来、外部schema取得やDB introspection等が必要になった場合だけ、そのreadをCapabilityへ分離します。
 
-## 既存の配列写像によるTransform実証候補
+## Transform検討の停止線
 
-[配列写像のGo試験](transform_projection_test.go)では、[TEIの変換定義](required-fields-projection.transform.json)を実際の`ParseSourceJSON`で解析し、既存の`map-array`と`construct-object`を使って、順序付き規則配列から受注・請求の派生検証計画を構築できるか確認します。期待される出力は試験側に独立して記述し、未対応の演算子・必須項目の欠落を拒否する試験も含めます。
+共有生成器をTEI-native Transformへ移す可能性を検討した結果、現行の受注実行では新しい生成器を採用しません。
 
-```bash
-go test ./reference/cross-project-extraction -run 'TestExistingMapArray|TestProjection'
-```
+最新mainでは、Applicationが選択した業務検証規則を既存の`driver.ResolveApplicationValidations`が解決し、`validationeval.Evaluate`が正本の`semantic.Validation`を直接評価します。First Web Targetも同じ規則を直接利用します。この経路に対して別の「検証計画」を生成すると、使われない派生形式と第二の契約を増やすだけです。
 
-この経路で十分かどうかは、**Authoring側が正しい規則配列を独立して提供できるか**に左右されます。Transformは規則名が案件の意味に合致するかを判断しません。既存の受理済み規則から必要な配列を得られるなら、新しい配列構築演算子は追加せずに済む可能性があります。逆に、二つの項目参照しか入力されない場合には、Transformが二規則を構築する方法を別途検討する必要があります。
+途中で、既存`map-array`による投影や固定長配列を作る`construct-array`候補も検討しました。しかし、具体的Consumerが無い状態でTransform IRを拡張する根拠にはしません。能力試験として追加していたTransform SourceとGo試験も、この判断に合わせて削除しました。
 
-検討の根拠と境界は[実行境界の整理](transform-boundary.md)に記録しています。これは合成入力の能力試験であり、既存の業務仕様から規則を自動導出した証拠ではありません。現時点ではtrustedな完全checkoutでのGo試験実行結果も取得していません。
+今後、別Target・外部形式・生成物など、**正本の業務規則を別表現へ変換する具体的Consumer**が現れた場合にだけ、既存Transformで足りるかをそのConsumerの受入試験から再評価します。外部read/writeが必要な場合だけCapability境界を使います。
 
-## 実際の業務仕様を起点とする規則投影
-
-[業務意味モデルからの投影試験](semantic_validation_source_test.go)では、実際の`reference/workspace`を既存の`workspace.Load`で読み込み、`validation.Validate`で意味検証を実施します。受注アプリケーション`order_entry`が明示的に参照する3件の業務規則を、`semantic.Validation`から宣言順に取り出し、[既存Transformの変換定義](semantic-validation-projection.transform.json)へ渡します。新しいルールを試験コードに書き直して入力する方式ではありません。
-
-確認対象は、数量と明細番号の`positive`、明細番号の`relation-unique`です。正の値を「非負」に置き換えず、関係内一意性を単なる項目検査へ弱めず、識別子・規則種別・属性・Relationを保持します。検証結果の期待JSONは試験側に独立して記述します。Source Indexも参照し、正本の定義ファイルとアプリケーションから遡れるかを確かめます。
-
-```bash
-go test ./reference/cross-project-extraction -run 'TestActualOrderEntrySemantic|TestSemanticValidationProjection'
-```
-
-これは既存の業務仕様から**派生する規則情報**をTransformで表せるかの試験です。生成された計画が各種のデータ検査を実行できること、実際のProvider・UIに適用されたこと、異なる二つの実案件で同じPluginを採用したことは示しません。現時点でGo試験はtrustedな完全checkoutで未実行です。
-
-この経路で確認できるのは受注アプリケーション一つです。独立した二番目のConsumerと、実際の業務検証ロジックを共通化できるという証拠は引き続き必要です。
-
-## 既存の実行機構を優先する判断
-
-[実行境界の整理](transform-boundary.md)のE8では、TEI本体にすでにある`driver.ResolveApplicationValidations`と`validationeval.Evaluate`、First Web Targetの実際の検証経路を確認しています。
-
-受注アプリケーションの現在の業務検証では、これらの機構が**正本の検証規則を直接消費**します。したがって、受注の実行のために、別の規則計画を生成する共通ジェネレータを追加しません。
-
-このReferenceの[意味規則の投影試験](semantic_validation_source_test.go)も、規則の選択を独自に再実装せず、既存Driverの解決結果を入力として使う形に修正しました。元の業務規則を異なる形式で必要とする明確な消費側が見つかるまでは、投影した計画は製品の実装対象ではなく、**既存Transformで表現可能かを確かめる試作**として扱います。
-
-## 派生記述と評価器拘束計画の区別
-
-[実行境界の整理](transform-boundary.md)のE9で、既存の評価器拘束計画と試験用の規則投影に同じ識別子が使われていた衝突を修正しました。試験用の契約識別子は`tei.reference.application-validation-projection/v0`です。
-
-既存の`tei.reference.semantic-validation-plan/v0`は、評価器実装の束縛とSemantic Setの整合性を扱う別契約です。規則の一覧を写しただけのJSONが、評価器の版・証拠・実行権限まで備えていると見なされないようにします。
+この停止判断は、#1067の目的と整合します。共通化可能であることと、共通化する価値があることを分け、利用先のない共通機構を先回りして製品へ追加しません。
 
 ## 共通化の効果測定
 
@@ -128,6 +100,6 @@ go test ./reference/cross-project-extraction -run 'TestActualOrderEntrySemantic|
 
 また、実際の二つの案件リポジトリへ同じ共有Pluginを導入し、それぞれの所有者が独立して受理・切り戻しを行った事実はまだありません。実Provider、署名・権限、配備、Runtime AuthorityもこのReferenceだけでは確認できません。
 
-次の正の実証では、まず#979側の最小Transform表現が成立した後、JS共有生成器とTEI Transformの出力を受注・請求双方で比較します。そのうえで同一の意味契約を本当に共有できる二つの独立Consumerを固定し、それぞれの受入試験を保持したまま採用差分とLock更新を比較します。外部Authorityが必要になった場合だけ#951のCapability契約へ接続し、新しい並行正本を作りません。
+次の正の実証は、同じ派生機構を本当に必要とする二つの独立Consumerが現れた時点から開始します。それぞれの正本・期待値・採用判断を固定し、共有化前後の変更量、試験量、レビュー負担、版固定と切戻しを比較します。具体的Consumerが無い間は、新しいTransform演算子や共有生成器を増やしません。外部Authorityが必要になった場合だけ#951のCapability契約へ接続します。
 
 生成コードの単体試験を機械的に案件ごとへ複製することは目的ではありません。共通部分の契約試験は共有側へ寄せ、案件ごとの業務上の期待値と接続検証は引き続き保持します。定義量と保守負担の削減効果は、実案件の比較が可能になってから測定します。
