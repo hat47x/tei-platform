@@ -26,6 +26,8 @@ Hostはslot bindingへ非secretで記録可能なopaque `BindingReceiptRef`と`R
 
 Provider callbackへは、required slotだけを含む`ContextSlotView`とcontrol-only contextを渡します。control-only contextは元のDeadline / Done / Errを保ちますが、`Value`は公開しません。
 
+**Goの同一package特有の迂回を閉じた**：従来の`controlOnlyContext`は`parent context.Context`をfieldに保存していた。同一packageのProvider callbackは`ctx.(controlOnlyContext).parent.Value(key)`と型アサーションでき、`Value()`がnilを返してもcallerのambient credentialを直接取得できた。修正前の負例で漏えいを再現した。現在は元の`parent`そのものを保持せず、Deadline・Doneと`Err()`のための最小のcontrol-only値だけをProviderへ渡す。providerから見えるconcrete structに`context.Context`型のfieldがないことを回帰テストで固定した。`Err()`の関数値は元Contextに束縛されるが、安全なGoからその関数値を通じて`Value()`を呼び出す経路は公開していない。`unsafe`/native codeや悪意のあるruntime内部操作への一般的隔離を保証するものではない。
+
 ReferenceのGo callbackは同一packageから実行されるため、`ContextSlotView`のunexported map/byte sliceに直接書き込む攻撃的な実装も考えられます。実際に、Providerがslot bytesを書き換えてから元のsecretをresultへ返すと、以前の直接反射検査を回避できることを負例で再現しました。現在は**Host側の照合用snapshotとは別に、Provider専用のmapとbyte sliceをdeep copy**して渡します。Callbackが値やbinding refを変更・削除しても、Hostの照合用値とreceiptは変更されません。Go package構成への依存を避ける防御ですが、Providerに渡したsecretを一般的に隠す仕組みではなく、同時書込みによるdata raceや外部副作用を防ぐものでもありません。
 
 Referenceは、呼出し開始時にSemantic Requestのbytesを複製し、下流へ渡す入力とreceiptのrequest digestを同じsnapshotに基づかせます。呼出し中にcallerが元のsliceを書き換えてもreceiptのidentityは変化しません。ただし、snapshot取得と同時に別goroutineが書き込むdata raceまで許容するものではありません。
