@@ -44,6 +44,8 @@ func TestJSONCommitHandler(t *testing.T) {
 		{name: "same origin", method: "POST", body: good, origin: "http://example.test", header: true, expected: 200, calls: 1},
 		{name: "scheme mismatch", method: "POST", body: good, origin: "https://example.test", header: true, expected: 403},
 		{name: "protocol missing", method: "POST", body: strings.Replace(good, `"protocolVersion":"1",`, "", 1), header: true, expected: 400},
+		{name: "null payload", method: "POST", body: strings.Replace(good, `"payload":{"x":1}`, `"payload":null`, 1), header: true, expected: 400},
+		{name: "whitespace null payload", method: "POST", body: strings.Replace(good, `"payload":{"x":1}`, `"payload":  null  `, 1), header: true, expected: 400},
 		{name: "protocol unsupported", method: "POST", body: strings.Replace(good, `"protocolVersion":"1"`, `"protocolVersion":"2"`, 1), header: true, expected: 400},
 		{name: "missing resource", method: "POST", body: strings.Replace(good, `"resourceID":"doc"`, `"resourceID":""`, 1), header: true, expected: 400},
 		{name: "legacy documentID rejected", method: "POST", body: strings.Replace(good, `"resourceID"`, `"documentID"`, 1), header: true, expected: 400},
