@@ -7,3 +7,6 @@ test("reachable input type change is observed",()=>{const changed=structuredClon
 test("unrelated type change does not affect result",()=>{const changed=structuredClone(index);changed.artifacts[1].fingerprint="sha256:new";assert.deepEqual(inspectCapabilityInputTypes(world,index,"app"),inspectCapabilityInputTypes(world,changed,"app"));});
 test("ambiguous type fails closed",()=>{const changed=structuredClone(world);changed.semantics[0].types.push({id:"type-a"});assert.equal(inspectCapabilityInputTypes(changed,index,"app").status,"unresolved");});
 test("missing source evidence fails closed",()=>{assert.equal(inspectCapabilityInputTypes(world,{artifacts:[],references:[]},"app").status,"unresolved");});
+
+test("no capability references are not mistaken for observed closure",()=>{const changed=structuredClone(world);changed.applications[0].patterns=[];assert.equal(inspectCapabilityInputTypes(changed,index,"app").status,"no-capability-references");});
+test("missing input type fails closed",()=>{const changed=structuredClone(world);changed.semantics[0].capabilities[0].inputs[0].type="";assert.equal(inspectCapabilityInputTypes(changed,index,"app").status,"unresolved");});
