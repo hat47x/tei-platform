@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -169,5 +171,26 @@ func TestProbeRejectsHiddenIndexFlags(t *testing.T) {
 				t.Fatalf("hidden tracked entry considered clean: %#v", got)
 			}
 		})
+	}
+}
+
+func TestProbeDoesNotRunRepositoryConfiguredFSMonitor(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX executable fixture")
+	}
+	root, head := exampleCheckout(t)
+	marker := filepath.Join(t.TempDir(), "fsmonitor-was-executed")
+	hook := filepath.Join(t.TempDir(), "monitor.sh")
+	content := "#!/bin/sh\n: > " + strconv.Quote(marker) + "\nexit 0\n"
+	if err := os.WriteFile(hook, []byte(content), 0700); err != nil {
+		t.Fatal(err)
+	}
+	gitTest(t, root, "config", "core.fsmonitor", hook)
+	got := probe(root, head, head)
+	if !got.EligibleForLocalGate {
+		t.Fatalf("otherwise valid checkout rejected: %#v", got)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("untrusted repository fsmonitor was executed; stat error=%v", err)
 	}
 }
