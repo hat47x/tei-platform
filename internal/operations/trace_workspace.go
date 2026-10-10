@@ -19,12 +19,12 @@ import (
 // WorkspaceTrace is a read-only projection, not an accepted Canonical graph,
 // a proposal, or authority to edit any located source.
 type WorkspaceTrace struct {
-	SchemaVersion         string                  `json:"schemaVersion"`
-	Trace                 modelref.TraceResult    `json:"trace"`
-	Source                sourcebridge.Navigation `json:"source"`
-	RelatedSources        []sourcebridge.Navigation `json:"relatedSources,omitempty"`
-	ProjectionUnresolved  []string                `json:"projectionUnresolved,omitempty"`
-	AuthorityLimits       []string                `json:"authorityLimits"`
+	SchemaVersion        string                    `json:"schemaVersion"`
+	Trace                modelref.TraceResult      `json:"trace"`
+	Source               sourcebridge.Navigation   `json:"source"`
+	RelatedSources       []sourcebridge.Navigation `json:"relatedSources,omitempty"`
+	ProjectionUnresolved []string                  `json:"projectionUnresolved,omitempty"`
+	AuthorityLimits      []string                  `json:"authorityLimits"`
 }
 
 // TraceWorkspace joins the established Derived Index modelref projection and
