@@ -58,3 +58,21 @@ func TestEntryRejectsNonLiteralAndTraversal(t *testing.T) {
 		t.Fatal("valid entry rejected")
 	}
 }
+
+func TestCgoPseudoImportIsNotAListedGoPackage(t *testing.T) {
+	// Real go list -deps -json includes "C" in Imports for a cgo package,
+	// but does not emit a package object with ImportPath "C".
+	cgo := `{"ImportPath":"tei/tools/cgo-sample","Module":{"Path":"tei","Main":true},"CgoFiles":["main.go"],"Imports":["C","fmt"]}`
+	got, err := parseGoList(strings.NewReader(cgo+"\n"+jsonStd), "tei/tools/cgo-sample", "")
+	if err != nil {
+		t.Fatalf("valid cgo dependency graph rejected: %v", err)
+	}
+	if len(got.Packages) != 1 || len(got.Packages[0].Imports) != 2 || got.Packages[0].Imports[0] != "C" {
+		t.Fatalf("lost cgo source or import edge: %+v", got)
+	}
+
+	nonCgo := `{"ImportPath":"tei/tools/cgo-sample","Module":{"Path":"tei","Main":true},"GoFiles":["main.go"],"Imports":["C","fmt"]}`
+	if _, err := parseGoList(strings.NewReader(nonCgo+"\n"+jsonStd), "tei/tools/cgo-sample", ""); err == nil {
+		t.Fatal("pseudo import C must not excuse a missing Go dependency for non-cgo sources")
+	}
+}
