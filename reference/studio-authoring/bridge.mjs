@@ -79,6 +79,64 @@ function ownerData(s, index) {
   return null;
 }
 
+const SOURCE_KINDS = Object.freeze({
+  data: "semantic-data",
+  relation: "semantic-relation",
+  attribute: "semantic-attribute",
+  validation: "semantic-validation",
+  pattern: "application-pattern"
+});
+
+// The Source Index is supplied by the existing TEI source-index producer.
+// These locators are view metadata, not permission to edit or Acceptance
+// authority. No label-to-path inference or second source ownership.
+function sourceLens(sourceIndex, kind, id) {
+  if (!sourceIndex) return { status: "unresolved",
+    reason: "Source Index was not supplied" };
+  if (!Array.isArray(sourceIndex.artifacts) ||
+      !Array.isArray(sourceIndex.references)) {
+    throw new Error("INVALID_SOURCE_INDEX");
+  }
+  const artifacts = new Map();
+  for (const a of sourceIndex.artifacts) {
+    if (typeof a.path !== "string" || !a.path ||
+        a.path.startsWith("/") || a.path.includes("\\") ||
+        /(^|\/)\.\.(\/|$)/.test(a.path) ||
+        /^[A-Za-z]:/.test(a.path) ||
+        !REVISION.test(a.fingerprint) || artifacts.has(a.path)) {
+      throw new Error("INVALID_OR_DUPLICATE_SOURCE_ARTIFACT");
+    }
+    artifacts.set(a.path, a.fingerprint);
+  }
+  const canonicalKind = SOURCE_KINDS[kind];
+  const refs = sourceIndex.references.filter(ref =>
+    ref?.subject?.kind === canonicalKind && ref?.subject?.id === id &&
+    ref.role === "definition"
+  );
+  if (refs.length === 0) return {
+    status: "unresolved", subject: { kind: canonicalKind, id },
+    reason: "No exact definition anchor in current Source Index"
+  };
+  if (refs.length !== 1) throw new Error("AMBIGUOUS_SOURCE_DEFINITION: " + kind + ":" + id);
+  const ref = refs[0], fingerprint = artifacts.get(ref.artifactPath);
+  const begin = ref.range?.start, end = ref.range?.end;
+  if (!fingerprint || !begin || !end ||
+      !Number.isInteger(begin.offset) || !Number.isInteger(end.offset) ||
+      begin.offset < 0 || end.offset < begin.offset ||
+      !Number.isInteger(begin.line) || begin.line < 1 ||
+      !Number.isInteger(begin.column) || begin.column < 1) {
+    throw new Error("INVALID_SOURCE_ANCHOR");
+  }
+  return {
+    status: "source-index-backed",
+    subject: { kind: canonicalKind, id },
+    artifactPath: ref.artifactPath,
+    artifactFingerprint: fingerprint,
+    range: ref.range,
+    caveat: "Index only: the caller must verify artifact fingerprint before opening or editing; write authority is Shared Acceptance Preview."
+  };
+}
+
 // Consume #1125's read-only Business DFD JSON projection if explicitly supplied.
 // This adapter intentionally does not parse Business Procedure fixtures or claim
 // that their reference-local Step IDs belong to accepted Canonical meaning.
@@ -217,8 +275,7 @@ export function projectWorld(world, revision, focus, options = {}) {
         : { status: "unresolved", items: [],
           reason: "Accepted Procedure is not in World. Optional #1125 read-only DFD is not an accepted Procedure." }
     },
-    sourceNavigation: { status: "unresolved",
-      reason: "Exact Source Index anchors have not been joined to this World" },
+    sourceNavigation: sourceLens(options.sourceIndex, s.kind, s.id),
     editable: false
   };
 }
