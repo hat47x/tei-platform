@@ -15,6 +15,13 @@ import (
 	"tei/internal/ir"
 )
 
+// Keep repair_intake route installation adjacent to the lookup handler;
+// preserve the legacy 503/405 responses for routes without runners.
+func registerRepairIntakeScenarioRoutes(mux *http.ServeMux, s *webTargetServer) {
+	mux.HandleFunc("/scenario/customer-lookup", s.handleCustomerLookupScenario)
+	mux.HandleFunc("/customer-lookup", s.handleCustomerLookupPage)
+}
+
 // errCustomerLookupInput marks input the Target itself rejects before any Driver call.
 var errCustomerLookupInput = errors.New("invalid customer lookup input")
 
