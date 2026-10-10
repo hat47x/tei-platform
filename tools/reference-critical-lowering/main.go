@@ -70,6 +70,8 @@ type Wiring struct {
 type Candidate struct {
 	Schema       string        `json:"schema"`
 	Source       Ref           `json:"source"`
+	// Producer-declared source dependency witness; completeness belongs to Acceptance.
+	SourceInputs []Ref         `json:"sourceInputs"`
 	Language     Ref           `json:"language"`
 	Subjects     []Subject     `json:"subjects"`
 	Requirements []Requirement `json:"requirements"`
@@ -117,6 +119,7 @@ type Step struct {
 // Origin is trace-only: it never substitutes for the accepted semantic snapshot.
 type Origin struct {
 	Source Ref `json:"source"`
+	SourceInputs []Ref `json:"sourceInputs"`
 	Language Ref `json:"language"`
 	CandidateDigest string `json:"candidateDigest"`
 	AcceptanceReceipt Ref `json:"acceptanceReceipt"`
@@ -211,6 +214,20 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 		!c.Source.valid() || !c.Language.valid() || !a.Snapshot.valid() || !a.Receipt.valid() {
 		return NeutralPlan{}, reject("invalid-boundary")
 	}
+	// Source dependencies must not silently disappear between interpretation and
+	// lowering. Completeness of this set must be checked by the real producer.
+	if len(c.SourceInputs) == 0 {
+		return NeutralPlan{}, reject("missing-source-dependencies")
+	}
+	seenSourceIDs := map[string]bool{c.Source.ID: true}
+	previousSource := ""
+	for _, src := range c.SourceInputs {
+		if !src.valid() || seenSourceIDs[src.ID] || (previousSource != "" && previousSource >= src.ID) {
+			return NeutralPlan{}, reject("invalid-source-dependencies")
+		}
+		seenSourceIDs[src.ID] = true
+		previousSource = src.ID
+	}
 	d := Digest(c)
 	if a.CandidateDigest != d || !trust.Accepted(d, a.Receipt, a.Snapshot) {
 		return NeutralPlan{}, reject("unaccepted-meaning")
@@ -262,7 +279,8 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 		return intents[i].Scope+":"+intents[i].Contract.ID < intents[j].Scope+":"+intents[j].Contract.ID
 	})
 	return NeutralPlan{Schema: NeutralSchema, Snapshot: a.Snapshot, Origin: Origin{
-		Source: c.Source, Language: c.Language, CandidateDigest: d, AcceptanceReceipt: a.Receipt,
+		Source: c.Source, SourceInputs: append([]Ref(nil), c.SourceInputs...),
+		Language: c.Language, CandidateDigest: d, AcceptanceReceipt: a.Receipt,
 	}, Intents: intents}, nil
 }
 
@@ -365,6 +383,7 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 // The Host re-evaluates current grants/context bindings immediately before dispatch.
 func AuthorizeInvocation(plan Plan, trust Trust) error {
 	if trust == nil || plan.Schema != Schema || !plan.Snapshot.valid() || !plan.Origin.Source.valid() ||
+		len(plan.Origin.SourceInputs) == 0 ||
 		!plan.Origin.Language.valid() || !plan.Origin.AcceptanceReceipt.valid() ||
 		plan.Origin.CandidateDigest == "" || len(plan.Steps) == 0 {
 		return reject("invalid-boundary")
@@ -400,7 +419,11 @@ type CacheKeys struct {
 }
 
 func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref) CacheKeys {
-	interpret := Digest(struct{ Source, Language Ref }{c.Source, c.Language})
+	interpret := Digest(struct {
+		Source Ref
+		SourceInputs []Ref
+		Language Ref
+	}{c.Source, c.SourceInputs, c.Language})
 	accept := Digest(struct {
 		Candidate string
 		Acceptance Acceptance
