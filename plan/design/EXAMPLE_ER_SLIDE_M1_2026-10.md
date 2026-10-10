@@ -195,3 +195,30 @@ JSON入力で`completeTables`を綴り間違えた場合にも、検査対象の
 - **Source Indexの根拠付け**: Caseが示すEvidencePointerの文書・観測結果・Source Indexが実在し、現在の仕様へ適用できることの独立検証。
 - **人間の権限検証**: 申告の`claimedBy.kind=human`を本当のHuman authorizationへ昇格させない。
 - **既存Relationを編集するtyped operationの必要性**: ユースケースを確定した後に、追加・修正・置換の意味的境界と差分検証を検討する。未検証の汎用文字列Patchを代用品にしない。
+
+## 型同一性の否定試験（2026-10-10）
+
+`relation_assessment.go`に、RelationKeyの**値の一致と型の同一性を別々に扱う条件**を追加した。たとえばCustomer IDとSupplier IDがどちらも文字列`"001"`なら、単にJSONの値が一致しただけでは正しい対応付けを証明できない。
+
+既存の正規化済みWorldには各Attributeの`typeRef`があるため、Adapterの表示用Catalogに`semanticType`として欠落なく保持する。両端が同じCanonical typeRefであると確認できる場合だけ、既存のキー値比較へ進む。片端が未定義か、Canonical typeRefが異なる場合は`relation-key-type-not-confirmed`としてレビューを起こす。合成CatalogにtypeRefが無いときは同じprimitive表示型同士であることを最低条件とする。
+
+ここでは**Aliasの変換可能性**はまだ判断しない。Canonical typeRefの一致は業務上のドメイン制約の充足や、識別子・コード値の実データの正当性まで証明するものではない。
+
+否定試験をPRに追加した。さらに実装のキー型比較ロジックを**型スタブへ切り出したGo 1.23.2の独立環境**で、意味型一致、異なる意味型、片側のみ型情報あり、基本型一致、基本型不一致の5ケースについて`go test -v ./...`がPASSし、`go vet ./...`もPASSした。
+
+ただし、この独立スモークテストは、PR #1128の実コードをチェックアウトして実行したものではない。実World連携・既存テスト全体・gofmt・Repository-healthの合格Evidenceとは区別する。
+
+### 統合までの実行手順
+
+trusted clean checkoutの**exact PR head**とcurrent mainを取得して固定したうえで次を順に実行し、clean pre/postと出力を保存する。Go sourceを手動修正した場合はheadが変わるのでGateを最初から取り直す。
+
+```sh
+git status --porcelain
+gofmt -l .
+go vet ./tools/reference-example-slide/...
+go test -count=1 ./tools/reference-example-slide/...
+tools/repository-health-check.sh
+git status --porcelain
+```
+
+PRのDraft解除やmain統合は、既存リポジトリ規約により**full Repository-health PASSとexact head/base/current mainの一致**を確認してから判断する。GitHub Actionsを起動しない。
