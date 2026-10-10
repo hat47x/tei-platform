@@ -29,6 +29,22 @@ type DetailEvidenceRef struct {
 	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
+type DetailReviewEvent struct {
+	Sequence       int                  `json:"sequence"`
+	ID             string               `json:"id"`
+	Kind           ReviewEventKind      `json:"kind"`
+	Reviewer       string               `json:"reviewer"`
+	Method         string               `json:"method"`
+	OccurredAt     string               `json:"occurredAt"`
+	Binding        string               `json:"binding"`
+	Context        []ScopeBinding       `json:"context,omitempty"`
+	TargetIdentity ReviewTargetIdentity `json:"targetIdentity"`
+	ValidFrom      string               `json:"validFrom,omitempty"`
+	ValidUntil     string               `json:"validUntil,omitempty"`
+	Evidence       []DetailEvidenceRef  `json:"evidence,omitempty"`
+	Conditions     []string             `json:"conditions,omitempty"`
+}
+
 type DetailContent struct {
 	Text          string              `json:"text"`
 	Target        TargetRef           `json:"target"`
@@ -37,6 +53,7 @@ type DetailContent struct {
 	ValidUntil    string              `json:"validUntil,omitempty"`
 	CheckedAt     string              `json:"checkedAt,omitempty"`
 	Evidence      []DetailEvidenceRef `json:"evidence,omitempty"`
+	ReviewHistory []DetailReviewEvent `json:"reviewHistory,omitempty"`
 	Supersedes    []string            `json:"supersedes,omitempty"`
 	ConflictsWith []string            `json:"conflictsWith,omitempty"`
 }
@@ -153,6 +170,7 @@ func resolveEpistemicDetail(
 			ValidUntil:    assertion.ValidUntil,
 			CheckedAt:     detailCheckedAt(*assertion, asOf),
 			Evidence:      detailEvidence(assertion.Evidence),
+			ReviewHistory: detailReviewHistory(*assertion, asOf),
 			Supersedes:    append([]string{}, assertion.Supersedes...),
 			ConflictsWith: append([]string{}, assertion.ConflictsWith...),
 		},
@@ -224,6 +242,36 @@ func normalizeDetailQuery(input DetailQuery) (DetailQuery, error) {
 		return input, fmt.Errorf("epistemic detail expectedReviewLogSequence must be >= 0")
 	}
 	return input, nil
+}
+
+func detailReviewHistory(assertion Assertion, asOf time.Time) []DetailReviewEvent {
+	out := make([]DetailReviewEvent, 0, len(assertion.ReviewEvents))
+	for _, event := range assertion.ReviewEvents {
+		occurredAt, err := time.Parse(time.RFC3339, event.OccurredAt)
+		if err != nil || occurredAt.After(asOf) {
+			continue
+		}
+		binding := "stale"
+		if reviewEventMatchesAssertion(event, assertion) {
+			binding = "current"
+		}
+		out = append(out, DetailReviewEvent{
+			Sequence:       event.Sequence,
+			ID:             event.ID,
+			Kind:           event.Kind,
+			Reviewer:       event.Reviewer,
+			Method:         event.Method,
+			OccurredAt:     event.OccurredAt,
+			Binding:        binding,
+			Context:        append([]ScopeBinding{}, event.Context...),
+			TargetIdentity: event.TargetIdentity,
+			ValidFrom:      event.ValidFrom,
+			ValidUntil:     event.ValidUntil,
+			Evidence:       detailEvidence(event.Evidence),
+			Conditions:     append([]string{}, event.Conditions...),
+		})
+	}
+	return out
 }
 
 func detailEvidence(values []EvidenceRef) []DetailEvidenceRef {
