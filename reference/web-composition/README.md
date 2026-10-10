@@ -369,3 +369,16 @@ bash reference/web-composition/qualify.sh <candidate-head-sha> <current-main-sha
 **スクリプトの局所検証:** `qualify.sh`はGitHub Blob `aeebb93e091a3e8ac835f1daade84b947628fc20`とbyte一致するローカルコピーで`bash -n` PASS。隔離した一時Gitリポジトリで、正しいSHA＋cleanの正常経路、間違ったmain SHA、dirtyなチェックアウト、mainを含まないcandidate、検証中に生成された未追跡ファイルの5ケースを検査しました。正常経路ではテスト実行体をstubにしたため、**これは検証スクリプトのGate条件を確認したもので、TEI全体のテストPASSを意味しません。**
 
 2026-10-10現在、PR #1114はまだmainの更新を含んでおらず、このGateの統合資格は**未取得**です。正確なhead・main上でのクリーンなフルチェックアウトおよびすべてのテストの実行記録が得られるまでDraftを維持します。
+
+## E2.10：Session Action JSONの一意な解釈
+
+Session操作に渡す入力について、従来の`json.Decoder.Decode(&struct)`＋`DisallowUnknownFields`方式ではJSONオブジェクト中の**重複member名**および**大文字小文字を畳み込んだ別表記**を拒否できません。認可済みActionの引数は、HTTP入口と下流Commandで異なる値解釈が生じないよう一意であるべきです。
+
+`tools/reference-first-web-target/session_command_route.go`のSession専用Decoderを、JSON Tokenでトップレベルの単一オブジェクトを解析する実装へ変更しました。`from`と`row`以外のmemberは**正確な大文字小文字を含めて**拒否し、重複キー、null、構造化された想定外値、少数の`row`、JSON配列・スカラー、複数JSON文書、64 KiB超の本文を拒否します。両member自体の省略は従来どおり許し、`from`の既定時刻、`row=0`の既定選択、負数拒否は変えません。HTTPクライアントに返すエラーは固定の400であり、内部デコーダーのメッセージや検証済みPrincipalを露出させません。Legacy Credential経路の入力契約には変更を加えていません。
+
+実Workspaceを構成するHTTP回帰テストに、同名重複、`ROW`等の別表記、各memberのnull、入れ子／非整数、トップレベル配列、64 KiB超の拒否と、対応する拒否監査を追加しました。**このHTTP回帰テスト本体は未実行**です。
+
+限定検証として、GitHub実装からJSON Token Decoderの制御構造を取り出して同じ標準ライブラリAPIを使う独立Go 1.23.2モジュールへ移し、正常・異常20ケースを`go test -count=1`、`go vet`、`go test -race -count=1`でPASSしました。**この実験はGitHub Blob全体をそのままコンパイルしたものではなく、実Workspace／Host認可／HTTP監査の動作証拠にもなりません。** 統合判断は引き続きexact-head・main包含・リポジトリ全体ヘルスチェックによります。
+
+- Session route GitHub Blob: `67476fa6b998a7d90851b2c04afc9bb454434509`
+- HTTP integration regression test GitHub Blob: `d6ff45a7a70b307147619c0c4ba21fd888ecb801`
