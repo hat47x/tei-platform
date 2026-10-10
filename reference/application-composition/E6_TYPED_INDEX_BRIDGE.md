@@ -9,7 +9,7 @@
 [E6接続試作](e6-typed-index-bridge.mjs)は、E5のJSON形式のReportを変更前後の二つ受け取り、対応するSource Index二つと照合する。
 
 1. E5 Reportが対象Applicationを一つ特定できており、宣言・Source所在の照合に未解決事項がないことを要求する。E5側の`observed`をそのまま全面的な適合へ読み替えない。
-2. Application・Semantic Namespace・Application Pattern・PatternのData／Relation／Capability／Application所有Query・Validation・論理Database・Database Contractの既知の直接参照種類だけを対象に、Report内の定義SourceとSource Indexの`definition`参照、Artifact指紋が一致することを確認する。出典欠落・重複・取り違えは停止する。
+2. Application・Semantic Namespace・Application Pattern・PatternのData／Relation／Capability／Application所有Query・Validation・論理Database・Database Contract・Database Contract Queryの既知の直接参照種類だけを対象に、Report内の定義SourceとSource Indexの`definition`参照、Artifact指紋が一致することを確認する。出典欠落・重複・取り違えは停止する。
 3. 変更前後の対象Subject集合が変わった場合は`declared_dependency_set_changed`とする。新たに追加されたValidation参照を、旧セットに含まれないという理由で見逃さない。
 4. 集合が一致する場合は、E4の既存`assessIndexedSubjects`へSubject集合を渡す。E6独自のSource指紋比較器は作らない。
 5. 結果が同一でも`limited-unchanged`と返す。これは「この限定的な明示参照集合について、Index上のSource情報が不変」という意味に限り、Application全体の互換性ではない。
@@ -30,7 +30,15 @@ E6は、E5で取得した明示参照をE4の既存検査へ**受け渡す接着
 
 入力されたE5 ReportとSource Indexは、信頼できるWorkspace読み取り境界から得られたことが**別途保証される前提**である。JSONの形と二つの入力同士の一致を検査しても、出典の真正性、完全性、改ざんされていないことは証明できない。LoaderとSource Indexの解析時同一bytes保証を扱う[#1017 / PR #1111](https://github.com/hat47x/tei-platform/pull/1111)の成果も未統合であり、ここで代替しない。
 
-この試作が受け取る依存は**E5で扱ったApplication、Semantic Namespace、Application Pattern、Patternが直接参照するData・Relation・Capability・Application所有Query、明示Validation、Database、Database Contractの定義出典**に限る。PatternのContractQuery／Datasource／入力BindingやData・Relation・Capabilityの推移的依存、Action実装、認証・認可、Environment binding、UI構成キットの選択は含まれない。E5の部分的な`observed`は全依存閉包の成立を意味しない。SUI Stage 0には正式なApplicationがなく、Native Canvas/Document/Actionの契約もこの集合からは導出できないため、**第二Consumerの検証完了とはしない**。
+この試作が受け取る依存は**E5で扱ったApplication、Semantic Namespace、Application Pattern、Patternが直接参照するData・Relation・Capability・Application所有Query、明示Validation、Database、Database Contractの定義出典**に限る。PatternのContractQueryについては直接の定義Sourceだけを扱い、**入力Bindingや結果型、実行時のDatasource適合**、Data・Relation・Capabilityの推移的依存、Action実装、認証・認可、Environment binding、UI構成キットの選択は含まれない。E5の部分的な`observed`は全依存閉包の成立を意味しない。SUI Stage 0には正式なApplicationがなく、Native Canvas/Document/Actionの契約もこの集合からは導出できないため、**第二Consumerの検証完了とはしない**。
+
+### Contract Queryを独立したSubjectとして追跡
+
+E5の直接参照に`pattern-contract-query`を追加したため、E6も`database-contract-query` Subjectを既存E4の変更検査へ渡す。特定QueryのSourceが欠落すれば、親のContractを見つけただけでは補完しない。
+
+Source Indexでは、同じContractファイルに親Contractと内包Queryがある場合、**物理Artifactは一つ、論理Subjectは二つ**である。初期の合成試験では同じ物理パスを異なる指紋で二度登録していたため、偽の不一致が生じた。fixtureを修正し、Source変更時には双方のSubjectで同じファイル指紋が変わることを検査した。
+
+現行E6の23件を、GitHub上のE4／E6コードと試験を読み込み、import/exportと`structuredClone`を置換したV8隔離実行器で再検証し、**23件成功・0件失敗**。これはNode.jsの`node --test`実行、実Go E5→E7接続やexact-headのRepository Healthではない。Source Indexに依存辺を取り込むときも、全依存の閉包や実Runtime権限が証明されたとはしない。
 
 ## 検証
 
