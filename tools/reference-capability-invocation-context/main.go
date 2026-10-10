@@ -27,10 +27,10 @@ type ContextSlotRequirement struct {
 }
 
 type ContextSlotBinding struct {
-	ContractID       string
-	ContractVersion  string
+	ContractID        string
+	ContractVersion   string
 	BindingReceiptRef string
-	Value            []byte
+	Value             []byte
 }
 
 type HostExecutionContext struct {
@@ -39,8 +39,8 @@ type HostExecutionContext struct {
 }
 
 type ContextBindingReceipt struct {
-	ContractID       string `json:"contractId"`
-	ContractVersion  string `json:"contractVersion"`
+	ContractID        string `json:"contractId"`
+	ContractVersion   string `json:"contractVersion"`
 	BindingReceiptRef string `json:"bindingReceiptRef"`
 }
 
