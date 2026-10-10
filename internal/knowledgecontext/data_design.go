@@ -72,6 +72,8 @@ type DataDesignEvidence struct {
 
 type DataDesignDeterminantTerm struct {
 	Kind      string           `json:"kind"`
+	Relation  core.CanonicalID `json:"relation,omitempty"`
+	End       string           `json:"end,omitempty"`
 	Data      core.CanonicalID `json:"data,omitempty"`
 	Attribute core.CanonicalID `json:"attribute,omitempty"`
 }
@@ -123,7 +125,7 @@ type DataDesignPersistenceRealization struct {
 	Authority  string                            `json:"authority"`
 }
 
-const dataDesignProjectionRevision = "tei.knowledge.data-design/v6"
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v7"
 
 type DataDesignContext struct {
 	ProjectionRevision                         string                                    `json:"projectionRevision"`
@@ -628,8 +630,10 @@ func buildDataDesignContext(
 				})
 				identityTerms := []DataDesignDeterminantTerm{
 					{
-						Kind: "relation-source-occurrence",
-						Data: relation.Source,
+						Kind:     "related-occurrence",
+						Relation: validation.Relation,
+						End:      "source",
+						Data:     relation.Source,
 					},
 					{
 						Kind:      "attribute",
@@ -656,7 +660,7 @@ func buildDataDesignContext(
 				}
 				identityCandidate.Fingerprint = businessIdentityCandidateFingerprint(identityCandidate)
 				identityCandidate.EvidenceRequirementFingerprint = dataDesignCandidateEvidenceRequirementFingerprint(
-					"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+					"tei.knowledge.data-design.business-identity-candidate-evidence/v2",
 					identityCandidate.Fingerprint,
 					identityCandidate.EvidenceNeeded,
 				)
@@ -680,7 +684,7 @@ func buildDataDesignContext(
 				}
 				fdCandidate.Fingerprint = functionalDependencyCandidateFingerprint(fdCandidate)
 				fdCandidate.EvidenceRequirementFingerprint = dataDesignCandidateEvidenceRequirementFingerprint(
-					"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+					"tei.knowledge.data-design.functional-dependency-candidate-evidence/v2",
 					fdCandidate.Fingerprint,
 					fdCandidate.EvidenceNeeded,
 				)
@@ -815,7 +819,7 @@ func businessIdentityCandidateFingerprint(value DataDesignBusinessIdentityCandid
 	value.Components = normalizedDeterminantTerms(value.Components)
 	value.EvidenceNeeded = nil
 	return typedDataDesignCandidateFingerprint(
-		"tei.knowledge.data-design.business-identity-candidate/v1",
+		"tei.knowledge.data-design.business-identity-candidate/v2",
 		value,
 	)
 }
@@ -826,7 +830,7 @@ func functionalDependencyCandidateFingerprint(value DataDesignFunctionalDependen
 	value.Determinants = normalizedDeterminantTerms(value.Determinants)
 	value.EvidenceNeeded = nil
 	return typedDataDesignCandidateFingerprint(
-		"tei.knowledge.data-design.functional-dependency-candidate/v1",
+		"tei.knowledge.data-design.functional-dependency-candidate/v2",
 		value,
 	)
 }
@@ -853,6 +857,12 @@ func normalizedDeterminantTerms(values []DataDesignDeterminantTerm) []DataDesign
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Kind != out[j].Kind {
 			return out[i].Kind < out[j].Kind
+		}
+		if out[i].Relation != out[j].Relation {
+			return out[i].Relation < out[j].Relation
+		}
+		if out[i].End != out[j].End {
+			return out[i].End < out[j].End
 		}
 		if out[i].Data != out[j].Data {
 			return out[i].Data < out[j].Data
