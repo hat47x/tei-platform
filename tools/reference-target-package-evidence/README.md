@@ -23,6 +23,17 @@ go run ./tools/reference-target-package-evidence \
 
 ## 二つの起動点の閉包比較（E1の前処理）
 
+実TEIの第一Web Targetと、固定Projectionのみに依存する独立Go起動点を、**同じclean checkoutの現在のGo環境で直接観測・比較**する場合：
+
+```sh
+go run ./tools/reference-target-package-evidence \
+  -entry ./tools/reference-first-web-target \
+  -compare-entry ./tools/reference-frozen-manifest-target \
+  > /tmp/tei-first-vs-frozen-go-closure.json
+```
+
+このモードは各入口について`go list -deps -json`を実行し、`sourceRevision`とGo build profileが完全一致しなければ失敗します。両入口に`-tags`を共通適用します。証拠の元になる二つのE0報告書を別々に保管する必要がある場合は、`-entry`を入口ごとに実行してJSONを保存し、以下の既存モードで比較してください。`-compare-entry`と`-compare-before/-compare-after`の併用は拒否します。
+
 **異なるGoビルド入口から生成した二つのE0 JSON**がある場合、次のように読み取り専用で比較できます。現状の第一Web Targetは一つの実行時選択入口だけであり、このコマンドを加えただけでApplication別のビルド入口が成立するわけではありません。
 
 ```sh
