@@ -18,6 +18,23 @@ type Principal struct {
 	PrincipalID string
 }
 
+// principalContextKey is private to the trusted host. Headers, query
+// parameters, and JSON supplied by the browser cannot populate this value.
+type principalContextKey struct{}
+
+// PrincipalFromContext returns the verified identity made available to an
+// Action adapter after session, origin and route authorization checks.
+// It is not itself permission to perform a business operation: the adapter
+// must still call the canonical security.authorize Capability.
+func PrincipalFromContext(ctx context.Context) (Principal, bool) {
+	principal, ok := ctx.Value(principalContextKey{}).(Principal)
+	if !ok || principal.ProviderID == "" || principal.Issuer == "" ||
+		principal.Subject == "" || principal.PrincipalID == "" {
+		return Principal{}, false
+	}
+	return principal, true
+}
+
 // Policy is host-owned: callers must not derive its contents from a browser request.
 type Policy struct {
 	Path     string
@@ -125,7 +142,7 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 			http.Error(tw, "access denied", http.StatusForbidden)
 			return
 		}
-		d.Invoke.ServeHTTP(tw, r)
+		d.Invoke.ServeHTTP(tw, r.WithContext(context.WithValue(r.Context(), principalContextKey{}, subject)))
 		stage = "completed"
 	}), nil
 }
