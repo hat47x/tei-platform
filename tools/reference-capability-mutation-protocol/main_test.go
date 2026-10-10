@@ -491,3 +491,68 @@ func TestCanceledInvocationDoesNotPrepareOrCommit(t *testing.T) {
 		t.Fatalf("canceled invocation crossed mutation boundary: execution=%+v err=%v provider=%+v", execution, err, provider)
 	}
 }
+
+
+func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
+	provider := newLedgerProvider()
+
+	left, err := provider.Prepare(context.Background(), PrepareRequest{
+		Protocol:      mutationProtocol,
+		InvocationKey: "concurrent-left",
+		RequestDigest: digest([]byte("2")),
+		Payload:       []byte("2"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := provider.Prepare(context.Background(), PrepareRequest{
+		Protocol:      mutationProtocol,
+		InvocationKey: "concurrent-right",
+		RequestDigest: digest([]byte("3")),
+		Payload:       []byte("3"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	leftHandle, err := validatePrepared("concurrent-left", digest([]byte("2")), left)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leftReceipt, err := provider.Commit(context.Background(), CommitRequest{
+		Protocol:          mutationProtocol,
+		PreparationID:    leftHandle.PreparationID,
+		InvocationKey:    leftHandle.InvocationKey,
+		RequestDigest:    leftHandle.RequestDigest,
+		ResultDigest:     leftHandle.ResultDigest,
+		ConcurrencyToken: leftHandle.ConcurrencyToken,
+	})
+	if err != nil || leftReceipt.Outcome != OutcomeCommitted {
+		t.Fatalf("first commit failed: receipt=%+v err=%v", leftReceipt, err)
+	}
+
+	rightHandle, err := validatePrepared("concurrent-right", digest([]byte("3")), right)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rightReceipt, err := provider.Commit(context.Background(), CommitRequest{
+		Protocol:          mutationProtocol,
+		PreparationID:    rightHandle.PreparationID,
+		InvocationKey:    rightHandle.InvocationKey,
+		RequestDigest:    rightHandle.RequestDigest,
+		ResultDigest:     rightHandle.ResultDigest,
+		ConcurrencyToken: rightHandle.ConcurrencyToken,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rightReceipt.Outcome != OutcomeNotCommitted ||
+		provider.value != 2 ||
+		provider.effectCount != 1 {
+		t.Fatalf(
+			"stale prepared result committed against changed state: receipt=%+v provider=%+v",
+			rightReceipt,
+			provider,
+		)
+	}
+}
