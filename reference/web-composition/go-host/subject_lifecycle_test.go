@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"tei/internal/security/legacyauth"
+	"tei/internal/security/legacyauthorization"
 )
 
 type subjectUserStoreFunc func(context.Context, string) (legacyauth.User, bool, error)
@@ -94,7 +95,7 @@ func TestActiveLegacySubjectLinksRequiresTrustedDependencies(t *testing.T) {
 	clock := func() time.Time { return time.Now() }
 	for _, args := range []struct {
 		links SubjectLinkLookup
-		store subjectUserStoreFunc
+		store legacyauthorization.SubjectStore
 		now func() time.Time
 	}{
 		{store: store, now: clock},
