@@ -298,7 +298,7 @@ func TestWebTargetSessionRouteRechecksAccountBeforeCommand(t *testing.T) {
 		}
 		if response.Result.Stage != "identity-link" || response.Result.Command != nil ||
 			response.Result.Observation != nil ||
-			response.ExecutionError != "trusted identity resolution unavailable" ||
+			response.ExecutionError != "trusted identity or authorization resolution unavailable" ||
 			strings.Contains(rec.Body.String(), "subject link store unavailable") ||
 			len(audits) != 1 || audits[0].Stage != "error" {
 			t.Fatalf("late link failure lost provenance: result=%+v audits=%+v", response, audits)
@@ -370,7 +370,7 @@ func TestWebTargetSessionRouteEffectTimeRevalidation(t *testing.T) {
 			t.Fatal(err)
 		}
 		if response.Result.Stage != "identity-link" || response.Result.Command != nil ||
-			response.Result.Observation != nil || response.ExecutionError != "trusted identity resolution unavailable" ||
+			response.Result.Observation != nil || response.ExecutionError != "trusted identity or authorization resolution unavailable" ||
 			strings.Contains(rec.Body.String(), "subject link differs") ||
 			len(audits) != 1 || audits[0].Stage != "error" {
 			t.Fatalf("changed mapping reached effect or leaked link state: response=%+v audits=%+v", response, audits)
