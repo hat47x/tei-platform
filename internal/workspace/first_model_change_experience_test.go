@@ -276,6 +276,104 @@ func TestFirstModelChangeRelationTargetDiagnosticAndRepair(t *testing.T) {
 	}
 }
 
+// A semantic Action declaration is still only a model; its parameter
+// errors must identify the authored capability before any binding exists.
+func TestFirstModelChangeCapabilityTypeDiagnosticAndRepair(t *testing.T) {
+	base := filepath.Join(repoRoot(t), filepath.FromSlash(firstModelRoot))
+	userRoot := t.TempDir()
+	for _, file := range []string{
+		"tei.workspace.yaml",
+		firstModelSemantic,
+		"applications/request-log/application.tei",
+	} {
+		content, err := os.ReadFile(filepath.Join(base, filepath.FromSlash(file)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		dst := filepath.Join(userRoot, filepath.FromSlash(file))
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dst, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	path := filepath.Join(userRoot, filepath.FromSlash(firstModelSemantic))
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const action = `
+capability intake.request.submit {
+    input request intake.unknown_request
+    output intake.unknown_result
+}
+`
+	brokenSource := string(source) + action
+	if err := os.WriteFile(path, []byte(brokenSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	broken, err := workspace.Load(userRoot)
+	if err != nil {
+		t.Fatalf("unknown Action parameter types should reach semantic validation: %v", err)
+	}
+	idx, err := workspace.BuildSourceIndex(userRoot, broken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing := map[string]bool{
+		"UNKNOWN_SEMANTIC_CAPABILITY_INPUT":  false,
+		"UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT": false,
+	}
+	for _, projected := range workspace.ProjectDiagnostics(validation.Validate(broken.World), idx) {
+		d := projected.Diagnostic
+		if _, expect := missing[d.Code]; !expect {
+			continue
+		}
+		if d.Severity != validation.Error || d.Subject == nil ||
+			*d.Subject != (sourceindex.Subject{Kind: "semantic-capability", ID: "intake.request.submit"}) {
+			t.Fatalf("invalid Action parameter has no stable capability Subject: %+v", d)
+		}
+		if len(projected.Sources) != 1 || projected.Sources[0].ArtifactPath != firstModelSemantic {
+			t.Fatalf("invalid Action parameter lost its source location: %+v", projected.Sources)
+		}
+		anchor := projected.Sources[0].Range
+		if anchor.Start.Offset < 0 || anchor.Start.Offset >= anchor.End.Offset ||
+			anchor.End.Offset > len(brokenSource) ||
+			brokenSource[anchor.Start.Offset:anchor.End.Offset] != "intake.request.submit" {
+			t.Fatalf("invalid Action parameter must locate its capability declaration: %+v", anchor)
+		}
+		missing[d.Code] = true
+	}
+	for code, observed := range missing {
+		if !observed {
+			t.Fatalf("unknown Action type did not emit %s", code)
+		}
+	}
+
+	repairedSource := strings.ReplaceAll(brokenSource, "intake.unknown_request", "intake.request")
+	repairedSource = strings.ReplaceAll(repairedSource, "intake.unknown_result", "intake.request")
+	if err := os.WriteFile(path, []byte(repairedSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	repaired, err := workspace.Load(userRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ds := validation.Validate(repaired.World); validation.HasErrors(ds) {
+		t.Fatalf("corrected semantic Action does not validate: %+v", ds)
+	}
+	if len(repaired.World.Bindings) != 0 || len(repaired.World.Applications[0].Patterns) != 0 {
+		t.Fatal("validating Action meaning must not fabricate a runnable function or UI")
+	}
+	index, err := workspace.BuildSourceIndex(userRoot, repaired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFirstModelReference(t, index, "semantic-capability", "intake.request.submit", firstModelSemantic)
+}
+
 func assertFirstModelReference(t *testing.T, idx sourceindex.Index, kind, id, path string) {
 	t.Helper()
 	refs := idx.ReferencesFor(sourceindex.Subject{Kind: kind, ID: id})
