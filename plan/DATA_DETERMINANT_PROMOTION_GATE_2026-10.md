@@ -134,7 +134,11 @@ Not Readyの主因は、実装不足ではなく**accepted business semanticsの
 
 次段では新しいCore syntaxを先に作らない。
 
-優先するのは、association Dataについて次をSource-backedに説明できるReferenceを一つ作ることである。
+association Dataのpositive pressureとして、`reference/business-system-design/data-determinant-association-pressure.md`を追加した。CoverageAssignmentを用い、ServiceContract occurrence + Asset occurrence + effectiveFromがbusiness occurrence identityを構成し得る一方、effectiveToやhistory revisionは別責務であること、surrogate primary keyの有無でbusiness meaningを変えないことをReference business factとして固定した。
+
+このReferenceにより、現行Core contractではSource-backedなbusiness occurrence identity / scoped FDをaccepted meaningとして直接authorできないrepresentational gapが具体化した。ただし、syntax採用はまだ行わない。
+
+次に優先するのは、association Dataについて次をSource-backedに説明できるReferenceをさらに検証することである。
 
 1. 何を一つのbusiness occurrenceと数えるか
 2. 構成Dataの組合せがidentityなのか
