@@ -45,7 +45,7 @@ func TestNativeActionPath(t *testing.T) {
 	t.Run("authorized commit then stale rejection", func(t *testing.T) {
 		host, store := newHost("allowed")
 		rev, err := host.Commit(context.Background(), intent)
-		if err != nil || rev != "r2" {
+		if err != nil || rev != "r1:1" {
 			t.Fatalf("revision=%s err=%v", rev, err)
 		}
 		_, doc, writes := store.Snapshot()
