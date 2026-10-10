@@ -20,6 +20,7 @@ const (
 	buildExecutionResultFormatVersion       = 1
 	pluginSubjectBindingFormatVersion       = 1
 	runtimeEngineSubjectBindingFormatVersion = 1
+	builderSubjectBindingFormatVersion       = 1
 )
 
 // BuildExecutionPlan is a Reference-only projection of exact build inputs.
@@ -98,6 +99,15 @@ type RuntimeEngineSubjectBinding struct {
 	OutputRole                     string                         `json:"outputRole"`
 }
 
+type BuilderSubjectBinding struct {
+	FormatVersion                  int                    `json:"formatVersion"`
+	Builder                        plugin.BuilderIdentity `json:"builder"`
+	ExecutionPlanFingerprint       string                 `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint         string                 `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string                `json:"buildExecutionResultFingerprint"`
+	OutputRole                     string                 `json:"outputRole"`
+}
+
 type referenceEvidence struct {
 	Schema                         string                      `json:"schema"`
 	SharedPlan                     BuildExecutionPlan          `json:"sharedPlan"`
@@ -125,6 +135,8 @@ type referenceEvidence struct {
 	BootstrapStage1Plan              BuildExecutionPlan         `json:"bootstrapStage1Plan"`
 	BootstrapStage2Plan              BuildExecutionPlan         `json:"bootstrapStage2Plan"`
 	BootstrapStage1ArtifactSet       ArtifactSet                `json:"bootstrapStage1ArtifactSet"`
+	BootstrapStage1BuilderBinding    BuilderSubjectBinding      `json:"bootstrapStage1BuilderBinding"`
+	BootstrapStage1BuilderBindingFingerprint string             `json:"bootstrapStage1BuilderBindingFingerprint"`
 	AuthorityLimits                  []string                   `json:"authorityLimits"`
 }
 
@@ -459,6 +471,21 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	if err != nil {
 		return referenceEvidence{}, err
 	}
+	stage1BuilderBinding := BuilderSubjectBinding{
+		FormatVersion:                  builderSubjectBindingFormatVersion,
+		Builder:                        stage1Output,
+		ExecutionPlanFingerprint:       stage1Fingerprint,
+		ArtifactSetFingerprint:         stage1OutputSetFingerprint,
+		BuildExecutionResultFingerprint: stage1ResultFingerprint,
+		OutputRole:                     "builder-artifact",
+	}
+	if err := verifyBuilderSubjectBinding(stage1BuilderBinding, stage1Plan, stage1OutputSet); err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1BuilderBindingFingerprint, err := builderSubjectBindingFingerprint(stage1BuilderBinding)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
 	if err := verifyBuildGraphBindings(
 		graph,
 		map[string]BuildExecutionPlan{
@@ -506,6 +533,8 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		BootstrapStage1Plan: stage1Plan,
 		BootstrapStage2Plan: stage2Plan,
 		BootstrapStage1ArtifactSet: stage1OutputSet,
+		BootstrapStage1BuilderBinding: stage1BuilderBinding,
+		BootstrapStage1BuilderBindingFingerprint: stage1BuilderBindingFingerprint,
 		AuthorityLimits: []string{
 			"build-binding-is-not-acceptance-authority",
 			"build-binding-is-not-runtime-authority",
@@ -1000,6 +1029,83 @@ func verifyRuntimeEngineSubjectBinding(
 		return nil
 	}
 	return fmt.Errorf("runtime engine subject binding output role %s is not present in artifact set", binding.OutputRole)
+}
+
+func (b BuilderSubjectBinding) Validate() error {
+	if b.FormatVersion != builderSubjectBindingFormatVersion {
+		return fmt.Errorf("unsupported builder subject binding format %d", b.FormatVersion)
+	}
+	if err := b.Builder.Validate(); err != nil {
+		return err
+	}
+	if err := validateFingerprint("execution plan fingerprint", b.ExecutionPlanFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("artifact set fingerprint", b.ArtifactSetFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("build execution result fingerprint", b.BuildExecutionResultFingerprint); err != nil {
+		return err
+	}
+	if strings.TrimSpace(b.OutputRole) == "" {
+		return fmt.Errorf("builder subject binding output role is required")
+	}
+	return nil
+}
+
+func builderSubjectBindingFingerprint(binding BuilderSubjectBinding) (string, error) {
+	if err := binding.Validate(); err != nil {
+		return "", err
+	}
+	normalized := binding
+	normalized.Builder.ArtifactDigest = normalizeDigest(binding.Builder.ArtifactDigest)
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
+	normalized.BuildExecutionResultFingerprint = normalizeFingerprint(binding.BuildExecutionResultFingerprint)
+	return fingerprintJSON(normalized)
+}
+
+func verifyBuilderSubjectBinding(
+	binding BuilderSubjectBinding,
+	plan BuildExecutionPlan,
+	set ArtifactSet,
+) error {
+	if err := binding.Validate(); err != nil {
+		return err
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ExecutionPlanFingerprint) != executionFingerprint {
+		return fmt.Errorf("builder subject binding execution plan fingerprint does not match")
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
+		return fmt.Errorf("builder subject binding artifact set fingerprint does not match")
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.BuildExecutionResultFingerprint) != resultFingerprint {
+		return fmt.Errorf("builder subject binding build execution result fingerprint does not match")
+	}
+	member, ok := artifactMemberByRole(set, binding.OutputRole)
+	if !ok {
+		return fmt.Errorf("builder subject binding output role %s is not present in artifact set", binding.OutputRole)
+	}
+	if normalizeDigest(member.Digest) != normalizeDigest(binding.Builder.ArtifactDigest) {
+		return fmt.Errorf("builder artifact digest does not match selected artifact member")
+	}
+	return nil
 }
 
 func projectPluginBuild(
