@@ -286,9 +286,9 @@ capability intake.request.submit {
 		t.Fatal(err)
 	}
 	keyDiagnostic := run(1, "validate", "-workspace", workspaceRoot)
-	if !strings.Contains(keyDiagnostic, "SEMANTIC_RELATION_KEY_TYPE_MISMATCH") ||
+	if strings.Count(keyDiagnostic, "SEMANTIC_RELATION_KEY_TYPE_MISMATCH") != 1 ||
 		!strings.Contains(keyDiagnostic, source+":") {
-		t.Fatalf("CLI accepted mismatched semantic Relation keys: %q", keyDiagnostic)
+		t.Fatalf("CLI must report the Relation key error once, at its source: %q", keyDiagnostic)
 	}
 	goodKey := strings.Replace(
 		badKey, "key intake.request.summary ->", "key intake.request.request_id ->", 1,
