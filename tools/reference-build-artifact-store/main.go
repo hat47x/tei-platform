@@ -95,7 +95,7 @@ func (s localArtifactStore) PutBytes(value []byte) (artifactStoreReceipt, error)
 		if err != nil {
 			return artifactStoreReceipt{}, err
 		}
-		return s.receipt("put-existing", digest, int64(len(stored)), target), nil
+		return s.receipt("put-existing", digest, int64(len(stored))), nil
 	} else if !os.IsNotExist(err) {
 		return artifactStoreReceipt{}, err
 	}
@@ -138,13 +138,13 @@ func (s localArtifactStore) PutBytes(value []byte) (artifactStoreReceipt, error)
 		if verifyErr != nil {
 			return artifactStoreReceipt{}, fmt.Errorf("concurrent artifact store object: %w", verifyErr)
 		}
-		return s.receipt("put-existing", digest, int64(len(stored)), target), nil
+		return s.receipt("put-existing", digest, int64(len(stored))), nil
 	}
 	stored, err := s.readVerified(target, digest)
 	if err != nil {
 		return artifactStoreReceipt{}, fmt.Errorf("verify published artifact store object: %w", err)
 	}
-	return s.receipt("put", digest, int64(len(stored)), target), nil
+	return s.receipt("put", digest, int64(len(stored))), nil
 }
 
 func (s localArtifactStore) GetBytes(expectedDigest string) ([]byte, artifactStoreReceipt, error) {
@@ -160,7 +160,7 @@ func (s localArtifactStore) GetBytes(expectedDigest string) ([]byte, artifactSto
 	if err != nil {
 		return nil, artifactStoreReceipt{}, err
 	}
-	return value, s.receipt("get", normalized, int64(len(value)), path), nil
+	return value, s.receipt("get", normalized, int64(len(value))), nil
 }
 
 func (s localArtifactStore) ensureAlgorithmDirectory() (os.FileInfo, error) {
@@ -270,17 +270,14 @@ func (s localArtifactStore) readVerified(path, expectedDigest string) ([]byte, e
 	return buffer.Bytes(), nil
 }
 
-func (s localArtifactStore) receipt(operation, digest string, size int64, path string) artifactStoreReceipt {
-	relative, err := filepath.Rel(s.root, path)
-	if err != nil {
-		relative = ""
-	}
+func (s localArtifactStore) receipt(operation, digest string, size int64) artifactStoreReceipt {
+	hexDigest := strings.TrimPrefix(digest, "sha256:")
 	return artifactStoreReceipt{
 		Schema:          artifactStoreReceiptSchema,
 		Operation:       operation,
 		Digest:          digest,
 		Size:            size,
-		Locator:         filepath.ToSlash(relative),
+		Locator:         filepath.ToSlash(filepath.Join(artifactDigestAlgorithm, hexDigest)),
 		AuthorityLimits: append([]string(nil), artifactStoreAuthorityLimits...),
 	}
 }
