@@ -70,7 +70,26 @@ node reference/studio-authoring/cli.mjs inspect \
 
 `review.previewAcceptable`がfalse、review内容が未確認、あるいはsourceの競合があればAcceptを行わず、未解決として止めてください。Previewの`unresolved`を勝手に「変更なし」へ変換しません。現行Shared Acceptanceの既知仕様では、Relation追加によってPersistence Mappingの意味まで自動確定するとは限りません。
 
-表上の編集は`view:"table"`、`subject:"attribute:sales.order_line.unit_price"`、`operation:"add-validation"`、`validationKind:"positive"`、`validationID:"sales.order_line.unit_price_positive"`とし、別候補として提出できます。Attribute型・Validationの妥当性はShared Acceptanceで最終確認します。既存Relationのcardinalityを`set`するoperationは未実装です。未対応編集を直接Source patchへ落とし込まないでください。
+表上の編集は`view:"table"`、`subject:"attribute:sales.order_line.unit_price"`、`operation:"add-validation"`、`validationKind:"positive"`、`validationID:"sales.order_line.unit_price_positive"`とし、別候補として提出できます。**ただしValidationの宣言のみでは、既存Web CommandがそのRuleを評価するとは限りません。** 実際に`order_entry`から使用する意図があるなら、同じ編集入力に次のフィールドを明示して、**規則とApplicationの選択を一つの候補**として提出します。
+
+```json
+{
+  "applicationUse": {
+    "application": "order_entry",
+    "placement": "applications/order-entry/application.tei"
+  }
+}
+```
+
+この追加フィールドは上記の`add-validation`編集入力へ組み合わせる部分指定です。単体のJSONとして提出するものではありません。生成される`delta`は既存の`add-validation`と`add-application-validation-use`の2操作になります。TEI既存実装`tools/reference-shared-acceptance/practical_validation_loop_test.go`と同じ契約を利用し、別の書込み器やRule実行器を追加しません。
+
+`placement`は呼出し側が**正本で確認したApplication定義の位置**を指定します。Bridgeはパスの大まかな形式とSemantic namespace利用を確認しますが、source ownership・型検査・二重宣言・書込み可否はShared AcceptanceのPreview/Reviewが最終確認します。Application側の明示的選択が受理済みであることも、実Target・Providerで規則が実行された証拠ではありません。
+
+初期`e2e.mjs`は表のケースを2操作の候補として実施し、受理後に意味・Application双方のSourceが変化し、再投影でも利用宣言が分かることを検査します。**このE2Eスクリプト自体の実行は未確認です**。Attribute型・Validationの妥当性はShared Acceptanceへ委ねます。
+
+各Projectionが返す`realizationReadiness.status=not-verified`は重要です。Source Acceptanceは正本変更に限った判断であり、DB migration、Target配備、実行時権限、Provider書込み、Observationを証明しません。表示の変更だけで不要なDB migrationを要求しない一方、意味変更だけで旧schemaが利用可能と断定もしません（#1119 S01/S02）。実際の適用可否は#1121/#1126/#1127側から明示的に受け取る必要があります。
+
+既存Relationのcardinalityを`set`するoperationは未実装です。未対応編集を直接Source patchへ落とし込まないでください。
 
 Worldとrevisionを先に取得してCLIへ渡す場合は、`-workspace`の代わりに`-world-file world.json -revision-file revision.json`を同時指定できます。`inspect`では`-source-index-file index.json`も指定でき、そのIndexにexact一致する定義位置を表示します。Workspace指定時はWorldとSource Indexを同じWorkspaceから読み、取得前後のrevision一致を検査します。ただし完全な原子snapshotやファイルの再読込時点の一致は保証せず、Accepted Sourceのrevision一致はShared Acceptanceで再確認します。JSONファイルを任意の第三者から受け取った場合、その内容がTEIのauthoritative Sourceと一致することはBridge単独では証明できません。
 
@@ -110,8 +129,8 @@ tools/repository-health-check.sh
 | Scenario | 初期実装 | 未検証・未対応 |
 | --- | --- | --- |
 | V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。Source Indexのexact kind/IDで元定義のアンカーを表示。#1138 JSONの任意参照で非Canonical BusinessとのPattern結合を候補実装 | Accepted Businessとの同revision結合、Source byte再検査は未実装。4つのAccepted Projection受入は**未達** |
-| V03 | ERのRelation追加・表のValidation追加をcandidate化 | PreviewのSemantic Diff / ImpactはShared Acceptance実行が必要 |
-| V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
+| V03 | ERのRelation追加・表のValidation追加に加え、必要ならApplicationによるValidation利用選択も同一candidateで提案。実行Readyは未確認と表示 | PreviewのSemantic Diff / Impact、Target/Provider readinessはShared Acceptanceと下流に要確認 |
+| V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。規則+Application選択はSource2ファイルを検査するテストとして追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
 | N06 | candidateへ基準revisionを保持。Projection時の前後revision不一致を拒否し、scratch E2Eにstale負例を追加 | 実WorkspaceでのN06実行とaccept途中の並行write試験は未実施 |
 | Invalid ref | exactな入力subject/Relation target不在・重複を拒否。Source Indexの曖昧な定義、範囲不正、危険なpathを拒否。DFDの参照切れはunresolved | 全モデルKind・全typed edge・Source byte最新性とBusinessの受理済み意味 |
