@@ -564,7 +564,7 @@ func TestE5OrderEntryWorkspaceContractQueryReference(t *testing.T) {
     if report.Status != "observed" {
         t.Fatalf("actual order_entry direct references unresolved: %+v",report.Issues)
     }
-    found := 0
+    found, inputSource := 0, 0
     for _, dep := range report.Dependencies {
         if dep.Relation == "pattern-contract-query" &&
             dep.Subject.Kind == "database-contract-query" &&
@@ -572,9 +572,15 @@ func TestE5OrderEntryWorkspaceContractQueryReference(t *testing.T) {
             dep.Source.Path == "databases/master-data/contracts/customer.tei" {
             found++
         }
+        if dep.Relation == "pattern-contract-query-input-attribute" &&
+            dep.Subject.Kind == "semantic-attribute" &&
+            dep.Subject.ID == "customer.customer.customer_id" &&
+            dep.Source.Path == "semantic/customer/customer.tei" {
+            inputSource++
+        }
     }
-    if found != 1 {
-        t.Fatalf("actual reference ContractQuery definition count=%d dependencies=%+v",found,report.Dependencies)
+    if found != 1 || inputSource != 1 {
+        t.Fatalf("actual ContractQuery definition=%d, input attribute=%d dependencies=%+v",found,inputSource,report.Dependencies)
     }
 }
 
@@ -587,5 +593,83 @@ func TestE5SUIStage0IsNotAnApplicationConsumer(t *testing.T) {
     report := inspectE5(loaded.World,index,"sui_reference_adoption_stage0")
     if report.Status != "unresolved" || !e5HasIssue(report,"application_missing_or_ambiguous") {
         t.Fatalf("SUI Stage 0 was incorrectly promoted to Application: %+v",report)
+    }
+}
+
+func e5ContractQueryAttributeFixture() (ir.World, sourceindex.Index) {
+    world, index := e5ContractQueryFixture()
+    world.Semantics[0].Data = []semantic.Data{{
+        ID:"sales.customer",
+        Attributes:[]semantic.Attribute{{ID:"sales.customer.customer_id"}},
+    }}
+    world.Applications[0].Patterns[1].ContractQuery.Inputs = []application.ContractQueryInputBinding{{
+        TargetAttribute:"sales.customer.customer_id",Input:"id",
+    }}
+    index.Artifacts=append(index.Artifacts,sourceindex.Artifact{
+        Path:"semantic/sales/customer.tei",
+        Fingerprint:"sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    })
+    index.References=append(index.References,sourceindex.Reference{
+        Subject:sourceindex.Subject{Kind:"semantic-attribute",ID:"sales.customer.customer_id"},
+        ArtifactPath:"semantic/sales/customer.tei",Role:sourceindex.RoleDefinition,
+    })
+    return world,index
+}
+
+func TestE5ContractQueryInputAttributeSource(t *testing.T) {
+    world,index:=e5ContractQueryAttributeFixture()
+    report:=inspectE5(world,index,"order_entry")
+    if report.Status!="observed" {t.Fatalf("unexpected source problem: %+v",report.Issues)}
+    count:=0
+    for _,dep:=range report.Dependencies {
+        if dep.Relation=="pattern-contract-query-input-attribute" &&
+            dep.Subject.Kind=="semantic-attribute" &&
+            dep.Subject.ID=="sales.customer.customer_id" &&
+            dep.Source.Path=="semantic/sales/customer.tei" {count++}
+    }
+    if count!=1 {t.Fatalf("input attribute source not observed once: %+v",report.Dependencies)}
+}
+
+func TestE5ContractQueryInputAttributeNotInWorld(t *testing.T) {
+    world,index:=e5ContractQueryAttributeFixture()
+    world.Semantics[0].Data=nil
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"contract_query_input_attribute_missing_or_ambiguous") {
+        t.Fatal("undefined semantic input attribute accepted")
+    }
+}
+
+func TestE5ContractQueryInputAttributeAmbiguous(t *testing.T) {
+    world,index:=e5ContractQueryAttributeFixture()
+    world.Semantics[0].Data[0].Attributes=append(world.Semantics[0].Data[0].Attributes,
+        world.Semantics[0].Data[0].Attributes[0])
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"contract_query_input_attribute_missing_or_ambiguous") {
+        t.Fatal("ambiguous semantic input attribute accepted")
+    }
+}
+
+func TestE5ContractQueryInputAttributeMissingSource(t *testing.T) {
+    world,index:=e5ContractQueryAttributeFixture()
+    for i,ref:=range index.References {
+        if ref.Subject.Kind=="semantic-attribute" && ref.Subject.ID=="sales.customer.customer_id" {
+            index.References=append(index.References[:i],index.References[i+1:]...)
+            break
+        }
+    }
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous") {
+        t.Fatal("semantic input attribute without Source Index definition accepted")
+    }
+}
+
+func TestE5ContractQueryInputAttributeNotPromotedWithoutQuery(t *testing.T) {
+    world,index:=e5ContractQueryAttributeFixture()
+    world.Databases[0].Contracts[0].Queries=nil
+    report:=inspectE5(world,index,"order_entry")
+    if !e5HasIssue(report,"contract_query_definition_missing_or_ambiguous") {
+        t.Fatal("missing Query accepted")
+    }
+    for _,dep:=range report.Dependencies {
+        if dep.Relation=="pattern-contract-query-input-attribute" {
+            t.Fatalf("unresolved Query promoted its input source: %+v",report.Dependencies)
+        }
     }
 }
