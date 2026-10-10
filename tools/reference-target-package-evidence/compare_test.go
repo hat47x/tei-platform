@@ -152,6 +152,11 @@ func TestCompareRejectsCgoCompilerConfigurationDrift(t *testing.T) {
 		"CGO_CPPFLAGS": "", "CGO_CXXFLAGS": "-O2 -g",
 		"CGO_LDFLAGS": "-O2 -g", "PKG_CONFIG": "pkg-config",
 	}
+	incomplete := before
+	incomplete.CgoToolchain = map[string]string{"CC": "gcc"}
+	if _, err := compareReports(incomplete, incomplete); err == nil {
+		t.Fatal("incomplete enabled-cgo toolchain must not be accepted")
+	}
 	after := before
 	// Clone the map so both reports retain distinct captured toolchains.
 	after.CgoToolchain = make(map[string]string, len(before.CgoToolchain))
