@@ -285,7 +285,9 @@ func TestWebTargetSessionRouteRechecksAccountBeforeCommand(t *testing.T) {
 			t.Fatal(err)
 		}
 		if response.Result.Stage != "identity-link" || response.Result.Command != nil ||
-			response.Result.Observation != nil || !strings.Contains(response.ExecutionError, "subject link store unavailable") ||
+			response.Result.Observation != nil ||
+			response.ExecutionError != "trusted identity resolution unavailable" ||
+			strings.Contains(rec.Body.String(), "subject link store unavailable") ||
 			len(audits) != 1 || audits[0].Stage != "error" {
 			t.Fatalf("late link failure lost provenance: result=%+v audits=%+v", response, audits)
 		}
