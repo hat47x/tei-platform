@@ -54,10 +54,10 @@ go run ./cmd/tei world -workspace /tmp/tei-first
 go run ./cmd/tei validate -workspace /tmp/tei-first
 ```
 
-`UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`のエラーで非0終了になることが期待結果です。「うまく推定して通す」ことはしません。型を`std.code`に戻してValidationが成功することを確認します。
+`UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`のエラーと、`semantic/intake/request.tei`の定義位置が表示され、非0終了になることが期待結果です。「うまく推定して通す」ことはしません。型を`std.code`に戻してValidationが成功することを確認します。
 
 ## 第1段階の完了と次の課題
 
-この例は、(a) 独立Workspaceの作成、(b) 一か所の編集、(c) Source位置とCanonical意味の確認、(d) 不正な参照の検出・修復までを扱います。回帰テストは`go test ./internal/workspace -run TestFirstModelChange`で実行できます。
+この例は、(a) 独立Workspaceの作成、(b) 一か所の編集、(c) Source位置とCanonical意味の確認、(d) 不正な参照の検出・修復までを扱います。回帰テストは`go test ./internal/workspace -run TestFirstModelChange -count=1`で実行できます。実際の`tei` CLIをbuildして、正常→編集→エラー→修復の操作を確認するテストは`go test ./cmd/tei -run TestFirstModelChangeCLIEndToEnd -count=1`です。
 
 次に必要なのは、同じ利用者作成Workspaceから標準的なCRUD・検索画面とデータを扱えるようにすること（#1127）、その際の操作数・手入力箇所・修復時間を外部の利用者にも測定可能にすることです。Validationの成功を業務利用可能という主張へ拡張しません。
