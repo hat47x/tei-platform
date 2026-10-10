@@ -72,3 +72,24 @@ generic Contract identityをHostがtransport envelopeのtop-levelで検証する
 - ISSUE-000080 Referenceへ機能を追加し続ける
 - legacy CapabilityKindをこのIssueで削除する
 - mutating Capabilityのtransaction設計
+
+
+## P2 — second transport pressure
+
+同じgeneric dispatch / result / receipt identityを、syntheticなloopback HTTP transportでも使うReferenceを追加した。
+
+processとHTTPではphysical carrierが異なる。process側はlegacy CapabilityKind / CapabilityIDとPlugin identityをcarrierに持つ。HTTP側はそのlegacy carrierを持たない。一方、Contract、Target、Provider、request / result shape、codec、payload digestは同じ`GenericInvocationIdentity`として保持できる。
+
+この結果から、transport-neutralなidentityをphysical carrierから分ける方向には二つのtransportによるpressureが得られた。
+
+ただしHTTP request内のgeneric identityはclient入力である。HostがrequestのProviderをそのまま信頼すると、transport metadataがProvider選択Authorityになる。このためHTTP ReferenceではHostが期待する`GenericInvocationIdentity`を事前に固定し、requestと一致する場合だけimplementationへ進む。
+
+このgateはAuthenticationやRuntime Authorityではない。First Web Target、production HTTP Runtime、browser fetch、Wasm host callを実証したものでもない。
+
+## P2後の停止条件
+
+二つのtransportで共通identityは再現したが、production schema / protocol変更へは進まない。
+
+次に必要なのは、actual Web / Wasm等のTarget consumerで同じidentityが必要かを確認すること、または#1116のRuntime Authority bridgeからgeneric receiptへproduction provenanceを失わず運ぶ必要が再現することである。
+
+synthetic HTTP Referenceだけを根拠に、process / HTTP JSON envelopeをTEI標準ABIへ固定しない。
