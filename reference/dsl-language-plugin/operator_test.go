@@ -34,6 +34,7 @@ func TestOperatorFailures(t *testing.T) {
 		{"duplicate", pure, []OperatorContract{pure, pure}, ErrOperatorAmbiguous},
 		{"same ID and version, different fingerprints", pure, []OperatorContract{pure, {"std.where", "1", "v2", "pure", "rows", "rows"}}, ErrOperatorAmbiguous},
 		{"invalid", OperatorContract{}, nil, ErrOperatorInvalid},
+		{"effectful contract", OperatorContract{"std.invoke", "1", "v1", "invoke", "rows", "rows"}, []OperatorContract{{"std.invoke", "1", "v1", "invoke", "rows", "rows"}}, ErrEffectEscalation},
 		{"signature drift", pure, []OperatorContract{{"std.where", "1", "v1", "pure", "different", "rows"}}, ErrOperatorInvalid},
 	}
 	for _, tc := range cases {
