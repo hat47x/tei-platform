@@ -141,7 +141,7 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		"trace", "-workspace", reference, "-scope", "reference-observation",
 		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
 		"-mode", "full", "-limit", "1",
-		"-expected-fingerprint", traceSummary.Result.Trace.SnapshotFingerprint), &traceFull); err != nil {
+		"-expected-fingerprint", traceSummary.Result.SnapshotFingerprint), &traceFull); err != nil {
 		t.Fatalf("trace full must be JSON: %v", err)
 	}
 	if !traceFull.OK || traceFull.Result == nil ||
