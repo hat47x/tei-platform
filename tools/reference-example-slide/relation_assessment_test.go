@@ -262,3 +262,45 @@ func TestTypeEvidencePartialIsUnresolved(t *testing.T) {
 		t.Fatalf("one-sided type identity was ignored: %+v",result)
 	}
 }
+
+// Completeness belongs to a snapshot, not the entire presentation.
+func TestStageCompletenessDoesNotLeak(t *testing.T) {
+	in := keyedInput()
+	in.Example.Stages = []Stage{{ID: "later"}}
+	in.Presentation.Frames = []Frame{
+		{ID: "later-frame", Stage: "later"},
+		{ID: "base-frame", Stage: "base"},
+	}
+	p, err := Build(in)
+	if err != nil { t.Fatal(err) }
+	if p.Slides[0].RelationFindings[0].Reason != "target-table-is-partial" {
+		t.Fatalf("base completeness leaked into later stage: %+v", p.Slides[0].RelationFindings)
+	}
+	if p.Slides[1].RelationFindings[0].Result != "supported" {
+		t.Fatal("base completeness unexpectedly lost")
+	}
+}
+
+func TestStageCompletenessRequiresExplicitDeclaration(t *testing.T) {
+	in := keyedInput()
+	in.Example.CompleteTables = nil
+	in.Example.Stages = []Stage{{ID: "later", CompleteTables: []string{"parent"}}}
+	in.Presentation.Frames = []Frame{
+		{ID: "later-frame", Stage: "later"},
+		{ID: "base-frame", Stage: "base"},
+	}
+	p, err := Build(in)
+	if err != nil { t.Fatal(err) }
+	if p.Slides[0].RelationFindings[0].Result != "supported" {
+		t.Fatal("explicit stage completeness ignored")
+	}
+	if p.Slides[1].RelationFindings[0].Result != "unresolved" {
+		t.Fatal("later completeness leaked into base")
+	}
+}
+
+func TestInvalidStageCompletenessFails(t *testing.T) {
+	in := keyedInput()
+	in.Example.Stages = []Stage{{ID: "later", CompleteTables: []string{"unknown"}}}
+	if _, err := Build(in); err == nil { t.Fatal("invalid stage scope accepted") }
+}
