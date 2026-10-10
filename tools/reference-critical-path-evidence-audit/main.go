@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -217,6 +218,25 @@ func exactSet(actual []string, expected ...string) bool {
 	return true
 }
 
+// foldedJSONKey uses Unicode simple folding (the equivalence used by
+// strings.EqualFold) to produce a deterministic canonical key. Comparing every
+// previously observed key would be quadratic for attacker-supplied JSON with
+// thousands of distinct fields; a lookup per folded key remains linear.
+func foldedJSONKey(key string) string {
+	var out strings.Builder
+	out.Grow(len(key))
+	for _, r := range key {
+		minimum := r
+		for candidate := unicode.SimpleFold(r); candidate != r; candidate = unicode.SimpleFold(candidate) {
+			if candidate < minimum {
+				minimum = candidate
+			}
+		}
+		out.WriteRune(minimum)
+	}
+	return out.String()
+}
+
 // Strict token scan rejects duplicate object keys, including nested keys. The
 // normal decoder otherwise silently uses the last duplicate value, allowing
 // caller-supplied Evidence fields to shadow an earlier contradictory claim.
@@ -244,14 +264,13 @@ func rejectDuplicateJSONKeys(data []byte) error {
 				if !ok {
 					return errors.New("packet has non-string JSON object key")
 				}
-				// encoding/json matches struct fields case-insensitively. Reject
-				// folded aliases as duplicates too (claim vs Claim).
-				for existing := range keys {
-					if strings.EqualFold(existing, key) {
-						return fmt.Errorf("duplicate JSON object key %q (alias of %q)", key, existing)
-					}
+				// Match encoding/json's case-insensitive struct-field behavior
+				// without a quadratic scan of prior keys. Values remain untrusted.
+				folded := foldedJSONKey(key)
+				if _, duplicate := keys[folded]; duplicate {
+					return fmt.Errorf("duplicate JSON object key %q (case-folded alias)", key)
 				}
-				keys[key] = struct{}{}
+				keys[folded] = struct{}{}
 				if err := walk(depth + 1); err != nil {
 					return err
 				}
