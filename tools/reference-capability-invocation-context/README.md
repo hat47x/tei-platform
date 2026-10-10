@@ -20,7 +20,9 @@ GitHub #1118の評価用Referenceです。
 
 `ContextSlotContract`、`ContextSlotRequirement`、`ContextSlotBinding`はReference上の試験形状です。production schemaとして固定していません。
 
-Hostはslot bindingへ非secretで記録可能なopaque `BindingReceiptRef`と`ReusePartitionRef`を与えます。Referenceは、これらの値が本当に非secretか、trusted sourceから発行されたかを検証しません。token、cookie、raw access ref、Principal payload等をreceipt refとして再利用してはなりません。current authorization / session / revocationの判断は既存のtrusted HostやSecurity境界の責務です。
+Hostはslot bindingへ非secretで記録可能なopaque `BindingReceiptRef`と`ReusePartitionRef`を与えます。Referenceは、これらの値が本当に非secretか、trusted sourceから発行されたかを一般的に検証できません。token、cookie、raw access ref、Principal payload等をreceipt refとして再利用してはなりません。current authorization / session / revocationの判断は既存のtrusted HostやSecurity境界の責務です。
+
+防御を一段追加し、`ForbidDirectResultReflection`のある必須slotの**raw bytesがそのまま**、公開されるReusePartitionRefやいずれかの必須BindingReceiptRefに含まれる場合は、Providerを起動する前に拒否します。他の必須slotのreceipt ref経由でも拒否し、未要求slotの壊れたrefには影響されません。エラー文にraw値は含めません。これは明白な誤設定を検出する局所対策であり、短い値の部分一致で正当な識別子を拒む可能性があります。変換・符号化・ハッシュ等による漏えいや、Host-issued identityの真正性まで保証しません。
 
 Provider callbackへは、required slotだけを含む`ContextSlotView`とcontrol-only contextを渡します。control-only contextは元のDeadline / Done / Errを保ちますが、`Value`は公開しません。
 
