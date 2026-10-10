@@ -1,10 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 )
 
 type changeRow struct {
@@ -94,7 +94,7 @@ func previewReview(base, next review, previous, proposed projection, baseSnapsho
 	flowRows:=func(rows []reviewFlow)map[string]string{
 		out:=map[string]string{};for _,x:=range rows{
 			// No logical flow ID exists in v0; edits are remove/add.
-			id:=strings.Join([]string{x.From,x.To,x.Kind,x.Condition},"\x00")
+			id:=fmt.Sprintf("flow-sha256:%x",sha256.Sum256([]byte(serialize(x))))
 			out[id]=serialize(x)
 		};return out
 	}
