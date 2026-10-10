@@ -306,3 +306,62 @@ blocked_by=<issue/pr/revision or none>; next=<consumer action>
 ### 決定すべき一つの「到達条件」
 
 G2は単なる21ケースのチェック数ではなく、**一つの受注明細業務について、同一Accepted meaning revisionをSource・Projection・Action binding・Driver request・separate Observationまで追えるか**で判断する。最初のハッピーパスは `V00→V03→V04→V05→V08`、最少否定経路は `N05/N06`（Source）、`N08`（Capability/Authorization）、`N11`（Observation）とし、現時点の具体的な変更対象・実装可能なvalidation変更は#1124/#1127が既存Schemaと照合して確定させる。合成例に一回だけ一致したことは、実Targetの独立した成功観測ではない。
+
+## 11. G1→G2接合部：設計の受理と実DBへの適用を分離する
+
+### 問題：V04が成功してもV05は実行可能とは限らない
+
+V04の「設計変更を正本へ受理」と、V05の「標準CRUDが保存できる」は別の責務である。ER上のRelation、cardinality、必須項目などを変更して正本を再投影できても、実DB、Provider binding、Target artifactがその意味を扱えるとは限らない。ここを一続きの成功として扱うと、**新しい設計意味を古い物理構造へ誤適用する**失敗が隠れる。
+
+特にTEIではApplicationとDatabaseはN:Mであり、Database schemaにはApplicationと独立したライフサイクルがある。Application revisionとDB schema versionの番号一致は要求しない。必要なのは、利用する実体ごとの**互換性と権限を検査した根拠**である。
+
+これは新しい全体Core型やmigration engineを要求するものではない。既存のSource Acceptance、Schema Desired/Actual/Diff/Migration、Capability/Plugin/Driver、Target/Artifact、Execution/Observationから一つの接合証跡を作る。
+
+### 実行可否の判定を行う場所
+
+1. **Source Acceptance**（#1124 / 既存#267）: proposalの基準revisionを検査し、受理済みSourceを作る。DB操作は行わない。PreviewとAcceptedを混ぜない。
+2. **Realization assessment**（#1126 / 既存Schema・Migration）: 変更後のData/Relationから、選択したDatasource/Providerに必要な実現差分と互換性を判定する。「差分なし」「既存schemaで互換」「migration必要」「未対応・未確認」を分ける。暗黙のDDL実行は禁止。
+3. **Invocation readiness**（#1121 / #1127）: 実行直前にAccepted meaning、生成Function/Action、Target profile、選ばれたDatasource/Providerの観測状態、Capability/Authorityが**互換**であることを判定する。build-time Lockとcurrent Principal/sessionは別。
+4. **Actual command と independent observation**（既存Driver / #1127）: 権限付きCommandの結果と保存後の別readを別証跡にする。Command成功だけでphysical stateをVerifiedとしない。
+
+段階ごとに別のrevisionやfingerprintを記録できること。Schemaのphysical migrationを必要としない画面文言変更まで書込停止にしてはならない。一方、危険なSchema差分を「自動生成可能だから」と無検査で流してはならない。判定時点と実Invocationの間にbinding/physical stateが変わった場合は、その情報が安全性条件に関わる限り再検証またはfail-closedとする。具体的な監視/排他方式は各Providerに委譲する。
+
+### G2提出packet（提案、既存契約を優先）
+
+次のキーは**監査用packetに必要な情報**の提案であり、同名のCore fieldを新設する指示ではない。既存Evidenceへのリンクで代用できる。
+
+| 欄 | 意味・条件 |
+| --- | --- |
+| `accepted_source` | Source locator、Accepted meaning revision、digest。acceptedでないproposalは不可 |
+| `change_class` | `presentation-only` / `semantic-no-physical-change` / `physical-change-required` / `unsupported-or-unresolved` |
+| `realization` | Application/DBの各authorityとmapping、選択したDatasource、対象physical schemaの観測・差分・互換性根拠。schema versionの同値は不要 |
+| `function_target` | 導出Function/Action、Capability binding、Target profileと実行対象artifact/Runtime revision（該当する場合） |
+| `execution_guard` | invocation時のcurrent authorization、必要なHost Context、required capability、schema互換性の判定結果 |
+| `outcome_observation` | Command result、独立したread Observation、対象record識別と時点。未観測をunknownとする |
+| `evidence_status` | 各段階ごとに`NOT_RUN`/`PASS`/`FAIL`/`UNRESOLVED`、exact head/fixture/provider/toolchain条件 |
+
+### 接合部の追加正・負試験
+
+| ID | 前提・操作 | 期待 | 主担当 |
+| --- | --- | --- | --- |
+| S01 | 画面ラベルのみの変更をAccepted | Semantic revisionは追跡し、不要なDB migrationを要求しない | #1124/#1121 |
+| S02 | Relation/cardinality変更をAcceptedし、旧physical schemaのまま更新 | 相互互換性の未確認ならCommand前に停止し、Source受理成功をDB更新成功と言わない | #1126/#1127 |
+| S03 | 変更済みphysical schemaを別Datasourceへ切り替えて呼び出し | Datasourceごとのrealization/Authorityを再評価。別DBの観測結果を流用しない | #1121/#1127 |
+| S04 | 安全な独立fixtureで必要な変更を計画・適用し、schemaを再観測 | 既存Migration安全境界の実行記録と、Function保存→別readを結び付ける | #1126/#1127 |
+| S05 | 有効だったbinding/required capability/current authorizationが実行時に失われる | 旧判定・preview・生成artifactだけを根拠に実行せずfail-closed | #1121/#1127 |
+| S06 | 同一DB schemaを複数Applicationが参照し、片方のみmeaning revision変更 | 各ApplicationとDatasourceのmapping互換性を独立に評価し、無関係なApplicationを自動改版しない | #1120/#1126 |
+
+- S02/S05は初期P0の**必須負例**とする。S01/S03/S04/S06はG2の範囲内で実装難度を確認し、未取得なら未確認と記録する。G3以降へ送る場合も理由と担当を固定する。
+- V03→V04の成立条件はS04の成功を前提としない。逆に、V05の「保存」はrealization/Authorityの確認なしにPASSとしない。
+- 合成fixtureでのS04は合成Evidence。実ProviderでのS04と同一のclaimにしない。Target・DB・権限・独立readの実操作証跡は別途必要。
+
+### 責任境界と次の受け渡し
+
+- **#1120（C0）**: Accepted subjectとsource revisionの追跡を担う。DB schemaや物理record keyへのidentity同一視を要求しない。
+- **#1124（C1）**: Preview→Acceptance→再投影まで。Accept時点でmigrationや新Target配備を暗黙に行わない。
+- **#1126（Data realization）**: 既存Schema Diff/Migrationの再利用箇所、上記4分類の判定と未対応条件をowner packetに記す。
+- **#1121（C3）**: lowering段階と実行直前でどのreadiness情報を伝え、何をその場で再検査するかをC3 packetで示す。current credentialsを不変artifactへ入れない。
+- **#1127（Product consumer）**: S02/S05の実行前拒否とV05/V08のCommand+Observationを最小Web referenceで実証する。
+- **#1119（Program）**: 上記packetのproducer/consumer確認と同一シナリオへの証跡の束ね直しを担当する。旧schema向けの旧Function実行結果を、変更後Sourceの実証へ横滑りさせない。
+
+**現状**: 2026-10-10の設計上の漏れを検出し、連携契約と否定試験を追加した段階。S01〜S06のテスト実行、actual DB/Target操作、各担当のAPI適合確認、trusted full Repository Healthはいずれも**未実施**。この節の追加だけでG1/G2をPASSにしない。
