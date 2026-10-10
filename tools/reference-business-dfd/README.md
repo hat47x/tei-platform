@@ -14,6 +14,43 @@ go test ./tools/reference-business-dfd
 
 DOT の描画には任意で Graphviz を使えます。ツール自体は Graphviz に依存しません。DOT の node 配置・装飾は一時的な表示情報で、Procedure の意味や step の同一性を構成しません。
 
+## 図からの局所ナビゲーションと変更プレビュー（G1候補）
+
+`-select kind:id` はSourceを書き換えず、選択要素の参照先と元Source位置を返します。Stepは**Procedure内に限るReference-local識別**であり、同じ文字列のAccepted Taskを作ったり推測して接続したりしません。
+
+```sh
+# 電話確認StepのSource・前後の候補遷移・業務Roleを表示
+go run ./tools/reference-business-dfd \
+  -procedure reference/business-system-design/dfd-order-approval/order-approval-procedure.json \
+  -review reference/business-system-design/dfd-order-approval/review-proposal.json \
+  -set reference/business-system-design/dfd-order-approval/procedure-set.json \
+  -select step:APP-10
+
+# Function側から、そのIDを明示参照するBusiness Stepへ戻る
+go run ./tools/reference-business-dfd \
+  -procedure reference/business-system-design/dfd-order-approval/order-approval-procedure.json \
+  -review reference/business-system-design/dfd-order-approval/review-proposal.json \
+  -set reference/business-system-design/dfd-order-approval/procedure-set.json \
+  -select pattern:order_entry.order_record
+```
+
+選択可能な種類は`step`、`pattern`、`trigger`、`business-role`、`party`、`store`、`information-flow`です。探索できないIDは`unresolved`で返し、別IDを類推しません。既存のGo Worldから参照したPattern、Data、Relationも同一性の照合にとどまり、Source IndexやAcceptanceの書込み先を保証しません。
+
+出力の`sourceSnapshots[].sha256`はProcedure・図レビュー案・Handoff setの**具体的な参照ファイルのバイト列**に対する確認用指紋です。実行中に参照ファイルが変化した場合は中断します。ただしWorkspace全体の`modelRevision`、Accepted Sourceとの因果関係、`sourceindex`のScopeを確定するものではなく、`worldRevisionStatus=unverified-no-model-revision-binding`とします。#1120のスコープ付き契約と#1124のStudio側ソース確認に接続するまでは`reference-only`のままです。
+
+未受理の図レビュー案を二つ比較するときは`-review-next`を使います。
+
+```sh
+go run ./tools/reference-business-dfd \
+  -procedure reference/business-system-design/dfd-order-approval/order-approval-procedure.json \
+  -review reference/business-system-design/dfd-order-approval/review-proposal.json \
+  -review-next /path/to/changed-review-proposal.json \
+  -set reference/business-system-design/dfd-order-approval/procedure-set.json \
+  -format json
+```
+
+結果には追加・変更・削除の候補差分と、両レビュー案の指紋、元Procedure／Handoff指紋、診断が入ります。Stepの正本やaccepted Worldを変更しません。Control transitionにはまだ独立した論理IDがないため、同じ矢印でも内容が変われば**削除＋追加**として表示し、勝手に同一業務経路とみなしません。この比較はShared AcceptanceのPreviewではなく、`readyForAcceptance=false`かつ`sourceWrites=[]`固定です。
+
 ## Source / authority の対応
 
 | 入力 | 意味 | Projection 側の扱い |
@@ -54,7 +91,7 @@ JSON の `source.file` と `source.pointer` は当該 Source の位置を示し�
 - Authoritative な Business Procedure の編集と Acceptance / 再読込（#1124）
 - 業務Role・情報の授受・手作業の提案を受理済み正本へ反映する編集操作（提案データのread-only投影は実装候補として存在）
 - 分岐・契機候補の業務上の確定、runtime trigger / schedule への Binding（#1121）
-- Function / Data / Procedure を往復できる Studio UI と source-aware cross-view review（#1120 / #1132）
+- Pattern IDや概念Storeからのreference-only Navigationは追加。Accepted Source Indexと一体化したFunction / Data / ProcedureのStudio UI往復は未実証（#1120 / #1124 / #1132）
 - 別資料の原文互換、旧製品挙動の再現、actual Target / Provider Evidence
 
 この Adapter によって新しい Canonical Procedure / Workflow / Authorization Role を追加しません。今後「提案された図の修正 → Source の変更提案 → Shared Acceptance → 再投影」を進めるときは、既存契約の owner（#1120 / #1124）と調整します。
