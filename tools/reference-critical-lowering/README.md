@@ -48,3 +48,20 @@ tools/repository-health-check.sh
 - Build-only dependenciesは既存Build ownerの明示引数として`Keys`へ渡し、`Build`段階のhashだけに加える。`Plan`には渡さず、Runtime Authorityの対象へしない。
 - Previewでの成功を認可とみなさず、古いLock / current Provider / Data Compatibility / Host Context / current grantのそれぞれで停止する負例を固定する。
 - `AuthorizeInvocation`はGateの**順序を示す合成Reference**であり、独立して返したboolや実行許可を後続のProviderへ再利用する本番APIではない。実装では既存Hostの現在のAuthorityとdispatch境界を再利用し、検査後の失効と実行開始のTOCTOU、失敗後の副作用/再試行を別途検証する。
+
+## Opt-in: 既存Web TargetのHTTP Black-box実行
+
+[web_target_smoke_test.go](web_target_smoke_test.go)は、既存`tools/reference-first-web-target`を**実際に`go build`**してLoopback（Ephemeral Port）で起動し、HTTP APIに対して次を検証するためのopt-in統合テストである。
+
+1. `/manifest.json`に、`order_entry`のCommand/Browse/Reference/Header-Detailの意味参照、対象CheckoutのTarget Revisionが保たれていること。
+2. `POST /scenario/submit`の正常系列でAuthentication → 3件のCanonical Validation → Authorization → Command Business Result → **別の**synthetic Observationが通過すること。
+3. 認証拒否がBusiness DenialとしてCommand/Observationへ進まず、Credentialがレスポンスへ漏れないこと。
+4. Command実行エラーが通常のBusiness Result/Observationと混同されず、HTTP 422と失敗Stageに残ること。
+
+Webバイナリの起動まで含むため、通常の局所Unit Testでは**skip**し、明示指示時に実行する。exact HEADの一致と実行前後のGit cleanを自動検査する。Repository rootで:
+
+```bash
+TEI_LOWERING_WEB_SMOKE=1 go test -count=1 -run '^TestWebTargetHTTPBlackBoxTrace$' -v ./tools/reference-critical-lowering
+```
+
+このテストは、**実Sourceを読み込む既存WebのHTTP実行**を検証する一方、Loweringの`Trust`がProduction Host/Shared Acceptanceを通過することを検証しない。HTTPの成功を「外部実DBへ保存した」「二つの実DSLからAcceptedされた」「第二Targetを実行した」と読み替えない。Serverはfixtureを使用し、観測も合成。実行していなければ成功証跡は存在しない。実行の際はexact checkout SHA、Go version、pre/post clean、Exit Code、主要Stageの観測を別途Evidenceとして保存する。
