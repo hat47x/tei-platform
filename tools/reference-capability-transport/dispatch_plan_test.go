@@ -192,3 +192,53 @@ func TestPlannedTransportReceiptDoesNotPromoteDispatchPlanToAuthority(t *testing
 func pruntimeProcessCommandForPlanTest() pruntime.ProcessCommand {
 	return pruntime.ProcessCommand{Executable: "must-not-run"}
 }
+
+
+func TestDispatchPlanReusesIdentityWithoutCollapsingInvocationPayloads(t *testing.T) {
+	firstDispatch := genericDispatch([]byte("first-payload"))
+	plan := transportDispatchPlanForTest(t, firstDispatch)
+	server := newAuthorizedHTTPTransportServer(t, plan)
+
+	first, err := invokeAuthorizedOverHTTPTransport(
+		context.Background(),
+		server.Client(),
+		server.URL,
+		plan,
+		"plan-reuse-first",
+		firstDispatch,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secondDispatch := genericDispatch([]byte("second-payload"))
+	second, err := invokeAuthorizedOverHTTPTransport(
+		context.Background(),
+		server.Client(),
+		server.URL,
+		plan,
+		"plan-reuse-second",
+		secondDispatch,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if first.Receipt.DispatchPlanFingerprint != second.Receipt.DispatchPlanFingerprint ||
+		first.Receipt.DispatchPlanFingerprint != plan.PlanFingerprint {
+		t.Fatalf(
+			"same semantic plan was not reused: first=%q second=%q plan=%q",
+			first.Receipt.DispatchPlanFingerprint,
+			second.Receipt.DispatchPlanFingerprint,
+			plan.PlanFingerprint,
+		)
+	}
+	if first.Receipt.RequestDigest == second.Receipt.RequestDigest ||
+		first.Receipt.ResultDigest == second.Receipt.ResultDigest {
+		t.Fatalf(
+			"distinct invocation payloads collapsed: first=%+v second=%+v",
+			first.Receipt,
+			second.Receipt,
+		)
+	}
+}
