@@ -202,8 +202,12 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 				continue
 			}
 			blocked, err := outputTouchesWorkspaceManagedSource(*workspacePath, output.path)
-			if err != nil || blocked {
-				fmt.Fprintln(stderr, command+"の"+output.flag+"はWorkspaceの管理対象Source・Decision・Confirmation記録を上書きできません:", err)
+			if err != nil {
+				fmt.Fprintln(stderr, command+"の"+output.flag+"のWorkspace出力先を照合できません:", err)
+				return 2
+			}
+			if blocked {
+				fmt.Fprintln(stderr, command+"の"+output.flag+"はWorkspaceの管理対象Source・Decision・Confirmation記録を上書きできません")
 				return 2
 			}
 		}
