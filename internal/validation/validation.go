@@ -244,7 +244,7 @@ func Validate(w ir.World) []Diagnostic {
 	}
 	for _, r := range semanticRelations {
 		if _, ok := semanticData[r.Target]; !ok {
-			out = append(out, errd("UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
 		}
 	}
 	semanticValueTypeExists := func(id core.CanonicalID) bool {
