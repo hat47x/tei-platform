@@ -118,5 +118,16 @@ func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r
 	}
 	result, err := s.protectedSessionConfig.Runner.RunVerifiedSessionCommand(
 		r.Context(), s.protectedSessionConfig.SubjectLinks, request.From, request.RowIndex)
+	// A subject link may be revoked or the account may become ineligible
+	// between the Host's early authorization and the Runner's fresh check.
+	// Preserve the Business Result / Execution Error envelope while making
+	// the HTTP status reflect that the request was not completed.
+	if result.Stage == "identity-link-denied" && err == nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusForbidden)
+	} else if result.Stage == "identity-link" && err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
 	s.writeCommandScenarioHTTPResult(w, result, err)
 }
