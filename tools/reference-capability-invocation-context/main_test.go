@@ -147,6 +147,32 @@ func TestUndeclaredHostSlotIsNotVisibleToProvider(t *testing.T) {
 	}
 }
 
+func TestMalformedUndeclaredHostSlotDoesNotAffectInvocation(t *testing.T) {
+	host := accessHost("trusted-access")
+	host.Bindings = append(host.Bindings, ContextSlotBinding{
+		ContractID: testTraceSlot,
+		// The undeclared slot is intentionally malformed. It must not affect
+		// an invocation that does not require it.
+	})
+
+	_, err := invokeWithExecutionContext(
+		context.Background(),
+		accessSlotContracts(),
+		accessRequirement(),
+		host,
+		[]byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			if _, ok := slots.Lookup(testTraceSlot); ok {
+				t.Fatal("malformed undeclared Host slot was visible to provider")
+			}
+			return []byte("result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("unrelated Host slot affected invocation: %v", err)
+	}
+}
+
 func TestControlContextHidesAmbientValuesButPreservesDeadline(t *testing.T) {
 	type privateKey struct{}
 	parent := context.WithValue(context.Background(), privateKey{}, "ambient-secret")
