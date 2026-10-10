@@ -20,11 +20,18 @@ type ExternalSubject struct {
 	Subject    string
 }
 
+// SubjectLink ties the externally verified identity to both the session's
+// application Principal and the existing business authorization subject.
+type SubjectLink struct {
+	PrincipalID string
+	SubjectID   string
+}
+
 // SubjectLinkLookup is supplied by a trusted Host-owned adapter. It must
 // validate the current link and account lifecycle, including revocation.
-// It must not infer links from user-provided names, email, or PrincipalID.
+// It must not infer links from user-provided names or email.
 // Unknown or revoked links return found=false; infrastructure failures return error.
-type SubjectLinkLookup func(context.Context, ExternalSubject) (subjectID string, found bool, err error)
+type SubjectLinkLookup func(context.Context, ExternalSubject) (link SubjectLink, found bool, err error)
 
 // NewCanonicalActionAuthorizer adapts the existing security.authorize
 // Capability to NewHost's mandatory authorization callback. It does not
@@ -54,7 +61,7 @@ func NewCanonicalActionAuthorizer(
 		if principal.ProviderID == "" || principal.Issuer == "" || principal.Subject == "" || principal.PrincipalID == "" {
 			return false, errors.New("session verifier returned incomplete identity")
 		}
-		subjectID, found, err := links(ctx, ExternalSubject{
+		link, found, err := links(ctx, ExternalSubject{
 			ProviderID: principal.ProviderID,
 			Issuer: principal.Issuer,
 			Subject: principal.Subject,
@@ -62,8 +69,11 @@ func NewCanonicalActionAuthorizer(
 		if err != nil {
 			return false, fmt.Errorf("trusted subject mapping unavailable: %w", err)
 		}
-		if !found || subjectID == "" {
+		if !found {
 			return false, nil // no inferred account, no fallback
+		}
+		if link.PrincipalID == "" || link.SubjectID == "" || link.PrincipalID != principal.PrincipalID {
+			return false, errors.New("subject link does not match verified application principal")
 		}
 		invocation, err := resolver.InvokeCapability(
 			ctx,
@@ -71,7 +81,7 @@ func NewCanonicalActionAuthorizer(
 			legacyauthorization.AuthorizationCapability,
 			adapters,
 			legacyauthorization.Input{
-				SubjectID: subjectID,
+				SubjectID: link.SubjectID,
 				Action:    "execute",
 				Resource:  string(commandPatternID),
 			},
@@ -85,7 +95,7 @@ func NewCanonicalActionAuthorizer(
 		switch invocation.Result.Outcome {
 		case "allowed":
 			grant, ok := invocation.Result.Payload.(legacyauthorization.AuthorizationGrant)
-			if !ok || grant.SubjectID != subjectID || grant.Action != "execute" || grant.Resource != string(commandPatternID) {
+			if !ok || grant.SubjectID != link.SubjectID || grant.Action != "execute" || grant.Resource != string(commandPatternID) {
 				return false, errors.New("authorization Capability returned a mismatched grant")
 			}
 			return true, nil
