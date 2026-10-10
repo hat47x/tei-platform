@@ -48,12 +48,14 @@ type informationFlow struct {
 type roleNode struct {
 	ID     string   `json:"id"`
 	Label  string   `json:"label"`
+	Authority string `json:"authority"`
 	Source location `json:"source"`
 }
 
 type partyNode struct {
 	ID     string   `json:"id"`
 	Label  string   `json:"label"`
+	Authority string `json:"authority"`
 	Source location `json:"source"`
 }
 
@@ -62,6 +64,7 @@ type storeNode struct {
 	Label        string   `json:"label"`
 	SemanticData string   `json:"semanticData,omitempty"`
 	DataStatus   string   `json:"dataStatus"`
+	Authority    string   `json:"authority"`
 	Source       location `json:"source"`
 }
 
@@ -119,7 +122,7 @@ func buildInformationProjection(r review, stepIDs map[string]bool, world ir.Worl
 		if strings.TrimSpace(role.Label)=="" {
 			add("DFD_BUSINESS_ROLE_LABEL_MISSING", pointer+"/label", "business Role must have a label")
 		}
-		out.Roles=append(out.Roles, roleNode{ID:role.ID, Label:role.Label, Source:location{sourceFile,pointer}})
+		out.Roles=append(out.Roles, roleNode{ID:role.ID, Label:role.Label, Authority:"proposal", Source:location{sourceFile,pointer}})
 	}
 	for i, party := range r.ExternalParties {
 		pointer := fmt.Sprintf("/externalParties/%d", i)
@@ -130,7 +133,7 @@ func buildInformationProjection(r review, stepIDs map[string]bool, world ir.Worl
 		if strings.TrimSpace(party.Label)=="" {
 			add("DFD_PARTY_LABEL_MISSING", pointer+"/label", "external Party must have a label")
 		}
-		out.ExternalParties=append(out.ExternalParties,partyNode{ID:party.ID,Label:party.Label,Source:location{sourceFile,pointer}})
+		out.ExternalParties=append(out.ExternalParties,partyNode{ID:party.ID,Label:party.Label,Authority:"proposal",Source:location{sourceFile,pointer}})
 	}
 	for i, store := range r.Stores {
 		pointer:=fmt.Sprintf("/stores/%d",i)
@@ -152,7 +155,7 @@ func buildInformationProjection(r review, stepIDs map[string]bool, world ir.Worl
 			}
 		}
 		out.Stores=append(out.Stores,storeNode{ID:store.ID,Label:store.Label,
-			SemanticData:store.SemanticData,DataStatus:status,Source:location{sourceFile,pointer}})
+			SemanticData:store.SemanticData,DataStatus:status,Authority:"proposal",Source:location{sourceFile,pointer}})
 	}
 	assigned:=map[string]bool{}
 	for i, a := range r.Responsibilities {
