@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1041,5 +1042,37 @@ func TestConfidentialProviderNormalNilPayloadStillSucceeds(t *testing.T) {
 	}
 	if execution.Receipt.Schema != contextReceiptSchema || len(execution.ResultPayload) != 0 {
 		t.Fatalf("normal nil payload did not produce a valid receipt: %+v", execution)
+	}
+}
+
+// A callback in the same Go package can access unexported concrete fields.
+// The control-only context must never store the caller's parent Context: a
+// concrete type assertion would bypass Value() and expose ambient credentials.
+func TestControlContextConcreteShapeDoesNotExposeParent(t *testing.T) {
+	type ambientKey struct{}
+	parent := context.WithValue(context.Background(), ambientKey{}, "ambient-confidential")
+	_, err := invokeWithExecutionContext(
+		parent, nil, nil, HostExecutionContext{}, []byte("request"),
+		func(ctx context.Context, _ ContextSlotView, _ []byte) ([]byte, error) {
+			if got := ctx.Value(ambientKey{}); got != nil {
+				t.Fatalf("ambient context leaked through Value: %v", got)
+			}
+			control, ok := ctx.(controlOnlyContext)
+			if !ok {
+				t.Fatalf("unexpected control context type %T", ctx)
+			}
+			contextInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+			concrete := reflect.TypeOf(control)
+			for i := 0; i < concrete.NumField(); i++ {
+				field := concrete.Field(i)
+				if field.Type.Implements(contextInterface) {
+					t.Fatalf("provider can retrieve ambient Context through concrete field %s", field.Name)
+				}
+			}
+			return []byte("safe"), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
