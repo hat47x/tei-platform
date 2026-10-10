@@ -127,6 +127,89 @@ func TestValidateIncludesPersistenceRelationStorageMappings(t *testing.T) {
 	assertDiagnosticCode(t, diagnostics, "PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH")
 }
 
+// All Relation Storage checks must run on the same default path as the CLI.
+// The specialist validator is not a substitute for Workspace validation.
+func TestDefaultValidationRejectsMalformedRelationStorageMapping(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*ir.World)
+		code   string
+	}{
+		{
+			name: "unknown semantic relation",
+			mutate: func(world *ir.World) {
+				world.Persistence[0].RelationStorage[0].Relation = "sales.order.unknown"
+			},
+			code: "UNKNOWN_PERSISTENCE_RELATION_STORAGE_RELATION",
+		},
+		{
+			name: "storage targets wrong semantic data",
+			mutate: func(world *ir.World) {
+				world.Persistence[0].SemanticData = "sales.order"
+			},
+			code: "PERSISTENCE_RELATION_STORAGE_TARGET_MISMATCH",
+		},
+		{
+			name: "source attribute belongs to wrong data",
+			mutate: func(world *ir.World) {
+				world.Persistence[0].RelationStorage[0].Components[0].SourceAttribute =
+					"sales.order_line.order_line_id"
+			},
+			code: "PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH",
+		},
+		{
+			name: "missing source attribute",
+			mutate: func(world *ir.World) {
+				world.Persistence[0].RelationStorage[0].Components[0].SourceAttribute =
+					"sales.order.unknown"
+			},
+			code: "UNKNOWN_PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE",
+		},
+		{
+			name: "invalid local storage shape",
+			mutate: func(world *ir.World) {
+				world.Persistence[0].RelationStorage[0].Components[0].Column = "order_line_id"
+			},
+			code: "INVALID_PERSISTENCE_RELATION_STORAGE",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			world := persistenceRelationStorageWorld()
+			tc.mutate(&world)
+			found := false
+			for _, d := range Validate(world) {
+				if d.Code != tc.code {
+					continue
+				}
+				if d.Severity != Error || d.Subject == nil ||
+					d.Subject.Kind != "persistence-mapping" ||
+					d.Subject.ID != "sales_core.order_line" {
+					t.Fatalf("Relation Storage error has no source-resolvable Persistence identity: %+v", d)
+				}
+				found = true
+			}
+			if !found {
+				t.Fatalf("default Validation missed %s", tc.code)
+			}
+		})
+	}
+}
+
+func TestDefaultValidationAcceptsExplicitValidRelationStorage(t *testing.T) {
+	world := persistenceRelationStorageWorld()
+	for _, d := range Validate(world) {
+		switch d.Code {
+		case "INVALID_PERSISTENCE_RELATION_STORAGE",
+			"UNKNOWN_PERSISTENCE_RELATION_STORAGE_RELATION",
+			"PERSISTENCE_RELATION_STORAGE_TARGET_MISMATCH",
+			"UNKNOWN_PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE",
+			"PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH":
+			t.Fatalf("valid explicit Relation Storage rejected: %+v", d)
+		}
+	}
+}
+
 func assertDiagnosticCode(t *testing.T, diagnostics []Diagnostic, code string) {
 	t.Helper()
 	for _, diagnostic := range diagnostics {
