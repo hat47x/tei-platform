@@ -42,7 +42,7 @@ Referenceは、呼出し開始時にSemantic Requestのbytesを複製し、下�
 
 downstream errorの`Error()`文字列が安全に見えても、元のGo error objectをそのまま返すと、`errors.As`、`Unwrap`、custom formatting、構造体fieldから秘匿情報を回収できる。実際に、秘密をfieldへ保持し`Error()`は無害な文字列を返す型の漏えいを負例で再現した。
 
-現Referenceでは、成功resultの直接反射を検出した場合に拒否し、機密required slotを持つ呼出しがdownstream errorを返した場合は**`Error()`や`Unwrap()`を一切呼び出さず、原error objectを破棄して固定failureへ置き換える**。この境界を越える同期的なProvider panicも、値を文字列化せず同じ固定failureへ変換する。非機密slotだけの呼出しでは元のerrorおよびGoのpanic伝播規則を維持する。panicの自動抑止を全Capabilityへ一般化しない。
+現Referenceでは、成功resultの直接反射を検出した場合に拒否し、機密required slotを持つ呼出しがdownstream errorを返した場合は**`Error()`や`Unwrap()`を一切呼び出さず、原error objectを破棄して固定failureへ置き換える**。この境界を越える同期的なProvider panicも、値を文字列化せず同じ固定failureへ変換する。`recover()`が`nil`を返す設定（`GODEBUG=panicnil=1`や古いGo互換動作）では、単純な`recover()!=nil`判定だと**`panic(nil)`を成功扱いして空resultとreceiptを発行してしまう**ことを負例で再現した。このため、戻り値そのものではなくProviderが正常にreturnしたかを別途記録し、`panic(nil)`も必ずopaque failureにする。正常な`nil, nil`返却は引き続き成功として扱う。非機密slotだけの呼出しでは元のerrorおよびGoのpanic伝播規則を維持する。panicの自動抑止を全Capabilityへ一般化しない。
 
 ただし、単純にerrorを固定文言へ置き換えるだけでは、下流実行中に発生したControl Contextの`context.Canceled` / `context.DeadlineExceeded`まで失われる。実際に両者の区別が消えることを再現し、修正した。現在は、**trustedなControl Contextの`Err()`が返す制御状態のみ**を優先して返す。下流errorが`context.Canceled`をwrapしているだけでは信頼せず、Control Contextが生きている場合は固定failureへ変換する。元の下流error objectは、どちらの場合も返さない。
 
