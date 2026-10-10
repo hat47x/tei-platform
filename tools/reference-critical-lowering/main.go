@@ -233,7 +233,9 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 	}
 	// Source dependencies must not silently disappear between interpretation and
 	// lowering. Completeness of this set must be checked by the real producer.
-	if len(c.SourceInputs) == 0 {
+	// Non-nil explicitly declares that the producer evaluated dependency
+	// closure. [] is valid for self-contained Sources; nil means not declared.
+	if c.SourceInputs == nil {
 		return NeutralPlan{}, reject("missing-source-dependencies")
 	}
 	seenSourceIDs := map[string]bool{c.Source.ID: true}
@@ -296,7 +298,7 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 		return intents[i].Scope+":"+intents[i].Contract.ID < intents[j].Scope+":"+intents[j].Contract.ID
 	})
 	return NeutralPlan{Schema: NeutralSchema, Snapshot: a.Snapshot, Origin: Origin{
-		Source: c.Source, SourceInputs: append([]Ref(nil), c.SourceInputs...),
+		Source: c.Source, SourceInputs: append([]Ref{}, c.SourceInputs...),
 		Language: c.Language, CandidateDigest: d, AcceptanceReceipt: a.Receipt,
 	}, Intents: intents}, nil
 }
@@ -406,7 +408,7 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 // not prove its fingerprint or grant dispatch permission.
 func ValidatePlan(plan Plan) error {
 	if plan.Schema != Schema || !plan.Snapshot.valid() || !plan.Origin.Source.valid() ||
-		len(plan.Origin.SourceInputs) == 0 || !plan.Origin.Language.valid() ||
+		plan.Origin.SourceInputs == nil || !plan.Origin.Language.valid() ||
 		!plan.Origin.AcceptanceReceipt.valid() || plan.Origin.CandidateDigest == "" ||
 		len(plan.Steps) == 0 {
 		return reject("invalid-boundary")
