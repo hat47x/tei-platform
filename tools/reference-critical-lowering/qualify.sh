@@ -51,16 +51,64 @@ if [[ -n "$unformatted" ]]; then
     exit 1
 fi
 
+# A -run pattern with zero matching tests exits 0. Likewise, an opt-in test
+# can be skipped with exit 0. Require an observed explicit PASS marker instead
+# of accepting the go test process status as proof of scenario execution.
+expect_test_pass() {
+    local test_name="$1"
+    shift
+    local transcript
+    transcript="$(mktemp)"
+    if ! "$@" -v | tee "$transcript"; then
+        rm -f "$transcript"
+        printf 'Go test command failed for %s\n' "$test_name" >&2
+        return 1
+    fi
+    if ! grep -Fq -- "--- PASS: ${test_name} (" "$transcript"; then
+        rm -f "$transcript"
+        printf 'Required test did not PASS (absent or skipped): %s\n' "$test_name" >&2
+        return 1
+    fi
+    rm -f "$transcript"
+}
+
 go vet ./tools/reference-critical-lowering
 go test -count=1 ./tools/reference-critical-lowering
 
 # Reuse existing Source Acceptance and Web Driver contracts; do not
 # introduce duplicate acceptance or web runtime implementations in #1121.
-go test -count=1 -run '^TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection$' ./tools/reference-shared-acceptance
-go test -count=1 -run '^TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList$' ./tools/reference-first-web-target
+expect_test_pass TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection \
+    go test -count=1 -run '^TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection
+
+# This is the full repository integration gate, not a focused-test shortcut.
+bash tools/repository-health-check.sh
+check_checkout after
+
+echo "LOCAL_CHECKS_PASSED HEAD=$EXPECTED_HEAD MAIN=$EXPECTED_MAIN"
+echo "Qualification still requires independent review, external provenance, current Host Authority/DB evidence, and explicit PR state checks."
+ ./tools/reference-shared-acceptance
+expect_test_pass TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList \
+    go test -count=1 -run '^TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList
+
+# This is the full repository integration gate, not a focused-test shortcut.
+bash tools/repository-health-check.sh
+check_checkout after
+
+echo "LOCAL_CHECKS_PASSED HEAD=$EXPECTED_HEAD MAIN=$EXPECTED_MAIN"
+echo "Qualification still requires independent review, external provenance, current Host Authority/DB evidence, and explicit PR state checks."
+ ./tools/reference-first-web-target
 
 # This actually builds and serves the EXISTING Web command over HTTP.
-TEI_LOWERING_WEB_SMOKE=1 go test -count=1 -run '^TestWebTargetHTTPBlackBoxTrace$' -v ./tools/reference-critical-lowering
+expect_test_pass TestWebTargetHTTPBlackBoxTrace \
+    env TEI_LOWERING_WEB_SMOKE=1 go test -count=1 -run '^TestWebTargetHTTPBlackBoxTrace
+
+# This is the full repository integration gate, not a focused-test shortcut.
+bash tools/repository-health-check.sh
+check_checkout after
+
+echo "LOCAL_CHECKS_PASSED HEAD=$EXPECTED_HEAD MAIN=$EXPECTED_MAIN"
+echo "Qualification still requires independent review, external provenance, current Host Authority/DB evidence, and explicit PR state checks."
+ ./tools/reference-critical-lowering
 
 # This is the full repository integration gate, not a focused-test shortcut.
 bash tools/repository-health-check.sh
