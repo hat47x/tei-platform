@@ -246,9 +246,9 @@ export function candidateFromEdit(world, revision, edit) {
     if (!isText(edit.relationID) || !isText(edit.symbol) ||
         !isText(edit.targetData) || !ix.data.has(edit.targetData) ||
         !["one", "many"].includes(edit.cardinality)) throw new Error("INVALID_RELATION_PROPOSAL");
+    ensureNotUsed(edit.relationID, ix);
     if (edit.relationID !== s.id + "." + edit.symbol)
       throw new Error("RELATION_ID_MUST_MATCH_SOURCE_SYMBOL");
-    ensureNotUsed(edit.relationID, ix);
     op = { op: "add-relation", data: s.id, id: edit.relationID,
       symbol: edit.symbol, target: edit.targetData, cardinality: edit.cardinality };
   } else if (edit.view === "table" && edit.operation === "add-validation" &&
