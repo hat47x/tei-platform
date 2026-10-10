@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 0,
+  "artifactKind": "tei.reference.rmt-executable-scenario-manifest",
+  "status": "candidate",
+  "scenarioId": "rmt-synthetic-read-only-001",
+  "classContractId": "reference.scenario.read-only-query",
+  "origin": "independent-synthetic",
+  "teiExecution": {
+    "status": "not-run"
+  },
+  "originalExecution": {
+    "status": "not-run"
+  },
+  "preconditionAlignment": {
+    "status": "not-assessed"
+  },
+  "comparison": {
+    "status": "not-evaluated",
+    "axes": []
+  },
+  "authorityLimits": [
+    "source-facts-not-canonical-acceptance",
+    "declared-crud-not-actual-action-effect",
+    "content-digest-not-observer-conformance"
+  ],
+  "unresolvedCodes": [
+    "tei-runtime-not-observed",
+    "original-runtime-evidence-not-observed"
+  ],
+  "publicationReview": {
+    "status": "pending"
+  }
+}
