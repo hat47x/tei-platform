@@ -175,3 +175,41 @@ func TestReviewFingerprintStableAcrossFrameOrderButNotQuestionChanges(t *testing
 	if err!=nil {t.Fatal(err)}
 	if first.Fingerprint==changed.Fingerprint {t.Fatal("new question did not stale old review")}
 }
+
+func TestChangedExampleDataStalesAnswersEvenWithSameFinding(t *testing.T) {
+	in,a:=reviewAnswerFixture(t)
+	before,err:=Review(in)
+	if err!=nil {t.Fatal(err)}
+	// Change both key values, keeping the same relation result and question.
+	in.Example.Base[0].Values["tenant"]=json.RawMessage("13")
+	in.Example.Base[1].Values["tenant_ref"]=json.RawMessage("13")
+	after,err:=Review(in)
+	if err!=nil {t.Fatal(err)}
+	if len(before.Issues)!=1 || len(after.Issues)!=1 ||
+		before.Issues[0].ID!=after.Issues[0].ID {
+		t.Fatalf("negative control no longer isolates payload change: before=%+v after=%+v",before,after)
+	}
+	if before.ExampleFingerprint==after.ExampleFingerprint || before.Fingerprint==after.Fingerprint {
+		t.Fatal("case payload change did not invalidate review binding")
+	}
+	if _,err:=BindAnswers(in,a);err==nil {
+		t.Fatal("answer to old example payload was accepted")
+	}
+}
+
+func TestChangedCatalogStalesAnswersEvenIfRevisionStringIsUnchanged(t *testing.T) {
+	in,a:=reviewAnswerFixture(t)
+	before,err:=Review(in)
+	if err!=nil {t.Fatal(err)}
+	tbl:=in.Catalog.Tables["parent"]
+	tbl.Fields[0].Visible=!tbl.Fields[0].Visible
+	in.Catalog.Tables["parent"]=tbl
+	after,err:=Review(in)
+	if err!=nil {t.Fatal(err)}
+	if before.CatalogFingerprint==after.CatalogFingerprint || before.Fingerprint==after.Fingerprint {
+		t.Fatal("catalog content change did not invalidate answer")
+	}
+	if _,err:=BindAnswers(in,a);err==nil {
+		t.Fatal("answer for old catalog was accepted")
+	}
+}
