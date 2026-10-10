@@ -736,7 +736,6 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 	})
 }
 
-
 func TestValidationScopeReviewSharedValidationAcrossStepsIsNotDuplicate(t *testing.T) {
 	workspacePath, fixturePath, _ := ref01Paths()
 	fixture, err := readFixture(fixturePath)
