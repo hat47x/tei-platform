@@ -277,7 +277,6 @@ func TestVerifiedPrincipalIsOnlyPassedAfterHostChecks(t *testing.T) {
 	}
 }
 
-
 func TestPrincipalHandoffIsRequestScopedWithoutFallback(t *testing.T) {
 	authenticated := true
 	principal := Principal{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "idp-user", PrincipalID: "employee-1"}
