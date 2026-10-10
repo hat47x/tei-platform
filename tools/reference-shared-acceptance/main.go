@@ -108,6 +108,33 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 
 
+
+	// The candidate source must not be an output of its own acceptance:
+	// accepting changes Source before emitting the Decision and derived World.
+	if command == "accept" && (*outPath != "" || *derivedOut != "") {
+		candidateDestination, err := resolveOutputDestination(*candidatePath)
+		if err != nil {
+			fmt.Fprintln(stderr, "candidate出力先の照合に失敗しました:", err)
+			return 2
+		}
+		for _, output := range []struct {
+			name string
+			path string
+		}{
+			{name: "-out", path: *outPath},
+			{name: "-derived-out", path: *derivedOut},
+		} {
+			if output.path == "" {
+				continue
+			}
+			destination, err := resolveOutputDestination(output.path)
+			if err != nil || referencePathText(candidateDestination) == referencePathText(destination) {
+				fmt.Fprintln(stderr, "acceptの"+output.name+"はcandidate source must not be an output（同一ファイルを指定できません）")
+				return 2
+			}
+		}
+	}
+
 	emit := func(value any) int {
 		encoded, err := encodeJSON(value)
 		if err != nil {
