@@ -13,8 +13,9 @@ type webTargetServer struct {
 	projection              webTargetProjection
 	readScenario            readScenarioRunner
 	commandScenario         commandScenarioRunner
-	protectedSessionConfig  *protectedSessionCommandConfig
-	protectedSessionHandler http.Handler
+	protectedSessionConfig      *protectedSessionCommandConfig
+	protectedSessionHandler     http.Handler
+	protectedSessionOptionCount int
 	customerLookup          customerLookupRunner
 	index                   *template.Template
 	customSubmit            *template.Template
