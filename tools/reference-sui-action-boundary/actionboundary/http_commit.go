@@ -10,9 +10,10 @@ import (
 	"strings"
 )
 
-// PayloadDecoder translates one application-owned JSON payload to the native
-// command input. It must reject unknown actions and invalid payloads itself.
-type PayloadDecoder func(actionID string, raw json.RawMessage) (any, error)
+// PayloadDecoder resolves an application-owned JSON payload into native command
+// input. The tuple (ApplicationID, ActionID) selects the payload grammar.
+// Unrecognized tuples and invalid payloads must fail closed.
+type PayloadDecoder func(applicationID, actionID string, raw json.RawMessage) (any, error)
 
 // JSONCommitHandler is a reference-only HTTP transport for native UI actions.
 // Production runtime must supply Host authorization backed by a trusted session,
@@ -22,9 +23,12 @@ type JSONCommitHandler struct {
 	DecodePayload PayloadDecoder
 }
 
+// Protocol version 1 is a generic resource-scoped conditional Action,
+// not a SUI DocumentV1 mutation schema. Each Application owns its payload.
 type httpCommitIntent struct {
+	ProtocolVersion   string          `json:"protocolVersion"`
 	ApplicationID    string          `json:"applicationID"`
-	DocumentID       string          `json:"documentID"`
+	ResourceID       string          `json:"resourceID"`
 	ActionID         string          `json:"actionID"`
 	ExpectedRevision string          `json:"expectedRevision"`
 	Payload          json.RawMessage `json:"payload"`
@@ -39,7 +43,7 @@ func (h JSONCommitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	reject := func(status int, code string) {
 		w.WriteHeader(status)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": code})
+		_ = json.NewEncoder(w).Encode(map[string]string{"protocolVersion": "1", "error": code})
 	}
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
@@ -71,18 +75,18 @@ func (h JSONCommitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reject(http.StatusBadRequest, "invalid_intent")
 		return
 	}
-	if input.ApplicationID == "" || input.DocumentID == "" || input.ActionID == "" || input.ExpectedRevision == "" ||
+	if input.ProtocolVersion != "1" || input.ApplicationID == "" || input.ResourceID == "" || input.ActionID == "" || input.ExpectedRevision == "" ||
 		len(input.Payload) == 0 || string(input.Payload) == "null" {
 		reject(http.StatusBadRequest, "invalid_intent")
 		return
 	}
-	payload, err := h.DecodePayload(input.ActionID, input.Payload)
-	if err != nil {
+	payload, err := h.DecodePayload(input.ApplicationID, input.ActionID, input.Payload)
+	if err != nil || payload == nil {
 		reject(http.StatusBadRequest, "invalid_payload")
 		return
 	}
 	revision, err := h.Host.Commit(r.Context(), Intent{
-		ApplicationID: input.ApplicationID, DocumentID: input.DocumentID, ActionID: input.ActionID,
+		ApplicationID: input.ApplicationID, ResourceID: input.ResourceID, ActionID: input.ActionID,
 		ExpectedRevision: input.ExpectedRevision, Payload: payload,
 	})
 	switch {
@@ -96,7 +100,7 @@ func (h JSONCommitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reject(http.StatusInternalServerError, "execution_failed")
 	default:
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]string{"revision": revision})
+		_ = json.NewEncoder(w).Encode(map[string]string{"protocolVersion": "1", "revision": revision})
 	}
 }
 
@@ -108,5 +112,14 @@ func sameHostOrigin(r *http.Request) bool {
 	u, err := url.Parse(origin)
 	return err == nil && (u.Scheme == "http" || u.Scheme == "https") &&
 		u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment == "" &&
-		strings.EqualFold(u.Host, r.Host)
+		u.Scheme == requestScheme(r) && strings.EqualFold(u.Host, r.Host)
+}
+
+// Never trust X-Forwarded-Proto here: proxy deployment must normalize the
+// request scheme through trusted server configuration before it reaches us.
+func requestScheme(r *http.Request) string {
+	if r.TLS != nil {
+		return "https"
+	}
+	return "http"
 }
