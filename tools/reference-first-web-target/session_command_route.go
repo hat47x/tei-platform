@@ -160,26 +160,31 @@ func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r
 	}
 	result, err := s.protectedSessionConfig.Runner.RunVerifiedSessionCommand(
 		r.Context(), s.protectedSessionConfig.SubjectLinks, request.From, request.RowIndex)
-	// A subject link may be revoked or the account may become ineligible
-	// between the Host's early authorization and the Runner's fresh check.
-	// Preserve the Business Result / Execution Error envelope while making
-	// the HTTP status reflect that the request was not completed.
-	if result.Stage == "validation-not-satisfied" && err == nil {
-		// Validation is a business rejection, not evidence of a completed
-		// Command. Preserve the business result while rejecting at HTTP/Audit.
+	// A successful HTTP authorization is not evidence of a completed Action.
+	// Map final business denials separately from uncompleted or uncertain
+	// execution, and never echo an internal Adapter/Driver error to a browser.
+	switch {
+	case err == nil && result.Stage == "completed" &&
+		result.Command != nil && result.Observation != nil:
+		// The normal success envelope has its existing HTTP 200 status.
+	case err == nil && result.Stage == "validation-not-satisfied":
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusUnprocessableEntity)
-	} else if (result.Stage == "identity-link-denied" || result.Stage == "authorization-denied") && err == nil {
+	case err == nil && (result.Stage == "identity-link-denied" || result.Stage == "authorization-denied"):
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)
-	} else if err != nil && (result.Stage == "identity-link" ||
-		result.Stage == "authorization" || result.Stage == "effect-authorization") {
-		// Do not return messages from trusted account and permission backends.
-		// Both the initial authorization and the effect-time recheck are
-		// security infrastructure checks, not untrusted input validation.
+	case err != nil && (result.Stage == "identity-link" ||
+		result.Stage == "authorization" || result.Stage == "effect-authorization"):
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		err = errors.New("trusted identity or authorization resolution unavailable")
+	default:
+		// A Command/Observation execution error does not prove the effect
+		// failed: the remote effect may have been committed before an error.
+		// Do not recommend blind retries or classify this as an input 422.
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		err = errors.New("action completion unconfirmed; inspect authoritative state before retrying")
 	}
 	s.writeCommandScenarioHTTPResult(w, result, err)
 }
