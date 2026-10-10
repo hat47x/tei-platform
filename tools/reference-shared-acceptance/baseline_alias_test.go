@@ -271,6 +271,9 @@ func TestReferenceAcceptRejectsCollidingOutputDestinations(t *testing.T) {
 		t.Skipf("directory symlinks are unavailable: %v", err)
 	}
 	newFile := filepath.Join(root, "new-output.json")
+	if err := os.Mkdir(filepath.Join(root, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	cases := []struct {
 		name       string
 		out        string
@@ -280,7 +283,7 @@ func TestReferenceAcceptRejectsCollidingOutputDestinations(t *testing.T) {
 		{name: "identical output", out: existing, derivedOut: existing},
 		{name: "existing file alias", out: fileAlias, derivedOut: existing},
 		{name: "new file under linked directory", out: filepath.Join(directoryAlias, "new-output.json"), derivedOut: newFile},
-		{name: "same destination via dot segments", out: filepath.Join(root, "nested", "..", "new-output.json"), derivedOut: newFile},
+		{name: "same destination via dot segments", out: filepath.Join(root, "nested") + string(os.PathSeparator) + ".." + string(os.PathSeparator) + "new-output.json", derivedOut: newFile},
 		{name: "case variation", out: existing, derivedOut: strings.ToUpper(existing)},
 		{name: "explicit baseline override does not permit collision", out: existing, derivedOut: fileAlias, allow: true},
 	}
