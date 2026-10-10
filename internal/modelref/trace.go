@@ -116,6 +116,19 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 			continue
 		}
 		row := TraceRow{Status: "unresolved", Edge: edge}
+		// Evidence has set semantics in modelref. Normalize a copy so two
+		// equivalent inputs produce byte-stable JSON, without mutating Graph.
+		row.Edge.Evidence = append([]Evidence(nil), edge.Evidence...)
+		sort.Slice(row.Edge.Evidence, func(i, j int) bool {
+			a, b := row.Edge.Evidence[i], row.Edge.Evidence[j]
+			if a.Authority != b.Authority { return a.Authority < b.Authority }
+			if a.Context != b.Context { return a.Context < b.Context }
+			if a.SourceToken != b.SourceToken { return a.SourceToken < b.SourceToken }
+			if a.ArtifactFingerprint != b.ArtifactFingerprint {
+				return a.ArtifactFingerprint < b.ArtifactFingerprint
+			}
+			return a.RuleFingerprint < b.RuleFingerprint
+		})
 		switch {
 		case counts[edge.From] == 0:
 			row.Issue = "invalid-source"
