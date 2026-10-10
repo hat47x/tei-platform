@@ -388,7 +388,7 @@ func TestE5ReusedPatternTargetEmitsOneSubject(t *testing.T) {
             Relation:"sales.order.lines"})
     index.Artifacts=append(index.Artifacts,sourceindex.Artifact{
         Path:"applications/order-entry/patterns/second.tei",
-        Fingerprint:"sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        Fingerprint:"sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
     })
     index.References=append(index.References,sourceindex.Reference{
         Subject:sourceindex.Subject{Kind:"application-pattern",ID:"order_entry.second"},
