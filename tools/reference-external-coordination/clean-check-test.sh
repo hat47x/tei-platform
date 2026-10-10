@@ -52,7 +52,7 @@ if [[ "${INJECTION_KIND:-}" == python-optimized-tamper ]]; then
       work_file="$arg/work/TW-0001.json"
       backup="$(mktemp)"
       cp "$work_file" "$backup"
-      sed -i 's/"kind": "human"/"kind": "agent"/' "$work_file"
+      sed 's/"kind": "human"/"kind": "agent"/' "$backup" > "$work_file"
       if cmp -s "$work_file" "$backup"; then
         echo 'Python pressure did not mutate the fixture' >&2
         rm -f "$backup"
