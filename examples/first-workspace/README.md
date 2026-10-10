@@ -66,6 +66,15 @@ go run ./cmd/tei validate -workspace /tmp/tei-first
 
 関連先を誤記した場合も確認できます。例えば同じ `data Request` に `relation parent to intake.unknown_request one` を追加すると、`UNKNOWN_SEMANTIC_RELATION_TARGET` と `parent` の定義位置が表示されるべきです。`intake.unknown_request` を実在する `intake.request` へ訂正し、再検証します。この自己関連が検証できても、永続化、選択画面、CRUDの実行が成立したことにはなりません。
 
+関連先Dataが存在していても、instance間を辿る`key`の属性型が食い違えば不正です。次のような型不一致を試せます。
+
+```tei
+    relation parent to intake.request one
+        key intake.request.summary -> intake.request.request_id
+```
+
+`summary`は`std.text`、`requestId`は`std.identifier`なので、通常の`tei validate`が`SEMANTIC_RELATION_KEY_TYPE_MISMATCH`を報告し、RelationのSourceを示すことが期待結果です。Source側を`intake.request.request_id`に訂正するとValidationが成功します。なお、**Semanticのkeyは物理DBの外部キーや実際の関連検索を作成した証拠ではありません**。
+
 意味上のActionについても、実在しない入力・出力型は拒否されます。例えば `capability intake.request.submit { input request intake.unknown_request output intake.unknown_result }` を宣言すると、`UNKNOWN_SEMANTIC_CAPABILITY_INPUT` / `UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT` が発生し、Capability定義を指します。どちらも `intake.request` に訂正するとモデルは検証できます。ただし、Actionを宣言しただけでは実行するFunction・権限・Provider・画面は成立しません。
 
 Applicationが参照するSemanticの名前を誤記した場合は、`UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE`としてApplication定義の位置を示します。構文エラーは`PARSE_ERROR`となります。いずれも元の定義を修復したうえで再検証します。
