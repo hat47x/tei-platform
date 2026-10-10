@@ -77,7 +77,7 @@ node reference/studio-authoring/cli.mjs inspect \
   -focus relation:sales.order_line.order
 ```
 
-一括`review-edit`は既存`preview`と`review -format json`を呼び出す**読み取り専用の薄いconsumer**です。候補のJSONは一時ディレクトリだけに作成し、処理後に消去します。手動の`preview`/`review`を置き換えられますが、正本編集・承認・Runtime authorityを付与しません。取得前後のrevision不一致は拒否し、Accept時には元のShared Acceptance自身が再検査します。外部snapshotファイルのみで`review-edit`を行う操作は認めません。
+一括`review-edit`は既存`preview`と`review -format json`を呼び出す**読み取り専用の薄いconsumer**です。候補のJSONは一時ディレクトリだけに作成し、処理後に消去します。手動の`preview`/`review`を置き換えられますが、正本編集・承認・Runtime authorityを付与しません。取得前後のrevision不一致に加え、PreviewとReviewの**候補ID・候補指紋・根拠指紋・基準revision・受入可否が互いに食い違う場合も拒否**します。`reviewConsistency.readyToAccept=false`は人による判断が未実施であることを表します。Accept時には元のShared Acceptance自身が再検査します。外部snapshotファイルのみで`review-edit`を行う操作は認めません。
 
 `review.previewAcceptable`がfalse、review内容が未確認、あるいはsourceの競合があればAcceptを行わず、未解決として止めてください。Previewの`unresolved`を勝手に「変更なし」へ変換しません。現行Shared Acceptanceの既知仕様では、Relation追加によってPersistence Mappingの意味まで自動確定するとは限りません。
 
@@ -103,6 +103,14 @@ node reference/studio-authoring/cli.mjs inspect \
 既存Relationのcardinalityを`set`するoperationは未実装です。未対応編集を直接Source patchへ落とし込まないでください。
 
 Worldとrevisionを先に取得してCLIへ渡す場合は、`-workspace`の代わりに`-world-file world.json -revision-file revision.json`を同時指定できます。`inspect`では`-source-index-file index.json`も指定でき、そのIndexにexact一致する定義位置を表示します。Workspace指定時はWorldとSource Indexを同じWorkspaceから読み、取得前後のrevision一致を検査します。ただし完全な原子snapshotやファイルの再読込時点の一致は保証せず、Accepted Sourceのrevision一致はShared Acceptanceで再確認します。JSONファイルを任意の第三者から受け取った場合、その内容がTEIのauthoritative Sourceと一致することはBridge単独では証明できません。
+
+### Source revision R0 → R1 の追跡（#1119）
+
+`e2e.mjs`は各ケースの結果を`tei.reference.studio-source-loop-receipt/v0`として標準出力に含めます。採取対象は`baseModelRevision`（R0）、Previewの`currentModelRevision`と予測`modelRevisionAfter`、Accepted Decisionの`modelRevisionBefore/After`、Sourceを再ロードした実際のR1、candidate/review指紋、変更ファイル一覧です。これらの整合を**一つのScratch受理操作の内部で検査**し、旧R0候補のPreviewとAcceptがR1を上書きしないことも検査します。
+
+Receiptは実行に成功したときだけ出力される**テスト実行記録の構造案**であり、現PR headのactual E2E PASSを意味しません。人間のAccept、実Provider、Runtime/Target、後続Observationの証拠は入らず、`not-observed`として明示します。Source IDとSource RevisionをWebのCommand/Observationへ引き渡す実際の連結は#1121/#1127の責務で、ここで実行Readyとは表示しません。
+
+現行Source Indexは#1120の`scope + kind + ID`契約と同じスコープ情報を提供しません。Source Indexの参照へ呼出し側が`scope`を付けただけではC0解決済みと扱わず、`sourceNavigation.status=unresolved`にします。複数scopeを持つモデルを安全に編集するには、#1120のtyped Resolverを同一revisionへ接続する必要があります。単一scopeの現Reference向けflat `data:ID` 形式を、汎用のC0表現として固定しません。
 
 ## Business参照の任意結合（#1125 / Draft PR #1138）
 
@@ -143,7 +151,7 @@ tools/repository-health-check.sh
 | V03 | ERのRelation追加・表のValidation追加に加え、必要ならApplicationによるValidation利用選択も同一candidateで提案。一括`review-edit`で既存Shared AcceptanceによるDiff/Impact/Reviewを表示し、実行Readyは未確認とする | read-only consumerのexact-head実GoテストとTarget/Provider readinessは未確認 |
 | V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。規則+Application選択はSource2ファイルを検査するテストとして追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
-| N06 | candidateへ基準revisionを保持。Projection時の前後revision不一致を拒否し、scratch E2Eにstale負例を追加 | 実WorkspaceでのN06実行とaccept途中の並行write試験は未実施 |
+| N06 | candidateのR0・Reviewの同一性を確認し、scratch E2EにAccepted DecisionのR0/R1照合と旧候補のstale負例を追加 | 実WorkspaceでのN06実行とaccept途中の並行write試験は未実施 |
 | Invalid ref | exactな入力subject/Relation target不在・重複を拒否。Source Indexの曖昧な定義、範囲不正、危険なpathを拒否。DFDの参照切れはunresolved | 全モデルKind・全typed edge・Source byte最新性とBusinessの受理済み意味 |
 | N12 | layout書換えは意味操作へ変換しない | 独立したView Metadataの保持・再生 |
 | 性能 | focus近傍だけを返す、合成増量ケースあり | realistic 1万+件の時間/メモリ実測 |
