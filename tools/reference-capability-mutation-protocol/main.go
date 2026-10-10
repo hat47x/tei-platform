@@ -67,7 +67,6 @@ type ProviderCommitReceipt struct {
 	InvocationKey      string
 	RequestDigest      string
 	ResultDigest       string
-	ResultRef          string
 	EffectDigest       string
 	CommitID           string
 	ReceiptFingerprint string
@@ -99,7 +98,6 @@ type MutationReceipt struct {
 	ResultDigest               string
 	PreparationFingerprint     string
 	ProviderReceiptFingerprint string
-	ResultRef                  string
 	EffectDigest               string
 	CommitID                   string
 	ReceiptFingerprint         string
@@ -416,9 +414,7 @@ func validateProviderReceipt(handle MutationHandle, provider ProviderCommitRecei
 		return MutationReceipt{}, fmt.Errorf("provider receipt has invalid outcome %q", provider.Outcome)
 	}
 	if provider.Outcome == OutcomeCommitted &&
-		(provider.ResultRef == "" ||
-			provider.EffectDigest == "" ||
-			provider.CommitID == "") {
+		(provider.EffectDigest == "" || provider.CommitID == "") {
 		return MutationReceipt{}, fmt.Errorf("committed provider receipt is incomplete")
 	}
 	if provider.ReceiptFingerprint != providerReceiptFingerprint(provider) {
@@ -432,7 +428,6 @@ func validateProviderReceipt(handle MutationHandle, provider ProviderCommitRecei
 		ResultDigest:               handle.ResultDigest,
 		PreparationFingerprint:     handle.PreparationFingerprint,
 		ProviderReceiptFingerprint: provider.ReceiptFingerprint,
-		ResultRef:                  provider.ResultRef,
 		EffectDigest:               provider.EffectDigest,
 		CommitID:                   provider.CommitID,
 	}
@@ -475,7 +470,6 @@ func NewPreparedMutation(
 func NewProviderReceipt(
 	outcome MutationOutcome,
 	handle MutationHandle,
-	resultRef,
 	effectDigest,
 	commitID string,
 ) ProviderCommitReceipt {
@@ -486,7 +480,6 @@ func NewProviderReceipt(
 		InvocationKey: handle.InvocationKey,
 		RequestDigest: handle.RequestDigest,
 		ResultDigest:  handle.ResultDigest,
-		ResultRef:     resultRef,
 		EffectDigest:  effectDigest,
 		CommitID:      commitID,
 	}
@@ -533,7 +526,6 @@ func providerReceiptFingerprint(receipt ProviderCommitReceipt) string {
 		InvocationKey    string          `json:"invocationKey"`
 		RequestDigest    string          `json:"requestDigest"`
 		ResultDigest     string          `json:"resultDigest"`
-		ResultRef        string          `json:"resultRef,omitempty"`
 		EffectDigest     string          `json:"effectDigest,omitempty"`
 		CommitID         string          `json:"commitId,omitempty"`
 	}{
@@ -544,7 +536,6 @@ func providerReceiptFingerprint(receipt ProviderCommitReceipt) string {
 		InvocationKey:    receipt.InvocationKey,
 		RequestDigest:    receipt.RequestDigest,
 		ResultDigest:     receipt.ResultDigest,
-		ResultRef:        receipt.ResultRef,
 		EffectDigest:     receipt.EffectDigest,
 		CommitID:         receipt.CommitID,
 	})
@@ -560,7 +551,6 @@ func mutationReceiptFingerprint(receipt MutationReceipt) string {
 		ResultDigest               string          `json:"resultDigest"`
 		PreparationFingerprint     string          `json:"preparationFingerprint"`
 		ProviderReceiptFingerprint string          `json:"providerReceiptFingerprint"`
-		ResultRef                  string          `json:"resultRef,omitempty"`
 		EffectDigest               string          `json:"effectDigest,omitempty"`
 		CommitID                   string          `json:"commitId,omitempty"`
 	}{
@@ -572,7 +562,6 @@ func mutationReceiptFingerprint(receipt MutationReceipt) string {
 		ResultDigest:               receipt.ResultDigest,
 		PreparationFingerprint:     receipt.PreparationFingerprint,
 		ProviderReceiptFingerprint: receipt.ProviderReceiptFingerprint,
-		ResultRef:                  receipt.ResultRef,
 		EffectDigest:               receipt.EffectDigest,
 		CommitID:                   receipt.CommitID,
 	})
