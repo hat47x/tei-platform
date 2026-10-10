@@ -17,13 +17,13 @@ func TestProtectedSessionResultNeverTreatsUnconfirmedCommandAsSuccess(t *testing
 	const securityFailure = "trusted identity or authorization resolution unavailable"
 	const effectUnknown = "action completion unconfirmed; inspect authoritative state before retrying"
 	for _, tc := range []struct {
-		name       string
-		stage      string
-		command    bool
+		name        string
+		stage       string
+		command     bool
 		observation bool
-		err        error
-		status     int
-		errorText  string
+		err         error
+		status      int
+		errorText   string
 	}{
 		{"completed with command and observation", "completed", true, true, nil, http.StatusOK, ""},
 		{"validation business rejection", "validation-not-satisfied", false, false, nil, http.StatusUnprocessableEntity, ""},
