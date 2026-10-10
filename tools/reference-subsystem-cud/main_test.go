@@ -132,28 +132,41 @@ func TestEmptyCandidateScopeCannotReportClean(t *testing.T) {
 
 func TestUnresolvedPatternDoesNotInventCrossSubsystemWriteFinding(t *testing.T) {
 	w, f := fixture(t)
-	f.FunctionIO = append(f.FunctionIO, FunctionIO{
-		Pattern: "unknown.submit", Subsystem: "sales", Data: "stock.reservation", Operation: "U", Source: "candidate:unknown",
-	})
+	f.FunctionIO = append(f.FunctionIO, FunctionIO{Pattern: "unknown.submit", Subsystem: "sales", Data: "stock.reservation", Operation: "U", Source: "candidate:unknown"})
 	r := Inspect(w, f)
 	if r.Status != "unresolved" || codeCount(r, "IO_PATTERN_UNRESOLVED") != 1 || codeCount(r, "CROSS_SUBSYSTEM_WRITE_INTENT") != 0 {
-		t.Fatalf("unresolvable Pattern must not imply a cross-subsystem writer: %+v", r)
+		t.Fatalf("bad: %+v", r)
 	}
-	// Duplicated World identity is equally non-addressable, even though the
-	// owning Data and candidate CUD are individually unambiguous.
 	w.Applications[0].Patterns = append(w.Applications[0].Patterns, w.Applications[0].Patterns[0])
 	f.FunctionIO[len(f.FunctionIO)-1].Pattern = "sales.submit"
 	r = Inspect(w, f)
-	if r.Status != "unresolved" || codeCount(r, "AMBIGUOUS_APPLICATION_PATTERN") != 1 ||
-		codeCount(r, "IO_PATTERN_UNRESOLVED") != 2 || codeCount(r, "CROSS_SUBSYSTEM_WRITE_INTENT") != 0 {
-		t.Fatalf("ambiguous Pattern must not imply a cross-subsystem writer: %+v", r)
+	if r.Status != "unresolved" || codeCount(r, "AMBIGUOUS_APPLICATION_PATTERN") != 1 || codeCount(r, "IO_PATTERN_UNRESOLVED") != 2 || codeCount(r, "CROSS_SUBSYSTEM_WRITE_INTENT") != 0 {
+		t.Fatalf("bad: %+v", r)
 	}
 }
-
 func TestExactInputDigestIsContentBoundNotAcceptance(t *testing.T) {
 	a := snapshotDigest([]byte(`{"a":1}`))
 	b := snapshotDigest([]byte(`{"a":2}`))
 	if a != "sha256:015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862" || a == b {
-		t.Fatalf("digest must identify exact supplied bytes: %s, %s", a, b)
+		t.Fatal(a, b)
+	}
+}
+func TestSnapshotBindingRejectsMissingOrStaleInputs(t *testing.T) {
+	raw := []byte(`{"semantics":[{"data":[{"id":"sales.order"},{"id":"stock.reservation"}]}],"applications":[{"patterns":[{"id":"sales.submit"},{"id":"stock.reserve"},{"id":"sales.list"}]}]}`)
+	w, f := fixture(t)
+	f.WorldJSONFingerprint = snapshotDigest(raw)
+	factsBytes, _ := json.Marshal(f)
+	good := InspectSnapshot(w, f, raw, factsBytes)
+	if good.Status != "no-findings-in-declared-scope" || good.InputFingerprints.WorldJSON != f.WorldJSONFingerprint || good.InputFingerprints.FactsJSON != snapshotDigest(factsBytes) {
+		t.Fatalf("bound: %+v", good)
+	}
+	bad := InspectSnapshot(w, f, append(append([]byte(nil), raw...), byte(' ')), factsBytes)
+	if bad.Status != "unresolved" || codeCount(bad, "WORLD_SNAPSHOT_STALE") != 1 {
+		t.Fatalf("stale: %+v", bad)
+	}
+	f.WorldJSONFingerprint = ""
+	unbound := InspectSnapshot(w, f, raw, factsBytes)
+	if unbound.Status != "unresolved" || codeCount(unbound, "WORLD_SNAPSHOT_UNBOUND") != 1 {
+		t.Fatalf("unbound: %+v", unbound)
 	}
 }
