@@ -199,3 +199,25 @@ seed issuer、attestation、現在のTrust受理・失効は#1104の責務です
 Build graphのedgeは順序だけを表すものではありません。`verifyBuildGraphBindings`はproducerのArtifact Setから指定Roleを選び、そのdigestがconsumerのexact `Builder.ArtifactDigest`またはexact `BuildDependency(kind/id/version).ArtifactDigest`と一致することを確認します。
 
 これにより「graph上は依存しているが、実際のconsumerが別artifactを使った」という偽のprovenanceを拒否します。stage0 seedも同じinput bindingを通し、stage1が実際にそのexact seed builderを使うことをcross-checkします。
+
+## Subject bindingはBuildExecutionResultへ束縛する
+
+`ExecutionPlanFingerprint`と`ArtifactSetFingerprint`を別々に保持するだけでは、別々のbuild runから得たplanとartifact setを後から組み合わせる余地があります。
+
+そのためPlugin / Runtime Engineのsubject bindingは、両fingerprintから構成される`BuildExecutionResultFingerprint`も必須で持ちます。
+
+```text
+BuildExecutionPlan
+  +
+ArtifactSet
+  ↓
+BuildExecutionResult
+  ↓
+typed Subject Binding
+```
+
+binding verificationでは、指定されたplan / setからResult fingerprintを再計算し、bindingのResult fingerprintと一致することを要求します。
+
+これによりsubjectは「このplan」と「このartifact set」を独立に参照するのではなく、その組合せとして観測されたbuild resultへ束縛されます。
+
+ただし、このReferenceはbuild executionの実行時刻やHost observationまで署名済みEvidenceにしたものではありません。Attestation / Trustは#1104の別責務です。
