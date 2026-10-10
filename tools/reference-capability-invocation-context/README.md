@@ -40,6 +40,8 @@ downstream errorの`Error()`文字列が安全に見えても、元のGo error o
 
 現Referenceでは、直接反射を検出した場合は従来どおり拒否する。それ以外でも`ForbidDirectResultReflection`のあるrequired slotが存在し、下流がerrorを返した場合は**原error objectを返さず**固定の汎用failureへ置き換える。非機密slotだけの呼出しでは元のerrorを保持する。
 
+ただし、単純にerrorを固定文言へ置き換えるだけでは、下流実行中に発生したControl Contextの`context.Canceled` / `context.DeadlineExceeded`まで失われる。実際に両者の区別が消えることを再現し、修正した。現在は、**trustedなControl Contextの`Err()`が返す制御状態のみ**を優先して返す。下流errorが`context.Canceled`をwrapしているだけでは信頼せず、Control Contextが生きている場合は固定failureへ変換する。元の下流error objectは、どちらの場合も返さない。
+
 これはReference上の防御策であり、製品のerror codeやCapability固有のfailure semanticsを決定するものではない。productionではContractに従う公開可能なfailure表現を別途設計する。固定メッセージへの変換だけで間接漏えいやProvider内部logを排除したとは主張しない。
 
 productionでは、Context Slot Contractのexposure policy、Provider Conformance、result schema、Security policy等との分担を別途判断します。
