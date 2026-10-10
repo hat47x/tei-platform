@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -67,5 +68,32 @@ func TestFixtureStoreFindBySubjectIsUniqueAndDeterministic(t *testing.T) {
 	user, found, err := store.FindByLogin(context.Background(), "legacy-editor")
 	if err != nil || !found || user.SubjectID != "subject-editor" {
 		t.Fatalf("login lookup changed: %+v found=%v err=%v", user, found, err)
+	}
+}
+
+func TestReferenceFixtureUsesUniqueBusinessSubjectIndex(t *testing.T) {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("unable to locate reference fixture")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", ".."))
+	store, err := LoadFixtureStore(filepath.Join(root, "reference", "legacy-auth", "users.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		subjectID string
+		loginID   string
+		role      string
+	}{
+		{subjectID: "subject-order-editor", loginID: "legacy-order-editor", role: "ORDER_EDITOR"},
+		{subjectID: "subject-order-viewer", loginID: "legacy-order-viewer", role: "ORDER_VIEWER"},
+		{subjectID: "subject-order-locked", loginID: "legacy-order-locked", role: "ORDER_EDITOR"},
+		{subjectID: "subject-order-disabled", loginID: "legacy-order-disabled", role: "ORDER_VIEWER"},
+	} {
+		user, found, err := store.FindBySubject(context.Background(), tc.subjectID)
+		if err != nil || !found || user.LoginID != tc.loginID || user.RoleCode != tc.role {
+			t.Fatalf("reference subject %q: user=%+v found=%v err=%v", tc.subjectID, user, found, err)
+		}
 	}
 }
