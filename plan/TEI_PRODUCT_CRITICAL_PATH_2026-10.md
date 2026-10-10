@@ -584,3 +584,33 @@ E1-Bでは、既存の数量0が単価の不満足を**隠さない**よう、�
 - **#1119**: Evidence packetには`accepted_revision`、`application_rule_set`、`web_workspace_source`、`fixture_provenance`、`rule_results`、`command_status`、`observation_nature`の根拠をリンクする。E1-A/B/Cは別caseとして数え、E1→E2（実DB Provider+独立read）の自動昇格は禁止する。
 
 **現状**: この節の根拠はGitHub上のmainソースとDraft PRの静的照合。E1-A/B/Cの追加テスト実装・actual実行、trusted full checkout、Repository Health、実DB操作はこの横断担当では**NOT RUN**。G1/G2のGate状態は変更しない。
+
+
+## 18. 既存のGo横断テストの再利用と残るG2接合点
+
+§16の最短実演のため、新しい単価Validation専用Runnerをもう一つ作る必要はない。現在のmainに既に次のテストソースが存在することを確認した。
+
+- `tools/reference-shared-acceptance/practical_validation_loop_test.go`: `TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection`。一つのcandidateで「Validation追加＋Application利用宣言」を受理し、Driverが4規則を解決する。
+- `tools/reference-first-web-target/practical_business_rule_test.go`: `TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList`。scratch WorkspaceでShared Acceptance CLIの`revision→preview→review→accept→reload`を経て、旧3規則と新4規則のCommand動作を比べる。2行目の単価をテスト内で0に変え、旧規則は満たすが新規規則だけが拒否する。さらに`httptest`で`POST /scenario/submit`の拒否とCommand/Observation未実行を確認し、単価を正に戻せば成功する。
+- 同じGoファイルの`TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines`は追加規則の参照値が欠落したケースで、成功扱い・通常の業務Validation拒否に丸めずExecution Errorにする。
+
+このソースは未実行の静的確認であり、現時点のE1 PASSではない。各既存テストは合成read/Command、test-only accept、HTTP handlerの`httptest`を用いる。実ブラウザや実DB、実際の人間の承認を証明しない。なお通常の`/scenario/submit`要求に単価の任意指定は無い。負例のためにWeb APIへ任意の価格上書き機能を追加しない。既存order 1002は数量が0で旧規則に先に失敗するため、今回の新規単価規則の負例には使わない。
+
+### 主担当への最小追加要求
+
+| Owner | 既存テストで足りること | 新たに必要な接合 |
+| --- | --- | --- |
+| #1124 | Shared Acceptance側の2操作受理 | PR #1137の1操作Studio候補を明示的利用選択と結び、同じscratch R0→R1を通す。UIの候補生成だけでV04合格にしない |
+| #1127 | scratch R1由来のWeb handlerで正/負/欠損のValidation実行 | 同じR1のProvider/Target readinessとreal Observationを後続で実証。別のunit-price用Runnerは作らない |
+| #1121 | lower段階のversion/capability候補 | R1の真正なAccepted Sourceを受け取り、実行時ContextやAuthorityを合成のTrustへ置き換えない |
+| #1119 | 既存試験のSourceとP0 Caseへの対応 | trusted exact HEADでの実テストreceipt、R0/R1/target/observationの証跡を収集し、E1/E2を分ける |
+
+trustedなactual full checkoutでの最初の対象コマンド（今回の作業では**実行していない**）:
+
+```bash
+go test -count=1 ./tools/reference-shared-acceptance -run '^TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection$'
+go test -count=1 ./tools/reference-first-web-target -run '^(TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList|TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines)$'
+bash tools/repository-health-check.sh
+```
+
+G2に残るのはStudio #1137の実consumer経路、accepted R1からのLowering / Authority接続、およびactual Provider・独立Observationである。上記test sourceの存在をG1/G2のPASSへ昇格しない。
