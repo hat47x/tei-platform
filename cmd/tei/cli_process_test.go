@@ -107,6 +107,30 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		t.Fatalf("wrong inspect invalid argument result: %+v", invalidInspect)
 	}
 
+	// Malformed and unrelated flags must use one JSON envelope, without the
+	// legacy FlagSet stderr-only exit path that is hard for LLMs to interpret.
+	for _, args := range [][]string{
+		{"trace", "-limit", "not-an-integer"},
+		{"trace", "-no-such-option", "x"},
+		{"trace", "-workspace", reference, "-environment", "dev"},
+		{"inspect", "-workspace", reference, "-scope", "foreign"},
+		{"inspect", "-limit", "1"},
+	} {
+		var failure struct {
+			SchemaVersion string `json:"schemaVersion"`
+			OK bool `json:"ok"`
+			Error *cliInspectionFailure `json:"error"`
+		}
+		if err := json.Unmarshal(run(2, args...), &failure); err != nil {
+			t.Fatalf("argv=%q invalid args must return JSON: %v", args, err)
+		}
+		if failure.OK || failure.Error == nil ||
+			failure.Error.Code != "INVALID_ARGUMENT" ||
+			(failure.SchemaVersion != "tei.cli.trace/v0" &&
+				failure.SchemaVersion != "tei.cli.inspect/v0") {
+			t.Fatalf("argv=%q invalid argument envelope: %+v", args, failure)
+		}
+	}
 	// Exercise argv, JSON, stdout/stderr and exit code for typed trace.
 	var traceSummary cliTraceReport
 	if err := json.Unmarshal(run(0,
