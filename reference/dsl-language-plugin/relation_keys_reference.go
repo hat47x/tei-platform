@@ -4,82 +4,81 @@ import (
 	"fmt"
 
 	"tei/internal/core"
+	"tei/internal/ir"
 	"tei/internal/semantic"
+	"tei/internal/validation"
 )
 
-// ValidateRelationKeys checks a relation's target and explicit key pairs
-// against an already accepted namespace. Empty keys remain valid for a
-// conceptual relation, but do not authorize a runtime join.
-func ValidateRelationKeys(ns semantic.Namespace, sourceID, relationID core.CanonicalID) error {
+// resolveWorldRelation locates an unambiguous relation and its endpoints in
+// the existing multi-namespace semantic world. It does not resolve or accept
+// Semantic Extensions, and must be given an already accepted world.
+func resolveWorldRelation(w ir.World, sourceID, relationID core.CanonicalID) (semantic.Relation, error) {
+	if sourceID == "" || relationID == "" {
+		return semantic.Relation{}, fmt.Errorf("relation requires source and relation identities")
+	}
 	var source *semantic.Data
-	for i := range ns.Data {
-		if ns.Data[i].ID == sourceID {
-			if source != nil {
-				return fmt.Errorf("duplicate source data %q", sourceID)
+	var sourceNamespace core.CanonicalID
+	for i := range w.Semantics {
+		for j := range w.Semantics[i].Data {
+			if w.Semantics[i].Data[j].ID != sourceID {
+				continue
 			}
-			source = &ns.Data[i]
+			if source != nil {
+				return semantic.Relation{}, fmt.Errorf("duplicate source data %q", sourceID)
+			}
+			source = &w.Semantics[i].Data[j]
+			sourceNamespace = w.Semantics[i].ID
 		}
 	}
-	if source == nil {
-		return fmt.Errorf("unknown source data %q", sourceID)
+	if source == nil || sourceNamespace == "" {
+		return semantic.Relation{}, fmt.Errorf("missing source data %q or its namespace", sourceID)
 	}
 	var relation *semantic.Relation
 	for i := range source.Relations {
 		if source.Relations[i].ID == relationID {
 			if relation != nil {
-				return fmt.Errorf("duplicate relation %q", relationID)
+				return semantic.Relation{}, fmt.Errorf("duplicate relation %q", relationID)
 			}
 			relation = &source.Relations[i]
 		}
 	}
 	if relation == nil {
-		return fmt.Errorf("unknown relation %q", relationID)
+		return semantic.Relation{}, fmt.Errorf("unknown relation %q", relationID)
 	}
 	if !relation.Cardinality.Valid() {
-		return fmt.Errorf("invalid relation cardinality")
+		return semantic.Relation{}, fmt.Errorf("relation %q has invalid cardinality", relationID)
 	}
-	var target *semantic.Data
-	for i := range ns.Data {
-		if ns.Data[i].ID == relation.Target {
-			if target != nil {
-				return fmt.Errorf("duplicate target data %q", relation.Target)
-			}
-			target = &ns.Data[i]
-		}
-	}
-	if target == nil {
-		return fmt.Errorf("unknown relation target %q", relation.Target)
-	}
-	seenSource := map[core.CanonicalID]bool{}
-	seenTarget := map[core.CanonicalID]bool{}
-	for _, key := range relation.Keys {
-		if key.SourceAttribute == "" || key.TargetAttribute == "" {
-			return fmt.Errorf("empty relation key attribute")
-		}
-		if seenSource[key.SourceAttribute] || seenTarget[key.TargetAttribute] {
-			return fmt.Errorf("duplicate relation key attribute")
-		}
-		seenSource[key.SourceAttribute] = true
-		seenTarget[key.TargetAttribute] = true
-		sourceCount, targetCount := 0, 0
-		var sourceType, targetType core.CanonicalID
-		for _, a := range source.Attributes {
-			if a.ID == key.SourceAttribute {
-				sourceCount++
-				sourceType = a.TypeRef
+	targetMatches := 0
+	for _, ns := range w.Semantics {
+		for _, data := range ns.Data {
+			if data.ID == relation.Target {
+				if ns.ID == "" {
+					return semantic.Relation{}, fmt.Errorf("target %q has no semantic namespace", relation.Target)
+				}
+				targetMatches++
 			}
 		}
-		for _, a := range target.Attributes {
-			if a.ID == key.TargetAttribute {
-				targetCount++
-				targetType = a.TypeRef
-			}
-		}
-		if sourceCount != 1 || targetCount != 1 {
-			return fmt.Errorf("relation key references missing or duplicate attribute")
-		}
-		if sourceType == "" || targetType == "" || sourceType != targetType {
-			return fmt.Errorf("relation key attribute type mismatch")
+	}
+	if targetMatches != 1 {
+		return semantic.Relation{}, fmt.Errorf("relation %q: expected one target %q, got %d", relationID, relation.Target, targetMatches)
+	}
+	return *relation, nil
+}
+
+// ValidateRelationKeys uses TEI's existing Semantic Relation key validator for
+// key ownership, type identity and mapping constraints. Its only additional
+// responsibility is identifying an unambiguous source/relation/target in the
+// supplied world. Keyless conceptual relations remain valid here.
+func ValidateRelationKeys(w ir.World, sourceID, relationID core.CanonicalID) error {
+	if _, err := resolveWorldRelation(w, sourceID, relationID); err != nil {
+		return err
+	}
+	for _, diagnostic := range validation.ValidateSemanticRelationKeys(w) {
+		if diagnostic.Severity == validation.Error &&
+			diagnostic.Subject != nil &&
+			diagnostic.Subject.Kind == "semantic-relation" &&
+			diagnostic.Subject.ID == string(relationID) {
+			return fmt.Errorf("relation %q: %s: %s", relationID, diagnostic.Code, diagnostic.Message)
 		}
 	}
 	return nil
