@@ -76,7 +76,9 @@ node --test tools/reference-sui-action-boundary/native-action-bridge.test.mjs
 node --test tools/reference-sui-action-boundary/json-action-dispatch.test.mjs
 ```
 
-旧Envelopeを使った操作アダプターのNode.js 22単体テスト6件は2026-10-10に実行してPASSを確認しました。**その後にv1の共通Envelopeへ変更しており、最新headのテストは未実行です。**GitHub上の正確なPR headをcheckoutして実行した結果ではありません。今回追加したHTTP Handlerは切り出したGoスタブ環境で`go test -race`と`go vet`がPASSし、Browser DispatcherはNode.js 22で4テストがPASSしました。ただし、実リポジトリで実行した結果ではありません。Go全体とリポジトリ全体の健全性は未検証です。統合時は対象コミットを固定し、`tools/repository-health-check.sh`全項目のPASSと実行前後のclean状態を別途確認してください。
+ローカルに再構成したファイルとGitHubのGit Blob SHAを照合したうえで、Node.js 22のテスト15件（操作アダプター6件、JSON Dispatcher 6件、共通契約3件）がすべてPASSしました。GoのHTTP Handlerとそのテスト2ファイルについても、Git Blob SHAが一致するコピーを用意し、模擬Host／模擬Document Storeを組み合わせて`go test -race`と`go vet`をPASSしました。
+
+ただし、これらは**正確なPR headをチェックアウトしたTEI全体のテストではありません**。Canonical Command解決、実セッション認可、SUI本番保存機構の検証結果も含まれません。統合時は正確なコミットを固定し、`tools/repository-health-check.sh`全項目PASSと実行前後のclean状態を確認してください。
 
 ## 検証範囲と未実装
 
