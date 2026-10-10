@@ -201,6 +201,7 @@ cross-view / execution Evidence
 | [000033 Oracle driver](000033-gate-b-oracle-driver-integration.md) | driver選定・Host assembly・metadata実証（既存#371） | 接続条件と実driverに依存する成果 |
 | [000034 Oracle read-only](000034-gate-b-oracle-read-only-evidence.md) | principal / grant / transaction / runtimeの安全な確認（既存#376） | driverの動作成功と権限保証は別の証明 |
 | [000041 Partition Schema Drift](000041-partition-schema-drift-semantics.md) | 未登録のpartition設計とWorkstream Dの同じ論点（既存#43） | 設計判断と最小再現契約に限定し、DDL実行へ広げない |
+| [000086 Capability Invocation Transport](000086-capability-invocation-transport.md) | generic Capability Invocationとprocess / 将来のWasm等のphysical transportの境界 | 既存Runtimeを再実装せず、transportで保持するidentityとRuntime Authorityを分ける |
 
 000033 / 000034の実Oracle条件は未取得のままです。成果は000022へ合流させ、未完了なら000030の`unresolved`へ残します。新しい第4・第5のGate B必須laneにはしません。
 
