@@ -6,13 +6,13 @@ set -euo pipefail
 # reviewed under AGENTS.md / CONTRIBUTING.md.
 #
 # Usage:
-#   tools/verify-cli-c1-local.sh <expected-pr-head-sha> <expected-main-sha> <outside-repo-receipt-dir>
+#   bash tools/verify-cli-c1-local.sh <expected-pr-head-sha> <expected-main-sha> <outside-repo-receipt-dir>
 #
 # Requires a clean, detached checkout of the exact PR head and authenticated
 # read-only access to origin. Does not fetch or mutate Git refs.
 
 if [[ "$#" -ne 3 || ! "$1" =~ ^[0-9a-f]{40}$ || ! "$2" =~ ^[0-9a-f]{40}$ ]]; then
-  echo "usage: $0 <40-char-pr-head-sha> <40-char-main-sha> <outside-repo-receipt-dir>" >&2
+  echo "usage: bash $0 <40-char-pr-head-sha> <40-char-main-sha> <outside-repo-receipt-dir>" >&2
   exit 2
 fi
 expected_head="$1"
