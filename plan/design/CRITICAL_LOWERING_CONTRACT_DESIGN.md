@@ -182,3 +182,13 @@ Reference `Keys`は`Builder`に加え、既存Build Artifact ownerが解決し�
 ProviderのRuntime/Build-only依存も`Lower`で検査し、不完全または重複したIDは拒否する。Runtime依存の順序は正規化し、登録順だけでPlan fingerprintが変わることを防ぐ。
 
 既存EnvironmentのDatasource選択には、宣言の欠落・重複・異なるDatabaseへの接続をテストとして追加した。実DBの互換性やHostの現在のGrant確認とは区別する。全テストは作成済みだが、trusted checkout上での実行は未了。
+
+## 10. Target変更とCapability Resolution Cacheの再評価
+
+「Targetのみを変更したらResolve Cacheを必ず再利用できる」とはしない。Target名だけを検査する場合と、Target専用Providerを選択し直す場合を区別する。
+
+- 同じ解決済みProvider・Lockを保持し、Target固有の生成設定だけを変える場合は`Interpret`、`Accept`、`Resolve`を再利用できる。
+- Web用ProviderからDesktop用Providerへ変更する場合、Accepted意味は再利用できても、Capability Provider・Conformance・Lockは異なるため`Resolve`以降を再評価する。
+- Targetが要求するEffectを提供できない場合は、Providerの自己申告による補完を認めず明示的に停止する。
+
+Reference TestではWebと概念DesktopのProvider選択を変更してこの差を固定した。Desktop executableの存在や実行を示す証拠ではない。
