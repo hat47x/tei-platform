@@ -89,6 +89,7 @@ func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (Provi
 			handle,
 			"",
 			"",
+			"",
 		)
 		record.receipt = receipt
 		return receipt, nil
@@ -101,6 +102,7 @@ func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (Provi
 	record.receipt = NewProviderReceipt(
 		OutcomeCommitted,
 		handle,
+		"result-"+request.InvocationKey,
 		digest([]byte(fmt.Sprintf("value=%d;version=%d", p.value, p.version))),
 		"commit-"+request.InvocationKey,
 	)
@@ -127,6 +129,7 @@ func (p *ledgerProvider) Status(_ context.Context, request StatusRequest) (Provi
 			preparedHandle(record.prepared),
 			"",
 			"",
+			"",
 		), nil
 	}
 	if record.committed {
@@ -138,6 +141,7 @@ func (p *ledgerProvider) Status(_ context.Context, request StatusRequest) (Provi
 	return NewProviderReceipt(
 		OutcomeNotCommitted,
 		preparedHandle(record.prepared),
+		"",
 		"",
 		"",
 	), nil
@@ -220,7 +224,6 @@ func clonePrepared(value PreparedMutation) PreparedMutation {
 }
 
 func cloneHandle(value MutationHandle) MutationHandle {
-	value.ResultPayload = append([]byte(nil), value.ResultPayload...)
 	return value
 }
 
@@ -327,6 +330,7 @@ func TestSuccessfulMutationCommitsPreparedResultExactlyOnce(t *testing.T) {
 	}
 	if first.Receipt.ResultDigest != digest(first.Result) ||
 		first.Receipt.RequestDigest != digest(request.Payload) ||
+		first.Receipt.ResultRef != "result-order-3" ||
 		first.Receipt.PreparationFingerprint != first.Handle.PreparationFingerprint {
 		t.Fatalf("receipt lost prepared identity: %+v", first.Receipt)
 	}
@@ -393,8 +397,9 @@ func TestCommitTransportFailureReturnsUnknownAndReconciles(t *testing.T) {
 		t.Fatal(err)
 	}
 	if reconciled.Outcome != OutcomeCommitted ||
-		string(reconciled.Result) != "6" ||
+		len(reconciled.Result) != 0 ||
 		reconciled.Receipt == nil ||
+		reconciled.Receipt.ResultRef != "result-order-5" ||
 		provider.effectCount != 1 {
 		t.Fatalf("reconcile did not recover committed effect: %+v provider=%+v", reconciled, provider)
 	}
@@ -513,7 +518,7 @@ func TestTamperedMutationHandleCannotBeReconciled(t *testing.T) {
 		Payload:       []byte("12"),
 	})
 	tampered := execution.Handle
-	tampered.ResultPayload = []byte("999")
+	tampered.ResultDigest = digest([]byte("999"))
 	if _, err := executor.Reconcile(context.Background(), tampered); err == nil {
 		t.Fatal("tampered handle was accepted")
 	}
@@ -561,7 +566,7 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	leftHandle, err := validatePrepared("concurrent-left", digest([]byte("2")), left)
+	leftHandle, _, err := validatePrepared("concurrent-left", digest([]byte("2")), left)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -577,7 +582,7 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 		t.Fatalf("first commit failed: receipt=%+v err=%v", leftReceipt, err)
 	}
 
-	rightHandle, err := validatePrepared("concurrent-right", digest([]byte("3")), right)
+	rightHandle, _, err := validatePrepared("concurrent-right", digest([]byte("3")), right)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -629,8 +634,9 @@ func TestUnknownCommitCanBeRecoveredFromJournalAfterExecutorRestart(t *testing.T
 		t.Fatal(err)
 	}
 	if reconciled.Outcome != OutcomeCommitted ||
-		string(reconciled.Result) != "14" ||
+		len(reconciled.Result) != 0 ||
 		reconciled.Receipt == nil ||
+		reconciled.Receipt.ResultRef != "result-order-restart" ||
 		provider.effectCount != 1 {
 		t.Fatalf("restart recovery failed: reconciled=%+v provider=%+v", reconciled, provider)
 	}
@@ -662,7 +668,9 @@ func TestReconcileByInvocationKeyUsesJournaledOutcomeWithoutProviderReplay(t *te
 		t.Fatal(err)
 	}
 	if reconciled.Outcome != OutcomeCommitted ||
+		len(reconciled.Result) != 0 ||
 		reconciled.Receipt == nil ||
+		reconciled.Receipt.ResultRef != "result-order-journaled" ||
 		reconciled.Receipt.ReceiptFingerprint != first.Receipt.ReceiptFingerprint {
 		t.Fatalf("journaled outcome was not recovered: %+v", reconciled)
 	}
