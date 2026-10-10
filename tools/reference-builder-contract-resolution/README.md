@@ -322,3 +322,30 @@ Reference testでは:
 を確認します。
 
 これによりProvider catalogの現在状態と、既に確定したBuildPlan identityを分離します。
+
+## support宣言とConformance Evidenceを分ける
+
+Providerの`RecipeKinds / Targets / Profiles`は「対応可能だと宣言している範囲」です。
+
+それだけではselected IntentへのConformanceを証明しません。
+
+ReferenceのConformance Evidenceは次へexact bindします。
+
+- Provider ID / version / ImplementationID
+- exact Provider ArtifactDigest
+- Contract fingerprint
+- Conformance profile
+- selected RecipeKind
+- selected Target
+- selected Profile
+
+したがって、Providerが後から`host/other`をsupport listへ追加しただけでは、そのTarget向けfresh resolutionはできません。
+
+```text
+support declaration
+  +
+selected Recipe × Target × Profile Conformance Evidence
+  -> eligible Provider
+```
+
+既存Intentとは無関係なsupport追加は既存Lockをstaleにしません。一方、新しいIntentを解決するときは、そのsliceに対応する新しいConformance Evidenceを要求します。
