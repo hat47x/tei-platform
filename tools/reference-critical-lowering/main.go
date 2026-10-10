@@ -310,8 +310,15 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 	if err != nil {
 		return Plan{}, err
 	}
-	if target.ID == "" {
+	if target.ID == "" || len(target.Effects) == 0 {
 		return Plan{}, reject("unsupported-target")
+	}
+	supportedEffects := make(map[string]bool)
+	for _, effect := range target.Effects {
+		if effect == "" || supportedEffects[effect] {
+			return Plan{}, reject("invalid-target-effects")
+		}
+		supportedEffects[effect] = true
 	}
 	steps := make([]Step, 0, len(neutral.Intents))
 	seen := make(map[string]bool)
@@ -324,7 +331,7 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 			return Plan{}, reject("duplicate-capability")
 		}
 		seen[key] = true
-		if !has(target.Effects, r.Effect) {
+		if !supportedEffects[r.Effect] {
 			return Plan{}, reject("unsupported-target")
 		}
 		var pin *Wiring
