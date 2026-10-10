@@ -22,8 +22,12 @@ type HTTPTransportImplementation func(
 ) (GenericTransportResult, error)
 
 func NewHTTPTransportHandler(
+	expectedIdentity GenericInvocationIdentity,
 	implementation HTTPTransportImplementation,
 ) (http.Handler, error) {
+	if err := validateGenericInvocationIdentity(expectedIdentity); err != nil {
+		return nil, fmt.Errorf("HTTP capability transport expected identity: %w", err)
+	}
 	if implementation == nil {
 		return nil, fmt.Errorf("HTTP capability transport requires implementation")
 	}
@@ -56,6 +60,10 @@ func NewHTTPTransportHandler(
 		}
 		if err := validateGenericDispatch(dispatch); err != nil {
 			http.Error(w, "invalid transport dispatch", http.StatusBadRequest)
+			return
+		}
+		if genericDispatchIdentity(dispatch) != expectedIdentity {
+			http.Error(w, "transport dispatch identity is not accepted by host", http.StatusConflict)
 			return
 		}
 
