@@ -43,7 +43,7 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 		if inputPath == "" {
 			return fmt.Errorf("-input is required unless -catalog is used")
 		}
-		if err := readJSON(inputPath, &input); err != nil {
+		if err := readStrictJSON(inputPath, &input); err != nil {
 			return fmt.Errorf("read input: %w", err)
 		}
 	}
