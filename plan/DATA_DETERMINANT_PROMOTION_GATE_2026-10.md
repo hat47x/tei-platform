@@ -138,6 +138,8 @@ association Dataのpositive pressureとして、`reference/business-system-desig
 
 このReferenceにより、現行Core contractではSource-backedなbusiness occurrence identity / scoped FDをaccepted meaningとして直接authorできないrepresentational gapが具体化した。ただし、syntax採用はまだ行わない。
 
+Reference自体の品質判定は`plan/DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md`へ分離する。DAR-P1〜P3でepistemic safety、cross-view integration、独立review / execution qualificationを段階化し、Reference PASSをCore primitive採用へ自動変換しない。
+
 このgapに対する最小contract候補は`plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md`へ分離した。現時点では、Attribute / related occurrence等のdeterminant term語彙だけを共通化し、business occurrence identity、candidate key、functional dependencyは別assertionとする案を第一候補にする。identityとFDを一つの万能`Key`へ畳まない。
 
 次に優先するのは、association Dataについて次をSource-backedに説明できるReferenceをさらに検証することである。
