@@ -153,20 +153,48 @@ func TestExactInputDigestIsContentBoundNotAcceptance(t *testing.T) {
 }
 func TestSnapshotBindingRejectsMissingOrStaleInputs(t *testing.T) {
 	raw := []byte(`{"semantics":[{"data":[{"id":"sales.order"},{"id":"stock.reservation"}]}],"applications":[{"patterns":[{"id":"sales.submit"},{"id":"stock.reserve"},{"id":"sales.list"}]}]}`)
-	w, f := fixture(t)
+	_, f := fixture(t)
 	f.WorldJSONFingerprint = snapshotDigest(raw)
 	factsBytes, _ := json.Marshal(f)
-	good := InspectSnapshot(w, f, raw, factsBytes)
+	good, err := InspectSnapshot(raw, factsBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if good.Status != "no-findings-in-declared-scope" || good.InputFingerprints.WorldJSON != f.WorldJSONFingerprint || good.InputFingerprints.FactsJSON != snapshotDigest(factsBytes) {
 		t.Fatalf("bound: %+v", good)
 	}
-	bad := InspectSnapshot(w, f, append(append([]byte(nil), raw...), byte(' ')), factsBytes)
+	bad, err := InspectSnapshot(append(append([]byte(nil), raw...), byte(' ')), factsBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if bad.Status != "unresolved" || codeCount(bad, "WORLD_SNAPSHOT_STALE") != 1 {
 		t.Fatalf("stale: %+v", bad)
 	}
 	f.WorldJSONFingerprint = ""
-	unbound := InspectSnapshot(w, f, raw, factsBytes)
+	unbound, err := InspectSnapshot(raw, mustJSON(t, f))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if unbound.Status != "unresolved" || codeCount(unbound, "WORLD_SNAPSHOT_UNBOUND") != 1 {
 		t.Fatalf("unbound: %+v", unbound)
+	}
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+func TestSnapshotDecodeMustUseSameSuppliedBytes(t *testing.T) {
+	_, err := InspectSnapshot([]byte(`{"semantics":true}`), []byte(`{"schemaVersion":"subsystem-cud-candidate-v1"}`))
+	if err == nil {
+		t.Fatal("invalid World JSON must be rejected, not substituted by caller-provided typed World")
+	}
+	_, err = InspectSnapshot([]byte(`{}`), []byte(`{"owners":true}`))
+	if err == nil {
+		t.Fatal("invalid facts must be rejected")
 	}
 }
