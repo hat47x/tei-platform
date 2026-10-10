@@ -16,6 +16,7 @@ import (
 
 const (
 	dispatchSchema = "tei.reference.capability-transport-dispatch/v0"
+	resultSchema   = "tei.reference.capability-transport-result/v0"
 	receiptSchema  = "tei.reference.capability-transport-receipt/v0"
 )
 
@@ -131,7 +132,7 @@ func invokeOverProcessTransport(
 	if err := decodeJSONExact(resp.Payload, &result); err != nil {
 		return TransportExecution{}, fmt.Errorf("decode generic transport result: %w", err)
 	}
-	if result.Schema != dispatchSchema ||
+	if result.Schema != resultSchema ||
 		result.ContractID != dispatch.ContractID ||
 		result.ContractFingerprint != dispatch.ContractFingerprint ||
 		result.Target != dispatch.Target ||
