@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -104,6 +105,7 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 						t.Fatalf("%s %s result/authorization/observation drift:\nold=%s\ntagged=%s",
 							request.method, request.path, legacy.body, tagged.body)
 					}
+					assertTaggedBusinessSemantics(t, request, tagged)
 					for _, secret := range []string{"editor-secret", "viewer-secret", "wrong-secret"} {
 						if bytes.Contains(tagged.body, []byte(secret)) {
 							t.Fatal("credential leaked into tagged business response")
@@ -126,6 +128,98 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 	}
 	if endHead != startHead {
 		t.Fatalf("binary parity crossed source revisions: before=%s after=%s", startHead, endHead)
+	}
+}
+
+
+// Body parity alone could allow an identical wrong result in both executables.
+// These assertions anchor the accepted synthetic Reference scenario semantics
+// independently of the new tagged entry implementation.
+func assertTaggedBusinessSemantics(t *testing.T, request taggedParityRequest, response taggedParityResponse) {
+	t.Helper()
+	if request.path == "/manifest.json" {
+		var manifest struct {
+			ApplicationID              string `json:"applicationId"`
+			HandoverBaselineID         string `json:"handoverBaselineId"`
+			BaselineRepositoryRevision string `json:"baselineRepositoryRevision"`
+			TargetBuildRevision        string `json:"targetBuildRevision"`
+		}
+		if err := json.Unmarshal(response.body, &manifest); err != nil {
+			t.Fatal(err)
+		}
+		if manifest.HandoverBaselineID != testBaselineID ||
+			manifest.BaselineRepositoryRevision != testBaselineRevision ||
+			manifest.TargetBuildRevision != testTargetRevision ||
+			(manifest.ApplicationID != "order_entry" && manifest.ApplicationID != "repair_intake") {
+			t.Fatalf("tagged manifest lost accepted B/R/T or Application: %+v", manifest)
+		}
+	}
+	if request.method == http.MethodPost && request.path == "/scenario/submit" {
+		if response.status == http.StatusBadRequest {
+			return
+		}
+		var command struct {
+			Result struct {
+				ScenarioID     string           `json:"scenarioId"`
+				ApplicationID  string           `json:"applicationId"`
+				Stage          string           `json:"stage"`
+				Authentication *json.RawMessage `json:"authentication"`
+				Authorization  *json.RawMessage `json:"authorization"`
+				Command        *json.RawMessage `json:"command"`
+				Observation    *json.RawMessage `json:"observation"`
+			} `json:"result"`
+			ExecutionError string `json:"executionError"`
+		}
+		if err := json.Unmarshal(response.body, &command); err != nil {
+			t.Fatal(err)
+		}
+		if command.Result.ApplicationID != "order_entry" ||
+			command.Result.ScenarioID != "order-entry.submit-order-web-slice" {
+			t.Fatalf("wrong command business identity: %+v", command.Result)
+		}
+		if response.status == http.StatusUnprocessableEntity {
+			if command.ExecutionError == "" {
+				t.Fatal("Execution Error was silently converted into a Business Result")
+			}
+			return
+		}
+		expectedStage := "completed"
+		switch {
+		case strings.Contains(request.body, "wrong-secret"):
+			expectedStage = "authentication-denied"
+		case strings.Contains(request.body, "legacy-order-viewer"):
+			expectedStage = "authorization-denied"
+		}
+		if command.Result.Stage != expectedStage || command.ExecutionError != "" {
+			t.Fatalf("command business stage=%q, expected=%q, executionError=%q",
+				command.Result.Stage, expectedStage, command.ExecutionError)
+		}
+		if expectedStage == "completed" {
+			if command.Result.Command == nil || command.Result.Observation == nil ||
+				command.Result.Authorization == nil || command.Result.Authentication == nil {
+				t.Fatal("completed Command omitted business/auth/observation boundaries")
+			}
+		} else if command.Result.Command != nil || command.Result.Observation != nil {
+			t.Fatal("denied Command exposed command/observation business result")
+		}
+	}
+	if request.method == http.MethodGet &&
+		strings.HasPrefix(request.path, "/scenario/customer-lookup?customerId=11") {
+		var lookup struct {
+			Result struct {
+				ApplicationID string `json:"applicationId"`
+				ScenarioID    string `json:"scenarioId"`
+				CustomerRows  []any  `json:"customerRows"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal(response.body, &lookup); err != nil {
+			t.Fatal(err)
+		}
+		if lookup.Result.ApplicationID != "repair_intake" ||
+			lookup.Result.ScenarioID != "repair-intake.customer-lookup-web-slice" ||
+			len(lookup.Result.CustomerRows) != 1 {
+			t.Fatalf("repair lookup lost Driver-result semantics: %+v", lookup.Result)
+		}
 	}
 }
 
