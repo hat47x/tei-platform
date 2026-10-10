@@ -397,7 +397,6 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	return result, nil
 }
 
-
 // requireMatchingBusinessGrant verifies the decision and its authority tuple.
 // This rule is independent of the HTTP Provider and is shared by the legacy
 // and verified-session paths.
