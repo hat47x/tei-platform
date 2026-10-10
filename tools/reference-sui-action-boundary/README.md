@@ -49,7 +49,7 @@ SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) が
 
 CLIや同一プロセス内の実行では、`Host.Commit`を直接呼べます。Webではオプションとして、`JSONCommitHandler`（Go標準`net/http`）と`json-action-dispatch.mjs`（ブラウザーの`fetch`）を利用できます。外部Pluginプロセスを必須にしません。
 
-`JSONCommitHandler`は利用側がApplicationとActionの組合せに対応する`DecodePayload`を渡さない限り、503で拒否します。共通層の詳細契約は[`PROTOCOL.md`](PROTOCOL.md)、機械検証用の要求スキーマは[`action-protocol-v1.schema.json`](action-protocol-v1.schema.json)に定義しています。認可は`Host.Authorizer`の責務であり、認証済みセッションから主体を取り出す実装が必要です。HTTP層は任意の主体IDを受信しません。JSONの未知フィールド、複数連結されたリクエスト、64KiB超の入力を拒否します。
+`JSONCommitHandler`は利用側がApplicationとActionの組合せに対応する`DecodePayload`を渡さない限り、503で拒否します。共通層の詳細契約は[`PROTOCOL.md`](PROTOCOL.md)にまとめ、要求は[`action-protocol-v1.schema.json`](action-protocol-v1.schema.json)、成功・失敗の応答は[`action-result-v1.schema.json`](action-result-v1.schema.json)に定義しています。認可は`Host.Authorizer`の責務であり、認証済みセッションから主体を取り出す実装が必要です。HTTP層は任意の主体IDを受信しません。JSONの未知フィールド、複数連結されたリクエスト、64KiB超の入力を拒否します。
 
 要求例（既存の`native-action-bridge.mjs`の`dispatchCommit`に、`createJSONActionDispatcher("/actions/commit")`を渡す）。この外側の形式はSUI以外のアプリケーションでも共通です：
 
@@ -76,7 +76,7 @@ node --test tools/reference-sui-action-boundary/native-action-bridge.test.mjs
 node --test tools/reference-sui-action-boundary/json-action-dispatch.test.mjs
 ```
 
-ローカルに再構成したファイルとGitHubのGit Blob SHAを照合したうえで、Node.js 22のテスト15件（操作アダプター6件、JSON Dispatcher 6件、共通契約3件）がすべてPASSしました。GoのHTTP Handlerとそのテスト2ファイルについても、Git Blob SHAが一致するコピーを用意し、模擬Host／模擬Document Storeを組み合わせて`go test -race`と`go vet`をPASSしました。
+ローカルに再構成したファイルとGitHubのGit Blob SHAを照合したうえで、Node.js 22のテスト16件（操作アダプター6件、JSON Dispatcher 6件、共通契約4件）がすべてPASSしました。GoのHTTP Handlerとそのテスト2ファイルについても、Git Blob SHAが一致するコピーを用意し、模擬Host／模擬Document Storeを組み合わせて`go test -race`と`go vet`をPASSしました。
 
 ただし、これらは**正確なPR headをチェックアウトしたTEI全体のテストではありません**。Canonical Command解決、実セッション認可、SUI本番保存機構の検証結果も含まれません。統合時は正確なコミットを固定し、`tools/repository-health-check.sh`全項目PASSと実行前後のclean状態を確認してください。
 
