@@ -33,6 +33,8 @@ TEIは`sha256:<64桁の16進>`という同じ形の文字列を、性質の違�
 
 Shared Acceptance Boundaryの外にも、`sha256`を計算する箇所が、`tools/`に少なくとも20あります。規則は、このIssueでは調べていません。
 
+2026-10-10に追加したISSUE-000086のCapability Transport Referenceは、新規値について後から規則を逆算する状態を増やさないため、payloadのraw-bytes規則とDispatch PlanのGo JSON marshal規則をReference内で明示し、独立再計算testを置く。この追記は、本Issueが対象とする既存7値の完了条件を広げない。
+
 他製品も同じ形の値を持ちます。SEIは、byte列そのものに掛ける`sei.raw-bytes+sha256/v1alpha1`と、RFC 8785のJCSで正規化してから掛ける`sei.jcs+sha256/v1alpha1`を、契約として定めています（`hat47x/sei-cognition:contracts/profiles/`）。MMIは、キーを整列した詰め書きのJSONに改行を1つ足して掛ける独自の規則を持ちます。MMIの文書は、同じオブジェクトでも製品によってダイジェストが変わると書いています（`hat47x/markdown-matrix-injector:02_Architecture/structured-artifact-neutral-observation-v0.md` §13）。
 
 TEIの系統と照らすと、次のとおりです。
