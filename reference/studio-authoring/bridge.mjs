@@ -3,7 +3,6 @@
 export const EDIT_SCHEMA = "tei.reference.studio-edit/v0";
 export const CANDIDATE_SCHEMA = "tei.reference.change-candidate/v0";
 const REVISION = /^sha256:[0-9a-f]{64}$/;
-const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 function requireID(id, context) {
   if (typeof id !== "string" || !id.trim() || id !== id.trim()) {
@@ -32,9 +31,12 @@ export function indexWorld(world) {
   if (!world || typeof world !== "object" || !Array.isArray(world.semantics) ||
       !Array.isArray(world.applications)) throw new Error("INVALID_WORLD");
   const data = new Map(), relations = new Map(), attributes = new Map();
-  const patterns = new Map(), namespaces = new Map();
+  const patterns = new Map(), namespaces = new Map(), validations = new Map();
   for (const ns of world.semantics) {
     insert(namespaces, ns.id, ns, "namespace");
+    for (const validation of array(ns.validations, "namespace.validations")) {
+      insert(validations, validation.id, { ...validation, namespace: ns.id }, "validation");
+    }
     for (const d of array(ns.data, "namespace.data")) {
       insert(data, d.id, { ...d, namespace: ns.id }, "data");
       for (const attr of array(d.attributes, "data.attributes")) {
@@ -51,7 +53,7 @@ export function indexWorld(world) {
       insert(patterns, pattern.id, { ...pattern, application: app.id }, "pattern");
     }
   }
-  return { data, relations, attributes, patterns, namespaces };
+  return { data, relations, attributes, patterns, namespaces, validations };
 }
 function selected(index, subject) {
   if (typeof subject !== "string") throw new Error("INVALID_SUBJECT");
@@ -59,13 +61,18 @@ function selected(index, subject) {
   if (cut < 1) throw new Error("INVALID_SUBJECT");
   const kind = subject.slice(0, cut), id = subject.slice(cut + 1);
   const map = { data: index.data, relation: index.relations,
-    attribute: index.attributes, pattern: index.patterns }[kind];
+    attribute: index.attributes, pattern: index.patterns, validation: index.validations }[kind];
   if (!map || !map.has(id)) throw new Error("UNRESOLVED_SUBJECT: " + subject);
   return { kind, id, value: map.get(id) };
 }
 function ownerData(s, index) {
   if (s.kind === "data") return s.id;
   if (s.kind === "relation" || s.kind === "attribute") return s.value.owner;
+  if (s.kind === "validation") {
+    const a = index.attributes.get(s.value.attribute);
+    const r = index.relations.get(s.value.relation);
+    return a?.owner || r?.owner || null;
+  }
   if (s.value.data && index.data.has(s.value.data)) return s.value.data;
   if (s.value.relation && index.relations.has(s.value.relation))
     return index.relations.get(s.value.relation).owner;
@@ -99,10 +106,22 @@ export function projectWorld(world, revision, focus) {
     target: ix.data.has(r.target) ? link("data", r.target) : null,
     cardinality: r.cardinality, status: ix.data.has(r.target) ? "source-backed" : "unresolved"
   }));
+  const relevantValidations = node
+    ? [...ix.validations.values()].filter(v =>
+      (v.attribute && ix.attributes.get(v.attribute)?.owner === dataID) ||
+      (v.relation && ix.relations.get(v.relation)?.owner === dataID))
+    : [];
   const table = node ? {
     ...link("data", node.id),
     attributes: array(node.attributes, "data.attributes").map(a => link("attribute", a.id)),
-    relations: array(node.relations, "data.relations").map(r => link("relation", r.id))
+    relations: array(node.relations, "data.relations").map(r => link("relation", r.id)),
+    validations: relevantValidations.map(v => ({
+      ...link("validation", v.id), kind: v.kind,
+      attribute: v.attribute && ix.attributes.has(v.attribute)
+        ? link("attribute", v.attribute) : null,
+      relation: v.relation && ix.relations.has(v.relation)
+        ? link("relation", v.relation) : null
+    }))
   } : null;
   return {
     schema: "tei.reference.studio-projection/v0",
@@ -138,7 +157,7 @@ export function projectWorld(world, revision, focus) {
 function isText(x) { return typeof x === "string" && x.length > 0 && x.trim() === x; }
 function ensureNotUsed(id, ix) {
   if (ix.data.has(id) || ix.relations.has(id) || ix.attributes.has(id) ||
-      ix.patterns.has(id)) throw new Error("DUPLICATE_ID: " + id);
+      ix.patterns.has(id) || ix.validations.has(id)) throw new Error("DUPLICATE_ID: " + id);
 }
 
 // Converts a proposed change to the existing Shared Acceptance candidate
@@ -158,6 +177,8 @@ export function candidateFromEdit(world, revision, edit) {
     if (!isText(edit.relationID) || !isText(edit.symbol) ||
         !isText(edit.targetData) || !ix.data.has(edit.targetData) ||
         !["one", "many"].includes(edit.cardinality)) throw new Error("INVALID_RELATION_PROPOSAL");
+    if (edit.relationID !== s.id + "." + edit.symbol)
+      throw new Error("RELATION_ID_MUST_MATCH_SOURCE_SYMBOL");
     ensureNotUsed(edit.relationID, ix);
     op = { op: "add-relation", data: s.id, id: edit.relationID,
       symbol: edit.symbol, target: edit.targetData, cardinality: edit.cardinality };
