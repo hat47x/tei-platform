@@ -107,6 +107,8 @@ receiptにはPlan fingerprintを残す。同じPlanをprocessとHTTPで実行し
 
 Plan fingerprintだけをAuthority Evidenceにはしない。PlanはCapability Conformance、Runtime Authority、Canonical Acceptanceのいずれでもない。現在のReferenceでは呼出し側がPlanを構築できるため、production候補の次Gateは上流のCapability resolution / Runtime AuthorityからPlanを導出し、transport層が独自にidentityを選べないことを確認することとする。
 
+process transportでは、generic Providerとlegacy carrierのPlugin ID / version一致までは確認するが、Planは`CapabilityKind / CapabilityID` mappingをAuthorityとして固定しない。同一Plugin内のどのlegacy Capabilityがgeneric Contractに対応するかはtransport層で推測せず、#1116のような明示Runtime bindingへ残す。
+
 このP3により、二transportで共通化すべき最小候補はdispatch / result / receipt identityだけでなく、上流identityをtransport前に固定するPlan境界まで広がった。ただしactual browser / Wasm consumerとproduction provenance接続は未実証であり、production schemaへは昇格しない。
 
 
