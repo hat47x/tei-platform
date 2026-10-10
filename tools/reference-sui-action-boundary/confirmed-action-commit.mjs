@@ -16,6 +16,13 @@ export function createConfirmedActionCommit({ dispatchCommit, readResource, appl
     throw new TypeError('dispatchCommit, readResource, applySnapshot and isCurrent are required');
   }
   const pending = new Set();
+  // A Promise is truthy; allowing an async guard would bypass the stale-state
+  // check. Require a synchronous, explicit true at both trust boundaries.
+  const assertCurrent = (intent, committedRevision = null) => {
+    let current = false;
+    try { current = isCurrent(intent) === true; } catch { /* fail closed */ }
+    if (!current) throw new ActionConfirmationError('local_state_changed', committedRevision);
+  };
 
   return async (intent) => {
     if (!intent || typeof intent !== 'object' ||
@@ -28,9 +35,7 @@ export function createConfirmedActionCommit({ dispatchCommit, readResource, appl
     if (pending.has(key)) {
       throw new ActionConfirmationError('action_in_flight');
     }
-    if (!isCurrent(intent)) {
-      throw new ActionConfirmationError('local_state_changed');
-    }
+    assertCurrent(intent);
     pending.add(key);
     let committedRevision = null;
     try {
@@ -59,14 +64,14 @@ export function createConfirmedActionCommit({ dispatchCommit, readResource, appl
         // longer proves the exact acknowledged revision. Reconcile explicitly.
         throw new ActionConfirmationError('revision_changed_after_commit', committedRevision);
       }
-      if (!isCurrent(intent)) {
-        // Another local edit happened while the remote round-trip was pending.
-        throw new ActionConfirmationError('local_state_changed', committedRevision);
-      }
+      // Another local edit may have happened during the remote round-trip.
+      assertCurrent(intent, committedRevision);
       try {
         // The application owns state and Undo semantics. This must be an
         // atomic guarded apply: never replace edits made after isCurrent.
-        await applySnapshot(resource, intent);
+        if (await applySnapshot(resource, intent) === false) {
+          throw new ActionConfirmationError('snapshot_apply_failed', committedRevision);
+        }
       } catch {
         throw new ActionConfirmationError('snapshot_apply_failed', committedRevision);
       }
