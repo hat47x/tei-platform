@@ -174,3 +174,11 @@ Reference `Keys`は`Builder`に加え、既存Build Artifact ownerが解決し�
 ### Gate判断
 
 新Web smoke testは通常の`go test`からはskipされ、明示実行でのみバイナリをbuildし起動する。これを含め、focused/full testが**実行済みであるという記録は存在しない**。次に必要なのはtrusted checkoutでのSmoke実行・Go formatter・full Health Check、actual Shared Acceptance/Generic Resolver接続、および二つ目のTargetからの独立した実測証拠である。
+
+## 9. Planの構造検査と依存関係の順序
+
+`ValidatePlan`でHost呼出し前のPlan構造を検査する。対象はRefの完全性、同一Target、Capability重複、required Context Slot、logical Data Contract、OriginのSource参照、Runtime Dependencyである。これはRuntime Authorityの代替ではなく、`ResolutionCurrent`等の現在状態検査が引き続き必要になる。
+
+ProviderのRuntime/Build-only依存も`Lower`で検査し、不完全または重複したIDは拒否する。Runtime依存の順序は正規化し、登録順だけでPlan fingerprintが変わることを防ぐ。
+
+既存EnvironmentのDatasource選択には、宣言の欠落・重複・異なるDatabaseへの接続をテストとして追加した。実DBの互換性やHostの現在のGrant確認とは区別する。全テストは作成済みだが、trusted checkout上での実行は未了。
