@@ -192,3 +192,16 @@ ProviderのRuntime/Build-only依存も`Lower`で検査し、不完全または�
 - Targetが要求するEffectを提供できない場合は、Providerの自己申告による補完を認めず明示的に停止する。
 
 Reference TestではWebと概念DesktopのProvider選択を変更してこの差を固定した。Desktop executableの存在や実行を示す証拠ではない。
+
+## 11. Generic Capability移行との整合（main更新を受けた追補）
+
+main `01f70b37398eed122e41ada3abdf8e9f7fd6adbb`で、評価待ちの[Generic Capability移行設計](GENERIC_CAPABILITY_MIGRATION_DESIGN.md)が追加された。本IssueのLowering Referenceは移行状態を新たなproduction schemaへ固定せず、次の単一Authority原則を守る。
+
+- **L0〜L2**: 既存`plugin.CapabilityKind`とEnvironment Planが実行Authorityを保持する。Generic Contract / Provider / Lockはlegacy Sourceからの**一方向projectionまたは下流consumer**としてのみ扱う。
+- **G1以後**: 別の明示AcceptanceでAuthorityが移った後だけGeneric Contract/Providerを正本にできる。旧表現への暗黙fallbackや双方向同期を採用しない。
+- **Loweringの責務**: 同一Accepted meaningに対して、Exact Wiring/Provider/Conformance/Lockを維持する。指定したProviderを失った場合に、登録済みの別Providerを暗黙選択しない。別のProviderがCatalogにあっても`missing-capability`、`contract-drift`等で停止する。
+- **既存Hostの責務**: L0〜L2でgeneric表現を使うときも既存Environment Authorityがcurrent invocationを承認すること。Referenceの`AuthorizeInvocation`はsynthetic gate順序のみであり、移行状態・current Legacy/Generic Authorityの真正性を判断しない。
+
+専用negative testは、別のlegacy Providerが存在していても、pin済みProviderを除去／Contract fingerprintを変更すると自動fallbackせず停止することを検査する。Dual Authorityを許していないことの**production実証**には、この合成テストだけでは不足する。
+
+既存`contract-query-executor`を使ったL1/L2実連携を#951側が導入したときは、Source revision→accepted generic projection→legacy-authoritative Environment Plan→実Invokerを同一traceで追跡し、#1121にidentity/evidenceの連結を追加する。これは現在未実装であり、提案段階の移行設計を先回りして採用済み扱いしない。
