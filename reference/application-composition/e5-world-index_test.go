@@ -246,3 +246,50 @@ func TestE5PairedEvidenceCannotPromoteAnUnresolvedReport(t *testing.T) {
         t.Fatalf("diagnostic was promoted by pairing: %+v", paired)
     }
 }
+
+func TestE5TwoAliasesMayShareOneDatabaseContract(t *testing.T) {
+    world, index := e5Fixture()
+    another := world.Applications[0].Databases[0]
+    another.Alias = "sales_reporting"
+    world.Applications[0].Databases = append(world.Applications[0].Databases, another)
+    report := inspectE5(world, index, "order_entry")
+    if report.Status != "observed" || len(report.Issues) != 0 {
+        t.Fatalf("distinct aliases to the same contract must be allowed: %+v", report)
+    }
+    // E6 treats dependency Subject identity as a set, not an alias multiset.
+    if len(report.Dependencies) != 6 {
+        t.Fatalf("expected six unique definition subjects, got %+v", report.Dependencies)
+    }
+    countDB, countContract := 0, 0
+    for _, dep := range report.Dependencies {
+        if dep.Relation == "database-target" { countDB++ }
+        if dep.Relation == "requires-contract" { countContract++ }
+    }
+    if countDB != 1 || countContract != 1 {
+        t.Fatalf("duplicate logical Source subjects were emitted: %+v", report.Dependencies)
+    }
+}
+
+func TestE5DuplicateContractWithinOneAliasStillFails(t *testing.T) {
+    world, index := e5Fixture()
+    req := world.Applications[0].Databases[0].RequiredContracts[0]
+    world.Applications[0].Databases[0].RequiredContracts =
+        append(world.Applications[0].Databases[0].RequiredContracts, req)
+    if !e5HasIssue(inspectE5(world, index, "order_entry"), "duplicate_contract_requirement") {
+        t.Fatal("duplicate contract inside one alias was accepted")
+    }
+}
+
+func TestE5OtherAliasMajorMismatchCannotHideBehindValidAlias(t *testing.T) {
+    world, index := e5Fixture()
+    another := world.Applications[0].Databases[0]
+    another.Alias = "sales_reporting"
+    another.RequiredContracts = []database.ContractRequirement{{
+        ContractID: "sales_core.order", CompatibleMajor: 5,
+    }}
+    world.Applications[0].Databases = append(world.Applications[0].Databases, another)
+    report := inspectE5(world, index, "order_entry")
+    if report.Status != "unresolved" || !e5HasIssue(report, "declared_major_mismatch") {
+        t.Fatalf("second alias masked a major mismatch: %+v", report)
+    }
+}
