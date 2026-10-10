@@ -735,3 +735,65 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 		}
 	})
 }
+
+
+func TestValidationScopeReviewSharedValidationAcrossStepsIsNotDuplicate(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var original step
+	found := false
+	for _, candidate := range fixture.Steps {
+		if candidate.ID == "BP-05" {
+			original = candidate
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("検証対象BP-05がありません")
+	}
+	second := original
+	second.ID = "BP-05-SECOND"
+	fixture.Steps = append(fixture.Steps, second)
+	rows := compareValidationScopes(loaded.World, fixture)
+	if len(rows) != 2 {
+		t.Fatalf("Validation比較対象が2ステップになりません: %+v", rows)
+	}
+	for _, row := range rows {
+		if row.Status != "review-needed" || len(row.ReferenceIssues) != 0 {
+			t.Fatalf("異なるStep間の同一Validation参照を重複と誤認しました: %+v", row)
+		}
+	}
+}
+
+func TestValidationScopeReviewEmptyValidationIDIsUnresolved(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range fixture.Steps {
+		if fixture.Steps[i].ID == "BP-05" {
+			fixture.Steps[i].Validations = append(fixture.Steps[i].Validations, "")
+		}
+	}
+	rows := compareValidationScopes(loaded.World, fixture)
+	if len(rows) != 1 || rows[0].Status != "unresolved-reference" {
+		t.Fatalf("空のValidation参照を比較可能と判定しました: %+v", rows)
+	}
+	want := []validationReferenceIssue{{Side: "procedure", ID: "", Reason: "missing-definition"}}
+	if !reflect.DeepEqual(rows[0].ReferenceIssues, want) {
+		t.Fatalf("空のValidation参照の原因を説明できません: %+v", rows[0].ReferenceIssues)
+	}
+}
