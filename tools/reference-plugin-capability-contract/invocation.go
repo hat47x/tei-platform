@@ -10,12 +10,15 @@ import (
 	"io"
 	"sort"
 	"strings"
+
+	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
 
 const (
 	referenceJSONPayloadCodec              = "application/json;profile=tei-reference-v0"
 	invocationEffectReadOnly               = "read-only"
 	invocationShapeAuthorityEvidenceSchema = "tei.reference.invocation-shape-authority-evidence/v0"
+	invocationShapePublisherAuthorityClass = "invocation-shape-issuer"
 )
 
 type InvocationShapeAuthorityEvidence struct {
@@ -45,9 +48,11 @@ type InvocationExecution struct {
 	RequestShape                             string     `json:"requestShape"`
 	RequestShapeFingerprint                  string     `json:"requestShapeFingerprint"`
 	RequestShapeAuthorityEvidenceFingerprint string     `json:"requestShapeAuthorityEvidenceFingerprint"`
+	RequestShapeTrustQualificationFingerprint string    `json:"requestShapeTrustQualificationFingerprint"`
 	ResultShape                              string     `json:"resultShape"`
 	ResultShapeFingerprint                   string     `json:"resultShapeFingerprint"`
 	ResultShapeAuthorityEvidenceFingerprint  string     `json:"resultShapeAuthorityEvidenceFingerprint"`
+	ResultShapeTrustQualificationFingerprint string     `json:"resultShapeTrustQualificationFingerprint"`
 	PayloadCodec                             string     `json:"payloadCodec"`
 	RequestDigest                            string     `json:"requestDigest"`
 	ResultDigest                             string     `json:"resultDigest"`
@@ -56,21 +61,32 @@ type InvocationExecution struct {
 }
 
 type InvocationRegistry struct {
-	implementations  map[string]InvocationImplementation
-	shapeAuthorities map[string]InvocationShapeAuthorityEvidence
+	implementations          map[string]InvocationImplementation
+	shapeAuthorities         map[string]InvocationShapeAuthorityEvidence
+	shapeTrustQualifications map[string]authoritytrust.Qualification
 }
 
 func NewInvocationRegistry(
 	implementations []InvocationImplementation,
 	authorities []InvocationShapeAuthorityEvidence,
+	trustGrantSets ...[]authoritytrust.Grant,
 ) (*InvocationRegistry, error) {
-	shapeAuthorities, err := normalizeInvocationShapeAuthorities(authorities)
+	if len(trustGrantSets) > 1 {
+		return nil, fmt.Errorf("capability invocation accepts at most one publisher trust grant set")
+	}
+	var trustGrants []authoritytrust.Grant
+	if len(trustGrantSets) == 1 {
+		trustGrants = trustGrantSets[0]
+	}
+	shapeAuthorities, shapeTrustQualifications, err :=
+		normalizeInvocationShapeAuthorities(authorities, trustGrants)
 	if err != nil {
 		return nil, err
 	}
 	registry := &InvocationRegistry{
-		implementations:  map[string]InvocationImplementation{},
-		shapeAuthorities: shapeAuthorities,
+		implementations:          map[string]InvocationImplementation{},
+		shapeAuthorities:         shapeAuthorities,
+		shapeTrustQualifications: shapeTrustQualifications,
 	}
 	for i, implementation := range implementations {
 		provider := implementation.Provider
@@ -252,13 +268,13 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 			contract.Version,
 		)
 	}
-	requestShapeAuthority, err := r.shapeAuthorityFor(
+	requestShapeAuthority, requestShapeTrust, err := r.shapeAuthorityFor(
 		implementation.RequestShapeArtifact,
 	)
 	if err != nil {
 		return InvocationExecution{}, err
 	}
-	resultShapeAuthority, err := r.shapeAuthorityFor(
+	resultShapeAuthority, resultShapeTrust, err := r.shapeAuthorityFor(
 		implementation.ResultShapeArtifact,
 	)
 	if err != nil {
@@ -306,9 +322,11 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 		RequestShape:                             contract.RequestShape,
 		RequestShapeFingerprint:                  contract.RequestShapeFingerprint,
 		RequestShapeAuthorityEvidenceFingerprint: requestShapeAuthority.EvidenceFingerprint,
+		RequestShapeTrustQualificationFingerprint: requestShapeTrust.QualificationFingerprint,
 		ResultShape:                              contract.ResultShape,
 		ResultShapeFingerprint:                   contract.ResultShapeFingerprint,
 		ResultShapeAuthorityEvidenceFingerprint:  resultShapeAuthority.EvidenceFingerprint,
+		ResultShapeTrustQualificationFingerprint: resultShapeTrust.QualificationFingerprint,
 		PayloadCodec:                             contract.PayloadCodec,
 		RequestDigest:                            "sha256:" + hex.EncodeToString(requestSum[:]),
 		ResultDigest:                             "sha256:" + hex.EncodeToString(resultSum[:]),
@@ -319,8 +337,14 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 
 func normalizeInvocationShapeAuthorities(
 	values []InvocationShapeAuthorityEvidence,
-) (map[string]InvocationShapeAuthorityEvidence, error) {
+	trustGrants []authoritytrust.Grant,
+) (
+	map[string]InvocationShapeAuthorityEvidence,
+	map[string]authoritytrust.Qualification,
+	error,
+) {
 	out := map[string]InvocationShapeAuthorityEvidence{}
+	qualifications := map[string]authoritytrust.Qualification{}
 	for i, value := range values {
 		value.Schema = strings.TrimSpace(value.Schema)
 		value.Issuer.ID = strings.TrimSpace(value.Issuer.ID)
@@ -337,13 +361,13 @@ func normalizeInvocationShapeAuthorities(
 			!validInvocationShapeFingerprint(value.ShapeFingerprint) ||
 			!validInvocationShapeFingerprint(value.AuthoritySourceFingerprint) ||
 			!validInvocationShapeFingerprint(value.EvidenceFingerprint) {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"shape authority evidence[%d] is incomplete or invalid",
 				i,
 			)
 		}
 		if calculated := invocationShapeAuthorityEvidenceFingerprint(value); calculated != value.EvidenceFingerprint {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"shape authority evidence[%d] fingerprint mismatch: recorded=%s calculated=%s",
 				i,
 				value.EvidenceFingerprint,
@@ -351,7 +375,7 @@ func normalizeInvocationShapeAuthorities(
 			)
 		}
 		if _, err := parseVersion(value.Issuer.Version); err != nil {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"shape authority evidence[%d] issuer version: %w",
 				i,
 				err,
@@ -363,16 +387,40 @@ func normalizeInvocationShapeAuthorities(
 			value.ShapeFingerprint,
 		)
 		if existing, duplicate := out[key]; duplicate {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"shape %s authority is ambiguous across accepted Evidence %s and %s",
 				value.ShapeID,
 				existing.EvidenceFingerprint,
 				value.EvidenceFingerprint,
 			)
 		}
+		qualification, err := authoritytrust.Verify(
+			authoritytrust.Statement{
+				AuthorityClass: invocationShapePublisherAuthorityClass,
+				Scope:          invocationShapeTrustScope(value.ShapeID),
+				Issuer: authoritytrust.Issuer{
+					ID:      value.Issuer.ID,
+					Version: value.Issuer.Version,
+				},
+				StatementFingerprint: value.EvidenceFingerprint,
+			},
+			trustGrants,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"shape authority evidence[%d] publisher trust: %w",
+				i,
+				err,
+			)
+		}
 		out[key] = value
+		qualifications[key] = qualification
 	}
-	return out, nil
+	return out, qualifications, nil
+}
+
+func invocationShapeTrustScope(shapeID string) string {
+	return "shape:" + strings.TrimSpace(shapeID)
 }
 
 func invocationShapeAuthorityEvidenceFingerprint(
@@ -400,9 +448,13 @@ func invocationShapeAuthorityKey(
 
 func (r *InvocationRegistry) shapeAuthorityFor(
 	artifact InvocationShapeArtifact,
-) (InvocationShapeAuthorityEvidence, error) {
+) (
+	InvocationShapeAuthorityEvidence,
+	authoritytrust.Qualification,
+	error,
+) {
 	if r == nil {
-		return InvocationShapeAuthorityEvidence{}, fmt.Errorf(
+		return InvocationShapeAuthorityEvidence{}, authoritytrust.Qualification{}, fmt.Errorf(
 			"capability invocation registry is nil",
 		)
 	}
@@ -414,12 +466,19 @@ func (r *InvocationRegistry) shapeAuthorityFor(
 	)
 	evidence, ok := r.shapeAuthorities[key]
 	if !ok {
-		return InvocationShapeAuthorityEvidence{}, fmt.Errorf(
+		return InvocationShapeAuthorityEvidence{}, authoritytrust.Qualification{}, fmt.Errorf(
 			"invocation shape %s has no accepted Shape Authority Evidence",
 			artifact.ID,
 		)
 	}
-	return evidence, nil
+	qualification, ok := r.shapeTrustQualifications[key]
+	if !ok {
+		return InvocationShapeAuthorityEvidence{}, authoritytrust.Qualification{}, fmt.Errorf(
+			"invocation shape %s has no current publisher trust qualification",
+			artifact.ID,
+		)
+	}
+	return evidence, qualification, nil
 }
 
 func uniqueSortedInvocationStrings(values []string) []string {
