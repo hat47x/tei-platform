@@ -32,6 +32,8 @@ function jsonFile(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 function fromWorkspace(workspace) {
+  // Resolve relative workspaces before switching the child process to repo root.
+  workspace = resolve(workspace);
   // The two reads are not atomic. The Shared Acceptance Preview and Accept
   // must re-check the base revision and fail closed on concurrent edits.
   const run = (...args) => execFileSync("go", ["run", ...args], {
