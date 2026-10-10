@@ -97,16 +97,58 @@ type webSessionCommandRequest struct {
 
 // handleProtectedSessionCommand is only registered behind NewHost's
 // route, session, issuer, CSRF and Action authorization enforcement.
-func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r *http.Request) {
-	var request *webSessionCommandRequest
+// decodeWebSessionCommandRequest accepts only the two explicitly named fields.
+// A struct Decoder with DisallowUnknownFields accepts duplicate members and
+// case-folded aliases; neither is appropriate at an authenticated command boundary.
+func decodeWebSessionCommandRequest(w http.ResponseWriter, r *http.Request) (webSessionCommandRequest, error) {
+	var request webSessionCommandRequest
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
-	decoder.DisallowUnknownFields() // loginId and credential are invalid here
-	if err := decoder.Decode(&request); err != nil || request == nil {
-		http.Error(w, "invalid session command request", http.StatusBadRequest)
-		return
+	start, err := decoder.Token()
+	if err != nil || start != json.Delim('{') {
+		return request, errors.New("session command expects one JSON object")
+	}
+	seen := map[string]bool{}
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return request, errors.New("invalid session command member")
+		}
+		name, ok := key.(string)
+		if !ok || seen[name] {
+			return request, errors.New("invalid or duplicate session command member")
+		}
+		seen[name] = true
+		switch name {
+		case "from":
+			var value *string
+			if err := decoder.Decode(&value); err != nil || value == nil {
+				return request, errors.New("session command from must be a string")
+			}
+			request.From = *value
+		case "row":
+			var value *int
+			if err := decoder.Decode(&value); err != nil || value == nil {
+				return request, errors.New("session command row must be an integer")
+			}
+			request.RowIndex = *value
+		default:
+			return request, errors.New("unknown session command member")
+		}
+	}
+	end, err := decoder.Token()
+	if err != nil || end != json.Delim('}') {
+		return request, errors.New("invalid session command object")
 	}
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		http.Error(w, "session command request must contain one JSON document", http.StatusBadRequest)
+		return request, errors.New("session command expects one JSON document")
+	}
+	return request, nil
+}
+
+func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r *http.Request) {
+	request, err := decodeWebSessionCommandRequest(w, r)
+	if err != nil {
+		http.Error(w, "invalid session command request", http.StatusBadRequest)
 		return
 	}
 	if request.RowIndex < 0 {
