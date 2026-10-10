@@ -70,9 +70,20 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		"-legacy-authorization", "reference/legacy-auth/authorization.json",
 		"-listen", address)
 	proc.Dir = root
-	var serverLog bytes.Buffer
-	proc.Stdout = &serverLog
-	proc.Stderr = &serverLog
+	logPath := filepath.Join(t.TempDir(), "web-target.log")
+	serverLog, err := os.Create(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer serverLog.Close()
+	// The child writes to a file; reading bytes.Buffer while os/exec writes
+	// into it would race under go test -race.
+	proc.Stdout = serverLog
+	proc.Stderr = serverLog
+	readLog := func() string {
+		content, _ := os.ReadFile(logPath)
+		return string(content)
+	}
 	if err := proc.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +106,7 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		}
 		select {
 		case <-runCtx.Done():
-			t.Fatalf("Web Target exited or timed out before readiness: %v\n%s", runCtx.Err(), serverLog.String())
+			t.Fatalf("Web Target exited or timed out before readiness: %v\n%s", runCtx.Err(), readLog())
 		case <-time.After(125 * time.Millisecond):
 		}
 	}
