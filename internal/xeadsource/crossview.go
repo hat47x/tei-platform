@@ -281,7 +281,8 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 			})
 
 			ioID, hasIOID := exactAttribute(ref.node, "IOID")
-			if !hasIOID || strings.TrimSpace(ioID) == "" {
+			ioID = strings.TrimSpace(ioID)
+			if !hasIOID || ioID == "" {
 				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
 					"task-function-io-target-id-missing",
 					"task-function-io-target",
@@ -354,6 +355,14 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 			if len(invalidOps) != 0 {
 				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
 					"iotable-operation-marker-unsupported",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token, tables[0].token},
+				))
+				continue
+			}
+			if operations == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-operation-missing",
 					"function-table-operation",
 					[]string{ref.functionToken, ref.token, tables[0].token},
 				))
