@@ -839,3 +839,147 @@ func TestSubjectBindingRejectsMismatchedBuildExecutionResultPairing(t *testing.T
 		t.Fatal("subject binding accepted a BuildExecutionResult fingerprint from a different plan/set pairing")
 	}
 }
+
+
+func TestBuilderSubjectBindingBindsExactSelfHostedBuilderResult(t *testing.T) {
+	plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "builder-source", ID: "self-hosted-builder", Locator: "source://builder", Digest: digestA,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.seed"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.reference.build/v1",
+			ArtifactDigest:  digestB,
+		},
+		Recipe:         plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "self-hosted-builder"},
+		OutputContract: "builder-artifact",
+		Target:         "host/reference",
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "builder-artifact", Format: "application/octet-stream", Digest: digestC,
+		}},
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding := BuilderSubjectBinding{
+		FormatVersion: builderSubjectBindingFormatVersion,
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.self_hosted"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.reference.build/v1",
+			ArtifactDigest:  digestC,
+		},
+		ExecutionPlanFingerprint:        executionFingerprint,
+		ArtifactSetFingerprint:          setFingerprint,
+		BuildExecutionResultFingerprint: resultFingerprint,
+		OutputRole:                      "builder-artifact",
+	}
+	if err := verifyBuilderSubjectBinding(binding, plan, set); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := builderSubjectBindingFingerprint(binding); err != nil {
+		t.Fatal(err)
+	}
+
+	badDigest := binding
+	badDigest.Builder.ArtifactDigest = digestD
+	if err := verifyBuilderSubjectBinding(badDigest, plan, set); err == nil {
+		t.Fatal("Builder binding accepted an artifact member with a different builder digest")
+	}
+
+	badResult := binding
+	badResult.BuildExecutionResultFingerprint = strings.Repeat("f", 64)
+	if err := verifyBuilderSubjectBinding(badResult, plan, set); err == nil {
+		t.Fatal("Builder binding accepted a different BuildExecutionResult")
+	}
+
+	badRole := binding
+	badRole.OutputRole = "missing-role"
+	if err := verifyBuilderSubjectBinding(badRole, plan, set); err == nil {
+		t.Fatal("Builder binding accepted an output role absent from the Artifact Set")
+	}
+}
+
+func TestBuilderSubjectBindingCanonicalizesDigestHexCase(t *testing.T) {
+	plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "builder-source", ID: "builder", Locator: "source://builder", Digest: digestA,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.seed"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "builder"},
+		OutputContract: "builder-artifact",
+		Target: "host/reference",
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "builder-artifact", Format: "application/octet-stream", Digest: digestC,
+		}},
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion: buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint: setFingerprint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lower := BuilderSubjectBinding{
+		FormatVersion: builderSubjectBindingFormatVersion,
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.self_hosted"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestC,
+		},
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint: setFingerprint,
+		BuildExecutionResultFingerprint: resultFingerprint,
+		OutputRole: "builder-artifact",
+	}
+	upper := lower
+	upper.Builder.ArtifactDigest = uppercaseDigest(lower.Builder.ArtifactDigest)
+	upper.ExecutionPlanFingerprint = strings.ToUpper(lower.ExecutionPlanFingerprint)
+	upper.ArtifactSetFingerprint = strings.ToUpper(lower.ArtifactSetFingerprint)
+	upper.BuildExecutionResultFingerprint = strings.ToUpper(lower.BuildExecutionResultFingerprint)
+
+	lowerFP, err := builderSubjectBindingFingerprint(lower)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upperFP, err := builderSubjectBindingFingerprint(upper)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lowerFP != upperFP {
+		t.Fatal("valid hex case changed Builder subject binding identity")
+	}
+}
