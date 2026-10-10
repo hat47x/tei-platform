@@ -2,6 +2,7 @@ package main
 
 import (
     "encoding/json"
+    "path/filepath"
     "reflect"
     "testing"
 
@@ -12,6 +13,7 @@ import (
     "tei/internal/query"
     "tei/internal/semantic"
     "tei/internal/sourceindex"
+    "tei/internal/workspace"
 )
 
 func e5Fixture() (ir.World, sourceindex.Index) {
@@ -547,5 +549,43 @@ func TestE5DuplicateArtifactPathRemainsUnresolved(t *testing.T) {
     if report.Status != "unresolved" ||
         !e5HasIssue(report,"source_definition_missing_or_ambiguous") {
         t.Fatalf("duplicate Artifact path accepted as unique evidence: %+v",report)
+    }
+}
+
+func TestE5OrderEntryWorkspaceContractQueryReference(t *testing.T) {
+    // This is an actual checked-in Workspace consumer, not the synthetic E5
+    // fixture. It must not be counted as PASS until run on a trusted checkout.
+    root := filepath.Join("..", "..", "reference", "workspace")
+    loaded, err := workspace.Load(root)
+    if err != nil { t.Fatalf("load reference Workspace: %v", err) }
+    index, err := workspace.BuildSourceIndex(root, loaded)
+    if err != nil { t.Fatalf("index reference Workspace: %v", err) }
+    report := inspectE5(loaded.World, index, "order_entry")
+    if report.Status != "observed" {
+        t.Fatalf("actual order_entry direct references unresolved: %+v",report.Issues)
+    }
+    found := 0
+    for _, dep := range report.Dependencies {
+        if dep.Relation == "pattern-contract-query" &&
+            dep.Subject.Kind == "database-contract-query" &&
+            dep.Subject.ID == "master_data.customer/find_by_id" &&
+            dep.Source.Path == "databases/master-data/contracts/customer.tei" {
+            found++
+        }
+    }
+    if found != 1 {
+        t.Fatalf("actual reference ContractQuery definition count=%d dependencies=%+v",found,report.Dependencies)
+    }
+}
+
+func TestE5SUIStage0IsNotAnApplicationConsumer(t *testing.T) {
+    root := filepath.Join("..", "..", "reference", "sui-adoption", "workspace")
+    loaded, err := workspace.Load(root)
+    if err != nil { t.Fatalf("load SUI Stage 0 Workspace: %v", err) }
+    index, err := workspace.BuildSourceIndex(root, loaded)
+    if err != nil { t.Fatalf("index SUI Stage 0 Workspace: %v", err) }
+    report := inspectE5(loaded.World,index,"sui_reference_adoption_stage0")
+    if report.Status != "unresolved" || !e5HasIssue(report,"application_missing_or_ambiguous") {
+        t.Fatalf("SUI Stage 0 was incorrectly promoted to Application: %+v",report)
     }
 }
