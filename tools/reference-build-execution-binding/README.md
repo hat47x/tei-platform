@@ -251,3 +251,75 @@ Referenceの署名profileは`tei.reference.fake-signature/v1`です。これはb
 Trust評価はraw Attestationだけでは行いません。先にBuildExecutionResult / Artifact Set / fake signatureを検証して`BuildAttestationVerification`を得て、そのverification Evidenceと一致するAttestationだけをcurrent policyへ渡します。
 
 Artifact Set全体へのattestationと、特定member role/digestへのattestationも区別します。
+
+## Build graphはambient inputを許さない
+
+Build graphを単なる順序図ではなくprovenanceとして扱うため、各Build nodeのexact inputはgraph内で一意に説明できることを要求します。
+
+対象:
+
+- exact `Builder`
+- すべての`BuildDependency`
+
+それぞれが、次のどちらか一つへ戻れなければなりません。
+
+```text
+producer node output
+or
+explicit external seed
+```
+
+graphに現れないambient builder / SDK / generator artifactは受理しません。
+
+逆に、同じconsumer inputを複数edgeやseed+edgeで二重供給することも拒否します。
+
+## Producer outputもBuildExecutionResultへ束縛する
+
+producer nodeの`BuildExecutionPlan`と`ArtifactSet`を別々に正しいものとして持つだけでは、別runのoutput setを後から組み合わせる余地があります。
+
+そのためgraph内のproducer outputは:
+
+```text
+BuildGraphNodeOutput
+  ArtifactSet
+  BuildExecutionResultFingerprint
+```
+
+として保持し、producer nodeのexact planとそのArtifactSetからResult fingerprintを再計算して一致を要求します。
+
+これにより:
+
+```text
+producer exact plan
+  +
+producer exact ArtifactSet
+  ->
+exact BuildExecutionResult
+```
+
+の組合せまでgraph provenanceに含めます。
+
+## self-hosted Builderのsubject binding
+
+self-hostingでは、stage1が出したbytesとstage2のBuilder artifact digestが一致するだけでは十分ではありません。同じbytesを別のlogical Builder identityとして扱う余地が残るためです。
+
+Referenceでは`BuilderSubjectBinding`を追加し:
+
+```text
+stage1 BuildExecutionResult
+  -> exact BuilderIdentity
+  -> stage2 BuildExecutionPlan.Builder
+```
+
+を検証します。
+
+一致条件:
+
+- Builder ID
+- Version
+- ContractVersion
+- ArtifactDigest
+
+ArtifactDigestは現行contractどおりhex caseを正規化して比較します。
+
+このbindingもAcceptance / Trust / Runtime Authorityを付与しません。stage0 seedのTrustは引き続き別責務です。
