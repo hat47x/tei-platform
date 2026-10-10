@@ -299,3 +299,27 @@ func TestTraceDirectSnapshotIsOrderIndependentButPreservesDuplicateDeclarations(
 		t.Fatalf("duplicate authoritative node not reflected in snapshot: %v", err)
 	}
 }
+
+func TestTraceDirectInvalidEvidenceOrderDoesNotChangeDiagnostics(t *testing.T) {
+	graph, rules, key := traceGraph()
+	graph.Edges[0].Evidence = []modelref.Evidence{
+		{Authority: "source-observation"},
+		{Authority: "derived"},
+	}
+	first, err := modelref.TraceDirect(graph, rules, key, modelref.TraceOptions{
+		Direction: "outgoing",
+	})
+	if err != nil || first.Unresolved != 1 || len(first.Rows) != 1 {
+		t.Fatalf("expected unresolved edge with missing provenance: %+v %v", first, err)
+	}
+	graph.Edges[0].Evidence[0], graph.Edges[0].Evidence[1] =
+		graph.Edges[0].Evidence[1], graph.Edges[0].Evidence[0]
+	second, err := modelref.TraceDirect(graph, rules, key, modelref.TraceOptions{
+		Direction: "outgoing", ExpectedFingerprint: first.SnapshotFingerprint,
+	})
+	if err != nil ||
+		first.SnapshotFingerprint != second.SnapshotFingerprint ||
+		!reflect.DeepEqual(first.Rows, second.Rows) {
+		t.Fatalf("permuted invalid evidence changed snapshot or diagnostic: first=%+v second=%+v err=%v", first, second, err)
+	}
+}
