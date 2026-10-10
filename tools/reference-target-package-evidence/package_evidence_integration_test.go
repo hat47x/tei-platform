@@ -43,8 +43,9 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	}
 
 	writeFixture("go.mod", "module example.test/tei-e0\n\ngo 1.23.2\n")
-	writeFixture(".gitignore", "ignored.go\n")
-	writeFixture("cmd/app/main.go", "package main\nimport \"example.test/tei-e0/internal/calc\"\nfunc main() { _ = calc.Result() }\n")
+	writeFixture(".gitignore", "ignored.go\nignored.txt\n")
+	writeFixture("cmd/app/main.go", "package main\nimport (\"embed\"; \"example.test/tei-e0/internal/calc\")\n//go:embed assets/*\nvar assets embed.FS\nfunc main() { _ = calc.Result(); _,_ = assets.ReadFile(\"assets/payload.txt\") }\n")
+	writeFixture("cmd/app/assets/payload.txt", "versioned asset\n")
 	writeFixture("cmd/app/optional.go", "//go:build optional\n\npackage main\nfunc optional() {}\n")
 	writeFixture("internal/calc/calc.go", "package calc\nfunc Result() int { return 42 }\n")
 	git("init", "-q")
@@ -93,6 +94,9 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	if slices.Contains(findEntry(base).GoFiles, "optional.go") {
 		t.Fatal("build-tagged source leaked into default build closure")
 	}
+	if !slices.Contains(findEntry(base).AuxiliaryInputs, SourceInput{Kind: "embed", Path: "assets/payload.txt"}) {
+		t.Fatal("tracked embedded asset absent from E0 package inventory")
+	}
 
 	tagged, err := produceEvidence("./cmd/app", "optional")
 	if err != nil {
@@ -101,6 +105,20 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	if tagged.SourceRevision != exactHead || tagged.BuildTags != "optional" ||
 		!slices.Contains(findEntry(tagged).GoFiles, "optional.go") {
 		t.Fatalf("build tag failed to select source: %+v", tagged)
+	}
+
+	// Embedded assets also alter the package bytes without appearing in
+	// git porcelain when ignored. They are part of the observed inputs.
+	writeFixture("cmd/app/assets/ignored.txt", "not tracked\n")
+	if status := git("status", "--porcelain", "--untracked-files=all"); status != "" {
+		t.Fatalf("fixture should be Git-clean despite ignored embedded file: %q", status)
+	}
+	if _, err := produceEvidence("./cmd/app", ""); err == nil ||
+		!strings.Contains(err.Error(), "not tracked by Git") {
+		t.Fatalf("ignored embedded source must not become E0 evidence: %v", err)
+	}
+	if err := os.Remove(filepath.Join(root, "cmd/app/assets/ignored.txt")); err != nil {
+		t.Fatal(err)
 	}
 
 	// Git porcelain still reports clean when a .gitignore-matched Go file is
