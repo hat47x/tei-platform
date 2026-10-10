@@ -10,6 +10,25 @@
 - 正規化: GraphのNode/Edge/EvidenceとSource Indexの並び順に依存しないfingerprint。ただし重複宣言・重複edgeは消さず検出対象とする。
 - Source境界: 同じWorldを保った元ファイル移動・非意味的編集でもSource側tokenが変わる。参照不能や逸脱pathはfail-closed。Source Indexを編集権限やShared Acceptanceへ昇格させない。
 
+## ローカル引き継ぎ：実行コマンド
+
+GitHubの認証情報を利用できるGo 1.23.2以降のローカル環境で、**既存の開発作業ツリーとは別の新規checkout**を使う。PR #1172のhead SHAは更新され得るため、以下のコマンドで都度取得する。実際のGitHub URLは認証済みのHTTPSまたはSSHを使用する。
+
+```bash
+git clone --no-checkout git@github.com:hat47x/tei-platform.git /tmp/tei-cli-c1-qualify
+cd /tmp/tei-cli-c1-qualify
+git fetch origin refs/heads/feat/cli-c1-typed-trace-integration refs/heads/main
+
+PR_HEAD="$(git ls-remote origin refs/heads/feat/cli-c1-typed-trace-integration | cut -f1)"
+MAIN_HEAD="$(git ls-remote origin refs/heads/main | cut -f1)"
+git checkout --detach "$PR_HEAD"
+bash tools/verify-cli-c1-local.sh "$PR_HEAD" "$MAIN_HEAD" /tmp/tei-cli-c1-receipt
+```
+
+`tools/verify-cli-c1-local.sh` は、exact PR head、remote main、クリーンなdetached checkoutを実行前後に照合し、既存の **`tools/repository-health-check.sh` を省略なく呼ぶ**。証跡 `receipt.txt` と `repository-health.log` はリポジトリ外に置き、作業ツリーを汚さない。
+
+**exit=0でもマージ権限の自動発行ではない。** 親PR依存（#1139→#1171、#1159→#1169→#1172）と、actual mainへの統合ベース、PRがDraftでなくなったか、candidate/mainのexact-SHAを再確認する。PASS receiptとこれらの条件を揃えるまではmainへ統合しない。
+
 ## 信頼できる検証環境での手順
 
 1. GitHub認証済みのGo 1.23.2以降が利用可能な環境で、**最新のPR #1172 head SHAとcurrent `main` SHAを記録**する。親PR #1169など並行PRのheadも確認し、対象ブランチ名の再解決だけで判断しない。
