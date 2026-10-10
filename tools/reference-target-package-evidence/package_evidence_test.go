@@ -88,8 +88,11 @@ func TestTrackedCompiledSourceInventory(t *testing.T) {
 	if err := os.MkdirAll(pkgDir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"main.go", "native.go"} {
-		if err := os.WriteFile(filepath.Join(pkgDir, name), []byte("package sample\n"), 0600); err != nil {
+	if err := os.MkdirAll(filepath.Join(pkgDir, "assets"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"main.go", "native.go", "native.h", "assets/x.txt"} {
+		if err := os.WriteFile(filepath.Join(pkgDir, name), []byte("fixture"), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -99,10 +102,14 @@ func TestTrackedCompiledSourceInventory(t *testing.T) {
 		Module:     &listedModule{Path: "tei", Main: true},
 		GoFiles:    []string{"main.go"},
 		CgoFiles:   []string{"native.go"},
+		HFiles:     []string{"native.h"},
+		EmbedFiles: []string{"assets/x.txt"},
 	}
 	tracked := map[string]struct{}{
 		"tools/sample/main.go":   {},
 		"tools/sample/native.go": {},
+		"tools/sample/native.h":  {},
+		"tools/sample/assets/x.txt": {},
 	}
 	for _, tc := range []struct {
 		name    string
@@ -112,6 +119,9 @@ func TestTrackedCompiledSourceInventory(t *testing.T) {
 		{name: "tracked-go-and-cgo", prepare: func(*listedPackage) {}},
 		{name: "ignored-go-source", prepare: func(p *listedPackage) { p.GoFiles = append(p.GoFiles, "ignored.go") }, wantErr: true},
 		{name: "ignored-cgo-source", prepare: func(p *listedPackage) { p.CgoFiles = append(p.CgoFiles, "ignored.go") }, wantErr: true},
+		{name: "ignored-header", prepare: func(p *listedPackage) { p.HFiles = []string{"ignored.h"} }, wantErr: true},
+		{name: "ignored-embedded-asset", prepare: func(p *listedPackage) { p.EmbedFiles = append(p.EmbedFiles, "assets/ignored.txt") }, wantErr: true},
+		{name: "traversal-embedded-asset", prepare: func(p *listedPackage) { p.EmbedFiles = []string{"../secret.txt"} }, wantErr: true},
 		{name: "missing-directory", prepare: func(p *listedPackage) { p.Dir = "" }, wantErr: true},
 		{name: "out-of-root-directory", prepare: func(p *listedPackage) { p.Dir = filepath.Join(root, "..", "outside") }, wantErr: true},
 		{name: "traversal-file", prepare: func(p *listedPackage) { p.GoFiles = []string{"../escape.go"} }, wantErr: true},
@@ -159,5 +169,32 @@ func TestTrackedCompiledSymlinkCannotSupplyUntrackedBytes(t *testing.T) {
 	tracked := map[string]struct{}{"module/link.go": {}}
 	if err := validateTrackedSources(raw, root, tracked); err == nil {
 		t.Fatal("Git-tracked symlink to untracked bytes was accepted")
+	}
+}
+
+func TestAuxiliaryPackageInputsAreRecordedInStableOrder(t *testing.T) {
+	base := listedPackage{
+		ImportPath: "tei/module",
+		Module:     &listedModule{Path: "tei", Main: true},
+		GoFiles:    []string{"main.go"},
+		EmbedFiles: []string{"assets/z.txt", "assets/a.txt"},
+		HFiles:     []string{"native.h"},
+		CFiles:     []string{"native.c"},
+		Imports:    []string{"fmt"},
+	}
+	obj, err := json.Marshal(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := parseGoList(strings.NewReader(string(obj)+"\n"+jsonStd), "tei/module", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputs := report.Packages[0].AuxiliaryInputs
+	if len(inputs) != 4 || inputs[0].Kind != "c" || inputs[0].Path != "native.c" ||
+		inputs[1].Kind != "embed" || inputs[1].Path != "assets/a.txt" ||
+		inputs[2].Kind != "embed" || inputs[2].Path != "assets/z.txt" ||
+		inputs[3].Kind != "header" || inputs[3].Path != "native.h" {
+		t.Fatalf("unstable or missing native/embed source inventory: %+v", inputs)
 	}
 }
