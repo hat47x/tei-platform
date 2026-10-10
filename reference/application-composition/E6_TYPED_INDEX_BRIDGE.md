@@ -22,7 +22,7 @@
 | E5が未解決、定義の重複、ReportとIndexの指紋不一致 | `unresolved` | 根拠不十分として停止 |
 | 無関係なArtifactだけが更新された | `limited-unchanged` | 一律の再検証を避ける |
 
-`limited-unchanged`には`fullClosure:false`、`authority:none`、`qualification:application-validation-and-database-contract-definitions-only`を明示する。
+`limited-unchanged`には`fullClosure:false`、`authority:none`、`qualification:application-declaration-and-direct-source-definitions-only`を明示する。
 
 ## なぜ別の構成解決器ではないか
 
