@@ -30,9 +30,14 @@ type RelationExpansionCandidate struct {
 // Only callers with a previously accepted World can give these values
 // authoritative meaning.
 func InspectPinnedRelationExpansion(w ir.World, sourceID, relationID core.CanonicalID, call PinnedCall, catalog []OperatorContract) (RelationExpansionCandidate, error) {
-	// Use the existing canonical validator exactly once, then retain the
-	// checked Relation identity and its authored key mapping.
-	relation, err := checkedWorldRelation(w, sourceID, relationID, validation.ValidateSemanticRelationKeys(w))
+	return inspectPinnedRelationExpansionChecked(w, sourceID, relationID, call, catalog, validation.ValidateSemanticRelationKeys(w))
+}
+
+// inspectPinnedRelationExpansionChecked consumes diagnostics from the existing
+// canonical validator. A multi-hop caller may compute this read-only snapshot
+// once for the whole accepted World, rather than rerunning validation per hop.
+func inspectPinnedRelationExpansionChecked(w ir.World, sourceID, relationID core.CanonicalID, call PinnedCall, catalog []OperatorContract, diagnostics []validation.Diagnostic) (RelationExpansionCandidate, error) {
+	relation, err := checkedWorldRelation(w, sourceID, relationID, diagnostics)
 	if err != nil {
 		return RelationExpansionCandidate{}, err
 	}
