@@ -95,12 +95,22 @@ func TestExistingOrderEntrySourceToDriverTrace(t *testing.T) {
 			declared[key] = true
 		}
 	}
+	represented := make(map[string]bool)
 	for _, requirement := range f.c.Requirements {
 		for _, need := range requirement.DataContracts {
 			key := need.Datasource + "/" + need.Database + "/" + need.Contract + "/" + need.VersionConstraint
 			if !declared[key] {
 				t.Fatalf("synthetic lowering added a DB requirement not declared in real Source: %s", key)
 			}
+			if represented[key] {
+				t.Fatalf("synthetic lowering silently duplicated DB requirement: %s", key)
+			}
+			represented[key] = true
+		}
+	}
+	for key := range declared {
+		if !represented[key] {
+			t.Fatalf("source-declared DB requirement disappeared before lowering: %s", key)
 		}
 	}
 
