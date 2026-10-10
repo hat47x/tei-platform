@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { projectWorld, candidateFromEdit } from "./bridge.mjs";
+import { projectWorld, candidateFromEdit, bindReviewArtifacts } from "./bridge.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
@@ -99,6 +99,7 @@ function main(argv) {
     };
     const preview = run("preview");
     const review = run("review", ["-format", "json"]);
+    const binding = bindReviewArtifacts(candidate, preview, review, revision);
     const latest = JSON.parse(execFileSync("go", ["run",
       "./tools/reference-shared-acceptance", "revision", "-workspace", workspace],
       { cwd: root, encoding: "utf8" })).modelRevision;
@@ -106,7 +107,7 @@ function main(argv) {
     return { schema: "tei.reference.studio-review-edit/v0",
       modelRevision: revision, sourceRevisionAfterReview: latest,
       sourceWriteByThisCommand: false, explicitAcceptance: "not-performed",
-      candidate, preview, review,
+      candidate, preview, review, reviewConsistency: binding,
       realizationReadiness: { status: "not-verified" } };
   } finally {
     rmSync(temporary, { recursive: true, force: true });
