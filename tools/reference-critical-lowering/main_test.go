@@ -598,3 +598,23 @@ func codeErrorFromFixture(f fixture) string {
 	_, err := f.lower(stubTrust{})
 	return code(err)
 }
+
+func TestSelfContainedSourceHasExplicitEmptyDependencyClosure(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	f.c.SourceInputs = []Ref{}
+	f.a.CandidateDigest = Digest(f.c)
+	neutral, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil {
+		t.Fatalf("explicit dependency-free Source rejected: %v", err)
+	}
+	if neutral.Origin.SourceInputs == nil || len(neutral.Origin.SourceInputs) != 0 {
+		t.Fatal("explicit empty dependency closure collapsed to unreported nil")
+	}
+	plan, err := f.lower(stubTrust{})
+	if err != nil {
+		t.Fatalf("dependency-free accepted candidate failed Lower: %v", err)
+	}
+	if err := AuthorizeInvocation(plan, stubTrust{}); err != nil {
+		t.Fatalf("explicit dependency-free plan rejected before Host: %v", err)
+	}
+}
