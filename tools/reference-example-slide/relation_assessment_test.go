@@ -209,3 +209,13 @@ func TestExactIntegerValidationRejectsRoundedFraction(t *testing.T) {
 		t.Fatalf("valid precise integer was rejected: %v", err)
 	}
 }
+
+func TestManyWithNoMatchedTargetIsNotSupported(t *testing.T) {
+	in := keyedInput()
+	in.Catalog.Relations[0].Cardinality = "many"
+	in.Example.Base[1].Values["number_ref"] = json.RawMessage("\"different\"")
+	result := oneFinding(t, in)
+	if result.Result != "unresolved" || result.Reason != "target-absence-requires-business-review" {
+		t.Fatalf("empty correspondence was treated as supported: %+v", result)
+	}
+}
