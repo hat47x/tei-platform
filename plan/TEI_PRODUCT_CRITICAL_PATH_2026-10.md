@@ -171,7 +171,7 @@ N10は既存Runtimeで同等試験が作れない場合、`unresolved`としてG
 | --- | --- | --- |
 | G0 — Inventory | 現在のowner Issue、producer/consumer、関連PR、具体的実装箇所と未成立条件を一覧 | `design-inventory-incomplete` |
 | G1 — Minimal contracts | C0/C1/C2/C3の実行例と負例、version/Sourceの再参照。既存Contractとの衝突を説明 | `contract-unverified` |
-| G2 — P0 product loop | V00〜V08のうち採用したP0必須セットとN01〜N12の該当負例を、同一のmeaning revisionに結び付けて再現 | `product-loop-unverified` |
+| G2 — P0 product loop | V00〜V08のうち採用したP0必須セットとN01〜N12の該当負例を、明示的なR0→R1の受理系譜（Preview/失敗時はR0不変）と、実行に使ったAccepted revisionに結び付けて再現 | `product-loop-unverified` |
 | G3 — Cross-target / mutation pressure | 第二Target差、仮想状態/取消、副作用、帳票・Batch・Scenario等を能力ごとに独立検証 | `capability-partial` |
 | G4 — Release qualification | exact headとclean pre/post状態のtrusted full checkout、focused tests、Repository Health、actual Target Evidence、独立review | `qualification-pending` |
 
@@ -245,7 +245,7 @@ N10は既存Runtimeで同等試験が作れない場合、`unresolved`としてG
 - **統合wave 0**: #1119の計画候補を独立review・文書検査して資格確認。ここでG0の全Gate合格を宣言しない。
 - **wave 1（並列契約確認）**: #1120はC0最小fixture、#1121は既存Capability/Driver上のC3最小fixtureを別PRで提出。同じ`internal/ir/world.go`や`internal/plugin/model.go`を両者が同時編集しない。必要ならC0の薄いproducer patchを先に採用し、C3はそのmain revisionへ追随。
 - **wave 2（独立consumer）**: #1125/#1126のread-only Projection、#1132のsource-aware cross-view diagnostic、#1124のPreview/Stale契約をそれぞれ小さく試験。Coreへ新Domain enumを足す前にExtension/Projection適合性を確認。
-- **wave 3（P0製品一往復）**: #1124がC0/C1を使ってV03→V04、#1127がC3と既存Driverを使ってV05→V08へ連結する。Producerが異なるfixture revisionを検証しただけでは合格としない。同じAccepted meaning revisionを通す。
+- **wave 3（P0製品一往復）**: #1124がC0/C1を使ってV03→V04、#1127がC3と既存Driverを使ってV05→V08へ連結する。Producerが互いに無関係なfixture revisionを検証しただけでは合格としない。V03のR0→V04のR1をDecisionで結び、V05/V08のconsumerがR1または根拠付き等価revisionを使用したことを検査する。
 - **wave 4（P1拡張）**: #1129/#1131/#1130、および第二Target・self-buildとの差分確認を個別に進める。新しいHard dependencyはP0の失敗例を提示してから採用する。
 - 各waveの終わりに、対応ownerはPR head・main SHA・実際に走らせた試験・未実行理由・次consumerをIssueへ記録する。資格確認済みmilestoneのみmainへmergeし、不要な作業branchを削除する。他レーンのPRを横断担当が無断統合しない。
 - **現在のGate状態**: G0 = inventory candidate（具体的API/API testのowner照合待ち）、G1 = contract-unverified、G2 = product-loop-unverified、G3 = capability-partial/actual未確認、G4 = qualification-pending。今回の作業環境にtrustedなRepository full checkoutは無く、`tools/repository-health-check.sh`・actual Targetの実行は**not-run**。GitHub上の差分確認のみでG0/G1をPASSとしない。
@@ -262,7 +262,7 @@ evidence=source-located|synthetic-tested|actual-target-observed|not-observed;
 blocked_by=<issue/pr/revision or none>; next=<consumer action>
 ```
 
-すべてのV00〜V08/N01〜N12は**設計上の担当あり・このプログラムとしての実行証跡なし**から始める。Issueごとの実証結果を受領した時点で該当caseのみ更新し、別RevisionでのPASSを横滑りさせない。G2の採否判定には、同じSource revision、Provider/Target identity、否定試験結果、別readによるObservationを束ねた受入packetが必要。
+すべてのV00〜V08/N01〜N12は**設計上の担当あり・このプログラムとしての実行証跡なし**から始める。Issueごとの実証結果を受領した時点で該当caseのみ更新し、別RevisionでのPASSを横滑りさせない。G2の採否判定には、Preview時R0、Accept後R1、生成・実行側のR1（または適合性の証跡）、Provider/Target identity、否定試験結果、別readによるObservationを束ねた受入packetが必要。
 
 ## 11. 最新PRを用いた契約の実地監査（2026-10-10）
 
@@ -305,7 +305,7 @@ blocked_by=<issue/pr/revision or none>; next=<consumer action>
 
 ### 決定すべき一つの「到達条件」
 
-G2は単なる21ケースのチェック数ではなく、**一つの受注明細業務について、同一Accepted meaning revisionをSource・Projection・Action binding・Driver request・separate Observationまで追えるか**で判断する。最初のハッピーパスは `V00→V03→V04→V05→V08`、最少否定経路は `N05/N06`（Source）、`N08`（Capability/Authorization）、`N11`（Observation）とし、現時点の具体的な変更対象・実装可能なvalidation変更は#1124/#1127が既存Schemaと照合して確定させる。合成例に一回だけ一致したことは、実Targetの独立した成功観測ではない。
+G2は単なる21ケースのチェック数ではなく、**一つの受注明細業務について、R0→R1のAcceptance系譜と、R1から派生したProjection・Action binding・Driver request・separate Observationの連結を追えるか**で判断する。最初のハッピーパスは `V00→V03→V04→V05→V08`、最少否定経路は `N05/N06`（Source）、`N08`（Capability/Authorization）、`N11`（Observation）とし、現時点の具体的な変更対象・実装可能なvalidation変更は#1124/#1127が既存Schemaと照合して確定させる。合成例に一回だけ一致したことは、実Targetの独立した成功観測ではない。
 
 ## 12. G1→G2接合部：設計の受理と実DBへの適用を分離する
 
@@ -388,6 +388,73 @@ V04の「設計変更を正本へ受理」と、V05の「標準CRUDが保存で�
 1. **C0（#1120）**のsource subjectはStudio（#1137）とCUD（#1136）で同じIDを指せても、前者は編集候補、後者はcaller-supplied factであってAuthorityが違う。typed ID一致だけで後者のowner/effectをAcceptedへ昇格しない。
 2. **C1（#1137）とC3（#1141）**の間には、既存Shared Acceptanceで生成されたexact Accepted Source revisionが必要。合成Acceptance stubやbridge precheckは橋渡し証跡にしない。
 3. **C3（#1141）とDriver/Web（#1127）**の間には実Resolver/Capability/Host Permission/DB readinessが必要。§12のS02/S05を通るまで、設計受理の成功はphysical write可能の根拠ではない。
-4. 並列PRはそれぞれ独立のDraftとして保持し、Source joinが必要になった段階でowner/consumerの相互Reviewを実施する。プロダクトG2の共通packetは同一revision・actual Provider/Targetと独立Observationに揃えて初めて評価する。
+4. 並列PRはそれぞれ独立のDraftとして保持し、Source joinが必要になった段階でowner/consumerの相互Reviewを実施する。プロダクトG2の共通packetはR0→R1の受理系譜、R1に整合するactual Provider/Targetと独立Observationを束ねて初めて評価する。
 
 **未確認**: この§13はGitHub変更path・patch・PR本文の静的照合であり、今回の環境でNode/Goの試験を実行したわけではない。各PRが報告した限定的なsyntheticテストと、trusted exact-head checkoutでの資格確認を区別する。
+
+## 14. G2のRevision系譜とEnd-to-end受入packet（候補）
+
+### 訂正: 変更前と変更後に「同一Source revision」を要求しない
+
+V03 PreviewとV04 Acceptanceが有効な**意味変更**であるなら、一般に変更前のAccepted Source revision `R0` と変更後のrevision `R1` は異なる。従って「V00〜V08を同一Source revisionで実行する」解釈は不適切。G2で求めるのは**変更前後の不可逆な同一視をせず、accepted DecisionによりR0からR1へ辿れ、後続のDerived/Runtime consumerがR1に対応すること**である。
+
+ここで`R0`/`R1`は説明上の記号。Git commit SHAではなく、既存Shared Acceptanceの`revision -workspace`で得るmanaged-source `modelRevision`に相当する。Git head、Source Indexのversion、Derived Worldのdigest、Database schemaの観測ID、Runtime/Build artifact digestも互いに独立した値であり、単純な文字列同値を要求しない。各値のproducerを明記し、同一性/互換性を**適切な辺で検証**する。
+
+```text
+trusted scratch workspace + existing accepted source
+    │ R0 = Shared Acceptance revision -workspace
+    ▼
+Studio / AI / file candidate P(baseModelRevision=R0)
+    │ preview/review: R0 unchanged, fingerprint=FP
+    ├── reject, stale, validation failure: stays R0
+    ▼ explicit acceptance with expected-review-fingerprint FP
+accepted Decision D (R0, P, FP, decision evidence, resulting R1)
+    │ source reload: obtain R1 independently
+    ├── R0 -> R1 trace must be explicit
+    ▼
+World/Projections W1 from accepted Source R1
+    │ build/derivation dependency witness, not ID equality
+    ▼
+Function/Binding F1 for R1
+    │ schema/Provider/Target compatibility and current Host Authority
+    ▼
+Invocation I1 (R1-compatible realization; exact target/binding)
+    │ Command outcome O_cmd
+    ▼
+Independent read O_read (record/provider/time correlated with I1)
+    │
+    ▼
+G2 acceptance packet: complete path or explicit UNRESOLVED
+```
+
+### Producer/consumerの最小必須証跡
+
+| 接合辺 | 必要な比較 | 失敗時の扱い | Owner |
+| --- | --- | --- | --- |
+| `R0→P→Preview` | Shared Acceptanceのcurrent `modelRevision`、candidate `baseModelRevision`、meaning delta、preview前後のmanaged-source digest | stale/invalidなら**R0不変**、Preview成功をAccept済みにしない | #1124/#267 |
+| `Preview→D→R1` | exact candidateとreview fingerprint、accept decision、実Sourceの再読込revision、許可されたsemantic diff | accept失敗ならR1不成立。Decision記録だけでSource変更を推測しない | #1124/#267 |
+| `R1→World/Studio` | 新R1からの再投影、logical ID/typed refs、Source Indexのcurrent anchor、未解決Business view | 旧Worldの再利用、Source anchorの捏造を拒否する | #1120/#1124/#1125/#1126 |
+| `R1→Function/Lowering` | Accepted meaning→Function/Capabilityのproducer、依存fingerprint・Target profile・versioned witness。cache hitは意味上の同値性で説明 | 合成Trustや無根拠なR0のartifactをR1実行の証拠にしない | #1121/#1127 |
+| `Function→Provider/DB` | 対象Datasourceごとのschema互換性、binding、current Host Context/Authority、invocation時の条件 | S02/S05に従いfail-closed。Previewやschema version番号だけで許可しない | #1121/#1126/#1127 |
+| `Invocation→Observation` | Command outcome、別readのProvider/record identity・取得時点・freshness、可視性と権限 | read未実施/不一致/競合・遅延で確定不可なら`UNRESOLVED`、成功応答で代用しない | #1127/#1129 |
+
+- `R1`が`R0`と同じ場合、意図したsource editが実際には起きていない可能性を診断する。No-opを意味変更済みのV04 PASSにはしない。表示・配置だけの操作はS01/N12として別扱いにする。
+- `O_read` は `O_cmd` と**独立に取得**するが、強いtransaction snapshotを必須としない。read時点の競合更新、非同期反映、閲覧権限の不足がある場合、CommandとObservationの不一致理由を断定せず`UNRESOLVED`へ分ける。
+- V00のbaseline R0とV05実行R1を独立した「同一版PASS」と主張しない。業務モデルの物理DBとの互換性はR1から個別に判定する。旧Physical schemaでも意味的に互換なら、**根拠のある互換**は認め、不必要なMigrationをブロッカーにしない。
+- 既存`reviewFingerprint`はShared AcceptanceのAPI値であり、モデル全体のrevisionそのものではない。候補識別用`candidateFingerprint`、Evidence fingerprint、review fingerprint、Acceptance後revisionを混同しない。
+
+### Ownerごとの次の実装可能な一本
+
+初回のEnd-to-end対象は、既存`reference/workspace`をscratchへコピーし、#1124の`add-relation`または`add-validation/positive`候補で`R0→Preview→Accept→R1→reload`を先に**actual scratch操作**で固定する。PR #1137のREADMEにある手順はまだ実行Evidenceではない。Shared Acceptanceの`reviewFingerprint`を用いて受理した時だけ`R1`を記録する。
+
+その後、#1127がR1に対応する既存Function/Driverが何を実際に実行できるかを確認する。**意味変更が既存TargetのObservable Effectに結び付かない場合は無理に同一画面の成功演出を作らず、次に必要な最小Capability/Generator adapterを実装する。** #1121が合成lowering witnessだけでTarget実行と称していないか、#1126が未確認schemaに暗黙対応させていないかを合同レビューする。
+
+### 追加の必須検査（既存V/N/Sの組合せ）
+
+1. **正常系**: V03（R0不変）→V04（R1成立）→V05/V08（R1に整合するFunctionと実行、独立read）。R0→R1のDecision参照がない独立の成功結果はG2 PASS不可。
+2. **stale**: N06（R0で提案した後Sourceを変更してcurrent R0'へ）→accept拒否→current R0'のbytes不変。旧candidateを暗黙に再適用しない。
+3. **権限**: N08/S05（R1で生成済でもHost/Capability現在値に問題）→Driver呼出し前拒否。事前生成物があるだけでは実行可能と扱わない。
+4. **realization**: S02（R1のData変更に旧schemaの互換根拠がない）→readiness不成立。Source editの成功をrollbackしない一方、DB writeへ進まない。
+5. **観測**: N11（Command成功でread未実施）→`Observed`や`Verified`を立てない。独立readに必要な権限が無い場合も`UNRESOLVED`。
+
+**G1/G2の状態**: 今回作ったのは接合・判定の規約候補であって新たなCore schemaではない。#1137のStudio Bridge・#1141のlowering・#1136のCUDは依然Draft candidate。既存AcceptanceとRuntimeを同じ実Source変更上で実行したEvidence、full trusted checkoutのqualification、実DB/Target Observationは未取得。各Ownerのpacket検証が済むまでG1/G2とも未合格とする。
