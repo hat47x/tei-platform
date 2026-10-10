@@ -123,8 +123,16 @@ node reference/studio-authoring/cli.mjs inspect \
   -workspace "$scratch/workspace" \
   -focus relation:sales.order.lines \
   -business-dfd "$scratch/dfd.json"
+
+# 逆方向: 非CanonicalなBusiness Stepから、元World上のFunction / Data /
+# Relation / Validationへの読み取り専用の参照候補を取得
+node reference/studio-authoring/cli.mjs inspect \\
+  -workspace "$scratch/workspace" \\
+  -focus step:BP-05 \\
+  -business-dfd "$scratch/dfd.json"
 ```
 
+- 逆向きの`step:ID`選択は`-business-dfd`が必須です。`tei.reference.studio-business-step-navigation/v0`を返し、Business Stepのスコープ`reference-procedure:<procedureId>`と、元Worldの型付きfocus候補`data:ID` / `relation:ID` / `validation:ID` / `pattern:ID`を分離します。ExactなID照合が成立しても`identity-match-only`であり、同一revisionとの結合は未証明です。`editable=false`、`acceptanceTargetStatus=unresolved-use-shared-acceptance`を維持します。Procedureに当該Stepが存在しない、Producerがerrorを返した、Source参照が不一致の場合はfail-closedです。
 - DFDの`functionRefs[].id`が同じWorldのApplication Pattern IDにexact matchしたStepについて、そのfocusとの関係を表示します。`data`/`relation`/`capability`参照の相違は`unresolved`にします。さらに#1125の`steps[].explicitMeaning`が示す`semantic-data` / `semantic-relation` / `semantic-validation`の**明示されたkind/ID**を、現在のWorldの正確な定義と再照合します。正確に一致するときに限り、FunctionのないStepからも該当Data/Relation/Validationへ`reference-only`の閲覧リンクを返します。これはBusiness StepをCanonicalに受理したことも、実行Functionを生成したことも意味しません。
 - 原DFDの`source.file`/`source.pointer`は**非Canonicalな参照Fixtureの位置**であり、Source Indexの編集先ではありません。
 - `manualOrExternalUnlinked`にはFunctionなしの手作業等を別掲します。これらは**Functionに未接続**であり、明示された意味参照まで存在しないという意味ではありません。近接していることだけを理由に依存辺を捏造しません。大きなProcedureでは20件までとし切詰めを明示します。
@@ -147,7 +155,7 @@ tools/repository-health-check.sh
 
 | Scenario | 初期実装 | 未検証・未対応 |
 | --- | --- | --- |
-| V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。Source Indexのexact kind/IDで元定義のアンカーを表示。#1138 JSONの非Canonical BusinessについてPatternおよび直接Data/Relation/Validation参照をread-only結合 | Accepted Businessとの同revision結合、Source byte再検査は未実装。4つのAccepted Projection受入は**未達** |
+| V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。Source Indexのexact kind/IDで元定義のアンカーを表示。#1138 JSONの非Canonical BusinessについてPatternおよび直接Data/Relation/Validation参照をread-only結合し、Step選択からの逆向きfocusも提供 | Accepted Businessとの同revision結合、Source byte再検査は未実装。4つのAccepted Projection受入は**未達** |
 | V03 | ERのRelation追加・表のValidation追加に加え、必要ならApplicationによるValidation利用選択も同一candidateで提案。一括`review-edit`で既存Shared AcceptanceによるDiff/Impact/Reviewを表示し、実行Readyは未確認とする | read-only consumerのexact-head実GoテストとTarget/Provider readinessは未確認 |
 | V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。規則+Application選択はSource2ファイルを検査するテストとして追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
