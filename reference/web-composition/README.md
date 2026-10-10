@@ -472,3 +472,20 @@ E2.11でブラウザへ返す権限基盤障害の文言を固定化しました
 - 追加した回帰ケースは、`order 1003`の既存合成Command Adapter障害（旧経路422、新Session 500と固定文言、Audit error）、Validation不成立の422、異常日時の400などです。
 - GitHub Blobで実装とテストのエラー文字列一致・結果分岐を静的に確認しました。ただし**実Workspace Go結合試験、Go vet/race、exact-head full Repository Healthの成功結果は未取得**です。以前の隔離Go試験を現在headの成功証拠とみなしません。
 - PR #1114はDraft・未マージを維持します。合成Fixtureを用いたテストの成功（未取得）と、実ProviderによるDurable Effectの観測（未取得）も区別します。
+
+
+## E2.15：Session結果分類の契約テストと入力形式の確定
+
+E2.14では実Workspaceを使用したHTTP回帰テストを追加しましたが、Server/Runner/Workspace/認証Fixtureに同時に依存するため、**結果分類だけの独立した回帰**も必要でした。`session_command_route.go`の実行結果変換を`writeProtectedSessionCommandHTTPResult`へ抽出し、`session_result_contract_test.go`から直接呼べるようにしました。実装は一つで、HTTP/監査の分岐に別のルールを作りません。
+
+新しいテストは、完了（Command＋Observation）、Validation業務拒否、Subject Link業務拒否、Canonical業務認可拒否、Identity／初回認可／最終認可の基盤障害、Command実行成否未確定、Command出力後のObservation障害、Read障害、`completed`にもかかわらずCommand／Observationが欠ける場合など**15ケース**で、HTTP Status、JSON結果、機密なAdapterエラーの秘匿を検査します。このテストの実行時には`workspace.Load`やSynthetic Session Providerの初期化を必要としません（ただしGoパッケージ全体のコンパイルには本物のRepositoryが必要です）。
+
+Session要求入力`from`は既存のRead Runnerと同じRFC3339形式をHTTP入口でも検証し、`yesterday`のような曖昧表現や`2026-02-30T00:00:00Z`のような存在しない暦日を**400**で拒否します。初回Session Host認証・CSRF・早期認可の順序は維持し、Credentialsの旧HTTP経路は変更しません。
+
+また、E2.11のSecurity Backend Errorの固定文言変更に対して旧回帰テスト2か所の期待値が更新されていなかった問題を是正しました。HTTP 503・固定文言の現実装と、テストの期待値を一致させています。
+
+- `session_command_route.go`: GitHub Blob `a8db2c363dae3d40573b1b294782839a51295312`
+- `session_command_route_test.go`: GitHub Blob `01675b77607b1731e6968f01098fddda8297931e`
+- `session_result_contract_test.go`: GitHub Blob `e2fe909ff198b4c551e9167db4af157f2e713e82`
+
+**検証可能な根拠：** GitHub上の実ファイル定義、型、期待エラー文言、HTTP分岐と各ケースを静的照合しました。**未取得の根拠：** このPR exact-headのclean full checkout上での`gofmt`、`go vet`、`go test`、race、実WorkspaceのGo結合、`tools/repository-health-check.sh`全PASS、実IdPと実永続化Providerの実行証拠。過去の隔離ハーネスのPASSを新しいソースへ転用しません。現行main包含も未達のためDraftを維持します。
