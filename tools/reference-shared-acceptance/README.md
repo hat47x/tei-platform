@@ -19,6 +19,8 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 
 また、`accept -out`と`accept -derived-out`のいずれも、入力candidateと同一の実ファイルを指定できません。受理後にDecisionやWorldで候補JSONが上書きされると、検査した候補の再参照・再試行ができなくなるためです。リンクや大小文字の異なる表記を含めて出力前に検査し、`-allow-reference-baseline`でも解除しません。
 
+`preview`・`review`・`reject`の`-out`も入力`-candidate`と同じ実ファイルを指定できません。`confirm-check`・`confirm-record`では同様に入力`-input`を保護します。読み取り・判断記録の出力が提案や確認入力を破壊しないよう、candidateの解析やDecisionの記録に入る**前**に拒否します。この制約は明示的なbaseline更新フラグでも解除できません。候補を意図的に変換する`attach-*`・`propose-qualified-reference-pattern`等の操作では、従来の出力指定を維持します。
+
 ## 受入境界
 
 ```text
