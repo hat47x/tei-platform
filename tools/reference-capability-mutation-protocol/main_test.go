@@ -25,6 +25,7 @@ type ledgerProvider struct {
 	commitCount                int
 	statusCount                int
 	effectCount                int
+	commitSawCanceledContext   bool
 	abortCount                 int
 	abortSawCanceledContext    bool
 	abortError                 bool
@@ -72,8 +73,11 @@ func (p *ledgerProvider) Prepare(_ context.Context, request PrepareRequest) (Pre
 	return clonePrepared(prepared), nil
 }
 
-func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (ProviderCommitReceipt, error) {
+func (p *ledgerProvider) Commit(ctx context.Context, request CommitRequest) (ProviderCommitReceipt, error) {
 	p.commitCount++
+	if ctx.Err() != nil {
+		p.commitSawCanceledContext = true
+	}
 	record, ok := p.records[request.InvocationKey]
 	if !ok ||
 		record.prepared.PreparationID != request.PreparationID ||
@@ -174,24 +178,37 @@ func (p *ledgerProvider) Abort(ctx context.Context, handle MutationHandle) error
 }
 
 type memoryJournal struct {
-	prepared     map[string]MutationHandle
-	outcomes     map[string]MutationReceipt
-	failPrepared bool
-	failOutcome  bool
+	intents        map[string]MutationHandle
+	outcomes       map[string]MutationReceipt
+	failIntent     bool
+	failOutcome    bool
+	onRecordIntent func()
 }
 
 func newMemoryJournal() *memoryJournal {
 	return &memoryJournal{
-		prepared: map[string]MutationHandle{},
+		intents:  map[string]MutationHandle{},
 		outcomes: map[string]MutationReceipt{},
 	}
 }
 
-func (j *memoryJournal) RecordPrepared(_ context.Context, handle MutationHandle) error {
-	if j.failPrepared {
-		return fmt.Errorf("synthetic prepared journal failure")
+func (j *memoryJournal) RecordCommitIntent(_ context.Context, handle MutationHandle) error {
+	if j.failIntent {
+		return fmt.Errorf("synthetic commit intent journal failure")
 	}
-	j.prepared[handle.InvocationKey] = cloneHandle(handle)
+	if existing, ok := j.intents[handle.InvocationKey]; ok {
+		if existing != handle {
+			return fmt.Errorf("commit intent conflict for invocation %s", handle.InvocationKey)
+		}
+		if j.onRecordIntent != nil {
+			j.onRecordIntent()
+		}
+		return nil
+	}
+	j.intents[handle.InvocationKey] = cloneHandle(handle)
+	if j.onRecordIntent != nil {
+		j.onRecordIntent()
+	}
 	return nil
 }
 
@@ -199,12 +216,18 @@ func (j *memoryJournal) RecordOutcome(_ context.Context, receipt MutationReceipt
 	if j.failOutcome {
 		return fmt.Errorf("synthetic outcome journal failure")
 	}
+	if existing, ok := j.outcomes[receipt.InvocationKey]; ok {
+		if existing != receipt {
+			return fmt.Errorf("outcome conflict for invocation %s", receipt.InvocationKey)
+		}
+		return nil
+	}
 	j.outcomes[receipt.InvocationKey] = receipt
 	return nil
 }
 
-func (j *memoryJournal) LoadPrepared(_ context.Context, invocationKey string) (MutationHandle, bool, error) {
-	handle, ok := j.prepared[invocationKey]
+func (j *memoryJournal) LoadCommitIntent(_ context.Context, invocationKey string) (MutationHandle, bool, error) {
+	handle, ok := j.intents[invocationKey]
 	if !ok {
 		return MutationHandle{}, false, nil
 	}
@@ -276,14 +299,14 @@ func TestPreparedResultIsValidatedBeforeCommit(t *testing.T) {
 		provider.value != 0 ||
 		provider.effectCount != 0 ||
 		provider.commitCount != 0 ||
-		len(journal.prepared) != 0 {
+		len(journal.intents) != 0 {
 		t.Fatalf(
 			"invalid result crossed commit boundary: execution=%+v value=%d effects=%d commits=%d prepared=%d",
 			execution,
 			provider.value,
 			provider.effectCount,
 			provider.commitCount,
-			len(journal.prepared),
+			len(journal.intents),
 		)
 	}
 	if provider.abortCount != 1 {
@@ -291,10 +314,10 @@ func TestPreparedResultIsValidatedBeforeCommit(t *testing.T) {
 	}
 }
 
-func TestPreparedIntentMustBeJournaledBeforeCommit(t *testing.T) {
+func TestCommitIntentMustBeJournaledBeforeCommit(t *testing.T) {
 	provider := newLedgerProvider()
 	journal := newMemoryJournal()
-	journal.failPrepared = true
+	journal.failIntent = true
 	executor := newExecutor(provider, journal)
 
 	execution, err := executor.Invoke(context.Background(), MutationRequest{
@@ -309,10 +332,10 @@ func TestPreparedIntentMustBeJournaledBeforeCommit(t *testing.T) {
 	}
 }
 
-func TestPreparedJournalFailureCanRetryWithoutReusingAbortedPreparation(t *testing.T) {
+func TestCommitIntentJournalFailureCanRetryWithoutReusingAbortedPreparation(t *testing.T) {
 	provider := newLedgerProvider()
 	journal := newMemoryJournal()
-	journal.failPrepared = true
+	journal.failIntent = true
 	executor := newExecutor(provider, journal)
 	request := MutationRequest{
 		InvocationKey: "order-journal-retry",
@@ -328,7 +351,7 @@ func TestPreparedJournalFailureCanRetryWithoutReusingAbortedPreparation(t *testi
 		t.Fatalf("journal failure crossed commit boundary: %+v", provider)
 	}
 
-	journal.failPrepared = false
+	journal.failIntent = false
 	second, err := executor.Invoke(context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
@@ -900,5 +923,72 @@ func TestExecutorRequiresExactExecutionBinding(t *testing.T) {
 	}
 	if provider.prepareCount != 0 || provider.commitCount != 0 {
 		t.Fatalf("invalid execution binding reached Provider: %+v", provider)
+	}
+}
+
+
+func TestCommitIntentJournalRejectsDifferentBindingForSameInvocationKey(t *testing.T) {
+	journal := newMemoryJournal()
+	firstBinding := testExecutionBinding("journal-binding-a")
+	secondBinding := testExecutionBinding("journal-binding-b")
+
+	oldPrepared := NewPreparedMutation(
+		"prep-shared-key",
+		"shared-key",
+		firstBinding,
+		digest([]byte("21")),
+		[]byte("21"),
+		"version-0",
+	)
+	if err := journal.RecordCommitIntent(
+		context.Background(),
+		preparedHandle(oldPrepared),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	provider := newLedgerProvider()
+	executor := newExecutorWithBinding(provider, journal, secondBinding)
+	execution, err := executor.Invoke(context.Background(), MutationRequest{
+		InvocationKey: "shared-key",
+		Payload:       []byte("21"),
+	})
+	if err == nil || !errors.Is(err, ErrJournalWrite) ||
+		!strings.Contains(err.Error(), "commit intent conflict") {
+		t.Fatalf("conflicting durable intent was overwritten: execution=%+v err=%v", execution, err)
+	}
+	if execution.Outcome != OutcomeNotCommitted ||
+		provider.commitCount != 0 ||
+		provider.effectCount != 0 ||
+		provider.abortCount != 1 {
+		t.Fatalf("journal conflict crossed commit boundary: execution=%+v provider=%+v", execution, provider)
+	}
+}
+
+func TestCancellationAfterDurableCommitIntentDoesNotAbandonDecision(t *testing.T) {
+	provider := newLedgerProvider()
+	journal := newMemoryJournal()
+	ctx, cancel := context.WithCancel(context.Background())
+	journal.onRecordIntent = cancel
+	executor := newExecutor(provider, journal)
+
+	execution, err := executor.Invoke(ctx, MutationRequest{
+		InvocationKey: "order-cancel-after-intent",
+		Payload:       []byte("22"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if execution.Outcome != OutcomeCommitted ||
+		provider.value != 22 ||
+		provider.effectCount != 1 ||
+		provider.commitCount != 1 {
+		t.Fatalf("durable commit intent was abandoned after caller cancellation: execution=%+v provider=%+v", execution, provider)
+	}
+	if provider.commitSawCanceledContext {
+		t.Fatal("commit coordinator received the canceled caller context after durable intent")
+	}
+	if provider.abortCount != 0 {
+		t.Fatalf("durable commit intent was incorrectly aborted: %d", provider.abortCount)
 	}
 }
