@@ -215,6 +215,10 @@ async function main() {
       integrationHead: head, sourceBefore: r0, sourceAfter: r1,
       observedBeforeLaunch: true, observedAfterHttp: true,
       changedManagedSourceFiles: changed(beforeFiles, files(workspace)),
+      changedSourceDigests: changed(beforeFiles, files(workspace)).map(path => ({
+        path, beforeSHA256: beforeFiles.get(path),
+        afterSHA256: files(workspace).get(path)
+      })),
       candidateFingerprint: preview.candidateFingerprint,
       reviewFingerprint: review.reviewFingerprint,
       decision: "automated-scratch-test-only", humanApproval: false,
