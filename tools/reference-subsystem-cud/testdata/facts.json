@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "subsystem-cud-candidate-v1",
+  "owners": [
+    {"data": "sales.order", "subsystem": "sales", "source": "fixture:sales-owner"},
+    {"data": "stock.reservation", "subsystem": "stock", "source": "fixture:stock-owner"}
+  ],
+  "functionIO": [
+    {"pattern": "sales.submit", "subsystem": "sales", "data": "sales.order", "operation": "U", "source": "fixture:submit"},
+    {"pattern": "stock.reserve", "subsystem": "stock", "data": "stock.reservation", "operation": "U", "source": "fixture:reserve"},
+    {"pattern": "sales.list", "subsystem": "sales", "data": "stock.reservation", "operation": "R", "source": "fixture:list"}
+  ],
+  "procedureSteps": [
+    {"id": "phone-confirmation", "subsystem": "sales", "realization": "manual", "source": "fixture:phone"},
+    {"id": "submit", "subsystem": "sales", "realization": "system", "pattern": "sales.submit", "source": "fixture:submit-step"},
+    {"id": "notify", "subsystem": "sales", "realization": "external", "source": "fixture:notify"}
+  ]
+}
