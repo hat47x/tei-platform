@@ -21,15 +21,21 @@ func TraceSubjectSources(root string, subject sourceindex.Subject) (SubjectSourc
 		return SubjectSources{}, fmt.Errorf("subject kind and id are required")
 	}
 	loaded, err := workspace.Load(root)
-	if err != nil { return SubjectSources{}, err }
+	if err != nil {
+		return SubjectSources{}, err
+	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil { return SubjectSources{}, err }
 	refs := idx.ReferencesFor(subject)
 	paths := make(map[string]bool, len(refs))
-	for _, ref := range refs { paths[ref.ArtifactPath] = true }
+	for _, ref := range refs {
+		paths[ref.ArtifactPath] = true
+	}
 	artifacts := make([]sourceindex.Artifact, 0, len(paths))
 	for _, artifact := range idx.Artifacts {
-		if paths[artifact.Path] { artifacts = append(artifacts, artifact) }
+		if paths[artifact.Path] {
+			artifacts = append(artifacts, artifact)
+		}
 	}
-	return SubjectSources{Subject:subject, Artifacts:artifacts, References:refs}, nil
+	return SubjectSources{Subject: subject, Artifacts: artifacts, References: refs}, nil
 }
