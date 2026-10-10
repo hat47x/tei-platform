@@ -138,7 +138,18 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   ]).stdout);
   checked(decision.decision === "accepted" && decision.sourceChanged === true,
     label + ": test harness Accepted source");
+  checked(decision.modelRevisionBefore === beforeRevision &&
+    decision.baseModelRevision === beforeRevision &&
+    decision.candidateFingerprint === preview.candidateFingerprint &&
+    preview.currentModelRevision === beforeRevision,
+    label + ": R0 and candidate fingerprint are consistent across Preview/Decision");
+  checked(decision.reviewBinding?.fingerprint === review.reviewFingerprint &&
+    decision.reviewBinding?.projection?.reviewFingerprint === review.reviewFingerprint,
+    label + ": Accepted Decision retains the exact reviewed projection");
   const afterRevision = revision(workspace);
+  checked(decision.modelRevisionAfter === afterRevision &&
+    preview.modelRevisionAfter === afterRevision,
+    label + ": R1 matches accepted Decision and projected Source plan");
   checked(afterRevision !== beforeRevision, label + ": Source revision changed");
   const changed = changedPaths(before, managedDigests(workspace));
   const allowedPaths = Array.isArray(expectedPath) ? expectedPath.slice().sort() : [expectedPath];
@@ -183,7 +194,26 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   ], false);
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
     label + ": stale Preview and stale Accept cannot modify newer Source");
-  return { name: label, beforeRevision, afterRevision, changed, acceptedSubject: expectedID };
+  return {
+    schema: "tei.reference.studio-source-loop-receipt/v0",
+    name: label, scenario: "V03-V04-N06",
+    evidenceClass: "temporary-synthetic-scratch",
+    humanAcceptance: "not-observed",
+    actualProviderResult: "not-observed",
+    runtimeObservation: "not-observed",
+    sourceLineage: {
+      baseModelRevision: beforeRevision,
+      previewCurrentRevision: preview.currentModelRevision,
+      previewExpectedRevisionAfter: preview.modelRevisionAfter,
+      acceptedDecisionBefore: decision.modelRevisionBefore,
+      acceptedDecisionAfter: decision.modelRevisionAfter,
+      verifiedReloadRevision: afterRevision,
+      candidateFingerprint: preview.candidateFingerprint,
+      reviewFingerprint: review.reviewFingerprint
+    },
+    changed, acceptedSubject: expectedID,
+    staleCandidateRefused: true
+  };
 }
 
 try {
@@ -204,9 +234,14 @@ try {
       placement: "applications/order-entry/application.tei" }
   }, "validation", "sales.order_line.unit_price_positive",
     ["applications/order-entry/application.tei", "semantic/sales/validation.tei"]);
+  const checkedHead = command("git", ["rev-parse", "HEAD"]).stdout.trim();
   process.stdout.write(JSON.stringify({
     status: "PASS", scope: "temporary scratch only; no human acceptance",
-    checks, cases: [er, table]
+    head: checkedHead, checks, cases: [er, table],
+    claimLimits: [
+      "not-human-approved", "not-actual-db-provider",
+      "not-web-target-execution", "not-full-repository-qualification"
+    ]
   }, null, 2) + "\n");
 } finally {
   rmSync(created, { recursive: true, force: true });
