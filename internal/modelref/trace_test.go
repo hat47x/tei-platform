@@ -2,6 +2,7 @@ package modelref_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -212,5 +213,26 @@ func TestTraceDirectNormalizesEvidenceWithoutMutatingGraph(t *testing.T) {
 	b, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "outgoing"})
 	if err != nil || !reflect.DeepEqual(a.Rows, b.Rows) {
 		t.Fatalf("unordered evidence changed trace output: %+v versus %+v (%v)", a, b, err)
+	}
+}
+
+func TestTraceDirectLargeCompleteAndSummary(t *testing.T) {
+	g, rules, fn := traceGraph()
+	const extra = 4096
+	for i := 0; i < extra; i++ {
+		g.Edges = append(g.Edges, modelref.Edge{
+			From: fn, To: traceRef(traceKey("orders", "data", "order-line")),
+			Relation: "reads",
+			Evidence: []modelref.Evidence{{Authority: "proposal", Context: fmt.Sprintf("case-%04d", i)}},
+		})
+	}
+	full, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Mode: "full"})
+	if err != nil || full.Total != extra+2 || len(full.Rows) != extra+2 || full.NextOffset != nil {
+		t.Fatalf("full trace silently truncated: total=%d rows=%d err=%v", full.Total, len(full.Rows), err)
+	}
+	summary, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Mode: "summary"})
+	if err != nil || summary.Total != full.Total || summary.Unresolved != full.Unresolved ||
+		len(summary.Rows) != 0 || summary.SnapshotFingerprint != full.SnapshotFingerprint {
+		t.Fatalf("summary diverged from full trace: %+v err=%v", summary, err)
 	}
 }
