@@ -321,6 +321,48 @@ func verifyBuildGraphBindings(
 			return fmt.Errorf("build graph edge %s/%s -> %s: %w", edge.FromNode, edge.OutputRole, edge.ToNode, err)
 		}
 	}
+	if err := verifyBuildGraphInputCoverage(g, plans); err != nil {
+		return err
+	}
+	return nil
+}
+
+func verifyBuildGraphInputCoverage(
+	g BuildGraph,
+	plans map[string]BuildExecutionPlan,
+) error {
+	bound := map[string]struct{}{}
+	for _, seed := range g.Seeds {
+		bound[seed.ToNode+"\x00"+seed.Input.key()] = struct{}{}
+	}
+	for _, edge := range g.Edges {
+		bound[edge.ToNode+"\x00"+edge.Input.key()] = struct{}{}
+	}
+
+	for _, node := range g.Nodes {
+		plan, ok := plans[node.ID]
+		if !ok {
+			return fmt.Errorf("build graph node %s has no exact BuildExecutionPlan", node.ID)
+		}
+		required := []BuildGraphInputBinding{{Kind: buildGraphInputBuilder}}
+		for _, dependency := range plan.Dependencies {
+			required = append(required, dependencyInput(
+				dependency.Kind,
+				dependency.ID,
+				dependency.Version,
+			))
+		}
+		for _, input := range required {
+			key := node.ID + "\x00" + input.key()
+			if _, ok := bound[key]; !ok {
+				return fmt.Errorf(
+					"build graph consumer input %s on node %s has no explicit producer or external seed",
+					input.key(),
+					node.ID,
+				)
+			}
+		}
+	}
 	return nil
 }
 
