@@ -56,7 +56,12 @@ func attachValidationScopeSources(rows []validationScopeReviewRow, index sourcei
 
 		subjects := []subject.Subject{{Kind: "application", ID: row.Application}}
 		seenID := make(map[string]struct{})
-		for _, id := range append(append([]string(nil), row.ApplicationOnly...), row.ProcedureOnly...) {
+		// Include the intersection as well: "no-set-difference" must still
+		// let a reviewer trace the exact Validation definitions compared.
+		validationIDs := append([]string(nil), row.SharedValidations...)
+		validationIDs = append(validationIDs, row.ApplicationOnly...)
+		validationIDs = append(validationIDs, row.ProcedureOnly...)
+		for _, id := range validationIDs {
 			if _, seen := seenID[id]; seen {
 				continue
 			}
