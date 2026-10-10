@@ -129,7 +129,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			}
 			destination, err := resolveOutputDestination(output.path)
 			if err != nil || referencePathText(candidateDestination) == referencePathText(destination) {
-				fmt.Fprintln(stderr, "acceptの"+output.name+"はcandidate source must not be an output（同一ファイルを指定できません）")
+				fmt.Fprintln(stderr, "acceptの"+output.name+"は入力candidateと同一ファイルを指定できません（別名・シンボリックリンクも含みます）")
 				return 2
 			}
 		}
