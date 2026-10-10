@@ -140,7 +140,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 **重要な停止線:** 現状の`RelationMatchPolicy`はFixture評価時に外部から与える値であり、Accepted Operator契約やAuthoritative DSL Sourceにまだ結合されていない。同じOperator pinでも方針の相違は**異なる意味**である。正式なLowering時には方針を型付きの演算引数としてCanonical meaningに含め、Source span・Semantic Set・Lockと対応付けなければならない。このReferenceをそのままSQL/Go/Wasmの実行判断に使ってはならない。照合は文字列表現による試験用の同値比較であり、実際の型比較規則、照合順序、Money精度、NULL伝播、外部結合、行順序、トランザクション時点の適合性は別途検証を要する。
 
-Fixture Oracleと型付き演算引数の合計5ファイルについて、GitHub Blob SHAと完全一致する局所Go 1.23.2環境でgo test、go test -race、go vetがPASSし、gofmt差分はなかった。core/ir/semanticとRelation Inspectorは局所stubのため、PR exact-headに対する正規健全性検証の証拠ではない。
+今回の追加・変更に関わるGoソース・テスト計11ファイルについて、GitHub Blob SHAと完全一致する局所Go 1.23.2環境でgo test、go test -race、go vetがPASSし、対象ファイルのgofmt差分はなかった（2026-10-10）。対象はOperator解決とPinned Composition、Relation検査・Expansion・多段Path、Fixture Oracle、引数Syntaxと型付き意味束縛である。ただしcore/ir/semantic/validationの型定義・Canonical Validatorは局所stubであり、正式なTEI World/Parser/CLIを含むPR exact-headに対する正規健全性検証の証拠ではない。
 
 ### 明示した演算引数を型付き意味候補に固定（2026-10-10）
 
