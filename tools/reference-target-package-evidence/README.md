@@ -45,7 +45,7 @@ go run ./tools/reference-target-package-evidence \
 
 比較は`SourceRevision`、メインGoモジュール、Go版、GOOS、GOARCH、CGO、`GOFLAGS`、`targetFeatures`が一致しない場合に拒否します。Cgo有効時は、`CC`・`CXX`・`CGO_CFLAGS`・`CGO_CPPFLAGS`・`CGO_CXXFLAGS`・`CGO_LDFLAGS`・`PKG_CONFIG`の実効値を`cgoToolchain`として併記し、そのキーが欠けた古いEvidenceや実効値が異なる二つのEvidenceも拒否します。`-tags`による意図的なソースの差は許容しますが、指定されたbuild tagsは結果へ明示し、同一ビルド条件の成果物であるとは主張しません。
 
-結果は、片方にしかないパッケージ（`beforeOnly`・`afterOnly`）と、共通パッケージでコンパイル対象Go/Cgoファイル、埋込・補助入力、import辺が変わったもの（`changed`）を区別して返します。パッケージやファイルの列挙順序の差だけでは変更とは判定しません。取り込むJSONは16 MiB以下に制限し、全階層の重複property（Unicode escapeによる同名キーを含む）・深すぎる入れ子・未知のfield・余分なJSONを拒否してからデコードします。そのうえで、**メインモジュール内の全パッケージが指定entryから静的import経由で到達可能であり、参照されたメインモジュール内パッケージが全て含まれること**を構造検査します。これにより、閉包に存在し得ない幽霊パッケージを`beforeOnly`に入れて「除去成功」と誤判定する事態を拒否します。ただし、構造的な整合性と来歴の正しさは別です。**入力JSONの真正性を検証するAuthorityではありません**。作成元のclean checkout／exact HEADと、実際に使ったビルド条件を独立して確認する必要があります。
+結果は、片方にしかないパッケージ（`beforeOnly`・`afterOnly`）と、共通パッケージでコンパイル対象Go/Cgoファイル、埋込・補助入力、import辺が変わったもの（`changed`）を区別して返します。パッケージやファイルの列挙順序の差だけでは変更とは判定しません。取り込むJSONは16 MiB以下に制限し、全階層の重複property（Unicode escapeによる同名キーを含む）・深すぎる入れ子・未知のfield・余分なJSONを拒否してからデコードします。また、Go/Cgoソース・import辺・補助入力の重複、不正な相対パス、サポートしていない補助入力種別も拒否し、列挙順序のみ正規化します。そのうえで、**メインモジュール内の全パッケージが指定entryから静的import経由で到達可能であり、参照されたメインモジュール内パッケージが全て含まれること**を構造検査します。これにより、閉包に存在し得ない幽霊パッケージを`beforeOnly`に入れて「除去成功」と誤判定する事態を拒否します。ただし、構造的な整合性と来歴の正しさは別です。**入力JSONの真正性を検証するAuthorityではありません**。作成元のclean checkout／exact HEADと、実際に使ったビルド条件を独立して確認する必要があります。
 
 一時Gitリポジトリを利用した結合テストには、同一HEAD上の二つの**異なるコンパイル時Go入口**（機能を参照する`cmd/app`と、参照しない`cmd/minimal`）を作り、実際の`go list`から二件のE0を得て`beforeOnly`・`afterOnly`を比較するケースを追加しました。これも現HEADのテストPASSをまだ取得していません。
 
