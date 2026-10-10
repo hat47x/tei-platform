@@ -626,3 +626,86 @@ func TestValidationScopeReviewMultipleReasonsForSameReference(t *testing.T) {
 		t.Fatalf("参照の順番によって未解決理由が変わりました: %+v", reordered)
 	}
 }
+
+func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checkUnresolved := func(t *testing.T, f fixture, wantCount int) {
+		t.Helper()
+		rows := compareValidationScopes(loaded.World, f)
+		if len(rows) != wantCount || validationScopeSourcesNeeded(rows) {
+			t.Fatalf("Step identityの未解決をSource解決の対象にしました: %+v", rows)
+		}
+		for _, row := range rows {
+			if row.Status != "unresolved-context" || row.Reason == "" ||
+				len(row.ApplicationOnly)+len(row.ProcedureOnly) != 0 ||
+				len(row.ReferenceIssues) != 0 {
+				t.Fatalf("一意でないStepから比較差を推論しました: %+v", row)
+			}
+		}
+	}
+
+	t.Run("empty step ID", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for i := range changed.Steps {
+			if changed.Steps[i].ID == "BP-05" {
+				changed.Steps[i].ID = "  "
+			}
+		}
+		checkUnresolved(t, changed, 1)
+	})
+
+	t.Run("duplicate with a non-validation step", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for i := range changed.Steps {
+			if changed.Steps[i].ID == "BP-04" {
+				changed.Steps[i].ID = "BP-05"
+			}
+		}
+		checkUnresolved(t, changed, 1)
+	})
+
+	t.Run("two validation steps with the same ID", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for _, candidate := range changed.Steps {
+			if candidate.ID == "BP-05" {
+				changed.Steps = append(changed.Steps, candidate)
+				break
+			}
+		}
+		checkUnresolved(t, changed, 2)
+	})
+
+	t.Run("distinct validation steps stay comparable", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for _, candidate := range changed.Steps {
+			if candidate.ID == "BP-05" {
+				candidate.ID = "BP-10"
+				changed.Steps = append(changed.Steps, candidate)
+				break
+			}
+		}
+		rows := compareValidationScopes(loaded.World, changed)
+		if len(rows) != 2 || !validationScopeSourcesNeeded(rows) {
+			t.Fatalf("異なるStepまで比較不能にしました: %+v", rows)
+		}
+		for _, row := range rows {
+			if row.Status != "review-needed" ||
+				!reflect.DeepEqual(row.ApplicationOnly, []string{"sales.order_line.line_number_positive"}) {
+				t.Fatalf("Stepごとの既存の比較を壊しました: %+v", rows)
+			}
+		}
+	})
+}
