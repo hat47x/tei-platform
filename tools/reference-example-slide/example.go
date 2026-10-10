@@ -454,11 +454,11 @@ func validateState(c Catalog, state map[string]Record) error {
 				if !ok || !boundedNumber(number.String()) {
 					return fmt.Errorf("%s.%s: expected bounded number", id, field.ID)
 				}
-				value, valid := new(big.Rat).SetString(number.String())
+				rational, valid := new(big.Rat).SetString(number.String())
 				if !valid {
 					return fmt.Errorf("%s.%s: invalid numeric value", id, field.ID)
 				}
-				if field.Type == "integer" && !value.IsInt() {
+				if field.Type == "integer" && !rational.IsInt() {
 					return fmt.Errorf("%s.%s: expected integer", id, field.ID)
 				}
 			case "boolean":
