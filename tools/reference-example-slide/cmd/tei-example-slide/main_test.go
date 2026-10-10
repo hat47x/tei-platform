@@ -14,7 +14,7 @@ func TestSyntheticExampleCreatesThreeSlides(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, file := range []string{
-		"projection.json", "slide-001.svg", "slide-002.svg", "slide-003.svg",
+		"projection.json", "review.json", "slide-001.svg", "slide-002.svg", "slide-003.svg",
 	} {
 		bytes, err := os.ReadFile(filepath.Join(out, file))
 		if err != nil {
@@ -40,5 +40,21 @@ func TestRealWorldDoesNotRewriteStaleCase(t *testing.T) {
 	}
 	if len(files) != 0 {
 		t.Fatalf("stale case produced output files: %d", len(files))
+	}
+}
+
+func TestReviewPacketIncludesAuthoredQuestion(t *testing.T) {
+	out := t.TempDir()
+	input := "../../testdata/partial_inspection.json"
+	if err := run(input, "", false, out); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(out, "review.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "\"authoredQuestions\"") ||
+		!strings.Contains(string(content), "\"modelRevision\"") {
+		t.Fatalf("review packet missing case question/revision: %s", content)
 	}
 }
