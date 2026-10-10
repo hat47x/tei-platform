@@ -2,8 +2,8 @@ package operations
 
 import (
 	"errors"
-	"path/filepath"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
