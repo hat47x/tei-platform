@@ -61,6 +61,15 @@ type AttestationTrustDecision struct {
 	Reason                 string `json:"reason"`
 }
 
+type BuildAttestationVerification struct {
+	AttestationFingerprint          string `json:"attestationFingerprint"`
+	BuildExecutionResultFingerprint string `json:"buildExecutionResultFingerprint"`
+	ArtifactSetFingerprint          string `json:"artifactSetFingerprint"`
+	Issuer                          string `json:"issuer"`
+	SignatureProfile                string `json:"signatureProfile"`
+	Predicate                       string `json:"predicate"`
+}
+
 func (s AttestationSubject) Validate() error {
 	if err := validateFingerprint("attestation artifact set fingerprint", s.ArtifactSetFingerprint); err != nil {
 		return err
@@ -173,21 +182,21 @@ func buildAttestationFingerprint(a BuildAttestation) (string, error) {
 	return fingerprintJSON(normalized)
 }
 
-func verifyBuildAttestationBinding(
+func verifyBuildAttestation(
 	a BuildAttestation,
 	plan BuildExecutionPlan,
 	set ArtifactSet,
-) error {
+) (BuildAttestationVerification, error) {
 	if err := a.Validate(); err != nil {
-		return err
+		return BuildAttestationVerification{}, err
 	}
 	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
 	if err != nil {
-		return err
+		return BuildAttestationVerification{}, err
 	}
 	setFingerprint, err := artifactSetFingerprint(set)
 	if err != nil {
-		return err
+		return BuildAttestationVerification{}, err
 	}
 	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
 		FormatVersion:            buildExecutionResultFormatVersion,
@@ -195,31 +204,51 @@ func verifyBuildAttestationBinding(
 		ArtifactSetFingerprint:   setFingerprint,
 	})
 	if err != nil {
-		return err
+		return BuildAttestationVerification{}, err
 	}
 	if normalizeFingerprint(a.BuildExecutionResultFingerprint) != resultFingerprint {
-		return fmt.Errorf("attestation build execution result fingerprint does not match")
+		return BuildAttestationVerification{}, fmt.Errorf("attestation build execution result fingerprint does not match")
 	}
 	if normalizeFingerprint(a.Subject.ArtifactSetFingerprint) != setFingerprint {
-		return fmt.Errorf("attestation artifact set fingerprint does not match")
+		return BuildAttestationVerification{}, fmt.Errorf("attestation artifact set fingerprint does not match")
 	}
 	if a.Subject.Kind == attestationSubjectArtifactMember {
 		member, ok := artifactMemberByRole(set, a.Subject.Role)
 		if !ok {
-			return fmt.Errorf("attestation member role %s is not present in Artifact Set", a.Subject.Role)
+			return BuildAttestationVerification{}, fmt.Errorf("attestation member role %s is not present in Artifact Set", a.Subject.Role)
 		}
 		if normalizeDigest(member.Digest) != normalizeDigest(a.Subject.ArtifactDigest) {
-			return fmt.Errorf("attestation member digest does not match Artifact Set")
+			return BuildAttestationVerification{}, fmt.Errorf("attestation member digest does not match Artifact Set")
 		}
 	}
 	expectedSignature, err := referenceFakeSignature(a)
 	if err != nil {
-		return err
+		return BuildAttestationVerification{}, err
 	}
 	if normalizeDigest(a.Signature) != normalizeDigest(expectedSignature) {
-		return fmt.Errorf("Reference fake attestation signature does not match immutable payload")
+		return BuildAttestationVerification{}, fmt.Errorf("Reference fake attestation signature does not match immutable payload")
 	}
-	return nil
+	attestationFingerprint, err := buildAttestationFingerprint(a)
+	if err != nil {
+		return BuildAttestationVerification{}, err
+	}
+	return BuildAttestationVerification{
+		AttestationFingerprint:          attestationFingerprint,
+		BuildExecutionResultFingerprint: resultFingerprint,
+		ArtifactSetFingerprint:          setFingerprint,
+		Issuer:                          a.Issuer,
+		SignatureProfile:                a.SignatureProfile,
+		Predicate:                       a.Predicate,
+	}, nil
+}
+
+func verifyBuildAttestationBinding(
+	a BuildAttestation,
+	plan BuildExecutionPlan,
+	set ArtifactSet,
+) error {
+	_, err := verifyBuildAttestation(a, plan, set)
+	return err
 }
 
 func (p AttestationTrustPolicy) Validate() error {
@@ -263,11 +292,19 @@ func attestationTrustPolicyFingerprint(policy AttestationTrustPolicy) (string, e
 
 func evaluateAttestationTrust(
 	a BuildAttestation,
+	verification BuildAttestationVerification,
 	policy AttestationTrustPolicy,
 ) (AttestationTrustDecision, error) {
 	attestationFingerprint, err := buildAttestationFingerprint(a)
 	if err != nil {
 		return AttestationTrustDecision{}, err
+	}
+	if verification.AttestationFingerprint != attestationFingerprint ||
+		normalizeFingerprint(verification.BuildExecutionResultFingerprint) != normalizeFingerprint(a.BuildExecutionResultFingerprint) ||
+		verification.Issuer != a.Issuer ||
+		verification.SignatureProfile != a.SignatureProfile ||
+		verification.Predicate != a.Predicate {
+		return AttestationTrustDecision{}, fmt.Errorf("attestation trust evaluation requires matching verified attestation evidence")
 	}
 	policyFingerprint, err := attestationTrustPolicyFingerprint(policy)
 	if err != nil {
