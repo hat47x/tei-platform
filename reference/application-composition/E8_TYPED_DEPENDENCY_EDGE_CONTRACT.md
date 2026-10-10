@@ -62,3 +62,9 @@ A plain `Complete bool` is not independently auditable. Before implementation, r
 The existing `sourceindex.Index.Validate(read)` checks artifact hashes and ranges against bytes supplied to its callback, but this alone does not establish that the `ir.World` parser consumed those same bytes. Keep the source-byte identity requirement explicit. The existing `sourceindex.Subject` is an alias of `internal/subject.Subject`, a path-independent `(Kind, ID)` pair; scoped names must be resolved before constructing that pair.
 
 No runtime API is changed by this review. The concrete semantic validator entry points have not yet been located or executed, so the proposed adapter remains conditional.
+
+## Existing E5 resolver audit (2026-10-10)
+
+The reference `e5-world-index.go` already traverses selected direct Pattern Data, Relation, Capability and Query references, database aliases and required contracts, ContractQuery bindings, and validation references. It also constructs lookup/count maps from `ir.World` itself (`patternTargets`, `queryOwners`, `contracts`, `aliasTargets`, `attributeDefinitions`). Therefore E8 must **not** assume E5 only observes Application-level references, nor should it copy these maps into a second implementation. E5 remains a bounded diagnostic; the maps are local checks, not proof that the authoritative semantic validators were invoked. Refactor or adapt only after locating those validators and establishing equivalence tests for existing E5 outputs.
+
+Recommended first regression fixture: one Application Pattern with a resolved Capability whose input type changes while the Pattern and its direct Source remain identical. Verify the new closure reports a changed reachable Type definition, whereas the E5 bounded observation remains explicitly limited. A second fixture should prove two distinct Application-local datasource aliases cannot be conflated. These are proposed tests, not executed tests.
