@@ -185,6 +185,30 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// Writing CLI output into a loaded Workspace's authoritative source or
+	// decision/confirmation ledger is unsafe even when the Workspace is not
+	// the historical Reference baseline. In particular, accept evaluates
+	// post-conformance before emitting -derived-out, and an output clobber
+	// after that check would invalidate a successful acceptance decision.
+	if *workspacePath != "" {
+		for _, output := range []struct {
+			flag string
+			path string
+		}{
+			{flag: "-out", path: *outPath},
+			{flag: "-derived-out", path: *derivedOut},
+		} {
+			if output.path == "" || (output.flag == "-derived-out" && command != "accept") {
+				continue
+			}
+			blocked, err := outputTouchesWorkspaceManagedSource(*workspacePath, output.path)
+			if err != nil || blocked {
+				fmt.Fprintln(stderr, command+"の"+output.flag+"はWorkspaceの管理対象Source・Decision・Confirmation記録を上書きできません:", err)
+				return 2
+			}
+		}
+	}
+
 	emit := func(value any) int {
 		encoded, err := encodeJSON(value)
 		if err != nil {
@@ -580,4 +604,64 @@ func resolveOutputDestination(path string) (string, error) {
 // preferable to allowing a baseline write on a case-insensitive mount.
 func referencePathText(path string) string {
 	return strings.ToLower(filepath.ToSlash(path))
+}
+
+
+// outputTouchesWorkspaceManagedSource prevents output flags from damaging
+// authoritative source and Decision/Confirmation records in *any* Workspace.
+// This rule is independent of the explicit historical baseline override.
+// Outputs outside the Workspace, or into ordinary untracked output files,
+// remain allowed. The safety check is not atomic with concurrent file renames.
+func outputTouchesWorkspaceManagedSource(root, output string) (bool, error) {
+	if root == "" || output == "" {
+		return false, nil
+	}
+	rootResolved, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		// A nonexistent Workspace has no managed files to overwrite; normal
+		// command validation will reject it if a Workspace is required.
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return true, err
+	}
+	rootAbs, err := filepath.Abs(rootResolved)
+	if err != nil {
+		return true, err
+	}
+	outputAbs, err := resolveOutputDestination(output)
+	if err != nil {
+		return true, err
+	}
+	rootText := strings.TrimSuffix(referencePathText(rootAbs), "/")
+	outputText := referencePathText(outputAbs)
+	if outputText != rootText && !strings.HasPrefix(outputText, rootText+"/") {
+		return false, nil
+	}
+	relative := strings.TrimPrefix(outputText, rootText+"/")
+	if outputText == rootText ||
+		relative == "tei.workspace.yaml" ||
+		relative == ".tei/plugin-lock.json" ||
+		relative == ".tei/decisions" || strings.HasPrefix(relative, ".tei/decisions/") ||
+		relative == ".tei/confirmations" || strings.HasPrefix(relative, ".tei/confirmations/") {
+		return true, nil
+	}
+	// The Source Index is the authoritative inventory, not a hard-coded
+	// list of extensions. Keep JSON/YAML/plugin source and .tei files equally
+	// protected, while permitting ordinary scratch output files.
+	snap, err := takeSnapshot(root)
+	if err != nil {
+		return true, err
+	}
+	for _, artifact := range snap.index.Artifacts {
+		filePath := filepath.Join(rootAbs, filepath.FromSlash(artifact.Path))
+		fileResolved, err := resolveOutputDestination(filePath)
+		if err != nil {
+			return true, err
+		}
+		if referencePathText(fileResolved) == outputText {
+			return true, nil
+		}
+	}
+	return false, nil
 }
