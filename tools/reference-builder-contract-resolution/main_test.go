@@ -543,3 +543,39 @@ func TestResolvedBuildPlanDoesNotImplicitlyChangeAfterCatalogExpansion(t *testin
 		t.Fatalf("catalog expansion changed exact BuildPlan Builder: %#v != %#v", plan.Builder, replayedPlan.Builder)
 	}
 }
+
+
+func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.T) {
+	contract, providers, evidence, wiring := referenceFixture()
+	provider := providers[0]
+	provider.Targets = append(append([]string(nil), provider.Targets...), "host/unverified")
+
+	intent := referenceIntent(contract)
+	intent.Target = "host/unverified"
+	catalog := BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: []BuilderProvider{provider},
+		Evidence:  []BuilderConformanceEvidence{evidence[0]},
+	}
+
+	if _, err := resolveBuilder(intent, catalog, &wiring); err == nil ||
+		!strings.Contains(err.Error(), "Conformance Evidence") {
+		t.Fatalf("declared but unverified Target was accepted: %v", err)
+	}
+
+	targetEvidence := evidence[0]
+	targetEvidence.Target = "host/unverified"
+	targetEvidence.EvidenceFingerprint = strings.Repeat("e", 64)
+	catalog.Evidence = append(catalog.Evidence, targetEvidence)
+
+	resolution, err := resolveBuilder(intent, catalog, &wiring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolution.Provider.ProviderID != provider.ProviderID {
+		t.Fatalf("verified Target resolved wrong provider: %#v", resolution.Provider)
+	}
+	if resolution.EvidenceFingerprint != targetEvidence.EvidenceFingerprint {
+		t.Fatalf("selected Target used wrong Conformance Evidence: %s", resolution.EvidenceFingerprint)
+	}
+}
