@@ -43,7 +43,7 @@ func TestAnswerHandoffIsNotConfirmationOrSemanticPatch(t *testing.T) {
 		t.Fatalf("unbound handoff fingerprint: %+v",h)
 	}
 	route:=h.Answers[0].ConfirmationRoute
-	if route==nil || route.IdentityKind!="example-review" || route.IdentitySubject!=a.Answers[0].Question.ID ||
+	if route==nil || route.IdentityKind!="example-review" || !strings.HasPrefix(route.IdentitySubject,"example-") ||
 		route.BasisKind!="semantic-relation" || route.BasisID!="child.parent" {
 		t.Fatalf("unable to route through existing Confirmation basis: %+v",route)
 	}
@@ -211,5 +211,52 @@ func TestChangedCatalogStalesAnswersEvenIfRevisionStringIsUnchanged(t *testing.T
 	}
 	if _,err:=BindAnswers(in,a);err==nil {
 		t.Fatal("answer for old catalog was accepted")
+	}
+}
+
+func TestConfirmationIdentityChangesWhenCasePayloadChanges(t *testing.T) {
+	in, a := reviewAnswerFixture(t)
+	before, err := BindAnswers(in, a)
+	if err != nil { t.Fatal(err) }
+	// Keep the same issue/relation IDs and semantic basis. Only the example
+	// values change, which existing Confirmation cannot observe by itself.
+	in.Example.Base[0].Values["tenant"] = json.RawMessage("99")
+	in.Example.Base[1].Values["tenant_ref"] = json.RawMessage("99")
+	review, err := Review(in)
+	if err != nil { t.Fatal(err) }
+	if review.Issues[0].ID != a.Answers[0].Question.ID {
+		t.Fatal("negative control no longer keeps the same issue identity")
+	}
+	a.ReviewFingerprint = review.Fingerprint
+	after, err := BindAnswers(in, a)
+	if err != nil { t.Fatal(err) }
+	old := before.Answers[0].ConfirmationRoute
+	newRoute := after.Answers[0].ConfirmationRoute
+	if old == nil || newRoute == nil || old.BasisID != newRoute.BasisID {
+		t.Fatal("changed canonical basis; the test requires an unchanged relation")
+	}
+	if old.IdentitySubject == newRoute.IdentitySubject {
+		t.Fatal("old confirmation would suppress review for changed example data")
+	}
+}
+
+func TestConfirmationIdentityStableAcrossPresentationReorder(t *testing.T) {
+	in, a := reviewAnswerFixture(t)
+	in.Presentation.Frames = []Frame{{ID:"last",Stage:"base"},{ID:"first",Stage:"base"}}
+	review, err := Review(in)
+	if err != nil { t.Fatal(err) }
+	a.ReviewFingerprint = review.Fingerprint
+	first, err := BindAnswers(in, a)
+	if err != nil { t.Fatal(err) }
+	in.Presentation.Frames[0], in.Presentation.Frames[1] =
+		in.Presentation.Frames[1], in.Presentation.Frames[0]
+	again, err := Review(in)
+	if err != nil { t.Fatal(err) }
+	a.ReviewFingerprint = again.Fingerprint
+	second, err := BindAnswers(in, a)
+	if err != nil { t.Fatal(err) }
+	if first.Answers[0].ConfirmationRoute.IdentitySubject !=
+		second.Answers[0].ConfirmationRoute.IdentitySubject {
+		t.Fatal("presentation reordering needlessly invalidated confirmation identity")
 	}
 }
