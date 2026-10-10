@@ -12,10 +12,10 @@ import (
 // TraceOptions selects only direct declared references. There is no inferred
 // transitive business impact or implicit wildcard scope.
 type TraceOptions struct {
-	Direction string `json:"direction"` // outgoing, incoming, both
-	Mode      string `json:"mode"`      // summary, full
-	Offset    int    `json:"offset,omitempty"`
-	Limit     int    `json:"limit,omitempty"`
+	Direction           string `json:"direction"` // outgoing, incoming, both
+	Mode                string `json:"mode"`      // summary, full
+	Offset              int    `json:"offset,omitempty"`
+	Limit               int    `json:"limit,omitempty"`
 	ExpectedFingerprint string `json:"expectedFingerprint,omitempty"`
 }
 
@@ -40,18 +40,18 @@ type TraceRow struct {
 // returns counts. "full" has no implicit truncation; a supplied positive Limit
 // enables explicit paging through NextOffset.
 type TraceResult struct {
-	SchemaVersion string      `json:"schemaVersion"`
-	SnapshotFingerprint string `json:"snapshotFingerprint"`
-	RuleFingerprint string `json:"ruleFingerprint"`
-	Subject       Key         `json:"subject"`
-	Direction     string      `json:"direction"`
-	Mode          string      `json:"mode"`
-	Authority     string      `json:"authority"`
-	Total         int         `json:"total"`
-	Unresolved    int         `json:"unresolved"`
-	Offset        int         `json:"offset,omitempty"`
-	Rows          []TraceRow  `json:"rows,omitempty"`
-	NextOffset    *int        `json:"nextOffset,omitempty"`
+	SchemaVersion       string     `json:"schemaVersion"`
+	SnapshotFingerprint string     `json:"snapshotFingerprint"`
+	RuleFingerprint     string     `json:"ruleFingerprint"`
+	Subject             Key        `json:"subject"`
+	Direction           string     `json:"direction"`
+	Mode                string     `json:"mode"`
+	Authority           string     `json:"authority"`
+	Total               int        `json:"total"`
+	Unresolved          int        `json:"unresolved"`
+	Offset              int        `json:"offset,omitempty"`
+	Rows                []TraceRow `json:"rows,omitempty"`
+	NextOffset          *int       `json:"nextOffset,omitempty"`
 }
 
 // TraceDirect selects and validates one-hop edges from the existing typed
