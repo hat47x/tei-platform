@@ -234,4 +234,41 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 	if restored := readWorld(); !bytes.Equal(restored["semantics"], after["semantics"]) {
 		t.Fatal("removing the experimental relation did not restore canonical meaning")
 	}
+
+	// Declared Action types must resolve before the Action can be used for
+	// application derivation; validation does not create an executable binding.
+	badAction := modified + `
+capability intake.request.submit {
+    input request intake.unknown_request
+    output intake.unknown_result
+}
+`
+	if err := os.WriteFile(srcPath, []byte(badAction), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	actionDiagnostic := run(1, "validate", "-workspace", workspaceRoot)
+	for _, code := range []string{
+		"UNKNOWN_SEMANTIC_CAPABILITY_INPUT",
+		"UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT",
+	} {
+		if !strings.Contains(actionDiagnostic, code) {
+			t.Fatalf("bad Action lacks %s: %q", code, actionDiagnostic)
+		}
+	}
+	if !strings.Contains(actionDiagnostic, source+":") {
+		t.Fatalf("bad Action types lost their authoring source: %q", actionDiagnostic)
+	}
+	repairedAction := strings.ReplaceAll(badAction, "intake.unknown_request", "intake.request")
+	repairedAction = strings.ReplaceAll(repairedAction, "intake.unknown_result", "intake.request")
+	if err := os.WriteFile(srcPath, []byte(repairedAction), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
+	if result := readWorld(); !bytes.Contains(result["semantics"], []byte("intake.request.submit")) {
+		t.Fatal("the corrected semantic Action is absent from Canonical meaning")
+	}
+	if err := os.WriteFile(srcPath, []byte(modified), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
 }
