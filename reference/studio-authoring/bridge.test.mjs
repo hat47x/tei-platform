@@ -140,6 +140,44 @@ test("dangling Function relation stays unresolved rather than becoming absent", 
   assert.equal(selected.relation, null);
 });
 
+test("the existing Source Index supplies a precise definition locator without changing identity", () => {
+  const source = {
+    artifacts: [{ path: "semantic/sales/order.tei",
+      fingerprint: "sha256:" + "a".repeat(64) }],
+    references: [{
+      subject: { kind: "semantic-relation", id: "sales.order.lines" },
+      artifactPath: "semantic/sales/order.tei",
+      role: "definition",
+      range: {
+        start: { offset: 120, line: 7, column: 14 },
+        end: { offset: 125, line: 7, column: 19 }
+      }
+    }]
+  };
+  const p = projectWorld(fixture(), revision, "relation:sales.order.lines", { sourceIndex: source });
+  assert.equal(p.sourceNavigation.status, "source-index-backed");
+  assert.equal(p.sourceNavigation.subject.id, "sales.order.lines");
+  assert.equal(p.sourceNavigation.subject.kind, "semantic-relation");
+  assert.equal(p.sourceNavigation.artifactPath, "semantic/sales/order.tei");
+  assert.equal(p.sourceNavigation.range.start.line, 7);
+
+  assert.equal(projectWorld(fixture(), revision, "data:sales.order",
+    { sourceIndex: source }).sourceNavigation.status, "unresolved");
+  assert.throws(() => projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex: { artifacts: [], references: {} } }), /INVALID_SOURCE_INDEX/);
+  assert.throws(() => projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex: { ...source, references: [...source.references, source.references[0]] } }),
+    /AMBIGUOUS_SOURCE_DEFINITION/);
+  assert.throws(() => projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex: { ...source, artifacts: [{ ...source.artifacts[0],
+      path: "../escape" }] } }), /INVALID_OR_DUPLICATE_SOURCE_ARTIFACT/);
+  assert.throws(() => projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex: { ...source, references: [{
+      ...source.references[0], range: { start: { offset: -1, line: 0, column: 0 },
+        end: { offset: 1, line: 1, column: 2 } }
+    }] } }), /INVALID_SOURCE_ANCHOR/);
+});
+
 test("optional #1125 Business reference joins exact Pattern ID without becoming accepted", () => {
   const world = fixture();
   const dfd = {
