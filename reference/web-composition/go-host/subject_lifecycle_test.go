@@ -21,20 +21,20 @@ func TestActiveLegacySubjectLinksRequireCurrentAccountEligibility(t *testing.T) 
 	origin := ExternalSubject{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "oidc-user"}
 	link := SubjectLink{PrincipalID: "employee-1", SubjectID: "subject-order-editor"}
 	valid := legacyauth.User{
-		SubjectID: link.SubjectID,
-		ValidFrom: now.Add(-time.Hour),
+		SubjectID:  link.SubjectID,
+		ValidFrom:  now.Add(-time.Hour),
 		ValidUntil: now.Add(time.Hour),
 	}
 	for _, tc := range []struct {
-		name string
-		user legacyauth.User
-		found bool
-		storeErr error
-		linkFound bool
-		linkErr error
-		link SubjectLink
-		wantFound bool
-		wantError bool
+		name           string
+		user           legacyauth.User
+		found          bool
+		storeErr       error
+		linkFound      bool
+		linkErr        error
+		link           SubjectLink
+		wantFound      bool
+		wantError      bool
 		wantStoreCalls int
 	}{
 		{name: "active user", user: valid, found: true, linkFound: true, link: link, wantFound: true, wantStoreCalls: 1},
@@ -96,7 +96,7 @@ func TestActiveLegacySubjectLinksRequiresTrustedDependencies(t *testing.T) {
 	for _, args := range []struct {
 		links SubjectLinkLookup
 		store legacyauthorization.SubjectStore
-		now func() time.Time
+		now   func() time.Time
 	}{
 		{store: store, now: clock},
 		{links: lookup, now: clock},
