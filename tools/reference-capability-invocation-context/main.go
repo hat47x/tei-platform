@@ -107,7 +107,7 @@ func invokeWithExecutionContext(
 	if err != nil {
 		return InvocationContextExecution{}, err
 	}
-	bindings, err := normalizeHostBindings(host.Bindings)
+	bindings, err := normalizeRequiredHostBindings(host.Bindings, required)
 	if err != nil {
 		return InvocationContextExecution{}, err
 	}
@@ -250,20 +250,28 @@ func normalizeContextSlotRequirements(
 	return out, nil
 }
 
-func normalizeHostBindings(
+func normalizeRequiredHostBindings(
 	values []ContextSlotBinding,
+	required []ContextSlotRequirement,
 ) (map[string]ContextSlotBinding, error) {
-	out := make(map[string]ContextSlotBinding, len(values))
+	requiredIDs := make(map[string]struct{}, len(required))
+	for _, requirement := range required {
+		requiredIDs[requirement.ContractID] = struct{}{}
+	}
+
+	out := make(map[string]ContextSlotBinding, len(required))
 	for i, value := range values {
 		value.ContractID = strings.TrimSpace(value.ContractID)
+		if _, needed := requiredIDs[value.ContractID]; !needed {
+			continue
+		}
 		value.ContractVersion = strings.TrimSpace(value.ContractVersion)
 		value.BindingReceiptRef = strings.TrimSpace(value.BindingReceiptRef)
-		if value.ContractID == "" ||
-			value.ContractVersion == "" ||
+		if value.ContractVersion == "" ||
 			value.BindingReceiptRef == "" ||
 			len(value.Value) == 0 {
 			return nil, fmt.Errorf(
-				"execution context binding[%d] requires contract, version, receipt, and value",
+				"required execution context binding[%d] requires version, receipt, and value",
 				i,
 			)
 		}
