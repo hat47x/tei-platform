@@ -88,3 +88,32 @@ go vet ./internal/modelref
 5. Publisher・Readerが `Rule` を同じversion / fingerprintで評価する方法を#1019/#951へ返し、Coreに固定種別を追加しない。
 
 この段階では **#1120全体の完了、Accepted model連携、UI双方向編集、DB migration、actual Runtime authority** を主張しない。
+
+## R1 — 実装圧力試験とSource Index再接続（2026-10-10）
+
+初期の `Diff / Impact` のうち、次の誤判定を回帰テストによって修正した。
+
+1. **派生edgeの根拠更新を無視しない**: 同じ `from/to/relation` でも、source token、artifact fingerprint、derivation rule fingerprint等の証拠が変わった場合、`reference-evidence-changed` を返す。単なるEvidence集合の順序変更は差分にしない。ただしrule自体の一般的な変更・semantic applicabilityの再証明にはまだ対応しない。
+2. **表示名・物理名による波及を拡大しすぎない**: `displayAffects/physicalAffects` の要件を**すべての伝播経路**で評価する。一段目の表示依存が存在しても、次段が通常の `triggers/reads` だけであれば、その先を表示変更の影響とは断定しない。
+3. **曖昧・未登録の参照を経由して影響を発明しない**: 有効な型付きedgeだけを逆隣接索引に入れる。欠落・version不一致・scope曖昧・未知relationからconsumerを生成しない。参照の誤り自体はまず `Validate` の診断で明示する。局所的な大規模Graphでも、毎edgeを毎回全Nodeから探索する設計を避ける。
+
+### read-only Source Navigation bridge
+
+`internal/modelref/sourcebridge` を新設し、既存の `sourceindex.Index` からscope付き `modelref.Key` へ、検証済みArtifact fingerprintとRangeを持つ**読み取り専用のNavigation**を返す。
+
+- 呼び出し元のreaderに対し、既存の `sourceindex.Index.Validate` でファイルdigest・位置メタデータの整合を確認する。Source Indexの実装・既存Definitionの識別子を変更しない。
+- `Source Index` にscopeフィールドが無い現段階では、異なるscopeの同一 `kind/id` を任意の一方のSourceに接続しない。`subject-scope-ambiguous` を返す。これは将来のscope-aware Indexの必要性を示す具体的な負例である。
+- indexに `RoleDerived` だけがある場合は `derived-only-source` として止める。単なるLocator検出を「編集可能な正本」やShared Acceptance済みの意味に読み替えない。
+- Snapshotのdigestが古い、source位置が破損した、元のDefinition/Authoring参照が見つからない場合は `unresolved`。欠落した候補を自動生成しない。
+- 返す `located` は**位置の観測結果**であって、特定snapshotが正式なAccepted Sourceであるとの認定ではない。Accept/reloadの成否・Concurrent Edit保護・Source更新は引き続き#267/#1124の既存境界で扱う。
+
+このBridgeは `modelref -> sourceindex` の逆依存を作らない独立したconsumer Packageであり、`ir.World` / `index.Build` / DSL / Runtimeを改修しない。#1124側のAuthoring Projectionは、同一revisionのWorld/Source Indexを得た場合に限り、ここからSource locatorを候補表示できる。
+
+追加のfocused suite:
+
+```sh
+go test -race -count=1 ./internal/modelref/...
+go vet ./internal/modelref/...
+```
+
+**実行範囲:** Go 1.23.2の隔離ミラーで `modelref` と `sourcebridge` をテストした。後者の隔離環境では `sourceindex` の最小同型shimを使用したため、trusted full checkoutでの実Package間試験と `tools/repository-health-check.sh` の資格確認は依然として未実施である。合格証跡を混同しない。現在のStageはReference Contract + source navigation adapter candidateであり、Accepted Worldの三視点実データ接続やStudio E2Eが成立したわけではない。
