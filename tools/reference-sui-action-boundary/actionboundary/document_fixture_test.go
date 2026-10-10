@@ -17,7 +17,7 @@ const documentFixture = `{"version":1,"id":"doc","createdAt":"2026-10-09T00:00:0
 
 func documentIntent(revision string, payload any) Intent {
 	return Intent{
-		ApplicationID: "sui", DocumentID: "doc", ActionID: "sui.move",
+		ApplicationID: "sui", ResourceID: "doc", ActionID: "sui.move",
 		ExpectedRevision: revision, Payload: payload,
 	}
 }
@@ -117,7 +117,7 @@ func TestJSONDocumentStoreRequiresDocumentIdentity(t *testing.T) {
 	s := NewScopedJSONDocumentStore("doc", "r1", []byte(documentFixture))
 	for _, id := range []string{"", "other"} {
 		in := documentIntent("r1", MovePayload{CardID: "a", X: 1, Y: 2})
-		in.DocumentID = id
+		in.ResourceID = id
 		_, err := s.Commit(context.Background(), in)
 		if !errors.Is(err, ErrDenied) {
 			t.Fatalf("document %q: expected denied, got %v", id, err)
