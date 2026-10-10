@@ -3,7 +3,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"flag"
 	"fmt"
 	"os"
@@ -18,14 +20,21 @@ func main() {
 	worldFile := flag.String("world", "", "optional normalized TEI World JSON")
 	catalogOnly := flag.Bool("catalog", false, "print the read-only Catalog derived from -world")
 	outDir := flag.String("out", "", "optional destination for slides as SVG and projection.json")
+	answerFile := flag.String("answers", "", "optional answer JSON bound to exact Review fingerprint; requires -out")
 	flag.Parse()
-	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir); err != nil {
+	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(inputPath, worldPath string, catalogOnly bool, outputPath string) error {
+func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answerFiles ...string) error {
+	if len(answerFiles) > 1 { return fmt.Errorf("only one answer input may be supplied") }
+	answerFile := ""
+	if len(answerFiles) == 1 { answerFile = answerFiles[0] }
+	if answerFile != "" && (catalogOnly || inputPath == "" || outputPath == "") {
+		return fmt.Errorf("-answers requires -input and -out, and excludes -catalog")
+	}
 	var input example.Input
 	if catalogOnly && (worldPath == "" || inputPath != "" || outputPath != "") {
 		return fmt.Errorf("-catalog requires -world and excludes -input/-out")
@@ -63,6 +72,18 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string) error
 	if err != nil {
 		return fmt.Errorf("derive review: %w", err)
 	}
+	var answerHandoff *example.AnswerHandoff
+	if answerFile != "" {
+		var proposed example.AnswerInput
+		if err := readStrictJSON(answerFile, &proposed); err != nil {
+			return fmt.Errorf("decode answer candidate: %w", err)
+		}
+		bound, err := example.BindAnswers(input, proposed)
+		if err != nil {
+			return fmt.Errorf("bind review answers: %w", err)
+		}
+		answerHandoff = &bound
+	}
 	if outputPath == "" {
 		return printJSON(projection)
 	}
@@ -87,6 +108,14 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string) error
 	if err := os.WriteFile(filepath.Join(outputPath, "review.json"), reviewData, 0600); err != nil {
 		return err
 	}
+	if answerHandoff != nil {
+		answerJSON, err := json.MarshalIndent(answerHandoff, "", "  ")
+		if err != nil { return err }
+		answerJSON = append(answerJSON, '\n')
+		if err := os.WriteFile(filepath.Join(outputPath, "answer-handoff.json"), answerJSON, 0600); err != nil {
+			return err
+		}
+	}
 	for i, slide := range projection.Slides {
 		file := filepath.Join(outputPath, fmt.Sprintf("slide-%03d.svg", i+1))
 		if err := os.WriteFile(file, []byte(example.SVG(slide)), 0600); err != nil {
@@ -108,4 +137,21 @@ func printJSON(value any) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+func readStrictJSON(path string, value any) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(value); err != nil {
+		return err
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		return fmt.Errorf("JSON has trailing content")
+	}
+	return nil
 }
