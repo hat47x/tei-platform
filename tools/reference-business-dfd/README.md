@@ -20,8 +20,24 @@ DOT の描画には任意で Graphviz を使えます。ツール自体は Graph
 | --- | --- | --- |
 | `order-entry-business-procedure.json` | 非 Canonical な Reference authoring fixture | `procedure.id` と `steps[].id` を exact identity として参照。actor / trigger は候補のまま保持 |
 | `order-entry-procedure-reference-set.json` | 独立した Handoff Reference | `from` / `to` / `condition` のみ投影。手順の自動実行は含意しない |
-| `order-entry-dfd-review-proposal.json` | **未受理の図レビュー案** | human / event / schedule の契機候補、順序・分岐・例外の矢印。必ず `authority=proposal` |
+| `order-entry-dfd-review-proposal.json` | **未受理の図レビュー案** | human / event / schedule の契機候補、順序・分岐・例外、業務 Role・責任割当て、外部主体・概念 Store・情報の授受。いずれも `authority=proposal` |
 | `reference/workspace` | 現行 Workspace の正規化 Application Pattern | Step の明示 Pattern ID だけを exact resolution し、Data / Relation / Capability を派生表示 |
+
+## 一階層DFDとして区別する情報
+
+従来の Step 間 `flows` は**業務の順序・分岐・例外候補**であり、情報の授受を表すDFDそのものではありません。今回、これとは独立して `information` Projectionを追加しました。
+
+| 要素 | 用途 | 意味上の制限 |
+| --- | --- | --- |
+| `steps` | 既存 Procedure Stepを一階層の作業・処理ノードとして表示 | Stepの再分解・自動Workflow化はしない |
+| `information.roles` / `responsibilities` | 営業担当や承認担当の業務上の役割とStepへの責任候補 | 認証主体・Authorization Role・RBACと同一視しない |
+| `information.externalParties` | 選択した業務境界の外にいる相手方 | 外部API接続や通信実績の証拠ではない |
+| `information.stores` | 情報の保管先という概念的な候補 | `semanticData`のexact ID照合はStoreの採用・物理DBの確定ではない |
+| `information.informationFlows` | 送り手・受け手・内容（`payload`）が明示された**情報の授受** | 実際に送受信された、業務が完了した、という主張にはならない |
+
+`informationFlows[].from/to` は `kind = step | party | store` と `id` の組で参照します。少なくとも一端がStepでなければ不整合として扱い、外部PartyからStoreへの直接書込み等を暗黙に認めません。内容不明、未解決の参照先、重複IDはSource位置とともに診断します。情報の授受は制御の矢印から推論しません。表示上は全て未受理であることが分かるようDOT上に`proposal`を付けています。
+
+このCaseの`businessRoles`や`externalParties`等は独立の**設計レビュー候補**です。採用済みの業務手順Sourceへ逆書きせず、他プロジェクトへ一般化しません。JSONの`authority=derived-read-only`はProjection自身の読み取り属性です。候補要素自体の権威はそれぞれ`proposal`です。
 
 **「手順ファイル内の Step の並び」と「業務の実際の遷移」は別物です。** 遷移の Source が無いとき、配列順から矢印を自動生成しません。提案経路は DOT では破線として表示します。3種類の契機も runtime trigger / schedule に束縛しておらず、いずれも `runtimeBinding=unbound` です。
 
@@ -31,12 +47,12 @@ JSON の `source.file` と `source.pointer` は当該 Source の位置を示し�
 
 ## 実証と残る作業
 
-最初の縦切りで確かめるのは #1119 の **V02 / N07**（Function のない manual / external Step が消えないこと）と、図レビュー候補を受理済み意味へ昇格しないことです。unit / integration test はそれらに加え、3種の trigger 候補、例外、Handoff、Source locator、無効参照を検査します。
+最初の縦切りで確かめるのは #1119 の **V02 / N07**（Function のない manual / external Step が消えないこと）と、図レビュー候補を受理済み意味へ昇格しないことです。unit / integration test はそれらに加え、3種の trigger 候補、例外、Handoff、Source locator、無効参照に加え、業務Role・外部Party・Store・情報Flowの正負例を検査するテストを追加しています。
 
 現時点で以下は**未実証**です。
 
 - Authoritative な Business Procedure の編集と Acceptance / 再読込（#1124）
-- Actor / 業務 Role の複数責任割当て、具体的な手作業・電話確認、外部依存の設計編集
+- 業務Role・情報の授受・手作業の提案を受理済み正本へ反映する編集操作（提案データのread-only投影は実装候補として存在）
 - 分岐・契機候補の業務上の確定、runtime trigger / schedule への Binding（#1121）
 - Function / Data / Procedure を往復できる Studio UI と source-aware cross-view review（#1120 / #1132）
 - 別資料の原文互換、旧製品挙動の再現、actual Target / Provider Evidence
