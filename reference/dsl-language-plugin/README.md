@@ -110,6 +110,12 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 正常なNamespace横断経路、2段目の型不一致、後段でのRelation ID衝突を試験対象としている。局所Go 1.23.2モジュールで、GitHub Blob SHAが一致する`relation_keys_reference.go`・`relation_path_reference.go`・`relation_expansion_candidate.go`および既存Canonicalキー検証器を用い、対応するテストで`go test`・`go test -race`・`go vet`をPASSした。ただし周辺型定義・World検証などは試験用stubであり、**PR全体の健全性確認は未実施**である。
 
+### 多段RelationのOperator pin照合（2026-10-10）
+
+`pinned_relation_path.go`に`InspectPinnedRelationPath`を追加した。各Hopを単なる`rows/<target>`へ畳み込まず、`RelationID`、結合キー、Cardinality、Operator pinを順序付きで残す。1:Nが途中にあれば終端まで`many`を維持するが、NULL許容性・存在保証・外部結合の振る舞いは推定しない。各Hopで`InspectPinnedRelationExpansion`と厳密な契約照合を再利用し、失敗したHop番号と既存Semantic Key検証器の診断を失わずに拒否する。失敗時には途中までのCandidateを返さない。
+
+`pinned_relation_path_test.go`にはNamespace横断の2段経路、キーのスナップショット保持、未固定契約、入出力型の不整合、副作用昇格、後段Relationの型不一致を加えた。これは**未受理の参照候補**に限り、Binding・Execution・権限付与・Semantic Lock照合は行わない。各HopでCanonical Key検証器を再実行するため、長い経路の効率化は今後の課題とする。現時点でこの追加テストのGo実行とPR exact-head全体の健全性確認は未実施。
+
 ### まだ検証できないこと
 
 - 本物のAccepted Semantic Setからのpin取得、Source Index、実Pluginの実現方式、実行権限
