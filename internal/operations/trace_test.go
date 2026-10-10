@@ -17,10 +17,14 @@ func TestTraceSubjectSourcesMatchesExistingIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	subject := sourceindex.Subject{Kind: "query", ID: "order_entry.recent_orders"}
 	got, err := TraceSubjectSources(root, subject)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	expected := idx.ReferencesFor(subject)
 	if len(got.References) != len(expected) || len(expected) == 0 {
 		t.Fatalf("trace references=%d expected=%d", len(got.References), len(expected))
@@ -58,9 +62,13 @@ func TestTraceSubjectSourcesReadOnly(t *testing.T) {
 	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: trace\nsources:\n  - semantic\n")
 	writeWorkspaceFixture(t, root, "semantic/a.tei", "namespace sales\n")
 	_, err := TraceSubjectSources(root, sourceindex.Subject{Kind: "semantic", ID: "sales"})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	entries, err := os.ReadDir(root)
-	if err != nil || len(entries) != 2 { t.Fatalf("workspace changed: %v %v", entries, err) }
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("workspace changed: %v %v", entries, err)
+	}
 }
 
 func TestTraceSubjectSourcesFromIndexFiltersExactIdentity(t *testing.T) {
@@ -79,7 +87,9 @@ func TestTraceSubjectSourcesFromIndexFiltersExactIdentity(t *testing.T) {
 		},
 	}
 	got, err := TraceSubjectSourcesFromIndex(idx, selected)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.Subject != selected || len(got.References) != 2 || len(got.Artifacts) != 1 {
 		t.Fatalf("subject sources incorrectly projected: %+v", got)
 	}
@@ -87,10 +97,14 @@ func TestTraceSubjectSourcesFromIndexFiltersExactIdentity(t *testing.T) {
 		t.Fatalf("unrelated artifact leaked: %+v", got.Artifacts)
 	}
 	for _, ref := range got.References {
-		if ref.Subject != selected { t.Fatalf("other kind leaked into query: %+v", ref) }
+		if ref.Subject != selected {
+			t.Fatalf("other kind leaked into query: %+v", ref)
+		}
 	}
 	missing, err := TraceSubjectSourcesFromIndex(idx, sourceindex.Subject{Kind: "query", ID: "missing"})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(missing.References) != 0 || len(missing.Artifacts) != 0 {
 		t.Fatalf("invented source for unknown identity: %+v", missing)
 	}
