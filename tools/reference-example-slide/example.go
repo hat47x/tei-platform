@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"math"
+	"bytes"
+	"math/big"
 	"sort"
 	"strings"
 )
@@ -441,11 +442,23 @@ func validateState(c Catalog, state map[string]Record) error {
 					}
 				}
 			case "integer", "number":
-				var number float64
-				if json.Unmarshal(value, &number) != nil || math.IsInf(number, 0) || math.IsNaN(number) {
+				// Do not round a JSON integer through float64. Values above
+				// 2^53 can otherwise turn a fractional key into an integer.
+				decoder := json.NewDecoder(bytes.NewReader(value))
+				decoder.UseNumber()
+				var decoded any
+				if err := decoder.Decode(&decoded); err != nil {
 					return fmt.Errorf("%s.%s: expected number", id, field.ID)
 				}
-				if field.Type == "integer" && math.Trunc(number) != number {
+				number, ok := decoded.(json.Number)
+				if !ok || !boundedNumber(number.String()) {
+					return fmt.Errorf("%s.%s: expected bounded number", id, field.ID)
+				}
+				value, valid := new(big.Rat).SetString(number.String())
+				if !valid {
+					return fmt.Errorf("%s.%s: invalid numeric value", id, field.ID)
+				}
+				if field.Type == "integer" && !value.IsInt() {
 					return fmt.Errorf("%s.%s: expected integer", id, field.ID)
 				}
 			case "boolean":
