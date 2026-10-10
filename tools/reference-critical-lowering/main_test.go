@@ -484,3 +484,35 @@ func TestDeclaredLanguageWitnessSemanticEqualityIsNotAuthorityEquality(t *testin
 	}
 	// These are declared Language identities, not two real Parser executions.
 }
+
+func TestStructurallyForgedPlansFailBeforeTrustedDispatch(t *testing.T) {
+	tests := []struct {
+		name string
+		edit func(*Plan)
+		want string
+	}{
+		{"unfingerprinted-contract", func(p *Plan) { p.Steps[0].Contract.Fingerprint = "" }, "invalid-plan-step"},
+		{"mixed-targets", func(p *Plan) { p.Steps[1].Target = "desktop" }, "invalid-plan-step"},
+		{"duplicate-capability", func(p *Plan) { p.Steps[1] = p.Steps[0] }, "duplicate-capability"},
+		{"invalid-runtime-dependency", func(p *Plan) { p.Steps[0].RuntimeDeps = []Ref{{}} }, "invalid-runtime-dependency"},
+		{"erased-required-context", func(p *Plan) { p.Steps[1].RequiredSlots = []Ref{{}} }, "invalid-context-declaration"},
+		{"corrupt-data-contract", func(p *Plan) { p.Steps[1].DataContracts = []DataNeed{{}} }, "invalid-data-requirement"},
+		{"duplicate-data-contract", func(p *Plan) {
+			p.Steps[1].DataContracts = append(p.Steps[1].DataContracts, p.Steps[1].DataContracts[0])
+		}, "duplicate-data-requirement"},
+		{"unfingerprinted-source", func(p *Plan) { p.Origin.SourceInputs[0].Fingerprint = "" }, "invalid-source-dependencies"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := orderFixture("tei.language.dsl")
+			plan, err := f.lower(stubTrust{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			tc.edit(&plan)
+			if got := code(AuthorizeInvocation(plan, stubTrust{})); got != tc.want {
+				t.Fatalf("Host callback allowed a malformed witness: got %q, expected %q", got, tc.want)
+			}
+		})
+	}
+}
