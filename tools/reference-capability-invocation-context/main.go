@@ -152,21 +152,14 @@ func invokeWithExecutionContext(
 		append([]byte(nil), semanticRequest...),
 	)
 	if err != nil {
+		if leak := directContextReflection(required, contracts, view, []byte(err.Error()), "downstream error"); leak != nil {
+			return InvocationContextExecution{}, leak
+		}
 		return InvocationContextExecution{}, err
 	}
 
-	for _, requirement := range required {
-		contract := contracts[requirement.ContractID]
-		if !contract.ForbidDirectResultReflection {
-			continue
-		}
-		value := view.values[requirement.ContractID].Value
-		if len(value) > 0 && bytes.Contains(resultPayload, value) {
-			return InvocationContextExecution{}, fmt.Errorf(
-				"execution context slot %s was directly reflected into result",
-				requirement.ContractID,
-			)
-		}
+	if leak := directContextReflection(required, contracts, view, resultPayload, "result"); leak != nil {
+		return InvocationContextExecution{}, leak
 	}
 
 	requestSum := sha256.Sum256(semanticRequest)
@@ -199,6 +192,30 @@ func invokeWithExecutionContext(
 			},
 		},
 	}, nil
+}
+
+func directContextReflection(
+	required []ContextSlotRequirement,
+	contracts map[string]ContextSlotContract,
+	view ContextSlotView,
+	surface []byte,
+	surfaceName string,
+) error {
+	for _, requirement := range required {
+		contract := contracts[requirement.ContractID]
+		if !contract.ForbidDirectResultReflection {
+			continue
+		}
+		value := view.values[requirement.ContractID].Value
+		if len(value) > 0 && bytes.Contains(surface, value) {
+			return fmt.Errorf(
+				"execution context slot %s was directly reflected into %s",
+				requirement.ContractID,
+				surfaceName,
+			)
+		}
+	}
+	return nil
 }
 
 func normalizeContextSlotContracts(
