@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -102,6 +103,15 @@ func TestGoBuildStaticEntrySelectionMatchesE0Closure(t *testing.T) {
 		info, err := os.Stat(binary)
 		if err != nil || info.Size() == 0 {
 			t.Fatalf("Go binary absent or empty: %s (%v)", binary, err)
+		}
+	}
+	// Beyond symbol reachability, run each locally built executable and
+	// verify that the shared order action behaves identically.
+	if unified.GOOS == runtime.GOOS && unified.GOARCH == runtime.GOARCH {
+		unifiedResult := strings.TrimSpace(run(unifiedBin))
+		orderResult := strings.TrimSpace(run(orderBin))
+		if unifiedResult != "order repair" || orderResult != "order" {
+			t.Fatalf("unexpected process results: unified=%q order=%q", unifiedResult, orderResult)
 		}
 	}
 	// An E0 package-set difference plus a real linked-symbol difference
