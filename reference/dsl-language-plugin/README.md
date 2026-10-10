@@ -116,6 +116,22 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `pinned_relation_path_test.go`にはNamespace横断の2段経路、キーのスナップショット保持、未固定契約、入出力型の不整合、副作用昇格、後段Relationの型不一致を加えた。これは**未受理の参照候補**に限り、Binding・Execution・権限付与・Semantic Lock照合は行わない。各HopでCanonical Key検証器を再実行するため、長い経路の効率化は今後の課題とする。現時点でこの追加テストのGo実行とPR exact-head全体の健全性確認は未実施。
 
+### RelationのNULL・欠損・多重度を区別するFixture Oracle（2026-10-10）
+
+`relation_match_probe.go`は、一段の`RelationExpansionCandidate`に対して、実データへの接続を伴わない**純粋なキー照合の参照Oracle**を追加する。Canonical Worldと受理済みpinから生成したCandidateを投入する正常系をテストに含めるが、このOracle自身にはWorldの受理・Lockの照合・Providerの選択権限はない。
+
+- **Relation欠損時の判断:** `reject`（一致するTargetが存在しなければエラー）、`discard`（対象行なし）、`retain-absence`（「一致先なし」を明示した結果）。どれも既定値にしない。
+- **NULLキー:** `reject`と`no-match`を明示して選ぶ。NULL同士を通常の値として一致させない。入力が取得不能・未評価のときはNULLでも不一致でもなく、評価エラーとして拒否する。
+- **多重度と重複:** `one`のRelationに2件以上一致した場合はエラー。`many`では一致する全行を残し、重複の暗黙排除や先頭1件の恣意的選択をしない。
+- **複合キー:** Relation定義のキー順に並んだ、あらかじめ型付き・正規化された値だけを比較する。空文字列の値はNULLとは別物とする。
+- **結果の存在状態:** `matched`、`discarded`、`retained-absent`を区別する。欠損行を全カラムNULLの偽の実レコードには変換しない。
+
+`relation_match_probe_test.go`には正常な複合キー、重複一致、Cardinality違反、未一致の3方針、NULLの2方針、取得不能、空文字列、方針の不備とCanonical Relation由来の候補を含めた。
+
+**重要な停止線:** 現状の`RelationMatchPolicy`はFixture評価時に外部から与える値であり、Accepted Operator契約やAuthoritative DSL Sourceにまだ結合されていない。同じOperator pinでも方針の相違は**異なる意味**である。正式なLowering時には方針を型付きの演算引数としてCanonical meaningに含め、Source span・Semantic Set・Lockと対応付けなければならない。このReferenceをそのままSQL/Go/Wasmの実行判断に使ってはならない。照合は文字列表現による試験用の同値比較であり、実際の型比較規則、照合順序、Money精度、NULL伝播、外部結合、行順序、トランザクション時点の適合性は別途検証を要する。
+
+追加の純粋照合ロジックは**簡略化した周辺型を含む局所Go 1.23.2モジュール**で`go test -count=1 ./...`、`go test -race -count=1 ./...`、`go vet ./...`がPASSした。ただし本リポジトリの全型定義、Canonical Worldとの結合テスト、およびPR exact-headの正規健全性検証は未実行であり、統合資格の証拠ではない。
+
 ### まだ検証できないこと
 
 - 本物のAccepted Semantic Setからのpin取得、Source Index、実Pluginの実現方式、実行権限
