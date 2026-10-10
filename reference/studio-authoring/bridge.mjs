@@ -32,6 +32,7 @@ export function indexWorld(world) {
       !Array.isArray(world.applications)) throw new Error("INVALID_WORLD");
   const data = new Map(), relations = new Map(), attributes = new Map();
   const patterns = new Map(), namespaces = new Map(), validations = new Map();
+  const applications = new Map();
   for (const ns of world.semantics) {
     insert(namespaces, ns.id, ns, "namespace");
     for (const validation of array(ns.validations, "namespace.validations")) {
@@ -48,12 +49,12 @@ export function indexWorld(world) {
     }
   }
   for (const app of world.applications) {
-    requireID(app.id, "application");
+    insert(applications, app.id, app, "application");
     for (const pattern of array(app.patterns, "application.patterns")) {
       insert(patterns, pattern.id, { ...pattern, application: app.id }, "pattern");
     }
   }
-  return { data, relations, attributes, patterns, namespaces, validations };
+  return { data, relations, attributes, patterns, namespaces, validations, applications };
 }
 function selected(index, subject) {
   if (typeof subject !== "string") throw new Error("INVALID_SUBJECT");
@@ -242,6 +243,10 @@ export function projectWorld(world, revision, focus, options = {}) {
     relations: array(node.relations, "data.relations").map(r => link("relation", r.id)),
     validations: relevantValidations.map(v => ({
       ...link("validation", v.id), kind: v.kind,
+      applicationSelection: [...ix.applications.values()].filter(a =>
+        array(a.validations, "application.validations").includes(v.id)
+      ).map(a => ({ application: a.id, status: "source-declared" })),
+      evaluationAuthority: "not-verified-by-projection",
       attribute: v.attribute && ix.attributes.has(v.attribute)
         ? link("attribute", v.attribute) : null,
       relation: v.relation && ix.relations.has(v.relation)
@@ -276,6 +281,9 @@ export function projectWorld(world, revision, focus, options = {}) {
           reason: "Accepted Procedure is not in World. Optional #1125 read-only DFD is not an accepted Procedure." }
     },
     sourceNavigation: sourceLens(options.sourceIndex, s.kind, s.id),
+    realizationReadiness: { status: "not-verified",
+      sourceAcceptedDoesNotImply: ["database-migration", "target-deployment", "runtime-authorization", "provider-write", "observation"],
+      note: "Use #1121/#1126/#1127 providers for physical readiness; no migration is inferred from display-only changes." },
     editable: false
   };
 }
@@ -299,6 +307,7 @@ export function candidateFromEdit(world, revision, edit) {
   const ix = indexWorld(world);
   const s = selected(ix, edit.subject);
   let op;
+  const ops = [];
   if (edit.view === "er" && edit.operation === "add-relation" && s.kind === "data") {
     if (!isText(edit.relationID) || !isText(edit.symbol) ||
         !isText(edit.targetData) || !ix.data.has(edit.targetData) ||
@@ -315,6 +324,23 @@ export function candidateFromEdit(world, revision, edit) {
     ensureNotUsed(edit.validationID, ix);
     op = { op: "add-validation", namespace: s.value.namespace,
       id: edit.validationID, kind: "positive", attribute: s.id };
+    if (edit.applicationUse !== undefined) {
+      const use = edit.applicationUse;
+      if (!use || !isText(use.application) || !isText(use.placement))
+        throw new Error("INVALID_APPLICATION_USE_REQUEST");
+      const app = ix.applications.get(use.application);
+      if (!app || !array(app.semanticUses, "application.semanticUses").includes(s.value.namespace))
+        throw new Error("APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE");
+      if (array(app.validations, "application.validations").includes(edit.validationID))
+        throw new Error("VALIDATION_ALREADY_SELECTED");
+      // Caller supplies a source location; only Shared Acceptance may decide
+      // whether that placement is owned by the Application and writable.
+      if (!/^applications\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+\.tei$/.test(use.placement) ||
+          use.placement.split("/").includes("..") || use.placement.split("/").includes("."))
+        throw new Error("UNSAFE_APPLICATION_SOURCE_PLACEMENT");
+      ops.push({ op: "add-application-validation-use", placement: use.placement,
+        applicationValidationUse: { application: use.application, validation: edit.validationID } });
+    }
   } else {
     throw new Error("UNSUPPORTED_EDIT: use a source-owned semantic operation; never write a derived cell");
   }
@@ -322,6 +348,6 @@ export function candidateFromEdit(world, revision, edit) {
   return {
     schema: CANDIDATE_SCHEMA, id: edit.id, baseModelRevision: revision,
     origin: { kind: edit.origin },
-    intent: edit.intent, delta: [op]
+    intent: edit.intent, delta: [op, ...ops]
   };
 }
