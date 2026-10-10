@@ -166,6 +166,17 @@ func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r
 	}
 	result, err := s.protectedSessionConfig.Runner.RunVerifiedSessionCommand(
 		r.Context(), s.protectedSessionConfig.SubjectLinks, request.From, request.RowIndex)
+	s.writeProtectedSessionCommandHTTPResult(w, result, err)
+}
+
+// writeProtectedSessionCommandHTTPResult is intentionally shared by the
+// synthetic Workspace HTTP path and the small result-contract test. This
+// mapping cannot infer durable Commit completion from a Driver error.
+func (s *webTargetServer) writeProtectedSessionCommandHTTPResult(
+	w http.ResponseWriter,
+	result commandScenarioResult,
+	err error,
+) {
 	// A successful HTTP authorization is not evidence of a completed Action.
 	// Map final business denials separately from uncompleted or uncertain
 	// execution, and never echo an internal Adapter/Driver error to a browser.
