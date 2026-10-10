@@ -142,3 +142,61 @@ func TestAdapterRejectsAliasCycle(t *testing.T) {
 		t.Fatalf("wanted alias-cycle error, got %v", err)
 	}
 }
+
+
+func TestActualWorldIllustrativeJoinAndUnknownKeylessRelation(t *testing.T) {
+	catalog, err := CatalogFromWorld(checkedWorld(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := Input{
+		Catalog: catalog,
+		Example: Example{
+			ID: "synthetic-order-join",
+			ModelRevision: catalog.Revision,
+			// The illustrative customer table is claimed complete only within
+			// this fabricated snapshot, not in the real provider database.
+			CompleteTables: []string{"customer.customer"},
+			Base: []Record{
+				{ID: "cust-synthetic", Table: "customer.customer",
+					Values: map[string]json.RawMessage{
+						"customer.customer.customer_id": json.RawMessage("\"C-1\""),
+					}},
+				{ID: "order-synthetic", Table: "sales.order",
+					Values: map[string]json.RawMessage{
+						"sales.order.customer_id": json.RawMessage("\"C-1\""),
+					}},
+			},
+		},
+		Diagram: Diagram{ID: "order-example", Placements: []Placement{
+			{ID: "c", Table: "customer.customer", X: 10, Y: 30},
+			{ID: "o", Table: "sales.order", X: 320, Y: 30},
+			{ID: "l", Table: "sales.order_line", X: 630, Y: 30},
+		}},
+		Presentation: Presentation{Frames: []Frame{{ID: "base", Stage: "base"}}},
+	}
+	projection, err := Build(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := projection.Slides[0].RelationFindings
+	foundKeyed, foundKeyless := false, false
+	for _, finding := range findings {
+		switch finding.RelationID {
+		case "sales.order.customer":
+			foundKeyed = true
+			if finding.Result != "supported" || len(finding.MatchedTargetIDs) != 1 ||
+				finding.MatchedTargetIDs[0] != "cust-synthetic" {
+				t.Fatalf("real keyed relation not qualified: %+v", finding)
+			}
+		case "sales.order.lines":
+			foundKeyless = true
+			if finding.Result != "unresolved" || finding.Reason != "relation-keys-not-declared" {
+				t.Fatalf("invented relation keys for OrderLine: %+v", finding)
+			}
+		}
+	}
+	if !foundKeyed || !foundKeyless {
+		t.Fatalf("incomplete source-to-target assessments: %+v", findings)
+	}
+}
