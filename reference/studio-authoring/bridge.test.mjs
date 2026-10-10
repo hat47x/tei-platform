@@ -140,6 +140,46 @@ test("dangling Function relation stays unresolved rather than becoming absent", 
   assert.equal(selected.relation, null);
 });
 
+test("optional #1125 Business reference joins exact Pattern ID without becoming accepted", () => {
+  const world = fixture();
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "order-entry.order-handling", diagnostics: [],
+    steps: [
+      { id: "BP-03", noApplicationFunction: false,
+        functionRefs: [{ id: "order_entry.order_lines", status: "resolved",
+          relation: "sales.order.lines" }],
+        source: { file: "fixture.json", pointer: "/steps/3" } },
+      { id: "BP-04", noApplicationFunction: true,
+        realization: "manual-unresolved", functionRefs: [],
+        source: { file: "fixture.json", pointer: "/steps/4" } }
+    ]
+  };
+  const p = projectWorld(world, revision, "relation:sales.order.lines", { businessDFD: dfd });
+  assert.equal(p.views.business.status, "reference-only");
+  assert.equal(p.views.business.authority, "noncanonical-reference");
+  assert.equal(p.views.business.freshness, "unverified-no-model-revision-binding");
+  assert.equal(p.views.business.items[0].functionRefs[0].id, "order_entry.order_lines");
+  assert.equal(p.views.business.items[0].source.pointer, "/steps/3");
+  assert.equal(p.views.business.manualOrExternalUnlinked[0].stepID, "BP-04");
+  assert.equal(p.views.business.items.some(v => v.stepID === "BP-04"), false,
+    "manual step must not be linked by proximity");
+  assert.throws(() => projectWorld(world, revision, "relation:sales.order.lines", {
+    businessDFD: { ...dfd, canonicalProcedureUsed: true }
+  }), /UNSUPPORTED_BUSINESS_DFD/);
+  const mismatch = structuredClone(dfd);
+  mismatch.steps[0].functionRefs[0].relation = "sales.missing";
+  const m = projectWorld(world, revision, "relation:sales.order.lines", { businessDFD: mismatch });
+  assert.equal(m.views.business.status, "unresolved");
+  assert.equal(m.views.business.items[0].functionRefs[0].status, "unresolved");
+  const duplicated = structuredClone(dfd);
+  duplicated.steps.push(structuredClone(duplicated.steps[0]));
+  assert.throws(() => projectWorld(world, revision, "relation:sales.order.lines", {
+    businessDFD: duplicated
+  }), /INVALID_OR_DUPLICATE_BUSINESS_STEP/);
+});
+
 test("local selection never expands into a global dense matrix", () => {
   const world = fixture();
   for (let i = 0; i < 2000; i++) {
