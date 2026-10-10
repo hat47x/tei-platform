@@ -271,3 +271,31 @@ func TestTrustEvaluationRejectsMismatchedVerificationEvidence(t *testing.T) {
 		t.Fatal("trust evaluation accepted verification Evidence for a different issuer")
 	}
 }
+
+
+func TestTrustEvaluationCanonicalizesVerificationFingerprintHexCase(t *testing.T) {
+	plan, set, resultFingerprint := attestationFixture(t)
+	attestation := signedSetAttestation(t, plan, set, resultFingerprint)
+	verification, err := verifyBuildAttestation(attestation, plan, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verification.AttestationFingerprint = strings.ToUpper(verification.AttestationFingerprint)
+	verification.BuildExecutionResultFingerprint = strings.ToUpper(verification.BuildExecutionResultFingerprint)
+	verification.ArtifactSetFingerprint = strings.ToUpper(verification.ArtifactSetFingerprint)
+
+	policy := AttestationTrustPolicy{
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           attestation.Issuer,
+		SignatureProfile: attestation.SignatureProfile,
+		Predicates:       []string{attestation.Predicate},
+		Revision:         "policy-1",
+	}
+	decision, err := evaluateAttestationTrust(attestation, verification, policy)
+	if err != nil {
+		t.Fatalf("valid fingerprint hex case was rejected: %v", err)
+	}
+	if !decision.Trusted {
+		t.Fatalf("valid fingerprint hex case changed Trust decision: %#v", decision)
+	}
+}
