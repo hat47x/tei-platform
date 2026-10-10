@@ -77,8 +77,8 @@ func TestTraceWorkspaceJSONArgumentErrors(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	cases := []struct {
 		root, world, scope, kind, id, direction, mode string
-		offset, limit, positional, expectedExit int
-		code string
+		offset, limit, positional, expectedExit       int
+		code                                          string
 	}{
 		{root: root, scope: "", kind: "semantic-data", id: "sales.order", expectedExit: 2, code: "INVALID_ARGUMENT"},
 		{root: root, world: "world.json", scope: "test", kind: "semantic-data", id: "sales.order", expectedExit: 2, code: "INVALID_ARGUMENT"},
