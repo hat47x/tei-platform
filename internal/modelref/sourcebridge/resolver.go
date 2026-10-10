@@ -14,10 +14,10 @@ import (
 // navigation operations. The caller must pin graph, index and reader to the
 // same Workspace revision; validating an index cannot lock a live filesystem.
 type Resolver struct {
-	nodes       map[modelref.Key]int
-	collisions  map[subject.Subject]int
-	references  map[subject.Subject][]sourceindex.Reference
-	artifacts   map[string]sourceindex.Artifact
+	nodes      map[modelref.Key]int
+	collisions map[subject.Subject]int
+	references map[subject.Subject][]sourceindex.Reference
+	artifacts  map[string]sourceindex.Artifact
 }
 
 // NewResolver validates artifact digests and exact ranges once rather than
@@ -33,10 +33,10 @@ func NewResolver(graph modelref.Graph, idx sourceindex.Index, read func(string) 
 		return nil, err
 	}
 	r := &Resolver{
-		nodes: make(map[modelref.Key]int, len(graph.Nodes)),
+		nodes:      make(map[modelref.Key]int, len(graph.Nodes)),
 		collisions: make(map[subject.Subject]int, len(graph.Nodes)),
 		references: make(map[subject.Subject][]sourceindex.Reference),
-		artifacts: make(map[string]sourceindex.Artifact, len(idx.Artifacts)),
+		artifacts:  make(map[string]sourceindex.Artifact, len(idx.Artifacts)),
 	}
 	for _, n := range graph.Nodes {
 		r.nodes[n.Key]++
