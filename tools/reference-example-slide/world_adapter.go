@@ -56,7 +56,7 @@ func CatalogFromWorld(world ir.World) (Catalog, error) {
 					return Catalog{}, fmt.Errorf("%s.%s: %w", id, attr.ID, err)
 				}
 				table.Fields = append(table.Fields, Field{
-					ID: string(attr.ID), Type: kind,
+					ID: string(attr.ID), Type: kind, SemanticType: string(attr.TypeRef),
 					// Attribute contains no required/visible flag. Both must be
 					// explicit presentation or validation decisions elsewhere.
 					Visible: true,
