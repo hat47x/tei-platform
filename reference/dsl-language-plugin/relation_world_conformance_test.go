@@ -76,6 +76,24 @@ func TestWorldRelationRejectsAmbiguousTarget(t *testing.T) {
 	}
 }
 
+
+// TestWorldRelationDoesNotAddStricterKeyRules ensures the reference does not
+// invent a source-key uniqueness restriction absent from the canonical
+// validator. Distinct target attributes remain independently mapped.
+func TestWorldRelationDoesNotAddStricterKeyRules(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	w.Semantics[1].Data[0].Attributes = append(w.Semantics[1].Data[0].Attributes,
+		semantic.Attribute{ID: "customer.customer.alt_id", TypeRef: "customer.customer_id"})
+	w.Semantics[0].Data[0].Relations[0].Keys = append(w.Semantics[0].Data[0].Relations[0].Keys,
+		semantic.RelationKey{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.alt_id"})
+	if ds := validation.ValidateSemanticRelationKeys(w); len(ds) != 0 {
+		t.Fatalf("canonical validator rejected distinct target keys: %#v", ds)
+	}
+	if err := ValidateRelationKeys(w, "sales.order", "sales.order.customer"); err != nil {
+		t.Fatalf("reference must preserve canonical relation key semantics: %v", err)
+	}
+}
+
 func crossNamespaceRelationFixture() ir.World {
 	return ir.World{Semantics: []semantic.Namespace{
 		{
