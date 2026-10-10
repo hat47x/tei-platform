@@ -99,6 +99,29 @@ export function compareCapabilityInputDefinitionSources({
     return {...limit,status:"unresolved",reason:"incomplete_input_definition_observation",
       baselineStatus:baseline.status,currentStatus:current.status};
   }
+  // A changed Capability declaration may alter semantics without changing
+  // the selected input Type/Data identities. Do not report unchanged unless
+  // every directly selected Capability definition is itself Source-stable.
+  const capabilityIds = w => {
+    const app=w.applications.find(a=>a.id===applicationId);
+    return [...new Set((app.patterns??[]).map(p=>p.capability).filter(Boolean))].sort();
+  };
+  const beforeCaps=capabilityIds(baselineWorld);
+  const afterCaps=capabilityIds(currentWorld);
+  if (JSON.stringify(beforeCaps)!==JSON.stringify(afterCaps)) {
+    return {...limit,status:"unresolved",reason:"capability_set_changed"};
+  }
+  const capabilitySubjects=beforeCaps.map(id=>({kind:"semantic-capability",id}));
+  let capabilityScope;
+  try {
+    capabilityScope=assessIndexedSubjects({baselineIndex,currentIndex,
+      consumers:[{id:applicationId,subjects:capabilitySubjects}]})[0];
+  } catch {
+    return {...limit,status:"unresolved",reason:"invalid_capability_source_index"};
+  }
+  if (capabilityScope.status!=="unchanged") {
+    return {...limit,status:"unresolved",reason:"capability_source_changed"};
+  }
   const subjectKeys = deps => deps.map(d=>JSON.stringify([
     d.subject.kind,d.subject.id])).sort();
   if (JSON.stringify(subjectKeys(baseline.dependencies)) !==
