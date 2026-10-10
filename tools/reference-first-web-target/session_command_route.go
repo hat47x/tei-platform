@@ -83,10 +83,10 @@ type webSessionCommandRequest struct {
 // handleProtectedSessionCommand is only registered behind NewHost's
 // route, session, issuer, CSRF and Action authorization enforcement.
 func (s *webTargetServer) handleProtectedSessionCommand(w http.ResponseWriter, r *http.Request) {
-	var request webSessionCommandRequest
+	var request *webSessionCommandRequest
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
 	decoder.DisallowUnknownFields() // loginId and credential are invalid here
-	if err := decoder.Decode(&request); err != nil {
+	if err := decoder.Decode(&request); err != nil || request == nil {
 		http.Error(w, "invalid session command request", http.StatusBadRequest)
 		return
 	}
