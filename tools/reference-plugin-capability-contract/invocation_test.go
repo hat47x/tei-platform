@@ -533,9 +533,13 @@ func TestInvocationRegistryRejectsMalformedShapeFingerprint(t *testing.T) {
 		t.Fatal(err)
 	}
 	implementation.RequestShapeFingerprint = "not-a-sha256"
+	authorities := invocationShapeAuthoritiesForTest(
+		[]InvocationImplementation{implementation},
+	)
 	if _, err := NewInvocationRegistry(
 		[]InvocationImplementation{implementation},
-		invocationShapeAuthoritiesForTest([]InvocationImplementation{implementation}),
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	); err == nil || !strings.Contains(err.Error(), "incomplete invocation shape") {
 		t.Fatalf("malformed invocation shape fingerprint was accepted: %v", err)
 	}
