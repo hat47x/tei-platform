@@ -452,7 +452,7 @@ func validateState(c Catalog, state map[string]Record) error {
 				}
 				number, ok := decoded.(json.Number)
 				if !ok || !boundedNumber(number.String()) {
-					return fmt.Errorf("%s.%s: expected bounded number", id, field.ID)
+					return fmt.Errorf("%s.%s: expected number (within bounded size)", id, field.ID)
 				}
 				rational, valid := new(big.Rat).SetString(number.String())
 				if !valid {
