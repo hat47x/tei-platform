@@ -152,3 +152,22 @@ func TestProbePinnedExpansionUsesCanonicalWorldCandidate(t *testing.T) {
 		t.Fatalf("validated candidate did not match fixture: %#v, %v", result, err)
 	}
 }
+
+func TestProbePinnedExpansionWithParametricOperatorPin(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	pin := OperatorContract{
+		ID: "std.op.expand", Version: "1", Fingerprint: "expand-parametric-v1",
+		Effect: "pure", InputType: expandSourceTypeVariable, OutputType: expandTargetTypeVariable,
+	}
+	candidate, err := InspectPinnedRelationExpansion(w, "sales.order", "sales.order.customer",
+		PinnedCall{Contract: pin, InputType: "rows/sales.order"}, []OperatorContract{pin})
+	if err != nil || candidate.OutputType != "rows/customer.customer" || candidate.Operator != pin {
+		t.Fatalf("cannot instantiate accepted template at canonical endpoints: %#v, %v", candidate, err)
+	}
+	result, err := ProbePinnedExpansion(candidate,
+		RelationMatchPolicy{Unmatched: UnmatchedReject, NullKey: NullKeyNoMatch},
+		[]ProbeKeyPart{probeValue("customer-1")}, [][]ProbeKeyPart{{probeValue("customer-1")}})
+	if err != nil || result.State != MatchFound || !reflect.DeepEqual(result.TargetIndices, []int{0}) {
+		t.Fatalf("parametric pinned candidate did not match: %#v, %v", result, err)
+	}
+}
