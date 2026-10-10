@@ -353,6 +353,26 @@ test("C0 scoped ID collision cannot be silently resolved by flat Studio token", 
     { sourceIndex }), /AMBIGUOUS_SOURCE_DEFINITION/);
 });
 
+test("even a single scoped Source locator is unresolved without typed C0 resolver", () => {
+  const anchor = {
+    subject: { kind: "semantic-relation", id: "sales.order.lines" },
+    role: "definition", scope: "orders-v1",
+    artifactPath: "semantic/sales/order.tei",
+    range: { start: { offset: 1, line: 1, column: 1 },
+      end: { offset: 2, line: 1, column: 2 } }
+  };
+  const index = {
+    artifacts: [{ path: "semantic/sales/order.tei",
+      fingerprint: "sha256:" + "f".repeat(64) }],
+    references: [anchor]
+  };
+  const p = projectWorld(fixture(), revision, "relation:sales.order.lines", {
+    sourceIndex: index
+  });
+  assert.equal(p.sourceNavigation.status, "unresolved");
+  assert.ok(p.sourceNavigation.reason.includes("typed Source Resolver"));
+});
+
 test("reference-local Business step ID matching a Pattern ID is not an accepted Function", () => {
   const source = fixture();
   const dfd = {
