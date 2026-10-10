@@ -400,3 +400,97 @@ func TestE5DuplicatePatternTargetIdentityFailsClosed(t *testing.T) {
         t.Fatal("duplicate Semantic Relation accepted")
     }
 }
+
+func e5ContractQueryFixture() (ir.World, sourceindex.Index) {
+    world, index := e5Fixture()
+    world.Applications[0].Patterns = append(world.Applications[0].Patterns, application.Pattern{
+        ID: "order_entry.customer_reference",
+        Kind: application.PatternReference,
+        Datasource: "sales",
+        ContractQuery: &application.ContractQueryInvocation{
+            Contract: "sales_core.order",
+            Query: "find_by_id",
+        },
+    })
+    world.Databases[0].Contracts[0].Queries = []database.QueryContract{{Name:"find_by_id"}}
+    index.Artifacts = append(index.Artifacts, sourceindex.Artifact{
+        Path:"applications/order-entry/patterns/customer-reference.tei",
+        Fingerprint:"sha256:abababababababababababababababababababababababababababababababab",
+    })
+    index.References = append(index.References, sourceindex.Reference{
+        Subject:sourceindex.Subject{Kind:"application-pattern",ID:"order_entry.customer_reference"},
+        ArtifactPath:"applications/order-entry/patterns/customer-reference.tei",
+        Role:sourceindex.RoleDefinition,
+    },sourceindex.Reference{
+        Subject:sourceindex.Subject{Kind:"database-contract-query",ID:"sales_core.order/find_by_id"},
+        ArtifactPath:"databases/sales-core/contracts/order.tei",
+        Role:sourceindex.RoleDefinition,
+    })
+    return world,index
+}
+
+func TestE5PatternContractQueryDirectReference(t *testing.T) {
+    world,index := e5ContractQueryFixture()
+    report := inspectE5(world,index,"order_entry")
+    if report.Status != "observed" {
+        t.Fatalf("typed ContractQuery not observed: %+v", report.Issues)
+    }
+    found := 0
+    for _, dep := range report.Dependencies {
+        if dep.Relation == "pattern-contract-query" && dep.Subject.Kind == "database-contract-query" &&
+            dep.Subject.ID == "sales_core.order/find_by_id" &&
+            dep.Source.Path == "databases/sales-core/contracts/order.tei" { found++ }
+    }
+    if found != 1 {t.Fatalf("expected exact ContractQuery definition once: %+v",report.Dependencies)}
+}
+
+func TestE5PatternContractQueryMissingDatasource(t *testing.T) {
+    world,index := e5ContractQueryFixture()
+    world.Applications[0].Patterns[1].Datasource = "undeclared"
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"contract_query_datasource_missing_or_ambiguous") {
+        t.Fatal("unknown datasource alias accepted")
+    }
+}
+
+func TestE5PatternContractQueryWrongRequiredContract(t *testing.T) {
+    world,index := e5ContractQueryFixture()
+    world.Applications[0].Databases[0].RequiredContracts = nil
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"contract_query_contract_unavailable") {
+        t.Fatal("unrequired ContractQuery contract accepted")
+    }
+}
+
+func TestE5PatternContractQueryMissingOrDuplicateQuery(t *testing.T) {
+    world,index := e5ContractQueryFixture()
+    world.Databases[0].Contracts[0].Queries = nil
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"contract_query_definition_missing_or_ambiguous") {
+        t.Fatal("missing contract Query accepted")
+    }
+    world,index = e5ContractQueryFixture()
+    world.Databases[0].Contracts[0].Queries = append(world.Databases[0].Contracts[0].Queries,
+        world.Databases[0].Contracts[0].Queries[0])
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"contract_query_definition_missing_or_ambiguous") {
+        t.Fatal("duplicate contract Query accepted")
+    }
+}
+
+func TestE5PatternContractQueryMissingSourceDefinition(t *testing.T) {
+    world,index := e5ContractQueryFixture()
+    for i, ref := range index.References {
+        if ref.Subject == (sourceindex.Subject{Kind:"database-contract-query",ID:"sales_core.order/find_by_id"}) {
+            index.References = append(index.References[:i],index.References[i+1:]...)
+            break
+        }
+    }
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous") {
+        t.Fatal("missing ContractQuery source reference accepted")
+    }
+}
+
+func TestE5PatternContractQueryWrongDatabaseOwner(t *testing.T) {
+    world,index := e5ContractQueryFixture()
+    world.Databases[0].Contracts = nil
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"contract_query_contract_unavailable") {
+        t.Fatal("ContractQuery not in chosen Database accepted")
+    }
+}
