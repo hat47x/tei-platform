@@ -21,6 +21,7 @@ func main() {
 		legacyUsers   = flag.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
 		legacyAuthz   = flag.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
 		listen        = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
+		scopedRoutes  = flag.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
 	)
 	flag.Parse()
 
@@ -80,9 +81,20 @@ func main() {
 		os.Exit(2)
 	}
 
+	// Preserve the existing multi-Application Gate C diagnostic routes by
+	// default. Scoped routing is explicitly opt-in and is NOT evidence that
+	// the unused Go packages were removed from the binary.
+	handler := target.Handler()
+	if *scopedRoutes {
+		handler, err = target.ScopedHandler()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+	}
 	server := &http.Server{
 		Addr:    *listen,
-		Handler: target.Handler(),
+		Handler: handler,
 	}
 	log.Printf(
 		"TEI first Web Target projection: http://%s/ application=%s baseline=%s R=%s T=%s",
