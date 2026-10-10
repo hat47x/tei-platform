@@ -46,6 +46,8 @@ type CrossViewUnresolved struct {
 
 type CrossViewProjection struct {
 	SchemaVersion                 int                          `json:"schemaVersion"`
+	SourceFormat                  string                       `json:"sourceFormat"`
+	SourceFormatVersion           string                       `json:"sourceFormatVersion"`
 	SourceArtifactDigest          string                       `json:"sourceArtifactDigest"`
 	MappingContractFingerprint    string                       `json:"mappingContractFingerprint"`
 	DerivationPolicyRevision      string                       `json:"derivationPolicyRevision"`
@@ -64,6 +66,8 @@ type CrossViewProjection struct {
 
 type CrossViewAccounting struct {
 	SchemaVersion                              int            `json:"schemaVersion"`
+	SourceFormat                               string         `json:"sourceFormat"`
+	SourceFormatVersion                        string         `json:"sourceFormatVersion"`
 	SourceArtifactDigest                       string         `json:"sourceArtifactDigest"`
 	MappingContractFingerprint                 string         `json:"mappingContractFingerprint"`
 	DerivationPolicyRevision                   string         `json:"derivationPolicyRevision"`
@@ -125,6 +129,10 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 	}
 	if doc.SHA256 == "" {
 		return CrossViewProjection{}, fmt.Errorf("source document digest is empty")
+	}
+	sourceFormatVersion, ok := nonEmptyExactAttribute(doc.Root, "FormatVersion")
+	if !ok {
+		return CrossViewProjection{}, fmt.Errorf("validated source document has no usable FormatVersion")
 	}
 
 	nodes := flattenCrossViewNodes(doc)
@@ -192,6 +200,8 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 
 	projection := CrossViewProjection{
 		SchemaVersion:               1,
+		SourceFormat:                string(doc.Format),
+		SourceFormatVersion:         sourceFormatVersion,
 		SourceArtifactDigest:        "sha256:" + doc.SHA256,
 		MappingContractFingerprint:  mappingContractFingerprint,
 		DerivationPolicyRevision:    CrossViewDerivationPolicyRevision,
@@ -206,7 +216,7 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 			"source-reachability-is-not-transaction-authority",
 			"source-reachability-is-not-authorization-or-business-ownership",
 			"derived-path-is-not-business-action-specific-crud",
-			"inspection-contract-binding-does-not-by-itself-prove-source-profile-conformance",
+			"source-profile-conformance-does-not-prove-semantic-correctness",
 		},
 	}
 
@@ -423,6 +433,8 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounting {
 	out := CrossViewAccounting{
 		SchemaVersion:                       1,
+		SourceFormat:                        projection.SourceFormat,
+		SourceFormatVersion:                 projection.SourceFormatVersion,
 		SourceArtifactDigest:                projection.SourceArtifactDigest,
 		MappingContractFingerprint:          projection.MappingContractFingerprint,
 		DerivationPolicyRevision:            projection.DerivationPolicyRevision,
