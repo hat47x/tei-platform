@@ -88,6 +88,12 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `relation_world_conformance_test.go`はsales・customer・addressの3つのNamespaceをまたぐRelationと、既存検証器が拒否する不正キーのDiagnostic同一性を試験対象とする。**この追加テストは関連Referenceソースと既存Semanticキー検証器を取り出した局所Go検証環境でPASSした**。ただし正規のTEI全ソースではなく、周辺型定義は検証用stubである。また、関数へWorldを渡した事実はShared AcceptanceやWorld全体のValidationの完了を示さない。呼び出し側が正式に受理したSemantic Worldを供給する責務は変わらない。
 
+### Canonical fixtureと効果判定の追加確認（2026-10-10）
+
+多段RelationのReference fixtureを`shop.order` / `shop.customer` / `shop.address`の正規Canonical ID、明示した`shop.key`型と対応するRelationキーへ修正した。Namespace間のfixtureも`customer.customer_id`型を定義した。両正常系に`validation.Validate(world)`と`validation.ValidateSemanticRelationKeys(world)`の結果を確認するテストを追加し、**キーだけ合っていて全体として無効な業務モデル**を正例にしない。
+
+`ResolveOperator`では不完全な契約を`ErrOperatorInvalid`、明示された`pure`以外の効果を`ErrEffectEscalation`として区別した。変更後の`operator.go` / `operator_test.go`はGitHub Blob SHAと一致する局所Go 1.23.2環境で`go test`・`go test -race`・`go vet`がPASS、`gofmt -l`は空。**World全体の正例テストは実リポジトリ上で未実行**であり、この局所結果をPR統合の根拠にしない。
+
 ### まだ検証できないこと
 
 - 本物のAccepted Semantic Setからのpin取得、Source Index、実Pluginの実現方式、実行権限
