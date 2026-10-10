@@ -20,6 +20,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E7：限定Evidenceの比較器](e7-paired-evidence.mjs)／[合成試験](e7-paired-evidence.test.mjs) — 形式偽装、依存追加、指紋不一致を診断。実Workspaceでの統合実行は未実施。
 - [E7a：選択対象だけのSource Index証跡](E7A_MINIMAL_DISCLOSURE.md) — 対象外のWorkspace Source pathを省き、定義出典の欠落・重複を拒否する。
 - [E8：SUI Native Canvasの第二Consumer評価](E8_SUI_NATIVE_CONSUMER_EVIDENCE.md) — 既存Native操作と未接続のTEI Runtime Actionを区別する。
+- [E9：Contract Query入力属性のSource追跡](E9_CONTRACT_QUERY_INPUT_SOURCE.md) — 実際の顧客参照Patternが参照する意味属性の定義変更を再検証に含める。Goテスト・実Workspaceは未実行。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
