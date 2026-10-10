@@ -21,6 +21,10 @@ dispatchは次を保持します。
 
 processから返るgeneric resultには同じidentityを返させます。Host側では、Contract、Provider、Target、shape、codecがrequestと完全一致することを確認します。opaque payloadはdigestでも照合できます。
 
+dispatchとresultは別schema IDにします。request framingをresultとして返しても受理しません。
+
+また、generic ProviderのPlugin ID / versionとlegacy carrierのPlugin identityはprocess起動前にHost側で照合します。Provider AをPlugin Bのcarrierで起動し、子processがAを自己申告するだけで通る経路を作りません。
+
 ## 現行process protocolで分かったこと
 
 現行`runtime.Request`はlegacy `CapabilityKind / CapabilityID`をtop-level identityとして要求します。一方、generic Contract ID / fingerprint、Target、shape identity、Implementation IDはtop-level metadataとして持ちません。
@@ -28,6 +32,8 @@ processから返るgeneric resultには同じidentityを返させます。Host�
 `runtime.Response`はPlugin、CapabilityID、descriptor fingerprintを返しますが、CapabilityKindは返しません。generic ProviderのImplementation ID / artifact digestやshape identityも返しません。
 
 このReferenceでは、generic metadataをresult payloadへechoさせることでdriftを検出します。ただし、payload echoはRuntime Authorityではありません。子processが自己申告した値とrequestが一致したことを確認しているだけです。
+
+carrierとの事前照合もPlugin ID / versionまでです。legacy carrierはgeneric ProviderのImplementation IDやartifact digestを持たないため、それらをproduction Runtime Authorityとして検証したことにはなりません。artifact、Permission、Resource、SandboxのAuthorityは#1116側のEnvironment Plan / Runtime Registry境界に残します。
 
 そのためreceiptには次の限界を残します。
 
