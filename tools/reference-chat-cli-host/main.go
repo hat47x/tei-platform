@@ -3,14 +3,19 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var gitSHA = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
@@ -36,16 +41,41 @@ type ProbeReport struct {
 	RepositoryHealth     string `json:"repositoryHealth"`
 }
 
-func commandOutput(root string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{
+// E0 must remain bounded even if a checkout has huge paths or Git hangs.
+// A limit breach is an unavailable observation, not a truncated success.
+var errCommandOutputLimit = errors.New("Git observation exceeds output limit")
+
+type limitedOutput struct {
+	buffer   bytes.Buffer
+	maxBytes int
+}
+
+func (b *limitedOutput) Write(p []byte) (int, error) {
+	if len(p) > b.maxBytes-b.buffer.Len() {
+		return 0, errCommandOutputLimit
+	}
+	return b.buffer.Write(p)
+}
+
+func commandOutputWithContext(ctx context.Context, root string, maxBytes int, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", append([]string{
 		"--no-replace-objects", "--no-optional-locks", "-C", root, "-c", "core.fsmonitor=false",
 	}, args...)...)
-	// Do not execute repository-configured FS monitor hooks or take optional
-	// index locks as part of a read-only host capability probe.
-	// Never include command stderr in a machine-readable status: it may
-	// contain a configured remote URL or other local environment details.
-	data, err := cmd.Output()
-	return strings.TrimSpace(string(data)), err
+	// Never run configured FS monitor hooks or take optional index locks.
+	// Git stderr can contain credentials and remote URLs; discard it entirely.
+	output := &limitedOutput{maxBytes: maxBytes}
+	cmd.Stdout = output
+	cmd.Stderr = io.Discard
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(output.buffer.String()), nil
+}
+
+func commandOutput(root string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return commandOutputWithContext(ctx, root, 8<<20, args...)
 }
 
 func probe(root, expectedHead, expectedMain string) ProbeReport {

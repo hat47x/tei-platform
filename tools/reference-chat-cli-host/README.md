@@ -17,3 +17,5 @@ Hostが信頼できるGitHub経路からfresh checkoutと最新origin/mainを確
 テスト: go test ./tools/reference-chat-cli-host。合成した隔離Gitリポジトリに対して成功、HEAD不一致、origin/main欠落・不一致、祖先関係不一致、サブディレクトリ誤指定、未知引数、Remote URL中のsecret非出力を検査する。実GitHub通信・実TEIフルcheckoutの検証ではない。
 
 Gitの`refs/replace`やlegacy graftsは、表示上のコミットSHAを変えずに祖先判定を変更できるため拒否します。Git呼び出しは`--no-replace-objects`で保護し、リポジトリが指定した`fsmonitor`は実行しません。元ソースが未信頼なら、そもそもShellで内容を実行する前に別経路でCheckoutと資格を検査する必要があります。
+
+Gitのread-only問い合わせには1コマンドあたり15秒のtimeoutと8MiBのstdout上限を設ける。超過やキャンセル時は**完全な観測を得られなかった失敗**とし、部分出力を状態判定へ利用しない。Gitのstderrも資格情報を含み得るため報告へ混ぜない。この上限も、`qualify.sh`による全体検証のtimeoutやログ保管契約を置き換えない。

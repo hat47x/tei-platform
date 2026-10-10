@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -225,5 +226,17 @@ func TestProbeRejectsLegacyGrafts(t *testing.T) {
 	got := probe(root, head, head)
 	if got.EligibleForLocalGate || got.HistoryOverrides != "present" {
 		t.Fatalf("grafted history accepted: %#v", got)
+	}
+}
+
+func TestCommandOutputRefusesTruncationAndCancelledExecution(t *testing.T) {
+	root, _ := exampleCheckout(t)
+	if data, err := commandOutputWithContext(context.Background(), root, 1, "rev-parse", "HEAD"); err == nil || data != "" {
+		t.Fatalf("oversized Git output treated as a complete observation: %q %v", data, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if data, err := commandOutputWithContext(ctx, root, 1<<20, "rev-parse", "HEAD"); err == nil || data != "" {
+		t.Fatalf("cancelled command returned a successful observation: %q %v", data, err)
 	}
 }
