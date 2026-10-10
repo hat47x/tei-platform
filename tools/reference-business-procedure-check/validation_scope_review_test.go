@@ -970,3 +970,33 @@ func TestValidationScopeReviewEmptyArtifactLocatorIsUnresolved(t *testing.T) {
 		t.Fatalf("空のartifact locatorを出典として採用しました: %+v", rows[0])
 	}
 }
+
+func TestValidationScopeReviewWhitespaceSourceIsUnresolved(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        string
+		fingerprint string
+	}{
+		{name: "whitespace locator", path: "  ", fingerprint: "sha256:valid"},
+		{name: "whitespace fingerprint", path: "application.tei", fingerprint: "  "},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			index := sourceindex.Index{
+				Artifacts: []sourceindex.Artifact{{Path: tc.path, Fingerprint: tc.fingerprint}},
+				References: []sourceindex.Reference{{
+					Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+					Role: sourceindex.RoleDefinition,
+					ArtifactPath: tc.path,
+					Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+				}},
+			}
+			rows := []validationScopeReviewRow{{Step: "BP-05", Application: "order_entry", Status: "no-set-difference"}}
+			attachValidationScopeSources(rows, index)
+			if len(rows[0].SourceEvidence) != 0 ||
+				!reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+				t.Fatalf("空白のみの出典情報を根拠として採用しました: %+v", rows[0])
+			}
+		})
+	}
+}
