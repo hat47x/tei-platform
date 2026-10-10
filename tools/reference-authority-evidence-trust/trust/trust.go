@@ -130,7 +130,7 @@ func Verify(
 		GrantFingerprint:  grant.GrantFingerprint,
 		PolicyFingerprint: grant.PolicyFingerprint,
 	}
-	qualification.QualificationFingerprint = qualificationFingerprint(qualification)
+	qualification.QualificationFingerprint = QualificationFingerprint(qualification)
 	return qualification, nil
 }
 
