@@ -81,3 +81,9 @@ E7の限定的な観測を、依存閉包が成立したという意味に読み
 **不足している接続契約**：既存意味解析器から、起点Subject・到達先Subject・辺の意味・解析不能理由を列挙する型付き依存辺の公開契約が必要。これは調査対象であり、上記の`World`や`Index`が既に提供しているとは扱わない。まず意味解析器側の既存処理と責務を調査し、公開するなら循環・未知種別・不正参照を区別できる失敗型を定める。Source Indexは証跡joinを担当し、意味辺の推定は担当しない。
 
 **実装順序案**：①既存意味解析器の参照解決箇所を特定 → ②最小の型付き辺を読み取り専用で公開 → ③E5の直接依存と統合し、Source証跡へjoin → ④推移閉包と失敗側判定を追加 → ⑤間接依存だけが変化する負例を通す。現時点では①の全面調査や②以降の実装・テストは未完了。
+
+## E8: scoped references requiring semantic resolution
+
+Inspection of `internal/application/model.go` and `internal/semantic/model.go` identifies several dependency candidates that cannot safely be interpreted as global Subject IDs. `Pattern.Datasource` is an application-local database alias; `Pattern.ContractQuery.Query` is local to its contract. Resolution must preserve these scopes. Other candidate references include Pattern Data, Relation, Query and Capability; semantic Attribute TypeRef; Relation Target and Keys; Validation Attribute and Relation; and Capability input/output types.
+
+These are declaration fields, not yet verified semantic dependency edges. Before exposing a typed dependency API, locate the authoritative validators and reuse their resolution rules. A possible read-only result is a list of `(from Subject, to Subject, relation)` edges and explicit unresolved-reference diagnostics. Do not infer a successful edge from a matching identifier alone. Add negative tests for alias collisions across applications, query names shared by contracts, and changes to indirect semantic dependencies. This section records a design inventory, not an implemented E8 or a passing test.
