@@ -39,15 +39,16 @@ func Evaluate(input []Check) Result {
  checks := append([]Check(nil), input...)
  sort.SliceStable(checks, func(i, j int) bool {
   a, b := checks[i], checks[j]
-  ak := a.Subject+"\x00"+a.Relation+"\x00"+a.Owner+"\x00"+a.Evidence+"\x00"+string(a.Status)
-  bk := b.Subject+"\x00"+b.Relation+"\x00"+b.Owner+"\x00"+b.Evidence+"\x00"+string(b.Status)
+  ak := a.Subject+"\x00"+a.Relation+"\x00"+a.Owner+"\x00"+a.Evidence+"\x00"+string(a.Status)+"\x00"+boolKey(a.Required)
+  bk := b.Subject+"\x00"+b.Relation+"\x00"+b.Owner+"\x00"+b.Evidence+"\x00"+string(b.Status)+"\x00"+boolKey(b.Required)
   return ak < bk
  })
  outcome := "eligible-for-proposal"
  rank := 0
- if len(checks)==0 { rank=1 }
+ requiredCount := 0
  for _, check := range checks {
   if !check.Required { continue }
+  requiredCount++
   status := check.Status
   if strings.TrimSpace(check.Subject)=="" || strings.TrimSpace(check.Relation)=="" || strings.TrimSpace(check.Owner)=="" || strings.TrimSpace(check.Evidence)=="" {
    status = Unresolved
@@ -61,10 +62,16 @@ func Evaluate(input []Check) Result {
   }
   if next > rank { rank = next }
  }
+ if requiredCount == 0 { rank = 1 }
  switch rank {
  case 1: outcome = "blocked-unresolved"
  case 2: outcome = "blocked-incompatible"
  case 3: outcome = "blocked-stale"
  }
  return Result{Outcome:outcome, Checks:checks}
+}
+
+func boolKey(v bool) string {
+ if v { return "1" }
+ return "0"
 }
