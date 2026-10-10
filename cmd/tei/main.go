@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -84,7 +85,14 @@ func main() {
 		writeJSON(commandCatalog())
 		return
 	}
-	fs := flag.NewFlagSet(command, flag.ExitOnError)
+	parseMode := flag.ExitOnError
+	if command == "inspect" || command == "trace" {
+		parseMode = flag.ContinueOnError
+	}
+	fs := flag.NewFlagSet(command, parseMode)
+	if parseMode == flag.ContinueOnError {
+		fs.SetOutput(io.Discard) // Emit one JSON error instead of a second stderr diagnostic.
+	}
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
@@ -136,7 +144,19 @@ func main() {
 	expectedRevision := fs.Int("expected-revision", -1, "expected durable deployment run revision for optimistic concurrency")
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
-	_ = fs.Parse(os.Args[2:])
+	parseErr := fs.Parse(os.Args[2:])
+	if command == "inspect" || command == "trace" {
+		if parseErr == nil {
+			parseErr = validateSelectedReadOnlyFlags(fs, command)
+		}
+		if parseErr != nil {
+			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
+	}
 	if *jsonValidation {
 		if command != "validate" {
 			fmt.Fprintln(os.Stderr, "-json is supported only for validate -workspace")
