@@ -775,6 +775,33 @@ testには、既知のS4 candidateと同じsemantic deltaになるpositive case�
 
 この段階でも探索結果の自動採用やReference Patternの自動適用は行わない。destination-ownedな情報は明示入力のままであり、Proposal生成後もAcceptanceは別である。
 
+### 2026-10-10 Data determinant Core promotion pressure
+
+Data Design Contextにはbusiness identity / functional dependencyのderived candidate、Evidence requirement、temporal / composite-domain unresolved、Persistence / Target / runtime identityのnegative boundaryまで入った。一方、これをそのままCore primitiveへ昇格するにはReference diversityが不足している。
+
+正本として[Data Determinant Promotion Gate](../DATA_DETERMINANT_PROMOTION_GATE_2026-10.md)を追加した。
+
+現行Referenceとtest pressureを、少なくとも次の三類型へ分ける。
+
+```text
+contained repeat
+  sales.order.lines -> sales.order_line
+  + accepted relation-unique
+  -> identity / FD candidateを導出できる
+
+changeable reference
+  repair.intake -> customer.customer
+  -> Relation shapeからidentity / FD candidateを作らない
+
+independent association
+  two independent one-relations
+  -> 組合せidentity / association identityを推測しない
+```
+
+`internal/knowledgecontext/context_test.go`には、この三類型を同じData Design Contextへ通すnegative pressureを追加した。contained repeatだけがaccepted scoped uniquenessを根拠にcandidateを持ち、reference / association shapeはbusiness meaningとdeterminantを`unresolved`へ残す。
+
+これにより、salesの一例から「親ID + 連番」等をCore規則へ一般化しないことを固定する。次段は新しいCore syntaxではなく、association Dataについてbusiness occurrence、組合せidentity、Relation差し替え、時間再利用、Persistence差をSource-backedに説明できるReferenceを一つ作ることである。そのReferenceが成立した後に、contained repeatとの共通部分だけをCore contract候補として再評価する。
+
 ### 現在のEvidence境界 — 2026-10-09
 
 Data Design Context、Knowledge Qualification、selective Disclosure、qualificationからexplicit-reference Proposalへ接続するReference実装は、PR #960までの変更としてmainへ反映されている。その後もProjection revision、candidate fingerprint、Evidence requirement fingerprint、SQL Realization / runtime identityのnegative pressureまでmain側で拡張された。
