@@ -893,6 +893,7 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	}
 	for i := range catalog.NamespaceAuthorities {
 		catalog.NamespaceAuthorities[i].EvidenceFingerprint = ""
+		catalog.NamespaceAuthorities[i].TrustQualificationFingerprint = ""
 	}
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
