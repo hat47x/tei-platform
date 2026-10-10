@@ -49,10 +49,13 @@ E1で読んだ `order_entry` ApplicationのGit blob SHAは `b559df7338d590ed173a
 
 [観測したSourceを利用先ごとに比較する試作](e3-requalification.mjs)と[合成試験](e3-requalification.test.mjs)では、**既存Sourceの内容識別子と、利用先が参照するSourceの一覧**を外部から与える。試作自体はWorkspaceを解析せず、SourceやLockを書き換えない。
 
+**留意点**: E2候補の構造と利用先識別子を照合しても、外部から提供されたSource指紋や利用先一覧の完全性・真正性は証明できない。ここでの `applicable` は読み取り専用の局所編集候補であり、権限確認や構文・意味互換の受理ではない。
+
 - 利用先が参照するSourceの指紋が変わらなければ `unchanged`。無関係なSource変更で、全案件を失効させない。
 - 対象Sourceが変更された場合は `unresolved: dependency_changed`。文字列上の変更可能性を、契約上の互換性と取り違えない。
 - 必要な指紋がない、または同じSourceが重複して提示された場合は判定を止める。
 - E2のUI変更候補 `proposed` は、対象Source群が変わっていないときだけ**局所編集の適用候補** `applicable` とする。正式採用や権限付与はしない。
+- `proposed` という文字列だけでは適用候補としない。E2が扱う `ui-heading`／`project-ui`／既知のUI Sourceと、`ui-presentation` の利用先が一致するときに限る。候補種別の偽装や異なる利用先の状態流用は `unresolved` とする。
 - E2のDB接続先変更は、対象が同一のDB定義でも `proposed-unqualified` にとどまり、Provider適合やGrant等の確認が済むまで `unresolved` とする。
 
 試験には、上記のGit blob SHAの変化を固定した一例も含む。Source単位の保守的な検査なので、Applicationファイル内の一つのValidation追加から、その影響を受けない細部まで自動的に切り分けることはできない。将来、意味・Contract単位の依存解析が成立したら、**既存の依存関係／Impact解析を再利用**する。別の本番向け依存グラフは作らない。
@@ -61,7 +64,7 @@ E1で読んだ `order_entry` ApplicationのGit blob SHAは `b559df7338d590ed173a
 node --test reference/application-composition/e2-change-probe.test.mjs reference/application-composition/e3-requalification.test.mjs
 ```
 
-Node.js 22.16.0の局所環境で、E2の9件とE3の11件、計20件を成功と確認した。試作のGit blob SHAと、GitHubに登録したファイルのSHAが一致することは別途照合する。**実リポジトリ全体のhealth、実React／Provider／SUI連携は未確認**である。
+Node.js 22.16.0の隔離環境で、E2の9件とE3の15件、計24件を成功と確認した（E3に候補種別・利用先の取り違えを拒否する4件を追加）。試作のGit blob SHAと、GitHubに登録したファイルのSHAが一致することは別途照合する。**実リポジトリ全体のhealth、実React／Provider／SUI連携は未確認**である。
 
 ## 判断と次の実証条件
 
