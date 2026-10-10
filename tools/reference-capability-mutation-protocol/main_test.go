@@ -26,6 +26,7 @@ type ledgerProvider struct {
 	effectCount                int
 	abortCount                 int
 	abortSawCanceledContext    bool
+	abortError                 bool
 	commitErrorAfterApply      bool
 	malformedReceiptAfterApply bool
 	forceNotCommitted          bool
@@ -148,6 +149,9 @@ func (p *ledgerProvider) Abort(ctx context.Context, handle MutationHandle) error
 	p.abortCount++
 	if ctx.Err() != nil {
 		p.abortSawCanceledContext = true
+	}
+	if p.abortError {
+		return fmt.Errorf("synthetic abort cleanup failure")
 	}
 	record, ok := p.records[handle.InvocationKey]
 	if !ok {
@@ -739,5 +743,29 @@ func TestPreparedFingerprintDoesNotCollideAcrossFieldBoundaries(t *testing.T) {
 			left.PreparationID,
 			right.InvocationKey,
 		)
+	}
+}
+
+
+func TestAbortCleanupFailureIsVisibleWithoutChangingBusinessOutcome(t *testing.T) {
+	provider := newLedgerProvider()
+	provider.abortError = true
+	journal := newMemoryJournal()
+	executor := newExecutor(provider, journal)
+	executor.Validate = func([]byte) error {
+		return fmt.Errorf("shape mismatch")
+	}
+
+	execution, err := executor.Invoke(context.Background(), MutationRequest{
+		InvocationKey: "order-abort-error",
+		Payload:       []byte("17"),
+	})
+	if execution.Outcome != OutcomeNotCommitted ||
+		!errors.Is(err, ErrResultValidation) ||
+		!errors.Is(err, ErrAbortCleanup) {
+		t.Fatalf("cleanup failure was hidden or changed business outcome: execution=%+v err=%v", execution, err)
+	}
+	if provider.commitCount != 0 || provider.effectCount != 0 {
+		t.Fatalf("cleanup failure crossed commit boundary: %+v", provider)
 	}
 }
