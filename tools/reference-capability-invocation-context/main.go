@@ -191,6 +191,7 @@ func invokeWithExecutionContext(
 				"context-slot-binding-does-not-grant-additional-authority",
 				"control-context-does-not-expose-caller-values",
 				"binding-receipt-does-not-contain-slot-value",
+				"binding-and-reuse-refs-are-host-declared-non-secret-not-validated",
 				"reuse-partition-is-host-input-not-authorization-proof",
 				"direct-reflection-check-does-not-prove-general-non-disclosure",
 			},
