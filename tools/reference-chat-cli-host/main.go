@@ -29,6 +29,7 @@ type ProbeReport struct {
 	CheckoutClean        string `json:"checkoutClean"`
 	IgnoredArtifacts     string `json:"ignoredArtifacts"`
 	HiddenIndexFlags     string `json:"hiddenIndexFlags"`
+	HistoryOverrides     string `json:"historyOverrides"`
 	EligibleForLocalGate bool   `json:"eligibleForLocalGate"`
 	LiveRemoteMain       string `json:"liveRemoteMain"`
 	Credentials          string `json:"credentials"`
@@ -37,7 +38,7 @@ type ProbeReport struct {
 
 func commandOutput(root string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{
-		"--no-optional-locks", "-C", root, "-c", "core.fsmonitor=false",
+		"--no-replace-objects", "--no-optional-locks", "-C", root, "-c", "core.fsmonitor=false",
 	}, args...)...)
 	// Do not execute repository-configured FS monitor hooks or take optional
 	// index locks as part of a read-only host capability probe.
@@ -53,7 +54,8 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		Checkout: "unavailable", ExpectedHeadMatch: "not-checked",
 		TrackingMainMatch: "not-checked", MainAncestor: "not-checked",
 		CheckoutClean: "not-checked", IgnoredArtifacts: "not-checked", HiddenIndexFlags: "not-checked",
-		LiveRemoteMain: "not-checked", Credentials: "not-checked",
+		HistoryOverrides: "not-checked",
+		LiveRemoteMain:   "not-checked", Credentials: "not-checked",
 		RepositoryHealth: "not-run",
 	}
 	if _, err := exec.LookPath("git"); err != nil {
@@ -81,6 +83,32 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		return result
 	}
 	result.Checkout = "present"
+	// A replacement or graft can change local ancestry without changing the
+	// visible commit SHA. Do not qualify such a repository via this probe.
+	// --no-replace-objects also protects the Git reads themselves.
+	replacements, err := commandOutput(root, "for-each-ref", "--format=%(refname)", "refs/replace")
+	if err != nil {
+		result.HistoryOverrides = "unavailable"
+		return result
+	}
+	graftsPath, err := commandOutput(root, "rev-parse", "--git-path", "info/grafts")
+	if err != nil || graftsPath == "" {
+		result.HistoryOverrides = "unavailable"
+		return result
+	}
+	if !filepath.IsAbs(graftsPath) {
+		graftsPath = filepath.Join(root, graftsPath)
+	}
+	_, graftsError := os.Lstat(graftsPath)
+	if graftsError != nil && !os.IsNotExist(graftsError) {
+		result.HistoryOverrides = "unavailable"
+		return result
+	}
+	result.HistoryOverrides = "absent"
+	if replacements != "" || graftsError == nil {
+		result.HistoryOverrides = "present"
+		return result
+	}
 	head, err := commandOutput(root, "rev-parse", "--verify", "HEAD^{commit}")
 	if err != nil {
 		return result
@@ -143,7 +171,8 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		}
 	}
 	result.EligibleForLocalGate = result.Go == "available" && result.CheckoutClean == "clean" &&
-		result.IgnoredArtifacts == "absent" && result.HiddenIndexFlags == "absent"
+		result.IgnoredArtifacts == "absent" && result.HiddenIndexFlags == "absent" &&
+		result.HistoryOverrides == "absent"
 	return result
 }
 

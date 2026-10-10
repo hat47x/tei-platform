@@ -45,7 +45,7 @@ func TestProbeMatchesLocalCheckoutButNeverClaimsFullQualification(t *testing.T) 
 	if got.Git != "available" || got.Go != "available" || got.Checkout != "present" ||
 		got.ExpectedHeadMatch != "match" || got.TrackingMainMatch != "match" ||
 		got.MainAncestor != "match" || !got.EligibleForLocalGate ||
-		got.CheckoutClean != "clean" || got.IgnoredArtifacts != "absent" || got.HiddenIndexFlags != "absent" {
+		got.CheckoutClean != "clean" || got.IgnoredArtifacts != "absent" || got.HiddenIndexFlags != "absent" || got.HistoryOverrides != "absent" {
 		t.Fatalf("unexpected preflight: %#v", got)
 	}
 	if got.RepositoryHealth != "not-run" || got.LiveRemoteMain != "not-checked" || got.Credentials != "not-checked" {
@@ -192,5 +192,38 @@ func TestProbeDoesNotRunRepositoryConfiguredFSMonitor(t *testing.T) {
 	}
 	if _, err := os.Stat(marker); !os.IsNotExist(err) {
 		t.Fatalf("untrusted repository fsmonitor was executed; stat error=%v", err)
+	}
+}
+
+func TestProbeRejectsCommitReplacementThatForgesMainAncestry(t *testing.T) {
+	root, original := exampleCheckout(t)
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("changed\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	gitTest(t, root, "add", "README.md")
+	gitTest(t, root, "commit", "-qm", "real main descendant")
+	newMain := gitTest(t, root, "rev-parse", "HEAD")
+	gitTest(t, root, "update-ref", "refs/remotes/origin/main", newMain)
+	gitTest(t, root, "checkout", "-q", "--detach", original)
+	originalTree := gitTest(t, root, "rev-parse", "HEAD^{tree}")
+	fake := gitTest(t, root, "commit-tree", originalTree, "-p", newMain, "-m", "forged ancestor")
+	gitTest(t, root, "replace", original, fake)
+	// This succeeds without the protective Git --no-replace-objects option.
+	gitTest(t, root, "merge-base", "--is-ancestor", newMain, original)
+	got := probe(root, original, newMain)
+	if got.EligibleForLocalGate || got.HistoryOverrides != "present" {
+		t.Fatalf("forged ancestor was accepted: %#v", got)
+	}
+}
+
+func TestProbeRejectsLegacyGrafts(t *testing.T) {
+	root, head := exampleCheckout(t)
+	path := filepath.Join(root, ".git", "info", "grafts")
+	if err := os.WriteFile(path, []byte(head+" "+strings.Repeat("f", 40)+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	got := probe(root, head, head)
+	if got.EligibleForLocalGate || got.HistoryOverrides != "present" {
+		t.Fatalf("grafted history accepted: %#v", got)
 	}
 }

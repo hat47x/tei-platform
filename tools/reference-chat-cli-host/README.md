@@ -15,3 +15,5 @@ eligibleForLocalGate=true は「ローカル資格確認を試行するための
 Hostが信頼できるGitHub経路からfresh checkoutと最新origin/mainを確保し、別の明示権限を持つときだけ、既存 tools/reference-tool-neutral-development/qualify.sh を用いる。これは完全なRepository HealthとRQ-034を実行する正式な資格Referenceであり、本事前診断が置き換えない。資格receiptは候補HEADとmain SHAに固定し、最新mainが動けば再取得する。
 
 テスト: go test ./tools/reference-chat-cli-host。合成した隔離Gitリポジトリに対して成功、HEAD不一致、origin/main欠落・不一致、祖先関係不一致、サブディレクトリ誤指定、未知引数、Remote URL中のsecret非出力を検査する。実GitHub通信・実TEIフルcheckoutの検証ではない。
+
+Gitの`refs/replace`やlegacy graftsは、表示上のコミットSHAを変えずに祖先判定を変更できるため拒否します。Git呼び出しは`--no-replace-objects`で保護し、リポジトリが指定した`fsmonitor`は実行しません。元ソースが未信頼なら、そもそもShellで内容を実行する前に別経路でCheckoutと資格を検査する必要があります。
