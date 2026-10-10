@@ -140,7 +140,17 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 **重要な停止線:** 現状の`RelationMatchPolicy`はFixture評価時に外部から与える値であり、Accepted Operator契約やAuthoritative DSL Sourceにまだ結合されていない。同じOperator pinでも方針の相違は**異なる意味**である。正式なLowering時には方針を型付きの演算引数としてCanonical meaningに含め、Source span・Semantic Set・Lockと対応付けなければならない。このReferenceをそのままSQL/Go/Wasmの実行判断に使ってはならない。照合は文字列表現による試験用の同値比較であり、実際の型比較規則、照合順序、Money精度、NULL伝播、外部結合、行順序、トランザクション時点の適合性は別途検証を要する。
 
-追加の純粋照合ロジックは**簡略化した周辺型を含む局所Go 1.23.2モジュール**で`go test -count=1 ./...`、`go test -race -count=1 ./...`、`go vet ./...`がPASSした。ただし本リポジトリの全型定義、Canonical Worldとの結合テスト、およびPR exact-headの正規健全性検証は未実行であり、統合資格の証拠ではない。
+このFixture Oracleのテストコードは追加済みだが、今回の変更を対象にしたGoテスト・race検査・vetはまだ実行していない。PR exact-headの正規健全性検証も未実施であり、統合資格の証拠は取得していない。
+
+### 明示した演算引数を型付き意味候補に固定（2026-10-10）
+
+`expand_invocation_syntax.go`は、Reference Languageでのみ `std.op.expand(relation: ..., unmatched: ..., null_key: ...)` の**必須の名前付き引数**を読み、引数順・空白と意味を分離する。各引数の元ソース内のUTF-8バイト位置を保持し、不在・重複・未知・非法の方針は位置付き診断で拒否する。このParserは既存`.tei`の正式文法でも共通Parser ABIでもない。
+
+`bound_expand_meaning.go`は、既存Semantic World上のRelationと受理済みであることを外部から前提とする厳密なOperator pinに、その引数を結合した**未受理の型付き意味候補**を作る。候補の変更検出用SHA-256 fingerprintには、スキーマ版、Relationの参照元・参照先・ID、Cardinality、結合キー順序、Operatorの契約identity・fingerprint・入出力型、`unmatched`と`null_key`の両方を含める。空白・引数順・Source spanは含めない。単一のOperator pinから、異なる引数に応じて異なる意味fingerprintが生じることを試験対象とした。
+
+`ProbeBoundExpandMeaning`は、呼び出し側が処理時に別のPolicyを注入できないよう、結合済みの方針だけでFixtureを評価する。候補や方針を後から変更した場合はfingerprint不一致として拒否する。ダイジェストは改変検知であり、署名・信頼の証拠・Semantic Lockの代わりではない。意味の採用には既存Semantic Extension/Shared Acceptance Boundaryを経由する。
+
+**追加したSyntax/意味束縛のテストは実行未確認。** 接続先の`OperatorContract`にも引数形式そのものはまだ受理済みInterfaceとして定義されていないため、これを実装済みDSL/Production機能としては扱わない。正式化に先立ち、演算引数のmeaning profileと受理済みSemantic Interfaceを一致させ、Source Indexの共通span ABIへ写す必要がある。
 
 ### まだ検証できないこと
 
