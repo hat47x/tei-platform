@@ -96,7 +96,7 @@ check_case() {
     ignored) printf 'cache\n' > "$repo/ignored.txt" ;;
     assume-unchanged) git -C "$repo" update-index --assume-unchanged README.md; printf 'masked\n' >> "$repo/README.md" ;;
     skip-worktree) git -C "$repo" update-index --skip-worktree README.md; printf 'masked\n' >> "$repo/README.md" ;;
-    post-ignored|post-hidden|after-delete-ignored|python-optimized-tamper) ;;
+    post-ignored|post-hidden|after-delete-ignored|python-optimized-clean|python-optimized-tamper) ;;
     *) echo "unknown fixture: $name" >&2; exit 1 ;;
   esac
 
@@ -106,7 +106,7 @@ check_case() {
   fi
 
   python_optimize=0
-  if [[ "$name" == python-optimized-tamper ]]; then
+  if [[ "$name" == python-optimized-clean || "$name" == python-optimized-tamper ]]; then
     python_optimize=2
   fi
   PATH="$SHIM_DIR:$PATH" INJECTION_KIND="$name" PRODUCT_REPO="$repo" \
@@ -155,6 +155,7 @@ check_case skip-worktree 2
 check_case post-ignored 1
 check_case post-hidden 1
 check_case after-delete-ignored 1
+check_case python-optimized-clean 0
 check_case python-optimized-tamper 1
 
 NON_GIT="$TMP_ROOT/non-git"
