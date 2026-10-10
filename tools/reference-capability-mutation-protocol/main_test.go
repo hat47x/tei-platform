@@ -151,6 +151,7 @@ func (p *ledgerProvider) Abort(_ context.Context, handle MutationHandle) error {
 	}
 	if !record.committed {
 		record.aborted = true
+		delete(p.records, handle.InvocationKey)
 	}
 	return nil
 }
@@ -272,6 +273,38 @@ func TestPreparedIntentMustBeJournaledBeforeCommit(t *testing.T) {
 	}
 	if provider.effectCount != 0 || provider.commitCount != 0 || provider.value != 0 {
 		t.Fatalf("commit happened without prepared journal: %+v", provider)
+	}
+}
+
+
+func TestPreparedJournalFailureCanRetryWithoutReusingAbortedPreparation(t *testing.T) {
+	provider := newLedgerProvider()
+	journal := newMemoryJournal()
+	journal.failPrepared = true
+	executor := newExecutor(provider, journal)
+	request := MutationRequest{
+		InvocationKey: "order-journal-retry",
+		Payload:       []byte("4"),
+	}
+
+	first, err := executor.Invoke(context.Background(), request)
+	if err == nil || !errors.Is(err, ErrJournalWrite) ||
+		first.Outcome != OutcomeNotCommitted {
+		t.Fatalf("expected pre-commit journal failure: execution=%+v err=%v", first, err)
+	}
+	if provider.effectCount != 0 || provider.commitCount != 0 {
+		t.Fatalf("journal failure crossed commit boundary: %+v", provider)
+	}
+
+	journal.failPrepared = false
+	second, err := executor.Invoke(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Outcome != OutcomeCommitted ||
+		provider.value != 4 ||
+		provider.effectCount != 1 {
+		t.Fatalf("safe retry after aborted preparation failed: execution=%+v provider=%+v", second, provider)
 	}
 }
 
