@@ -195,6 +195,37 @@ func TestEpistemicDetailRedactsEvidenceAndMarksMetadataPartial(t *testing.T) {
 	}
 }
 
+func TestEpistemicDetailAccessLossCanDowngradeCurrentAssessmentWithoutSemanticStale(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		switch corpus.Assertions[i].ID {
+		case "conflict-a":
+			corpus.Assertions[i].ConflictsWith = nil
+		case "conflict-b":
+			corpus.Assertions[i].ConflictsWith = []string{"conflict-a"}
+			corpus.Assertions[i].AccessRefs = []string{"policy:conflict-detail"}
+		}
+	}
+
+	fullAccess := []string{"policy:conflict-detail"}
+	query := detailQueryFor(t, corpus, context, "conflict-a", fullAccess)
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+	if err != nil {
+		t.Fatalf("access loss should return current partial assessment, not semantic-stale error: %v", err)
+	}
+	if result.Assessment.MetadataState != MetadataPartial ||
+		result.Assessment.UseState != "review-required" ||
+		!hasReason(result.Assessment, "EPISTEMIC_METADATA_INCOMPLETE") {
+		t.Fatalf("access loss did not downgrade current detail assessment: %+v", result.Assessment)
+	}
+	if result.Assessment.ReviewSubjectFingerprint != query.ExpectedReviewSubjectFingerprint {
+		t.Fatalf("operational access loss changed semantic subject receipt: query=%s current=%s",
+			query.ExpectedReviewSubjectFingerprint,
+			result.Assessment.ReviewSubjectFingerprint,
+		)
+	}
+}
+
 func TestEpistemicDetailHidesRestrictedRelationsAndKeepsPartialSignal(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
