@@ -544,7 +544,7 @@ func TestShapePublisherTrustPolicyRefreshDoesNotChangeShapeOrCapabilityIdentity(
 
 	payload, err := json.Marshal(SourceAdapterRequest{
 		Format:                "xead",
-		SourceBytes:           []byte("<System FormatVersion="1.2"/>"),
+		SourceBytes:           []byte(`<System FormatVersion="1.2"/>`),
 		TranscriptionContract: sourceAdapterTranscriptionContract(),
 	})
 	if err != nil {
