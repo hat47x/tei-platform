@@ -149,3 +149,49 @@ test('Pattern capability dependency is not falsely treated as part of the covere
   assert.equal(result.fullClosure,false);
   assert.equal(result.authority,'none');
 });
+
+test('a changed referenced Semantic Capability invalidates its unchanged Pattern source',()=>{
+  const target={relation:'pattern-capability',subject:{kind:'semantic-capability',id:'sales.order.submit'},
+    path:'semantic/sales/capability.tei',digit:'e'};
+  const old=fixture([...subjects,target]),next=structuredClone(old);
+  next.index.artifacts[4].fingerprint=sha('f');
+  next.report.dependencies[4].source.fingerprint=sha('f');
+  const result=check(old,next);
+  assert.equal(result.status,'unresolved');
+  assert.equal(result.reason,'indexed_source_changed');
+  assert.deepEqual(result.affected.map(x=>x.subject),[target.subject]);
+});
+
+test('typed Data Relation and Query changes each invalidate their consuming Pattern',()=>{
+  const targets=[
+    {relation:'pattern-data',subject:{kind:'semantic-data',id:'sales.order'},path:'semantic/sales/data.tei',digit:'e'},
+    {relation:'pattern-relation',subject:{kind:'semantic-relation',id:'sales.order.lines'},
+      path:'semantic/sales/relation.tei',digit:'f'},
+    {relation:'pattern-query',subject:{kind:'query',id:'order_entry.orders'},
+      path:'applications/order-entry/queries/orders.tei',digit:'9'},
+  ];
+  for (let i=0;i<targets.length;i++){
+    const old=fixture([...subjects,...targets]),next=structuredClone(old);
+    next.index.artifacts[subjects.length+i].fingerprint=sha('a');
+    next.report.dependencies[subjects.length+i].source.fingerprint=sha('a');
+    const result=check(old,next);
+    assert.equal(result.status,'unresolved');
+    assert.deepEqual(result.affected.map(x=>x.subject),[targets[i].subject]);
+  }
+});
+
+test('an unmodified Pattern cannot hide a missing typed referent',()=>{
+  const referent={relation:'pattern-relation',
+    subject:{kind:'semantic-relation',id:'sales.order.lines'},
+    path:'semantic/sales/relation.tei',digit:'e'};
+  const old=fixture([...subjects,referent]),next=structuredClone(old);
+  next.report.dependencies.pop();
+  assert.equal(check(old,next).reason,'declared_dependency_set_changed');
+});
+
+test('unsupported invented Pattern relation type is not promoted to a known dependency',()=>{
+  const old=fixture(),next=structuredClone(old);
+  next.report.dependencies.push({relation:'pattern-implementation',
+    subject:{kind:'runtime-module',id:'some'},source:{path:'build/module.go',fingerprint:sha('c')}});
+  assert.equal(check(old,next).reason,'invalid_dependency_claim');
+});
