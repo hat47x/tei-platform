@@ -168,6 +168,8 @@ func TestWebTargetProtectedSessionRouteDeniesUntrustedAndMalformedRequests(t *te
 		{"case folded key rejected", "corporate-editor", "matching", `{"Row":0}`, http.StatusBadRequest},
 		{"mixed case alias rejected", "corporate-editor", "matching", `{"row":0,"ROW":1}`, http.StatusBadRequest},
 		{"JSON null must not invoke a command", "corporate-editor", "matching", `null`, http.StatusBadRequest},
+		{"JSON array cannot invoke a command", "corporate-editor", "matching", `[]`, http.StatusBadRequest},
+		{"body over 64 KiB rejected", "corporate-editor", "matching", `{"from":"` + strings.Repeat("A", 64<<10) + `"}`, http.StatusBadRequest},
 		{"JSON null member from rejected", "corporate-editor", "matching", `{"from":null}`, http.StatusBadRequest},
 		{"JSON null member row rejected", "corporate-editor", "matching", `{"row":null}`, http.StatusBadRequest},
 		{"JSON fractional row rejected", "corporate-editor", "matching", `{"row":0.5}`, http.StatusBadRequest},
