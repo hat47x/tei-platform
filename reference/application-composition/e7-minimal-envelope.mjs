@@ -19,6 +19,7 @@ export function minimizePairedSourceEvidence(envelope) {
       envelope.qualification !== qualification || !object(envelope.report) ||
       envelope.report.status !== 'observed' ||
       envelope.report.qualification !== 'declaration-and-source-index-only' ||
+      typeof envelope.report.application !== 'string' || !envelope.report.application.trim() ||
       !Array.isArray(envelope.report.issues) || envelope.report.issues.length !== 0 ||
       !Array.isArray(envelope.report.dependencies) || !envelope.report.dependencies.length ||
       !object(envelope.index) || !Array.isArray(envelope.index.artifacts) ||
@@ -27,7 +28,8 @@ export function minimizePairedSourceEvidence(envelope) {
   }
   const selected = new Map();
   for (const dependency of envelope.report.dependencies) {
-    if (!object(dependency) || !validSubject(dependency.subject) ||
+    if (!object(dependency) || typeof dependency.relation !== 'string' ||
+        !dependency.relation.trim() || !validSubject(dependency.subject) ||
         !object(dependency.source) || !path(dependency.source.path) ||
         !fingerprint(dependency.source.fingerprint)) {
       return {status:'unresolved', reason:'invalid_dependency'};
@@ -84,7 +86,6 @@ export function minimizePairedSourceEvidence(envelope) {
   const projectedRefs = selectedRefs.map(ref => ({
     subject:{kind:ref.subject.kind,id:ref.subject.id},
     artifactPath:ref.artifactPath, role:ref.role,
-    ...(ref.range === undefined ? {} : {range:structuredClone(ref.range)}),
   }));
   const projectedDependencies = envelope.report.dependencies.map(dep => ({
     relation:dep.relation, subject:{kind:dep.subject.kind,id:dep.subject.id},
@@ -98,7 +99,6 @@ export function minimizePairedSourceEvidence(envelope) {
     },
     index:{artifacts:[...artifacts.values()].map(a=>({
       path:a.path, fingerprint:a.fingerprint,
-      ...(a.format === undefined ? {} : {format:a.format}),
     })), references:projectedRefs},
   };
   return {status:'projected', qualification:'selected-source-disclosure-only',
