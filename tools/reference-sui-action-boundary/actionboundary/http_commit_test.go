@@ -89,7 +89,7 @@ func TestJSONCommitHandlerSUIRoundTripAndConflict(t *testing.T) {
 	store := NewScopedJSONDocumentStore("doc", "r1", []byte(documentFixture))
 	host := Host{
 		Authorizer: permit(true),
-		Bindings: []Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: store}},
+		Bindings:   []Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: store}},
 	}
 	handler := JSONCommitHandler{
 		Host: host,
@@ -117,7 +117,9 @@ func TestJSONCommitHandlerSUIRoundTripAndConflict(t *testing.T) {
 	if first.Code != 200 {
 		t.Fatalf("first commit returned %d: %s", first.Code, first.Body.String())
 	}
-	var result struct{ Revision string `json:"revision"` }
+	var result struct {
+		Revision string `json:"revision"`
+	}
 	if err := json.Unmarshal(first.Body.Bytes(), &result); err != nil || result.Revision != "r1:1" {
 		t.Fatalf("bad revision: %+v err=%v", result, err)
 	}
