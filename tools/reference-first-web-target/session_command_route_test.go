@@ -464,3 +464,46 @@ func TestWebTargetSessionValidationRejectionIsNotReportedAsCompletedCommand(t *t
 		t.Fatalf("legacy business validation behavior changed: %+v", legacyResponse)
 	}
 }
+
+
+func TestWebTargetSessionCommandFailureDoesNotClaimEffectWasRejected(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	var audits []webcomposition.AuditRecord
+	config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// This fixture selects order 1003, for which the command Adapter returns
+	// an Execution Error. A production adapter might report the same error
+	// after committing an effect; the session endpoint cannot infer rollback.
+	rec := postSyntheticSession(server.Handler(), "/scenario/session-submit",
+		"corporate-editor", "matching",
+		`{"from":"2026-09-18T07:00:00Z","row":2}`)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("uncertain Command error was presented as input rejection: HTTP=%d body=%s",
+			rec.Code, rec.Body.String())
+	}
+	var response webCommandScenarioErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Result.Stage != "command" || response.Result.Command != nil ||
+		response.Result.Observation != nil || response.Result.Authorization == nil ||
+		response.Result.Authorization.Outcome != "allowed" ||
+		response.ExecutionError != "action completion unconfirmed; inspect authoritative state before retrying" ||
+		strings.Contains(rec.Body.String(), "synthetic submit adapter unavailable") ||
+		len(audits) != 1 || audits[0].Stage != "error" ||
+		audits[0].Status != http.StatusInternalServerError {
+		t.Fatalf("Command error lost uncertainty or leaked Adapter implementation: response=%+v audits=%+v",
+			response, audits)
+	}
+	// The legacy endpoint retains its historical HTTP 422 Execution Error
+	// envelope. The new status semantics apply to the opt-in session route.
+	legacy := postSyntheticSession(server.Handler(), "/scenario/submit", "", "",
+		`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}`)
+	if legacy.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("legacy Command error status changed: %d body=%s", legacy.Code, legacy.Body.String())
+	}
+}
