@@ -51,6 +51,14 @@ SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`s
 
 SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
 
+### SUI受信実装の構文破損復旧・レビュー帰属（2026-10-11）
+
+SUI側で追加修正を照合した際、`routes/docs.py`にAction受信関数の重複と`expectedRevision`フィールドの欠落があることを発見しました。これはコードをPRへ追加しただけでは気付きにくい重大な退行です。重複がないと確認できたコミット`d952d97`を基点に、Action受信経路のOrigin、Revision、保存、監査を再構築し、`_SuiCardMoveActionIntent`・`post_sui_card_move_action`・`_commit_sui_card_move_action`とRevisionフィールドが各一つであることを確認しました。ローカル実行用`03_Implement/scripts/verify_native_action_boundary.sh`には、pytestに先立って`compileall`／`ast.parse`で重要定義の欠損と重複を検出する静的ガードを追加しています。**スクリプトと正式統合テストは未実行です。**
+
+SUIの既存`reviewAttribution`は、過去の人間レビューの帰属を示します。新規レビューを登録する通常PUTでは本人一致を厳密に確認する一方、Card移動は既存レビュー帰属を変えない操作であり、別の認可済み利用者にも許可されるべきです。ActionではReviewerの再申告検証を行わず、`updated.reviewAttribution == original.reviewAttribution`で改変不可を保証します。異なるActorによる移動で`reviewAttribution`・`critiqueInputs`・`reproposalDiffs`が保存されるSQLite回帰テストを追加しています。これも正式実行はまだです。
+
+TEI HostからSUIへの実認証委譲は`CAPABILITY_GAPS.md`の「SUI native Action receiver: authority handoff gates」を要件とします。**実セッションとApplication実装の本人・Tenant・対象Resourceが整合しない構成では有効化しません。** Hostサービスアカウントをそのまま元の人間主体の代用にしないこと、SUI所有の保存契約をTEI Coreへ移植しないことを明示しています。
+
 ### CAS Revisionの強度とSUI固有の成功監査（2026-10-11追補）
 
 SUI [Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)のAction readbackを、SUI既存GETの互換的な弱ETag解釈から切り離しました。**SUI固有のApplicationプロファイル**として、Action要求・応答と再読込のRevisionは厳密な小文字64桁SHA-256であり、再読込のHTTP ETagには強い引用符付きの`"<hash>"`だけを認めます。弱い`W/"..."`や欠落・不正ETagを拒否し、取得はsame-origin、no-store、redirect=errorとしました。JavaScript／Python双方で、末尾改行と正規表現`# SUIの操作をTEI Actionへ接続する参照実装
