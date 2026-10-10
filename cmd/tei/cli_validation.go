@@ -2,14 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 
+	"tei/internal/operations"
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
-	"tei/internal/workspace"
 )
 
 // cliValidationReport is a projection for automation, not a second semantic
@@ -58,30 +59,34 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 		SchemaVersion: "tei.cli.validate/v0",
 		Diagnostics:   []cliValidationItem{},
 	}
-	result, err := workspace.Load(root)
+	result, err := operations.ValidateWorkspace(root)
 	if err != nil {
-		if direct, ok := workspace.SourceDiagnosticFromError(root, err); ok {
-			report.Diagnostics = append(report.Diagnostics, cliValidationItem{
-				Diagnostic: validation.Diagnostic{
-					Code: direct.Code, Severity: direct.Severity, Message: direct.Message,
-				},
-				// There is no Semantic Subject before parsing completes.
-				Sources: []cliValidationSource{{
-					ArtifactPath: direct.Source.ArtifactPath,
-					Range:        direct.Source.Range,
-				}},
-			})
-			return writeValidationReport(out, report, 1)
+		code := "WORKSPACE_VALIDATION_FAILED"
+		var failure *operations.ValidationFailure
+		if errors.As(err, &failure) {
+			switch failure.Stage {
+			case operations.StageLoad:
+				code = "WORKSPACE_LOAD_FAILED"
+			case operations.StageSourceIndex:
+				code = "SOURCE_INDEX_FAILED"
+			}
 		}
-		report.Error = &cliValidationFailure{Code: "WORKSPACE_LOAD_FAILED", Message: err.Error()}
+		report.Error = &cliValidationFailure{Code: code, Message: err.Error()}
 		return writeValidationReport(out, report, 2)
 	}
-	index, err := workspace.BuildSourceIndex(root, result)
-	if err != nil {
-		report.Error = &cliValidationFailure{Code: "SOURCE_INDEX_FAILED", Message: err.Error()}
-		return writeValidationReport(out, report, 2)
+	if result.Direct != nil {
+		report.Diagnostics = append(report.Diagnostics, cliValidationItem{
+			Diagnostic: validation.Diagnostic{
+				Code: result.Direct.Code, Severity: result.Direct.Severity, Message: result.Direct.Message,
+			},
+			Sources: []cliValidationSource{{
+				ArtifactPath: result.Direct.Source.ArtifactPath,
+				Range:        result.Direct.Source.Range,
+			}},
+		})
+		return writeValidationReport(out, report, 1)
 	}
-	for _, projected := range workspace.ProjectDiagnostics(validation.Validate(result.World), index) {
+	for _, projected := range result.Diagnostics {
 		item := cliValidationItem{Diagnostic: projected.Diagnostic}
 		for _, ref := range projected.Sources {
 			item.Sources = append(item.Sources, cliValidationSource{
