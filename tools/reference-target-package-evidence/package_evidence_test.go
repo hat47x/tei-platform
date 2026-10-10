@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -84,6 +85,14 @@ func TestCgoPseudoImportIsNotAListedGoPackage(t *testing.T) {
 func TestTrackedCompiledSourceInventory(t *testing.T) {
 	root := t.TempDir()
 	pkgDir := filepath.Join(root, "tools", "sample")
+	if err := os.MkdirAll(pkgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"main.go", "native.go"} {
+		if err := os.WriteFile(filepath.Join(pkgDir, name), []byte("package sample\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	base := listedPackage{
 		ImportPath: "tei/tools/sample",
 		Dir:        pkgDir,
@@ -120,5 +129,35 @@ func TestTrackedCompiledSourceInventory(t *testing.T) {
 				t.Fatalf("unexpected error result: %v", err)
 			}
 		})
+	}
+}
+
+func TestTrackedCompiledSymlinkCannotSupplyUntrackedBytes(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "module")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	realSource := filepath.Join(root, "real.go")
+	if err := os.WriteFile(realSource, []byte("package main\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link.go")
+	if err := os.Symlink(realSource, link); err != nil {
+		t.Skipf("cannot create symlink on this host: %v", err)
+	}
+	p := listedPackage{
+		ImportPath: "tei/module",
+		Dir:        dir,
+		Module:     &listedModule{Path: "tei", Main: true},
+		GoFiles:    []string{"link.go"},
+	}
+	raw, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracked := map[string]struct{}{"module/link.go": {}}
+	if err := validateTrackedSources(raw, root, tracked); err == nil {
+		t.Fatal("Git-tracked symlink to untracked bytes was accepted")
 	}
 }
