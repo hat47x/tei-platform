@@ -65,14 +65,14 @@ SUI main の`App.tsx`は、`handleCardMoveBegin`で`DocumentV1`の参照と`docE
 
 - `dispatchCommit(intent)`：`createJSONActionDispatcher`などで一度だけ確定要求を送ります。権限拒否・Revision競合でローカル状態は更新しません。
 - `readResource(intent)`：成功後に、**同じ権威ある保存先**からキャッシュを使わずに取得します。アプリケーション側の読取アダプターは`{applicationID, resourceID, revision, value}`形式へ正規化します。`value`はアプリケーション所有の状態です。
-- `isCurrent(intent)`：送信前と読取後に、操作開始時のローカル状態が現在も有効か検査します。SUIであればDocument参照・ETag・未保存編集状態などを確認します。判定できない場合は成功扱いにしません。
-- `applySnapshot(resource, intent)`：Resource IDとRevisionが確定応答と一致し、ローカル状態も変化していない場合にだけ、アプリケーション自身が確定済みSnapshotを反映します。この処理自身も**最新状態を原子的に再確認**する必要があります。
+- `isCurrent(intent)`：送信前と読取後に、操作開始時のローカル状態が現在も有効か検査します。**同期的に真偽値の`true`を返した場合だけ通過**させ、Promise、例外、その他の真と評価される値は拒否します。SUIであればDocument参照・ETag・未保存編集状態などを確認します。判定できない場合は成功扱いにしません。
+- `applySnapshot(resource, intent)`：Resource IDとRevisionが確定応答と一致し、ローカル状態も変化していない場合にだけ、アプリケーション自身が確定済みSnapshotを反映します。この処理自身も**最新状態を原子的に再確認**する必要があります。反映できない場合は例外を送出するか`false`を返し、成功を返してはいけません。
 
 同じResourceに対する処理中の二重確定は拒否します。別Resourceは同時に処理できます。エラー`ActionConfirmationError`の`committedRevision`が非nullの場合、**サーバーは成功を応答済みですが、UIへの反映は未完了**です。読取失敗、Revisionの不一致、UIの状態変化、反映処理の失敗をサーバー側のロールバックとみなさず、旧Revisionで自動再送しません。通信断など、成功応答そのものを受け取れなかった場合も、保存先に変更済みの可能性があるため再照会が必要です。
 
 SUIの`applyDocumentChange`はローカルUndo履歴とdirty状態を更新するため、そのままサーバー確定Snapshotの反映に使うことはできません。実接続では**サーバー確定Snapshotを履歴・dirty状態と整合させて取り込む別のSUI所有経路**が必要です。TEI側がSUIのUndoやIsland規則を解釈することはありません。
 
-検証用の`confirmed-action-commit.test.mjs`（11ケース）と`action-browser-roundtrip.test.mjs`（4ケース）は、取消し・正常確定・失敗時の非反映・通信応答喪失・第二Applicationへの再利用を対象にします。後者のHTTPサーバーと保存処理は**テスト内の合成実装**であり、実Go Host・本番SUI保存経路・実Canvasの動作証拠ではありません。
+検証用の`confirmed-action-commit.test.mjs`（14ケース）と`action-browser-roundtrip.test.mjs`（4ケース）は、取消し・正常確定・失敗時の非反映・通信応答喪失・第二Applicationへの再利用を対象にします。後者のHTTPサーバーと保存処理は**テスト内の合成実装**であり、実Go Host・本番SUI保存経路・実Canvasの動作証拠ではありません。
 
 ## Web向けのJSON Action接続口（参照実装）
 
@@ -103,6 +103,8 @@ HTTP接続口とブラウザー側Dispatcherの動作は模擬Store・模擬fetc
 go test -race -count=1 ./tools/reference-sui-action-boundary/actionboundary
 node --test tools/reference-sui-action-boundary/native-action-bridge.test.mjs
 node --test tools/reference-sui-action-boundary/json-action-dispatch.test.mjs
+node --test tools/reference-sui-action-boundary/confirmed-action-commit.test.mjs
+node --test tools/reference-sui-action-boundary/action-browser-roundtrip.test.mjs
 ```
 
 ローカルに再構成したファイルとGitHubのGit Blob SHAを照合したうえで、Node.js 22のテスト16件（操作アダプター6件、JSON Dispatcher 6件、共通契約4件）がすべてPASSしました。GoのHTTP Handlerとそのテスト2ファイルについても、Git Blob SHAが一致するコピーを用意し、模擬Host／模擬Document Storeを組み合わせて`go test -race`と`go vet`をPASSしました。
