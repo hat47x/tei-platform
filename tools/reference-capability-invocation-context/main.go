@@ -169,6 +169,11 @@ func invokeWithExecutionContext(
 		// Do not allow the original error object to cross this boundary.
 		for _, requirement := range required {
 			if contracts[requirement.ContractID].ForbidDirectResultReflection {
+				// Only the trusted control context may attest cancellation.
+				// Do not trust an unwrapped downstream error as evidence of it.
+				if controlErr := control.Err(); controlErr != nil {
+					return InvocationContextExecution{}, controlErr
+				}
 				return InvocationContextExecution{}, fmt.Errorf(
 					"downstream invocation failed (confidential error detail withheld)",
 				)
