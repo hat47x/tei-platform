@@ -193,3 +193,9 @@ digest自体は署名・確定済みの規則・読み込んだPlugin sourceの�
 `RuleFingerprint`はPlugin catalogのlock / Capability解決、署名検証、明示的なAcceptance決定とは別責務。破壊的Rule変更時のMigration戦略は#1019/#951と合意する。Graphの意味をCoreに固定しない原則を守る。
 
 `Lookup`の索引によって典型的な参照解決の反復全走査を抑えたが、**極端に同じIDが多数のScope/Kindに存在するGraph**での一意性診断、cycle path説明、Property-based test、realistic 1万件規模のEditor応答測定は未完了。実装数やsynthetic PASSは三視点の実製品Acceptanceそのものではない。
+
+### R4補足 — Source Snapshotの読み取りコスト
+
+`sourcebridge.NewResolver`では、`Index.Validate`が同じArtifactを複数のDefinition/Authoring anchorから検査する際、1回の構築内で読み取ったbytesをパス別にコピーして再利用する。これによりSourceファイル数に応じた実I/Oに抑え、各anchorごとのファイル再読込を避ける。既存のSource Indexによるfingerprint/Range整合性は省略しない。
+
+追加したテストでは1 Artifactと1 Definition Referenceについて、構築時のreader呼出しが**厳密に1回**となり、以後の1000件Navigationは0回であることを確認する（隔離ミラーでPASS）。なお一度のキャッシュ検証は時点間のAtomic Snapshotや同時編集排除を保証しない。呼出し元が同じimmutable Source revisionを渡し、Acceptの直前にShared Acceptanceで競合を再検査することが必須である。
