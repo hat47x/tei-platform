@@ -429,3 +429,16 @@ E2.11の最終認可はCommandの`resolver.InvokeCapability`を呼ぶ**前**に�
 - **実WorkspaceのGoテスト、Race、Repository Healthは未実行です。** GitHubへ変更したファイルはリポジトリ上で確認しましたが、actual full checkoutでの`go test`成功は取得していません。
 - これはConcrete Adapter内までチェックを近づけた変更であり、**認可の版条件と副作用Commitが同じトランザクションになったことを意味しません**。外部DB・SaaS API・Queue等の本番相当で原子的に失効を扱うには、プラグインに対応可能なEffect Fence／版条件／再試行保証が必要です。共通要件と競合試験は独立した[Issue #1174](https://github.com/hat47x/tei-platform/issues/1174)へ起票済みです。
 - PR #1114はDraftを維持します。最新mainを含むexact headクリーンcheckoutでWeb＋Repository Health全PASSと前後cleanを確認するまで統合しません。
+
+
+## E2.13：Sessionの業務Validation拒否とHTTP／監査の整合
+
+Sessionでは、HTTP要求が認証・CSRF・Hostの早期業務認可を通過した後でも、RunnerのRead／Validationで**業務的な不成立**となり、Commandが実行されないことがあります。従来のSession結果変換では`Stage=validation-not-satisfied`、`Command=nil`にもかかわらずHTTP 200が返り、Host Auditが`completed`となる余地がありました。これはビジネス操作の成功率、監査、生成AIクライアントの再試行判断に誤解を生みます。
+
+そこでSession専用`handleProtectedSessionCommand`で`validation-not-satisfied`かつExecution Errorなしを**HTTP 422**へ分類し、Business Result本体・Validation Evidenceはそのまま保持することにしました。HostのAuditはHTTPステータスを根拠に`rejected`となります。これにより、HTTP上の受理と実際のCommand完了を混同しません。通常のCredential経路は既存契約（業務拒否の結果を200のJSONとして返す）を保持します。
+
+既存`command_scenario_test.go`の実Workspace入力で不成立が再現される`from=2026-09-18T08:00:00Z`・`row=1`を使い、Session 422・監査`rejected`・Validation`not-satisfied`・認可以降に進まないことと、旧Credential経路が従来どおり200のBusiness Resultを返すことを`session_command_route_test.go`へ追加しました。
+
+- `session_command_route.go`: GitHub Blob `2ce16a6a47b0060a158eaa7ad78c035b8730ebc6`
+- `session_command_route_test.go`: GitHub Blob `7dbbf446239be6459cc908c41ab919f3cd424eb9`
+- 新規HTTP統合テストの実行結果は**未取得**。Actual full checkoutのGoテスト・Race・Repo Healthを省略して完了とは扱いません。PR #1114はDraftを維持します。
