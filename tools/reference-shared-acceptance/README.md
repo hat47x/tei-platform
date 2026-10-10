@@ -21,6 +21,8 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 
 `preview`・`review`・`reject`の`-out`も入力`-candidate`と同じ実ファイルを指定できません。`confirm-check`・`confirm-record`では同様に入力`-input`を保護します。読み取り・判断記録の出力が提案や確認入力を破壊しないよう、candidateの解析やDecisionの記録に入る**前**に拒否します。この制約は明示的なbaseline更新フラグでも解除できません。候補を意図的に変換する`attach-*`・`propose-qualified-reference-pattern`等の操作では、従来の出力指定を維持します。
 
+入力candidateを意図的に置換する変換操作でも、**独立した根拠の入力**は保護します。`attach-qualification`の`-qualification`、`propose-qualified-reference-pattern`の`-qualification`と`-reference-reuse`、`attach-semantic-evaluation`の`-semantic-evaluation`、`attach-rmt-transcription`の`-rmt-transcription`と同じ実ファイルを`-out`に指定した場合は事前に拒否します。候補とEvidenceを区別し、提案生成時に資格確認・評価・転写の原本を消さないためです。候補自身への意図的なin-place変換は引き続き許可します。
+
 ## 受入境界
 
 ```text
