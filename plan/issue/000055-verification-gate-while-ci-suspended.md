@@ -111,6 +111,26 @@ receiptは少なくともcandidate commit / tree、expected main、health runner
 - [ ] そのexact receiptを使ったcode-changing PRのmerge前照合を一度実施する。
 - [ ] bypass後の`merged`状態をqualificationへ読み替えず、current mainのhealthを独立に確認する。
 
+## Forward verificationの正本
+
+未資格merge後のRepository-wide forward qualificationはGitHub Issue #1048を正本とする。
+
+```text
+#1048
+  current-main exact HEAD / tree
+  exact-clean pre/post
+  full repository-health-check.sh
+  remote main stability
+
+#1060
+  Builder Review / Handoff / Disclosure /
+  Shared Acceptance bridge focused verification
+```
+
+#1060は#1059固有のfocused checksを担当し、Repository-wide full Gateを複製しない。#1048のreceiptを#1060で利用できるのは、exact HEAD / tree / health-runner blob / clean pre-post / main stabilityが同一の場合だけである。
+
+#1048のforward PASSも、#1059その他の未資格mergeがmerge時点で適正だったことを遡及して意味しない。
+
 ## 2026-09-29 verification-anchor audit
 
 current main `ee5b5b14f87536e08c9f713504de99f71f082c52` のqualificationを、過去の「green」記録から暗黙継承できないことを履歴上で再確認した。
