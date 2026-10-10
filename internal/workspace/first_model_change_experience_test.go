@@ -117,11 +117,24 @@ func TestFirstModelChangeEditValidationAndRepair(t *testing.T) {
 	if err != nil {
 		t.Fatalf("malformed type must reach validation rather than silently disappearing: %v", err)
 	}
+	brokenIndex, err := workspace.BuildSourceIndex(userRoot, broken)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var found bool
-	for _, d := range validation.Validate(broken.World) {
-		if d.Severity == validation.Error && d.Code == "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE" {
-			found = true
+	for _, projected := range workspace.ProjectDiagnostics(validation.Validate(broken.World), brokenIndex) {
+		if projected.Diagnostic.Severity != validation.Error || projected.Diagnostic.Code != "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE" {
+			continue
 		}
+		if projected.Diagnostic.Subject == nil ||
+			projected.Diagnostic.Subject.Kind != "semantic-attribute" ||
+			projected.Diagnostic.Subject.ID != "intake.request.priority" {
+			t.Fatalf("invalid type has no stable semantic subject: %+v", projected.Diagnostic)
+		}
+		if len(projected.Sources) != 1 || projected.Sources[0].ArtifactPath != firstModelSemantic {
+			t.Fatalf("invalid type has no actionable source location: %+v", projected.Sources)
+		}
+		found = true
 	}
 	if !found {
 		t.Fatal("unknown business attribute type did not produce a validation error")
