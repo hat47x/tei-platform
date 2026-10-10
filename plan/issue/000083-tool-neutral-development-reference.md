@@ -390,7 +390,7 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 
 これらに独立したProduct上の必要性が後から見つかった場合は、その必要性自体を別に評価します。
 
-## 2026-10-08 未資格統合の記録
+## 2026-10-08〜09 未資格統合の記録
 
 PR #967は2026-10-08T06:06:01Zに、head `425b5743fab37ec087892d67d7bbf09e6496bacd`からmerge commit `6307950c53f0c7879d9231c5077e2410cff71e9a`としてmainへ統合されました。
 
@@ -398,13 +398,15 @@ PR #967は2026-10-08T06:06:01Zに、head `425b5743fab37ec087892d67d7bbf09e6496ba
 
 したがって、**#967がmerge済みであること自体をqualification Evidenceとして扱いません。** synthetic runner PASS、shell構文確認、GitHub上のmergeable / merged状態も代替Evidenceにはしません。この記録のために共有済みGit履歴を巻き戻さず、forward-onlyで扱います。
 
+さらに、#967の是正用Draft PR #1027も、actual qualification receipt未取得を本文に明記したまま2026-10-09T06:50:05Zにmainへ統合されました。merge commitは`474c1b545267afad99b8320d676b6f02251809fb`、messageは`Merge remote-tracking branch 'origin/work/rq-034-post-merge-qualification'`です。これは通常Git merge経由の統合であり、Draft flagだけでは防止できないことを示します。#1027のmergeもqualification Evidenceには数えません。
+
 現在のforward stopは、trustedなactual TEI full checkoutで、その時点のcurrent main exact HEADを固定し、次を同じcheckoutで確認することです。
 
-1. tracked / untracked / ignored artifactを含めたclean pre-state。
+1. tracked / untracked / ignored artifactに加え、`assume-unchanged` / `skip-worktree`等のtracked内容を隠せるindex flagも無いclean pre-state。
 2. full `tools/repository-health-check.sh` PASS。
 3. RQ-034 Executable Reference PASS。
 4. 実行中にHEADと対象mainが変わっていないこと。
-5. tracked / untracked / ignored artifactを含めたclean post-state。
+5. tracked / untracked / ignored artifactとtracked内容を隠せるindex flagの双方が無いclean post-state。
 
 current execution environmentではactual TEI checkoutを実行できないため、このforward stopは未完了です。RQ-034はDesign Only、本IssueはIn Progressのままとします。2026-10-09の是正作業はmain `60b8de4718c495dfbcbb1f20b98427f399d6598c`を起点に開始しましたが、このSHAは固定の完了条件ではありません。actual qualification時にmainが進んでいれば、新しいcurrent mainから最初から取り直します。
 
@@ -429,7 +431,132 @@ candidate exact head
 
 これはTEIへ新しい`verified`状態を追加する仕組みではありません。Gate実行時の一時的なEvidenceを取り違えにくくするためのRepository Toolです。
 
-`--expected-main`が固定するのは、preflightで取得済みのlocal `origin/main`です。wrapperはそのSHA一致だけでなく、expected mainがcandidate HEADのancestorであることも確認します。remote GitHub上の`main`をlockするものではないため、qualification PASS後もmerge直前にremote stateを再取得し、mainがexpected SHAから動いていれば、そのreceiptをstaleとしてcandidateへ最新mainを統合したうえで再qualificationします。
+#1027の未資格統合では、文書上の停止条件が存在していても通常Git mergeでmainへ入れられることが実際に起きました。このため`qualify.sh --receipt-file`は、成功時にRepository外へmachine-readable receiptを出せるようにします。receiptはcandidate HEAD / tree、expected main、clean pre/post、Repository Health / RQ-034 Reference PASS、およびhealth / qualify / Reference / integration-preflight runnerのGit blob SHAを固定します。既存receiptは上書きせず、すべてのqualification検査を終えた後にだけ、同じdirectory内の一時fileからhard-linkで原子的に公開します。receipt公開後に失敗し得るqualification判定は置かず、失敗runがPASS形状のreceiptを残さない順序にします。
+
+統合直前は`integration-preflight.sh`をread-onlyで実行します。preflight自身がcandidateで初めて追加・変更される場合にも自己適用できるよう、**exact candidateのclean checkoutからcandidate版preflightを実行し、`--integration-root`でexact expected mainの別clean checkoutを指定します。** candidate checkoutとintegration checkoutを同一にせず、実行中のpreflight file自身もcandidate上のblobおよびreceiptへ結び付けます。integration checkout HEADとlocal `origin/main`、candidate HEAD / ref / tree、4つのrunner blob、双方のclean stateが一致し続けることを確認します。さらに`git ls-remote`で指定remoteのlive `main`を開始時と終了時に確認し、remote-tracking refが古いままでもfail closedします。main移動、candidate変更、receipt書換え、runner変更、preflight自身の差替えでは失敗します。receiptは開始時と終了時のblobも比較し、preflight実行中の差替えも拒否します。このpreflight自体はfetch / merge / commit / push / ref更新を行わず、remoteにはread-onlyで問い合わせます。
+
+preflightがPASSした後は、branch名を再解決せず、preflightが出力したexact `candidate-head` SHAをそのまま通常Gitの統合対象へ引き継ぎます。これによりpreflight後にbranch refが進んでも別commitを誤統合しません。
+
+receiptは署名済みAuthorityやTEI Product stateではありません。通常Gitを使うHuman / AI間で、別revisionのPASSをmerge authorityとして誤流用しないためのhandoff Evidenceです。強いwitnessが必要な環境では別Providerを重ねられますが、RQ-034の通常開発経路に必須化しません。
+
+`--expected-main`がqualification時に固定するのは、事前取得済みのlocal `origin/main`です。wrapperはそのSHA一致だけでなく、expected mainがcandidate HEADのancestorであることも確認します。統合直前のpreflightではlocal refに加えてlive remote `main`も直接確認します。ただしremoteをlockするものではないため、preflight後にmainが進んだ場合はnon-force pushのnon-fast-forward拒否を安全網とし、最新mainをcandidateへ取り込んでqualificationからやり直します。
+
+### qualification receipt / integration preflightの合成検証
+
+actual TEI checkoutを使えない制約とは別に、receipt handoff自体のGit mechanicsをlocal synthetic Repositoryで実行しました。synthetic Repositoryには最小のhealth runnerとReference runnerを置き、candidateをcurrent mainから分岐させ、`qualify.sh`と同じreceipt field / runner blob binding、`integration-preflight.sh`と同じ検査条件を使っています。
+
+確認結果:
+
+```text
+normal=PASS
+tamper=PASS
+runner_mutation=PASS
+main_movement=PASS
+bootstrap_separate_integration=PASS
+preflight_self_mutation=PASS
+```
+
+- 正常系: exact candidate / mainからreceiptを作成し、integration checkoutをexact mainへ置いたpreflightがPASS。
+- receipt改ざん: `qualification=PASS`を書き換えたreceiptを拒否。
+- candidate runner変更: receipt取得後にReference runnerを変更したcandidateをrunner blob不一致で拒否。
+- main移動: receipt取得後にlocal `origin/main`またはlive remote `main`が進んだ状態をstaleとして拒否。
+- bootstrap: candidate版preflightをexact candidate checkoutから実行し、別のexact-main integration checkoutを検査できる。
+- preflight自己変更: receipt取得後に実行中preflightのbytesを変えた場合、candidate blobとの不一致で拒否。
+
+また、detached HEADのsource checkoutから`git clone --local --no-hardlinks`した場合、cloneも同じdetached commitから始まることをlocal Gitで確認しました。source checkoutにignored / untracked artifactが存在してもclone側へは複製されないため、source側のignored-clean検査は省略できません。
+
+追加のindex-state pressureでは、`git status --porcelain`が空のままになる`assume-unchanged`と`skip-worktree`をそれぞれ設定し、`git ls-files -v`由来のfail-closed検査が両方を検出することを確認しました。
+
+```text
+assume_unchanged_detected=PASS
+skip_worktree_detected=PASS
+normal_index=PASS
+```
+
+これは「working treeで実行した内容」と「receiptが指すcommit内容」がずれる経路を閉じるためのRepository mechanicsです。sparse checkout等で`skip-worktree`が必要なcheckoutはRQ-034 qualificationには使わず、full clean checkoutへ切り替えます。
+
+これはqualification toolingのmechanics Evidenceであり、actual TEIのRepository Health、CLI、Canonical meaning、RQ-034 Reference成立Evidenceではありません。
+
+### receipt / preflight回帰テスト
+
+一回限りのsynthetic pressureだけでは将来の変更で退行を検出できないため、`tools/reference-tool-neutral-development/qualification_test.go`を同じlaneへ追加します。testはactual `qualify.sh` / `integration-preflight.sh`を合成Git Repositoryへ配置し、次を回帰対象にします。
+
+- v3 receiptのcandidate HEAD / tree / expected main / PASS field
+- exact candidate + live remote mainのpreflight正常系
+- 既存receiptを上書きしないこと
+- candidate tree改ざんを拒否すること
+- local remote-tracking refが古いままlive remote mainだけ進んだ状態を拒否すること
+
+test sourceのGit blob `649aebb25101bf199942a627c00205aa464dbbb9`は、隔離した最小Go moduleでcompile-only `go test -run '^
+## Evidence
+
+最初のReferenceでは少なくとも次を残します。
+
+- base Git revision
+- clean pre-state
+- 利用したCLI command
+- 対象Source identity / locator
+- 変更したfile
+- Git diff
+- Build / Validation / Test commandとactual result
+- result commit / revision
+- clean post-state
+- integration context
+- integration後のreload / Validation result
+- 削除対象とした非正本state（最初のReferenceではDecision ledger）に依存せず再構築できたこと
+- Semantic conflict negative case
+- 使用した開発環境の制約。ただしCanonical identityには含めない
+
+このEvidenceを、TEI独自の永続Task stateへ変換することは要求しません。Reference EvidenceとしてRepositoryに残すか、通常のGit / test outputへ結び付けます。
+
+## 完了条件
+
+- [ ] clean checkout / task-local worktreeだけで対象TEI Sourceを理解できる
+- [ ] 専用Agent Adapterなしにfile-native sourceを編集できる
+- [ ] CLI / Repository Toolから必要なBuild / Validation / Testを完結できる
+- [ ] Git commit / branch等を第一級の変更成果物として利用できる
+- [ ] Structured Proposal / TEI独自Change Setを必須にしない
+- [ ] 別contextから変更後SourceをreloadしCanonical meaningを再構築できる
+- [ ] Agent Session / Workspace / Checkpoint / Plan / 一般的な検証状態をTEI Product stateへ追加しない
+- [ ] Decision ledger等、明示的に非正本と分類したstateを除去してもauthoritative sourceとCanonical meaningが変わらない
+- [ ] Git上はmerge可能だがSemantic上は不整合となるnegative caseを少なくとも一つ再現できる
+- [ ] CLI-only pathがdeveloper MCPなしでも成立する
+- [ ] MCPを追加する場合、CLIと同じapplication service / semantic contractを利用できる
+- [ ] CLI / MCPの入口差が意味・Authority差にならない
+- [ ] 開発環境のShell / Filesystem / Git authorityとApplication Runtime authorityを混同しない
+- [ ] Referenceで見つかった不足を通常CLI / application serviceのGapとして説明できる
+- [ ] Agent専用subsystemを追加しなくても一往復が成立する
+- [ ] exact candidate headがcurrent mainを含む状態で、full `tools/repository-health-check.sh`と本Referenceをclean pre/post state付きでPASSできる
+- [ ] qualification receiptとread-only integration preflightで、exact candidate HEAD / tree、expected main、live remote main、runner blobの一致を再確認してから通常Git統合へ進める
+
+## 非目標
+
+- Devin相当のAgent Runtime
+- Agent Session / Checkpoint管理
+- chat-first IDE
+- Gitの置換
+- 全変更へのTEI独自Change Set強制
+- MCP serverをTEI開発の必須入口にすること
+- CI状態のTEI内複製
+- 開発ToolのShell権限をTEI Runtime Capabilityへ変換すること
+- Tool trajectoryの監査基盤
+- 特定のAI provider / modelの標準化
+
+## 関連文書
+
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md`
+- `requirements/README.md`
+- `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
+- `plan/adr/0031-tool-neutral-git-native-development.md`
+- `plan/issue/000027-ai-proposal-acceptance-boundary.md`
+- `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
+- `plan/issue/000047-knowledge-first-semantic-exploration.md`
+- `plan/issue/000079-plugin-self-build.md`
+- `plan/issue/000080-extensible-plugin-capability-contract.md`
+- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+- `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
+- `docs/architecture.md`
+`を通過した同一blobです。actual branch上のscriptsを伴うtest実行はtrusted checkoutでのfull Repository Healthまで未取得であり、compile-only結果をbehavior PASSへ読み替えません。
 
 ## Evidence
 
@@ -470,6 +597,7 @@ candidate exact head
 - [ ] Referenceで見つかった不足を通常CLI / application serviceのGapとして説明できる
 - [ ] Agent専用subsystemを追加しなくても一往復が成立する
 - [ ] exact candidate headがcurrent mainを含む状態で、full `tools/repository-health-check.sh`と本Referenceをclean pre/post state付きでPASSできる
+- [ ] qualification receiptとread-only integration preflightで、exact candidate HEAD / tree、expected main、live remote main、runner blobの一致を再確認してから通常Git統合へ進める
 
 ## 非目標
 

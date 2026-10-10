@@ -30,12 +30,19 @@ assert_no_ignored_artifacts() {
 assert_repo_clean() {
   local repo="$1"
   local phase="$2"
-  local status
+  local status hidden_index
 
   status="$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
-  if [[ -n "$status" ]]; then
+  hidden_index="$(git -C "$repo" ls-files -v | grep -E '^[a-zS]' || true)"
+  if [[ -n "$status" || -n "$hidden_index" ]]; then
     echo "$phase is not clean" >&2
-    git -C "$repo" status --short --untracked-files=all >&2
+    if [[ -n "$status" ]]; then
+      git -C "$repo" status --short --untracked-files=all >&2
+    fi
+    if [[ -n "$hidden_index" ]]; then
+      echo "$phase contains index flags that can hide tracked worktree content" >&2
+      printf '%s\n' "$hidden_index" >&2
+    fi
     exit 1
   fi
   assert_no_ignored_artifacts "$repo" "$phase"

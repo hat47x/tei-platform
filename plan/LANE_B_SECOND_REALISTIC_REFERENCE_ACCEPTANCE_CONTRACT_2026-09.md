@@ -4,9 +4,9 @@ Status: **Lane B / supporting Evidence-coverage contract / no new Requirement / 
 
 Related:
 
-- `plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
-- `plan/LANE_B_REALISTIC_BUSINESS_REFERENCE_CORPUS_AUDIT_2026-09.md`
-- `plan/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`
+- `plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
+- `docs/audits/LANE_B_REALISTIC_BUSINESS_REFERENCE_CORPUS_AUDIT_2026-09.md`
+- `docs/audits/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`
 - `plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`
 - `plan/issue/000042-business-procedure-cross-view-reference.md`
 - `plan/issue/000048-business-procedure-contract-adr-readiness.md`
@@ -25,7 +25,7 @@ B-F19b Reference maturity / breadth
   != Gate 15c automatically required
 ```
 
-Business Procedure一般のreview原則は`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`を参照する。本書はその原則を第二realistic Referenceのacceptance条件へ絞る。
+Business Procedure一般のreview原則は`plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`を参照する。本書はその原則を第二realistic Referenceのacceptance条件へ絞る。
 
 ## 2. 三段階status
 

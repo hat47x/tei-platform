@@ -70,6 +70,83 @@ AI Builderが高い自律性を持っていても、Canonical authorityを暗黙
 
 AI Builderへ渡す理解用Contextは、Repository断片の単純な列挙に限定しない。対象subjectについて、現在のSource / Evidence、未解決事項、authority limit、設計判断に必要な確認順序を、用途別のderived Projectionとしてまとめてよい。
 
+AI Builder向けには、共有Knowledge ContextそのものをBuilder専用schemaへ変えず、対象subjectから**Builder Review Plan**を別のderived Projectionとして生成してよい。この計画は`current-knowledge-context`をrouting scopeとし、Source / Evidence、定義、Data設計、依存・影響のうち何をどの順で読むかを示す。各Knowledgeが持つ設計原則や業務意味は複製しない。
+
+```text
+shared Knowledge Context
+        ↓
+Builder Review Plan
+        ↓
+purpose-bound Knowledge selection
+        ↓
+AI Builder understanding
+
+Builder Review Plan
+  != shared Context
+  != semantic applicability
+  != accepted Decision
+  != write / runtime authority
+```
+
+Review Planが示したKnowledgeを特定taskへ用いる前に、task側が明示したQualification requirementsと既存Knowledge Qualificationを接続する。これをBuilder Review Handoffとして別Projectionにできる。
+
+```text
+Builder Review Plan
+  -> selected Knowledge candidates
+
+explicit Qualification Requirements
+  + current Source Evidence
+  -> Qualification
+
+Plan + Qualification
+  -> Builder Review Handoff
+
+Builder Review Handoff
+  != disclosed Knowledge
+  != access control / redaction
+  != Accepted Decision
+  != write / runtime authority
+```
+
+HandoffはKnowledge本文を集約しない。Qualificationがapplicableでも、その結果は「明示したrequirementsに対してcurrent Evidence上適用可能」という範囲に限る。実際のKnowledge本文は既存Disclosureからcurrent stateを取得し、そのDisclosure fingerprintで再利用可否を追跡する。
+
+HandoffからDisclosureへ進むときは、保存済みHandoffの内容をそのまま信用しない。current Context / Source Indexから同じQualification requirementsでHandoffを再構成し、fingerprint一致と`qualified-for-disclosure`を確認してから既存Disclosureを生成する。Handoffとcurrent stateが一致しなければstaleとして停止する。
+
+```text
+saved handoff
+  + current Context / Source Index
+  -> rebuild current handoff
+  -> fingerprint equal?
+  -> qualified-for-disclosure?
+  -> existing DisclosureProjection
+```
+
+DisclosureにはHandoffを埋め込まない。したがってDisclosureの存在自体は、任意の別taskについてQualification済みであることを意味しない。
+
+AI Builderが変更候補を作る段階では、HandoffやDisclosure snapshotをProposal meaningへコピーしない。Shared Acceptance側が既に持つQualification Evidence形式へ、Handoff内の`QualificationResult`だけを接続する。これにより、ProposalはADR-0022のMinimum Semantic Deltaを保ち、KnowledgeはEvidenceとして別identityで追跡される。
+
+```text
+Builder Review Handoff
+  -> embedded QualificationResult
+  -> existing Shared Acceptance Evidence
+
+Disclosure snapshot
+  -> Builder understanding only
+
+Proposal
+  -> minimum semantic delta
+```
+
+この接続で新しいProposal schemaを作らない。Handoff経路と直接`knowledge-qualify`した経路は、同じQualification Resultから同じgrounded candidate / candidate fingerprint / evidence fingerprintへ収束することをReferenceで検証する。
+
+また、HandoffのQualificationと各Knowledge区画内部のreadinessを同一視しない。`qualified-for-disclosure`でも、選択区画が持つ`resolutionStatus`、`evidenceCoverageStatus`、局所的なambiguity等は別途確認する。共有`Context.unresolved`を局所的不確実性の完全な一覧とは扱わない。
+
+同様に、subject単体のQualificationをcross-viewな変更妥当性へ昇格させない。Application Patternがqualifiedでも、その変更がBusiness Procedure、Application authority、datasource access、Contract、Authorization、既知conflictと整合するとは限らない。Builder Review Planはcurrent Knowledge Contextの確認後にcross-view constraint / authority / known conflictを確認する段階を必ず置き、必要な外部Evidenceが未解決ならProposal形成前に停止する。
+
+これにより、Review Planを万能Context Packetへ拡張せず、`available -> selected -> qualified -> disclosed` の境界を実行経路として保てる。
+
+Review Planのfingerprintはrouting identityを表すだけであり、選択したKnowledge自体のfreshness proofにはしない。また、推奨された区画をQualification済みKnowledgeやsemantic applicabilityへ昇格させず、必要なQualificationを別境界で通す。current Knowledge Contextに区画が無いことも、他のKnowledge surfaceを含む全体的な不存在へ一般化しない。Knowledge内容の再利用可否は、それぞれのProjection / DisclosureのfingerprintとEvidence境界で別に確認する。
+
 Data設計では、`tei knowledge-context ... -disclose data-design` がこの境界を担う。識別子、候補キー、関数従属性等について、PersistenceやUIの構造から業務意味を推測せず、根拠が不足する場合は`unresolved`を保持する。投影が返すreview protocolや設計候補はAIへの作業指針であって、Canonical authorityやAcceptanceそのものではない。
 
 ```text

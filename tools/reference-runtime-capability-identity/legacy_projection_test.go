@@ -15,10 +15,10 @@ func legacyReferenceDefinition(
 	permissions []permission.Spec,
 ) plugin.Definition {
 	return plugin.Definition{
-		ID: core.MustCanonicalID("tei.reference.document_render"),
+		ID:      core.MustCanonicalID("tei.reference.document_render"),
 		Version: "1.0.0",
 		Runtime: plugin.Runtime{
-			Kind: plugin.RuntimeProcess,
+			Kind:    plugin.RuntimeProcess,
 			Command: "document-render-worker",
 			Sandbox: plugin.SandboxRequired,
 		},
@@ -26,8 +26,8 @@ func legacyReferenceDefinition(
 			Digest: "sha256:" + strings.Repeat("a", 64),
 		},
 		Provides: []plugin.Capability{{
-			Kind: plugin.CapabilityDeploymentExecutor,
-			ID: core.MustCanonicalID("legacy.document_render"),
+			Kind:        plugin.CapabilityDeploymentExecutor,
+			ID:          core.MustCanonicalID("legacy.document_render"),
 			Permissions: append([]permission.Spec(nil), permissions...),
 		}},
 	}
@@ -40,24 +40,24 @@ func legacyReferenceEnvironment(
 		ID: core.MustCanonicalID("legacy_runtime"),
 		PermissionGrants: []environment.PermissionGrant{{
 			CapabilityKind: string(plugin.CapabilityDeploymentExecutor),
-			CapabilityID: core.MustCanonicalID("legacy.document_render"),
-			Permission: perm,
+			CapabilityID:   core.MustCanonicalID("legacy.document_render"),
+			Permission:     perm,
 		}},
 		ResourceBindings: []environment.ResourceBinding{
 			referenceResourceBinding(),
 			{
-				Kind: permission.KindNetwork,
-				Scope: "unrelated-network",
+				Kind:       permission.KindNetwork,
+				Scope:      "unrelated-network",
 				ResourceID: core.MustCanonicalID("resource.unrelated_network"),
 			},
 		},
 		LeasePolicies: []environment.CapabilityLeasePolicy{{
 			CapabilityKind: string(plugin.CapabilityDeploymentExecutor),
-			CapabilityID: core.MustCanonicalID("legacy.document_render"),
+			CapabilityID:   core.MustCanonicalID("legacy.document_render"),
 			Policy: resource.LeasePolicy{
-				MaxLifetime: "20m",
-				RenewBefore: "3m",
-				RevokeTimeout: "2s",
+				MaxLifetime:    "20m",
+				RenewBefore:    "3m",
+				RevokeTimeout:  "2s",
 				RenewalFailure: resource.RenewalFailClosed,
 			},
 		}},
@@ -240,17 +240,17 @@ func TestLegacyEnvironmentProjectionIgnoresUnrelatedAuthorityGrowth(t *testing.T
 
 	env.PermissionGrants = append(env.PermissionGrants, environment.PermissionGrant{
 		CapabilityKind: string(plugin.CapabilityEvidenceProvider),
-		CapabilityID: core.MustCanonicalID("unrelated.evidence"),
+		CapabilityID:   core.MustCanonicalID("unrelated.evidence"),
 		Permission: permission.Spec{
-			Kind: permission.KindNetwork,
+			Kind:   permission.KindNetwork,
 			Access: permission.AccessConnect,
-			Scope: "unrelated-network",
+			Scope:  "unrelated-network",
 		},
 	})
 	env.LeasePolicies = append(env.LeasePolicies, environment.CapabilityLeasePolicy{
 		CapabilityKind: string(plugin.CapabilityEvidenceProvider),
-		CapabilityID: core.MustCanonicalID("unrelated.evidence"),
-		Policy: resource.DefaultLeasePolicy(),
+		CapabilityID:   core.MustCanonicalID("unrelated.evidence"),
+		Policy:         resource.DefaultLeasePolicy(),
 	})
 	if err := verifyLegacyEnvironmentAuthorityProjection(
 		projection, env, runtimeProjection, ref, profile,
@@ -344,8 +344,8 @@ func TestProjectedLegacyAuthorityCannotCoexistWithIndependentLegacyClaim(t *test
 	authority := projection.Authority
 	authority.LegacyClaims = []LegacyAuthorityClaim{{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		CapabilityKind: string(runtimeProjection.LegacyCapabilityKind),
-		CapabilityID: runtimeProjection.LegacyCapabilityID,
+		CapabilityKind:               string(runtimeProjection.LegacyCapabilityKind),
+		CapabilityID:                 runtimeProjection.LegacyCapabilityID,
 	}}
 	if _, err := buildRuntimeEnvironmentPlan(ref, profile, authority); err == nil ||
 		!strings.Contains(err.Error(), "both generic and legacy Authority") {

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -138,7 +139,7 @@ func TestInspectWithContractBindsExactContractAndNormalizedPolicy(t *testing.T) 
 	}
 	got, err := InspectWithContract(
 		FormatXead,
-		[]byte(`<System><Table><TableKey Type="PK"><TableKeyField FieldID="F1"/></TableKey></Table></System>`),
+		[]byte(`<System FormatVersion="1.2"><Table><TableKey Type="PK"><TableKeyField FieldID="F1"/></TableKey></Table></System>`),
 		contractBytes,
 	)
 	if err != nil {
@@ -202,4 +203,39 @@ func repositoryRootFromSource(t *testing.T) string {
 		t.Fatal("cannot resolve test source path")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+}
+
+func TestInspectWithContractRejectsUnsupportedSourceProfile(t *testing.T) {
+	root := repositoryRootFromSource(t)
+	contractBytes, err := os.ReadFile(filepath.Join(root, "reference", "reference-model-transfer", "transcription-contract-v0.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []string{
+		`<System FormatVersion="9.9"><Table/></System>`,
+		`<System><Table/></System>`,
+		`<OtherRoot FormatVersion="1.2"><Table/></OtherRoot>`,
+	} {
+		if _, err := InspectWithContract(FormatXead, []byte(source), contractBytes); err == nil {
+			t.Fatalf("unsupported source profile was classified: %s", source)
+		}
+	}
+}
+
+func TestInspectWithContractRequiresSourceProfileDeclaration(t *testing.T) {
+	contractBytes := []byte(`{
+		"constructMappings": {
+			"xead": {
+				"System": {"classification": ["source-metadata"]}
+			}
+		}
+	}`)
+	_, err := InspectWithContract(
+		FormatXead,
+		[]byte(`<System FormatVersion="1.2"/>`),
+		contractBytes,
+	)
+	if err == nil || !strings.Contains(err.Error(), "no source profile") {
+		t.Fatalf("classification without source profile was accepted: %v", err)
+	}
 }

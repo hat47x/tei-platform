@@ -13,7 +13,7 @@ Status: current interpretation index
 - `RQ-025` — 業務上の行為・手順をApplication Functionから独立して設計できること
 - `RQ-026` — Data / Function-Interaction / Business Procedureの異なる視点から相互検証できること
 
-詳細な概念・Architecture境界は [`docs/business-system-design.md`](../docs/business-system-design.md) を参照します。Business Procedure authoring / reviewの品質モデルは [`plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) に置きます。
+詳細な概念・Architecture境界は [`docs/business-system-design.md`](../docs/business-system-design.md) を参照します。Business Procedure authoring / reviewの品質モデルは [`plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) に置きます。
 
 ## 2. 設計原点へ立ち返る順序
 
@@ -179,4 +179,4 @@ RQ-025 / RQ-026のPrimary PASであるPAS-07は [`plan/UPSTREAM_ACCEPTANCE_SCENA
 
 詳細なReference / Evidence mappingは [`plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`](../plan/RQ025_RQ026_ACCEPTANCE_TRACE.md) をsupporting Evidence contractとして参照します。この索引自体をRequirementまたはPASの第二正本として拡張しません。
 
-Business Procedureの設計品質reviewは [`plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) を参照し、そこから新しいRequirement / Gate / production schemaを自動導出しません。
+Business Procedureの設計品質reviewは [`plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) を参照し、そこから新しいRequirement / Gate / production schemaを自動導出しません。

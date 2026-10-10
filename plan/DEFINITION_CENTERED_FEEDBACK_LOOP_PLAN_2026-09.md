@@ -171,7 +171,7 @@ FeedbackはまずEvidenceとして扱い、meaning-owning concernを解決して
 
 正本:
 
-- `DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
+- `docs/audits/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
 - merged via PR #591
 
 三種類のmemoryをauthority roleとして分離した。
@@ -523,7 +523,7 @@ Phase 0文書はcurrent baselineの保守だけを行い、P1以後の責務は�
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `plan/DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`
 - `plan/DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md`
-- `plan/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
+- `docs/audits/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
 - `plan/REFERENCE_PATTERN_EVIDENCE_HANDOFF_2026-09.md`
 - `plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
@@ -531,4 +531,4 @@ Phase 0文書はcurrent baselineの保守だけを行い、P1以後の責務は�
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000051-derived-cognitive-retrieval-evaluation.md`
-- `plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
+- `plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`
