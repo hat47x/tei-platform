@@ -23,6 +23,7 @@ type ledgerProvider struct {
 	records                    map[string]*ledgerRecord
 	prepareCount               int
 	commitCount                int
+	statusCount                int
 	effectCount                int
 	abortCount                 int
 	abortSawCanceledContext    bool
@@ -47,6 +48,9 @@ func (p *ledgerProvider) Prepare(_ context.Context, request PrepareRequest) (Pre
 		return PreparedMutation{}, err
 	}
 	if existing, ok := p.records[request.InvocationKey]; ok {
+		if existing.prepared.BindingFingerprint != request.BindingFingerprint {
+			return PreparedMutation{}, fmt.Errorf("idempotency key reused across execution binding")
+		}
 		if existing.prepared.RequestDigest != request.RequestDigest {
 			return PreparedMutation{}, fmt.Errorf("idempotency key reused with different request")
 		}
@@ -56,6 +60,7 @@ func (p *ledgerProvider) Prepare(_ context.Context, request PrepareRequest) (Pre
 	prepared := NewPreparedMutation(
 		"prep-"+request.InvocationKey,
 		request.InvocationKey,
+		request.BindingFingerprint,
 		request.RequestDigest,
 		result,
 		fmt.Sprintf("version-%d", p.version),
@@ -70,7 +75,9 @@ func (p *ledgerProvider) Prepare(_ context.Context, request PrepareRequest) (Pre
 func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (ProviderCommitReceipt, error) {
 	p.commitCount++
 	record, ok := p.records[request.InvocationKey]
-	if !ok || record.prepared.PreparationID != request.PreparationID {
+	if !ok ||
+		record.prepared.PreparationID != request.PreparationID ||
+		record.prepared.BindingFingerprint != request.BindingFingerprint {
 		return ProviderCommitReceipt{}, fmt.Errorf("unknown preparation")
 	}
 	if record.aborted {
@@ -80,7 +87,8 @@ func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (Provi
 	if record.committed {
 		return record.receipt, nil
 	}
-	if request.RequestDigest != handle.RequestDigest ||
+	if request.BindingFingerprint != handle.BindingFingerprint ||
+		request.RequestDigest != handle.RequestDigest ||
 		request.ResultDigest != handle.ResultDigest ||
 		request.ConcurrencyToken != handle.ConcurrencyToken {
 		return ProviderCommitReceipt{}, fmt.Errorf("commit request does not match preparation")
@@ -119,6 +127,7 @@ func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (Provi
 }
 
 func (p *ledgerProvider) Status(_ context.Context, request StatusRequest) (ProviderCommitReceipt, error) {
+	p.statusCount++
 	record, ok := p.records[request.InvocationKey]
 	if !ok || record.prepared.PreparationID != request.PreparationID {
 		return ProviderCommitReceipt{}, fmt.Errorf("unknown preparation")
@@ -214,12 +223,29 @@ func numericResultValidator(value []byte) error {
 	return nil
 }
 
-func newExecutor(provider *ledgerProvider, journal *memoryJournal) Executor {
+func testExecutionBinding(marker string) string {
+	return digest([]byte("execution-binding:" + marker))
+}
+
+func newExecutorWithBinding(
+	provider *ledgerProvider,
+	journal *memoryJournal,
+	bindingFingerprint string,
+) Executor {
 	return Executor{
-		Provider: provider,
-		Journal:  journal,
-		Validate: numericResultValidator,
+		BindingFingerprint: bindingFingerprint,
+		Provider:           provider,
+		Journal:            journal,
+		Validate:           numericResultValidator,
 	}
+}
+
+func newExecutor(provider *ledgerProvider, journal *memoryJournal) Executor {
+	return newExecutorWithBinding(
+		provider,
+		journal,
+		testExecutionBinding("default"),
+	)
 }
 
 func clonePrepared(value PreparedMutation) PreparedMutation {
@@ -549,8 +575,9 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 
 	left, err := provider.Prepare(context.Background(), PrepareRequest{
 		Protocol:      mutationProtocol,
-		InvocationKey: "concurrent-left",
-		RequestDigest: digest([]byte("2")),
+		InvocationKey:      "concurrent-left",
+		BindingFingerprint: testExecutionBinding("default"),
+		RequestDigest:      digest([]byte("2")),
 		Payload:       []byte("2"),
 	})
 	if err != nil {
@@ -558,23 +585,30 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 	}
 	right, err := provider.Prepare(context.Background(), PrepareRequest{
 		Protocol:      mutationProtocol,
-		InvocationKey: "concurrent-right",
-		RequestDigest: digest([]byte("3")),
+		InvocationKey:      "concurrent-right",
+		BindingFingerprint: testExecutionBinding("default"),
+		RequestDigest:      digest([]byte("3")),
 		Payload:       []byte("3"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	leftHandle, _, err := validatePrepared("concurrent-left", digest([]byte("2")), left)
+	leftHandle, _, err := validatePrepared(
+		"concurrent-left",
+		testExecutionBinding("default"),
+		digest([]byte("2")),
+		left,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	leftReceipt, err := provider.Commit(context.Background(), CommitRequest{
 		Protocol:          mutationProtocol,
 		PreparationID:    leftHandle.PreparationID,
-		InvocationKey:    leftHandle.InvocationKey,
-		RequestDigest:    leftHandle.RequestDigest,
+		InvocationKey:     leftHandle.InvocationKey,
+		BindingFingerprint: leftHandle.BindingFingerprint,
+		RequestDigest:     leftHandle.RequestDigest,
 		ResultDigest:     leftHandle.ResultDigest,
 		ConcurrencyToken: leftHandle.ConcurrencyToken,
 	})
@@ -582,15 +616,21 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 		t.Fatalf("first commit failed: receipt=%+v err=%v", leftReceipt, err)
 	}
 
-	rightHandle, _, err := validatePrepared("concurrent-right", digest([]byte("3")), right)
+	rightHandle, _, err := validatePrepared(
+		"concurrent-right",
+		testExecutionBinding("default"),
+		digest([]byte("3")),
+		right,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rightReceipt, err := provider.Commit(context.Background(), CommitRequest{
 		Protocol:          mutationProtocol,
 		PreparationID:    rightHandle.PreparationID,
-		InvocationKey:    rightHandle.InvocationKey,
-		RequestDigest:    rightHandle.RequestDigest,
+		InvocationKey:     rightHandle.InvocationKey,
+		BindingFingerprint: rightHandle.BindingFingerprint,
+		RequestDigest:     rightHandle.RequestDigest,
 		ResultDigest:     rightHandle.ResultDigest,
 		ConcurrencyToken: rightHandle.ConcurrencyToken,
 	})
@@ -708,6 +748,7 @@ func TestDurableMutationHandleDoesNotContainPreparedResultPayload(t *testing.T) 
 	prepared := NewPreparedMutation(
 		"prep-sensitive",
 		"sensitive-invocation",
+		testExecutionBinding("sensitive"),
 		digest([]byte("request")),
 		[]byte("sensitive-result-payload"),
 		"version-1",
@@ -724,8 +765,9 @@ func TestDurableMutationHandleDoesNotContainPreparedResultPayload(t *testing.T) 
 
 func TestPreparedFingerprintDoesNotCollideAcrossFieldBoundaries(t *testing.T) {
 	common := PreparedMutation{
-		Protocol:         mutationProtocol,
-		RequestDigest:    digest([]byte("request")),
+		Protocol:           mutationProtocol,
+		BindingFingerprint: testExecutionBinding("collision"),
+		RequestDigest:      digest([]byte("request")),
 		ResultDigest:     digest([]byte("result")),
 		ConcurrencyToken: "version-1",
 	}
@@ -767,5 +809,96 @@ func TestAbortCleanupFailureIsVisibleWithoutChangingBusinessOutcome(t *testing.T
 	}
 	if provider.commitCount != 0 || provider.effectCount != 0 {
 		t.Fatalf("cleanup failure crossed commit boundary: %+v", provider)
+	}
+}
+
+
+func TestReconcileRejectsExecutionBindingDriftBeforeProviderStatus(t *testing.T) {
+	provider := newLedgerProvider()
+	provider.commitErrorAfterApply = true
+	journal := newMemoryJournal()
+	first := newExecutorWithBinding(
+		provider,
+		journal,
+		testExecutionBinding("binding-a"),
+	)
+
+	execution, err := first.Invoke(context.Background(), MutationRequest{
+		InvocationKey: "order-binding-drift",
+		Payload:       []byte("18"),
+	})
+	if err == nil || !errors.Is(err, ErrCommitUnknown) {
+		t.Fatalf("expected unknown first execution: execution=%+v err=%v", execution, err)
+	}
+	beforeStatus := provider.statusCount
+
+	restarted := newExecutorWithBinding(
+		provider,
+		journal,
+		testExecutionBinding("binding-b"),
+	)
+	_, err = restarted.ReconcileByInvocationKey(
+		context.Background(),
+		"order-binding-drift",
+	)
+	if err == nil || !strings.Contains(err.Error(), "execution binding") {
+		t.Fatalf("binding drift was accepted: %v", err)
+	}
+	if provider.statusCount != beforeStatus {
+		t.Fatalf(
+			"binding drift reached Provider.Status: before=%d after=%d",
+			beforeStatus,
+			provider.statusCount,
+		)
+	}
+}
+
+func TestJournaledOutcomeIsRevalidatedBeforeReplay(t *testing.T) {
+	provider := newLedgerProvider()
+	journal := newMemoryJournal()
+	executor := newExecutor(provider, journal)
+
+	first, err := executor.Invoke(context.Background(), MutationRequest{
+		InvocationKey: "order-tampered-journal",
+		Payload:       []byte("19"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt := journal.outcomes["order-tampered-journal"]
+	receipt.CommitID = "tampered-commit"
+	journal.outcomes["order-tampered-journal"] = receipt
+
+	beforeStatus := provider.statusCount
+	_, err = executor.ReconcileByInvocationKey(
+		context.Background(),
+		"order-tampered-journal",
+	)
+	if err == nil || !errors.Is(err, ErrJournalCorrupt) {
+		t.Fatalf("tampered Journal outcome was accepted: %v", err)
+	}
+	if provider.statusCount != beforeStatus {
+		t.Fatalf(
+			"tampered Journal outcome triggered Provider.Status: before=%d after=%d",
+			beforeStatus,
+			provider.statusCount,
+		)
+	}
+}
+
+func TestExecutorRequiresExactExecutionBinding(t *testing.T) {
+	provider := newLedgerProvider()
+	journal := newMemoryJournal()
+	executor := newExecutorWithBinding(provider, journal, "not-a-digest")
+
+	execution, err := executor.Invoke(context.Background(), MutationRequest{
+		InvocationKey: "order-invalid-binding",
+		Payload:       []byte("20"),
+	})
+	if err == nil || !strings.Contains(err.Error(), "execution binding fingerprint") {
+		t.Fatalf("invalid execution binding was accepted: execution=%+v err=%v", execution, err)
+	}
+	if provider.prepareCount != 0 || provider.commitCount != 0 {
+		t.Fatalf("invalid execution binding reached Provider: %+v", provider)
 	}
 }
