@@ -62,7 +62,7 @@ func TestPinnedExpansionKeepsDistinctRelationsWithSameEndpoints(t *testing.T) {
 	}
 }
 
-func TestPinnedExpansionRequiresExecutableAndAcceptedContracts(t *testing.T) {
+func TestPinnedExpansionRequiresExecutableKeysAndExactCatalogPin(t *testing.T) {
 	pin := OperatorContract{
 		ID: "std.op.expand", Version: "1", Fingerprint: "expand-v1",
 		Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/customer.customer",
