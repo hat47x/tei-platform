@@ -10,6 +10,48 @@ import (
 	"tei/internal/knowledgecontext"
 )
 
+func decodeQualificationInput(data []byte) (knowledgecontext.QualificationResult, error) {
+	qualification, qualificationErr := decodeQualificationResult(data)
+	if qualificationErr == nil {
+		return qualification, nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var handoff knowledgecontext.BuilderReviewHandoff
+	if err := decoder.Decode(&handoff); err != nil {
+		return knowledgecontext.QualificationResult{}, fmt.Errorf(
+			"qualification入力をQualificationResultまたはBuilder Review Handoffとして読めません: qualification=%v handoff=%w",
+			qualificationErr,
+			err,
+		)
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return knowledgecontext.QualificationResult{}, fmt.Errorf(
+			"Builder Review Handoff JSONの後ろに余分な内容があります",
+		)
+	}
+	if err := knowledgecontext.ValidateBuilderReviewHandoff(handoff); err != nil {
+		return knowledgecontext.QualificationResult{}, fmt.Errorf(
+			"Builder Review Handoffが不正です: %w",
+			err,
+		)
+	}
+	if handoff.Status != "qualified-for-disclosure" {
+		return knowledgecontext.QualificationResult{}, fmt.Errorf(
+			"Builder Review Handoff status %q はShared Acceptance Evidenceへ接続できません",
+			handoff.Status,
+		)
+	}
+	if handoff.Qualification.Status != knowledgecontext.QualificationApplicable {
+		return knowledgecontext.QualificationResult{}, fmt.Errorf(
+			"Builder Review Handoffのqualification status %q はapplicableではありません",
+			handoff.Qualification.Status,
+		)
+	}
+	return handoff.Qualification, nil
+}
+
 func decodeQualificationResult(data []byte) (knowledgecontext.QualificationResult, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()

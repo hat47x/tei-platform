@@ -12,7 +12,7 @@ import (
 
 const (
 	evidenceArtifactKindSemanticEvaluation = "semantic-evaluation"
-	evidenceArtifactKindRMTTranscription    = "rmt-transcription"
+	evidenceArtifactKindRMTTranscription   = "rmt-transcription"
 	semanticEvaluationEvidenceSchema       = semanticevidence.Schema
 )
 

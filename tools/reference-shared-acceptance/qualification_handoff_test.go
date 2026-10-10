@@ -107,6 +107,265 @@ func TestApplicableQualificationAttachesExactEvidenceWithoutChangingCandidateMea
 	}
 }
 
+func TestBuilderReviewHandoffQualificationReusesExistingSharedAcceptanceEvidencePath(t *testing.T) {
+	dir := scratchWorkspace(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := knowledgecontext.Build(
+		snapshot.loaded.World,
+		snapshot.index,
+		subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+	)
+	requirements := knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	}
+
+	direct, err := knowledgecontext.QualifyWithSources(ctx, snapshot.index, requirements)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoff, err := knowledgecontext.BuildBuilderReviewHandoff(ctx, snapshot.index, requirements)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Status != "qualified-for-disclosure" {
+		t.Fatalf("builder review handoff status=%q", handoff.Status)
+	}
+	if !bytes.Equal(mustJSON(t, direct), mustJSON(t, handoff.Qualification)) {
+		t.Fatalf(
+			"builder review handoff changed existing QualificationResult:\ndirect=%+v\nhandoff=%+v",
+			direct,
+			handoff.Qualification,
+		)
+	}
+
+	candidateData := mustJSON(t, unitPriceCandidate(snapshot.revision))
+	directGrounded, err := attachQualificationEvidence(candidateData, direct)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffGrounded, err := attachQualificationEvidence(candidateData, handoff.Qualification)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directNormalized, directMeaning, err := normalizeCandidate(directGrounded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffNormalized, handoffMeaning, err := normalizeCandidate(handoffGrounded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if directMeaning != handoffMeaning {
+		t.Fatalf(
+			"builder review path changed candidate meaning: direct=%s handoff=%s",
+			directMeaning,
+			handoffMeaning,
+		)
+	}
+	if !bytes.Equal(mustJSON(t, directNormalized), mustJSON(t, handoffNormalized)) {
+		t.Fatalf(
+			"builder review path produced a different grounded candidate:\ndirect=%+v\nhandoff=%+v",
+			directNormalized.Evidence,
+			handoffNormalized.Evidence,
+		)
+	}
+
+	directEvaluation, err := evaluate(dir, mustJSON(t, directNormalized))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoffEvaluation, err := evaluate(dir, mustJSON(t, handoffNormalized))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !directEvaluation.preview.Acceptable || !handoffEvaluation.preview.Acceptable {
+		t.Fatalf(
+			"equivalent qualification paths diverged at Shared Acceptance preview: direct=%v handoff=%v",
+			directEvaluation.preview.Stages,
+			handoffEvaluation.preview.Stages,
+		)
+	}
+	if directEvaluation.preview.CandidateFingerprint != handoffEvaluation.preview.CandidateFingerprint ||
+		directEvaluation.preview.EvidenceFingerprint != handoffEvaluation.preview.EvidenceFingerprint {
+		t.Fatalf(
+			"builder review bridge changed Shared Acceptance identity: direct=(%s,%s) handoff=(%s,%s)",
+			directEvaluation.preview.CandidateFingerprint,
+			directEvaluation.preview.EvidenceFingerprint,
+			handoffEvaluation.preview.CandidateFingerprint,
+			handoffEvaluation.preview.EvidenceFingerprint,
+		)
+	}
+}
+
+func TestQualificationInputAcceptsValidBuilderReviewHandoffAndRejectsInvalidState(t *testing.T) {
+	dir := scratchWorkspace(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := knowledgecontext.Build(
+		snapshot.loaded.World,
+		snapshot.index,
+		subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+	)
+	requirements := knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	}
+	handoff, err := knowledgecontext.BuildBuilderReviewHandoff(ctx, snapshot.index, requirements)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeQualificationInput(mustJSON(t, handoff))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(mustJSON(t, decoded), mustJSON(t, handoff.Qualification)) {
+		t.Fatalf("handoff qualification changed during adapter decode: got=%+v want=%+v", decoded, handoff.Qualification)
+	}
+
+	tampered := handoff
+	tampered.SelectedSections = append([]string(nil), handoff.SelectedSections...)
+	tampered.SelectedSections[0] = "modified"
+	if _, err := decodeQualificationInput(mustJSON(t, tampered)); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint") {
+		t.Fatalf("tampered Builder Review Handoff was not rejected: %v", err)
+	}
+
+	blocked, err := knowledgecontext.BuildBuilderReviewHandoff(
+		knowledgecontext.Context{
+			Subject:    subject.Subject{Kind: "semantic-data", ID: "missing.example"},
+			Unresolved: []string{"source-reference-unavailable"},
+		},
+		sourceindex.Index{},
+		knowledgecontext.QualificationRequirements{ExpectedKind: "semantic-data"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blocked.Status != "blocked-unresolved" {
+		t.Fatalf("blocked fixture status=%q", blocked.Status)
+	}
+	if _, err := decodeQualificationInput(mustJSON(t, blocked)); err == nil ||
+		!strings.Contains(err.Error(), "Shared Acceptance Evidence") {
+		t.Fatalf("blocked Builder Review Handoff was accepted: %v", err)
+	}
+}
+
+func TestKnowledgeReviewHandoffCLIOutputFlowsThroughSharedAcceptance(t *testing.T) {
+	dir := scratchWorkspace(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := treeDigest(t, dir)
+
+	temp := t.TempDir()
+	requirementsPath := filepath.Join(temp, "qualification-requirements.json")
+	candidatePath := filepath.Join(temp, "candidate.json")
+	handoffPath := filepath.Join(temp, "review-handoff.json")
+	groundedPath := filepath.Join(temp, "grounded-candidate.json")
+
+	requirements := knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	}
+	if err := os.WriteFile(requirementsPath, mustJSON(t, requirements), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(candidatePath, mustJSON(t, unitPriceCandidate(snapshot.revision)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(
+		"go", "run", "./cmd/tei", "knowledge-review-handoff",
+		"-workspace", dir,
+		"-subject-kind", "application-pattern",
+		"-subject-id", "order_entry.customer_reference",
+		"-qualification-requirements", requirementsPath,
+	)
+	cmd.Dir = repositoryRoot(t)
+	cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=")
+	var handoffOut, handoffErr bytes.Buffer
+	cmd.Stdout = &handoffOut
+	cmd.Stderr = &handoffErr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("tei knowledge-review-handoff failed: %v\nstderr=%s", err, handoffErr.String())
+	}
+	qualification, err := decodeQualificationInput(handoffOut.Bytes())
+	if err != nil {
+		t.Fatalf("actual Builder Review Handoff is not accepted by Shared Acceptance adapter: %v\noutput=%s", err, handoffOut.String())
+	}
+	if qualification.Status != knowledgecontext.QualificationApplicable ||
+		len(qualification.Evidence) == 0 ||
+		len(qualification.DependencyEvidence) == 0 {
+		t.Fatalf("review handoff lost qualification Evidence: %+v", qualification)
+	}
+	if err := os.WriteFile(handoffPath, handoffOut.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var attachOut, attachErr bytes.Buffer
+	if code := runCLI(
+		[]string{"attach-qualification", "-candidate", candidatePath, "-qualification", handoffPath},
+		&attachOut,
+		&attachErr,
+	); code != 0 {
+		t.Fatalf("attach-qualification from review handoff code=%d stderr=%s", code, attachErr.String())
+	}
+	grounded, err := decodeCandidate(attachOut.Bytes())
+	if err != nil {
+		t.Fatalf("review handoff attachment output is not a candidate: %v\noutput=%s", err, attachOut.String())
+	}
+	if len(grounded.Evidence) == 0 {
+		t.Fatalf("grounded candidate lacks Evidence: %+v", grounded)
+	}
+	if err := os.WriteFile(groundedPath, attachOut.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var previewOut, previewErr bytes.Buffer
+	if code := runCLI(
+		[]string{"preview", "-workspace", dir, "-candidate", groundedPath},
+		&previewOut,
+		&previewErr,
+	); code != 0 {
+		t.Fatalf("preview code=%d stderr=%s output=%s", code, previewErr.String(), previewOut.String())
+	}
+	var preview Preview
+	if err := json.Unmarshal(previewOut.Bytes(), &preview); err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Acceptable ||
+		preview.CandidateFingerprint == "" ||
+		preview.EvidenceFingerprint == "" {
+		t.Fatalf("review handoff did not survive Shared Acceptance preview: %+v", preview)
+	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
+
 func TestAttachQualificationIsIdempotentAfterEvidenceNormalization(t *testing.T) {
 	dir := scratchWorkspace(t)
 	snapshot, err := takeSnapshot(dir)

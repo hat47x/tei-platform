@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrInvalidSelection = errors.New("language selection is incomplete")
-	ErrProviderMissing = errors.New("locked language provider is unavailable")
+	ErrInvalidSelection  = errors.New("language selection is incomplete")
+	ErrProviderMissing   = errors.New("locked language provider is unavailable")
 	ErrProviderAmbiguous = errors.New("locked language provider is ambiguous")
 )
 
@@ -18,10 +18,10 @@ var (
 // distinct from the implementation supplying the parser. Dependency solving,
 // acceptance, and build provenance are outside this reference.
 type Selection struct {
-	LanguageID                 string
-	ContractVersion            string
-	ContractFingerprint        string
-	ImplementationID           string
+	LanguageID                string
+	ContractVersion           string
+	ContractFingerprint       string
+	ImplementationID          string
 	ImplementationFingerprint string
 }
 

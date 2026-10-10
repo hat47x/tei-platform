@@ -4,7 +4,7 @@ Status: **Lane B / provenance-backed pressure seed / not a Business authoring so
 
 Related:
 
-- `plan/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`
+- `docs/audits/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`
 - `plan/LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`
 - Lane C PR #482 / ISSUE-000042
 

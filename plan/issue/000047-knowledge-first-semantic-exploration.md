@@ -775,18 +775,28 @@ testには、既知のS4 candidateと同じsemantic deltaになるpositive case�
 
 この段階でも探索結果の自動採用やReference Patternの自動適用は行わない。destination-ownedな情報は明示入力のままであり、Proposal生成後もAcceptanceは別である。
 
-### 現在のEvidence境界
+### 現在のEvidence境界 — 2026-10-09
 
-このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
+Data Design Context、Knowledge Qualification、selective Disclosure、qualificationからexplicit-reference Proposalへ接続するReference実装は、PR #960までの変更としてmainへ反映されている。その後もProjection revision、candidate fingerprint、Evidence requirement fingerprint、SQL Realization / runtime identityのnegative pressureまでmain側で拡張された。
 
-code-changing laneの既存ruleに従い、full `tools/repository-health-check.sh` PASSとclean pre/post stateが得られるまでmainへのintegration authorityは無い。
+ただし、Repository verification gateはISSUE-000055で再開されている。mainにコードが存在することと、現行規則に基づくProduct Evidence成立は同じではない。current mainまたは対象candidate headについて、trusted actual full checkoutで`tools/repository-health-check.sh`の全項目PASS、clean pre/post state、candidate head / base main一致を持つqualification receiptが確認できるまでは、下記完了条件を「検証済み」として一括で閉じない。
+
+現状は次の三層に分ける。
+
+| 状態 | 対象 |
+| --- | --- |
+| 実装・Referenceがmainに存在し、再検証待ち | Data Design Context、scoped uniqueness、business identity / FD candidate、composite domain / temporal unresolved、Source Evidence、Persistence / Target / runtime identityのnegative boundary、Data Design / Disclosure fingerprint guard、Knowledge Qualification、selective Disclosure、explicit-reference Proposal、Shared Acceptance handoff |
+| 進行中 | AI BuilderがKnowledgeを読む順序、task-local Qualification、qualified DisclosureをShared Acceptanceへ接続する境界。PR #1059で継続中 |
+| なお本質的な未解決が残る | first-classなbusiness occurrence identifier / candidate key / functional dependencyをいつCore contractへ上げるかのEvidence、Derived Experience Knowledgeの検証済み候補をExecution / Observation / revisionへ戻す経路、routing / learned rankingを交換・削除してもCanonical meaningが変わらないことの実証 |
+
+この区別により、「実装済みだがqualification未取得」と「そもそも意味契約が未確定」を混同しない。
 
 ## 完了条件
 
 - [x] Gate C Ready後に着手する
 - [ ] Data / Relation設計時に、AI / Studio / CLIが同じData Design Contextからbusiness occurrence identifier、candidate key、既知・候補のfunctional dependency、composite domain constraint、時間・履歴条件、Relation topology、Source / Evidence、unresolvedへ到達できる
-- [ ] 単独`id` / UUID / surrogate keyを持つRealizationでも、acceptedなbusiness identifier / candidate key / uniqueness / Relation meaningを失わず逆追跡できる
-- [ ] View / Application Pattern / Target / ORM / runtime objectのidentityからbusiness keyを逆算しないnegative Referenceを持つ
+- [ ] 単独`id` / UUID / surrogate keyを持つRealizationでも、acceptedなbusiness identifier / candidate key / uniqueness / Relation meaningが存在する場合は失わず逆追跡できる。first-classな根拠が無い場合は、名称やphysical keyから補完せずunresolvedを保持できる
+- [ ] 現在存在するApplication Pattern / Target / runtime object等のidentityからbusiness keyを逆算しないnegative Referenceを持つ。View / ORM等を将来導入する場合も同じ境界を適用し、完了条件のためだけに存在しない層を新設しない
 - [ ] functional dependencyをfirst-classにauthorしていない対象で、根拠不足を「従属性なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] composite domain / allowed-combination constraintをfirst-classにauthorしていない対象で、根拠不足を「複合制約なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] temporal / history conditionをfirst-classにauthorしていない対象で、datetime属性や履歴columnを根拠に「時間意味が確定済み」と扱わずunresolvedとしてAIへ返せる
