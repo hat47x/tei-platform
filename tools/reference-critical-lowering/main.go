@@ -424,6 +424,7 @@ func ValidatePlan(plan Plan) error {
 	}
 	seenSteps := make(map[string]bool)
 	targetID := plan.Steps[0].Target
+	previousStep := ""
 	for _, step := range plan.Steps {
 		if !step.Contract.valid() || !step.Provider.valid() || !step.Conformance.valid() ||
 			!step.ResolutionLock.valid() || !step.Artifact.valid() ||
@@ -434,7 +435,11 @@ func ValidatePlan(plan Plan) error {
 		if seenSteps[key] {
 			return reject("duplicate-capability")
 		}
+		if previousStep != "" && previousStep >= key {
+			return reject("noncanonical-plan-order")
+		}
 		seenSteps[key] = true
+		previousStep = key
 		slots := make(map[string]bool)
 		for _, slot := range step.RequiredSlots {
 			if !slot.valid() || slots[slot.ID] {
@@ -454,11 +459,16 @@ func ValidatePlan(plan Plan) error {
 			data[k] = true
 		}
 		seenRuntime := make(map[string]bool)
+		previousRuntimeID := ""
 		for _, dep := range step.RuntimeDeps {
 			if !dep.valid() || seenRuntime[dep.ID] {
 				return reject("invalid-runtime-dependency")
 			}
+			if previousRuntimeID != "" && previousRuntimeID >= dep.ID {
+				return reject("noncanonical-runtime-dependency")
+			}
 			seenRuntime[dep.ID] = true
+			previousRuntimeID = dep.ID
 		}
 	}
 	return nil
