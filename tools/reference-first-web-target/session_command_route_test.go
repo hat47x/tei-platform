@@ -177,6 +177,8 @@ func TestWebTargetProtectedSessionRouteDeniesUntrustedAndMalformedRequests(t *te
 		{"JSON fractional row rejected", "corporate-editor", "matching", `{"row":0.5}`, http.StatusBadRequest},
 		{"nested field row rejected", "corporate-editor", "matching", `{"row":{"value":0}}`, http.StatusBadRequest},
 		{"negative row rejected", "corporate-editor", "matching", `{"row":-1}`, http.StatusBadRequest},
+		{"malformed RFC3339 from rejected", "corporate-editor", "matching", `{"from":"yesterday","row":0}`, http.StatusBadRequest},
+		{"invalid calendar date rejected", "corporate-editor", "matching", `{"from":"2026-02-30T00:00:00Z","row":0}`, http.StatusBadRequest},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := len(audits)
