@@ -1,6 +1,7 @@
 package modelref_test
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -39,7 +40,8 @@ func TestTraceDirectIncomingOutgoingAndSummary(t *testing.T) {
 	result, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "both"})
 	if err != nil { t.Fatal(err) }
 	if result.Total != 2 || result.Unresolved != 0 || len(result.Rows) != 2 ||
-		result.NextOffset != nil || result.Authority != "candidate-read-only" {
+		result.NextOffset != nil || result.Authority != "candidate-read-only" ||
+		result.SnapshotFingerprint == "" || result.RuleFingerprint != modelref.RuleFingerprint(rules) {
 		t.Fatalf("unexpected trace: %+v", result)
 	}
 	for _, row := range result.Rows {
@@ -124,6 +126,26 @@ func TestTraceDirectPaginationAndDeterministicOrder(t *testing.T) {
 	last, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Offset: *second.NextOffset, Limit: 1})
 	if err != nil || last.NextOffset != nil || len(last.Rows) != 1 {
 		t.Fatalf("page 3: %+v %v", last, err)
+	}
+	if first.SnapshotFingerprint != second.SnapshotFingerprint ||
+		second.SnapshotFingerprint != last.SnapshotFingerprint {
+		t.Fatalf("pagination changed snapshot without warning")
+	}
+	gChanged := g
+	gChanged.Nodes = append([]modelref.Node(nil), g.Nodes...)
+	gChanged.Nodes[0].Version = "2"
+	_, err = modelref.TraceDirect(gChanged, rules, fn, modelref.TraceOptions{
+		Offset: *first.NextOffset, Limit: 1, ExpectedFingerprint: first.SnapshotFingerprint,
+	})
+	var stale *modelref.TraceError
+	if !errors.As(err, &stale) || stale.Code != "STALE_SNAPSHOT" {
+		t.Fatalf("stale continuation was silently accepted: %v", err)
+	}
+	withPrecondition, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{
+		Offset: *first.NextOffset, Limit: 1, ExpectedFingerprint: first.SnapshotFingerprint,
+	})
+	if err != nil || !reflect.DeepEqual(withPrecondition.Rows, second.Rows) {
+		t.Fatalf("valid continuation differs: %+v %v", withPrecondition, err)
 	}
 	combined := append(append([]modelref.TraceRow{}, first.Rows...), second.Rows...)
 	combined = append(combined, last.Rows...)
