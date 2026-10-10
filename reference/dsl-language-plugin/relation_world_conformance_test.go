@@ -95,9 +95,8 @@ func TestWorldRelationPathRejectsLaterHopIdentityCollision(t *testing.T) {
 	}
 }
 
-// TestWorldRelationDoesNotAddStricterKeyRules ensures the reference does not
-// invent a source-key uniqueness restriction absent from the canonical
-// validator. Distinct target attributes remain independently mapped.
+// TestWorldRelationRejectsGlobalRelationIdentityCollision verifies that a
+// relation ID cannot also refer to a relation under another Data.
 func TestWorldRelationRejectsGlobalRelationIdentityCollision(t *testing.T) {
 	w := crossNamespaceRelationFixture()
 	// The duplicate is declared under a different Data; looking only at
@@ -112,6 +111,9 @@ func TestWorldRelationRejectsGlobalRelationIdentityCollision(t *testing.T) {
 	}
 }
 
+// TestWorldRelationDoesNotAddStricterKeyRules ensures the reference does not
+// invent a source-key uniqueness restriction absent from the canonical
+// validator. Distinct target attributes remain independently mapped.
 func TestWorldRelationDoesNotAddStricterKeyRules(t *testing.T) {
 	w := crossNamespaceRelationFixture()
 	w.Semantics[1].Data[0].Attributes = append(w.Semantics[1].Data[0].Attributes,
