@@ -402,3 +402,70 @@ func TestReferenceAcceptRejectsCandidateInputAliasWithOverride(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceInputPreservingCommandsRejectOutputAliases(t *testing.T) {
+	root := t.TempDir()
+	candidate := filepath.Join(root, "candidate.json")
+	query := filepath.Join(root, "confirmation.json")
+	for _, source := range []string{candidate, query} {
+		if err := os.WriteFile(source, []byte("original-input"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	candidateAlias := filepath.Join(root, "candidate-alias")
+	queryAlias := filepath.Join(root, "confirmation-alias")
+	directoryAlias := filepath.Join(root, "directory-alias")
+	for link, target := range map[string]string{
+		candidateAlias: candidate,
+		queryAlias:     query,
+		directoryAlias: root,
+	} {
+		if err := os.Symlink(target, link); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+	}
+	for _, tc := range []struct {
+		name    string
+		command string
+		input   string
+		out     string
+		allow   bool
+	}{
+		{name: "preview exact candidate", command: "preview", input: candidate, out: candidate},
+		{name: "review candidate symlink", command: "review", input: candidate, out: candidateAlias},
+		{name: "reject directory symlink", command: "reject", input: candidate, out: filepath.Join(directoryAlias, "candidate.json")},
+		{name: "reject mixed-case candidate", command: "reject", input: candidate, out: strings.ToUpper(candidate)},
+		{name: "confirm-check exact input", command: "confirm-check", input: query, out: query},
+		{name: "confirm-record input symlink", command: "confirm-record", input: queryAlias, out: query},
+		{name: "confirm-record with baseline opt-in", command: "confirm-record", input: query, out: queryAlias, allow: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			args := []string{tc.command, "-workspace", root}
+			switch tc.command {
+			case "preview", "review", "reject":
+				args = append(args, "-candidate", tc.input)
+			case "confirm-check", "confirm-record":
+				args = append(args, "-input", tc.input)
+			}
+			args = append(args, "-out", tc.out)
+			if tc.allow {
+				args = append(args, "-allow-reference-baseline")
+			}
+			var stdout, stderr bytes.Buffer
+			if code := runCLI(args, &stdout, &stderr); code != 2 ||
+				!strings.Contains(stderr.String(), "入力ファイル") {
+				t.Fatalf("input collision not rejected before parsing: code=%d stdout=%s stderr=%s",
+					code, stdout.String(), stderr.String())
+			}
+			for _, source := range []string{candidate, query} {
+				content, err := os.ReadFile(source)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(content) != "original-input" {
+					t.Fatalf("input %s overwritten: %q", source, content)
+				}
+			}
+		})
+	}
+}
