@@ -190,11 +190,22 @@ func invokeWithExecutionContext(
 		providerBindings[id] = binding
 	}
 	providerView := ContextSlotView{values: providerBindings}
-	resultPayload, err := next(
-		control,
-		providerView,
-		append([]byte(nil), semanticRequestSnapshot...),
-	)
+	// Provider errors and panic values may execute untrusted formatting code or
+	// contain raw secrets. For confidential slots, neither may cross the gate.
+	confidential := false
+	for _, requirement := range required {
+		if contracts[requirement.ContractID].ForbidDirectResultReflection {
+			confidential = true
+			break
+		}
+	}
+	requestForProvider := append([]byte(nil), semanticRequestSnapshot...)
+	var resultPayload []byte
+	if confidential {
+		resultPayload, err = invokeConfidentialProvider(next, control, providerView, requestForProvider)
+	} else {
+		resultPayload, err = next(control, providerView, requestForProvider)
+	}
 	// Do not return a result, error object, or receipt after trusted control
 	// cancellation. Check before inspecting a potentially untrusted provider
 	// error; a provider cannot forge this state by wrapping context.Canceled.
@@ -202,18 +213,12 @@ func invokeWithExecutionContext(
 		return InvocationContextExecution{}, controlErr
 	}
 	if err != nil {
-		if leak := directContextReflection(required, contracts, view, []byte(err.Error()), "downstream error"); leak != nil {
-			return InvocationContextExecution{}, leak
-		}
-		// A typed error can expose credentials through errors.As, Unwrap,
-		// custom formatting, or exported fields even when Error() is safe.
-		// Do not allow the original error object to cross this boundary.
-		for _, requirement := range required {
-			if contracts[requirement.ContractID].ForbidDirectResultReflection {
-				return InvocationContextExecution{}, fmt.Errorf(
-					"downstream invocation failed (confidential error detail withheld)",
-				)
-			}
+		if confidential {
+			// Never call Error(), Unwrap(), or custom formatting on an untrusted
+			// provider error: those methods themselves can panic or reveal secrets.
+			return InvocationContextExecution{}, fmt.Errorf(
+				"downstream invocation failed (confidential error detail withheld)",
+			)
 		}
 		return InvocationContextExecution{}, err
 	}
@@ -252,6 +257,24 @@ func invokeWithExecutionContext(
 			},
 		},
 	}, nil
+}
+
+// invokeConfidentialProvider prevents a synchronous provider panic from
+// escaping into caller logging or stack traces. Never format the panic value.
+// Panics in other goroutines and fatal runtime errors are outside this guard.
+func invokeConfidentialProvider(
+	next NextInvocation,
+	control context.Context,
+	view ContextSlotView,
+	request []byte,
+) (payload []byte, err error) {
+	defer func() {
+		if recover() != nil {
+			payload = nil
+			err = fmt.Errorf("downstream invocation failed (confidential error detail withheld)")
+		}
+	}()
+	return next(control, view, request)
 }
 
 func directContextReflection(
