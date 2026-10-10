@@ -336,3 +336,64 @@ func TestBuilderResolutionUsesCanonicalProviderID(t *testing.T) {
 		t.Fatalf("BuilderIdentity ID=%s want provider=%s", resolution.Builder.ID, providers[0].ProviderID)
 	}
 }
+
+
+func TestMalformedExplicitWiringIsRejectedBeforeProviderLookup(t *testing.T) {
+	contract, providers, evidence, wiring := referenceFixture()
+	wiring.ProviderVersion = "not-a-version"
+	_, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: providers,
+		Evidence:  evidence,
+	}, &wiring)
+	if err == nil || !strings.Contains(err.Error(), "builder wiring provider version") {
+		t.Fatalf("malformed wiring error: %v", err)
+	}
+
+	wiring = BuilderWiring{
+		ContractID:       contract.ID,
+		ProviderID:       providers[0].ProviderID,
+		ProviderVersion:  providers[0].ProviderVersion,
+		ImplementationID: providers[0].ImplementationID,
+		ArtifactDigest:   "sha256:not-hex",
+	}
+	if _, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: providers,
+		Evidence:  evidence,
+	}, &wiring); err == nil || !strings.Contains(err.Error(), "builder wiring artifact digest") {
+		t.Fatalf("malformed wiring digest error: %v", err)
+	}
+}
+
+func TestLockedReplayIgnoresUnrelatedSupportExpansion(t *testing.T) {
+	contract, providers, evidence, wiring := referenceFixture()
+	intent := referenceIntent(contract)
+	catalog := BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: []BuilderProvider{providers[0]},
+		Evidence:  []BuilderConformanceEvidence{evidence[0]},
+	}
+	resolution, err := resolveBuilder(intent, catalog, &wiring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := lockBuilderResolution(resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expandedProvider := providers[0]
+	expandedProvider.RecipeKinds = append(append([]string(nil), expandedProvider.RecipeKinds...), "additional-recipe")
+	expandedProvider.Targets = append(append([]string(nil), expandedProvider.Targets...), "host/additional")
+	expandedProvider.Profiles = append(append([]string(nil), expandedProvider.Profiles...), "additional-profile")
+	catalog.Providers[0] = expandedProvider
+
+	replayed, err := replayBuilderResolution(intent, catalog, lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replayed.ResolutionFingerprint != resolution.ResolutionFingerprint {
+		t.Fatalf("unrelated support expansion changed locked resolution identity: %s != %s", replayed.ResolutionFingerprint, resolution.ResolutionFingerprint)
+	}
+}
