@@ -123,7 +123,8 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   const afterRevision = revision(workspace);
   checked(afterRevision !== beforeRevision, label + ": Source revision changed");
   const changed = changedPaths(before, managedDigests(workspace));
-  checked(JSON.stringify(changed) === JSON.stringify([expectedPath]),
+  const allowedPaths = Array.isArray(expectedPath) ? expectedPath.slice().sort() : [expectedPath];
+  checked(JSON.stringify(changed) === JSON.stringify(allowedPaths),
     label + ": only the intended source file is changed: " + JSON.stringify(changed));
   const afterWorld = world(workspace);
   const after = projectWorld(afterWorld, afterRevision,
@@ -137,8 +138,18 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     checked(after.views.table.value.relations.some(v => v.id === expectedID),
       label + ": accepted Relation appears in reprojected table");
   } else {
-    checked(after.views.table.value.validations.some(v => v.id === expectedID),
-      label + ": accepted Validation appears in reprojected table");
+    const rule = after.views.table.value.validations.find(v => v.id === expectedID);
+    checked(!!rule, label + ": accepted Validation appears in reprojected table");
+    if (edit.applicationUse) {
+      checked(rule.applicationSelection.some(u =>
+        u.application === edit.applicationUse.application && u.status === "source-declared"),
+        label + ": rule and explicit Application selection reproject together");
+      checked((afterWorld.applications.find(a =>
+        a.id === edit.applicationUse.application)?.validations || []).includes(expectedID),
+        label + ": accepted Application declares the Validation");
+      checked(after.realizationReadiness.status === "not-verified",
+        label + ": Source Acceptance is not Target/Provider readiness");
+    }
   }
   const beforeStale = managedDigests(workspace);
   const stale = acceptance([
@@ -170,8 +181,11 @@ try {
     origin: "ai", intent: "明細単価に正値Validationを追加する",
     view: "table", subject: "attribute:sales.order_line.unit_price",
     operation: "add-validation", validationID: "sales.order_line.unit_price_positive",
-    validationKind: "positive"
-  }, "validation", "sales.order_line.unit_price_positive", "semantic/sales/validation.tei");
+    validationKind: "positive",
+    applicationUse: { application: "order_entry",
+      placement: "applications/order-entry/application.tei" }
+  }, "validation", "sales.order_line.unit_price_positive",
+    ["applications/order-entry/application.tei", "semantic/sales/validation.tei"]);
   process.stdout.write(JSON.stringify({
     status: "PASS", scope: "temporary scratch only; no human acceptance",
     checks, cases: [er, table]
