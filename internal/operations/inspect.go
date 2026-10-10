@@ -82,7 +82,7 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 		status = "indexed"
 	}
 	return SubjectInspection{
-		SchemaVersion: "tei.cli.inspect/v0",
+		SchemaVersion: "tei.operations.inspect/v0",
 		Effect: "read-only",
 		Subject: subject,
 		Canonical: canonical,
