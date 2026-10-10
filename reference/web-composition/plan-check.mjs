@@ -22,7 +22,7 @@ export function validateAuthenticationPlan(plan){
     const exactKey=JSON.stringify([link.providerId,link.issuer,link.subject]);
     if(exactLinks.has(exactKey)) throw new Error("duplicate identity link declaration");
     exactLinks.add(exactKey);
-    const key=JSON.stringify([link.issuer,link.subject]);
+    const key=JSON.stringify([link.providerId,link.issuer,link.subject]);
     if(links.has(key) && links.get(key)!==link.principalId) throw new Error("conflicting principal mapping");
     links.set(key,link.principalId);
   }
@@ -35,6 +35,12 @@ export function composeRequestPlan(plan){
   if(!route.id || !route.method || !route.path || !hostPolicy.id || !Array.isArray(hostPolicy.requiredGuards) || !Array.isArray(hostPolicy.terminalEvents)) throw new Error("host route policy is incomplete");
   if(route.actionId && route.exposure==="public") throw new Error("action route cannot silently become public");
   if(route.actionId && !hostPolicy.requiredGuards.includes("action-authorized")) throw new Error("action route has no mandatory authorization");
+  if(route.actionId){
+    for(const guard of ['authenticated','csrf-protected','action-authorized'])
+      if(!hostPolicy.requiredGuards.includes(guard)) throw new Error("action route missing mandatory protection: "+guard);
+    for(const terminal of ['completed','rejected','error'])
+      if(!hostPolicy.terminalEvents.includes(terminal)) throw new Error("action route missing mandatory terminal audit: "+terminal);
+  }
   if(new Set(hostContracts).size!==hostContracts.length) throw new Error("duplicate host contract");
   if(new Set(hostPolicy.requiredGuards).size!==hostPolicy.requiredGuards.length) throw new Error("duplicate required guard");
   const ids=new Map(),providers=new Map(),slots=new Set(),guards=new Set(),terminalEvents=new Set(),invalidGuardEvidence=[];
