@@ -374,6 +374,101 @@ capability intake.request.submit {
 	assertFirstModelReference(t, index, "semantic-capability", "intake.request.submit", firstModelSemantic)
 }
 
+// The default Validator must check typed relation-key mappings, not only
+// existence of the target Data. This guards future Data-backed CRUD derivation.
+func TestFirstModelChangeRelationKeyTypeMismatchAndRepair(t *testing.T) {
+	base := filepath.Join(repoRoot(t), filepath.FromSlash(firstModelRoot))
+	root := t.TempDir()
+	for _, file := range []string{
+		"tei.workspace.yaml",
+		firstModelSemantic,
+		"applications/request-log/application.tei",
+	} {
+		content, err := os.ReadFile(filepath.Join(base, filepath.FromSlash(file)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		dst := filepath.Join(root, filepath.FromSlash(file))
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dst, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	path := filepath.Join(root, filepath.FromSlash(firstModelSemantic))
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const status = "    attribute status type std.code\n"
+	const relation = "    relation parent to intake.request one\n        key intake.request.summary -> intake.request.request_id\n"
+	if strings.Count(string(source), status) != 1 {
+		t.Fatal("cannot find the unique first-workspace insertion point")
+	}
+	invalid := strings.Replace(string(source), status, status+relation, 1)
+	if err := os.WriteFile(path, []byte(invalid), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	broken, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	index, err := workspace.BuildSourceIndex(root, broken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, projected := range workspace.ProjectDiagnostics(validation.Validate(broken.World), index) {
+		d := projected.Diagnostic
+		if d.Code != "SEMANTIC_RELATION_KEY_TYPE_MISMATCH" {
+			continue
+		}
+		if d.Severity != validation.Error || d.Subject == nil ||
+			*d.Subject != (sourceindex.Subject{Kind: "semantic-relation", ID: "intake.request.parent"}) {
+			t.Fatalf("relation-key mismatch has no typed Subject: %+v", d)
+		}
+		if len(projected.Sources) != 1 || projected.Sources[0].ArtifactPath != firstModelSemantic {
+			t.Fatalf("relation-key mismatch lost its source: %+v", projected.Sources)
+		}
+		anchor := projected.Sources[0].Range
+		if anchor.Start.Offset < 0 || anchor.Start.Offset >= anchor.End.Offset ||
+			anchor.End.Offset > len(invalid) ||
+			invalid[anchor.Start.Offset:anchor.End.Offset] != "parent" {
+			t.Fatalf("relation-key mismatch does not locate its Relation: %+v", anchor)
+		}
+		found = true
+	}
+	if !found {
+		t.Fatal("default Validation silently accepted mismatched Relation keys")
+	}
+
+	corrected := strings.Replace(invalid, "key intake.request.summary ->", "key intake.request.request_id ->", 1)
+	if err := os.WriteFile(path, []byte(corrected), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	repaired, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ds := validation.Validate(repaired.World); validation.HasErrors(ds) {
+		t.Fatalf("repaired Relation key mapping should be valid: %+v", ds)
+	}
+	if len(repaired.World.Persistence) != 0 || len(repaired.World.Databases) != 0 {
+		t.Fatal("semantic relation-key validation must not provision physical storage")
+	}
+	repairedIndex, err := workspace.BuildSourceIndex(root, repaired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFirstModelReference(t, repairedIndex, "semantic-relation", "intake.request.parent", firstModelSemantic)
+	if err := index.Validate(func(rel string) ([]byte, error) {
+		return os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	}); err == nil {
+		t.Fatal("outdated Source Index accepted a repaired relation-key mapping")
+	}
+}
+
 func assertFirstModelReference(t *testing.T, idx sourceindex.Index, kind, id, path string) {
 	t.Helper()
 	refs := idx.ReferencesFor(sourceindex.Subject{Kind: kind, ID: id})
