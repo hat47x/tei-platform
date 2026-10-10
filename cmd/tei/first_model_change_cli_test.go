@@ -271,4 +271,34 @@ capability intake.request.submit {
 		t.Fatal(err)
 	}
 	assertValid()
+
+	// Relation key types must be validated on the standard CLI path, not
+	// solely by calling a specialist validator in isolation.
+	badKey := strings.Replace(
+		modified,
+		"    attribute status type std.code\n",
+		"    attribute status type std.code\n"+
+			"    relation parent to intake.request one\n"+
+			"        key intake.request.summary -> intake.request.request_id\n",
+		1,
+	)
+	if err := os.WriteFile(srcPath, []byte(badKey), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	keyDiagnostic := run(1, "validate", "-workspace", workspaceRoot)
+	if !strings.Contains(keyDiagnostic, "SEMANTIC_RELATION_KEY_TYPE_MISMATCH") ||
+		!strings.Contains(keyDiagnostic, source+":") {
+		t.Fatalf("CLI accepted mismatched semantic Relation keys: %q", keyDiagnostic)
+	}
+	goodKey := strings.Replace(
+		badKey, "key intake.request.summary ->", "key intake.request.request_id ->", 1,
+	)
+	if err := os.WriteFile(srcPath, []byte(goodKey), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
+	if err := os.WriteFile(srcPath, []byte(modified), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
 }
