@@ -157,13 +157,7 @@ func TestProcessTransportRoundTripPreservesGenericIdentityAndOpaquePayload(t *te
 		t.Fatalf("result payload=%v want=%v", execution.ResultPayload, payload)
 	}
 	receipt := execution.Receipt
-	if receipt.GenericContractID != dispatch.ContractID ||
-		receipt.ContractFingerprint != dispatch.ContractFingerprint ||
-		receipt.Target != dispatch.Target ||
-		receipt.Provider != dispatch.Provider ||
-		receipt.RequestShapeFingerprint != dispatch.RequestShapeFingerprint ||
-		receipt.ResultShapeFingerprint != dispatch.ResultShapeFingerprint ||
-		receipt.PayloadCodec != dispatch.PayloadCodec {
+	if receipt.InvocationIdentity != genericDispatchIdentity(dispatch) {
 		t.Fatalf("generic transport identity drifted: %+v", receipt)
 	}
 	if receipt.RequestDigest != digestBytes(payload) ||
