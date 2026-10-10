@@ -205,7 +205,7 @@ confirm / reject / withdraw commandは少なくとも次のpreconditionを持ち
 
 meaning、review subject、target binding、review sequenceのいずれかがUI表示後に変わっていれば古いcommandを拒否します。
 
-`reviewSubjectFingerprint` は、review event、reviewer candidate、access referenceを除いた正規化assertionから作るopaqueな同時実行receiptです。target、statement kind、scope、temporal validity、Evidence、Conflict / supersession relation等の変更を検出します。これはTruthやsemantic identityを証明するfingerprintではありません。
+`reviewSubjectFingerprint` は、review event、reviewer candidate、authorization用access referenceを除いた正規化assertionから作るopaqueな同時実行receiptです。assertion直下だけでなく、Evidence内の`accessRefs`もreceiptへ含めません。target、statement kind、scope、temporal validity、Evidenceのidentity / fingerprint、Conflict / supersession relation等の変更は検出します。これはTruthやsemantic identityを証明するfingerprintではありません。
 
 これにより、別surfaceで意味編集、scope変更、classification変更、Evidence変更、relation変更、target移動、review追加が行われた後に、古い画面から確認を重ねるlost updateを避けます。
 
@@ -267,6 +267,8 @@ access範囲は別の`TransportAccess`として、既存authorization adapter / 
 resolverはそのaccess contextで既存transportと同じfilterを通し、可視範囲を現在のContextQueryで再評価します。receiptのどれかが変わっていれば古いqueryとして拒否します。
 
 取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationです。resultにはaccess refを含めません。
+
+freshness subjectでもEvidenceのauthorization access refは除外します。policy識別子だけが変わってもsource checkを内容変更としてstaleにはしません。一方、Evidenceのlocatorやfingerprintが変わればfreshness bindingは切れます。
 
 `checkedAt` はraw値をそのまま返しません。current freshness subjectへ結び付いており、かつ `ContextQuery.asOf` 以前に行われたsource checkだけを返します。未来のsource checkや、subject編集でbindingが切れたcheckはdetailへ出しません。
 
