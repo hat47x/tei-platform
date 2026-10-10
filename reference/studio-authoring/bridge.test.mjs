@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts } from "./bridge.mjs";
@@ -481,6 +481,45 @@ test("local selection never expands into a global dense matrix", () => {
   const result = projectWorld(world, revision, "data:sales.order_line");
   assert.ok(result.views.er.edges.length <= 1);
   assert.ok(result.views.function.items.length <= 1);
+});
+
+test("real Reference World and Procedure fixture retain explicit non-Function Validation step", () => {
+  // This is a data-level fixture reconstruction of the optional #1125 DFD
+  // projection shape, not a Go DFD producer execution or Business Acceptance.
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  const world = JSON.parse(readFileSync(join(root, "reference/world.json"), "utf8"));
+  const fixture = JSON.parse(readFileSync(join(root,
+    "reference/business-system-design/order-entry-business-procedure.json"), "utf8"));
+  assert.equal(fixture.canonical, false);
+  assert.equal(fixture.artifactRole, "reference-authoring-fixture");
+  const step = fixture.steps.find(x => x.id === "BP-05");
+  assert.ok(step && !(step.applicationPatterns || []).length);
+  assert.ok(step.validations.includes("sales.order_line.quantity_positive"));
+  const businessDFD = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: fixture.procedure.id, diagnostics: [],
+    steps: [{
+      id: step.id, realization: step.realization,
+      noApplicationFunction: true, functionRefs: [],
+      explicitMeaning: step.validations.map((id, i) => ({
+        kind: "semantic-validation", id,
+        status: "resolved-id-not-accepted",
+        authority: "procedure-reference-only",
+        source: { file: "reference/business-system-design/order-entry-business-procedure.json",
+          pointer: "/steps/5/validations/" + i }
+      }))
+    }]
+  };
+  const result = projectWorld(world, revision,
+    "validation:sales.order_line.quantity_positive", { businessDFD });
+  assert.equal(result.views.business.authority, "noncanonical-reference");
+  assert.equal(result.views.business.items[0].stepID, "BP-05");
+  assert.deepEqual(result.views.business.items[0].functionRefs, []);
+  assert.equal(result.views.business.items[0].explicitMeaning[0].status,
+    "exact-id-matches-current-world");
+  assert.equal(result.views.business.freshness,
+    "unverified-no-model-revision-binding");
 });
 
 test("CLI consumes snapshot artifacts without mutating inputs", () => {
