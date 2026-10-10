@@ -327,6 +327,26 @@ func TestInvalidGenericDispatchStopsBeforeTransport(t *testing.T) {
 	}
 }
 
+func TestProcessTransportRejectsProviderPackageThatDiffersFromCarrier(t *testing.T) {
+	launcher := &countingProcessLauncher{}
+	dispatch := genericDispatch([]byte("payload"))
+	dispatch.Provider.PluginID = "tei.reference.other"
+	_, err := invokeOverProcessTransport(
+		context.Background(),
+		launcher,
+		pruntime.ProcessCommand{Executable: "must-not-run"},
+		transportCarrier(),
+		"transport-provider-carrier-mismatch",
+		dispatch,
+	)
+	if err == nil || !strings.Contains(err.Error(), "does not match legacy carrier plugin") {
+		t.Fatalf("generic Provider package mismatch was accepted: %v", err)
+	}
+	if launcher.calls != 0 {
+		t.Fatalf("Provider/carrier mismatch reached transport: calls=%d", launcher.calls)
+	}
+}
+
 func TestProcessTransportRequiresLegacyCarrierIdentity(t *testing.T) {
 	launcher, command := helperLauncher("echo")
 	carrier := transportCarrier()
@@ -384,6 +404,7 @@ func TestTransportReceiptDoesNotPromoteCarrierToGenericAuthority(t *testing.T) {
 		"transport-success-is-not-runtime-authority",
 		"transport-success-is-not-canonical-acceptance",
 		"legacy-carrier-identity-is-not-generic-contract-identity",
+		"carrier-provider-package-match-is-not-runtime-authority",
 		"generic-provider-and-shape-echo-is-not-runtime-authority",
 		"process-response-does-not-echo-legacy-capability-kind",
 		"process-stdio-is-one-realization-not-universal-capability-abi",
