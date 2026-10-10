@@ -114,3 +114,23 @@ Issue #1165 の第一段階では、`tei inspect` からモデル要素一件の
 `worldFingerprint`は正規化Worldの内容ハッシュであり、書込み用revisionやAcceptanceを意味しない。`sourceStatus=not-indexed`は対応する出所参照の欠落を示すが、Canonicalの不存在とは異なる。結果は適切な情報開示制御の下で利用する。
 
 この実装候補はグラフの参照先・参照元探索、差分比較、更新、認可、原子的Snapshotを含まない。テストの記述だけでは適合の証拠とせず、actual clean checkoutの全Repository Healthを確認してから統合する。
+
+
+## 8. C1: 型付き参照traceをCLIへ接続する統合候補
+
+Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromIndex` → `modelref.TraceDirect` → `modelref/sourcebridge.NewResolver` を、一つの型付きGo操作 `operations.TraceWorkspace` でつなぐ。CLIの `tei trace` は引数・JSON schema・終了コードを変換する薄いAdapterとし、別のEdge正本は持たない。
+
+- `-workspace`、`-scope`、`-subject-kind`、`-subject-id`を必須とする。`scope`はProjectionの文脈ラベルであり、業務namespace・ユーザーの認可scope・受理済みrevisionとの一致を証明しない。
+- `direction=outgoing|incoming|both`、`mode=summary|full`。CLIはsummaryを既定とする。Fullは明示的な件数上限がなければ全件出力し、`limit`が正の場合のみ `nextOffset`を返す。
+- Source Indexの既存Artifact fingerprintとRangeを検証してからSource Navigationに利用する。GraphとSource Indexが不一致ならエラー扱いとし、Sourceから業務関係を推測しない。元定義のLocationが見つかってもAcceptedや書込み許可を推定しない。
+- JSONの `schemaVersion=tei.cli.trace/v0`、`ok`、`result.trace`、`result.source`、`result.relatedSources`（Fullの出力ページのみ）、`result.projectionUnresolved`を返す。意味的な直接参照だけでなく、Derived Indexの投影時点で脱落した関係の情報を保持する。
+- 未存在・重複・stale snapshotを終了コード1、不正引数・読込失敗・Source Index検証失敗等を終了コード2とする。機械可読JSONの`error.code`で詳細を識別する。
+- `snapshotFingerprint`は候補GraphとPolicyのバイト列に関するハッシュ。ページ間で変化を検出できるが、**Source Index自体を同一時点へ固定せず**、Sourceファイルの読取競合や同時書換えに対する完全な一貫性を保証しない。完全なSnapshot境界は#1017と別途調整する。
+- `sourcebridge`に渡す読取関数で相対path正規化、symlinkによるWorkspace外参照拒否、regular file確認を実施する。ただしsymlinkのswapを原子的に防ぐ仕組みではなく、これをproductionのsecure source readerとは呼ばない。
+- 初期の関係は既存Derived Indexがすでに提供する宣言済みData/Pattern/Relation等に限られる。Business Procedure/DFD、物理CRUD、共有Acceptance、暗黙のtransitive path探索は未実装。
+
+### PRの統合順
+
+本作業は、独立したDraft系列（[#1159](https://github.com/hat47x/tei-platform/pull/1159) → [#1169](https://github.com/hat47x/tei-platform/pull/1169) と [#1139](https://github.com/hat47x/tei-platform/pull/1139) → [#1171](https://github.com/hat47x/tei-platform/pull/1171)）を参照する**統合用Draft候補**である。統合ブランチで履歴を接続していても各元PRがmainへ統合可能と認定されたわけではない。元PRのheadを変更せず、上流の検証・マージ順序を尊重して最終的な差分を再評価する。
+
+具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるexact head/full repository healthが揃うまでDraftを維持し、mainへマージしない。
