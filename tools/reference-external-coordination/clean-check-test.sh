@@ -16,13 +16,17 @@ REAL_PYTHON="$(command -v python3)"
 cat > "$SHIM_DIR/git" <<'SHIM_GIT'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "${INJECTION_KIND:-}" == post-ignored || "${INJECTION_KIND:-}" == post-hidden ]]; then
+if [[ "${INJECTION_KIND:-}" == post-ignored || "${INJECTION_KIND:-}" == post-hidden ||
+      "${INJECTION_KIND:-}" == post-core-worktree ]]; then
   if [[ "$*" == *"commit -qm coordination: create human work"* && ! -f "$INJECTION_MARKER" ]]; then
     : > "$INJECTION_MARKER"
     if [[ "$INJECTION_KIND" == post-ignored ]]; then
       printf 'unexpected\n' > "$PRODUCT_REPO/ignored.txt"
-    else
+    elif [[ "$INJECTION_KIND" == post-hidden ]]; then
       "$REAL_GIT" -C "$PRODUCT_REPO" update-index --skip-worktree README.md
+      printf 'unexpected\n' >> "$PRODUCT_REPO/README.md"
+    else
+      "$REAL_GIT" -C "$PRODUCT_REPO" config core.worktree "$PRODUCT_SHADOW"
       printf 'unexpected\n' >> "$PRODUCT_REPO/README.md"
     fi
   fi
@@ -117,6 +121,15 @@ check_case() {
       extra_env=("GIT_DIR=$TMP_ROOT/foreign-repo/.git")
       override_label=GIT_DIR
       ;;
+    core-worktree|post-core-worktree)
+      mkdir -p "$TMP_ROOT/$name-shadow"
+      cp -R "$repo/." "$TMP_ROOT/$name-shadow/"
+      if [[ "$name" == core-worktree ]]; then
+        git -C "$repo" config core.worktree "$TMP_ROOT/$name-shadow"
+        printf 'masked\n' >> "$repo/README.md"
+        test -z "$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
+      fi
+      ;;
     git-config-count)
       mkdir -p "$TMP_ROOT/config-shadow"
       cp -R "$repo/." "$TMP_ROOT/config-shadow/"
@@ -138,7 +151,7 @@ check_case() {
   fi
   env "${extra_env[@]}" PATH="$SHIM_DIR:$PATH" INJECTION_KIND="$name" PRODUCT_REPO="$repo" \
     REAL_GIT="$REAL_GIT" REAL_RM="$REAL_RM" REAL_PYTHON="$REAL_PYTHON" \
-    PYTHONOPTIMIZE="$python_optimize" INJECTION_MARKER="$TMP_ROOT/$name.marker" \
+    PRODUCT_SHADOW="$TMP_ROOT/$name-shadow" PYTHONOPTIMIZE="$python_optimize" INJECTION_MARKER="$TMP_ROOT/$name.marker" \
     bash "$repo/tools/reference-external-coordination/run.sh" > "$output" 2>&1 || actual=$?
   if [[ "$actual" -ne "$expected" ]]; then
     echo "$name: expected exit $expected, got $actual" >&2
@@ -152,6 +165,12 @@ check_case() {
   else
     if [[ -n "$override_label" ]]; then
       grep -Fq "rejects Git environment override: $override_label" "$output"
+    elif [[ "$name" == core-worktree || "$name" == post-core-worktree ]]; then
+      grep -Fq 'Git worktree root mismatch' "$output"
+      grep -Fq "($([[ "$name" == core-worktree ]] && echo pre-state || echo 'after coordination'))" "$output"
+      if [[ "$name" == post-core-worktree ]]; then
+        test -f "$TMP_ROOT/$name.marker"
+      fi
     elif [[ "$name" == python-optimized-tamper ]]; then
       # Semantic validation must fail, not the Git checkout cleanliness guard.
       test -f "$TMP_ROOT/$name.marker"
@@ -185,7 +204,9 @@ check_case git-work-tree 2
 check_case git-index-file 2
 check_case git-dir 2
 check_case git-config-count 2
+check_case core-worktree 2
 check_case post-ignored 1
+check_case post-core-worktree 1
 check_case post-hidden 1
 check_case after-delete-ignored 1
 check_case python-optimized-clean 0
