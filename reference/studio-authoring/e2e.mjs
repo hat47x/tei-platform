@@ -148,8 +148,12 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(staleJSON.acceptable === false &&
     (staleJSON.stages || []).some(v => v.name === "base-revision" && v.status === "fail"),
     label + ": stale revision fails closed (N06)");
+  acceptance([
+    "accept", "-workspace", workspace, "-candidate", path,
+    "-expected-review-fingerprint", review.reviewFingerprint
+  ], false);
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
-    label + ": stale preview leaves Accepted source intact");
+    label + ": stale Preview and stale Accept cannot modify newer Source");
   return { name: label, beforeRevision, afterRevision, changed, acceptedSubject: expectedID };
 }
 
