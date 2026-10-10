@@ -107,6 +107,44 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		t.Fatalf("wrong inspect invalid argument result: %+v", invalidInspect)
 	}
 
+	// Exercise argv, JSON, stdout/stderr and exit code for typed trace.
+	var traceSummary cliTraceReport
+	if err := json.Unmarshal(run(0,
+		"trace", "-workspace", reference, "-scope", "reference-observation",
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+		"-mode", "summary"), &traceSummary); err != nil {
+		t.Fatalf("trace summary must be JSON: %v", err)
+	}
+	if !traceSummary.OK || traceSummary.Result == nil ||
+		traceSummary.Result.Trace.Total < 2 || len(traceSummary.Result.Trace.Rows) != 0 {
+		t.Fatalf("unexpected typed trace summary: %+v", traceSummary)
+	}
+	var traceFull cliTraceReport
+	if err := json.Unmarshal(run(0,
+		"trace", "-workspace", reference, "-scope", "reference-observation",
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+		"-mode", "full", "-limit", "1",
+		"-expected-fingerprint", traceSummary.Result.Trace.SnapshotFingerprint), &traceFull); err != nil {
+		t.Fatalf("trace full must be JSON: %v", err)
+	}
+	if !traceFull.OK || traceFull.Result == nil ||
+		len(traceFull.Result.Trace.Rows) != 1 ||
+		traceFull.Result.Trace.NextOffset == nil {
+		t.Fatalf("wrong trace full result: %+v", traceFull)
+	}
+	var traceStale cliTraceReport
+	if err := json.Unmarshal(run(1,
+		"trace", "-workspace", reference, "-scope", "reference-observation",
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+		"-mode", "full", "-limit", "1", "-offset", "1",
+		"-expected-fingerprint", "sha256:stale"), &traceStale); err != nil {
+		t.Fatalf("trace stale must be JSON: %v", err)
+	}
+	if traceStale.OK || traceStale.Error == nil ||
+		traceStale.Error.Code != "STALE_SNAPSHOT" {
+		t.Fatalf("incorrect stale result: %+v", traceStale)
+	}
+
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n\ndata Order {\n    attribute orderId type }\n}\n")
 	var broken cliValidationReport
 	if err := json.Unmarshal(run(1, "validate", "-workspace", root, "-json"), &broken); err != nil {
