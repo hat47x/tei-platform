@@ -112,6 +112,31 @@ func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
 	}
 }
 
+func TestCrossViewExposesValidatedSourceProfile(t *testing.T) {
+	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2"><Task ID="T1"/></System>`, crossViewContractFixture())
+	if projection.SourceFormat != "xead" || projection.SourceFormatVersion != "1.2" {
+		t.Fatalf("source profile=%s/%s", projection.SourceFormat, projection.SourceFormatVersion)
+	}
+	accounting := CrossViewPublicAccounting(projection)
+	if accounting.SourceFormat != "xead" || accounting.SourceFormatVersion != "1.2" {
+		t.Fatalf("accounting source profile=%s/%s", accounting.SourceFormat, accounting.SourceFormatVersion)
+	}
+	if !containsString(projection.AuthorityLimits, "source-profile-conformance-does-not-prove-semantic-correctness") {
+		t.Fatalf("source profile authority limit missing: %+v", projection.AuthorityLimits)
+	}
+}
+
+func TestCrossViewTreatsEmptyTaskActionIDAsMissing(t *testing.T) {
+	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2"><Task ID="T1"><TaskAction ID=""/></Task></System>`, crossViewContractFixture())
+	accounting := CrossViewPublicAccounting(projection)
+	if accounting.TaskActionCount != 1 || accounting.TaskActionMissingIDCount != 1 {
+		t.Fatalf("empty TaskAction ID accounting=%+v", accounting)
+	}
+	if len(projection.Actions) != 1 || !projection.Actions[0].MissingLegacyID {
+		t.Fatalf("empty TaskAction ID was treated as usable identity: %+v", projection.Actions)
+	}
+}
+
 func TestCrossViewFailsClosedOnAmbiguousFunctionIdentity(t *testing.T) {
 	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
   <Table ID="T1"/>
