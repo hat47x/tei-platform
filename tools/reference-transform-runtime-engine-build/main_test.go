@@ -522,3 +522,51 @@ func TestNoClobberPublishSurvivesVerifiedTempCleanup(t *testing.T) {
 		t.Fatalf("published destination changed after temp cleanup: %q", raw)
 	}
 }
+
+
+func TestCopyVerifiedArtifactRejectsRepositoryInternalDestinationThroughSymlinkedRepoPath(t *testing.T) {
+	parent := t.TempDir()
+	realRepo := filepath.Join(parent, "real-repo")
+	if err := os.Mkdir(realRepo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repoAlias := filepath.Join(parent, "repo-alias")
+	if err := os.Symlink(realRepo, repoAlias); err != nil {
+		t.Skipf("symlink is unavailable: %v", err)
+	}
+
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destination := filepath.Join(realRepo, "must-not-publish")
+	if err := copyVerifiedArtifactOutsideRepository(repoAlias, source, destination, digest); err == nil {
+		t.Fatal("repository-internal destination was accepted through a symlinked repository path")
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatalf("repository-internal artifact was created: %v", err)
+	}
+}
+
+func TestCopyVerifiedArtifactRejectsUnresolvableRepositoryPath(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "engine")
+	if err := os.WriteFile(source, []byte("engine-bytes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := hashFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "engine-copy")
+	missingRepo := filepath.Join(t.TempDir(), "missing-repository")
+	if err := copyVerifiedArtifactOutsideRepository(missingRepo, source, outside, digest); err == nil {
+		t.Fatal("unresolvable repository path was accepted for artifact containment checking")
+	}
+	if _, err := os.Stat(outside); !os.IsNotExist(err) {
+		t.Fatalf("artifact was created despite unresolved repository root: %v", err)
+	}
+}
