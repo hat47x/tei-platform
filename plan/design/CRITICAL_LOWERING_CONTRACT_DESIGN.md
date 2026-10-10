@@ -223,3 +223,13 @@ Targetの実行可能Effectは集合として扱い、`Lower`に渡すEffect宣�
 同じ意味のTarget Planが入力順で複数のFingerprintを持たないよう、受信PlanのStepは`Scope+Contract ID`、Runtime Dependencyは`Ref.ID`で昇順という構造上の規約を加えた。Loweringは当該順序を生成し、受信後に入れ替えたPlanはtrusted callbackへの引渡し前に停止する。Provider登録順序自体は選択条件に使わず、あくまで明示WiringとVersionにより固定する。
 
 この規約は**計画内容のAuthenticityや実権限を与える署名ではない**。元のAccepted snapshot、current Resolution Lock、Artifact、current Host Context、Permissionをすべて別のAuthorityで照合し、検査とdispatchの間に失効がないよう保証する必要がある。
+
+## 13. Running WebのRevision独立性とAuthorization Denial
+
+既存Web TargetのHTTP Black-box TestでGate Bの固定Baseline Repository Revision Rと、実際に構築するCheckoutのTarget Revision Tを区別する。もともと`-baseline-revision`と`-target-revision`の両方にHEADを指定していたため、R/Tの同一化に気付かないままE2E成功を報告する危険があった。既存Web側のGate B fixture revision R (`e5231839a5dcc62cce1181a2731fcb7c70d16736`) とT（HEAD）を別々に渡し、Manifest、正常Command、Authentication denial、Authorization denial、実行失敗の全レスポンスに含まれるRevisionを独立して比較する。
+
+受信Manifestは既存Web側の5種類のPatternを**全件かつ重複なし**で要求し、Command/Browse/Record/Reference/Header-Detailを個別照合する。後勝ちのMap上書きで重複Patternを隠さない。
+
+Web executionではCredential不一致だけでなく、有効なViewer IdentityがAuthenticationを通過しても現在のAuthorizationによりCommand/Observationへ進めないことを独立した負例として検査する。これは既存のfixture AuthorizationによるHTTP契約の検証であり、Hostのreal permission grant、Authority revocation、実DB副作用の検証とは区別する。
+
+該当Goテストはtrusted full checkoutで未実行であり、修正済みのテストコードの存在をPASSとしない。Qualificationは独立したmain祖先確認・全体Health・parent #1119 evidence reviewを必要とする。
