@@ -147,6 +147,28 @@ Execution Context slotとProviderのAuthority scopeは別の軸である。
 
 Invocationに成功しても、Execution ContextはCanonical Acceptance、objective Truth、reviewer authority、source変更権を与えない。
 
+## Generic Runtime Capability Authorityとの関係
+
+#976は、AcceptedなCapability Contract / Provider / Execution Profileから導出したRuntime Capability identityへ、Permission、Resource、Lease、provenanceを一貫して結び付ける課題を扱う。
+
+#1118のExecution Contextとは責務が異なる。
+
+```text
+#976
+  どのRuntime Capability realizationを
+  どのAuthorityで実行できるか
+
+#1118
+  その1回のInvocationへ
+  trusted Hostがどのcurrent execution inputを渡すか
+```
+
+Execution Context slotの実値をRuntime Capability identity、Permission Grant、Resource Binding、Capability Resolution Lockへ含めない。sessionやauthorizationが変わるたびにCapability identityを作り直す構造にしない。
+
+逆に、Context Slot bindingが存在してもRuntime CapabilityのPermission、Resource、Lease、Sandbox Authorityを自動取得しない。#976側のAuthority成立をContext Slotで代替しない。
+
+同じRuntime Capability identityでも、Invocationごとにverified Principalやaccess contextが異なることはあり得る。その差は#1118のcurrent bindingとreuse partitionで扱い、#976のstable identityとは分ける。
+
 ## currentnessとLock
 
 Plugin LockやCapability resolutionはContractとProviderのidentityを固定する。一方、session、authorization、revocation、leaseなどのcurrentnessは呼出し時に確認する。
