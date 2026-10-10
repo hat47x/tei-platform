@@ -36,8 +36,8 @@ func TestResolverValidatesOneSnapshotForManyNavigations(t *testing.T) {
 		t.Fatal(err)
 	}
 	validatedReads := reads
-	if validatedReads == 0 {
-		t.Fatal("Source Index was never validated")
+	if validatedReads != 1 {
+		t.Fatalf("expected one source read for one artifact, got %d", validatedReads)
 	}
 	for i := 0; i < len(nodes); i++ {
 		navigation := resolver.Locate(nodes[i].Key)
