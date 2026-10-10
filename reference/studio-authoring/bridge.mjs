@@ -251,6 +251,84 @@ function businessLens(dfd, patterns, index, focus) {
   };
 }
 
+// Navigate FROM a reference-local Business Step back to existing World
+// meaning, without assigning that Step accepted identity or source ownership.
+// This is a consumer of the opt-in #1125 DFD, never a new Source editor.
+export function navigateReferenceBusinessStep(world, revision, dfd, stepID) {
+  exactRevision(revision);
+  if (!isText(stepID) || !dfd ||
+      dfd.schemaVersion !== "business-dfd-projection-v0" ||
+      dfd.authority !== "derived-read-only" ||
+      dfd.canonicalProcedureUsed !== false ||
+      !isText(dfd.procedureId) ||
+      !Array.isArray(dfd.steps) || !Array.isArray(dfd.diagnostics))
+    throw new Error("UNSUPPORTED_BUSINESS_DFD_AUTHORITY_OR_SCHEMA");
+  const index = indexWorld(world);
+  const seen = new Set();
+  for (const step of dfd.steps) {
+    if (!step || !isText(step.id) || seen.has(step.id) ||
+        !Array.isArray(step.functionRefs))
+      throw new Error("INVALID_OR_DUPLICATE_BUSINESS_STEP");
+    seen.add(step.id);
+  }
+  const step = dfd.steps.find(s => s.id === stepID);
+  if (!step) throw new Error("UNRESOLVED_REFERENCE_BUSINESS_STEP");
+  const producerValid = !dfd.diagnostics.some(d => d.severity === "error");
+  const candidates = [];
+  const add = (kind, id, via, resolved, source) => {
+    candidates.push({
+      focus: kind + ":" + id, kind, id, via,
+      status: producerValid && resolved ? "identity-match-only" : "unresolved",
+      authority: "reference-only", source: source || null
+    });
+  };
+  for (const r of array(step.explicitMeaning, "step.explicitMeaning")) {
+    if (!r || !isText(r.kind) || !isText(r.id) ||
+        !["semantic-data", "semantic-relation", "semantic-validation",
+          "semantic-capability"].includes(r.kind) ||
+        !["resolved-id-not-accepted", "unresolved"].includes(r.status))
+      throw new Error("INVALID_BUSINESS_DIRECT_MEANING");
+    const kind = { "semantic-data": "data", "semantic-relation": "relation",
+      "semantic-validation": "validation" }[r.kind];
+    // Capabilities currently lack a canonical Studio focus map; unresolved.
+    if (!kind) {
+      add("capability", r.id, "explicit-business-semantic-reference", false, r.source);
+      continue;
+    }
+    const target = { data: index.data, relation: index.relations,
+      validation: index.validations }[kind].get(r.id);
+    add(kind, r.id, "explicit-business-semantic-reference",
+      !!target && r.status === "resolved-id-not-accepted" &&
+      r.authority === "procedure-reference-only", r.source);
+  }
+  for (const r of step.functionRefs) {
+    if (!r || !isText(r.id) || !["resolved", "unresolved"].includes(r.status))
+      throw new Error("INVALID_BUSINESS_FUNCTION_REFERENCE");
+    const pattern = index.patterns.get(r.id);
+    add("pattern", r.id, "explicit-application-pattern",
+      !!pattern && r.status === "resolved" &&
+      (r.data || "") === (pattern.data || "") &&
+      (r.relation || "") === (pattern.relation || "") &&
+      (r.capability || "") === (pattern.capability || ""));
+  }
+  const verified = candidates.filter(c => c.status === "identity-match-only");
+  return {
+    schema: "tei.reference.studio-business-step-navigation/v0",
+    authority: "noncanonical-reference",
+    modelRevision: revision,
+    subject: { kind: "step", id: step.id,
+      scope: "reference-procedure:" + dfd.procedureId,
+      authority: "reference-only" },
+    status: producerValid && verified.length ? "reference-only" : "unresolved",
+    candidates,
+    source: step.source || null,
+    freshness: "unverified-no-model-revision-binding",
+    editable: false, acceptanceTargetStatus: "unresolved-use-shared-acceptance",
+    realizationReadiness: { status: "not-verified" },
+    note: "Candidate focuses are read-only World identity matches. The Business Step is not Accepted Source; these links do not establish a shared revision, authoring location, execution effect or approval."
+  };
+}
+
 // Each view is a projection, not another editable copy of World.
 // All IDs are original exact Canonical IDs; no label matching or synthetic edges.
 export function projectWorld(world, revision, focus, options = {}) {
