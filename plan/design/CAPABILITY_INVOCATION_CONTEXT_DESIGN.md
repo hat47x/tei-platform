@@ -245,6 +245,10 @@ Lock fingerprintが一致していても、現在のsessionやaccessが有効で
 
 必要な監査情報は、Security subsystemが発行する非secretで記録可能なopaque receipt reference等で別に扱う候補とする。raw credentialやaccess ref集合を通常のInvocation receiptへ保存しない。receipt reference自体へtoken、cookie、Principal payload等を流用しない。
 
+ただし「Hostが非secretのrefを発行する」だけでは、実装ミスによるraw値の混入を検出できない。Referenceの防御として、秘匿対象のrequired slotのraw bytesが`ReusePartitionRef`またはrequired BindingReceiptRefのいずれかへ直接含まれる場合は、dispatch前に拒否する。slot自身のrefだけでなく他のrequired slotのrefも調べ、無関係な未要求slotには干渉しない。返すerrorにはraw値を載せない。
+
+この検査はliteral matchに限られ、短い値では誤検知し得る。暗号化・符号化・ハッシュ化・derived値の漏えいや、Hostによる参照ID発行の真正性は検証しない。productionではHostが公開可能なopaque識別子を安全に発行することが引き続き本質的な条件となる。
+
 ## cacheとreuse partition
 
 Semantic RequestからExecution Contextを分離すると、cache設計に新しい制約が生じる。
