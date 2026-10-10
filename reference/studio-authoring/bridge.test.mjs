@@ -349,8 +349,10 @@ test("C0 scoped ID collision cannot be silently resolved by flat Studio token", 
       { ...anchor, scope: "tenant-b" }
     ]
   };
-  assert.throws(() => projectWorld(fixture(), revision, "relation:sales.order.lines",
-    { sourceIndex }), /AMBIGUOUS_SOURCE_DEFINITION/);
+  const result = projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex });
+  assert.equal(result.sourceNavigation.status, "unresolved");
+  assert.ok(result.sourceNavigation.reason.includes("typed Source Resolver"));
 });
 
 test("even a single scoped Source locator is unresolved without typed C0 resolver", () => {
