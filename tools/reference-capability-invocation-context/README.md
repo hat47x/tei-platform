@@ -28,9 +28,9 @@ Provider callbackへは、required slotだけを含む`ContextSlotView`とcontro
 
 ## Confidentiality boundary
 
-`ForbidDirectResultReflection`を持つslotは、raw slot bytesがresultへそのまま含まれる場合にReferenceが拒否します。
+`ForbidDirectResultReflection`を持つslotは、raw slot bytesがresult payloadまたはdownstream error messageへそのまま含まれる場合にReferenceが拒否します。
 
-この検査は直接反射だけを検出します。encoding、hash、派生情報、side channel等の一般的な情報漏えいを証明しません。そのためreceiptには`direct-reflection-check-does-not-prove-general-non-disclosure`を残します。
+この検査はresult / errorへの直接反射だけを検出します。encoding、hash、派生情報、Provider内部log、side channel等の一般的な情報漏えいを証明しません。そのためreceiptには`direct-reflection-check-does-not-prove-general-non-disclosure`を残します。
 
 productionでは、Context Slot Contractのexposure policy、Provider Conformance、result schema、Security policy等との分担を別途判断します。
 
