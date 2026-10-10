@@ -5,6 +5,7 @@ import { createNativeActionBridge } from "./native-action-bridge.mjs";
 import { createJSONActionDispatcher } from "./json-action-dispatch.mjs";
 
 const schema = JSON.parse(readFileSync(new URL("./action-protocol-v1.schema.json", import.meta.url), "utf8"));
+const resultSchema = JSON.parse(readFileSync(new URL("./action-result-v1.schema.json", import.meta.url), "utf8"));
 
 test("wire envelope matches published JSON Schema's version and field set", () => {
   const required = [
@@ -70,4 +71,13 @@ test("cancel and conflict never dispatch or silently retry", async () => {
   await assert.rejects(bridge.drop(), /revision_conflict/);
   assert.equal(sent.length, 1);
   assert.equal(bridge.phase, "idle");
+});
+
+test("success and error responses share one versioned public schema", () => {
+  assert.equal(resultSchema.$schema, schema.$schema);
+  assert.deepEqual(resultSchema.required, ["protocolVersion"]);
+  assert.deepEqual(resultSchema.oneOf, [{ required: ["revision"] }, { required: ["error"] }]);
+  assert.equal(resultSchema.additionalProperties, false);
+  assert.equal(resultSchema.properties.protocolVersion.const, "1");
+  assert.equal(resultSchema.properties.revision.minLength, 1);
 });
