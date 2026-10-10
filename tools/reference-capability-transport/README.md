@@ -57,13 +57,23 @@ process failure時は、既存`StdioProcessLauncher`のstderr redactionをその
 
 子processがstderrへsecret相当の文字列を書いても、Host errorにはraw textを含めず、byte数とSHA-256だけを残します。このReferenceは既存Runtimeの境界を再実装しません。
 
+## Host Dispatch Plan
+
+二つのtransportを比較すると、transport自身がrequest内のgeneric identityをAuthorityとして扱わない境界が共通して必要になります。
+
+Referenceでは`TransportDispatchPlan`を追加しました。Planは上流で決まった`GenericInvocationIdentity`とfingerprintだけを持ちます。processとHTTPのplan-bound経路は、dispatchのContract、Provider、Target、shape、codecがPlanと一致しない場合、process起動やHTTP送信の前に停止します。
+
+成功したreceiptには同じPlan fingerprintを残します。processとHTTPでcarrierは異なっても、どの上流Planを運んだかを同じ方法で追跡できます。
+
+Plan自体はCapability Conformance、Runtime Authority、Canonical Acceptanceの証明ではありません。呼出し側が任意のPlanを作れるReferenceの段階では、fingerprintは改ざん検出用のderived identityに留まります。production候補へ進めるには、#1116等の上流Runtime AuthorityやCapability resolutionからPlanを導出し、transport層が独自にidentityを作らないことを確認する必要があります。
+
 ## 次の判断
 
-このReferenceだけではproduction protocolを変更しません。
+processとsynthetic HTTPの二つで、transport-neutralなdispatch / receipt identityが必要になることは再現しました。このため、共通identityはproduction候補として検討できる段階に進みました。
 
-二つ目のtransportでもgeneric Contract / Provider / Target / shape identityをHost-verifiableなdispatch metadataとして必要とすることが確認できた場合に、transport-neutralなdispatch / receipt contractをproduction候補として検討します。
+ただし、現時点ではproduction protocolへ昇格しません。HTTP Referenceはactual First Web Targetではなく、Planも上流Authorityから導出していません。次のGateは、既存Runtime Authorityまたは実Target consumerが同じPlan identityを供給し、transportがそのidentityを読み替えず運べることです。
 
-Web / Wasmを二つ目のtransportに使う場合も、process protocolをそのまま移植しません。module loading、host import、memory、sandboxはTarget固有のrealization concernとして分けます。
+Web / Wasmへ進む場合もprocess protocolを移植しません。module loading、host import、memory、sandboxはTarget固有のrealization concernとして分けます。
 
 
 ## 第二transport: loopback HTTP
