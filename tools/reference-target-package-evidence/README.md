@@ -30,4 +30,4 @@ go run ./tools/reference-target-package-evidence \
 
 ## 検証段階
 
-本追加のGoソース3件は、隔離したGo 1.23.2モジュールで**同じGit blob SHA**を照合した上で、局所`go test`・`go vet`・`gofmt`および小さなGo entryに対する`go list`の動作を確認しました。これはTEIリポジトリ全体や実第一Web Targetに対する実行確認ではありません。Trusted clean full checkoutでの`tools/repository-health-check.sh`は未取得です。Draft PRのまま扱います。
+**初期版のGoソース3件のみ**、隔離したGo 1.23.2モジュールで当時のGit blob SHA一致を照合し、局所`go test`・`go vet`・`gofmt`および小さなGo entryに対する`go list`を確認しました。その後、実GoによるCgo疑似importとGit ignore対象のGoファイル混入を再現し、パーサー／ソース確認／負例テストを追加しています。**追加修正後の現headではGoテスト・Go vet・gofmt・実第一Web Targetの実行結果は未取得**です。初期版のPASSを現headへ流用せず、TEI trusted clean full checkoutでのexact-head `tools/repository-health-check.sh`と前後clean確認を統合条件とします。Draft PRのまま扱います。
