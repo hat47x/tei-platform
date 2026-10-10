@@ -75,6 +75,35 @@ test("table edit uses source-owned attribute, never the derived table cell", () 
   }]);
 });
 
+test("accepted validations reappear in the table lens with their original ID", () => {
+  const world = fixture();
+  world.semantics[0].validations = [{
+    id: "sales.order_line.price_positive", kind: "positive",
+    attribute: "sales.order_line.price"
+  }];
+  const projected = projectWorld(world, revision, "validation:sales.order_line.price_positive");
+  assert.equal(projected.views.table.value.id, "sales.order_line");
+  assert.deepEqual(projected.views.table.value.validations, [{
+    subject: "validation:sales.order_line.price_positive",
+    id: "sales.order_line.price_positive", kind: "positive",
+    attribute: { subject: "attribute:sales.order_line.price", id: "sales.order_line.price" },
+    relation: null
+  }]);
+  assert.throws(() => candidateFromEdit(world, revision, {
+    schema: "tei.reference.studio-edit/v0", id: "duplicate-validation",
+    origin: "studio", intent: "既存Validationを再追加しない",
+    view: "table", subject: "attribute:sales.order_line.price",
+    operation: "add-validation", validationID: "sales.order_line.price_positive",
+    validationKind: "positive"
+  }), /DUPLICATE_ID/);
+});
+
+test("only source-compatible relation IDs are converted to candidate operations", () => {
+  assert.throws(() => candidateFromEdit(fixture(), revision, {
+    ...edit(), relationID: "sales.order_line.parent"
+  }), /RELATION_ID_MUST_MATCH_SOURCE_SYMBOL/);
+});
+
 test("N05: direct derived-cell edits, arbitrary patches and layout edits fail closed", () => {
   assert.throws(() => candidateFromEdit(fixture(), revision, { ...edit(), derived: true }), /DERIVED_IS_READONLY/);
   assert.throws(() => candidateFromEdit(fixture(), revision, { ...edit(), operation: "set-layout" }), /UNSUPPORTED_EDIT/);
