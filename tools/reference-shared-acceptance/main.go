@@ -440,10 +440,14 @@ func isReferenceBaselineOutput(path string) bool {
 	if protected(abs) {
 		return true
 	}
-	// A dangling file symlink is still a potential output: os.WriteFile
-	// follows the link and may create a protected target.
+	// An existing output-file symlink is safe only when its final target
+	// can be resolved and is outside the protected Reference. The resolver
+	// below checks that target. Keep dangling/looping links fail-closed
+	// instead of rejecting every legitimate scratch output symlink.
 	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
-		return true
+		if _, err := filepath.EvalSymlinks(path); err != nil {
+			return true
+		}
 	}
 	// Resolve the original spelling before cleaning "..". Output files and
 	// their parents may not exist yet, so resolve the nearest existing
