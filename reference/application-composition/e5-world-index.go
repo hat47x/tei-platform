@@ -271,6 +271,59 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
             }
         }
     }
+    // A reference Pattern's ContractQuery identifies a specific contract Query,
+    // not just the containing Database Contract. Follow only this typed direct
+    // reference. Do not infer a Provider, SQL, Permission or complete closure.
+    aliasTargets := map[string][]string{}
+    requiredByAlias := map[string]map[string]bool{}
+    for _, requirement := range app.Databases {
+        alias := string(requirement.Alias)
+        aliasTargets[alias] = append(aliasTargets[alias], string(requirement.TargetDatabase))
+        if requiredByAlias[alias] == nil {
+            requiredByAlias[alias] = map[string]bool{}
+        }
+        for _, needed := range requirement.RequiredContracts {
+            requiredByAlias[alias][string(needed.ContractID)] = true
+        }
+    }
+    observedContractQueries := map[string]bool{}
+    for _, pattern := range app.Patterns {
+        if pattern.ContractQuery == nil {
+            continue
+        }
+        alias := string(pattern.Datasource)
+        contractID := string(pattern.ContractQuery.Contract)
+        queryName := string(pattern.ContractQuery.Query)
+        querySubject := sourceindex.Subject{Kind: "database-contract-query", ID: contractID + "/" + queryName}
+        if alias == "" || len(aliasTargets[alias]) != 1 {
+            record("pattern-contract-query", querySubject, "contract_query_datasource_missing_or_ambiguous")
+            continue
+        }
+        databaseID := aliasTargets[alias][0]
+        if databases[databaseID] != 1 || !requiredByAlias[alias][contractID] ||
+            contracts[databaseID][contractID] != 1 || contractOwners[contractID] != 1 {
+            record("pattern-contract-query", querySubject, "contract_query_contract_unavailable")
+            continue
+        }
+        count := 0
+        for _, db := range world.Databases {
+            if string(db.ID) != databaseID { continue }
+            for _, contract := range db.Contracts {
+                if string(contract.ID) != contractID { continue }
+                for _, query := range contract.Queries {
+                    if string(query.Name) == queryName { count++ }
+                }
+            }
+        }
+        if queryName == "" || count != 1 {
+            record("pattern-contract-query", querySubject, "contract_query_definition_missing_or_ambiguous")
+            continue
+        }
+        if !observedContractQueries[querySubject.ID] {
+            attach("pattern-contract-query", querySubject)
+            observedContractQueries[querySubject.ID] = true
+        }
+    }
     sort.Slice(out.Dependencies, func(i, j int) bool {
         a, b := out.Dependencies[i], out.Dependencies[j]
         if a.Relation != b.Relation { return a.Relation < b.Relation }
