@@ -270,3 +270,57 @@ func TestArtifactReceiptDoesNotPromoteStoreAuthority(t *testing.T) {
 		}
 	}
 }
+
+
+func TestStoreRejectsReplacedAlgorithmDirectory(t *testing.T) {
+	root := t.TempDir()
+	store, err := openLocalArtifactStore(root, 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(store.algorithmDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(store.algorithmDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.PutBytes([]byte("must-not-publish")); !errors.Is(err, errArtifactCorrupt) {
+		t.Fatalf("replaced algorithm directory was not rejected: %v", err)
+	}
+}
+
+func TestConcurrentPutLeavesNoTemporaryObjects(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	value := []byte("concurrent cleanup")
+	const workers = 8
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := store.PutBytes(value)
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	entries, err := os.ReadDir(store.algorithmDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("normal concurrent put left unexpected store entries: %#v", entries)
+	}
+	wantName := strings.TrimPrefix(digestBytes(value), "sha256:")
+	if entries[0].Name() != wantName {
+		t.Fatalf("stored object name=%q want=%q", entries[0].Name(), wantName)
+	}
+}
