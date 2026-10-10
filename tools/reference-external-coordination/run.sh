@@ -48,7 +48,7 @@ assert_product_clean() {
   }
   if [[ "$actual_root" != "$ROOT" ]]; then
     echo "external-coordination reference Git worktree root mismatch ($phase)" >&2
-    printf 'script checkout: %s\\nGit worktree: %s\\n' "$ROOT" "$actual_root" >&2
+    printf 'script checkout: %s\nGit worktree: %s\n' "$ROOT" "$actual_root" >&2
     exit "$failure_code"
   fi
   status="$(git -C "$ROOT" status --porcelain=v1 --untracked-files=all)"
