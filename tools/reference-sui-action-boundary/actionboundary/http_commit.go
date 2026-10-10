@@ -1,6 +1,7 @@
 package actionboundary
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -76,7 +77,7 @@ func (h JSONCommitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if input.ProtocolVersion != "1" || input.ApplicationID == "" || input.ResourceID == "" || input.ActionID == "" || input.ExpectedRevision == "" ||
-		len(input.Payload) == 0 || string(input.Payload) == "null" {
+		len(input.Payload) == 0 || bytes.Equal(bytes.TrimSpace(input.Payload), []byte("null")) {
 		reject(http.StatusBadRequest, "invalid_intent")
 		return
 	}
