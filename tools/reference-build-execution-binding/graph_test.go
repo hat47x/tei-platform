@@ -45,6 +45,19 @@ func dependencyInput(kind, id, version string) BuildGraphInputBinding {
 	}
 }
 
+func externalBuilderSeed(node string, plan BuildExecutionPlan) BuildGraphSeed {
+	return BuildGraphSeed{
+		ID:              string(plan.Builder.ID),
+		Kind:            "builder-seed",
+		Version:         plan.Builder.Version,
+		ContractVersion: plan.Builder.ContractVersion,
+		ArtifactDigest:  plan.Builder.ArtifactDigest,
+		TrustBoundary:   "external-exact-builder",
+		ToNode:          node,
+		Input:           BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+	}
+}
+
 func TestBuildGraphFingerprintIsDeclarationOrderIndependent(t *testing.T) {
 	generator := graphNodeForPlan(t, "generator", graphPlan(t, "generator", digestA, digestB))
 	consumer := graphNodeForPlan(t, "consumer", graphPlan(t, "consumer", digestC, digestB))
@@ -182,6 +195,11 @@ func TestBuildGraphAllowsOneProducerToFeedMultipleConsumers(t *testing.T) {
 				Input: dependencyInput("generated-source", "generated-input", "1.0.0"),
 			},
 		},
+		Seeds: []BuildGraphSeed{
+			externalBuilderSeed("producer", producerPlan),
+			externalBuilderSeed("left", leftPlan),
+			externalBuilderSeed("right", rightPlan),
+		},
 	}
 	outputs := map[string]ArtifactSet{
 		"producer": {
@@ -233,6 +251,10 @@ func TestBuildGraphBindsProducerOutputToExactConsumerDependency(t *testing.T) {
 			ToNode: "consumer",
 			Input: dependencyInput("generated-source", "generated-input", "1.0.0"),
 		}},
+		Seeds: []BuildGraphSeed{
+			externalBuilderSeed("producer", producerPlan),
+			externalBuilderSeed("consumer", consumerPlan),
+		},
 	}
 	outputs := map[string]ArtifactSet{
 		"producer": {
@@ -555,5 +577,49 @@ func TestBuildGraphRejectsBuilderSeedContractMismatch(t *testing.T) {
 		nil,
 	); err == nil {
 		t.Fatal("builder seed with mismatched contract version was accepted because digest matched")
+	}
+}
+
+
+func TestVerifyBuildGraphBindingsRejectsUnboundBuilder(t *testing.T) {
+	plan := graphPlan(t, "consumer", digestA, digestB)
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{
+			graphNodeForPlan(t, "consumer", plan),
+		},
+	}
+	if err := verifyBuildGraphBindings(
+		graph,
+		map[string]BuildExecutionPlan{"consumer": plan},
+		nil,
+	); err == nil {
+		t.Fatal("Build graph accepted a node whose exact Builder has no producer or external seed")
+	}
+}
+
+func TestVerifyBuildGraphBindingsRejectsUnboundDependency(t *testing.T) {
+	plan := graphPlan(t, "consumer", digestA, digestB)
+	plan.Dependencies = []plugin.BuildDependency{{
+		Kind:           "sdk",
+		ID:             "reference-sdk",
+		Version:        "1.0.0",
+		ArtifactDigest: digestC,
+	}}
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{
+			graphNodeForPlan(t, "consumer", plan),
+		},
+		Seeds: []BuildGraphSeed{
+			externalBuilderSeed("consumer", plan),
+		},
+	}
+	if err := verifyBuildGraphBindings(
+		graph,
+		map[string]BuildExecutionPlan{"consumer": plan},
+		nil,
+	); err == nil {
+		t.Fatal("Build graph accepted a BuildDependency with no producer or external seed")
 	}
 }
