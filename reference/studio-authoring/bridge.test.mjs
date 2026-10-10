@@ -380,6 +380,11 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
       "-revision-file", revPath, "-edit-file", editPath], { encoding: "utf8" });
     assert.equal(propose.status, 0, propose.stderr);
     assert.equal(JSON.parse(propose.stdout).delta[0].op, "add-relation");
+    const unsafeReview = spawnSync(process.execPath, [cli, "review-edit",
+      "-world-file", worldPath, "-revision-file", revPath, "-edit-file", editPath],
+      { encoding: "utf8" });
+    assert.notEqual(unsafeReview.status, 0,
+      "review-edit requires a live workspace and cannot trust unrelated snapshots");
     assert.deepEqual(paths.map(p => readFileSync(p, "utf8")), before);
   } finally {
     rmSync(dir, { recursive: true, force: true });
