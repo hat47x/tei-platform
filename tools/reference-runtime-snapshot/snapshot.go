@@ -29,7 +29,6 @@ type Identity struct {
 // an expected digest from the same untrusted input would prove nothing.
 type Snapshot struct {
 	manifest []byte
-	identity Identity
 }
 
 func readTopLevelStrings(data []byte) (map[string]string, error) {
@@ -106,7 +105,7 @@ func Accept(raw []byte, expected Identity) (Snapshot, error) {
 			return Snapshot{}, fmt.Errorf("manifest %s does not match independent binding", binding.property)
 		}
 	}
-	return Snapshot{manifest: append([]byte(nil), raw...), identity: expected}, nil
+	return Snapshot{manifest: append([]byte(nil), raw...)}, nil
 }
 
 // Handler provides only GET /manifest.json and GET /healthz. In particular,
