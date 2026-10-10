@@ -45,6 +45,15 @@ node reference/studio-authoring/cli.mjs propose \
   -workspace "$scratch/workspace" -edit-file "$scratch/edit.json" \
   > "$scratch/candidate.json"
 
+# 表/ER編集→Shared Acceptance Preview/Reviewまでを一つのread-only応答へ
+node reference/studio-authoring/cli.mjs review-edit \
+  -workspace "$scratch/workspace" -edit-file "$scratch/edit.json" \
+  > "$scratch/studio-review.json"
+
+# review-editが出力するcandidate/preview/reviewはいずれもread-only。
+# sourceWriteByThisCommand=false、explicitAcceptance=not-performed。
+# preview.acceptableがfalseなら決してAcceptへ進まない。
+
 # Shared Acceptanceはsourceの現revisionを再検査し、overlay上で評価する
 go run ./tools/reference-shared-acceptance preview \
   -workspace "$scratch/workspace" -candidate "$scratch/candidate.json" \
@@ -67,6 +76,8 @@ node reference/studio-authoring/cli.mjs inspect \
   -workspace "$scratch/workspace" \
   -focus relation:sales.order_line.order
 ```
+
+一括`review-edit`は既存`preview`と`review -format json`を呼び出す**読み取り専用の薄いconsumer**です。候補のJSONは一時ディレクトリだけに作成し、処理後に消去します。手動の`preview`/`review`を置き換えられますが、正本編集・承認・Runtime authorityを付与しません。取得前後のrevision不一致は拒否し、Accept時には元のShared Acceptance自身が再検査します。外部snapshotファイルのみで`review-edit`を行う操作は認めません。
 
 `review.previewAcceptable`がfalse、review内容が未確認、あるいはsourceの競合があればAcceptを行わず、未解決として止めてください。Previewの`unresolved`を勝手に「変更なし」へ変換しません。現行Shared Acceptanceの既知仕様では、Relation追加によってPersistence Mappingの意味まで自動確定するとは限りません。
 
@@ -129,7 +140,7 @@ tools/repository-health-check.sh
 | Scenario | 初期実装 | 未検証・未対応 |
 | --- | --- | --- |
 | V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。Source Indexのexact kind/IDで元定義のアンカーを表示。#1138 JSONの任意参照で非Canonical BusinessとのPattern結合を候補実装 | Accepted Businessとの同revision結合、Source byte再検査は未実装。4つのAccepted Projection受入は**未達** |
-| V03 | ERのRelation追加・表のValidation追加に加え、必要ならApplicationによるValidation利用選択も同一candidateで提案。実行Readyは未確認と表示 | PreviewのSemantic Diff / Impact、Target/Provider readinessはShared Acceptanceと下流に要確認 |
+| V03 | ERのRelation追加・表のValidation追加に加え、必要ならApplicationによるValidation利用選択も同一candidateで提案。一括`review-edit`で既存Shared AcceptanceによるDiff/Impact/Reviewを表示し、実行Readyは未確認とする | read-only consumerのexact-head実GoテストとTarget/Provider readinessは未確認 |
 | V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。規則+Application選択はSource2ファイルを検査するテストとして追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
 | N06 | candidateへ基準revisionを保持。Projection時の前後revision不一致を拒否し、scratch E2Eにstale負例を追加 | 実WorkspaceでのN06実行とaccept途中の並行write試験は未実施 |
