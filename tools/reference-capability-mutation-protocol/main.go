@@ -129,9 +129,9 @@ type MutationProvider interface {
 }
 
 type MutationJournal interface {
-	RecordPrepared(context.Context, MutationHandle) error
+	RecordCommitIntent(context.Context, MutationHandle) error
 	RecordOutcome(context.Context, MutationReceipt) error
-	LoadPrepared(context.Context, string) (MutationHandle, bool, error)
+	LoadCommitIntent(context.Context, string) (MutationHandle, bool, error)
 	LoadOutcome(context.Context, string) (MutationReceipt, bool, error)
 }
 
@@ -202,25 +202,22 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 			Handle:  handle,
 		}, errors.Join(err, cleanupErr)
 	}
-	if err := e.Journal.RecordPrepared(ctx, handle); err != nil {
+	if err := e.Journal.RecordCommitIntent(ctx, handle); err != nil {
 		cleanupErr := abortPrepared(e.Provider, ctx, handle)
 		return MutationExecution{
 			Outcome: OutcomeNotCommitted,
 			Handle:  handle,
 		}, errors.Join(
-			fmt.Errorf("%w: prepared intent: %v", ErrJournalWrite, err),
+			fmt.Errorf("%w: commit intent: %v", ErrJournalWrite, err),
 			cleanupErr,
 		)
 	}
-	if err := ctx.Err(); err != nil {
-		cleanupErr := abortPrepared(e.Provider, ctx, handle)
-		return MutationExecution{
-			Outcome: OutcomeNotCommitted,
-			Handle:  handle,
-		}, errors.Join(err, cleanupErr)
-	}
 
-	providerReceipt, commitErr := e.Provider.Commit(ctx, CommitRequest{
+	// Once the durable commit intent exists, request cancellation no longer
+	// decides the business outcome. The coordinator must drive commit/status
+	// to a terminal or explicitly unknown outcome.
+	commitCtx := context.WithoutCancel(ctx)
+	providerReceipt, commitErr := e.Provider.Commit(commitCtx, CommitRequest{
 		Protocol:           mutationProtocol,
 		PreparationID:     handle.PreparationID,
 		InvocationKey:     handle.InvocationKey,
@@ -292,12 +289,12 @@ func (e Executor) ReconcileByInvocationKey(
 	if invocationKey == "" {
 		return MutationExecution{}, fmt.Errorf("invocation key is required")
 	}
-	handle, ok, err := e.Journal.LoadPrepared(ctx, invocationKey)
+	handle, ok, err := e.Journal.LoadCommitIntent(ctx, invocationKey)
 	if err != nil {
-		return MutationExecution{}, fmt.Errorf("%w: load prepared intent: %v", ErrJournalWrite, err)
+		return MutationExecution{}, fmt.Errorf("%w: load commit intent: %v", ErrJournalWrite, err)
 	}
 	if !ok {
-		return MutationExecution{}, fmt.Errorf("prepared mutation %q is not journaled", invocationKey)
+		return MutationExecution{}, fmt.Errorf("mutation commit intent %q is not journaled", invocationKey)
 	}
 	if err := validateHandle(handle); err != nil {
 		return MutationExecution{}, fmt.Errorf("%w: prepared handle: %v", ErrJournalCorrupt, err)
