@@ -38,3 +38,16 @@ go run ./tools/reference-target-package-evidence \
 `closure_test.go`はGoの実import graphを調査し、TEIメインモジュールの依存を当該CLIと`tei/tools/reference-runtime-snapshot`の**二つだけ**に限定します。将来、Authoring用Workspace/Driver/DSLが混入した場合はテスト失敗とします。
 
 **未証明**：実Web TargetのProjection生成との接続、個別ApplicationのBusiness Result・Observation・Authorization、ブラウザ資産、実ホスト・Secret取扱い、link時の不要コード除去、Artifact digest／署名、実運用への適合性。これらは別の受入条件で判定します。本CLIはProduction Targetや既存Gate Cを置き換えません。
+
+
+## 隔離Goモジュールでの検証（2026-10-10）
+
+`module tei` / Go 1.23.2・linux/amd64の**隔離した最小モジュール**へ、このCLIとSnapshotのGoソース6件をGitHubの内容と同一blob SHAでコピーして検証した。これは実TEIリポジトリ全体のcheckoutではなく、Providerや実第一Web Targetを含まない。
+
+- `go test -count=1`・`go test -race -count=1`：SnapshotとこのCLIの両パッケージでPASS。
+- `go vet`・`gofmt -l`：PASS（gofmt出力なし）。
+- `go list -deps`：メインモジュール内のpackageは`tei/tools/reference-runtime-snapshot`と`tei/tools/reference-frozen-manifest-target`だけ。
+- `go build -trimpath -ldflags=-buildid=`：生成バイナリは**7,979,340 bytes**（このGo版/OS/構成固有の結果）。
+- 合成manifestを`127.0.0.1`へ配信して、`GET /manifest.json`はHTTP 200で入力とbyte一致、`POST /scenario/submit`は404を観測。
+
+HTTP listenerにはReadHeaderTimeout=5秒、IdleTimeout=30秒を設定する。この測定は**生成済み業務ランタイムの最小化、実アプリケーション機能の維持、ブラウザ/API二単位構成**の証拠ではない。PR最新HEADのtrusted clean full `tools/repository-health-check.sh`の代替にはならず、Draftからの統合資格を意味しない。
