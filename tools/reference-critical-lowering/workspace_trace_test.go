@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/application"
@@ -80,16 +81,55 @@ func TestExistingOrderEntrySourceToDriverTrace(t *testing.T) {
 	declared := make(map[string]bool)
 	for _, db := range app.Databases {
 		for _, req := range db.RequiredContracts {
-			key := fmt.Sprintf("%s/%s/^%d", db.TargetDatabase, req.ContractID, req.CompatibleMajor)
+			key := fmt.Sprintf("%s/%s/%s/^%d", db.Alias, db.TargetDatabase, req.ContractID, req.CompatibleMajor)
 			declared[key] = true
 		}
 	}
 	for _, requirement := range f.c.Requirements {
 		for _, need := range requirement.DataContracts {
-			key := need.Database + "/" + need.Contract + "/" + need.VersionConstraint
+			key := need.Datasource + "/" + need.Database + "/" + need.Contract + "/" + need.VersionConstraint
 			if !declared[key] {
 				t.Fatalf("synthetic lowering added a DB requirement not declared in real Source: %s", key)
 			}
+		}
+	}
+
+	// Bind illustrative Candidate origin refs to Source Index fingerprints,
+	// not invented "sha256:<path>" labels. The Source Index owns file locators,
+	// while Acceptance (currently synthetic) would own the accepted provenance.
+	artifacts := make(map[string]string, len(idx.Artifacts))
+	for _, artifact := range idx.Artifacts {
+		artifacts[artifact.Path] = artifact.Fingerprint
+	}
+	bind := func(ref *Ref) {
+		t.Helper()
+		const prefix = "reference/workspace/"
+		if !strings.HasPrefix(ref.ID, prefix) {
+			t.Fatalf("source dependency %s is outside the expected reference workspace", ref.ID)
+		}
+		localPath := strings.TrimPrefix(ref.ID, prefix)
+		fingerprint := artifacts[localPath]
+		if fingerprint == "" {
+			t.Fatalf("source dependency %s has no real Source Index artifact", localPath)
+		}
+		ref.Fingerprint = fingerprint
+	}
+	bind(&f.c.Source)
+	for i := range f.c.SourceInputs {
+		bind(&f.c.SourceInputs[i])
+	}
+	f.a.CandidateDigest = Digest(f.c)
+	neutral, err := Neutralize(f.c, f.a, stubTrust{})
+	if err != nil {
+		t.Fatalf("source-index fingerprint bound Candidate: %v", err)
+	}
+	if neutral.Origin.Source.Fingerprint != f.c.Source.Fingerprint ||
+		len(neutral.Origin.SourceInputs) != len(f.c.SourceInputs) {
+		t.Fatalf("provenance lost across accepted boundary: %+v", neutral.Origin)
+	}
+	for i, source := range f.c.SourceInputs {
+		if neutral.Origin.SourceInputs[i] != source {
+			t.Fatalf("source fingerprint lost at index %d", i)
 		}
 	}
 }
