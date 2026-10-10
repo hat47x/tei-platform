@@ -868,3 +868,49 @@ func TestValidationScopeReviewEmptyValidationIDIsUnresolved(t *testing.T) {
 		t.Fatalf("空のValidation参照の原因を説明できません: %+v", rows[0].ReferenceIssues)
 	}
 }
+
+func TestValidationScopeReviewSourceAttachmentSkipsUnresolvedRows(t *testing.T) {
+	const validationID = "sales.order_line.quantity_positive"
+	index := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{
+			{Path: "applications/order-entry/application.tei", Fingerprint: "sha256:application"},
+			{Path: "semantic/sales/validation.tei", Fingerprint: "sha256:validation"},
+		},
+		References: []sourceindex.Reference{
+			{
+				Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "applications/order-entry/application.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+			},
+			{
+				Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "semantic/sales/validation.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+			},
+		},
+	}
+	rows := []validationScopeReviewRow{
+		{
+			Step: "BP-05", Application: "order_entry", Status: "unresolved-reference",
+			ReferenceIssues: []validationReferenceIssue{{Side: "procedure", ID: "missing", Reason: "missing-definition"}},
+			SourceEvidence: []validationReviewSource{{Kind: "application", ID: "stale"}},
+			UnresolvedSource: []string{"stale"},
+		},
+		{
+			Step: "BP-06", Application: "order_entry", Status: "review-needed",
+			ApplicationOnly: []string{validationID},
+		},
+	}
+	attachValidationScopeSources(rows, index)
+	if len(rows[0].SourceEvidence) != 0 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("未解決の比較行に出典情報が残りました: %+v", rows[0])
+	}
+	if !reflect.DeepEqual(rows[0].ReferenceIssues, []validationReferenceIssue{{Side: "procedure", ID: "missing", Reason: "missing-definition"}}) {
+		t.Fatalf("出典再解析が意味レベルの未解決理由を変更しました: %+v", rows[0])
+	}
+	if len(rows[1].SourceEvidence) != 2 || len(rows[1].UnresolvedSource) != 0 {
+		t.Fatalf("正常な比較行の出典が取得できません: %+v", rows[1])
+	}
+}
