@@ -60,7 +60,7 @@ func TestRepairOnlyBinaryUsesRepairRunnerAndNoOrderRoutes(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		method, path string
-		status int
+		status       int
 	}{
 		{http.MethodGet, "/manifest.json", http.StatusOK},
 		{http.MethodGet, "/scenario/customer-lookup?customerId=11", http.StatusOK},
