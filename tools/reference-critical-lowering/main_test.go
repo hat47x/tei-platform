@@ -246,25 +246,33 @@ func TestSelectiveCacheKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	k := Keys(f.c, f.a, plan, f.target, ref("builder-v1"))
+	k := Keys(f.c, f.a, plan, f.target, ref("builder-v1"), []Ref{ref("build.codegen-tool"), ref("build.compiler")})
 	unrelated := f
 	unrelated.providers = append(unrelated.providers, Provider{Identity: ref("unrelated")})
 	again, err := unrelated.lower(stubTrust{})
-	if err != nil || Keys(unrelated.c, unrelated.a, again, unrelated.target, ref("builder-v1")) != k {
+	if err != nil || Keys(unrelated.c, unrelated.a, again, unrelated.target, ref("builder-v1"), []Ref{ref("build.compiler"), ref("build.codegen-tool")}) != k {
 		t.Fatal("unrelated Provider invalidated accepted resolution")
 	}
-	changedTarget := Keys(f.c, f.a, plan, Target{ID: "alternate", Effects: f.target.Effects}, ref("builder-v1"))
+	changedTarget := Keys(f.c, f.a, plan, Target{ID: "alternate", Effects: f.target.Effects}, ref("builder-v1"), []Ref{ref("build.compiler"), ref("build.codegen-tool")})
 	if changedTarget.Interpret != k.Interpret || changedTarget.Accept != k.Accept ||
 		changedTarget.Resolve != k.Resolve || changedTarget.Target == k.Target || changedTarget.Build == k.Build {
 		t.Fatal("Target changes must not invalidate prior stages")
 	}
-	newBuilder := Keys(f.c, f.a, plan, f.target, ref("builder-v2"))
+	newBuilder := Keys(f.c, f.a, plan, f.target, ref("builder-v2"), []Ref{ref("build.compiler"), ref("build.codegen-tool")})
 	if newBuilder.Target != k.Target || newBuilder.Build == k.Build {
 		t.Fatal("builder change must only invalidate artifact stage")
 	}
+	// Build-only tool changes do not belong to resolution or runtime plan,
+	// but must invalidate the artifact build stage even with an unchanged builder.
+	otherBuildInput := Keys(f.c, f.a, plan, f.target, ref("builder-v1"), []Ref{ref("build.compiler-v2"), ref("build.codegen-tool")})
+	if otherBuildInput.Interpret != k.Interpret || otherBuildInput.Accept != k.Accept ||
+		otherBuildInput.Resolve != k.Resolve || otherBuildInput.Target != k.Target ||
+		otherBuildInput.Build == k.Build {
+		t.Fatal("build-only dependency change failed selective artifact invalidation")
+	}
 	changedSource := f.c
 	changedSource.Source = ref("changed-source")
-	recomputed := Keys(changedSource, f.a, plan, f.target, ref("builder-v1"))
+	recomputed := Keys(changedSource, f.a, plan, f.target, ref("builder-v1"), []Ref{ref("build.compiler"), ref("build.codegen-tool")})
 	if recomputed.Interpret == k.Interpret || recomputed.Accept == k.Accept {
 		t.Fatal("source change must invalidate interpretation and acceptance")
 	}
@@ -406,7 +414,7 @@ func TestSourceDependenciesInvalidateInterpretation(t *testing.T) {
 	f := orderFixture("tei.language.dsl")
 	plan, err := f.lower(stubTrust{})
 	if err != nil { t.Fatal(err) }
-	before := Keys(f.c, f.a, plan, f.target, ref("builder-v1"))
+	before := Keys(f.c, f.a, plan, f.target, ref("builder-v1"), []Ref{ref("build.codegen-tool"), ref("build.compiler")})
 	neutral, err := Neutralize(f.c, f.a, stubTrust{})
 	if err != nil { t.Fatal(err) }
 	origin := Digest(neutral.Origin)
@@ -414,7 +422,7 @@ func TestSourceDependenciesInvalidateInterpretation(t *testing.T) {
 	if Digest(neutral.Origin) != origin {
 		t.Fatal("accepted Origin aliases mutable source dependencies")
 	}
-	after := Keys(f.c, f.a, plan, f.target, ref("builder-v1"))
+	after := Keys(f.c, f.a, plan, f.target, ref("builder-v1"), []Ref{ref("build.codegen-tool"), ref("build.compiler")})
 	if before.Interpret == after.Interpret || before.Accept == after.Accept {
 		t.Fatal("dependent semantic Source did not invalidate interpretation and acceptance")
 	}
