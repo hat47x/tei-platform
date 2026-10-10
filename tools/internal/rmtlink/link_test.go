@@ -11,18 +11,18 @@ import (
 func sourceFixture(t *testing.T) rmtevidence.Evidence {
 	t.Helper()
 	v := rmtevidence.Evidence{
-		Schema: rmtevidence.Schema,
-		SourceFormat: "xead",
-		SourceFormatVersion: "1.2",
-		SourceArtifactDigest: "sha256:" + strings.Repeat("1", 64),
-		SourceToken: "sha256:" + strings.Repeat("2", 64),
-		SourceConstructKnown: true,
-		SourceConstruct: "Table",
+		Schema:                     rmtevidence.Schema,
+		SourceFormat:               "xead",
+		SourceFormatVersion:        "1.2",
+		SourceArtifactDigest:       "sha256:" + strings.Repeat("1", 64),
+		SourceToken:                "sha256:" + strings.Repeat("2", 64),
+		SourceConstructKnown:       true,
+		SourceConstruct:            "Table",
 		MappingContractFingerprint: "sha256:" + strings.Repeat("3", 64),
-		MappingStatus: rmtevidence.MappingMapped,
-		Classification: []string{"canonical-candidate", "unresolved"},
-		Extension: "reference.xead.relational-semantics",
-		AuthorityLimits: append([]string(nil), rmtevidence.RequiredAuthorityLimits...),
+		MappingStatus:              rmtevidence.MappingMapped,
+		Classification:             []string{"canonical-candidate", "unresolved"},
+		Extension:                  "reference.xead.relational-semantics",
+		AuthorityLimits:            append([]string(nil), rmtevidence.RequiredAuthorityLimits...),
 	}
 	prepared, err := rmtevidence.Prepare(v)
 	if err != nil {
@@ -34,13 +34,13 @@ func sourceFixture(t *testing.T) rmtevidence.Evidence {
 func linkContext(t *testing.T) Context {
 	t.Helper()
 	return Context{
-		Source: sourceFixture(t),
+		Source:               sourceFixture(t),
 		CandidateFingerprint: "sha256:" + strings.Repeat("4", 64),
-		BaseModelRevision: "sha256:" + strings.Repeat("5", 64),
-		ReviewFingerprint: "sha256:" + strings.Repeat("6", 64),
-		Target: SemanticTarget{
-			Kind: "validation",
-			ID: "sales.order_line.unit_price_positive",
+		BaseModelRevision:    "sha256:" + strings.Repeat("5", 64),
+		ReviewFingerprint:    "sha256:" + strings.Repeat("6", 64),
+		Target:               SemanticTarget{
+			Kind:   "validation",
+			ID:     "sales.order_line.unit_price_positive",
 			Change: "added",
 		},
 	}
