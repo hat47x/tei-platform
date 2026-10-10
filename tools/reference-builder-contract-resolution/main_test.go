@@ -397,3 +397,79 @@ func TestLockedReplayIgnoresUnrelatedSupportExpansion(t *testing.T) {
 		t.Fatalf("unrelated support expansion changed locked resolution identity: %s != %s", replayed.ResolutionFingerprint, resolution.ResolutionFingerprint)
 	}
 }
+
+
+func TestLockRejectsTamperedResolutionCrossFields(t *testing.T) {
+	contract, providers, evidence, wiring := referenceFixture()
+	intent := referenceIntent(contract)
+	resolution, err := resolveBuilder(intent, BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: []BuilderProvider{providers[0]},
+		Evidence:  []BuilderConformanceEvidence{evidence[0]},
+	}, &wiring)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		edit func(*BuilderResolution)
+	}{
+		{
+			name: "contract semantic drift",
+			edit: func(value *BuilderResolution) {
+				value.Contract.OutputSemantics = "tampered-output"
+			},
+		},
+		{
+			name: "provider contract drift",
+			edit: func(value *BuilderResolution) {
+				value.Provider.ContractVersion = "9.9.9"
+			},
+		},
+		{
+			name: "builder identity drift",
+			edit: func(value *BuilderResolution) {
+				value.Builder.ID = core.MustCanonicalID("tei.builder.other")
+			},
+		},
+		{
+			name: "resolution fingerprint drift",
+			edit: func(value *BuilderResolution) {
+				value.ResolutionFingerprint = strings.Repeat("f", 64)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tampered := resolution
+			tt.edit(&tampered)
+			if _, err := lockBuilderResolution(tampered); err == nil {
+				t.Fatal("tampered Resolution was accepted for locking")
+			}
+		})
+	}
+}
+
+func TestReplayRejectsLockWhoseBuilderDoesNotMatchLockedProvider(t *testing.T) {
+	contract, providers, evidence, wiring := referenceFixture()
+	intent := referenceIntent(contract)
+	catalog := BuilderCatalog{
+		Contracts: []BuilderContract{contract},
+		Providers: []BuilderProvider{providers[0]},
+		Evidence:  []BuilderConformanceEvidence{evidence[0]},
+	}
+	resolution, err := resolveBuilder(intent, catalog, &wiring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := lockBuilderResolution(resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.Builder.ID = core.MustCanonicalID("tei.builder.other")
+	if _, err := replayBuilderResolution(intent, catalog, lock); err == nil ||
+		!strings.Contains(err.Error(), "BuilderIdentity does not match locked Provider") {
+		t.Fatalf("mismatched lock BuilderIdentity error: %v", err)
+	}
+}
