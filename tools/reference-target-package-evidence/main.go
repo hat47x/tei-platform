@@ -9,10 +9,23 @@ import (
 	"os"
 )
 
+const maxEvidenceFileBytes = 16 << 20
+
 func readEvidenceFile(file string) (Report, error) {
-	content, err := os.ReadFile(file)
+	input, err := os.Open(file)
+	if err != nil {
+		return Report{}, fmt.Errorf("open package report: %w", err)
+	}
+	defer input.Close()
+	content, err := io.ReadAll(io.LimitReader(input, maxEvidenceFileBytes+1))
 	if err != nil {
 		return Report{}, fmt.Errorf("read package report: %w", err)
+	}
+	if len(content) > maxEvidenceFileBytes {
+		return Report{}, fmt.Errorf("package report exceeds %d bytes", maxEvidenceFileBytes)
+	}
+	if err := rejectAmbiguousJSON(content); err != nil {
+		return Report{}, fmt.Errorf("ambiguous package report: %w", err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(content))
 	decoder.DisallowUnknownFields()
