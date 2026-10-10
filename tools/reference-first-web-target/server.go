@@ -10,15 +10,15 @@ import (
 )
 
 type webTargetServer struct {
-	projection         webTargetProjection
-	readScenario       readScenarioRunner
-	commandScenario    commandScenarioRunner
+	projection              webTargetProjection
+	readScenario            readScenarioRunner
+	commandScenario         commandScenarioRunner
 	protectedSessionConfig  *protectedSessionCommandConfig
 	protectedSessionHandler http.Handler
-	customerLookup     customerLookupRunner
-	index              *template.Template
-	customSubmit       *template.Template
-	customerLookupPage *template.Template
+	customerLookup          customerLookupRunner
+	index                   *template.Template
+	customSubmit            *template.Template
+	customerLookupPage      *template.Template
 }
 
 // applicationBound is implemented by every scenario runner. The server refuses to start when a
