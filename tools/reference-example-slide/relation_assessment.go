@@ -98,9 +98,10 @@ func assessRelations(catalog Catalog, state map[string]Record, completeTables ma
 				finding.Reason = "unresolved-target-key"
 			case !completeTables[relation.TargetTable]:
 				finding.Reason = "target-table-is-partial"
-			case relation.Cardinality == "one" && len(finding.MatchedTargetIDs) == 0:
-				// The TEI Relation does not separately specify optionality.
-				// Do not turn an absent illustrative target into a business error.
+			case len(finding.MatchedTargetIDs) == 0:
+				// A zero-target match is not positive evidence of a record
+				// correspondence for either one or many. The TEI Relation
+				// does not separately specify a nonzero minimum cardinality.
 				finding.Reason = "target-absence-requires-business-review"
 			default:
 				// Supports only the recorded join, under the stated complete
