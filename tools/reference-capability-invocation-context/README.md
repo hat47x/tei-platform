@@ -34,6 +34,18 @@ Provider callbackへは、required slotだけを含む`ContextSlotView`とcontro
 
 productionでは、Context Slot Contractのexposure policy、Provider Conformance、result schema、Security policy等との分担を別途判断します。
 
+## Semantic Request shapeとの分担
+
+このcontext gateはSemantic Requestのpayloadを解釈・書き換えません。Execution Contextらしいfieldを見つけて削除するSanitizerではありません。
+
+たとえばrequest bytesに`grantedAccessRefs`というfieldが含まれていても、gateはそのbytesを下流へそのまま渡します。安全性は、#951側のrequest-shape validationやCapability固有のstrict decoderが、semantic contractに存在しないexecution-context fieldを拒否することに依存します。
+
+#1045の`DetailQuery`はauthorization access refをschemaへ持たず、CLIも別の`-detail-access`入力へ分離しているため、この条件をpressureできる。
+
+したがってreceiptには`context-gate-relies-on-capability-request-shape-to-exclude-execution-context-fields`を残します。context gate単体のPASSを、request schemaの安全性へ一般化しません。
+
+また、`ContextSlotRequirement`の集合はconsumer payloadから作る値ではなく、resolved Capability Contractからtrusted Hostが取得した入力であることを前提とします。current ReferenceはそのContract Authorityやfingerprint binding自体を検証しないため、`context-requirements-are-trusted-contract-input-not-consumer-payload`も明示します。
+
 ## Downstream invocation effect
 
 このcontext gateは、下流Capabilityがread-onlyであることを検証しません。#951のgeneric Invocation Referenceはread-only effectだけを許可しており、本Referenceはその手前へ置く前提です。
