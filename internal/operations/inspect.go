@@ -30,14 +30,14 @@ func (e *InspectionError) Error() string { return e.Message }
 // Subject from the normalized World, with Source Index evidence. Its World
 // fingerprint is descriptive, not a revision token or an acceptance grant.
 type SubjectInspection struct {
-	SchemaVersion    string              `json:"schemaVersion"`
-	Effect           string              `json:"effect"`
-	Subject          sourceindex.Subject `json:"subject"`
-	Canonical        json.RawMessage     `json:"canonical"`
-	WorldFingerprint string              `json:"worldFingerprint"`
-	SourceIndexFingerprint string          `json:"sourceIndexFingerprint"`
-	SourceStatus     string              `json:"sourceStatus"`
-	Sources          SubjectSources      `json:"sources"`
+	SchemaVersion          string              `json:"schemaVersion"`
+	Effect                 string              `json:"effect"`
+	Subject                sourceindex.Subject `json:"subject"`
+	Canonical              json.RawMessage     `json:"canonical"`
+	WorldFingerprint       string              `json:"worldFingerprint"`
+	SourceIndexFingerprint string              `json:"sourceIndexFingerprint"`
+	SourceStatus           string              `json:"sourceStatus"`
+	Sources                SubjectSources      `json:"sources"`
 }
 // InspectSubject reads one Workspace, then projects its already-normalized World
 // and Source Index. It must not infer a subject from a source path or synthesize
