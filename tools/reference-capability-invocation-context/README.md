@@ -24,6 +24,10 @@ Hostはslot bindingへ非secretで記録可能なopaque `BindingReceiptRef`と`R
 
 Provider callbackへは、required slotだけを含む`ContextSlotView`とcontrol-only contextを渡します。control-only contextは元のDeadline / Done / Errを保ちますが、`Value`は公開しません。
 
+Referenceは、呼出し開始時にSemantic Requestのbytesを複製し、下流へ渡す入力とreceiptのrequest digestを同じsnapshotに基づかせます。呼出し中にcallerが元のsliceを書き換えてもreceiptのidentityは変化しません。ただし、snapshot取得と同時に別goroutineが書き込むdata raceまで許容するものではありません。
+
+呼出しのdispatch前にControl Contextがすでにcancelされていれば、下流を呼び出さずに終了します。dispatch後のcancelはControl Contextのsignalとして伝えます。下流の停止を強制できると保証するものではありません。
+
 これはGo realizationの一例です。TEIの製品契約をGo `context.Context`へ固定しません。
 
 ## Confidentiality boundary
