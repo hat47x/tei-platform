@@ -20,6 +20,7 @@
   "web": {
     "acceptedRevision": "", "application": "order_entry", "target": "web",
     "selectedValidation": "sales.order_line.unit_price_positive",
+    "negativeValidation": "sales.order_line.unit_price_positive", "negativeEvidenceMode": "handler-only",
     "providerKind": "synthetic", "runMode": "handler-only",
     "positiveReceipt": "", "negativeReceipt": "", "unobservedControlReceipt": ""
   },
