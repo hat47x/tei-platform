@@ -13,7 +13,7 @@
 | Documentの識別、Revision照合、更新 | アプリケーション所有の`Store`。今回の実装はメモリ内の模擬保存 |
 | SUIのDocumentV1、島への所属、履歴、SafeMode | SUIの既存実装。TEIには移植しない |
 
-`Host.Commit`はApplication ID、Document ID、Action ID、期待Revision、アプリケーション固有のPayloadを受け取ります。更新前にActionの対応と認可を確認し、保存側へ委譲します。**Hostだけでは同時更新を防げません。** Revisionの原子的な照合と更新はStoreの責務です。
+`Host.Commit`はApplication ID、**Resource ID**、Action ID、期待Revision、アプリケーション固有のPayloadを受け取ります。更新前にActionの対応と認可を確認し、保存側へ委譲します。**Hostだけでは同時更新を防げません。** Revisionの原子的な照合と更新はStoreの責務です。
 
 ## SUIの実コードとの対応
 
@@ -34,7 +34,7 @@ SUI `03_Implement/frontend/src/domain/types.ts` の`DocumentV1`では、Cardの�
 
 `native-action-bridge.mjs` は、FrameworkやNode.js専用APIに依存しないES Moduleです。既存のReact Canvasを置き換えず、画面側が`begin`、`preview`、`cancel`、`drop`を呼び分ける接続口だけを提供します。
 
-- `begin`: 操作対象と期待Revisionを固定します。画面入力のApplication IDや権限を信用するという意味ではありません。Host側で再検証が必要です。
+- `begin`: Application、Resource、Actionと期待Revisionを固定します。共通の`protocolVersion: "1"`を生成します。画面入力のApplication IDや権限を信用するという意味ではありません。Host側で再検証が必要です。
 - `preview`: 最終候補のPayloadのコピーをローカルに保持します。永続化・TEI Actionは呼びません。
 - `cancel`: プレビューを破棄します。書き込みは行いません。
 - `drop`: 最後のPayloadで1回だけ`dispatchCommit`を呼び、処理中の二重操作を拒否します。拒否や競合を勝手に再実行せず、例外を呼出元へ戻します。
@@ -49,14 +49,15 @@ SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) が
 
 CLIや同一プロセス内の実行では、`Host.Commit`を直接呼べます。Webではオプションとして、`JSONCommitHandler`（Go標準`net/http`）と`json-action-dispatch.mjs`（ブラウザーの`fetch`）を利用できます。外部Pluginプロセスを必須にしません。
 
-`JSONCommitHandler`は利用側がAction別に`DecodePayload`を渡さない限り、503で拒否します。認可は`Host.Authorizer`の責務であり、認証済みセッションから主体を取り出す実装が必要です。HTTP層は任意の主体IDを受信しません。JSONの未知フィールド、複数連結されたリクエスト、64KiB超の入力を拒否します。
+`JSONCommitHandler`は利用側がApplicationとActionの組合せに対応する`DecodePayload`を渡さない限り、503で拒否します。共通層の詳細契約は[`PROTOCOL.md`](PROTOCOL.md)、機械検証用の要求スキーマは[`action-protocol-v1.schema.json`](action-protocol-v1.schema.json)に定義しています。認可は`Host.Authorizer`の責務であり、認証済みセッションから主体を取り出す実装が必要です。HTTP層は任意の主体IDを受信しません。JSONの未知フィールド、複数連結されたリクエスト、64KiB超の入力を拒否します。
 
-要求例（既存の`native-action-bridge.mjs`の`dispatchCommit`に、`createJSONActionDispatcher("/actions/commit")`を渡す）：
+要求例（既存の`native-action-bridge.mjs`の`dispatchCommit`に、`createJSONActionDispatcher("/actions/commit")`を渡す）。この外側の形式はSUI以外のアプリケーションでも共通です：
 
 ```json
 {
+  "protocolVersion": "1",
   "applicationID": "sui",
-  "documentID": "doc",
+  "resourceID": "doc",
   "actionID": "sui.move",
   "expectedRevision": "r1",
   "payload": {"cardId": "a", "x": 5, "y": 6}
@@ -75,11 +76,11 @@ node --test tools/reference-sui-action-boundary/native-action-bridge.test.mjs
 node --test tools/reference-sui-action-boundary/json-action-dispatch.test.mjs
 ```
 
-操作アダプターのNode.js 22単体テスト6件は2026-10-10に実行してPASSを確認しました。GitHub上の正確なPR headをcheckoutして実行した結果ではありません。今回追加したHTTP Handlerは切り出したGoスタブ環境で`go test -race`と`go vet`がPASSし、Browser DispatcherはNode.js 22で4テストがPASSしました。ただし、実リポジトリで実行した結果ではありません。Go全体とリポジトリ全体の健全性は未検証です。統合時は対象コミットを固定し、`tools/repository-health-check.sh`全項目のPASSと実行前後のclean状態を別途確認してください。
+旧Envelopeを使った操作アダプターのNode.js 22単体テスト6件は2026-10-10に実行してPASSを確認しました。**その後にv1の共通Envelopeへ変更しており、最新headのテストは未実行です。**GitHub上の正確なPR headをcheckoutして実行した結果ではありません。今回追加したHTTP Handlerは切り出したGoスタブ環境で`go test -race`と`go vet`がPASSし、Browser DispatcherはNode.js 22で4テストがPASSしました。ただし、実リポジトリで実行した結果ではありません。Go全体とリポジトリ全体の健全性は未検証です。統合時は対象コミットを固定し、`tools/repository-health-check.sh`全項目のPASSと実行前後のclean状態を別途確認してください。
 
 ## 検証範囲と未実装
 
-参照テストは正常更新、認可拒否、Revision競合、同時更新、Document IDの不一致、未知Card、非有限座標、不正Document構造、無関係な情報の保持を対象にします。第二Applicationのテストは模擬Storeを用いており、汎用プラグインの本番動作を証明しません。
+参照テストは正常更新、認可拒否、Revision競合、同時更新、Resource IDの不一致、未知Card、非有限座標、不正Document構造、無関係な情報の保持を対象にします。`standard_protocol_test.go`ではSUI形式のCard移動と、独立したInventory形式の在庫調整を同じHandler・Hostに渡すテストを追加しました。双方とも模擬Storeであり、汎用プラグインの本番動作を証明しません。
 
 未実装：SUIの確定コールバックからTEIランタイムへのAction dispatch、操作開始時のRevision捕捉と権限照合、SUIのDocumentV1検証器とTEI保存機構の実連携、実セッションからのSubject解決、実ランタイム権限、ブラウザー配備、SafeModeとExport保護の統合確認、性能測定。
 
