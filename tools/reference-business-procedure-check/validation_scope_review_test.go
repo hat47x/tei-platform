@@ -355,10 +355,10 @@ func TestValidationScopeReviewSourceEvidence(t *testing.T) {
 		t.Fatalf("比較の意味または出典が未解決です: %+v", row)
 	}
 	want := map[string]string{
-		"application:order_entry": "applications/order-entry/application.tei",
+		"application:order_entry":                                   "applications/order-entry/application.tei",
 		"semantic-validation:sales.order_line.line_number_positive": "semantic/sales/validation.tei",
-		"semantic-validation:sales.order_line.quantity_positive": "semantic/sales/validation.tei",
-		"semantic-validation:sales.order.lines.line_number_unique": "semantic/sales/validation.tei",
+		"semantic-validation:sales.order_line.quantity_positive":    "semantic/sales/validation.tei",
+		"semantic-validation:sales.order.lines.line_number_unique":  "semantic/sales/validation.tei",
 	}
 	if len(row.SourceEvidence) != len(want) {
 		t.Fatalf("正本Sourceに戻るための情報が不足しています: %+v", row.SourceEvidence)
@@ -408,9 +408,9 @@ func TestValidationScopeReviewEqualSetsTraceAllValidationSources(t *testing.T) {
 		t.Fatalf("共通集合の出典が不足しています: %+v", rows)
 	}
 	want := map[string]bool{
-		"application:order_entry": true,
-		"semantic-validation:sales.order_line.quantity_positive": true,
-		"semantic-validation:sales.order.lines.line_number_unique": true,
+		"application:order_entry":                                   true,
+		"semantic-validation:sales.order_line.quantity_positive":    true,
+		"semantic-validation:sales.order.lines.line_number_unique":  true,
 		"semantic-validation:sales.order_line.line_number_positive": true,
 	}
 	for _, evidence := range rows[0].SourceEvidence {
