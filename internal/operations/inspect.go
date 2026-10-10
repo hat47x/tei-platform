@@ -2,7 +2,6 @@ package operations
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -21,7 +20,7 @@ const (
 )
 
 type InspectionError struct {
-	Code string
+	Code    string
 	Message string
 }
 
@@ -31,13 +30,13 @@ func (e *InspectionError) Error() string { return e.Message }
 // Subject from the normalized World, with Source Index evidence. Its World
 // fingerprint is descriptive, not a revision token or an acceptance grant.
 type SubjectInspection struct {
-	SchemaVersion string          `json:"schemaVersion"`
-	Effect        string          `json:"effect"`
-	Subject       sourceindex.Subject `json:"subject"`
-	Canonical     json.RawMessage `json:"canonical"`
-	WorldFingerprint string       `json:"worldFingerprint"`
-	SourceStatus  string          `json:"sourceStatus"`
-	Sources       SubjectSources  `json:"sources"`
+	SchemaVersion     string              `json:"schemaVersion"`
+	Effect            string              `json:"effect"`
+	Subject           sourceindex.Subject `json:"subject"`
+	Canonical         json.RawMessage     `json:"canonical"`
+	WorldFingerprint  string              `json:"worldFingerprint"`
+	SourceStatus      string              `json:"sourceStatus"`
+	Sources           SubjectSources      `json:"sources"`
 }
 
 // InspectSubject reads one Workspace, then projects its already-normalized World
@@ -145,7 +144,7 @@ func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMess
 	}
 	raw, err := json.Marshal(matches[0])
 	if err != nil {
-		return nil, errors.New("cannot serialize canonical subject: " + err.Error())
+		return nil, fmt.Errorf("serialize canonical subject: %w", err)
 	}
 	return raw, nil
 }
