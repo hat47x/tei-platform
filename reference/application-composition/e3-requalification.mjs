@@ -1,5 +1,6 @@
 // #1016 E3: read-only, caller-supplied source identities and consumers.
 // This is a selective requalification experiment, not a second lock or a runtime resolver.
+import {uiPath} from './e2-change-probe.mjs';
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const safePath = path => typeof path === 'string' && path.length > 0 && !path.startsWith('/') &&
   !path.includes('\\') && !path.split('/').some(p => !p || p === '.' || p === '..');
@@ -39,14 +40,22 @@ export function assessScopedChanges({baseline, current, consumers} = {}) {
   });
 }
 
-// A scoped change can be *locally applicable* only when all declared dependencies
-// are unchanged AND the existing E2 candidate was a bounded, proposed edit.
-// The return value does not attest to acceptance, provider conformance or permissions.
+// Only the known E2 UI-heading candidate can become locally applicable in E3.
+// The source identities and consumer dependencies are still caller-supplied: this is
+// a consistency check, not provenance, authorization, or semantic conformance.
 export function assessCandidateApplicability({candidate, scope} = {}) {
   if (!isObject(candidate) || !isObject(scope)) throw new TypeError('invalid_candidate_scope');
   if (scope.status === 'unresolved') return {status:'unresolved', reason:scope.reason};
   if (scope.status !== 'unchanged') return {status:'unresolved', reason:'unknown_scope_state'};
-  if (candidate.status === 'proposed') return {status:'applicable', qualification:'local-edit-only'};
+  if (candidate.status === 'proposed') {
+    if (candidate.kind !== 'ui-heading' || candidate.path !== uiPath ||
+        candidate.owner !== 'project-ui' || typeof candidate.after !== 'string' ||
+        !Array.isArray(candidate.checks) || !candidate.checks.includes('ui-extension-test')) {
+      return {status:'unresolved', reason:'unqualified_candidate_type'};
+    }
+    if (scope.id !== 'ui-presentation') return {status:'unresolved', reason:'candidate_scope_mismatch'};
+    return {status:'applicable', qualification:'local-edit-only'};
+  }
   if (candidate.status === 'unchanged') return {status:'unchanged'};
   return {status:'unresolved', reason:candidate.reason || 'additional_qualification_required'};
 }
