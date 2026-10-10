@@ -181,9 +181,18 @@ func invokeWithExecutionContext(
 		return InvocationContextExecution{}, fmt.Errorf("invocation control context ended before dispatch: %w", err)
 	}
 	control := controlOnlyContext{parent: parent}
+	// Keep the Host snapshot used for leak detection inaccessible from a
+	// potentially mutable same-package callback. Copy both map and bytes;
+	// a shallow copy lets the Provider erase the original comparison value.
+	providerBindings := make(map[string]ContextSlotBinding, len(view.values))
+	for id, binding := range view.values {
+		binding.Value = append([]byte(nil), binding.Value...)
+		providerBindings[id] = binding
+	}
+	providerView := ContextSlotView{values: providerBindings}
 	resultPayload, err := next(
 		control,
-		view,
+		providerView,
 		append([]byte(nil), semanticRequestSnapshot...),
 	)
 	// Do not return a result, error object, or receipt after trusted control
