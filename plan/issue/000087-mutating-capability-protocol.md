@@ -29,7 +29,7 @@ request
   -> prepare
   -> prepared result
   -> result validation
-  -> prepared intent journal
+  -> durable commit intent journal
   -> commit
   -> committed / not-committed / unknown
   -> reconcile
@@ -43,7 +43,7 @@ Hostはprepared resultをcommit前に検査する。検査に失敗した場合�
 
 ### Journal
 
-result validation後、commit前にprepared handleをJournalへ記録する。記録できない場合はcommitしない。
+result validation後、commit前にcommit対象のpayload-free handleをdurable commit intentとしてJournalへ記録する。記録できない場合はcommitしない。
 
 process停止後もInvocation Keyからprepared handleを復元し、Providerのstatusへ戻れる必要がある。
 
@@ -62,6 +62,10 @@ Provider receiptがprepared identityと一致しない場合も、副作用が�
 `unknown`になったmutationは、Journalからprepared handleを復元してProvider statusへ戻る。statusでも確定できなければ`unknown`を維持する。
 
 Journalにcommitted / not-committed receiptが既にあれば、Provider commitを再実行せずJournalからoutcomeを再構築する。
+
+result validationとrequest cancellationの確認後、commit intentのJournal記録が成功した時点をpoint-of-no-returnとする。それ以前のcancelはAbortして`not-committed`にできる。それ以後のcaller cancellationはcommit decisionを取り消さず、Host coordinatorがcommit / status reconciliationを完遂する。
+
+同じInvocation Keyへ同じcommit intentを再保存することはidempotentに許容する。別binding / 別prepared identityへの上書きはJournal conflictとして拒否する。
 
 ## Idempotency
 
@@ -91,6 +95,10 @@ prepare後にrequestがcancelされた場合も、Abort cleanupへ同じcancel�
 
 このAbortはcommit済み効果を打ち消すcompensationではない。
 
+Abort cleanupの失敗も黙って捨てない。business outcomeを`not-committed`のまま保ちつつ、resource leakの可能性を独立したcleanup errorとして返す。
+
+Journalから読み戻したhandle / outcome receiptは、binding、digest、preparation / receipt fingerprintを再検証する。durable storageをTrust Authorityにはしない。
+
 ## Compensation
 
 compensationをgeneric Invocationの暗黙動作にしない。commit済み効果を取り消せるかはCapability固有の意味である。
@@ -103,10 +111,14 @@ compensationをgeneric Invocationの暗黙動作にしない。commit済み効�
 
 Application Runtimeでmutating Capabilityを実行する場合はRQ-019のAuthority境界を別に通る必要がある。Runtime Authorityがあることも、prepare / validate / commit / reconcileの原子性を証明しない。
 
+mutation protocolは上位で確定した実行経路をopaqueなExecution Binding fingerprintとして受け取る。bindingはPrepare / Commit / Status / durable handle / receiptsへ固定する。再起動後のreconcileでcurrent bindingとJournal handleが一致しなければProviderへ到達する前に拒否する。
+
+Execution Binding fingerprint自体はAuthorityではない。production接続時にはCapability Resolution identityとRuntime Invocation Provenanceから導出する必要がある。
+
 ## 敵対的pressure
 
 - invalid prepared resultでcommitしない
-- prepared intentをJournalへ記録できなければcommitしない
+- durable commit intentをJournalへ記録できなければcommitしない
 - successful commitだけがprepared resultを公開する
 - 同じInvocation Keyのretryで副作用を増やさない
 - 同じInvocation Keyを別requestへ使わない
@@ -117,11 +129,16 @@ Application Runtimeでmutating Capabilityを実行する場合はRQ-019のAuthor
 - statusが`unknown`なら`unknown`を維持する
 - stale concurrency tokenをcommitしない
 - commit後のJournal failureをrollback扱いしない
-- cancel済みrequestをprepare / commitしない
+- cancel済みrequestをpoint-of-no-returnより前ならprepare / commitしない
+- point-of-no-return後のcaller cancelでcommit decisionを破棄しない
+- 同じInvocation Keyへ別bindingのcommit intentを上書きしない
+- Journal recordをreplay前に再検証する
+- Execution Binding driftをProvider access前に拒否する
+- Abort cleanup failureを独立して観測する
 
 ## 完了条件
 
-- prepare / validate / journal / commitの順序をExecutable Referenceで確認できる
+- prepare / validate / durable commit intent / commitの順序をExecutable Referenceで確認できる
 - idempotency keyとrequest identityを固定できる
 - commit transport failureを`unknown`として保持できる
 - payload-freeなJournal handleからprocess再起動後のoutcome reconcileへ戻れる
@@ -129,6 +146,8 @@ Application Runtimeでmutating Capabilityを実行する場合はRQ-019のAuthor
 - committed effectとJournal / receipt failureを混同しない
 - compensationを暗黙recoveryとして扱わない
 - Runtime Authorityとmutation protocolを別責務として説明できる
+- Execution BindingをAuthorityそのものにせず、回復時の実行identityとして固定できる
+- Journal conflict / corruptionをfail closedに扱える
 
 ## 非目標
 
