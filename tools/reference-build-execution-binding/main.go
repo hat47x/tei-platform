@@ -83,17 +83,19 @@ type PluginSubjectBinding struct {
 	FormatVersion               int             `json:"formatVersion"`
 	Plugin                      plugin.Identity `json:"plugin"`
 	PluginDefinitionFingerprint string          `json:"pluginDefinitionFingerprint"`
-	ExecutionPlanFingerprint    string          `json:"executionPlanFingerprint"`
-	ArtifactSetFingerprint      string          `json:"artifactSetFingerprint"`
-	OutputRoles                 []string        `json:"outputRoles"`
+	ExecutionPlanFingerprint     string          `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint       string          `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string       `json:"buildExecutionResultFingerprint"`
+	OutputRoles                  []string        `json:"outputRoles"`
 }
 
 type RuntimeEngineSubjectBinding struct {
 	FormatVersion            int                            `json:"formatVersion"`
 	Engine                   pruntime.RuntimeEngineIdentity `json:"engine"`
-	ExecutionPlanFingerprint string                         `json:"executionPlanFingerprint"`
-	ArtifactSetFingerprint   string                         `json:"artifactSetFingerprint"`
-	OutputRole               string                         `json:"outputRole"`
+	ExecutionPlanFingerprint       string                         `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint         string                         `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string                        `json:"buildExecutionResultFingerprint"`
+	OutputRole                     string                         `json:"outputRole"`
 }
 
 type referenceEvidence struct {
@@ -186,6 +188,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			PluginDefinitionFingerprint: strings.Repeat("a", 64),
 			ExecutionPlanFingerprint: sharedExecutionFingerprint,
 			ArtifactSetFingerprint: sharedSetFingerprint,
+			BuildExecutionResultFingerprint: sharedResultFingerprint,
 			OutputRoles: []string{"primary"},
 		},
 		{
@@ -194,6 +197,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			PluginDefinitionFingerprint: strings.Repeat("b", 64),
 			ExecutionPlanFingerprint: sharedExecutionFingerprint,
 			ArtifactSetFingerprint: sharedSetFingerprint,
+			BuildExecutionResultFingerprint: sharedResultFingerprint,
 			OutputRoles: []string{"primary"},
 		},
 	}
@@ -237,12 +241,21 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	if err != nil {
 		return referenceEvidence{}, err
 	}
+	multiResultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: multiExecutionFingerprint,
+		ArtifactSetFingerprint:   multiSetFingerprint,
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
 	multiBinding := PluginSubjectBinding{
 		FormatVersion: pluginSubjectBindingFormatVersion,
 		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.web_plugin"), Version: "1.0.0"},
 		PluginDefinitionFingerprint: strings.Repeat("e", 64),
 		ExecutionPlanFingerprint: multiExecutionFingerprint,
 		ArtifactSetFingerprint: multiSetFingerprint,
+		BuildExecutionResultFingerprint: multiResultFingerprint,
 		OutputRoles: []string{"resource-manifest", "web-script"},
 	}
 	if err := verifyPluginSubjectBinding(multiBinding, multiOutputPlan, multiSet); err != nil {
@@ -287,6 +300,14 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	if err != nil {
 		return referenceEvidence{}, err
 	}
+	engineResultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: engineExecutionFingerprint,
+		ArtifactSetFingerprint:   engineSetFingerprint,
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
 	engineBinding := RuntimeEngineSubjectBinding{
 		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
 		Engine: pruntime.RuntimeEngineIdentity{
@@ -298,6 +319,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		},
 		ExecutionPlanFingerprint: engineExecutionFingerprint,
 		ArtifactSetFingerprint: engineSetFingerprint,
+		BuildExecutionResultFingerprint: engineResultFingerprint,
 		OutputRole: "runtime-engine",
 	}
 	if err := verifyRuntimeEngineSubjectBinding(engineBinding, enginePlan, engineSet); err != nil {
@@ -754,6 +776,9 @@ func (b PluginSubjectBinding) Validate() error {
 	if err := validateFingerprint("artifact set fingerprint", b.ArtifactSetFingerprint); err != nil {
 		return err
 	}
+	if err := validateFingerprint("build execution result fingerprint", b.BuildExecutionResultFingerprint); err != nil {
+		return err
+	}
 	if len(b.OutputRoles) == 0 {
 		return fmt.Errorf("plugin subject binding requires at least one output role")
 	}
@@ -778,6 +803,7 @@ func pluginSubjectBindingFingerprint(binding PluginSubjectBinding) (string, erro
 	normalized.PluginDefinitionFingerprint = normalizeFingerprint(binding.PluginDefinitionFingerprint)
 	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
 	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
+	normalized.BuildExecutionResultFingerprint = normalizeFingerprint(binding.BuildExecutionResultFingerprint)
 	normalized.OutputRoles = append([]string(nil), binding.OutputRoles...)
 	sort.Strings(normalized.OutputRoles)
 	return fingerprintJSON(normalized)
@@ -805,6 +831,17 @@ func verifyPluginSubjectBinding(
 	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
 		return fmt.Errorf("plugin subject binding artifact set fingerprint does not match")
 	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.BuildExecutionResultFingerprint) != resultFingerprint {
+		return fmt.Errorf("plugin subject binding build execution result fingerprint does not match")
+	}
 	roles := map[string]struct{}{}
 	for _, member := range set.Members {
 		roles[member.Role] = struct{}{}
@@ -830,6 +867,9 @@ func (b RuntimeEngineSubjectBinding) Validate() error {
 	if err := validateFingerprint("artifact set fingerprint", b.ArtifactSetFingerprint); err != nil {
 		return err
 	}
+	if err := validateFingerprint("build execution result fingerprint", b.BuildExecutionResultFingerprint); err != nil {
+		return err
+	}
 	if strings.TrimSpace(b.OutputRole) == "" {
 		return fmt.Errorf("runtime engine subject binding output role is required")
 	}
@@ -844,6 +884,7 @@ func runtimeEngineSubjectBindingFingerprint(binding RuntimeEngineSubjectBinding)
 	normalized.Engine.ImplementationDigest = normalizeDigest(binding.Engine.ImplementationDigest)
 	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
 	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
+	normalized.BuildExecutionResultFingerprint = normalizeFingerprint(binding.BuildExecutionResultFingerprint)
 	return fingerprintJSON(normalized)
 }
 
@@ -868,6 +909,17 @@ func verifyRuntimeEngineSubjectBinding(
 	}
 	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
 		return fmt.Errorf("runtime engine subject binding artifact set fingerprint does not match")
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.BuildExecutionResultFingerprint) != resultFingerprint {
+		return fmt.Errorf("runtime engine subject binding build execution result fingerprint does not match")
 	}
 	if binding.Engine.Target != plan.Target {
 		return fmt.Errorf("runtime engine subject binding target does not match build execution target")
@@ -930,16 +982,18 @@ func projectPluginBuild(
 		ExecutionPlanFingerprint: executionFingerprint,
 		ArtifactSetFingerprint:   setFingerprint,
 	}
-	if err := result.Validate(); err != nil {
+	resultFingerprint, err := buildExecutionResultFingerprint(result)
+	if err != nil {
 		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
 	}
 	binding := PluginSubjectBinding{
 		FormatVersion:               pluginSubjectBindingFormatVersion,
 		Plugin:                      plan.Plugin,
 		PluginDefinitionFingerprint: plan.PluginDefinitionFingerprint,
-		ExecutionPlanFingerprint:    executionFingerprint,
-		ArtifactSetFingerprint:      setFingerprint,
-		OutputRoles:                 []string{"primary"},
+		ExecutionPlanFingerprint:     executionFingerprint,
+		ArtifactSetFingerprint:       setFingerprint,
+		BuildExecutionResultFingerprint: resultFingerprint,
+		OutputRoles:                  []string{"primary"},
 	}
 	if err := verifyPluginSubjectBinding(binding, executionPlan, set); err != nil {
 		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
