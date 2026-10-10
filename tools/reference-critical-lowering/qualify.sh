@@ -30,11 +30,7 @@ check_checkout() {
         printf '%s: could not verify remote main\n' "$stage" >&2
         exit 1
     fi
-    if [[ "$remote_line" != "$EXPECTED_MAIN""refs/heads/main" ]]; then
-        printf '%s: remote main has moved: %s\n' "$stage" "$remote_line" >&2
-        exit 1
-    fi
-    if ! git merge-base --is-ancestor "$EXPECTED_MAIN" "$EXPECTED_HEAD"; then\t'"refs/heads/main" ]]; then
+    if [[ "$remote_line" != "$EXPECTED_MAIN"$'\t'"refs/heads/main" ]]; then
         printf '%s: remote main has moved: %s\n' "$stage" "$remote_line" >&2
         exit 1
     fi
