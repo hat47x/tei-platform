@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
 	"tei/internal/application"
@@ -13,7 +12,6 @@ import (
 	"tei/internal/driver/queryresult"
 	"tei/internal/ir"
 	"tei/internal/query"
-	"tei/internal/realization"
 )
 
 type readScenarioInput struct {
@@ -34,28 +32,6 @@ type readScenarioResult struct {
 	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
 	AuthorityLimits []string                   `json:"authorityLimits"`
 	Unresolved      []string                   `json:"unresolved"`
-}
-
-type semanticRowProjection struct {
-	Attributes []semanticValueProjection `json:"attributes"`
-}
-
-type semanticValueProjection struct {
-	Attribute string `json:"attribute"`
-	Value     any    `json:"value"`
-}
-
-type runtimeBindingProjection struct {
-	Pattern            string `json:"pattern"`
-	Environment        string `json:"environment,omitempty"`
-	Instance           string `json:"instance,omitempty"`
-	Provider           string `json:"provider,omitempty"`
-	ExecutorCapability string `json:"executorCapability,omitempty"`
-	ContractQuery      string `json:"contractQuery,omitempty"`
-	Datasource         string `json:"datasource,omitempty"`
-	Database           string `json:"database,omitempty"`
-	Access             string `json:"access,omitempty"`
-	Note               string `json:"note,omitempty"`
 }
 
 type readScenarioRunner interface {
@@ -197,65 +173,6 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 			"visual-evidence-not-yet-acquired",
 		},
 	}, nil
-}
-
-func projectEnvironmentBinding(
-	pattern string,
-	environmentID core.CanonicalID,
-	executor realization.ResolvedContractQueryExecutor,
-) runtimeBindingProjection {
-	return runtimeBindingProjection{
-		Pattern:            pattern,
-		Environment:        string(environmentID),
-		Instance:           string(executor.Instance.ID),
-		Provider:           string(executor.Instance.Provider),
-		ExecutorCapability: string(executor.Capability.Capability.ID),
-		ContractQuery:      executor.Binding.Target.Identity(),
-	}
-}
-
-func projectMappedRows(source queryresult.MappedResult) ([]semanticRowProjection, error) {
-	result := make([]semanticRowProjection, len(source.Rows))
-	for rowIndex, row := range source.Rows {
-		if len(row) != len(source.Columns) {
-			return nil, fmt.Errorf(
-				"mapped result row %d has %d values for %d columns",
-				rowIndex,
-				len(row),
-				len(source.Columns),
-			)
-		}
-		projected := semanticRowProjection{}
-		for columnIndex, column := range source.Columns {
-			projected.Attributes = append(projected.Attributes, semanticValueProjection{
-				Attribute: string(column.Attribute),
-				Value:     row[columnIndex],
-			})
-		}
-		result[rowIndex] = projected
-	}
-	return result, nil
-}
-
-func projectContractRows(source []driver.ContractQueryRow) []semanticRowProjection {
-	result := make([]semanticRowProjection, len(source))
-	for rowIndex, row := range source {
-		keys := make([]string, 0, len(row.Attributes))
-		values := make(map[string]any, len(row.Attributes))
-		for attribute, value := range row.Attributes {
-			key := string(attribute)
-			keys = append(keys, key)
-			values[key] = value
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			result[rowIndex].Attributes = append(result[rowIndex].Attributes, semanticValueProjection{
-				Attribute: key,
-				Value:     values[key],
-			})
-		}
-	}
-	return result
 }
 
 type referenceBrowseExecutor struct{}
