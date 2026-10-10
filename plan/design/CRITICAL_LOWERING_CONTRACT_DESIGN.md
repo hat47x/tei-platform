@@ -215,3 +215,11 @@ PR #1150の評価待ちGeneric Capability移行文書を取り込むため、`01
 `workspace_trace_test.go`ではApplication宣言にあるDatasource alias・DB Contract・Compatible Majorの集合とReferenceのDataNeedの集合が**双方向一致**することを検査する。Referenceの一部subsetだけを照合し、宣言済みのContractを黙って落とす抜け道を残さない。
 
 `qualify.sh`は、実行前後にExpected HEAD / current origin/main / clean checkoutとmain ancestor条件を確認する。対象は局所Test、既設Acceptance→Driver/Web Test、実WebバイナリのHTTP Smoke、全Repository Health。ただし、**このスクリプトの追加自体は実行済み証跡ではない**。各チェックのExit Code、実行日時、Go version、HEAD/mainを信頼する実Checkout上で取得し、独立したGate reviewで判定する。現時点でPASS証跡がないため、PRはDraft、Issueもopenのままとする。
+
+## 13. Target Effect宣言と受信Planの順序を制約
+
+Targetの実行可能Effectは集合として扱い、`Lower`に渡すEffect宣言が空、空文字列を含む、または重複する場合は拒否する。これにより、不完全なTargetを「Effectを実現した」と扱う余地を減らす。実装可能なEffectの真正性は実Target/Host側で確認し、自己申告だけでは実行させない。
+
+同じ意味のTarget Planが入力順で複数のFingerprintを持たないよう、受信PlanのStepは`Scope+Contract ID`、Runtime Dependencyは`Ref.ID`で昇順という構造上の規約を加えた。Loweringは当該順序を生成し、受信後に入れ替えたPlanはtrusted callbackへの引渡し前に停止する。Provider登録順序自体は選択条件に使わず、あくまで明示WiringとVersionにより固定する。
+
+この規約は**計画内容のAuthenticityや実権限を与える署名ではない**。元のAccepted snapshot、current Resolution Lock、Artifact、current Host Context、Permissionをすべて別のAuthorityで照合し、検査とdispatchの間に失効がないよう保証する必要がある。
