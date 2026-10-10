@@ -145,3 +145,18 @@ func TestE5MissingApplicationDoesNotPickFallback(t *testing.T) {
     world,index:=e5Fixture()
     if !e5HasIssue(inspectE5(world,index,"missing"),"application_missing_or_ambiguous"){t.Fatal("unknown app accepted")}
 }
+
+func TestE5RejectsDuplicateContractOwner(t *testing.T) {
+    world,index:=e5Fixture()
+    world.Databases=append(world.Databases,database.Database{
+        ID:"other_database",
+        Contracts:[]database.Contract{{ID:"sales_core.order",Version:database.ContractVersion{Major:4,Minor:2}}},
+    })
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"target_contract_missing_or_ambiguous"){t.Fatal("global duplicate contract identity accepted")}
+}
+
+func TestE5DoesNotUseAuthoringAsDefinition(t *testing.T) {
+    world,index:=e5Fixture()
+    index.References[len(index.References)-1].Role=sourceindex.RoleAuthoring
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous"){t.Fatal("authoring reference used as definition")}
+}
