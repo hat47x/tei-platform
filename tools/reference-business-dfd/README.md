@@ -80,7 +80,9 @@ go run ./tools/reference-business-dfd \
 
 `manual-unresolved`、`manual-external-unresolved` の Step は対応 Application Function がなくても valid な業務上の作業候補として残します。`ActorCandidate` は担当業務上の主体であり、Security / Authorization Role へ自動変換しません。`RoleAuthorizationBinding=not-inferred` は認可成功を意味しません。
 
-JSON の `source.file` と `source.pointer` は当該 Source の位置を示します。存在しない Pattern、複数解決、欠けた Step、無条件の分岐・例外等は source-aware diagnostics として報告します。`unreferencedPatterns` は**この一つの Procedure に限る未使用一覧**であり、Application 全体の死んだ機能という断定ではありません。
+StepがFunctionを持たなくても、Procedure側が明示したData／Relation／Validation／Capabilityへのdirect referenceは、`steps[].explicitMeaning`に保持します。特に既存の`BP-05`にはApplication Functionがありませんが、2件のValidationをSource位置付きで表示できます。これらは`procedure-reference-only`の参照であり、参照先のIDが既存Worldに一致しただけでは、権限・更新実績・業務完了を確定しません。
+
+JSON の `source.file` と `source.pointer` は当該 Source の位置を示します。存在しない Pattern／direct Semantic参照、複数解決、欠けた Step、無条件の分岐・例外等は source-aware diagnostics として報告します。`unreferencedPatterns` は**この一つの Procedure から参照されていないPattern一覧**であり、Application 全体で未使用という断定ではありません。各件には正本未記載を即時エラーにしない `review-question` を付けます。
 
 ## 実証と残る作業
 
