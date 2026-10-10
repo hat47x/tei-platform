@@ -164,3 +164,19 @@ func TestRelationFindingsFollowStageNotSlideOrder(t *testing.T) {
 		t.Fatalf("findings followed presentation order: %+v",projection.Slides)
 	}
 }
+
+func TestNumericKeyComparisonIsResourceBounded(t *testing.T) {
+	equal, comparable := equalScalar(
+		json.RawMessage("1e100000000"), json.RawMessage("1"),
+	)
+	if equal || comparable {
+		t.Fatal("extreme numeric exponent was treated as comparable")
+	}
+	in := keyedInput()
+	in.Example.Base[1].Values["tenant_ref"] = json.RawMessage("9e100000000")
+	// The example's integer value is outside the ordinary scalar validator
+	// range; this must not be silently accepted or cause an unbounded allocation.
+	if _, err := Build(in); err == nil {
+		t.Fatal("out-of-range integer was silently accepted")
+	}
+}
