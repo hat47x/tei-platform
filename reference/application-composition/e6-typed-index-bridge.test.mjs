@@ -18,7 +18,7 @@ const fixture=(entries=subjects)=>({
     issues:[],dependencies:entries.map(s=>({
       relation:s.relation,subject:structuredClone(s.subject),
       source:{path:s.path,fingerprint:sha(s.digit)}}))},
-  index:{artifacts:entries.map(s=>({path:s.path,fingerprint:sha(s.digit)})),
+  index:{artifacts:entries.filter((s,i)=>entries.findIndex(x=>x.path===s.path)===i).map(s=>({path:s.path,fingerprint:sha(s.digit)})),
     references:entries.map(s=>({subject:structuredClone(s.subject),artifactPath:s.path,role:'definition'}))},
 });
 const check=(old,newer)=>assessParsedApplicationSourceDrift({
@@ -196,28 +196,32 @@ test('unsupported invented Pattern relation type is not promoted to a known depe
   assert.equal(check(old,next).reason,'invalid_dependency_claim');
 });
 
-test('a typed ContractQuery definition is compared as a separate Source Index subject',()=>{
+test('a typed ContractQuery shares its artifact fingerprint with the containing Contract',()=>{
   const invocation={
     relation:'pattern-contract-query',
     subject:{kind:'database-contract-query',id:'sales_core.order/find_by_id'},
-    path:'databases/sales-core/contracts/order.tei',digit:'f',
+    path:'databases/sales-core/contracts/order.tei',digit:'d',
   };
   const old=fixture([...subjects,invocation]),next=structuredClone(old);
   const stable=check(old,next);
   assert.equal(stable.status,'limited-unchanged');
   assert.equal(stable.fullClosure,false);
+  // Source Index stores ONE artifact per file. A contract and its query are
+  // separate Subjects with the same whole-file digest, not separate artifacts.
+  assert.equal(old.index.artifacts.length,4);
+  next.report.dependencies[3].source.fingerprint=sha('e');
   next.report.dependencies[4].source.fingerprint=sha('e');
-  next.index.artifacts[4].fingerprint=sha('e');
+  next.index.artifacts[3].fingerprint=sha('e');
   const changed=check(old,next);
   assert.equal(changed.status,'unresolved');
   assert.equal(changed.reason,'indexed_source_changed');
-  assert.deepEqual(changed.affected.map(x=>x.subject),[invocation.subject]);
+  assert.deepEqual(changed.affected.map(x=>x.subject),[contract,invocation.subject]);
 });
 test('a missing ContractQuery definition is never inferred from its containing Contract',()=>{
   const invocation={
     relation:'pattern-contract-query',
     subject:{kind:'database-contract-query',id:'sales_core.order/find_by_id'},
-    path:'databases/sales-core/contracts/order.tei',digit:'f',
+    path:'databases/sales-core/contracts/order.tei',digit:'d',
   };
   const old=fixture([...subjects,invocation]),next=structuredClone(old);
   next.index.references.pop();
