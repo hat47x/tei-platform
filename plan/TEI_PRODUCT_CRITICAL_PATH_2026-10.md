@@ -555,3 +555,32 @@ Gate G2の最初の実行は、既存Shared Acceptanceを使ったscratch `R0→
 **次の実装Owner判断**: #1124はPR #1137で1操作候補を2操作の明示的選択へ拡張するか、Reference CLIへ既存Shared Acceptanceの2操作候補をそのまま渡す薄いconsumerを置くかを決める。#1127はE1のWeb統合試験と、E2に必要なactual Providerを接続する実機構を区別する。#1121はR1のAccepted Source系譜を合成`trustedAcceptanceReceipt`で置換しない。#1119はE0/E1/E2を別欄で管理し、PR #1137/#1141のDraftを合格と数えない。
 
 **今回の実測範囲**: main上の`reference/world.json`、`tools/reference-shared-acceptance`のREADME/試験ソース、`tools/reference-first-web-target`のCommand/Read実装、PR #1137のBridgeソースをGitHubから読み取って比較した。ここに記した`R0→R1→Web`操作を、この作業環境で実行したわけではない。trusted exact-head checkout / Repository Health / current real-DB Evidenceは未取得、G2未合格。
+
+## 17. E1の「追加した単価ルール」を正負の両方で観測するためのfixture境界
+
+### 静的に確認できる実装上の制約
+
+§16で選んだ `sales.order_line.unit_price_positive` は、単なるRule宣言だけでなく、`order_entry` の `uses validation` に追加されて初めてWeb Commandの対象になる。既存`practical_validation_loop_test.go`は同じcandidateで受理したとき、`ResolveApplicationValidations`が**既存3件の後に単価ルールを4件目として返す**ことを検査している。
+
+一方、mainの`tools/reference-first-web-target/read_scenario.go`のsynthetic Contract Query Executorは、すべての受注明細で`unit_price`に `4000.00` / `4500.00` を返す。受注1002にある既存の負例は**単価ではなく数量0**であり、Command側は評価が不満足になった最初のValidationで停止する。従って、現在のWeb標準fixtureだけで`/scenario/submit`の失敗応答を得ても、**追加した単価ルールが拒否を発生させた証拠にはならない**。
+
+これは実DBを導入して解決すべき課題ではない。まず既存`command_scenario_test.go`が使用する`staticReadScenarioRunner`によるテスト用のread差替えを再利用し、**新Ruleだけが不満足**となる独立ケースを作る。
+
+### E1の二段階証跡（#1127へのconsumer契約）
+
+| ケース | setup/操作 | 必ず確認すること | 証跡の上限 |
+| --- | --- | --- | --- |
+| E1-A: R1に届く正常系 | 独立scratchで`add-validation`+`add-application-validation-use`を同一Acceptance→R1再読込。既存Web Targetを`-workspace <scratch>`で起動し、受注1001（既存単価4,000/4,500）をsubmit | R1のRule解決は4件で、**4件目の単価も`satisfied`**。Command結果とsynthetic Observationは別欄。R1 Source revisionと実際のWeb起動Workspaceを記録 | actual Web / synthetic Provider。外部DB保存の証拠にはならない |
+| E1-B: 追加Ruleの負例 | **同じR1由来World**で`referenceCommandScenarioRunner`のreadだけを試験用に差替え、受注1001の一明細`unit_price=0`とし、数量/番号/一意性は満足させる。既存Web HTTP handlerへsubmit | 先行3件は`satisfied`、4件目の**`sales.order_line.unit_price_positive`だけ`not-satisfied`**、Stageは`validation-not-satisfied`、Authorization/Command/Observationは未実行・未生成 | テスト用fixtureを使った実Go HTTP handler。通常Web実行fixtureや実DBの改変証拠ではない |
+| E1-C: Rule未選択の負例 | 同じ新Rule定義があっても`uses validation`のない隔離Worldを読む | Webで解決されるRuleは既存3件のまま。Rule定義の存在だけを「新Rule適用済み」と判定しない | schema/選択のnegative contract test。未選択をRuntime不具合と断定しない |
+
+E1-Bでは、既存の数量0が単価の不満足を**隠さない**よう、既存成功例1001を基点とする。Command送信入力へ単価を任意注入する**本番用API**は追加しない。テスト専用`staticReadScenarioRunner`を、`httptest`と既存の`newWebTargetServer`で利用する案を優先する。HTTP statusやJSON envelopeの形式は既存Web handlerの仕様に照合し、推測で固定しない。
+
+### 最小のhandoffと安全側の判定
+
+- **#1124**: R0→R1の2操作が、既存Shared AcceptanceのPreview/Review/Accepted Decisionを通じて一体として変更された証跡を出す。Source変更はscratch内のSemantic ValidationとApplication定義に限定する。Studio独自Acceptanceは作らない。
+- **#1127**: E1-A（actual target起動）とE1-B（合成read差替えによるHTTP handler負例）、E1-C（明示的Use欠落）を別のテストとして記録する。既存Driver/Validation/Authorization/Outcomeを差替えない。E1-Bだけで「通常Targetの実データから単価不正を観測した」とは主張しない。
+- **#1121**: R1に紐づくRuleの選択とCapability/Target readinessを独立証跡で繋ぐ。合成ReceiptだけではE1-Aの実行結果を証明しない。
+- **#1119**: Evidence packetには`accepted_revision`、`application_rule_set`、`web_workspace_source`、`fixture_provenance`、`rule_results`、`command_status`、`observation_nature`の根拠をリンクする。E1-A/B/Cは別caseとして数え、E1→E2（実DB Provider+独立read）の自動昇格は禁止する。
+
+**現状**: この節の根拠はGitHub上のmainソースとDraft PRの静的照合。E1-A/B/Cの追加テスト実装・actual実行、trusted full checkout、Repository Health、実DB操作はこの横断担当では**NOT RUN**。G1/G2のGate状態は変更しない。
