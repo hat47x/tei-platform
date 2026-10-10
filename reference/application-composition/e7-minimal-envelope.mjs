@@ -1,3 +1,4 @@
+import {assessParsedApplicationSourceDrift} from './e6-typed-index-bridge.mjs';
 // #1016 E7a: minimize paired Source Index disclosure without adding an authority or resolver.
 // The caller must already have a trusted same-invocation E5 observation.
 const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -80,6 +81,16 @@ export function minimizePairedSourceEvidence(envelope) {
     if (artifacts.get(dependency.source.path)?.fingerprint !== dependency.source.fingerprint) {
       return {status:'unresolved', reason:'fingerprint_mismatch'};
     }
+  }
+  // Use E6's existing typed relation/subject and Application identity checks
+  // against this same snapshot. A selected file's presence alone does not
+  // prove the dependency report is a valid E5 projection.
+  const selfCheck = assessParsedApplicationSourceDrift({
+    baselineReport: envelope.report, currentReport: envelope.report,
+    baselineIndex: envelope.index, currentIndex: envelope.index,
+  });
+  if (selfCheck.status !== 'limited-unchanged') {
+    return {status:'unresolved', reason:'unverified_dependency_report'};
   }
   // Reconstruct an allowlisted shape. Unknown JSON fields must not become
   // accidental data disclosure when an external tool consumes the projection.
