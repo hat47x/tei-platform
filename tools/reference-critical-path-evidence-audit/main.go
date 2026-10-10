@@ -55,10 +55,10 @@ type Web struct {
 	Application              string `json:"application"`
 	Target                   string `json:"target"`
 	SelectedValidation       string `json:"selectedValidation"`
-	NegativeValidation       string `json:"negativeValidation"`   // asserted failing rule, not independently verified
-	NegativeEvidenceMode     string `json:"negativeEvidenceMode"` // running-server, handler-only
-	ProviderKind             string `json:"providerKind"`         // synthetic, actual-db
-	RunMode                  string `json:"runMode"`              // running-server, handler-only
+	NegativeValidation       string `json:"negativeValidation"`       // asserted failing rule, not independently verified
+	NegativeEvidenceMode     string `json:"negativeEvidenceMode"`     // running-server, handler-only
+	ProviderKind             string `json:"providerKind"`             // synthetic, actual-db
+	RunMode                  string `json:"runMode"`                  // running-server, handler-only
 	WorkspaceRevisionReceipt string `json:"workspaceRevisionReceipt"` // independent revision observation of Web workspace
 	TargetLaunchReceipt      string `json:"targetLaunchReceipt"`      // workspace, target build, start/stop, no credentials
 	PositiveReceipt          string `json:"positiveReceipt"`
