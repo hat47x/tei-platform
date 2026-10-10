@@ -300,6 +300,40 @@ test("optional #1125 Business reference joins exact Pattern ID without becoming 
   }), /INVALID_OR_DUPLICATE_BUSINESS_STEP/);
 });
 
+test("C0 scoped ID collision cannot be silently resolved by flat Studio token", () => {
+  const anchor = {
+    subject: { kind: "semantic-relation", id: "sales.order.lines" },
+    role: "definition", artifactPath: "semantic/sales/order.tei",
+    range: { start: { offset: 1, line: 1, column: 1 },
+      end: { offset: 2, line: 1, column: 2 } }
+  };
+  const sourceIndex = {
+    artifacts: [{ path: "semantic/sales/order.tei",
+      fingerprint: "sha256:" + "f".repeat(64) }],
+    references: [
+      { ...anchor, scope: "tenant-a" },
+      { ...anchor, scope: "tenant-b" }
+    ]
+  };
+  assert.throws(() => projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex }), /AMBIGUOUS_SOURCE_DEFINITION/);
+});
+
+test("reference-local Business step ID matching a Pattern ID is not an accepted Function", () => {
+  const source = fixture();
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "local-procedure", diagnostics: [],
+    steps: [{ id: "order_entry.order_lines", noApplicationFunction: false, functionRefs: [] }]
+  };
+  const p = projectWorld(source, revision, "relation:sales.order.lines",
+    { businessDFD: dfd });
+  assert.equal(p.views.business.authority, "noncanonical-reference");
+  assert.equal(p.views.business.items.length, 0);
+  assert.equal(p.views.business.freshness, "unverified-no-model-revision-binding");
+});
+
 test("local selection never expands into a global dense matrix", () => {
   const world = fixture();
   for (let i = 0; i < 2000; i++) {
