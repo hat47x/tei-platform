@@ -498,59 +498,108 @@ func copyState(state map[string]Record) map[string]Record {
 	return out
 }
 
-// SVG is a deterministic proof renderer; it is not a complete ER notation.
-// It keeps authored coordinates even when a parent appears right of a child.
+// SVG renders the entire illustrative snapshot, not merely the first record.
+// Authored positions are preserved; overlapping placements are not silently
+// rearranged. It is an accessible proof view, not complete ER notation.
 func SVG(slide Slide) string {
-	const width = 225
-	height := func(table ShownTable) int { return 42 + len(table.Fields)*20 }
-	byID := map[string]ShownTable{}
+	const width = 264
+	const rowHeight = 17
+	height := func(box ShownTable) int {
+		if len(box.Records) == 0 {
+			return 46 + len(box.Fields)*rowHeight
+		}
+		return 34 + len(box.Records)*(rowHeight*(len(box.Fields)+1)+7)
+	}
 	minX, minY, maxX, maxY := 0, 0, 360, 140
-	for _, table := range slide.Tables {
-		byID[table.PlacementID] = table
-		if table.X < minX {
-			minX = table.X
+	byID := map[string]ShownTable{}
+	for _, box := range slide.Tables {
+		byID[box.PlacementID] = box
+		if box.X < minX {
+			minX = box.X
 		}
-		if table.Y < minY {
-			minY = table.Y
+		if box.Y < minY {
+			minY = box.Y
 		}
-		if table.X+width+12 > maxX {
-			maxX = table.X + width + 12
+		if box.X+width+12 > maxX {
+			maxX = box.X + width + 12
 		}
-		if table.Y+height(table)+12 > maxY {
-			maxY = table.Y + height(table) + 12
+		if box.Y+height(box)+12 > maxY {
+			maxY = box.Y + height(box) + 12
 		}
 	}
+	// Reserve a header band for the slide context and the review result counts.
+	left, top := minX-10, minY-58
+	viewWidth, viewHeight := maxX-minX+24, maxY-minY+76
 	var out strings.Builder
-	fmt.Fprintf(&out, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="%d %d %d %d" role="img">`,
-		minX-10, minY-10, maxX-minX+20, maxY-minY+20)
-	for _, edge := range slide.Connections {
-		parent, pok := byID[edge.Parent]
-		child, cok := byID[edge.Child]
-		if pok && cok {
-			fmt.Fprintf(&out, `<path d="M%d %d L%d %d" fill="none" stroke="#667788"/>`,
-				parent.X+width, parent.Y+21, child.X, child.Y+21)
-		}
+	fmt.Fprintf(&out, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="%d %d %d %d" role="img">`, left, top, viewWidth, viewHeight)
+	description := slide.Title
+	if description == "" {
+		description = slide.ID
 	}
-	for _, table := range slide.Tables {
-		fmt.Fprintf(&out, `<rect x="%d" y="%d" width="%d" height="%d" fill="white" stroke="#334455"/>`,
-			table.X, table.Y, width, height(table))
-		fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="13">%s</text>`,
-			table.X+7, table.Y+19, html.EscapeString(table.Table))
-		for i, field := range table.Fields {
-			label := field
-			if len(table.Records) > 0 {
-				if value, ok := table.Records[0].Values[field]; ok {
-					label += ": " + string(value)
+	fmt.Fprintf(&out, "<title>%s</title>", html.EscapeString(description))
+	fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="16">%s</text>`, left+5, top+21, html.EscapeString(description))
+	counts := map[string]int{}
+	for _, finding := range slide.RelationFindings {
+		counts[finding.Result]++
+	}
+	badges := fmt.Sprintf("Stage: %s | Supported: %d | Contradictions: %d | Unresolved: %d", slide.Stage, counts["supported"], counts["contradiction"], counts["unresolved"])
+	fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="11">%s</text>`, left+5, top+41, html.EscapeString(badges))
+	for _, edge := range slide.Connections {
+		p, okP := byID[edge.Parent]
+		c, okC := byID[edge.Child]
+		if !okP || !okC {
+			continue
+		}
+		label := edge.RelationID
+		if label == "" {
+			label = edge.ViaField
+		}
+		fmt.Fprintf(&out, `<path d="M%d %d L%d %d" fill="none" stroke="#667788" aria-label="%s"/>`, p.X+width, p.Y+18, c.X, c.Y+18, html.EscapeString(label))
+	}
+	for _, box := range slide.Tables {
+		fmt.Fprintf(&out, `<rect x="%d" y="%d" width="%d" height="%d" fill="white" stroke="#334455"/>`, box.X, box.Y, width, height(box))
+		fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="13">%s</text>`, box.X+7, box.Y+20, html.EscapeString(box.Table))
+		if len(box.Records) == 0 {
+			fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="10">(no example records)</text>`, box.X+7, box.Y+34)
+			for i, field := range box.Fields {
+				fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="11">%s</text>`, box.X+7, box.Y+50+i*rowHeight, html.EscapeString(shortLabel(field, 35)))
+			}
+			continue
+		}
+		cursor := box.Y + 36
+		for _, record := range box.Records {
+			fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="11" font-weight="bold">%s</text>`, box.X+7, cursor, html.EscapeString(shortLabel(record.ID, 38)))
+			cursor += rowHeight
+			for _, field := range box.Fields {
+				value := "∅"
+				if v, ok := record.Values[field]; ok {
+					value = formatSlideValue(v)
 				}
+				label := shortLabel(field+": "+value, 39)
+				fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="11">%s</text>`, box.X+12, cursor, html.EscapeString(label))
+				cursor += rowHeight
 			}
-			runes := []rune(label)
-			if len(runes) > 30 {
-				label = string(runes[:30]) + "…"
-			}
-			fmt.Fprintf(&out, `<text x="%d" y="%d" font-family="sans-serif" font-size="11">%s</text>`,
-				table.X+7, table.Y+38+i*20, html.EscapeString(label))
+			cursor += 7
 		}
 	}
 	out.WriteString("</svg>")
 	return out.String()
+}
+
+func formatSlideValue(raw json.RawMessage) string {
+	if len(raw) > 0 && raw[0] == '"' {
+		var value string
+		if json.Unmarshal(raw, &value) == nil {
+			return value
+		}
+	}
+	return string(raw)
+}
+
+func shortLabel(value string, maxRunes int) string {
+	runes := []rune(value)
+	if len(runes) > maxRunes {
+		return string(runes[:maxRunes-1]) + "…"
+	}
+	return value
 }
