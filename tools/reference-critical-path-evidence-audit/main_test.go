@@ -19,7 +19,7 @@ func fixture() Packet {
 		Contract:      Contract{ProducerPath: "tools/reference-shared-acceptance/practical_validation_loop_test.go", ConsumerPath: "tools/reference-first-web-target/practical_business_rule_test.go", PositiveTest: "TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection", NegativeTest: "TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines", EvidenceClass: "actual-observed"},
 		Qualification: Qualification{Head: h, Main: m, FullHealth: "PASS", CleanBefore: true, CleanAfter: true, Receipt: "local/health.log"},
 		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("3", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
-		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", ProviderKind: "actual-db", RunMode: "running-server", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
+		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", NegativeValidation: "sales.order_line.unit_price_positive", NegativeEvidenceMode: "running-server", ProviderKind: "actual-db", RunMode: "running-server", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
 		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
 	}
 }
@@ -101,6 +101,32 @@ func TestE0RejectsEmptyProducerConsumerEvidence(t *testing.T) {
 		t.Fatal("empty E0 evidence can pass preflight")
 	}
 }
+func TestE1HandlerOnlyUnitPriceNegativeIsNotLiveEvidence(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	// Existing unit-price rejection is a Go HTTP handler test; it does not
+	// exercise a separately running Web Target with an invalid unit price.
+	p.Web.NegativeEvidenceMode = "handler-only"
+	r := Audit(p, h, m)
+	if !has(r, "E1_NEGATIVE_SELECTED_RULE_RUNNING_WEB_EVIDENCE_REQUIRED") ||
+		r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+		t.Fatalf("%+v", r)
+	}
+}
+
+func TestE1OtherValidationCannotStandInForUnitPriceNegative(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	// The default Web fixture's rejected order has invalid quantity,
+	// which does not demonstrate the newly accepted unit-price guard.
+	p.Web.NegativeValidation = "sales.order_line.quantity_positive"
+	r := Audit(p, h, m)
+	if !has(r, "E1_NEGATIVE_SELECTED_RULE_RUNNING_WEB_EVIDENCE_REQUIRED") ||
+		r.Status != "INCOMPLETE" {
+		t.Fatalf("%+v", r)
+	}
+}
+
 func TestHandlerOnlyIsNotARealWebRun(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"
