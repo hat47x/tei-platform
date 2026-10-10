@@ -54,6 +54,10 @@ func TestTransportHelperProcess(t *testing.T) {
 		result.ContractFingerprint = "sha256:" + strings.Repeat("f", 64)
 	case "tamper-provider":
 		result.Provider.ImplementationID = "tampered.implementation"
+	case "tamper-request-id":
+	case "tamper-plugin":
+	case "tamper-capability-id":
+	case "tamper-descriptor":
 	default:
 		fmt.Fprintln(os.Stderr, "unsupported helper mode")
 		os.Exit(24)
@@ -71,6 +75,16 @@ func TestTransportHelperProcess(t *testing.T) {
 		DescriptorFingerprint: req.DescriptorFingerprint,
 		Status:                pruntime.ResponseOK,
 		Payload:               payload,
+	}
+	switch mode {
+	case "tamper-request-id":
+		resp.RequestID = req.RequestID + "-tampered"
+	case "tamper-plugin":
+		resp.Plugin.ID = core.MustCanonicalID("tei.reference.transport.other")
+	case "tamper-capability-id":
+		resp.CapabilityID = core.MustCanonicalID("transport.other-carrier")
+	case "tamper-descriptor":
+		resp.DescriptorFingerprint = strings.Repeat("f", 64)
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(resp); err != nil {
 		fmt.Fprintln(os.Stderr, "encode response:", err)
@@ -202,6 +216,97 @@ func TestProcessTransportRejectsGenericProviderDrift(t *testing.T) {
 	)
 	if err == nil || !strings.Contains(err.Error(), "identity drifted") {
 		t.Fatalf("generic Provider drift was accepted: %v", err)
+	}
+}
+
+func TestProcessTransportRejectsLegacyResponseIdentityDrift(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode string
+		want string
+	}{
+		{name: "request-id", mode: "tamper-request-id", want: "request id"},
+		{name: "plugin", mode: "tamper-plugin", want: "plugin identity"},
+		{name: "capability-id", mode: "tamper-capability-id", want: "CapabilityID"},
+		{name: "descriptor", mode: "tamper-descriptor", want: "descriptor fingerprint"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			launcher, command := helperLauncher(tc.mode)
+			_, err := invokeOverProcessTransport(
+				context.Background(),
+				launcher,
+				command,
+				transportCarrier(),
+				"transport-legacy-drift-"+tc.name,
+				genericDispatch([]byte("payload")),
+			)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("legacy response %s drift was not rejected: %v", tc.name, err)
+			}
+		})
+	}
+}
+
+type countingProcessLauncher struct {
+	calls int
+}
+
+func (l *countingProcessLauncher) Invoke(
+	context.Context,
+	pruntime.ProcessCommand,
+	pruntime.Request,
+) (pruntime.Response, error) {
+	l.calls++
+	return pruntime.Response{}, fmt.Errorf("launcher should not have been called")
+}
+
+func TestInvalidGenericDispatchStopsBeforeTransport(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*GenericDispatch)
+		want   string
+	}{
+		{
+			name: "contract-fingerprint",
+			mutate: func(dispatch *GenericDispatch) {
+				dispatch.ContractFingerprint = "not-a-fingerprint"
+			},
+			want: "contract identity",
+		},
+		{
+			name: "provider-artifact",
+			mutate: func(dispatch *GenericDispatch) {
+				dispatch.Provider.ArtifactDigest = "not-a-fingerprint"
+			},
+			want: "provider identity",
+		},
+		{
+			name: "request-shape",
+			mutate: func(dispatch *GenericDispatch) {
+				dispatch.RequestShapeFingerprint = ""
+			},
+			want: "shape identity",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			launcher := &countingProcessLauncher{}
+			dispatch := genericDispatch([]byte("payload"))
+			tc.mutate(&dispatch)
+			_, err := invokeOverProcessTransport(
+				context.Background(),
+				launcher,
+				pruntime.ProcessCommand{Executable: "must-not-run"},
+				transportCarrier(),
+				"transport-preflight-"+tc.name,
+				dispatch,
+			)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("invalid dispatch %s was not rejected before transport: %v", tc.name, err)
+			}
+			if launcher.calls != 0 {
+				t.Fatalf("invalid dispatch reached transport: calls=%d", launcher.calls)
+			}
+		})
 	}
 }
 
