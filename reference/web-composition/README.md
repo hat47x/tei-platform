@@ -222,3 +222,23 @@ GitHub Blobとbyte一致するローカルコピーで`gofmt -l`（出力なし�
 この二つの**実際の新規ファイル**と、必要な他パッケージを置き換えた一時的な隔離Goモジュール（Go 1.23.2）を使い、`go test -count=1`、`go vet`、`go test -race -count=1`がPASSしました。認証不成立、CSRF失敗、閲覧者の業務拒否、本文からの資格情報／Subject ID注入、二つのJSON文書、`null`、構成欠落、二重宣言等のテストコードを実行しています。
 
 **重要な証拠の限界:** この隔離ハーネスは`workspace.Load`、`webTargetServer`、認証Host、`security.authorize`、既存Runner等をスタブに差し替えています。新規ルートのGo構文と制御分岐は確認できますが、旧Web Target本体やCanonical Resolver、実`reference/workspace`との結合成功の証拠ではありません。統合には、実Repositoryのexact headをクリーンにチェックアウトし、既存および新しいすべてのGoテストと`tools/repository-health-check.sh`を実行する必要があります。未完のためPRはDraftです。
+
+## E2.5：セッション連携時のアカウント状態・失効の再検証
+
+`security.authorize`が評価する既存の業務操作権限と、認証済みアカウントの有効性は別です。既存`legacyauthorization.Adapter`はRoleによる業務許可を扱いますが、Session経路を通ってきたAccountの`disabled`、`valid_from`、`valid_until`、`locked_until`をそれだけでは判断しません。従来のCredential経路が`security.authenticate`で検査していたAccountの状態を、セッション経路で無条件に省略すると危険です。
+
+そこで`go-host/subject_lifecycle.go`に`NewActiveLegacySubjectLinks`を追加しました。Hostが管理する明示的な`ProviderID + Issuer + Subject → PrincipalID + SubjectID`の対応付けに加え、既存の`legacyauthorization.SubjectStore`を`SubjectID`で引き直し、現在のアカウント状態を検査します。未知・無効・期間外・ロック中のアカウントは認可へ進めません。対応付け・Storeの障害、SubjectID不整合は例外として区別し、権限付与を行いません。Roleの判断は引き続き正本の`security.authorize`です。
+
+Web Server側は`AccountNow`という明示的なClock依存を必須にし、**Hostの早期認可時**と**Command実行直前の主体リンク再検証時**の両方でAccountの適格性を確認します。既存のFixtureを使う合成テストではRunnerの固定時刻を注入しますが、これは本番の失効確認を実証するものではありません。本番では信頼済みの最新Account Storeと適切な時刻源が必要です。
+
+追加のHTTP回帰テストは、業務Role上は受注実行権限を持つもののAccountがロック中の`subject-order-locked`と、無効な`subject-order-disabled`の拒否を確認します。さらにHostの早期認可後にAccount有効期限を越える場合と、主体対応付けStoreが実行直前に障害になる場合を試験します。この後段の失効はHTTP 403、Store障害はHTTP 503とし、CommandとObservationへ進みません。後段のStore例外はExecution Errorと区別しますが、バックエンド由来のエラーメッセージはHTTP応答へ露出させず固定文言に変換します。
+
+### 局所検証と統合保留
+
+- `subject_lifecycle.go`: GitHub Blob `5a99d308658718ebb27864ae3444cf0d6a5c34da`。
+- `subject_lifecycle_test.go`: GitHub Blob `52d9501a58a47e6989a127851fcd7cd33c36778f`。
+- **上記2ファイルとローカルコピーの`git hash-object`一致を確認**しました。Go 1.23.2の隔離`module tei`で、既存`legacyauth.User`／`legacyauthorization.SubjectStore`の公開型に合わせた最小スタブを使い、`gofmt -l`出力なし、`go vet`、`go test -count=1`、`go test -race -count=1`はすべてPASSしました。テスト内12個の正常・異常ケースと依存不足テストが通過しました。
+- ただしこの隔離テストのStore・Userは互換スタブです。**実`reference/workspace`、`legacyauth.FixtureStore`、`driver.Resolver`、Web Server全体を利用した新しい結合テストのPASSは未取得**です。
+- 主体リンクの二重検査、HTTP 403/503への変換、エラー文言の秘匿、ロック／失効のHTTP負例はコードとテストを追加しましたが、それらの**actual full repository実行は未実施**です。現行mainとPR headの差分を再確認し、`tools/repository-health-check.sh`全項目PASS、実行前後cleanをexact headへ結び付けるまでDraft維持・統合禁止です。
+
+このReferenceは実IdP、Session Cookie、CSRF Provider、企業Directoryの現在性、分散Host間の失効伝播を提供しません。とくにAccount Storeが古いSnapshotである場合、Clockだけが最新でも本番の適格性は保証できません。
