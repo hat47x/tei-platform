@@ -453,10 +453,12 @@ func ValidatePlan(plan Plan) error {
 			}
 			data[k] = true
 		}
+		seenRuntime := make(map[string]bool)
 		for _, dep := range step.RuntimeDeps {
-			if !dep.valid() {
+			if !dep.valid() || seenRuntime[dep.ID] {
 				return reject("invalid-runtime-dependency")
 			}
+			seenRuntime[dep.ID] = true
 		}
 	}
 	return nil
