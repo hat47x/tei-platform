@@ -1011,3 +1011,35 @@ func TestConfidentialProviderErrorFormattingIsNeverCalled(t *testing.T) {
 		t.Fatalf("provider secret leaked through formatting: %v", err)
 	}
 }
+
+func TestConfidentialProviderPanicNilNeverReturnsSuccess(t *testing.T) {
+	execution, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost("confidential-access"), []byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			panic(nil)
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "confidential error detail withheld") {
+		t.Fatalf("panic(nil) incorrectly returned as a successful invocation: %v", err)
+	}
+	if execution.Receipt.Schema != "" || len(execution.ResultPayload) != 0 {
+		t.Fatalf("panic(nil) returned an execution receipt: %+v", execution)
+	}
+}
+
+func TestConfidentialProviderNormalNilPayloadStillSucceeds(t *testing.T) {
+	execution, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost("confidential-access"), []byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			return nil, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("normal empty result was mistaken for panic(nil): %v", err)
+	}
+	if execution.Receipt.Schema != contextReceiptSchema || len(execution.ResultPayload) != 0 {
+		t.Fatalf("normal nil payload did not produce a valid receipt: %+v", execution)
+	}
+}
