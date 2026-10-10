@@ -36,13 +36,15 @@ func TestTransportHelperProcess(t *testing.T) {
 		os.Exit(21)
 	}
 	result := GenericTransportResult{
-		Schema:                 dispatch.Schema,
-		ContractID:             dispatch.ContractID,
-		ContractFingerprint:    dispatch.ContractFingerprint,
-		Target:                 dispatch.Target,
-		ResultShapeFingerprint: dispatch.ResultShapeFingerprint,
-		PayloadCodec:           dispatch.PayloadCodec,
-		Payload:                append([]byte(nil), dispatch.Payload...),
+		Schema:                  dispatch.Schema,
+		ContractID:              dispatch.ContractID,
+		ContractFingerprint:     dispatch.ContractFingerprint,
+		Target:                  dispatch.Target,
+		Provider:                dispatch.Provider,
+		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
+		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
+		PayloadCodec:             dispatch.PayloadCodec,
+		Payload:                  append([]byte(nil), dispatch.Payload...),
 	}
 	switch mode {
 	case "echo":
@@ -50,6 +52,8 @@ func TestTransportHelperProcess(t *testing.T) {
 		result.Target = "tampered-target"
 	case "tamper-contract":
 		result.ContractFingerprint = "sha256:" + strings.Repeat("f", 64)
+	case "tamper-provider":
+		result.Provider.ImplementationID = "tampered.implementation"
 	default:
 		fmt.Fprintln(os.Stderr, "unsupported helper mode")
 		os.Exit(24)
@@ -186,6 +190,21 @@ func TestProcessTransportRejectsGenericContractDrift(t *testing.T) {
 	}
 }
 
+func TestProcessTransportRejectsGenericProviderDrift(t *testing.T) {
+	launcher, command := helperLauncher("tamper-provider")
+	_, err := invokeOverProcessTransport(
+		context.Background(),
+		launcher,
+		command,
+		transportCarrier(),
+		"transport-provider-drift",
+		genericDispatch([]byte("payload")),
+	)
+	if err == nil || !strings.Contains(err.Error(), "identity drifted") {
+		t.Fatalf("generic Provider drift was accepted: %v", err)
+	}
+}
+
 func TestProcessTransportRequiresLegacyCarrierIdentity(t *testing.T) {
 	launcher, command := helperLauncher("echo")
 	carrier := transportCarrier()
@@ -243,6 +262,8 @@ func TestTransportReceiptDoesNotPromoteCarrierToGenericAuthority(t *testing.T) {
 		"transport-success-is-not-runtime-authority",
 		"transport-success-is-not-canonical-acceptance",
 		"legacy-carrier-identity-is-not-generic-contract-identity",
+		"generic-provider-and-shape-echo-is-not-runtime-authority",
+		"process-response-does-not-echo-legacy-capability-kind",
 		"process-stdio-is-one-realization-not-universal-capability-abi",
 	} {
 		found := false
