@@ -66,6 +66,46 @@ func TestLoadSemanticNamespaceAuthoritiesUsesStrictJSON(t *testing.T) {
 	}
 }
 
+func TestLoadPublisherTrustGrantsUsesStrictJSON(t *testing.T) {
+	grant, trust := semanticNamespaceAuthorityForTest(
+		t,
+		"std.validation",
+		"tei.std.validation",
+		"a",
+		"b",
+		true,
+	)
+	_ = grant
+	encoded, err := json.Marshal(trust[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := writeReferenceJSON(t, "publisher-trust.json", string(encoded))
+	values, err := loadPublisherTrustGrants([]string{valid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(values) != 1 ||
+		values[0].AuthorityClass != semanticNamespacePublisherAuthorityClass ||
+		values[0].Scope != semanticNamespaceTrustScope("std.validation") {
+		t.Fatalf("publisher trust=%+v", values)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(encoded, &raw); err != nil {
+		t.Fatal(err)
+	}
+	raw["unexpected"] = true
+	unknownBytes, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unknown := writeReferenceJSON(t, "publisher-trust-unknown.json", string(unknownBytes))
+	if _, err := loadPublisherTrustGrants([]string{unknown}); err == nil {
+		t.Fatal("unknown publisher trust field was accepted")
+	}
+}
+
 func captureReferenceCatalogRun(
 	t *testing.T,
 	args []string,
