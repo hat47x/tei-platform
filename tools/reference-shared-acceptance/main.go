@@ -390,10 +390,16 @@ func isReferenceBaseline(workspacePath string) bool {
 	if strings.HasSuffix(filepath.ToSlash(abs), "/reference/workspace") {
 		return true
 	}
-	resolved, err := filepath.EvalSymlinks(abs)
+	// Resolve the original spelling before Abs cleans ".." segments: a symlink
+	// can change what its following ".." refers to on the filesystem.
+	resolved, err := filepath.EvalSymlinks(workspacePath)
 	if err != nil {
 		// A nonexistent workspace cannot be a successfully loaded target.
 		return false
 	}
-	return strings.HasSuffix(filepath.ToSlash(resolved), "/reference/workspace")
+	resolvedAbs, err := filepath.Abs(resolved)
+	if err != nil {
+		return false
+	}
+	return strings.HasSuffix(filepath.ToSlash(resolvedAbs), "/reference/workspace")
 }
