@@ -74,6 +74,8 @@ Referenceでは`TransportDispatchPlan`を追加しました。Planは上流で�
 
 Plan自体はCapability Conformance、Runtime Authority、Canonical Acceptanceの証明ではありません。呼出し側が任意のPlanを作れるReferenceの段階では、fingerprintは改ざん検出用のderived identityに留まります。production候補へ進めるには、#1116等の上流Runtime AuthorityやCapability resolutionからPlanを導出し、transport層が独自にidentityを作らないことを確認する必要があります。
 
+processではさらに、Planのgeneric Provider identityからlegacy `CapabilityKind / CapabilityID`へ対応付けるcarrier bindingが必要です。現在のPlanはこのmappingをAuthorityとして持ちません。同じPlugin ID / versionであることまでは事前照合しますが、Plugin内のどのlegacy Capabilityがgeneric Contractへ対応するかは#1116側の明示Runtime bindingに残します。Transport層で推測しません。
+
 ## 次の判断
 
 processとsynthetic HTTPの二つで、transport-neutralなdispatch / receipt identityが必要になることは再現しました。このため、共通identityはproduction候補として検討できる段階に進みました。
