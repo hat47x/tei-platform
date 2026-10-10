@@ -36,14 +36,23 @@ export function createJSONActionDispatcher(endpoint, fetchImpl = globalThis.fetc
     } catch {
       throw new ActionCommitError("invalid_response", result.status);
     }
-    if (body?.protocolVersion !== "1") {
+    // Enforce the public result schema at the trust boundary, including its
+    // mutually exclusive success/error variants. A malformed success must
+    // never be mistaken for a committed mutation by the UI.
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        body.protocolVersion !== "1" ||
+        Object.keys(body).some((key) => !["protocolVersion", "revision", "error"].includes(key))) {
       throw new ActionCommitError("invalid_response", result.status);
     }
     if (!result.ok) {
-      const code = typeof body?.error === "string" ? body.error : "execution_failed";
-      throw new ActionCommitError(code, result.status);
+      if (Object.hasOwn(body, "revision") || typeof body.error !== "string" ||
+          !/^[a-z][a-z0-9_]*$/.test(body.error)) {
+        throw new ActionCommitError("invalid_response", result.status);
+      }
+      throw new ActionCommitError(body.error, result.status);
     }
-    if (typeof body?.revision !== "string" || body.revision.length === 0) {
+    if (result.status !== 200 || Object.hasOwn(body, "error") ||
+        typeof body.revision !== "string" || body.revision.length === 0) {
       throw new ActionCommitError("invalid_response", result.status);
     }
     return body.revision;
