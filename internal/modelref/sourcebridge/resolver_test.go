@@ -70,7 +70,10 @@ func TestResolverRejectsAmbiguousDefinitionAnchors(t *testing.T) {
 	if got := resolver.Locate(key); got.Reason != "ambiguous-source-anchor" || got.Status != "unresolved" {
 		t.Fatalf("ambiguous source was promoted: %+v", got)
 	}
-	if _, err := sourcebridge.NewResolver(modelref.Graph{}, index, func(string) ([]byte, error) { return []byte("stale"), nil }); err == nil {
+	if _, err := sourcebridge.NewResolver(modelref.Graph{Schema: "tei.modelref.v0"}, index, func(string) ([]byte, error) { return []byte("stale"), nil }); err == nil {
 		t.Fatal("stale Source Index qualified as a snapshot")
+	}
+	if _, err := sourcebridge.NewResolver(modelref.Graph{Schema: "tei.modelref.v9"}, index, read); err == nil {
+		t.Fatal("unsupported Graph schema was accepted")
 	}
 }
