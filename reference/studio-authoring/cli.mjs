@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Read-only Reference CLI: accepted World -> scoped projections / proposals.
 // Use the existing reference-shared-acceptance for preview, review and accept.
-import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { projectWorld, candidateFromEdit } from "./bridge.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -12,6 +13,7 @@ const usage = [
   "usage:",
   "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID [-business-dfd FILE]",
   "  node reference/studio-authoring/cli.mjs propose -workspace DIR -edit-file FILE",
+  "  node reference/studio-authoring/cli.mjs review-edit -workspace DIR -edit-file FILE",
   "  alternatively: -world-file FILE -revision-file FILE [-source-index-file FILE] (read-only artifacts)",
   "  output is JSON on stdout; no command in this CLI writes authoritative source"
 ].join("\n");
@@ -52,15 +54,16 @@ function fromWorkspace(workspace, withSourceIndex) {
 }
 function main(argv) {
   const [command, ...rest] = argv;
-  if (!["inspect", "propose"].includes(command)) throw new Error("UNKNOWN_COMMAND");
+  if (!["inspect", "propose", "review-edit"].includes(command)) throw new Error("UNKNOWN_COMMAND");
   const opt = flags(rest);
   const fromFiles = !!opt["-world-file"] && !!opt["-revision-file"];
   if (!!opt["-workspace"] === fromFiles ||
       (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"] ||
         opt["-source-index-file"])) ||
       (command === "inspect" && (!opt["-focus"] || opt["-edit-file"])) ||
-      (command === "propose" && (!opt["-edit-file"] || opt["-focus"] ||
-        opt["-business-dfd"] || opt["-source-index-file"])))
+      (["propose", "review-edit"].includes(command) && (!opt["-edit-file"] || opt["-focus"] ||
+        opt["-business-dfd"] || opt["-source-index-file"])) ||
+      (command === "review-edit" && (!opt["-workspace"] || fromFiles)))
     throw new Error("INVALID_INPUT");
   const { world, revision, sourceIndex } = fromFiles
     ? { world: jsonFile(opt["-world-file"]),
@@ -73,7 +76,41 @@ function main(argv) {
     { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
       ...(sourceIndex ? { sourceIndex } : {}) }
   );
-  return candidateFromEdit(world, revision, jsonFile(opt["-edit-file"]));
+  const candidate = candidateFromEdit(world, revision, jsonFile(opt["-edit-file"]));
+  if (command === "propose") return candidate;
+  // The Review operation delegates entirely to Shared Acceptance; it does
+  // not grant approval and never invokes accept/reject or writes a Source.
+  const workspace = resolve(opt["-workspace"]);
+  const temporary = mkdtempSync(join(tmpdir(), "tei-studio-review-"));
+  try {
+    const candidatePath = join(temporary, "candidate.json");
+    writeFileSync(candidatePath, JSON.stringify(candidate) + "\\n", { mode: 0o600 });
+    const run = (cmd, extra = []) => {
+      const result = spawnSync("go", ["run", "./tools/reference-shared-acceptance",
+        cmd, "-workspace", workspace, "-candidate", candidatePath, ...extra],
+        { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+      if (result.error) throw result.error;
+      // Preview and Review return status 1 with JSON when not acceptable.
+      // They are still valid diagnostics, not permission to Accept.
+      if (![0, 1].includes(result.status))
+        throw new Error("SHARED_ACCEPTANCE_FAILED: " + result.stderr);
+      try { return JSON.parse(result.stdout); }
+      catch { throw new Error("SHARED_ACCEPTANCE_NO_JSON: " + result.stderr); }
+    };
+    const preview = run("preview");
+    const review = run("review", ["-format", "json"]);
+    const latest = JSON.parse(execFileSync("go", ["run",
+      "./tools/reference-shared-acceptance", "revision", "-workspace", workspace],
+      { cwd: root, encoding: "utf8" })).modelRevision;
+    if (latest !== revision) throw new Error("SOURCE_CHANGED_DURING_REVIEW");
+    return { schema: "tei.reference.studio-review-edit/v0",
+      modelRevision: revision, sourceRevisionAfterReview: latest,
+      sourceWriteByThisCommand: false, explicitAcceptance: "not-performed",
+      candidate, preview, review,
+      realizationReadiness: { status: "not-verified" } };
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 }
 try {
   const result = main(process.argv.slice(2));
