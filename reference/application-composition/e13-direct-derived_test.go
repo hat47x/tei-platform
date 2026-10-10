@@ -116,3 +116,17 @@ func TestE13ReferenceWorkspaceApplicationPatternMembership(t *testing.T) {
 		t.Fatalf("E5 and existing Derived Index disagree on order_entry Pattern membership: E5=%v Derived=%v", patterns, indexPatterns)
 	}
 }
+
+func TestE13SUIStage0RemainsNonApplication(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "sui-adoption", "workspace")
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load SUI Stage 0: %v", err)
+	}
+	derived := e13FromWorld(loaded.World)
+	for _, pattern := range derived.ApplicationPatterns {
+		if string(pattern.Application) == "sui_reference_adoption_stage0" {
+			t.Fatalf("semantic-only SUI Stage 0 acquired an Application Pattern: %+v", pattern)
+		}
+	}
+}
