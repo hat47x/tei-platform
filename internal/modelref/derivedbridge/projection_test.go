@@ -41,3 +41,21 @@ func TestUnknownDoesNotBecomeCanonical(t *testing.T) {
 		t.Fatalf("invented scope: %+v", p)
 	}
 }
+
+func TestAmbiguousGenericSemanticReferenceNeverGuessed(t *testing.T) {
+	d := index.Derived{
+		SemanticElements: []index.SemanticElementEntry{
+			{Kind: "type", ID: "sales.shared"},
+			{Kind: "data", ID: "sales.shared"},
+			{Kind: "capability", ID: "sales.consumer"},
+		},
+		SemanticDependencies: []index.SemanticDependency{
+			{FromKind: "semantic-capability", From: "sales.consumer", Relation: "input", ToKind: "semantic-element", To: "sales.shared"},
+		},
+	}
+	p := derivedbridge.FromIndex(d, "sales-scope")
+	if len(p.Graph.Edges) != 0 || len(p.Unresolved) != 1 ||
+		p.Unresolved[0] != "unresolved-semantic-element:sales.shared" {
+		t.Fatalf("generic semantic identity was guessed: %+v", p)
+	}
+}
