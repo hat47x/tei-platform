@@ -262,11 +262,15 @@ result identity:
 - semantic contract: `tei.epistemic-detail/v0`
 - representation schema: `tei.reference.epistemic-detail/v0`
 
-queryはassertion IDに加え、表示・選択時点のmeaning fingerprint、review subject fingerprint、target binding、review log sequenceだけを持ちます。authorization情報はsemantic queryへ入れません。
+queryはassertion IDと、表示・選択時点で観測したmeaning fingerprint、review subject fingerprint、target binding、review log sequence、metadata stateを持ちます。これらはread時の楽観ロック条件ではなく、現在のdetailとの差分を判定するための観測snapshotです。authorization情報はsemantic queryへ入れません。
 
 access範囲は別の`TransportAccess`として、既存authorization adapter / server境界からresolverへ注入します。UIや認知consumerがpolicy refをqueryの意味として扱う必要はありません。Referenceは渡されたopaqueなaccess refの意味を推測せず、既存transportと同じ完全一致semanticsだけで可視範囲を絞ります。
 
-resolverはそのaccess contextで既存transportと同じfilterを通し、可視範囲を現在のContextQueryで再評価します。receiptのどれかが変わっていれば古いqueryとして拒否します。
+resolverはそのaccess contextで既存transportと同じfilterを通し、可視範囲を現在のContextQueryで再評価します。assertion自体へアクセスできる限り、観測時点から状態が変わっていてもcurrent detailを返します。resultの`drift`は、meaning、subject、review history、target bindingについて`same / changed / indeterminate`を示します。meaningとtarget bindingは`same / changed`、subjectとreview historyはmetadataが不完全なviewをまたぐ場合に`indeterminate`となり得ます。
+
+`indeterminate`はsemantic changeが起きたという意味ではありません。Evidenceやreview historyがaccess redactionで見えなくなった場合、実際の内容変更と可視性変更だけを安全に区別できないため、その不確定性を残します。consumerはdriftがすべて`same`でない場合、detailを閲覧用dataとして表示できても、古いProjectionから生成したreviewやclassification等の操作を再利用せず、current Projectionを取得して操作可否を再評価します。
+
+このread semanticsをhuman review mutationへ適用しません。write側のreview commandはmeaning、review subject、target binding、review sequenceをlost update防止のpreconditionとして扱い、不一致なら引き続きhard rejectします。
 
 取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationに加え、access可能なreview history summaryです。resultにはaccess refを含めません。
 
