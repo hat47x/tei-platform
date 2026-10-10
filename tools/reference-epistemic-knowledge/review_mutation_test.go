@@ -102,6 +102,42 @@ func TestReviewCommandRejectsStaleSequence(t *testing.T) {
 	}
 }
 
+func TestReviewCommandIgnoresAuthorizationOnlySubjectChanges(t *testing.T) {
+	corpus, context := loadFixture(t)
+	command := reviewCommandFor(t, corpus, context, "ai-unreviewed", ReviewEventConfirm, "auth-only-change")
+
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "ai-unreviewed" {
+			continue
+		}
+		corpus.Assertions[i].AccessRefs = []string{"policy:assertion-v2"}
+		for j := range corpus.Assertions[i].Evidence {
+			corpus.Assertions[i].Evidence[j].AccessRefs = []string{"policy:evidence-v2"}
+		}
+	}
+
+	if _, err := applyReviewCommand(corpus, context, command); err != nil {
+		t.Fatalf("authorization-only change invalidated semantic review receipt: %v", err)
+	}
+}
+
+func TestReviewCommandRejectsEvidenceIdentityChange(t *testing.T) {
+	corpus, context := loadFixture(t)
+	command := reviewCommandFor(t, corpus, context, "ai-unreviewed", ReviewEventConfirm, "evidence-content-change")
+
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "ai-unreviewed" || len(corpus.Assertions[i].Evidence) == 0 {
+			continue
+		}
+		corpus.Assertions[i].Evidence[0].Ref = "conversation://tei/release-assumption-v2"
+	}
+
+	_, err := applyReviewCommand(corpus, context, command)
+	if err == nil || !strings.Contains(err.Error(), "subject binding is stale") {
+		t.Fatalf("Evidence identity change did not invalidate semantic review receipt: %v", err)
+	}
+}
+
 func TestReviewCommandRejectsStaleReviewSubjectBinding(t *testing.T) {
 	corpus, context := loadFixture(t)
 	command := reviewCommandFor(t, corpus, context, "user-current", ReviewEventConfirm, "stale-subject")
