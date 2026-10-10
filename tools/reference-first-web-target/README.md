@@ -191,7 +191,7 @@ Semantic / Functional runner単独ではVisual Fidelity Evidenceを取得しま�
 
 さらに、受注用のHTTP read/commandレスポンス型・ハンドラーと`/custom-submit`のルート登録を`order_scenario_http.go`にまとめ、repair側の`/scenario/customer-lookup`・`/customer-lookup`のルート登録とHTTPハンドラーは`repair_scenario_http.go`へ配置しました。業務RunnerはHTTP依存を持たない`customer_lookup_scenario.go`に残しています。共通`server.go`の`Handler()`は二つの登録関数を呼び出します。
 
-共有行Projectionの型・変換は`read_scenario.go`から`shared_semantic_projection.go`へ移し、受注Runnerと修理受付Runnerが型や変換処理を複製せず利用できるようにしました。さらに、`repair_intake`のExecutor Registryは顧客参照用Oracleだけを登録する構成へ縮小しました。`order_entry`ではOracle顧客参照とPostgreSQL明細参照の両方を引き続き登録します。`runner_transport_boundary_test.go`で業務RunnerソースへのHTTP/JSON Transport import混入を拒否し、`reference_contract_query_fixture_test.go`で二Applicationの登録範囲を検査します。**これらのテストは最新PR HEADでは未実行です。**
+共有行Projectionの型・変換は`read_scenario.go`から、独立Goパッケージ[`sharedprojection`](sharedprojection/README.md)へ移しました。`shared_semantic_projection.go`は従来の名前と関数署名を保つための型エイリアス・薄いラッパーだけを残し、受注Runnerと修理受付Runnerが型や変換処理を複製せず利用できるようにしました。新しいパッケージはWorkspace LoaderやLegacy認証・認可を直接参照せず、Goの依存閉包についても専用テストで負例を固定します。さらに、`repair_intake`のExecutor Registryは顧客参照用Oracleだけを登録する構成へ縮小しました。`order_entry`ではOracle顧客参照とPostgreSQL明細参照の両方を引き続き登録します。`runner_transport_boundary_test.go`で業務RunnerソースへのHTTP/JSON Transport import混入を拒否し、`reference_contract_query_fixture_test.go`で二Applicationの登録範囲を検査します。**これらのテストは最新PR HEADでは未実行です。**
 
 **現行の第一Web Targetは、従来どおり両Applicationのルートを登録する一つのGo `package main`です。** 未設定RunnerへのHTTP 503、非対応methodへの405、存在しないパスへの404を維持するための回帰テストを追加しました。この整理のみで不要なGo実装がコンパイル・リンクから除外されたとは言えません。
 
