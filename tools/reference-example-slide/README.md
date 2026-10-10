@@ -160,3 +160,13 @@ GoコードとテストはPR #1128に追加したが、対象BranchのGoテス�
 CLIのCase入力も未知fieldを拒否する。例えば`completeTables`の綴り違いを黙って無視すると検証範囲が変わるため、誤入力として扱う。
 
 これらはPR #1128の候補実装であり、対象BranchのGoテストやRepository-health GateのPASSは未確認である。
+
+## RelationKeyの型同一性 — 表面的な値の一致を過信しない
+
+`CatalogFromWorld`では、従来の表示用`type`（string / integer / opaqueなど）に加えて、各属性の**Canonical typeRef**を`semanticType`として保持する。
+
+値がたまたま`"001"`同士であっても、片方がSupplier ID、もう片方がCustomer IDなら、それだけで業務上の同一性を証明できない。このため、RelationKeyで結合する両属性の`semanticType`が異なる場合、または片側だけ型identityを持つ場合は、`relation-key-type-not-confirmed`として`unresolved`にする。表示用基本型しか無い合成Catalogでは、両基本型が同一であることを要求する。
+
+これはCanonicalな型IDの**同一性に関する保守的な条件**であり、異なるAliasが認証済み変換で相互運用できるか、あるいは型が同一なら実値のドメイン制約を満たすかは判断しない。ValueやReferential Integrityの完全検証に読み替えない。
+
+`relation_assessment_test.go`へ、文字列一致なのに意味的な型が異なる場合、双方の型IDが同じ場合、片側の型IDだけがある場合の否定・肯定試験を追加した。対象PR全体のGoテストは未実行。
