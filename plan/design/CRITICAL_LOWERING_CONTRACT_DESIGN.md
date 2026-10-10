@@ -27,8 +27,8 @@
 
 - `tei.lowering-candidate/v0`: Source Ref、Language Contract Ref、三視点などのtyped subject Ref、required Contract / scope / effect / Context Slot宣言。source spanやSource Index本文は持たず、正本へ参照で戻る。
 - `tei.lowering-acceptance-link/v0`: candidate digest、Accepted snapshot Ref、trusted Acceptance receipt Ref。参照可能であることは受理権限の証明ではなく、現行のauthoritative Shared Acceptanceで照合する。
-- `tei.lowering-neutral-plan/v0`: Accepted snapshot RefとContract / effect / required slotのintent。Target、Provider、principal、credential、Environment binding実値を入れない。
-- `tei.lowering-witness/v0`: selected Provider、Conformance、既存Capability Resolution Lock、既存Build Artifactの**参照**、Runtime dependency、Target step。これはTarget-bound witnessであり、新しいArtifact Lockでもない。
+- `tei.lowering-neutral-plan/v0`: Accepted snapshot Ref、Origin（source / language / candidate digest / Acceptance receiptへの参照）、Contract / effect / required slotのintent。Target、Provider、principal、credential、Environment binding実値を入れない。
+- `tei.lowering-witness/v0`: OriginとAccepted snapshotを引き継ぎ、selected Provider、Conformance、既存Capability Resolution Lock、既存Build Artifactの**参照**、Runtime dependency、Target step。これはTarget-bound witnessであり、新しいArtifact Lockでもない。
 - `Ref`: `{id,version,fingerprint}`のexact照合。major番号一致のみから互換性を推定しない。Referenceで使う`sha256:...`文字列は合成ラベルで、実digest検証・発行者の真正性は実装していない。
 
 **Context Slotの宣言**はCandidate digestとAccepted Contract / Provider conformanceへ束縛する。slotが欠けたとき「context不要」として実行することを禁止する。一方、session / verified principal / access refなどの**実値**はSnapshot / Lock / Plan / Artifact / Cache Keyに記録しない。毎回trusted HostでbindingとAuthorizationを検査し、Providerへ必要なslotだけ渡す。Auth engine / Resource Brokerの第二実装を作らない。
@@ -45,7 +45,7 @@
 | `missing-capability` / `missing-wiring` | 明示解決先がない | #951 / #1016 の選択へ戻る |
 | `incompatible-version` / `contract-drift` | exact identity、schemaまたはfingerprint不一致 | Contract / Providerを再解決 |
 | `ambiguous-provider` / `ambiguous-wiring` | 複数候補を暗黙選択しようとした | 一意なwiringを要求 |
-| `conformance-or-context-drift` / `unverified-provider` | Scope・Conformance・Context Slot・publisher Authority不備 | contract ownerに戻りfix |
+| `invalid-context-declaration` / `conformance-or-context-drift` / `unverified-provider` | Scope・Conformance・Context Slot・publisher Authority不備 | contract ownerに戻りfix |
 | `unsupported-target` | Targetがeffect / realizationを提供できない | 明示的に別Target案へ（意味を変えない） |
 | `missing-execution-context` / `authorization-denied` | 実行時のHost slot binding / current grant不備 | **Providerを実行しない** |
 
