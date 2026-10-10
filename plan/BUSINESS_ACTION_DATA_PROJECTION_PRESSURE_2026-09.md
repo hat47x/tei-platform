@@ -217,7 +217,7 @@ no data dependency
 
 ## 9. CRUD matrixへの含意
 
-Watanabe / X-TEA pressureと同様、matrixはstructured designからderiveする。
+X-TEA等の外部設計資料と同様に、matrixは構造化された設計情報から導出する。
 
 Current pressureでまず安全に作れるのは:
 

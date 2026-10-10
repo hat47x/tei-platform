@@ -15,7 +15,7 @@ Handoff
 
 だけを保持する。
 
-Pre-ADR Gate Cでsecond realistic Handoffを確認する前に、Watanabe external design evidenceから次の疑問が出る。
+Pre-ADR Gate Cでsecond realistic Handoffを確認する前に、外部設計資料の検討から次の疑問が出る。
 
 ```text
 actor / job context
@@ -70,7 +70,7 @@ ActorはProcedure側Business contextとしてreview可能であり、Handoff rel
 
 ## 3. Procedure trigger / Handoff condition pressure
 
-Watanabe external evidenceはBusiness workがevent-drivenに開始され得ることをcorroborateする。
+参照した外部設計資料は、Business workがイベントを契機に開始され得ることを裏付ける。
 
 しかし:
 
@@ -147,7 +147,7 @@ broader realistic review context
 
 ## 5. External source quality note
 
-Watanabe bookについて、書籍の存在・著者・出版年・「業務フローのパターン」等の章構成は日本実業出版社系書誌、国立国会図書館、版元ドットコム等で確認できる。
+参照した書籍について、存在・著者・出版年・「業務フローのパターン」等の章構成は日本実業出版社系書誌、国立国会図書館、版元ドットコム等で確認できる。
 
 一方、次の細目:
 

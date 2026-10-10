@@ -39,7 +39,7 @@
 - `plan/BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`
 - `plan/BUSINESS_HANDOFF_TEI_ORIGINAL_SECOND_CASE_SEARCH_2026-09.md`
 
-`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`は現在、公開横断の詳細Evidence正本ではなくExternal Design Reference Noteである。X-TEA / XEAD / 渡辺幸三氏に関する詳細corroborationは、Business Flow / Handoff / O1 / CRUD等のquestion-specific Lane C auditへ近接保持する。
+`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`は現在、公開横断の詳細Evidence正本ではなくExternal Design Reference Noteである。X-TEA / XEAD等の外部設計資料に関する詳細corroborationは、Business Flow / Handoff / O1 / CRUD等のquestion-specific Lane C auditへ近接保持する。
 
 ## Lane境界
 
@@ -271,7 +271,7 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 | A95 | migration previewでlegacy sourceを読めるが、legacy + candidate simultaneous authorityをrejectし、one cutover後candidate-only reloadへ進む | test-only実装済み / production cutover未採用 |
 | A96 | Procedure actor context変更をHandoff endpoint identityへ複製せずProcedure + Step local addressでsame relationをresolveする | test-only structural Pressure |
 | A97 | Procedure triggerとHandoff conditionを別authorityとして扱い、片側変更を他方へ暗黙同期しない | test-only structural Pressure |
-| A98 | Watanabe external evidenceはthree-view mutual constraint / event-driven Business Flowをcorroborateするがactor/event/document field追加authorityにはしない | external corroboration / no schema expansion |
+| A98 | 外部設計資料はthree-view mutual constraint / event-driven Business Flowをcorroborateするがactor/event/document field追加authorityにはしない | external corroboration / no schema expansion |
 | A99 | current TEI-original Repositoryにindependent second realistic Handoffはなく、adjacency / defect / Lifecycle / Deploymentをsecond caseへ昇格しない | negative Evidence / Pre-ADR Gate C未充足 |
 | A100 | workspace manifestのdeclared source rootをBusiness physical discovery候補にしてもunknown rootは`ir.World` Business embeddingを自動発生させない | test-only実装 / existing loader corroboration |
 | A101 | declared Business root外にlegacy Reference fileが存在してもmanaged authority candidateへ入れず`file exists != authority reachable`を表現する | test-only実装済み |
