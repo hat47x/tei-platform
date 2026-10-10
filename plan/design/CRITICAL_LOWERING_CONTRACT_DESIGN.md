@@ -124,3 +124,29 @@ Runtime preflightで独立に照合すべき根拠を明示する。
 同じ認可の失敗でもApplication-level business outcome（業務規則による拒否）とHost permission gate failure（実行権限不足）は混同しない。Retry、business completion、Observationも別の契約。上記テストは合成callbackで否定経路だけをpressureしており、実EnvironmentでのS05 actual evidenceではない。
 
 **停止条件:** 受注明細を実際に保存する際の正規Driver経路、Datasource Resolver、current Schema互換性証跡、Runtime Host Grantを同時に示せるまでは、このReferenceをproduction enforcementとして採用しない。実施した検査の根拠・時点・scoped identityが提出できない場合はUnknown/Unverifiedとして拒否し、static fingerprintのみから「現在も許可」としない。
+
+## 7. Source dependency witness・Datasource alias・Build-only cache
+
+### Authoring→AcceptanceのSource fingerprint
+
+先の合成Referenceが持っていた`Candidate.Source`（Application fileのみ）では、PatternやSemantic定義の変更がSource側の変更として表現されず、古いAcceptanceを誤って再利用するおそれがあった。追加した`SourceInputs []Ref`は、解釈に入力した依存SourceのID/Version/Fingerprintを明示する。Authoring→Accepted Candidateのdigest、Target-neutral Origin、Target-bound PlanのOriginまで欠落させない。重複・未fingerprint・非決定的な順序は拒否し、Source Indexを読んだintegration testで参照したSource fileの**実SHA-256**をBindingする。
+
+ただし、現時点の入力集合は受注のApplication/Command Pattern/Sales Data/Validationの代表Sourceであり、Productionに必要な**全依存Source closure**が網羅されたという意味ではない。完全な依存グラフとAcceptanceの正当性はWorkspace Loader/ParserとTrusted Acceptance ownerに帰属し、Reference側で署名や承認を発行しない。CandidateのfingerprintはSource Indexから取得可能な実値に置き換えられるが、それをTrustの自己申告だけで正当化してはならない。
+
+### Datasourceと物理Instanceを混同しない
+
+`DataNeed`にはApplication-local `Datasource` aliasを追加した。`sales`・`master`は実Source上の明示名であり、`sales_core.dev`・`master_data.dev`という実行環境固有のDB instanceとは異なる。Alias + Database + Contract ID + Compatible Majorの組がSourceと一致することをintegration testで照合する。これにより、複数aliasで同一Databaseを参照する案件でも、Contractだけから物理接続を推定しない。
+
+### Build-only dependency変更の再生成
+
+Reference `Keys`は`Builder`に加え、既存Build Artifact ownerが解決した**選択済みBuild-only dependency集合**をartifact stageのkeyへ明示的に受け取る。Build-only depsの追加・version変更は`Build`だけ無効化し、`Interpret`/`Accept`/`Resolve`/`Target`は維持する。並び順を正規化し、Plugin registration orderだけの差で再ビルドしない。逆に、この集合はTarget-neutral intent・runtime Stepsには保存せず、Runtime depsやcurrent grantと混同しない。
+
+これらは`/v0`候補の境界実証であり、既存の`#943` Build Artifact型、`#951` Resolver型、`#1118` Context型へ新しい本番用重複データ構造を導入する提案ではない。
+
+### 正確な残作業
+
+1. Source Indexから完全な依存closureを決定しTrusted Acceptanceへの受理証跡を結ぶ。
+2. Capability Resolverと既存Lock/Artifactの**実IDとfingerprint**を使ったBindingを追加する。
+3. `order_entry` Web HTTP実行でactual Target trace（Auth/Validation/Business Result/Separate Observation）を獲得する。
+4. 第二Targetは意味の不変条件、Capability非対応の失敗または具体的実行差分を実証する。
+5. exact-head clean checkoutでGo test・gofmt・repository-health-checkを実行し、証跡を残す。現時点でこれらは未実行。
