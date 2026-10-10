@@ -64,3 +64,20 @@ E7の限定的な観測を、依存閉包が成立したという意味に読み
 7. **権限を分離する**：閉包が完全でも、互換性・生成許可・デプロイ可否・実行時認可を自動的に承認しない。これらは各専用検証器の判定に委ねる。
 
 この節は設計上の受入条件であり、E8の実装・テスト完了を主張しない。既存のE5/E6/E7のJSON契約や終了コードは変更しない。
+
+## E8接続点のコード調査（2026-10-10）
+
+ブランチ上の既存コードを確認した。以下は**実装済みAPIと、未実装の接続処理の区別**である。
+
+| 既存の型・API | 所在 | E8での役割と制約 |
+| --- | --- | --- |
+| `ir.World` | `internal/ir/world.go` | `Applications`、`Semantics`、`Databases`、`Plugins`、`Environments`などを保持する正規化済みM0入力。依存辺そのものを列挙するAPIではない。 |
+| `sourceindex.Subject` | `internal/sourceindex/model.go` | 中立の`internal/subject.Subject`への互換alias。依存先の識別子に使用できるが、依存関係を自動生成しない。 |
+| `sourceindex.Index.ReferencesFor(subject)` | 同上 | 指定SubjectのSource参照を列挙。定義参照の一意性は呼出側で検査する必要がある。 |
+| `sourceindex.RoleDefinition` | 同上 | 定義証跡の選択に使用。Authoring/Derived/Implementationを定義証跡に昇格させない。 |
+| `sourceindex.Index.Validate(read)` | 同上 | Artifact fingerprintとRangeの整合を読み直して検査する。Loaderが解析した入力との同一性までは証明しない。 |
+| `e5UniqueSource` | `reference/application-composition/e5-world-index.go` | Definitionが一意でfingerprintが存在することを確認する既存の限定的join。E8では重複実装より共通化を検討。 |
+
+**不足している接続契約**：既存意味解析器から、起点Subject・到達先Subject・辺の意味・解析不能理由を列挙する型付き依存辺の公開契約が必要。これは調査対象であり、上記の`World`や`Index`が既に提供しているとは扱わない。まず意味解析器側の既存処理と責務を調査し、公開するなら循環・未知種別・不正参照を区別できる失敗型を定める。Source Indexは証跡joinを担当し、意味辺の推定は担当しない。
+
+**実装順序案**：①既存意味解析器の参照解決箇所を特定 → ②最小の型付き辺を読み取り専用で公開 → ③E5の直接依存と統合し、Source証跡へjoin → ④推移閉包と失敗側判定を追加 → ⑤間接依存だけが変化する負例を通す。現時点では①の全面調査や②以降の実装・テストは未完了。
