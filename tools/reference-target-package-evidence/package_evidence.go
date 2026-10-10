@@ -142,6 +142,10 @@ func parseGoList(reader io.Reader, entry, tags string) (Report, error) {
 // reported by go list is in the Git index. git status --untracked-files=all
 // alone does not expose ignored source files that Go could still compile.
 func validateTrackedSources(raw []byte, root string, tracked map[string]struct{}) error {
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return fmt.Errorf("cannot resolve repository root: %w", err)
+	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	for {
 		var p listedPackage
@@ -176,8 +180,11 @@ func validateTrackedSources(raw []byte, root string, tracked map[string]struct{}
 			if err != nil {
 				return fmt.Errorf("cannot resolve compiled source %q: %w", rel, err)
 			}
-			if filepath.Clean(resolved) != filepath.Clean(full) {
-				return fmt.Errorf("compiled source %q traverses a symlink", rel)
+			// Compare with the canonical root: /var and /private/var can
+			// denote the same temporary checkout on some hosts.
+			expected := filepath.Join(canonicalRoot, filepath.FromSlash(rel))
+			if filepath.Clean(resolved) != filepath.Clean(expected) {
+				return fmt.Errorf("compiled source %q traverses a symlink below repository root", rel)
 			}
 			info, err := os.Stat(full)
 			if err != nil || !info.Mode().IsRegular() {
