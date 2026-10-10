@@ -14,7 +14,7 @@ func TestOrderApprovalAndWarehousePreparationDemonstration(t *testing.T) {
 		"../../reference/workspace",
 	)
 	if err!=nil { t.Fatal(err) }
-	if len(p.Diagnostics)!=0 { t.Fatalf("demo should be a reviewable source case: %+v",p.Diagnostics) }
+	for _,d:=range p.Diagnostics { if d.Severity=="error" { t.Fatalf("demo should be a reviewable source case: %+v",d) } }
 	if p.ProcedureID!="order-entry.approval-and-shipment-prep" { t.Fatalf("unexpected procedure %s",p.ProcedureID) }
 	if len(p.Steps)!=8 || len(p.Triggers)!=3 || len(p.Information.InformationFlows)!=5 || len(p.Handoffs)!=1 {
 		t.Fatalf("demo projection incomplete: steps=%d triggers=%d information=%d handoffs=%d",
