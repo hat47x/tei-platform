@@ -211,4 +211,9 @@ func TestWebTargetSessionRouteIsOptInAndFailsClosed(t *testing.T) {
 	if _, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config)); err == nil {
 		t.Fatal("session route accepted a different command runner")
 	}
+	config = syntheticProtectedSessionConfiguration(runner)
+	if _, err := newWebTargetServer(projection, read, runner,
+		withProtectedSessionCommand(config), withProtectedSessionCommand(config)); err == nil {
+		t.Fatal("duplicate protected session declarations were silently overwritten")
+	}
 }
