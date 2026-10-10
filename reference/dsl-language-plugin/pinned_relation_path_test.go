@@ -10,21 +10,17 @@ import (
 )
 
 func pinnedRelationPathFixture() ([]PinnedRelationStep, []OperatorContract) {
-	first := OperatorContract{
-		ID: "std.op.expand", Version: "1", Fingerprint: "expand-customer-v1",
-		Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/customer.customer",
+	// One semantic contract specializes across both Relation endpoints.
+	// Source and target bindings must come from the canonical World, not
+	// from a new operator identity or version per Relation.
+	expand := OperatorContract{
+		ID: "std.op.expand", Version: "1", Fingerprint: "expand-parametric-v1",
+		Effect: "pure", InputType: expandSourceTypeVariable, OutputType: expandTargetTypeVariable,
 	}
-	second := OperatorContract{
-		ID: "std.op.expand", Version: "1", Fingerprint: "expand-address-v1",
-		Effect: "pure", InputType: "rows/customer.customer", OutputType: "rows/address.address",
-	}
-	// These are distinct pins for distinct operator versions in the same
-	// mock catalog. Production identity must come from accepted contracts.
-	second.Version = "2"
 	return []PinnedRelationStep{
-		{RelationID: "sales.order.customer", Call: PinnedCall{Contract: first, InputType: first.InputType}},
-		{RelationID: "customer.customer.addresses", Call: PinnedCall{Contract: second, InputType: second.InputType}},
-	}, []OperatorContract{first, second}
+		{RelationID: "sales.order.customer", Call: PinnedCall{Contract: expand, InputType: "rows/sales.order"}},
+		{RelationID: "customer.customer.addresses", Call: PinnedCall{Contract: expand, InputType: "rows/customer.customer"}},
+	}, []OperatorContract{expand}
 }
 
 func TestInspectPinnedRelationPathPreservesEveryRelation(t *testing.T) {
@@ -43,8 +39,9 @@ func TestInspectPinnedRelationPathPreservesEveryRelation(t *testing.T) {
 		t.Fatalf("wrong path shape: %#v", result)
 	}
 	for i, id := range []core.CanonicalID{"sales.order.customer", "customer.customer.addresses"} {
-		if result.Expansions[i].RelationID != id || len(result.Expansions[i].Keys) != 1 {
-			t.Fatalf("step %d lost relation provenance or keys: %#v", i, result.Expansions[i])
+		if result.Expansions[i].RelationID != id || len(result.Expansions[i].Keys) != 1 ||
+			result.Expansions[i].Operator != catalog[0] {
+			t.Fatalf("step %d lost relation provenance, keys or reusable operator pin: %#v", i, result.Expansions[i])
 		}
 	}
 	// The returned candidates must not alias mutable authored World data.
