@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -74,5 +75,47 @@ func TestCgoPseudoImportIsNotAListedGoPackage(t *testing.T) {
 	nonCgo := `{"ImportPath":"tei/tools/cgo-sample","Module":{"Path":"tei","Main":true},"GoFiles":["main.go"],"Imports":["C","fmt"]}`
 	if _, err := parseGoList(strings.NewReader(nonCgo+"\n"+jsonStd), "tei/tools/cgo-sample", ""); err == nil {
 		t.Fatal("pseudo import C must not excuse a missing Go dependency for non-cgo sources")
+	}
+}
+
+func TestTrackedCompiledSourceInventory(t *testing.T) {
+	root := t.TempDir()
+	pkgDir := filepath.Join(root, "tools", "sample")
+	base := listedPackage{
+		ImportPath: "tei/tools/sample",
+		Dir:        pkgDir,
+		Module:     &listedModule{Path: "tei", Main: true},
+		GoFiles:    []string{"main.go"},
+		CgoFiles:   []string{"native.go"},
+	}
+	tracked := map[string]struct{}{
+		"tools/sample/main.go":   {},
+		"tools/sample/native.go": {},
+	}
+	for _, tc := range []struct {
+		name    string
+		prepare func(*listedPackage)
+		wantErr bool
+	}{
+		{name: "tracked-go-and-cgo", prepare: func(*listedPackage) {}},
+		{name: "ignored-go-source", prepare: func(p *listedPackage) { p.GoFiles = append(p.GoFiles, "ignored.go") }, wantErr: true},
+		{name: "ignored-cgo-source", prepare: func(p *listedPackage) { p.CgoFiles = append(p.CgoFiles, "ignored.go") }, wantErr: true},
+		{name: "missing-directory", prepare: func(p *listedPackage) { p.Dir = "" }, wantErr: true},
+		{name: "out-of-root-directory", prepare: func(p *listedPackage) { p.Dir = filepath.Join(root, "..", "outside") }, wantErr: true},
+		{name: "traversal-file", prepare: func(p *listedPackage) { p.GoFiles = []string{"../escape.go"} }, wantErr: true},
+		{name: "absolute-file", prepare: func(p *listedPackage) { p.GoFiles = []string{filepath.Join(root, "elsewhere.go")} }, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := base
+			tc.prepare(&p)
+			raw, err := json.Marshal(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = validateTrackedSources(raw, root, tracked)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("unexpected error result: %v", err)
+			}
+		})
 	}
 }
