@@ -32,7 +32,7 @@ go run ./cmd/tei validate \\
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドやPlugin機能を列挙する完全な登録簿ではありません。詳細とWeb／デスクトップへの接続方針は[CLI優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
 
-正規化済みの業務モデルから特定の要素だけを読む場合、`inspect`を利用できます。初期対応は`semantic-data`、`application`、`query`の3種類です。kindとCanonical IDを完全一致で指定します。
+正規化済みの業務モデルから特定の要素だけを読む場合、`inspect`を利用できます。初期対応は`semantic-data`、`semantic-relation`、`application`、`application-pattern`、`query`の5種類です。kindとCanonical IDを完全一致で指定します。
 
 ```bash
 go run ./cmd/tei inspect \
@@ -43,7 +43,7 @@ go run ./cmd/tei inspect \
 
 `inspect`は`tei.cli.inspect/v0`形式のJSONを返します。成功時の`result.canonical`は既存のNormalized Worldから選択した要素そのもの、`result.sources`は既存Source Indexの参照とArtifact fingerprintです。`worldFingerprint`は読取り時点のCanonical Worldの内容を識別するためのハッシュであり、競合更新を防ぐrevisionや変更の受理証跡ではありません。`sourceStatus=not-indexed`はSource Indexに参照がないことを意味し、Canonicalの不存在とは区別します。
 
-業務モデル要素の参照先と参照元を調べるには、読み取り専用の`trace`を使用します。初期段階では既存のDerived Indexが表現できる宣言済みの直接参照に限定しています。
+業務モデル要素の参照先と参照元を調べるには、読み取り専用の`trace`を使用します。`inspect`と共通のkind/ID（例：`semantic-relation: sales.order.customer`）から意味情報と参照関係の両方を取得できます。初期段階では既存のDerived Indexが表現できる宣言済みの直接参照に限定しています。
 
 ```bash
 go run ./cmd/tei trace \
