@@ -79,6 +79,22 @@ func TestWorldRelationRejectsAmbiguousTarget(t *testing.T) {
 	}
 }
 
+func TestWorldRelationPathRejectsLaterHopIdentityCollision(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	// Only the second hop is ambiguous. The first hop remains valid.
+	w.Semantics[0].Data[0].Relations = append(w.Semantics[0].Data[0].Relations,
+		semantic.Relation{
+			ID: "customer.customer.addresses", Target: "address.address",
+			Cardinality: semantic.CardinalityMany,
+		})
+	_, err := TraceRelationPath(w, "sales.order", []core.CanonicalID{
+		"sales.order.customer", "customer.customer.addresses",
+	})
+	if err == nil || !strings.Contains(err.Error(), "step 1") {
+		t.Fatalf("later-hop global relation collision not located: %v", err)
+	}
+}
+
 // TestWorldRelationDoesNotAddStricterKeyRules ensures the reference does not
 // invent a source-key uniqueness restriction absent from the canonical
 // validator. Distinct target attributes remain independently mapped.
