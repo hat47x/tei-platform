@@ -22,12 +22,12 @@ func transportDispatchPlanForTest(
 	return plan
 }
 
-func newAuthorizedHTTPTransportServer(
+func newPlannedHTTPTransportServer(
 	t *testing.T,
 	plan TransportDispatchPlan,
 ) *httptest.Server {
 	t.Helper()
-	handler, err := NewAuthorizedHTTPTransportHandler(
+	handler, err := NewPlannedHTTPTransportHandler(
 		plan,
 		echoHTTPTransportImplementation,
 	)
@@ -39,13 +39,13 @@ func newAuthorizedHTTPTransportServer(
 	return server
 }
 
-func TestAuthorizedProcessTransportRejectsDispatchDriftBeforeLauncher(t *testing.T) {
+func TestPlannedProcessTransportRejectsDispatchDriftBeforeLauncher(t *testing.T) {
 	dispatch := genericDispatch([]byte("payload"))
 	plan := transportDispatchPlanForTest(t, dispatch)
 	dispatch.Target = "tampered-target"
 
 	launcher := &countingProcessLauncher{}
-	_, err := invokeAuthorizedOverProcessTransport(
+	_, err := invokePlannedOverProcessTransport(
 		context.Background(),
 		launcher,
 		pruntimeProcessCommandForPlanTest(),
@@ -62,14 +62,14 @@ func TestAuthorizedProcessTransportRejectsDispatchDriftBeforeLauncher(t *testing
 	}
 }
 
-func TestAuthorizedHTTPTransportRejectsDispatchDriftBeforeNetwork(t *testing.T) {
+func TestPlannedHTTPTransportRejectsDispatchDriftBeforeNetwork(t *testing.T) {
 	dispatch := genericDispatch([]byte("payload"))
 	plan := transportDispatchPlanForTest(t, dispatch)
 	dispatch.Provider.ImplementationID = "tampered.implementation"
 
 	roundTripper := &countingRoundTripper{}
 	client := &http.Client{Transport: roundTripper}
-	_, err := invokeAuthorizedOverHTTPTransport(
+	_, err := invokePlannedOverHTTPTransport(
 		context.Background(),
 		client,
 		"http://example.invalid/capability",
@@ -85,12 +85,12 @@ func TestAuthorizedHTTPTransportRejectsDispatchDriftBeforeNetwork(t *testing.T) 
 	}
 }
 
-func TestAuthorizedProcessAndHTTPReceiptsBindSameDispatchPlan(t *testing.T) {
+func TestPlannedProcessAndHTTPReceiptsBindSameDispatchPlan(t *testing.T) {
 	dispatch := genericDispatch([]byte{0x00, 0xfe, 0xff, 'P', 'L', 'A', 'N'})
 	plan := transportDispatchPlanForTest(t, dispatch)
 
 	processLauncher, processCommand := helperLauncher("echo")
-	processExecution, err := invokeAuthorizedOverProcessTransport(
+	processExecution, err := invokePlannedOverProcessTransport(
 		context.Background(),
 		processLauncher,
 		processCommand,
@@ -103,8 +103,8 @@ func TestAuthorizedProcessAndHTTPReceiptsBindSameDispatchPlan(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server := newAuthorizedHTTPTransportServer(t, plan)
-	httpExecution, err := invokeAuthorizedOverHTTPTransport(
+	server := newPlannedHTTPTransportServer(t, plan)
+	httpExecution, err := invokePlannedOverHTTPTransport(
 		context.Background(),
 		server.Client(),
 		server.URL,
@@ -155,12 +155,12 @@ func TestTransportDispatchPlanRejectsIdentityTamperWithReusedFingerprint(t *test
 	}
 }
 
-func TestAuthorizedTransportReceiptDoesNotPromoteDispatchPlanToAuthority(t *testing.T) {
+func TestPlannedTransportReceiptDoesNotPromoteDispatchPlanToAuthority(t *testing.T) {
 	dispatch := genericDispatch([]byte("payload"))
 	plan := transportDispatchPlanForTest(t, dispatch)
-	server := newAuthorizedHTTPTransportServer(t, plan)
+	server := newPlannedHTTPTransportServer(t, plan)
 
-	execution, err := invokeAuthorizedOverHTTPTransport(
+	execution, err := invokePlannedOverHTTPTransport(
 		context.Background(),
 		server.Client(),
 		server.URL,
