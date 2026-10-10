@@ -8,7 +8,7 @@
 
 ## この文書の位置づけ
 
-この文書は、Capabilityへ渡す業務上・意味上の入力と、Hostが実行時に与える認可情報などを分けるための設計候補をまとめる。
+この文書は、Capabilityへ渡す業務上・意味上の入力と、Hostが実行時に与える認可情報などを分けるための設計候補をまとめる。TEI全体の層構造やPlugin Architectureの第二正本にはせず、この機能内部の境界だけを扱う。
 
 #951では、Capability Contract、Provider、Conformance、Authority scope、read-only Invocationを分離するReferenceが作られている。#1118ではその仕組みを作り直さず、generic Invocationへ実行時の文脈を安全に渡すために不足している境界だけを扱う。
 
