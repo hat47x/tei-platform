@@ -26,18 +26,18 @@ type commandScenarioInput struct {
 }
 
 type commandScenarioResult struct {
-	ScenarioID      string                       `json:"scenarioId"`
-	ApplicationID   string                       `json:"applicationId"`
-	Stage           string                       `json:"stage"`
-	Authentication  *businessResultProjection    `json:"authentication,omitempty"`
-	Read            *readScenarioResult          `json:"read,omitempty"`
-	Validations     []validationResultProjection `json:"validations,omitempty"`
-	Authorization   *businessResultProjection    `json:"authorization,omitempty"`
-	EffectAuthorization *businessResultProjection `json:"effectAuthorization,omitempty"`
-	Command         *businessResultProjection    `json:"command,omitempty"`
-	Observation     *observationProjection       `json:"observation,omitempty"`
-	AuthorityLimits []string                     `json:"authorityLimits"`
-	Unresolved      []string                     `json:"unresolved"`
+	ScenarioID          string                       `json:"scenarioId"`
+	ApplicationID       string                       `json:"applicationId"`
+	Stage               string                       `json:"stage"`
+	Authentication      *businessResultProjection    `json:"authentication,omitempty"`
+	Read                *readScenarioResult          `json:"read,omitempty"`
+	Validations         []validationResultProjection `json:"validations,omitempty"`
+	Authorization       *businessResultProjection    `json:"authorization,omitempty"`
+	EffectAuthorization *businessResultProjection    `json:"effectAuthorization,omitempty"`
+	Command             *businessResultProjection    `json:"command,omitempty"`
+	Observation         *observationProjection       `json:"observation,omitempty"`
+	AuthorityLimits     []string                     `json:"authorityLimits"`
+	Unresolved          []string                     `json:"unresolved"`
 }
 
 type validationResultProjection struct {
