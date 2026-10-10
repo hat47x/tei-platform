@@ -320,7 +320,12 @@ func validateCatalog(c Catalog) error {
 			}
 		}
 	}
+	relationIDs := map[string]bool{}
 	for _, relation := range c.Relations {
+		if relationIDs[relation.ID] {
+			return fmt.Errorf("duplicate semantic relation %q", relation.ID)
+		}
+		relationIDs[relation.ID] = true
 		from, srcOK := c.Tables[relation.SourceTable]
 		to, dstOK := c.Tables[relation.TargetTable]
 		if relation.ID == "" || !srcOK || !dstOK {
@@ -329,10 +334,15 @@ func validateCatalog(c Catalog) error {
 		if relation.Cardinality != "one" && relation.Cardinality != "many" {
 			return fmt.Errorf("%s: unknown cardinality %q",relation.ID,relation.Cardinality)
 		}
+		keyPairs := map[SemanticRelationKey]bool{}
 		for _, key := range relation.Keys {
-			if !hasField(from,key.SourceField) || !hasField(to,key.TargetField) {
-				return fmt.Errorf("%s: unknown relation key %s -> %s",relation.ID,key.SourceField,key.TargetField)
+			if !hasField(from, key.SourceField) || !hasField(to, key.TargetField) {
+				return fmt.Errorf("%s: unknown relation key %s -> %s", relation.ID, key.SourceField, key.TargetField)
 			}
+			if keyPairs[key] {
+				return fmt.Errorf("%s: duplicate relation key pair", relation.ID)
+			}
+			keyPairs[key] = true
 		}
 	}
 	return nil
