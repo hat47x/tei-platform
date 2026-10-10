@@ -35,13 +35,14 @@ type Subject struct {
 // DataNeed describes a logical database Contract requirement, not a bound instance
 // or a claim that a physical schema is currently compatible.
 type DataNeed struct {
+	Datasource string `json:"datasource"` // application-local alias, never a physical instance
 	Database string `json:"database"`
 	Contract string `json:"contract"`
 	VersionConstraint string `json:"versionConstraint"`
 }
 
 func (n DataNeed) valid() bool {
-	if n.Database == "" || n.Contract == "" || len(n.VersionConstraint) < 2 ||
+	if n.Datasource == "" || n.Database == "" || n.Contract == "" || len(n.VersionConstraint) < 2 ||
 		n.VersionConstraint[0] != '^' {
 		return false
 	}
@@ -249,7 +250,7 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 			if !need.valid() {
 				return NeutralPlan{}, reject("invalid-data-requirement")
 			}
-			k := need.Database + ":" + need.Contract
+			k := need.Datasource + ":" + need.Database + ":" + need.Contract
 			if data[k] {
 				return NeutralPlan{}, reject("duplicate-data-requirement")
 			}
