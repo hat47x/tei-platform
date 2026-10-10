@@ -39,13 +39,15 @@ type GenericDispatch struct {
 }
 
 type GenericTransportResult struct {
-	Schema                 string `json:"schema"`
-	ContractID             string `json:"contractId"`
-	ContractFingerprint    string `json:"contractFingerprint"`
-	Target                 string `json:"target"`
-	ResultShapeFingerprint string `json:"resultShapeFingerprint"`
-	PayloadCodec            string `json:"payloadCodec"`
-	Payload                 []byte `json:"payload"`
+	Schema                  string                  `json:"schema"`
+	ContractID              string                  `json:"contractId"`
+	ContractFingerprint     string                  `json:"contractFingerprint"`
+	Target                  string                  `json:"target"`
+	Provider                GenericProviderIdentity `json:"provider"`
+	RequestShapeFingerprint string                  `json:"requestShapeFingerprint"`
+	ResultShapeFingerprint  string                  `json:"resultShapeFingerprint"`
+	PayloadCodec             string                  `json:"payloadCodec"`
+	Payload                  []byte                  `json:"payload"`
 }
 
 type LegacyCarrier struct {
@@ -133,6 +135,8 @@ func invokeOverProcessTransport(
 		result.ContractID != dispatch.ContractID ||
 		result.ContractFingerprint != dispatch.ContractFingerprint ||
 		result.Target != dispatch.Target ||
+		result.Provider != dispatch.Provider ||
+		result.RequestShapeFingerprint != dispatch.RequestShapeFingerprint ||
 		result.ResultShapeFingerprint != dispatch.ResultShapeFingerprint ||
 		result.PayloadCodec != dispatch.PayloadCodec {
 		return TransportExecution{}, fmt.Errorf("generic transport result identity drifted")
@@ -160,6 +164,8 @@ func invokeOverProcessTransport(
 				"transport-success-is-not-runtime-authority",
 				"transport-success-is-not-canonical-acceptance",
 				"legacy-carrier-identity-is-not-generic-contract-identity",
+				"generic-provider-and-shape-echo-is-not-runtime-authority",
+				"process-response-does-not-echo-legacy-capability-kind",
 				"process-stdio-is-one-realization-not-universal-capability-abi",
 			},
 		},
