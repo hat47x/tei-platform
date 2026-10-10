@@ -63,6 +63,25 @@ func ReviewMigration(before, after Graph, t Transition, retargets []EdgeRetarget
 	for _, k := range t.To {
 		created[k] = true
 	}
+	// A migration review must not authorize unrelated node edits. A separate
+	// change proposal may cover them, but this narrow contract cannot.
+	for _, change := range out.Changes {
+		switch change.Kind {
+		case "added":
+			if !created[change.Key] {
+				add("unrelated-node-change", keyString(change.Key))
+			}
+		case "removed":
+			if !removed[change.Key] {
+				add("unrelated-node-change", keyString(change.Key))
+			}
+		case "reference-changed", "reference-evidence-changed":
+			// Explicit retargets cover references below; evidence-only edits
+			// must be reviewed separately by the Shared Acceptance boundary.
+		case "display-renamed", "physical-renamed", "version-changed", "evidence-changed":
+			add("unrelated-node-change", keyString(change.Key))
+		}
+	}
 	oldLookup, newLookup := newLookup(before.Nodes), newLookup(after.Nodes)
 
 	// Identifying an edge by its logical source/relation/target avoids relying
