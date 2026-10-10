@@ -37,7 +37,7 @@ go run ./reference/application-composition \
 go test ./reference/application-composition
 ```
 
-`-include-direct-derived`だけを指定して`-paired-evidence`を省略した場合は入力誤りとして停止する。通常の`-paired-evidence`のJSONには`derived`を追加しない。両フラグを指定した場合のみ、従来の`{format,qualification,report,index}`に`derived`フィールドを追加する。既存E7はこの新しいフィールドから実行権限・Sourceの完全性・変更なしの判定を推論しない。
+`-include-direct-derived`だけを指定して`-paired-evidence`を省略した場合は入力誤りとして停止する。通常の`-paired-evidence`のJSONには`derived`を追加しない。両フラグを指定し、**E5のApplication直接参照Reportが`observed`の場合のみ**、従来の`{format,qualification,report,index}`に`derived`フィールドを追加する。`unresolved`の場合は従来のIssue/Source Index診断を維持する一方、Derived情報を追加公開しない。既存E7はこの新しいフィールドから実行権限・Sourceの完全性・変更なしの判定を推論しない。
 
 **このコマンド列は実行手順であり、今回実際に成功したという記録ではない。**
 
