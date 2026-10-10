@@ -27,3 +27,14 @@ For local checks, `go test ./tools/reference-subsystem-cud` and `go vet ./tools/
 - The source JSON has real `semantics[].data[].id` and `applications[].patterns[].id` arrays. This tool intentionally reads only those known fields; it does not derive owner, actual effect, or Function I/O from a Pattern name, `kind`, or `capability`.
 - The typed Data/Relation/Pattern edge provider is owned by #1120 (Draft PR #1139, `modelref/derivedbridge`). When it is qualified, #1132 should consume those read-only edges by exact scoped identity rather than make another parallel graph representation. Accepted Subsystem ownership and explicitly scoped declared I/O still require a separate verified source/acceptance contract.
 - A complete Source→World→typed edge→CUD diagnostic→Studio navigation path has **not** been run; the local isolated unit tests only qualify this tool's candidate logic.
+
+## Stale-world rejection (E0 snapshot binding)
+
+`facts.json` additionally **must** include `worldJSONFingerprint`, e.g. `"sha256:b21ed42b17ca10937dcf7020d27fce1546a389327375f2ceb958b0a09937d51c"` for the exact bytes of `testdata/world.json`. To prepare a candidate for your own snapshot, compute `sha256sum /path/to/world.json` and prefix the 64 hexadecimal characters with `sha256:`. This binding is deliberately byte-exact: reformatting JSON requires updating the candidate evidence.
+
+- **Matching supplied World bytes**: the CLI runs the existing read-only candidate checks, recording both input digests in the report.
+- **Missing fingerprint**: `WORLD_SNAPSHOT_UNBOUND` (`unresolved`, nonzero exit).
+- **Changed World bytes**: `WORLD_SNAPSHOT_STALE` (`unresolved`, nonzero exit), even if the edited JSON still describes the same identities.
+- **Malformed World/facts JSON**: input decoding fails before inspection. The CLI does not accept an unrelated pre-decoded `World` beside the digest bytes; `InspectSnapshot` decodes and inspects exactly the supplied bytes in one function. A pure `Inspect(w,f)` remains available for candidate-only unit tests but is **not** a snapshot-integrity check.
+
+**This is consistency, not authenticity.** The same caller controls both `facts.json` and `world.json`, so a newly computed matching digest cannot establish that either comes from an accepted TEI Workspace. It is not a signature, Source Index conformance, Shared Acceptance authorization, or proof of Function-level/actual effects. #1120 should provide the shared typed Source/Graph evidence; #1132 still needs an accepted ownership/declaration producer, exact Workspace revision binding, and a real integration test before qualification.
