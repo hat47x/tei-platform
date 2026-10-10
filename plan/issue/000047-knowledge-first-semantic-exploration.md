@@ -802,7 +802,11 @@ independent association
 
 さらにactual Source-backed negative caseとして`security.authorization_grant`を`knowledge-context`へ通す。`subjectId / action / resource`の3 Attributeと`semantic/security/authorization.tei`のSource Evidenceは取得できるが、acceptedなcomposite uniqueness / occurrence identityが無いためbusiness identity / FD candidateは生成しない。identifier-like fieldの複数存在を、そのまま複合keyの根拠へ昇格しない。
 
-これにより、salesの一例から「親ID + 連番」等をCore規則へ一般化しないことを固定する。次段は新しいCore syntaxではなく、association Dataについてbusiness occurrence、組合せidentity、Relation差し替え、時間再利用、Persistence差をSource-backedに説明できるReferenceを一つ作ることである。そのReferenceが成立した後に、contained repeatとの共通部分だけをCore contract候補として再評価する。
+これにより、salesの一例から「親ID + 連番」等をCore規則へ一般化しないことを固定する。
+
+positive association pressureとして`reference/business-system-design/data-determinant-association-pressure.md`を追加した。CoverageAssignmentではServiceContract / Assetが独立occurrenceで、同じ組合せを時間を変えて再activationできるため、pairだけでもsurrogate `assignment_id`だけでもbusiness occurrence identityを説明できない。Reference business factとして、ServiceContract occurrence + Asset occurrence + effectiveFromをoccurrence identity候補とし、effectiveToとhistory revisionを別責務へ分ける。二種類のPersistence Realizationでもbusiness meaningを維持する。
+
+このReferenceにより、現行Core contractがSource-backedなbusiness occurrence identity / scoped FDをaccepted meaningとして直接authorできないrepresentational gapが具体化した。次段では、contained repeatとassociationに共通する最小contract shapeを比較し、changeable referenceへ誤適用しない形だけをCore contract候補として再評価する。
 
 ### 現在のEvidence境界 — 2026-10-09
 
