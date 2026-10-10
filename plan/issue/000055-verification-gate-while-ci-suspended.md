@@ -107,6 +107,7 @@ receiptは少なくともcandidate commit / tree、expected main、health runner
 この再開作業の完了条件は次のとおり。
 
 - [x] 汎用qualification runnerのshell / Git制御を合成Repositoryでpressureする。local bare originを使い、正常receipt、ignored artifact、stale main、health中のmain移動、Repository内receipt、skip-worktreeを再現した。さらに`tools/repositoryqualification`へ同じ契約のGo回帰テストを追加し、隔離した合成moduleで6 subtestがPASSした。
+- [ ] 追加回帰: health実行中にignored artifactまたはskip-worktree付きtracked mutationが注入された場合、post-health exact-cleanでrejectする2 synthetic caseを`tools/repositoryqualification`へ追加した。コード追加済みだが、この更新後のexact lane headでは未実行のためPASSとは記録しない。
 - [ ] trusted actual TEI checkoutでrunnerを実行し、full Repository Health PASSを含むreceiptを取得する。
 - [ ] そのexact receiptを使ったcode-changing PRのmerge前照合を一度実施する。
 - [ ] bypass後の`merged`状態をqualificationへ読み替えず、current mainのhealthを独立に確認する。
