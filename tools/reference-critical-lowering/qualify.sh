@@ -3,6 +3,9 @@
 # Requires an independently prepared, full, clean, trusted Git checkout.
 set -euo pipefail
 
+# Fail before any tests if a later line was accidentally truncated or malformed.
+bash -n "$0"
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
