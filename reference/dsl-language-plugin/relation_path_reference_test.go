@@ -20,7 +20,7 @@ func TestTraceRelationPathMultiplicity(t *testing.T) {
 		{"one then many", []core.CanonicalID{"order.customer", "customer.addresses"}, "address", semantic.CardinalityMany},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			shape, err := TraceRelationPath(ir.World{Semantics: []semantic.Namespace{ns}},  "order", tc.path)
+			shape, err := TraceRelationPath(ir.World{Semantics: []semantic.Namespace{ns}}, "order", tc.path)
 			if err != nil || shape.TargetID != tc.target || shape.SourceID != "order" || shape.Multiplicity != tc.wantCount {
 				t.Fatalf("unexpected shape %#v: %v", shape, err)
 			}
@@ -49,7 +49,7 @@ func TestTraceRelationPathRejectsInvalidHops(t *testing.T) {
 			if tc.mutate != nil {
 				tc.mutate(&ns)
 			}
-			if _, err := TraceRelationPath(ir.World{Semantics: []semantic.Namespace{ns}},  tc.start, tc.path); err == nil {
+			if _, err := TraceRelationPath(ir.World{Semantics: []semantic.Namespace{ns}}, tc.start, tc.path); err == nil {
 				t.Fatal("expected invalid relation path to be rejected")
 			}
 		})
