@@ -20,7 +20,7 @@ func parseTraceReport(t *testing.T, payload []byte) cliTraceReport {
 }
 
 func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
-	root := filepath.Join(testRepositoryRoot(t), "reference", "workspace")
+	root := filepath.Join("..", "..", "reference", "workspace")
 	run := func(code int, direction, mode, fingerprint string, offset, limit int) cliTraceReport {
 		t.Helper()
 		var out bytes.Buffer
@@ -54,7 +54,7 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 }
 
 func TestTraceWorkspaceJSONArgumentErrors(t *testing.T) {
-	root := filepath.Join(testRepositoryRoot(t), "reference", "workspace")
+	root := filepath.Join("..", "..", "reference", "workspace")
 	cases := []struct {
 		root, world, scope, kind, id, direction, mode string
 		offset, limit, positional, expectedExit int
