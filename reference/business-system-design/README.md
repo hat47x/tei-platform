@@ -114,7 +114,7 @@ go run ./tools/reference-business-procedure-check
 go run ./tools/reference-business-procedure-check -review-validation-scope
 ~~~
 
-指定時のみ、従来の診断とは別に`validationScopeReview`を返す設計です。各行は、ステップ、比較対象のApplication、両側にしか現れないValidation ID、確認状態と理由からなります。加えて既存Source Indexから、Application定義と差分に現れたValidation定義の**相対Sourceパス・開始行・ファイル指紋**を`sourceEvidence`として返す候補を含みます。 業務手順側の明示参照は入力したfixtureファイルのパスを`procedureSource`で示します（このパスはCanonicalな意味IDではありません）。Sourceを一意に特定できない場合は`unresolvedSource`に対象の意味IDを残し、推測による場所の補完は行いません。 比較対象が存在しない場合、または全行が`unresolved-context`／`unresolved-reference`の場合には、追加のSource Index構築を行わず、未解決の判断をそのまま返します。参照比較が成立する行が一つでもあれば、Source Indexの検証を要求します。
+指定時のみ、従来の診断とは別に`validationScopeReview`を返す設計です。各行は、ステップ、比較対象のApplication、片側にだけ現れるValidation ID（`applicationOnly` / `procedureOnly`）、両側で一致するValidation ID（`sharedValidations`）、確認状態と理由からなります。加えて既存Source Indexから、Application定義と**共通・差分の両方に現れるValidation定義**の相対Sourceパス・開始行・ファイル指紋を`sourceEvidence`として返す候補を含みます。 業務手順側の明示参照は入力したfixtureファイルのパスを`procedureSource`で示します（このパスはCanonicalな意味IDではありません）。Sourceを一意に特定できない場合は`unresolvedSource`に対象の意味IDを残し、推測による場所の補完は行いません。 比較対象が存在しない場合、または全行が`unresolved-context`／`unresolved-reference`の場合には、追加のSource Index構築を行わず、未解決の判断をそのまま返します。参照比較が成立する行が一つでもあれば、Source Indexの検証を要求します。
 
 | 状態 | 意味 |
 | --- | --- |
@@ -126,6 +126,8 @@ go run ./tools/reference-business-procedure-check -review-validation-scope
 `validation-support`ステップの識別子は、他の種類のステップも含む同一Business Procedureの全ステップ内で一意である必要があります。Step IDが空欄か重複している場合、たとえValidationの参照集合が比較可能でも`unresolved-context`へ保留します。元のcheckerのblocking診断とは別の読み取り表示であり、どちらのStepを正しいものとして選ぶこともありません。
 
 `referenceIssues`の要素は、`side`（`application`または`procedure`）、`id`（明示されたValidation ID）、`reason`で構成します。`reason`は`missing-definition`（意味定義が存在しない）、`ambiguous-definition`（意味定義が複数存在する）、`duplicate-declaration`（その側で同じ参照を繰り返した）のいずれかです。同じIDでも両側で解決できない場合はそれぞれ表示します。これらは調査の手掛かりであり、参照差やビジネス上の矛盾を確定しません。出典ファイルを探せなかった状態を表す`unresolvedSource`とは別概念です。
+
+`no-set-difference`の行でも`sharedValidations`を返すため、空の差分だけで一致を説明しません。既存Source Indexからこれら共通Validationの定義位置も追跡し、定義が欠落・重複・指紋不明の場合は`unresolvedSource`に残します。**出典が見つかったことも集合が一致したことも、業務上の同値性やAcceptanceを証明しません。**
 
 この表示は`reference-authoring-fixture`へ値を書き戻しません。`fixture.application`は比較する文脈に限り、Procedureの所有者を意味しません。また、差が見つかっても追加のValidationや権限、確認済みの業務規則を自動的に作成しません。既存のblocking diagnosticと`-expect-diagnostic`の判断も変更しません。
 
