@@ -614,3 +614,25 @@ bash tools/repository-health-check.sh
 ```
 
 G2に残るのはStudio #1137の実consumer経路、accepted R1からのLowering / Authority接続、およびactual Provider・独立Observationである。上記test sourceの存在をG1/G2のPASSへ昇格しない。
+
+## 19. G2証跡packetの静的Preflightを実装（2026-10-10）
+
+§16〜18の初回業務シナリオに対し、#1119が所有する軽量Reference `tools/reference-critical-path-evidence-audit/` を追加した。これは**Gate合格判定器ではなく、各レーンからのEvidence packetの欠損・合成証拠の混入を機械的に弾く前置検査**である。Core、Shared Acceptance、Driver、既存Gate C Evidence Auditのいずれも置換しない。
+
+| Scope | 静的に検査する内容 | 上限・根拠 |
+| --- | --- | --- |
+| E0契約 | producer/consumerのsource path、正負テスト名、`source-only/synthetic-tested/actual-observed`の報告種別 | IDやテスト名は単なる申告。テスト実行/契約互換性は別のactual Evidenceを要す |
+| 資格確認 | exact PR headとreviewしたmainの一致、full Repository Health PASS・前後clean・receiptの入力欄 | 文字列とflagの一致に過ぎず、実際のtrusted checkout、current remote mainは本toolで証明しない |
+| E1提出 | `R0≠R1`、candidate/review/Decision/reload、`add-validation`＋`add-application-validation-use`の**同一**変更、R1上の`order_entry`明示選択、Web正負・N11、`running-server`の申告 | `httptest`/handler-onlyはE1の実Webサーバ操作に自動昇格しない。Synthetic ProviderはE1の範囲内で許容、外部DB実証ではない |
+| E2提出 | actual-db、Datasource/schema compatible、current Host Authority、独立Command/read receipt/record、S02/S05拒否試験 | Web synthetic/共通receiptではE2不可。read独立性とphysical stateの真偽は独立Reviewが必要 |
+
+入力schemaはReference固有の `tei.critical-path-evidence/v0`。コマンドは `go run ./tools/reference-critical-path-evidence-audit -packet <file> -head <exact-HEAD> -main <reviewed-main-SHA>`。schema/type不正や必須証跡不足は `INCOMPLETE` とdiagnosticで返す。整合する提出物も `REVIEW_REQUIRED` で止まり、**`productGate` は必ず `UNQUALIFIED`**。exit code 0をProduct Gate PASS / merge権限に変換してはならない。詳細と未取得Evidenceは同toolのREADMEに固定。
+
+### この回の実検証と限界
+
+- `main.go` と `main_test.go` は Go 1.23.2 の**単独コピー**で `GO111MODULE=off go test -race -count=1 -v main.go main_test.go` を実行し、11件PASS。さらに `GO111MODULE=off go vet main.go main_test.go` PASS、`gofmt -l`空を確認した。GitHubの該当Blobはこの試験済みファイルのgit object SHAと一致：`58643a702479db12219b317281c975687b743363`（main.go）、`30ec224d5722d4584e54e9fc2cb5544ac4f1ccef`（main_test.go）。
+- 否定試験はsynthetic WebでE2申告を拒否、Validation-onlyの候補を拒否、R0=R1やstale head/mainを拒否、readとCommand同一receiptを拒否、S02/S05/N11証跡欠落を拒否、健康試験`NOT_RUN`を拒否、producer/consumer空のE0を拒否、handler-onlyのE1昇格を拒否、未知field・余分なJSON値を拒否する。
+- この限定的Goテストは**trusted full TEI checkoutのPackageテストや`tools/repository-health-check.sh`の代替ではない**。このコード自身を含むPR headのfull checkout資格確認、実E1 `R0→R1→Web`、外部DBの実E2・別read、独立監査はいずれも未実施。
+- `REVIEW_REQUIRED`になったpacketであっても**未取得な証拠の空欄を「PASS」で埋めることは禁止**。#1124/#1127が実験と根拠を別々に提出し、#1119は同一R0→R1系譜とScope/Authorityの実consumer確認を担当する。
+
+**現状判定**: 横断レーンの証拠申告を検査する仕組みが増えたに過ぎず、G0はconsumer合意待ち、G1/G2/G3/G4の合格はなお未取得。このツールが合格を出せない設計は、意図的な製品安全境界である。
