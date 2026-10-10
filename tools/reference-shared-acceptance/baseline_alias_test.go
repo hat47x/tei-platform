@@ -469,3 +469,62 @@ func TestReferenceInputPreservingCommandsRejectOutputAliases(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceAuxiliaryEvidenceInputsCannotBeOverwritten(t *testing.T) {
+	root := t.TempDir()
+	candidate := filepath.Join(root, "candidate.json")
+	qualification := filepath.Join(root, "qualification.json")
+	reuse := filepath.Join(root, "reference-reuse.json")
+	evaluation := filepath.Join(root, "semantic-evaluation.json")
+	transcription := filepath.Join(root, "transcription.json")
+	for _, source := range []string{candidate, qualification, reuse, evaluation, transcription} {
+		if err := os.WriteFile(source, []byte("original-evidence"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	evidenceAlias := filepath.Join(root, "evidence-alias")
+	if err := os.Symlink(qualification, evidenceAlias); err != nil {
+		t.Skipf("evidence symlink unavailable: %v", err)
+	}
+	for _, tc := range []struct {
+		name    string
+		command string
+		out     string
+		want    string
+		allow   bool
+	}{
+		{name: "qualification direct", command: "attach-qualification", out: qualification, want: "-qualification"},
+		{name: "qualification alias", command: "attach-qualification", out: evidenceAlias, want: "-qualification"},
+		{name: "reference reuse", command: "propose-qualified-reference-pattern", out: reuse, want: "-reference-reuse"},
+		{name: "semantic evaluation", command: "attach-semantic-evaluation", out: evaluation, want: "-semantic-evaluation"},
+		{name: "rmt transcription", command: "attach-rmt-transcription", out: transcription, want: "-rmt-transcription"},
+		{name: "explicit baseline flag does not allow evidence overwrite", command: "attach-qualification", out: qualification, want: "-qualification", allow: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			args := []string{
+				tc.command, "-workspace", root, "-candidate", candidate,
+				"-qualification", qualification, "-reference-reuse", reuse,
+				"-semantic-evaluation", evaluation, "-rmt-transcription", transcription,
+				"-out", tc.out,
+			}
+			if tc.allow {
+				args = append(args, "-allow-reference-baseline")
+			}
+			var stdout, stderr bytes.Buffer
+			if code := runCLI(args, &stdout, &stderr); code != 2 ||
+				!strings.Contains(stderr.String(), tc.want) {
+				t.Fatalf("evidence input overwritten or bad rejection: code=%d stdout=%s stderr=%s",
+					code, stdout.String(), stderr.String())
+			}
+			for _, source := range []string{candidate, qualification, reuse, evaluation, transcription} {
+				unchanged, err := os.ReadFile(source)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(unchanged) != "original-evidence" {
+					t.Fatalf("input %s was modified: %q", source, unchanged)
+				}
+			}
+		})
+	}
+}
