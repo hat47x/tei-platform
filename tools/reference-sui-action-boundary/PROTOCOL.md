@@ -39,7 +39,7 @@
 | `expectedRevision` | 必須。対象リソースに対する楽観的競合制御の条件です |
 | `payload` | 必須、null不可。形式と意味は`(applicationID, actionID)`が選ぶアプリケーション固有の定義に従います |
 
-共通層はPayloadを業務データとして解釈しません。認証主体、テナント、権限、レビュー済みフラグを、Payloadに記載された値だけで信用しません。どのApplicationがどのActionを実行できるかはCanonicalの解決と実行時認可で検証します。資源の識別とRevisionの原子的照合・変更は、Application所有のStoreが実施します。
+共通層はPayloadを業務データとして解釈しません。JSONの`null`は空白を挟んだ場合も共通境界で拒否します。認証主体、テナント、権限、レビュー済みフラグを、Payloadに記載された値だけで信用しません。どのApplicationがどのActionを実行できるかはCanonicalの解決と実行時認可で検証します。資源の識別とRevisionの原子的照合・変更は、Application所有のStoreが実施します。
 
 リソースID中の`/`は許容します。Authorization Resourceを構築する場合は、Application ID、Resource ID、Action IDをそれぞれ独立に符号化し、連結後の曖昧な区切りを生じさせません。
 
