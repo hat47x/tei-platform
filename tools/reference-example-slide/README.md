@@ -9,10 +9,20 @@
 リポジトリルートから:
 
 ~~~sh
-go test ./tools/reference-example-slide
+# 参照パッケージとCLIを対象に試験
+go test ./tools/reference-example-slide/...
+
+# 合成Caseを指定して三枚のSVGと投影JSONを出力
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input tools/reference-example-slide/testdata/partial_inspection.json \
+  -out /tmp/tei-example-slides
+
+# 正規化済みWorldから、表示用Catalogとrevisionを読み取り専用で確認
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -world reference/world.json -catalog
 ~~~
 
-`testdata/partial_inspection.json` に、読み取り専用Catalog、Case、Diagram、Presentationを含みます。GoテストではJSON読込から全段階のSnapshot投影とSVG文字列生成までを検証します。現時点でこのコマンドがPASSしたという記録はありません。
+`testdata/partial_inspection.json` に、読み取り専用Catalog、Case、Diagram、Presentationを含みます。GoテストではJSON読込から全段階のSnapshot投影とSVG文字列生成までを検証します。現時点でこれらのコマンドがPASSしたという記録はありません。CLIでは実WorldとCaseのrevisionが異なる場合、黙って修正せず拒否します。
 
 ## この実装が保証を目指す範囲
 
