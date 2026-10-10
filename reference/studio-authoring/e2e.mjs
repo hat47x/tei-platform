@@ -73,6 +73,9 @@ function revision(workspace) {
 function world(workspace) {
   return JSON.parse(tei(["world", "-workspace", workspace]).stdout);
 }
+function sourceIndex(workspace) {
+  return JSON.parse(tei(["source-index", "-workspace", workspace]).stdout);
+}
 function input(label, suffix, value) {
   const path = join(created, label + suffix);
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
@@ -83,8 +86,11 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   const beforeRevision = revision(workspace);
   const before = managedDigests(workspace);
   const model = world(workspace);
-  const beforeFocus = projectWorld(model, beforeRevision, edit.subject);
+  const beforeFocus = projectWorld(model, beforeRevision, edit.subject,
+    { sourceIndex: sourceIndex(workspace) });
   checked(beforeFocus.authority === "derived-readonly", label + ": initial readonly");
+  checked(beforeFocus.sourceNavigation.status === "source-index-backed",
+    label + ": focus resolves to exact Source Index definition");
 
   const proposal = candidateFromEdit(model, beforeRevision, edit);
   const path = input(label, ".candidate.json", proposal);
@@ -121,8 +127,10 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     label + ": only the intended source file is changed: " + JSON.stringify(changed));
   const afterWorld = world(workspace);
   const after = projectWorld(afterWorld, afterRevision,
-    expectedKind + ":" + expectedID);
+    expectedKind + ":" + expectedID, { sourceIndex: sourceIndex(workspace) });
   checked(after.modelRevision === afterRevision, label + ": new revision in projection");
+  checked(after.sourceNavigation.status === "source-index-backed",
+    label + ": accepted subject resolves to its exact updated Source anchor");
   if (expectedKind === "relation") {
     checked(after.views.er.edges.some(v => v.id === expectedID),
       label + ": accepted Relation appears in reprojected ER");
