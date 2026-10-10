@@ -48,6 +48,20 @@ E1の最終判定には、さらに`go build`後のbytes、digest、link済みsy
 
 次段階のE1では、同じ受理済みApplication meaning（Handover B/R）に対する**別の配備入口**で同じ観測を行い、さらに`go build`成果物のbytes・digestと必要に応じsymbol／実行結果を照合します。既存のGate C第一Web Targetを置き換えず、Build Artifactの正本は[#943](https://github.com/hat47x/tei-platform/issues/943)に委ねます。
 
+
+## 二つのGo起動点に対する局所実証（TEI本体ではない）
+
+`compare_integration_test.go`は、Gitで固定した一時Goモジュールに`cmd/unified`と`cmd/order`の**二つの異なるcompile-time入口**を設け、実`produceEvidence`と`compareReports`が返すソース閉包を検査し、続けて`go build`と`go tool nm`でリンク結果に差があることを確認するテストです。実TEIの`order_entry`・`repair_intake`、実Plugin実装、Gate Cの成否を表すテストではありません。
+
+同じ構成を別の**隔離したGo 1.23.2/linux-amd64環境**で手動再現し、`CGO_ENABLED=0`、`GOENV=off`、`GOWORK=off`、`GOPROXY=off`、`go build -trimpath -ldflags=-buildid=`の下で、次の局所結果を取得しました（TEIのactual binaryではありません）。
+
+| compile-time入口 | メインモジュール内パッケージ | 生成Goバイナリ | `internal/repair.Run` |
+| --- | --- | ---: | --- |
+| `cmd/unified` | `cmd/unified`, `internal/order`, `internal/repair` | 2,124,733 bytes | シンボルあり |
+| `cmd/order` | `cmd/order`, `internal/order` | 2,124,232 bytes | シンボルなし |
+
+この局所の差は**501 bytes**であり、Goリンク時のサイズ改善が常にこの値・比率で生じるという根拠にはならず、アプリの正しさや権限境界の証明でもありません。局所のバイナリdigestは各build結果を識別するために取得しており、TEI Build Artifact Lockや配布物の正本ではありません。**PR現headの`go test`を成功させた記録ではない**点も区別します。実TEIのE1受入には、同じ意味・契約を保つ実アプリ別入口、full health、実成果物の実測と認可の回帰確認が必要です。
+
 ## 検証段階
 
 **初期版のGoソース3件のみ**、隔離したGo 1.23.2モジュールで当時のGit blob SHA一致を照合し、局所`go test`・`go vet`・`gofmt`および小さなGo entryに対する`go list`を確認しました。その後、実GoによるCgo疑似importとGit ignore対象のGoファイル混入を再現し、パーサー／ソース確認／負例テストを追加しています。**追加修正後の現headではGoテスト・Go vet・gofmt・実第一Web Targetの実行結果は未取得**です。Go 1.23.2/Linuxの隔離モジュールにおいて`GOAMD64=v1`は`main.go`のみ、`GOAMD64=v3`は`amd64v3.go`も選ぶことを実測し、この差と`targetFeatures`の一致性を確認する実Git/Go結合テストを追加しています（追加テストの結果は未取得）。さらに、Git indexの状態フラグが`git status`の結果を偽装し得ることを独立の一時Gitリポジトリで再現し、拒否する検査と回帰テストを追加した。**新しいGit index対策の最小ヘルパーは隔離したGo 1.23.2でテスト・vet・gofmtにPASSしたが、TEIリポジトリ内の追加コード全体のPASSではない**。初期版のPASSを現headへ流用せず、TEI trusted clean full checkoutでのexact-head `tools/repository-health-check.sh`と前後clean確認を統合条件とします。Draft PRのまま扱います。
