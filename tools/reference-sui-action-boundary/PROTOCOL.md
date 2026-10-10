@@ -58,13 +58,12 @@ HTTPを利用する場合は、同一オリジンへの`POST`、JSON本文、`Co
 | 403 | `request_origin_denied` / `action_denied` | オリジン検査・実行時認可等で拒否 |
 | 409 | `revision_conflict` | 確定前のRevisionから対象が変化した |
 | 405 | `method_not_allowed` | POST以外を要求した |
-| 413 | 参照実装では入力上限超過を400に変換 | 将来、制限理由の公開方法を整理 |
 | 415 | `unsupported_content_type` | JSON以外のメディア型 |
 | 500 / 503 | `execution_failed` / `payload_decoder_unavailable` | 実行失敗・配備不足 |
 
 `revision_conflict`を受け取ったブラウザーは、旧Revisionで自動再送しません。最新状態を取得し、利用者の意図を必要に応じて確認します。`request_origin_denied`などで拒否された場合も、画面上の見かけの変更を成功とみなしません。
 
-> 413は将来のHTTP互換性を検討する項目です。現在のGo参照実装の応答に存在すると解釈しないでください。
+現行のGo参照実装では、入力が64KiBの上限を超えた場合も`400 invalid_intent`を返します。将来のHTTP仕様との整合については、`413 Content Too Large`への変更を含めて検討します。
 
 ## アプリケーション非依存性の判定
 
@@ -90,4 +89,4 @@ Versionは文字列のメジャー番号です。今後の変更では、既存�
 
 Go参照Storeの`documentID`は、SUI固有の文書保存アダプター内部の識別子として残します。汎用Hostと通信境界には持ち込みません。
 
-検証するときは正確なCommitを固定し、`go test -race`、`tools/repository-health-check.sh`、ブラウザーとSUIの現物テストを実行してください。テストコードの追加とPASS証拠は区別します。
+検証するときは正確なCommitを固定し、`go test -race`、`tools/repository-health-check.sh`、ブラウザーとSUIの現物テストを実行してください。テストコードの追加とPASS証拠は区別します。ブラウザーの参照ファイル4点とJSON SchemaのGit Blob SHAを照合したローカルNodeテスト15件はPASSしましたが、実TEIリポジトリ全体の健全性検査はまだ実施できていません。
