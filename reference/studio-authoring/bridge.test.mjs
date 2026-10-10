@@ -390,6 +390,89 @@ test("reference-local Business step ID matching a Pattern ID is not an accepted 
   assert.equal(p.views.business.freshness, "unverified-no-model-revision-binding");
 });
 
+test("a manual Business Step can point directly to exact Validation without acquiring a Function", () => {
+  const w = fixture();
+  w.semantics[0].validations = [{
+    id: "sales.order_line.price_positive", kind: "positive",
+    attribute: "sales.order_line.price"
+  }];
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "order-entry.order-handling", diagnostics: [],
+    steps: [{
+      id: "BP-05", realization: "validation-support", noApplicationFunction: true,
+      functionRefs: [], explicitMeaning: [
+        { kind: "semantic-validation", id: "sales.order_line.price_positive",
+          status: "resolved-id-not-accepted", authority: "procedure-reference-only",
+          source: { file: "procedure-reference.json", pointer: "/steps/5/validations/0" } },
+        { kind: "semantic-data", id: "sales.order_line",
+          status: "resolved-id-not-accepted", authority: "procedure-reference-only" }
+      ]
+    }]
+  };
+  const p = projectWorld(w, revision, "validation:sales.order_line.price_positive",
+    { businessDFD: dfd });
+  assert.equal(p.views.business.status, "reference-only");
+  assert.equal(p.views.business.authority, "noncanonical-reference");
+  assert.equal(p.views.business.items[0].stepID, "BP-05");
+  assert.deepEqual(p.views.business.items[0].functionRefs, []);
+  assert.equal(p.views.business.items[0].explicitMeaning[0].subject,
+    "validation:sales.order_line.price_positive");
+  assert.equal(p.views.business.items[0].explicitMeaning[0].status,
+    "exact-id-matches-current-world");
+  assert.equal(p.views.business.manualOrExternalUnlinked[0].stepID, "BP-05");
+  assert.equal(p.views.business.freshness, "unverified-no-model-revision-binding");
+  assert.equal(p.editable, false);
+  // The same explicit step can be reached from Data without inventing a
+  // dependency on a sibling Field or a generated Function.
+  const onData = projectWorld(w, revision, "data:sales.order_line",
+    { businessDFD: dfd });
+  assert.equal(onData.views.business.items[0].explicitMeaning[0].subject,
+    "data:sales.order_line");
+  const unrelated = projectWorld(w, revision, "data:sales.order",
+    { businessDFD: dfd });
+  assert.equal(unrelated.views.business.items.length, 0,
+    "same Procedure does not imply every Data depends on each step");
+});
+
+test("stale, spoofed, or wrong-kind Business direct references cannot become linked meaning", () => {
+  const w = fixture();
+  w.semantics[0].validations = [{
+    id: "sales.order_line.price_positive", kind: "positive",
+    attribute: "sales.order_line.price"
+  }];
+  const base = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "p", diagnostics: [],
+    steps: [{ id: "BP-05", noApplicationFunction: true, functionRefs: [],
+      explicitMeaning: [{ kind: "semantic-validation",
+        id: "sales.order_line.price_positive",
+        status: "resolved-id-not-accepted", authority: "procedure-reference-only" }] }]
+  };
+  const focus = "validation:sales.order_line.price_positive";
+  const stale = structuredClone(base);
+  stale.steps[0].explicitMeaning[0].status = "unresolved";
+  const s = projectWorld(w, revision, focus, { businessDFD: stale });
+  assert.equal(s.views.business.status, "unresolved");
+  assert.equal(s.views.business.items[0].explicitMeaning[0].status, "unresolved");
+  assert.equal(s.views.business.diagnostics[0].code,
+    "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED");
+  const forged = structuredClone(base);
+  forged.steps[0].explicitMeaning[0].authority = "accepted";
+  assert.equal(projectWorld(w, revision, focus, {
+    businessDFD: forged }).views.business.status, "unresolved");
+  const wrongKind = structuredClone(base);
+  wrongKind.steps[0].explicitMeaning[0].kind = "semantic-relation";
+  assert.equal(projectWorld(w, revision, focus, {
+    businessDFD: wrongKind }).views.business.items.length, 0);
+  const malformed = structuredClone(base);
+  malformed.steps[0].explicitMeaning = { id: "sales.order_line.price_positive" };
+  assert.throws(() => projectWorld(w, revision, focus, {
+    businessDFD: malformed }), /step.explicitMeaning: array required/);
+});
+
 test("local selection never expands into a global dense matrix", () => {
   const world = fixture();
   for (let i = 0; i < 2000; i++) {
