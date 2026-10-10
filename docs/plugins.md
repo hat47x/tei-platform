@@ -82,4 +82,6 @@ process Pluginは、Plugin LockだけでなくPermission Grant、Resource Bindin
 
 processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
 
+Generic Capability Invocationをphysical transportへ載せる場合も、process protocolをuniversal ABIにしません。ISSUE-000086のReferenceでは既存process launcherでgeneric Contract / Provider / Target / shape identityをpayload内に保持できるかを確認しています。一方、現行process Request / Responseのtop-level identityはlegacy CapabilityKind / CapabilityIDを前提とするため、generic Capabilityのproduction transport統合が成立したとは扱いません。
+
 詳しくは [Security / Trust Boundary](security.md) を参照してください。
