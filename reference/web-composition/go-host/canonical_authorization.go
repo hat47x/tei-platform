@@ -63,8 +63,8 @@ func NewCanonicalActionAuthorizer(
 		}
 		link, found, err := links(ctx, ExternalSubject{
 			ProviderID: principal.ProviderID,
-			Issuer: principal.Issuer,
-			Subject: principal.Subject,
+			Issuer:     principal.Issuer,
+			Subject:    principal.Subject,
 		})
 		if err != nil {
 			return false, fmt.Errorf("trusted subject mapping unavailable: %w", err)
