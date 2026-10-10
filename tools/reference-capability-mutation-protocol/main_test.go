@@ -18,18 +18,18 @@ type ledgerRecord struct {
 }
 
 type ledgerProvider struct {
-	value                    int
-	version                  int
-	records                  map[string]*ledgerRecord
-	prepareCount             int
-	commitCount              int
-	effectCount              int
-	abortCount               int
-	abortSawCanceledContext  bool
-	commitErrorAfterApply    bool
+	value                      int
+	version                    int
+	records                    map[string]*ledgerRecord
+	prepareCount               int
+	commitCount                int
+	effectCount                int
+	abortCount                 int
+	abortSawCanceledContext    bool
+	commitErrorAfterApply      bool
 	malformedReceiptAfterApply bool
-	forceNotCommitted        bool
-	statusUnknown            bool
+	forceNotCommitted          bool
+	statusUnknown              bool
 }
 
 func newLedgerProvider() *ledgerProvider {
@@ -278,7 +278,6 @@ func TestPreparedIntentMustBeJournaledBeforeCommit(t *testing.T) {
 		t.Fatalf("commit happened without prepared journal: %+v", provider)
 	}
 }
-
 
 func TestPreparedJournalFailureCanRetryWithoutReusingAbortedPreparation(t *testing.T) {
 	provider := newLedgerProvider()
@@ -541,7 +540,6 @@ func TestCanceledInvocationDoesNotPrepareOrCommit(t *testing.T) {
 	}
 }
 
-
 func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 	provider := newLedgerProvider()
 
@@ -605,7 +603,6 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 		)
 	}
 }
-
 
 func TestUnknownCommitCanBeRecoveredFromJournalAfterExecutorRestart(t *testing.T) {
 	provider := newLedgerProvider()
@@ -674,7 +671,6 @@ func TestReconcileByInvocationKeyUsesJournaledOutcomeWithoutProviderReplay(t *te
 		t.Fatalf("journaled outcome triggered provider commit replay: before=%d after=%d", beforeCommits, provider.commitCount)
 	}
 }
-
 
 func TestCancellationAfterPrepareUsesNonCanceledCleanupContext(t *testing.T) {
 	provider := newLedgerProvider()
