@@ -37,6 +37,10 @@ type validationScopeReviewRow struct {
 func compareValidationScopes(world ir.World, f fixture) []validationScopeReviewRow {
 	var rows []validationScopeReviewRow
 	_, _, validationCounts, _ := semanticCounts(world)
+	stepCounts := make(map[string]int, len(f.Steps))
+	for _, s := range f.Steps {
+		stepCounts[s.ID]++
+	}
 	for _, s := range f.Steps {
 		if s.Realization != "validation-support" {
 			continue
@@ -44,6 +48,12 @@ func compareValidationScopes(world ir.World, f fixture) []validationScopeReviewR
 		row := validationScopeReviewRow{
 			Step:        s.ID,
 			Application: f.Application,
+		}
+		if strings.TrimSpace(s.ID) == "" || stepCounts[s.ID] != 1 {
+			row.Status = "unresolved-context"
+			row.Reason = "Business ProcedureのStep IDが空欄または重複しています。比較対象のステップを一意に特定できないため、集合差の判定を保留します"
+			rows = append(rows, row)
+			continue
 		}
 		if strings.TrimSpace(f.Application) == "" {
 			row.Status = "unresolved-context"
