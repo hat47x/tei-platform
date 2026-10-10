@@ -46,6 +46,7 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	writeFixture(".gitignore", "ignored.go\nignored.txt\n")
 	writeFixture("cmd/app/main.go", "package main\nimport (\"embed\"; \"example.test/tei-e0/internal/calc\")\n//go:embed assets/*\nvar assets embed.FS\nfunc main() { _ = calc.Result(); _,_ = assets.ReadFile(\"assets/payload.txt\") }\n")
 	writeFixture("cmd/app/assets/payload.txt", "versioned asset\n")
+	writeFixture("cmd/minimal/main.go", "package main\nfunc main() {}\n")
 	writeFixture("cmd/app/optional.go", "//go:build optional\n\npackage main\nfunc optional() {}\n")
 	writeFixture("cmd/app/amd64v3.go", "//go:build amd64.v3\n\npackage main\nfunc tuned() {}\n")
 	writeFixture("internal/calc/calc.go", "package calc\nfunc Result() int { return 42 }\n")
@@ -83,6 +84,24 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	}
 	if base.GoVersion == "" || base.GOOS == "" || base.GOARCH == "" {
 		t.Fatalf("missing toolchain identity: %+v", base)
+	}
+	// Observe two independent compile-time entry packages from the same
+	// Git HEAD, rather than rerunning a unified executable with different
+	// runtime -application flags.
+	minimal, err := produceEvidence("./cmd/minimal", "")
+	if err != nil {
+		t.Fatalf("actual go list for minimal entry: %v", err)
+	}
+	delta, err := compareReports(base, minimal)
+	if err != nil {
+		t.Fatalf("compare actual Go entry closures: %v", err)
+	}
+	if !slices.Contains(delta.BeforeOnly, "example.test/tei-e0/internal/calc") ||
+		!slices.Contains(delta.BeforeOnly, "example.test/tei-e0/cmd/app") ||
+		!slices.Contains(delta.AfterOnly, "example.test/tei-e0/cmd/minimal") ||
+		len(delta.Changed) != 0 ||
+		delta.SourceRevision != exactHead {
+		t.Fatalf("independent Go entry comparison lost compiled package differences: %+v", delta)
 	}
 	findEntry := func(r Report) SourcePackage {
 		t.Helper()
