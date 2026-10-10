@@ -149,6 +149,12 @@ func TestFirstModelChangeEditValidationAndRepair(t *testing.T) {
 		if len(projected.Sources) != 1 || projected.Sources[0].ArtifactPath != firstModelSemantic {
 			t.Fatalf("invalid type has no actionable source location: %+v", projected.Sources)
 		}
+		anchor := projected.Sources[0].Range
+		if anchor.Start.Offset >= anchor.End.Offset ||
+			anchor.Start.Offset < 0 || anchor.End.Offset > len(invalid) ||
+			invalid[anchor.Start.Offset:anchor.End.Offset] != "priority" {
+			t.Fatalf("semantic type error must select the edited attribute identifier, not a file-level placeholder: %+v", anchor)
+		}
 		found = true
 	}
 	if !found {
