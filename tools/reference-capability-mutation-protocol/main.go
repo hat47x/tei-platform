@@ -14,6 +14,7 @@ const (
 	mutationFingerprintCanonicalization = "go-json-marshal-struct/v0"
 	rawPayloadDigestRule                = "raw-bytes+sha256/v0"
 
+	OutcomePrepared     MutationOutcome = "prepared"
 	OutcomeCommitted    MutationOutcome = "committed"
 	OutcomeNotCommitted MutationOutcome = "not-committed"
 	OutcomeUnknown      MutationOutcome = "unknown"
@@ -213,18 +214,26 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 		)
 	}
 
+	return e.commitPrepared(ctx, handle, preparedResult)
+}
+
+func (e Executor) commitPrepared(
+	ctx context.Context,
+	handle MutationHandle,
+	preparedResult []byte,
+) (MutationExecution, error) {
 	// Once the durable commit intent exists, request cancellation no longer
 	// decides the business outcome. The coordinator must drive commit/status
 	// to a terminal or explicitly unknown outcome.
-	commitCtx := context.WithoutCancel(ctx)
-	providerReceipt, commitErr := e.Provider.Commit(commitCtx, CommitRequest{
+	coordinatorCtx := context.WithoutCancel(ctx)
+	providerReceipt, commitErr := e.Provider.Commit(coordinatorCtx, CommitRequest{
 		Protocol:           mutationProtocol,
 		PreparationID:     handle.PreparationID,
 		InvocationKey:     handle.InvocationKey,
 		BindingFingerprint: handle.BindingFingerprint,
 		RequestDigest:     handle.RequestDigest,
-		ResultDigest:     handle.ResultDigest,
-		ConcurrencyToken: handle.ConcurrencyToken,
+		ResultDigest:      handle.ResultDigest,
+		ConcurrencyToken:  handle.ConcurrencyToken,
 	})
 	if commitErr != nil {
 		return MutationExecution{
@@ -242,7 +251,7 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 	}
 	switch receipt.Outcome {
 	case OutcomeCommitted:
-		if err := e.Journal.RecordOutcome(ctx, receipt); err != nil {
+		if err := e.Journal.RecordOutcome(coordinatorCtx, receipt); err != nil {
 			return MutationExecution{
 				Outcome: OutcomeCommitted,
 				Handle:  handle,
@@ -256,7 +265,7 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 			Receipt: &receipt,
 		}, nil
 	case OutcomeNotCommitted:
-		if err := e.Journal.RecordOutcome(ctx, receipt); err != nil {
+		if err := e.Journal.RecordOutcome(coordinatorCtx, receipt); err != nil {
 			return MutationExecution{
 				Outcome: OutcomeNotCommitted,
 				Handle:  handle,
@@ -371,6 +380,9 @@ func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (Mutatio
 			Handle:  handle,
 		}, fmt.Errorf("%w: invalid status receipt: %v", ErrCommitUnknown, err)
 	}
+	if receipt.Outcome == OutcomePrepared {
+		return e.commitPrepared(ctx, handle, nil)
+	}
 	if receipt.Outcome == OutcomeUnknown {
 		return MutationExecution{
 			Outcome: OutcomeUnknown,
@@ -467,7 +479,8 @@ func validateProviderReceipt(handle MutationHandle, provider ProviderCommitRecei
 		provider.ResultDigest != handle.ResultDigest {
 		return MutationReceipt{}, fmt.Errorf("provider receipt does not match prepared mutation")
 	}
-	if provider.Outcome != OutcomeCommitted &&
+	if provider.Outcome != OutcomePrepared &&
+		provider.Outcome != OutcomeCommitted &&
 		provider.Outcome != OutcomeNotCommitted &&
 		provider.Outcome != OutcomeUnknown {
 		return MutationReceipt{}, fmt.Errorf("provider receipt has invalid outcome %q", provider.Outcome)
