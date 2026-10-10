@@ -6,9 +6,9 @@
 
     go run ./tools/reference-chat-cli-host --root . --expected-head CANDIDATE_SHA --expected-main MAIN_SHA
 
-出力は機械可読JSON (tei.dev-host-probe/v0)。成功はexit 0、前提不足はexit 1、不正引数はexit 2で返す。実Git checkoutを前提とし、GitとGoの存在、ルート、HEAD、ローカルorigin/main、main祖先関係を検査する。
+出力は機械可読JSON (tei.dev-host-probe/v0)。成功はexit 0、前提不足はexit 1、不正引数はexit 2で返す。実Git checkoutを前提とし、GitとGoの存在、ルート、HEAD、ローカルorigin/main、main祖先関係を検査する。加えてtracked/untrackedのclean状態、ignored artifact、assume-unchanged / skip-worktreeの隠蔽フラグを**独立に**確認する。状態だけを返し、ファイル名やGit remote、Credentialを出力しない。
 
-eligibleForLocalGate=true は「ローカル資格確認を試行するための最小前提がある」という意味に限る。checkoutのclean状態、実際のGitHubへの接続・認証、live remote main、全Goテストを確認した意味ではない。JSONのliveRemoteMainとcredentialsは常にnot-checked、repositoryHealthはnot-runである。Remote URLやCredentialは出力しない。引数から任意のShellコマンドを実行しない。
+eligibleForLocalGate=true は「ローカル資格確認を試行するための最小前提がある」という意味に限る。既存の#972資格確認に代わるclean証拠、実際のGitHubへの接続・認証、live remote main、全Goテストを確認した意味ではない。JSONのliveRemoteMainとcredentialsは常にnot-checked、repositoryHealthはnot-runである。Remote URLやCredentialは出力しない。引数から任意のShellコマンドを実行しない。
 
 ## 次段
 

@@ -26,6 +26,9 @@ type ProbeReport struct {
 	ExpectedHeadMatch    string `json:"expectedHeadMatch"`
 	TrackingMainMatch    string `json:"trackingMainMatch"`
 	MainAncestor         string `json:"mainAncestor"`
+	CheckoutClean        string `json:"checkoutClean"`
+	IgnoredArtifacts     string `json:"ignoredArtifacts"`
+	HiddenIndexFlags     string `json:"hiddenIndexFlags"`
 	EligibleForLocalGate bool   `json:"eligibleForLocalGate"`
 	LiveRemoteMain       string `json:"liveRemoteMain"`
 	Credentials          string `json:"credentials"`
@@ -33,7 +36,11 @@ type ProbeReport struct {
 }
 
 func commandOutput(root string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd := exec.Command("git", append([]string{
+		"--no-optional-locks", "-C", root, "-c", "core.fsmonitor=false",
+	}, args...)...)
+	// Do not execute repository-configured FS monitor hooks or take optional
+	// index locks as part of a read-only host capability probe.
 	// Never include command stderr in a machine-readable status: it may
 	// contain a configured remote URL or other local environment details.
 	data, err := cmd.Output()
@@ -45,6 +52,7 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		Schema: "tei.dev-host-probe/v0", Git: "unavailable", Go: "unavailable",
 		Checkout: "unavailable", ExpectedHeadMatch: "not-checked",
 		TrackingMainMatch: "not-checked", MainAncestor: "not-checked",
+		CheckoutClean: "not-checked", IgnoredArtifacts: "not-checked", HiddenIndexFlags: "not-checked",
 		LiveRemoteMain: "not-checked", Credentials: "not-checked",
 		RepositoryHealth: "not-run",
 	}
@@ -99,7 +107,43 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		return result
 	}
 	result.MainAncestor = "match"
-	result.EligibleForLocalGate = result.Go == "available"
+	// These checks are deliberately a fail-early convenience, not another
+	// implementation of RQ-034 qualification. Its runner must check them
+	// again before and after executing full Repository Health.
+	status, err := commandOutput(root, "status", "--porcelain=v1", "--untracked-files=all")
+	if err != nil {
+		result.CheckoutClean = "unavailable"
+		return result
+	}
+	result.CheckoutClean = "clean"
+	if status != "" {
+		result.CheckoutClean = "dirty"
+	}
+	ignored, err := commandOutput(root, "ls-files", "--others", "--ignored", "--exclude-standard")
+	if err != nil {
+		result.IgnoredArtifacts = "unavailable"
+		return result
+	}
+	result.IgnoredArtifacts = "absent"
+	if ignored != "" {
+		result.IgnoredArtifacts = "present"
+	}
+	indexed, err := commandOutput(root, "ls-files", "-v")
+	if err != nil {
+		result.HiddenIndexFlags = "unavailable"
+		return result
+	}
+	result.HiddenIndexFlags = "absent"
+	for _, entry := range strings.Split(indexed, "\n") {
+		// Git prints H for ordinary tracked entries, lowercase flags for
+		// assume-unchanged, and S for skip-worktree. Never return paths.
+		if len(entry) > 0 && ((entry[0] >= 'a' && entry[0] <= 'z') || entry[0] == 'S') {
+			result.HiddenIndexFlags = "present"
+			break
+		}
+	}
+	result.EligibleForLocalGate = result.Go == "available" && result.CheckoutClean == "clean" &&
+		result.IgnoredArtifacts == "absent" && result.HiddenIndexFlags == "absent"
 	return result
 }
 

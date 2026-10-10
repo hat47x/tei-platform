@@ -42,7 +42,8 @@ func TestProbeMatchesLocalCheckoutButNeverClaimsFullQualification(t *testing.T) 
 	got := probe(root, head, head)
 	if got.Git != "available" || got.Go != "available" || got.Checkout != "present" ||
 		got.ExpectedHeadMatch != "match" || got.TrackingMainMatch != "match" ||
-		got.MainAncestor != "match" || !got.EligibleForLocalGate {
+		got.MainAncestor != "match" || !got.EligibleForLocalGate ||
+		got.CheckoutClean != "clean" || got.IgnoredArtifacts != "absent" || got.HiddenIndexFlags != "absent" {
 		t.Fatalf("unexpected preflight: %#v", got)
 	}
 	if got.RepositoryHealth != "not-run" || got.LiveRemoteMain != "not-checked" || got.Credentials != "not-checked" {
@@ -109,5 +110,64 @@ func TestArgumentsRejectMissingSHAAndUnknownCommands(t *testing.T) {
 	}
 	if code := run([]string{"--root", root, "--expected-head", head, "--expected-main", head, "--command", "rm -rf"}); code != 2 {
 		t.Fatalf("unknown executable argument exit %d", code)
+	}
+}
+
+func TestProbeRejectsDirtyUntrackedAndIgnoredCheckout(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change func(*testing.T, string)
+		field  string
+	}{
+		{"tracked modification", func(t *testing.T, root string) {
+			if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("modified\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}, "dirty"},
+		{"untracked file", func(t *testing.T, root string) {
+			if err := os.WriteFile(filepath.Join(root, "new-file.txt"), []byte("new\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}, "dirty"},
+		{"ignored credential artifact", func(t *testing.T, root string) {
+			if err := os.WriteFile(filepath.Join(root, ".git", "info", "exclude"), []byte("credential.env\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, "credential.env"), []byte("SHOULD_NOT_LEAK\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}, "ignored"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, head := exampleCheckout(t)
+			tc.change(t, root)
+			got := probe(root, head, head)
+			if got.EligibleForLocalGate {
+				t.Fatalf("preflight accepted unclean repo: %#v", got)
+			}
+			if tc.field == "dirty" && got.CheckoutClean != "dirty" {
+				t.Fatalf("dirty tracked/untracked content not reported: %#v", got)
+			}
+			if tc.field == "ignored" && (got.IgnoredArtifacts != "present" || got.CheckoutClean != "clean") {
+				t.Fatalf("ignored content not reported independently: %#v", got)
+			}
+			encoded, err := json.Marshal(got)
+			if err != nil || strings.Contains(string(encoded), "SHOULD_NOT_LEAK") || strings.Contains(string(encoded), "credential.env") {
+				t.Fatalf("artifact content/path appeared in status: %s %v", encoded, err)
+			}
+		})
+	}
+}
+
+func TestProbeRejectsHiddenIndexFlags(t *testing.T) {
+	for _, flag := range []string{"--assume-unchanged", "--skip-worktree"} {
+		t.Run(flag, func(t *testing.T) {
+			root, head := exampleCheckout(t)
+			gitTest(t, root, "update-index", flag, "README.md")
+			got := probe(root, head, head)
+			if got.EligibleForLocalGate || got.HiddenIndexFlags != "present" {
+				t.Fatalf("hidden tracked entry considered clean: %#v", got)
+			}
+		})
 	}
 }
