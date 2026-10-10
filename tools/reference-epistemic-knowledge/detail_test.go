@@ -386,6 +386,71 @@ func TestEpistemicDetailReportsObservedReceiptDrift(t *testing.T) {
 	})
 }
 
+func TestEpistemicDetailReportsCurrentSemanticAndReviewChanges(t *testing.T) {
+	t.Run("semantic-edit", func(t *testing.T) {
+		corpus, context := loadFixture(t)
+		query := detailQueryFor(t, corpus, context, "user-current", nil)
+
+		for i := range corpus.Assertions {
+			if corpus.Assertions[i].ID != "user-current" {
+				continue
+			}
+			corpus.Assertions[i].Text = "The database lifecycle changed after the observed projection."
+			corpus.Assertions[i].MeaningFingerprint =
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		}
+
+		result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+		if err != nil {
+			t.Fatalf("semantic edit prevented current detail inspection: %v", err)
+		}
+		if result.Drift.Meaning != "changed" || result.Drift.Subject != "changed" {
+			t.Fatalf("semantic edit was not reported as changed: %+v", result.Drift)
+		}
+	})
+
+	t.Run("review-append", func(t *testing.T) {
+		corpus, context := loadFixture(t)
+		query := detailQueryFor(t, corpus, context, "user-current", nil)
+
+		for i := range corpus.Assertions {
+			if corpus.Assertions[i].ID != "user-current" {
+				continue
+			}
+			assertion := &corpus.Assertions[i]
+			assertion.ReviewEvents = append(assertion.ReviewEvents, ReviewEvent{
+				Sequence:           1,
+				ID:                 "review-after-observed-projection",
+				Kind:               ReviewEventConfirm,
+				Reviewer:           "human",
+				Method:             reviewMethodHuman,
+				MeaningFingerprint: assertion.MeaningFingerprint,
+				StatementKind:      assertion.Mode,
+				Context:            append([]ScopeBinding{}, assertion.Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: assertion.Target.Kind,
+					ID:   assertion.Target.ID,
+				},
+				ValidFrom:  assertion.ValidFrom,
+				ValidUntil: assertion.ValidUntil,
+				OccurredAt: context.AsOf,
+			})
+		}
+
+		result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+		if err != nil {
+			t.Fatalf("new review history prevented current detail inspection: %v", err)
+		}
+		if result.Drift.Subject != "same" || result.Drift.ReviewHistory != "changed" {
+			t.Fatalf("review append was not isolated to review-history drift: %+v", result.Drift)
+		}
+		if len(result.Content.ReviewHistory) != 1 ||
+			result.Content.ReviewHistory[0].ID != "review-after-observed-projection" {
+			t.Fatalf("current review history was not returned after append: %+v", result.Content.ReviewHistory)
+		}
+	})
+}
+
 func TestEpistemicDetailRefreshesOperationalCheckedAtWithoutStaleSubject(t *testing.T) {
 	corpus, context := loadFixture(t)
 	context.AsOf = "2026-10-10T01:00:00Z"
@@ -406,6 +471,12 @@ func TestEpistemicDetailRefreshesOperationalCheckedAtWithoutStaleSubject(t *test
 	}
 	if result.Content.CheckedAt != "2026-10-10T00:30:00Z" {
 		t.Fatalf("detail did not return refreshed source check: %+v", result.Content)
+	}
+	if result.Drift.Meaning != "same" ||
+		result.Drift.Subject != "same" ||
+		result.Drift.ReviewHistory != "same" ||
+		result.Drift.TargetBinding != "same" {
+		t.Fatalf("checkedAt refresh changed semantic/read receipts: %+v", result.Drift)
 	}
 }
 
