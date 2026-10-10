@@ -27,6 +27,17 @@ func runGuarded(procedureFile, reviewFile, setFile, workspaceDir string) (projec
 	return p,before,nil
 }
 
+func verifySnapshots(qualified []navigationSnapshot) error {
+	for _,expected:=range qualified {
+		current,err:=snapshot(expected.File)
+		if err!=nil {return fmt.Errorf("DFD_REFERENCE_SOURCE_UNREADABLE: %w",err)}
+		if current!=expected {
+			return fmt.Errorf("DFD_REFERENCE_SOURCE_CHANGED_AFTER_PROJECTION: %s",expected.File)
+		}
+	}
+	return nil
+}
+
 func navigateGuarded(p projection, selector string, qualified []navigationSnapshot) (navigationResult,error) {
 	paths:=make([]string,len(qualified))
 	for i,s:=range qualified {paths[i]=s.File}
@@ -40,5 +51,6 @@ func navigateGuarded(p projection, selector string, qualified []navigationSnapsh
 			return navigationResult{},fmt.Errorf("DFD_REFERENCE_SOURCE_CHANGED_AFTER_PROJECTION: %s",s.File)
 		}
 	}
+	if err:=verifySnapshots(qualified);err!=nil {return navigationResult{},err}
 	return selected,nil
 }
