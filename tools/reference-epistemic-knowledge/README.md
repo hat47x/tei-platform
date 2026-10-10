@@ -268,7 +268,9 @@ access範囲は別の`TransportAccess`として、既存authorization adapter / 
 
 resolverはそのaccess contextで既存transportと同じfilterを通し、可視範囲を現在のContextQueryで再評価します。receiptのどれかが変わっていれば古いqueryとして拒否します。
 
-取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationです。resultにはaccess refを含めません。
+取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationに加え、access可能なreview history summaryです。resultにはaccess refを含めません。
+
+review historyはappend-only eventをそのままAuthorityへ昇格せず、説明用summaryとして返します。各eventにはsequence、kind、reviewer、method、occurredAt、scope、target identity、conditions、access-filter済みEvidenceと、current assertionへ結び付くかを示す`binding=current / stale`を持たせます。current `ContextQuery.asOf`より未来のeventは返しません。event自体またはevent Evidenceがaccess不可なら既存transportと同じredactionを適用し、hidden IDやreviewerを漏らしません。
 
 freshness subjectでもEvidenceのauthorization access refは除外します。policy識別子だけが変わってもsource checkを内容変更としてstaleにはしません。一方、Evidenceのlocatorやfingerprintが変わればfreshness bindingは切れます。
 
