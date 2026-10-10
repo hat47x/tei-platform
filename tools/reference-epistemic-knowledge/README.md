@@ -205,11 +205,13 @@ confirm / reject / withdraw commandは少なくとも次のpreconditionを持ち
 
 meaning、review subject、target binding、review sequenceのいずれかがUI表示後に変わっていれば古いcommandを拒否します。
 
-`reviewSubjectFingerprint` は、review event、reviewer candidate、authorization用access referenceを除いた正規化assertionから作るopaqueな同時実行receiptです。assertion直下だけでなく、Evidence内の`accessRefs`もreceiptへ含めません。target、statement kind、scope、temporal validity、Evidenceのidentity / fingerprint、Conflict / supersession relation等の変更は検出します。これはTruthやsemantic identityを証明するfingerprintではありません。
+`reviewSubjectFingerprint` は、review対象そのものを明示的なsubject structへ写して作るopaqueな同時実行receiptです。対象に含めるのは、assertion identity、text / meaning fingerprint、content provenance / ingestion actor、target、statement kind、scope、temporal validity、Evidenceのidentity / fingerprint、Conflict / supersession relationです。review event、reviewer candidate、metadata completeness、`checkedAt` / `checkedSubjectFingerprint`、authorization用access referenceは含めません。assertion直下だけでなく、Evidence内の`accessRefs`も除外します。これはTruthやsemantic identityを証明するfingerprintではありません。
 
 これにより、別surfaceで意味編集、scope変更、classification変更、Evidence変更、relation変更、target移動、review追加が行われた後に、古い画面から確認を重ねるlost updateを避けます。
 
-confirm / rejectではmetadataがcompleteであり、targetがambiguous / detachedではなく、現在contextがcompatibleであることも要求します。withdrawは既存確認を外す操作なので、contentの再確認とは分けます。
+confirm / rejectではmetadataがcompleteであり、targetがambiguous / detachedではなく、現在contextがcompatibleであることも要求します。
+
+metadata completenessがcompleteからpartialへ変わった場合、review subject receiptそのものは変えません。代わりにmutation実行時のcurrent preconditionでfail closedします。source check時刻だけが更新された場合もsubject receiptは変えず、detail / Projectionは最新のfreshness signalを再評価します。これにより運用metadataの更新をsemantic editとして誤認しません。withdrawは既存確認を外す操作なので、contentの再確認とは分けます。
 
 meaning fingerprintやtarget binding preconditionはsemantic identityの証明ではありません。Reviewer IDも組織Authorityを与えません。
 
