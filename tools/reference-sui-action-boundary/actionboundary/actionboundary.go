@@ -14,16 +14,18 @@ var (
 	ErrDenied   = errors.New("action denied")
 )
 
-// Intent is emitted only when the UI commits an interaction, never on preview.
+// Intent is an application-neutral, resource-scoped conditional mutation.
+// It is emitted only when the UI commits an interaction, never on preview.
+// The payload is owned by the selected Application and is opaque to the Host.
 type Intent struct {
 	ApplicationID    string
-	DocumentID       string
+	ResourceID       string
 	ActionID         string
 	ExpectedRevision string
 	Payload          any
 }
 
-// Store is application-owned; the host never interprets its document schema.
+// Store is application-owned; the host never interprets resource data schemas.
 // Commit must atomically compare the revision and persist the mutation.
 type Store interface {
 	Commit(context.Context, Intent) (string, error)
@@ -49,7 +51,7 @@ type Host struct {
 }
 
 func (h Host) Commit(ctx context.Context, in Intent) (string, error) {
-	if in.ApplicationID == "" || in.DocumentID == "" || in.ActionID == "" || in.ExpectedRevision == "" {
+	if in.ApplicationID == "" || in.ResourceID == "" || in.ActionID == "" || in.ExpectedRevision == "" {
 		return "", ErrInvalid
 	}
 	if h.Authorizer == nil {
@@ -74,7 +76,7 @@ func (h Host) Commit(ctx context.Context, in Intent) (string, error) {
 			return "", err
 		}
 	}
-	if err := h.Authorizer.Authorize(ctx, in.ApplicationID, in.DocumentID, in.ActionID); err != nil {
+	if err := h.Authorizer.Authorize(ctx, in.ApplicationID, in.ResourceID, in.ActionID); err != nil {
 		return "", fmt.Errorf("%w: %v", ErrDenied, err)
 	}
 	return selected.Store.Commit(ctx, in)
