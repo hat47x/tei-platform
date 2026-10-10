@@ -416,7 +416,7 @@ func main() {
     var output any = report
     if *pairedEvidence {
         evidence := e5PairedEvidence(report,index)
-        if *includeDerived { d:=e13FromWorld(loaded.World); evidence.Derived=&d }
+        if *includeDerived && report.Status == "observed" { d:=e13FromWorld(loaded.World); evidence.Derived=&d }
         output=evidence
     }
     if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
