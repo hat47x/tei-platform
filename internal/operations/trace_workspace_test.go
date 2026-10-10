@@ -137,3 +137,31 @@ func TestReadWorkspaceSourceRejectsAbsoluteAndEscapedPaths(t *testing.T) {
 		t.Fatal("symlink escaped Workspace read boundary")
 	}
 }
+
+func TestTraceWorkspaceRejectsDuplicateCanonicalDeclarations(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "semantic"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"),
+		[]byte("workspace: trace\nsources:\n  - semantic\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Two syntactically valid files declare the same Canonical Subject.
+	// The read-only Derived bridge may coalesce a repeated identity, but
+	// trace must not pretend the authoring declarations are unique.
+	for _, filename := range []string{"one.tei", "two.tei"} {
+		if err := os.WriteFile(filepath.Join(root, "semantic", filename),
+			[]byte("namespace sales\n\ndata Order {\n    attribute orderId type std.identifier\n}\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	key := modelref.Key{Scope: "reference", Subject: subject.Subject{
+		Kind: "semantic-data", ID: "sales.order",
+	}}
+	_, err := TraceWorkspace(root, key, modelref.TraceOptions{Mode: "summary"})
+	var failure *modelref.TraceError
+	if !errors.As(err, &failure) || failure.Code != "SUBJECT_AMBIGUOUS" {
+		t.Fatalf("duplicate Canonical declarations were hidden by derived index: %v", err)
+	}
+}
