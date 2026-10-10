@@ -27,6 +27,10 @@ func TestFirstModelChangeIndependentWorkspace(t *testing.T) {
 	if len(loaded.World.Applications) != 1 || loaded.World.Applications[0].ID != "request_log" {
 		t.Fatalf("unexpected applications: %#v", loaded.World.Applications)
 	}
+	if len(loaded.World.Databases) != 0 || len(loaded.World.Persistence) != 0 ||
+		len(loaded.World.Migrations) != 0 || len(loaded.World.Environments) != 0 {
+		t.Fatal("model-only first experience must not imply database, migration, or runtime readiness")
+	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
 		t.Fatalf("build first workspace source index: %v", err)
