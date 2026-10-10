@@ -15,6 +15,8 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 
 `-out`と`accept -derived-out`も書き込み先です。たとえ`-workspace`がscratchであっても、出力先が`reference/workspace`配下のファイル、または派生Golden `reference/world.json`を指す場合は、`-allow-reference-baseline`なしでは実行前に拒否します。既存ファイル、新規出力先、workspaceへのシンボリックリンクや`..`を経由する表記も対象です。一方、**解決先が保護対象外と確認できる通常の出力ファイルへのシンボリックリンクは許可**します。宛先を解決できないdangling / cyclicな出力ファイルのリンクは安全を確認できないため拒否します。実際にbaselineを更新する場合は、ファイルの用途と受理判断を確認したうえで明示フラグを指定します。保護対象のパス表記では大小文字を保守的に同一視するため、大文字・小文字を区別するfilesystemでは似た名称の無関係な出力先まで拒否することがあります。この判定は誤操作防止であり、並行したファイル差替えやHard Linkを含む敵対的なfilesystemへの完全な隔離保証ではありません。
 
+`accept`の`-out`と`-derived-out`を同じ実ファイルに向けると、受理後に生成したWorld JSONをDecision JSONが上書きしてしまいます。そのため両出力先が同一なら、別名パスやシンボリックリンク経由も含めて実行前に拒否します。この判定は`-allow-reference-baseline`を指定しても解除できません。WorldとDecisionは別々の出力先に指定してください。
+
 ## 受入境界
 
 ```text
