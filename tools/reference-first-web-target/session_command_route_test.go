@@ -293,3 +293,75 @@ func TestWebTargetSessionRouteRechecksAccountBeforeCommand(t *testing.T) {
 		}
 	})
 }
+
+func TestWebTargetSessionRouteEffectTimeRevalidation(t *testing.T) {
+	t.Run("account expires after validation and business authorization", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		clockCalls := 0
+		config.AccountNow = func() time.Time {
+			clockCalls++
+			if clockCalls < 3 {
+				return runner.now
+			}
+			return runner.now.AddDate(4, 0, 0) // beyond the fixture account expiration
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching",
+			`{"from":"2026-09-18T08:30:00Z","row":0}`)
+		if rec.Code != http.StatusForbidden || clockCalls != 3 {
+			t.Fatalf("effect-time expiry escaped: HTTP=%d clockChecks=%d body=%s", rec.Code, clockCalls, rec.Body.String())
+		}
+		var response webCommandScenarioResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link-denied" || len(response.Result.Validations) != 3 ||
+			response.Result.Authorization == nil || response.Result.Authorization.Outcome != "allowed" ||
+			response.Result.Command != nil || response.Result.Observation != nil ||
+			len(audits) != 1 || audits[0].Stage != "rejected" {
+			t.Fatalf("expired account reached effect: result=%+v audits=%+v", response.Result, audits)
+		}
+	})
+	t.Run("subject mapping changes after early checks", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		original := config.SubjectLinks
+		calls := 0
+		config.SubjectLinks = func(ctx context.Context, source webcomposition.ExternalSubject) (webcomposition.SubjectLink, bool, error) {
+			calls++
+			if calls == 3 {
+				// Both linked accounts exist, but a different SubjectID must
+				// never inherit the permission granted to the prior identity.
+				return webcomposition.SubjectLink{PrincipalID: "employee-1", SubjectID: "subject-order-viewer"}, true, nil
+			}
+			return original(ctx, source)
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching",
+			`{"from":"2026-09-18T08:30:00Z","row":0}`)
+		if rec.Code != http.StatusServiceUnavailable || calls != 3 {
+			t.Fatalf("link drift bypassed effect-time check: HTTP=%d lookups=%d body=%s", rec.Code, calls, rec.Body.String())
+		}
+		var response webCommandScenarioErrorResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link" || response.Result.Command != nil ||
+			response.Result.Observation != nil || response.ExecutionError != "trusted identity resolution unavailable" ||
+			strings.Contains(rec.Body.String(), "subject link differs") ||
+			len(audits) != 1 || audits[0].Stage != "error" {
+			t.Fatalf("changed mapping reached effect or leaked link state: response=%+v audits=%+v", response, audits)
+		}
+	})
+}
