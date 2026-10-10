@@ -323,6 +323,15 @@
       "risk": "cross-view accounting can invent a declared operation from structural presence alone and blur the boundary between Table participation and explicit CRUD authority.",
       "owner": "GitHub #1031 / Draft PR #1077",
       "stopCondition": "function-table-operation is emitted only when at least one recognized C/R/U/D marker is present; zero recognized markers produce iotable-operation-missing unresolved Evidence, and unsupported markers never yield partial CRUD"
+    },
+    {
+      "id": "RML-036",
+      "topic": "empty-legacy-id-counted-as-usable-identity",
+      "nature": "unresolved",
+      "evidence": "The historical cross-view-accounting-v0 counted 35 TaskActions with no ID attribute, but exact-source re-accounting found the remaining 113 ID attributes are present with empty values. No TaskAction has a non-empty usable legacy ID.",
+      "risk": "attribute-presence accounting can make 113 TaskActions appear durably identifiable and can hide pressure to preserve source-token addressability without synthesizing identity.",
+      "owner": "GitHub #1031 / Draft PR #1077",
+      "stopCondition": "current source inventory distinguishes absent / present-empty / non-empty IDs; cross-view MissingLegacyID treats empty and absent identically; exact-source v1 accounting expects missing-or-empty=148 and tests reject empty ID as usable identity"
     }
   ],
   "claimsNotEstablished": [
