@@ -4,6 +4,7 @@ package derivedbridge
 
 import (
 	"sort"
+	"strings"
 	"tei/internal/index"
 	"tei/internal/modelref"
 	"tei/internal/subject"
@@ -30,6 +31,7 @@ func FromIndex(d index.Derived, scope string) Projection {
 		return p
 	}
 	nodes := make(map[modelref.Key]bool)
+	semanticKindsByID := make(map[string][]string)
 	add := func(kind, id string) {
 		if id == "" {
 			return
@@ -39,6 +41,9 @@ func FromIndex(d index.Derived, scope string) Projection {
 			return // repeated use of the same Application is not a duplicate definition
 		}
 		nodes[k] = true
+		if strings.HasPrefix(kind, "semantic-") {
+			semanticKindsByID[id] = append(semanticKindsByID[id], kind)
+		}
 		p.Graph.Nodes = append(p.Graph.Nodes, modelref.Node{Key: k})
 	}
 	for _, e := range d.SemanticElements {
@@ -69,17 +74,15 @@ func FromIndex(d index.Derived, scope string) Projection {
 			return
 		}
 		if toKind == "semantic-element" {
-			matches := []string{}
-			for k := range nodes {
-				if k.Subject.ID == toID && len(k.Subject.Kind) >= 9 && k.Subject.Kind[:9] == "semantic-" {
-					matches = append(matches, k.Subject.Kind)
-				}
-			}
-			if len(matches) != 1 {
+			// Keep resolution linear in the number of definitions and edges.
+			// Two definitions with the same ID but different kinds are not
+			// interchangeable; they must remain explicitly ambiguous.
+			kinds := semanticKindsByID[toID]
+			if len(kinds) != 1 {
 				p.Unresolved = append(p.Unresolved, "unresolved-semantic-element:"+toID)
 				return
 			}
-			toKind = matches[0]
+			toKind = kinds[0]
 		}
 		to := modelref.Key{Scope: scope, Subject: subject.Subject{Kind: toKind, ID: toID}}
 		if !nodes[to] {
