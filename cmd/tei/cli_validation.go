@@ -14,8 +14,20 @@ import (
 type cliValidationReport struct {
 	SchemaVersion string                          `json:"schemaVersion"`
 	OK            bool                            `json:"ok"`
-	Diagnostics   []workspace.ProjectedDiagnostic `json:"diagnostics"`
+	Diagnostics   []cliValidationItem             `json:"diagnostics"`
 	Error         *cliValidationFailure           `json:"error,omitempty"`
+}
+
+// Source locations never synthesize an empty Semantic Subject for parse errors.
+type cliValidationItem struct {
+	Diagnostic validation.Diagnostic `json:"diagnostic"`
+	Sources    []cliValidationSource `json:"sources,omitempty"`
+}
+
+type cliValidationSource struct {
+	ArtifactPath string           `json:"artifactPath"`
+	Range        sourceindex.Range `json:"range"`
+	Role         sourceindex.Role  `json:"role,omitempty"`
 }
 
 type cliValidationFailure struct {
@@ -28,17 +40,17 @@ type cliValidationFailure struct {
 func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 	report := cliValidationReport{
 		SchemaVersion: "tei.cli.validate/v0",
-		Diagnostics:   []workspace.ProjectedDiagnostic{},
+		Diagnostics:   []cliValidationItem{},
 	}
 	result, err := workspace.Load(root)
 	if err != nil {
 		if direct, ok := workspace.SourceDiagnosticFromError(root, err); ok {
-			report.Diagnostics = append(report.Diagnostics, workspace.ProjectedDiagnostic{
+			report.Diagnostics = append(report.Diagnostics, cliValidationItem{
 				Diagnostic: validation.Diagnostic{
 					Code: direct.Code, Severity: direct.Severity, Message: direct.Message,
 				},
 				// There is no Semantic Subject before parsing completes.
-				Sources: []sourceindex.Reference{{
+				Sources: []cliValidationSource{{
 					ArtifactPath: direct.Source.ArtifactPath,
 					Range:        direct.Source.Range,
 				}},
@@ -53,7 +65,17 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 		report.Error = &cliValidationFailure{Code: "SOURCE_INDEX_FAILED", Message: err.Error()}
 		return writeValidationReport(out, report, 2)
 	}
-	report.Diagnostics = workspace.ProjectDiagnostics(validation.Validate(result.World), index)
+	for _, projected := range workspace.ProjectDiagnostics(validation.Validate(result.World), index) {
+		item := cliValidationItem{Diagnostic: projected.Diagnostic}
+		for _, ref := range projected.Sources {
+			item.Sources = append(item.Sources, cliValidationSource{
+				ArtifactPath: ref.ArtifactPath,
+				Range:        ref.Range,
+				Role:         ref.Role,
+			})
+		}
+		report.Diagnostics = append(report.Diagnostics, item)
+	}
 	report.OK = true
 	for _, item := range report.Diagnostics {
 		if item.Diagnostic.Severity == validation.Error {
