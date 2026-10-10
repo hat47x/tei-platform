@@ -666,3 +666,22 @@ mainの通常Web fixtureでは新規`unit_price_positive`を失敗させる単�
 4. #1126/#1127: E2は別途actual DB、同じR1に対するDB互換性・current Host Authority・Commandと独立read、S02/S05/N11を実証する。
 
 **現状**: §20は更新後のGitHub source/PRに基づく設計・実装照合およびpreflight code/testの変更。新規のGoテストはこの横断担当でtrusted full TEI checkout実行していない。Node E2E、running Web、actual DB、Repository Healthも未実行。#1119 G1/G2は未合格、親PR #1135はDraft継続。
+
+## 21. G2証跡監査の敵対的入力対策と現状負例（2026-10-10）
+
+§19のpreflightを単なる申告欄の検査として利用する際、次の二つの**偽の形式合格経路**を発見し、Reference側へ修正した。
+
+1. `E1/E2`を申告しながら`contract.evidenceClass=source-only`または`synthetic-tested`のまま、他の文字列だけ埋めると、先行実装では`REVIEW_REQUIRED`になり得た。現在は **`E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED`** として`INCOMPLETE`にする。Web Providerがsyntheticでも、E1に必要なrunning Webの**実行**の申告まで不要になるわけではない。
+2. Goの標準JSON decoderは重複したfieldで最後の値を採用する。さらに`io.LimitReader(...,1 MiB)`は先頭1 MiBが有効なJSONなら**残りの入力を読み落としてEOFとする**ため、hidden trailing contentを検出できない。修正後は入力サイズを**1 MiBを超えて拒否**し、UTF-8、未知field、重複key（入れ子を含む）、`claim/Claim`のようなcase-folded alias、過深nest、追記JSONを拒否する。Source/Target/Authorityの実体をこのtoolで検証できるという意味ではない。
+
+現状の機械可読負例は `tools/reference-critical-path-evidence-audit/testdata/p0-order-unit-price-incomplete.json`。既存Goテストソース名と、Validation追加＋Application利用宣言の二つのdeltaを明示する一方、**実行済みではないものを埋めていない**。現在の`main`と候補PR headを引数に指定してReference CLIを**隔離Go環境**で実走査し、次を確認した。
+
+- 結果 `status=INCOMPLETE`、`productGate=UNQUALIFIED`、終了非ゼロ。
+- `ACCEPTED_R0_R1_LINEAGE_MISSING`、`ACCEPTANCE_REVIEW_AND_RELOAD_EVIDENCE_MISSING`、`E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED`、`E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED`、`ACTUAL_WEB_POSITIVE_AND_NEGATIVE_RECEIPTS_REQUIRED`、`N11_UNOBSERVED_CONTROL_MISSING`、`REVISION_QUALIFICATION_STALE_OR_MISSING`、`TRUSTED_FULL_HEALTH_NOT_RECORDED` を出力。後続の更新で「未実行」を確定PASSへ改ざんしていないか、fixtureの回帰テストでも確認する。
+- 既存の#1124 E2Eと#1127 Web/Driverの受注明細Validationテストを新規に重複実装するのではなく、**そのactual実行Evidenceを受け取る**ための検査に限定する。
+
+### 試験の所在と限界
+
+Go 1.23.2の**独立コピー**で `GO111MODULE=off go test -race -count=1 -v main.go main_test.go` は20件PASS、`GO111MODULE=off go vet main.go main_test.go`はPASS、`gofmt -l`は空。これらの対象コードは、その時点のGitHub blobと一致している：`main.go=84cf10a53fe560cd3595e058e1476a1f6055571c`、`main_test.go=b8e113e63135b6bb203a541afd63cc4fa53bf1e1`、fixture=`7a499e246489b3ef4b8e18263c6c8deb253a39e9`。
+
+**未取得**: trusted full TEI checkoutのexact-head Package test、`tools/repository-health-check.sh`、Web running-server上の単価負例、実DBのCommand＋独立Read、実Human Acceptance。Code/testの孤立実行はこれらに代わらない。E1/E2の形式上の入力に`actual-observed`と記入しただけでは、actual観測の真偽を証明したことにはならず、preflightは常に`productGate=UNQUALIFIED`とする。
