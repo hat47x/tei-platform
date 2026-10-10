@@ -46,6 +46,8 @@ go run ./cmd/tei world -workspace /tmp/tei-first
 
 `intake.request.priority`が新たに現れ、既存の`intake.request`と`request_log`のIDは変わりません。この段階では意味の追加が確認できるだけで、DB列や画面が自動生成・更新されたわけではありません。
 
+変更後は必ずSource Indexを再生成してください。変更前のFingerprintに基づいた参照位置・内容を、最新の証拠として流用しません。編集対象は `.tei` の正本であり、`tei world` の出力JSONではありません。
+
 ## 3. 失敗と修復を確認する
 
 コピーした`request.tei`の`priority`属性の型を一時的に`std.not_defined`へ変更し、Validationを実行します。
