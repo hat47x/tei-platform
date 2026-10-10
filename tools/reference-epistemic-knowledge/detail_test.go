@@ -362,6 +362,109 @@ func TestEpistemicDetailDoesNotPresentStaleSourceCheckAsCurrentDetail(t *testing
 	}
 }
 
+func TestEpistemicDetailExplainsCurrentReviewHistory(t *testing.T) {
+	corpus, context := loadFixture(t)
+	query := detailQueryFor(t, corpus, context, "human-reviewed", nil)
+
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Content.ReviewHistory) != 1 {
+		t.Fatalf("current review history was not returned: %+v", result.Content.ReviewHistory)
+	}
+	event := result.Content.ReviewHistory[0]
+	if event.ID != "review-main-branch" ||
+		event.Kind != ReviewEventConfirm ||
+		event.Reviewer != "human" ||
+		event.Method != reviewMethodHuman ||
+		event.OccurredAt != "2026-10-06T12:05:00Z" ||
+		event.Binding != "current" {
+		t.Fatalf("unexpected review history summary: %+v", event)
+	}
+	if event.TargetIdentity.Kind != "repository-fact" ||
+		event.TargetIdentity.ID != "tei.main-branch" ||
+		len(event.Context) != 2 {
+		t.Fatalf("review scope was not preserved in detail history: %+v", event)
+	}
+}
+
+func TestEpistemicDetailHidesRestrictedReviewHistory(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		corpus.Assertions[i].ReviewEvents[0].AccessRefs = []string{"policy:review-history"}
+	}
+	fullAccess := []string{"policy:review-history"}
+	query := detailQueryFor(t, corpus, context, "human-reviewed", fullAccess)
+
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Content.ReviewHistory) != 0 {
+		t.Fatalf("restricted review history leaked: %+v", result.Content.ReviewHistory)
+	}
+	if result.Assessment.MetadataState != MetadataPartial ||
+		result.Assessment.ConfirmationState != "unreviewed" ||
+		result.Assessment.UseState != "review-required" {
+		t.Fatalf("hidden review history did not downgrade current detail: %+v", result.Assessment)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "review-main-branch") ||
+		strings.Contains(string(encoded), "policy:review-history") {
+		t.Fatalf("hidden review identity leaked through detail output: %s", encoded)
+	}
+}
+
+func TestEpistemicDetailMarksStaleVisibleReviewHistory(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		corpus.Assertions[i].ReviewEvents = append(corpus.Assertions[i].ReviewEvents, ReviewEvent{
+			Sequence:           2,
+			ID:                 "stale-review-history",
+			Kind:               ReviewEventConfirm,
+			Reviewer:           "human",
+			Method:             reviewMethodHuman,
+			MeaningFingerprint: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			StatementKind:      corpus.Assertions[i].Mode,
+			Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
+			TargetIdentity: ReviewTargetIdentity{
+				Kind: corpus.Assertions[i].Target.Kind,
+				ID:   corpus.Assertions[i].Target.ID,
+			},
+			OccurredAt: "2026-10-06T12:06:00Z",
+		})
+	}
+	query := detailQueryFor(t, corpus, context, "human-reviewed", nil)
+
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Content.ReviewHistory) != 2 {
+		t.Fatalf("visible stale review history was dropped: %+v", result.Content.ReviewHistory)
+	}
+	var stale *DetailReviewEvent
+	for i := range result.Content.ReviewHistory {
+		if result.Content.ReviewHistory[i].ID == "stale-review-history" {
+			stale = &result.Content.ReviewHistory[i]
+			break
+		}
+	}
+	if stale == nil || stale.Binding != "stale" {
+		t.Fatalf("stale review event was not labeled stale: %+v", result.Content.ReviewHistory)
+	}
+}
+
 func TestEpistemicDetailDoesNotLeakFutureReviewHistory(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
