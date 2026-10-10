@@ -365,3 +365,41 @@ func TestWebTargetSessionRouteEffectTimeRevalidation(t *testing.T) {
 		}
 	})
 }
+
+func TestWebTargetSessionRouteReportsMidRequestBusinessRevocationAsDenial(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	original := config.SubjectLinks
+	lookups := 0
+	config.SubjectLinks = func(ctx context.Context, source webcomposition.ExternalSubject) (webcomposition.SubjectLink, bool, error) {
+		lookups++
+		if lookups == 2 {
+			// The Host authorized an editor, but the trusted mapping now
+			// resolves the same application Principal to a viewer. The
+			// canonical business Capability must reject this changed role.
+			return webcomposition.SubjectLink{PrincipalID: "employee-1", SubjectID: "subject-order-viewer"}, true, nil
+		}
+		return original(ctx, source)
+	}
+	var audits []webcomposition.AuditRecord
+	config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching",
+		`{"from":"2026-09-18T08:30:00Z","row":0}`)
+	if rec.Code != http.StatusForbidden || lookups != 2 {
+		t.Fatalf("business permission revocation did not return 403: HTTP=%d lookups=%d body=%s", rec.Code, lookups, rec.Body.String())
+	}
+	var response webCommandScenarioResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Result.Stage != "authorization-denied" || response.Result.Authorization == nil ||
+		response.Result.Authorization.Outcome != "denied" || response.Result.Command != nil ||
+		response.Result.Observation != nil || len(audits) != 1 ||
+		audits[0].Stage != "rejected" || audits[0].Status != http.StatusForbidden {
+		t.Fatalf("changed permissions were audited as successful: result=%+v audit=%+v", response.Result, audits)
+	}
+}
