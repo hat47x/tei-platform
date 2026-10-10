@@ -184,8 +184,9 @@ func TestTraceDirectPaginationAndDeterministicOrder(t *testing.T) {
 		g.Edges[i], g.Edges[j] = g.Edges[j], g.Edges[i]
 	}
 	reordered, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{})
-	if err != nil || !reflect.DeepEqual(all.Rows, reordered.Rows) {
-		t.Fatalf("insertion order changed trace: %+v %v", reordered, err)
+	if err != nil || !reflect.DeepEqual(all.Rows, reordered.Rows) ||
+		all.SnapshotFingerprint != reordered.SnapshotFingerprint {
+		t.Fatalf("insertion order changed trace rows or snapshot: %+v %v", reordered, err)
 	}
 	if all.Total != 3 || all.Unresolved != 0 {
 		t.Fatalf("full trace truncated: %+v", all)
@@ -246,8 +247,9 @@ func TestTraceDirectNormalizesEvidenceWithoutMutatingGraph(t *testing.T) {
 	g.Edges[0].Evidence[0], g.Edges[0].Evidence[1] =
 		g.Edges[0].Evidence[1], g.Edges[0].Evidence[0]
 	b, err := modelref.TraceDirect(g, rules, fn, modelref.TraceOptions{Direction: "outgoing"})
-	if err != nil || !reflect.DeepEqual(a.Rows, b.Rows) {
-		t.Fatalf("unordered evidence changed trace output: %+v versus %+v (%v)", a, b, err)
+	if err != nil || !reflect.DeepEqual(a.Rows, b.Rows) ||
+		a.SnapshotFingerprint != b.SnapshotFingerprint {
+		t.Fatalf("unordered evidence changed trace output or snapshot: %+v versus %+v (%v)", a, b, err)
 	}
 }
 
@@ -269,5 +271,31 @@ func TestTraceDirectLargeCompleteAndSummary(t *testing.T) {
 	if err != nil || summary.Total != full.Total || summary.Unresolved != full.Unresolved ||
 		len(summary.Rows) != 0 || summary.SnapshotFingerprint != full.SnapshotFingerprint {
 		t.Fatalf("summary diverged from full trace: %+v err=%v", summary, err)
+	}
+}
+
+func TestTraceDirectSnapshotIsOrderIndependentButPreservesDuplicateDeclarations(t *testing.T) {
+	graph, rules, key := traceGraph()
+	one, err := modelref.TraceDirect(graph, rules, key, modelref.TraceOptions{
+		Mode: "summary",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph.Nodes[0], graph.Nodes[2] = graph.Nodes[2], graph.Nodes[0]
+	graph.Edges[0], graph.Edges[1] = graph.Edges[1], graph.Edges[0]
+	two, err := modelref.TraceDirect(graph, rules, key, modelref.TraceOptions{
+		Mode: "full", ExpectedFingerprint: one.SnapshotFingerprint,
+	})
+	if err != nil || one.SnapshotFingerprint != two.SnapshotFingerprint {
+		t.Fatalf("equivalent graph order invalidated continuation: %v", err)
+	}
+	graph.Nodes = append(graph.Nodes, graph.Nodes[0])
+	_, err = modelref.TraceDirect(graph, rules, key, modelref.TraceOptions{
+		Mode: "full", ExpectedFingerprint: one.SnapshotFingerprint,
+	})
+	var stale *modelref.TraceError
+	if !errors.As(err, &stale) || stale.Code != "STALE_SNAPSHOT" {
+		t.Fatalf("duplicate authoritative node not reflected in snapshot: %v", err)
 	}
 }
