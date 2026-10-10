@@ -9,8 +9,8 @@ import (
 	"tei/internal/modelref"
 	"tei/internal/modelref/derivedbridge"
 	"tei/internal/modelref/sourcebridge"
-	"tei/internal/workspace"
 	"tei/internal/subject"
+	"tei/internal/workspace"
 )
 
 func TestIssue1120ReadOnlyReferenceWorldToSourceAndImpact(t *testing.T) {
@@ -52,7 +52,9 @@ func TestIssue1120ReadOnlyReferenceWorldToSourceAndImpact(t *testing.T) {
 	// constructing a second relation graph from path/name similarities.
 	outgoing, err := modelref.TraceDirect(projection.Graph, projection.Rules, relation,
 		modelref.TraceOptions{Direction: "outgoing"})
-	if err != nil { t.Fatalf("trace relation outgoing: %v", err) }
+	if err != nil {
+		t.Fatalf("trace relation outgoing: %v", err)
+	}
 	foundCustomer := false
 	for _, row := range outgoing.Rows {
 		if row.Status == "resolved" && row.ResolvedTo != nil && *row.ResolvedTo == customer {
@@ -64,7 +66,9 @@ func TestIssue1120ReadOnlyReferenceWorldToSourceAndImpact(t *testing.T) {
 	}
 	incoming, err := modelref.TraceDirect(projection.Graph, projection.Rules, relation,
 		modelref.TraceOptions{Direction: "incoming"})
-	if err != nil { t.Fatalf("trace relation incoming: %v", err) }
+	if err != nil {
+		t.Fatalf("trace relation incoming: %v", err)
+	}
 	foundPattern := false
 	for _, row := range incoming.Rows {
 		if row.Status == "resolved" && row.Edge.From == pattern {
