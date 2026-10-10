@@ -447,14 +447,29 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			Digest: stage1Output.ArtifactDigest,
 		}},
 	}
+	stage1OutputSetFingerprint, err := artifactSetFingerprint(stage1OutputSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1ResultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: stage1Fingerprint,
+		ArtifactSetFingerprint:   stage1OutputSetFingerprint,
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
 	if err := verifyBuildGraphBindings(
 		graph,
 		map[string]BuildExecutionPlan{
 			"stage1": stage1Plan,
 			"stage2": stage2Plan,
 		},
-		map[string]ArtifactSet{
-			"stage1": stage1OutputSet,
+		map[string]BuildGraphNodeOutput{
+			"stage1": {
+				ArtifactSet:                     stage1OutputSet,
+				BuildExecutionResultFingerprint: stage1ResultFingerprint,
+			},
 		},
 	); err != nil {
 		return referenceEvidence{}, err
