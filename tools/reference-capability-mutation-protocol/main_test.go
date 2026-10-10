@@ -89,7 +89,6 @@ func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (Provi
 			handle,
 			"",
 			"",
-			"",
 		)
 		record.receipt = receipt
 		return receipt, nil
@@ -102,7 +101,6 @@ func (p *ledgerProvider) Commit(_ context.Context, request CommitRequest) (Provi
 	record.receipt = NewProviderReceipt(
 		OutcomeCommitted,
 		handle,
-		"result-"+request.InvocationKey,
 		digest([]byte(fmt.Sprintf("value=%d;version=%d", p.value, p.version))),
 		"commit-"+request.InvocationKey,
 	)
@@ -129,7 +127,6 @@ func (p *ledgerProvider) Status(_ context.Context, request StatusRequest) (Provi
 			preparedHandle(record.prepared),
 			"",
 			"",
-			"",
 		), nil
 	}
 	if record.committed {
@@ -141,7 +138,6 @@ func (p *ledgerProvider) Status(_ context.Context, request StatusRequest) (Provi
 	return NewProviderReceipt(
 		OutcomeNotCommitted,
 		preparedHandle(record.prepared),
-		"",
 		"",
 		"",
 	), nil
@@ -330,7 +326,6 @@ func TestSuccessfulMutationCommitsPreparedResultExactlyOnce(t *testing.T) {
 	}
 	if first.Receipt.ResultDigest != digest(first.Result) ||
 		first.Receipt.RequestDigest != digest(request.Payload) ||
-		first.Receipt.ResultRef != "result-order-3" ||
 		first.Receipt.PreparationFingerprint != first.Handle.PreparationFingerprint {
 		t.Fatalf("receipt lost prepared identity: %+v", first.Receipt)
 	}
@@ -399,7 +394,6 @@ func TestCommitTransportFailureReturnsUnknownAndReconciles(t *testing.T) {
 	if reconciled.Outcome != OutcomeCommitted ||
 		len(reconciled.Result) != 0 ||
 		reconciled.Receipt == nil ||
-		reconciled.Receipt.ResultRef != "result-order-5" ||
 		provider.effectCount != 1 {
 		t.Fatalf("reconcile did not recover committed effect: %+v provider=%+v", reconciled, provider)
 	}
@@ -636,7 +630,6 @@ func TestUnknownCommitCanBeRecoveredFromJournalAfterExecutorRestart(t *testing.T
 	if reconciled.Outcome != OutcomeCommitted ||
 		len(reconciled.Result) != 0 ||
 		reconciled.Receipt == nil ||
-		reconciled.Receipt.ResultRef != "result-order-restart" ||
 		provider.effectCount != 1 {
 		t.Fatalf("restart recovery failed: reconciled=%+v provider=%+v", reconciled, provider)
 	}
@@ -670,7 +663,6 @@ func TestReconcileByInvocationKeyUsesJournaledOutcomeWithoutProviderReplay(t *te
 	if reconciled.Outcome != OutcomeCommitted ||
 		len(reconciled.Result) != 0 ||
 		reconciled.Receipt == nil ||
-		reconciled.Receipt.ResultRef != "result-order-journaled" ||
 		reconciled.Receipt.ReceiptFingerprint != first.Receipt.ReceiptFingerprint {
 		t.Fatalf("journaled outcome was not recovered: %+v", reconciled)
 	}
