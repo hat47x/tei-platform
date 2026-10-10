@@ -105,6 +105,9 @@ func invokeOverProcessTransport(
 	if err := validateGenericDispatch(dispatch); err != nil {
 		return TransportExecution{}, err
 	}
+	if err := validateCarrierProviderBinding(carrier, dispatch.Provider); err != nil {
+		return TransportExecution{}, err
+	}
 
 	payload, err := json.Marshal(dispatch)
 	if err != nil {
@@ -165,6 +168,7 @@ func invokeOverProcessTransport(
 				"transport-success-is-not-runtime-authority",
 				"transport-success-is-not-canonical-acceptance",
 				"legacy-carrier-identity-is-not-generic-contract-identity",
+				"carrier-provider-package-match-is-not-runtime-authority",
 				"generic-provider-and-shape-echo-is-not-runtime-authority",
 				"process-response-does-not-echo-legacy-capability-kind",
 				"process-stdio-is-one-realization-not-universal-capability-abi",
@@ -185,6 +189,23 @@ func validateLegacyCarrier(carrier LegacyCarrier) error {
 	}
 	if strings.TrimSpace(carrier.Operation) == "" {
 		return fmt.Errorf("legacy transport carrier requires operation")
+	}
+	return nil
+}
+
+func validateCarrierProviderBinding(
+	carrier LegacyCarrier,
+	provider GenericProviderIdentity,
+) error {
+	if string(carrier.Plugin.ID) != provider.PluginID ||
+		carrier.Plugin.Version != provider.PluginVersion {
+		return fmt.Errorf(
+			"generic provider %s@%s does not match legacy carrier plugin %s@%s",
+			provider.PluginID,
+			provider.PluginVersion,
+			carrier.Plugin.ID,
+			carrier.Plugin.Version,
+		)
 	}
 	return nil
 }
