@@ -121,9 +121,14 @@ func main() {
 	inputFlag := flag.String("input", "", "path to the source XML")
 	contractFlag := flag.String("contract", "", "optional transcription contract JSON")
 	localCandidatesFlag := flag.Bool("local-candidates", false, "include source-locator candidate classification; local/private output only")
+	candidateNodeFlag := flag.Int("candidate-evidence-node", 0, "emit one redacted typed RMT Evidence for a local node ordinal (requires -contract)")
 	flag.Parse()
 	if *formatFlag == "" || *inputFlag == "" {
-		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file> [-contract transcription-contract.json] [-local-candidates]")
+		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file> [-contract transcription-contract.json] [-local-candidates | -candidate-evidence-node N]")
+		os.Exit(2)
+	}
+	if *candidateNodeFlag < 0 || (*candidateNodeFlag > 0 && (*contractFlag == "" || *localCandidatesFlag)) {
+		fmt.Fprintln(os.Stderr, "-candidate-evidence-node must be positive, requires -contract and cannot be combined with -local-candidates")
 		os.Exit(2)
 	}
 	content, err := os.ReadFile(*inputFlag)
@@ -151,6 +156,23 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
+	}
+
+	if *candidateNodeFlag > 0 {
+		evidence, err := BuildTranscriptionCandidateEvidence(format, doc, contractBytes, *candidateNodeFlag)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := VerifyTranscriptionCandidateEvidence(format, doc, contractBytes, evidence); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := encoder.Encode(evidence); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		return
 	}
 	coverage, err := CheckClassificationCoverage(format, doc, contractBytes)
 	if err != nil {
