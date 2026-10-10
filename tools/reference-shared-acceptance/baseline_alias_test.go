@@ -227,3 +227,31 @@ func TestReferenceBaselineGuardMatchesMixedCaseConservatively(t *testing.T) {
 		t.Fatal("case variant bypassed derived Golden protection")
 	}
 }
+
+func TestReferenceBaselineOutputFlagAllowsResolvedScratchSymlink(t *testing.T) {
+	// Use the ordinary CLI, not just the classifier, to verify that the
+	// safety guard does not disable a legitimate scratch output workflow.
+	workspace := scratchWorkspace(t)
+	root := t.TempDir()
+	output := filepath.Join(root, "revision.json")
+	if err := os.WriteFile(output, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(root, "revision-alias.json")
+	if err := os.Symlink(output, alias); err != nil {
+		t.Skipf("scratch output symlink unavailable: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if code := runCLI([]string{"revision", "-workspace", workspace, "-out", alias}, &stdout, &stderr); code != 0 {
+		t.Fatalf("safe scratch output alias rejected: code=%d stdout=%s stderr=%s",
+			code, stdout.String(), stderr.String())
+	}
+	content, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "modelRevision") {
+		t.Fatalf("revision output was not written through safe alias: %q", content)
+	}
+}
