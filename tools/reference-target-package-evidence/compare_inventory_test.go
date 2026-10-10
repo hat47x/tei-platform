@@ -1,16 +1,14 @@
 package main
 
-import (
-	"testing"
-)
+import "testing"
 
 // A hand-written or corrupted comparison input must not manufacture package
 // removal by adding impossible paths, duplicates, or arbitrary source kinds.
 func TestCompareRejectsImpossibleSourceInventory(t *testing.T) {
 	base := comparisonFixture("tei/cmd/one", SourcePackage{
-		ImportPath: "tei/cmd/one",
-		GoFiles:    []string{"main.go"},
-		Imports:    []string{"fmt"},
+		ImportPath:      "tei/cmd/one",
+		GoFiles:         []string{"main.go"},
+		Imports:         []string{"fmt"},
 		AuxiliaryInputs: []SourceInput{
 			{Kind: "embed", Path: "assets/data.txt"},
 		},
@@ -59,18 +57,18 @@ func TestCompareRejectsImpossibleSourceInventory(t *testing.T) {
 
 func TestCompareAcceptsSortedEquivalentPackageInventory(t *testing.T) {
 	before := comparisonFixture("tei/cmd/one", SourcePackage{
-		ImportPath: "tei/cmd/one",
-		GoFiles:    []string{"z.go", "a.go"},
-		Imports:    []string{"strings", "fmt"},
+		ImportPath:      "tei/cmd/one",
+		GoFiles:         []string{"z.go", "a.go"},
+		Imports:         []string{"strings", "fmt"},
 		AuxiliaryInputs: []SourceInput{
 			{Kind: "embed", Path: "assets/z.txt"},
 			{Kind: "embed", Path: "assets/a.txt"},
 		},
 	})
 	after := comparisonFixture("tei/cmd/one", SourcePackage{
-		ImportPath: "tei/cmd/one",
-		GoFiles:    []string{"a.go", "z.go"},
-		Imports:    []string{"fmt", "strings"},
+		ImportPath:      "tei/cmd/one",
+		GoFiles:         []string{"a.go", "z.go"},
+		Imports:         []string{"fmt", "strings"},
 		AuxiliaryInputs: []SourceInput{
 			{Kind: "embed", Path: "assets/a.txt"},
 			{Kind: "embed", Path: "assets/z.txt"},
