@@ -159,7 +159,7 @@ function businessLens(dfd, patterns, index, focus) {
   if (!dfd || dfd.schemaVersion !== "business-dfd-projection-v0" ||
       dfd.authority !== "derived-read-only" ||
       dfd.canonicalProcedureUsed !== false ||
-      typeof dfd.procedureId !== "string" ||
+      !isText(dfd.procedureId) ||
       !Array.isArray(dfd.steps) || !Array.isArray(dfd.diagnostics)) {
     throw new Error("UNSUPPORTED_BUSINESS_DFD_AUTHORITY_OR_SCHEMA");
   }
@@ -208,7 +208,10 @@ function businessLens(dfd, patterns, index, focus) {
     }
     const directLinks = [];
     for (const r of array(step.explicitMeaning, "step.explicitMeaning")) {
-      if (!r || !isText(r.kind) || !isText(r.id))
+      if (!r || !isText(r.kind) || !isText(r.id) ||
+          !["semantic-data", "semantic-relation", "semantic-validation",
+            "semantic-capability"].includes(r.kind) ||
+          !["resolved-id-not-accepted", "unresolved"].includes(r.status))
         throw new Error("INVALID_BUSINESS_DIRECT_MEANING");
       if (r.kind !== explicitKind || r.id !== focus.id) continue;
       const current = r.status === "resolved-id-not-accepted" &&
