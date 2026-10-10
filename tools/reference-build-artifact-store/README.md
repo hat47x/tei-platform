@@ -117,3 +117,17 @@ content-addressed filenameだけ正しくても、Store directoryを後から別
 normal concurrent putではsame-directory tempをno-clobber hard linkでpublishし、各operation終了時にtemp linkをcleanupします。crash途中のorphan temp回収は非目標のままです。
 
 このReferenceは悪意あるfilesystem管理者に対する完全なsandboxを主張しません。Store rootはTEI build processが管理できるfilesystem領域であることを前提とし、その範囲でpath差替え・symlink・content driftをfail-closedにします。
+
+## Build Lock bridge
+
+current `internal/plugin.LockedBuild.ArtifactDigest`から、Store固有locatorをLockへ追加せずexact bytesを再取得できることをtestします。
+
+```text
+LockedBuild.ArtifactDigest
+  -> Local Artifact Store GetBytes(expected digest)
+  -> reverified exact bytes
+```
+
+Lockが保持するのはcontent identityです。Store rootやrelative LocatorはStore側のretrieval contextであり、Build Lock / Runtime Lockのlogical identityへ混ぜません。
+
+Store missやcorruptionが起きても、Lockを別digestへ暗黙更新しません。
