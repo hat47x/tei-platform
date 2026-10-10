@@ -797,12 +797,38 @@ func evidenceWithoutAccessRefs(values []EvidenceRef) []EvidenceRef {
 	return out
 }
 
+type reviewSubject struct {
+	ID                 string         `json:"id"`
+	Target             TargetRef      `json:"target"`
+	Text               string         `json:"text"`
+	MeaningFingerprint string         `json:"meaningFingerprint"`
+	Origin             Origin         `json:"origin"`
+	IngestedBy         IngestionActor `json:"ingestedBy"`
+	StatementKind      AssertionMode  `json:"statementKind"`
+	Context            []ScopeBinding `json:"context,omitempty"`
+	ValidFrom          string         `json:"validFrom,omitempty"`
+	ValidUntil         string         `json:"validUntil,omitempty"`
+	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
+	Supersedes         []string       `json:"supersedes,omitempty"`
+	ConflictsWith      []string       `json:"conflictsWith,omitempty"`
+}
+
 func reviewSubjectFingerprint(assertion Assertion) string {
-	subject := assertion
-	subject.ReviewEvents = nil
-	subject.ReviewerCandidates = nil
-	subject.AccessRefs = nil
-	subject.Evidence = evidenceWithoutAccessRefs(assertion.Evidence)
+	subject := reviewSubject{
+		ID:                 assertion.ID,
+		Target:             assertion.Target,
+		Text:               assertion.Text,
+		MeaningFingerprint: assertion.MeaningFingerprint,
+		Origin:             assertion.Origin,
+		IngestedBy:         assertion.IngestedBy,
+		StatementKind:      assertion.Mode,
+		Context:            append([]ScopeBinding{}, assertion.Context...),
+		ValidFrom:          assertion.ValidFrom,
+		ValidUntil:         assertion.ValidUntil,
+		Evidence:           evidenceWithoutAccessRefs(assertion.Evidence),
+		Supersedes:         append([]string{}, assertion.Supersedes...),
+		ConflictsWith:      append([]string{}, assertion.ConflictsWith...),
+	}
 	encoded, _ := json.Marshal(subject)
 	sum := sha256.Sum256(encoded)
 	return fmt.Sprintf("sha256:%x", sum[:])
