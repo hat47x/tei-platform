@@ -38,7 +38,7 @@ E6は、E5で取得した明示参照をE4の既存検査へ**受け渡す接着
 node --test reference/application-composition/e6-typed-index-bridge.test.mjs
 ```
 
-Node.jsの隔離実行環境で、E4モジュールとE6モジュール、およびE6の14件の合成試験を実行し、**14 PASS / 0 FAIL**を確認した（初回版）。後続の直接参照拡張に伴うテスト2件は追加したが、変更後の実行確認はまだない。GitHubへ登録したGit blob SHAと手元で試験した内容が一致した。
+Node.jsの隔離実行環境で、E4モジュールとE6モジュール、およびE6の14件の合成試験を実行し、**14 PASS / 0 FAIL**を確認した（初回版）。後続の直接参照拡張に伴うテスト3件（うち1件はPattern内部Capabilityへの推移的依存を未検査と示す負例）は追加したが、変更後の実行確認はまだない。GitHubへ登録したGit blob SHAと手元で試験した内容が一致した。
 
 - E4モジュール：`d2a61dac60b1641e453513e3f72b7c6c2ef43501`（既存ファイル）
 - E6モジュール：`820638daeed5d93b2c4cf3fcca2f643b8e5262aa`
