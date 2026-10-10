@@ -96,6 +96,7 @@ func TestInspectSubjectReferenceWorkspaceUsesSourceIndex(t *testing.T) {
 		}
 		if result.Subject != subject || result.Effect != "read-only" ||
 			result.SchemaVersion != "tei.operations.inspect/v0" || result.WorldFingerprint == "" ||
+			result.SourceIndexFingerprint == "" ||
 			result.SourceStatus != "indexed" || len(result.Sources.References) == 0 ||
 			len(result.Sources.Artifacts) == 0 || !json.Valid(result.Canonical) {
 			t.Fatalf("invalid inspection: %+v", result)
@@ -140,6 +141,9 @@ func TestInspectSubjectFileMoveDoesNotChangeCanonicalFingerprint(t *testing.T) {
 	}
 	if before.WorldFingerprint != after.WorldFingerprint || !reflect.DeepEqual(before.Canonical, after.Canonical) {
 		t.Fatalf("source move changed canonical meaning: %s vs %s", before.WorldFingerprint, after.WorldFingerprint)
+	}
+	if before.SourceIndexFingerprint == after.SourceIndexFingerprint {
+		t.Fatal("source move did not change Source Index fingerprint")
 	}
 	if len(before.Sources.References) == 0 || len(after.Sources.References) == 0 ||
 		before.Sources.References[0].ArtifactPath == after.Sources.References[0].ArtifactPath {
