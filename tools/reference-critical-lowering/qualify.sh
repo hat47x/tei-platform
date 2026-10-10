@@ -22,6 +22,12 @@ check_checkout() {
         printf '%s: stale revision (HEAD=%s origin/main=%s)\n' "$stage" "$head" "$main" >&2
         exit 1
     fi
+    # Health evidence must cover the exact target main, not an outdated
+    # feature branch that predates later main changes.
+    if ! git merge-base --is-ancestor "$EXPECTED_MAIN" "$EXPECTED_HEAD"; then
+        printf '%s: current main is not an ancestor of tested PR HEAD\n' "$stage" >&2
+        exit 1
+    fi
     status="$(git status --porcelain --untracked-files=all)"
     if [[ -n "$status" ]]; then
         printf '%s: checkout is not clean; refusing to qualify\n' "$stage" >&2
