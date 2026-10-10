@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -264,6 +265,26 @@ func TestDirectConfidentialReflectionIsRejected(t *testing.T) {
 	)
 	if err == nil || !strings.Contains(err.Error(), "directly reflected") {
 		t.Fatalf("direct execution-context reflection was accepted: %v", err)
+	}
+}
+
+func TestDirectConfidentialErrorReflectionIsRejected(t *testing.T) {
+	_, err := invokeWithExecutionContext(
+		context.Background(),
+		accessSlotContracts(),
+		accessRequirement(),
+		accessHost("secret-access-value"),
+		[]byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			value, _ := slots.Lookup(testAccessSlot)
+			return nil, fmt.Errorf("provider failed for %s", value)
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "directly reflected into downstream error") {
+		t.Fatalf("direct execution-context error reflection was accepted: %v", err)
+	}
+	if strings.Contains(err.Error(), "secret-access-value") {
+		t.Fatalf("reflection rejection re-exposed confidential value: %v", err)
 	}
 }
 
