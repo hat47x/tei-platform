@@ -252,7 +252,8 @@ func TestControlContextHidesAmbientValuesButPreservesDeadline(t *testing.T) {
 
 func TestControlContextPreservesCancellation(t *testing.T) {
 	parent, cancel := context.WithCancel(context.Background())
-	cancel()
+	defer cancel()
+	invoked := false
 
 	_, err := invokeWithExecutionContext(
 		parent,
@@ -261,6 +262,12 @@ func TestControlContextPreservesCancellation(t *testing.T) {
 		accessHost("trusted-access"),
 		[]byte("request"),
 		func(ctx context.Context, _ ContextSlotView, _ []byte) ([]byte, error) {
+			invoked = true
+			if ctx.Err() != nil {
+				t.Fatalf("control context was canceled before dispatch: %v", ctx.Err())
+			}
+			cancel()
+			<-ctx.Done()
 			if ctx.Err() != context.Canceled {
 				t.Fatalf("control cancellation was not preserved: %v", ctx.Err())
 			}
@@ -269,6 +276,9 @@ func TestControlContextPreservesCancellation(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !invoked {
+		t.Fatal("downstream was not invoked with an active control context")
 	}
 }
 
