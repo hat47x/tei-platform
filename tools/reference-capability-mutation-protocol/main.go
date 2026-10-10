@@ -24,6 +24,7 @@ var (
 	ErrCommitNotCommitted = errors.New("mutation was not committed")
 	ErrCommitUnknown      = errors.New("mutation commit outcome is unknown")
 	ErrJournalWrite       = errors.New("mutation journal write failed")
+	ErrJournalCorrupt     = errors.New("mutation journal record is invalid")
 	ErrAbortCleanup       = errors.New("mutation abort cleanup failed")
 )
 
@@ -35,16 +36,18 @@ type MutationRequest struct {
 }
 
 type PrepareRequest struct {
-	Protocol      string
-	InvocationKey string
-	RequestDigest string
-	Payload       []byte
+	Protocol           string
+	InvocationKey      string
+	BindingFingerprint string
+	RequestDigest      string
+	Payload            []byte
 }
 
 type PreparedMutation struct {
 	Protocol               string
 	PreparationID          string
 	InvocationKey          string
+	BindingFingerprint     string
 	RequestDigest          string
 	ResultPayload          []byte
 	ResultDigest           string
@@ -53,10 +56,11 @@ type PreparedMutation struct {
 }
 
 type CommitRequest struct {
-	Protocol          string
-	PreparationID    string
-	InvocationKey    string
-	RequestDigest    string
+	Protocol           string
+	PreparationID      string
+	InvocationKey      string
+	BindingFingerprint string
+	RequestDigest      string
 	ResultDigest     string
 	ConcurrencyToken string
 }
@@ -66,6 +70,7 @@ type ProviderCommitReceipt struct {
 	Outcome            MutationOutcome
 	PreparationID      string
 	InvocationKey      string
+	BindingFingerprint string
 	RequestDigest      string
 	ResultDigest       string
 	EffectDigest       string
@@ -74,10 +79,11 @@ type ProviderCommitReceipt struct {
 }
 
 type StatusRequest struct {
-	Protocol      string
-	PreparationID string
-	InvocationKey string
-	RequestDigest string
+	Protocol           string
+	PreparationID      string
+	InvocationKey      string
+	BindingFingerprint string
+	RequestDigest      string
 	ResultDigest  string
 }
 
@@ -85,6 +91,7 @@ type MutationHandle struct {
 	Protocol               string
 	PreparationID          string
 	InvocationKey          string
+	BindingFingerprint     string
 	RequestDigest          string
 	ResultDigest           string
 	ConcurrencyToken       string
@@ -95,6 +102,7 @@ type MutationReceipt struct {
 	Protocol                   string
 	Outcome                    MutationOutcome
 	InvocationKey              string
+	BindingFingerprint         string
 	RequestDigest              string
 	ResultDigest               string
 	PreparationFingerprint     string
@@ -128,12 +136,16 @@ type MutationJournal interface {
 }
 
 type Executor struct {
-	Provider MutationProvider
-	Journal  MutationJournal
-	Validate ResultValidator
+	BindingFingerprint string
+	Provider           MutationProvider
+	Journal            MutationJournal
+	Validate           ResultValidator
 }
 
 func (e Executor) Invoke(ctx context.Context, request MutationRequest) (MutationExecution, error) {
+	if err := validateExecutionBinding(e.BindingFingerprint); err != nil {
+		return MutationExecution{}, err
+	}
 	if e.Provider == nil {
 		return MutationExecution{}, fmt.Errorf("mutation provider is required")
 	}
@@ -153,15 +165,21 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 	payload := append([]byte(nil), request.Payload...)
 	requestDigest := digest(payload)
 	prepared, err := e.Provider.Prepare(ctx, PrepareRequest{
-		Protocol:      mutationProtocol,
-		InvocationKey: request.InvocationKey,
-		RequestDigest: requestDigest,
+		Protocol:           mutationProtocol,
+		InvocationKey:      request.InvocationKey,
+		BindingFingerprint: e.BindingFingerprint,
+		RequestDigest:      requestDigest,
 		Payload:       payload,
 	})
 	if err != nil {
 		return MutationExecution{Outcome: OutcomeNotCommitted}, err
 	}
-	handle, preparedResult, err := validatePrepared(request.InvocationKey, requestDigest, prepared)
+	handle, preparedResult, err := validatePrepared(
+		request.InvocationKey,
+		e.BindingFingerprint,
+		requestDigest,
+		prepared,
+	)
 	if err != nil {
 		cleanupErr := abortPrepared(e.Provider, ctx, preparedHandle(prepared))
 		return MutationExecution{Outcome: OutcomeNotCommitted}, errors.Join(err, cleanupErr)
@@ -196,10 +214,11 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 	}
 
 	providerReceipt, commitErr := e.Provider.Commit(ctx, CommitRequest{
-		Protocol:          mutationProtocol,
-		PreparationID:    handle.PreparationID,
-		InvocationKey:    handle.InvocationKey,
-		RequestDigest:    handle.RequestDigest,
+		Protocol:           mutationProtocol,
+		PreparationID:     handle.PreparationID,
+		InvocationKey:     handle.InvocationKey,
+		BindingFingerprint: handle.BindingFingerprint,
+		RequestDigest:     handle.RequestDigest,
 		ResultDigest:     handle.ResultDigest,
 		ConcurrencyToken: handle.ConcurrencyToken,
 	})
@@ -257,6 +276,9 @@ func (e Executor) ReconcileByInvocationKey(
 	ctx context.Context,
 	invocationKey string,
 ) (MutationExecution, error) {
+	if err := validateExecutionBinding(e.BindingFingerprint); err != nil {
+		return MutationExecution{}, err
+	}
 	if e.Journal == nil {
 		return MutationExecution{}, fmt.Errorf("mutation journal is required")
 	}
@@ -270,9 +292,22 @@ func (e Executor) ReconcileByInvocationKey(
 	if !ok {
 		return MutationExecution{}, fmt.Errorf("prepared mutation %q is not journaled", invocationKey)
 	}
+	if err := validateHandle(handle); err != nil {
+		return MutationExecution{}, fmt.Errorf("%w: prepared handle: %v", ErrJournalCorrupt, err)
+	}
+	if handle.BindingFingerprint != e.BindingFingerprint {
+		return MutationExecution{}, fmt.Errorf(
+			"prepared mutation binding %s differs from current execution binding %s",
+			handle.BindingFingerprint,
+			e.BindingFingerprint,
+		)
+	}
 	if receipt, found, err := e.Journal.LoadOutcome(ctx, invocationKey); err != nil {
 		return MutationExecution{}, fmt.Errorf("%w: load outcome: %v", ErrJournalWrite, err)
-	} else if found {
+} else if found {
+		if err := validateMutationReceipt(handle, receipt); err != nil {
+			return MutationExecution{}, fmt.Errorf("%w: outcome receipt: %v", ErrJournalCorrupt, err)
+		}
 		if receipt.Outcome == OutcomeCommitted {
 			return MutationExecution{
 				Outcome: OutcomeCommitted,
@@ -292,6 +327,9 @@ func (e Executor) ReconcileByInvocationKey(
 }
 
 func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (MutationExecution, error) {
+	if err := validateExecutionBinding(e.BindingFingerprint); err != nil {
+		return MutationExecution{}, err
+	}
 	if e.Provider == nil {
 		return MutationExecution{}, fmt.Errorf("mutation provider is required")
 	}
@@ -301,11 +339,19 @@ func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (Mutatio
 	if err := validateHandle(handle); err != nil {
 		return MutationExecution{}, err
 	}
+	if handle.BindingFingerprint != e.BindingFingerprint {
+		return MutationExecution{}, fmt.Errorf(
+			"mutation handle binding %s differs from current execution binding %s",
+			handle.BindingFingerprint,
+			e.BindingFingerprint,
+		)
+	}
 	providerReceipt, err := e.Provider.Status(ctx, StatusRequest{
-		Protocol:      mutationProtocol,
-		PreparationID: handle.PreparationID,
-		InvocationKey: handle.InvocationKey,
-		RequestDigest: handle.RequestDigest,
+		Protocol:           mutationProtocol,
+		PreparationID:     handle.PreparationID,
+		InvocationKey:     handle.InvocationKey,
+		BindingFingerprint: handle.BindingFingerprint,
+		RequestDigest:     handle.RequestDigest,
 		ResultDigest:  handle.ResultDigest,
 	})
 	if err != nil {
@@ -350,6 +396,7 @@ func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (Mutatio
 
 func validatePrepared(
 	invocationKey,
+	bindingFingerprint,
 	requestDigest string,
 	prepared PreparedMutation,
 ) (MutationHandle, []byte, error) {
@@ -361,6 +408,7 @@ func validatePrepared(
 	}
 	if prepared.PreparationID == "" ||
 		prepared.InvocationKey != invocationKey ||
+		prepared.BindingFingerprint != bindingFingerprint ||
 		prepared.RequestDigest != requestDigest ||
 		prepared.ConcurrencyToken == "" {
 		return MutationHandle{}, nil, fmt.Errorf("prepared mutation identity is inconsistent")
@@ -383,6 +431,7 @@ func validateHandle(handle MutationHandle) error {
 	if handle.Protocol != mutationProtocol ||
 		handle.PreparationID == "" ||
 		handle.InvocationKey == "" ||
+		!validDigest(handle.BindingFingerprint) ||
 		handle.RequestDigest == "" ||
 		handle.ResultDigest == "" ||
 		handle.ConcurrencyToken == "" ||
@@ -393,6 +442,7 @@ func validateHandle(handle MutationHandle) error {
 		Protocol:               handle.Protocol,
 		PreparationID:          handle.PreparationID,
 		InvocationKey:          handle.InvocationKey,
+		BindingFingerprint:     handle.BindingFingerprint,
 		RequestDigest:          handle.RequestDigest,
 		ResultDigest:           handle.ResultDigest,
 		ConcurrencyToken:       handle.ConcurrencyToken,
@@ -408,6 +458,7 @@ func validateProviderReceipt(handle MutationHandle, provider ProviderCommitRecei
 	if provider.Protocol != mutationProtocol ||
 		provider.PreparationID != handle.PreparationID ||
 		provider.InvocationKey != handle.InvocationKey ||
+		provider.BindingFingerprint != handle.BindingFingerprint ||
 		provider.RequestDigest != handle.RequestDigest ||
 		provider.ResultDigest != handle.ResultDigest {
 		return MutationReceipt{}, fmt.Errorf("provider receipt does not match prepared mutation")
@@ -428,6 +479,7 @@ func validateProviderReceipt(handle MutationHandle, provider ProviderCommitRecei
 		Protocol:                   mutationProtocol,
 		Outcome:                    provider.Outcome,
 		InvocationKey:              handle.InvocationKey,
+		BindingFingerprint:         handle.BindingFingerprint,
 		RequestDigest:              handle.RequestDigest,
 		ResultDigest:               handle.ResultDigest,
 		PreparationFingerprint:     handle.PreparationFingerprint,
@@ -444,6 +496,7 @@ func preparedHandle(prepared PreparedMutation) MutationHandle {
 		Protocol:               prepared.Protocol,
 		PreparationID:          prepared.PreparationID,
 		InvocationKey:          prepared.InvocationKey,
+		BindingFingerprint:     prepared.BindingFingerprint,
 		RequestDigest:          prepared.RequestDigest,
 		ResultDigest:           prepared.ResultDigest,
 		ConcurrencyToken:       prepared.ConcurrencyToken,
@@ -454,15 +507,17 @@ func preparedHandle(prepared PreparedMutation) MutationHandle {
 func NewPreparedMutation(
 	preparationID,
 	invocationKey,
+	bindingFingerprint,
 	requestDigest string,
 	resultPayload []byte,
 	concurrencyToken string,
 ) PreparedMutation {
 	prepared := PreparedMutation{
 		Protocol:         mutationProtocol,
-		PreparationID:    preparationID,
-		InvocationKey:    invocationKey,
-		RequestDigest:    requestDigest,
+		PreparationID:      preparationID,
+		InvocationKey:      invocationKey,
+		BindingFingerprint: bindingFingerprint,
+		RequestDigest:      requestDigest,
 		ResultPayload:    append([]byte(nil), resultPayload...),
 		ResultDigest:     digest(resultPayload),
 		ConcurrencyToken: concurrencyToken,
@@ -480,9 +535,10 @@ func NewProviderReceipt(
 	receipt := ProviderCommitReceipt{
 		Protocol:      mutationProtocol,
 		Outcome:       outcome,
-		PreparationID: handle.PreparationID,
-		InvocationKey: handle.InvocationKey,
-		RequestDigest: handle.RequestDigest,
+		PreparationID:      handle.PreparationID,
+		InvocationKey:      handle.InvocationKey,
+		BindingFingerprint: handle.BindingFingerprint,
+		RequestDigest:      handle.RequestDigest,
 		ResultDigest:  handle.ResultDigest,
 		EffectDigest:  effectDigest,
 		CommitID:      commitID,
@@ -513,16 +569,18 @@ func preparedFingerprint(prepared PreparedMutation) string {
 		Canonicalization string `json:"canonicalization"`
 		Protocol         string `json:"protocol"`
 		PreparationID    string `json:"preparationId"`
-		InvocationKey    string `json:"invocationKey"`
-		RequestDigest    string `json:"requestDigest"`
+		InvocationKey      string `json:"invocationKey"`
+		BindingFingerprint string `json:"bindingFingerprint"`
+		RequestDigest      string `json:"requestDigest"`
 		ResultDigest     string `json:"resultDigest"`
 		ConcurrencyToken string `json:"concurrencyToken"`
 	}{
 		Canonicalization: mutationFingerprintCanonicalization,
 		Protocol:         prepared.Protocol,
 		PreparationID:    prepared.PreparationID,
-		InvocationKey:    prepared.InvocationKey,
-		RequestDigest:    prepared.RequestDigest,
+		InvocationKey:      prepared.InvocationKey,
+		BindingFingerprint: prepared.BindingFingerprint,
+		RequestDigest:      prepared.RequestDigest,
 		ResultDigest:     prepared.ResultDigest,
 		ConcurrencyToken: prepared.ConcurrencyToken,
 	})
@@ -534,8 +592,9 @@ func providerReceiptFingerprint(receipt ProviderCommitReceipt) string {
 		Protocol         string          `json:"protocol"`
 		Outcome          MutationOutcome `json:"outcome"`
 		PreparationID    string          `json:"preparationId"`
-		InvocationKey    string          `json:"invocationKey"`
-		RequestDigest    string          `json:"requestDigest"`
+		InvocationKey      string          `json:"invocationKey"`
+		BindingFingerprint string          `json:"bindingFingerprint"`
+		RequestDigest      string          `json:"requestDigest"`
 		ResultDigest     string          `json:"resultDigest"`
 		EffectDigest     string          `json:"effectDigest,omitempty"`
 		CommitID         string          `json:"commitId,omitempty"`
@@ -544,8 +603,9 @@ func providerReceiptFingerprint(receipt ProviderCommitReceipt) string {
 		Protocol:         receipt.Protocol,
 		Outcome:          receipt.Outcome,
 		PreparationID:    receipt.PreparationID,
-		InvocationKey:    receipt.InvocationKey,
-		RequestDigest:    receipt.RequestDigest,
+		InvocationKey:      receipt.InvocationKey,
+		BindingFingerprint: receipt.BindingFingerprint,
+		RequestDigest:      receipt.RequestDigest,
 		ResultDigest:     receipt.ResultDigest,
 		EffectDigest:     receipt.EffectDigest,
 		CommitID:         receipt.CommitID,
@@ -558,6 +618,7 @@ func mutationReceiptFingerprint(receipt MutationReceipt) string {
 		Protocol                   string          `json:"protocol"`
 		Outcome                    MutationOutcome `json:"outcome"`
 		InvocationKey              string          `json:"invocationKey"`
+		BindingFingerprint         string          `json:"bindingFingerprint"`
 		RequestDigest              string          `json:"requestDigest"`
 		ResultDigest               string          `json:"resultDigest"`
 		PreparationFingerprint     string          `json:"preparationFingerprint"`
@@ -569,6 +630,7 @@ func mutationReceiptFingerprint(receipt MutationReceipt) string {
 		Protocol:                   receipt.Protocol,
 		Outcome:                    receipt.Outcome,
 		InvocationKey:              receipt.InvocationKey,
+		BindingFingerprint:         receipt.BindingFingerprint,
 		RequestDigest:              receipt.RequestDigest,
 		ResultDigest:               receipt.ResultDigest,
 		PreparationFingerprint:     receipt.PreparationFingerprint,
@@ -576,6 +638,51 @@ func mutationReceiptFingerprint(receipt MutationReceipt) string {
 		EffectDigest:               receipt.EffectDigest,
 		CommitID:                   receipt.CommitID,
 	})
+}
+
+func validateExecutionBinding(bindingFingerprint string) error {
+	if !validDigest(bindingFingerprint) {
+		return fmt.Errorf("execution binding fingerprint is not an exact sha256 digest")
+	}
+	return nil
+}
+
+func validateMutationReceipt(handle MutationHandle, receipt MutationReceipt) error {
+	if receipt.Protocol != mutationProtocol ||
+		receipt.InvocationKey != handle.InvocationKey ||
+		receipt.BindingFingerprint != handle.BindingFingerprint ||
+		receipt.RequestDigest != handle.RequestDigest ||
+		receipt.ResultDigest != handle.ResultDigest ||
+		receipt.PreparationFingerprint != handle.PreparationFingerprint {
+		return fmt.Errorf("mutation receipt does not match prepared handle")
+	}
+	if receipt.Outcome != OutcomeCommitted &&
+		receipt.Outcome != OutcomeNotCommitted {
+		return fmt.Errorf("journaled mutation receipt has invalid outcome %q", receipt.Outcome)
+	}
+	if receipt.ProviderReceiptFingerprint == "" {
+		return fmt.Errorf("journaled mutation receipt lacks provider receipt identity")
+	}
+	if receipt.Outcome == OutcomeCommitted &&
+		(receipt.EffectDigest == "" || receipt.CommitID == "") {
+		return fmt.Errorf("journaled committed mutation receipt is incomplete")
+	}
+	if receipt.ReceiptFingerprint != mutationReceiptFingerprint(receipt) {
+		return fmt.Errorf("journaled mutation receipt fingerprint is stale")
+	}
+	return nil
+}
+
+func validDigest(value string) bool {
+	if len(value) != len("sha256:")+64 || value[:len("sha256:")] != "sha256:" {
+		return false
+	}
+	for _, ch := range value[len("sha256:"):] {
+		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+			return false
+		}
+	}
+	return true
 }
 
 func structuredFingerprint(value any) string {
