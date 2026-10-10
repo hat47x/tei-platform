@@ -45,11 +45,11 @@ func orderFixture(language string) fixture {
 	slots := []Ref{ref("tei.context.verified-principal")}
 	need := []Requirement{
 		{Contract: ref("tei.test.customer-query"), Scope: "application-runtime", Effect: "read",
-			DataContracts: []DataNeed{{Database: "master_data", Contract: "master_data.customer", VersionConstraint: "^2"}}},
+			DataContracts: []DataNeed{{Datasource: "master", Database: "master_data", Contract: "master_data.customer", VersionConstraint: "^2"}}},
 		{Contract: ref("tei.test.order-submit"), Scope: "application-runtime", Effect: "write", RequiredSlots: slots,
 			DataContracts: []DataNeed{
-				{Database: "sales_core", Contract: "sales_core.order", VersionConstraint: "^4"},
-				{Database: "sales_core", Contract: "sales_core.order_line", VersionConstraint: "^1"},
+				{Datasource: "sales", Database: "sales_core", Contract: "sales_core.order", VersionConstraint: "^4"},
+				{Datasource: "sales", Database: "sales_core", Contract: "sales_core.order_line", VersionConstraint: "^1"},
 			}},
 	}
 	c := Candidate{
@@ -342,6 +342,7 @@ func TestInvalidDataRequirementsFailClosed(t *testing.T) {
 		want string
 	}{
 		{"empty-constraint", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "" }, "invalid-data-requirement"},
+		{"missing-datasource", func(f *fixture) { f.c.Requirements[0].DataContracts[0].Datasource = "" }, "invalid-data-requirement"},
 		{"unknown-constraint", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "latest" }, "invalid-data-requirement"},
 		{"zero-major", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "^0" }, "invalid-data-requirement"},
 		{"non-canonical-major", func(f *fixture) { f.c.Requirements[0].DataContracts[0].VersionConstraint = "^02" }, "invalid-data-requirement"},
