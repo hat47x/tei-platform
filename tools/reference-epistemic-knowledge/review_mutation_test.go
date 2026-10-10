@@ -102,6 +102,44 @@ func TestReviewCommandRejectsStaleSequence(t *testing.T) {
 	}
 }
 
+func TestReviewSubjectFingerprintIgnoresOperationalState(t *testing.T) {
+	corpus, _ := loadFixture(t)
+	var assertion Assertion
+	for _, candidate := range corpus.Assertions {
+		if candidate.ID == "ai-unreviewed" {
+			assertion = candidate
+			break
+		}
+	}
+	if assertion.ID == "" {
+		t.Fatal("fixture assertion not found")
+	}
+	before := reviewSubjectFingerprint(assertion)
+
+	assertion.MetadataState = MetadataPartial
+	assertion.CheckedAt = "2026-10-10T00:00:00Z"
+	assertion.CheckedSubjectFingerprint =
+		"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	assertion.ReviewerCandidates = []string{"user:someone-else"}
+	assertion.AccessRefs = []string{"policy:assertion"}
+	for i := range assertion.Evidence {
+		assertion.Evidence[i].AccessRefs = []string{"policy:evidence"}
+	}
+	after := reviewSubjectFingerprint(assertion)
+	if before != after {
+		t.Fatalf("operational metadata changed review subject receipt: before=%s after=%s", before, after)
+	}
+
+	assertion.Context = append(assertion.Context, ScopeBinding{
+		Dimension:  "environment",
+		Value:      "production",
+		Provenance: ScopeDeclared,
+	})
+	if reviewSubjectFingerprint(assertion) == after {
+		t.Fatal("semantic context change did not invalidate review subject receipt")
+	}
+}
+
 func TestReviewCommandIgnoresAuthorizationOnlySubjectChanges(t *testing.T) {
 	corpus, context := loadFixture(t)
 	command := reviewCommandFor(t, corpus, context, "ai-unreviewed", ReviewEventConfirm, "auth-only-change")
