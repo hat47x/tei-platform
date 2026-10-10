@@ -22,7 +22,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E8：SUI Native Canvasの第二Consumer評価](E8_SUI_NATIVE_CONSUMER_EVIDENCE.md) — 既存Native操作と未接続のTEI Runtime Actionを区別する。
 - [E9：Contract Query入力属性のSource追跡](E9_CONTRACT_QUERY_INPUT_SOURCE.md) — 実際の顧客参照Patternが参照する意味属性の定義変更を再検証に含める。Goテスト・実Workspaceは未実行。
 - [E10：構成Profileを採用すべきかの判定](E10_COMPOSITION_ADOPTION_DECISION.md) — 受注明細・SUIの二Consumerで、業務意味・Provider/Target・UI・Runtime権限の検証を分離し、Profileへ追加する最少情報と採否の実証条件を定める。
-- [E11：限定Source変更と型付き影響候補のレビュー接続](E11_TYPED_IMPACT_REVIEW_GATE.md) — E7の部分的なSource検査結果と#1120候補の型付きImpactを重複Graphなしで束ねる。実Go/JS結合は未実施。E5の明示的なPattern所属で判定（命名prefix推論を廃止）。初回12件はNodeで実行、更新後18件はV8互換試験のみ。
+- [E11：限定Source変更と型付き影響候補のレビュー接続](E11_TYPED_IMPACT_REVIEW_GATE.md) — E7の部分的なSource検査結果と#1120候補の型付きImpactを重複Graphなしで束ねる。E5の明示的なPattern所属で判定（命名prefix推論を廃止）。E7と#1120 Go Projectionの実JSON形状を結ぶ入口を追加。ただし同一snapshot未証明なら`unresolved`で止める。現在26件はV8互換試験のみ、Go/JS実結合は未実施。
 - [E12：E7のSource報告をE11型付きImpactレビューへ結ぶ](E12_PAIRED_SOURCE_TYPED_REVIEW.md) — E7の実比較結果と同じCurrent ReportからApplicationのPattern所有情報を取り出す。15件のNode標準テスト。Goの同一snapshot結合とAuthorityは未実証。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
