@@ -357,3 +357,39 @@ export function candidateFromEdit(world, revision, edit) {
     intent: edit.intent, delta: [op, ...ops]
   };
 }
+
+
+// This is a consumer-level coherence check, not an alternative Preview or
+// acceptance policy. Two separate Shared Acceptance reads must describe the
+// same candidate and R0; otherwise a Studio review packet is not usable.
+export function bindReviewArtifacts(candidate, preview, review, revision) {
+  exactRevision(revision);
+  const fail = (why) => { throw new Error("REVIEW_BINDING_MISMATCH: " + why); };
+  if (!candidate || candidate.schema !== CANDIDATE_SCHEMA ||
+      candidate.baseModelRevision !== revision || !isText(candidate.id))
+    fail("candidate");
+  if (!preview || preview.schema !== "tei.reference.change-preview/v0" ||
+      preview.candidateId !== candidate.id ||
+      preview.baseModelRevision !== revision ||
+      preview.currentModelRevision !== revision ||
+      !REVISION.test(preview.candidateFingerprint || ""))
+    fail("preview identity or revision");
+  if (!review || review.schema !== "tei.reference.approval-review/v0" ||
+      review.candidateId !== candidate.id ||
+      review.candidateFingerprint !== preview.candidateFingerprint ||
+      review.previewAcceptable !== preview.acceptable ||
+      !REVISION.test(review.reviewFingerprint || ""))
+    fail("review identity, semantic fingerprint or result");
+  if ((review.evidenceFingerprint || "") !== (preview.evidenceFingerprint || ""))
+    fail("evidence");
+  if (preview.acceptable !== true) {
+    // Failed reviews should be displayed to a human, never as a valid
+    // source-edit candidate. Callers must not submit these to Accept.
+    return { status: "not-acceptable", readyToAccept: false,
+      candidateFingerprint: preview.candidateFingerprint,
+      reviewFingerprint: review.reviewFingerprint };
+  }
+  return { status: "reviewed-consistent", readyToAccept: false,
+    candidateFingerprint: preview.candidateFingerprint,
+    reviewFingerprint: review.reviewFingerprint };
+}
