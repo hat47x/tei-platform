@@ -80,8 +80,8 @@ class ScenarioManifestConformance(unittest.TestCase):
     def test_negative_controls(self) -> None:
         source = externally_observed_candidate()
         mutations = {
-            "original trace missing": lambda v: v["originalExecution"].update(status="not-run"),
-            "no TEI trace": lambda v: v["teiExecution"].update(status="not-run"),
+            "original trace missing": lambda v: v.update(originalExecution={"status": "not-run"}),
+            "no TEI trace": lambda v: v.update(teiExecution={"status": "not-run"}),
             "precondition not aligned": lambda v: v["preconditionAlignment"].update(status="not-aligned"),
             "no comparable axes": lambda v: v["comparison"].update(axes=[]),
             "comparison receipt missing": lambda v: v["comparison"].pop("comparisonEvidenceDigest"),
@@ -103,6 +103,26 @@ class ScenarioManifestConformance(unittest.TestCase):
                 item = copy.deepcopy(source)
                 mutate(item)
                 self.invalid(item)
+
+    def test_incomparable_incomplete_evidence_remains_expressible(self) -> None:
+        value = externally_observed_candidate()
+        value["originalExecution"] = {"status": "not-run"}
+        value["preconditionAlignment"] = {"status": "not-assessed"}
+        value["comparison"] = {"status": "incomparable", "axes": []}
+        self.valid(value)
+
+    def test_unknown_original_result_cannot_be_claimed_consistent(self) -> None:
+        value = externally_observed_candidate()
+        value["originalExecution"] = {"status": "inconclusive"}
+        value["preconditionAlignment"] = {"status": "unknown"}
+        value["comparison"] = {"status": "unresolved", "axes": []}
+        self.valid(value)
+        value["comparison"] = {
+            "status": "consistent-on-observed-axes",
+            "axes": ["business-result"],
+            "comparisonEvidenceDigest": HEX("a"),
+        }
+        self.invalid(value)
 
     def test_no_false_evidence_from_synthetic(self) -> None:
         value = externally_observed_candidate()
