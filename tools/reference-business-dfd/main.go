@@ -350,9 +350,31 @@ func main() {
 	workspaceDir:=flag.String("workspace","reference/workspace","Workspace for exact Pattern resolution")
 	format:=flag.String("format","json","json or dot")
 	selectElement:=flag.String("select","","optional exact read-only navigation selector kind:id")
+	reviewNext:=flag.String("review-next","","optional second unaccepted DFD review proposal for read-only semantic comparison")
 	flag.Parse()
 	p,sourceSnapshot,err:=runGuarded(*procedureFile,*reviewFile,*setFile,*workspaceDir)
 	if err!=nil { fmt.Fprintln(os.Stderr,err); os.Exit(1) }
+	if *reviewNext!="" {
+		if *selectElement!="" || *format!="json" {
+			fmt.Fprintln(os.Stderr,"review preview requires -format json and cannot be combined with -select")
+			os.Exit(1)
+		}
+		var before, after review
+		if err:=decodeFile(*reviewFile,&before);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		nextProjection,nextSnapshots,err:=runGuarded(*procedureFile,*reviewNext,*setFile,*workspaceDir)
+		if err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		if err:=decodeFile(*reviewNext,&after);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		compared,err:=previewReview(before,after,p,nextProjection,sourceSnapshot,nextSnapshots)
+		if err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		// Revalidate both source inputs after the comparison; do not silently
+		// reuse source positions if another editor changed either fixture.
+		if _,err:=navigateGuarded(p,"step:"+p.Steps[0].ID,sourceSnapshot);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		if _,err:=navigateGuarded(nextProjection,"step:"+nextProjection.Steps[0].ID,nextSnapshots);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		enc:=json.NewEncoder(os.Stdout);enc.SetIndent("","  ")
+		if err:=enc.Encode(compared);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		if compared.AcceptanceStatus=="blocked-unresolved-diagnostic" {os.Exit(2)}
+		return
+	}
 	if *selectElement!="" {
 		if *format!="json" {fmt.Fprintln(os.Stderr,"navigation selection requires -format json");os.Exit(1)}
 		selected,navErr:=navigateGuarded(p,*selectElement,sourceSnapshot)
