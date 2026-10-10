@@ -2,10 +2,10 @@ package languagereference
 
 import (
 	"errors"
-
-	"tei/internal/semantic"
 	"strings"
 	"testing"
+
+	"tei/internal/semantic"
 )
 
 func TestParseExpandInvocationKeepsSourceBytesAndNamedArguments(t *testing.T) {
