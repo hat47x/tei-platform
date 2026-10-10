@@ -20,6 +20,17 @@ remote="${TEI_CP_REMOTE:-origin}"
 [[ "$remote" =~ ^[A-Za-z0-9._/-]+$ ]] || die "unsafe TEI_CP_REMOTE"
 [[ "$remote" != -* ]] || die "TEI_CP_REMOTE must not start with a dash"
 
+# Do not allow a local/forked remote to masquerade as the authoritative main.
+# Only canonical GitHub transport URLs for this repository are allowed.
+remote_url="$(git remote get-url "$remote" 2>/dev/null)" ||
+  die "remote not configured: $remote"
+case "$remote_url" in
+  https://github.com/hat47x/tei-platform|https://github.com/hat47x/tei-platform.git|\
+  git@github.com:hat47x/tei-platform|git@github.com:hat47x/tei-platform.git|\
+  ssh://git@github.com/hat47x/tei-platform|ssh://git@github.com/hat47x/tei-platform.git) ;;
+  *) die "unexpected remote repository URL; require canonical hat47x/tei-platform" ;;
+esac
+
 clean() {
   local stage="$1" status unusual
   status="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)" ||
