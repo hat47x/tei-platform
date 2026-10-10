@@ -83,6 +83,9 @@ if [[ -n "$unformatted" ]]; then
     exit 1
 fi
 
+# Guard the qualification script itself against missing, stale or moved refs.
+bash tools/reference-critical-lowering/qualify_gate_test.sh
+
 go vet ./tools/reference-critical-lowering
 go test -count=1 ./tools/reference-critical-lowering
 
