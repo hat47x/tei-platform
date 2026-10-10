@@ -302,6 +302,8 @@ Goの`error`は`Error()`文字列だけではない。たとえば`Error()`が�
 
 現Referenceでは、直接反射を検出した場合の拒否に加え、機密扱いのrequired slotがある呼出しではdownstream error objectの外部流出を防ぐため、原errorをwrapせず固定のfailureへ変換する。非機密のrequired slotだけの場合はdownstream errorの型を維持する。
 
+また、固定failureへ変換するだけでは、下流実行中に発生したControl Contextのcancellation / deadlineが失われる。Referenceで再現・修正したため、trustedなControl Context自身の`Err()`が終了状態を示す場合には、その状態を返す。Providerのerror objectに含まれる`context.Canceled`相当の値だけではキャンセルを認定しない。この区別をしないと、Providerが偽の制御状態を報告できてしまう。
+
 これは**Referenceの漏えい経路を閉じる暫定措置**である。固定文言を製品のfailure semanticsとみなさない。製品化時には、Capability Contractで定義された公開可能な失敗分類を、Hostが既存Security policyに照らして変換する必要がある。特にunknown / access deniedの同一外部表現を求めるconsumerでは、汎用gateがその違いを新しいoracleにしないよう確認する。下流のlogging、間接漏えい、timing / side channel、mutating effectの安全性はこれだけでは保証できない。
 
 ## Consumer pressure
