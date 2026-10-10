@@ -156,6 +156,7 @@ CoverageAssignmentを例に、独立したServiceContract / Asset occurrenceの�
 関連するPromotion GateとCore contract候補は次です。
 
 - `plan/DATA_DETERMINANT_PROMOTION_GATE_2026-10.md`
+- `plan/DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md`
 - `plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md`
 
 ## `second-corpus/`
