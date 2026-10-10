@@ -564,7 +564,7 @@ Gate G2の最初の実行は、既存Shared Acceptanceを使ったscratch `R0→
 
 一方、mainの`tools/reference-first-web-target/read_scenario.go`のsynthetic Contract Query Executorは、すべての受注明細で`unit_price`に `4000.00` / `4500.00` を返す。受注1002にある既存の負例は**単価ではなく数量0**であり、Command側は評価が不満足になった最初のValidationで停止する。従って、現在のWeb標準fixtureだけで`/scenario/submit`の失敗応答を得ても、**追加した単価ルールが拒否を発生させた証拠にはならない**。
 
-これは実DBを導入して解決すべき課題ではない。まず既存`command_scenario_test.go`が使用する`staticReadScenarioRunner`によるテスト用のread差替えを再利用し、**新Ruleだけが不満足**となる独立ケースを作る。
+これは実DBを導入して解決すべき課題ではない。既存`staticReadScenarioRunner`によるテスト用read差替えを使い、**新Ruleだけが不満足**となる独立ケースを評価する。現mainにはその横断テストがすでに存在する（§18）。
 
 ### E1の二段階証跡（#1127へのconsumer契約）
 
@@ -581,9 +581,9 @@ E1-Bでは、既存の数量0が単価の不満足を**隠さない**よう、�
 - **#1124**: R0→R1の2操作が、既存Shared AcceptanceのPreview/Review/Accepted Decisionを通じて一体として変更された証跡を出す。Source変更はscratch内のSemantic ValidationとApplication定義に限定する。Studio独自Acceptanceは作らない。
 - **#1127**: E1-A（actual target起動）とE1-B（合成read差替えによるHTTP handler負例）、E1-C（明示的Use欠落）を別のテストとして記録する。既存Driver/Validation/Authorization/Outcomeを差替えない。E1-Bだけで「通常Targetの実データから単価不正を観測した」とは主張しない。
 - **#1121**: R1に紐づくRuleの選択とCapability/Target readinessを独立証跡で繋ぐ。合成ReceiptだけではE1-Aの実行結果を証明しない。
-- **#1119**: Evidence packetには`accepted_revision`、`application_rule_set`、`web_workspace_source`、`fixture_provenance`、`rule_results`、`command_status`、`observation_nature`の根拠をリンクする。E1-A/B/Cは別caseとして数え、E1→E2（実DB Provider+独立read）の自動昇格は禁止する。
+- **#1119**: Evidence packetには`accepted_revision`、`application_rule_set`、`web_workspace_source`、`fixture_provenance`、`rule_results`、`command_status`、`observation_nature`の根拠をリンクする。E1-A/B/Cは異なる観測条件として区別する。§18の既存テスト結果を再利用し、二重実装・二重計上を避ける。E1→E2（実DB Provider+独立read）の自動昇格は禁止する。
 
-**現状**: この節の根拠はGitHub上のmainソースとDraft PRの静的照合。E1-A/B/Cの追加テスト実装・actual実行、trusted full checkout、Repository Health、実DB操作はこの横断担当では**NOT RUN**。G1/G2のGate状態は変更しない。
+**現状**: この節は観測条件を整理した設計上の区分。E1-B相当の既存Go横断テストとその限界は§18に記録されている。この横断担当では当該Goテストのactual実行、trusted full checkout、Repository Health、実DB操作は**NOT RUN**。G1/G2のGate状態は変更しない。
 
 
 ## 18. 既存のGo横断テストの再利用と残るG2接合点
