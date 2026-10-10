@@ -99,7 +99,13 @@ function publishReceipts(submissions) {
   const parent = realpathSync(dirname(target)); // parent must already exist
   const sourceRoot = realpathSync(root);
   const scratchRoot = realpathSync(temp);
-  for (const forbidden of [sourceRoot, scratchRoot]) {
+  const forbiddenRoots = [sourceRoot, scratchRoot];
+  // In the composed test, root is a disposable worktree; the caller's
+  // original repository and the composition scratch must also be protected.
+  for (const key of ["TEI_CP_ORIGINAL_REPOSITORY_ROOT", "TEI_CP_INTEGRATION_TEMP_DIR"]) {
+    if (process.env[key]) forbiddenRoots.push(realpathSync(process.env[key]));
+  }
+  for (const forbidden of forbiddenRoots) {
     assert.ok(parent !== forbidden && !parent.startsWith(forbidden + sep),
       "evidence directory must be outside repository and ephemeral scratch");
   }
