@@ -82,3 +82,43 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
     a.subject.id.localeCompare(b.subject.id));
   return {status:issues.length?"unresolved":dependencies.length?"observed-limited":inspected?"no-input-types":"no-capability-references",qualification:"declaration-only-not-semantic-acceptance",dependencies,issues};
 }
+
+
+// Scoped change probe for directly reached Capability Input definitions only.
+// This is NOT an Application dependency closure, validation acceptance, or
+// a claim that the two World/Index pairs came from trusted common snapshots.
+export function compareCapabilityInputDefinitionSources({
+  baselineWorld,currentWorld,baselineIndex,currentIndex,applicationId,
+}={}) {
+  const limit={qualification:"declaration-only-not-semantic-acceptance",
+    fullClosure:false,authority:"none"};
+  const baseline=inspectCapabilityInputTypes(baselineWorld,baselineIndex,applicationId);
+  const current=inspectCapabilityInputTypes(currentWorld,currentIndex,applicationId);
+  if (baseline.status !== "observed-limited" ||
+      current.status !== "observed-limited") {
+    return {...limit,status:"unresolved",reason:"incomplete_input_definition_observation",
+      baselineStatus:baseline.status,currentStatus:current.status};
+  }
+  const subjectKeys = deps => deps.map(d=>JSON.stringify([
+    d.subject.kind,d.subject.id])).sort();
+  if (JSON.stringify(subjectKeys(baseline.dependencies)) !==
+      JSON.stringify(subjectKeys(current.dependencies))) {
+    return {...limit,status:"unresolved",reason:"input_definition_set_changed"};
+  }
+  // E4 owns the Role/path/fingerprint comparison of two complete indexed
+  // snapshots. The Subject list here comes from the narrow typed declarations.
+  let scope;
+  try {
+    scope=assessIndexedSubjects({
+      baselineIndex,currentIndex,
+      consumers:[{id:applicationId,subjects:baseline.dependencies.map(d=>d.subject)}],
+    })[0];
+  } catch {
+    return {...limit,status:"unresolved",reason:"invalid_source_index"};
+  }
+  if (scope.status !== "unchanged") {
+    return {...limit,status:"unresolved",reason:"input_definition_source_changed",
+      affected:scope.affected};
+  }
+  return {...limit,status:"limited-unchanged",dependencyCount:baseline.dependencies.length};
+}
