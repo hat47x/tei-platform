@@ -104,6 +104,12 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 新規候補とテストはGitHub Blob SHAが一致するGo 1.23.2局所モジュールで`go test -count=1 ./...`、`go test -race -count=1 ./...`、`go vet ./...`がPASSし、対象の`gofmt -l`は空。ただし周辺の`core/ir/semantic/validation`型はテスト用の簡略stubである。**PR exact-headを用いた全体健全性確認の証拠ではない。**
 
+### Relation検証の重複走査を削減（2026-10-10）
+
+`TraceRelationPath`では、以前は各Relationの検証ごとに`ValidateSemanticRelationKeys(World)`を実行し、さらに同じRelationを再探索していた。現在は**経路全体でCanonical Validatorを1回だけ呼び**、既存のDiagnosticを`checkedWorldRelation`でRelation IDごとに対応付ける。これは結果の絞り込みであり、新しいキー検証規則ではない。`InspectPinnedRelationExpansion`もRelationの一意性確認・キー診断・候補作成を一度の探索から行う。
+
+正常なNamespace横断経路、2段目の型不一致、後段でのRelation ID衝突を試験対象としている。局所Go 1.23.2モジュールで、GitHub Blob SHAが一致する`relation_keys_reference.go`・`relation_path_reference.go`・`relation_expansion_candidate.go`および既存Canonicalキー検証器を用い、対応するテストで`go test`・`go test -race`・`go vet`をPASSした。ただし周辺型定義・World検証などは試験用stubであり、**PR全体の健全性確認は未実施**である。
+
 ### まだ検証できないこと
 
 - 本物のAccepted Semantic Setからのpin取得、Source Index、実Pluginの実現方式、実行権限
