@@ -142,6 +142,29 @@ go run ./tools/reference-business-procedure-check \
   -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
 ```
 
+### CI停止中の手動検証と記録
+
+CIが停止している間は、ワークフローの実行有無を品質の証拠として扱わない。検証担当者は、**対象のcommit SHAを固定したクリーンな作業ツリー**で次を実行し、結果を記録する。別のcommitや隔離用の代替型で実行した結果は代用しない。
+
+```bash
+git rev-parse HEAD
+git status --porcelain
+go version
+go test ./tools/reference-business-procedure-check -count=1
+go vet ./tools/reference-business-procedure-check
+go run ./tools/reference-business-procedure-check
+go run ./tools/reference-business-procedure-check -review-validation-scope
+go run ./tools/reference-business-procedure-check \\
+  -review-validation-scope \\
+  -probe reference/business-system-design/order-entry-customer-edit-conflict.json \\
+  -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
+bash tools/repository-health-check.sh
+git status --porcelain
+git rev-parse HEAD
+```
+
+記録には、実行日時、対象commit、比較対象mainのcommit、Goのバージョン、各コマンドの終了コード、baselineと任意表示のDiagnosticsが一致すること、BP-05の差分と共通ValidationおよびSourceの確認結果、実行前後の作業ツリーがクリーンであることを含める。失敗や未実施の項目はそのまま記載し、PASSへ読み替えない。mainやPR headが変わった場合は統合前に差分と検証対象を再評価する。**Draft PRは手動検証を完了しても自動的にマージしない。**
+
 確認点は、BP-05で`sales.order_line.line_number_positive`が`applicationOnly`に現れること、`sourceEvidence`からApplication定義とValidation定義の正本へ戻れること、そしてCustomer編集probeの既存blocking diagnosticが維持されることです。上記コマンドの**実際の実行結果は未取得**であり、完了記録は別途残します。
 
 この節は**実装候補の使い方**です。変更を含むPRのexact-headで`tools/repository-health-check.sh`がPASSし、実行記録が残るまでは「利用可能になった」とは主張しません。実証の入口と停止条件は[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)にまとめています。
