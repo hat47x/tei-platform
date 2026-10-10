@@ -218,6 +218,9 @@ func build(f fixture, r review, set procedureSet, world ir.World, procedureFile,
 	}
 	ids := map[string]bool{}
 	used := map[string]bool{}
+	if len(f.Steps)==0 {
+		add("DFD_PROCEDURE_STEPS_MISSING","error",procedureFile,"/steps","Procedure must contain at least one Step for a business DFD")
+	}
 	for i, s := range f.Steps {
 		loc := location{procedureFile,fmt.Sprintf("/steps/%d",i)}
 		if s.ID == "" || ids[s.ID] { add("DFD_STEP_ID_INVALID","error",procedureFile,loc.Pointer+"/id","step id is missing or duplicated") }
@@ -253,8 +256,18 @@ func build(f fixture, r review, set procedureSet, world ir.World, procedureFile,
 		if !ids[t.TargetStep] { add("DFD_TRIGGER_TARGET_MISSING","error",reviewFile,loc.Pointer+"/targetStep","target Step not found") }
 		p.Triggers=append(p.Triggers,triggerNode{t.ID,t.Kind,t.Label,t.TargetStep,"proposal","unbound",loc})
 	}
+	seenFlows := map[string]bool{}
 	for i,e := range r.Flows {
 		loc := location{reviewFile,fmt.Sprintf("/flows/%d",i)}
+		// Control transitions do not yet carry a persistent logical ID.
+		// Two identical authored edges must not be silently deduplicated
+		// by the proposal comparison or by a renderer.
+		signature:=e.From+"\x00"+e.To+"\x00"+e.Kind+"\x00"+e.Condition
+		if seenFlows[signature] {
+			add("DFD_CONTROL_TRANSITION_DUPLICATE","error",reviewFile,loc.Pointer,
+				"duplicated identical control transition in review proposal")
+		}
+		seenFlows[signature]=true
 		if !ids[e.From] || !ids[e.To] { add("DFD_FLOW_ENDPOINT_MISSING","error",reviewFile,loc.Pointer,"flow Step endpoint not found") }
 		if e.Kind!="sequence" && e.Kind!="branch" && e.Kind!="exception" {
 			add("DFD_FLOW_KIND_INVALID","error",reviewFile,loc.Pointer+"/kind","unsupported flow kind")
