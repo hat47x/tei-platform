@@ -97,3 +97,41 @@ func TestScopedRoutingDoesNotMutateLegacyGateCSurface(t *testing.T) {
 		}
 	}
 }
+
+func TestScopedRoutesRejectCrossApplicationRunnerEvenIfServerWasModified(t *testing.T) {
+	// Future generators must not bypass the constructor's ApplicationID
+	// binding by directly filling the in-package server struct.
+	for _, tc := range []struct {
+		name   string
+		server *webTargetServer
+	}{
+		{
+			name: "repair-runner-on-order",
+			server: &webTargetServer{
+				projection: webTargetProjection{ApplicationID: "order_entry"},
+				customerLookup: &referenceCustomerLookupScenarioRunner{},
+			},
+		},
+		{
+			name: "order-runner-on-repair",
+			server: &webTargetServer{
+				projection: webTargetProjection{ApplicationID: "repair_intake"},
+				readScenario: &referenceReadScenarioRunner{},
+			},
+		},
+		{
+			name: "missing-runner-identity",
+			server: &webTargetServer{
+				projection: webTargetProjection{ApplicationID: "order_entry"},
+				readScenario: undeclaredRunner{},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, err := tc.server.ScopedHandler()
+			if err == nil || handler != nil {
+				t.Fatalf("invalid server wiring accepted: handler=%v err=%v", handler, err)
+			}
+		})
+	}
+}
