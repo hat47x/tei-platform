@@ -505,3 +505,47 @@ func TestE5PatternContractQueryWrongDatabaseOwner(t *testing.T) {
         t.Fatal("ContractQuery not in chosen Database accepted")
     }
 }
+
+func TestE5SharedArtifactSupportsMultipleDefinitionSubjects(t *testing.T) {
+    world,index := e5PatternTargetsFixture()
+    path := "semantic/sales/order.tei"
+    artifacts, definitions := 0, 0
+    for _, artifact := range index.Artifacts {
+        if artifact.Path == path { artifacts++ }
+    }
+    for _, ref := range index.References {
+        if ref.ArtifactPath == path && ref.Role == sourceindex.RoleDefinition {
+            definitions++
+        }
+    }
+    if artifacts != 1 || definitions != 2 {
+        t.Fatalf("one Artifact with Namespace and Data Source references expected; artifacts=%d refs=%d",
+            artifacts, definitions)
+    }
+    report := inspectE5(world,index,"order_entry")
+    if report.Status != "observed" {
+        t.Fatalf("valid multi-subject Source must resolve: %+v", report)
+    }
+    names := map[string]bool{}
+    for _, dep := range report.Dependencies {
+        if dep.Source.Path == path { names[dep.Subject.Kind] = true }
+    }
+    if !names["semantic"] || !names["semantic-data"] {
+        t.Fatalf("one physical Source must retain two semantic Subject identities: %+v",report.Dependencies)
+    }
+}
+
+func TestE5DuplicateArtifactPathRemainsUnresolved(t *testing.T) {
+    world,index := e5PatternTargetsFixture()
+    for _, artifact := range index.Artifacts {
+        if artifact.Path == "semantic/sales/order.tei" {
+            index.Artifacts = append(index.Artifacts,artifact)
+            break
+        }
+    }
+    report := inspectE5(world,index,"order_entry")
+    if report.Status != "unresolved" ||
+        !e5HasIssue(report,"source_definition_missing_or_ambiguous") {
+        t.Fatalf("duplicate Artifact path accepted as unique evidence: %+v",report)
+    }
+}
