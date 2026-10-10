@@ -38,8 +38,10 @@ func TestSelectedReadOnlyFlagsDisallowUnrelatedArguments(t *testing.T) {
 				t.Fatalf("error is not a single JSON document: %d %v %q", code, err, out.String())
 			}
 			var report struct {
-				OK bool `json:"ok"`
-				Error struct { Code string `json:"code"` } `json:"error"`
+				OK    bool `json:"ok"`
+				Error struct {
+					Code string `json:"code"`
+				} `json:"error"`
 			}
 			if err := json.Unmarshal(out.Bytes(), &report); err != nil ||
 				report.OK || report.Error.Code != "INVALID_ARGUMENT" {
