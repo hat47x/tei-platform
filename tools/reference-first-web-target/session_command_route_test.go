@@ -44,15 +44,15 @@ func syntheticProtectedSessionConfiguration(runner *referenceCommandScenarioRunn
 	identities := map[string]webcomposition.Principal{
 		"corporate-editor": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor", PrincipalID: "employee-1"},
 		"corporate-viewer": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer", PrincipalID: "employee-2"},
-		"legacy-editor": {ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor", PrincipalID: "employee-1"},
+		"legacy-editor":    {ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor", PrincipalID: "employee-1"},
 	}
 	links := map[webcomposition.ExternalSubject]webcomposition.SubjectLink{
-		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor"}: {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
-		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer"}: {PrincipalID: "employee-2", SubjectID: "subject-order-viewer"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor"}:     {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer"}:     {PrincipalID: "employee-2", SubjectID: "subject-order-viewer"},
 		{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor"}: {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
 	}
 	return protectedSessionCommandConfig{
-		Runner: runner,
+		Runner:    runner,
 		Providers: map[string]string{"corporate": corporateIssuer, "legacy": "legacy:order_entry"},
 		VerifySession: func(r *http.Request) (webcomposition.Principal, error) {
 			identity, ok := identities[r.Header.Get("X-Synthetic-Session")]
@@ -146,7 +146,7 @@ func TestWebTargetProtectedSessionRouteDeniesUntrustedAndMalformedRequests(t *te
 	h := server.Handler()
 	for _, tc := range []struct {
 		name, identity, csrf, body string
-		want int
+		want                       int
 	}{
 		{"unauthenticated", "", "matching", `{"row":0}`, http.StatusUnauthorized},
 		{"fake principal header alone is not session", "not-a-session", "matching", `{"row":0}`, http.StatusUnauthorized},
