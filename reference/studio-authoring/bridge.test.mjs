@@ -236,13 +236,30 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
     writeFileSync(worldPath, JSON.stringify(fixture()));
     writeFileSync(revPath, JSON.stringify({ modelRevision: revision }));
     writeFileSync(editPath, JSON.stringify(edit()));
-    const paths = [worldPath, revPath, editPath];
+    const sourcePath = join(dir, "source-index.json");
+    writeFileSync(sourcePath, JSON.stringify({
+      artifacts: [{ path: "semantic/sales/order.tei",
+        fingerprint: "sha256:" + "1".repeat(64) }],
+      references: [{
+        subject: { kind: "semantic-relation", id: "sales.order.lines" },
+        role: "definition", artifactPath: "semantic/sales/order.tei",
+        range: { start: { offset: 2, line: 1, column: 3 },
+          end: { offset: 7, line: 1, column: 8 } }
+      }]
+    }));
+    const paths = [worldPath, revPath, editPath, sourcePath];
     const before = paths.map(p => readFileSync(p, "utf8"));
     const cli = fileURLToPath(new URL("./cli.mjs", import.meta.url));
     const inspect = spawnSync(process.execPath, [cli, "inspect", "-world-file", worldPath,
       "-revision-file", revPath, "-focus", "relation:sales.order.lines"], { encoding: "utf8" });
     assert.equal(inspect.status, 0, inspect.stderr);
     assert.equal(JSON.parse(inspect.stdout).views.function.items[0].id, "order_entry.order_lines");
+    const inspectIndexed = spawnSync(process.execPath, [cli, "inspect",
+      "-world-file", worldPath, "-revision-file", revPath,
+      "-source-index-file", sourcePath, "-focus", "relation:sales.order.lines"],
+    { encoding: "utf8" });
+    assert.equal(inspectIndexed.status, 0, inspectIndexed.stderr);
+    assert.equal(JSON.parse(inspectIndexed.stdout).sourceNavigation.status, "source-index-backed");
     const propose = spawnSync(process.execPath, [cli, "propose", "-world-file", worldPath,
       "-revision-file", revPath, "-edit-file", editPath], { encoding: "utf8" });
     assert.equal(propose.status, 0, propose.stderr);
