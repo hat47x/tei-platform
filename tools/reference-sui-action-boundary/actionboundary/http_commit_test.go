@@ -79,3 +79,63 @@ func TestJSONCommitHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONCommitHandlerSUIRoundTripAndConflict(t *testing.T) {
+	store := NewScopedJSONDocumentStore("doc", "r1", []byte(documentFixture))
+	host := Host{
+		Authorizer: permit(true),
+		Bindings: []Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: store}},
+	}
+	handler := JSONCommitHandler{
+		Host: host,
+		DecodePayload: func(action string, raw json.RawMessage) (any, error) {
+			if action != "sui.move" {
+				return nil, ErrInvalid
+			}
+			var payload MovePayload
+			if err := json.Unmarshal(raw, &payload); err != nil {
+				return nil, err
+			}
+			return payload, nil
+		},
+	}
+	requestBody := `{"applicationID":"sui","documentID":"doc","actionID":"sui.move","expectedRevision":"r1","payload":{"cardId":"a","x":5,"y":6}}`
+	send := func() *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "http://example.test/commit", bytes.NewBufferString(requestBody))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("X-TEI-Action", "commit")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w
+	}
+	first := send()
+	if first.Code != 200 {
+		t.Fatalf("first commit returned %d: %s", first.Code, first.Body.String())
+	}
+	var result struct{ Revision string `json:"revision"` }
+	if err := json.Unmarshal(first.Body.Bytes(), &result); err != nil || result.Revision != "r1:1" {
+		t.Fatalf("bad revision: %+v err=%v", result, err)
+	}
+	second := send()
+	if second.Code != 409 {
+		t.Fatalf("expected conflict, got %d: %s", second.Code, second.Body.String())
+	}
+	revision, document, writes := store.Snapshot()
+	if revision != "r1:1" || writes != 1 {
+		t.Fatalf("revision=%q writes=%d", revision, writes)
+	}
+	var updated map[string]json.RawMessage
+	if err := json.Unmarshal(document, &updated); err != nil {
+		t.Fatal(err)
+	}
+	var cards []map[string]json.RawMessage
+	if err := json.Unmarshal(updated["cards"], &cards); err != nil {
+		t.Fatal(err)
+	}
+	if string(cards[0]["x"]) != "5" || string(cards[0]["y"]) != "6" {
+		t.Fatalf("card did not move: %s", cards[0])
+	}
+	if string(updated["edges"]) == "" || string(updated["reviewAttribution"]) == "" {
+		t.Fatal("unrelated SUI fields lost")
+	}
+}
