@@ -37,7 +37,7 @@ export function composeRequestPlan(plan){
   if(route.actionId && !hostPolicy.requiredGuards.includes("action-authorized")) throw new Error("action route has no mandatory authorization");
   if(new Set(hostContracts).size!==hostContracts.length) throw new Error("duplicate host contract");
   if(new Set(hostPolicy.requiredGuards).size!==hostPolicy.requiredGuards.length) throw new Error("duplicate required guard");
-  const ids=new Map(),providers=new Map(),slots=new Set(),guards=new Set(),terminalEvents=new Set();
+  const ids=new Map(),providers=new Map(),slots=new Set(),guards=new Set(),terminalEvents=new Set(),invalidGuardEvidence=[];
   // An executable standard guard must publish the specific contract proving
   // its result. A label attached to an unrelated prerequisite is not evidence.
   // Custom/plugin guards need a separately defined typed guard contract.
@@ -60,7 +60,7 @@ export function composeRequestPlan(plan){
     for(const guard of p.guards||[]){
       const evidence=standardGuardEvidence.get(guard);
       if(evidence && !(p.provides||[]).includes(evidence))
-        throw new Error("guard declaration lacks corresponding evidence: "+guard+" -> "+evidence);
+        invalidGuardEvidence.push({guard,evidence});
       guards.add(guard);
     }
     for(const event of p.onTerminal||[]) terminalEvents.add(event);
@@ -108,6 +108,12 @@ export function composeRequestPlan(plan){
       if(![...ancestors].some(id=>(ids.get(id).guards||[]).includes(guard)))
         throw new Error("required guard is not a prerequisite of Action: "+guard);
     }
+  }
+  // Report disconnected guards before invalid evidence: both are defects,
+  // but a missing causal dependency has to remain visible in old regressions.
+  if(invalidGuardEvidence.length){
+    const {guard,evidence}=invalidGuardEvidence[0];
+    throw new Error("guard declaration lacks corresponding evidence: "+guard+" -> "+evidence);
   }
   return {routeId:route.id,order,requiredGuards:[...hostPolicy.requiredGuards],terminalEvents:[...hostPolicy.terminalEvents]};
 }
