@@ -687,6 +687,29 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 		checkUnresolved(t, changed, 2)
 	})
 
+	t.Run("ambiguous step does not suppress a distinct step", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for i := range changed.Steps {
+			if changed.Steps[i].ID == "BP-04" {
+				changed.Steps[i].ID = "BP-05"
+			}
+		}
+		for _, candidate := range changed.Steps {
+			if candidate.ID == "BP-05" && candidate.Realization == "validation-support" {
+				candidate.ID = "BP-10"
+				changed.Steps = append(changed.Steps, candidate)
+				break
+			}
+		}
+		rows := compareValidationScopes(loaded.World, changed)
+		if len(rows) != 2 || rows[0].Status != "unresolved-context" ||
+			rows[1].Status != "review-needed" || !validationScopeSourcesNeeded(rows) ||
+			!reflect.DeepEqual(rows[1].ApplicationOnly, []string{"sales.order_line.line_number_positive"}) {
+			t.Fatalf("未解決Stepが別の一意なStepまで比較不能にしました: %+v", rows)
+		}
+	})
+
 	t.Run("distinct validation steps stay comparable", func(t *testing.T) {
 		changed := fixture
 		changed.Steps = append([]step(nil), fixture.Steps...)
