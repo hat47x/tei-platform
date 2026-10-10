@@ -658,6 +658,18 @@ func outputTouchesWorkspaceManagedSource(root, output string) (bool, error) {
 		return true, err
 	}
 	for _, artifact := range snap.index.Artifacts {
+		// The Source Index records existing files; a newly created file in a
+		// declared source root may still become authoritative on next reload.
+		// Reserve the root directories of managed artifacts for source only.
+		// Do not synthesize roots from single-file workspace metadata.
+		artifactRelative := referencePathText(artifact.Path)
+		if cut := strings.IndexByte(artifactRelative, '/'); cut > 0 {
+			rootName := artifactRelative[:cut]
+			if rootName != ".tei" && (relative == rootName ||
+				strings.HasPrefix(relative, rootName+"/")) {
+				return true, nil
+			}
+		}
 		filePath := filepath.Join(rootAbs, filepath.FromSlash(artifact.Path))
 		fileResolved, err := resolveOutputDestination(filePath)
 		if err != nil {
