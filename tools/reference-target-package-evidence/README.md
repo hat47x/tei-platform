@@ -16,7 +16,7 @@ go run ./tools/reference-target-package-evidence \
   > /tmp/tei-first-web-go-packages.json
 ```
 
-- 開始・終了時に`git status --porcelain --untracked-files=all`とHEADを確認し、変更があれば失敗します。さらに、`go list`がコンパイル対象として挙げたメインモジュールのGo/Cgoソースに加えて、`go list`が列挙する埋込ファイル（`//go:embed`）とC/C++/ヘッダー/Assembly/SWIG等の補助入力がGitの追跡対象であることを検査します。補助入力は`auxiliaryInputs`に`kind`と相対パスを出力します。通常の`git status`では見えない**ignore対象の未追跡Goファイル**も、コンパイルに使われるなら失敗させます。またGitで追跡されていても、シンボリックリンク経由で別のソースを読み込む場合は拒否します。ただしこの検査は全入力の改ざん防止や`tools/repository-health-check.sh`のexact-head full PASS／統合資格を保証しません。
+- 開始・終了時に`git status --porcelain --untracked-files=all`とHEADを確認し、変更があれば失敗します。さらに、`go list`がコンパイル対象として挙げたメインモジュールのGo/Cgoソースに加えて、`go list`が列挙する埋込ファイル（`//go:embed`）とC/C++/ヘッダー/Assembly/SWIG等の補助入力がGitの追跡対象であることを検査します。補助入力は`auxiliaryInputs`に`kind`と相対パスを出力します。Goのメインモジュールもリポジトリ直下に固定し、Git管理対象の通常ファイル`go.mod`と照合します。通常の`git status`では見えない**ignore対象の未追跡Goファイル**も、コンパイルに使われるなら失敗させます。またGitで追跡されていても、シンボリックリンク経由で別のソースを読み込む場合は拒否します。ただしこの検査は全入力の改ざん防止や`tools/repository-health-check.sh`のexact-head full PASS／統合資格を保証しません。
 - `GOENV=off`、`GOWORK=off`、`GOFLAGS=`を`go list`に適用し、隠れたユーザー設定・Workspace・build flagによる入力変化を避けます。必要なbuild tagsは`-tags`で明示し、GOOS／GOARCH／CGO_ENABLED／Go版を結果に記録します。
 - Goのツールチェーンが依存を解決できない、JSONが不正、参照先パッケージが欠落している等の場合には不完全な結果を成功として出力しません。
 
