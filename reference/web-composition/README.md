@@ -382,3 +382,28 @@ Session操作に渡す入力について、従来の`json.Decoder.Decode(&struct
 
 - Session route GitHub Blob: `67476fa6b998a7d90851b2c04afc9bb454434509`
 - HTTP integration regression test GitHub Blob: `d6ff45a7a70b307147619c0c4ba21fd888ecb801`
+
+## E2.11：副作用直前の業務権限再評価（2026-10-10）
+
+E2.6ではSessionの主体対応付けとAccount適格性をCommand直前に再評価しましたが、同一`SubjectID`の**業務操作権限が早期認可から副作用までの間に変更される**場合は検知できませんでした。特に初回の`security.authorize`が`allowed`であっても、その後のRole・Permission変更を受け取る新しい評価が必要です。
+
+`command_scenario.go`の業務認可呼出しを`invokeBusinessAuthorization`へ集約し、既存の`security.authorize` Capability、`order_entry/security.authorize` Binding、同じ`SubjectID/action/resource`の組を**初回認可とSession専用の副作用直前認可の両方**で使用します。別の権限判定表・独自Role比較は設けません。Commandに進む条件は、(1) Read/Validation、(2) 初回業務認可、(3) Subject LinkとAccountの最終確認、(4) **Canonical認可の最終確認**がすべて成功することです。最終認可ではOutcomeとGrantの主体／操作／資源まで照合し、想定外のResult ModeやGrant不整合はExecution Errorです。
+
+最終認可結果は新しい任意フィールド`effectAuthorization`に記録します。初回の`authorization`を上書きしないため、両者の判断が異なった場合もBusiness Evidenceを失いません。最終`denied`は`Stage=authorization-denied`、Session HTTP 403、Host監査`rejected`として扱います。認可Capability障害や不整合は`Stage=effect-authorization`、HTTP 503、監査`error`とし、HTTPへ内部基盤エラー文字列を渡さず固定メッセージへ置き換えます。Credential経路はこれまでどおり最初の認可を一度実行し、`effectAuthorization`を生成しません。
+
+`tools/reference-first-web-target/session_effect_authorization_test.go`に実Workspaceと本物のRunner/Host/Capabilityを使う回帰テストを追加しました。Subject Linkの3回目の照合時に合成Permission Fixtureを`deny`へ切り替える場合と、AdapterのRuleを利用不能にする場合について、HTTP、認可結果の来歴、Command／Observationが存在しないこと、監査、実行エラーメッセージ秘匿を検査します。既存のSession正常系は`effectAuthorization=allowed`、旧Credential正常系は`effectAuthorization`なしを要求するよう拡充しました。
+
+### E2.11の検証資格と限界
+
+- `tools/reference-first-web-target/command_scenario.go`: GitHub Blob `c0da4c4a388fa796b9ccc7d2a8145891412bd1cc`
+- `tools/reference-first-web-target/session_command_route.go`: GitHub Blob `e943cb9b8d3f2e5ccd4998daf0f0cb9a1a471736`
+- `tools/reference-first-web-target/session_command_route_test.go`: GitHub Blob `81a4051d9f49789645ffed0126698add9135df32`
+- `tools/reference-first-web-target/session_effect_authorization_test.go`: GitHub Blob `7388750d897f85a4bda8b99c729dcedd2ddfb45f`
+
+コード順序をGitHub Blob上で静的確認した結果、Read → Validation → 初回Canonical認可 → Link/Account再検証 → 最終Canonical認可 → Command Capability呼出しであり、旧Credential入口は`nil`のEffect Guardを渡すため最終認可を追加しません。
+
+**ここに記載した新規テストの成功は未取得です。** この実行環境は`github.com`の名前解決に失敗し、リポジトリの完全なクリーンチェックアウトを作れません。よってGo実行・`gofmt`・`go vet`・Race・Repository Healthの実候補に対するPASSは主張しません。現時点の成果は実装、回帰テスト追加、Blob上の呼出し順序の静的検査です。
+
+また、最終認可と副作用の実行が**同一のトランザクション／原子的な操作として結合されているわけではありません**。最終認可の直後から実際のCommitまでのごく短い期間に起こる失効を完全には排除できません。本番相当の実行では、効果を持つAdapter側での承認フェンス、権限バージョン条件、トランザクション内再検証、冪等性・取消可能性を別途設計・検証する必要があります。合成Fixtureでの時刻操作は実IdPやDirectoryの失効伝播証明ではありません。
+
+統合資格は従来どおり現行mainを含むexact-headのclean full checkoutでの`reference/web-composition/qualify.sh`全PASS、実Workspace Go回帰、未変更のrefs確認を前提とします。CIは使用せず、Draft・未マージを維持します。
