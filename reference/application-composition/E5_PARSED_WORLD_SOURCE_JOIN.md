@@ -18,6 +18,7 @@
 | `Patterns[].Relation` | `semantic-relation:<ID>` | Patternの直接Relation参照がWorld内で一意で、Source定義が一意であること |
 | `Patterns[].Capability` | `semantic-capability:<ID>` | Patternの直接Capability参照がWorld内で一意で、Source定義が一意であること |
 | `Patterns[].Query` | `query:<ID>` | Patternの直接Query参照がWorld内で一意、同一Application所有でSource定義が一意であること |
+| `Patterns[].ContractQuery` | `database-contract-query:<ContractID>/<QueryName>` | 宣言済みDatasource alias・要求済みContract・Contract内のQuery定義と一意のSource出典を照合 |
 | `Application.Validations[]` | `semantic-validation:<ID>` | 意味定義が一意で、Source上のdefinitionが一意であること |
 | `Application.Databases[].TargetDatabase` | `database:<ID>` | 論理Database宣言が一意で、Source上のdefinitionが一意であること |
 | `Application.Databases[].RequiredContracts[]` | `database-contract:<ID>` | 選んだDatabaseに当該Contract定義が一意に存在し、Source上のdefinitionを特定できること |
@@ -34,7 +35,7 @@ Source Index内の`RoleDefinition`だけを定義出典として扱い、`author
 - `unresolved`：Application欠落／重複、Validation定義欠落／重複、DB定義の曖昧さ、Contract取り違え／重複、Source定義の欠落／重複、宣言メジャー不一致など。入力の解析漏れや未解決を成功としない。
 - `qualification: declaration-and-source-index-only`：`observed`でも受理済み業務意味、実行権限、実際のProvider互換、Migration、UIの接続を保証しない。
 
-Versionのメジャー照合は明白な不一致の検出のみであり、実際のContract Conformanceや実装のバージョン選択は既存検証とLockへ委譲する。`SemanticUses`とPattern自身の定義出典は追加したが、**Patternの直接参照をさらに辿る推移的依存（DataのAttributeやRelation先、Capabilityの入出力型、Query結果型、ContractQueryとそのinput bindingなど）**、外部認証、Environment接続、SUI Native依存を自動的に完全列挙したわけではないため、**全依存Closureの成立を主張しない**。
+Versionのメジャー照合は明白な不一致の検出のみであり、実際のContract Conformanceや実装のバージョン選択は既存検証とLockへ委譲する。`SemanticUses`とPattern自身の定義出典は追加したが、**Patternの直接参照をさらに辿る推移的依存（DataのAttributeやRelation先、Capabilityの入出力型、Query結果型、ContractQueryの入力Bindingや結果型など）**、外部認証、Environment接続、SUI Native依存を自動的に完全列挙したわけではないため、**全依存Closureの成立を主張しない**。
 
 ### 同一Databaseへの複数aliasとSourceの一意性
 
@@ -50,13 +51,21 @@ E5の以前の定義では、`order_entry.submit_order`のPatternファイルが
 
 既存の`application.Pattern`フィールドと`ir.World`内の定義を突き合わせ、**Data／Relation／Capability／Application所有Query**の直接参照をSource Indexの`definition`へ結ぶ。参照先が無い、重複する、Queryの所有Applicationが違う、Source Indexの定義が一意でない場合は`unresolved`とする。同じRelationなどを複数Patternが利用してもSource Subjectは一度だけE6へ渡す。新しい解析器や依存グラフは作らない。
 
-これはPatternからの**1段の直接依存**のみ。既存のCanonical意味検証を置き換えず、ContractQuery・Datasourceの解決やData／Relation／Capabilityからの推移的な型依存、実現アセットの依存は未解決。**全依存閉包や受理済み業務互換を主張しない。** Goテストは6件追加したが、このheadのGoテスト実行は未確認。
+これはPatternからの**1段の直接依存**のみ。既存のCanonical意味検証を置き換えず、ContractQueryの入力Bindingの照合やData／Relation／Capabilityからの推移的な型依存、実現アセットの依存は未解決。**全依存閉包や受理済み業務互換を主張しない。** Goテストは6件追加したが、このheadのGoテスト実行は未確認。
 
 ### Source Indexの共有Artifactとfixture修正
 
 実際のSource Indexは**Artifact（物理Sourceファイル）とSubject（論理定義）を分ける**。同じ`semantic/sales/order.tei`にNamespaceとDataの定義があっても、Artifactを二件作るのではなく、**Artifact一件へ複数のdefinition Reference**を結ぶ。E5の`e5UniqueSource`は、同じArtifact Pathの二重登録を曖昧として拒否するため、Go回帰テストの`e5PatternTargetsFixture`がArtifactを二度appendしていた旧形状は正常系として成立しなかった。
 
 fixtureを修正し、既に登録されたArtifact Pathを再追加せずSubject Referenceだけ追加するようにした。加えて「同一Artifact・複数Subjectを正常扱い」と「同一PathのArtifactを重複登録すると未解決」の2件の回帰テストを記述した。**この修正はGoでの実行未確認であり、GoのPASS数には加えない**。コードの正式検証Gateは従来どおり維持する。
+
+### Contract Queryの直接参照を照合する追加検証
+
+実際の`order_entry.customer_reference`は、Datasource `master`と `master_data.customer / find_by_id`を参照する。E5では型付き`Pattern.ContractQuery`・`Pattern.Datasource`とApplicationのDatabase要求、およびDatabase ContractのQuery宣言を結ぶ。対応するSource Index Subjectは`database-contract-query:<ContractID>/<QueryName>`であり、**新たな依存関係の第二正本は作らない**。
+
+aliasの欠落・重複、要求されていないContract、Contract内のQueryの欠落・重複、別DatabaseのContractを誤選択した場合、定義Sourceの欠落を`unresolved`にする。ここで確認するのは**直接参照の存在とSource出典**のみ。Query inputとSemantic attributeの対応、戻り値、Provider実行、権限は既存検証に委譲する。
+
+合成のGo負例と正常例を6テスト登録し、さらに`reference/workspace`の受注アプリケーションを実Loaderで読む検査と、`sui-adoption/workspace` Stage 0が正式Applicationと誤認されない検査を2テスト登録した。**Goテストの実行証跡は未取得**であり、PASSとして数えない。
 
 ## 実行手順と検証Gate
 
