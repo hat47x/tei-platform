@@ -226,7 +226,11 @@ func TestWiringWithoutArtifactDigestRejectsPhysicalArtifactAmbiguity(t *testing.
 	clone.ArtifactDigest = "sha256:" + strings.Repeat("e", 64)
 	e2 := evidence[0]
 	e2.ArtifactDigest = clone.ArtifactDigest
-	e2.EvidenceFingerprint = strings.Repeat("f", 64)
+	e2FP, err := conformanceEvidenceFingerprint(e2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e2.EvidenceFingerprint = e2FP
 
 	wiring.ArtifactDigest = ""
 	_, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
@@ -245,7 +249,11 @@ func TestExactArtifactWiringDisambiguatesPhysicalRealizations(t *testing.T) {
 	clone.ArtifactDigest = "sha256:" + strings.Repeat("e", 64)
 	e2 := evidence[0]
 	e2.ArtifactDigest = clone.ArtifactDigest
-	e2.EvidenceFingerprint = strings.Repeat("f", 64)
+	e2FP, err := conformanceEvidenceFingerprint(e2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e2.EvidenceFingerprint = e2FP
 
 	resolution, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
 		Contracts: []BuilderContract{contract},
@@ -565,7 +573,11 @@ func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.
 
 	targetEvidence := evidence[0]
 	targetEvidence.Target = "host/unverified"
-	targetEvidence.EvidenceFingerprint = strings.Repeat("e", 64)
+	targetEvidenceFP, err := conformanceEvidenceFingerprint(targetEvidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetEvidence.EvidenceFingerprint = targetEvidenceFP
 	catalog.Evidence = append(catalog.Evidence, targetEvidence)
 
 	resolution, err := resolveBuilder(intent, catalog, &wiring)
