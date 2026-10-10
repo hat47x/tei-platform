@@ -292,6 +292,32 @@ func TestDirectReflectionGuardDoesNotClaimGeneralNonDisclosure(t *testing.T) {
 	}
 }
 
+func TestContextGateDoesNotClaimDownstreamEffectSafety(t *testing.T) {
+	execution, err := invokeWithExecutionContext(
+		context.Background(),
+		accessSlotContracts(),
+		accessRequirement(),
+		accessHost("trusted-access"),
+		[]byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			return []byte("result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, limit := range execution.Receipt.AuthorityLimits {
+		if limit == "context-gate-does-not-prove-downstream-invocation-is-read-only" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("context gate overstated downstream invocation-effect safety")
+	}
+}
+
 func TestExecutionContextRequiresHostReusePartition(t *testing.T) {
 	host := accessHost("trusted-access")
 	host.ReusePartitionRef = ""
