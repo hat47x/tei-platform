@@ -754,3 +754,29 @@ PR #1135のE1 preflight `tei.critical-path-evidence/v0` に、以下の**独立�
 3. #1126/#1127: physical DB/Host Authorization/independent readはE2で別途取得。外部DB効果をsynthetic Observationの結果から推論しない。
 
 **状態**: E1証拠の受渡し欠落を検査するGoコード、負例Goテスト、README、現状fixtureを更新済み。今回の更新分のtrusted full checkout Go test / Repository Health / live Web / actual DBは**NOT RUN**。G1/G2もPASSにしない。
+
+
+## 24. trusted full checkoutの実行手順を固定する（2026-10-10）
+
+### source qualificationと製品E1/E2の資格を分ける
+
+§19〜23の横断Evidence preflightは、候補PR内Go/READMEの隔離試験と、実製品のrunning-Web/DB証跡を区別する。しかし**当該候補の最新HEADと最新mainで、既存Go packageを実行してよいか**を判断する再現可能な手順が不足していた。
+
+そこで親担当の `tools/reference-critical-path-evidence-audit/qualify.sh` を追加した。これはスコープを**#1119のDraft PR自身の資格試験**に限定する。#1120/#1124/#1121/#1127の実装を複製しない。
+
+- 実行前: `TEI_CP_EXPECTED_HEAD` と `TEI_CP_EXPECTED_MAIN`（ともにexact SHA40）を必須とし、remote fetch後のmain・work branch一致、mainがcandidateの祖先、変更pathが親レーン内に限られることを検査する。ignored/未追跡を含むclean状態と非標準Git indexも検査する。
+- focused: Evidence preflightのGo race test/vet/gofmt、既存Shared Acceptanceの正例・stale拒否、既存Web Driver/HTTP handlerの単価Validation正負・欠損を**既存testコードで**実行する。
+- full: `tools/repository-health-check.sh`を実行後、HEAD/clean/current remote main・branchが動いていないことを再fetchして確認する。
+- 出力は`CRITICAL_PATH_LOCAL_SOURCE_QUALIFIED_ONLY`とexact revision/runner blobのみ。G1/G2/実Web/実DB/独立readのPASS、他Draft PRの資格、独立Review、mainへの自動mergeを意味しない。
+
+起動例（**ここでは実行していない**）:
+
+```bash
+TEI_CP_EXPECTED_HEAD=<PR-1135の最新SHA40> \
+TEI_CP_EXPECTED_MAIN=<origin/mainの最新SHA40> \
+bash tools/reference-critical-path-evidence-audit/qualify.sh
+```
+
+この手順はcurrent mainが更新された後で古い親ブランチをそのまま合格扱いにしない。mainの新コミットを通常の安全な方法で取り込み、exact HEADを再指定したtrusted完全checkoutで再実行する必要がある。差分の形式上の非競合は資格試験の代わりにならない。
+
+**未取得Evidence**: 今回はGitHubに資格スクリプトとrunbookを追加した段階。直接gitアクセスできない現セッションでは、このスクリプトの実full checkoutは走らせていない。親PR #1135はDraft/Gate未合格を維持し、完了時にのみmain統合とIssue完了を判定する。
