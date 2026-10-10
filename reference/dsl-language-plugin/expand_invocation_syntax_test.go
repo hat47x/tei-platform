@@ -34,9 +34,9 @@ func TestParseExpandInvocationKeepsSourceBytesAndNamedArguments(t *testing.T) {
 
 func TestParseExpandInvocationRejectsAmbiguityAndIncompletePolicy(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		source string
-		cause  error
+		name	string
+		source	string
+		cause	error
 	}{
 		{"missing unmatched", "std.op.expand(relation: sales.order.customer, null_key: reject)", nil},
 		{"missing null policy", "std.op.expand(relation: sales.order.customer, unmatched: reject)", nil},
