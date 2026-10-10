@@ -42,7 +42,7 @@ E1の最終判定には、さらに`go build`後のbytes、digest、link済みsy
 
 ## この証拠で言えること／言えないこと
 
-**観測対象**は一つの静的なGoビルド入口です。第一Web Targetの`-application`はサーバーの**実行時引数**なので、それを二通りにしても別のGo package closureにはなりません。アプリごとに異なる実装を物理的に除外したければ、異なるcompile-time入口を作り、同じ条件でそれぞれを測る必要があります。
+**観測対象**は一つの静的なGo実行可能ビルド入口（`package main`）です。`go list`で単なるGoライブラリを指定して得た依存閉包を、実行バイナリの入口の証拠として採用しないよう拒否します。第一Web Targetの`-application`はサーバーの**実行時引数**なので、それを二通りにしても別のGo package closureにはなりません。アプリごとに異なる実装を物理的に除外したければ、異なるcompile-time入口を作り、同じ条件でそれぞれを測る必要があります。
 
 このJSONだけでは、Go linkerの不要コード除去、最終成果物のサイズ・digest・symbol、実動作、Secret／認可、独立したWeb UIのJSやHTMLの配布物は証明できません。`go list`の補助ファイル一覧も、Cの推移的な`#include`、`pkg-config`、システムSDK、外部リンカ入力、ツールチェーンが生成するファイルやGo以外のアセットビルド全体を網羅するものではありません。また`go list`が収集する静的import先は、GoのReflection・Pluginの動的参照や外部プロセスを完全には表しません。
 
