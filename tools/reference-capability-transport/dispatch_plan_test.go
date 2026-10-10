@@ -197,9 +197,9 @@ func pruntimeProcessCommandForPlanTest() pruntime.ProcessCommand {
 func TestDispatchPlanReusesIdentityWithoutCollapsingInvocationPayloads(t *testing.T) {
 	firstDispatch := genericDispatch([]byte("first-payload"))
 	plan := transportDispatchPlanForTest(t, firstDispatch)
-	server := newAuthorizedHTTPTransportServer(t, plan)
+	server := newPlannedHTTPTransportServer(t, plan)
 
-	first, err := invokeAuthorizedOverHTTPTransport(
+	first, err := invokePlannedOverHTTPTransport(
 		context.Background(),
 		server.Client(),
 		server.URL,
@@ -212,7 +212,7 @@ func TestDispatchPlanReusesIdentityWithoutCollapsingInvocationPayloads(t *testin
 	}
 
 	secondDispatch := genericDispatch([]byte("second-payload"))
-	second, err := invokeAuthorizedOverHTTPTransport(
+	second, err := invokePlannedOverHTTPTransport(
 		context.Background(),
 		server.Client(),
 		server.URL,
