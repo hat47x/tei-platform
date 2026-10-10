@@ -102,7 +102,19 @@ type actionFunctionPair struct {
 
 var crossViewFingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
-func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
+func BuildCrossViewProjection(
+	format Format,
+	source []byte,
+	contractBytes []byte,
+) (CrossViewProjection, error) {
+	inspection, err := InspectWithContract(format, source, contractBytes)
+	if err != nil {
+		return CrossViewProjection{}, err
+	}
+	return buildCrossViewProjection(inspection)
+}
+
+func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
 	doc := inspection.Document
 	mappingContractFingerprint, err := normalizeCrossViewContractFingerprint(inspection.TranscriptionContractFingerprint)
 	if err != nil {
@@ -310,7 +322,7 @@ func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 		case "IOTable":
 			if ref.functionToken == "" {
 				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
-					""iotable-without-function",
+					"iotable-without-function",
 					"function-table-operation",
 					[]string{ref.token},
 				))
