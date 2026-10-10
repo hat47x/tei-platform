@@ -171,10 +171,26 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 		return result, fmt.Errorf("authenticated result does not contain subject identity")
 	}
 
+	return r.runAuthenticatedSubjectCommand(ctx, subject.SubjectID, input.From, input.RowIndex, result)
+}
+
+// runAuthenticatedSubjectCommand contains the existing business Read,
+// Validation, authorization, Command, and Observation sequence. The caller
+// must establish an identity through one explicit authentication route.
+// Authorization still executes at this Action boundary, not in the UI.
+func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommand(
+	ctx context.Context,
+	subjectID, from string,
+	rowIndex int,
+	result commandScenarioResult,
+) (commandScenarioResult, error) {
+	if subjectID == "" || from == "" || rowIndex < 0 {
+		return result, fmt.Errorf("authenticated command requires a subject, from and non-negative row")
+	}
 	result.Stage = "read"
 	readResult, err := r.read.Run(ctx, readScenarioInput{
-		From:     input.From,
-		RowIndex: input.RowIndex,
+		From:     from,
+		RowIndex: rowIndex,
 	})
 	if err != nil {
 		return result, err
@@ -220,7 +236,7 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 			return authorizationAdapter, nil
 		}),
 		legacyauthorization.Input{
-			SubjectID: subject.SubjectID,
+			SubjectID: subjectID,
 			Action:    "execute",
 			Resource:  "order_entry.submit_order",
 		},
