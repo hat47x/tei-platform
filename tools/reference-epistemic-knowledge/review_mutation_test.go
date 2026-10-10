@@ -247,6 +247,25 @@ func TestReviewCommandRefusesAmbiguousTargetConfirmation(t *testing.T) {
 	}
 }
 
+func TestReviewCommandStillRejectsMetadataDowngradeAfterReceipt(t *testing.T) {
+	corpus, context := loadFixture(t)
+	command := reviewCommandFor(t, corpus, context, "ai-unreviewed", ReviewEventConfirm, "metadata-downgrade")
+
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "ai-unreviewed" {
+			corpus.Assertions[i].MetadataState = MetadataPartial
+		}
+	}
+
+	_, err := applyReviewCommand(corpus, context, command)
+	if err == nil || !strings.Contains(err.Error(), "metadataState=partial") {
+		t.Fatalf("metadata downgrade bypassed current precondition: %v", err)
+	}
+	if strings.Contains(err.Error(), "subject binding is stale") {
+		t.Fatalf("operational metadata was incorrectly treated as subject change: %v", err)
+	}
+}
+
 func TestReviewCommandRefusesPartialMetadataConfirmation(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
