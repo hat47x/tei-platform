@@ -71,7 +71,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `operator.go`の`OperatorContract` / `ResolveOperator`がOperator契約照合の唯一の経路である。`pinned_pipeline.go`は、構文中のOperator識別子と**位置順に与えられた**契約を照合する。`pinned_composition.go`は型の連続性を調べ、契約のバージョン・fingerprint・効果を再検証する。識別子のみで登録Catalogから選択する旧`ResolveCall` / `ParsePipeline` / `Compose`は、暗黙の意味変更を許すため廃止した。
 
-`pinned_semantic_binding.go`は既存のSemantic NamespaceのData識別子を確認する。`semantic_path_reference.go`はData/Attribute/RelationのCanonical IDと多重度を検証する。`relation_keys_reference.go`はRelationの参照先、結合キーの存在・一意性・型の一致を検査する。`expand_relation_reference.go`は結合キーのあるRelationと固定済み`std.op.expand`契約を照合する。`relation_path_reference.go`は複数Relationにおける多重度を、各段の妥当性を確認しながら伝播する。
+`pinned_semantic_binding.go`は既存のSemantic NamespaceのData識別子を確認する。`semantic_path_reference.go`はData/Attribute/RelationのCanonical IDと多重度を検証する。`relation_keys_reference.go`は**複数Namespaceを含む`ir.World`**のRelation参照元・参照先を一意に特定し、結合キーの意味検査は既存の`validation.ValidateSemanticRelationKeys`へ委譲する。`expand_relation_reference.go`はこの検証結果と固定済み`std.op.expand`契約を照合する。`relation_path_reference.go`はNamespaceをまたぐ複数Relationについて、各段を検証しながら多重度を伝播する。
 
 ### 検証できること
 
@@ -79,6 +79,14 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 - Operatorの入出力型が連続しない場合や、副作用を含む契約を拒否する。
 - Data・Attribute・Relationの欠落、重複、未定義の多重度、結合キーの欠陥を拒否する。
 - Relationの一段または複数段の連鎖で、`one`と`many`の合成を検証する。得られる多重度は**起点1件あたりに想定される結果の多重性**であり、存在保証や実レコード件数ではない。
+
+### 既存Relation検証器との一元化（2026-10-10）
+
+以前のReferenceは、結合キーの型一致や重複を独自に実装しており、Relationの参照元と参照先が**同じNamespaceにあること**を前提としていた。この方式では既存World上の正当なNamespace間Relationを拒否しかねなかったため、独自のキー規則を廃止した。
+
+現在は`ValidateRelationKeys(ir.World, sourceID, relationID)`で対象のData・Relation・Targetの一意性とCardinalityを確認し、結合キーの参照先・所属・Semantic型同一性・重複については既存`internal/validation/semantic_relation_keys.go`の`ValidateSemanticRelationKeys`が返す対象RelationのDiagnosticを使用する。`ExpandRelationReference`と`TraceRelationPath`も同じWorldを受け取る。これにより、DSL Referenceが独自に別のキー意味論を採用する危険を抑える。
+
+`relation_world_conformance_test.go`はsales・customer・addressの3つのNamespaceをまたぐRelationと、既存検証器が拒否する不正キーのDiagnostic同一性を試験対象とする。**この追加テストの実行結果は未取得**である。また、関数へWorldを渡した事実はShared AcceptanceやWorld全体のValidationの完了を示さない。呼び出し側が正式に受理したSemantic Worldを供給する責務は変わらない。
 
 ### まだ検証できないこと
 
