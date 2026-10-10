@@ -103,3 +103,14 @@ C0の受入は、正常系・構文エラー・意味エラー・入力読込み
 実装PRをmainへ取り込むには、対象exact headとcurrent mainについて、[リポジトリの統合規則](../../AGENTS.md)が要求するactual full Repository Healthの証拠が必要となる。コードの存在、合成テスト、レビュー、GitHub上のPR作成をその代用としない。
 
 この文書もC0も、production-ready Editor、HTTP API、OS認証連携、デスクトップ版の実現、AIの安全な自律実行を証明するものではない。
+
+
+## 7. C1: Canonical Subject inspection (draft)
+
+Issue #1165 の第一段階では、`tei inspect` からモデル要素一件の意味情報とSource Index上の出所を取得する。初期対応は`semantic-data`、`application`、`query`の三種類で、kindとCanonical IDの完全一致を要求する。
+
+`internal/operations.InspectSubject`が既存のNormalized Worldから要素を抽出し、同じWorkspaceロードで構築したSource Indexに結び付ける。CLIは引数・JSON・終了コードのみを処理し、新しい意味モデルを所有しない。不在は`SUBJECT_NOT_FOUND`、重複は`SUBJECT_AMBIGUOUS`として一件目を採用しない。
+
+`worldFingerprint`は正規化Worldの内容ハッシュであり、書込み用revisionやAcceptanceを意味しない。`sourceStatus=not-indexed`は対応する出所参照の欠落を示すが、Canonicalの不存在とは異なる。結果は適切な情報開示制御の下で利用する。
+
+この実装候補はグラフの参照先・参照元探索、差分比較、更新、認可、原子的Snapshotを含まない。テストの記述だけでは適合の証拠とせず、actual clean checkoutの全Repository Healthを確認してから統合する。
