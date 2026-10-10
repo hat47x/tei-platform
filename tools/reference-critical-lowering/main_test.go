@@ -175,6 +175,11 @@ func TestFailClosedNegativeControls(t *testing.T) {
 		{"acceptance-authority", func(f *fixture) {}, stubTrust{denyAcceptance: true}, "unaccepted-meaning"},
 		{"publisher-authority", func(f *fixture) {}, stubTrust{denyPublisher: true}, "unverified-provider"},
 		{"provider-conformance", func(f *fixture) {}, stubTrust{denyConformance: true}, "unverified-provider"},
+		{"invalid-runtime-dependency", func(f *fixture) { f.providers[0].RuntimeDeps = []Ref{{}} }, stubTrust{}, "invalid-provider-dependency"},
+		{"duplicate-runtime-dependency", func(f *fixture) {
+			f.providers[0].RuntimeDeps = append(f.providers[0].RuntimeDeps, f.providers[0].RuntimeDeps[0])
+		}, stubTrust{}, "invalid-provider-dependency"},
+		{"invalid-build-only-dependency", func(f *fixture) { f.providers[0].BuildOnlyDeps = []Ref{{}} }, stubTrust{}, "invalid-provider-dependency"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -514,5 +519,20 @@ func TestStructurallyForgedPlansFailBeforeTrustedDispatch(t *testing.T) {
 				t.Fatalf("Host callback allowed a malformed witness: got %q, expected %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestRuntimeDependencyOrderDoesNotChangeResolvedPlan(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	f.providers[0].RuntimeDeps = []Ref{ref("runtime.a"), ref("runtime.b")}
+	first, err := f.lower(stubTrust{})
+	if err != nil { t.Fatal(err) }
+
+	reordered := orderFixture("tei.language.dsl")
+	reordered.providers[0].RuntimeDeps = []Ref{ref("runtime.b"), ref("runtime.a")}
+	second, err := reordered.lower(stubTrust{})
+	if err != nil { t.Fatal(err) }
+	if Digest(first) != Digest(second) {
+		t.Fatal("runtime dependency registration order changed the target-bound witness")
 	}
 }
