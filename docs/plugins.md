@@ -82,6 +82,10 @@ process Pluginは、Plugin LockだけでなくPermission Grant、Resource Bindin
 
 processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
 
-Generic Capability Invocationをphysical transportへ載せる場合も、process protocolをuniversal ABIにしません。ISSUE-000086のReferenceでは既存process launcherとsynthetic loopback HTTPの二つで、同じContract / Provider / Target / shape identityをphysical carrierから分けて保持できるかを確認しています。HTTPではremote requestのidentityをAuthorityにせず、Hostが固定した期待identityと一致する場合だけimplementationへ渡します。一方、現行process Request / Responseのtop-level identityはlegacy CapabilityKind / CapabilityIDを前提とし、HTTP Referenceもproduction Runtime Authorityを持ちません。このためgeneric Capabilityのproduction transport統合が成立したとは扱いません。
+Generic Capability Invocationをphysical transportへ載せる場合も、process protocolをuniversal ABIにしません。ISSUE-000086のReferenceでは既存process launcherとsynthetic loopback HTTPの二つで、同じContract / Provider / Target / shape identityをphysical carrierから分けて保持できるかを確認しています。
+
+transportがrequest内のidentityをAuthorityとして扱わないよう、両transportのplan-bound経路では上流の`TransportDispatchPlan`とdispatch identityを照合します。一致しない場合はprocess起動やHTTP送信の前に停止します。receiptにはPlan fingerprintを残しますが、Plan自体をCapability ConformanceやRuntime Authorityにはしません。
+
+現行process Request / Responseのtop-level identityはlegacy CapabilityKind / CapabilityIDを前提とし、HTTP Referenceもproduction Runtime Authorityを持ちません。上流のCapability resolution / Runtime AuthorityからPlanを導出するE2Eも未実証です。このためgeneric Capabilityのproduction transport統合が成立したとは扱いません。
 
 詳しくは [Security / Trust Boundary](security.md) を参照してください。
