@@ -16,9 +16,10 @@ const m = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 func fixture() Packet {
 	return Packet{
 		Schema: schema, Claim: "E2",
+		Contract:      Contract{ProducerPath: "tools/reference-shared-acceptance/practical_validation_loop_test.go", ConsumerPath: "tools/reference-first-web-target/practical_business_rule_test.go", PositiveTest: "TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection", NegativeTest: "TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines", EvidenceClass: "synthetic-tested"},
 		Qualification: Qualification{Head: h, Main: m, FullHealth: "PASS", CleanBefore: true, CleanAfter: true, Receipt: "local/health.log"},
 		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("3", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
-		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", ProviderKind: "actual-db", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
+		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", ProviderKind: "actual-db", RunMode: "running-server", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
 		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
 	}
 }
@@ -92,6 +93,23 @@ func TestHealthNotRunCannotQualify(t *testing.T) {
 		t.Fatal("lost trusted gate")
 	}
 }
+func TestE0RejectsEmptyProducerConsumerEvidence(t *testing.T) {
+	p := fixture()
+	p.Claim = "E0"
+	p.Contract = Contract{}
+	if !has(Audit(p, h, m), "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") {
+		t.Fatal("empty E0 evidence can pass preflight")
+	}
+}
+func TestHandlerOnlyIsNotARealWebRun(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Web.RunMode = "handler-only"
+	if !has(Audit(p, h, m), "E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED") {
+		t.Fatal("handler-only test promoted to E1")
+	}
+}
+
 func TestStrictInputRejectsUnknownAndTrailing(t *testing.T) {
 	p := fixture()
 	dir := t.TempDir()
