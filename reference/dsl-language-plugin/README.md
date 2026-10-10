@@ -69,7 +69,7 @@ E2以降は既存`positive`と`relation-unique`を基準に、Operatorの可読�
 
 E2以降の参照実装は、受理済みの意味契約を**外部から正確に受け取る**前提で構成する。契約の採用、依存解決、Lockの発行は既存のSemantic ExtensionとShared Acceptance Boundaryの責務であり、このディレクトリには別の正本を作らない。
 
-`operator.go`の`OperatorContract` / `ResolveOperator`がOperator契約照合の唯一の経路である。`pinned_pipeline.go`は、構文中のOperator識別子と**位置順に与えられた**契約を照合する。`pinned_composition.go`は型の連続性を調べ、契約のバージョン・fingerprint・効果を再検証する。識別子のみで登録Catalogから選択する旧`ResolveCall` / `ParsePipeline` / `Compose`は、暗黙の意味変更を許すため廃止した。
+`operator.go`の`OperatorContract` / `ResolveOperator`がOperator契約照合の唯一の経路である。 旧`ComposePure`も、受理済みCatalogを照合せず任意の契約を合成できるため削除した。Operatorの型付き合成は必ず`ComposePinned`で各段階の契約を再照合する。`pinned_pipeline.go`は、構文中のOperator識別子と**位置順に与えられた**契約を照合する。`pinned_composition.go`は型の連続性を調べ、契約のバージョン・fingerprint・効果を再検証する。識別子のみで登録Catalogから選択する旧`ResolveCall` / `ParsePipeline` / `Compose`は、暗黙の意味変更を許すため廃止した。
 
 `pinned_semantic_binding.go`は既存のSemantic NamespaceのData識別子を確認する。`semantic_path_reference.go`はData/Attribute/RelationのCanonical IDと多重度を検証する。`relation_keys_reference.go`は**複数Namespaceを含む`ir.World`**のRelation参照元・参照先を一意に特定し、結合キーの意味検査は既存の`validation.ValidateSemanticRelationKeys`へ委譲する。`expand_relation_reference.go`はこの検証結果と固定済み`std.op.expand`契約を照合する。`relation_path_reference.go`はNamespaceをまたぐ複数Relationについて、各段を検証しながら多重度を伝播する。
 
