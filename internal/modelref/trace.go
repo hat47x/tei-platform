@@ -88,7 +88,25 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 		return TraceResult{}, fmt.Errorf("serialize graph snapshot: %w", err)
 	}
 	policyFingerprint := RuleFingerprint(rules)
-	digest := sha256.Sum256(append([]byte("tei.modelref.trace.snapshot/v0\n"), append(raw, []byte("\n"+policyFingerprint)...)...))
+	// A page belongs to a specific subject and direction. Changing either
+	// while reusing a continuation token would otherwise silently select
+	// a different result set from the very same graph and rule snapshot.
+	// Mode, offset and limit are excluded so summary -> full and paged full
+	// remain compatible for an unchanged query.
+	queryJSON, err := json.Marshal(struct {
+		Subject   Key    `json:"subject"`
+		Direction string `json:"direction"`
+	}{Subject: subject, Direction: options.Direction})
+	if err != nil {
+		return TraceResult{}, fmt.Errorf("serialize trace selector: %w", err)
+	}
+	snapshotBytes := []byte("tei.modelref.trace.snapshot/v1\n")
+	snapshotBytes = append(snapshotBytes, raw...)
+	snapshotBytes = append(snapshotBytes, '\n')
+	snapshotBytes = append(snapshotBytes, policyFingerprint...)
+	snapshotBytes = append(snapshotBytes, '\n')
+	snapshotBytes = append(snapshotBytes, queryJSON...)
+	digest := sha256.Sum256(snapshotBytes)
 	snapshotFingerprint := "sha256:" + hex.EncodeToString(digest[:])
 	if options.ExpectedFingerprint != "" && options.ExpectedFingerprint != snapshotFingerprint {
 		return TraceResult{}, &TraceError{Code: "STALE_SNAPSHOT", Message: "graph or rule fingerprint changed since the prior page"}
