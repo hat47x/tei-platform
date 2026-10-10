@@ -482,6 +482,9 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	if err := verifyBuilderSubjectBinding(stage1BuilderBinding, stage1Plan, stage1OutputSet); err != nil {
 		return referenceEvidence{}, err
 	}
+	if err := verifyBuilderHandoff(stage1BuilderBinding, stage2Plan); err != nil {
+		return referenceEvidence{}, err
+	}
 	stage1BuilderBindingFingerprint, err := builderSubjectBindingFingerprint(stage1BuilderBinding)
 	if err != nil {
 		return referenceEvidence{}, err
@@ -1104,6 +1107,24 @@ func verifyBuilderSubjectBinding(
 	}
 	if normalizeDigest(member.Digest) != normalizeDigest(binding.Builder.ArtifactDigest) {
 		return fmt.Errorf("builder artifact digest does not match selected artifact member")
+	}
+	return nil
+}
+
+func verifyBuilderHandoff(
+	producerBinding BuilderSubjectBinding,
+	consumerPlan BuildExecutionPlan,
+) error {
+	if err := producerBinding.Validate(); err != nil {
+		return err
+	}
+	produced := producerBinding.Builder
+	consumed := consumerPlan.Builder
+	if produced.ID != consumed.ID ||
+		produced.Version != consumed.Version ||
+		produced.ContractVersion != consumed.ContractVersion ||
+		normalizeDigest(produced.ArtifactDigest) != normalizeDigest(consumed.ArtifactDigest) {
+		return fmt.Errorf("producer Builder subject does not match consumer exact Builder identity")
 	}
 	return nil
 }
