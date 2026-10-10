@@ -430,6 +430,20 @@
       "observed": "In the exact benchmark, 35 of 148 TaskAction elements omit the ID attribute, while the other 113 carry ID=\"\". Therefore zero TaskActions have a usable non-empty legacy ID even though a simple attribute-presence count reports only 35 as missing.",
       "risk": "Inventory or migration logic can treat an empty identifier attribute as a durable source identity, undercounting unaddressable business steps and encouraging fallback matching by SortKey, label, or source order.",
       "teiDirection": "separate attribute absence, present-but-empty, and usable non-empty identity in source accounting; treat both absent and empty IDs as missing for identity resolution, and use exact-snapshot source tokens only for addressability rather than inventing durable business identity"
+    },
+    {
+      "id": "RMP-062",
+      "topic": "derivation-policy-identity-vs-algorithm-change",
+      "observed": "RMT-4 initially changed cross-view behavior to require source-profile validation and later to reject IOTable declarations with no CRUD marker, while CrossViewDerivationPolicyRevision and its fingerprint rule list still described the earlier v1 algorithm.",
+      "risk": "Two projections produced by materially different derivation algorithms can claim the same derivation-policy identity. Projection fingerprints may differ, but replay and review cannot tell whether the change came from source/contract drift or an unversioned algorithm change.",
+      "teiDirection": "bump the derivation-policy revision whenever outcome-affecting rules change and include those rules in the deterministic policy fingerprint; keep policy identity separate from source artifact, mapping contract and projection content fingerprints"
+    },
+    {
+      "id": "RMP-063",
+      "topic": "cross-view-public-accounting-free-text-surface",
+      "observed": "The first CrossViewPublicAccounting function accepted any caller-constructed CrossViewProjection and emitted source/derived edge kinds, target kinds, CRUD strings and unresolved codes as public map keys without validating them against the RMT-4 vocabulary. A caller could also supply arbitrary source format/version or stale policy fingerprints.",
+      "risk": "An artifact described as public-safe can become a source-content disclosure channel or can summarize a forged/stale projection even when the original Source Adapter path is safe.",
+      "teiDirection": "validate source profile syntax, exact fingerprints, current derivation-policy identity, projection content fingerprint, endpoint/source tokens and the closed RMT-4 relation/target/unresolved vocabularies before producing public accounting; reject unknown public keys rather than serializing them"
     }
   ]
 }
