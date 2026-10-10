@@ -117,6 +117,11 @@ type referenceEvidence struct {
 	BuildGraph                       BuildGraph                 `json:"buildGraph"`
 	BuildGraphFingerprint            string                     `json:"buildGraphFingerprint"`
 	BuildGraphOrder                  []string                   `json:"buildGraphOrder"`
+	BuildAttestation                 BuildAttestation           `json:"buildAttestation"`
+	BuildAttestationVerification     BuildAttestationVerification `json:"buildAttestationVerification"`
+	BuildAttestationFingerprint      string                     `json:"buildAttestationFingerprint"`
+	CurrentTrustDecision             AttestationTrustDecision   `json:"currentTrustDecision"`
+	RevokedTrustDecision             AttestationTrustDecision   `json:"revokedTrustDecision"`
 	BootstrapStage1Plan              BuildExecutionPlan         `json:"bootstrapStage1Plan"`
 	BootstrapStage2Plan              BuildExecutionPlan         `json:"bootstrapStage2Plan"`
 	BootstrapStage1ArtifactSet       ArtifactSet                `json:"bootstrapStage1ArtifactSet"`
@@ -211,6 +216,45 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			return referenceEvidence{}, err
 		}
 		sharedBindingFingerprints = append(sharedBindingFingerprints, fingerprint)
+	}
+
+	buildAttestation, err := signReferenceAttestation(BuildAttestation{
+		FormatVersion:                   buildAttestationFormatVersion,
+		Predicate:                       "tei.reference.build-result/v1",
+		BuildExecutionResultFingerprint: sharedResultFingerprint,
+		Subject: AttestationSubject{
+			Kind:                   attestationSubjectArtifactSet,
+			ArtifactSetFingerprint: sharedSetFingerprint,
+		},
+		Issuer: "tei.reference.issuer",
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	attestationVerification, err := verifyBuildAttestation(buildAttestation, sharedPlan, sharedSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	attestationFingerprint, err := buildAttestationFingerprint(buildAttestation)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	trustPolicy := AttestationTrustPolicy{
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           buildAttestation.Issuer,
+		SignatureProfile: buildAttestation.SignatureProfile,
+		Predicates:       []string{buildAttestation.Predicate},
+		Revision:         "policy-1",
+	}
+	currentTrustDecision, err := evaluateAttestationTrust(buildAttestation, attestationVerification, trustPolicy)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	trustPolicy.Revoked = true
+	trustPolicy.Revision = "policy-2"
+	revokedTrustDecision, err := evaluateAttestationTrust(buildAttestation, attestationVerification, trustPolicy)
+	if err != nil {
+		return referenceEvidence{}, err
 	}
 
 	multiOutputPlan := BuildExecutionPlan{
@@ -439,6 +483,11 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		BuildGraph: graph,
 		BuildGraphFingerprint: graphFingerprint,
 		BuildGraphOrder: graphOrder,
+		BuildAttestation: buildAttestation,
+		BuildAttestationVerification: attestationVerification,
+		BuildAttestationFingerprint: attestationFingerprint,
+		CurrentTrustDecision: currentTrustDecision,
+		RevokedTrustDecision: revokedTrustDecision,
 		BootstrapStage1Plan: stage1Plan,
 		BootstrapStage2Plan: stage2Plan,
 		BootstrapStage1ArtifactSet: stage1OutputSet,
@@ -447,6 +496,8 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			"build-binding-is-not-runtime-authority",
 			"artifact-set-location-is-not-content-identity",
 			"stage0-boundary-is-not-trust-acceptance",
+			"reference-fake-signature-is-not-cryptographic-security",
+			"attestation-trust-is-not-runtime-authority",
 		},
 	}, nil
 }
