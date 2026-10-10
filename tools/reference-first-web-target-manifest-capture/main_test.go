@@ -84,6 +84,8 @@ func TestCaptureFailsBeforePrintingBytesOnWrongIdentityOrProtocol(t *testing.T) 
 		{name: "wrong-app", code: 200, contentType: "application/json", body: strings.Replace(webManifest, "order_entry", "repair_intake", 1)},
 		{name: "wrong-build", code: 200, contentType: "application/json", body: strings.Replace(webManifest, `"T"`, `"T2"`, 1)},
 		{name: "duplicate-root", code: 200, contentType: "application/json", body: `{"applicationId":"repair_intake",` + webManifest[1:]},
+		{name: "nested-duplicate", code: 200, contentType: "application/json", body: strings.Replace(webManifest, `"patterns":[]`, `"patterns":[{"id":"p1","id":"p2"}]`, 1)},
+		{name: "deeply-nested", code: 200, contentType: "application/json", body: strings.Replace(webManifest, `"patterns":[]`, `"patterns":`+strings.Repeat("[", 129)+`null`+strings.Repeat("]", 129), 1)},
 		{name: "malformed-json", code: 200, contentType: "application/json", body: "{broken"},
 		{name: "html", code: 200, contentType: "text/html", body: webManifest},
 		{name: "compressed-transport", code: 200, contentType: "application/json", body: webManifest},
