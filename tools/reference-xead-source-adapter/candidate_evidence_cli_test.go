@@ -75,8 +75,28 @@ func TestRMTSelectedNodeCLIRejectsUnsupportedMode(t *testing.T) {
 	if err := os.WriteFile(input, []byte(`<System FormatVersion="1.2"><Table ID="one"/></System>`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.Command("go", "run", ".", "-format", "xead", "-input", input, "-candidate-evidence-node", "2").CombinedOutput()
-	if err == nil {
-		t.Fatalf("missing contract accepted: %s", output)
+	contractPath := filepath.Join(dir, "contract.json")
+	if err := os.WriteFile(contractPath, classificationContractFixture(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	base := []string{"run", ".", "-format", "xead", "-input", input}
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"missing contract", []string{"-candidate-evidence-node", "2"}},
+		{"zero ordinal", []string{"-contract", contractPath, "-candidate-evidence-node", "0"}},
+		{"negative ordinal", []string{"-contract", contractPath, "-candidate-evidence-node", "-1"}},
+		{"out of range", []string{"-contract", contractPath, "-candidate-evidence-node", "400"}},
+		{"conflicting local mode", []string{"-contract", contractPath, "-candidate-evidence-node", "2", "-local-candidates"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append(append([]string{}, base...), tc.args...)
+			output, err := exec.Command("go", args...).CombinedOutput()
+			if err == nil {
+				t.Fatalf("invalid node evidence CLI mode accepted: %s", output)
+			}
+		})
 	}
 }
