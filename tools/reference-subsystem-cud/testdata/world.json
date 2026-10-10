@@ -1,0 +1,8 @@
+{
+  "semantics": [
+    {"data": [{"id": "sales.order"}, {"id": "stock.reservation"}]}
+  ],
+  "applications": [
+    {"patterns": [{"id": "sales.submit"}, {"id": "stock.reserve"}, {"id": "sales.list"}]}
+  ]
+}
