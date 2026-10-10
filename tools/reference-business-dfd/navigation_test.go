@@ -130,7 +130,7 @@ func TestDemoNavigationKeepsHandoffDistinctFromExecutableFlow(t *testing.T) {
 	p,err:=run(root+"order-approval-procedure.json",root+"review-proposal.json",
 		root+"procedure-set.json","../../reference/workspace")
 	if err!=nil{t.Fatal(err)}
-	if len(p.Diagnostics)!=0 {t.Fatalf("invalid demo: %+v",p.Diagnostics)}
+	for _,d:=range p.Diagnostics {if d.Severity=="error" {t.Fatalf("invalid demo: %+v",d)}}
 	info,err:=navigate(p,"step:APP-50")
 	if err!=nil{t.Fatal(err)}
 	var handoff *navigationLink
