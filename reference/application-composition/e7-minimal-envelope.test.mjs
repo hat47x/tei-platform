@@ -93,3 +93,28 @@ test('unrecognized fields are not leaked even when inserted into a selected refe
   assert.equal(out.status,'projected');
   assert.ok(!JSON.stringify(out.evidence).includes('PRIVATE-'));
 });
+
+test('E7a rejects a fake dependency relation before exposing its source path', () => {
+  const a=fixture();
+  a.report.dependencies[1].relation='undocumented-native-secret';
+  assert.equal(minimizePairedSourceEvidence(a).reason,'unverified_dependency_report');
+});
+
+test('E7a requires the report to contain exactly its selected Application definition', () => {
+  const absent=fixture();
+  absent.report.dependencies.splice(0,1);
+  assert.equal(minimizePairedSourceEvidence(absent).reason,'unverified_dependency_report');
+  const changed=fixture();
+  changed.report.application='unrelated_application';
+  assert.equal(minimizePairedSourceEvidence(changed).reason,'unverified_dependency_report');
+});
+
+test('E7a will not export forged private Source via a fabricated report', () => {
+  const a=fixture();
+  a.report.dependencies=[{
+    relation:'fabricated-secret',
+    subject:{kind:'semantic-data',id:'private.internal'},
+    source:{path:fileExtra,fingerprint:sha('c')},
+  }];
+  assert.equal(minimizePairedSourceEvidence(a).reason,'unverified_dependency_report');
+});
