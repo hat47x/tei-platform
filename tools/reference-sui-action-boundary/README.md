@@ -51,6 +51,14 @@ SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`s
 
 SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
 
+### SUIサーバー側のSUI所有コマンドと既存保存経路
+
+[SUI PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)へ、`card_move_command.py`（DocumentV1内のCard移動、島所属、Affiliation衝突時の拒否）と、既存`PUT /docs/{id}`／`GET /docs/{id}`／ETagを利用するSQLite結合テストを追加しました。フロントエンドの`getAuthoritativeDocument`は`cache:"no-store"`を指定し、セッション前提条件を維持してDocumentとETagを読み直します。
+
+この段階は、SUIが自身のDomain MutationとDocument保存を所有する構造の確認です。**TEI Go Hostからこのコマンドを実際に呼ぶ経路、及びSUI側の純粋コマンドと原子的CASを同一実行境界に結ぶ処理は未完成**です。Pythonの追加テスト、TypeScriptの追加テストと全体健全性検査も未実施です。SUIの現在のPUTに存在するテナント分離・SafeMode・レビュー帰属・アーカイブ判定の手続きを、独立したTEI Action経路から迂回してはいけません。
+
+SUI側のTypeScriptとPythonで島境界判定を実装するため、次の段階で同一fixtureを双方に通し差分を検出する検証が必須です。差異が残る間はUIからのAction確定を本番経路として有効にしません。
+
 ## SUI実接続の条件（2026-10-10時点）
 
 SUI main の`App.tsx`は、`handleCardMoveBegin`で`DocumentV1`の参照と`docEtag`を捕捉し、`handleCardMoveCommit`から`commitCardDrag`を呼んで`applyDocumentChange`へ**ローカル変更**を渡しています。現行の`CanvasShell.onCardMoveCommit`は同期的な`void`コールバックです。このまま同じ確定処理にHTTP dispatchを足すと、サーバー側の拒否より先にSUIのUndo履歴・dirty状態を書き換える二重の更新経路ができてしまいます。
