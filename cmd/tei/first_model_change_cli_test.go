@@ -199,4 +199,39 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertValid()
+
+	// A relationship must not be accepted when its target Data does not exist.
+	// This is an authoring prerequisite for, not proof of, a working CRUD view.
+	if strings.Count(modified, "\n}\n") != 1 {
+		t.Fatal("first-workspace data declaration has an unexpected shape")
+	}
+	badRelation := strings.Replace(
+		modified, "\n}\n", "    relation parent to intake.unknown_request one\n}\n", 1,
+	)
+	if err := os.WriteFile(srcPath, []byte(badRelation), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	relationDiagnostic := run(1, "validate", "-workspace", workspaceRoot)
+	if !strings.Contains(relationDiagnostic, "UNKNOWN_SEMANTIC_RELATION_TARGET") ||
+		!strings.Contains(relationDiagnostic, source+":") {
+		t.Fatalf("unknown related Data was not reported with its source: %q", relationDiagnostic)
+	}
+
+	correctRelation := strings.Replace(badRelation, "intake.unknown_request", "intake.request", 1)
+	if err := os.WriteFile(srcPath, []byte(correctRelation), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
+	relationWorld := readWorld()
+	if !bytes.Contains(relationWorld["semantics"], []byte("intake.request.parent")) {
+		t.Fatal("corrected relation is not present in Canonical semantics")
+	}
+	// Removing the temporary relation must return to the exact pre-error model.
+	if err := os.WriteFile(srcPath, []byte(modified), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
+	if restored := readWorld(); !bytes.Equal(restored["semantics"], after["semantics"]) {
+		t.Fatal("removing the experimental relation did not restore canonical meaning")
+	}
 }
