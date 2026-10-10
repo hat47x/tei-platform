@@ -96,6 +96,47 @@ Hostが持つambient state全体をProviderへ渡さない。Contractが宣言�
 
 consumer payload内に同名の値が存在しても、Hostが注入するExecution Contextを上書きするAuthorityを与えない。Providerも、宣言されていないambient contextへ依存しない。
 
+## Control ContextとExecution Contextを分ける
+
+#951のgeneric Invocationは現在、Provider implementationを`func(context.Context, []byte) ([]byte, error)`として保持し、callerから受けたGo `context.Context`をそのままProviderへ渡している。
+
+cancellationやdeadlineを伝えるだけなら自然だが、#1043のようにverified Principalを`context.WithValue`へ入れる実装と組み合わせると注意が必要になる。ContractがExecution Context slotを宣言しても、Providerがraw `context.Value`から別の値を読めれば、slot境界を迂回できるためである。
+
+そのため、generic Invocationでは実行制御と実行データも分ける。
+
+```text
+Control Context
+  cancellation
+  deadline
+  実行中断に必要なcontrol signal
+
+Execution Context
+  Contractが宣言したslot
+  Hostが検証したcurrent binding
+```
+
+Providerへcallerのambient context全体を見せることを標準にはしない。
+
+Go Referenceを作る場合、元contextのDeadline、Done、Err等のcontrol signalだけを引き継ぎ、Valueを公開しないwrapperを一つの実現候補としてpressureできる。ただし、このwrapper自体を製品Contractにはしない。Wasm、remote Provider、Desktop等はそれぞれの方法で同じ意味境界を実装できるようにする。
+
+Execution Contextを分けても、tracing等のcontrol metadataをどこまでControl Contextへ含めるかはまだ固定しない。初回はauthorization等のAuthorityに関わる値がambient valueとしてProviderへ漏れないことを優先する。
+
+### Invocation receipt
+
+#951の現在のInvocationExecutionはrequest digestとresult digestを記録する。同じSemantic RequestでもExecution Contextによって可視結果が変わる場合、request digestだけでは安全な再利用単位にならない。
+
+一方、raw Principal、token、access ref集合をreceiptへ保存すべきではない。
+
+そのため#1118では、必要に応じて次へ戻れる非secretなreceiptを候補とする。
+
+```text
+execution context contract set
+Host-issued binding receipt
+execution reuse partition
+```
+
+これらはsemantic request digest、Capability Lock、Authorization decisionのいずれとも別のidentityである。
+
 ## Authority scopeとの関係
 
 Execution Context slotとProviderのAuthority scopeは別の軸である。
