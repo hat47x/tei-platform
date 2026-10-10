@@ -458,3 +458,31 @@ G2 acceptance packet: complete path or explicit UNRESOLVED
 5. **観測**: N11（Command成功でread未実施）→`Observed`や`Verified`を立てない。独立readに必要な権限が無い場合も`UNRESOLVED`。
 
 **G1/G2の状態**: 今回作ったのは接合・判定の規約候補であって新たなCore schemaではない。#1137のStudio Bridge・#1141のlowering・#1136のCUDは依然Draft candidate。既存AcceptanceとRuntimeを同じ実Source変更上で実行したEvidence、full trusted checkoutのqualification、実DB/Target Observationは未取得。各Ownerのpacket検証が済むまでG1/G2とも未合格とする。
+
+## 15. G1実consumer間のスコープ・Kind・Authority接合（2026-10-10）
+
+### 観測した現物と導かれる問題
+
+新たに成立した**未統合の候補PR**をGitHub source / diff単位で再確認した。#1120 [PR #1139](https://github.com/hat47x/tei-platform/pull/1139) は `internal/modelref.Key{Scope,Subject{Kind,ID}}` / `Ref{Scope,Subject,Version}` を提供する。一方、#1124 [PR #1137](https://github.com/hat47x/tei-platform/pull/1137) のStudio selectionは `"data:<ID>"` / `"pattern:<ID>"` というScopeなしのローカル表記。#1125 [PR #1138](https://github.com/hat47x/tei-platform/pull/1138) は `BP-xx` を非CanonicalなBusiness Procedure Reference stepとして投影する。#1121 [PR #1141](https://github.com/hat47x/tei-platform/pull/1141) の`Subject.Kind`は合成の `business/data/function`、#1132 [PR #1136](https://github.com/hat47x/tei-platform/pull/1136) のCUD入力はcaller-suppliedな`pattern/data/source`候補である。
+
+**同じ文字列を参照していることと、同じ業務意味・Scope・Authorityを表していることは異なる。** C0の`Scope`をC1/C3で落としたり、PatternとFunction・Business Stepを名前だけで同一視したりすれば、Referenceの単体試験がそれぞれ通っても、製品のcross-view接合は成立しない。
+
+| 接合先 | 初期Producer / Consumer | G1での合流条件（既存契約を優先） | 必須の負例 |
+| --- | --- | --- | --- |
+| `C0→C1` | #1120 scoped typed Ref → #1124 Studio selection/source navigation | Project/Workspace等の**実際に確認されたScope**を引き回す。UIのflat tokenを使う場合も、C0境界でexact scopeを復元できることを確認する。暗黙の唯一候補選択をしない | 二つのScopeに同じKind+IDがあるとき、誤ったSource anchorを返さずambiguous/unresolved |
+| `C0→Business` | #1125 DFD / #1138 → #1120 / #1124 | `BP-xx`はReference局所ID。explicit identity mapping/採用なしにAccepted Business Stepへ昇格しない。手作業・外部作業はFunction不在でも保持する | `BP-00`と同名のCanonical IDを勝手に作らず、手作業がUIから消えない |
+| `Business/Function→C3` | #1124 Pattern / #1125 Step / #1120 typed edge → #1121 Lowering | `pattern` ≠ `function` ≠ `business task`。`uses/implements`等の明示・由来付き関係がない場合はunresolved。型変換をCoreに固定せず、必要なExtension契約で扱う | 同名ID・同versionでも異Kindに暗黙解決しない |
+| `C1→Accepted R1→C3` | #1124 Shared Acceptance → #1121 / #1127 | §14の`R0→P→D→R1`系譜と、R1に対応する実Function/Capability/Targetの適合根拠を結ぶ | 合成Acceptance receiptまたは旧R0のBuild artifactだけでR1の実行成功を宣言しない |
+| `C2→Cross-view review` | #1132 CUD候補 → #1124/#1126 | `source` locator、owner/FunctionIOは未検証の候補であり、C0のidentityや実Runtime effectにはならない | 空coverage・未知Pattern・旧source evidenceから「所有権違反なし」「実更新あり」を断定しない |
+| `C3→DB/Host→Observation` | #1121/#1126 → #1127 | §12のDatasourceごとのschema互換性、実行直前Host Authority、§14の独立Observationを利用 | S02/S05/N11をfail-closedまたはUNRESOLVED。生成物の存在で権限を補わない |
+
+### G0証跡の最新差分と次の手順
+
+- #1139はGoの隔離ミラーでfocused race test / vetを実行済みと報告。ただしexact-head trusted full checkout未実施。Source Indexにはscopeがないため、`sourcebridge.Locate`は同一Kind+IDが複数scopeにあるときに`unresolved`で止める候補である。これは望ましい安全側の挙動だが、Studioや実Worldからの正式接続は未実証。
+- #1138はBusiness DFDのJSON/DOTとSource aware diagnostic、human/event/schedule、manual/external、情報フローと責任分担のread-only Reference。unit test sourceが存在するが、PR時点でactual test未実行。Studio #1137側には**任意DFDをreference-onlyで読むAdapter**が追加された。両者の共通JSON shapeとSource freshness、Scopeはtrusted checkoutでConsumer統合を実行するまで未確認。
+- #1136は先のレビューで指摘した「candidate factsが空でもclean」の誤解を、head `06a24821881756dd468f9ee27eb7daf81bb5d526` にて `EMPTY_CANDIDATE_SCOPE` とcoverage accountingの追加で緩和。隔離環境9テストPASSとの報告を取得済みだが、実Source-based coverageは依然未検証。
+- 横断担当#1119は#1120/#1124/#1121に、ScopeとKindのconsumer-negative-testをIssueコメントで引き渡した。Producer/Consumerの両側が同じexact fixture、revision、Authorityで実行した証跡が出るまで**G1 contract-unverified**を維持する。
+
+Gate G2の最初の実行は、既存Shared Acceptanceを使ったscratch `R0→R1` と、#1127による**R1互換性を検証した実Driver/Web実行**の接続を優先する。DFDからのBusiness Acceptance、全種類のPlugin解決やself-buildをその一往復の前提へ追加しない。ただし三視点の完成を主張する際は、Business viewが`reference-only`のままでは製品受入不可とする。
+
+**非主張**: この監査は現PRのGitHub source/diffとIssueの報告に基づく。今回の#1119担当からはGo/Nodeのfocused testもfull trusted checkoutも実行していない。scope/kindの橋渡しは設計上の未解決項目であり、製品のG1/G2はPASSしていない。
