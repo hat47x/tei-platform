@@ -107,8 +107,6 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-
-
 	// The candidate source must not be an output of its own acceptance:
 	// accepting changes Source before emitting the Decision and derived World.
 	if command == "accept" && (*outPath != "" || *derivedOut != "") {
