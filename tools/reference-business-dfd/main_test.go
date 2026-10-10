@@ -103,10 +103,15 @@ func TestMissingFunctionIsSourceAware(t *testing.T) {
 	got:=build(f,r,s,w,"procedure.json","review.json","set.json")
 	if !codes(got)["DFD_FUNCTION_REFERENCE_NOT_EXACT"] { t.Fatal("missing function must be a diagnostic") }
 	if got.Steps[0].FunctionRefs[0].Status!="unresolved" { t.Fatal("unresolved must not be shown as resolved") }
-	d:=got.Diagnostics[0]
-	if d.Source.File!="procedure.json" || d.Source.Pointer!="/steps/0/applicationPatterns/0" {
-		t.Fatalf("source-aware failure missing: %+v",d)
+	foundSource:=false
+	for _,d:=range got.Diagnostics {
+		if d.Code=="DFD_FUNCTION_REFERENCE_NOT_EXACT" &&
+			d.Source.File=="procedure.json" &&
+			d.Source.Pointer=="/steps/0/applicationPatterns/0" {
+			foundSource=true
+		}
 	}
+	if !foundSource {t.Fatalf("source-aware failure missing: %+v",got.Diagnostics)}
 }
 
 func TestBadTriggerFlowAndHandoffFailAsDiagnostics(t *testing.T) {
