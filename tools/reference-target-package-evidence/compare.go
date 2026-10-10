@@ -41,6 +41,21 @@ func packageMap(report Report) (map[string]SourcePackage, error) {
 		report.GoVersion == "" || report.GOOS == "" || report.GOARCH == "" || report.CGOEnabled == "" {
 		return nil, fmt.Errorf("incomplete Go package report identity")
 	}
+	if report.CGOEnabled != "0" && report.CGOEnabled != "1" {
+		return nil, fmt.Errorf("invalid CGO_ENABLED in package report")
+	}
+	if report.CGOEnabled == "1" {
+		// Old or hand-written JSON without a compiler profile is not
+		// comparable as if it were produced by the hardened E0 observer.
+		for _, key := range []string{
+			"CC", "CXX", "CGO_CFLAGS", "CGO_CPPFLAGS",
+			"CGO_CXXFLAGS", "CGO_LDFLAGS", "PKG_CONFIG",
+		} {
+			if _, exists := report.CgoToolchain[key]; !exists {
+				return nil, fmt.Errorf("missing cgo toolchain setting %s", key)
+			}
+		}
+	}
 	pkgs := make(map[string]SourcePackage, len(report.Packages))
 	for _, p := range report.Packages {
 		if p.ImportPath == "" {
