@@ -1,0 +1,235 @@
+// Command reference-critical-path-evidence-audit checks the completeness of
+// cross-lane evidence packets. It cannot grant a TEI Product Gate or verify
+// a referenced artifact's authenticity.
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"sort"
+	"strings"
+)
+
+const schema = "tei.critical-path-evidence/v0"
+
+var sha40 = regexp.MustCompile(`^[0-9a-f]{40}$`)
+var revision = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+type Qualification struct {
+	Head        string `json:"head"`
+	Main        string `json:"main"`
+	FullHealth  string `json:"fullHealth"` // PASS, FAIL, NOT_RUN
+	CleanBefore bool   `json:"cleanBefore"`
+	CleanAfter  bool   `json:"cleanAfter"`
+	Receipt     string `json:"receipt"`
+}
+
+type Acceptance struct {
+	R0                   string   `json:"r0"`
+	R1                   string   `json:"r1"`
+	CandidateFingerprint string   `json:"candidateFingerprint"`
+	ReviewFingerprint    string   `json:"reviewFingerprint"`
+	DecisionReceipt      string   `json:"decisionReceipt"`
+	ReloadReceipt        string   `json:"reloadReceipt"`
+	Delta                []string `json:"delta"`
+}
+
+type Web struct {
+	AcceptedRevision         string `json:"acceptedRevision"`
+	Application              string `json:"application"`
+	Target                   string `json:"target"`
+	SelectedValidation       string `json:"selectedValidation"`
+	ProviderKind             string `json:"providerKind"` // synthetic, actual-db
+	PositiveReceipt          string `json:"positiveReceipt"`
+	NegativeReceipt          string `json:"negativeReceipt"`
+	UnobservedControlReceipt string `json:"unobservedControlReceipt"` // N11
+}
+
+type Physical struct {
+	AcceptedRevision       string `json:"acceptedRevision"`
+	Datasource             string `json:"datasource"`
+	SchemaCompatibility    string `json:"schemaCompatibility"` // compatible, incompatible, unresolved
+	SchemaEvidence         string `json:"schemaEvidence"`
+	HostAuthorityEvidence  string `json:"hostAuthorityEvidence"`
+	CommandReceipt         string `json:"commandReceipt"`
+	IndependentReadReceipt string `json:"independentReadReceipt"`
+	RecordID               string `json:"recordId"`
+	SchemaFailureControl   string `json:"schemaFailureControl"` // S02
+	HostFailureControl     string `json:"hostFailureControl"`   // S05
+}
+
+type Packet struct {
+	Schema        string        `json:"schema"`
+	Claim         string        `json:"claim"` // E0, E1, E2: evidence tier requested, not a Gate PASS
+	Qualification Qualification `json:"qualification"`
+	Acceptance    Acceptance    `json:"acceptance"`
+	Web           Web           `json:"web"`
+	Physical      Physical      `json:"physical"`
+}
+
+type Report struct {
+	Schema         string   `json:"schema"`
+	Requested      string   `json:"requested"`
+	Status         string   `json:"status"`      // INCOMPLETE or REVIEW_REQUIRED; never PASS
+	ProductGate    string   `json:"productGate"` // UNQUALIFIED; caller must independently verify
+	Diagnostics    []string `json:"diagnostics"`
+	AuthorityLimit string   `json:"authorityLimit"`
+}
+
+// Audit checks declarations and cross-stage consistency only. Evidence locators
+// are not dereferenced or trusted; neither this tool nor its exit code approves
+// a merge, deployment, user acceptance, or external database mutation.
+func Audit(p Packet, expectedHead, expectedMain string) Report {
+	r := Report{
+		Schema: schema, Requested: p.Claim, Status: "INCOMPLETE", ProductGate: "UNQUALIFIED",
+		Diagnostics: []string{}, AuthorityLimit: "caller-supplied locators and assertions; review actual bytes, runtime, permission, and exact trusted checkout independently",
+	}
+	add := func(code string) { r.Diagnostics = append(r.Diagnostics, code) }
+	if p.Schema != schema {
+		add("UNSUPPORTED_PACKET_SCHEMA")
+	}
+	if p.Claim != "E0" && p.Claim != "E1" && p.Claim != "E2" {
+		add("UNSUPPORTED_EVIDENCE_TIER")
+	}
+	if !sha40.MatchString(expectedHead) || !sha40.MatchString(expectedMain) {
+		add("EXPECTED_HEAD_OR_MAIN_REQUIRED")
+	}
+	if !sha40.MatchString(p.Qualification.Head) || !sha40.MatchString(p.Qualification.Main) ||
+		p.Qualification.Head != expectedHead || p.Qualification.Main != expectedMain {
+		add("REVISION_QUALIFICATION_STALE_OR_MISSING")
+	}
+	if p.Qualification.FullHealth != "PASS" || !p.Qualification.CleanBefore ||
+		!p.Qualification.CleanAfter || strings.TrimSpace(p.Qualification.Receipt) == "" {
+		add("TRUSTED_FULL_HEALTH_NOT_RECORDED")
+	}
+	if p.Claim == "E1" || p.Claim == "E2" {
+		a, w := p.Acceptance, p.Web
+		if !revision.MatchString(a.R0) || !revision.MatchString(a.R1) || a.R0 == a.R1 {
+			add("ACCEPTED_R0_R1_LINEAGE_MISSING")
+		}
+		if !revision.MatchString(a.CandidateFingerprint) ||
+			!revision.MatchString(a.ReviewFingerprint) ||
+			strings.TrimSpace(a.DecisionReceipt) == "" || strings.TrimSpace(a.ReloadReceipt) == "" {
+			add("ACCEPTANCE_REVIEW_AND_RELOAD_EVIDENCE_MISSING")
+		}
+		if !exactSet(a.Delta, "add-validation", "add-application-validation-use") {
+			add("VALIDATION_AND_APPLICATION_USE_NOT_ATOMIC")
+		}
+		if w.AcceptedRevision != a.R1 || w.Application != "order_entry" ||
+			w.Target != "web" || w.SelectedValidation != "sales.order_line.unit_price_positive" {
+			add("WEB_NOT_BOUND_TO_ACCEPTED_R1_RULE_SELECTION")
+		}
+		if w.ProviderKind != "synthetic" && w.ProviderKind != "actual-db" {
+			add("WEB_PROVIDER_KIND_UNRESOLVED")
+		}
+		if w.PositiveReceipt == "" || w.NegativeReceipt == "" ||
+			w.PositiveReceipt == w.NegativeReceipt {
+			add("ACTUAL_WEB_POSITIVE_AND_NEGATIVE_RECEIPTS_REQUIRED")
+		}
+		if w.UnobservedControlReceipt == "" || w.UnobservedControlReceipt == w.PositiveReceipt ||
+			w.UnobservedControlReceipt == w.NegativeReceipt {
+			add("N11_UNOBSERVED_CONTROL_MISSING")
+		}
+	}
+	if p.Claim == "E2" {
+		a, w, ph := p.Acceptance, p.Web, p.Physical
+		if w.ProviderKind != "actual-db" {
+			add("SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2")
+		}
+		if ph.AcceptedRevision != a.R1 || ph.Datasource == "" ||
+			ph.SchemaCompatibility != "compatible" || ph.SchemaEvidence == "" {
+			add("S02_REAL_DATASOURCE_SCHEMA_READINESS_MISSING")
+		}
+		if ph.HostAuthorityEvidence == "" {
+			add("S05_CURRENT_HOST_AUTHORITY_MISSING")
+		}
+		if ph.CommandReceipt == "" || ph.IndependentReadReceipt == "" ||
+			ph.CommandReceipt == ph.IndependentReadReceipt || ph.RecordID == "" {
+			add("E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED")
+		}
+		if ph.SchemaFailureControl == "" {
+			add("S02_NEGATIVE_CONTROL_MISSING")
+		}
+		if ph.HostFailureControl == "" {
+			add("S05_NEGATIVE_CONTROL_MISSING")
+		}
+	}
+	sort.Strings(r.Diagnostics)
+	if len(r.Diagnostics) == 0 {
+		r.Status = "REVIEW_REQUIRED"
+	}
+	return r
+}
+
+func exactSet(actual []string, expected ...string) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+	want := make(map[string]int, len(expected))
+	for _, s := range expected {
+		want[s]++
+	}
+	for _, s := range actual {
+		want[s]--
+	}
+	for _, count := range want {
+		if count != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func run(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("critical-path-evidence-audit", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	path := fs.String("packet", "", "evidence packet JSON")
+	head := fs.String("head", "", "exact candidate HEAD SHA")
+	mainSHA := fs.String("main", "", "exact reviewed main SHA")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 || *path == "" {
+		return errors.New("-packet, -head, -main are required")
+	}
+	f, err := os.Open(*path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	dec := json.NewDecoder(io.LimitReader(f, 1<<20))
+	dec.DisallowUnknownFields()
+	var p Packet
+	if err := dec.Decode(&p); err != nil {
+		return fmt.Errorf("packet: %w", err)
+	}
+	var extra any
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("packet has trailing JSON")
+		}
+		return fmt.Errorf("trailing JSON: %w", err)
+	}
+	report := Audit(p, *head, *mainSHA)
+	enc := json.NewEncoder(out)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(report); err != nil {
+		return err
+	}
+	if report.Status != "REVIEW_REQUIRED" {
+		return errors.New("evidence packet incomplete")
+	}
+	return nil
+}
+
+func main() {
+	if err := run(os.Args[1:], os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
