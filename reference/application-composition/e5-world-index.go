@@ -1,0 +1,211 @@
+// #1016 E5: inspect declared application dependencies using existing typed World and Source Index.
+// This read-only reference is not validation acceptance, provider conformance or runtime authority.
+package main
+
+import (
+    "encoding/json"
+    "flag"
+    "fmt"
+    "os"
+    "sort"
+
+    "tei/internal/ir"
+    "tei/internal/sourceindex"
+    "tei/internal/workspace"
+)
+
+type e5Evidence struct {
+    Path string `json:"path"`
+    Fingerprint string `json:"fingerprint"`
+}
+type e5Dependency struct {
+    Relation string `json:"relation"`
+    Subject sourceindex.Subject `json:"subject"`
+    Source e5Evidence `json:"source"`
+}
+type e5Issue struct {
+    Relation string `json:"relation"`
+    Subject sourceindex.Subject `json:"subject"`
+    Reason string `json:"reason"`
+}
+type e5Report struct {
+    Application string `json:"application"`
+    Status string `json:"status"`
+    Qualification string `json:"qualification"`
+    Dependencies []e5Dependency `json:"dependencies"`
+    Issues []e5Issue `json:"issues"`
+}
+
+// Only a unique definition reference may substantiate a dependency. Authoring,
+// derived, and implementation references are not substitute definitions.
+func e5UniqueSource(index sourceindex.Index, subject sourceindex.Subject) (e5Evidence, bool) {
+    refs := index.ReferencesFor(subject)
+    var path string
+    count := 0
+    for _, ref := range refs {
+        if ref.Role == sourceindex.RoleDefinition {
+            path = ref.ArtifactPath
+            count++
+        }
+    }
+    if count != 1 {
+        return e5Evidence{}, false
+    }
+    var artifact sourceindex.Artifact
+    count = 0
+    for _, candidate := range index.Artifacts {
+        if candidate.Path == path {
+            artifact = candidate
+            count++
+        }
+    }
+    if count != 1 || artifact.Fingerprint == "" {
+        return e5Evidence{}, false
+    }
+    return e5Evidence{Path: path, Fingerprint: artifact.Fingerprint}, true
+}
+
+// inspectE5 consumes parsed canonical declarations and a separately built Index.
+// The loader, semantic validators and index-builder retain their own authority.
+func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5Report {
+    out := e5Report{
+        Application: applicationID,
+        Status: "unresolved",
+        Qualification: "declaration-and-source-index-only",
+        Dependencies: []e5Dependency{},
+        Issues: []e5Issue{},
+    }
+    record := func(relation string, subject sourceindex.Subject, reason string) {
+        out.Issues = append(out.Issues, e5Issue{Relation: relation, Subject: subject, Reason: reason})
+    }
+    attach := func(relation string, subject sourceindex.Subject) {
+        source, ok := e5UniqueSource(index, subject)
+        if !ok {
+            record(relation, subject, "source_definition_missing_or_ambiguous")
+            return
+        }
+        out.Dependencies = append(out.Dependencies, e5Dependency{Relation: relation, Subject: subject, Source: source})
+    }
+    var selected int
+    var appIndex int
+    for i, app := range world.Applications {
+        if string(app.ID) == applicationID {
+            selected++
+            appIndex = i
+        }
+    }
+    appSubject := sourceindex.Subject{Kind: "application", ID: applicationID}
+    if selected != 1 || applicationID == "" {
+        record("application", appSubject, "application_missing_or_ambiguous")
+        return out
+    }
+    app := world.Applications[appIndex]
+    attach("application", appSubject)
+
+    validations := map[string]int{}
+    for _, ns := range world.Semantics {
+        for _, rule := range ns.Validations {
+            validations[string(rule.ID)]++
+        }
+    }
+    seenValidation := map[string]bool{}
+    for _, id := range app.Validations {
+        name := string(id)
+        subject := sourceindex.Subject{Kind: "semantic-validation", ID: name}
+        if seenValidation[name] {
+            record("uses-validation", subject, "duplicate_application_reference")
+            continue
+        }
+        seenValidation[name] = true
+        if validations[name] != 1 {
+            record("uses-validation", subject, "validation_definition_missing_or_ambiguous")
+            continue
+        }
+        attach("uses-validation", subject)
+    }
+
+    databases := map[string]int{}
+    contracts := map[string]map[string]int{}
+    majors := map[string]map[string]int{}
+    for _, db := range world.Databases {
+        name := string(db.ID)
+        databases[name]++
+        if contracts[name] == nil {
+            contracts[name] = map[string]int{}
+            majors[name] = map[string]int{}
+        }
+        for _, contract := range db.Contracts {
+            id := string(contract.ID)
+            contracts[name][id]++
+            majors[name][id] = contract.Version.Major
+        }
+    }
+    seenAliases := map[string]bool{}
+    seenContracts := map[string]bool{}
+    for _, requirement := range app.Databases {
+        alias, target := string(requirement.Alias), string(requirement.TargetDatabase)
+        targetSubject := sourceindex.Subject{Kind: "database", ID: target}
+        if alias == "" || seenAliases[alias] {
+            record("database-alias", targetSubject, "duplicate_or_empty_datasource_alias")
+            continue
+        }
+        seenAliases[alias] = true
+        if databases[target] != 1 {
+            record("database-target", targetSubject, "database_definition_missing_or_ambiguous")
+            continue
+        }
+        attach("database-target", targetSubject)
+        for _, needed := range requirement.RequiredContracts {
+            id := string(needed.ContractID)
+            subject := sourceindex.Subject{Kind: "database-contract", ID: id}
+            key := target + "/" + id
+            if seenContracts[key] {
+                record("requires-contract", subject, "duplicate_contract_requirement")
+                continue
+            }
+            seenContracts[key] = true
+            if contracts[target][id] != 1 {
+                record("requires-contract", subject, "target_contract_missing_or_ambiguous")
+                continue
+            }
+            if needed.CompatibleMajor < 1 || majors[target][id] != needed.CompatibleMajor {
+                record("requires-contract", subject, "declared_major_mismatch")
+                continue
+            }
+            attach("requires-contract", subject)
+        }
+    }
+    sort.Slice(out.Dependencies, func(i, j int) bool {
+        a, b := out.Dependencies[i], out.Dependencies[j]
+        if a.Relation != b.Relation { return a.Relation < b.Relation }
+        if a.Subject.Kind != b.Subject.Kind { return a.Subject.Kind < b.Subject.Kind }
+        return a.Subject.ID < b.Subject.ID
+    })
+    sort.Slice(out.Issues, func(i, j int) bool {
+        a, b := out.Issues[i], out.Issues[j]
+        if a.Relation != b.Relation { return a.Relation < b.Relation }
+        if a.Subject.Kind != b.Subject.Kind { return a.Subject.Kind < b.Subject.Kind }
+        if a.Subject.ID != b.Subject.ID { return a.Subject.ID < b.Subject.ID }
+        return a.Reason < b.Reason
+    })
+    if len(out.Issues) == 0 {
+        out.Status = "observed"
+    }
+    return out
+}
+
+func main() {
+    root := flag.String("workspace", "reference/workspace", "workspace directory for read-only inspection")
+    applicationID := flag.String("application", "order_entry", "existing Application ID")
+    flag.Parse()
+    loaded, err := workspace.Load(*root)
+    if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+    index, err := workspace.BuildSourceIndex(*root, loaded)
+    if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+    report := inspectE5(loaded.World, index, *applicationID)
+    if err := json.NewEncoder(os.Stdout).Encode(report); err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+    if report.Status != "observed" { os.Exit(2) }
+}
