@@ -470,6 +470,9 @@ func TestValidationScopeReviewDoesNotTrustDuplicateArtifactPaths(t *testing.T) {
 		{name: "conflicting", fingerprints: []string{"sha256:first", "sha256:second"}},
 		{name: "identical", fingerprints: []string{"sha256:first", "sha256:first"}},
 		{name: "third-cannot-restore", fingerprints: []string{"sha256:first", "sha256:second", "sha256:third"}},
+		{name: "fourth-cannot-restore", fingerprints: []string{"sha256:first", "sha256:second", "sha256:third", "sha256:fourth"}},
+		{name: "empty-then-valid-stays-ambiguous", fingerprints: []string{"", "sha256:valid"}},
+		{name: "valid-then-empty-stays-ambiguous", fingerprints: []string{"sha256:valid", ""}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			const applicationPath = "applications/order-entry/application.tei"
