@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -14,6 +15,9 @@ import (
 func TestCLIProcessJSONContract(t *testing.T) {
 	// Exercise the actual argv/exit/stdout boundary, not just helper functions.
 	binary := filepath.Join(t.TempDir(), "tei")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	build := exec.Command("go", "build", "-o", binary, ".")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, output)
