@@ -122,58 +122,12 @@ go run ./tools/reference-target-package-evidence \
   -compare-before "$temp/combined.e0.json" -compare-after "$temp/repair.e0.json" \
   > "$temp/combined-vs-repair.json"
 
-# Optional real-process fixture parity: do not label link/source observations
-# as Business Result parity without actually exercising both HTTP servers.
+# Optional real-process fixture parity: source/link observations alone
+# cannot certify business result or authorization equivalence.
 synthetic_fixture_http_parity_verified=false
 if [[ "${TEI_E1_RUN_HTTP_PARITY:-0}" == "1" ]]; then
   TEI_E1_BINARY_PARITY=1 go test -count=1 \
-    -run '^TestTaggedBinariesPreserveFirstWebBusinessHTTPParity
-  echo "checkout changed while measuring; reject evidence" >&2
-  exit 1
-fi
-
-combined_bytes="$(wc -c < "$temp/combined.bin" | tr -d '[:space:]')"
-order_bytes="$(wc -c < "$temp/order.bin" | tr -d '[:space:]')"
-repair_bytes="$(wc -c < "$temp/repair.bin" | tr -d '[:space:]')"
-combined_sha="$(sha256sum "$temp/combined.bin" | cut -d' ' -f1)"
-order_sha="$(sha256sum "$temp/order.bin" | cut -d' ' -f1)"
-repair_sha="$(sha256sum "$temp/repair.bin" | cut -d' ' -f1)"
-cat > "$temp/measurement.json" <<EOF
-{
-  "kind": "diagnostic-tagged-go-source-and-binary-observation",
-  "sourceRevision": "$source_revision",
-  "goVersion": "$go_version",
-  "goos": "linux",
-  "goarch": "$go_arch",
-  "goamd64": "$go_amd64",
-  "goExperiment": "$go_experiment",
-  "cgoEnabled": "0",
-  "buildFlags": "-trimpath -ldflags=-buildid=",
-  "combinedBytes": $combined_bytes,
-  "combinedSHA256": "$combined_sha",
-  "orderBytes": $order_bytes,
-  "orderSHA256": "$order_sha",
-  "repairBytes": $repair_bytes,
-  "repairSHA256": "$repair_sha",
-  "syntheticFixtureHttpParityVerified": $synthetic_fixture_http_parity_verified,
-  "sameHandoverBusinessParityVerified": false,
-  "productionAuthorizationVerified": false,
-  "fullE1BrowserAPIPackagingVerified": false,
-  "artifactAuthority": false
-}
-EOF
-
-# Reserve only after all tests pass; never move into an unrelated directory
-# created by another process between the preflight and the final write.
-mkdir -- "$parent/$name"
-destination_claimed=true
-mv -- "$temp"/* "$parent/$name/"
-rmdir -- "$temp"
-complete=true
-trap - EXIT
-cat "$parent/$name/measurement.json"
-echo "diagnostic tagged source/binary evidence: $parent/$name" >&2
- \
+    -run '^TestTaggedBinariesPreserveFirstWebBusinessHTTPParity$' \
     ./tools/reference-first-web-target \
     > "$temp/tagged-http-parity.test.txt" 2>&1
   synthetic_fixture_http_parity_verified=true
@@ -208,6 +162,7 @@ cat > "$temp/measurement.json" <<EOF
   "orderSHA256": "$order_sha",
   "repairBytes": $repair_bytes,
   "repairSHA256": "$repair_sha",
+  "syntheticFixtureHttpParityVerified": $synthetic_fixture_http_parity_verified,
   "sameHandoverBusinessParityVerified": false,
   "productionAuthorizationVerified": false,
   "fullE1BrowserAPIPackagingVerified": false,
