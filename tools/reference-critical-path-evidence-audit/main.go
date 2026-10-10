@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 const schema = "tei.critical-path-evidence/v0"
@@ -123,6 +125,9 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		add("TRUSTED_FULL_HEALTH_NOT_RECORDED")
 	}
 	if p.Claim == "E1" || p.Claim == "E2" {
+		if p.Contract.EvidenceClass != "actual-observed" {
+			add("E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED")
+		}
 		a, w := p.Acceptance, p.Web
 		if !revision.MatchString(a.R0) || !revision.MatchString(a.R1) || a.R0 == a.R1 {
 			add("ACCEPTED_R0_R1_LINEAGE_MISSING")
@@ -203,6 +208,69 @@ func exactSet(actual []string, expected ...string) bool {
 	return true
 }
 
+// Strict token scan rejects duplicate object keys, including nested keys. The
+// normal decoder otherwise silently uses the last duplicate value, allowing
+// caller-supplied Evidence fields to shadow an earlier contradictory claim.
+// A depth bound also rejects pathological nesting before any typed decoding.
+func rejectDuplicateJSONKeys(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	var walk func(int) error
+	walk = func(depth int) error {
+		if depth > 64 {
+			return errors.New("packet JSON nesting exceeds 64")
+		}
+		tok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		switch tok {
+		case json.Delim('{'):
+			keys := make(map[string]struct{})
+			for dec.More() {
+				keyToken, err := dec.Token()
+				if err != nil {
+					return err
+				}
+				key, ok := keyToken.(string)
+				if !ok {
+					return errors.New("packet has non-string JSON object key")
+				}
+				if _, duplicate := keys[key]; duplicate {
+					return fmt.Errorf("duplicate JSON object key %q", key)
+				}
+				keys[key] = struct{}{}
+				if err := walk(depth + 1); err != nil {
+					return err
+				}
+			}
+			_, err = dec.Token() // closing }
+			return err
+		case json.Delim('['):
+			for dec.More() {
+				if err := walk(depth + 1); err != nil {
+					return err
+				}
+			}
+			_, err = dec.Token() // closing ]
+			return err
+		case json.Delim('}'), json.Delim(']'):
+			return errors.New("unexpected closing JSON delimiter")
+		default:
+			return nil
+		}
+	}
+	if err := walk(0); err != nil {
+		return err
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("packet has trailing JSON")
+		}
+		return err
+	}
+	return nil
+}
+
 func run(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("critical-path-evidence-audit", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -220,7 +288,23 @@ func run(args []string, out io.Writer) error {
 		return err
 	}
 	defer f.Close()
-	dec := json.NewDecoder(io.LimitReader(f, 1<<20))
+	// Reject over-limit inputs rather than treating the limit as an artificial
+	// EOF: a valid first MiB followed by hidden trailing bytes must not pass.
+	const maxPacketBytes = 1 << 20
+	data, err := io.ReadAll(io.LimitReader(f, maxPacketBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(data) > maxPacketBytes {
+		return errors.New("packet exceeds 1 MiB")
+	}
+	if !utf8.Valid(data) {
+		return errors.New("packet is not valid UTF-8")
+	}
+	if err := rejectDuplicateJSONKeys(data); err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	var p Packet
 	if err := dec.Decode(&p); err != nil {
