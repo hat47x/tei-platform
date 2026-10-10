@@ -30,19 +30,21 @@ type DetailEvidenceRef struct {
 }
 
 type DetailReviewEvent struct {
-	Sequence       int                  `json:"sequence"`
-	ID             string               `json:"id"`
-	Kind           ReviewEventKind      `json:"kind"`
-	Reviewer       string               `json:"reviewer"`
-	Method         string               `json:"method"`
-	OccurredAt     string               `json:"occurredAt"`
-	Binding        string               `json:"binding"`
-	Context        []ScopeBinding       `json:"context,omitempty"`
-	TargetIdentity ReviewTargetIdentity `json:"targetIdentity"`
-	ValidFrom      string               `json:"validFrom,omitempty"`
-	ValidUntil     string               `json:"validUntil,omitempty"`
-	Evidence       []DetailEvidenceRef  `json:"evidence,omitempty"`
-	Conditions     []string             `json:"conditions,omitempty"`
+	Sequence           int                  `json:"sequence"`
+	ID                 string               `json:"id"`
+	Kind               ReviewEventKind      `json:"kind"`
+	Reviewer           string               `json:"reviewer"`
+	Method             string               `json:"method"`
+	MeaningFingerprint string               `json:"meaningFingerprint"`
+	StatementKind      AssertionMode        `json:"statementKind"`
+	OccurredAt         string               `json:"occurredAt"`
+	Binding            string               `json:"binding"`
+	Context            []ScopeBinding       `json:"context,omitempty"`
+	TargetIdentity     ReviewTargetIdentity `json:"targetIdentity"`
+	ValidFrom          string               `json:"validFrom,omitempty"`
+	ValidUntil         string               `json:"validUntil,omitempty"`
+	Evidence           []DetailEvidenceRef  `json:"evidence,omitempty"`
+	Conditions         []string             `json:"conditions,omitempty"`
 }
 
 type DetailContent struct {
@@ -256,19 +258,21 @@ func detailReviewHistory(assertion Assertion, asOf time.Time) []DetailReviewEven
 			binding = "current"
 		}
 		out = append(out, DetailReviewEvent{
-			Sequence:       event.Sequence,
-			ID:             event.ID,
-			Kind:           event.Kind,
-			Reviewer:       event.Reviewer,
-			Method:         event.Method,
-			OccurredAt:     event.OccurredAt,
-			Binding:        binding,
-			Context:        append([]ScopeBinding{}, event.Context...),
-			TargetIdentity: event.TargetIdentity,
-			ValidFrom:      event.ValidFrom,
-			ValidUntil:     event.ValidUntil,
-			Evidence:       detailEvidence(event.Evidence),
-			Conditions:     append([]string{}, event.Conditions...),
+			Sequence:           event.Sequence,
+			ID:                 event.ID,
+			Kind:               event.Kind,
+			Reviewer:           event.Reviewer,
+			Method:             event.Method,
+			MeaningFingerprint: event.MeaningFingerprint,
+			StatementKind:      event.StatementKind,
+			OccurredAt:         event.OccurredAt,
+			Binding:            binding,
+			Context:            append([]ScopeBinding{}, event.Context...),
+			TargetIdentity:     event.TargetIdentity,
+			ValidFrom:          event.ValidFrom,
+			ValidUntil:         event.ValidUntil,
+			Evidence:           detailEvidence(event.Evidence),
+			Conditions:         append([]string{}, event.Conditions...),
 		})
 	}
 	return out
