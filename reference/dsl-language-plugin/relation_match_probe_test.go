@@ -55,9 +55,9 @@ func TestProbePinnedExpansionRejectsOneToManyViolation(t *testing.T) {
 func TestProbePinnedExpansionNoMatchDecisions(t *testing.T) {
 	candidate := probeCandidate(semantic.CardinalityMany, 1)
 	for _, tc := range []struct {
-		policy UnmatchedPolicy
-		state  RelationMatchState
-		fail   error
+		policy	UnmatchedPolicy
+		state	RelationMatchState
+		fail	error
 	}{
 		{UnmatchedReject, "", ErrMatchUnmatched},
 		{UnmatchedDiscard, MatchDiscarded, nil},
@@ -77,12 +77,12 @@ func TestProbePinnedExpansionNoMatchDecisions(t *testing.T) {
 func TestProbePinnedExpansionNullIsNotUnavailable(t *testing.T) {
 	candidate := probeCandidate(semantic.CardinalityMany, 1)
 	for _, tc := range []struct {
-		name    string
-		source  []ProbeKeyPart
-		targets [][]ProbeKeyPart
-		null    NullKeyPolicy
-		want    RelationMatchState
-		wantErr error
+		name	string
+		source	[]ProbeKeyPart
+		targets	[][]ProbeKeyPart
+		null	NullKeyPolicy
+		want	RelationMatchState
+		wantErr	error
 	}{
 		{"null source no-match", []ProbeKeyPart{probeNull()}, [][]ProbeKeyPart{{probeValue("x")}}, NullKeyNoMatch, MatchRetainedAbsent, nil},
 		{"null target no-match", []ProbeKeyPart{probeValue("x")}, [][]ProbeKeyPart{{probeNull()}}, NullKeyNoMatch, MatchRetainedAbsent, nil},
