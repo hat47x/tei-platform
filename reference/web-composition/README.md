@@ -407,3 +407,25 @@ E2.6ではSessionの主体対応付けとAccount適格性をCommand直前に再�
 また、最終認可と副作用の実行が**同一のトランザクション／原子的な操作として結合されているわけではありません**。最終認可の直後から実際のCommitまでのごく短い期間に起こる失効を完全には排除できません。本番相当の実行では、効果を持つAdapter側での承認フェンス、権限バージョン条件、トランザクション内再検証、冪等性・取消可能性を別途設計・検証する必要があります。合成Fixtureでの時刻操作は実IdPやDirectoryの失効伝播証明ではありません。
 
 統合資格は従来どおり現行mainを含むexact-headのclean full checkoutでの`reference/web-composition/qualify.sh`全PASS、実Workspace Go回帰、未変更のrefs確認を前提とします。CIは使用せず、Draft・未マージを維持します。
+
+## E2.12：Command Adapterの内部まで最終認可を移動（2026-10-10）
+
+E2.11の最終認可はCommandの`resolver.InvokeCapability`を呼ぶ**前**に行われていました。これは業務操作を許可した後、DriverのBinding解決、Adapter解決、Capability呼出しまでの間に権限が変更される競合を残します。E2.12ではSessionの場合にだけ、**Concrete Command Adapterの`Invoke`コールバック内部、合成業務状態を実際に変更する行の直前**へ以下を移しました。
+
+- 信頼済みSubject Link／Accountの再取得と適格性判定
+- 同じ`security.authorize` Capabilityを使う業務権限の再評価
+- 付与された`AuthorizationGrant`のSubjectID・Action・Resourceの完全一致確認
+
+最初の認可結果は既存`authorization`に記録し、最終認可結果は`effectAuthorization`へ別記します。Adapter内で失効が検出された場合、DriverはAdapterのerrorをExecution Errorとして包みますが、**明示的な私的Sentinelに一致した業務拒否だけ**をRunnerで復元し、`identity-link-denied`／`authorization-denied`としてHTTP 403／Audit拒否へ写像します。その他のBinding・Adapter・権限ストア障害や予期しない結果はExecution Errorを保持し、HTTP 503の固定文言・Audit errorにします。旧Credential経路はGuardなし・認可1回という従来契約を保持します。
+
+初回認可についても、単に`Outcome=allowed`なら許すのではなく、**同じ`requireMatchingBusinessGrant`**を適用して`security.authorize`のCapability ID・Result Mode・主体・Action・Resourceの一致を確認します。最終認可と初回認可で別の権限解釈を作らないためです。
+
+新しい`session_effect_grant_contract_test.go`では、主体／操作／資源／Capability／Mode／Outcome／Payloadの不一致を拒否する表形式試験と、Goの構文木から`effectGuard`とCanonical再認可が**Command Adapter内部の状態変更より前**にあることを検査する静的回帰試験を追加しました。既存の`session_effect_authorization_test.go`は権限の途中失効、最終権限基盤障害のHTTPと監査を引き続き要求します。
+
+### 境界と検証保留
+
+- `command_scenario.go`: GitHub Blob `765cc05768493f706cddbca1ef10a55118a171ac`
+- `session_effect_grant_contract_test.go`: 今回追加したCapability Grantと構文木の契約試験
+- **実WorkspaceのGoテスト、Race、Repository Healthは未実行です。** GitHubへ変更したファイルはリポジトリ上で確認しましたが、actual full checkoutでの`go test`成功は取得していません。
+- これはConcrete Adapter内までチェックを近づけた変更であり、**認可の版条件と副作用Commitが同じトランザクションになったことを意味しません**。外部DB・SaaS API・Queue等の本番相当で原子的に失効を扱うには、プラグインに対応可能なEffect Fence／版条件／再試行保証が必要です。共通要件と競合試験は独立した[Issue #1174](https://github.com/hat47x/tei-platform/issues/1174)へ起票済みです。
+- PR #1114はDraftを維持します。最新mainを含むexact headクリーンcheckoutでWeb＋Repository Health全PASSと前後cleanを確認するまで統合しません。
