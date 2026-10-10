@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "business-seed-ledger-v0-pressure",
+  "artifactRole": "reference-seed-ledger-pressure",
+  "canonical": false,
+  "seed": "coverage-assignment-data-determinant",
+  "independentNeed": "A coverage assignment must let the business distinguish one activation of one asset under one service contract from later re-activation of the same pair, while keeping implementation row identity and history revision identity separate from the business occurrence.",
+  "scope": {
+    "in": [
+      "one service contract occurrence",
+      "one asset occurrence",
+      "one coverage activation occurrence",
+      "effective-from and effective-to semantics for that activation",
+      "history revision identity as a separate concern",
+      "alternative persistence primary-key realizations"
+    ],
+    "out": [
+      "billing",
+      "service-level calculation",
+      "authorization",
+      "asset ownership",
+      "contract pricing",
+      "workflow and scheduling"
+    ]
+  },
+  "sources": [],
+  "copiedArtifacts": [],
+  "licenseAnalogyMade": false,
+  "sourceBackedFacts": [],
+  "teiOriginalDecisions": [
+    {
+      "id": "TD-CA-1",
+      "text": "CoverageAssignment is a TEI-original Reference occurrence that associates one independent ServiceContract occurrence with one independent Asset occurrence.",
+      "refs": [
+        "data-determinant-association-pressure.md section 2"
+      ]
+    },
+    {
+      "id": "TD-CA-2",
+      "text": "The Reference pressure treats ServiceContract occurrence + Asset occurrence + effectiveFrom as the candidate business occurrence identity, while effectiveTo is not an identity component.",
+      "refs": [
+        "data-determinant-association-pressure.md section 3"
+      ]
+    },
+    {
+      "id": "TD-CA-3",
+      "text": "Re-activation of the same ServiceContract and Asset pair at a later effectiveFrom is a separate business occurrence, not a history revision of the earlier assignment.",
+      "refs": [
+        "data-determinant-association-pressure.md sections 2 and 5"
+      ]
+    },
+    {
+      "id": "TD-CA-4",
+      "text": "A history revision identifier is separate from CoverageAssignment business occurrence identity.",
+      "refs": [
+        "data-determinant-association-pressure.md section 5"
+      ]
+    },
+    {
+      "id": "TD-CA-5",
+      "text": "Surrogate-primary-key and composite-primary-key persistence realizations must preserve the same Reference business meaning.",
+      "refs": [
+        "data-determinant-association-pressure.md section 7"
+      ]
+    }
+  ],
+  "derived": [],
+  "proposals": [
+    {
+      "id": "P-CA-1",
+      "status": "proposal",
+      "text": "Reuse a shared determinant-term vocabulary while keeping occurrence identity, candidate key and functional dependency as separate semantic assertions.",
+      "ref": "../../plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md"
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "U-CA-1",
+      "subject": "external-domain-validation",
+      "status": "unresolved",
+      "note": "The CoverageAssignment scenario is TEI-original Reference authoring and has not been independently validated against an external domain source."
+    },
+    {
+      "id": "U-CA-2",
+      "subject": "relation-semantics-contract",
+      "status": "unresolved",
+      "note": "Whether relation business semantics needs a first-class Core contract or can remain Source-backed evidence is not decided."
+    },
+    {
+      "id": "U-CA-3",
+      "subject": "business-identity-core-syntax",
+      "status": "unresolved",
+      "note": "No parser or Canonical IR syntax for business occurrence identity is accepted."
+    },
+    {
+      "id": "U-CA-4",
+      "subject": "functional-dependency-core-syntax",
+      "status": "unresolved",
+      "note": "No parser or Canonical IR syntax for scoped functional dependency is accepted."
+    },
+    {
+      "id": "U-CA-5",
+      "subject": "temporal-overlap-policy",
+      "status": "unresolved",
+      "note": "Whether validity intervals for the same contract and asset may overlap is intentionally left as a separate business rule."
+    },
+    {
+      "id": "U-CA-6",
+      "subject": "shared-acceptance-authoring-path",
+      "status": "unresolved",
+      "note": "The eventual first-class determinant assertion still needs an accepted Proposal / Review / Decision path."
+    }
+  ],
+  "crossViewQuestions": [
+    {
+      "id": "CQ-CA-1",
+      "question": "Which business identity must remain stable when CoverageAssignment changes from a surrogate physical primary key to a composite physical primary key?",
+      "views": [
+        "data",
+        "persistence"
+      ],
+      "dataIdentity": "candidate"
+    },
+    {
+      "id": "CQ-CA-2",
+      "question": "Which relation facts distinguish an independent association from a contained repeat or a changeable reference before determinant promotion?",
+      "views": [
+        "business",
+        "data"
+      ],
+      "dataIdentity": "unresolved"
+    }
+  ],
+  "handoff": {
+    "candidate": {
+      "from": "",
+      "to": ""
+    },
+    "arisesNaturally": false,
+    "basis": "",
+    "notDerivedFrom": [],
+    "conditionIsNot": []
+  },
+  "review": {
+    "checklist": "DATA_DETERMINANT_PROMOTION_GATE_2026-10.md G1-G10",
+    "author": "tei-original-reference-authoring",
+    "independentReview": "required"
+  }
+}
