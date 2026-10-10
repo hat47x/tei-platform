@@ -93,3 +93,18 @@ processとHTTPではphysical carrierが異なる。process側はlegacy Capabilit
 次に必要なのは、actual Web / Wasm等のTarget consumerで同じidentityが必要かを確認すること、または#1116のRuntime Authority bridgeからgeneric receiptへproduction provenanceを失わず運ぶ必要が再現することである。
 
 synthetic HTTP Referenceだけを根拠に、process / HTTP JSON envelopeをTEI標準ABIへ固定しない。
+
+
+## P3 — Host Dispatch Plan pressure
+
+P2でprocessとHTTPの二transportが同じgeneric identityを必要とすることは確認できた。一方、transport関数が受け取ったdispatchをそのまま信頼すると、呼出し側がContract、Provider、Target、shapeをtransport payload内で選べる。
+
+HTTP handlerではHostが期待identityを別入力として持っていたが、process側はlegacy carrierのPlugin ID / versionとの一致しか確認していなかった。二transportでAuthority境界が非対称だった。
+
+Referenceに`TransportDispatchPlan`を追加し、processとHTTPの双方で同じpreflightを使う。Planは上流で決まった`GenericInvocationIdentity`とPlan fingerprintを持つ。dispatch identityがPlanと一致しない場合は、process launcherやHTTP clientへ到達する前に拒否する。
+
+receiptにはPlan fingerprintを残す。同じPlanをprocessとHTTPで実行した場合、physical carrierは異なっても、Invocation identity、request / result digest、Plan identityを同じ方法で追跡できる。
+
+Plan fingerprintだけをAuthority Evidenceにはしない。PlanはCapability Conformance、Runtime Authority、Canonical Acceptanceのいずれでもない。現在のReferenceでは呼出し側がPlanを構築できるため、production候補の次Gateは上流のCapability resolution / Runtime AuthorityからPlanを導出し、transport層が独自にidentityを選べないことを確認することとする。
+
+このP3により、二transportで共通化すべき最小候補はdispatch / result / receipt identityだけでなく、上流identityをtransport前に固定するPlan境界まで広がった。ただしactual browser / Wasm consumerとproduction provenance接続は未実証であり、production schemaへは昇格しない。
