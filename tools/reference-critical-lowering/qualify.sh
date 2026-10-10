@@ -23,6 +23,21 @@ check_checkout() {
         printf '%s: stale revision (HEAD=%s origin/main=%s)\n' "$stage" "$head" "$main" >&2
         exit 1
     fi
+    # origin/main is only a local cache. Check the actual remote ref both
+    # before and after the run to reject a moving integration target.
+    local remote_line
+    if ! remote_line="$(git ls-remote --exit-code origin refs/heads/main)"; then
+        printf '%s: could not verify remote main\n' "$stage" >&2
+        exit 1
+    fi
+    if [[ "$remote_line" != "$EXPECTED_MAIN""refs/heads/main" ]]; then
+        printf '%s: remote main has moved: %s\n' "$stage" "$remote_line" >&2
+        exit 1
+    fi
+    if ! git merge-base --is-ancestor "$EXPECTED_MAIN" "$EXPECTED_HEAD"; then\t'"refs/heads/main" ]]; then
+        printf '%s: remote main has moved: %s\n' "$stage" "$remote_line" >&2
+        exit 1
+    fi
     if ! git merge-base --is-ancestor "$EXPECTED_MAIN" "$EXPECTED_HEAD"; then
         printf '%s: current main is not an ancestor of PR HEAD\n' "$stage" >&2
         exit 1
