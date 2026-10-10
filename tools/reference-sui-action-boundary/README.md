@@ -51,6 +51,65 @@ SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`s
 
 SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
 
+### CAS Revisionの強度とSUI固有の成功監査（2026-10-11追補）
+
+SUI [Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)のAction readbackを、SUI既存GETの互換的な弱ETag解釈から切り離しました。**SUI固有のApplicationプロファイル**として、Action要求・応答と再読込のRevisionは厳密な小文字64桁SHA-256であり、再読込のHTTP ETagには強い引用符付きの`"<hash>"`だけを認めます。弱い`W/"..."`や欠落・不正ETagを拒否し、取得はsame-origin、no-store、redirect=errorとしました。JavaScript／Python双方で、末尾改行と正規表現`# SUIの操作をTEI Actionへ接続する参照実装
+
+この実装は、非業務アプリケーションの独自UIをTEI ApplicationのActionへ接続する際の境界を検証するものです。**本番用のCanvas接続、SUIの移行、永続化、実セッション認可は実装していません。**
+
+## 所有する責務
+
+| 関心事 | 所有者・現状 |
+| --- | --- |
+| ポインター操作、選択、ドラッグ中の表示、取消し | SUIの既存React Canvas。TEIには未接続 |
+| ApplicationとActionの対応 | 参照用`Host` |
+| 宣言済みCommandの解決 | `CanonicalCommandGate`。`driver.Resolver.ResolvePattern`へ接続可能 |
+| 実行時の認可 | `CapabilityAuthorizer`。既存`security.authorize`を使用するが、実セッションは未接続 |
+| Documentの識別、Revision照合、更新 | アプリケーション所有の`Store`。今回の実装はメモリ内の模擬保存 |
+| SUIのDocumentV1、島への所属、履歴、SafeMode | SUIの既存実装。TEIには移植しない |
+
+`Host.Commit`はApplication ID、**Resource ID**、Action ID、期待Revision、アプリケーション固有のPayloadを受け取ります。更新前にActionの対応と認可を確認し、保存側へ委譲します。**Hostだけでは同時更新を防げません。** Revisionの原子的な照合と更新はStoreの責務です。
+
+## SUIの実コードとの対応
+
+SUI `03_Implement/frontend/src/domain/types.ts` の`DocumentV1`では、Cardの座標は`card.x`、`card.y`です。`card.position`という構造ではありません。参照用`JSONDocumentStore`はこの座標形式に合わせ、`version: 1`と文書本体の`id`を確認します。Sourceは`card.meta.source`、保留は`card.holdState`、レビューは`reviewAttribution`などを保持します。未知のEdge種別も移動によって変更しません。
+
+ただし、参照用StoreはSUIのTypeScript検証器を呼び出さず、島への自動所属やUndo/Redoも再現しません。構造が似ていることと、SUIのドメイン処理に接続したことを混同しないでください。
+
+**旧SUI実装で確認した差分**（2026-10-10に確認した旧経路。PR #3222の新経路とは区別）：
+
+- `src/canvas/CardView.tsx`の`handlePointerMove`は移動中の各イベントで`onMove`を呼びます。Drop時だけ呼び出すAPIではありません。
+- `src/App.tsx`の`handleCardMove`は移動中に`setHistory`と`setIsDirty`を実行します。
+- 同じ`App.tsx`では`pointerup`と`pointercancel`の両方で`commitCardDragSnapshot`を呼びます。現状の取消しを「永続状態に影響しない」と扱うことはできません。
+- Drop時の処理はCardの移動だけでなく、島への所属変更を同じUndo操作にまとめます。単純な`x/y`更新だけでは動作互換になりません。
+
+したがって、TEI接続時は既存のCanvasを置き換えるのではなく、**局所プレビュー／取消し／確定**を分けるSUI側の接続口を用意し、確定時にだけ`Host.Commit`へ最終座標とRevisionを渡す必要があります。認可拒否やRevision競合では、プレビューを破棄し、Documentを再取得します。SUIの既存島所属・Undo/Redo規則はSUI側のAction実装に残します。
+
+## ブラウザー側の操作アダプター（参照実装）
+
+`native-action-bridge.mjs` は、FrameworkやNode.js専用APIに依存しないES Moduleです。既存のReact Canvasを置き換えず、画面側が`begin`、`preview`、`cancel`、`drop`を呼び分ける接続口だけを提供します。
+
+- `begin`: Application、Resource、Actionと期待Revisionを固定します。共通の`protocolVersion: "1"`を生成します。画面入力のApplication IDや権限を信用するという意味ではありません。Host側で再検証が必要です。
+- `preview`: 最終候補のPayloadのコピーをローカルに保持します。永続化・TEI Actionは呼びません。
+- `cancel`: プレビューを破棄します。書き込みは行いません。
+- `drop`: 最後のPayloadで1回だけ`dispatchCommit`を呼び、処理中の二重操作を拒否します。拒否や競合を勝手に再実行せず、例外を呼出元へ戻します。
+
+SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) が2026-10-10にmainへ統合され、`CardView`の局所プレビュー、`pointerup`のみの確定コールバック、`CanvasShell`の`onCardMoveCommit`、そして`App.tsx`の確定処理への接続を追加しました。`domain/card_drag_commit.ts`は、従来の位置変更とドロップ先の島への所属変更を一つのDocument更新へまとめます。Appは`applyDocumentChange`を一回呼ぶため、Undo履歴も一単位になります。Cardのポインター操作開始時にはSUI Documentの参照とETagを保持し、確定時にいずれかが変化していれば操作を拒否します。これはSUI内部のローカル整合性ガードであり、TEIサーバーでのRevision照合や認可の代用にはなりません。既存の`onMove`経路は別の利用者との互換用に保持しています。
+
+ただし、**SUI内の局所的な確定と、TEIランタイムのAction実行は別段階です。** このPRでは、SUIからTEIの`native-action-bridge.mjs`、`Host.Commit`、実セッション認可を呼び出していません。DocumentのRevisionを操作開始時に捕捉して送信する経路も未実装です。現行のSUI保存は引き続きSUI自身が所有しています。
+
+現段階の変更量はSUIの既存3ファイル（App、CanvasShell、CardView）への編集と、新規ドメイン実装1ファイル・テスト2ファイルです。SUI側のVitest・typecheck・build・実ブラウザー確認は未実行のため、UIの動作互換が実証された状態ではありません。ブラウザーではTEI側のES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。
+
+## SUI利用側アダプターへの接続（Draft）
+
+SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`src/api/tei_card_move_action.ts`を追加しています。SUIの`DocumentV1`とETagを操作開始時点の条件とし、Card移動の確定座標だけを`sui.move`のPayloadとして渡します。成功後は、**SUI自身の既存Document取得経路**からDocumentとETagを再読込し、TEI Actionが返したRevision、Card座標、島への所属が一致した場合にだけSUIへ状態反映を委ねます。利用側が`dispatch`、`readDocument`、`isCurrent`、`applyConfirmed`の4つのポートを与える構造で、TEI CoreにSUI専用型を取り込みません。
+
+SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
+
+の挙動に依存せず、63桁+改行も無効にします。この制約を**汎用TEI Hostの`expectedRevision`型や第二Applicationに押し付けません**。Inventory等の異なる保存リビジョン形式はそのApplicationの契約が定義します。
+
+SUI固有のAction保存がDB commitに成功した後、SUI既存`AuditDispatcher`へ`apply`イベントを送信する処理を追加しました。検証済ActorとTenant/Document、`sui.move`、`committed`を記録し、Card本文・Source・生の権限主張はコピーしません。競合・拒否・失敗時には成功イベントを送らず、監査Sink障害でも**既に完了したコミットをHTTP 500の失敗と誤報しない**ようにします。ただし既存監査配送はfail-openであり、**永続監査outbox・復旧可能な配送保証は未実装**です。本番監査要件を満たすことを意味しません。READMEの確認はコード・テスト追加の事実であり、正式Python/SQLite/Vitest/Go/React検証は未完了です。
+
 ### SUI Action境界のHTTP保護とUndo状態計画（2026-10-11）
 
 [SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Go参照HTTPプロファイルとSUI専用の受信口の差分を詰めました。明示されたHTTP OriginのScheme/Host同一性はBFF Cookieなしでも確認し、異なるOriginや`X-TEI-Action`欠落は`403 request_origin_denied`、非JSONは`415 unsupported_content_type`とします。Cookie認証では引き続きSUIのBFF CSRFミドルウェアを利用します。ETagに終端改行を付けた非正規入力は64文字の長さ制限によって拒否し、保存済みDocumentの形式不整合（`500 execution_failed`）と利用者のMove入力違反（`400 invalid_payload`）は分離しました。これらはSUI専用HTTPアダプターの処理であり、TEIのGo HostへSUI固有型を導入しません。
