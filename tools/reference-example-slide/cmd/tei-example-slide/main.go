@@ -83,6 +83,9 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 			return fmt.Errorf("bind review answers: %w", err)
 		}
 		answerHandoff = &bound
+		triage, err := example.TriageAnsweredReview(input, proposed)
+		if err != nil { return fmt.Errorf("triage review answers: %w", err) }
+		changeTriage = &triage
 	}
 	if outputPath == "" {
 		return printJSON(projection)
@@ -113,6 +116,12 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 		if err != nil { return err }
 		answerJSON = append(answerJSON, '\n')
 		if err := os.WriteFile(filepath.Join(outputPath, "answer-handoff.json"), answerJSON, 0600); err != nil {
+			return err
+		}
+		triageJSON, err := json.MarshalIndent(changeTriage, "", "  ")
+		if err != nil { return err }
+		triageJSON = append(triageJSON, '\n')
+		if err := os.WriteFile(filepath.Join(outputPath, "change-triage.json"), triageJSON, 0600); err != nil {
 			return err
 		}
 	}
