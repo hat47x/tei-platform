@@ -106,6 +106,47 @@ func TestUnresolvedOrNonexistentElementFailsClosed(t *testing.T) {
 	}
 }
 
+func TestReverseDataNavigationDoesNotClaimAcceptedBusinessDependency(t *testing.T) {
+	const root="../../reference/business-system-design/dfd-order-approval/"
+	p,err:=run(root+"order-approval-procedure.json",root+"review-proposal.json",
+		root+"procedure-set.json","../../reference/workspace")
+	if err!=nil{t.Fatal(err)}
+	n,err:=navigate(p,"semantic-data:sales.order")
+	if err!=nil{t.Fatal(err)}
+	if n.Subject.Scope!="unverified-current-world" || n.Subject.Authority!="identity-match-only" ||
+		n.Editable || n.Source!=nil || n.WorldRevisionStatus!="unverified-no-model-revision-binding" {
+		t.Fatalf("semantic Data navigation got fake Source authority: %+v",n)
+	}
+	if n.Status!="reference-only" {t.Fatalf("Data reverse link missing: %+v",n)}
+	seenStep,seenStore:=false,false
+	for _,link:=range n.Links {
+		if link.Subject.Kind=="step" && link.Subject.ID=="APP-00" {seenStep=true}
+		if link.Subject.Kind=="store" && link.Subject.ID=="orders" {seenStore=true}
+		if link.Subject.Authority!="reference-only" {t.Fatalf("reverse Data navigation promoted authority: %+v",link)}
+	}
+	if !seenStep || !seenStore {t.Fatalf("expected proposed Step and Store cross-references: %+v",n.Links)}
+}
+
+func TestReverseDirectValidationNavigationRemainsReferenceLocal(t *testing.T) {
+	p,err:=run(
+		"../../reference/business-system-design/order-entry-business-procedure.json",
+		"../../reference/business-system-design/order-entry-dfd-review-proposal.json",
+		"../../reference/business-system-design/order-entry-procedure-reference-set.json",
+		"../../reference/workspace")
+	if err!=nil{t.Fatal(err)}
+	n,err:=navigate(p,"semantic-validation:sales.order_line.quantity_positive")
+	if err!=nil{t.Fatal(err)}
+	found:=false
+	for _,link:=range n.Links {
+		if link.Subject.ID=="BP-05" && link.Relation=="explicitly-referenced-by-step" {
+			found=true
+		}
+	}
+	if !found || n.Status!="reference-only" || n.Editable || n.Source!=nil {
+		t.Fatalf("Validation owner Step cannot be navigated as a reference-only link: %+v",n)
+	}
+}
+
 func TestNavigationSourceFingerprintIsBoundToExactFixtureBytes(t *testing.T) {
 	f,r,s,w:=sample()
 	p:=build(f,r,s,w,"procedure.json","review.json","set.json")
