@@ -51,6 +51,16 @@ SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`s
 
 SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
 
+### SUI Action境界のHTTP保護とUndo状態計画（2026-10-11）
+
+[SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Go参照HTTPプロファイルとSUI専用の受信口の差分を詰めました。明示されたHTTP OriginのScheme/Host同一性はBFF Cookieなしでも確認し、異なるOriginや`X-TEI-Action`欠落は`403 request_origin_denied`、非JSONは`415 unsupported_content_type`とします。Cookie認証では引き続きSUIのBFF CSRFミドルウェアを利用します。ETagに終端改行を付けた非正規入力は64文字の長さ制限によって拒否し、保存済みDocumentの形式不整合（`500 execution_failed`）と利用者のMove入力違反（`400 invalid_payload`）は分離しました。これらはSUI専用HTTPアダプターの処理であり、TEIのGo HostへSUI固有型を導入しません。
+
+ブラウザー側では、成功応答を受け取った後の壊れたDocument再読込についても、確認済みの`committedRevision`を保持した`invalid_readback`を返します。サーバー側は既に処理した可能性があるため、旧Revisionでの自動再送は禁止します。
+
+SUIへ`frontend/src/domain/confirmed_card_move_state.ts`と対応テストを追加しました。これはReact Canvasを置き換えるものではなく、SUI自身の履歴`past/present/future`、保存済みETagとdirtyを一体として計画する純粋関数です。サーバー確定後はdirty=falseとして直前のDocumentをUndo履歴に残し、後からUndoした操作は**新しいローカル編集**として再保存します。未保存編集、ReadOnly、保存処理中、テナントセッション変化、進行中ドラッグ、操作開始時のDocument/ETag不一致は拒否します。**複数React stateの更新原子性・実Canvasへの接続は未完成です。**
+
+アダプターの補助的V8確認は25/25ケース、履歴計画関数の同確認は5/5ケース。ただしGitHub取得後に型注釈を除去し簡易Assertで実行した結果であり、Node/Vitest/TypeScript/Python/Goの正式テストPASSではありません。実証はSUIの`03_Implement/scripts/verify_native_action_boundary.sh`でexact-headをチェックアウトして行います。CIは停止中であり、両PRのDraftは維持します。
+
 ### Action送信前のDocument差分制約と検証入口（2026-10-10）
 
 [SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)に`isPureCardMove`を追加しました。元Documentと移動候補を比較し、**対象Cardのx/yと島への所属変更のみ**を許して、それ以外の情報変更が混入したリクエストは**Action dispatch前**に拒否します。これにより成功済みのSUI保存と画面の再取得結果が食い違う事例を抑制し、SUIのSource／Hold／Edge／レビュー／Affiliationの非改変を守ります。TEI HostがSUIのCardやIslandの意味論を解釈する必要はありません。
