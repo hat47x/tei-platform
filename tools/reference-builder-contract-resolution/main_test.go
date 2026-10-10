@@ -233,7 +233,7 @@ func TestWiringWithoutArtifactDigestRejectsPhysicalArtifactAmbiguity(t *testing.
 	e2.EvidenceFingerprint = e2FP
 
 	wiring.ArtifactDigest = ""
-	_, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
+	_, err = resolveBuilder(referenceIntent(contract), BuilderCatalog{
 		Contracts: []BuilderContract{contract},
 		Providers: []BuilderProvider{providers[0], clone},
 		Evidence:  []BuilderConformanceEvidence{evidence[0], e2},
