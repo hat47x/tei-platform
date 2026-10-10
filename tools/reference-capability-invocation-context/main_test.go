@@ -544,3 +544,120 @@ func TestContextSlotLookupReturnsIndependentBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInvalidTrustedContextDeclarationFailsBeforeDispatch(t *testing.T) {
+	tests := []struct {
+		name         string
+		contracts    []ContextSlotContract
+		requirements []ContextSlotRequirement
+		host         HostExecutionContext
+		errorText    string
+	}{
+		{
+			name:         "duplicate required declaration",
+			contracts:    accessSlotContracts(),
+			requirements: append(accessRequirement(), accessRequirement()...),
+			host:         accessHost("trusted-access"),
+			errorText:    "duplicated",
+		},
+		{
+			name:         "required contract absent",
+			contracts:    nil,
+			requirements: accessRequirement(),
+			host:         accessHost("trusted-access"),
+			errorText:    "has no contract",
+		},
+		{
+			name:         "required contract version not accepted",
+			contracts:    accessSlotContracts(),
+			requirements: []ContextSlotRequirement{{ContractID: testAccessSlot, ContractVersion: "9.9.9"}},
+			host:         accessHost("trusted-access"),
+			errorText:    "has no exact contract",
+		},
+		{
+			name:         "duplicate host binding",
+			contracts:    accessSlotContracts(),
+			requirements: accessRequirement(),
+			host: HostExecutionContext{
+				Bindings: append(accessHost("trusted-access").Bindings, accessHost("trusted-access").Bindings...),
+				ReusePartitionRef: "partition:dup",
+			},
+			errorText: "bound more than once",
+		},
+		{
+			name:         "empty required host value",
+			contracts:    accessSlotContracts(),
+			requirements: accessRequirement(),
+			host: HostExecutionContext{
+				Bindings: []ContextSlotBinding{{
+					ContractID: testAccessSlot, ContractVersion: "0.1.0",
+					BindingReceiptRef: "auth-receipt:empty",
+				}},
+				ReusePartitionRef: "partition:empty",
+			},
+			errorText: "requires version, receipt, and value",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			called := false
+			_, err := invokeWithExecutionContext(
+				context.Background(), tt.contracts, tt.requirements, tt.host,
+				[]byte("request"),
+				func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+					called = true
+					return []byte("result"), nil
+				},
+			)
+			if err == nil || !strings.Contains(err.Error(), tt.errorText) {
+				t.Fatalf("invalid trusted context declaration was accepted: %v", err)
+			}
+			if called {
+				t.Fatal("downstream ran despite invalid trusted context declaration")
+			}
+		})
+	}
+}
+
+func TestHostBindingIsSnapshotBeforeDispatch(t *testing.T) {
+	host := accessHost("trusted-access")
+	_, err := invokeWithExecutionContext(
+		context.Background(),
+		accessSlotContracts(),
+		accessRequirement(),
+		host,
+		[]byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			host.Bindings[0].Value[0] = 'X'
+			value, ok := slots.Lookup(testAccessSlot)
+			if !ok || string(value) != "trusted-access" {
+				t.Fatalf("Host buffer mutation changed the bound slot: %q ok=%v", value, ok)
+			}
+			return []byte("result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDownstreamRequestMutationDoesNotChangeReceiptIdentity(t *testing.T) {
+	request := []byte("original-request")
+	sum := sha256.Sum256(request)
+	expected := "sha256:" + hex.EncodeToString(sum[:])
+	execution, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost("trusted-access"), request,
+		func(_ context.Context, _ ContextSlotView, received []byte) ([]byte, error) {
+			received[0] = 'X'
+			return []byte("result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if execution.Receipt.SemanticRequestDigest != expected || string(request) != "original-request" {
+		t.Fatalf("downstream mutation changed request identity or caller buffer: digest=%s request=%q",
+			execution.Receipt.SemanticRequestDigest, request)
+	}
+}
