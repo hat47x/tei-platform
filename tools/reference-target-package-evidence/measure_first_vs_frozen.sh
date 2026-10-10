@@ -38,8 +38,18 @@ done
 source_revision="$(git rev-parse HEAD)"
 export GOENV=off GOWORK=off GOFLAGS= GOOS=linux CGO_ENABLED=0
 target_arch="$(go env GOARCH)"
+go_version="$(go env GOVERSION)"
+target_tuning="$(go env GOAMD64)"
+go_experiment="$(go env GOEXPERIMENT)"
 temp="$(mktemp -d "$parent/.tei-closure-measure-XXXXXXXX")"
-cleanup() { rm -rf -- "$temp"; }
+destination_claimed=false
+complete=false
+cleanup() {
+  rm -rf -- "$temp"
+  if [[ "$destination_claimed" == true && "$complete" != true ]]; then
+    rm -rf -- "$parent/$name"
+  fi
+}
 trap cleanup EXIT
 
 go run ./tools/reference-target-package-evidence \
@@ -75,9 +85,14 @@ cat > "$temp/measurement.json" <<EOF
 {
   "evidenceKind": "diagnostic-source-closure-and-linked-binary-observation",
   "sourceRevision": "$source_revision",
+  "goVersion": "$go_version",
   "goos": "linux",
   "goarch": "$target_arch",
+  "goamd64": "$target_tuning",
+  "goExperiment": "$go_experiment",
   "cgoEnabled": "0",
+  "goFlags": "",
+  "buildFlags": "-trimpath -ldflags=-buildid=",
   "firstWebBytes": $first_bytes,
   "firstWebSHA256": "$first_sha",
   "frozenBytes": $frozen_bytes,
@@ -91,8 +106,14 @@ cat > "$temp/measurement.json" <<EOF
 }
 EOF
 
-# Persist only after both source identity and physical symbol gates pass.
-mv -- "$temp" "$parent/$name"
+# Claim the destination atomically. A preflight check followed by a plain
+# mv can accidentally move evidence *into* a concurrently created folder.
+# Never overwrite a pre-existing directory or follow a dangling symlink.
+mkdir -- "$parent/$name"
+destination_claimed=true
+mv -- "$temp"/* "$parent/$name/"
+rmdir -- "$temp"
+complete=true
 trap - EXIT
 cat "$parent/$name/measurement.json"
 echo "diagnostic files saved to $parent/$name" >&2
