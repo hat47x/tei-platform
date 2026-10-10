@@ -52,11 +52,7 @@ func newWebTargetServer(
 	if err != nil {
 		return nil, err
 	}
-	customSubmit, err := template.New("custom-submit").Parse(customSubmitHTML)
-	if err != nil {
-		return nil, err
-	}
-	customerLookupPage, err := template.New("customer-lookup").Parse(customerLookupHTML)
+	customSubmit, customerLookupPage, err := referenceScenarioTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +91,7 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/manifest.json", s.handleManifest)
 	mux.HandleFunc("/healthz", s.handleHealth)
-	registerOrderEntryScenarioRoutes(mux, s)
-	registerRepairIntakeScenarioRoutes(mux, s)
+	registerCombinedScenarioRoutes(mux, s)
 	return mux
 }
 
