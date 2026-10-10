@@ -22,10 +22,10 @@ git fetch origin refs/heads/feat/cli-c1-typed-trace-integration refs/heads/main
 PR_HEAD="$(git ls-remote origin refs/heads/feat/cli-c1-typed-trace-integration | cut -f1)"
 MAIN_HEAD="$(git ls-remote origin refs/heads/main | cut -f1)"
 git checkout --detach "$PR_HEAD"
-bash tools/verify-cli-c1-local.sh "$PR_HEAD" "$MAIN_HEAD" /tmp/tei-cli-c1-receipt
+bash tools/verify-cli-c1-local.sh "$PR_HEAD" "$MAIN_HEAD" "/tmp/tei-cli-c1-receipt-$PR_HEAD-$(date -u +%Y%m%dT%H%M%SZ)"
 ```
 
-`tools/verify-cli-c1-local.sh` は、exact PR head、remote main、クリーンなdetached checkoutを実行前後に照合し、既存の **`tools/repository-health-check.sh` を省略なく呼ぶ**。証跡 `receipt.txt` と `repository-health.log` はリポジトリ外に置き、作業ツリーを汚さない。
+`tools/verify-cli-c1-local.sh` は、exact PR head、remote main、クリーンなdetached checkoutを実行前後に照合し、既存の **`tools/repository-health-check.sh` を省略なく呼ぶ**。証跡 `receipt.txt` と `repository-health.log` はリポジトリ外に置き、作業ツリーを汚さない。**既存のreceiptは上書きしない**ので、実行ごとに新しい証跡ディレクトリを指定する。
 
 **exit=0でもマージ権限の自動発行ではない。** 親PR依存（#1139→#1171、#1159→#1169→#1172）と、actual mainへの統合ベース、PRがDraftでなくなったか、candidate/mainのexact-SHAを再確認する。PASS receiptとこれらの条件を揃えるまではmainへ統合しない。
 
