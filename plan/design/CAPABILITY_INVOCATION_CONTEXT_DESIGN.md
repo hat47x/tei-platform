@@ -308,6 +308,8 @@ Goの`error`は`Error()`文字列だけではない。たとえば`Error()`が�
 
 また、固定failureへ変換するだけでは、下流実行中に発生したControl Contextのcancellation / deadlineが失われる。Referenceで再現・修正したため、trustedなControl Context自身の`Err()`が終了状態を示す場合には、その状態を返す。Providerのerror objectに含まれる`context.Canceled`相当の値だけではキャンセルを認定しない。この区別をしないと、Providerが偽の制御状態を報告できてしまう。
 
+さらに、Providerが`nil` errorと成功結果を返しても、呼出し中にControl Contextが終了していれば旧Referenceは結果とreceiptを返していた。テストで再現したため、Provider callbackが戻った直後にtrusted Control Contextの終了状態を調べ、cancel / deadlineが成立していれば結果とreceiptを空にして終了する。ContextのないCapabilityも同じcontrol判定を使う。これは同期的な境界確認であって、検査後に生じる競合、外部副作用の取消し、実行中のProvider強制停止を保証しない。
+
 これは**Referenceの漏えい経路を閉じる暫定措置**である。固定文言を製品のfailure semanticsとみなさない。製品化時には、Capability Contractで定義された公開可能な失敗分類を、Hostが既存Security policyに照らして変換する必要がある。特にunknown / access deniedの同一外部表現を求めるconsumerでは、汎用gateがその違いを新しいoracleにしないよう確認する。下流のlogging、間接漏えい、timing / side channel、mutating effectの安全性はこれだけでは保証できない。
 
 ## Consumer pressure
