@@ -166,7 +166,7 @@ func bindExecutionToTransportPlan(
 	return execution
 }
 
-func invokeAuthorizedOverProcessTransport(
+func invokePlannedOverProcessTransport(
 	ctx context.Context,
 	launcher pruntime.ProcessLauncher,
 	command pruntime.ProcessCommand,
