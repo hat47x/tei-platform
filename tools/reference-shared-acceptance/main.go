@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -478,14 +477,9 @@ func isReferenceBaselineOutput(path string) bool {
 	}
 }
 
-// referencePathText preserves case-sensitive matching on Unix-like systems,
-// but uses the filesystem's case-insensitive spelling on Windows. Without
-// this normalization a caller could spell REFERENCE/WORKSPACE in different
-// case and bypass an otherwise matching baseline path.
+// referencePathText matches protected paths conservatively even on hosts
+// whose filesystem ignores case. False positives on case-sensitive hosts are
+// preferable to allowing a baseline write on a case-insensitive mount.
 func referencePathText(path string) string {
-	path = filepath.ToSlash(path)
-	if runtime.GOOS == "windows" {
-		return strings.ToLower(path)
-	}
-	return path
+	return strings.ToLower(filepath.ToSlash(path))
 }
