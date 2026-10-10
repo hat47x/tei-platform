@@ -44,3 +44,26 @@ test("invalid or absent input shape is diagnosed without throwing",()=>{
   assert.equal(inspectCapabilityInputTypes(input,idx,'app').status,'unresolved');
  }
 });
+
+test("capability without inputs is not evidence of any reached Type definition",()=>{
+ const changed=structuredClone(world);changed.semantics[0].capabilities[0].inputs=[];
+ const result=inspectCapabilityInputTypes(changed,index,'app');
+ assert.equal(result.status,'no-input-types');
+ assert.deepEqual(result.dependencies,[]);
+});
+test("malformed World and Index members return unresolved rather than crash",()=>{
+ const cases=[
+  [{...world,applications:[null]},index],
+  [{...world,applications:[{id:'app',patterns:[null]}]},index],
+  [{...world,semantics:[null]},index],
+  [{...world,semantics:[{capabilities:[null],types:[]}]},index],
+  [{...world,semantics:[{capabilities:[{id:'cap',inputs:[null]}],types:[]}]},index],
+  [world,{...index,artifacts:[null]}],
+  [world,{...index,references:[null]}],
+ ];
+ for (const [typed,source] of cases) {
+  const result=inspectCapabilityInputTypes(typed,source,'app');
+  assert.equal(result.status,'unresolved');
+  assert.ok(result.issues.includes('invalid_snapshot_shape'));
+ }
+});
