@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 )
 
 // PackageChange describes changed compiled-source or import edges in one
@@ -67,6 +68,56 @@ func packageMap(report Report) (map[string]SourcePackage, error) {
 	}
 	if _, ok := pkgs[report.Entry]; !ok {
 		return nil, fmt.Errorf("entry %q absent from package closure", report.Entry)
+	}
+	// E0 output contains only main-module packages. A comparison of two
+	// imported JSON reports must reject fabricated, dangling or disconnected
+	// main-module nodes instead of displaying them as physical removals.
+	inModule := func(importPath string) bool {
+		return importPath == report.Module || strings.HasPrefix(importPath, report.Module+"/")
+	}
+	for _, pkg := range pkgs {
+		if !inModule(pkg.ImportPath) {
+			return nil, fmt.Errorf("package %q is not in main module %q", pkg.ImportPath, report.Module)
+		}
+		if len(pkg.GoFiles)+len(pkg.CgoFiles) == 0 {
+			return nil, fmt.Errorf("package %q has no compiled Go source", pkg.ImportPath)
+		}
+	}
+	reached := make(map[string]bool, len(pkgs))
+	stack := []string{report.Entry}
+	for len(stack) > 0 {
+		importPath := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if reached[importPath] {
+			continue
+		}
+		reached[importPath] = true
+		pkg := pkgs[importPath]
+		for _, dep := range pkg.Imports {
+			// C is a cgo pseudo-import, not a Go package.
+			if dep == "C" {
+				if len(pkg.CgoFiles) == 0 {
+					return nil, fmt.Errorf("package %q has C pseudo-import without cgo source", importPath)
+				}
+				continue
+			}
+			if !inModule(dep) {
+				// Standard library and external modules are intentionally
+				// excluded from the source-level report.
+				continue
+			}
+			if _, ok := pkgs[dep]; !ok {
+				return nil, fmt.Errorf("main-module import %q from %q absent from package closure", dep, importPath)
+			}
+			stack = append(stack, dep)
+		}
+	}
+	if len(reached) != len(pkgs) {
+		for importPath := range pkgs {
+			if !reached[importPath] {
+				return nil, fmt.Errorf("unreachable package %q in source closure", importPath)
+			}
+		}
 	}
 	return pkgs, nil
 }
