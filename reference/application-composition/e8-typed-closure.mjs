@@ -1,6 +1,16 @@
+import {assessIndexedSubjects} from './e4-index-scope.mjs';
 // E8 provisional declaration-only probe; NOT semantic acceptance or full closure.
 export function inspectCapabilityInputTypes(world, index, applicationId) {
   const issues = [], dependencies = [];
+  // Inspect parsed declarations only. Structural validity of a Source Index
+  // remains owned by E4; never silently accept malformed evidence.
+  if (!world || !Array.isArray(world.applications) ||
+      !Array.isArray(world.semantics) ||
+      !index || !Array.isArray(index.artifacts) ||
+      !Array.isArray(index.references)) {
+    return {status:"unresolved",qualification:"declaration-only-not-semantic-acceptance",
+      dependencies,issues:["invalid_snapshot_shape"]};
+  }
   const apps = (world.applications ?? []).filter(a => a.id === applicationId);
   if (apps.length !== 1) return {status:"unresolved", qualification:"declaration-only", dependencies, issues:["application_missing_or_ambiguous"]};
   const definitions = (kind,id) => (index.references ?? []).filter(r => r.subject?.kind === kind && r.subject?.id === id && r.role === "definition");
@@ -25,6 +35,21 @@ export function inspectCapabilityInputTypes(world, index, applicationId) {
       if (!id) {issues.push("input_type_missing:"+matches[0].id);continue;}
       if (types.filter(t => t.id === id).length !== 1) {issues.push("type_missing_or_ambiguous:"+id);continue;}
       if (!seen.has(id)) {seen.add(id); evidence("semantic-type",id);}
+    }
+  }
+  // E4 checks all indexed Artifact paths, SHA-256s, roles and references.
+  // A same-index self-compare only checks structural evidence. It does NOT
+  // verify original bytes, provenance, cross-snapshot drift, or authority.
+  if (dependencies.length) {
+    try {
+      const result = assessIndexedSubjects({
+        baselineIndex:index,currentIndex:index,
+        consumers:[{id:'capability-input-types',
+          subjects:dependencies.map(d=>d.subject)}],
+      })[0];
+      if (result.status !== 'unchanged') issues.push('unresolved_source_index_subject');
+    } catch {
+      issues.push('invalid_source_index');
     }
   }
   dependencies.sort((a,b)=>a.subject.id.localeCompare(b.subject.id));
