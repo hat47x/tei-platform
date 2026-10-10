@@ -67,6 +67,12 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 	if !reflect.DeepEqual(*page.Result, fromGo) {
 		t.Fatalf("CLI/Go semantic results differ\nCLI: %+v\nGo: %+v", *page.Result, fromGo)
 	}
+	changedDirection := run(1, "incoming", "full",
+		summary.Result.Trace.SnapshotFingerprint, 1, 1)
+	if changedDirection.OK || changedDirection.Error == nil ||
+		changedDirection.Error.Code != "STALE_SNAPSHOT" {
+		t.Fatalf("trace continuation changed direction without detection: %+v", changedDirection)
+	}
 	stale := run(1, "both", "full", "sha256:obsolete", 1, 1)
 	if stale.OK || stale.Error == nil || stale.Error.Code != "STALE_SNAPSHOT" {
 		t.Fatalf("stale continuation not rejected: %+v", stale)
