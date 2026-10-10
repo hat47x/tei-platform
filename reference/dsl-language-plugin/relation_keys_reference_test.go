@@ -28,7 +28,9 @@ func TestRelationKeysReference(t *testing.T) {
 	}{
 		{"missing target", func(n *semantic.Namespace) { n.Data = n.Data[:1] }},
 		{"type mismatch", func(n *semantic.Namespace) { n.Data[1].Attributes[0].TypeRef = core.CanonicalID("std.text") }},
-		{"missing source key", func(n *semantic.Namespace) { n.Data[0].Relations[0].Keys[0].SourceAttribute = core.CanonicalID("sales.order.unknown") }},
+		{"missing source key", func(n *semantic.Namespace) {
+			n.Data[0].Relations[0].Keys[0].SourceAttribute = core.CanonicalID("sales.order.unknown")
+		}},
 		{"duplicate target", func(n *semantic.Namespace) { n.Data = append(n.Data, n.Data[1]) }},
 		{"invalid cardinality", func(n *semantic.Namespace) { n.Data[0].Relations[0].Cardinality = "unknown" }},
 	}
