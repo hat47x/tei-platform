@@ -362,6 +362,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			ID: string(stage0Builder.ID),
 			Kind: "builder-seed",
 			Version: stage0Builder.Version,
+			ContractVersion: stage0Builder.ContractVersion,
 			ArtifactDigest: stage0Builder.ArtifactDigest,
 			TrustBoundary: "external-stage0-seed",
 			ToNode: "stage1",
