@@ -96,13 +96,17 @@ func TestLinkRejectsRetargetingAndStaleContext(t *testing.T) {
 		{"source node changed", func(v *Context) {
 			v.Source.SourceToken = "sha256:" + strings.Repeat("b", 64)
 			rebound, err := rmtevidence.Prepare(v.Source)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			v.Source = rebound
 		}},
 		{"source mapping contract changed", func(v *Context) {
 			v.Source.MappingContractFingerprint = "sha256:" + strings.Repeat("c", 64)
 			rebound, err := rmtevidence.Prepare(v.Source)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			v.Source = rebound
 		}},
 		{"candidate changed", func(v *Context) {
