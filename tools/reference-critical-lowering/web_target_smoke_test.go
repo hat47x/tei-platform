@@ -38,6 +38,12 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	if len(head) != 40 {
 		t.Fatalf("invalid checkout revision %q", head)
 	}
+	// The Gate B baseline R and this checkout's target build T are separate
+	// evidence identities. A locally built Web binary must not rewrite R.
+	const baselineRevision = "e5231839a5dcc62cce1181a2731fcb7c70d16736"
+	if head == baselineRevision {
+		t.Fatal("baseline repository revision and target build revision were conflated")
+	}
 	checkExactClean := func(stage string) {
 		t.Helper()
 		currentHead := exec.Command("git", "rev-parse", "HEAD")
@@ -84,7 +90,7 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		"-workspace", "reference/workspace",
 		"-application", "order_entry",
 		"-baseline-id", "B",
-		"-baseline-revision", head,
+		"-baseline-revision", baselineRevision,
 		"-target-revision", head,
 		"-legacy-users", "reference/legacy-auth/users.json",
 		"-legacy-authorization", "reference/legacy-auth/authorization.json",
@@ -150,6 +156,7 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	var manifest struct {
 		ApplicationID string `json:"applicationId"`
 		TargetBuildRevision string `json:"targetBuildRevision"`
+		BaselineRepositoryRevision string `json:"baselineRepositoryRevision"`
 		Patterns []struct {
 			ID string `json:"id"`
 			Kind string `json:"kind"`
@@ -164,7 +171,8 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if manifest.ApplicationID != "order_entry" || manifest.TargetBuildRevision != head {
+	if manifest.ApplicationID != "order_entry" || manifest.TargetBuildRevision != head ||
+		manifest.BaselineRepositoryRevision != baselineRevision {
 		t.Fatalf("Web Target manifest identity mismatch: %+v", manifest)
 	}
 	// Compare real Web projection to the same semantic subject references
@@ -229,6 +237,9 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		}
 		if string(envelope["targetBuildRevision"]) != fmt.Sprintf("%q", head) {
 			t.Fatalf("wrong Target revision evidence: %s", envelope["targetBuildRevision"])
+		}
+		if string(envelope["baselineRepositoryRevision"]) != fmt.Sprintf("%q", baselineRevision) {
+			t.Fatalf("wrong Gate B baseline provenance: %s", envelope["baselineRepositoryRevision"])
 		}
 		return envelope
 	}
