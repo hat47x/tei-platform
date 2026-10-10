@@ -471,6 +471,17 @@ test("stale, spoofed, or wrong-kind Business direct references cannot become lin
   malformed.steps[0].explicitMeaning = { id: "sales.order_line.price_positive" };
   assert.throws(() => projectWorld(w, revision, focus, {
     businessDFD: malformed }), /step.explicitMeaning: array required/);
+  const inventedKind = structuredClone(base);
+  inventedKind.steps[0].explicitMeaning[0].kind = "unknown-business-meaning";
+  assert.throws(() => projectWorld(w, revision, focus, {
+    businessDFD: inventedKind }), /INVALID_BUSINESS_DIRECT_MEANING/);
+  const fabricatedState = structuredClone(base);
+  fabricatedState.steps[0].explicitMeaning[0].status = "accepted";
+  assert.throws(() => projectWorld(w, revision, focus, {
+    businessDFD: fabricatedState }), /INVALID_BUSINESS_DIRECT_MEANING/);
+  assert.throws(() => projectWorld(w, revision, focus, {
+    businessDFD: { ...base, procedureId: "" }
+  }), /UNSUPPORTED_BUSINESS_DFD_AUTHORITY_OR_SCHEMA/);
 });
 
 test("local selection never expands into a global dense matrix", () => {
