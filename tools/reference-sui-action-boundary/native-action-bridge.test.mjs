@@ -3,7 +3,7 @@ import test from "node:test";
 import { createNativeActionBridge } from "./native-action-bridge.mjs";
 
 const action = (applicationID = "sui") => ({
-  applicationID, documentID: "doc", actionID: "move", expectedRevision: "r1",
+  applicationID, resourceID: "doc", actionID: "move", expectedRevision: "r1",
 });
 
 test("preview and cancel are local only, with no commit", async () => {
@@ -33,7 +33,7 @@ test("one drop sends exactly one application-owned action with final preview", a
   bridge.preview({ cardId: "a", x: 3, y: 4 });
   const result = await bridge.drop();
   assert.equal(result, "r2");
-  assert.deepEqual(commits, [{ ...action(), payload: { cardId: "a", x: 3, y: 4 } }]);
+  assert.deepEqual(commits, [{ protocolVersion: "1", ...action(), payload: { cardId: "a", x: 3, y: 4 } }]);
   assert.equal(bridge.phase, "idle");
   await assert.rejects(bridge.drop(), /no active interaction/);
   assert.equal(commits.length, 1);
@@ -86,14 +86,14 @@ test("second unrelated application uses the same adapter without SUI fields", as
   bridge.preview({ item: "p1", width: 230 });
   assert.equal(await bridge.drop(), "v2");
   assert.deepEqual(commits, [{
-    applicationID: "inventory", documentID: "doc", actionID: "resize",
+    protocolVersion: "1", applicationID: "inventory", resourceID: "doc", actionID: "resize",
     expectedRevision: "r1", payload: { item: "p1", width: 230 },
   }]);
 });
 
 test("identity and drop-without-preview fail closed", async () => {
   const bridge = createNativeActionBridge(() => { throw Error("should not dispatch"); });
-  assert.throws(() => bridge.begin({ ...action(), documentID: "" }), /required/);
+  assert.throws(() => bridge.begin({ ...action(), resourceID: "" }), /required/);
   bridge.begin(action());
   await assert.rejects(bridge.drop(), /requires a final preview/);
   assert.equal(bridge.cancel(), true);
