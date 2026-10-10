@@ -12,6 +12,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/plugin"
 	"tei/internal/sourceindex"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -23,6 +24,13 @@ func TestExistingOrderEntrySourceToDriverTrace(t *testing.T) {
 	loaded, err := workspace.Load(root)
 	if err != nil {
 		t.Fatalf("load actual order_entry workspace: %v", err)
+	}
+	// Invoke the existing Canonical World validator rather than treating a
+	// parsed Source as accepted/valid solely because loading succeeded.
+	for _, diagnostic := range validation.Validate(loaded.World) {
+		if diagnostic.Severity == validation.Error {
+			t.Fatalf("actual Canonical World validation: %s: %s", diagnostic.Code, diagnostic.Message)
+		}
 	}
 	resolver := driver.NewResolver(loaded.World)
 	for _, tc := range []struct {
