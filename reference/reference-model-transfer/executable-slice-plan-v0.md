@@ -146,3 +146,16 @@ go test -count=1 ./tools/reference-shared-acceptance -run '^TestRMTSyntheticRead
 初版テストでは受理済みValidationが単にDriverから解決できることしか確認しておらず、照会結果との因果関係が弱かった。そのため、今回の差分では**受理前にそのValidationが存在しないこと**を検査し、受理後に明示的にmappedされた照会結果からOrderを選び、対応する独立した合成明細値へ受理済みValidationを適用する。正値が`satisfied`、ゼロが`not-satisfied`となる両経路と、合成Storeが不変であることを検査する。
 
 この変更で示せるのは「Review/Acceptanceで追加された業務Ruleが、再読込後のread-onlyシナリオで評価可能になり、その判定が合成明細値によって変わること」までである。実DBへの接続、元Reference Modelの具体的なAction/Function/Data relationからのcandidate生成、権限を含む本番相当のread-only照会は**別Gate**である。既存サンプルのorder_entryという名称の一致や、テスト順序の一致をsource/model equivalenceのEvidenceにしない。
+
+
+## 9. 独立合成Sourceを用いたAdapter→Acceptanceの接続候補
+
+Source Adapterの既存`BuildTranscriptionCandidateEvidence` / `VerifyTranscriptionCandidateEvidence`をCLIから呼べる`-candidate-evidence-node N`を追加した。公開側にはtyped source token / artifact digest / contract fingerprintだけを渡し、ローカルnode ordinal・legacy ID・structural locator・XML本文を出力しない。unsupported profile、node選択誤り、型付きEvidence不整合は拒否する。OutputをShared Acceptanceの`attach-rmt-transcription`に渡すことで、**出典としてのsource-bound Evidence運搬**が可能になる。
+
+`rmt_synthetic_read_only_scenario_test.go`は独立した自作XML（System / Table）を実際のSource Adapter CLIへ渡し、そのtyped EvidenceをShared Acceptanceのcandidateへ添付してからReview / test-local Acceptance / reload / Driver read-only Scenarioを走らせる構成へ変更した。出典側のTable名・秘密値・locatorを公表せず、Snapshot digestに拘束されることを検査する。
+
+**重要な未接続:** このsynthetic Tableは、受理する`unit_price_positive` Ruleの出典ではない。現在のtyped RMT Evidenceはcandidateの変更対象subjectやsemantic deltaへの対応を宣言・検証する意味上の`transcription decision`ではなく、添付可能な観測根拠にすぎない。意図的に別々のfixtureを接続しているため、これを「選ばれたBusiness ActionからTEIへ意味を転写できた」と解釈してはならない。
+
+次の本質的なGateは、選んだBusiness Action / Function / Dataのsource-backed graphに対し、局所のselect理由、受理対象となるTEI semantic subject、Mappingの候補と限界、Review fingerprint、explicit human acceptance receiptを**対応関係として別に**記録し、original sourceのdrift時には対応を無効化することである。単一nodeのsource tokenの存在だけで`source-derived meaning`や`runtime equivalence`を承認しない。#1031 / PR #1077のcross-view機構が適格化するまでGraphの意味を複製実装しない。
+
+コードとSchemaの実行結果は依然未取得であり、この変更はDraft PRの候補である。#1146にcurrent headでのfocused/full qualificationを委譲する。
