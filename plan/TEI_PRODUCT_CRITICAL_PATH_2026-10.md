@@ -365,3 +365,29 @@ V04の「設計変更を正本へ受理」と、V05の「標準CRUDが保存で�
 - **#1119（Program）**: 上記packetのproducer/consumer確認と同一シナリオへの証跡の束ね直しを担当する。旧schema向けの旧Function実行結果を、変更後Sourceの実証へ横滑りさせない。
 
 **現状**: 2026-10-10の設計上の漏れを検出し、連携契約と否定試験を追加した段階。S01〜S06のテスト実行、actual DB/Target操作、各担当のAPI適合確認、trusted full Repository Healthはいずれも**未実施**。この節の追加だけでG1/G2をPASSにしない。
+
+## 13. 初期consumer・lowering候補の横断照合（2026-10-10）
+
+### C1: Studio Candidate/Projection — #1124 / PR #1137
+
+- 正確な比較時点: base main `5fc5a0e1cb4fb42897c76dd3334292e2ad4a66e4`、head `3bede1f48a0e373e3f444b7e63dab324037dee07`、Draft。変更は `reference/studio-authoring/` の4ファイルのみ。#1135/#1136/#1141との直接path一致なし。
+- Producer側の約束は `tei.reference.studio-edit/v0` の `add-relation` / `add-validation/positive` を既存 `tei.reference.change-candidate/v0` へ渡すこと。受理済み意味やSource改変、Validationを独自実装せず、`tools/reference-shared-acceptance`を再利用する。
+- `projectWorld` は `Data / ER / Function` を元のCanonical IDで投影するが、Business viewは `unresolved`、Source Indexのanchorも `unresolved`。これがV00の**三視点完全達成ではない**ことを残す。
+- PRに記載された8ではなく**9件のNodeテストソース**は、コードが存在しても `node --test ...` actual実行済みではない。報告されているV8 smoke 9件PASSは別の限定的な合成証拠。
+- **consumer handoff**: #1120はC0 exact source anchor/typed edge、#1125はBusiness Procedure/Actor/triggerのread-only投影、#1124はscratch Workspaceで `V03→V04→reload` と `N05/N06` をexact revisionで実際に走らせる。#1137のProposal JSONを単に生成できるだけでは `V04 PASS` にしない。
+
+### C3: Lowering Witness — #1121 / PR #1141
+
+- 比較時点: base main `5fc5a0e1cb4fb42897c76dd3334292e2ad4a66e4`、head `afe8a648f0c09d361d21f0f2433a3d13c4ce9fa4`、Draft。新規は `plan/design/CRITICAL_LOWERING_CONTRACT_DESIGN.md` および `tools/reference-critical-lowering/` の3ファイル、合計4ファイル。
+- E0 `tei.lowering-witness/v0` は、synthetic Candidate→Acceptance link→neutral intent→wiring→Provider witnessを扱う**候補**。Trust callbackやProvider/Lock/Artifactの具体IDは合成であり、実#951 Resolver・Shared Acceptance・Driver・Targetへまだ連結していない。
+- `requiredContextSlots` の**宣言**をAccepted ContractとProvider選択に残し、actual verified Principal/session値はcurrent Host invocationで扱う設計が維持されている。これを理由に `C3 G1 PASS` としない。
+- **consumer handoff**: #1121は#951/#1016の実Resolverや#1118 Host Context Gateへ繋ぎ、#1127は既存Driver/Web Targetで `N08/N11` と `S02/S05` を実行する。synthetic `authorization-denied` が出たことをcurrent Runtime Authorizationの実証に読み替えない。
+
+### 合流時の最小ルール
+
+1. **C0（#1120）**のsource subjectはStudio（#1137）とCUD（#1136）で同じIDを指せても、前者は編集候補、後者はcaller-supplied factであってAuthorityが違う。typed ID一致だけで後者のowner/effectをAcceptedへ昇格しない。
+2. **C1（#1137）とC3（#1141）**の間には、既存Shared Acceptanceで生成されたexact Accepted Source revisionが必要。合成Acceptance stubやbridge precheckは橋渡し証跡にしない。
+3. **C3（#1141）とDriver/Web（#1127）**の間には実Resolver/Capability/Host Permission/DB readinessが必要。§12のS02/S05を通るまで、設計受理の成功はphysical write可能の根拠ではない。
+4. 並列PRはそれぞれ独立のDraftとして保持し、Source joinが必要になった段階でowner/consumerの相互Reviewを実施する。プロダクトG2の共通packetは同一revision・actual Provider/Targetと独立Observationに揃えて初めて評価する。
+
+**未確認**: この§13はGitHub変更path・patch・PR本文の静的照合であり、今回の環境でNode/Goの試験を実行したわけではない。各PRが報告した限定的なsyntheticテストと、trusted exact-head checkoutでの資格確認を区別する。
