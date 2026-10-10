@@ -468,7 +468,7 @@ E2.11でブラウザへ返す権限基盤障害の文言を固定化しました
 ### 実装と検証状態
 
 - `session_command_route.go`: GitHub Blob `f846ac88a5340287f17b6182be9d1a4ea5715e9f`
-- `session_command_route_test.go`: GitHub Blob `01675b77607b1731e6968f01098fddda8297931e`
+- `session_command_route_test.go`: GitHub Blob `b9328536413862918d412cb053c9e5470547f925`
 - 追加した回帰ケースは、`order 1003`の既存合成Command Adapter障害（旧経路422、新Session 500と固定文言、Audit error）、Validation不成立の422、異常日時の400などです。
 - GitHub Blobで実装とテストのエラー文字列一致・結果分岐を静的に確認しました。ただし**実Workspace Go結合試験、Go vet/race、exact-head full Repository Healthの成功結果は未取得**です。以前の隔離Go試験を現在headの成功証拠とみなしません。
 - PR #1114はDraft・未マージを維持します。合成Fixtureを用いたテストの成功（未取得）と、実ProviderによるDurable Effectの観測（未取得）も区別します。
