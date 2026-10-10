@@ -423,6 +423,13 @@
       "observed": "The first cross-view derivation emitted a resolved function-table-operation edge when an IOTable resolved to a Table even if OpC/OpR/OpU/OpD were all absent or empty. The resulting edge carried an empty operations string and could still participate in an action-function-table derived path.",
       "risk": "The existence of an IOTable can be mistaken for an explicit CRUD declaration, creating a cross-view path with no source-backed operation and making downstream accounting look more complete than the source actually states.",
       "teiDirection": "require at least one recognized C/R/U/D marker before emitting a function-table-operation edge; keep an empty declaration unresolved and keep unsupported markers fail-closed rather than deriving a partial operation"
+    },
+    {
+      "id": "RMP-061",
+      "topic": "identifier-attribute-presence-vs-usable-identity",
+      "observed": "In the exact benchmark, 35 of 148 TaskAction elements omit the ID attribute, while the other 113 carry ID=\"\". Therefore zero TaskActions have a usable non-empty legacy ID even though a simple attribute-presence count reports only 35 as missing.",
+      "risk": "Inventory or migration logic can treat an empty identifier attribute as a durable source identity, undercounting unaddressable business steps and encouraging fallback matching by SortKey, label, or source order.",
+      "teiDirection": "separate attribute absence, present-but-empty, and usable non-empty identity in source accounting; treat both absent and empty IDs as missing for identity resolution, and use exact-snapshot source tokens only for addressability rather than inventing durable business identity"
     }
   ]
 }
