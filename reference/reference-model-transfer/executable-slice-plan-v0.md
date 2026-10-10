@@ -177,3 +177,21 @@ Source Adapterの既存`BuildTranscriptionCandidateEvidence` / `VerifyTranscript
 次に満たすべき条件は、(a) Source Adapterとcross-view Projectionを**同じexact source/contract/policy**で読み直すこと、(b) 業務上の選択理由とData/Function/Business対応をReviewへ明示すること、(c) 推測した意味へ独立したAcceptance decisionがあること、(d) 実行結果は観測者資格と外部stateのEvidenceに基づき別途照合すること、である。現在のLinkには`humanApproved`や`originalEquivalent`というfield自体を設けず、fingerprintを署名・承認の代わりにしない。
 
 実行資格はIssue #1146で取得する。`go test -count=1 ./tools/internal/rmtlink`は追加のfocused testであり、trusted checkout上での実行PASSは未取得。
+
+
+### 10.1 Reviewとcandidate中のEvidence実在性の確認
+
+単なる`rmtlink.Prepare`に、正しい形式のfingerprintを渡すだけなら、**そのEvidenceが実際にReview対象のcandidateに添付されていたか**を確かめられない。異なるsourceから発行された有効なtokenを、無関係なReviewと後から組み合わせることができてしまう。
+
+この弱点を補うため、`tools/reference-shared-acceptance/rmt_reviewed_link.go`に`prepareRMTReviewedLink`を追加した。これは既存の共有受理経路に属する**参照実装限定の検証補助**であり、以下を同時に要求する。
+
+1. Previewが`acceptable`で、stale扱いされていないこと。
+2. candidateの正規化identity、Evidence fingerprint、base revisionと、同一評価のPreview / current snapshotが一致すること。
+3. その評価から実際に生成したReview Projectionとfingerprintを用いること。呼び出し元が任意のReview digestを渡せないこと。
+4. Link対象がPreviewのSemantic Diffに**一件だけ存在する**こと。ここでは`added validation`に限定する。
+5. source evidence fingerprintが、同じcandidateに添付されたtyped RMT artifactの中に**一件だけ存在する**こと。全く別のsource tokenを後から選んでLinkと呼ばないこと。
+
+補助関数は別に定義した`rmtlink.Prepare`へこのcurrent Contextを渡し、`proposed/unresolved`の候補だけを発行する。`rmt_reviewed_link_test.go`では、source未添付、別source token、Review / candidate / Evidence fingerprintの不一致、workspace drift、未受理Preview、存在しない差分などを負例にする。
+
+**この追加は意味の正しさを検証しない。** いかなる有効なXML Tableからも、意味的には無関係なValidationへの`proposed/unresolved` correlationを作れてしまう。対応関係の意味判断、出典と意思決定者の資格、実行権限、original Runtimeとの比較には独立したGateが残る。LinkをShared AcceptanceのDecision本体へ混ぜたり、受理済み意味のSSOTへ格納したりしない。
+
