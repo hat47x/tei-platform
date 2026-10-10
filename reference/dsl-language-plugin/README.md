@@ -116,6 +116,16 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `pinned_relation_path_test.go`にはNamespace横断の2段経路、キーのスナップショット保持、未固定契約、入出力型の不整合、副作用昇格、後段Relationの型不一致を加えた。これは**未受理の参照候補**に限り、Binding・Execution・権限付与・Semantic Lock照合は行わない。各HopでCanonical Key検証器を再実行するため、長い経路の効率化は今後の課題とする。現時点でこの追加テストのGo実行とPR exact-head全体の健全性確認は未実施。
 
+### 単一のOperator pinを複数Relationへ適用する型特殊化（2026-10-10）
+
+以前の多段Relation fixtureでは、`std.op.expand`の具体的な入出力型が段ごとに異なるため、**同じOperator IDを段ごとに別versionとして仮登録する**回避策を使っていた。これはOperatorの意味が同じでも、適用先Dataが変わるだけで契約versionを増やす誤った誘導になる。
+
+`relation_expansion_candidate.go`では、既存の`ResolveOperator`による厳密なversion/fingerprint/効果の照合を維持したまま、Referenceで扱う`std.op.expand`に限って、`rows/$Source → rows/$Target`という**明示的な2変数の型形状**を認める。型変数の値は任意の名前解決ではなく、検証済みSemantic Relationの参照元・参照先からだけ得る。適用した結果の具体的な出力型は`RelationExpansionCandidate.OutputType`へ保持し、OperatorのSemantic pinは変えない。旧来の具体的な入出力型pinも引き続き受理する。
+
+`pinned_relation_path_test.go`はsales→customer→addressの2段階で、単一の`std.op.expand@1`契約を再利用する形へ変更した。途中のDataが変わってもOperator versionを変えず、各Relationのキー、識別子、Cardinality、型の連鎖は区別できることを検証対象とする。Fixture Oracleでも同じ汎用pinの具体化を受け付ける。
+
+これは**全Operator向けの型変数言語を実装したという意味ではない**。型制約の一般化、入力型のnullable性・型幅・値等価性、演算引数のCanonical表現、Semantic Lockへの接続は未解決である。標準Operator契約として採用する前に、既存Semantic Interfaceの受理済みProjectionでこの型形状をどう表現するか決める必要がある。追加テストのリポジトリ全体でのGo実行、およびPR exact-head検証は未実施。
+
 ### RelationのNULL・欠損・多重度を区別するFixture Oracle（2026-10-10）
 
 `relation_match_probe.go`は、一段の`RelationExpansionCandidate`に対して、実データへの接続を伴わない**純粋なキー照合の参照Oracle**を追加する。Canonical Worldと受理済みpinから生成したCandidateを投入する正常系をテストに含めるが、このOracle自身にはWorldの受理・Lockの照合・Providerの選択権限はない。
