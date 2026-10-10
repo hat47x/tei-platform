@@ -637,6 +637,9 @@ func validateEvidence(evidence BuilderConformanceEvidence) error {
 		strings.TrimSpace(evidence.Profile) == "" {
 		return fmt.Errorf("invalid builder Conformance Evidence identity")
 	}
+	if _, err := core.ParseCanonicalID(string(evidence.ProviderID)); err != nil {
+		return fmt.Errorf("Evidence provider id: %w", err)
+	}
 	if _, err := canonicalDigestChecked(evidence.ArtifactDigest); err != nil {
 		return err
 	}
@@ -646,7 +649,40 @@ func validateEvidence(evidence BuilderConformanceEvidence) error {
 	if err := validateFingerprint("Evidence fingerprint", evidence.EvidenceFingerprint); err != nil {
 		return err
 	}
+	expected, err := conformanceEvidenceFingerprint(evidence)
+	if err != nil {
+		return err
+	}
+	if canonicalFingerprint(expected) != canonicalFingerprint(evidence.EvidenceFingerprint) {
+		return fmt.Errorf("Evidence fingerprint does not match Conformance Evidence claims")
+	}
 	return nil
+}
+
+func conformanceEvidenceFingerprint(evidence BuilderConformanceEvidence) (string, error) {
+	if evidence.ProviderID == "" || !core.ValidNumericVersion(evidence.ProviderVersion) ||
+		strings.TrimSpace(evidence.ImplementationID) == "" ||
+		strings.TrimSpace(evidence.ConformanceProfile) == "" ||
+		strings.TrimSpace(evidence.RecipeKind) == "" ||
+		strings.TrimSpace(evidence.Target) == "" ||
+		strings.TrimSpace(evidence.Profile) == "" {
+		return "", fmt.Errorf("invalid builder Conformance Evidence identity")
+	}
+	if _, err := core.ParseCanonicalID(string(evidence.ProviderID)); err != nil {
+		return "", fmt.Errorf("Evidence provider id: %w", err)
+	}
+	digest, err := canonicalDigestChecked(evidence.ArtifactDigest)
+	if err != nil {
+		return "", err
+	}
+	if err := validateFingerprint("Evidence contract fingerprint", evidence.ContractFingerprint); err != nil {
+		return "", err
+	}
+	value := evidence
+	value.ArtifactDigest = digest
+	value.ContractFingerprint = canonicalFingerprint(value.ContractFingerprint)
+	value.EvidenceFingerprint = ""
+	return fingerprint(value)
 }
 
 func builderContractFingerprint(contract BuilderContract) (string, error) {
@@ -848,15 +884,20 @@ func referenceFixture() (BuilderContract, []BuilderProvider, []BuilderConformanc
 			ImplementationID: providers[0].ImplementationID, ArtifactDigest: providers[0].ArtifactDigest,
 			ContractFingerprint: contractFingerprint, ConformanceProfile: contract.ConformanceProfile,
 			RecipeKind: "deterministic-copy", Target: "host/reference", Profile: "reference",
-			EvidenceFingerprint: strings.Repeat("c", 64),
 		},
 		{
 			ProviderID: providers[1].ProviderID, ProviderVersion: providers[1].ProviderVersion,
 			ImplementationID: providers[1].ImplementationID, ArtifactDigest: providers[1].ArtifactDigest,
 			ContractFingerprint: contractFingerprint, ConformanceProfile: contract.ConformanceProfile,
 			RecipeKind: "deterministic-copy", Target: "host/reference", Profile: "reference",
-			EvidenceFingerprint: strings.Repeat("d", 64),
 		},
+	}
+	for i := range evidence {
+		fingerprint, err := conformanceEvidenceFingerprint(evidence[i])
+		if err != nil {
+			panic(err)
+		}
+		evidence[i].EvidenceFingerprint = fingerprint
 	}
 	wiring := BuilderWiring{
 		ContractID:       contract.ID,
