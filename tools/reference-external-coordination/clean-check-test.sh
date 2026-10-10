@@ -123,18 +123,20 @@ check_case() {
     test -z "$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
     test -z "$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
   else
-    grep -Fq 'requires a clean product checkout' "$output"
-    if [[ "$name" == post-ignored || "$name" == post-hidden || "$name" == after-delete-ignored ]]; then
-      test -f "$TMP_ROOT/$name.marker"
-      if [[ "$name" == after-delete-ignored ]]; then
-        grep -Fq '(after coordination store deletion)' "$output"
-      else
-        grep -Fq '(after coordination)' "$output"
-      fi
-    fi
     if [[ "$name" == python-optimized-tamper ]]; then
+      # Semantic validation must fail, not the Git checkout cleanliness guard.
       test -f "$TMP_ROOT/$name.marker"
       grep -Fq 'AssertionError' "$output"
+    else
+      grep -Fq 'requires a clean product checkout' "$output"
+      if [[ "$name" == post-ignored || "$name" == post-hidden || "$name" == after-delete-ignored ]]; then
+        test -f "$TMP_ROOT/$name.marker"
+        if [[ "$name" == after-delete-ignored ]]; then
+          grep -Fq '(after coordination store deletion)' "$output"
+        else
+          grep -Fq '(after coordination)' "$output"
+        fi
+      fi
     fi
     if grep -Fq 'external coordination git-text reference: PASS' "$output"; then
       echo "$name: reported PASS despite a rejected checkout" >&2
