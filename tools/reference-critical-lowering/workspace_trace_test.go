@@ -9,6 +9,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/driver"
+	"tei/internal/environment"
 	"tei/internal/plugin"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -180,4 +181,53 @@ func TestExistingOrderEntrySourceToDriverTrace(t *testing.T) {
 			t.Fatalf("source fingerprint lost at index %d", i)
 		}
 	}
+}
+
+func TestEnvironmentDatasourceBindingMutationsFailClosed(t *testing.T) {
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil { t.Fatal(err) }
+	var dev environment.Environment
+	for _, e := range loaded.World.Environments { if e.ID == "development" { dev = e } }
+	if dev.ID == "" { t.Fatal("missing development Environment") }
+	check := func(env environment.Environment) bool {
+		var selected core.CanonicalID
+		for _, binding := range env.Bindings {
+			if binding.Application != "order_entry" || binding.Alias != "sales" { continue }
+			if selected != "" { return false } // duplicates are never ordered fallbacks
+			selected = binding.Instance
+		}
+		if selected == "" { return false }
+		instance, ok := env.InstanceByID(selected)
+		return ok && instance.Definition == "sales_core"
+	}
+	if !check(dev) { t.Fatal("actual sales datasource does not bind sales_core") }
+	copyEnv := func() environment.Environment {
+		e := dev
+		e.Bindings = append([]environment.ApplicationDatabaseBinding(nil), dev.Bindings...)
+		return e
+	}
+	missing := copyEnv()
+	kept := missing.Bindings[:0]
+	for _, b := range missing.Bindings {
+		if b.Application != "order_entry" || b.Alias != "sales" { kept = append(kept, b) }
+	}
+	missing.Bindings = kept
+	if check(missing) { t.Fatal("missing binding accepted") }
+
+	duplicate := copyEnv()
+	for _, b := range duplicate.Bindings {
+		if b.Application == "order_entry" && b.Alias == "sales" {
+			duplicate.Bindings = append(duplicate.Bindings, b)
+			break
+		}
+	}
+	if check(duplicate) { t.Fatal("ambiguous binding accepted") }
+
+	misbound := copyEnv()
+	for i, b := range misbound.Bindings {
+		if b.Application == "order_entry" && b.Alias == "sales" {
+			misbound.Bindings[i].Instance = "master_data.dev"
+		}
+	}
+	if check(misbound) { t.Fatal("wrong database instance accepted") }
 }
