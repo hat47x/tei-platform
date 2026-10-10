@@ -51,4 +51,8 @@ GitHub [#1142](https://github.com/hat47x/tei-platform/issues/1142) は、Evidenc
 - [scenario-manifest-v0.schema.json](scenario-manifest-v0.schema.json) — 公開可能なScenario manifestの構造候補。観測なしで同等性を宣言しない条件を含む
 - [scenario-manifest-v0.example.json](scenario-manifest-v0.example.json) — synthetic、未実行、比較未評価の例。PASS結果ではない
 
-ここに追加したのは設計候補と未実行のfixtureである。旧Runtimeの挙動やTEI側の実行・受理・同等性について、新しいEvidenceを取得したことを意味しない。
+初期契約に加え、`tools/reference-xead-source-adapter`で選択source nodeの型付きEvidenceを出力するCLI、`tools/reference-shared-acceptance`の合成縦断test、`tools/internal/rmtlink`のSource→Review差分の**未解決・提案のみの相関**を追加した。どれもtrusted Go実行Gateは未取得。
+
+`rmtlink`はsource artifact digest / token / typed Evidence fingerprintとcandidate / base revision / Review fingerprint / 対象Semantic差分の一致を検査する。source nameやraw locatorを公開せず、変更時は古いLinkを拒否する。ただしLink作成・Verificationは**人間の意味判断、Source再観測、Runtime実測、同等性、実行権限を代行しない**。
+
+旧Runtimeの挙動やTEI側の実行・受理・同等性について、新しいactual PASS Evidenceを取得したことを意味しない。
