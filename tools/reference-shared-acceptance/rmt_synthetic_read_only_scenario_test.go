@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"
 	"tei/internal/query"
+	"tei/internal/semantic/validationeval"
 	"tei/internal/workspace"
 )
 
@@ -35,6 +37,17 @@ func (e rmtSyntheticReadOnlyExecutor) ExecuteBrowseQuery(
 func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutation(t *testing.T) {
 	dir := scratchWorkspace(t)
 	originalTree := treeDigest(t, dir)
+	beforeAccept, err := workspace.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previousRules, err := driver.NewResolver(beforeAccept.World).ResolveApplicationValidations("order_entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := findRule(previousRules, "sales.order_line.unit_price_positive"); exists {
+		t.Fatal("fixture unexpectedly contains the rule before Acceptance")
+	}
 	candidate := unitPriceWithSelectionCandidate(revisionOfDir(t, dir))
 	grounded, err := attachRMTTranscriptionEvidence(
 		mustJSON(t, candidate),
@@ -76,7 +89,8 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := findRule(acceptedRules, core.MustCanonicalID("sales.order_line.unit_price_positive")); !ok {
+	unitPriceRule, found := findRule(acceptedRules, core.MustCanonicalID("sales.order_line.unit_price_positive"))
+	if !found {
 		t.Fatalf("reload did not preserve accepted rule: %+v", acceptedRules)
 	}
 
@@ -133,6 +147,30 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 	}
 	if orderID != int64(101) {
 		t.Fatalf("explicit result mapping was lost: orderID=%#v", orderID)
+	}
+
+	// The accepted rule must actually change what this scenario can evaluate.
+	// Associate the explicitly mapped order ID with independently held synthetic
+	// line values. Merely resolving the accepted rule without evaluating it
+	// would not establish a causal link between the Decision and this scenario.
+	lineUnitPrices := map[int64]*big.Rat{101: big.NewRat(35, 1)}
+	selectedOrderID, ok := orderID.(int64)
+	if !ok {
+		t.Fatalf("mapped order ID has unexpected type: %T", orderID)
+	}
+	readUnitPrice := func() numberSource {
+		return numberSource{
+			"sales.order_line.unit_price": new(big.Rat).Set(lineUnitPrices[selectedOrderID]),
+		}
+	}
+	result, err := validationeval.Evaluate(unitPriceRule, readUnitPrice())
+	if err != nil || result != validationeval.ResultSatisfied {
+		t.Fatalf("accepted Validation did not pass synthetic positive line: result=%s err=%v", result, err)
+	}
+	lineUnitPrices[selectedOrderID] = big.NewRat(0, 1)
+	result, err = validationeval.Evaluate(unitPriceRule, readUnitPrice())
+	if err != nil || result != validationeval.ResultNotSatisfied {
+		t.Fatalf("accepted Validation did not reject synthetic nonpositive line: result=%s err=%v", result, err)
 	}
 	if !reflect.DeepEqual(store, before) {
 		t.Fatalf("synthetic read-only store changed: before=%+v after=%+v", before, store)
