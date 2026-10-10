@@ -580,3 +580,49 @@ func TestValidationScopeReviewEvidenceRefreshDropsStaleSources(t *testing.T) {
 		t.Fatalf("意味未解決への遷移時にSource根拠が残りました: %+v", rows[0])
 	}
 }
+
+func TestValidationScopeReviewMultipleReasonsForSameReference(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 同じ意味IDが未定義で、Procedure内にも2回明示されている。
+	// 一つの問題を別の原因によって打ち消さず、理由をそれぞれ一回だけ返す。
+	const missingID = "sales.reference_only.undefined_validation"
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = append(f.Steps[i].Validations, missingID, missingID, missingID)
+		}
+	}
+	rows := compareValidationScopes(loaded.World, f)
+	want := []validationReferenceIssue{
+		{Side: "procedure", ID: missingID, Reason: "duplicate-declaration"},
+		{Side: "procedure", ID: missingID, Reason: "missing-definition"},
+	}
+	if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+		!reflect.DeepEqual(rows[0].ReferenceIssues, want) ||
+		len(rows[0].ApplicationOnly) != 0 || len(rows[0].ProcedureOnly) != 0 ||
+		validationScopeSourcesNeeded(rows) {
+		t.Fatalf("同じ参照の複数原因を失いました: %+v", rows)
+	}
+
+	// 明示参照の並び順を変えても、未解決理由の集合と順序は変わらない。
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = []string{
+				missingID, "sales.order.lines.line_number_unique",
+				missingID, "sales.order_line.quantity_positive", missingID,
+			}
+		}
+	}
+	reordered := compareValidationScopes(loaded.World, f)
+	if len(reordered) != 1 || !reflect.DeepEqual(reordered[0].ReferenceIssues, want) {
+		t.Fatalf("参照の順番によって未解決理由が変わりました: %+v", reordered)
+	}
+}
