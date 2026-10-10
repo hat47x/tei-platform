@@ -45,6 +45,12 @@ SUI側では [PR #3222](https://github.com/hat47x/sui-sensemaking/pull/3222) が
 
 現段階の変更量はSUIの既存3ファイル（App、CanvasShell、CardView）への編集と、新規ドメイン実装1ファイル・テスト2ファイルです。SUI側のVitest・typecheck・build・実ブラウザー確認は未実行のため、UIの動作互換が実証された状態ではありません。ブラウザーではTEI側のES Moduleを取り込めますが、`structuredClone`を利用できる実行環境が必要です。
 
+## SUI利用側アダプターへの接続（Draft）
+
+SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`src/api/tei_card_move_action.ts`を追加しています。SUIの`DocumentV1`とETagを操作開始時点の条件とし、Card移動の確定座標だけを`sui.move`のPayloadとして渡します。成功後は、**SUI自身の既存Document取得経路**からDocumentとETagを再読込し、TEI Actionが返したRevision、Card座標、島への所属が一致した場合にだけSUIへ状態反映を委ねます。利用側が`dispatch`、`readDocument`、`isCurrent`、`applyConfirmed`の4つのポートを与える構造で、TEI CoreにSUI専用型を取り込みません。
+
+SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
+
 ## SUI実接続の条件（2026-10-10時点）
 
 SUI main の`App.tsx`は、`handleCardMoveBegin`で`DocumentV1`の参照と`docEtag`を捕捉し、`handleCardMoveCommit`から`commitCardDrag`を呼んで`applyDocumentChange`へ**ローカル変更**を渡しています。現行の`CanvasShell.onCardMoveCommit`は同期的な`void`コールバックです。このまま同じ確定処理にHTTP dispatchを足すと、サーバー側の拒否より先にSUIのUndo履歴・dirty状態を書き換える二重の更新経路ができてしまいます。
