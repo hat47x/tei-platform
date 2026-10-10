@@ -193,4 +193,6 @@ Semantic / Functional runner単独ではVisual Fidelity Evidenceを取得しま�
 
 **現行の第一Web Targetは、従来どおり両Applicationのルートを登録する一つのGo `package main`です。** 未設定RunnerへのHTTP 503、非対応methodへの405、存在しないパスへの404を維持するための回帰テストを追加しました。この整理のみで不要なGo実装がコンパイル・リンクから除外されたとは言えません。
 
+さらに、`webTargetServer.ScopedHandler()`を**オプトインの参照構成**として追加しました。ProjectionのApplication IDが`order_entry`なら受注用、`repair_intake`なら修理受付用のルートだけを登録し、他方のHTTPパスは404になります。不明なApplication IDや、別ApplicationのRunnerが混入した構成はHandlerを返さず失敗します。一方、従来の`Handler()`はGate C用の複数Application診断ルートを変更せず維持します。`scoped_routes_test.go`ではルート非公開・Runner混入拒否を、`scoped_parity_test.go`では同じ実Workspace fixtureを使ったread/Command/認証・認可拒否/Execution Error/customer lookupのHTTPレスポンスと想定ステータスの同等性を回帰条件にしています。**これらの追加テストは現HEADでのPASS未取得**であり、Goソースの物理的な分離を証明するものではありません。
+
 E1で異なるApplication向けバイナリを成立させるには、共通Transportの契約とApplication固有Route/Runnerの依存を**別Goパッケージとcompile-time entry**へ分離し、その上で既存Gate CのBusiness Result・Execution Error・Observation・Authorizationについて差分回帰を行う必要があります。物理除外は`go list`だけでなく実`go build`・`go tool nm`・成果物digestで確認します。実配備機構や第二のProvider Resolverをここで増設しません。
