@@ -961,6 +961,50 @@ func TestRelationUniqueValidationResolvesScopedDataDesignWithoutInventingIdentit
 	}
 }
 
+func TestAuthorizationGrantDoesNotInferCompositeBusinessIdentityFromIdentifierLikeFields(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"security.authorization_grant",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil || got.DataDesign.Data != "security.authorization_grant" {
+		t.Fatalf("AuthorizationGrant Data Design Context is missing: %+v", got.DataDesign)
+	}
+	if len(got.DataDesign.Attributes) != 3 {
+		t.Fatalf("AuthorizationGrant attribute context is incomplete: %+v", got.DataDesign.Attributes)
+	}
+	if len(got.DataDesign.BusinessIdentityCandidates) != 0 ||
+		len(got.DataDesign.FunctionalDependencyCandidates) != 0 {
+		t.Fatalf("subject/action/resource shape was generalized into determinant candidates: %+v", got.DataDesign)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("AuthorizationGrant identity was invented from identifier-like fields: %+v", got.DataDesign)
+	}
+	if !hasDataDesignEvidence(
+		got.DataDesign,
+		"semantic-data",
+		"security.authorization_grant",
+		"semantic/security/authorization.tei",
+	) {
+		t.Fatalf("AuthorizationGrant Source Evidence is missing: %+v", got.DataDesign.Evidence)
+	}
+	for _, question := range []string{
+		"which-fields-identify-the-business-occurrence",
+		"what-is-the-uniqueness-scope",
+		"is-this-business-occurrence-identity-or-history-version-identity",
+	} {
+		if !containsKnowledgeContextString(got.DataDesign.BusinessIdentityEvidenceQuestions, question) {
+			t.Fatalf("AuthorizationGrant identity question %q is missing: %+v", question, got.DataDesign.BusinessIdentityEvidenceQuestions)
+		}
+	}
+}
+
 func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier(t *testing.T) {
 	root := testRepositoryRoot(t)
 	got, err := buildKnowledgeContext(
