@@ -156,4 +156,44 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 	if !bytes.Equal(after["semantics"], repaired["semantics"]) {
 		t.Fatal("the corrected model differs from the previously valid semantic meaning")
 	}
+
+	// A first-time user can also mistype the used namespace. Validation must
+	// link the error to the application source, not just report an unknown ID.
+	applicationPath := filepath.Join(workspaceRoot, "applications", "request-log", "application.tei")
+	appSource, err := os.ReadFile(applicationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const semanticUse = "uses semantic intake"
+	if strings.Count(string(appSource), semanticUse) != 1 {
+		t.Fatal("unexpected application declaration in first workspace")
+	}
+	badAppSource := strings.Replace(string(appSource), semanticUse, "uses semantic misspelled", 1)
+	if err := os.WriteFile(applicationPath, []byte(badAppSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	missingNamespace := run(1, "validate", "-workspace", workspaceRoot)
+	if !strings.Contains(missingNamespace, "UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE") ||
+		!strings.Contains(missingNamespace, "applications/request-log/application.tei:") {
+		t.Fatalf("unknown application namespace did not resolve to its authoring source: %q", missingNamespace)
+	}
+	if err := os.WriteFile(applicationPath, appSource, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
+
+	// A malformed source is a parse error, not an empty or partially accepted model.
+	badSyntax := strings.Replace(modified, "priority type std.code", "priority type }", 1)
+	if err := os.WriteFile(srcPath, []byte(badSyntax), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	syntaxDiagnostic := run(1, "validate", "-workspace", workspaceRoot)
+	if !strings.Contains(syntaxDiagnostic, "PARSE_ERROR") ||
+		!strings.Contains(syntaxDiagnostic, source) {
+		t.Fatalf("invalid syntax was not reported with its source: %q", syntaxDiagnostic)
+	}
+	if err := os.WriteFile(srcPath, []byte(modified), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertValid()
 }
