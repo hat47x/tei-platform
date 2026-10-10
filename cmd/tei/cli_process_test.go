@@ -127,8 +127,10 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		t.Fatalf("inspect relation must be JSON: %v", err)
 	}
 	if !inspectRelation.OK || inspectRelation.Result == nil ||
-		inspectRelation.Result.Subject != traceSummary.Result.Trace.Subject.Subject {
-		t.Fatalf("inspect and trace disagree on subject: inspect=%+v trace=%+v", inspectRelation, traceSummary)
+		inspectRelation.Result.Subject != traceSummary.Result.Trace.Subject.Subject ||
+		inspectRelation.Result.WorldFingerprint != traceSummary.Result.WorldFingerprint ||
+		inspectRelation.Result.SourceIndexFingerprint != traceSummary.Result.SourceIndexFingerprint {
+		t.Fatalf("inspect and trace disagree on identity or projection snapshot: inspect=%+v trace=%+v", inspectRelation, traceSummary)
 	}
 	if len(traceSummary.Result.Source.References) == 0 ||
 		len(inspectRelation.Result.Sources.References) == 0 ||
