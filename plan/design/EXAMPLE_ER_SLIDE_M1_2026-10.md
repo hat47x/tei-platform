@@ -82,7 +82,7 @@
 
 データモデル上の関連線の表示と、具体的なレコードの関連照合を別機構にした。図に関連が表示されるだけでそのケースの参照整合性を確認済みとすることはできない。
 
-`Example.completeTables`は、各Snapshotについて「このテーブルのレコードをすべて掲載した」という**Case内部の申告**である。指定していないテーブルは部分的な抜粋とし、Targetが見えないだけでは矛盾を主張しない。この申告には業務事実の採用権限を与えない。
+`Example.completeTables`は基底Snapshotについて「このテーブルのレコードをすべて掲載した」という**Case内部の申告**であり、後続Stageは個別の`Stage.completeTables`で指定する。指定していないテーブルは部分的な抜粋とし、Targetが見えないだけでは矛盾を主張しない。この申告には業務事実の採用権限を与えない。
 
 三値の`relationFindings`は、relation ID / source record IDを単位に出す。判定結果はこの説明用Datasetの範囲だけに限定する。
 
@@ -155,7 +155,7 @@ Reviewから出た質問を、実際のモデル・具体例・適用文脈に�
 
 1. 対象PR exact-headのGoテスト、gofmt、Go vet、必須Repository Health Check。
 2. Source Indexから実RelationへBasis subjectが正しく解決できるかの、実Workspaceを使った読み取り専用縦断検査。
-3. `completeTables`が現在はCase全Stageに一括適用されることを踏まえた、Stageごとの完全性・時点・データ出典の表現。
+3. `Stage.completeTables`の独立宣言を実装候補として追加した。ただし完全性を裏付ける時点・データ出典・観測証拠の管理は未実装。
 4. 確認後の設計変更について、既存Shared Acceptanceの対応するtyped operationだけを使用する。未実装の操作を無条件に生成しない。
 
 今回もProduction、UI、意味モデルの正本は変更していない。
@@ -191,7 +191,7 @@ JSON入力で`completeTables`を綴り間違えた場合にも、検査対象の
 
 ### 後続で必要な契約
 
-- **Stage単位の網羅性と観測時点**: 現状`completeTables`は全Stageで共有されるため、時点別の観測範囲を厳密に証明できない。
+- **Stage単位の網羅性と観測時点**: Stageごとの`completeTables`は指定できるが、その申告と実際の観測時点・データ出典を照合する機構は未実装。
 - **Source Indexの根拠付け**: Caseが示すEvidencePointerの文書・観測結果・Source Indexが実在し、現在の仕様へ適用できることの独立検証。
 - **人間の権限検証**: 申告の`claimedBy.kind=human`を本当のHuman authorizationへ昇格させない。
 - **既存Relationを編集するtyped operationの必要性**: ユースケースを確定した後に、追加・修正・置換の意味的境界と差分検証を検討する。未検証の汎用文字列Patchを代用品にしない。
@@ -222,3 +222,9 @@ git status --porcelain
 ```
 
 PRのDraft解除やmain統合は、既存リポジトリ規約により**full Repository-health PASSとexact head/base/current mainの一致**を確認してから判断する。GitHub Actionsを起動しない。
+
+## M1時点別網羅性の扱い（2026-10-10）
+
+基底Stageの`Example.completeTables`を、それ以降のStageへ暗黙継承する設計を廃止した。基底と後続Stageが異なる抽出範囲や観測時点を持ち得るため、各`Stage.completeTables`を独立した明示宣言とする。後続Stageで無指定なら部分的なデータセットとして`unresolved`を維持する。既存の基底だけのCaseとの互換性を保つ。
+
+変更は読み取り専用Referenceと否定試験に限定。実Providerの時点・抽出範囲の根拠付けは引き続き未実装であり、例の申告をSource Index Evidenceへ自動昇格しない。対象PRのGoテストは未実行。
