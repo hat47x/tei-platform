@@ -84,7 +84,7 @@ WORK_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 WORK_BLOB_BEFORE="$(git -C "$STORE" hash-object "work/$WORK_ID.json")"
 
 printf 'current evidence\n' > "$STORE/artifacts/$WORK_ID/run-a.txt"
-ARTIFACT_DIGEST="$(python3 - "$STORE/artifacts/$WORK_ID/run-a.txt" <<'PY'
+ARTIFACT_DIGEST="$(python3 -I - "$STORE/artifacts/$WORK_ID/run-a.txt" <<'PY'
 import hashlib
 import pathlib
 import sys
@@ -162,7 +162,7 @@ cat > "$STORE/native-state/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP_STATE
 }
 EOF_FOLLOW_UP_STATE
 
-python3 - "$STORE" "$PRODUCT_HEAD_BEFORE" "$COLLIDING_LOCAL_WORK_REF" <<'PY'
+python3 -I - "$STORE" "$PRODUCT_HEAD_BEFORE" "$COLLIDING_LOCAL_WORK_REF" <<'PY'
 import hashlib
 import json
 import pathlib
@@ -252,7 +252,7 @@ git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID" "work/$FOLLOW_UP_ID.
 git -C "$STORE" commit -qm "coordination: append independent agent results"
 RESULTS_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
-python3 - "$STORE/native-state/$WORK_ID.json" <<'PY'
+python3 -I - "$STORE/native-state/$WORK_ID.json" <<'PY'
 import json
 import pathlib
 import sys
