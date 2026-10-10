@@ -400,3 +400,84 @@ func TestRuntimeAuthorityBridgeDoesNotInferLegacyCapabilityFromImplementationID(
 		t.Fatalf("legacy Capability was inferred from implementation identity: %v", err)
 	}
 }
+
+
+func TestGenericInvocationCannotBypassProductionResourceBrokerGate(t *testing.T) {
+	fixture := newRuntimeAuthorityFixture(t)
+	required := permission.Spec{
+		Kind:   permission.KindNetwork,
+		Access: permission.AccessConnect,
+		Scope:  "database.primary",
+	}
+	fixture.plan.Capabilities[0].Capability.Permissions = []permission.Spec{required}
+	fixture.plan.Capabilities[0].Permissions = []permission.Spec{required}
+	fixture.registry.Resources = nil
+
+	registry, _ := runtimeAuthorityGenericRegistry(t, fixture)
+	_, err := registry.ResolveAndInvoke(
+		context.Background(),
+		ResolveInput{
+			Scope:       ScopeApplicationRuntime,
+			Requirement: Requirement{
+				ContractID:      fixture.contract.ID,
+				CompatibleMajor: 1,
+			},
+			Contracts: []Contract{fixture.contract},
+			Providers: []Provider{fixture.provider},
+			Evidence: []ConformanceEvidence{
+				evidenceFor(
+					fixture.provider,
+					fixture.contract,
+					"runtime-authority-conformance",
+				),
+			},
+		},
+		runtimeAuthorityRequestPayload(t),
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires resources but host has no resource broker") {
+		t.Fatalf("missing production Resource Broker was bypassed: %v", err)
+	}
+	if fixture.builtin.calls != 0 {
+		t.Fatalf("domain implementation ran before Resource Broker gate: calls=%d", fixture.builtin.calls)
+	}
+}
+
+func TestGenericInvocationCannotBypassRequiredProductionSandbox(t *testing.T) {
+	fixture := newRuntimeAuthorityFixture(t)
+	fixture.plan.Plugins[0].Boundary = pruntime.BoundaryProcess
+	fixture.plan.Plugins[0].Trust = pruntime.TrustExternalProcess
+	fixture.plan.Plugins[0].Command = "reference-contract-query"
+	fixture.plan.Plugins[0].SandboxPolicy = plugin.SandboxRequired
+	fixture.plan.Capabilities[0].Boundary = pruntime.BoundaryProcess
+	fixture.registry.Builtins = nil
+	fixture.registry.Sandboxes = nil
+	fixture.registry.Processes = nil
+
+	registry, _ := runtimeAuthorityGenericRegistry(t, fixture)
+	_, err := registry.ResolveAndInvoke(
+		context.Background(),
+		ResolveInput{
+			Scope:       ScopeApplicationRuntime,
+			Requirement: Requirement{
+				ContractID:      fixture.contract.ID,
+				CompatibleMajor: 1,
+			},
+			Contracts: []Contract{fixture.contract},
+			Providers: []Provider{fixture.provider},
+			Evidence: []ConformanceEvidence{
+				evidenceFor(
+					fixture.provider,
+					fixture.contract,
+					"runtime-authority-conformance",
+				),
+			},
+		},
+		runtimeAuthorityRequestPayload(t),
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires sandbox launcher") {
+		t.Fatalf("required production Sandbox was bypassed: %v", err)
+	}
+	if fixture.builtin.calls != 0 {
+		t.Fatalf("in-process implementation ran for process Runtime boundary: calls=%d", fixture.builtin.calls)
+	}
+}
