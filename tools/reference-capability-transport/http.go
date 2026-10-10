@@ -27,7 +27,7 @@ func isJSONMediaType(raw string) bool {
 	return err == nil && mediaType == httpTransportContentType
 }
 
-func NewAuthorizedHTTPTransportHandler(
+func NewPlannedHTTPTransportHandler(
 	plan TransportDispatchPlan,
 	implementation HTTPTransportImplementation,
 ) (http.Handler, error) {
@@ -104,7 +104,7 @@ func NewHTTPTransportHandler(
 	}), nil
 }
 
-func invokeAuthorizedOverHTTPTransport(
+func invokePlannedOverHTTPTransport(
 	ctx context.Context,
 	client *http.Client,
 	endpoint string,
