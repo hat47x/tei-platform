@@ -13,4 +13,6 @@ go test -count=1 ./tools/reference-runtime-snapshot
 go vet ./tools/reference-runtime-snapshot
 ```
 
+`closure_test.go`は実`go list -deps -json`を実行し、このパッケージから他のTEI main-module packageが推移的にimportされないことを確認します。したがって設計用Workspace LoaderやDriver Resolverがこの読取り境界へ紛れた場合は局所テストが失敗します。これは**Goソースの依存閉包**の検査であり、実行バイナリやBrowser/Serverの依存除去・安全性を証明するものではありません。
+
 上記はパッケージの隔離テストであり、第一Web TargetのFunctional/Visual/Gate Cや、#259 E1のBrowser+API分離に必要な認可・Transport・実配備物の証拠ではない。既存のGate C Target Sourceを変更せず、将来のアプリ固有compile-time entryでこのReferenceを使用するには、同一Handover meaning、データ/Provider、認可とBusiness Result、実行時の操作を別途実証する必要がある。
