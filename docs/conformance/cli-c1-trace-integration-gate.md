@@ -55,3 +55,13 @@ go run ./cmd/tei inspect -workspace reference/workspace -subject-kind semantic-r
 - `full` は明示ページ分割しない場合、全候補参照を組み立てる。大規模Workspaceに対する性能・最大メモリの実測は未取得。走査予算による黙った打切りは行わない。
 
 この文書はGate判断の正本を増やすものではなく、`AGENTS.md` / `CONTRIBUTING.md` と対象Issueの合格条件を適用するための補足手順である。
+
+## 設計知見・未解決課題の恒久参照
+
+- **#1165（Issue本文）**：採用したCanonical/Source/Typed Graphの責務、Scopeの非権威性、複合tokenの使い分け、五つの初期kind、重複宣言と不完全Evidenceの扱い、CLIとGoのAdapter分離、未取得のGo品質Gate証拠、親PR依存を集約する。
+- **#1017**：Source Readerのsymlink/TOCTOU。C1のhash＋digest＋path containment検証はatomic snapshotを保証しない。
+- **#1177**：large Workspaceのページングと内部全量走査・Source Index再検証・メモリ使用量の分離。黙った走査予算による欠落を禁止し、全体テキスト出力後の一括解析案も評価する。
+- **#1178**：`read-only`を機密情報開示の認可へ昇格させない。Canonical/Source path/edge/unresolved/近傍情報のLLM送出と既存Disclosure機構を接続する。
+- **#1163**：one-revision end-to-end Acceptance/Target/Observation Evidenceとの区別。CLIの読取tokenは実行や書込権限の証拠ではない。
+
+C1の品質Gateが通った後も#1017/#1177/#1178/#1163は**独立した未解決課題**として残す。C1 PRへ無制限に取り込んで完了を遅らせない。
