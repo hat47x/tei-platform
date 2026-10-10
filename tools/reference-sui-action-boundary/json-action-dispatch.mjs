@@ -19,6 +19,8 @@ export function createJSONActionDispatcher(endpoint, fetchImpl = globalThis.fetc
       method: "POST",
       headers: { "Content-Type": "application/json", "X-TEI-Action": "commit" },
       credentials: "same-origin",
+      mode: "same-origin",
+      redirect: "error",
       cache: "no-store",
       body: JSON.stringify(intent),
     });
