@@ -22,26 +22,26 @@ type listedModule struct {
 }
 
 type listedPackage struct {
-	ImportPath string                 `json:"ImportPath"`
-	Dir        string                 `json:"Dir"`
-	Name       string                 `json:"Name"`
-	Module     *listedModule          `json:"Module"`
-	GoFiles    []string               `json:"GoFiles"`
-	CgoFiles   []string               `json:"CgoFiles"`
-	EmbedFiles []string              `json:"EmbedFiles"`
-	CFiles     []string              `json:"CFiles"`
-	CXXFiles   []string              `json:"CXXFiles"`
-	MFiles     []string              `json:"MFiles"`
-	HFiles     []string              `json:"HFiles"`
-	FFiles     []string              `json:"FFiles"`
-	SFiles     []string              `json:"SFiles"`
-	SwigFiles  []string              `json:"SwigFiles"`
-	SwigCXXFiles []string            `json:"SwigCXXFiles"`
-	SysoFiles  []string              `json:"SysoFiles"`
-	Imports    []string               `json:"Imports"`
-	Error      *struct{ Err string }  `json:"Error"`
-	Incomplete bool                   `json:"Incomplete"`
-	DepsErrors []struct{ Err string } `json:"DepsErrors"`
+	ImportPath   string                 `json:"ImportPath"`
+	Dir          string                 `json:"Dir"`
+	Name         string                 `json:"Name"`
+	Module       *listedModule          `json:"Module"`
+	GoFiles      []string               `json:"GoFiles"`
+	CgoFiles     []string               `json:"CgoFiles"`
+	EmbedFiles   []string               `json:"EmbedFiles"`
+	CFiles       []string               `json:"CFiles"`
+	CXXFiles     []string               `json:"CXXFiles"`
+	MFiles       []string               `json:"MFiles"`
+	HFiles       []string               `json:"HFiles"`
+	FFiles       []string               `json:"FFiles"`
+	SFiles       []string               `json:"SFiles"`
+	SwigFiles    []string               `json:"SwigFiles"`
+	SwigCXXFiles []string               `json:"SwigCXXFiles"`
+	SysoFiles    []string               `json:"SysoFiles"`
+	Imports      []string               `json:"Imports"`
+	Error        *struct{ Err string }  `json:"Error"`
+	Incomplete   bool                   `json:"Incomplete"`
+	DepsErrors   []struct{ Err string } `json:"DepsErrors"`
 }
 
 type SourceInput struct {
@@ -50,11 +50,11 @@ type SourceInput struct {
 }
 
 type SourcePackage struct {
-	ImportPath       string        `json:"importPath"`
-	GoFiles          []string      `json:"goFiles,omitempty"`
-	CgoFiles         []string      `json:"cgoFiles,omitempty"`
-	AuxiliaryInputs  []SourceInput `json:"auxiliaryInputs,omitempty"`
-	Imports          []string      `json:"imports,omitempty"`
+	ImportPath      string        `json:"importPath"`
+	GoFiles         []string      `json:"goFiles,omitempty"`
+	CgoFiles        []string      `json:"cgoFiles,omitempty"`
+	AuxiliaryInputs []SourceInput `json:"auxiliaryInputs,omitempty"`
+	Imports         []string      `json:"imports,omitempty"`
 }
 
 // auxiliaryInputs records source and embedded inputs not represented by
