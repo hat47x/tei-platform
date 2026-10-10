@@ -116,6 +116,7 @@ func TestWebTargetProtectedSessionRoutePreservesLegacyAndBusinessSemantics(t *te
 			if response.Host != projection.Host || result.Stage != "completed" || result.Authentication != nil ||
 				result.Read == nil || len(result.Validations) != 3 ||
 				result.Authorization == nil || result.Authorization.Outcome != "allowed" ||
+				result.EffectAuthorization == nil || result.EffectAuthorization.Outcome != "allowed" ||
 				result.Command == nil || result.Observation == nil {
 				t.Fatalf("session result does not preserve existing business outcome: %+v", response)
 			}
@@ -132,8 +133,9 @@ func TestWebTargetProtectedSessionRoutePreservesLegacyAndBusinessSemantics(t *te
 	if err := json.Unmarshal(legacy.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if response.Result.Authentication == nil || response.Result.Authentication.Outcome != "authenticated" {
-		t.Fatalf("legacy authentication lost: %+v", response.Result)
+	if response.Result.Authentication == nil || response.Result.Authentication.Outcome != "authenticated" ||
+		response.Result.EffectAuthorization != nil {
+		t.Fatalf("legacy credential route was changed by session reauthorization: %+v", response.Result)
 	}
 	if len(records) != 2 || records[0].Stage != "completed" || records[1].Stage != "completed" {
 		t.Fatalf("synthetic Host auditing failed: %+v", records)
