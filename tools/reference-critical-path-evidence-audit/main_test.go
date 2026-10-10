@@ -188,6 +188,7 @@ func TestStrictInputRejectsDuplicateKeysAndInvalidUTF8(t *testing.T) {
 	}
 	for label, data := range map[string][]byte{
 		"top-level duplicate": bytes.Replace(b, []byte(`"claim":"E2"`), []byte(`"claim":"E0","claim":"E2"`), 1),
+		"case-folded alias":   bytes.Replace(b, []byte(`"claim":"E2"`), []byte(`"claim":"E0","Claim":"E2"`), 1),
 		"nested duplicate":    bytes.Replace(b, []byte(`"runMode":"running-server"`), []byte(`"runMode":"handler-only","runMode":"running-server"`), 1),
 		"invalid UTF-8":       append(append([]byte{}, b...), 0xff),
 	} {
