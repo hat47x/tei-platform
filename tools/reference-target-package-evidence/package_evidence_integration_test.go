@@ -96,6 +96,10 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compare actual Go entry closures: %v", err)
 	}
+	if _, err := produceEvidence("./internal/calc", ""); err == nil ||
+		!strings.Contains(err.Error(), "not a Go executable package") {
+		t.Fatalf("a library must not qualify as executable target entry: %v", err)
+	}
 	if !slices.Contains(delta.BeforeOnly, "example.test/tei-e0/internal/calc") ||
 		!slices.Contains(delta.BeforeOnly, "example.test/tei-e0/cmd/app") ||
 		!slices.Contains(delta.AfterOnly, "example.test/tei-e0/cmd/minimal") ||
