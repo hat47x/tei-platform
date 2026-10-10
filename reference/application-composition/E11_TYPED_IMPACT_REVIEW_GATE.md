@@ -39,6 +39,30 @@ E7の`limited-unchanged`は、E5で列挙したApplicationの直接定義Source�
 
 これにより、名前が似た別ProjectのPatternをレビュー対象として昇格することも、命名規則を変えた真正のPatternを見落とすことも避ける。ただし入力Reportの真正性・解析時snapshot一致はこのAdapterで証明できない。**同じE7の現時点Envelopeと、同じ解析Snapshotから生成された#1120 ProjectionをCallerが結ぶ必要がある。** 新しい所有RegistryやGraphの第二正本は導入しない。
 
+## E11b：Goが返す実JSON形状への接続
+
+初回E11はCallerが`typedProjection={schema, scope, application, nodes, unresolved, diagnostics, affected}`を手組みする形式だった。これは合成試験には使えるが、[PR #1139](https://github.com/hat47x/tei-platform/pull/1139)の実際の`derivedbridge.Projection`は`graph={schema,nodes,edges}`、`rules`、`unresolved`、`authorityLimits`を持つ。Goの`modelref.Validate`と`modelref.Impact`の結果も別に受け取るため、形状変換と同一Workspace時点の確認を曖昧にしたままでは接続できない。
+
+[E11関数](e11-review-gate.mjs)の`qualifyPairedCompositionReview`は、次の**既存出力のJSON形状**を直接受け取る。
+
+- `baseline`・`current`：E5の`-paired-evidence`が返す変更前後のE7 Envelope。Source Indexの出典・差分検査はE7→E6→E4へ委譲する。
+- `projection`：Goの`derivedbridge.Projection`。その`graph.schema`・`graph.nodes`と`unresolved`を既存E11へ接続する。Graphの`edges`・`rules`は**読み直したり再検証したりせず**、入力形状の存在だけ確認する。
+- `diagnostics`・`affected`：Goの`modelref.Validate`／`modelref.Impact`による**Caller提供の出力**。E11側ではImpactの再探索・Rule推論を行わない。
+- `application`・`scope`：解析対象の明示選択。Patternの所属は常に`current.report`にあるE5直接参照を用いる。
+
+**最重要の停止条件**：E5/E7のReport・IndexとGoの型付きProjectionは現時点で別々の呼出しから得られる。JSONが整合しても同じ解析済みWorkspace snapshotに由来することは証明できない。この入口では、下位の`qualifyCompositionReview`が一時的に`limited-unchanged`または`review-candidate`と判断しても、必ず`status:unresolved`、`reason:unverified_shared_snapshot`へ落とす。Review候補は参考情報として残すが、**影響なし、採用済み、実行許可**とは返さない。Source出典の不一致や型付きGraphの不整合があれば、それぞれの既存`unresolved`理由を優先する。
+
+この挙動は、真偽値の`sameSnapshot=true`をCallerに設定させるだけでは改善しない。必要なのは[#1017 / PR #1111](https://github.com/hat47x/tei-platform/pull/1111)のLoader/Index同一bytes保証を踏まえ、Go側が`derivedbridge.FromIndex`・`Validate`・`Impact`まで**固定した同一解析結果**から実行したことを検証する接続である。監査可能な一致の証拠が揃うまでは最終的な不変性を主張しない。
+
+### E11bの局所確認
+
+GitHub登録済みのE4・E6・E7・E11各ファイルと試験ファイルを読み取り、V8インメモリ互換ランナーで`import/export`、基本`assert`、`structuredClone`を置換して**E11全26件成功／失敗0**を確認した。新規8件では実JSON形状の受渡し、Source変更時の再検証、Go Impact候補保持、ReportとSource Indexの不一致、無効なGraph、未解決診断、Pattern所属偽装、同一snapshot未検証による保留を扱う。
+
+- E11b本体Git blob：`512b7b9711c04306fa11d581b2f8e12d3c63617c`
+- E11b試験Git blob：`bdcbee2989a6826f63107e65f593ce144ca764a2`
+
+**これはNode.js標準`node --test`、Go側の実Projection出力を読み込むE2E、全Repository Healthの実行ではない。** この限定試験と以前のNode.jsでの初回12件を混同しない。
+
 ## 負例と局所試験
 
 ```sh
