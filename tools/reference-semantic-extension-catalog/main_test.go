@@ -24,6 +24,7 @@ func TestLoadSemanticNamespaceAuthoritiesUsesStrictJSON(t *testing.T) {
 		`{
 			"namespace":"std.validation",
 			"extension":"tei.std.validation",
+			"issuer":{"id":"tei.reference.semantic-authority-publisher","version":"1.0.0"},
 			"evidenceFingerprint":"sha256:`+strings.Repeat("a", 64)+`"
 		}`,
 	)
@@ -33,7 +34,9 @@ func TestLoadSemanticNamespaceAuthoritiesUsesStrictJSON(t *testing.T) {
 	}
 	if len(values) != 1 ||
 		values[0].Namespace != "std.validation" ||
-		values[0].Extension != "tei.std.validation" {
+		values[0].Extension != "tei.std.validation" ||
+		values[0].Issuer.ID != "tei.reference.semantic-authority-publisher" ||
+		values[0].Issuer.Version != "1.0.0" {
 		t.Fatalf("namespace authority=%+v", values)
 	}
 
