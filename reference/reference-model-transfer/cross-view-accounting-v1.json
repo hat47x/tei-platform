@@ -8,7 +8,7 @@
     "formatVersion": "1.2",
     "artifactSha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9"
   },
-  "derivationPolicyRevision": "tei.xeadsource.cross-view/v1",
+  "derivationPolicyRevision": "tei.xeadsource.cross-view/v2",
   "sourceWideExpectedAccounting": {
     "taskCount": 62,
     "taskActionCount": 148,
@@ -51,7 +51,8 @@
     "calculation": "independent exact-source aggregate recalculation using the same documented RMT-4 relation rules",
     "implementationReplay": "NOT_RUN",
     "repositoryHealthCheck": "NOT_RUN",
-    "interpretation": "expected accounting oracle only; not actual exact-head Go execution Evidence"
+    "interpretation": "expected accounting oracle only; not actual exact-head Go execution Evidence",
+    "note": "v2 adds mandatory source-profile gating, rejects empty/unsupported CRUD declarations, normalizes the no-target sentinel, and validates the public accounting vocabulary before publication"
   },
   "authorityLimits": [
     "source-backed-edge-is-not-accepted-canonical-meaning",
