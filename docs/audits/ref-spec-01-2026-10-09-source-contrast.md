@@ -199,3 +199,13 @@ GitHub上の実装と内容一致を確認した次の二つのGo原文ファイ
 制約：`application`、`semantic`、`ir`、`core`、`sourceindex`、`subject`の各型と`fixture`/`step`/`semanticCounts`は隔離用代替実装。したがって、本体の`workspace.Load`・`BuildSourceIndex`・実Source Index制約・`main.go`・既存診断・Repository回帰テスト本体を実行したものではない。これは**変更対象の原文二ファイルを直接組み合わせて実行した限定的検証**であり、trusted checkoutのfull `tools/repository-health-check.sh`とclean pre/postの統合資格を代替しない。
 
 2026-10-10のmain追随は2親の通常merge `6cd08baeb4a7636f1dc4183204c77942bfc3f17e`で完了し、その時点ではmainからbehind 0となった。その後mainに追加commitがあり、検証時点ではbranchが再びbehind 1だった。対象main SHAが変わった場合は、統合資格の再取得が必要である。
+
+## 2026-10-10 共通Validationの照合根拠とSource逆追跡
+
+比較結果が`no-set-difference`である場合、従来のJSONでは`applicationOnly`と`procedureOnly`がどちらも空で、具体的にどのValidation IDを突き合わせたかを同じ比較行だけから再現できなかった。Source追跡も差分IDのみを入力としたため、`no-set-difference`ではApplication定義だけが`sourceEvidence`へ載り、**同一と判断したValidationの定義に戻れない**。これは「同じ集合と判断した理由を人間が確認する」というレビューの価値を下げる。
+
+対処として、**双方に明示されたValidation IDの共通部分**を新しい任意項目`sharedValidations`として昇順で返す。比較できない`unresolved-context`／`unresolved-reference`では従来どおり集合を返さない。`attachValidationScopeSources`は共通・片側固有のValidation IDすべてを合併し、重複するSubjectを除去して出典位置とファイル指紋を辿る。出典が曖昧・不明なら`unresolvedSource`へ残す。集合一致は業務同値・実行適用範囲一致・Acceptanceの証拠とはしない。
+
+実Referenceでは`order_entry`のValidation宣言3件のうち、`BP-05`が明示する2件を`sharedValidations`、残る1件を`applicationOnly`と表示する。出典の期待件数はApplication定義1件とValidation定義3件の計4件となる。`BP-05`側に残る1件を追加して集合を一致させた実験では、`sharedValidations`が3件で`sourceEvidence`が計4件になることを要求し、出典Indexを空にした場合は古い証拠を破棄して未解決4件を返す回帰テストを追加した。
+
+**実装・テストの追加はGitHubブランチに反映したが、最新のGoテスト、実Workspace結合、full repository-health-checkはこの時点で未実施**。過去の隔離Goテストは、今回の`sharedValidations`実装を含んでいないため成功証拠に転用しない。PRをDraftで維持し、統合を停止する。
