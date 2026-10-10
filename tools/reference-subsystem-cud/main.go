@@ -3,6 +3,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -75,12 +76,20 @@ type Coverage struct {
 	ProcedureSteps  int `json:"procedureSteps"`
 }
 
+// InputFingerprints bind this report to the exact supplied bytes. They are not
+// proof of an authoritative Workspace or of accepted candidate facts.
+type InputFingerprints struct {
+	WorldJSON string `json:"worldJSON"`
+	FactsJSON string `json:"factsJSON"`
+}
+
 type Report struct {
-	SchemaVersion  string       `json:"schemaVersion"`
-	AuthorityLimit string       `json:"authorityLimit"`
-	Status         string       `json:"status"`
-	Coverage       Coverage     `json:"coverage"`
-	Diagnostics    []Diagnostic `json:"diagnostics"`
+	SchemaVersion     string             `json:"schemaVersion"`
+	AuthorityLimit    string             `json:"authorityLimit"`
+	Status            string             `json:"status"`
+	Coverage          Coverage           `json:"coverage"`
+	InputFingerprints *InputFingerprints `json:"inputFingerprints,omitempty"`
+	Diagnostics       []Diagnostic       `json:"diagnostics"`
 }
 
 func Inspect(w World, f Facts) Report {
@@ -150,11 +159,17 @@ func Inspect(w World, f Facts) Report {
 			add("UNKNOWN_OPERATION", "unresolved", subject, op.Source, "supported declared operations are C, R, U and D")
 			continue
 		}
-		if patternCount[op.Pattern] != 1 {
+		patternResolved := patternCount[op.Pattern] == 1
+		dataResolved := dataCount[op.Data] == 1
+		if !patternResolved {
 			add("IO_PATTERN_UNRESOLVED", "unresolved", subject, op.Source, "Pattern must resolve to exactly one World Pattern")
 		}
-		if dataCount[op.Data] != 1 {
+		if !dataResolved {
 			add("IO_DATA_UNRESOLVED", "unresolved", subject, op.Source, "Data must resolve to exactly one World Data")
+		}
+		// Do not assign ownership violations to a Function whose Pattern
+		// is missing or ambiguous. Its declared CUD is not addressable.
+		if !patternResolved || !dataResolved {
 			continue
 		}
 		matches := owners[op.Data]
@@ -240,6 +255,10 @@ func main() {
 		fail(err)
 	}
 	out := Inspect(w, f)
+	out.InputFingerprints = &InputFingerprints{
+		WorldJSON: snapshotDigest(worldBytes),
+		FactsJSON: snapshotDigest(factsBytes),
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(out); err != nil {
@@ -250,6 +269,12 @@ func main() {
 	if out.Status != "no-findings-in-declared-scope" {
 		os.Exit(1)
 	}
+}
+
+// snapshotDigest identifies the exact supplied JSON bytes, not whether the
+// content came from the current accepted Source or was altered by the caller.
+func snapshotDigest(raw []byte) string {
+	return fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
 }
 
 func fail(err error) {
