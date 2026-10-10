@@ -106,9 +106,9 @@ func TestTrackedCompiledSourceInventory(t *testing.T) {
 		EmbedFiles: []string{"assets/x.txt"},
 	}
 	tracked := map[string]struct{}{
-		"tools/sample/main.go":   {},
-		"tools/sample/native.go": {},
-		"tools/sample/native.h":  {},
+		"tools/sample/main.go":      {},
+		"tools/sample/native.go":    {},
+		"tools/sample/native.h":     {},
 		"tools/sample/assets/x.txt": {},
 	}
 	for _, tc := range []struct {
