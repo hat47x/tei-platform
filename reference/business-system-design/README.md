@@ -120,8 +120,10 @@ go run ./tools/reference-business-procedure-check -review-validation-scope
 | --- | --- |
 | `review-needed` | 明示参照の集合に差があり、人による適用範囲の確認が必要。自動的な不整合判定ではない |
 | `no-set-difference` | 集合には差がない。ただし業務上の意味や実行結果が一致する証拠ではない |
-| `unresolved-context` | 比較先Applicationが未指定・未発見・重複しており、比較を行わない |
+| `unresolved-context` | 比較するStep IDが空欄・重複する、または比較先Applicationが未指定・未発見・重複しており、比較の文脈を一意に特定できない |
 | `unresolved-reference` | Validation参照が未解決・重複するため、集合差の判定を保留する。`referenceIssues`には原因となる側、Validation ID、原因を具体的に返す |
+
+`validation-support`ステップの識別子は、他の種類のステップも含む同一Business Procedureの全ステップ内で一意である必要があります。Step IDが空欄か重複している場合、たとえValidationの参照集合が比較可能でも`unresolved-context`へ保留します。元のcheckerのblocking診断とは別の読み取り表示であり、どちらのStepを正しいものとして選ぶこともありません。
 
 `referenceIssues`の要素は、`side`（`application`または`procedure`）、`id`（明示されたValidation ID）、`reason`で構成します。`reason`は`missing-definition`（意味定義が存在しない）、`ambiguous-definition`（意味定義が複数存在する）、`duplicate-declaration`（その側で同じ参照を繰り返した）のいずれかです。同じIDでも両側で解決できない場合はそれぞれ表示します。これらは調査の手掛かりであり、参照差やビジネス上の矛盾を確定しません。出典ファイルを探せなかった状態を表す`unresolvedSource`とは別概念です。
 
