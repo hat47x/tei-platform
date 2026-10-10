@@ -7,6 +7,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"tei/internal/core"
+	"tei/internal/plugin"
 )
 
 func openTestStore(t *testing.T, maxBytes int64) localArtifactStore {
@@ -348,5 +351,57 @@ func TestReceiptLocatorDoesNotLeakStoreRoot(t *testing.T) {
 	want := filepath.ToSlash(filepath.Join(artifactDigestAlgorithm, strings.TrimPrefix(receipt.Digest, "sha256:")))
 	if receipt.Locator != want {
 		t.Fatalf("receipt locator=%q want=%q", receipt.Locator, want)
+	}
+}
+
+
+func TestLockedBuildDigestRetrievesExactStoredArtifact(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	artifact := []byte("self-build locked artifact")
+	receipt, err := store.PutBytes(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	plan := plugin.BuildPlan{
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      plugin.Identity{ID: core.MustCanonicalID("tei.reference.store_locked_plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint: strings.Repeat("a", 64),
+		Sources: []plugin.BuildSource{{
+			Kind:    "reference-source",
+			ID:      "plugin-source",
+			Locator: "reference://plugin-source",
+			Digest:  "sha256:" + strings.Repeat("b", 64),
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.store_reference"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  "sha256:" + strings.Repeat("c", 64),
+		},
+		Recipe: plugin.BuildRecipe{
+			Kind:       "deterministic-reference",
+			Entrypoint: "plugin-source",
+		},
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
+		Target:     "host/reference",
+	}
+	locked, err := plugin.LockBuildOutput(plan, receipt.Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if locked.ArtifactDigest != receipt.Digest {
+		t.Fatalf("locked artifact digest=%s want=%s", locked.ArtifactDigest, receipt.Digest)
+	}
+
+	got, getReceipt, err := store.GetBytes(locked.ArtifactDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(artifact) {
+		t.Fatalf("LockedBuild digest retrieved wrong bytes: %q", got)
+	}
+	if getReceipt.Digest != locked.ArtifactDigest {
+		t.Fatalf("get receipt digest=%s want locked=%s", getReceipt.Digest, locked.ArtifactDigest)
 	}
 }
