@@ -98,10 +98,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	// later Decision JSON would silently overwrite the generated World.
 	// This collision is invalid even with explicit baseline write permission.
 	if command == "accept" && *outPath != "" && *derivedOut != "" {
-		outDestination, outErr := resolveOutputDestination(*outPath)
-		derivedDestination, derivedErr := resolveOutputDestination(*derivedOut)
-		if outErr != nil || derivedErr != nil ||
-			referencePathText(outDestination) == referencePathText(derivedDestination) {
+		collision, err := outputDestinationsReferToSameFile(*outPath, *derivedOut)
+		if err != nil || collision {
 			fmt.Fprintln(stderr, "acceptの-outと-derived-outは、同じ出力ファイルを指定できません（別名・シンボリックリンクも含みます）")
 			return 2
 		}
@@ -110,11 +108,6 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	// The candidate source must not be an output of its own acceptance:
 	// accepting changes Source before emitting the Decision and derived World.
 	if command == "accept" && (*outPath != "" || *derivedOut != "") {
-		candidateDestination, err := resolveOutputDestination(*candidatePath)
-		if err != nil {
-			fmt.Fprintln(stderr, "candidate出力先の照合に失敗しました:", err)
-			return 2
-		}
 		for _, output := range []struct {
 			name string
 			path string
@@ -125,8 +118,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			if output.path == "" {
 				continue
 			}
-			destination, err := resolveOutputDestination(output.path)
-			if err != nil || referencePathText(candidateDestination) == referencePathText(destination) {
+			collision, err := outputDestinationsReferToSameFile(*candidatePath, output.path)
+			if err != nil || collision {
 				fmt.Fprintln(stderr, "acceptの"+output.name+"は入力candidateと同一ファイルを指定できません（別名・シンボリックリンクも含みます）")
 				return 2
 			}
@@ -147,10 +140,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			preservedInput = *inputPath
 		}
 		if preservedInput != "" {
-			inputDestination, inputErr := resolveOutputDestination(preservedInput)
-			outputDestination, outputErr := resolveOutputDestination(*outPath)
-			if inputErr != nil || outputErr != nil ||
-				referencePathText(inputDestination) == referencePathText(outputDestination) {
+			collision, err := outputDestinationsReferToSameFile(preservedInput, *outPath)
+			if err != nil || collision {
 				fmt.Fprintln(stderr, command+"の-outは入力ファイルと同一の出力先を指定できません（別名・シンボリックリンクも含みます）")
 				return 2
 			}
@@ -175,10 +166,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			if input.path == "" {
 				continue
 			}
-			inputDestination, inputErr := resolveOutputDestination(input.path)
-			outputDestination, outputErr := resolveOutputDestination(*outPath)
-			if inputErr != nil || outputErr != nil ||
-				referencePathText(inputDestination) == referencePathText(outputDestination) {
+			collision, err := outputDestinationsReferToSameFile(input.path, *outPath)
+			if err != nil || collision {
 				fmt.Fprintln(stderr, command+"の-outは"+input.flag+"の入力ファイルを上書きできません（別名・シンボリックリンクも含みます）")
 				return 2
 			}
@@ -601,6 +590,40 @@ func resolveOutputDestination(path string) (string, error) {
 			current = parent
 		}
 	}
+}
+
+// outputDestinationsReferToSameFile compares both resolved path spellings
+// and, for existing files, filesystem identities. Path comparison alone is
+// insufficient: two different hard-link names can overwrite the same input
+// file or cause accept's derived World to be replaced by its Decision JSON.
+// Unresolvable destinations other than newly created files fail closed.
+func outputDestinationsReferToSameFile(left, right string) (bool, error) {
+	leftPath, err := resolveOutputDestination(left)
+	if err != nil {
+		return false, err
+	}
+	rightPath, err := resolveOutputDestination(right)
+	if err != nil {
+		return false, err
+	}
+	if referencePathText(leftPath) == referencePathText(rightPath) {
+		return true, nil
+	}
+	leftInfo, err := os.Stat(leftPath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	rightInfo, err := os.Stat(rightPath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return os.SameFile(leftInfo, rightInfo), nil
 }
 
 // referencePathText matches protected paths conservatively even on hosts
