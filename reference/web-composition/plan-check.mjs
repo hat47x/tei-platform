@@ -15,15 +15,15 @@ export function validateAuthenticationPlan(plan){
     for(const id of policy.allowedProviders) if(!providers.has(id)) throw new Error("authentication policy references a missing provider: "+id);
     if(new Set(policy.allowedProviders).size!==policy.allowedProviders.length) throw new Error("authentication policy repeats a provider");
   }
-  const links=new Map(),exactLinks=new Set();
+  const links=new Map();
   for(const link of plan.subjectLinks){
     if(!link.providerId || !providers.has(link.providerId) || !link.issuer || !link.subject || !link.principalId) throw new Error("subject linking requires provider, issuer, subject and principal identity");
     if(providers.get(link.providerId).issuer!==link.issuer) throw new Error("subject issuer differs from provider identity");
-    const exactKey=JSON.stringify([link.providerId,link.issuer,link.subject]);
-    if(exactLinks.has(exactKey)) throw new Error("duplicate identity link declaration");
-    exactLinks.add(exactKey);
     const key=JSON.stringify([link.providerId,link.issuer,link.subject]);
-    if(links.has(key) && links.get(key)!==link.principalId) throw new Error("conflicting principal mapping");
+    if(links.has(key)){
+      if(links.get(key)!==link.principalId) throw new Error("conflicting principal mapping");
+      throw new Error("duplicate identity link declaration");
+    }
     links.set(key,link.principalId);
   }
   return {providerCount:providers.size,policyCount:plan.policies.length,linkedSubjectCount:links.size};
