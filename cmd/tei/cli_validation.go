@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"sort"
+	"strings"
 
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
@@ -33,6 +36,19 @@ type cliValidationSource struct {
 type cliValidationFailure struct {
 	Code	string	`json:"code"`
 	Message	string	`json:"message"`
+}
+
+// invalidJSONValidationArguments keeps an opt-in JSON response machine-readable
+// even when mutually exclusive or missing input flags are supplied.
+func invalidJSONValidationArguments(out io.Writer) (int, error) {
+	return writeValidationReport(out, cliValidationReport{
+		SchemaVersion: "tei.cli.validate/v0",
+		Diagnostics:   []cliValidationItem{},
+		Error: &cliValidationFailure{
+			Code:    "INVALID_ARGUMENT",
+			Message: "validate -json requires -workspace, forbids -world and positional arguments",
+		},
+	}, 2)
 }
 
 // validateWorkspaceJSON preserves the existing text command and exit codes:
@@ -76,6 +92,10 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 		}
 		report.Diagnostics = append(report.Diagnostics, item)
 	}
+	// A stable order makes CLI results usable in repeatable LLM/tool workflows.
+	sort.Slice(report.Diagnostics, func(i, j int) bool {
+		return cliDiagnosticSortKey(report.Diagnostics[i]) < cliDiagnosticSortKey(report.Diagnostics[j])
+	})
 	report.OK = true
 	for _, item := range report.Diagnostics {
 		if item.Diagnostic.Severity == validation.Error {
@@ -87,6 +107,24 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 		return writeValidationReport(out, report, 1)
 	}
 	return writeValidationReport(out, report, 0)
+}
+
+func cliDiagnosticSortKey(item cliValidationItem) string {
+	d := item.Diagnostic
+	// Length-prefixed fields avoid ambiguous concatenations.
+	fields := []string{string(d.Severity), d.Code, d.Message}
+	if d.Subject != nil {
+		fields = append(fields, d.Subject.Kind, d.Subject.ID)
+	}
+	for _, s := range item.Sources {
+		fields = append(fields, s.ArtifactPath,
+			fmt.Sprintf("%012d:%012d", s.Range.Start.Line, s.Range.Start.Column),
+			string(s.Role))
+	}
+	for i, field := range fields {
+		fields[i] = fmt.Sprintf("%d:%s", len(field), field)
+	}
+	return strings.Join(fields, "|")
 }
 
 func writeValidationReport(out io.Writer, report cliValidationReport, code int) (int, error) {
