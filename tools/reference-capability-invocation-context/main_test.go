@@ -10,14 +10,20 @@ import (
 )
 
 const (
-	testAccessSlot = "tei.reference.context-slot.authorization-access/v0"
-	testTraceSlot  = "tei.reference.context-slot.trace/v0"
+	testAccessSlot    = "tei.reference.context-slot.authorization-access/v0"
+	testPrincipalSlot = "tei.reference.context-slot.verified-principal/v0"
+	testTraceSlot     = "tei.reference.context-slot.trace/v0"
 )
 
 func accessSlotContracts() []ContextSlotContract {
 	return []ContextSlotContract{
 		{
 			ID:                           testAccessSlot,
+			Version:                      "0.1.0",
+			ForbidDirectResultReflection: true,
+		},
+		{
+			ID:                           testPrincipalSlot,
 			Version:                      "0.1.0",
 			ForbidDirectResultReflection: true,
 		},
@@ -78,6 +84,44 @@ func TestExecutionContextIsSeparateFromSemanticRequest(t *testing.T) {
 	}
 	if execution.Receipt.ReusePartitionRef != "visibility-partition:current" {
 		t.Fatalf("Host reuse partition was lost: %+v", execution.Receipt)
+	}
+}
+
+func TestVerifiedPrincipalSecondConsumerUsesSameContextGate(t *testing.T) {
+	requirements := []ContextSlotRequirement{{
+		ContractID:      testPrincipalSlot,
+		ContractVersion: "0.1.0",
+	}}
+	host := HostExecutionContext{
+		Bindings: []ContextSlotBinding{{
+			ContractID:        testPrincipalSlot,
+			ContractVersion:   "0.1.0",
+			BindingReceiptRef: "principal-receipt:current",
+			Value:             []byte("principal:alice"),
+		}},
+		ReusePartitionRef: "principal-partition:alice",
+	}
+	request := []byte(`{"action":"order.read","resource":"order:42"}`)
+
+	_, err := invokeWithExecutionContext(
+		context.Background(),
+		accessSlotContracts(),
+		requirements,
+		host,
+		request,
+		func(_ context.Context, slots ContextSlotView, got []byte) ([]byte, error) {
+			principal, ok := slots.Lookup(testPrincipalSlot)
+			if !ok || string(principal) != "principal:alice" {
+				t.Fatalf("verified Principal slot was not delivered: %q ok=%v", principal, ok)
+			}
+			if string(got) != string(request) {
+				t.Fatal("Web semantic request changed while passing context gate")
+			}
+			return []byte(`{"status":"authorized-path-reached"}`), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
