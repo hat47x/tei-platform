@@ -267,9 +267,27 @@ func build(f fixture, r review, set procedureSet, world ir.World, procedureFile,
 	info, infoDiagnostics := buildInformationProjection(r, ids, world, reviewFile)
 	p.Information = info
 	p.Diagnostics = append(p.Diagnostics, infoDiagnostics...)
+	// The set declares procedure-level endpoints. Remote Step existence is
+	// not proven here: this adapter loads only one Procedure's Step source.
+	procedureCounts:=map[string]int{}
+	for i,member:=range set.Procedures {
+		procedureCounts[member.ID]++
+		if strings.TrimSpace(member.ID)=="" || strings.TrimSpace(member.Artifact)=="" || procedureCounts[member.ID]>1 {
+			add("DFD_SET_MEMBER_INVALID","error",setFile,fmt.Sprintf("/procedures/%d",i),"reference set requires unique non-empty Procedure ID and artifact locator")
+		}
+	}
+	if procedureCounts[f.Procedure.ID]!=1 {
+		add("DFD_CURRENT_PROCEDURE_NOT_IN_SET","error",setFile,"/procedures","current Procedure must be listed exactly once")
+	}
 	for i,h := range set.Handoffs {
 		if h.From.Procedure!=f.Procedure.ID && h.To.Procedure!=f.Procedure.ID { continue }
 		loc := location{setFile,fmt.Sprintf("/handoffs/%d",i)}
+		if procedureCounts[h.From.Procedure]!=1 {
+			add("DFD_HANDOFF_FROM_PROCEDURE_NOT_EXACT","error",setFile,loc.Pointer+"/from/procedure","Handoff from Procedure not present exactly once in set")
+		}
+		if procedureCounts[h.To.Procedure]!=1 {
+			add("DFD_HANDOFF_TO_PROCEDURE_NOT_EXACT","error",setFile,loc.Pointer+"/to/procedure","Handoff to Procedure not present exactly once in set")
+		}
 		if h.From.Procedure==f.Procedure.ID && !ids[h.From.Step] {
 			add("DFD_HANDOFF_FROM_MISSING","error",setFile,loc.Pointer+"/from/step","handoff source Step not found")
 		}
