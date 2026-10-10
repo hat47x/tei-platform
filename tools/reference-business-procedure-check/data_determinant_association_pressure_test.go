@@ -101,13 +101,30 @@ func TestDataDeterminantAssociationReferenceKeepsCorePromotionUnresolved(t *test
 		t.Fatal("a Core contract candidate proposal is required without promoting it to a decision")
 	}
 	if ledger.Review.Author != "tei-original-reference-authoring" ||
-		ledger.Review.IndependentReview != "required" {
+		ledger.Review.IndependentReview != "required" ||
+		ledger.Review.Checklist != "DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md DDA-01..DDA-12" {
 		t.Fatalf("association determinant pressure review state drifted: %+v", ledger.Review)
 	}
 	if ledger.Handoff.ArisesNaturally ||
 		ledger.Handoff.Candidate.From != "" ||
 		ledger.Handoff.Candidate.To != "" {
 		t.Fatalf("data determinant pressure invented a Business Handoff: %+v", ledger.Handoff)
+	}
+}
+
+func TestDataDeterminantAssociationReferenceReviewIsNotSelfAccepted(t *testing.T) {
+	ledger := loadDataDeterminantAssociationSeedLedger(t)
+	if ledger.Review.IndependentReview != "required" {
+		t.Fatalf("association determinant Reference bypassed independent review: %+v", ledger.Review)
+	}
+	for _, forbidden := range []string{
+		"review-passed",
+		"accepted",
+		"approved",
+	} {
+		if strings.EqualFold(strings.TrimSpace(ledger.Review.IndependentReview), forbidden) {
+			t.Fatalf("Reference claimed review outcome before independent evidence: %+v", ledger.Review)
+		}
 	}
 }
 
