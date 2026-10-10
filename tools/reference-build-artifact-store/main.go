@@ -271,12 +271,16 @@ func (s localArtifactStore) readVerified(path, expectedDigest string) ([]byte, e
 }
 
 func (s localArtifactStore) receipt(operation, digest string, size int64, path string) artifactStoreReceipt {
+	relative, err := filepath.Rel(s.root, path)
+	if err != nil {
+		relative = ""
+	}
 	return artifactStoreReceipt{
 		Schema:          artifactStoreReceiptSchema,
 		Operation:       operation,
 		Digest:          digest,
 		Size:            size,
-		Locator:         filepath.ToSlash(path),
+		Locator:         filepath.ToSlash(relative),
 		AuthorityLimits: append([]string(nil), artifactStoreAuthorityLimits...),
 	}
 }
