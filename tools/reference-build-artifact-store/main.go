@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"tei/internal/core"
+	"tei/internal/plugin"
 )
 
 const (
@@ -46,7 +50,94 @@ type artifactStoreReceipt struct {
 	AuthorityLimits []string `json:"authorityLimits"`
 }
 
-func main() {}
+type artifactStoreEvidence struct {
+	Schema               string               `json:"schema"`
+	Put                  artifactStoreReceipt `json:"put"`
+	Get                  artifactStoreReceipt `json:"get"`
+	ReopenedGet          artifactStoreReceipt `json:"reopenedGet"`
+	LockedArtifactDigest string               `json:"lockedArtifactDigest"`
+	RetrievedDigest      string               `json:"retrievedDigest"`
+	BytesEqual           bool                 `json:"bytesEqual"`
+	AuthorityLimits      []string             `json:"authorityLimits"`
+}
+
+func main() {
+	root, err := os.MkdirTemp("", "tei-build-artifact-store-*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(root)
+
+	store, err := openLocalArtifactStore(root, 1<<20)
+	if err != nil {
+		panic(err)
+	}
+	artifact := []byte("tei local artifact store reference")
+	put, err := store.PutBytes(artifact)
+	if err != nil {
+		panic(err)
+	}
+
+	plan := plugin.BuildPlan{
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      plugin.Identity{ID: core.MustCanonicalID("tei.reference.artifact_store_plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint: strings.Repeat("a", 64),
+		Sources: []plugin.BuildSource{{
+			Kind:    "reference-source",
+			ID:      "plugin-source",
+			Locator: "reference://plugin-source",
+			Digest:  "sha256:" + strings.Repeat("b", 64),
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.artifact_store_reference"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  "sha256:" + strings.Repeat("c", 64),
+		},
+		Recipe: plugin.BuildRecipe{
+			Kind:       "deterministic-reference",
+			Entrypoint: "plugin-source",
+		},
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
+		Target:     "host/reference",
+	}
+	locked, err := plugin.LockBuildOutput(plan, put.Digest)
+	if err != nil {
+		panic(err)
+	}
+
+	firstBytes, get, err := store.GetBytes(locked.ArtifactDigest)
+	if err != nil {
+		panic(err)
+	}
+	reopened, err := openLocalArtifactStore(root, 1<<20)
+	if err != nil {
+		panic(err)
+	}
+	secondBytes, reopenedGet, err := reopened.GetBytes(locked.ArtifactDigest)
+	if err != nil {
+		panic(err)
+	}
+	if !bytes.Equal(firstBytes, artifact) || !bytes.Equal(secondBytes, artifact) {
+		panic("artifact store reference retrieved different bytes")
+	}
+
+	out := artifactStoreEvidence{
+		Schema:               "tei.reference.local-artifact-store-evidence/v0",
+		Put:                  put,
+		Get:                  get,
+		ReopenedGet:          reopenedGet,
+		LockedArtifactDigest: locked.ArtifactDigest,
+		RetrievedDigest:      digestBytes(secondBytes),
+		BytesEqual:           true,
+		AuthorityLimits:      append([]string(nil), artifactStoreAuthorityLimits...),
+	}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(out); err != nil {
+		panic(err)
+	}
+}
 
 func openLocalArtifactStore(root string, maxBytes int64) (localArtifactStore, error) {
 	if maxBytes <= 0 {
