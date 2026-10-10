@@ -117,6 +117,11 @@ func parseGoList(reader io.Reader, entry, tags string) (Report, error) {
 	}
 	for _, p := range result.Packages {
 		for _, dep := range p.Imports {
+			// import "C" is a cgo pseudo-import, not a Go package emitted
+			// by go list -deps -json. It is valid only for cgo sources.
+			if dep == "C" && len(p.CgoFiles) != 0 {
+				continue
+			}
 			if _, ok := seen[dep]; !ok {
 				return Report{}, fmt.Errorf("go list closure missing import %s from %s", dep, p.ImportPath)
 			}
