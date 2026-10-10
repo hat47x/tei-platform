@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"strings"
 )
@@ -20,6 +21,11 @@ type HTTPTransportImplementation func(
 	context.Context,
 	GenericDispatch,
 ) (GenericTransportResult, error)
+
+func isJSONMediaType(raw string) bool {
+	mediaType, _, err := mime.ParseMediaType(strings.TrimSpace(raw))
+	return err == nil && mediaType == httpTransportContentType
+}
 
 func NewHTTPTransportHandler(
 	expectedIdentity GenericInvocationIdentity,
@@ -42,8 +48,7 @@ func NewHTTPTransportHandler(
 			http.Error(w, "missing request id", http.StatusBadRequest)
 			return
 		}
-		contentType := r.Header.Get("Content-Type")
-		if contentType != httpTransportContentType {
+		if !isJSONMediaType(r.Header.Get("Content-Type")) {
 			http.Error(w, "unsupported content type", http.StatusUnsupportedMediaType)
 			return
 		}
@@ -146,11 +151,10 @@ func invokeOverHTTPTransport(
 			requestID,
 		)
 	}
-	if resp.Header.Get("Content-Type") != httpTransportContentType {
+	if !isJSONMediaType(resp.Header.Get("Content-Type")) {
 		return TransportExecution{}, fmt.Errorf(
-			"HTTP capability transport content type %q is not %q",
+			"HTTP capability transport content type %q is not JSON",
 			resp.Header.Get("Content-Type"),
-			httpTransportContentType,
 		)
 	}
 	responsePayload, err := io.ReadAll(io.LimitReader(resp.Body, httpTransportMaxBytes+1))
