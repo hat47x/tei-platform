@@ -188,3 +188,21 @@ GitHub Blobと一致するローカルコピーに対し、Go 1.23.2の`gofmt`�
 - **実際のReference Workspace／Driver／Command Scenarioを読み込む新結合試験は未実行です。** 既存旧認証経路の回帰を含む実Repositoryの`go test`、`go vet`、`go test -race`、exact-head `tools/repository-health-check.sh`のPASSは取得していません。
 
 **公開経路も未切替えです。** 現在の`webTargetServer.Handler()`の`/scenario/submit`は旧Credential方式のままです。Session方式は本Referenceの`NewHost`を手動で構成した合成テストによる専用入口であり、実IdP、Session Cookie、CSRF Provider、ブラウザ、productionを動作確認したものではありません。本番相当の経路を公開する前には、旧入口との到達可能性の整理、信頼済みProvider／Subject Linkの実装、Tenant境界、account無効化・期限・失効検査、既存Bindingへの適合確認が必要です。
+
+## E2.4：既存Web Serverの保護されたSession経路へ接続（2026-10-10）
+
+First Web Targetの`newWebTargetServer`に、信頼済みHostだけが構成する任意の`withProtectedSessionCommand`を追加しました。設定された場合にのみ`Handler()`は**POST `/scenario/session-submit`**を登録します。Host側で`NewCanonicalActionAuthorizer`と`NewHost`を必ず構築するため、呼出し元が未保護の裸の`http.Handler`を挿し込む経路にはしていません。セッション検証、CSRF検証、`ProviderID → Issuer`の許可一覧、信頼済み主体リンク、監査、同一Applicationの既存Command Runnerが欠ける構成は起動時に拒否します。
+
+旧**POST `/scenario/submit`**は従来の`loginId`/`credential`入力と`security.authenticate`実行を維持します。新しいSession経路のJSON入力は`from`と`row`だけです。`loginId`、`credential`、`subjectId`等の未宣言フィールド、複数JSON文書、負の行番号は拒否します。新旧経路のBusiness ResultとExecution ErrorのHTTP応答・Provenance記述は`writeCommandScenarioHTTPResult`で共通化し、Web側に別の意味変換表を作りません。新経路は、Hostの認可とRunner内の既存`security.authorize`の両方を通過して初めてCommandへ進みます。
+
+`tools/reference-first-web-target/session_command_route_test.go`に、既存`reference/workspace`、`reference/legacy-auth`、実`newWebTargetServer`と`Handler()`を利用する試験を追加しました。合成の二つの認証元からの受注完了、旧Credential経路の互換、Session経路未設定時の404、設定欠落時の起動拒否、CSRF欠落、既存業務規則による閲覧者の拒否、JSON経由の資格情報・主体IDの注入拒否、監査記録を検査します。テスト用`X-Synthetic-Session`ヘッダーは**あくまで合成Providerのテストデータ**であり、本番認証手段として提供しません。
+
+### E2.4の検証範囲
+
+- `session_command_route.go`: GitHub Blob `cde1faf11b220379d7670e6cc431b119907611fa`
+- `session_command_route_test.go`: GitHub Blob `f56010fb94b053b8c73200c9ed0475aef1102fe0`
+- この二ファイルは、GitHub Blob SHAとローカルファイルの`git hash-object`が一致することを確認しました。`gofmt`実行後のファイルは変更なし、Goの構文処理に必要な形式を満たしています。
+- 実Workspaceへの依存があるため、**追加したE2.4結合テストの実行結果は未取得**です。旧Credential経路と新Session経路の`go test`、race、vet、actual full checkoutでの全体Repository Healthの成功は主張しません。
+- 同じPRへの並行変更を監視しており、2026-10-10時点のmain更新が対象とした`plan/issue/001067-cross-project-plugin-promotion.md`は本PRの変更ファイルと重複しません。ただしheadが最新mainの1コミット後方なので、統合時の資格判断には最新mainを含むexact head再検証が必要です。
+
+これは、本番配備時に利用できるSession管理、実IdP検証、Secure Cookie、CSRF Token発行・検証、subject-link管理・失効、Trusted Proxyの検証を実装したものではありません。新経路は明示的にHost構成した場合に限るReference機構であり、現行`main.go`の通常起動経路では未選択です。安全性宣言と実証を混同せず、導入前には実Provider・ブラウザを使うE3検証が必要です。
