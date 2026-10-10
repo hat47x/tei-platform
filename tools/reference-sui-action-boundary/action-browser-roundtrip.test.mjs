@@ -56,7 +56,7 @@ function scenario() {
       const snap = snapshots.get(keyFor(intent.applicationID, intent.resourceID));
       return snap && { applicationID: intent.applicationID, resourceID: intent.resourceID, ...structuredClone(snap) };
     },
-    applySnapshot: async (resource) => { localState = structuredClone(resource.value); },
+    applySnapshot: async (resource) => { localState = structuredClone(resource.value); return true; },
     isCurrent: () => true,
   });
   return {
