@@ -38,11 +38,31 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	if len(head) != 40 {
 		t.Fatalf("invalid checkout revision %q", head)
 	}
+	checkExactClean := func(stage string) {
+		t.Helper()
+		currentHead := exec.Command("git", "rev-parse", "HEAD")
+		currentHead.Dir = root
+		actualHead, err := currentHead.Output()
+		if err != nil || strings.TrimSpace(string(actualHead)) != head {
+			t.Fatalf("%s: tested checkout HEAD changed: %v", stage, err)
+		}
+		gitStatus := exec.Command("git", "status", "--porcelain", "--untracked-files=all")
+		gitStatus.Dir = root
+		dirty, err := gitStatus.Output()
+		if err != nil {
+			t.Fatalf("%s: clean checkout status unavailable: %v", stage, err)
+		}
+		if len(bytes.TrimSpace(dirty)) != 0 {
+			t.Fatalf("%s: evidence requires a clean checkout, but %d status bytes were returned", stage, len(dirty))
+		}
+	}
+	checkExactClean("before")
+	defer checkExactClean("after")
 
 	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelBuild()
 	binary := filepath.Join(t.TempDir(), "first-web-target")
-	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, "./tools/reference-first-web-target")
+	build := exec.CommandContext(buildCtx, "go", "build", "-mod=readonly", "-o", binary, "./tools/reference-first-web-target")
 	build.Dir = root
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build existing Web Target: %v\n%s", err, output)
