@@ -100,9 +100,10 @@ type Report struct {
 	GOOS           string          `json:"goos"`
 	GOARCH         string          `json:"goarch"`
 	CGOEnabled     string          `json:"cgoEnabled"`
-	GoFlags        string          `json:"goFlags"`
-	BuildTags      string          `json:"buildTags,omitempty"`
-	Packages       []SourcePackage `json:"packages"`
+	GoFlags        string            `json:"goFlags"`
+	BuildTags      string            `json:"buildTags,omitempty"`
+	TargetFeatures map[string]string `json:"targetFeatures,omitempty"`
+	Packages       []SourcePackage   `json:"packages"`
 }
 
 // parseGoList consumes the documented stream of JSON package objects returned
@@ -399,17 +400,37 @@ func produceEvidence(entry, tags string) (Report, error) {
 	if err := validateTrackedSources(output, root, tracked); err != nil {
 		return Report{}, err
 	}
-	envCmd := exec.Command("go", "env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS")
+	// GOOS/GOARCH alone do not identify the source-selection profile:
+	// for example, GOAMD64=v3 activates //go:build amd64.v3 sources
+	// while GOAMD64=v1 does not. Capture all Go 1.23 target tunables.
+	targetTuning := []string{
+		"GO386", "GOAMD64", "GOARM", "GOARM64", "GOEXPERIMENT",
+		"GOLOONG64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM",
+	}
+	envArgs := append([]string{"env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS"}, targetTuning...)
+	envCmd := exec.Command("go", envArgs...)
 	envCmd.Env = goList.Env
 	envOut, err := envCmd.Output()
 	if err != nil {
 		return Report{}, fmt.Errorf("go env failed: %w", err)
 	}
-	var env struct{ GOVERSION, GOOS, GOARCH, CGO_ENABLED, GOFLAGS string }
+	var env map[string]string
 	if err := json.Unmarshal(envOut, &env); err != nil {
 		return Report{}, fmt.Errorf("decode go env: %w", err)
 	}
-	report.GoVersion, report.GOOS, report.GOARCH, report.CGOEnabled, report.GoFlags = env.GOVERSION, env.GOOS, env.GOARCH, env.CGO_ENABLED, env.GOFLAGS
+	report.GoVersion = env["GOVERSION"]
+	report.GOOS = env["GOOS"]
+	report.GOARCH = env["GOARCH"]
+	report.CGOEnabled = env["CGO_ENABLED"]
+	report.GoFlags = env["GOFLAGS"]
+	for _, key := range targetTuning {
+		if value := env[key]; value != "" {
+			if report.TargetFeatures == nil {
+				report.TargetFeatures = make(map[string]string)
+			}
+			report.TargetFeatures[key] = value
+		}
+	}
 	revisionAfter, err := repositoryIdentity()
 	if err != nil {
 		return Report{}, fmt.Errorf("repository changed during observation: %w", err)
