@@ -55,7 +55,7 @@ go tool nm "$temp/frozen" > "$temp/frozen.nm"
 # An authoring symbol in the frozen binary is a failure, not a size win.
 # Absence in nm is evidence only under this toolchain, not an exhaustive
 # binary/secret/authorization proof.
-if grep -E 'tei/internal/(workspace|driver)\\.' "$temp/frozen.nm" >/dev/null; then
+if grep -E 'tei/internal/(workspace|driver)\.' "$temp/frozen.nm" >/dev/null; then
   echo "frozen binary links TEI authoring/driver symbols" >&2
   exit 1
 fi
@@ -63,8 +63,8 @@ first_bytes="$(wc -c < "$temp/first-web" | tr -d '[:space:]')"
 frozen_bytes="$(wc -c < "$temp/frozen" | tr -d '[:space:]')"
 first_sha="$(sha256sum "$temp/first-web" | cut -d' ' -f1)"
 frozen_sha="$(sha256sum "$temp/frozen" | cut -d' ' -f1)"
-first_workspace_symbols="$(grep -c 'tei/internal/workspace\\.' "$temp/first-web.nm" || true)"
-first_driver_symbols="$(grep -c 'tei/internal/driver\\.' "$temp/first-web.nm" || true)"
+first_workspace_symbols="$(grep -c 'tei/internal/workspace\.' "$temp/first-web.nm" || true)"
+first_driver_symbols="$(grep -c 'tei/internal/driver\.' "$temp/first-web.nm" || true)"
 
 if [[ "$(git rev-parse HEAD)" != "$source_revision" || -n "$(git status --porcelain --untracked-files=all)" ]]; then
   echo "source checkout changed during measurement; evidence rejected" >&2
