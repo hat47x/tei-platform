@@ -12,7 +12,7 @@ const usage = [
   "usage:",
   "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID [-business-dfd FILE]",
   "  node reference/studio-authoring/cli.mjs propose -workspace DIR -edit-file FILE",
-  "  alternatively: -world-file FILE -revision-file FILE (read-only artifact inputs)",
+  "  alternatively: -world-file FILE -revision-file FILE [-source-index-file FILE] (read-only artifacts)",
   "  output is JSON on stdout; no command in this CLI writes authoritative source"
 ].join("\n");
 
@@ -20,7 +20,7 @@ function flags(argv) {
   const result = {};
   for (let i = 0; i < argv.length; i += 2) {
     if (!argv[i].startsWith("-") || !argv[i + 1] || ![
-      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd"
+      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd", "-source-index-file"
     ].includes(argv[i]) || Object.hasOwn(result, argv[i])) {
       throw new Error("INVALID_FLAG: " + (argv[i] || ""));
     }
@@ -31,7 +31,7 @@ function flags(argv) {
 function jsonFile(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
-function fromWorkspace(workspace) {
+function fromWorkspace(workspace, withSourceIndex) {
   // Resolve relative workspaces before switching the child process to repo root.
   workspace = resolve(workspace);
   // The two reads are not atomic. The Shared Acceptance Preview and Accept
@@ -43,9 +43,12 @@ function fromWorkspace(workspace) {
     "revision", "-workspace", workspace)).modelRevision;
   const before = getRevision();
   const world = JSON.parse(run("./cmd/tei", "world", "-workspace", workspace));
+  const sourceIndex = withSourceIndex
+    ? JSON.parse(run("./cmd/tei", "source-index", "-workspace", workspace))
+    : undefined;
   const after = getRevision();
   if (before !== after) throw new Error("SOURCE_CHANGED_DURING_PROJECTION");
-  return { world, revision: after };
+  return { world, revision: after, sourceIndex };
 }
 function main(argv) {
   const [command, ...rest] = argv;
@@ -53,17 +56,22 @@ function main(argv) {
   const opt = flags(rest);
   const fromFiles = !!opt["-world-file"] && !!opt["-revision-file"];
   if (!!opt["-workspace"] === fromFiles ||
-      (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"])) ||
+      (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"] ||
+        opt["-source-index-file"])) ||
       (command === "inspect" && (!opt["-focus"] || opt["-edit-file"])) ||
-      (command === "propose" && (!opt["-edit-file"] || opt["-focus"] || opt["-business-dfd"])))
+      (command === "propose" && (!opt["-edit-file"] || opt["-focus"] ||
+        opt["-business-dfd"] || opt["-source-index-file"])))
     throw new Error("INVALID_INPUT");
-  const { world, revision } = fromFiles
+  const { world, revision, sourceIndex } = fromFiles
     ? { world: jsonFile(opt["-world-file"]),
-        revision: jsonFile(opt["-revision-file"]).modelRevision }
-    : fromWorkspace(opt["-workspace"]);
+        revision: jsonFile(opt["-revision-file"]).modelRevision,
+        sourceIndex: opt["-source-index-file"]
+          ? jsonFile(opt["-source-index-file"]) : undefined }
+    : fromWorkspace(opt["-workspace"], command === "inspect");
   if (command === "inspect") return projectWorld(
     world, revision, opt["-focus"],
-    opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}
+    { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
+      ...(sourceIndex ? { sourceIndex } : {}) }
   );
   return candidateFromEdit(world, revision, jsonFile(opt["-edit-file"]));
 }
