@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"tei/internal/core"
@@ -238,8 +239,12 @@ func decodeJSONExact(payload []byte, out any) error {
 	if err := decoder.Decode(out); err != nil {
 		return err
 	}
-	if decoder.More() {
-		return fmt.Errorf("trailing JSON value is not allowed")
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("trailing JSON value is not allowed")
+		}
+		return fmt.Errorf("decode trailing JSON value: %w", err)
 	}
 	return nil
 }
