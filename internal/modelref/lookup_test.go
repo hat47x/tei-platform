@@ -59,3 +59,20 @@ func BenchmarkValidate4096References(b *testing.B) {
 		}
 	}
 }
+
+func TestNodeEvidenceOrderIsNotSemanticDifference(t *testing.T) {
+	before := fixture()
+	before.Nodes[0].Evidence = []modelref.Evidence{
+		{Authority: "source-observation", SourceToken: "a", ArtifactFingerprint: "sha256:first"},
+		{Authority: "source-observation", SourceToken: "b", ArtifactFingerprint: "sha256:second"},
+	}
+	after := fixture()
+	after.Nodes[0].Evidence = []modelref.Evidence{before.Nodes[0].Evidence[1], before.Nodes[0].Evidence[0]}
+	if ds := modelref.Diff(before, after); len(ds) != 0 {
+		t.Fatalf("unordered evidence created a false diff: %+v", ds)
+	}
+	after.Nodes[0].Evidence[1].ArtifactFingerprint = "sha256:changed"
+	if ds := modelref.Diff(before, after); len(ds) != 1 || ds[0].Kind != "evidence-changed" {
+		t.Fatalf("actual evidence change was ignored: %+v", ds)
+	}
+}
