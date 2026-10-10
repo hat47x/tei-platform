@@ -320,6 +320,7 @@ func dot(p projection) string {
 			strconv.Quote("step:"+e.From),strconv.Quote("step:"+e.To),strconv.Quote(e.Kind+": "+e.Condition))
 	}
 	appendInformationDOT(&b, p.Information)
+	appendBusinessContextDOT(&b, p)
 	b.WriteString("}\n")
 	return b.String()
 }
