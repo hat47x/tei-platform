@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // TraceOptions selects only direct declared references. There is no inferred
@@ -135,7 +136,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 		}
 		row := TraceRow{Status: "unresolved", Edge: edge}
 		switch {
-		case counts[edge.From] == 0:
+		case !validKey(edge.From) || counts[edge.From] == 0:
 			row.Issue = "invalid-source"
 		case counts[edge.From] > 1:
 			row.Issue = "ambiguous-source"
@@ -146,8 +147,14 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 			} else {
 				rule, exists := rulesByKey[ruleKey{edge.Relation, edge.From.Subject.Kind, dest.Subject.Kind}]
 				switch {
+				case !validKey(dest):
+					row.Issue = "invalid-target"
 				case !exists:
 					row.Issue = "invalid-edge-type"
+				case strings.TrimSpace(rule.rule.Relation) == "" ||
+					strings.TrimSpace(rule.rule.FromKind) == "" ||
+					strings.TrimSpace(rule.rule.ToKind) == "":
+					row.Issue = "invalid-rule"
 				case rule.conflict:
 					row.Issue = "conflicting-rule"
 				default:
