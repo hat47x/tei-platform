@@ -45,3 +45,27 @@ SVGは最小の描画確認であり、完全な専用ER記号・衝突回避・
 実データの安全な利用、AI候補生成、業務上の整合性の判定、詳細設計への提案とShared Acceptance接続は後続の検証対象です。WorldのRelationKeyが存在しても、説明用Caseのレコード間で業務キーを検査する機構は未実装です。**関係線を描けたことを参照整合性検証済みと読んではいけません。** この参照実装は独立した`std.*` Semantic Extensionの採用根拠にもなりません。
 
 設計の詳細は [M1設計候補](../../plan/design/EXAMPLE_ER_SLIDE_M1_2026-10.md) を参照してください。
+
+## 三値の関連評価（追加した実装候補）
+
+スライドの`relationFindings`には、対象Snapshotに存在するSourceレコードごとの関連評価を追加した。
+
+| result | 限定された意味 |
+| --- | --- |
+| `supported` | 対象テーブルの全レコードがこの説明用Snapshot内に存在すると**Case自身が申告**した範囲で、RelationKeyによる照合が成立した。実際の業務やProviderの正しさを証明しない |
+| `contradiction` | `cardinality=one`の関連で、一つのSourceレコードから**複数の一致Target**が観測されるなど、手元の具体例だけで否定できる条件 |
+| `unresolved` | 対象テーブルが部分的、RelationKey未定義、キー値不足、比較不能、ゼロ件の場合の必須性不明など、成立も不成立も証明できない |
+
+`Example.completeTables`で、説明用Snapshotの対象テーブルが全件列挙されていると申告できる。省略時はすべて部分抜粋として扱う。これはユーザーまたは生成AIが供給した**例に対する仮定**であり、実環境から確認された網羅性のEvidenceではない。Source Indexや実データ観測から正当化されない限り、Productionの完全性保証へ昇格しない。
+
+RelationKeyがない（あるいは対象の属性値を比較できない）場合は、自動結合を試みず`unresolved`とする。`one`で一致Targetが複数見つかった場合だけ、Datasetが部分的でも矛盾が確定する。一致Targetが0件でも、意味モデルに必須性が無ければ、欠如を直ちに`contradiction`にはしない。
+
+Composite RelationKeyもキー対を順番どおり照合する。整数や小数のJSON表記を比較するときは有理数による完全な数値比較を使い、巨大指数を含む値は比較不能に分類してリソース消費を制限する。
+
+### 回帰試験の拡充
+
+`relation_assessment_test.go`で、複合キー、大整数の値精度、部分Datasetでの安易な合格、複数一致Target、欠落・未定義キー、出現0件、Stageとスライド順序、完全テーブル宣言の誤りを反証する。
+
+`world_adapter_test.go`では、実際の正規化済みWorldの`sales.order.customer`を合成レコード値で照合し、同じWorldにあるKeylessな`sales.order.lines`が安易に合格しないことを確認する。どちらも実Providerや本番データの検証ではない。
+
+**検証実行の状態:** Go test / gofmt / full Repository-healthは未実行。これらを実行したというEvidenceは存在しない。
