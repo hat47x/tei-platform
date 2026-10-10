@@ -226,3 +226,68 @@ func TestWebTargetSessionRouteIsOptInAndFailsClosed(t *testing.T) {
 		t.Fatal("duplicate protected session declarations were silently overwritten")
 	}
 }
+
+func TestWebTargetSessionRouteRechecksAccountBeforeCommand(t *testing.T) {
+	t.Run("account expires after HTTP authorization", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		clockCalls := 0
+		config.AccountNow = func() time.Time {
+			clockCalls++
+			if clockCalls == 1 {
+				return runner.now
+			}
+			return runner.now.AddDate(4, 0, 0) // beyond fixture valid_until
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching", `{"row":0}`)
+		if rec.Code != http.StatusForbidden || clockCalls != 2 {
+			t.Fatalf("expired identity was not stopped at command boundary: status=%d clock=%d body=%s", rec.Code, clockCalls, rec.Body.String())
+		}
+		var response webCommandScenarioResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link-denied" || response.Result.Command != nil ||
+			response.Result.Observation != nil || len(audits) != 1 || audits[0].Stage != "rejected" {
+			t.Fatalf("late account revocation reached business command: result=%+v audits=%+v", response.Result, audits)
+		}
+	})
+	t.Run("subject link store fails after HTTP authorization", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		original := config.SubjectLinks
+		calls := 0
+		config.SubjectLinks = func(ctx context.Context, source webcomposition.ExternalSubject) (webcomposition.SubjectLink, bool, error) {
+			calls++
+			if calls == 2 {
+				return webcomposition.SubjectLink{}, false, errors.New("subject link store unavailable")
+			}
+			return original(ctx, source)
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching", `{"row":0}`)
+		if rec.Code != http.StatusServiceUnavailable || calls != 2 {
+			t.Fatalf("late mapping error was not treated as execution failure: status=%d lookups=%d body=%s", rec.Code, calls, rec.Body.String())
+		}
+		var response webCommandScenarioErrorResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link" || response.Result.Command != nil ||
+			response.Result.Observation != nil || !strings.Contains(response.ExecutionError, "subject link store unavailable") ||
+			len(audits) != 1 || audits[0].Stage != "error" {
+			t.Fatalf("late link failure lost provenance: result=%+v audits=%+v", response, audits)
+		}
+	})
+}
