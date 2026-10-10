@@ -41,6 +41,24 @@ func TestReferenceRuntimeQueryCompositionSelectsOnlyRequiredProviders(t *testing
 	if _, ok := order[postgres]; !ok {
 		t.Fatal("order_entry lost PostgreSQL order-line executor")
 	}
+	// Observe the constructed Runner registries too, so refactoring the
+	// wiring cannot silently restore the over-broad legacy composition.
+	world := loadReferenceWorld(t)
+	repairRunner := newReferenceCustomerLookupScenarioRunner(world)
+	repairRegistry, ok := repairRunner.contracts.(driver.ContractQueryExecutorMap)
+	if !ok || len(repairRegistry) != 1 {
+		t.Fatalf("actual repair_intake Runner does not use Oracle-only binding: %T / %+v",
+			repairRunner.contracts, repairRunner.contracts)
+	}
+	if _, ok := repairRegistry[postgres]; ok {
+		t.Fatal("actual repair_intake Runner exposes a PostgreSQL binding")
+	}
+	orderRunner := newReferenceReadScenarioRunner(world)
+	orderRegistry, ok := orderRunner.contracts.(driver.ContractQueryExecutorMap)
+	if !ok || len(orderRegistry) != 2 {
+		t.Fatalf("actual order_entry Runner lost required two-Provider composition: %T / %+v",
+			orderRunner.contracts, orderRunner.contracts)
+	}
 	// Each map is constructed independently, so changing one Application's
 	// runtime fixture does not silently grant/revoke another's capabilities.
 	delete(order, oracle)
