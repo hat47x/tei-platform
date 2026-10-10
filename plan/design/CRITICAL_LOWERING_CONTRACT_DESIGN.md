@@ -87,3 +87,40 @@ current AuthorizationとHost Bindingをキャッシュしたまま呼出しを�
 6. exact PR headとcurrent mainを記録し、trusted clean checkoutの`tools/repository-health-check.sh`全PASSを得たときだけレビュー・統合を検討する。**Draft PRは統合しない**。
 
 上記は#1119のG2/G3に必要な作業を具体化したものであり、Reference testが通っただけでG2/G3を達成したとは扱わない。
+
+## 6. #1119 C3 / S05: Data Contractと実行時Authorityを別の根拠にする
+
+#1119 のV04→V05の接続では「受理済みの意味」だけでは保存を許可できない。対象`order_entry`の既存Sourceには、案件からDatabaseへ次の**logical requirements**が宣言されている。
+
+```text
+order_entry.sales  -> sales_core
+  sales_core.order       ^4
+  sales_core.order_line  ^1
+order_entry.master -> master_data
+  master_data.customer   ^2
+```
+
+これはEnvironmentの`sales_core.dev`等の現在の物理Schema Versionそのものではない。Application Release RevisionとDatabase schema versionの数値一致を要求するのではなく、Database側が所有するCompatibility判定が必要である。
+
+Referenceでは`DataNeed {database, contract, versionConstraint}`をAccepted Candidate / Neutral intent / Target-bound stepまでコピーする。具体的なDatasource alias → Environment / Instance / Provider選択、およびCurrent Physical Schemaの取得・比較は既存`environment`・`driver`・`database`・`realization`へ委譲し、これらの実値をCandidateにAuthorしない。Target stepへ移すのは**必要Contract**であり、Schema互換を検証したという虚偽の決定ではない。
+
+Runtime preflightで独立に照合すべき根拠を明示する。
+
+| 検査 | 固定する宣言・Evidence参照 | 実行時のCurrent検査 |
+| --- | --- | --- |
+| Meaning | exact Candidate digest → trusted Acceptance → Accepted Snapshot | 呼出し対象が当該snapshotに適合すること |
+| Capability / Target | exact contract/provider/conformance/Resolution Lock/Build Artifact参照 | 現在の実行用bindingとartifact選択が有効であること |
+| Data | logical `DataNeed`のdatabase/contract/version constraint | 対象Datasource → Instanceの現在bindingとSchema互換判定 |
+| Execution Authority | required Context Slotの契約だけ | 現在のslot binding、Principal、Permission / Resource / Lease等 |
+
+`Trust`への`ResolutionCurrent(plan)`、`RuntimeBindingCurrent(step)`、`DataCompatible(step)`、`ContextBound(step)`、`Authorized(step)`は上表の分離を試す**Reference callback**であり、productionのDB introspector、permission checkerを再実装するものではない。少なくとも次の負例は副作用を呼ぶ前に停止する。
+
+- **S05-A** Preview後にCapability / artifact / runtime Provider bindingが取り消された → `runtime-binding-unavailable`。
+- **S05-B** Database instanceが再接続され、実SchemaがAccepted Contract requirementに非互換となった → `data-contract-incompatible`。
+- **S05-C** 必須Host Context Slotが解決できなくなった → `missing-execution-context`。
+- **S05-D** 権限が取り消された → `authorization-denied`。
+- **S05-E** 過去のResolution Lockに基づくplanのまま実行しようとした、またはcallerがeffectを書き換えた → `stale-or-untrusted-resolution`。
+
+同じ認可の失敗でもApplication-level business outcome（業務規則による拒否）とHost permission gate failure（実行権限不足）は混同しない。Retry、business completion、Observationも別の契約。上記テストは合成callbackで否定経路だけをpressureしており、実EnvironmentでのS05 actual evidenceではない。
+
+**停止条件:** 受注明細を実際に保存する際の正規Driver経路、Datasource Resolver、current Schema互換性証跡、Runtime Host Grantを同時に示せるまでは、このReferenceをproduction enforcementとして採用しない。実施した検査の根拠・時点・scoped identityが提出できない場合はUnknown/Unverifiedとして拒否し、static fingerprintのみから「現在も許可」としない。
