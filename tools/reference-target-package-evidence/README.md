@@ -32,7 +32,7 @@ go run ./tools/reference-target-package-evidence \
   > /tmp/tei-package-closure-delta.json
 ```
 
-比較は`SourceRevision`、メインGoモジュール、Go版、GOOS、GOARCH、CGO、`GOFLAGS`、`targetFeatures`が一致しない場合に拒否します。`-tags`による意図的なソースの差は許容しますが、指定されたbuild tagsは結果へ明示し、同一ビルド条件の成果物であるとは主張しません。
+比較は`SourceRevision`、メインGoモジュール、Go版、GOOS、GOARCH、CGO、`GOFLAGS`、`targetFeatures`が一致しない場合に拒否します。Cgo有効時は、`CC`・`CXX`・`CGO_CFLAGS`・`CGO_CPPFLAGS`・`CGO_CXXFLAGS`・`CGO_LDFLAGS`・`PKG_CONFIG`の実効値を`cgoToolchain`として併記し、そのキーが欠けた古いEvidenceや実効値が異なる二つのEvidenceも拒否します。`-tags`による意図的なソースの差は許容しますが、指定されたbuild tagsは結果へ明示し、同一ビルド条件の成果物であるとは主張しません。
 
 結果は、片方にしかないパッケージ（`beforeOnly`・`afterOnly`）と、共通パッケージでコンパイル対象Go/Cgoファイル、埋込・補助入力、import辺が変わったもの（`changed`）を区別して返します。パッケージやファイルの列挙順序の差だけでは変更とは判定しません。取り込むJSONは厳格にデコードしたうえで、**メインモジュール内の全パッケージが指定entryから静的import経由で到達可能であり、参照されたメインモジュール内パッケージが全て含まれること**を構造検査します。これにより、閉包に存在し得ない幽霊パッケージを`beforeOnly`に入れて「除去成功」と誤判定する事態を拒否します。ただし、構造的な整合性と来歴の正しさは別です。**入力JSONの真正性を検証するAuthorityではありません**。作成元のclean checkout／exact HEADと、実際に使ったビルド条件を独立して確認する必要があります。
 
@@ -44,7 +44,7 @@ E1の最終判定には、さらに`go build`後のbytes、digest、link済みsy
 
 **観測対象**は一つの静的なGo実行可能ビルド入口（`package main`）です。`go list`で単なるGoライブラリを指定して得た依存閉包を、実行バイナリの入口の証拠として採用しないよう拒否します。第一Web Targetの`-application`はサーバーの**実行時引数**なので、それを二通りにしても別のGo package closureにはなりません。アプリごとに異なる実装を物理的に除外したければ、異なるcompile-time入口を作り、同じ条件でそれぞれを測る必要があります。
 
-このJSONだけでは、Go linkerの不要コード除去、最終成果物のサイズ・digest・symbol、実動作、Secret／認可、独立したWeb UIのJSやHTMLの配布物は証明できません。`go list`の補助ファイル一覧も、Cの推移的な`#include`、`pkg-config`、システムSDK、外部リンカ入力、ツールチェーンが生成するファイルやGo以外のアセットビルド全体を網羅するものではありません。また`go list`が収集する静的import先は、GoのReflection・Pluginの動的参照や外部プロセスを完全には表しません。
+このJSONだけでは、Go linkerの不要コード除去、最終成果物のサイズ・digest・symbol、実動作、Secret／認可、独立したWeb UIのJSやHTMLの配布物は証明できません。`go list`の補助ファイル一覧も、Cの推移的な`#include`、`pkg-config`で取得した外部依存のバージョンや実体、システムSDK、外部リンカ入力、ツールチェーンが生成するファイルやGo以外のアセットビルド全体を網羅するものではありません。`cgoToolchain`は`go env`の設定文字列を記録するだけであり、`gcc`等の実行ファイルのハッシュやCのオブジェクト・リンク済み成果物を証明するものではありません。また`go list`が収集する静的import先は、GoのReflection・Pluginの動的参照や外部プロセスを完全には表しません。
 
 次段階のE1では、同じ受理済みApplication meaning（Handover B/R）に対する**別の配備入口**で同じ観測を行い、さらに`go build`成果物のbytes・digestと必要に応じsymbol／実行結果を照合します。既存のGate C第一Web Targetを置き換えず、Build Artifactの正本は[#943](https://github.com/hat47x/tei-platform/issues/943)に委ねます。
 
