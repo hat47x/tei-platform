@@ -163,3 +163,33 @@ Referenceの最小試験では、受注/明細RelationとApplication Patternの�
 2. exact PR headに `tools/repository-health-check.sh` を実行し、Go toolchain、pre/post clean、current mainとの比較を記録する。非実施のままPRをDraftから変更しない。
 3. #1124は `derivedbridge` と `sourcebridge.NewResolver` の**read-only consumer**になり得るが、Accepted Business Procedureの不足は #1125、ER・関数従属性の編纂は#1126、Actual Function CUDは#1132に保持する。
 4. 同一revisionのSnapshot Bind / concurrent edit / stale Proposal / shared Acceptance前後のProofは、このReferenceだけで成立していない。生成物をAccepted meaningとして保存する機構も追加していない。
+
+## R4 — Graph Validationの拡張性・性能・根拠の再評価（2026-10-10）
+
+### 誤用・性能劣化を防ぐ修正
+
+現行の`Validate`は、元々それぞれのedgeについて全Nodeを走査して参照解決し、すべてのPlugin Ruleを繰り返し走査していた。多数のData/Function/Business nodeを表示する製品モデラーでは、この繰返しが編集時の検査時間を押し上げる。
+
+- `internal/modelref/lookup.go`: 検査対象となる一つのimmutable graph snapshotに対し、Nodeをlogical IDで索引化する。種類・Scope・Versionは解決時に厳密に判定し、種類不一致・未解決・複数候補を従来の診断に残す。`Resolve`の単発APIも同じ検索意味論を使う。
+- `Validate`: Plugin側Ruleを`(relation, fromKind, toKind)`で索引化する。Rule未定義・空値、同じ型組に矛盾するRuleがある場合は`invalid-rule` / `conflicting-rule`を出す。先に登録されたRuleを黙って「正式」とみなさず、診断を消費する側がfail-closedに止める必要がある。
+- 以前の実装では参照元が不正・参照先が欠落したedgeについて、そこで`continue`するためEvidence不足の診断を落としていた。Edge provenanceを**参照の成否にかかわらず**検査することで、欠落参照と不完全な派生根拠を同時に示せる。
+- `Diff`のNode Evidenceも順序非依存の比較とし、source token一覧の並べ替えだけで不要な再レビューを発生させない。実際のfingerprint変更は`evidence-changed`のまま。
+
+### Extension Policyのfingerprint
+
+`RuleFingerprint([]Rule)`を追加。Ruleの集合を一定の規約（`tei.modelref.rules.v0`）で正規化してSHA-256化し、登録順や同一Ruleの重複による差を除外する。Relation型、循環禁止group、表示名・物理名への依存条件が変わればfingerprintも変わる。これによりGraphのNode/Edgeが不変でも、**解釈するExtensionのRule変更で過去のValidate/Impact結果がstaleになる**ことを検出する基礎ができた。
+
+digest自体は署名・確定済みの規則・読み込んだPlugin sourceの検証ではない。利用側はPlugin ID/version/source digest、RuleFingerprint、World/Source snapshot revisionを同時に保持し、変化時に必ず再評価する。既存Shared Acceptanceがその文脈を正式に束縛する前に、digest一致だけを根拠に受理したことにはしない。
+
+### 追加した検証と数値の位置付け
+
+- 4096件のtyped edge・8192件のNodeを持つ擬似Graphの正例・欠落参照の負例を追加。
+- `BenchmarkValidate4096References`を追加。Go 1.23.2 / Linux amd64 の独立ミラーで`-benchtime=5x`実行時は約27ms/op（5回）だった。ごく小さなベンチマーク実行なので、旧実装に対する速度倍率や実Referenceの性能を主張しない。
+- Ruleの登録順の交換、同一Ruleの重複、Display依存とcycle policyの変更を反映するfingerprint、Plugin Rule衝突、Evidence不足と欠落参照の重複診断、Node Evidence並べ替えの負例を追加。
+- 隔離ミラーの`go test -race -count=1 ./internal/modelref/...`、`go vet ./internal/modelref/...`はPASS。ただしミラーは一部のコードを独立に再現しており、現在のPR exact headの全Go package一致とRepository Healthの合格を証明しない。
+
+### 残る設計・資格確認上の注意
+
+`RuleFingerprint`はPlugin catalogのlock / Capability解決、署名検証、明示的なAcceptance決定とは別責務。破壊的Rule変更時のMigration戦略は#1019/#951と合意する。Graphの意味をCoreに固定しない原則を守る。
+
+`Lookup`の索引によって典型的な参照解決の反復全走査を抑えたが、**極端に同じIDが多数のScope/Kindに存在するGraph**での一意性診断、cycle path説明、Property-based test、realistic 1万件規模のEditor応答測定は未完了。実装数やsynthetic PASSは三視点の実製品Acceptanceそのものではない。
