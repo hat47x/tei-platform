@@ -13,6 +13,7 @@ import (
 type Catalog struct {
 	Revision string           `json:"revision"`
 	Tables   map[string]Table `json:"tables"`
+	Relations []SemanticRelation `json:"relations,omitempty"`
 }
 
 type Table struct {
@@ -25,6 +26,20 @@ type Field struct {
 	Required bool   `json:"required,omitempty"`
 	Visible  bool   `json:"visible,omitempty"`
 	RefTable string `json:"refTable,omitempty"`
+}
+
+// SemanticRelation preserves directed semantic relationships separately from
+// physical foreign keys. The pair of attribute IDs is not a record-ID link.
+type SemanticRelation struct {
+	ID          string `json:"id"`
+	SourceTable string `json:"sourceTable"`
+	TargetTable string `json:"targetTable"`
+	Cardinality string `json:"cardinality"`
+	Keys        []SemanticRelationKey `json:"keys,omitempty"`
+}
+type SemanticRelationKey struct {
+	SourceField string `json:"sourceField"`
+	TargetField string `json:"targetField"`
 }
 
 type Record struct {
@@ -104,7 +119,8 @@ type ShownTable struct {
 type Connection struct {
 	Parent   string `json:"parent"`
 	Child    string `json:"child"`
-	ViaField string `json:"viaField"`
+	ViaField string `json:"viaField,omitempty"`
+	RelationID string `json:"relationId,omitempty"`
 }
 
 type Slide struct {
@@ -245,6 +261,23 @@ func Build(in Input) (Projection, error) {
 				}
 			}
 		}
+		for _, relation := range in.Catalog.Relations {
+			for _, source := range in.Diagram.Placements {
+				if source.Table != relation.SourceTable { continue }
+				for _, target := range in.Diagram.Placements {
+					if target.Table != relation.TargetTable { continue }
+					// Cardinality indicates how the relation's target is viewed:
+					// "one" -> referenced parent target; "many" -> child target.
+					parent, child := target.ID, source.ID
+					if relation.Cardinality == "many" {
+						parent, child = source.ID, target.ID
+					}
+					slide.Connections = append(slide.Connections, Connection{
+						Parent:parent, Child:child, RelationID:relation.ID,
+					})
+				}
+			}
+		}
 		out.Slides = append(out.Slides, slide)
 	}
 	return out, nil
@@ -265,7 +298,7 @@ func validateCatalog(c Catalog) error {
 			}
 			fields[field.ID] = true
 			switch field.Type {
-			case "string", "integer", "number", "boolean", "ref":
+			case "string", "integer", "number", "boolean", "ref", "opaque":
 			default:
 				return fmt.Errorf("%s.%s: unsupported type %q", id, field.ID, field.Type)
 			}
@@ -275,6 +308,21 @@ func validateCatalog(c Catalog) error {
 				}
 			} else if field.RefTable != "" {
 				return fmt.Errorf("%s.%s: refTable requires reference type", id, field.ID)
+			}
+		}
+	}
+	for _, relation := range c.Relations {
+		from, srcOK := c.Tables[relation.SourceTable]
+		to, dstOK := c.Tables[relation.TargetTable]
+		if relation.ID == "" || !srcOK || !dstOK {
+			return fmt.Errorf("invalid semantic relation %q",relation.ID)
+		}
+		if relation.Cardinality != "one" && relation.Cardinality != "many" {
+			return fmt.Errorf("%s: unknown cardinality %q",relation.ID,relation.Cardinality)
+		}
+		for _, key := range relation.Keys {
+			if !hasField(from,key.SourceField) || !hasField(to,key.TargetField) {
+				return fmt.Errorf("%s: unknown relation key %s -> %s",relation.ID,key.SourceField,key.TargetField)
 			}
 		}
 	}
@@ -359,6 +407,9 @@ func validateState(c Catalog, state map[string]Record) error {
 				return fmt.Errorf("%s.%s: invalid JSON", id, field.ID)
 			}
 			switch field.Type {
+			case "opaque":
+				// Preserve original typed JSON without inventing a primitive check.
+				// This is not evidence that the field's domain constraint holds.
 			case "string", "ref":
 				var text string
 				if json.Unmarshal(value, &text) != nil {
