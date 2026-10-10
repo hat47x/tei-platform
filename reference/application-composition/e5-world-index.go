@@ -233,16 +233,44 @@ func inspectE5(world ir.World, index sourceindex.Index, applicationID string) e5
     return out
 }
 
+
+// e5PairedEvidence provides one transport envelope for the diagnostic and the
+// Source Index obtained from the same Load/BuildSourceIndex operation.
+// It is not cryptographic provenance, complete dependency closure, or authority.
+func e5PairedEvidence(report e5Report, index sourceindex.Index) struct {
+    Format string `json:"format"`
+    Report e5Report `json:"report"`
+    Index sourceindex.Index `json:"index"`
+    Qualification string `json:"qualification"`
+} {
+    return struct {
+        Format string `json:"format"`
+        Report e5Report `json:"report"`
+        Index sourceindex.Index `json:"index"`
+        Qualification string `json:"qualification"`
+    }{
+        Format: "tei.e5-paired-source-observation.v1",
+        Report: report,
+        Index: index,
+        Qualification: "read-only-paired-input-not-an-authority",
+    }
+}
+
 func main() {
     root := flag.String("workspace", "reference/workspace", "workspace directory for read-only inspection")
     applicationID := flag.String("application", "order_entry", "existing Application ID")
+    pairedEvidence := flag.Bool("paired-evidence", false, "emit diagnostic and Source Index from the same load operation; paths may be sensitive")
     flag.Parse()
     loaded, err := workspace.Load(*root)
     if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
     index, err := workspace.BuildSourceIndex(*root, loaded)
     if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
     report := inspectE5(loaded.World, index, *applicationID)
-    if err := json.NewEncoder(os.Stdout).Encode(report); err != nil {
+    var output any = report
+    if *pairedEvidence {
+        output = e5PairedEvidence(report, index)
+    }
+    if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
