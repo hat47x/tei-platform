@@ -121,6 +121,8 @@ type MutationProvider interface {
 type MutationJournal interface {
 	RecordPrepared(context.Context, MutationHandle) error
 	RecordOutcome(context.Context, MutationReceipt) error
+	LoadPrepared(context.Context, string) (MutationHandle, bool, error)
+	LoadOutcome(context.Context, string) (MutationReceipt, bool, error)
 }
 
 type Executor struct {
@@ -242,6 +244,45 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 			Handle:  handle,
 		}, ErrCommitUnknown
 	}
+}
+
+func (e Executor) ReconcileByInvocationKey(
+	ctx context.Context,
+	invocationKey string,
+) (MutationExecution, error) {
+	if e.Journal == nil {
+		return MutationExecution{}, fmt.Errorf("mutation journal is required")
+	}
+	if invocationKey == "" {
+		return MutationExecution{}, fmt.Errorf("invocation key is required")
+	}
+	handle, ok, err := e.Journal.LoadPrepared(ctx, invocationKey)
+	if err != nil {
+		return MutationExecution{}, fmt.Errorf("%w: load prepared intent: %v", ErrJournalWrite, err)
+	}
+	if !ok {
+		return MutationExecution{}, fmt.Errorf("prepared mutation %q is not journaled", invocationKey)
+	}
+	if receipt, found, err := e.Journal.LoadOutcome(ctx, invocationKey); err != nil {
+		return MutationExecution{}, fmt.Errorf("%w: load outcome: %v", ErrJournalWrite, err)
+	} else if found {
+		if receipt.Outcome == OutcomeCommitted {
+			return MutationExecution{
+				Outcome: OutcomeCommitted,
+				Result:  append([]byte(nil), handle.ResultPayload...),
+				Handle:  handle,
+				Receipt: &receipt,
+			}, nil
+		}
+		if receipt.Outcome == OutcomeNotCommitted {
+			return MutationExecution{
+				Outcome: OutcomeNotCommitted,
+				Handle:  handle,
+				Receipt: &receipt,
+			}, ErrCommitNotCommitted
+		}
+	}
+	return e.Reconcile(ctx, handle)
 }
 
 func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (MutationExecution, error) {
