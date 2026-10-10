@@ -99,16 +99,18 @@ func (s *JSONDocumentStore) Commit(_ context.Context, in Intent) (string, error)
 		}
 		found = true
 		var currentX, currentY float64
-		if string(cards[i]["x"]) == "null" {
-			return "", fmt.Errorf("%w: null card x coordinate", ErrInvalid)
+		// json.Unmarshal(nil, &float64) succeeds and leaves a zero value.
+		// Validate field presence before decoding; otherwise missing x/y
+		// would be silently repaired into valid coordinates on commit.
+		rawX, hasX := cards[i]["x"]
+		rawY, hasY := cards[i]["y"]
+		if !hasX || !hasY || string(rawX) == "null" || string(rawY) == "null" {
+			return "", fmt.Errorf("%w: missing or null card coordinate", ErrInvalid)
 		}
-		if err := json.Unmarshal(cards[i]["x"], &currentX); err != nil {
+		if err := json.Unmarshal(rawX, &currentX); err != nil {
 			return "", fmt.Errorf("%w: invalid card x coordinate", ErrInvalid)
 		}
-		if string(cards[i]["y"]) == "null" {
-			return "", fmt.Errorf("%w: null card y coordinate", ErrInvalid)
-		}
-		if err := json.Unmarshal(cards[i]["y"], &currentY); err != nil {
+		if err := json.Unmarshal(rawY, &currentY); err != nil {
 			return "", fmt.Errorf("%w: invalid card y coordinate", ErrInvalid)
 		}
 		if math.IsNaN(currentX) || math.IsInf(currentX, 0) ||
