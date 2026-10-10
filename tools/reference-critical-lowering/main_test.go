@@ -373,3 +373,22 @@ func TestForgedPlanDoesNotBypassTrustedResolution(t *testing.T) {
 		t.Fatalf("forged plan unexpectedly gained invoke authority: %s", got)
 	}
 }
+
+func TestUndeclaredContextAndDataDoNotGate(t *testing.T) {
+	f := orderFixture("tei.language.dsl")
+	// Re-run the accepted boundary for a pure synthetic read operation that
+	// declares neither a data contract nor invocation Context slots.
+	f.c.Requirements = f.c.Requirements[:1]
+	f.c.Requirements[0].DataContracts = nil
+	f.wiring = f.wiring[:1]
+	f.providers = f.providers[:1]
+	f.a.CandidateDigest = Digest(f.c)
+	plan, err := f.lower(stubTrust{})
+	if err != nil { t.Fatal(err) }
+	if len(plan.Steps[0].RequiredSlots) != 0 || len(plan.Steps[0].DataContracts) != 0 {
+		t.Fatal("unexpected runtime requirements")
+	}
+	if err := AuthorizeInvocation(plan, stubTrust{denyContext: true, denyData: true}); err != nil {
+		t.Fatalf("unrelated Host context/schema status invalidated unrelated operation: %v", err)
+	}
+}
