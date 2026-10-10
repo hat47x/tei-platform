@@ -51,6 +51,13 @@ test -z "$(git status --porcelain --untracked-files=all --ignored=matching)"
 if [[ -n "${TEI_SYNTHETIC_ADVANCE_MAIN_TO:-}" ]]; then
   git --git-dir="${TEI_SYNTHETIC_ORIGIN:?}" update-ref refs/heads/main "$TEI_SYNTHETIC_ADVANCE_MAIN_TO"
 fi
+if [[ "${TEI_SYNTHETIC_INJECT_IGNORED:-}" == "1" ]]; then
+  printf 'injected during health\n' > ignored.log
+fi
+if [[ "${TEI_SYNTHETIC_INJECT_HIDDEN_INDEX:-}" == "1" ]]; then
+  git update-index --skip-worktree candidate.txt
+  printf 'mutated during health\n' > candidate.txt
+fi
 printf 'synthetic repository health: PASS\n' >&2
 `)
 	if err := os.WriteFile(filepath.Join(work, "tools", "repository-health-check.sh"), health, 0o755); err != nil {
@@ -179,6 +186,45 @@ printf 'synthetic repository health: PASS\n' >&2
 		}
 		run(t, "", "git", "--git-dir", origin, "update-ref", "refs/heads/main", main)
 		run(t, work, "git", "fetch", "origin", "--prune")
+	})
+
+	t.Run("rejects ignored artifact injected during health", func(t *testing.T) {
+		injected := filepath.Join(work, "ignored.log")
+		_ = os.Remove(injected)
+		output := runFailureEnv(
+			t,
+			work,
+			[]string{"TEI_SYNTHETIC_INJECT_IGNORED=1"},
+			"bash",
+			"tools/run-repository-local-qualification.sh",
+			"--expected-head", head,
+			"--expected-main", main,
+		)
+		if !strings.Contains(output, "post-health") {
+			t.Fatalf("ignored artifact injected during health was rejected for an unexpected reason:\n%s", output)
+		}
+		if err := os.Remove(injected); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("rejects hidden index mutation injected during health", func(t *testing.T) {
+		output := runFailureEnv(
+			t,
+			work,
+			[]string{"TEI_SYNTHETIC_INJECT_HIDDEN_INDEX=1"},
+			"bash",
+			"tools/run-repository-local-qualification.sh",
+			"--expected-head", head,
+			"--expected-main", main,
+		)
+		if !strings.Contains(output, "non-standard tracked index state during post-health") {
+			t.Fatalf("hidden index mutation injected during health was rejected for an unexpected reason:\n%s", output)
+		}
+		if err := runNoFail(work, "git", "update-index", "--no-skip-worktree", "candidate.txt"); err != nil {
+			t.Fatal(err)
+		}
+		run(t, work, "git", "checkout", "--", "candidate.txt")
 	})
 
 	t.Run("rejects receipt inside repository", func(t *testing.T) {
