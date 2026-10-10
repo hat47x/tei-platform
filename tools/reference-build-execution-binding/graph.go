@@ -63,13 +63,14 @@ type BuildGraphEdge struct {
 }
 
 type BuildGraphSeed struct {
-	ID             string                 `json:"id"`
-	Kind           string                 `json:"kind"`
-	Version        string                 `json:"version"`
-	ArtifactDigest string                 `json:"artifactDigest"`
-	TrustBoundary  string                 `json:"trustBoundary"`
-	ToNode         string                 `json:"toNode"`
-	Input          BuildGraphInputBinding `json:"input"`
+	ID              string                 `json:"id"`
+	Kind            string                 `json:"kind"`
+	Version         string                 `json:"version"`
+	ContractVersion string                 `json:"contractVersion,omitempty"`
+	ArtifactDigest  string                 `json:"artifactDigest"`
+	TrustBoundary   string                 `json:"trustBoundary"`
+	ToNode          string                 `json:"toNode"`
+	Input           BuildGraphInputBinding `json:"input"`
 }
 
 type BuildGraph struct {
@@ -140,6 +141,21 @@ func (g BuildGraph) Validate() error {
 		if err := seed.Input.Validate(); err != nil {
 			return fmt.Errorf("build graph seed %s input: %w", seed.ID, err)
 		}
+		switch seed.Input.Kind {
+		case buildGraphInputBuilder:
+			if strings.TrimSpace(seed.ContractVersion) == "" {
+				return fmt.Errorf("build graph builder seed %s contract version is required", seed.ID)
+			}
+		case buildGraphInputDependency:
+			if seed.ContractVersion != "" {
+				return fmt.Errorf("build graph dependency seed %s must not declare builder contract version", seed.ID)
+			}
+			if seed.Kind != seed.Input.DependencyKind ||
+				seed.ID != seed.Input.DependencyID ||
+				seed.Version != seed.Input.DependencyVersion {
+				return fmt.Errorf("build graph dependency seed identity does not match consumer dependency binding")
+			}
+		}
 		if err := validateDigest("build graph seed "+seed.ID+" artifact digest", seed.ArtifactDigest); err != nil {
 			return err
 		}
@@ -150,6 +166,7 @@ func (g BuildGraph) Validate() error {
 			seed.ID,
 			seed.Kind,
 			seed.Version,
+			seed.ContractVersion,
 			seed.ToNode,
 			seed.Input.key(),
 		}, "\x00")
@@ -157,6 +174,27 @@ func (g BuildGraph) Validate() error {
 			return fmt.Errorf("build graph seed %s is declared more than once for node %s", seed.ID, seed.ToNode)
 		}
 		seeds[key] = struct{}{}
+	}
+
+	inputOwners := map[string]string{}
+	registerInput := func(toNode string, input BuildGraphInputBinding, owner string) error {
+		key := toNode + "\x00" + input.key()
+		if previous, duplicate := inputOwners[key]; duplicate {
+			return fmt.Errorf("build graph consumer input %s on node %s is satisfied more than once: %s and %s",
+				input.key(), toNode, previous, owner)
+		}
+		inputOwners[key] = owner
+		return nil
+	}
+	for _, seed := range g.Seeds {
+		if err := registerInput(seed.ToNode, seed.Input, "seed "+seed.ID); err != nil {
+			return err
+		}
+	}
+	for _, edge := range g.Edges {
+		if err := registerInput(edge.ToNode, edge.Input, "edge "+edge.FromNode+"/"+edge.OutputRole); err != nil {
+			return err
+		}
 	}
 
 	if _, err := topologicalBuildOrderValidated(g); err != nil {
@@ -201,6 +239,7 @@ func normalizeBuildGraph(g BuildGraph) BuildGraph {
 			out.Seeds[i].ID,
 			out.Seeds[i].Kind,
 			out.Seeds[i].Version,
+			out.Seeds[i].ContractVersion,
 			out.Seeds[i].ToNode,
 			out.Seeds[i].Input.key(),
 		}, "\x00")
@@ -208,6 +247,7 @@ func normalizeBuildGraph(g BuildGraph) BuildGraph {
 			out.Seeds[j].ID,
 			out.Seeds[j].Kind,
 			out.Seeds[j].Version,
+			out.Seeds[j].ContractVersion,
 			out.Seeds[j].ToNode,
 			out.Seeds[j].Input.key(),
 		}, "\x00")
@@ -246,6 +286,20 @@ func verifyBuildGraphBindings(
 	}
 	for _, seed := range g.Seeds {
 		plan := plans[seed.ToNode]
+		switch seed.Input.Kind {
+		case buildGraphInputBuilder:
+			if string(plan.Builder.ID) != seed.ID ||
+				plan.Builder.Version != seed.Version ||
+				plan.Builder.ContractVersion != seed.ContractVersion {
+				return fmt.Errorf("build graph builder seed %s identity does not match consumer exact builder", seed.ID)
+			}
+		case buildGraphInputDependency:
+			if seed.Kind != seed.Input.DependencyKind ||
+				seed.ID != seed.Input.DependencyID ||
+				seed.Version != seed.Input.DependencyVersion {
+				return fmt.Errorf("build graph dependency seed %s identity does not match consumer dependency binding", seed.ID)
+			}
+		}
 		if err := verifyBuildGraphConsumerInput(plan, seed.Input, seed.ArtifactDigest); err != nil {
 			return fmt.Errorf("build graph seed %s -> %s: %w", seed.ID, seed.ToNode, err)
 		}
