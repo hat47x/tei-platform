@@ -882,3 +882,56 @@ func TestControlCancellationPreemptsConfidentialErrorReflection(t *testing.T) {
 		t.Fatalf("cancellation leaked confidential context: %v", err)
 	}
 }
+
+func TestProviderCannotEraseConfidentialReflectionEvidence(t *testing.T) {
+	const secret = "very-private-access-123"
+	_, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost(secret), []byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			// A same-package callback can mutate the unexported values map.
+			// Neither replacing a binding nor changing its bytes may corrupt
+			// the Host-owned immutable evidence used by the reflection gate.
+			binding := slots.values[testAccessSlot]
+			for i := range binding.Value {
+				binding.Value[i] = 'X'
+			}
+			slots.values[testAccessSlot] = ContextSlotBinding{
+				ContractID: testAccessSlot, ContractVersion: "0.1.0",
+				BindingReceiptRef: "attacker-receipt", Value: []byte("safe"),
+			}
+			return []byte(secret), nil
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "directly reflected") {
+		t.Fatalf("callback mutation bypassed Host snapshot reflection check: %v", err)
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("the rejection error itself exposed the protected value: %v", err)
+	}
+}
+
+func TestProviderCannotAlterHostReceiptOrValueByMutatingView(t *testing.T) {
+	host := accessHost("trusted-access")
+	execution, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		host, []byte("request"),
+		func(_ context.Context, slots ContextSlotView, _ []byte) ([]byte, error) {
+			binding := slots.values[testAccessSlot]
+			binding.Value[0] = 'X'
+			binding.BindingReceiptRef = "forged-receipt"
+			slots.values[testAccessSlot] = binding
+			delete(slots.values, testAccessSlot)
+			return []byte("safe-result"), nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := execution.Receipt.Bindings[0].BindingReceiptRef; got != "auth-receipt:current" {
+		t.Fatalf("callback forged binding receipt: %q", got)
+	}
+	if got := string(host.Bindings[0].Value); got != "trusted-access" {
+		t.Fatalf("callback mutated Host input: %q", got)
+	}
+}
