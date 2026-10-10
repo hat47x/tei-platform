@@ -63,7 +63,7 @@ type SourcePackage struct {
 func (p listedPackage) auxiliaryInputs() []SourceInput {
 	var inputs []SourceInput
 	for _, group := range []struct {
-		kind string
+		kind  string
 		files []string
 	}{
 		{"embed", p.EmbedFiles},
