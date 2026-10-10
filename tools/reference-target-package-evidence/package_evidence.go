@@ -169,6 +169,20 @@ func validateTrackedSources(raw []byte, root string, tracked map[string]struct{}
 			if _, ok := tracked[rel]; !ok {
 				return fmt.Errorf("compiled source %q in package %s is not tracked by Git", rel, p.ImportPath)
 			}
+			// A Git-tracked symlink can point at untracked, ignored, or
+			// out-of-tree bytes. Refuse it even when git status is clean.
+			full := filepath.Join(root, filepath.FromSlash(rel))
+			resolved, err := filepath.EvalSymlinks(full)
+			if err != nil {
+				return fmt.Errorf("cannot resolve compiled source %q: %w", rel, err)
+			}
+			if filepath.Clean(resolved) != filepath.Clean(full) {
+				return fmt.Errorf("compiled source %q traverses a symlink", rel)
+			}
+			info, err := os.Stat(full)
+			if err != nil || !info.Mode().IsRegular() {
+				return fmt.Errorf("compiled source %q is not a regular file", rel)
+			}
 		}
 	}
 }
