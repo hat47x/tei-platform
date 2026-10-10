@@ -49,7 +49,7 @@ function main(argv) {
   const opt = flags(rest);
   const fromFiles = !!opt["-world-file"] && !!opt["-revision-file"];
   if (!!opt["-workspace"] === fromFiles ||
-      (!opt["-workspace"] && !fromFiles) ||
+      (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"])) ||
       (command === "inspect" && (!opt["-focus"] || opt["-edit-file"])) ||
       (command === "propose" && (!opt["-edit-file"] || opt["-focus"])))
     throw new Error("INVALID_INPUT");
