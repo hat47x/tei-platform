@@ -51,6 +51,14 @@ SUIの[PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、`s
 
 SUI内の単体参照テストは14件PASS（Node.js 22.16.0、Git Blob SHA一致のファイル）。この確認はSUI実Canvasや本番のTEI Hostの連携試験ではありません。特に、サーバー側の`sui.move` Command実装・永続的なCAS、HTTP配備・セッション認可、およびReact App内で履歴・dirty・ETagを整合して取り込む実経路は未接続です。SUIの保存用ETagとTEIの応答Revisionを同一リソースの値として照合できる本番Adapterが確定するまで、UI側の接続を有効化しません。
 
+### SUI Actionの同期確定とPydantic正規化（2026-10-10）
+
+SUI側の`applyConfirmed`ポートは`Promise<boolean>`を許さず、**同期的に状態反映が完了した場合の`boolean true`だけ**を承認するよう改訂しました。サーバーが確定した後のReact側競合を避けるには、SUIアプリがDocument参照、ETag、未保存編集の有無を同期的に再確認し、履歴・dirty・Undo/Redoを一貫して更新する必要があります。単純な`setState`要求だけを根拠に`true`を返す実装は許容しません。
+
+また、SUI Pydanticが欠落した`Island.collapsed`を`false`で補完し、`shape`と`geometry`の片方からもう一方を導出する既知の保存時正規化に対応しました。Document全体照合によるSource、レビュー、Edge、Affiliation等の喪失検出は維持します。
+
+SUI `src/api/tei_card_move_action.integration.test.ts`に、Actionポート・同一オリジンPOST・no-storeのETag付きGET・アプリ所有状態の同期確定を結ぶテストを追加しました（送信と受信はモックHTTP、実SUI FastAPI、TEI Go Host、React実画面は未接続）。**変更後のNode／Vitest／Pythonテストは未実行です。**
+
 ### 利用側安全性の追補（2026-10-10）
 
 [SUI Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)では、Action成功後のDocument全体照合を追加し、座標・島所属だけが正しくてもSource／Hold／レビュー／未知Edge／Affiliationなどに損失があればローカル反映を拒否するようにしました。サーバー所有の`updatedAt`と任意の`null`／未指定の等価性は許容します。単一テナントの追加認可アダプターがない場合でも、明示的な読取り専用モードのAction更新は拒否します。
