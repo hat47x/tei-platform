@@ -184,3 +184,13 @@ Visualは `tools/reference-first-web-target-visual-evidence-audit`、architectur
 Semantic / Functional runner単独ではVisual Fidelity Evidenceを取得しません。Semantic / Functionalが成功してもsummaryは `visualEvidence.status = pending`、`gateCReady = false` のままです。Visual audit単独もGate C Readyを宣言しません。
 
 手順の正本は `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
+
+## E1へ向けたApplication別のHTTP構成境界（実装準備段階）
+
+[#1167](https://github.com/hat47x/tei-platform/issues/1167)の実装準備として、`read_scenario.go`に同居していたOracle/PostgreSQLの共有Contract Query Fixtureを`reference_contract_query_fixture.go`へ切り出しました。これは`order_entry`と`repair_intake`が利用する同一実装であり、業務意味や契約を複製しません。
+
+さらに、受注用のHTTP read/commandレスポンス型・ハンドラーと`/custom-submit`のルート登録を`order_scenario_http.go`にまとめ、repair側の`/scenario/customer-lookup`・`/customer-lookup`のルート登録は`customer_lookup_scenario.go`へ配置しました。共通`server.go`の`Handler()`は二つの登録関数を呼び出します。
+
+**現行の第一Web Targetは、従来どおり両Applicationのルートを登録する一つのGo `package main`です。** 未設定RunnerへのHTTP 503、非対応methodへの405、存在しないパスへの404を維持するための回帰テストを追加しました。この整理のみで不要なGo実装がコンパイル・リンクから除外されたとは言えません。
+
+E1で異なるApplication向けバイナリを成立させるには、共通Transportの契約とApplication固有Route/Runnerの依存を**別Goパッケージとcompile-time entry**へ分離し、その上で既存Gate CのBusiness Result・Execution Error・Observation・Authorizationについて差分回帰を行う必要があります。物理除外は`go list`だけでなく実`go build`・`go tool nm`・成果物digestで確認します。実配備機構や第二のProvider Resolverをここで増設しません。
