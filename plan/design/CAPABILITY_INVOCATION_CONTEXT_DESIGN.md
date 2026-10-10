@@ -296,6 +296,14 @@ generic Invocation Context層がaccess deniedやnot foundの外部表現を一�
 
 別Capabilityで監査要件や利用者向けエラーが異なる場合、そのContractが必要なfailure semanticsを定義する。Execution Context層は、Contractが要求する失敗表現に必要な情報だけをProviderまたはHostへ渡す。
 
+### Go error objectの情報漏えいとReferenceの暫定境界
+
+Goの`error`は`Error()`文字列だけではない。たとえば`Error()`が安全な固定文言でも、具体的なerror型のfieldや`errors.As` / `Unwrap`経由でcurrent credentialを取り出せる。文字列の直接反射チェック後にdownstream errorをそのまま返す構造は、Execution Contextの秘匿境界を満たさない。
+
+現Referenceでは、直接反射を検出した場合の拒否に加え、機密扱いのrequired slotがある呼出しではdownstream error objectの外部流出を防ぐため、原errorをwrapせず固定のfailureへ変換する。非機密のrequired slotだけの場合はdownstream errorの型を維持する。
+
+これは**Referenceの漏えい経路を閉じる暫定措置**である。固定文言を製品のfailure semanticsとみなさない。製品化時には、Capability Contractで定義された公開可能な失敗分類を、Hostが既存Security policyに照らして変換する必要がある。特にunknown / access deniedの同一外部表現を求めるconsumerでは、汎用gateがその違いを新しいoracleにしないよう確認する。下流のlogging、間接漏えい、timing / side channel、mutating effectの安全性はこれだけでは保証できない。
+
 ## Consumer pressure
 
 ### Epistemic detail resolver
