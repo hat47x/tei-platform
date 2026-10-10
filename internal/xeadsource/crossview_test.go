@@ -36,7 +36,7 @@ func buildCrossViewFixture(t *testing.T, source string, contract []byte) CrossVi
 
 func crossViewPublicAccounting(t *testing.T, projection CrossViewProjection) CrossViewAccounting {
 	t.Helper()
-	accounting, err := crossViewPublicAccounting(t, projection)
+	accounting, err := CrossViewPublicAccounting(projection)
 	if err != nil {
 		t.Fatal(err)
 	}
