@@ -39,7 +39,7 @@ Result保存やBackend-native completionの前後でProduct Sourceが変化し�
 bash tools/reference-external-coordination/run.sh
 ```
 
-runnerはremote Git、GitHub API、外部SaaS、Go toolchain、TEI CLIを必要としません。標準Git、Bash、Python 3だけを利用します。
+runnerはremote Git、GitHub API、外部SaaS、Go toolchain、TEI CLIを必要としません。標準Git、Bash、Python 3だけを利用します。 PythonのJSON・意味検証では`python3 -I`（isolated mode）を使用します。これにより呼び出し元の`PYTHONOPTIMIZE`で`assert`が無効化されることを防ぎます。
 
 合成Git repositoryでのclean判定回帰を個別に実行する場合は、次を用います。
 
@@ -47,7 +47,7 @@ runnerはremote Git、GitHub API、外部SaaS、Go toolchain、TEI CLIを必要�
 bash tools/reference-external-coordination/clean-check-test.sh
 ```
 
-この試験は正常なcheckoutでのE1 round tripと、tracked / untracked / ignored artifact、`assume-unchanged`、`skip-worktree`、non-Git directoryの拒否を確認します。さらに、Coordination Storeへの最初のcommit直前にignored artifactまたはhidden-index状態を挿入し、処理後のclean判定がexit 1で拒否することを確認します。Store削除直後にもignored artifactを挿入し、削除後のclean判定が同様に拒否することを確認します。注入は合成fixture内でのみ行い、元のProduct checkoutは変更しません。合成環境での成功は、trustedな実TEI checkout上のfull Repository HealthやCanonical reloadのEvidenceには含めません。
+この試験は正常なcheckoutでのE1 round tripと、tracked / untracked / ignored artifact、`assume-unchanged`、`skip-worktree`、non-Git directoryの拒否を確認します。さらに、Coordination Storeへの最初のcommit直前にignored artifactまたはhidden-index状態を挿入し、処理後のclean判定がexit 1で拒否することを確認します。Store削除直後にもignored artifactを挿入し、削除後のclean判定が同様に拒否することを確認します。さらに、`PYTHONOPTIMIZE=2`の条件下でWork envelopeのoriginを一時的に改ざんし、Python側の意味検証が失敗することも確認します。注入は合成fixture内でのみ行い、元のProduct checkoutは変更しません。合成環境での成功は、trustedな実TEI checkout上のfull Repository HealthやCanonical reloadのEvidenceには含めません。
 
 ## このReferenceが主張しないこと
 
