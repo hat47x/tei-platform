@@ -107,6 +107,34 @@ func TestEvidenceFromCleanGitCheckoutAndBuildTags(t *testing.T) {
 		t.Fatalf("build tag failed to select source: %+v", tagged)
 	}
 
+	// Git index flags can make an edited tracked Go source invisible to
+	// porcelain status. Such an observation must fail before go list.
+	trackedSource := "internal/calc/calc.go"
+	originalCalc := "package calc\nfunc Result() int { return 42 }\n"
+	for _, tc := range []struct {
+		name, setFlag, clearFlag string
+	}{
+		{"assume-unchanged", "--assume-unchanged", "--no-assume-unchanged"},
+		{"skip-worktree", "--skip-worktree", "--no-skip-worktree"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			git("update-index", tc.setFlag, trackedSource)
+			writeFixture(trackedSource, "package calc\nfunc Result() int { return 999 }\n")
+			if status := git("status", "--porcelain", "--untracked-files=all"); status != "" {
+				t.Fatalf("hidden index flag unexpectedly exposed source changes: %q", status)
+			}
+			if _, err := produceEvidence("./cmd/app", ""); err == nil ||
+				!strings.Contains(err.Error(), "hidden Git index flag") {
+				t.Fatalf("modified tracked source hidden by %s was accepted: %v", tc.name, err)
+			}
+			git("update-index", tc.clearFlag, trackedSource)
+			writeFixture(trackedSource, originalCalc)
+			if status := git("status", "--porcelain", "--untracked-files=all"); status != "" {
+				t.Fatalf("fixture was not restored after %s: %q", tc.name, status)
+			}
+		})
+	}
+
 	// Embedded assets also alter the package bytes without appearing in
 	// git porcelain when ignored. They are part of the observed inputs.
 	writeFixture("cmd/app/assets/ignored.txt", "not tracked\n")
