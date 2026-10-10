@@ -93,13 +93,13 @@ func (p listedPackage) auxiliaryInputs() []SourceInput {
 }
 
 type Report struct {
-	Entry          string          `json:"entry"`
-	SourceRevision string          `json:"sourceRevision"`
-	Module         string          `json:"module"`
-	GoVersion      string          `json:"goVersion"`
-	GOOS           string          `json:"goos"`
-	GOARCH         string          `json:"goarch"`
-	CGOEnabled     string          `json:"cgoEnabled"`
+	Entry          string            `json:"entry"`
+	SourceRevision string            `json:"sourceRevision"`
+	Module         string            `json:"module"`
+	GoVersion      string            `json:"goVersion"`
+	GOOS           string            `json:"goos"`
+	GOARCH         string            `json:"goarch"`
+	CGOEnabled     string            `json:"cgoEnabled"`
 	GoFlags        string            `json:"goFlags"`
 	BuildTags      string            `json:"buildTags,omitempty"`
 	TargetFeatures map[string]string `json:"targetFeatures,omitempty"`
