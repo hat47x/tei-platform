@@ -97,3 +97,21 @@ Set manifestやRole解決は上位契約です。Artifact Set manifestだけ存�
 - crash recovery / orphan temp GC
 - signature / Attestation verification
 - Runtime deployment selection
+
+
+## Filesystem boundary
+
+Store open時に`sha256/`directoryのfilesystem identityを保持します。
+
+put / get時に:
+
+- algorithm directoryがsymlinkへ変わっていない
+- directory自体が別inodeへ差し替わっていない
+
+ことを再確認します。
+
+content-addressed filenameだけ正しくても、Store directoryを後から別場所へ差し替えてartifactを書かせる状態を受理しません。
+
+normal concurrent putではsame-directory tempをno-clobber hard linkでpublishし、各operation終了時にtemp linkをcleanupします。crash途中のorphan temp回収は非目標のままです。
+
+このReferenceは悪意あるfilesystem管理者に対する完全なsandboxを主張しません。Store rootはTEI build processが管理できるfilesystem領域であることを前提とし、その範囲でpath差替え・symlink・content driftをfail-closedにします。
