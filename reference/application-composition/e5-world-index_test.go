@@ -9,6 +9,7 @@ import (
     "tei/internal/core"
     "tei/internal/database"
     "tei/internal/ir"
+    "tei/internal/query"
     "tei/internal/semantic"
     "tei/internal/sourceindex"
 )
@@ -291,5 +292,111 @@ func TestE5OtherAliasMajorMismatchCannotHideBehindValidAlias(t *testing.T) {
     report := inspectE5(world, index, "order_entry")
     if report.Status != "unresolved" || !e5HasIssue(report, "declared_major_mismatch") {
         t.Fatalf("second alias masked a major mismatch: %+v", report)
+    }
+}
+
+func e5PatternTargetsFixture() (ir.World, sourceindex.Index) {
+    world, index := e5Fixture()
+    world.Semantics[0].Data = []semantic.Data{{
+        ID: "sales.order", Relations: []semantic.Relation{{ID: "sales.order.lines"}},
+    }}
+    world.Semantics[0].Capabilities = []semantic.Capability{{ID: "sales.order.submit"}}
+    world.Queries = []query.EmbeddedSQL{{ID: "order_entry.orders", Application: "order_entry"}}
+    pattern := &world.Applications[0].Patterns[0]
+    pattern.Data = "sales.order"
+    pattern.Relation = "sales.order.lines"
+    pattern.Capability = "sales.order.submit"
+    pattern.Query = "order_entry.orders"
+    refs := []struct {
+        subject sourceindex.Subject
+        path string
+    }{
+        {sourceindex.Subject{Kind:"semantic-data",ID:"sales.order"}, "semantic/sales/order.tei"},
+        {sourceindex.Subject{Kind:"semantic-relation",ID:"sales.order.lines"}, "semantic/sales/relation.tei"},
+        {sourceindex.Subject{Kind:"semantic-capability",ID:"sales.order.submit"}, "semantic/sales/capability.tei"},
+        {sourceindex.Subject{Kind:"query",ID:"order_entry.orders"}, "applications/order-entry/queries/orders.tei"},
+    }
+    for _, r := range refs {
+        index.Artifacts = append(index.Artifacts,
+            sourceindex.Artifact{Path:r.path,Fingerprint:"sha256:abababababababababababababababababababababababababababababababab"})
+        index.References = append(index.References,
+            sourceindex.Reference{Subject:r.subject,ArtifactPath:r.path,Role:sourceindex.RoleDefinition})
+    }
+    return world,index
+}
+
+func TestE5FollowsTypedPatternTargets(t *testing.T) {
+    world, index := e5PatternTargetsFixture()
+    report := inspectE5(world,index,"order_entry")
+    if report.Status!="observed" || len(report.Dependencies)!=10 {
+        t.Fatalf("expected six direct plus four Pattern target definitions: %+v",report)
+    }
+    seen := map[string]bool{}
+    for _, dep := range report.Dependencies {
+        seen[dep.Relation+":"+dep.Subject.ID] = true
+    }
+    for _, claim := range []string{
+        "pattern-data:sales.order", "pattern-relation:sales.order.lines",
+        "pattern-capability:sales.order.submit", "pattern-query:order_entry.orders",
+    } {
+        if !seen[claim] {t.Fatalf("missing Pattern target dependency: %s; %+v",claim,report)}
+    }
+}
+
+func TestE5MissingPatternCapabilityFailsClosed(t *testing.T) {
+    world,index := e5PatternTargetsFixture()
+    world.Semantics[0].Capabilities=nil
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"pattern_target_missing_or_ambiguous") {
+        t.Fatal("missing Semantic Capability accepted")
+    }
+}
+
+func TestE5PatternQueryCannotCrossApplication(t *testing.T) {
+    world,index := e5PatternTargetsFixture()
+    world.Queries[0].Application="another_app"
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"pattern_query_wrong_application") {
+        t.Fatal("foreign application query accepted")
+    }
+}
+
+func TestE5PatternReferentMissingIndexDefinitionFailsClosed(t *testing.T) {
+    world,index := e5PatternTargetsFixture()
+    // The last reference is the Pattern's Query definition.
+    index.References=index.References[:len(index.References)-1]
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"source_definition_missing_or_ambiguous") {
+        t.Fatal("missing Query Source definition accepted")
+    }
+}
+
+func TestE5ReusedPatternTargetEmitsOneSubject(t *testing.T) {
+    world,index := e5PatternTargetsFixture()
+    world.Applications[0].Patterns = append(world.Applications[0].Patterns,
+        application.Pattern{ID:"order_entry.second", Kind:application.PatternReference,
+            Relation:"sales.order.lines"})
+    index.Artifacts=append(index.Artifacts,sourceindex.Artifact{
+        Path:"applications/order-entry/patterns/second.tei",
+        Fingerprint:"sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    })
+    index.References=append(index.References,sourceindex.Reference{
+        Subject:sourceindex.Subject{Kind:"application-pattern",ID:"order_entry.second"},
+        ArtifactPath:"applications/order-entry/patterns/second.tei",Role:sourceindex.RoleDefinition,
+    })
+    report:=inspectE5(world,index,"order_entry")
+    if report.Status!="observed" || len(report.Dependencies)!=11 {
+        t.Fatalf("reused relation must be observed once: %+v",report)
+    }
+    count:=0
+    for _, dep:=range report.Dependencies {
+        if dep.Relation=="pattern-relation" && dep.Subject.ID=="sales.order.lines" {count++}
+    }
+    if count!=1 {t.Fatalf("relation source duplicated: %+v",report.Dependencies)}
+}
+
+func TestE5DuplicatePatternTargetIdentityFailsClosed(t *testing.T) {
+    world,index := e5PatternTargetsFixture()
+    world.Semantics[0].Data[0].Relations = append(world.Semantics[0].Data[0].Relations,
+        world.Semantics[0].Data[0].Relations[0])
+    if !e5HasIssue(inspectE5(world,index,"order_entry"),"pattern_target_missing_or_ambiguous") {
+        t.Fatal("duplicate Semantic Relation accepted")
     }
 }
