@@ -84,6 +84,11 @@ export function projectWorld(world, revision, focus) {
     ? [...ix.relations.values()].filter(r => r.owner === dataID || r.target === dataID)
     : s.kind === "relation" ? [s.value] : [];
   const relationIDs = new Set(relatedRelations.map(r => r.id));
+  const visibleDataIDs = new Set(node ? [node.id] : []);
+  for (const r of relatedRelations) {
+    if (ix.data.has(r.owner)) visibleDataIDs.add(r.owner);
+    if (ix.data.has(r.target)) visibleDataIDs.add(r.target);
+  }
   const relatedPatterns = [...ix.patterns.values()].filter(p =>
     p.id === s.id ||
     (dataID !== null && p.data === dataID) ||
@@ -107,13 +112,19 @@ export function projectWorld(world, revision, focus) {
     views: {
       table: { status: table ? "available" : "not-applicable", value: table },
       er: { status: er.length ? "available" : "not-applicable",
-        nodes: node ? [link("data", node.id)] : [], edges: er },
+        nodes: [...visibleDataIDs].map(id => link("data", id)), edges: er },
       function: { status: relatedPatterns.length ? "available" : "not-applicable",
         items: relatedPatterns.map(p => ({
           ...link("pattern", p.id), application: p.application, kind: p.kind,
           data: p.data && ix.data.has(p.data) ? link("data", p.data) : null,
           relation: p.relation && ix.relations.has(p.relation)
-            ? link("relation", p.relation) : null
+            ? link("relation", p.relation) : null,
+          dataReferenceStatus: !p.data ? "not-declared" :
+            ix.data.has(p.data) ? "source-backed" : "unresolved",
+          relationReferenceStatus: !p.relation ? "not-declared" :
+            ix.relations.has(p.relation) ? "source-backed" : "unresolved",
+          unresolvedDataID: p.data && !ix.data.has(p.data) ? p.data : null,
+          unresolvedRelationID: p.relation && !ix.relations.has(p.relation) ? p.relation : null
         })) },
       business: { status: "unresolved", items: [],
         reason: "Accepted Procedure projection is not present in this World; #1125 adapter required" }
