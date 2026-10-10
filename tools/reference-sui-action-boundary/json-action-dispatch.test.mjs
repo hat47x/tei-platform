@@ -38,6 +38,10 @@ test("untrusted or malformed server response is an error", async () => {
     { ok: true, status:200, json:async () => ({}) },
     { ok: true, status:200, json:async () => ({protocolVersion: "1", revision: null}) },
     { ok: true, status:200, json:async () => {throw new Error("bad json")} },
+    { ok: true, status:200, json:async () => ({protocolVersion: "1", revision: "r2", error: "revision_conflict"}) },
+    { ok: true, status:200, json:async () => ({protocolVersion: "1", revision: "r2", unexpected: true}) },
+    { ok: true, status:201, json:async () => ({protocolVersion: "1", revision: "r2"}) },
+    { ok: true, status:200, json:async () => [ {protocolVersion: "1", revision: "r2"} ] },
   ]) {
     const send = createJSONActionDispatcher("/actions/commit", async () => response);
     await assert.rejects(send(intent), (e) => e instanceof ActionCommitError && e.code==="invalid_response");
@@ -72,4 +76,22 @@ test("rejects obsolete document field and missing version before fetching", asyn
     await assert.rejects(send(value), TypeError);
   }
   assert.equal(requests, 0);
+});
+
+test("malformed error envelopes cannot be reported as valid Action denials", async () => {
+  const invalidBodies = [
+    { protocolVersion: "1", error: "revision_conflict", revision: "r2" },
+    { protocolVersion: "1", error: "" },
+    { protocolVersion: "1", error: "Invalid Error" },
+    { protocolVersion: "1", error: 403 },
+    { protocolVersion: "1", revision: "r2" },
+    { protocolVersion: "1", error: "action_denied", unexpected: true },
+  ];
+  for (const body of invalidBodies) {
+    const send = createJSONActionDispatcher("/actions/commit", async () => ({
+      ok: false, status: 403, json: async () => body,
+    }));
+    await assert.rejects(send(intent), (e) => e instanceof ActionCommitError &&
+      e.code === "invalid_response" && e.status === 403);
+  }
 });
