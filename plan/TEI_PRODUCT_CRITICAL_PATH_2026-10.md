@@ -195,3 +195,71 @@ N10は既存Runtimeで同等試験が作れない場合、`unresolved`としてG
 - GitHub PRのDiff/Issue本文を読むことは、信頼できるfull checkoutで実行して検証したことではない。
 - X-TEA由来の機能の「観測」「移植候補」「TEIでの実装完了」は異なる。
 - 関連元モデルの著作物や原データを、公開可能性の確認なしにfixtureへ複製しない。
+
+## 9. G0 横断依存台帳（2026-10-10・暫定）
+
+### 監査の基点と証拠の区分
+
+- GitHubの `main` と本PRの比較基点: `5fc5a0e1cb4fb42897c76dd3334292e2ad4a66e4`。本PR #1135は `work/issue-1119-critical-path-product-gate` からの**文書だけのDraft**。次回の着手時にはこのSHAを流用せず、改めてmainを取得する。
+- 現状区分は `baseline-reported`（既存のstatus / Gateに記録）、`source-located`（今回main上のpathを読んだ）、`draft-candidate`（未統合）、`not-observed`（今回actual実行していない）を併記する。「Referenceあり」と「このGateのPASS」は別。
+- `docs/status.md`、`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`、`docs/business-system-design.md`を既存の製品判断の基線として参照した。今回確認したsource anchorは `internal/ir/world.go`、`internal/plugin/model.go`、`tools/reference-shared-acceptance/README.md`、`tools/repository-health-check.sh`。pathがあることとAPIの適合・actual PASSは等価ではない。
+- 既存Gate B/Cの過去のReady判定は変更しない。今回のP0 product loopについては全ケース**未資格確認**であり、以下の実装場所・テストは各ownerの申告待ち。
+
+| 契約・CP | Producer / 最初のconsumer | 再利用する既存境界と現状 | 下流を止める最小blocker | Evidence / Ownerが提出するもの |
+| --- | --- | --- | --- | --- |
+| CP-1 / C0: typed subject・edge・provenance | #1120 → #1124/#1126/#1132（後続 #1125/#1131） | Canonical/Source Indexと意味差分。既存基線あり、今回の三視点契約は未確認 | 論理ID、Source locator、表示名、physical keyを混同せず、無効edgeとrenameを検出できること | V00/V01、N01/N02の正負fixture・JSON差分・破壊的変更規則 |
+| CP-2: Capability/Plugin選択・依存 | #951/#1016/#1019 → #1121/#1127 | `internal/plugin/model.go`に固定CapabilityKindあり。#951のgeneric resolverはReference/Draftのためproduction採用を未認定 | exact contract / scope / version / provider・Conformance / Authorityの欠落をfail-closedにすること | 合致・不一致2 Provider、wrong scope・ambiguous provider・unauthorized higher versionの結果 |
+| CP-3 / C3: lowering・execution handoff | #1121 → #1127/#1129/#1130 | DriverとWeb Targetは既存Gateの基線。新しい共通巨大IRは不要 | Accepted revision → Binding/Lock → Driver/Targetのtrace、required Context Slot宣言を落とさないこと | V05/V08、N08/N11。Hostの実Principal/sessionをCanonicalへ入れない負例 |
+| CP-4: Target/Authority束縛 | #976/#1043/#259・#1118 → #1121/#1127 | 実行時のPermission/Host/Target既存境界を流用。第二Targetによる意味同等性は未実証 | declarative permissionとcurrent execution authorization、potential CUDとactual effectを区別 | Authority拒否・Target Unsupported・別read Observationを別証跡として添付 |
+| CP-5: Build / physical Artifact | #943/#979/#1080/#1101/#1103 → #1121、後続G3/G4 | Build/Plugin Lockは既存の別責務。self-build Stage3はP0のHard blockerにしない | exact artifact/target profileの追跡は保つが、Runtime Lockへbuild-only依存を入れない | Stage別の再現・digest照合はG3/G4で評価。P0では既存実行物を用いる |
+| CP-6 / C1: Projection→Accepted Source | #1124 + 既存#267 → #1125/#1126のview consumer | `tools/reference-shared-acceptance/`はfile/Studio/AIの同一受理境界を持つReference。人向け三視点UIのactual運用は未確認 | proposalのbase revision、対象Source、preview非書換え、stale拒否、accept後再投影 | V03/V04、N05/N06/N12のbefore/after source digest |
+| CP-6 / C2: Cross-view diagnostic | #1132 → #1124/#1125/#1126/#1127 | #1031はlegacy source read-only観測でAccepted Action effectではない | Function CUDのdeclareとOwner Actionのactual effectを別の関係型にする | V06、N04/N07のsource-backed / derived / unresolved診断 |
+| CP-6 / C4: typed example / Scenario | #1131 → #1126/#1129/#1132 | PR #1128はread-only ER slide試作。Dataset→実行→差分照合は別 | Stage、presentation order、actual step timeを混同しない | N09、2例のexpected/actual差分。P1寄りでP0初回loopを停止させない |
+| CP-6: Business DFD・Data ER・standard UI | #1125/#1126/#1127 → #1124/#1132 | それぞれPlugin Projection・既存Pattern/Driverに接続 | 手作業の欠落扱い禁止、logical/physical key分離、UI由来の認可昇格禁止 | V01/V02/V05/V07、N03/N07/N08/N12をそれぞれ提出 |
+| CP-6: Consequence / report / batch | #1129/#1130 → P1製品圧力 | 既存Command/Observationを再利用、actual consequenceは未認定 | rollback、二重effect、cancel、artifact outputを静的なFunction宣言から推定しない | N10および帳票・Batch・再実行の各actual証跡 |
+
+**評価の優先度**: P0の先行安定化はC0（参照）・C1（受理境界）・C3（実行Authority）。これらは下流consumerが多く、片方の都合で変えると三視点とDriverに同時手戻りが生じる。C2はC0に依存する薄いRule側で先行可能、C4とself-buildはP0最短loopの阻害条件にしない。変更頻度・影響先件数の実測が未取得なので、定量スコアや完了期日は付与しない。
+
+### G0からG1へ渡す契約ハンドシェイク
+
+各Producerは実装を他レーンへ配布する前に、以下の**最小互換packet**を#1119へ返す。packetは新たなCore型を強制するものではなく、既存APIを採用する場合はそのpathとversionで足りる。
+
+1. `owner issue / provider path / consumer issue / exact revision / contract version / schema or sample`。採用済みSource、Derived projection、候補、未解決、実観測のAuthorityを個別に記す。
+2. 正例1件・負例1件以上の実行方法と入力digest、期待されるdiagnostic code、出力のSource anchor。少なくとも旧consumerの互換fixtureを含める。
+3. **破壊変更の分類**: read-only field追加、semantic kind/edge追加、existing fieldの意味変更、ID再割当、serialization変更、required capability/contextの追加を区別。重大な変更はproducerがconsumerを列挙し、consumer側がversionと失敗時動作を確認するまで共有契約を凍結しない。
+4. `tested | not-run | needs-trusted-checkout | actual-target-observed`と、実施時のmain/head SHA・Go version・pre/post clean状態を明記。GitHubに文書やテストソースがあるだけではPASSにしない。
+5. C0→C1では「subject/source locator」と「acceptの対象/expected revision」の対応を、C0→C2では「source-backed/derived」と「Action-specific effectではないこと」を、C3→#1127では「required invocation context/Host authority」が落ちないことを**consumer側の負例**で確認する。
+
+**具体的な契約衝突の停止条件**:
+
+- C0の新しいedge typeがSource Adapterの観測factをAccepted meaningへ暗黙昇格させる場合、#1120と#1031/#1132でreviewするまで採用しない。
+- C1のUI独自accept経路が `tools/reference-shared-acceptance` のstale/current Source検査を迂回する場合、#1124/#267で止める。
+- C3のArtifact/Lockにcurrent Principal/credentialを固定したり、required Context Slotをoptionalとして欠落させたりする場合、#1121/#1118で止める。
+- C2の「Subsystem外のCUD」を静的なFunction-level declared operationだけで実更新/認可違反と断定する場合、#1132へ差し戻す。
+- P0のRuntime選択をself-build Stage3 / 全Plugin generic化 / 第二Targetの完成まで延期する場合、#1119でHard blocker指定の根拠を見直す。
+
+### PR競合、推奨統合順序、Gate判定
+
+- **今回確認した変更path**: PR #1135は本計画ファイルのみ。PR #1128は `plan/design/EXAMPLE_ER_SLIDE_M1_2026-10.md` と `tools/reference-example-slide/` の6ファイルであり、#1135との直接path重複なし。#1128はDraftであり、#1126/#1131がその描画器を先取り・複製しない。
+- **境界の近い別PR**: #1040はShared Acceptance周辺、#1115はAcceptance source safety、#1114はWeb Host/Auth、#1123はInvocation Contextであり、#1124/#1121/#1127が同じ契約やファイルを変更する前に変更pathとmain採用状況を再照合する。この列挙はpath一致を確認した一覧ではなく衝突候補。
+- **統合wave 0**: #1119の計画候補を独立review・文書検査して資格確認。ここでG0の全Gate合格を宣言しない。
+- **wave 1（並列契約確認）**: #1120はC0最小fixture、#1121は既存Capability/Driver上のC3最小fixtureを別PRで提出。同じ`internal/ir/world.go`や`internal/plugin/model.go`を両者が同時編集しない。必要ならC0の薄いproducer patchを先に採用し、C3はそのmain revisionへ追随。
+- **wave 2（独立consumer）**: #1125/#1126のread-only Projection、#1132のsource-aware cross-view diagnostic、#1124のPreview/Stale契約をそれぞれ小さく試験。Coreへ新Domain enumを足す前にExtension/Projection適合性を確認。
+- **wave 3（P0製品一往復）**: #1124がC0/C1を使ってV03→V04、#1127がC3と既存Driverを使ってV05→V08へ連結する。Producerが異なるfixture revisionを検証しただけでは合格としない。同じAccepted meaning revisionを通す。
+- **wave 4（P1拡張）**: #1129/#1131/#1130、および第二Target・self-buildとの差分確認を個別に進める。新しいHard dependencyはP0の失敗例を提示してから採用する。
+- 各waveの終わりに、対応ownerはPR head・main SHA・実際に走らせた試験・未実行理由・次consumerをIssueへ記録する。資格確認済みmilestoneのみmainへmergeし、不要な作業branchを削除する。他レーンのPRを横断担当が無断統合しない。
+- **現在のGate状態**: G0 = inventory candidate（具体的API/API testのowner照合待ち）、G1 = contract-unverified、G2 = product-loop-unverified、G3 = capability-partial/actual未確認、G4 = qualification-pending。今回の作業環境にtrustedなRepository full checkoutは無く、`tools/repository-health-check.sh`・actual Targetの実行は**not-run**。GitHub上の差分確認のみでG0/G1をPASSとしない。
+
+## 10. G0証跡受付の最小フォーマット
+
+#1119への各laneの次回報告は、長文の進捗説明より次の1行単位のcoverageを優先する。
+
+```text
+case=V03/N06; owner=#1124; producer=C1(#1124); consumer=#1126;
+main=<sha>; head=<sha>; source=<path:anchor>; test=<command/test>;
+fixture=<digest>; outcome=PASS|FAIL|NOT_RUN|UNRESOLVED;
+evidence=source-located|synthetic-tested|actual-target-observed|not-observed;
+blocked_by=<issue/pr/revision or none>; next=<consumer action>
+```
+
+すべてのV00〜V08/N01〜N12は**設計上の担当あり・このプログラムとしての実行証跡なし**から始める。Issueごとの実証結果を受領した時点で該当caseのみ更新し、別RevisionでのPASSを横滑りさせない。G2の採否判定には、同じSource revision、Provider/Target identity、否定試験結果、別readによるObservationを束ねた受入packetが必要。
