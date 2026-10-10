@@ -99,6 +99,23 @@ func TestTraceWorkspaceMissingAndStaleFingerprint(t *testing.T) {
 	}
 }
 
+func TestTraceWorkspaceInvalidSubjectFailsBeforeWorkspaceLoad(t *testing.T) {
+	missingWorkspace := filepath.Join(t.TempDir(), "missing")
+	for _, key := range []modelref.Key{
+		{Scope: "reference", Subject: subject.Subject{Kind: "semantic-data"}},
+		{Scope: "reference", Subject: subject.Subject{ID: "sales.order"}},
+		{Scope: "reference", Subject: subject.Subject{Kind: " semantic-data", ID: "sales.order"}},
+		{Scope: "reference", Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order "}},
+		{Scope: " reference", Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order"}},
+	} {
+		_, err := TraceWorkspace(missingWorkspace, key, modelref.TraceOptions{})
+		var invalid *modelref.TraceError
+		if !errors.As(err, &invalid) || invalid.Code != "INVALID_SUBJECT" {
+			t.Fatalf("invalid subject %+v loaded Workspace or was accepted: %v", key, err)
+		}
+	}
+}
+
 func TestTraceWorkspaceLoadFailureStage(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "not-present")
 	key := modelref.Key{Scope: "reference", Subject: subject.Subject{
