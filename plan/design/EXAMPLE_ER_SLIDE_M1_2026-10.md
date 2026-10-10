@@ -77,3 +77,25 @@
 - 現段階ではReferenceが意味定義の必須性・データ型を完全再現するわけではなく、Studioの正本受理経路も使っていない。
 
 この境界を維持しながら、次は実際のCaseをSemantic RelationKeyへ適合させて検証可能にするか、未知・不完全を返すかの最小契約を反証例から定める。データ例が一部しかない説明用スライドで、参照先が存在しないことを不整合と即断してはいけない。
+
+## 部分データの扱い — RelationKey評価の追加候補
+
+データモデル上の関連線の表示と、具体的なレコードの関連照合を別機構にした。図に関連が表示されるだけでそのケースの参照整合性を確認済みとすることはできない。
+
+`Example.completeTables`は、各Snapshotについて「このテーブルのレコードをすべて掲載した」という**Case内部の申告**である。指定していないテーブルは部分的な抜粋とし、Targetが見えないだけでは矛盾を主張しない。この申告には業務事実の採用権限を与えない。
+
+三値の`relationFindings`は、relation ID / source record IDを単位に出す。判定結果はこの説明用Datasetの範囲だけに限定する。
+
+- `supported`: Sourceに必要なキー値があり、Targetが完全と申告され、キー値が一致し、`cardinality=one`の場合は一致Targetが1件（`many`では列挙可能）。これは**モデルが実務上正しい証拠ではない**。
+- `contradiction`: `one`に対して可視の2件以上のTargetが一致した。この矛盾は部分Datasetでも証明できる。
+- `unresolved`: RelationKey未定義、比較不能、キー欠落、Targetが部分、0件に対する必須性未定義など。空欄を否定事実へ変換しない。
+
+キー照合は順序付きの複合RelationKeyを保持し、JSON numberは浮動小数点へ丸めずに比較する。巨大な指数等では資源制約のため比較不能とする。異なるJSON型を自動変換せず、型の意味が未確定なら`unresolved`で残す。
+
+### M1検証の段階
+
+`relation_assessment_test.go`と`world_adapter_test.go`に、複合キー・部分抜粋・2件一致矛盾・キー欠落・Keysなし・大きいID・表示順差・World内の受注→顧客を含むテスト候補を追加した。
+
+実際のGitHub PRのcheckoutはこの環境では取得できず、**当該候補ブランチのGoテスト・format・full Repository-healthは未実行**。独立したGo 1.23.2 scratch probe（関係評価の抜粋・型スタブ）では三値評価の主要7ケースがPASSし、`go vet`も完了したが、PRのソース全体・Adapter・CLI・リポジトリの検証Evidenceを代替しない。
+
+未確定: Datasetの網羅性宣言をどのEvidenceで裏付けるか、Source Indexによる業務キーの権威追跡、実Provider観測と説明用スナップショットの区別、複雑なデータ型の比較、完全ER図記法との互換。
