@@ -25,6 +25,10 @@ Hostはprepared resultをcommit前に検査します。resultがshapeやdomain r
 
 result検査後はprepared handleをJournalへ記録します。Journalへの記録に失敗した場合もcommitしません。commit後にHost processが停止しても、Invocation Keyからprepared handleを復元し、Providerのstatusへ戻るためです。
 
+durable handleへprepared resultの生bytesは入れません。保持するのはrequest digest、result digest、preparation identity、Concurrency Token等の回復情報です。result payloadに機密情報が含まれる場合、回復性のためだけにその内容をJournalへ永続化することを避けます。
+
+再起動後のreconcileはcommit outcomeの確定までを責務とします。結果payloadが再度必要な場合は、別のObservation / Query境界から取得します。Commandの回復と結果データの再取得を同じdurable recordへ押し込みません。
+
 ReferenceのJournalはmemory実装です。永続性、暗号化、複製、障害復旧を実証したものではありません。productionでは、commit前に回復可能な記録を残せる保存境界が別途必要です。
 
 ## idempotencyとretry
@@ -70,7 +74,19 @@ Provider receiptには少なくとも次を結びます。
 - effect digest
 - commit identity
 
-Host側のMutation ReceiptはProvider receiptとprepared fingerprintへ戻れるようにします。
+Host側のMutation ReceiptはProvider receiptとprepared fingerprintへ戻れるようにします。Receiptもresult payload自体は保持せず、result digestだけを保持します。
+
+## fingerprintとbyte rule
+
+request / result digestは入力byte列そのものへSHA-256を適用します。文字列化、改行正規化、Unicode正規化等はこのReference内で暗黙に行いません。
+
+prepared / Provider receipt / Mutation receiptのfingerprintは、field境界を持つstructをJSONへmarshalした後にSHA-256を適用します。NUL区切り連結等の曖昧なfield結合は使いません。canonicalization規則はReference candidateとして明示し、将来のproduction wire formatとは分離します。
+
+## cleanup
+
+request cancellationがprepare後に発生しても、未commit prepared stateのcleanupまで同じcancel済みContextで止めないようにします。Abortはrequest Contextの値を保ちつつcancellation / deadlineを外したcleanup Contextでbest-effort実行します。
+
+これはcompensationではありません。commit前の一時resource解放だけを対象にします。
 
 ## Journal failure
 
@@ -111,7 +127,7 @@ Reference testsでは次をpressureします。
 - 同じInvocation Keyのretryで副作用を重複させない
 - 同じInvocation Keyを別requestへ使わない
 - commit response喪失後は`unknown`を保持する
-- Journalからprepared handleを復元し、process再起動後もreconcileできる
+- Journalからpayload-freeなprepared handleを復元し、process再起動後もoutcomeをreconcileできる
 - malformedなcommit receiptを`not-committed`へ読み替えない
 - statusが`unknown`なら`unknown`を維持する
 - stale Concurrency Tokenでprepared resultをcommitしない
