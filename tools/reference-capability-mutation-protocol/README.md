@@ -11,7 +11,7 @@ semantic request
   -> prepare
   -> prepared result
   -> result validation
-  -> prepared intent journal
+  -> durable commit intent journal
   -> commit
   -> committed / not-committed / unknown
   -> reconcile when needed
@@ -23,7 +23,7 @@ semantic request
 
 Hostはprepared resultをcommit前に検査します。resultがshapeやdomain ruleを満たさない場合はcommitせず、prepared stateをabortします。
 
-result検査後はprepared handleをJournalへ記録します。Journalへの記録に失敗した場合もcommitしません。commit後にHost processが停止しても、Invocation Keyからprepared handleを復元し、Providerのstatusへ戻るためです。
+result検査後はcommit対象のpayload-free handleをJournalへdurable commit intentとして記録します。Journalへの記録に失敗した場合もcommitしません。commit後にHost processが停止しても、Invocation Keyからprepared handleを復元し、Providerのstatusへ戻るためです。
 
 durable handleへprepared resultの生bytesは入れません。保持するのはrequest digest、result digest、preparation identity、Concurrency Token等の回復情報です。result payloadに機密情報が含まれる場合、回復性のためだけにその内容をJournalへ永続化することを避けます。
 
@@ -52,6 +52,14 @@ commit request
 ```
 
 statusでも確定できない場合は`unknown`を維持します。
+
+### point-of-no-return
+
+result validationとrequest cancellationの確認を終えた後、Hostはcommit intentをJournalへ記録します。この記録が成功した時点をpoint-of-no-returnとします。
+
+point-of-no-returnより前にrequestがcancelされた場合はprepared stateをAbortし、commitしません。commit intentを記録した後にcallerがcancelしても、Hostはそのcancelをcommit可否の判断へ使いません。commit / status reconciliationをcoordinator責務として完遂します。
+
+そのためcommit呼出しにはcaller cancellation / deadlineを外したContextを使います。これはAuthorityを拡張するものではありません。どのProviderをどの権限で実行するかは、point-of-no-returnより前に確定したExecution Bindingへ固定します。
 
 ## concurrency
 
@@ -88,9 +96,17 @@ request cancellationがprepare後に発生しても、未commit prepared state�
 
 これはcompensationではありません。commit前の一時resource解放だけを対象にします。
 
+Abortに失敗した場合も、business outcomeは`not-committed`のままです。ただしresource leakの可能性を隠さず、cleanup errorを独立して返します。
+
+## Journal integrity
+
+同じInvocation Keyに同じcommit intentを再保存することはidempotentに許容します。一方、別bindingや別prepared identityを同じInvocation Keyへ上書きしてはいけません。Journal implementationはconflictとして拒否する必要があります。
+
+Journalから読み戻したhandleやoutcome receiptも無条件には信用しません。binding、request / result digest、preparation fingerprint、receipt fingerprintを再検証し、改ざんまたは破損したrecordはProviderへ到達する前に停止します。
+
 ## Journal failure
 
-prepared intentの記録に失敗した場合はcommitしません。
+commit intentの記録に失敗した場合はcommitしません。
 
 一方、commit成功後にoutcome receiptの保存だけが失敗した場合、副作用を「失敗したから無かった」とは扱いません。Referenceは`committed` outcomeとJournal errorを同時に返します。同じInvocation Keyで再入場すればProviderのidempotencyによって副作用を増やさず回復できるpressureを置いています。
 
@@ -117,12 +133,20 @@ Capability Contract / Provider / Conformance
 
 各境界は別の責務です。
 
+### Execution Binding
+
+mutation protocolはCapability ResolutionやRuntime Permissionを再計算しません。上位で確定した実行経路をopaqueなexact SHA-256 fingerprintとして受け取ります。
+
+Execution Binding fingerprintはPrepare、Commit、Status、durable handle、Provider receipt、Mutation Receiptへ伝播します。process再起動後のreconcileでも、current ExecutorのbindingとJournal内handleのbindingが一致しなければProviderへ到達する前に拒否します。
+
+このfingerprint自体は新しいAuthorityではありません。将来productionへ接続する場合は、ISSUE-000080側のCapability Resolution identityとRuntime Invocation Provenanceから導出するpressureが必要です。
+
 ## Referenceで確認すること
 
 Reference testsでは次をpressureします。
 
 - prepared resultを検査する前にcommitしない
-- prepared intentをJournalへ記録できなければcommitしない
+- commit intentをJournalへ記録できなければcommitしない
 - commit成功時だけprepared resultを返す
 - 同じInvocation Keyのretryで副作用を重複させない
 - 同じInvocation Keyを別requestへ使わない
@@ -132,6 +156,11 @@ Reference testsでは次をpressureします。
 - statusが`unknown`なら`unknown`を維持する
 - stale Concurrency Tokenでprepared resultをcommitしない
 - commit後のJournal failureをrollback済みと誤認しない
+- commit intent記録後のcaller cancellationでcommit decisionを破棄しない
+- 同じInvocation Keyへ別bindingのcommit intentを上書きしない
+- Journalから読み戻したhandle / receiptを再検証する
+- Execution Binding driftをProvider.Status前に拒否する
+- Abort cleanup failureをbusiness outcomeと分けて観測する
 
 ## 非目標
 
