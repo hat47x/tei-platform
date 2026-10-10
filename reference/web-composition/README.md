@@ -170,3 +170,21 @@ GitHub Blobと一致するローカルコピーに対し、Go 1.23.2の`gofmt`�
 `SubjectLinkLookup`の実体は未実装です。実運用向けには、対応付けの管理権限、現在の有効性・失効・無効化、tenant／Application境界を検査できる信頼済みStoreが必要です。特に既存`legacyauthorization.Adapter`は業務roleを評価するものであり、認証済み主体のアカウント状態・再認証・失効を代行するものではありません。
 
 また、現行`commandScenarioRunner.RunCommand`はCredentialsを要求し、自身で`security.authenticate`と`security.authorize`を呼び出します。この新しい認可コールバックは**そのRunnerをまだ呼び出していません**。既存Runnerの業務Validation・Command・Observationを維持するためのセッション専用入口を接続することが次の課題です。架空のCredentialを渡して旧経路を通す実装にはしません。
+
+## E2.3：資格情報を再送しないSession専用Runner（2026-10-10）
+
+既存First Web Targetに`RunVerifiedSessionCommand`を追加しました。従来の`RunCommand`は`loginId`と`credential`を使って`security.authenticate`を呼ぶ互換経路のまま残します。新しい入口は`webcomposition.PrincipalFromContext`が返す**Web Hostで検証済みのPrincipal**を必須とし、既存の`SubjectLinkLookup`を通して`PrincipalID`と業務`SubjectID`の対応を要求します。暗黙のlegacy認証へのfallbackや、架空のCredentialの注入は行いません。対応付けなしは`identity-link-denied`、対応付け異常・Lookup障害はExecution Errorと区別します。セッション認証を、実行していない`security.authenticate` CapabilityのBusiness Resultとして偽装しません。
+
+`command_scenario.go`の旧`RunCommand`は認証に成功した後、共通の`runAuthenticatedSubjectCommand`へ進む構成に変更しました。Session経路も同じ共通処理を利用します。Read → Canonical Validation → **既存`security.authorize` Capability** → Command → Observationを一切複製せず、業務認可をFinal Action境界で再評価します。共通化前後の業務処理164行を比較し、参照する入力変数3箇所以外のテキストが**完全一致**することを確認しました（比較対象の旧Blob `ba1b5426334128448256531508ca97891f3f30da`、新Blob `a2e16ee371d4bcb51b1188f2327a6de70092a8ba`）。
+
+`tools/reference-first-web-target/session_command_scenario_test.go`には、合成の企業認証／従来認証から同じ既存業務処理を通す正常系、既存業務規則による閲覧者の拒否、リンク未登録、Principal不一致、リンクStore障害、未検証Contextからの直接呼出し拒否を追加しました。Host側の早期認可だけに依存せず、Runnerでも既存Capabilityを呼び直すことを試験します。
+
+### 確認済みの範囲と未実施
+
+- `session_command_scenario.go`のGitHub Blob: `e4a497374527ad7ba346d6af82ef4cbbfd1142b5`
+- `session_command_scenario_test.go`のGitHub Blob: `ce5806d7fa80f022312991df557ad452d194dfc8`
+- この二ファイルは上記Blobと完全一致するローカルコピーで`gofmt -l`が空、Go 1.23.2のParserによる構文確認がPASS。
+- E2.2の`canonical_authorization.go`もGitHub Blobと完全一致するローカルコピーを用い、**stub Driver／Binding／Capability Result**による隔離Go契約ハーネスで`go vet`、`go test -count=1`、`go test -race -count=1`がPASS。Session Runner本体についても**stub共通実行処理／Principal Context**による同条件の隔離Go契約ハーネスでPASSしました。これらはテスト補助依存を差し替えた限定的な確認です。
+- **実際のReference Workspace／Driver／Command Scenarioを読み込む新結合試験は未実行です。** 既存旧認証経路の回帰を含む実Repositoryの`go test`、`go vet`、`go test -race`、exact-head `tools/repository-health-check.sh`のPASSは取得していません。
+
+**公開経路も未切替えです。** 現在の`webTargetServer.Handler()`の`/scenario/submit`は旧Credential方式のままです。Session方式は本Referenceの`NewHost`を手動で構成した合成テストによる専用入口であり、実IdP、Session Cookie、CSRF Provider、ブラウザ、productionを動作確認したものではありません。本番相当の経路を公開する前には、旧入口との到達可能性の整理、信頼済みProvider／Subject Linkの実装、Tenant境界、account無効化・期限・失効検査、既存Bindingへの適合確認が必要です。
