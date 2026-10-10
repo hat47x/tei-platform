@@ -63,6 +63,20 @@ GitHub登録済みのE4・E6・E7・E11各ファイルと試験ファイルを�
 
 **これはNode.js標準`node --test`、Go側の実Projection出力を読み込むE2E、全Repository Healthの実行ではない。** この限定試験と以前のNode.jsでの初回12件を混同しない。
 
+### E11c：型付きImpact Reasonの自由文混入を拒否する
+
+E11は当初、Callerが渡した`modelref.Impact`候補の`reason`を「空でない文字列」という条件だけで採用し、そのまま`reviewCandidates`へ返していた。E12はレビュー結果をCLIの標準出力へJSONで返すため、外部入力の`reason`が`password:secret`のような自由文でも、構成レビューの機械的な変更理由として出力し得た。
+
+既存Goの`modelref.Change.Kind`は`added`／`removed`／`display-renamed`／`physical-renamed`／`version-changed`／`evidence-changed`／`reference-changed`／`reference-evidence-changed`といった**短い機械コード**である。E11はその正本を移し替えた固定enumは持たず、Go側の拡張を妨げない小さな文字種規約（小文字英数字＋ハイフン、先頭英字、96文字以内）で検査し、自由文・制御文字・過長入力は`invalid_typed_impact`へ保留する。この規約はE11の**出力衛生**であり、Impactの意味解決・Runtime権限の判断ではない。
+
+修正した`e11-review-gate.mjs`・合成テストについて、GitHub登録済み原文E4/E6/E7/E11をV8のインメモリ互換ランナーへ取り込み、ESM import/exportと基本assert／`structuredClone`を試験用に代替して、**E11合計30件すべて成功（失敗0）**を確認した。新規4件は不適切なReason、制御文字・過大値、Goの既知変更種別の継続利用、Go形式のE7+Impactの入力を含む。
+
+- 修正後E11実装Git blob：`3ed7f5e7cf11081041b51bbcaf335472d18f5411`
+- 修正後テストGit blob：`f9aa97efb105c30c58393b09c6a186c0bacd36e7`
+- **未実施**：この最新headでのNode.js標準`node --test`、Goの実Impact出力との統合、actual Workspace、trusted exact-head Repository Health。30件は**V8互換環境**での限定結果である。
+
+機械コードの形をした機密文字列、Subject ID、Scope、Source Path、真正性のないGo Carrierなどの開示許可は、この文字符号検査だけでは保証できない。外部共有前のACL、真正なSource読み取り、別PR #1139の型付き検証を引き続き必要とする。
+
 ## 負例と局所試験
 
 ```sh
