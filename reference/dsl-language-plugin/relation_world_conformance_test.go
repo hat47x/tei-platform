@@ -82,6 +82,20 @@ func TestWorldRelationRejectsAmbiguousTarget(t *testing.T) {
 // TestWorldRelationDoesNotAddStricterKeyRules ensures the reference does not
 // invent a source-key uniqueness restriction absent from the canonical
 // validator. Distinct target attributes remain independently mapped.
+func TestWorldRelationRejectsGlobalRelationIdentityCollision(t *testing.T) {
+	w := crossNamespaceRelationFixture()
+	// The duplicate is declared under a different Data; looking only at
+	// the source's relation slice would wrongly treat the ID as unique.
+	w.Semantics[1].Data[0].Relations = append(w.Semantics[1].Data[0].Relations,
+		semantic.Relation{
+			ID: "sales.order.customer", Target: "address.address",
+			Cardinality: semantic.CardinalityMany,
+		})
+	if err := ValidateRelationKeys(w, "sales.order", "sales.order.customer"); err == nil {
+		t.Fatal("globally ambiguous relation identity was accepted")
+	}
+}
+
 func TestWorldRelationDoesNotAddStricterKeyRules(t *testing.T) {
 	w := crossNamespaceRelationFixture()
 	w.Semantics[1].Data[0].Attributes = append(w.Semantics[1].Data[0].Attributes,
