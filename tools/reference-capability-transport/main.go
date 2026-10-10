@@ -141,39 +141,24 @@ func invokeOverProcessTransport(
 	if err := decodeJSONExact(resp.Payload, &result); err != nil {
 		return TransportExecution{}, fmt.Errorf("decode generic transport result: %w", err)
 	}
-	if result.Schema != resultSchema ||
-		result.ContractID != dispatch.ContractID ||
-		result.ContractFingerprint != dispatch.ContractFingerprint ||
-		result.Target != dispatch.Target ||
-		result.Provider != dispatch.Provider ||
-		result.RequestShapeFingerprint != dispatch.RequestShapeFingerprint ||
-		result.ResultShapeFingerprint != dispatch.ResultShapeFingerprint ||
-		result.PayloadCodec != dispatch.PayloadCodec {
-		return TransportExecution{}, fmt.Errorf("generic transport result identity drifted")
+	if err := validateGenericTransportResult(dispatch, result); err != nil {
+		return TransportExecution{}, err
 	}
 
 	return TransportExecution{
 		ResultPayload: append([]byte(nil), result.Payload...),
-		Receipt: TransportReceipt{
-			Schema:    receiptSchema,
-			Transport: "process-stdio-v1",
-			Carrier: TransportCarrierReceipt{
+		Receipt: newTransportReceipt(
+			"process-stdio-v1",
+			TransportCarrierReceipt{
 				Kind:                 "tei-runtime-legacy-capability",
 				Plugin:               &carrier.Plugin,
 				LegacyCapabilityKind: carrier.CapabilityKind,
 				LegacyCapabilityID:   carrier.CapabilityID,
 			},
-			RequestID:               requestID,
-			GenericContractID:       dispatch.ContractID,
-			ContractFingerprint:     dispatch.ContractFingerprint,
-			Target:                  dispatch.Target,
-			Provider:                dispatch.Provider,
-			RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
-			ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
-			PayloadCodec:             dispatch.PayloadCodec,
-			RequestDigest:            digestBytes(dispatch.Payload),
-			ResultDigest:             digestBytes(result.Payload),
-			AuthorityLimits: []string{
+			requestID,
+			dispatch,
+			result,
+			[]string{
 				"transport-success-is-not-capability-conformance",
 				"transport-success-is-not-runtime-authority",
 				"transport-success-is-not-canonical-acceptance",
@@ -183,8 +168,51 @@ func invokeOverProcessTransport(
 				"process-response-does-not-echo-legacy-capability-kind",
 				"process-stdio-is-one-realization-not-universal-capability-abi",
 			},
-		},
+		),
 	}, nil
+}
+
+func validateGenericTransportResult(
+	dispatch GenericDispatch,
+	result GenericTransportResult,
+) error {
+	if result.Schema != resultSchema ||
+		result.ContractID != dispatch.ContractID ||
+		result.ContractFingerprint != dispatch.ContractFingerprint ||
+		result.Target != dispatch.Target ||
+		result.Provider != dispatch.Provider ||
+		result.RequestShapeFingerprint != dispatch.RequestShapeFingerprint ||
+		result.ResultShapeFingerprint != dispatch.ResultShapeFingerprint ||
+		result.PayloadCodec != dispatch.PayloadCodec {
+		return fmt.Errorf("generic transport result identity drifted")
+	}
+	return nil
+}
+
+func newTransportReceipt(
+	transport string,
+	carrier TransportCarrierReceipt,
+	requestID string,
+	dispatch GenericDispatch,
+	result GenericTransportResult,
+	authorityLimits []string,
+) TransportReceipt {
+	return TransportReceipt{
+		Schema:                  receiptSchema,
+		Transport:               transport,
+		Carrier:                 carrier,
+		RequestID:               requestID,
+		GenericContractID:       dispatch.ContractID,
+		ContractFingerprint:     dispatch.ContractFingerprint,
+		Target:                  dispatch.Target,
+		Provider:                dispatch.Provider,
+		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
+		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
+		PayloadCodec:             dispatch.PayloadCodec,
+		RequestDigest:            digestBytes(dispatch.Payload),
+		ResultDigest:             digestBytes(result.Payload),
+		AuthorityLimits:          append([]string(nil), authorityLimits...),
+	}
 }
 
 func validateLegacyCarrier(carrier LegacyCarrier) error {
