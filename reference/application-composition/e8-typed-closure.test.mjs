@@ -67,3 +67,63 @@ test("malformed World and Index members return unresolved rather than crash",()=
   assert.ok(result.issues.includes('invalid_snapshot_shape'));
  }
 });
+
+test("actual order_entry capability input is Semantic Data, not a Semantic Type",()=>{
+ // Identifiers mirror the real reference/workspace semantic/sales/order.tei:
+ // capability sales.order.submit { input order sales.order }
+ const real={applications:[{id:'order_entry',patterns:[{
+   id:'order_entry.submit_order',capability:'sales.order.submit',
+ }]}],semantics:[{id:'sales',
+   capabilities:[{id:'sales.order.submit',inputs:[{name:'order',type:'sales.order'}]}],
+   data:[{id:'sales.order'}],types:[{id:'sales.order_id'}],
+ }]};
+ const artifact='semantic/sales/order.tei';
+ const src={artifacts:[{path:artifact,fingerprint:sha('d')}],
+   references:[{subject:{kind:'semantic-data',id:'sales.order'},
+    role:'definition',artifactPath:artifact}]};
+ const result=inspectCapabilityInputTypes(real,src,'order_entry');
+ assert.equal(result.status,'observed-limited');
+ assert.deepEqual(result.dependencies,[{
+   subject:{kind:'semantic-data',id:'sales.order'},path:artifact,fingerprint:sha('d'),
+ }]);
+});
+test("changing the reachable Data Source evidence changes the observed dependency",()=>{
+ const real={applications:[{id:'app',patterns:[{capability:'submit'}]}],
+   semantics:[{capabilities:[{id:'submit',inputs:[{name:'order',type:'sales.order'}]}],
+     data:[{id:'sales.order'}]}]};
+ const src={artifacts:[{path:'sales/order.tei',fingerprint:sha('a')}],
+   references:[{subject:{kind:'semantic-data',id:'sales.order'},
+     role:'definition',artifactPath:'sales/order.tei'}]};
+ const changed=structuredClone(src);changed.artifacts[0].fingerprint=sha('c');
+ const before=inspectCapabilityInputTypes(real,src,'app');
+ const after=inspectCapabilityInputTypes(real,changed,'app');
+ assert.equal(before.status,'observed-limited');
+ assert.equal(after.status,'observed-limited');
+ assert.notDeepEqual(before.dependencies,after.dependencies);
+});
+test("duplicate Data identities do not resolve by declaration order",()=>{
+ const changed=structuredClone(world);
+ changed.semantics[0].capabilities[0].inputs[0].type='sales.order';
+ changed.semantics[0].data=[{id:'sales.order'},{id:'sales.order'}];
+ assert.equal(inspectCapabilityInputTypes(changed,index,'app').status,'unresolved');
+});
+test("cross-category collisions cannot silently favor Type over Data",()=>{
+ const changed=structuredClone(world);
+ changed.semantics[0].data=[{id:'type-a'}];
+ const result=inspectCapabilityInputTypes(changed,index,'app');
+ assert.equal(result.status,'unresolved');
+ assert.ok(result.issues.includes('input_definition_missing_or_ambiguous:type-a'));
+});
+test("Data Source without a unique definition remains unresolved",()=>{
+ const changed=structuredClone(world);
+ changed.semantics[0].capabilities[0].inputs[0].type='sales.order';
+ changed.semantics[0].data=[{id:'sales.order'}];
+ assert.equal(inspectCapabilityInputTypes(changed,index,'app').status,'unresolved');
+});
+test("malformed semantic Data declarations fail closed",()=>{
+ const changed=structuredClone(world);
+ changed.semantics[0].data=[null];
+ const result=inspectCapabilityInputTypes(changed,index,'app');
+ assert.equal(result.status,'unresolved');
+ assert.ok(result.issues.includes('invalid_snapshot_shape'));
+});
