@@ -40,3 +40,11 @@ tools/repository-health-check.sh
 これは**実Source→Canonical→Driver解決の局所Integration Test**であり、actual Web UI/HTTP実行、Permission/Schema互換性の本物の検証、Physical DBへの問い合わせ、第二Targetの観測とは区別する。Test source追加だけではPASSと表明しない。
 
 実行時判定の変更例（#1119 S05）は、同じPlanに対して古いPreview時の判断を使い回さず、各回`ResolutionCurrent`、`RuntimeBindingCurrent`、`DataCompatible`、`ContextBound`、`Authorized`を分けて検査する。これらは現在、テスト用stubであり、DriverやHostの真正な決定ではない。
+
+## 追加した依存・cache境界（2026-10-10）
+
+- 既存Source IndexにあるApplication、Command Pattern、Semantic Data、ValidationのArtifact fingerprintを読み、`Candidate.SourceInputs`と`Origin.SourceInputs`へ保持する。**完全なSource closureの決定は未実装**であり、実際に引用した代表SourceのTraceだけを検証する。
+- `DataNeed`は`Datasource` alias、Database、Contract、Compatible Majorを保持する。Host側で解決される物理DB instance/connection/sessionは含まない。
+- Build-only dependenciesは既存Build ownerの明示引数として`Keys`へ渡し、`Build`段階のhashだけに加える。`Plan`には渡さず、Runtime Authorityの対象へしない。
+- Previewでの成功を認可とみなさず、古いLock / current Provider / Data Compatibility / Host Context / current grantのそれぞれで停止する負例を固定する。
+- `AuthorizeInvocation`はGateの**順序を示す合成Reference**であり、独立して返したboolや実行許可を後続のProviderへ再利用する本番APIではない。実装では既存Hostの現在のAuthorityとdispatch境界を再利用し、検査後の失効と実行開始のTOCTOU、失敗後の副作用/再試行を別途検証する。
