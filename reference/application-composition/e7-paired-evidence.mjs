@@ -34,7 +34,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       const contents=await Promise.all(paths.map(async p=>{
         const text=await readFile(p,'utf8');
         if (Buffer.byteLength(text,'utf8') > limit) throw new Error('snapshot_too_large');
-        return JSON.parse(text);
+        try { return JSON.parse(text); }
+        catch { throw new Error('invalid_snapshot_json'); }
       }));
       const result=assessPairedEvidence(contents[0],contents[1]);
       process.stdout.write(JSON.stringify(result,null,2)+'\n');
