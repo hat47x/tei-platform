@@ -69,6 +69,7 @@ type BuilderConformanceEvidence struct {
 	RecipeKind          string           `json:"recipeKind"`
 	Target              string           `json:"target"`
 	Profile             string           `json:"profile"`
+	ClaimsFingerprint   string           `json:"claimsFingerprint"`
 	EvidenceFingerprint string           `json:"evidenceFingerprint"`
 }
 
@@ -646,20 +647,23 @@ func validateEvidence(evidence BuilderConformanceEvidence) error {
 	if err := validateFingerprint("Evidence contract fingerprint", evidence.ContractFingerprint); err != nil {
 		return err
 	}
+	if err := validateFingerprint("Conformance claims fingerprint", evidence.ClaimsFingerprint); err != nil {
+		return err
+	}
 	if err := validateFingerprint("Evidence fingerprint", evidence.EvidenceFingerprint); err != nil {
 		return err
 	}
-	expected, err := conformanceEvidenceFingerprint(evidence)
+	expected, err := conformanceClaimsFingerprint(evidence)
 	if err != nil {
 		return err
 	}
-	if canonicalFingerprint(expected) != canonicalFingerprint(evidence.EvidenceFingerprint) {
-		return fmt.Errorf("Evidence fingerprint does not match Conformance Evidence claims")
+	if canonicalFingerprint(expected) != canonicalFingerprint(evidence.ClaimsFingerprint) {
+		return fmt.Errorf("Conformance claims fingerprint does not match Evidence claims")
 	}
 	return nil
 }
 
-func conformanceEvidenceFingerprint(evidence BuilderConformanceEvidence) (string, error) {
+func conformanceClaimsFingerprint(evidence BuilderConformanceEvidence) (string, error) {
 	if evidence.ProviderID == "" || !core.ValidNumericVersion(evidence.ProviderVersion) ||
 		strings.TrimSpace(evidence.ImplementationID) == "" ||
 		strings.TrimSpace(evidence.ConformanceProfile) == "" ||
@@ -681,6 +685,7 @@ func conformanceEvidenceFingerprint(evidence BuilderConformanceEvidence) (string
 	value := evidence
 	value.ArtifactDigest = digest
 	value.ContractFingerprint = canonicalFingerprint(value.ContractFingerprint)
+	value.ClaimsFingerprint = ""
 	value.EvidenceFingerprint = ""
 	return fingerprint(value)
 }
@@ -893,12 +898,14 @@ func referenceFixture() (BuilderContract, []BuilderProvider, []BuilderConformanc
 		},
 	}
 	for i := range evidence {
-		fingerprint, err := conformanceEvidenceFingerprint(evidence[i])
+		claimsFingerprint, err := conformanceClaimsFingerprint(evidence[i])
 		if err != nil {
 			panic(err)
 		}
-		evidence[i].EvidenceFingerprint = fingerprint
+		evidence[i].ClaimsFingerprint = claimsFingerprint
 	}
+	evidence[0].EvidenceFingerprint = strings.Repeat("c", 64)
+	evidence[1].EvidenceFingerprint = strings.Repeat("d", 64)
 	wiring := BuilderWiring{
 		ContractID:       contract.ID,
 		ProviderID:       providers[0].ProviderID,
