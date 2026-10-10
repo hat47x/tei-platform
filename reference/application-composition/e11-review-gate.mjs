@@ -3,6 +3,10 @@ import {assessPairedEvidence} from './e7-paired-evidence.mjs';
 // Do not resolve a dependency graph, create a lock or infer runtime authority.
 const obj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const nonempty = x => typeof x === 'string' && !!x.trim() && x === x.trim();
+// A modelref Impact reason is a bounded machine change-kind, never a free-form
+// diagnostic or a user-supplied message. Reject ambiguous text at this bridge.
+const machineReason = x => typeof x === 'string' && x.length <= 96 &&
+  /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(x);
 const key = k => obj(k) && nonempty(k.scope) && obj(k.subject) &&
   nonempty(k.subject.kind) && nonempty(k.subject.id);
 const keyText = k => JSON.stringify([k.scope,k.subject.kind,k.subject.id]);
@@ -82,7 +86,7 @@ export function qualifyCompositionReview({sourceDrift,sourceReport,typedProjecti
   const review = [];
   for (const candidate of typedProjection.affected) {
     if (!obj(candidate) || !key(candidate.changed) || !key(candidate.consumer) ||
-        !nonempty(candidate.reason) || candidate.changed.scope !== scope ||
+        !machineReason(candidate.reason) || candidate.changed.scope !== scope ||
         candidate.consumer.scope !== scope ||
         !known.has(keyText(candidate.changed)) || !known.has(keyText(candidate.consumer))) {
       return unresolved('invalid_typed_impact');
