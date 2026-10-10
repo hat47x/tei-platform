@@ -98,8 +98,8 @@ func TestSessionCommandUsesExistingBusinessExecutionWithoutCredentials(t *testin
 			t.Fatalf("%s lost business stages: %+v", identity.ProviderID, actual)
 		}
 	}
-	if linkCalls != 4 {
-		t.Fatalf("expected fresh link lookup at HTTP and Command boundaries, got %d", linkCalls)
+	if linkCalls != 6 {
+		t.Fatalf("expected fresh link lookups at HTTP, Runner and final effect boundaries, got %d", linkCalls)
 	}
 }
 
