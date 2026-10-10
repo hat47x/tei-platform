@@ -373,7 +373,7 @@ V04の「設計変更を正本へ受理」と、V05の「標準CRUDが保存で�
 - 正確な比較時点: base main `5fc5a0e1cb4fb42897c76dd3334292e2ad4a66e4`、head `3bede1f48a0e373e3f444b7e63dab324037dee07`、Draft。変更は `reference/studio-authoring/` の4ファイルのみ。#1135/#1136/#1141との直接path一致なし。
 - Producer側の約束は `tei.reference.studio-edit/v0` の `add-relation` / `add-validation/positive` を既存 `tei.reference.change-candidate/v0` へ渡すこと。受理済み意味やSource改変、Validationを独自実装せず、`tools/reference-shared-acceptance`を再利用する。
 - `projectWorld` は `Data / ER / Function` を元のCanonical IDで投影するが、Business viewは `unresolved`、Source Indexのanchorも `unresolved`。これがV00の**三視点完全達成ではない**ことを残す。
-- PRに記載された8ではなく**9件のNodeテストソース**は、コードが存在しても `node --test ...` actual実行済みではない。報告されているV8 smoke 9件PASSは別の限定的な合成証拠。
+- PRに記載された**9件の合成Nodeテスト**は、テストコードが存在しても `node --test ...` actual実行済みではない。報告されているV8 smoke 9件PASSは別の限定的な合成証拠。
 - **consumer handoff**: #1120はC0 exact source anchor/typed edge、#1125はBusiness Procedure/Actor/triggerのread-only投影、#1124はscratch Workspaceで `V03→V04→reload` と `N05/N06` をexact revisionで実際に走らせる。#1137のProposal JSONを単に生成できるだけでは `V04 PASS` にしない。
 
 ### C3: Lowering Witness — #1121 / PR #1141
