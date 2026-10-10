@@ -184,6 +184,20 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommand(
 	rowIndex int,
 	result commandScenarioResult,
 ) (commandScenarioResult, error) {
+	return r.runAuthenticatedSubjectCommandWithEffectGuard(ctx, subjectID, from, rowIndex, result, nil)
+}
+
+// runAuthenticatedSubjectCommandWithEffectGuard shares every business stage
+// with the legacy credential path. Session entry points may revalidate their
+// current account link at the final effect boundary without inventing a
+// credential or bypassing the canonical security.authorize Capability.
+func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffectGuard(
+	ctx context.Context,
+	subjectID, from string,
+	rowIndex int,
+	result commandScenarioResult,
+	effectGuard func(context.Context) (bool, error),
+) (commandScenarioResult, error) {
 	if subjectID == "" || from == "" || rowIndex < 0 {
 		return result, fmt.Errorf("authenticated command requires a subject, from and non-negative row")
 	}
@@ -304,6 +318,17 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommand(
 	}
 	if commandResolution.Capability == nil {
 		return result, fmt.Errorf("submit-order Pattern did not resolve a Capability")
+	}
+	if effectGuard != nil {
+		allowed, guardErr := effectGuard(ctx)
+		if guardErr != nil {
+			result.Stage = "identity-link"
+			return result, fmt.Errorf("effect-time identity validation unavailable: %w", guardErr)
+		}
+		if !allowed {
+			result.Stage = "identity-link-denied"
+			return result, nil
+		}
 	}
 	command, err := r.resolver.InvokeCapability(
 		ctx,
