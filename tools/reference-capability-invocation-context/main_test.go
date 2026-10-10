@@ -579,7 +579,7 @@ func TestInvalidTrustedContextDeclarationFailsBeforeDispatch(t *testing.T) {
 			contracts:    accessSlotContracts(),
 			requirements: accessRequirement(),
 			host: HostExecutionContext{
-				Bindings: append(accessHost("trusted-access").Bindings, accessHost("trusted-access").Bindings...),
+				Bindings:          append(accessHost("trusted-access").Bindings, accessHost("trusted-access").Bindings...),
 				ReusePartitionRef: "partition:dup",
 			},
 			errorText: "bound more than once",
