@@ -449,11 +449,13 @@ func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref, buil
 		Accepted string
 		Steps []resolvedStep
 	}{accept, resolved})
+	effects := append([]string(nil), target.Effects...)
+	sort.Strings(effects) // Target effects are a capability set, not an ordered sequence.
 	targetKey := Digest(struct {
 		Resolved string
 		Target Target
 		Realization []Step
-	}{resolve, target, plan.Steps})
+	}{resolve, Target{ID: target.ID, Effects: effects}, plan.Steps})
 	buildInputs := append([]Ref(nil), buildOnly...)
 	sort.Slice(buildInputs, func(i, j int) bool {
 		if buildInputs[i].ID != buildInputs[j].ID {
