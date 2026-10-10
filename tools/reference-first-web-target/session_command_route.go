@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"tei/internal/realization"
 	"tei/internal/security/legacyauthorization"
@@ -23,6 +24,7 @@ type protectedSessionCommandConfig struct {
 	VerifySession func(*http.Request) (webcomposition.Principal, error)
 	VerifyCSRF    func(*http.Request, webcomposition.Principal) bool
 	SubjectLinks  webcomposition.SubjectLinkLookup
+	AccountNow    func() time.Time
 	Audit         func(webcomposition.AuditRecord)
 }
 
@@ -46,6 +48,13 @@ func (s *webTargetServer) configureProtectedSessionCommand() error {
 	if config.Runner == nil || config.SubjectLinks == nil || s.projection.ApplicationID != "order_entry" {
 		return errors.New("session command needs order_entry, a bound runner and trusted subject links")
 	}
+	activeLinks, err := webcomposition.NewActiveLegacySubjectLinks(config.SubjectLinks, config.Runner.store, config.AccountNow)
+	if err != nil {
+		return fmt.Errorf("session command account eligibility cannot be constructed: %w", err)
+	}
+	// Both the Host early authorization and the command execution resolve current
+	// account eligibility; a revoked link cannot be reused after early approval.
+	config.SubjectLinks = activeLinks
 	legacyRunner, ok := s.commandScenario.(*referenceCommandScenarioRunner)
 	if !ok || legacyRunner != config.Runner {
 		return errors.New("session command must share the configured order_entry command runner")
