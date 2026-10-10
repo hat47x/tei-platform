@@ -16,26 +16,6 @@ import (
 // errCustomerLookupInput marks input the Target itself rejects before any Driver call.
 var errCustomerLookupInput = errors.New("invalid customer lookup input")
 
-type customerLookupInput struct {
-	CustomerID string
-}
-
-type customerLookupResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
-	CustomerID      string                     `json:"customerId"`
-	Intake          semanticRowProjection      `json:"intake"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
-}
-
-type customerLookupRunner interface {
-	RunCustomerLookup(context.Context, customerLookupInput) (customerLookupResult, error)
-}
-
 // referenceCustomerLookupScenarioRunner runs the second Application's customer reference Pattern
 // through the Driver. It reuses the customer meaning (customer.customer) and the Contract Query
 // that order_entry already uses; it does not copy either.

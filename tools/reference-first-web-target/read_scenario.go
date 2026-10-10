@@ -14,30 +14,6 @@ import (
 	"tei/internal/query"
 )
 
-type readScenarioInput struct {
-	From     string
-	RowIndex int
-}
-
-type readScenarioResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
-	From            string                     `json:"from"`
-	SelectedRow     int                        `json:"selectedRow"`
-	BrowseRows      []semanticRowProjection    `json:"browseRows"`
-	SelectedOrder   semanticRowProjection      `json:"selectedOrder"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	OrderLineRows   []semanticRowProjection    `json:"orderLineRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
-}
-
-type readScenarioRunner interface {
-	Run(context.Context, readScenarioInput) (readScenarioResult, error)
-}
-
 type referenceReadScenarioRunner struct {
 	resolver      driver.Resolver
 	environmentID core.CanonicalID
