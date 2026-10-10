@@ -20,6 +20,18 @@ go test -count=1 ./tools/reference-critical-path-evidence-audit
 
 出力の `status` は `INCOMPLETE` または `REVIEW_REQUIRED`。`productGate` は**常に `UNQUALIFIED`**。`REVIEW_REQUIRED`、exit code 0、`FullHealth: PASS`という入力文字列のいずれも、Gate PASS / mainへの統合許可ではない。`REVIEW_REQUIRED` は**形式上の必須欄が揃っただけ**で、証跡の実在、真正性、検査時点、Authorityを独立して調べる必要がある。
 
+## P0の現在地を再現する例
+
+`testdata/p0-order-unit-price-incomplete.json` は、受注明細単価の追加Validationについて**既存のGoテストソースまでは確認したが、actual running Web・Source R0/R1・trusted checkoutのEvidenceが未取得**である現状を、そのまま機械可読化した負例である。見本データの`head`/`main`や実行receiptを、存在しないのに埋めてはならない。
+
+```sh
+go run ./tools/reference-critical-path-evidence-audit \
+  -packet tools/reference-critical-path-evidence-audit/testdata/p0-order-unit-price-incomplete.json \
+  -head "$(git rev-parse HEAD)" -main "$(git rev-parse main)"
+```
+
+正しい動作は`INCOMPLETE`・`productGate=UNQUALIFIED`・非ゼロ終了である。欠けている証拠には`R0→R1`、実Webの新規単価負例、Repository Health、独立Observationが含まれる。テスト`TestCurrentP0FixtureCannotBeSubmittedAsEvidence`が、「既存テストがある」という事実だけでE1を認定してしまう回帰を防止する。
+
 ## v0の対象シナリオと判断境界
 
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
