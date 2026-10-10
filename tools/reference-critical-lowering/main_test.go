@@ -170,6 +170,13 @@ func TestFailClosedNegativeControls(t *testing.T) {
 		{"ambiguous-provider", func(f *fixture) { f.providers = append(f.providers, f.providers[0]) }, stubTrust{}, "ambiguous-provider"},
 		{"unsupported-effect", func(f *fixture) { f.target.Effects = []string{"read"} }, stubTrust{}, "unsupported-target"},
 		{"wrong-target", func(f *fixture) { f.target.ID = "desktop" }, stubTrust{}, "unsupported-target"},
+		{"empty-effect-declaration", func(f *fixture) { f.target.Effects = nil }, stubTrust{}, "unsupported-target"},
+		{"duplicate-effect-declaration", func(f *fixture) {
+			f.target.Effects = append(f.target.Effects, "read")
+		}, stubTrust{}, "invalid-target-effects"},
+		{"blank-effect-declaration", func(f *fixture) {
+			f.target.Effects = append(f.target.Effects, "")
+		}, stubTrust{}, "invalid-target-effects"},
 		{"wrong-candidate-schema", func(f *fixture) { f.c.Schema = "tei.lowering-candidate/v99" }, stubTrust{}, "invalid-boundary"},
 		{"unaccepted-candidate", func(f *fixture) { f.c.Source = ref("changed.file") }, stubTrust{}, "unaccepted-meaning"},
 		{"acceptance-authority", func(f *fixture) {}, stubTrust{denyAcceptance: true}, "unaccepted-meaning"},
