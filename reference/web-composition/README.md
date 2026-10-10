@@ -442,3 +442,33 @@ Sessionでは、HTTP要求が認証・CSRF・Hostの早期業務認可を通過�
 - `session_command_route.go`: GitHub Blob `2ce16a6a47b0060a158eaa7ad78c035b8730ebc6`
 - `session_command_route_test.go`: GitHub Blob `7dbbf446239be6459cc908c41ab919f3cd424eb9`
 - 新規HTTP統合テストの実行結果は**未取得**。Actual full checkoutのGoテスト・Race・Repo Healthを省略して完了とは扱いません。PR #1114はDraftを維持します。
+
+
+## E2.14：Session実行状態とHTTP結果のfail-closed化
+
+現在の`handleProtectedSessionCommand`は、Session Providerが真正性・CSRF・業務権限を確認した後に、業務ResultをHTTPへ投影します。**Hostの早期認可が通過したことはCommand完了の証拠ではありません。** そのため、Business Resultの終了状態を次のように分類します。
+
+| Runner Result / Error | 新Session HTTP | Host Audit | 意味 |
+| --- | --- | --- | --- |
+| `completed`、Command・Observationとも確認済、Errorなし | 200 | completed | 合成参照で完了 |
+| `validation-not-satisfied`、Errorなし | 422 | rejected | 業務Validationによる未実行 |
+| `identity-link-denied` / `authorization-denied`、Errorなし | 403 | rejected | 権限・主体の業務拒否 |
+| `identity-link` / `authorization` / `effect-authorization` のExecution Error | 503 | error | 身元・権限基盤が利用できない |
+| `command` / `observation` のExecution Error | 500 | error | 実行成否・観測結果が未確定 |
+| 予期しない非終端Result、Errorなし | 500 | error | 成功と断定できない |
+
+認可等の基盤ErrorのHTTP応答は固定の`trusted identity or authorization resolution unavailable`、その他の未確定の実行Errorは固定の`action completion unconfirmed; inspect authoritative state before retrying`とし、内部のAdapter/Driverエラーメッセージをブラウザに返しません。特にCommand中のTimeoutや障害では、**HTTP 500を「確実にロールバックされた」と解釈しない**ことが重要です。現在のReferenceが使用する合成状態は外部のDurable Commitではありません。実Providerの操作確定を判定する条件・操作ID・Retry Policyは汎用[Issue #1174](https://github.com/hat47x/tei-platform/issues/1174)で整備します。
+
+既存Credential経路のHTTP 422 Execution Error Envelopeは互換のため変更しません。新旧でStatus Semanticsが異なる部分は専用の参照テストで明示します。さらに、Read Runnerが要求する`from`のRFC3339形式はSession HTTP入口で検証し、壊れた日時や存在しない暦日を**400で拒否**します。これは業務Data取得エラーを入力不正として誤分類しないためです。
+
+### 今回見つかったテスト不一致
+
+E2.11でブラウザへ返す権限基盤障害の文言を固定化しましたが、既存HTTP回帰テストの2か所が旧文言`trusted identity resolution unavailable`を期待したままでした。これを実装に合わせ、固定文言秘匿とAudit動作を同一契約に戻しました。
+
+### 実装と検証状態
+
+- `session_command_route.go`: GitHub Blob `f846ac88a5340287f17b6182be9d1a4ea5715e9f`
+- `session_command_route_test.go`: GitHub Blob `01675b77607b1731e6968f01098fddda8297931e`
+- 追加した回帰ケースは、`order 1003`の既存合成Command Adapter障害（旧経路422、新Session 500と固定文言、Audit error）、Validation不成立の422、異常日時の400などです。
+- GitHub Blobで実装とテストのエラー文字列一致・結果分岐を静的に確認しました。ただし**実Workspace Go結合試験、Go vet/race、exact-head full Repository Healthの成功結果は未取得**です。以前の隔離Go試験を現在headの成功証拠とみなしません。
+- PR #1114はDraft・未マージを維持します。合成Fixtureを用いたテストの成功（未取得）と、実ProviderによるDurable Effectの観測（未取得）も区別します。
