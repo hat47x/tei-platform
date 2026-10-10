@@ -28,8 +28,11 @@ type OperatorContract struct {
 // Conflicting fingerprints for the same identity and version are ambiguous,
 // even if the requested fingerprint is present in the catalog.
 func ResolveOperator(pin OperatorContract, catalog []OperatorContract) (OperatorContract, error) {
-	if pin.ID == "" || pin.Version == "" || pin.Fingerprint == "" || pin.InputType == "" || pin.OutputType == "" || pin.Effect != "pure" {
+	if pin.ID == "" || pin.Version == "" || pin.Fingerprint == "" || pin.InputType == "" || pin.OutputType == "" || pin.Effect == "" {
 		return OperatorContract{}, ErrOperatorInvalid
+	}
+	if pin.Effect != "pure" {
+		return OperatorContract{}, fmt.Errorf("%w: %s", ErrEffectEscalation, pin.ID)
 	}
 	matches := 0
 	var found OperatorContract
