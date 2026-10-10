@@ -183,7 +183,7 @@ func TestRetryHistoryPreservesFailuresAfterSuccess(t *testing.T) {
 	if err := history.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if len(history.FailedAttemptFingerprints) != 2 {
+	if len(history.FailedAttempts) != 2 {
 		t.Fatalf("successful retry erased failure history: %#v", history)
 	}
 }
@@ -287,7 +287,7 @@ func TestReferenceEvidenceDoesNotInlineSensitiveDiagnostic(t *testing.T) {
 	if evidence.Attempt.Outcome != attemptOutcomeFailed {
 		t.Fatalf("attempt outcome=%s", evidence.Attempt.Outcome)
 	}
-	if len(evidence.History.FailedAttemptFingerprints) != 1 ||
+	if len(evidence.History.FailedAttempts) != 1 ||
 		evidence.History.SuccessfulResult == nil ||
 		evidence.History.SuccessfulResult.ResultFingerprint == "" {
 		t.Fatalf("retry history: %#v", evidence.History)
@@ -393,5 +393,73 @@ func TestAttemptHistoryRejectsSuccessfulResultFromDifferentPlan(t *testing.T) {
 	}
 	if err := history.Validate(); err == nil {
 		t.Fatal("Attempt History accepted a successful result from a different BuildPlan")
+	}
+}
+
+
+func TestAttemptHistoryRejectsDuplicateOrOutOfOrderOrdinal(t *testing.T) {
+	plan := referenceBuildPlan()
+	exitCode := 2
+	first, _, err := newFailedAttempt(
+		plan, 2,
+		fakeFailure{
+			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
+			DiagnosticSummary: "first recorded attempt", Stderr: []byte("first"),
+		},
+		8,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	history, err := newAttemptHistory(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendFailure(plan, first); err != nil {
+		t.Fatal(err)
+	}
+
+	duplicateOrdinal, _, err := newFailedAttempt(
+		plan, 2,
+		fakeFailure{
+			Phase: attemptPhaseLink, FailureClass: "link-error", ExitCode: &exitCode,
+			DiagnosticSummary: "duplicate ordinal", Stderr: []byte("duplicate"),
+		},
+		8,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendFailure(plan, duplicateOrdinal); err == nil {
+		t.Fatal("Attempt History accepted a duplicate attempt ordinal")
+	}
+
+	earlierOrdinal, _, err := newFailedAttempt(
+		plan, 1,
+		fakeFailure{
+			Phase: attemptPhaseBuilderRun, FailureClass: "builder-error", ExitCode: &exitCode,
+			DiagnosticSummary: "earlier ordinal", Stderr: []byte("earlier"),
+		},
+		8,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendFailure(plan, earlierOrdinal); err == nil {
+		t.Fatal("Attempt History accepted an out-of-order attempt ordinal")
+	}
+}
+
+func TestAttemptHistoryValidationRejectsDuplicateEvidenceFingerprint(t *testing.T) {
+	history := buildAttemptHistory{
+		Schema:               attemptHistorySchema,
+		BuildPlanFingerprint: strings.Repeat("a", 64),
+		FailedAttempts: []failedAttemptReference{
+			{AttemptOrdinal: 1, EvidenceFingerprint: strings.Repeat("b", 64)},
+			{AttemptOrdinal: 2, EvidenceFingerprint: strings.Repeat("b", 64)},
+		},
+	}
+	if err := history.Validate(); err == nil {
+		t.Fatal("Attempt History accepted a duplicated failure Evidence fingerprint")
 	}
 }
