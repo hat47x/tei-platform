@@ -296,6 +296,31 @@ func validEntry(entry string) bool {
 	return path.Clean(strings.TrimPrefix(entry, "./")) == strings.TrimPrefix(entry, "./")
 }
 
+// verifyIndexVisibility rejects per-path Git index flags that can suppress
+// worktree changes from git status. A clean status alone is insufficient
+// evidence that compiled source bytes match the recorded HEAD.
+func verifyIndexVisibility() error {
+	raw, err := exec.Command("git", "ls-files", "-v", "-z").Output()
+	if err != nil {
+		return fmt.Errorf("read Git index visibility flags: %w", err)
+	}
+	for _, record := range bytes.Split(raw, []byte{0}) {
+		if len(record) == 0 {
+			continue
+		}
+		if len(record) < 3 || record[1] != ' ' {
+			return fmt.Errorf("invalid Git index visibility record")
+		}
+		// H is Git's normal tracked-file tag. Lowercase h means
+		// assume-unchanged; S means skip-worktree. Treat all other flags as
+		// non-qualifying rather than guessing which paths Git will inspect.
+		if record[0] != 'H' {
+			return fmt.Errorf("hidden Git index flag %q on tracked path %q", record[0], record[2:])
+		}
+	}
+	return nil
+}
+
 func repositoryIdentity() (string, error) {
 	top, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -307,6 +332,9 @@ func repositoryIdentity() (string, error) {
 	}
 	if filepath.Clean(strings.TrimSpace(string(top))) != filepath.Clean(cwd) {
 		return "", fmt.Errorf("run from repository root")
+	}
+	if err := verifyIndexVisibility(); err != nil {
+		return "", err
 	}
 	status, err := exec.Command("git", "status", "--porcelain", "--untracked-files=all").Output()
 	if err != nil {
