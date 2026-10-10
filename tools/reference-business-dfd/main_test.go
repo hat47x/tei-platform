@@ -99,7 +99,6 @@ func TestManualExternalAndThreeTriggerKindsAreNotFunctionsOrAuthority(t *testing
 
 func TestUnreferencedFunctionIsScopedSourceAwareReviewQuestion(t *testing.T) {
 	f,r,s,w:=sample()
-	_ = r
 	p:=build(f,r,s,w,"procedure.json","review.json","set.json")
 	if len(p.UnreferencedPatterns)!=1 || p.UnreferencedPatterns[0]!="order_entry.submit_order" {
 		t.Fatalf("scoped unreferenced Function was lost: %+v",p.UnreferencedPatterns)
