@@ -903,7 +903,7 @@ Function <-> Table I/O structured relation
 
 から機械導出される。
 
-これは渡辺幸三氏の「matrixをstructured design informationから機械的に得る」という設計姿勢とも一致する。
+これは、matrixを構造化された設計情報から機械的に導出するという外部資料の設計原則とも整合する。
 
 ## 3. TEI current equivalent / gap
 
