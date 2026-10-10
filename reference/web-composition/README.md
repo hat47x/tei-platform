@@ -53,6 +53,20 @@ node --test reference/web-composition/plan-check.test.mjs
 
 これは静的な構成検査であり、Guardに対応したProviderが実際に暗号学的検証・CSRF・業務認可を正しく実行する証拠にはなりません。特にプラグイン定義の`guardEvidence`は**合成された宣言上の制約**であり、実体の適格性は将来のHost / Plugin Conformanceで確認する必要があります。実Repository全体の`tools/repository-health-check.sh`は未実行のため、本PRのDraft維持・統合保留は変わりません。
 
+### E1/E2手動横断検証コマンド
+
+`reference/web-composition/verify.sh`は、Web構成の静的Node検査と、Web Host・First Web Target・Legacy User StoreのGo package検査をひとつの**手動実行コマンド**にまとめます。
+
+~~~sh
+bash reference/web-composition/verify.sh --race
+# mainとの統合資格には、上記とは別にfull repositoryで次も必須
+tools/repository-health-check.sh
+~~~
+
+スクリプトは`node --test`、対象3 packageの`go vet`、`go test -count=1`を実行し、`--race`指定時のみ`go test -race`を追加します。必要なNode/Goがない、あるいはフルリポジトリの`go.mod`と`plan-check.test.mjs`がないときは、結果を成功とみなさず停止します。**GitHub Actionsの実行・再開は行いません。** Nodeが入っていないHostではこの追加検証はPASSと扱えません。
+
+2026-10-10、GitHub Blob `ccc2de2e6a8cdbe1781ece3b5564a1dccd67186a`と同一の`verify.sh`について、ローカルで`bash -n`、`--help`、不完全なcheckoutでの拒否を確認しました。ただし**実Workspaceを含むリポジトリ全体でこのスクリプトを実行した証拠はまだありません**。これは全体ヘルスチェックの代替ではなく、E1 Node回帰検証の実行漏れを防ぐための補助です。
+
 ## この試作が保証しないこと
 
 `guards`や`onTerminal`は処理点の**宣言**です。実際に要求元検証が行われたこと、拒否時に監査が実行されたこと、認証Providerが真正であることの証拠ではありません。これらを保証するには、信頼できるHostによる処理の強制と、Provider適合性の検査、実HTTP動作試験が別に必要です。
