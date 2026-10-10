@@ -914,3 +914,39 @@ func TestValidationScopeReviewSourceAttachmentSkipsUnresolvedRows(t *testing.T) 
 		t.Fatalf("正常な比較行の出典が取得できません: %+v", rows[1])
 	}
 }
+
+func TestValidationScopeReviewMissingSourceDoesNotSuppressOtherEvidence(t *testing.T) {
+	const validationID = "sales.order_line.quantity_positive"
+	index := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{
+			{Path: "applications/order-entry/application.tei", Fingerprint: "sha256:application"},
+		},
+		References: []sourceindex.Reference{
+			{
+				Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "applications/order-entry/application.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+			},
+			{
+				Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "semantic/sales/missing.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+			},
+		},
+	}
+	rows := []validationScopeReviewRow{{
+		Step: "BP-05", Application: "order_entry", Status: "review-needed",
+		SharedValidations: []string{validationID},
+	}}
+	attachValidationScopeSources(rows, index)
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{"semantic-validation:" + validationID}) {
+		t.Fatalf("存在しないartifactのValidation出典を未解決として保持しません: %+v", rows[0])
+	}
+	if len(rows[0].SourceEvidence) != 1 ||
+		rows[0].SourceEvidence[0].Kind != "application" ||
+		rows[0].SourceEvidence[0].Fingerprint != "sha256:application" {
+		t.Fatalf("欠落したValidation出典がApplicationの正当な根拠まで消しました: %+v", rows[0])
+	}
+}
