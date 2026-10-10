@@ -112,6 +112,7 @@ type Trust interface {
 	Accepted(candidateDigest string, receipt, snapshot Ref) bool
 	Published(contract Ref) bool
 	Conformant(provider Provider) bool
+	ContextBound(step Step) bool // trusted Host validates current, declared slot bindings
 	Authorized(step Step) bool // call again at each invocation; not a cached grant
 }
 
@@ -125,7 +126,10 @@ func reject(code string) error { return Failure{Code: code} }
 // Digest is a deterministic serialization of struct-based evidence, not a signature.
 // Its callers must not put secrets, current sessions, or access refs into these values.
 func Digest(value any) string {
-	b, _ := json.Marshal(value)
+	b, err := json.Marshal(value)
+	if err != nil {
+		panic("reference digest cannot serialize: " + err.Error())
+	}
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
 }
@@ -191,14 +195,12 @@ func Neutralize(c Candidate, a Acceptance, trust Trust) (NeutralPlan, error) {
 // Lower checks stage crossings only. Existing parsers, resolvers, and Driver still
 // own meaning, capability selection, effect realization, and execution.
 func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, target Target, trust Trust) (Plan, error) {
-	neutral, err := Neutralize(c, a, trust)
-	if err != nil {
+	if _, err := Neutralize(c, a, trust); err != nil {
 		return Plan{}, err
 	}
 	if target.ID == "" {
 		return Plan{}, reject("unsupported-target")
 	}
-	_ = neutral // the neutral stage is reusable by additional Target realizations
 	steps := make([]Step, 0, len(c.Requirements))
 	seen := make(map[string]bool)
 	for _, r := range c.Requirements {
@@ -290,6 +292,9 @@ func AuthorizeInvocation(plan Plan, trust Trust) error {
 		return reject("invalid-boundary")
 	}
 	for _, s := range plan.Steps {
+		if !trust.ContextBound(s) {
+			return reject("missing-execution-context")
+		}
 		if !trust.Authorized(s) {
 			return reject("authorization-denied")
 		}
