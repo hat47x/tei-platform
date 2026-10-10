@@ -1,6 +1,7 @@
 package rmtlink
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -158,5 +159,48 @@ func TestLinkRejectsForgedEvidenceAndUnqualifiedTarget(t *testing.T) {
 	ctx.ReviewFingerprint = ""
 	if _, err := Prepare(ctx); err == nil {
 		t.Fatal("link without actual Review was accepted")
+	}
+}
+
+
+func TestLinkDecodeRejectsUnknownFieldsAndExtraJSON(t *testing.T) {
+	ctx := linkContext(t)
+	link, err := Prepare(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Decode(payload, ctx); err != nil {
+		t.Fatalf("valid link JSON was rejected: %v", err)
+	}
+	var shape map[string]any
+	if err := json.Unmarshal(payload, &shape); err != nil {
+		t.Fatal(err)
+	}
+	shape["publicationApproved"] = true
+	withUnknown, err := json.Marshal(shape)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Decode(withUnknown, ctx); err == nil {
+		t.Fatal("unrecognized publication approval field was silently accepted")
+	}
+	if _, err := Decode(append(append([]byte(nil), payload...), []byte(" {}")...), ctx); err == nil {
+		t.Fatal("trailing JSON document was accepted")
+	}
+	shape = map[string]any{}
+	if err := json.Unmarshal(payload, &shape); err != nil {
+		t.Fatal(err)
+	}
+	shape["status"] = "accepted"
+	modified, err := json.Marshal(shape)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Decode(modified, ctx); err == nil {
+		t.Fatal("forged accepted status was accepted")
 	}
 }
