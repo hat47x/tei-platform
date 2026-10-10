@@ -337,7 +337,7 @@ func TestDirectConfidentialErrorReflectionIsRejected(t *testing.T) {
 			return nil, fmt.Errorf("provider failed for %s", value)
 		},
 	)
-	if err == nil || !strings.Contains(err.Error(), "directly reflected into downstream error") {
+	if err == nil || !strings.Contains(err.Error(), "confidential error detail withheld") {
 		t.Fatalf("direct execution-context error reflection was accepted: %v", err)
 	}
 	if strings.Contains(err.Error(), "secret-access-value") {
@@ -933,5 +933,81 @@ func TestProviderCannotAlterHostReceiptOrValueByMutatingView(t *testing.T) {
 	}
 	if got := string(host.Bindings[0].Value); got != "trusted-access" {
 		t.Fatalf("callback mutated Host input: %q", got)
+	}
+}
+
+func TestConfidentialProviderPanicIsOpaque(t *testing.T) {
+	const secret = "provider-panic-private-value"
+	var execution InvocationContextExecution
+	var err error
+	// The panic must be caught at the invocation boundary, not by the caller.
+	execution, err = invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost(secret), []byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			panic("provider panic: " + secret)
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "confidential error detail withheld") {
+		t.Fatalf("confidential provider panic was not converted to opaque failure: %v", err)
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("panic secret escaped through invocation error: %v", err)
+	}
+	if execution.Receipt.Schema != "" || len(execution.ResultPayload) != 0 {
+		t.Fatalf("panicking provider returned execution artifacts: %+v", execution)
+	}
+}
+
+func TestNonConfidentialProviderPanicRetainsGoSemantics(t *testing.T) {
+	defer func() {
+		if got := recover(); got != "programmer mistake" {
+			t.Fatalf("nonconfidential panic was unexpectedly changed: %v", got)
+		}
+	}()
+	_, _ = invokeWithExecutionContext(
+		context.Background(), nil, nil, HostExecutionContext{}, []byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			panic("programmer mistake")
+		},
+	)
+}
+
+func TestConfidentialProviderPanicHonorsTrustedCancellation(t *testing.T) {
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := invokeWithExecutionContext(
+		parent, accessSlotContracts(), accessRequirement(),
+		accessHost("panic-secret-value"), []byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			cancel()
+			panic("panic-secret-value")
+		},
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("trusted cancellation should take precedence over provider panic: %v", err)
+	}
+}
+
+// Some provider error types run arbitrary code inside Error(). A confidential
+// invocation must not evaluate them just to decide how to redact them.
+type panicWhileFormattingProviderError struct{ secret string }
+
+func (e *panicWhileFormattingProviderError) Error() string { panic(e.secret) }
+
+func TestConfidentialProviderErrorFormattingIsNeverCalled(t *testing.T) {
+	const secret = "formatting-secret-value"
+	_, err := invokeWithExecutionContext(
+		context.Background(), accessSlotContracts(), accessRequirement(),
+		accessHost(secret), []byte("request"),
+		func(context.Context, ContextSlotView, []byte) ([]byte, error) {
+			return nil, &panicWhileFormattingProviderError{secret: secret}
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "confidential error detail withheld") {
+		t.Fatalf("provider error formatting was not safely skipped: %v", err)
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("provider secret leaked through formatting: %v", err)
 	}
 }
