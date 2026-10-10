@@ -1,5 +1,7 @@
 # Critical Lowering Contract Reference (#1121)
 
+**ローカルへの引き継ぎ:** [LOCAL_HANDOFF.md](LOCAL_HANDOFF.md) に、前提SHA、整形・完全検証、ログ保管、未達の製品受入条件、およびマージ・Issueクローズの判定手順を記載。ここでのReference追加だけではIssueを完了と判断しない。
+
 評価待ちの合成contract pressure。**TEIのproduction Compiler / Driver / Plugin Resolver / Build Artifact契約は変更しない。**実行先のバイナリやWeb UIは生成しない。
 
 ## 検証すること
