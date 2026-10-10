@@ -19,3 +19,11 @@ go run ./tools/reference-subsystem-cud -world /path/to/world.json -facts /path/t
 This reference intentionally avoids a second Canonical model or an automatic adapter that would promote legacy observations to project truth. Next integration step: use the existing Source/Acceptance mechanisms to derive an exact, provenance-bound and accepted set of ownership and I/O facts from TEI, and combine the report with #1120 typed references and #1124 Studio diagnostics. Until then the result is **candidate inspection** only.
 
 For local checks, `go test ./tools/reference-subsystem-cud` and `go vet ./tools/reference-subsystem-cud` should run without external Go libraries. Repository-wide tests and trusted `tools/repository-health-check.sh` must still be run against the exact PR head before merging.
+
+## Exact-input accounting and non-inference (E0 hardening)
+
+- The CLI attaches `inputFingerprints.worldJSON` and `inputFingerprints.factsJSON` (SHA-256 of **exact supplied bytes**) to its JSON report. This identifies an input snapshot for downstream review, but does **not** verify that the World was regenerated from current accepted Source or that candidate facts have been accepted.
+- If a declared Function I/O points to a missing or ambiguous World Pattern, the tool reports `IO_PATTERN_UNRESOLVED` and **does not** infer `CROSS_SUBSYSTEM_WRITE_INTENT` from that entry. Data identity and owner must also be exact before write-boundary review; unknown values are not replaced with an arbitrary match.
+- The source JSON has real `semantics[].data[].id` and `applications[].patterns[].id` arrays. This tool intentionally reads only those known fields; it does not derive owner, actual effect, or Function I/O from a Pattern name, `kind`, or `capability`.
+- The typed Data/Relation/Pattern edge provider is owned by #1120 (Draft PR #1139, `modelref/derivedbridge`). When it is qualified, #1132 should consume those read-only edges by exact scoped identity rather than make another parallel graph representation. Accepted Subsystem ownership and explicitly scoped declared I/O still require a separate verified source/acceptance contract.
+- A complete Source→World→typed edge→CUD diagnostic→Studio navigation path has **not** been run; the local isolated unit tests only qualify this tool's candidate logic.
