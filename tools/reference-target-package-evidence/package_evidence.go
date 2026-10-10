@@ -30,6 +30,7 @@ type listedPackage struct {
 	CgoFiles   []string               `json:"CgoFiles"`
 	Imports    []string               `json:"Imports"`
 	Error      *struct{ Err string }  `json:"Error"`
+	Incomplete bool                   `json:"Incomplete"`
 	DepsErrors []struct{ Err string } `json:"DepsErrors"`
 }
 
@@ -73,8 +74,11 @@ func parseGoList(reader io.Reader, entry, tags string) (Report, error) {
 		if p.ImportPath == "" {
 			return Report{}, fmt.Errorf("go list has empty package import path")
 		}
-		if p.Error != nil && p.Error.Err != "" {
+		if p.Error != nil {
 			return Report{}, fmt.Errorf("go list package %s: %s", p.ImportPath, p.Error.Err)
+		}
+		if p.Incomplete {
+			return Report{}, fmt.Errorf("go list package %s is incomplete", p.ImportPath)
 		}
 		if len(p.DepsErrors) != 0 {
 			return Report{}, fmt.Errorf("go list package %s has unresolved dependencies", p.ImportPath)
@@ -90,6 +94,9 @@ func parseGoList(reader io.Reader, entry, tags string) (Report, error) {
 			mainModule = p.Module.Path
 		}
 		if p.ImportPath == entry {
+			if p.Module == nil || !p.Module.Main {
+				return Report{}, fmt.Errorf("entry %s is not in the main module", entry)
+			}
 			entryFound = true
 		}
 	}
