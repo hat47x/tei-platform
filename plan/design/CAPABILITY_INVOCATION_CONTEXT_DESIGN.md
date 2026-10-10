@@ -48,6 +48,24 @@ Execution Contextは、現在の呼出しをどの条件で実行してよいか
 
 「tenant」「environment」のようなfield名だけでSemantic ContextかExecution Contextかを固定しない。同じ名称でも、業務上の問い合わせ対象なのか、現在callerの実行境界なのかで役割が変わり得る。
 
+### Semantic Request shapeはcontext gateで書き換えない
+
+Execution Contextを別入力へ移しても、context gateがSemantic Request payloadから「認可らしいfield」を推測して削除してはならない。
+
+どのfieldがSemantic Requestに属するかはCapability Contractのrequest shapeが決める。#951のshape validationとCapability固有decoderが、Contract外fieldをfail closedする。
+
+```text
+request shape
+  -> Semantic Requestに何を含められるか
+
+Context Slot requirement
+  -> Hostが別経路で何を注入するか
+```
+
+両方に同じAuthority inputを持たせない。request schemaにExecution Context値を追加してcontext gateとの二経路を作らない。
+
+Context Slot requirement集合もconsumerがrequest内で指定しない。resolved Capability Contractからtrusted Hostが取得する。最初の#1118 Referenceはこのrequirement集合をtrusted inputとして受け取り、Contract Authorityやfingerprint binding自体は後続境界として残す。
+
 ## Context Slot Contract
 
 generic Invocationへ自由形式のcontext mapを追加しない。Providerが任意のkeyへ暗黙依存すると、Contractから実行条件を確認できなくなるためである。
