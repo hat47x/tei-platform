@@ -13,6 +13,8 @@ type webTargetServer struct {
 	projection         webTargetProjection
 	readScenario       readScenarioRunner
 	commandScenario    commandScenarioRunner
+	protectedSessionConfig  *protectedSessionCommandConfig
+	protectedSessionHandler http.Handler
 	customerLookup     customerLookupRunner
 	index              *template.Template
 	customSubmit       *template.Template
@@ -124,6 +126,9 @@ func newWebTargetServer(
 			return nil, err
 		}
 	}
+	if err := server.configureProtectedSessionCommand(); err != nil {
+		return nil, err
+	}
 	return server, nil
 }
 
@@ -134,6 +139,9 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/scenario/read", s.handleReadScenario)
 	mux.HandleFunc("/scenario/submit", s.handleCommandScenario)
+	if s.protectedSessionHandler != nil {
+		mux.Handle("/scenario/session-submit", s.protectedSessionHandler)
+	}
 	mux.HandleFunc("/custom-submit", s.handleCustomSubmit)
 	mux.HandleFunc("/scenario/customer-lookup", s.handleCustomerLookupScenario)
 	mux.HandleFunc("/customer-lookup", s.handleCustomerLookupPage)
@@ -242,6 +250,12 @@ func (s *webTargetServer) handleCommandScenario(w http.ResponseWriter, r *http.R
 		From:       request.From,
 		RowIndex:   request.RowIndex,
 	})
+	s.writeCommandScenarioHTTPResult(w, result, err)
+}
+
+// Both credential and session routes preserve the existing JSON result and
+// Execution Error envelope; the authentication proof stays route-specific.
+func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, result commandScenarioResult, err error) {
 	if err != nil {
 		response := webCommandScenarioErrorResponse{
 			HandoverBaselineID:         s.projection.HandoverBaselineID,
