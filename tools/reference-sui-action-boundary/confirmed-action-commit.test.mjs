@@ -16,7 +16,7 @@ function harness(overrides = {}) {
   const controller = createConfirmedActionCommit({
     dispatchCommit: async (intent) => { writes++; record.push('commit'); return 'r2'; },
     readResource: async () => { reads++; record.push('read'); return structuredClone(persisted); },
-    applySnapshot: async (snap) => { applications++; record.push('apply'); doc = snap.value; },
+    applySnapshot: async (snap) => { applications++; record.push('apply'); doc = snap.value; return true; },
     isCurrent: () => current,
     ...overrides,
   });
@@ -113,7 +113,7 @@ test('native preview and cancel do not mutate; drop only applies server-confirme
   const controller = createConfirmedActionCommit({
     dispatchCommit: async (intent) => { seen = intent; return 'r2'; },
     readResource: async () => persisted,
-    applySnapshot: async (readback) => { applied++; assert.deepEqual(readback.value.islands, persisted.value.islands); },
+    applySnapshot: async (readback) => { applied++; assert.deepEqual(readback.value.islands, persisted.value.islands); return true; },
     isCurrent: () => true,
   });
   const bridge = createNativeActionBridge(controller);
@@ -149,6 +149,12 @@ test('throwing local guard after remote acknowledgment retains committed revisio
 
 test('application may reject an atomic apply with false without reporting confirmed UI state', async () => {
   const h = harness({ applySnapshot: async () => false });
+  await assert.rejects(h.controller(base), failure('snapshot_apply_failed', 'r2'));
+  assert.equal(h.state.applications, 0);
+});
+
+test('application must explicitly acknowledge an atomic snapshot apply', async () => {
+  const h = harness({ applySnapshot: async () => undefined });
   await assert.rejects(h.controller(base), failure('snapshot_apply_failed', 'r2'));
   assert.equal(h.state.applications, 0);
 });
