@@ -149,3 +149,24 @@ Go 1.23.2、`module tei`の隔離環境で`gofmt -l`（出力なし）、`go vet
 従来は、必要な`guards`をどこかの処理点が宣言していれば、Actionの実行より後ろや無関係の処理点でも構成検査を通る余地がありました。今回、Actionの`invoke`から`requires`の契約依存を逆にたどり、**必須Guardを宣言した処理点が、その依存経路上の先行処理であること**を検査します。`before`や`after`による表示上の順序指定だけでは、Action保護の証拠として採用しません。Audit処理だけが認証Guardを宣言する構成、Action自身がCSRFを宣言する構成、CSRFを順序指定だけで先行させる構成、認証結果を使わずActionを呼び出す構成を拒否します。
 
 **検証範囲の限界は従来どおりです。** この検査は解決済み処理点の自己申告と依存関係の静的整合性を確認するのみです。Hostによる実保護、条件分岐を含むすべての実行経路でのGuard実行、実Providerの真正性、Actionの業務認可成立は保証しません。正式な製品規則へ採用するには、既存のCapability/Provider適合性と実HTTP経路に結び付けた追加検証が必要です。
+
+## E2.2：既存の業務認可Capabilityへの接続（2026-10-10）
+
+`go-host/canonical_authorization.go`に、`NewCanonicalActionAuthorizer`を追加しました。`NewHost`が要求する`Dependencies.Authorize`へ直接渡せる関数を作り、既存の`driver.Resolver.InvokeCapability`から`security.authorize`を実行します。認可を独自のWeb側ルールで判定せず、Capabilityの`allowed`／`denied`というBusiness Resultと実行エラーを区別します。これは既存のAdapter／Bindingを再利用するための参照接続であり、第二のProvider Resolverではありません。
+
+処理前に、対象が既存ApplicationのCommand Patternであることと、`security.authorize`のBindingが解決できることを検査します。要求されたActionが構成済みのCommandと異なれば拒否します。主体対応付けはHostが管理する`SubjectLinkLookup`へ委譲し、`ProviderID + Issuer + Subject`の組から、Applicationの`PrincipalID`と既存認可Storeが参照する`SubjectID`の**両方**を取得します。セッションが提示する`PrincipalID`と対応付け先が一致しない場合は、設定または信頼境界の不整合として失敗させます。メールアドレスや表示名から主体を推測しません。
+
+`go-host/canonical_authorization_test.go`では、実Repositoryの`reference/workspace`、`reference/legacy-auth/users.json`、`reference/legacy-auth/authorization.json`を読み込み、既存Driver・Capability・Adapterを通す結合試験を定義しました。試験項目には企業認証相当とlegacy認証相当の編集者許可、閲覧者の業務拒否、未登録・失効した対応付け、セッション主体との不一致、対応付け先の障害、未知Command、必須接続の欠落を含みます。どの試験もIdPや実Sessionの真正性を証明するものではありません。
+
+### E2.2の確認範囲
+
+GitHub Blobと一致するローカルコピーに対し、Go 1.23.2の`gofmt`による書式確認とGo構文を保つ整形を行いました。
+
+- `canonical_authorization.go`：`a2174e1d7ed4d305733dac294770cde451c223f9`
+- `canonical_authorization_test.go`：`33ae2a6f27a0810de6e7f1529a95ef1f44f33298`
+
+**新しい結合試験を実リポジトリで実行した証拠は未取得です。** これら二つのファイルを含むパッケージの`go test`・`go vet`・`go test -race`の成功はまだ主張しません。前節の局所試験PASSは、その時点の二ファイルだけを対象とした結果であり、今回の追加分には継承されません。
+
+`SubjectLinkLookup`の実体は未実装です。実運用向けには、対応付けの管理権限、現在の有効性・失効・無効化、tenant／Application境界を検査できる信頼済みStoreが必要です。特に既存`legacyauthorization.Adapter`は業務roleを評価するものであり、認証済み主体のアカウント状態・再認証・失効を代行するものではありません。
+
+また、現行`commandScenarioRunner.RunCommand`はCredentialsを要求し、自身で`security.authenticate`と`security.authorize`を呼び出します。この新しい認可コールバックは**そのRunnerをまだ呼び出していません**。既存Runnerの業務Validation・Command・Observationを維持するためのセッション専用入口を接続することが次の課題です。架空のCredentialを渡して旧経路を通す実装にはしません。
