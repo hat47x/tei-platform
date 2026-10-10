@@ -260,6 +260,29 @@ func TestEpistemicDetailRejectsStaleReceipts(t *testing.T) {
 	})
 }
 
+func TestEpistemicDetailRefreshesOperationalCheckedAtWithoutStaleSubject(t *testing.T) {
+	corpus, context := loadFixture(t)
+	context.AsOf = "2026-10-10T01:00:00Z"
+	query := detailQueryFor(t, corpus, context, "user-current", nil)
+
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "user-current" {
+			continue
+		}
+		corpus.Assertions[i].CheckedAt = "2026-10-10T00:30:00Z"
+		corpus.Assertions[i].CheckedSubjectFingerprint =
+			freshnessSubjectFingerprint(corpus.Assertions[i])
+	}
+
+	result, err := resolveEpistemicDetail(corpus, context, query, TransportAccess{})
+	if err != nil {
+		t.Fatalf("source-check timestamp alone made detail receipt stale: %v", err)
+	}
+	if result.Content.CheckedAt != "2026-10-10T00:30:00Z" {
+		t.Fatalf("detail did not return refreshed source check: %+v", result.Content)
+	}
+}
+
 func TestEpistemicDetailDoesNotLeakFutureCheckedAt(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
