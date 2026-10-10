@@ -479,7 +479,7 @@ E1の最初の候補実装として、`internal/plugin/build.go`へread-onlyなB
 
 Build Planは、Plugin identity、descriptor fingerprint、Source closure、builder identity、build-only dependency、Target / profile、非secret parameterを保持します。Build dependencyは既存の`Definition.Requires`へ統合せず、Runtime / package dependencyと分離しました。
 
-Build Planのfingerprintは、Source、dependency、parameterの宣言順に依存しません。一方、Source digest / locator、builder、dependency、Target、parameterのいずれかが変わればfingerprintも変わります。Sourceやbuilderのdigestが未固定の場合、重複したSource / dependency / parameterがある場合はfail-closedで停止します。
+Build Planのfingerprintは、Source、dependency、parameterの宣言順に依存しません。当時の候補ではSource locatorもfingerprintへ含めていました。2026-10-10の再整理では、locatorは取得場所を示すprovenanceであり、exact bytesが同じならbuild content identityから分離する方針へ更新しています。Source digest、builder、dependency、Target、parameter等のbuild semanticsが変わる場合はfingerprintも変わります。Sourceやbuilderのdigestが未固定の場合、重複したSource / dependency / parameterがある場合はfail-closedで停止します。
 
 Build Lockは、Plugin / TargetごとにBuild Plan fingerprintと生成artifact digestを結び付けます。既存Plugin Lockを置き換えるものではありません。Build Lockは「どのbuild inputsから何が生成されたか」を固定し、Plugin Lockは「RuntimeでどのPlugin実装を使うか」を固定します。
 
@@ -546,7 +546,7 @@ artifact-free Source Definition
 
 初期Referenceでは、Source closureまたはGo toolchain closureにsymlinkがある場合は推測して追跡せず停止します。
 
-Source closureは現時点ではRepository全体です。これは過剰包含ですが入力の取りこぼしを避けるための意図的な初期条件です。E2 Evidence成立後に、必要であれば`go list`等から正確なbuild dependency closureへ狭めます。
+この時点のSource closureはRepository全体でした。入力の取りこぼしを避けるための意図的な初期条件でしたが、2026-10-10の計画では#1090 / #1093により、Repository snapshot provenanceとactual Build Source closureを分離する方針へ更新しています。Go artifactについては`go list`等から実際に選択されたbuild dependency closureへ狭め、Repository revision自体は別Evidenceとして保持します。
 
 このrunnerはまだexact-headで実行していません。したがってactual artifact digest、reproducibility成立、SB-2達成は未主張です。Draft PR #949の検証Gateを維持します。
 
@@ -687,7 +687,7 @@ execution identity
   + Host acceptance
 ```
 
-現在のReferenceではRepository全体を保守的なBuild Plan Source closureに含めるためengine Source変更もBuild Plan fingerprintへ波及します。ただしproductionのexact Runtime Engine identityを独立に固定できたことは意味しません。この不足は#973で追跡します。
+この時点のReferenceではRepository全体を保守的なBuild Plan Source closureへ含めていたため、engine Source変更もBuild Plan fingerprintへ波及していました。その後、Repository snapshotとactual Build Source closureを分離し、Runtime Engine identityも別に固定する方向へ進んでいます。この履歴上の記述だけでproductionのexact Runtime Engine identityが確立したとは扱いません。残る境界は#973と、artifact publication safetyの#1098で追跡します。
 
 #973が解決するまでは、standalone executable相当のSB-2達成、realization digest単独による完全なruntime behavior固定、engine差替えへのreplay safety、Web / Wasm engine bindingを主張しません。
 
