@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -263,8 +264,12 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	}
 
 	state := map[int64]string{orderID: "pending"}
+	// The Driver returns an Execution Error for an Adapter rejection. This
+	// private sentinel restores a known business denial to a business outcome.
+	// Other Adapter, Binding and authorization failures remain Execution Errors.
+	errEffectBusinessDenied := errors.New("effect-time business authorization denied")
 	commandAdapter := capabilityAdapterFunc(func(
-		_ context.Context,
+		invokeCtx context.Context,
 		capability core.CanonicalID,
 		raw any,
 	) (capabilityinvoke.BusinessResult, error) {
@@ -278,6 +283,47 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 		}
 		if actualOrderID == 1003 {
 			return capabilityinvoke.BusinessResult{}, fmt.Errorf("synthetic submit adapter unavailable for order %d", actualOrderID)
+		}
+		// Verify identity and authorization at the concrete effect Adapter,
+		// after Binding/Capability dispatch and directly before state change.
+		// A pre-dispatch check alone leaves another avoidable stale-permission gap.
+		if effectGuard != nil {
+			allowed, guardErr := effectGuard(invokeCtx)
+			if guardErr != nil {
+				result.Stage = "identity-link"
+				return capabilityinvoke.BusinessResult{}, fmt.Errorf("effect-time identity validation unavailable: %w", guardErr)
+			}
+			if !allowed {
+				result.Stage = "identity-link-denied"
+				return capabilityinvoke.BusinessResult{}, errEffectBusinessDenied
+			}
+			result.Stage = "effect-authorization"
+			final, authErr := r.invokeBusinessAuthorization(invokeCtx, subjectID)
+			if authErr != nil {
+				return capabilityinvoke.BusinessResult{}, fmt.Errorf("effect-time authorization unavailable: %w", authErr)
+			}
+			projected, projectErr := projectBusinessResult(final)
+			if projectErr != nil {
+				return capabilityinvoke.BusinessResult{}, projectErr
+			}
+			result.EffectAuthorization = &projected
+			if final.Mode != capabilityinvoke.ResultOutcome {
+				return capabilityinvoke.BusinessResult{}, errors.New("effect-time authorization returned unexpected result mode")
+			}
+			switch final.Outcome {
+			case "denied":
+				result.Stage = "authorization-denied"
+				return capabilityinvoke.BusinessResult{}, errEffectBusinessDenied
+			case "allowed":
+				grant, ok := final.Payload.(legacyauthorization.AuthorizationGrant)
+				if !ok || grant.SubjectID != subjectID || grant.Action != "execute" ||
+					grant.Resource != "order_entry.submit_order" {
+					return capabilityinvoke.BusinessResult{}, errors.New("effect-time authorization returned mismatched grant")
+				}
+			default:
+				return capabilityinvoke.BusinessResult{}, fmt.Errorf("effect-time authorization returned unexpected outcome %q", final.Outcome)
+			}
+			result.Stage = "command"
 		}
 		state[actualOrderID] = "submitted"
 		return capabilityinvoke.BusinessResult{
@@ -301,48 +347,6 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	if commandResolution.Capability == nil {
 		return result, fmt.Errorf("submit-order Pattern did not resolve a Capability")
 	}
-	if effectGuard != nil {
-		allowed, guardErr := effectGuard(ctx)
-		if guardErr != nil {
-			result.Stage = "identity-link"
-			return result, fmt.Errorf("effect-time identity validation unavailable: %w", guardErr)
-		}
-		if !allowed {
-			result.Stage = "identity-link-denied"
-			return result, nil
-		}
-		// The identity/account link may still be current while the subject's
-		// business permissions have changed since the initial authorization.
-		// Re-evaluate through the same canonical security.authorize Capability,
-		// rather than introducing a target-specific permission evaluator.
-		result.Stage = "effect-authorization"
-		effectAuthorization, err := r.invokeBusinessAuthorization(ctx, subjectID)
-		if err != nil {
-			return result, fmt.Errorf("effect-time authorization unavailable: %w", err)
-		}
-		projected, err := projectBusinessResult(effectAuthorization)
-		if err != nil {
-			return result, err
-		}
-		result.EffectAuthorization = &projected
-		if effectAuthorization.Mode != capabilityinvoke.ResultOutcome {
-			return result, fmt.Errorf("effect-time authorization returned an unexpected result mode")
-		}
-		switch effectAuthorization.Outcome {
-		case "denied":
-			result.Stage = "authorization-denied"
-			return result, nil
-		case "allowed":
-			grant, ok := effectAuthorization.Payload.(legacyauthorization.AuthorizationGrant)
-			if !ok || grant.SubjectID != subjectID || grant.Action != "execute" ||
-				grant.Resource != "order_entry.submit_order" {
-				return result, fmt.Errorf("effect-time authorization returned a mismatched grant")
-			}
-		default:
-			return result, fmt.Errorf("effect-time authorization returned an unexpected outcome %q", effectAuthorization.Outcome)
-		}
-		result.Stage = "command"
-	}
 	command, err := r.resolver.InvokeCapability(
 		ctx,
 		core.MustCanonicalID("order_entry"),
@@ -356,6 +360,9 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 		map[string]any{"orderId": orderID},
 	)
 	if err != nil {
+		if errors.Is(err, errEffectBusinessDenied) {
+			return result, nil // known denial, never an Execution Error
+		}
 		return result, err
 	}
 	projectedCommand, err := projectBusinessResult(command.Result)
