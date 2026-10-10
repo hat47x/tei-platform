@@ -140,7 +140,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 **重要な停止線:** 現状の`RelationMatchPolicy`はFixture評価時に外部から与える値であり、Accepted Operator契約やAuthoritative DSL Sourceにまだ結合されていない。同じOperator pinでも方針の相違は**異なる意味**である。正式なLowering時には方針を型付きの演算引数としてCanonical meaningに含め、Source span・Semantic Set・Lockと対応付けなければならない。このReferenceをそのままSQL/Go/Wasmの実行判断に使ってはならない。照合は文字列表現による試験用の同値比較であり、実際の型比較規則、照合順序、Money精度、NULL伝播、外部結合、行順序、トランザクション時点の適合性は別途検証を要する。
 
-このFixture Oracleのテストコードは追加済みだが、今回の変更を対象にしたGoテスト・race検査・vetはまだ実行していない。PR exact-headの正規健全性検証も未実施であり、統合資格の証拠は取得していない。
+Fixture Oracleと型付き演算引数の合計5ファイルについて、GitHub Blob SHAと完全一致する局所Go 1.23.2環境でgo test、go test -race、go vetがPASSし、gofmt差分はなかった。core/ir/semanticとRelation Inspectorは局所stubのため、PR exact-headに対する正規健全性検証の証拠ではない。
 
 ### 明示した演算引数を型付き意味候補に固定（2026-10-10）
 
@@ -150,7 +150,7 @@ E2以降の参照実装は、受理済みの意味契約を**外部から正確�
 
 `ProbeBoundExpandMeaning`は、呼び出し側が処理時に別のPolicyを注入できないよう、結合済みの方針だけでFixtureを評価する。候補や方針を後から変更した場合はfingerprint不一致として拒否する。ダイジェストは改変検知であり、署名・信頼の証拠・Semantic Lockの代わりではない。意味の採用には既存Semantic Extension/Shared Acceptance Boundaryを経由する。
 
-**追加したSyntax/意味束縛のテストは実行未確認。** 接続先の`OperatorContract`にも引数形式そのものはまだ受理済みInterfaceとして定義されていないため、これを実装済みDSL/Production機能としては扱わない。正式化に先立ち、演算引数のmeaning profileと受理済みSemantic Interfaceを一致させ、Source Indexの共通span ABIへ写す必要がある。
+**Syntax/意味束縛とFixture Oracleの局所テストはPASSしたが、統合試験は未実施。** 接続先の`OperatorContract`にも引数形式そのものはまだ受理済みInterfaceとして定義されていないため、これを実装済みDSL/Production機能としては扱わない。正式化に先立ち、演算引数のmeaning profileと受理済みSemantic Interfaceを一致させ、Source Indexの共通span ABIへ写す必要がある。
 
 ### まだ検証できないこと
 
