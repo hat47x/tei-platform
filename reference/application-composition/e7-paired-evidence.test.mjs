@@ -85,3 +85,20 @@ test('application identity change cannot reuse old selection',()=>{
   b.report.application='other_application';
   assert.equal(check(a,b).reason,'wrong_application_identity');
 });
+
+test('paired evidence detects a changed ContractQuery semantic input source',()=>{
+  const older=fixture(),newer=structuredClone(older);
+  const subject={kind:'semantic-attribute',id:'customer.customer.customer_id'};
+  const path='semantic/customer/customer.tei';
+  const source={path,fingerprint:sha('e')};
+  for (const evidence of [older,newer]) {
+    evidence.report.dependencies.push({relation:'pattern-contract-query-input-attribute',
+      subject:structuredClone(subject),source:structuredClone(source)});
+    evidence.index.artifacts.push({path,fingerprint:sha('e')});
+    evidence.index.references.push({subject:structuredClone(subject),artifactPath:path,role:'definition'});
+  }
+  assert.equal(check(older,newer).status,'limited-unchanged');
+  newer.report.dependencies.at(-1).source.fingerprint=sha('f');
+  newer.index.artifacts.at(-1).fingerprint=sha('f');
+  assert.equal(check(older,newer).reason,'indexed_source_changed');
+});
