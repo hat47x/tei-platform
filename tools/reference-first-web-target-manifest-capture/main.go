@@ -88,6 +88,9 @@ func capture(ctx context.Context, client *http.Client, opts captureOptions) ([]b
 	if response.StatusCode != http.StatusOK {
 		return nil, "", fmt.Errorf("first Web Target returned HTTP %d", response.StatusCode)
 	}
+	if coding := response.Header.Get("Content-Encoding"); coding != "" && coding != "identity" {
+		return nil, "", fmt.Errorf("compressed manifest transport is not accepted: %s", coding)
+	}
 	contentType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if err != nil || contentType != "application/json" {
 		return nil, "", fmt.Errorf("first Web Target did not return application/json")
@@ -118,7 +121,7 @@ func runCapture(args []string, out, notices io.Writer) error {
 	defer cancel()
 	client := &http.Client{
 		Timeout: 10 * time.Second,
-		Transport: &http.Transport{Proxy: nil},
+		Transport: &http.Transport{Proxy: nil, DisableCompression: true},
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
