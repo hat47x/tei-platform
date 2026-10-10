@@ -104,6 +104,87 @@ test("only source-compatible relation IDs are converted to candidate operations"
   }), /RELATION_ID_MUST_MATCH_SOURCE_SYMBOL/);
 });
 
+test("a rule alone is not an Application-selected Command validation", () => {
+  const world = fixture();
+  world.applications[0].semanticUses = ["sales"];
+  const baseline = {
+    schema: "tei.reference.studio-edit/v0", id: "price-positive",
+    origin: "studio", intent: "正値Validationを提案する", view: "table",
+    subject: "attribute:sales.order_line.price", operation: "add-validation",
+    validationID: "sales.order_line.price_positive", validationKind: "positive"
+  };
+  const alone = candidateFromEdit(world, revision, baseline);
+  assert.equal(alone.delta.length, 1);
+  assert.equal(alone.delta[0].op, "add-validation");
+  // A semantic rule not selected by the Application is not equivalent to
+  // Driver evaluation. The Bridge never reports execution readiness.
+  const p = projectWorld(world, revision, "data:sales.order_line");
+  assert.equal(p.realizationReadiness.status, "not-verified");
+
+  const paired = candidateFromEdit(world, revision, {
+    ...baseline,
+    applicationUse: {
+      application: "order_entry",
+      placement: "applications/order-entry/application.tei"
+    }
+  });
+  assert.deepEqual(paired.delta, [
+    alone.delta[0],
+    { op: "add-application-validation-use",
+      placement: "applications/order-entry/application.tei",
+      applicationValidationUse: {
+        application: "order_entry", validation: "sales.order_line.price_positive"
+      } }
+  ]);
+  const ai = candidateFromEdit(world, revision, {
+    ...baseline, origin: "ai",
+    applicationUse: {
+      application: "order_entry",
+      placement: "applications/order-entry/application.tei"
+    }
+  });
+  assert.deepEqual(ai.delta, paired.delta);
+});
+
+test("paired rule/use rejects missing scope, invalid Application and unsafe paths", () => {
+  const world = fixture();
+  world.applications[0].semanticUses = ["sales"];
+  const edit = {
+    schema: "tei.reference.studio-edit/v0", id: "pair",
+    origin: "studio", intent: "rule and selection", view: "table",
+    subject: "attribute:sales.order_line.price",
+    operation: "add-validation", validationID: "sales.order_line.price_positive",
+    validationKind: "positive", applicationUse: {
+      application: "order_entry", placement: "applications/order-entry/application.tei"
+    }
+  };
+  assert.throws(() => candidateFromEdit(world, revision,
+    { ...edit, applicationUse: { ...edit.applicationUse, application: "missing" } }),
+    /APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE/);
+  assert.throws(() => candidateFromEdit(world, revision,
+    { ...edit, applicationUse: { ...edit.applicationUse, placement: "../../reference/world.json" } }),
+    /UNSAFE_APPLICATION_SOURCE_PLACEMENT/);
+  world.applications[0].semanticUses = ["customer"];
+  assert.throws(() => candidateFromEdit(world, revision, edit),
+    /APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE/);
+});
+
+test("accepted rule selection displays declared use without claiming actual target effect", () => {
+  const world = fixture();
+  world.semantics[0].validations = [{
+    id: "sales.order_line.price_positive", kind: "positive",
+    attribute: "sales.order_line.price"
+  }];
+  world.applications[0].validations = ["sales.order_line.price_positive"];
+  const p = projectWorld(world, revision, "validation:sales.order_line.price_positive");
+  const v = p.views.table.value.validations[0];
+  assert.deepEqual(v.applicationSelection,
+    [{ application: "order_entry", status: "source-declared" }]);
+  assert.equal(v.evaluationAuthority, "not-verified-by-projection");
+  assert.equal(p.realizationReadiness.status, "not-verified");
+  assert.ok(p.realizationReadiness.sourceAcceptedDoesNotImply.includes("provider-write"));
+});
+
 test("N05: direct derived-cell edits, arbitrary patches and layout edits fail closed", () => {
   assert.throws(() => candidateFromEdit(fixture(), revision, { ...edit(), derived: true }), /DERIVED_IS_READONLY/);
   assert.throws(() => candidateFromEdit(fixture(), revision, { ...edit(), operation: "set-layout" }), /UNSUPPORTED_EDIT/);
