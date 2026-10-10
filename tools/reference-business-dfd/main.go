@@ -70,6 +70,11 @@ type review struct {
 	Procedure string `json:"procedure"`
 	Triggers []reviewTrigger `json:"triggers"`
 	Flows []reviewFlow `json:"flows"`
+	BusinessRoles []businessRole `json:"businessRoles,omitempty"`
+	ExternalParties []externalParty `json:"externalParties,omitempty"`
+	Stores []informationStore `json:"stores,omitempty"`
+	Responsibilities []stepResponsibility `json:"responsibilities,omitempty"`
+	InformationFlows []informationFlow `json:"informationFlows,omitempty"`
 }
 type endpoint struct {
 	Procedure string `json:"procedure"`
@@ -147,6 +152,7 @@ type projection struct {
 	Triggers []triggerNode `json:"triggers"`
 	Flows []flowEdge `json:"flows"`
 	Handoffs []handoffEdge `json:"handoffs"`
+	Information informationProjection `json:"information"`
 	UnreferencedPatterns []string `json:"unreferencedPatterns"`
 	Diagnostics []diagnostic `json:"diagnostics"`
 }
@@ -258,6 +264,9 @@ func build(f fixture, r review, set procedureSet, world ir.World, procedureFile,
 		}
 		p.Flows=append(p.Flows,flowEdge{e.From,e.To,e.Kind,e.Condition,"proposal",loc})
 	}
+	info, infoDiagnostics := buildInformationProjection(r, ids, world, reviewFile)
+	p.Information = info
+	p.Diagnostics = append(p.Diagnostics, infoDiagnostics...)
 	for i,h := range set.Handoffs {
 		if h.From.Procedure!=f.Procedure.ID && h.To.Procedure!=f.Procedure.ID { continue }
 		loc := location{setFile,fmt.Sprintf("/handoffs/%d",i)}
@@ -310,6 +319,7 @@ func dot(p projection) string {
 		fmt.Fprintf(&b,"  %s -> %s [style=dashed, label=%s];\n",
 			strconv.Quote("step:"+e.From),strconv.Quote("step:"+e.To),strconv.Quote(e.Kind+": "+e.Condition))
 	}
+	appendInformationDOT(&b, p.Information)
 	b.WriteString("}\n")
 	return b.String()
 }
