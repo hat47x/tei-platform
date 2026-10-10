@@ -306,7 +306,7 @@ Go ReferenceではProvider callbackがContext Slot Viewと同じpackageで動く
 
 Goの`error`は`Error()`文字列だけではない。たとえば`Error()`が安全な固定文言でも、具体的なerror型のfieldや`errors.As` / `Unwrap`経由でcurrent credentialを取り出せる。文字列の直接反射チェック後にdownstream errorをそのまま返す構造は、Execution Contextの秘匿境界を満たさない。
 
-現Referenceでは、成功resultのraw slot bytes直接反射を検出した場合に拒否する。機密扱いのrequired slotがある呼出しでdownstream errorが返った場合には、`Error()`・`Unwrap()`・formatting等の実行自体に任意のコードやpanicを伴うため、**error文字列の直接反射検査はせず**、原error objectを評価・wrapせず固定failureへ変換する。同じ呼出し中の同期的なProvider panicも値をformatせず固定failureへ変換する。Goのpanicはそのまま上位へ伝播すると秘密をpanic payload/stack logに含める経路となるため、実際の負例で再現して対策した。非機密のrequired slotだけの場合は、従来のerror型およびpanic伝播を維持する。
+現Referenceでは、成功resultのraw slot bytes直接反射を検出した場合に拒否する。機密扱いのrequired slotがある呼出しでdownstream errorが返った場合には、`Error()`・`Unwrap()`・formatting等の実行自体に任意のコードやpanicを伴うため、**error文字列の直接反射検査はせず**、原error objectを評価・wrapせず固定failureへ変換する。同じ呼出し中の同期的なProvider panicも値をformatせず固定failureへ変換する。Goのpanicはそのまま上位へ伝播すると秘密をpanic payload/stack logに含める経路となるため、実際の負例で再現して対策した。 さらに`panic(nil)`はGoの互換動作や`GODEBUG=panicnil=1`で`recover()`が`nil`になる場合がある。`recover()!=nil`判定に依存すると、panicを発生させた呼出しが成功扱いされ、receiptまで発行されるfail-openを局所テストで再現した。Referenceではcallbackが通常returnしたかを独立したフラグで判定する。panicの内容を観測せず`panic(nil)`も拒否し、正常な`(nil, nil)`だけは許容する。非機密のrequired slotだけの場合は、従来のerror型およびpanic伝播を維持する。
 
 また、固定failureへ変換するだけでは、下流実行中に発生したControl Contextのcancellation / deadlineが失われる。Referenceで再現・修正したため、trustedなControl Context自身の`Err()`が終了状態を示す場合には、その状態を返す。Providerのerror objectに含まれる`context.Canceled`相当の値だけではキャンセルを認定しない。この区別をしないと、Providerが偽の制御状態を報告できてしまう。
 
