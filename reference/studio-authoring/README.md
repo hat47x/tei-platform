@@ -125,9 +125,9 @@ node reference/studio-authoring/cli.mjs inspect \
   -business-dfd "$scratch/dfd.json"
 ```
 
-- DFDの`functionRefs[].id`が同じWorldのApplication Pattern IDにexact matchしたStepのみ、そのfocusとの関係を表示します。`data`/`relation`/`capability`参照の相違は`unresolved`にします。
+- DFDの`functionRefs[].id`が同じWorldのApplication Pattern IDにexact matchしたStepについて、そのfocusとの関係を表示します。`data`/`relation`/`capability`参照の相違は`unresolved`にします。さらに#1125の`steps[].explicitMeaning`が示す`semantic-data` / `semantic-relation` / `semantic-validation`の**明示されたkind/ID**を、現在のWorldの正確な定義と再照合します。正確に一致するときに限り、FunctionのないStepからも該当Data/Relation/Validationへ`reference-only`の閲覧リンクを返します。これはBusiness StepをCanonicalに受理したことも、実行Functionを生成したことも意味しません。
 - 原DFDの`source.file`/`source.pointer`は**非Canonicalな参照Fixtureの位置**であり、Source Indexの編集先ではありません。
-- `manualOrExternalUnlinked`にFunctionなしの手作業等を別掲します。近接していることだけを理由に、選択Dataとの依存辺を捏造しません。大きなProcedureでは20件までとし切詰めを明示します。
+- `manualOrExternalUnlinked`にはFunctionなしの手作業等を別掲します。これらは**Functionに未接続**であり、明示された意味参照まで存在しないという意味ではありません。近接していることだけを理由に依存辺を捏造しません。大きなProcedureでは20件までとし切詰めを明示します。
 - DFDにはWorkspace revisionのbindingが無いので、たとえ同一IDでも`freshness=unverified-no-model-revision-binding`です。旧DFDがSource revisionと一致すること、Business Procedureがacceptedであることは**証明できません**。最新Worldからの再取得と#1120 contractによる厳密な結合は後続です。
 - #1138は別レーンのDraftであり、本PRへのコードコピーやCore変更は行いません。このコマンドは#1138のツールが存在するcheckoutでのみ動きます。通常のmainではDFDを渡さずBusinessを`unresolved`に保ちます。
 
@@ -147,7 +147,7 @@ tools/repository-health-check.sh
 
 | Scenario | 初期実装 | 未検証・未対応 |
 | --- | --- | --- |
-| V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。Source Indexのexact kind/IDで元定義のアンカーを表示。#1138 JSONの任意参照で非Canonical BusinessとのPattern結合を候補実装 | Accepted Businessとの同revision結合、Source byte再検査は未実装。4つのAccepted Projection受入は**未達** |
+| V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。Source Indexのexact kind/IDで元定義のアンカーを表示。#1138 JSONの非Canonical BusinessについてPatternおよび直接Data/Relation/Validation参照をread-only結合 | Accepted Businessとの同revision結合、Source byte再検査は未実装。4つのAccepted Projection受入は**未達** |
 | V03 | ERのRelation追加・表のValidation追加に加え、必要ならApplicationによるValidation利用選択も同一candidateで提案。一括`review-edit`で既存Shared AcceptanceによるDiff/Impact/Reviewを表示し、実行Readyは未確認とする | read-only consumerのexact-head実GoテストとTarget/Provider readinessは未確認 |
 | V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。規則+Application選択はSource2ファイルを検査するテストとして追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
