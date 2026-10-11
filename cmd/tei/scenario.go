@@ -26,6 +26,7 @@ type scenarioStepEvidence struct {
 	EvidenceNature string `json:"evidenceNature"`
 	RowCount int `json:"rowCount,omitempty"`
 	ValidationResults map[string]string `json:"validationResults,omitempty"`
+	ObservationResult any `json:"observationResult,omitempty"`
 }
 
 func runScenarioCommand(args []string, output io.Writer) error {
@@ -85,8 +86,26 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	fixtureDigests := make(map[string]string)
 	resolvedFixtures := make(map[string]scenariotest.BrowseFixture)
 	validationFixtures := make(map[string]scenariotest.ValidationFixture)
+	observationFixtures := make(map[string]scenariotest.ObservationFixture)
 	stepsByID := make(map[string]scenariotest.Step)
 	for _, st := range s.Steps {
+		if st.Operation == "observe-synthetic-state" {
+			path, err := scenarioFixturePath(*scenarioPath, st.Fixture)
+			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			source, err := os.ReadFile(path)
+			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			fixture, err := scenariotest.ParseObservationFixture(source)
+			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			if fixture.ReadIdentity != st.ReadIdentity { return fmt.Errorf("step %s: Observation identity mismatch", st.ID) }
+			digest := sha256.Sum256(source)
+			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
+			observationFixtures[st.ID] = fixture
+			if *stepID != "" && *stepID != st.ID { continue }
+			selected = true
+			stepsByID[st.ID] = st
+			evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Verified: false, EvidenceNature: "synthetic-observation-bound; not-read"})
+			continue
+		}
 		if st.Operation == "evaluate-validations" {
 			path, err := scenarioFixturePath(*scenarioPath, st.Fixture)
 			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
@@ -210,6 +229,15 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		// No Driver Query invocation occurs until all source/binding fingerprints pass.
 		for i := range evidence {
+			if evidence[i].Operation == "observe-synthetic-state" {
+				st := stepsByID[evidence[i].StepID]
+				result, err := executeScenarioObservation(st, observationFixtures[st.ID])
+				if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+				evidence[i].ObservationResult = result
+				evidence[i].Verified = true
+				evidence[i].EvidenceNature = "synthetic-independent-observation-read"
+				continue
+			}
 			if evidence[i].Operation == "evaluate-validations" {
 				st := stepsByID[evidence[i].StepID]
 				results, err := executeScenarioValidations(resolver, applicationID, st, validationFixtures[st.ID])

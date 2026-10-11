@@ -76,6 +76,16 @@
         "sales.order.lines.line_number_unique": "satisfied",
         "sales.order_line.line_number_positive": "satisfied"
       }
+    },
+    {
+      "id": "observe-synthetic",
+      "operation": "observe-synthetic-state",
+      "readIdentity": "synthetic.order_state.read",
+      "fixture": "fixtures/order_state_pending.json",
+      "expectObservation": {
+        "kind": "string",
+        "data": "pending"
+      }
     }
   ]
 }
