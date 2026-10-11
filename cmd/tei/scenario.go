@@ -25,6 +25,7 @@ type scenarioStepEvidence struct {
 	Verified       bool   `json:"verified"`
 	EvidenceNature string `json:"evidenceNature"`
 	RowCount int `json:"rowCount,omitempty"`
+	ValidationResults map[string]string `json:"validationResults,omitempty"`
 }
 
 func runScenarioCommand(args []string, output io.Writer) error {
@@ -83,8 +84,27 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	selected := false
 	fixtureDigests := make(map[string]string)
 	resolvedFixtures := make(map[string]scenariotest.BrowseFixture)
+	validationFixtures := make(map[string]scenariotest.ValidationFixture)
 	stepsByID := make(map[string]scenariotest.Step)
 	for _, st := range s.Steps {
+		if st.Operation == "evaluate-validations" {
+			path, err := scenarioFixturePath(*scenarioPath, st.Fixture)
+			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			source, err := os.ReadFile(path)
+			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			fixture, err := scenariotest.ParseValidationFixture(source)
+			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			digest := sha256.Sum256(source)
+			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
+			validationFixtures[st.ID] = fixture
+			if *stepID != "" && *stepID != st.ID { continue }
+			// Validate selection without re-declaring it in Scenario.
+			if _, err := resolver.ResolveApplicationValidations(applicationID); err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			selected = true
+			stepsByID[st.ID] = st
+			evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Verified: false, EvidenceNature: "canonical-validations-bound; not-evaluated"})
+			continue
+		}
 		patternID, err := core.ParseCanonicalID(st.Pattern)
 		if err != nil {
 			return fmt.Errorf("step %s: %w", st.ID, err)
@@ -190,6 +210,15 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		// No Driver Query invocation occurs until all source/binding fingerprints pass.
 		for i := range evidence {
+			if evidence[i].Operation == "evaluate-validations" {
+				st := stepsByID[evidence[i].StepID]
+				results, err := executeScenarioValidations(resolver, applicationID, st, validationFixtures[st.ID])
+				if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+				evidence[i].ValidationResults = results
+				evidence[i].Verified = true
+				evidence[i].EvidenceNature = "canonical-validations-synthetic-input-evaluated"
+				continue
+			}
 			if evidence[i].Operation != "execute-browse-query" {
 				continue
 			}
