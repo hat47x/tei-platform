@@ -128,6 +128,8 @@ Driverは、本番Runtimeだけでなく、設計途中のApplicationを動か�
 
 設計内容をコード生成後まで待たずに検証できることを重視します。
 
+**Driver Scenarioをシナリオテストの正本として再利用できること**: 業務定義から一度生成・受理したDriver Scenarioは、独立して保存・版管理・再読込でき、以降はそれを元にCLIの実行コマンド列・テスト、Web等のTarget固有E2Eを何度でも再生成できる必要があります。Scenarioの入力・事前条件・業務Step・期待Outcome・失敗・Observation・網羅対象の正本をCLIスクリプトやWebテストへ分散させてはいけません。業務意味のSSOTはAccepted Canonicalに残し、Scenarioが所有するのは**テストの意図と検証条件**です。ScenarioとCanonical revisionとの整合は必ず検査します。生成AIが最小の実行環境で業務定義を検証する主要手段として、生成したCLIコマンドを利用できなければなりません。
+
 ## RQ-013 Target-neutralなPresentation / Interaction境界を持つこと
 
 Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込まず追加できる必要があります。
@@ -135,6 +137,10 @@ Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込
 新しいTargetは独立したAdapter / Packageとして追加でき、Core変更なしで接続可能であることを基本とします。
 
 Targetごとの差はCapability negotiationやRuntime Binding等で明示し、Conformanceによって共通意味が保たれていることを確認します。
+
+**業務機能の経路間完全性**: 同じAccepted Applicationと実行条件を扱うCLI、Web、Desktop、Mobile、API、MCP等の経路は、原則として全業務操作・Validation・認可・Outcome・副作用・Observationに同等に到達可能でなければなりません。CLIを業務機能の省略版とはせず、一経路のDriver/CLI Scenario群から業務定義全体を検証可能にします。経路間の差は入力・表示・通信・Host連携という実現方法に限定し、未実装の業務機能や「非対応表示」を同等性として扱いません。必要な実装能力が不足する場合は、同じ業務契約を満たす明示的・認可済み代替手段を使うか、実行・配備前に不適合／未解決として検出します。
+
+同じDriver ScenarioとAccepted revisionを基準に、CLIで検証した業務の操作・期待結果・観測をWeb等のTarget-specific E2Eへ導出できる必要があります。生成元の業務assertionは共通化し、Webの認証・session・CSRF・画面操作・Accessibility等のTarget固有テストは別途実行します。CLIの業務PASSだけでWeb E2EもPASSと宣言したり、未対応Scenarioを黙ってskipしたりしてはいけません。詳細境界と最初の実証は`plan/design/CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md`、#1180に置きます。
 
 Targetが「何を表示・操作できるか」というTarget Capabilityと、「どのtransport・信頼境界・session・Resource条件で実行されるか」というExecution / Trust Profileを、実装都合だけで一つのTarget差へ畳んではいけません。必要な分離は第一Targetと第二TargetのReferenceから検証します。
 
@@ -239,6 +245,8 @@ ownership、fencing、durable handle、observation等を用いて、誰が現在
 重要な設計境界は、文書だけでなく、小さいReference Workspace、fixture、実行例、Conformance testから再現できることを基本とします。
 
 異なるProviderやTargetを追加するときも、「動いた」という事実だけでなく、共通の意味境界を満たしているかを確認できる必要があります。
+
+Driver Scenarioを唯一のテストケース定義とする範囲では、再生成したCLIコマンド／各Target E2EがScenarioの操作・分岐・期待値・必要な観測を漏らさず保持しているかを、機械的なcoverage matrixと生成物の一致検査で示します。同じScenario revision／Generator version／Target Bindingから生成した成果物は再現可能であり、手修正された生成物や旧revisionの生成物はstaleとして検出できる必要があります。CLIでScenarioが実行可能と確認できることと、各Targetでの実E2E／認証／視覚・操作品質が確認できることは別のEvidenceです。
 
 AIが作成したProposalやgenerated artifactを採用した場合も、AIを介さずauthoritative sourceを再読込し、同じCanonical meaningとConformance結果を再現できる必要があります。
 
