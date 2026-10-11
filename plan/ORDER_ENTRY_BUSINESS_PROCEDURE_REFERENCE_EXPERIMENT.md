@@ -2,7 +2,7 @@
 
 - Status: Lane C experiment design / not Canonical
 - Purpose: restore the X-TEA Business Model viewpoint around the existing v1 `order_entry` Reference without introducing a Workflow Engine or duplicating Application meaning
-- Parent audit: `UPSTREAM_BUSINESS_SYSTEM_DESIGN_VITALITY_AUDIT_2026-09.md`
+- Parent audit: `docs/audits/UPSTREAM_BUSINESS_SYSTEM_DESIGN_VITALITY_AUDIT_2026-09.md`
 - Design fallback: `UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md`
 
 ## 1. Question under test

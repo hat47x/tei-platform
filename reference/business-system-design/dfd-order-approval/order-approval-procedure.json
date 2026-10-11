@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "business-procedure-reference-v0",
+  "artifactRole": "reference-authoring-fixture",
+  "canonical": false,
+  "application": "order_entry",
+  "procedure": {
+    "id": "order-entry.approval-and-shipment-prep",
+    "identityStatus": "reference-local-stable",
+    "purpose": "review customer order, approve or return it, submit accepted application command, and request warehouse preparation without assuming fulfillment",
+    "actor": {
+      "status": "candidate",
+      "label": "order coordinator"
+    },
+    "trigger": {
+      "status": "candidate",
+      "text": "an incoming order needs business approval"
+    }
+  },
+  "steps": [
+    {
+      "id": "APP-00",
+      "businessAction": "read incoming order details",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.order_record"
+      ]
+    },
+    {
+      "id": "APP-10",
+      "businessAction": "call the customer to confirm delivery timing",
+      "realization": "manual-unresolved"
+    },
+    {
+      "id": "APP-15",
+      "businessAction": "obtain external stock readiness information",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "APP-20",
+      "businessAction": "decide whether to approve the order",
+      "realization": "manual-unresolved"
+    },
+    {
+      "id": "APP-30",
+      "businessAction": "return the request for corrections",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "APP-40",
+      "businessAction": "submit the accepted order through the application",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.submit_order"
+      ]
+    },
+    {
+      "id": "APP-50",
+      "businessAction": "request warehouse shipment preparation subject to business conditions",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "APP-60",
+      "businessAction": "observe external preparation progress separately from command result",
+      "realization": "observation-boundary"
+    }
+  ]
+}

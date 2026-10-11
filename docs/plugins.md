@@ -1,22 +1,22 @@
-# Plugin / Bundle
+# プラグインとBundle
 
-TEIでは、Pluginを業務意味のprimitiveではなく、**Capabilityの実装を配布する単位**として扱います。
+TEIでは、プラグインを業務上の意味を表す最小要素とはせず、**機能（Capability）の実装を配布する単位**として扱います。
 
-## Identityを分ける
+## 識別子を分ける
 
-次のIDは別物です。
+次の三つの識別子は、それぞれ異なるものを表します。
 
 - business Canonical ID — 例: `sales.order`
 - Capability ID — 例: `migration.atlas`
 - Plugin package ID — 例: `tei.migration.atlas`
 
-EnvironmentはCapabilityへBindingし、特定package名を業務モデルへ埋め込みません。
+環境（Environment）は必要な機能に実装を結び付けます。業務モデルには特定のパッケージ名を埋め込みません。
 
 ## Plugin Lock
 
 Environmentが要求するPlugin / Bundleのcompatible majorから実装を解決し、Plugin Lockでexact versionとdescriptor fingerprintを固定します。
 
-これにより、開発時に「たまたま見つかった実装」と本番で使う実装が暗黙に変わることを避けます。
+開発時と本番環境で、意図せず別の実装が選ばれることを防ぎます。
 
 Plugin LockはRuntimeで利用する実装を固定するためのものです。PluginをSourceから再構築するためのBuild入力まで、同じLockへ押し込みません。
 
@@ -26,7 +26,7 @@ Build PlanのSource closure、builder、dependency、parameterそのものはBui
 
 format 2は読み取り互換を維持します。format 3へ移行しただけで、build traceを持たない既存Pluginまでself-build済みとみなしません。
 
-## Capability negotiation
+## 利用する機能の解決
 
 現在のarchitecture probeでは、Database Provider、Migration Provider、Deployment Executor、Observation Provider、Evidence Provider、SQL analysis等のCapabilityを明示的に解決します。
 
@@ -42,7 +42,7 @@ Targetごとのpackagingでは、Semantic / Capability上のidentity、version�
 
 この最適化によってPlugin境界を消したことにはしません。diagnostic、Evidence、更新影響、Authorityは、最適化後も元のlogical Plugin / Capabilityへ逆追跡できる必要があります。
 
-## Build / self-build
+## ビルドとセルフビルド
 
 Plugin descriptorをTEIで記述できることと、Plugin implementationをTEI自身で再構築できることは別です。
 
@@ -74,12 +74,22 @@ TEI-native Pluginを優先してReference化しますが、Go、Rust、JavaScrip
 
 Build可能であること、artifactをAccepted Plugin Lockへ採用できること、RuntimeでCapabilityをinvokeできることは別のAuthorityです。Build成功をAcceptanceやRuntime Authorityへ自動昇格させません。
 
-詳細な作業契約は [ISSUE-000079](../plan/issue/000079-plugin-self-build.md) で管理します。
+実行可能な検証例と現在の成立範囲は [Plugin self-build Reference](../reference/plugin-self-build/README.md) を参照してください。
 
-## Runtime
+## 実行時の扱い
 
 process Pluginは、Plugin LockだけでなくPermission Grant、Resource Binding、Sandbox Profile、Resource Lease、Supervisor ownership / fencing等の実行時境界を通ります。
 
 processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
+
+generic Capability ContractをApplication Runtimeで使う場合も、Capability resolver自体をRuntime Authorityにしません。Referenceでは、generic Providerを既存Environment PlanのCapabilityへ明示的に対応付け、実呼出しをproduction Runtime Registryへ戻します。これにより、Permission Grant、Resource Lease、artifact verification、Sandbox等の既存境界をgeneric Invocationから迂回しない構造をpressureしています。
+
+この接続はmigration用Referenceであり、productionの`CapabilityKind`を置き換えたものではありません。また、production Runtimeが返すInvocation Provenanceをgeneric Invocationの共通Evidenceとして運ぶ仕組みは未確定です。
+
+Generic Capability Invocationをphysical transportへ載せる場合も、process protocolをuniversal ABIにしません。ISSUE-000086のReferenceでは既存process launcherとsynthetic loopback HTTPの二つで、同じContract / Provider / Target / shape identityをphysical carrierから分けて保持できるかを確認しています。
+
+transportがrequest内のidentityをAuthorityとして扱わないよう、両transportのplan-bound経路では上流の`TransportDispatchPlan`とdispatch identityを照合します。一致しない場合はprocess起動やHTTP送信の前に停止します。receiptにはPlan fingerprintを残しますが、Plan自体をCapability ConformanceやRuntime Authorityにはしません。
+
+現行process Request / Responseのtop-level identityはlegacy CapabilityKind / CapabilityIDを前提とし、HTTP Referenceもproduction Runtime Authorityを持ちません。上流のCapability resolution / Runtime AuthorityからPlanを導出するE2Eも未実証です。このためgeneric Capabilityのproduction transport統合が成立したとは扱いません。
 
 詳しくは [Security / Trust Boundary](security.md) を参照してください。

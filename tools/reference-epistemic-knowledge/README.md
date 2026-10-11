@@ -205,11 +205,13 @@ confirm / reject / withdraw commandは少なくとも次のpreconditionを持ち
 
 meaning、review subject、target binding、review sequenceのいずれかがUI表示後に変わっていれば古いcommandを拒否します。
 
-`reviewSubjectFingerprint` は、review event、reviewer candidate、access referenceを除いた正規化assertionから作るopaqueな同時実行receiptです。target、statement kind、scope、temporal validity、Evidence、Conflict / supersession relation等の変更を検出します。これはTruthやsemantic identityを証明するfingerprintではありません。
+`reviewSubjectFingerprint` は、review対象そのものを明示的なsubject structへ写して作るopaqueな同時実行receiptです。対象に含めるのは、assertion identity、text / meaning fingerprint、content provenance / ingestion actor、target、statement kind、scope、temporal validity、Evidenceのidentity / fingerprint、Conflict / supersession relationです。review event、reviewer candidate、metadata completeness、`checkedAt` / `checkedSubjectFingerprint`、authorization用access referenceは含めません。assertion直下だけでなく、Evidence内の`accessRefs`も除外します。これはTruthやsemantic identityを証明するfingerprintではありません。
 
 これにより、別surfaceで意味編集、scope変更、classification変更、Evidence変更、relation変更、target移動、review追加が行われた後に、古い画面から確認を重ねるlost updateを避けます。
 
-confirm / rejectではmetadataがcompleteであり、targetがambiguous / detachedではなく、現在contextがcompatibleであることも要求します。withdrawは既存確認を外す操作なので、contentの再確認とは分けます。
+confirm / rejectではmetadataがcompleteであり、targetがambiguous / detachedではなく、現在contextがcompatibleであることも要求します。
+
+metadata completenessがcompleteからpartialへ変わった場合、review subject receiptそのものは変えません。detail取得時のaccess変化でcurrent Assessmentがpartial / review-requiredへ下がる場合も、意味・Evidence identity等のreview subjectが同じならsemantic staleとは扱いません。consumerはdetail resultのcurrent Assessmentを再評価し、古いpremise laneをそのまま使わない必要があります。代わりにmutation実行時のcurrent preconditionでfail closedします。source check時刻だけが更新された場合もsubject receiptは変えず、detail / Projectionは最新のfreshness signalを再評価します。これにより運用metadataの更新をsemantic editとして誤認しません。withdrawは既存確認を外す操作なので、contentの再確認とは分けます。
 
 meaning fingerprintやtarget binding preconditionはsemantic identityの証明ではありません。Reviewer IDも組織Authorityを与えません。
 
@@ -243,6 +245,56 @@ requestは少なくとも次を保持します。
 - reviewer candidate
 
 reviewer candidateはAuthorityではありません。Projectionには `reviewer-candidate-is-not-review-authority` を明示します。
+
+## 必要時だけ詳細へ戻るdetail resolver
+
+通常のProjectionは、判定に必要なsignalへ絞っています。本文、完全なTarget、Context、EvidenceをすべてのAssessmentへ重ねて持たせません。
+
+SUIで詳細を確認するときや、SEIがContext Egress Planで選んだassertionの本文を解決するときは、読み取り専用のdetail queryを使います。
+
+query identity:
+
+- semantic contract: `tei.epistemic-detail-query/v0`
+- representation schema: `tei.reference.epistemic-detail-query/v0`
+
+result identity:
+
+- semantic contract: `tei.epistemic-detail/v0`
+- representation schema: `tei.reference.epistemic-detail/v0`
+
+queryはassertion IDと、表示・選択時点で観測したmeaning fingerprint、review subject fingerprint、target binding、review log sequence、metadata stateを持ちます。これらはread時の楽観ロック条件ではなく、現在のdetailとの差分を判定するための観測snapshotです。authorization情報はsemantic queryへ入れません。
+
+access範囲は別の`TransportAccess`として、既存authorization adapter / server境界からresolverへ注入します。UIや認知consumerがpolicy refをqueryの意味として扱う必要はありません。Referenceは渡されたopaqueなaccess refの意味を推測せず、既存transportと同じ完全一致semanticsだけで可視範囲を絞ります。
+
+resolverはそのaccess contextで既存transportと同じfilterを通し、可視範囲を現在のContextQueryで再評価します。assertion自体へアクセスできる限り、観測時点から状態が変わっていてもcurrent detailを返します。resultの`drift`は、meaning、subject、review history、target bindingについて`same / changed / indeterminate`を示します。meaningとtarget bindingは`same / changed`、subjectとreview historyはmetadataが不完全なviewをまたぐ場合に`indeterminate`となり得ます。
+
+`indeterminate`はsemantic changeが起きたという意味ではありません。Evidenceやreview historyがaccess redactionで見えなくなった場合、実際の内容変更と可視性変更だけを安全に区別できないため、その不確定性を残します。consumerはdriftがすべて`same`でない場合、detailを閲覧用dataとして表示できても、古いProjectionから生成したreviewやclassification等の操作を再利用せず、current Projectionを取得して操作可否を再評価します。
+
+このread semanticsをhuman review mutationへ適用しません。write側のreview commandはmeaning、review subject、target binding、review sequenceをlost update防止のpreconditionとして扱い、不一致なら引き続きhard rejectします。
+
+取得できるdetailは、現在Assessmentと、access可能な本文、Target、Context、validity、checked-at、Evidence、relationに加え、access可能なreview history summaryです。resultにはaccess refを含めません。
+
+review historyはappend-only eventをそのままAuthorityへ昇格せず、説明用summaryとして返します。各eventにはsequence、kind、reviewer、method、review時のmeaning fingerprint / statement kind、occurredAt、scope、target identity、conditions、access-filter済みEvidenceと、current assertionへ結び付くかを示す`binding=current / stale`を持たせます。current `ContextQuery.asOf`より未来のeventは返しません。event自体またはevent Evidenceがaccess不可なら既存transportと同じredactionを適用し、hidden IDやreviewerを漏らしません。
+
+freshness subjectでもEvidenceのauthorization access refは除外します。policy識別子だけが変わってもsource checkを内容変更としてstaleにはしません。一方、Evidenceのlocatorやfingerprintが変わればfreshness bindingは切れます。
+
+`checkedAt` はraw値をそのまま返しません。current freshness subjectへ結び付いており、かつ `ContextQuery.asOf` 以前に行われたsource checkだけを返します。未来のsource checkや、subject編集でbindingが切れたcheckはdetailへ出しません。
+
+assertion自体がaccess不可の場合と、指定IDが存在しない場合は、どちらも`epistemic detail target is unavailable`とします。存在確認のための別経路にしません。
+
+Evidence、review history、relation等の一部がaccess filterで失われた場合は、既存transportと同様にmetadataをpartialへ落とします。hidden IDやpolicy refをresultへ出しません。
+
+detail resolverは確認状態や利用可否を更新しません。statement kindが`instruction`でも、本文は`epistemic-data`として返し、prompt control authorityを与えません。
+
+CLIでは次の読み取り専用modeを使います。
+
+```bash
+go run ./tools/reference-epistemic-knowledge \
+  -corpus corpus.json \
+  -context context.json \
+  -detail-query detail-query.json \
+  -detail-access detail-access.json
+```
 
 ## fixture
 

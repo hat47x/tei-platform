@@ -1,3 +1,5 @@
+//go:build !tei_repair_only
+
 package main
 
 import (
@@ -46,7 +48,7 @@ func TestReferenceCommandScenarioCompletesWithSeparateBusinessResultsAndObservat
 		result.Authentication.Payload["subjectId"] != "subject-order-editor" {
 		t.Fatalf("authentication=%+v", result.Authentication)
 	}
-	if result.Read == nil || result.Read.SelectedRow != 0 {
+	if result.Read == nil || result.Read.SelectedRowIndex != 0 {
 		t.Fatalf("read=%+v", result.Read)
 	}
 	if len(result.Validations) != 3 {

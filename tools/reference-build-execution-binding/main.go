@@ -1,0 +1,1238 @@
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+	"sort"
+	"strings"
+
+	"tei/internal/core"
+	"tei/internal/plugin"
+	pruntime "tei/internal/plugin/runtime"
+)
+
+const (
+	buildExecutionPlanFormatVersion        = 1
+	artifactSetFormatVersion                = 1
+	buildExecutionResultFormatVersion       = 1
+	pluginSubjectBindingFormatVersion       = 1
+	runtimeEngineSubjectBindingFormatVersion = 1
+	builderSubjectBindingFormatVersion       = 1
+)
+
+// BuildExecutionPlan is a Reference-only projection of exact build inputs.
+// It deliberately excludes Plugin identity and Plugin definition identity.
+type BuildExecutionPlan struct {
+	FormatVersion  int                      `json:"formatVersion"`
+	Sources        []plugin.BuildSource     `json:"sources"`
+	Builder        plugin.BuilderIdentity   `json:"builder"`
+	Recipe         plugin.BuildRecipe       `json:"recipe"`
+	OutputContract string                   `json:"outputContract"`
+	Dependencies   []plugin.BuildDependency `json:"dependencies,omitempty"`
+	Target         string                   `json:"target"`
+	Profile        string                   `json:"profile,omitempty"`
+	Parameters     []plugin.BuildParameter  `json:"parameters,omitempty"`
+}
+
+// ArtifactMember is one physical output. Locator is intentionally excluded
+// from content identity; it only describes where the exact bytes are found.
+type ArtifactMember struct {
+	Role    string `json:"role"`
+	Format  string `json:"format"`
+	Digest  string `json:"digest"`
+	Locator string `json:"locator,omitempty"`
+}
+
+// ArtifactSet identifies the physical outputs of one build without embedding
+// any domain subject identity.
+type ArtifactSet struct {
+	FormatVersion int              `json:"formatVersion"`
+	Members       []ArtifactMember `json:"members"`
+}
+
+// BuildExecutionResult binds one exact execution plan to one exact content set.
+// Different plans can produce the same bytes but yield different result identities.
+// Repeating the same plan with the same ArtifactSet gives the same result identity;
+// actual execution attempts require separate observation Evidence.
+type BuildExecutionResult struct {
+	FormatVersion            int    `json:"formatVersion"`
+	ExecutionPlanFingerprint string `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint   string `json:"artifactSetFingerprint"`
+}
+
+type ArtifactMemberChange struct {
+	Role         string `json:"role"`
+	FirstFormat  string `json:"firstFormat"`
+	SecondFormat string `json:"secondFormat"`
+	FirstDigest  string `json:"firstDigest"`
+	SecondDigest string `json:"secondDigest"`
+}
+
+type ArtifactSetComparison struct {
+	Reproducible      bool                   `json:"reproducible"`
+	FirstFingerprint  string                 `json:"firstFingerprint"`
+	SecondFingerprint string                 `json:"secondFingerprint"`
+	MissingFromSecond []string               `json:"missingFromSecond,omitempty"`
+	ExtraInSecond     []string               `json:"extraInSecond,omitempty"`
+	Changed           []ArtifactMemberChange `json:"changed,omitempty"`
+}
+
+// PluginSubjectBinding connects a logical Plugin to a domain-neutral build
+// result. It grants no Acceptance or Runtime Authority.
+type PluginSubjectBinding struct {
+	FormatVersion               int             `json:"formatVersion"`
+	Plugin                      plugin.Identity `json:"plugin"`
+	PluginDefinitionFingerprint string          `json:"pluginDefinitionFingerprint"`
+	ExecutionPlanFingerprint     string          `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint       string          `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string       `json:"buildExecutionResultFingerprint"`
+	OutputRoles                  []string        `json:"outputRoles"`
+}
+
+type RuntimeEngineSubjectBinding struct {
+	FormatVersion            int                            `json:"formatVersion"`
+	Engine                   pruntime.RuntimeEngineIdentity `json:"engine"`
+	ExecutionPlanFingerprint       string                         `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint         string                         `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string                        `json:"buildExecutionResultFingerprint"`
+	OutputRole                     string                         `json:"outputRole"`
+}
+
+type BuilderSubjectBinding struct {
+	FormatVersion                  int                    `json:"formatVersion"`
+	Builder                        plugin.BuilderIdentity `json:"builder"`
+	ExecutionPlanFingerprint       string                 `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint         string                 `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string                `json:"buildExecutionResultFingerprint"`
+	OutputRole                     string                 `json:"outputRole"`
+}
+
+type referenceEvidence struct {
+	Schema                         string                      `json:"schema"`
+	SharedPlan                     BuildExecutionPlan          `json:"sharedPlan"`
+	SharedArtifactSet              ArtifactSet                 `json:"sharedArtifactSet"`
+	SharedResult                   BuildExecutionResult        `json:"sharedResult"`
+	SharedResultFingerprint        string                      `json:"sharedResultFingerprint"`
+	SharedPluginBindings           []PluginSubjectBinding      `json:"sharedPluginBindings"`
+	SharedPluginBindingFingerprints []string                    `json:"sharedPluginBindingFingerprints"`
+	MultiOutputPlan                BuildExecutionPlan          `json:"multiOutputPlan"`
+	MultiOutputArtifactSet         ArtifactSet                 `json:"multiOutputArtifactSet"`
+	MultiOutputBinding             PluginSubjectBinding        `json:"multiOutputBinding"`
+	MultiOutputComparison          ArtifactSetComparison       `json:"multiOutputComparison"`
+	RuntimeEnginePlan              BuildExecutionPlan          `json:"runtimeEnginePlan"`
+	RuntimeEngineArtifactSet       ArtifactSet                 `json:"runtimeEngineArtifactSet"`
+	RuntimeEngineBinding             RuntimeEngineSubjectBinding `json:"runtimeEngineBinding"`
+	RuntimeEngineBindingFingerprint  string                     `json:"runtimeEngineBindingFingerprint"`
+	BuildGraph                       BuildGraph                 `json:"buildGraph"`
+	BuildGraphFingerprint            string                     `json:"buildGraphFingerprint"`
+	BuildGraphOrder                  []string                   `json:"buildGraphOrder"`
+	BuildAttestation                 BuildAttestation           `json:"buildAttestation"`
+	BuildAttestationVerification     BuildAttestationVerification `json:"buildAttestationVerification"`
+	BuildAttestationFingerprint      string                     `json:"buildAttestationFingerprint"`
+	CurrentTrustDecision             AttestationTrustDecision   `json:"currentTrustDecision"`
+	RevokedTrustDecision             AttestationTrustDecision   `json:"revokedTrustDecision"`
+	BootstrapStage1Plan              BuildExecutionPlan         `json:"bootstrapStage1Plan"`
+	BootstrapStage2Plan              BuildExecutionPlan         `json:"bootstrapStage2Plan"`
+	BootstrapStage1ArtifactSet       ArtifactSet                `json:"bootstrapStage1ArtifactSet"`
+	BootstrapStage1BuilderBinding    BuilderSubjectBinding      `json:"bootstrapStage1BuilderBinding"`
+	BootstrapStage1BuilderBindingFingerprint string             `json:"bootstrapStage1BuilderBindingFingerprint"`
+	AuthorityLimits                  []string                   `json:"authorityLimits"`
+}
+
+func main() {
+	evidence, err := buildReferenceEvidence()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(evidence); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func buildReferenceEvidence() (referenceEvidence, error) {
+	const (
+		sourceDigest    = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		builderDigest   = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+		artifactDigest  = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+		secondaryDigest = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+	)
+
+	sharedPlan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "source", ID: "shared", Locator: "source://shared", Digest: sourceDigest,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.shared_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "shared-reference", Entrypoint: "shared"},
+		OutputContract: "shared-runtime-artifact",
+		Target: "host/reference",
+	}
+	sharedExecutionFingerprint, err := buildExecutionPlanFingerprint(sharedPlan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	sharedSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "primary", Format: "application/octet-stream", Digest: artifactDigest,
+		}},
+	}
+	sharedSetFingerprint, err := artifactSetFingerprint(sharedSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	sharedResult := BuildExecutionResult{
+		FormatVersion: buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: sharedExecutionFingerprint,
+		ArtifactSetFingerprint: sharedSetFingerprint,
+	}
+	sharedResultFingerprint, err := buildExecutionResultFingerprint(sharedResult)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	sharedBindings := []PluginSubjectBinding{
+		{
+			FormatVersion: pluginSubjectBindingFormatVersion,
+			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_a"), Version: "1.0.0"},
+			PluginDefinitionFingerprint: strings.Repeat("a", 64),
+			ExecutionPlanFingerprint: sharedExecutionFingerprint,
+			ArtifactSetFingerprint: sharedSetFingerprint,
+			BuildExecutionResultFingerprint: sharedResultFingerprint,
+			OutputRoles: []string{"primary"},
+		},
+		{
+			FormatVersion: pluginSubjectBindingFormatVersion,
+			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_b"), Version: "1.0.0"},
+			PluginDefinitionFingerprint: strings.Repeat("b", 64),
+			ExecutionPlanFingerprint: sharedExecutionFingerprint,
+			ArtifactSetFingerprint: sharedSetFingerprint,
+			BuildExecutionResultFingerprint: sharedResultFingerprint,
+			OutputRoles: []string{"primary"},
+		},
+	}
+	sharedBindingFingerprints := make([]string, 0, len(sharedBindings))
+	for _, binding := range sharedBindings {
+		if err := verifyPluginSubjectBinding(binding, sharedPlan, sharedSet); err != nil {
+			return referenceEvidence{}, err
+		}
+		fingerprint, err := pluginSubjectBindingFingerprint(binding)
+		if err != nil {
+			return referenceEvidence{}, err
+		}
+		sharedBindingFingerprints = append(sharedBindingFingerprints, fingerprint)
+	}
+
+	buildAttestation, err := signReferenceAttestation(BuildAttestation{
+		FormatVersion:                   buildAttestationFormatVersion,
+		Predicate:                       "tei.reference.build-result/v1",
+		BuildExecutionResultFingerprint: sharedResultFingerprint,
+		Subject: AttestationSubject{
+			Kind:                   attestationSubjectArtifactSet,
+			ArtifactSetFingerprint: sharedSetFingerprint,
+		},
+		Issuer: "tei.reference.issuer",
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	attestationVerification, err := verifyBuildAttestation(buildAttestation, sharedPlan, sharedSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	attestationFingerprint, err := buildAttestationFingerprint(buildAttestation)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	trustPolicy := AttestationTrustPolicy{
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           buildAttestation.Issuer,
+		SignatureProfile: buildAttestation.SignatureProfile,
+		Predicates:       []string{buildAttestation.Predicate},
+		Revision:         "policy-1",
+	}
+	currentTrustDecision, err := evaluateAttestationTrust(buildAttestation, attestationVerification, trustPolicy)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	trustPolicy.Revoked = true
+	trustPolicy.Revision = "policy-2"
+	revokedTrustDecision, err := evaluateAttestationTrust(buildAttestation, attestationVerification, trustPolicy)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+
+	multiOutputPlan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "source", ID: "web-app", Locator: "source://web-app", Digest: sourceDigest,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.web_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "web-reference", Entrypoint: "web-app"},
+		OutputContract: "web-artifact-set",
+		Target: "web/reference",
+	}
+	multiExecutionFingerprint, err := buildExecutionPlanFingerprint(multiOutputPlan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	multiSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{
+			{Role: "web-script", Format: "text/javascript", Digest: artifactDigest, Locator: "out/app.js"},
+			{Role: "resource-manifest", Format: "application/json", Digest: secondaryDigest, Locator: "out/manifest.json"},
+		},
+	}
+	multiSetFingerprint, err := artifactSetFingerprint(multiSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	multiResultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: multiExecutionFingerprint,
+		ArtifactSetFingerprint:   multiSetFingerprint,
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	multiBinding := PluginSubjectBinding{
+		FormatVersion: pluginSubjectBindingFormatVersion,
+		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.web_plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint: strings.Repeat("e", 64),
+		ExecutionPlanFingerprint: multiExecutionFingerprint,
+		ArtifactSetFingerprint: multiSetFingerprint,
+		BuildExecutionResultFingerprint: multiResultFingerprint,
+		OutputRoles: []string{"resource-manifest", "web-script"},
+	}
+	if err := verifyPluginSubjectBinding(multiBinding, multiOutputPlan, multiSet); err != nil {
+		return referenceEvidence{}, err
+	}
+	divergentSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{
+			{Role: "web-script", Format: "text/javascript", Digest: secondaryDigest, Locator: "other/app.js"},
+			{Role: "resource-map", Format: "application/json", Digest: sourceDigest, Locator: "other/resources.json"},
+		},
+	}
+	multiComparison, err := compareArtifactSets(multiSet, divergentSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+
+	enginePlan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "go-source-closure", ID: "transform-engine", Locator: "source://engine", Digest: sourceDigest,
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID: core.MustCanonicalID("tei.builder.go_reference"), Version: "1.0.0",
+			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
+		},
+		Recipe: plugin.BuildRecipe{Kind: "runtime-engine", Entrypoint: "transform-engine"},
+		OutputContract: "runtime-engine-executable",
+		Target: "host/reference",
+	}
+	engineExecutionFingerprint, err := buildExecutionPlanFingerprint(enginePlan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	engineSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "runtime-engine", Format: "application/octet-stream", Digest: artifactDigest,
+		}},
+	}
+	engineSetFingerprint, err := artifactSetFingerprint(engineSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	engineResultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: engineExecutionFingerprint,
+		ArtifactSetFingerprint:   engineSetFingerprint,
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	engineBinding := RuntimeEngineSubjectBinding{
+		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
+		Engine: pruntime.RuntimeEngineIdentity{
+			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
+			Version: "1.0.0",
+			ContractVersion: "tei.transform-runtime/v1",
+			ImplementationDigest: artifactDigest,
+			Target: "host/reference",
+		},
+		ExecutionPlanFingerprint: engineExecutionFingerprint,
+		ArtifactSetFingerprint: engineSetFingerprint,
+		BuildExecutionResultFingerprint: engineResultFingerprint,
+		OutputRole: "runtime-engine",
+	}
+	if err := verifyRuntimeEngineSubjectBinding(engineBinding, enginePlan, engineSet); err != nil {
+		return referenceEvidence{}, err
+	}
+	engineBindingFingerprint, err := runtimeEngineSubjectBindingFingerprint(engineBinding)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+
+	stage0Builder := plugin.BuilderIdentity{
+		ID: core.MustCanonicalID("tei.builder.stage0_reference"),
+		Version: "1.0.0",
+		ContractVersion: "tei.reference.build/v1",
+		ArtifactDigest: sourceDigest,
+	}
+	stage1Plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: []plugin.BuildSource{{
+			Kind: "builder-source", ID: "self-hosted-builder", Locator: "source://self-hosted-builder", Digest: builderDigest,
+		}},
+		Builder: stage0Builder,
+		Recipe: plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "self-hosted-builder"},
+		OutputContract: "builder-artifact",
+		Target: "host/reference",
+	}
+	stage1Fingerprint, err := buildExecutionPlanFingerprint(stage1Plan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1Output := plugin.BuilderIdentity{
+		ID: core.MustCanonicalID("tei.builder.self_hosted_reference"),
+		Version: "1.0.0",
+		ContractVersion: stage0Builder.ContractVersion,
+		ArtifactDigest: artifactDigest,
+	}
+	stage2Plan := BuildExecutionPlan{
+		FormatVersion: buildExecutionPlanFormatVersion,
+		Sources: append([]plugin.BuildSource(nil), stage1Plan.Sources...),
+		Builder: stage1Output,
+		Recipe: stage1Plan.Recipe,
+		OutputContract: stage1Plan.OutputContract,
+		Target: stage1Plan.Target,
+	}
+	stage2Fingerprint, err := buildExecutionPlanFingerprint(stage2Plan)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	graph := BuildGraph{
+		FormatVersion: buildGraphFormatVersion,
+		Nodes: []BuildGraphNode{
+			{ID: "stage2", ExecutionPlanFingerprint: stage2Fingerprint},
+			{ID: "stage1", ExecutionPlanFingerprint: stage1Fingerprint},
+		},
+		Edges: []BuildGraphEdge{{
+			FromNode: "stage1",
+			OutputRole: "builder-artifact",
+			ToNode: "stage2",
+			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+		}},
+		Seeds: []BuildGraphSeed{{
+			ID: string(stage0Builder.ID),
+			Kind: "builder-seed",
+			Version: stage0Builder.Version,
+			ContractVersion: stage0Builder.ContractVersion,
+			ArtifactDigest: stage0Builder.ArtifactDigest,
+			TrustBoundary: "external-stage0-seed",
+			ToNode: "stage1",
+			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+		}},
+	}
+	graphFingerprint, err := buildGraphFingerprint(graph)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1OutputSet := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role: "builder-artifact",
+			Format: "application/octet-stream",
+			Digest: stage1Output.ArtifactDigest,
+		}},
+	}
+	stage1OutputSetFingerprint, err := artifactSetFingerprint(stage1OutputSet)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1ResultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: stage1Fingerprint,
+		ArtifactSetFingerprint:   stage1OutputSetFingerprint,
+	})
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1BuilderBinding := BuilderSubjectBinding{
+		FormatVersion:                  builderSubjectBindingFormatVersion,
+		Builder:                        stage1Output,
+		ExecutionPlanFingerprint:       stage1Fingerprint,
+		ArtifactSetFingerprint:         stage1OutputSetFingerprint,
+		BuildExecutionResultFingerprint: stage1ResultFingerprint,
+		OutputRole:                     "builder-artifact",
+	}
+	if err := verifyBuilderSubjectBinding(stage1BuilderBinding, stage1Plan, stage1OutputSet); err != nil {
+		return referenceEvidence{}, err
+	}
+	if err := verifyBuilderHandoff(stage1BuilderBinding, stage2Plan); err != nil {
+		return referenceEvidence{}, err
+	}
+	stage1BuilderBindingFingerprint, err := builderSubjectBindingFingerprint(stage1BuilderBinding)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+	if err := verifyBuildGraphBindings(
+		graph,
+		map[string]BuildExecutionPlan{
+			"stage1": stage1Plan,
+			"stage2": stage2Plan,
+		},
+		map[string]BuildGraphNodeOutput{
+			"stage1": {
+				ArtifactSet:                     stage1OutputSet,
+				BuildExecutionResultFingerprint: stage1ResultFingerprint,
+			},
+		},
+	); err != nil {
+		return referenceEvidence{}, err
+	}
+	graphOrder, err := topologicalBuildOrder(graph)
+	if err != nil {
+		return referenceEvidence{}, err
+	}
+
+	return referenceEvidence{
+		Schema: "tei.reference.build-execution-binding/v0",
+		SharedPlan: sharedPlan,
+		SharedArtifactSet: sharedSet,
+		SharedResult: sharedResult,
+		SharedResultFingerprint: sharedResultFingerprint,
+		SharedPluginBindings: sharedBindings,
+		SharedPluginBindingFingerprints: sharedBindingFingerprints,
+		MultiOutputPlan: multiOutputPlan,
+		MultiOutputArtifactSet: multiSet,
+		MultiOutputBinding: multiBinding,
+		MultiOutputComparison: multiComparison,
+		RuntimeEnginePlan: enginePlan,
+		RuntimeEngineArtifactSet: engineSet,
+		RuntimeEngineBinding: engineBinding,
+		RuntimeEngineBindingFingerprint: engineBindingFingerprint,
+		BuildGraph: graph,
+		BuildGraphFingerprint: graphFingerprint,
+		BuildGraphOrder: graphOrder,
+		BuildAttestation: buildAttestation,
+		BuildAttestationVerification: attestationVerification,
+		BuildAttestationFingerprint: attestationFingerprint,
+		CurrentTrustDecision: currentTrustDecision,
+		RevokedTrustDecision: revokedTrustDecision,
+		BootstrapStage1Plan: stage1Plan,
+		BootstrapStage2Plan: stage2Plan,
+		BootstrapStage1ArtifactSet: stage1OutputSet,
+		BootstrapStage1BuilderBinding: stage1BuilderBinding,
+		BootstrapStage1BuilderBindingFingerprint: stage1BuilderBindingFingerprint,
+		AuthorityLimits: []string{
+			"build-binding-is-not-acceptance-authority",
+			"build-binding-is-not-runtime-authority",
+			"artifact-set-location-is-not-content-identity",
+			"stage0-boundary-is-not-trust-acceptance",
+			"reference-fake-signature-is-not-cryptographic-security",
+			"attestation-trust-is-not-runtime-authority",
+		},
+	}, nil
+}
+
+func executionPlanFromPluginBuildPlan(plan plugin.BuildPlan) (BuildExecutionPlan, error) {
+	if err := plan.Validate(); err != nil {
+		return BuildExecutionPlan{}, err
+	}
+	normalized := plugin.NormalizeBuildPlan(plan)
+	out := BuildExecutionPlan{
+		FormatVersion:  buildExecutionPlanFormatVersion,
+		Sources:        append([]plugin.BuildSource(nil), normalized.Sources...),
+		Builder:        normalized.Builder,
+		Recipe:         normalized.Recipe,
+		OutputContract: string(normalized.OutputKind),
+		Dependencies:   append([]plugin.BuildDependency(nil), normalized.Dependencies...),
+		Target:         normalized.Target,
+		Profile:        normalized.Profile,
+		Parameters:     append([]plugin.BuildParameter(nil), normalized.Parameters...),
+	}
+	if err := out.Validate(); err != nil {
+		return BuildExecutionPlan{}, err
+	}
+	return out, nil
+}
+
+func (p BuildExecutionPlan) Validate() error {
+	if p.FormatVersion != buildExecutionPlanFormatVersion {
+		return fmt.Errorf("unsupported build execution plan format %d", p.FormatVersion)
+	}
+	if len(p.Sources) == 0 {
+		return fmt.Errorf("build execution plan requires at least one source")
+	}
+	sourceKeys := map[string]struct{}{}
+	for _, source := range p.Sources {
+		if strings.TrimSpace(source.Kind) == "" || strings.TrimSpace(source.ID) == "" {
+			return fmt.Errorf("build execution source kind and id are required")
+		}
+		if strings.TrimSpace(source.Locator) == "" {
+			return fmt.Errorf("build execution source %s locator is required", source.ID)
+		}
+		if err := validateDigest("build execution source "+source.ID, source.Digest); err != nil {
+			return err
+		}
+		if _, duplicate := sourceKeys[source.ID]; duplicate {
+			return fmt.Errorf("build execution source %s is declared more than once", source.ID)
+		}
+		sourceKeys[source.ID] = struct{}{}
+	}
+	if err := p.Builder.Validate(); err != nil {
+		return err
+	}
+	if strings.TrimSpace(p.Recipe.Kind) == "" || strings.TrimSpace(p.Recipe.Entrypoint) == "" {
+		return fmt.Errorf("build execution recipe kind and entrypoint are required")
+	}
+	if strings.TrimSpace(p.OutputContract) == "" {
+		return fmt.Errorf("build execution output contract is required")
+	}
+	dependencyKeys := map[string]struct{}{}
+	for _, dependency := range p.Dependencies {
+		if strings.TrimSpace(dependency.Kind) == "" ||
+			strings.TrimSpace(dependency.ID) == "" ||
+			strings.TrimSpace(dependency.Version) == "" {
+			return fmt.Errorf("build execution dependency kind, id, and version are required")
+		}
+		if err := validateDigest("build execution dependency "+dependency.ID, dependency.ArtifactDigest); err != nil {
+			return err
+		}
+		key := dependency.Kind + "\x00" + dependency.ID + "\x00" + dependency.Version
+		if _, duplicate := dependencyKeys[key]; duplicate {
+			return fmt.Errorf("build execution dependency %s/%s@%s is declared more than once", dependency.Kind, dependency.ID, dependency.Version)
+		}
+		dependencyKeys[key] = struct{}{}
+	}
+	if strings.TrimSpace(p.Target) == "" {
+		return fmt.Errorf("build execution target is required")
+	}
+	parameters := map[string]struct{}{}
+	for _, parameter := range p.Parameters {
+		if strings.TrimSpace(parameter.Name) == "" {
+			return fmt.Errorf("build execution parameter name is required")
+		}
+		if _, duplicate := parameters[parameter.Name]; duplicate {
+			return fmt.Errorf("build execution parameter %s is declared more than once", parameter.Name)
+		}
+		parameters[parameter.Name] = struct{}{}
+	}
+	return nil
+}
+
+func normalizeBuildExecutionPlan(plan BuildExecutionPlan) BuildExecutionPlan {
+	out := plan
+	out.Sources = append([]plugin.BuildSource(nil), plan.Sources...)
+	out.Dependencies = append([]plugin.BuildDependency(nil), plan.Dependencies...)
+	out.Parameters = append([]plugin.BuildParameter(nil), plan.Parameters...)
+	sort.Slice(out.Sources, func(i, j int) bool {
+		if out.Sources[i].Kind != out.Sources[j].Kind {
+			return out.Sources[i].Kind < out.Sources[j].Kind
+		}
+		if out.Sources[i].ID != out.Sources[j].ID {
+			return out.Sources[i].ID < out.Sources[j].ID
+		}
+		return out.Sources[i].Locator < out.Sources[j].Locator
+	})
+	sort.Slice(out.Dependencies, func(i, j int) bool {
+		if out.Dependencies[i].Kind != out.Dependencies[j].Kind {
+			return out.Dependencies[i].Kind < out.Dependencies[j].Kind
+		}
+		if out.Dependencies[i].ID != out.Dependencies[j].ID {
+			return out.Dependencies[i].ID < out.Dependencies[j].ID
+		}
+		return out.Dependencies[i].Version < out.Dependencies[j].Version
+	})
+	sort.Slice(out.Parameters, func(i, j int) bool {
+		return out.Parameters[i].Name < out.Parameters[j].Name
+	})
+	return out
+}
+
+func buildExecutionPlanFingerprint(plan BuildExecutionPlan) (string, error) {
+	if err := plan.Validate(); err != nil {
+		return "", err
+	}
+	normalized := normalizeBuildExecutionPlan(plan)
+	type identitySource struct {
+		Kind   string `json:"kind"`
+		ID     string `json:"id"`
+		Digest string `json:"digest"`
+	}
+	sources := make([]identitySource, 0, len(normalized.Sources))
+	for _, source := range normalized.Sources {
+		sources = append(sources, identitySource{
+			Kind:   source.Kind,
+			ID:     source.ID,
+			Digest: normalizeDigest(source.Digest),
+		})
+	}
+	builder := normalized.Builder
+	builder.ArtifactDigest = normalizeDigest(builder.ArtifactDigest)
+	dependencies := append([]plugin.BuildDependency(nil), normalized.Dependencies...)
+	for i := range dependencies {
+		dependencies[i].ArtifactDigest = normalizeDigest(dependencies[i].ArtifactDigest)
+	}
+	return fingerprintJSON(struct {
+		FormatVersion  int                      `json:"formatVersion"`
+		Sources        []identitySource         `json:"sources"`
+		Builder        plugin.BuilderIdentity   `json:"builder"`
+		Recipe         plugin.BuildRecipe       `json:"recipe"`
+		OutputContract string                   `json:"outputContract"`
+		Dependencies   []plugin.BuildDependency `json:"dependencies,omitempty"`
+		Target         string                   `json:"target"`
+		Profile        string                   `json:"profile,omitempty"`
+		Parameters     []plugin.BuildParameter  `json:"parameters,omitempty"`
+	}{
+		FormatVersion:  normalized.FormatVersion,
+		Sources:        sources,
+		Builder:        builder,
+		Recipe:         normalized.Recipe,
+		OutputContract: normalized.OutputContract,
+		Dependencies:   dependencies,
+		Target:         normalized.Target,
+		Profile:        normalized.Profile,
+		Parameters:     normalized.Parameters,
+	})
+}
+
+func (s ArtifactSet) Validate() error {
+	if s.FormatVersion != artifactSetFormatVersion {
+		return fmt.Errorf("unsupported artifact set format %d", s.FormatVersion)
+	}
+	if len(s.Members) == 0 {
+		return fmt.Errorf("artifact set requires at least one member")
+	}
+	roles := map[string]struct{}{}
+	for _, member := range s.Members {
+		if strings.TrimSpace(member.Role) == "" {
+			return fmt.Errorf("artifact member role is required")
+		}
+		if strings.TrimSpace(member.Format) == "" {
+			return fmt.Errorf("artifact member %s format is required", member.Role)
+		}
+		if err := validateDigest("artifact member "+member.Role, member.Digest); err != nil {
+			return err
+		}
+		if _, duplicate := roles[member.Role]; duplicate {
+			return fmt.Errorf("artifact member role %s is declared more than once", member.Role)
+		}
+		roles[member.Role] = struct{}{}
+	}
+	return nil
+}
+
+func artifactSetFingerprint(set ArtifactSet) (string, error) {
+	if err := set.Validate(); err != nil {
+		return "", err
+	}
+	type identityMember struct {
+		Role   string `json:"role"`
+		Format string `json:"format"`
+		Digest string `json:"digest"`
+	}
+	members := make([]identityMember, 0, len(set.Members))
+	for _, member := range set.Members {
+		members = append(members, identityMember{
+			Role:   member.Role,
+			Format: member.Format,
+			Digest: normalizeDigest(member.Digest),
+		})
+	}
+	sort.Slice(members, func(i, j int) bool {
+		if members[i].Role != members[j].Role {
+			return members[i].Role < members[j].Role
+		}
+		if members[i].Format != members[j].Format {
+			return members[i].Format < members[j].Format
+		}
+		return members[i].Digest < members[j].Digest
+	})
+	return fingerprintJSON(struct {
+		FormatVersion int              `json:"formatVersion"`
+		Members       []identityMember `json:"members"`
+	}{
+		FormatVersion: set.FormatVersion,
+		Members:       members,
+	})
+}
+
+func compareArtifactSets(first, second ArtifactSet) (ArtifactSetComparison, error) {
+	firstFingerprint, err := artifactSetFingerprint(first)
+	if err != nil {
+		return ArtifactSetComparison{}, err
+	}
+	secondFingerprint, err := artifactSetFingerprint(second)
+	if err != nil {
+		return ArtifactSetComparison{}, err
+	}
+
+	firstByRole := make(map[string]ArtifactMember, len(first.Members))
+	for _, member := range first.Members {
+		firstByRole[member.Role] = member
+	}
+	secondByRole := make(map[string]ArtifactMember, len(second.Members))
+	for _, member := range second.Members {
+		secondByRole[member.Role] = member
+	}
+
+	comparison := ArtifactSetComparison{
+		FirstFingerprint:  firstFingerprint,
+		SecondFingerprint: secondFingerprint,
+	}
+	for role, firstMember := range firstByRole {
+		secondMember, ok := secondByRole[role]
+		if !ok {
+			comparison.MissingFromSecond = append(comparison.MissingFromSecond, role)
+			continue
+		}
+		if firstMember.Format != secondMember.Format ||
+			normalizeDigest(firstMember.Digest) != normalizeDigest(secondMember.Digest) {
+			comparison.Changed = append(comparison.Changed, ArtifactMemberChange{
+				Role:         role,
+				FirstFormat:  firstMember.Format,
+				SecondFormat: secondMember.Format,
+				FirstDigest:  firstMember.Digest,
+				SecondDigest: secondMember.Digest,
+			})
+		}
+	}
+	for role := range secondByRole {
+		if _, ok := firstByRole[role]; !ok {
+			comparison.ExtraInSecond = append(comparison.ExtraInSecond, role)
+		}
+	}
+	sort.Strings(comparison.MissingFromSecond)
+	sort.Strings(comparison.ExtraInSecond)
+	sort.Slice(comparison.Changed, func(i, j int) bool {
+		return comparison.Changed[i].Role < comparison.Changed[j].Role
+	})
+	comparison.Reproducible = len(comparison.MissingFromSecond) == 0 &&
+		len(comparison.ExtraInSecond) == 0 &&
+		len(comparison.Changed) == 0 &&
+		firstFingerprint == secondFingerprint
+	return comparison, nil
+}
+
+func (r BuildExecutionResult) Validate() error {
+	if r.FormatVersion != buildExecutionResultFormatVersion {
+		return fmt.Errorf("unsupported build execution result format %d", r.FormatVersion)
+	}
+	if err := validateFingerprint("execution plan fingerprint", r.ExecutionPlanFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("artifact set fingerprint", r.ArtifactSetFingerprint); err != nil {
+		return err
+	}
+	return nil
+}
+
+func buildExecutionResultFingerprint(result BuildExecutionResult) (string, error) {
+	if err := result.Validate(); err != nil {
+		return "", err
+	}
+	normalized := result
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(result.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(result.ArtifactSetFingerprint)
+	return fingerprintJSON(normalized)
+}
+
+func (b PluginSubjectBinding) Validate() error {
+	if b.FormatVersion != pluginSubjectBindingFormatVersion {
+		return fmt.Errorf("unsupported plugin subject binding format %d", b.FormatVersion)
+	}
+	if b.Plugin.ID == "" {
+		return fmt.Errorf("plugin subject binding id is required")
+	}
+	if _, err := core.ParseCanonicalID(string(b.Plugin.ID)); err != nil {
+		return fmt.Errorf("plugin subject binding id: %w", err)
+	}
+	if !core.ValidNumericVersion(b.Plugin.Version) {
+		return fmt.Errorf("plugin subject binding version %q must be major.minor.patch", b.Plugin.Version)
+	}
+	if err := validateFingerprint("plugin definition fingerprint", b.PluginDefinitionFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("execution plan fingerprint", b.ExecutionPlanFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("artifact set fingerprint", b.ArtifactSetFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("build execution result fingerprint", b.BuildExecutionResultFingerprint); err != nil {
+		return err
+	}
+	if len(b.OutputRoles) == 0 {
+		return fmt.Errorf("plugin subject binding requires at least one output role")
+	}
+	seen := map[string]struct{}{}
+	for _, role := range b.OutputRoles {
+		if strings.TrimSpace(role) == "" {
+			return fmt.Errorf("plugin subject binding output role is required")
+		}
+		if _, duplicate := seen[role]; duplicate {
+			return fmt.Errorf("plugin subject binding output role %s is declared more than once", role)
+		}
+		seen[role] = struct{}{}
+	}
+	return nil
+}
+
+func pluginSubjectBindingFingerprint(binding PluginSubjectBinding) (string, error) {
+	if err := binding.Validate(); err != nil {
+		return "", err
+	}
+	normalized := binding
+	normalized.PluginDefinitionFingerprint = normalizeFingerprint(binding.PluginDefinitionFingerprint)
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
+	normalized.BuildExecutionResultFingerprint = normalizeFingerprint(binding.BuildExecutionResultFingerprint)
+	normalized.OutputRoles = append([]string(nil), binding.OutputRoles...)
+	sort.Strings(normalized.OutputRoles)
+	return fingerprintJSON(normalized)
+}
+
+func verifyPluginSubjectBinding(
+	binding PluginSubjectBinding,
+	plan BuildExecutionPlan,
+	set ArtifactSet,
+) error {
+	if err := binding.Validate(); err != nil {
+		return err
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ExecutionPlanFingerprint) != executionFingerprint {
+		return fmt.Errorf("plugin subject binding execution plan fingerprint does not match")
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
+		return fmt.Errorf("plugin subject binding artifact set fingerprint does not match")
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.BuildExecutionResultFingerprint) != resultFingerprint {
+		return fmt.Errorf("plugin subject binding build execution result fingerprint does not match")
+	}
+	roles := map[string]struct{}{}
+	for _, member := range set.Members {
+		roles[member.Role] = struct{}{}
+	}
+	for _, role := range binding.OutputRoles {
+		if _, ok := roles[role]; !ok {
+			return fmt.Errorf("plugin subject binding output role %s is not present in artifact set", role)
+		}
+	}
+	return nil
+}
+
+func (b RuntimeEngineSubjectBinding) Validate() error {
+	if b.FormatVersion != runtimeEngineSubjectBindingFormatVersion {
+		return fmt.Errorf("unsupported runtime engine subject binding format %d", b.FormatVersion)
+	}
+	if err := b.Engine.Validate(); err != nil {
+		return err
+	}
+	if err := validateFingerprint("execution plan fingerprint", b.ExecutionPlanFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("artifact set fingerprint", b.ArtifactSetFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("build execution result fingerprint", b.BuildExecutionResultFingerprint); err != nil {
+		return err
+	}
+	if strings.TrimSpace(b.OutputRole) == "" {
+		return fmt.Errorf("runtime engine subject binding output role is required")
+	}
+	return nil
+}
+
+func runtimeEngineSubjectBindingFingerprint(binding RuntimeEngineSubjectBinding) (string, error) {
+	if err := binding.Validate(); err != nil {
+		return "", err
+	}
+	normalized := binding
+	normalized.Engine.ImplementationDigest = normalizeDigest(binding.Engine.ImplementationDigest)
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
+	normalized.BuildExecutionResultFingerprint = normalizeFingerprint(binding.BuildExecutionResultFingerprint)
+	return fingerprintJSON(normalized)
+}
+
+func verifyRuntimeEngineSubjectBinding(
+	binding RuntimeEngineSubjectBinding,
+	plan BuildExecutionPlan,
+	set ArtifactSet,
+) error {
+	if err := binding.Validate(); err != nil {
+		return err
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ExecutionPlanFingerprint) != executionFingerprint {
+		return fmt.Errorf("runtime engine subject binding execution plan fingerprint does not match")
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
+		return fmt.Errorf("runtime engine subject binding artifact set fingerprint does not match")
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.BuildExecutionResultFingerprint) != resultFingerprint {
+		return fmt.Errorf("runtime engine subject binding build execution result fingerprint does not match")
+	}
+	if binding.Engine.Target != plan.Target {
+		return fmt.Errorf("runtime engine subject binding target does not match build execution target")
+	}
+	for _, member := range set.Members {
+		if member.Role != binding.OutputRole {
+			continue
+		}
+		if normalizeDigest(member.Digest) != normalizeDigest(binding.Engine.ImplementationDigest) {
+			return fmt.Errorf("runtime engine implementation digest does not match selected artifact member")
+		}
+		return nil
+	}
+	return fmt.Errorf("runtime engine subject binding output role %s is not present in artifact set", binding.OutputRole)
+}
+
+func (b BuilderSubjectBinding) Validate() error {
+	if b.FormatVersion != builderSubjectBindingFormatVersion {
+		return fmt.Errorf("unsupported builder subject binding format %d", b.FormatVersion)
+	}
+	if err := b.Builder.Validate(); err != nil {
+		return err
+	}
+	if err := validateFingerprint("execution plan fingerprint", b.ExecutionPlanFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("artifact set fingerprint", b.ArtifactSetFingerprint); err != nil {
+		return err
+	}
+	if err := validateFingerprint("build execution result fingerprint", b.BuildExecutionResultFingerprint); err != nil {
+		return err
+	}
+	if strings.TrimSpace(b.OutputRole) == "" {
+		return fmt.Errorf("builder subject binding output role is required")
+	}
+	return nil
+}
+
+func builderSubjectBindingFingerprint(binding BuilderSubjectBinding) (string, error) {
+	if err := binding.Validate(); err != nil {
+		return "", err
+	}
+	normalized := binding
+	normalized.Builder.ArtifactDigest = normalizeDigest(binding.Builder.ArtifactDigest)
+	normalized.ExecutionPlanFingerprint = normalizeFingerprint(binding.ExecutionPlanFingerprint)
+	normalized.ArtifactSetFingerprint = normalizeFingerprint(binding.ArtifactSetFingerprint)
+	normalized.BuildExecutionResultFingerprint = normalizeFingerprint(binding.BuildExecutionResultFingerprint)
+	return fingerprintJSON(normalized)
+}
+
+func verifyBuilderSubjectBinding(
+	binding BuilderSubjectBinding,
+	plan BuildExecutionPlan,
+	set ArtifactSet,
+) error {
+	if err := binding.Validate(); err != nil {
+		return err
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ExecutionPlanFingerprint) != executionFingerprint {
+		return fmt.Errorf("builder subject binding execution plan fingerprint does not match")
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.ArtifactSetFingerprint) != setFingerprint {
+		return fmt.Errorf("builder subject binding artifact set fingerprint does not match")
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	})
+	if err != nil {
+		return err
+	}
+	if normalizeFingerprint(binding.BuildExecutionResultFingerprint) != resultFingerprint {
+		return fmt.Errorf("builder subject binding build execution result fingerprint does not match")
+	}
+	member, ok := artifactMemberByRole(set, binding.OutputRole)
+	if !ok {
+		return fmt.Errorf("builder subject binding output role %s is not present in artifact set", binding.OutputRole)
+	}
+	if normalizeDigest(member.Digest) != normalizeDigest(binding.Builder.ArtifactDigest) {
+		return fmt.Errorf("builder artifact digest does not match selected artifact member")
+	}
+	return nil
+}
+
+func verifyBuilderHandoff(
+	producerBinding BuilderSubjectBinding,
+	consumerPlan BuildExecutionPlan,
+) error {
+	if err := producerBinding.Validate(); err != nil {
+		return err
+	}
+	produced := producerBinding.Builder
+	consumed := consumerPlan.Builder
+	if produced.ID != consumed.ID ||
+		produced.Version != consumed.Version ||
+		produced.ContractVersion != consumed.ContractVersion ||
+		normalizeDigest(produced.ArtifactDigest) != normalizeDigest(consumed.ArtifactDigest) {
+		return fmt.Errorf("producer Builder subject does not match consumer exact Builder identity")
+	}
+	return nil
+}
+
+func projectPluginBuild(
+	plan plugin.BuildPlan,
+	build plugin.LockedBuild,
+) (BuildExecutionPlan, ArtifactSet, BuildExecutionResult, PluginSubjectBinding, error) {
+	planFingerprint, err := plugin.BuildPlanFingerprint(plan)
+	if err != nil {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
+	}
+	if build.Plugin != plan.Plugin {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, fmt.Errorf("locked build Plugin does not match BuildPlan")
+	}
+	if build.OutputKind != plan.OutputKind || build.Target != plan.Target || build.Profile != plan.Profile {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, fmt.Errorf("locked build output coordinates do not match BuildPlan")
+	}
+	if build.PlanFingerprint != planFingerprint {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, fmt.Errorf("locked build plan fingerprint does not match BuildPlan")
+	}
+	if err := validateDigest("locked build artifact", build.ArtifactDigest); err != nil {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
+	}
+
+	executionPlan, err := executionPlanFromPluginBuildPlan(plan)
+	if err != nil {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
+	}
+	executionFingerprint, err := buildExecutionPlanFingerprint(executionPlan)
+	if err != nil {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
+	}
+	set := ArtifactSet{
+		FormatVersion: artifactSetFormatVersion,
+		Members: []ArtifactMember{{
+			Role:   "primary",
+			Format: "application/octet-stream",
+			Digest: build.ArtifactDigest,
+		}},
+	}
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
+	}
+	result := BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: executionFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
+	}
+	resultFingerprint, err := buildExecutionResultFingerprint(result)
+	if err != nil {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
+	}
+	binding := PluginSubjectBinding{
+		FormatVersion:               pluginSubjectBindingFormatVersion,
+		Plugin:                      plan.Plugin,
+		PluginDefinitionFingerprint: plan.PluginDefinitionFingerprint,
+		ExecutionPlanFingerprint:     executionFingerprint,
+		ArtifactSetFingerprint:       setFingerprint,
+		BuildExecutionResultFingerprint: resultFingerprint,
+		OutputRoles:                  []string{"primary"},
+	}
+	if err := verifyPluginSubjectBinding(binding, executionPlan, set); err != nil {
+		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
+	}
+	return executionPlan, set, result, binding, nil
+}
+
+func fingerprintJSON(value any) (string, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(encoded)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func validateFingerprint(label, value string) error {
+	if len(value) != 64 {
+		return fmt.Errorf("%s must contain 64 hex characters", label)
+	}
+	for _, r := range value {
+		if !((r >= '0' && r <= '9') ||
+			(r >= 'a' && r <= 'f') ||
+			(r >= 'A' && r <= 'F')) {
+			return fmt.Errorf("%s contains non-hex character", label)
+		}
+	}
+	return nil
+}
+
+func normalizeFingerprint(value string) string {
+	return strings.ToLower(value)
+}
+
+func validateDigest(label, value string) error {
+	if !strings.HasPrefix(value, "sha256:") {
+		return fmt.Errorf("%s must use sha256:<64-hex>", label)
+	}
+	return validateFingerprint(label, strings.TrimPrefix(value, "sha256:"))
+}
+
+func normalizeDigest(value string) string {
+	if !strings.HasPrefix(value, "sha256:") {
+		return value
+	}
+	return "sha256:" + strings.ToLower(strings.TrimPrefix(value, "sha256:"))
+}

@@ -273,7 +273,7 @@
     {
       "id": "RMP-039",
       "topic": "business-occurrence-vs-history-version-identity",
-      "observed": "Watanabe's temporal modeling examples distinguish the identity of the continuing business occurrence from effective-dated/history records, and warn that mechanically adding effective-start dates, history numbers, or latest-state flags to main-table key design can obscure relations; history structures are useful when the business needs past-state reconstruction but are not a universal default",
+      "observed": "The referenced temporal modeling examples distinguish the identity of the continuing business occurrence from effective-dated/history records, and warn that mechanically adding effective-start dates, history numbers, or latest-state flags to main-table key design can obscure relations; history structures are useful when the business needs past-state reconstruction but are not a universal default",
       "risk": "reference transfer can promote version/history selectors into business occurrence identity, erase the distinction between an occurrence and its versions, or impose history structure on domains that do not require it",
       "teiDirection": "preserve effective date/history number/latest flag as source facts, but distinguish business occurrence identity, history/version identity, validity periods, current-state selection and state transitions; require Source/Contract evidence before promotion and keep temporal modeling opt-in"
     },
@@ -409,6 +409,41 @@
       "observed": "After standard construct/classification validation, typed RMT Evidence still carried Extension and authorityLimits as unrestricted strings. Shared Acceptance renders Extension and stores the full artifact, so a hand-authored Evidence file could place arbitrary prose or source-derived text into those fields even though SourceConstruct was redacted.",
       "risk": "A field intended for TEI-owned identifiers or authority-limit codes can become an accidental source-content disclosure channel. The artifact can remain fingerprint-valid because the fingerprint only binds whatever content the producer supplied.",
       "teiDirection": "keep Plugin/Extension identity extensible, but constrain public typed-Evidence identifier/code fields to bounded ASCII token syntax rather than arbitrary prose; test the current transcription contract against that public-token boundary. Do not treat token syntax as Provider Conformance or semantic authority."
+    },
+    {
+      "id": "RMP-059",
+      "topic": "cross-view-source-profile-gate-bypass",
+      "observed": "After source-profile hardening, InspectWithContract validates root kind and FormatVersion, but the first RMT-4 BuildCrossViewProjection API accepted an exported Inspection and only checked its transcription-contract fingerprint string. A caller could Parse unsupported source, hand-assemble Inspection with a syntactically valid fingerprint, and enter cross-view derivation without the source-profile Gate.",
+      "risk": "Cross-view Evidence can assign standard Xead relation semantics to an unsupported or lookalike source profile even though the Source Adapter itself would reject that source under the exact contract.",
+      "teiDirection": "make the public cross-view entry point accept exact source bytes plus the exact transcription contract and invoke InspectWithContract internally; do not treat a self-assembled Inspection or fingerprint string as proof that source-profile validation occurred"
+    },
+    {
+      "id": "RMP-060",
+      "topic": "iotable-presence-vs-declared-operation",
+      "observed": "The first cross-view derivation emitted a resolved function-table-operation edge when an IOTable resolved to a Table even if OpC/OpR/OpU/OpD were all absent or empty. The resulting edge carried an empty operations string and could still participate in an action-function-table derived path.",
+      "risk": "The existence of an IOTable can be mistaken for an explicit CRUD declaration, creating a cross-view path with no source-backed operation and making downstream accounting look more complete than the source actually states.",
+      "teiDirection": "require at least one recognized C/R/U/D marker before emitting a function-table-operation edge; keep an empty declaration unresolved and keep unsupported markers fail-closed rather than deriving a partial operation"
+    },
+    {
+      "id": "RMP-061",
+      "topic": "identifier-attribute-presence-vs-usable-identity",
+      "observed": "In the exact benchmark, 35 of 148 TaskAction elements omit the ID attribute, while the other 113 carry ID=\"\". Therefore zero TaskActions have a usable non-empty legacy ID even though a simple attribute-presence count reports only 35 as missing.",
+      "risk": "Inventory or migration logic can treat an empty identifier attribute as a durable source identity, undercounting unaddressable business steps and encouraging fallback matching by SortKey, label, or source order.",
+      "teiDirection": "separate attribute absence, present-but-empty, and usable non-empty identity in source accounting; treat both absent and empty IDs as missing for identity resolution, and use exact-snapshot source tokens only for addressability rather than inventing durable business identity"
+    },
+    {
+      "id": "RMP-062",
+      "topic": "derivation-policy-identity-vs-algorithm-change",
+      "observed": "RMT-4 initially changed cross-view behavior to require source-profile validation and later to reject IOTable declarations with no CRUD marker, while CrossViewDerivationPolicyRevision and its fingerprint rule list still described the earlier v1 algorithm.",
+      "risk": "Two projections produced by materially different derivation algorithms can claim the same derivation-policy identity. Projection fingerprints may differ, but replay and review cannot tell whether the change came from source/contract drift or an unversioned algorithm change.",
+      "teiDirection": "bump the derivation-policy revision whenever outcome-affecting rules change and include those rules in the deterministic policy fingerprint; keep policy identity separate from source artifact, mapping contract and projection content fingerprints"
+    },
+    {
+      "id": "RMP-063",
+      "topic": "cross-view-public-accounting-free-text-surface",
+      "observed": "The first CrossViewPublicAccounting function accepted any caller-constructed CrossViewProjection and emitted source/derived edge kinds, target kinds, CRUD strings and unresolved codes as public map keys without validating them against the RMT-4 vocabulary. A caller could also supply arbitrary source format/version or stale policy fingerprints.",
+      "risk": "An artifact described as public-safe can become a source-content disclosure channel or can summarize a forged/stale projection even when the original Source Adapter path is safe.",
+      "teiDirection": "validate source profile syntax, exact fingerprints, current derivation-policy identity, projection content fingerprint, endpoint/source tokens and the closed RMT-4 relation/target/unresolved vocabularies before producing public accounting; reject unknown public keys rather than serializing them"
     }
   ]
 }

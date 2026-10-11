@@ -20,7 +20,7 @@ func (f fakePatternResolver) ResolvePattern(_, _ core.CanonicalID) (driver.Patte
 	return f.resolution, f.err
 }
 func TestCanonicalCommandGate(t *testing.T) {
-	intent := Intent{ApplicationID: "sui", DocumentID: "doc", ActionID: "sui.move", ExpectedRevision: "r1", Payload: "move"}
+	intent := Intent{ApplicationID: "sui", ResourceID: "doc", ActionID: "sui.move", ExpectedRevision: "r1", Payload: "move"}
 	command := driver.PatternResolution{
 		Application: application.Application{ID: core.CanonicalID("sui")},
 		Pattern:     application.Pattern{ID: core.CanonicalID("sui.move"), Kind: application.PatternCommand},

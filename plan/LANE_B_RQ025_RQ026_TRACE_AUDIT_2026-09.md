@@ -458,7 +458,7 @@ full Canonical Procedure modelへ飛躍しません。
 
 判断に迷った場合は次の順へ戻ります。
 
-1. 渡辺幸三氏の三要素分析法 / 業務システム設計の言説
+1. 三要素分析法 / 業務システム設計に関する出典を特定できる一次資料
 2. X-TEA Modeler / Driver manual・source
 3. CONCEPTWARE / Reference Model
 4. TEI固有Requirement / Evidence

@@ -6,7 +6,7 @@
 - Related:
   - `plan/ACTOR_CONTEXT_R3AN_ACCEPTANCE_AUTHORITY_EVIDENCE_GATE_2026-09.md`
   - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
-  - `plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md`
+  - `docs/audits/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md`
 - Side effect: None
 - Product Gate impact: None
 - Production schema impact: None

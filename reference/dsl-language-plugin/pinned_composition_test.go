@@ -16,6 +16,7 @@ func TestComposePinnedDeterministic(t *testing.T) {
 		}
 	}
 }
+
 func TestComposePinnedRejectsDrift(t *testing.T) {
 	pin := OperatorContract{ID: "std.where", Version: "1", Fingerprint: "accepted-v1", Effect: "pure", InputType: "rows/order", OutputType: "rows/order"}
 	for _, tc := range []struct {

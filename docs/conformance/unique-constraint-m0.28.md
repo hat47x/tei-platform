@@ -4,7 +4,7 @@ M0.28では、UNIQUE constraintをPersistence MappingからDesired Physical Sche
 
 PostgreSQLはUNIQUE constraintを内部的にunique indexで支えますが、TEIでは両者を同じ意味として扱いません。UNIQUE constraintは「重複を許さない」というconstraint intent、明示的なunique indexは「一意なaccess pathを設ける」というphysical optimization intentです。
 
-設計判断は [ADR-0009](../adr/0009-unique-constraint-and-unique-index.md) に記録しています。
+設計判断は [ADR-0009](../../plan/adr/0009-unique-constraint-and-unique-index.md) に記録しています。
 
 ## 検証する経路
 

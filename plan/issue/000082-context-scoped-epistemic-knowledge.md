@@ -1,6 +1,6 @@
 # ISSUE-000082: 文脈付きEpistemic AnnotationとProject Knowledge Healthを実証する
 
-- 状態: In Progress — ADR-0030採用、TEI / SUI / SEIの横断Issue起票済み。First Reference candidateはDraft PR #961で実装中。exact-head full Repository Healthは#962で未完了
+- 状態: In Progress — ADR-0030採用。First ReferenceはPR #961でmainへ統合済みだが、#962のexact-head full Repository Healthは未完了。必要時だけ詳細へ戻るresolverはGitHub #1045で継続
 - GitHub Issue: #958
 - Cross-repository Issues: SUI #3184 / SEI #660
 - 関連ADR: ADR-0030
@@ -223,6 +223,24 @@ confirm / rejectではmetadata complete、target stable、context compatibleも�
 CLIはcorpusファイルを直接変更せず、updated sidecar + appended event + Projectionをresultとして返す。durable storage commitやmulti-surface mergeは未実証のまま残す。
 
 またProjectionは `ContextQuery.asOf` より未来のreview eventをconfirmation、event count、sequence、reasonへ含めない。Historical projectionへ未来のreview情報を漏らさない。
+
+### E6d: 必要時だけ詳細へ戻るresolver
+
+Projectionは、通常の判定に必要なsignalへ絞ります。Target、Context、Evidence、本文を全Assessmentへ常時複製しません。
+
+SUI #3201では、Assessmentに含まれる由来、確認状態、文脈適合性、鮮度、Conflict等までは説明できます。一方、完全な詳細表示には元のTarget、Context、Evidenceが必要です。SEI #661のContext Egress Planも、本文を直接運ばずassertion参照を選ぶところで止めています。
+
+#1045では、この二つのconsumerから共用できる読み取り専用resolverをReferenceへ追加します。detail queryはassertion IDと、Projection表示時に観測したmeaning fingerprint、review subject fingerprint、target binding、review log sequence、metadata stateを受け取ります。
+
+authorization情報はsemantic queryへ含めません。access範囲は既存authorization adapter / server境界が別の`TransportAccess`としてresolverへ注入します。resolverは既存transportと同じaccess semanticsでcorpusを絞り、その可視範囲を同じContextQueryで再評価します。
+
+read-only detailでは、観測snapshotと現在値が異なってもassertion自体へアクセスできる限りcurrent detailを返します。meaning、subject、review history、target bindingの差を`drift`として返し、metadataがpartial / absentなviewをまたいで実変更とredactionだけを区別できない場合は`indeterminate`を残します。driftがあるdetailは閲覧できますが、古いProjectionから作ったreview等の操作を再利用せず、current Projectionを取得して操作可否を再評価します。
+
+この挙動はwrite-sideのreview mutationとは分けます。review commandではmeaning、review subject、target binding、review sequenceが現在値と一致することを引き続きpreconditionとし、lost updateを防ぐため不一致をhard rejectします。
+
+access不可とunknown assertionは同じunavailableとして扱います。Evidence、review history、relationの一部だけが不可視なら、hidden identityを返さずmetadataをpartialへ落とします。resultにはaccess ref自体を含めません。
+
+detail取得はconfirmationやuse stateを変更しません。statement kindがinstructionでも、取得本文へAIのprompt control authorityを与えません。detail contentはdataとして扱います。
 
 ### E7: semantic contract / representation versionの分離
 

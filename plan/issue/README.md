@@ -1,12 +1,12 @@
-# TEI Planning Issues
+# TEIの計画Issue
 
-このディレクトリを、計画上の作業定義と進行確認の入口とします。背景、制約、完了条件、担当境界は各Issueに置き、採用する設計判断は`../adr/`へ記録します。既存GitHub Issueへの参照は履歴・Evidenceを辿るために残しますが、本整理ではGitHubへ新規起票・更新しません。
+このディレクトリは、計画上の作業内容と進捗を確認するための入口です。背景、制約、完了条件、担当範囲は各Issueに記し、採用した設計判断は`../adr/`へ記録します。既存のGitHub Issueへの参照は履歴とEvidenceをたどるために残します。この文書の整理自体では、GitHub Issueの新規作成・更新は行いません。
 
-TEIのIssueは、単なるTODO一覧ではありません。**どのProduct上の不確実性を減らし、その結果として次に何を判断できるようにするか**を残すための文書です。
+TEIのIssueは単なる作業一覧ではありません。**製品上のどの不確実性を減らし、その結果として何を判断できるようにするか**を記録する文書です。
 
 ## Issueを読むときの四つの問い
 
-技術詳細やチェックリストへ入る前に、まず次を確認します。
+技術の詳細やチェックリストに進む前に、次の四点を確認します。
 
 1. **何に困っているのか** — どの失敗や不確実性を減らす作業か
 2. **このIssueは何を所有するのか** — 隣接Issueとどこで責務を分けるか
@@ -25,7 +25,7 @@ TEIのIssueは、単なるTODO一覧ではありません。**どのProduct上�
 production authorityへ採用する
 ```
 
-この区別を保つことで、一つの大きなAI / Business / Runtime Issueへ責務が集まりすぎることを避けます。
+この区別によって、AI・業務・Runtimeにまたがる一つのIssueへ責務が集中することを避けます。
 
 ## 現在の重要な三つの読み筋
 
@@ -120,7 +120,7 @@ Reference・Evidenceの取り方
 - algorithm名やpackage名を、Product上の問いより先に固定しない
 - 完了条件は作業量ではなく、次の判断を可能にするEvidenceへ結び付ける
 
-短いIssueでは全見出しを機械的に設ける必要はありません。ただし、読者が「なぜこの作業が必要で、終わると何が変わるのか」を推測しなければならない状態は避けます。
+短いIssueにすべての見出しを設ける必要はありません。ただし、作業が必要な理由と完了後の変化は、読者が推測しなくても分かるようにします。
 
 ## 統合の基準と確認範囲
 
@@ -201,6 +201,7 @@ cross-view / execution Evidence
 | [000033 Oracle driver](000033-gate-b-oracle-driver-integration.md) | driver選定・Host assembly・metadata実証（既存#371） | 接続条件と実driverに依存する成果 |
 | [000034 Oracle read-only](000034-gate-b-oracle-read-only-evidence.md) | principal / grant / transaction / runtimeの安全な確認（既存#376） | driverの動作成功と権限保証は別の証明 |
 | [000041 Partition Schema Drift](000041-partition-schema-drift-semantics.md) | 未登録のpartition設計とWorkstream Dの同じ論点（既存#43） | 設計判断と最小再現契約に限定し、DDL実行へ広げない |
+| [000086 Capability Invocation Transport](000086-capability-invocation-transport.md) | generic Capability Invocationとprocess / 将来のWasm等のphysical transportの境界 | 既存Runtimeを再実装せず、transportで保持するidentityとRuntime Authorityを分ける |
 
 000033 / 000034の実Oracle条件は未取得のままです。成果は000022へ合流させ、未完了なら000030の`unresolved`へ残します。新しい第4・第5のGate B必須laneにはしません。
 

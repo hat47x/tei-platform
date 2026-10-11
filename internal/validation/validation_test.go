@@ -112,6 +112,58 @@ func TestReferenceWorldPasses(t *testing.T) {
 	}
 }
 
+// A valid explicit semantic traversal key must remain acceptable through the
+// default validator, while changing the source key to a different semantic
+// type must be rejected before any Function/Provider can use the mapping.
+func TestDefaultValidationPreservesWellTypedRelationKeyAndRejectsMismatch(t *testing.T) {
+	w := referenceWorld()
+	for i := range w.Semantics {
+		switch w.Semantics[i].ID {
+		case cid("sales"):
+			data := &w.Semantics[i].Data[0]
+			data.Attributes = append(data.Attributes, semantic.Attribute{
+				ID: cid("sales.order.customer_id"), Symbol: "customerId", TypeRef: cid("std.identifier"),
+			})
+			data.Relations[0].Keys = []semantic.RelationKey{{
+				SourceAttribute: cid("sales.order.customer_id"),
+				TargetAttribute: cid("customer.customer.customer_id"),
+			}}
+		case cid("customer"):
+			data := &w.Semantics[i].Data[0]
+			data.Attributes = append(data.Attributes, semantic.Attribute{
+				ID: cid("customer.customer.customer_id"), Symbol: "customerId", TypeRef: cid("std.identifier"),
+			})
+		}
+	}
+	for _, d := range validation.Validate(w) {
+		if d.Severity == validation.Error {
+			t.Fatalf("default Validation rejected a well-typed explicit Relation key: %+v", d)
+		}
+	}
+
+	for i := range w.Semantics {
+		if w.Semantics[i].ID == cid("sales") {
+			// status has sales.order_status semantics and does not match
+			// the target identifier's std.identifier identity.
+			w.Semantics[i].Data[0].Relations[0].Keys[0].SourceAttribute = cid("sales.order.status")
+		}
+	}
+	count := 0
+	for _, d := range validation.Validate(w) {
+		if d.Code != "SEMANTIC_RELATION_KEY_TYPE_MISMATCH" {
+			continue
+		}
+		if d.Severity != validation.Error || d.Subject == nil ||
+			d.Subject.Kind != "semantic-relation" || d.Subject.ID != "sales.order.customer" {
+			t.Fatalf("invalid Relation key diagnostic lacks its canonical Subject: %+v", d)
+		}
+		count++
+	}
+	if count != 1 {
+		t.Fatalf("default Validation must report exactly one Relation key mismatch, got %d", count)
+	}
+}
+
 func TestApplicationSupportsMultipleDatabases(t *testing.T) {
 	w := referenceWorld()
 	if got := len(w.Applications[0].Databases); got != 2 {

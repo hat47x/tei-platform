@@ -36,6 +36,22 @@ func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontex
 		subject.Subject{Kind: kind, ID: id},
 	), nil
 }
+func buildDataDesignCandidateReview(
+	root, subjectKind, subjectID, candidateKind, candidateFingerprint,
+	expectedEvidenceRequirementFingerprint string,
+) (knowledgecontext.DataDesignCandidateReviewPacket, error) {
+	ctx, err := buildKnowledgeContext(root, subjectKind, subjectID)
+	if err != nil {
+		return knowledgecontext.DataDesignCandidateReviewPacket{}, err
+	}
+	return knowledgecontext.BuildDataDesignCandidateReview(
+		ctx,
+		candidateKind,
+		candidateFingerprint,
+		expectedEvidenceRequirementFingerprint,
+	)
+}
+
 func buildKnowledgeDisclosure(
 	ctx knowledgecontext.Context,
 	selection string,
@@ -171,6 +187,24 @@ func buildBuilderReviewDisclosureFromFile(
 		return knowledgecontext.DisclosureProjection{}, handoff, err
 	}
 	return disclosure, handoff, nil
+}
+
+func checkDataDesignCandidateReviewFingerprint(
+	packet knowledgecontext.DataDesignCandidateReviewPacket,
+	expected string,
+) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if packet.Fingerprint != expected {
+		return fmt.Errorf(
+			"Data Design candidate review fingerprint mismatch: expected=%s current=%s",
+			expected,
+			packet.Fingerprint,
+		)
+	}
+	return nil
 }
 
 func checkBuilderReviewHandoffFingerprint(

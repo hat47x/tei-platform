@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TEI resource-scoped Action commit result v1",
+  "description": "Application-independent Action commit success or failure envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "const": "1"
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "error": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "revision"
+      ]
+    },
+    {
+      "required": [
+        "error"
+      ]
+    }
+  ]
+}

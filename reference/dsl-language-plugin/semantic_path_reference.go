@@ -2,6 +2,7 @@ package languagereference
 
 import (
 	"fmt"
+
 	"tei/internal/core"
 	"tei/internal/semantic"
 )

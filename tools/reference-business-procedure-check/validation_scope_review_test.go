@@ -1,0 +1,1002 @@
+package main
+
+import (
+	"encoding/json"
+	"reflect"
+	"testing"
+
+	"tei/internal/application"
+	"tei/internal/core"
+	"tei/internal/sourceindex"
+	"tei/internal/semantic"
+	"tei/internal/workspace"
+)
+
+func TestValidationScopeReviewKeepsOriginalCheckerAndWorkspaceUnchanged(t *testing.T) {
+	workspacePath, fixturePath, probePath := ref01Paths()
+	before := ref01TreeDigest(t, workspacePath)
+
+	baseline, err := run(workspacePath, fixturePath, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(baseline.ValidationScopeReview) != 0 {
+		t.Fatalf("任意表示を指定しないbaselineに比較結果が混入しました: %+v", baseline.ValidationScopeReview)
+	}
+
+	reviewed, err := runWithOptions(workspacePath, fixturePath, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(reviewed.Diagnostics, baseline.Diagnostics) {
+		t.Fatalf("比較表示が既存のblocking判定を書き換えました: before=%+v after=%+v", baseline.Diagnostics, reviewed.Diagnostics)
+	}
+	if len(reviewed.ValidationScopeReview) != 1 {
+		t.Fatalf("validation-supportの比較は1件のはずです: %+v", reviewed.ValidationScopeReview)
+	}
+	row := reviewed.ValidationScopeReview[0]
+	if row.Step != "BP-05" || row.Application != "order_entry" || row.Status != "review-needed" {
+		t.Fatalf("比較文脈または判定が不正です: %+v", row)
+	}
+	if !reflect.DeepEqual(row.ApplicationOnly, []string{"sales.order_line.line_number_positive"}) ||
+		len(row.ProcedureOnly) != 0 ||
+		!reflect.DeepEqual(row.SharedValidations, []string{
+			"sales.order.lines.line_number_unique",
+			"sales.order_line.quantity_positive",
+		}) {
+		t.Fatalf("受理済みValidationと業務手順の差・共通参照を検出できません: %+v", row)
+	}
+
+	probed, err := runWithOptions(workspacePath, fixturePath, probePath, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := checkExpectedDiagnostics(probed.Diagnostics, "BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT"); err != nil {
+		t.Fatalf("Customer編集のblocking判定が変わりました: %v", err)
+	}
+	if !reflect.DeepEqual(probed.ValidationScopeReview, reviewed.ValidationScopeReview) {
+		t.Fatalf("別のProbeでValidation比較結果が変わりました: %+v", probed.ValidationScopeReview)
+	}
+	if after := ref01TreeDigest(t, workspacePath); after != before {
+		t.Fatal("読み取り専用の比較でReference Workspaceを書き換えました")
+	}
+}
+
+func TestValidationScopeReviewNeverInfersMissingOrAmbiguousApplication(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	missingContext := f
+	missingContext.Application = ""
+	rows := compareValidationScopes(loaded.World, missingContext)
+	if len(rows) != 1 || rows[0].Status != "unresolved-context" || len(rows[0].ApplicationOnly) != 0 {
+		t.Fatalf("Application未指定から意味を推測しました: %+v", rows)
+	}
+
+	ambiguousWorld := loaded.World
+	for _, app := range loaded.World.Applications {
+		if string(app.ID) == f.Application {
+			ambiguousWorld.Applications = append(append([]application.Application(nil), loaded.World.Applications...), app)
+			break
+		}
+	}
+	rows = compareValidationScopes(ambiguousWorld, f)
+	if len(rows) != 1 || rows[0].Status != "unresolved-context" || len(rows[0].ApplicationOnly) != 0 {
+		t.Fatalf("Application ID重複から任意の一件を選びました: %+v", rows)
+	}
+}
+
+func TestValidationScopeReviewTreatsUnknownReferenceAsUnresolved(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = append(f.Steps[i].Validations, "sales.nonexistent.validation")
+		}
+	}
+	rows := compareValidationScopes(loaded.World, f)
+	if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+		len(rows[0].ApplicationOnly) != 0 || len(rows[0].ProcedureOnly) != 0 {
+		t.Fatalf("未解決参照を集合差の確定結果にしました: %+v", rows)
+	}
+	if !reflect.DeepEqual(rows[0].ReferenceIssues, []validationReferenceIssue{{
+		Side: "procedure", ID: "sales.nonexistent.validation", Reason: "missing-definition",
+	}}) {
+		t.Fatalf("未解決Validationの位置と原因を説明できません: %+v", rows[0].ReferenceIssues)
+	}
+}
+
+func TestValidationScopeReviewEqualSetsDoNotClaimBusinessEquivalence(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = append(f.Steps[i].Validations, "sales.order_line.line_number_positive")
+		}
+	}
+	rows := compareValidationScopes(loaded.World, f)
+	if len(rows) != 1 || rows[0].Status != "no-set-difference" ||
+		!reflect.DeepEqual(rows[0].SharedValidations, []string{
+			"sales.order.lines.line_number_unique",
+			"sales.order_line.line_number_positive",
+			"sales.order_line.quantity_positive",
+		}) ||
+		len(rows[0].ApplicationOnly)+len(rows[0].ProcedureOnly) != 0 {
+		t.Fatalf("同じ参照集合とその明示的な根拠IDの扱いが不正です: %+v", rows)
+	}
+	if rows[0].Reason == "" {
+		t.Fatal("意味の適用範囲は別途確認が必要である旨を表示していません")
+	}
+}
+
+func TestValidationScopeReviewDoesNotHideDuplicateDeclarations(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("procedure", func(t *testing.T) {
+		duplicate := f
+		duplicate.Steps = append([]step(nil), f.Steps...)
+		found := false
+		for i := range duplicate.Steps {
+			if duplicate.Steps[i].ID == "BP-05" {
+				original := duplicate.Steps[i].Validations
+				duplicate.Steps[i].Validations = append(append([]string(nil), original...), original[0])
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("検証対象BP-05がありません")
+		}
+		rows := compareValidationScopes(loaded.World, duplicate)
+		want := []validationReferenceIssue{{
+			Side: "procedure", ID: "sales.order_line.quantity_positive", Reason: "duplicate-declaration",
+		}}
+		if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+			!reflect.DeepEqual(rows[0].ReferenceIssues, want) {
+			t.Fatalf("Procedure内の重複を説明できません: %+v", rows)
+		}
+	})
+
+	t.Run("application", func(t *testing.T) {
+		duplicate := loaded.World
+		duplicate.Applications = append([]application.Application(nil), loaded.World.Applications...)
+		found := false
+		for i := range duplicate.Applications {
+			if string(duplicate.Applications[i].ID) == f.Application {
+				values := duplicate.Applications[i].Validations
+				duplicate.Applications[i].Validations = append(values[:len(values):len(values)], values[0])
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("比較対象Applicationがありません")
+		}
+		rows := compareValidationScopes(duplicate, f)
+		want := []validationReferenceIssue{{
+			Side: "application", ID: "sales.order_line.quantity_positive", Reason: "duplicate-declaration",
+		}}
+		if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+			!reflect.DeepEqual(rows[0].ReferenceIssues, want) {
+			t.Fatalf("Application内の重複を説明できません: %+v", rows)
+		}
+	})
+}
+
+func TestValidationScopeReviewReferenceIssuesIdentifyBothSides(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The same semantic definition is now ambiguous in both declaration lists.
+	ambiguous := loaded.World
+	ambiguous.Semantics = append(append([]semantic.Namespace(nil), loaded.World.Semantics...), semantic.Namespace{
+		ID: core.CanonicalID("review_only_duplicate"),
+		Validations: []semantic.Validation{{
+			ID: core.CanonicalID("sales.order_line.quantity_positive"),
+		}},
+	})
+	rows := compareValidationScopes(ambiguous, fixture)
+	want := []validationReferenceIssue{
+		{Side: "application", ID: "sales.order_line.quantity_positive", Reason: "ambiguous-definition"},
+		{Side: "procedure", ID: "sales.order_line.quantity_positive", Reason: "ambiguous-definition"},
+	}
+	if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+		!reflect.DeepEqual(rows[0].ReferenceIssues, want) ||
+		len(rows[0].ApplicationOnly)+len(rows[0].ProcedureOnly) != 0 ||
+		validationScopeSourcesNeeded(rows) {
+		t.Fatalf("曖昧なSemantic定義を比較結果へ昇格しました: %+v", rows)
+	}
+
+	// Three references to one Validation represent one distinct issue.
+	duplicate := fixture
+	duplicate.Steps = append([]step(nil), fixture.Steps...)
+	for i := range duplicate.Steps {
+		if duplicate.Steps[i].ID == "BP-05" {
+			duplicate.Steps[i].Validations = append(append([]string(nil), fixture.Steps[i].Validations...),
+				"sales.order_line.quantity_positive", "sales.order_line.quantity_positive")
+		}
+	}
+	rows = compareValidationScopes(loaded.World, duplicate)
+	want = []validationReferenceIssue{{
+		Side: "procedure", ID: "sales.order_line.quantity_positive", Reason: "duplicate-declaration",
+	}}
+	if len(rows) != 1 || !reflect.DeepEqual(rows[0].ReferenceIssues, want) ||
+		validationScopeSourcesNeeded(rows) {
+		t.Fatalf("重複参照を出典別に一度だけ示せません: %+v", rows)
+	}
+}
+
+func TestValidationScopeReviewShowsBothDifferenceDirections(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	world := loaded.World
+	world.Applications = append([]application.Application(nil), world.Applications...)
+	found := false
+	for i := range world.Applications {
+		if string(world.Applications[i].ID) == f.Application {
+			values := world.Applications[i].Validations
+			world.Applications[i].Validations = append([]core.CanonicalID(nil), values[:2]...)
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("比較対象Applicationがありません")
+	}
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = []string{
+				"sales.order.lines.line_number_unique",
+				"sales.order_line.line_number_positive",
+			}
+		}
+	}
+	rows := compareValidationScopes(world, f)
+	if len(rows) != 1 || rows[0].Status != "review-needed" ||
+		!reflect.DeepEqual(rows[0].ApplicationOnly, []string{"sales.order_line.quantity_positive"}) ||
+		!reflect.DeepEqual(rows[0].ProcedureOnly, []string{"sales.order_line.line_number_positive"}) {
+		t.Fatalf("双方向のValidation参照差を説明できません: %+v", rows)
+	}
+}
+
+func TestValidationScopeReviewJSONIsOptIn(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	baseline, err := run(workspacePath, fixturePath, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	existingJSON, err := json.Marshal(baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var existing map[string]json.RawMessage
+	if err := json.Unmarshal(existingJSON, &existing); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := existing["validationScopeReview"]; ok {
+		t.Fatal("明示指定なしで比較結果が出力されました")
+	}
+	reviewed, err := runWithOptions(workspacePath, fixturePath, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reviewedJSON, err := json.Marshal(reviewed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var withReview map[string]json.RawMessage
+	if err := json.Unmarshal(reviewedJSON, &withReview); err != nil {
+		t.Fatal(err)
+	}
+	if len(withReview["validationScopeReview"]) == 0 {
+		t.Fatal("明示指定時にValidation比較結果が出力されません")
+	}
+	delete(withReview, "validationScopeReview")
+	if !reflect.DeepEqual(withReview, existing) {
+		t.Fatalf("任意表示が従来のJSON項目を書き換えました: before=%v after=%v", existing, withReview)
+	}
+}
+
+func TestValidationScopeReviewSourceEvidence(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	before := ref01TreeDigest(t, workspacePath)
+	result, err := runWithOptions(workspacePath, fixturePath, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.ValidationScopeReview) != 1 {
+		t.Fatalf("対象の比較行がありません: %+v", result.ValidationScopeReview)
+	}
+	row := result.ValidationScopeReview[0]
+	if row.ProcedureSource != fixturePath {
+		t.Fatalf("業務手順の明示参照元へ戻れません: have=%q want=%q", row.ProcedureSource, fixturePath)
+	}
+	if row.Status != "review-needed" || len(row.UnresolvedSource) != 0 {
+		t.Fatalf("比較の意味または出典が未解決です: %+v", row)
+	}
+	want := map[string]string{
+		"application:order_entry":                                   "applications/order-entry/application.tei",
+		"semantic-validation:sales.order_line.line_number_positive": "semantic/sales/validation.tei",
+		"semantic-validation:sales.order_line.quantity_positive":    "semantic/sales/validation.tei",
+		"semantic-validation:sales.order.lines.line_number_unique":  "semantic/sales/validation.tei",
+	}
+	if len(row.SourceEvidence) != len(want) {
+		t.Fatalf("正本Sourceに戻るための情報が不足しています: %+v", row.SourceEvidence)
+	}
+	for _, evidence := range row.SourceEvidence {
+		key := evidence.Kind + ":" + evidence.ID
+		if evidence.Path != want[key] || evidence.Fingerprint == "" || evidence.Line < 1 {
+			t.Fatalf("出典に戻るための情報が不正です: %+v", evidence)
+		}
+		delete(want, key)
+	}
+	if len(want) != 0 {
+		t.Fatalf("出典を返していないidentityがあります: %v", want)
+	}
+	if after := ref01TreeDigest(t, workspacePath); after != before {
+		t.Fatal("Source Indexの追跡が正本Workspaceを変更しました")
+	}
+}
+
+func TestValidationScopeReviewEqualSetsTraceAllValidationSources(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// BP-05 declares all three accepted Application validations.
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = append(f.Steps[i].Validations, "sales.order_line.line_number_positive")
+		}
+	}
+	rows := compareValidationScopes(loaded.World, f)
+	if len(rows) != 1 || rows[0].Status != "no-set-difference" ||
+		len(rows[0].SharedValidations) != 3 || !validationScopeSourcesNeeded(rows) {
+		t.Fatalf("集合が等しいときの全Validation IDが見えません: %+v", rows)
+	}
+	sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attachValidationScopeSources(rows, sources)
+	if len(rows[0].UnresolvedSource) != 0 || len(rows[0].SourceEvidence) != 4 {
+		t.Fatalf("共通集合の出典が不足しています: %+v", rows)
+	}
+	want := map[string]bool{
+		"application:order_entry":                                   true,
+		"semantic-validation:sales.order_line.quantity_positive":    true,
+		"semantic-validation:sales.order.lines.line_number_unique":  true,
+		"semantic-validation:sales.order_line.line_number_positive": true,
+	}
+	for _, evidence := range rows[0].SourceEvidence {
+		k := evidence.Kind + ":" + evidence.ID
+		if !want[k] || evidence.Fingerprint == "" || evidence.Line < 1 {
+			t.Fatalf("確定できない出典または重複出典です: %+v", evidence)
+		}
+		delete(want, k)
+	}
+	if len(want) != 0 {
+		t.Fatalf("共通Validationの出典が取得できません: %+v", want)
+	}
+
+	// Dropping the index must clear old evidence and show all unresolved identities.
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if len(rows[0].SourceEvidence) != 0 ||
+		!reflect.DeepEqual(rows[0].UnresolvedSource, []string{
+			"application:order_entry",
+			"semantic-validation:sales.order.lines.line_number_unique",
+			"semantic-validation:sales.order_line.line_number_positive",
+			"semantic-validation:sales.order_line.quantity_positive",
+		}) {
+		t.Fatalf("共通集合のSourceが失われても古い出典を残しました: %+v", rows)
+	}
+}
+
+func TestValidationScopeReviewKeepsMissingSourceUnresolved(t *testing.T) {
+	rows := []validationScopeReviewRow{{
+		Step: "BP-05",
+		Application: "order_entry",
+		Status: "review-needed",
+		ApplicationOnly: []string{"sales.order_line.line_number_positive"},
+	}}
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{
+		"application:order_entry",
+		"semantic-validation:sales.order_line.line_number_positive",
+	}) {
+		t.Fatalf("不在のSourceを推測で補完しました: %+v", rows[0])
+	}
+	if len(rows[0].SourceEvidence) != 0 || rows[0].Status != "review-needed" {
+		t.Fatalf("出典が無いときに根拠を作りました: %+v", rows[0])
+	}
+}
+
+func TestValidationScopeReviewAmbiguousSourceIsNotChosen(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := compareValidationScopes(loaded.World, fixture)
+	if len(rows) != 1 || len(rows[0].ApplicationOnly) != 1 {
+		t.Fatalf("比較対象の参照差がありません: %+v", rows)
+	}
+	duplicated := false
+	for _, ref := range sources.References {
+		if ref.Subject.Kind == "semantic-validation" && ref.Subject.ID == "sales.order_line.line_number_positive" {
+			sources.References = append(sources.References, ref)
+			duplicated = true
+			break
+		}
+	}
+	if !duplicated {
+		t.Fatal("ValidationのSource定義がIndex上にありません")
+	}
+	attachValidationScopeSources(rows, sources)
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{
+		"semantic-validation:sales.order_line.line_number_positive",
+	}) {
+		t.Fatalf("重複したSource定義から一件を勝手に選びました: %+v", rows[0])
+	}
+	for _, evidence := range rows[0].SourceEvidence {
+		if evidence.ID == "sales.order_line.line_number_positive" {
+			t.Fatalf("重複したSource定義を確定した根拠としました: %+v", evidence)
+		}
+	}
+}
+
+func TestValidationScopeReviewSourceOrderingIsDeterministic(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordered := compareValidationScopes(loaded.World, fixture)
+	attachValidationScopeSources(ordered, sources)
+	if len(ordered) != 1 || ordered[0].Status != "review-needed" {
+		t.Fatalf("比較対象がありません: %+v", ordered)
+	}
+
+	reversedIndex := sources
+	reversedIndex.References = append([]sourceindex.Reference(nil), sources.References...)
+	reversedIndex.Artifacts = append([]sourceindex.Artifact(nil), sources.Artifacts...)
+	for i, j := 0, len(reversedIndex.References)-1; i < j; i, j = i+1, j-1 {
+		reversedIndex.References[i], reversedIndex.References[j] = reversedIndex.References[j], reversedIndex.References[i]
+	}
+	for i, j := 0, len(reversedIndex.Artifacts)-1; i < j; i, j = i+1, j-1 {
+		reversedIndex.Artifacts[i], reversedIndex.Artifacts[j] = reversedIndex.Artifacts[j], reversedIndex.Artifacts[i]
+	}
+	reversed := compareValidationScopes(loaded.World, fixture)
+	attachValidationScopeSources(reversed, reversedIndex)
+	if !reflect.DeepEqual(ordered, reversed) {
+		t.Fatalf("Source Indexの走査順で比較結果が変わりました: original=%+v reversed=%+v", ordered, reversed)
+	}
+}
+
+func TestValidationScopeReviewDoesNotTrustDuplicateArtifactPaths(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		fingerprints []string
+	}{
+		{name: "conflicting", fingerprints: []string{"sha256:first", "sha256:second"}},
+		{name: "identical", fingerprints: []string{"sha256:first", "sha256:first"}},
+		{name: "third-cannot-restore", fingerprints: []string{"sha256:first", "sha256:second", "sha256:third"}},
+		{name: "fourth-cannot-restore", fingerprints: []string{"sha256:first", "sha256:second", "sha256:third", "sha256:fourth"}},
+		{name: "empty-then-valid-stays-ambiguous", fingerprints: []string{"", "sha256:valid"}},
+		{name: "valid-then-empty-stays-ambiguous", fingerprints: []string{"sha256:valid", ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const applicationPath = "applications/order-entry/application.tei"
+			const validationPath = "semantic/sales/validation.tei"
+			const validationID = "sales.order_line.line_number_positive"
+			index := sourceindex.Index{
+				Artifacts: []sourceindex.Artifact{{Path: validationPath, Fingerprint: "sha256:valid"}},
+				References: []sourceindex.Reference{
+					{
+						Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+						Role: sourceindex.RoleDefinition,
+						ArtifactPath: applicationPath,
+						Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+					},
+					{
+						Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+						Role: sourceindex.RoleDefinition,
+						ArtifactPath: validationPath,
+						Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+					},
+				},
+			}
+			for _, fingerprint := range tc.fingerprints {
+				index.Artifacts = append(index.Artifacts, sourceindex.Artifact{
+					Path: applicationPath, Fingerprint: fingerprint,
+				})
+			}
+			rows := []validationScopeReviewRow{{
+				Step: "BP-05",
+				Application: "order_entry",
+				Status: "review-needed",
+				ApplicationOnly: []string{validationID},
+			}}
+			attachValidationScopeSources(rows, index)
+			if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+				t.Fatalf("重複Sourceを未解決とせず、根拠に昇格しました: %+v", rows[0])
+			}
+			if len(rows[0].SourceEvidence) != 1 ||
+				rows[0].SourceEvidence[0].Kind != "semantic-validation" ||
+				rows[0].SourceEvidence[0].Fingerprint != "sha256:valid" {
+				t.Fatalf("重複していないValidation出典まで破壊しました: %+v", rows[0])
+			}
+		})
+	}
+}
+
+func TestValidationScopeSourcesAreNotRequiredForUnresolvedRows(t *testing.T) {
+	cases := []struct {
+		name string
+		rows []validationScopeReviewRow
+		want bool
+	}{
+		{name: "no validation step", want: false},
+		{name: "missing context", rows: []validationScopeReviewRow{{Status: "unresolved-context"}}, want: false},
+		{name: "unknown validation", rows: []validationScopeReviewRow{{Status: "unresolved-reference"}}, want: false},
+		{name: "review needed", rows: []validationScopeReviewRow{{Status: "review-needed"}}, want: true},
+		{name: "matching sets", rows: []validationScopeReviewRow{{Status: "no-set-difference"}}, want: true},
+		{name: "mixed rows", rows: []validationScopeReviewRow{{Status: "unresolved-context"}, {Status: "review-needed"}}, want: true},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if got := validationScopeSourcesNeeded(test.rows); got != test.want {
+				t.Fatalf("出典を探索する条件が不正です: got=%t want=%t rows=%+v", got, test.want, test.rows)
+			}
+		})
+	}
+}
+
+func TestValidationScopeReviewEvidenceRefreshDropsStaleSources(t *testing.T) {
+	const applicationPath = "applications/order-entry/application.tei"
+	known := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{{Path: applicationPath, Fingerprint: "sha256:known"}},
+		References: []sourceindex.Reference{{
+			Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+			Role: sourceindex.RoleDefinition,
+			ArtifactPath: applicationPath,
+			Range: sourceindex.Range{Start: sourceindex.Position{Line: 3}},
+		}},
+	}
+	rows := []validationScopeReviewRow{{Status: "review-needed", Application: "order_entry"}}
+	attachValidationScopeSources(rows, known)
+	if len(rows[0].SourceEvidence) != 1 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("テスト前提のSource解決に失敗しました: %+v", rows[0])
+	}
+
+	// Indexが変化して同じSourceを解決できなくなったら、古い証拠を残さない。
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if len(rows[0].SourceEvidence) != 0 ||
+		!reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+		t.Fatalf("再解析で以前の出典を残しました: %+v", rows[0])
+	}
+
+	// 同じ未解決Indexでの再解析も、未解決IDを重複させない。
+	attachValidationScopeSources(rows, sourceindex.Index{})
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+		t.Fatalf("再解析で未解決IDが重複しました: %+v", rows[0])
+	}
+
+	// 出典が解決できるようになれば、未解決IDを残さない。
+	attachValidationScopeSources(rows, known)
+	if len(rows[0].SourceEvidence) != 1 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("新しい出典への再解決後に古い未解決を残しました: %+v", rows[0])
+	}
+
+	rows[0].Status = "unresolved-context"
+	attachValidationScopeSources(rows, known)
+	if len(rows[0].SourceEvidence) != 0 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("意味未解決への遷移時にSource根拠が残りました: %+v", rows[0])
+	}
+}
+
+func TestValidationScopeReviewMultipleReasonsForSameReference(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	f, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 同じ意味IDが未定義で、Procedure内にも2回明示されている。
+	// 一つの問題を別の原因によって打ち消さず、理由をそれぞれ一回だけ返す。
+	const missingID = "sales.reference_only.undefined_validation"
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = append(f.Steps[i].Validations, missingID, missingID, missingID)
+		}
+	}
+	rows := compareValidationScopes(loaded.World, f)
+	want := []validationReferenceIssue{
+		{Side: "procedure", ID: missingID, Reason: "duplicate-declaration"},
+		{Side: "procedure", ID: missingID, Reason: "missing-definition"},
+	}
+	if len(rows) != 1 || rows[0].Status != "unresolved-reference" ||
+		!reflect.DeepEqual(rows[0].ReferenceIssues, want) ||
+		len(rows[0].ApplicationOnly) != 0 || len(rows[0].ProcedureOnly) != 0 ||
+		validationScopeSourcesNeeded(rows) {
+		t.Fatalf("同じ参照の複数原因を失いました: %+v", rows)
+	}
+
+	// 明示参照の並び順を変えても、未解決理由の集合と順序は変わらない。
+	for i := range f.Steps {
+		if f.Steps[i].ID == "BP-05" {
+			f.Steps[i].Validations = []string{
+				missingID, "sales.order.lines.line_number_unique",
+				missingID, "sales.order_line.quantity_positive", missingID,
+			}
+		}
+	}
+	reordered := compareValidationScopes(loaded.World, f)
+	if len(reordered) != 1 || !reflect.DeepEqual(reordered[0].ReferenceIssues, want) {
+		t.Fatalf("参照の順番によって未解決理由が変わりました: %+v", reordered)
+	}
+}
+
+func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checkUnresolved := func(t *testing.T, f fixture, wantCount int) {
+		t.Helper()
+		rows := compareValidationScopes(loaded.World, f)
+		if len(rows) != wantCount || validationScopeSourcesNeeded(rows) {
+			t.Fatalf("Step identityの未解決をSource解決の対象にしました: %+v", rows)
+		}
+		for _, row := range rows {
+			if row.Status != "unresolved-context" || row.Reason == "" ||
+				len(row.ApplicationOnly)+len(row.ProcedureOnly) != 0 ||
+				len(row.ReferenceIssues) != 0 {
+				t.Fatalf("一意でないStepから比較差を推論しました: %+v", row)
+			}
+		}
+	}
+
+	t.Run("empty step ID", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for i := range changed.Steps {
+			if changed.Steps[i].ID == "BP-05" {
+				changed.Steps[i].ID = "  "
+			}
+		}
+		checkUnresolved(t, changed, 1)
+	})
+
+	t.Run("duplicate with a non-validation step", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for i := range changed.Steps {
+			if changed.Steps[i].ID == "BP-04" {
+				changed.Steps[i].ID = "BP-05"
+			}
+		}
+		checkUnresolved(t, changed, 1)
+	})
+
+	t.Run("two validation steps with the same ID", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for _, candidate := range changed.Steps {
+			if candidate.ID == "BP-05" {
+				changed.Steps = append(changed.Steps, candidate)
+				break
+			}
+		}
+		checkUnresolved(t, changed, 2)
+	})
+
+	t.Run("ambiguous step does not suppress a distinct step", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for i := range changed.Steps {
+			if changed.Steps[i].ID == "BP-04" {
+				changed.Steps[i].ID = "BP-05"
+			}
+		}
+		for _, candidate := range changed.Steps {
+			if candidate.ID == "BP-05" && candidate.Realization == "validation-support" {
+				candidate.ID = "BP-10"
+				changed.Steps = append(changed.Steps, candidate)
+				break
+			}
+		}
+		rows := compareValidationScopes(loaded.World, changed)
+		if len(rows) != 2 || rows[0].Status != "unresolved-context" ||
+			rows[1].Status != "review-needed" || !validationScopeSourcesNeeded(rows) ||
+			!reflect.DeepEqual(rows[1].ApplicationOnly, []string{"sales.order_line.line_number_positive"}) {
+			t.Fatalf("未解決Stepが別の一意なStepまで比較不能にしました: %+v", rows)
+		}
+	})
+
+	t.Run("distinct validation steps stay comparable", func(t *testing.T) {
+		changed := fixture
+		changed.Steps = append([]step(nil), fixture.Steps...)
+		for _, candidate := range changed.Steps {
+			if candidate.ID == "BP-05" {
+				candidate.ID = "BP-10"
+				changed.Steps = append(changed.Steps, candidate)
+				break
+			}
+		}
+		rows := compareValidationScopes(loaded.World, changed)
+		if len(rows) != 2 || !validationScopeSourcesNeeded(rows) {
+			t.Fatalf("異なるStepまで比較不能にしました: %+v", rows)
+		}
+		for _, row := range rows {
+			if row.Status != "review-needed" ||
+				!reflect.DeepEqual(row.ApplicationOnly, []string{"sales.order_line.line_number_positive"}) {
+				t.Fatalf("Stepごとの既存の比較を壊しました: %+v", rows)
+			}
+		}
+	})
+}
+
+func TestValidationScopeReviewSharedValidationAcrossStepsIsNotDuplicate(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var original step
+	found := false
+	for _, candidate := range fixture.Steps {
+		if candidate.ID == "BP-05" {
+			original = candidate
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("検証対象BP-05がありません")
+	}
+	second := original
+	second.ID = "BP-05-SECOND"
+	fixture.Steps = append(fixture.Steps, second)
+	rows := compareValidationScopes(loaded.World, fixture)
+	if len(rows) != 2 {
+		t.Fatalf("Validation比較対象が2ステップになりません: %+v", rows)
+	}
+	for _, row := range rows {
+		if row.Status != "review-needed" || len(row.ReferenceIssues) != 0 {
+			t.Fatalf("異なるStep間の同一Validation参照を重複と誤認しました: %+v", row)
+		}
+	}
+}
+
+func TestValidationScopeReviewEmptyValidationIDIsUnresolved(t *testing.T) {
+	workspacePath, fixturePath, _ := ref01Paths()
+	fixture, err := readFixture(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range fixture.Steps {
+		if fixture.Steps[i].ID == "BP-05" {
+			fixture.Steps[i].Validations = append(fixture.Steps[i].Validations, "")
+		}
+	}
+	rows := compareValidationScopes(loaded.World, fixture)
+	if len(rows) != 1 || rows[0].Status != "unresolved-reference" {
+		t.Fatalf("空のValidation参照を比較可能と判定しました: %+v", rows)
+	}
+	want := []validationReferenceIssue{{Side: "procedure", ID: "", Reason: "missing-definition"}}
+	if !reflect.DeepEqual(rows[0].ReferenceIssues, want) {
+		t.Fatalf("空のValidation参照の原因を説明できません: %+v", rows[0].ReferenceIssues)
+	}
+}
+
+func TestValidationScopeReviewSourceAttachmentSkipsUnresolvedRows(t *testing.T) {
+	const validationID = "sales.order_line.quantity_positive"
+	index := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{
+			{Path: "applications/order-entry/application.tei", Fingerprint: "sha256:application"},
+			{Path: "semantic/sales/validation.tei", Fingerprint: "sha256:validation"},
+		},
+		References: []sourceindex.Reference{
+			{
+				Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "applications/order-entry/application.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+			},
+			{
+				Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "semantic/sales/validation.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+			},
+		},
+	}
+	rows := []validationScopeReviewRow{
+		{
+			Step: "BP-05", Application: "order_entry", Status: "unresolved-reference",
+			ReferenceIssues: []validationReferenceIssue{{Side: "procedure", ID: "missing", Reason: "missing-definition"}},
+			SourceEvidence: []validationReviewSource{{Kind: "application", ID: "stale"}},
+			UnresolvedSource: []string{"stale"},
+		},
+		{
+			Step: "BP-06", Application: "order_entry", Status: "review-needed",
+			ApplicationOnly: []string{validationID},
+		},
+	}
+	attachValidationScopeSources(rows, index)
+	if len(rows[0].SourceEvidence) != 0 || len(rows[0].UnresolvedSource) != 0 {
+		t.Fatalf("未解決の比較行に出典情報が残りました: %+v", rows[0])
+	}
+	if !reflect.DeepEqual(rows[0].ReferenceIssues, []validationReferenceIssue{{Side: "procedure", ID: "missing", Reason: "missing-definition"}}) {
+		t.Fatalf("出典再解析が意味レベルの未解決理由を変更しました: %+v", rows[0])
+	}
+	if len(rows[1].SourceEvidence) != 2 || len(rows[1].UnresolvedSource) != 0 {
+		t.Fatalf("正常な比較行の出典が取得できません: %+v", rows[1])
+	}
+}
+
+func TestValidationScopeReviewMissingSourceDoesNotSuppressOtherEvidence(t *testing.T) {
+	const validationID = "sales.order_line.quantity_positive"
+	index := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{
+			{Path: "applications/order-entry/application.tei", Fingerprint: "sha256:application"},
+		},
+		References: []sourceindex.Reference{
+			{
+				Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "applications/order-entry/application.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+			},
+			{
+				Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+				Role: sourceindex.RoleDefinition,
+				ArtifactPath: "semantic/sales/missing.tei",
+				Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+			},
+		},
+	}
+	rows := []validationScopeReviewRow{{
+		Step: "BP-05", Application: "order_entry", Status: "review-needed",
+		SharedValidations: []string{validationID},
+	}}
+	attachValidationScopeSources(rows, index)
+	if !reflect.DeepEqual(rows[0].UnresolvedSource, []string{"semantic-validation:" + validationID}) {
+		t.Fatalf("存在しないartifactのValidation出典を未解決として保持しません: %+v", rows[0])
+	}
+	if len(rows[0].SourceEvidence) != 1 ||
+		rows[0].SourceEvidence[0].Kind != "application" ||
+		rows[0].SourceEvidence[0].Fingerprint != "sha256:application" {
+		t.Fatalf("欠落したValidation出典がApplicationの正当な根拠まで消しました: %+v", rows[0])
+	}
+}
+
+func TestValidationScopeReviewEmptyArtifactLocatorIsUnresolved(t *testing.T) {
+	// Even a malformed index containing an empty-path artifact must not
+	// turn an empty source locator into review evidence.
+	index := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{{Path: "", Fingerprint: "sha256:nonempty"}},
+		References: []sourceindex.Reference{{
+			Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+			Role: sourceindex.RoleDefinition,
+			ArtifactPath: "",
+			Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+		}},
+	}
+	rows := []validationScopeReviewRow{{Step: "BP-05", Application: "order_entry", Status: "no-set-difference"}}
+	attachValidationScopeSources(rows, index)
+	if len(rows[0].SourceEvidence) != 0 ||
+		!reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+		t.Fatalf("空のartifact locatorを出典として採用しました: %+v", rows[0])
+	}
+}
+
+func TestValidationScopeReviewWhitespaceSourceIsUnresolved(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        string
+		fingerprint string
+	}{
+		{name: "whitespace locator", path: "  ", fingerprint: "sha256:valid"},
+		{name: "whitespace fingerprint", path: "application.tei", fingerprint: "  "},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			index := sourceindex.Index{
+				Artifacts: []sourceindex.Artifact{{Path: tc.path, Fingerprint: tc.fingerprint}},
+				References: []sourceindex.Reference{{
+					Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
+					Role: sourceindex.RoleDefinition,
+					ArtifactPath: tc.path,
+					Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+				}},
+			}
+			rows := []validationScopeReviewRow{{Step: "BP-05", Application: "order_entry", Status: "no-set-difference"}}
+			attachValidationScopeSources(rows, index)
+			if len(rows[0].SourceEvidence) != 0 ||
+				!reflect.DeepEqual(rows[0].UnresolvedSource, []string{"application:order_entry"}) {
+				t.Fatalf("空白のみの出典情報を根拠として採用しました: %+v", rows[0])
+			}
+		})
+	}
+}

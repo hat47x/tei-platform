@@ -13,7 +13,7 @@ from / to / condition sufficiencyを確認
 
 が残っている。
 
-Watanabe external evidenceからcaseをコピーせず、まずcurrent TEI Repositoryに**CRUD / Handoff pressureとは独立した理由で既に存在するBusiness scenario**がないかを再探索する。
+外部設計資料からcaseをコピーせず、まずcurrent TEI Repositoryに**CRUD / Handoff pressureとは独立した理由で既に存在するBusiness scenario**がないかを再探索する。
 
 見つからない場合、matrixを埋めるためだけにsecond fixtureを発明しない。
 
@@ -180,7 +180,7 @@ PAS-05 / Runtime lifecycleをPAS-07 Business Handoffへ流用しない。
 
 Current: **reject**。
 
-### Candidate F — Watanabe Business Flow patterns
+### Candidate F — 外部資料のBusiness Flow patterns
 
 External evidenceには:
 
@@ -305,7 +305,7 @@ intentional cross-view defect
 Business Lifecycle
 Deployment / runtime scenarios
 RQ-025 / RQ-026
-Watanabe external patterns
+外部設計資料のpatterns
 realistic multi-Application synthetic pressure
 ```
 
@@ -453,7 +453,7 @@ Second case不足を埋めるためだけに次を行わない。
 - customer-edit defectからmaster-data workflowを発明
 - Lifecycle transitionをHandoff化
 - Deployment ownershipをBusiness Handoff化
-- Watanabe patternをTEI fixtureへコピー
+- 外部資料のpatternをTEI fixtureへコピー
 - RQ-025の一般的handoff許容から具体的actor / responsibility / conditionを生成
 - synthetic fulfillment / warehouse / delivery scenarioからaccepted Handoffを逆生成
 - provider-owned Physical Schema relation / lifecycleをBusiness Handoffへ読み替える
@@ -530,7 +530,7 @@ one explicit current Handoff
   + exact endpoint / condition pressure
   + actor / trigger independence structural pressure
   + requirement-level Handoff legitimacy
-  + Watanabe external corroboration
+  + 外部設計資料による裏付け
   + existing-corpus negative search
   + post-merge Business-delta reopen rule
 ```

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -69,19 +70,52 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <commands|inspect|trace|scenario|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
 		os.Exit(2)
 	}
 	command := os.Args[1]
-	fs := flag.NewFlagSet(command, flag.ExitOnError)
+	if command == "commands" {
+		if len(os.Args) != 2 {
+			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
+			os.Exit(2)
+		}
+		writeJSON(commandCatalog())
+		return
+	}
+	if command == "scenario" {
+		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	parseMode := flag.ExitOnError
+	if command == "inspect" || command == "trace" {
+		parseMode = flag.ContinueOnError
+	}
+	fs := flag.NewFlagSet(command, parseMode)
+	if parseMode == flag.ContinueOnError {
+		fs.SetOutput(io.Discard)
+	}
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
+	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
+	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
+	traceDirection := fs.String("direction", "both", "trace incoming, outgoing, or both")
+	traceMode := fs.String("mode", "summary", "trace summary or full")
+	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
+	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
+	traceExpectedFingerprint := fs.String("expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
+	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
+	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
+	expectedDataDesignCandidateEvidenceRequirementFingerprint := fs.String("expected-data-design-candidate-evidence-requirement-fingerprint", "", "expected current Data Design candidate Evidence requirement fingerprint")
+	expectedDataDesignCandidateReviewFingerprint := fs.String("expected-data-design-candidate-review-fingerprint", "", "expected current Data Design candidate review packet fingerprint")
 	expectedReviewPlanFingerprint := fs.String("expected-review-plan-fingerprint", "", "expected Builder Review Plan fingerprint; knowledge-review-plan fails on mismatch")
 	expectedReviewHandoffFingerprint := fs.String("expected-review-handoff-fingerprint", "", "expected Builder Review Handoff fingerprint; review handoff commands fail on mismatch")
 	reviewHandoffPath := fs.String("review-handoff", "", "Builder Review Handoff JSON")
@@ -121,7 +155,54 @@ func main() {
 	expectedRevision := fs.Int("expected-revision", -1, "expected durable deployment run revision for optimistic concurrency")
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
-	_ = fs.Parse(os.Args[2:])
+	parseErr := fs.Parse(os.Args[2:])
+	if command == "inspect" || command == "trace" {
+		if parseErr == nil {
+			parseErr = validateSelectedReadOnlyFlags(fs, command)
+		}
+		if parseErr != nil {
+			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
+	}
+	if *jsonValidation {
+		if command != "validate" {
+			fmt.Fprintln(os.Stderr, "-json is supported only for validate -workspace")
+			os.Exit(2)
+		}
+		if *workspacePath == "" || *worldPath != "" || fs.NArg() != 0 {
+			code, err := invalidJSONValidationArguments(os.Stdout)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			os.Exit(code)
+		}
+	}
+	if command == "trace" {
+		code, err := traceWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *traceScope,
+			*subjectKind, *subjectID, *traceDirection, *traceMode,
+			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "inspect" {
+		code, err := inspectWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if command == "workspace-files" {
 		if *workspacePath == "" || *worldPath != "" {
 			fmt.Fprintln(os.Stderr, "workspace-files requires -workspace and does not accept -world")
@@ -220,6 +301,48 @@ func main() {
 			os.Exit(1)
 		}
 		writeJSON(disclosure)
+		return
+	}
+	if command == "knowledge-data-design-candidate-review" {
+		if *workspacePath == "" || *worldPath != "" {
+			fmt.Fprintln(os.Stderr, "knowledge-data-design-candidate-review requires -workspace and does not accept -world")
+			os.Exit(2)
+		}
+		if strings.TrimSpace(*dataDesignCandidateKind) == "" ||
+			strings.TrimSpace(*dataDesignCandidateFingerprint) == "" {
+			fmt.Fprintln(
+				os.Stderr,
+				"knowledge-data-design-candidate-review requires -data-design-candidate-kind and -data-design-candidate-fingerprint",
+			)
+			os.Exit(2)
+		}
+		context, err := buildKnowledgeContext(*workspacePath, *subjectKind, *subjectID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := checkDataDesignFingerprint(context, *expectedDataDesignFingerprint); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		packet, err := knowledgecontext.BuildDataDesignCandidateReview(
+			context,
+			*dataDesignCandidateKind,
+			*dataDesignCandidateFingerprint,
+			*expectedDataDesignCandidateEvidenceRequirementFingerprint,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := checkDataDesignCandidateReviewFingerprint(
+			packet,
+			*expectedDataDesignCandidateReviewFingerprint,
+		); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		writeJSON(packet)
 		return
 	}
 	if command == "knowledge-context" {
@@ -330,7 +453,13 @@ func main() {
 	}
 
 	if command == "validate" && *workspacePath != "" {
-		code, err := validateWorkspace(os.Stdout, *workspacePath)
+		var code int
+		var err error
+		if *jsonValidation {
+			code, err = validateWorkspaceJSON(os.Stdout, *workspacePath)
+		} else {
+			code, err = validateWorkspace(os.Stdout, *workspacePath)
+		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

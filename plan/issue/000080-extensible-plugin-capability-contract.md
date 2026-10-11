@@ -296,3 +296,27 @@ request / resultの両shapeについてAccepted Evidenceが無ければ、Implem
 このGateはpublisher trustそのものを成立させたものではない。現在確認しているのは、呼出し元がAccepted Evidenceとして渡した入力をexact shapeへ結ぶことまでである。誰がEvidenceを発行できるか、署名、organization policy、revocation / freshnessは未実証である。Evidence fingerprintの形式だけからtrustを推測しない。
 
 この境界はSemantic Extensionのnamespace / Conformance Evidenceと同じ原則を使うが、Evidence型やAuthority scopeを統合しない。Semantic meaningのAuthorityとInvocation wire schemaのAuthorityは別に保つ。
+
+## E6 Production Runtime Authority bridge candidate — 2026-10-10
+
+E2以降でgeneric InvocationはCapability固有のRegistry増殖を避けられるようになったが、Application RuntimeのContract QueryはReference内の`driver.ContractQueryExecutor`を直接呼んでいた。この経路をそのままproductionへ持ち込むと、既存Runtimeが持つPermission、Resource Lease、Sandbox、artifact verificationを迂回できる。
+
+Referenceに`RuntimeAuthorizedContractQueryExecutor`を追加した。generic Providerを既存`runtime.EnvironmentPlan`の`contract-query-executor`へ明示的に対応付け、実行はproduction `runtime.Registry.InvokeWithProvenance`へ委譲する。
+
+Bindingはlegacy Capability IDとoperationを明示する。Implementation IDやContract名からlegacy Capabilityを推測しない。Environment PlanでCapabilityが一意に解決でき、選ばれたPlugin ID / versionとartifact digestがgeneric Providerに一致する場合だけadapterを構築する。
+
+このため、generic Capability resolutionとproduction Runtime Authorityは次の順で独立して検査される。
+
+```text
+generic Contract / Provider / Conformance
+  -> explicit legacy Capability binding
+  -> production Environment Plan
+  -> Permission / Resource / artifact verification / Sandbox
+  -> Runtime implementation
+```
+
+negative controlでは、Capability不在、Plugin identity不一致、artifact不一致、Permission不足、Resource Broker不在、required Sandbox不在を実装呼出し前の停止条件にした。generic Providerを解決できたことだけではRuntime Authorityを得られない。
+
+一方、production Runtimeが返す`InvocationProvenance`は現在adapter内で保持しており、generic `InvocationExecution`にはまだ含めていない。generic consumerがPlugin Lock、Runtime Policy、Sandbox、Permission等の実行根拠へ機械的に戻るには、Authorityを増やさずprovenanceを運ぶ共通receiptが必要である。この点は次のGapとして残す。
+
+このincrementはReference candidateであり、production Runtime APIや`CapabilityKind`を変更していない。exact-head focused testとfull Repository healthを実行できるcheckoutが現在の環境に無いため、Evidence tierは変更しない。

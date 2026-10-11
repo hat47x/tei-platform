@@ -4,7 +4,7 @@
 - Date: 2026-09-18
 - Parent: `plan/ACTOR_CONTEXT_R3I_AUTHORIZATION_TARGET_EVALUATION_CADENCE_2026-09.md`
 - Related:
-  - `plan/LANE_B_AUTHORIZATION_TARGET_AUTHORITY_AUDIT_2026-09.md`
+  - `docs/audits/LANE_B_AUTHORIZATION_TARGET_AUTHORITY_AUDIT_2026-09.md`
   - `reference/business-system-design/order-entry-business-procedure.json`
   - `reference/business-system-design/order-entry-protected-target-overlay.json`
   - `reference/workspace/applications/order-entry/patterns/submit-order.tei`

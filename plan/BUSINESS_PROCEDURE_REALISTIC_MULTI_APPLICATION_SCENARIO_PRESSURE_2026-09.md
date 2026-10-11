@@ -69,7 +69,7 @@ Database / Contract / datasource / Provider設定は持たせない。
 
 actual Repository runnerで実行されるまではgreen Evidenceではない。
 
-## 5. Watanabe pressureとの関係
+## 5. 外部設計資料との関係
 
 Business Modelを単なる「画面操作順」へ縮めず、manual / physical / external partyを含む業務マニュアルとして扱う。
 

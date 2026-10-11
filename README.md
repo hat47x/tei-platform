@@ -1,7 +1,8 @@
 # TEI（鼎／テイ）
 
-- **想定仕様（HTML）:** [仕様ガイド](docs/specification/index.html) — 採用済み・評価待ち・X-TEA原典の対応
-- **期限なしロードマップ（HTML）:** [プロダクト開発ロードマップ](plan/product-roadmap.html) — 依存関係と完了条件
+> **開発状況・レビューに関する重要な注意**  
+> TEIは生成AIを用いて開発中の実験的なプロジェクトです。現段階では、コード・設計・セキュリティに対する体系的な**人的レビューは未実施**です。  
+> READMEや各種文書に記載するテスト結果・Gate判定は、対象・時点・検証範囲を限定したものであり、人的レビューや品質・安全性の保証を意味しません。現時点で本番利用を前提としないでください。
 
 TEIは、業務上の意味を長く保ちながら、実装・データベース・実行先・実行環境を必要以上に一体化しない業務アプリケーション基盤を目指す実験的なプロジェクトです。
 
@@ -16,7 +17,7 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 
 > 現在地 — 2026-09-22: architecture & product validation / research implementation  
 > `order_entry`のApplication Pattern Stage 1とGate Aは完了しています。Application Driverの主要意味境界も成立しています。現在の正式判定は Gate B: Ready（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）で、Handover Baseline `B / R`も固定済みです。第一Web Targetについてもactual Gate C Evidenceを取得し、Gate C: Readyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`。Visual Fidelityは単一のAI評価者による評価で、人による確認ではありません）。  
-> Gate C後には、第二Application `repair_intake`のsourceとEnvironment bindingを、利用者の明示的なAcceptance decisionを経て`reference/workspace`へ受理し、通常のDriver経路で実行できることも確認しました（S5〜S8、[`ISSUE-000040`](plan/issue/000040-semantic-component-composition.md)）。これは第二Application Targetや実行権限の成立を意味しません。Studio / AI、第二TargetはまだProduct Evidence取得前です。詳細な現状は[現在の実装状況](docs/status.md)を正本とします。
+> Gate C後には、第二Application `repair_intake`のsourceとEnvironment bindingを、利用者の明示的なAcceptance decisionを経て`reference/workspace`へ受理し、通常のDriver経路で実行できることも確認しました（S5〜S8）。これは第二Application Targetや実行権限の成立を意味しません。Studio / AI、第二TargetはまだProduct Evidence取得前です。詳細な現状は[現在の実装状況](docs/status.md)を正本とします。
 
 完成したlow-code製品、production-ready Editor、production-ready multi-Target Runtimeを提供する段階ではありません。
 

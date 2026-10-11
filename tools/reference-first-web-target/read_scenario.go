@@ -1,9 +1,10 @@
+//go:build !tei_repair_only
+
 package main
 
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
 	"tei/internal/application"
@@ -11,57 +12,9 @@ import (
 	"tei/internal/database"
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"
-	"tei/internal/environment"
 	"tei/internal/ir"
 	"tei/internal/query"
-	"tei/internal/realization"
 )
-
-type readScenarioInput struct {
-	From     string
-	RowIndex int
-}
-
-type readScenarioResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
-	From            string                     `json:"from"`
-	SelectedRow     int                        `json:"selectedRow"`
-	BrowseRows      []semanticRowProjection    `json:"browseRows"`
-	SelectedOrder   semanticRowProjection      `json:"selectedOrder"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	OrderLineRows   []semanticRowProjection    `json:"orderLineRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
-}
-
-type semanticRowProjection struct {
-	Attributes []semanticValueProjection `json:"attributes"`
-}
-
-type semanticValueProjection struct {
-	Attribute string `json:"attribute"`
-	Value     any    `json:"value"`
-}
-
-type runtimeBindingProjection struct {
-	Pattern            string `json:"pattern"`
-	Environment        string `json:"environment,omitempty"`
-	Instance           string `json:"instance,omitempty"`
-	Provider           string `json:"provider,omitempty"`
-	ExecutorCapability string `json:"executorCapability,omitempty"`
-	ContractQuery      string `json:"contractQuery,omitempty"`
-	Datasource         string `json:"datasource,omitempty"`
-	Database           string `json:"database,omitempty"`
-	Access             string `json:"access,omitempty"`
-	Note               string `json:"note,omitempty"`
-}
-
-type readScenarioRunner interface {
-	Run(context.Context, readScenarioInput) (readScenarioResult, error)
-}
 
 type referenceReadScenarioRunner struct {
 	resolver      driver.Resolver
@@ -85,24 +38,6 @@ func newReferenceReadScenarioRunner(world ir.World) *referenceReadScenarioRunner
 // projected Application so a runner never serves another Application's manifest.
 func (r *referenceReadScenarioRunner) ApplicationID() string {
 	return string(r.applicationID)
-}
-
-// referenceContractQueryExecutors is the development runtime composition shared by every
-// Reference scenario runner, so the Executor-to-instance binding is written once.
-// The Executors are synthetic fixtures, not connections to a real Database.
-func referenceContractQueryExecutors() driver.ContractQueryExecutorMap {
-	return driver.ContractQueryExecutorMap{
-		{
-			Environment: core.MustCanonicalID("development"),
-			Instance:    core.MustCanonicalID("master_data.dev"),
-			Capability:  core.MustCanonicalID("database.query.oracle"),
-		}: referenceContractQueryExecutor{provider: environment.ProviderOracle},
-		{
-			Environment: core.MustCanonicalID("development"),
-			Instance:    core.MustCanonicalID("sales_core.dev"),
-			Capability:  core.MustCanonicalID("database.query.postgres"),
-		}: referenceContractQueryExecutor{provider: environment.ProviderPostgres},
-	}
 }
 
 func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenarioInput) (readScenarioResult, error) {
@@ -179,15 +114,15 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 	orderLineRows := projectContractRows(lines.Execution.Result.Rows)
 
 	return readScenarioResult{
-		ScenarioID:    "order-entry.read-only-web-slice",
-		Environment:   string(r.environmentID),
-		ApplicationID: string(r.applicationID),
-		From:          input.From,
-		SelectedRow:   input.RowIndex,
-		BrowseRows:    browseRows,
-		SelectedOrder: selectedOrder,
-		CustomerRows:  customerRows,
-		OrderLineRows: orderLineRows,
+		ScenarioID:       "order-entry.read-only-web-slice",
+		Environment:      string(r.environmentID),
+		ApplicationID:    string(r.applicationID),
+		From:             input.From,
+		SelectedRowIndex: input.RowIndex,
+		BrowseRows:       browseRows,
+		SelectedOrder:    selectedOrder,
+		CustomerRows:     customerRows,
+		OrderLineRows:    orderLineRows,
 		RuntimeBindings: []runtimeBindingProjection{
 			{
 				Pattern:    "order_entry.recent_orders",
@@ -204,6 +139,7 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 			"runtime-row-index-is-selection-state-not-business-identity",
 			"runtime-row-or-attribute-value-is-not-business-identity-proof",
 			"explicit-result-mapping-is-semantic-correspondence-not-business-key-proof",
+			"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
 			"browse-runtime-environment-binding-is-not-inferred",
 			"reference-and-header-detail-runtime-binding-use-driver-environment-resolution",
 			"read-slice-does-not-imply-authorization-or-command-readiness",
@@ -216,65 +152,6 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 			"visual-evidence-not-yet-acquired",
 		},
 	}, nil
-}
-
-func projectEnvironmentBinding(
-	pattern string,
-	environmentID core.CanonicalID,
-	executor realization.ResolvedContractQueryExecutor,
-) runtimeBindingProjection {
-	return runtimeBindingProjection{
-		Pattern:            pattern,
-		Environment:        string(environmentID),
-		Instance:           string(executor.Instance.ID),
-		Provider:           string(executor.Instance.Provider),
-		ExecutorCapability: string(executor.Capability.Capability.ID),
-		ContractQuery:      executor.Binding.Target.Identity(),
-	}
-}
-
-func projectMappedRows(source queryresult.MappedResult) ([]semanticRowProjection, error) {
-	result := make([]semanticRowProjection, len(source.Rows))
-	for rowIndex, row := range source.Rows {
-		if len(row) != len(source.Columns) {
-			return nil, fmt.Errorf(
-				"mapped result row %d has %d values for %d columns",
-				rowIndex,
-				len(row),
-				len(source.Columns),
-			)
-		}
-		projected := semanticRowProjection{}
-		for columnIndex, column := range source.Columns {
-			projected.Attributes = append(projected.Attributes, semanticValueProjection{
-				Attribute: string(column.Attribute),
-				Value:     row[columnIndex],
-			})
-		}
-		result[rowIndex] = projected
-	}
-	return result, nil
-}
-
-func projectContractRows(source []driver.ContractQueryRow) []semanticRowProjection {
-	result := make([]semanticRowProjection, len(source))
-	for rowIndex, row := range source {
-		keys := make([]string, 0, len(row.Attributes))
-		values := make(map[string]any, len(row.Attributes))
-		for attribute, value := range row.Attributes {
-			key := string(attribute)
-			keys = append(keys, key)
-			values[key] = value
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			result[rowIndex].Attributes = append(result[rowIndex].Attributes, semanticValueProjection{
-				Attribute: key,
-				Value:     values[key],
-			})
-		}
-	}
-	return result
 }
 
 type referenceBrowseExecutor struct{}
@@ -332,84 +209,3 @@ func (referenceBrowseExecutor) ExecuteBrowseQuery(
 	}, nil
 }
 
-type referenceContractQueryExecutor struct {
-	provider environment.DatabaseProvider
-}
-
-func (e referenceContractQueryExecutor) DatabaseProvider() environment.DatabaseProvider {
-	return e.provider
-}
-
-func (e referenceContractQueryExecutor) ExecuteContractQuery(
-	_ context.Context,
-	target realization.ContractQueryTarget,
-	queryContract database.QueryContract,
-	parameters map[string]any,
-) (driver.ContractQueryResult, error) {
-	switch target.Identity() {
-	case "master_data/master_data.customer/find_by_id":
-		if e.provider != environment.ProviderOracle {
-			return driver.ContractQueryResult{}, fmt.Errorf("customer executor provider=%s", e.provider)
-		}
-		if queryContract.Name != "find_by_id" {
-			return driver.ContractQueryResult{}, fmt.Errorf("unexpected customer Query %s", queryContract.Name)
-		}
-		id, ok := parameters["id"]
-		if !ok {
-			return driver.ContractQueryResult{}, fmt.Errorf("customer id parameter is required")
-		}
-		return driver.ContractQueryResult{
-			Rows: []driver.ContractQueryRow{{
-				Attributes: map[core.CanonicalID]any{
-					core.MustCanonicalID("customer.customer.customer_id"): id,
-					core.MustCanonicalID("customer.customer.name"):        "Reference Customer " + fmt.Sprint(id),
-				},
-			}},
-			Payload: map[string]any{"fixture": "oracle-customer-read"},
-		}, nil
-
-	case "sales_core/sales_core.order_line/find_by_order":
-		if e.provider != environment.ProviderPostgres {
-			return driver.ContractQueryResult{}, fmt.Errorf("order-line executor provider=%s", e.provider)
-		}
-		orderIDValue, ok := parameters["order_id"]
-		if !ok {
-			return driver.ContractQueryResult{}, fmt.Errorf("order_id parameter is required")
-		}
-		orderID, ok := orderIDValue.(int64)
-		if !ok {
-			return driver.ContractQueryResult{}, fmt.Errorf("order_id parameter has unexpected type %T", orderIDValue)
-		}
-		if queryContract.Name != "find_by_order" {
-			return driver.ContractQueryResult{}, fmt.Errorf("unexpected order-line Query %s", queryContract.Name)
-		}
-		firstQuantity := "2"
-		if orderID == 1002 {
-			firstQuantity = "0"
-		}
-		return driver.ContractQueryResult{
-			Rows: []driver.ContractQueryRow{
-				{Attributes: map[core.CanonicalID]any{
-					core.MustCanonicalID("sales.order_line.order_line_id"): int64(5001),
-					core.MustCanonicalID("sales.order_line.line_number"):   1,
-					core.MustCanonicalID("sales.order_line.item_code"):     "ITEM-A",
-					core.MustCanonicalID("sales.order_line.quantity"):      firstQuantity,
-					core.MustCanonicalID("sales.order_line.unit_price"):    "4000.00",
-				}},
-				{Attributes: map[core.CanonicalID]any{
-					core.MustCanonicalID("sales.order_line.order_line_id"): int64(5002),
-					core.MustCanonicalID("sales.order_line.line_number"):   2,
-					core.MustCanonicalID("sales.order_line.item_code"):     "ITEM-B",
-					core.MustCanonicalID("sales.order_line.quantity"):      "1",
-					core.MustCanonicalID("sales.order_line.unit_price"):    "4500.00",
-				}},
-			},
-			Payload: map[string]any{
-				"fixture": "postgres-order-line-read",
-				"orderId": orderID,
-			},
-		}, nil
-	default:
-		return driver.ContractQueryResult{}, fmt.Errorf("unsupported Contract Query target %s", target.Identity())
-	}
-}

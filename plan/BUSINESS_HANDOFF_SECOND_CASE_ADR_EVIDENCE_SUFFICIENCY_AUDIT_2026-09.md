@@ -26,7 +26,7 @@ order-entry.order-handling/BP-09
 
 の一件である。
 
-既存corpusのnegative search、Requirement-level corroboration、Watanabe external evidenceもある。
+既存corpusのnegative search、Requirement-level corroboration、外部設計資料による裏付けもある。
 
 ここで問うのは:
 
@@ -97,7 +97,7 @@ invalid inference rejected
 
 ### E3 — external / requirement corroboration
 
-RQ-025 / RQ-026およびWatanabe external evidenceは、Business Procedure / Business responsibility / Business Flow separationの妥当性を補強する。
+RQ-025 / RQ-026および外部設計資料による裏付けは、Business Procedure / Business responsibility / Business Flow separationの妥当性を補強する。
 
 ただし具体的な第二Handoff instanceをauthorしない。
 
@@ -226,7 +226,7 @@ Negative search / negative proofが証明するのは:
 
 ## 7. External evidenceもsecond positive caseの代替ではない
 
-Watanabe external evidenceは:
+外部設計資料による裏付けは:
 
 - Business / Function / Data view separation
 - Business responsibility / procedure meaning
