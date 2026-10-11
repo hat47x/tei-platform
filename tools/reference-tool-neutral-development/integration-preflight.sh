@@ -136,6 +136,13 @@ assert_git_history_and_root() {
   fi
 }
 
+# --remote selects an already-configured Git remote name, not an arbitrary
+# URL, transport helper or Git option supplied by a caller.
+if [[ ! "$REMOTE" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+  echo "error: --remote must be a configured remote name" >&2
+  exit 2
+fi
+
 if [[ "$CANDIDATE_REF" == -* ]]; then
   echo "error: --candidate must not begin with '-'" >&2
   exit 2
