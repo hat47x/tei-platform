@@ -81,6 +81,113 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		}
 	}
 
+	// Inspect operates over the same normalized Canonical World and Source
+	// Index, but reports not-found and invalid requests as structured JSON.
+	reference := filepath.Join("..", "..", "reference", "workspace")
+	var inspected cliInspectionReport
+	if err := json.Unmarshal(run(0, "inspect", "-workspace", reference, "-subject-kind", "semantic-data", "-subject-id", "sales.order"), &inspected); err != nil {
+		t.Fatalf("inspect success must be JSON: %v", err)
+	}
+	if !inspected.OK || inspected.Result == nil || inspected.Result.SourceStatus != "indexed" ||
+		inspected.Result.Subject.Kind != "semantic-data" || inspected.Result.Subject.ID != "sales.order" {
+		t.Fatalf("unexpected inspect success: %+v", inspected)
+	}
+	var absent cliInspectionReport
+	if err := json.Unmarshal(run(1, "inspect", "-workspace", reference, "-subject-kind", "semantic-data", "-subject-id", "sales.not_found"), &absent); err != nil {
+		t.Fatalf("inspect missing subject not JSON: %v", err)
+	}
+	if absent.OK || absent.Error == nil || absent.Error.Code != "SUBJECT_NOT_FOUND" {
+		t.Fatalf("wrong missing subject result: %+v", absent)
+	}
+	var invalidInspect cliInspectionReport
+	if err := json.Unmarshal(run(2, "inspect", "-workspace", reference, "-subject-kind", "semantic-data"), &invalidInspect); err != nil {
+		t.Fatalf("inspect invalid argument not JSON: %v", err)
+	}
+	if invalidInspect.OK || invalidInspect.Error == nil || invalidInspect.Error.Code != "INVALID_SUBJECT" {
+		t.Fatalf("wrong inspect invalid argument result: %+v", invalidInspect)
+	}
+
+	// Malformed and unrelated flags must use one JSON envelope, without the
+	// legacy FlagSet stderr-only exit path that is hard for LLMs to interpret.
+	for _, args := range [][]string{
+		{"trace", "-limit", "not-an-integer"},
+		{"trace", "-no-such-option", "x"},
+		{"trace", "-workspace", reference, "-environment", "dev"},
+		{"inspect", "-workspace", reference, "-scope", "foreign"},
+		{"inspect", "-limit", "1"},
+	} {
+		var failure struct {
+			SchemaVersion string                `json:"schemaVersion"`
+			OK            bool                  `json:"ok"`
+			Error         *cliInspectionFailure `json:"error"`
+		}
+		if err := json.Unmarshal(run(2, args...), &failure); err != nil {
+			t.Fatalf("argv=%q invalid args must return JSON: %v", args, err)
+		}
+		if failure.OK || failure.Error == nil ||
+			failure.Error.Code != "INVALID_ARGUMENT" ||
+			(failure.SchemaVersion != "tei.cli.trace/v0" &&
+				failure.SchemaVersion != "tei.cli.inspect/v0") {
+			t.Fatalf("argv=%q invalid argument envelope: %+v", args, failure)
+		}
+	}
+	// Exercise argv, JSON, stdout/stderr and exit code for typed trace.
+	var traceSummary cliTraceReport
+	if err := json.Unmarshal(run(0,
+		"trace", "-workspace", reference, "-scope", "reference-observation",
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+		"-mode", "summary"), &traceSummary); err != nil {
+		t.Fatalf("trace summary must be JSON: %v", err)
+	}
+	if !traceSummary.OK || traceSummary.Result == nil ||
+		traceSummary.Result.Trace.Total < 2 || len(traceSummary.Result.Trace.Rows) != 0 {
+		t.Fatalf("unexpected typed trace summary: %+v", traceSummary)
+	}
+	var inspectRelation cliInspectionReport
+	if err := json.Unmarshal(run(0,
+		"inspect", "-workspace", reference,
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+	), &inspectRelation); err != nil {
+		t.Fatalf("inspect relation must be JSON: %v", err)
+	}
+	if !inspectRelation.OK || inspectRelation.Result == nil ||
+		inspectRelation.Result.Subject != traceSummary.Result.Trace.Subject.Subject ||
+		inspectRelation.Result.WorldFingerprint != traceSummary.Result.WorldFingerprint ||
+		inspectRelation.Result.SourceIndexFingerprint != traceSummary.Result.SourceIndexFingerprint {
+		t.Fatalf("inspect and trace disagree on identity or projection snapshot: inspect=%+v trace=%+v", inspectRelation, traceSummary)
+	}
+	if len(traceSummary.Result.Source.References) == 0 ||
+		len(inspectRelation.Result.Sources.References) == 0 ||
+		traceSummary.Result.Source.References[0].ArtifactPath !=
+			inspectRelation.Result.Sources.References[0].ArtifactPath {
+		t.Fatalf("inspect and trace disagree on provenance: inspect=%+v trace=%+v", inspectRelation.Result.Sources, traceSummary.Result.Source)
+	}
+	var traceFull cliTraceReport
+	if err := json.Unmarshal(run(0,
+		"trace", "-workspace", reference, "-scope", "reference-observation",
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+		"-mode", "full", "-limit", "1",
+		"-expected-fingerprint", traceSummary.Result.SnapshotFingerprint), &traceFull); err != nil {
+		t.Fatalf("trace full must be JSON: %v", err)
+	}
+	if !traceFull.OK || traceFull.Result == nil ||
+		len(traceFull.Result.Trace.Rows) != 1 ||
+		traceFull.Result.Trace.NextOffset == nil {
+		t.Fatalf("wrong trace full result: %+v", traceFull)
+	}
+	var traceStale cliTraceReport
+	if err := json.Unmarshal(run(1,
+		"trace", "-workspace", reference, "-scope", "reference-observation",
+		"-subject-kind", "semantic-relation", "-subject-id", "sales.order.customer",
+		"-mode", "full", "-limit", "1", "-offset", "1",
+		"-expected-fingerprint", "sha256:stale"), &traceStale); err != nil {
+		t.Fatalf("trace stale must be JSON: %v", err)
+	}
+	if traceStale.OK || traceStale.Error == nil ||
+		traceStale.Error.Code != "STALE_SNAPSHOT" {
+		t.Fatalf("incorrect stale result: %+v", traceStale)
+	}
+
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n\ndata Order {\n    attribute orderId type }\n}\n")
 	var broken cliValidationReport
 	if err := json.Unmarshal(run(1, "validate", "-workspace", root, "-json"), &broken); err != nil {

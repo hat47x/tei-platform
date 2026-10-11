@@ -9,8 +9,8 @@ import (
 	"tei/internal/modelref"
 	"tei/internal/modelref/derivedbridge"
 	"tei/internal/modelref/sourcebridge"
-	"tei/internal/workspace"
 	"tei/internal/subject"
+	"tei/internal/workspace"
 )
 
 func TestIssue1120ReadOnlyReferenceWorldToSourceAndImpact(t *testing.T) {
@@ -47,6 +47,41 @@ func TestIssue1120ReadOnlyReferenceWorldToSourceAndImpact(t *testing.T) {
 	}
 	if !containsEdge(pattern, relation) || !containsEdge(relation, customer) || !containsEdge(app, pattern) {
 		t.Fatalf("Data/Function/Relation cross-reference lost: %v", projection.Unresolved)
+	}
+	// CLI-facing callers must consume the existing typed graph rather than
+	// constructing a second relation graph from path/name similarities.
+	outgoing, err := modelref.TraceDirect(projection.Graph, projection.Rules, relation,
+		modelref.TraceOptions{Direction: "outgoing"})
+	if err != nil {
+		t.Fatalf("trace relation outgoing: %v", err)
+	}
+	foundCustomer := false
+	for _, row := range outgoing.Rows {
+		if row.Status == "resolved" && row.ResolvedTo != nil && *row.ResolvedTo == customer {
+			foundCustomer = true
+		}
+	}
+	if !foundCustomer || outgoing.Unresolved != 0 {
+		t.Fatalf("trace lost declared relation -> customer: %+v", outgoing)
+	}
+	incoming, err := modelref.TraceDirect(projection.Graph, projection.Rules, relation,
+		modelref.TraceOptions{Direction: "incoming"})
+	if err != nil {
+		t.Fatalf("trace relation incoming: %v", err)
+	}
+	foundPattern := false
+	for _, row := range incoming.Rows {
+		if row.Status == "resolved" && row.Edge.From == pattern {
+			foundPattern = true
+		}
+	}
+	if !foundPattern || incoming.Unresolved != 0 {
+		t.Fatalf("trace lost pattern -> relation: %+v", incoming)
+	}
+	summary, err := modelref.TraceDirect(projection.Graph, projection.Rules, relation,
+		modelref.TraceOptions{Direction: "both", Mode: "summary"})
+	if err != nil || summary.Total != outgoing.Total+incoming.Total || len(summary.Rows) != 0 {
+		t.Fatalf("trace summary changed the result set: %+v, %v", summary, err)
 	}
 	for _, diag := range modelref.Validate(projection.Graph, projection.Rules) {
 		// The adapter must not return references invalid under its own
