@@ -37,7 +37,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 - 古い復元断片、無関係な第三者Skill、固定版HTML仕様ガイドの削除をHEADへ反映した。Goソースとそのテスト、現行Markdown正本はこれらの削除PRでは変更していない。
 - この統合作業ではCI・Repository Health・履歴／秘密情報／権利／非Git公開面の網羅監査を実施していない。**Git統合済み ≠ 品質検証済み ≠ Public公開可能**として、以下の停止条件を維持する。
 
-2026-10-11後刻、current `main`は`095e8c49b5a905f6c0e4ff15a709479efdeb3de1`（PR #1218–#1220統合後）、Open PRは0件と再確認した。以前の候補よりmainが4コミット進んでいたため、候補に取り込んだ。GitHub公開面の追跡確認は[公開面スナップショット](../docs/audits/PUBLIC_GITHUB_SURFACE_SNAPSHOT_2026-10-11.md)を参照。remote branch head数と全refの再棚卸しは別途必要。
+2026-10-11後刻、current `main`は`095e8c49b5a905f6c0e4ff15a709479efdeb3de1`（PR #1218–#1220統合後）、Open PRは0件と再確認した。以前の候補よりmainが4コミット進んでいたため、候補に取り込んだ。candidate `a3068a194cf8dd331db3d0e546dbf6ee620c2004`は取得済みorigin branch head 77件すべてのcommit historyを含む。GitHub管理PR refsの個別取得・公開適合性確認は別途必要。GitHub公開面の追跡確認は[公開面スナップショット](../docs/audits/PUBLIC_GITHUB_SURFACE_SNAPSHOT_2026-10-11.md)を参照。
 
 ## 3. P0-A 機密性・権利・公開面
 

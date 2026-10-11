@@ -20,6 +20,7 @@
 | Actions設定 | 有効、許可Actionはall、SHA pinning必須ではない |
 | main branch protection API | 403。現Privateプランでは取得できず、保護設定を確認できない |
 | Workflow | 手動起動のみ、job条件は常にfalse、`contents: read`。現在実行されるhosted jobはない |
+| Git状態の再確認 | main `095e8c49b5a905f6c0e4ff15a709479efdeb3de1`、Open PR 0件、origin branch heads 77件の全commitをcandidate `a3068a194cf8dd331db3d0e546dbf6ee620c2004`が含む |
 
 ## 限定的な候補文字列走査
 
