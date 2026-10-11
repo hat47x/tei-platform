@@ -92,6 +92,20 @@ but artifact-affecting input identity unchanged
 
 current `BuildPlan`からこのReferenceへ射影する処理は候補モデルのpressureであり、production化する際には「artifact-affecting definition closureが完全である」というEvidenceまたはcontractが必要です。
 
+## BuildExecutionResultは実行回数を識別しない
+
+`BuildExecutionResult` は、exact `BuildExecutionPlan` と `ArtifactSet` の**内容上の対応**を識別する。個別のBuild Attempt（実際に実行した一回の観測）を識別するものではない。
+
+```text
+Plan A + ArtifactSet X -> Result R
+Plan A + ArtifactSet X -> Result R  （別の実行でも同一）
+Plan B + ArtifactSet X -> Result S  （Planが違うので別）
+```
+
+したがって、`Result R` を二回提示しても「独立して二回buildし、結果が一致した」Evidenceにはならない。実際の二回実行・失敗・再試行と、各Attemptで観測したResultの対応は#1110 / #1083のAttempt / Reproducibility Evidenceの責務とする。
+
+このReferenceはResult content identityとtyped subject bindingだけを検証し、actual Attempt count、Host execution、bit reproducibilityの成立を非主張とする。詳細なproduction移行停止線と負例SBP-05/06は#943 / Draft #1186を参照。
+
 ## Artifact Set
 
 #1102の最小pressureとして、複数physical outputを一つのcontent setとして扱います。
