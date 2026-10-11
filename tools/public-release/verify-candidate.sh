@@ -39,6 +39,7 @@ while IFS= read -r path || [[ -n "$path" ]]; do
   [[ "$kind" == blob && ( "$mode" == 100644 || "$mode" == 100755 ) ]] || { echo 'unsupported source mode' >&2; exit 3; }
   [[ -f "$candidate/$path" && ! -L "$candidate/$path" ]] || { echo 'candidate blob missing' >&2; exit 3; }
   [[ "$(git -C "$repo" hash-object -- "$candidate/$path")" == "$oid" ]] || { echo 'candidate blob mismatch' >&2; exit 3; }
+  [[ "$(stat -c %h -- "$candidate/$path")" == 1 ]] || { echo 'candidate file has external hardlink' >&2; exit 3; }
   permissions=$(stat -c %a -- "$candidate/$path")
   if [[ "$mode" == 100644 ]]; then [[ "$permissions" == 644 ]] || { echo 'file mode mismatch' >&2; exit 3; }
   else [[ "$permissions" == 755 ]] || { echo 'file mode mismatch' >&2; exit 3; }
