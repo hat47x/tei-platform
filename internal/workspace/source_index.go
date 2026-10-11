@@ -2,9 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"tei/internal/sourceindex"
@@ -17,9 +14,12 @@ import (
 // subjects continue to use the loader's legacy point location until their
 // parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
-	rootReal, err := filepath.EvalSymlinks(root)
+	rootReal, err := canonicalWorkspaceRoot(root)
 	if err != nil {
-		return sourceindex.Index{}, fmt.Errorf("resolve Workspace root: %w", err)
+		return sourceindex.Index{}, err
+	}
+	if result.sourceSnapshot != nil && result.sourceSnapshotRoot != rootReal {
+		return sourceindex.Index{}, fmt.Errorf("loaded source snapshot belongs to another Workspace")
 	}
 	idx := sourceindex.Index{}
 	contents := map[string][]byte{}
@@ -33,41 +33,20 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		if content, ok := contents[p]; ok {
 			return content, nil
 		}
-		// A caller may supply a Result without passing through Load. Reject
-		// physical escapes here as well as in the managed-source preflight.
-		// This check is not atomic with ReadFile; see issue #1017 for the
-		// platform-specific read-time race-free boundary.
-		physical, err := filepath.EvalSymlinks(filepath.Join(root, filepath.FromSlash(p)))
+		// For a Result produced by Load, use the exact bytes parsed by
+		// the domain loader. A forged/standalone Result has no snapshot
+		// and retains the existing checked filesystem read fallback.
+		if snapshot, ok := result.sourceSnapshot[p]; ok {
+			// Load retained an independent copy of the parsed bytes. Source
+			// Index only reads it; a second full-file copy is unnecessary.
+			contents[p] = snapshot
+			return snapshot, nil
+		}
+		// Standalone Results and unparsed managed assets go through the same
+		// checked native reader as Load. It is not a race-free open boundary.
+		content, err := readWorkspaceFile(rootReal, p)
 		if err != nil {
-			return nil, fmt.Errorf("resolve source %q: %w", p, err)
-		}
-		rel, err := filepath.Rel(rootReal, physical)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-			return nil, fmt.Errorf("source %q resolves outside Workspace", p)
-		}
-		// Check the opened file, not a separate path lookup. This avoids a
-		// stat/read mismatch, but does not make the preceding symlink
-		// resolution atomic with open (see issue #1017).
-		file, err := os.Open(physical)
-		if err != nil {
-			return nil, fmt.Errorf("open source %q: %w", p, err)
-		}
-		info, err := file.Stat()
-		if err != nil {
-			file.Close()
-			return nil, fmt.Errorf("stat source %q: %w", p, err)
-		}
-		if !info.Mode().IsRegular() {
-			file.Close()
-			return nil, fmt.Errorf("source %q is not a regular file", p)
-		}
-		content, readErr := io.ReadAll(file)
-		closeErr := file.Close()
-		if readErr != nil {
-			return nil, fmt.Errorf("read source %q: %w", p, readErr)
-		}
-		if closeErr != nil {
-			return nil, fmt.Errorf("close source %q: %w", p, closeErr)
+			return nil, err
 		}
 		contents[p] = content
 		return content, nil

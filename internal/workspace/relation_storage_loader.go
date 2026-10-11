@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"tei/internal/sourceindex"
@@ -21,7 +20,7 @@ func loadRelationStorageAuthorings(root string, r *Result) error {
 	}
 
 	for _, path := range files {
-		src, err := os.ReadFile(path)
+		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
 			return err
 		}
