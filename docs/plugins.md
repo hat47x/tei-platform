@@ -86,4 +86,10 @@ generic Capability ContractをApplication Runtimeで使う場合も、Capability
 
 この接続はmigration用Referenceであり、productionの`CapabilityKind`を置き換えたものではありません。また、production Runtimeが返すInvocation Provenanceをgeneric Invocationの共通Evidenceとして運ぶ仕組みは未確定です。
 
+Generic Capability Invocationをphysical transportへ載せる場合も、process protocolをuniversal ABIにしません。ISSUE-000086のReferenceでは既存process launcherとsynthetic loopback HTTPの二つで、同じContract / Provider / Target / shape identityをphysical carrierから分けて保持できるかを確認しています。
+
+transportがrequest内のidentityをAuthorityとして扱わないよう、両transportのplan-bound経路では上流の`TransportDispatchPlan`とdispatch identityを照合します。一致しない場合はprocess起動やHTTP送信の前に停止します。receiptにはPlan fingerprintを残しますが、Plan自体をCapability ConformanceやRuntime Authorityにはしません。
+
+現行process Request / Responseのtop-level identityはlegacy CapabilityKind / CapabilityIDを前提とし、HTTP Referenceもproduction Runtime Authorityを持ちません。上流のCapability resolution / Runtime AuthorityからPlanを導出するE2Eも未実証です。このためgeneric Capabilityのproduction transport統合が成立したとは扱いません。
+
 詳しくは [Security / Trust Boundary](security.md) を参照してください。

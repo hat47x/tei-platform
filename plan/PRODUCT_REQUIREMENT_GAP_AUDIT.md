@@ -189,6 +189,8 @@ Semantic Lock candidateではsemantic replayとcurrent Evidence bindingも分離
 同日のE5 candidateでは、shape artifact内のissuer自己申告をAuthorityへ昇格させないため、issuer / shape ID / exact fingerprintへ結び付くAccepted Shape Authority EvidenceをInvocation Registryの別入力として要求した。Evidence無し、stale shape fingerprint、同一shapeへの競合Evidenceをfail closedにし、実行結果へ利用Evidence fingerprintを残す。Evidence更新だけではCapability resolution identityを変えない。一方、Evidenceの発行Authority、署名、publisher trust、freshness / revocationは未実証であり、Evidence fingerprintだけをtrust proofにはしない。RQ-032 / RQ-033のtierは変更しない。
 
 2026-10-10のISSUE-000080 E6 candidateでは、generic Contract Query Providerを既存`runtime.EnvironmentPlan`のlegacy Capabilityへ明示Bindingし、実呼出しをproduction `runtime.Registry.InvokeWithProvenance`へ委譲するReferenceを追加した。Capability不在、Plugin identity / artifact不一致、Permission不足、Resource Broker不在、required Sandbox不在を実装呼出し前に拒否するpressureを置き、generic resolutionだけではRuntime Authorityを得られない境界を明示した。一方、production RuntimeのInvocation Provenanceはadapter内に留まり、generic `InvocationExecution`から機械的に辿れない。exact-head focused test / full Repository healthも未取得のため、Evidence tierは変更しない。
+2026-10-10のISSUE-000086 candidateでは、既存processとsynthetic HTTPの二つのtransportでGeneric Capability Invocationのidentityとpayload digestを物理搬送から分離するReferenceを追加した。transport実行前にTransportDispatchPlanのidentity照合を求め、receiptへPlan fingerprintを記録する。一方、production Runtime Authorityへの接続、browser / Wasmでの実動作、Permission等の完全な保証は未実証であり、Evidence tierを変更しない。
+
 ## 6. Cross-cutting Product Quality監査
 
 Quality concernを新しいRequirementへ分割せず、既存RequirementのEvidence completenessとして監査します。
