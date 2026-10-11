@@ -339,6 +339,9 @@ func TestBuilderReviewHandoffIsNotAUniversalContextPacket(t *testing.T) {
 		"Authorized",
 		"CanExecute",
 		"NextAction",
+		"DataDesignCandidateReview",
+		"CandidateReviewPacket",
+		"CandidatePayload",
 	} {
 		if _, found := typ.FieldByName(forbidden); found {
 			t.Fatalf("Builder Review Handoff introduced forbidden universal/authority field %q", forbidden)

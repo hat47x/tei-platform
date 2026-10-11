@@ -95,6 +95,87 @@ func TestBuildBuilderReviewPlanRoutesAvailableKnowledgeInReviewOrder(t *testing.
 	}
 }
 
+func TestBuildBuilderReviewPlanAddsCandidateReviewOnlyWhenDerivedCandidateExists(t *testing.T) {
+	base := Context{
+		Subject: subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+		DataDesign: &DataDesignContext{
+			ProjectionRevision: dataDesignProjectionRevision,
+			Data:               "sales.order_line",
+		},
+	}
+	withoutCandidate := BuildBuilderReviewPlan(base)
+	if containsBuilderReviewString(
+		withoutCandidate.ReviewSequence,
+		"review-data-design-candidates-by-stable-fingerprint-and-evidence-contract",
+	) {
+		t.Fatalf("candidate review was routed without a candidate: %+v", withoutCandidate.ReviewSequence)
+	}
+
+	withCandidateContext := base
+	withCandidateContext.DataDesign = &DataDesignContext{
+		ProjectionRevision: dataDesignProjectionRevision,
+		Data:               "sales.order_line",
+		BusinessIdentityCandidates: []DataDesignBusinessIdentityCandidate{
+			{
+				Fingerprint:                    "sha256:candidate-a",
+				EvidenceRequirementFingerprint: "sha256:requirements-a",
+				Relation:                       "sales.order.lines",
+				TargetOccurrence:               "sales.order_line",
+				BasisConstraint:                "sales.order.lines.line_number_unique",
+				Scope:                          "per-relation-source-occurrence",
+				Nature:                         "candidate-from-accepted-scoped-uniqueness",
+			},
+		},
+	}
+	withCandidate := BuildBuilderReviewPlan(withCandidateContext)
+	if !containsBuilderReviewString(
+		withCandidate.ReviewSequence,
+		"review-data-design-candidates-by-stable-fingerprint-and-evidence-contract",
+	) {
+		t.Fatalf("candidate review was not routed: %+v", withCandidate.ReviewSequence)
+	}
+	if !containsBuilderReviewString(
+		withCandidate.StopRules,
+		"stop-before-authoring-derived-data-design-candidate-while-business-evidence-or-first-class-authoring-contract-is-unresolved",
+	) {
+		t.Fatalf("candidate review stop rule is missing: %+v", withCandidate.StopRules)
+	}
+	if !containsBuilderReviewString(
+		withCandidate.AuthorityLimits,
+		"data-design-candidate-review-packet-is-derived-review-state-not-semantic-authority",
+	) {
+		t.Fatalf("candidate review authority limit is missing: %+v", withCandidate.AuthorityLimits)
+	}
+	if withCandidate.Fingerprint == withoutCandidate.Fingerprint {
+		t.Fatalf("candidate review routing did not change Review Plan identity: %s", withCandidate.Fingerprint)
+	}
+
+	changedCandidateContent := withCandidateContext
+	changedCandidateContent.DataDesign = &DataDesignContext{
+		ProjectionRevision: dataDesignProjectionRevision,
+		Data:               "sales.order_line",
+		BusinessIdentityCandidates: []DataDesignBusinessIdentityCandidate{
+			{
+				Fingerprint:                    "sha256:candidate-b",
+				EvidenceRequirementFingerprint: "sha256:requirements-b",
+				Relation:                       "sales.order.lines",
+				TargetOccurrence:               "sales.order_line",
+				BasisConstraint:                "sales.order.lines.line_number_unique",
+				Scope:                          "per-relation-source-occurrence",
+				Nature:                         "candidate-from-accepted-scoped-uniqueness",
+			},
+		},
+	}
+	changedCandidate := BuildBuilderReviewPlan(changedCandidateContent)
+	if changedCandidate.Fingerprint != withCandidate.Fingerprint {
+		t.Fatalf(
+			"candidate content changed routing identity: first=%s second=%s",
+			withCandidate.Fingerprint,
+			changedCandidate.Fingerprint,
+		)
+	}
+}
+
 func TestBuildBuilderReviewPlanKeepsSourceGapVisible(t *testing.T) {
 	got := BuildBuilderReviewPlan(Context{
 		Subject:    subject.Subject{Kind: "semantic-capability", ID: "sales.order.submit"},
