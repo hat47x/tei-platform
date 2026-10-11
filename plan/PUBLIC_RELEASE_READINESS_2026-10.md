@@ -52,6 +52,14 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 5. Aを採用する場合は開発laneのfreeze、Private mirror backup、reproducible filter、全コミットの旧→新SHA対応、PR/refs再作成、資格Evidence再取得、復旧計画、最終Human reviewが先行条件。過去の検証receiptを変更後headへ機械転用しない。
 6. Bを採用する場合はPrivate/公開RepositoryのSource同期方式、Issue運用の正本、GitHub Actionsの資格の対応を明示する。Clean Public exportは元RepositoryのGit lineageを自動保持しない。
 
+### 2026-10-11 全Git refsの追加観測
+
+GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（heads **64** / tags **4** / pull **1,010**）。この一覧に対象人物名を含むref名称はなかったが、commit message自体の監査済みという意味ではない。
+
+**PR参照はGitHubのread-only管理下にあり、通常のforce/mirror pushでは全参照を置換できない。** GitHubの履歴削除ドキュメントでも旧SHA・PR ref・キャッシュ・cloneに履歴が残ると説明している。またGitHub Supportは原則として非機密データ削除を支援しない。単なる人物名の削減を目的とする場合、Aの既存repo rewriteだけでは公開側から旧messageを完全に隠せると期待しない。
+
+そのため、**履歴が公開されないことを優先するならB（新規clean Public Repositoryへの選別ソース導入）を強い候補とする**。ただし既存Issue/PR番号、URL、Git lineage、qualificationの継承が失われる点を明確にし、主開発リポジトリの在り方を決定してから実行する。
+
 ## 5. P0-C Public向けGitHub Actionsと保護
 
 - [ ] Public化に伴うpush ruleset無効化など、Settingsの変更前後の差分を記録。
