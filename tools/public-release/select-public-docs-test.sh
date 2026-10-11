@@ -65,6 +65,11 @@ if python3 "$here/select-public-docs.py" "$work/repo" "$sha" "$work/reviewed" "$
 fi
 [[ ! -e "$work/wrong-output" ]]
 
+# Reset the other link to valid content so the next refusal tests isolate the redirect.
+printf '# Index\n\n[Current](audits/CURRENT_AUDIT.md)\n' > "$work/repo/docs/index.md"
+git -C "$work/repo" add docs/index.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm restore-index
+
 # The candidate must still point from the compatibility guide to the declared target.
 printf '# 監査記録の移動案内\n\n[Different](../docs/index.md)\n' > "$work/repo/plan/OLD_AUDIT.md"
 git -C "$work/repo" add plan/OLD_AUDIT.md
