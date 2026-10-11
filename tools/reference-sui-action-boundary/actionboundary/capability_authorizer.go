@@ -3,6 +3,7 @@ package actionboundary
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"tei/internal/security/legacyauthorization"
 	"tei/internal/semantic"
@@ -24,7 +25,7 @@ type CapabilityAuthorizer struct {
 	Adapter    capabilityinvoke.Adapter
 }
 
-func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actionID string) error {
+func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, resourceID, actionID string) error {
 	if a.Subjects == nil || a.Adapter == nil {
 		return fmt.Errorf("%w: runtime authorization dependencies missing", ErrDenied)
 	}
@@ -38,7 +39,7 @@ func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actio
 	result, err := capabilityinvoke.Invoke(ctx, a.Capability, a.Adapter, legacyauthorization.Input{
 		SubjectID: subject,
 		Action:    "execute",
-		Resource:  appID + "/" + docID + "/" + actionID,
+		Resource:  authorizationResource(appID, resourceID, actionID),
 	})
 	if err != nil {
 		return fmt.Errorf("%w: authorization invocation: %v", ErrDenied, err)
@@ -47,8 +48,14 @@ func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actio
 		return fmt.Errorf("%w: authorization outcome %s", ErrDenied, result.Outcome)
 	}
 	grant, ok := result.Payload.(legacyauthorization.AuthorizationGrant)
-	if !ok || grant.SubjectID != subject || grant.Action != "execute" || grant.Resource != appID+"/"+docID+"/"+actionID {
+	if !ok || grant.SubjectID != subject || grant.Action != "execute" || grant.Resource != authorizationResource(appID, resourceID, actionID) {
 		return fmt.Errorf("%w: authorization grant mismatch", ErrDenied)
 	}
 	return nil
+}
+
+// authorizationResource encodes each identity separately. Concatenating raw
+// identities would conflate (app="a/b", resource="c") with (app="a", resource="b/c").
+func authorizationResource(appID, resourceID, actionID string) string {
+	return url.PathEscape(appID) + "/" + url.PathEscape(resourceID) + "/" + url.PathEscape(actionID)
 }
