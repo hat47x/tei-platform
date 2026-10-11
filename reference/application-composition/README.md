@@ -26,6 +26,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E11：限定Source変更と型付き影響候補のレビュー接続](E11_TYPED_IMPACT_REVIEW_GATE.md) — E7の部分的なSource検査結果と#1120候補の型付きImpactを重複Graphなしで束ねる。E5の明示的なPattern所属で判定（命名prefix推論を廃止）。E7と#1120 Go Projectionの実JSON形状を結ぶ入口を追加。ただし同一snapshot未証明なら`unresolved`で止める。E11合成テスト30件はV8互換試験で確認、Go/JS実結合は未実施。
 - [E12：型付き影響レビューを実際のJSONファイルから確認するCLI](E12_PAIRED_SOURCE_TYPED_REVIEW.md) — E11のGo形式JSON用判定器を単一の正本とし、E12は入力サイズ・終了コード・出力制限のみ担当。Node標準テスト13件。Goの同一snapshot結合とAuthorityは未実証。
 - [E13：E5と既存Derived Indexを一度の解析済みWorldから取得](E13_SAME_WORLD_DERIVED_OBSERVATION.md) — E5にオプトインの`-include-direct-derived`を追加し、既存`index.Build(loaded.World)`から必要な直接参照5種類だけを同時出力。Go試験5件を追加（**未実行**）。[厳格なローカル検証](qualify-e13-local.sh)はbash構文のみ確認済み。#1120 Go Impact/同一Source bytes保証は未結合。
+- [E14：受注明細の三視点直接参照とSourceの実Workspace確認](E14_CROSS_VIEW_SOURCE_WITNESS.md) — 既存Derived IndexのApplication→Pattern→Relation→Dataと出典の一意性をGoテストに固定。Go4関数・Source負例5サブケース（**未実行**）。E13の未解決時の追加開示抑止についてGoテスト2関数を追加。#1120 Impactへの統合は別Gate。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
