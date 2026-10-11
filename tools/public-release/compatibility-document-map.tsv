@@ -1,0 +1,41 @@
+# Compatibility-only documentation entrypoints: repository path<TAB>canonical destination.
+# Omit from approved public candidates only when the canonical destination is included.
+# Private repository compatibility paths remain unchanged.
+docs/adr/0001-adr-and-issue-workflow.md	plan/adr/0001-adr-and-issue-workflow.md
+docs/adr/0002-m0221-public-checkpoint.md	plan/adr/0002-m0221-public-checkpoint.md
+docs/adr/0003-reference-fixtures.md	plan/adr/0003-reference-fixtures.md
+docs/adr/0004-source-to-canonical-traceability.md	plan/adr/0004-source-to-canonical-traceability.md
+docs/adr/0005-supervisor-and-runtime-fencing-authority.md	plan/adr/0005-supervisor-and-runtime-fencing-authority.md
+docs/adr/0006-process-command-and-argv.md	plan/adr/0006-process-command-and-argv.md
+docs/adr/0007-database-driver-assembly.md	plan/adr/0007-database-driver-assembly.md
+docs/adr/0008-persistence-foreign-key-identity.md	plan/adr/0008-persistence-foreign-key-identity.md
+docs/adr/0009-unique-constraint-and-unique-index.md	plan/adr/0009-unique-constraint-and-unique-index.md
+docs/adr/0010-advanced-index-semantics.md	plan/adr/0010-advanced-index-semantics.md
+docs/adr/0011-advanced-index-authoring.md	plan/adr/0011-advanced-index-authoring.md
+docs/adr/0012-provider-expression-representation.md	plan/adr/0012-provider-expression-representation.md
+docs/adr/0013-offline-physical-realization-policy.md	plan/adr/0013-offline-physical-realization-policy.md
+docs/adr/0014-provider-index-identifier-comparison.md	plan/adr/0014-provider-index-identifier-comparison.md
+docs/adr/0015-provider-owned-migration-sql-rendering.md	plan/adr/0015-provider-owned-migration-sql-rendering.md
+docs/adr/README.md	plan/adr/README.md
+plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md	docs/audits/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md
+plan/BUSINESS_MODEL_PHYSICAL_BASE_REVISION_OPTION_AUDIT_2026-09.md	docs/audits/BUSINESS_MODEL_PHYSICAL_BASE_REVISION_OPTION_AUDIT_2026-09.md
+plan/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md	docs/audits/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md
+plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md	plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md
+plan/BUSINESS_PROCEDURE_MAIN_BASELINE_REAUDIT_2026-09.md	docs/audits/BUSINESS_PROCEDURE_MAIN_BASELINE_REAUDIT_2026-09.md
+plan/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md	docs/audits/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md
+plan/LANE_B_A54_A69_COMPOSITION_AND_READINESS_AUDIT_2026-09.md	docs/audits/LANE_B_A54_A69_COMPOSITION_AND_READINESS_AUDIT_2026-09.md
+plan/LANE_B_A70_A72_SECOND_CORPUS_OUTLINE_AUDIT_2026-09.md	docs/audits/LANE_B_A70_A72_SECOND_CORPUS_OUTLINE_AUDIT_2026-09.md
+plan/LANE_B_A73_A79_PHYSICAL_OBSERVATION_HANDOFF_AUTHORITY_AUDIT_2026-09.md	docs/audits/LANE_B_A73_A79_PHYSICAL_OBSERVATION_HANDOFF_AUTHORITY_AUDIT_2026-09.md
+plan/LANE_B_A80_A83_DATA_PROJECTION_AUDIT_2026-09.md	docs/audits/LANE_B_A80_A83_DATA_PROJECTION_AUDIT_2026-09.md
+plan/LANE_B_AUTHORIZATION_TARGET_AUTHORITY_AUDIT_2026-09.md	docs/audits/LANE_B_AUTHORIZATION_TARGET_AUTHORITY_AUDIT_2026-09.md
+plan/LANE_B_BUSINESS_PROCEDURE_EXPLICIT_REF_ROLE_AUDIT_2026-09.md	docs/audits/LANE_B_BUSINESS_PROCEDURE_EXPLICIT_REF_ROLE_AUDIT_2026-09.md
+plan/LANE_B_CROSS_VIEW_REF_REPRESENTATION_OPTION_AUDIT_2026-09.md	docs/audits/LANE_B_CROSS_VIEW_REF_REPRESENTATION_OPTION_AUDIT_2026-09.md
+plan/LANE_B_GATE15_AND_OBSERVATION_TRACE_AUDIT_2026-09.md	docs/audits/LANE_B_GATE15_AND_OBSERVATION_TRACE_AUDIT_2026-09.md
+plan/LANE_B_PRE_ADR_BLOCKER_CONVERGENCE_AUDIT_2026-09.md	docs/audits/LANE_B_PRE_ADR_BLOCKER_CONVERGENCE_AUDIT_2026-09.md
+plan/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md	docs/audits/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md
+plan/LANE_B_REALISTIC_BUSINESS_REFERENCE_CORPUS_AUDIT_2026-09.md	docs/audits/LANE_B_REALISTIC_BUSINESS_REFERENCE_CORPUS_AUDIT_2026-09.md
+plan/LANE_B_RQ002_BUSINESS_PROCEDURE_CANONICAL_TRACE_AUDIT_2026-09.md	docs/audits/LANE_B_RQ002_BUSINESS_PROCEDURE_CANONICAL_TRACE_AUDIT_2026-09.md
+plan/LANE_B_VALIDATION_REF_NECESSITY_AUDIT_2026-09.md	docs/audits/LANE_B_VALIDATION_REF_NECESSITY_AUDIT_2026-09.md
+plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md	plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md
+plan/UPSTREAM_BUSINESS_SYSTEM_DESIGN_VITALITY_AUDIT_2026-09.md	docs/audits/UPSTREAM_BUSINESS_SYSTEM_DESIGN_VITALITY_AUDIT_2026-09.md
+plan/UPSTREAM_TRACE_AUDIT_2026-09.md	docs/audits/UPSTREAM_TRACE_AUDIT_2026-09.md
