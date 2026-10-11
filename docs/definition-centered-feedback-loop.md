@@ -6,7 +6,7 @@ Status: current design direction / no new Canonical kind / no new Gate
 
 TEIは、生成AIが大量の設計書やコードを生成すること自体を価値の中心にしません。
 
-中心に置くのは、**人間にも機械にも読める端的な定義体をauthoritative meaningとして保ち、その定義から実行・可視化・検査・探索を豊かに再生成し、現実から得たfeedbackを正しい意味所有層へ戻せること**です。
+中心に置くのは、**人にも機械にも読める簡潔な定義を意味の正本として保ち、そこから実行・可視化・検査・探索のための情報を再生成し、現実から得たフィードバックを意味の責任を持つ層へ戻せること**です。
 
 ```text
 small authoritative definitions
@@ -28,7 +28,7 @@ authoritative source
         ↺
 ```
 
-このloopは自己書換え型のAI systemを意味しません。AI、認知index、Studio、Runtimeはauthorityではなく、定義体を理解・検証・改善するための異なる器官です。
+この一連の流れは、自己書換え型のAIシステムを意味しません。AI、認知インデックス、Studio、Runtimeは決定権限を持たず、定義の理解・検証・改善にそれぞれ異なる役割を担います。
 
 ## 2. X-TEA / XEADから受け取るもの
 
@@ -59,7 +59,7 @@ TEIでは「外部モデルにfieldがある」ことではなく、**そのfiel
 
 Definition-centeredは「すべてをTEI DSLへ書き直す」という意味ではありません。
 
-Authoritative sourceはconcernごとに異なり得ます。
+意味の正本となる情報源（Authoritative source）は、関心事ごとに異なる場合があります。
 
 ```text
 TEI-native business / semantic meaning -> .tei等のTEI-native source
@@ -68,7 +68,7 @@ existing implementation meaning       -> Go / existing asset + explicit binding
 provider/environment fact              -> provider-owned configuration / observation
 ```
 
-重要なのは、同じ意味について暗黙の複数正本を作らず、どのsourceが何をauthorしているか説明できることです。
+同じ意味について暗黙に複数の正本を作らず、どの情報源が何を定義しているか説明できることが重要です。
 
 ### 3.1 irreducible meaningだけをauthorする
 
@@ -92,7 +92,7 @@ prefer derived
   generated target code
 ```
 
-「derivedにできる」ことは、情報を捨てることではありません。元定義と生成規則からいつでも説明・再構成できることを要求します。
+派生情報として生成することは、情報を捨てることではありません。元の定義と生成規則から、いつでも説明・再構成できる必要があります。
 
 ### 3.2 progressive disclosure
 
@@ -110,11 +110,11 @@ Business Procedure / Handoff
 time / decision / evidence detail
 ```
 
-追加する概念は「空欄を埋めるため」ではなく、追加しないとmeaning lossが起きる時だけ増やします。
+概念は空欄を埋めるために追加せず、追加しなければ業務上の意味が失われる場合に限って増やします。
 
 ### 3.3 semantic densityとfalse compressionを区別する
 
-短い定義は目的ですが、短さ自体をKPIにはしません。
+定義を短くすることは目指しますが、短さ自体をKPIにはしません。
 
 ```text
 high semantic density
@@ -155,7 +155,7 @@ manual work、responsibility、actuality、exception等を削って定義を短�
 - HDC / VSA等のrole-aware representation
 - candidate ranking / novelty signal
 
-これは**再生成可能で、revision-bound**でなければなりません。
+これらは**再生成可能で、対象のリビジョンに結び付いている**必要があります。
 
 ```text
 association != dependency
@@ -233,7 +233,7 @@ Intent / local editing context
 
 ## 6. Feedbackを正しい所有層へroutingする
 
-高品質なfeedback loopでは、見つかった問題を何でもSemantic sourceへ返しません。
+質の高いフィードバックの仕組みでは、見つかった問題をすべてSemantic sourceへ戻すわけではありません。
 
 | Feedback | 主な戻り先 | 戻してはいけない先の例 |
 | --- | --- | --- |
@@ -246,15 +246,15 @@ Intent / local editing context
 | 検索取りこぼし / ranking問題 | derived index / cognition | Canonical relationの捏造 |
 | Reference patternが合わない | candidate ranking / applicability rule | Reference patternの自動採用 |
 
-原則は次です。
+修正先を判断する原則は次のとおりです。
 
-> visible symptomではなく、meaningを所有する最小の層を直す。
+> 目に見える症状ではなく、意味を管理する最小の層を直す。
 
 これにより「UIを直してDataの誤りを隠す」「AI promptを調整してauthority矛盾を隠す」といった局所最適を防ぎます。
 
 ## 7. Minimum Semantic Delta
 
-生成AI時代には、全modelやfileを毎回再生成するより、**現在のaccepted meaningに対する最小の意味差分をproposalすること**を標準にします。
+生成AIを使う場合は、モデルやファイルを毎回丸ごと再生成するのではなく、**現在受理されている意味に対する最小限の変更を提案すること**を標準にします。
 
 ```text
 base revision
