@@ -1,6 +1,6 @@
 # Cordis由来の合成機構とTEIプラグイン継続更新の評価
 
-- 状態：**設計・机上検証の候補**（2026-10-12）。本書は採用済みRuntime仕様、無停止保証、実環境での検証結果ではない。
+- 状態：**比較検討時点の記録**（2026-10-12）。現行ABIを維持するという前提は、後続の[ADR-0032](../adr/0032-composition-kernel-replacement.md)により置き換えられた。本書の採否表は技術評価の履歴として読む。無停止の実環境保証やProduction統合を示さない。
 - 管理Issue：[#1223](https://github.com/hat47x/tei-platform/issues/1223)
 - 既存の正本：[Plugin / Bundle](../../docs/plugins.md)、[案件構成](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)、[多様なTarget向けランタイム](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)、[generic Capability移行](GENERIC_CAPABILITY_MIGRATION_DESIGN.md)
 - 関連Issue：[#951](https://github.com/hat47x/tei-platform/issues/951)、[#1016](https://github.com/hat47x/tei-platform/issues/1016)、[#259](https://github.com/hat47x/tei-platform/issues/259)、[#1118](https://github.com/hat47x/tei-platform/issues/1118)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#943](https://github.com/hat47x/tei-platform/issues/943)
