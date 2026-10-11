@@ -41,11 +41,24 @@ printf 'README.md\nLICENSE\nnonexistent\n' > "$work/paths"
 must_fail "$work/missing"
 printf 'README.md\nLICENSE\nREADME.md\n' > "$work/paths"
 must_fail "$work/duplicate"
+printf 'README.md\nLICENSE\n.git/config\n' > "$work/paths"
+must_fail "$work/gitdir"
 printf 'README.md\nLICENSE\n' > "$work/paths"
+mkdir "$work/reserved.lock"
+must_fail "$work/reserved"
+rmdir "$work/reserved.lock"
 printf '# TEI\n' > "$work/repo/README.md"
 # A fixed commit cannot be affected by later uncommitted working-tree changes.
 bash "$candidate" "$work/repo" "$sha" "$work/paths" "$work/fixed" > /dev/null
 grep -Fq '人的レビュー' "$work/fixed/README.md"
+# A new commit without the notice must be refused.
+git -C "$work/repo" add README.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid \
+    -c commit.gpgsign=false commit -qm no-notice
+previous_sha=$sha
+sha=$(git -C "$work/repo" rev-parse HEAD)
+must_fail "$work/no-notice"
+sha=$previous_sha
 # Candidate output within the source repository must be refused.
 if bash "$candidate" "$work/repo" "$sha" "$work/paths" "$work/repo/export" > /dev/null 2>&1; then
   echo "expected in-repository refusal" >&2
