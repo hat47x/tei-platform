@@ -231,7 +231,6 @@ func TestCrossViewRejectsPartialCRUDWhenMarkerIsUnsupported(t *testing.T) {
 	}
 }
 
-
 func TestCrossViewBindsProjectionToSourceContractAndRule(t *testing.T) {
 	sourceA := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpR="+"/></Function></System>`
 	sourceB := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpU="+"/></Function></System>`

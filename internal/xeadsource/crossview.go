@@ -45,45 +45,45 @@ type CrossViewUnresolved struct {
 }
 
 type CrossViewProjection struct {
-	SchemaVersion                 int                          `json:"schemaVersion"`
-	SourceArtifactDigest          string                       `json:"sourceArtifactDigest"`
-	MappingContractFingerprint    string                       `json:"mappingContractFingerprint"`
-	DerivationPolicyRevision      string                       `json:"derivationPolicyRevision"`
-	DerivationPolicyFingerprint   string                       `json:"derivationPolicyFingerprint"`
-	TaskCount                     int                          `json:"taskCount"`
-	TaskFunctionIOCount           int                          `json:"taskFunctionIoCount"`
-	TaskFunctionIONoTargetCount   int                          `json:"taskFunctionIoNoTargetCount"`
-	IOTableCount                  int                          `json:"ioTableCount"`
-	SourceEdges                   []CrossViewEdge              `json:"sourceEdges"`
-	DerivedEdges                  []CrossViewEdge              `json:"derivedEdges"`
-	Actions                       []CrossViewActionObservation `json:"actions"`
-	Unresolved                    []CrossViewUnresolved        `json:"unresolved,omitempty"`
-	ProjectionFingerprint         string                       `json:"projectionFingerprint"`
-	AuthorityLimits               []string                     `json:"authorityLimits"`
+	SchemaVersion               int                          `json:"schemaVersion"`
+	SourceArtifactDigest        string                       `json:"sourceArtifactDigest"`
+	MappingContractFingerprint  string                       `json:"mappingContractFingerprint"`
+	DerivationPolicyRevision    string                       `json:"derivationPolicyRevision"`
+	DerivationPolicyFingerprint string                       `json:"derivationPolicyFingerprint"`
+	TaskCount                   int                          `json:"taskCount"`
+	TaskFunctionIOCount         int                          `json:"taskFunctionIoCount"`
+	TaskFunctionIONoTargetCount int                          `json:"taskFunctionIoNoTargetCount"`
+	IOTableCount                int                          `json:"ioTableCount"`
+	SourceEdges                 []CrossViewEdge              `json:"sourceEdges"`
+	DerivedEdges                []CrossViewEdge              `json:"derivedEdges"`
+	Actions                     []CrossViewActionObservation `json:"actions"`
+	Unresolved                  []CrossViewUnresolved        `json:"unresolved,omitempty"`
+	ProjectionFingerprint       string                       `json:"projectionFingerprint"`
+	AuthorityLimits             []string                     `json:"authorityLimits"`
 }
 
 type CrossViewAccounting struct {
-	SchemaVersion                              int            `json:"schemaVersion"`
-	SourceArtifactDigest                       string         `json:"sourceArtifactDigest"`
-	MappingContractFingerprint                 string         `json:"mappingContractFingerprint"`
-	DerivationPolicyRevision                   string         `json:"derivationPolicyRevision"`
-	DerivationPolicyFingerprint                string         `json:"derivationPolicyFingerprint"`
-	ProjectionFingerprint                      string         `json:"projectionFingerprint"`
-	TaskCount                                  int            `json:"taskCount"`
-	TaskActionCount                            int            `json:"taskActionCount"`
-	TaskActionWithoutFunctionIOCount           int            `json:"taskActionWithoutFunctionIoCount"`
-	TaskActionMissingIDCount                   int            `json:"taskActionMissingIdCount"`
-	TaskFunctionIOCount                        int            `json:"taskFunctionIoCount"`
-	TaskFunctionIONoTargetCount                int            `json:"taskFunctionIoNoTargetCount"`
-	DistinctActionFunctionPairCount            int            `json:"distinctActionFunctionPairCount"`
-	IOTableCount                               int            `json:"ioTableCount"`
-	PotentialActionFunctionTablePathCount      int            `json:"potentialActionFunctionTablePathCount"`
-	TaskFunctionIOTargetKindCounts             map[string]int `json:"taskFunctionIoTargetKindCounts,omitempty"`
-	PotentialOperationCombinationCounts        map[string]int `json:"potentialOperationCombinationCounts,omitempty"`
-	SourceEdgeCounts                           map[string]int `json:"sourceEdgeCounts"`
-	DerivedEdgeCounts                          map[string]int `json:"derivedEdgeCounts"`
-	UnresolvedCounts                           map[string]int `json:"unresolvedCounts,omitempty"`
-	AuthorityLimits                            []string        `json:"authorityLimits"`
+	SchemaVersion                         int            `json:"schemaVersion"`
+	SourceArtifactDigest                  string         `json:"sourceArtifactDigest"`
+	MappingContractFingerprint            string         `json:"mappingContractFingerprint"`
+	DerivationPolicyRevision              string         `json:"derivationPolicyRevision"`
+	DerivationPolicyFingerprint           string         `json:"derivationPolicyFingerprint"`
+	ProjectionFingerprint                 string         `json:"projectionFingerprint"`
+	TaskCount                             int            `json:"taskCount"`
+	TaskActionCount                       int            `json:"taskActionCount"`
+	TaskActionWithoutFunctionIOCount      int            `json:"taskActionWithoutFunctionIoCount"`
+	TaskActionMissingIDCount              int            `json:"taskActionMissingIdCount"`
+	TaskFunctionIOCount                   int            `json:"taskFunctionIoCount"`
+	TaskFunctionIONoTargetCount           int            `json:"taskFunctionIoNoTargetCount"`
+	DistinctActionFunctionPairCount       int            `json:"distinctActionFunctionPairCount"`
+	IOTableCount                          int            `json:"ioTableCount"`
+	PotentialActionFunctionTablePathCount int            `json:"potentialActionFunctionTablePathCount"`
+	TaskFunctionIOTargetKindCounts        map[string]int `json:"taskFunctionIoTargetKindCounts,omitempty"`
+	PotentialOperationCombinationCounts   map[string]int `json:"potentialOperationCombinationCounts,omitempty"`
+	SourceEdgeCounts                      map[string]int `json:"sourceEdgeCounts"`
+	DerivedEdgeCounts                     map[string]int `json:"derivedEdgeCounts"`
+	UnresolvedCounts                      map[string]int `json:"unresolvedCounts,omitempty"`
+	AuthorityLimits                       []string       `json:"authorityLimits"`
 }
 
 type crossViewNode struct {
@@ -95,9 +95,9 @@ type crossViewNode struct {
 }
 
 type actionFunctionPair struct {
-	actionToken  string
+	actionToken   string
 	functionToken string
-	sourceTokens []string
+	sourceTokens  []string
 }
 
 var crossViewFingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -310,7 +310,7 @@ func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 		case "IOTable":
 			if ref.functionToken == "" {
 				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
-					""iotable-without-function",
+					"iotable-without-function",
 					"function-table-operation",
 					[]string{ref.token},
 				))
