@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+candidate="$here/prepare-candidate.sh"
+work=$(mktemp -d)
+trap 'rm -rf -- "$work"' EXIT
+
+mkdir -p "$work/repo/internal"
+git -C "$work/repo" init -q
+printf '# TEI\n\n> 生成AIを用いて開発しています。人的レビューは未実施です。\n' > "$work/repo/README.md"
+printf 'MIT License\n' > "$work/repo/LICENSE"
+printf 'package sample\n' > "$work/repo/internal/sample.go"
+printf 'INTERNAL_ONLY\n' > "$work/repo/private-notes.txt"
+ln -s ../private-notes.txt "$work/repo/internal/link"
+git -C "$work/repo" add -A
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid \
+    -c commit.gpgsign=false commit -qm initial
+sha=$(git -C "$work/repo" rev-parse HEAD)
+printf 'README.md\nLICENSE\ninternal/sample.go\n' > "$work/paths"
+
+bash "$candidate" "$work/repo" "$sha" "$work/paths" "$work/export" > "$work/log"
+[[ -f "$work/export/README.md" && -f "$work/export/LICENSE" ]]
+[[ -f "$work/export/internal/sample.go" && ! -e "$work/export/private-notes.txt" ]]
+[[ ! -e "$work/export/.git" && ! -e "$work/export/internal/link" ]]
+cmp "$work/repo/internal/sample.go" "$work/export/internal/sample.go"
+grep -q 'CANDIDATE_ONLY' "$work/log"
+
+must_fail() {
+  local output=$1
+  if bash "$candidate" "$work/repo" "$sha" "$work/paths" "$output" > /dev/null 2>&1; then
+    echo "expected refusal: $output" >&2
+    exit 1
+  fi
+  [[ ! -e "$output" ]] || { echo "incomplete output left behind" >&2; exit 1; }
+}
+printf 'README.md\nLICENSE\ninternal/link\n' > "$work/paths"
+must_fail "$work/symlink"
+printf 'README.md\nLICENSE\n../other.txt\n' > "$work/paths"
+must_fail "$work/traversal"
+printf 'README.md\nLICENSE\nnonexistent\n' > "$work/paths"
+must_fail "$work/missing"
+printf 'README.md\nLICENSE\nREADME.md\n' > "$work/paths"
+must_fail "$work/duplicate"
+printf 'README.md\nLICENSE\n' > "$work/paths"
+printf '# TEI\n' > "$work/repo/README.md"
+# A fixed commit cannot be affected by later uncommitted working-tree changes.
+bash "$candidate" "$work/repo" "$sha" "$work/paths" "$work/fixed" > /dev/null
+grep -Fq '人的レビュー' "$work/fixed/README.md"
+# Candidate output within the source repository must be refused.
+if bash "$candidate" "$work/repo" "$sha" "$work/paths" "$work/repo/export" > /dev/null 2>&1; then
+  echo "expected in-repository refusal" >&2
+  exit 1
+fi
+echo "PASS: candidate builder isolated synthetic tests"
