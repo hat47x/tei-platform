@@ -214,7 +214,7 @@ func Generate(s Scenario, source []byte, scenarioPath, workspacePath string) (Pl
 	digest := sha256.Sum256(source)
 	plan := Plan{SchemaVersion: PlanVersion, ScenarioID: parsed.ID, ScenarioSHA256: hex.EncodeToString(digest[:]), Commands: make([]Command, 0, len(parsed.Steps))}
 	for _, step := range parsed.Steps {
-		plan.Commands = append(plan.Commands, Command{StepID: step.ID, Argv: []string{"tei", "scenario", "run", "-scenario", scenarioPath, "-workspace", workspacePath, "-step", step.ID}})
+		plan.Commands = append(plan.Commands, Command{StepID: step.ID, Argv: []string{"tei", "scenario", "run", "-scenario", scenarioPath, "-workspace", workspacePath, "-step", step.ID, "-scenario-sha256", plan.ScenarioSHA256}})
 	}
 	return plan, nil
 }

@@ -25,7 +25,7 @@ func TestGenerateIsDeterministicAndComplete(t *testing.T) {
 	if !reflect.DeepEqual(a, b) || len(a.Commands) != len(s.Steps) {
 		t.Fatal("non-reproducible or incomplete generation")
 	}
-	if got := a.Commands[0].Argv; !reflect.DeepEqual(got, []string{"tei", "scenario", "run", "-scenario", "fixture.json", "-workspace", "reference/workspace", "-step", "browse"}) {
+	if got := a.Commands[0].Argv; !reflect.DeepEqual(got, []string{"tei", "scenario", "run", "-scenario", "fixture.json", "-workspace", "reference/workspace", "-step", "browse", "-scenario-sha256", a.ScenarioSHA256}) {
 		t.Fatalf("argv=%q", got)
 	}
 	if len(a.ScenarioSHA256) != 64 {

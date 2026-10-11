@@ -43,6 +43,10 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	workspacePath := flags.String("workspace", "", "TEI Workspace root")
 	stepID := flags.String("step", "", "specific Scenario step for run")
 	planPath := flags.String("plan", "", "generated CLI plan for check")
+	expectedScenarioSHA := flags.String("scenario-sha256", "", "required Scenario revision of generated command")
+	expectedWorldSHA := flags.String("world-sha256", "", "required resolved World fingerprint of generated command")
+	expectedLockSHA := flags.String("plugin-lock-sha256", "", "required plugin lock fingerprint of generated command")
+	expectedFixtureSHA := flags.String("fixture-sha256", "", "required synthetic Fixture fingerprint of generated command")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -54,6 +58,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	}
 	if (*planPath != "") != (action == "check") {
 		return fmt.Errorf("-plan is required only for check")
+	}
+	if action != "run" && (*expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != "") {
+		return fmt.Errorf("generated-command fingerprint flags are valid only for run")
 	}
 	source, err := os.ReadFile(*scenarioPath)
 	if err != nil {
@@ -159,6 +166,31 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	}
 	lockDigest := sha256.Sum256(lockSource)
 	plan.PluginLockSHA256 = hex.EncodeToString(lockDigest[:])
+	for i := range plan.Commands {
+		command := &plan.Commands[i]
+		command.Argv = append(command.Argv,
+			"-world-sha256", plan.WorldSHA256,
+			"-plugin-lock-sha256", plan.PluginLockSHA256)
+		if expected, ok := plan.FixtureSHA256[command.StepID]; ok {
+			command.Argv = append(command.Argv, "-fixture-sha256", expected)
+		}
+	}
+	if action == "run" {
+		if *expectedScenarioSHA != "" && *expectedScenarioSHA != plan.ScenarioSHA256 {
+			return fmt.Errorf("generated CLI command is stale: Scenario fingerprint differs")
+		}
+		if *expectedWorldSHA != "" && *expectedWorldSHA != plan.WorldSHA256 {
+			return fmt.Errorf("generated CLI command is stale: Canonical World fingerprint differs")
+		}
+		if *expectedLockSHA != "" && *expectedLockSHA != plan.PluginLockSHA256 {
+			return fmt.Errorf("generated CLI command is stale: Plugin Lock fingerprint differs")
+		}
+		if *expectedFixtureSHA != "" {
+			if *stepID == "" || *expectedFixtureSHA != plan.FixtureSHA256[*stepID] {
+				return fmt.Errorf("generated CLI command is stale: Fixture fingerprint differs")
+			}
+		}
+	}
 	switch action {
 	case "generate":
 		return json.NewEncoder(output).Encode(plan)
