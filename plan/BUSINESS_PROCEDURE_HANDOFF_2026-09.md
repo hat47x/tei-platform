@@ -495,9 +495,9 @@ Business Flow != Data Relation
 
 一つのEditor graphへProjectionすることは可能でも、一つのCanonical object / generic edgeへ畳む根拠にはしない。
 
-## 7. Watanabe external evidenceからのcorroboration
+## 7. 外部設計資料による裏付け
 
-`BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`では、渡辺幸三氏の公開されている三要素分析法資料をexternal design evidenceとして確認した。
+`BUSINESS_HANDOFF_SECOND_REALISTIC_EXTERNAL_EVIDENCE_PRESSURE_2026-09.md`では、公開されている三要素分析法の資料をexternal design evidenceとして確認した。
 
 Relevant source meaning:
 
@@ -547,7 +547,7 @@ R3 handoff-only
 
 を採用しない。
 
-Watanabe evidenceはcurrent H1/R3 insufficiencyをまだ証明しない。
+当該外部資料はcurrent H1/R3 insufficiencyをまだ証明しない。
 
 ## 8. Step addressとの接続
 
@@ -585,7 +585,7 @@ current Referenceでは自然言語conditionをaccepted Business relation meanin
 - runtime event guard
 - state machine guard
 
-Watanabe external evidenceはBusiness workにevent contextがあることを補強するが、Handoff condition自体をruntime event guardへ変換する根拠にはならない。
+外部設計資料はBusiness workにevent contextがあることを補強するが、Handoff condition自体をruntime event guardへ変換する根拠にはならない。
 
 condition wording changeをsemantic diffとして観測できることを先に満たす。
 
@@ -619,7 +619,7 @@ R1  semantic.Data.Relation reuse             reject
 
 R3は**handoff-only**であり、generic Business relation bagではない。
 
-X-TEAに加えてWatanabe三要素分析法の公開資料からもR3/R4 separationへのcorroborationが得られたが、production adoption条件は変えない。
+X-TEAに加えて三要素分析法の公開資料からもR3/R4 separationへのcorroborationが得られたが、production adoption条件は変えない。
 
 ## 12. test-only Evidence（Part 3）
 
@@ -665,7 +665,7 @@ Production採用はactual green、より現実的なReference、Lane B再監査�
 
 ## 14. Current Gate C implication
 
-Watanabe external evidenceにより:
+外部設計資料により:
 
 ```text
 Handoff non-inference boundary
@@ -711,13 +711,13 @@ H1がBusiness relationである
   -> H1をそのままBusiness Flow / DFDと呼ぶ
 ```
 
-本監査では、渡辺幸三氏の言説、X-TEA / XEADの公開説明、XeadModeler sourceへ立ち返り、HandoffとBusiness Flowの境界を再確認する。
+本監査では、三要素分析法、X-TEA / XEADの公開説明、XeadModeler sourceへ立ち返り、HandoffとBusiness Flowの境界を再確認する。
 
 ## 2. 設計原点のEvidence
 
 ### 2.1 三要素分析法
 
-渡辺氏は業務システムをData / Function / Businessの三要素から捉え、Business Modelを業務マニュアルとして説明している。
+参照資料では、業務システムをData / Function / Businessの三要素から捉え、Business Modelを業務マニュアルとして説明している。
 
 業務システムは社会システムであり、Business側にはApplicationの内部実行順だけでは表せない人・外部主体・業務手順が含まれる。
 

@@ -365,7 +365,7 @@ Second-case探索では次をrejectした。
 - customer-edit intentional defectからmaster-data workflowを発明
 - Business Lifecycle state transition
 - Deployment / runtime transition
-- Watanabe external patternの直接fixture化
+- 外部資料のpatternを直接fixture化すること
 - RQ-025 / RQ-026の一般的Handoff allowanceから具体的instanceを生成
 - synthetic `fulfillment_console` / warehouse / external delivery pressureからaccepted Handoffを逆生成
 

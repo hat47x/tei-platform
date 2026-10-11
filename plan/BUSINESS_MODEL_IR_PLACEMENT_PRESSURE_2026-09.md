@@ -16,7 +16,7 @@ Handoffs
 
 Current TEIの`ir.World`はApplication / Database / Query / Realization / Environment等のnormalized compilation unitである。
 
-Business Procedureは一方でX-TEA / 渡辺幸三氏の三要素におけるBusiness Model側の社会システム意味を保持する。
+Business Procedureは一方でX-TEA / 三要素分析法におけるBusiness Model側の社会システム意味を保持する。
 
 この二つを「first-classだから同じstructに入れる」と短絡しない。
 

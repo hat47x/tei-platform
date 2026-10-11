@@ -130,7 +130,7 @@ C1でcurrent Pressureは閉じる。
 
 C2のfield完全除去は、実際にauthoring surfaceを設計するときに必要性が出た場合だけ再検討する。
 
-## 7. Watanabe pressureとの関係
+## 7. 外部設計資料との関係
 
 Business Modelを社会的な業務手順として扱うなら、一つの手順が複数システム、人、外部組織、物理作業を跨ぐことは自然である。
 
