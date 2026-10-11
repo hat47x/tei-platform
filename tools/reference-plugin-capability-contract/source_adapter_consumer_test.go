@@ -92,9 +92,11 @@ func sourceAdapterRegistryFixture(t *testing.T) (
 		t.Fatal(err)
 	}
 	implementations := []SourceAdapterImplementation{implementation}
+	authorities := sourceAdapterShapeAuthoritiesForTest(t, implementations)
 	registry, err := NewSourceAdapterRegistry(
 		implementations,
-		sourceAdapterShapeAuthoritiesForTest(t, implementations),
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -361,9 +363,11 @@ func TestSourceAdapterRegistryRejectsDuplicatePhysicalImplementation(t *testing.
 		implementation,
 		implementation,
 	}
+	authorities := sourceAdapterShapeAuthoritiesForTest(t, implementations)
 	if _, err := NewSourceAdapterRegistry(
 		implementations,
-		sourceAdapterShapeAuthoritiesForTest(t, implementations),
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	); err == nil || !strings.Contains(err.Error(), "registered more than once") {
 		t.Fatalf("duplicate physical implementation was accepted: %v", err)
 	}

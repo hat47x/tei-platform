@@ -122,11 +122,14 @@ func TestSemanticLockRejectsNamespaceOwnerTamper(t *testing.T) {
 		Namespace: "std.reference",
 		Version:   "1.0.0",
 	}
-	authority := SemanticNamespaceAuthority{
-		Namespace:           descriptor.Namespace,
-		Extension:           descriptor.ID,
-		EvidenceFingerprint: namespaceAuthorityEvidence("a"),
-	}
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"3",
+		true,
+	)
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		CoreCatalogInput{},
 		[]ExtensionDescriptor{descriptor},
@@ -134,6 +137,7 @@ func TestSemanticLockRejectsNamespaceOwnerTamper(t *testing.T) {
 		nil,
 		nil,
 		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	)
 	if err != nil {
 		t.Fatal(err)

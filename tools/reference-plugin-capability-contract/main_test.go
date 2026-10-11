@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
 
 func TestNonInvocationContractFingerprintDoesNotGainEmptyShapeIssuer(t *testing.T) {
@@ -89,14 +91,62 @@ func invocationShapeAuthoritiesForTest(
 	return out
 }
 
+func invocationShapePublisherTrustForTest(
+	t *testing.T,
+	authorities []InvocationShapeAuthorityEvidence,
+) []authoritytrust.Grant {
+	t.Helper()
+	seen := map[string]struct{}{}
+	var out []authoritytrust.Grant
+	for _, authority := range authorities {
+		key := strings.Join(
+			[]string{
+				authority.Issuer.ID,
+				authority.Issuer.Version,
+				authority.ShapeID,
+			},
+			"\x00",
+		)
+		if _, duplicate := seen[key]; duplicate {
+			continue
+		}
+		seen[key] = struct{}{}
+		grant, err := authoritytrust.NewGrant(
+			invocationShapePublisherAuthorityClass,
+			invocationShapeTrustScope(authority.ShapeID),
+			authoritytrust.Issuer{
+				ID:      authority.Issuer.ID,
+				Version: authority.Issuer.Version,
+			},
+			fingerprint(struct {
+				Issuer  InvocationShapeIssuer `json:"issuer"`
+				ShapeID string                `json:"shapeId"`
+				Policy  string                `json:"policy"`
+			}{
+				Issuer:  authority.Issuer,
+				ShapeID: authority.ShapeID,
+				Policy:  "accepted-reference-publisher-trust",
+			}),
+			true,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, grant)
+	}
+	return out
+}
+
 func newInvocationRegistryForTest(
 	t *testing.T,
 	implementations []InvocationImplementation,
 ) *InvocationRegistry {
 	t.Helper()
+	authorities := invocationShapeAuthoritiesForTest(implementations)
 	registry, err := NewInvocationRegistry(
 		implementations,
-		invocationShapeAuthoritiesForTest(implementations),
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	)
 	if err != nil {
 		t.Fatal(err)

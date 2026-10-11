@@ -8,21 +8,31 @@ import "fmt"
 //
 // This is deliberately separate from verifySemanticLockReplay. Replay proves
 // that the locked meaning can be reconstructed from exact declarations.
-// Evidence binding proves only that accepted Evidence inputs are present and
-// exactly bound to the locked contract/profile or namespace/owner. It does not
-// prove publisher trust or the authority that issued that Evidence.
+// Evidence binding proves that accepted Evidence inputs are present and
+// exactly bound to the locked contract/profile or namespace/owner. Namespace
+// Authority Evidence is also re-qualified against the caller's current
+// publisher trust grants. Trust policy remains outside the semantic lock.
 func verifySemanticLockAcceptedEvidenceBindings(
 	lock SemanticLock,
 	conformances []SemanticInterfaceConformance,
 	namespaceAuthorities []SemanticNamespaceAuthority,
+	publisherTrustSets ...[]PublisherTrustGrant,
 ) error {
+	if len(publisherTrustSets) > 1 {
+		return fmt.Errorf("semantic lock Evidence verification accepts at most one publisher trust grant set")
+	}
+	var publisherTrust []PublisherTrustGrant
+	if len(publisherTrustSets) == 1 {
+		publisherTrust = publisherTrustSets[0]
+	}
 	normalizeSemanticLock(&lock)
 
 	acceptedConformance, err := normalizeSemanticInterfaceConformance(conformances)
 	if err != nil {
 		return err
 	}
-	acceptedNamespaceAuthority, err := normalizeSemanticNamespaceAuthorities(namespaceAuthorities)
+	acceptedNamespaceAuthority, _, err :=
+		normalizeSemanticNamespaceAuthorities(namespaceAuthorities, publisherTrust)
 	if err != nil {
 		return err
 	}

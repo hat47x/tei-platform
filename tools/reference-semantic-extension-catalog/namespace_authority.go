@@ -4,36 +4,68 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
 
+const semanticNamespacePublisherAuthorityClass = "semantic-namespace-owner"
+
+type PublisherTrustGrant = authoritytrust.Grant
+
 type SemanticNamespaceAuthority struct {
-	Namespace           string `json:"namespace"`
-	Extension           string `json:"extension"`
-	EvidenceFingerprint string `json:"evidenceFingerprint"`
+	Namespace           string                `json:"namespace"`
+	Extension           string                `json:"extension"`
+	Issuer              authoritytrust.Issuer `json:"issuer"`
+	EvidenceFingerprint string                `json:"evidenceFingerprint"`
 }
 
 type CatalogNamespaceAuthority struct {
-	Namespace           string `json:"namespace"`
-	Extension           string `json:"extension"`
-	EvidenceFingerprint string `json:"evidenceFingerprint,omitempty"`
+	Namespace                     string `json:"namespace"`
+	Extension                     string `json:"extension"`
+	EvidenceFingerprint           string `json:"evidenceFingerprint,omitempty"`
+	TrustQualificationFingerprint string `json:"trustQualificationFingerprint,omitempty"`
 }
 
 func normalizeSemanticNamespaceAuthorities(
 	values []SemanticNamespaceAuthority,
-) (map[string]SemanticNamespaceAuthority, error) {
+	trustGrants []PublisherTrustGrant,
+) (
+	map[string]SemanticNamespaceAuthority,
+	map[string]authoritytrust.Qualification,
+	error,
+) {
 	out := map[string]SemanticNamespaceAuthority{}
+	qualifications := map[string]authoritytrust.Qualification{}
 	for _, value := range values {
 		value.Namespace = strings.TrimSpace(value.Namespace)
 		value.Extension = strings.TrimSpace(value.Extension)
+		value.Issuer.ID = strings.TrimSpace(value.Issuer.ID)
+		value.Issuer.Version = strings.TrimSpace(value.Issuer.Version)
 		value.EvidenceFingerprint = strings.TrimSpace(value.EvidenceFingerprint)
 		if value.Namespace == "" || value.Extension == "" ||
 			!validSHA256Fingerprint(value.EvidenceFingerprint) {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"semantic namespace authority requires namespace, extension, and evidence fingerprint",
 			)
 		}
+		qualification, err := authoritytrust.Verify(
+			authoritytrust.Statement{
+				AuthorityClass: semanticNamespacePublisherAuthorityClass,
+				Scope:          semanticNamespaceTrustScope(value.Namespace),
+				Issuer:         value.Issuer,
+				StatementFingerprint: value.EvidenceFingerprint,
+			},
+			trustGrants,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"semantic namespace authority %s publisher trust: %w",
+				value.Namespace,
+				err,
+			)
+		}
 		if existing, ok := out[value.Namespace]; ok && existing != value {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"semantic namespace %s has conflicting authority grants for %s and %s",
 				value.Namespace,
 				existing.Extension,
@@ -41,8 +73,13 @@ func normalizeSemanticNamespaceAuthorities(
 			)
 		}
 		out[value.Namespace] = value
+		qualifications[value.Namespace] = qualification
 	}
-	return out, nil
+	return out, qualifications, nil
+}
+
+func semanticNamespaceTrustScope(namespace string) string {
+	return "namespace:" + strings.TrimSpace(namespace)
 }
 
 func isReservedStandardNamespace(namespace string) bool {
@@ -54,13 +91,15 @@ func resolveNamespaceAuthorities(
 	selected map[string]ExtensionDescriptor,
 	coreNamespaces map[string]struct{},
 	grants []SemanticNamespaceAuthority,
+	publisherTrust []PublisherTrustGrant,
 ) (
 	map[string]bool,
 	[]CatalogNamespaceAuthority,
 	[]CatalogUnresolved,
 	error,
 ) {
-	accepted, err := normalizeSemanticNamespaceAuthorities(grants)
+	accepted, trustQualifications, err :=
+		normalizeSemanticNamespaceAuthorities(grants, publisherTrust)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -155,10 +194,12 @@ func resolveNamespaceAuthorities(
 				continue
 			}
 
+			qualification := trustQualifications[namespace]
 			resolved = append(resolved, CatalogNamespaceAuthority{
-				Namespace:           namespace,
-				Extension:           grant.Extension,
-				EvidenceFingerprint: grant.EvidenceFingerprint,
+				Namespace:                     namespace,
+				Extension:                     grant.Extension,
+				EvidenceFingerprint:           grant.EvidenceFingerprint,
+				TrustQualificationFingerprint: qualification.QualificationFingerprint,
 			})
 			for _, owner := range namespaceOwners {
 				if owner == grant.Extension {
