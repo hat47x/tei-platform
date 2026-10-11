@@ -193,3 +193,35 @@ func TestRebindingToAnotherProviderEmitsTransition(t *testing.T) {
 		t.Fatalf("silent rebinding: %+v", s.Transitions)
 	}
 }
+
+func TestCycleDetectedEvenWithUnrelatedMissingDependency(t *testing.T) {
+	r := NewRegistry()
+	c := Contract{ID: "std.missing", Version: "1.0.0", Shape: "shape-missing"}
+	_, err := r.Apply(0, []Provider{
+		provider("A", "tenant-A", storage, required(c), required(app)),
+		provider("B", "tenant-A", app, required(storage)),
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "cycle") {
+		t.Fatalf("cycle suppressed by missing dependency: %v", err)
+	}
+	if r.Snapshot().Revision != 0 {
+		t.Fatal("cycle mutation committed")
+	}
+}
+
+func TestChangedProviderDefinitionTriggersTransition(t *testing.T) {
+	r := NewRegistry()
+	s, err := r.Apply(0, []Provider{provider("A", "tenant-A", storage)}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := storage
+	changed.Shape = "shape-2"
+	s, err = r.Apply(s.Revision, []Provider{provider("A", "tenant-A", changed)}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Transitions) != 1 || s.Transitions[0].From == s.Transitions[0].To {
+		t.Fatalf("silent identity change: %+v", s.Transitions)
+	}
+}
