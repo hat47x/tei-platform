@@ -70,6 +70,72 @@ while [[ "$#" -gt 0 ]]; do
   esac
 done
 
+# Qualification must observe the checkout the caller selected. Ambient Git
+# redirection/config and replacement objects can spoof HEAD or ancestry.
+# This is independent of Git worktree cleanliness.
+assert_git_environment() {
+  local name
+  for name in GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR \
+    GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
+    GIT_REPLACE_REF_BASE GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS; do
+    if [[ -v "$name" ]]; then
+      echo "error: Git environment override is not allowed: $name" >&2
+      exit 2
+    fi
+  done
+  for name in ${!GIT_CONFIG_KEY_@} ${!GIT_CONFIG_VALUE_@}; do
+    echo "error: Git configuration injection is not allowed: $name" >&2
+    exit 2
+  done
+}
+
+assert_git_environment
+export GIT_NO_REPLACE_OBJECTS=1
+# Also prevent a repository-selected fsmonitor from being run by child scripts.
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=core.fsmonitor
+export GIT_CONFIG_VALUE_0=false
+
+git() {
+  command git --no-replace-objects --no-optional-locks -c core.fsmonitor=false "$@"
+}
+
+assert_git_history_and_root() {
+  local root="$1"
+  local top replacements grafts
+  top="$(git -C "$root" rev-parse --show-toplevel)" || {
+    echo "error: cannot inspect Git worktree root" >&2
+    exit 1
+  }
+  top="$(cd "$top" && pwd -P)" || {
+    echo "error: cannot resolve Git worktree root" >&2
+    exit 1
+  }
+  if [[ "$top" != "$root" ]]; then
+    echo "error: Git worktree root differs from the required checkout root" >&2
+    exit 1
+  fi
+  replacements="$(git -C "$root" for-each-ref --format='%(refname)' refs/replace)" || {
+    echo "error: cannot inspect Git replacement refs" >&2
+    exit 1
+  }
+  if [[ -n "$replacements" ]]; then
+    echo "error: Git replacement objects make qualification history untrustworthy" >&2
+    exit 1
+  fi
+  grafts="$(git -C "$root" rev-parse --git-path info/grafts)" || {
+    echo "error: cannot inspect Git grafts" >&2
+    exit 1
+  }
+  if [[ "$grafts" != /* ]]; then
+    grafts="$root/$grafts"
+  fi
+  if [[ -e "$grafts" || -L "$grafts" ]]; then
+    echo "error: legacy Git grafts make qualification history untrustworthy" >&2
+    exit 1
+  fi
+}
+
 if [[ "$CANDIDATE_REF" == -* ]]; then
   echo "error: --candidate must not begin with '-'" >&2
   exit 2
@@ -104,6 +170,7 @@ assert_clean_checkout() {
   local repo="$1"
   local label="$2"
   local status ignored hidden_index
+  assert_git_history_and_root "$repo"
   status="$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
   ignored="$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
   hidden_index="$(git -C "$repo" ls-files -v | grep -E '^[a-zS]' || true)"
