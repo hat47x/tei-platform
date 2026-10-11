@@ -77,7 +77,7 @@ func main() {
 	}
 	command := os.Args[1]
 	if command == "scenario" {
-		if err := runScenarioCommand(os.Args[2:]); err != nil {
+		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

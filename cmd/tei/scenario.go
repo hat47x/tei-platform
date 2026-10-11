@@ -23,7 +23,7 @@ type scenarioStepEvidence struct {
 	EvidenceNature string `json:"evidenceNature"`
 }
 
-func runScenarioCommand(args []string) error {
+func runScenarioCommand(args []string, output io.Writer) error {
 	if len(args) == 0 {
 		return fmt.Errorf("scenario requires verify, generate, run, or check")
 	}
@@ -106,7 +106,7 @@ func runScenarioCommand(args []string) error {
 	}
 	switch action {
 	case "generate":
-		return json.NewEncoder(os.Stdout).Encode(plan)
+		return json.NewEncoder(output).Encode(plan)
 	case "check":
 		saved, err := os.ReadFile(*planPath)
 		if err != nil {
@@ -124,9 +124,9 @@ func runScenarioCommand(args []string) error {
 		if !reflect.DeepEqual(old, plan) {
 			return fmt.Errorf("stale or modified CLI plan: regenerate from Scenario")
 		}
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{"scenarioId": s.ID, "planMatches": true})
+		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "planMatches": true})
 	case "verify", "run":
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence, "scope": "pattern-resolution-only; not Query/Command/Observation E2E"})
+		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence, "scope": "pattern-resolution-only; not Query/Command/Observation E2E"})
 	}
 	return fmt.Errorf("unreachable scenario action %q", action)
 }
