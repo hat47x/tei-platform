@@ -1053,3 +1053,59 @@ func containsDataDesignSubject(values []subject.Subject, want subject.Subject) b
 	}
 	return false
 }
+
+func TestDataDesignContextCarriesIdentityAndFunctionalDependencyReviewPolicy(t *testing.T) {
+	ctx := Build(
+		dataDesignRelationUniqueWorld(),
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil {
+		t.Fatal("data design context is missing")
+	}
+
+	for _, want := range []string{
+		"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+		"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
+		"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
+		"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
+		"preserve-unresolved-when-required-business-evidence-is-missing",
+		"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.DesignReviewProtocol, want) {
+			t.Fatalf("data design review policy %q is missing: %+v", want, ctx.DataDesign.DesignReviewProtocol)
+		}
+	}
+
+	for _, want := range []string{
+		"persistence-primary-key-is-not-business-identifier-or-candidate-key",
+		"current-data-uniqueness-is-not-functional-dependency-proof",
+		"statistical-correlation-is-not-functional-dependency",
+		"functional-dependency-direction-is-not-symmetric-by-default",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.AuthorityLimits, want) {
+			t.Fatalf("data design authority limit %q is missing: %+v", want, ctx.DataDesign.AuthorityLimits)
+		}
+	}
+
+	for _, want := range []string{
+		"when-is-the-identifier-valid",
+		"which-normalization-or-equivalence-policy-applies",
+		"if-surrogate-key-is-used-which-accepted-uniqueness-preserves-business-identity",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.BusinessIdentityEvidenceQuestions, want) {
+			t.Fatalf("business identity Evidence question %q is missing: %+v", want, ctx.DataDesign.BusinessIdentityEvidenceQuestions)
+		}
+	}
+
+	for _, want := range []string{
+		"under-what-scope-and-time-does-the-dependency-hold",
+		"is-the-dependency-an-accepted-business-rule-or-only-observed-in-current-data",
+		"is-the-reverse-dependency-also-accepted-or-only-the-stated-direction",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.FunctionalDependencyEvidenceQuestions, want) {
+			t.Fatalf("functional dependency Evidence question %q is missing: %+v", want, ctx.DataDesign.FunctionalDependencyEvidenceQuestions)
+		}
+	}
+}
+
