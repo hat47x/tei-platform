@@ -60,6 +60,17 @@ bash tools/public-release/audit-profile-coverage-test.sh
 
 ただし、このコマンドのツールファイルは現段階ではDraft PR内にあり、固定したSource commit自身に含まれるとは限らない。必ずReview済みのツールファイルを用意した上で、入力Git commit SHAは変更せずに実行する。
 
+## 候補ディレクトリとPublic Git Repositoryは異なる
+
+Draft PR #1195の`prepare-candidate.sh`は、Private側のGit履歴を持ち込まない通常のディレクトリを生成する。この出力には`.git`がない。
+
+そのまま`tools/repository-health-check.sh`を呼ぶと、同スクリプト冒頭の`git rev-parse --show-toplevel`の条件を満たせない。したがって、生成直後に「full Repository Health PASS」と称することはできない。
+
+- 最初に候補生成／`verify-candidate.sh`で固定元SHAとのbyte一致を確認する。
+- 候補ディレクトリに対し、Gitに依存しない`go build`、`go vet`、`go test`、CLI Validateを個別に試す。Git履歴を読むtestについても省略せず、移行要否を記録する。
+- 公開の新規開発リポジトリを採用する場合、**外部公開前の安全な非公開検証環境**で公開予定Sourceから新しいroot Git commitを作り、その新しいGit lineageの下でRepository Healthを実施する。元Private repoのtest receiptは引き継がない。
+- PublicへのPush、GitHub Actionsの有効化、Privateの履歴削除は、Source／権利／機密情報の独立審査と所有者の判断まで行わない。
+
 ## 未達Gate
 
 1. 許可リストが参照する**全**コード・Goテスト・Runbook・Source Fixtureの依存閉包（Go packageと非Goデータ）。単に全`*.go`を選んでも`go:embed`、動的なfile reader、外部サービス依存は保証しない。
