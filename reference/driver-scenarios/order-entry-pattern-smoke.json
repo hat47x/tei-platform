@@ -10,6 +10,13 @@
       "expectKind": "browse",
       "expectData": "sales.order",
       "expectQuery": "order_entry.recent_orders"
+    },
+    {
+      "id": "record-pattern",
+      "operation": "resolve-pattern",
+      "pattern": "order_entry.order_record",
+      "expectKind": "record",
+      "expectData": "sales.order"
     }
   ]
 }
