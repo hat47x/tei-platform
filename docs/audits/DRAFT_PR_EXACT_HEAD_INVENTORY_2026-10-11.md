@@ -58,3 +58,11 @@ A follow-up `is:open` search returned 37 PRs total. All were individually fetche
 | #1040 | `c28fcd2b38ff54616bcfe73ff1c038781453813b` | `main` | `4f7357a05d35c1fdb3370fa82fb55e67fe9a7314` |
 
 These base SHAs are per-PR observations and are not evidence that they match current `main`. No open PR was merged. Each future `main` merge still needs its own current PR/base/head checks and applicable repository-health qualification.
+
+## Latest refresh — 2026-10-11 18:45 JST
+
+- Current `main`: `6af87d84041e731d67634d887b62ceccd219723f`.
+- GitHub REST returned **0 open PRs**. PRs #1200, #1202, #1203, and #1206 are now closed and merged. Their exact heads are ancestors of this local integration candidate.
+- The GitHub issue timeline records `ready_for_review` before each merge: #1200 at 07:40:49Z (merge 07:40:53Z); #1202 at 09:43:09Z (merge 09:43:14Z); #1203 at 09:43:17Z (merge 09:43:38Z); #1206 at 09:43:20Z (merge 09:43:44Z). These events resolve the earlier uncertainty about whether the merged PRs were still Draft at merge time.
+- All **74 current remote branch heads** were checked against candidate `c0a1b556659e1214b38cdb186e5b29437fd16d00`: 74 ancestors, 0 outside, 0 missing. This check includes `tools/public-development-quality-profile-20261011`; its history is present, while its superseded allowlist and scripts were removed from the current tree. See [the archived source-profile review](PUBLIC_DEVELOPMENT_PROFILE_REVIEW_2026-10-11.md).
+- PRs and branches can change again. Re-fetch current `main`, all remote branch heads, and PR state before any later release or merge decision.

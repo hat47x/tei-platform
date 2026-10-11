@@ -33,3 +33,12 @@
 この走査はGit object本文の秘密らしい文字列を探すもの。commit author/committer metadata・commit messageの個人情報評価、Issue/PR/comment/review/添付、Actions logs/artifacts、Release assets、Wiki/Pages、第三者ライセンス・著作権・個人情報の人間確認は含まない。GitHub上のRefと履歴が取得時点以降に変わっていないことも、公開直前に再確認する。
 
 したがって、この記録はGitHub全公開面の監査完了やPublic化承認を意味しない。関連: [Issue #1187](https://github.com/hat47x/tei-platform/issues/1187)、[Issue #1188](https://github.com/hat47x/tei-platform/issues/1188)。
+
+## Latest refresh — 2026-10-11 18:45 JST
+
+- Mirror source: `hat47x/tei-platform`; current `main` `6af87d84041e731d67634d887b62ceccd219723f`.
+- `git ls-remote --refs` matched the mirror exactly: 1,053 refs (74 heads, 4 tags, 975 PR-head refs). `git rev-list --all --count`: 11,903 reachable commits; `git rev-list --objects --all`: 46,203 objects. After pruning obsolete PR merge refs and garbage-collecting only this disposable mirror, `git fsck --full --no-reflogs --unreachable` returned no diagnostics.
+- Gitleaks v8.29.1 scanned 11,526 commits / about 1.03 GB across all refs with full history and merge-parent diffs. It reported 12 finding rows at 2 source-line sites in the same test file (`business_action_ownership_boundary_projection_pressure_test.go`, lines 86–87); no new rule or source site appeared. Values and report JSON remain outside the repository. These source sites still need independent human review.
+- The earlier phrase “2件” described the 2 distinct source-line sites, not the 12 machine-report rows. It should not be interpreted as the total scan finding count.
+- Candidate history at `c0a1b556659e1214b38cdb186e5b29437fd16d00` was scanned separately: 8,375 commits / about 754 MB, with 6 finding rows at the same 2 source-line sites. The directory scan of the candidate working tree reported 1 row at line 86, the same known site. The directory scan included the pending documentation dispositions but not later Git metadata; the exact machine reports remain outside the repository.
+- Neither scan covers Git metadata privacy, Issues/PR discussions, workflow logs/artifacts, releases, Wiki/Pages, or human rights review.

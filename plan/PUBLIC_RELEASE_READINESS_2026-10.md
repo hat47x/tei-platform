@@ -31,14 +31,14 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | サーバー保護 | 過去の#513/#972でmain無保護が記録された。Private rulesets APIは現プランで403 |
 | 全履歴・非Git面 | **未監査**。この一覧から公開可とは推論しない |
 
-2026-10-11のGitHub API再取得では、Open PR 37件（Draft 33件、Ready 4件）すべての現在のexact head SHAがローカル集約候補の祖先に含まれていた。SHA・base一覧は[Open PR exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)に記録した。これはPRの `main` 統合資格ではなく、Draft PRを `main` にmergeしない。
+2026-10-11 18:45 JSTの再取得ではOpen PRは0件。リモートbranch 74件のexact headはすべて統合候補の祖先に含まれる。Draft PR #1200・#1202・#1203・#1206はいずれもReady化イベントの後にmergeされたことをGitHub timelineで確認した。記録は[PR・branch exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)を参照。今後のmain統合では、Draft PRを統合せず、直前のexact head・base・current mainを再取得して判断する。
 
 ## 3. P0-A 機密性・権利・公開面
 
-- 2026-10-11にGitHubの全1,081 refsを一時mirrorし、Gitleaks v8.29.1でGit本文を走査した記録: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。検出2件はGo enum識別子の誤検知と初期判定した。独立した人間reviewerの確認は未完了であり、Issue #1188のGateは閉じない。
+- 2026-10-11 18:45 JSTにGitHubの全1,053 refsを一時mirrorし、Gitleaks v8.29.1でGit本文を走査した。12 finding rowsは同一テストファイルの2 source-line sitesにあり、自動検知とCodexによる初期確認では型付きenum識別子と判断した。独立した人間reviewerの確認は未完了であり、Issue #1188のGateは閉じない。詳細: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。
 - 2026-10-11の初期third-party inventory: [第三者ライセンス棚卸し](../docs/audits/THIRD_PARTY_LICENSE_INVENTORY_2026-10-11.md)。確認済みコンポーネントの通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ集約。全資料・assetと配布物の確認、#941の再配布境界は未解決。
-- [x] 信頼済みHostでprivate mirror cloneを取得し、全refs（active branches、tags、PR refsを含む）と `git rev-list --objects --all` を列挙。2026-10-11時点のmirrorは1,081 refs / 46,016 objects。commit author/committer metadataとメッセージの公開適合性は未確認。
-- [x] バージョン固定済みのGitleaksでGit履歴を走査。2検出をGo enum識別子の誤検知と初期判定したが、独立した人間reviewerの承認待ち。報告書・検出値はRepository外に保管し、Issueへ候補値を記録していない。Evidence: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。作業ツリー自体の未追跡・一時ファイル検査は別途未実施。
+- [x] 信頼済みHostでprivate mirrorを取得し、全refsと `git rev-list --objects --all` を列挙。2026-10-11 18:45 JSTのmirrorは1,053 refs / 46,203 objects。commit author/committer metadataとメッセージの公開適合性は未確認。
+- [x] バージョン固定済みGitleaksでGit履歴を走査。12 finding rowsは2 source-line sitesに限定され、独立した人間reviewerの承認待ち。報告書・検出値はRepository外に保管し、Issueへ候補値を記録していない。作業tree scanは同監査記録の最新追記を参照。
 - [ ] 個人情報、社内・顧客情報、credential、endpoint、private URL、外部文献の出典・利用条件等の公開適合性を確認する。
 - [ ] Issue/PR/reviews/commentsと添付、全過去Actions logs/artifacts、Release/assets、Wiki/Pages等も対象にする。API取得不可なら `NOT_INSPECTED`。
 - [x] 初期license inventoryを実施。root `LICENSE` はMIT、製品の固定Go moduleは[`github.com/jackc/pgx/v5 v5.7.6`](https://github.com/jackc/pgx/tree/v5.7.6)（MIT）へ移行した。Go 1.23.2でmodule checksumとruntime依存を解決し、直接・推移runtime依存のMIT/BSD 3-Clause通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ更新した。全release targetのSBOM、Ponytailを含む履歴内コピー、全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
