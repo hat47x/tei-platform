@@ -56,6 +56,15 @@ func TestReferenceReadScenarioRunsBrowseRecordReferenceAndHeaderDetailThroughDri
 		t.Fatalf("first order-line id=%#v", got)
 	}
 
+	resultType := reflect.TypeOf(readScenarioResult{})
+	if _, found := resultType.FieldByName("SelectedRow"); found {
+		t.Fatal("read scenario result reintroduced ambiguous SelectedRow runtime identity")
+	}
+	selectedRowField, found := resultType.FieldByName("SelectedRowIndex")
+	if !found || selectedRowField.Tag.Get("json") != "selectedRowIndex" {
+		t.Fatalf("runtime selection field is not explicitly labelled as an index: %+v", selectedRowField)
+	}
+
 	rowType := reflect.TypeOf(semanticRowProjection{})
 	if rowType.NumField() != 1 || rowType.Field(0).Name != "Attributes" {
 		t.Fatalf("runtime row projection acquired identity authority fields: %v", rowType)
@@ -69,6 +78,7 @@ func TestReferenceReadScenarioRunsBrowseRecordReferenceAndHeaderDetailThroughDri
 		"runtime-row-index-is-selection-state-not-business-identity",
 		"runtime-row-or-attribute-value-is-not-business-identity-proof",
 		"explicit-result-mapping-is-semantic-correspondence-not-business-key-proof",
+		"scenario-application-environment-and-binding-identities-are-runtime-context-not-business-data-identity",
 	} {
 		if !containsString(result.AuthorityLimits, limit) {
 			t.Fatalf("runtime identity authority limit %q is missing: %+v", limit, result.AuthorityLimits)
@@ -168,6 +178,10 @@ func TestReadScenarioHTTPKeepsGateCProvenanceSeparateFromSemanticResult(t *testi
 	var response webReadScenarioResponse
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
+	}
+	if strings.Contains(recorder.Body.String(), "\"selectedRow\"") ||
+		!strings.Contains(recorder.Body.String(), "\"selectedRowIndex\": 0") {
+		t.Fatalf("read scenario JSON does not distinguish row selection state from identity: %s", recorder.Body.String())
 	}
 	if response.HandoverBaselineID != testBaselineID ||
 		response.BaselineRepositoryRevision != testBaselineRevision ||

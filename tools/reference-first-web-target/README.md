@@ -90,12 +90,15 @@ go run ./tools/reference-first-web-target \
 
 Customer IDから`repair_intake.intake.customer_id`のmapped rowを作り、`repair_intake.customer_reference`をDriverのEnvironment-aware Contract Query resolutionで実行します。`order_entry`が使う`customer.customer`の意味とContract Query（`master_data.customer`の`find_by_id`）を、コピーせず同じidentityで使います。
 
+JSON結果では、HTTP入力を`requestedCustomerId`として明示します。これは入力値を記録するruntime stateであり、business occurrence identifierの宣言ではありません。同様にRead Scenarioの`selectedRowIndex`はruntime上の選択位置です。mapped row、Contract Queryの結果row、個々のAttribute値も、それだけではbusiness identityのEvidenceになりません。`scenarioId`、`applicationId`、Environment、Instance、executor binding等のidentityも実行文脈を示すもので、business data identityとは別です。
+
 限界:
 
 - developmentのExecutorはsynthetic fixtureで、実Databaseへの接続ではありません。
 - productionにはContract Query executor bindingが無く、productionでは実行できません。developmentのExecutorへ代替しません。
 - 認証の門はありません（Reference診断用）。
 - Customer IDを整数へ変換するのはTarget内のfixture上の選択で、Canonicalな型規則ではありません。
+- `requestedCustomerId`、`selectedRowIndex`、mapped row、result rowをbusiness keyへ昇格しません。business identityはCanonical / accepted Evidence側で別に確認します。
 
 ## Authority boundary
 
