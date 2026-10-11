@@ -39,6 +39,10 @@ must_fail() {
   fi
   [[ ! -e "$work/reject" ]]
 }
+# A provisional profile produced for another commit must be rejected.
+{ printf '# Based on exact private main revision: %s\n' '0000000000000000000000000000000000000000'; cat "$work/reviewed"; } > "$work/wrong-revision"
+must_fail "$sha" "$work/wrong-revision"
+
 # The canonical audit is mandatory when its compatibility path is omitted.
 grep -v '^docs/audits/CURRENT_AUDIT.md$' "$work/reviewed" > "$work/without-canonical"
 must_fail "$sha" "$work/without-canonical"
@@ -49,6 +53,50 @@ git -C "$work/repo" add docs/index.md
 git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm link-to-legacy
 linked_sha=$(git -C "$work/repo" rev-parse HEAD)
 must_fail "$linked_sha" "$work/reviewed"
+
+# Any locally linked file absent from the selected public tree is a blocker.
+printf '# Index\n\n[Missing](missing.md)\n' > "$work/repo/docs/index.md"
+git -C "$work/repo" add docs/index.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm unresolved-local-link
+missing_sha=$(git -C "$work/repo" rev-parse HEAD)
+must_fail "$missing_sha" "$work/reviewed"
+
+# A map to an existing but unrelated file is not enough: the redirect must link there.
+printf 'plan/OLD_AUDIT.md\tdocs/index.md\n' > "$work/wrong-map"
+if python3 "$here/select-public-docs.py" "$work/repo" "$sha" "$work/reviewed" "$work/wrong-map" "$work/wrong-output" > /dev/null 2>&1; then
+  echo 'expected incorrect mapping refusal' >&2
+  exit 1
+fi
+[[ ! -e "$work/wrong-output" ]]
+
+# Reset the other link to valid content so the next refusal tests isolate the redirect.
+printf '# Index\n\n[Current](audits/CURRENT_AUDIT.md)\n' > "$work/repo/docs/index.md"
+git -C "$work/repo" add docs/index.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm restore-index
+
+# The candidate must still point from the compatibility guide to the declared target.
+printf '# 監査記録の移動案内\n\n[Different](../docs/index.md)\n' > "$work/repo/plan/OLD_AUDIT.md"
+git -C "$work/repo" add plan/OLD_AUDIT.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm mismatched-redirect
+mismatch_sha=$(git -C "$work/repo" rev-parse HEAD)
+must_fail "$mismatch_sha" "$work/reviewed"
+
+# A document containing more than just a redirect must not be automatically omitted.
+python3 - "$work/repo/plan/OLD_AUDIT.md" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+p.write_text('# 監査記録の移動案内\n\n[移動先](../docs/audits/CURRENT_AUDIT.md)\n\n' + 'Additional content.\n' * 150, encoding='utf-8')
+PY
+git -C "$work/repo" add plan/OLD_AUDIT.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm expanded-document
+expanded_sha=$(git -C "$work/repo" rev-parse HEAD)
+must_fail "$expanded_sha" "$work/reviewed"
+
+# Restore the short redirect for subsequent tests.
+printf '# 監査記録の移動案内\n\n[移動先](../docs/audits/CURRENT_AUDIT.md)\n' > "$work/repo/plan/OLD_AUDIT.md"
+git -C "$work/repo" add plan/OLD_AUDIT.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm restored-redirect
 
 # Textual historical mention (not an active URL) may be retained for audit context.
 printf '# Index\n\nHistoric file: plan/OLD_AUDIT.md. [Current](audits/CURRENT_AUDIT.md)\n' > "$work/repo/docs/index.md"

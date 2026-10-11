@@ -105,6 +105,12 @@ def main() -> None:
         mode, kind, _ = meta.decode("ascii").split()
         if kind == "blob" and mode in ("100644", "100755"):
             blobs.add(name.decode("utf-8"))
+    # A path-list derived from a specific source tree is not transferable to
+    # a different Git revision merely because the filenames still match.
+    for raw_line in input_file.read_text(encoding="utf-8").splitlines():
+        label = "# Based on exact private main revision: "
+        if raw_line.startswith(label) and raw_line[len(label):] != sha:
+            stop("Reviewed source snapshot differs from requested commit")
     reviewed = read_paths(input_file)
     if not reviewed or not set(reviewed) <= blobs:
         stop("Reviewed manifest contains a missing/non-regular source path")

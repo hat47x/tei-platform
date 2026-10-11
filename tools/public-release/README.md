@@ -58,7 +58,25 @@ bash tools/public-release/verify-candidate.sh \
 bash tools/public-release/select-public-docs-test.sh
 ```
 
-The selector only drops a mapped entry when its canonical destination is already in the reviewed list and the source is still an obvious redirect. It scans retained Markdown for ordinary inline, reference-style and HTML links that resolve to omitted entries. **Any such link blocks selection until the retained document is corrected or excluded.** A published documentation site also needs separate complete link-checking (including external links, dynamic references and generated HTML); this targeted scan is not an exhaustive link audit. Do not publish a generated allowlist automatically.
+The selector only drops a mapped entry when its canonical destination is already in the reviewed list, the source remains a short compatibility guide and its link resolves to that exact destination. It scans retained Markdown for ordinary inline, reference-style and HTML links. **Links to any omitted or otherwise unselected local file block selection**, including links outside the repository; review the canonical destination or include its target before proceeding. This is a fail-closed subset check, not a complete Markdown/HTML parser: generated pages, dynamically formed links, external websites, anchor validity and fenced code samples need independent review. Do not publish a generated allowlist automatically.
+
+### Current Markdown inventory (2026-10-11 main)
+
+| Initial review class | Files | Publication handling |
+| --- | ---: | --- |
+| Compatibility-only relocation guides | 38 | Candidate for exclusion; verify the destination and all incoming links |
+| Current explanatory `docs/` excluding the guides | 35 | Prioritize current reader-facing entrypoints and conformance proof |
+| Product and requirements | 7 | Preserve canonical requirements and value statements |
+| Canonical ADRs (`plan/adr/`) | 32 | Preserve current decisions and their references |
+| Planning design (`plan/design/`) | 22 | Review authority and reference requirements |
+| Planning workstream and analysis (`plan/` root excluding the guides) | 189 | Review for current value; avoid publishing every exploratory note |
+| Planning Issue records (`plan/issue/`) | 87 | Evaluate against GitHub Issue SSOT and traceability needs |
+| Historical audits (`docs/audits/`) | 22 | Preserve when evidence is necessary; otherwise private archive is a candidate |
+| Reference and tool documentation | 44 | Preserve required build, usage and verification instructions |
+| Root, research, and skill documents | 6 | Review separately |
+| **Total** | **482** | Classification is by location, not human approval |
+
+**No broad directory is automatically approved or excluded.** A path in `plan/issue/` or `docs/audits/` may be an essential evidence source. Direct deletion from the development repository is separate from omitting its content in a new Public checkout. The two short external-design reference notes in `plan/` are also candidates for individual review; they are not in the 38-entry redirect map and must not be assumed disposable without checking incoming links.
 
 Other historical audits, design-pressure notes and implementation Evidence are **not** excluded solely because they are dated or not part of the current introduction: their authority, cross-references, reproducibility and current readers must be evaluated before inclusion or removal. The published documentation navigation should lead to Product/Requirement/Architecture, current plan and verified Evidence rather than use individual exploratory notes as introductory material.
 
