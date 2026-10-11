@@ -35,6 +35,7 @@ type ProbeReport struct {
 	IgnoredArtifacts     string `json:"ignoredArtifacts"`
 	HiddenIndexFlags     string `json:"hiddenIndexFlags"`
 	HistoryOverrides     string `json:"historyOverrides"`
+	AmbientGitOverrides  string `json:"ambientGitOverrides"`
 	EligibleForLocalGate bool   `json:"eligibleForLocalGate"`
 	LiveRemoteMain       string `json:"liveRemoteMain"`
 	Credentials          string `json:"credentials"`
@@ -57,6 +58,30 @@ func (b *limitedOutput) Write(p []byte) (int, error) {
 	return b.buffer.Write(p)
 }
 
+// A Git environment override can redirect -C commands to another object
+// store, index, worktree or namespace. It must not turn a local probe into a
+// success assertion about a different repository.
+func ambientGitOverridesPresent() bool {
+	for _, entry := range os.Environ() {
+		key, _, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		switch key {
+		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
+			"GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+			"GIT_NAMESPACE", "GIT_REPLACE_REF_BASE", "GIT_CONFIG_COUNT",
+			"GIT_CONFIG_PARAMETERS":
+			return true
+		}
+		if strings.HasPrefix(key, "GIT_CONFIG_KEY_") ||
+			strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
+			return true
+		}
+	}
+	return false
+}
+
 func commandOutputWithContext(ctx context.Context, root string, maxBytes int, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", append([]string{
 		"--no-replace-objects", "--no-optional-locks", "-C", root, "-c", "core.fsmonitor=false",
@@ -66,6 +91,7 @@ func commandOutputWithContext(ctx context.Context, root string, maxBytes int, ar
 	output := &limitedOutput{maxBytes: maxBytes}
 	cmd.Stdout = output
 	cmd.Stderr = io.Discard
+	cmd.Env = append(os.Environ(), "GIT_NO_REPLACE_OBJECTS=1")
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}
@@ -84,7 +110,7 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		Checkout: "unavailable", ExpectedHeadMatch: "not-checked",
 		TrackingMainMatch: "not-checked", MainAncestor: "not-checked",
 		CheckoutClean: "not-checked", IgnoredArtifacts: "not-checked", HiddenIndexFlags: "not-checked",
-		HistoryOverrides: "not-checked",
+		HistoryOverrides: "not-checked", AmbientGitOverrides: "not-checked",
 		LiveRemoteMain:   "not-checked", Credentials: "not-checked",
 		RepositoryHealth: "not-run",
 	}
@@ -92,6 +118,11 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		return result
 	}
 	result.Git = "available"
+	result.AmbientGitOverrides = "absent"
+	if ambientGitOverridesPresent() {
+		result.AmbientGitOverrides = "present"
+		return result
+	}
 	if _, err := exec.LookPath("go"); err == nil {
 		result.Go = "available"
 	}
@@ -202,7 +233,7 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 	}
 	result.EligibleForLocalGate = result.Go == "available" && result.CheckoutClean == "clean" &&
 		result.IgnoredArtifacts == "absent" && result.HiddenIndexFlags == "absent" &&
-		result.HistoryOverrides == "absent"
+		result.HistoryOverrides == "absent" && result.AmbientGitOverrides == "absent"
 	return result
 }
 

@@ -46,7 +46,7 @@ func TestProbeMatchesLocalCheckoutButNeverClaimsFullQualification(t *testing.T) 
 	if got.Git != "available" || got.Go != "available" || got.Checkout != "present" ||
 		got.ExpectedHeadMatch != "match" || got.TrackingMainMatch != "match" ||
 		got.MainAncestor != "match" || !got.EligibleForLocalGate ||
-		got.CheckoutClean != "clean" || got.IgnoredArtifacts != "absent" || got.HiddenIndexFlags != "absent" || got.HistoryOverrides != "absent" {
+		got.CheckoutClean != "clean" || got.IgnoredArtifacts != "absent" || got.HiddenIndexFlags != "absent" || got.HistoryOverrides != "absent" || got.AmbientGitOverrides != "absent" {
 		t.Fatalf("unexpected preflight: %#v", got)
 	}
 	if got.RepositoryHealth != "not-run" || got.LiveRemoteMain != "not-checked" || got.Credentials != "not-checked" {
@@ -238,5 +238,30 @@ func TestCommandOutputRefusesTruncationAndCancelledExecution(t *testing.T) {
 	cancel()
 	if data, err := commandOutputWithContext(ctx, root, 1<<20, "rev-parse", "HEAD"); err == nil || data != "" {
 		t.Fatalf("cancelled command returned a successful observation: %q %v", data, err)
+	}
+}
+
+func TestProbeRejectsAmbientGitOverridesWithoutInvokingGit(t *testing.T) {
+	for _, key := range []string{"GIT_INDEX_FILE", "GIT_DIR", "GIT_WORK_TREE",
+		"GIT_OBJECT_DIRECTORY", "GIT_REPLACE_REF_BASE", "GIT_CONFIG_COUNT",
+		"GIT_CONFIG_KEY_0", "GIT_CONFIG_PARAMETERS"} {
+		t.Run(key, func(t *testing.T) {
+			root, head := exampleCheckout(t)
+			t.Setenv(key, filepath.Join(t.TempDir(), "untrusted"))
+			got := probe(root, head, head)
+			if got.AmbientGitOverrides != "present" || got.EligibleForLocalGate ||
+				got.Checkout != "unavailable" {
+				t.Fatalf("ambient %s redirected checkout: %#v", key, got)
+			}
+		})
+	}
+}
+
+func TestProbeRejectsCoreWorktreeRedirection(t *testing.T) {
+	root, head := exampleCheckout(t)
+	gitTest(t, root, "config", "core.worktree", t.TempDir())
+	got := probe(root, head, head)
+	if got.Checkout != "unavailable" || got.EligibleForLocalGate {
+		t.Fatalf("local Git config redirected physical checkout: %#v", got)
 	}
 }

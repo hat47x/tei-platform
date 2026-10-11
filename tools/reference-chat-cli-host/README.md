@@ -19,3 +19,5 @@ Hostが信頼できるGitHub経路からfresh checkoutと最新origin/mainを確
 Gitの`refs/replace`やlegacy graftsは、表示上のコミットSHAを変えずに祖先判定を変更できるため拒否します。Git呼び出しは`--no-replace-objects`で保護し、リポジトリが指定した`fsmonitor`は実行しません。元ソースが未信頼なら、そもそもShellで内容を実行する前に別経路でCheckoutと資格を検査する必要があります。
 
 Gitのread-only問い合わせには1コマンドあたり15秒のtimeoutと8MiBのstdout上限を設ける。超過やキャンセル時は**完全な観測を得られなかった失敗**とし、部分出力を状態判定へ利用しない。Gitのstderrも資格情報を含み得るため報告へ混ぜない。この上限も、`qualify.sh`による全体検証のtimeoutやログ保管契約を置き換えない。
+
+実行環境側の`GIT_DIR`、`GIT_WORK_TREE`、`GIT_INDEX_FILE`、代替object store、Git configuration injection等が設定されていれば、`-C`で別checkoutを指定したように見せかける危険があるため`ambientGitOverrides=present`で停止する。子Gitプロセスへ`GIT_NO_REPLACE_OBJECTS=1`を明示する。この検査もHost認証と最新remoteへの接続を証明するものではない。
