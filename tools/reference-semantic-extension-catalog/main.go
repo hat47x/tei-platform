@@ -73,11 +73,13 @@ func run(args []string) int {
 	var wiringPaths pathFlags
 	var conformancePaths pathFlags
 	var namespaceAuthorityPaths pathFlags
+	var publisherTrustPaths pathFlags
 	var evaluatorBindingPaths pathFlags
 	flags.Var(&roots, "require", "root extension requirement EXTENSION@MAJOR; repeatable")
 	flags.Var(&wiringPaths, "interface-wiring", "semantic interface wiring JSON file; repeatable")
 	flags.Var(&conformancePaths, "interface-conformance", "accepted semantic interface conformance JSON file; repeatable")
 	flags.Var(&namespaceAuthorityPaths, "namespace-authority", "accepted semantic namespace authority JSON file; repeatable")
+	flags.Var(&publisherTrustPaths, "publisher-trust", "current publisher trust grant JSON file; repeatable")
 	flags.Var(&evaluatorBindingPaths, "evaluator-binding", "semantic Validation evaluator binding JSON file; repeatable")
 	if err := flags.Parse(args); err != nil {
 		return 2
@@ -99,7 +101,7 @@ func run(args []string) int {
 	}
 	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" ||
 		(strings.TrimSpace(*verifySemanticLockPath) == "" && len(roots) == 0) {
-		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-evaluator-binding FILE] [-semantic-lock-out FILE] [-validation-plan-out FILE] [-verify-validation-plan FILE] [-verify-semantic-lock-evidence] [-subject-context] [-subject-kind KIND] [-subject-id ID]")
+		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-publisher-trust FILE] [-evaluator-binding FILE] [-semantic-lock-out FILE] [-validation-plan-out FILE] [-verify-validation-plan FILE] [-verify-semantic-lock-evidence] [-subject-context] [-subject-kind KIND] [-subject-id ID]")
 		return 2
 	}
 
@@ -145,10 +147,16 @@ func run(args []string) int {
 				fmt.Fprintln(os.Stderr, err)
 				return 1
 			}
+			publisherTrust, err := loadPublisherTrustGrants(publisherTrustPaths)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
 			if err := verifySemanticLockAcceptedEvidenceBindings(
 				lock,
 				conformances,
 				namespaceAuthorities,
+				publisherTrust,
 			); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				return 1
@@ -179,6 +187,11 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	publisherTrust, err := loadPublisherTrustGrants(publisherTrustPaths)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		coreCatalogFromSourceIndex(index),
 		descriptors,
@@ -186,6 +199,7 @@ func run(args []string) int {
 		wirings,
 		conformances,
 		namespaceAuthorities,
+		publisherTrust,
 	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -317,6 +331,18 @@ func loadSemanticNamespaceAuthorities(paths []string) ([]SemanticNamespaceAuthor
 		var value SemanticNamespaceAuthority
 		if err := decodeStrictJSONFile(path, &value); err != nil {
 			return nil, fmt.Errorf("namespace authority %s: %w", path, err)
+		}
+		out = append(out, value)
+	}
+	return out, nil
+}
+
+func loadPublisherTrustGrants(paths []string) ([]PublisherTrustGrant, error) {
+	out := make([]PublisherTrustGrant, 0, len(paths))
+	for _, path := range paths {
+		var value PublisherTrustGrant
+		if err := decodeStrictJSONFile(path, &value); err != nil {
+			return nil, fmt.Errorf("publisher trust %s: %w", path, err)
 		}
 		out = append(out, value)
 	}
