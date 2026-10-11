@@ -1,10 +1,6 @@
 # TEI（鼎／テイ）
 
-> **開発状況・レビューに関する重要な注意**  
-> TEIは生成AIを用いて開発中の実験的なプロジェクトです。現段階では、コード・設計・セキュリティに対する体系的な**人的レビューは未実施**です。  
-> READMEや各種文書に記載するテスト結果・Gate判定は、対象・時点・検証範囲を限定したものであり、人的レビューや品質・安全性の保証を意味しません。現時点で本番利用を前提としないでください。
-
-TEIは、業務上の意味を長く保ちながら、実装・データベース・実行先・実行環境を必要以上に一体化しない業務アプリケーション基盤を目指す実験的なプロジェクトです。
+TEIは、業務上の意味を長く保ち、実装・データベース・実行先・実行環境を結び付けて扱うソフトウェア開発基盤を目指す実験的なプロジェクトです。
 
 画面や表を素早く作ることだけでなく、技術を変更しても次の点を追跡・検証できる状態を重視します。
 
@@ -15,130 +11,107 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 - 外部世界で実際に何が観測されたか
 - 何が未検証・未解決か
 
-> **現在の開発段階**  
-> CLIとReference Workspaceを通じて、業務定義、実装、実行結果、観測のつながりを検証しています。Gate A・B・Cの過去のReady判定は、対象を固定した実証結果であり、最新のmainや製品全体の品質保証ではありません。実装済みの範囲と未完成の機構は[現在の実装状況](docs/status.md)を参照してください。
-
-完成したlow-code製品、production-ready Editor、production-ready multi-Target Runtimeを提供する段階ではありません。
-
 ## どこから読むか
 
-### 製品価値と開発計画
+### 製品の価値と開発計画
 
-- **最上位の価値:** [TEI Product Value](product/value/TEI_PRODUCT_VALUE.md)
-- **成熟した姿:** [TEI Product Vision](product/vision/TEI_PRODUCT_VISION.md)
-- **判断原則:** [TEI Product Principles](product/principles/TEI_PRODUCT_PRINCIPLES.md)
-- **Product Requirements:** [TEI Product Requirements](requirements/TEI_PRODUCT_REQUIREMENTS.md)
-- **Requirement → PAS → Evidence:** [Upstream Acceptance Scenario Traceability](plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
-- **開発全体:** [TEI Master Plan](plan/MASTER_PLAN.md)
+- **最上位の価値:** [TEIが大切にする価値](product/value/TEI_PRODUCT_VALUE.md)
+- **目指す姿:** [TEIが目指す姿](product/vision/TEI_PRODUCT_VISION.md)
+- **判断原則:** [TEIの設計原則](product/principles/TEI_PRODUCT_PRINCIPLES.md)
+- **製品要求:** [TEIの製品要求](requirements/TEI_PRODUCT_REQUIREMENTS.md)
+- **要求から受入条件までの追跡:** [上流の受入シナリオ追跡](plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
+- **開発全体:** [TEI全体計画](plan/MASTER_PLAN.md)
 - **v1主線:** [v1 Reference Application 実証計画](plan/V1_REFERENCE_APPLICATION_PLAN.md)
-- **Requirement Gap:** [Product Requirement Gap Audit](plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)
-- **Milestones:** [TEI Milestones](plan/MILESTONES.md)
+- **要求の不足:** [製品要求の不足に関する調査](plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)
+- **節目:** [TEIの開発段階](plan/MILESTONES.md)
 
-### 現在の判定段階
-
-- **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md) — Ready
-- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md) — Ready
-- **Gate B Evidence:** [Acquisition](plan/GATE_B_EVIDENCE_ACQUISITION.md) / [Runbook](plan/GATE_B_EVIDENCE_RUNBOOK.md)
-- **Gate B → C:** [Handover Contract](plan/GATE_B_TO_C_HANDOVER_CONTRACT.md) / [Baseline B](plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)
-- **Gate C:** [Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md) — Ready / [Evidence Contract](plan/GATE_C_EVIDENCE_CONTRACT.md) / [First Web Target Runbook](plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
-
-### 技術を読む / 動かす
+### 技術を知る・動かす
 
 - [設計文書の案内](docs/README.md)
-- [はじめてTEIを知る方へ](docs/for-readers.md)
+- [TEIを初めて知る方へ](docs/for-readers.md)
 - [TEIの考え方](docs/overview.md)
 - [使い始める](docs/getting-started.md)
 - [全体構成](docs/architecture.md)
 - [現在の実装状況](docs/status.md)
 
-## 開発状況と検証範囲
-
-Go CLI、Driver、Reference Workspace、および第一Web Targetの一部について、固定Source・環境での実証を積み重ねています。一方、統合モデラー、汎用Target Runtime、多様な外部Provider、本番環境での安全性は未完成または未検証です。
-
-過去の実証結果と現在の実装は、次の資料で区別しています。
-
-- [現在の実装状況](docs/status.md)：実装範囲と未完成事項の概要
-- [Gate A](plan/GATE_A_READINESS_AUDIT.md)・[Gate B](plan/GATE_B_READINESS_AUDIT.md)・[Gate C](plan/GATE_C_READINESS_AUDIT.md)：それぞれの固定revisionとEvidenceに対する判定
-- [TEI Master Plan](plan/MASTER_PLAN.md)・[Milestones](plan/MILESTONES.md)：今後の開発方針と優先順位
-
 ## 設計上の主要原則
 
-### Meaningと実装を分ける
+### 意味と実装を分ける
 
 ```text
-Authoring Source
+設計元の記述
       ↓
-Canonical Meaning
+正本となる意味
       ↓
-Binding / Realization
+対応付け・実現方法
       ↓
-Provider / Target / Runtime
+提供元・実行先・実行基盤
       ↓
-Execution
+実行
       ↓
-Observation / Evidence
+観測・検証根拠
 ```
 
-「何で実装するか」を「何を意味するか」へ暗黙に混ぜません。
+「何を意味するか」と「何で実装するか」を区別します。
 
-### file pathをSemantic identityにしない
+### ファイルの場所を意味の識別子にしない
 
-Source-to-Canonical Traceabilityを持ちつつ、file pathはsemantic identityではありません。
+設計元の記述から正本となる意味までをたどれるようにします。ファイルの場所は意味を識別するものではありません。
 
-file moveだけでlogical identityが変わらない場合はsemantic no-opになり得ます。logical rename / Canonical identity変更はSemantic changeとして扱います。
+ファイルの移動だけで論理上の識別子が変わらない場合、意味の変更はありません。論理名や正本となる意味の識別子を変える場合は、意味の変更として扱います。
 
-### SQLやGoを敵にしない
+### SQLやGoをそのまま生かす
 
-`.tei`へ全面移植する方針ではありません。
+`.tei`の定義に加え、既存のSQLやGoなども、それぞれの形式のまま利用します。
 
 ```text
-*.tei   semantic / application / lifecycle definitions
-*.sql   native SQL
-*.go    custom implementation
-*.json  observed / derived artifacts
-*.yaml  workspace / external configuration
-*.md    documentation
+*.tei   意味・アプリケーション・ライフサイクルの定義
+*.sql   SQL
+*.go    個別の実装
+*.json  観測・導出した記録
+*.yaml  作業領域・外部設定
+*.md    文書
 ```
 
-native assetはauthoritativeなままSource-to-Canonical traceへ接続します。
+既存形式の資産を正本として扱いながら、設計元の記述から正本となる意味までをたどれるようにします。
 
-### CommandとObservationを分ける
+### 命令と観測を分ける
 
 ```text
-Command Business Result
-        ↓ separate operation
-explicit read boundary
+命令に対する業務上の結果
+        ↓ 別の操作
+明示した読み取り境界
         ↓
-Observation / Execution Error
+観測結果・実行時のエラー
 ```
 
-Command acknowledgementだけでexternal state成立とはみなしません。
+命令を受け付けたという応答だけで、外部の状態が変わったとは判断しません。
 
-Business Result、Execution Error、Observation、Developer Diagnosticを分離します。
+業務上の結果、実行時のエラー、観測結果、開発者向け診断を区別します。
 
-### Studio / AIを第二正本にしない
+### 設計情報を共通の受入境界へ集約する
 
-Gate C後のauthoringは次へ収束させます。
+Gate C後の設計と編集は、次の形にまとめていきます。
 
 ```text
-file-native / Studio / CLI / AI
-          ↓ candidate
-Shared Acceptance Boundary
+ファイルを直接扱う方法・Studio・コマンドラインツール・AI
+          ↓ 候補
+共通の受入境界
           ↓
-authoritative source
+正本となる記述
           ↓ reload
-Canonical meaning
+正本となる意味
 ```
 
-Preview / Rejectはnon-mutating、stale `baseModelRevision`は明示処理します。
+プレビューや却下では元の記述を変えず、古い`baseModelRevision`は明示的に扱います。
 
-Studio / AI都合でmandatory authored Stable ID / UUIDやPatch-only authoringを前提にしません。
+利用者が安定識別子やUUIDを記述する方法も、差分から編集する方法も選べます。
 
-### Studio Wails HostとApplication Targetを分ける
+### Studioの実行環境とアプリケーションの実行先を分ける
 
-Studioがdeveloper-facing desktop hostとしてWailsを使っても、Generated Wails Desktop Application Targetとは別物です。
+Studioが開発者向けのデスクトップ環境としてWailsを使う場合も、生成するWailsデスクトップアプリケーションの実行先とは別のものです。
 
-Studio GUIの成功を第二Application TargetのSemantic / Functional / Visual Evidenceへ数えません。
+Studioの画面が動いたことを、二つ目のアプリケーション実行先における意味・機能・表示の検証根拠として数えません。
 
 ## まず動かす
 
@@ -163,23 +136,18 @@ go run ./cmd/tei source-index \
   -subject-id order_entry.recent_orders
 ```
 
-## Repository layout
+## リポジトリの構成
 
 ```text
-product/                 Product Value / Vision / Principles
-requirements/            Product Requirements
-plan/                    Master / Milestone / PAS / Gate / ADR / Plan Issue
-cmd/tei/                 CLI
-internal/                executable architecture / validation / runtime
-reference/workspace/     end-to-end Reference Workspace
-reference/observed/      observed fixtures
-tools/                   Evidence / Reference support tools
-examples/                focused executable examples
-docs/                    reader / architecture / conformance documentation
+product/                 製品の価値・目指す姿・判断原則
+requirements/            製品要求
+plan/                    全体計画・開発段階・受入条件・判定・設計記録・作業課題
+cmd/tei/                 コマンドラインツール
+internal/                実行構成・検証・実行基盤
+reference/workspace/     一連の流れを確認する参照用作業領域
+reference/observed/      観測状態を模した試験用データ
+tools/                   検証根拠・参照用の補助ツール
+examples/                個別の実行例
+docs/                    利用者向け・構成・準拠範囲の文書
 ```
 
-## 制約と未完成の機能
-
-TEIは実験的な開発基盤であり、現時点では本番利用やAPI互換性を保証しません。特に、Studio / GUI Editor、Web以外も含む汎用Target、外部Provider、AIを用いた設計支援、運用時の耐障害性・セキュリティは、設計内容と実証済みの範囲を区別する必要があります。
-
-詳しい現在地と根拠は[現在の実装状況](docs/status.md)、開発計画は[TEI Master Plan](plan/MASTER_PLAN.md)を参照してください。設計契約や局所テストの存在を、製品全体の検証済み状態と同一視しません。
