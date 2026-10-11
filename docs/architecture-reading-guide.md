@@ -525,7 +525,7 @@ Architectureを最初から最後まで一度に読む必要はありません�
 ### AI / Editorを中心に読む
 
 1. [Definition-Centered Feedback Loop](definition-centered-feedback-loop.md)
-2. [`../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md)
+2. [Design Synthesis / 認知支援の読み方](design-synthesis-reading-guide.md)
 3. [Architecture](architecture.md)のAuthoring candidate / Acceptance Boundary節
 
 ## 16. 次に読むもの
