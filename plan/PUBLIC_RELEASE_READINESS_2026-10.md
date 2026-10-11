@@ -34,11 +34,12 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 ## 3. P0-A 機密性・権利・公開面
 
 - 2026-10-11にGitHubの全1,081 refsを一時mirrorし、Gitleaks v8.29.1でGit本文を走査した記録: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。検出2件はGo enum識別子の誤検知と初期判定した。独立した人間reviewerの確認は未完了であり、Issue #1188のGateは閉じない。
+- 2026-10-11の初期third-party inventory: [第三者ライセンス棚卸し](../docs/audits/THIRD_PARTY_LICENSE_INVENTORY_2026-10-11.md)。確認済みコンポーネントの通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ集約。全資料・assetと配布物の確認、#941の再配布境界は未解決。
 - [x] 信頼済みHostでprivate mirror cloneを取得し、全refs（active branches、tags、PR refsを含む）と `git rev-list --objects --all` を列挙。2026-10-11時点のmirrorは1,081 refs / 46,016 objects。commit author/committer metadataとメッセージの公開適合性は未確認。
 - [x] バージョン固定済みのGitleaksでGit履歴を走査。2検出をGo enum識別子の誤検知と初期判定したが、独立した人間reviewerの承認待ち。報告書・検出値はRepository外に保管し、Issueへ候補値を記録していない。Evidence: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。作業ツリー自体の未追跡・一時ファイル検査は別途未実施。
 - [ ] 個人情報、社内・顧客情報、credential、endpoint、private URL、外部文献の出典・利用条件等の公開適合性を確認する。
 - [ ] Issue/PR/reviews/commentsと添付、全過去Actions logs/artifacts、Release/assets、Wiki/Pages等も対象にする。API取得不可なら `NOT_INSPECTED`。
-- [x] 初期license inventoryを実施。root `LICENSE` はMIT、固定Go module `github.com/lib/pq v1.12.3` はMIT、`skills/ponytail/` は個別MIT。通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ追加した。Skillのupstream provenance、全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
+- [x] 初期license inventoryを実施。root `LICENSE` はMIT、固定Go module `github.com/lib/pq v1.12.3` はMIT、`skills/ponytail/` はupstream v4.10.0と内容・LICENSEの一致を確認した個別MIT。通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ追加した。全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
 - [ ] 対応が必要な項目が判明した場合は、適切な権限管理・情報の取扱い・必要な資格情報の更新手順を定め、共有refsへの変更を一括して計画する。
 - [ ] 安全なscope・scanner version・refs数・objects数・未解決件数・人間reviewerだけをpublic Evidenceへ出す。
 

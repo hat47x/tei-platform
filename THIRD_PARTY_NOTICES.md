@@ -41,6 +41,7 @@ SOFTWARE.
 - Path: [`skills/ponytail/`](skills/ponytail/)
 - Copyright: DietrichGebert
 - License: MIT; see [`skills/ponytail/LICENSE`](skills/ponytail/LICENSE)
-- The skill's local license is preserved as its authoritative notice. Its upstream source and provenance still need human review before publication.
+- Source: <https://github.com/DietrichGebert/ponytail/tree/v4.10.0/skills/ponytail
+- The skill and LICENSE contents match the upstream v4.10.0 files byte-for-byte. The local license remains beside the skill as its authoritative notice.
 
 The root [`LICENSE`](LICENSE) does not replace or relicense separately licensed content listed here.
