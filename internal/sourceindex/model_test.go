@@ -93,12 +93,12 @@ func TestNormalizeIsDeterministicWhenReferencesShareStartOffset(t *testing.T) {
 	sub := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
 	makeRef := func(end int) sourceindex.Reference {
 		return sourceindex.Reference{
-			Subject: sub,
+			Subject:      sub,
 			ArtifactPath: "semantic/sales/order.tei",
-			Role: sourceindex.RoleDefinition,
+			Role:         sourceindex.RoleDefinition,
 			Range: sourceindex.Range{
 				Start: sourceindex.Position{Offset: 10, Line: 1, Column: 11},
-				End: sourceindex.Position{Offset: end, Line: 1, Column: end + 1},
+				End:   sourceindex.Position{Offset: end, Line: 1, Column: end + 1},
 			},
 		}
 	}

@@ -55,7 +55,7 @@ func TestTraceWorkspaceJSONSuccessAndContinuation(t *testing.T) {
 	// CLI JSON is only a transport projection. For the same Workspace and
 	// selector it must agree with the typed, in-process Go operation.
 	fromGo, err := operations.TraceWorkspace(root, modelref.Key{
-		Scope: "reference-observation",
+		Scope:   "reference-observation",
 		Subject: subject.Subject{Kind: "semantic-relation", ID: "sales.order.customer"},
 	}, modelref.TraceOptions{
 		Direction: "both", Mode: "full",

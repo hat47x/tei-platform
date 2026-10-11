@@ -23,7 +23,7 @@ func traceGraph() (modelref.Graph, []modelref.Rule, modelref.Key) {
 	task := traceKey("orders", "task", "confirm-order")
 	g := modelref.Graph{
 		Schema: "tei.modelref.v0",
-		Nodes: []modelref.Node{{Key: data}, {Key: fn}, {Key: task}},
+		Nodes:  []modelref.Node{{Key: data}, {Key: fn}, {Key: task}},
 		Edges: []modelref.Edge{
 			{From: fn, To: traceRef(data), Relation: "reads"},
 			{From: task, To: traceRef(fn), Relation: "triggers"},

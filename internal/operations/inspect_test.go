@@ -30,7 +30,7 @@ func TestInspectCanonicalExactKindAndID(t *testing.T) {
 			{ID: "other.id", Symbol: "other_data"},
 		}}},
 		Applications: []application.Application{{ID: "same.id", Patterns: []application.Pattern{{ID: "same.id"}}}},
-		Queries: []query.EmbeddedSQL{{ID: "same.id", Source: "select 1"}},
+		Queries:      []query.EmbeddedSQL{{ID: "same.id", Source: "select 1"}},
 	}
 	check := func(kind string, expected any) {
 		t.Helper()
