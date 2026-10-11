@@ -202,7 +202,7 @@ func dataDesignEvidenceSearchSubjects(
 	sourceData := core.CanonicalID("")
 	var attributeSubjects []subject.Subject
 	for _, term := range candidate.Terms {
-		if term.Kind == "relation-source-occurrence" && term.Data != "" {
+		if term.Kind == "related-occurrence" && term.End == "source" && term.Data != "" {
 			sourceData = term.Data
 		}
 		if term.Attribute != "" {
@@ -317,7 +317,7 @@ func resolveDataDesignReviewCandidate(
 			)
 		}
 		if dataDesignCandidateEvidenceRequirementFingerprint(
-			"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+			"tei.knowledge.data-design.business-identity-candidate-evidence/v2",
 			value.Fingerprint,
 			value.EvidenceNeeded,
 		) != value.EvidenceRequirementFingerprint {
@@ -368,7 +368,7 @@ func resolveDataDesignReviewCandidate(
 			)
 		}
 		if dataDesignCandidateEvidenceRequirementFingerprint(
-			"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+			"tei.knowledge.data-design.functional-dependency-candidate-evidence/v2",
 			value.Fingerprint,
 			value.EvidenceNeeded,
 		) != value.EvidenceRequirementFingerprint {

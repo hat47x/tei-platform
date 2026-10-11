@@ -26,7 +26,7 @@ func TestLoadHeaderDetailContractQueryBindingsKeepsSourceIdentityExplicit(t *tes
 		t.Fatal(err)
 	}
 
-	result := Result{Sources: map[string]SourceLocation{}}
+	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	if err := loadHeaderDetailContractQueryBindings(root, &result); err != nil {
 		t.Fatalf("Binding sourceを読み込めません: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestLoadHeaderDetailContractQueryBindingsRejectsDuplicateIdentity(t *testin
 		t.Fatal(err)
 	}
 
-	result := Result{Sources: map[string]SourceLocation{}}
+	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	err := loadHeaderDetailContractQueryBindings(root, &result)
 	if err == nil || !strings.Contains(err.Error(), "既に") || !strings.Contains(err.Error(), "order_entry/order_entry.order_lines") {
 		t.Fatalf("同一Application Patternへの複数realization sourceを拒否していません: %v", err)

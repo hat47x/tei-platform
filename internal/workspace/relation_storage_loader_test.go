@@ -25,7 +25,9 @@ func TestLoadRelationStorageAuthoringsMergesIntoExplicitPersistenceMapping(t *te
 	}
 
 	r := Result{
-		Sources: map[string]SourceLocation{},
+		Sources:            map[string]SourceLocation{},
+		sourceSnapshotRoot: root,
+		sourceSnapshot:     map[string][]byte{},
 	}
 	r.World.Persistence = []persistence.Mapping{
 		{ID: core.MustCanonicalID("sales_core.order")},
@@ -73,7 +75,7 @@ func TestLoadRelationStorageAuthoringsRejectsUnknownPersistenceMapping(t *testin
 		t.Fatal(err)
 	}
 
-	r := Result{Sources: map[string]SourceLocation{}}
+	r := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	r.World.Persistence = []persistence.Mapping{{ID: core.MustCanonicalID("sales_core.order")}}
 
 	err := loadRelationStorageAuthorings(root, &r)
@@ -101,7 +103,7 @@ func TestLoadRelationStorageAuthoringsRejectsDuplicateSourceIdentity(t *testing.
 		}
 	}
 
-	r := Result{Sources: map[string]SourceLocation{}}
+	r := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	r.World.Persistence = []persistence.Mapping{{ID: core.MustCanonicalID("sales_core.order_line")}}
 
 	if err := loadRelationStorageAuthorings(root, &r); err == nil {

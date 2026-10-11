@@ -287,10 +287,14 @@ func TestStoreRejectsReplacedAlgorithmDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	replacement := filepath.Join(root, "replacement-sha256")
+	if err := os.Mkdir(replacement, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Remove(store.algorithmDir); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(store.algorithmDir, 0o755); err != nil {
+	if err := os.Rename(replacement, store.algorithmDir); err != nil {
 		t.Fatal(err)
 	}
 

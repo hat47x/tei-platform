@@ -291,7 +291,8 @@ func TestDataDesignCandidateReviewBindsCurrentFunctionalDependencyCandidate(t *t
 		"current-core-has-no-first-class-functional-dependency-authoring-contract",
 		"semantic-extension-route-cannot-yet-losslessly-author-determinants-dependent-occurrence-and-scope",
 		"semantic-extension-route-is-not-accepted-production-authoring-contract",
-		"authoritative-declaration-source-and-namespace-authority-not-selected",
+		"authoritative-declaration-source-not-selected",
+		"semantic-extension-namespace-authority-not-selected",
 	} {
 		if !containsDataDesignReviewString(packet.FirstClassAuthoringContractReasons, reason) {
 			t.Fatalf("FD first-class authoring reason %q is missing: %+v", reason, packet.FirstClassAuthoringContractReasons)

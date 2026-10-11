@@ -356,6 +356,7 @@ func TestBuilderResolutionUsesCanonicalProviderID(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
 	providers[0].ProviderID = core.MustCanonicalID("tei.builder.copy_explicit")
 	evidence[0].ProviderID = providers[0].ProviderID
+	evidence[0].ClaimsFingerprint, _ = conformanceClaimsFingerprint(evidence[0])
 	wiring.ProviderID = providers[0].ProviderID
 	resolution, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
 		Contracts: []BuilderContract{contract},
