@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"strings"
 )
 
 var (
@@ -23,8 +24,19 @@ type Binding struct {
 }
 
 func (b Binding) valid() bool {
-	return b.ContractID != "" && b.ContractVersion != "" && b.ProviderID != "" &&
-		b.ArtifactDigest != "" && b.Generation != 0
+	if b.ContractID == "" || b.ContractVersion == "" || b.ProviderID == "" || b.Generation == 0 || !strings.HasPrefix(b.ArtifactDigest, "sha256:") {
+		return false
+	}
+	hex := strings.TrimPrefix(b.ArtifactDigest, "sha256:")
+	if len(hex) != 64 {
+		return false
+	}
+	for _, c := range hex {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 type generation struct {
@@ -105,7 +117,7 @@ func (r *Router) Publish(expected uint64, next Binding, scope *Scope, guard func
 		return nil, ErrStaleGeneration
 	}
 	old := r.current
-	if next.Generation <= expected || next.ContractID != old.binding.ContractID || scope == old.scope {
+	if next.Generation <= expected || next.ContractID != old.binding.ContractID || next.ContractVersion != old.binding.ContractVersion || scope == old.scope {
 		return nil, errors.New("generation, contract or scope is incompatible")
 	}
 	if err := guard(next); err != nil {
