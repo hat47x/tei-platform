@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"reflect"
 	"regexp"
 	"strconv"
 	"time"
@@ -52,7 +54,11 @@ func (v Value) Decode() (any, error) {
 	case "int64":
 		return strconv.ParseInt(v.Data, 10, 64)
 	case "float64":
-		return strconv.ParseFloat(v.Data, 64)
+		f, err := strconv.ParseFloat(v.Data, 64)
+		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+			return nil, fmt.Errorf("non-finite or invalid float value")
+		}
+		return f, nil
 	case "timestamp":
 		return time.Parse(time.RFC3339Nano, v.Data)
 	default:
@@ -202,8 +208,8 @@ func Generate(s Scenario, source []byte, scenarioPath, workspacePath string) (Pl
 	if err != nil {
 		return Plan{}, err
 	}
-	if parsed.ID != s.ID {
-		return Plan{}, fmt.Errorf("Scenario identity mismatch")
+	if !reflect.DeepEqual(parsed, s) {
+		return Plan{}, fmt.Errorf("Scenario input differs from source bytes")
 	}
 	digest := sha256.Sum256(source)
 	plan := Plan{SchemaVersion: PlanVersion, ScenarioID: parsed.ID, ScenarioSHA256: hex.EncodeToString(digest[:]), Commands: make([]Command, 0, len(parsed.Steps))}
