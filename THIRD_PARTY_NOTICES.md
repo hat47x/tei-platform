@@ -34,14 +34,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Separately licensed repository content
-
-### Ponytail skill
-
-- Path: [`skills/ponytail/`](skills/ponytail/)
-- Copyright: DietrichGebert
-- License: MIT; see [`skills/ponytail/LICENSE`](skills/ponytail/LICENSE)
-- Source: <https://github.com/DietrichGebert/ponytail/tree/v4.10.0/skills/ponytail
-- The skill and LICENSE contents match the upstream v4.10.0 files byte-for-byte. The local license remains beside the skill as its authoritative notice.
-
-The root [`LICENSE`](LICENSE) does not replace or relicense separately licensed content listed here.
+The root [`LICENSE`](LICENSE) applies to TEI project code. Developer-side authoring tools and skills are maintained outside this product repository and are not product dependencies.

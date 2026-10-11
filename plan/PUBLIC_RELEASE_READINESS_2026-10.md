@@ -22,7 +22,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | main SHA | `53ce39c35851b1ec731eb6cd3066d9a708f3620d`（観測時点のsnapshot） |
 | main Git tree | recursive 1,928 entries / truncated=false（**file path inventoryのみ**） |
 | root LICENSE | MIT |
-| `skills/ponytail/LICENSE` | 独立した第三者のMIT著作権表示あり |
+| 開発補助スキル | PonytailをCodexの開発者環境へ配置し、製品treeから除外。過去Git履歴に残るため履歴公開範囲は要確認 |
 | main Actions workflow | `.github/workflows/knowledge-portability-reference-evidence.yml`: manual-only、job `if: false` |
 | README | 生成AIを用いて開発中・体系的な人的レビュー未実施の警告を冒頭へ追加する候補 |
 | `SECURITY.md` | mainに存在しない。連絡窓口の所有者判断が必要 |
@@ -41,7 +41,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 - [x] バージョン固定済みのGitleaksでGit履歴を走査。2検出をGo enum識別子の誤検知と初期判定したが、独立した人間reviewerの承認待ち。報告書・検出値はRepository外に保管し、Issueへ候補値を記録していない。Evidence: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。作業ツリー自体の未追跡・一時ファイル検査は別途未実施。
 - [ ] 個人情報、社内・顧客情報、credential、endpoint、private URL、外部文献の出典・利用条件等の公開適合性を確認する。
 - [ ] Issue/PR/reviews/commentsと添付、全過去Actions logs/artifacts、Release/assets、Wiki/Pages等も対象にする。API取得不可なら `NOT_INSPECTED`。
-- [x] 初期license inventoryを実施。root `LICENSE` はMIT、固定Go module `github.com/lib/pq v1.12.3` はMIT、`skills/ponytail/` はupstream v4.10.0と内容・LICENSEの一致を確認した個別MIT。通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ追加した。全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
+- [x] 初期license inventoryを実施。root `LICENSE` はMIT、製品の固定Go module `github.com/lib/pq v1.12.3` はMITであり、通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ追加した。Ponytailはupstream v4.10.0の開発補助スキルとしてCodex開発者環境へ移し、製品treeから除外した。過去Git履歴に含まれるコピーは残る。全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
 - [ ] 対応が必要な項目が判明した場合は、適切な権限管理・情報の取扱い・必要な資格情報の更新手順を定め、共有refsへの変更を一括して計画する。
 - [ ] 安全なscope・scanner version・refs数・objects数・未解決件数・人間reviewerだけをpublic Evidenceへ出す。
 
