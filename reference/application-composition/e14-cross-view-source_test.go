@@ -114,3 +114,37 @@ func TestE14SingleWorldProjectionRetainsGenericCapabilityInputKind(t *testing.T)
 	// A generic semantic-element is not implicitly a validated type,
 	// accepted action, runtime permission, or complete dependency closure.
 }
+
+func TestE14AmbiguousOrDerivedOnlySourceIsNotADefinition(t *testing.T) {
+	const src = "semantic/sales/order.tei"
+	artifact := sourceindex.Artifact{
+		Path: src, Fingerprint: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	}
+	def := sourceindex.Reference{
+		Subject: sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.customer"},
+		ArtifactPath: src, Role: sourceindex.RoleDefinition,
+	}
+	for _, test := range []struct {
+		name string
+		index sourceindex.Index
+	}{
+		{"empty", sourceindex.Index{}},
+		{"derived-only", sourceindex.Index{Artifacts: []sourceindex.Artifact{artifact},
+			References: []sourceindex.Reference{{Subject: def.Subject, ArtifactPath: src,
+				Role: sourceindex.RoleDerived}}}},
+		{"duplicate-definition", sourceindex.Index{Artifacts: []sourceindex.Artifact{artifact},
+			References: []sourceindex.Reference{def, def}}},
+		{"duplicate-artifact", sourceindex.Index{Artifacts: []sourceindex.Artifact{artifact, artifact},
+			References: []sourceindex.Reference{def}}},
+		{"wrong-path", sourceindex.Index{Artifacts: []sourceindex.Artifact{artifact},
+			References: []sourceindex.Reference{{
+				Subject: def.Subject, ArtifactPath: "semantic/other.tei", Role: sourceindex.RoleDefinition,
+			}}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if e14UniqueDefinition(test.index, def.Subject.Kind, def.Subject.ID, src) {
+				t.Fatal("ambiguous or untrusted source anchor treated as a unique definition")
+			}
+		})
+	}
+}
