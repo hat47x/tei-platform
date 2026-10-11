@@ -3,9 +3,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"fmt"
 	"strings"
 	"testing"
 )
