@@ -15,9 +15,8 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 - 外部世界で実際に何が観測されたか
 - 何が未検証・未解決か
 
-> 現在地 — 2026-09-22: architecture & product validation / research implementation  
-> `order_entry`のApplication Pattern Stage 1とGate Aは完了しています。Application Driverの主要意味境界も成立しています。現在の正式判定は Gate B: Ready（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）で、Handover Baseline `B / R`も固定済みです。第一Web Targetについてもactual Gate C Evidenceを取得し、Gate C: Readyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`。Visual Fidelityは単一のAI評価者による評価で、人による確認ではありません）。  
-> Gate C後には、第二Application `repair_intake`のsourceとEnvironment bindingを、利用者の明示的なAcceptance decisionを経て`reference/workspace`へ受理し、通常のDriver経路で実行できることも確認しました（S5〜S8）。これは第二Application Targetや実行権限の成立を意味しません。Studio / AI、第二TargetはまだProduct Evidence取得前です。詳細な現状は[現在の実装状況](docs/status.md)を正本とします。
+> **現在の開発段階**  
+> CLIとReference Workspaceを通じて、業務定義、実装、実行結果、観測のつながりを検証しています。Gate A・B・Cの過去のReady判定は、対象を固定した実証結果であり、最新のmainや製品全体の品質保証ではありません。実装済みの範囲と未完成の機構は[現在の実装状況](docs/status.md)を参照してください。
 
 完成したlow-code製品、production-ready Editor、production-ready multi-Target Runtimeを提供する段階ではありません。
 
@@ -52,66 +51,15 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 - [全体構成](docs/architecture.md)
 - [現在の実装状況](docs/status.md)
 
-## 現在のv1主線
+## 開発状況と検証範囲
 
-```text
-Application Pattern Stage 1
-        Done
-          ↓
-Gate A
-        Ready
-          ↓
-Application Driver
-  major semantics ready
-          ↓
-Gate B
-  Ready / R = e5231839a5dcc62cce1181a2731fcb7c70d16736
-          ↓
-Handover Baseline B / revision R
-  fixed
-          ↓
-First Web Target / build T
-  implemented with Evidence / T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
-          ↓
-Gate C / PAS-04
-  Ready
-          ↓
-   ┌──────┼──────────────┐
-   ↓      ↓              ↓
-Studio  knowledge / AI  Second Target
-PAS-01  PAS-06 / 01     PAS-04
-```
+Go CLI、Driver、Reference Workspace、および第一Web Targetの一部について、固定Source・環境での実証を積み重ねています。一方、統合モデラー、汎用Target Runtime、多様な外部Provider、本番環境での安全性は未完成または未検証です。
 
-Gate Cを通過したので、Studio / knowledge-first・AI Proposal / 第二Application・第二Targetは並行して進められます。いま必要なのは、どのlaneから始めるかをEvidenceに基づいて判断することです。各laneの進み具合は[現在の実装状況](docs/status.md)を参照してください。
+過去の実証結果と現在の実装は、次の資料で区別しています。
 
-## Gate Bの達成状況
-
-Gate Bは Ready です。candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`について、#310 deterministic Repository、#255 generated artifact reproducibility、#308 real PostgreSQL Provider + ephemeral fixtureをsame-runで揃え、#387 final convergenceと独立artifact auditまで成立しています。
-
-Handover Baseline `B / R`も固定済みです。判定の正本は[Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md)、第一Web Targetへの引き渡しは[Baseline B](plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
-
-この`B / R`を引き継いだ`ISSUE-000007`の第一Web Targetは、baseline `R`とTarget build revision `T`を分離したままGate CのSemantic / Functional / Visual Evidenceを取得し、Gate C Readyと判定済みです（[Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md)）。
-
-PostgreSQL以外の実Database Providerと既存外部資産のEvidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は継続しますが、Gate B Readyを差し戻す第四Required laneではありません。
-
-## Gate BからGate Cへの改訂版の引継ぎ
-
-Gate B Ready revisionを`R`、Handover Baselineを`B`、第一Web Targetの実装revisionを`T1`とします。
-
-```text
-Gate B Ready for R
-        ↓
-Handover Baseline B
-  baselineRepositoryRevision = R
-        ↓ meaning baseline
-First Web Target build T1
-        ↓
-Gate C Evidence
-```
-
-通常`T1 != R`です。Gate C Readyと判定したbuild `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`が、この`T1`にあたります。
-
-Target実装中にbaseline Application meaningを変更する必要が生じた場合、Web固有field / ruleで不足を埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認してsuccessor Handoverを発行します。
+- [現在の実装状況](docs/status.md)：実装範囲と未完成事項の概要
+- [Gate A](plan/GATE_A_READINESS_AUDIT.md)・[Gate B](plan/GATE_B_READINESS_AUDIT.md)・[Gate C](plan/GATE_C_READINESS_AUDIT.md)：それぞれの固定revisionとEvidenceに対する判定
+- [TEI Master Plan](plan/MASTER_PLAN.md)・[Milestones](plan/MILESTONES.md)：今後の開発方針と優先順位
 
 ## 設計上の主要原則
 
@@ -230,20 +178,8 @@ examples/                focused executable examples
 docs/                    reader / architecture / conformance documentation
 ```
 
-## 現時点で完成済みとは言わないもの
+## 制約と未完成の機能
 
-- Visual Fidelityの人による承認（Gate C Visualは単一のAI評価者による評価）
-- production-ready Web / Desktop / Mobile Target
-- Studio minimal Authoring Loopのactual Reference
-- production-ready GUI Editor
-- knowledge-first Semantic explorationのactual Reference
-- AI Proposal / Decision UXのactual Reference
-- second Application Target
-- complete Target Capability taxonomy
-- complete Workflow Runtime
-- production durability / HA guarantee
-- generic OS sandbox
-- API compatibility guarantee
+TEIは実験的な開発基盤であり、現時点では本番利用やAPI互換性を保証しません。特に、Studio / GUI Editor、Web以外も含む汎用Target、外部Provider、AIを用いた設計支援、運用時の耐障害性・セキュリティは、設計内容と実証済みの範囲を区別する必要があります。
 
-設計契約やisolated testが存在することを、actual Product Evidence取得済みと読み替えません。
-
+詳しい現在地と根拠は[現在の実装状況](docs/status.md)、開発計画は[TEI Master Plan](plan/MASTER_PLAN.md)を参照してください。設計契約や局所テストの存在を、製品全体の検証済み状態と同一視しません。
