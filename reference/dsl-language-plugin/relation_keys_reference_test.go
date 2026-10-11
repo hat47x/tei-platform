@@ -1,16 +1,25 @@
 package languagereference
 
 import (
-	"tei/internal/core"
-	"tei/internal/semantic"
 	"testing"
+
+	"tei/internal/core"
+	"tei/internal/ir"
+	"tei/internal/semantic"
 )
 
 func TestRelationKeysReference(t *testing.T) {
-	source := semantic.Data{ID: core.CanonicalID("sales.order"), Attributes: []semantic.Attribute{{ID: core.CanonicalID("sales.order.id"), TypeRef: core.CanonicalID("std.int")}}, Relations: []semantic.Relation{{ID: core.CanonicalID("sales.order.lines"), Target: core.CanonicalID("sales.line"), Cardinality: semantic.CardinalityMany, Keys: []semantic.RelationKey{{SourceAttribute: core.CanonicalID("sales.order.id"), TargetAttribute: core.CanonicalID("sales.line.order_id")}}}}}
-	target := semantic.Data{ID: core.CanonicalID("sales.line"), Attributes: []semantic.Attribute{{ID: core.CanonicalID("sales.line.order_id"), TypeRef: core.CanonicalID("std.int")}}}
+	source := semantic.Data{ID: core.CanonicalID("sales.order"), Attributes: []semantic.Attribute{
+		{ID: core.CanonicalID("sales.order.id"), TypeRef: core.CanonicalID("std.int")},
+	}, Relations: []semantic.Relation{{
+		ID: core.CanonicalID("sales.order.lines"), Target: core.CanonicalID("sales.line"), Cardinality: semantic.CardinalityMany,
+		Keys: []semantic.RelationKey{{SourceAttribute: core.CanonicalID("sales.order.id"), TargetAttribute: core.CanonicalID("sales.line.order_id")}},
+	}}}
+	target := semantic.Data{ID: core.CanonicalID("sales.line"), Attributes: []semantic.Attribute{
+		{ID: core.CanonicalID("sales.line.order_id"), TypeRef: core.CanonicalID("std.int")},
+	}}
 	ns := semantic.Namespace{ID: core.CanonicalID("sales"), Data: []semantic.Data{source, target}}
-	if err := ValidateRelationKeys(ns, source.ID, source.Relations[0].ID); err != nil {
+	if err := ValidateRelationKeys(ir.World{Semantics: []semantic.Namespace{ns}}, source.ID, source.Relations[0].ID); err != nil {
 		t.Fatal(err)
 	}
 	tests := []struct {
@@ -32,7 +41,7 @@ func TestRelationKeysReference(t *testing.T) {
 			clone.Data[0].Relations[0].Keys = append([]semantic.RelationKey(nil), ns.Data[0].Relations[0].Keys...)
 			clone.Data[1].Attributes = append([]semantic.Attribute(nil), ns.Data[1].Attributes...)
 			tc.change(&clone)
-			if err := ValidateRelationKeys(clone, source.ID, source.Relations[0].ID); err == nil {
+			if err := ValidateRelationKeys(ir.World{Semantics: []semantic.Namespace{clone}}, source.ID, source.Relations[0].ID); err == nil {
 				t.Fatal("expected rejection")
 			}
 		})

@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"tei/internal/core"
+	"tei/internal/ir"
 	"tei/internal/semantic"
+	"tei/internal/validation"
 )
 
 // RelationPathShape describes a finite chain of semantic relations. Multiplicity
@@ -16,32 +18,22 @@ type RelationPathShape struct {
 	Multiplicity semantic.Cardinality
 }
 
-// TraceRelationPath validates each hop before propagating multiplicity.
-// Conceptual relations without keys are valid model elements, but cannot
-// participate in this executable-shape reference. No data is read or joined.
-func TraceRelationPath(ns semantic.Namespace, sourceID core.CanonicalID, relationIDs []core.CanonicalID) (RelationPathShape, error) {
-	if ns.ID == "" || sourceID == "" || len(relationIDs) == 0 {
-		return RelationPathShape{}, fmt.Errorf("relation path requires namespace, source and steps")
+// TraceRelationPath validates each hop using the canonical Semantic World.
+// A relation may cross namespaces; keyless conceptual relations cannot
+// participate in this executable-shape reference. No records are read.
+func TraceRelationPath(w ir.World, sourceID core.CanonicalID, relationIDs []core.CanonicalID) (RelationPathShape, error) {
+	if sourceID == "" || len(relationIDs) == 0 {
+		return RelationPathShape{}, fmt.Errorf("relation path requires source and steps")
 	}
+	// Canonical key diagnostics are independent of the traversal order.
+	// Build them once and associate them with each hop's Relation identity.
+	diagnostics := validation.ValidateSemanticRelationKeys(w)
 	result := RelationPathShape{SourceID: sourceID, TargetID: sourceID, Multiplicity: semantic.CardinalityOne}
 	current := sourceID
 	for step, relationID := range relationIDs {
-		if err := ValidateRelationKeys(ns, current, relationID); err != nil {
+		relation, err := checkedWorldRelation(w, current, relationID, diagnostics)
+		if err != nil {
 			return RelationPathShape{}, fmt.Errorf("step %d: %w", step, err)
-		}
-		var source *semantic.Data
-		for i := range ns.Data {
-			if ns.Data[i].ID == current {
-				source = &ns.Data[i]
-				break
-			}
-		}
-		var relation *semantic.Relation
-		for i := range source.Relations {
-			if source.Relations[i].ID == relationID {
-				relation = &source.Relations[i]
-				break
-			}
 		}
 		if len(relation.Keys) == 0 {
 			return RelationPathShape{}, fmt.Errorf("step %d: relation %q has no key mapping", step, relationID)
