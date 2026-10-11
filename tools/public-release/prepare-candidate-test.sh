@@ -51,6 +51,9 @@ rm "$work/export/unreviewed.txt"
 ln -s /dev/null "$work/export/rogue-link"
 verify_must_fail
 rm "$work/export/rogue-link"
+ln "$work/export/LICENSE" "$work/external-hardlink"
+verify_must_fail
+rm "$work/external-hardlink"
 bash "$verifier" "$work/repo" "$sha" "$work/paths" "$work/export" > /dev/null
 
 must_fail() {
