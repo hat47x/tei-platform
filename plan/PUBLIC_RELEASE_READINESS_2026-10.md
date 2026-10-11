@@ -19,7 +19,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | 対象 | 状態 |
 | --- | --- |
 | `hat47x/tei-platform` | Private、default `main` |
-| main SHA | `53ce39c35851b1ec731eb6cd3066d9a708f3620d`（観測時点のsnapshot） |
+| main SHA | `00fec46acb2ea62e7c35a9838fcc7e604c1247be`（2026-10-11の後続snapshot。最新状態は公開操作前に再取得する） |
 | main Git tree | recursive 1,928 entries / truncated=false（**file path inventoryのみ**） |
 | root LICENSE | MIT |
 | 開発補助スキル | PonytailをCodexの開発者環境へ配置し、製品treeから除外。過去Git履歴に残るため履歴公開範囲は要確認 |
@@ -30,6 +30,8 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | Git履歴の公開適合性 | mainの一部コミットの参照関係を確認。全refsのmetadata/contentの網羅検査は未了 |
 | サーバー保護 | 過去の#513/#972でmain無保護が記録された。Private rulesets APIは現プランで403 |
 | 全履歴・非Git面 | **未監査**。この一覧から公開可とは推論しない |
+
+GitHub REST API上のIssue/PR・コメント、Release、Actions run/artifactの件数と限定走査は[GitHub公開面スナップショット](../docs/audits/PUBLIC_GITHUB_SURFACE_SNAPSHOT_2026-10-11.md)に記録した。これによって非Git公開面監査が完了したものとは扱わない。
 
 2026-10-11 18:59 JSTの最終確認では、current `main`は`00fec46acb2ea62e7c35a9838fcc7e604c1247be`、Open PRは0件。全74 remote branch headsはローカル候補`5bef7420e78b581dd4236ce56098dcdb065fdcf5`の祖先に含まれ、checkoutはclean。#1200・#1202・#1203・#1206はReady化後にmergeされた。#1207–#1217もmerge済み。`go build ./...`と`go mod verify`はPASS。full repository health test suiteは未実行。詳細は[PR・branch exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)。今後のmain統合では、Draft PRを統合せず、直前のexact head・base・current mainを再取得して判断する。
 
