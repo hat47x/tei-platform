@@ -61,6 +61,7 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 			app: "order_entry", taggedBinary: orderOnly,
 			requests: []taggedParityRequest{
 				{http.MethodGet, "/manifest.json", "", http.StatusOK},
+				{http.MethodGet, "/", "", http.StatusOK},
 				{http.MethodGet, "/scenario/read?from=2026-09-18T08:30:00Z&row=0", "", http.StatusOK},
 				{http.MethodGet, "/custom-submit", "", http.StatusOK},
 				{http.MethodPut, "/custom-submit", "", http.StatusMethodNotAllowed},
@@ -122,6 +123,20 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 					}
 					assertTaggedBusinessSemantics(t, request, tagged)
 				})
+			}
+			if testCase.app == "repair_intake" {
+				// The historical combined repair index intentionally retains
+				// the order-entry links. Repair-only navigation must instead
+				// reflect only the routes actually present in its binary.
+				index := requestTaggedParityHTTP(t, taggedBase, taggedParityRequest{
+					method: http.MethodGet, path: "/", status: http.StatusOK,
+				})
+				if index.status != http.StatusOK ||
+					!bytes.Contains(index.body, []byte(`href="/customer-lookup"`)) ||
+					bytes.Contains(index.body, []byte(`href="/custom-submit"`)) ||
+					bytes.Contains(index.body, []byte(`href="/scenario/read"`)) {
+					t.Fatal("repair-only binary rendered links to absent Application routes")
+				}
 			}
 			for _, request := range testCase.foreign {
 				response := requestTaggedParityHTTP(t, taggedBase, request)

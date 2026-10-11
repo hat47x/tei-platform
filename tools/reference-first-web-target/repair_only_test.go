@@ -79,6 +79,44 @@ func TestRepairOnlyBinaryUsesRepairRunnerAndNoOrderRoutes(t *testing.T) {
 	}
 }
 
+// A repair-only binary must not advertise inaccessible order-specific links.
+// This checks rendered HTML, not just route HTTP status.
+func TestRepairOnlyIndexExposesOnlyRepairNavigation(t *testing.T) {
+	world := repairOnlyReferenceWorld(t)
+	projection, err := buildWebTargetProjection(world, projectionConfig{
+		HandoverBaselineID:         "B",
+		BaselineRepositoryRevision: "e5231839a5dcc62cce1181a2731fcb7c70d16736",
+		TargetBuildRevision:        "target-test-revision",
+		ApplicationID:              core.MustCanonicalID("repair_intake"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := newWebTargetServer(projection, nil, nil,
+		withCustomerLookup(newReferenceCustomerLookupScenarioRunner(world)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply := httptest.NewRecorder()
+	server.Handler().ServeHTTP(reply, httptest.NewRequest(http.MethodGet, "/", nil))
+	if reply.Code != http.StatusOK {
+		t.Fatalf("repair-only index returned %d", reply.Code)
+	}
+	page := reply.Body.String()
+	if !strings.Contains(page, `href="/customer-lookup"`) {
+		t.Fatal("repair-only index does not link to its customer lookup UI")
+	}
+	for _, unavailable := range []string{
+		`href="/scenario/read"`,
+		`href="/custom-submit"`,
+		"POST /scenario/submit",
+	} {
+		if strings.Contains(page, unavailable) {
+			t.Fatalf("repair-only index advertises excluded route %q", unavailable)
+		}
+	}
+}
+
 func TestCompiledRepairEntryRejectsRuntimeApplicationOverride(t *testing.T) {
 	before := os.Args
 	defer func() { os.Args = before }()
