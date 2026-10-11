@@ -114,6 +114,40 @@ func TestQualificationReceiptAndIntegrationPreflightControlFlow(t *testing.T) {
 	})
 
 
+	t.Run("rejects URL and option as integration remote names", func(t *testing.T) {
+		for _, remote := range []string{"ext::helper", "https://example.invalid/repo.git", "--upload-pack=malicious"} {
+			out := runFailure(t, candidate, "bash",
+				"tools/reference-tool-neutral-development/integration-preflight.sh",
+				"--receipt-file", receipt, "--candidate", head,
+				"--expected-main", main, "--remote", remote,
+				"--integration-root", integration)
+			if !strings.Contains(out, "configured remote name") {
+				t.Fatalf("unsafe remote %q was rejected for an unexpected reason:\n%s", remote, out)
+			}
+		}
+	})
+
+	t.Run("qualification must not run configured fsmonitor", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("POSIX executable fixture")
+		}
+		marker := filepath.Join(tmp, "fsmonitor-executed")
+		hook := filepath.Join(tmp, "malicious-fsmonitor.sh")
+		writeFile(t, hook, []byte("#!/bin/sh\n: > "+marker+"\nexit 0\n"), 0o755)
+		run(t, candidate, "git", "config", "core.fsmonitor", hook)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "config", "--unset", "core.fsmonitor") })
+		out := run(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", main)
+		if !strings.Contains(out, "qualification=PASS") {
+			t.Fatalf("synthetic qualification unexpectedly failed:\n%s", out)
+		}
+		if _, err := os.Stat(marker); !os.IsNotExist(err) {
+			t.Fatalf("qualification executed a repository-selected fsmonitor: %v", err)
+		}
+		run(t, candidate, "git", "config", "--unset", "core.fsmonitor")
+	})
+
 	t.Run("rejects Git replacement objects in qualification and integration", func(t *testing.T) {
 		run(t, candidate, "git", "replace", head, main)
 		t.Cleanup(func() { _ = runNoFail(candidate, "git", "replace", "-d", head) })
