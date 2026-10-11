@@ -33,6 +33,7 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 		return EvaluationResult{}, err
 	}
 	e := evaluator{limits: source.Limits}
+
 	rootValues := make(map[string]Value, len(inputs))
 	for name, value := range inputs {
 		// Isolate caller-owned slices once. Evaluation treats Value as immutable
@@ -40,6 +41,7 @@ func Evaluate(source Source, inputs map[string]Value) (EvaluationResult, error) 
 		rootValues[name] = value.Clone()
 	}
 	env := &evalEnv{root: rootValues}
+
 	for i := range source.Program.Assertions {
 		if _, err := e.eval(source.Program.Assertions[i], env, 0); err != nil {
 			return EvaluationResult{}, fmt.Errorf("assertion %d: %w", i, err)
@@ -152,10 +154,12 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("select-field requires object, got %s", source.Kind)
 		}
+
 		index, ok, err := e.findObjectField(source, expr.Field)
 		if err != nil {
 			return Value{}, err
 		}
+
 		if !ok {
 			if expr.Optional {
 				return Null(), nil
@@ -172,7 +176,9 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			}
 			fields = append(fields, Field{Name: field.Name, Value: value})
 		}
+
 		return objectShared(fields)
+
 	case OpMapArray:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -219,10 +225,12 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 				}
 				keys[k] = key.String
 			}
+
 			items[i] = sortItem{value: item, keys: keys}
 		}
 		if err := stableSortItems(e, items); err != nil {
 			return Value{}, err
+
 		}
 		out := make([]Value, len(items))
 		for i := range items {
@@ -237,26 +245,31 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if source.Kind != ValueObject {
 			return Value{}, fmt.Errorf("replace-field requires object, got %s", source.Kind)
 		}
+
 		index, exists, err := e.findObjectField(source, expr.Field)
 		if err != nil {
 			return Value{}, err
 		}
 		if !exists {
+
 			return source, nil
 		}
 		replacement, err := e.eval(*expr.Value, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
+
 		out := source
 		out.Object = append([]Field(nil), source.Object...)
 		out.Object[index].Value = replacement
 		return out, nil
+
 	case OpOmitField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
 			return Value{}, err
 		}
+
 		index, exists, err := e.findObjectField(source, expr.Field)
 		if err != nil {
 			return Value{}, err
@@ -268,6 +281,7 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		out.Object = append(out.Object, source.Object[:index]...)
 		out.Object = append(out.Object, source.Object[index+1:]...)
 		return out, nil
+
 	case OpAssertEqual:
 		actual, err := e.eval(*expr.Actual, env, depth+1)
 		if err != nil {
@@ -379,6 +393,7 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 }
 
 func (e *evaluator) validateFinalOutput(value Value) error {
+
 	if value.Kind == ValueBytes {
 		if len(value.Bytes) > e.limits.MaxOutputBytes {
 			return fmt.Errorf("transform output exceeds maxOutputBytes")
