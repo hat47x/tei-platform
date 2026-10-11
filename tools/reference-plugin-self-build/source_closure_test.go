@@ -213,6 +213,7 @@ func TestRepositoryTreeSnapshotDigestTracksGitTreeListingNotWorktreeSemantics(t 
 	}
 }
 
+
 func TestHashRepositorySnapshotTreeUsesCommittedHEADNotWorktreeBytes(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skipf("git is unavailable: %v", err)
@@ -267,6 +268,7 @@ func runSnapshotGit(t *testing.T, repo string, args ...string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
 
 func TestRepositoryTreeDigestAlgorithmIsExplicit(t *testing.T) {
 	if repositoryTreeDigestAlgorithm != "git-ls-tree-sha256-v1" {
