@@ -71,6 +71,21 @@ Draft PR #1195の`prepare-candidate.sh`は、Private側のGit履歴を持ち込�
 - 公開の新規開発リポジトリを採用する場合、**外部公開前の安全な非公開検証環境**で公開予定Sourceから新しいroot Git commitを作り、その新しいGit lineageの下でRepository Healthを実施する。元Private repoのtest receiptは引き継がない。
 - PublicへのPush、GitHub Actionsの有効化、Privateの履歴削除は、Source／権利／機密情報の独立審査と所有者の判断まで行わない。
 
+## 実行時のPackage / Test同等性を確認するGate
+
+上記の静的検査に加え、[ `check-public-test-parity.sh` ](check-public-test-parity.sh)を用意した。固定Sourceのclean checkoutと`prepare-candidate.sh`による候補に対し、独立`verify-candidate.sh`を**試験前後**で実行する。両者について`go list ./...`、`go vet ./...`、`go test -count=1 -timeout 60m ./...`、CLIのBuild、Reference Workspace Validateを実行し、Go package集合を照合する。各失敗は後続のコマンドが成功しても失敗として扱う。
+
+```bash
+bash tools/public-release/check-public-test-parity.sh \
+  . def7efc6b864c0fc4da61b451909fc002531159b \
+  tools/public-release/proposed-development-public-paths.txt \
+  /private/verified-public-source-candidate
+```
+
+このゲートは**まだ実TEIで実行していない**。正本checkout、選択済みcandidate、`verify-candidate.sh`（別Draft PR #1195）が揃わなければ実行を拒否する。出力先はPrivateなローカル検証環境であり、公開Repositoryではない。
+
+検査スクリプトのGitHub blob SHAは`6ae2eb608fd01ccf85ae9bc38c6891a5c53d2861`で、ローカル側の同一バイト列に対する`git hash-object`と一致。Bash構文PASS。ローカルの小さな**合成Goリポジトリ**で同等性の正常系と、Goテストの意図的失敗を確実に拒否することを確認した。この独立ゲートのオーケストレーション検査では合成用のmock verifierを使用したため、実candidateの独立検証やTEIのfull test PASSとは区別する。
+
 ## 未達Gate
 
 1. 許可リストが参照する**全**コード・Goテスト・Runbook・Source Fixtureの依存閉包（Go packageと非Goデータ）。単に全`*.go`を選んでも`go:embed`、動的なfile reader、外部サービス依存は保証しない。
