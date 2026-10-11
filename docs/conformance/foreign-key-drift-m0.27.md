@@ -4,7 +4,7 @@ M0.27では、M0.26でactual PostgreSQLから観測できることまで確認�
 
 目的はPostgreSQL固有のForeign Key機能を増やすことではありません。Database所有のPersistence MappingでDesired FKを明示し、provider-neutralなPhysical Schema上でActualとの意味差を比較できるようにします。
 
-設計判断は [ADR-0008](../adr/0008-persistence-foreign-key-identity.md) に記録しています。
+設計判断は [ADR-0008](../../plan/adr/0008-persistence-foreign-key-identity.md) に記録しています。
 
 ## 検証する経路
 

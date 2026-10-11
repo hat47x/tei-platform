@@ -148,7 +148,7 @@ Durable Invocation Handleでは、Supervisor Ownership Store上で現在の調�
 
 この区別により、Resource Broker側では新generationへtakeover済みでも、runtime-side fencingがまだ未確立という状態をDurableに表現できます。その期間にfull runtime authorityを持つとは主張せず、runtime-mutating operationや自動replayへ短絡しません。
 
-Conformance testでは、unknownでSupervisor generationだけが進むこと、後続reattachでruntime generationが追いつくこと、runtime generationがSupervisor generationを超えるHandleを拒否すること、terminal / missingの非authority-bearing observationだけではruntime generationを進めないことを直接確認します。設計理由は [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md) に記録しています。
+Conformance testでは、unknownでSupervisor generationだけが進むこと、後続reattachでruntime generationが追いつくこと、runtime generationがSupervisor generationを超えるHandleを拒否すること、terminal / missingの非authority-bearing observationだけではruntime generationを進めないことを直接確認します。設計理由は [ADR-0005](../../plan/adr/0005-supervisor-and-runtime-fencing-authority.md) に記録しています。
 
 ## この文書が保証しないもの
 

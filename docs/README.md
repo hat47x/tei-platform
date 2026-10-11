@@ -2,7 +2,7 @@
 
 この文書は、TEIの設計、実装、開発状況を調べるための案内です。製品要求、設計判断、受入条件、検証結果はここでは新たに定義しません。それぞれの正本はリンク先を参照してください。
 
-全体像、業務モデル、実装境界、要求の背景、未決事項、X-TEA原典の検討結果は、[想定仕様ガイド（HTML）](specification/index.html)からたどれます。正式な要求の最新の範囲は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)で確認してください。[期限なしロードマップ](../plan/product-roadmap.html)もあります。いずれも元の正本を置き換えるものではありません。
+全体像は[TEIの考え方](overview.md)、実装境界は[Architecture](architecture.md)、業務モデルは[Business-System Design](business-system-design.md)から確認できます。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、開発の主線は[TEI Master Plan](../plan/MASTER_PLAN.md)に記載しています。
 
 すべての文書を順番に読む必要はありません。目的に応じて入口を選んでください。リポジトリ全体の入口は[README](../README.md)です。
 
@@ -12,9 +12,9 @@
 | --- | --- | --- |
 | TEIが何を目指すか | [はじめてTEIを知る方へ](for-readers.md) | [TEIの考え方](overview.md) |
 | 技術的な全体構造 | [Architecture 読み方ガイド](architecture-reading-guide.md) | [Architecture](architecture.md) |
-| 機能ごとの内部設計 | [機能設計文書](../plan/design/README.md) | 対応するADR / Plan Issue |
+| 機能の実装・検証 | [Architecture](architecture.md) | [Conformance・Reference](../reference/README.md) |
 | 業務システム設計としての境界 | [業務システム設計 読み方ガイド](business-system-design-reading-guide.md) | [Business-System Design](business-system-design.md) |
-| AI / local cognition / Design Synthesis | [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md) | [Design Synthesis Loop Requirement Draft](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) |
+| AI / local cognition / Design Synthesis | [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md) | [TEIの考え方](overview.md) |
 | 正式なProduct Requirement | [Product Requirements 読み方ガイド](../requirements/README.md) | [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md) |
 | RequirementからEvidenceまでのつながり | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEI Planning](../plan/README.md) |
 | 現在どこまで成立しているか | [現在の実装状況](status.md) | [TEI Planning](../plan/README.md) |
@@ -55,11 +55,11 @@ Gate / Product claim
 | `docs/status.md` | 現在の実装・Evidence状態を示す | 可変のcurrent snapshot |
 | `reference/` / `tools/` | 設計仮説を実例・checkerで圧力試験する | Reference / executable Evidence surface |
 | `docs/conformance/` | 実装と設計上の不変条件の対応を示す | 対象範囲ごとのConformance説明 |
-| [`docs/audits/`](audits/README.md) | 特定時点の監査結果を残す | 監査記録。current architectureの第二正本ではない |
+| `docs/audits/` | 特定時点の監査結果を保管する | 監査記録。Architectureの正本ではない |
 
 `architecture-reading-guide.md`、`business-system-design-reading-guide.md`、`design-synthesis-reading-guide.md`、`requirements/README.md`は、正本を置き換えるものではありません。背景や失敗例、要求のつながりを知りたい場合に読む案内です。
 
-旧配置の[`docs/adr/`](adr/README.md)には、過去の参照を保つための案内だけが残っています。ADR本文の正本は[`plan/adr/`](../plan/adr/README.md)です。
+ADR本文の正本は[`plan/adr/`](../plan/adr/README.md)です。
 
 ## おすすめの読み順
 
@@ -98,13 +98,10 @@ Requirementだけから実装を直接導出せず、PAS、設計判断、Refere
 ### 4. AI / local cognition / Design Synthesisを追う
 
 1. [TEIの考え方](overview.md)で、TEI全体におけるAIの位置を確認します。
-2. [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md)で、人の作業を何へ圧縮したいのかを具体例から理解します。
-3. [Design Synthesis Loop Requirement Draft](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md)に、上位のProduct GoalとDSR候補があります。
-4. [Derived Cognitive Exploration Overview](../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md)に、非LLM認知を検討する理由があります。
-5. [Derived Cognitive Requirement Draft](../plan/DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md)に、TEIへ求める性質があります。
-6. 対応するPlan Issue / Benchmark / Feature Contract
+2. [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md)で、Product Goalと認知支援の考え方を確認します。
+3. 実装済みの範囲と未検証の範囲は[現在の実装状況](status.md)で確かめます。
 
-FlyHash、HDC、embedding、feature atom等の詳細から読み始めず、「既知の事実で候補空間を狭め、人は残った意味判断を行う」というProduct Goalから下へ降ります。
+非LLM認知やモデル生成の探索項目は実装確定事項ではありません。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)に従います。
 
 ### 5. 現在のGateを確認する
 
