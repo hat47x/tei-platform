@@ -128,6 +128,8 @@ Driverは、本番Runtimeだけでなく、設計途中のApplicationを動か�
 
 設計内容をコード生成後まで待たずに検証できることを重視します。
 
+**Driver Scenarioをシナリオテストの正本として再利用できること**: 業務定義から一度生成・受理したDriver Scenarioは、独立して保存・版管理・再読込でき、以降はそれを元にCLIの実行コマンド列・テスト、Web等のTarget固有E2Eを何度でも再生成できる必要があります。Scenarioの入力・事前条件・業務Step・期待Outcome・失敗・Observation・網羅対象の正本をCLIスクリプトやWebテストへ分散させてはいけません。業務意味のSSOTはAccepted Canonicalに残し、Scenarioが所有するのは**テストの意図と検証条件**です。ScenarioとCanonical revisionとの整合は必ず検査します。生成AIが最小の実行環境で業務定義を検証する主要手段として、生成したCLIコマンドを利用できなければなりません。
+
 ## RQ-013 Target-neutralなPresentation / Interaction境界を持つこと
 
 Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込まず追加できる必要があります。
@@ -243,6 +245,8 @@ ownership、fencing、durable handle、observation等を用いて、誰が現在
 重要な設計境界は、文書だけでなく、小さいReference Workspace、fixture、実行例、Conformance testから再現できることを基本とします。
 
 異なるProviderやTargetを追加するときも、「動いた」という事実だけでなく、共通の意味境界を満たしているかを確認できる必要があります。
+
+Driver Scenarioを唯一のテストケース定義とする範囲では、再生成したCLIコマンド／各Target E2EがScenarioの操作・分岐・期待値・必要な観測を漏らさず保持しているかを、機械的なcoverage matrixと生成物の一致検査で示します。同じScenario revision／Generator version／Target Bindingから生成した成果物は再現可能であり、手修正された生成物や旧revisionの生成物はstaleとして検出できる必要があります。CLIでScenarioが実行可能と確認できることと、各Targetでの実E2E／認証／視覚・操作品質が確認できることは別のEvidenceです。
 
 AIが作成したProposalやgenerated artifactを採用した場合も、AIを介さずauthoritative sourceを再読込し、同じCanonical meaningとConformance結果を再現できる必要があります。
 
