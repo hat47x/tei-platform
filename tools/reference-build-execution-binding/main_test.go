@@ -1070,3 +1070,46 @@ func TestBuildExecutionResultFingerprintIsContentIdentityNotAttemptIdentity(t *t
 		t.Fatal("different exact plans collapsed into one result identity")
 	}
 }
+
+func TestDomainNeutralProjectionDoesNotRewriteLegacyLocatorSensitiveBuildFingerprint(t *testing.T) {
+	base := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
+	relocated := base
+	relocated.Sources = append([]plugin.BuildSource(nil), base.Sources...)
+	relocated.Sources[0].Locator = "reference://same-bytes-other-location"
+
+	// BuildPlan v1 includes Locator. Its exact Lock semantics must not be
+	// retroactively changed when introducing a domain-neutral projection.
+	legacyA, err := plugin.BuildPlanFingerprint(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyB, err := plugin.BuildPlanFingerprint(relocated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacyA == legacyB {
+		t.Fatal("BuildPlan v1 unexpectedly ignored Source Locator")
+	}
+
+	// The Reference execution identity treats Locator as a retrieval hint.
+	// This is a *different* fingerprint contract, not a replacement for v1.
+	executionA, err := executionPlanFromPluginBuildPlan(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executionB, err := executionPlanFromPluginBuildPlan(relocated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectedA, err := buildExecutionPlanFingerprint(executionA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectedB, err := buildExecutionPlanFingerprint(executionB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projectedA != projectedB {
+		t.Fatal("retrieval-only Locator changed domain-neutral content identity")
+	}
+}
