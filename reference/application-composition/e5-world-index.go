@@ -392,6 +392,18 @@ type e5EvidenceEnvelope struct {
     Derived *e13DirectDerived `json:"derived,omitempty"`
 }
 
+// e13PairedEvidence adds the existing Derived Index only for an observed
+// Application and only on explicit request. It does not grant disclosure,
+// acceptance, or executable authority.
+func e13PairedEvidence(world ir.World, report e5Report, sourceIndex sourceindex.Index, includeDerived bool) e5EvidenceEnvelope {
+    evidence := e5PairedEvidence(report, sourceIndex)
+    if includeDerived && report.Status == "observed" {
+        derived := e13FromWorld(world)
+        evidence.Derived = &derived
+    }
+    return evidence
+}
+
 func e5PairedEvidence(report e5Report, index sourceindex.Index) e5EvidenceEnvelope {
     return e5EvidenceEnvelope{
         Format: "tei.e5-paired-source-observation.v1",
@@ -415,9 +427,7 @@ func main() {
     report := inspectE5(loaded.World, index, *applicationID)
     var output any = report
     if *pairedEvidence {
-        evidence := e5PairedEvidence(report,index)
-        if *includeDerived && report.Status == "observed" { d:=e13FromWorld(loaded.World); evidence.Derived=&d }
-        output=evidence
+        output = e13PairedEvidence(loaded.World, report, index, *includeDerived)
     }
     if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
         fmt.Fprintln(os.Stderr, err)
