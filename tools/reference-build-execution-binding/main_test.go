@@ -1037,3 +1037,36 @@ func TestBuilderHandoffRejectsSameBytesUnderDifferentLogicalBuilder(t *testing.T
 		t.Fatalf("valid digest hex case changed Builder handoff identity: %v", err)
 	}
 }
+
+func TestBuildExecutionResultFingerprintIsContentIdentityNotAttemptIdentity(t *testing.T) {
+	// Recomputing the same plan/output pair does not prove that a second
+	// actual build happened. Separate BuildAttempt Evidence is required.
+	pair := BuildExecutionResult{
+		FormatVersion:            buildExecutionResultFormatVersion,
+		ExecutionPlanFingerprint: strings.Repeat("a", 64),
+		ArtifactSetFingerprint:   strings.Repeat("b", 64),
+	}
+	first, err := buildExecutionResultFingerprint(pair)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := buildExecutionResultFingerprint(pair)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != second {
+		t.Fatal("repeated calculation changed result content identity")
+	}
+
+	// Identical output bytes under a different exact plan remain a
+	// different BuildExecutionResult.
+	differentPlan := pair
+	differentPlan.ExecutionPlanFingerprint = strings.Repeat("c", 64)
+	changed, err := buildExecutionResultFingerprint(differentPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed == first {
+		t.Fatal("different exact plans collapsed into one result identity")
+	}
+}
