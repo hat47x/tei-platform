@@ -45,3 +45,34 @@ go vet ./internal/composition
 4. 別ProcessまたはWasm instanceで新旧世代を並走させ、実トラフィックと実リソースの切替を試す。
 5. 静的TargetのLoweringでLoader/Watcherを完全除外できるか計測する。
 6. 必要な経路が成立した段階で旧`CapabilityKind`、Plugin依存、旧Runtime分類を段階的に削除する。旧APIの保護を目的に新Kernelを複雑化させない。
+
+
+## 2026-10-12：Contract/Coeffect Registryの追加（本PRの続き）
+
+`internal/composition/registry.go` は旧Plugin ID・固定CapabilityKindから独立した、サービス契約中心の依存解決Referenceである。
+
+- `Contract(ID, Version, Shape)` は型付きサービス契約の同一性候補。現段階の `Shape` は文字列の**完全一致**だけを調べ、署名やschemaの実際の検証は行わない。
+- `Provider(ID, Scope, Offers, Requires)` と `Dependency(Contract, optional explicit ProviderID)` で要求サービスを宣言する。`Scope` は正確に一致する場合だけ探索し、tenant間の暗黙fallbackを禁止する。
+- `Registry.Apply(expectedRevision, upserts, removes)` は一回の原子的な構成変更であり、古いRevision・不正宣言・明確な依存循環があれば更新を取り消す。
+- 依存先が欠ける、または候補が曖昧な場合は、勝手に選ばず`Assessment.Eligible=false`と理由を返す。同じscope内に候補が複数ある場合、明示したProviderIDで絞り込める。
+- `ActivationOrder` は依存先から利用側への順序を示す。これは**宣言上の適格順**であり、実際の起動・readiness・Authorityを証明しない。
+- `Transitions` はProviderの登録・撤去・契約変更・依存先の差し替えを観測可能にする。Provider喪失時の実Runtime停止は**Host側がこの結果を適用するまで成立しない**。
+- 配布上のPlugin依存、Business Canonical ID、Build Artifactのauthority、実際のPermission・Lease、Runtime Engine identityはRegistryが定義・保証するものではない。
+
+追加した試験：
+- Provider不在→出現→撤去→復帰の適格性と変化通知
+- 同一契約に対する曖昧な複数Provider、明示wiring、Scopeをまたぐfallback禁止
+- 依存循環による`Apply`全体の拒否、欠落サービスと循環が共存する場合の拒否
+- 同時更新で旧Revisionを使った片方だけを成功させるCAS、Snapshotの防御的コピー
+- 契約Shape差、重複編集、Provider宣言差、再Bindingの観測
+- `vertical_slice_test.go`で、依存喪失の検出→Hostによる明示Withdraw→旧呼出しDrain→Effect解放→Provider復帰後もHostが勝手に再起動しないことを確認
+
+`internal/composition`の**同じsource bytes**を持つ独立した一時Goモジュール（Go 1.23.2）で`go test -race -count=1 ./...`、`go vet ./...`、`gofmt -l`を実行しPASS。GitHub上のblob SHAとローカル`git hash-object`が一致することも、追加したregistry.go / registry_test.go / vertical_slice_test.goについて確認する。
+
+**重要な限界**：このRegistryは副作用ゼロの依存解決と変更差分生成までを担当し、Providerを起動・再起動・解放するReactive Runtime Schedulerではない。実行時の状態遷移、Ready判定、二世代並走の容量、権限・署名・lease・fencing、世代切替の自動適用は今後の実装対象である。局所GoテストのPASSをTEI全体のRepository Healthや実環境の無停止性の証明に読み替えない。
+
+次の接続優先順位：
+1. Contractのtyped shape・Conformance／Authorityの検証契約（#951）と、exact Artifact Lockの結合。
+2. Hostが所有するActivation/Deactivation Coordinator。RegistryのTransitionを受け、旧Runtimeのin-flightとEffect Scopeを整合させる。単純な自動restartは行わない。
+3. production Consumerの一件を新Contract解決→Provider確定→Host Authority→Invocationへ載せ、旧Resolver・旧Kind依存を撤去。
+4. 別ProcessまたはWasm Hostでの実トラフィック切替・Availability観測。Static Loweringでは動的Registry自体を削れることを検証。
