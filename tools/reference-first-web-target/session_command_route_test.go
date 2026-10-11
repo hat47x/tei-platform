@@ -1,0 +1,510 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"tei/internal/core"
+	"tei/internal/workspace"
+	webcomposition "tei/reference/web-composition/go-host"
+)
+
+func sessionWebProjectionAndRunner(t *testing.T) (webTargetProjection, *referenceCommandScenarioRunner, readScenarioRunner) {
+	t.Helper()
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+		HandoverBaselineID:         testBaselineID,
+		BaselineRepositoryRevision: testBaselineRevision,
+		TargetBuildRevision:        testTargetRevision,
+		ApplicationID:              core.MustCanonicalID("order_entry"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := newReferenceCommandScenarioRunner(loaded.World,
+		legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return projection, runner, newReferenceReadScenarioRunner(loaded.World)
+}
+
+// These are explicitly synthetic fixtures. The example header is not a
+// recommended real session verifier and must never be deployed as one.
+func syntheticProtectedSessionConfiguration(runner *referenceCommandScenarioRunner) protectedSessionCommandConfig {
+	corporateIssuer := "https://issuer.example.invalid/tenant1"
+	identities := map[string]webcomposition.Principal{
+		"corporate-editor":   {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor", PrincipalID: "employee-1"},
+		"corporate-viewer":   {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer", PrincipalID: "employee-2"},
+		"legacy-editor":      {ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor", PrincipalID: "employee-1"},
+		"corporate-locked":   {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked", PrincipalID: "employee-locked"},
+		"corporate-disabled": {ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-disabled", PrincipalID: "employee-disabled"},
+	}
+	links := map[webcomposition.ExternalSubject]webcomposition.SubjectLink{
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-editor"}:     {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-viewer"}:     {PrincipalID: "employee-2", SubjectID: "subject-order-viewer"},
+		{ProviderID: "legacy", Issuer: "legacy:order_entry", Subject: "legacy-editor"}: {PrincipalID: "employee-1", SubjectID: "subject-order-editor"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-locked"}:     {PrincipalID: "employee-locked", SubjectID: "subject-order-locked"},
+		{ProviderID: "corporate", Issuer: corporateIssuer, Subject: "oidc-disabled"}:   {PrincipalID: "employee-disabled", SubjectID: "subject-order-disabled"},
+	}
+	return protectedSessionCommandConfig{
+		Runner:    runner,
+		Providers: map[string]string{"corporate": corporateIssuer, "legacy": "legacy:order_entry"},
+		VerifySession: func(r *http.Request) (webcomposition.Principal, error) {
+			identity, ok := identities[r.Header.Get("X-Synthetic-Session")]
+			if !ok {
+				return webcomposition.Principal{}, errors.New("session missing")
+			}
+			return identity, nil
+		},
+		VerifyCSRF: func(r *http.Request, _ webcomposition.Principal) bool {
+			return r.Header.Get("X-Synthetic-CSRF") == "matching"
+		},
+		SubjectLinks: func(_ context.Context, subject webcomposition.ExternalSubject) (webcomposition.SubjectLink, bool, error) {
+			link, ok := links[subject]
+			return link, ok, nil
+		},
+		AccountNow: func() time.Time { return runner.now }, // deterministic fixture clock, not production expiry
+		Audit:      func(webcomposition.AuditRecord) {},
+	}
+}
+
+func postSyntheticSession(h http.Handler, url, identity, csrf, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, url, strings.NewReader(body))
+	if identity != "" {
+		req.Header.Set("X-Synthetic-Session", identity)
+	}
+	if csrf != "" {
+		req.Header.Set("X-Synthetic-CSRF", csrf)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	return w
+}
+
+func TestWebTargetProtectedSessionRoutePreservesLegacyAndBusinessSemantics(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	var records []webcomposition.AuditRecord
+	config.Audit = func(record webcomposition.AuditRecord) { records = append(records, record) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := server.Handler()
+	for _, id := range []string{"corporate-editor", "legacy-editor"} {
+		t.Run(id, func(t *testing.T) {
+			rec := postSyntheticSession(h, "/scenario/session-submit", id, "matching",
+				`{"from":"2026-09-18T08:30:00Z","row":0}`)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("session submit: status=%d response=%s", rec.Code, rec.Body.String())
+			}
+			var response webCommandScenarioResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			result := response.Result
+			if response.Host != projection.Host || result.Stage != "completed" || result.Authentication != nil ||
+				result.Read == nil || len(result.Validations) != 3 ||
+				result.Authorization == nil || result.Authorization.Outcome != "allowed" ||
+				result.EffectAuthorization == nil || result.EffectAuthorization.Outcome != "allowed" ||
+				result.Command == nil || result.Observation == nil {
+				t.Fatalf("session result does not preserve existing business outcome: %+v", response)
+			}
+		})
+	}
+	// The legacy credential path remains independent and continues to run
+	// security.authenticate; it is never silently used by the new session path.
+	legacy := postSyntheticSession(h, "/scenario/submit", "", "",
+		`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`)
+	if legacy.Code != http.StatusOK {
+		t.Fatalf("legacy submit status=%d body=%s", legacy.Code, legacy.Body.String())
+	}
+	var response webCommandScenarioResponse
+	if err := json.Unmarshal(legacy.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Result.Authentication == nil || response.Result.Authentication.Outcome != "authenticated" ||
+		response.Result.EffectAuthorization != nil {
+		t.Fatalf("legacy credential route was changed by session reauthorization: %+v", response.Result)
+	}
+	if len(records) != 2 || records[0].Stage != "completed" || records[1].Stage != "completed" {
+		t.Fatalf("synthetic Host auditing failed: %+v", records)
+	}
+}
+
+func TestWebTargetProtectedSessionRouteDeniesUntrustedAndMalformedRequests(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	var audits []webcomposition.AuditRecord
+	config.Audit = func(record webcomposition.AuditRecord) { audits = append(audits, record) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := server.Handler()
+	for _, tc := range []struct {
+		name, identity, csrf, body string
+		want                       int
+	}{
+		{"unauthenticated", "", "matching", `{"row":0}`, http.StatusUnauthorized},
+		{"fake principal header alone is not session", "not-a-session", "matching", `{"row":0}`, http.StatusUnauthorized},
+		{"csrf missing", "corporate-editor", "", `{"row":0}`, http.StatusForbidden},
+		{"viewer denied by existing business rule", "corporate-viewer", "matching", `{"row":0}`, http.StatusForbidden},
+		{"locked editor denied before business capability", "corporate-locked", "matching", `{"row":0}`, http.StatusForbidden},
+		{"disabled account denied", "corporate-disabled", "matching", `{"row":0}`, http.StatusForbidden},
+		{"credential rejected on session route", "corporate-editor", "matching", `{"loginId":"legacy-order-editor","credential":"editor-secret","row":0}`, http.StatusBadRequest},
+		{"subject cannot come from JSON", "corporate-editor", "matching", `{"subjectId":"subject-order-editor","row":0}`, http.StatusBadRequest},
+		{"two JSON objects rejected", "corporate-editor", "matching", `{"row":0} {"row":0}`, http.StatusBadRequest},
+		{"duplicate row rejected", "corporate-editor", "matching", `{"row":0,"row":1}`, http.StatusBadRequest},
+		{"duplicate from rejected", "corporate-editor", "matching", `{"from":"2026-09-18T08:30:00Z","from":"2026-09-19T08:30:00Z"}`, http.StatusBadRequest},
+		{"case folded key rejected", "corporate-editor", "matching", `{"Row":0}`, http.StatusBadRequest},
+		{"mixed case alias rejected", "corporate-editor", "matching", `{"row":0,"ROW":1}`, http.StatusBadRequest},
+		{"JSON null must not invoke a command", "corporate-editor", "matching", `null`, http.StatusBadRequest},
+		{"JSON array cannot invoke a command", "corporate-editor", "matching", `[]`, http.StatusBadRequest},
+		{"body over 64 KiB rejected", "corporate-editor", "matching", `{"from":"` + strings.Repeat("A", 64<<10) + `"}`, http.StatusBadRequest},
+		{"JSON null member from rejected", "corporate-editor", "matching", `{"from":null}`, http.StatusBadRequest},
+		{"JSON null member row rejected", "corporate-editor", "matching", `{"row":null}`, http.StatusBadRequest},
+		{"JSON fractional row rejected", "corporate-editor", "matching", `{"row":0.5}`, http.StatusBadRequest},
+		{"nested field row rejected", "corporate-editor", "matching", `{"row":{"value":0}}`, http.StatusBadRequest},
+		{"negative row rejected", "corporate-editor", "matching", `{"row":-1}`, http.StatusBadRequest},
+		{"malformed RFC3339 from rejected", "corporate-editor", "matching", `{"from":"yesterday","row":0}`, http.StatusBadRequest},
+		{"invalid calendar date rejected", "corporate-editor", "matching", `{"from":"2026-02-30T00:00:00Z","row":0}`, http.StatusBadRequest},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			before := len(audits)
+			rec := postSyntheticSession(h, "/scenario/session-submit", tc.identity, tc.csrf, tc.body)
+			if rec.Code != tc.want || len(audits) != before+1 {
+				t.Fatalf("status=%d want=%d audits=%d", rec.Code, tc.want, len(audits)-before)
+			}
+			if audits[len(audits)-1].Stage != "rejected" {
+				t.Fatalf("request must be audited as rejected: %+v", audits[len(audits)-1])
+			}
+		})
+	}
+	req := httptest.NewRequest(http.MethodGet, "/scenario/session-submit", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("session endpoint unexpectedly accepts GET: %d", w.Code)
+	}
+}
+
+func TestWebTargetSessionRouteIsOptInAndFailsClosed(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	server, err := newWebTargetServer(projection, read, runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching", `{"row":0}`)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unconfigured route unexpectedly exposed: %d", rec.Code)
+	}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*protectedSessionCommandConfig)
+	}{
+		{"no verifier", func(c *protectedSessionCommandConfig) { c.VerifySession = nil }},
+		{"no csrf", func(c *protectedSessionCommandConfig) { c.VerifyCSRF = nil }},
+		{"no subject links", func(c *protectedSessionCommandConfig) { c.SubjectLinks = nil }},
+		{"no audit", func(c *protectedSessionCommandConfig) { c.Audit = nil }},
+		{"no providers", func(c *protectedSessionCommandConfig) { c.Providers = nil }},
+		{"no eligibility clock", func(c *protectedSessionCommandConfig) { c.AccountNow = nil }},
+		{"no runner", func(c *protectedSessionCommandConfig) { c.Runner = nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := syntheticProtectedSessionConfiguration(runner)
+			tc.mutate(&config)
+			if _, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config)); err == nil {
+				t.Fatal("unsafe session route configuration accepted")
+			}
+		})
+	}
+	differentRunner := sessionReferenceRunner(t)
+	config := syntheticProtectedSessionConfiguration(differentRunner)
+	if _, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config)); err == nil {
+		t.Fatal("session route accepted a different command runner")
+	}
+	config = syntheticProtectedSessionConfiguration(runner)
+	if _, err := newWebTargetServer(projection, read, runner,
+		withProtectedSessionCommand(config), withProtectedSessionCommand(config)); err == nil {
+		t.Fatal("duplicate protected session declarations were silently overwritten")
+	}
+}
+
+func TestWebTargetSessionRouteRechecksAccountBeforeCommand(t *testing.T) {
+	t.Run("account expires after HTTP authorization", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		clockCalls := 0
+		config.AccountNow = func() time.Time {
+			clockCalls++
+			if clockCalls == 1 {
+				return runner.now
+			}
+			return runner.now.AddDate(4, 0, 0) // beyond fixture valid_until
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching", `{"row":0}`)
+		if rec.Code != http.StatusForbidden || clockCalls != 2 {
+			t.Fatalf("expired identity was not stopped at command boundary: status=%d clock=%d body=%s", rec.Code, clockCalls, rec.Body.String())
+		}
+		var response webCommandScenarioResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link-denied" || response.Result.Command != nil ||
+			response.Result.Observation != nil || len(audits) != 1 || audits[0].Stage != "rejected" {
+			t.Fatalf("late account revocation reached business command: result=%+v audits=%+v", response.Result, audits)
+		}
+	})
+	t.Run("subject link store fails after HTTP authorization", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		original := config.SubjectLinks
+		calls := 0
+		config.SubjectLinks = func(ctx context.Context, source webcomposition.ExternalSubject) (webcomposition.SubjectLink, bool, error) {
+			calls++
+			if calls == 2 {
+				return webcomposition.SubjectLink{}, false, errors.New("subject link store unavailable")
+			}
+			return original(ctx, source)
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching", `{"row":0}`)
+		if rec.Code != http.StatusServiceUnavailable || calls != 2 {
+			t.Fatalf("late mapping error was not treated as execution failure: status=%d lookups=%d body=%s", rec.Code, calls, rec.Body.String())
+		}
+		var response webCommandScenarioErrorResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link" || response.Result.Command != nil ||
+			response.Result.Observation != nil ||
+			response.ExecutionError != "trusted identity or authorization resolution unavailable" ||
+			strings.Contains(rec.Body.String(), "subject link store unavailable") ||
+			len(audits) != 1 || audits[0].Stage != "error" {
+			t.Fatalf("late link failure lost provenance: result=%+v audits=%+v", response, audits)
+		}
+	})
+}
+
+func TestWebTargetSessionRouteEffectTimeRevalidation(t *testing.T) {
+	t.Run("account expires after validation and business authorization", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		clockCalls := 0
+		config.AccountNow = func() time.Time {
+			clockCalls++
+			if clockCalls < 3 {
+				return runner.now
+			}
+			return runner.now.AddDate(4, 0, 0) // beyond the fixture account expiration
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching",
+			`{"from":"2026-09-18T08:30:00Z","row":0}`)
+		if rec.Code != http.StatusForbidden || clockCalls != 3 {
+			t.Fatalf("effect-time expiry escaped: HTTP=%d clockChecks=%d body=%s", rec.Code, clockCalls, rec.Body.String())
+		}
+		var response webCommandScenarioResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link-denied" || len(response.Result.Validations) != 3 ||
+			response.Result.Authorization == nil || response.Result.Authorization.Outcome != "allowed" ||
+			response.Result.Command != nil || response.Result.Observation != nil ||
+			len(audits) != 1 || audits[0].Stage != "rejected" {
+			t.Fatalf("expired account reached effect: result=%+v audits=%+v", response.Result, audits)
+		}
+	})
+	t.Run("subject mapping changes after early checks", func(t *testing.T) {
+		projection, runner, read := sessionWebProjectionAndRunner(t)
+		config := syntheticProtectedSessionConfiguration(runner)
+		original := config.SubjectLinks
+		calls := 0
+		config.SubjectLinks = func(ctx context.Context, source webcomposition.ExternalSubject) (webcomposition.SubjectLink, bool, error) {
+			calls++
+			if calls == 3 {
+				// Both linked accounts exist, but a different SubjectID must
+				// never inherit the permission granted to the prior identity.
+				return webcomposition.SubjectLink{PrincipalID: "employee-1", SubjectID: "subject-order-viewer"}, true, nil
+			}
+			return original(ctx, source)
+		}
+		var audits []webcomposition.AuditRecord
+		config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+		server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching",
+			`{"from":"2026-09-18T08:30:00Z","row":0}`)
+		if rec.Code != http.StatusServiceUnavailable || calls != 3 {
+			t.Fatalf("link drift bypassed effect-time check: HTTP=%d lookups=%d body=%s", rec.Code, calls, rec.Body.String())
+		}
+		var response webCommandScenarioErrorResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Result.Stage != "identity-link" || response.Result.Command != nil ||
+			response.Result.Observation != nil || response.ExecutionError != "trusted identity or authorization resolution unavailable" ||
+			strings.Contains(rec.Body.String(), "subject link differs") ||
+			len(audits) != 1 || audits[0].Stage != "error" {
+			t.Fatalf("changed mapping reached effect or leaked link state: response=%+v audits=%+v", response, audits)
+		}
+	})
+}
+
+func TestWebTargetSessionRouteReportsMidRequestBusinessRevocationAsDenial(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	original := config.SubjectLinks
+	lookups := 0
+	config.SubjectLinks = func(ctx context.Context, source webcomposition.ExternalSubject) (webcomposition.SubjectLink, bool, error) {
+		lookups++
+		if lookups == 2 {
+			// The Host authorized an editor, but the trusted mapping now
+			// resolves the same application Principal to a viewer. The
+			// canonical business Capability must reject this changed role.
+			return webcomposition.SubjectLink{PrincipalID: "employee-1", SubjectID: "subject-order-viewer"}, true, nil
+		}
+		return original(ctx, source)
+	}
+	var audits []webcomposition.AuditRecord
+	config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := postSyntheticSession(server.Handler(), "/scenario/session-submit", "corporate-editor", "matching",
+		`{"from":"2026-09-18T08:30:00Z","row":0}`)
+	if rec.Code != http.StatusForbidden || lookups != 2 {
+		t.Fatalf("business permission revocation did not return 403: HTTP=%d lookups=%d body=%s", rec.Code, lookups, rec.Body.String())
+	}
+	var response webCommandScenarioResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Result.Stage != "authorization-denied" || response.Result.Authorization == nil ||
+		response.Result.Authorization.Outcome != "denied" || response.Result.Command != nil ||
+		response.Result.Observation != nil || len(audits) != 1 ||
+		audits[0].Stage != "rejected" || audits[0].Status != http.StatusForbidden {
+		t.Fatalf("changed permissions were audited as successful: result=%+v audit=%+v", response.Result, audits)
+	}
+}
+
+func TestWebTargetSessionValidationRejectionIsNotReportedAsCompletedCommand(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	var audits []webcomposition.AuditRecord
+	config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Existing reference Workspace has a selected order whose quantity is
+	// not positive. This is a valid business denial, not an execution error.
+	body := `{"from":"2026-09-18T08:00:00Z","row":1}`
+	rec := postSyntheticSession(server.Handler(), "/scenario/session-submit",
+		"corporate-editor", "matching", body)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("session business validation incorrectly appeared successful: HTTP=%d body=%s",
+			rec.Code, rec.Body.String())
+	}
+	var response webCommandScenarioResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Result.Stage != "validation-not-satisfied" || len(response.Result.Validations) != 1 ||
+		response.Result.Validations[0].Result != "not-satisfied" ||
+		response.Result.Authentication != nil || response.Result.Authorization != nil ||
+		response.Result.EffectAuthorization != nil ||
+		response.Result.Command != nil || response.Result.Observation != nil ||
+		len(audits) != 1 || audits[0].Stage != "rejected" || audits[0].Status != http.StatusUnprocessableEntity {
+		t.Fatalf("validation business denial lost provenance or reached an effect: response=%+v audit=%+v", response, audits)
+	}
+	// Keep the historical Credential endpoint's HTTP envelope unchanged;
+	// only the protected session route has the new business rejection code.
+	legacy := postSyntheticSession(server.Handler(), "/scenario/submit", "", "",
+		`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:00:00Z","row":1}`)
+	if legacy.Code != http.StatusOK {
+		t.Fatalf("legacy Credential HTTP response contract changed: %d body=%s",
+			legacy.Code, legacy.Body.String())
+	}
+	var legacyResponse webCommandScenarioResponse
+	if err := json.Unmarshal(legacy.Body.Bytes(), &legacyResponse); err != nil {
+		t.Fatal(err)
+	}
+	if legacyResponse.Result.Stage != "validation-not-satisfied" ||
+		legacyResponse.Result.Authentication == nil || legacyResponse.Result.Authorization != nil ||
+		legacyResponse.Result.Command != nil {
+		t.Fatalf("legacy business validation behavior changed: %+v", legacyResponse)
+	}
+}
+
+func TestWebTargetSessionCommandFailureDoesNotClaimEffectWasRejected(t *testing.T) {
+	projection, runner, read := sessionWebProjectionAndRunner(t)
+	config := syntheticProtectedSessionConfiguration(runner)
+	var audits []webcomposition.AuditRecord
+	config.Audit = func(a webcomposition.AuditRecord) { audits = append(audits, a) }
+	server, err := newWebTargetServer(projection, read, runner, withProtectedSessionCommand(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// This fixture selects order 1003, for which the command Adapter returns
+	// an Execution Error. A production adapter might report the same error
+	// after committing an effect; the session endpoint cannot infer rollback.
+	rec := postSyntheticSession(server.Handler(), "/scenario/session-submit",
+		"corporate-editor", "matching",
+		`{"from":"2026-09-18T07:00:00Z","row":2}`)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("uncertain Command error was presented as input rejection: HTTP=%d body=%s",
+			rec.Code, rec.Body.String())
+	}
+	var response webCommandScenarioErrorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Result.Stage != "command" || response.Result.Command != nil ||
+		response.Result.Observation != nil || response.Result.Authorization == nil ||
+		response.Result.Authorization.Outcome != "allowed" ||
+		response.ExecutionError != "action completion unconfirmed; inspect authoritative state before retrying" ||
+		strings.Contains(rec.Body.String(), "synthetic submit adapter unavailable") ||
+		len(audits) != 1 || audits[0].Stage != "error" ||
+		audits[0].Status != http.StatusInternalServerError {
+		t.Fatalf("Command error lost uncertainty or leaked Adapter implementation: response=%+v audits=%+v",
+			response, audits)
+	}
+	// The legacy endpoint retains its historical HTTP 422 Execution Error
+	// envelope. The new status semantics apply to the opt-in session route.
+	legacy := postSyntheticSession(server.Handler(), "/scenario/submit", "", "",
+		`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}`)
+	if legacy.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("legacy Command error status changed: %d body=%s", legacy.Code, legacy.Body.String())
+	}
+}
