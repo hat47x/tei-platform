@@ -1,12 +1,12 @@
 # TEI ドキュメント案内
 
-この文書は、TEIの設計・実装・現在地を読むための案内板です。新しいProduct Requirement、Architecture判断、Gate条件、Evidence結論はここでは定義しません。各項目の意味上の正本は、それぞれのリンク先にあります。
+この文書は、TEIの設計、実装、開発状況を調べるための案内です。製品要求、設計判断、受入条件、検証結果はここでは新たに定義しません。それぞれの正本はリンク先を参照してください。
 
 全体像、業務モデル、実装境界、全26要求、未決事項、X-TEA原典の検討結果は、[想定仕様ガイド（HTML）](specification/index.html)でまとめて見られます。[期限なしロードマップ](../plan/product-roadmap.html)もあります。どちらも既存の正本を変更する文書ではありません。
 
-全文書を順番に読む必要はありません。知りたいことに応じて入口を選んでください。
+すべての文書を順番に読む必要はありません。目的に応じて入口を選んでください。
 
-## クイックナビゲーション
+## 知りたいことから探す
 
 | 知りたいこと | 最初に読む文書 | 次に読む文書 |
 | --- | --- | --- |
@@ -18,14 +18,14 @@
 | 正式なProduct Requirement | [Product Requirements 読み方ガイド](../requirements/README.md) | [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md) |
 | RequirementからEvidenceまでのつながり | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEI Planning](../plan/README.md) |
 | 現在どこまで成立しているか | [現在の実装状況](status.md) | [TEI Planning](../plan/README.md) |
-| 実際に動かしたい | [Getting Started](getting-started.md) | [現在の実装状況](status.md) |
+| 実際に動かしたい | [TEIを動かす](getting-started.md) | [現在の実装状況](status.md) |
 | Security / Authority境界 | [Security](security.md) | [Architecture 読み方ガイド](architecture-reading-guide.md) |
 | 用語・命名を確認したい | [Naming](naming.md) | [TEIの考え方](overview.md) |
 | 文書を書きたい・レビューしたい | [TEI 文書品質ガイド](documentation-quality.md) | [`AGENTS.md`](../AGENTS.md) |
 
 ## 文書の役割
 
-TEIでは、説明、設計判断、要求、計画、Evidenceを一つの長文へ集約しません。
+TEIでは、説明、要求、設計判断、計画、検証の根拠を一つの長文にまとめず、役割ごとに管理します。
 
 ```text
 Product Value / Vision / Principles
@@ -43,7 +43,7 @@ Evidence
 Gate / Product claim
 ```
 
-一方、`docs/`はこの構造を理解・利用するための説明と技術文書を置く場所です。
+`docs/`には、この構造を理解し、利用するための説明と技術文書を置きます。
 
 | 文書群 | 主な役割 | 正本性 |
 | --- | --- | --- |
@@ -67,7 +67,7 @@ Gate / Product claim
 2. [TEIの考え方](overview.md)
 3. [現在の実装状況](status.md)
 
-細かな型やGate手順より先に、TEIが「意味・実装・実行・観測」をなぜ分けるのかをつかみます。
+まず、TEIが「意味・実装・実行・観測」を分ける理由を確認します。型の詳細やGateの手順は、その後に読み進めます。
 
 ### 2. Architectureを追う
 
@@ -118,7 +118,7 @@ FlyHash、HDC、embedding、feature atom等の詳細から読み始めず、「�
 2. [`AGENTS.md`](../AGENTS.md)
 3. 対象文書の上位正本 / Reference / Evidence
 
-TEIは扱う技術領域と業務知識が広いため、実装できる人だけが読める文書では足りません。文書側で背景、前提、用語、失敗例、設計理由を引き受け、主担当より一段浅い知識の読者でも、目的・境界・判断理由をレビューできる状態を目指します。
+TEIは扱う技術領域と業務知識が広いため、実装できる人だけが読める文書では足りません。背景や前提、用語、失敗例、判断理由を文書内で説明し、専門外の読者も目的と設計上の境界を理解してレビューできる状態を目指します。
 
 ## 設計文書を読むときの区別
 
