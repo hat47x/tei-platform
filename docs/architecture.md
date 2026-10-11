@@ -678,7 +678,7 @@ Replayable Behaviorを利用しても、単一behaviorの成功で複数stepのB
 
 Visual evaluator、GUI agent、VLM等を利用しても、Visual EvidenceだけでSemantic / Functional Conformanceを成立させません。
 
-第二Targetでの圧力試験は[`ISSUE-000026`](../plan/issue/000026-target-capability-execution-profile-boundary.md)で扱います。
+第二Targetでの圧力試験は継続課題です。具体的な成立範囲は、対象Targetの実装と検証結果に基づいて判断します。
 
 ## 配備と外部状態の確認
 
