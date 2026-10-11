@@ -2,6 +2,7 @@ package main
 
 import (
 	"sort"
+	"strings"
 
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
@@ -32,9 +33,14 @@ func validationScopeSourcesNeeded(rows []validationScopeReviewRow) bool {
 // 既存Source Indexへ戻す。曖昧・欠落時に名前からSourceを補完しない。
 func attachValidationScopeSources(rows []validationScopeReviewRow, index sourceindex.Index) {
 	artifacts := make(map[string]string, len(index.Artifacts))
+	ambiguousPaths := make(map[string]struct{})
 	for _, artifact := range index.Artifacts {
+		if _, ambiguous := ambiguousPaths[artifact.Path]; ambiguous {
+			continue
+		}
 		if _, duplicated := artifacts[artifact.Path]; duplicated {
-			// An ambiguous artifact path cannot identify a trustworthy fingerprint.
+			// Once duplicated, a path remains ambiguous even if it appears again.
+			ambiguousPaths[artifact.Path] = struct{}{}
 			artifacts[artifact.Path] = ""
 			continue
 		}
@@ -42,13 +48,21 @@ func attachValidationScopeSources(rows []validationScopeReviewRow, index sourcei
 	}
 	for i := range rows {
 		row := &rows[i]
+		// Derived evidence is a fresh projection of this Index, not an append-only log.
+		row.SourceEvidence = nil
+		row.UnresolvedSource = nil
 		if row.Status != "review-needed" && row.Status != "no-set-difference" {
 			continue
 		}
 
 		subjects := []subject.Subject{{Kind: "application", ID: row.Application}}
 		seenID := make(map[string]struct{})
-		for _, id := range append(append([]string(nil), row.ApplicationOnly...), row.ProcedureOnly...) {
+		// Include the intersection as well: "no-set-difference" must still
+		// let a reviewer trace the exact Validation definitions compared.
+		validationIDs := append([]string(nil), row.SharedValidations...)
+		validationIDs = append(validationIDs, row.ApplicationOnly...)
+		validationIDs = append(validationIDs, row.ProcedureOnly...)
+		for _, id := range validationIDs {
 			if _, seen := seenID[id]; seen {
 				continue
 			}
@@ -68,7 +82,7 @@ func attachValidationScopeSources(rows []validationScopeReviewRow, index sourcei
 			}
 			ref := definitions[0]
 			fingerprint := artifacts[ref.ArtifactPath]
-			if fingerprint == "" || ref.Range.Start.Line < 1 {
+			if strings.TrimSpace(ref.ArtifactPath) == "" || strings.TrimSpace(fingerprint) == "" || ref.Range.Start.Line < 1 {
 				row.UnresolvedSource = append(row.UnresolvedSource, target.Kind+":"+target.ID)
 				continue
 			}
