@@ -48,3 +48,8 @@
 - `main` advanced to `00fec46acb2ea62e7c35a9838fcc7e604c1247be`. The refreshed mirror again matched all remote refs exactly: 1,064 refs (74 heads, 4 tags, 986 PR-head refs), 11,914 reachable commits, and 46,228 reachable objects. `git fsck --full --no-reflogs --unreachable` returned no diagnostics after pruning and garbage collection of the disposable mirror.
 - Gitleaks v8.29.1 scanned 11,537 commits / about 1.06 GB across all refs; it reported the same 12 rows at the same 2 source-line sites. Candidate history at `45e7ec0ef896cb7b1567d725c6b483265d09b20b` scanned 8,388 commits / about 794 MB and reported 6 rows at those same sites. Current-tree scan reported 1 row at line 86. No new source site or rule appeared.
 - The independent human review of the two enum-identifier sites is still required. These results do not clear Git metadata, Issue/PR content, Actions logs/artifacts, Release assets, Wiki/Pages, or third-party rights.
+
+## Final local candidate check — 2026-10-11 18:59 JST
+
+- Candidate `5bef7420e78b581dd4236ce56098dcdb065fdcf5` working-tree scan: 1 finding row at the same line-86 site. The three local commits after the full candidate-history scan were separately scanned (3 commits / 4.49 KB); no findings.
+- The line-86/87 identifiers were source-checked as typed enum constants, but still await an independent human reviewer. This confirmation does not authorize an allowlist or close Issue #1188.

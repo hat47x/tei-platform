@@ -31,7 +31,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | サーバー保護 | 過去の#513/#972でmain無保護が記録された。Private rulesets APIは現プランで403 |
 | 全履歴・非Git面 | **未監査**。この一覧から公開可とは推論しない |
 
-2026-10-11 18:55 JSTの再取得では、current `main`は`00fec46acb2ea62e7c35a9838fcc7e604c1247be`、Open PRは0件。全74 remote branch headsはローカル候補`45e7ec0ef896cb7b1567d725c6b483265d09b20b`の祖先に含まれる。#1200・#1202・#1203・#1206はReady化後にmergeされた。#1207–#1217もmerge timelineを確認済み。詳細は[PR・branch exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)。今後のmain統合では、Draft PRを統合せず、直前のexact head・base・current mainを再取得して判断する。
+2026-10-11 18:59 JSTの最終確認では、current `main`は`00fec46acb2ea62e7c35a9838fcc7e604c1247be`、Open PRは0件。全74 remote branch headsはローカル候補`5bef7420e78b581dd4236ce56098dcdb065fdcf5`の祖先に含まれ、checkoutはclean。#1200・#1202・#1203・#1206はReady化後にmergeされた。#1207–#1217もmerge済み。`go build ./...`と`go mod verify`はPASS。full repository health test suiteは未実行。詳細は[PR・branch exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)。今後のmain統合では、Draft PRを統合せず、直前のexact head・base・current mainを再取得して判断する。
 
 ## 3. P0-A 機密性・権利・公開面
 

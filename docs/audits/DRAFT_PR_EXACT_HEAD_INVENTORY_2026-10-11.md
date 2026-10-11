@@ -72,3 +72,7 @@ These base SHAs are per-PR observations and are not evidence that they match cur
 - `main` advanced to `00fec46acb2ea62e7c35a9838fcc7e604c1247be` through PRs #1207–#1217. GitHub REST currently returns 0 open PRs; all 74 remote branch heads are ancestors of candidate `45e7ec0ef896cb7b1567d725c6b483265d09b20b`.
 - PR timeline records show #1207–#1217 merged between 09:45:53Z and 09:49:56Z. These heads and their resulting `main` merge commits are now present in the local candidate.
 - The local candidate remains a review branch; it has not been pushed. These ancestry facts do not imply Repository Health qualification for merging this candidate.
+
+## Final local candidate check — 2026-10-11 18:59 JST
+
+After the audit and README updates plus a package declaration repair, candidate `5bef7420e78b581dd4236ce56098dcdb065fdcf5` remains based on current `main` `00fec46acb2ea62e7c35a9838fcc7e604c1247be`; all 74 remote branch heads remain ancestors and GitHub reports 0 open PRs. The checkout is clean. No push or `main` update was performed from this task.
