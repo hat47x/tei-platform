@@ -1,236 +1,59 @@
-# REF-SPEC-01：受注のValidation参照差の静的照合（2026-10-09）
+# REF-SPEC-01：Validation参照差の確認記録
 
-## 目的と判定の範囲
+この記録は、ApplicationとBusiness ProcedureのValidation参照差を調査した**根拠と未検証範囲**をまとめたものです。仕様と操作手順は[Business-system design Reference](../../reference/business-system-design/README.md)、研究上の評価目的は[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とし、ここでは重複して定義しません。関連する[Draft PR #1040](https://github.com/hat47x/tei-platform/pull/1040)と[Issue #915](https://github.com/hat47x/tei-platform/issues/915)は、Validation比較の変更とbrownfield onboarding全体の研究を区別して扱います。
 
-業務手順を含む複数の設計視点を、一つの変更から追跡できるかを評価するための**読み取り専用の静的確認**である。新しい業務仕様や修正要求を受理するものではない。関連する価値と実証計画は[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)のREF-SPEC-01に置く。
+## 静的なSource照合（2026-10-09）
 
-- 照合対象のGit revision：`797ce7e99851b0c5cd054bf0b93824e329653eaf`
-- 取得方法：GitHub上の同一revisionから正本Sourceを個別取得し、Applicationの`uses validation`宣言、Sales側のValidation定義、Business ProcedureのBP-05の明示参照、Customer編集probeを読み取った。
-- 照合方法：`.tei`の対象行を限定した文字列抽出と、Business ProcedureのJSON解析。TEIの全構文解析、Workspace Loader、Validation Engineや実際のCLI実行は行っていない。
-- Sourceの更新：なし。出力はこの文書だけに記録する。
+- 対象Git revision：797ce7e99851b0c5cd054bf0b93824e329653eaf
+- 方法：同一revisionのApplication .tei、Semantic Validation .tei、Business Procedure JSON、Customer編集probeを個別取得し、対象宣言を読み取った。Workspace LoaderやGo checkerの実行結果ではない。
+- 元Workspaceの書き換え：なし。
 
-## 照合したSource
-
-| 参照元 | Git blob SHA |
+| 対象Source（reference/以下） | Git blob SHA |
 | --- | --- |
-| `reference/workspace/applications/order-entry/application.tei` | `00c29ac0e557cb50fdcd13f2477d0b538a528c80` |
-| `reference/workspace/semantic/sales/validation.tei` | `fd9e3ad6a81e3201ade8e987377137a3ba702d5f` |
-| `reference/business-system-design/order-entry-business-procedure.json` | `ac1980d90ddd702a362078e1d4dd8dd70f5bc1a2` |
-| `reference/business-system-design/order-entry-customer-edit-conflict.json` | `2786138549a4b3f227f06969f57bf2a6ba47a99f` |
+| workspace/applications/order-entry/application.tei | 00c29ac0e557cb50fdcd13f2477d0b538a528c80 |
+| workspace/semantic/sales/validation.tei | fd9e3ad6a81e3201ade8e987377137a3ba702d5f |
+| business-system-design/order-entry-business-procedure.json | ac1980d90ddd702a362078e1d4dd8dd70f5bc1a2 |
+| business-system-design/order-entry-customer-edit-conflict.json | 2786138549a4b3f227f06969f57bf2a6ba47a99f |
 
-## 得られた事実
+確認できた事実は、order_entryのApplication宣言にValidationが3件あり、BP-05の明示参照にはそのうち2件があることです。共通はsales.order_line.quantity_positiveとsales.order.lines.line_number_unique、Application側のみはsales.order_line.line_number_positiveです。Procedure側のみのIDはありません。**差があるだけで業務上の欠陥とは断定しません。**
 
-`order_entry`の`uses validation`宣言には、以下の3件が存在する。
+Customer編集probeにはBP-02でread-writeを要求する入力がありましたが、この静的確認だけでは既存checkerが拒否診断を返したことを実証していません。
 
-1. `sales.order_line.quantity_positive`
-2. `sales.order.lines.line_number_unique`
-3. `sales.order_line.line_number_positive`
+## 限定的なGo実行の経過
 
-対象とした`sales`のValidation定義Sourceにも、同じ3件のIDが記載されていた。
+過去の隔離モジュールはGitHubのGo原文とblob SHAを一致させ、必要なTEI型や集計関数を**代替実装**して試験したものです。後から追加されたコード、実Workspace、現行PR全体の検証記録ではありません。次のPASSはそれぞれ**記載された当時の原文**だけに適用されます。
 
-一方、`order-entry.order-handling`の業務手順BP-05（`validation-support`）で明示されたValidationは上記の1、2の2件であり、3番目は存在しなかった。したがって、**Application側にのみ記載されたIDは`sales.order_line.line_number_positive`の1件、業務手順側のみに記載されたIDは0件**である。
-
-Customer編集probeは、同じ業務手順のBP-02に対し、`order_entry.customer_reference`を対象に`read-write`を要求していた。この事実だけでは、現行checkerが期待の拒否診断を実際に返したと主張できない。
-
-## 判断を残す事項
-
-BP-05の明示参照は、Application全体のValidation宣言を網羅する義務を持つとは定められていない。したがって、上記の集合差をそのまま欠落・不整合・自動同期対象と判断しない。業務手順の適用範囲に行番号の正値検査が必要なのか、Application側から導出した一覧を表示すれば十分なのかを、人が確認できる候補として示す。
-
-現行`reference-business-procedure-check`の標準出力は、Business Procedureが明示したValidationの解決と、Patternから導出できる意味を扱っている。今回の集合差を**実際に表示したという証拠はまだない**。任意の比較表示を追加する試作については、コードとテストを別途検証する。
-
-## 次の検証と完了条件
-
-1. 同一exact headのclean checkoutで、既存のbaseline checkerとCustomer編集probeを実行し、診断・終了値・実行前後のcleanを記録する。
-2. 比較表示を指定した場合だけ、上記のApplication-only IDを`review-needed`として返せるか確かめる。標準動作とblocking診断を変えない。
-3. 文脈未指定、ID重複、参照不能を未解決として返し、意味の推測や権限の補完をしないことを負例で確かめる。
-4. 実際の人のレビュー、業務上の採否、実Provider、UI経由の実行結果は別に確認する。
-
-**現時点の結論：** 同一revisionのSource間に、確認候補となる明示参照の差が一つ存在することまでは静的に確認できた。これを検出する製品機能の成立、checkerのPASS、業務上の欠落の確定、利用者の確認負担の削減は、いずれも未検証である。
-
-## 隔離環境での原文コード確認（Go 1.23.2）
-
-プルリクエスト内の`tools/reference-business-procedure-check/validation_scope_review.go`を、出典のまま隔離用のGoモジュールへ転記し、`git hash-object`の結果がGitHubに保存されているblob SHA `c061d451c774a25999cd2fd7a8e18dc250d6018c`と**完全一致**することを確認した。比較処理そのもののSource bytesは一致する。
-
-隔離モジュールでは、Application、World、fixture、Validation IDの件数取得を最小限の代替型・関数として用意し、以下の6件を実行した。
-
-1. 受注のApplication-only Validation 1件とJSON出力
-2. Application文脈の未指定・同一ID重複
-3. Validation IDの未定義・意味定義の同一ID重複
-4. Application・Procedure内のValidation宣言重複
-5. 集合一致時の扱い
-6. Application-onlyとProcedure-onlyが同時に存在する場合の双方向差
-
-`GOENV=off GOWORK=off GOFLAGS= go test -count=1 -v ./...`は6件PASS。`GOENV=off GOWORK=off GOFLAGS= go vet ./...`もPASSした。`gofmt -l tools/reference-business-procedure-check/validation_scope_review.go`の出力は空だった。
-
-**限界:** ここで使用したApplication・World・fixture・semanticCountsは隔離モジュール内の最小の代替実装であり、TEI本体の型とWorkspace Loaderは実行していない。さらに、PRの既存`main.go`変更、GitHubにある`validation_scope_review_test.go`、リポジトリ全体のテストは、この記録では検証していない。したがって、隔離テストのPASSはプロダクトの受入・統合資格にならず、PRのexact-headでのfull Repository healthとclean前後記録が必須である。
-
-## Source Indexによる戻り先の検証（2026-10-09）
-
-静的な集合差だけでは、利用者が判断に必要な正本へ戻れない。そこでDraft PRの比較結果へ、次の読取情報を追加した。
-
-- `procedureSource`: Business Procedureの参照を記した入力fixtureのパス。Canonicalな意味IDではない。
-- `sourceEvidence`: 既存Source Indexを根拠とするApplication定義と差分Validation定義の相対パス・開始行・ファイル指紋。
-- `unresolvedSource`: Source Index内の定義が不在・重複・指紋欠落の場合、推測で補完せず残す対象の意味ID。
-
-比較機能を指定しない既存CLI実行では、Source Indexを追加生成しない。比較指定時にSource Index自体の検査に失敗した場合はエラーとして停止する。成功時のsource evidenceも**意味や業務判断の受理・権限付与を表さない**。
-
-今回GitHubに登録した`tools/reference-business-procedure-check/validation_scope_review_sources.go`の原文を隔離用のGoモジュールへ転記し、`git hash-object`がblob SHA `a86ee7dc38a1e1d6f7fa6563511f17e9f70bce66`に一致することを確認した。隔離モジュールは`tei/internal/subject`と`tei/internal/sourceindex`の最小代替型を持つ。Go 1.23.2で次の4件のテストがPASSし、`go vet ./...`もPASSした。
-
-1. ApplicationとValidationの出典をそれぞれ1件に絞って返す。
-2. 同じ意味IDに二つのSource定義が存在すれば、選ばず未解決に残す。
-3. ファイル指紋が無ければ、根拠として返さない。
-4. 意味参照自体が未解決であれば、Source探索から勝手に意味を作り出さない。
-
-新規ファイルの`gofmt -l`出力は空だった。これは**原文の一ファイルを隔離した試験**である。本体の`workspace.BuildSourceIndex`、既存のSource Index、`runWithOptions`の接続、テストファイルを含むPR全体の`go test`は未実施である。結論として、実際の業務アプリに対するsource provenanceの成立と、人が確認できる実際の所要時間の短縮は、引き続き未確認である。
-
-## 隔離実行による出典重複の反証（2026-10-09）
-
-新しい参照差表示を隔離したGo 1.23.2モジュール（Linux）で実行し、Source Index相当の入力に同じartifactパスが複数存在する負例を確認した。
-
-**修正前に再現した問題：** 出典一覧を`map[path]fingerprint`へ代入していたため、同じパスに異なる指紋があると最後の値が選ばれ、比較表示の`sourceEvidence`に根拠として現れた。別の参照先が一意であっても、曖昧なartifactパスの指紋を選択してはならない。
-
-**修正内容：** パスが2回以上現れた場合は、そのパスの指紋を不明扱いにし、以後の項目でも復活させない。対応する意味IDは`unresolvedSource`へ残し、一意な別の出典は保持する。異なる指紋、同じ指紋、3回の重複を対象に負例テストを追加した。
-
-隔離した二つのGo原文ファイルの`git hash-object`は次に一致した。
-
-| 対象 | Git blob SHA |
-| --- | --- |
-| `validation_scope_review.go` | `7f5c2ed7f0e6599173706b54d65ef93442265526` |
-| 修正後`validation_scope_review_sources.go` | `f494a1f5997d9a2ce5a9ea198dafe5938ac73d92` |
-
-隔離モジュールはTEIの`application`、`ir`、`sourceindex`、`subject`の必要な型と`semanticCounts`を**代替実装**したもの。原文の比較・出典処理を対象に、参照差、Validation重複、文脈欠落、Source定義の重複、artifactパスの重複を確認した。修正前には重複artifactパスの負例がFAILし、修正後は7テストがPASS、`go vet ./...`もPASSした。対象の二原文ファイルに対する`gofmt -l`は出力なし。
-
-本来、`workspace.BuildSourceIndex`は既存の`sourceindex.Index.Validate`によってartifactパス重複を拒否する。このため、ここで発見した問題は**未検証のIndexを補助関数へ渡したときの防御不足**であり、製品の通常経路で再現した不具合とは記録しない。隔離環境のPASSも、PRのexact-headでのfull Repository healthやSource Loaderの試験の代わりにはならない。追加したRepository回帰テストは未実行であり、mainへの統合資格は未取得である。
-
-## 未解決の比較結果を失わせない条件整理（2026-10-09）
-
-追加の設計レビューにより、`-review-validation-scope`を指定すると、`validation-support`ステップが存在しない場合やすべての比較行が`unresolved-context`／`unresolved-reference`であっても、無条件に`workspace.BuildSourceIndex`を実行していたことを確認した。これは出典探索の必要がない状態でも無関係なSourceの問題が処理全体を停止させ、未解決の比較結果を読めなくするおそれがある。
-
-**修正した振る舞い：** `review-needed`または`no-set-difference`が一行以上ある場合にだけSource Indexを構築する。それ以外の行については、追加の出典探索を要求せず、未解決のまま返す。出典探索が必要な行があるときは従来どおりSource Indexを検証し、構築失敗を隠さない。判定の正本や既存診断は変更しない。
-
-条件分岐について、比較行なし、文脈未解決、Validation未解決、集合の差、集合一致、混合ケースを対象とする**新規Go回帰テストのソースを追加**した。この変更を含む現在のGoソース `validation_scope_review_sources.go` のGitHub blob SHAは `9ebb22754a53444ff272cfdca35fa7a41979b778`。上節までの隔離実行は、それぞれの節が指定する**過去のblob**に対する記録であり、今回変更後のGo実行を示すものではない。
-
-実際のTEI全体のテスト、exact-headのfull Repository healthとclean pre/postは引き続き未実施。Draft PRの検証・統合状態を変更する証拠はない。
-
-## 出典の再解析による古い根拠の混入を防ぐ（2026-10-10）
-
-レビュー補助関数`attachValidationScopeSources`を同じ比較行に繰り返し適用したとき、Source Indexが変わっても以前の`sourceEvidence`が残り、新しい`unresolvedSource`と同時に表示される問題を発見した。現在のCLIは一回の実行内で一度だけこの補助関数を呼ぶため、これは**再解析や呼出側の将来的な再利用で生じる状態混入**の負例であり、本番利用で発生した事象とは記録しない。
-
-対象のGitHub原文`validation_scope_review_sources.go`（blob `9ebb22754a53444ff272cfdca35fa7a41979b778`）を隔離Go 1.23.2モジュールに複製し、`git hash-object`で完全一致を確認した。出典を取得した後に空のSource Indexで再解析するテストが、修正前に期待どおりFAILした。実際には、古い1件の`sourceEvidence`と現在の`unresolvedSource`が同時に残った。
-
-この補助処理を、各再解析で`sourceEvidence`と`unresolvedSource`を初期化する方式へ修正した。修正後のGitHub blobは`8116f2bf5fb3d119572c94430cd483179b0f72af`であり、隔離モジュールの`git hash-object`も一致した。同じ隔離モジュールでは、出典を失う再解析と、同じIndexでの繰り返し・意味状態変化の2テストがPASSし、`go vet ./...`はPASS、対象原文の`gofmt -l`は出力なしだった。
-
-GitHubのPRに加えた回帰テストは、既知→不明→繰り返し不明→再解決→文脈未解決の遷移を確認する。**このPR本体のGoテストは未実施である。** 隔離試験は比較ツールの完全な型・Workspace・Source Index実装を代替しない。PR exact-headに対する全Repository health・前後cleanの記録が取得できるまで、mainへの統合資格とは扱わない。
-
-## 二つの実ソースを組み合わせた隔離検査（2026-10-10）
-
-以前の個別スモークテストに加え、PRの次のGoソースを**一切変更せず同一の隔離モジュール内で組み合わせて実行**した。
-
-| 対象 | GitHub原文と一致したGit blob |
-| --- | --- |
-| `validation_scope_review.go` | `7f5c2ed7f0e6599173706b54d65ef93442265526` |
-| `validation_scope_review_sources.go` | `8116f2bf5fb3d119572c94430cd483179b0f72af` |
-
-実行環境は `go version go1.23.2 linux/amd64`。`internal/application`、`internal/core`、`internal/ir`、`internal/subject`、`internal/sourceindex` の型と、`semanticCounts`、`fixture`、`step`は、**隔離した最小代替実装**であり、TEIの実Repositoryをチェックアウトしたものではない。
-
-同じモジュール内で次の4件を実行した。
-
-1. Applicationに3件、BP-05に2件のValidationがあるケースで、`applicationOnly`に残る1件を検出する。
-2. 比較結果から、Applicationと差分Validation定義の二つのSource位置・指紋を解決する。その後の空Index再解析では、古い根拠を破棄し未解決に戻す。
-3. Application文脈が消えた場合、暗黙の所属を推測せず`unresolved-context`とし、不要なSource照合を要求しない。
-4. 一つのValidationの定義件数が2件の場合、`unresolved-reference`へ保留する。既知→不明の再解析と未解決状態での冪等性も確認する。
-
-`GOENV=off GOWORK=off GOFLAGS= go test -count=1 ./...`は4件PASS、`go vet ./...`はPASS、二つの原文に対する`gofmt -l`は出力なしだった。比較処理と出典追跡処理を同一ビルドで呼び出すことまでは確認したが、**本体の既存`main.go`、実Workspace Loader、実Source Index実装、Repository回帰テスト、全体health checkの動作を確認したものではない。**
-
-また、現在のPR head `864d0502dc45388cc3c07a7b7de7eb6bc8fec001`は、点検時のmain `02e4160a529d69835916193aec83b5f932fef46e`から491コミットbehindである。両者の再統合・全Repositoryテスト・前後cleanのreceiptは未取得なので、Draftの停止条件は変わらない。
-
-## 未解決Validationの調査可能性（2026-10-10）
-
-従来の `unresolved-reference` は「Validation参照が曖昧または未定義」という説明のみで、どちらの宣言のどの参照が原因かを表示していなかった。このままでは、`ApplicationOnly`/`ProcedureOnly`が空の保留ケースで修正対象を特定するために、両方の定義を人が再照合する必要がある。
-
-今回の追加実装候補では、保留行に `referenceIssues` を設け、以下の三属性を一件ずつ保持する。
-
-- `side`: `application` または `procedure`。どちらの明示参照に問題があるか
-- `id`: 参照されているValidationの意味ID
-- `reason`: `missing-definition`（意味定義0件）、`ambiguous-definition`（意味定義2件以上）、`duplicate-declaration`（同じ側で明示参照を2回以上記述）
-
-両側で同じValidationを参照し、そのValidation定義が複数あれば、両側の問題として表示する。同じ側・ID・原因の重複は取り除き、表示順を固定する。問題が解決されない限り、集合差の結果は返さない。これは出典ファイルの所在を解決できない`unresolvedSource`とは独立の意味レベルの情報である。
-
-コードと回帰テストはPR #1040に追加した。テストは、手順側の未定義ID、手順側・Application側の参照重複、両側での意味定義の曖昧性、3回の参照重複を含む。**この新しい変更に対するGoテスト、full Repository health、およびclean pre/postはまだ実行していない。** 以前の隔離モジュールのPASSをこの変更の成功と読み替えず、PRをDraftで保持する。
-
-## 未解決理由の分類を原文Goで隔離実行（2026-10-10）
-
-`validation_scope_review.go`のGitHub blob `cad187b3e155ab21140048fe5fc65d84ce823432`と同一のGo原文を、Linuxの一時Go moduleに配置した。`git hash-object review/validation_scope_review.go`の出力は上記SHAと一致し、`gofmt -l`は出力なし。Goの実行環境は`go1.23.2 linux/amd64`である。
-
-代替したのは`core.CanonicalID`、`application.Application`、`semantic.Namespace/Validation`、`ir.World`の最小型、`fixture/step`、`semanticCounts`、レビュー出典の表示用型。**比較関数と`validationReferenceIssue`の実装は原文のまま**利用した。
-
-`GOENV=off GOWORK=off GOFLAGS= go test -count=1 -v ./...`の実測は4個のトップレベルテストがPASS。分類のテーブルテスト7例はすべてPASSした。対象は正常な差分、一致、手順側とApplication側の定義不在、両側の重複明示、両側の意味定義曖昧、定義不在と三重明示の併発、入力順に依存しない出力、文脈未解決、非validation-support行のスキップである。`GOENV=off GOWORK=off GOFLAGS= go vet ./...`もPASS。
-
-一方、**これは実Repositoryの単体テストではない**。テスト自身は隔離用の独立データを使い、実`workspace.Load`、実Source Index、実`main.go`、既存診断の互換性を検証していない。併発理由と三重明示の確認はRepositoryの回帰テストにも追加したが、そちらの実行結果は未取得。隔離試験のPASSをPRのqualificationに利用しない。
-
-## Business Procedure Step IDの重複と比較文脈（2026-10-10）
-
-既存の`evaluate`にはBusiness Procedureの重複Step IDを示すblocking診断があるが、今回の任意Validation比較では、同じIDが異なるステップに使用されている場合でも、Validation集合の差を独立した確認結果として表示し得た。これでは`step`をキーに検査行を開く利用者が、比較対象の一意性を誤認するおそれがある。
-
-**修正内容**：まず業務手順の全ステップ（`validation-support`以外を含む）のID出現数を取得する。比較対象`validation-support`のStep IDが空白だけ、または出現数が1でなければ`unresolved-context`へ保留する。Applicationの暗黙解決・Validation集合差の確定・追加Source Index探索は行わず、理由にStep IDの問題を明示する。ステップIDが互いに異なる複数の`validation-support`は従来どおり別々に比較する。従来のblocking診断は変更しない。
-
-リポジトリへ4条件の回帰テストを追加した。
-
-- Step IDが空白だけの場合
-- `validation-support`と異種ステップでIDが重複する場合
-- 複数の`validation-support`でIDが重複する場合
-- 一意のIDを持つ複数の`validation-support`が独立して比較できる場合
-
-**資格上の限界**：ここで報告するのはGitHub上のコードとテスト、READMEの更新であり、更新後のGoファイルを含むテストの実行やexact-head full Repository healthはまだ確認していない。以前の比較処理の隔離PASSはこの新しい条件分岐に対する実行結果ではない。
-
-## Step ID境界の隔離実測と混合ステップへの回帰テスト（2026-10-10）
-
-GitHub上の実装と内容一致を確認した次の二つのGo原文ファイルを、同じ一時Goモジュールに配置して隔離実行した。
-
-| ファイル | Git blob SHA |
-| --- | --- |
-| `tools/reference-business-procedure-check/validation_scope_review.go` | `dea1f479be6bcd2604eb6d785985bf38ecd2e5d1` |
-| `tools/reference-business-procedure-check/validation_scope_review_sources.go` | `8116f2bf5fb3d119572c94430cd483179b0f72af` |
-
-`git hash-object`の出力は両方とも上記と一致。`gofmt -l`は両原文とも出力なし。`go version go1.23.2 linux/amd64`で`GOENV=off GOWORK=off GOFLAGS= go test -count=1 ./...`は**3トップレベルテスト、うちStep ID境界6サブテスト**をすべてPASS。`go vet ./...`もPASSした。
-
-実行で確認した条件は、BP-05のValidation差分、Application/Validation双方のSource証拠、Index消失時の古い証拠破棄、Step IDが通常・重複（異種ステップを含む）・空欄・異なる複数・同一複数・未解決と正常の混在、未定義と曖昧なValidation参照の理由とソート順である。**最後の混合Stepのケースを本体Repository回帰テストにも追加した**。
-
-制約：`application`、`semantic`、`ir`、`core`、`sourceindex`、`subject`の各型と`fixture`/`step`/`semanticCounts`は隔離用代替実装。したがって、本体の`workspace.Load`・`BuildSourceIndex`・実Source Index制約・`main.go`・既存診断・Repository回帰テスト本体を実行したものではない。これは**変更対象の原文二ファイルを直接組み合わせて実行した限定的検証**であり、trusted checkoutのfull `tools/repository-health-check.sh`とclean pre/postの統合資格を代替しない。
-
-2026-10-10のmain追随は2親の通常merge `6cd08baeb4a7636f1dc4183204c77942bfc3f17e`で完了し、その時点ではmainからbehind 0となった。その後mainに追加commitがあり、検証時点ではbranchが再びbehind 1だった。対象main SHAが変わった場合は、統合資格の再取得が必要である。
-
-## 2026-10-10 共通Validationの照合根拠とSource逆追跡
-
-比較結果が`no-set-difference`である場合、従来のJSONでは`applicationOnly`と`procedureOnly`がどちらも空で、具体的にどのValidation IDを突き合わせたかを同じ比較行だけから再現できなかった。Source追跡も差分IDのみを入力としたため、`no-set-difference`ではApplication定義だけが`sourceEvidence`へ載り、**同一と判断したValidationの定義に戻れない**。これは「同じ集合と判断した理由を人間が確認する」というレビューの価値を下げる。
-
-対処として、**双方に明示されたValidation IDの共通部分**を新しい任意項目`sharedValidations`として昇順で返す。比較できない`unresolved-context`／`unresolved-reference`では従来どおり集合を返さない。`attachValidationScopeSources`は共通・片側固有のValidation IDすべてを合併し、重複するSubjectを除去して出典位置とファイル指紋を辿る。出典が曖昧・不明なら`unresolvedSource`へ残す。集合一致は業務同値・実行適用範囲一致・Acceptanceの証拠とはしない。
-
-実Referenceでは`order_entry`のValidation宣言3件のうち、`BP-05`が明示する2件を`sharedValidations`、残る1件を`applicationOnly`と表示する。出典の期待件数はApplication定義1件とValidation定義3件の計4件となる。`BP-05`側に残る1件を追加して集合を一致させた実験では、`sharedValidations`が3件で`sourceEvidence`が計4件になることを要求し、出典Indexを空にした場合は古い証拠を破棄して未解決4件を返す回帰テストを追加した。
-
-**実装・テストの追加はGitHubブランチに反映したが、最新のGoテスト、実Workspace結合、full repository-health-checkはこの時点で未実施**。過去の隔離Goテストは、今回の`sharedValidations`実装を含んでいないため成功証拠に転用しない。PRをDraftで維持し、統合を停止する。
-
-
-## 2026-10-11 反映漏れ点検：Validation比較の議論とGitHub正本
-
-本節は**実装・仕様・検証計画がGitHub上に存在するか**の追跡表であり、実行テストの成功記録ではない。対象はDraft PR #1040のValidation参照比較に限定する。Issue #915はbrownfield onboarding全体の研究・価値仮説を扱い、このPRだけでIssue全体を完了とはしない。
-
-| 議論で確定・追加した内容 | GitHub上の正本・根拠 | 反映状況 |
+| 時点 | 対象と主な確認点 | 隔離実行で得た結果 |
 | --- | --- | --- |
-| ApplicationとBusiness ProcedureのValidation参照を、業務的不整合と断定せず比較する | `validation_scope_review.go`、Reference README | コード・文書あり |
-| 明示的opt-inと既存blocking診断との分離 | `main.go`、`validation_scope_review_test.go` | コード・テストあり |
-| Application/Stepの文脈が欠ける、Step IDが重複する場合の保留 | `validation_scope_review.go`、対応回帰テスト | コード・テストあり |
-| Validation意味定義の欠落・曖昧・重複宣言をside/ID/reasonで提示 | `referenceIssues`、対応回帰テスト | コード・テストあり |
-| 集合の差分と共通IDを昇順で示し、一致を業務的同値・Acceptanceと混同しない | `sharedValidations`、README、対応回帰テスト | コード・文書・テストあり |
-| 既存Source Indexに戻る出典パス・行・指紋、曖昧・欠落時の未解決保持 | `validation_scope_review_sources.go`、対応回帰テスト | コード・テストあり |
-| artifact pathが複数現れる場合、3件目以降でも曖昧性を解除しない | `validation_scope_review_sources.go`、重複path回帰テスト | コード・テストあり |
-| 再解析時に古い`sourceEvidence`/`unresolvedSource`を残さない | `validation_scope_review_sources.go`、再解析回帰テスト | コード・テストあり |
-| unresolved行と正常行の混在で、前者を確定せず後者の根拠を保持 | `validation_scope_review_test.go`（`72f4b81`） | テスト追加済み・未実行 |
-| Validationのartifact欠落でも有効なApplication出典を保持 | `validation_scope_review_test.go`（`0b22b91`） | テスト追加済み・未実行 |
-| 空・空白のみのartifact locator / fingerprintを出典として認めない | 出典照合（`7ccc6b5`、`96c9d6d`）、負例テスト（`67585fe`、`3df3445`） | コード・テスト追加済み・未実行 |
-| CI停止中の手動確認、exact-head、前後clean、全Repository healthを記録する | Reference README（`e896cce`） | 手順追加済み・未実行 |
-| 設計者によるA/B比較、所要時間だけでなく誤断定や根拠誤認も測る | Reference README（`580b955`） | 実験計画追加済み・実測なし |
+| 10/09 | 比較関数 blob c061d451：差分、一致、文脈・参照未解決 | Go 1.23.2、6テストPASS、vet PASS |
+| 10/09 | 出典処理 blob a86ee7dc：一意な定義、曖昧性、指紋欠落 | 4テストPASS、vet PASS |
+| 10/09 | 比較 blob 7f5c2ed7＋出典修正 blob f494a1f5：artifact path重複の反証 | 修正前FAILを再現、修正後7テストPASS、vet PASS |
+| 10/10 | 出典処理 blob 8116f2bf：出典消失後に古い根拠を残さない | 修正前FAILを再現、修正後2テストPASS、vet PASS |
+| 10/10 | 比較・出典の原文二ファイルを同じ隔離ビルドで使用 | 4テストPASS、vet PASS |
+| 10/10 | 未解決理由の比較処理 blob cad187b3：side・ID・reason・重複排除 | 4トップレベルテスト（分類7例）PASS、vet PASS |
+| 10/10 | Step IDガードを含む比較処理 blob dea1f479＋出典 blob 8116f2bf | 3トップレベルテスト（Step境界6例）PASS、vet PASS |
 
-**実施していないこと：** 最新のTEI Repository checkoutを用いたGoテスト、実Workspace/Source Indexとの結合確認、`tools/repository-health-check.sh`全項目PASS、実行前後のclean確認、レビュー工数の実測。過去の隔離Go試験は、その時点の原文一部と最小代替型に対する結果であり、以後の変更や現在のPR headの実行資格ではない。CIは停止中とされており、自動テストの起動を統合条件の代わりに要求しないが、**手動の全項目検証が無い限り統合資格は得られない**。
+原文blobと操作条件の詳細は[Issue #915の2026-10-09〜10の実行コメント](https://github.com/hat47x/tei-platform/issues/915)およびこの文書のGit履歴から辿れます。検証対象を限定した結果であり、Repository全体のPASSを意味しません。
 
-**記録整合性の課題：** 従来のPR本文には過去のheadとmainを「現在」として記した箇所があり、また本監査文書は上記直近変更を追記するまで収録していなかった。本節で議論→ファイルの対応を補い、PRの状態欄は都度最新情報を表示する。main追随およびDraft解除・統合はこの追跡表の作成とは別の作業とする。
+## 設計上の反証と実装への反映
+
+| 失敗し得るケース | 反映先 | 判断 |
+| --- | --- | --- |
+| Validationの未定義・重複定義や片側の宣言重複 | validation_scope_review.go と回帰テスト | unresolved-referenceに理由を残し、集合差を確定しない |
+| Step IDの空欄・重複、Application文脈が不明 | 同上 | unresolved-contextに保留する |
+| 共通Validationの出典を表示できない | validation_scope_review.go / validation_scope_review_sources.go | sharedValidationsも追跡する |
+| 同一artifact pathが何度も現れる | validation_scope_review_sources.go | 2回目以降は曖昧性を解除しない |
+| Source Indexの再照合後に古い出典が残る | 同上 | sourceEvidence / unresolvedSourceを毎回再生成する |
+| 未解決行が正常な比較行の根拠まで失わせる | validation_scope_review_test.go（72f4b81） | 正常な比較行は独立して追跡する |
+| Validationの出典artifactが欠落している | 同テスト（0b22b91） | 有効なApplication出典だけは残す |
+| 空または空白のみの出典パス・指紋 | 出典処理（7ccc6b5、96c9d6d）とテスト（67585fe、3df3445） | 不正な根拠として未解決にする |
+
+出典の重複・空白への防御は、補助関数へ不正なIndexを渡す負例です。通常のSource Index生成経路で確認された製品障害とは記録しません。回帰テスト関数24件はPRに存在しますが、**現行Repositoryでの一括実行結果は未取得**です。
+
+## 統合判断と未検証事項（2026-10-11時点）
+
+**未取得の証拠：** 実Repositoryのclean checkoutにおける最新headのGoテスト、実Workspace/Source Indexを使う結合確認、既存blocking diagnosticとの動作互換、full tools/repository-health-check.shの全項目PASS、実行前後のclean状態、設計者によるA/Bレビュー工数の実測。
+
+CIは停止中です。手動検証を省略してよいわけではありません。以前の隔離Go試験やコードの静的照合は、最新headの統合資格とみなしません。mainとPR headが動いた場合は再資格確認が必要です。**Draft PRをmainへ統合しない停止条件を維持します。**
+
+この文書は時点付きの監査記録です。現在のPR head・main SHA・Draft状態は[PR #1040](https://github.com/hat47x/tei-platform/pull/1040)で確認してください。Gitのコミット履歴とIssueコメントに残る詳細な実行経過を、ここへ重複して追記しません。

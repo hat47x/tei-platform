@@ -104,97 +104,56 @@ go run ./tools/reference-business-procedure-check
 
 ## Applicationと業務手順のValidation参照を比較する（評価中）
 
-受理済みApplicationのValidation宣言と、業務手順の`validation-support`ステップにある明示参照は、異なる目的を持っています。前者はApplicationの評価対象を定め、後者は業務手順側で必要とする確認を表します。**双方が常に同じ集合であるという契約はありません。**
+Application全体のValidation宣言と、Business Procedureの各validation-supportステップが明示した参照は、目的も適用範囲も異なります。集合差は**確認すべき候補**であり、業務仕様の欠落や不整合を自動的に意味するものではありません。
 
-2026-10-08に受理された`sales.order_line.line_number_positive`は、`order_entry`の三つ目のValidation宣言です。現在のBP-05では別の二つのValidationが明示されているため、追加された規則が業務手順側でも必要なのか、どこまでが自動的に導出できるのかを確認する必要があります。
+既存checkerに変更を加えず、次のフラグを指定したときだけ読み取り専用の比較結果をJSONへ追加します。
 
-既存checkerへ次の**任意の読み取り表示**を追加する実装候補を検証しています。
+    go run ./tools/reference-business-procedure-check -review-validation-scope
 
-~~~bash
-go run ./tools/reference-business-procedure-check -review-validation-scope
-~~~
+### 結果の読み方
 
-指定時のみ、従来の診断とは別に`validationScopeReview`を返す設計です。各行は、ステップ、比較対象のApplication、片側にだけ現れるValidation ID（`applicationOnly` / `procedureOnly`）、両側で一致するValidation ID（`sharedValidations`）、確認状態と理由からなります。加えて既存Source Indexから、Application定義と**共通・差分の両方に現れるValidation定義**の相対Sourceパス・開始行・ファイル指紋を`sourceEvidence`として返す候補を含みます。 業務手順側の明示参照は入力したfixtureファイルのパスを`procedureSource`で示します（このパスはCanonicalな意味IDではありません）。Sourceを一意に特定できない場合は`unresolvedSource`に対象の意味IDを残し、推測による場所の補完は行いません。 比較対象が存在しない場合、または全行が`unresolved-context`／`unresolved-reference`の場合には、追加のSource Index構築を行わず、未解決の判断をそのまま返します。参照比較が成立する行が一つでもあれば、Source Indexの検証を要求します。
-
-| 状態 | 意味 |
+| 項目 | 意味 |
 | --- | --- |
-| `review-needed` | 明示参照の集合に差があり、人による適用範囲の確認が必要。自動的な不整合判定ではない |
-| `no-set-difference` | 集合には差がない。ただし業務上の意味や実行結果が一致する証拠ではない |
-| `unresolved-context` | 比較するStep IDが空欄・重複する、または比較先Applicationが未指定・未発見・重複しており、比較の文脈を一意に特定できない |
-| `unresolved-reference` | Validation参照が未解決・重複するため、集合差の判定を保留する。`referenceIssues`には原因となる側、Validation ID、原因を具体的に返す |
+| applicationContext / step | 明示された比較対象ApplicationとBusiness ProcedureのStep ID |
+| applicationOnly / procedureOnly | 片側にだけ明示されたValidation ID |
+| sharedValidations | 両側に明示されたValidation ID。一致しても業務上の同値性は保証しない |
+| review-needed | 参照集合に差がある。適用範囲を人が確認する |
+| no-set-difference | 集合差はない。業務上の適用範囲や実行結果まで等しいとは限らない |
+| unresolved-context | Step IDが空・重複する、またはApplicationを一意に指定・解決できない |
+| unresolved-reference | Validation定義の欠落・曖昧性・宣言の重複がある。集合差を確定しない |
+| referenceIssues | 未解決参照のside（application / procedure）、id、reason（missing-definition / ambiguous-definition / duplicate-declaration） |
+| procedureSource | 業務手順の入力fixtureのパス。Canonicalな意味IDではない |
+| sourceEvidence / unresolvedSource | 出典が特定できた定義の相対パス・行・指紋／特定できなかった意味ID |
 
-`validation-support`ステップの識別子は、他の種類のステップも含む同一Business Procedureの全ステップ内で一意である必要があります。Step IDが空欄か重複している場合、たとえValidationの参照集合が比較可能でも`unresolved-context`へ保留します。元のcheckerのblocking診断とは別の読み取り表示であり、どちらのStepを正しいものとして選ぶこともありません。
+Step IDは種類を問わず同一手順内で一意でなければなりません。比較するApplicationは、fixtureの指定を使い、名称の類似から所属を推測しません。Validation参照が解決できない行は、集合差を返す代わりに原因を示します。
 
-`referenceIssues`の要素は、`side`（`application`または`procedure`）、`id`（明示されたValidation ID）、`reason`で構成します。`reason`は`missing-definition`（意味定義が存在しない）、`ambiguous-definition`（意味定義が複数存在する）、`duplicate-declaration`（その側で同じ参照を繰り返した）のいずれかです。同じIDでも両側で解決できない場合はそれぞれ表示します。これらは調査の手掛かりであり、参照差やビジネス上の矛盾を確定しません。出典ファイルを探せなかった状態を表す`unresolvedSource`とは別概念です。
+比較できる行がある場合に限り、既存Source Indexを検証します。Application定義と共通・片側固有のValidation定義を追跡し、定義やファイルの重複、出典の欠落を推測で補いません。不正な出典パスや指紋は根拠に採用せず、再解析でも古い根拠を残しません。Source Indexの構築そのものが失敗した場合は、成功したものとして表示せずエラーで停止します。
 
-`no-set-difference`の行でも`sharedValidations`を返すため、空の差分だけで一致を説明しません。既存Source Indexからこれら共通Validationの定義位置も追跡し、定義が欠落・重複・指紋不明の場合は`unresolvedSource`に残します。**出典が見つかったことも集合が一致したことも、業務上の同値性やAcceptanceを証明しません。**
+現在の受注Referenceでは、BP-05の二つのValidationが共通し、Application側にsales.order_line.line_number_positiveが一つ残る想定です。これは**人による適用範囲の確認を促す結果**であり、Business Procedureへ規則を書き戻す指示ではありません。Workspace、Acceptance、Authorization、既存のblocking diagnosticは変更しません。
 
-この表示は`reference-authoring-fixture`へ値を書き戻しません。`fixture.application`は比較する文脈に限り、Procedureの所有者を意味しません。また、差が見つかっても追加のValidationや権限、確認済みの業務規則を自動的に作成しません。既存のblocking diagnosticと`-expect-diagnostic`の判断も変更しません。
+### 手動検証（CI停止中も同じ条件）
 
-正本Sourceの追跡と既存診断の互換性を確認する手順は次のとおりです。いずれも読み取り専用で、受理済みのWorkspaceを変更してはいけません。
+信頼できる実Repositoryのクリーンなチェックアウトで、対象commitと比較先mainを固定し、以下を実行します。
 
-```bash
-go test ./tools/reference-business-procedure-check -count=1
-go run ./tools/reference-business-procedure-check -review-validation-scope
-go run ./tools/reference-business-procedure-check \
-  -review-validation-scope \
-  -probe reference/business-system-design/order-entry-customer-edit-conflict.json \
-  -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
-```
+    git rev-parse HEAD
+    git status --porcelain --untracked-files=all
+    go version
+    go test ./tools/reference-business-procedure-check -count=1
+    go vet ./tools/reference-business-procedure-check
+    go run ./tools/reference-business-procedure-check
+    go run ./tools/reference-business-procedure-check -review-validation-scope
+    go run ./tools/reference-business-procedure-check -review-validation-scope -probe reference/business-system-design/order-entry-customer-edit-conflict.json -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
+    bash tools/repository-health-check.sh
+    git status --porcelain --untracked-files=all
+    git rev-parse HEAD
 
-### CI停止中の手動検証と記録
+上記に加え、ignoredファイルとindexの状態も前後で確認します。記録対象は、commit SHA、main SHA、Go環境、コマンドごとの終了コード、既存診断とレビュー表示の比較、BP-05の共通・差分IDと正本出典、前後のclean状態です。**この記述は手順であり、コマンドを実行した記録ではありません。** 過去の隔離テストを最新headの資格に転用せず、full Repository healthが未実施・不合格ならmainへ統合しません。Draft PRは検証に合格しても自動的にマージしません。
 
-CIが停止している間は、ワークフローの実行有無を品質の証拠として扱わない。検証担当者は、**対象のcommit SHAを固定したクリーンな作業ツリー**で次を実行し、結果を記録する。別のcommitや隔離用の代替型で実行した結果は代用しない。
+### 人のレビュー負担を測る
 
-```bash
-git rev-parse HEAD
-git status --porcelain
-go version
-go test ./tools/reference-business-procedure-check -count=1
-go vet ./tools/reference-business-procedure-check
-go run ./tools/reference-business-procedure-check
-go run ./tools/reference-business-procedure-check -review-validation-scope
-go run ./tools/reference-business-procedure-check \\
-  -review-validation-scope \\
-  -probe reference/business-system-design/order-entry-customer-edit-conflict.json \\
-  -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
-bash tools/repository-health-check.sh
-git status --porcelain
-git rev-parse HEAD
-```
+[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)のREF-SPEC-01に従い、通常のSource探索（A）と比較JSONを併用する方法（B）を、同じ業務上の確認課題で比べます。所要時間・開いたファイル数・再検索回数に加え、参照IDの取り違え、未解決事項の記載漏れ、根拠のない断定を記録します。Bが速くても誤判断が増えれば成功としません。評価順序や対象課題を入れ替え、同じ人の学習効果を独立な試行として数えないようにします。
 
-記録には、実行日時、対象commit、比較対象mainのcommit、Goのバージョン、各コマンドの終了コード、baselineと任意表示のDiagnosticsが一致すること、BP-05の差分と共通ValidationおよびSourceの確認結果、実行前後の作業ツリーがクリーンであることを含める。失敗や未実施の項目はそのまま記載し、PASSへ読み替えない。mainやPR headが変わった場合は統合前に差分と検証対象を再評価する。**Draft PRは手動検証を完了しても自動的にマージしない。**
-
-確認点は、BP-05で`sales.order_line.line_number_positive`が`applicationOnly`に現れること、`sourceEvidence`からApplication定義とValidation定義の正本へ戻れること、そしてCustomer編集probeの既存blocking diagnosticが維持されることです。上記コマンドの**実際の実行結果は未取得**であり、完了記録は別途残します。
-
-この節は**実装候補の使い方**です。変更を含むPRのexact-headで`tools/repository-health-check.sh`がPASSし、実行記録が残るまでは「利用可能になった」とは主張しません。実証の入口と停止条件は[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)にまとめています。
-
-## Validation比較のレビュー価値を測る実験（未実施）
-
-この任意表示を製品機能として採用する判断は、集合差の正確さだけでは行わない。**実際の設計者が、追加されたValidationの適用先と出典をより少ない手間で確認できるか**を測る。
-
-### 比較する二つの作業方法
-
-同じReference Workspace、同じBusiness Procedure fixture、同じ確認課題を使い、以下を比較する。
-
-| 条件 | 設計者へ渡す情報 | 禁止する近道 |
-| --- | --- | --- |
-| A：従来方式 | Application定義、Business Procedure fixture、Semantic定義、通常checker出力 | 任意の`validationScopeReview`表示 |
-| B：補助表示あり | Aと同じ情報に加え、`-review-validation-scope`のJSON出力 | 自動生成した結論を人の承認とみなすこと |
-
-課題は「`sales.order_line.line_number_positive`がApplicationに追加されたがBP-05に明示されていない。これは業務手順の欠陥と断定できるか。確認すべき出典と未解決事項を示せ」とする。**正答は一律に『欠陥』でも『問題なし』でもない**。両側の参照集合と定義の出典を特定し、適用範囲の判断を保留できることを要求する。
-
-### 測定方法
-
-- 開始時刻：確認課題と入力一式を渡した時点。終了時刻：調査メモを提出した時点。
-- 記録：所要時間（秒）、手動で開いたSourceファイル数、Sourceの再検索回数、参照IDの取り違え数、確認できた出典の数、未解決事項の記載漏れ数。
-- 成功条件：Applicationの3件とBP-05の2件を区別し、共通2件とApplicationのみ1件を示す。出典の所在を確認し、集合差だけで業務上の不整合・Acceptanceを断定しない。
-- 反証条件：BがAより速くても誤断定・根拠誤認が増える場合は改善と認めない。Bの出典パスが欠落・重複している場合は`unresolvedSource`を確認し、推測で補わない。
-- 実験順序：順序効果を抑えるため、複数の評価者または同等難度の別ケースを用意してA/Bの順序を入れ替える。同一人物に同じ課題を連続実施させた結果を独立試行として扱わない。
-
-結果は各試行の対象commit、Workspace/fixtureのfingerprint、実行環境、A/B条件、開始・終了時刻、正誤判定根拠とともに記録する。単独の試行や合成fixtureの成功から、実案件での工数削減を一般化しない。
-
-**実施状況：実験計画のみ。実測値は未取得。** CI停止中でも手動で実施できるが、実行したときはRepository healthの検証記録とは別に保存する。
+**実験は計画段階で、所要時間や効果の実測値はありません。** 出典を限定して確認した事実、過去の隔離テスト結果、残る検証条件は[REF-SPEC-01監査記録](../../docs/audits/ref-spec-01-2026-10-09-source-contrast.md)を参照してください。
 
 ## `order-entry-follow-up-procedure.json`
 
