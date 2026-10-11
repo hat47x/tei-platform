@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
+	"time"
 	"strings"
 )
 
@@ -32,6 +34,82 @@ type Step struct {
 	ExpectKind  string `json:"expectKind"`
 	ExpectData  string `json:"expectData"`
 	ExpectQuery string `json:"expectQuery,omitempty"`
+	Parameters map[string]Value `json:"parameters,omitempty"`
+	Fixture string `json:"fixture,omitempty"`
+	ExpectRows []map[string]Value `json:"expectRows,omitempty"`
+}
+
+// Value is a typed test fixture value, never an authority or semantic type definition.
+type Value struct {
+	Kind string `json:"kind"`
+	Data string `json:"data"`
+}
+
+func (v Value) Decode() (any, error) {
+	switch v.Kind {
+	case "string":
+		return v.Data, nil
+	case "int64":
+		return strconv.ParseInt(v.Data, 10, 64)
+	case "float64":
+		return strconv.ParseFloat(v.Data, 64)
+	case "timestamp":
+		return time.Parse(time.RFC3339Nano, v.Data)
+	default:
+		return nil, fmt.Errorf("unsupported fixture value kind %q", v.Kind)
+	}
+}
+
+func ValidateValues(values map[string]Value) error {
+	for key, v := range values {
+		if strings.TrimSpace(key) == "" {
+			return fmt.Errorf("empty fixture value name")
+		}
+		if _, err := v.Decode(); err != nil {
+			return fmt.Errorf("fixture value %s: %w", key, err)
+		}
+	}
+	return nil
+}
+
+// BrowseFixture is a test-only substitute for a resolved Query Executor.
+// It stores raw rows independently of the Scenario's expected semantic rows.
+type BrowseFixture struct {
+	Query string `json:"query"`
+	DatasourceAlias string `json:"datasourceAlias"`
+	TargetDatabase string `json:"targetDatabase"`
+	Parameters map[string]Value `json:"parameters"`
+	Columns []string `json:"columns"`
+	Rows [][]Value `json:"rows"`
+}
+
+func ParseBrowseFixture(source []byte) (BrowseFixture, error) {
+	var fixture BrowseFixture
+	d := json.NewDecoder(bytes.NewReader(source))
+	d.DisallowUnknownFields()
+	if err := d.Decode(&fixture); err != nil {
+		return BrowseFixture{}, fmt.Errorf("decode Browse Fixture: %w", err)
+	}
+	if d.Decode(new(any)) != io.EOF {
+		return BrowseFixture{}, fmt.Errorf("trailing Browse Fixture content")
+	}
+	if fixture.Query == "" || fixture.DatasourceAlias == "" || fixture.TargetDatabase == "" || len(fixture.Columns) == 0 {
+		return BrowseFixture{}, fmt.Errorf("Browse Fixture missing Query, datasource or columns")
+	}
+	if err := ValidateValues(fixture.Parameters); err != nil {
+		return BrowseFixture{}, err
+	}
+	for i, row := range fixture.Rows {
+		if len(row) != len(fixture.Columns) {
+			return BrowseFixture{}, fmt.Errorf("Browse Fixture row %d has %d values for %d columns", i, len(row), len(fixture.Columns))
+		}
+		for _, value := range row {
+			if _, err := value.Decode(); err != nil {
+				return BrowseFixture{}, fmt.Errorf("Browse Fixture row %d: %w", i, err)
+			}
+		}
+	}
+	return fixture, nil
 }
 
 type Command struct {
@@ -43,6 +121,9 @@ type Plan struct {
 	SchemaVersion  string    `json:"schemaVersion"`
 	ScenarioID     string    `json:"scenarioId"`
 	ScenarioSHA256 string    `json:"scenarioSha256"`
+	WorldSHA256 string `json:"worldSha256,omitempty"`
+	PluginLockSHA256 string `json:"pluginLockSha256,omitempty"`
+	FixtureSHA256 map[string]string `json:"fixtureSha256,omitempty"`
 	Commands       []Command `json:"commands"`
 }
 
@@ -72,7 +153,7 @@ func Parse(source []byte) (Scenario, error) {
 			return Scenario{}, fmt.Errorf("invalid or duplicate step id %q", step.ID)
 		}
 		seen[step.ID] = true
-		if step.Operation != "resolve-pattern" {
+		if step.Operation != "resolve-pattern" && step.Operation != "execute-browse-query" {
 			return Scenario{}, fmt.Errorf("step %q: unsupported operation %q", step.ID, step.Operation)
 		}
 		if strings.TrimSpace(step.Pattern) == "" || strings.TrimSpace(step.ExpectKind) == "" || strings.TrimSpace(step.ExpectData) == "" {
@@ -86,6 +167,26 @@ func Parse(source []byte) (Scenario, error) {
 		}
 		if step.ExpectKind == "record" && step.ExpectQuery != "" {
 			return Scenario{}, fmt.Errorf("step %q: record cannot expect Query", step.ID)
+		}
+		if step.Operation == "resolve-pattern" {
+			if step.Fixture != "" || step.Parameters != nil || step.ExpectRows != nil {
+				return Scenario{}, fmt.Errorf("step %q: resolve-pattern cannot have Query execution fields", step.ID)
+			}
+		} else {
+			if step.ExpectKind != "browse" || step.Fixture == "" || step.ExpectRows == nil {
+				return Scenario{}, fmt.Errorf("step %q: browse execution requires browse Pattern, fixture and expected rows", step.ID)
+			}
+			if err := ValidateValues(step.Parameters); err != nil {
+				return Scenario{}, fmt.Errorf("step %q: %w", step.ID, err)
+			}
+			for row, columns := range step.ExpectRows {
+				if len(columns) == 0 {
+					return Scenario{}, fmt.Errorf("step %q expected row %d is empty", step.ID, row)
+				}
+				if err := ValidateValues(columns); err != nil {
+					return Scenario{}, fmt.Errorf("step %q expected row %d: %w", step.ID, row, err)
+				}
+			}
 		}
 	}
 	return s, nil
