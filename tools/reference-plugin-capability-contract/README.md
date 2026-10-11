@@ -128,3 +128,25 @@ request / resultの両shapeにAccepted Evidenceが無ければ、Implementation�
 Invocation結果には、request / resultで利用したShape Authority Evidence fingerprintを残します。Evidenceだけを更新した場合、Capability ContractやProviderのresolution identityは変えず、Authority Evidenceの更新だけを観測できます。
 
 このGateはpublisher trustを解決したものではありません。現段階では、呼出し元がAccepted Evidenceとして渡したものをexact bindingとして検査するところまでです。Evidenceを誰が発行できるか、署名をどう検証するか、どの組織policyをAcceptedとするかは未実証です。issuer文字列、artifact自身、Provider自己申告のいずれからもtrustを推測しません。
+
+## Production Runtime Authorityとの接続
+
+generic InvocationがApplication RuntimeのCapabilityを呼ぶ場合も、Permission、Resource、SandboxをReference側で再実装しません。Contract QueryのReferenceでは、generic Providerを既存`runtime.EnvironmentPlan`上の`contract-query-executor`へ明示的に対応付け、その後の実行をproduction `runtime.Registry.InvokeWithProvenance`へ委譲します。
+
+対応付けでは、legacy Capability IDとoperationを明示します。generic ProviderのImplementation IDやContract名からlegacy Capabilityを推測しません。Environment Plan上でCapabilityが一意に解決でき、Plugin ID / versionとartifact digestがgeneric Providerに一致する場合だけExecutorを構築します。
+
+この経路では、production Runtimeが既に持つ次の境界がそのまま有効です。
+
+- Environment PlanとPlugin Lockに基づくProvider選択
+- required PermissionとEnvironment Grantの照合
+- Resource Broker / Lease
+- artifact verification
+- builtin / processのRuntime boundary
+- required Sandbox
+- Runtime Invocation Provenance
+
+negative controlでは、Environment PlanにCapabilityが無い場合、Plugin identityやartifact digestが一致しない場合、Permissionが不足する場合、Resource Brokerが無い場合、required Sandboxを起動できない場合に、domain implementationを実行する前に停止します。
+
+generic InvocationがRuntime Authorityを代替するわけではありません。generic resolverが選んだProviderは、production Environment Planが許可していなければ実行できません。反対に、Environment Planが許可しただけでgeneric ContractのConformanceを満たしたことにもなりません。二つの検査を別の境界として維持します。
+
+現時点では、production `InvocationProvenance`をadapter内で保持していますが、generic `InvocationExecution`の機械可読なEvidenceとしてはまだ返していません。generic consumerがRuntime Authorityの根拠へ一回で戻れるようにする場合は、provenanceを失わずに運ぶ共通receiptが別途必要です。Referenceはこの点を未解決のまま明示します。
