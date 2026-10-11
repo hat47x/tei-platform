@@ -1,16 +1,21 @@
 package languagereference
 
 import (
+	"testing"
+
 	"tei/internal/core"
 	"tei/internal/semantic"
-	"testing"
 )
 
 func TestSemanticPathValidation(t *testing.T) {
 	ns := semantic.Namespace{ID: core.CanonicalID("sales"), Data: []semantic.Data{{
-		ID:         core.CanonicalID("sales.order"),
-		Attributes: []semantic.Attribute{{ID: core.CanonicalID("sales.order.amount"), TypeRef: core.CanonicalID("std.decimal")}},
-		Relations:  []semantic.Relation{{ID: core.CanonicalID("sales.order.lines"), Target: core.CanonicalID("sales.line"), Cardinality: semantic.CardinalityMany}},
+		ID: core.CanonicalID("sales.order"),
+		Attributes: []semantic.Attribute{
+			{ID: core.CanonicalID("sales.order.amount"), TypeRef: core.CanonicalID("std.decimal")},
+		},
+		Relations: []semantic.Relation{
+			{ID: core.CanonicalID("sales.order.lines"), Target: core.CanonicalID("sales.line"), Cardinality: semantic.CardinalityMany},
+		},
 	}}}
 	for _, tc := range []struct {
 		name string

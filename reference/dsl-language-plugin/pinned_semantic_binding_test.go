@@ -1,9 +1,10 @@
 package languagereference
 
 import (
+	"testing"
+
 	"tei/internal/core"
 	"tei/internal/semantic"
-	"testing"
 )
 
 func TestPinnedSemanticBinding(t *testing.T) {
