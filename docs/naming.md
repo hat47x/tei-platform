@@ -1,10 +1,10 @@
-# TEIの命名とWorkspace identity
+# TEIの命名とワークスペースの識別
 
-この文書は、TEIで使う名称と、Workspace・Semantic ID・物理ファイルを混同しないための規則を整理します。名称そのものの変更ではなく、現在採用している命名方針の説明です。
+この文書では、TEIの名称と、ワークスペース、業務上の識別子、物理ファイルを区別する命名規則を説明します。新たな改名を提案するものではありません。
 
-## Product name
+## 製品名
 
-現在のプラットフォーム名は TEI（鼎／テイ） です。
+現在のプラットフォーム名はTEI（鼎／テイ）です。
 
 `TEI`を一つの英語展開へ固定しません。次の3つは競合する正式名称ではなく、同じ設計を異なる面から説明する補助的な読みです。
 
@@ -12,9 +12,9 @@
 - **Target-neutral Executable Infrastructure** — Semantic / Application Definitionが、特定の実装言語、Database、UI技術、Deployment target、Executorを意味上の特権として持たないこと。
 - **Three-Element Integration** — 異なる層を一つのsource of truthへ潰さずに接続すること。たとえばsemantic / realization / execution、logical / physical / observed、application / database / environmentなどです。
 
-通常のUIや文書で、TEIを毎回これらの英語へ展開して表記する必要はありません。
+画面や文書でTEIを使うたびに、これらの英語表記を添える必要はありません。
 
-## Canonical technical names
+## 標準の技術名称
 
 技術上の標準名称は次のとおりです。
 
@@ -29,7 +29,7 @@
 
 業務上のCanonical IDには`tei.` prefixを付けません。たとえば`sales.order`は`sales.order`のままであり、`tei.sales.order`にはしません。
 
-## Workspace identityは拡張子だけで決めない
+## ワークスペースは拡張子だけで識別しない
 
 TEI Workspaceは、`tei.workspace.yaml`と、そこで管理対象として宣言されたsource root / directoryによって識別します。
 
@@ -61,7 +61,7 @@ TEI Workspaceは、`tei.workspace.yaml`と、そこで管理対象として宣�
 - **Sandbox Profile** — 1回のprocess invocationに必要なleast-authority enforcement request。Profileが存在するだけで実際のenforcement済みとはみなしません。
 - **Runtime Policy fingerprint** — Plugin Lock identityとは別のexecution-policy identity。Durable Runが利用するCapability PermissionとResource Bindingを固定します。
 
-## Historical references
+## X-TEA / XEADとの関係
 
 X-TEA / XEAD は現在の製品・プラットフォーム名ではありません。
 
@@ -69,7 +69,7 @@ TEIはX-TEA / XEADの公式な後継・派生プロジェクトを名乗りま�
 
 新しい実装symbol、Repository path、CLI command、generated artifact、Canonical DefinitionではTEIの名称を使います。
 
-## Naming rule
+## 命名の原則
 
 概念に明確なdomain / architecture上の役割名がある場合は、その名称を優先します。`Database Workbench`、`Execution Plan IR`、`Migration Provider`のような語へ、機械的にすべて`TEI`を付ける必要はありません。
 
@@ -83,4 +83,4 @@ Capability IDは`migration.atlas`、`database.postgres`、`runtime.reference`の
 
 Bundle IDは、`tei.reference.providers`のように、まとめて配布するpackage setを識別します。
 
-業務上のCanonical IDには、ここでも`tei.` prefixを付けません。
+業務上のCanonical IDには、プラグインの識別子と異なり、`tei.`接頭辞を付けません。
