@@ -32,6 +32,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/index"
 	"tei/internal/ir"
+	"tei/internal/knowledgecontext"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/query/analyzer"
