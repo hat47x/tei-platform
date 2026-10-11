@@ -480,7 +480,7 @@ Target removed
 - `docs/business-system-design.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
-- `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
-- `plan/issue/000047-knowledge-first-semantic-exploration.md`
-- `plan/issue/000027-ai-proposal-acceptance-boundary.md`
-- `plan/issue/000051-derived-cognitive-retrieval-evaluation.md`
+- ISSUE-000046-studio-shared-acceptance-authoring-loop.md
+- ISSUE-000047-knowledge-first-semantic-exploration.md
+- ISSUE-000027-ai-proposal-acceptance-boundary.md
+- ISSUE-000051-derived-cognitive-retrieval-evaluation.md

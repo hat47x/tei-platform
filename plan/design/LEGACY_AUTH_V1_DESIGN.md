@@ -2,7 +2,7 @@
 
 - 状態: 実装前設計
 
-この文書は実装前に置いた設計を保持する文書です。実装・Evidenceの現在地は[ISSUE-000003](../issue/000003-legacy-authentication-compatibility-reference.md)と[`docs/status.md`](../../docs/status.md)を正とし、この文書の将来形表現をcurrent progressの主張として読み替えません。
+この文書は実装前に置いた設計を保持する文書です。実装・Evidenceの現在地はISSUE-000003と[`docs/status.md`](../../docs/status.md)を正とし、この文書の将来形表現をcurrent progressの主張として読み替えません。
 
 ## 目的
 
@@ -299,8 +299,8 @@ Authenticationでは、`authenticated` / `denied`の業務OutcomeとExecution Er
 - `plan/adr/0019-authentication-capability-boundary.md`
 - `plan/adr/0020-capability-business-outcome-boundary.md`
 - `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
-- `plan/issue/000003-legacy-authentication-compatibility-reference.md`
-- `plan/issue/000009-capability-outcome-and-execution-error.md`
-- `plan/issue/000005-application-pattern-reference.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
+- ISSUE-000003-legacy-authentication-compatibility-reference.md
+- ISSUE-000009-capability-outcome-and-execution-error.md
+- ISSUE-000005-application-pattern-reference.md
+- ISSUE-000006-application-driver-vertical-slice.md
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md` RQ-004、RQ-008、RQ-009、RQ-012、RQ-017、RQ-019、RQ-021

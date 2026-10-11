@@ -159,7 +159,7 @@ go run ./tools/reference-deployment-attempt
 
 ## 外部Reference Modelの入力
 
-TEIは外部Reference Modelを入力として検証できますが、第三者のモデル・手引・source snapshotやそこから派生した詳細資料は同梱しません。転写作業の公開要件は[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)に記します。
+TEIは外部Reference Modelを入力として検証できますが、第三者のモデル・手引・source snapshotやそこから派生した詳細資料は同梱しません。転写作業の公開要件はISSUE-000078に記します。
 
 ## SUI Reference Adoption fixture
 
@@ -167,7 +167,7 @@ TEIは外部Reference Modelを入力として検証できますが、第三者�
 
 現時点ではSUI既存の `IslandHierarchyContractV1` に対応するM1〜M4だけを固定しています。TEIのCanonical WorkspaceやProduct Requirementの正本ではなく、Gateを飛び越えずread-only mapping / validationを試すためのhand-written fixtureです。
 
-設計は `../plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照してください。
+設計は `../plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `ISSUE-000052` を参照してください。
 
 ## Reference artifactを追加・更新するとき
 

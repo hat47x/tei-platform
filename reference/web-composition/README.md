@@ -248,7 +248,7 @@ First Web Targetの`newWebTargetServer`に、信頼済みHostだけが構成す�
 - `session_command_route_test.go`: GitHub Blob `f56010fb94b053b8c73200c9ed0475aef1102fe0`
 - この二ファイルは、GitHub Blob SHAとローカルファイルの`git hash-object`が一致することを確認しました。`gofmt`実行後のファイルは変更なし、Goの構文処理に必要な形式を満たしています。
 - 実Workspaceへの依存があるため、**追加したE2.4結合テストの実行結果は未取得**です。旧Credential経路と新Session経路の`go test`、race、vet、actual full checkoutでの全体Repository Healthの成功は主張しません。
-- 同じPRへの並行変更を監視しており、2026-10-10時点のmain更新が対象とした`plan/issue/001067-cross-project-plugin-promotion.md`は本PRの変更ファイルと重複しません。ただしheadが最新mainの1コミット後方なので、統合時の資格判断には最新mainを含むexact head再検証が必要です。
+- 同じPRへの並行変更を監視しており、2026-10-10時点のmain更新が対象としたISSUE-001067-cross-project-plugin-promotion.mdは本PRの変更ファイルと重複しません。ただしheadが最新mainの1コミット後方なので、統合時の資格判断には最新mainを含むexact head再検証が必要です。
 
 これは、本番配備時に利用できるSession管理、実IdP検証、Secure Cookie、CSRF Token発行・検証、subject-link管理・失効、Trusted Proxyの検証を実装したものではありません。新経路は明示的にHost構成した場合に限るReference機構であり、現行`main.go`の通常起動経路では未選択です。安全性宣言と実証を混同せず、導入前には実Provider・ブラウザを使うE3検証が必要です。
 

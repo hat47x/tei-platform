@@ -684,11 +684,11 @@ source修正が必要ならcommitし、新しいclean revisionを新Rとしてcy
 - `GATE_B_READINESS_AUDIT.md`
 - `GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- `issue/000025-reference-generated-artifacts-refresh.md`
-- `issue/000029-gate-b-readiness-audit.md`
-- `issue/000030-gate-b-to-c-handover-baseline.md`
-- `issue/000031-gate-b-postgres-header-detail-evidence.md`
-- `issue/000032-gate-b-deterministic-repository-evidence.md`
-- `issue/000037-gate-b-three-lane-final-evidence.md`
+- ISSUE-000025-reference-generated-artifacts-refresh.md
+- ISSUE-000029-gate-b-readiness-audit.md
+- ISSUE-000030-gate-b-to-c-handover-baseline.md
+- ISSUE-000031-gate-b-postgres-header-detail-evidence.md
+- ISSUE-000032-gate-b-deterministic-repository-evidence.md
+- ISSUE-000037-gate-b-three-lane-final-evidence.md
 - `tools/reference-gate-b-final-evidence/README.md`
 - `tools/reference-gate-b-readiness-artifact-audit/README.md`

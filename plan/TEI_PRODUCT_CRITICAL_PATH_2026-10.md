@@ -829,7 +829,7 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 
 ### 親ブランチへのmain同期（今回の実操作）
 
-Issue #1119の現Draft作業branchだけに、current main `e084b89f19d4ce53047906c03e28746af56afa4d` を**非force・2親の通常merge commit**として取り込んだ。事前にmainの変更2 path（`plan/design/GENERIC_CAPABILITY_MIGRATION_DESIGN.md`と`plan/issue/001067-cross-project-plugin-promotion.md`）が親PRの8変更pathと重ならないことをGitHubで照合し、mainの2 blobを既存branchのtreeへ載せた。作業branch head `1c8cd60699d5eaff98df452ee651c7f63f7bb3c5`は第1親が旧head、第2親がmainとなり、GitHub compareは**behind 0**。正本mainや他Ownerのbranchを変更していない。
+Issue #1119の現Draft作業branchだけに、current main `e084b89f19d4ce53047906c03e28746af56afa4d` を**非force・2親の通常merge commit**として取り込んだ。事前にmainの変更2 path（`plan/design/GENERIC_CAPABILITY_MIGRATION_DESIGN.md`とISSUE-001067-cross-project-plugin-promotion.md）が親PRの8変更pathと重ならないことをGitHubで照合し、mainの2 blobを既存branchのtreeへ載せた。作業branch head `1c8cd60699d5eaff98df452ee651c7f63f7bb3c5`は第1親が旧head、第2親がmainとなり、GitHub compareは**behind 0**。正本mainや他Ownerのbranchを変更していない。
 
 これは**Gitの系譜/変更pathが整合したことの確認のみ**である。統合後の最新HEADでtrusted full checkout/Go/Node/full Repository Healthは実行できていないため、資格PASSやmainへのPR mergeを意味しない。mainが再び進めば最新pinと統合結果を再確認する。
 

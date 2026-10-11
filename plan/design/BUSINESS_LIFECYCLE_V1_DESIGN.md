@@ -2,7 +2,7 @@
 
 - 状態: 評価待ち（未採用）
 - 日付: 2026-09-05
-- 対象Issue: [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md)
+- 対象Issue: ISSUE-000038
 - 関連ADR: [ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)（いずれも提案中）
 
 この文書は要件の詳細化であり、採用済みの設計基線ではありません。評価が終わるまで、ここに書いた意味モデル、構文、診断、実行順序、結果契約を実装の根拠にしません。
@@ -181,7 +181,7 @@ Application側では、[既存のValidation参照検査](../../internal/validati
 - Lifecycleのidentityにfile pathを含めません。`sales/order.tei`と`sales/lifecycle.tei`のどちらへ書いても同じCanonical meaningになります（RQ-002）。
 - `Lifecycles`は`omitempty`とし、Lifecycleを持たないWorkspaceの`world.json`をbyte単位で変えません。既存のgenerated artifact Evidenceへ不要な差分を出さないためです。
 - [Semantic anchor](../../internal/syntax/semantic_anchor.go)へ`semantic-lifecycle` / `semantic-lifecycle-state` / `semantic-lifecycle-transition`を追加し、上記の診断がすべてauthoring sourceの位置へ戻れるようにします。
-- Reference WorkspaceへLifecycleを追加する変更は`world.json`のgoldenを更新します。[ISSUE-000025](../issue/000025-reference-generated-artifacts-refresh.md)の手順に従い、`-write`直後のdirty treeを完了Evidenceとせず、修復差分をcommitしたclean revisionでcheck-onlyを再実行します。
+- Reference WorkspaceへLifecycleを追加する変更は`world.json`のgoldenを更新します。ISSUE-000025の手順に従い、`-write`直後のdirty treeを完了Evidenceとせず、修復差分をcommitしたclean revisionでcheck-onlyを再実行します。
 
 ## Realization: 状態コードのMapping
 
@@ -295,7 +295,7 @@ const (
 
 ### 遷移が成立しなかった場合の結果契約
 
-現在の`sales.order.submit`は単一`output sales.order`です。[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md) / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md)に従い、事前Validationの不成立をOutcomeへ二重定義せず、理由なく全Capabilityをnamed Outcomeへ変更しません。
+現在の`sales.order.submit`は単一`output sales.order`です。ISSUE-000009 / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md)に従い、事前Validationの不成立をOutcomeへ二重定義せず、理由なく全Capabilityをnamed Outcomeへ変更しません。
 
 一方、条件付き更新が成立しなかった状態は、実行を完了できなかった状態ではありません。処理は正常に終わり、業務としては「確定しなかった」という結末です。事前に判定できない実行時の結末であり、二重定義にはあたりません。そのため名前付きOutcome契約へ変更します。
 
@@ -382,7 +382,7 @@ Conformanceは`docs/conformance/business-lifecycle-v1.md`へまとめ、少な�
 
 ## 関連文書
 
-- [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md): 作業範囲、実装順、完了条件
+- ISSUE-000038: 作業範囲、実装順、完了条件
 - [ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)
 - [ADR-0017](../adr/0017-application-pattern-ownership.md) / [ADR-0019](../adr/0019-authentication-capability-boundary.md) / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md) / [ADR-0023](../adr/0023-command-observation-explicit-read-boundary.md)
 - [Product Requirements](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)

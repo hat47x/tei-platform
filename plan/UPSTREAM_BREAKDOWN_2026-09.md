@@ -25,7 +25,7 @@ Product Acceptance Scenario (PAS-xx)     UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILI
         ↓
 計画（順序・Gate・Milestone）              MASTER_PLAN / MILESTONES / GATE_*
         ↓
-下流の担当（作業定義・設計判断・機能設計）    plan/issue/ · plan/adr/ · plan/design/
+下流の担当（作業定義・設計判断・機能設計）    GitHub Issues · plan/adr/ · plan/design/
         ↓
 Reference / Conformance / Evidence        reference/ · tools/ · docs/conformance/
         ↓
@@ -40,11 +40,11 @@ Gate / Product claim
 
 | Family | 件数目安 | 主な内容 | 結論の受け皿 |
 | --- | --- | --- | --- |
-| `BUSINESS_PROCEDURE_*` | 約35 | Business Procedure / Step address / Handoff / O1 / identity の候補絞り込み | Lane C判定は Pre-ADR Audit、Reference / Evidence は [ISSUE-000042](issue/000042-business-procedure-cross-view-reference.md)、契約起票は [ISSUE-000048](issue/000048-business-procedure-contract-adr-readiness.md) |
+| `BUSINESS_PROCEDURE_*` | 約35 | Business Procedure / Step address / Handoff / O1 / identity の候補絞り込み | Lane C判定は Pre-ADR Audit、Reference / Evidence は ISSUE-000042、契約起票は ISSUE-000048 |
 | `BUSINESS_ACTION_*` | 約8 | Business Action × CRUD / Data projection / ownership lens | ISSUE-000042（A80〜A83系のprojection）、Subsystem再検討は本書§6 |
-| `BUSINESS_AUTHORING_*` | 約9 | authoring authority / loader / discovery / production採用条件 | [ISSUE-000049](issue/000049-business-authoring-production-adoption-readiness.md) |
+| `BUSINESS_AUTHORING_*` | 約9 | authoring authority / loader / discovery / production採用条件 | ISSUE-000049 |
 | `BUSINESS_MODEL_*` | 約7 | Business semantic plane の配置と受理境界 | ISSUE-000048（契約決定時にADRへ）、placement reopenは本書§6 |
-| `BUSINESS_HANDOFF_*` | 約5 | Handoff authority / second case 十分性 | [ISSUE-000050](issue/000050-second-realistic-handoff-corpus.md) |
+| `BUSINESS_HANDOFF_*` | 約5 | Handoff authority / second case 十分性 | ISSUE-000050 |
 | `LANE_B_*` | 約17 | A-set単位のtrace監査、RQ-002 / RQ-025 / RQ-026 trace | PAS trace正本は `RQ025_RQ026_ACCEPTANCE_TRACE.md`、A-set正本は ISSUE-000042 |
 | `UPSTREAM_*` | 4 | PAS trace、vitality監査、trace監査、X-TEA fallback protocol | 本書と `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` |
 | `XTEA_*` | 2 | X-TEA原典由来のEvidence register | ISSUE-000042 / 本書§6のreopen trigger |
@@ -103,7 +103,7 @@ trigger未成立を「永久に不要」へ、trigger成立を「即採用」へ
 
 ## 7. 計画層へ反映すること
 
-- `plan/issue/README.md`の主線は2026-09-04時点の記述です。Gate B三系統に加え、Lane B / Lane Cと本書で割り当てた3件を主線へ載せます。
+- GitHub Issuesの主線は2026-09-04時点の記述です。Gate B三系統に加え、Lane B / Lane Cと本書で割り当てた3件を主線へ載せます。
 - `MASTER_PLAN.md` / `MILESTONES.md`へは、①②③の順序依存（③はProduct Gate C後）だけを反映し、上流の個別結論は持ち込みません。
 - Gate B必須Evidence三系統（ISSUE-000032 / 000025 / 000031）とLane Cのactual runner greenは**別のEvidence**です。同じrunnerが動くことで両方をgreenへ読み替えません。
 
@@ -135,5 +135,5 @@ plan/                 計画管理（Master Plan / Milestone / Gate / 本書）
 - [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — RQ → PAS → Evidence trace
 - [`SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md`](SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md) — Subsystem reopen trigger
 - [`RQ025_RQ026_ACCEPTANCE_TRACE.md`](RQ025_RQ026_ACCEPTANCE_TRACE.md) — PAS-07 Evidence contract
-- [`issue/000042-business-procedure-cross-view-reference.md`](issue/000042-business-procedure-cross-view-reference.md) — Lane C Reference / Evidenceの親
+- ISSUE-000042-business-procedure-cross-view-reference.md — Lane C Reference / Evidenceの親
 - [`README.md`](README.md) — 計画層の入口

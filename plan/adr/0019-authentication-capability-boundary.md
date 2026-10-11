@@ -133,6 +133,6 @@ Application上の意味がTarget固有コードへ閉じ、Driverや第二Target
 ## 関連文書
 
 - `plan/design/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/issue/000003-legacy-authentication-compatibility-reference.md`
-- `plan/issue/000009-capability-outcome-and-execution-error.md`
+- ISSUE-000003-legacy-authentication-compatibility-reference.md
+- ISSUE-000009-capability-outcome-and-execution-error.md
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`

@@ -2,7 +2,7 @@
 
 - 状態: 実装済みの現行基線
 - 更新日: 2026-09-06
-- 対象Issue: [ISSUE-000006](../issue/000006-application-driver-vertical-slice.md)
+- 対象Issue: ISSUE-000006
 - 関連ADR: [ADR-0019](../adr/0019-authentication-capability-boundary.md) / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md) / [ADR-0021](../adr/0021-header-detail-relation-traversal-realization.md) / [ADR-0023](../adr/0023-command-observation-explicit-read-boundary.md)
 
 ## この文書の役割
@@ -12,7 +12,7 @@ Application Driverの機能設計です。Canonical Worldに置かれたApplicat
 正本との関係は次のとおりです。
 
 - 実装構造と技術境界の説明は[`docs/architecture.md`](../../docs/architecture.md)が現行基線です。この文書はそれを置き換えず、Driver機能の内部設計を扱います。
-- 採用した設計判断はADR、作業範囲と完了条件は[ISSUE-000006](../issue/000006-application-driver-vertical-slice.md)、実装・Evidenceの現在地は[`docs/status.md`](../../docs/status.md)が正本です。
+- 採用した設計判断はADR、作業範囲と完了条件はISSUE-000006、実装・Evidenceの現在地は[`docs/status.md`](../../docs/status.md)が正本です。
 - Gate B判定と必要Evidenceは[`plan/README.md`](../README.md)と[Gate B Readiness Audit](../GATE_B_READINESS_AUDIT.md)が正本です。この文書はGate条件を新設しません。
 
 扱うのは、Pattern解決からCapability実行、Query / Contract Query実行、Observationまでの実行境界です。Database側の物理schema lifecycle、Plugin / Process Runtimeのauthority、Target / Presentationは扱いません。
@@ -144,8 +144,8 @@ Evidenceは性質ごとに分けます。取得状況そのものはこの文書
 | 種別 | 何を示すか | current stateの確認先 |
 | --- | --- | --- |
 | synthetic fixture | 意味境界の接続と決定論的な再現 | Repository内Scenario / `docs/status.md` |
-| real-provider ephemeral fixture | 実PostgreSQL engineでの動作 | [ISSUE-000031](../issue/000031-gate-b-postgres-header-detail-evidence.md) / `docs/status.md` |
-| actual external asset | 既存Oracle資産の観測 | [ISSUE-000022](../issue/000022-external-master-data-physical-query-evidence.md) / `docs/status.md` |
+| real-provider ephemeral fixture | 実PostgreSQL engineでの動作 | ISSUE-000031 / `docs/status.md` |
+| actual external asset | 既存Oracle資産の観測 | ISSUE-000022 / `docs/status.md` |
 
 synthetic Scenarioの成功を、実Database、既存外部資産、本番運用の保証へ昇格させません。Gate Bの必須Evidence三系統と判定は[`plan/README.md`](../README.md)が正本です。
 
@@ -168,5 +168,5 @@ synthetic Scenarioの成功を、実Database、既存外部資産、本番運用
 
 - [Application Pattern v1 設計](APPLICATION_PATTERN_V1_DESIGN.md) / [Capability Outcome v1 設計](CAPABILITY_OUTCOME_V1_DESIGN.md) / [既存認証Compatibility v1 設計](LEGACY_AUTH_V1_DESIGN.md)
 - [Database Contract Query v1 設計](DATABASE_CONTRACT_QUERY_V1_DESIGN.md)
-- [ISSUE-000006](../issue/000006-application-driver-vertical-slice.md) / [ISSUE-000018](../issue/000018-database-contract-query-execution.md) / [ISSUE-000019](../issue/000019-reference-contract-query-invocation.md) / [ISSUE-000020](../issue/000020-contract-query-runtime-instance-identity.md)
+- ISSUE-000006 / ISSUE-000018 / ISSUE-000019 / ISSUE-000020
 - [`docs/architecture.md`](../../docs/architecture.md) / [`docs/status.md`](../../docs/status.md)

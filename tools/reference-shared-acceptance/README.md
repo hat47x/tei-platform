@@ -125,7 +125,7 @@ go run ./tools/reference-shared-acceptance confirm-check  -workspace DIR -input 
 go run ./tools/reference-shared-acceptance confirmations  -workspace DIR
 ```
 
-`confirm-check`は`ask: true / false`と理由を返します。判定に使うのは確認の種類と対象、答えた時点の前提(subjectを宣言しているfileのfingerprint)が今も同じかだけで、確認の文面と記録の古さは使いません。記録が無い、前提が変わった、記録が読めない、履歴が分岐している、答えが人によるものでない場合は、確認を出す側へ倒します。答えを変えるときは`supersedes`で先頭の記録を指定します。詳細と暫定判断は[ISSUE-000074](../../plan/issue/000074-answered-confirmation-history.md)を参照します。
+`confirm-check`は`ask: true / false`と理由を返します。判定に使うのは確認の種類と対象、答えた時点の前提(subjectを宣言しているfileのfingerprint)が今も同じかだけで、確認の文面と記録の古さは使いません。記録が無い、前提が変わった、記録が読めない、履歴が分岐している、答えが人によるものでない場合は、確認を出す側へ倒します。答えを変えるときは`supersedes`で先頭の記録を指定します。詳細と暫定判断はISSUE-000074を参照します。
 
 退けた提案は、`reject`が書いた決定記録へ`linkedDecision`で結び、人が退けた提案を、前提が変わるまで再び出さないための記録として残せます（`rejected-proposal`、暫定）。`reject`の出力と決定記録の形は変えていません。流れは次のとおりです。`jq`が無ければ、`reject.json`から`candidateFingerprint`と`recordPath`を読み取り、同じ値を入れてください。
 

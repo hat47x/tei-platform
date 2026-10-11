@@ -3,7 +3,7 @@
 - 対象：ISSUE-000079 / GitHub #943
 - 作成日：2026-10-11
 - 状態：**設計候補。production仕様の採用・実装・qualified PASSではない**
-- 正本：`plan/issue/000079-plugin-self-build.md`
+- 正本：ISSUE-000079-plugin-self-build.md
 - 比較対象：main `internal/plugin/build.go`、Draft #1106 / #1151 / #1148 / #1093 / #1099
 - 関連：#957 / #979 / #1066 / #951 / #1096 / #1103 / #1104 / #1173 / #971 / #1122 / #1167
 
@@ -204,4 +204,4 @@ Locked replayが成功しても、失効したProviderをBuild実行してよい
 - [ ] #979 actual SB-3 convergence Evidence
 - [ ] Go以外のbuilder・第二Targetがこの意味契約を満たすか評価
 
-本書は設計の正本を増やすものではなく、`plan/issue/000079-plugin-self-build.md` と既存Issue群から、productionへの移行判定に必要な未決事項・負例・順序を抽出した**判定用ノート**である。最終判断は元計画・ADR・actual Evidenceへ返す。
+本書は設計の正本を増やすものではなく、ISSUE-000079-plugin-self-build.md と既存Issue群から、productionへの移行判定に必要な未決事項・負例・順序を抽出した**判定用ノート**である。最終判断は元計画・ADR・actual Evidenceへ返す。

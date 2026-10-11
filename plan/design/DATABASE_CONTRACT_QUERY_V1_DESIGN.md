@@ -2,7 +2,7 @@
 
 - 状態: 実装済みの現行基線
 - 更新日: 2026-09-06
-- 対象Issue: [ISSUE-000018](../issue/000018-database-contract-query-execution.md) / [ISSUE-000019](../issue/000019-reference-contract-query-invocation.md) / [ISSUE-000020](../issue/000020-contract-query-runtime-instance-identity.md) / [ISSUE-000021](../issue/000021-oracle-contract-query-sql-runner.md)
+- 対象Issue: ISSUE-000018 / ISSUE-000019 / ISSUE-000020 / ISSUE-000021
 - 関連ADR: [ADR-0007](../adr/0007-database-driver-assembly.md) / [ADR-0021](../adr/0021-header-detail-relation-traversal-realization.md)
 
 ## この文書の役割
@@ -111,7 +111,7 @@ providerが一致するCapabilityを探索して自動選択することはあ�
 
 Runnerは、Semantic attribute、Contract input、table / column、接続先Databaseのいずれも推測しません。実行時parameter値はEvidenceへ保持しません。
 
-ADR-0007のとおり、実driverの組み立てはCore外の責務です。PostgreSQLのReference runnerは`github.com/jackc/pgx/v5/stdlib`を`database/sql` adapterとして登録し、[`tools/`](../../tools)配下のEvidence runnerが接続を組み立てます。Oracle driverの選定と統合は[ISSUE-000033](../issue/000033-gate-b-oracle-driver-integration.md)で継続しています。
+ADR-0007のとおり、実driverの組み立てはCore外の責務です。PostgreSQLのReference runnerは`github.com/jackc/pgx/v5/stdlib`を`database/sql` adapterとして登録し、[`tools/`](../../tools)配下のEvidence runnerが接続を組み立てます。Oracle driverの選定と統合はISSUE-000033で継続しています。
 
 ## Application側からの呼び出し
 
@@ -153,8 +153,8 @@ Driver側の実行と結果検査（cardinality、Semantic row）は[Application
 | Evidence | 何を示すか | current stateの確認先 |
 | --- | --- | --- |
 | Repository内Conformance（Go test） | 契約・realization・executor選択・runtime変換の決定論的な再現 | Repository内test / `docs/status.md` |
-| real PostgreSQL ephemeral fixture | 実engineでのheader-detail実行と前後の安全性 | [ISSUE-000031](../issue/000031-gate-b-postgres-header-detail-evidence.md) / `docs/status.md` |
-| actual Oracle | 既存外部資産に対するread、driver統合、read-only強制 | [ISSUE-000022](../issue/000022-external-master-data-physical-query-evidence.md) / [ISSUE-000033](../issue/000033-gate-b-oracle-driver-integration.md) / [ISSUE-000034](../issue/000034-gate-b-oracle-read-only-evidence.md) / `docs/status.md` |
+| real PostgreSQL ephemeral fixture | 実engineでのheader-detail実行と前後の安全性 | ISSUE-000031 / `docs/status.md` |
+| actual Oracle | 既存外部資産に対するread、driver統合、read-only強制 | ISSUE-000022 / ISSUE-000033 / ISSUE-000034 / `docs/status.md` |
 
 Contract Queryの機械検証は`reference_contract_query_sql_conformance_test.go`等のRepository testを正とします。説明文書のcurrent構成は`docs/conformance/`を確認します。
 
@@ -178,5 +178,5 @@ Contract Queryの機械検証は`reference_contract_query_sql_conformance_test.g
 - [Application Driver v1 設計](APPLICATION_DRIVER_V1_DESIGN.md)
 - [Application Pattern v1 設計](APPLICATION_PATTERN_V1_DESIGN.md)
 - [ADR-0007](../adr/0007-database-driver-assembly.md) / [ADR-0021](../adr/0021-header-detail-relation-traversal-realization.md)
-- [ISSUE-000023](../issue/000023-header-detail-relation-traversal-boundary.md) / [ISSUE-000024](../issue/000024-keyless-relation-physical-storage.md)
+- ISSUE-000023 / ISSUE-000024
 - [`docs/architecture.md`](../../docs/architecture.md) / [`docs/status.md`](../../docs/status.md)

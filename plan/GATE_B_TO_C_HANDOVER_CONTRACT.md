@@ -360,9 +360,9 @@ Handover確認は新しい番号付きGateではありません。Gate Bの出�
 - `GATE_C_EVIDENCE_CONTRACT.md`
 - `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `V1_REFERENCE_APPLICATION_PLAN.md`
-- `issue/000007-first-web-target-projection.md`
-- `issue/000028-first-web-target-conformance-evidence.md`
-- `issue/000029-gate-b-readiness-audit.md`
-- `issue/000030-gate-b-to-c-handover-baseline.md`
-- `issue/000035-gate-b-external-provider-scope-audit.md`
-- `issue/000037-gate-b-three-lane-final-evidence.md`
+- ISSUE-000007-first-web-target-projection.md
+- ISSUE-000028-first-web-target-conformance-evidence.md
+- ISSUE-000029-gate-b-readiness-audit.md
+- ISSUE-000030-gate-b-to-c-handover-baseline.md
+- ISSUE-000035-gate-b-external-provider-scope-audit.md
+- ISSUE-000037-gate-b-three-lane-final-evidence.md

@@ -313,4 +313,4 @@ child Evidence JSON自体にも各child runnerの通常のsecret非保存契約�
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
-- `plan/issue/000037-gate-b-three-lane-final-evidence.md`
+- ISSUE-000037-gate-b-three-lane-final-evidence.md

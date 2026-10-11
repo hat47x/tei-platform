@@ -287,12 +287,12 @@ Gate Aの必須項目に独立したBlockerは残っていません。
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/design/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
-- `plan/issue/000003-legacy-authentication-compatibility-reference.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
-- `plan/issue/000009-capability-outcome-and-execution-error.md`
-- `plan/issue/000013-gate-a-readiness-audit.md`
-- `plan/issue/000014-business-validation-reference.md`
-- `plan/issue/000015-submit-capability-binding-reference.md`
+- ISSUE-000003-legacy-authentication-compatibility-reference.md
+- ISSUE-000006-application-driver-vertical-slice.md
+- ISSUE-000009-capability-outcome-and-execution-error.md
+- ISSUE-000013-gate-a-readiness-audit.md
+- ISSUE-000014-business-validation-reference.md
+- ISSUE-000015-submit-capability-binding-reference.md
 - GitHub Issue #67 / #68 / #69 / #77 / #124 / #125 / #126
 - GitHub PR #132 / #135 / #136 / #139 / #140 / #141 / #143 / #148 / #149 / #151
 - ADR-0019 / ADR-0020

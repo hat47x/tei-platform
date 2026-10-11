@@ -4,7 +4,7 @@
 - **役割:** DSL自体のPlugin化と、業務意図を表現するOperatorを組み合わせる方式の機能設計候補。
 - **追跡:** [GitHub #988](https://github.com/hat47x/tei-platform/issues/988)
 - **上位正本:** [RQ-032 / RQ-033](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、[Architecture](../../docs/architecture.md)。本書はそれらを置き換えない。
-- **関連:** [ISSUE-000077 Semantic Extension](../issue/000077-semantic-extension-reference.md)、[ISSUE-000079 Plugin self-build](../issue/000079-plugin-self-build.md)、[ISSUE-000080 extensible Capability](../issue/000080-extensible-plugin-capability-contract.md)。
+- **関連:** ISSUE-000077 Semantic Extension、ISSUE-000079 Plugin self-build、ISSUE-000080 extensible Capability。
 - **対象外:** 既存 `.tei` Parserの即時置換、Production-ready汎用式エンジン、native SQLからの強制移行、任意のPluginコードに意味変更権限を与えること。
 
 ## 1. 目的と避けたい失敗

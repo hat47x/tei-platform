@@ -2,7 +2,7 @@
 
 - 状態: 提案中
 - 日付: 2026-09-05
-- 関連Issue: [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md)（作業範囲と実装順）
+- 関連Issue: ISSUE-000038（作業範囲と実装順）
 - 関連設計: [業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)（評価待ち）
 
 この判断は評価待ちです。採用が決まるまで、実装やReference変更の根拠にしません。

@@ -111,7 +111,7 @@ TEIは、一つの層の価値を、別の層の損失で買わないことを�
 
 例はRequirementやCanonical meaningではなく、価値の働き方を示すためのものです。いずれも小規模なReference上の事実であり、本番運用での効果を示すものではありません。
 
-- **組織 — 規則を書き写さない。** `order_entry`では、受注確定の前に守る業務Validationの内容を一つの正本として持ち、Driverのscenarioと第一Web Targetが同じ定義を読んで評価します。画面側へ規則の内容を書き写していません（Gate Cのexact revision `T = 0ba87a4e…`で取得したFunctional Evidence。Validation not-satisfiedの経路）。ただし、**どの規則を評価するか**の選択は、以前は第一Web Targetのコードとscenario testに一覧として書かれており、規則を一件足しても、その一覧を直さない限り画面からの実行では評価されませんでした。2026-10-06に、この選択をApplicationの`uses validation`宣言（`order_entry`の正本）へ移し、Driverがそこから選ぶようにしました（[ADR-0029](../../plan/adr/0029-application-validation-selection-from-canonical-declaration.md)、[ISSUE-000073](../../plan/issue/000073-derive-validation-selection-from-canonical.md)）。これで、規則の追加は正本の変更（Validationの定義とApplicationの宣言）で届きます。ただし、操作ごとに評価対象を変える仕組みと、Business Procedureが別に持つ同じValidationの参照との関係は、まだ決めていません。また、これは`order_entry`というReferenceでの確認で、他のTarget・API・AIエージェントの経路では確かめていません。
+- **組織 — 規則を書き写さない。** `order_entry`では、受注確定の前に守る業務Validationの内容を一つの正本として持ち、Driverのscenarioと第一Web Targetが同じ定義を読んで評価します。画面側へ規則の内容を書き写していません（Gate Cのexact revision `T = 0ba87a4e…`で取得したFunctional Evidence。Validation not-satisfiedの経路）。ただし、**どの規則を評価するか**の選択は、以前は第一Web Targetのコードとscenario testに一覧として書かれており、規則を一件足しても、その一覧を直さない限り画面からの実行では評価されませんでした。2026-10-06に、この選択をApplicationの`uses validation`宣言（`order_entry`の正本）へ移し、Driverがそこから選ぶようにしました（[ADR-0029](../../plan/adr/0029-application-validation-selection-from-canonical-declaration.md)、ISSUE-000073）。これで、規則の追加は正本の変更（Validationの定義とApplicationの宣言）で届きます。ただし、操作ごとに評価対象を変える仕組みと、Business Procedureが別に持つ同じValidationの参照との関係は、まだ決めていません。また、これは`order_entry`というReferenceでの確認で、他のTarget・API・AIエージェントの経路では確かめていません。
 - **組織 — Domainの意味を再利用する。** 第二Application `repair_intake` は、`order_entry`で使っていた顧客の意味（`customer.customer`）と顧客照会のContractを、コピーではなく同じidentityのまま参照して組み立てられました。既存の意味を作り直さずに次のApplicationへ再利用した最初の実例です。ただし、顧客のSemanticは同じidentityでの参照ですが、Contractと照会Queryは互換範囲（`master_data.customer ^2`）の条件つきの再利用です。`order_entry`のPatternは引き継がず、`repair_intake`が自分のPattern（`repair_intake.customer_reference`）を持ちます。
 - **組織 — Infrastructureの知識も再利用する。** `repair_intake`の顧客マスタは、各Environmentへ1行ずつ結び付けを足すだけで既存の`master_data`インスタンスへつながり、Driverで実行する段階では、Queryを実行するための新しいEnvironment sourceは不要でした。`order_entry`のために書かれた既存のContract Query executor binding（Queryを実行する実装への結び付け）が、Applicationではなく「Environment・Database・Contract・Query」の組で識別されていたため、そのまま使えたからです。ただしこれはdevelopmentでの確認で、使ったExecutorはtest doubleです。実Databaseへの接続を示すものではありません。また、productionにはContract Query executor bindingが一件も無く、productionでは実行できません（`order_entry`でも同じで、Referenceの範囲として意図的かどうかは未判定です）。各Environmentへ足した1行ずつのbindingも、`repair_intake`のために新しく受理したものです。
 - **個人 — 承認の対象を小さくする。** `repair_intake`の追加は、生成AIが作ったProposal（変更候補）を、file・CLI・Studio・AIのどの入口からの候補も同じ検査を通すShared Acceptance Boundary（共有の受入境界）で検査し、別の生成AIによる独立レビューを経てから、Repository ownerが明示的に受理しました。受理の対象は、生成コードの全量ではなく、3 source（741 bytes）の意味の差分でした。ただし、受理した人が意味差分を読んで判断できたかは検証していません。記録に残るのは、独立レビューの完了と残る停止条件を提示された上での明示的な回答までです。人向けの面は未実装で、RQ-028はPartial Evidenceです。また、Shared Acceptance Boundaryが実証したのは受け取る側で、Studio UIとAIによる候補生成の入口はまだ含みません。
@@ -130,9 +130,9 @@ TEIは、価値を測定値で確かめることを、今は主張しません�
 - **関係性:** それらの機能が、同じ意味・同じidentityでつながっているか。意味を一つ作れば、複数の機能・複数のApplicationから、写し直しなしに使われ、元へ辿れるか。
 - **実用性:** 実務に近いシナリオを、実際に最初から最後まで通せるか。
 
-この確かめ方は、数を出すためのものではなく、実際に動くものを作って見せることを先に置きます。MVP（最小限の実用的な製品）やプロトタイプで、実務シナリオを通し、通せた機能と、その間の関係を記録として積み上げます。測定は、その積み重ねから問題領域の知見が蓄積したあとの研究課題です。最初の実証の候補は[ISSUE-000075](../../plan/issue/000075-practical-scenario-mvp-demonstration.md)に整理しています（owner判断待ち）。
+この確かめ方は、数を出すためのものではなく、実際に動くものを作って見せることを先に置きます。MVP（最小限の実用的な製品）やプロトタイプで、実務シナリオを通し、通せた機能と、その間の関係を記録として積み上げます。測定は、その積み重ねから問題領域の知見が蓄積したあとの研究課題です。実証の候補や優先順位はGitHub Issuesで管理します。
 
-これと並ぶ強い確認方法として、成熟した既存の業務システムReference Modelを一式でTEIへ転写し、sourceにある意味を黙って落とさず、表現できるもの・nativeなまま残すもの・未解決のものを説明できるかを確かめます。小さい自作例では現れにくい規模、cross-reference、暗黙前提、実装依存を同時に圧迫できるためです。外部Reference Modelの利用条件を確認したうえで、公開可能な検証要件を[ISSUE-000078](../../plan/issue/000078-reference-model-transfer-gate.md)で扱います。外部のmodel体系をTEIの仕様や正本へするのではなく、TEI自身のRequirementを反証可能な形で試す材料として使います。原資料や詳細分析は公開Repositoryへ含めません。
+これと並ぶ強い確認方法として、成熟した既存の業務システムReference Modelを一式でTEIへ転写し、sourceにある意味を黙って落とさず、表現できるもの・nativeなまま残すもの・未解決のものを説明できるかを確かめます。小さい自作例では現れにくい規模、cross-reference、暗黙前提、実装依存を同時に圧迫できるためです。外部Reference Modelの利用条件を確認し、TEI自身のRequirementを反証可能な形で試す材料として使います。外部のmodel体系をTEIの仕様や正本にはせず、原資料や詳細分析も公開Repositoryへ含めません。
 
 実証で確かめる性質は、層ごとに次のとおりです。いずれも「できたか、できないか」「示されたか、示されないか」で確かめる性質で、数の大小ではありません。
 
@@ -148,7 +148,7 @@ TEIは、価値を測定値で確かめることを、今は主張しません�
   - 分からない状態が、成功や安全として扱われていないこと
   - 業務知識を読めることが、実行権限へ変わっていないこと
 
-研究にとどめている測定の課題は、[ISSUE-000072](../../plan/issue/000072-rule-change-hand-edit-count.md)に置いています。どこまで確かめられているかの現在地は[`docs/status.md`](../../docs/status.md)、Requirementごとの実証状況は[`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。各項目を担うIssueは[Issue一覧の「Product Valueの確かめ方と担当」](../../plan/issue/README.md)にまとめています。
+研究にとどめている測定の課題も、実証から得た知見が蓄積した段階でGitHub Issuesに登録します。どこまで確かめられているかの現在地は[`docs/status.md`](../../docs/status.md)、Requirementごとの実証状況は[`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。
 
 ### まだ主張しないこと
 

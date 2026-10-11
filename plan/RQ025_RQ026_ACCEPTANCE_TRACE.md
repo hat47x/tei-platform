@@ -11,7 +11,7 @@ PAS-07 user value / Requirement mapping / Gate relation
   -> plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md
 
 Lane C detailed Reference Evidence inventory
-  -> plan/issue/000042-business-procedure-cross-view-reference.md A-set
+  -> ISSUE-000042 A-set
 
 Business Procedure design-quality review
 
@@ -309,7 +309,7 @@ RRB-P2 P1 sourceをsource/test cross-viewへ統合
 RRB-P3 actual execution-qualified breadth Evidence
 ```
 
-ISSUE-000050はprovenance source、Evidence nature、Business Seed Acceptance Contractまで整理したが、accepted Business seedはまだauthorしていない。したがってP1 / P2 / P3は未達である。（2026-09-21追記: seedをauthorし、P1 / P2（source / test level）/ P3のEvidenceを取得した。作成者self-reviewのみ。[ISSUE-000050](issue/000050-second-realistic-handoff-corpus.md)の実施記録）
+ISSUE-000050はprovenance source、Evidence nature、Business Seed Acceptance Contractまで整理したが、accepted Business seedはまだauthorしていない。したがってP1 / P2 / P3は未達である。（2026-09-21追記: seedをauthorし、P1 / P2（source / test level）/ P3のEvidenceを取得した。作成者self-reviewのみ。ISSUE-000050の実施記録）
 
 ## 11. Current findings / status
 
