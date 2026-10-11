@@ -136,6 +136,10 @@ Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込
 
 Targetごとの差はCapability negotiationやRuntime Binding等で明示し、Conformanceによって共通意味が保たれていることを確認します。
 
+**業務機能の経路間完全性**: 同じAccepted Applicationと実行条件を扱うCLI、Web、Desktop、Mobile、API、MCP等の経路は、原則として全業務操作・Validation・認可・Outcome・副作用・Observationに同等に到達可能でなければなりません。CLIを業務機能の省略版とはせず、一経路のDriver/CLI Scenario群から業務定義全体を検証可能にします。経路間の差は入力・表示・通信・Host連携という実現方法に限定し、未実装の業務機能や「非対応表示」を同等性として扱いません。必要な実装能力が不足する場合は、同じ業務契約を満たす明示的・認可済み代替手段を使うか、実行・配備前に不適合／未解決として検出します。
+
+同じDriver ScenarioとAccepted revisionを基準に、CLIで検証した業務の操作・期待結果・観測をWeb等のTarget-specific E2Eへ導出できる必要があります。生成元の業務assertionは共通化し、Webの認証・session・CSRF・画面操作・Accessibility等のTarget固有テストは別途実行します。CLIの業務PASSだけでWeb E2EもPASSと宣言したり、未対応Scenarioを黙ってskipしたりしてはいけません。詳細境界と最初の実証は`plan/design/CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md`、#1180に置きます。
+
 Targetが「何を表示・操作できるか」というTarget Capabilityと、「どのtransport・信頼境界・session・Resource条件で実行されるか」というExecution / Trust Profileを、実装都合だけで一つのTarget差へ畳んではいけません。必要な分離は第一Targetと第二TargetのReferenceから検証します。
 
 Target / Hostがinspectionやdevelopment controlのために公開するMCP等のcontrol interfaceと、Application自身が業務上のPresentation / InteractionをMCP Targetとして公開する場合も区別できる必要があります。
