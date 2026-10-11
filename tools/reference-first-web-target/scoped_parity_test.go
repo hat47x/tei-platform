@@ -5,6 +5,7 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -82,8 +83,10 @@ func TestScopedBusinessRoutesMatchExistingCombinedTarget(t *testing.T) {
 				t.Fatal(err)
 			}
 			combined := tc.server.Handler()
-			for _, input := range tc.cases {
-				t.Run(input.method+" "+input.path+" "+input.body, func(t *testing.T) {
+			for caseIndex, input := range tc.cases {
+				// A command request may carry a credential; never write it
+				// into an exported go test subtest name.
+				t.Run(fmt.Sprintf("%02d-%s", caseIndex, input.method), func(t *testing.T) {
 					invoke := func(handler http.Handler) *httptest.ResponseRecorder {
 						req := httptest.NewRequest(input.method, input.path, strings.NewReader(input.body))
 						if input.body != "" {
@@ -99,16 +102,17 @@ func TestScopedBusinessRoutesMatchExistingCombinedTarget(t *testing.T) {
 						t.Fatalf("%s %s: historical HTTP %d, scoped HTTP %d, expected %d",
 							input.method, input.path, before.Code, after.Code, input.status)
 					}
+					for _, credential := range []string{"editor-secret", "viewer-secret", "wrong-secret"} {
+						if strings.Contains(before.Body.String(), credential) ||
+							strings.Contains(after.Body.String(), credential) {
+							t.Fatal("credential leaked into HTTP response; bodies withheld")
+						}
+					}
 					if before.Code != after.Code ||
 						before.Body.String() != after.Body.String() ||
 						before.Header().Get("Content-Type") != after.Header().Get("Content-Type") {
-						t.Fatalf("route parity lost: combined HTTP %d %q; scoped HTTP %d %q",
-							before.Code, before.Body.String(), after.Code, after.Body.String())
-					}
-					for _, credential := range []string{"editor-secret", "viewer-secret", "wrong-secret"} {
-						if strings.Contains(after.Body.String(), credential) {
-							t.Fatal("credential leaked in HTTP response")
-						}
+						t.Fatalf("route parity lost: combined HTTP %d, scoped HTTP %d (bodies withheld)",
+							before.Code, after.Code)
 					}
 				})
 			}

@@ -100,24 +100,27 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 		t.Run(testCase.app, func(t *testing.T) {
 			combinedBase := launchTaggedParityBinary(t, root, combined, testCase.app)
 			taggedBase := launchTaggedParityBinary(t, root, testCase.taggedBinary, testCase.app)
-			for _, request := range testCase.requests {
-				t.Run(request.method+" "+request.path+" "+request.body, func(t *testing.T) {
+			for caseIndex, request := range testCase.requests {
+				// Never include request bodies in test names: command bodies
+				// contain credentials and go test writes names to logs.
+				t.Run(fmt.Sprintf("%02d-%s", caseIndex, request.method), func(t *testing.T) {
 					legacy := requestTaggedParityHTTP(t, combinedBase, request)
 					tagged := requestTaggedParityHTTP(t, taggedBase, request)
 					if legacy.status != request.status || tagged.status != request.status {
 						t.Fatalf("%s %s: old status=%d, tagged status=%d, expected=%d",
 							request.method, request.path, legacy.status, tagged.status, request.status)
 					}
-					if legacy.contentType != tagged.contentType || !bytes.Equal(legacy.body, tagged.body) {
-						t.Fatalf("%s %s result/authorization/observation drift:\nold=%s\ntagged=%s",
-							request.method, request.path, legacy.body, tagged.body)
-					}
-					assertTaggedBusinessSemantics(t, request, tagged)
 					for _, secret := range []string{"editor-secret", "viewer-secret", "wrong-secret"} {
-						if bytes.Contains(tagged.body, []byte(secret)) {
-							t.Fatal("credential leaked into tagged business response")
+						if bytes.Contains(legacy.body, []byte(secret)) ||
+							bytes.Contains(tagged.body, []byte(secret)) {
+							t.Fatal("credential leaked into a business response; body withheld")
 						}
 					}
+					if legacy.contentType != tagged.contentType || !bytes.Equal(legacy.body, tagged.body) {
+						t.Fatalf("%s %s result/authorization/observation drift (old=%d bytes, tagged=%d bytes; bodies withheld)",
+							request.method, request.path, len(legacy.body), len(tagged.body))
+					}
+					assertTaggedBusinessSemantics(t, request, tagged)
 				})
 			}
 			for _, request := range testCase.foreign {
