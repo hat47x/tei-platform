@@ -4,8 +4,8 @@
 
 - Examined exact private main revision: `3620f0dd3dd677fb1604c99809dde2c729e98b3d`
 - Files in recursive Git tree: **1,705 blobs**, `truncated=false`
-- Explicit provisional selection: **684 files** (40%); deferred: **1,021 files** (60%)
-- Content-size indication: selected ≈4.36 MB vs deferred ≈10.62 MB. This is only the sum of Git tree file sizes, not a clone or download measurement.
+- Explicit provisional selection: **675 files** (40%); deferred: **1,030 files** (60%)
+- Content-size indication: selected ≈4.26 MB vs deferred ≈10.72 MB. This is only the sum of Git tree file sizes, not a clone or download measurement.
 - Machine-readable exact path list: [`proposed-user-value-public-paths.txt`](proposed-user-value-public-paths.txt)
 - Intended publication flow: [`prepare-candidate.sh`](prepare-candidate.sh) then [`verify-candidate.sh`](verify-candidate.sh), after mandatory source checkout, security review, and link closure. This list has **not been certified by a human reviewer**.
 
@@ -15,14 +15,16 @@
 | --- | ---: | --- |
 | `cmd/`, `internal/`, `examples/` | 444 | Include first-party executable CLI, internal implementation and examples with tests |
 | `product/`, `requirements/` | 7 | Include primary product goals and requirements |
-| `docs/` | 44 | Reader onboarding, architecture, conformance, current explanations and most specification pages; no compatibility redirects/audits |
+| `docs/` | 35 | Reader onboarding, architecture, conformance and current explanations; no relocation redirects/audits or the dated standalone HTML specification |
 | `plan/` | 47 | Include 32 canonical ADR files and 15 crosscutting planning/evidence entrypoints; defer other working notes |
 | `reference/` | 131 | Include CLI validation workspace, selected project/application examples, golden data and documented input fixtures; defer auxiliary/third-party transfer areas |
 | `tools/` | 4 | Include only `repository-health-check.sh`, two `reference-golden` files and the process plugin example |
 | Root files | 7 | README, MIT LICENSE, Go module and sums, contributor instructions, AI development guidance and ignore rules |
-| **Total** | **684** | Proposed output set, subject to all gates |
+| **Total** | **675** | Proposed output set, subject to all gates |
 
-The reduced set defers: 500 `tools/` files, 314 `plan/` files, 126 `bootstrap/` files, 39 `docs/` files, 34 `reference/` files, 4 `research/` files, 2 `skills/` files, the inactive private workflow and the duplicate `CLAUDE.md` instructions. **Deferred does not mean worthless or legally ineligible.** Many are diagnostics, supporting integration tests, scenario artifacts or historical evidence with real maintainer value; some may be needed for full build, verification, license provenance or accurate published claims.
+The reduced set defers: 500 `tools/` files, 314 `plan/` files, 126 `bootstrap/` files, 48 `docs/` files, 34 `reference/` files, 4 `research/` files, 2 `skills/` files, the inactive private workflow and the duplicate `CLAUDE.md` instructions. **Deferred does not mean worthless or legally ineligible.** Many are diagnostics, supporting integration tests, scenario artifacts or historical evidence with real maintainer value; some may be needed for full build, verification, license provenance or accurate published claims.
+
+Static specification pages under `docs/specification/` are based on an older fixed review snapshot and duplicate current Requirements/Architecture/Plan sources. Their HTML navigation links to a separate external-design review and the older roadmap. They are therefore deferred from the initial publication profile instead of pulling an entire stale navigation tree into the public candidate. A new, independently reviewed landing page can later reintroduce useful rendered guidance.
 
 Examples of lower user-facing value *for an initial distribution*: mass `bootstrap/final-source/` samples, one-time R7B merge/qualification scripts, internal issue handoff/audit timelines, deprecated-location Markdown guides, raw third-party reference transfer artifacts without confirmed licensing. Preserve these inside the Private repository unless a separate internal cleanup is authorized and validated.
 
@@ -30,11 +32,11 @@ Do **not** strip `internal/` or its tests simply because the Go package name say
 
 ## Actual decision on the pinned source
 
-**NO-GO** for this provisional selection. The current source tree was read from GitHub and the proposed paths were checked against its exact tree. All 684 selected paths exist, but the selected set is **not closed under document links**.
+**NO-GO** for this provisional selection. The current source tree was read from GitHub and the proposed paths were checked against its exact tree. All 675 selected paths exist, but the selected set is **not closed under document links**.
 
 Concrete first-level examples:
 
-- `README.md` links to `plan/product-roadmap.html` and `plan/issue/000040-semantic-component-composition.md`, which are absent from this provisional list.
+- `README.md` links to `docs/specification/index.html`, `plan/product-roadmap.html` and `plan/issue/000040-semantic-component-composition.md`, which are absent from this provisional list.
 - `docs/status.md` links to `tools/reference-shared-acceptance/README.md`, several `plan/issue/` items, and current business-procedure runbooks absent from this list.
 - Other selected Markdown, HTML, CLI and test references have **not** been exhaustively checked.
 
