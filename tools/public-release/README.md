@@ -30,6 +30,14 @@ The allowlist must contain one exact repository-relative file path per line (ASC
 
 **Do not publish `/private/review-all-paths.txt`, the source checkout, or the audit report.** Keeping output outside the source repository prevents accidentally adding it to the private tree; it is not itself a confidentiality guarantee.
 
+## Dormant public CI workflow example
+
+`reference-workflow.yml` is intentionally stored under `tools/public-release/` rather than `.github/workflows/`, so it **cannot run as a GitHub Actions workflow in the current repository**. Do not move it into an active workflow path until the public source, workflow code, external Actions revisions and target repository settings have been approved.
+
+The template uses read-only `contents: read` permission, no Secrets and no artifact uploads. It checks out the PR head (not the synthetic test-merge ref), checks the exact SHA and clean tracked/untracked/ignored state before and after the full `bash tools/repository-health-check.sh`. It uses GitHub-hosted Ubuntu, sets a job timeout, and does not use `pull_request_target`.
+
+A passing workflow does **not** automatically establish the existing TEI merge qualification: the head may be tested against a different base revision, the public commit identity differs from the private source, branch protection may not be configured, and GitHub settings or runner availability are not yet verified. Review the third-party Action references, repository security settings, source dependency requirements and job logs before enabling the workflow on the approved Public repository. The existing Private workflow pause is untouched.
+
 ## Independent publication gates
 
 - Exact source commit selected and recorded privately; no reference to a mutable branch as the proof of exported bytes.
