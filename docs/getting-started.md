@@ -66,6 +66,11 @@ go run ./cmd/tei trace \
 結果の`worldFingerprint`と`sourceIndexFingerprint`は、`inspect`が返す同名のフィールドと比較できます。前者が一致しても、Source移動・注記変更などがあれば後者は変わります。結果の`source`は選択要素の元定義、`relatedSources`はFull出力のそのページに登場した参照先・参照元の出所候補を示します。`projectionUnresolved`はDerived Indexの投影時点で解決できなかった参照です。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。Source Indexと原ファイルの間で生じる同時更新は、トランザクション的に固定できていません。
 
 成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応kind・Workspace読込み失敗などは`2`です。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点で対応するのは宣言済みの直接参照であり、複数段の依存探索、全種類の要素取得、受理済み業務フローとの完全な横断参照には対応しません。
+## 最初の小さなWorkspaceから始める
+
+`reference/workspace`を読み解く前に、独立した最小Workspaceで「業務の意味を一か所変更し、ValidationとSource Indexで確認する」操作を試せます。
+
+[First Model Change — 最初の意味変更を試す](../examples/first-workspace/README.md) を参照してください。Go toolchainだけで動きます。これはModelの検証例であり、生成画面やCRUDを利用できる状態ではありません。
 
 ## 1. テスト
 
