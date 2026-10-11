@@ -2,6 +2,7 @@
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 candidate="$here/prepare-candidate.sh"
+verifier="$here/verify-candidate.sh"
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 
@@ -24,6 +25,27 @@ bash "$candidate" "$work/repo" "$sha" "$work/paths" "$work/export" > "$work/log"
 [[ ! -e "$work/export/.git" && ! -e "$work/export/internal/link" ]]
 cmp "$work/repo/internal/sample.go" "$work/export/internal/sample.go"
 grep -q 'CANDIDATE_ONLY' "$work/log"
+bash "$verifier" "$work/repo" "$sha" "$work/paths" "$work/export" > "$work/verify.log"
+grep -q 'VERIFIED_CANDIDATE_ONLY' "$work/verify.log"
+verify_must_fail() {
+  if bash "$verifier" "$work/repo" "$sha" "$work/paths" "$work/export" > /dev/null 2>&1; then
+    echo 'expected verifier refusal' >&2
+    exit 1
+  fi
+}
+printf 'modified\n' >> "$work/export/README.md"
+verify_must_fail
+cp "$work/repo/README.md" "$work/export/README.md"
+chmod 600 "$work/export/LICENSE"
+verify_must_fail
+chmod 644 "$work/export/LICENSE"
+printf 'unreviewed\n' > "$work/export/unreviewed.txt"
+verify_must_fail
+rm "$work/export/unreviewed.txt"
+ln -s /dev/null "$work/export/rogue-link"
+verify_must_fail
+rm "$work/export/rogue-link"
+bash "$verifier" "$work/repo" "$sha" "$work/paths" "$work/export" > /dev/null
 
 must_fail() {
   local output=$1
