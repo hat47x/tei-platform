@@ -239,12 +239,12 @@ func Validate(w ir.World) []Diagnostic {
 
 	for _, a := range semanticAttributes {
 		if _, ok := semanticTypes[a.TypeRef]; !ok {
-			out = append(out, errd("UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
 		}
 	}
 	for _, r := range semanticRelations {
 		if _, ok := semanticData[r.Target]; !ok {
-			out = append(out, errd("UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
 		}
 	}
 	semanticValueTypeExists := func(id core.CanonicalID) bool {
@@ -257,11 +257,11 @@ func Validate(w ir.World) []Diagnostic {
 	for _, c := range semanticCapabilities {
 		for _, in := range c.Inputs {
 			if !semanticValueTypeExists(in.Type) {
-				out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_INPUT", "capability %s input %s refers to unknown semantic value type %s", c.ID, in.Name, in.Type))
+				out = append(out, errFor(subject.Subject{Kind: "semantic-capability", ID: string(c.ID)}, "UNKNOWN_SEMANTIC_CAPABILITY_INPUT", "capability %s input %s refers to unknown semantic value type %s", c.ID, in.Name, in.Type))
 			}
 		}
 		if c.Output != "" && !semanticValueTypeExists(c.Output) {
-			out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
+			out = append(out, errFor(subject.Subject{Kind: "semantic-capability", ID: string(c.ID)}, "UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
 		}
 
 	}
@@ -292,7 +292,7 @@ func Validate(w ir.World) []Diagnostic {
 	for _, a := range w.Applications {
 		for _, ns := range a.SemanticUses {
 			if _, ok := semanticNamespaces[ns]; !ok {
-				out = append(out, errd("UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE", "application %s uses unknown semantic namespace %s", a.ID, ns))
+				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE", "application %s uses unknown semantic namespace %s", a.ID, ns))
 			}
 		}
 	}

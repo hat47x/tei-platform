@@ -12,6 +12,12 @@
 go version
 ```
 
+## 最初の小さなWorkspaceから始める
+
+`reference/workspace`を読み解く前に、独立した最小Workspaceで「業務の意味を一か所変更し、ValidationとSource Indexで確認する」操作を試せます。
+
+[First Model Change — 最初の意味変更を試す](../examples/first-workspace/README.md) を参照してください。Go toolchainだけで動きます。これはModelの検証例であり、生成画面やCRUDを利用できる状態ではありません。
+
 ## 1. テスト
 
 ```bash
