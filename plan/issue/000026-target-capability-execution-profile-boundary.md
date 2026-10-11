@@ -109,7 +109,7 @@ Target Capabilityは、あるTarget / Hostで利用可能なPresentation、Inter
 
 Canonical Applicationがframework APIを直接要求するのではなく、必要な上位Capabilityを要求し、Target Adapter / Host側が提供可能な集合を示す形を比較します。
 
-Capabilityが存在しない場合も、直ちにApplication意味の欠落とはみなしません。代替Projection、利用不可表示、別Targetへの委譲等を選べる余地を残します。
+Capabilityが存在しない場合、Presentation上の装飾／入力形態の差と、業務機能を実行する必須能力の不足を分けます。業務契約を完全に満たす代替Projection、認可済みProvider、明示委譲で同じ業務操作・結果・観測を実現できれば意味は保たれます。しかし「利用不可表示」を出して必須業務操作を省略したTargetを業務同等と判定してはいけません。代替がない場合はBuild / Conformanceでincompatible・unresolvedとして止めます。optionalなTarget装飾を外すことと業務機能の省略は同義ではありません（RQ-013、#1180）。
 
 ### Execution / Trust Profile
 
