@@ -60,7 +60,43 @@ GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（h
 
 **Git履歴とIssue/PRの継続性を優先する構成A**と、**公開用Sourceと開発記録を分離する構成B**の双方について、保守負担、外部からの参加、公開範囲、資格Evidenceの扱いを比較して決定する。
 
-## 5. P0-C Public向けGitHub Actionsと保護
+## 5. 公開候補の事前生成と開発運用の移管
+
+### 5.1 固定コミットからの出力（Draft PR #1195）
+
+`tools/public-release/prepare-candidate.sh`（[Draft PR #1195](https://github.com/hat47x/tei-platform/pull/1195)）は、信頼済みPrivate checkout内の固定Git commitと、レビューした個別ファイルパス一覧から、**Git履歴を含まないローカル公開候補**を作る。外部ネットワークへの送信、Public Repositoryの作成、Git ref更新、`git push` は行わない。
+
+- pathの明示allowlist方式とし、source tree全体を無条件でコピーしない。選別済みファイルが十分な依存閉包を持つかは、別途Build/Testで検証する。
+- 候補はREADME/Licenceと、冒頭の生成AI開発・人的レビュー状況の表示がなければ拒否する。
+- Git blob SHA照合、directory traversal・duplicate・symlink等の拒否は補助検査。機密性・権利・内容の安全性を判定するものではない。
+- 候補に対するsecret/license/PII scan、全ファイル内容の人的確認、Source全体のテスト、公開用CI、保護設定は独立Gate。
+- 2026-10-11時点の合成Repositoryでの隔離テストはPASS。ただし正規TEI checkoutのfull health、公開前監査、別Public Repository作成は未実施。
+
+### 5.2 公開後の正本とIssue/CIの接続
+
+公開用Sourceだけを新Repositoryへ配っても、Private RepositoryのPRのHEADでPublic Actionsを動かしたことにはならない。Private側とPublic側ではGit commit SHAもGit historyも異なる。
+
+そのため次の方式を比較して運用を選定する。
+
+| 方式 | CI・Issueへの効果 | 留意点 |
+| --- | --- | --- |
+| 既存RepositoryをPublic化 | 既存Issue/PRの正本とPublic CIが同一Repository | 開発履歴、Issue、PR、Actions logs等の公開範囲を十分に審査 |
+| 新Public Repositoryを開発正本にする | Cutover後のIssue/PRは最初からPublic CIで資格確認できる | Privateにある大量のIssue/PR、進行中ブランチ、引用SHAを計画的に引き継ぐ |
+| Private開発＋Public配布 | Private作業・資料を維持し、承認済みSourceのみ公開可能 | Private PRの統合資格をPublic CIから自動判定できない。公開配布は遅延しやすい |
+
+いずれも、公開用リポジトリの名前、既存URL・Issue番号の継続要件、保護する研究データ、公開する開発履歴、公開後のIssue SSOTをownerが確定する。既存Private Repositoryを安易にrenameしてURL redirect/remoteへのpush先を変えない。
+
+### 5.3 公開する前の必須確認
+
+1. 全非公開Source・GitHub面を監査し、公開可能な正本集合を固定する。
+2. Reference Modelや外部コンテンツの著作権・再配布条件、READMEのレビュー状況表示、機密情報Scanを確認する。
+3. Candidateの内容を独立にレビューし、必要なGo/CLI/Webのテストを**Candidateの実ファイル**に対して実行する。
+4. 新Repositoryの場合はSourceの旧→新revisionとfile digestsの照合をPrivate記録に保持する。Privateの過去Evidenceを新公開SHAのPASSに読み替えない。
+5. 公開後はGitHub-hosted runnerで実際のcheckoutとfull Repository Healthを行い、必要なbranch protection/required statusを確認する。
+
+本節およびPR #1195は公開操作そのものを認可しない。
+
+## 6. P0-C Public向けGitHub Actionsと保護
 
 - [ ] Public化に伴うpush ruleset無効化など、Settingsの変更前後の差分を記録。
 - [ ] ActionsはGitHub-hosted standard runnerで `permissions: contents: read`、`pull_request`を基本、Forkからの未信頼SourceへSecretsやwrite tokenを渡さない。`pull_request_target`で未信頼コードを実行しない。
@@ -70,7 +106,7 @@ GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（h
 - [ ] #513の過去runner起動前エラーと区別し、実際のcheckout・test step・full PASSを観測するまではCI復旧未達。
 - [ ] Workflow/runner・外部Action/依存物・fork時の秘密保護をレビューしてから停止中のjobを有効化。Privateで利用枠を消費するような再起動はしない。
 
-## 6. 公開へのGo / No-Go
+## 7. 公開へのGo / No-Go
 
 **公開しない**条件:
 - full-history / non-Git公開面の監査が欠けている
@@ -81,7 +117,7 @@ GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（h
 
 公開に進む場合は、直前に同じGitHub stateでこれらを再確認し、公開後のbranch protection・read-only CI・actual runner testを再監査する。作業の承認と実施は別の操作として記録。
 
-## 7. 参照
+## 8. 参照
 
 - [GitHub: Setting repository visibility](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility)
 - [GitHub: Removing sensitive data from a repository](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
