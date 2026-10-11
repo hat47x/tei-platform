@@ -5,7 +5,7 @@
 - Parent: [#1187](https://github.com/hat47x/tei-platform/issues/1187)
 - 機密性・非Git公開面: [#1188](https://github.com/hat47x/tei-platform/issues/1188)
 - CI・保護設定: [#1189](https://github.com/hat47x/tei-platform/issues/1189)
-- 文書・書誌情報・公開用Git構成: [#986](https://github.com/hat47x/tei-platform/issues/986)、[Draft PR #1164](https://github.com/hat47x/tei-platform/pull/1164)、[#1190](https://github.com/hat47x/tei-platform/issues/1190)
+- 文書・書誌情報・公開用Git構成: [#986](https://github.com/hat47x/tei-platform/issues/986)、[統合済みPR #1164](https://github.com/hat47x/tei-platform/pull/1164)、[#1190](https://github.com/hat47x/tei-platform/issues/1190)
 - 外部参照モデルの公開境界: [#941](https://github.com/hat47x/tei-platform/issues/941)、[既存方針](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)
 
 ## 1. 目的と境界
@@ -19,10 +19,10 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | 対象 | 状態 |
 | --- | --- |
 | `hat47x/tei-platform` | Private、default `main` |
-| main SHA | `53ce39c35851b1ec731eb6cd3066d9a708f3620d`（観測時点のsnapshot） |
-| main Git tree | recursive 1,928 entries / truncated=false（**file path inventoryのみ**） |
+| main SHA | `79b1ebcdd0da96744767e40e1224af160eae13d8`（2026-10-11、PR #1218統合直後のsnapshot。最新HEADを固定する表示ではない） |
+| main Git tree | recursive 2,204 entries / blobs 1,908件 / truncated=false（**当時点のpath inventoryのみ**） |
 | root LICENSE | MIT |
-| `skills/ponytail/LICENSE` | 独立した第三者のMIT著作権表示あり |
+| 整理済みの旧資産 | `bootstrap/`の旧復元断片、`skills/ponytail/`、旧静的HTML仕様ガイドと専用rendererはHEADから除外済み（PR #1202、#1203、#1218）。古いGit blobは残る |
 | main Actions workflow | `.github/workflows/knowledge-portability-reference-evidence.yml`: manual-only、job `if: false` |
 | README | 生成AIによる開発・体系的な人的レビュー未実施の警告はmainの冒頭に掲載済み |
 | `SECURITY.md` | mainに存在しない。連絡窓口の所有者判断が必要 |
@@ -30,6 +30,12 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | Git履歴の公開適合性 | mainの一部コミットの参照関係を確認。全refsのmetadata/contentの網羅検査は未了 |
 | サーバー保護 | 過去の#513/#972でmain無保護が記録された。Private rulesets APIは現プランで403 |
 | 全履歴・非Git面 | **未監査**。この一覧から公開可とは推論しない |
+
+### 統合・整理の現在地（2026-10-11 checkpoint）
+
+- 既存の未マージPRの統合を進め、GitHub上のopen PRが0件になったことを確認した。branchの残存自体は未統合作業を意味しない。廃止済みPR #1195と#1201は取り込んでいない。
+- 古い復元断片、無関係な第三者Skill、固定版HTML仕様ガイドの削除をHEADへ反映した。Goソースとそのテスト、現行Markdown正本はこれらの削除PRでは変更していない。
+- この統合作業ではCI・Repository Health・履歴／秘密情報／権利／非Git公開面の網羅監査を実施していない。**Git統合済み ≠ 品質検証済み ≠ Public公開可能**として、以下の停止条件を維持する。
 
 ## 3. P0-A 機密性・権利・公開面
 
@@ -45,7 +51,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 
 原則: 文献の著者・書誌情報・必要な著作権表示を維持し、外部資料の記載内容とTEI独自の設計判断を区別する。文書の見出し、ファイル名、リンク、Git metadataは読み手にとって明確で追跡可能な構成とする。
 
-1. 文書・ファイル名・内部リンクの整合性確認は**既存Draft PR #1164**で進行する。別PRに重複実装しない。
+1. 文書・ファイル名・内部リンクの整理（PR #1164）は統合済み。残る作業はtrusted full checkoutでの全参照・リンク確認と、現在のMarkdown正本に対する差分レビュー。過去のPR統合を網羅検査済みとは扱わない。
 2. trusted full historyから `git log --all` のsubject/body/trailer、著作者・コミッター情報、GitHub commit commentsを取得し、公開対象と出典・ライセンス要件への適合性を確認する。
 3. Git履歴の構成を変更する場合は、多数の子コミット・branch・PR・Release・exact-head Evidenceへの参照に影響する。範囲と移行計画を確定するまで、部分的なforce pushは実施しない。
 4. #1190で **(A) 既存Repositoryの公開** と **(B) 新しいPublic Repositoryに監査済みSourceを導入** を比較する。GitHub管理のPR refs、キャッシュ、外部cloneの可視性と、公開URL・Issue番号・PRの継続性も評価する。
@@ -71,7 +77,7 @@ GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（h
 - 維持するもの：CLIとGo Runtime、意味モデル、`go test ./...`等の必須テストと入力データ、現行の製品価値・要求・Architecture・ADR正本、実行可能なReference/Evidence。
 - 整理候補：過去のSource再構成断片、一時的な運用補助、現在の正本と重複する作業資料、TEIの機能・開発検証に不要な第三者のAI向けSkill。
 - 単にファイル数を減らすためにGoテストや必要なEvidenceを失わない。テストが失われた状態の`go test`成功を、削除前と同じ回帰検証と扱わない。
-- 削除候補はそれぞれ独立PRに分け、差分と参照の確認、正規Repository Healthを実施してから統合する。PR #1202は旧bootstrap断片、PR #1203は用途が異なる第三者Skillの整理。
+- 整理対象は独立PRに分け、ファイルの役割・削除範囲・既知の参照を記録する。PR #1202（旧bootstrap断片126件）、#1203（用途が異なる第三者Skill 2件）、#1218（固定時点の静的HTML仕様ガイド・専用renderer等15件）はmainへ統合済み。これらの差分限定性と、**trusted full checkoutによる全参照検索・正規Repository Healthの実行結果は別問題**。後者は未取得であり、Public Gateとして残る。
 - 旧配置の互換案内は、内部と外部からの参照を確認できるまで維持する。正本文書への導線の改修はPR #1091、#1198、#1199、#1200を参照。
 
 ### 5.2 公開するRepositoryとGit履歴
