@@ -64,6 +64,10 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	if action != "run" && (*expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != "") {
 		return fmt.Errorf("generated-command fingerprint flags are valid only for run")
 	}
+	pinsSupplied := *expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != ""
+	if action == "run" && pinsSupplied && (*stepID == "" || *expectedScenarioSHA == "" || *expectedWorldSHA == "" || *expectedLockSHA == "") {
+		return fmt.Errorf("generated Scenario run requires complete Scenario, World, Plugin Lock pins and one Step")
+	}
 	source, err := os.ReadFile(*scenarioPath)
 	if err != nil {
 		return err
@@ -213,6 +217,10 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 	}
 	if action == "run" {
+		_, stepHasFixture := plan.FixtureSHA256[*stepID]
+		if pinsSupplied && (stepHasFixture != (*expectedFixtureSHA != "")) {
+			return fmt.Errorf("generated Scenario run requires the exact Fixture pin for the selected Step")
+		}
 		if *expectedScenarioSHA != "" && *expectedScenarioSHA != plan.ScenarioSHA256 {
 			return fmt.Errorf("generated CLI command is stale: Scenario fingerprint differs")
 		}
@@ -282,7 +290,16 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "planMatches": true})
 	case "verify", "run":
-		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence, "scope": "reference Pattern / synthetic Browse only; not Auth/Command/Observation/Web E2E"})
+		mode := "static-verification"
+		if action == "run" {
+			mode = "exploratory-unpinned"
+			if pinsSupplied { mode = "generated-pinned" }
+		}
+		return json.NewEncoder(output).Encode(map[string]any{
+			"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence,
+			"executionMode": mode, "selectedStepCount": len(evidence),
+			"scope": "reference Pattern, synthetic Browse, Canonical Validation and independent synthetic Observation only; no Auth/Command/Web E2E",
+		})
 	}
 	return fmt.Errorf("unreachable scenario action %q", action)
 }

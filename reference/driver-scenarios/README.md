@@ -48,3 +48,7 @@ go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-p
 An additional `observe-synthetic` step tests the existing `driver.ExecuteObservationRead` interface. The expected `pending` state is declared in the Scenario and independently provided by `fixtures/order_state_pending.json`, with a stable read identity and `synthetic` evidence nature. Generated CLI argv pins the fixture digest. Wrong observed state, read identity or fixture digest fails closed.
 
 This is **not** an observed Command effect and does not claim an order has been submitted. The synthetic Observation is deliberately a separate read without a preceding Command.
+
+## Generated command provenance
+
+All generated `run` commands carry Scenario, resolved World and Plugin Lock fingerprints plus a mandatory per-Step Fixture fingerprint for any step with a fixture. **Partial pins fail closed**. An explicit direct `scenario run` without any pins is still permitted for development exploration but is visibly labeled `exploratory-unpinned`; a command with a complete generated pin set is labeled `generated-pinned`. Neither label asserts Accepted Revision, authentication, real-provider execution or full Scenario conformance.
