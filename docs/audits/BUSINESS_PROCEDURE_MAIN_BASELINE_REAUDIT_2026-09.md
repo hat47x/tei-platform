@@ -34,7 +34,7 @@ Refreshed mainでは`docs/business-system-design.md`をTEI-local Requirement / R
 一方、`requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`には引き続き、設計判断に迷う場合の参照順序として:
 
 ```text
-渡辺幸三氏の明示的言説
+出典を特定できる業務設計の一次資料
   -> X-TEA / XEAD manual / model structure
   -> XeadModeler / Driver public source
   -> Reference Model usage

@@ -30,7 +30,7 @@ Status: current interpretation index
 
 このfallbackは歴史的shapeをそのままTEIへ移植するための規則ではありません。歴史的概念が防いでいた設計上の失敗を確認し、現行TEIのmeaning / authority / Provider / Target境界へ翻訳します。
 
-2026-10に行った外部の公開資料・公開実装の調査と、TEIへの採否は [`外部設計資料の評価`](../plan/design/watanabe-business-system-design-pressure.md) に整理します。この調査記録もRequirementの正本ではなく、既存Requirementをどう解釈したかを追跡するためのdesign pressureです。
+2026-10に行った外部の公開資料・公開実装の調査と、TEIへの採否は [`外部設計資料の評価`](../plan/design/external-business-system-design-pressure.md) に整理します。この調査記録もRequirementの正本ではなく、既存Requirementをどう解釈したかを追跡するためのdesign pressureです。
 
 ## 3. RQ-025の解釈
 

@@ -16,7 +16,7 @@ X-TEA公式ポータルはCONCEPTWAREを、複数の業種・業態別Reference 
 
 公開イベント資料でも、実業務で使えるReference Modelを複数業務で公開していたことが確認できる。
 
-また渡辺幸三氏自身の解説では、CONCEPTWARE／販売管理を「本格的な業務システムのレファレンスモデル」としてDriver実装のdesign pressureに使った経緯が示されている。
+また公開資料では、CONCEPTWARE／販売管理を「本格的な業務システムのレファレンスモデル」としてDriver実装のdesign pressureに使った経緯が示されている。
 
 ### CONCEPTWARE／受注生産 → TALON再現
 
