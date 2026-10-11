@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -69,7 +70,7 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <commands|inspect|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <commands|inspect|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
@@ -84,12 +85,25 @@ func main() {
 		writeJSON(commandCatalog())
 		return
 	}
-	fs := flag.NewFlagSet(command, flag.ExitOnError)
+	parseMode := flag.ExitOnError
+	if command == "inspect" || command == "trace" {
+		parseMode = flag.ContinueOnError
+	}
+	fs := flag.NewFlagSet(command, parseMode)
+	if parseMode == flag.ContinueOnError {
+		fs.SetOutput(io.Discard) // Emit one JSON error instead of a second stderr diagnostic.
+	}
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
+	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
+	traceDirection := fs.String("direction", "both", "trace incoming, outgoing, or both")
+	traceMode := fs.String("mode", "summary", "trace summary or full")
+	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
+	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
+	traceExpectedFingerprint := fs.String("expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
 	expectedReviewPlanFingerprint := fs.String("expected-review-plan-fingerprint", "", "expected Builder Review Plan fingerprint; knowledge-review-plan fails on mismatch")
 	expectedReviewHandoffFingerprint := fs.String("expected-review-handoff-fingerprint", "", "expected Builder Review Handoff fingerprint; review handoff commands fail on mismatch")
@@ -130,7 +144,19 @@ func main() {
 	expectedRevision := fs.Int("expected-revision", -1, "expected durable deployment run revision for optimistic concurrency")
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
-	_ = fs.Parse(os.Args[2:])
+	parseErr := fs.Parse(os.Args[2:])
+	if command == "inspect" || command == "trace" {
+		if parseErr == nil {
+			parseErr = validateSelectedReadOnlyFlags(fs, command)
+		}
+		if parseErr != nil {
+			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
+	}
 	if *jsonValidation {
 		if command != "validate" {
 			fmt.Fprintln(os.Stderr, "-json is supported only for validate -workspace")
@@ -143,6 +169,20 @@ func main() {
 			}
 			os.Exit(code)
 		}
+	}
+	if command == "trace" {
+		code, err := traceWorkspaceJSON(
+			os.Stdout, *workspacePath, *worldPath, *traceScope,
+			*subjectKind, *subjectID, *traceDirection, *traceMode,
+			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg(),
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
 	}
 	if command == "inspect" {
 		code, err := inspectWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())

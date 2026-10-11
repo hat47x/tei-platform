@@ -30,13 +30,14 @@ func (e *InspectionError) Error() string { return e.Message }
 // Subject from the normalized World, with Source Index evidence. Its World
 // fingerprint is descriptive, not a revision token or an acceptance grant.
 type SubjectInspection struct {
-	SchemaVersion     string              `json:"schemaVersion"`
-	Effect            string              `json:"effect"`
-	Subject           sourceindex.Subject `json:"subject"`
-	Canonical         json.RawMessage     `json:"canonical"`
-	WorldFingerprint  string              `json:"worldFingerprint"`
-	SourceStatus      string              `json:"sourceStatus"`
-	Sources           SubjectSources      `json:"sources"`
+	SchemaVersion          string              `json:"schemaVersion"`
+	Effect                 string              `json:"effect"`
+	Subject                sourceindex.Subject `json:"subject"`
+	Canonical              json.RawMessage     `json:"canonical"`
+	WorldFingerprint       string              `json:"worldFingerprint"`
+	SourceIndexFingerprint string              `json:"sourceIndexFingerprint"`
+	SourceStatus           string              `json:"sourceStatus"`
+	Sources                SubjectSources      `json:"sources"`
 }
 
 // InspectSubject reads one Workspace, then projects its already-normalized World
@@ -73,9 +74,9 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 	if err != nil {
 		return SubjectInspection{}, err
 	}
-	worldJSON, err := json.Marshal(loaded.World)
+	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, idx)
 	if err != nil {
-		return SubjectInspection{}, fmt.Errorf("serialize normalized World: %w", err)
+		return SubjectInspection{}, err
 	}
 	status := "not-indexed"
 	if len(sources.References) > 0 {
@@ -86,7 +87,8 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 		Effect: "read-only",
 		Subject: subject,
 		Canonical: canonical,
-		WorldFingerprint: sourceindex.Fingerprint(worldJSON),
+		WorldFingerprint: worldFP,
+		SourceIndexFingerprint: sourceFP,
 		SourceStatus: status,
 		Sources: sources,
 	}, nil
@@ -94,7 +96,7 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 
 func supportedInspectionKind(kind string) bool {
 	switch kind {
-	case "semantic-data", "application", "query":
+	case "semantic-data", "semantic-relation", "application", "application-pattern", "query":
 		return true
 	default:
 		return false
@@ -115,10 +117,28 @@ func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMess
 				}
 			}
 		}
+	case "semantic-relation":
+		for _, namespace := range world.Semantics {
+			for _, data := range namespace.Data {
+				for _, item := range data.Relations {
+					if string(item.ID) == subject.ID {
+						matches = append(matches, item)
+					}
+				}
+			}
+		}
 	case "application":
 		for _, item := range world.Applications {
 			if string(item.ID) == subject.ID {
 				matches = append(matches, item)
+			}
+		}
+	case "application-pattern":
+		for _, app := range world.Applications {
+			for _, item := range app.Patterns {
+				if string(item.ID) == subject.ID {
+					matches = append(matches, item)
+				}
 			}
 		}
 	case "query":

@@ -26,10 +26,10 @@ func inspectionCode(t *testing.T, err error, want string) {
 func TestInspectCanonicalExactKindAndID(t *testing.T) {
 	world := ir.World{
 		Semantics: []semantic.Namespace{{ID: "sales", Data: []semantic.Data{
-			{ID: "same.id", Symbol: "canonical_data"},
+			{ID: "same.id", Symbol: "canonical_data", Relations: []semantic.Relation{{ID: "same.id", Symbol: "same_relation"}}},
 			{ID: "other.id", Symbol: "other_data"},
 		}}},
-		Applications: []application.Application{{ID: "same.id"}},
+		Applications: []application.Application{{ID: "same.id", Patterns: []application.Pattern{{ID: "same.id"}}}},
 		Queries: []query.EmbeddedSQL{{ID: "same.id", Source: "select 1"}},
 	}
 	check := func(kind string, expected any) {
@@ -47,7 +47,9 @@ func TestInspectCanonicalExactKindAndID(t *testing.T) {
 		}
 	}
 	check("semantic-data", world.Semantics[0].Data[0])
+	check("semantic-relation", world.Semantics[0].Data[0].Relations[0])
 	check("application", world.Applications[0])
+	check("application-pattern", world.Applications[0].Patterns[0])
 	check("query", world.Queries[0])
 
 	_, err := inspectCanonical(world, sourceindex.Subject{Kind: "semantic-data", ID: "not-found"})
@@ -83,7 +85,9 @@ func TestInspectSubjectReferenceWorkspaceUsesSourceIndex(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	for _, subject := range []sourceindex.Subject{
 		{Kind: "semantic-data", ID: "sales.order"},
+		{Kind: "semantic-relation", ID: "sales.order.customer"},
 		{Kind: "application", ID: "order_entry"},
+		{Kind: "application-pattern", ID: "order_entry.customer_reference"},
 		{Kind: "query", ID: "order_entry.recent_orders"},
 	} {
 		result, err := InspectSubject(root, subject)
@@ -92,6 +96,7 @@ func TestInspectSubjectReferenceWorkspaceUsesSourceIndex(t *testing.T) {
 		}
 		if result.Subject != subject || result.Effect != "read-only" ||
 			result.SchemaVersion != "tei.operations.inspect/v0" || result.WorldFingerprint == "" ||
+			result.SourceIndexFingerprint == "" ||
 			result.SourceStatus != "indexed" || len(result.Sources.References) == 0 ||
 			len(result.Sources.Artifacts) == 0 || !json.Valid(result.Canonical) {
 			t.Fatalf("invalid inspection: %+v", result)
@@ -136,6 +141,9 @@ func TestInspectSubjectFileMoveDoesNotChangeCanonicalFingerprint(t *testing.T) {
 	}
 	if before.WorldFingerprint != after.WorldFingerprint || !reflect.DeepEqual(before.Canonical, after.Canonical) {
 		t.Fatalf("source move changed canonical meaning: %s vs %s", before.WorldFingerprint, after.WorldFingerprint)
+	}
+	if before.SourceIndexFingerprint == after.SourceIndexFingerprint {
+		t.Fatal("source move did not change Source Index fingerprint")
 	}
 	if len(before.Sources.References) == 0 || len(after.Sources.References) == 0 ||
 		before.Sources.References[0].ArtifactPath == after.Sources.References[0].ArtifactPath {

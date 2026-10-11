@@ -114,3 +114,60 @@ Issue #1165 の第一段階では、`tei inspect` からモデル要素一件の
 `worldFingerprint`は正規化Worldの内容ハッシュであり、書込み用revisionやAcceptanceを意味しない。`sourceStatus=not-indexed`は対応する出所参照の欠落を示すが、Canonicalの不存在とは異なる。結果は適切な情報開示制御の下で利用する。
 
 この実装候補はグラフの参照先・参照元探索、差分比較、更新、認可、原子的Snapshotを含まない。テストの記述だけでは適合の証拠とせず、actual clean checkoutの全Repository Healthを確認してから統合する。
+
+
+## 8. C1: 型付き参照traceをCLIへ接続する統合候補
+
+Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromIndex` → `modelref.TraceDirect` → `modelref/sourcebridge.NewResolver` を、一つの型付きGo操作 `operations.TraceWorkspace` でつなぐ。CLIの `tei trace` は引数・JSON schema・終了コードを変換する薄いAdapterとし、別のEdge正本は持たない。
+
+- `-workspace`、`-scope`、`-subject-kind`、`-subject-id`を必須とする。`scope`はProjectionの文脈ラベルであり、業務namespace・ユーザーの認可scope・受理済みrevisionとの一致を証明しない。
+- `direction=outgoing|incoming|both`、`mode=summary|full`。CLIはsummaryを既定とする。Fullは明示的な件数上限がなければ全件出力し、`limit`が正の場合のみ `nextOffset`を返す。
+- Source Indexの既存Artifact fingerprintとRangeを検証してからSource Navigationに利用する。GraphとSource Indexが不一致ならエラー扱いとし、Sourceから業務関係を推測しない。元定義のLocationが見つかってもAcceptedや書込み許可を推定しない。
+- JSONの `schemaVersion=tei.cli.trace/v0`、`ok`、`result.trace`、`result.source`、`result.relatedSources`（Fullの出力ページのみ）、`result.projectionUnresolved`を返す。意味的な直接参照だけでなく、Derived Indexの投影時点で脱落した関係の情報を保持する。
+- 未存在・重複・stale snapshotを終了コード1、不正引数・読込失敗・Source Index検証失敗等を終了コード2とする。機械可読JSONの`error.code`で詳細を識別する。
+- `snapshotFingerprint`は候補GraphとPolicyのバイト列に関するハッシュ。ページ間で変化を検出できるが、**Source Index自体を同一時点へ固定せず**、Sourceファイルの読取競合や同時書換えに対する完全な一貫性を保証しない。完全なSnapshot境界は#1017と別途調整する。
+- `sourcebridge`に渡す読取関数で相対path正規化、symlinkによるWorkspace外参照拒否、regular file確認を実施する。ただしsymlinkのswapを原子的に防ぐ仕組みではなく、これをproductionのsecure source readerとは呼ばない。
+- 初期の関係は既存Derived Indexがすでに提供する宣言済みData/Pattern/Relation等に限られる。Business Procedure/DFD、物理CRUD、共有Acceptance、暗黙のtransitive path探索は未実装。
+
+### PRの統合順
+
+本作業は、独立したDraft系列（[#1159](https://github.com/hat47x/tei-platform/pull/1159) → [#1169](https://github.com/hat47x/tei-platform/pull/1169) と [#1139](https://github.com/hat47x/tei-platform/pull/1139) → [#1171](https://github.com/hat47x/tei-platform/pull/1171)）を参照する**統合用Draft候補**である。統合ブランチで履歴を接続していても各元PRがmainへ統合可能と認定されたわけではない。元PRのheadを変更せず、上流の検証・マージ順序を尊重して最終的な差分を再評価する。
+
+具体的には、executable CLIによる`commands`、`inspect`、`trace`、`validate`の戻り値/出力整合性と、typed Go操作/CLIの同等性を確認する。CIは停止中につき、Goのunit/プロセステストを追加した事実とclean checkoutにおける実行済みPASSを混同しない。`AGENTS.md`に定めるexact head/full repository healthが揃うまでDraftを維持し、mainへマージしない。
+
+
+### 8.1 統合候補の静的レビューで修正した境界
+
+- **同じ論理対象をinspectとtraceで扱えるようにする**: 初期 `inspect` は `semantic-data`、`application`、`query` に加えて、`semantic-relation` と `application-pattern` の既存World定義を取得する。関係Graphの再生成はしない。CLIプロセス試験は `sales.order.customer` の両コマンドが同じSubjectと定義元を指すことを確認する。
+- **重複Canonical宣言を誤って一意と判定しない**: `derivedbridge` が同じIDの使用をまとめても、`operations.TraceWorkspace` は対応するCanonical種別について `inspectCanonical` と同じexact resolverを通し、欠落・重複を拒否する。候補Graphの重複排除をCanonicalな重複検証の代用にしない。
+- **ページ継続は検索対象と方向にも結び付く**: `trace.snapshotFingerprint` はGraphとRuleに加え、`scope/kind/id` と `direction` を含める。`summary → full` や `offset/limit` の変更では有効のままとし、対象や方向が異なる要求を以前のページの継続として受理しない。
+- **静的なテスト不備の修正**: `cmd/tei/cli_trace_test.go` 内の未定義な`testRepositoryRoot`参照を、既存CLI試験と同じ相対的なReference Workspaceの指定に変更した。CLI/Go結果の意味一致と、方向を変更したときの `STALE_SNAPSHOT` も回帰テストに含めた。
+
+これらはコードとテスト**候補の変更**であり、テストPASSの報告ではない。Goの書式・コンパイル、actual `go test ./...`、`go vet ./...`、`tools/repository-health-check.sh` については未検証である。
+
+`trace.snapshotFingerprint` は検索条件とGraph/Policyの継続検査用であり、Source Index、Workspace全ファイル、外部Providerの状態を含む単一トランザクションのrevisionではない。Sourceファイル移動・内容変更と併発する場合はSource側のfingerprintも別に確認する必要がある。
+
+
+### 8.2 Canonical/Sourceの複合スナップショット（2026-10-10）
+
+`tei trace` がSource Indexを含めずGraphだけで継続判定すると、同じCanonical Worldで元ファイルが移動した場合や、コメントだけが変わった場合に、古いページの位置・根拠と新しいページの元定義が混在する。この欠落を以下のように修正した。
+
+1. `workspaceProjectionFingerprints` は正規化 `ir.World` と、既存 `workspace.BuildSourceIndex` で生成・Normalizeした `sourceindex.Index` のJSONを、それぞれ独立してfingerprint化する。前者はSourceファイル移動では不変、後者はArtifact path/digest/Source Referenceの変化で変わる。
+2. `operations.TraceWorkspace` は既存 `modelref.TraceDirect` のgraph+rule+query fingerprintと、上記二種類のfingerprintを結合して `tei.operations.trace.snapshot/v1` の継続用トークンを算出する。出力 `result.snapshotFingerprint` がこのトークンであり、`result.trace.snapshotFingerprint` はGraph限定の内部読取識別子として残す。
+3. CLIの `-expected-fingerprint` は**Workspaceレベルの`result.snapshotFingerprint`**のみを受け付ける。違う場合は `STALE_SNAPSHOT`、終了コード1。`summary→full`やoffset/limitだけの変更は同じWorkspace状態であれば許容し、同じWorldに対するSource移動や非意味的な原文変更は拒否する。
+4. `operations.InspectSubject` も `worldFingerprint` と `sourceIndexFingerprint` を共通ヘルパーから取得する。CLIから両操作を別々に呼んだ場合に、観測したCanonicalとSourceのスナップショットが一致したか検証できるようにする。
+
+回帰試験には、合成WorkspaceのSemantic Dataについて `order.tei→renamed.tei` の移動、およびファイル末尾空行の追加を組み込む。どちらも意味情報とmodelref graphが変わらないことを確認しながら、Source Index fingerprintと継続用トークンの変更、および古いトークンの拒否を検証する（テストコード追加、**actual PASS未確認**）。
+
+なお、`BuildSourceIndex` と `sourcebridge.NewResolver` における原ファイル検証は同時読取の競合を完全には閉じない。複合トークンは複数CLI呼出し間の**観測結果の変化検出**であり、単一読取トランザクションの保証、OSのatomic open、Shared Acceptanceの書込み排他ではない。Source全体を本文に展開して後解析する方式にも、同じスナップショット固定・情報開示制御が別途必要となる。
+
+
+### 8.3 CLI引数契約と候補Graphの決定性（2026-10-10）
+
+- `inspect`/`trace` は、未知フラグ・型変換不能値・他コマンド用の既知フラグをJSON `INVALID_ARGUMENT` と終了コード2で返す。CLI入力が正当だと確認する前に、正本をロードしない。失敗時に標準エラーだけが唯一の診断経路にならないよう、選択コマンドに限りFlagSetの`ContinueOnError`でparse結果を受け取る。
+- `modelref.TraceDirect` のスナップショットv2は、GraphのNode/Edge/Evidenceを順序に依存しない形で直列化し、Rule fingerprintと選択Subject/Directionを結合する。重複したNode/Edgeは勝手に除去しない。同じgraphを異なる走査順で生成しても`STALE_SNAPSHOT`にならない一方、重複宣言・意味変更ならtokenが変わる。
+- 不正なSource Evidenceが複数ある場合の`Issue`も同じ根拠順序で選択し、全件出力のrow情報とスナップショットの間の整合を保つ。`summary`は未解決件数を全辺に対して数えるがrow自体は構築しない。
+- Source Indexの同開始位置・同roleの参照は終了offset等で正規化順序を決定し、元の入力順によるfingerprint変化を避ける。
+- 上記の静的修正だけでは品質Gateは通過しない。検証実施手順と未証明の境界は `docs/conformance/cli-c1-trace-integration-gate.md` を参照する。
+
+結果の階層は `result.snapshotFingerprint`（CLI継続用のWorkspace合成token）と `result.trace.snapshotFingerprint`（Goモデルの候補Graph限定token）を意図的に区別する。これは生成AIとUI Adapterが継続の対象を誤解しないための契約であり、新たなAuthorityや二重管理を意味しない。
