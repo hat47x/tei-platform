@@ -69,13 +69,21 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <scenario|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <commands|scenario|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
 		os.Exit(2)
 	}
 	command := os.Args[1]
+	if command == "commands" {
+		if len(os.Args) != 2 {
+			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
+			os.Exit(2)
+		}
+		writeJSON(commandCatalog())
+		return
+	}
 	if command == "scenario" {
 		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -86,6 +94,7 @@ func main() {
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
+	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
@@ -129,6 +138,19 @@ func main() {
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
 	_ = fs.Parse(os.Args[2:])
+	if *jsonValidation {
+		if command != "validate" {
+			fmt.Fprintln(os.Stderr, "-json is supported only for validate -workspace")
+			os.Exit(2)
+		}
+		if *workspacePath == "" || *worldPath != "" || fs.NArg() != 0 {
+			code, err := invalidJSONValidationArguments(os.Stdout)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			os.Exit(code)
+		}
+	}
 	if command == "workspace-files" {
 		if *workspacePath == "" || *worldPath != "" {
 			fmt.Fprintln(os.Stderr, "workspace-files requires -workspace and does not accept -world")
@@ -337,7 +359,13 @@ func main() {
 	}
 
 	if command == "validate" && *workspacePath != "" {
-		code, err := validateWorkspace(os.Stdout, *workspacePath)
+		var code int
+		var err error
+		if *jsonValidation {
+			code, err = validateWorkspaceJSON(os.Stdout, *workspacePath)
+		} else {
+			code, err = validateWorkspace(os.Stdout, *workspacePath)
+		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

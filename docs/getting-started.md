@@ -18,6 +18,26 @@ go version
 
 [First Model Change — 最初の意味変更を試す](../examples/first-workspace/README.md) を参照してください。Go toolchainだけで動きます。これはModelの検証例であり、生成画面やCRUDを利用できる状態ではありません。
 
+## CLIを生成AIや自動化から使う
+
+当面は`tei` CLIを操作の入口として優先します。現在のread-onlyな主要コマンドは、次のJSON一覧から確認できます。
+
+```bash
+go run ./cmd/tei commands
+```
+
+モデルや定義の整合性を調べる場合、生成AIは次のようにJSON診断を受け取れます。
+
+```bash
+go run ./cmd/tei validate \\
+  -workspace reference/workspace \\
+  -json > /tmp/tei-validation.json
+```
+
+結果には`schemaVersion`、`ok`、`diagnostics`が含まれます。構文エラーでは元ファイルの位置を、意味上の検証では可能な範囲でSubjectとSource Indexの位置を返します。従来の`validate -workspace`はテキスト形式のままです。
+
+終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドやPlugin機能を列挙する完全な登録簿ではありません。詳細とWeb／デスクトップへの接続方針は[CLI優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
+
 ## 1. テスト
 
 ```bash
