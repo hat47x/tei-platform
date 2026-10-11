@@ -4,7 +4,7 @@ Status: **supporting Evidence-coverage audit / no new Requirement / no new Gate 
 
 Related:
 
-- `plan/LANE_B_RQ002_BUSINESS_PROCEDURE_CANONICAL_TRACE_AUDIT_2026-09.md`
+- `docs/audits/LANE_B_RQ002_BUSINESS_PROCEDURE_CANONICAL_TRACE_AUDIT_2026-09.md`
 - `plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`
 - `plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`
 - Lane C PR #482 / `plan/issue/000042-business-procedure-cross-view-reference.md`

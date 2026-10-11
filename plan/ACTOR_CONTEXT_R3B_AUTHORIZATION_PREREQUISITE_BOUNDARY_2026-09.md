@@ -4,7 +4,7 @@
 - Date: 2026-09-18
 - Parent: `plan/ACTOR_CONTEXT_R3A_PRINCIPAL_AUTHORIZATION_BOUNDARY_2026-09.md`
 - Refined by: `plan/ACTOR_CONTEXT_R3C_AUTHORIZATION_REQUIREMENT_AUTHORITY_2026-09.md`
-- Related: `plan/LANE_B_AUTHORIZATION_TARGET_AUTHORITY_AUDIT_2026-09.md`
+- Related: `docs/audits/LANE_B_AUTHORIZATION_TARGET_AUTHORITY_AUDIT_2026-09.md`
 - Side effect: None
 - Product Gate impact: None
 - Production schema impact: None
