@@ -55,7 +55,6 @@ RQ-028が列挙する確認対象と、Product Valueの「形だけの承認」�
 
 ## 机上評価 — 既存のShared Acceptance Preview
 
-評価対象は`tools/reference-shared-acceptance`の`preview`出力です。根拠はtoolのREADMEと、`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md` §13の実Preview記録（`repair_intake`、11 stage PASS、変更subject 6件、impact 15本、unresolved 3件）です。コードは実行していません。
 
 | 条件 | 評価 | 根拠と不足 |
 | --- | --- | --- |

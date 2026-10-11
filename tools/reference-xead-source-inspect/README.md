@@ -1,7 +1,7 @@
 # reference-xead-source-inspect
 
 Repository外に置いたXead/Xeaf source snapshotを、RMT-2のsource-faithful adapterと
-`transcription-contract-v0.json`で検査するReference toolです。
+`xead-source-transcription-contract.synthetic.json`で検査するReference toolです。
 
 このtoolはCanonical sourceを変更しません。標準出力も、原modelのraw XML、業務名称、
 legacy ID、完全なsource locatorを複製しない集計Evidenceに限定します。
@@ -9,7 +9,7 @@ legacy ID、完全なsource locatorを複製しない集計Evidenceに限定し�
 ~~~text
 go run ./tools/reference-xead-source-inspect \
   -format xead \
-  -source /path/to/MfgOrder.xead
+  -source /path/to/local-model.xead
 ~~~
 
 主な出力:

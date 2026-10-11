@@ -4,7 +4,7 @@ ISSUE-000080 / GitHub #951 のReferenceです。
 
 productionの`internal/plugin.CapabilityKind`をすぐに変更せず、PluginがCore固定enumを追加しなくても新しいCapability Contractを宣言・解決できる最小境界をpressureします。
 
-最初のcontractはXead / Xeaf Source Adapterです。これはauthoring toolであり、Application Runtime Capabilityではありません。
+最初のcontractはauthoring tool向けのSource Adapterです。これはApplication Runtime Capabilityではありません。具体的な外部モデルの資料やsource fileはこのRepositoryへ含めません。
 
 このReferenceで確認する境界は次です。
 
@@ -46,7 +46,7 @@ XeadとXeafの独自fixtureでは、exact source bytesのdigest、未知construc
 
 あわせて、同じexpanded nameのXML属性重複と、root外の非空白textをreaderで拒否します。raw sourceの曖昧性をfirst-wins / last-winsで意味分類へ流しません。
 
-Repository正本の`reference/reference-model-transfer/transcription-contract-v0.json`を使うtestも追加し、現在のXead `System / 1.2` profileから`Table`のcandidate classificationへ到達する経路をpressureしています。
+Repository正本の`reference/xead-source-transcription-contract.synthetic.json`を使うtestも追加し、現在のXead `System / 1.2` profileから`Table`のcandidate classificationへ到達する経路をpressureしています。
 
 ### RMT-2との境界
 

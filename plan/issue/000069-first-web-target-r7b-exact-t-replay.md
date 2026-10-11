@@ -3084,8 +3084,6 @@ tools/reference-first-web-target-r7b-replay-plan/main_test.go
 までをcompareした結果、changed pathは次の4つのMarkdown計画文書だけだった。
 
 ```text
-plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md
-plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md
 plan/issue/000040-semantic-component-composition.md
 plan/issue/000069-first-web-target-r7b-exact-t-replay.md
 ```
@@ -3658,8 +3656,6 @@ candidate vs parent:
 E1.15のsource-relevant base `40209d25e36b0709776c77c369ab183f06b38670` からcurrent mainまでを比較すると、変更は次の4 docs pathだけであり、canonical 11 source pathとのoverlapは0である。
 
 ```text
-plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md
-plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md
 plan/issue/000040-semantic-component-composition.md
 plan/issue/000069-first-web-target-r7b-exact-t-replay.md
 ```
@@ -5210,8 +5206,6 @@ main advance from source-relevant base:
   8 commits
 
 changed paths:
-  plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md
-  plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md
   plan/issue/000040-semantic-component-composition.md
   plan/issue/000069-first-web-target-r7b-exact-t-replay.md
 
@@ -5306,8 +5300,6 @@ source-relevant base `c46eafe95c69d91c2d6f4d51c58697d0539db2e4` からこのchec
 main ahead from source-relevant base = 10 commits
 
 changed paths:
-  plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md
-  plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md
   plan/issue/000040-semantic-component-composition.md
   plan/issue/000069-first-web-target-r7b-exact-t-replay.md
 

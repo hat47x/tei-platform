@@ -62,10 +62,6 @@ ADR前に必要なのは**contractを反証できるEvidence**であり、最終
 
 ## 上位基線
 
-- 三段readinessの原典: [`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`](../BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md)
-- 判定の正本: [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)
-- 設計品質: [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
-- second Reference acceptance: [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
 - 担当割り当て: [`UPSTREAM_BREAKDOWN_2026-09.md`](../UPSTREAM_BREAKDOWN_2026-09.md) §4
 - 関連RQ: RQ-002 / RQ-003 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-025 / RQ-026
 - PAS: PAS-07
@@ -88,7 +84,6 @@ ISSUE-000042のoperational checklistを本Issueへ再掲しない。checklistの
 
 Pre-ADR Auditのcurrent判定をそのまま担当する。
 
-- **A. actual Repository runner green — 充足（2026-09-20、R = `e2856e6`、[Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）** — 次を同一revision `R`でactual実行した: `gofmt` / `go vet` / `go test` / checkerに加え、source-uniqueness、source-root membership、candidate-only fresh-process、second-corpus non-inference Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
 - **B. independent second realistic TEI-original responsibility transfer — Evidence取得済み（2026-09-21、R = `82e4301`、[ISSUE-000050](000050-second-realistic-handoff-corpus.md)実施記録）。ただし作成者self-reviewのみで、独立reviewとPre-ADR Auditによる再判定は未実施** — `order_entry`から独立した製造・入庫のReference（二つのProcedureと、自然に生じた責任のHandoff一件）をauthorし、RRB-P1、RRB-P2（source / test level。項目4は未確認）、RRB-P3（Gate A A1〜A8 PASS、critical 39件）のEvidenceを取得した。Handoff一般の妥当性、独立reviewを経たこと、Contract ADR readyは主張しない
 
 Blocker Bは「Handoff fixtureが二つあること」ではない。Handoff検証を目的に業務を逆算せず、独立したBusiness needから自然に生じた責任継続でcurrent H1/R3の一般性をpressureできることを要求する。
@@ -128,7 +123,6 @@ Gate A green前には:
 - `from/to/condition`をpositive Evidenceとしてauthorしない
 - system result / physical Observation / actor差からresponsibility transferをbackfillしない
 
-したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。Blocker Bは2026-09-21にEvidenceを取得した。2026-09-24に作成者とは別系統の生成AI（OpenAI GPT-5.6 Sol）が独立reviewを実施し、[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md)へ`review-blocked`を記録した。主なblocking findingは、conditionがtarget Step ST-00のmeaningを内包すること、count accountability transferとU-4/U-6/U-9の不整合、RRB-P2 item 4未確認である。current execution priorityはこれらのmeaning / pressure修正と必要な再reviewであり、その後にPre-ADR AuditがBlocker Bを再判定する。2026-09-24のremediation incrementではF-1/F-2/F-4とsame-actor pressureをsource/testへ反映したが、RRB-P2 item 4は未解決であり、remediation authorとreviewerが同一のため独立再reviewも必要である。旧R = `82e4301`のGate A PASSをcurrent remediation revisionへ引き継がない。独立review自体はAudit再判定ではなく、Contract ADRはNot Readyを維持する。
 
 ## ADR前に要求するEvidence
 
@@ -187,8 +181,6 @@ Pre-ADR AuditのGateを詳細化する作業チェックとして、次を追う
 
 ## 関連
 
-- [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
-- [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
 - [ISSUE-000042](000042-business-procedure-cross-view-reference.md): Lane C Reference / Evidenceの親
 - [ISSUE-000049](000049-business-authoring-production-adoption-readiness.md) / [ISSUE-000050](000050-second-realistic-handoff-corpus.md)
 - [`RQ025_RQ026_ACCEPTANCE_TRACE.md`](../RQ025_RQ026_ACCEPTANCE_TRACE.md) / [`SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md`](../SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md)

@@ -119,7 +119,6 @@ Builder re-entry context
 
 ## Phase 0 findings — Actor Context Projection
 
-Phase 0の設計基線は `plan/ACTOR_CONTEXT_PROJECTIONS_2026-09.md` とする。
 
 current TEIの棚卸しから、次を確認した。
 
@@ -361,7 +360,6 @@ Builder Review Handoff
 
 ## Phase 1 first challenge — customer_referenceを編集可能にする要求
 
-最初のAI Builder re-entry challengeは `plan/ACTOR_CONTEXT_R1_AI_BUILDER_CHANGE_CHALLENGE_2026-09.md` を正本とする。
 
 変更要求:
 
@@ -448,7 +446,6 @@ actual `go test` PASSおよびfree-exploration vs structured-context比較runは
 
 ### R2 first challenge — human review projection
 
-R1と同じcustomer edit要求を使い、生成AIの変更をコード精読前に人間が理解するためのchallengeは `plan/ACTOR_CONTEXT_R2_HUMAN_REVIEW_CHALLENGE_2026-09.md` を正本とする。
 
 test-only source:
 
@@ -495,7 +492,6 @@ GUI click imitationはbaseline比較に使っても、標準経路にはしな�
 
 ### R3 first challenge — read-only Business Actor
 
-最初のread-only Agent challengeは `plan/ACTOR_CONTEXT_R3_READ_ONLY_BUSINESS_ACTOR_CHALLENGE_2026-09.md` を正本とする。
 
 R3 sourceはApplication / Pattern / Contract / Business Procedureというread-routeのactual decisive inputだけをfingerprintし、R1固有のcustomer-edit conflict Evidenceをfreshness dependencyへ持ち込まない。Application / Pattern / Contractはsubject identityからSource Indexでcurrent locatorを解決し、SourceRefsも同じfingerprint input集合からderiveする。
 
@@ -555,7 +551,6 @@ R3ではMCP / API等のtransport contract、Agent principal mapping、actual que
 
 ### R3A — principal / Authorization target boundary
 
-R3 static read routeの次段は `plan/ACTOR_CONTEXT_R3A_PRINCIPAL_AUTHORIZATION_BOUNDARY_2026-09.md` を正本とする。
 
 test-only source:
 
@@ -594,7 +589,6 @@ Authentication Observationはruntime contextであり、R3 static source freshne
 
 R3Aでauthenticated subjectを安全に解決できても、BP-02ではAuthorization requirement自体がcurrent accepted sourceから確定していない。
 
-次段は `plan/ACTOR_CONTEXT_R3B_AUTHORIZATION_PREREQUISITE_BOUNDARY_2026-09.md` を正本とする。
 
 test-only source:
 
@@ -629,7 +623,6 @@ R3Bをさらに精査すると、BP-02ではtarget/action以前に「このActio
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3C_AUTHORIZATION_REQUIREMENT_AUTHORITY_2026-09.md`
 
 test-only source:
 
@@ -669,7 +662,6 @@ R3Cでrequirementを独立authorityにした後、authoring locusを選ぶ前に
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3D_AUTHORIZATION_REQUIREMENT_AUTHORING_SCOPE_2026-09.md`
 
 test-only source:
 
@@ -707,7 +699,6 @@ R3Dのscope差をsingle-use fixtureだけで終わらせず、同じApplication 
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3E_AUTHORIZATION_REQUIREMENT_SECOND_USE_CASE_2026-09.md`
 
 test-only source:
 
@@ -752,7 +743,6 @@ R3Eのsynthetic second-use-caseを、current Repositoryに既に存在するPatt
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3F_REPOSITORY_BACKED_AUTHORIZATION_SCOPE_2026-09.md`
 
 test-only source:
 
@@ -799,7 +789,6 @@ R3Fのrepository-backed cross-Procedure reuseを踏まえ、Pattern共通require
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3G_AUTHORIZATION_REQUIREMENT_INVARIANT_VARIATION_2026-09.md`
 
 test-only source:
 
@@ -839,7 +828,6 @@ R3GでPattern minimum / Business Step variation / exception intent / precedence�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3H_AUTHORIZATION_EXCEPTION_EVIDENCE_GATE_2026-09.md`
 
 test-only source:
 
@@ -883,7 +871,6 @@ R3Hでexception mechanism lineをEvidence不足として保留し、read-only AI
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3I_AUTHORIZATION_TARGET_EVALUATION_CADENCE_2026-09.md`
 
 test-only source:
 
@@ -935,7 +922,6 @@ R3Iで `requirement=required` とprotected resourceまで解決してもAuthoriz
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3J_AUTHORIZATION_ACTION_AUTHORITY_GATE_2026-09.md`
 
 test-only source:
 
@@ -971,7 +957,6 @@ R3Jでcurrent action authority Evidence Gateを未充足として保持したま
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3K_AUTHORIZATION_ACTION_AUTHORING_SCOPE_2026-09.md`
 
 test-only source:
 
@@ -1025,7 +1010,6 @@ R3KでBusiness Step / Application Pattern / explicit cross-viewのaction scope�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3L_AUTHORIZATION_ACTION_LOCUS_EVIDENCE_GATE_2026-09.md`
 
 test-only source:
 
@@ -1077,7 +1061,6 @@ R3Lでaction-locus Evidence不足のためproduction locus選択を停止した�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3M_OPERATIONAL_STOP_EXPLANATION_HANDOFF_2026-09.md`
 
 test-only source:
 
@@ -1116,7 +1099,6 @@ R3Mでcurrent BP-06のaction-authority stopを正確に説明できることを�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3N_STAGE_AWARE_OPERATIONAL_STOP_TAXONOMY_2026-09.md`
 
 test-only source:
 
@@ -1163,7 +1145,6 @@ R3Mのprovenance付きstop explanationとR3Nのstage-aware taxonomyから、Huma
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3O_STOP_PROJECTION_CORE_2026-09.md`
 
 test-only source:
 
@@ -1210,7 +1191,6 @@ R3Oのaudience-neutral semantic coreから、Human / Agent向けにpurpose-bound
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3P_PURPOSE_BOUND_STOP_PROJECTION_OMISSION_2026-09.md`
 
 test-only source:
 
@@ -1248,7 +1228,6 @@ R3Pのselected / omitted category boundaryをbounded projectionのfreshness depe
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3Q_PROJECTION_SELECTIVE_FRESHNESS_2026-09.md`
 
 test-only source:
 
@@ -1279,7 +1258,6 @@ R3Qでpurpose-bound projectionのfreshnessをselected semantic categoryへ絞っ
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3R_PROJECTION_DEPENDENCY_PROVENANCE_2026-09.md`
 
 test-only source:
 
@@ -1332,7 +1310,6 @@ R3Rでprojection dependencyをprofile / Source Index subject / Reference artifac
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3S_PROJECTION_DEPENDENCY_REASON_2026-09.md`
 
 test-only source:
 
@@ -1386,7 +1363,6 @@ R3Sでselected categoryからdependency / reasonへ戻れるようにした後�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3T_PROJECTION_REEVALUATION_REASON_2026-09.md`
 
 test-only source:
 
@@ -1441,7 +1417,6 @@ R3Tでbounded projectionのre-evaluation reasonをchange class / dependency / re
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3U_MULTI_REASON_AGGREGATION_2026-09.md`
 
 test-only source:
 
@@ -1490,7 +1465,6 @@ R3Uで一つのbounded projection内のmulti-reason aggregationをlosslessに扱
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3V_CROSS_AUDIENCE_REASON_IDENTITY_2026-09.md`
 
 test-only source:
 
@@ -1544,7 +1518,6 @@ R3T / R3U / R3Vのreason集合を、actual selected category value changeと分�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3W_CATEGORY_VALUE_CHANGE_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -1584,7 +1557,6 @@ R3Wでactual selected category changeを確定した後、そのchangeとR3I Aut
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3X_AUTHORIZATION_CONTEXT_IDENTITY_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -1632,7 +1604,6 @@ R3XでAuthorization Observationのtuple identityとfreshness authorityを分離�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3Y_AUTHORIZATION_REEVALUATION_REUSE_AUTHORITY_2026-09.md`
 
 test-only source:
 
@@ -1692,7 +1663,6 @@ R3Yでreevaluation authorityとprior Observation reuse authorityを分離した�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3Z_AUTHORIZATION_FRESHNESS_PRECEDENCE_EVIDENCE_GATE_2026-09.md`
 
 test-only source:
 
@@ -1754,7 +1724,6 @@ R3Zのfreshness precedence Gateがcurrent Repositoryでは `insufficient-evidenc
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AA_AUTHORIZATION_FRESHNESS_STOP_HANDOFF_2026-09.md`
 
 test-only source:
 
@@ -1796,7 +1765,6 @@ R3AAでfreshness authority unresolvedをOperational stopへ接続した後、Hum
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AB_CROSS_AUDIENCE_FRESHNESS_DRILLDOWN_PROVENANCE_2026-09.md`
 
 test-only source:
 
@@ -1852,7 +1820,6 @@ R3ABでfreshness stopのderived analysisとprovenance rootを分離した後、r
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AC_FRESHNESS_DRILLDOWN_ROOT_CHANGE_CLASSIFICATION_2026-09.md`
 
 test-only source:
 
@@ -1897,7 +1864,6 @@ R3ACのrole-aware root deltaをR3Tへ直接流さず、R3R/R3Sで既に成立し
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AD_ROOT_CHANGE_PROJECTION_IMPACT_2026-09.md`
 
 test-only source:
 
@@ -1946,7 +1912,6 @@ R3ADでexplicit existing-dependency bindingを通してselected re-evaluation re
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AE_ROOT_CHANGE_CATEGORY_VALUE_OUTCOME_2026-09.md`
 
 test-only source:
 
@@ -3215,7 +3180,6 @@ R3AEのcategory fingerprint outcomeとR3YのAuthorization freshness authorityを
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AF_REEVALUATION_OUTCOME_EXPLANATION_2026-09.md`
 
 test-only source:
 
@@ -3254,7 +3218,6 @@ R3AFのunderlying Operational explanationを再計算せず、Human / Agentのpu
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AG_PURPOSE_BOUND_OUTCOME_EXPLANATION_MATERIALIZATION_2026-09.md`
 
 test-only source:
 
@@ -3308,7 +3271,6 @@ R3AGのpurpose-bound presentationから、shared outcomeのprovenanceを同じch
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AH_CROSS_AUDIENCE_OUTCOME_DRILLDOWN_2026-09.md`
 
 test-only source:
 
@@ -3349,7 +3311,6 @@ R3AGのAgent resolution-inspection materializationとR3AH provenance traceをmac
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AI_READ_ONLY_AGENT_CONSUMPTION_2026-09.md`
 
 test-only source:
 
@@ -3403,7 +3364,6 @@ R3AIのread-only reasoningから外部情報が必要になっても、問い合
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AJ_AUTHORITY_INFORMATION_REQUEST_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -3472,7 +3432,6 @@ R3AJのauthority-information requestにsemantic identityとcurrent context revis
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AK_REQUEST_CORRELATION_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -3534,7 +3493,6 @@ R3AKでcurrent request revisionへcorrelateしたresponseのEvidenceRefをqualif
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AL_RESPONSE_EVIDENCE_QUALIFICATION_2026-09.md`
 
 test-only source:
 
@@ -3576,7 +3534,6 @@ R3ALでexplicitにqualifiedされたEvidenceがauthority valueをassertする場
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AM_QUALIFIED_EVIDENCE_AUTHORITY_ASSERTION_2026-09.md`
 
 test-only source:
 
@@ -3617,7 +3574,6 @@ R3AMのqualified authority assertionをAccepted Decision候補へ進める前に
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AN_ACCEPTANCE_AUTHORITY_EVIDENCE_GATE_2026-09.md`
 
 test-only source:
 
@@ -3677,7 +3633,6 @@ R3ANでacceptance authority evidenceがqualifyしても、それだけでasserti
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AO_EXPLICIT_ACCEPTANCE_WITNESS_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -3722,7 +3677,6 @@ R3AOのprovenance-bound acceptance witness observationをauthoritative Accepted 
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AP_ACCEPTED_DECISION_WRITE_AUTHORITY_EVIDENCE_GATE_2026-09.md`
 
 test-only source:
 
@@ -3786,7 +3740,6 @@ R3APでAccepted Decision write-authority Evidence Gateがsingle-qualifiedとな�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AQ_ACCEPTED_DECISION_COMMIT_CANDIDATE_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -3839,7 +3792,6 @@ R3AQ commit candidateをauthoritative sinkへ適用する前に、application au
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AR_APPLICATION_AUTHORITY_REVISION_GATE_2026-09.md`
 
 test-only source:
 
@@ -3901,7 +3853,6 @@ R3AR application-authority Gateがsingle-qualifiedでも自動write attemptへ�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AS_WRITE_ATTEMPT_CANDIDATE_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -3955,7 +3906,6 @@ R3AS write-attempt candidateへwriterから返ったと仮定するtest-only obs
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AT_WRITE_ATTEMPT_OBSERVATION_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -4012,7 +3962,6 @@ R3AT raw writer observationをauthoritative write outcomeへ進める前に、ou
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AU_WRITE_OUTCOME_ACCEPTANCE_AUTHORITY_GATE_2026-09.md`
 
 test-only source:
 
@@ -4050,7 +3999,6 @@ R3AU outcome-acceptance Gateがsingle-qualifiedでも自動accept/rejectせず�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AV_OUTCOME_ACCEPTANCE_WITNESS_CANDIDATE_2026-09.md`
 
 test-only source:
 
@@ -4088,7 +4036,6 @@ R3AVの `accept-observed-outcome` candidateが存在しても、outcome evidence
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AW_POST_WRITE_RECONCILIATION_AUTHORITY_GATE_2026-09.md`
 
 test-only source:
 
@@ -4140,7 +4087,6 @@ R3AW reconciliation authority Gateがsingle-qualifiedでも自動reconciliation�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AX_RECONCILIATION_WITNESS_CANDIDATE_2026-09.md`
 
 test-only source:
 
@@ -4188,7 +4134,6 @@ R3AX reconciliation candidateの後段でも、reconciliation execution observat
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AY_RECONCILIATION_EXECUTION_OBSERVATION_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -4243,7 +4188,6 @@ R3AYで分離したexecution observation / current-state observationについて
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AZ_RECONCILIATION_EVIDENCE_ACCEPTANCE_AUTHORITY_GATE_2026-09.md`
 
 test-only source:
 
@@ -4304,7 +4248,6 @@ R3AZのexecution/current-state Evidence acceptance authority Gateがsingle-quali
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3BA_RECONCILIATION_EVIDENCE_ACCEPTANCE_WITNESS_CANDIDATE_2026-09.md`
 
 test-only source:
 
@@ -4364,7 +4307,6 @@ R3BAのexecution / current-state plane-local Evidence accept candidateが両方�
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3BB_RECONCILIATION_RESULT_ACCEPTANCE_AUTHORITY_GATE_2026-09.md`
 
 test-only source:
 
@@ -4422,7 +4364,6 @@ R3BB Gateがsingle-qualifiedでもreconciliation resultを自動accept/rejectせ
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3BC_RECONCILIATION_RESULT_ACCEPTANCE_WITNESS_CANDIDATE_2026-09.md`
 
 test-only source:
 
@@ -4474,7 +4415,6 @@ R3BC `accept-reconciliation-result` candidateが存在してもauthoritative sta
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3BD_AUTHORITATIVE_STATE_APPLICATION_AUTHORITY_GATE_2026-09.md`
 
 test-only source:
 
@@ -4514,7 +4454,6 @@ R3BD Gateがsingle-qualifiedでも自動適用せず、explicit witnessが存在
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3BE_STATE_APPLICATION_WITNESS_CANDIDATE_2026-09.md`
 
 test-only source:
 
@@ -4553,7 +4492,6 @@ R3BE apply candidateの後段でも、state-application execution observationと
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3BF_STATE_APPLICATION_OBSERVATION_BOUNDARY_2026-09.md`
 
 test-only source:
 
@@ -4724,7 +4662,6 @@ Knowledge Portability R0 / handoffの次に、Gate C後の第二Application着�
 
 正本:
 
-- `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
 
 test-only source:
 
@@ -4771,7 +4708,6 @@ second Application Pre-Gate contractに対し、新しいPortability schemaを�
 
 正本:
 
-- `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
 
 test-only source:
 

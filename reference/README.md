@@ -157,13 +157,9 @@ go run ./tools/reference-deployment-attempt
 
 この実行例の出力には実行時刻に由来する値が含まれるため、出力全体をgoldenとして固定するのではなく、実行が正常に完了することをCIで確認します。
 
-## Reference Model Transfer Evidence
+## 外部Reference Modelの入力
 
-`reference/reference-model-transfer/` は、[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)で進める成熟Reference Model転写のsource-derived Evidenceです。
-
-初回benchmarkの原model / manualはRepository外に保持し、ここにはexact digest、aggregate inventory、初期pressure等、原内容を大量転載せず転写coverageを再現するための情報だけを置きます。
-
-このdirectoryが存在しても、Reference ModelをTEIへ転写済み、original Runtimeとbehavior equivalent、再配布条件確認済みという意味ではありません。判定契約は[Reference Model Transfer Evidence Gate](../plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を参照してください。
+TEIは外部Reference Modelを入力として検証できますが、第三者のモデル・手引・source snapshotやそこから派生した詳細資料は同梱しません。転写作業の公開要件は[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)に記します。
 
 ## SUI Reference Adoption fixture
 

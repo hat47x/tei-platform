@@ -5,7 +5,6 @@
 - 性格: Requirementの最小Reference / 既存受入境界の拡張
 - 主担当要求: RQ-016（主）/ RQ-017 / RQ-027
 - 関連Issue: [ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)（受理境界と`reject`）、[ISSUE-000046](000046-studio-shared-acceptance-authoring-loop.md)（Studioで確認を出す面）、[ISSUE-000047](000047-knowledge-first-semantic-exploration.md) / [ISSUE-000051](000051-derived-cognitive-retrieval-evaluation.md)（提案を作る側）、[ISSUE-000008](000008-editor-and-ai-followup-note.md)（Done。再質問抑止を後続AI支援の一項目として挙げたが、記録の担当は割り当てていない）
-- 設計メモ: [Derived Cognitive Requirement Draft](../DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) DCR-18（「前にも見た」という慣れではなく、明示的なDecision / suppression historyで実装する）
 - 価値との対応: [Product Value](../../product/value/TEI_PRODUCT_VALUE.md)「個人 5. 同じことを二度しなくてよい」、「価値の確かめ方 — 個人: 一度答えた確認が、理由なく繰り返されないこと」、原則P13
 - Gate impact: None
 

@@ -63,7 +63,7 @@ WasmはWeb / Desktop / Mobile / API / MCP / VUIと同列のTargetではない。
 
 Hikeは任意のGo sourceをWasmへ変換するcompilerではなく、Go風の別言語からLLVM IR等へ下ろす実装であるため、TEI Go Coreの置換候補とは扱わない。検討対象は「accepted meaningから小さいtyped execution subsetを導出し、portable artifact providerへ下ろせるか」である。
 
-詳細なread-only Pressureは[`PORTABLE_EXECUTION_ARTIFACT_ARCHITECTURE_PRESSURE_2026-09.md`](../PORTABLE_EXECUTION_ARTIFACT_ARCHITECTURE_PRESSURE_2026-09.md)に置く。
+詳細なread-only Pressureは`PORTABLE_EXECUTION_ARTIFACT_ARCHITECTURE_PRESSURE_2026-09.md`に置く。
 
 ## 第一Targetから受け取る比較baseline
 

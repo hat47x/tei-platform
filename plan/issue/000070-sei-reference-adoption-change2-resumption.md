@@ -264,13 +264,11 @@ production schemaではありません。意味の損失を確かめるための
 1. Application自身が、業務上のPresentation / InteractionをMCP Targetとして公開する場合
 2. TargetやHostが、inspectionや開発の制御のためにMCP等のcontrol interfaceを公開する場合
 
-[Actor Context Projections §9](../ACTOR_CONTEXT_PROJECTIONS_2026-09.md)は、AI Business Actor向けのmachine interfaceについて、三つ目の候補（Operational Consumer interface）も挙げています。
 
 SEI側の境界設計案（外部のエージェントやprotocolとの境界）は、SEIのMCP面を「Canonical Semantic Access Surface」（SEIの意味へ外から触れる正規の入口）の実現の一つとし、**読み取りと提案だけ**に限ります。決定は、明示された権限の経路で行います。これもSEIの未統合branchにだけある提案です。
 
 #### そろえ方（候補）
 
-- **TEIがSEIのMCPを使う場合。** SEIのMCPは、RQ-013の1にも2にもあたりません。TEIから見れば外部の認知Providerのinterfaceです。返ってくるものは認知の観測や提案であり、Canonical meaningでも実行権限でもありません（[Product Value §7](../../product/value/TEI_PRODUCT_VALUE.md)、[DCR-01 / DCR-15](../DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md)）。SEIへ渡す入力には、RQ-019どおり権限やsecretを混ぜません。
 - **SEI（またはSEIの文脈を持つ外部エージェント）がTEIへ働きかける場合。** 読み取りはTEIのProjectionを通します。「提案」は、Application定義の変更ならShared Acceptance Boundaryへの変更候補として（ADR-0022）、業務の実行なら、TEIがOperational Planeで評価する依頼（Action Intent）として（ADR-0028）受けます。どちらの場合も、2のcontrol interfaceを業務Actionの入口にしません。
 - **設計の収束として記録する。** SEIの「読み取りと提案だけ、決定は明示された権限の経路で」という形は、TEIのADR-0022（ProposalとCanonical受入の分離）とADR-0028（読めることと実行できることの分離）と同じ形です。二つの製品が独立に同じ形へ行き着いたことは、三つ目の候補（Operational Consumer interface）を将来formalizeするときの参考になります。ただし参考にとどめ、形を先に決めません。
 

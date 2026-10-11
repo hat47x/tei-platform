@@ -87,7 +87,6 @@ Gate C前に第二Application sourceを先取りせず、着手時に必要な�
 
 正本:
 
-- `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
 
 test-only source:
 
@@ -125,7 +124,6 @@ Gate C後の最初のread-only Referenceでは、
 
 正本:
 
-- `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
 
 test-only source:
 
@@ -194,12 +192,10 @@ Gate C Readyを受け、actual second-Application workstreamを開始した。
 
 S0:
 
-- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
 - `tools/reference-business-procedure-check/second_application_gate_c_actual_entry_pressure_test.go`
 
 S1 / S2:
 
-- `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
 - `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
 
 current qualification / portability result:
@@ -211,20 +207,16 @@ current qualification / portability result:
 
 S3:
 
-- `plan/SECOND_APPLICATION_S3_DESTINATION_DECISION_PACKET_2026-09.md`
 
 でdestination-owned candidateとして `repair_intake` / `repair_intake.intake.customer` / `repair_intake.customer_reference` / `customer_master` を明示した。これは `repair_intake-test-only` scenario labelからの自動昇格ではない。
 
 S4:
 
-- `plan/SECOND_APPLICATION_S4_COMPOSITION_CANDIDATE_2026-09.md`
 
 でexisting Application / Pattern grammarだけを使うcomposition Proposalを固定した。
 
 S5:
 
-- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
-- `plan/SECOND_APPLICATION_S5_FRESHNESS_CAPTURE_2026-09.md`
 
 でexact Proposal identity、Semantic Diff、current shared-authority freshnessまで固定した。
 
@@ -234,13 +226,6 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 
 正本:
 
-- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_COMPATIBILITY_PRESSURE_2026-09.md`
-- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`
-- `plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`
-- `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`
-- `plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md`
-- `plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`
-- `plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md`
 
 現在のpre-Acceptance停止条件は三つ独立している。
 
@@ -248,17 +233,14 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 2. exact `c18ae...` Proposalをcurrent `baseModelRevision`へ結び付けたmulti-layer Shared Acceptance Preview PASS
 3. exact reviewed Proposalに対するexplicit human Acceptance decision
 
-2026-09-21更新: 2は成立した。`tools/reference-shared-acceptance`が型付きoperation `add-data` / `add-application` / `add-reference-pattern`を扱い、実際の`reference/workspace`（base revision `sha256:f70da9b64a5b…`）に対する`c18ae...`のread-only Previewが全stage PASSした（fingerprint・差分・impact・unresolvedは[実装記録](../SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md)）。1も成立した: `tools/reference-business-procedure-check`のS3 / S4 / S5 review / freshness pressureを改訂版3-source Proposalへ更新し、temporary workspaceへのfull-workspace Validation（positive 1件とnegative control 2件）を追加して、focused `TestSecondApplication...`・reference-evidence runner・repository health checkがPASSした（[実行記録](../SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md)「10. 実行記録」）。残る停止条件は3だけで、Previewもexecutable pressureも人のAcceptanceへ読み替えない。
 
 Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。PreviewをAcceptanceへ読み替えず、一般的な作業継続指示もProposal採用Decisionへ読み替えない。
 
 **Acceptanceの進め方（利用者の方針、2026-09-21）**: exact `c18ae...`のAcceptanceは、**別の生成AIによる独立レビューの後**に行う。レビューが済むまで`accept`は実行しない。作成者（`claude-sonnet-5`）のself-reviewは独立レビューの代わりにしない。レビューの指摘は、accept前に対応するか、理由つきで見送る。レビュー結果とAcceptance decision（exact `c18ae...`、判断、その時点のrevision、残るunresolved）は、このIssueへ追記する。この方針は「レビューの後にacceptする」という順序の決定であり、レビュー結果が出る前のacceptを許すものではない。
 
-独立レビュー入力は `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_HANDOFF_2026-09.md` に固定し、2026-09-21にGPT-5.6 Sol（OpenAI）がレビューを実施した。
 
 結果:
 
-- `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_RESULT_2026-09.md`
 - verdict = `review-clear-with-conditions`
 - required pre-Acceptance fixes = none
 - human Acceptance decision = not made by the review
@@ -269,15 +251,12 @@ Repository integration条件は、actual acceptで`-derived-out reference/world.
 
 後続のShared Acceptance更新により、successful acceptは`.tei/decisions/<sha>.json`へaccepted Decisionを非authoritative Evidenceとして記録する。このrecordはmanaged sourceでもmodel revisionでもない。Second Applicationでは3 authoritative source + regenerated golden + exact Decision recordを同一integration unitへ含め、後段integration失敗でpre-acceptへ戻す場合はその試行のrecordも削除する。独立レビュー後のこの差分は再qualification済みで、review結論を変更しない。
 
-S6はAcceptance sourceをもう一度別経路でauthorする段階ではなく、accepted 3-source compositionが通常Workspaceとして自立することを確認するEvidence段階とする。normal `tei validate`、Workspace model revision、`reference/world.json`、Source Index 6 subjects、shared authority / Environment不変を確認し、その後だけS7 Environment Binding Proposalへ進む。正本は `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`。
 
 S7 preflightでは、current development / productionが既に `master_data.dev` / `master_data.prod`（definition `master_data`, provider `oracle`）を持ち、`tei.reference.providers` bundleがOracle providerを供給していることを確認した。したがってS6 complete後の最小Environment候補は `repair_intake.customer_master` を既存instanceへbindする2行であり、新Database instance / Provider / Permission / Resource grantを先行作成しない。exact S7 Proposal fingerprint / base revisionはS6完了後に固定する。
 
-独立レビューによりaccept後のRepository integration条件も評価済みである。actual acceptでは`-derived-out reference/world.json`を使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを再生成し、golden checkとrepository health PASSまで同じRepository changeで完了する。Gate B / Gate Cの`B / R / T`はrevision-scoped historical Evidenceであり、post-Gate-C current Referenceの進化を旧baselineへcarry-forwardしない。実行手順は`plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`を正本とする。
 
 ## S5 Acceptance witness と実行記録 — 2026-09-21
 
-`plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md` §9の形式で記録する。
 
 ```text
 proposal fingerprint:            c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
@@ -326,7 +305,6 @@ guardを緩めた箇所は無い。`TestSecondApplicationCompositionRejectsAnExi
 
 ### S6 — 完了（2026-09-21）
 
-`plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md` §14のexit criteriaを全て満たした（実行記録は同§15）。Acceptance toolを使わない通常経路で、`tei validate` PASS、model revisionがPreviewの`modelRevisionAfter`と一致、`tei world`がgoldenとbyte一致、Source Index 6 subjectがexpected artifactへ戻ること、共有authorityとEnvironmentが不変であることを確認した。
 
 決定記録については、機械到達できること（`accepted` / `current` / `intact`）と、**記録を除いてもmodel revisionとCanonical Worldが変わらないこと**の両方を確認した。記録はEvidenceであってauthorityではない。
 
@@ -334,7 +312,6 @@ guardを緩めた箇所は無い。`TestSecondApplicationCompositionRejectsAnExi
 
 ### S7 — executable pressure実施済み、Acceptance未了（2026-09-21）
 
-`plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md` §9のpressureを実装・実行し、§13へ記録した。最小のEnvironment binding 2行が共有Validationを通り、§5の5種類のdefectがそれぞれ期待するcodeでfail closedし、変更が2 Environment fileの1行ずつに収まることを確認した。Repositoryのauthoritative Environment sourceは変更していない。
 
 ```text
 S7 Proposal fingerprint = sha256:9fb68c2878f468ed57e50b73b142344df9426cbc0eb20c5d60e9389ec367e2e4
@@ -362,7 +339,6 @@ health check           PASS
 
 ### S8 — Driver / First Web Target preflight（2026-09-21）
 
-正本: `plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`
 
 source inspectionで、developmentはaccepted `repair_intake.customer_master -> master_data.dev` bindingに加え、既存の `master_data.customer/find_by_id -> database.query.oracle` Contract Query executor bindingを持つため、instance-aware synthetic Driver scenarioを既存Driver APIだけで再現できることを確認した。runtime inputは`repair_intake.intake.customer_id`をSemantic columnとするmapped rowとして渡し、Relation keyからQuery input `id`へ到達させる。
 
@@ -376,7 +352,6 @@ S8a Driver test-only candidateは `decdb5c16d403e72e8ce12dcd62698d29b3ae40f`（b
 
 S8 Target provenanceは旧Gate Cの `B / R` をcarry-forwardしない。`repair_intake`は旧 `R=e523...` に存在しないため、S8a Driver scenarioをcurrent sourceで成立させた後、そのrevisionで必要なHandover Evidenceを再qualificationし、successor `B2 / R2`を発行してからFirst Web Targetへ渡す。Target buildは別identity `T2`として追跡する。
 
-S8bへ進む前のsuccessor Handover契約を `plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md` に固定した。R2はS8a integration + health PASS後のclean revisionまで割り当てない。exact R2で既存Gate B Required Evidence #310/#255/#308をfinal convergence `-broad`でsame-run再取得し、retained child artifactsをreadiness artifact auditで独立再照合する。その上でSecond Application Driver Evidenceを追加参照してB2/R2を新規発行する。historical B/R/Tは不変で、#308 PostgreSQLをactual Oracle Evidenceへ読み替えない。
 
 ### S8 — Driver scenario（2026-09-22）
 
@@ -425,9 +400,7 @@ S6 preflightで、旧Application + Pattern Proposalがdestination Semantic Relat
 
 - old fingerprint: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` — superseded before Acceptance
 - revised fingerprint: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
-- revised design: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
 
-revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake.customer` を持つ最小destination Semanticを含む。authoritative sourceはまだ作成しない。`plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md` で、temporary workspaceへのthree-source注入、`workspace.Load`、`validation.Validate`、S3/S4/S5 pressure更新、reference-evidence scriptのgofmt対象追随、repository health checkまでを次のhealth-capable execution契約として固定した。
 
 2026-09-20の再検査では、document freshness baseを `c185937ab27a3a31332fefcd63ba5940b97b021e` まで更新し、関連shared/provenance/validation blobが不変であることを確認した。また `validation.Validate()` がdata-access Validation集約経路を通じてRelation key / Contract Query cross-layer検査を含むことも確認した。一方、`second_application_s5_freshness_capture_pressure_test.go` のbase revision constantは旧 `6ffaa40e...` のままであるため、これも次のexecutable-pressure code deltaへ追加した。
 

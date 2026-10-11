@@ -5,8 +5,6 @@
 - Primary owner after entry: ISSUE-000040
 - Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
 - Pre-Gate contracts:
-  - `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
-  - `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
   - `plan/KNOWLEDGE_PORTABILITY_HANDOFF_2026-09.md`
 - Canonical Application impact before Gate C Ready: None
 
@@ -276,7 +274,6 @@ Application source acceptance後にEnvironment側を別authorityとして扱う�
 
 preflight:
 
-- `plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md`
 
 current source inspectionでは、development / productionに既存の `master_data.dev` / `master_data.prod` Oracle instanceがあり、最小候補はdestination-owned aliasをそれぞれへ結ぶ2 bindingである。
 
@@ -305,7 +302,6 @@ origin `order_entry.master` bindingをcopy authorityとして扱わない。
 
 preflight:
 
-- `plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`
 
 read-only customer lookupを、
 
@@ -470,29 +466,23 @@ branch / PRを完了条件にはしない。コードを変更した場合はpus
 
 actual entry:
 
-- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
 - `B / R / T = B / e5231839a5dcc62cce1181a2731fcb7c70d16736 / 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
 
 S0は完了した。
 
 S1 / S2は、
 
-- `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
 - `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
 
 でSource-definedまで進んだ。
 
-Second ApplicationのCanonical sourceはS5で受理済み、S6 reload verification完了、Environment bindingはS7で受理済みである。Target実装はまだ開始していない。S8は`plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`を正本として、Driver / First Web Targetのdeterministic development Evidenceから開始する。actual Oracle runtime authorityは未成立のまま保持する。
 
-S3はSource-defined後、S6 preflightでdestination Relation owner / keyをaddendumした。旧S4 2-source ProposalはAcceptance前にsupersededし、current revised Proposalは `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`、fingerprint `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` である。
 
 2026-09-21時点で、revised executable pressure、multi-layer Shared Acceptance実装、actual `reference/workspace` read-only Preview、別生成AIによる独立レビュー（`review-clear-with-conditions`）まで完了した。required pre-Acceptance fixは無い。残るS5停止条件はexact `c18ae...`に対するexplicit human Acceptance decisionだけである。
 
 Acceptance実行契約:
-- `plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`
 
 Acceptance成功後のS6 Source / reload / validation契約:
-- `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`
 
 一般的な作業継続指示をAcceptance witnessへ読み替えない。
 

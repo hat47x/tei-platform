@@ -14,7 +14,6 @@ Lane C detailed Reference Evidence inventory
   -> plan/issue/000042-business-procedure-cross-view-reference.md A-set
 
 Business Procedure design-quality review
-  -> plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md
 
 本書
   -> A-set -> E7 / S7 mapping

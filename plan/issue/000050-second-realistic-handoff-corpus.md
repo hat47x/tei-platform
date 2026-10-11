@@ -12,12 +12,6 @@ Contract ADR blocker Bを解消する。`order_entry`とは独立した二つ目
 
 ## 上位基線
 
-- blocker定義: [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) Remaining Contract ADR blockers
-- readiness境界: [`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`](../BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md) §8-B
-- 設計品質: [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
-- 第二Reference受入条件の正本: [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
-- 十分性監査: [`BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md`](../BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md)
-- corpus provenance: [`LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`](../../docs/audits/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md)
 - 担当割り当て: [`UPSTREAM_BREAKDOWN_2026-09.md`](../UPSTREAM_BREAKDOWN_2026-09.md) §5
 - 関連RQ: RQ-002 / RQ-003 / RQ-018 / RQ-021 / RQ-022 / RQ-025 / RQ-026
 
@@ -84,7 +78,6 @@ public-source auditで確認済みの次をdesign-pressure sourceとする。
 - TALON「モデリング分科会の発足」 — 2015
 - XeadModeler GitHub repository — repository sourceについてBSD-3-Clause
 
-利用条件は[`LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`](../../docs/audits/LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md) §3 / §5を正とする。
 
 特に次を固定する。
 
@@ -156,7 +149,6 @@ prepare / perform shipment
 
 ## Evidence nature — current phase
 
-[`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)に従い、現在の材料を次のように扱う。
 
 | Nature | Current second corpusでの扱い |
 | --- | --- |
@@ -192,7 +184,6 @@ Business上の受入・次責任へのcontinuationは
 
 ### R2 negative proofで確認済みの範囲 — 2026-09
 
-PR #596 / `DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`で、上記1〜4・6のうちauthority短絡に関する主要部分をnegative proofとして確認した。
 
 ```text
 Command accepted -> physical completion
@@ -233,7 +224,6 @@ R2 negative proof
 
 ## RRB-P1 acceptanceの本Issueへの適用
 
-第二Reference acceptance条件の正本は`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`であり、本Issueでは再定義しない。
 
 製造・在庫候補へ適用する際は、特に次を確認する。
 
@@ -324,7 +314,6 @@ Handoffが自然に存在しない場合、そのseedはH1/R3 generality Evidenc
 
 Corpus selection / provenance整理はaccepted Business meaningをまだauthorしていないresearch incrementなのでGate A actual green前でも行ってよい。
 
-一方、`BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md`とISSUE-000048が固定した順序は維持する。
 
 ```text
 provenance pressure selection
@@ -436,7 +425,7 @@ Gate A green後の順序（独立needのseed、責任の確認、最小のProced
 - **S4-A**: Handoff endpointをProcedure key + Step keyで解決し、古いendpoint、未知のProcedure、空のcondition、重複したrelationをfail closedにすることを確認した。二つのProcedureはStep IDの接頭辞（`PR-` / `ST-`）が異なるため、別ProcedureでStep IDが衝突するcaseは確認していない。
 - **C1**: どのProcedureも単一のApplication ownerへ戻さずに説明できる（baseline checkerが`application`を出さない）。ただしApplicationを一つも持たないため、複数のApplicationを跨ぐProcedureへの圧力は掛かっていない。
 
-項目16: このReferenceから、既存のfrom / to / condition、Procedure-scoped address、handoff-only relationで吸収できない不足は出なかった。[Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§11が挙げた確認点のうち、条件の自然言語による十分性、triggerとconditionの分離、actor差からの非導出は確認した。一方、**actorが同じ場合にtransferを否定しないこと**（両Procedureのactorは異なる）、**conditionを支えるevent / documentのidentityの要否**（U-5で未author）、**actor / responsibility detailをstructuredにする要否**（actorは`candidate`のラベルのまま）は、不足が出なかったのではなく**圧力を掛けていない**。「Reopen trigger」が成立しなかった根拠にはするが、これらが不要であることの証明にはしない。
+項目16: このReferenceから、既存のfrom / to / condition、Procedure-scoped address、handoff-only relationで吸収できない不足は出なかった。Pre-ADR Audit§11が挙げた確認点のうち、条件の自然言語による十分性、triggerとconditionの分離、actor差からの非導出は確認した。一方、**actorが同じ場合にtransferを否定しないこと**（両Procedureのactorは異なる）、**conditionを支えるevent / documentのidentityの要否**（U-5で未author）、**actor / responsibility detailをstructuredにする要否**（actorは`candidate`のラベルのまま）は、不足が出なかったのではなく**圧力を掛けていない**。「Reopen trigger」が成立しなかった根拠にはするが、これらが不要であることの証明にはしない。
 
 ### RRB-P3（actual execution）
 
@@ -475,7 +464,6 @@ RRB-P1 / P2 / P3のEvidenceを取得した（上の限定つき）。ISSUE-00004
 - [x] system result / Observation / adjacency / actor差からHandoffを生成していないことをactual testで確認した（R = `82e4301`のA7）
 - [x] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した（R = `82e4301`のA7）
 - [x] ISSUE-000048のblocker Bへ、取得revisionとEvidence natureつきで結果を渡した
-- [x] 独立review（OpenAI GPT-5.6 Sol）を実施し、RRB-P1 14項目・seed review checklist・O-1〜O-5・RRB-P2/P3を記録した（2026-09-24）。結果は[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md)の`review-blocked`。Pre-ADR Audit再判定は未実施
 - [ ] Pre-ADR AuditがBlocker Bを再判定した（判定はAuditが持つ）
 
 ## 独立review結果 — 2026-09-24
@@ -503,7 +491,6 @@ RRB-P3 = 達成
 recommended B-F19b = Unresolved
 ```
 
-詳細とrequired fixesは[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md)を正とする。
 
 このreviewはPre-ADR Auditの再判定ではない。次はsource meaning / pressureのblocking findingsを解消し、必要なら再reviewした後にAudit §17を再判定する。
 
@@ -606,7 +593,5 @@ second corpusで具体的lossが出た場合だけcurrent minimum contractをreo
 
 ## 関連
 
-- [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
-- [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
 - [ISSUE-000048](000048-business-procedure-contract-adr-readiness.md) / [ISSUE-000049](000049-business-authoring-production-adoption-readiness.md)
 - [ISSUE-000042](000042-business-procedure-cross-view-reference.md)

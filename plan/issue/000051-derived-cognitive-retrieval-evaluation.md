@@ -559,7 +559,6 @@ Gate B / Gate Cの完了条件へ本Issueを追加しません。第一Web Targe
 - `docs/architecture.md`
 - `docs/business-system-design.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
-- `plan/DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md`
 - `plan/design/README.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000040-semantic-component-composition.md`

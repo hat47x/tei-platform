@@ -310,7 +310,6 @@ Business Procedureは「全fieldが埋まったら完成」ではなく、対象
 
 第二・第三のReferenceは既存contractを通すためのfixtureではなく、Handoff等を取り除いても独立したBusiness設計価値を持つseedから始める。
 
-ここではBusiness Procedure一般のdesign-quality review原則だけを示す。**second realistic Referenceのacceptance / maturity条件（RRB-P1 / P2 / P3）の正本は `LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`** とし、本節を別のacceptance contractにしない。
 
 accepted seedへ進める前のreviewでは、少なくとも次を見る。
 
@@ -419,7 +418,6 @@ docs/business-system-design.md
 本書
   -> Business Procedure design-quality review model
 
-plan/LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md
   -> second realistic Reference acceptance / maturity条件
 
 plan/issue/000042...

@@ -34,21 +34,9 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026のcross-view照合をbounded proof obligationとしてDesign Synthesisの候補縮約へ接続する評価待ち設計 |
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件単位のPlugin / UI Kit / 仕様Template / Architecture Profileの構成境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |\n| [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | Capabilityのsemantic requestとHost注入のexecution contextを分離する評価待ち設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIで既存の実装を生かしながらTEIへ移行するための設計基線。 |
-| [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) | 業務手順の意味、根拠、確認範囲を評価する設計品質モデル。 |
 
 ## 関連Reference / Evaluation
 
-- [`../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md) — Cross-view proof設計のP1〜P4を既存`order_entry`へ適用し、`supported / contradiction / unresolved`の実用性とauthority境界を確認するR1評価
-- [`../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md) — Manufacturing / inventory pressureへP5 / P6を適用し、Command / Observation / actuality / Business acceptance / Handoffの非短絡を確認するR2 negative評価
-- [`../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md) — R1 / R2のproof結果をbounded `DesignContextPacket`へ渡すときのauthority、candidate contraction、unresolved、LLM残余判断の境界を整理するR3評価
-- [`../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md) — candidate-local proof選択、compact elimination certificate、trace-preserving unresolved集約をR1 / R2へ当てるR4 read-only評価
-- [`../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md) — exact existing asset、Reference Pattern、associative retrieval等のdiscovery経路とcandidate meaning / current qualificationを分離するR5 read-only評価
-- [`../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md) — proofをrequired accepted authorityのfingerprintへ束縛し、selective stale再評価とstale contradictionのcandidate elimination禁止を確認するR6 read-only評価
-- [`../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md) — Design Synthesis LoopのS1〜S5について、Gate C前後を分けたAcceptance素案、R1〜R6、およびS1 semantic candidate diversity pressureからのEvidence接続を整理するLane D scenario draft
-- [`../DESIGN_SYNTHESIS_ORDER_ENTRY_S1_S2_FRONTIER_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_ORDER_ENTRY_S1_S2_FRONTIER_PRESSURE_2026-09.md) — current `order_entry` sourceを使い、existing supported candidate / unresolved proposal / contradicted proposalが同時に存在するS1→S2 frontierをPressureし、contractionとwinner selectionを分離するread-only評価
-- [`../DESIGN_SYNTHESIS_CONTEXT_PACKET_MIXED_FRONTIER_REFINEMENT_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_MIXED_FRONTIER_REFINEMENT_2026-09.md) — R3の初期`proposal_origin`表現をR5とS1→S2 frontier Evidenceで補正し、candidate subject / discovery trace / current proof qualificationを分離したままmixed frontierをS3へ渡すR3 refinement
-- [`../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_SCOPE_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_SCOPE_PRESSURE_2026-09.md) — current PostgreSQL fail-closed sourceを使い、Target / Provider feasibility contradictionがsemantic candidateではなくmatching realization variantへ向くこと、hard provider constraint時だけcomposite candidateへ拡張できることをPressureするS2 refinement
-- [`../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_OUTCOME_CLASSIFICATION_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_OUTCOME_CLASSIFICATION_PRESSURE_2026-09.md) — generic provider failure surfaceをmissing Evidence / observed incompatibility / structural unsupported / operational recovery / supportedへ分け、S2 contractionとS5 owner routingでreason / owner / scopeを失わないことをPressureするS2-S5 refinement
 
 `DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順は、後続のread-only実績に合わせてR1〜R6へ同期済みである。当初change / stale再評価として想定した論点は、R3〜R5を先に独立評価した後、R6 snapshot invalidationとして扱う。
 
@@ -169,7 +157,6 @@ Gate B Ready
   -> Gate C Evidence
 ```
 
-再開後の最初の順序は[`../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md)に従う。
 
 ```text
 S1 realistic intent / candidate frontier

@@ -132,7 +132,7 @@ TEIは、価値を測定値で確かめることを、今は主張しません�
 
 この確かめ方は、数を出すためのものではなく、実際に動くものを作って見せることを先に置きます。MVP（最小限の実用的な製品）やプロトタイプで、実務シナリオを通し、通せた機能と、その間の関係を記録として積み上げます。測定は、その積み重ねから問題領域の知見が蓄積したあとの研究課題です。最初の実証の候補は[ISSUE-000075](../../plan/issue/000075-practical-scenario-mvp-demonstration.md)に整理しています（owner判断待ち）。
 
-これと並ぶ強い確認方法として、成熟した既存の業務システムReference Modelを一式でTEIへ転写し、sourceにある意味を黙って落とさず、表現できるもの・nativeなまま残すもの・未解決のものを説明できるかを確かめます。小さい自作例では現れにくい規模、cross-reference、暗黙前提、実装依存を同時に圧迫できるためです。最初のbenchmarkは[ISSUE-000078](../../plan/issue/000078-reference-model-transfer-gate.md)で扱います。外部のmodel体系をTEIの仕様や正本へするのではなく、TEI自身のRequirementを反証可能な形で試す材料として使います。
+これと並ぶ強い確認方法として、成熟した既存の業務システムReference Modelを一式でTEIへ転写し、sourceにある意味を黙って落とさず、表現できるもの・nativeなまま残すもの・未解決のものを説明できるかを確かめます。小さい自作例では現れにくい規模、cross-reference、暗黙前提、実装依存を同時に圧迫できるためです。外部Reference Modelの利用条件を確認したうえで、公開可能な検証要件を[ISSUE-000078](../../plan/issue/000078-reference-model-transfer-gate.md)で扱います。外部のmodel体系をTEIの仕様や正本へするのではなく、TEI自身のRequirementを反証可能な形で試す材料として使います。原資料や詳細分析は公開Repositoryへ含めません。
 
 実証で確かめる性質は、層ごとに次のとおりです。いずれも「できたか、できないか」「示されたか、示されないか」で確かめる性質で、数の大小ではありません。
 
@@ -396,7 +396,6 @@ TEIから見ると、この定義は本節の境界と矛盾しません。TEI�
 - SEIのRecommendationは、TEIのAuthorizationになりません。 SEIからTEIへの信号は依頼（SEIの語でAction Intent）であり、実行するかどうかはTEIが自らのAuthorization、Capability、Resourceの境界で判断します。SEIの記録が委任や判断の経緯を示していても、それは権限の証拠への参照であって、権限そのものではありません。
 - 必須の依存はどちら向きにもありません。 TEIのDriverとShared Acceptance Boundaryは、SEIが止まっていても単独で完結します。受理の記録等をSEIへ写すことは任意です。SEI側の提案は、こうした局所で完結するループを神経系の比喩で「反射弓」と呼びますが、これは比喩であり、TEIの型や要求の根拠にはしません。
 
-TEI側の具体的な受け止め方（SEI Change 2の再開、受理記録をSEIの判断の記憶へ写す候補、MCPの扱い）は[ISSUE-000070](../../plan/issue/000070-sei-reference-adoption-change2-resumption.md)、AI Business Actorへの委任をSEIから参照する候補は[Actor Context Projections §11.1](../../plan/ACTOR_CONTEXT_PROJECTIONS_2026-09.md)に置いています。どちらも評価待ちです。
 
 
 ## 技術調査を利用者の価値へつなぐ（2026-10-09、実証前）

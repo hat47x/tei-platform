@@ -14,32 +14,8 @@
 - `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`
 - `docs/architecture.md`
 - `docs/business-system-design.md`
-- `docs/audits/LANE_B_RQ002_BUSINESS_PROCEDURE_CANONICAL_TRACE_AUDIT_2026-09.md`
-- `plan/LANE_B_RQ025_RQ026_TRACE_AUDIT_2026-09.md`
 - `plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`
-- `plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`
-- `plan/BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`
-- `plan/BUSINESS_AUTHORING_PRODUCTION_2026-09.md`（Part 2、旧`PRODUCTION_ADOPTION_EVIDENCE_CONTRACT`）
-- `docs/audits/BUSINESS_PROCEDURE_MAIN_BASELINE_REAUDIT_2026-09.md`
-- `plan/BUSINESS_PROCEDURE_EXPLICIT_REF_AUTHORITY_PRESSURE_2026-09.md`
-- `plan/BUSINESS_PROCEDURE_D4_O1_2026-09.md`（D4 Step body minimality + O1 protected-target role、旧`D4_REF_KIND_PRESSURE` / `APPLICATION_PATTERN_TARGET_PRESSURE` / `D4_APPLICATION_PATTERN_TARGET_ROLE_PRESSURE` / `O1_AUTHORITY_DIRECTION_PRESSURE`等を統合）
-- `plan/BUSINESS_PROCEDURE_MANUFACTURING_INVENTORY_CORPUS_PRESSURE_OUTLINE_2026-09.md`
-- `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_PRESSURE_2026-09.md`（Part 1〜3、旧`SECOND_CORPUS_CONTRACT_PRESSURE_AUDIT` / `SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL` / `SECOND_CORPUS_HANDOFF_INFERENCE_PRESSURE`を統合）
-- `plan/BUSINESS_PROCEDURE_PHYSICAL_OBSERVATION_PRESSURE_2026-09.md`
-- `plan/BUSINESS_ACTION_DATA_PROJECTION_PRESSURE_2026-09.md`
-- `plan/BUSINESS_ACTION_CRUD_2026-09.md`（Part 1〜4、旧`CRUD_PROJECTION_PRESSURE` / `CRUD_OPERATION_GAP_AUDIT` / `CRUD_XTEA_FUNCTION_TABLE_IO_TRANSLATION` / `CRUD_DIRECT_EFFECTIVE_BOUNDARY_PRESSURE`を統合）
-- `plan/BUSINESS_AUTHORING_AUTHORITY_CUTOVER_PRESSURE_2026-09.md`
-- `plan/BUSINESS_AUTHORING_PRODUCTION_2026-09.md`（Part 1、旧`PRODUCTION_LOADER_VERSIONING_OPTION_AUDIT`）
-- `plan/BUSINESS_AUTHORING_WORKSPACE_DISCOVERY_BOUNDARY_PRESSURE_2026-09.md`
-- `plan/BUSINESS_AUTHORING_LOGICAL_SOURCE_IDENTITY_PRESSURE_2026-09.md`
-- `docs/audits/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md`
-- `docs/audits/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`
-- `docs/audits/BUSINESS_MODEL_PHYSICAL_BASE_REVISION_OPTION_AUDIT_2026-09.md`
-- `plan/BUSINESS_HANDOFF_STANDALONE_AUTHORING_PRESSURE_2026-09.md`
-- `plan/BUSINESS_HANDOFF_SECOND_REALISTIC_EXTERNAL_EVIDENCE_PRESSURE_2026-09.md`
-- `plan/BUSINESS_HANDOFF_TEI_ORIGINAL_SECOND_CASE_SEARCH_2026-09.md`
 
-`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`は現在、公開横断の詳細Evidence正本ではなくExternal Design Reference Noteである。X-TEA / XEAD等の外部設計資料に関する詳細corroborationは、Business Flow / Handoff / O1 / CRUD等のquestion-specific Lane C auditへ近接保持する。
 
 ## Lane境界
 
@@ -170,7 +146,6 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 
 ## Acceptance / Evidence Pressure matrix
 
-このmatrixはLane Cの**Evidence / Pressure inventory**であり、独立したReady / Not Ready判定を所有しない。Contract ADR readinessの唯一の正本は`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`とする。
 
 | ID | Pressure | 現在の扱い |
 | --- | --- | --- |
@@ -551,7 +526,6 @@ Manufacturing / inventory pressureでもCommand acceptedとphysical completion�
 
 ## Verification status
 
-Repository上にはchecker / fixtures / Go Pressure testsを実装済みだが、actual Repository execution Evidenceは未取得である。Runner availabilityやexecution target revisionは一時状態なので本Issueへ固定せず、`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`に従って実行時にexact revision `R`、runner kind、environmentを記録する。
 
 PR #482は2026-09-09にmainへmerge済みで、PR #520でstandalone Handoff source uniqueness Pressureもmainへ入った。PR #529ではGate A runbookをpost-merge exact-revision execution modelへ更新した。ただしReference / Pressure / runbookのmergeはContract ADR adoptionやGate A greenを意味しない。
 

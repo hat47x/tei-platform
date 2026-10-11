@@ -6,6 +6,10 @@
 
 TEIは、業務上の意味を長く保ちながら、実装・データベース・実行先・実行環境を必要以上に一体化しない業務アプリケーション基盤を目指す実験的なプロジェクトです。
 
+![TEI — Traceable Execution of Intent](docs/assets/tei-branding-image.jpg)
+
+業務の意味を一つの正本として保ち、SQL・Go・データベース・画面・AIの間を追跡可能につなぐことで、担当者や技術が替わっても理解し、確かめ、変え続けられる業務システムを目指します。現在の価値と将来像は[TEI Product Value](product/value/TEI_PRODUCT_VALUE.md)と[TEI Product Vision](product/vision/TEI_PRODUCT_VISION.md)に記しています。
+
 画面や表を素早く作ることだけでなく、技術を変更しても次の点を追跡・検証できる状態を重視します。
 
 - この業務概念は何を意味するか

@@ -15,7 +15,6 @@ Existing source owners remain authoritative:
 - `internal/knowledgecontext/builder_review_handoff.go`: `ValidateBuilderReviewHandoff` checks subject-local handoff integrity, not whole-change compatibility.
 - `tools/reference-shared-acceptance/main.go`: `attach-qualification` and `propose-qualified-reference-pattern` are existing adapter entrances; authoritative mutation remains in explicit `accept`.
 
-The Business Procedure source of truth is `plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`. Its current design is a **separate normalized Business semantic plane**, not `ir.World.Business`. Production source loader and authority cutover are not yet adopted. Use test/reference evidence only until that contract is ready.
 
 ## Minimal projection candidate (not yet schema)
 

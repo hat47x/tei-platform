@@ -157,7 +157,7 @@ Gate Bは2026-09-19にReadyへ到達しました（candidate revision `R = e5231
 | 段 | 担当Issue | 一つの成果・責務 | 判定の正本 |
 | --- | --- | --- | --- |
 | Reference / Evidence | [000042 cross-view Reference](000042-business-procedure-cross-view-reference.md) | checker / Pressure test / A-set / operational checklistの親 | 本Issueは判定stateを持たない |
-| ① Contract ADR | [000048 Contract ADR readiness](000048-business-procedure-contract-adr-readiness.md) | blocker A / Bの解消とADR起票 | [Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) |
+| ① Contract ADR | [000048 Contract ADR readiness](000048-business-procedure-contract-adr-readiness.md) | blocker A / Bの解消とADR起票 | Pre-ADR Audit |
 | ② production採用 | [000049 production adoption readiness](000049-business-authoring-production-adoption-readiness.md) | adapter / shared Acceptance / fresh processの3条件 | 000049の完了条件 |
 | Evidence補充 | [000050 second Handoff corpus](000050-second-realistic-handoff-corpus.md) | 二つ目のrealistic corpusでの`from/to/condition` lossless | 000048 blocker Bへ引き渡す |
 
@@ -167,7 +167,7 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 
 ### 3. 成熟したReference Modelの転写
 
-[000078](000078-reference-model-transfer-gate.md)は、既存の小規模Referenceとは別に、成熟した外部業務モデル全体をTEIへ転写して表現力をpressureする横断Issueです。最初のbenchmarkにはX-TEA / XEAD系「CONCEPTWARE／受注生産」を使います。
+[000078](000078-reference-model-transfer-gate.md)は、既存の小規模Referenceとは別に、成熟した外部業務モデル全体をTEIへ転写して表現力をpressureする横断Issueです。対象となる外部Reference Modelと利用条件は個別に確認し、原資料・詳細分析は公開Repositoryへ含めません。
 
 ~~~text
 外部source / manual / model
@@ -181,7 +181,7 @@ TEI source / Driver / Target
 cross-view / execution Evidence
 ~~~
 
-このIssueはX-TEA互換を所有しません。転写で見つかった具体的gapを000042、000038〜000040、000026、000027、000053、000077等へ戻し、同じ機能を000078内で二重実装しません。判定契約は[Reference Model Transfer Evidence Gate](../REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
+このIssueはX-TEA互換を所有しません。転写で見つかった具体的gapを000042、000038〜000040、000026、000027、000053、000077等へ戻し、同じ機能を000078内で二重実装しません。公開Issueには目的・境界・完了条件のみを記します。
 
 ### 4. 外部の実行基盤の評価
 

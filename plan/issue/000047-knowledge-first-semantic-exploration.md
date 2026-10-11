@@ -536,8 +536,6 @@ qualification結果は同じISSUE-000040 workstreamへhandoffする。Repository
 
 Gate C Ready後のactual second-Application S1を開始した。
 
-- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
-- `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
 - `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
 
 current RepositoryからCustomer lookup intentに対し、

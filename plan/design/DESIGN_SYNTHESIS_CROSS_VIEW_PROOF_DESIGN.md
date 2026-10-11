@@ -11,8 +11,6 @@
 - Product Requirementの正本: [`../../requirements/TEI_PRODUCT_REQUIREMENTS.md`](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)
 - Business設計境界: [`../../docs/business-system-design.md`](../../docs/business-system-design.md)
 - RQ-025 / RQ-026解釈: [`../../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
-- Business Procedure品質モデル: [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
-- Design Synthesis上位目標: [`../DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md)
 
 主にRQ-026の「異なる視点から相互検証できること」と、未採用DSR-02 / DSR-12の候補縮約を接続するための設計仮説です。
 
@@ -452,7 +450,6 @@ unresolved
 
 ### R1 — order entry proof reference
 
-[`../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md)で、既存`order_entry`へP1〜P4を適用した。
 
 - `supported / contradiction / unresolved`の三状態を保持できる
 - no traceをnegative factへ変換しない
@@ -461,7 +458,6 @@ unresolved
 
 ### R2 — manufacturing / inventory actuality / Handoff pressure
 
-[`../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md)でP5 / P6をnegative pressureした。
 
 ```text
 Command success
@@ -477,7 +473,6 @@ responsibility continuation
 
 ### R3 — proof-to-context boundary
 
-[`../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md)で、proof結果をbounded contextへ渡す際のauthority boundaryを確認した。
 
 - packetはdisposable / snapshot-bound projection
 - `supported`はwhole candidate acceptanceではない
@@ -486,7 +481,6 @@ responsibility continuation
 
 ### R4 — candidate-local proof contraction
 
-[`../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md)で、candidate claimに必要なproof subsetだけを選ぶPressureを行った。
 
 - unrelated contradictionでcandidateを除外しない
 - decisive contradictionはcompact elimination certificateへ戻れる
@@ -495,7 +489,6 @@ responsibility continuation
 
 ### R5 — candidate discovery provenance
 
-[`../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md)で、candidate meaningとdiscovery mechanismを分離した。
 
 - exact / Pattern / associative discoveryをauthority上で区別する
 - 同一candidateが複数経路で見つかってもcandidateを重複させない
@@ -504,7 +497,6 @@ responsibility continuation
 
 ### R6 — accepted snapshot / stale再評価
 
-[`../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md)で、当初R4として予定していたchange / stale再評価を、R3〜R5実績の後段としてPressureした。
 
 - proofが依存するaccepted authority fingerprintだけでfreshnessを見る
 - unrelated changeで全proofを一律staleにしない
