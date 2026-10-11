@@ -41,7 +41,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 - [x] バージョン固定済みのGitleaksでGit履歴を走査。2検出をGo enum識別子の誤検知と初期判定したが、独立した人間reviewerの承認待ち。報告書・検出値はRepository外に保管し、Issueへ候補値を記録していない。Evidence: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。作業ツリー自体の未追跡・一時ファイル検査は別途未実施。
 - [ ] 個人情報、社内・顧客情報、credential、endpoint、private URL、外部文献の出典・利用条件等の公開適合性を確認する。
 - [ ] Issue/PR/reviews/commentsと添付、全過去Actions logs/artifacts、Release/assets、Wiki/Pages等も対象にする。API取得不可なら `NOT_INSPECTED`。
-- [x] 初期license inventoryを実施。root `LICENSE` はMIT、製品の固定Go module `github.com/lib/pq v1.12.3` はMITであり、通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ追加した。Ponytailはupstream v4.10.0の開発補助スキルとしてCodex開発者環境へ移し、製品treeから除外した。過去Git履歴に含まれるコピーは残る。全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
+- [x] 初期license inventoryを実施。root `LICENSE` はMIT、製品の固定Go moduleは[`github.com/jackc/pgx/v5 v5.7.6`](https://github.com/jackc/pgx/tree/v5.7.6)（MIT）へ移行した。Go 1.23.2でmodule checksumとruntime依存を解決し、直接・推移runtime依存のMIT/BSD 3-Clause通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ更新した。全release targetのSBOM、Ponytailを含む履歴内コピー、全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
 - [ ] 対応が必要な項目が判明した場合は、適切な権限管理・情報の取扱い・必要な資格情報の更新手順を定め、共有refsへの変更を一括して計画する。
 - [ ] 安全なscope・scanner version・refs数・objects数・未解決件数・人間reviewerだけをpublic Evidenceへ出す。
 

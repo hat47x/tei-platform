@@ -111,7 +111,7 @@ providerが一致するCapabilityを探索して自動選択することはあ�
 
 Runnerは、Semantic attribute、Contract input、table / column、接続先Databaseのいずれも推測しません。実行時parameter値はEvidenceへ保持しません。
 
-ADR-0007のとおり、実driverの組み立てはCore外の責務です。`go.mod`が持つDatabase driverはPostgreSQL（`github.com/lib/pq`）だけで、実接続は[`tools/`](../../tools)配下のEvidence runnerが`sql.Open`で組み立てます。Oracle driverの選定と統合は[ISSUE-000033](../issue/000033-gate-b-oracle-driver-integration.md)で継続しています。
+ADR-0007のとおり、実driverの組み立てはCore外の責務です。PostgreSQLのReference runnerは`github.com/jackc/pgx/v5/stdlib`を`database/sql` adapterとして登録し、[`tools/`](../../tools)配下のEvidence runnerが接続を組み立てます。Oracle driverの選定と統合は[ISSUE-000033](../issue/000033-gate-b-oracle-driver-integration.md)で継続しています。
 
 ## Application側からの呼び出し
 

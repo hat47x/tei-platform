@@ -9,12 +9,11 @@ import (
 	"reflect"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	"tei/internal/core"
 	"tei/internal/driver"
 	postgresquery "tei/internal/driver/queryruntime/postgres"
 	"tei/internal/workspace"
+	"tei/tools/internal/postgresdb"
 )
 
 type evidence struct {
@@ -40,7 +39,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	db, err := sql.Open("postgres", dsn)
+	db, err := postgresdb.OpenSQL(dsn)
 	if err != nil {
 		panic(err)
 	}

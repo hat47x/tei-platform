@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	"tei/internal/application"
 	"tei/internal/database/providers/postgres"
 	"tei/internal/driver"
@@ -18,6 +16,7 @@ import (
 	"tei/internal/query"
 	"tei/internal/validation"
 	"tei/internal/workspace"
+	"tei/tools/internal/postgresdb"
 )
 
 type postgresBrowseExecutor struct {
@@ -67,7 +66,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "TEI_TEST_POSTGRES_DSN is required")
 		os.Exit(2)
 	}
-	db, err := sql.Open("postgres", dsn)
+	db, err := postgresdb.OpenSQL(dsn)
 	if err != nil {
 		panic(err)
 	}
