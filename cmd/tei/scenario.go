@@ -82,6 +82,8 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	evidence := make([]scenarioStepEvidence, 0, len(s.Steps))
 	selected := false
 	fixtureDigests := make(map[string]string)
+	resolvedFixtures := make(map[string]scenariotest.BrowseFixture)
+	stepsByID := make(map[string]scenariotest.Step)
 	for _, st := range s.Steps {
 		patternID, err := core.ParseCanonicalID(st.Pattern)
 		if err != nil {
@@ -116,6 +118,7 @@ func runScenarioCommand(args []string, output io.Writer) error {
 			}
 			digest := sha256.Sum256(fixtureSource)
 			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
+			resolvedFixtures[st.ID] = fixture
 			if resolved.Query == nil || fixture.Query != string(resolved.Query.ID) || resolved.Datasource == nil ||
 				fixture.DatasourceAlias != string(resolved.Datasource.Alias) ||
 				fixture.TargetDatabase != string(resolved.Datasource.TargetDatabase) {
@@ -126,20 +129,13 @@ func runScenarioCommand(args []string, output io.Writer) error {
 			continue
 		}
 		selected = true
+		stepsByID[st.ID] = st
 		rowCount := 0
 		nature := "canonical-pattern-resolution-only"
 		verified := true
 		if st.Operation == "execute-browse-query" {
 			nature = "synthetic-fixture-bound; query-not-executed"
 			verified = false
-			if action == "run" {
-				rowCount, err = executeScenarioBrowse(resolver, applicationID, st, fixture)
-				if err != nil {
-					return fmt.Errorf("step %s: %w", st.ID, err)
-				}
-				verified = true
-				nature = "synthetic-browse-query-executed"
-			}
 		}
 		evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Pattern: st.Pattern, Verified: verified, EvidenceNature: nature, RowCount: rowCount})
 	}
@@ -189,6 +185,20 @@ func runScenarioCommand(args []string, output io.Writer) error {
 			if *stepID == "" || *expectedFixtureSHA != plan.FixtureSHA256[*stepID] {
 				return fmt.Errorf("generated CLI command is stale: Fixture fingerprint differs")
 			}
+		}
+		// No Driver Query invocation occurs until all source/binding fingerprints pass.
+		for i := range evidence {
+			if evidence[i].Operation != "execute-browse-query" {
+				continue
+			}
+			st := stepsByID[evidence[i].StepID]
+			rows, err := executeScenarioBrowse(resolver, applicationID, st, resolvedFixtures[st.ID])
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			evidence[i].RowCount = rows
+			evidence[i].Verified = true
+			evidence[i].EvidenceNature = "synthetic-browse-query-executed"
 		}
 	}
 	switch action {

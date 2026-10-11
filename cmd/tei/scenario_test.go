@@ -68,6 +68,13 @@ func TestScenarioCLIReferenceRoundTrip(t *testing.T) {
 	if len(plan.WorldSHA256) != 64 || len(plan.PluginLockSHA256) != 64 || len(plan.FixtureSHA256["browse-synthetic"]) != 64 {
 		t.Fatalf("missing independently bound hashes: %#v", plan)
 	}
+	var pinnedOutput bytes.Buffer
+	if err := runScenarioCommand(plan.Commands[2].Argv[2:], &pinnedOutput); err != nil {
+		t.Fatalf("generated pinned argv could not be executed: %v", err)
+	}
+	if !strings.Contains(pinnedOutput.String(), "synthetic-browse-query-executed") {
+		t.Fatalf("generated pinned command did not execute synthetic Browse: %s", pinnedOutput.String())
+	}
 	planPath := filepath.Join(t.TempDir(), "commands.json")
 	if err := os.WriteFile(planPath, []byte(generated), 0600); err != nil {
 		t.Fatal(err)
@@ -149,6 +156,14 @@ func TestScenarioCLIRejectsStaleFixtureAndWrongBusinessResult(t *testing.T) {
 	if _, err := run("check", "-plan", planPath); err == nil {
 		t.Fatal("changed fixture incorrectly accepted")
 	}
+	var persisted scenariotest.Plan
+	if err := json.Unmarshal(generated.Bytes(), &persisted); err != nil {
+		t.Fatal(err)
+	}
+	var pinnedOutput bytes.Buffer
+	if err := runScenarioCommand(persisted.Commands[2].Argv[2:], &pinnedOutput); err == nil {
+		t.Fatal("stale generated argv accepted after fixture mutation")
+	}
 	if _, err := run("run", "-step", "browse-synthetic"); err == nil {
 		t.Fatal("wrong mapped status incorrectly passed Scenario expectation")
 	}
@@ -168,6 +183,10 @@ func TestScenarioCLIRejectsStaleFixtureAndWrongBusinessResult(t *testing.T) {
 	}
 	if _, err := run("check", "-plan", planPath); err == nil {
 		t.Fatal("changed Scenario incorrectly accepted")
+	}
+	var pinnedOutput2 bytes.Buffer
+	if err := runScenarioCommand(persisted.Commands[2].Argv[2:], &pinnedOutput2); err == nil {
+		t.Fatal("stale generated argv accepted after Scenario mutation")
 	}
 }
 
