@@ -96,6 +96,16 @@ GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（h
 
 本節およびPR #1195は公開操作そのものを認可しない。
 
+### 公開ドキュメントの構成・整理（#1197）
+
+Public向けには現行Product/Requirements/Architecture、使用・参加ガイド、正本ADR、再現可能なReference/Evidenceを優先する。内部の検討経緯や古い監査記録は、日付だけで機械的に削除せず、必要性・権利条件・参照関係を確認して掲載を判断する。
+
+- 2026-10-11のmainにはMarkdown 482件（`plan/` 352件、`docs/` 73件）。
+- 内容が別ファイルへ移った互換案内38件（`plan/` 22件と`docs/adr/` 16件）の参照元・正本先を[Draft PR #1195](https://github.com/hat47x/tei-platform/pull/1195)の選別表に記録した。
+- 新Public Repositoryへ選択済みファイルのみを導入する場合に限り、**正本が同梱され、残存リンクが検証された後で**これらの互換案内を公開候補から除外する。
+- Private開発Repositoryの旧URL案内を削除するかは別の判断。既存[Draft PR #1091](https://github.com/hat47x/tei-platform/pull/1091)の内部参照監査と外部互換性を踏まえ、現時点では維持する。
+- 選別器・テストスクリプトの追加だけで実TEI全件に対する安全な削除を証明したとは扱わない。公開前にtrusted checkoutで検査する。
+
 ## 6. P0-C Public向けGitHub Actionsと保護
 
 - [ ] Public化に伴うpush ruleset無効化など、Settingsの変更前後の差分を記録。
