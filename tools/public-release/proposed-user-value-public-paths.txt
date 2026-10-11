@@ -49,15 +49,6 @@ docs/overview.md
 docs/plugins.md
 docs/product-quality-architecture.md
 docs/security.md
-docs/specification/architecture.html
-docs/specification/authoring.html
-docs/specification/business.html
-docs/specification/decisions.html
-docs/specification/index.html
-docs/specification/requirements.html
-docs/specification/source-manifest.json
-docs/specification/sources.html
-docs/specification/style.css
 docs/status.md
 examples/process-plugin/main.go
 examples/runtime-reattach/main.go
