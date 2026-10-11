@@ -38,12 +38,12 @@ run_go_suite() {
   local id=$2
   (
     cd "$root"
-    go list ./... | LC_ALL=C sort > "$logs/$id.packages"
-    go vet ./... > "$logs/$id.vet" 2>&1
-    go test -count=1 -timeout 60m ./... > "$logs/$id.tests" 2>&1
-    go build -o "$logs/$id-tei" ./cmd/tei > "$logs/$id.build" 2>&1
-    go run ./cmd/tei validate -workspace reference/workspace > "$logs/$id.validate" 2>&1
-    tail -n 1 "$logs/$id.validate" | grep -qx 'ok'
+    go list ./... | LC_ALL=C sort > "$logs/$id.packages" || return
+    go vet ./... > "$logs/$id.vet" 2>&1 || return
+    go test -count=1 -timeout 60m ./... > "$logs/$id.tests" 2>&1 || return
+    go build -o "$logs/$id-tei" ./cmd/tei > "$logs/$id.build" 2>&1 || return
+    go run ./cmd/tei validate -workspace reference/workspace > "$logs/$id.validate" 2>&1 || return
+    tail -n 1 "$logs/$id.validate" | grep -qx 'ok' || return
   )
 }
 
