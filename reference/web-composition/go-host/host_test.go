@@ -232,3 +232,47 @@ func TestRejectAmbiguousProtectedRoutePolicies(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifiedPrincipalIsOnlyPassedAfterHostChecks(t *testing.T) {
+	principal := Principal{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "external-123", PrincipalID: "employee-1"}
+	called := 0
+	seen := Principal{}
+	h, err := NewHost(Policy{
+		Path: "/scenario/submit", Method: http.MethodPost, ActionID: "order_entry.submit_order",
+		Providers: map[string]string{"corporate": principal.Issuer},
+	}, Dependencies{
+		VerifySession: func(*http.Request) (Principal, error) { return principal, nil },
+		VerifyCSRF:    func(r *http.Request, _ Principal) bool { return r.Header.Get("X-CSRF-Fixture") == "matching" },
+		Authorize:     func(context.Context, Principal, string) (bool, error) { return true, nil },
+		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			called++
+			var ok bool
+			seen, ok = PrincipalFromContext(r.Context())
+			if !ok {
+				t.Error("verified principal missing")
+			}
+			w.WriteHeader(http.StatusAccepted)
+		}),
+		Audit: func(AuditRecord) {},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An untrusted client-supplied identity must not create a context principal.
+	req := httptest.NewRequest(http.MethodPost, "http://example.test/scenario/submit", nil)
+	req.Header.Set("X-Principal-ID", "admin")
+	if _, ok := PrincipalFromContext(req.Context()); ok {
+		t.Fatal("unverified request acquired a principal")
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden || called != 0 {
+		t.Fatalf("CSRF rejection bypass: status=%d calls=%d", w.Code, called)
+	}
+	req.Header.Set("X-CSRF-Fixture", "matching")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusAccepted || called != 1 || seen != principal {
+		t.Fatalf("verified principal not preserved: status=%d calls=%d principal=%+v", w.Code, called, seen)
+	}
+}
