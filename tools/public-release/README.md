@@ -17,8 +17,14 @@ bash tools/public-release/prepare-candidate.sh \
   "$PWD" "$sha" \
   /private/reviewed-public-paths.txt \
   /private/tei-public-candidate
+bash tools/public-release/verify-candidate.sh \
+  "$PWD" "$sha" \
+  /private/reviewed-public-paths.txt \
+  /private/tei-public-candidate
 bash tools/public-release/prepare-candidate-test.sh
 ```
+
+`verify-candidate.sh` independently verifies the bytes, exact Git blob OIDs, file modes, permitted filenames and absence of extra regular files or symlinks in the exported candidate. Both scripts return nonzero if these checks fail. This is a **local integrity gate**, not a security clearance or review signature.
 
 The allowlist must contain one exact repository-relative file path per line (ASCII letters, numbers, `_`, `-`, `.`, `/`). Blank lines and `#` comments are ignored. Entire directories, Git symlinks/submodules, duplicate paths, path traversal and all non-regular blobs are rejected. If the candidate lacks the root `README.md` and `LICENSE`, or lacks the explicit AI-development/human-review warning near the start of the README, preparation fails.
 
@@ -34,6 +40,8 @@ The allowlist must contain one exact repository-relative file path per line (ASC
 - Maintain a private record of exact source revision, selected file paths, original blob OIDs, candidate digests, reviewer decision and resulting public commit SHA. Do not automatically publish private commit IDs or internal report contents.
 - Create a **fresh public Git history** only after review; publish by a separately authorized workflow. Enable a read-only CI, signed/qualified release process and branch protection. No automatic push from this helper.
 - For subsequent releases, compare both public-tree diffs and changes to the published Git history; an initially clean public tree may later acquire private information through additions or commit messages.
+
+The helpers use GNU/Linux Bash/Git/coreutils (`realpath`, `stat`, and `mv -T`) and are intended for the trusted WSL2/Linux execution host. Run the synthetic test from this host before attempting the full candidate. A candidate may be reproducible and still carry confidential or third-party material, so every accepted file needs independent human and license review.
 
 A new public repository changes Git lineage and does **not** preserve private Issues/PR numbers, exact-head qualification receipts or past product Evidence. No implied qualification transfer.
 
