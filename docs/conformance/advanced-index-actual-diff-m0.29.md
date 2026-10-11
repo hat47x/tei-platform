@@ -4,7 +4,7 @@
 
 M0.29では、PostgreSQLの実DBに存在するIndexを、単純な列名の並びへ潰さずに観測し、Desired Physical Schemaとの差を意味のある単位で説明できるようにします。
 
-対象はIssue #50と[ADR-0010](../adr/0010-advanced-index-semantics.md)で定めたActual / Diff側です。Advanced IndexをDesiredから記述するauthoring構文はIssue #51へ分離し、この段階では追加しません。
+対象はIssue #50と[ADR-0010](../../plan/adr/0010-advanced-index-semantics.md)で定めたActual / Diff側です。Advanced IndexをDesiredから記述するauthoring構文はIssue #51へ分離し、この段階では追加しません。
 
 ## Physical Schemaで保持する意味
 
