@@ -9,6 +9,22 @@
 - どのScenarioで確かめるか: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - どの順で不確実性を減らすか: `plan/`
 
+## 文書が多い場合の探し方
+
+`plan/`直下には現行計画、受入・検証の契約、過去の評価記録への移動案内が共存します。ファイル数だけで重要度や最新性を判断せず、次の入口から目的の正本へ進んでください。
+
+| 調べたいこと | 参照先 |
+| --- | --- |
+| 全体の着手順と現在の主線 | [`MASTER_PLAN.md`](MASTER_PLAN.md) |
+| 要求から受入シナリオとEvidenceまで | [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
+| 個別作業の目的・完了条件 | [`issue/README.md`](issue/README.md) |
+| 採用した設計判断 | [`adr/README.md`](adr/README.md) |
+| 複数Issueにまたがる機能設計 | [`design/README.md`](design/README.md) |
+| 特定時点の監査結果 | [`../docs/audits/README.md`](../docs/audits/README.md) |
+| 現在の実装・実証状況 | [`../docs/status.md`](../docs/status.md) |
+
+古いパスに残る短い移動案内は本文の複製ではありません。正本は案内先を参照してください。履歴上の参照を壊すおそれがあるため、未確認の参照元が残る間は削除しません。
+
 ## 最初に読む文書
 
 1. [`MASTER_PLAN.md`](MASTER_PLAN.md) — 現在のworkstream /主線
