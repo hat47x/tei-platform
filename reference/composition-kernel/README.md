@@ -76,3 +76,20 @@ go vet ./internal/composition
 2. Hostが所有するActivation/Deactivation Coordinator。RegistryのTransitionを受け、旧Runtimeのin-flightとEffect Scopeを整合させる。単純な自動restartは行わない。
 3. production Consumerの一件を新Contract解決→Provider確定→Host Authority→Invocationへ載せ、旧Resolver・旧Kind依存を撤去。
 4. 別ProcessまたはWasm Hostでの実トラフィック切替・Availability観測。Static Loweringでは動的Registry自体を削れることを検証。
+
+
+## E2：依存変更からのReconciliation Plan
+
+`internal/composition/reconcile.go` に、連続するRegistry Snapshotから変更対象を伝播させる副作用のない`PlanReconciliation`を追加。
+
+- `StopOrder` は旧依存グラフの逆順（Consumerを先、Providerを後）。**実際の停止命令ではない**。Hostはin-flight呼出しを保護し、旧世代のDrain・fencing等を確認する。
+- `StartOrder` は新依存グラフの順方向（Providerを先、Consumerを後）。起動できることや実際のReadyを保証しない。
+- `Retained` は宣言変更・依存変更の影響がないインスタンスの候補。不要な再起動を避ける。
+- Providerの切替だけでなく、そのProviderを間接依存するConsumerへ変更を伝播する。
+- 連続しないRevisionや同じSnapshotからはPlanを作らない。旧新の同一プロバイダーのService identityが変わる場合もTransitionから再評価する。
+
+追加試験では、`data-v1→data-v2`の際に`StopOrder=[consumer,data-v1]`、`StartOrder=[data-v2,consumer]`となり、独立したテナント内の無関係なサービスがRetainedになることを確認した。
+
+独立Go 1.23.2モジュールに同一bytesで収録し、`go test -race -count=25 ./...`と`go vet ./...`をPASS。GitHub Blob SHAとローカルGit Hashが一致することを検証した。**Host Scheduler・Process/Wasm上の実動作、実際の切替順序、Availability、全Repository Healthは未確認**。
+
+このPlanは単純に`StopOrder`を即時実行する指示ではない。無停止更新では新版を別スコープに準備してReadyを観測し、新しい呼出しを切り替えた後で旧世代をDrain・解放する。事故・Provider消失時は計画更新とは異なるfail-closed経路をHostが選ぶ。
