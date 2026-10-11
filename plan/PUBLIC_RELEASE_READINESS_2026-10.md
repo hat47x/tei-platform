@@ -24,7 +24,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | root LICENSE | MIT |
 | 開発補助スキル | PonytailをCodexの開発者環境へ配置し、製品treeから除外。過去Git履歴に残るため履歴公開範囲は要確認 |
 | main Actions workflow | `.github/workflows/knowledge-portability-reference-evidence.yml`: manual-only、job `if: false` |
-| README | 生成AIを用いて開発中・体系的な人的レビュー未実施の警告を冒頭へ追加する候補 |
+| README | 生成AIによる開発・体系的な人的レビュー未実施の警告はmainの冒頭に掲載済み |
 | `SECURITY.md` | mainに存在しない。連絡窓口の所有者判断が必要 |
 | 第三者モデル | #941の安全側公開境界を維持。原モデル/手引の直接再配布は許諾確認まで禁止 |
 | Git履歴の公開適合性 | mainの一部コミットの参照関係を確認。全refsのmetadata/contentの網羅検査は未了 |
@@ -64,51 +64,38 @@ GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（h
 
 **Git履歴とIssue/PRの継続性を優先する構成A**と、**公開用Sourceと開発記録を分離する構成B**の双方について、保守負担、外部からの参加、公開範囲、資格Evidenceの扱いを比較して決定する。
 
-## 5. 公開候補の事前生成と開発運用の移管
+## 5. 現行Sourceの個別評価と開発運用の継続
 
-### 5.1 固定コミットからの出力（Draft PR #1195）
+### 5.1 個別のファイル・資料・ツールの評価
 
-`tools/public-release/prepare-candidate.sh`（[Draft PR #1195](https://github.com/hat47x/tei-platform/pull/1195)）は、信頼済みPrivate checkout内の固定Git commitと、レビューした個別ファイルパス一覧から、**Git履歴を含まないローカル公開候補**を作る。外部ネットワークへの送信、Public Repositoryの作成、Git ref更新、`git push` は行わない。
+公開候補の許可リストによる抽出・生成方式は採用しない。PR #1195および関連PR #1201は未マージでクローズし、公開の作業手順に含めない。
 
-- pathの明示allowlist方式とし、source tree全体を無条件でコピーしない。選別済みファイルが十分な依存閉包を持つかは、別途Build/Testで検証する。
-- 候補はREADME/Licenceと、冒頭の生成AI開発・人的レビュー状況の表示がなければ拒否する。
-- Git blob SHA照合、directory traversal・duplicate・symlink等の拒否は補助検査。機密性・権利・内容の安全性を判定するものではない。
-- 候補に対するsecret/license/PII scan、全ファイル内容の人的確認、Source全体のテスト、公開用CI、保護設定は独立Gate。
-- 2026-10-11時点の合成Repositoryでの隔離テストはPASS。ただし正規TEI checkoutのfull health、公開前監査、別Public Repository作成は未実施。
+現行mainのファイルを、利用者・開発参加者にとっての必要性、コード・テストの依存、出典・再配布条件、秘密情報、現在の説明と旧資料の重複から個別に判断する。まとめて扱う場合も、対象パス・ファイルの内容と役割を確認する。
 
-### 5.2 公開後の正本とIssue/CIの接続
+- 維持するもの：CLIとGo Runtime、意味モデル、`go test ./...`等の必須テストと入力データ、現行の製品価値・要求・Architecture・ADR正本、実行可能なReference/Evidence。
+- 整理候補：過去のSource再構成断片、一時的な運用補助、現在の正本と重複する作業資料、TEIの機能・開発検証に不要な第三者のAI向けSkill。
+- 単にファイル数を減らすためにGoテストや必要なEvidenceを失わない。テストが失われた状態の`go test`成功を、削除前と同じ回帰検証と扱わない。
+- 削除候補はそれぞれ独立PRに分け、差分と参照の確認、正規Repository Healthを実施してから統合する。PR #1202は旧bootstrap断片、PR #1203は用途が異なる第三者Skillの整理。
+- 旧配置の互換案内は、内部と外部からの参照を確認できるまで維持する。正本文書への導線の改修はPR #1091、#1198、#1199、#1200を参照。
 
-公開用Sourceだけを新Repositoryへ配っても、Private RepositoryのPRのHEADでPublic Actionsを動かしたことにはならない。Private側とPublic側ではGit commit SHAもGit historyも異なる。
+### 5.2 公開するRepositoryとGit履歴
 
-そのため次の方式を比較して運用を選定する。
+主な想定は既存`hat47x/tei-platform`をPrivateからPublicへ移行すること。現行HEADからの削除だけでは過去のblobやcommit metadata、PR refs等は消えないため、公開前に**全履歴・全公開面の監査**を行う。
 
-| 方式 | CI・Issueへの効果 | 留意点 |
-| --- | --- | --- |
-| 既存RepositoryをPublic化 | 既存Issue/PRの正本とPublic CIが同一Repository | 開発履歴、Issue、PR、Actions logs等の公開範囲を十分に審査 |
-| 新Public Repositoryを開発正本にする | Cutover後のIssue/PRは最初からPublic CIで資格確認できる | Privateにある大量のIssue/PR、進行中ブランチ、引用SHAを計画的に引き継ぐ |
-| Private開発＋Public配布 | Private作業・資料を維持し、承認済みSourceのみ公開可能 | Private PRの統合資格をPublic CIから自動判定できない。公開配布は遅延しやすい |
-
-いずれも、公開用リポジトリの名前、既存URL・Issue番号の継続要件、保護する研究データ、公開する開発履歴、公開後のIssue SSOTをownerが確定する。既存Private Repositoryを安易にrenameしてURL redirect/remoteへのpush先を変えない。
+必要なら別Public Repositoryという選択肢も比較するが、生成ツールによるSource抽出を前提としない。別Repositoryを選ぶ場合は、Issue/PR正本の切替えとGit SHA・検証資格の非移譲を明示的に扱う。
 
 ### 5.3 公開する前の必須確認
 
-1. 全非公開Source・GitHub面を監査し、公開可能な正本集合を固定する。
-2. Reference Modelや外部コンテンツの著作権・再配布条件、READMEのレビュー状況表示、機密情報Scanを確認する。
-3. Candidateの内容を独立にレビューし、必要なGo/CLI/Webのテストを**Candidateの実ファイル**に対して実行する。
-4. 新Repositoryの場合はSourceの旧→新revisionとfile digestsの照合をPrivate記録に保持する。Privateの過去Evidenceを新公開SHAのPASSに読み替えない。
-5. 公開後はGitHub-hosted runnerで実際のcheckoutとfull Repository Healthを行い、必要なbranch protection/required statusを確認する。
+1. 現行mainを含む公開され得る全Git refs、Issue・PR・comments・Release・Actionsログ等を調べ、秘密情報・個人情報・機密資料を検査する。
+2. Reference Modelや外部コンテンツの著作権・ライセンス・再配布条件を確認する。未検証の資料や古いGit blobの扱いも対象とする。
+3. 各整理PRについて、実ファイルの正本性・参照・テスト依存・変更多発箇所を検査し、現在のブランチHEADで正規Repository Healthと前後のclean状態を確認する。
+4. READMEの生成AI開発・体系的な人的レビュー未実施表示を維持する。古いGateのReady判定を最新mainの品質保証に置き換えない。
+5. Public化前後にGitHubのbranch protection、required checks、Secrets不渡しとread-only Actionsを実機で確認し、GitHub-hosted runnerでのfull Repository Healthを観測する。
+6. Ownerによる公開可否の最終判断を得る。未完了の監査項目がある場合はPrivateを維持する。
 
-本節およびPR #1195は公開操作そのものを認可しない。
+### 公開ドキュメントの整理
 
-### 公開ドキュメントの構成・整理（#1197）
-
-Public向けには現行Product/Requirements/Architecture、使用・参加ガイド、正本ADR、再現可能なReference/Evidenceを優先する。内部の検討経緯や古い監査記録は、日付だけで機械的に削除せず、必要性・権利条件・参照関係を確認して掲載を判断する。
-
-- 2026-10-11のmainにはMarkdown 482件（`plan/` 352件、`docs/` 73件）。
-- 内容が別ファイルへ移った互換案内38件（`plan/` 22件と`docs/adr/` 16件）の参照元・正本先を[Draft PR #1195](https://github.com/hat47x/tei-platform/pull/1195)の選別表に記録した。
-- 新Public Repositoryへ選択済みファイルのみを導入する場合に限り、**正本が同梱され、残存リンクが検証された後で**これらの互換案内を公開候補から除外する。
-- Private開発Repositoryの旧URL案内を削除するかは別の判断。既存[Draft PR #1091](https://github.com/hat47x/tei-platform/pull/1091)の内部参照監査と外部互換性を踏まえ、現時点では維持する。
-- 選別器・テストスクリプトの追加だけで実TEI全件に対する安全な削除を証明したとは扱わない。公開前にtrusted checkoutで検査する。
+現在のProduct/Requirements/Architecture、使用・参加ガイド、ADR正本、実証に必要なReference/Evidenceを入口に据える。歴史的監査記録や旧計画は、単に古いという理由で消さず、個別に必要性と参照を確認する（#1197）。互換用の移動案内は必要な参照を確認するまで維持する。
 
 ## 6. P0-C Public向けGitHub Actionsと保護
 

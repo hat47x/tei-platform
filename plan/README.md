@@ -1,6 +1,6 @@
 # TEIの開発計画
 
-[プロダクト開発ロードマップ（HTML）](product-roadmap.html)は、期限を設けず、着手依存と完了条件で開発順を整理した横断ガイドです。[想定仕様](../docs/specification/index.html)と相互参照し、正式なGate・採用判断は既存正本に従います。
+[TEI Master Plan](MASTER_PLAN.md)と[Milestones](MILESTONES.md)は、期限を設けず、Productの価値・着手依存・完了条件を整理する正本です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
 
 `plan/`には、製品の価値・要求を、着手順、受入シナリオ、設計判断、参照実装、検証根拠、Gateへ結び付ける計画文書を置きます。
 
