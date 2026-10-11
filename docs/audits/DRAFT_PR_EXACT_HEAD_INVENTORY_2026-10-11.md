@@ -66,3 +66,9 @@ These base SHAs are per-PR observations and are not evidence that they match cur
 - The GitHub issue timeline records `ready_for_review` before each merge: #1200 at 07:40:49Z (merge 07:40:53Z); #1202 at 09:43:09Z (merge 09:43:14Z); #1203 at 09:43:17Z (merge 09:43:38Z); #1206 at 09:43:20Z (merge 09:43:44Z). These events resolve the earlier uncertainty about whether the merged PRs were still Draft at merge time.
 - All **74 current remote branch heads** were checked against candidate `c0a1b556659e1214b38cdb186e5b29437fd16d00`: 74 ancestors, 0 outside, 0 missing. This check includes `tools/public-development-quality-profile-20261011`; its history is present, while its superseded allowlist and scripts were removed from the current tree. See [the archived source-profile review](PUBLIC_DEVELOPMENT_PROFILE_REVIEW_2026-10-11.md).
 - PRs and branches can change again. Re-fetch current `main`, all remote branch heads, and PR state before any later release or merge decision.
+
+## Subsequent refresh — 2026-10-11 18:55 JST
+
+- `main` advanced to `00fec46acb2ea62e7c35a9838fcc7e604c1247be` through PRs #1207–#1217. GitHub REST currently returns 0 open PRs; all 74 remote branch heads are ancestors of candidate `45e7ec0ef896cb7b1567d725c6b483265d09b20b`.
+- PR timeline records show #1207–#1217 merged between 09:45:53Z and 09:49:56Z. These heads and their resulting `main` merge commits are now present in the local candidate.
+- The local candidate remains a review branch; it has not been pushed. These ancestry facts do not imply Repository Health qualification for merging this candidate.

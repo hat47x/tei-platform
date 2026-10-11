@@ -42,3 +42,9 @@
 - The earlier phrase “2件” described the 2 distinct source-line sites, not the 12 machine-report rows. It should not be interpreted as the total scan finding count.
 - Candidate history at `c0a1b556659e1214b38cdb186e5b29437fd16d00` was scanned separately: 8,375 commits / about 754 MB, with 6 finding rows at the same 2 source-line sites. The directory scan of the candidate working tree reported 1 row at line 86, the same known site. The directory scan included the pending documentation dispositions but not later Git metadata; the exact machine reports remain outside the repository.
 - Neither scan covers Git metadata privacy, Issues/PR discussions, workflow logs/artifacts, releases, Wiki/Pages, or human rights review.
+
+## Subsequent refresh — 2026-10-11 18:55 JST
+
+- `main` advanced to `00fec46acb2ea62e7c35a9838fcc7e604c1247be`. The refreshed mirror again matched all remote refs exactly: 1,064 refs (74 heads, 4 tags, 986 PR-head refs), 11,914 reachable commits, and 46,228 reachable objects. `git fsck --full --no-reflogs --unreachable` returned no diagnostics after pruning and garbage collection of the disposable mirror.
+- Gitleaks v8.29.1 scanned 11,537 commits / about 1.06 GB across all refs; it reported the same 12 rows at the same 2 source-line sites. Candidate history at `45e7ec0ef896cb7b1567d725c6b483265d09b20b` scanned 8,388 commits / about 794 MB and reported 6 rows at those same sites. Current-tree scan reported 1 row at line 86. No new source site or rule appeared.
+- The independent human review of the two enum-identifier sites is still required. These results do not clear Git metadata, Issue/PR content, Actions logs/artifacts, Release assets, Wiki/Pages, or third-party rights.
