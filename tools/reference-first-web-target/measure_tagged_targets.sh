@@ -67,6 +67,20 @@ for mode in combined order repair; do
   go tool nm "$temp/$mode.bin" > "$temp/$mode.nm"
 done
 
+# Both Application build tags together are invalid. The command must fail
+# and must not leave behind a seemingly deployable executable.
+if go build -trimpath -ldflags=-buildid= \
+  -tags="tei_order_only,tei_repair_only" \
+  -o "$temp/conflicting.bin" ./tools/reference-first-web-target \
+  > "$temp/conflicting-tags.build.txt" 2>&1; then
+  echo "conflicting Application build tags unexpectedly produced a binary" >&2
+  exit 1
+fi
+if [[ -e "$temp/conflicting.bin" ]]; then
+  echo "conflicting Application build tags left an executable" >&2
+  exit 1
+fi
+
 # Verify actual go list file selection, not merely the CLI's application arg.
 require_source() {
   if ! grep -Fxq "$2" "$temp/$1.sources"; then

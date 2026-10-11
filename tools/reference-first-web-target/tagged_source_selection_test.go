@@ -102,3 +102,23 @@ func TestFirstWebTargetApplicationBuildTagsSelectDisjointBusinessSources(t *test
 		})
 	}
 }
+
+// Even when no successful package main is selected, "go list" alone can
+// still return a syntactically valid package. Check that mutually exclusive
+// flags never select any executable main or Application-specific routes.
+func TestConflictingApplicationTagsSelectNoEntrypoint(t *testing.T) {
+	files := sourceFilesForBuildTags(t, "tei_order_only,tei_repair_only")
+	for _, forbidden := range []string{
+		"main.go", "main_order_only.go", "main_repair_only.go",
+		"single_application_startup.go",
+		"combined_scenario_routes.go", "combined_scenario_templates.go",
+		"order_only_wiring.go", "repair_only_wiring.go",
+		"read_scenario.go", "command_scenario.go",
+		"customer_lookup_scenario.go", "order_scenario_http.go",
+		"repair_scenario_http.go",
+	} {
+		if files[forbidden] {
+			t.Errorf("conflicting Application tags unexpectedly selected %s", forbidden)
+		}
+	}
+}

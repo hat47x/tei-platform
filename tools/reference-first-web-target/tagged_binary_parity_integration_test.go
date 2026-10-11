@@ -62,6 +62,9 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 			requests: []taggedParityRequest{
 				{http.MethodGet, "/manifest.json", "", http.StatusOK},
 				{http.MethodGet, "/scenario/read?from=2026-09-18T08:30:00Z&row=0", "", http.StatusOK},
+				{http.MethodGet, "/custom-submit", "", http.StatusOK},
+				{http.MethodPut, "/custom-submit", "", http.StatusMethodNotAllowed},
+				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":1}`, http.StatusOK},
 				{http.MethodGet, "/scenario/read?row=-1", "", http.StatusBadRequest},
 				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK},
 				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-viewer","credential":"viewer-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK},
@@ -79,6 +82,10 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 			requests: []taggedParityRequest{
 				{http.MethodGet, "/manifest.json", "", http.StatusOK},
 				{http.MethodGet, "/scenario/customer-lookup?customerId=11", "", http.StatusOK},
+				{http.MethodGet, "/customer-lookup", "", http.StatusOK},
+				{http.MethodGet, "/customer-lookup?customerId=11", "", http.StatusOK},
+				{http.MethodGet, "/customer-lookup?customerId=abc", "", http.StatusBadRequest},
+				{http.MethodPost, "/customer-lookup", "", http.StatusMethodNotAllowed},
 				{http.MethodGet, "/scenario/customer-lookup?customerId=abc", "", http.StatusBadRequest},
 				{http.MethodGet, "/scenario/customer-lookup", "", http.StatusBadRequest},
 				{http.MethodPost, "/scenario/customer-lookup?customerId=11", "", http.StatusMethodNotAllowed},
@@ -189,6 +196,8 @@ func assertTaggedBusinessSemantics(t *testing.T, request taggedParityRequest, re
 			expectedStage = "authentication-denied"
 		case strings.Contains(request.body, "legacy-order-viewer"):
 			expectedStage = "authorization-denied"
+		case strings.Contains(request.body, `"row":1`):
+			expectedStage = "validation-not-satisfied"
 		}
 		if command.Result.Stage != expectedStage || command.ExecutionError != "" {
 			t.Fatalf("command business stage=%q, expected=%q, executionError=%q",
