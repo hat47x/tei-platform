@@ -52,6 +52,14 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 	}
 	if _, ok := availableSet["data-design"]; ok {
 		reviewSequence = append(reviewSequence, "review-data-design-and-its-review-protocol")
+		if ctx.DataDesign != nil &&
+			(len(ctx.DataDesign.BusinessIdentityCandidates) != 0 ||
+				len(ctx.DataDesign.FunctionalDependencyCandidates) != 0) {
+			reviewSequence = append(
+				reviewSequence,
+				"review-data-design-candidates-by-stable-fingerprint-and-evidence-contract",
+			)
+		}
 	}
 	if _, ok := availableSet["dependencies"]; ok {
 		reviewSequence = append(reviewSequence, "review-dependencies-and-impact")
@@ -68,6 +76,10 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 
 	unresolved := append([]string(nil), ctx.Unresolved...)
 	sort.Strings(unresolved)
+
+	candidateReviewRequired := ctx.DataDesign != nil &&
+		(len(ctx.DataDesign.BusinessIdentityCandidates) != 0 ||
+			len(ctx.DataDesign.FunctionalDependencyCandidates) != 0)
 
 	result := BuilderReviewPlan{
 		ProjectionRevision:            builderReviewPlanProjectionRevision,
@@ -90,6 +102,7 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"stop-before-proposal-when-required-cross-view-conflict-evidence-is-unresolved",
 			"refresh-review-plan-before-reusing-cached-routing",
 		},
+
 		AuthorityLimits: []string{
 			"builder-review-plan-is-derived-routing-guidance-not-semantic-authority",
 			"recommended-section-is-not-semantic-applicability",
@@ -102,6 +115,16 @@ func BuildBuilderReviewPlan(ctx Context) BuilderReviewPlan {
 			"review-plan-fingerprint-is-routing-identity-not-knowledge-freshness-proof",
 			"review-plan-fingerprint-is-not-selected-knowledge-fingerprint",
 		},
+	}
+	if candidateReviewRequired {
+		result.StopRules = append(
+			result.StopRules,
+			"stop-before-authoring-derived-data-design-candidate-while-business-evidence-or-first-class-authoring-contract-is-unresolved",
+		)
+		result.AuthorityLimits = append(
+			result.AuthorityLimits,
+			"data-design-candidate-review-packet-is-derived-review-state-not-semantic-authority",
+		)
 	}
 	result.Fingerprint = builderReviewPlanFingerprint(result)
 	return result

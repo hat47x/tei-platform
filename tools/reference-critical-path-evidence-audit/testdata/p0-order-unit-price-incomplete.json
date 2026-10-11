@@ -1,0 +1,29 @@
+{
+  "schema": "tei.critical-path-evidence/v0",
+  "claim": "E1",
+  "contract": {
+    "producerPath": "tools/reference-shared-acceptance/practical_validation_loop_test.go",
+    "consumerPath": "tools/reference-first-web-target/practical_business_rule_test.go",
+    "positiveTest": "TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection",
+    "negativeTest": "TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList",
+    "evidenceClass": "source-only"
+  },
+  "qualification": {
+    "head": "", "main": "", "fullHealth": "NOT_RUN",
+    "cleanBefore": false, "cleanAfter": false, "receipt": ""
+  },
+  "acceptance": {
+    "r0": "", "r1": "", "candidateFingerprint": "", "reviewFingerprint": "",
+    "decisionReceipt": "", "reloadReceipt": "",
+    "delta": ["add-validation", "add-application-validation-use"]
+  },
+  "web": {
+    "acceptedRevision": "", "application": "order_entry", "target": "web",
+    "selectedValidation": "sales.order_line.unit_price_positive",
+    "negativeValidation": "sales.order_line.unit_price_positive", "negativeEvidenceMode": "handler-only",
+    "providerKind": "synthetic", "runMode": "handler-only",
+    "workspaceRevisionReceipt": "", "targetLaunchReceipt": "",
+    "positiveReceipt": "", "negativeReceipt": "", "unobservedControlReceipt": ""
+  },
+  "physical": {}
+}

@@ -1,18 +1,27 @@
 package languagereference
 
 import (
-	"tei/internal/core"
-	"tei/internal/semantic"
 	"testing"
+
+	"tei/internal/core"
+	"tei/internal/ir"
+	"tei/internal/semantic"
 )
 
 func TestExpandRelationReference(t *testing.T) {
-	src := semantic.Data{ID: core.CanonicalID("sales.order"), Attributes: []semantic.Attribute{{ID: core.CanonicalID("sales.order.id"), TypeRef: core.CanonicalID("std.int")}}, Relations: []semantic.Relation{{ID: core.CanonicalID("sales.order.lines"), Target: core.CanonicalID("sales.line"), Cardinality: semantic.CardinalityMany, Keys: []semantic.RelationKey{{SourceAttribute: core.CanonicalID("sales.order.id"), TargetAttribute: core.CanonicalID("sales.line.order_id")}}}}}
-	target := semantic.Data{ID: core.CanonicalID("sales.line"), Attributes: []semantic.Attribute{{ID: core.CanonicalID("sales.line.order_id"), TypeRef: core.CanonicalID("std.int")}}}
+	src := semantic.Data{ID: core.CanonicalID("sales.order"), Attributes: []semantic.Attribute{
+		{ID: core.CanonicalID("sales.order.id"), TypeRef: core.CanonicalID("std.int")},
+	}, Relations: []semantic.Relation{{
+		ID: core.CanonicalID("sales.order.lines"), Target: core.CanonicalID("sales.line"), Cardinality: semantic.CardinalityMany,
+		Keys: []semantic.RelationKey{{SourceAttribute: core.CanonicalID("sales.order.id"), TargetAttribute: core.CanonicalID("sales.line.order_id")}},
+	}}}
+	target := semantic.Data{ID: core.CanonicalID("sales.line"), Attributes: []semantic.Attribute{
+		{ID: core.CanonicalID("sales.line.order_id"), TypeRef: core.CanonicalID("std.int")},
+	}}
 	ns := semantic.Namespace{ID: core.CanonicalID("sales"), Data: []semantic.Data{src, target}}
 	pin := OperatorContract{ID: "std.op.expand", Version: "1", Fingerprint: "expand-v1", Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/sales.line"}
 	call := PinnedCall{Contract: pin, InputType: pin.InputType}
-	out, err := ExpandRelationReference(ns, src.ID, src.Relations[0].ID, call, []OperatorContract{pin})
+	out, err := ExpandRelationReference(ir.World{Semantics: []semantic.Namespace{ns}}, src.ID, src.Relations[0].ID, call, []OperatorContract{pin})
 	if err != nil || out != pin.OutputType {
 		t.Fatalf("got %q: %v", out, err)
 	}
@@ -36,7 +45,7 @@ func TestExpandRelationReference(t *testing.T) {
 			clone.Data[0].Relations[0].Keys = append([]semantic.RelationKey(nil), src.Relations[0].Keys...)
 			c := call
 			tc.mutate(&clone, &c)
-			if _, err := ExpandRelationReference(clone, src.ID, src.Relations[0].ID, c, tc.catalog); err == nil {
+			if _, err := ExpandRelationReference(ir.World{Semantics: []semantic.Namespace{clone}}, src.ID, src.Relations[0].ID, c, tc.catalog); err == nil {
 				t.Fatal("expected rejection")
 			}
 		})

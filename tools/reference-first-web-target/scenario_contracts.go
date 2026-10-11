@@ -14,18 +14,18 @@ type readScenarioInput struct {
 }
 
 type readScenarioResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
-	From            string                     `json:"from"`
-	SelectedRow     int                        `json:"selectedRow"`
-	BrowseRows      []semanticRowProjection    `json:"browseRows"`
-	SelectedOrder   semanticRowProjection      `json:"selectedOrder"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	OrderLineRows   []semanticRowProjection    `json:"orderLineRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
+	ScenarioID       string                     `json:"scenarioId"`
+	Environment      string                     `json:"environment"`
+	ApplicationID    string                     `json:"applicationId"`
+	From             string                     `json:"from"`
+	SelectedRowIndex int                        `json:"selectedRowIndex"`
+	BrowseRows       []semanticRowProjection    `json:"browseRows"`
+	SelectedOrder    semanticRowProjection      `json:"selectedOrder"`
+	CustomerRows     []semanticRowProjection    `json:"customerRows"`
+	OrderLineRows    []semanticRowProjection    `json:"orderLineRows"`
+	RuntimeBindings  []runtimeBindingProjection `json:"runtimeBindings"`
+	AuthorityLimits  []string                   `json:"authorityLimits"`
+	Unresolved       []string                   `json:"unresolved"`
 }
 
 type readScenarioRunner interface {
@@ -47,6 +47,7 @@ type commandScenarioResult struct {
 	Read            *readScenarioResult          `json:"read,omitempty"`
 	Validations     []validationResultProjection `json:"validations,omitempty"`
 	Authorization   *businessResultProjection    `json:"authorization,omitempty"`
+	EffectAuthorization *businessResultProjection `json:"effectAuthorization,omitempty"`
 	Command         *businessResultProjection    `json:"command,omitempty"`
 	Observation     *observationProjection       `json:"observation,omitempty"`
 	AuthorityLimits []string                     `json:"authorityLimits"`
@@ -80,15 +81,15 @@ type customerLookupInput struct {
 }
 
 type customerLookupResult struct {
-	ScenarioID      string                     `json:"scenarioId"`
-	Environment     string                     `json:"environment"`
-	ApplicationID   string                     `json:"applicationId"`
-	CustomerID      string                     `json:"customerId"`
-	Intake          semanticRowProjection      `json:"intake"`
-	CustomerRows    []semanticRowProjection    `json:"customerRows"`
-	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
-	Unresolved      []string                   `json:"unresolved"`
+	ScenarioID          string                     `json:"scenarioId"`
+	Environment         string                     `json:"environment"`
+	ApplicationID       string                     `json:"applicationId"`
+	RequestedCustomerID string                     `json:"requestedCustomerId"`
+	Intake              semanticRowProjection      `json:"intake"`
+	CustomerRows        []semanticRowProjection    `json:"customerRows"`
+	RuntimeBindings     []runtimeBindingProjection `json:"runtimeBindings"`
+	AuthorityLimits     []string                   `json:"authorityLimits"`
+	Unresolved          []string                   `json:"unresolved"`
 }
 
 type customerLookupRunner interface {

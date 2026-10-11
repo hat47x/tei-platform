@@ -72,6 +72,8 @@ type DataDesignEvidence struct {
 
 type DataDesignDeterminantTerm struct {
 	Kind      string           `json:"kind"`
+	Relation  core.CanonicalID `json:"relation,omitempty"`
+	End       string           `json:"end,omitempty"`
 	Data      core.CanonicalID `json:"data,omitempty"`
 	Attribute core.CanonicalID `json:"attribute,omitempty"`
 }
@@ -123,7 +125,7 @@ type DataDesignPersistenceRealization struct {
 	Authority  string                            `json:"authority"`
 }
 
-const dataDesignProjectionRevision = "tei.knowledge.data-design/v6"
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v7"
 
 type DataDesignContext struct {
 	ProjectionRevision                         string                                    `json:"projectionRevision"`
@@ -390,6 +392,7 @@ func buildDataDesignContext(
 		RelationEvidenceQuestions: []string{
 			"what-business-meaning-does-the-relation-express",
 			"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+			"does-this-relation-archetype-support-business-identity-or-functional-dependency-or-only-topology",
 			"what-cardinality-is-required",
 			"is-the-relation-current-only-or-temporal",
 			"what-history-or-validity-period-must-be-preserved",
@@ -398,6 +401,8 @@ func buildDataDesignContext(
 		DesignReviewProtocol: []string{
 			"resolve-current-semantic-data-and-source-evidence-before-design-change",
 			"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+			"classify-relation-archetype-before-promoting-business-identity-or-functional-dependency",
+			"require-source-backed-association-semantics-before-composite-identity",
 			"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
 			"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
 			"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
@@ -411,6 +416,7 @@ func buildDataDesignContext(
 			"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
 			"data-design-resolution-status-is-structural-not-business-certainty",
 			"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
+			"relation-archetype-review-is-guidance-not-semantic-proof",
 			"ambiguous-data-design-context-blocks-cache-reuse",
 			"data-design-evidence-coverage-is-not-source-freshness-proof",
 			"incomplete-data-design-evidence-blocks-complete-cache-reuse",
@@ -624,8 +630,10 @@ func buildDataDesignContext(
 				})
 				identityTerms := []DataDesignDeterminantTerm{
 					{
-						Kind: "relation-source-occurrence",
-						Data: relation.Source,
+						Kind:     "related-occurrence",
+						Relation: validation.Relation,
+						End:      "source",
+						Data:     relation.Source,
 					},
 					{
 						Kind:      "attribute",
@@ -652,7 +660,7 @@ func buildDataDesignContext(
 				}
 				identityCandidate.Fingerprint = businessIdentityCandidateFingerprint(identityCandidate)
 				identityCandidate.EvidenceRequirementFingerprint = dataDesignCandidateEvidenceRequirementFingerprint(
-					"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+					"tei.knowledge.data-design.business-identity-candidate-evidence/v2",
 					identityCandidate.Fingerprint,
 					identityCandidate.EvidenceNeeded,
 				)
@@ -676,7 +684,7 @@ func buildDataDesignContext(
 				}
 				fdCandidate.Fingerprint = functionalDependencyCandidateFingerprint(fdCandidate)
 				fdCandidate.EvidenceRequirementFingerprint = dataDesignCandidateEvidenceRequirementFingerprint(
-					"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+					"tei.knowledge.data-design.functional-dependency-candidate-evidence/v2",
 					fdCandidate.Fingerprint,
 					fdCandidate.EvidenceNeeded,
 				)
@@ -801,6 +809,19 @@ func buildDataDesignContext(
 	sort.Slice(ctx.PersistenceRealizations, func(i, j int) bool {
 		return ctx.PersistenceRealizations[i].Mapping < ctx.PersistenceRealizations[j].Mapping
 	})
+	if len(ctx.BusinessIdentityCandidates) != 0 ||
+		len(ctx.FunctionalDependencyCandidates) != 0 {
+		insertAt := len(ctx.DesignReviewProtocol) - 1
+		protocol := make([]string, 0, len(ctx.DesignReviewProtocol)+2)
+		protocol = append(protocol, ctx.DesignReviewProtocol[:insertAt]...)
+		protocol = append(
+			protocol,
+			"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+			"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
+		)
+		protocol = append(protocol, ctx.DesignReviewProtocol[insertAt:]...)
+		ctx.DesignReviewProtocol = protocol
+	}
 	ctx.Fingerprint = dataDesignFingerprint(ctx)
 	return ctx
 }
@@ -811,7 +832,7 @@ func businessIdentityCandidateFingerprint(value DataDesignBusinessIdentityCandid
 	value.Components = normalizedDeterminantTerms(value.Components)
 	value.EvidenceNeeded = nil
 	return typedDataDesignCandidateFingerprint(
-		"tei.knowledge.data-design.business-identity-candidate/v1",
+		"tei.knowledge.data-design.business-identity-candidate/v2",
 		value,
 	)
 }
@@ -822,7 +843,7 @@ func functionalDependencyCandidateFingerprint(value DataDesignFunctionalDependen
 	value.Determinants = normalizedDeterminantTerms(value.Determinants)
 	value.EvidenceNeeded = nil
 	return typedDataDesignCandidateFingerprint(
-		"tei.knowledge.data-design.functional-dependency-candidate/v1",
+		"tei.knowledge.data-design.functional-dependency-candidate/v2",
 		value,
 	)
 }
@@ -849,6 +870,12 @@ func normalizedDeterminantTerms(values []DataDesignDeterminantTerm) []DataDesign
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Kind != out[j].Kind {
 			return out[i].Kind < out[j].Kind
+		}
+		if out[i].Relation != out[j].Relation {
+			return out[i].Relation < out[j].Relation
+		}
+		if out[i].End != out[j].End {
+			return out[i].End < out[j].End
 		}
 		if out[i].Data != out[j].Data {
 			return out[i].Data < out[j].Data

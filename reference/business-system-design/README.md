@@ -101,6 +101,60 @@ go run ./tools/reference-business-procedure-check
 
 これらのMatrix / diagnostic出力はderived Projectionです。Reference authoring fixtureへ逆書きしません。
 
+
+## Applicationと業務手順のValidation参照を比較する（評価中）
+
+Application全体のValidation宣言と、Business Procedureの各validation-supportステップが明示した参照は、目的も適用範囲も異なります。集合差は**確認すべき候補**であり、業務仕様の欠落や不整合を自動的に意味するものではありません。
+
+既存checkerに変更を加えず、次のフラグを指定したときだけ読み取り専用の比較結果をJSONへ追加します。
+
+    go run ./tools/reference-business-procedure-check -review-validation-scope
+
+### 結果の読み方
+
+| 項目 | 意味 |
+| --- | --- |
+| applicationContext / step | 明示された比較対象ApplicationとBusiness ProcedureのStep ID |
+| applicationOnly / procedureOnly | 片側にだけ明示されたValidation ID |
+| sharedValidations | 両側に明示されたValidation ID。一致しても業務上の同値性は保証しない |
+| review-needed | 参照集合に差がある。適用範囲を人が確認する |
+| no-set-difference | 集合差はない。業務上の適用範囲や実行結果まで等しいとは限らない |
+| unresolved-context | Step IDが空・重複する、またはApplicationを一意に指定・解決できない |
+| unresolved-reference | Validation定義の欠落・曖昧性・宣言の重複がある。集合差を確定しない |
+| referenceIssues | 未解決参照のside（application / procedure）、id、reason（missing-definition / ambiguous-definition / duplicate-declaration） |
+| procedureSource | 業務手順の入力fixtureのパス。Canonicalな意味IDではない |
+| sourceEvidence / unresolvedSource | 出典が特定できた定義の相対パス・行・指紋／特定できなかった意味ID |
+
+Step IDは種類を問わず同一手順内で一意でなければなりません。比較するApplicationは、fixtureの指定を使い、名称の類似から所属を推測しません。Validation参照が解決できない行は、集合差を返す代わりに原因を示します。
+
+比較できる行がある場合に限り、既存Source Indexを検証します。Application定義と共通・片側固有のValidation定義を追跡し、定義やファイルの重複、出典の欠落を推測で補いません。不正な出典パスや指紋は根拠に採用せず、再解析でも古い根拠を残しません。Source Indexの構築そのものが失敗した場合は、成功したものとして表示せずエラーで停止します。
+
+現在の受注Referenceでは、BP-05の二つのValidationが共通し、Application側にsales.order_line.line_number_positiveが一つ残る想定です。これは**人による適用範囲の確認を促す結果**であり、Business Procedureへ規則を書き戻す指示ではありません。Workspace、Acceptance、Authorization、既存のblocking diagnosticは変更しません。
+
+### 手動検証（CI停止中も同じ条件）
+
+信頼できる実Repositoryのクリーンなチェックアウトで、対象commitと比較先mainを固定し、以下を実行します。
+
+    git rev-parse HEAD
+    git status --porcelain --untracked-files=all
+    go version
+    go test ./tools/reference-business-procedure-check -count=1
+    go vet ./tools/reference-business-procedure-check
+    go run ./tools/reference-business-procedure-check
+    go run ./tools/reference-business-procedure-check -review-validation-scope
+    go run ./tools/reference-business-procedure-check -review-validation-scope -probe reference/business-system-design/order-entry-customer-edit-conflict.json -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
+    bash tools/repository-health-check.sh
+    git status --porcelain --untracked-files=all
+    git rev-parse HEAD
+
+上記に加え、ignoredファイルとindexの状態も前後で確認します。記録対象は、commit SHA、main SHA、Go環境、コマンドごとの終了コード、既存診断とレビュー表示の比較、BP-05の共通・差分IDと正本出典、前後のclean状態です。**この記述は手順であり、コマンドを実行した記録ではありません。** 過去の隔離テストを最新headの資格に転用せず、full Repository healthが未実施・不合格ならmainへ統合しません。Draft PRは検証に合格しても自動的にマージしません。
+
+### 人のレビュー負担を測る
+
+[技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)のREF-SPEC-01に従い、通常のSource探索（A）と比較JSONを併用する方法（B）を、同じ業務上の確認課題で比べます。所要時間・開いたファイル数・再検索回数に加え、参照IDの取り違え、未解決事項の記載漏れ、根拠のない断定を記録します。Bが速くても誤判断が増えれば成功としません。評価順序や対象課題を入れ替え、同じ人の学習効果を独立な試行として数えないようにします。
+
+**実験は計画段階で、所要時間や効果の実測値はありません。** 出典を限定して確認した事実、過去の隔離テスト結果、残る検証条件は[REF-SPEC-01監査記録](../../docs/audits/ref-spec-01-2026-10-09-source-contrast.md)を参照してください。
+
 ## `order-entry-follow-up-procedure.json`
 
 同じ`order_entry.order_record`を別のBusiness Procedure文脈から利用するReference authoring fixtureです。
@@ -135,6 +189,29 @@ order-entry.order-handling / BP-09
 一方、Procedure key自体をlogical renameしたのにhandoff linkを更新しなければfail closedにします。類似名称から接続し直しません。
 
 このReferenceはhandoffをruntime Workflowへ変換しません。retry / timer / queue / scheduler等を含意しません。
+
+## Data determinant association pressure
+
+`data-determinant-association-pressure.md`は、contained repeatだけでは判断できないbusiness occurrence identity / candidate key / functional dependencyのCore昇格条件をpressureするTEI-original Referenceです。
+
+CoverageAssignmentを例に、独立したServiceContract / Asset occurrenceの組合せ、`effectiveFrom`、history revision、Persistence surrogate keyを分離します。
+
+`data-determinant-association-seed-ledger.json`は、同じscenarioについて次を分離します。
+
+- external Source-backed fact: 現時点では無し
+- TEI-original Reference decision
+- Core contract proposal
+- unresolved
+- cross-view question
+- independent review状態
+
+このReferenceはCanonical authorityではありません。business occurrence identity / FDの新しいCore syntaxを採用したことも意味しません。
+
+関連するPromotion GateとCore contract候補は次です。
+
+- `plan/DATA_DETERMINANT_PROMOTION_GATE_2026-10.md`
+- `plan/DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md`
+- `plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md`
 
 ## `second-corpus/`
 

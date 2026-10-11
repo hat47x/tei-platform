@@ -1,0 +1,18 @@
+{
+  "query": "order_entry.recent_orders",
+  "datasourceAlias": "sales",
+  "targetDatabase": "sales_core",
+  "parameters": {
+    "from": {"kind": "timestamp", "data": "2026-09-01T00:00:00Z"}
+  },
+  "columns": ["total_amount", "status", "ordered_at", "customer_id", "order_id"],
+  "rows": [
+    [
+      {"kind": "float64", "data": "2500.5"},
+      {"kind": "string", "data": "OPEN"},
+      {"kind": "timestamp", "data": "2026-09-02T10:00:00Z"},
+      {"kind": "int64", "data": "11"},
+      {"kind": "int64", "data": "1001"}
+    ]
+  ]
+}

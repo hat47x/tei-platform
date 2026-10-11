@@ -20,6 +20,9 @@ const orderScenarioIndexFooterHTML = `<footer>JSON projection: <a href="/manifes
 func registerOrderEntryScenarioRoutes(mux *http.ServeMux, s *webTargetServer) {
 	mux.HandleFunc("/scenario/read", s.handleReadScenario)
 	mux.HandleFunc("/scenario/submit", s.handleCommandScenario)
+	if s.protectedSessionHandler != nil {
+		mux.Handle("/scenario/session-submit", s.protectedSessionHandler)
+	}
 	mux.HandleFunc("/custom-submit", s.handleCustomSubmit)
 }
 
@@ -140,6 +143,11 @@ func (s *webTargetServer) handleCommandScenario(w http.ResponseWriter, r *http.R
 		From:       request.From,
 		RowIndex:   request.RowIndex,
 	})
+	s.writeCommandScenarioHTTPResult(w, result, err)
+}
+
+// Both credential and session routes use the same JSON result and error envelope.
+func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, result commandScenarioResult, err error) {
 	if err != nil {
 		response := webCommandScenarioErrorResponse{
 			HandoverBaselineID:         s.projection.HandoverBaselineID,

@@ -519,18 +519,22 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 	if ctx.DataDesign == nil {
 		t.Fatal("Data Design Context is missing")
 	}
-	if ctx.DataDesign.ProjectionRevision != "tei.knowledge.data-design/v6" {
+	if ctx.DataDesign.ProjectionRevision != "tei.knowledge.data-design/v7" {
 		t.Fatalf("data design projection revision=%q", ctx.DataDesign.ProjectionRevision)
 	}
 	want := []string{
 		"resolve-current-semantic-data-and-source-evidence-before-design-change",
 		"separate-business-occurrence-identity-from-persistence-runtime-and-ui-identifiers",
+		"classify-relation-archetype-before-promoting-business-identity-or-functional-dependency",
+		"require-source-backed-association-semantics-before-composite-identity",
 		"establish-business-identifier-candidate-key-scope-time-and-equivalence-from-evidence",
 		"preserve-accepted-business-uniqueness-when-using-surrogate-identifiers",
 		"establish-functional-dependency-as-business-semantic-claim-not-sample-data-correlation",
 		"distinguish-functional-dependency-from-composite-domain-constraint",
 		"treat-relation-keys-scoped-uniqueness-and-persistence-keys-as-candidates-not-authority",
 		"preserve-unresolved-when-required-business-evidence-is-missing",
+		"review-derived-candidates-by-stable-fingerprint-and-evidence-requirement-before-authoring",
+		"resolve-first-class-authoring-contract-before-promoting-derived-candidate",
 		"route-derived-identity-and-dependency-proposals-through-shared-acceptance",
 	}
 	if !reflect.DeepEqual(ctx.DataDesign.DesignReviewProtocol, want) {
@@ -541,6 +545,12 @@ func TestDataDesignContextExposesOrderedAIReviewProtocol(t *testing.T) {
 		"data-design-review-protocol-is-derived-guidance-not-semantic-authority",
 	) {
 		t.Fatalf("review protocol authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
+	}
+	if !containsKnowledgeContextString(
+		ctx.DataDesign.AuthorityLimits,
+		"relation-archetype-review-is-guidance-not-semantic-proof",
+	) {
+		t.Fatalf("relation archetype authority limit is missing: %+v", ctx.DataDesign.AuthorityLimits)
 	}
 	for _, limit := range []string{
 		"current-data-uniqueness-is-not-functional-dependency-proof",
@@ -940,7 +950,9 @@ func TestRelationUniqueValidationResolvesScopedDataDesignWithoutInventingIdentit
 	}
 	fdCandidate := got.DataDesign.FunctionalDependencyCandidates[0]
 	if len(fdCandidate.Determinants) != 2 ||
-		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Kind != "related-occurrence" ||
+		fdCandidate.Determinants[0].Relation != "sales.order.lines" ||
+		fdCandidate.Determinants[0].End != "source" ||
 		fdCandidate.Determinants[0].Data != "sales.order" ||
 		fdCandidate.Determinants[1].Kind != "attribute" ||
 		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
@@ -950,6 +962,50 @@ func TestRelationUniqueValidationResolvesScopedDataDesignWithoutInventingIdentit
 		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
 		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
 		t.Fatalf("validation context invented accepted identity or FD: %+v", got.DataDesign)
+	}
+}
+
+func TestAuthorizationGrantDoesNotInferCompositeBusinessIdentityFromIdentifierLikeFields(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"security.authorization_grant",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil || got.DataDesign.Data != "security.authorization_grant" {
+		t.Fatalf("AuthorizationGrant Data Design Context is missing: %+v", got.DataDesign)
+	}
+	if len(got.DataDesign.Attributes) != 3 {
+		t.Fatalf("AuthorizationGrant attribute context is incomplete: %+v", got.DataDesign.Attributes)
+	}
+	if len(got.DataDesign.BusinessIdentityCandidates) != 0 ||
+		len(got.DataDesign.FunctionalDependencyCandidates) != 0 {
+		t.Fatalf("subject/action/resource shape was generalized into determinant candidates: %+v", got.DataDesign)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("AuthorizationGrant identity was invented from identifier-like fields: %+v", got.DataDesign)
+	}
+	if !hasDataDesignEvidence(
+		got.DataDesign,
+		"semantic-data",
+		"security.authorization_grant",
+		"semantic/security/authorization.tei",
+	) {
+		t.Fatalf("AuthorizationGrant Source Evidence is missing: %+v", got.DataDesign.Evidence)
+	}
+	for _, question := range []string{
+		"which-fields-identify-the-business-occurrence",
+		"what-is-the-uniqueness-scope",
+		"is-this-business-occurrence-identity-or-history-version-identity",
+	} {
+		if !containsKnowledgeContextString(got.DataDesign.BusinessIdentityEvidenceQuestions, question) {
+			t.Fatalf("AuthorizationGrant identity question %q is missing: %+v", question, got.DataDesign.BusinessIdentityEvidenceQuestions)
+		}
 	}
 }
 
@@ -972,7 +1028,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.Focus.ID != "sales.order_line" {
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
-	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v6" ||
+	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v7" ||
 		len(dataDesign.Fingerprint) <= len("sha256:") ||
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" ||
 		dataDesign.ResolutionStatus != "resolved" ||
@@ -1053,6 +1109,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	for _, question := range []string{
 		"what-business-meaning-does-the-relation-express",
 		"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+		"does-this-relation-archetype-support-business-identity-or-functional-dependency-or-only-topology",
 		"what-cardinality-is-required",
 		"is-the-relation-current-only-or-temporal",
 		"what-history-or-validity-period-must-be-preserved",
@@ -1126,7 +1183,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("business identity candidate drifted: %+v", identityCandidate)
 	}
 	if len(identityCandidate.Components) != 2 ||
-		identityCandidate.Components[0].Kind != "relation-source-occurrence" ||
+		identityCandidate.Components[0].Kind != "related-occurrence" ||
+		identityCandidate.Components[0].Relation != "sales.order.lines" ||
+		identityCandidate.Components[0].End != "source" ||
 		identityCandidate.Components[0].Data != "sales.order" ||
 		identityCandidate.Components[1].Kind != "attribute" ||
 		identityCandidate.Components[1].Data != "sales.order_line" ||
@@ -1166,7 +1225,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("functional dependency candidate drifted: %+v", fdCandidate)
 	}
 	if len(fdCandidate.Determinants) != 2 ||
-		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Kind != "related-occurrence" ||
+		fdCandidate.Determinants[0].Relation != "sales.order.lines" ||
+		fdCandidate.Determinants[0].End != "source" ||
 		fdCandidate.Determinants[0].Data != "sales.order" ||
 		fdCandidate.Determinants[0].Attribute != "" ||
 		fdCandidate.Determinants[1].Kind != "attribute" ||

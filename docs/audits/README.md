@@ -15,6 +15,7 @@
 - [業務手順からの明示参照が果たす役割](LANE_B_BUSINESS_PROCEDURE_EXPLICIT_REF_ROLE_AUDIT_2026-09.md)
 - [業務手順における参照対象の表現方法](LANE_B_CROSS_VIEW_REF_REPRESENTATION_OPTION_AUDIT_2026-09.md)
 - [業務手順から検証規則への明示的な参照](LANE_B_VALIDATION_REF_NECESSITY_AUDIT_2026-09.md)
+- [Applicationと業務手順のValidation参照差（REF-SPEC-01、2026年10月）](ref-spec-01-2026-10-09-source-contrast.md)
 - [公開情報から得られる業務資料と利用条件](LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md)
 - [リポジトリ内の独立した業務資料の有無](LANE_B_REALISTIC_BUSINESS_REFERENCE_CORPUS_AUDIT_2026-09.md)
 

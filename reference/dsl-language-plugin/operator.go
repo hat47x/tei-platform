@@ -25,19 +25,24 @@ type OperatorContract struct {
 }
 
 // ResolveOperator never chooses a newer version or the first registered item.
+// Conflicting fingerprints for the same identity and version are ambiguous,
+// even if the requested fingerprint is present in the catalog.
 func ResolveOperator(pin OperatorContract, catalog []OperatorContract) (OperatorContract, error) {
-	if pin.ID == "" || pin.Version == "" || pin.Fingerprint == "" || pin.InputType == "" || pin.OutputType == "" || pin.Effect != "pure" {
+	if pin.ID == "" || pin.Version == "" || pin.Fingerprint == "" || pin.InputType == "" || pin.OutputType == "" || pin.Effect == "" {
 		return OperatorContract{}, ErrOperatorInvalid
+	}
+	if pin.Effect != "pure" {
+		return OperatorContract{}, fmt.Errorf("%w: %s", ErrEffectEscalation, pin.ID)
 	}
 	matches := 0
 	var found OperatorContract
 	for _, c := range catalog {
-		if c.ID == pin.ID && c.Version == pin.Version && c.Fingerprint == pin.Fingerprint {
+		if c.ID == pin.ID && c.Version == pin.Version {
 			matches++
 			found = c
 		}
 	}
-	if matches == 0 {
+	if matches == 0 || (matches == 1 && found.Fingerprint != pin.Fingerprint) {
 		return OperatorContract{}, fmt.Errorf("%w: %s@%s", ErrOperatorMissing, pin.ID, pin.Version)
 	}
 	if matches > 1 {
@@ -47,24 +52,4 @@ func ResolveOperator(pin OperatorContract, catalog []OperatorContract) (Operator
 		return OperatorContract{}, fmt.Errorf("%w: incompatible signature for %s", ErrOperatorInvalid, pin.ID)
 	}
 	return found, nil
-}
-
-// ComposePure verifies that the output type of each step is exactly the input
-// type of the next step. This is not a general type system or execution plan.
-func ComposePure(steps []OperatorContract) (string, error) {
-	if len(steps) == 0 {
-		return "", ErrOperatorInvalid
-	}
-	for i, s := range steps {
-		if s.Effect != "pure" {
-			return "", fmt.Errorf("%w: %s", ErrEffectEscalation, s.ID)
-		}
-		if s.ID == "" || s.InputType == "" || s.OutputType == "" || s.Version == "" || s.Fingerprint == "" {
-			return "", ErrOperatorInvalid
-		}
-		if i > 0 && steps[i-1].OutputType != s.InputType {
-			return "", fmt.Errorf("%w: %s -> %s type mismatch", ErrOperatorInvalid, steps[i-1].ID, s.ID)
-		}
-	}
-	return steps[len(steps)-1].OutputType, nil
 }

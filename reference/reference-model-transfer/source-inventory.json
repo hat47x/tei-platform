@@ -73,7 +73,14 @@
     },
     "business": {
       "taskActionCount": 148,
-      "taskActionsWithoutTaskFunctionIO": 6
+      "taskActionsWithoutTaskFunctionIO": 6,
+      "taskActionIdentity": {
+        "attributeAbsent": 35,
+        "attributePresentButEmpty": 113,
+        "usableNonEmptyID": 0,
+        "missingOrEmptyID": 148,
+        "note": "attribute presence is not usable identity; source token remains exact-snapshot addressability only"
+      }
     },
     "instanceSortKeys": {
       "0": 18,
