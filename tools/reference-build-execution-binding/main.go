@@ -54,7 +54,9 @@ type ArtifactSet struct {
 }
 
 // BuildExecutionResult binds one exact execution plan to one exact content set.
-// Same bytes from a different execution remain a different result identity.
+// Different plans can produce the same bytes but yield different result identities.
+// Repeating the same plan with the same ArtifactSet gives the same result identity;
+// actual execution attempts require separate observation Evidence.
 type BuildExecutionResult struct {
 	FormatVersion            int    `json:"formatVersion"`
 	ExecutionPlanFingerprint string `json:"executionPlanFingerprint"`
