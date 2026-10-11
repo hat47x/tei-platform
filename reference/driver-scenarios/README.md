@@ -31,3 +31,14 @@ The `scenario generate` output embeds `-scenario-sha256`, `-world-sha256`, `-plu
 The test-only typed values include string, int64, float64 and RFC3339 timestamp. NaN and infinity are refused. The whole raw row is mapped using the actual Canonical Query declaration; Scenario assertions must cover every semantic mapped column on every row. A missing mapping or wrong fixture parameter is an execution failure, not a passing zero-result Query.
 
 This remains a **draft implementation candidate** until actual exact-head full-checkout Go tests, repository health check and CLI integration with parallel PRs are verified. World and Plugin Lock *hashes* are not substitutes for Accepted Revision/Policy/Authority qualification or external provider evidence.
+
+## Canonical Validation scenarios
+
+Two additional persisted steps (`validate-positive`, `validate-denied`) execute the existing `driver.ResolveApplicationValidations` and `validationeval.Evaluate` over explicit synthetic input fixtures. Every Application-declared Validation must appear in the Scenario's expected outcomes; rules are **never selected from the Scenario**.
+
+The expected negative business outcome `not-satisfied` is a valid, successful *negative test*, not an Execution Error. A missing input, unexpected outcome, duplicated or undeclared rule, or extra unused fixture input is an Execution Error. These steps do not authenticate or authorize the caller, invoke Command, or perform independent Observation, and are **not** evidence for those paths.
+
+```bash
+go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-pattern-smoke.json -workspace reference/workspace -step validate-positive
+go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-pattern-smoke.json -workspace reference/workspace -step validate-denied
+```

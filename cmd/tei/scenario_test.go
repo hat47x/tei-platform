@@ -17,23 +17,16 @@ func scenarioFixtureCopy(t *testing.T, scenarioPath string) (string, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixtureSource, err := os.ReadFile(filepath.Join(filepath.Dir(scenarioPath), "fixtures", "recent_orders.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	dir := t.TempDir()
-	if err := os.Mkdir(filepath.Join(dir, "fixtures"), 0700); err != nil {
-		t.Fatal(err)
-	}
+	if err := os.Mkdir(filepath.Join(dir, "fixtures"), 0700); err != nil { t.Fatal(err) }
 	newPath := filepath.Join(dir, "scenario.json")
-	fixturePath := filepath.Join(dir, "fixtures", "recent_orders.json")
-	if err := os.WriteFile(newPath, source, 0600); err != nil {
-		t.Fatal(err)
+	if err := os.WriteFile(newPath, source, 0600); err != nil { t.Fatal(err) }
+	for _, name := range []string{"recent_orders.json", "order_valid.json", "order_invalid.json"} {
+		fixtureSource, err := os.ReadFile(filepath.Join(filepath.Dir(scenarioPath), "fixtures", name))
+		if err != nil { t.Fatal(err) }
+		if err := os.WriteFile(filepath.Join(dir, "fixtures", name), fixtureSource, 0600); err != nil { t.Fatal(err) }
 	}
-	if err := os.WriteFile(fixturePath, fixtureSource, 0600); err != nil {
-		t.Fatal(err)
-	}
-	return newPath, fixturePath
+	return newPath, filepath.Join(dir, "fixtures", "recent_orders.json")
 }
 
 func runScenarioCheckForTest(path, workspace, plan string) (string, error) {
@@ -62,10 +55,10 @@ func TestScenarioCLIReferenceRoundTrip(t *testing.T) {
 	if err := json.Unmarshal([]byte(generated), &plan); err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Commands) != 3 || plan.Commands[0].StepID != "browse-pattern" || plan.Commands[1].StepID != "record-pattern" || plan.Commands[2].StepID != "browse-synthetic" {
+	if len(plan.Commands) != 5 || plan.Commands[0].StepID != "browse-pattern" || plan.Commands[1].StepID != "record-pattern" || plan.Commands[2].StepID != "browse-synthetic" || plan.Commands[3].StepID != "validate-positive" || plan.Commands[4].StepID != "validate-denied" {
 		t.Fatalf("missing command bindings: %#v", plan.Commands)
 	}
-	if len(plan.WorldSHA256) != 64 || len(plan.PluginLockSHA256) != 64 || len(plan.FixtureSHA256["browse-synthetic"]) != 64 {
+	if len(plan.WorldSHA256) != 64 || len(plan.PluginLockSHA256) != 64 || len(plan.FixtureSHA256["browse-synthetic"]) != 64 || len(plan.FixtureSHA256["validate-positive"]) != 64 || len(plan.FixtureSHA256["validate-denied"]) != 64 {
 		t.Fatalf("missing independently bound hashes: %#v", plan)
 	}
 	var pinnedOutput bytes.Buffer
@@ -250,7 +243,7 @@ func TestScenarioCLIRejectsWrongGeneratedEnvironmentFingerprint(t *testing.T) {
 	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Commands) != 3 {
+	if len(plan.Commands) != 5 {
 		t.Fatalf("generated commands=%d", len(plan.Commands))
 	}
 	for _, target := range []string{"-world-sha256", "-plugin-lock-sha256", "-fixture-sha256"} {
@@ -271,4 +264,54 @@ func TestScenarioCLIRejectsWrongGeneratedEnvironmentFingerprint(t *testing.T) {
 			t.Fatalf("generated run ignored modified %s", target)
 		}
 	}
+}
+
+func TestScenarioCanonicalValidationGeneratedCommands(t *testing.T) {
+	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
+	workspace := filepath.Join("..", "..", "reference", "workspace")
+	var output bytes.Buffer
+	if err := runScenarioCommand([]string{"generate", "-scenario", reference, "-workspace", workspace}, &output); err != nil { t.Fatal(err) }
+	var plan scenariotest.Plan
+	if err := json.Unmarshal(output.Bytes(), &plan); err != nil { t.Fatal(err) }
+	for _, tc := range []struct{ id, result string }{
+		{"validate-positive", "satisfied"},
+		{"validate-denied", "not-satisfied"},
+	} {
+		var command scenariotest.Command
+		for _, item := range plan.Commands { if item.StepID == tc.id { command = item; break } }
+		if len(command.Argv) == 0 { t.Fatalf("missing generated validation command for %s", tc.id) }
+		var actual bytes.Buffer
+		if err := runScenarioCommand(command.Argv[2:], &actual); err != nil { t.Fatal(err) }
+		var receipt struct{ Evidence []scenarioStepEvidence `json:"evidence"` }
+		if err := json.Unmarshal(actual.Bytes(), &receipt); err != nil { t.Fatal(err) }
+		if len(receipt.Evidence) != 1 || !receipt.Evidence[0].Verified ||
+			receipt.Evidence[0].ValidationResults["sales.order_line.quantity_positive"] != tc.result {
+			t.Fatalf("%s validation outcome mismatch: %s", tc.id, actual.String())
+		}
+	}
+}
+
+func TestScenarioValidationRejectsWrongResultAndMissingInput(t *testing.T) {
+	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
+	workspace := filepath.Join("..", "..", "reference", "workspace")
+	path, _ := scenarioFixtureCopy(t, reference)
+	run := func() error {
+		var out bytes.Buffer
+		return runScenarioCommand([]string{"run", "-scenario", path, "-workspace", workspace, "-step", "validate-positive"}, &out)
+	}
+	if err := run(); err != nil { t.Fatal(err) }
+	original, err := os.ReadFile(path)
+	if err != nil { t.Fatal(err) }
+	bad := strings.Replace(string(original), `"sales.order_line.line_number_positive": "satisfied"`, `"sales.order_line.line_number_positive": "not-satisfied"`, 1)
+	if bad == string(original) { t.Fatal("expected-result mutation had no effect") }
+	if err := os.WriteFile(path, []byte(bad), 0600); err != nil { t.Fatal(err) }
+	if err := run(); err == nil { t.Fatal("mismatched Validation result passed") }
+	if err := os.WriteFile(path, original, 0600); err != nil { t.Fatal(err) }
+	inputPath := filepath.Join(filepath.Dir(path), "fixtures", "order_valid.json")
+	input, err := os.ReadFile(inputPath)
+	if err != nil { t.Fatal(err) }
+	incomplete := strings.Replace(string(input), `"sales.order_line.quantity": "2.5",`, "", 1)
+	if incomplete == string(input) { t.Fatal("input mutation had no effect") }
+	if err := os.WriteFile(inputPath, []byte(incomplete), 0600); err != nil { t.Fatal(err) }
+	if err := run(); err == nil { t.Fatal("missing Validation input passed") }
 }

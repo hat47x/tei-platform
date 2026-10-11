@@ -127,3 +127,26 @@ func TestRejectMalformedTypedBrowseData(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalValidationScenarioFixtureContracts(t *testing.T) {
+	valid := `{"numbers":{"quantity":"2.5"},"relationKeys":[{"relation":"r","attribute":"a","keys":["1","2"]}]}`
+	if _, err := ParseValidationFixture([]byte(valid)); err != nil { t.Fatal(err) }
+	for _, invalid := range []string{
+		`{"numbers":{},"relationKeys":null}`,
+		`{"numbers":{"quantity":"bad"},"relationKeys":[]}`,
+		`{"numbers":{},"relationKeys":[{"relation":"r","attribute":"a","keys":[]},{"relation":"r","attribute":"a","keys":[]}]}`,
+		`{"numbers":{},"relationKeys":[{"relation":"r","attribute":"a"}]}`,
+		`{"numbers":{},"relationKeys":[],"unknown":1}`,
+	} {
+		if _, err := ParseValidationFixture([]byte(invalid)); err == nil { t.Fatalf("invalid fixture accepted: %s", invalid) }
+	}
+	scenario := Scenario{SchemaVersion:SchemaVersion, ID:"val", Application:"order_entry", Steps:[]Step{{ID:"validate",Operation:"evaluate-validations",Fixture:"fixtures/in.json",ExpectValidations:map[string]string{"sales.rule":"satisfied"}}}}
+	b,_ := json.Marshal(scenario)
+	if _,err := Parse(b);err!=nil {t.Fatal(err)}
+	scenario.Steps[0].ExpectValidations["sales.rule"]="unknown"
+	b,_ = json.Marshal(scenario)
+	if _,err := Parse(b);err==nil { t.Fatal("invalid expected outcome accepted") }
+	scenario.Steps[0].ExpectValidations=map[string]string{}
+	b,_ = json.Marshal(scenario)
+	if _,err := Parse(b);err==nil { t.Fatal("empty expectations accepted") }
+}
