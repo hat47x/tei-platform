@@ -53,6 +53,7 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0028: TEI成果物を人間・AI Builder・AI Business Actorの共通知識面として扱う](0028-human-ai-builder-agent-shared-knowledge-plane.md)
 - [ADR-0029: Applicationが評価するValidationの選択を、Canonicalな`uses validation`宣言から導く](0029-application-validation-selection-from-canonical-declaration.md)
 - [ADR-0030: 生成AIが扱う情報を文脈付きの認識状態として保持する](0030-context-scoped-epistemic-knowledge.md)
+- [ADR-0032: Cordis型の合成KernelをTEIの新しいプラグイン基盤とする](0032-composition-kernel-replacement.md)（目標方針として採用。Production実装は移行中）
 
 ## `docs/adr/`について
 
