@@ -55,18 +55,7 @@
         ]
       },
       "TableKey": {
-        "classification": [
-          "canonical-candidate",
-          "source-key-assertion",
-          "unresolved"
-        ],
-        "extension": "reference.xead.relational-semantics",
-        "authorityLimits": [
-          "legacy-key-is-not-business-identity",
-          "legacy-key-is-not-candidate-key",
-          "legacy-key-is-not-functional-dependency",
-          "legacy-key-is-not-physical-key-authority"
-        ]
+        "classification": ["unresolved"]
       },
       "TableKeyField": {
         "classification": [

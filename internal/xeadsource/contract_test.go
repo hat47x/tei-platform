@@ -24,13 +24,9 @@ func TestClassificationPolicyFromContractCarriesMachineReadableAuthorityLimits(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(policy["TableKey"].AuthorityLimits, []string{
-		"legacy-key-is-not-business-identity",
-		"legacy-key-is-not-candidate-key",
-		"legacy-key-is-not-functional-dependency",
-		"legacy-key-is-not-physical-key-authority",
-	}) {
-		t.Fatalf("TableKey authority limits drifted: %#v", policy["TableKey"])
+	if !reflect.DeepEqual(policy["TableKey"].Classifications, []string{"unresolved"}) ||
+		policy["TableKey"].Extension != "" || len(policy["TableKey"].AuthorityLimits) != 0 {
+		t.Fatalf("synthetic contract overstates TableKey semantics: %#v", policy["TableKey"])
 	}
 }
 
@@ -64,13 +60,9 @@ func TestInspectWithContractBindsExactContractAndNormalizedPolicy(t *testing.T) 
 	if keyCandidate == nil {
 		t.Fatal("TableKey candidate is missing")
 	}
-	if !reflect.DeepEqual(keyCandidate.AuthorityLimits, []string{
-		"legacy-key-is-not-business-identity",
-		"legacy-key-is-not-candidate-key",
-		"legacy-key-is-not-functional-dependency",
-		"legacy-key-is-not-physical-key-authority",
-	}) {
-		t.Fatalf("contract authority limits did not reach candidate: %#v", keyCandidate)
+	if !reflect.DeepEqual(keyCandidate.Classifications, []string{"unresolved"}) ||
+		keyCandidate.Extension != "" || len(keyCandidate.AuthorityLimits) != 0 {
+		t.Fatalf("synthetic contract overstated TableKey semantics: %#v", keyCandidate)
 	}
 }
 

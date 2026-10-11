@@ -27,7 +27,7 @@ func copyAmplificationSource(output Expr) Source {
 			MaxOutputBytes:  8192,
 			MaxNestingDepth: 20,
 		},
-		Inputs: []InputSpec{{Name: "source", Kind: InputObject}},
+		Inputs:  []InputSpec{{Name: "source", Kind: InputObject}},
 		Program: Program{Output: output},
 	}
 }
@@ -63,8 +63,8 @@ func TestEvaluateSnapshotIsIndependentOfCallerMutation(t *testing.T) {
 func TestEvaluateFieldSelectionIsIndependentOfCallerMutation(t *testing.T) {
 	input := copyAmplificationInput()
 	expr := Expr{
-		Op: OpSelectField,
-		From: &Expr{Op: OpInput, Name: "source"},
+		Op:    OpSelectField,
+		From:  &Expr{Op: OpInput, Name: "source"},
 		Field: "items",
 	}
 	result, err := Evaluate(copyAmplificationSource(expr), map[string]Value{"source": input})
@@ -80,8 +80,8 @@ func TestEvaluateFieldSelectionIsIndependentOfCallerMutation(t *testing.T) {
 func TestEvaluateReplaceFieldKeepsOriginalObjectUnchanged(t *testing.T) {
 	input := copyAmplificationInput()
 	expr := Expr{
-		Op: OpReplaceField,
-		From: &Expr{Op: OpInput, Name: "source"},
+		Op:    OpReplaceField,
+		From:  &Expr{Op: OpInput, Name: "source"},
 		Field: "replace",
 		Value: &Expr{Op: OpLiteral, Literal: json.RawMessage(`"new"`)},
 	}
@@ -102,8 +102,8 @@ func TestEvaluateReplaceFieldKeepsOriginalObjectUnchanged(t *testing.T) {
 func TestEvaluateOmitFieldKeepsOriginalObjectUnchanged(t *testing.T) {
 	input := copyAmplificationInput()
 	expr := Expr{
-		Op: OpOmitField,
-		From: &Expr{Op: OpInput, Name: "source"},
+		Op:    OpOmitField,
+		From:  &Expr{Op: OpInput, Name: "source"},
 		Field: "replace",
 	}
 	result, err := Evaluate(copyAmplificationSource(expr), map[string]Value{"source": input})

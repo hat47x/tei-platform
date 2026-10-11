@@ -416,7 +416,7 @@ func TestREFSPEC01StalePremiseUsesActualSharedAcceptancePreview(t *testing.T) {
 	root := repositoryRoot(t)
 	temp := t.TempDir()
 
-	baseCandidate, err := os.ReadFile(filepath.Join(root, "plan", "issue", "000075-practical-b", "candidate.json"))
+	baseCandidate, err := os.ReadFile(filepath.Join(root, "tools", "reference-first-web-target", "testdata", "line-number-positive.synthetic-candidate.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
