@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
-	"strconv"
 )
 
 type webTargetServer struct {
@@ -47,56 +45,17 @@ func requireApplicationMatch(kind string, runner any, want string) error {
 	return nil
 }
 
-type webReadScenarioResponse struct {
-	HandoverBaselineID         string             `json:"handoverBaselineId"`
-	BaselineRepositoryRevision string             `json:"baselineRepositoryRevision"`
-	TargetBuildRevision        string             `json:"targetBuildRevision"`
-	TargetAdapter              string             `json:"targetAdapter"`
-	Host                       string             `json:"host"`
-	Result                     readScenarioResult `json:"result"`
-}
-
-type webCommandScenarioRequest struct {
-	LoginID    string `json:"loginId"`
-	Credential string `json:"credential"`
-	From       string `json:"from"`
-	RowIndex   int    `json:"row"`
-}
-
-type webCommandScenarioResponse struct {
-	HandoverBaselineID         string                `json:"handoverBaselineId"`
-	BaselineRepositoryRevision string                `json:"baselineRepositoryRevision"`
-	TargetBuildRevision        string                `json:"targetBuildRevision"`
-	TargetAdapter              string                `json:"targetAdapter"`
-	Host                       string                `json:"host"`
-	Result                     commandScenarioResult `json:"result"`
-}
-
-type webCommandScenarioErrorResponse struct {
-	HandoverBaselineID         string                `json:"handoverBaselineId"`
-	BaselineRepositoryRevision string                `json:"baselineRepositoryRevision"`
-	TargetBuildRevision        string                `json:"targetBuildRevision"`
-	TargetAdapter              string                `json:"targetAdapter"`
-	Host                       string                `json:"host"`
-	Result                     commandScenarioResult `json:"result"`
-	ExecutionError             string                `json:"executionError"`
-}
-
 func newWebTargetServer(
 	projection webTargetProjection,
 	readScenario readScenarioRunner,
 	commandScenario commandScenarioRunner,
 	options ...webTargetOption,
 ) (*webTargetServer, error) {
-	index, err := template.New("index").Parse(indexHTML)
+	index, err := template.New("index").Parse(indexHTML + `{{define "target_footer"}}` + referenceIndexFooterHTML() + `{{end}}`)
 	if err != nil {
 		return nil, err
 	}
-	customSubmit, err := template.New("custom-submit").Parse(customSubmitHTML)
-	if err != nil {
-		return nil, err
-	}
-	customerLookupPage, err := template.New("customer-lookup").Parse(customerLookupHTML)
+	customSubmit, customerLookupPage, err := referenceScenarioTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +97,7 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/manifest.json", s.handleManifest)
 	mux.HandleFunc("/healthz", s.handleHealth)
+
 	mux.HandleFunc("/scenario/read", s.handleReadScenario)
 	mux.HandleFunc("/scenario/submit", s.handleCommandScenario)
 	if s.protectedSessionHandler != nil {
@@ -146,6 +106,7 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/custom-submit", s.handleCustomSubmit)
 	mux.HandleFunc("/scenario/customer-lookup", s.handleCustomerLookupScenario)
 	mux.HandleFunc("/customer-lookup", s.handleCustomerLookupPage)
+
 	return mux
 }
 
@@ -390,7 +351,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 0 24px 40px; opacity: .72; 
 <ul class="compact">{{range .AuthorityLimits}}<li><code>{{.}}</code></li>{{end}}</ul>
 </section>
 </main>
-<footer>JSON projection: <a href="/manifest.json">/manifest.json</a> · read-only Driver slice: <a href="/scenario/read">/scenario/read</a> · submit Command: <code>POST /scenario/submit</code> · Custom UI: <a href="/custom-submit">/custom-submit</a> · health: <a href="/healthz">/healthz</a></footer>
+{{template "target_footer" .}}
 </body>
 </html>
 `
