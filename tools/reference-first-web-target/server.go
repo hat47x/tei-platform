@@ -48,7 +48,7 @@ func newWebTargetServer(
 	commandScenario commandScenarioRunner,
 	options ...webTargetOption,
 ) (*webTargetServer, error) {
-	index, err := template.New("index").Parse(indexHTML)
+	index, err := template.New("index").Parse(indexHTML + `{{define "target_footer"}}` + referenceIndexFooterHTML() + `{{end}}`)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 0 24px 40px; opacity: .72; 
 <ul class="compact">{{range .AuthorityLimits}}<li><code>{{.}}</code></li>{{end}}</ul>
 </section>
 </main>
-<footer>JSON projection: <a href="/manifest.json">/manifest.json</a> · read-only Driver slice: <a href="/scenario/read">/scenario/read</a> · submit Command: <code>POST /scenario/submit</code> · Custom UI: <a href="/custom-submit">/custom-submit</a> · health: <a href="/healthz">/healthz</a></footer>
+{{template "target_footer" .}}
 </body>
 </html>
 `

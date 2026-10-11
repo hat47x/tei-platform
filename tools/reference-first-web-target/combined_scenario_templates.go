@@ -7,6 +7,11 @@ import "html/template"
 // Keep legacy combined-mode template construction in one provider function.
 // Other compile-time entries can replace this with only their own templates
 // without changing the shared transport constructor.
+// Historical combined-mode index footer remains byte-for-byte unchanged.
+func referenceIndexFooterHTML() string {
+	return orderScenarioIndexFooterHTML
+}
+
 func referenceScenarioTemplates() (*template.Template, *template.Template, error) {
 	customSubmit, err := template.New("custom-submit").Parse(customSubmitHTML)
 	if err != nil {
