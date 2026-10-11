@@ -25,7 +25,6 @@ type scenarioStepEvidence struct {
 	Verified          bool              `json:"verified"`
 	EvidenceNature    string            `json:"evidenceNature"`
 	RowCount          int               `json:"rowCount,omitempty"`
-	RowCount          int               `json:"rowCount,omitempty"`
 	ValidationResults map[string]string `json:"validationResults,omitempty"`
 	ObservationResult any               `json:"observationResult,omitempty"`
 }
