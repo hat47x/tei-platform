@@ -2,6 +2,7 @@
 
 - 状態: 評価待ち（未採用）。実装・Reference変更の根拠にしない
 - 日付: 2026-10-08
+- 更新: 2026-10-09に付録Dを追加し、付録Aの「MCP」「agent credential」の行を更新した。章立てと既存の番号は変えていない
 - 親Issue: [ISSUE-000052](../issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md)
 - 関連: [SUI Reference Adoption設計基線](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) / [ISSUE-000080](../issue/000080-extensible-plugin-capability-contract.md) / [ADR-0019](../adr/0019-authentication-capability-boundary.md)
 - 減らす不確実性: RQ-008（Capability単位の置換）、RQ-019（権限とResource）、RQ-029（知識の再利用・移植）、RQ-005（ApplicationとDatabaseのN:M）、RQ-010（高密度な設計・運用環境）、RQ-031（Coreを特権化しない）、RQ-032（Plugin / DSLでの意味宣言）、RQ-023（一人で維持できる構造）
@@ -106,6 +107,8 @@ scope-isolation Bundle（仮称）
 
 結果は`allow` / `deny` / `not-evaluated`の三値にし、PDPの停止や無効な応答は`not-evaluated`として扱い、`deny`とは分けます。これは、SEI ADR-0030が定める区別と同じです。SUIのD8が採る「PDP不達なら拒否」は、この三値に対する既定動作の一つです。他のscopeの資源IDは存在を推測させない応答にします。
 
+なお、手順2の「membershipが有効であること」と手順6の「外部の認可判断への問い合わせ」は、組織の構成員（member）を前提に書いています。外部のAI協働者（agent）のようにmembershipを持たない主体を同じ手順で扱うと、この二つは読み替えが要ります。SUIの実装から読み取れた読み替えの案は付録D.5に記録しましたが、評価待ちであり、この手順の変更としては採用していません。
+
 認証は、ADR-0019の`security.authenticate`と分けたまま、その後ろに`scope.resolve`を置きます。`scope.resolve`は、検証済みclaimか、境界で外部入力を除去した信頼できるhost対応からだけscopeを決めます。browserのheaderやqueryから決めません。
 
 また、「active scopeは認証sessionごとに一つ」「scopeが切り替わったら古いcontextを拒否する」というADR-0061の仕組み（サーバーが発行する`tenantSessionVersion`の比較）は、**文脈の世代による遮断（fencing）**として一般化できます。TEIにはすでに、ownership / fencingの考え方（RQ-020）と、`expectedRevision`をアトミックに比較するcommit境界（`tools/reference-sui-interaction`のE1）があります。同じ原理なので、新しい概念を足さず、既存のfencingへ寄せられるかを先に評価します。
@@ -118,6 +121,8 @@ GET / PUT / list / search / count / export / share / import / MCP / webhook / jo
 ```
 
 この試験は言語に依存しません。SUIのPython実装でも、将来のGo実装でも、同じ試験を通ることで同じ契約を満たしたと言えます。
+
+この行列の最後の項目（agent credential）は、SUIに実装が現れるまで、中身を具体的に書けませんでした。実装から読み取れた、行列の各経路で追加して問うべき合格条件の候補は付録D.5にまとめています。ただし、確認できたのはSUI一件の未merge実装で、IdPもテスト用に模したものです。そのため、L3の適合条件としては採用せず、評価待ちの候補として扱います。
 
 ### 5.3 Pluginにしてはいけないもの
 
@@ -298,6 +303,7 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 - **要件区分の語彙（隔離の強さの段階）は固定していません。** SUI一件から作ると、SUIの実装に引きずられます。SEI・EKIの要求を見てから決めます
 - **エディタUIは、画面モックとReferenceの候補です。** Studio自体がDesign Onlyであり、本書はUIの実装を約束しません
 - **SEIとEKIの現行規定は、SUIの実装ほど詳細ではありません。** 共通の契約に載せられるかは、三者の担当が確認してからです
+- **付録Dの項目（AG-1〜AG-12）は、SUI一件の未merge実装に基づく候補です。** 第二のApplicationで再現するまで標準化しません。確認に使ったIdPはテスト用に模したもので、実在のIdPにおける`sub`の意味、PostgreSQLの本番相当の構成、攻撃者の視点での審査は、まだ確認していません。詳細は付録D.6とD.7に書きました
 - **ここで述べた行数や参照回数は、2026-10-08時点の大まかな計測値です。** 分割の効果を測る指標（変更の波及箇所数）は、`ISSUE-000052`のchange amplificationで別途取ります
 - **この文書は、SUIがTEIへ移管されること、scope isolationが標準化されること、どの分割も実施されることを、まだ保証しません。** 複数のApplicationで再現した後に、ADRとIssueへ分けて判断します
 - 実在の機微資料を外部providerへ送らない、というSUIの不変条件は、この検討でも変更していません
@@ -308,12 +314,14 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 2. 共通部品の名前と範囲を`scope-isolation`（tenantを一例とする）にしてよいか
 3. SEI、EKI側の担当と、conformanceの共有場所（どのリポジトリに置くか）を決める必要があるか
 4. SUI側の分割は、本書の八章の順序で`ROADMAP.md`へ載せてよいか（SUI側のAGENTS.mdでは、管理文書を増やさずROADMAPにTODOを書く規則です）
+5. 付録D.4のAG-12（tenant確定前の索引が持つ全体での一意制約が、他tenantの対応付けの存在を伝えうること）を、TEI側の部品化を待たずに、SUI側で先に判断し、SUIの`ROADMAP.md`へ載せてよいか
 
 ## 付録A. 越境試験の棚卸し（9章の一つ目の実施結果）
 
 - 日付: 2026-10-09
 - 方法: SUIのroute定義とテスト名を静的に読み、`grep`で対応を確認した。**テストは実行していない。** 「見当たらない」は、tenant・saas・guest系のテストファイルを`grep`した範囲での所見であり、「試験が存在しない」とは断定しない
 - 対象: ADR-0059の実装gate 5が挙げる14経路
+- 更新（2026-10-09）: 「MCP」と「agent credential」の2行、および「読み取れること」の4を、SUIの未merge branchの実装に合わせて書き換えた。この更新分だけは、branch先端でtestを実行して確かめている（方法と限界は付録D）。ほかの行は初版のままで、試験は実行していない。SUIのADR番号に衝突があるので、付録D冒頭の注も参照のこと
 
 | 経路 | SUIの実装 | 越境試験の確認結果 |
 | --- | --- | --- |
@@ -324,12 +332,12 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 | export | 書き出しはclient側。サーバー側は`export-audit`でeventを記録 | **確認できず。** audit eventにtenantIdを含める単体試験（`test_audit.py`）はあるが、`export-audit` routeの越境試験は見当たらない |
 | share | `document_access_admin`（可視性の更新） | RLSの試験（`test_document_access_rls_postgres.py`）はあるが、HTTP経路での越境は未確認 |
 | import | client側で検証し、`PUT`へ流す | `PUT`の試験に含まれる。import時にtenantの権限を持ち越さない規則（D10）の試験は見当たらない |
-| MCP | `SUI_RUNTIME_PROFILE=saas-multitenant`では`document_client.ts`が**起動を拒否する**（「tenantに束縛したMCP credentialが未実装」） | 試験以前に設計上は閉じている。解除条件が未定で、解除時に必要な試験は未整備 |
+| MCP | **main**では、`SUI_RUNTIME_PROFILE=saas-multitenant`で`document_client.ts`が**起動を拒否する**（「tenantに束縛したMCP credentialが未実装」）。**未mergeのbranch**（`feat/agent-oauth-token-exchange`の先端）では、stdioは`SUI_MCP_AGENT_CREDENTIAL`、HTTPはトークン交換の設定（`SUI_MCP_TOKEN_EXCHANGE_*`）が揃うときだけ起動でき、静的な`SUI_API_KEY`は拒否する（ADR-0093、ADR-0094） | **branch上では試験で固定されている。** backendのHTTP経路は`test_agent_credential_http.py`と`test_agent_oauth_http.py`、MCP側のvitestは`document_client.test.ts`、`token_exchange.test.ts`、`http_server_exchange.test.ts`。起動拒否を解除する条件は、ADR-0093に9項目で書かれている。**限界**: SUI一件で、PR #3214はDraft、残る2 branchは独自のPRを持たず積まれている。トークン交換の確認は、テスト用に模したIdPに限る。MCPとbackendを実際につないだ試験は見当たらない |
 | webhook / job | 該当機能なし | N/A |
 | audit | event envelopeに`tenantId`が必須。metadataで`tenantid`キーを予約済み | 単体では確認済み。DBに保存された監査を別tenantが読めないことの試験は確認できず |
 | cache | server側に共有cacheはなし。browser保存は`tenantId`で名前空間化 | frontendの試験（`app_browser_storage.test.ts`にtenant言及20件）。切り替え時の破棄は`app_runtime_cleanup.ts`にtenant言及がなく、別の経路かを要確認 |
 | rate limit | `rate_limit.py`。使用箇所は管理用のprovisioning routeだけで、キーはclient IP | 現状はtenantに属する経路に制限がなく、D7の「キーにtenantIdを含める」が働く場面がない（食い違いではない）。Data Planeへ制限を足す時にtenantをキーへ入れることを、conformanceの項目にする |
-| agent credential | 上記MCPと同じ。未実装 | N/A（実装時に必須化） |
+| agent credential | **未mergeのbranchで実装済み。** membershipを持たない別種の主体として、不透明な資格情報（ADR-0093）と、トークン交換後のOAuth主体の対応付け（ADR-0094）を扱う。Tenant Adminによる登録・一覧・失効のAPI（`/tenant-admin/agent-credentials`）がある。agentが通れるrouteは、許可リストの4つだけ | **あり（branch上）。** 同じdocIdを持つ別tenantの遮断、付与外・不存在・他tenantを同じ404にすること、失効・期限切れ・付与の取り消しが次の要求で効くこと、書き込み・export・archiveの403、未確認の本文を返さないこと、監査の主体（`test_agent_credential_http.py`）。OAuth経路（`test_agent_oauth_http.py`）、管理API（`test_agent_credential_admin_routes.py`）、agent用の表のFORCE RLS（`test_agent_credential_postgres_rls.py`）。**限界**: 付録D.7。PostgreSQLの試験は、実行した作業者の申告では使い捨てのPostgreSQL 16 clusterで通ったもので、本書は再実行しておらず、記録も確認していない |
 | 補足: 古いcontext | `test_tenant_session_precondition.py`、`test_saas_tenant_resource_gate_postgres.py` | あり。資源参照の前に止まること |
 
 **読み取れること**
@@ -337,7 +345,7 @@ Stage 1が先に来る点が要です。試験さえ移れば、実装がPython�
 1. 中核の経路（GET / PUT、RLSの二重化、古いcontextの遮断）は、試験で固定されている
 2. 一覧、export-audit、監査の読み取り、importの権限非継承は、HTTPレベルの試験が見当たらない。越境試験の第一候補
 3. rate limitは管理用routeだけにあり、tenantとは無関係に動く。Data Planeへ足す時の規則として、conformanceに載せる
-4. MCPは「閉じている」が、解除条件がない。共通部品のconformanceには「credentialをtenantと文書へ束縛する」項目が要る
+4. （初版）MCPは「閉じている」が、解除条件がない。共通部品のconformanceには「credentialをtenantと文書へ束縛する」項目が要る。（2026-10-09更新）SUI側が解除条件を9項目で定め、branch上で試験として固定した。初版で求めた項目は、付録DのAG-1〜AG-12として具体化した。ただし、いずれも評価待ちの候補で、SUI一件にとどまる
 
 この結果は、14経路を適合条件にするというL3の案が実在のコードに対して意味を持つことを示す。一方で、14経路のうち4経路はSUIにも機能がないため、共通のconformanceは「該当機能があれば必須」の形で書く必要がある。
 
@@ -405,3 +413,183 @@ SaaSの越境境界と同じく、「共有環境でだけ必要な保証」は�
 必須化の実装は、既存の`428 document_access_precondition_required`と同じ形状のコード（例: `document_precondition_required`）で足せる見込みです。新規作成の経路（`If-None-Match: *`）の扱いは、`inquiry_bundles`の既存契約に合わせられます。
 
 なお、これは`api.md`のAPI契約の変更であり、SUIのAGENTS.mdに従って契約・実装・関連テストを同時に更新する必要があります。長期的な設計判断にあたるため、実施する場合はADRに「価値への寄与」とともに記録することになります。
+
+## 付録D. agent資格情報とMCPが示したこと
+
+- 日付: 2026-10-09
+- 状態: 評価待ち（未採用）。本付録の項目（AG-1〜AG-12）は、scope-isolation BundleのL3へ加える**候補**であり、採用済みの要件でもCanonicalな意味でもない
+- 役割: SUIに現れたagent資格情報の実装を、TEI側から読み直した所見の記録。実装の正本はSUI側のADRと`02_Architecture/api.md`の2.15で、本付録はその第二正本ではない
+- 対象: SUIの未merge branch三つ。`feat/agent-credential-mcp`（Draft PR #3214）、`feat/agent-credential-admin-api`、`feat/agent-oauth-token-exchange`。後の二つは前のbranchの上に積まれ、独自のPRを持たない。先端のcommitは`7f02f17`
+- 方法: コード、ADR、`api.md`を読み、関連するtestをbranch先端で実行した。
+  - 実行したもの: backendの関連8ファイルをSQLite上で実行し、87 passed・6 skippedだった（skippedはPostgreSQLを要する試験）。MCPのvitest 3ファイルは38 passedだった。さらに、台帳の試験が分類漏れを実際に検出するかを、管理APIを追加したcommit（`586d647`）で実行して確かめた（AG-11）
+  - 実行していないもの: PostgreSQLを要する試験（`test_agent_credential_postgres_rls.py`など）は、実行環境が無く再実行していない。実行した作業者の申告では、使い捨てのPostgreSQL 16 clusterで通っているが、本書はその記録を確認していない
+- 減らす不確実性: RQ-019（権限とResource）、RQ-029（知識の再利用・移植）。SUI一件の実装から、どこまでをconformance項目として一般化してよいかを見分ける
+- 注（ADR番号）: 本付録の作成時点で、SUIの`main`には別の`ADR-0094`（`ADR-0094-oversized-document-review-path.md`。送信上限を超えた文書の確認導線）が入っており、branch上の`ADR-0094-agent-oauth-token-exchange-for-mcp-http.md`と番号が衝突している。本書の「ADR-0094」は、断りがない限り後者（agent向けのトークン交換）を指す。SUI側で採番が変わったときは、本書の参照を追随させる
+
+### D.1 背景
+
+付録Aの時点では、MCPは`saas-multitenant`で起動を拒否され、agent credentialは未実装でした。MCP（Model Context Protocol）は、AIエージェントが外部のデータやツールを呼び出すための接続規約です。agentは人間の利用者ではなく、tenantのmembership（その組織の構成員であること）も持ちません。そのため、「利用者を認証し、membershipを確認し、認可する」というこれまでの順序には、そのままでは載りません。
+
+その後、この空白を埋める実装が、SUIに三つのbranchとして現れました。
+
+- `feat/agent-credential-mcp`（ADR-0093）: Tenant Adminが登録する、tenantと文書に束縛した**不透明な資格情報**（opaque token。中身に意味を持たせず、サーバー側の表を引いて初めて意味が決まる文字列）。許可リスト方式のrouteと文書view。MCPのstdio通信
+- `feat/agent-credential-admin-api`: Tenant Adminによる登録・一覧・失効のAPI
+- `feat/agent-oauth-token-exchange`（ADR-0094）: MCPのHTTP通信が**トークン交換**（RFC 8693。IdP、つまりトークンを発行する認証サービスに、ある宛先向けのトークンを渡して、別の宛先向けの短命なトークンに引き換えてもらう仕組み）を行う。backendは、交換後のトークンの`(identity_provider_id, sub)`（IdPの識別子と、トークンが表す主体の識別子）からagentを引く
+
+付録Aの「読み取れること」の4は、共通部品のconformanceに「credentialをtenantと文書へ束縛する」項目が要ると書いていました。本付録は、この項目を実装に照らして具体化し、どこまで一般化できるかを分けて記録します。
+
+### D.2 防ぎたい失敗
+
+- **トークンに書かれたtenantを信じる失敗。** claim（トークンに書かれた主張）は権限ではなく要求にすぎません。信じると、IdPの設定ミスやclaimの付け替えが、そのままtenant越境になります。
+- **静的なAPI keyでtenantを済ませる失敗。** keyは、どのtenantの誰かを証明しません。共有環境でkeyが一つ漏れると、影響が全tenantに及びます。
+- **失効しても読み続けられる失敗。** 資格情報の状態をキャッシュしたり、トークンの有効期限だけに頼ったりすると、管理者が失効させた後もしばらく読めてしまいます。
+- **拒否の理由が応答の差として観測できる失敗。** 失効、期限切れ、未知、他tenantの文書が別々の応答になると、資格情報や文書の存在を探る手掛かりになります。
+- **拒否リスト方式で書いた失敗。** 閉じたいrouteを列挙する方式では、あとで本文由来の派生データを返すrouteが追加されたとき、agentに対して静かに開きます。
+- **本文を含む新しい項目が、agentへそのまま出る失敗。** 隠す項目を列挙する方式では、`DocumentV1`に項目が増えるたびに、未確認の本文が出る危険が生じます。
+- **受け取ったトークンを、下流へそのまま渡す失敗。** MCP宛てのトークンをbackendへ転送すると、トークンの宛先という境界が消えます。MCPが侵害されたときの被害も、backendまで広がります。
+- **監査の主体を、呼び出し側の申告に任せる失敗。** headerの値で記録すると、agentが他人の名前で読んだように見せかけられます。
+- **新しい表やrouteの分類を忘れる失敗。** 3章に書いた「Pluginを入れ忘れる」ことで分離が静かに無効になる失敗と同じ形が、表やrouteを足すときにも起きます。
+
+### D.3 具体例: tenant Aのagentが`shared-doc`を読む
+
+付録Aと同じく、同じdocId（`shared-doc`）を持つtenant AとBを例にします。tenant Aのagent（`agent-a`）が`GET /docs/shared-doc`を呼ぶと、SUIのbackendは次の順に処理します。
+
+```text
+1  Sui-Sensemaking-Agent-Credential: suiag_... を受け取る   （通常の利用者のAuthorizationとは別のheader）
+2  鍵付きハッシュで agent_credential_index を引く            ← tenantが決まる前。RLSなし
+     得るもの: (tenant A, agent-a, 資格情報の版) だけ
+3  tenant Aのデータ領域を設定する
+4  agent_credentials から 状態・期限・版 を読み直す          ← RLSあり。毎要求
+5  (メソッド, route) が許可リストに一致するか                ← 一致しなければ 403
+6  agent_document_grants に shared-doc の付与があるか        ← 無ければ「存在しない」と同じ 404
+7  許可リスト方式の文書viewを返す                            ← 構造と、人が確認した本文だけ
+8  監査eventの主体を agent:agent-a にする                    ← x-actor-ref は見ない
+```
+
+この図からは、次の三点が読み取れます。
+
+- 2は「どのtenantか」を引く段階なので、tenantで絞れません。そのため、RLS（Row Level Security。DBが行ごとにアクセスを制限する機能）を掛けられず、3以降で状態・期限・付与を、RLS付きの表から読み直します。
+- 5と6は、この順に検査します。routeを閉じる`403`は、文書があるかどうかに依存しません。
+- tenant Bの`shared-doc`、tenant Aで付与されていない文書、存在しない文書は、どれも同じ`404`になります。
+
+MCPのHTTP通信では、1が次のように変わります。MCPは、呼び出し元のトークン（宛先はMCP）を検証し、IdPで交換して、backend宛ての短命のトークンを得ます。backendはそのトークンを自分で検証し、`(identity_provider_id, sub)`からagentを引く対応付けの行でtenantを決めます。2以降は同じです。
+
+### D.4 読み取れること（AG-1〜AG-12）
+
+AG（agent）は本書内の仮の呼び名で、Requirement IDではありません。各項目は「内容と理由」と「SUIでの根拠」に分けて書きます。一般化できるか、まだ何が示されていないかは、D.6にまとめました。
+
+**AG-1 外部agentは、membershipを持たない別種の主体として扱う**
+
+- 内容と理由: agentにmembershipやbrowser sessionを渡さず、Tenant Adminが登録した資格情報と、文書ごとの明示的な付与だけで読み取りを許します。利用者のsessionをagentへ委譲する案（ADR-0093の案C）は、sessionの権限が読み取り専用の用途より広く、`tenantSessionVersion`をagentにも持たせることになるため、採られませんでした。付与の行が無ければ読めない「構造上の既定拒否」なので、policyの設定を書き忘れても開きません（ゲスト受け入れのADR-0080から引き継いだ方針）。
+- SUIでの根拠: `agent_credentials.py`の`AgentRequestPrincipal`、`routes/docs.py`の`TenantContext(membership_id=None, resolved_by="agent_credential")`。この経路は外部のPDPを問い合わせず、付与の行が判断を兼ねます（`reason="agent_document_grant"`）。
+
+**AG-2 tenantは、サーバー側の行からだけ決める**
+
+- 内容と理由: tenantと付与は、資格情報から引いた行（不透明な資格情報なら索引の行、OAuthなら対応付けの行）で決めます。トークンのclaim、`x-tenant-id`のようなheader、query、pathの値は使いません。IdPの設定ミスが、そのままtenant越境になるのを避けるためです（SUI ADR-0063 D8）。
+- SUIでの根拠: `test_tenant_hints_in_the_request_are_never_trusted`（`x-tenant-id`とqueryの`tenantId`で他tenantを指定しても404）、`test_the_tenant_comes_from_the_binding_not_from_the_token`（別のtenantを名乗るclaimを足した署名付きトークンでも、tenantは対応付けの行のまま）。
+
+**AG-3 tenantが決まる前に引く索引表はRLSの外に置く。理由を台帳に書き、状態は毎回RLS付きの表から読み直す**
+
+- 内容と理由: tenantを資格情報から導く以上、「どのtenantか」を引く表そのものは、tenantで絞れません。そこで索引表は、鍵付きハッシュ（OAuthでは`(identity_provider_id, sub)`）から`(tenant, agent, 版)`だけを返す最小の表にして、RLSを掛けません。この免除は、理由を添えて台帳に載せます。失効・期限・版・文書の付与は、tenantの領域を設定した後に、RLS付きの表から毎要求で読み直します。索引に状態を持たせると、失効が索引の更新に依存し、更新漏れがそのまま失効漏れや越境になるからです。
+- SUIでの根拠: migration `0036`（`agent_credentials`と`agent_document_grants`は同じmigrationでFORCE RLS、つまり表の所有者にもRLSを適用する設定を有効にし、`agent_credential_index`には掛けない）、`0037`（`agent_oauth_bindings`も索引としてRLSなし）、`_active_principal`、`RLS_EXEMPT_TENANT_TABLES`の2項目。`test_agent_credential_postgres_rls.py`は、RLS付きの2表がtenant指定なしでは0件になることと、他tenantへの書き込みが拒否されることを確かめます（PostgreSQLが必要）。
+
+**AG-4 拒否の形を揃える。無効な資格情報は一つの応答、付与外・不存在・他tenantは一つの404**
+
+- 内容と理由: 不正・未知・失効・期限切れ・版の不一致は、区別せず`401 agent_credential_invalid`にします。付与外の既存文書、存在しない文書、他tenantの文書は、状態コードも本文も同じ`404`にします。応答に差があると、資格情報の状態や文書の存在を探る手掛かりになるためです。agent用のheaderがあるのに無効なときは、通常の利用者の経路へ落とさず、そこで閉じます。route許可と書き込みの拒否は付与の確認より先に行うので、`403`も文書の有無に依存しません。
+- 残る例外: 二つの形式の資格情報を同時に送ると`400`、署名鍵を取得できないときは`503`です。どちらも資格情報の有効性そのものには依存しません。`503`は「評価できなかった」を表し、通す（`allow`）ことも、拒否する（`deny`）こともしません。これは5.2のL2が定める`not-evaluated`の区別と同じです。登録時の`409`は別の問題を含むため、AG-12で扱います。
+- SUIでの根拠: `test_ungranted_documents_look_the_same_as_missing_ones`（状態コードと本文の一致）、`test_malformed_or_unknown_credentials_fail_closed_with_one_response`、`test_invalid_or_unbound_tokens_fail_closed_with_one_response`（7種）、`test_an_unavailable_key_source_is_503_not_a_pass`、`test_sending_both_credential_forms_is_rejected`。
+
+**AG-5 membershipを持たない主体には、拒否リストではなく許可リストを使う**
+
+- 内容と理由: agentが通れるのは、`GET /docs`、`GET /docs/{doc_id}`、`GET /ai/proposals/status`、`POST /docs/{doc_id}/context-audit`の四つだけです。読み取りであっても、本文由来の派生データを返す経路（判断ログ、類似候補）は、個別に検討するまで`403 agent_route_not_enabled`で閉じます。許可の照合には、実際のURLではなく、Webフレームワーク（FastAPI）が解決したroute定義（`/docs/{doc_id}`の形）を使います。
+- SUIでの根拠: `_AGENT_ALLOWED_ROUTES`、`test_derived_read_routes_stay_closed_to_agents`（3経路）、`test_agent_credentials_never_write_export_or_change_state`（PUT、export-audit、archive、unarchive）、`test_agent_credentials_do_not_authenticate_other_routes_in_the_saas_profile`（AI系の6経路）。agent用のheaderを解釈するのは`_authorize_request`と`list_documents`の2か所だけで、ほかのrouteでは認証として働きません。
+- 注意すべき点: `/ai/proposals/status`だけは、session検査を「agent用のheaderがあれば省く」変種（`require_tenant_scoped_api_precondition_unless_agent`）を使います。この変種は認証をせず、検査を省くだけで、handlerが資格情報を必ず検証することを前提にしています。headerの有無で検査を省く形は、handlerが検証を忘れると素通しになります。SUIには、`/ai/`と`/context/`以下のrouteでこの変種を許す経路を`/ai/proposals/status`の1つに限る試験（`test_all_tenant_content_ai_and_context_routes_install_precondition`）があります。ほかの接頭辞のrouteについては、この限定を確かめる試験を確認できていません。
+
+**AG-6 開示は許可リスト方式の文書viewで行い、伏せたことが分かる印を持たせる**
+
+- 内容と理由: `GET /docs/{doc_id}`は、agentには文書をそのまま返しません。許可した構造の項目（カードの位置・種別、辺、島の構成など）と、人が確認した本文（`textReviewed`が真のカード本文、`titleReviewed`が真の島の題名）だけを写して返します。許可リスト方式なので、`DocumentV1`に本文を含む項目が増えても、明示するまでagentには出ません。拒否リスト方式なら、増えた項目は既定で出てしまいます。
+- SUIでの根拠: `_agent_document_view`、`test_only_reviewed_text_and_allowed_structure_reach_agents`（本文に見立てた11個の文字列が応答に出ないこと）。
+- 印の揺れ: 伏せたことを示す形が一つではありません。voidやナラティブのように空にできない文字列は`[withheld]`、未確認のカード本文は空文字列、未確認の島の題名と文書の題名は`null`または欠落です。確認済みかを示す旗（`textReviewed`、`titleReviewed`）も同時に返るので、受け手は推測できますが、統一した印ではありません。これは付録B.2の6（`omit`は「無い」と区別できない）と同じ論点で、SEI ADR-0030の`withheld`（開示しない）と`unknown`（不明・無い）の区別を、共通部品の契約として一つの形に決める必要があります。`[withheld]`は、必須項目を空にできないSUIのスキーマ制約から来ているので、そのままは一般化できません。
+- 付録Bとの関係: 付録B.1は開示判断の形を三つ数えました。backendの許可リストは、その外に現れた第四の形です。「一つの宣言から全出力を導く」（付録B.2の2）はまだ実現しておらず、この第四の形が加わって、判断の置き場所はむしろ増えています。
+
+**AG-7 受け取ったトークンを下流へ転送しない。トークン交換で宛先を変える**
+
+- 内容と理由: HTTP通信のMCPは、自分宛て（audience、つまりトークンの宛先がMCP）のトークンを検証したあと、それをbackendへ渡さず、IdPのトークン交換でbackend宛ての短命のトークンに引き換えて送ります。ADR-0094によれば、MCPの認可仕様は、自分宛てのトークンを下流のAPIへそのまま渡すこと（token passthrough）を禁じています（本書は仕様の原文を確認していません）。転送すると、宛先という境界が消えるからです。MCP宛てのトークンがbackendでも通るなら、MCPに届いたトークンを持つ者は誰でもbackendを直接呼べ、backendも「このトークンは誰に向けたものか」を検査できません。MCPが専用の資格情報でbackendを呼び、検証済みの`client_id`を申告する案は、MCPが侵害されると任意のagentを名乗れるため採られませんでした。
+- SUIでの根拠: `token_exchange.ts`、`http_server.ts`（交換できない要求は`502`で閉じ、backendを呼ばない）、`http_server_exchange.test.ts`（backendへ届くのは交換後のトークンだけで、`Authorization`と`X-API-Key`は付かない）、`test_agent_oauth_http.py`（MCP宛てのaudienceを持つトークンは、backendで401）。
+
+**AG-8 失効は次の要求から効かせ、キャッシュで遅らせない**
+
+- 内容と理由: 資格情報の状態・期限・版と、文書ごとの付与を、毎要求で読み直します。失効の権威は、tenant側の行です。IdPが発行したトークンの有効期限ではありません。OAuth経由でも、資格情報を失効させると、署名が有効な交換後のトークンであっても、次の要求から拒否されます。ADR-0093は、キャッシュするなら`deployment + tenantId + agentId + credentialVersion`をキーにし、トークンの有効期限を越えて保持しないと定めていますが、実装はキャッシュを持ちません。
+- SUIでの根拠: `test_credential_revocation_applies_to_the_next_request`、`test_document_grant_revocation_applies_to_the_next_request`、`test_expired_and_version_mismatched_credentials_are_rejected`、`test_revoking_the_credential_stops_the_oauth_path_at_the_next_request`。
+
+**AG-9 監査の主体は、検証済みの主体から求める**
+
+- 内容と理由: 監査eventの主体は、リクエストの`x-actor-ref`ではなく、検証済みの`agent:<agentId>`から作ります。eventには`tenantId`を含め、本文・題名・トークンは含めません。MCPが送る読み取りの監査（`context-audit`）も、資格情報が束縛されたtenantと付与された文書の外は404です。
+- SUIでの根拠: `_audit_actor_ref`、`test_audit_event_carries_tenant_and_agent_but_no_content_or_token`（偽の`x-actor-ref`を送っても、記録される主体はagentのまま）、`test_proposal_status_and_context_audit_are_scoped_to_the_grant`。
+
+**AG-10 守りが揃わない構成は起動しない。揃ったことを、解除条件として試験で固定する**
+
+- 内容と理由: MCPは`saas-multitenant`で、stdioなら`SUI_MCP_AGENT_CREDENTIAL`、HTTPならトークン交換の設定が揃わない限り起動を拒否します。静的な`SUI_API_KEY`は、tenantを証明しないので、この構成で設定されていること自体を拒否します。ADR-0093は、起動拒否を解除する条件を9項目で書き、transportごとに解除する手順にしています。これは5章の原則3（宣言したのに守りが無い構成は動かさない）の実例です。L3の適合条件も、この種の「解除条件」として使うのが自然だと考えられます。
+- SUIでの根拠: `document_client.ts`の`validateMcpRuntimeProfile`、`document_client.test.ts`、ADR-0093の解除条件の表。
+
+**AG-11 新しい表・routeの分類漏れを、台帳の試験で検出する**
+
+- 内容と理由: 隔離の保証は、新しい表やrouteが分類されないまま増えると、静かに崩れます。SUIには二つの台帳があります。(1) tenantを持つ全ての表を、RLS対象か、理由つきの免除かに分け、対象の表の一覧も明示します。実在しない免除（古くなった台帳）も失敗にします（`RLS_EXEMPT_TENANT_TABLES`）。(2) 登録された全routeについて、tenant境界を設ける共通関数を呼ぶか、理由つきの免除一覧に載せるかを、構文木の走査で確かめます（`_UNGUARDED_ROUTE_EXEMPTIONS`）。
+- 実地の確認: 管理APIを追加したcommit（`586d647`）で、route台帳の試験`test_every_registered_route_is_tenant_guarded_or_explicitly_exempt`を実行したところ、`/tenant-admin/agent-credentials`の4経路が未分類として失敗しました（本書の作業で再現）。次のcommit（`bac01f7`）で分類して通っています。表の台帳でも、agentの4表の分類が同じ形で加えられています。表の台帳が失敗することは、コードを読んで確認しただけで、実行していません。
+- SUIでの根拠: `test_document_access_rls_postgres.py`、`test_tenant_session_precondition.py`。
+
+**AG-12 tenantが決まる前の索引は全体で一意でなければならず、その衝突はtenantを越えて観測できる**
+
+- 内容と理由: OAuth主体の対応付け`(identity_provider_id, sub)`は、tenantが決まる前に一つのagentを引くので、全tenantを通じて一意でなければなりません。そのため、tenant Aが結んだ主体をtenant Bの管理者が結ぼうとすると、`409 agent_oauth_principal_bound`で拒否されます。`api.md`は「どのtenantのagentかは示さない」と書いていますが、結ばれていること自体は伝わります。AG-4の「他tenantのものは存在しないものと区別しない」の例外です。観測できるのは、自分のtenantに登録済みのagentがあり、`agent.register`のcapabilityを持つ管理者が、他tenantの対応付けのIdP識別子と`sub`を推測できる場合に限られます。不透明な資格情報の索引は、鍵付きハッシュが衝突しないので、この問題がありません。
+- 構造上の緊張: 全体で一意にする限り、衝突は観測できます。tenantごとに一意にすると、同じ主体から複数のagentが引けてしまい、どのtenantかを決める入力が別に要ります。それをトークンやheaderから取るとAG-2に反します。
+- SUIでの根拠: `AgentCredentialRepository.bind_oauth_principal`、`routes/agent_credential_admin.py`の`409`、`test_a_principal_can_be_bound_to_only_one_agent`（repositoryの層で、別tenantとの衝突を拒否）。HTTPの層で別tenantとの衝突を扱う試験は見当たりません。コードと`api.md`を読んだ範囲の観察で、実害の大きさは評価していません。受け入れるか、別の設計にするかは、SUI側で判断する事項です。
+
+### D.5 L2・L3へ反映する案
+
+**L2の手順の読み替え案**
+
+1. 手順2「membershipが有効であることを検証する」は、主体の種類によって根拠が違います。memberはmembership、agentは資格情報の状態（失効・期限・版）と文書ごとの付与です。「主体の種類に応じた有効性の根拠を、毎要求で検証する」と書き、memberとagentを例に挙げる形が考えられます（AG-1、AG-3、AG-8）。
+2. 手順6「外部の認可判断（PDP）へcapabilityを問い合わせる」は、SUIのagentでは行われず、付与の行が判断を兼ねます（ゲストも同じ）。三値で見ると、「問い合わせる必要がない（適用外）」と「問い合わせたが評価できなかった（`not-evaluated`）」は別の状態で、同じ扱いにしてはいけません。SUIは前者として扱っています。未決なのは、外部のPDPが持つ全体の方針（たとえば全面停止）をagentにも適用すべきかどうかで、ADR-0093とADR-0094には記述が見当たりません。
+
+**L3の行列へ加える合格条件の候補**
+
+付録Aの末尾が述べるとおり、いずれも「該当機能があれば必須」の形で書きます。
+
+| 行列の経路 | membershipを持たない主体（agent）で、追加して問う条件の候補 | 項目 |
+| --- | --- | --- |
+| GET | 同じdocIdを持つ別tenantの文書を読めない。付与外・不存在・他tenantが同じ404になる。tenantはサーバー側の行だけで決まり、header・query・claimでは変わらない | AG-2、AG-4 |
+| PUT / export / share / import | agentの資格情報では、書き込み・export・archiveなど状態を変える経路は常に拒否される。許可リストに無いrouteは、読み取りでも拒否される | AG-5 |
+| list | 付与された文書のmetadataだけを返し、本文由来の項目（題名など）は返さない。tenant全体の件数や存在を示さない | AG-4、AG-6 |
+| MCP | 資格情報の経路が揃わない構成は起動しない。静的なAPI keyでtenantを済ませない。HTTPでは、受け取ったトークンを転送せず、宛先を変える | AG-7、AG-10 |
+| audit | 監査の主体は検証済みの主体から求め、headerなどの申告を使わない。本文・題名・トークンを含めない | AG-9 |
+| cache | 資格情報の状態をキャッシュする場合は、キーにtenant・agent・資格情報の版を含め、トークンの有効期限を越えて保持しない。SUIはキャッシュを持たない | AG-8 |
+| rate limit | 付録Aの項目に加えて、キーをtenantとagentのどちらにするかを決める（ADR-0093の未解決事項） | （付録A） |
+| agent credential | 失効・期限切れ・版の不一致・付与の取り消しが、次の要求から効く。索引表は最小で、状態は毎回RLS付きの表から読む | AG-3、AG-8 |
+| 経路ではなく構造 | 新しい表やrouteが分類されないまま増えると、試験が失敗する。tenantが決まる前の索引にある一意制約が、他tenantの存在を伝えない | AG-11、AG-12 |
+
+### D.6 項目ごとの一般化の見立てと、まだ示されていないこと
+
+見立ての語は次の意味です。**一般化できそう**は、SUI以外でも同じ問題が起きる理由が文書から読める、という意味で、他のApplicationで確認できたという意味ではありません。**条件つき**は、前提が成り立つ範囲に限ります。**SUI固有**は、SUIの語彙やスキーマに依存します。**未決**は、設計がまだ決まっていません。どの項目も、第二の消費者で再現されるまでは、標準化の根拠にしません。
+
+| 項目 | 一般化の見立て | まだ示されていないこと |
+| --- | --- | --- |
+| AG-1 別種の主体 | 条件つき。membershipを持たない主体を別の種類にする形は、ゲストとagentで共有されている。ただし二つとも同じ実装の中なので、独立した二例ではない。読み取り専用の用途と、確認済みの本文の扱いはSUI固有 | 付与の検査をゲストとagentで共通化できるか（ADR-0093は範囲外とした）。第三の主体種別。外部のPDPを呼ばないことが意図した設計か |
+| AG-2 tenantは行から決める | 一般化できそう。SUIの既存方針の延長で、EKIがtenantをまたぐ付与を禁じているのとも向きが合う（EKI側の個別確認は未） | claimにtenantが入る実在のIdPでの試験。SEI・EKIの実装での再現 |
+| AG-3 tenant確定前の索引 | 一般化できそう。tenantを要求から導く主体（ゲスト、agent、OAuth主体）で、同じ形の索引が現れている | 索引の列が最小であること（状態を持たないこと）を機械的に確かめる仕組み。免除理由の妥当性を確かめる仕組み。PostgreSQL以外のDatabase Providerでの扱い（L1の`unsupported`）。実運用のconnection pool |
+| AG-4 拒否の形 | 一般化できそう | 応答時間や大きさなど、本文以外に現れる差。例外（400、503、409）の網羅的な洗い出し |
+| AG-5 許可リスト | 一般化できそう。membershipを持たない主体の既定は許可リストでよい。許可する4経路の中身はSUI固有 | 全routeを列挙して、許可外が必ずagentを拒否することの機械的な確認（現状は抜き取りの13経路）。許可routeを増やすときの審査の手順 |
+| AG-6 許可リスト方式のview | 許可リスト方式は一般化できそう。印の形は未決。`[withheld]`はSUIのスキーマ制約に依存し、SUI固有 | 新しい項目が許可リストに載っていない場合の検出（既定では出さないが、判断した記録は残らない）。受け手が「伏せた」と「空」を区別できるか。SEIの`withheld`との整合 |
+| AG-7 トークンを転送しない | 条件つき。宛先を変える原則は一般化できそうだが、交換先のIdPがRFC 8693に対応することが前提 | 実在のIdPでの交換。交換後の`sub`の意味（元の主体か、交換を行った側か）。MCPとbackendを実際につないだ試験（現状は両者を差し替えて代用）。交換結果の再利用の可否と、IdPへの負荷 |
+| AG-8 即時の失効 | 一般化できそう。ただし毎要求の読み直しには費用がかかる | 負荷。DBのreplicaを置く構成での「次の要求」の意味。キャッシュを入れる場合のキーと寿命の試験 |
+| AG-9 監査の主体 | 一般化できそう | 管理操作（登録・失効）の監査event。現状は`logger.info`で記録し、読み取りと同じ監査の経路には載せていない（コードを読んだ範囲）。保存された監査を別tenantが読めないこと（付録Aのaudit行） |
+| AG-10 起動しない構成 | 一般化できそう。5章の原則3の実例 | 解除条件8（ログにトークンが出ないこと）の試験。「固定済み」はADRの表に人が書いた状態で、機械的に生成されたものではない |
+| AG-11 台帳の試験 | 一般化できそう。台帳の形は言語に依存しない | 免除理由の中身の妥当性（自由な文章で、機械検査の対象外）。台帳を更新すれば通る点（忘れの検出であって、判断の正しさの検証ではない）。route・表以外の軸（cache key、object storage、job、webhook）の台帳 |
+| AG-12 一意制約の観測 | 未決。一般化できる課題だが、解がまだ無い | HTTPの層での試験。実害の評価。tenantごとに一意にした場合の設計 |
+
+### D.7 この付録が主張しないこと
+
+- **SUIの実装が安全であるとは主張しません。** 対象は未mergeのbranchで、PR #3214はDraftです。外部の審査や、攻撃者の視点での検討（脅威モデル）の代わりにもなりません。
+- **実在のIdPや実在の資産で確認したとは主張しません。** backendの試験は、テスト用に自前で作った署名鍵でIdPを模し、MCPの試験は、IdPとbackendを`fetch`の差し替えで代用しています。実在の機微資料は使っておらず、SUIの安全不変条件（SafeMode既定ON、AI出力はproposal-only、`human_reviewed`は人間だけが設定）は変えていません。
+- **PostgreSQLの本番相当の構成で確認したとは主張しません。** RLSの試験は、実行した作業者の申告では使い捨てのPostgreSQL 16 clusterで通ったものです。本書は再実行しておらず、その記録も確認していません。実運用のconnection poolや権限の構成も確認していません。
+- **標準化に十分な証拠が揃ったとは主張しません。** 証拠はSUI一件で、第二の消費者がありません。7章の判断基準（第二のApplicationで再利用できそうか）はまだ満たしていません。
+- **TEIのCore、Plugin契約、`CapabilityKind`の変更を求めません。** 本付録の項目は、L3の試験項目の候補にとどまります。
