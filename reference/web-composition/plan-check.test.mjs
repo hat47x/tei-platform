@@ -84,3 +84,119 @@ test('host contracts must be unambiguous', () => {
   const p=clone(base);p.hostContracts.push('action.identity');
   assert.throws(()=>composeRequestPlan(p),/duplicate host contract/);
 });
+
+test('guard declaration in audit does not protect Action', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='identity').guards=[];
+  p.steps.find(step=>step.id==='audit').guards=['authenticated'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('guard declaration on Action itself does not protect earlier execution', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='csrf').guards=[];
+  p.steps.find(step=>step.id==='invoke').guards=['csrf-protected'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('ordering hints cannot replace required guard contracts', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='invoke').requires=['action.authorized'];
+  p.steps.find(step=>step.id==='csrf').before=['invoke'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('unused authentication output does not prove Action authentication', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='authorize').requires=['action.identity'];
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+
+test('authentication label on shared context does not prove session identity', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='identity').guards=[];
+  p.steps.find(step=>step.id==='context').guards=['authenticated'];
+  assert.throws(()=>composeRequestPlan(p),/guard declaration lacks corresponding evidence: authenticated/);
+});
+test('CSRF label on unrelated context does not prove origin check', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='csrf').guards=[];
+  p.steps.find(step=>step.id==='context').guards=['csrf-protected'];
+  assert.throws(()=>composeRequestPlan(p),/guard declaration lacks corresponding evidence: csrf-protected/);
+});
+test('authorization label on identity step does not prove business grant', () => {
+  const p=clone(base);
+  p.steps.find(step=>step.id==='authorize').guards=[];
+  p.steps.find(step=>step.id==='identity').guards.push('action-authorized');
+  assert.throws(()=>composeRequestPlan(p),/guard declaration lacks corresponding evidence: action-authorized/);
+});
+test('authentication policy identity cannot be defined twice', () => {
+  const p=clone(authentication);
+  p.policies.push(clone(p.policies[0]));
+  assert.throws(()=>validateAuthenticationPlan(p),/duplicate authentication policy identity/);
+});
+test('duplicate source identity mapping is not silently coalesced', () => {
+  const p=clone(authentication);
+  p.subjectLinks.push(clone(p.subjectLinks[0]));
+  assert.throws(()=>validateAuthenticationPlan(p),/duplicate identity link declaration/);
+});
+test('empty authentication plan is not a viable provider selection', () => {
+  const p=clone(authentication);
+  p.providers=[];
+  p.policies=[];
+  p.subjectLinks=[];
+  assert.throws(()=>validateAuthenticationPlan(p),/active policy and provider/);
+});
+
+test('unknown plugin guard without an evidence binding is rejected', () => {
+  const p=clone(base);
+  p.hostPolicy.requiredGuards.push('tenant-isolated');
+  p.steps.find(step=>step.id==='context').guards=['tenant-isolated'];
+  assert.throws(()=>composeRequestPlan(p),/required guard has no declared evidence contract/);
+});
+test('plugin guard with explicit evidence is a causal Action prerequisite', () => {
+  const p=clone(base);
+  p.hostPolicy.requiredGuards.push('tenant-isolated');
+  p.hostPolicy.guardEvidence={'tenant-isolated':'tenant.boundary.checked'};
+  p.steps.push({id:'tenant-check',scope:'server',requires:['identity.principal'],provides:['tenant.boundary.checked'],guards:['tenant-isolated']});
+  p.steps.find(step=>step.id==='invoke').requires.push('tenant.boundary.checked');
+  const result=composeRequestPlan(p);
+  assert.ok(result.order.indexOf('tenant-check')<result.order.indexOf('invoke'));
+});
+test('plugin guard with only a declared before hint cannot guard an Action', () => {
+  const p=clone(base);
+  p.hostPolicy.requiredGuards.push('tenant-isolated');
+  p.hostPolicy.guardEvidence={'tenant-isolated':'tenant.boundary.checked'};
+  p.steps.push({id:'tenant-check',scope:'server',requires:['identity.principal'],provides:['tenant.boundary.checked'],guards:['tenant-isolated'],before:['invoke']});
+  assert.throws(()=>composeRequestPlan(p),/prerequisite of Action/);
+});
+test('standard guard evidence cannot be redefined by a plugin', () => {
+  const p=clone(base);
+  p.hostPolicy.guardEvidence={'authenticated':'request.context'};
+  assert.throws(()=>composeRequestPlan(p),/standard guard evidence cannot be overridden/);
+});
+
+test('action route cannot drop authenticated host guard', () => {
+  const p=clone(base);p.hostPolicy.requiredGuards=p.hostPolicy.requiredGuards.filter(g=>g!=='authenticated');
+  assert.throws(()=>composeRequestPlan(p),/mandatory protection: authenticated/);
+});
+test('action route cannot drop csrf host guard', () => {
+  const p=clone(base);p.hostPolicy.requiredGuards=p.hostPolicy.requiredGuards.filter(g=>g!=='csrf-protected');
+  assert.throws(()=>composeRequestPlan(p),/mandatory protection: csrf-protected/);
+});
+test('action route cannot omit denied or failed audit events', () => {
+  for(const terminal of ['completed','rejected','error']){
+    const p=clone(base);p.hostPolicy.terminalEvents=p.hostPolicy.terminalEvents.filter(e=>e!==terminal);
+    assert.throws(()=>composeRequestPlan(p),new RegExp('mandatory terminal audit: '+terminal));
+  }
+});
+test('different providers with the same issuer and subject may have separate explicit principals', () => {
+  const p=clone(authentication);
+  p.providers.push({id:'second-oidc',kind:'oidc',issuer:'https://example.invalid/issuer'});
+  p.policies[0].allowedProviders.push('second-oidc');
+  p.subjectLinks.push({providerId:'second-oidc',issuer:'https://example.invalid/issuer',subject:'fixed-sub-001',principalId:'separate-principal'});
+  assert.equal(validateAuthenticationPlan(p).linkedSubjectCount,3);
+});
+
+test('the same external identity cannot change application PrincipalID', () => {
+  const p=clone(authentication);
+  p.subjectLinks.push({...p.subjectLinks[0],principalId:'attacker-principal'});
+  assert.throws(()=>validateAuthenticationPlan(p),/conflicting principal mapping/);
+});

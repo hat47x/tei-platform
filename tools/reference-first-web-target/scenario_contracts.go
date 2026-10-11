@@ -47,6 +47,7 @@ type commandScenarioResult struct {
 	Read            *readScenarioResult          `json:"read,omitempty"`
 	Validations     []validationResultProjection `json:"validations,omitempty"`
 	Authorization   *businessResultProjection    `json:"authorization,omitempty"`
+	EffectAuthorization *businessResultProjection `json:"effectAuthorization,omitempty"`
 	Command         *businessResultProjection    `json:"command,omitempty"`
 	Observation     *observationProjection       `json:"observation,omitempty"`
 	AuthorityLimits []string                     `json:"authorityLimits"`

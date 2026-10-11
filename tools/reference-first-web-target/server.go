@@ -8,13 +8,16 @@ import (
 )
 
 type webTargetServer struct {
-	projection         webTargetProjection
-	readScenario       readScenarioRunner
-	commandScenario    commandScenarioRunner
-	customerLookup     customerLookupRunner
-	index              *template.Template
-	customSubmit       *template.Template
-	customerLookupPage *template.Template
+	projection                  webTargetProjection
+	readScenario                readScenarioRunner
+	commandScenario             commandScenarioRunner
+	protectedSessionConfig      *protectedSessionCommandConfig
+	protectedSessionHandler     http.Handler
+	protectedSessionOptionCount int
+	customerLookup              customerLookupRunner
+	index                       *template.Template
+	customSubmit                *template.Template
+	customerLookupPage          *template.Template
 }
 
 // applicationBound is implemented by every scenario runner. The server refuses to start when a
@@ -82,6 +85,9 @@ func newWebTargetServer(
 		if err := requireApplicationMatch("customer lookup scenario", server.customerLookup, projection.ApplicationID); err != nil {
 			return nil, err
 		}
+	}
+	if err := server.configureProtectedSessionCommand(); err != nil {
+		return nil, err
 	}
 	return server, nil
 }
