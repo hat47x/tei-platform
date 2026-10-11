@@ -555,6 +555,22 @@ WebAssembly Component Modelからは、interface contractと実装言語を分�
 - WebAssembly Component Model: https://component-model.bytecodealliance.org/
 
 
+## 2026-10-11 P1判定ノート — production最小契約の抽出
+
+#943の議論で優先度を上げた「Referenceからproductionへ何を移し、何を移さないか」を、`plan/issue/000079-production-contract-delta.md` に独立した判定ノートとして整理した。
+
+中心となる移行停止線：
+
+1. **旧BuildPlan v1 / BuildArtifactLock / Runtime Plugin Lock format 3は互換維持。** 現行`BuildPlanFingerprint`はSource `Locator`を含む。一方、Draft #1106のdomain-neutral `BuildExecutionPlan`はLocatorをcontent identityから外す。この差を黙って同一fingerprintへ読み替えない。新identityの採用時は別format / namespaceとread-only cross-bindingを要求する。
+2. **BuildExecutionResultと実行Attemptは別証拠。** `PlanFingerprint + ArtifactSetFingerprint`が同じでも、独立した二回のactual実行の証明にはならない。#1110 / #1083のAttempt・失敗・再現性Evidenceを橋渡しする。
+3. **Resolver / Adapter / Store / Trustを分業。** #1151によるProvider選択、#1096によるGo Source closure、#1148によるartifact再取得、#1104によるcurrent Trustは独立しており、単独の成功からAcceptance / Runtime Authorityを得ない。
+4. **#1106は共通実行／subject bindingのpressureであり、production Build Schedulerではない。** 初期の対象はPlugin、Runtime Engine、Builderのtyped bindingと複数artifactの最小契約までに絞る。
+5. **資格確認が前提。** #1173の実行経路と#971のcurrent-main forward qualification、各Draft exact-head qualificationを満たすまでは、設計承認・静的検査・既存merge状態をactual PASSと扱わない。
+
+判定ノートにはSBP-01〜SBP-22の具体的な負例／回帰試験を用意した。まず既存Issueへownerを割り振って統合し、重複する新しいResolver、Policy Engine、Host Runtimeを増やさない。今後の議論順序は **trusted qualification → identity/projection → Builder resolution/adapter → Result/Attempt/Store → Authority bridge → SB-3** とする。
+
+**本節・判定ノートは設計候補であり、main統合や実装資格を示さない。**
+
 ## 2026-10-06 E1 candidate — Build Plan / Build Lock
 
 E1の最初の候補実装として、`internal/plugin/build.go`へread-onlyなBuild Plan / Build Lock modelを追加しました。

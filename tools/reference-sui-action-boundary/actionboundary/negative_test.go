@@ -18,13 +18,13 @@ func (s *rejectingStore) Commit(context.Context, Intent) (string, error) {
 
 func TestCommitNegativeMatrix(t *testing.T) {
 	ctx := context.Background()
-	valid := Intent{ApplicationID: "sui", DocumentID: "doc", ActionID: "move", ExpectedRevision: "r1", Payload: "opaque"}
+	valid := Intent{ApplicationID: "sui", ResourceID: "doc", ActionID: "move", ExpectedRevision: "r1", Payload: "opaque"}
 	cases := []struct {
 		name   string
 		mutate func(*Intent)
 	}{
 		{"missing application", func(i *Intent) { i.ApplicationID = "" }},
-		{"missing document", func(i *Intent) { i.DocumentID = "" }},
+		{"missing document", func(i *Intent) { i.ResourceID = "" }},
 		{"missing action", func(i *Intent) { i.ActionID = "" }},
 		{"missing expected revision", func(i *Intent) { i.ExpectedRevision = "" }},
 	}
