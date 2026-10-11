@@ -1,116 +1,123 @@
 package transform
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
 
-func TestSnapshotInputsDeepCopiesCallerValuesOnce(t *testing.T) {
-	nested := Value{
-		Kind: ValueObject,
-		Object: []Field{{
-			Name: "items",
-			Value: Value{
-				Kind: ValueArray,
-				Array: []Value{{Kind: ValueString, String: "before"}},
-			},
-		}},
-	}
-	inputs := map[string]Value{"source": nested}
-	snapshot := snapshotInputs(inputs)
+	"tei/internal/core"
+)
 
-	inputs["source"].Object[0].Value.Array[0].String = "caller-changed"
-	got := snapshot["source"].Object[0].Value.Array[0].String
-	if got != "before" {
-		t.Fatalf("snapshot aliases caller input: got %q", got)
-	}
-}
-
-func TestEvaluatorViewsShareOnlyInvocationOwnedNestedValues(t *testing.T) {
-	caller := Value{
-		Kind: ValueObject,
-		Object: []Field{{
-			Name: "items",
-			Value: Value{
-				Kind: ValueArray,
-				Array: []Value{{Kind: ValueString, String: "before"}},
-			},
-		}},
-	}
-	snapshot := snapshotInputs(map[string]Value{"source": caller})["source"]
-	selected, ok := fieldView(snapshot, "items")
-	if !ok {
-		t.Fatal("items field not found")
-	}
-
-	selected.Array[0].String = "evaluator-owned-change"
-	if got := snapshot.Object[0].Value.Array[0].String; got != "evaluator-owned-change" {
-		t.Fatalf("field view unexpectedly deep-copied nested value: got %q", got)
-	}
-	if got := caller.Object[0].Value.Array[0].String; got != "before" {
-		t.Fatalf("evaluator-owned view leaked mutation to caller: got %q", got)
-	}
-}
-
-func TestReplaceFieldOwnedCopiesObjectContainerOnly(t *testing.T) {
-	source := Value{
-		Kind: ValueObject,
-		Object: []Field{
-			{Name: "replace", Value: String("old")},
-			{
-				Name: "keep",
-				Value: Value{
-					Kind: ValueArray,
-					Array: []Value{{Kind: ValueString, String: "nested"}},
-				},
-			},
+// This regression suite forward-ports the copy-amplification branch's
+// observable ownership requirements to the current resource-metered evaluator.
+// It deliberately uses Evaluate rather than retired helper functions.
+func copyAmplificationSource(output Expr) Source {
+	return Source{
+		FormatVersion: SourceFormatVersion,
+		Identity: SourceIdentity{
+			ID:              core.MustCanonicalID("tei.reference.transform_copy"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.reference.transform-copy/v1",
 		},
+		Profile: ProfileV1,
+		Limits: Limits{
+			MaxSteps:        10000,
+			MaxCollection:   100,
+			MaxInputNodes:   1000,
+			MaxInputBytes:   8192,
+			MaxOutputBytes:  8192,
+			MaxNestingDepth: 20,
+		},
+		Inputs: []InputSpec{{Name: "source", Kind: InputObject}},
+		Program: Program{Output: output},
 	}
-	out, replaced, err := replaceFieldOwned(source, "replace", String("new"))
+}
+
+func copyAmplificationInput() Value {
+	return Value{Kind: ValueObject, Object: []Field{
+		{Name: "replace", Value: String("old")},
+		{Name: "items", Value: Value{Kind: ValueArray, Array: []Value{
+			String("before"),
+		}}},
+	}}
+}
+
+func TestEvaluateSnapshotIsIndependentOfCallerMutation(t *testing.T) {
+	input := copyAmplificationInput()
+	result, err := Evaluate(
+		copyAmplificationSource(Expr{Op: OpInput, Name: "source"}),
+		map[string]Value{"source": input},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !replaced || out.Object[0].Value.String != "new" || source.Object[0].Value.String != "old" {
-		t.Fatalf("replace result: source=%#v out=%#v", source, out)
+	input.Object[1].Value.Array[0].String = "caller-changed"
+	if got := result.Output.Object[1].Value.Array[0].String; got != "before" {
+		t.Fatalf("result aliases caller-owned input after Evaluate: %q", got)
 	}
-
-	out.Object[1].Name = "renamed"
-	if source.Object[1].Name != "keep" {
-		t.Fatal("replace-field reused mutable object container")
-	}
-
-	out.Object[1].Value.Array[0].String = "shared"
-	if source.Object[1].Value.Array[0].String != "shared" {
-		t.Fatal("replace-field unexpectedly deep-copied unchanged nested value")
+	result.Output.Object[1].Value.Array[0].String = "result-changed"
+	if got := input.Object[1].Value.Array[0].String; got != "caller-changed" {
+		t.Fatalf("returned result aliases mutable caller input: %q", got)
 	}
 }
 
-func TestOmitFieldOwnedCopiesObjectContainerOnly(t *testing.T) {
-	source := Value{
-		Kind: ValueObject,
-		Object: []Field{
-			{Name: "drop", Value: String("x")},
-			{
-				Name: "keep",
-				Value: Value{
-					Kind: ValueArray,
-					Array: []Value{{Kind: ValueString, String: "nested"}},
-				},
-			},
-		},
+func TestEvaluateFieldSelectionIsIndependentOfCallerMutation(t *testing.T) {
+	input := copyAmplificationInput()
+	expr := Expr{
+		Op: OpSelectField,
+		From: &Expr{Op: OpInput, Name: "source"},
+		Field: "items",
 	}
-	out, err := omitFieldOwned(source, "drop")
+	result, err := Evaluate(copyAmplificationSource(expr), map[string]Value{"source": input})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Object) != 1 || out.Object[0].Name != "keep" {
-		t.Fatalf("omit result: %#v", out)
+	input.Object[1].Value.Array[0].String = "caller-changed"
+	if len(result.Output.Array) != 1 || result.Output.Array[0].String != "before" {
+		t.Fatalf("selection leaked caller mutation: %#v", result.Output)
 	}
+}
 
-	out.Object[0].Name = "renamed"
-	if source.Object[1].Name != "keep" {
-		t.Fatal("omit-field reused mutable object container")
+func TestEvaluateReplaceFieldKeepsOriginalObjectUnchanged(t *testing.T) {
+	input := copyAmplificationInput()
+	expr := Expr{
+		Op: OpReplaceField,
+		From: &Expr{Op: OpInput, Name: "source"},
+		Field: "replace",
+		Value: &Expr{Op: OpLiteral, Literal: json.RawMessage(`"new"`)},
 	}
+	result, err := Evaluate(copyAmplificationSource(expr), map[string]Value{"source": input})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Output.Object[0].Value.String != "new" || input.Object[0].Value.String != "old" {
+		t.Fatalf("replace mutated caller or lost replacement: original=%#v result=%#v", input, result.Output)
+	}
+	result.Output.Object[1].Name = "renamed"
+	result.Output.Object[1].Value.Array[0].String = "changed"
+	if input.Object[1].Name != "items" || input.Object[1].Value.Array[0].String != "before" {
+		t.Fatal("returned replace output mutated caller-owned container or nested data")
+	}
+}
 
-	out.Object[0].Value.Array[0].String = "shared"
-	if source.Object[1].Value.Array[0].String != "shared" {
-		t.Fatal("omit-field unexpectedly deep-copied unchanged nested value")
+func TestEvaluateOmitFieldKeepsOriginalObjectUnchanged(t *testing.T) {
+	input := copyAmplificationInput()
+	expr := Expr{
+		Op: OpOmitField,
+		From: &Expr{Op: OpInput, Name: "source"},
+		Field: "replace",
+	}
+	result, err := Evaluate(copyAmplificationSource(expr), map[string]Value{"source": input})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Output.Object) != 1 || result.Output.Object[0].Name != "items" {
+		t.Fatalf("unexpected omit result: %#v", result.Output)
+	}
+	if len(input.Object) != 2 || input.Object[0].Name != "replace" {
+		t.Fatalf("omit mutated caller-owned object: %#v", input)
+	}
+	result.Output.Object[0].Value.Array[0].String = "changed"
+	if input.Object[1].Value.Array[0].String != "before" {
+		t.Fatal("returned omit output mutated caller-owned nested data")
 	}
 }
