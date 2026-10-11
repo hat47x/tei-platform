@@ -125,8 +125,8 @@ func newRuntimeAuthorityFixture(t *testing.T) runtimeAuthorityFixture {
 	}
 	verifier := &acceptingRuntimeArtifactVerifier{}
 	plan := pruntime.EnvironmentPlan{
-		Environment:           core.MustCanonicalID("development"),
-		PluginLockFingerprint: strings.Repeat("e", 64),
+		Environment:              core.MustCanonicalID("development"),
+		PluginLockFingerprint:    strings.Repeat("e", 64),
 		RuntimePolicyFingerprint: strings.Repeat("f", 64),
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin:                identity,
@@ -215,7 +215,7 @@ func TestGenericContractQueryCanReuseProductionRuntimeAuthority(t *testing.T) {
 	execution, err := registry.ResolveAndInvoke(
 		context.Background(),
 		ResolveInput{
-			Scope:       ScopeApplicationRuntime,
+			Scope: ScopeApplicationRuntime,
 			Requirement: Requirement{
 				ContractID:      fixture.contract.ID,
 				CompatibleMajor: 1,
@@ -352,7 +352,7 @@ func TestGenericInvocationCannotBypassProductionRuntimePermissionGate(t *testing
 	_, err := registry.ResolveAndInvoke(
 		context.Background(),
 		ResolveInput{
-			Scope:       ScopeApplicationRuntime,
+			Scope: ScopeApplicationRuntime,
 			Requirement: Requirement{
 				ContractID:      fixture.contract.ID,
 				CompatibleMajor: 1,
@@ -401,7 +401,6 @@ func TestRuntimeAuthorityBridgeDoesNotInferLegacyCapabilityFromImplementationID(
 	}
 }
 
-
 func TestGenericInvocationCannotBypassProductionResourceBrokerGate(t *testing.T) {
 	fixture := newRuntimeAuthorityFixture(t)
 	required := permission.Spec{
@@ -417,7 +416,7 @@ func TestGenericInvocationCannotBypassProductionResourceBrokerGate(t *testing.T)
 	_, err := registry.ResolveAndInvoke(
 		context.Background(),
 		ResolveInput{
-			Scope:       ScopeApplicationRuntime,
+			Scope: ScopeApplicationRuntime,
 			Requirement: Requirement{
 				ContractID:      fixture.contract.ID,
 				CompatibleMajor: 1,
@@ -457,7 +456,7 @@ func TestGenericInvocationCannotBypassRequiredProductionSandbox(t *testing.T) {
 	_, err := registry.ResolveAndInvoke(
 		context.Background(),
 		ResolveInput{
-			Scope:       ScopeApplicationRuntime,
+			Scope: ScopeApplicationRuntime,
 			Requirement: Requirement{
 				ContractID:      fixture.contract.ID,
 				CompatibleMajor: 1,

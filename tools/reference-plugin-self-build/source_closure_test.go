@@ -198,7 +198,6 @@ func TestGoPackageBuildFilesIncludesSelectedCompilerAndEmbedInputs(t *testing.T)
 	}
 }
 
-
 func TestRepositoryTreeSnapshotDigestTracksGitTreeListingNotWorktreeSemantics(t *testing.T) {
 	first := []byte("100644 blob aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\tREADME.md\x00" +
 		"120000 blob bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\tlink\x00")
@@ -213,7 +212,6 @@ func TestRepositoryTreeSnapshotDigestTracksGitTreeListingNotWorktreeSemantics(t 
 		t.Fatal("repository tree snapshot digest ignored Git tree listing change")
 	}
 }
-
 
 func TestHashRepositorySnapshotTreeUsesCommittedHEADNotWorktreeBytes(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
@@ -269,7 +267,6 @@ func runSnapshotGit(t *testing.T, repo string, args ...string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
-
 
 func TestRepositoryTreeDigestAlgorithmIsExplicit(t *testing.T) {
 	if repositoryTreeDigestAlgorithm != "git-ls-tree-sha256-v1" {

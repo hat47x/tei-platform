@@ -18,13 +18,21 @@ func scenarioFixtureCopy(t *testing.T, scenarioPath string) (string, string) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	if err := os.Mkdir(filepath.Join(dir, "fixtures"), 0700); err != nil { t.Fatal(err) }
+	if err := os.Mkdir(filepath.Join(dir, "fixtures"), 0700); err != nil {
+		t.Fatal(err)
+	}
 	newPath := filepath.Join(dir, "scenario.json")
-	if err := os.WriteFile(newPath, source, 0600); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(newPath, source, 0600); err != nil {
+		t.Fatal(err)
+	}
 	for _, name := range []string{"recent_orders.json", "order_valid.json", "order_invalid.json", "order_state_pending.json"} {
 		fixtureSource, err := os.ReadFile(filepath.Join(filepath.Dir(scenarioPath), "fixtures", name))
-		if err != nil { t.Fatal(err) }
-		if err := os.WriteFile(filepath.Join(dir, "fixtures", name), fixtureSource, 0600); err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "fixtures", name), fixtureSource, 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return newPath, filepath.Join(dir, "fixtures", "recent_orders.json")
 }
@@ -270,20 +278,37 @@ func TestScenarioCanonicalValidationGeneratedCommands(t *testing.T) {
 	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
 	workspace := filepath.Join("..", "..", "reference", "workspace")
 	var output bytes.Buffer
-	if err := runScenarioCommand([]string{"generate", "-scenario", reference, "-workspace", workspace}, &output); err != nil { t.Fatal(err) }
+	if err := runScenarioCommand([]string{"generate", "-scenario", reference, "-workspace", workspace}, &output); err != nil {
+		t.Fatal(err)
+	}
 	var plan scenariotest.Plan
-	if err := json.Unmarshal(output.Bytes(), &plan); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(output.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct{ id, result string }{
 		{"validate-positive", "satisfied"},
 		{"validate-denied", "not-satisfied"},
 	} {
 		var command scenariotest.Command
-		for _, item := range plan.Commands { if item.StepID == tc.id { command = item; break } }
-		if len(command.Argv) == 0 { t.Fatalf("missing generated validation command for %s", tc.id) }
+		for _, item := range plan.Commands {
+			if item.StepID == tc.id {
+				command = item
+				break
+			}
+		}
+		if len(command.Argv) == 0 {
+			t.Fatalf("missing generated validation command for %s", tc.id)
+		}
 		var actual bytes.Buffer
-		if err := runScenarioCommand(command.Argv[2:], &actual); err != nil { t.Fatal(err) }
-		var receipt struct{ Evidence []scenarioStepEvidence `json:"evidence"` }
-		if err := json.Unmarshal(actual.Bytes(), &receipt); err != nil { t.Fatal(err) }
+		if err := runScenarioCommand(command.Argv[2:], &actual); err != nil {
+			t.Fatal(err)
+		}
+		var receipt struct {
+			Evidence []scenarioStepEvidence `json:"evidence"`
+		}
+		if err := json.Unmarshal(actual.Bytes(), &receipt); err != nil {
+			t.Fatal(err)
+		}
 		if len(receipt.Evidence) != 1 || !receipt.Evidence[0].Verified ||
 			receipt.Evidence[0].ValidationResults["sales.order_line.quantity_positive"] != tc.result {
 			t.Fatalf("%s validation outcome mismatch: %s", tc.id, actual.String())
@@ -299,37 +324,74 @@ func TestScenarioValidationRejectsWrongResultAndMissingInput(t *testing.T) {
 		var out bytes.Buffer
 		return runScenarioCommand([]string{"run", "-scenario", path, "-workspace", workspace, "-step", "validate-positive"}, &out)
 	}
-	if err := run(); err != nil { t.Fatal(err) }
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
 	original, err := os.ReadFile(path)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	bad := strings.Replace(string(original), `"sales.order_line.line_number_positive": "satisfied"`, `"sales.order_line.line_number_positive": "not-satisfied"`, 1)
-	if bad == string(original) { t.Fatal("expected-result mutation had no effect") }
-	if err := os.WriteFile(path, []byte(bad), 0600); err != nil { t.Fatal(err) }
-	if err := run(); err == nil { t.Fatal("mismatched Validation result passed") }
-	if err := os.WriteFile(path, original, 0600); err != nil { t.Fatal(err) }
+	if bad == string(original) {
+		t.Fatal("expected-result mutation had no effect")
+	}
+	if err := os.WriteFile(path, []byte(bad), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(); err == nil {
+		t.Fatal("mismatched Validation result passed")
+	}
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
 	inputPath := filepath.Join(filepath.Dir(path), "fixtures", "order_valid.json")
 	input, err := os.ReadFile(inputPath)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	incomplete := strings.Replace(string(input), `"sales.order_line.quantity": "2.5",`, "", 1)
-	if incomplete == string(input) { t.Fatal("input mutation had no effect") }
-	if err := os.WriteFile(inputPath, []byte(incomplete), 0600); err != nil { t.Fatal(err) }
-	if err := run(); err == nil { t.Fatal("missing Validation input passed") }
+	if incomplete == string(input) {
+		t.Fatal("input mutation had no effect")
+	}
+	if err := os.WriteFile(inputPath, []byte(incomplete), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(); err == nil {
+		t.Fatal("missing Validation input passed")
+	}
 }
 
 func TestScenarioIndependentSyntheticObservationFromGeneratedCLI(t *testing.T) {
 	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
 	workspace := filepath.Join("..", "..", "reference", "workspace")
 	var generated bytes.Buffer
-	if err := runScenarioCommand([]string{"generate", "-scenario", reference, "-workspace", workspace}, &generated); err != nil { t.Fatal(err) }
+	if err := runScenarioCommand([]string{"generate", "-scenario", reference, "-workspace", workspace}, &generated); err != nil {
+		t.Fatal(err)
+	}
 	var plan scenariotest.Plan
-	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
 	var command scenariotest.Command
-	for _, item := range plan.Commands { if item.StepID == "observe-synthetic" { command = item; break } }
-	if len(command.Argv) == 0 { t.Fatal("Observation command missing") }
+	for _, item := range plan.Commands {
+		if item.StepID == "observe-synthetic" {
+			command = item
+			break
+		}
+	}
+	if len(command.Argv) == 0 {
+		t.Fatal("Observation command missing")
+	}
 	var output bytes.Buffer
-	if err := runScenarioCommand(command.Argv[2:], &output); err != nil { t.Fatal(err) }
-	var receipt struct { Evidence []scenarioStepEvidence `json:"evidence"` }
-	if err := json.Unmarshal(output.Bytes(), &receipt); err != nil { t.Fatal(err) }
+	if err := runScenarioCommand(command.Argv[2:], &output); err != nil {
+		t.Fatal(err)
+	}
+	var receipt struct {
+		Evidence []scenarioStepEvidence `json:"evidence"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
 	if len(receipt.Evidence) != 1 || !receipt.Evidence[0].Verified ||
 		receipt.Evidence[0].EvidenceNature != "synthetic-independent-observation-read" ||
 		receipt.Evidence[0].ObservationResult != "pending" {
@@ -341,25 +403,46 @@ func TestScenarioObservationRejectsWrongResultAndOldFixture(t *testing.T) {
 	workspace := filepath.Join("..", "..", "reference", "workspace")
 	path, _ := scenarioFixtureCopy(t, reference)
 	var generated bytes.Buffer
-	if err := runScenarioCommand([]string{"generate", "-scenario", path, "-workspace", workspace}, &generated); err != nil { t.Fatal(err) }
+	if err := runScenarioCommand([]string{"generate", "-scenario", path, "-workspace", workspace}, &generated); err != nil {
+		t.Fatal(err)
+	}
 	var plan scenariotest.Plan
-	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
 	var args []string
-	for _, item := range plan.Commands { if item.StepID == "observe-synthetic" { args = item.Argv[2:]; break } }
-	if len(args) == 0 { t.Fatal("missing Observation argv") }
+	for _, item := range plan.Commands {
+		if item.StepID == "observe-synthetic" {
+			args = item.Argv[2:]
+			break
+		}
+	}
+	if len(args) == 0 {
+		t.Fatal("missing Observation argv")
+	}
 	read := func(argv []string) error {
 		var out bytes.Buffer
 		return runScenarioCommand(argv, &out)
 	}
-	if err := read(args); err != nil { t.Fatal(err) }
+	if err := read(args); err != nil {
+		t.Fatal(err)
+	}
 	fixturePath := filepath.Join(filepath.Dir(path), "fixtures", "order_state_pending.json")
 	original, err := os.ReadFile(fixturePath)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	tampered := strings.Replace(string(original), `"pending"`, `"submitted"`, 1)
-	if tampered == string(original) { t.Fatal("Observation mutation had no effect") }
-	if err := os.WriteFile(fixturePath, []byte(tampered), 0600); err != nil { t.Fatal(err) }
-	if err := read(args); err == nil { t.Fatal("old pinned command accepted after Observation change") }
-	if err := read([]string{"run","-scenario",path,"-workspace",workspace,"-step","observe-synthetic"}); err == nil {
+	if tampered == string(original) {
+		t.Fatal("Observation mutation had no effect")
+	}
+	if err := os.WriteFile(fixturePath, []byte(tampered), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := read(args); err == nil {
+		t.Fatal("old pinned command accepted after Observation change")
+	}
+	if err := read([]string{"run", "-scenario", path, "-workspace", workspace, "-step", "observe-synthetic"}); err == nil {
 		t.Fatal("independent Observation mismatch unexpectedly passed")
 	}
 }
@@ -368,9 +451,13 @@ func TestScenarioCLIRejectsPartialPinsAndDistinguishesUnpinnedExecution(t *testi
 	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
 	workspace := filepath.Join("..", "..", "reference", "workspace")
 	var generated bytes.Buffer
-	if err := runScenarioCommand([]string{"generate", "-scenario", reference, "-workspace", workspace}, &generated); err != nil { t.Fatal(err) }
+	if err := runScenarioCommand([]string{"generate", "-scenario", reference, "-workspace", workspace}, &generated); err != nil {
+		t.Fatal(err)
+	}
 	var plan scenariotest.Plan
-	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
 	args := append([]string(nil), plan.Commands[2].Argv[2:]...)
 	for i := range args {
 		if args[i] == "-fixture-sha256" {
@@ -379,7 +466,9 @@ func TestScenarioCLIRejectsPartialPinsAndDistinguishesUnpinnedExecution(t *testi
 		}
 	}
 	var discarded bytes.Buffer
-	if err := runScenarioCommand(args, &discarded); err == nil { t.Fatal("generated command accepted without its Fixture pin") }
+	if err := runScenarioCommand(args, &discarded); err == nil {
+		t.Fatal("generated command accepted without its Fixture pin")
+	}
 	args = append([]string(nil), plan.Commands[2].Argv[2:]...)
 	for i := range args {
 		if args[i] == "-world-sha256" {
@@ -388,14 +477,20 @@ func TestScenarioCLIRejectsPartialPinsAndDistinguishesUnpinnedExecution(t *testi
 		}
 	}
 	discarded.Reset()
-	if err := runScenarioCommand(args, &discarded); err == nil { t.Fatal("generated command accepted with incomplete World pin") }
+	if err := runScenarioCommand(args, &discarded); err == nil {
+		t.Fatal("generated command accepted with incomplete World pin")
+	}
 	var ordinary bytes.Buffer
-	if err := runScenarioCommand([]string{"run", "-scenario", reference, "-workspace", workspace, "-step", "browse-synthetic"}, &ordinary); err != nil { t.Fatal(err) }
+	if err := runScenarioCommand([]string{"run", "-scenario", reference, "-workspace", workspace, "-step", "browse-synthetic"}, &ordinary); err != nil {
+		t.Fatal(err)
+	}
 	if !strings.Contains(ordinary.String(), `"executionMode":"exploratory-unpinned"`) {
 		t.Fatalf("unpinned direct invocation lacked provenance: %s", ordinary.String())
 	}
 	var pinned bytes.Buffer
-	if err := runScenarioCommand(plan.Commands[2].Argv[2:], &pinned); err != nil { t.Fatal(err) }
+	if err := runScenarioCommand(plan.Commands[2].Argv[2:], &pinned); err != nil {
+		t.Fatal(err)
+	}
 	if !strings.Contains(pinned.String(), `"executionMode":"generated-pinned"`) {
 		t.Fatalf("generated invocation lacked pinned provenance: %s", pinned.String())
 	}

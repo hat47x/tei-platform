@@ -50,9 +50,9 @@ func normalizeSemanticNamespaceAuthorities(
 		}
 		qualification, err := authoritytrust.Verify(
 			authoritytrust.Statement{
-				AuthorityClass: semanticNamespacePublisherAuthorityClass,
-				Scope:          semanticNamespaceTrustScope(value.Namespace),
-				Issuer:         value.Issuer,
+				AuthorityClass:       semanticNamespacePublisherAuthorityClass,
+				Scope:                semanticNamespaceTrustScope(value.Namespace),
+				Issuer:               value.Issuer,
 				StatementFingerprint: value.EvidenceFingerprint,
 			},
 			trustGrants,

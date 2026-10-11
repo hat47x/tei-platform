@@ -11,29 +11,29 @@ import (
 // ReviewPacket is a derived, read-only handoff for human design review.
 // No Question or Issue here is an accepted semantic decision or a Patch.
 type ReviewPacket struct {
-	CaseID        string          `json:"caseId"`
-	ModelRevision string          `json:"modelRevision"`
+	CaseID        string `json:"caseId"`
+	ModelRevision string `json:"modelRevision"`
 	// Bind review responses to exact example records and the actual Catalog,
 	// not just the names of unresolved questions.
 	ExampleFingerprint string `json:"exampleFingerprint"`
 	CatalogFingerprint string `json:"catalogFingerprint"`
 	// Fingerprint binds all authored and derived questions to this exact review.
-	Fingerprint string          `json:"fingerprint"`
-	Authored      []Question      `json:"authoredQuestions,omitempty"`
-	Issues        []ReviewIssue   `json:"issues,omitempty"`
+	Fingerprint string        `json:"fingerprint"`
+	Authored    []Question    `json:"authoredQuestions,omitempty"`
+	Issues      []ReviewIssue `json:"issues,omitempty"`
 }
 
 type ReviewIssue struct {
-	ID              string   `json:"id"`
-	Stage           string   `json:"stage"`
-	FrameIDs        []string `json:"frameIds"`
-	RelationID      string   `json:"relationId"`
-	SourceRecordID  string   `json:"sourceRecordId"`
-	Result          string   `json:"result"`
-	Reason          string   `json:"reason"`
-	Question        string   `json:"question"`
-	EvidenceNeeded  []string `json:"evidenceNeeded"`
-	ReviewTarget    string   `json:"reviewTarget"`
+	ID             string   `json:"id"`
+	Stage          string   `json:"stage"`
+	FrameIDs       []string `json:"frameIds"`
+	RelationID     string   `json:"relationId"`
+	SourceRecordID string   `json:"sourceRecordId"`
+	Result         string   `json:"result"`
+	Reason         string   `json:"reason"`
+	Question       string   `json:"question"`
+	EvidenceNeeded []string `json:"evidenceNeeded"`
+	ReviewTarget   string   `json:"reviewTarget"`
 }
 
 // Review builds a new projection from its input rather than trusting a
@@ -57,7 +57,7 @@ func reviewProjection(input Input, projection Projection) ReviewPacket {
 		CaseID: input.Example.ID, ModelRevision: input.Catalog.Revision,
 		ExampleFingerprint: "sha256:" + hex.EncodeToString(caseSum[:]),
 		CatalogFingerprint: "sha256:" + hex.EncodeToString(catalogSum[:]),
-		Authored: append([]Question(nil), input.Example.Questions...),
+		Authored:           append([]Question(nil), input.Example.Questions...),
 	}
 	byID := map[string]int{}
 	for _, slide := range projection.Slides {
@@ -76,9 +76,9 @@ func reviewProjection(input Input, projection Projection) ReviewPacket {
 			byID[id] = len(packet.Issues)
 			packet.Issues = append(packet.Issues, ReviewIssue{
 				ID: id, Stage: slide.Stage, FrameIDs: []string{slide.ID},
-				RelationID: finding.RelationID,
+				RelationID:     finding.RelationID,
 				SourceRecordID: finding.SourceRecordID,
-				Result: finding.Result, Reason: finding.Reason,
+				Result:         finding.Result, Reason: finding.Reason,
 				Question: question, EvidenceNeeded: needed,
 				ReviewTarget: target,
 			})
@@ -87,9 +87,15 @@ func reviewProjection(input Input, projection Projection) ReviewPacket {
 	// Stable representation despite differences in presentation ordering.
 	sort.Slice(packet.Issues, func(i, j int) bool {
 		left, right := packet.Issues[i], packet.Issues[j]
-		if left.Stage != right.Stage { return left.Stage < right.Stage }
-		if left.RelationID != right.RelationID { return left.RelationID < right.RelationID }
-		if left.SourceRecordID != right.SourceRecordID { return left.SourceRecordID < right.SourceRecordID }
+		if left.Stage != right.Stage {
+			return left.Stage < right.Stage
+		}
+		if left.RelationID != right.RelationID {
+			return left.RelationID < right.RelationID
+		}
+		if left.SourceRecordID != right.SourceRecordID {
+			return left.SourceRecordID < right.SourceRecordID
+		}
 		return left.ID < right.ID
 	})
 	for i := range packet.Issues {

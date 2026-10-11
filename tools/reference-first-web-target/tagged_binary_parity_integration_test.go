@@ -52,10 +52,10 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 	orderOnly := build("order", "tei_order_only")
 	repairOnly := build("repair", "tei_repair_only")
 	for _, testCase := range []struct {
-		app         string
+		app          string
 		taggedBinary string
-		requests    []taggedParityRequest
-		foreign     []taggedParityRequest
+		requests     []taggedParityRequest
+		foreign      []taggedParityRequest
 	}{
 		{
 			app: "order_entry", taggedBinary: orderOnly,
@@ -155,7 +155,6 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 		t.Fatalf("binary parity crossed source revisions: before=%s after=%s", startHead, endHead)
 	}
 }
-
 
 // Body parity alone could allow an identical wrong result in both executables.
 // These assertions anchor the accepted synthetic Reference scenario semantics

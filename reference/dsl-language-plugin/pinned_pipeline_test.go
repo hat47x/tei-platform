@@ -21,7 +21,7 @@ func TestPinnedPipelineRoundTrip(t *testing.T) {
 func TestPinnedPipelineFailsClosed(t *testing.T) {
 	pin := OperatorContract{ID: "std.where", Version: "1", Fingerprint: "where-v1", Effect: "pure", InputType: "rows/order", OutputType: "rows/order"}
 	tests := []struct {
-		name, source   string
+		name, source  string
 		pins, catalog []OperatorContract
 	}{
 		{"no pins", "rows/order |> std.where", nil, []OperatorContract{pin}},

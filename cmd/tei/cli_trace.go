@@ -32,7 +32,7 @@ func traceWorkspaceJSON(
 		kind != strings.TrimSpace(kind) || id != strings.TrimSpace(id) ||
 		positional != 0 {
 		report.Error = &cliInspectionFailure{
-			Code: "INVALID_ARGUMENT",
+			Code:    "INVALID_ARGUMENT",
 			Message: "trace requires -workspace, -scope, -subject-kind, -subject-id and no -world/positional arguments",
 		}
 		return writeTraceReport(out, report, 2)

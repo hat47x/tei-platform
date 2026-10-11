@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	buildAttestationFormatVersion = 1
+	buildAttestationFormatVersion       = 1
 	attestationTrustPolicyFormatVersion = 1
-	referenceFakeSignatureProfile = "tei.reference.fake-signature/v1"
+	referenceFakeSignatureProfile       = "tei.reference.fake-signature/v1"
 )
 
 type AttestationSubjectKind string
@@ -27,22 +27,22 @@ type AttestationSubject struct {
 }
 
 type BuildAttestation struct {
-	FormatVersion                  int                `json:"formatVersion"`
-	Predicate                      string             `json:"predicate"`
-	BuildExecutionResultFingerprint string            `json:"buildExecutionResultFingerprint"`
-	Subject                        AttestationSubject `json:"subject"`
-	Issuer                         string             `json:"issuer"`
-	SignatureProfile               string             `json:"signatureProfile"`
-	Signature                      string             `json:"signature"`
+	FormatVersion                   int                `json:"formatVersion"`
+	Predicate                       string             `json:"predicate"`
+	BuildExecutionResultFingerprint string             `json:"buildExecutionResultFingerprint"`
+	Subject                         AttestationSubject `json:"subject"`
+	Issuer                          string             `json:"issuer"`
+	SignatureProfile                string             `json:"signatureProfile"`
+	Signature                       string             `json:"signature"`
 }
 
 type attestationUnsignedPayload struct {
-	FormatVersion                  int                `json:"formatVersion"`
-	Predicate                      string             `json:"predicate"`
-	BuildExecutionResultFingerprint string            `json:"buildExecutionResultFingerprint"`
-	Subject                        AttestationSubject `json:"subject"`
-	Issuer                         string             `json:"issuer"`
-	SignatureProfile               string             `json:"signatureProfile"`
+	FormatVersion                   int                `json:"formatVersion"`
+	Predicate                       string             `json:"predicate"`
+	BuildExecutionResultFingerprint string             `json:"buildExecutionResultFingerprint"`
+	Subject                         AttestationSubject `json:"subject"`
+	Issuer                          string             `json:"issuer"`
+	SignatureProfile                string             `json:"signatureProfile"`
 }
 
 type AttestationTrustPolicy struct {

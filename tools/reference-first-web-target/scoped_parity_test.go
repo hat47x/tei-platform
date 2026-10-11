@@ -50,7 +50,7 @@ func TestScopedBusinessRoutesMatchExistingCombinedTarget(t *testing.T) {
 		cases  []requestCase
 	}{
 		{
-			name: "order_entry",
+			name:   "order_entry",
 			server: order,
 			cases: []requestCase{
 				{http.MethodGet, "/manifest.json", "", http.StatusOK},
@@ -65,7 +65,7 @@ func TestScopedBusinessRoutesMatchExistingCombinedTarget(t *testing.T) {
 			},
 		},
 		{
-			name: "repair_intake",
+			name:   "repair_intake",
 			server: repair,
 			cases: []requestCase{
 				{http.MethodGet, "/manifest.json", "", http.StatusOK},

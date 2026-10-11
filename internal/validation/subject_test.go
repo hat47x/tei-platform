@@ -38,7 +38,7 @@ func TestRepresentativeDiagnosticsCarryStructuredSubjects(t *testing.T) {
 			world: ir.World{Semantics: []semantic.Namespace{{
 				ID: "intake",
 				Data: []semantic.Data{{
-					ID: "intake.request",
+					ID:         "intake.request",
 					Attributes: []semantic.Attribute{{ID: "intake.request.summary", TypeRef: "intake.unknown_type"}},
 				}},
 			}}},
@@ -64,7 +64,7 @@ func TestRepresentativeDiagnosticsCarryStructuredSubjects(t *testing.T) {
 			world: ir.World{Semantics: []semantic.Namespace{{
 				ID: "intake",
 				Capabilities: []semantic.Capability{{
-					ID: "intake.request.submit",
+					ID:     "intake.request.submit",
 					Inputs: []semantic.Parameter{{Name: "request", Type: "intake.missing"}},
 				}},
 			}}},

@@ -124,4 +124,3 @@ func (r *referenceCustomerLookupScenarioRunner) RunCustomerLookup(
 		},
 	}, nil
 }
-

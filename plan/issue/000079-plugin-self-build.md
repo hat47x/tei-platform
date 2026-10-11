@@ -557,7 +557,7 @@ WebAssembly Component Modelからは、interface contractと実装言語を分�
 
 ## 2026-10-11 P1判定ノート — production最小契約の抽出
 
-#943の議論で優先度を上げた「Referenceからproductionへ何を移し、何を移さないか」を、`plan/issue/000079-production-contract-delta.md` に独立した判定ノートとして整理した。
+#943の議論で優先度を上げた「Referenceからproductionへ何を移し、何を移さないか」を、[`PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md`](../design/PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md) に独立した判定ノートとして整理した。
 
 中心となる移行停止線：
 

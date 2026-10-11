@@ -281,17 +281,20 @@ func TestArtifactReceiptDoesNotPromoteStoreAuthority(t *testing.T) {
 	}
 }
 
-
 func TestStoreRejectsReplacedAlgorithmDirectory(t *testing.T) {
 	root := t.TempDir()
 	store, err := openLocalArtifactStore(root, 1<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
+	replacement := filepath.Join(root, "replacement-sha256")
+	if err := os.Mkdir(replacement, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Remove(store.algorithmDir); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(store.algorithmDir, 0o755); err != nil {
+	if err := os.Rename(replacement, store.algorithmDir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -335,7 +338,6 @@ func TestConcurrentPutLeavesNoTemporaryObjects(t *testing.T) {
 	}
 }
 
-
 func TestReceiptLocatorDoesNotLeakStoreRoot(t *testing.T) {
 	store := openTestStore(t, 1<<20)
 	receipt, err := store.PutBytes([]byte("portable receipt locator"))
@@ -353,7 +355,6 @@ func TestReceiptLocatorDoesNotLeakStoreRoot(t *testing.T) {
 		t.Fatalf("receipt locator=%q want=%q", receipt.Locator, want)
 	}
 }
-
 
 func TestLockedBuildDigestRetrievesExactStoredArtifact(t *testing.T) {
 	store := openTestStore(t, 1<<20)

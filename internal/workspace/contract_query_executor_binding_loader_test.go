@@ -25,7 +25,7 @@ func TestLoadContractQueryExecutorBindingsKeepsSourceIdentityExplicit(t *testing
 		t.Fatal(err)
 	}
 
-	result := Result{Sources: map[string]SourceLocation{}}
+	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	if err := loadContractQueryExecutorBindings(root, &result); err != nil {
 		t.Fatalf("Binding sourceを読み込めません: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestLoadContractQueryExecutorBindingsRejectsDuplicateIdentity(t *testing.T)
 		t.Fatal(err)
 	}
 
-	result := Result{Sources: map[string]SourceLocation{}}
+	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	err := loadContractQueryExecutorBindings(root, &result)
 	if err == nil || !strings.Contains(err.Error(), "既に") || !strings.Contains(err.Error(), "development/master_data.dev/master_data/master_data.customer/find_by_id") {
 		t.Fatalf("同一Binding identityへの複数executor宣言を拒否していません: %v", err)

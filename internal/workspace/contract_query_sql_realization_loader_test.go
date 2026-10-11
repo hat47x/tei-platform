@@ -35,7 +35,7 @@ func TestLoadContractQuerySQLRealizationSeparatesAuthoringAndNativeSQLSources(t 
 		t.Fatal(err)
 	}
 
-	result := Result{Sources: map[string]SourceLocation{}}
+	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	if err := loadContractQuerySQLRealizations(root, &result); err != nil {
 		t.Fatalf("SQL realization sourceを読み込めません: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestLoadContractQuerySQLRealizationRejectsDuplicateIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := Result{Sources: map[string]SourceLocation{}}
+	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	err := loadContractQuerySQLRealizations(root, &result)
 	if err == nil || !strings.Contains(err.Error(), "は既に") || !strings.Contains(err.Error(), "master_data/master_data.customer/find_by_id/sql/oracle") {
 		t.Fatalf("同じtarget + providerへの複数SQL realizationを曖昧に共存させています: %v", err)

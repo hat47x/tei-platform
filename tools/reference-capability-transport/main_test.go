@@ -1,4 +1,4 @@
-package main
+package capabilitytransport
 
 import (
 	"bytes"
@@ -43,8 +43,8 @@ func TestTransportHelperProcess(t *testing.T) {
 		Provider:                dispatch.Provider,
 		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
 		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
-		PayloadCodec:             dispatch.PayloadCodec,
-		Payload:                  append([]byte(nil), dispatch.Payload...),
+		PayloadCodec:            dispatch.PayloadCodec,
+		Payload:                 append([]byte(nil), dispatch.Payload...),
 	}
 	switch mode {
 	case "echo":
@@ -84,7 +84,7 @@ func TestTransportHelperProcess(t *testing.T) {
 	case "tamper-plugin":
 		resp.Plugin.ID = core.MustCanonicalID("tei.reference.transport.other")
 	case "tamper-capability-id":
-		resp.CapabilityID = core.MustCanonicalID("transport.other-carrier")
+		resp.CapabilityID = core.MustCanonicalID("transport.other_carrier")
 	case "tamper-descriptor":
 		resp.DescriptorFingerprint = strings.Repeat("f", 64)
 	}
@@ -102,7 +102,7 @@ func transportCarrier() LegacyCarrier {
 			Version: "1.0.0",
 		},
 		CapabilityKind:        plugin.CapabilityContractQueryExecutor,
-		CapabilityID:          core.MustCanonicalID("transport.legacy-carrier"),
+		CapabilityID:          core.MustCanonicalID("transport.legacy_carrier"),
 		DescriptorFingerprint: strings.Repeat("d", 64),
 		Operation:             "generic-dispatch-v0",
 	}
@@ -118,12 +118,12 @@ func genericDispatch(payload []byte) GenericDispatch {
 			PluginID:         "tei.reference.transport",
 			PluginVersion:    "1.0.0",
 			ImplementationID: "generic.echo.v1",
-			ArtifactDigest:  "sha256:" + strings.Repeat("b", 64),
+			ArtifactDigest:   "sha256:" + strings.Repeat("b", 64),
 		},
 		RequestShapeFingerprint: "sha256:" + strings.Repeat("c", 64),
 		ResultShapeFingerprint:  "sha256:" + strings.Repeat("e", 64),
-		PayloadCodec:             "application/octet-stream",
-		Payload:                  append([]byte(nil), payload...),
+		PayloadCodec:            "application/octet-stream",
+		Payload:                 append([]byte(nil), payload...),
 	}
 }
 
@@ -168,7 +168,7 @@ func TestProcessTransportRoundTripPreservesGenericIdentityAndOpaquePayload(t *te
 		receipt.Carrier.Plugin == nil ||
 		*receipt.Carrier.Plugin != transportCarrier().Plugin ||
 		receipt.Carrier.LegacyCapabilityKind != plugin.CapabilityContractQueryExecutor ||
-		receipt.Carrier.LegacyCapabilityID != core.MustCanonicalID("transport.legacy-carrier") {
+		receipt.Carrier.LegacyCapabilityID != core.MustCanonicalID("transport.legacy_carrier") {
 		t.Fatalf("legacy carrier identity was hidden: %+v", receipt)
 	}
 }

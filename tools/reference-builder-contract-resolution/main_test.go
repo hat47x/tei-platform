@@ -356,6 +356,7 @@ func TestBuilderResolutionUsesCanonicalProviderID(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
 	providers[0].ProviderID = core.MustCanonicalID("tei.builder.copy_explicit")
 	evidence[0].ProviderID = providers[0].ProviderID
+	evidence[0].ClaimsFingerprint, _ = conformanceClaimsFingerprint(evidence[0])
 	wiring.ProviderID = providers[0].ProviderID
 	resolution, err := resolveBuilder(referenceIntent(contract), BuilderCatalog{
 		Contracts: []BuilderContract{contract},
@@ -369,7 +370,6 @@ func TestBuilderResolutionUsesCanonicalProviderID(t *testing.T) {
 		t.Fatalf("BuilderIdentity ID=%s want provider=%s", resolution.Builder.ID, providers[0].ProviderID)
 	}
 }
-
 
 func TestMalformedExplicitWiringIsRejectedBeforeProviderLookup(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
@@ -430,7 +430,6 @@ func TestLockedReplayIgnoresUnrelatedSupportExpansion(t *testing.T) {
 		t.Fatalf("unrelated support expansion changed locked resolution identity: %s != %s", replayed.ResolutionFingerprint, resolution.ResolutionFingerprint)
 	}
 }
-
 
 func TestLockRejectsTamperedResolutionCrossFields(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
@@ -507,7 +506,6 @@ func TestReplayRejectsLockWhoseBuilderDoesNotMatchLockedProvider(t *testing.T) {
 	}
 }
 
-
 func TestResolvedBuildPlanDoesNotImplicitlyChangeAfterCatalogExpansion(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
 	intent := referenceIntent(contract)
@@ -554,7 +552,6 @@ func TestResolvedBuildPlanDoesNotImplicitlyChangeAfterCatalogExpansion(t *testin
 	}
 }
 
-
 func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
 	provider := providers[0]
@@ -594,7 +591,6 @@ func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.
 		t.Fatalf("selected Target used wrong Conformance Evidence: %s", resolution.EvidenceFingerprint)
 	}
 }
-
 
 func TestConformanceEvidenceFingerprintBindsSelectedClaims(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()

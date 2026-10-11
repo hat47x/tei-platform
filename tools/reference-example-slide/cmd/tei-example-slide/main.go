@@ -5,9 +5,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -29,9 +29,13 @@ func main() {
 }
 
 func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answerFiles ...string) error {
-	if len(answerFiles) > 1 { return fmt.Errorf("only one answer input may be supplied") }
+	if len(answerFiles) > 1 {
+		return fmt.Errorf("only one answer input may be supplied")
+	}
 	answerFile := ""
-	if len(answerFiles) == 1 { answerFile = answerFiles[0] }
+	if len(answerFiles) == 1 {
+		answerFile = answerFiles[0]
+	}
 	if answerFile != "" && (catalogOnly || inputPath == "" || outputPath == "") {
 		return fmt.Errorf("-answers requires -input and -out, and excludes -catalog")
 	}
@@ -73,6 +77,7 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 		return fmt.Errorf("derive review: %w", err)
 	}
 	var answerHandoff *example.AnswerHandoff
+	var changeTriage *example.ChangeTriage
 	if answerFile != "" {
 		var proposed example.AnswerInput
 		if err := readStrictJSON(answerFile, &proposed); err != nil {
@@ -84,7 +89,9 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 		}
 		answerHandoff = &bound
 		triage, err := example.TriageAnsweredReview(input, proposed)
-		if err != nil { return fmt.Errorf("triage review answers: %w", err) }
+		if err != nil {
+			return fmt.Errorf("triage review answers: %w", err)
+		}
 		changeTriage = &triage
 	}
 	if outputPath == "" {
@@ -113,13 +120,17 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 	}
 	if answerHandoff != nil {
 		answerJSON, err := json.MarshalIndent(answerHandoff, "", "  ")
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		answerJSON = append(answerJSON, '\n')
 		if err := os.WriteFile(filepath.Join(outputPath, "answer-handoff.json"), answerJSON, 0600); err != nil {
 			return err
 		}
 		triageJSON, err := json.MarshalIndent(changeTriage, "", "  ")
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		triageJSON = append(triageJSON, '\n')
 		if err := os.WriteFile(filepath.Join(outputPath, "change-triage.json"), triageJSON, 0600); err != nil {
 			return err

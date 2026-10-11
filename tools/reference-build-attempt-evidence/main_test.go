@@ -348,7 +348,6 @@ func uppercaseDigest(value string) string {
 	return "sha256:" + strings.ToUpper(strings.TrimPrefix(value, "sha256:"))
 }
 
-
 func TestAttemptHistoryRejectsTamperedFailureEvidence(t *testing.T) {
 	plan := referenceBuildPlan()
 	exitCode := 2
@@ -395,7 +394,6 @@ func TestAttemptHistoryRejectsSuccessfulResultFromDifferentPlan(t *testing.T) {
 		t.Fatal("Attempt History accepted a successful result from a different BuildPlan")
 	}
 }
-
 
 func TestAttemptHistoryRejectsDuplicateOrOutOfOrderOrdinal(t *testing.T) {
 	plan := referenceBuildPlan()

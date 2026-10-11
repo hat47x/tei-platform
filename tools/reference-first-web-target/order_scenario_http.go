@@ -183,4 +183,3 @@ func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, 
 		http.Error(w, "encode command scenario result", http.StatusInternalServerError)
 	}
 }
-

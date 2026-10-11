@@ -95,4 +95,3 @@ func ProjectContractRows(source []driver.ContractQueryRow) []SemanticRowProjecti
 	}
 	return result
 }
-

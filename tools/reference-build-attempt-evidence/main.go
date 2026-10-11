@@ -47,29 +47,29 @@ type diagnosticCaptureEvidence struct {
 }
 
 type buildAttemptEvidence struct {
-	Schema               string                     `json:"schema"`
-	AttemptOrdinal       int                        `json:"attemptOrdinal"`
-	BuildPlanFingerprint string                     `json:"buildPlanFingerprint"`
-	Builder              plugin.BuilderIdentity     `json:"builder"`
-	Target               string                     `json:"target"`
-	Profile              string                     `json:"profile,omitempty"`
-	Phase                string                     `json:"phase"`
-	Outcome              string                     `json:"outcome"`
-	FailureClass         string                     `json:"failureClass"`
-	ExitCode             *int                       `json:"exitCode,omitempty"`
-	Signal               string                     `json:"signal,omitempty"`
-	DiagnosticSummary    string                     `json:"diagnosticSummary"`
-	Stdout               diagnosticCaptureEvidence  `json:"stdout"`
-	Stderr               diagnosticCaptureEvidence  `json:"stderr"`
-	AuthorityLimits      []string                   `json:"authorityLimits"`
-	EvidenceFingerprint  string                     `json:"evidenceFingerprint"`
+	Schema               string                    `json:"schema"`
+	AttemptOrdinal       int                       `json:"attemptOrdinal"`
+	BuildPlanFingerprint string                    `json:"buildPlanFingerprint"`
+	Builder              plugin.BuilderIdentity    `json:"builder"`
+	Target               string                    `json:"target"`
+	Profile              string                    `json:"profile,omitempty"`
+	Phase                string                    `json:"phase"`
+	Outcome              string                    `json:"outcome"`
+	FailureClass         string                    `json:"failureClass"`
+	ExitCode             *int                      `json:"exitCode,omitempty"`
+	Signal               string                    `json:"signal,omitempty"`
+	DiagnosticSummary    string                    `json:"diagnosticSummary"`
+	Stdout               diagnosticCaptureEvidence `json:"stdout"`
+	Stderr               diagnosticCaptureEvidence `json:"stderr"`
+	AuthorityLimits      []string                  `json:"authorityLimits"`
+	EvidenceFingerprint  string                    `json:"evidenceFingerprint"`
 }
 
 type buildAttemptHistory struct {
-	Schema           string                     `json:"schema"`
-	BuildPlanFingerprint string                  `json:"buildPlanFingerprint"`
-	FailedAttempts   []failedAttemptReference   `json:"failedAttempts"`
-	SuccessfulResult *successfulResultReference `json:"successfulResult,omitempty"`
+	Schema               string                     `json:"schema"`
+	BuildPlanFingerprint string                     `json:"buildPlanFingerprint"`
+	FailedAttempts       []failedAttemptReference   `json:"failedAttempts"`
+	SuccessfulResult     *successfulResultReference `json:"successfulResult,omitempty"`
 }
 
 type failedAttemptReference struct {
@@ -413,6 +413,11 @@ func captureDiagnostic(
 		Truncated:     int64(len(retained)) < observed,
 		AccessClass:   "restricted-build-diagnostic",
 	}, retained, nil
+}
+
+func digestBytes(value []byte) string {
+	sum := sha256.Sum256(value)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func buildAttemptEvidenceFingerprint(e buildAttemptEvidence) (string, error) {

@@ -14,7 +14,7 @@ import (
 const (
 	dataDesignCandidateReviewProjectionRevision = "tei.knowledge.data-design-candidate-review/v1"
 
-	DataDesignCandidateKindBusinessIdentity      = "business-identity"
+	DataDesignCandidateKindBusinessIdentity     = "business-identity"
 	DataDesignCandidateKindFunctionalDependency = "functional-dependency"
 )
 
@@ -37,28 +37,28 @@ type DataDesignCandidateReviewRequirement struct {
 }
 
 type DataDesignCandidateReviewPacket struct {
-	ProjectionRevision                    string                                `json:"projectionRevision"`
-	Fingerprint                           string                                `json:"fingerprint"`
-	Subject                               subject.Subject                       `json:"subject"`
-	DataDesignProjectionRevision          string                                `json:"dataDesignProjectionRevision"`
-	DataDesignFingerprint                 string                                `json:"dataDesignFingerprint"`
-	DataDesignResolutionStatus            string                                `json:"dataDesignResolutionStatus"`
-	DataDesignEvidenceCoverageStatus      string                                `json:"dataDesignEvidenceCoverageStatus"`
-	Candidate                             DataDesignCandidateReviewCandidate     `json:"candidate"`
-	SourceEvidence                        []DataDesignEvidence                    `json:"sourceEvidence,omitempty"`
-	SourceEvidenceMissing                 []subject.Subject                     `json:"sourceEvidenceMissing,omitempty"`
-	SourceEvidenceStatus                  string                                `json:"sourceEvidenceStatus"`
-	ReviewBlockingAmbiguities             []DataDesignAmbiguity                  `json:"reviewBlockingAmbiguities,omitempty"`
-	CandidateAmbiguityStatus              string                                `json:"candidateAmbiguityStatus"`
-	BusinessEvidenceRequirements          []DataDesignCandidateReviewRequirement `json:"businessEvidenceRequirements"`
-	BusinessEvidenceStatus                string                                `json:"businessEvidenceStatus"`
-	ReviewStatus                          string                                `json:"reviewStatus"`
-	PromotionStatus                       string                                `json:"promotionStatus"`
-	PromotionBlockingReasons              []string                              `json:"promotionBlockingReasons"`
-	FirstClassAuthoringContractStatus     string                                `json:"firstClassAuthoringContractStatus"`
-	FirstClassAuthoringContractReasons    []string                              `json:"firstClassAuthoringContractReasons"`
-	ReviewSequence                        []string                              `json:"reviewSequence"`
-	AuthorityLimits                       []string                              `json:"authorityLimits"`
+	ProjectionRevision                 string                                 `json:"projectionRevision"`
+	Fingerprint                        string                                 `json:"fingerprint"`
+	Subject                            subject.Subject                        `json:"subject"`
+	DataDesignProjectionRevision       string                                 `json:"dataDesignProjectionRevision"`
+	DataDesignFingerprint              string                                 `json:"dataDesignFingerprint"`
+	DataDesignResolutionStatus         string                                 `json:"dataDesignResolutionStatus"`
+	DataDesignEvidenceCoverageStatus   string                                 `json:"dataDesignEvidenceCoverageStatus"`
+	Candidate                          DataDesignCandidateReviewCandidate     `json:"candidate"`
+	SourceEvidence                     []DataDesignEvidence                   `json:"sourceEvidence,omitempty"`
+	SourceEvidenceMissing              []subject.Subject                      `json:"sourceEvidenceMissing,omitempty"`
+	SourceEvidenceStatus               string                                 `json:"sourceEvidenceStatus"`
+	ReviewBlockingAmbiguities          []DataDesignAmbiguity                  `json:"reviewBlockingAmbiguities,omitempty"`
+	CandidateAmbiguityStatus           string                                 `json:"candidateAmbiguityStatus"`
+	BusinessEvidenceRequirements       []DataDesignCandidateReviewRequirement `json:"businessEvidenceRequirements"`
+	BusinessEvidenceStatus             string                                 `json:"businessEvidenceStatus"`
+	ReviewStatus                       string                                 `json:"reviewStatus"`
+	PromotionStatus                    string                                 `json:"promotionStatus"`
+	PromotionBlockingReasons           []string                               `json:"promotionBlockingReasons"`
+	FirstClassAuthoringContractStatus  string                                 `json:"firstClassAuthoringContractStatus"`
+	FirstClassAuthoringContractReasons []string                               `json:"firstClassAuthoringContractReasons"`
+	ReviewSequence                     []string                               `json:"reviewSequence"`
+	AuthorityLimits                    []string                               `json:"authorityLimits"`
 }
 
 func BuildDataDesignCandidateReview(
@@ -145,24 +145,24 @@ func BuildDataDesignCandidateReview(
 	sort.Strings(promotionBlockingReasons)
 
 	packet := DataDesignCandidateReviewPacket{
-		ProjectionRevision:               dataDesignCandidateReviewProjectionRevision,
-		Subject:                          ctx.Subject,
-		DataDesignProjectionRevision:     ctx.DataDesign.ProjectionRevision,
-		DataDesignFingerprint:            ctx.DataDesign.Fingerprint,
-		DataDesignResolutionStatus:       ctx.DataDesign.ResolutionStatus,
-		DataDesignEvidenceCoverageStatus: ctx.DataDesign.EvidenceCoverageStatus,
-		Candidate:                        candidate,
-		SourceEvidence:                   sourceEvidence,
-		SourceEvidenceMissing:            sourceMissing,
-		SourceEvidenceStatus:             sourceEvidenceStatus,
-		ReviewBlockingAmbiguities:        blockingAmbiguities,
-		CandidateAmbiguityStatus:         candidateAmbiguityStatus,
-		BusinessEvidenceRequirements:     requirements,
-		BusinessEvidenceStatus:           "unresolved",
-		ReviewStatus:                     reviewStatus,
-		PromotionStatus:                  "blocked",
-		PromotionBlockingReasons:         promotionBlockingReasons,
-		FirstClassAuthoringContractStatus: "unresolved",
+		ProjectionRevision:                 dataDesignCandidateReviewProjectionRevision,
+		Subject:                            ctx.Subject,
+		DataDesignProjectionRevision:       ctx.DataDesign.ProjectionRevision,
+		DataDesignFingerprint:              ctx.DataDesign.Fingerprint,
+		DataDesignResolutionStatus:         ctx.DataDesign.ResolutionStatus,
+		DataDesignEvidenceCoverageStatus:   ctx.DataDesign.EvidenceCoverageStatus,
+		Candidate:                          candidate,
+		SourceEvidence:                     sourceEvidence,
+		SourceEvidenceMissing:              sourceMissing,
+		SourceEvidenceStatus:               sourceEvidenceStatus,
+		ReviewBlockingAmbiguities:          blockingAmbiguities,
+		CandidateAmbiguityStatus:           candidateAmbiguityStatus,
+		BusinessEvidenceRequirements:       requirements,
+		BusinessEvidenceStatus:             "unresolved",
+		ReviewStatus:                       reviewStatus,
+		PromotionStatus:                    "blocked",
+		PromotionBlockingReasons:           promotionBlockingReasons,
+		FirstClassAuthoringContractStatus:  "unresolved",
 		FirstClassAuthoringContractReasons: dataDesignFirstClassAuthoringContractReasons(kind),
 		ReviewSequence: []string{
 			"rebuild-current-data-design-context-and-verify-fingerprint",
@@ -202,7 +202,7 @@ func dataDesignEvidenceSearchSubjects(
 	sourceData := core.CanonicalID("")
 	var attributeSubjects []subject.Subject
 	for _, term := range candidate.Terms {
-		if term.Kind == "relation-source-occurrence" && term.Data != "" {
+		if term.Kind == "related-occurrence" && term.End == "source" && term.Data != "" {
 			sourceData = term.Data
 		}
 		if term.Attribute != "" {
@@ -317,7 +317,7 @@ func resolveDataDesignReviewCandidate(
 			)
 		}
 		if dataDesignCandidateEvidenceRequirementFingerprint(
-			"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+			"tei.knowledge.data-design.business-identity-candidate-evidence/v2",
 			value.Fingerprint,
 			value.EvidenceNeeded,
 		) != value.EvidenceRequirementFingerprint {
@@ -368,7 +368,7 @@ func resolveDataDesignReviewCandidate(
 			)
 		}
 		if dataDesignCandidateEvidenceRequirementFingerprint(
-			"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+			"tei.knowledge.data-design.functional-dependency-candidate-evidence/v2",
 			value.Fingerprint,
 			value.EvidenceNeeded,
 		) != value.EvidenceRequirementFingerprint {
@@ -412,9 +412,9 @@ func dataDesignReviewSubjects(
 	terms []DataDesignDeterminantTerm,
 ) map[subject.Subject]struct{} {
 	out := map[subject.Subject]struct{}{
-		{Kind: "semantic-relation", ID: string(relation)}:       {},
+		{Kind: "semantic-relation", ID: string(relation)}:          {},
 		{Kind: "semantic-validation", ID: string(basisConstraint)}: {},
-		{Kind: "semantic-data", ID: string(target)}:             {},
+		{Kind: "semantic-data", ID: string(target)}:                {},
 	}
 	for _, term := range terms {
 		if term.Data != "" {

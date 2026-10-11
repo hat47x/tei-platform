@@ -76,12 +76,12 @@ func TestDataDeterminantAssociationReferenceKeepsCorePromotionUnresolved(t *test
 	ledger := loadDataDeterminantAssociationSeedLedger(t)
 
 	requiredUnresolved := map[string]bool{
-		"external-domain-validation":           false,
-		"relation-semantics-contract":          false,
-		"business-identity-core-syntax":        false,
-		"functional-dependency-core-syntax":    false,
-		"temporal-overlap-policy":              false,
-		"shared-acceptance-authoring-path":      false,
+		"external-domain-validation":        false,
+		"relation-semantics-contract":       false,
+		"business-identity-core-syntax":     false,
+		"functional-dependency-core-syntax": false,
+		"temporal-overlap-policy":           false,
+		"shared-acceptance-authoring-path":  false,
 	}
 	for _, item := range ledger.Unresolved {
 		if item.Status != "unresolved" || strings.TrimSpace(item.Note) == "" {

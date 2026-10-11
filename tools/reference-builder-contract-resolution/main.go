@@ -113,12 +113,12 @@ type BuilderResolutionLock struct {
 }
 
 type ReferenceEvidence struct {
-	Schema                string                `json:"schema"`
-	FreshResolution       BuilderResolution     `json:"freshResolution"`
-	Lock                  BuilderResolutionLock `json:"lock"`
-	ReplayResolution      BuilderResolution     `json:"replayResolution"`
-	ExpandedFreshError    string                `json:"expandedFreshError"`
-	AuthorityLimits       []string              `json:"authorityLimits"`
+	Schema             string                `json:"schema"`
+	FreshResolution    BuilderResolution     `json:"freshResolution"`
+	Lock               BuilderResolutionLock `json:"lock"`
+	ReplayResolution   BuilderResolution     `json:"replayResolution"`
+	ExpandedFreshError string                `json:"expandedFreshError"`
+	AuthorityLimits    []string              `json:"authorityLimits"`
 }
 
 func main() {

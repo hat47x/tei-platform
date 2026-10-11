@@ -2,6 +2,14 @@
 
 特定の時点と対象について調べた結果を保管する。現在の設計判断や完了状況は、関連する要件、Issue、ADR、検証記録を参照する。
 
+## 公開準備の監査
+
+- [PRとリモートbranchのexact-head確認（2026年10月11日）](DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)
+- [Git履歴の機密情報走査（2026年10月11日）](PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)
+- [公開開発用Source構成の過去評価（2026年10月11日）](PUBLIC_DEVELOPMENT_PROFILE_REVIEW_2026-10-11.md)
+- [第三者ライセンス棚卸し（2026年10月11日）](THIRD_PARTY_LICENSE_INVENTORY_2026-10-11.md)
+- [GitHub上の公開面スナップショット（2026年10月11日）](PUBLIC_GITHUB_SURFACE_SNAPSHOT_2026-10-11.md)
+
 ## 業務設計の監査
 
 - [A54〜A69の構成と採用判断](LANE_B_A54_A69_COMPOSITION_AND_READINESS_AUDIT_2026-09.md)

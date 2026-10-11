@@ -32,6 +32,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/index"
 	"tei/internal/ir"
+	"tei/internal/knowledgecontext"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/query/analyzer"
@@ -70,13 +71,20 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <commands|inspect|trace|scenario|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <scenario|commands|inspect|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
 		os.Exit(2)
 	}
 	command := os.Args[1]
+	if command == "scenario" {
+		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if command == "commands" {
 		if len(os.Args) != 2 {
 			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
@@ -85,20 +93,13 @@ func main() {
 		writeJSON(commandCatalog())
 		return
 	}
-	if command == "scenario" {
-		if err := runScenarioCommand(os.Args[2:], os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
-	}
 	parseMode := flag.ExitOnError
 	if command == "inspect" || command == "trace" {
 		parseMode = flag.ContinueOnError
 	}
 	fs := flag.NewFlagSet(command, parseMode)
 	if parseMode == flag.ContinueOnError {
-		fs.SetOutput(io.Discard)
+		fs.SetOutput(io.Discard) // Emit one JSON error instead of a second stderr diagnostic.
 	}
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
@@ -182,9 +183,11 @@ func main() {
 		}
 	}
 	if command == "trace" {
-		code, err := traceWorkspaceJSON(os.Stdout, *workspacePath, *worldPath, *traceScope,
+		code, err := traceWorkspaceJSON(
+			os.Stdout, *workspacePath, *worldPath, *traceScope,
 			*subjectKind, *subjectID, *traceDirection, *traceMode,
-			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg())
+			*traceExpectedFingerprint, *traceOffset, *traceLimit, fs.NArg(),
+		)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

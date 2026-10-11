@@ -52,9 +52,9 @@ func TestScenarioResultContractsNeverKeepCredentials(t *testing.T) {
 		}
 	}
 	raw, err := json.Marshal(commandScenarioResult{
-		ScenarioID: "order-entry.submit-order-web-slice",
+		ScenarioID:    "order-entry.submit-order-web-slice",
 		ApplicationID: "order_entry",
-		Stage: "authorization-denied",
+		Stage:         "authorization-denied",
 	})
 	if err != nil {
 		t.Fatal(err)

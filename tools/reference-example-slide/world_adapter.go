@@ -22,7 +22,7 @@ func CatalogFromWorld(world ir.World) (Catalog, error) {
 	}
 	catalog := Catalog{
 		Revision: fmt.Sprintf("sha256:%x", sha256.Sum256(encoded)),
-		Tables: make(map[string]Table),
+		Tables:   make(map[string]Table),
 	}
 
 	types := make(map[string]semantic.Type)

@@ -27,7 +27,7 @@ func inspectWorkspaceJSON(out io.Writer, root, world, kind, id string, positiona
 	report := cliInspectionReport{SchemaVersion: "tei.cli.inspect/v0"}
 	if root == "" || world != "" || kind == "" || id == "" || positional != 0 {
 		report.Error = &cliInspectionFailure{
-			Code: operations.InspectionInvalidSubject,
+			Code:    operations.InspectionInvalidSubject,
 			Message: "inspect requires -workspace, -subject-kind and -subject-id; -world and positional arguments are not supported",
 		}
 		return writeInspectionReport(out, report, 2)

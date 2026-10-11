@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"path/filepath"
+	"reflect"
 
 	"tei/internal/core"
 	"tei/internal/driver"
@@ -19,14 +19,14 @@ import (
 )
 
 type scenarioStepEvidence struct {
-	StepID         string `json:"stepId"`
-	Operation      string `json:"operation"`
-	Pattern        string `json:"pattern"`
-	Verified       bool   `json:"verified"`
-	EvidenceNature string `json:"evidenceNature"`
-	RowCount int `json:"rowCount,omitempty"`
+	StepID            string            `json:"stepId"`
+	Operation         string            `json:"operation"`
+	Pattern           string            `json:"pattern"`
+	Verified          bool              `json:"verified"`
+	EvidenceNature    string            `json:"evidenceNature"`
+	RowCount          int               `json:"rowCount,omitempty"`
 	ValidationResults map[string]string `json:"validationResults,omitempty"`
-	ObservationResult any `json:"observationResult,omitempty"`
+	ObservationResult any               `json:"observationResult,omitempty"`
 }
 
 func runScenarioCommand(args []string, output io.Writer) error {
@@ -95,16 +95,26 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	for _, st := range s.Steps {
 		if st.Operation == "observe-synthetic-state" {
 			path, err := scenarioFixturePath(*scenarioPath, st.Fixture)
-			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
 			source, err := os.ReadFile(path)
-			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
 			fixture, err := scenariotest.ParseObservationFixture(source)
-			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
-			if fixture.ReadIdentity != st.ReadIdentity { return fmt.Errorf("step %s: Observation identity mismatch", st.ID) }
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			if fixture.ReadIdentity != st.ReadIdentity {
+				return fmt.Errorf("step %s: Observation identity mismatch", st.ID)
+			}
 			digest := sha256.Sum256(source)
 			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
 			observationFixtures[st.ID] = fixture
-			if *stepID != "" && *stepID != st.ID { continue }
+			if *stepID != "" && *stepID != st.ID {
+				continue
+			}
 			selected = true
 			stepsByID[st.ID] = st
 			evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Verified: false, EvidenceNature: "synthetic-observation-bound; not-read"})
@@ -112,17 +122,27 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		if st.Operation == "evaluate-validations" {
 			path, err := scenarioFixturePath(*scenarioPath, st.Fixture)
-			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
 			source, err := os.ReadFile(path)
-			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
 			fixture, err := scenariotest.ParseValidationFixture(source)
-			if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
 			digest := sha256.Sum256(source)
 			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
 			validationFixtures[st.ID] = fixture
-			if *stepID != "" && *stepID != st.ID { continue }
+			if *stepID != "" && *stepID != st.ID {
+				continue
+			}
 			// Validate selection without re-declaring it in Scenario.
-			if _, err := resolver.ResolveApplicationValidations(applicationID); err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+			if _, err := resolver.ResolveApplicationValidations(applicationID); err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
 			selected = true
 			stepsByID[st.ID] = st
 			evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Verified: false, EvidenceNature: "canonical-validations-bound; not-evaluated"})
@@ -240,7 +260,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 			if evidence[i].Operation == "observe-synthetic-state" {
 				st := stepsByID[evidence[i].StepID]
 				result, err := executeScenarioObservation(st, observationFixtures[st.ID])
-				if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+				if err != nil {
+					return fmt.Errorf("step %s: %w", st.ID, err)
+				}
 				evidence[i].ObservationResult = result
 				evidence[i].Verified = true
 				evidence[i].EvidenceNature = "synthetic-independent-observation-read"
@@ -249,7 +271,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 			if evidence[i].Operation == "evaluate-validations" {
 				st := stepsByID[evidence[i].StepID]
 				results, err := executeScenarioValidations(resolver, applicationID, st, validationFixtures[st.ID])
-				if err != nil { return fmt.Errorf("step %s: %w", st.ID, err) }
+				if err != nil {
+					return fmt.Errorf("step %s: %w", st.ID, err)
+				}
 				evidence[i].ValidationResults = results
 				evidence[i].Verified = true
 				evidence[i].EvidenceNature = "canonical-validations-synthetic-input-evaluated"
@@ -293,7 +317,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		mode := "static-verification"
 		if action == "run" {
 			mode = "exploratory-unpinned"
-			if pinsSupplied { mode = "generated-pinned" }
+			if pinsSupplied {
+				mode = "generated-pinned"
+			}
 		}
 		return json.NewEncoder(output).Encode(map[string]any{
 			"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence,

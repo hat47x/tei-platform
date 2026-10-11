@@ -43,7 +43,7 @@ func scenarioFixturePath(scenarioPath, fixture string) (string, error) {
 
 // scenarioBrowseExecutor is synthetic: its raw result is read from a fixture,
 // never a production datasource. It does not authorize any real provider access.
-type scenarioBrowseExecutor struct { fixture scenariotest.BrowseFixture }
+type scenarioBrowseExecutor struct{ fixture scenariotest.BrowseFixture }
 
 func (e scenarioBrowseExecutor) ExecuteBrowseQuery(_ context.Context, q query.EmbeddedSQL, source application.DatabaseRequirement, params map[string]any) (driver.BrowseQueryResult, error) {
 	f := e.fixture

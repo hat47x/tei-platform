@@ -9,9 +9,9 @@ import (
 func ref(id string) Ref { return Ref{ID: id, Version: "1.0.0", Fingerprint: "sha256:" + id} }
 
 type stubTrust struct {
-	denyAcceptance, denyPublisher, denyConformance bool
+	denyAcceptance, denyPublisher, denyConformance                            bool
 	denyResolution, denyRuntimeBinding, denyData, denyContext, denyInvocation bool
-	expectedPlan string
+	expectedPlan                                                              string
 }
 
 func (s stubTrust) Accepted(d string, receipt, snapshot Ref) bool {
@@ -25,8 +25,8 @@ func (s stubTrust) ResolutionCurrent(p Plan) bool {
 	return !s.denyResolution && (s.expectedPlan == "" || Digest(p) == s.expectedPlan)
 }
 func (s stubTrust) RuntimeBindingCurrent(step Step) bool { return !s.denyRuntimeBinding }
-func (s stubTrust) DataCompatible(step Step) bool { return !s.denyData }
-func (s stubTrust) ContextBound(step Step) bool { return !s.denyContext }
+func (s stubTrust) DataCompatible(step Step) bool        { return !s.denyData }
+func (s stubTrust) ContextBound(step Step) bool          { return !s.denyContext }
 func (s stubTrust) Authorized(step Step) bool {
 	return !s.denyInvocation && step.Contract.valid()
 }
@@ -77,16 +77,16 @@ func orderFixture(language string) fixture {
 			Identity: wiring[0].Provider, Contract: need[0].Contract, Scope: need[0].Scope,
 			Target: "web", Conformance: ref("test.customer.conformance"),
 			ResolutionLock: ref("existing.capability-lock.customer"),
-			Artifact: ref("existing.artifact.customer"),
-			RuntimeDeps: []Ref{ref("runtime.customer-service")},
-			BuildOnlyDeps: []Ref{ref("build.codegen-tool")},
+			Artifact:       ref("existing.artifact.customer"),
+			RuntimeDeps:    []Ref{ref("runtime.customer-service")},
+			BuildOnlyDeps:  []Ref{ref("build.codegen-tool")},
 		},
 		{
 			Identity: wiring[1].Provider, Contract: need[1].Contract, Scope: need[1].Scope,
 			Target: "web", Conformance: ref("test.submit.conformance"),
 			ResolutionLock: ref("existing.capability-lock.submit"),
-			Artifact: ref("existing.artifact.submit"), Slots: append([]Ref(nil), slots...),
-			RuntimeDeps: []Ref{ref("runtime.order-service")},
+			Artifact:       ref("existing.artifact.submit"), Slots: append([]Ref(nil), slots...),
+			RuntimeDeps:   []Ref{ref("runtime.order-service")},
 			BuildOnlyDeps: []Ref{ref("build.compiler")},
 		},
 	}
@@ -152,10 +152,10 @@ func TestWebOrderScenarioWithTwoLanguageProducers(t *testing.T) {
 
 func TestFailClosedNegativeControls(t *testing.T) {
 	tests := []struct {
-		name string
-		edit func(*fixture)
+		name  string
+		edit  func(*fixture)
 		trust stubTrust
-		want string
+		want  string
 	}{
 		{"missing-capability", func(f *fixture) { f.providers = f.providers[1:] }, stubTrust{}, "missing-capability"},
 		{"provider-version", func(f *fixture) { f.providers[0].Identity.Version = "2.0.0" }, stubTrust{}, "incompatible-version"},
@@ -229,7 +229,9 @@ func TestCurrentAuthorizationIsNotCachedIntoPlan(t *testing.T) {
 func TestSecondTargetIsConceptOnly(t *testing.T) {
 	f := orderFixture("tei.language.dsl")
 	neutralBefore, err := Neutralize(f.c, f.a, stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	web, err := f.lower(stubTrust{})
 	if err != nil {
 		t.Fatal(err)
@@ -241,7 +243,9 @@ func TestSecondTargetIsConceptOnly(t *testing.T) {
 		f.wiring[i].Provider = f.providers[i].Identity
 	}
 	neutralAfter, err := Neutralize(f.c, f.a, stubTrust{})
-	if err != nil || Digest(neutralBefore) != Digest(neutralAfter) { t.Fatal("Target changed neutral intent", err) }
+	if err != nil || Digest(neutralBefore) != Digest(neutralAfter) {
+		t.Fatal("Target changed neutral intent", err)
+	}
 	desktop, err := f.lower(stubTrust{})
 	if err != nil || desktop.Snapshot != web.Snapshot {
 		t.Fatalf("meaning changed with Target: %v", err)
@@ -300,7 +304,9 @@ func TestSelectiveCacheKeys(t *testing.T) {
 func TestTargetSpecificProviderSelectionInvalidatesResolveButNotAcceptedMeaning(t *testing.T) {
 	web := orderFixture("tei.language.dsl")
 	webPlan, err := web.lower(stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	webKeys := Keys(web.c, web.a, webPlan, web.target, ref("builder-v1"), []Ref{ref("build.compiler")})
 
 	desktop := orderFixture("tei.language.dsl")
@@ -311,7 +317,9 @@ func TestTargetSpecificProviderSelectionInvalidatesResolveButNotAcceptedMeaning(
 		desktop.wiring[i].Provider = desktop.providers[i].Identity
 	}
 	desktopPlan, err := desktop.lower(stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	desktopKeys := Keys(desktop.c, desktop.a, desktopPlan, desktop.target, ref("builder-v1"), []Ref{ref("build.compiler")})
 	if desktopKeys.Interpret != webKeys.Interpret || desktopKeys.Accept != webKeys.Accept {
 		t.Fatal("Target-local Provider selection changed accepted semantics")
@@ -355,9 +363,9 @@ func TestS05PreviewCannotGrantExecutionAuthority(t *testing.T) {
 	// Synthetic rehearsal: a preview is resolved, then one current condition
 	// changes before invocation. None of the following reuses that preview.
 	tests := []struct {
-		name string
+		name  string
 		trust stubTrust
-		code string
+		code  string
 	}{
 		{"locked-resolution-revoked", stubTrust{denyResolution: true}, "stale-or-untrusted-resolution"},
 		{"provider-unbound", stubTrust{denyRuntimeBinding: true}, "runtime-binding-unavailable"},
@@ -424,9 +432,13 @@ func TestInvalidDataRequirementsFailClosed(t *testing.T) {
 func TestForgedPlanDoesNotBypassTrustedResolution(t *testing.T) {
 	f := orderFixture("tei.language.dsl")
 	p, err := f.lower(stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	trust := stubTrust{expectedPlan: Digest(p)}
-	if err := AuthorizeInvocation(p, trust); err != nil { t.Fatal(err) }
+	if err := AuthorizeInvocation(p, trust); err != nil {
+		t.Fatal(err)
+	}
 
 	forged := p
 	forged.Steps = append([]Step(nil), p.Steps...)
@@ -446,7 +458,9 @@ func TestUndeclaredContextAndDataDoNotGate(t *testing.T) {
 	f.providers = f.providers[:1]
 	f.a.CandidateDigest = Digest(f.c)
 	plan, err := f.lower(stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(plan.Steps[0].RequiredSlots) != 0 || len(plan.Steps[0].DataContracts) != 0 {
 		t.Fatal("unexpected runtime requirements")
 	}
@@ -458,10 +472,14 @@ func TestUndeclaredContextAndDataDoNotGate(t *testing.T) {
 func TestSourceDependenciesInvalidateInterpretation(t *testing.T) {
 	f := orderFixture("tei.language.dsl")
 	plan, err := f.lower(stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	before := Keys(f.c, f.a, plan, f.target, ref("builder-v1"), []Ref{ref("build.codegen-tool"), ref("build.compiler")})
 	neutral, err := Neutralize(f.c, f.a, stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	origin := Digest(neutral.Origin)
 	f.c.SourceInputs[1].Fingerprint = "sha256:changed-definition"
 	if Digest(neutral.Origin) != origin {
@@ -477,7 +495,7 @@ func TestSourceDependenciesInvalidateInterpretation(t *testing.T) {
 }
 
 func TestInvalidSourceDependencyWitnessFailsClosed(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name string
 		edit func(*fixture)
 		want string
@@ -510,9 +528,13 @@ func TestDeclaredLanguageWitnessSemanticEqualityIsNotAuthorityEquality(t *testin
 	a := orderFixture("tei.language.dsl")
 	b := orderFixture("tei.language.sql-projection")
 	left, err := Neutralize(a.c, a.a, stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	right, err := Neutralize(b.c, b.a, stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if Digest(left.Intents) != Digest(right.Intents) || left.Snapshot != right.Snapshot {
 		t.Fatal("synthetic producers changed the accepted semantic intent")
 	}
@@ -566,12 +588,16 @@ func TestRuntimeDependencyOrderDoesNotChangeResolvedPlan(t *testing.T) {
 	f := orderFixture("tei.language.dsl")
 	f.providers[0].RuntimeDeps = []Ref{ref("runtime.a"), ref("runtime.b")}
 	first, err := f.lower(stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	reordered := orderFixture("tei.language.dsl")
 	reordered.providers[0].RuntimeDeps = []Ref{ref("runtime.b"), ref("runtime.a")}
 	second, err := reordered.lower(stubTrust{})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if Digest(first) != Digest(second) {
 		t.Fatal("runtime dependency registration order changed the target-bound witness")
 	}
@@ -579,9 +605,9 @@ func TestRuntimeDependencyOrderDoesNotChangeResolvedPlan(t *testing.T) {
 
 func TestPinnedProviderFailureNeverFallsBackToAnotherAuthority(t *testing.T) {
 	tests := []struct {
-		name string
+		name          string
 		breakSelected func(*fixture)
-		want string
+		want          string
 	}{
 		{"pinned-provider-removed", func(f *fixture) { f.providers = f.providers[1:] }, "missing-capability"},
 		{"pinned-contract-drift", func(f *fixture) {

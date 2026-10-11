@@ -11,8 +11,8 @@ import (
 )
 
 type scenarioValidationSource struct {
-	fixture scenariotest.ValidationFixture
-	numberReads map[string]bool
+	fixture       scenariotest.ValidationFixture
+	numberReads   map[string]bool
 	relationReads map[string]bool
 }
 

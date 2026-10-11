@@ -113,7 +113,6 @@ func TestQualificationReceiptAndIntegrationPreflightControlFlow(t *testing.T) {
 		}
 	})
 
-
 	t.Run("rejects URL and option as integration remote names", func(t *testing.T) {
 		for _, remote := range []string{"ext::helper", "https://example.invalid/repo.git", "--upload-pack=malicious"} {
 			out := runFailure(t, candidate, "bash",

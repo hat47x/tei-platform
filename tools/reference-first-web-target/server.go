@@ -97,6 +97,7 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/manifest.json", s.handleManifest)
 	mux.HandleFunc("/healthz", s.handleHealth)
+
 	registerCombinedScenarioRoutes(mux, s)
 	return mux
 }

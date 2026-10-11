@@ -44,20 +44,20 @@ type InvocationImplementation struct {
 }
 
 type InvocationExecution struct {
-	Resolution                               Resolution `json:"resolution"`
-	RequestShape                             string     `json:"requestShape"`
-	RequestShapeFingerprint                  string     `json:"requestShapeFingerprint"`
-	RequestShapeAuthorityEvidenceFingerprint string     `json:"requestShapeAuthorityEvidenceFingerprint"`
-	RequestShapeTrustQualificationFingerprint string    `json:"requestShapeTrustQualificationFingerprint"`
-	ResultShape                              string     `json:"resultShape"`
-	ResultShapeFingerprint                   string     `json:"resultShapeFingerprint"`
-	ResultShapeAuthorityEvidenceFingerprint  string     `json:"resultShapeAuthorityEvidenceFingerprint"`
-	ResultShapeTrustQualificationFingerprint string     `json:"resultShapeTrustQualificationFingerprint"`
-	PayloadCodec                             string     `json:"payloadCodec"`
-	RequestDigest                            string     `json:"requestDigest"`
-	ResultDigest                             string     `json:"resultDigest"`
-	ResultPayload                            []byte     `json:"resultPayload"`
-	AuthorityLimits                          []string   `json:"authorityLimits"`
+	Resolution                                Resolution `json:"resolution"`
+	RequestShape                              string     `json:"requestShape"`
+	RequestShapeFingerprint                   string     `json:"requestShapeFingerprint"`
+	RequestShapeAuthorityEvidenceFingerprint  string     `json:"requestShapeAuthorityEvidenceFingerprint"`
+	RequestShapeTrustQualificationFingerprint string     `json:"requestShapeTrustQualificationFingerprint"`
+	ResultShape                               string     `json:"resultShape"`
+	ResultShapeFingerprint                    string     `json:"resultShapeFingerprint"`
+	ResultShapeAuthorityEvidenceFingerprint   string     `json:"resultShapeAuthorityEvidenceFingerprint"`
+	ResultShapeTrustQualificationFingerprint  string     `json:"resultShapeTrustQualificationFingerprint"`
+	PayloadCodec                              string     `json:"payloadCodec"`
+	RequestDigest                             string     `json:"requestDigest"`
+	ResultDigest                              string     `json:"resultDigest"`
+	ResultPayload                             []byte     `json:"resultPayload"`
+	AuthorityLimits                           []string   `json:"authorityLimits"`
 }
 
 type InvocationRegistry struct {
@@ -318,20 +318,20 @@ func (r *InvocationRegistry) ResolveAndInvoke(
 	limits = uniqueSortedInvocationStrings(limits)
 
 	return InvocationExecution{
-		Resolution:                               resolution,
-		RequestShape:                             contract.RequestShape,
-		RequestShapeFingerprint:                  contract.RequestShapeFingerprint,
-		RequestShapeAuthorityEvidenceFingerprint: requestShapeAuthority.EvidenceFingerprint,
+		Resolution:                                resolution,
+		RequestShape:                              contract.RequestShape,
+		RequestShapeFingerprint:                   contract.RequestShapeFingerprint,
+		RequestShapeAuthorityEvidenceFingerprint:  requestShapeAuthority.EvidenceFingerprint,
 		RequestShapeTrustQualificationFingerprint: requestShapeTrust.QualificationFingerprint,
-		ResultShape:                              contract.ResultShape,
-		ResultShapeFingerprint:                   contract.ResultShapeFingerprint,
-		ResultShapeAuthorityEvidenceFingerprint:  resultShapeAuthority.EvidenceFingerprint,
-		ResultShapeTrustQualificationFingerprint: resultShapeTrust.QualificationFingerprint,
-		PayloadCodec:                             contract.PayloadCodec,
-		RequestDigest:                            "sha256:" + hex.EncodeToString(requestSum[:]),
-		ResultDigest:                             "sha256:" + hex.EncodeToString(resultSum[:]),
-		ResultPayload:                            append([]byte(nil), resultPayload...),
-		AuthorityLimits:                          limits,
+		ResultShape:                               contract.ResultShape,
+		ResultShapeFingerprint:                    contract.ResultShapeFingerprint,
+		ResultShapeAuthorityEvidenceFingerprint:   resultShapeAuthority.EvidenceFingerprint,
+		ResultShapeTrustQualificationFingerprint:  resultShapeTrust.QualificationFingerprint,
+		PayloadCodec:                              contract.PayloadCodec,
+		RequestDigest:                             "sha256:" + hex.EncodeToString(requestSum[:]),
+		ResultDigest:                              "sha256:" + hex.EncodeToString(resultSum[:]),
+		ResultPayload:                             append([]byte(nil), resultPayload...),
+		AuthorityLimits:                           limits,
 	}, nil
 }
 

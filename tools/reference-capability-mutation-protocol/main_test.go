@@ -597,21 +597,21 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 	provider := newLedgerProvider()
 
 	left, err := provider.Prepare(context.Background(), PrepareRequest{
-		Protocol:      mutationProtocol,
+		Protocol:           mutationProtocol,
 		InvocationKey:      "concurrent-left",
 		BindingFingerprint: testExecutionBinding("default"),
 		RequestDigest:      digest([]byte("2")),
-		Payload:       []byte("2"),
+		Payload:            []byte("2"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	right, err := provider.Prepare(context.Background(), PrepareRequest{
-		Protocol:      mutationProtocol,
+		Protocol:           mutationProtocol,
 		InvocationKey:      "concurrent-right",
 		BindingFingerprint: testExecutionBinding("default"),
 		RequestDigest:      digest([]byte("3")),
-		Payload:       []byte("3"),
+		Payload:            []byte("3"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -627,13 +627,13 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 		t.Fatal(err)
 	}
 	leftReceipt, err := provider.Commit(context.Background(), CommitRequest{
-		Protocol:          mutationProtocol,
-		PreparationID:    leftHandle.PreparationID,
-		InvocationKey:     leftHandle.InvocationKey,
+		Protocol:           mutationProtocol,
+		PreparationID:      leftHandle.PreparationID,
+		InvocationKey:      leftHandle.InvocationKey,
 		BindingFingerprint: leftHandle.BindingFingerprint,
-		RequestDigest:     leftHandle.RequestDigest,
-		ResultDigest:     leftHandle.ResultDigest,
-		ConcurrencyToken: leftHandle.ConcurrencyToken,
+		RequestDigest:      leftHandle.RequestDigest,
+		ResultDigest:       leftHandle.ResultDigest,
+		ConcurrencyToken:   leftHandle.ConcurrencyToken,
 	})
 	if err != nil || leftReceipt.Outcome != OutcomeCommitted {
 		t.Fatalf("first commit failed: receipt=%+v err=%v", leftReceipt, err)
@@ -649,13 +649,13 @@ func TestPreparedResultCannotCommitAgainstStaleConcurrencyState(t *testing.T) {
 		t.Fatal(err)
 	}
 	rightReceipt, err := provider.Commit(context.Background(), CommitRequest{
-		Protocol:          mutationProtocol,
-		PreparationID:    rightHandle.PreparationID,
-		InvocationKey:     rightHandle.InvocationKey,
+		Protocol:           mutationProtocol,
+		PreparationID:      rightHandle.PreparationID,
+		InvocationKey:      rightHandle.InvocationKey,
 		BindingFingerprint: rightHandle.BindingFingerprint,
-		RequestDigest:     rightHandle.RequestDigest,
-		ResultDigest:     rightHandle.ResultDigest,
-		ConcurrencyToken: rightHandle.ConcurrencyToken,
+		RequestDigest:      rightHandle.RequestDigest,
+		ResultDigest:       rightHandle.ResultDigest,
+		ConcurrencyToken:   rightHandle.ConcurrencyToken,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -791,8 +791,8 @@ func TestPreparedFingerprintDoesNotCollideAcrossFieldBoundaries(t *testing.T) {
 		Protocol:           mutationProtocol,
 		BindingFingerprint: testExecutionBinding("collision"),
 		RequestDigest:      digest([]byte("request")),
-		ResultDigest:     digest([]byte("result")),
-		ConcurrencyToken: "version-1",
+		ResultDigest:       digest([]byte("result")),
+		ConcurrencyToken:   "version-1",
 	}
 	left := common
 	left.PreparationID = "a\x00b"
@@ -810,7 +810,6 @@ func TestPreparedFingerprintDoesNotCollideAcrossFieldBoundaries(t *testing.T) {
 		)
 	}
 }
-
 
 func TestAbortCleanupFailureIsVisibleWithoutChangingBusinessOutcome(t *testing.T) {
 	provider := newLedgerProvider()
@@ -834,7 +833,6 @@ func TestAbortCleanupFailureIsVisibleWithoutChangingBusinessOutcome(t *testing.T
 		t.Fatalf("cleanup failure crossed commit boundary: %+v", provider)
 	}
 }
-
 
 func TestReconcileRejectsExecutionBindingDriftBeforeProviderStatus(t *testing.T) {
 	provider := newLedgerProvider()
@@ -881,7 +879,7 @@ func TestJournaledOutcomeIsRevalidatedBeforeReplay(t *testing.T) {
 	journal := newMemoryJournal()
 	executor := newExecutor(provider, journal)
 
-	first, err := executor.Invoke(context.Background(), MutationRequest{
+	_, err := executor.Invoke(context.Background(), MutationRequest{
 		InvocationKey: "order-tampered-journal",
 		Payload:       []byte("19"),
 	})
@@ -925,7 +923,6 @@ func TestExecutorRequiresExactExecutionBinding(t *testing.T) {
 		t.Fatalf("invalid execution binding reached Provider: %+v", provider)
 	}
 }
-
 
 func TestCommitIntentJournalRejectsDifferentBindingForSameInvocationKey(t *testing.T) {
 	journal := newMemoryJournal()

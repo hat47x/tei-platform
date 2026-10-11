@@ -88,7 +88,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 	snapshotFP := workspaceTraceFingerprint(worldFP, sourceFP, result.SnapshotFingerprint)
 	if expected != "" && expected != snapshotFP {
 		return WorkspaceTrace{}, &modelref.TraceError{
-			Code: "STALE_SNAPSHOT",
+			Code:    "STALE_SNAPSHOT",
 			Message: "trace graph, selector, World, or Source Index differs from the prior page",
 		}
 	}
@@ -97,10 +97,10 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		SnapshotFingerprint:    snapshotFP,
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
-		Trace: result,
-		Source: resolver.Locate(key),
-		ProjectionUnresolved: append([]string(nil), projection.Unresolved...),
-		AuthorityLimits: append([]string(nil), projection.AuthorityLimits...),
+		Trace:                  result,
+		Source:                 resolver.Locate(key),
+		ProjectionUnresolved:   append([]string(nil), projection.Unresolved...),
+		AuthorityLimits:        append([]string(nil), projection.AuthorityLimits...),
 	}
 	if result.Mode == "summary" {
 		return out, nil

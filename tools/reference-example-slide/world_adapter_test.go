@@ -134,7 +134,7 @@ func TestAdapterRejectsAliasCycle(t *testing.T) {
 			{ID: "fixture.two", Kind: semantic.TypeAlias, Underlying: "fixture.one"},
 		},
 		Data: []semantic.Data{{
-			ID: "fixture.item",
+			ID:         "fixture.item",
 			Attributes: []semantic.Attribute{{ID: "fixture.item.value", TypeRef: "fixture.one"}},
 		}},
 	}}}
@@ -142,7 +142,6 @@ func TestAdapterRejectsAliasCycle(t *testing.T) {
 		t.Fatalf("wanted alias-cycle error, got %v", err)
 	}
 }
-
 
 func TestActualWorldIllustrativeJoinAndUnknownKeylessRelation(t *testing.T) {
 	catalog, err := CatalogFromWorld(checkedWorld(t))
@@ -152,7 +151,7 @@ func TestActualWorldIllustrativeJoinAndUnknownKeylessRelation(t *testing.T) {
 	input := Input{
 		Catalog: catalog,
 		Example: Example{
-			ID: "synthetic-order-join",
+			ID:            "synthetic-order-join",
 			ModelRevision: catalog.Revision,
 			// The illustrative customer table is claimed complete only within
 			// this fabricated snapshot, not in the real provider database.

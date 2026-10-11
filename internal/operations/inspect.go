@@ -13,10 +13,10 @@ import (
 // Inspection codes distinguish invalid input, a missing or ambiguous canonical
 // declaration, and kinds that this initial read-only surface does not support.
 const (
-	InspectionInvalidSubject   = "INVALID_SUBJECT"
+	InspectionInvalidSubject  = "INVALID_SUBJECT"
 	InspectionUnsupportedKind = "UNSUPPORTED_SUBJECT_KIND"
-	InspectionNotFound         = "SUBJECT_NOT_FOUND"
-	InspectionAmbiguous        = "SUBJECT_AMBIGUOUS"
+	InspectionNotFound        = "SUBJECT_NOT_FOUND"
+	InspectionAmbiguous       = "SUBJECT_AMBIGUOUS"
 )
 
 type InspectionError struct {
@@ -83,14 +83,14 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 		status = "indexed"
 	}
 	return SubjectInspection{
-		SchemaVersion: "tei.operations.inspect/v0",
-		Effect: "read-only",
-		Subject: subject,
-		Canonical: canonical,
-		WorldFingerprint: worldFP,
+		SchemaVersion:          "tei.operations.inspect/v0",
+		Effect:                 "read-only",
+		Subject:                subject,
+		Canonical:              canonical,
+		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
-		SourceStatus: status,
-		Sources: sources,
+		SourceStatus:           status,
+		Sources:                sources,
 	}, nil
 }
 

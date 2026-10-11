@@ -66,7 +66,7 @@ func TestSharedContractProjectionSortsCanonicalAttributes(t *testing.T) {
 	rows := projectContractRows([]driver.ContractQueryRow{
 		{Attributes: map[core.CanonicalID]any{
 			customerName: "Reference Customer 11",
-			customerID: int64(11),
+			customerID:   int64(11),
 		}},
 	})
 	expected := []semanticRowProjection{

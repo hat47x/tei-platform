@@ -121,11 +121,11 @@ func TestE14AmbiguousOrDerivedOnlySourceIsNotADefinition(t *testing.T) {
 		Path: src, Fingerprint: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 	}
 	def := sourceindex.Reference{
-		Subject: sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.customer"},
+		Subject:      sourceindex.Subject{Kind: "semantic-relation", ID: "sales.order.customer"},
 		ArtifactPath: src, Role: sourceindex.RoleDefinition,
 	}
 	for _, test := range []struct {
-		name string
+		name  string
 		index sourceindex.Index
 	}{
 		{"empty", sourceindex.Index{}},

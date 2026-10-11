@@ -19,8 +19,8 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | 対象 | 状態 |
 | --- | --- |
 | `hat47x/tei-platform` | Private、default `main` |
-| main SHA | `79b1ebcdd0da96744767e40e1224af160eae13d8`（2026-10-11、PR #1218統合直後のsnapshot。最新HEADを固定する表示ではない） |
-| main Git tree | recursive 2,204 entries / blobs 1,908件 / truncated=false（**当時点のpath inventoryのみ**） |
+| main SHA | `095e8c49b5a905f6c0e4ff15a709479efdeb3de1`（2026-10-11、PR #1220統合後の確認値。公開操作前に再取得する） |
+| main Git tree | recursive 2,204 entries / blobs 1,908件 / truncated=false（`79b1ebcdd0da96744767e40e1224af160eae13d8`時点のpath inventory。現行tree件数ではない） |
 | root LICENSE | MIT |
 | 整理済みの旧資産 | `bootstrap/`の旧復元断片、`skills/ponytail/`、旧静的HTML仕様ガイドと専用rendererはHEADから除外済み（PR #1202、#1203、#1218）。古いGit blobは残る |
 | main Actions workflow | `.github/workflows/knowledge-portability-reference-evidence.yml`: manual-only、job `if: false` |
@@ -36,6 +36,8 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 - 既存の未マージPRの統合を進め、GitHub上のopen PRが0件になったことを確認した。branchの残存自体は未統合作業を意味しない。廃止済みPR #1195と#1201は取り込んでいない。
 - 古い復元断片、無関係な第三者Skill、固定版HTML仕様ガイドの削除をHEADへ反映した。Goソースとそのテスト、現行Markdown正本はこれらの削除PRでは変更していない。
 - この統合作業ではCI・Repository Health・履歴／秘密情報／権利／非Git公開面の網羅監査を実施していない。**Git統合済み ≠ 品質検証済み ≠ Public公開可能**として、以下の停止条件を維持する。
+
+2026-10-11後刻、current `main`は`095e8c49b5a905f6c0e4ff15a709479efdeb3de1`（PR #1218–#1220統合後）、Open PRは0件と再確認した。以前の候補よりmainが4コミット進んでいたため、候補に取り込んだ。candidate `a3068a194cf8dd331db3d0e546dbf6ee620c2004`は取得済みorigin branch head 77件すべてのcommit historyを含む。GitHub管理PR refsの個別取得・公開適合性確認は別途必要。GitHub公開面の追跡確認は[公開面スナップショット](../docs/audits/PUBLIC_GITHUB_SURFACE_SNAPSHOT_2026-10-11.md)を参照。
 
 ## 3. P0-A 機密性・権利・公開面
 

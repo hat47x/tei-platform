@@ -1,4 +1,4 @@
-package main
+package capabilitytransport
 
 import (
 	"bytes"
@@ -13,8 +13,8 @@ import (
 
 const (
 	httpTransportContentType = "application/json"
-	httpTransportRequestID    = "X-TEI-Request-ID"
-	httpTransportMaxBytes     = 8 << 20
+	httpTransportRequestID   = "X-TEI-Request-ID"
+	httpTransportMaxBytes    = 8 << 20
 )
 
 type HTTPTransportImplementation func(

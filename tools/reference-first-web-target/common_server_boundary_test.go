@@ -18,12 +18,12 @@ func TestCommonWebServerDoesNotWireSpecificApplications(t *testing.T) {
 		t.Fatal(err)
 	}
 	forbidden := map[string]bool{
-		"registerOrderEntryScenarioRoutes": true,
-		"registerRepairIntakeScenarioRoutes": true,
-		"customSubmitHTML": true,
-		"customerLookupHTML": true,
-		"newReferenceReadScenarioRunner": true,
-		"newReferenceCommandScenarioRunner": true,
+		"registerOrderEntryScenarioRoutes":         true,
+		"registerRepairIntakeScenarioRoutes":       true,
+		"customSubmitHTML":                         true,
+		"customerLookupHTML":                       true,
+		"newReferenceReadScenarioRunner":           true,
+		"newReferenceCommandScenarioRunner":        true,
 		"newReferenceCustomerLookupScenarioRunner": true,
 	}
 	ast.Inspect(file, func(node ast.Node) bool {

@@ -111,7 +111,7 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		TrackingMainMatch: "not-checked", MainAncestor: "not-checked",
 		CheckoutClean: "not-checked", IgnoredArtifacts: "not-checked", HiddenIndexFlags: "not-checked",
 		HistoryOverrides: "not-checked", AmbientGitOverrides: "not-checked",
-		LiveRemoteMain:   "not-checked", Credentials: "not-checked",
+		LiveRemoteMain: "not-checked", Credentials: "not-checked",
 		RepositoryHealth: "not-run",
 	}
 	if _, err := exec.LookPath("git"); err != nil {

@@ -38,7 +38,7 @@ func linkContext(t *testing.T) Context {
 		CandidateFingerprint: "sha256:" + strings.Repeat("4", 64),
 		BaseModelRevision:    "sha256:" + strings.Repeat("5", 64),
 		ReviewFingerprint:    "sha256:" + strings.Repeat("6", 64),
-		Target:               SemanticTarget{
+		Target: SemanticTarget{
 			Kind:   "validation",
 			ID:     "sales.order_line.unit_price_positive",
 			Change: "added",
@@ -161,7 +161,6 @@ func TestLinkRejectsForgedEvidenceAndUnqualifiedTarget(t *testing.T) {
 		t.Fatal("link without actual Review was accepted")
 	}
 }
-
 
 func TestLinkDecodeRejectsUnknownFieldsAndExtraJSON(t *testing.T) {
 	ctx := linkContext(t)

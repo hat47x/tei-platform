@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"
@@ -20,6 +18,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/validation"
 	"tei/internal/workspace"
+	"tei/tools/internal/postgresdb"
 	"tei/tools/internal/repositoryevidence"
 )
 
@@ -97,7 +96,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	db, err := sql.Open("postgres", dsn)
+	db, err := postgresdb.OpenSQL(dsn)
 	if err != nil {
 		panic(postgresConnectionError("PostgreSQL接続設定の初期化", err))
 	}

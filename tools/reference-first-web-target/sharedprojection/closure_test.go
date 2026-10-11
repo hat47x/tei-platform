@@ -28,7 +28,7 @@ func TestSharedProjectionDependencyClosureExcludesOtherApplicationAndAuthoring(t
 		var p struct {
 			ImportPath string
 			Incomplete bool
-			Error *struct{ Err string }
+			Error      *struct{ Err string }
 			DepsErrors []struct{ Err string }
 		}
 		if err := decoder.Decode(&p); err != nil {

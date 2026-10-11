@@ -16,14 +16,14 @@ func graphPlan(t *testing.T, id, sourceDigest, builderDigest string) BuildExecut
 			Kind: "source", ID: id + "-source", Locator: "source://" + id, Digest: sourceDigest,
 		}},
 		Builder: plugin.BuilderIdentity{
-			ID: core.MustCanonicalID("tei.builder." + id),
-			Version: "1.0.0",
+			ID:              core.MustCanonicalID("tei.builder." + id),
+			Version:         "1.0.0",
 			ContractVersion: "tei.reference.build/v1",
-			ArtifactDigest: builderDigest,
+			ArtifactDigest:  builderDigest,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "reference", Entrypoint: id},
+		Recipe:         plugin.BuildRecipe{Kind: "reference", Entrypoint: id},
 		OutputContract: "reference-artifact",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 }
 
@@ -38,9 +38,9 @@ func graphNodeForPlan(t *testing.T, id string, plan BuildExecutionPlan) BuildGra
 
 func dependencyInput(kind, id, version string) BuildGraphInputBinding {
 	return BuildGraphInputBinding{
-		Kind: buildGraphInputDependency,
-		DependencyKind: kind,
-		DependencyID: id,
+		Kind:              buildGraphInputDependency,
+		DependencyKind:    kind,
+		DependencyID:      id,
 		DependencyVersion: version,
 	}
 }
@@ -89,28 +89,28 @@ func TestBuildGraphFingerprintIsDeclarationOrderIndependent(t *testing.T) {
 
 	left := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{consumer, independent, generator},
+		Nodes:         []BuildGraphNode{consumer, independent, generator},
 		Edges: []BuildGraphEdge{{
-			FromNode: "generator",
+			FromNode:   "generator",
 			OutputRole: "generated-source",
-			ToNode: "consumer",
-			Input: dependencyInput("generated-source", "generated-input", "1.0.0"),
+			ToNode:     "consumer",
+			Input:      dependencyInput("generated-source", "generated-input", "1.0.0"),
 		}},
 		Seeds: []BuildGraphSeed{{
-			ID: "reference-sdk",
-			Kind: "sdk",
-			Version: "1.0.0",
+			ID:             "reference-sdk",
+			Kind:           "sdk",
+			Version:        "1.0.0",
 			ArtifactDigest: digestA,
-			TrustBoundary: "external-exact-artifact",
-			ToNode: "generator",
-			Input: dependencyInput("sdk", "reference-sdk", "1.0.0"),
+			TrustBoundary:  "external-exact-artifact",
+			ToNode:         "generator",
+			Input:          dependencyInput("sdk", "reference-sdk", "1.0.0"),
 		}},
 	}
 	right := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{generator, consumer, independent},
-		Edges: append([]BuildGraphEdge(nil), left.Edges...),
-		Seeds: append([]BuildGraphSeed(nil), left.Seeds...),
+		Nodes:         []BuildGraphNode{generator, consumer, independent},
+		Edges:         append([]BuildGraphEdge(nil), left.Edges...),
+		Seeds:         append([]BuildGraphSeed(nil), left.Seeds...),
 	}
 	leftFP, err := buildGraphFingerprint(left)
 	if err != nil {
@@ -143,10 +143,10 @@ func TestTopologicalBuildOrderKeepsProducerBeforeConsumer(t *testing.T) {
 			graphNodeForPlan(t, "generator", graphPlan(t, "generator", digestA, digestB)),
 		},
 		Edges: []BuildGraphEdge{{
-			FromNode: "generator",
+			FromNode:   "generator",
 			OutputRole: "generated-source",
-			ToNode: "consumer",
-			Input: dependencyInput("generated-source", "generated-input", "1.0.0"),
+			ToNode:     "consumer",
+			Input:      dependencyInput("generated-source", "generated-input", "1.0.0"),
 		}},
 	}
 	order, err := topologicalBuildOrder(graph)
@@ -171,7 +171,7 @@ func TestBuildGraphRejectsCycleAndReportsCyclePath(t *testing.T) {
 	nodeC := graphNodeForPlan(t, "c", graphPlan(t, "c", digestC, digestD))
 	graph := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{nodeA, nodeB, nodeC},
+		Nodes:         []BuildGraphNode{nodeA, nodeB, nodeC},
 		Edges: []BuildGraphEdge{
 			{FromNode: "a", OutputRole: "primary", ToNode: "b", Input: dependencyInput("artifact", "from-a", "1.0.0")},
 			{FromNode: "b", OutputRole: "primary", ToNode: "c", Input: dependencyInput("artifact", "from-b", "1.0.0")},
@@ -196,9 +196,9 @@ func TestBuildGraphAllowsOneProducerToFeedMultipleConsumers(t *testing.T) {
 	rightPlan := graphPlan(t, "right", digestD, digestB)
 	for _, plan := range []*BuildExecutionPlan{&leftPlan, &rightPlan} {
 		plan.Dependencies = []plugin.BuildDependency{{
-			Kind: "generated-source",
-			ID: "generated-input",
-			Version: "1.0.0",
+			Kind:           "generated-source",
+			ID:             "generated-input",
+			Version:        "1.0.0",
 			ArtifactDigest: digestC,
 		}}
 	}
@@ -235,8 +235,8 @@ func TestBuildGraphAllowsOneProducerToFeedMultipleConsumers(t *testing.T) {
 	}
 	plans := map[string]BuildExecutionPlan{
 		"producer": producerPlan,
-		"left": leftPlan,
-		"right": rightPlan,
+		"left":     leftPlan,
+		"right":    rightPlan,
 	}
 	if err := verifyBuildGraphBindings(graph, plans, outputs); err != nil {
 		t.Fatal(err)
@@ -258,9 +258,9 @@ func TestBuildGraphBindsProducerOutputToExactConsumerDependency(t *testing.T) {
 	producerPlan := graphPlan(t, "producer", digestA, digestB)
 	consumerPlan := graphPlan(t, "consumer", digestB, digestD)
 	consumerPlan.Dependencies = []plugin.BuildDependency{{
-		Kind: "generated-source",
-		ID: "generated-input",
-		Version: "1.0.0",
+		Kind:           "generated-source",
+		ID:             "generated-input",
+		Version:        "1.0.0",
 		ArtifactDigest: digestC,
 	}}
 	graph := BuildGraph{
@@ -270,10 +270,10 @@ func TestBuildGraphBindsProducerOutputToExactConsumerDependency(t *testing.T) {
 			graphNodeForPlan(t, "consumer", consumerPlan),
 		},
 		Edges: []BuildGraphEdge{{
-			FromNode: "producer",
+			FromNode:   "producer",
 			OutputRole: "generated-source",
-			ToNode: "consumer",
-			Input: dependencyInput("generated-source", "generated-input", "1.0.0"),
+			ToNode:     "consumer",
+			Input:      dependencyInput("generated-source", "generated-input", "1.0.0"),
 		}},
 		Seeds: []BuildGraphSeed{
 			externalBuilderSeed("producer", producerPlan),
@@ -284,7 +284,7 @@ func TestBuildGraphBindsProducerOutputToExactConsumerDependency(t *testing.T) {
 		"producer": graphNodeOutputForPlan(t, producerPlan, ArtifactSet{
 			FormatVersion: artifactSetFormatVersion,
 			Members: []ArtifactMember{{
-				Role: "generated-source",
+				Role:   "generated-source",
 				Format: "application/octet-stream",
 				Digest: digestC,
 			}},
@@ -307,20 +307,20 @@ func TestBuildGraphBindsProducerOutputToExactConsumerDependency(t *testing.T) {
 
 func TestBootstrapSeedIsExternalBoundaryNotCycleNode(t *testing.T) {
 	stage0 := plugin.BuilderIdentity{
-		ID: core.MustCanonicalID("tei.builder.seed"),
-		Version: "1.0.0",
+		ID:              core.MustCanonicalID("tei.builder.seed"),
+		Version:         "1.0.0",
 		ContractVersion: "tei.reference.build/v1",
-		ArtifactDigest: digestA,
+		ArtifactDigest:  digestA,
 	}
 	stage1Plan := graphPlan(t, "stage1_builder", digestB, stage0.ArtifactDigest)
 	stage1Plan.Builder = stage0
 	stage1Node := graphNodeForPlan(t, "stage1", stage1Plan)
 
 	stage1Output := plugin.BuilderIdentity{
-		ID: core.MustCanonicalID("tei.builder.self_hosted"),
-		Version: "1.0.0",
+		ID:              core.MustCanonicalID("tei.builder.self_hosted"),
+		Version:         "1.0.0",
 		ContractVersion: stage0.ContractVersion,
-		ArtifactDigest: digestC,
+		ArtifactDigest:  digestC,
 	}
 	stage2Plan := graphPlan(t, "stage2_builder", digestB, stage1Output.ArtifactDigest)
 	stage2Plan.Builder = stage1Output
@@ -328,29 +328,29 @@ func TestBootstrapSeedIsExternalBoundaryNotCycleNode(t *testing.T) {
 
 	graph := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{stage2Node, stage1Node},
+		Nodes:         []BuildGraphNode{stage2Node, stage1Node},
 		Edges: []BuildGraphEdge{{
-			FromNode: "stage1",
+			FromNode:   "stage1",
 			OutputRole: "builder-artifact",
-			ToNode: "stage2",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ToNode:     "stage2",
+			Input:      BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 		Seeds: []BuildGraphSeed{{
-			ID: string(stage0.ID),
-			Kind: "builder-seed",
-			Version: stage0.Version,
+			ID:              string(stage0.ID),
+			Kind:            "builder-seed",
+			Version:         stage0.Version,
 			ContractVersion: stage0.ContractVersion,
-			ArtifactDigest: stage0.ArtifactDigest,
-			TrustBoundary: "external-stage0-seed",
-			ToNode: "stage1",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ArtifactDigest:  stage0.ArtifactDigest,
+			TrustBoundary:   "external-stage0-seed",
+			ToNode:          "stage1",
+			Input:           BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
 	outputs := map[string]BuildGraphNodeOutput{
 		"stage1": graphNodeOutputForPlan(t, stage1Plan, ArtifactSet{
 			FormatVersion: artifactSetFormatVersion,
 			Members: []ArtifactMember{{
-				Role: "builder-artifact",
+				Role:   "builder-artifact",
 				Format: "application/octet-stream",
 				Digest: stage1Output.ArtifactDigest,
 			}},
@@ -389,22 +389,22 @@ func TestBuildGraphFingerprintBindsOutputSelectorAndSeedBoundary(t *testing.T) {
 	consumer := graphNodeForPlan(t, "consumer", graphPlan(t, "consumer", digestC, digestB))
 	base := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{producer, consumer},
+		Nodes:         []BuildGraphNode{producer, consumer},
 		Edges: []BuildGraphEdge{{
-			FromNode: "producer",
+			FromNode:   "producer",
 			OutputRole: "runtime",
-			ToNode: "consumer",
-			Input: dependencyInput("artifact", "runtime-input", "1.0.0"),
+			ToNode:     "consumer",
+			Input:      dependencyInput("artifact", "runtime-input", "1.0.0"),
 		}},
 		Seeds: []BuildGraphSeed{{
-			ID: "seed",
-			Kind: "builder-seed",
-			Version: "1.0.0",
+			ID:              "seed",
+			Kind:            "builder-seed",
+			Version:         "1.0.0",
 			ContractVersion: "tei.reference.build/v1",
-			ArtifactDigest: digestD,
-			TrustBoundary: "external-stage0-seed",
-			ToNode: "producer",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ArtifactDigest:  digestD,
+			TrustBoundary:   "external-stage0-seed",
+			ToNode:          "producer",
+			Input:           BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
 	baseFP, err := buildGraphFingerprint(base)
@@ -450,16 +450,16 @@ func TestBuildGraphDigestIdentityCanonicalizesHexCase(t *testing.T) {
 	node := graphNodeForPlan(t, "node", graphPlan(t, "node", digestA, digestB))
 	lower := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{node},
+		Nodes:         []BuildGraphNode{node},
 		Seeds: []BuildGraphSeed{{
-			ID: "seed",
-			Kind: "builder-seed",
-			Version: "1.0.0",
+			ID:              "seed",
+			Kind:            "builder-seed",
+			Version:         "1.0.0",
 			ContractVersion: "tei.reference.build/v1",
-			ArtifactDigest: digestC,
-			TrustBoundary: "external-exact-artifact",
-			ToNode: "node",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ArtifactDigest:  digestC,
+			TrustBoundary:   "external-exact-artifact",
+			ToNode:          "node",
+			Input:           BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
 	upper := lower
@@ -483,15 +483,15 @@ func TestBuildGraphDigestIdentityCanonicalizesHexCase(t *testing.T) {
 
 func TestBuildGraphInputBindingRejectsIncompleteDependency(t *testing.T) {
 	input := BuildGraphInputBinding{
-		Kind: buildGraphInputDependency,
+		Kind:           buildGraphInputDependency,
 		DependencyKind: "sdk",
-		DependencyID: "reference-sdk",
+		DependencyID:   "reference-sdk",
 	}
 	if err := input.Validate(); err == nil {
 		t.Fatal("incomplete exact dependency input binding was accepted")
 	}
 	builder := BuildGraphInputBinding{
-		Kind: buildGraphInputBuilder,
+		Kind:         buildGraphInputBuilder,
 		DependencyID: "must-not-be-present",
 	}
 	if err := builder.Validate(); err == nil {
@@ -499,22 +499,21 @@ func TestBuildGraphInputBindingRejectsIncompleteDependency(t *testing.T) {
 	}
 }
 
-
 func TestBuildGraphRejectsMultipleProducersForSameConsumerInput(t *testing.T) {
 	producerA := graphNodeForPlan(t, "producer-a", graphPlan(t, "producer_a", digestA, digestB))
 	producerB := graphNodeForPlan(t, "producer-b", graphPlan(t, "producer_b", digestB, digestC))
 	consumerPlan := graphPlan(t, "consumer", digestC, digestD)
 	consumerPlan.Dependencies = []plugin.BuildDependency{{
-		Kind: "generated-source",
-		ID: "generated-input",
-		Version: "1.0.0",
+		Kind:           "generated-source",
+		ID:             "generated-input",
+		Version:        "1.0.0",
 		ArtifactDigest: digestA,
 	}}
 	consumer := graphNodeForPlan(t, "consumer", consumerPlan)
 	input := dependencyInput("generated-source", "generated-input", "1.0.0")
 	graph := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{producerA, producerB, consumer},
+		Nodes:         []BuildGraphNode{producerA, producerB, consumer},
 		Edges: []BuildGraphEdge{
 			{FromNode: "producer-a", OutputRole: "primary", ToNode: "consumer", Input: input},
 			{FromNode: "producer-b", OutputRole: "primary", ToNode: "consumer", Input: input},
@@ -529,16 +528,16 @@ func TestBuildGraphRejectsSeedAndProducerForSameConsumerInput(t *testing.T) {
 	producer := graphNodeForPlan(t, "producer", graphPlan(t, "producer", digestA, digestB))
 	consumerPlan := graphPlan(t, "consumer", digestC, digestD)
 	consumerPlan.Dependencies = []plugin.BuildDependency{{
-		Kind: "sdk",
-		ID: "sdk",
-		Version: "1.0.0",
+		Kind:           "sdk",
+		ID:             "sdk",
+		Version:        "1.0.0",
 		ArtifactDigest: digestA,
 	}}
 	consumer := graphNodeForPlan(t, "consumer", consumerPlan)
 	input := dependencyInput("sdk", "sdk", "1.0.0")
 	graph := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{producer, consumer},
+		Nodes:         []BuildGraphNode{producer, consumer},
 		Edges: []BuildGraphEdge{{
 			FromNode: "producer", OutputRole: "primary", ToNode: "consumer", Input: input,
 		}},
@@ -557,16 +556,16 @@ func TestBuildGraphRejectsBuilderSeedIdentityMismatch(t *testing.T) {
 	node := graphNodeForPlan(t, "consumer", plan)
 	graph := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{node},
+		Nodes:         []BuildGraphNode{node},
 		Seeds: []BuildGraphSeed{{
-			ID: "tei.builder.other",
-			Kind: "builder-seed",
-			Version: plan.Builder.Version,
+			ID:              "tei.builder.other",
+			Kind:            "builder-seed",
+			Version:         plan.Builder.Version,
 			ContractVersion: plan.Builder.ContractVersion,
-			ArtifactDigest: plan.Builder.ArtifactDigest,
-			TrustBoundary: "external-stage0-seed",
-			ToNode: "consumer",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ArtifactDigest:  plan.Builder.ArtifactDigest,
+			TrustBoundary:   "external-stage0-seed",
+			ToNode:          "consumer",
+			Input:           BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
 	if err := verifyBuildGraphBindings(
@@ -583,16 +582,16 @@ func TestBuildGraphRejectsBuilderSeedContractMismatch(t *testing.T) {
 	node := graphNodeForPlan(t, "consumer", plan)
 	graph := BuildGraph{
 		FormatVersion: buildGraphFormatVersion,
-		Nodes: []BuildGraphNode{node},
+		Nodes:         []BuildGraphNode{node},
 		Seeds: []BuildGraphSeed{{
-			ID: string(plan.Builder.ID),
-			Kind: "builder-seed",
-			Version: plan.Builder.Version,
+			ID:              string(plan.Builder.ID),
+			Kind:            "builder-seed",
+			Version:         plan.Builder.Version,
 			ContractVersion: "different-contract/v1",
-			ArtifactDigest: plan.Builder.ArtifactDigest,
-			TrustBoundary: "external-stage0-seed",
-			ToNode: "consumer",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ArtifactDigest:  plan.Builder.ArtifactDigest,
+			TrustBoundary:   "external-stage0-seed",
+			ToNode:          "consumer",
+			Input:           BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
 	if err := verifyBuildGraphBindings(
@@ -603,7 +602,6 @@ func TestBuildGraphRejectsBuilderSeedContractMismatch(t *testing.T) {
 		t.Fatal("builder seed with mismatched contract version was accepted because digest matched")
 	}
 }
-
 
 func TestVerifyBuildGraphBindingsRejectsUnboundBuilder(t *testing.T) {
 	plan := graphPlan(t, "consumer", digestA, digestB)
@@ -648,7 +646,6 @@ func TestVerifyBuildGraphBindingsRejectsUnboundDependency(t *testing.T) {
 	}
 }
 
-
 func TestBuildGraphRejectsOutputFromDifferentBuildExecutionResult(t *testing.T) {
 	producerPlan := graphPlan(t, "producer", digestA, digestB)
 	consumerPlan := graphPlan(t, "consumer", digestB, digestD)
@@ -665,10 +662,10 @@ func TestBuildGraphRejectsOutputFromDifferentBuildExecutionResult(t *testing.T) 
 			graphNodeForPlan(t, "consumer", consumerPlan),
 		},
 		Edges: []BuildGraphEdge{{
-			FromNode: "producer",
+			FromNode:   "producer",
 			OutputRole: "generated-source",
-			ToNode: "consumer",
-			Input: dependencyInput("generated-source", "generated-input", "1.0.0"),
+			ToNode:     "consumer",
+			Input:      dependencyInput("generated-source", "generated-input", "1.0.0"),
 		}},
 		Seeds: []BuildGraphSeed{
 			externalBuilderSeed("producer", producerPlan),
@@ -678,7 +675,7 @@ func TestBuildGraphRejectsOutputFromDifferentBuildExecutionResult(t *testing.T) 
 	set := ArtifactSet{
 		FormatVersion: artifactSetFormatVersion,
 		Members: []ArtifactMember{{
-			Role: "generated-source",
+			Role:   "generated-source",
 			Format: "application/octet-stream",
 			Digest: digestC,
 		}},

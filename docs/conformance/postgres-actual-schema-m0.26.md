@@ -28,7 +28,7 @@ Schema Diff
 
 `internal/database/providers/postgres`は引き続き標準`database/sql`へだけ依存し、具体driverを選びません。
 
-Reference integrationのassemblyとして`github.com/lib/pq`を利用します。この依存はactual PostgreSQLへ接続するReference harnessのためのもので、provider SPIやCanonical modelへdriver identityを持ち込みません。
+Reference integrationのassemblyとして`github.com/jackc/pgx/v5/stdlib`を利用します。`database/sql`互換adapterを通じてactual PostgreSQLへ接続するため、provider SPIやCanonical modelへdriver identityを持ち込みません。fixtureの複文SQLを維持するため、共有接続設定でsimple protocolを選択します。
 
 接続文字列は`TEI_TEST_POSTGRES_DSN`からHost-sideに与えます。DSN、password、host等をPhysical Schema SnapshotやSchema Diffへ保存しません。
 
