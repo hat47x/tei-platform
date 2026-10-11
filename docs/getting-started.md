@@ -1,12 +1,12 @@
-# Getting Started
+# TEIを動かす
 
-この文書は、TEIを実際にcloneして動かしたい開発者向けの入口です。まず考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md) を先に読む方が自然です。
+この文書では、TEIを取得して動作を確かめる手順を説明します。設計の考え方を先に知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
 ## 前提
 
-現段階のTEIはGoで実装されたarchitecture probeです。完成したGUI製品の操作手順ではなく、設計境界を実行可能なコードで確認するための手順です。
+現在のTEIは、設計上の境界をGoのコードで検証する段階にあります。ここで説明するのは完成したGUI製品の操作ではなく、参照実装を使った動作確認です。
 
-Go toolchainがあれば主要部分を試せます。
+主要な確認にはGoの開発環境が必要です。
 
 ```bash
 go version
@@ -18,19 +18,19 @@ go version
 go test ./...
 ```
 
-すべてのpackage testが通ることを確認します。
+すべてのパッケージのテストが成功することを確認します。
 
-## 2. Reference Workspaceをvalidate
+## 2. 参照用ワークスペースを検証する
 
 ```bash
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-Referenceには過去Releaseを意図的に残しているため、historical contractについてWarningが表示されます。最後が`ok`で終わればValidation自体は成功です。
+参照用データには過去のリリースを意図的に残しているため、過去の契約に関する警告が表示されます。最後が`ok`で終われば検証は成功です。
 
 Source Indexで位置を解決できるfindingは、`path:line:column`を伴って表示されます。
 
-## 3. 正規化Worldを見る
+## 3. 正規化したモデル（World）を見る
 
 ```bash
 go run ./cmd/tei world \
@@ -43,7 +43,7 @@ go run ./cmd/tei world \
 
 重要なのは、Canonical Worldにauthoring file pathを混ぜないことです。Sourceの物理位置は次のSource Indexから確認します。
 
-## 4. Source Indexでsourceへ戻る
+## 4. Source Indexで定義元を確認する
 
 Source Index全体を見るには次を実行します。
 
@@ -113,7 +113,7 @@ go run ./cmd/tei deployment-start \
 
 保存済みの `reference/order_rollout.durable-run.m0.21.start.json` はこの入力から再生成可能な参照fixtureです。詳しくは [reference/README.md](../reference/README.md) を参照してください。
 
-## 7. 実process Pluginの参照例
+## 7. 外部プロセスとして動くプラグインの参照例
 
 M0.24では、Reference Pluginを実際のOS child processとして起動できます。まずhelper binaryをbuildします。
 
@@ -145,7 +145,7 @@ TEI_TEST_POSTGRES_DSN='postgres://user:password@127.0.0.1:5432/database?sslmode=
 
 詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
 
-## 9. Runtime reattach example
+## 9. 実行中のプロセスを別のHostから引き継ぐ例
 
 ```bash
 go run ./examples/runtime-reattach

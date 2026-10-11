@@ -1,17 +1,17 @@
-# TEIへのContribute
+# TEIへの貢献
 
-TEIは、現在もArchitectureとReferenceを相互にpressureしながら育てている実験的なプロジェクトです。
+TEIは、アーキテクチャの設計と参照実装を照らし合わせながら検証を続けている実験的なプロジェクトです。
 
-Code contributionだけでなく、次のような参加も重要です。
+コードの変更以外にも、次のような形で参加できます。
 
-- Reference WorkspaceやCLIを実際に試した結果
-- 既存の業務システムが現在のmodelへ素直に当てはまらない例
-- migration / database / deploymentのedge case
-- 既存のlow-code、model-driven、workflow、schema toolとの比較
+- 参照用ワークスペース（Reference Workspace）やCLIを実際に試した結果
+- 既存の業務システムを現在のモデルでは表現しにくい例
+- 移行・データベース・配備で問題になる例外的なケース
+- 既存のローコード、モデル駆動開発、ワークフロー、スキーマ管理ツールとの比較
 - 設計上の調査結果や運用上の知見
-- Architecture上の不整合を小さく再現できる例
+- アーキテクチャ上の不整合を小さく再現できる例
 
-大きなCore primitiveを追加する前に、まず「どのProduct Requirement上の不確実性を減らしたいか」「どの利用例で必要か」をIssueや設計文書へ残すことを優先します。
+中核となる大きな仕組みを追加する前に、解消したい製品要求上の不確実性と、必要になる利用例をIssueや設計文書へ記録します。
 
 ## 設計上の基本姿勢
 
@@ -69,7 +69,7 @@ trusted-local full Repository-health PASS receipt
 
 この順序を満たさないcanonical source mergeを検出した場合は、履歴を書き換えずforward containmentでGateを復旧し、資格確認済みB4 candidateを保持します。
 
-## Development
+## 開発時の確認
 
 ```bash
 gofmt -l .   # 出力が空であること
@@ -78,7 +78,7 @@ go test ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-上記をまとめて実行するRead-onlyの補助として`tools/repository-health-check.sh`があります（`--fast`で`go test`を省略）。GitHub Actionsを使えない間は、mainへpushする前に手元でこの確認を通してください。背景は[`ISSUE-000055`](plan/issue/000055-verification-gate-while-ci-suspended.md)にあります。
+上記をまとめて確認する読み取り専用のスクリプトが`tools/repository-health-check.sh`です（`--fast`では`go test`を省略します）。GitHub Actionsを使えない間は、mainへpushする前に手元でこの確認を通してください。背景は[`ISSUE-000055`](plan/issue/000055-verification-gate-while-ci-suspended.md)にあります。
 
 Reference Workspaceには、過去contractとの互換性を確認するためのwarningが意図的に含まれる場合があります。
 

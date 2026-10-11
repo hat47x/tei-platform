@@ -1,8 +1,8 @@
-# TEI Planning
+# TEIの開発計画
 
 [プロダクト開発ロードマップ（HTML）](product-roadmap.html)は、期限を設けず、着手依存と完了条件で開発順を整理した横断ガイドです。[想定仕様](../docs/specification/index.html)と相互参照し、正式なGate・採用判断は既存正本に従います。
 
-`plan/`には、Product Value / Requirementsを実際の着手順、Product Acceptance Scenario、ADR、Reference、Evidence、Gateへ接続するplanning文書を置きます。
+`plan/`には、製品の価値・要求を、着手順、受入シナリオ、設計判断、参照実装、検証根拠、Gateへ結び付ける計画文書を置きます。
 
 - 何を守るか: `product/`
 - 何を満たすか: `requirements/`
@@ -41,7 +41,7 @@ Studio  knowledge / AI  Second Target
 PAS-01  PAS-06 / 01     PAS-04
 ```
 
-Gate C後のStudio / knowledge-first / AI Proposalと第二Targetは並行可能です。
+Gate Cの後は、Studio、既存知識を優先する探索、AI Proposal、第二Targetの開発を並行して進められます。
 
 ## Gate A
 
@@ -83,7 +83,7 @@ actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとし
 
 Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定済みです。
 
-Handoverは新しい番号付きGateでもCanonicalの第二正本でもありません。
+引継ぎ（Handover）は、新しい番号付きGateでも、Canonicalの第二の正本でもありません。
 
 ## Gate C / First Web Target
 
@@ -222,7 +222,7 @@ AI ProposalはCanonical authorityではなく、file-native / Studio / CLI等と
 
 - [`issue/000026-target-capability-execution-profile-boundary.md`](issue/000026-target-capability-execution-profile-boundary.md)
 
-First TargetだけでTarget-neutral taxonomyを完成させず、第二TargetでTarget Capability / Runtime Binding / Execution-Trust / RQ-024 performanceを圧力試験します。
+第一Targetだけで実行先に依存しない分類体系を完成したものとはせず、第二TargetでTarget Capability、Runtime Binding、Execution-Trust、RQ-024の性能要件を検証します。
 
 Studioのdeveloper-facing Wails HostをApplication Target Evidenceへ数えません。
 
