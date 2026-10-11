@@ -1302,6 +1302,32 @@ func TestResolutionCoverageKeepsConditionalConfirmationUnresolved(t *testing.T) 
 	}
 }
 
+func TestFreshnessSubjectIgnoresAuthorizationOnlyEvidenceChanges(t *testing.T) {
+	corpus, _ := loadFixture(t)
+	var assertion Assertion
+	for _, candidate := range corpus.Assertions {
+		if candidate.ID == "ai-unreviewed" {
+			assertion = candidate
+			break
+		}
+	}
+	if assertion.ID == "" || len(assertion.Evidence) == 0 {
+		t.Fatal("fixture no longer provides evidence-bearing assertion")
+	}
+	before := freshnessSubjectFingerprint(assertion)
+	assertion.AccessRefs = []string{"policy:assertion-v2"}
+	assertion.Evidence[0].AccessRefs = []string{"policy:evidence-v2"}
+	after := freshnessSubjectFingerprint(assertion)
+	if before != after {
+		t.Fatalf("authorization-only evidence change invalidated freshness subject: before=%s after=%s", before, after)
+	}
+
+	assertion.Evidence[0].Fingerprint = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	if freshnessSubjectFingerprint(assertion) == after {
+		t.Fatal("Evidence fingerprint change did not invalidate freshness subject")
+	}
+}
+
 func TestBoundCheckedAtCanSatisfyConsumerFreshness(t *testing.T) {
 	corpus, context := loadFixture(t)
 	context.AsOf = "2026-10-06T14:00:00Z"
