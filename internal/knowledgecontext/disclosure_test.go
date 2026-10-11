@@ -23,7 +23,7 @@ func TestBuildDisclosureSeparatesSelectedDisclosedAndOmittedKnowledge(t *testing
 					Fingerprint: "sha256:candidate",
 					Relation:    "sales.order.lines",
 					Components: []DataDesignDeterminantTerm{
-						{Kind: "relation-source-occurrence", Data: "sales.order"},
+						{Kind: "related-occurrence", Relation: "sales.order.lines", End: "source", Data: "sales.order"},
 						{Kind: "attribute", Data: "sales.order_line", Attribute: "sales.order_line.line_number"},
 					},
 					TargetOccurrence: "sales.order_line",
@@ -93,7 +93,7 @@ func TestBuildDisclosureSeparatesSelectedDisclosedAndOmittedKnowledge(t *testing
 	got.DataDesign.BusinessIdentityCandidates[0].Components[0].Kind = "mutated"
 	got.DataDesign.BusinessIdentityCandidates[0].EvidenceNeeded[0] = "mutated"
 	if ctx.DataDesign.AuthorityLimits[0] != "data-design-source-limit" ||
-		ctx.DataDesign.BusinessIdentityCandidates[0].Components[0].Kind != "relation-source-occurrence" ||
+		ctx.DataDesign.BusinessIdentityCandidates[0].Components[0].Kind != "related-occurrence" ||
 		ctx.DataDesign.BusinessIdentityCandidates[0].EvidenceNeeded[0] != "relation-business-meaning" {
 		t.Fatalf("disclosure Data Design snapshot aliases source Context: source=%+v disclosure=%+v", ctx.DataDesign, got.DataDesign)
 	}

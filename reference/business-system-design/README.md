@@ -190,6 +190,29 @@ order-entry.order-handling / BP-09
 
 このReferenceはhandoffをruntime Workflowへ変換しません。retry / timer / queue / scheduler等を含意しません。
 
+## Data determinant association pressure
+
+`data-determinant-association-pressure.md`は、contained repeatだけでは判断できないbusiness occurrence identity / candidate key / functional dependencyのCore昇格条件をpressureするTEI-original Referenceです。
+
+CoverageAssignmentを例に、独立したServiceContract / Asset occurrenceの組合せ、`effectiveFrom`、history revision、Persistence surrogate keyを分離します。
+
+`data-determinant-association-seed-ledger.json`は、同じscenarioについて次を分離します。
+
+- external Source-backed fact: 現時点では無し
+- TEI-original Reference decision
+- Core contract proposal
+- unresolved
+- cross-view question
+- independent review状態
+
+このReferenceはCanonical authorityではありません。business occurrence identity / FDの新しいCore syntaxを採用したことも意味しません。
+
+関連するPromotion GateとCore contract候補は次です。
+
+- `plan/DATA_DETERMINANT_PROMOTION_GATE_2026-10.md`
+- `plan/DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md`
+- `plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md`
+
 ## `second-corpus/`
 
 `order_entry`とは独立した、二つ目のBusiness Procedure Referenceです（受注生産の製造と、完成品の入庫）。Applicationを参照しない二つのProcedureと、その間の責任の受け渡し（Handoff）一件、出典・fact・設計判断・未解決事項を分けて記録するseed ledgerを持ちます。
