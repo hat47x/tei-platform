@@ -50,6 +50,21 @@ git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c comm
 linked_sha=$(git -C "$work/repo" rev-parse HEAD)
 must_fail "$linked_sha" "$work/reviewed"
 
+# Any locally linked file absent from the selected public tree is a blocker.
+printf '# Index\n\n[Missing](missing.md)\n' > "$work/repo/docs/index.md"
+git -C "$work/repo" add docs/index.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm unresolved-local-link
+missing_sha=$(git -C "$work/repo" rev-parse HEAD)
+must_fail "$missing_sha" "$work/reviewed"
+
+# A map to an existing but unrelated file is not enough: the redirect must link there.
+printf 'plan/OLD_AUDIT.md\tdocs/index.md\n' > "$work/wrong-map"
+if python3 "$here/select-public-docs.py" "$work/repo" "$sha" "$work/reviewed" "$work/wrong-map" "$work/wrong-output" > /dev/null 2>&1; then
+  echo 'expected incorrect mapping refusal' >&2
+  exit 1
+fi
+[[ ! -e "$work/wrong-output" ]]
+
 # Textual historical mention (not an active URL) may be retained for audit context.
 printf '# Index\n\nHistoric file: plan/OLD_AUDIT.md. [Current](audits/CURRENT_AUDIT.md)\n' > "$work/repo/docs/index.md"
 git -C "$work/repo" add docs/index.md
