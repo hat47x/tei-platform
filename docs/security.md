@@ -1,23 +1,23 @@
 # Security / Trust Boundary
 
-この文書は、TEIのSecurity、Resource Authority、Runtime Trust Boundaryを説明する**current technical boundary**です。
+この文書では、TEIにおけるセキュリティ、リソースの使用権限、実行時の信頼境界について、現在の技術設計を説明します。
 
-Product Requirementや個別ProviderのSecurity仕様を第二正本として定義する文書ではありません。ここに書かれた境界が実装でどこまで成立しているかは、対応するConformance、Reference、Evidenceで確認します。
+製品要求や個別Providerのセキュリティ仕様を、ここで新たに定義するものではありません。設計した境界がどこまで実装・検証されているかは、対応するConformance、Reference、Evidenceで確認します。
 
-この文書を読むうえで最も重要な前提は、次の一点です。
+最も重要なのは、次の区別です。
 
 > **「業務上その機能が存在すること」と、「ある実行主体がその機能やResourceを使ってよいこと」は別です。**
 
-TEIのSemantic ModelにCapabilityが定義されていても、それだけでPluginやAI、Hostへ実行権限が与えられるわけではありません。
+TEIのSemantic ModelにCapabilityが定義されていても、それだけでPlugin、AI、Hostに実行権限が与えられるわけではありません。
 
 ## 1. 何を防ぎたいのか
 
 TEIでは、業務上の意味からApplicationやRuntimeへ処理をつなぎます。そのため、意味の定義が正しくても、実行境界で次のような問題が起きると安全性を失います。
 
-- Pluginが、宣言されていないnetworkやfilesystemへアクセスする
+- Pluginが宣言されていないネットワークやファイルシステムへアクセスする
 - SecretがCanonical Definitionや履歴へ平文で残る
 - 一度失効したResource authorityが、その後も使えてしまう
-- Host交代後も古いHostがResource操作を続ける
+- Hostの交代後も旧HostがResourceを操作し続ける
 - 外部processの状態が不明なのに、同じ副作用を自動再実行する
 - 「実行を要求した」ことと「外部で実際に起きた」ことを混同する
 
@@ -41,13 +41,13 @@ external execution
 Observation / Evidence
 ```
 
-上段の意味が存在するからといって、下段のauthorityを自動的に得ることはありません。
+上段の意味や機能が定義されていても、下段の実行権限は自動的には与えられません。
 
 ## 2. Capability is not permission — 機能の存在と権限を分ける
 
 ### 防ぎたい失敗
 
-たとえば「メール送信」というCapabilityが業務モデルに存在していても、すべてのPluginが自由にメールを送れてよいわけではありません。
+たとえば、業務モデルに「メール送信」というCapabilityがあっても、すべてのPluginにメール送信を許可するわけではありません。
 
 Capabilityの存在をそのまま実行権限とみなすと、Pluginの追加や再利用だけで権限が拡大する可能性があります。
 
@@ -92,7 +92,7 @@ opaque handle / endpoint / mount
 
 **Resource Broker**は、論理的なResource参照を、そのHostで実際に使えるResourceへ解決する境界です。
 
-Secretのraw valueをDurable RunやPlugin provenanceへ保存しないことを基本とします。
+Secretの実際の値をDurable RunやPlugin provenanceには保存しないことを基本とします。
 
 ### 具体例
 
@@ -122,7 +122,7 @@ TEIが作るSandbox Profileは、Hostへ渡す**実行制約の要求**です。
 
 しかし、Profileを作っただけでOS level enforcementが成立したとはみなしません。
 
-Hostは実際のenforcerを提供し、deny-by-default policyを適用する必要があります。
+Hostには、制約を実際に強制する仕組みと、明示的に許可した操作だけを認めるポリシーが必要です。
 
 ```text
 TEI Sandbox Profile
@@ -217,7 +217,7 @@ TEIが外部processへ副作用のある処理を依頼した直後にHostが停
 2. processは終了している
 3. process自体が見つからない
 
-3だからといって、「実行されなかった」とは限りません。外部副作用だけが完了してprocess情報が失われている可能性もあります。
+プロセスが見つからなくても、実行されなかったとは限りません。外部への副作用だけが完了し、プロセス情報が失われている可能性もあります。
 
 ### TEIの境界
 
@@ -282,7 +282,7 @@ External state changed as intended
 
 TEIでは、必要な処理についてObservationを取り、次へ進む根拠となるEvidenceを確認します。
 
-これは「AIやRuntimeが成功と言ったから成功」としないための境界でもあります。
+AIやRuntimeが成功と返しただけで、外部での成功まで確定しないための境界でもあります。
 
 ## 10. 一つのtakeover例で全体を見る
 
@@ -316,7 +316,7 @@ TEIでは、必要な処理についてObservationを取り、次へ進む根拠
 
 M0.22.1でコードとテストから直接追跡できる保証範囲は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
 
-この文書の説明だけで「production-grade Securityが完成した」とは扱いません。
+この文書だけを根拠に、本番運用に必要なセキュリティが完成したとは判断しません。
 
 Architecture上の境界、Reference実装、isolated test、actual external Evidence、本番運用保証はそれぞれ別です。
 
