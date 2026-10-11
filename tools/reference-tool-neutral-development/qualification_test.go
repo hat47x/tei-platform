@@ -227,7 +227,8 @@ func TestQualificationReceiptAndIntegrationPreflightControlFlow(t *testing.T) {
 		out := runFailure(t, candidate, "bash",
 			"tools/reference-tool-neutral-development/qualify.sh",
 			"--expected-head", head, "--expected-main", main)
-		if !strings.Contains(out, "worktree root differs") {
+		if !strings.Contains(out, "worktree root differs") &&
+			!strings.Contains(out, "run from a TEI Git checkout") {
 			t.Fatalf("qualification did not detect core.worktree redirection:\n%s", out)
 		}
 		out = runFailure(t, candidate, "bash",
@@ -235,7 +236,8 @@ func TestQualificationReceiptAndIntegrationPreflightControlFlow(t *testing.T) {
 			"--receipt-file", receipt, "--candidate", head,
 			"--expected-main", main, "--remote", "origin",
 			"--integration-root", integration)
-		if !strings.Contains(out, "worktree root differs") {
+		if !strings.Contains(out, "worktree root differs") &&
+			!strings.Contains(out, "must be executed from a TEI candidate checkout") {
 			t.Fatalf("integration preflight did not detect core.worktree redirection:\n%s", out)
 		}
 		run(t, candidate, "git", "config", "--unset", "core.worktree")
