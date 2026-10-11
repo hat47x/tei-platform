@@ -98,7 +98,7 @@ local LLMで十分なReference Scenarioを持つことを目標にしつつ、�
 
 AIが作った内容は、採用されるまでは提案です。AIの提案能力が高くても、Canonical meaningの変更権限、本番操作の権限や、秘密情報・ネットワーク・ファイルシステムなどの資源を利用する権限を自動的に持つわけではありません。
 
-より詳しい設計方向は、[Definition-Centered Feedback Loop](definition-centered-feedback-loop.md) と [`Design Synthesis Loop Requirement Draft`](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) を参照してください。
+より詳しい設計方向は、[Definition-Centered Feedback Loop](definition-centered-feedback-loop.md) と [Design Synthesis / 認知支援の読み方](design-synthesis-reading-guide.md) を参照してください。
 
 ## 意味の正本と用途別の表現
 
