@@ -33,8 +33,9 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 
 ## 3. P0-A 機密性・権利・公開面
 
-- [ ] 信頼済みHostでprivate mirror cloneを取得し、全refs（active branches、tags、PR refsを別途含む）と `git rev-list --objects --all` を列挙。正規Git/Goの動作確認と混同しない。
-- [ ] バージョン固定済みのGitleaks等を使い、Git履歴と作業ツリーで秘密情報を検査。生成報告書・検出値・未公開pathはRepository外へ保存し、Issueへ秘密そのものを書かない。
+- 2026-10-11にGitHubの全1,081 refsを一時mirrorし、Gitleaks v8.29.1でGit本文を走査した記録: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。検出2件はGo enum識別子の誤検知と初期判定した。独立した人間reviewerの確認は未完了であり、Issue #1188のGateは閉じない。
+- [x] 信頼済みHostでprivate mirror cloneを取得し、全refs（active branches、tags、PR refsを含む）と `git rev-list --objects --all` を列挙。2026-10-11時点のmirrorは1,081 refs / 46,016 objects。commit author/committer metadataとメッセージの公開適合性は未確認。
+- [x] バージョン固定済みのGitleaksでGit履歴を走査。2検出をGo enum識別子の誤検知と初期判定したが、独立した人間reviewerの承認待ち。報告書・検出値はRepository外に保管し、Issueへ候補値を記録していない。Evidence: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。作業ツリー自体の未追跡・一時ファイル検査は別途未実施。
 - [ ] 個人情報、社内・顧客情報、credential、endpoint、private URL、外部文献の出典・利用条件等の公開適合性を確認する。
 - [ ] Issue/PR/reviews/commentsと添付、全過去Actions logs/artifacts、Release/assets、Wiki/Pages等も対象にする。API取得不可なら `NOT_INSPECTED`。
 - [ ] `LICENSE` とThird-party source/Skill/assets/資料のcopyright・再配布条件を照合。#941の参照モデル原物・抜粋・変換物等の再配布範囲は独立審査。
