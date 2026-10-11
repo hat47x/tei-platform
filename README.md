@@ -15,9 +15,7 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 - 外部世界で実際に何が観測されたか
 - 何が未検証・未解決か
 
-> 現在地 — 2026-09-22: architecture & product validation / research implementation  
-> `order_entry`のApplication Pattern Stage 1とGate Aは完了しています。Application Driverの主要意味境界も成立しています。現在の正式判定は Gate B: Ready（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）で、Handover Baseline `B / R`も固定済みです。第一Web Targetについてもactual Gate C Evidenceを取得し、Gate C: Readyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`。Visual Fidelityは単一のAI評価者による評価で、人による確認ではありません）。  
-> Gate C後には、第二Application `repair_intake`のsourceとEnvironment bindingを、利用者の明示的なAcceptance decisionを経て`reference/workspace`へ受理し、通常のDriver経路で実行できることも確認しました（S5〜S8）。これは第二Application Targetや実行権限の成立を意味しません。Studio / AI、第二TargetはまだProduct Evidence取得前です。詳細な現状は[現在の実装状況](docs/status.md)を正本とします。
+> 開発状況・Gate判定・未検証範囲の正本は[現在の実装状況](docs/status.md)です。Gateの過去判定は、各資料に記載された固定revisionと検証範囲に限られます。
 
 完成したlow-code製品、production-ready Editor、production-ready multi-Target Runtimeを提供する段階ではありません。
 
@@ -37,11 +35,11 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 
 ### 現在の判定段階
 
-- **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md) — Ready
-- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md) — Ready
+- **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md)
+- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md)
 - **Gate B Evidence:** [Acquisition](plan/GATE_B_EVIDENCE_ACQUISITION.md) / [Runbook](plan/GATE_B_EVIDENCE_RUNBOOK.md)
 - **Gate B → C:** [Handover Contract](plan/GATE_B_TO_C_HANDOVER_CONTRACT.md) / [Baseline B](plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)
-- **Gate C:** [Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md) — Ready / [Evidence Contract](plan/GATE_C_EVIDENCE_CONTRACT.md) / [First Web Target Runbook](plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
+- **Gate C:** [Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md) / [Evidence Contract](plan/GATE_C_EVIDENCE_CONTRACT.md) / [First Web Target Runbook](plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 
 ### 技術を読む / 動かす
 
@@ -52,66 +50,9 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 - [全体構成](docs/architecture.md)
 - [現在の実装状況](docs/status.md)
 
-## 現在のv1主線
+## 開発状況と検証範囲
 
-```text
-Application Pattern Stage 1
-        Done
-          ↓
-Gate A
-        Ready
-          ↓
-Application Driver
-  major semantics ready
-          ↓
-Gate B
-  Ready / R = e5231839a5dcc62cce1181a2731fcb7c70d16736
-          ↓
-Handover Baseline B / revision R
-  fixed
-          ↓
-First Web Target / build T
-  implemented with Evidence / T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
-          ↓
-Gate C / PAS-04
-  Ready
-          ↓
-   ┌──────┼──────────────┐
-   ↓      ↓              ↓
-Studio  knowledge / AI  Second Target
-PAS-01  PAS-06 / 01     PAS-04
-```
-
-Gate Cを通過したので、Studio / knowledge-first・AI Proposal / 第二Application・第二Targetは並行して進められます。いま必要なのは、どのlaneから始めるかをEvidenceに基づいて判断することです。各laneの進み具合は[現在の実装状況](docs/status.md)を参照してください。
-
-## Gate Bの達成状況
-
-Gate Bは Ready です。candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`について、#310 deterministic Repository、#255 generated artifact reproducibility、#308 real PostgreSQL Provider + ephemeral fixtureをsame-runで揃え、#387 final convergenceと独立artifact auditまで成立しています。
-
-Handover Baseline `B / R`も固定済みです。判定の正本は[Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md)、第一Web Targetへの引き渡しは[Baseline B](plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
-
-この`B / R`を引き継いだ`ISSUE-000007`の第一Web Targetは、baseline `R`とTarget build revision `T`を分離したままGate CのSemantic / Functional / Visual Evidenceを取得し、Gate C Readyと判定済みです（[Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md)）。
-
-PostgreSQL以外の実Database Providerと既存外部資産のEvidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は継続しますが、Gate B Readyを差し戻す第四Required laneではありません。
-
-## Gate BからGate Cへの改訂版の引継ぎ
-
-Gate B Ready revisionを`R`、Handover Baselineを`B`、第一Web Targetの実装revisionを`T1`とします。
-
-```text
-Gate B Ready for R
-        ↓
-Handover Baseline B
-  baselineRepositoryRevision = R
-        ↓ meaning baseline
-First Web Target build T1
-        ↓
-Gate C Evidence
-```
-
-通常`T1 != R`です。Gate C Readyと判定したbuild `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`が、この`T1`にあたります。
-
-Target実装中にbaseline Application meaningを変更する必要が生じた場合、Web固有field / ruleで不足を埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認してsuccessor Handoverを発行します。
+開発段階、過去のGate判定、現在の未検証範囲は[現在の実装状況](docs/status.md)で管理します。各Gateの根拠・制約・固定revisionは、それぞれの判定資料とEvidence契約に記載します。過去のReady判定を、最新mainやすべてのProvider・Target・production環境に対する保証として扱いません。
 
 ## 設計上の主要原則
 
