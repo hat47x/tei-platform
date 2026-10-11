@@ -59,6 +59,14 @@ SUIの既存`reviewAttribution`は、過去の人間レビューの帰属を示�
 
 TEI HostからSUIへの実認証委譲は`CAPABILITY_GAPS.md`の「SUI native Action receiver: authority handoff gates」を要件とします。**実セッションとApplication実装の本人・Tenant・対象Resourceが整合しない構成では有効化しません。** Hostサービスアカウントをそのまま元の人間主体の代用にしないこと、SUI所有の保存契約をTEI Coreへ移植しないことを明示しています。
 
+### SUI同時更新時のロック競合と通信断後の観察（2026-10-11）
+
+SUI #3226の条件付きSQL claimは、実行中に同じDocumentへの別Writerが現れた場合、SQLite`SQLITE_BUSY`/`SQLITE_LOCKED`、PostgreSQL`40001`/`40P01`/`55P03`を既知の書込競合として扱い、SUI ActionおよびIf-Match付きPUTへ409を返します。これ以外のDB障害を勝手に競合扱いしません。Actionが行claim後に入力・ドメイン検証で拒否されたときは早期`db.rollback()`でロックを解放します。2つの活きたSQLite Sessionでのロック競合、ドメイン拒否後の新しい正常Action、PostgreSQLドライバーのSQLSTATE分類のテストを追加しました。独立したSQLite実験は実行しましたが**PR headの完全なSQLite/PostgreSQL統合テストはまだです**。
+
+通信断でPOSTが確定したか不明なとき、SUIは`commit_outcome_unknown`として**自動再送しません**。追加された`observeSuiCardMoveAfterUnknownCommit`はSUIの権限付きDocument取得口から読み直して、`unchanged`・`converged`・`diverged`・`unresolved`を観察するだけです。`converged`は「結果と同じDocumentになっている」であって「このActionが成功した／この人が編集した」という確証ではありません。したがって監査帰属やUndo/dirtyを更新せず、React所有者で現在のセッション・ETag・Document同一性を再評価します。GitHub BlobからTypeScript型を除去した限定JS実行では35ケース／158アサーションが成功しました。正式Node、tsc、Vitestの合格とは区別します。
+
+これらは**SUI Applicationが所有する具体化**です。TEI汎用HostへSUI固有の履歴・島・PostgreSQL SQLSTATE列挙を持ち込まず、実Subject委譲を確立するまでActionの本番経路を有効化しません。
+
 ### CAS Revisionの強度とSUI固有の成功監査（2026-10-11追補）
 
 SUI [Draft PR #3226](https://github.com/hat47x/sui-sensemaking/pull/3226)のAction readbackを、SUI既存GETの互換的な弱ETag解釈から切り離しました。**SUI固有のApplicationプロファイル**として、Action要求・応答と再読込のRevisionは厳密な小文字64桁SHA-256であり、再読込のHTTP ETagには強い引用符付きの`"<hash>"`だけを認めます。弱い`W/"..."`や欠落・不正ETagを拒否し、取得はsame-origin、no-store、redirect=errorとしました。JavaScript／Python双方で、末尾改行と正規表現`# SUIの操作をTEI Actionへ接続する参照実装
