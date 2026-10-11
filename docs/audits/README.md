@@ -40,3 +40,7 @@
 ## データベースの監査
 
 - [PostgreSQLのカタログ正規化](postgres-catalog-normalization-m0.27.md)
+
+## 配置変更の参照調査
+
+- [旧パス参照と移動案内の点検（2026年10月9日）](RELOCATED_DOCUMENT_REFERENCE_AUDIT_2026-10-09.md)

@@ -100,4 +100,4 @@ Stage 0 reportの`constraintCoverage`は、SUI正本のconstraintをTEI native�
 - pass / fail結果をTEI Product Requirement成立のEvidenceへ読み替えない
 - 最初のprobeはread-onlyとする
 
-設計判断は `plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照します。
+設計判断は `plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照します。

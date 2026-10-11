@@ -8,7 +8,7 @@ Related:
 
 - `docs/definition-centered-feedback-loop.md`
 - `plan/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
-- `plan/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
+- `docs/audits/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
 - `plan/DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
 - `plan/issue/000051-derived-cognitive-retrieval-evaluation.md`

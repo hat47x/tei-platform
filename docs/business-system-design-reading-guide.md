@@ -464,7 +464,7 @@ Function / Interaction
 2. [`requirements/README.md`](../requirements/README.md) — Product Requirement全体の中での位置を確認する
 3. [`requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) — RQ-025 / RQ-026の解釈を確認する
 4. [`business-system-design.md`](business-system-design.md) — Architecture境界を詳細に読む
-5. [`../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) — Procedure reviewの具体的な品質観点へ進む
+5. [`../plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) — Procedure reviewの具体的な品質観点へ進む
 6. 対応するReference / Plan Issue / Evidence — 実際にどこまで確認されたかを見る
 
 ## 12. このガイドから一般化しないこと

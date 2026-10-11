@@ -171,7 +171,7 @@ go run ./tools/reference-deployment-attempt
 
 現時点ではSUI既存の `IslandHierarchyContractV1` に対応するM1〜M4だけを固定しています。TEIのCanonical WorkspaceやProduct Requirementの正本ではなく、Gateを飛び越えずread-only mapping / validationを試すためのhand-written fixtureです。
 
-設計は `../plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照してください。
+設計は `../plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照してください。
 
 ## Reference artifactを追加・更新するとき
 
