@@ -43,7 +43,7 @@ go test ./reference/application-composition
 
 ## テストとして追加したもの
 
-[e13-direct-derived_test.go](e13-direct-derived_test.go)に、Goの5件の試験を追加した。
+[e13-direct-derived_test.go](e13-direct-derived_test.go)に、Goの7件の試験を追加した。
 
 1. E13で抽出した5つの配列が`index.Build(World)`の同じフィールドと一致すること。
 2. 既存E5 EnvelopeのデフォルトJSONに`derived`が無く、`report`／`index`が保存されること。
@@ -51,7 +51,10 @@ go test ./reference/application-composition
 4. **実`reference/workspace`の`order_entry`**を`workspace.Load`＋`BuildSourceIndex`で一回読み、E5のApplication Pattern所属集合と、同じ`loaded.World`から作ったDerived IndexのApplication Pattern集合が一致すること。
 5. **SUI Stage 0の実Workspace**がSemanticの部分参照のままであり、`sui_reference_adoption_stage0`という架空のApplication Patternへ昇格していないこと。
 
-**5件はGoテストとして記述したもので、PASSとは主張しない**。この環境では非公開Repositoryのtrusted full checkoutを取得できず、Goの対象Packageや`tools/repository-health-check.sh`をexact-headで実行していない。新規テストの個別Go構文はローカル`gofmt`で確認したが、既存E5全体のGo Buildが成立することを証明しない。
+6. 未解決のE5 Reportではオプトイン指定があっても追加Derivedを出力しないこと。
+7. E5 Reportが`observed`でも、明示オプトインがなければ従来のJSONを維持すること。
+
+**7件はGoテストとして記述したもので、PASSとは主張しない**。この環境では非公開Repositoryのtrusted full checkoutを取得できず、Goの対象Packageや`tools/repository-health-check.sh`をexact-headで実行していない。新規テストの個別Go構文はローカル`gofmt`で確認したが、既存E5全体のGo Buildが成立することを証明しない。
 
 ## 残る未解決
 
@@ -71,6 +74,8 @@ bash reference/application-composition/qualify-e13-local.sh
 [qualify-e13-local.sh](qualify-e13-local.sh)は、対象の**完全なローカルチェックアウト**で、candidate headと`origin/main`のSHA、Go/NodeのVersion、前後cleanを記録する。Focused Goの`gofmt / go test / go vet`、既存の全Node標準テスト、実`order_entry`のオプトインJSON生成・形状確認、最後に省略なしの`tools/repository-health-check.sh`を順番に行う。Git push、PRのDraft解除、mainへのマージは行わない。
 
 **2026-10-10時点では、このスクリプトをTEI完全チェックアウト上で実行していない。** 今回この環境で取得できたのは、新スクリプトとGitHub登録blobが一致する`bash -n`構文確認のみ（blob `382211c3a61995db2840220a0d1ddc30f6ba3d64`）。スクリプトがテストを自動的に走らせる設計であることは、テストPASSのEvidenceにはならない。既存E5 Go実装には`gofmt`非準拠の箇所が残っている可能性があり、スクリプトは最初の書式検査で停止し得る。その際は欠落した証拠を成功扱いせず、変更をコミットし直した**新しいexact head**について実行をやり直す。
+
+[E14：実Workspaceの三視点Source照合](E14_CROSS_VIEW_SOURCE_WITNESS.md)では、既存Derived Indexの直接参照とSource定義の一意性を別のGoテスト4関数に固定した。#1120の変更影響演算の代替ではない。
 
 ### 次の受入条件
 
