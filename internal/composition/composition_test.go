@@ -5,11 +5,12 @@ import (
 	"errors"
 	"reflect"
 	"sync"
+	"strings"
 	"testing"
 )
 
 func b(gen uint64, provider string) Binding {
-	return Binding{ContractID: "std.test.echo", ContractVersion: "1.0.0", ProviderID: provider, ArtifactDigest: "sha256:example", Generation: gen}
+	return Binding{ContractID: "std.test.echo", ContractVersion: "1.0.0", ProviderID: provider, ArtifactDigest: "sha256:" + strings.Repeat("a", 64), Generation: gen}
 }
 
 func allow(Binding) error { return nil }
@@ -139,5 +140,22 @@ func TestHostAuthorityAndWithdrawal(t *testing.T) {
 	l.Release()
 	if err := retired.Drain(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRejectContractDriftAndInvalidArtifact(t *testing.T) {
+	r, err := NewRouter(b(1, "v1"), NewScope())
+	if err != nil {
+		t.Fatal(err)
+	}
+	badVersion := b(2, "v2")
+	badVersion.ContractVersion = "2.0.0"
+	if _, err := r.Publish(1, badVersion, NewScope(), allow); err == nil {
+		t.Fatal("incompatible contract published")
+	}
+	badArtifact := b(2, "v2")
+	badArtifact.ArtifactDigest = "sha256:example"
+	if _, err := r.Publish(1, badArtifact, NewScope(), allow); err == nil {
+		t.Fatal("unverified artifact identity accepted")
 	}
 }
