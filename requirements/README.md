@@ -1,10 +1,10 @@
 # TEI Product Requirements 読み方ガイド
 
-この文書は、[`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md) にある正式なProduct Requirementを、根幹の目的から個別要求へ降りて読めるようにする案内です。
+この文書は、[`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md)に定めた製品要求（Product Requirement）を、基本的な目的から個別の要求へ読み進めるための案内です。
 
-正式な要求の正本は`TEI_PRODUCT_REQUIREMENTS.md`です。この文書はRequirementを追加・変更するものではありません。
+正式な要求の正本は`TEI_PRODUCT_REQUIREMENTS.md`です。この文書で要求を追加・変更することはありません。
 
-TEIには、業務モデリング、Database、Target、Runtime、Security、AI、業務手順など異なる領域の要求があります。RQ番号を順番に読むだけでは、それらがなぜ一つのプロダクトに必要なのか見えにくいため、ここでは「何を守るための要求か」でまとめ直します。
+TEIの要求は、業務モデル、Database、Target、Runtime、Security、AI、業務手順など多岐にわたります。RQ番号順では各要求の関係が見えにくいため、ここでは何を守るための要求かによって整理します。
 
 ## 1. まず一つの流れとして見る
 
@@ -38,7 +38,7 @@ Web画面で登録するという実現方法
 実際に外部Databaseへ登録されたという観測結果
 ```
 
-この区別を維持するために、複数のRequirementが互いに支え合っています。
+この区別を維持するため、複数の要求が互いに関係しています。
 
 これらの要求は、Product Valueが定める個人・組織・社会の価値を、プロダクトの能力として支えるためにあります。どの価値をどのRequirementが支えるかは、[`TEI_PRODUCT_VALUE.md`](../product/value/TEI_PRODUCT_VALUE.md)の「意味のSSOTが生む価値」で各価値の項目ごとに示しています。
 
@@ -62,7 +62,7 @@ Web画面で登録するという実現方法
 - **RQ-003** — 暗黙の複数正本を作らない
 - **RQ-004** — Native assetをnativeなまま利用する
 
-ここでいうCanonicalは、特定の画面やDatabase製品ではなく、TEIが基準として扱う意味です。
+ここでいうCanonicalは、特定の画面やDatabase製品に依存せず、TEIが基準として扱う意味です。
 
 ### B. Applicationと実装を安全に組み立てる — RQ-005〜009
 
@@ -87,7 +87,7 @@ Web画面で登録するという実現方法
 
 ### C. 設計を多面的に見て、実装前に検証する — RQ-010〜014
 
-TEIでは、設計を一つのフォームや一つのDiagramへ閉じ込めません。
+TEIでは、設計を一つのフォームや図だけで表現しません。
 
 同じ意味を、表、Graph、Flow、UI、自然言語等から確認し、Driverで実行可能な部分を早期に試します。
 
@@ -168,7 +168,7 @@ Security / Runtimeの具体的な説明は[`../docs/security.md`](../docs/securi
 
 最後の要求群は、TEI自身の設計や評価方法を守ります。
 
-Referenceや実験が成功しても、そのままproduction-readyとは言えません。また、Business Procedure、Data、Function等の一視点だけで業務全体を説明したことにもなりません。
+参照実装や実験が成功しても、それだけで本番運用に対応した製品とは言えません。また、Business Procedure、Data、Functionなど、いずれか一つの視点だけで業務全体を説明したことにもなりません。
 
 主な失敗例は次のとおりです。
 
@@ -301,7 +301,7 @@ RQを単独のチェック項目として見るより、同じ業務シナリオ
 
 たとえば「staleなAI Proposalを黙って適用しない」という要求があっても、特定のversion storeやconflict algorithmを要求しているとは限りません。
 
-Product Requirementはまず何を守るかを定めます。具体的な方式はArchitecture、ADR、Referenceで比較します。
+製品要求では、まず守るべきことを定めます。具体的な方式はArchitecture、ADR、Referenceで比較します。
 
 ### Requirementがあることと、実装済みであることは別
 
