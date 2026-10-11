@@ -1,6 +1,6 @@
 # CLI C2：inspect／traceのDisclosure境界（設計候補）
 
-- 状態：2026-10-11、設計・隔離Reference。製品契約としては未採用。
+- 状態：2026-10-11、設計候補。製品契約・実装としては未採用。Go Referenceは公開化後の検証用に別ブランチへ保留。
 - 担当：[Issue #1178](https://github.com/hat47x/tei-platform/issues/1178)
 - C1候補：[Issue #1165](https://github.com/hat47x/tei-platform/issues/1165)／[Draft PR #1172](https://github.com/hat47x/tei-platform/pull/1172)
 - 参照：[Security境界](../../docs/security.md)、[legacy Authorization](../../docs/conformance/legacy-authorization-v1.md)、[Knowledge Disclosure](../../internal/knowledgecontext/disclosure.go)、[ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[Capability Invocation Context #1118](https://github.com/hat47x/tei-platform/issues/1118)
@@ -108,7 +108,11 @@ PrincipalとモデルSubjectを同じ名前でまとめない。生credential、
 9. Raw errorやSource情報をpublic error、log、tokenへ反射しない。
 10. Sectionを選択しただけでアクセス許可になる設計を拒否。
 
-隔離Reference：[tools/reference-cli-disclosure](../../tools/reference-cli-disclosure/README.md)。合成Authorizerを注入するだけで、実Provider／C1／各Transportには未接続。局所Go testをactual repository-wide qualificationへ読み替えない。
+隔離Go Referenceは[保留ブランチ `park/issue-1178-c2-reference-unverified`](https://github.com/hat47x/tei-platform/tree/park/issue-1178-c2-reference-unverified/tools/reference-cli-disclosure)に保存した。合成Authorizerを注入するだけで、実Provider／C1／各Transportには未接続。mainへの今回の統合範囲は設計文書だけとし、局所Go testをactual repository-wide qualificationへ読み替えない。
+
+## 保留した実装の再開条件
+
+リポジトリのPublic化後にIssue #1178を再開する。保留したGo Referenceは、現行のmainへ単純再投入せず、既存のAuthorization／Invocation Context／C1の実装状態との差分を見直してから再評価する。readとegressの同一Capabilityによる認可、全Resourceの可視性、Host発行Policy revisionとReceipt、二つ以上のtransportでの負例、outward error／log／cacheの秘匿を結合して実測する。コードを統合する場合は、その時点のexact headとcurrent mainを照合し、trusted clean checkoutの全Repository Healthを取得する。
 
 ## C1へ要求しない機能と統合停止線
 
