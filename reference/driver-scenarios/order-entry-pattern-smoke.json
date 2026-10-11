@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "tei.driver-scenario/v0",
+  "id": "order-entry-browse-pattern-smoke",
+  "application": "order_entry",
+  "steps": [
+    {
+      "id": "browse-pattern",
+      "operation": "resolve-pattern",
+      "pattern": "order_entry.recent_orders",
+      "expectKind": "browse",
+      "expectData": "sales.order",
+      "expectQuery": "order_entry.recent_orders"
+    },
+    {
+      "id": "record-pattern",
+      "operation": "resolve-pattern",
+      "pattern": "order_entry.order_record",
+      "expectKind": "record",
+      "expectData": "sales.order"
+    },
+    {
+      "id": "browse-synthetic",
+      "operation": "execute-browse-query",
+      "pattern": "order_entry.recent_orders",
+      "expectKind": "browse",
+      "expectData": "sales.order",
+      "expectQuery": "order_entry.recent_orders",
+      "fixture": "fixtures/recent_orders.json",
+      "parameters": {
+        "from": {"kind": "timestamp", "data": "2026-09-01T00:00:00Z"}
+      },
+      "expectRows": [
+        {
+          "sales.order.order_id": {"kind": "int64", "data": "1001"},
+          "sales.order.customer_id": {"kind": "int64", "data": "11"},
+          "sales.order.ordered_at": {"kind": "timestamp", "data": "2026-09-02T10:00:00Z"},
+          "sales.order.status": {"kind": "string", "data": "OPEN"},
+          "sales.order.total": {"kind": "float64", "data": "2500.5"}
+        }
+      ]
+    }
+  ]
+}
