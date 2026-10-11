@@ -99,10 +99,6 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealth)
 
 	registerCombinedScenarioRoutes(mux, s)
-	if s.protectedSessionHandler != nil {
-		mux.Handle("/scenario/session-submit", s.protectedSessionHandler)
-	}
-
 	return mux
 }
 
@@ -123,43 +119,6 @@ func (s *webTargetServer) handleManifest(w http.ResponseWriter, _ *http.Request)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(s.projection); err != nil {
 		http.Error(w, "encode target manifest", http.StatusInternalServerError)
-	}
-}
-
-func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, result commandScenarioResult, err error) {
-	if err != nil {
-		response := webCommandScenarioErrorResponse{
-			HandoverBaselineID:         s.projection.HandoverBaselineID,
-			BaselineRepositoryRevision: s.projection.BaselineRepositoryRevision,
-			TargetBuildRevision:        s.projection.TargetBuildRevision,
-			TargetAdapter:              s.projection.TargetAdapter,
-			Host:                       s.projection.Host,
-			Result:                     result,
-			ExecutionError:             err.Error(),
-		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		if encodeErr := encoder.Encode(response); encodeErr != nil {
-			http.Error(w, "encode command scenario execution error", http.StatusInternalServerError)
-		}
-		return
-	}
-
-	response := webCommandScenarioResponse{
-		HandoverBaselineID:         s.projection.HandoverBaselineID,
-		BaselineRepositoryRevision: s.projection.BaselineRepositoryRevision,
-		TargetBuildRevision:        s.projection.TargetBuildRevision,
-		TargetAdapter:              s.projection.TargetAdapter,
-		Host:                       s.projection.Host,
-		Result:                     result,
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(response); err != nil {
-		http.Error(w, "encode command scenario result", http.StatusInternalServerError)
 	}
 }
 
