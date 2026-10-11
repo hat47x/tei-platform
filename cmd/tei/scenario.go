@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"reflect"
+	"path/filepath"
 
 	"tei/internal/core"
 	"tei/internal/driver"
@@ -21,6 +24,7 @@ type scenarioStepEvidence struct {
 	Pattern        string `json:"pattern"`
 	Verified       bool   `json:"verified"`
 	EvidenceNature string `json:"evidenceNature"`
+	RowCount int `json:"rowCount,omitempty"`
 }
 
 func runScenarioCommand(args []string, output io.Writer) error {
@@ -70,6 +74,7 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	resolver := driver.NewResolver(loaded.World)
 	evidence := make([]scenarioStepEvidence, 0, len(s.Steps))
 	selected := false
+	fixtureDigests := make(map[string]string)
 	for _, st := range s.Steps {
 		patternID, err := core.ParseCanonicalID(st.Pattern)
 		if err != nil {
@@ -88,11 +93,48 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		if st.ExpectQuery != "" && (resolved.Query == nil || string(resolved.Query.ID) != st.ExpectQuery) {
 			return fmt.Errorf("step %s: expected Query %s not resolved", st.ID, st.ExpectQuery)
 		}
+		var fixture scenariotest.BrowseFixture
+		if st.Operation == "execute-browse-query" {
+			fixturePath, err := scenarioFixturePath(*scenarioPath, st.Fixture)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			fixtureSource, err := os.ReadFile(fixturePath)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			fixture, err = scenariotest.ParseBrowseFixture(fixtureSource)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			digest := sha256.Sum256(fixtureSource)
+			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
+			if resolved.Query == nil || fixture.Query != string(resolved.Query.ID) || resolved.Datasource == nil ||
+				fixture.DatasourceAlias != string(resolved.Datasource.Alias) ||
+				fixture.TargetDatabase != string(resolved.Datasource.TargetDatabase) {
+				return fmt.Errorf("step %s: Browse Fixture query/datasource differs from Canonical", st.ID)
+			}
+		}
 		if *stepID != "" && st.ID != *stepID {
 			continue
 		}
 		selected = true
-		evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Pattern: st.Pattern, Verified: true, EvidenceNature: "canonical-pattern-resolution-only"})
+		rowCount := 0
+		nature := "canonical-pattern-resolution-only"
+		verified := true
+		if st.Operation == "execute-browse-query" {
+			nature = "synthetic-fixture-bound; query-not-executed"
+			verified = false
+			if action == "run" {
+				rowCount, err = executeScenarioBrowse(resolver, applicationID, st, fixture)
+				if err != nil {
+					return fmt.Errorf("step %s: %w", st.ID, err)
+				}
+				verified = true
+				nature = "synthetic-browse-query-executed"
+			}
+		}
+		evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Pattern: st.Pattern, Verified: verified, EvidenceNature: nature, RowCount: rowCount})
 	}
 	if action == "run" && !selected {
 		return fmt.Errorf("unknown or unselected scenario step %q", *stepID)
@@ -104,6 +146,19 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	if len(plan.Commands) != len(s.Steps) {
 		return fmt.Errorf("generator omitted a Scenario step")
 	}
+	plan.FixtureSHA256 = fixtureDigests
+	worldBytes, err := json.Marshal(loaded.World)
+	if err != nil {
+		return fmt.Errorf("fingerprint resolved Canonical World: %w", err)
+	}
+	worldDigest := sha256.Sum256(worldBytes)
+	plan.WorldSHA256 = hex.EncodeToString(worldDigest[:])
+	lockSource, err := os.ReadFile(filepath.Join(*workspacePath, ".tei", "plugin-lock.json"))
+	if err != nil {
+		return fmt.Errorf("pin Workspace plugin lock: %w", err)
+	}
+	lockDigest := sha256.Sum256(lockSource)
+	plan.PluginLockSHA256 = hex.EncodeToString(lockDigest[:])
 	switch action {
 	case "generate":
 		return json.NewEncoder(output).Encode(plan)
@@ -126,7 +181,7 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "planMatches": true})
 	case "verify", "run":
-		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence, "scope": "pattern-resolution-only; not Query/Command/Observation E2E"})
+		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence, "scope": "reference Pattern / synthetic Browse only; not Auth/Command/Observation/Web E2E"})
 	}
 	return fmt.Errorf("unreachable scenario action %q", action)
 }
