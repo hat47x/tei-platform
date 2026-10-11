@@ -132,7 +132,8 @@ func TestE15ActualGoImpactToE12ReadOnlyReview(t *testing.T) {
 		if review.Reason != "unresolved_typed_references" {
 			t.Fatalf("typed projection was incomplete but review reason=%q", review.Reason)
 		}
-		return // fail closed; these issues must be qualified in #1120
+		t.Fatalf("E15 integration gate remains blocked: unresolved typed references=%d, diagnostics=%d",
+			len(projection.Unresolved), len(diagnostics))
 	}
 	if review.Reason != "unverified_shared_snapshot" {
 		t.Fatalf("E12 prematurely accepted Go evidence, reason=%q", review.Reason)
