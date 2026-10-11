@@ -27,17 +27,65 @@
       "expectQuery": "order_entry.recent_orders",
       "fixture": "fixtures/recent_orders.json",
       "parameters": {
-        "from": {"kind": "timestamp", "data": "2026-09-01T00:00:00Z"}
+        "from": {
+          "kind": "timestamp",
+          "data": "2026-09-01T00:00:00Z"
+        }
       },
       "expectRows": [
         {
-          "sales.order.order_id": {"kind": "int64", "data": "1001"},
-          "sales.order.customer_id": {"kind": "int64", "data": "11"},
-          "sales.order.ordered_at": {"kind": "timestamp", "data": "2026-09-02T10:00:00Z"},
-          "sales.order.status": {"kind": "string", "data": "OPEN"},
-          "sales.order.total": {"kind": "float64", "data": "2500.5"}
+          "sales.order.order_id": {
+            "kind": "int64",
+            "data": "1001"
+          },
+          "sales.order.customer_id": {
+            "kind": "int64",
+            "data": "11"
+          },
+          "sales.order.ordered_at": {
+            "kind": "timestamp",
+            "data": "2026-09-02T10:00:00Z"
+          },
+          "sales.order.status": {
+            "kind": "string",
+            "data": "OPEN"
+          },
+          "sales.order.total": {
+            "kind": "float64",
+            "data": "2500.5"
+          }
         }
       ]
+    },
+    {
+      "id": "validate-positive",
+      "operation": "evaluate-validations",
+      "fixture": "fixtures/order_valid.json",
+      "expectValidations": {
+        "sales.order_line.quantity_positive": "satisfied",
+        "sales.order.lines.line_number_unique": "satisfied",
+        "sales.order_line.line_number_positive": "satisfied"
+      }
+    },
+    {
+      "id": "validate-denied",
+      "operation": "evaluate-validations",
+      "fixture": "fixtures/order_invalid.json",
+      "expectValidations": {
+        "sales.order_line.quantity_positive": "not-satisfied",
+        "sales.order.lines.line_number_unique": "satisfied",
+        "sales.order_line.line_number_positive": "satisfied"
+      }
+    },
+    {
+      "id": "observe-synthetic",
+      "operation": "observe-synthetic-state",
+      "readIdentity": "synthetic.order_state.read",
+      "fixture": "fixtures/order_state_pending.json",
+      "expectObservation": {
+        "kind": "string",
+        "data": "pending"
+      }
     }
   ]
 }

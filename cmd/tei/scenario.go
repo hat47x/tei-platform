@@ -19,12 +19,15 @@ import (
 )
 
 type scenarioStepEvidence struct {
-	StepID         string `json:"stepId"`
-	Operation      string `json:"operation"`
-	Pattern        string `json:"pattern"`
-	Verified       bool   `json:"verified"`
-	EvidenceNature string `json:"evidenceNature"`
-	RowCount       int    `json:"rowCount,omitempty"`
+	StepID            string            `json:"stepId"`
+	Operation         string            `json:"operation"`
+	Pattern           string            `json:"pattern"`
+	Verified          bool              `json:"verified"`
+	EvidenceNature    string            `json:"evidenceNature"`
+	RowCount          int               `json:"rowCount,omitempty"`
+	RowCount          int               `json:"rowCount,omitempty"`
+	ValidationResults map[string]string `json:"validationResults,omitempty"`
+	ObservationResult any               `json:"observationResult,omitempty"`
 }
 
 func runScenarioCommand(args []string, output io.Writer) error {
@@ -62,6 +65,10 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	if action != "run" && (*expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != "") {
 		return fmt.Errorf("generated-command fingerprint flags are valid only for run")
 	}
+	pinsSupplied := *expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != ""
+	if action == "run" && pinsSupplied && (*stepID == "" || *expectedScenarioSHA == "" || *expectedWorldSHA == "" || *expectedLockSHA == "") {
+		return fmt.Errorf("generated Scenario run requires complete Scenario, World, Plugin Lock pins and one Step")
+	}
 	source, err := os.ReadFile(*scenarioPath)
 	if err != nil {
 		return err
@@ -83,8 +90,65 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	selected := false
 	fixtureDigests := make(map[string]string)
 	resolvedFixtures := make(map[string]scenariotest.BrowseFixture)
+	validationFixtures := make(map[string]scenariotest.ValidationFixture)
+	observationFixtures := make(map[string]scenariotest.ObservationFixture)
 	stepsByID := make(map[string]scenariotest.Step)
 	for _, st := range s.Steps {
+		if st.Operation == "observe-synthetic-state" {
+			path, err := scenarioFixturePath(*scenarioPath, st.Fixture)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			source, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			fixture, err := scenariotest.ParseObservationFixture(source)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			if fixture.ReadIdentity != st.ReadIdentity {
+				return fmt.Errorf("step %s: Observation identity mismatch", st.ID)
+			}
+			digest := sha256.Sum256(source)
+			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
+			observationFixtures[st.ID] = fixture
+			if *stepID != "" && *stepID != st.ID {
+				continue
+			}
+			selected = true
+			stepsByID[st.ID] = st
+			evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Verified: false, EvidenceNature: "synthetic-observation-bound; not-read"})
+			continue
+		}
+		if st.Operation == "evaluate-validations" {
+			path, err := scenarioFixturePath(*scenarioPath, st.Fixture)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			source, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			fixture, err := scenariotest.ParseValidationFixture(source)
+			if err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			digest := sha256.Sum256(source)
+			fixtureDigests[st.ID] = hex.EncodeToString(digest[:])
+			validationFixtures[st.ID] = fixture
+			if *stepID != "" && *stepID != st.ID {
+				continue
+			}
+			// Validate selection without re-declaring it in Scenario.
+			if _, err := resolver.ResolveApplicationValidations(applicationID); err != nil {
+				return fmt.Errorf("step %s: %w", st.ID, err)
+			}
+			selected = true
+			stepsByID[st.ID] = st
+			evidence = append(evidence, scenarioStepEvidence{StepID: st.ID, Operation: st.Operation, Verified: false, EvidenceNature: "canonical-validations-bound; not-evaluated"})
+			continue
+		}
 		patternID, err := core.ParseCanonicalID(st.Pattern)
 		if err != nil {
 			return fmt.Errorf("step %s: %w", st.ID, err)
@@ -174,6 +238,10 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 	}
 	if action == "run" {
+		_, stepHasFixture := plan.FixtureSHA256[*stepID]
+		if pinsSupplied && (stepHasFixture != (*expectedFixtureSHA != "")) {
+			return fmt.Errorf("generated Scenario run requires the exact Fixture pin for the selected Step")
+		}
 		if *expectedScenarioSHA != "" && *expectedScenarioSHA != plan.ScenarioSHA256 {
 			return fmt.Errorf("generated CLI command is stale: Scenario fingerprint differs")
 		}
@@ -190,6 +258,28 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		// No Driver Query invocation occurs until all source/binding fingerprints pass.
 		for i := range evidence {
+			if evidence[i].Operation == "observe-synthetic-state" {
+				st := stepsByID[evidence[i].StepID]
+				result, err := executeScenarioObservation(st, observationFixtures[st.ID])
+				if err != nil {
+					return fmt.Errorf("step %s: %w", st.ID, err)
+				}
+				evidence[i].ObservationResult = result
+				evidence[i].Verified = true
+				evidence[i].EvidenceNature = "synthetic-independent-observation-read"
+				continue
+			}
+			if evidence[i].Operation == "evaluate-validations" {
+				st := stepsByID[evidence[i].StepID]
+				results, err := executeScenarioValidations(resolver, applicationID, st, validationFixtures[st.ID])
+				if err != nil {
+					return fmt.Errorf("step %s: %w", st.ID, err)
+				}
+				evidence[i].ValidationResults = results
+				evidence[i].Verified = true
+				evidence[i].EvidenceNature = "canonical-validations-synthetic-input-evaluated"
+				continue
+			}
 			if evidence[i].Operation != "execute-browse-query" {
 				continue
 			}
@@ -225,7 +315,18 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "planMatches": true})
 	case "verify", "run":
-		return json.NewEncoder(output).Encode(map[string]any{"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence, "scope": "reference Pattern / synthetic Browse only; not Auth/Command/Observation/Web E2E"})
+		mode := "static-verification"
+		if action == "run" {
+			mode = "exploratory-unpinned"
+			if pinsSupplied {
+				mode = "generated-pinned"
+			}
+		}
+		return json.NewEncoder(output).Encode(map[string]any{
+			"scenarioId": s.ID, "scenarioSha256": plan.ScenarioSHA256, "evidence": evidence,
+			"executionMode": mode, "selectedStepCount": len(evidence),
+			"scope": "reference Pattern, synthetic Browse, Canonical Validation and independent synthetic Observation only; no Auth/Command/Web E2E",
+		})
 	}
 	return fmt.Errorf("unreachable scenario action %q", action)
 }

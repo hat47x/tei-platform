@@ -30,15 +30,27 @@ type Scenario struct {
 }
 
 type Step struct {
-	ID          string             `json:"id"`
-	Operation   string             `json:"operation"`
-	Pattern     string             `json:"pattern"`
-	ExpectKind  string             `json:"expectKind"`
-	ExpectData  string             `json:"expectData"`
-	ExpectQuery string             `json:"expectQuery,omitempty"`
-	Parameters  map[string]Value   `json:"parameters,omitempty"`
-	Fixture     string             `json:"fixture,omitempty"`
-	ExpectRows  []map[string]Value `json:"expectRows"`
+	ID                string             `json:"id"`
+	Operation         string             `json:"operation"`
+	Pattern           string             `json:"pattern"`
+	ExpectKind        string             `json:"expectKind"`
+	ExpectData        string             `json:"expectData"`
+	ExpectQuery       string             `json:"expectQuery,omitempty"`
+	Parameters        map[string]Value   `json:"parameters,omitempty"`
+	Fixture           string             `json:"fixture,omitempty"`
+	ExpectRows        []map[string]Value `json:"expectRows"`
+	ID                string             `json:"id"`
+	Operation         string             `json:"operation"`
+	Pattern           string             `json:"pattern"`
+	ExpectKind        string             `json:"expectKind"`
+	ExpectData        string             `json:"expectData"`
+	ExpectQuery       string             `json:"expectQuery,omitempty"`
+	Parameters        map[string]Value   `json:"parameters,omitempty"`
+	Fixture           string             `json:"fixture,omitempty"`
+	ExpectRows        []map[string]Value `json:"expectRows"`
+	ExpectValidations map[string]string  `json:"expectValidations,omitempty"`
+	ReadIdentity      string             `json:"readIdentity,omitempty"`
+	ExpectObservation *Value             `json:"expectObservation,omitempty"`
 }
 
 // Value is a typed test fixture value, never an authority or semantic type definition.
@@ -159,8 +171,37 @@ func Parse(source []byte) (Scenario, error) {
 			return Scenario{}, fmt.Errorf("invalid or duplicate step id %q", step.ID)
 		}
 		seen[step.ID] = true
-		if step.Operation != "resolve-pattern" && step.Operation != "execute-browse-query" {
+		if step.Operation != "resolve-pattern" && step.Operation != "execute-browse-query" && step.Operation != "evaluate-validations" && step.Operation != "observe-synthetic-state" {
 			return Scenario{}, fmt.Errorf("step %q: unsupported operation %q", step.ID, step.Operation)
+		}
+		if step.Operation == "observe-synthetic-state" {
+			if step.Pattern != "" || step.ExpectKind != "" || step.ExpectData != "" || step.ExpectQuery != "" ||
+				step.Parameters != nil || step.ExpectRows != nil || len(step.ExpectValidations) != 0 ||
+				step.ReadIdentity == "" || step.Fixture == "" || step.ExpectObservation == nil {
+				return Scenario{}, fmt.Errorf("step %q: synthetic Observation requires read identity, fixture and expectation", step.ID)
+			}
+			if _, err := step.ExpectObservation.Decode(); err != nil {
+				return Scenario{}, fmt.Errorf("step %q: %w", step.ID, err)
+			}
+			continue
+		}
+		if step.Operation == "evaluate-validations" {
+			if step.ReadIdentity != "" || step.ExpectObservation != nil {
+				return Scenario{}, fmt.Errorf("step %q: unexpected Observation fields", step.ID)
+			}
+			if step.Pattern != "" || step.ExpectKind != "" || step.ExpectData != "" || step.ExpectQuery != "" || step.Parameters != nil || step.ExpectRows != nil ||
+				strings.TrimSpace(step.Fixture) == "" || len(step.ExpectValidations) == 0 {
+				return Scenario{}, fmt.Errorf("step %q: Validation requires fixture and expected results, without Pattern fields", step.ID)
+			}
+			for id, outcome := range step.ExpectValidations {
+				if strings.TrimSpace(id) == "" || (outcome != "satisfied" && outcome != "not-satisfied") {
+					return Scenario{}, fmt.Errorf("step %q: unsupported Validation expectation %s=%s", step.ID, id, outcome)
+				}
+			}
+			continue
+		}
+		if len(step.ExpectValidations) != 0 || step.ReadIdentity != "" || step.ExpectObservation != nil {
+			return Scenario{}, fmt.Errorf("step %q: Pattern operation cannot own Validation/Observation results", step.ID)
 		}
 		if strings.TrimSpace(step.Pattern) == "" || strings.TrimSpace(step.ExpectKind) == "" || strings.TrimSpace(step.ExpectData) == "" {
 			return Scenario{}, fmt.Errorf("step %q: missing explicit expectation", step.ID)
