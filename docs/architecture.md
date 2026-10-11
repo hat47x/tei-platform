@@ -210,7 +210,7 @@ Canonical subject identity
 
 AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等はderived knowledgeとして保持できますが、Canonical meaningの第二の正本にはしません。model名、prompt、tool trajectory、judge score等も、意味を定義しない限りEvidence側へ残します。
 
-この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置きます。Gate C後の実証は、一つのAI Issueへ集約せず、[`ISSUE-000046`](../plan/issue/000046-studio-shared-acceptance-authoring-loop.md)でStudioのShared Acceptance loop、[`ISSUE-000047`](../plan/issue/000047-knowledge-first-semantic-exploration.md)でHuman / AI共通のread-only探索、[`ISSUE-000027`](../plan/issue/000027-ai-proposal-acceptance-boundary.md)でAI Proposal / Acceptanceをそれぞれ扱います。
+この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置きます。Gate C後の実証は、StudioのShared Acceptance loop、Human / AI共通のread-only探索、AI Proposal / Acceptanceという独立した対象に分けて進めます。各対象で実装・確認できた範囲は[現在の実装状況](status.md)と対応するReferenceで確認します。
 
 ## 開発ツールと実行環境の境界
 
@@ -257,7 +257,7 @@ Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / 
 
 これらに別のProduct上の必要性がある場合は、その必要性を個別に評価します。開発Toolが所有する状態を、RQ-034のためだけにTEIへ複製しません。
 
-この境界の長期判断は[ADR-0031](../plan/adr/0031-tool-neutral-git-native-development.md)、Executable Referenceは[ISSUE-000083](../plan/issue/000083-tool-neutral-development-reference.md)で扱います。
+この境界の長期判断は[ADR-0031](../plan/adr/0031-tool-neutral-git-native-development.md)に置きます。Executable Referenceの成立範囲は、該当する実装と検証結果から別途確認します。
 
 ## 意味を扱う中核
 
@@ -635,7 +635,7 @@ Target Adapter
 
 **execution artifact / ABI / host**は、現時点では独立したCanonical kindやproduction schemaではありません。同じWeb Targetがnative / remote runtime、freestanding Wasm、Worker-hosted Wasm等を取り得ることや、同じportable artifactを複数Hostへ載せ得ることを説明するため、Runtime Binding内部の実現差として観測します。WasmをWeb / Desktop / Mobile / API / MCP / VUIと同列のTarget kindにはしません。
 
-これらをどこまで独立概念として分離すべきかは、第一Web Targetと第二Target、およびportable artifact ReferenceのEvidenceから確定します。現時点で完全なtaxonomyをCoreへ固定しません。詳細は[Portable Execution Artifact Architecture Pressure](../plan/PORTABLE_EXECUTION_ARTIFACT_ARCHITECTURE_PRESSURE_2026-09.md)と[`ISSUE-000026`](../plan/issue/000026-target-capability-execution-profile-boundary.md)を参照してください。
+これらをどこまで独立概念として分離すべきかは、第一Web Targetと第二Target、およびportable artifact ReferenceのEvidenceから確定します。現時点で完全なtaxonomyをCoreへ固定しません。これは検討中の設計境界であり、特定のReferenceで成立した事項を全Targetへ一般化しません。
 
 Gate Cでは、意味baselineとTarget実装revisionを同一revisionへ畳みません。Gate B通過時のHandover Baselineを`B`、その`baselineRepositoryRevision`を`R`、Targetのbuild / runtime identityを`T`として別々に追跡します。
 
