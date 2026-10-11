@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 TMP_ROOT="$(mktemp -d)"
 STORE="$TMP_ROOT/coordination-store"
 WORK_ID="TW-0001"
@@ -20,16 +20,52 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Git environment overrides can redirect -C to a different working tree, index,
+# object store or namespace. Cleanliness must refer to this actual checkout.
+# Refuse such overrides rather than silently qualifying a different repository.
+for git_override in \
+  GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_NAMESPACE \
+  GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES \
+  GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT; do
+  if [[ -n "${!git_override:-}" ]]; then
+    echo "external-coordination reference rejects Git environment override: $git_override" >&2
+    exit 2
+  fi
+done
+
 if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "external-coordination reference requires a Git checkout" >&2
   exit 2
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "external-coordination reference requires a clean product checkout" >&2
-  git -C "$ROOT" status --short >&2
-  exit 2
-fi
+# Reject non-standard index flags and ignored files as well as ordinary changes.
+# An assume-unchanged / skip-worktree entry can hide edits from git status.
+assert_product_clean() {
+  local phase="$1" failure_code="$2" status ignored index_flags hidden_index actual_root
+  actual_root="$(git -C "$ROOT" rev-parse --show-toplevel)" || {
+    echo "external-coordination reference cannot resolve product Git worktree root ($phase)" >&2
+    exit "$failure_code"
+  }
+  if [[ "$actual_root" != "$ROOT" ]]; then
+    echo "external-coordination reference Git worktree root mismatch ($phase)" >&2
+    printf 'script checkout: %s\nGit worktree: %s\n' "$ROOT" "$actual_root" >&2
+    exit "$failure_code"
+  fi
+  status="$(git -C "$ROOT" status --porcelain=v1 --untracked-files=all)"
+  ignored="$(git -C "$ROOT" ls-files --others --ignored --exclude-standard)"
+  index_flags="$(git -C "$ROOT" ls-files -v)"
+  hidden_index="$(printf '%s\n' "$index_flags" | grep -E '^[a-zS]' || true)"
+
+  if [[ -n "$status" || -n "$ignored" || -n "$hidden_index" ]]; then
+    echo "external-coordination reference requires a clean product checkout ($phase)" >&2
+    [[ -z "$status" ]] || printf 'git status:\n%s\n' "$status" >&2
+    [[ -z "$ignored" ]] || printf 'ignored artifacts:\n%s\n' "$ignored" >&2
+    [[ -z "$hidden_index" ]] || printf 'hidden index entries:\n%s\n' "$hidden_index" >&2
+    exit "$failure_code"
+  fi
+}
+
+assert_product_clean "pre-state" 2
 
 PRODUCT_HEAD_BEFORE="$(git -C "$ROOT" rev-parse HEAD)"
 
@@ -70,7 +106,7 @@ WORK_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 WORK_BLOB_BEFORE="$(git -C "$STORE" hash-object "work/$WORK_ID.json")"
 
 printf 'current evidence\n' > "$STORE/artifacts/$WORK_ID/run-a.txt"
-ARTIFACT_DIGEST="$(python3 - "$STORE/artifacts/$WORK_ID/run-a.txt" <<'PY'
+ARTIFACT_DIGEST="$(python3 -I - "$STORE/artifacts/$WORK_ID/run-a.txt" <<'PY'
 import hashlib
 import pathlib
 import sys
@@ -148,7 +184,7 @@ cat > "$STORE/native-state/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP_STATE
 }
 EOF_FOLLOW_UP_STATE
 
-python3 - "$STORE" "$PRODUCT_HEAD_BEFORE" "$COLLIDING_LOCAL_WORK_REF" <<'PY'
+python3 -I - "$STORE" "$PRODUCT_HEAD_BEFORE" "$COLLIDING_LOCAL_WORK_REF" <<'PY'
 import hashlib
 import json
 import pathlib
@@ -238,7 +274,7 @@ git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID" "work/$FOLLOW_UP_ID.
 git -C "$STORE" commit -qm "coordination: append independent agent results"
 RESULTS_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
-python3 - "$STORE/native-state/$WORK_ID.json" <<'PY'
+python3 -I - "$STORE/native-state/$WORK_ID.json" <<'PY'
 import json
 import pathlib
 import sys
@@ -270,11 +306,7 @@ if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$PRODUCT_HEAD_BEFORE" ]]; then
   exit 1
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "coordination activity changed the product checkout" >&2
-  git -C "$ROOT" status --short >&2
-  exit 1
-fi
+assert_product_clean "after coordination" 1
 
 STORE_HEAD="$(git -C "$STORE" rev-parse HEAD)"
 rm -rf "$STORE"
@@ -284,11 +316,7 @@ if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$PRODUCT_HEAD_BEFORE" ]]; then
   exit 1
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-  echo "deleting the coordination store changed the product checkout" >&2
-  git -C "$ROOT" status --short >&2
-  exit 1
-fi
+assert_product_clean "after coordination store deletion" 1
 
 printf 'product=%s\n' "$PRODUCT_HEAD_BEFORE"
 printf 'work-commit=%s\n' "$WORK_COMMIT"
