@@ -33,9 +33,15 @@ esac
 
 parent=$(dirname "$dest")
 [[ -d "$parent" && -w "$parent" ]] || { echo "output parent must exist and be writable" >&2; exit 2; }
-tmp=$(mktemp -d "${dest}.tmp.XXXXXX")
-cleanup() { if [[ -d "$tmp" ]]; then rm -rf -- "$tmp"; fi; }
+lock="${dest}.lock"
+mkdir -- "$lock" || { echo "candidate output is already reserved" >&2; exit 2; }
+tmp=""
+cleanup() {
+  if [[ -n "$tmp" && -d "$tmp" ]]; then rm -rf -- "$tmp"; fi
+  if [[ -d "$lock" ]]; then rmdir -- "$lock"; fi
+}
 trap cleanup EXIT
+tmp=$(mktemp -d "${dest}.tmp.XXXXXX")
 
 declare -A seen=()
 count=0
@@ -83,7 +89,9 @@ head -n 15 "$tmp/README.md" | grep -Fq '人的レビュー' || {
   exit 3
 }
 
-mv -- "$tmp" "$dest"
+[[ ! -e "$dest" && ! -L "$dest" ]] || { echo "output appeared during preparation" >&2; exit 3; }
+mv -T -- "$tmp" "$dest"
+rmdir -- "$lock"
 trap - EXIT
 printf 'CANDIDATE_ONLY source=%s files=%s output=%s\n' "$commit" "$count" "$dest"
 printf '%s\n' 'NOT_AUDITED: independently review every output file, licenses, metadata and required tests before publishing.'
