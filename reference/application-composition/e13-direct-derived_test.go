@@ -130,3 +130,35 @@ func TestE13SUIStage0RemainsNonApplication(t *testing.T) {
 		}
 	}
 }
+
+func TestE13UnresolvedReportDoesNotExposeDerived(t *testing.T) {
+	world, indexed := e5PatternTargetsFixture()
+	report := e5Report{
+		Application: "order_entry",
+		Status: "unresolved",
+		Qualification: "declaration-and-source-index-only",
+	}
+	envelope := e13PairedEvidence(world, report, indexed, true)
+	if envelope.Derived != nil {
+		t.Fatal("unresolved E5 Application must not emit additional World-derived metadata")
+	}
+	if envelope.Report.Status != "unresolved" {
+		t.Fatal("E5 unresolved status lost while restricting optional disclosure")
+	}
+}
+
+func TestE13ObservedReportRequiresExplicitOptIn(t *testing.T) {
+	world, indexed := e5PatternTargetsFixture()
+	report := inspectE5(world, indexed, "order_entry")
+	if report.Status != "observed" {
+		t.Fatalf("fixture unexpectedly unresolved: %+v", report.Issues)
+	}
+	baseline := e13PairedEvidence(world, report, indexed, false)
+	if baseline.Derived != nil {
+		t.Fatal("unrequested Derived Index was disclosed")
+	}
+	selected := e13PairedEvidence(world, report, indexed, true)
+	if selected.Derived == nil || len(selected.Derived.ApplicationPatterns) == 0 {
+		t.Fatal("opt-in derived projection unavailable")
+	}
+}
