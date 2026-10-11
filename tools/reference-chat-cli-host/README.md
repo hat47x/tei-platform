@@ -41,7 +41,7 @@ CANDIDATE_SHA="$(git -C "$CHECKOUT" rev-parse --verify "refs/remotes/origin/$BRA
 git -C "$CHECKOUT" switch --detach "$CANDIDATE_SHA"
 
 # Candidateへ最新mainが未統合なら資格確認を進めない。
-git -C "$CHECKOUT" merge-base --is-ancestor "$MAIN_SHA" "$CANDIDATE_SHA" || {
+git --no-replace-objects -C "$CHECKOUT" merge-base --is-ancestor "$MAIN_SHA" "$CANDIDATE_SHA" || {
   echo "candidate does not contain current main; integrate in its work branch first" >&2
   exit 1
 }
