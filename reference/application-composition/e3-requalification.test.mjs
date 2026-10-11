@@ -85,3 +85,23 @@ test('observed E1-to-current change flags Application dependents without invalid
   assert.deepEqual(outcome['database-wiring'].changed,[app]);
   assert.deepEqual(outcome['application-action-ui'].changed,[app]);
 });
+
+test('generic proposed status without an identified change is not applicable',()=>{
+  assert.deepEqual(assessCandidateApplicability({candidate:{status:'proposed'},scope:report(old)[0]}),
+    {status:'unresolved',reason:'unqualified_candidate_type'});
+});
+test('an environment change cannot masquerade as a UI-local proposal',()=>{
+  const fake={status:'proposed',kind:'environment-binding',path:env,owner:'environment',after:'modified',checks:[]};
+  assert.deepEqual(assessCandidateApplicability({candidate:fake,scope:report(old)[0]}),
+    {status:'unresolved',reason:'unqualified_candidate_type'});
+});
+test('valid UI edit cannot use unchanged database-wiring as its scope',()=>{
+  const proposal=proposeUIHeading("React.createElement('h2',null,'Details')");
+  assert.deepEqual(assessCandidateApplicability({candidate:proposal,scope:status(report(old))['database-wiring']}),
+    {status:'unresolved',reason:'candidate_scope_mismatch'});
+});
+test('an unrelated proposed candidate for the UI path remains unqualified',()=>{
+  const other={status:'proposed',kind:'ui-heading',path:ui,owner:'project-ui',after:'anything'};
+  assert.deepEqual(assessCandidateApplicability({candidate:other,scope:report(old)[0]}),
+    {status:'unresolved',reason:'unqualified_candidate_type'});
+});
