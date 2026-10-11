@@ -2,7 +2,7 @@
 
 Status: **Design baseline — cross-cutting / Evidence-driven**
 
-関連は次のとおりです。
+関連文書とIssueは次のとおりです。
 
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md` — Product Requirement正本
 - `plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — 段階的な実証計画
@@ -12,9 +12,9 @@ Status: **Design baseline — cross-cutting / Evidence-driven**
 
 ## 1. 位置づけ
 
-TEIにとってProduct Qualityは、意味モデルとは別の「非機能Layer」ではありません。
+TEIにおける製品品質（Product Quality）は、意味モデルから切り離された「非機能層」ではありません。
 
-TEIがすでに要求している次の境界を、Target / Provider / Runtime / Studio / AIまで一貫して守れるかを横断的に確認する設計軸です。
+すでに定めた次の境界が、Target、Provider、Runtime、Studio、AIの各領域でも一貫して守られるかを確かめるための設計軸です。
 
 - business meaningとrealizationの分離
 - authoritative sourceとderived artifactの分離
@@ -30,7 +30,7 @@ TEIがすでに要求している次の境界を、Target / Provider / Runtime /
 
 ## 2. なぜ横断Architectureが必要か
 
-Requirementが正しくても、quality concernを個別実装へ分散させると次の短絡が起こり得ます。
+要求が適切でも、品質上の関心事を個別実装ごとに扱うと、次のような早計な判断が起こり得ます。
 
 ```text
 Databaseでは安全
@@ -49,7 +49,7 @@ AI retrieval accuracyが高い
   != semantic correctness
 ```
 
-したがってqualityは、既存の意味・変更・実行・Interaction・Evidence境界へ同じ問いを掛けます。
+そのため品質については、意味・変更・実行・Interaction・Evidenceの各境界に対して、同じ観点から確認します。
 
 ## 3. Quality axes
 
@@ -242,7 +242,7 @@ Change safetyはDatabase migrationだけに限定しません。
 - Target / Runtime configuration change
 - Studio / AI accepted edit
 
-共通原則はは次のとおりです。
+共通原則は次のとおりです。
 
 ```text
 candidate
@@ -252,8 +252,6 @@ candidate
   -> apply
   -> reload / observation / evidence
 ```
-
-です。
 
 外部状態に依存するdestructive operationでは、古いObservationだけを実行許可へ使いません。freshness、revision、identity、ownership等、当該領域で必要なpreconditionをapply直前に確認します。
 
@@ -309,7 +307,7 @@ Operational TelemetryはRuntimeを観測するProjectionです。
 
 OpenTelemetry等のsemantic conventionsへ写像できることは相互運用上有用ですが、TEI Canonical modelをtelemetry data modelへ合わせません。
 
-必要な相関をは次のとおりです。
+必要な相関は次のように表します。
 
 ```text
 TEI logical identity
@@ -317,7 +315,7 @@ TEI logical identity
    -> trace / metric / log
 ```
 
-の方向で行います。
+この方向で、論理的な識別子と運用上の記録を結び付けます。
 
 ## 11. 外部quality modelの扱い
 
@@ -340,7 +338,7 @@ Quality Architectureは新しいGateを追加しません。
 - Studio / AI / Second Target: それぞれ同じQuality Envelope原則で比較する
 - production: observability / HA / supply-chain等を必要なEvidenceとともに拡張する
 
-Quality planningやstatic reviewをactual Evidenceへ読み替えません。
+品質の計画や静的レビューを、実環境で取得したEvidenceと同一視しません。
 
 ## 13. 先に固定しないもの
 
