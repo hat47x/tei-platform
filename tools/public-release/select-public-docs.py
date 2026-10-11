@@ -143,7 +143,9 @@ def main() -> None:
         with temp.open("x", encoding="utf-8") as stream:
             for path in sorted(remaining):
                 stream.write(path + "\n")
-        os.replace(temp, output)
+        # Hardlink creation refuses to overwrite a concurrent writer's output.
+        # The staging file is in the same directory, hence on the same device.
+        os.link(temp, output)
     finally:
         if temp.exists():
             temp.unlink()
