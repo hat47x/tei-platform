@@ -347,7 +347,7 @@ Reference pressureでは少なくとも次を比較します。
 
 この一意性はbusiness identifierやcandidate keyではない。親子関係が業務上の包含を意味するか、親の識別子とline numberの組合せがbusiness occurrenceを識別するかは、現在のCanonical meaningだけでは確定できない。このため`businessOccurrenceIdentifier`、`candidateKeys`、`functionalDependencies`は引き続き`unresolved`とする。
 
-ただし、設計探索を止めないため、acceptedなscoped uniquenessから検討対象となる`businessIdentityCandidates`は提示する。`sales.order.lines.line_number_unique`では、候補のcomponentsを`relation-source-occurrence: sales.order`と`attribute: sales.order_line.line_number`の2項に分け、target occurrenceを`sales.order_line`とする。これはbusiness identifierやcandidate keyの確定ではない。source occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、identifier stability、temporal validityを確認できるまでcandidateのまま保持する。
+ただし、設計探索を止めないため、acceptedなscoped uniquenessから検討対象となる`businessIdentityCandidates`は提示する。`sales.order.lines.line_number_unique`では、候補のcomponentsを`related-occurrence(relation=sales.order.lines, end=source, data=sales.order)`と`attribute: sales.order_line.line_number`の2項に分け、target occurrenceを`sales.order_line`とする。これはbusiness identifierやcandidate keyの確定ではない。source occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、identifier stability、temporal validityを確認できるまでcandidateのまま保持する。
 
 `businessIdentityCandidates`と`functionalDependencyCandidates`には、候補そのものを指す`fingerprint`と、現在必要な確認項目を指す`evidenceRequirementFingerprint`を分けて持たせる。`fingerprint`はdeterminant / component、scope、target occurrence、basis constraint等の候補意味から決め、`evidenceNeeded`は含めない。そのため、確認項目が増減しても候補意味が同じならcandidate identityは変わらない。`evidenceRequirementFingerprint`はcandidate fingerprintと正規化した`evidenceNeeded`から生成するため、確認契約が変わればこちらだけが変わる。business identity候補とFD候補はtype discriminatorを分け、異なる候補種別を同じidentityとして扱わない。どちらのfingerprintもAcceptance、business identifierとしての確定、Evidence充足を証明しない。
 
@@ -355,7 +355,7 @@ Data Design Contextには、判断材料として使ったData、Attribute、Rel
 
 Context再利用では、Evidenceの揃い方と構造解決の一意性を分ける。`evidenceCoverageStatus=complete|incomplete`は必要subjectのSource Evidenceが揃っているかだけを表し、`resolutionStatus=resolved|ambiguous`はCanonical ID / Persistence Mapping等の構造解決が一意かだけを表す。業務意味がすべて確定したことを`resolved`の意味にはしない。cached Contextのexact fingerprint guardは、`resolutionStatus=resolved`かつEvidence completeの場合だけ通す。Evidenceが揃っていてもduplicate Semantic IDやduplicate Persistence Mappingが残るContextは再利用しない。
 
-構造解決状態を追加した段階ではData Design Projection revisionを`tei.knowledge.data-design/v2`へ上げ、その後、Data全体の`temporalHistoryConditions`とEvidence questionを追加してv3、候補単位のfingerprint追加でv4、候補identityとEvidence確認契約の分離でv5とした。SQL Realizationを明示result mappingからData Design Contextへ接続する現在のrevisionは`tei.knowledge.data-design/v6`とする。Context fingerprintにもprojection revisionが含まれるため、v1〜v5 cacheをv6へ黙って持ち越さない。
+構造解決状態を追加した段階ではData Design Projection revisionを`tei.knowledge.data-design/v2`へ上げ、その後、Data全体の`temporalHistoryConditions`とEvidence questionを追加してv3、候補単位のfingerprint追加でv4、候補identityとEvidence確認契約の分離でv5とした。SQL Realizationを明示result mappingからData Design Contextへ接続した段階を`tei.knowledge.data-design/v6`とし、related-occurrence determinantへexact Relation identityとendを追加した現在のrevisionを`tei.knowledge.data-design/v7`とする。candidate fingerprint schemaもv2へ上げる。Context fingerprintにもprojection revisionが含まれるため、v1〜v6 cacheをv7へ黙って持ち越さない。
 
 Data Design Context全体には`projectionRevision`と`fingerprint`も付ける。fingerprintは、正規化・並べ替え後のData Design Context全体から`fingerprint`自身だけを空にして決定論的に生成する。したがって、関連Source Evidenceだけでなく、ambiguity、候補、Persistence Realization、Evidence coverageなどProjectionの意味が変われば値も変わる。無関係なSourceはProjectionへ入らないため、その追加だけではfingerprintを変えない。この値はData設計の正しさやCanonical meaningの同一性を証明するものではなく、AIやStudioがContextを再取得するためのcache identityとして扱う。
 
@@ -365,7 +365,7 @@ CLIでcached Contextを再利用する場合は、保存していたfingerprint�
 
 `scopedUniqueness`はkind名だけから生成しない。Relationが`many`であり、ValidationのAttributeがそのRelation targetに属する場合に限ってProjectionへ出す。壊れた`relation-unique`やSource Evidence不足から、business identityやfunctional dependencyを推測しない。
 
-一方、acceptedなscoped uniquenessからは、次に検証すべき関数従属性の候補を限定的に導ける。`sales.order.lines.line_number_unique`の場合、`line_number`単独をdeterminantとして扱わない。候補のdeterminantは、`relation-source-occurrence: sales.order`と`attribute: sales.order_line.line_number`の2項として保持し、dependent occurrenceを`sales.order_line`、scopeを`per-relation-source-occurrence`とする。これにより、scope注記を読み落としたAIが「line numberだけで明細を決める」と誤解する経路を構造上閉じる。natureは`candidate-from-accepted-scoped-uniqueness`であり、acceptedなfunctional dependencyではない。確定には少なくともsource occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、temporal validityが必要であるため、これらを`evidenceNeeded`へ残す。さらに、business identity候補には`history-version-identity`と`identifier-reuse-policy`、functional dependency候補には`history-version-identity`と`temporal-dependency-scope`を候補固有の未解決Evidenceとして保持する。上位の時間・履歴質問を読まなくても、候補単位で「同一occurrenceのversionか」「識別子再利用があるか」「従属性がどの時間scopeで成立するか」を再確認できるようにする。`functionalDependencies`本体は引き続き`unresolved`とする。
+一方、acceptedなscoped uniquenessからは、次に検証すべき関数従属性の候補を限定的に導ける。`sales.order.lines.line_number_unique`の場合、`line_number`単独をdeterminantとして扱わない。候補のdeterminantは、`related-occurrence(relation=sales.order.lines, end=source, data=sales.order)`と`attribute: sales.order_line.line_number`の2項として保持し、dependent occurrenceを`sales.order_line`、scopeを`per-relation-source-occurrence`とする。これにより、scope注記を読み落としたAIが「line numberだけで明細を決める」と誤解する経路を構造上閉じる。natureは`candidate-from-accepted-scoped-uniqueness`であり、acceptedなfunctional dependencyではない。確定には少なくともsource occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、temporal validityが必要であるため、これらを`evidenceNeeded`へ残す。さらに、business identity候補には`history-version-identity`と`identifier-reuse-policy`、functional dependency候補には`history-version-identity`と`temporal-dependency-scope`を候補固有の未解決Evidenceとして保持する。上位の時間・履歴質問を読まなくても、候補単位で「同一occurrenceのversionか」「識別子再利用があるか」「従属性がどの時間scopeで成立するか」を再確認できるようにする。`functionalDependencies`本体は引き続き`unresolved`とする。
 
 Reference testでは、`sales.order_line`についてincoming Relation、`relation-unique`、positive Validation、exact Source Evidenceを同じData Design Contextから取得できることを記述した。また、Relation keyを持つ`sales.order.customer`でも、source / target AttributeのEvidenceを保持しつつbusiness identifierへ昇格しないことを確認対象にした。Relationごとにcardinalityとkey mappingはacceptedな構造情報として示す一方、`businessMeaning`と`temporalSemantics`は`unresolved`で返す。Relationの形だけから変更可能な参照、包含、独立association、current-only、temporal等を決めない。内部negative testでは、不正なRelation shapeから`scopedUniqueness`を生成しないことと、Source Indexが欠けた場合に`evidenceMissing`へ明示することを固定した。
 
@@ -774,6 +774,45 @@ qualificationからShared AcceptanceへEvidenceを渡す経路に続き、探索
 testには、既知のS4 candidateと同じsemantic deltaになるpositive caseに加え、required Contract Queryをqualificationしていないcase、stale Evidence、reuse requestからContract Queryを注入するcaseをnegative caseとして記述した。CLI自体がworkspaceを変更しないことも対象にしている。
 
 この段階でも探索結果の自動採用やReference Patternの自動適用は行わない。destination-ownedな情報は明示入力のままであり、Proposal生成後もAcceptanceは別である。
+
+### 2026-10-10 Data determinant Core promotion pressure
+
+Data Design Contextにはbusiness identity / functional dependencyのderived candidate、Evidence requirement、temporal / composite-domain unresolved、Persistence / Target / runtime identityのnegative boundaryまで入った。一方、これをそのままCore primitiveへ昇格するにはReference diversityが不足している。
+
+正本として[Data Determinant Promotion Gate](../DATA_DETERMINANT_PROMOTION_GATE_2026-10.md)を追加した。
+
+現行Referenceとtest pressureを、少なくとも次の三類型へ分ける。
+
+```text
+contained repeat
+  sales.order.lines -> sales.order_line
+  + accepted relation-unique
+  -> identity / FD candidateを導出できる
+
+changeable reference
+  repair.intake -> customer.customer
+  -> Relation shapeからidentity / FD candidateを作らない
+
+independent association
+  two independent one-relations
+  -> 組合せidentity / association identityを推測しない
+```
+
+`internal/knowledgecontext/context_test.go`には、この三類型を同じData Design Contextへ通すnegative pressureを追加した。contained repeatだけがaccepted scoped uniquenessを根拠にcandidateを持ち、reference / association shapeはbusiness meaningとdeterminantを`unresolved`へ残す。
+
+さらにactual Source-backed negative caseとして`security.authorization_grant`を`knowledge-context`へ通す。`subjectId / action / resource`の3 Attributeと`semantic/security/authorization.tei`のSource Evidenceは取得できるが、acceptedなcomposite uniqueness / occurrence identityが無いためbusiness identity / FD candidateは生成しない。identifier-like fieldの複数存在を、そのまま複合keyの根拠へ昇格しない。
+
+これにより、salesの一例から「親ID + 連番」等をCore規則へ一般化しないことを固定する。
+
+positive association pressureとして`reference/business-system-design/data-determinant-association-pressure.md`を追加した。CoverageAssignmentではServiceContract / Assetが独立occurrenceで、同じ組合せを時間を変えて再activationできるため、pairだけでもsurrogate `assignment_id`だけでもbusiness occurrence identityを説明できない。Reference business factとして、ServiceContract occurrence + Asset occurrence + effectiveFromをoccurrence identity候補とし、effectiveToとhistory revisionを別責務へ分ける。二種類のPersistence Realizationでもbusiness meaningを維持する。
+
+CoverageAssignment Referenceの受入条件は`plan/DATA_DETERMINANT_ASSOCIATION_REFERENCE_ACCEPTANCE_CONTRACT_2026-10.md`へ分離した。DAR-P1はTEI-original pressureとしてのepistemic safety、DAR-P2は三類型 / Persistence / Review Protocolへの統合、DAR-P3は独立reviewとactual Repository executionを要求する。seed ledgerの`review.checklist`もDDA-01〜12へbindingし、current stateは`independentReview=required`のままとする。
+
+このReferenceにより、現行Core contractがSource-backedなbusiness occurrence identity / scoped FDをaccepted meaningとして直接authorできないrepresentational gapが具体化した。
+
+共通shapeの比較結果は`plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md`へ分離した。第一候補は、determinant term語彙を共有しつつ、business occurrence identity / candidate key / functional dependencyを別assertionにする構造である。contained repeatではRelation source occurrence + local Attribute、associationでは複数のRelation target occurrence + temporal/local Attributeを同じterm vocabularyで表現できる。一方、changeable referenceはRelationが存在するだけではidentity termにしない。
+
+Parser / Canonical IRへの新primitive実装はまだ開始しない。CoverageAssignment Referenceを既存Business System Design review flowへ通し、Relation semanticsのdurable contractが別途必要かを含めて確認した後に再評価する。
 
 ### 現在のEvidence境界 — 2026-10-09
 
