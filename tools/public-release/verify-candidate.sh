@@ -14,9 +14,12 @@ candidate=$(realpath -e "$candidate_arg")
 case "$candidate/" in "$repo/"*) echo 'candidate must be outside repository' >&2; exit 2;; esac
 [[ "$(git -C "$repo" rev-parse --verify "$commit^{commit}")" == "$commit" ]] || { echo 'source commit not found' >&2; exit 2; }
 
-# Refuse links and special nodes, including inside nested directories.
-if [[ -n "$(find "$candidate" ! -type f ! -type d -print -quit)" ]]; then
-  echo 'candidate contains symlink or special node' >&2
+# Record and check the complete candidate walk. A traversal error is a failure;
+# process substitution would otherwise hide find's nonzero exit status.
+scan=$(mktemp)
+trap 'rm -f -- "$scan"' EXIT
+if ! find "$candidate" -print0 > "$scan"; then
+  echo 'candidate directory traversal failed' >&2
   exit 3
 fi
 
@@ -48,9 +51,15 @@ while IFS= read -r path || [[ -n "$path" ]]; do
 done < "$list"
 [[ "$count" -gt 0 && -v expected[README.md] && -v expected[LICENSE] ]] || { echo 'required files missing' >&2; exit 3; }
 while IFS= read -r -d '' file; do
-  path=${file#"$candidate"/}
-  [[ -v "expected[$path]" ]] || { echo 'unexpected file in candidate' >&2; exit 3; }
-done < <(find "$candidate" -type f -print0)
+  if [[ -L "$file" || ( ! -f "$file" && ! -d "$file" ) ]]; then
+    echo 'candidate contains symlink or special node' >&2
+    exit 3
+  fi
+  if [[ -f "$file" ]]; then
+    path=${file#"$candidate"/}
+    [[ -v "expected[$path]" ]] || { echo 'unexpected file in candidate' >&2; exit 3; }
+  fi
+done < "$scan"
 head -n 15 "$candidate/README.md" | grep -Fq '生成AI' || { echo 'AI development notice missing' >&2; exit 3; }
 head -n 15 "$candidate/README.md" | grep -Fq '人的レビュー' || { echo 'human review notice missing' >&2; exit 3; }
 printf 'VERIFIED_CANDIDATE_ONLY source=%s files=%s\n' "$commit" "$count"
