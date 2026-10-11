@@ -113,6 +113,170 @@ func TestQualificationReceiptAndIntegrationPreflightControlFlow(t *testing.T) {
 		}
 	})
 
+
+	t.Run("rejects URL and option as integration remote names", func(t *testing.T) {
+		for _, remote := range []string{"ext::helper", "https://example.invalid/repo.git", "--upload-pack=malicious"} {
+			out := runFailure(t, candidate, "bash",
+				"tools/reference-tool-neutral-development/integration-preflight.sh",
+				"--receipt-file", receipt, "--candidate", head,
+				"--expected-main", main, "--remote", remote,
+				"--integration-root", integration)
+			if !strings.Contains(out, "configured remote name") {
+				t.Fatalf("unsafe remote %q was rejected for an unexpected reason:\n%s", remote, out)
+			}
+		}
+	})
+
+	t.Run("qualification must not run configured fsmonitor", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("POSIX executable fixture")
+		}
+		marker := filepath.Join(tmp, "fsmonitor-executed")
+		hook := filepath.Join(tmp, "malicious-fsmonitor.sh")
+		writeFile(t, hook, []byte("#!/bin/sh\n: > "+marker+"\nexit 0\n"), 0o755)
+		run(t, candidate, "git", "config", "core.fsmonitor", hook)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "config", "--unset", "core.fsmonitor") })
+		out := run(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", main)
+		if !strings.Contains(out, "qualification=PASS") {
+			t.Fatalf("synthetic qualification unexpectedly failed:\n%s", out)
+		}
+		if _, err := os.Stat(marker); !os.IsNotExist(err) {
+			t.Fatalf("qualification executed a repository-selected fsmonitor: %v", err)
+		}
+		run(t, candidate, "git", "config", "--unset", "core.fsmonitor")
+	})
+
+	t.Run("rejects Git replacement objects in qualification and integration", func(t *testing.T) {
+		run(t, candidate, "git", "replace", head, main)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "replace", "-d", head) })
+		out := runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", main)
+		if !strings.Contains(out, "replacement objects") {
+			t.Fatalf("qualification did not identify Git history replacement:\n%s", out)
+		}
+		out = runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/integration-preflight.sh",
+			"--receipt-file", receipt, "--candidate", head,
+			"--expected-main", main, "--remote", "origin",
+			"--integration-root", integration)
+		if !strings.Contains(out, "replacement objects") {
+			t.Fatalf("integration preflight did not identify Git history replacement:\n%s", out)
+		}
+		run(t, candidate, "git", "replace", "-d", head)
+	})
+
+	t.Run("reproduces forged ancestry rejected by qualification", func(t *testing.T) {
+		// True commit graph: main -> candidate -> futureMain.
+		// A replacement object lies about candidate's parent without
+		// changing the HEAD SHA, which fooled the old ancestor check.
+		candidateTree := strings.TrimSpace(run(t, candidate, "git", "rev-parse", head+"^{tree}"))
+		futureMain := strings.TrimSpace(run(t, candidate, "git", "commit-tree",
+			candidateTree, "-p", head, "-m", "future main"))
+		forgedCandidate := strings.TrimSpace(run(t, candidate, "git", "commit-tree",
+			candidateTree, "-p", futureMain, "-m", "forged candidate"))
+		run(t, candidate, "git", "update-ref", "refs/remotes/origin/main", futureMain)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "update-ref", "refs/remotes/origin/main", main) })
+		run(t, candidate, "git", "replace", head, forgedCandidate)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "replace", "-d", head) })
+
+		// Red: default Git silently takes the forged graph.
+		run(t, candidate, "git", "merge-base", "--is-ancestor", futureMain, head)
+		// Green: protected Git objects see the real graph.
+		runFailure(t, candidate, "git", "--no-replace-objects",
+			"merge-base", "--is-ancestor", futureMain, head)
+		out := runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", futureMain)
+		if !strings.Contains(out, "replacement objects") {
+			t.Fatalf("forged ancestry was not blocked by qualification:\n%s", out)
+		}
+		run(t, candidate, "git", "replace", "-d", head)
+		run(t, candidate, "git", "update-ref", "refs/remotes/origin/main", main)
+	})
+
+	t.Run("rejects legacy grafts in both verification phases", func(t *testing.T) {
+		grafts := filepath.Join(candidate, ".git", "info", "grafts")
+		writeFile(t, grafts, []byte(head+" "+main+"\n"), 0o644)
+		t.Cleanup(func() { _ = os.Remove(grafts) })
+		out := runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", main)
+		if !strings.Contains(out, "Git grafts") {
+			t.Fatalf("qualification did not identify legacy grafts:\n%s", out)
+		}
+		out = runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/integration-preflight.sh",
+			"--receipt-file", receipt, "--candidate", head,
+			"--expected-main", main, "--remote", "origin",
+			"--integration-root", integration)
+		if !strings.Contains(out, "Git grafts") {
+			t.Fatalf("integration preflight did not identify legacy grafts:\n%s", out)
+		}
+		if err := os.Remove(grafts); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("rejects Git core.worktree pointing at a different checkout", func(t *testing.T) {
+		shadow := t.TempDir()
+		run(t, candidate, "git", "config", "core.worktree", shadow)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "config", "--unset", "core.worktree") })
+		out := runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", main)
+		if !strings.Contains(out, "worktree root differs") &&
+			!strings.Contains(out, "run from a TEI Git checkout") {
+			t.Fatalf("qualification did not detect core.worktree redirection:\n%s", out)
+		}
+		out = runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/integration-preflight.sh",
+			"--receipt-file", receipt, "--candidate", head,
+			"--expected-main", main, "--remote", "origin",
+			"--integration-root", integration)
+		if !strings.Contains(out, "worktree root differs") &&
+			!strings.Contains(out, "must be executed from a TEI candidate checkout") {
+			t.Fatalf("integration preflight did not detect core.worktree redirection:\n%s", out)
+		}
+		run(t, candidate, "git", "config", "--unset", "core.worktree")
+	})
+
+	t.Run("rejects external Git index redirection", func(t *testing.T) {
+		args := []string{"bash", "tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", main}
+		out := runWithEnvironmentFailure(t, candidate, map[string]string{
+			"GIT_INDEX_FILE": filepath.Join(t.TempDir(), "alternative-index"),
+		}, args...)
+		if !strings.Contains(out, "GIT_INDEX_FILE") {
+			t.Fatalf("qualification accepted ambient index redirect:\n%s", out)
+		}
+		out = runWithEnvironmentFailure(t, candidate, map[string]string{
+			"GIT_INDEX_FILE": filepath.Join(t.TempDir(), "alternative-index"),
+		}, "bash", "tools/reference-tool-neutral-development/integration-preflight.sh",
+			"--receipt-file", receipt, "--candidate", head,
+			"--expected-main", main, "--remote", "origin",
+			"--integration-root", integration)
+		if !strings.Contains(out, "GIT_INDEX_FILE") {
+			t.Fatalf("integration preflight accepted ambient index redirect:\n%s", out)
+		}
+	})
+
+	t.Run("rejects history replacement in separate integration checkout", func(t *testing.T) {
+		run(t, integration, "git", "replace", main, head)
+		t.Cleanup(func() { _ = runNoFail(integration, "git", "replace", "-d", main) })
+		out := runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/integration-preflight.sh",
+			"--receipt-file", receipt, "--candidate", head,
+			"--expected-main", main, "--remote", "origin",
+			"--integration-root", integration)
+		if !strings.Contains(out, "replacement objects") {
+			t.Fatalf("integration checkout replacement accepted:\n%s", out)
+		}
+		run(t, integration, "git", "replace", "-d", main)
+	})
+
 	t.Run("does not overwrite an existing receipt", func(t *testing.T) {
 		before := string(mustReadFile(t, receipt))
 		runFailure(
@@ -239,4 +403,19 @@ func runNoFail(dir string, name string, args ...string) error {
 		cmd.Dir = dir
 	}
 	return cmd.Run()
+}
+
+func runWithEnvironmentFailure(t *testing.T, dir string, extra map[string]string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	for key, value := range extra {
+		cmd.Env = append(cmd.Env, key+"="+value)
+	}
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("%v unexpectedly succeeded under Git environment override:\n%s", args, out)
+	}
+	return string(out)
 }

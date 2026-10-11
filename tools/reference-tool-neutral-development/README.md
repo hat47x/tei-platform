@@ -135,6 +135,18 @@ wrapper自身がpre/postのtracked / untracked / ignored stateを確認するた
 
 PASS時には`candidate-head`、`origin-main`、`candidate-contains-expected-main=true`、Repository health / Reference / qualification結果をstdoutへ出します。これは永続的なTEI Product stateではなく、その時点のexact Git relationとGate結果を示すreceiptです。必要なGate handoffで、通常のIssue / PR Evidenceとして記録できます。
 
+
+### Gitの履歴・checkout境界の負例（#972 / #1173）
+
+資格チェックと統合前preflightは、dirty/untracked/ignored/index flagだけでなく、**Git自身がどのSource・commit graphを観測したか**を確認する。Gitの`refs/replace`やlegacy `info/grafts`は表示中のcommit SHAを変えずに親子関係・treeを変更できる。従来の`git merge-base --is-ancestor`だけでは、偽の祖先関係を通す危険がある。
+
+- 対象checkoutの物理的なtop-levelが、呼び出し側が指定したrootに一致しなければ拒否する。Git local configの`core.worktree`で別のclean directoryへ読み替えても通さない。
+- `GIT_DIR`、`GIT_WORK_TREE`、`GIT_INDEX_FILE`、`GIT_COMMON_DIR`、Git object/namespace/replace/config injection関連のambient overrideを拒否する。検証中は`GIT_NO_REPLACE_OBJECTS=1`とread-only Git呼び出しの`--no-replace-objects`を使用する。
+- `refs/replace`、`info/grafts`が存在すれば**継続しない**。候補・統合両checkoutの開始時と終了時に確認する。Gitのrepository-local`fsmonitor`を資格チェックのGit観測中に実行しない。
+- 資格確認に使うrunner自身とreceiptのrevision binding、開始・終了のclean条件、live main checkはこれまでどおり維持する。
+
+`qualification_test.go`では、実テスト用Git repositoryにreplacement/grafts/core.worktree/env overrideを注入し、qualificationとintegration preflightを**両方とも**拒否することを回帰対象とする。これはGit mechanicsの合成テストであり、actual TEI full checkoutを用いるRepository Healthの資格結果ではない。
+
 ### machine-readable qualification receipt
 
 通常Git mergeによる統合でもGateを取り違えないため、`--receipt-file`を指定すると、すべてのGateが成功した後だけmachine-readable receiptをRepository外へ出力します。
