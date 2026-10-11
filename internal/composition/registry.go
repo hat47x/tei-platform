@@ -162,11 +162,11 @@ func (r *Registry) Apply(expected uint64, upserts []Provider, removes []string) 
 	resolved.Revision = expected + 1
 	old := map[string]string{}
 	for _, p := range r.snapshot.Providers {
-		old[p.ProviderID] = status(p)
+		old[p.ProviderID] = status(p, r.providers[p.ProviderID])
 	}
 	current := map[string]string{}
 	for _, p := range resolved.Providers {
-		current[p.ProviderID] = status(p)
+		current[p.ProviderID] = status(p, candidate[p.ProviderID])
 	}
 	all := map[string]bool{}
 	for id := range old {
@@ -185,11 +185,8 @@ func (r *Registry) Apply(expected uint64, upserts []Provider, removes []string) 
 	return cloneSnapshot(resolved), nil
 }
 
-func status(p Assessment) string {
-	if p.Eligible {
-		return fmt.Sprintf("eligible %v", p.Bindings)
-	}
-	return p.Reason
+func status(p Assessment, definition Provider) string {
+	return fmt.Sprintf("eligible=%t reason=%s bindings=%v definition=%v", p.Eligible, p.Reason, p.Bindings, definition)
 }
 
 func sortedKeys[V any](m map[string]V) []string {
@@ -225,20 +222,26 @@ func evaluate(providers map[string]Provider) (Snapshot, error) {
 				}
 			}
 			if len(matches) == 0 {
-				a.Eligible, a.Reason = false, fmt.Sprintf("missing %s in scope %s", req.Contract.ID, p.Scope)
-				break
+				if a.Eligible {
+					a.Eligible, a.Reason = false, fmt.Sprintf("missing %s in scope %s", req.Contract.ID, p.Scope)
+				}
+				continue
 			}
 			if len(matches) > 1 {
-				a.Eligible, a.Reason = false, fmt.Sprintf("ambiguous %s in scope %s", req.Contract.ID, p.Scope)
-				break
+				if a.Eligible {
+					a.Eligible, a.Reason = false, fmt.Sprintf("ambiguous %s in scope %s", req.Contract.ID, p.Scope)
+				}
+				continue
 			}
 			dependency, err := resolve(matches[0])
 			if err != nil {
 				return Assessment{}, err
 			}
 			if !dependency.Eligible {
-				a.Eligible, a.Reason = false, fmt.Sprintf("dependency %s ineligible: %s", matches[0], dependency.Reason)
-				break
+				if a.Eligible {
+					a.Eligible, a.Reason = false, fmt.Sprintf("dependency %s ineligible: %s", matches[0], dependency.Reason)
+				}
+				continue
 			}
 			a.Bindings = append(a.Bindings, Edge{req.Contract.ID, matches[0]})
 		}
