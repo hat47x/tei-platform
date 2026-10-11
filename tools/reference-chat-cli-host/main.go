@@ -118,13 +118,13 @@ func probe(root, expectedHead, expectedMain string) ProbeReport {
 		return result
 	}
 	result.Git = "available"
+	if _, err := exec.LookPath("go"); err == nil {
+		result.Go = "available"
+	}
 	result.AmbientGitOverrides = "absent"
 	if ambientGitOverridesPresent() {
 		result.AmbientGitOverrides = "present"
 		return result
-	}
-	if _, err := exec.LookPath("go"); err == nil {
-		result.Go = "available"
 	}
 	physicalRoot, err := filepath.EvalSymlinks(root)
 	if err != nil {
