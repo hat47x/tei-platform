@@ -74,7 +74,7 @@ TEI-native Pluginを優先してReference化しますが、Go、Rust、JavaScrip
 
 Build可能であること、artifactをAccepted Plugin Lockへ採用できること、RuntimeでCapabilityをinvokeできることは別のAuthorityです。Build成功をAcceptanceやRuntime Authorityへ自動昇格させません。
 
-詳細な作業契約は [Plugin self-build Reference](../reference/plugin-self-build/README.md) で管理します。
+実行可能な検証例と現在の成立範囲は [Plugin self-build Reference](../reference/plugin-self-build/README.md) を参照してください。
 
 ## 実行時の扱い
 
