@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "business-dfd-review-v0",
+  "authority": "proposal",
+  "procedure": "order-entry.order-handling",
+  "triggers": [
+    {
+      "id": "TR-HUMAN",
+      "kind": "human",
+      "targetStep": "BP-00",
+      "label": "sales operator starts a pending order review"
+    },
+    {
+      "id": "TR-EVENT",
+      "kind": "event",
+      "targetStep": "BP-00",
+      "label": "an external order notification arrives (hypothesis)"
+    },
+    {
+      "id": "TR-SCHEDULE",
+      "kind": "schedule",
+      "targetStep": "BP-00",
+      "label": "periodic order queue review (hypothesis)"
+    }
+  ],
+  "flows": [
+    {
+      "from": "BP-00",
+      "to": "BP-01",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-01",
+      "to": "BP-02",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-02",
+      "to": "BP-03",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-03",
+      "to": "BP-04",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-04",
+      "to": "BP-05",
+      "kind": "branch",
+      "condition": "manual review found no outstanding issue (hypothesis)"
+    },
+    {
+      "from": "BP-04",
+      "to": "BP-01",
+      "kind": "exception",
+      "condition": "order requires correction or clarification (hypothesis)"
+    },
+    {
+      "from": "BP-05",
+      "to": "BP-06",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-06",
+      "to": "BP-07",
+      "kind": "branch",
+      "condition": "authorization permits submit (hypothesis)"
+    },
+    {
+      "from": "BP-06",
+      "to": "BP-09",
+      "kind": "exception",
+      "condition": "authorization denied (hypothesis)"
+    },
+    {
+      "from": "BP-07",
+      "to": "BP-08",
+      "kind": "sequence"
+    },
+    {
+      "from": "BP-08",
+      "to": "BP-09",
+      "kind": "sequence"
+    }
+  ],
+  "businessRoles": [
+    {
+      "id": "sales-operator",
+      "label": "sales operations (business role candidate)"
+    },
+    {
+      "id": "sales-approver",
+      "label": "sales reviewer (business role candidate)"
+    }
+  ],
+  "externalParties": [
+    {
+      "id": "customer",
+      "label": "customer (outside order-handling boundary)"
+    },
+    {
+      "id": "warehouse",
+      "label": "warehouse desk (outside order-handling boundary)"
+    }
+  ],
+  "stores": [
+    {
+      "id": "order",
+      "label": "order records (conceptual store)",
+      "semanticData": "sales.order"
+    },
+    {
+      "id": "lines",
+      "label": "order line records (conceptual store)",
+      "semanticData": "sales.order_line"
+    }
+  ],
+  "responsibilities": [
+    {
+      "step": "BP-00",
+      "role": "sales-operator"
+    },
+    {
+      "step": "BP-04",
+      "role": "sales-approver"
+    },
+    {
+      "step": "BP-09",
+      "role": "sales-operator"
+    }
+  ],
+  "informationFlows": [
+    {
+      "id": "I-01",
+      "from": {
+        "kind": "party",
+        "id": "customer"
+      },
+      "to": {
+        "kind": "step",
+        "id": "BP-04"
+      },
+      "payload": "customer availability or delivery preference (review hypothesis)"
+    },
+    {
+      "id": "I-02",
+      "from": {
+        "kind": "store",
+        "id": "order"
+      },
+      "to": {
+        "kind": "step",
+        "id": "BP-01"
+      },
+      "payload": "current order detail (review hypothesis)"
+    },
+    {
+      "id": "I-03",
+      "from": {
+        "kind": "store",
+        "id": "lines"
+      },
+      "to": {
+        "kind": "step",
+        "id": "BP-03"
+      },
+      "payload": "order line quantities (review hypothesis)"
+    },
+    {
+      "id": "I-04",
+      "from": {
+        "kind": "step",
+        "id": "BP-09"
+      },
+      "to": {
+        "kind": "party",
+        "id": "warehouse"
+      },
+      "payload": "order follow-up request (review hypothesis)"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "business-procedure-reference-set-v0",
+  "artifactRole": "reference-authoring-set-fixture",
+  "procedures": [
+    {
+      "id": "order-entry.approval-and-shipment-prep",
+      "artifact": "order-approval-procedure.json"
+    },
+    {
+      "id": "order-entry.warehouse-preparation",
+      "artifact": "warehouse-preparation.json"
+    }
+  ],
+  "handoffs": [
+    {
+      "from": {
+        "procedure": "order-entry.approval-and-shipment-prep",
+        "step": "APP-50"
+      },
+      "to": {
+        "procedure": "order-entry.warehouse-preparation",
+        "step": "WH-00"
+      },
+      "condition": "approved order and independent readiness confirmation; application submit success alone is insufficient"
+    }
+  ]
+}
