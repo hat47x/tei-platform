@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "tei.driver-scenario/v0",
+  "id": "order-entry-browse-pattern-smoke",
+  "application": "order_entry",
+  "steps": [
+    {
+      "id": "browse-pattern",
+      "operation": "resolve-pattern",
+      "pattern": "order_entry.recent_orders",
+      "expectKind": "browse",
+      "expectData": "sales.order",
+      "expectQuery": "order_entry.recent_orders"
+    }
+  ]
+}
