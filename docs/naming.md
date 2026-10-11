@@ -1,6 +1,6 @@
 # TEIの命名とワークスペースの識別
 
-この文書では、TEIの名称と、ワークスペース、意味を表す識別子（Semantic ID）、物理ファイルを区別する命名規則を説明します。新たな改名を提案するものではありません。
+この文書では、TEIの名称と、作業領域、意味を表す識別子、実際のファイルを区別する命名規則を説明します。新しい名称への変更を提案するものではありません。
 
 ## 製品名
 
@@ -8,9 +8,9 @@
 
 `TEI`を一つの英語展開へ固定しません。次の3つは競合する正式名称ではなく、同じ設計を異なる面から説明する補助的な読みです。
 
-- **Traceable Execution of Intent** — 意図がSemantic Definition、Realization、Execution、Observation、Evidence、Recoveryまで追跡できること。
-- **Target-neutral Executable Infrastructure** — Semantic / Application Definitionが、特定の実装言語、Database、UI技術、Deployment target、Executorを意味上の特権として持たないこと。
-- **Three-Element Integration** — 異なる層を一つのsource of truthへ潰さずに接続すること。たとえばsemantic / realization / execution、logical / physical / observed、application / database / environmentなどです。
+- **Traceable Execution of Intent** — 意図を定義し、実現し、実行し、観測し、根拠を残し、復旧するまでの経過をたどれること。
+- **Target-neutral Executable Infrastructure** — 意味やアプリケーションの定義が、特定の実装言語、データベース、画面技術、配備先、実行主体を特別扱いしないこと。
+- **Three-Element Integration** — 異なる層を一つの正本へ押しつぶさずにつなぐこと。たとえば、意味・実現方法・実行、論理・物理・観測、アプリケーション・データベース・実行環境の関係です。
 
 画面や文書でTEIを使うたびに、これらの英語表記を添える必要はありません。
 
@@ -18,69 +18,69 @@
 
 技術上の標準名称は次のとおりです。
 
-- monorepo: `tei`
+- 単一リポジトリ: `tei`
 - CLI: `tei`
-- visible workspace declaration: `tei.workspace.yaml`
-- TEI-native DSL extension: `.tei`
-- standard semantic namespace: `std.*`
-- generated artifacts: `.tei-generated/`
-- derived metadata / index / cache / tool state: `.tei/`
-- Go module used by this architecture probe: `tei`
+- 作業領域の宣言ファイル: `tei.workspace.yaml`
+- TEIの定義言語ファイル: `.tei`
+- 標準の意味名前空間: `std.*`
+- 生成物: `.tei-generated/`
+- 導出した補助情報、索引、キャッシュ、ツールの状態: `.tei/`
+- この構成検証で使うGoモジュール: `tei`
 
-業務上のCanonical IDには`tei.` prefixを付けません。たとえば`sales.order`は`sales.order`のままであり、`tei.sales.order`にはしません。
+業務上の意味を表す識別子には`tei.`接頭辞を付けません。たとえば`sales.order`はそのまま`sales.order`とし、`tei.sales.order`にはしません。
 
 ## ワークスペースは拡張子だけで識別しない
 
-TEI Workspaceは、`tei.workspace.yaml`と、そこで管理対象として宣言されたsource root / directoryによって識別します。
+TEIの作業領域は、`tei.workspace.yaml`と、そこで管理対象に指定されたソースの起点やディレクトリで識別します。
 
-`.tei`はTEI-native DSLの拡張子ですが、「そのdirectoryがTEI Workspaceである」ことを示す唯一の印ではありません。
+`.tei`はTEIの定義言語に使う拡張子ですが、ディレクトリがTEIの作業領域であることを示す唯一の印ではありません。
 
-物理ファイルは、その用途に自然な形式を保ちます。`.sql`、`.go`、`.json`、`.yaml`、`.md`等をTEI管理下へ置いても、それらを無理にTEI DSLへ変換しません。Editorは管理対象resourceとして列挙できますが、すべてのファイルを同じparserへ押し込めません。
+ファイルは用途に合った形式のまま扱います。`.sql`、`.go`、`.json`、`.yaml`、`.md`などをTEIの管理下へ置いても、無理にTEIの定義言語へ変換しません。編集画面は管理対象の資源として一覧にできますが、すべてのファイルを同じ解析器で扱う必要はありません。
 
 この方針では、次の3つを明確に分けます。
 
-- **workspace / unit identity** — directory + manifest / context
-- **semantic identity** — `sales.order`等のCanonical ID
-- **physical representation** — `.tei`、`.sql`、`.go`、`.json`、`.yaml`、`.md`等
+- **作業領域や単位の識別** — ディレクトリ、設定ファイル、文脈
+- **意味の識別** — `sales.order`などの正式な識別子
+- **ファイル上の表現** — `.tei`、`.sql`、`.go`、`.json`、`.yaml`、`.md`など
 
-現在のcompilerは、TEI-native DSL semanticsが必要な`.tei`をparseします。他のmanaged fileはnative fileとして保持・列挙し、必要なProviderやEditor Capabilityが扱います。
+現在のコンパイラは、TEIの定義言語による意味が必要な`.tei`を解析します。他の管理対象ファイルは元の形式を保ったまま一覧にし、必要に応じて対応する提供元や編集機能が扱います。
 
-## 現在使っているProduct boundary名
+## 現在使っている製品境界の名称
 
-次の名称は、場当たり的に`TEI` prefixを付け直さず、アーキテクチャ上の役割を表す名称として維持します。
+次の正式名称は、場当たり的に`TEI`接頭辞を付けず、構成上の役割を示す名称として維持します。
 
-- **Editor Intelligence** — 切り離し可能なanalysis / intelligence境界。SQL analysisでは現在Python + SQLGlotを使います。
-- **Database Workbench** — schema / query / lineage / planを扱うderived editor projection。Canonical source of truthにはしません。
-- **DatabaseProvider / CatalogReader** — driver-neutralなDatabase observation境界。
-- **Migration Provider / HistoryReader** — 外部migration toolとの統合境界。
-- Execution Plan IR, Physical Schema Snapshot, Derived Query IR, Persistence Mapping — 明示的なmodel / artifact名称。
-- **Deployment Executor SPI** — provider-neutralなcommand境界。
-- **Observation Provider** — provider-neutralなlive-state observation境界。
-- **Evidence Provider** — rollout / decisionに必要なevidenceの境界。
-- **Resource Broker** — logical Resource IDをinvocation-scoped secret handle、network endpoint、mount等へ解決するHost境界。
-- **Sandbox Profile** — 1回のprocess invocationに必要なleast-authority enforcement request。Profileが存在するだけで実際のenforcement済みとはみなしません。
-- **Runtime Policy fingerprint** — Plugin Lock identityとは別のexecution-policy identity。Durable Runが利用するCapability PermissionとResource Bindingを固定します。
+- **Editor Intelligence** — 切り離して扱える分析・認知機能の境界です。SQLの分析には現在、PythonとSQLGlotを使います。
+- **Database Workbench** — データベースの構造、問い合わせ、由来、実行計画を扱う編集画面です。導出した表示であり、意味の正本にはしません。
+- **DatabaseProvider / CatalogReader** — 特定の接続方式に依存せず、データベースの状態を観測する境界です。
+- **Migration Provider / HistoryReader** — 外部のデータベース移行ツールと連携する境界です。
+- Execution Plan IR、Physical Schema Snapshot、Derived Query IR、Persistence Mapping — 明示的なモデルや成果物の名称です。
+- **Deployment Executor SPI** — 提供元に依存しない命令の境界です。
+- **Observation Provider** — 提供元に依存せず、現在の状態を観測する境界です。
+- **Evidence Provider** — 展開や判断に必要な根拠を扱う境界です。
+- **Resource Broker** — 論理的な資源識別子を、呼び出し中だけ使う秘密情報の取扱先、ネットワーク接続先、接続領域などへ解決するホスト側の境界です。
+- **Sandbox Profile** — 一回の処理に必要な最小権限を求める設定です。設定があるだけでは、実際に制限が働いた証拠になりません。
+- **Runtime Policy fingerprint** — 拡張機能の固定情報とは別に、実行時の方針を識別する値です。保存済みの実行記録が使う機能の権限と資源の対応付けを固定します。
 
 ## X-TEA / XEADとの関係
 
 X-TEA / XEAD は現在の製品・プラットフォーム名ではありません。
 
-TEIはX-TEA / XEADの公式な後継・派生プロジェクトを名乗りません。公開資料や参照モデルから得た設計上の示唆を説明するとき、またはprovenanceを保つ必要がある既存artifactを指すときに、独立した参照対象として歴史的名称を用います。
+TEIはX-TEA / XEADの公式な後継・派生プロジェクトを名乗りません。公開資料や参照モデルから得た設計上の示唆を説明するときや、出所を保つ必要がある既存の成果物を指すときに、歴史的な名称を独立した参照先として使います。
 
-新しい実装symbol、Repository path、CLI command、generated artifact、Canonical DefinitionではTEIの名称を使います。
+新しい実装上の識別子、リポジトリの場所、コマンド、生成物、正式な定義ではTEIの名称を使います。
 
 ## 命名の原則
 
-概念に明確なdomain / architecture上の役割名がある場合は、その名称を優先します。`Database Workbench`、`Execution Plan IR`、`Migration Provider`のような語へ、機械的にすべて`TEI`を付ける必要はありません。
+概念に明確な業務領域や構成上の役割名がある場合は、その名称を優先します。`Database Workbench`、`Execution Plan IR`、`Migration Provider`のような語へ、機械的にすべて`TEI`を付ける必要はありません。
 
-`TEI` prefixは、プラットフォーム、CLI / module / repository boundaryを示す場合や、他システムとの区別が必要な場合に使います。
+`TEI`接頭辞は、プラットフォーム、コマンドラインツール、モジュール、リポジトリの境界を示す場合や、他システムとの区別が必要な場合に使います。
 
-## PluginとBundleの命名
+## 拡張機能と配布単位の名称
 
-TEIが配布するPlugin package IDにはTEI package namespaceを使います。例として`tei.migration.atlas`、`tei.database.postgres`があります。
+TEIが配布する拡張機能の識別子には、TEIの名前空間を使います。例として`tei.migration.atlas`、`tei.database.postgres`があります。
 
-Capability IDは`migration.atlas`、`database.postgres`、`runtime.reference`のように役割を表す名称のままにします。Bindingが指すのはpackageそのものではなくCapabilityだからです。
+実行能力の識別子は`migration.atlas`、`database.postgres`、`runtime.reference`のように、役割を表す名称にします。対応付けの対象は配布物そのものではなく、実行能力だからです。
 
-Bundle IDは、`tei.reference.providers`のように、まとめて配布するpackage setを識別します。
+配布単位の識別子は、`tei.reference.providers`のように、まとめて配る拡張機能の組を示します。
 
-業務上のCanonical IDには、プラグインの識別子と異なり、`tei.`接頭辞を付けません。
+業務上の意味を表す識別子には、拡張機能の識別子と異なり、`tei.`接頭辞を付けません。
