@@ -1,0 +1,8 @@
+{
+  "readIdentity": "synthetic.order_state.read",
+  "nature": "synthetic",
+  "observed": {
+    "kind": "string",
+    "data": "pending"
+  }
+}
