@@ -134,6 +134,35 @@ func TestQualificationReceiptAndIntegrationPreflightControlFlow(t *testing.T) {
 		run(t, candidate, "git", "replace", "-d", head)
 	})
 
+	t.Run("reproduces forged ancestry rejected by qualification", func(t *testing.T) {
+		// True commit graph: main -> candidate -> futureMain.
+		// A replacement object lies about candidate's parent without
+		// changing the HEAD SHA, which fooled the old ancestor check.
+		candidateTree := strings.TrimSpace(run(t, candidate, "git", "rev-parse", head+"^{tree}"))
+		futureMain := strings.TrimSpace(run(t, candidate, "git", "commit-tree",
+			candidateTree, "-p", head, "-m", "future main"))
+		forgedCandidate := strings.TrimSpace(run(t, candidate, "git", "commit-tree",
+			candidateTree, "-p", futureMain, "-m", "forged candidate"))
+		run(t, candidate, "git", "update-ref", "refs/remotes/origin/main", futureMain)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "update-ref", "refs/remotes/origin/main", main) })
+		run(t, candidate, "git", "replace", head, forgedCandidate)
+		t.Cleanup(func() { _ = runNoFail(candidate, "git", "replace", "-d", head) })
+
+		// Red: default Git silently takes the forged graph.
+		run(t, candidate, "git", "merge-base", "--is-ancestor", futureMain, head)
+		// Green: protected Git objects see the real graph.
+		runFailure(t, candidate, "git", "--no-replace-objects",
+			"merge-base", "--is-ancestor", futureMain, head)
+		out := runFailure(t, candidate, "bash",
+			"tools/reference-tool-neutral-development/qualify.sh",
+			"--expected-head", head, "--expected-main", futureMain)
+		if !strings.Contains(out, "replacement objects") {
+			t.Fatalf("forged ancestry was not blocked by qualification:\n%s", out)
+		}
+		run(t, candidate, "git", "replace", "-d", head)
+		run(t, candidate, "git", "update-ref", "refs/remotes/origin/main", main)
+	})
+
 	t.Run("rejects legacy grafts in both verification phases", func(t *testing.T) {
 		grafts := filepath.Join(candidate, ".git", "info", "grafts")
 		writeFile(t, grafts, []byte(head+" "+main+"\n"), 0o644)
