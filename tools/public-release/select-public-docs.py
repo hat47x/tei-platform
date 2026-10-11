@@ -117,8 +117,19 @@ def main() -> None:
         if mapping[path] not in selected:
             stop("Cannot omit a redirect when its canonical document is not included")
         source_text = git(repo, "show", sha + ":" + path).decode("utf-8")
-        if not any(marker in source_text for marker in ("移動案内", "移動しました", "旧URL")):
+        if len(source_text) > 1600:
+            stop("Mapped document is too large for automatic redirect-only omission")
+        if not any(marker in source_text for marker in ("移動案内", "移動しました", "旧URL", "既存の参照先との互換")):
             stop("Mapped source is no longer an obvious compatibility-only document")
+        target = mapping[path]
+        candidate_links = links(source_text)
+        normalized = {
+            posixpath.normpath(posixpath.join(posixpath.dirname(path), unquote(urlsplit(link).path)))
+            for link in candidate_links
+            if not urlsplit(link).scheme and not urlsplit(link).netloc
+        }
+        if target not in normalized:
+            stop("Mapped document does not link to its canonical destination")
 
     remaining = selected - excluded
     for path in sorted(remaining):
@@ -132,8 +143,16 @@ def main() -> None:
             target = posixpath.normpath(
                 posixpath.join(posixpath.dirname(path), unquote(parsed.path))
             )
+            if parsed.path == "":
+                continue  # An anchor in the same source file.
+            if target.startswith("../") or target == "..":
+                stop("Link escapes the repository in retained document: " + path)
             if target in excluded:
                 stop("Kept document still links to a removed compatibility path: " + path)
+            if target not in remaining:
+                directory_index = posixpath.join(target, "README.md")
+                if directory_index not in remaining:
+                    stop("Retained document has an unresolved local link: " + path)
 
     # File selection is deterministic. A final content and link audit remains required.
     temp = output.parent / (output.name + ".incomplete")
