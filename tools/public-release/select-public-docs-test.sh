@@ -39,6 +39,10 @@ must_fail() {
   fi
   [[ ! -e "$work/reject" ]]
 }
+# A provisional profile produced for another commit must be rejected.
+{ printf '# Based on exact private main revision: %s\n' '0000000000000000000000000000000000000000'; cat "$work/reviewed"; } > "$work/wrong-revision"
+must_fail "$sha" "$work/wrong-revision"
+
 # The canonical audit is mandatory when its compatibility path is omitted.
 grep -v '^docs/audits/CURRENT_AUDIT.md$' "$work/reviewed" > "$work/without-canonical"
 must_fail "$sha" "$work/without-canonical"
