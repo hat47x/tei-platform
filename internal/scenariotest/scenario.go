@@ -38,7 +38,7 @@ type Step struct {
 	ExpectQuery string `json:"expectQuery,omitempty"`
 	Parameters map[string]Value `json:"parameters,omitempty"`
 	Fixture string `json:"fixture,omitempty"`
-	ExpectRows []map[string]Value `json:"expectRows,omitempty"`
+	ExpectRows []map[string]Value `json:"expectRows"`
 }
 
 // Value is a typed test fixture value, never an authority or semantic type definition.

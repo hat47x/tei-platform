@@ -149,7 +149,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	if len(plan.Commands) != len(s.Steps) {
 		return fmt.Errorf("generator omitted a Scenario step")
 	}
-	plan.FixtureSHA256 = fixtureDigests
+	if len(fixtureDigests) != 0 {
+		plan.FixtureSHA256 = fixtureDigests
+	}
 	worldBytes, err := json.Marshal(loaded.World)
 	if err != nil {
 		return fmt.Errorf("fingerprint resolved Canonical World: %w", err)

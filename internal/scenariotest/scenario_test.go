@@ -83,3 +83,47 @@ func TestGenerateAllStepsInOrder(t *testing.T) {
 		t.Fatal("duplicate step ID accepted")
 	}
 }
+
+func TestEmptyBrowseExpectationSurvivesRoundTrip(t *testing.T) {
+	s := Scenario{
+		SchemaVersion: SchemaVersion, ID: "empty-browse", Application: "order_entry",
+		Steps: []Step{{
+			ID: "empty", Operation: "execute-browse-query", Pattern: "order_entry.recent_orders",
+			ExpectKind: "browse", ExpectData: "sales.order", ExpectQuery: "order_entry.recent_orders",
+			Fixture: "fixtures/empty.json", ExpectRows: []map[string]Value{},
+		}},
+	}
+	b, err := json.Marshal(s)
+	if err != nil { t.Fatal(err) }
+	parsed, err := Parse(b)
+	if err != nil { t.Fatal(err) }
+	if parsed.Steps[0].ExpectRows == nil {
+		t.Fatal("explicit zero-row expectation lost in JSON")
+	}
+	p, err := Generate(parsed, b, "scenario.json", "workspace")
+	if err != nil || len(p.Commands) != 1 { t.Fatalf("empty Browse generation: %v %#v", err, p) }
+}
+func TestRejectMalformedTypedBrowseData(t *testing.T) {
+	valueCases := []Value{
+		{Kind: "float64", Data: "NaN"},
+		{Kind: "float64", Data: "+Inf"},
+		{Kind: "timestamp", Data: "not-a-time"},
+		{Kind: "int64", Data: "one"},
+		{Kind: "boolean", Data: "true"},
+	}
+	for _, v := range valueCases {
+		if _, err := v.Decode(); err == nil {
+			t.Fatalf("invalid value accepted: %#v", v)
+		}
+	}
+	badFixtures := []string{
+		`{"query":"q","datasourceAlias":"x","targetDatabase":"db","columns":["a"],"rows":[[]]}`,
+		`{"query":"q","datasourceAlias":"x","targetDatabase":"db","columns":[],"rows":[]}`,
+		`{"query":"q","datasourceAlias":"x","targetDatabase":"db","columns":["a"],"rows":[],"unexpected":true}`,
+	}
+	for _, src := range badFixtures {
+		if _, err := ParseBrowseFixture([]byte(src)); err == nil {
+			t.Fatalf("invalid Browse Fixture accepted: %s", src)
+		}
+	}
+}
