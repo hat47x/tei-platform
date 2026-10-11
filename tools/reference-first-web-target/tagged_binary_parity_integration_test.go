@@ -64,7 +64,7 @@ func TestTaggedBinariesPreserveFirstWebBusinessHTTPParity(t *testing.T) {
 				{http.MethodGet, "/scenario/read?from=2026-09-18T08:30:00Z&row=0", "", http.StatusOK},
 				{http.MethodGet, "/custom-submit", "", http.StatusOK},
 				{http.MethodPut, "/custom-submit", "", http.StatusMethodNotAllowed},
-				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":1}`, http.StatusOK},
+				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:00:00Z","row":1}`, http.StatusOK},
 				{http.MethodGet, "/scenario/read?row=-1", "", http.StatusBadRequest},
 				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK},
 				{http.MethodPost, "/scenario/submit", `{"loginId":"legacy-order-viewer","credential":"viewer-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK},
