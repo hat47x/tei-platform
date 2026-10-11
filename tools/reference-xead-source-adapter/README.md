@@ -108,3 +108,30 @@ Evidenceはexact source artifact digest、FormatVersion、name-independent sourc
 `Observe`はXML token streamを複数文書の連結として受け入れません。root elementを一つだけ要求し、二つ目のroot、root外の非空白text、rootless inputをエラーにします。root前後の空白は許容します。
 
 これにより、最初の`System.FormatVersion`でprofileを判定しながら、別rootのnodeまでclassificationへ混ぜる経路を閉じます。
+
+
+## Typed EvidenceをShared Acceptanceへ渡す（RMT-4 synthetic slice）
+
+exact sourceのローカル観測からnode ordinalを選択し、`-candidate-evidence-node N`で**一つのsource-bound typed Evidence**を標準出力へ出せる。既存の`BuildTranscriptionCandidateEvidence` / `VerifyTranscriptionCandidateEvidence`を利用するだけで、legacy要素からTEIの意味を自動生成しない。選んだordinal、元のSource、contractはローカルで保持する。ordinalは1-basedであり、0・負数・範囲外を拒否する。 `-contract`が必須で`-local-candidates`との同時指定はできない。
+
+~~~bash
+# private local workspace only: don't commit the original document or private locator
+go run ./tools/reference-xead-source-adapter \
+  -format xead \
+  -input /private/path/synthetic-source.xead \
+  -contract reference/reference-model-transfer/transcription-contract-v0.json \
+  -candidate-evidence-node 2 \
+  > /private/path/rmt-node-evidence.json
+
+# proposal-candidate.json is created separately. Source observations do not
+# author its semantic delta or grant human Acceptance.
+go run ./tools/reference-shared-acceptance attach-rmt-transcription \
+  -candidate /private/path/proposal-candidate.json \
+  -rmt-transcription /private/path/rmt-node-evidence.json \
+  -out /private/path/grounded-proposal.json
+~~~
+
+**出力は自己申告のsource provenanceであり、正本性を証明しない。** source tokenとartifact digestは特定のsource revisionにだけ適用できる。後からSourceやcontractが変わった場合、source adapterの`VerifyTranscriptionCandidateEvidence`で再構成して照合する必要がある。`grounded-proposal.json`はShared AcceptanceのReviewを通しただけで受理されるわけではなく、explicit decisionが必要。実行時のdriver provenance、外部DB観測、旧Runtime actual traceもそれぞれ別に取得する。
+
+`candidate_evidence_cli_test.go`は独立した合成XMLを使い、実際のCLIで既知・未知nodeを選択したときのtyped JSON / source内容の非露出 / exact source照合を確認するテスト候補である。RMTの大規模benchmarkに対する実行同等性は主張しない。
+
