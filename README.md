@@ -15,7 +15,8 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 - 外部世界で実際に何が観測されたか
 - 何が未検証・未解決か
 
-> 開発状況・Gate判定・未検証範囲の正本は[現在の実装状況](docs/status.md)です。Gateの過去判定は、各資料に記載された固定revisionと検証範囲に限られます。
+> **現在の開発段階**  
+> CLIとReference Workspaceを通じて、業務定義、実装、実行結果、観測のつながりを検証しています。Gate A・B・Cの過去のReady判定は、対象を固定した実証結果であり、最新のmainや製品全体の品質保証ではありません。実装済みの範囲と未完成の機構は[現在の実装状況](docs/status.md)を参照してください。
 
 完成したlow-code製品、production-ready Editor、production-ready multi-Target Runtimeを提供する段階ではありません。
 
@@ -35,11 +36,11 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 
 ### 現在の判定段階
 
-- **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md)
-- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md)
+- **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md) — Ready
+- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md) — Ready
 - **Gate B Evidence:** [Acquisition](plan/GATE_B_EVIDENCE_ACQUISITION.md) / [Runbook](plan/GATE_B_EVIDENCE_RUNBOOK.md)
 - **Gate B → C:** [Handover Contract](plan/GATE_B_TO_C_HANDOVER_CONTRACT.md) / [Baseline B](plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)
-- **Gate C:** [Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md) / [Evidence Contract](plan/GATE_C_EVIDENCE_CONTRACT.md) / [First Web Target Runbook](plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
+- **Gate C:** [Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md) — Ready / [Evidence Contract](plan/GATE_C_EVIDENCE_CONTRACT.md) / [First Web Target Runbook](plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 
 ### 技術を読む / 動かす
 
@@ -52,7 +53,13 @@ TEIは、業務上の意味を長く保ちながら、実装・データベー�
 
 ## 開発状況と検証範囲
 
-開発段階、過去のGate判定、現在の未検証範囲は[現在の実装状況](docs/status.md)で管理します。各Gateの根拠・制約・固定revisionは、それぞれの判定資料とEvidence契約に記載します。過去のReady判定を、最新mainやすべてのProvider・Target・production環境に対する保証として扱いません。
+Go CLI、Driver、Reference Workspace、および第一Web Targetの一部について、固定Source・環境での実証を積み重ねています。一方、統合モデラー、汎用Target Runtime、多様な外部Provider、本番環境での安全性は未完成または未検証です。
+
+過去の実証結果と現在の実装は、次の資料で区別しています。
+
+- [現在の実装状況](docs/status.md)：実装範囲と未完成事項の概要
+- [Gate A](plan/GATE_A_READINESS_AUDIT.md)・[Gate B](plan/GATE_B_READINESS_AUDIT.md)・[Gate C](plan/GATE_C_READINESS_AUDIT.md)：それぞれの固定revisionとEvidenceに対する判定
+- [TEI Master Plan](plan/MASTER_PLAN.md)・[Milestones](plan/MILESTONES.md)：今後の開発方針と優先順位
 
 ## 設計上の主要原則
 
@@ -171,20 +178,8 @@ examples/                focused executable examples
 docs/                    reader / architecture / conformance documentation
 ```
 
-## 現時点で完成済みとは言わないもの
+## 制約と未完成の機能
 
-- Visual Fidelityの人による承認（Gate C Visualは単一のAI評価者による評価）
-- production-ready Web / Desktop / Mobile Target
-- Studio minimal Authoring Loopのactual Reference
-- production-ready GUI Editor
-- knowledge-first Semantic explorationのactual Reference
-- AI Proposal / Decision UXのactual Reference
-- second Application Target
-- complete Target Capability taxonomy
-- complete Workflow Runtime
-- production durability / HA guarantee
-- generic OS sandbox
-- API compatibility guarantee
+TEIは実験的な開発基盤であり、現時点では本番利用やAPI互換性を保証しません。特に、Studio / GUI Editor、Web以外も含む汎用Target、外部Provider、AIを用いた設計支援、運用時の耐障害性・セキュリティは、設計内容と実証済みの範囲を区別する必要があります。
 
-設計契約やisolated testが存在することを、actual Product Evidence取得済みと読み替えません。
-
+詳しい現在地と根拠は[現在の実装状況](docs/status.md)、開発計画は[TEI Master Plan](plan/MASTER_PLAN.md)を参照してください。設計契約や局所テストの存在を、製品全体の検証済み状態と同一視しません。

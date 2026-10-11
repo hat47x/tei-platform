@@ -13,7 +13,7 @@
 | IssueコメントAPI | 1,265件を取得 |
 | PR review comment API | 0件を取得。review本文そのものはこの走査に含まない |
 | Releases | 4件。説明、添付assetの内容は未確認 |
-| Actions runs | 776件。ログとartifact内の内容は未確認 |
+| Actions runs | 776件（2026-08-30〜2026-09-22、すべてcompleted）。成功397、失敗378、skipped 1 |
 | Actions artifacts | 現在のAPI一覧で0件 |
 | Actions設定 | 有効、許可Actionはall、SHA pinning必須ではない |
 | main branch protection API | 403。現Privateプランでは取得できず、保護設定を確認できない |
@@ -25,12 +25,20 @@
 
 この走査は汎用secret scannerや人手による全記録レビューではない。PR review本文、Issue/PR添付、Release説明・asset、Actions log、workflow artifactの過去内容、commit comment、外部連携先に複製された情報は対象外である。特にActions runsが776件あるため、公開前に履歴ログと保存期間・参照可能性を個別確認する必要がある。
 
-取得したAPI応答と一時ファイルはrepository外の `/tmp/tei-public-audit/` に保管している。認証情報や候補値は出力・commitしていない。
+## Actions logとRelease assetの追加確認
+
+- 776 runすべてのlog archive APIを照会。751件でZIP応答を取得し、うち512件にlog filesがあった。25件はAPIが404を返したため未取得として扱う。
+- 取得できた1,738 log files（展開後合計約33 MB）を一時領域へ安全な相対pathで展開し、Gitleaks v8.29.1で走査。検出0件。
+- 4 Releaseの各asset（計4件、gzip tar）を取得。全アーカイブのpathを検査し、不正な絶対path・親ディレクトリ参照は0件。展開物を同じGitleaksで走査し、検出0件。
+- 走査はsecret検知に限る。ログ・Evidence・Releaseの意味内容、第三者権利、個人情報の全件人手レビューはしていない。404となった25 runのlogsも未確認。
+
+取得したAPI応答、一時ファイル、検知報告はrepository外の `/tmp/tei-public-audit/` に保管している。認証情報や候補値は出力・commitしていない。
 
 ## 必要な継続作業
 
 - Issue/PR本文・コメントを人が公開適合性確認し、添付の有無と内容も確認する。
 - PR reviews、commit comments、Release説明と全assetを取得して確認する。
-- Actions 776 runのlog、artifact、workflowごとの権限・fork動作を精査する。現在artifactが0件でも過去ログの確認を省略しない。
+- 404の25 run logsを取得可能な経路で確認する。Actionsのartifactは現時点で0件だが、workflowごとの権限・fork動作も履歴上のworkflow定義と照合する。
+- Issue/PR本文・コメント、取得済みActions log、Release説明・assetについて独立した人手レビューを行う。今回のsecret scan PASSを内容・権利審査の代用にしない。
 - branch protection / rulesetsは取得可能な権限・プランで再確認し、mainの必須checkとDraft禁止方針を確認する。
 - 独立した人間レビュー後にのみ、公開前判定を更新する。

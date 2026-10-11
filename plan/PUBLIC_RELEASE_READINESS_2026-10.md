@@ -5,7 +5,7 @@
 - Parent: [#1187](https://github.com/hat47x/tei-platform/issues/1187)
 - 機密性・非Git公開面: [#1188](https://github.com/hat47x/tei-platform/issues/1188)
 - CI・保護設定: [#1189](https://github.com/hat47x/tei-platform/issues/1189)
-- 文書・書誌情報・公開用Git構成: [#986](https://github.com/hat47x/tei-platform/issues/986)、[Draft PR #1164](https://github.com/hat47x/tei-platform/pull/1164)、[#1190](https://github.com/hat47x/tei-platform/issues/1190)
+- 文書・書誌情報・公開用Git構成: [#986](https://github.com/hat47x/tei-platform/issues/986)、[統合済みPR #1164](https://github.com/hat47x/tei-platform/pull/1164)、[#1190](https://github.com/hat47x/tei-platform/issues/1190)
 - 外部参照モデルの公開境界: [#941](https://github.com/hat47x/tei-platform/issues/941)、[既存方針](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)
 
 ## 1. 目的と境界
@@ -19,10 +19,10 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | 対象 | 状態 |
 | --- | --- |
 | `hat47x/tei-platform` | Private、default `main` |
-| main SHA | `00fec46acb2ea62e7c35a9838fcc7e604c1247be`（2026-10-11の後続snapshot。最新状態は公開操作前に再取得する） |
-| main Git tree | recursive 1,928 entries / truncated=false（**file path inventoryのみ**） |
+| main SHA | `095e8c49b5a905f6c0e4ff15a709479efdeb3de1`（2026-10-11、PR #1220統合後の確認値。公開操作前に再取得する） |
+| main Git tree | recursive 2,204 entries / blobs 1,908件 / truncated=false（`79b1ebcdd0da96744767e40e1224af160eae13d8`時点のpath inventory。現行tree件数ではない） |
 | root LICENSE | MIT |
-| 開発補助スキル | PonytailをCodexの開発者環境へ配置し、製品treeから除外。過去Git履歴に残るため履歴公開範囲は要確認 |
+| 整理済みの旧資産 | `bootstrap/`の旧復元断片、`skills/ponytail/`、旧静的HTML仕様ガイドと専用rendererはHEADから除外済み（PR #1202、#1203、#1218）。古いGit blobは残る |
 | main Actions workflow | `.github/workflows/knowledge-portability-reference-evidence.yml`: manual-only、job `if: false` |
 | README | 生成AIによる開発・体系的な人的レビュー未実施の警告はmainの冒頭に掲載済み |
 | `SECURITY.md` | mainに存在しない。連絡窓口の所有者判断が必要 |
@@ -31,19 +31,21 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | サーバー保護 | 過去の#513/#972でmain無保護が記録された。Private rulesets APIは現プランで403 |
 | 全履歴・非Git面 | **未監査**。この一覧から公開可とは推論しない |
 
-GitHub REST API上のIssue/PR・コメント、Release、Actions run/artifactの件数と限定走査は[GitHub公開面スナップショット](../docs/audits/PUBLIC_GITHUB_SURFACE_SNAPSHOT_2026-10-11.md)に記録した。これによって非Git公開面監査が完了したものとは扱わない。
+### 統合・整理の現在地（2026-10-11 checkpoint）
 
-2026-10-11 18:59 JSTの最終確認では、current `main`は`00fec46acb2ea62e7c35a9838fcc7e604c1247be`、Open PRは0件。全74 remote branch headsはローカル候補`5bef7420e78b581dd4236ce56098dcdb065fdcf5`の祖先に含まれ、checkoutはclean。#1200・#1202・#1203・#1206はReady化後にmergeされた。#1207–#1217もmerge済み。`go build ./...`と`go mod verify`はPASS。full repository health test suiteは未実行。詳細は[PR・branch exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)。今後のmain統合では、Draft PRを統合せず、直前のexact head・base・current mainを再取得して判断する。
+- 既存の未マージPRの統合を進め、GitHub上のopen PRが0件になったことを確認した。branchの残存自体は未統合作業を意味しない。廃止済みPR #1195と#1201は取り込んでいない。
+- 古い復元断片、無関係な第三者Skill、固定版HTML仕様ガイドの削除をHEADへ反映した。Goソースとそのテスト、現行Markdown正本はこれらの削除PRでは変更していない。
+- この統合作業ではCI・Repository Health・履歴／秘密情報／権利／非Git公開面の網羅監査を実施していない。**Git統合済み ≠ 品質検証済み ≠ Public公開可能**として、以下の停止条件を維持する。
+
+2026-10-11後刻、current `main`は`095e8c49b5a905f6c0e4ff15a709479efdeb3de1`（PR #1218–#1220統合後）、Open PRは0件と再確認した。以前の候補よりmainが4コミット進んでいたため、候補に取り込んだ。GitHub公開面の追跡確認は[公開面スナップショット](../docs/audits/PUBLIC_GITHUB_SURFACE_SNAPSHOT_2026-10-11.md)を参照。remote branch head数と全refの再棚卸しは別途必要。
 
 ## 3. P0-A 機密性・権利・公開面
 
-- 2026-10-11 18:55 JSTにGitHubの全1,064 refsを一時mirrorし、Gitleaks v8.29.1でGit本文を走査した。12 finding rowsは同一テストファイルの2 source-line sitesにあり、自動検知とCodexによる初期確認では型付きenum識別子と判断した。独立した人間reviewerの確認は未完了であり、Issue #1188のGateは閉じない。詳細: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。
-- 2026-10-11の初期third-party inventory: [第三者ライセンス棚卸し](../docs/audits/THIRD_PARTY_LICENSE_INVENTORY_2026-10-11.md)。確認済みコンポーネントの通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ集約。全資料・assetと配布物の確認、#941の再配布境界は未解決。
-- [x] 信頼済みHostでprivate mirrorを取得し、全refsと `git rev-list --objects --all` を列挙。2026-10-11 18:55 JSTのmirrorは1,064 refs / 46,228 objects。commit author/committer metadataとメッセージの公開適合性は未確認。
-- [x] バージョン固定済みGitleaksでGit履歴と候補treeを走査。12 history finding rowsは2 source-line sites、candidate historyには6 rows、現行treeには1 rowがあり、独立した人間reviewerの承認待ち。報告書・検出値はRepository外に保管し、Issueへ候補値を記録していない。Evidence: [Git履歴機密情報スキャン](../docs/audits/PUBLIC_GIT_HISTORY_SECRET_SCAN_2026-10-11.md)。
+- [ ] 信頼済みHostでprivate mirror cloneを取得し、全refs（active branches、tags、PR refsを別途含む）と `git rev-list --objects --all` を列挙。正規Git/Goの動作確認と混同しない。
+- [ ] バージョン固定済みのGitleaks等を使い、Git履歴と作業ツリーで秘密情報を検査。生成報告書・検出値・未公開pathはRepository外へ保存し、Issueへ秘密そのものを書かない。
 - [ ] 個人情報、社内・顧客情報、credential、endpoint、private URL、外部文献の出典・利用条件等の公開適合性を確認する。
 - [ ] Issue/PR/reviews/commentsと添付、全過去Actions logs/artifacts、Release/assets、Wiki/Pages等も対象にする。API取得不可なら `NOT_INSPECTED`。
-- [x] 初期license inventoryを実施。root `LICENSE` はMIT、製品の固定Go moduleは[`github.com/jackc/pgx/v5 v5.7.6`](https://github.com/jackc/pgx/tree/v5.7.6)（MIT）へ移行した。Go 1.23.2でmodule checksumとruntime依存を解決し、直接・推移runtime依存のMIT/BSD 3-Clause通知を[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)へ更新した。全release targetのSBOM、Ponytailを含む履歴内コピー、全資料・asset・書誌表示のhuman review、および#941の参照model原物・抜粋・変換物等の再配布範囲は未解決。
+- [ ] `LICENSE` とThird-party source/Skill/assets/資料のcopyright・再配布条件を照合。#941の参照モデル原物・抜粋・変換物等の再配布範囲は独立審査。
 - [ ] 対応が必要な項目が判明した場合は、適切な権限管理・情報の取扱い・必要な資格情報の更新手順を定め、共有refsへの変更を一括して計画する。
 - [ ] 安全なscope・scanner version・refs数・objects数・未解決件数・人間reviewerだけをpublic Evidenceへ出す。
 
@@ -51,7 +53,7 @@ GitHub REST API上のIssue/PR・コメント、Release、Actions run/artifactの
 
 原則: 文献の著者・書誌情報・必要な著作権表示を維持し、外部資料の記載内容とTEI独自の設計判断を区別する。文書の見出し、ファイル名、リンク、Git metadataは読み手にとって明確で追跡可能な構成とする。
 
-1. 文書・ファイル名・内部リンクの整合性確認は**既存Draft PR #1164**で進行する。別PRに重複実装しない。
+1. 文書・ファイル名・内部リンクの整理（PR #1164）は統合済み。残る作業はtrusted full checkoutでの全参照・リンク確認と、現在のMarkdown正本に対する差分レビュー。過去のPR統合を網羅検査済みとは扱わない。
 2. trusted full historyから `git log --all` のsubject/body/trailer、著作者・コミッター情報、GitHub commit commentsを取得し、公開対象と出典・ライセンス要件への適合性を確認する。
 3. Git履歴の構成を変更する場合は、多数の子コミット・branch・PR・Release・exact-head Evidenceへの参照に影響する。範囲と移行計画を確定するまで、部分的なforce pushは実施しない。
 4. #1190で **(A) 既存Repositoryの公開** と **(B) 新しいPublic Repositoryに監査済みSourceを導入** を比較する。GitHub管理のPR refs、キャッシュ、外部cloneの可視性と、公開URL・Issue番号・PRの継続性も評価する。
@@ -77,7 +79,7 @@ GitHub API `git/matching-refs/` で観測されたGit refは計 **1,078件**（h
 - 維持するもの：CLIとGo Runtime、意味モデル、`go test ./...`等の必須テストと入力データ、現行の製品価値・要求・Architecture・ADR正本、実行可能なReference/Evidence。
 - 整理候補：過去のSource再構成断片、一時的な運用補助、現在の正本と重複する作業資料、TEIの機能・開発検証に不要な第三者のAI向けSkill。
 - 単にファイル数を減らすためにGoテストや必要なEvidenceを失わない。テストが失われた状態の`go test`成功を、削除前と同じ回帰検証と扱わない。
-- 削除候補はそれぞれ独立PRに分け、差分と参照の確認、正規Repository Healthを実施してから統合する。PR #1202は旧bootstrap断片、PR #1203は用途が異なる第三者Skillの整理。
+- 整理対象は独立PRに分け、ファイルの役割・削除範囲・既知の参照を記録する。PR #1202（旧bootstrap断片126件）、#1203（用途が異なる第三者Skill 2件）、#1218（固定時点の静的HTML仕様ガイド・専用renderer等15件）はmainへ統合済み。これらの差分限定性と、**trusted full checkoutによる全参照検索・正規Repository Healthの実行結果は別問題**。後者は未取得であり、Public Gateとして残る。
 - 旧配置の互換案内は、内部と外部からの参照を確認できるまで維持する。正本文書への導線の改修はPR #1091、#1198、#1199、#1200を参照。
 
 ### 5.2 公開するRepositoryとGit履歴
