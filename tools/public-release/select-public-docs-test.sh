@@ -65,6 +65,30 @@ if python3 "$here/select-public-docs.py" "$work/repo" "$sha" "$work/reviewed" "$
 fi
 [[ ! -e "$work/wrong-output" ]]
 
+# The candidate must still point from the compatibility guide to the declared target.
+printf '# 監査記録の移動案内\n\n[Different](../docs/index.md)\n' > "$work/repo/plan/OLD_AUDIT.md"
+git -C "$work/repo" add plan/OLD_AUDIT.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm mismatched-redirect
+mismatch_sha=$(git -C "$work/repo" rev-parse HEAD)
+must_fail "$mismatch_sha" "$work/reviewed"
+
+# A document containing more than just a redirect must not be automatically omitted.
+python3 - "$work/repo/plan/OLD_AUDIT.md" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+p.write_text('# 監査記録の移動案内\n\n[移動先](../docs/audits/CURRENT_AUDIT.md)\n\n' + 'Additional content.\n' * 150, encoding='utf-8')
+PY
+git -C "$work/repo" add plan/OLD_AUDIT.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm expanded-document
+expanded_sha=$(git -C "$work/repo" rev-parse HEAD)
+must_fail "$expanded_sha" "$work/reviewed"
+
+# Restore the short redirect for subsequent tests.
+printf '# 監査記録の移動案内\n\n[移動先](../docs/audits/CURRENT_AUDIT.md)\n' > "$work/repo/plan/OLD_AUDIT.md"
+git -C "$work/repo" add plan/OLD_AUDIT.md
+git -C "$work/repo" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm restored-redirect
+
 # Textual historical mention (not an active URL) may be retained for audit context.
 printf '# Index\n\nHistoric file: plan/OLD_AUDIT.md. [Current](audits/CURRENT_AUDIT.md)\n' > "$work/repo/docs/index.md"
 git -C "$work/repo" add docs/index.md
