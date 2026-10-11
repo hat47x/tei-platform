@@ -39,13 +39,13 @@ func TestNativeActionPath(t *testing.T) {
 		return host, store
 	}
 	intent := Intent{
-		ApplicationID: "sui", DocumentID: "doc", ActionID: "sui.move",
+		ApplicationID: "sui", ResourceID: "doc", ActionID: "sui.move",
 		ExpectedRevision: "r1", Payload: MovePayload{CardID: "a", X: 12, Y: 34},
 	}
 	t.Run("authorized commit then stale rejection", func(t *testing.T) {
 		host, store := newHost("allowed")
 		rev, err := host.Commit(context.Background(), intent)
-		if err != nil || rev != "r2" {
+		if err != nil || rev != "r1:1" {
 			t.Fatalf("revision=%s err=%v", rev, err)
 		}
 		_, doc, writes := store.Snapshot()
@@ -78,7 +78,7 @@ func TestNativeActionPath(t *testing.T) {
 	t.Run("other document never mutates bound store", func(t *testing.T) {
 		host, store := newHost("allowed")
 		foreign := intent
-		foreign.DocumentID = "other-doc"
+		foreign.ResourceID = "other-doc"
 		_, err := host.Commit(context.Background(), foreign)
 		if !errors.Is(err, ErrDenied) {
 			t.Fatalf("expected denial, got %v", err)
