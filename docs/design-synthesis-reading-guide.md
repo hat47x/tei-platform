@@ -2,7 +2,7 @@
 
 この文書は、TEIで検討しているDesign Synthesis、Derived Cognition、local LLMの関係を、**個別アルゴリズムより先にProduct上の目的から理解するための入口**です。
 
-正式なProduct RequirementやArchitectureを追加する文書ではありません。現在の上位計画は[`../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md)、Derived Cognitionの検討は[`../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md)以降にあります。
+正式なProduct RequirementやArchitectureを追加する文書ではありません。採用済みの要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、現在の実装・検証範囲は[現在の実装状況](status.md)で確認してください。Derived Cognitionやアルゴリズムの候補は、未採用の研究課題として扱います。
 
 この領域は、LLM、検索、グラフ、constraint、embedding、FlyHash、HDC等の技術名が多くなりやすいため、まず「何をしたいのか」だけを押さえます。
 
@@ -506,11 +506,9 @@ AIで自動化した  != Product価値が成立した
 
 1. 本書 — 何を目指すかを具体例から理解する
 2. [`overview.md`](overview.md) — TEI全体の中でAI / local cognitionを見る
-3. [`../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 上位Product GoalとDSR候補
-4. [`../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — 非LLM認知を検討する理由
-5. [`../plan/DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md`](../plan/DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — TEIへ要求する性質
-6. `ISSUE-000047 / 000051` — Product Referenceと評価責務
-7. Benchmark / Feature Extraction Contract — 実験詳細
+3. [製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md) — 正式なRequirementsと未決事項を区別する
+4. [現在の実装状況](status.md) — AI支援の実装済み範囲と未検証事項を確かめる
+5. 必要なReference / Evidence — 個別に再現できる内容だけを検討根拠として参照する
 
 詳細なfeature atomやalgorithm比較から読み始める必要はありません。
 
