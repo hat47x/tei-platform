@@ -276,6 +276,7 @@ func TestVerifiedPrincipalIsOnlyPassedAfterHostChecks(t *testing.T) {
 		t.Fatalf("verified principal not preserved: status=%d calls=%d principal=%+v", w.Code, called, seen)
 	}
 }
+
 func TestPrincipalHandoffIsRequestScopedWithoutFallback(t *testing.T) {
 	authenticated := true
 	principal := Principal{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "idp-user", PrincipalID: "employee-1"}

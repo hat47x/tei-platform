@@ -18,16 +18,18 @@ type Principal struct {
 	PrincipalID string
 }
 
-// principalContextKey is private to the trusted host. Browser headers and JSON
-// cannot populate this context value.
+// principalContextKey is private to the trusted host. Headers, query
+// parameters, and JSON supplied by the browser cannot populate this value.
 type principalContextKey struct{}
 
-// PrincipalFromContext exposes the session-verified identity to an Action adapter.
-// The adapter must still perform business authorization through its canonical
-// Capability; this value alone is not an authorization grant.
+// PrincipalFromContext returns the verified identity made available to an
+// Action adapter after session, origin and route authorization checks.
+// It is not itself permission to perform a business operation: the adapter
+// must still call the canonical security.authorize Capability.
 func PrincipalFromContext(ctx context.Context) (Principal, bool) {
 	principal, ok := ctx.Value(principalContextKey{}).(Principal)
-	if !ok || principal.ProviderID == "" || principal.Issuer == "" || principal.Subject == "" || principal.PrincipalID == "" {
+	if !ok || principal.ProviderID == "" || principal.Issuer == "" ||
+		principal.Subject == "" || principal.PrincipalID == "" {
 		return Principal{}, false
 	}
 	return principal, true
