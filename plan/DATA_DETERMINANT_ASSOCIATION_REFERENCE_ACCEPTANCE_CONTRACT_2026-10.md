@@ -8,7 +8,7 @@ Related:
 - `reference/business-system-design/data-determinant-association-seed-ledger.json`
 - `plan/DATA_DETERMINANT_PROMOTION_GATE_2026-10.md`
 - `plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md`
-- `plan/issue/000047-knowledge-first-semantic-exploration.md`
+- ISSUE-000047-knowledge-first-semantic-exploration.md
 
 ## 1. 目的
 

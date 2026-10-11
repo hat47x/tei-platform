@@ -125,7 +125,7 @@ go run ./tools/reference-shared-acceptance confirm-check  -workspace DIR -input 
 go run ./tools/reference-shared-acceptance confirmations  -workspace DIR
 ```
 
-`confirm-check`は`ask: true / false`と理由を返します。判定に使うのは確認の種類と対象、答えた時点の前提(subjectを宣言しているfileのfingerprint)が今も同じかだけで、確認の文面と記録の古さは使いません。記録が無い、前提が変わった、記録が読めない、履歴が分岐している、答えが人によるものでない場合は、確認を出す側へ倒します。答えを変えるときは`supersedes`で先頭の記録を指定します。詳細と暫定判断は[ISSUE-000074](../../plan/issue/000074-answered-confirmation-history.md)を参照します。
+`confirm-check`は`ask: true / false`と理由を返します。判定に使うのは確認の種類と対象、答えた時点の前提(subjectを宣言しているfileのfingerprint)が今も同じかだけで、確認の文面と記録の古さは使いません。記録が無い、前提が変わった、記録が読めない、履歴が分岐している、答えが人によるものでない場合は、確認を出す側へ倒します。答えを変えるときは`supersedes`で先頭の記録を指定します。詳細と暫定判断はISSUE-000074を参照します。
 
 退けた提案は、`reject`が書いた決定記録へ`linkedDecision`で結び、人が退けた提案を、前提が変わるまで再び出さないための記録として残せます（`rejected-proposal`、暫定）。`reject`の出力と決定記録の形は変えていません。流れは次のとおりです。`jq`が無ければ、`reject.json`から`candidateFingerprint`と`recordPath`を読み取り、同じ値を入れてください。
 
@@ -326,7 +326,6 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - `ISSUE-000046`が最小loopとして名指しするRelation変更（既存Data `sales.order_line`へ`order`を追加）について、Preview（Semantic Diff・exact dependencyのimpact・Persistence Mappingへの辺と保存方法が未決定であること）→ Reject → Accept → toolなしの再読込までを通し、変わるのは一つのfileの挿入した行だけである（`relation_test.go`）
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
 - そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
-- 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）
 - `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。required dependencyのauthoritative source / fingerprintもscoped Evidenceとして照合し、同じIDのdependency sourceが変わったcaseをfail closedにできる。requirements外のdependency Evidenceはhandoffしない（`qualification_handoff_test.go`）
 - Semantic Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与し、内部Evaluation fingerprintと外側artifact fingerprintを二重に固定できる。`pass / fail / unknown`はReview A3/A7へ露出するが、candidate meaningやAcceptance authorityへ昇格しない（`semantic_evaluation_handoff_test.go`）
 - accepted / rejected Decisionが、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged / none`、判断理由に使ったEvidenceの集約statusとSource/artifact別statusを返す。stale rejectはrevision conflictも保持する。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go` / `semantic_evaluation_handoff_test.go`）

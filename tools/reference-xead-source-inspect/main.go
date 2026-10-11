@@ -101,7 +101,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	formatValue := flags.String("format", "", "source format: xead or xeaf")
 	sourcePath := flags.String("source", "", "Repository-external Xead/Xeaf source file")
-	contractPath := flags.String("contract", "reference/reference-model-transfer/transcription-contract-v0.json", "transcription contract JSON")
+	contractPath := flags.String("contract", "reference/xead-source-transcription-contract.synthetic.json", "transcription contract JSON")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}

@@ -2,7 +2,7 @@
 
 状態: **初回G0/G1向けの部分実装**。現時点で三視点統合Editorの製品受入・Source再投影・実行Evidenceは成立していません。
 
-既存の[Shared Acceptance](../../tools/reference-shared-acceptance/README.md)と[Studio authoring計画](../../plan/issue/000046-studio-shared-acceptance-authoring-loop.md)を使用します。このディレクトリに新しいCanonical正本、Patchエンジン、Validation、Acceptance、Authorizationを作りません。親の[#1119](https://github.com/hat47x/tei-platform/issues/1119)と[#1120](https://github.com/hat47x/tei-platform/issues/1120)の最終契約が確定するまでは、ここにあるJSONは**Reference限定**の運搬形式です。
+既存の[Shared Acceptance](../../tools/reference-shared-acceptance/README.md)とStudio authoring計画を使用します。このディレクトリに新しいCanonical正本、Patchエンジン、Validation、Acceptance、Authorizationを作りません。親の[#1119](https://github.com/hat47x/tei-platform/issues/1119)と[#1120](https://github.com/hat47x/tei-platform/issues/1120)の最終契約が確定するまでは、ここにあるJSONは**Reference限定**の運搬形式です。
 
 ## 検証する最小境界
 

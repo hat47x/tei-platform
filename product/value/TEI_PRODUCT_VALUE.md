@@ -361,7 +361,6 @@ TEIから見ると、この定義は本節の境界と矛盾しません。TEI�
 - SEIのRecommendationは、TEIのAuthorizationになりません。 SEIからTEIへの信号は依頼（SEIの語でAction Intent）であり、実行するかどうかはTEIが自らのAuthorization、Capability、Resourceの境界で判断します。SEIの記録が委任や判断の経緯を示していても、それは権限の証拠への参照であって、権限そのものではありません。
 - 必須の依存はどちら向きにもありません。 TEIのDriverとShared Acceptance Boundaryは、SEIが止まっていても単独で完結します。受理の記録等をSEIへ写すことは任意です。SEI側の提案は、こうした局所で完結するループを神経系の比喩で「反射弓」と呼びますが、これは比喩であり、TEIの型や要求の根拠にはしません。
 
-TEI側の具体的な受け止め方（SEI Change 2の再開、受理記録をSEIの判断の記憶へ写す候補、MCPの扱い）は[ISSUE-000070](../../plan/issue/000070-sei-reference-adoption-change2-resumption.md)、AI Business Actorへの委任をSEIから参照する候補は[Actor Context Projections §11.1](../../plan/ACTOR_CONTEXT_PROJECTIONS_2026-09.md)に置いています。どちらも評価待ちです。
 
 
 ## 技術調査を利用者の価値へつなぐ（2026-10-09、実証前）

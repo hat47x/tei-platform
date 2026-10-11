@@ -394,8 +394,7 @@ func TestCapabilitySourceAdapterUsesCurrentReferenceTranscriptionContract(t *tes
 	contractBytes, err := os.ReadFile(filepath.Join(
 		root,
 		"reference",
-		"reference-model-transfer",
-		"transcription-contract-v0.json",
+		"xead-source-transcription-contract.synthetic.json",
 	))
 	if err != nil {
 		t.Fatal(err)

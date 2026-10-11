@@ -10,7 +10,7 @@
 - 契約: [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
 - 実行手順: [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 - Baseline: [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)
-- Repository Issue: [`issue/000028-first-web-target-conformance-evidence.md`](issue/000028-first-web-target-conformance-evidence.md) / GitHub #270、[`issue/000007-first-web-target-projection.md`](issue/000007-first-web-target-projection.md) / GitHub #70
+- Repository Issue: ISSUE-000028-first-web-target-conformance-evidence.md / GitHub #270、ISSUE-000007-first-web-target-projection.md / GitHub #70
 
 ## 目的と読み方
 
@@ -144,6 +144,6 @@ Semantic / Functional / Architectureは、`T`のclean checkoutでRunbookの手�
 - `GATE_C_EVIDENCE_CONTRACT.md`
 - `GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
 - `GATE_B_TO_C_HANDOVER_BASELINE_B.md`
-- `issue/000007-first-web-target-projection.md`
-- `issue/000026-target-capability-execution-profile-boundary.md`
-- `issue/000028-first-web-target-conformance-evidence.md`
+- ISSUE-000007-first-web-target-projection.md
+- ISSUE-000026-target-capability-execution-profile-boundary.md
+- ISSUE-000028-first-web-target-conformance-evidence.md

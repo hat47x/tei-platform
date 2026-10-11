@@ -7,7 +7,6 @@ Status: **planning breakdown / 既存正本を変更しない / 新しいRequire
 `plan/`直下に蓄積した上流工程文書（pressure / audit / trace 群）の結論を、**計画層**と**下流の担当**へ割り当てる導出表です。
 
 - 何の正本か: 上流結論と下流担当の**対応付け**の正本
-- 何の第二正本ではないか: Requirement（`requirements/`）、PAS trace（`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`）、Gate判定（各Readiness Audit）、Lane C判定（`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`）、作業状態（各Plan Issue）のいずれでもありません
 - 扱う範囲: 上流文書の分類、結論の受け皿、受け皿が無い結論の下流起票、reopen triggerの所有先、配置上の課題
 - 扱わない範囲: 個々の上流結論の再判定、Evidence取得状況の再記述、schema決定
 
@@ -26,7 +25,7 @@ Product Acceptance Scenario (PAS-xx)     UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILI
         ↓
 計画（順序・Gate・Milestone）              MASTER_PLAN / MILESTONES / GATE_*
         ↓
-下流の担当（作業定義・設計判断・機能設計）    plan/issue/ · plan/adr/ · plan/design/
+下流の担当（作業定義・設計判断・機能設計）    GitHub Issues · plan/adr/ · plan/design/
         ↓
 Reference / Conformance / Evidence        reference/ · tools/ · docs/conformance/
         ↓
@@ -41,11 +40,11 @@ Gate / Product claim
 
 | Family | 件数目安 | 主な内容 | 結論の受け皿 |
 | --- | --- | --- | --- |
-| `BUSINESS_PROCEDURE_*` | 約35 | Business Procedure / Step address / Handoff / O1 / identity の候補絞り込み | Lane C判定は Pre-ADR Audit、Reference / Evidence は [ISSUE-000042](issue/000042-business-procedure-cross-view-reference.md)、契約起票は [ISSUE-000048](issue/000048-business-procedure-contract-adr-readiness.md) |
+| `BUSINESS_PROCEDURE_*` | 約35 | Business Procedure / Step address / Handoff / O1 / identity の候補絞り込み | Lane C判定は Pre-ADR Audit、Reference / Evidence は ISSUE-000042、契約起票は ISSUE-000048 |
 | `BUSINESS_ACTION_*` | 約8 | Business Action × CRUD / Data projection / ownership lens | ISSUE-000042（A80〜A83系のprojection）、Subsystem再検討は本書§6 |
-| `BUSINESS_AUTHORING_*` | 約9 | authoring authority / loader / discovery / production採用条件 | [ISSUE-000049](issue/000049-business-authoring-production-adoption-readiness.md) |
+| `BUSINESS_AUTHORING_*` | 約9 | authoring authority / loader / discovery / production採用条件 | ISSUE-000049 |
 | `BUSINESS_MODEL_*` | 約7 | Business semantic plane の配置と受理境界 | ISSUE-000048（契約決定時にADRへ）、placement reopenは本書§6 |
-| `BUSINESS_HANDOFF_*` | 約5 | Handoff authority / second case 十分性 | [ISSUE-000050](issue/000050-second-realistic-handoff-corpus.md) |
+| `BUSINESS_HANDOFF_*` | 約5 | Handoff authority / second case 十分性 | ISSUE-000050 |
 | `LANE_B_*` | 約17 | A-set単位のtrace監査、RQ-002 / RQ-025 / RQ-026 trace | PAS trace正本は `RQ025_RQ026_ACCEPTANCE_TRACE.md`、A-set正本は ISSUE-000042 |
 | `UPSTREAM_*` | 4 | PAS trace、vitality監査、trace監査、X-TEA fallback protocol | 本書と `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` |
 | `XTEA_*` | 2 | X-TEA原典由来のEvidence register | ISSUE-000042 / 本書§6のreopen trigger |
@@ -55,7 +54,6 @@ Gate / Product claim
 
 ## 4. Lane Cの三段readinessを下流へ割る
 
-`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`が分離した三段を、担当Issueへ割り当てます。これがこのブレイクダウンの中心です。
 
 ```text
 ① Contract ADR readiness         → ISSUE-000048（新規）
@@ -88,7 +86,7 @@ ISSUE-000042との担当境界は次のとおりです。
 | C/U/D欠落は契約blockerではない、という判断 | readiness split §6 | ISSUE-000048の非目標 + 本書§6 |
 | `ir.World.Business` embeddingのdefer判断 | readiness split §7 | ISSUE-000048（ADR起票時に記録） + 本書§6 |
 
-Fresh-process feasibilityはADR前に必要なEvidenceである一方、current source-level implementationではGate A actual executionまで縮約している（2026-09-20更新: Gate A actual executionは取得済みでPASS。R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、判定の正本は[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）。このためISSUE-000048でmaterial blockerをAとは別の第三blockerとして重複管理しない。
+Fresh-process feasibilityはADR前に必要なEvidenceである一方、current source-level implementationではGate A actual executionまで縮約している（2026-09-20更新: Gate A actual executionは取得済みでPASS。R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、判定の正本はPre-ADR Audit§13）。このためISSUE-000048でmaterial blockerをAとは別の第三blockerとして重複管理しない。
 
 ## 6. reopen triggerの所有先
 
@@ -105,7 +103,7 @@ trigger未成立を「永久に不要」へ、trigger成立を「即採用」へ
 
 ## 7. 計画層へ反映すること
 
-- `plan/issue/README.md`の主線は2026-09-04時点の記述です。Gate B三系統に加え、Lane B / Lane Cと本書で割り当てた3件を主線へ載せます。
+- GitHub Issuesの主線は2026-09-04時点の記述です。Gate B三系統に加え、Lane B / Lane Cと本書で割り当てた3件を主線へ載せます。
 - `MASTER_PLAN.md` / `MILESTONES.md`へは、①②③の順序依存（③はProduct Gate C後）だけを反映し、上流の個別結論は持ち込みません。
 - Gate B必須Evidence三系統（ISSUE-000032 / 000025 / 000031）とLane Cのactual runner greenは**別のEvidence**です。同じrunnerが動くことで両方をgreenへ読み替えません。
 
@@ -135,9 +133,7 @@ plan/                 計画管理（Master Plan / Milestone / Gate / 本書）
 ## 10. 関連文書
 
 - [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — RQ → PAS → Evidence trace
-- [`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`](BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md) — 三段readinessの原典
-- [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) — Contract ADR判定の正本
 - [`SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md`](SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md) — Subsystem reopen trigger
 - [`RQ025_RQ026_ACCEPTANCE_TRACE.md`](RQ025_RQ026_ACCEPTANCE_TRACE.md) — PAS-07 Evidence contract
-- [`issue/000042-business-procedure-cross-view-reference.md`](issue/000042-business-procedure-cross-view-reference.md) — Lane C Reference / Evidenceの親
+- ISSUE-000042-business-procedure-cross-view-reference.md — Lane C Reference / Evidenceの親
 - [`README.md`](README.md) — 計画層の入口

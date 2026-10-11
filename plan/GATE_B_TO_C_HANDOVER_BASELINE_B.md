@@ -5,7 +5,7 @@
 - 固定日: 2026-09-19
 - 固定根拠: [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)（判定日2026-09-19、Ready）
 - 規則・原則の正本: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
-- Repository Issue: [`issue/000030-gate-b-to-c-handover-baseline.md`](issue/000030-gate-b-to-c-handover-baseline.md) / GitHub #291
+- Repository Issue: ISSUE-000030-gate-b-to-c-handover-baseline.md / GitHub #291
 
 本記録は`GATE_B_TO_C_HANDOVER_CONTRACT.md`が定める規則の下で、実際に固定した最初のHandover Baselineの内容を残します。Contract文書自体を書き換えず、本記録が個別revisionのinstanceです。Handoverは新しいCanonical schemaでも第二の正本でもありません。stable reference / identity / fingerprintから実Evidenceへ戻るための束ねです。
 
@@ -161,7 +161,7 @@ Target実装中にCanonical / Driver meaningの変更が必要になった場合
 - `GATE_B_EVIDENCE_ACQUISITION.md`
 - `GATE_B_EVIDENCE_RUNBOOK.md`
 - `GATE_C_EVIDENCE_CONTRACT.md`
-- `issue/000007-first-web-target-projection.md`
-- `issue/000028-first-web-target-conformance-evidence.md`
-- `issue/000029-gate-b-readiness-audit.md`
-- `issue/000030-gate-b-to-c-handover-baseline.md`
+- ISSUE-000007-first-web-target-projection.md
+- ISSUE-000028-first-web-target-conformance-evidence.md
+- ISSUE-000029-gate-b-readiness-audit.md
+- ISSUE-000030-gate-b-to-c-handover-baseline.md

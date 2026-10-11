@@ -17,13 +17,13 @@
 | --- | --- |
 | 全体の着手順と現在の主線 | [`MASTER_PLAN.md`](MASTER_PLAN.md) |
 | 要求から受入シナリオとEvidenceまで | [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
-| 個別作業の目的・完了条件 | [`issue/README.md`](issue/README.md) |
+| 個別作業の目的・完了条件 | GitHub Issues |
 | 採用した設計判断 | [`adr/README.md`](adr/README.md) |
 | 複数Issueにまたがる機能設計 | [`design/README.md`](design/README.md) |
-| 特定時点の監査結果 | [`../docs/audits/README.md`](../docs/audits/README.md) |
+| 特定時点の監査結果 | 公開ツリーには個別の監査・検討記録を含めません |
 | 現在の実装・実証状況 | [`../docs/status.md`](../docs/status.md) |
 
-古いパスに残る短い移動案内は本文の複製ではありません。正本は案内先を参照してください。履歴上の参照を壊すおそれがあるため、未確認の参照元が残る間は削除しません。
+詳細な調査・検討記録は公開ツリーに含めず、採用した判断はADR、現行の要求と作業条件はRequirements・Issueを正本として管理します。
 
 ## 最初に読む文書
 
@@ -73,7 +73,7 @@ Application Pattern、Datasource、Validation、Authentication / Authorization�
 - [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md) — 何のEvidenceが必要か / 何を証明するか
 - [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md) — 唯一の具体実行手順
 - [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) — Ready / Not Ready判定
-- [`issue/000037-gate-b-three-lane-final-evidence.md`](issue/000037-gate-b-three-lane-final-evidence.md) — three-lane final convergence
+- ISSUE-000037-gate-b-three-lane-final-evidence.md — three-lane final convergence
 
 ### 現在
 
@@ -95,7 +95,7 @@ actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとし
 
 - [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) — Handoverの規則・原則
 - [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md) — 実際に固定したBaseline `B / R`の記録
-- [`issue/000030-gate-b-to-c-handover-baseline.md`](issue/000030-gate-b-to-c-handover-baseline.md)
+- ISSUE-000030-gate-b-to-c-handover-baseline.md
 
 Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定済みです。
 
@@ -106,8 +106,8 @@ Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`�
 - [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md) — Ready判定の記録
 - [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
 - [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
-- [`issue/000007-first-web-target-projection.md`](issue/000007-first-web-target-projection.md)
-- [`issue/000028-first-web-target-conformance-evidence.md`](issue/000028-first-web-target-conformance-evidence.md)
+- ISSUE-000007-first-web-target-projection.md
+- ISSUE-000028-first-web-target-conformance-evidence.md
 
 Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)です。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではありません。
 
@@ -138,11 +138,8 @@ Target側でbaseline meaningを変更する必要がある場合、Web固有fiel
 
 1. [`../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) — RQ-025 / RQ-026の要求解釈
 2. [`../docs/business-system-design.md`](../docs/business-system-design.md) — Data / Function-Interaction / BusinessのArchitecture境界
-3. [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) — false completenessを避け、meaning / evidence / authority / actuality / responsibilityをreviewする品質モデル
-4. [`issue/000042-business-procedure-cross-view-reference.md`](issue/000042-business-procedure-cross-view-reference.md) — Lane C Reference / Pressure inventory
-5. [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md) — second realistic ReferenceのRRB-P1 / P2 / P3 acceptance / maturity条件
-6. [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) / [`issue/000048-business-procedure-contract-adr-readiness.md`](issue/000048-business-procedure-contract-adr-readiness.md) — Contract ADR readiness
-7. [`issue/000050-second-realistic-handoff-corpus.md`](issue/000050-second-realistic-handoff-corpus.md) — acceptance contractを製造 / 在庫candidateへ適用し、independent Business seedからsecond realistic Handoff Evidenceを取得する計画（2026-09-21: 実施済み。実施記録あり）
+4. ISSUE-000042-business-procedure-cross-view-reference.md — Lane C Reference / Pressure inventory
+7. ISSUE-000050-second-realistic-handoff-corpus.md — acceptance contractを製造 / 在庫candidateへ適用し、independent Business seedからsecond realistic Handoff Evidenceを取得する計画（2026-09-21: 実施済み。実施記録あり）
 
 現在の品質上の中心は、Business Procedureを「完全に埋めたflow」として作ることではありません。
 
@@ -164,7 +161,6 @@ Studio、knowledge-first探索、AI Proposal、非LLM認知方式を別々のAI�
 設計本文:
 
 - [`../docs/definition-centered-feedback-loop.md`](../docs/definition-centered-feedback-loop.md) — concise definition / three-memory separation / feedback routing / minimum semantic delta / Reference Modelの役割
-- [`DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 上流の複数設計案をローカル認知で縮約し、local LLMとsemantic-to-implementation/test derivationへ接続する上位Product Goal
 - [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) — Gate C前後の実証順と既存Issueの責務統合
 
 中心flow:
@@ -199,7 +195,7 @@ Gate C前はdefinition inventory、feedback routing、memory separation、Refere
 
 ### Studio / PAS-01
 
-- [`issue/000046-studio-shared-acceptance-authoring-loop.md`](issue/000046-studio-shared-acceptance-authoring-loop.md)
+- ISSUE-000046-studio-shared-acceptance-authoring-loop.md
 
 最小loop:
 
@@ -217,26 +213,21 @@ StudioはCanonicalの第二正本ではありません。Definition-centered loo
 
 この領域は、個別algorithmやfeature設計からではなく、Product上の趣旨から順に読みます。
 
-1. [`DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 複数設計案、proposal-space contraction、local-first認知、local LLM、semantic-to-code/test derivationという上位Product Goal
-2. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Canonical / LLM / Authorityとの境界、個別課題への展開順
-3. [`DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md`](DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — SEI Cognition / SUI / ハエ脳等の関連検討からTEIへ取り込む性質を抽出した要件素案と所有境界
-4. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
-5. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
-6. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
-7. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
+4. ISSUE-000047-knowledge-first-semantic-exploration.md — Human / AI共通のknowledge-first Product Reference
+5. ISSUE-000051-derived-cognitive-retrieval-evaluation.md — candidate retrieval方式を比較するarchitecture probe
 
 Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けることは最初の実証スライスです。FlyHash、HDC/VSA等はその候補生成部分に価値があるかを比較する方式であり、最終目標はretrieval単体ではなく、設計候補の生成・縮約・Acceptance・implementation/test derivationまでfeedback loopを閉じることです。
 
 ### AI Proposal / PAS-01 / PAS-06
 
 - [`adr/0022-ai-proposal-canonical-acceptance-boundary.md`](adr/0022-ai-proposal-canonical-acceptance-boundary.md)
-- [`issue/000027-ai-proposal-acceptance-boundary.md`](issue/000027-ai-proposal-acceptance-boundary.md)
+- ISSUE-000027-ai-proposal-acceptance-boundary.md
 
 AI ProposalはCanonical authorityではなく、file-native / Studio / CLI等とShared Acceptance Boundaryへ収束します。AIの標準的な価値はwhole modelを再生成することではなく、current revision・explicit refs・Evidenceに基づく**小さい意味差分、比較、説明**を作ることです。
 
 ### Second Target / PAS-04
 
-- [`issue/000026-target-capability-execution-profile-boundary.md`](issue/000026-target-capability-execution-profile-boundary.md)
+- ISSUE-000026-target-capability-execution-profile-boundary.md
 
 第一Targetだけで実行先に依存しない分類体系を完成したものとはせず、第二TargetでTarget Capability、Runtime Binding、Execution-Trust、RQ-024の性能要件を検証します。
 
@@ -250,7 +241,7 @@ Studioのdeveloper-facing Wails HostをApplication Target Evidenceへ数えま�
 
 planning-onlyの将来作業まで不要にGitHub Issueへ二重起票することを目的にはしません。
 
-Plan Issueの構成ルールは[`issue/README.md`](issue/README.md)を参照します。
+Plan Issueの構成ルールはGitHub Issuesを参照します。
 
 ## 判定文書と調査記録の役割
 
@@ -260,8 +251,8 @@ Plan Issueの構成ルールは[`issue/README.md`](issue/README.md)を参照し�
 | --- | --- | --- |
 | Gate A・B・Cの判定 | [Gate A](GATE_A_READINESS_AUDIT.md)／[Gate B](GATE_B_READINESS_AUDIT.md)／[Gate C](GATE_C_READINESS_AUDIT.md) | 判定した対象・版・Evidenceに結び付く正式記録。現在の`main`の検証済みを意味しない。 |
 | 製品要求の不足と根拠 | [要求別の不足監査](PRODUCT_REQUIREMENT_GAP_AUDIT.md) | 更新型の照合文書。要求と実証の正本を置き換えない。 |
-| 業務手順の契約ADR作成可否 | [ADR作成前の判定](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) | 当該契約の判定正本。他の調査や独立レビューだけでReadyに変更しない。 |
-| 特定時点の調査結果 | [監査記録一覧](../docs/audits/README.md) | 判断を裏付ける参考記録。現行の採用判断やGateの第二正本にしない。 |
+| 業務手順の契約ADR作成可否 | 関連するIssueと採用ADR | 現行の作業条件と採用済み判断をそれぞれの正本で確認します。 |
+| 特定時点の調査結果 | 公開対象外 | 詳細な調査・検討記録は製品文書と分けて管理します。 |
 
 独立レビューや証拠の引継ぎに使う文書は、関連するIssue・判定文書との関係を確かめてから配置を変更する。旧パスの移動案内は参照をつなぐだけであり、本文の正本ではない。
 

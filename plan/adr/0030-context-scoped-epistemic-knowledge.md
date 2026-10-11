@@ -329,7 +329,7 @@ ISSUE-000082 / GitHub Issue #958では、少なくとも次を確認します。
 - SUI Sensemaking #3184
 - SEI Cognition #660
 - ADR-0022 AI ProposalとCanonical受入境界を分離する
-- `plan/issue/000027-ai-proposal-acceptance-boundary.md`
-- `plan/issue/000047-knowledge-first-semantic-exploration.md`
-- `plan/issue/000077-semantic-extension-reference.md`
+- ISSUE-000027-ai-proposal-acceptance-boundary.md
+- ISSUE-000047-knowledge-first-semantic-exploration.md
+- ISSUE-000077-semantic-extension-reference.md
 - ISSUE-000080 / GitHub Issue #951

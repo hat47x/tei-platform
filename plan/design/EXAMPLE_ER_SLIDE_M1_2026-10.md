@@ -54,7 +54,7 @@
 - [Product Requirements](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)
 - [Business Design Requirement](../../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
 - [Business System Design](../../docs/business-system-design.md)
-- [実務シナリオ縦断実証](../issue/000075-practical-scenario-mvp-demonstration.md)
+- 実務シナリオ縦断実証
 - [Definition-centered Feedback Loop](../../docs/definition-centered-feedback-loop.md)
 
 ## 2026-10-10の候補実装（未検証）

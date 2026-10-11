@@ -160,7 +160,6 @@ blocked
 
 actual entry record:
 
-- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
 
 actual pressure:
 

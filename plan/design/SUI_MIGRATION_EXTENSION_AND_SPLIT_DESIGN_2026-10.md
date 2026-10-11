@@ -3,8 +3,8 @@
 - 状態: 評価待ち（未採用）。実装・Reference変更の根拠にしない
 - 日付: 2026-10-08
 - 更新: 2026-10-09に付録Dを追加し、付録Aの「MCP」「agent credential」の行を更新した。章立てと既存の番号は変えていない
-- 親Issue: [ISSUE-000052](../issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md)
-- 関連: [SUI Reference Adoption設計基線](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) / [ISSUE-000080](../issue/000080-extensible-plugin-capability-contract.md) / [ADR-0019](../adr/0019-authentication-capability-boundary.md)
+- 親Issue: ISSUE-000052
+- 関連: [SUI Reference Adoption設計基線](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) / ISSUE-000080 / [ADR-0019](../adr/0019-authentication-capability-boundary.md)
 - 減らす不確実性: RQ-008（Capability単位の置換）、RQ-019（権限とResource）、RQ-029（知識の再利用・移植）、RQ-005（ApplicationとDatabaseのN:M）、RQ-010（高密度な設計・運用環境）、RQ-031（Coreを特権化しない）、RQ-032（Plugin / DSLでの意味宣言）、RQ-023（一人で維持できる構造）
 
 ## 1. この文書の役割

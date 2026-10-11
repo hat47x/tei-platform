@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "synthetic-source-transcription-contract",
+  "status": "example",
+  "purpose": "Exercise the source adapter with synthetic input. The mappings cover recognized XML construct names but classify them conservatively; this is not a reference-model transcription or accepted semantic authority.",
+  "sourceProfiles": {
+    "xead": {
+      "rootKind": "System",
+      "supportedFormatVersions": [
+        "1.2"
+      ]
+    },
+    "xeaf": {
+      "rootKind": "System",
+      "supportedFormatVersions": [
+        "1.2"
+      ]
+    }
+  },
+  "constructMappings": {
+    "xead": {
+      "System": {
+        "classification": [
+          "source-metadata"
+        ],
+        "extension": "reference.compat.xead.source"
+      },
+      "Subsystem": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Department": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "DataType": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Table": {
+        "classification": [
+          "canonical-candidate"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "authorityLimits": [
+          "synthetic-example-only"
+        ]
+      },
+      "TableField": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "TableKey": {
+        "classification": ["unresolved"]
+      },
+      "TableKeyField": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Relationship": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "FunctionType": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Function": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "FunctionUsedByThis": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "IOTable": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "IOPanel": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "IOSpool": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Role": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Task": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "TaskAction": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "TaskFunctionIO": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "SubjectArea": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "DataflowNode": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "DataflowLine": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Instance": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "TableType": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "SubsystemTable": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "SubsystemRelationship": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "IOPanelField": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "IOPanelStyle": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "IOSpoolStyle": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "MaintenanceLog": {
+        "classification": [
+          "unresolved"
+        ]
+      }
+    },
+    "xeaf": {
+      "System": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Subsystem": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Table": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Function": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Script": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Field": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Column": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Button": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Filter": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Refer": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Detail": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Key": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Menu": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "HeaderPhrase": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Phrase": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "Option": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "PrintFont": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "BatchField": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "AddRowListColumn": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "AddRowListButton": {
+        "classification": [
+          "unresolved"
+        ]
+      },
+      "MaintenanceLog": {
+        "classification": [
+          "unresolved"
+        ]
+      }
+    }
+  }
+}

@@ -1,13 +1,13 @@
-# RMT transcription candidate Evidence
+# Source transcription candidate Evidence
 
-`tei.reference.rmt-transcription-candidate-evidence/v0`は、Reference Model Transferで観測した一つのsource nodeを、Shared Acceptanceへ渡すためのtyped Evidence contractです。
+この内部Referenceは、利用者が指定したsource fileから観測した一つのnodeを、Shared Acceptanceへ渡すtyped Evidence contractを扱います。公開Repositoryには第三者のsource fileや、その内容を含む観測記録を同梱しません。
 
-このEvidenceはsemantic changeそのものではありません。exact external source artifact上のどの観測を根拠にしたかを固定し、semantic deltaはShared AcceptanceのCandidate側で別に明示します。
+このEvidenceはsemantic changeそのものではありません。ローカルsource artifact上の観測を固定し、semantic deltaはShared AcceptanceのCandidate側で別に明示します。
 
 保持するのは次です。
 
-- source format / FormatVersion
-- exact source artifact digest
+- source format / format version
+- exact local source artifact digest
 - source nodeを指すname-independent token
 - mapping contract fingerprint
 - known standard constructであるか
@@ -41,7 +41,7 @@ typed Evidenceは、producerが`sourceConstructKnown=true`と書いただけで�
 
 この語彙検査はobserver Conformanceの代わりではありません。標準construct名として妥当であることと、qualified Source Adapterが実際のsourceを観測したことは別の主張です。
 
-Source Adapter、`transcription-contract-v0.json`、typed Evidenceは責務が異なるため、語彙の定義自体は別に持ちます。ただし、三者の更新ずれはReference testで検出します。Xead / Xeafのconstruct集合と、転写契約で使うclassificationが一致しなければtestを失敗させます。
+Source Adapter、`xead-source-transcription-contract.synthetic.json`、typed Evidenceは責務が異なるため、語彙の定義自体は別に持ちます。ただし、三者の更新ずれはReference testで検出します。Xead / Xeafのconstruct集合と、転写契約で使うclassificationが一致しなければtestを失敗させます。
 
 
 ## 公開token

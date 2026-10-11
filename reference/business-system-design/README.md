@@ -153,7 +153,7 @@ Step IDは種類を問わず同一手順内で一意でなければなりませ�
 
 [技術リサーチ統合方針](../../plan/TECH_RESEARCH_INTEGRATION_2026-10.md)のREF-SPEC-01に従い、通常のSource探索（A）と比較JSONを併用する方法（B）を、同じ業務上の確認課題で比べます。所要時間・開いたファイル数・再検索回数に加え、参照IDの取り違え、未解決事項の記載漏れ、根拠のない断定を記録します。Bが速くても誤判断が増えれば成功としません。評価順序や対象課題を入れ替え、同じ人の学習効果を独立な試行として数えないようにします。
 
-**実験は計画段階で、所要時間や効果の実測値はありません。** 出典を限定して確認した事実、過去の隔離テスト結果、残る検証条件は[REF-SPEC-01監査記録](../../docs/audits/ref-spec-01-2026-10-09-source-contrast.md)を参照してください。
+**実験は計画段階で、所要時間や効果の実測値はありません。** 出典を限定して確認した事実、過去の隔離テスト結果、残る検証条件はREF-SPEC-01監査記録を参照してください。
 
 ## `order-entry-follow-up-procedure.json`
 
@@ -239,7 +239,6 @@ pure file moveでbytesが同じ場合も、Procedure key / fingerprintは保て�
 
 Procedure key自体のrenameはlogical identity changeとして扱います。
 
-詳細は`plan/BUSINESS_PROCEDURE_REVIEW_HANDOFF_PRESSURE_2026-09.md`を参照します。
 
 ## `order-entry-customer-edit-conflict.json`
 

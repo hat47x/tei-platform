@@ -238,4 +238,4 @@ node --test tools/reference-sui-action-boundary/action-browser-roundtrip.test.mj
 
 未実装：SUIの確定コールバックからTEIランタイムへのAction dispatch、操作開始時のRevision捕捉と権限照合、SUIのDocumentV1検証器とTEI保存機構の実連携、実セッションからのSubject解決、実ランタイム権限、ブラウザー配備、SafeModeとExport保護の統合確認、性能測定。
 
-作業窓口はGitHub Issue #993、設計の正本は`plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`です。GitHub Issue #52は別件です。
+作業窓口はGitHub Issue #993、設計の正本はISSUE-000052-sui-reference-adoption-and-plugin-surface-evaluation.mdです。GitHub Issue #52は別件です。

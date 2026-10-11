@@ -55,7 +55,7 @@ human ownerは一人ですが、複数のAI session / processが同時に作業�
 - B4をrebase / reset / force updateしてlineageを切る
 - `main`上にsourceが存在すること自体をqualification Evidenceとみなす
 
-統合は[`plan/issue/000069-first-web-target-r7b-exact-t-replay.md`](plan/issue/000069-first-web-target-r7b-exact-t-replay.md)の順序に従います。
+統合はISSUE-000069-first-web-target-r7b-exact-t-replay.mdの順序に従います。
 
 ```text
 trusted-local full Repository-health PASS receipt
@@ -78,7 +78,7 @@ go test ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-上記をまとめて確認する読み取り専用のスクリプトが`tools/repository-health-check.sh`です（`--fast`では`go test`を省略します）。GitHub Actionsを使えない間は、mainへpushする前に手元でこの確認を通してください。背景は[`ISSUE-000055`](plan/issue/000055-verification-gate-while-ci-suspended.md)にあります。
+上記をまとめて確認する読み取り専用のスクリプトが`tools/repository-health-check.sh`です（`--fast`では`go test`を省略します）。GitHub Actionsを使えない間は、mainへpushする前に手元でこの確認を通してください。背景は`ISSUE-000055`にあります。
 
 Reference Workspaceには、過去contractとの互換性を確認するためのwarningが意図的に含まれる場合があります。
 

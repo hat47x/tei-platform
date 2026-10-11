@@ -52,7 +52,7 @@ func rmtIndependentSyntheticSourceEvidence(t *testing.T) []byte {
 	cmd := exec.Command(
 		"go", "run", "./tools/reference-xead-source-adapter",
 		"-format", "xead", "-input", input,
-		"-contract", "reference/reference-model-transfer/transcription-contract-v0.json",
+		"-contract", "reference/xead-source-transcription-contract.synthetic.json",
 		"-candidate-evidence-node", "2",
 	)
 	cmd.Dir = repositoryRoot(t)

@@ -2,7 +2,7 @@
 
 - 状態: 提案中
 - 日付: 2026-09-05
-- 関連Issue: [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md)（作業範囲と実装順）
+- 関連Issue: ISSUE-000038（作業範囲と実装順）
 - 関連設計: [業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)（評価待ち）
 
 この判断は評価待ちです。採用が決まるまで、実装やCapability契約の変更の根拠にしません。
@@ -116,7 +116,7 @@ readを先に行えば、認可前に「そもそも遷移できない」と早�
 
 ### 増える負担
 
-`sales.order.submit`の契約変更は、既存のDriver Scenarioとその期待値に影響します。Gate Bの必須Evidenceは同じcandidate revisionへ揃える必要があるため、**この契約変更はGate B Ready判定と[ISSUE-000030](../issue/000030-gate-b-to-c-handover-baseline.md)のHandover Baseline固定より前に入れません**。
+`sales.order.submit`の契約変更は、既存のDriver Scenarioとその期待値に影響します。Gate Bの必須Evidenceは同じcandidate revisionへ揃える必要があるため、**この契約変更はGate B Ready判定とISSUE-000030のHandover Baseline固定より前に入れません**。
 
 また、payloadを持たないOutcomeが自然に見える最初の実例でもあります。v1では`std.unit`もpayload省略構文も導入せず、domain側の明示的なresult dataを使います。ADR-0020が残した論点への入力として記録します。
 

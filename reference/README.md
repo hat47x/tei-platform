@@ -157,13 +157,9 @@ go run ./tools/reference-deployment-attempt
 
 この実行例の出力には実行時刻に由来する値が含まれるため、出力全体を基準値として固定せず、自動検証で実行が正常に完了することを確かめます。
 
-## Reference Model Transfer Evidence
+## 外部Reference Modelの入力
 
-`reference/reference-model-transfer/` は、[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)で進める成熟Reference Model転写のsource-derived Evidenceです。
-
-初回の評価に使った元のモデルと手引書はリポジトリの外に保管します。ここには、元の内容を大量に転載せず、転写範囲を再現するための正確な照合値、全体の一覧、初期の作業負荷などだけを置きます。
-
-このディレクトリがあっても、参照モデルをTEIへ転写済みであること、元の実行環境と同じ動作をすること、再配布の条件を確認済みであることを示すものではありません。判定条件は[参照モデル転写の検証段階](../plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を参照してください。
+TEIは外部Reference Modelを入力として検証できますが、第三者のモデル・手引・source snapshotやそこから派生した詳細資料は同梱しません。転写作業の公開要件はISSUE-000078に記します。
 
 ## SUI Reference Adoption fixture
 
@@ -171,7 +167,7 @@ go run ./tools/reference-deployment-attempt
 
 現在はSUIの既存の`IslandHierarchyContractV1`に対応するM1〜M4だけを固定しています。TEIの正本となる作業領域や製品要求ではありません。段階を踏んで、読み取り専用の対応付けと検証を試すために手で用意したデータです。
 
-設計は`../plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は`../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`を参照してください。
+設計は`../plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は`ISSUE-000052`を参照してください。
 
 ## Reference artifactを追加・更新するとき
 

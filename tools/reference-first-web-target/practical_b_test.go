@@ -24,16 +24,16 @@ import (
 	"tei/internal/workspace"
 )
 
-// 実証記録B（受理待ち）の機械的な証明。詳細はplan/issue/000075-practical-scenario-mvp-demonstration.md。
+// 合成候補を用い、scratch copy上でだけ候補受理ができることを確認する。
 //
-// reference/workspaceには書き込まない。候補 plan/issue/000075-practical-b/candidate.json は、
+// reference/workspaceには書き込まない。合成候補は、
 // workspaceのcopy（t.TempDir）に対してだけ、tools/reference-shared-acceptanceのCLIで受理する。
 // そのpackageはmain packageなのでimportできず、CLIを実行して受理する。
 //
 // このtestが示すのは、scratch copyの中で候補がacceptedになり、order_entryの宣言と評価がその規則を含むことだけである。
 // 実際のowner受理、Gate Evidence、browser上の表示は示さない。
 const (
-	practicalBCandidate = "plan/issue/000075-practical-b/candidate.json"
+	practicalBCandidate = "tools/reference-first-web-target/testdata/line-number-positive.synthetic-candidate.json"
 	practicalBRule      = "sales.order_line.line_number_positive"
 )
 

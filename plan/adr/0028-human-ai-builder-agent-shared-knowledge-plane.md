@@ -392,4 +392,4 @@ Applicationのsemantic境界を利用できず、UI変更へ脆弱で、Business
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
 - `plan/adr/0023-command-observation-explicit-read-boundary.md`
-- `plan/issue/000042-business-procedure-cross-view-reference.md`
+- ISSUE-000042-business-procedure-cross-view-reference.md

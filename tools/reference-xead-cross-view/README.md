@@ -8,8 +8,8 @@ Xead sourceとexact transcription contractを受け取り、Data・Function・Bu
 
 ```bash
 go run ./tools/reference-xead-cross-view \
-  -input /path/to/MfgOrder.xead \
-  -contract reference/reference-model-transfer/transcription-contract-v0.json
+  -input /path/to/local-model.xead \
+  -contract reference/xead-source-transcription-contract.synthetic.json
 ```
 
 個別source tokenとrelationをローカル調査で確認する場合だけ `-local-projection` を付けます。この出力はpublic Reference Model Evidenceへ保存しません。
@@ -17,7 +17,7 @@ go run ./tools/reference-xead-cross-view \
 ```bash
 go run ./tools/reference-xead-cross-view \
   -input /path/to/model.xead \
-  -contract reference/reference-model-transfer/transcription-contract-v0.json \
+  -contract reference/xead-source-transcription-contract.synthetic.json \
   -local-projection
 ```
 

@@ -2,7 +2,7 @@
 
 Gate Bのうち、Repository checkoutとGo toolchainだけで再現できる**deterministic Repository Evidence**を一つの入口から実行するtoolです。
 
-GitHub Issue #310 / `plan/issue/000032-gate-b-deterministic-repository-evidence.md`の実行補助を目的とします。
+GitHub Issue #310 / ISSUE-000032-gate-b-deterministic-repository-evidence.mdの実行補助を目的とします。
 
 ## 対象
 
@@ -214,7 +214,7 @@ EvidenceをRepositoryへ永続保存するか、どのpathを標準とするか�
 ## 関連
 
 - GitHub Issue #310
-- `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
+- ISSUE-000032-gate-b-deterministic-repository-evidence.md
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`

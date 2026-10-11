@@ -13,7 +13,6 @@ Status: current interpretation index
 - `RQ-025` — 業務上の行為・手順をApplication Functionから独立して設計できること
 - `RQ-026` — Data / Function-Interaction / Business Procedureの異なる視点から相互検証できること
 
-詳細な概念・Architecture境界は [`docs/business-system-design.md`](../docs/business-system-design.md) を参照します。Business Procedure authoring / reviewの品質モデルは [`plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) に置きます。
 
 ## 2. 設計原点へ立ち返る順序
 
@@ -26,11 +25,9 @@ Status: current interpretation index
 5. 現行TEI Product Requirements / Architecture / Reference / Evidence
 6. 小さいTEI Reference実験
 
-[`plan/UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md`](../plan/UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md) と [`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`](../plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md) は、現在は既存linkを保つためのcross-cutting External Design Reference Noteとして扱います。個別設計判断を支える詳細な外部provenance / corroboration / non-proofは、Business Flow、Handoff、O1、CRUD等の**question-specific audit / Plan Issueへ近接保持**し、横断registerを詳細Evidenceの第二正本へ戻しません。
 
 このfallbackは歴史的shapeをそのままTEIへ移植するための規則ではありません。歴史的概念が防いでいた設計上の失敗を確認し、現行TEIのmeaning / authority / Provider / Target境界へ翻訳します。
 
-2026-10に行った外部の公開資料・公開実装の調査と、TEIへの採否は [`外部設計資料の評価`](../plan/design/external-business-system-design-pressure.md) に整理します。この調査記録もRequirementの正本ではなく、既存Requirementをどう解釈したかを追跡するためのdesign pressureです。
 
 ## 3. RQ-025の解釈
 
@@ -178,5 +175,3 @@ RQ-006の`Unresolved`は主に外部状態比較のRequirementですが、「情
 RQ-025 / RQ-026のPrimary PASであるPAS-07は [`plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) へ統合済みです。
 
 詳細なReference / Evidence mappingは [`plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`](../plan/RQ025_RQ026_ACCEPTANCE_TRACE.md) をsupporting Evidence contractとして参照します。この索引自体をRequirementまたはPASの第二正本として拡張しません。
-
-Business Procedureの設計品質reviewは [`plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/design/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) を参照し、そこから新しいRequirement / Gate / production schemaを自動導出しません。

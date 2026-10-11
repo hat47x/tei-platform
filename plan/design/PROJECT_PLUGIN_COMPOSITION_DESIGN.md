@@ -111,6 +111,6 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 
 - 全候補のPlugin化、全Targetへの実装、巨大なUI/Workflow基盤、新しいCapability enum、新しいResolver、独自Lockの並行開発は非目標。
 - Domain固有の意味（SUI・ゲーム等）をTEI Coreに移すことも非目標。
-- 既存機構で足りると分かった対象は新Issueへ分割しない。必要な機構だけを#1016で評価し、隣接する#997 / #998 / #951 / #943 / #988 / #993 / plan/issue/000040の既存担当へ引き渡す。
+- 既存機構で足りると分かった対象は新Issueへ分割しない。必要な機構だけを#1016で評価し、隣接する#997 / #998 / #951 / #943 / #988 / #993 / GitHub Issues000040の既存担当へ引き渡す。
 
 本書の評価を経て、Application Composition Profileが実際に独立したSource表現を要するかを決める。採用するならADRを別途作成し、Project-owned Source / Plugin Lock / Semantic Lock / Target realizationを第二正本化しない最小境界に限る。

@@ -2,7 +2,7 @@
 
 - 状態: 実装前設計
 
-この文書は最初の実装へ渡した設計を保持する文書です。本文には実装前時点の「現行実装」や候補表現が残ります。実装済み範囲・残条件・Evidenceの現在地は[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md)と[`docs/status.md`](../../docs/status.md)を正とし、この文書だけからcurrent implementation stateを判定しません。
+この文書は最初の実装へ渡した設計を保持する文書です。本文には実装前時点の「現行実装」や候補表現が残ります。実装済み範囲・残条件・Evidenceの現在地はISSUE-000009と[`docs/status.md`](../../docs/status.md)を正とし、この文書だけからcurrent implementation stateを判定しません。
 
 ## 目的
 
@@ -597,9 +597,9 @@ C. どちらも持たないno-output Capability
 ## 関連文書
 
 - `plan/adr/0020-capability-business-outcome-boundary.md`
-- `plan/issue/000009-capability-outcome-and-execution-error.md`
+- ISSUE-000009-capability-outcome-and-execution-error.md
 - `plan/design/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/issue/000003-legacy-authentication-compatibility-reference.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
-- `plan/issue/000007-first-web-target-projection.md`
+- ISSUE-000003-legacy-authentication-compatibility-reference.md
+- ISSUE-000006-application-driver-vertical-slice.md
+- ISSUE-000007-first-web-target-projection.md
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`

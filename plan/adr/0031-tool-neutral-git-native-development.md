@@ -269,5 +269,5 @@ native MCP、Agent Adapter、remote execution service等に追加価値が見つ
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `docs/architecture.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
-- `plan/issue/000027-ai-proposal-acceptance-boundary.md`
-- `plan/issue/000083-tool-neutral-development-reference.md`
+- ISSUE-000027-ai-proposal-acceptance-boundary.md
+- ISSUE-000083-tool-neutral-development-reference.md

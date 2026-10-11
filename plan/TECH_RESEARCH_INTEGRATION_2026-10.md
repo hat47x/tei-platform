@@ -341,7 +341,7 @@ TEIへの翻訳:
 
     go run ./tools/reference-business-procedure-check -probe reference/business-system-design/order-entry-customer-edit-conflict.json -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
 
-既存の説明は [Business-system design Reference](../reference/business-system-design/README.md)、受理履歴は [ISSUE-000075](issue/000075-practical-scenario-mvp-demonstration.md)を参照する。過去のcandidate／preview／reviewファイルは**当時の基準版に対する証拠**であり、現在のWorldへ再受理可能という証明ではない。
+既存の説明は [Business-system design Reference](../reference/business-system-design/README.md)、受理履歴は ISSUE-000075を参照する。過去のcandidate／preview／reviewファイルは**当時の基準版に対する証拠**であり、現在のWorldへ再受理可能という証明ではない。
 
 最初に作る読取結果は、(1) exact Source・意味identity・衝突根拠から**判定できた事項**、(2) 不在・古い前提・Procedure固有の意図など**人の判断が残る事項**、(3) 実Provider・画面・未実行のDriverなど**根拠が届かない事項**、(4) 変更を提案するか保留・追加調査するかという**人が選ぶ事項**を分ける。
 
