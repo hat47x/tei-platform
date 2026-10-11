@@ -136,7 +136,9 @@ func TestRejectMalformedTypedBrowseData(t *testing.T) {
 
 func TestCanonicalValidationScenarioFixtureContracts(t *testing.T) {
 	valid := `{"numbers":{"quantity":"2.5"},"relationKeys":[{"relation":"r","attribute":"a","keys":["1","2"]}]}`
-	if _, err := ParseValidationFixture([]byte(valid)); err != nil { t.Fatal(err) }
+	if _, err := ParseValidationFixture([]byte(valid)); err != nil {
+		t.Fatal(err)
+	}
 	for _, invalid := range []string{
 		`{"numbers":{},"relationKeys":null}`,
 		`{"numbers":{"quantity":"bad"},"relationKeys":[]}`,
@@ -144,37 +146,53 @@ func TestCanonicalValidationScenarioFixtureContracts(t *testing.T) {
 		`{"numbers":{},"relationKeys":[{"relation":"r","attribute":"a"}]}`,
 		`{"numbers":{},"relationKeys":[],"unknown":1}`,
 	} {
-		if _, err := ParseValidationFixture([]byte(invalid)); err == nil { t.Fatalf("invalid fixture accepted: %s", invalid) }
+		if _, err := ParseValidationFixture([]byte(invalid)); err == nil {
+			t.Fatalf("invalid fixture accepted: %s", invalid)
+		}
 	}
-	scenario := Scenario{SchemaVersion:SchemaVersion, ID:"val", Application:"order_entry", Steps:[]Step{{ID:"validate",Operation:"evaluate-validations",Fixture:"fixtures/in.json",ExpectValidations:map[string]string{"sales.rule":"satisfied"}}}}
-	b,_ := json.Marshal(scenario)
-	if _,err := Parse(b);err!=nil {t.Fatal(err)}
-	scenario.Steps[0].ExpectValidations["sales.rule"]="unknown"
-	b,_ = json.Marshal(scenario)
-	if _,err := Parse(b);err==nil { t.Fatal("invalid expected outcome accepted") }
-	scenario.Steps[0].ExpectValidations=map[string]string{}
-	b,_ = json.Marshal(scenario)
-	if _,err := Parse(b);err==nil { t.Fatal("empty expectations accepted") }
+	scenario := Scenario{SchemaVersion: SchemaVersion, ID: "val", Application: "order_entry", Steps: []Step{{ID: "validate", Operation: "evaluate-validations", Fixture: "fixtures/in.json", ExpectValidations: map[string]string{"sales.rule": "satisfied"}}}}
+	b, _ := json.Marshal(scenario)
+	if _, err := Parse(b); err != nil {
+		t.Fatal(err)
+	}
+	scenario.Steps[0].ExpectValidations["sales.rule"] = "unknown"
+	b, _ = json.Marshal(scenario)
+	if _, err := Parse(b); err == nil {
+		t.Fatal("invalid expected outcome accepted")
+	}
+	scenario.Steps[0].ExpectValidations = map[string]string{}
+	b, _ = json.Marshal(scenario)
+	if _, err := Parse(b); err == nil {
+		t.Fatal("empty expectations accepted")
+	}
 }
 
 func TestObservationFixtureRequiresExplicitSyntheticRead(t *testing.T) {
 	good := `{"readIdentity":"synthetic.order_state.read","nature":"synthetic","observed":{"kind":"string","data":"pending"}}`
-	if _, err := ParseObservationFixture([]byte(good)); err != nil { t.Fatal(err) }
+	if _, err := ParseObservationFixture([]byte(good)); err != nil {
+		t.Fatal(err)
+	}
 	for _, invalid := range []string{
 		`{"readIdentity":"synthetic.order_state.read","nature":"external-observed","observed":{"kind":"string","data":"pending"}}`,
 		`{"readIdentity":"","nature":"synthetic","observed":{"kind":"string","data":"pending"}}`,
 		`{"readIdentity":"read","nature":"synthetic","observed":{"kind":"invalid","data":"pending"}}`,
 		`{"readIdentity":"read","nature":"synthetic","observed":{"kind":"string","data":"pending"},"extra":"ignored"}`,
 	} {
-		if _, err := ParseObservationFixture([]byte(invalid)); err == nil { t.Fatalf("invalid observation fixture accepted: %s", invalid) }
+		if _, err := ParseObservationFixture([]byte(invalid)); err == nil {
+			t.Fatalf("invalid observation fixture accepted: %s", invalid)
+		}
 	}
-	s := Scenario{SchemaVersion:SchemaVersion, ID:"observation", Application:"order_entry", Steps:[]Step{{
-		ID:"observe", Operation:"observe-synthetic-state", ReadIdentity:"synthetic.order_state.read", Fixture:"fixtures/state.json",
-		ExpectObservation:&Value{Kind:"string",Data:"pending"},
+	s := Scenario{SchemaVersion: SchemaVersion, ID: "observation", Application: "order_entry", Steps: []Step{{
+		ID: "observe", Operation: "observe-synthetic-state", ReadIdentity: "synthetic.order_state.read", Fixture: "fixtures/state.json",
+		ExpectObservation: &Value{Kind: "string", Data: "pending"},
 	}}}
 	b, _ := json.Marshal(s)
-	if _, err := Parse(b); err != nil { t.Fatal(err) }
+	if _, err := Parse(b); err != nil {
+		t.Fatal(err)
+	}
 	s.Steps[0].ExpectObservation = nil
 	b, _ = json.Marshal(s)
-	if _, err := Parse(b); err == nil { t.Fatal("Observation without expected state accepted") }
+	if _, err := Parse(b); err == nil {
+		t.Fatal("Observation without expected state accepted")
+	}
 }

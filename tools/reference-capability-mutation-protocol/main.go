@@ -62,8 +62,8 @@ type CommitRequest struct {
 	InvocationKey      string
 	BindingFingerprint string
 	RequestDigest      string
-	ResultDigest     string
-	ConcurrencyToken string
+	ResultDigest       string
+	ConcurrencyToken   string
 }
 
 type ProviderCommitReceipt struct {
@@ -85,7 +85,7 @@ type StatusRequest struct {
 	InvocationKey      string
 	BindingFingerprint string
 	RequestDigest      string
-	ResultDigest  string
+	ResultDigest       string
 }
 
 type MutationHandle struct {
@@ -170,7 +170,7 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 		InvocationKey:      request.InvocationKey,
 		BindingFingerprint: e.BindingFingerprint,
 		RequestDigest:      requestDigest,
-		Payload:       payload,
+		Payload:            payload,
 	})
 	if err != nil {
 		return MutationExecution{Outcome: OutcomeNotCommitted}, err
@@ -189,12 +189,12 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 	if err := e.Validate(preparedResult); err != nil {
 		cleanupErr := abortPrepared(e.Provider, ctx, handle)
 		return MutationExecution{
-			Outcome: OutcomeNotCommitted,
-			Handle:  handle,
-		}, errors.Join(
-			fmt.Errorf("%w: %v", ErrResultValidation, err),
-			cleanupErr,
-		)
+				Outcome: OutcomeNotCommitted,
+				Handle:  handle,
+			}, errors.Join(
+				fmt.Errorf("%w: %v", ErrResultValidation, err),
+				cleanupErr,
+			)
 	}
 	if err := ctx.Err(); err != nil {
 		cleanupErr := abortPrepared(e.Provider, ctx, handle)
@@ -206,12 +206,12 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 	if err := e.Journal.RecordCommitIntent(ctx, handle); err != nil {
 		cleanupErr := abortPrepared(e.Provider, ctx, handle)
 		return MutationExecution{
-			Outcome: OutcomeNotCommitted,
-			Handle:  handle,
-		}, errors.Join(
-			fmt.Errorf("%w: commit intent: %v", ErrJournalWrite, err),
-			cleanupErr,
-		)
+				Outcome: OutcomeNotCommitted,
+				Handle:  handle,
+			}, errors.Join(
+				fmt.Errorf("%w: commit intent: %v", ErrJournalWrite, err),
+				cleanupErr,
+			)
 	}
 
 	return e.commitPrepared(ctx, handle, preparedResult)
@@ -228,12 +228,12 @@ func (e Executor) commitPrepared(
 	coordinatorCtx := context.WithoutCancel(ctx)
 	providerReceipt, commitErr := e.Provider.Commit(coordinatorCtx, CommitRequest{
 		Protocol:           mutationProtocol,
-		PreparationID:     handle.PreparationID,
-		InvocationKey:     handle.InvocationKey,
+		PreparationID:      handle.PreparationID,
+		InvocationKey:      handle.InvocationKey,
 		BindingFingerprint: handle.BindingFingerprint,
-		RequestDigest:     handle.RequestDigest,
-		ResultDigest:      handle.ResultDigest,
-		ConcurrencyToken:  handle.ConcurrencyToken,
+		RequestDigest:      handle.RequestDigest,
+		ResultDigest:       handle.ResultDigest,
+		ConcurrencyToken:   handle.ConcurrencyToken,
 	})
 	if commitErr != nil {
 		return MutationExecution{
@@ -317,7 +317,7 @@ func (e Executor) ReconcileByInvocationKey(
 	}
 	if receipt, found, err := e.Journal.LoadOutcome(ctx, invocationKey); err != nil {
 		return MutationExecution{}, fmt.Errorf("%w: load outcome: %v", ErrJournalWrite, err)
-} else if found {
+	} else if found {
 		if err := validateMutationReceipt(handle, receipt); err != nil {
 			return MutationExecution{}, fmt.Errorf("%w: outcome receipt: %v", ErrJournalCorrupt, err)
 		}
@@ -361,11 +361,11 @@ func (e Executor) Reconcile(ctx context.Context, handle MutationHandle) (Mutatio
 	}
 	providerReceipt, err := e.Provider.Status(ctx, StatusRequest{
 		Protocol:           mutationProtocol,
-		PreparationID:     handle.PreparationID,
-		InvocationKey:     handle.InvocationKey,
+		PreparationID:      handle.PreparationID,
+		InvocationKey:      handle.InvocationKey,
 		BindingFingerprint: handle.BindingFingerprint,
-		RequestDigest:     handle.RequestDigest,
-		ResultDigest:  handle.ResultDigest,
+		RequestDigest:      handle.RequestDigest,
+		ResultDigest:       handle.ResultDigest,
 	})
 	if err != nil {
 		return MutationExecution{
@@ -530,14 +530,14 @@ func NewPreparedMutation(
 	concurrencyToken string,
 ) PreparedMutation {
 	prepared := PreparedMutation{
-		Protocol:         mutationProtocol,
+		Protocol:           mutationProtocol,
 		PreparationID:      preparationID,
 		InvocationKey:      invocationKey,
 		BindingFingerprint: bindingFingerprint,
 		RequestDigest:      requestDigest,
-		ResultPayload:    append([]byte(nil), resultPayload...),
-		ResultDigest:     digest(resultPayload),
-		ConcurrencyToken: concurrencyToken,
+		ResultPayload:      append([]byte(nil), resultPayload...),
+		ResultDigest:       digest(resultPayload),
+		ConcurrencyToken:   concurrencyToken,
 	}
 	prepared.PreparationFingerprint = preparedFingerprint(prepared)
 	return prepared
@@ -550,15 +550,15 @@ func NewProviderReceipt(
 	commitID string,
 ) ProviderCommitReceipt {
 	receipt := ProviderCommitReceipt{
-		Protocol:      mutationProtocol,
-		Outcome:       outcome,
+		Protocol:           mutationProtocol,
+		Outcome:            outcome,
 		PreparationID:      handle.PreparationID,
 		InvocationKey:      handle.InvocationKey,
 		BindingFingerprint: handle.BindingFingerprint,
 		RequestDigest:      handle.RequestDigest,
-		ResultDigest:  handle.ResultDigest,
-		EffectDigest:  effectDigest,
-		CommitID:      commitID,
+		ResultDigest:       handle.ResultDigest,
+		EffectDigest:       effectDigest,
+		CommitID:           commitID,
 	}
 	receipt.ReceiptFingerprint = providerReceiptFingerprint(receipt)
 	return receipt
@@ -583,49 +583,49 @@ func abortPrepared(
 
 func preparedFingerprint(prepared PreparedMutation) string {
 	return structuredFingerprint(struct {
-		Canonicalization string `json:"canonicalization"`
-		Protocol         string `json:"protocol"`
-		PreparationID    string `json:"preparationId"`
+		Canonicalization   string `json:"canonicalization"`
+		Protocol           string `json:"protocol"`
+		PreparationID      string `json:"preparationId"`
 		InvocationKey      string `json:"invocationKey"`
 		BindingFingerprint string `json:"bindingFingerprint"`
 		RequestDigest      string `json:"requestDigest"`
-		ResultDigest     string `json:"resultDigest"`
-		ConcurrencyToken string `json:"concurrencyToken"`
+		ResultDigest       string `json:"resultDigest"`
+		ConcurrencyToken   string `json:"concurrencyToken"`
 	}{
-		Canonicalization: mutationFingerprintCanonicalization,
-		Protocol:         prepared.Protocol,
-		PreparationID:    prepared.PreparationID,
+		Canonicalization:   mutationFingerprintCanonicalization,
+		Protocol:           prepared.Protocol,
+		PreparationID:      prepared.PreparationID,
 		InvocationKey:      prepared.InvocationKey,
 		BindingFingerprint: prepared.BindingFingerprint,
 		RequestDigest:      prepared.RequestDigest,
-		ResultDigest:     prepared.ResultDigest,
-		ConcurrencyToken: prepared.ConcurrencyToken,
+		ResultDigest:       prepared.ResultDigest,
+		ConcurrencyToken:   prepared.ConcurrencyToken,
 	})
 }
 
 func providerReceiptFingerprint(receipt ProviderCommitReceipt) string {
 	return structuredFingerprint(struct {
-		Canonicalization string          `json:"canonicalization"`
-		Protocol         string          `json:"protocol"`
-		Outcome          MutationOutcome `json:"outcome"`
-		PreparationID    string          `json:"preparationId"`
+		Canonicalization   string          `json:"canonicalization"`
+		Protocol           string          `json:"protocol"`
+		Outcome            MutationOutcome `json:"outcome"`
+		PreparationID      string          `json:"preparationId"`
 		InvocationKey      string          `json:"invocationKey"`
 		BindingFingerprint string          `json:"bindingFingerprint"`
 		RequestDigest      string          `json:"requestDigest"`
-		ResultDigest     string          `json:"resultDigest"`
-		EffectDigest     string          `json:"effectDigest,omitempty"`
-		CommitID         string          `json:"commitId,omitempty"`
+		ResultDigest       string          `json:"resultDigest"`
+		EffectDigest       string          `json:"effectDigest,omitempty"`
+		CommitID           string          `json:"commitId,omitempty"`
 	}{
-		Canonicalization: mutationFingerprintCanonicalization,
-		Protocol:         receipt.Protocol,
-		Outcome:          receipt.Outcome,
-		PreparationID:    receipt.PreparationID,
+		Canonicalization:   mutationFingerprintCanonicalization,
+		Protocol:           receipt.Protocol,
+		Outcome:            receipt.Outcome,
+		PreparationID:      receipt.PreparationID,
 		InvocationKey:      receipt.InvocationKey,
 		BindingFingerprint: receipt.BindingFingerprint,
 		RequestDigest:      receipt.RequestDigest,
-		ResultDigest:     receipt.ResultDigest,
-		EffectDigest:     receipt.EffectDigest,
-		CommitID:         receipt.CommitID,
+		ResultDigest:       receipt.ResultDigest,
+		EffectDigest:       receipt.EffectDigest,
+		CommitID:           receipt.CommitID,
 	})
 }
 

@@ -35,7 +35,7 @@ func TestExistingOrderEntrySourceToDriverTrace(t *testing.T) {
 	resolver := driver.NewResolver(loaded.World)
 	for _, tc := range []struct {
 		pattern string
-		verify func(application.Pattern, driver.PatternResolution) bool
+		verify  func(application.Pattern, driver.PatternResolution) bool
 	}{
 		{"order_entry.submit_order", func(_ application.Pattern, r driver.PatternResolution) bool {
 			return r.Capability != nil && r.Capability.ID == "sales.order.submit"
@@ -203,22 +203,38 @@ func TestExistingOrderEntrySourceToDriverTrace(t *testing.T) {
 
 func TestEnvironmentDatasourceBindingMutationsFailClosed(t *testing.T) {
 	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	var dev environment.Environment
-	for _, e := range loaded.World.Environments { if e.ID == "development" { dev = e } }
-	if dev.ID == "" { t.Fatal("missing development Environment") }
+	for _, e := range loaded.World.Environments {
+		if e.ID == "development" {
+			dev = e
+		}
+	}
+	if dev.ID == "" {
+		t.Fatal("missing development Environment")
+	}
 	check := func(env environment.Environment) bool {
 		var selected core.CanonicalID
 		for _, binding := range env.Bindings {
-			if binding.Application != "order_entry" || binding.Alias != "sales" { continue }
-			if selected != "" { return false } // duplicates are never ordered fallbacks
+			if binding.Application != "order_entry" || binding.Alias != "sales" {
+				continue
+			}
+			if selected != "" {
+				return false
+			} // duplicates are never ordered fallbacks
 			selected = binding.Instance
 		}
-		if selected == "" { return false }
+		if selected == "" {
+			return false
+		}
 		instance, ok := env.InstanceByID(selected)
 		return ok && instance.Definition == "sales_core"
 	}
-	if !check(dev) { t.Fatal("actual sales datasource does not bind sales_core") }
+	if !check(dev) {
+		t.Fatal("actual sales datasource does not bind sales_core")
+	}
 	copyEnv := func() environment.Environment {
 		e := dev
 		e.Bindings = append([]environment.ApplicationDatabaseBinding(nil), dev.Bindings...)
@@ -227,10 +243,14 @@ func TestEnvironmentDatasourceBindingMutationsFailClosed(t *testing.T) {
 	missing := copyEnv()
 	kept := missing.Bindings[:0]
 	for _, b := range missing.Bindings {
-		if b.Application != "order_entry" || b.Alias != "sales" { kept = append(kept, b) }
+		if b.Application != "order_entry" || b.Alias != "sales" {
+			kept = append(kept, b)
+		}
 	}
 	missing.Bindings = kept
-	if check(missing) { t.Fatal("missing binding accepted") }
+	if check(missing) {
+		t.Fatal("missing binding accepted")
+	}
 
 	duplicate := copyEnv()
 	for _, b := range duplicate.Bindings {
@@ -239,7 +259,9 @@ func TestEnvironmentDatasourceBindingMutationsFailClosed(t *testing.T) {
 			break
 		}
 	}
-	if check(duplicate) { t.Fatal("ambiguous binding accepted") }
+	if check(duplicate) {
+		t.Fatal("ambiguous binding accepted")
+	}
 
 	misbound := copyEnv()
 	for i, b := range misbound.Bindings {
@@ -247,5 +269,7 @@ func TestEnvironmentDatasourceBindingMutationsFailClosed(t *testing.T) {
 			misbound.Bindings[i].Instance = "master_data.dev"
 		}
 	}
-	if check(misbound) { t.Fatal("wrong database instance accepted") }
+	if check(misbound) {
+		t.Fatal("wrong database instance accepted")
+	}
 }

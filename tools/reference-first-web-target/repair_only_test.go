@@ -46,10 +46,10 @@ func TestRepairOnlyBinaryUsesRepairRunnerAndNoOrderRoutes(t *testing.T) {
 		t.Fatalf("repair-only business meaning changed: %+v", result)
 	}
 	projection, err := buildWebTargetProjection(world, projectionConfig{
-		HandoverBaselineID: "B",
+		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: "e5231839a5dcc62cce1181a2731fcb7c70d16736",
-		TargetBuildRevision: "target-test-revision",
-		ApplicationID: core.MustCanonicalID("repair_intake"),
+		TargetBuildRevision:        "target-test-revision",
+		ApplicationID:              core.MustCanonicalID("repair_intake"),
 	})
 	if err != nil {
 		t.Fatal(err)

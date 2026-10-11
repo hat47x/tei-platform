@@ -421,7 +421,6 @@ func TestCopyVerifiedArtifactRejectsExistingDestination(t *testing.T) {
 	}
 }
 
-
 func TestPublishVerifiedArtifactNoClobberRejectsLateDestination(t *testing.T) {
 	dir := t.TempDir()
 	tempPath := filepath.Join(dir, ".verified-temp")
@@ -484,7 +483,6 @@ func TestPublishVerifiedArtifactNoClobberPublishesSameArtifact(t *testing.T) {
 	}
 }
 
-
 func TestNoClobberPublishSurvivesVerifiedTempCleanup(t *testing.T) {
 	dir := t.TempDir()
 	tempPath := filepath.Join(dir, ".verified-temp")
@@ -522,7 +520,6 @@ func TestNoClobberPublishSurvivesVerifiedTempCleanup(t *testing.T) {
 		t.Fatalf("published destination changed after temp cleanup: %q", raw)
 	}
 }
-
 
 func TestCopyVerifiedArtifactRejectsRepositoryInternalDestinationThroughSymlinkedRepoPath(t *testing.T) {
 	parent := t.TempDir()

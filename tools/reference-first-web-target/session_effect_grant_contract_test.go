@@ -34,7 +34,11 @@ func TestMatchingBusinessGrantIsBoundToExactRequestedAuthority(t *testing.T) {
 		{"denied instead of allowed", func(r *capabilityinvoke.BusinessResult) { r.Outcome = "denied" }},
 		{"missing grant", func(r *capabilityinvoke.BusinessResult) { r.Payload = nil }},
 		{"malformed payload", func(r *capabilityinvoke.BusinessResult) { r.Payload = map[string]any{"subjectId": grant.SubjectID} }},
-		{"changed subject", func(r *capabilityinvoke.BusinessResult) { v := grant; v.SubjectID = "subject-order-viewer"; r.Payload = v }},
+		{"changed subject", func(r *capabilityinvoke.BusinessResult) {
+			v := grant
+			v.SubjectID = "subject-order-viewer"
+			r.Payload = v
+		}},
 		{"changed action", func(r *capabilityinvoke.BusinessResult) { v := grant; v.Action = "read"; r.Payload = v }},
 		{"changed resource", func(r *capabilityinvoke.BusinessResult) { v := grant; v.Resource = "other.command"; r.Payload = v }},
 	} {

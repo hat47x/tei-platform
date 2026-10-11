@@ -55,7 +55,7 @@ func TestMappedRowsRejectWidthMismatch(t *testing.T) {
 	} {
 		_, err := ProjectMappedRows(queryresult.MappedResult{
 			Columns: []queryresult.Column{{
-				Raw: "customer_id",
+				Raw:       "customer_id",
 				Attribute: core.MustCanonicalID("customer.customer.customer_id"),
 			}},
 			Rows: [][]any{values},
@@ -72,7 +72,7 @@ func TestContractRowsSortCanonicalKeys(t *testing.T) {
 	rows := ProjectContractRows([]driver.ContractQueryRow{
 		{Attributes: map[core.CanonicalID]any{
 			attributeName: "Reference Customer 11",
-			attributeID: int64(11),
+			attributeID:   int64(11),
 		}},
 	})
 	want := []SemanticRowProjection{

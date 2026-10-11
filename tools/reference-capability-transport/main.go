@@ -15,19 +15,19 @@ import (
 )
 
 const (
-	dispatchSchema                 = "tei.reference.capability-transport-dispatch/v0"
-	resultSchema                   = "tei.reference.capability-transport-result/v0"
-	receiptSchema                  = "tei.reference.capability-transport-receipt/v0"
-	dispatchPlanSchema             = "tei.reference.capability-transport-dispatch-plan/v0"
-	rawPayloadDigestRule           = "tei.reference.raw-bytes+sha256/v0"
-	dispatchPlanFingerprintRule    = "tei.reference.go-json-marshal-struct+sha256/v0"
+	dispatchSchema              = "tei.reference.capability-transport-dispatch/v0"
+	resultSchema                = "tei.reference.capability-transport-result/v0"
+	receiptSchema               = "tei.reference.capability-transport-receipt/v0"
+	dispatchPlanSchema          = "tei.reference.capability-transport-dispatch-plan/v0"
+	rawPayloadDigestRule        = "tei.reference.raw-bytes+sha256/v0"
+	dispatchPlanFingerprintRule = "tei.reference.go-json-marshal-struct+sha256/v0"
 )
 
 type GenericProviderIdentity struct {
 	PluginID         string `json:"pluginId"`
 	PluginVersion    string `json:"pluginVersion"`
 	ImplementationID string `json:"implementationId"`
-	ArtifactDigest  string `json:"artifactDigest"`
+	ArtifactDigest   string `json:"artifactDigest"`
 }
 
 type GenericInvocationIdentity struct {
@@ -37,7 +37,7 @@ type GenericInvocationIdentity struct {
 	Provider                GenericProviderIdentity `json:"provider"`
 	RequestShapeFingerprint string                  `json:"requestShapeFingerprint"`
 	ResultShapeFingerprint  string                  `json:"resultShapeFingerprint"`
-	PayloadCodec             string                  `json:"payloadCodec"`
+	PayloadCodec            string                  `json:"payloadCodec"`
 }
 
 type TransportDispatchPlan struct {
@@ -55,8 +55,8 @@ type GenericDispatch struct {
 	Provider                GenericProviderIdentity `json:"provider"`
 	RequestShapeFingerprint string                  `json:"requestShapeFingerprint"`
 	ResultShapeFingerprint  string                  `json:"resultShapeFingerprint"`
-	PayloadCodec             string                  `json:"payloadCodec"`
-	Payload                  []byte                  `json:"payload"`
+	PayloadCodec            string                  `json:"payloadCodec"`
+	Payload                 []byte                  `json:"payload"`
 }
 
 type GenericTransportResult struct {
@@ -67,23 +67,23 @@ type GenericTransportResult struct {
 	Provider                GenericProviderIdentity `json:"provider"`
 	RequestShapeFingerprint string                  `json:"requestShapeFingerprint"`
 	ResultShapeFingerprint  string                  `json:"resultShapeFingerprint"`
-	PayloadCodec             string                  `json:"payloadCodec"`
-	Payload                  []byte                  `json:"payload"`
+	PayloadCodec            string                  `json:"payloadCodec"`
+	Payload                 []byte                  `json:"payload"`
 }
 
 type LegacyCarrier struct {
 	Plugin                plugin.Identity       `json:"plugin"`
 	CapabilityKind        plugin.CapabilityKind `json:"capabilityKind"`
-	CapabilityID          core.CanonicalID       `json:"capabilityId"`
-	DescriptorFingerprint string                 `json:"descriptorFingerprint"`
-	Operation             string                 `json:"operation"`
+	CapabilityID          core.CanonicalID      `json:"capabilityId"`
+	DescriptorFingerprint string                `json:"descriptorFingerprint"`
+	Operation             string                `json:"operation"`
 }
 
 type TransportCarrierReceipt struct {
-	Kind                 string                  `json:"kind"`
-	Plugin               *plugin.Identity        `json:"plugin,omitempty"`
-	LegacyCapabilityKind plugin.CapabilityKind   `json:"legacyCapabilityKind,omitempty"`
-	LegacyCapabilityID   core.CanonicalID        `json:"legacyCapabilityId,omitempty"`
+	Kind                 string                `json:"kind"`
+	Plugin               *plugin.Identity      `json:"plugin,omitempty"`
+	LegacyCapabilityKind plugin.CapabilityKind `json:"legacyCapabilityKind,omitempty"`
+	LegacyCapabilityID   core.CanonicalID      `json:"legacyCapabilityId,omitempty"`
 }
 
 type TransportReceipt struct {
@@ -91,12 +91,12 @@ type TransportReceipt struct {
 	Transport               string                    `json:"transport"`
 	DispatchPlanFingerprint string                    `json:"dispatchPlanFingerprint,omitempty"`
 	PayloadDigestRule       string                    `json:"payloadDigestRule"`
-	Carrier            TransportCarrierReceipt   `json:"carrier"`
-	RequestID          string                    `json:"requestId"`
-	InvocationIdentity GenericInvocationIdentity `json:"invocationIdentity"`
-	RequestDigest       string                    `json:"requestDigest"`
-	ResultDigest        string                    `json:"resultDigest"`
-	AuthorityLimits     []string                  `json:"authorityLimits"`
+	Carrier                 TransportCarrierReceipt   `json:"carrier"`
+	RequestID               string                    `json:"requestId"`
+	InvocationIdentity      GenericInvocationIdentity `json:"invocationIdentity"`
+	RequestDigest           string                    `json:"requestDigest"`
+	ResultDigest            string                    `json:"resultDigest"`
+	AuthorityLimits         []string                  `json:"authorityLimits"`
 }
 
 type TransportExecution struct {
@@ -295,7 +295,7 @@ func genericDispatchIdentity(dispatch GenericDispatch) GenericInvocationIdentity
 		Provider:                dispatch.Provider,
 		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
 		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
-		PayloadCodec:             dispatch.PayloadCodec,
+		PayloadCodec:            dispatch.PayloadCodec,
 	}
 }
 
@@ -307,7 +307,7 @@ func genericResultIdentity(result GenericTransportResult) GenericInvocationIdent
 		Provider:                result.Provider,
 		RequestShapeFingerprint: result.RequestShapeFingerprint,
 		ResultShapeFingerprint:  result.ResultShapeFingerprint,
-		PayloadCodec:             result.PayloadCodec,
+		PayloadCodec:            result.PayloadCodec,
 	}
 }
 
@@ -333,13 +333,13 @@ func newTransportReceipt(
 	return TransportReceipt{
 		Schema:             receiptSchema,
 		Transport:          transport,
-		PayloadDigestRule: rawPayloadDigestRule,
+		PayloadDigestRule:  rawPayloadDigestRule,
 		Carrier:            carrier,
 		RequestID:          requestID,
 		InvocationIdentity: genericDispatchIdentity(dispatch),
-		RequestDigest:       digestBytes(dispatch.Payload),
-		ResultDigest:        digestBytes(result.Payload),
-		AuthorityLimits:     append([]string(nil), authorityLimits...),
+		RequestDigest:      digestBytes(dispatch.Payload),
+		ResultDigest:       digestBytes(result.Payload),
+		AuthorityLimits:    append([]string(nil), authorityLimits...),
 	}
 }
 

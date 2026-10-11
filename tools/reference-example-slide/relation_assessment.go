@@ -129,10 +129,16 @@ func relationKeyTypesCompatible(catalog Catalog, relation SemanticRelation) bool
 	for _, key := range relation.Keys {
 		var left, right Field
 		for _, field := range source.Fields {
-			if field.ID == key.SourceField { left = field; break }
+			if field.ID == key.SourceField {
+				left = field
+				break
+			}
 		}
 		for _, field := range target.Fields {
-			if field.ID == key.TargetField { right = field; break }
+			if field.ID == key.TargetField {
+				right = field
+				break
+			}
 		}
 		if left.SemanticType != "" || right.SemanticType != "" {
 			if left.SemanticType == "" || right.SemanticType == "" ||

@@ -16,52 +16,6 @@ import (
 	"tei/internal/query"
 )
 
-type readScenarioInput struct {
-	From     string
-	RowIndex int
-}
-
-type readScenarioResult struct {
-	ScenarioID       string                     `json:"scenarioId"`
-	Environment      string                     `json:"environment"`
-	ApplicationID    string                     `json:"applicationId"`
-	From             string                     `json:"from"`
-	SelectedRowIndex int                        `json:"selectedRowIndex"`
-	BrowseRows       []semanticRowProjection    `json:"browseRows"`
-	SelectedOrder    semanticRowProjection      `json:"selectedOrder"`
-	CustomerRows     []semanticRowProjection    `json:"customerRows"`
-	OrderLineRows    []semanticRowProjection    `json:"orderLineRows"`
-	RuntimeBindings  []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits  []string                   `json:"authorityLimits"`
-	Unresolved       []string                   `json:"unresolved"`
-}
-
-type semanticRowProjection struct {
-	Attributes []semanticValueProjection `json:"attributes"`
-}
-
-type semanticValueProjection struct {
-	Attribute string `json:"attribute"`
-	Value     any    `json:"value"`
-}
-
-type runtimeBindingProjection struct {
-	Pattern            string `json:"pattern"`
-	Environment        string `json:"environment,omitempty"`
-	Instance           string `json:"instance,omitempty"`
-	Provider           string `json:"provider,omitempty"`
-	ExecutorCapability string `json:"executorCapability,omitempty"`
-	ContractQuery      string `json:"contractQuery,omitempty"`
-	Datasource         string `json:"datasource,omitempty"`
-	Database           string `json:"database,omitempty"`
-	Access             string `json:"access,omitempty"`
-	Note               string `json:"note,omitempty"`
-}
-
-type readScenarioRunner interface {
-	Run(context.Context, readScenarioInput) (readScenarioResult, error)
-}
-
 type referenceReadScenarioRunner struct {
 	resolver      driver.Resolver
 	environmentID core.CanonicalID

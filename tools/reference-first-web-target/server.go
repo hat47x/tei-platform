@@ -98,14 +98,10 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/manifest.json", s.handleManifest)
 	mux.HandleFunc("/healthz", s.handleHealth)
 
-	mux.HandleFunc("/scenario/read", s.handleReadScenario)
-	mux.HandleFunc("/scenario/submit", s.handleCommandScenario)
+	registerCombinedScenarioRoutes(mux, s)
 	if s.protectedSessionHandler != nil {
 		mux.Handle("/scenario/session-submit", s.protectedSessionHandler)
 	}
-	mux.HandleFunc("/custom-submit", s.handleCustomSubmit)
-	mux.HandleFunc("/scenario/customer-lookup", s.handleCustomerLookupScenario)
-	mux.HandleFunc("/customer-lookup", s.handleCustomerLookupPage)
 
 	return mux
 }
@@ -130,93 +126,6 @@ func (s *webTargetServer) handleManifest(w http.ResponseWriter, _ *http.Request)
 	}
 }
 
-func (s *webTargetServer) handleReadScenario(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if s.readScenario == nil {
-		http.Error(w, "read scenario is not configured", http.StatusServiceUnavailable)
-		return
-	}
-
-	rowIndex := 0
-	if raw := r.URL.Query().Get("row"); raw != "" {
-		parsed, err := strconv.Atoi(raw)
-		if err != nil || parsed < 0 {
-			http.Error(w, "row must be a non-negative integer", http.StatusBadRequest)
-			return
-		}
-		rowIndex = parsed
-	}
-	from := r.URL.Query().Get("from")
-	if from == "" {
-		from = "2026-09-01T00:00:00Z"
-	}
-
-	result, err := s.readScenario.Run(r.Context(), readScenarioInput{
-		From:     from,
-		RowIndex: rowIndex,
-	})
-	if err != nil {
-		http.Error(w, "execute read scenario: "+err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	response := webReadScenarioResponse{
-		HandoverBaselineID:         s.projection.HandoverBaselineID,
-		BaselineRepositoryRevision: s.projection.BaselineRepositoryRevision,
-		TargetBuildRevision:        s.projection.TargetBuildRevision,
-		TargetAdapter:              s.projection.TargetAdapter,
-		Host:                       s.projection.Host,
-		Result:                     result,
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(response); err != nil {
-		http.Error(w, "encode read scenario result", http.StatusInternalServerError)
-	}
-}
-
-func (s *webTargetServer) handleCommandScenario(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if s.commandScenario == nil {
-		http.Error(w, "command scenario is not configured", http.StatusServiceUnavailable)
-		return
-	}
-
-	var request webCommandScenarioRequest
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&request); err != nil {
-		http.Error(w, "invalid command request", http.StatusBadRequest)
-		return
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		http.Error(w, "command request must contain one JSON document", http.StatusBadRequest)
-		return
-	}
-	if request.From == "" {
-		request.From = "2026-09-01T00:00:00Z"
-	}
-
-	result, err := s.commandScenario.RunCommand(r.Context(), commandScenarioInput{
-		LoginID:    request.LoginID,
-		Credential: request.Credential,
-		From:       request.From,
-		RowIndex:   request.RowIndex,
-	})
-	s.writeCommandScenarioHTTPResult(w, result, err)
-}
-
-// Both credential and session routes preserve the existing JSON result and
-// Execution Error envelope; the authentication proof stays route-specific.
 func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, result commandScenarioResult, err error) {
 	if err != nil {
 		response := webCommandScenarioErrorResponse{

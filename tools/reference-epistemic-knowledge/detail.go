@@ -21,9 +21,6 @@ type DetailQuery struct {
 	ExpectedReviewSubjectFingerprint string        `json:"expectedReviewSubjectFingerprint"`
 	ExpectedTargetBinding            string        `json:"expectedTargetBinding"`
 	ExpectedReviewLogSequence        int           `json:"expectedReviewLogSequence"`
-	Contract                         string        `json:"contract"`
-	Schema                           string        `json:"schema"`
-	AssertionID                      string        `json:"assertionId"`
 	ObservedMeaningFingerprint       string        `json:"observedMeaningFingerprint"`
 	ObservedReviewSubjectFingerprint string        `json:"observedReviewSubjectFingerprint"`
 	ObservedTargetBinding            string        `json:"observedTargetBinding"`

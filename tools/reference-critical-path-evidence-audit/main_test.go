@@ -140,9 +140,9 @@ func TestE1OtherValidationCannotStandInForUnitPriceNegative(t *testing.T) {
 
 func TestE1RejectsUnboundWebWorkspaceRevision(t *testing.T) {
 	for name, edit := range map[string]func(*Packet){
-		"missing workspace revision": func(p *Packet) { p.Web.WorkspaceRevisionReceipt = "" },
-		"missing target launch": func(p *Packet) { p.Web.TargetLaunchReceipt = "" },
-		"reused positive result": func(p *Packet) { p.Web.WorkspaceRevisionReceipt = p.Web.PositiveReceipt },
+		"missing workspace revision":    func(p *Packet) { p.Web.WorkspaceRevisionReceipt = "" },
+		"missing target launch":         func(p *Packet) { p.Web.TargetLaunchReceipt = "" },
+		"reused positive result":        func(p *Packet) { p.Web.WorkspaceRevisionReceipt = p.Web.PositiveReceipt },
 		"same evidence for both stages": func(p *Packet) { p.Web.TargetLaunchReceipt = p.Web.WorkspaceRevisionReceipt },
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -154,14 +154,14 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		return body, resp.StatusCode
 	}
 	var manifest struct {
-		ApplicationID string `json:"applicationId"`
-		TargetBuildRevision string `json:"targetBuildRevision"`
+		ApplicationID              string `json:"applicationId"`
+		TargetBuildRevision        string `json:"targetBuildRevision"`
 		BaselineRepositoryRevision string `json:"baselineRepositoryRevision"`
-		Patterns []struct {
-			ID string `json:"id"`
-			Kind string `json:"kind"`
+		Patterns                   []struct {
+			ID         string `json:"id"`
+			Kind       string `json:"kind"`
 			Capability string `json:"capability"`
-			Data string `json:"data"`
+			Data       string `json:"data"`
 		} `json:"patterns"`
 	}
 	manifestBytes, status := get("/manifest.json")
@@ -205,11 +205,11 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 		}
 	}
 	for id, kind := range map[string]string{
-		"order_entry.submit_order": "command",
-		"order_entry.recent_orders": "browse",
-		"order_entry.order_record": "record",
+		"order_entry.submit_order":       "command",
+		"order_entry.recent_orders":      "browse",
+		"order_entry.order_record":       "record",
 		"order_entry.customer_reference": "reference",
-		"order_entry.order_lines": "header-detail",
+		"order_entry.order_lines":        "header-detail",
 	} {
 		if seen[id] != kind {
 			t.Fatalf("Source->Web pattern %s=%q, expected %q", id, seen[id], kind)
@@ -253,12 +253,22 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 
 	success := post(`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK)
 	var result struct {
-		Stage string `json:"stage"`
-		Authentication *struct { Outcome string `json:"outcome"` } `json:"authentication"`
-		Validations []struct { Result string `json:"result"` } `json:"validations"`
-		Authorization *struct { Outcome string `json:"outcome"` } `json:"authorization"`
-		Command *struct { Capability string `json:"capability"` } `json:"command"`
-		Observation *struct { Nature string `json:"nature"` } `json:"observation"`
+		Stage          string `json:"stage"`
+		Authentication *struct {
+			Outcome string `json:"outcome"`
+		} `json:"authentication"`
+		Validations []struct {
+			Result string `json:"result"`
+		} `json:"validations"`
+		Authorization *struct {
+			Outcome string `json:"outcome"`
+		} `json:"authorization"`
+		Command *struct {
+			Capability string `json:"capability"`
+		} `json:"command"`
+		Observation *struct {
+			Nature string `json:"nature"`
+		} `json:"observation"`
 	}
 	if err := json.Unmarshal(success["result"], &result); err != nil {
 		t.Fatal(err)
@@ -278,8 +288,8 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 
 	denied := post(`{"loginId":"legacy-order-editor","credential":"wrong-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK)
 	var denial struct {
-		Stage string `json:"stage"`
-		Command json.RawMessage `json:"command"`
+		Stage       string          `json:"stage"`
+		Command     json.RawMessage `json:"command"`
 		Observation json.RawMessage `json:"observation"`
 	}
 	if err := json.Unmarshal(denied["result"], &denial); err != nil {
@@ -293,10 +303,14 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	// business denial must not dispatch or fabricate an execution observation.
 	viewer := post(`{"loginId":"legacy-order-viewer","credential":"viewer-secret","from":"2026-09-18T08:30:00Z","row":0}`, http.StatusOK)
 	var authDenied struct {
-		Stage string `json:"stage"`
-		Authentication *struct { Outcome string `json:"outcome"` } `json:"authentication"`
-		Authorization *struct { Outcome string `json:"outcome"` } `json:"authorization"`
-		Command json.RawMessage `json:"command"`
+		Stage          string `json:"stage"`
+		Authentication *struct {
+			Outcome string `json:"outcome"`
+		} `json:"authentication"`
+		Authorization *struct {
+			Outcome string `json:"outcome"`
+		} `json:"authorization"`
+		Command     json.RawMessage `json:"command"`
 		Observation json.RawMessage `json:"observation"`
 	}
 	if err := json.Unmarshal(viewer["result"], &authDenied); err != nil {
@@ -310,7 +324,9 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	}
 
 	failed := post(`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}`, http.StatusUnprocessableEntity)
-	var errorResult struct { Stage string `json:"stage"` }
+	var errorResult struct {
+		Stage string `json:"stage"`
+	}
 	if err := json.Unmarshal(failed["result"], &errorResult); err != nil {
 		t.Fatal(err)
 	}

@@ -1,10 +1,10 @@
 package exampleslide
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html"
-	"bytes"
 	"math/big"
 	"sort"
 	"strings"
@@ -12,8 +12,8 @@ import (
 
 // Catalog is a read-only adapter input. It is not a TEI canonical source.
 type Catalog struct {
-	Revision string           `json:"revision"`
-	Tables   map[string]Table `json:"tables"`
+	Revision  string             `json:"revision"`
+	Tables    map[string]Table   `json:"tables"`
 	Relations []SemanticRelation `json:"relations,omitempty"`
 }
 
@@ -22,23 +22,23 @@ type Table struct {
 }
 
 type Field struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
+	ID   string `json:"id"`
+	Type string `json:"type"`
 	// SemanticType retains the original TEI attribute type identity where known.
 	// Equality of JSON values does not imply equality of semantic domains.
 	SemanticType string `json:"semanticType,omitempty"`
-	Required bool   `json:"required,omitempty"`
-	Visible  bool   `json:"visible,omitempty"`
-	RefTable string `json:"refTable,omitempty"`
+	Required     bool   `json:"required,omitempty"`
+	Visible      bool   `json:"visible,omitempty"`
+	RefTable     string `json:"refTable,omitempty"`
 }
 
 // SemanticRelation preserves directed semantic relationships separately from
 // physical foreign keys. The pair of attribute IDs is not a record-ID link.
 type SemanticRelation struct {
-	ID          string `json:"id"`
-	SourceTable string `json:"sourceTable"`
-	TargetTable string `json:"targetTable"`
-	Cardinality string `json:"cardinality"`
+	ID          string                `json:"id"`
+	SourceTable string                `json:"sourceTable"`
+	TargetTable string                `json:"targetTable"`
+	Cardinality string                `json:"cardinality"`
 	Keys        []SemanticRelationKey `json:"keys,omitempty"`
 }
 type SemanticRelationKey struct {
@@ -127,18 +127,18 @@ type ShownTable struct {
 }
 
 type Connection struct {
-	Parent   string `json:"parent"`
-	Child    string `json:"child"`
-	ViaField string `json:"viaField,omitempty"`
+	Parent     string `json:"parent"`
+	Child      string `json:"child"`
+	ViaField   string `json:"viaField,omitempty"`
 	RelationID string `json:"relationId,omitempty"`
 }
 
 type Slide struct {
-	ID          string       `json:"id"`
-	Title       string       `json:"title"`
-	Stage       string       `json:"stage"`
-	Tables      []ShownTable `json:"tables"`
-	Connections []Connection `json:"connections"`
+	ID               string            `json:"id"`
+	Title            string            `json:"title"`
+	Stage            string            `json:"stage"`
+	Tables           []ShownTable      `json:"tables"`
+	Connections      []Connection      `json:"connections"`
 	RelationFindings []RelationFinding `json:"relationFindings,omitempty"`
 }
 
@@ -224,7 +224,9 @@ func Build(in Input) (Projection, error) {
 		}
 		snapshots[stage.ID] = copyState(state)
 		complete, err := completeTableSet(in.Catalog, stage.CompleteTables)
-		if err != nil { return empty, fmt.Errorf("stage %s: %w", stage.ID, err) }
+		if err != nil {
+			return empty, fmt.Errorf("stage %s: %w", stage.ID, err)
+		}
 		stageComplete[stage.ID] = complete
 	}
 	out := Projection{
@@ -282,9 +284,13 @@ func Build(in Input) (Projection, error) {
 		}
 		for _, relation := range in.Catalog.Relations {
 			for _, source := range in.Diagram.Placements {
-				if source.Table != relation.SourceTable { continue }
+				if source.Table != relation.SourceTable {
+					continue
+				}
 				for _, target := range in.Diagram.Placements {
-					if target.Table != relation.TargetTable { continue }
+					if target.Table != relation.TargetTable {
+						continue
+					}
 					// Cardinality indicates how the relation's target is viewed:
 					// "one" -> referenced parent target; "many" -> child target.
 					parent, child := target.ID, source.ID
@@ -292,7 +298,7 @@ func Build(in Input) (Projection, error) {
 						parent, child = source.ID, target.ID
 					}
 					slide.Connections = append(slide.Connections, Connection{
-						Parent:parent, Child:child, RelationID:relation.ID,
+						Parent: parent, Child: child, RelationID: relation.ID,
 					})
 				}
 			}
@@ -340,10 +346,10 @@ func validateCatalog(c Catalog) error {
 		from, srcOK := c.Tables[relation.SourceTable]
 		to, dstOK := c.Tables[relation.TargetTable]
 		if relation.ID == "" || !srcOK || !dstOK {
-			return fmt.Errorf("invalid semantic relation %q",relation.ID)
+			return fmt.Errorf("invalid semantic relation %q", relation.ID)
 		}
 		if relation.Cardinality != "one" && relation.Cardinality != "many" {
-			return fmt.Errorf("%s: unknown cardinality %q",relation.ID,relation.Cardinality)
+			return fmt.Errorf("%s: unknown cardinality %q", relation.ID, relation.Cardinality)
 		}
 		keyPairs := map[SemanticRelationKey]bool{}
 		for _, key := range relation.Keys {

@@ -44,7 +44,7 @@ func TestMissingOrMalformedSourceFailsClosed(t *testing.T) {
 		{"empty-package-error", `{"ImportPath":"tei/tools/sample","Name":"main","Module":{"Path":"tei","Main":true},"Error":{}}`, "tei/tools/sample"},
 		{"incomplete", `{"ImportPath":"tei/tools/sample","Name":"main","Module":{"Path":"tei","Main":true},"Incomplete":true}`, "tei/tools/sample"},
 		{"non-executable-entry", `{"ImportPath":"tei/tools/sample","Name":"library","Module":{"Path":"tei","Main":true},"GoFiles":["lib.go"]}`, "tei/tools/sample"},
-		{"entry-not-main-module", jsonStd+"\n"+jsonB+"\n"+jsonStrings, "fmt"},
+		{"entry-not-main-module", jsonStd + "\n" + jsonB + "\n" + jsonStrings, "fmt"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			if _, err := parseGoList(strings.NewReader(scenario.raw), scenario.entry, ""); err == nil {

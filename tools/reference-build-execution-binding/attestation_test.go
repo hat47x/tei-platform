@@ -16,14 +16,14 @@ func attestationFixture(t *testing.T) (BuildExecutionPlan, ArtifactSet, string) 
 			Kind: "source", ID: "artifact", Locator: "source://artifact", Digest: digestA,
 		}},
 		Builder: plugin.BuilderIdentity{
-			ID: core.MustCanonicalID("tei.builder.attestation_reference"),
-			Version: "1.0.0",
+			ID:              core.MustCanonicalID("tei.builder.attestation_reference"),
+			Version:         "1.0.0",
 			ContractVersion: "tei.reference.build/v1",
-			ArtifactDigest: digestB,
+			ArtifactDigest:  digestB,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "attestation-reference", Entrypoint: "artifact"},
+		Recipe:         plugin.BuildRecipe{Kind: "attestation-reference", Entrypoint: "artifact"},
 		OutputContract: "artifact-set",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
 	if err != nil {
@@ -132,11 +132,11 @@ func TestTrustRevocationChangesDecisionNotImmutableAttestation(t *testing.T) {
 	}
 
 	policy := AttestationTrustPolicy{
-		FormatVersion: attestationTrustPolicyFormatVersion,
-		Issuer: "tei.reference.issuer",
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           "tei.reference.issuer",
 		SignatureProfile: referenceFakeSignatureProfile,
-		Predicates: []string{"tei.reference.build-result/v1"},
-		Revision: "policy-1",
+		Predicates:       []string{"tei.reference.build-result/v1"},
+		Revision:         "policy-1",
 	}
 	verification, err := verifyBuildAttestation(attestation, plan, set)
 	if err != nil {
@@ -175,11 +175,11 @@ func TestWrongIssuerOrPredicateDoesNotBecomeTrusted(t *testing.T) {
 	plan, set, resultFingerprint := attestationFixture(t)
 	attestation := signedSetAttestation(t, plan, set, resultFingerprint)
 	policy := AttestationTrustPolicy{
-		FormatVersion: attestationTrustPolicyFormatVersion,
-		Issuer: "tei.reference.other_issuer",
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           "tei.reference.other_issuer",
 		SignatureProfile: referenceFakeSignatureProfile,
-		Predicates: []string{"tei.reference.build-result/v1"},
-		Revision: "policy-1",
+		Predicates:       []string{"tei.reference.build-result/v1"},
+		Revision:         "policy-1",
 	}
 	verification, err := verifyBuildAttestation(attestation, plan, set)
 	if err != nil {
@@ -218,11 +218,11 @@ func TestFakeSignatureProfileProvidesNoCryptoAuthorityShortcut(t *testing.T) {
 	// deliberately says nothing about current trust. An explicit policy is
 	// still required.
 	policy := AttestationTrustPolicy{
-		FormatVersion: attestationTrustPolicyFormatVersion,
-		Issuer: "tei.reference.untrusted",
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           "tei.reference.untrusted",
 		SignatureProfile: referenceFakeSignatureProfile,
-		Predicates: []string{attestation.Predicate},
-		Revision: "policy-1",
+		Predicates:       []string{attestation.Predicate},
+		Revision:         "policy-1",
 	}
 	verification, err := verifyBuildAttestation(attestation, plan, set)
 	if err != nil {
@@ -237,7 +237,6 @@ func TestFakeSignatureProfileProvidesNoCryptoAuthorityShortcut(t *testing.T) {
 	}
 }
 
-
 func TestTrustEvaluationRejectsMismatchedVerificationEvidence(t *testing.T) {
 	plan, set, resultFingerprint := attestationFixture(t)
 	attestation := signedSetAttestation(t, plan, set, resultFingerprint)
@@ -246,11 +245,11 @@ func TestTrustEvaluationRejectsMismatchedVerificationEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	policy := AttestationTrustPolicy{
-		FormatVersion: attestationTrustPolicyFormatVersion,
-		Issuer: attestation.Issuer,
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           attestation.Issuer,
 		SignatureProfile: attestation.SignatureProfile,
-		Predicates: []string{attestation.Predicate},
-		Revision: "policy-1",
+		Predicates:       []string{attestation.Predicate},
+		Revision:         "policy-1",
 	}
 
 	tampered := verification
@@ -271,7 +270,6 @@ func TestTrustEvaluationRejectsMismatchedVerificationEvidence(t *testing.T) {
 		t.Fatal("trust evaluation accepted verification Evidence for a different issuer")
 	}
 }
-
 
 func TestTrustEvaluationCanonicalizesVerificationFingerprintHexCase(t *testing.T) {
 	plan, set, resultFingerprint := attestationFixture(t)

@@ -112,13 +112,13 @@ func TestE15ActualGoImpactToE12ReadOnlyReview(t *testing.T) {
 	// external JSON; no generic JS fallback is introduced.
 	goCarrier := map[string]any{
 		"projection": map[string]any{
-			"graph": projection.Graph,
-			"rules": append([]modelref.Rule{}, projection.Rules...),
-			"unresolved": append([]string{}, projection.Unresolved...),
+			"graph":           projection.Graph,
+			"rules":           append([]modelref.Rule{}, projection.Rules...),
+			"unresolved":      append([]string{}, projection.Unresolved...),
 			"authorityLimits": append([]string{}, projection.AuthorityLimits...),
 		},
 		"diagnostics": append([]modelref.Diagnostic{}, diagnostics...),
-		"affected": append([]modelref.Affected{}, affected...),
+		"affected":    append([]modelref.Affected{}, affected...),
 	}
 	// Both E5 and modelref originate from one loaded.World in this Go
 	// invocation, but parser/index source bytes and durable repository revision

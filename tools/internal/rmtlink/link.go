@@ -29,19 +29,19 @@ type SemanticTarget struct {
 }
 
 type Link struct {
-	Schema                     string `json:"schema"`
-	Status                     string `json:"status"`
-	MeaningStatus              string `json:"meaningStatus"`
-	SourceArtifactDigest       string `json:"sourceArtifactDigest"`
-	SourceToken                string `json:"sourceToken"`
-	SourceEvidenceFingerprint  string `json:"sourceEvidenceFingerprint"`
-	MappingContractFingerprint string `json:"mappingContractFingerprint"`
-	CandidateFingerprint       string `json:"candidateFingerprint"`
-	BaseModelRevision          string `json:"baseModelRevision"`
-	ReviewFingerprint          string `json:"reviewFingerprint"`
+	Schema                     string         `json:"schema"`
+	Status                     string         `json:"status"`
+	MeaningStatus              string         `json:"meaningStatus"`
+	SourceArtifactDigest       string         `json:"sourceArtifactDigest"`
+	SourceToken                string         `json:"sourceToken"`
+	SourceEvidenceFingerprint  string         `json:"sourceEvidenceFingerprint"`
+	MappingContractFingerprint string         `json:"mappingContractFingerprint"`
+	CandidateFingerprint       string         `json:"candidateFingerprint"`
+	BaseModelRevision          string         `json:"baseModelRevision"`
+	ReviewFingerprint          string         `json:"reviewFingerprint"`
 	Target                     SemanticTarget `json:"target"`
-	AuthorityLimits            []string `json:"authorityLimits"`
-	LinkFingerprint            string `json:"linkFingerprint"`
+	AuthorityLimits            []string       `json:"authorityLimits"`
+	LinkFingerprint            string         `json:"linkFingerprint"`
 }
 
 type Context struct {
@@ -83,18 +83,18 @@ func Prepare(ctx Context) (Link, error) {
 	// A mapped source construct can still be semantically unresolved. No
 	// classification or extension grants equivalence or Acceptance.
 	value := Link{
-		Schema: Schema,
-		Status: StatusProposed,
-		MeaningStatus: MeaningUnresolved,
-		SourceArtifactDigest: source.SourceArtifactDigest,
-		SourceToken: source.SourceToken,
-		SourceEvidenceFingerprint: source.EvidenceFingerprint,
+		Schema:                     Schema,
+		Status:                     StatusProposed,
+		MeaningStatus:              MeaningUnresolved,
+		SourceArtifactDigest:       source.SourceArtifactDigest,
+		SourceToken:                source.SourceToken,
+		SourceEvidenceFingerprint:  source.EvidenceFingerprint,
 		MappingContractFingerprint: source.MappingContractFingerprint,
-		CandidateFingerprint: ctx.CandidateFingerprint,
-		BaseModelRevision: ctx.BaseModelRevision,
-		ReviewFingerprint: ctx.ReviewFingerprint,
-		Target: ctx.Target,
-		AuthorityLimits: append([]string(nil), limits...),
+		CandidateFingerprint:       ctx.CandidateFingerprint,
+		BaseModelRevision:          ctx.BaseModelRevision,
+		ReviewFingerprint:          ctx.ReviewFingerprint,
+		Target:                     ctx.Target,
+		AuthorityLimits:            append([]string(nil), limits...),
 	}
 	value.LinkFingerprint = fingerprint(value)
 	return value, nil

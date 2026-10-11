@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	Schema = "tei.lowering-witness/v0"
-	CandidateSchema = "tei.lowering-candidate/v0"
+	Schema           = "tei.lowering-witness/v0"
+	CandidateSchema  = "tei.lowering-candidate/v0"
 	AcceptanceSchema = "tei.lowering-acceptance-link/v0"
-	NeutralSchema = "tei.lowering-neutral-plan/v0"
+	NeutralSchema    = "tei.lowering-neutral-plan/v0"
 )
 
 // Ref is an exact, externally defined identity. A digest does not establish Authority.
@@ -35,9 +35,9 @@ type Subject struct {
 // DataNeed describes a logical database Contract requirement, not a bound instance
 // or a claim that a physical schema is currently compatible.
 type DataNeed struct {
-	Datasource string `json:"datasource"` // application-local alias, never a physical instance
-	Database string `json:"database"`
-	Contract string `json:"contract"`
+	Datasource        string `json:"datasource"` // application-local alias, never a physical instance
+	Database          string `json:"database"`
+	Contract          string `json:"contract"`
 	VersionConstraint string `json:"versionConstraint"`
 }
 
@@ -51,9 +51,9 @@ func (n DataNeed) valid() bool {
 }
 
 type Requirement struct {
-	Contract Ref `json:"contract"`
-	Scope string `json:"scope"`
-	Effect string `json:"effect"`
+	Contract Ref    `json:"contract"`
+	Scope    string `json:"scope"`
+	Effect   string `json:"effect"`
 	// Exact requirement belongs to Accepted meaning; current instance binding is Host-owned.
 	DataContracts []DataNeed `json:"dataContracts,omitempty"`
 	// This identity is a mandatory part of the accepted contract, not an optional sidecar.
@@ -68,8 +68,8 @@ type Wiring struct {
 }
 
 type Candidate struct {
-	Schema       string        `json:"schema"`
-	Source       Ref           `json:"source"`
+	Schema string `json:"schema"`
+	Source Ref    `json:"source"`
 	// Producer-declared source dependency witness; completeness belongs to Acceptance.
 	SourceInputs []Ref         `json:"sourceInputs"`
 	Language     Ref           `json:"language"`
@@ -103,26 +103,26 @@ type Target struct {
 }
 
 type Step struct {
-	Contract       Ref    `json:"contract"`
-	Provider       Ref    `json:"provider"`
-	DataContracts []DataNeed `json:"dataContracts,omitempty"`
-	Scope          string `json:"scope"`
-	Effect         string `json:"effect"`
-	Conformance    Ref    `json:"conformance"`
-	ResolutionLock Ref    `json:"capabilityResolutionLock"`
-	Artifact       Ref    `json:"buildArtifact"`
-	RequiredSlots  []Ref  `json:"requiredContextSlots"`
-	RuntimeDeps    []Ref  `json:"runtimeDependencies"`
-	Target         string `json:"target"`
+	Contract       Ref        `json:"contract"`
+	Provider       Ref        `json:"provider"`
+	DataContracts  []DataNeed `json:"dataContracts,omitempty"`
+	Scope          string     `json:"scope"`
+	Effect         string     `json:"effect"`
+	Conformance    Ref        `json:"conformance"`
+	ResolutionLock Ref        `json:"capabilityResolutionLock"`
+	Artifact       Ref        `json:"buildArtifact"`
+	RequiredSlots  []Ref      `json:"requiredContextSlots"`
+	RuntimeDeps    []Ref      `json:"runtimeDependencies"`
+	Target         string     `json:"target"`
 }
 
 // Origin is trace-only: it never substitutes for the accepted semantic snapshot.
 type Origin struct {
-	Source Ref `json:"source"`
-	SourceInputs []Ref `json:"sourceInputs"`
-	Language Ref `json:"language"`
-	CandidateDigest string `json:"candidateDigest"`
-	AcceptanceReceipt Ref `json:"acceptanceReceipt"`
+	Source            Ref    `json:"source"`
+	SourceInputs      []Ref  `json:"sourceInputs"`
+	Language          Ref    `json:"language"`
+	CandidateDigest   string `json:"candidateDigest"`
+	AcceptanceReceipt Ref    `json:"acceptanceReceipt"`
 }
 
 // NeutralPlan records the minimum executable intent without Target, Provider or
@@ -130,14 +130,14 @@ type Origin struct {
 type NeutralPlan struct {
 	Schema   string        `json:"schema"`
 	Snapshot Ref           `json:"snapshot"`
-	Origin Origin          `json:"origin"`
+	Origin   Origin        `json:"origin"`
 	Intents  []Requirement `json:"intents"`
 }
 
 type Plan struct {
 	Schema   string `json:"schema"`
 	Snapshot Ref    `json:"snapshot"`
-	Origin Origin   `json:"origin"`
+	Origin   Origin `json:"origin"`
 	Steps    []Step `json:"steps"`
 }
 
@@ -156,7 +156,7 @@ type Trust interface {
 	// The callback must not infer equivalence from application and DB version numbers.
 	DataCompatible(step Step) bool
 	ContextBound(step Step) bool // trusted Host validates current, declared slot bindings
-	Authorized(step Step) bool // call again at each invocation; not a cached grant
+	Authorized(step Step) bool   // call again at each invocation; not a cached grant
 }
 
 type Failure struct {
@@ -164,7 +164,7 @@ type Failure struct {
 }
 
 func (f Failure) Error() string { return f.Code }
-func reject(code string) error { return Failure{Code: code} }
+func reject(code string) error  { return Failure{Code: code} }
 
 // Digest is a deterministic serialization of struct-based evidence, not a signature.
 // Its callers must not put secrets, current sessions, or access refs into these values.
@@ -203,8 +203,12 @@ func equalSlots(a, b []Ref) bool {
 func normalizedRefs(refs []Ref) ([]Ref, error) {
 	out := append([]Ref(nil), refs...)
 	sort.Slice(out, func(i, j int) bool {
-		if out[i].ID != out[j].ID { return out[i].ID < out[j].ID }
-		if out[i].Version != out[j].Version { return out[i].Version < out[j].Version }
+		if out[i].ID != out[j].ID {
+			return out[i].ID < out[j].ID
+		}
+		if out[i].Version != out[j].Version {
+			return out[i].Version < out[j].Version
+		}
 		return out[i].Fingerprint < out[j].Fingerprint
 	})
 	for i, dep := range out {
@@ -387,7 +391,9 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 			return Plan{}, reject("unsupported-target")
 		}
 		runtimeDeps, err := normalizedRefs(p.RuntimeDeps)
-		if err != nil { return Plan{}, err }
+		if err != nil {
+			return Plan{}, err
+		}
 		if _, err := normalizedRefs(p.BuildOnlyDeps); err != nil {
 			return Plan{}, err
 		}
@@ -399,7 +405,7 @@ func Lower(c Candidate, a Acceptance, wiring []Wiring, providers []Provider, tar
 		steps = append(steps, Step{
 			Contract: p.Contract, Provider: p.Identity, Scope: p.Scope, Effect: r.Effect,
 			DataContracts: append([]DataNeed(nil), r.DataContracts...),
-			Conformance: p.Conformance, ResolutionLock: p.ResolutionLock,
+			Conformance:   p.Conformance, ResolutionLock: p.ResolutionLock,
 			Artifact: p.Artifact, RequiredSlots: append([]Ref(nil), r.RequiredSlots...),
 			RuntimeDeps: runtimeDeps, Target: target.ID,
 		})
@@ -524,20 +530,20 @@ type CacheKeys struct {
 // the existing Build Artifact owner; it stays out of runtime Plan/Step.
 func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref, buildOnly []Ref) CacheKeys {
 	interpret := Digest(struct {
-		Source Ref
+		Source       Ref
 		SourceInputs []Ref
-		Language Ref
+		Language     Ref
 	}{c.Source, c.SourceInputs, c.Language})
 	accept := Digest(struct {
-		Candidate string
+		Candidate  string
 		Acceptance Acceptance
 	}{Digest(c), a})
 	// Artifacts and Target are part of realization, not semantic composition.
 	type resolvedStep struct {
 		Contract, Provider, Conformance, ResolutionLock Ref
-		Scope, Effect string
-		DataContracts []DataNeed
-		RequiredSlots, RuntimeDeps []Ref
+		Scope, Effect                                   string
+		DataContracts                                   []DataNeed
+		RequiredSlots, RuntimeDeps                      []Ref
 	}
 	resolved := make([]resolvedStep, 0, len(plan.Steps))
 	for _, s := range plan.Steps {
@@ -549,13 +555,13 @@ func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref, buil
 	}
 	resolve := Digest(struct {
 		Accepted string
-		Steps []resolvedStep
+		Steps    []resolvedStep
 	}{accept, resolved})
 	effects := append([]string(nil), target.Effects...)
 	sort.Strings(effects) // Target effects are a capability set, not an ordered sequence.
 	targetKey := Digest(struct {
-		Resolved string
-		Target Target
+		Resolved    string
+		Target      Target
 		Realization []Step
 	}{resolve, Target{ID: target.ID, Effects: effects}, plan.Steps})
 	buildInputs := append([]Ref(nil), buildOnly...)
@@ -571,8 +577,8 @@ func Keys(c Candidate, a Acceptance, plan Plan, target Target, builder Ref, buil
 	return CacheKeys{
 		Interpret: interpret, Accept: accept, Resolve: resolve,
 		Target: targetKey, Build: Digest(struct {
-			Target string
-			Builder Ref
+			Target                string
+			Builder               Ref
 			BuildOnlyDependencies []Ref
 		}{targetKey, builder, buildInputs}),
 	}

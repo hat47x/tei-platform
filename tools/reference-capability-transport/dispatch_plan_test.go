@@ -193,7 +193,6 @@ func pruntimeProcessCommandForPlanTest() pruntime.ProcessCommand {
 	return pruntime.ProcessCommand{Executable: "must-not-run"}
 }
 
-
 func TestDispatchPlanReusesIdentityWithoutCollapsingInvocationPayloads(t *testing.T) {
 	firstDispatch := genericDispatch([]byte("first-payload"))
 	plan := transportDispatchPlanForTest(t, firstDispatch)

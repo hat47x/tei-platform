@@ -23,8 +23,8 @@ func echoHTTPTransportImplementation(
 		Provider:                dispatch.Provider,
 		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
 		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
-		PayloadCodec:             dispatch.PayloadCodec,
-		Payload:                  append([]byte(nil), dispatch.Payload...),
+		PayloadCodec:            dispatch.PayloadCodec,
+		Payload:                 append([]byte(nil), dispatch.Payload...),
 	}, nil
 }
 
@@ -130,10 +130,10 @@ func TestHTTPTransportRejectsImplementationIdentityDriftBeforeResponse(t *testin
 			_ context.Context,
 			dispatch GenericDispatch,
 		) (GenericTransportResult, error) {
-		result, err := echoHTTPTransportImplementation(context.Background(), dispatch)
-		if err != nil {
-			return GenericTransportResult{}, err
-		}
+			result, err := echoHTTPTransportImplementation(context.Background(), dispatch)
+			if err != nil {
+				return GenericTransportResult{}, err
+			}
 			result.Provider.ImplementationID = "tampered.implementation"
 			return result, nil
 		},

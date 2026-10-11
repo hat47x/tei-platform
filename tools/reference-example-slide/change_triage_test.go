@@ -19,7 +19,9 @@ func TestChangeTriageRoutesCorrectionWithoutPatch(t *testing.T) {
 		t.Run(tc.disposition, func(t *testing.T) {
 			candidate.Answers[0].Disposition = tc.disposition
 			triage, err := TriageAnsweredReview(in, candidate)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			if len(triage.Items) != 1 {
 				t.Fatalf("incorrect triage: %+v", triage)
 			}
@@ -39,7 +41,9 @@ func TestExistingRelationKeyCannotBeReplacedByAddRelation(t *testing.T) {
 	in, candidate := reviewAnswerFixture(t)
 	in.Catalog.Relations[0].Keys = nil
 	review, err := Review(in)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(review.Issues) != 1 || review.Issues[0].Reason != "relation-keys-not-declared" {
 		t.Fatalf("negative control not keyless: %+v", review.Issues)
 	}
@@ -47,7 +51,9 @@ func TestExistingRelationKeyCannotBeReplacedByAddRelation(t *testing.T) {
 	candidate.Answers[0].Question.ID = review.Issues[0].ID
 	candidate.Answers[0].Disposition = "propose-model-change"
 	triage, err := TriageAnsweredReview(in, candidate)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	item := triage.Items[0]
 	if item.CandidateReady ||
 		item.Reason != "existing-relation-key-edit-not-supported-by-current-typed-operations" {
@@ -62,7 +68,9 @@ func TestContradictoryExampleStillRequiresCauseDetermination(t *testing.T) {
 	duplicate.ID = "another-parent"
 	in.Example.Base = append(in.Example.Base, duplicate)
 	review, err := Review(in)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(review.Issues) != 1 || review.Issues[0].Reason != "multiple-targets-for-one" {
 		t.Fatalf("negative control not a contradiction: %+v", review.Issues)
 	}
@@ -70,7 +78,9 @@ func TestContradictoryExampleStillRequiresCauseDetermination(t *testing.T) {
 	candidate.Answers[0].Question.ID = review.Issues[0].ID
 	candidate.Answers[0].Disposition = "propose-model-change"
 	triage, err := TriageAnsweredReview(in, candidate)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	item := triage.Items[0]
 	if item.CandidateReady || item.Reason != "model-versus-example-cause-not-determined" {
 		t.Fatalf("model and example causes were conflated: %+v", item)

@@ -7,8 +7,8 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
-	"tei/internal/sourceindex"
 	"tei/internal/semantic"
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -618,10 +618,10 @@ func TestValidationScopeReviewEvidenceRefreshDropsStaleSources(t *testing.T) {
 	known := sourceindex.Index{
 		Artifacts: []sourceindex.Artifact{{Path: applicationPath, Fingerprint: "sha256:known"}},
 		References: []sourceindex.Reference{{
-			Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
-			Role: sourceindex.RoleDefinition,
+			Subject:      sourceindex.Subject{Kind: "application", ID: "order_entry"},
+			Role:         sourceindex.RoleDefinition,
 			ArtifactPath: applicationPath,
-			Range: sourceindex.Range{Start: sourceindex.Position{Line: 3}},
+			Range:        sourceindex.Range{Start: sourceindex.Position{Line: 3}},
 		}},
 	}
 	rows := []validationScopeReviewRow{{Status: "review-needed", Application: "order_entry"}}
@@ -704,7 +704,7 @@ func TestValidationScopeReviewMultipleReasonsForSameReference(t *testing.T) {
 
 func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 	workspacePath, fixturePath, _ := ref01Paths()
-	fixture, err := readFixture(fixturePath)
+	loadedFixture, err := readFixture(fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -729,8 +729,8 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 	}
 
 	t.Run("empty step ID", func(t *testing.T) {
-		changed := fixture
-		changed.Steps = append([]step(nil), fixture.Steps...)
+		changed := loadedFixture
+		changed.Steps = append([]step(nil), loadedFixture.Steps...)
 		for i := range changed.Steps {
 			if changed.Steps[i].ID == "BP-05" {
 				changed.Steps[i].ID = "  "
@@ -740,8 +740,8 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 	})
 
 	t.Run("duplicate with a non-validation step", func(t *testing.T) {
-		changed := fixture
-		changed.Steps = append([]step(nil), fixture.Steps...)
+		changed := loadedFixture
+		changed.Steps = append([]step(nil), loadedFixture.Steps...)
 		for i := range changed.Steps {
 			if changed.Steps[i].ID == "BP-04" {
 				changed.Steps[i].ID = "BP-05"
@@ -751,8 +751,8 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 	})
 
 	t.Run("two validation steps with the same ID", func(t *testing.T) {
-		changed := fixture
-		changed.Steps = append([]step(nil), fixture.Steps...)
+		changed := loadedFixture
+		changed.Steps = append([]step(nil), loadedFixture.Steps...)
 		for _, candidate := range changed.Steps {
 			if candidate.ID == "BP-05" {
 				changed.Steps = append(changed.Steps, candidate)
@@ -763,8 +763,8 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 	})
 
 	t.Run("ambiguous step does not suppress a distinct step", func(t *testing.T) {
-		changed := fixture
-		changed.Steps = append([]step(nil), fixture.Steps...)
+		changed := loadedFixture
+		changed.Steps = append([]step(nil), loadedFixture.Steps...)
 		for i := range changed.Steps {
 			if changed.Steps[i].ID == "BP-04" {
 				changed.Steps[i].ID = "BP-05"
@@ -786,8 +786,8 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 	})
 
 	t.Run("distinct validation steps stay comparable", func(t *testing.T) {
-		changed := fixture
-		changed.Steps = append([]step(nil), fixture.Steps...)
+		changed := loadedFixture
+		changed.Steps = append([]step(nil), loadedFixture.Steps...)
 		for _, candidate := range changed.Steps {
 			if candidate.ID == "BP-05" {
 				candidate.ID = "BP-10"
@@ -810,7 +810,7 @@ func TestValidationScopeReviewRequiresUniqueStepIdentity(t *testing.T) {
 
 func TestValidationScopeReviewSharedValidationAcrossStepsIsNotDuplicate(t *testing.T) {
 	workspacePath, fixturePath, _ := ref01Paths()
-	fixture, err := readFixture(fixturePath)
+	loadedFixture, err := readFixture(fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -820,7 +820,7 @@ func TestValidationScopeReviewSharedValidationAcrossStepsIsNotDuplicate(t *testi
 	}
 	var original step
 	found := false
-	for _, candidate := range fixture.Steps {
+	for _, candidate := range loadedFixture.Steps {
 		if candidate.ID == "BP-05" {
 			original = candidate
 			found = true
@@ -832,8 +832,8 @@ func TestValidationScopeReviewSharedValidationAcrossStepsIsNotDuplicate(t *testi
 	}
 	second := original
 	second.ID = "BP-05-SECOND"
-	fixture.Steps = append(fixture.Steps, second)
-	rows := compareValidationScopes(loaded.World, fixture)
+	loadedFixture.Steps = append(loadedFixture.Steps, second)
+	rows := compareValidationScopes(loaded.World, loadedFixture)
 	if len(rows) != 2 {
 		t.Fatalf("Validation比較対象が2ステップになりません: %+v", rows)
 	}
@@ -846,7 +846,7 @@ func TestValidationScopeReviewSharedValidationAcrossStepsIsNotDuplicate(t *testi
 
 func TestValidationScopeReviewEmptyValidationIDIsUnresolved(t *testing.T) {
 	workspacePath, fixturePath, _ := ref01Paths()
-	fixture, err := readFixture(fixturePath)
+	loadedFixture, err := readFixture(fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -854,12 +854,12 @@ func TestValidationScopeReviewEmptyValidationIDIsUnresolved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := range fixture.Steps {
-		if fixture.Steps[i].ID == "BP-05" {
-			fixture.Steps[i].Validations = append(fixture.Steps[i].Validations, "")
+	for i := range loadedFixture.Steps {
+		if loadedFixture.Steps[i].ID == "BP-05" {
+			loadedFixture.Steps[i].Validations = append(loadedFixture.Steps[i].Validations, "")
 		}
 	}
-	rows := compareValidationScopes(loaded.World, fixture)
+	rows := compareValidationScopes(loaded.World, loadedFixture)
 	if len(rows) != 1 || rows[0].Status != "unresolved-reference" {
 		t.Fatalf("空のValidation参照を比較可能と判定しました: %+v", rows)
 	}
@@ -878,24 +878,24 @@ func TestValidationScopeReviewSourceAttachmentSkipsUnresolvedRows(t *testing.T) 
 		},
 		References: []sourceindex.Reference{
 			{
-				Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
-				Role: sourceindex.RoleDefinition,
+				Subject:      sourceindex.Subject{Kind: "application", ID: "order_entry"},
+				Role:         sourceindex.RoleDefinition,
 				ArtifactPath: "applications/order-entry/application.tei",
-				Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+				Range:        sourceindex.Range{Start: sourceindex.Position{Line: 1}},
 			},
 			{
-				Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
-				Role: sourceindex.RoleDefinition,
+				Subject:      sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+				Role:         sourceindex.RoleDefinition,
 				ArtifactPath: "semantic/sales/validation.tei",
-				Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+				Range:        sourceindex.Range{Start: sourceindex.Position{Line: 10}},
 			},
 		},
 	}
 	rows := []validationScopeReviewRow{
 		{
 			Step: "BP-05", Application: "order_entry", Status: "unresolved-reference",
-			ReferenceIssues: []validationReferenceIssue{{Side: "procedure", ID: "missing", Reason: "missing-definition"}},
-			SourceEvidence: []validationReviewSource{{Kind: "application", ID: "stale"}},
+			ReferenceIssues:  []validationReferenceIssue{{Side: "procedure", ID: "missing", Reason: "missing-definition"}},
+			SourceEvidence:   []validationReviewSource{{Kind: "application", ID: "stale"}},
 			UnresolvedSource: []string{"stale"},
 		},
 		{
@@ -923,16 +923,16 @@ func TestValidationScopeReviewMissingSourceDoesNotSuppressOtherEvidence(t *testi
 		},
 		References: []sourceindex.Reference{
 			{
-				Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
-				Role: sourceindex.RoleDefinition,
+				Subject:      sourceindex.Subject{Kind: "application", ID: "order_entry"},
+				Role:         sourceindex.RoleDefinition,
 				ArtifactPath: "applications/order-entry/application.tei",
-				Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+				Range:        sourceindex.Range{Start: sourceindex.Position{Line: 1}},
 			},
 			{
-				Subject: sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
-				Role: sourceindex.RoleDefinition,
+				Subject:      sourceindex.Subject{Kind: "semantic-validation", ID: validationID},
+				Role:         sourceindex.RoleDefinition,
 				ArtifactPath: "semantic/sales/missing.tei",
-				Range: sourceindex.Range{Start: sourceindex.Position{Line: 10}},
+				Range:        sourceindex.Range{Start: sourceindex.Position{Line: 10}},
 			},
 		},
 	}
@@ -957,10 +957,10 @@ func TestValidationScopeReviewEmptyArtifactLocatorIsUnresolved(t *testing.T) {
 	index := sourceindex.Index{
 		Artifacts: []sourceindex.Artifact{{Path: "", Fingerprint: "sha256:nonempty"}},
 		References: []sourceindex.Reference{{
-			Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
-			Role: sourceindex.RoleDefinition,
+			Subject:      sourceindex.Subject{Kind: "application", ID: "order_entry"},
+			Role:         sourceindex.RoleDefinition,
 			ArtifactPath: "",
-			Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+			Range:        sourceindex.Range{Start: sourceindex.Position{Line: 1}},
 		}},
 	}
 	rows := []validationScopeReviewRow{{Step: "BP-05", Application: "order_entry", Status: "no-set-difference"}}
@@ -985,10 +985,10 @@ func TestValidationScopeReviewWhitespaceSourceIsUnresolved(t *testing.T) {
 			index := sourceindex.Index{
 				Artifacts: []sourceindex.Artifact{{Path: tc.path, Fingerprint: tc.fingerprint}},
 				References: []sourceindex.Reference{{
-					Subject: sourceindex.Subject{Kind: "application", ID: "order_entry"},
-					Role: sourceindex.RoleDefinition,
+					Subject:      sourceindex.Subject{Kind: "application", ID: "order_entry"},
+					Role:         sourceindex.RoleDefinition,
 					ArtifactPath: tc.path,
-					Range: sourceindex.Range{Start: sourceindex.Position{Line: 1}},
+					Range:        sourceindex.Range{Start: sourceindex.Position{Line: 1}},
 				}},
 			}
 			rows := []validationScopeReviewRow{{Step: "BP-05", Application: "order_entry", Status: "no-set-difference"}}

@@ -9,10 +9,10 @@ import (
 // ChangeTriage distinguishes a proposed correction to the Example from a
 // request to edit TEI's authoritative semantic model. Neither creates a Patch.
 type ChangeTriage struct {
-	Schema            string            `json:"schema"`
-	CaseID            string            `json:"caseId"`
-	ModelRevision     string            `json:"modelRevision"`
-	AnswerFingerprint string            `json:"answerFingerprint"`
+	Schema            string             `json:"schema"`
+	CaseID            string             `json:"caseId"`
+	ModelRevision     string             `json:"modelRevision"`
+	AnswerFingerprint string             `json:"answerFingerprint"`
 	Items             []ChangeTriageItem `json:"items"`
 }
 

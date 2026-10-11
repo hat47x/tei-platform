@@ -465,7 +465,6 @@ func TestInvocationRegistryRejectsTamperedShapeAuthorityEvidence(t *testing.T) {
 	}
 }
 
-
 func TestInvocationRegistryRejectsAcceptedShapeEvidenceWithoutPublisherTrust(t *testing.T) {
 	contract := sourceAdapterContract()
 	provider := sourceAdapterProvider(
@@ -577,13 +576,13 @@ func TestShapePublisherTrustPolicyRefreshDoesNotChangeShapeOrCapabilityIdentity(
 		t.Fatal("publisher trust policy refresh changed Shape identity")
 	}
 	if oldExecution.RequestShapeAuthorityEvidenceFingerprint !=
-			newExecution.RequestShapeAuthorityEvidenceFingerprint ||
+		newExecution.RequestShapeAuthorityEvidenceFingerprint ||
 		oldExecution.ResultShapeAuthorityEvidenceFingerprint !=
 			newExecution.ResultShapeAuthorityEvidenceFingerprint {
 		t.Fatal("publisher trust policy refresh changed Authority Evidence identity")
 	}
 	if oldExecution.RequestShapeTrustQualificationFingerprint ==
-			newExecution.RequestShapeTrustQualificationFingerprint ||
+		newExecution.RequestShapeTrustQualificationFingerprint ||
 		oldExecution.ResultShapeTrustQualificationFingerprint ==
 			newExecution.ResultShapeTrustQualificationFingerprint {
 		t.Fatal("publisher trust policy refresh was not observable")

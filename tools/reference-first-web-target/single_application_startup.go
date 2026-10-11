@@ -68,7 +68,7 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 		return err
 	}
 	read, command, options, err := factory(loaded.World, singleApplicationConfig{
-		LegacyUsers: *legacyUsers,
+		LegacyUsers:         *legacyUsers,
 		LegacyAuthorization: *legacyAuthorization,
 	})
 	if err != nil {

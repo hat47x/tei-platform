@@ -21,50 +21,6 @@ import (
 	"tei/internal/semantic/validationeval"
 )
 
-type commandScenarioInput struct {
-	LoginID    string
-	Credential string
-	From       string
-	RowIndex   int
-}
-
-type commandScenarioResult struct {
-	ScenarioID          string                       `json:"scenarioId"`
-	ApplicationID       string                       `json:"applicationId"`
-	Stage               string                       `json:"stage"`
-	Authentication      *businessResultProjection    `json:"authentication,omitempty"`
-	Read                *readScenarioResult          `json:"read,omitempty"`
-	Validations         []validationResultProjection `json:"validations,omitempty"`
-	Authorization       *businessResultProjection    `json:"authorization,omitempty"`
-	EffectAuthorization *businessResultProjection    `json:"effectAuthorization,omitempty"`
-	Command             *businessResultProjection    `json:"command,omitempty"`
-	Observation         *observationProjection       `json:"observation,omitempty"`
-	AuthorityLimits     []string                     `json:"authorityLimits"`
-	Unresolved          []string                     `json:"unresolved"`
-}
-
-type validationResultProjection struct {
-	Validation string `json:"validation"`
-	Result     string `json:"result"`
-}
-
-type businessResultProjection struct {
-	Capability string         `json:"capability"`
-	Mode       string         `json:"mode"`
-	Outcome    string         `json:"outcome,omitempty"`
-	Payload    map[string]any `json:"payload,omitempty"`
-}
-
-type observationProjection struct {
-	ReadIdentity string `json:"readIdentity"`
-	Nature       string `json:"nature"`
-	Result       any    `json:"result"`
-}
-
-type commandScenarioRunner interface {
-	RunCommand(context.Context, commandScenarioInput) (commandScenarioResult, error)
-}
-
 type referenceCommandScenarioRunner struct {
 	resolver      driver.Resolver
 	read          readScenarioRunner

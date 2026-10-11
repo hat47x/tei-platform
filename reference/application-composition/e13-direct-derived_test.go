@@ -134,8 +134,8 @@ func TestE13SUIStage0RemainsNonApplication(t *testing.T) {
 func TestE13UnresolvedReportDoesNotExposeDerived(t *testing.T) {
 	world, indexed := e5PatternTargetsFixture()
 	report := e5Report{
-		Application: "order_entry",
-		Status: "unresolved",
+		Application:   "order_entry",
+		Status:        "unresolved",
 		Qualification: "declaration-and-source-index-only",
 	}
 	envelope := e13PairedEvidence(world, report, indexed, true)

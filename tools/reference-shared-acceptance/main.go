@@ -126,7 +126,6 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-
 	// Input-preserving commands must not overwrite their own proposal/query.
 	// This is distinct from accept (checked above): even a read-only review
 	// can destroy its source document if -out points back to -candidate.
@@ -147,7 +146,6 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 	}
-
 
 	// Auxiliary evidence/config files are inputs, never targets for an
 	// emitted proposal. Unlike the primary -candidate, which attach commands
@@ -527,7 +525,6 @@ func isReferenceBaseline(workspacePath string) bool {
 	return strings.HasSuffix(referencePathText(resolvedAbs), "/reference/workspace")
 }
 
-
 // isReferenceBaselineOutput protects against clobbering managed Reference
 // files through either output flag. The derived golden lives beside the
 // workspace, so it is included explicitly. This is a mistaken-write guard,
@@ -632,7 +629,6 @@ func outputDestinationsReferToSameFile(left, right string) (bool, error) {
 func referencePathText(path string) string {
 	return strings.ToLower(filepath.ToSlash(path))
 }
-
 
 // outputTouchesWorkspaceManagedSource prevents output flags from damaging
 // authoritative source and Decision/Confirmation records in *any* Workspace.

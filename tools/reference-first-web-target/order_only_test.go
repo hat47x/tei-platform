@@ -20,10 +20,10 @@ func TestOrderOnlyBinaryRetainsOrderRoutesWithoutRepairLookup(t *testing.T) {
 		t.Fatal(err)
 	}
 	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
-		HandoverBaselineID: testBaselineID,
+		HandoverBaselineID:         testBaselineID,
 		BaselineRepositoryRevision: testBaselineRevision,
-		TargetBuildRevision: testTargetRevision,
-		ApplicationID: core.MustCanonicalID("order_entry"),
+		TargetBuildRevision:        testTargetRevision,
+		ApplicationID:              core.MustCanonicalID("order_entry"),
 	})
 	if err != nil {
 		t.Fatal(err)

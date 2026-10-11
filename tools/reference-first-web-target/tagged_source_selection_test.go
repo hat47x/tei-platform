@@ -64,7 +64,7 @@ func TestFirstWebTargetApplicationBuildTagsSelectDisjointBusinessSources(t *test
 		"combined_scenario_routes.go", "combined_scenario_templates.go",
 	}
 	for _, tc := range []struct {
-		name, tags        string
+		name, tags       string
 		include, exclude []string
 	}{
 		{

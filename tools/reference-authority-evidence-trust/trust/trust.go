@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	GrantSchema           = "tei.reference.authority-trust-grant/v0"
-	QualificationSchema   = "tei.reference.authority-trust-qualification/v0"
-	Canonicalization      = "json-struct-field-order/v0"
+	GrantSchema         = "tei.reference.authority-trust-grant/v0"
+	QualificationSchema = "tei.reference.authority-trust-qualification/v0"
+	Canonicalization    = "json-struct-field-order/v0"
 )
 
 type Issuer struct {
@@ -54,10 +54,10 @@ func NewGrant(
 	active bool,
 ) (Grant, error) {
 	grant := Grant{
-		Schema:            GrantSchema,
-		Canonicalization:  Canonicalization,
-		AuthorityClass:    strings.TrimSpace(authorityClass),
-		Scope:             strings.TrimSpace(scope),
+		Schema:           GrantSchema,
+		Canonicalization: Canonicalization,
+		AuthorityClass:   strings.TrimSpace(authorityClass),
+		Scope:            strings.TrimSpace(scope),
 		Issuer: Issuer{
 			ID:      strings.TrimSpace(issuer.ID),
 			Version: strings.TrimSpace(issuer.Version),

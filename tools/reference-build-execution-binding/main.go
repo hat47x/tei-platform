@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	buildExecutionPlanFormatVersion        = 1
-	artifactSetFormatVersion                = 1
-	buildExecutionResultFormatVersion       = 1
-	pluginSubjectBindingFormatVersion       = 1
+	buildExecutionPlanFormatVersion          = 1
+	artifactSetFormatVersion                 = 1
+	buildExecutionResultFormatVersion        = 1
+	pluginSubjectBindingFormatVersion        = 1
 	runtimeEngineSubjectBindingFormatVersion = 1
 	builderSubjectBindingFormatVersion       = 1
 )
@@ -83,63 +83,63 @@ type ArtifactSetComparison struct {
 // PluginSubjectBinding connects a logical Plugin to a domain-neutral build
 // result. It grants no Acceptance or Runtime Authority.
 type PluginSubjectBinding struct {
-	FormatVersion               int             `json:"formatVersion"`
-	Plugin                      plugin.Identity `json:"plugin"`
-	PluginDefinitionFingerprint string          `json:"pluginDefinitionFingerprint"`
-	ExecutionPlanFingerprint     string          `json:"executionPlanFingerprint"`
-	ArtifactSetFingerprint       string          `json:"artifactSetFingerprint"`
-	BuildExecutionResultFingerprint string       `json:"buildExecutionResultFingerprint"`
-	OutputRoles                  []string        `json:"outputRoles"`
+	FormatVersion                   int             `json:"formatVersion"`
+	Plugin                          plugin.Identity `json:"plugin"`
+	PluginDefinitionFingerprint     string          `json:"pluginDefinitionFingerprint"`
+	ExecutionPlanFingerprint        string          `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint          string          `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string          `json:"buildExecutionResultFingerprint"`
+	OutputRoles                     []string        `json:"outputRoles"`
 }
 
 type RuntimeEngineSubjectBinding struct {
-	FormatVersion            int                            `json:"formatVersion"`
-	Engine                   pruntime.RuntimeEngineIdentity `json:"engine"`
-	ExecutionPlanFingerprint       string                         `json:"executionPlanFingerprint"`
-	ArtifactSetFingerprint         string                         `json:"artifactSetFingerprint"`
-	BuildExecutionResultFingerprint string                        `json:"buildExecutionResultFingerprint"`
-	OutputRole                     string                         `json:"outputRole"`
+	FormatVersion                   int                            `json:"formatVersion"`
+	Engine                          pruntime.RuntimeEngineIdentity `json:"engine"`
+	ExecutionPlanFingerprint        string                         `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint          string                         `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string                         `json:"buildExecutionResultFingerprint"`
+	OutputRole                      string                         `json:"outputRole"`
 }
 
 type BuilderSubjectBinding struct {
-	FormatVersion                  int                    `json:"formatVersion"`
-	Builder                        plugin.BuilderIdentity `json:"builder"`
-	ExecutionPlanFingerprint       string                 `json:"executionPlanFingerprint"`
-	ArtifactSetFingerprint         string                 `json:"artifactSetFingerprint"`
-	BuildExecutionResultFingerprint string                `json:"buildExecutionResultFingerprint"`
-	OutputRole                     string                 `json:"outputRole"`
+	FormatVersion                   int                    `json:"formatVersion"`
+	Builder                         plugin.BuilderIdentity `json:"builder"`
+	ExecutionPlanFingerprint        string                 `json:"executionPlanFingerprint"`
+	ArtifactSetFingerprint          string                 `json:"artifactSetFingerprint"`
+	BuildExecutionResultFingerprint string                 `json:"buildExecutionResultFingerprint"`
+	OutputRole                      string                 `json:"outputRole"`
 }
 
 type referenceEvidence struct {
-	Schema                         string                      `json:"schema"`
-	SharedPlan                     BuildExecutionPlan          `json:"sharedPlan"`
-	SharedArtifactSet              ArtifactSet                 `json:"sharedArtifactSet"`
-	SharedResult                   BuildExecutionResult        `json:"sharedResult"`
-	SharedResultFingerprint        string                      `json:"sharedResultFingerprint"`
-	SharedPluginBindings           []PluginSubjectBinding      `json:"sharedPluginBindings"`
-	SharedPluginBindingFingerprints []string                    `json:"sharedPluginBindingFingerprints"`
-	MultiOutputPlan                BuildExecutionPlan          `json:"multiOutputPlan"`
-	MultiOutputArtifactSet         ArtifactSet                 `json:"multiOutputArtifactSet"`
-	MultiOutputBinding             PluginSubjectBinding        `json:"multiOutputBinding"`
-	MultiOutputComparison          ArtifactSetComparison       `json:"multiOutputComparison"`
-	RuntimeEnginePlan              BuildExecutionPlan          `json:"runtimeEnginePlan"`
-	RuntimeEngineArtifactSet       ArtifactSet                 `json:"runtimeEngineArtifactSet"`
-	RuntimeEngineBinding             RuntimeEngineSubjectBinding `json:"runtimeEngineBinding"`
-	RuntimeEngineBindingFingerprint  string                     `json:"runtimeEngineBindingFingerprint"`
-	BuildGraph                       BuildGraph                 `json:"buildGraph"`
-	BuildGraphFingerprint            string                     `json:"buildGraphFingerprint"`
-	BuildGraphOrder                  []string                   `json:"buildGraphOrder"`
-	BuildAttestation                 BuildAttestation           `json:"buildAttestation"`
-	BuildAttestationVerification     BuildAttestationVerification `json:"buildAttestationVerification"`
-	BuildAttestationFingerprint      string                     `json:"buildAttestationFingerprint"`
-	CurrentTrustDecision             AttestationTrustDecision   `json:"currentTrustDecision"`
-	RevokedTrustDecision             AttestationTrustDecision   `json:"revokedTrustDecision"`
-	BootstrapStage1Plan              BuildExecutionPlan         `json:"bootstrapStage1Plan"`
-	BootstrapStage2Plan              BuildExecutionPlan         `json:"bootstrapStage2Plan"`
-	BootstrapStage1ArtifactSet       ArtifactSet                `json:"bootstrapStage1ArtifactSet"`
-	BootstrapStage1BuilderBinding    BuilderSubjectBinding      `json:"bootstrapStage1BuilderBinding"`
-	BootstrapStage1BuilderBindingFingerprint string             `json:"bootstrapStage1BuilderBindingFingerprint"`
-	AuthorityLimits                  []string                   `json:"authorityLimits"`
+	Schema                                   string                       `json:"schema"`
+	SharedPlan                               BuildExecutionPlan           `json:"sharedPlan"`
+	SharedArtifactSet                        ArtifactSet                  `json:"sharedArtifactSet"`
+	SharedResult                             BuildExecutionResult         `json:"sharedResult"`
+	SharedResultFingerprint                  string                       `json:"sharedResultFingerprint"`
+	SharedPluginBindings                     []PluginSubjectBinding       `json:"sharedPluginBindings"`
+	SharedPluginBindingFingerprints          []string                     `json:"sharedPluginBindingFingerprints"`
+	MultiOutputPlan                          BuildExecutionPlan           `json:"multiOutputPlan"`
+	MultiOutputArtifactSet                   ArtifactSet                  `json:"multiOutputArtifactSet"`
+	MultiOutputBinding                       PluginSubjectBinding         `json:"multiOutputBinding"`
+	MultiOutputComparison                    ArtifactSetComparison        `json:"multiOutputComparison"`
+	RuntimeEnginePlan                        BuildExecutionPlan           `json:"runtimeEnginePlan"`
+	RuntimeEngineArtifactSet                 ArtifactSet                  `json:"runtimeEngineArtifactSet"`
+	RuntimeEngineBinding                     RuntimeEngineSubjectBinding  `json:"runtimeEngineBinding"`
+	RuntimeEngineBindingFingerprint          string                       `json:"runtimeEngineBindingFingerprint"`
+	BuildGraph                               BuildGraph                   `json:"buildGraph"`
+	BuildGraphFingerprint                    string                       `json:"buildGraphFingerprint"`
+	BuildGraphOrder                          []string                     `json:"buildGraphOrder"`
+	BuildAttestation                         BuildAttestation             `json:"buildAttestation"`
+	BuildAttestationVerification             BuildAttestationVerification `json:"buildAttestationVerification"`
+	BuildAttestationFingerprint              string                       `json:"buildAttestationFingerprint"`
+	CurrentTrustDecision                     AttestationTrustDecision     `json:"currentTrustDecision"`
+	RevokedTrustDecision                     AttestationTrustDecision     `json:"revokedTrustDecision"`
+	BootstrapStage1Plan                      BuildExecutionPlan           `json:"bootstrapStage1Plan"`
+	BootstrapStage2Plan                      BuildExecutionPlan           `json:"bootstrapStage2Plan"`
+	BootstrapStage1ArtifactSet               ArtifactSet                  `json:"bootstrapStage1ArtifactSet"`
+	BootstrapStage1BuilderBinding            BuilderSubjectBinding        `json:"bootstrapStage1BuilderBinding"`
+	BootstrapStage1BuilderBindingFingerprint string                       `json:"bootstrapStage1BuilderBindingFingerprint"`
+	AuthorityLimits                          []string                     `json:"authorityLimits"`
 }
 
 func main() {
@@ -173,9 +173,9 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			ID: core.MustCanonicalID("tei.builder.shared_reference"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "shared-reference", Entrypoint: "shared"},
+		Recipe:         plugin.BuildRecipe{Kind: "shared-reference", Entrypoint: "shared"},
 		OutputContract: "shared-runtime-artifact",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	sharedExecutionFingerprint, err := buildExecutionPlanFingerprint(sharedPlan)
 	if err != nil {
@@ -192,9 +192,9 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		return referenceEvidence{}, err
 	}
 	sharedResult := BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: sharedExecutionFingerprint,
-		ArtifactSetFingerprint: sharedSetFingerprint,
+		ArtifactSetFingerprint:   sharedSetFingerprint,
 	}
 	sharedResultFingerprint, err := buildExecutionResultFingerprint(sharedResult)
 	if err != nil {
@@ -202,22 +202,22 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	}
 	sharedBindings := []PluginSubjectBinding{
 		{
-			FormatVersion: pluginSubjectBindingFormatVersion,
-			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_a"), Version: "1.0.0"},
-			PluginDefinitionFingerprint: strings.Repeat("a", 64),
-			ExecutionPlanFingerprint: sharedExecutionFingerprint,
-			ArtifactSetFingerprint: sharedSetFingerprint,
+			FormatVersion:                   pluginSubjectBindingFormatVersion,
+			Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_a"), Version: "1.0.0"},
+			PluginDefinitionFingerprint:     strings.Repeat("a", 64),
+			ExecutionPlanFingerprint:        sharedExecutionFingerprint,
+			ArtifactSetFingerprint:          sharedSetFingerprint,
 			BuildExecutionResultFingerprint: sharedResultFingerprint,
-			OutputRoles: []string{"primary"},
+			OutputRoles:                     []string{"primary"},
 		},
 		{
-			FormatVersion: pluginSubjectBindingFormatVersion,
-			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_b"), Version: "1.0.0"},
-			PluginDefinitionFingerprint: strings.Repeat("b", 64),
-			ExecutionPlanFingerprint: sharedExecutionFingerprint,
-			ArtifactSetFingerprint: sharedSetFingerprint,
+			FormatVersion:                   pluginSubjectBindingFormatVersion,
+			Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_b"), Version: "1.0.0"},
+			PluginDefinitionFingerprint:     strings.Repeat("b", 64),
+			ExecutionPlanFingerprint:        sharedExecutionFingerprint,
+			ArtifactSetFingerprint:          sharedSetFingerprint,
 			BuildExecutionResultFingerprint: sharedResultFingerprint,
-			OutputRoles: []string{"primary"},
+			OutputRoles:                     []string{"primary"},
 		},
 	}
 	sharedBindingFingerprints := make([]string, 0, len(sharedBindings))
@@ -280,9 +280,9 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			ID: core.MustCanonicalID("tei.builder.web_reference"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "web-reference", Entrypoint: "web-app"},
+		Recipe:         plugin.BuildRecipe{Kind: "web-reference", Entrypoint: "web-app"},
 		OutputContract: "web-artifact-set",
-		Target: "web/reference",
+		Target:         "web/reference",
 	}
 	multiExecutionFingerprint, err := buildExecutionPlanFingerprint(multiOutputPlan)
 	if err != nil {
@@ -308,13 +308,13 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		return referenceEvidence{}, err
 	}
 	multiBinding := PluginSubjectBinding{
-		FormatVersion: pluginSubjectBindingFormatVersion,
-		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.web_plugin"), Version: "1.0.0"},
-		PluginDefinitionFingerprint: strings.Repeat("e", 64),
-		ExecutionPlanFingerprint: multiExecutionFingerprint,
-		ArtifactSetFingerprint: multiSetFingerprint,
+		FormatVersion:                   pluginSubjectBindingFormatVersion,
+		Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.web_plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint:     strings.Repeat("e", 64),
+		ExecutionPlanFingerprint:        multiExecutionFingerprint,
+		ArtifactSetFingerprint:          multiSetFingerprint,
 		BuildExecutionResultFingerprint: multiResultFingerprint,
-		OutputRoles: []string{"resource-manifest", "web-script"},
+		OutputRoles:                     []string{"resource-manifest", "web-script"},
 	}
 	if err := verifyPluginSubjectBinding(multiBinding, multiOutputPlan, multiSet); err != nil {
 		return referenceEvidence{}, err
@@ -340,9 +340,9 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			ID: core.MustCanonicalID("tei.builder.go_reference"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: builderDigest,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "runtime-engine", Entrypoint: "transform-engine"},
+		Recipe:         plugin.BuildRecipe{Kind: "runtime-engine", Entrypoint: "transform-engine"},
 		OutputContract: "runtime-engine-executable",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	engineExecutionFingerprint, err := buildExecutionPlanFingerprint(enginePlan)
 	if err != nil {
@@ -369,16 +369,16 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	engineBinding := RuntimeEngineSubjectBinding{
 		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
 		Engine: pruntime.RuntimeEngineIdentity{
-			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
-			Version: "1.0.0",
-			ContractVersion: "tei.transform-runtime/v1",
+			ID:                   core.MustCanonicalID("tei.runtime_engine.reference"),
+			Version:              "1.0.0",
+			ContractVersion:      "tei.transform-runtime/v1",
 			ImplementationDigest: artifactDigest,
-			Target: "host/reference",
+			Target:               "host/reference",
 		},
-		ExecutionPlanFingerprint: engineExecutionFingerprint,
-		ArtifactSetFingerprint: engineSetFingerprint,
+		ExecutionPlanFingerprint:        engineExecutionFingerprint,
+		ArtifactSetFingerprint:          engineSetFingerprint,
 		BuildExecutionResultFingerprint: engineResultFingerprint,
-		OutputRole: "runtime-engine",
+		OutputRole:                      "runtime-engine",
 	}
 	if err := verifyRuntimeEngineSubjectBinding(engineBinding, enginePlan, engineSet); err != nil {
 		return referenceEvidence{}, err
@@ -389,38 +389,38 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	}
 
 	stage0Builder := plugin.BuilderIdentity{
-		ID: core.MustCanonicalID("tei.builder.stage0_reference"),
-		Version: "1.0.0",
+		ID:              core.MustCanonicalID("tei.builder.stage0_reference"),
+		Version:         "1.0.0",
 		ContractVersion: "tei.reference.build/v1",
-		ArtifactDigest: sourceDigest,
+		ArtifactDigest:  sourceDigest,
 	}
 	stage1Plan := BuildExecutionPlan{
 		FormatVersion: buildExecutionPlanFormatVersion,
 		Sources: []plugin.BuildSource{{
 			Kind: "builder-source", ID: "self-hosted-builder", Locator: "source://self-hosted-builder", Digest: builderDigest,
 		}},
-		Builder: stage0Builder,
-		Recipe: plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "self-hosted-builder"},
+		Builder:        stage0Builder,
+		Recipe:         plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "self-hosted-builder"},
 		OutputContract: "builder-artifact",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	stage1Fingerprint, err := buildExecutionPlanFingerprint(stage1Plan)
 	if err != nil {
 		return referenceEvidence{}, err
 	}
 	stage1Output := plugin.BuilderIdentity{
-		ID: core.MustCanonicalID("tei.builder.self_hosted_reference"),
-		Version: "1.0.0",
+		ID:              core.MustCanonicalID("tei.builder.self_hosted_reference"),
+		Version:         "1.0.0",
 		ContractVersion: stage0Builder.ContractVersion,
-		ArtifactDigest: artifactDigest,
+		ArtifactDigest:  artifactDigest,
 	}
 	stage2Plan := BuildExecutionPlan{
-		FormatVersion: buildExecutionPlanFormatVersion,
-		Sources: append([]plugin.BuildSource(nil), stage1Plan.Sources...),
-		Builder: stage1Output,
-		Recipe: stage1Plan.Recipe,
+		FormatVersion:  buildExecutionPlanFormatVersion,
+		Sources:        append([]plugin.BuildSource(nil), stage1Plan.Sources...),
+		Builder:        stage1Output,
+		Recipe:         stage1Plan.Recipe,
 		OutputContract: stage1Plan.OutputContract,
-		Target: stage1Plan.Target,
+		Target:         stage1Plan.Target,
 	}
 	stage2Fingerprint, err := buildExecutionPlanFingerprint(stage2Plan)
 	if err != nil {
@@ -433,20 +433,20 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			{ID: "stage1", ExecutionPlanFingerprint: stage1Fingerprint},
 		},
 		Edges: []BuildGraphEdge{{
-			FromNode: "stage1",
+			FromNode:   "stage1",
 			OutputRole: "builder-artifact",
-			ToNode: "stage2",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ToNode:     "stage2",
+			Input:      BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 		Seeds: []BuildGraphSeed{{
-			ID: string(stage0Builder.ID),
-			Kind: "builder-seed",
-			Version: stage0Builder.Version,
+			ID:              string(stage0Builder.ID),
+			Kind:            "builder-seed",
+			Version:         stage0Builder.Version,
 			ContractVersion: stage0Builder.ContractVersion,
-			ArtifactDigest: stage0Builder.ArtifactDigest,
-			TrustBoundary: "external-stage0-seed",
-			ToNode: "stage1",
-			Input: BuildGraphInputBinding{Kind: buildGraphInputBuilder},
+			ArtifactDigest:  stage0Builder.ArtifactDigest,
+			TrustBoundary:   "external-stage0-seed",
+			ToNode:          "stage1",
+			Input:           BuildGraphInputBinding{Kind: buildGraphInputBuilder},
 		}},
 	}
 	graphFingerprint, err := buildGraphFingerprint(graph)
@@ -456,7 +456,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	stage1OutputSet := ArtifactSet{
 		FormatVersion: artifactSetFormatVersion,
 		Members: []ArtifactMember{{
-			Role: "builder-artifact",
+			Role:   "builder-artifact",
 			Format: "application/octet-stream",
 			Digest: stage1Output.ArtifactDigest,
 		}},
@@ -474,12 +474,12 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 		return referenceEvidence{}, err
 	}
 	stage1BuilderBinding := BuilderSubjectBinding{
-		FormatVersion:                  builderSubjectBindingFormatVersion,
-		Builder:                        stage1Output,
-		ExecutionPlanFingerprint:       stage1Fingerprint,
-		ArtifactSetFingerprint:         stage1OutputSetFingerprint,
+		FormatVersion:                   builderSubjectBindingFormatVersion,
+		Builder:                         stage1Output,
+		ExecutionPlanFingerprint:        stage1Fingerprint,
+		ArtifactSetFingerprint:          stage1OutputSetFingerprint,
 		BuildExecutionResultFingerprint: stage1ResultFingerprint,
-		OutputRole:                     "builder-artifact",
+		OutputRole:                      "builder-artifact",
 	}
 	if err := verifyBuilderSubjectBinding(stage1BuilderBinding, stage1Plan, stage1OutputSet); err != nil {
 		return referenceEvidence{}, err
@@ -512,33 +512,33 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	}
 
 	return referenceEvidence{
-		Schema: "tei.reference.build-execution-binding/v0",
-		SharedPlan: sharedPlan,
-		SharedArtifactSet: sharedSet,
-		SharedResult: sharedResult,
-		SharedResultFingerprint: sharedResultFingerprint,
-		SharedPluginBindings: sharedBindings,
-		SharedPluginBindingFingerprints: sharedBindingFingerprints,
-		MultiOutputPlan: multiOutputPlan,
-		MultiOutputArtifactSet: multiSet,
-		MultiOutputBinding: multiBinding,
-		MultiOutputComparison: multiComparison,
-		RuntimeEnginePlan: enginePlan,
-		RuntimeEngineArtifactSet: engineSet,
-		RuntimeEngineBinding: engineBinding,
-		RuntimeEngineBindingFingerprint: engineBindingFingerprint,
-		BuildGraph: graph,
-		BuildGraphFingerprint: graphFingerprint,
-		BuildGraphOrder: graphOrder,
-		BuildAttestation: buildAttestation,
-		BuildAttestationVerification: attestationVerification,
-		BuildAttestationFingerprint: attestationFingerprint,
-		CurrentTrustDecision: currentTrustDecision,
-		RevokedTrustDecision: revokedTrustDecision,
-		BootstrapStage1Plan: stage1Plan,
-		BootstrapStage2Plan: stage2Plan,
-		BootstrapStage1ArtifactSet: stage1OutputSet,
-		BootstrapStage1BuilderBinding: stage1BuilderBinding,
+		Schema:                                   "tei.reference.build-execution-binding/v0",
+		SharedPlan:                               sharedPlan,
+		SharedArtifactSet:                        sharedSet,
+		SharedResult:                             sharedResult,
+		SharedResultFingerprint:                  sharedResultFingerprint,
+		SharedPluginBindings:                     sharedBindings,
+		SharedPluginBindingFingerprints:          sharedBindingFingerprints,
+		MultiOutputPlan:                          multiOutputPlan,
+		MultiOutputArtifactSet:                   multiSet,
+		MultiOutputBinding:                       multiBinding,
+		MultiOutputComparison:                    multiComparison,
+		RuntimeEnginePlan:                        enginePlan,
+		RuntimeEngineArtifactSet:                 engineSet,
+		RuntimeEngineBinding:                     engineBinding,
+		RuntimeEngineBindingFingerprint:          engineBindingFingerprint,
+		BuildGraph:                               graph,
+		BuildGraphFingerprint:                    graphFingerprint,
+		BuildGraphOrder:                          graphOrder,
+		BuildAttestation:                         buildAttestation,
+		BuildAttestationVerification:             attestationVerification,
+		BuildAttestationFingerprint:              attestationFingerprint,
+		CurrentTrustDecision:                     currentTrustDecision,
+		RevokedTrustDecision:                     revokedTrustDecision,
+		BootstrapStage1Plan:                      stage1Plan,
+		BootstrapStage2Plan:                      stage2Plan,
+		BootstrapStage1ArtifactSet:               stage1OutputSet,
+		BootstrapStage1BuilderBinding:            stage1BuilderBinding,
 		BootstrapStage1BuilderBindingFingerprint: stage1BuilderBindingFingerprint,
 		AuthorityLimits: []string{
 			"build-binding-is-not-acceptance-authority",
@@ -1182,13 +1182,13 @@ func projectPluginBuild(
 		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err
 	}
 	binding := PluginSubjectBinding{
-		FormatVersion:               pluginSubjectBindingFormatVersion,
-		Plugin:                      plan.Plugin,
-		PluginDefinitionFingerprint: plan.PluginDefinitionFingerprint,
-		ExecutionPlanFingerprint:     executionFingerprint,
-		ArtifactSetFingerprint:       setFingerprint,
+		FormatVersion:                   pluginSubjectBindingFormatVersion,
+		Plugin:                          plan.Plugin,
+		PluginDefinitionFingerprint:     plan.PluginDefinitionFingerprint,
+		ExecutionPlanFingerprint:        executionFingerprint,
+		ArtifactSetFingerprint:          setFingerprint,
 		BuildExecutionResultFingerprint: resultFingerprint,
-		OutputRoles:                  []string{"primary"},
+		OutputRoles:                     []string{"primary"},
 	}
 	if err := verifyPluginSubjectBinding(binding, executionPlan, set); err != nil {
 		return BuildExecutionPlan{}, ArtifactSet{}, BuildExecutionResult{}, PluginSubjectBinding{}, err

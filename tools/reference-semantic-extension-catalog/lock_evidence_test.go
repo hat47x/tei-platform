@@ -183,7 +183,6 @@ func TestSemanticLockEvidenceBindingRejectsDifferentNamespaceOwner(t *testing.T)
 	}
 }
 
-
 func TestSemanticLockEvidenceBindingRejectsRevokedNamespacePublisherTrust(t *testing.T) {
 	descriptor := ExtensionDescriptor{
 		Schema:    extensionSchema,

@@ -11,8 +11,8 @@ import (
 // It is NOT evidence of a real Command effect.
 type ObservationFixture struct {
 	ReadIdentity string `json:"readIdentity"`
-	Nature string `json:"nature"`
-	Observed Value `json:"observed"`
+	Nature       string `json:"nature"`
+	Observed     Value  `json:"observed"`
 }
 
 func ParseObservationFixture(source []byte) (ObservationFixture, error) {

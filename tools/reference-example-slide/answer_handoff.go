@@ -162,10 +162,10 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 				// must therefore change when the Example or Catalog changes,
 				// even if issue.ID and the semantic source stay identical.
 				route = &ConfirmationRoute{
-					IdentityKind: "example-review",
+					IdentityKind:    "example-review",
 					IdentitySubject: scopedConfirmationSubject(issue, review),
-					BasisKind: "semantic-relation",
-					BasisID: issue.RelationID,
+					BasisKind:       "semantic-relation",
+					BasisID:         issue.RelationID,
 				}
 			}
 		default:
@@ -189,8 +189,10 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 			evidenceIDs[id] = true
 			evidence = append(evidence, e)
 		}
-		sort.Slice(evidence, func(i,j int) bool {
-			if evidence[i].Kind != evidence[j].Kind { return evidence[i].Kind < evidence[j].Kind }
+		sort.Slice(evidence, func(i, j int) bool {
+			if evidence[i].Kind != evidence[j].Kind {
+				return evidence[i].Kind < evidence[j].Kind
+			}
 			return evidence[i].Ref < evidence[j].Ref
 		})
 		next := "human-review-required"
@@ -210,14 +212,16 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 			Question: answer.Question, QuestionText: questionText,
 			Response: response, Context: context,
 			Disposition: answer.Disposition,
-			ClaimedBy: AnswerActor{Kind:answer.ClaimedBy.Kind, ID:actorID},
-			Evidence: evidence, Status: "unverified",
+			ClaimedBy:   AnswerActor{Kind: answer.ClaimedBy.Kind, ID: actorID},
+			Evidence:    evidence, Status: "unverified",
 			NextStep: next, ConfirmationRoute: route,
 		})
 	}
-	sort.Slice(out.Answers, func(i,j int) bool {
-		a,b := out.Answers[i].Question, out.Answers[j].Question
-		if a.Kind != b.Kind { return a.Kind < b.Kind }
+	sort.Slice(out.Answers, func(i, j int) bool {
+		a, b := out.Answers[i].Question, out.Answers[j].Question
+		if a.Kind != b.Kind {
+			return a.Kind < b.Kind
+		}
 		return a.ID < b.ID
 	})
 	encoded, _ := json.Marshal(out) // Fingerprint is still empty.
@@ -226,11 +230,11 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 	return out, nil
 }
 
- // scopedConfirmationSubject supplements existing Confirmation's canonical
- // basis fingerprint with the exact, immutable illustrative Case context.
- // Returning the raw issue ID would suppress fresh review when the model
- // sources are unchanged but the example record values have changed.
- func scopedConfirmationSubject(issue ReviewIssue, review ReviewPacket) string {
+// scopedConfirmationSubject supplements existing Confirmation's canonical
+// basis fingerprint with the exact, immutable illustrative Case context.
+// Returning the raw issue ID would suppress fresh review when the model
+// sources are unchanged but the example record values have changed.
+func scopedConfirmationSubject(issue ReviewIssue, review ReviewPacket) string {
 	fields, _ := json.Marshal([]string{
 		review.CaseID, review.ModelRevision,
 		review.ExampleFingerprint, review.CatalogFingerprint,

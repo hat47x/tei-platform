@@ -131,8 +131,8 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 	}
 	change := ev.preview.SemanticDiff[0]
 	link, linkContext, err := prepareRMTReviewedLink(ev, sourceEvidence, rmtlink.SemanticTarget{
-		Kind: change.Kind,
-		ID: change.ID,
+		Kind:   change.Kind,
+		ID:     change.ID,
 		Change: change.Change,
 	})
 	if err != nil {
@@ -265,7 +265,7 @@ func TestRMTSyntheticReadOnlySliceRequiresAcceptedMeaningAndRecordsNoStoreMutati
 		) (driver.BrowseQueryResult, error) {
 			return driver.BrowseQueryResult{Raw: queryresult.RawResult{
 				Columns: []string{"order_id"},
-				Rows: [][]any{{int64(101)}},
+				Rows:    [][]any{{int64(101)}},
 			}}, nil
 		}),
 		map[string]any{"from": from},

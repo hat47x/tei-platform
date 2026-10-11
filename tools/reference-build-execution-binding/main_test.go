@@ -182,9 +182,9 @@ func TestMultiOutputBindingSelectsRolesWithoutUsingFilesystemPaths(t *testing.T)
 			ID: core.MustCanonicalID("tei.builder.web_reference"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "web-reference", Entrypoint: "app"},
+		Recipe:         plugin.BuildRecipe{Kind: "web-reference", Entrypoint: "app"},
 		OutputContract: "web-artifact-set",
-		Target: "web/reference",
+		Target:         "web/reference",
 	}
 	executionFP, err := buildExecutionPlanFingerprint(plan)
 	if err != nil {
@@ -202,21 +202,21 @@ func TestMultiOutputBindingSelectsRolesWithoutUsingFilesystemPaths(t *testing.T)
 		t.Fatal(err)
 	}
 	resultFP, err := buildExecutionResultFingerprint(BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		ArtifactSetFingerprint:   setFP,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	binding := PluginSubjectBinding{
-		FormatVersion: pluginSubjectBindingFormatVersion,
-		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.web_plugin"), Version: "1.0.0"},
-		PluginDefinitionFingerprint: strings.Repeat("e", 64),
-		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		FormatVersion:                   pluginSubjectBindingFormatVersion,
+		Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.web_plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint:     strings.Repeat("e", 64),
+		ExecutionPlanFingerprint:        executionFP,
+		ArtifactSetFingerprint:          setFP,
 		BuildExecutionResultFingerprint: resultFP,
-		OutputRoles: []string{"resource-manifest", "web-script"},
+		OutputRoles:                     []string{"resource-manifest", "web-script"},
 	}
 	if err := verifyPluginSubjectBinding(binding, plan, set); err != nil {
 		t.Fatal(err)
@@ -260,7 +260,6 @@ func TestArtifactSetRejectsDuplicateRole(t *testing.T) {
 	}
 }
 
-
 func TestExecutionIdentityIgnoresSourceLocatorWhenExactBytesMatch(t *testing.T) {
 	planA := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
 	planB := planA
@@ -287,7 +286,6 @@ func TestExecutionIdentityIgnoresSourceLocatorWhenExactBytesMatch(t *testing.T) 
 		t.Fatal("source locator leaked into execution input identity despite identical exact bytes")
 	}
 }
-
 
 func TestCompareArtifactSetsPreservesMissingExtraAndChangedEvidence(t *testing.T) {
 	first := ArtifactSet{
@@ -349,7 +347,6 @@ func TestCompareArtifactSetsIgnoresLocatorOnlyChanges(t *testing.T) {
 	}
 }
 
-
 func TestOneExecutionCanBindMultiplePluginsWithoutDuplicatingArtifactResult(t *testing.T) {
 	plan := BuildExecutionPlan{
 		FormatVersion: buildExecutionPlanFormatVersion,
@@ -360,9 +357,9 @@ func TestOneExecutionCanBindMultiplePluginsWithoutDuplicatingArtifactResult(t *t
 			ID: core.MustCanonicalID("tei.builder.shared_reference"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "shared-reference", Entrypoint: "shared"},
+		Recipe:         plugin.BuildRecipe{Kind: "shared-reference", Entrypoint: "shared"},
 		OutputContract: "shared-runtime-artifact",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	executionFP, err := buildExecutionPlanFingerprint(plan)
 	if err != nil {
@@ -379,9 +376,9 @@ func TestOneExecutionCanBindMultiplePluginsWithoutDuplicatingArtifactResult(t *t
 		t.Fatal(err)
 	}
 	result := BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		ArtifactSetFingerprint:   setFP,
 	}
 	resultFP, err := buildExecutionResultFingerprint(result)
 	if err != nil {
@@ -390,22 +387,22 @@ func TestOneExecutionCanBindMultiplePluginsWithoutDuplicatingArtifactResult(t *t
 
 	bindings := []PluginSubjectBinding{
 		{
-			FormatVersion: pluginSubjectBindingFormatVersion,
-			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_a"), Version: "1.0.0"},
-			PluginDefinitionFingerprint: strings.Repeat("a", 64),
-			ExecutionPlanFingerprint: executionFP,
-			ArtifactSetFingerprint: setFP,
+			FormatVersion:                   pluginSubjectBindingFormatVersion,
+			Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_a"), Version: "1.0.0"},
+			PluginDefinitionFingerprint:     strings.Repeat("a", 64),
+			ExecutionPlanFingerprint:        executionFP,
+			ArtifactSetFingerprint:          setFP,
 			BuildExecutionResultFingerprint: resultFP,
-			OutputRoles: []string{"primary"},
+			OutputRoles:                     []string{"primary"},
 		},
 		{
-			FormatVersion: pluginSubjectBindingFormatVersion,
-			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_b"), Version: "1.0.0"},
-			PluginDefinitionFingerprint: strings.Repeat("b", 64),
-			ExecutionPlanFingerprint: executionFP,
-			ArtifactSetFingerprint: setFP,
+			FormatVersion:                   pluginSubjectBindingFormatVersion,
+			Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin_b"), Version: "1.0.0"},
+			PluginDefinitionFingerprint:     strings.Repeat("b", 64),
+			ExecutionPlanFingerprint:        executionFP,
+			ArtifactSetFingerprint:          setFP,
 			BuildExecutionResultFingerprint: resultFP,
-			OutputRoles: []string{"primary"},
+			OutputRoles:                     []string{"primary"},
 		},
 	}
 	for _, binding := range bindings {
@@ -430,9 +427,9 @@ func TestRuntimeEngineSubjectBindingDoesNotRequirePluginIdentity(t *testing.T) {
 			ID: core.MustCanonicalID("tei.builder.go_reference"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "runtime-engine", Entrypoint: "transform-engine"},
+		Recipe:         plugin.BuildRecipe{Kind: "runtime-engine", Entrypoint: "transform-engine"},
 		OutputContract: "runtime-engine-executable",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	executionFP, err := buildExecutionPlanFingerprint(plan)
 	if err != nil {
@@ -449,9 +446,9 @@ func TestRuntimeEngineSubjectBindingDoesNotRequirePluginIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	resultFP, err := buildExecutionResultFingerprint(BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		ArtifactSetFingerprint:   setFP,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -459,16 +456,16 @@ func TestRuntimeEngineSubjectBindingDoesNotRequirePluginIdentity(t *testing.T) {
 	binding := RuntimeEngineSubjectBinding{
 		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
 		Engine: pruntime.RuntimeEngineIdentity{
-			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
-			Version: "1.0.0",
-			ContractVersion: "tei.transform-runtime/v1",
+			ID:                   core.MustCanonicalID("tei.runtime_engine.reference"),
+			Version:              "1.0.0",
+			ContractVersion:      "tei.transform-runtime/v1",
 			ImplementationDigest: digestC,
-			Target: "host/reference",
+			Target:               "host/reference",
 		},
-		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		ExecutionPlanFingerprint:        executionFP,
+		ArtifactSetFingerprint:          setFP,
 		BuildExecutionResultFingerprint: resultFP,
-		OutputRole: "runtime-engine",
+		OutputRole:                      "runtime-engine",
 	}
 	if err := verifyRuntimeEngineSubjectBinding(binding, plan, set); err != nil {
 		t.Fatal(err)
@@ -482,7 +479,6 @@ func TestRuntimeEngineSubjectBindingDoesNotRequirePluginIdentity(t *testing.T) {
 		t.Fatal("runtime engine binding accepted an artifact member with a different implementation digest")
 	}
 }
-
 
 func TestReferenceEvidenceIsDeterministicAndKeepsAuthoritySeparated(t *testing.T) {
 	first, err := buildReferenceEvidence()
@@ -574,7 +570,6 @@ func TestReferenceEvidenceIsDeterministicAndKeepsAuthoritySeparated(t *testing.T
 	}
 }
 
-
 func TestExecutionIdentityCanonicalizesValidSHA256HexCase(t *testing.T) {
 	lower := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
 	lower.Dependencies = []plugin.BuildDependency{{
@@ -660,22 +655,22 @@ func TestSubjectBindingFingerprintsCanonicalizeValidHexCase(t *testing.T) {
 		t.Fatal(err)
 	}
 	resultFP, err := buildExecutionResultFingerprint(BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		ArtifactSetFingerprint:   setFP,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	lowerPlugin := PluginSubjectBinding{
-		FormatVersion: pluginSubjectBindingFormatVersion,
-		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin"), Version: "1.0.0"},
-		PluginDefinitionFingerprint: strings.Repeat("a", 64),
-		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		FormatVersion:                   pluginSubjectBindingFormatVersion,
+		Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint:     strings.Repeat("a", 64),
+		ExecutionPlanFingerprint:        executionFP,
+		ArtifactSetFingerprint:          setFP,
 		BuildExecutionResultFingerprint: resultFP,
-		OutputRoles: []string{"primary"},
+		OutputRoles:                     []string{"primary"},
 	}
 	upperPlugin := lowerPlugin
 	upperPlugin.PluginDefinitionFingerprint = strings.ToUpper(lowerPlugin.PluginDefinitionFingerprint)
@@ -701,16 +696,16 @@ func TestSubjectBindingFingerprintsCanonicalizeValidHexCase(t *testing.T) {
 	lowerEngine := RuntimeEngineSubjectBinding{
 		FormatVersion: runtimeEngineSubjectBindingFormatVersion,
 		Engine: pruntime.RuntimeEngineIdentity{
-			ID: core.MustCanonicalID("tei.runtime_engine.reference"),
-			Version: "1.0.0",
-			ContractVersion: "tei.transform-runtime/v1",
+			ID:                   core.MustCanonicalID("tei.runtime_engine.reference"),
+			Version:              "1.0.0",
+			ContractVersion:      "tei.transform-runtime/v1",
 			ImplementationDigest: digestC,
-			Target: "host/reference",
+			Target:               "host/reference",
 		},
-		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		ExecutionPlanFingerprint:        executionFP,
+		ArtifactSetFingerprint:          setFP,
 		BuildExecutionResultFingerprint: resultFP,
-		OutputRole: "primary",
+		OutputRole:                      "primary",
 	}
 	upperEngine := lowerEngine
 	upperEngine.Engine.ImplementationDigest = uppercaseDigest(lowerEngine.Engine.ImplementationDigest)
@@ -746,7 +741,6 @@ func TestCurrentBuildPlanWithUppercaseHexCanBeProjected(t *testing.T) {
 		t.Fatalf("current valid BuildPlan with uppercase hex could not be projected: %v", err)
 	}
 }
-
 
 func TestExecutionIdentityKeepsBuildRelevantPathSemanticsOutsideLocator(t *testing.T) {
 	base := referencePluginBuildPlan("tei.reference.plugin", strings.Repeat("a", 64))
@@ -789,7 +783,6 @@ func TestExecutionIdentityKeepsBuildRelevantPathSemanticsOutsideLocator(t *testi
 	}
 }
 
-
 func TestSubjectBindingRejectsMismatchedBuildExecutionResultPairing(t *testing.T) {
 	plan := BuildExecutionPlan{
 		FormatVersion: buildExecutionPlanFormatVersion,
@@ -800,9 +793,9 @@ func TestSubjectBindingRejectsMismatchedBuildExecutionResultPairing(t *testing.T
 			ID: core.MustCanonicalID("tei.builder.reference"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "reference", Entrypoint: "app"},
+		Recipe:         plugin.BuildRecipe{Kind: "reference", Entrypoint: "app"},
 		OutputContract: "runtime-artifact",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	executionFP, err := buildExecutionPlanFingerprint(plan)
 	if err != nil {
@@ -819,27 +812,26 @@ func TestSubjectBindingRejectsMismatchedBuildExecutionResultPairing(t *testing.T
 		t.Fatal(err)
 	}
 	wrongResultFP, err := buildExecutionResultFingerprint(BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: strings.Repeat("f", 64),
-		ArtifactSetFingerprint: setFP,
+		ArtifactSetFingerprint:   setFP,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	binding := PluginSubjectBinding{
-		FormatVersion: pluginSubjectBindingFormatVersion,
-		Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin"), Version: "1.0.0"},
-		PluginDefinitionFingerprint: strings.Repeat("a", 64),
-		ExecutionPlanFingerprint: executionFP,
-		ArtifactSetFingerprint: setFP,
+		FormatVersion:                   pluginSubjectBindingFormatVersion,
+		Plugin:                          plugin.Identity{ID: core.MustCanonicalID("tei.reference.plugin"), Version: "1.0.0"},
+		PluginDefinitionFingerprint:     strings.Repeat("a", 64),
+		ExecutionPlanFingerprint:        executionFP,
+		ArtifactSetFingerprint:          setFP,
 		BuildExecutionResultFingerprint: wrongResultFP,
-		OutputRoles: []string{"primary"},
+		OutputRoles:                     []string{"primary"},
 	}
 	if err := verifyPluginSubjectBinding(binding, plan, set); err == nil {
 		t.Fatal("subject binding accepted a BuildExecutionResult fingerprint from a different plan/set pairing")
 	}
 }
-
 
 func TestBuilderSubjectBindingBindsExactSelfHostedBuilderResult(t *testing.T) {
 	plan := BuildExecutionPlan{
@@ -928,9 +920,9 @@ func TestBuilderSubjectBindingCanonicalizesDigestHexCase(t *testing.T) {
 			ID: core.MustCanonicalID("tei.builder.seed"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestB,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "builder"},
+		Recipe:         plugin.BuildRecipe{Kind: "builder-realization", Entrypoint: "builder"},
 		OutputContract: "builder-artifact",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	executionFingerprint, err := buildExecutionPlanFingerprint(plan)
 	if err != nil {
@@ -947,9 +939,9 @@ func TestBuilderSubjectBindingCanonicalizesDigestHexCase(t *testing.T) {
 		t.Fatal(err)
 	}
 	resultFingerprint, err := buildExecutionResultFingerprint(BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: executionFingerprint,
-		ArtifactSetFingerprint: setFingerprint,
+		ArtifactSetFingerprint:   setFingerprint,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -960,10 +952,10 @@ func TestBuilderSubjectBindingCanonicalizesDigestHexCase(t *testing.T) {
 			ID: core.MustCanonicalID("tei.builder.self_hosted"), Version: "1.0.0",
 			ContractVersion: "tei.reference.build/v1", ArtifactDigest: digestC,
 		},
-		ExecutionPlanFingerprint: executionFingerprint,
-		ArtifactSetFingerprint: setFingerprint,
+		ExecutionPlanFingerprint:        executionFingerprint,
+		ArtifactSetFingerprint:          setFingerprint,
 		BuildExecutionResultFingerprint: resultFingerprint,
-		OutputRole: "builder-artifact",
+		OutputRole:                      "builder-artifact",
 	}
 	upper := lower
 	upper.Builder.ArtifactDigest = uppercaseDigest(lower.Builder.ArtifactDigest)
@@ -984,7 +976,6 @@ func TestBuilderSubjectBindingCanonicalizesDigestHexCase(t *testing.T) {
 	}
 }
 
-
 func TestBuilderHandoffRejectsSameBytesUnderDifferentLogicalBuilder(t *testing.T) {
 	binding := BuilderSubjectBinding{
 		FormatVersion: builderSubjectBindingFormatVersion,
@@ -1004,10 +995,10 @@ func TestBuilderHandoffRejectsSameBytesUnderDifferentLogicalBuilder(t *testing.T
 		Sources: []plugin.BuildSource{{
 			Kind: "source", ID: "consumer", Locator: "source://consumer", Digest: digestA,
 		}},
-		Builder: binding.Builder,
-		Recipe: plugin.BuildRecipe{Kind: "reference", Entrypoint: "consumer"},
+		Builder:        binding.Builder,
+		Recipe:         plugin.BuildRecipe{Kind: "reference", Entrypoint: "consumer"},
 		OutputContract: "reference-artifact",
-		Target: "host/reference",
+		Target:         "host/reference",
 	}
 	if err := verifyBuilderHandoff(binding, consumer); err != nil {
 		t.Fatal(err)

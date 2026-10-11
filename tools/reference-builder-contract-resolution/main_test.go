@@ -370,7 +370,6 @@ func TestBuilderResolutionUsesCanonicalProviderID(t *testing.T) {
 	}
 }
 
-
 func TestMalformedExplicitWiringIsRejectedBeforeProviderLookup(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
 	wiring.ProviderVersion = "not-a-version"
@@ -430,7 +429,6 @@ func TestLockedReplayIgnoresUnrelatedSupportExpansion(t *testing.T) {
 		t.Fatalf("unrelated support expansion changed locked resolution identity: %s != %s", replayed.ResolutionFingerprint, resolution.ResolutionFingerprint)
 	}
 }
-
 
 func TestLockRejectsTamperedResolutionCrossFields(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
@@ -507,7 +505,6 @@ func TestReplayRejectsLockWhoseBuilderDoesNotMatchLockedProvider(t *testing.T) {
 	}
 }
 
-
 func TestResolvedBuildPlanDoesNotImplicitlyChangeAfterCatalogExpansion(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
 	intent := referenceIntent(contract)
@@ -554,7 +551,6 @@ func TestResolvedBuildPlanDoesNotImplicitlyChangeAfterCatalogExpansion(t *testin
 	}
 }
 
-
 func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()
 	provider := providers[0]
@@ -594,7 +590,6 @@ func TestDeclaredSupportRequiresConformanceEvidenceForSelectedIntent(t *testing.
 		t.Fatalf("selected Target used wrong Conformance Evidence: %s", resolution.EvidenceFingerprint)
 	}
 }
-
 
 func TestConformanceEvidenceFingerprintBindsSelectedClaims(t *testing.T) {
 	contract, providers, evidence, wiring := referenceFixture()

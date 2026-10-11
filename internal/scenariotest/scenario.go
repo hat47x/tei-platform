@@ -39,15 +39,6 @@ type Step struct {
 	Parameters        map[string]Value   `json:"parameters,omitempty"`
 	Fixture           string             `json:"fixture,omitempty"`
 	ExpectRows        []map[string]Value `json:"expectRows"`
-	ID                string             `json:"id"`
-	Operation         string             `json:"operation"`
-	Pattern           string             `json:"pattern"`
-	ExpectKind        string             `json:"expectKind"`
-	ExpectData        string             `json:"expectData"`
-	ExpectQuery       string             `json:"expectQuery,omitempty"`
-	Parameters        map[string]Value   `json:"parameters,omitempty"`
-	Fixture           string             `json:"fixture,omitempty"`
-	ExpectRows        []map[string]Value `json:"expectRows"`
 	ExpectValidations map[string]string  `json:"expectValidations,omitempty"`
 	ReadIdentity      string             `json:"readIdentity,omitempty"`
 	ExpectObservation *Value             `json:"expectObservation,omitempty"`

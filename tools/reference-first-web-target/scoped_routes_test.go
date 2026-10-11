@@ -18,13 +18,13 @@ func TestApplicationScopedRoutesAreDisjoint(t *testing.T) {
 	}{
 		{
 			application: "order_entry",
-			own: []string{"/scenario/read", "/scenario/submit", "/custom-submit"},
-			foreign: []string{"/scenario/customer-lookup", "/customer-lookup"},
+			own:         []string{"/scenario/read", "/scenario/submit", "/custom-submit"},
+			foreign:     []string{"/scenario/customer-lookup", "/customer-lookup"},
 		},
 		{
 			application: "repair_intake",
-			own: []string{"/scenario/customer-lookup", "/customer-lookup"},
-			foreign: []string{"/scenario/read", "/scenario/submit", "/custom-submit"},
+			own:         []string{"/scenario/customer-lookup", "/customer-lookup"},
+			foreign:     []string{"/scenario/read", "/scenario/submit", "/custom-submit"},
 		},
 	} {
 		t.Run(tc.application, func(t *testing.T) {
@@ -110,21 +110,21 @@ func TestScopedRoutesRejectCrossApplicationRunnerEvenIfServerWasModified(t *test
 		{
 			name: "repair-runner-on-order",
 			server: &webTargetServer{
-				projection: webTargetProjection{ApplicationID: "order_entry"},
+				projection:     webTargetProjection{ApplicationID: "order_entry"},
 				customerLookup: &referenceCustomerLookupScenarioRunner{},
 			},
 		},
 		{
 			name: "order-runner-on-repair",
 			server: &webTargetServer{
-				projection: webTargetProjection{ApplicationID: "repair_intake"},
+				projection:   webTargetProjection{ApplicationID: "repair_intake"},
 				readScenario: &referenceReadScenarioRunner{},
 			},
 		},
 		{
 			name: "missing-runner-identity",
 			server: &webTargetServer{
-				projection: webTargetProjection{ApplicationID: "order_entry"},
+				projection:   webTargetProjection{ApplicationID: "order_entry"},
 				readScenario: undeclaredRunner{},
 			},
 		},
