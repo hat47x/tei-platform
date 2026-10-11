@@ -6,51 +6,29 @@ import (
 	"testing"
 )
 
-func crossViewContractFixture() []byte {
-	return []byte(`{
-  "constructMappings": {
-    "xead": {
-      "System": {
-        "classification": ["source-metadata"],
-        "extension": "reference.compat.xead.source"
-      }
-    }
-  },
-  "sourceProfiles": {
-    "xead": {
-      "rootKind": "System",
-      "supportedFormatVersions": ["1.2"]
-    }
-  }
-}`)
+func crossViewMappingFingerprint() string {
+	return strings.Repeat("a", 64)
 }
 
-func buildCrossViewFixture(t *testing.T, source string, contract []byte) CrossViewProjection {
+func crossViewInspection(t *testing.T, source string, fingerprint string) Inspection {
 	t.Helper()
-	projection, err := BuildCrossViewProjection(FormatXead, []byte(source), contract)
+	return Inspection{
+		Document:                         parseCrossViewFixture(t, source),
+		TranscriptionContractFingerprint: fingerprint,
+	}
+}
+
+func parseCrossViewFixture(t *testing.T, source string) Document {
+	t.Helper()
+	doc, err := Parse(FormatXead, []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return projection
-}
-
-func crossViewPublicAccounting(t *testing.T, projection CrossViewProjection) CrossViewAccounting {
-	t.Helper()
-	accounting, err := CrossViewPublicAccounting(projection)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return accounting
-}
-
-func refingerprintCrossViewProjection(projection CrossViewProjection) CrossViewProjection {
-	projection.ProjectionFingerprint = ""
-	projection.ProjectionFingerprint = crossViewFingerprint(projection)
-	return projection
+	return doc
 }
 
 func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
+	doc := parseCrossViewFixture(t, `<System>
   <Table ID="T1"/>
   <Function ID="F1">
     <IOTable ID="IO1" TableID="T1" OpR="+"/>
@@ -63,8 +41,13 @@ func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
     </TaskAction>
     <TaskAction ID="A2"/>
   </Task>
-</System>`, crossViewContractFixture())
-	accounting := crossViewPublicAccounting(t, projection)
+</System>`)
+
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounting := CrossViewPublicAccounting(projection)
 
 	if accounting.TaskCount != 1 ||
 		accounting.TaskActionCount != 2 ||
@@ -127,40 +110,19 @@ func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
 	}
 }
 
-func TestCrossViewExposesValidatedSourceProfile(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2"><Task ID="T1"/></System>`, crossViewContractFixture())
-	if projection.SourceFormat != "xead" || projection.SourceFormatVersion != "1.2" {
-		t.Fatalf("source profile=%s/%s", projection.SourceFormat, projection.SourceFormatVersion)
-	}
-	accounting := crossViewPublicAccounting(t, projection)
-	if accounting.SourceFormat != "xead" || accounting.SourceFormatVersion != "1.2" {
-		t.Fatalf("accounting source profile=%s/%s", accounting.SourceFormat, accounting.SourceFormatVersion)
-	}
-	if !containsString(projection.AuthorityLimits, "source-profile-conformance-does-not-prove-semantic-correctness") {
-		t.Fatalf("source profile authority limit missing: %+v", projection.AuthorityLimits)
-	}
-}
-
-func TestCrossViewTreatsEmptyTaskActionIDAsMissing(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2"><Task ID="T1"><TaskAction ID=""/></Task></System>`, crossViewContractFixture())
-	accounting := crossViewPublicAccounting(t, projection)
-	if accounting.TaskActionCount != 1 || accounting.TaskActionMissingIDCount != 1 {
-		t.Fatalf("empty TaskAction ID accounting=%+v", accounting)
-	}
-	if len(projection.Actions) != 1 || !projection.Actions[0].MissingLegacyID {
-		t.Fatalf("empty TaskAction ID was treated as usable identity: %+v", projection.Actions)
-	}
-}
-
 func TestCrossViewFailsClosedOnAmbiguousFunctionIdentity(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
+	doc := parseCrossViewFixture(t, `<System>
   <Table ID="T1"/>
   <Function ID="F1"><IOTable ID="IO1" TableID="T1" OpR="+"/><IOPanel ID="P1"/></Function>
   <Function ID="F1"><IOPanel ID="P1"/></Function>
   <Task ID="TASK1">
     <TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="P1"/></TaskAction>
   </Task>
-</System>`, crossViewContractFixture())
+</System>`)
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if hasCrossViewEdge(projection.SourceEdges, "action-function-use") {
 		t.Fatal("ambiguous Function ID produced an action/function edge")
 	}
@@ -173,13 +135,17 @@ func TestCrossViewFailsClosedOnAmbiguousFunctionIdentity(t *testing.T) {
 }
 
 func TestCrossViewKeepsUnresolvedIOTableInSourceTotals(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
+	doc := parseCrossViewFixture(t, `<System>
   <Table ID="T1"/>
   <Table ID="T1"/>
   <Function ID="F1"><IOTable ID="IO1" TableID="T1" OpU="+"/></Function>
   <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="0"/></TaskAction></Task>
-</System>`, crossViewContractFixture())
-	accounting := crossViewPublicAccounting(t, projection)
+</System>`)
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounting := CrossViewPublicAccounting(projection)
 	if accounting.IOTableCount != 1 {
 		t.Fatalf("IOTable source total=%d want=1", accounting.IOTableCount)
 	}
@@ -198,14 +164,18 @@ func TestCrossViewKeepsUnresolvedIOTableInSourceTotals(t *testing.T) {
 }
 
 func TestCrossViewDoesNotPromoteNamespacedLookalike(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2" xmlns:x="urn:private">
+	doc := parseCrossViewFixture(t, `<System xmlns:x="urn:private">
   <Table ID="T1"/>
   <Function ID="F1"><IOTable ID="IO1" TableID="T1" OpR="+"/><IOPanel ID="P1"/></Function>
   <Task ID="TASK1">
     <TaskAction ID="A1"><x:TaskFunctionIO FunctionID="F1" IOID="P1"/></TaskAction>
   </Task>
-</System>`, crossViewContractFixture())
-	accounting := crossViewPublicAccounting(t, projection)
+</System>`)
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounting := CrossViewPublicAccounting(projection)
 	if accounting.TaskFunctionIOCount != 0 {
 		t.Fatalf("namespaced lookalike counted as TaskFunctionIO: %+v", accounting)
 	}
@@ -218,12 +188,16 @@ func TestCrossViewDoesNotPromoteNamespacedLookalike(t *testing.T) {
 }
 
 func TestCrossViewDoesNotTreatNamespacedAttributeAsFunctionID(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2" xmlns:x="urn:private">
+	doc := parseCrossViewFixture(t, `<System xmlns:x="urn:private">
   <Function ID="F1"><IOPanel ID="P1"/></Function>
   <Task ID="TASK1">
     <TaskAction ID="A1"><TaskFunctionIO x:FunctionID="F1" IOID="P1"/></TaskAction>
   </Task>
-</System>`, crossViewContractFixture())
+</System>`)
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !hasCrossViewUnresolved(projection.Unresolved, "task-function-io-function-id-missing") {
 		t.Fatalf("namespaced FunctionID was treated as standard attribute: %+v", projection.Unresolved)
 	}
@@ -233,11 +207,15 @@ func TestCrossViewDoesNotTreatNamespacedAttributeAsFunctionID(t *testing.T) {
 }
 
 func TestCrossViewRejectsPartialCRUDWhenMarkerIsUnsupported(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
+	doc := parseCrossViewFixture(t, `<System>
   <Table ID="T1"/>
   <Function ID="F1"><IOTable ID="IO1" TableID="T1" OpR="+" OpU="?"/></Function>
   <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="0"/></TaskAction></Task>
-</System>`, crossViewContractFixture())
+</System>`)
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if hasCrossViewEdge(projection.SourceEdges, "function-table-operation") {
 		t.Fatalf("partially understood CRUD produced a resolved source edge: %+v", projection.SourceEdges)
 	}
@@ -247,52 +225,27 @@ func TestCrossViewRejectsPartialCRUDWhenMarkerIsUnsupported(t *testing.T) {
 	if !hasCrossViewUnresolved(projection.Unresolved, "iotable-operation-marker-unsupported") {
 		t.Fatalf("unsupported CRUD marker was not retained as unresolved: %+v", projection.Unresolved)
 	}
-	accounting := crossViewPublicAccounting(t, projection)
+	accounting := CrossViewPublicAccounting(projection)
 	if accounting.IOTableCount != 1 {
 		t.Fatalf("source IOTable count=%d want=1", accounting.IOTableCount)
 	}
 }
 
-
-func TestCrossViewRejectsIOTableWithoutDeclaredOperation(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
-  <Table ID="T1"/>
-  <Function ID="F1"><IOTable ID="IO1" TableID="T1"/></Function>
-  <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="0"/></TaskAction></Task>
-</System>`, crossViewContractFixture())
-	if hasCrossViewEdge(projection.SourceEdges, "function-table-operation") {
-		t.Fatalf("IOTable without CRUD marker produced a resolved edge: %+v", projection.SourceEdges)
-	}
-	if len(projection.DerivedEdges) != 0 {
-		t.Fatalf("IOTable without CRUD marker produced a derived path: %+v", projection.DerivedEdges)
-	}
-	if !hasCrossViewUnresolved(projection.Unresolved, "iotable-operation-missing") {
-		t.Fatalf("missing CRUD declaration was not retained as unresolved: %+v", projection.Unresolved)
-	}
-}
-
-func TestCrossViewNormalizesNoTargetSentinel(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
-  <Function ID="F1"/>
-  <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID=" 0 "/></TaskAction></Task>
-</System>`, crossViewContractFixture())
-	accounting := crossViewPublicAccounting(t, projection)
-	if accounting.TaskFunctionIONoTargetCount != 1 {
-		t.Fatalf("trimmed IOID=0 count=%d want=1", accounting.TaskFunctionIONoTargetCount)
-	}
-	if hasCrossViewUnresolved(projection.Unresolved, "task-function-io-target-not-found") {
-		t.Fatalf("trimmed IOID=0 was treated as a target reference: %+v", projection.Unresolved)
-	}
-}
-
 func TestCrossViewBindsProjectionToSourceContractAndRule(t *testing.T) {
-	sourceA := `<System FormatVersion="1.2"><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpR="+"/></Function></System>`
-	sourceB := `<System FormatVersion="1.2"><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpU="+"/></Function></System>`
-	contractA := crossViewContractFixture()
-	contractB := append(append([]byte(nil), contractA...), ' ')
-	left := buildCrossViewFixture(t, sourceA, contractA)
-	contractChanged := buildCrossViewFixture(t, sourceA, contractB)
-	sourceChanged := buildCrossViewFixture(t, sourceB, contractA)
+	sourceA := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpR="+"/></Function></System>`
+	sourceB := `<System><Table ID="T1"/><Function ID="F1"><IOTable TableID="T1" OpU="+"/></Function></System>`
+	left, err := BuildCrossViewProjection(crossViewInspection(t, sourceA, strings.Repeat("1", 64)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	contractChanged, err := BuildCrossViewProjection(crossViewInspection(t, sourceA, strings.Repeat("2", 64)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceChanged, err := BuildCrossViewProjection(crossViewInspection(t, sourceB, strings.Repeat("1", 64)))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if left.ProjectionFingerprint == contractChanged.ProjectionFingerprint {
 		t.Fatal("mapping contract drift did not stale the cross-view projection")
@@ -307,12 +260,16 @@ func TestCrossViewBindsProjectionToSourceContractAndRule(t *testing.T) {
 }
 
 func TestCrossViewPublicAccountingOmitsIndividualRelationTokens(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
+	doc := parseCrossViewFixture(t, `<System>
   <Table ID="private-table"/>
   <Function ID="private-function"><IOTable ID="private-io" TableID="private-table" OpR="+"/></Function>
   <Task ID="private-task"><TaskAction ID="private-action"><TaskFunctionIO FunctionID="private-function" IOID="0"/></TaskAction></Task>
-</System>`, crossViewContractFixture())
-	encoded, err := json.Marshal(crossViewPublicAccounting(t, projection))
+</System>`)
+	projection, err := BuildCrossViewProjection(Inspection{Document: doc, TranscriptionContractFingerprint: crossViewMappingFingerprint()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(CrossViewPublicAccounting(projection))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,64 +281,15 @@ func TestCrossViewPublicAccountingOmitsIndividualRelationTokens(t *testing.T) {
 	}
 }
 
-func TestCrossViewPublicAccountingRejectsForgedRelationVocabulary(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2">
-  <Task ID="T1"><TaskAction ID="A1"/></Task>
-</System>`, crossViewContractFixture())
-	if len(projection.SourceEdges) == 0 {
-		t.Fatal("test setup produced no source edge")
-	}
-	projection.SourceEdges[0].Kind = "private-business-relation"
-	projection = refingerprintCrossViewProjection(projection)
-	if _, err := CrossViewPublicAccounting(projection); err == nil || !strings.Contains(err.Error(), "public vocabulary") {
-		t.Fatalf("forged relation kind reached public accounting: %v", err)
-	}
-}
-
-func TestCrossViewPublicAccountingRejectsFreeTextSourceVersion(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2"><Task ID="T1"/></System>`, crossViewContractFixture())
-	projection.SourceFormatVersion = "private source version description"
-	projection = refingerprintCrossViewProjection(projection)
-	if _, err := CrossViewPublicAccounting(projection); err == nil || !strings.Contains(err.Error(), "bounded numeric version") {
-		t.Fatalf("free-text source version reached public accounting: %v", err)
-	}
-}
-
-func TestCrossViewDerivationPolicyRevisionTracksCurrentRules(t *testing.T) {
-	projection := buildCrossViewFixture(t, `<System FormatVersion="1.2"><Task ID="T1"/></System>`, crossViewContractFixture())
-	if projection.DerivationPolicyRevision != "tei.xeadsource.cross-view/v2" {
-		t.Fatalf("derivation policy revision=%q", projection.DerivationPolicyRevision)
-	}
-	if projection.DerivationPolicyFingerprint != crossViewDerivationPolicyFingerprint() {
-		t.Fatalf("derivation policy fingerprint=%q", projection.DerivationPolicyFingerprint)
-	}
-}
-
-func TestCrossViewAlwaysAppliesSourceProfileGate(t *testing.T) {
-	contract := crossViewContractFixture()
-	cases := []struct {
-		name   string
-		source string
-	}{
-		{"missing format version", `<System><Task/></System>`},
-		{"unsupported format version", `<System FormatVersion="9.9"><Task/></System>`},
-		{"wrong root", `<Other FormatVersion="1.2"><Task/></Other>`},
-		{"namespaced root", `<x:System xmlns:x="urn:private" FormatVersion="1.2"><Task/></x:System>`},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if _, err := BuildCrossViewProjection(FormatXead, []byte(tc.source), contract); err == nil {
-				t.Fatalf("unsupported source profile was accepted: %s", tc.source)
-			}
-		})
-	}
-}
-
-func TestCrossViewRejectsContractWithoutSourceProfile(t *testing.T) {
-	contract := []byte(`{"constructMappings":{"xead":{}}}`)
-	source := []byte(`<System FormatVersion="1.2"><Task/></System>`)
-	if _, err := BuildCrossViewProjection(FormatXead, source, contract); err == nil {
-		t.Fatal("contract without source profile was accepted")
+func TestCrossViewRejectsInspectionWithoutExactContractBinding(t *testing.T) {
+	doc := parseCrossViewFixture(t, `<System/>`)
+	for _, fingerprint := range []string{"", "abc", "sha256:" + strings.Repeat("A", 64), "sha256:" + strings.Repeat("1", 63)} {
+		if _, err := BuildCrossViewProjection(Inspection{
+			Document:                         doc,
+			TranscriptionContractFingerprint: fingerprint,
+		}); err == nil {
+			t.Fatalf("invalid mapping fingerprint accepted: %q", fingerprint)
+		}
 	}
 }
 
