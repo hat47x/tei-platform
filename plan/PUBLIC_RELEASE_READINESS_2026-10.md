@@ -31,7 +31,7 @@ Private→Publicによって過去のGit historyだけでなくActions実行履�
 | サーバー保護 | 過去の#513/#972でmain無保護が記録された。Private rulesets APIは現プランで403 |
 | 全履歴・非Git面 | **未監査**。この一覧から公開可とは推論しない |
 
-2026-10-11のGitHub API再取得では、Open/Draft PR 33件すべての現在のexact head SHAがローカル集約候補の祖先に含まれていた。SHA・base一覧は[Draft PR exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)に記録した。これはPRの `main` 統合資格ではなく、Draft PRを `main` にmergeしない。
+2026-10-11のGitHub API再取得では、Open PR 37件（Draft 33件、Ready 4件）すべての現在のexact head SHAがローカル集約候補の祖先に含まれていた。SHA・base一覧は[Open PR exact-head inventory](../docs/audits/DRAFT_PR_EXACT_HEAD_INVENTORY_2026-10-11.md)に記録した。これはPRの `main` 統合資格ではなく、Draft PRを `main` にmergeしない。
 
 ## 3. P0-A 機密性・権利・公開面
 

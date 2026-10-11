@@ -45,3 +45,16 @@
 | #1061 | `work/issue-915-ref-spec-01-review` | `79e0d4d26dd28d1428326230014572c81aeb2ecb` | `main` | `aac0a7f075afd69d17b91ee49e24483c70542672` |
 
 The inventory is a time-bounded snapshot. Re-fetch every PR and the current `main` before using it for any later integration decision.
+
+## All open PR head check
+
+A follow-up `is:open` search returned 37 PRs total. All were individually fetched and their current exact heads were checked against candidate HEAD `4602bbd29186b98466d141fe403821aa4e11d4a3`: 33 Draft heads and 4 non-Draft heads are all ancestors; none were missing or outside the candidate history. The four non-Draft PRs were:
+
+| PR | Exact head SHA | Base ref | Observed base SHA |
+| ---: | --- | --- | --- |
+| #1123 | `69ef4a601c15c80ed4b44543e0fd127c1b03ffd1` | `main` | `5d169ecc2b567c8a749a34744704b5a59f9fffb1` |
+| #1122 | `fc2aa5d1eaffd9b2ec8f62924917c2695153fc5c` | `main` | `5fc5a0e1cb4fb42897c76dd3334292e2ad4a66e4` |
+| #1051 | `c408a6662f9dde856e171fd4886083f2b752b875` | `main` | `09eae6193d6663314c14ba34552b1f9f23f5431d` |
+| #1040 | `c28fcd2b38ff54616bcfe73ff1c038781453813b` | `main` | `4f7357a05d35c1fdb3370fa82fb55e67fe9a7314` |
+
+These base SHAs are per-PR observations and are not evidence that they match current `main`. No open PR was merged. Each future `main` merge still needs its own current PR/base/head checks and applicable repository-health qualification.
