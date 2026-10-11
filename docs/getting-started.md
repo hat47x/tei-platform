@@ -12,6 +12,61 @@
 go version
 ```
 
+## CLIを生成AIや自動化から使う
+
+当面は`tei` CLIを操作の入口として優先します。現在のread-onlyな主要コマンドは、次のJSON一覧から確認できます。
+
+```bash
+go run ./cmd/tei commands
+```
+
+モデルや定義の整合性を調べる場合、生成AIは次のようにJSON診断を受け取れます。
+
+```bash
+go run ./cmd/tei validate \\
+  -workspace reference/workspace \\
+  -json > /tmp/tei-validation.json
+```
+
+結果には`schemaVersion`、`ok`、`diagnostics`が含まれます。構文エラーでは元ファイルの位置を、意味上の検証では可能な範囲でSubjectとSource Indexの位置を返します。従来の`validate -workspace`はテキスト形式のままです。
+
+終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドやPlugin機能を列挙する完全な登録簿ではありません。詳細とWeb／デスクトップへの接続方針は[CLI優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
+
+正規化済みの業務モデルから特定の要素だけを読む場合、`inspect`を利用できます。初期対応は`semantic-data`、`semantic-relation`、`application`、`application-pattern`、`query`の5種類です。kindとCanonical IDを完全一致で指定します。
+
+```bash
+go run ./cmd/tei inspect \
+  -workspace reference/workspace \
+  -subject-kind semantic-data \
+  -subject-id sales.order
+```
+
+`inspect`は`tei.cli.inspect/v0`形式のJSONを返します。成功時の`result.canonical`は既存のNormalized Worldから選択した要素そのもの、`result.sources`は既存Source Indexの参照とArtifact fingerprintです。`worldFingerprint`は読取り時点のCanonical Worldの内容を識別するためのハッシュであり、競合更新を防ぐrevisionや変更の受理証跡ではありません。`sourceStatus=not-indexed`はSource Indexに参照がないことを意味し、Canonicalの不存在とは区別します。
+
+業務モデル要素の参照先と参照元を調べるには、読み取り専用の`trace`を使用します。`inspect`と共通のkind/ID（例：`semantic-relation: sales.order.customer`）から意味情報と参照関係の両方を取得できます。初期段階では既存のDerived Indexが表現できる宣言済みの直接参照に限定しています。
+
+```bash
+go run ./cmd/tei trace \
+  -workspace reference/workspace \
+  -scope reference-observation \
+  -subject-kind semantic-relation \
+  -subject-id sales.order.customer \
+  -direction both -mode summary
+
+go run ./cmd/tei trace \
+  -workspace reference/workspace \
+  -scope reference-observation \
+  -subject-kind semantic-relation \
+  -subject-id sales.order.customer \
+  -direction both -mode full
+```
+
+`-scope`は呼出し元が指定する**候補グラフの文脈識別子**です。Workspace名、業務上の所属namespace、受理状態や認可scopeを自動的に証明する値ではありません。`-mode summary`は件数・未解決件数を取得し、`-mode full`では宣言された直接の参照を省略せず返します。大規模な結果を分割する場合のみ`-limit 100`のように指定し、`result.trace.nextOffset`と**`result.snapshotFingerprint`（Workspace全体の継続用トークン）**を次回の`-offset`、`-expected-fingerprint`へ渡してください。`result.trace.snapshotFingerprint`はGraphと関係規則・選択条件だけの識別子であり、CLIの継続には使いません。入力Graph、対象や方向、正規化World、Source Index（元ファイルの内容や場所を含む）が変化している場合、`STALE_SNAPSHOT`で継続を拒否します。
+
+結果の`worldFingerprint`と`sourceIndexFingerprint`は、`inspect`が返す同名のフィールドと比較できます。前者が一致しても、Source移動・注記変更などがあれば後者は変わります。結果の`source`は選択要素の元定義、`relatedSources`はFull出力のそのページに登場した参照先・参照元の出所候補を示します。`projectionUnresolved`はDerived Indexの投影時点で解決できなかった参照です。関係の`resolved`は宣言の解決に成功したことのみを意味し、実行の成功・人間による承認・書込み許可を意味しません。Source Indexと原ファイルの間で生じる同時更新は、トランザクション的に固定できていません。
+
+成功時の終了コードは`0`、不存在・重複宣言は`1`、引数不正・未対応kind・Workspace読込み失敗などは`2`です。失敗時も可能な範囲で`ok=false`と`error.code`を持つJSONを出力します。現時点で対応するのは宣言済みの直接参照であり、複数段の依存探索、全種類の要素取得、受理済み業務フローとの完全な横断参照には対応しません。
+
 ## 1. テスト
 
 ```bash

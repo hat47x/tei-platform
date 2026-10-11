@@ -1,6 +1,7 @@
 package sourceindex_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -85,5 +86,36 @@ func TestIndexReferencesForSubject(t *testing.T) {
 	}
 	if err := idx.Validate(func(string) ([]byte, error) { return content, nil }); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNormalizeIsDeterministicWhenReferencesShareStartOffset(t *testing.T) {
+	sub := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	makeRef := func(end int) sourceindex.Reference {
+		return sourceindex.Reference{
+			Subject: sub,
+			ArtifactPath: "semantic/sales/order.tei",
+			Role: sourceindex.RoleDefinition,
+			Range: sourceindex.Range{
+				Start: sourceindex.Position{Offset: 10, Line: 1, Column: 11},
+				End: sourceindex.Position{Offset: end, Line: 1, Column: end + 1},
+			},
+		}
+	}
+	indexA := sourceindex.Index{References: []sourceindex.Reference{
+		makeRef(14), makeRef(12), makeRef(13),
+	}}
+	indexB := sourceindex.Index{References: []sourceindex.Reference{
+		makeRef(12), makeRef(13), makeRef(14),
+	}}
+	indexA.Normalize()
+	indexB.Normalize()
+	if !reflect.DeepEqual(indexA.References, indexB.References) {
+		t.Fatalf("Source Index normalized differently for the same logical references: %+v / %+v", indexA.References, indexB.References)
+	}
+	for i, ref := range indexA.References {
+		if ref.Range.End.Offset != i+12 {
+			t.Fatalf("equal-start reference order is unstable: %+v", indexA.References)
+		}
 	}
 }

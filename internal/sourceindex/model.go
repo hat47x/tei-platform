@@ -181,7 +181,22 @@ func (i *Index) Normalize() {
 		if left.ArtifactPath != right.ArtifactPath {
 			return left.ArtifactPath < right.ArtifactPath
 		}
-		return left.Range.Start.Offset < right.Range.Start.Offset
+		if left.Range.Start.Offset != right.Range.Start.Offset {
+			return left.Range.Start.Offset < right.Range.Start.Offset
+		}
+		if left.Range.End.Offset != right.Range.End.Offset {
+			return left.Range.End.Offset < right.Range.End.Offset
+		}
+		if left.Range.Start.Line != right.Range.Start.Line {
+			return left.Range.Start.Line < right.Range.Start.Line
+		}
+		if left.Range.Start.Column != right.Range.Start.Column {
+			return left.Range.Start.Column < right.Range.Start.Column
+		}
+		if left.Range.End.Line != right.Range.End.Line {
+			return left.Range.End.Line < right.Range.End.Line
+		}
+		return left.Range.End.Column < right.Range.End.Column
 	})
 }
 

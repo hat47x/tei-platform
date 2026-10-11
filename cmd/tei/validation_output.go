@@ -4,26 +4,21 @@ import (
 	"fmt"
 	"io"
 
+	"tei/internal/operations"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
 func validateWorkspace(out io.Writer, root string) (int, error) {
-	result, err := workspace.Load(root)
-	if err != nil {
-		if diagnostic, ok := workspace.SourceDiagnosticFromError(root, err); ok {
-			printSourceDiagnostic(out, diagnostic)
-			return 1, nil
-		}
-		return 2, err
-	}
-
-	index, err := workspace.BuildSourceIndex(root, result)
+	result, err := operations.ValidateWorkspace(root)
 	if err != nil {
 		return 2, err
 	}
-	projected := workspace.ProjectDiagnostics(validation.Validate(result.World), index)
-	if printProjectedDiagnostics(out, projected) {
+	if result.Direct != nil {
+		printSourceDiagnostic(out, *result.Direct)
+		return 1, nil
+	}
+	if printProjectedDiagnostics(out, result.Diagnostics) {
 		return 1, nil
 	}
 	fmt.Fprintln(out, "ok")

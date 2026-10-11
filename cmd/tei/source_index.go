@@ -4,15 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"tei/internal/operations"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
-type sourceIndexSubjectView struct {
-	Subject    sourceindex.Subject     `json:"subject"`
-	Artifacts  []sourceindex.Artifact  `json:"artifacts,omitempty"`
-	References []sourceindex.Reference `json:"references"`
-}
+type sourceIndexSubjectView = operations.SubjectSources
 
 func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error) {
 	if strings.TrimSpace(root) == "" {
@@ -36,21 +33,7 @@ func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, error
 		return index, nil
 	}
 
-	subject := sourceindex.Subject{Kind: kind, ID: id}
-	references := index.ReferencesFor(subject)
-	paths := make(map[string]struct{}, len(references))
-	for _, ref := range references {
-		paths[ref.ArtifactPath] = struct{}{}
-	}
-	artifacts := make([]sourceindex.Artifact, 0, len(paths))
-	for _, artifact := range index.Artifacts {
-		if _, ok := paths[artifact.Path]; ok {
-			artifacts = append(artifacts, artifact)
-		}
-	}
-	return sourceIndexSubjectView{
-		Subject:    subject,
-		Artifacts:  artifacts,
-		References: references,
-	}, nil
+	// Reuse the index built for this invocation, rather than reloading the
+	// Workspace and potentially mixing two different source snapshots.
+	return operations.TraceSubjectSourcesFromIndex(index, sourceindex.Subject{Kind: kind, ID: id})
 }
