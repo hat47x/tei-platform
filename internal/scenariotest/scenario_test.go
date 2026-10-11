@@ -150,3 +150,25 @@ func TestCanonicalValidationScenarioFixtureContracts(t *testing.T) {
 	b,_ = json.Marshal(scenario)
 	if _,err := Parse(b);err==nil { t.Fatal("empty expectations accepted") }
 }
+
+func TestObservationFixtureRequiresExplicitSyntheticRead(t *testing.T) {
+	good := `{"readIdentity":"synthetic.order_state.read","nature":"synthetic","observed":{"kind":"string","data":"pending"}}`
+	if _, err := ParseObservationFixture([]byte(good)); err != nil { t.Fatal(err) }
+	for _, invalid := range []string{
+		`{"readIdentity":"synthetic.order_state.read","nature":"external-observed","observed":{"kind":"string","data":"pending"}}`,
+		`{"readIdentity":"","nature":"synthetic","observed":{"kind":"string","data":"pending"}}`,
+		`{"readIdentity":"read","nature":"synthetic","observed":{"kind":"invalid","data":"pending"}}`,
+		`{"readIdentity":"read","nature":"synthetic","observed":{"kind":"string","data":"pending"},"extra":"ignored"}`,
+	} {
+		if _, err := ParseObservationFixture([]byte(invalid)); err == nil { t.Fatalf("invalid observation fixture accepted: %s", invalid) }
+	}
+	s := Scenario{SchemaVersion:SchemaVersion, ID:"observation", Application:"order_entry", Steps:[]Step{{
+		ID:"observe", Operation:"observe-synthetic-state", ReadIdentity:"synthetic.order_state.read", Fixture:"fixtures/state.json",
+		ExpectObservation:&Value{Kind:"string",Data:"pending"},
+	}}}
+	b, _ := json.Marshal(s)
+	if _, err := Parse(b); err != nil { t.Fatal(err) }
+	s.Steps[0].ExpectObservation = nil
+	b, _ = json.Marshal(s)
+	if _, err := Parse(b); err == nil { t.Fatal("Observation without expected state accepted") }
+}

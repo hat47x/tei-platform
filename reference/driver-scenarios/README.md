@@ -42,3 +42,9 @@ The expected negative business outcome `not-satisfied` is a valid, successful *n
 go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-pattern-smoke.json -workspace reference/workspace -step validate-positive
 go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-pattern-smoke.json -workspace reference/workspace -step validate-denied
 ```
+
+## Independent synthetic Observation (no Command claim)
+
+An additional `observe-synthetic` step tests the existing `driver.ExecuteObservationRead` interface. The expected `pending` state is declared in the Scenario and independently provided by `fixtures/order_state_pending.json`, with a stable read identity and `synthetic` evidence nature. Generated CLI argv pins the fixture digest. Wrong observed state, read identity or fixture digest fails closed.
+
+This is **not** an observed Command effect and does not claim an order has been submitted. The synthetic Observation is deliberately a separate read without a preceding Command.
