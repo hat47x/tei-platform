@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"tei/internal/sourceindex"
+	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
 
 const (
@@ -174,12 +175,23 @@ func verifySemanticLockReplay(
 		})
 	}
 	namespaceAuthorities := make([]SemanticNamespaceAuthority, 0, len(lock.NamespaceAuthorities))
+	publisherTrust := make([]PublisherTrustGrant, 0, len(lock.NamespaceAuthorities))
 	for _, authority := range lock.NamespaceAuthorities {
+		issuer := semanticLockVerificationPublisher()
 		namespaceAuthorities = append(namespaceAuthorities, SemanticNamespaceAuthority{
 			Namespace:           authority.Namespace,
 			Extension:           authority.Extension,
+			Issuer:              issuer,
 			EvidenceFingerprint: syntheticLockVerificationEvidenceFingerprint(),
 		})
+		grant, err := newSemanticLockVerificationTrustGrant(
+			authority.Namespace,
+			issuer,
+		)
+		if err != nil {
+			return err
+		}
+		publisherTrust = append(publisherTrust, grant)
 	}
 
 	reconstructed, err := resolveSemanticCatalogWithAllInputs(
@@ -189,6 +201,7 @@ func verifySemanticLockReplay(
 		interfaceWirings,
 		interfaceConformance,
 		namespaceAuthorities,
+		publisherTrust,
 	)
 	if err != nil {
 		return fmt.Errorf("semantic lock exact graph cannot be reconstructed: %w", err)
@@ -344,4 +357,24 @@ func semanticLockExtensionKey(id, version string) string {
 
 func syntheticLockVerificationEvidenceFingerprint() string {
 	return sourceindex.Fingerprint([]byte("semantic-lock-verification"))
+}
+
+func semanticLockVerificationPublisher() authoritytrust.Issuer {
+	return authoritytrust.Issuer{
+		ID:      "tei.reference.semantic-lock-verification",
+		Version: "1.0.0",
+	}
+}
+
+func newSemanticLockVerificationTrustGrant(
+	namespace string,
+	issuer authoritytrust.Issuer,
+) (PublisherTrustGrant, error) {
+	return authoritytrust.NewGrant(
+		semanticNamespacePublisherAuthorityClass,
+		semanticNamespaceTrustScope(namespace),
+		issuer,
+		sourceindex.Fingerprint([]byte("semantic-lock-verification-trust")),
+		true,
+	)
 }

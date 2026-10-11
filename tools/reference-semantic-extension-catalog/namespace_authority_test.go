@@ -5,10 +5,46 @@ import (
 	"testing"
 
 	"tei/internal/subject"
+	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
 
 func namespaceAuthorityEvidence(hex string) string {
 	return "sha256:" + strings.Repeat(hex, 64)
+}
+
+func semanticNamespacePublisherForTest() authoritytrust.Issuer {
+	return authoritytrust.Issuer{
+		ID:      "tei.reference.semantic-authority-publisher",
+		Version: "1.0.0",
+	}
+}
+
+func semanticNamespaceAuthorityForTest(
+	t *testing.T,
+	namespace string,
+	extension string,
+	evidenceHex string,
+	policyHex string,
+	active bool,
+) (SemanticNamespaceAuthority, []PublisherTrustGrant) {
+	t.Helper()
+	authority := SemanticNamespaceAuthority{
+		Namespace:           namespace,
+		Extension:           extension,
+		Issuer:              semanticNamespacePublisherForTest(),
+		EvidenceFingerprint: namespaceAuthorityEvidence(evidenceHex),
+	}
+	grant, err := authoritytrust.NewGrant(
+		semanticNamespacePublisherAuthorityClass,
+		semanticNamespaceTrustScope(namespace),
+		authority.Issuer,
+		namespaceAuthorityEvidence(policyHex),
+		active,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return authority, []PublisherTrustGrant{grant}
 }
 
 func TestSemanticExtensionCannotFirstClaimStandardNamespace(t *testing.T) {
@@ -43,11 +79,14 @@ func TestAcceptedAuthorityAllowsStandardExtensionThroughSameContract(t *testing.
 			Subject: subject.Subject{Kind: "validation-policy", ID: "std.validation.required"},
 		}},
 	}
-	grant := SemanticNamespaceAuthority{
-		Namespace:           descriptor.Namespace,
-		Extension:           descriptor.ID,
-		EvidenceFingerprint: namespaceAuthorityEvidence("a"),
-	}
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"1",
+		true,
+	)
 
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		CoreCatalogInput{},
@@ -55,7 +94,8 @@ func TestAcceptedAuthorityAllowsStandardExtensionThroughSameContract(t *testing.
 		[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
 		nil,
 		nil,
-		[]SemanticNamespaceAuthority{grant},
+		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +105,8 @@ func TestAcceptedAuthorityAllowsStandardExtensionThroughSameContract(t *testing.
 	}
 	if len(catalog.NamespaceAuthorities) != 1 ||
 		catalog.NamespaceAuthorities[0].Namespace != descriptor.Namespace ||
-		catalog.NamespaceAuthorities[0].Extension != descriptor.ID {
+		catalog.NamespaceAuthorities[0].Extension != descriptor.ID ||
+		catalog.NamespaceAuthorities[0].TrustQualificationFingerprint == "" {
 		t.Fatalf("namespace authority was not preserved: %+v", catalog.NamespaceAuthorities)
 	}
 	if !catalogHasSubject(catalog, descriptor.Concepts[0].Subject) {
@@ -92,11 +133,14 @@ func TestNamespaceAuthoritySelectsOneOwnerWithoutLoadOrderWinner(t *testing.T) {
 			Subject: subject.Subject{Kind: "policy-view", ID: "policy.right"},
 		}},
 	}
-	grant := SemanticNamespaceAuthority{
-		Namespace:           left.Namespace,
-		Extension:           right.ID,
-		EvidenceFingerprint: namespaceAuthorityEvidence("b"),
-	}
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		left.Namespace,
+		right.ID,
+		"b",
+		"2",
+		true,
+	)
 
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		CoreCatalogInput{},
@@ -107,7 +151,8 @@ func TestNamespaceAuthoritySelectsOneOwnerWithoutLoadOrderWinner(t *testing.T) {
 		},
 		nil,
 		nil,
-		[]SemanticNamespaceAuthority{grant},
+		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -134,18 +179,22 @@ func TestNamespaceAuthorityCannotOverrideCoreOwnership(t *testing.T) {
 		Namespace: "shared.policy",
 		Version:   "1.0.0",
 	}
-	grant := SemanticNamespaceAuthority{
-		Namespace:           descriptor.Namespace,
-		Extension:           descriptor.ID,
-		EvidenceFingerprint: namespaceAuthorityEvidence("c"),
-	}
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"c",
+		"3",
+		true,
+	)
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		CoreCatalogInput{Subjects: []subject.Subject{coreNamespace}},
 		[]ExtensionDescriptor{descriptor},
 		[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
 		nil,
 		nil,
-		[]SemanticNamespaceAuthority{grant},
+		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -163,17 +212,22 @@ func TestNamespaceAuthorityEvidenceDoesNotChangeSemanticIdentity(t *testing.T) {
 		Version:   "1.0.0",
 	}
 	resolve := func(hex string) SemanticCatalog {
+		authority, publisherTrust := semanticNamespaceAuthorityForTest(
+			t,
+			descriptor.Namespace,
+			descriptor.ID,
+			hex,
+			"4",
+			true,
+		)
 		catalog, err := resolveSemanticCatalogWithAllInputs(
 			CoreCatalogInput{},
 			[]ExtensionDescriptor{descriptor},
 			[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
 			nil,
 			nil,
-			[]SemanticNamespaceAuthority{{
-				Namespace:           descriptor.Namespace,
-				Extension:           descriptor.ID,
-				EvidenceFingerprint: namespaceAuthorityEvidence(hex),
-			}},
+			[]SemanticNamespaceAuthority{authority},
+			publisherTrust,
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -195,6 +249,119 @@ func TestNamespaceAuthorityEvidenceDoesNotChangeSemanticIdentity(t *testing.T) {
 	}
 	if left.EvidenceFingerprint == right.EvidenceFingerprint {
 		t.Fatalf("authority Evidence change was not reflected in Evidence identity: %s", left.EvidenceFingerprint)
+	}
+}
+
+func TestNamespaceAuthorityRequiresTrustedPublisherEvenWithAcceptedEvidence(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.std.validation",
+		Namespace: "std.validation",
+		Version:   "1.0.0",
+	}
+	authority, _ := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"5",
+		true,
+	)
+	_, err := resolveSemanticCatalogWithAllInputs(
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{descriptor},
+		[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
+		nil,
+		nil,
+		[]SemanticNamespaceAuthority{authority},
+	)
+	if err == nil || !strings.Contains(err.Error(), "publisher trust") {
+		t.Fatalf("accepted Namespace Authority Evidence bypassed publisher trust: %v", err)
+	}
+}
+
+func TestNamespaceAuthorityRejectsRevokedPublisherTrust(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.std.validation",
+		Namespace: "std.validation",
+		Version:   "1.0.0",
+	}
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"6",
+		false,
+	)
+	_, err := resolveSemanticCatalogWithAllInputs(
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{descriptor},
+		[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
+		nil,
+		nil,
+		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
+	)
+	if err == nil || !strings.Contains(err.Error(), "revoked") {
+		t.Fatalf("revoked namespace publisher remained trusted: %v", err)
+	}
+}
+
+func TestNamespacePublisherTrustRefreshDoesNotChangeSemanticIdentity(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.std.validation",
+		Namespace: "std.validation",
+		Version:   "1.0.0",
+	}
+	authority, leftTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"7",
+		true,
+	)
+	_, rightTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"8",
+		true,
+	)
+	resolve := func(publisherTrust []PublisherTrustGrant) SemanticCatalog {
+		catalog, err := resolveSemanticCatalogWithAllInputs(
+			CoreCatalogInput{},
+			[]ExtensionDescriptor{descriptor},
+			[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
+			nil,
+			nil,
+			[]SemanticNamespaceAuthority{authority},
+			publisherTrust,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return catalog
+	}
+	left := resolve(leftTrust)
+	right := resolve(rightTrust)
+	if left.ResolutionFingerprint != right.ResolutionFingerprint {
+		t.Fatal("publisher trust refresh changed Semantic Set identity")
+	}
+	if left.NamespaceAuthorities[0].EvidenceFingerprint !=
+		right.NamespaceAuthorities[0].EvidenceFingerprint {
+		t.Fatal("publisher trust refresh changed Namespace Authority Evidence identity")
+	}
+	if left.NamespaceAuthorities[0].TrustQualificationFingerprint ==
+		right.NamespaceAuthorities[0].TrustQualificationFingerprint {
+		t.Fatal("publisher trust refresh was not observable")
+	}
+	if left.EvidenceFingerprint == right.EvidenceFingerprint {
+		t.Fatal("publisher trust refresh was not reflected in catalog Evidence identity")
 	}
 }
 

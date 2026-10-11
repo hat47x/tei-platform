@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
 
 func TestReferenceInvocationShapesShareCanonicalIssuer(t *testing.T) {
@@ -105,9 +107,13 @@ func TestInvocationRegistryRejectsShapeArtifactDriftAtRegistration(t *testing.T)
 	implementation.RequestShapeArtifact.Root.Required = append(
 		implementation.RequestShapeArtifact.Root.Required, "NewRequiredField",
 	)
+	authorities := invocationShapeAuthoritiesForTest(
+		[]InvocationImplementation{implementation},
+	)
 	_, err = NewInvocationRegistry(
 		[]InvocationImplementation{implementation},
-		invocationShapeAuthoritiesForTest([]InvocationImplementation{implementation}),
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	)
 	if err == nil || !strings.Contains(err.Error(), `requires undeclared property "NewRequiredField"`) {
 		t.Fatalf("mutated shape artifact was registered: %v", err)
@@ -328,6 +334,7 @@ func TestInvocationRegistryRejectsStaleShapeAuthorityEvidence(t *testing.T) {
 	if _, err := NewInvocationRegistry(
 		[]InvocationImplementation{implementation},
 		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	); err == nil || !strings.Contains(err.Error(), "no accepted Shape Authority Evidence") {
 		t.Fatalf("stale shape authority Evidence was accepted: %v", err)
 	}
@@ -340,9 +347,11 @@ func TestInvocationRegistryRejectsAmbiguousShapeAuthorityEvidence(t *testing.T) 
 	if left.EvidenceFingerprint == right.EvidenceFingerprint {
 		t.Fatal("test authority fingerprints unexpectedly match")
 	}
+	authorities := []InvocationShapeAuthorityEvidence{left, right}
 	if _, err := NewInvocationRegistry(
 		nil,
-		[]InvocationShapeAuthorityEvidence{left, right},
+		authorities,
+		invocationShapePublisherTrustForTest(t, authorities),
 	); err == nil || !strings.Contains(err.Error(), "ambiguous") {
 		t.Fatalf("ambiguous accepted Shape Authority Evidence was accepted: %v", err)
 	}
@@ -386,11 +395,19 @@ func TestShapeAuthorityEvidenceRefreshDoesNotChangeCapabilityResolutionIdentity(
 			"authority-new-result",
 		),
 	}
-	oldRegistry, err := NewInvocationRegistry(implementations, oldAuthorities)
+	oldRegistry, err := NewInvocationRegistry(
+		implementations,
+		oldAuthorities,
+		invocationShapePublisherTrustForTest(t, oldAuthorities),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	newRegistry, err := NewInvocationRegistry(implementations, newAuthorities)
+	newRegistry, err := NewInvocationRegistry(
+		implementations,
+		newAuthorities,
+		invocationShapePublisherTrustForTest(t, newAuthorities),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -445,5 +462,162 @@ func TestInvocationRegistryRejectsTamperedShapeAuthorityEvidence(t *testing.T) {
 		[]InvocationShapeAuthorityEvidence{evidence},
 	); err == nil || !strings.Contains(err.Error(), "fingerprint mismatch") {
 		t.Fatalf("tampered Shape Authority Evidence was accepted: %v", err)
+	}
+}
+
+
+func TestInvocationRegistryRejectsAcceptedShapeEvidenceWithoutPublisherTrust(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.shape-untrusted-publisher",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorities := invocationShapeAuthoritiesForTest(
+		[]InvocationImplementation{implementation},
+	)
+	if _, err := NewInvocationRegistry(
+		[]InvocationImplementation{implementation},
+		authorities,
+	); err == nil || !strings.Contains(err.Error(), "publisher trust") {
+		t.Fatalf("accepted Shape Authority Evidence bypassed publisher trust: %v", err)
+	}
+}
+
+func TestShapePublisherTrustPolicyRefreshDoesNotChangeShapeOrCapabilityIdentity(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.shape-trust-refresh",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementations := []InvocationImplementation{implementation}
+	authorities := invocationShapeAuthoritiesForTest(implementations)
+	oldGrants := invocationShapePublisherTrustForTest(t, authorities)
+	newGrants := append([]authoritytrust.Grant(nil), oldGrants...)
+	for i := range newGrants {
+		newGrants[i].PolicyFingerprint = fingerprint(struct {
+			Policy string `json:"policy"`
+			Shape  string `json:"shape"`
+		}{
+			Policy: "refreshed-reference-publisher-policy",
+			Shape:  newGrants[i].Scope,
+		})
+		newGrants[i].GrantFingerprint =
+			authoritytrust.GrantFingerprint(newGrants[i])
+	}
+
+	oldRegistry, err := NewInvocationRegistry(
+		implementations,
+		authorities,
+		oldGrants,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newRegistry, err := NewInvocationRegistry(
+		implementations,
+		authorities,
+		newGrants,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload, err := json.Marshal(SourceAdapterRequest{
+		Format:                "xead",
+		SourceBytes:           []byte(`<System FormatVersion="1.2"/>`),
+		TranscriptionContract: sourceAdapterTranscriptionContract(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := sourceAdapterResolveInput(contract, provider)
+	oldExecution, err := oldRegistry.ResolveAndInvoke(
+		context.Background(),
+		input,
+		payload,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newExecution, err := newRegistry.ResolveAndInvoke(
+		context.Background(),
+		input,
+		payload,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if oldExecution.Resolution.ResolutionFingerprint !=
+		newExecution.Resolution.ResolutionFingerprint {
+		t.Fatal("publisher trust policy refresh changed Capability resolution identity")
+	}
+	if oldExecution.RequestShapeFingerprint != newExecution.RequestShapeFingerprint ||
+		oldExecution.ResultShapeFingerprint != newExecution.ResultShapeFingerprint {
+		t.Fatal("publisher trust policy refresh changed Shape identity")
+	}
+	if oldExecution.RequestShapeAuthorityEvidenceFingerprint !=
+			newExecution.RequestShapeAuthorityEvidenceFingerprint ||
+		oldExecution.ResultShapeAuthorityEvidenceFingerprint !=
+			newExecution.ResultShapeAuthorityEvidenceFingerprint {
+		t.Fatal("publisher trust policy refresh changed Authority Evidence identity")
+	}
+	if oldExecution.RequestShapeTrustQualificationFingerprint ==
+			newExecution.RequestShapeTrustQualificationFingerprint ||
+		oldExecution.ResultShapeTrustQualificationFingerprint ==
+			newExecution.ResultShapeTrustQualificationFingerprint {
+		t.Fatal("publisher trust policy refresh was not observable")
+	}
+}
+
+func TestInvocationRegistryRejectsRevokedShapePublisherTrust(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.shape-revoked-publisher",
+		referenceXeadReaderImplementationID,
+	)
+	typed, err := ReferenceXeadSourceAdapterImplementation(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementation, err := sourceAdapterInvocationImplementation(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	implementations := []InvocationImplementation{implementation}
+	authorities := invocationShapeAuthoritiesForTest(implementations)
+	grants := invocationShapePublisherTrustForTest(t, authorities)
+	for i := range grants {
+		grants[i].Active = false
+		grants[i].GrantFingerprint = authoritytrust.GrantFingerprint(grants[i])
+	}
+	if _, err := NewInvocationRegistry(
+		implementations,
+		authorities,
+		grants,
+	); err == nil || !strings.Contains(err.Error(), "revoked") {
+		t.Fatalf("revoked Shape publisher remained trusted: %v", err)
 	}
 }

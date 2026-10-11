@@ -113,11 +113,14 @@ func TestSemanticLockEvidenceBindingRequiresCurrentNamespaceAuthority(t *testing
 		Namespace: "std.reference",
 		Version:   "1.0.0",
 	}
-	authority := SemanticNamespaceAuthority{
-		Namespace:           descriptor.Namespace,
-		Extension:           descriptor.ID,
-		EvidenceFingerprint: namespaceAuthorityEvidence("a"),
-	}
+	authority, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"9",
+		true,
+	)
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		CoreCatalogInput{},
 		[]ExtensionDescriptor{descriptor},
@@ -125,6 +128,7 @@ func TestSemanticLockEvidenceBindingRequiresCurrentNamespaceAuthority(t *testing
 		nil,
 		nil,
 		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -148,6 +152,7 @@ func TestSemanticLockEvidenceBindingRequiresCurrentNamespaceAuthority(t *testing
 		lock,
 		nil,
 		[]SemanticNamespaceAuthority{authority},
+		publisherTrust,
 	); err != nil {
 		t.Fatalf("exact namespace Authority Evidence did not qualify locked owner: %v", err)
 	}
@@ -160,16 +165,78 @@ func TestSemanticLockEvidenceBindingRejectsDifferentNamespaceOwner(t *testing.T)
 			Extension: "tei.std.validation",
 		}},
 	}
-	wrong := SemanticNamespaceAuthority{
-		Namespace:           "std.validation",
-		Extension:           "third.party.validation",
-		EvidenceFingerprint: namespaceAuthorityEvidence("a"),
-	}
+	wrong, publisherTrust := semanticNamespaceAuthorityForTest(
+		t,
+		"std.validation",
+		"third.party.validation",
+		"a",
+		"a",
+		true,
+	)
 	if err := verifySemanticLockAcceptedEvidenceBindings(
 		lock,
 		nil,
 		[]SemanticNamespaceAuthority{wrong},
+		publisherTrust,
 	); err == nil || !strings.Contains(err.Error(), "but accepted Authority Evidence names") {
 		t.Fatalf("different namespace owner was accepted: %v", err)
+	}
+}
+
+
+func TestSemanticLockEvidenceBindingRejectsRevokedNamespacePublisherTrust(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.std.reference",
+		Namespace: "std.reference",
+		Version:   "1.0.0",
+	}
+	authority, activeTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"b",
+		true,
+	)
+	catalog, err := resolveSemanticCatalogWithAllInputs(
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{descriptor},
+		[]ExtensionRequirement{{Extension: descriptor.ID, CompatibleMajor: 1}},
+		nil,
+		nil,
+		[]SemanticNamespaceAuthority{authority},
+		activeTrust,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildSemanticLock(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifySemanticLockReplay(
+		lock,
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{descriptor},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	_, revokedTrust := semanticNamespaceAuthorityForTest(
+		t,
+		descriptor.Namespace,
+		descriptor.ID,
+		"a",
+		"b",
+		false,
+	)
+	if err := verifySemanticLockAcceptedEvidenceBindings(
+		lock,
+		nil,
+		[]SemanticNamespaceAuthority{authority},
+		revokedTrust,
+	); err == nil || !strings.Contains(err.Error(), "revoked") {
+		t.Fatalf("revoked publisher trust qualified locked namespace owner: %v", err)
 	}
 }
