@@ -30,6 +30,38 @@ The allowlist must contain one exact repository-relative file path per line (ASC
 
 **Do not publish `/private/review-all-paths.txt`, the source checkout, or the audit report.** Keeping output outside the source repository prevents accidentally adding it to the private tree; it is not itself a confidentiality guarantee.
 
+## Publication document selection
+
+The committed `compatibility-document-map.tsv` tracks **38 compatibility-only Markdown entrypoints** whose full content lives at canonical paths: 22 short `plan/` relocation guides and 16 `docs/adr/` guides (15 individual ADR guides plus the directory index). All 38 source/destination pairs were verified as present in the proposal branch Git tree on 2026-10-11.
+
+These files **remain in the development repository** because external and historical links may rely on them (see Draft PR #1091). They are candidates for **omission from a new public source snapshot**, not automatic deletion from private Git history.
+
+To derive a reduced, deterministic review list:
+
+```bash
+python3 tools/public-release/select-public-docs.py \
+  "$PWD" "$sha" \
+  /private/reviewed-public-paths.txt \
+  tools/public-release/compatibility-document-map.tsv \
+  /private/reviewed-public-paths-filtered.txt
+
+bash tools/public-release/prepare-candidate.sh \
+  "$PWD" "$sha" \
+  /private/reviewed-public-paths-filtered.txt \
+  /private/tei-public-candidate
+
+bash tools/public-release/verify-candidate.sh \
+  "$PWD" "$sha" \
+  /private/reviewed-public-paths-filtered.txt \
+  /private/tei-public-candidate
+
+bash tools/public-release/select-public-docs-test.sh
+```
+
+The selector only drops a mapped entry when its canonical destination is already in the reviewed list and the source is still an obvious redirect. It scans retained Markdown for ordinary inline, reference-style and HTML links that resolve to omitted entries. **Any such link blocks selection until the retained document is corrected or excluded.** A published documentation site also needs separate complete link-checking (including external links, dynamic references and generated HTML); this targeted scan is not an exhaustive link audit. Do not publish a generated allowlist automatically.
+
+Other historical audits, design-pressure notes and implementation Evidence are **not** excluded solely because they are dated or not part of the current introduction: their authority, cross-references, reproducibility and current readers must be evaluated before inclusion or removal. The published documentation navigation should lead to Product/Requirement/Architecture, current plan and verified Evidence rather than use individual exploratory notes as introductory material.
+
 ## Dormant public CI workflow example
 
 `reference-workflow.yml` is intentionally stored under `tools/public-release/` rather than `.github/workflows/`, so it **cannot run as a GitHub Actions workflow in the current repository**. Do not move it into an active workflow path until the public source, workflow code, external Actions revisions and target repository settings have been approved.
