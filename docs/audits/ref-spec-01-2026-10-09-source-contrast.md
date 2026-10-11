@@ -209,3 +209,28 @@ GitHub上の実装と内容一致を確認した次の二つのGo原文ファイ
 実Referenceでは`order_entry`のValidation宣言3件のうち、`BP-05`が明示する2件を`sharedValidations`、残る1件を`applicationOnly`と表示する。出典の期待件数はApplication定義1件とValidation定義3件の計4件となる。`BP-05`側に残る1件を追加して集合を一致させた実験では、`sharedValidations`が3件で`sourceEvidence`が計4件になることを要求し、出典Indexを空にした場合は古い証拠を破棄して未解決4件を返す回帰テストを追加した。
 
 **実装・テストの追加はGitHubブランチに反映したが、最新のGoテスト、実Workspace結合、full repository-health-checkはこの時点で未実施**。過去の隔離Goテストは、今回の`sharedValidations`実装を含んでいないため成功証拠に転用しない。PRをDraftで維持し、統合を停止する。
+
+
+## 2026-10-11 反映漏れ点検：Validation比較の議論とGitHub正本
+
+本節は**実装・仕様・検証計画がGitHub上に存在するか**の追跡表であり、実行テストの成功記録ではない。対象はDraft PR #1040のValidation参照比較に限定する。Issue #915はbrownfield onboarding全体の研究・価値仮説を扱い、このPRだけでIssue全体を完了とはしない。
+
+| 議論で確定・追加した内容 | GitHub上の正本・根拠 | 反映状況 |
+| --- | --- | --- |
+| ApplicationとBusiness ProcedureのValidation参照を、業務的不整合と断定せず比較する | `validation_scope_review.go`、Reference README | コード・文書あり |
+| 明示的opt-inと既存blocking診断との分離 | `main.go`、`validation_scope_review_test.go` | コード・テストあり |
+| Application/Stepの文脈が欠ける、Step IDが重複する場合の保留 | `validation_scope_review.go`、対応回帰テスト | コード・テストあり |
+| Validation意味定義の欠落・曖昧・重複宣言をside/ID/reasonで提示 | `referenceIssues`、対応回帰テスト | コード・テストあり |
+| 集合の差分と共通IDを昇順で示し、一致を業務的同値・Acceptanceと混同しない | `sharedValidations`、README、対応回帰テスト | コード・文書・テストあり |
+| 既存Source Indexに戻る出典パス・行・指紋、曖昧・欠落時の未解決保持 | `validation_scope_review_sources.go`、対応回帰テスト | コード・テストあり |
+| artifact pathが複数現れる場合、3件目以降でも曖昧性を解除しない | `validation_scope_review_sources.go`、重複path回帰テスト | コード・テストあり |
+| 再解析時に古い`sourceEvidence`/`unresolvedSource`を残さない | `validation_scope_review_sources.go`、再解析回帰テスト | コード・テストあり |
+| unresolved行と正常行の混在で、前者を確定せず後者の根拠を保持 | `validation_scope_review_test.go`（`72f4b81`） | テスト追加済み・未実行 |
+| Validationのartifact欠落でも有効なApplication出典を保持 | `validation_scope_review_test.go`（`0b22b91`） | テスト追加済み・未実行 |
+| 空・空白のみのartifact locator / fingerprintを出典として認めない | 出典照合（`7ccc6b5`、`96c9d6d`）、負例テスト（`67585fe`、`3df3445`） | コード・テスト追加済み・未実行 |
+| CI停止中の手動確認、exact-head、前後clean、全Repository healthを記録する | Reference README（`e896cce`） | 手順追加済み・未実行 |
+| 設計者によるA/B比較、所要時間だけでなく誤断定や根拠誤認も測る | Reference README（`580b955`） | 実験計画追加済み・実測なし |
+
+**実施していないこと：** 最新のTEI Repository checkoutを用いたGoテスト、実Workspace/Source Indexとの結合確認、`tools/repository-health-check.sh`全項目PASS、実行前後のclean確認、レビュー工数の実測。過去の隔離Go試験は、その時点の原文一部と最小代替型に対する結果であり、以後の変更や現在のPR headの実行資格ではない。CIは停止中とされており、自動テストの起動を統合条件の代わりに要求しないが、**手動の全項目検証が無い限り統合資格は得られない**。
+
+**記録整合性の課題：** 従来のPR本文には過去のheadとmainを「現在」として記した箇所があり、また本監査文書は上記直近変更を追記するまで収録していなかった。本節で議論→ファイルの対応を補い、PRの状態欄は都度最新情報を表示する。main追随およびDraft解除・統合はこの追跡表の作成とは別の作業とする。
