@@ -23,3 +23,11 @@ go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-p
 `verify` and `generate` validate the fixture binding but do not execute the Query; the result evidence explicitly says `synthetic-fixture-bound; query-not-executed`. `run` executes the synthetic Driver Query and reports `synthetic-browse-query-executed`; neither result is real-provider evidence. No secret values or authenticated authority are captured. The fixture path must remain inside the Scenario directory even through symlinks.
 
 This small Reference should be extended only after the typed operation adapter and safely isolated fixture described in #1158/#1180 are available. Do not infer product-wide operation coverage from a single Pattern resolution fixture.
+
+## Current qualification boundary
+
+The `scenario generate` output embeds `-scenario-sha256`, `-world-sha256`, `-plugin-lock-sha256` and, for synthetic Browse steps, `-fixture-sha256`. The `scenario run` entry compares supplied pins **before** calling the Driver Query. A direct hand-written `scenario run` without these options is permitted for exploratory testing, but it is not evidence of executing the previously generated command revision.
+
+The test-only typed values include string, int64, float64 and RFC3339 timestamp. NaN and infinity are refused. The whole raw row is mapped using the actual Canonical Query declaration; Scenario assertions must cover every semantic mapped column on every row. A missing mapping or wrong fixture parameter is an execution failure, not a passing zero-result Query.
+
+This remains a **draft implementation candidate** until actual exact-head full-checkout Go tests, repository health check and CLI integration with parallel PRs are verified. World and Plugin Lock *hashes* are not substitutes for Accepted Revision/Policy/Authority qualification or external provider evidence.
