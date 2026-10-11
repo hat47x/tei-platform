@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"path/filepath"
+	"reflect"
 
 	"tei/internal/core"
 	"tei/internal/driver"
@@ -24,7 +24,7 @@ type scenarioStepEvidence struct {
 	Pattern        string `json:"pattern"`
 	Verified       bool   `json:"verified"`
 	EvidenceNature string `json:"evidenceNature"`
-	RowCount int `json:"rowCount,omitempty"`
+	RowCount       int    `json:"rowCount,omitempty"`
 }
 
 func runScenarioCommand(args []string, output io.Writer) error {

@@ -94,14 +94,20 @@ func TestEmptyBrowseExpectationSurvivesRoundTrip(t *testing.T) {
 		}},
 	}
 	b, err := json.Marshal(s)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	parsed, err := Parse(b)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if parsed.Steps[0].ExpectRows == nil {
 		t.Fatal("explicit zero-row expectation lost in JSON")
 	}
 	p, err := Generate(parsed, b, "scenario.json", "workspace")
-	if err != nil || len(p.Commands) != 1 { t.Fatalf("empty Browse generation: %v %#v", err, p) }
+	if err != nil || len(p.Commands) != 1 {
+		t.Fatalf("empty Browse generation: %v %#v", err, p)
+	}
 }
 func TestRejectMalformedTypedBrowseData(t *testing.T) {
 	valueCases := []Value{

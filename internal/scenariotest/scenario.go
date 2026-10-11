@@ -13,8 +13,8 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 )
 
 const SchemaVersion = "tei.driver-scenario/v0"
@@ -30,15 +30,15 @@ type Scenario struct {
 }
 
 type Step struct {
-	ID          string `json:"id"`
-	Operation   string `json:"operation"`
-	Pattern     string `json:"pattern"`
-	ExpectKind  string `json:"expectKind"`
-	ExpectData  string `json:"expectData"`
-	ExpectQuery string `json:"expectQuery,omitempty"`
-	Parameters map[string]Value `json:"parameters,omitempty"`
-	Fixture string `json:"fixture,omitempty"`
-	ExpectRows []map[string]Value `json:"expectRows"`
+	ID          string             `json:"id"`
+	Operation   string             `json:"operation"`
+	Pattern     string             `json:"pattern"`
+	ExpectKind  string             `json:"expectKind"`
+	ExpectData  string             `json:"expectData"`
+	ExpectQuery string             `json:"expectQuery,omitempty"`
+	Parameters  map[string]Value   `json:"parameters,omitempty"`
+	Fixture     string             `json:"fixture,omitempty"`
+	ExpectRows  []map[string]Value `json:"expectRows"`
 }
 
 // Value is a typed test fixture value, never an authority or semantic type definition.
@@ -81,12 +81,12 @@ func ValidateValues(values map[string]Value) error {
 // BrowseFixture is a test-only substitute for a resolved Query Executor.
 // It stores raw rows independently of the Scenario's expected semantic rows.
 type BrowseFixture struct {
-	Query string `json:"query"`
-	DatasourceAlias string `json:"datasourceAlias"`
-	TargetDatabase string `json:"targetDatabase"`
-	Parameters map[string]Value `json:"parameters"`
-	Columns []string `json:"columns"`
-	Rows [][]Value `json:"rows"`
+	Query           string           `json:"query"`
+	DatasourceAlias string           `json:"datasourceAlias"`
+	TargetDatabase  string           `json:"targetDatabase"`
+	Parameters      map[string]Value `json:"parameters"`
+	Columns         []string         `json:"columns"`
+	Rows            [][]Value        `json:"rows"`
 }
 
 func ParseBrowseFixture(source []byte) (BrowseFixture, error) {
@@ -124,13 +124,13 @@ type Command struct {
 }
 
 type Plan struct {
-	SchemaVersion  string    `json:"schemaVersion"`
-	ScenarioID     string    `json:"scenarioId"`
-	ScenarioSHA256 string    `json:"scenarioSha256"`
-	WorldSHA256 string `json:"worldSha256,omitempty"`
-	PluginLockSHA256 string `json:"pluginLockSha256,omitempty"`
-	FixtureSHA256 map[string]string `json:"fixtureSha256,omitempty"`
-	Commands       []Command `json:"commands"`
+	SchemaVersion    string            `json:"schemaVersion"`
+	ScenarioID       string            `json:"scenarioId"`
+	ScenarioSHA256   string            `json:"scenarioSha256"`
+	WorldSHA256      string            `json:"worldSha256,omitempty"`
+	PluginLockSHA256 string            `json:"pluginLockSha256,omitempty"`
+	FixtureSHA256    map[string]string `json:"fixtureSha256,omitempty"`
+	Commands         []Command         `json:"commands"`
 }
 
 func Parse(source []byte) (Scenario, error) {
