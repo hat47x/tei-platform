@@ -1,0 +1,599 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tei:reference:rmt-executable-scenario-manifest:v0",
+  "title": "RMT executable scenario manifest — public candidate",
+  "description": "Candidate public metadata only. Schema-valid data is not proof of observer conformance, runtime execution, acceptance or equivalence. Publication PASS and observer/issuer authority cannot be asserted by this candidate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactKind",
+    "status",
+    "scenarioId",
+    "classContractId",
+    "origin",
+    "teiExecution",
+    "originalExecution",
+    "preconditionAlignment",
+    "comparison",
+    "authorityLimits"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 0
+    },
+    "artifactKind": {
+      "const": "tei.reference.rmt-executable-scenario-manifest"
+    },
+    "status": {
+      "const": "candidate"
+    },
+    "scenarioId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,79}$"
+    },
+    "classContractId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128,
+      "description": "Extension-defined class, not a fixed Core enum."
+    },
+    "origin": {
+      "enum": [
+        "independent-synthetic",
+        "external-model-private"
+      ]
+    },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactDigest",
+        "sourceProfile",
+        "transcriptionContractDigest"
+      ],
+      "properties": {
+        "artifactDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "sourceProfile": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$",
+          "maxLength": 128,
+          "description": "Public token only; no source path or free text."
+        },
+        "transcriptionContractDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "description": "Public digest/profiles only, never source content, names or local locator."
+    },
+    "teiRevision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "acceptedSourceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "acceptanceDecisionReceiptDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "teiExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not-run",
+            "observed",
+            "inconclusive",
+            "blocked"
+          ]
+        },
+        "receiptDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "receiptDigest"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not-run"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "receiptDigest"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "originalExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not-run",
+            "observed",
+            "inconclusive",
+            "blocked"
+          ]
+        },
+        "receiptDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "receiptDigest"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not-run"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "receiptDigest"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "preconditionAlignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not-assessed",
+            "aligned",
+            "not-aligned",
+            "unknown"
+          ]
+        },
+        "receiptDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "aligned"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "receiptDigest"
+            ]
+          }
+        }
+      ]
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "axes"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not-evaluated",
+            "incomparable",
+            "consistent-on-observed-axes",
+            "different-on-observed-axes",
+            "unresolved"
+          ]
+        },
+        "axes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "business-result",
+              "persistent-data-delta",
+              "external-effect",
+              "transaction-outcome",
+              "authorization-resource",
+              "retry-unknown",
+              "interaction-observation"
+            ]
+          }
+        },
+        "comparisonEvidenceDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "consistent-on-observed-axes",
+                  "different-on-observed-axes"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "axes": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "comparisonEvidenceDigest"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not-evaluated"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "axes": {
+                "maxItems": 0
+              }
+            },
+            "not": {
+              "required": [
+                "comparisonEvidenceDigest"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "authorityLimits": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 3,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{2,127}$"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "source-facts-not-canonical-acceptance"
+          }
+        },
+        {
+          "contains": {
+            "const": "declared-crud-not-actual-action-effect"
+          }
+        },
+        {
+          "contains": {
+            "const": "content-digest-not-observer-conformance"
+          }
+        }
+      ]
+    },
+    "unresolvedCodes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{2,127}$"
+      }
+    },
+    "publicationReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "blocked"
+          ]
+        },
+        "receiptDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Only a separate verifier can authorize publication; this self-asserted candidate cannot express passed."
+        }
+      },
+      "description": "Candidate-only review tracking. A publication PASS must be recorded outside the untrusted manifest by a qualified reviewer.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "pending"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "receiptDigest"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "origin": {
+            "const": "external-model-private"
+          }
+        },
+        "required": [
+          "origin"
+        ]
+      },
+      "then": {
+        "required": [
+          "sourceBinding"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "origin": {
+            "const": "independent-synthetic"
+          }
+        },
+        "required": [
+          "origin"
+        ]
+      },
+      "then": {
+        "properties": {
+          "originalExecution": {
+            "properties": {
+              "status": {
+                "const": "not-run"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "teiExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "teiExecution"
+        ]
+      },
+      "then": {
+        "required": [
+          "teiRevision",
+          "acceptedSourceDigest",
+          "acceptanceDecisionReceiptDigest"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "originalExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "originalExecution"
+        ]
+      },
+      "then": {
+        "required": [
+          "sourceBinding"
+        ],
+        "properties": {
+          "origin": {
+            "const": "external-model-private"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "comparison": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "consistent-on-observed-axes",
+                  "different-on-observed-axes"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "comparison"
+        ]
+      },
+      "then": {
+        "properties": {
+          "origin": {
+            "const": "external-model-private"
+          },
+          "teiExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            }
+          },
+          "originalExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            }
+          },
+          "preconditionAlignment": {
+            "properties": {
+              "status": {
+                "const": "aligned"
+              }
+            }
+          }
+        },
+        "required": [
+          "sourceBinding",
+          "teiRevision",
+          "acceptedSourceDigest",
+          "acceptanceDecisionReceiptDigest"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preconditionAlignment": {
+            "properties": {
+              "status": {
+                "const": "aligned"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "preconditionAlignment"
+        ]
+      },
+      "then": {
+        "properties": {
+          "teiExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            }
+          },
+          "originalExecution": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
