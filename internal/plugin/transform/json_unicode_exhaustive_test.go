@@ -55,7 +55,7 @@ func TestParseJSONUnicodeBackslashParity(t *testing.T) {
 // The programmatic Source path must not accept malformed literal JSON and
 // derive a valid artifact or fingerprint from encoding/json's replacement.
 func TestProgrammaticSourceRejectsMalformedSurrogate(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := referencePluginPackageTransformSource(t)
 	source.Program.Assertions = nil
 	source.Program.Output = transform.Expr{
 		Op:      transform.OpLiteral,
