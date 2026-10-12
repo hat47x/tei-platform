@@ -27,13 +27,14 @@ type ExplicitContractReport struct {
 	Capability      core.CanonicalID        `json:"capability,omitempty"`
 	BindingIdentity string                  `json:"bindingIdentity,omitempty"`
 	DataOperation   string                  `json:"dataOperation,omitempty"`
+	Resolved        []string                `json:"resolved"`
+	Unverified      []string                `json:"unverified"`
+	Executable      bool                    `json:"executable"`
+
 	// These are matched Source declarations, not an authorized Provider route.
 	WriteDatasource    core.LocalName   `json:"writeDatasource,omitempty"`
 	WriteDatabase      core.CanonicalID `json:"writeDatabase,omitempty"`
 	PersistenceMapping core.CanonicalID `json:"persistenceMapping,omitempty"`
-	Resolved        []string                `json:"resolved"`
-	Unverified      []string                `json:"unverified"`
-	Executable      bool                    `json:"executable"`
 }
 
 // InspectExplicitPattern reuses the Driver's authoritative declared-reference
