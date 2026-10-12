@@ -166,7 +166,7 @@ func TestEveryRequirementIsMappedToAnAcceptanceScenario(t *testing.T) {
 		"plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md",
 		idsMatching(t, filepath.Join("plan", "UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md"), row, "## 11. Requirement → Primary PAS mapping"))
 	assertCoversEveryRequirement(t, defined,
-		"plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md",
+		"plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md",
 		idsMatching(t, filepath.Join("plan", "PRODUCT_REQUIREMENT_GAP_AUDIT.md"), row, "## 4. Requirement別監査"))
 }
 

@@ -14,7 +14,7 @@
       "git_blob_sha1": "ebad7e5b4f0332097abfe89f09371c49d93aac83"
     },
     "tei_quality_evidence_plan": {
-      "path": "plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md",
+      "path": "plan/evidence/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md",
       "git_blob_sha1": "93677786ef91d842dc47dfd735d7dbd62639881f"
     },
     "tei_gate_c_evidence_contract": {

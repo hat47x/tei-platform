@@ -6,7 +6,7 @@
 - 関連: ISSUE-000040 / ISSUE-000047 / ISSUE-000053
 - 対象: Semantic Extensionの依存、解決、固定、説明可能性
 - 非対象: package配布サービス、Marketplace、Runtime sandboxの再設計
-- 敵対的評価: `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
+- 敵対的評価: `plan/research/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
 
 ## 1. このPre-ADRで決めたいこと
 
@@ -621,7 +621,7 @@ E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで
 - Dart pub, PubGrub solver design
   - https://github.com/dart-lang/pub/blob/master/doc/solver.md
 
-- 敵対的評価: `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
+- 敵対的評価: `plan/research/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
 
 - WebAssembly browser loading:
   - https://developer.mozilla.org/docs/WebAssembly/Reference/JavaScript_interface/instantiateStreaming_static

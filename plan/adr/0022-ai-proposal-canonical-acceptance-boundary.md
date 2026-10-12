@@ -208,7 +208,7 @@ autonomyとauthorityは別の関心事であり、security境界を曖昧にす�
 
 ## 関連文書
 
-- `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
+- `plan/research/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - ISSUE-000008-editor-and-ai-followup-note.md
 - ISSUE-000027-ai-proposal-acceptance-boundary.md

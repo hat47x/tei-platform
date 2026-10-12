@@ -5,8 +5,8 @@ Status: **Design baseline — cross-cutting / Evidence-driven**
 関連文書とIssueは次のとおりです。
 
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md` — Product Requirement正本
-- `plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — 段階的な実証計画
-- `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md` — Requirement別の現在地
+- `plan/evidence/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — 段階的な実証計画
+- `plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md` — Requirement別の現在地
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` — PASとの接続
 - GitHub Issue #565
 

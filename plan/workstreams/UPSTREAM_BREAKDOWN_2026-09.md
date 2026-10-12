@@ -132,8 +132,8 @@ plan/                 計画管理（Master Plan / Milestone / Gate / 本書）
 
 ## 10. 関連文書
 
-- [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — RQ → PAS → Evidence trace
+- [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — RQ → PAS → Evidence trace
 - [`SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md`](SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md) — Subsystem reopen trigger
-- [`RQ025_RQ026_ACCEPTANCE_TRACE.md`](RQ025_RQ026_ACCEPTANCE_TRACE.md) — PAS-07 Evidence contract
+- [`RQ025_RQ026_ACCEPTANCE_TRACE.md`](../evidence/RQ025_RQ026_ACCEPTANCE_TRACE.md) — PAS-07 Evidence contract
 - ISSUE-000042-business-procedure-cross-view-reference.md — Lane C Reference / Evidenceの親
 - [`README.md`](README.md) — 計画層の入口

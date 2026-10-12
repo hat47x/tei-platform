@@ -7,7 +7,7 @@ Baseline revision: `c4cfc387ff9b8c38386d3c8d7a9c398b391c3e5b`
 Related:
 
 - `docs/definition-centered-feedback-loop.md`
-- `plan/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
+- `plan/workstreams/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
 - `reference/README.md`
 - `docs/architecture.md`
 - `docs/business-system-design.md`

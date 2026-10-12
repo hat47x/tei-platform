@@ -738,7 +738,7 @@ unrelated origin change
 
 focused runnerは次を正本とする。
 
-- `plan/KNOWLEDGE_PORTABILITY_EXECUTABLE_EVIDENCE_2026-09.md`
+- `plan/evidence/KNOWLEDGE_PORTABILITY_EXECUTABLE_EVIDENCE_2026-09.md`
 - `.github/workflows/knowledge-portability-reference-evidence.yml`
 
 successful runがcurrent PR headへ結び付いた場合のみ、R0 pressureをSource EvidenceからExecutable Evidenceへ昇格する。

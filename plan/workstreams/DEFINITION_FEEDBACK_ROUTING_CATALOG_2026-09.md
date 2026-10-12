@@ -7,8 +7,8 @@ Baseline: `main` after P0-1 Definition / Derived Artifact Inventory
 Related:
 
 - `docs/definition-centered-feedback-loop.md`
-- `plan/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
-- `plan/DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`
+- `plan/workstreams/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
+- `plan/workstreams/DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`
 - `plan/design/DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`
 - `docs/product-quality-architecture.md`
 - `docs/business-system-design.md`

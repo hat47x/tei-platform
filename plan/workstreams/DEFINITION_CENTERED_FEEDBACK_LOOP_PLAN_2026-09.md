@@ -229,7 +229,7 @@ Function viewはlosslessに可能ならView / read-CUD / Action-Capability / cal
 
 ## 7. Phase 1 — Gate C後の最初のclosed loop
 
-**Status: In Progress — Gate C Ready済み。2026-09-21に決定論的なShared Acceptance loop（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)、Validation追加1件）を実装した。`ISSUE-000047`の探索・Studio UI・AI producerとの接続は未着手。**
+**Status: In Progress — Gate C Ready済み。2026-09-21に決定論的なShared Acceptance loop（[`tools/reference-shared-acceptance`](../../tools/reference-shared-acceptance/README.md)、Validation追加1件）を実装した。`ISSUE-000047`の探索・Studio UI・AI producerとの接続は未着手。**
 
 最初に一つの小さい変更だけを通す。
 
@@ -519,8 +519,8 @@ Phase 0文書はcurrent baselineの保守だけを行い、P1以後の責務は�
 - `docs/definition-centered-feedback-loop.md`
 - `docs/architecture.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
-- `plan/DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`
-- `plan/DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md`
+- `plan/workstreams/DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`
+- `plan/workstreams/DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
 - ISSUE-000046-studio-shared-acceptance-authoring-loop.md
 - ISSUE-000047-knowledge-first-semantic-exploration.md
