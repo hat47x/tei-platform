@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { runInNewContext } from "node:vm";
 import { candidateFromEdit, projectWorld, navigateReferenceBusinessStep } from "./bridge.mjs";
 
 if (process.env.TEI_STUDIO_E2E !== "1") {
@@ -90,6 +91,65 @@ function input(label, suffix, value) {
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
   return path;
 }
+// Execute the actual SCRIPT embedded in the CLI-produced offline form in a
+// restricted DOM mock. Do not synthesize a visual edit JSON in the test.
+function submitOfflineEditor(html, edit, baseRevision) {
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  checked(scripts.length === 1, "editor: exactly one pinned inline script");
+  const script = scripts[0][1];
+  const digest = createHash("sha256").update(script).digest("base64");
+  checked(html.includes("script-src &#39;sha256-" + digest + "&#39;") &&
+    html.includes("connect-src &#39;none&#39;"),
+    "editor: offline script is CSP-pinned and network access denied");
+  const readInput = id => {
+    const tag = html.match(new RegExp('<input id="' + id + '"[^>]*>'))?.[0];
+    assert.ok(tag, "editor: missing expected input " + id);
+    const value = tag.match(/value="([^"]*)"/)?.[1];
+    assert.notEqual(value, undefined, "editor: missing initial value for " + id);
+    return value;
+  };
+  const values = {
+    "subject": readInput("subject"),
+    "model-revision": readInput("model-revision"),
+    "view": readInput("view"),
+    "candidate-id": edit.id, "intent": edit.intent,
+    "symbol": edit.symbol, "target-data": edit.targetData,
+    "cardinality": edit.cardinality, "validation-id": edit.validationID,
+    "application": edit.applicationUse?.application,
+    "placement": edit.applicationUse?.placement
+  };
+  checked(values.subject === edit.subject &&
+    values["model-revision"] === baseRevision &&
+    values.view === edit.view,
+    "editor: browser DOM uses exactly the currently inspected Source revision");
+  const controls = new Map(Object.entries(values).filter(([, v]) =>
+    v !== undefined).map(([key, value]) => [key, { value }]));
+  if (html.includes('id="use-application"'))
+    controls.set("use-application", { checked: !!edit.applicationUse });
+  const result = { value: "", focus() {}, select() {} };
+  const notice = { textContent: "" };
+  controls.set("proposal-json", result);
+  controls.set("notice", notice);
+  let submit;
+  controls.set("studio-edit", { addEventListener(event, handler) {
+    assert.equal(event, "submit");
+    assert.equal(submit, undefined);
+    submit = handler;
+  } });
+  // Available DOM controls and JSON only. No filesystem, subprocess or
+  // network API can be accessed by the form script in this sandbox.
+  runInNewContext(script, { document: {
+    getElementById: id => controls.get(id) ?? null
+  }, JSON }, { timeout: 1000 });
+  assert.equal(typeof submit, "function", "editor: submit handler registered");
+  let prevented = false;
+  submit({ preventDefault() { prevented = true; } });
+  checked(prevented && notice.textContent.includes("未審査") &&
+    result.value.endsWith("\n"),
+    "editor: simulated submit yields unapplied JSON only");
+  return JSON.parse(result.value);
+}
+
 function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   const workspace = newWorkspace(label);
   const beforeRevision = revision(workspace);
@@ -113,8 +173,15 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     editorPage.includes("script-src") &&
     !editorPage.includes(workspace),
     label + ": live offline form binds exact Source revision without exposing workspace path");
-  const visualEdit = { ...edit, origin: "studio",
-    expectedModelRevision: beforeRevision };
+  const visualEdit = submitOfflineEditor(editorPage, edit, beforeRevision);
+  checked(visualEdit.origin === "studio" &&
+    visualEdit.expectedModelRevision === beforeRevision &&
+    visualEdit.id === edit.id &&
+    visualEdit.intent === edit.intent &&
+    visualEdit.operation === edit.operation &&
+    (edit.view !== "table" ||
+      visualEdit.applicationUse?.application === edit.applicationUse?.application),
+    label + ": actual browser-generated JSON preserves the requested operation");
   const visualEditPath = input(label, ".visual-edit.json", visualEdit);
   const visualCandidate = JSON.parse(command(process.execPath, [
     join(root, "reference/studio-authoring/cli.mjs"), "propose",
@@ -126,7 +193,7 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(visualCandidate.baseModelRevision === beforeRevision &&
     visualCandidate.origin.kind === "studio" &&
     JSON.stringify(visualCandidate.delta) === JSON.stringify(proposal.delta),
-    label + ": revision-pinned form edit enters same Go-compatible candidate transport");
+    label + ": browser-submitted form enters same Go-compatible candidate transport");
 
 
   const derivedEdit = input(label, ".derived-edit.json", {
