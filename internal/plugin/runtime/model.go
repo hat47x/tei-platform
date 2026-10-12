@@ -106,6 +106,9 @@ type EnvironmentPlan struct {
 	RuntimePolicyFingerprint     string              `json:"runtimePolicyFingerprint"`
 	Plugins                      []PluginRuntime     `json:"plugins"`
 	Capabilities                 []CapabilityRuntime `json:"capabilities,omitempty"`
+	// ServiceBindings are host-selected, exact transport routes. They do not
+	// attest Contract/Provider conformance or issue runtime permissions.
+	ServiceBindings []ServiceCarrierBinding `json:"serviceBindings,omitempty"`
 }
 
 func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) (EnvironmentPlan, error) {
@@ -233,17 +236,19 @@ func bindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, en
 
 func PolicyFingerprint(plan EnvironmentPlan) string {
 	payload := struct {
-		Environment                  core.CanonicalID    `json:"environment"`
-		PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
-		RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
-		Plugins                      []PluginRuntime     `json:"plugins"`
-		Capabilities                 []CapabilityRuntime `json:"capabilities"`
+		Environment                  core.CanonicalID        `json:"environment"`
+		PluginLockFingerprint        string                  `json:"pluginLockFingerprint"`
+		RuntimeEngineLockFingerprint string                  `json:"runtimeEngineLockFingerprint,omitempty"`
+		Plugins                      []PluginRuntime         `json:"plugins"`
+		Capabilities                 []CapabilityRuntime     `json:"capabilities"`
+		ServiceBindings              []ServiceCarrierBinding `json:"serviceBindings,omitempty"`
 	}{
 		Environment:                  plan.Environment,
 		PluginLockFingerprint:        plan.PluginLockFingerprint,
 		RuntimeEngineLockFingerprint: plan.RuntimeEngineLockFingerprint,
 		Plugins:                      append([]PluginRuntime(nil), plan.Plugins...),
 		Capabilities:                 append([]CapabilityRuntime(nil), plan.Capabilities...),
+		ServiceBindings:              append([]ServiceCarrierBinding(nil), plan.ServiceBindings...),
 	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
