@@ -176,9 +176,13 @@ func TestRetryHistoryPreservesFailuresAfterSuccess(t *testing.T) {
 	if err := history.AppendFailure(plan, second); err != nil {
 		t.Fatal(err)
 	}
-	history.SuccessfulResult = &successfulResultReference{
-		BuildPlanFingerprint: first.BuildPlanFingerprint,
-		ResultFingerprint:    strings.Repeat("e", 64),
+	builder := &fakeSuccessfulBuilder{}
+	success, err := builder.Run(plan, 3, []byte("verified fake-builder output"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendSuccess(plan, success); err != nil {
+		t.Fatal(err)
 	}
 	if err := history.Validate(); err != nil {
 		t.Fatal(err)
@@ -288,9 +292,8 @@ func TestReferenceEvidenceDoesNotInlineSensitiveDiagnostic(t *testing.T) {
 		t.Fatalf("attempt outcome=%s", evidence.Attempt.Outcome)
 	}
 	if len(evidence.History.FailedAttempts) != 1 ||
-		evidence.History.SuccessfulResult == nil ||
-		evidence.History.SuccessfulResult.ResultFingerprint == "" {
-		t.Fatalf("retry history: %#v", evidence.History)
+		len(evidence.History.SuccessfulAttempts) != 0 {
+		t.Fatalf("failed fake build must not claim a successful execution: %#v", evidence.History)
 	}
 }
 
@@ -373,12 +376,13 @@ func TestAttemptHistoryRejectsTamperedFailureEvidence(t *testing.T) {
 	}
 }
 
-func TestAttemptHistoryRejectsSuccessfulResultFromDifferentPlan(t *testing.T) {
+func TestAttemptHistoryRejectsSuccessFromDifferentPlan(t *testing.T) {
 	plan := referenceBuildPlan()
 	other := referenceBuildPlan()
 	other.Sources = append([]plugin.BuildSource(nil), other.Sources...)
 	other.Sources[0].Digest = "sha256:" + strings.Repeat("f", 64)
-	otherFingerprint, err := plugin.BuildPlanFingerprint(other)
+	builder := &fakeSuccessfulBuilder{}
+	success, err := builder.Run(other, 1, []byte("different output"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,12 +390,12 @@ func TestAttemptHistoryRejectsSuccessfulResultFromDifferentPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	history.SuccessfulResult = &successfulResultReference{
-		BuildPlanFingerprint: otherFingerprint,
-		ResultFingerprint:    strings.Repeat("e", 64),
+	if err := history.AppendSuccess(plan, success); err == nil {
+		t.Fatal("Attempt History accepted an execution from a different BuildPlan")
 	}
+	history.SuccessfulAttempts = append(history.SuccessfulAttempts, success)
 	if err := history.Validate(); err == nil {
-		t.Fatal("Attempt History accepted a successful result from a different BuildPlan")
+		t.Fatal("Attempt History validation accepted an execution from a different BuildPlan")
 	}
 }
 
