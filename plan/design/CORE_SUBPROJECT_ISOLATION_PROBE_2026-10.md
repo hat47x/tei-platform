@@ -39,6 +39,14 @@ tools/check-core-isolation.sh
 
 したがって、`internal/composition/`のファイルをただ`core/`へ移動するのではなく、まず実際のConsumer/Providerを接続する縦断試験を設け、どの公開契約を通じて利用するかを確認する必要があります。
 
+## プラグイン側の切り出しを阻む依存
+
+代表例として、既存の処理実行プラグイン`tools/reference-process-plugin/main.go`を確認しました。このファイルは`tei/internal/plugin/runtime`と`tei/internal/deployment/executor`を直接参照しています。現在は同じGoモジュール内にあるため動作する構成ですが、実装だけを`plugins/`へ移しても、独立した契約と依存関係が成立するわけではありません。
+
+一方、`examples/process-plugin/main.go`はプラグイン自身ではなく、その起動と呼出しを試す利用例です。こちらはさらに`tei/internal/core`、`tei/internal/deployment`、`tei/internal/plugin`などを参照しています。両者を区別せず一括でプラグインのソースとみなさないようにします。
+
+先に、外部プラグインが参照する通信・呼出し契約と、ホスト内の実行権限・資源管理を分ける必要があります。契約の移行は[ADR-0032](../adr/0032-composition-kernel-replacement.md)および既存のプラグイン設計課題（[#951](https://github.com/hat47x/tei-platform/issues/951)、[#943](https://github.com/hat47x/tei-platform/issues/943)）に合わせます。今回、新しいプラグイン規約や外部公開APIを先取りして追加しません。
+
 ## 確認結果と残る条件
 
 この変更の作成時点では、隔離スクリプトを使い、**合成した小さなGoパッケージ**で正常系と、外部依存を注入した失敗系を確認しました。後続の改修では、直下と下位ディレクトリの二つの模擬Goパッケージに対して両方のテストが実行されることを確認し、下位の`go.mod`を拒否することと、下位パッケージから存在しないTEI内部パッケージを参照した際に失敗することを確認しました（Go 1.23.2、Linux/amd64、`GO111MODULE=off`を呼び出し環境に設定した条件）。TEIの実ソース全体を取得した環境でスクリプトを実行した結果ではありません。
