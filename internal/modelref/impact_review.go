@@ -25,6 +25,7 @@ func ReviewImpact(before Graph, changes []Change, rules []Rule) ImpactReview {
 	review := ImpactReview{
 		SchemaVersion: "tei.modelref.impact-review/v0",
 		RuleFingerprint: RuleFingerprint(rules),
+		Changes:         append([]Change(nil), changes...),
 		AuthorityLimits: []string{
 			"typed-graph-is-a-candidate-not-accepted-meaning",
 			"no-source-revision-or-acceptance-bound",
