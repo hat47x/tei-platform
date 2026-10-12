@@ -116,6 +116,32 @@ func TestCompositionHandoffRejectsUnconformantAndScopeDrift(t *testing.T) {
 	_ = provider
 }
 
+func TestCompositionHandoffPinsExactVersionArtifactAndFingerprint(t *testing.T) {
+	_, _, _, provider, input, expected := handoffSourceFixture(t)
+	for _, change := range []struct {
+		name string
+		mutate func(*CompositionResolutionExpectation)
+	}{
+		{"version", func(e *CompositionResolutionExpectation) { e.Target.Contract.Version = "1.1.0" }},
+		{"artifact", func(e *CompositionResolutionExpectation) {
+			e.Provider.ArtifactDigest = "sha256:" + strings.Repeat("b", 64)
+		}},
+		{"contract-fingerprint", func(e *CompositionResolutionExpectation) {
+			e.Provider.ContractFingerprint = "sha256:" + strings.Repeat("0", 64)
+		}},
+		{"implementation", func(e *CompositionResolutionExpectation) { e.Provider.ImplementationID = "other" }},
+	} {
+		t.Run(change.name, func(t *testing.T) {
+			b := expected
+			change.mutate(&b)
+			if candidate, err := resolveCompositionEvidenceReference(input, b); err == nil {
+				t.Fatalf("drifted expected binding was accepted: %+v", candidate)
+			}
+		})
+	}
+	_ = provider
+}
+
 func TestCompositionHandoffFreshEvidenceAndRegistryEpochsRemainSeparate(t *testing.T) {
 	registry, set, contract, provider, input, expected := handoffSourceFixture(t)
 	first, err := resolveCompositionEvidenceReference(input, expected)
