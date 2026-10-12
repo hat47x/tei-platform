@@ -82,7 +82,7 @@ func TestCrossViewPublicAccountingRejectsForgedPublicationKeys(t *testing.T) {
 		}},
 		{"private unresolved reason", func(p *CrossViewProjection) {
 			p.Unresolved = append(p.Unresolved, CrossViewUnresolved{
-				Code: "private-internal-exception",
+				Code:         "private-internal-exception",
 				RelationKind: "function-table-operation",
 				SourceTokens: []string{p.Actions[0].ActionToken},
 			})
