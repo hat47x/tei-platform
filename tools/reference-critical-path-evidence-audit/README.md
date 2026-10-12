@@ -71,7 +71,7 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 
 **任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の5つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
 
-- `workspace-r1.json`：R0→test-only Accept→R1、Preview/Review fingerprint、変更Sourceの相対pathと実行前後の管理対象差分を記録。Human Approvalと主張しない。
+- `workspace-r1.json`：R0→test-only Accept→R1、Preview/ReviewとDecisionの指紋、変更Sourceの相対pathと実行前後の管理対象差分を記録。さらに`cmd/tei world -workspace`を**別のCLI呼び出し**で再実行し、実際のJSONバイト列のSHA-256が受理時の`Decision.DerivedWorldSHA256`と一致するか検査する。Human Approvalと主張しない。
 - `target-launch.json`：正常系WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。同じ証跡内に、負例用の**別バイナリ**の指紋・起動先・差替Source指紋も併記し、二つの起動を一つの実行成果物と偽らない。Host権限の確認ではない。
 - `web-positive.json`：HTTP正常系のValidation ID/結果4件、Command観測とsynthetic Observation。認証情報、実DBの値・注文個人情報は含めない。
 - `target-negative-launch.json`：テスト専用Go Overlayによる別バイナリの指紋、元fixtureと差替fixtureの指紋、起動先、同じR1申告を記録。通常Targetと同一バイナリとはみなさない。
