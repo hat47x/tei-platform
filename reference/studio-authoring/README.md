@@ -7,7 +7,7 @@
 ## 検証する最小境界
 
 - 入力はTEIの既存World JSONと、同じWorkspaceから得たmodelRevision。BridgeはWorldのData/Relation/Attribute/ValidationとApplication Patternの**元のID**を使い、表・ER・機能の近傍Projectionを読み取り専用で返します。CLIではWorkspace revisionをWorld取得前後で照合し、読み込み中の変更を検知すればProjectionを拒否します。
-- Accepted Business Procedureは現在のWorld JSONに含まれていないため、Businessは標準で `unresolved` です。#1125 Draft PR #1138のread-only DFD JSONを任意入力として与えた場合に限り、**明示的なApplication Pattern ID**で局所的に結合します。手作業・外部作業はFunctionへ紐付けずに別表示します。この結果は`reference-only`（未受理のFixture由来）で、Sourceとの同一revisionを証明しません。業務意味を勝手にacceptedへ昇格させません。既存の`tei source-index`を同じWorkspaceから取得すると、Source定義を`semantic-data`等のexact kind/IDで特定できます。取得時はrevisionの前後一致を確認します。ただし表示するのはIndexのdigest/位置情報であり、実際の編集権限や最新バイト検証を担保するものではありません。Sourceへ書き込む位置はShared Acceptance Previewの`sourceEdits`で確かめます。
+- Accepted Business Procedureは現在のWorld JSONに含まれていないため、Businessは標準で `unresolved` です。#1125 Draft PR #1138のread-only DFD JSONを任意入力として与えた場合に限り、**明示的なApplication Pattern ID**で局所的に結合します。手作業・外部作業はFunctionへ紐付けずに別表示します。この結果は`reference-only`（未受理のFixture由来）で、Sourceとの同一revisionを証明しません。業務意味を勝手にacceptedへ昇格させません。既存の`tei source-index`を同じWorkspaceから取得すると、Source定義を`semantic-data`等のexact kind/IDで特定できます。生の作業領域を指定する`inspect -workspace`では、さらに対象ファイルを読み直してSHA-256指紋とバイト位置・行列位置を照合します。検証結果は`sourceNavigation.byteVerification.status=verified-at-read`です。`-world-file`等の単独資料を渡す場合は`not-checked`に留めます。取得時はrevisionの前後一致を確認します。検証はファイルを読んだ一時点の観測であり、同時編集を排除するロックでも書込み権限でもありません。対象パスのシンボリックリンクや作業領域外参照、古い指紋や位置情報は拒否します。Sourceへ書き込む位置はShared Acceptance Previewの`sourceEdits`で確かめます。
 - ER操作の`add-relation`と表操作の`add-validation/positive`だけを、既存 `tei.reference.change-candidate/v0` に変換します。Derived rowの直接書換え、任意のpatch、layout変更から意味を生成することは禁止します。
 - 実際のValidation、Semantic Diff、Impact、source edit、stale revision、Accept、Rollback、Decisionは**既存Shared Acceptance**が担当します。Bridgeのprecheckは利便性のためだけで、これらの検査を代替しません。
 - file/native CLI/AI/Studioのorigin値はprovenanceにとどめ、meaningを入口により変えません。候補の差分が同じなら最終的な意味の比較はShared Acceptanceへ委譲します。
@@ -138,6 +138,12 @@ node reference/studio-authoring/cli.mjs inspect \\
 - `manualOrExternalUnlinked`にはFunctionなしの手作業等を別掲します。これらは**Functionに未接続**であり、明示された意味参照まで存在しないという意味ではありません。近接していることだけを理由に依存辺を捏造しません。大きなProcedureでは20件までとし切詰めを明示します。
 - DFDにはWorkspace revisionのbindingが無いので、たとえ同一IDでも`freshness=unverified-no-model-revision-binding`です。旧DFDがSource revisionと一致すること、Business Procedureがacceptedであることは**証明できません**。最新Worldからの再取得と#1120 contractによる厳密な結合は後続です。
 - #1138は別レーンのDraftであり、本PRへのコードコピーやCore変更は行いません。このコマンドは#1138のツールが存在するcheckoutでのみ動きます。通常のmainではDFDを渡さずBusinessを`unresolved`に保ちます。
+
+### 元ソース位置の確認
+
+通常の`inspect -workspace`は索引とソース本体を照合し、位置情報を表示します。検査では作業領域内の通常ファイルに限定し、実際のバイト列から指紋と開始・終了位置を再計算します。確認後には作業領域の版をもう一度取得します。途中で版が変われば結果を拒否します。
+
+独立した`-world-file`・`-revision-file`・`-source-index-file`の組合せは、元ソースを保有していないため、この照合を実施できません。表示された位置を根拠に編集先を自動決定することはありません。通常の`inspect`でも、利用者の受理や編集権限は得られず、正本の変更は既存の共通受理機構に委ねます。
 
 ## 試験と境界
 
