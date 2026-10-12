@@ -145,6 +145,22 @@ function businessStep(view) {
 function reviewEdit(view) {
   const preview = view.preview || {}, review = view.review || {};
   const stages = preview.stages || [];
+  const reviewSections = review.sections || [];
+  const coverage = review.coverage || {};
+  const assessment = reviewSections.length === 0
+    ? "審査区分を取得できません。範囲の充足を確認できません。"
+    : "利用可能：" + str(coverage.available ?? "不明") +
+      "／一部：" + str(coverage.partial ?? "不明") +
+      "／未評価：" + str(coverage.notEvaluated ?? "不明");
+  const sectionBody = '<p class="warning">' + assessment + '</p>' +
+    entries(reviewSections, s =>
+      '<strong>' + str(s.code) + '　' + str(s.title) + '</strong>' +
+      ' ／評価範囲：' + str(s.coverage) +
+      (s.summary ? '<p>' + str(s.summary) + '</p>' : '') +
+      (s.note ? '<p class="warning">' + str(s.note) + '</p>' : '') +
+      entries(s.items, x => str(x)) +
+      (s.sources?.length ? '<p>根拠の出所：' +
+        s.sources.map(str).join("、") + '</p>' : ''));
   return document("Studioの変更提案と審査",
     "Sourceへの変更はこの文書では実行されません。差分・影響・未解決事項を確認します。",
     facts([["変更案", view.candidate?.id], ["モデルの版", view.modelRevision],
@@ -165,6 +181,8 @@ function reviewEdit(view) {
     section("review", "受理機構の段階別結果", "参照のみ",
       entries(stages, x => str(x.name) + ' ／' + str(x.status) +
         (x.diagnostics?.length ? safeJSON(x.diagnostics) : ""))) +
+    section("review-coverage", "承認前に確認する審査区分", "一部・未評価を含むことがあります",
+      sectionBody) +
     section("source", "予定される元定義の変更", "未適用",
       entries(preview.sourceEdits, x =>
         '<strong>' + str(x.path) + '</strong>' + safeJSON({
