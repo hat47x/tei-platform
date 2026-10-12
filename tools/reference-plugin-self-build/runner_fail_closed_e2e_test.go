@@ -47,21 +47,28 @@ func TestSelfBuildRunnerRejectsAlteredSecondBuilder(t *testing.T) {
 		t.Fatal(err)
 	}
 	marker := filepath.Join(dir, "altered-second-path")
+	// The wrapper is an explicitly selected toolchain for this negative test.
+	// It must not read test-only variables from the hermetic Go environment.
+	shellQuote := func(path string) string {
+		return "'" + strings.ReplaceAll(path, "'", "'\\''") + "'"
+	}
 	script := strings.Join([]string{
 		"#!/bin/sh",
 		"set -eu",
-		"if [ \"$1\" != build ]; then exec \"$TEI_TEST_REAL_GO\" \"$@\"; fi",
+		"real_go=" + shellQuote(goPath),
+		"fault_marker=" + shellQuote(marker),
+		"if [ \"$1\" != build ]; then exec \"$real_go\" \"$@\"; fi",
 		"output=''",
 		"previous=''",
 		"for arg in \"$@\"; do",
 		"  if [ \"$previous\" = -o ]; then output=\"$arg\"; fi",
 		"  previous=\"$arg\"",
 		"done",
-		"\"$TEI_TEST_REAL_GO\" \"$@\"",
+		"\"$real_go\" \"$@\"",
 		"case \"$output\" in",
 		"  */tei-plugin-package-builder-*/builder-second)",
 		"    printf '\\nTEI deliberate second-build fault\\n' >> \"$output\"",
-		"    printf '%s\\n' \"$output\" > \"$TEI_TEST_FAULT_MARKER\"",
+		"    printf '%s\\n' \"$output\" > \"$fault_marker\"",
 		"    ;;",
 		"esac",
 	}, "\n") + "\n"
@@ -74,8 +81,6 @@ func TestSelfBuildRunnerRejectsAlteredSecondBuilder(t *testing.T) {
 	cmd := exec.Command(cli, "-repo", root, "-go", filepath.Join(wrapperDir, "go"))
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(),
-		"TEI_TEST_REAL_GO="+goPath,
-		"TEI_TEST_FAULT_MARKER="+marker,
 		"GOENV=off", "GOWORK=off", "GOTOOLCHAIN=local", "GOFLAGS=",
 	)
 	var stdout, stderr bytes.Buffer
