@@ -100,7 +100,7 @@ func TestRuleSourceCutPreservesCRLFAndNestedFD(t *testing.T) {
 func TestRuleSourceCutRejectsWrongIdentityAndAmbiguousOwner(t *testing.T) {
 	tests := []struct {
 		name, kind, data, id string
-		source string
+		source               string
 	}{
 		{"unknown kind", "relation", "sales.order_line", "sales.order_line.business_line", authoredBusinessRuleSource},
 		{"missing rule", "candidate-key", "sales.order_line", "sales.order_line.missing", authoredBusinessRuleSource},
