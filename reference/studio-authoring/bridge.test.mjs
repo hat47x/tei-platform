@@ -295,6 +295,64 @@ test("the existing Source Index supplies a precise definition locator without ch
     }] } }), /INVALID_SOURCE_ANCHOR/);
 });
 
+test("source index rejects unnormalized path and incomplete end positions before displaying an anchor", () => {
+  const source = {
+    artifacts: [{ path: "semantic/sales/order.tei",
+      fingerprint: "sha256:" + "a".repeat(64) }],
+    references: [{
+      subject: { kind: "semantic-relation", id: "sales.order.lines" },
+      artifactPath: "semantic/sales/order.tei", role: "definition",
+      range: { start: { offset: 2, line: 1, column: 3 },
+        end: { offset: 7, line: 1, column: 8 } }
+    }]
+  };
+  const run = input => projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex: input });
+  assert.equal(run(source).sourceNavigation.byteVerification.status, "not-checked");
+  for (const path of ["semantic//sales/order.tei", "semantic/./sales/order.tei",
+    "semantic/sales/order.tei/", "./semantic/sales/order.tei"]) {
+    assert.throws(() => run({ ...source, artifacts: [{
+      ...source.artifacts[0], path }] }), /INVALID_OR_DUPLICATE_SOURCE_ARTIFACT/);
+  }
+  for (const end of [{ offset: 7, line: 0, column: 8 },
+    { offset: 7, line: 1, column: 0 }, { offset: 7, line: -1, column: 8 },
+    { offset: 7, line: 1.5, column: 8 }, { offset: 7, line: 1, column: 2 },
+    { offset: 7, line: 0, column: 1 }]) {
+    const invalid = structuredClone(source);
+    invalid.references[0].range.end = end;
+    assert.throws(() => run(invalid), /INVALID_SOURCE_ANCHOR/);
+  }
+});
+
+test("nested subject scope cannot be flattened to an unscoped Source Index definition", () => {
+  const base = {
+    artifacts: [{ path: "semantic/sales/order.tei",
+      fingerprint: "sha256:" + "b".repeat(64) }],
+    references: [{
+      subject: { kind: "semantic-relation", id: "sales.order.lines" },
+      artifactPath: "semantic/sales/order.tei", role: "definition",
+      range: { start: { offset: 2, line: 1, column: 3 },
+        end: { offset: 7, line: 1, column: 8 } }
+    }]
+  };
+  const run = sourceIndex => projectWorld(fixture(), revision,
+    "relation:sales.order.lines", { sourceIndex });
+  assert.equal(run(base).sourceNavigation.status, "source-index-backed");
+  const nested = structuredClone(base);
+  nested.references[0].subject.scope = "app:order_entry";
+  const ref = run(nested).sourceNavigation;
+  assert.equal(ref.status, "unresolved");
+  assert.ok(ref.reason.includes("#1120"));
+  const duplicateScope = structuredClone(base);
+  duplicateScope.references[0].subject.scope = "app:one";
+  duplicateScope.references.push({
+    ...structuredClone(duplicateScope.references[0]),
+    subject: { ...duplicateScope.references[0].subject, scope: "app:two" }
+  });
+  assert.equal(run(duplicateScope).sourceNavigation.status, "unresolved",
+    "same kind and ID with different scoped meanings must never select either");
+});
+
 test("optional #1125 Business reference joins exact Pattern ID without becoming accepted", () => {
   const world = fixture();
   const dfd = {
