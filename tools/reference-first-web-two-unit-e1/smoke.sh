@@ -99,6 +99,71 @@ browser_status="$(curl --noproxy '*' -sS --max-time 10 -o "$temp/browser-post.ht
 [[ "$direct_status" == "$browser_status" ]] ||
   { echo "Browser and API form responses have different HTTP statuses" >&2; exit 1; }
 cmp "$temp/direct.html" "$temp/browser-post.html"
+
+# Preserve the existing Business Result / Execution Error distinctions through
+# the *actual* Browser host -> Go API process boundary. Do not write
+# credentials or raw business responses to the retained measurement.
+for scenario in completed authentication-denied authorization-denied validation-not-satisfied execution-error malformed-request; do
+  case "$scenario" in
+    completed)
+      payload='{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}'
+      ;;
+    authentication-denied)
+      payload='{"loginId":"legacy-order-editor","credential":"wrong-secret","from":"2026-09-18T08:30:00Z","row":0}'
+      ;;
+    authorization-denied)
+      payload='{"loginId":"legacy-order-viewer","credential":"viewer-secret","from":"2026-09-18T08:30:00Z","row":0}'
+      ;;
+    validation-not-satisfied)
+      payload='{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:00:00Z","row":1}'
+      ;;
+    execution-error)
+      payload='{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}'
+      ;;
+    malformed-request)
+      payload='{"unknown":"field"}'
+      ;;
+  esac
+  direct="$(curl --noproxy '*' -sS --max-time 10 -o "$temp/api-$scenario.json" -w '%{http_code}' \
+    -H 'Content-Type: application/json' -X POST --data "$payload" \
+    "http://127.0.0.1:$api_port/scenario/submit")"
+  proxied="$(curl --noproxy '*' -sS --max-time 10 -o "$temp/browser-$scenario.json" -w '%{http_code}' \
+    -H "Origin: $browser" -H 'Content-Type: application/json' -X POST --data "$payload" \
+    "$browser/scenario/submit")"
+  [[ "$direct" == "$proxied" ]] || { echo "HTTP status changed at Browser boundary ($scenario)" >&2; exit 1; }
+  cmp "$temp/api-$scenario.json" "$temp/browser-$scenario.json"
+  python3 - "$temp/browser-$scenario.json" "$scenario" "$proxied" <<'PY'
+import json, pathlib, sys
+data = pathlib.Path(sys.argv[1]).read_bytes()
+scenario, status = sys.argv[2], int(sys.argv[3])
+if any(s in data for s in (b"editor-secret", b"viewer-secret", b"wrong-secret")):
+    raise SystemExit("credential disclosed in Browser-facing response")
+if scenario == "malformed-request":
+    if status != 400:
+        raise SystemExit("malformed input was not rejected")
+else:
+    payload = json.loads(data)
+    result = payload.get("result", {})
+    if result.get("applicationId") != "order_entry":
+        raise SystemExit("API did not preserve Application")
+    if scenario == "execution-error":
+        if status != 422 or not payload.get("executionError"):
+            raise SystemExit("execution failure was lost")
+        if result.get("observation") is not None:
+            raise SystemExit("unconfirmed Command was presented as observed")
+    else:
+        if status != 200 or result.get("stage") != scenario:
+            raise SystemExit("business stage or HTTP status changed")
+        if payload.get("executionError"):
+            raise SystemExit("Business denial became Execution Error")
+        if scenario == "completed":
+            if result.get("command") is None or result.get("observation") is None:
+                raise SystemExit("completed result lost business Command or Observation")
+        elif result.get("command") is not None or result.get("observation") is not None:
+            raise SystemExit("Business denial emitted a Command or Observation")
+PY
+done
+
 # Fail closed for an origin mismatch and an unimplemented route.
 bad_origin="$(curl --noproxy '*' -sS --max-time 5 -o /dev/null -w '%{http_code}' \
   -H 'Origin: http://evil.invalid' -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -131,6 +196,8 @@ cat > "$dir/smoke-observation.json" <<EOF
   "apiProjectionProxiedUnchanged": true,
   "syntheticFormStatus": $browser_status,
   "syntheticFormBodyEqualsDirectAPI": true,
+  "apiJsonStagesAndFailuresMatchThroughBrowserHost": true,
+  "credentialsNotReflectedInBrowserApiResults": true,
   "foreignOriginRejected": true,
   "unmountedRouteRejected": true,
   "staticAssetSurvivesApiStop": true,
