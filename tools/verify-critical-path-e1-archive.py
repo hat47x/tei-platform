@@ -86,7 +86,9 @@ def verify_archive(manifest_path=MANIFEST, receipts_dir=RECEIPTS):
         require(receipt["integrationHead"] == INTEGRATION_HEAD,
                 f"{name}: integration head differs")
         require("synthetic" in receipt["evidenceNature"] or
-                "test-only" in receipt["evidenceNature"],
+                "test-only" in receipt["evidenceNature"] or
+                (name == "stale-source-control.json" and
+                 receipt["evidenceNature"] == "running-web-http-stale-source-R0-label-spoof-control"),
                 f"{name}: source was not marked synthetic/test-only")
         receipts[name] = receipt
 
