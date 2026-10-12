@@ -112,6 +112,46 @@ jobs:
           bash tools/reference-external-coordination/clean-check-test.sh
           bash tools/reference-external-coordination/run.sh
 
+      # PR仮統合SHAとは別に、PRの実HEADに対する関連検証も実行する。
+      # 既存の完全履歴checkoutのGitオブジェクトから、隔離した追加worktreeを作る。
+      # full Healthの失敗は隠さず、E1の診断だけを独立して残す。
+      - name: PR候補HEADそのもののE1を検証
+        if: ${{ github.event_name == 'pull_request' && !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$PR_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          # 前段でPR仮統合の第二親=HEADを検証済み。ここでも再検査する。
+          read -r virtual_merge base_parent head_parent extra < <(git rev-list --parents -n 1 "$GITHUB_SHA")
+          test -z "${extra:-}"
+          test "$virtual_merge" = "$GITHUB_SHA"
+          test "$head_parent" = "$PR_HEAD_SHA"
+          isolated_root="$(mktemp -d "$RUNNER_TEMP/tei-external-e1-head.XXXXXXXX")"
+          isolated_checkout="$isolated_root/checkout"
+          trap 'git worktree remove --force "$isolated_checkout" >/dev/null 2>&1 || true' EXIT
+          git worktree add --detach "$isolated_checkout" "$PR_HEAD_SHA"
+          (
+            cd "$isolated_checkout"
+            test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+            test "$(git rev-parse --show-toplevel)" = "$PWD"
+            assert_clean() {
+              test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+              test -z "$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+            }
+            assert_clean
+            printf 'e1-exact-candidate-head=%s\n' "$(git rev-parse HEAD)"
+            printf 'e1-exact-runner-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/run.sh)"
+            printf 'e1-exact-regression-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/clean-check-test.sh)"
+            bash -n tools/reference-external-coordination/run.sh
+            bash -n tools/reference-external-coordination/clean-check-test.sh
+            python3 tools/ci-workflows-test.py
+            bash tools/reference-external-coordination/clean-check-test.sh
+            assert_clean
+            bash tools/reference-external-coordination/run.sh
+            assert_clean
+            test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+          )
+
       - name: 実行後の版と作業領域を確認
         if: always()
         shell: bash
