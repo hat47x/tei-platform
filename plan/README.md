@@ -1,13 +1,13 @@
 # TEIの開発計画
 
-[開発全体の計画](MASTER_PLAN.md)と[マイルストーン](MILESTONES.md)は、期限を設けずに、製品の価値・着手の依存関係・完了条件を整理する正本です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
+[開発全体の計画](MASTER_PLAN.md)と[マイルストーン](MILESTONES.md)は、期限を設けず、製品の価値、作業の依存関係、完了条件を整理する正本です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
 
-`plan/`は、製品要求、着手順、受け入れシナリオ、設計判断、検証根拠をつなぐ計画の入口です。全体計画とマイルストーンは直下に置き、個別の計画文書は役割ごとのディレクトリにまとめます。
+`plan/`は、製品要求、着手順、受入シナリオ、設計判断、検証根拠をつなぐ計画の入口です。全体計画とマイルストーンは直下に置き、個別の計画文書は役割ごとのディレクトリにまとめます。
 
-- 何を守るか: `product/`
-- 何を満たすか: `requirements/`
-- どのシナリオで確かめるか: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- どの順で不確実性を減らすか: `plan/`
+- 守る価値：`product/`
+- 満たす要求：`requirements/`
+- 検証に用いるシナリオ：`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+- 不確実性を減らす順序：`plan/`
 
 ## 文書の配置
 
@@ -17,7 +17,7 @@
 | --- | --- |
 | 全体の着手順と現在の主線 | [`MASTER_PLAN.md`](MASTER_PLAN.md) |
 | 要求から受け入れシナリオ、検証根拠まで | [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
-| 個別作業の目的・完了条件 | GitHub Issues |
+| 個別作業の目的・完了条件 | GitHubの課題 |
 | 採用した設計判断 | [`adr/README.md`](adr/README.md) |
 | 複数の課題にまたがる機能設計 | [`design/README.md`](design/README.md) |
 | 段階判定の条件・手順・記録 | [`gate/README.md`](gate/README.md) |
@@ -27,48 +27,48 @@
 | 特定時点の監査結果 | 公開ツリーには個別の監査・検討記録を含めません |
 | 現在の実装・実証状況 | [`../docs/status.md`](../docs/status.md) |
 
-詳細な調査・検討記録は公開ツリーに含めません。採用した設計判断はADR、現行の要求は要求文書、作業条件はGitHubの課題でそれぞれ管理します。
+詳細な調査・検討記録は公開リポジトリには含めません。採用した設計判断は設計判断記録、現行の要求は要求文書、作業条件はGitHubの課題で管理します。
 
 ## 最初に読む文書
 
-1. [`MASTER_PLAN.md`](MASTER_PLAN.md) — 現在の作業分野と開発の主線
-2. [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md) — `order_entry`を使う第1版の実証順
-3. [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — 製品要求、受け入れシナリオ、検証根拠の対応
-4. [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md) — 現在の要求に関する検証根拠と不足
-5. [`MILESTONES.md`](MILESTONES.md) — 期限を設けない機能の到達目標
-6. [`UPSTREAM_BREAKDOWN_2026-09.md`](workstreams/UPSTREAM_BREAKDOWN_2026-09.md) — 上流の設計上の検証や監査で得た結論を、計画と下流の担当へ対応付けた一覧
+1. [`MASTER_PLAN.md`](MASTER_PLAN.md)：現在の作業分野と開発の主線
+2. [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)：`order_entry`を使う第1版の実証順
+3. [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)：製品要求、受入シナリオ、検証根拠の対応
+4. [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md)：現在の要求に関する検証根拠と不足
+5. [`MILESTONES.md`](MILESTONES.md)：期限を設けない機能の到達目標
+6. [`UPSTREAM_BREAKDOWN_2026-09.md`](workstreams/UPSTREAM_BREAKDOWN_2026-09.md)：上流の設計検証や監査で得た結論と、計画や後続の担当との対応を示す一覧
 
-## 現在のv1主線
+## 第1版に向けた現在の開発の流れ
 
 ```text
-Application Pattern Stage 1 — Done
+アプリケーション構成パターンの第1段階 — Done
         ↓
-Gate A — Ready
+判定段階A（Gate A）— Ready
         ↓
-Application Driver — major semantics ready
+設計の実行・検証 — 主な意味を扱う機構は準備済み
         ↓
-Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
+判定段階B（Gate B）— Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B / revision R — 固定済み
+引継ぎの基準B・対象版R — 固定済み
         ↓
-First Web Target build T1 — Evidence取得済み（T = 0ba87a4e0a96…）
+最初のWeb向けビルドT1 — 検証根拠取得済み（T = 0ba87a4e0a96…）
         ↓
-Gate C — PAS-04 — Ready
+判定段階C（Gate C）— PAS-04 — Ready
         ↓
-   ┌──────┼──────────────┐
-   ↓      ↓              ↓
-Studio  knowledge / AI  Second Target
-PAS-01  PAS-06 / 01     PAS-04
+       ┌──────┼────────────┐
+       ↓      ↓            ↓
+    編集環境  知識・AI    二つ目の実行先
+    PAS-01  PAS-06／01       PAS-04
 ```
 
-Gate Cの後は、設計・編集環境（Studio）、既存の知識を優先する探索、AIによる変更提案、第二の実行先の開発を並行して進められます。
+判定段階Cの後は、設計・編集環境、既存知識を優先する探索、AIによる変更提案、二つ目の実行先の開発を並行して進められます。
 
 ## Gate A
 
 判定条件、実行手順、判定記録は[`gate/README.md`](gate/README.md)にまとめています。
 
 - [`GATE_A_READINESS_AUDIT.md`](gate/GATE_A_READINESS_AUDIT.md)
-- 現在: **Ready**
+- 現在：**Ready**
 
 アプリケーションの型、データソース、検証、認証・認可、機能の対応付け、業務結果・実行エラーなどをドライバーへ渡すための意味上の基準が成立しています。
 
@@ -76,63 +76,63 @@ Gate Cの後は、設計・編集環境（Studio）、既存の知識を優先�
 
 ### 正本文書
 
-- [`GATE_B_EVIDENCE_ACQUISITION.md`](gate/GATE_B_EVIDENCE_ACQUISITION.md) — 必要な検証根拠と、それによって証明する内容
-- [`GATE_B_EVIDENCE_RUNBOOK.md`](gate/GATE_B_EVIDENCE_RUNBOOK.md) — 正式な実行手順
-- [`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) — Ready / Not Readyの判定記録
-- ISSUE-000037-gate-b-three-lane-final-evidence.md — three-lane final convergence
+- [`GATE_B_EVIDENCE_ACQUISITION.md`](gate/GATE_B_EVIDENCE_ACQUISITION.md)：必要な検証根拠と、それによって証明する内容
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](gate/GATE_B_EVIDENCE_RUNBOOK.md)：正式な実行手順
+- [`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md)：`Ready`／`Not Ready`の判定記録
+- ISSUE-000037-gate-b-three-lane-final-evidence.md：三系統の検証根拠を最終的にそろえる作業
 
 ### 現在
 
-**Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
+**Ready**です（判定に用いた候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
 
-必要な検証根拠は次の三つで、いずれも同じ実行・同じ改訂版Rについて成立しています。
+必要な検証根拠は次の三つです。いずれも同じ実行と同じ対象版`R`について成立しています。
 
-| Evidence | Issue | 状態 |
+| 検証根拠 | 課題 | 状態 |
 | --- | --- | --- |
-| deterministic Repository | `ISSUE-000032` / #310 | 成立 |
-| generated artifact reproducibility | `ISSUE-000025` / #255 | 成立 |
-| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | 成立 |
+| リポジトリの決定的な再現性 | `ISSUE-000032` / #310 | 成立 |
+| 生成物の再現性 | `ISSUE-000025` / #255 | 成立 |
+| 実際のPostgreSQLと一時的な試験データ | `ISSUE-000031` / #308 | 成立 |
 
-#387の最終的な集約と独立した成果物監査（`artifactAuditPassed = true`）の詳細は[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md)を参照してください。
+#387で検証根拠を最終的にそろえた経緯と、独立した成果物の監査（`artifactAuditPassed = true`）は、[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md)に記録しています。
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneではなく、未完了のままHandoverへ`unresolved`として渡しています。
+実際のOracle環境に関する#214、#371、#376は、外部資産についての重要な検証作業として継続します。ただし、判定段階Bで必須となる四つ目の検証条件には加えず、未完了のまま`unresolved`として引き継いでいます。
 
-## Gate B → Gate C Handover
+## 判定段階BからCへの引継ぎ
 
-- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](gate/GATE_B_TO_C_HANDOVER_CONTRACT.md) — Handoverの規則・原則
-- [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md) — 実際に固定したBaseline `B / R`の記録
+- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](gate/GATE_B_TO_C_HANDOVER_CONTRACT.md)：引継ぎの規則と原則
+- [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)：実際に固定した基準`B / R`の記録
 - ISSUE-000030-gate-b-to-c-handover-baseline.md
 
-Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定済みです。
+判定段階Bで`Ready`となった候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`は、引継ぎの基準`B`として固定済みです。
 
-引き継ぎ（Handover）は、新たな番号付きのGateでも、正本となる意味の第二の正本でもありません。
+引継ぎは、新しい番号付きの判定段階ではなく、意味の第二の正本でもありません。
 
-## Gate C / First Web Target
+## 判定段階Cと最初のWeb向け実行先
 
-- [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md) — Ready判定の記録
+- [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)：`Ready`判定の記録
 - [`GATE_C_EVIDENCE_CONTRACT.md`](gate/GATE_C_EVIDENCE_CONTRACT.md)
 - [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 - ISSUE-000007-first-web-target-projection.md
 - ISSUE-000028-first-web-target-conformance-evidence.md
 
-Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)です。画面の見た目の忠実さを評価したのは単一のAI評価者であり、人による確認ではありません。
+判定段階Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)です。画面の見た目の忠実さを評価したのは単一のAI評価者であり、人による確認ではありません。
 
-最初のWeb向け実行先のビルド版`T1`は、基準となる改訂版`R`とは分けて追跡します。
+最初のWeb向け実行先のビルド版`T1`と、意味の基準となる改訂版`R`は、別々に追跡します。
 
 ```text
-Handover B at R
-      ↓ meaning baseline
-Web build T1
+改訂版Rに対する引継ぎの基準B
+      ↓ 意味の基準
+Web向けビルドT1
       ↓
-Gate C Evidence
+判定段階Cの検証根拠
 ```
 
-Gate Cでは次を分離します。
+判定段階Cでは、次の検証根拠を分けて扱います。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
-4. 必要に応じたPerformance Evidence
+1. 意味上の準拠性
+2. 操作と機能の検証根拠
+3. 表示の忠実度に関する検証根拠
+4. 必要に応じた性能の検証根拠
 
 実行先側で基準となる意味を変更する必要がある場合、Web固有の項目や規則で補わず、次の引き継ぎを発行します。
 
