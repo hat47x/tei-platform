@@ -160,12 +160,12 @@ func serve(in io.Reader, out io.Writer) error {
 		return errors.New("carrier does not match reference")
 	}
 	resp := carrierResponse{
-		ProtocolVersion:     req.ProtocolVersion,
-		RequestID:           req.RequestID,
-		Plugin:              req.Plugin,
-		CapabilityID:        req.CapabilityID,
+		ProtocolVersion:       req.ProtocolVersion,
+		RequestID:             req.RequestID,
+		Plugin:                req.Plugin,
+		CapabilityID:          req.CapabilityID,
 		DescriptorFingerprint: req.DescriptorFingerprint,
-		Status:              "error",
+		Status:                "error",
 	}
 	deny := func() error {
 		resp.Error = "invalid or unsupported read-only quote"
@@ -197,15 +197,15 @@ func serve(in io.Reader, out io.Writer) error {
 		return deny()
 	}
 	result, err := json.Marshal(genericResult{
-		Schema:                 "tei.reference.capability-transport-result/v0",
-		ContractID:             dispatch.ContractID,
-		ContractFingerprint:    dispatch.ContractFingerprint,
-		Target:                 dispatch.Target,
-		Provider:               dispatch.Provider,
+		Schema:                  "tei.reference.capability-transport-result/v0",
+		ContractID:              dispatch.ContractID,
+		ContractFingerprint:     dispatch.ContractFingerprint,
+		Target:                  dispatch.Target,
+		Provider:                dispatch.Provider,
 		RequestShapeFingerprint: dispatch.RequestShapeFingerprint,
-		ResultShapeFingerprint: dispatch.ResultShapeFingerprint,
-		PayloadCodec:           dispatch.PayloadCodec,
-		Payload:                payload,
+		ResultShapeFingerprint:  dispatch.ResultShapeFingerprint,
+		PayloadCodec:            dispatch.PayloadCodec,
+		Payload:                 payload,
 	})
 	if err != nil {
 		return deny()
