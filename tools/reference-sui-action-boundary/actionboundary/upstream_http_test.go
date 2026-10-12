@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 type fixedTenant struct {
@@ -254,5 +255,22 @@ func TestHTTPSApplicationStoreUsesOneContractForIndependentInventoryApp(t *testi
 	rev, err := store.Commit(context.Background(), intent)
 	if err != nil || rev != "stock-v2" || calls != 1 {
 		t.Fatalf("inventory commit: revision=%s calls=%d error=%v", rev, calls, err)
+	}
+}
+
+func TestHTTPSApplicationStoreTimeoutNeverRetries(t *testing.T) {
+	calls := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		// The upstream may have committed before the network reply is lost.
+		time.Sleep(80 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"protocolVersion":"1","revision":"r2"}`))
+	}))
+	defer server.Close()
+	store := upstreamStore(server, validDelegation())
+	store.Client.Timeout = 10 * time.Millisecond
+	_, err := store.Commit(context.Background(), upstreamIntent())
+	if !errors.Is(err, ErrRemoteOutcomeUnknown) || calls != 1 {
+		t.Fatalf("timed out upstream outcome must be unknown, not retried: calls=%d error=%v", calls, err)
 	}
 }
