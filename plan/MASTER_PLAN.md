@@ -341,15 +341,15 @@ B Semantic / Knowledge ───┬── C Application / Legacy
                  I Production Boundary
 ```
 
-作業は完全な直列ではありません。Gate C後は、Studio・AI・既存知識の探索と第二Targetを並行して進められます。
+作業をすべて順番に終える必要はありません。判定段階Cの後は、編集環境、AI、既存知識の探索と、二つ目の実行先の検証を並行して進められます。
 
-## 2026-10 Research Integration — Product Valueへ戻す
+## 2026年10月の技術調査を製品価値につなぐ
 
-直近のresearchは、新しいAI subsystemや新しいGateを増やす根拠にはしません。Product Valueの中心である「意味のSSOT」「技術からの独立」「人が確認可能な変更」「AIを使っても再現可能なEvidence」へ戻し、既存Workstreamへ割り当てます。
+直近の調査結果を、新しいAI基盤や判定段階を増やす理由にはしません。「意味の正本を一つに保つ」「特定技術から独立する」「人が変更を確認できる」「AIを使っても検証結果を再現できる」という製品価値に照らし、既存の作業領域へ割り当てます。
 
 詳細は[TECH_RESEARCH_INTEGRATION_2026-10.md](research/TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とします。
 
-Knowledge / AIでは、次の段階昇格をbaselineとしてPressureします。
+知識の探索とAIの利用については、次の順序で必要な手段を段階的に増やせるか検証します。
 
 ~~~text
 exact / explicit
@@ -365,75 +365,75 @@ local SLM / LLM
 external LLM
 ~~~
 
-どの段階でも、候補の品質や確信度を、意味上の適用可能性、Acceptance、書込み権限、Runtimeの権限と同一視しません。最終的なqualification / Validation / Acceptance / authority checkは決定論的境界へ戻します。
+どの段階でも、候補の品質や確信度を、意味上の適用可能性、受理、書込み権限、実行時の権限と同一視しません。候補の適格性、検証、受理、権限は、同じ入力なら同じ結果になる規則で最終的に確認します。
 
-Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaningへ持ち込まず、Host / Adapter / execution artifact / ABI / Execution Profileの差として観測します。同じSemantic Operationが異なるartifact / Hostでも追跡できることを第二Target pressureへ含めます。
+実行先と実行基盤については、Wails、WebView、ネイティブ実行、Wasmなどの違いを意味の正本へ持ち込みません。実行環境、接続部品、生成した実行物、実行物間の規約、実行設定の違いとして観測します。意味上は同じ操作を、異なる実行物や環境でも追跡できるか、二つ目の実行先で検証します。
 
-この研究成果の統合は、RQ-010 / 013 / 015 / 016 / 021 / 024 / 027〜030に残る不足を減らすための作業です。研究を参照しただけでEvidenceの段階を変更することはありません。
+これらの調査結果は、RQ-010、013、015、016、021、024、027〜030に残る不足を減らすために活用します。研究を参照しただけでは、検証の達成段階を変更しません。
 
 
 ### 2026-10-09の追加検証候補（評価待ち）
 
-直近の仕様レビュー研究、画面操作の評価、WebAssemblyのインターフェース標準化を、**新しいGateや独立した基盤の追加ではなく、既存の業務Referenceをより厳しく確かめる材料**として扱う。Product Valueにとっての意味と調査根拠は、[技術リサーチ統合方針 §9](research/TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とする。
+直近の仕様確認に関する研究、画面操作の評価、WebAssemblyの接続規約の標準化は、**新しい判定段階や独立した基盤を増やすためではなく、既存の業務上の参照事例をより厳しく検証するため**に利用する。製品価値との関係と調査根拠は、[技術調査の統合方針第9節](research/TECH_RESEARCH_INTEGRATION_2026-10.md)に記す。
 
-- **REF-SPEC-01：仕様の不足を実装前に発見する。** 既存の受注Referenceで欠落、曖昧さ、矛盾、古い前提を人が発見できるかを比較する。受け皿はISSUE-000075、#982、#998、#915、#267。最初に得たい価値は、生成量ではなく、意味を誤って確定させない変更レビューである。
-- **REF-INTERACTION-01：画面操作を業務結果まで確認する。** 表示、操作、権限による拒否、Business Result、Observation、視覚評価を別の結果として記録する。受け皿は#997、#1000、#1001、#259。第一Web Targetの既存Gate C判定を遡って変更しない。
-- **REF-PORTABLE-01：異なる実行物・Hostで意味を保つ。** Go native、TinyGo Wasmなどの対応可能な実行物を小さく比較する。WASI 0.2 / 0.3、ABI、Host imports、依存、権限、資源、性能を分けて記録する。受け皿は#259、#943、#973、#976、#1016。Studio用Wails Hostと第二業務Targetを混同せず、HikeをGoコンパイラとして扱わない。
+- **REF-SPEC-01：仕様の不足を実装前に発見する。** 既存の受注の参照事例を使い、人が欠落、曖昧さ、矛盾、古い前提を発見できるか比較する。関連課題はISSUE-000075、#982、#998、#915、#267。最初に確かめたい価値は、生成量ではなく、意味を誤って確定させない変更の確認である。
+- **REF-INTERACTION-01：画面操作を業務結果まで確認する。** 表示、操作、権限による拒否、業務上の結果、観測結果、画面の評価を分けて記録する。関連課題は#997、#1000、#1001、#259。最初のWeb向け実行先で得た判定段階Cの結果を遡って変更しない。
+- **REF-PORTABLE-01：異なる実行物や環境で意味を保つ。** Goのネイティブ実行物やTinyGoのWasmなど、対応可能な方式を小さな構成で比較する。WASI 0.2／0.3、バイナリ間の規約、実行環境から取り込む機能、依存関係、権限、資源、性能を分けて記録する。関連課題は#259、#943、#973、#976、#1016。編集環境用のWailsと二つ目の業務用実行先を混同せず、HikeをGoコンパイラとして扱わない。
 
-優先度は、まず**業務変更時に役立つREF-SPEC-01**、次に**操作の成立を示すREF-INTERACTION-01**、続いて**可搬性を確かめるREF-PORTABLE-01**とする。ただしこれは研究候補の評価順であって、既存Issueの着手承認・並行作業・保護された統合手順を変更しない。ISSUE-000075の候補Bは業務規則の変更を受理済みだが、一周の実証は未完了である。REF-SPEC-01はこの受理を置き換えず、受理済みの意味とBusiness Procedure側の記述の差を読み取り専用で示す。
+評価は、まず**業務変更時に役立つREF-SPEC-01**、次に**操作の成立を示すREF-INTERACTION-01**、続いて**可搬性を確かめるREF-PORTABLE-01**の順とする。ただし、これは研究候補の評価順であり、既存課題の着手承認、並行作業、保護された統合手順を変更しない。ISSUE-000075の候補Bでは業務規則の変更を受理したが、一連の処理を通した実証は未完了である。REF-SPEC-01はその受理を置き換えず、受理済みの意味と業務手順の記述の違いを読み取り専用で示す。
 
-**判定:** 文書への反映は実施済み。三つのREFはいずれも設計案であり、実行・利用者評価・性能計測・Requirement Evidenceへの昇格は未実施。小さな実証で中心価値の不確実性を減らせない場合、方式や作業範囲を広げる前に見送る。
+**判定：**文書への反映は実施済み。三つの参照実験はいずれも設計案であり、実行、利用者評価、性能計測、要求を満たしたことを示す検証根拠の取得は未実施。小さな実証で中心価値に関する不確実性を減らせない場合は、方式や作業範囲を広げる前に見送る。
 
-## Reference Model Transfer Evidence — 成熟した外部modelで全体をpressureする
+## 外部の参照モデルを使った横断的な検証
 
-小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとしてISSUE-000078を進めます。対象となる外部Reference Modelは、公開可能性と利用条件を個別に確認します。外部モデルそのものや詳細な派生資料はこの公開Repositoryへ含めません。
+小規模な参照事例だけでTEIの表現力を判断しないため、判定段階Cの後にISSUE-000078を横断的な検証として進めます。利用する外部の参照モデルについては、公開の可否と利用条件を個別に確認します。外部モデルの本体や詳細な派生資料は、この公開リポジトリには含めません。
 
-これは新しいProduct Gate Dではなく、既存の要求をまとめて厳しく検証するためのEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
+これは新しい製品判定段階Dではなく、既存の要求をまとめて厳しく検証するためのものです。X-TEAのスキーマや実行基盤をTEIの意味を決める権限の根拠にはしません。データ、機能・操作、業務、元形式の既存資産、実行基盤と環境、表示形式を一式で移し替えても、意味を失わず説明できるか確認します。
 
-転写中に見つかった不足は、Business Procedure、Lifecycle、change impact、Target、Semantic Extension等の既存Issueへ返します。Runtime / Tool Capabilityの種類をCore固定enumへ追加しないための共通境界はISSUE-000080へ返します。Reference Modelに存在するという理由だけでCore primitiveを追加しません。原モデルの内容は利用条件を確認せずpublic Repositoryへ転載せず、source fingerprint、mapping、loss / unresolved、TEI独自fixtureをEvidenceとして保持します。
+移し替える際に見つかった不足は、業務手順、変更周期、変更の影響、実行先、意味の拡張などに関する既存課題で扱います。実行基盤や開発用の道具の機能を、中核に固定された列挙値として増やさないための境界はISSUE-000080で扱います。外部の参照モデルに存在するという理由だけで中核の基本要素を増やしません。原モデルの内容は利用条件を確かめずに公開リポジトリへ転載しません。元資料の照合値、対応付け、失われた意味や未解決の事項、TEI独自の試験データを検証根拠として保持します。
 
 作業の目的と公開境界はISSUE-000078で管理します。
 
 ## 業務設計の実用性を基準にした範囲の再評価（2026-10-08、評価待ち）
 
-[Product triage #982](https://github.com/hat47x/tei-platform/issues/982)では、Data / Function・Interaction / Business Procedureの相互検証、早期に動かせる設計、人が理解できるProjectionを先に成立させる観点から、RQ-001〜033と進行中のRQ-034提案のv1着手範囲を見直している。**Product Requirementの削除・既存優先順位の採用変更をここで確定しない。**
+[製品要求の整理#982](https://github.com/hat47x/tei-platform/issues/982)では、データ、機能・操作、業務手順の相互検証、早期に動かせる設計、人が理解できる表示を優先する観点から、RQ-001〜033と検討中のRQ-034について第1版で着手する範囲を見直している。**ここでは製品要求の削除や既存の優先順位の変更を確定しない。**
 
-検討の入口は既存のISSUE-000075とする。2026-10-05に実証Aはsyntheticなdevelopment環境で実行記録済み。候補Bでは2026-10-08に業務規則の変更がownerによって受理されたが、Web画面を含む一周、全明細への規則適用、三視点の意味整合までは完了していない。実証Bの詳細と未完了範囲はISSUE-000075を参照する。
+検討の入口は既存のISSUE-000075とする。実証Aは2026-10-05に合成データを用いた開発環境で実行記録を取得した。候補Bでは2026-10-08に管理主体が業務規則の変更を受理したが、Web画面を含む一連の処理、すべての明細への規則適用、三つの視点での意味の整合性確認は完了していない。実証Bの詳細と未完了範囲はISSUE-000075を参照する。
 
-汎用Plugin solver、Builder self-hosting、AI Business Actor、複数Targetなどの長期能力は否定しない。一方、それらの完成をこの最小の業務実証の前提に追加するなら、**どの具体的な不足を埋めるか**を示してから採否を判断する。現行のGate、各laneのqualificationとprotected integration条件は変更しない。
+汎用的なプラグインの依存解決、構築器の自己構築、AIによる業務実行、複数の実行先などの長期的な能力は否定しない。ただし、それらの完成を最小限の業務実証の前提とする場合は、**どの具体的な不足を解消するか**を明らかにしてから採否を判断する。現在の判定段階、各作業の適格性確認、保護された統合条件は変更しない。
 
 ## 現在の優先順
 
-1. （完了、2026-09-19）Gate B actual final Evidenceを同一revision（R = `e5231839`）へ収束した
-2. （完了、2026-09-19）Handover Baseline `B` / revision `R`を固定した
-3. （完了、2026-09-19）第一Web Targetをbuild revision `T1`（T = `0ba87a4e`）として実装し、Gate C Evidenceを取得してReadyと判定した
-4. Gate C Ready後の並行lane（現在地。各Issueの状態は各Issueの`状態`行が正本）
-   - `ISSUE-000046` Studio minimal Authoring Loop
-   - `ISSUE-000047` knowledge-first Semantic exploration — exact / deterministic baseline → lightweight cognition → model escalation
-   - `ISSUE-000027` AI Proposal / Acceptance — mechanismに依存せずminimum semantic deltaをShared Acceptanceへ収束
-   - `ISSUE-000026` 第二Target pressure test — Target差に加えてportable execution artifact / Host差を比較
-   - `ISSUE-000053` AI-native re-entry / Operational Knowledge — contract / implementation / config / current authority / Observationの再現性
-   - `ISSUE-000078` Reference Model Transfer — 成熟した既存model全体を転写し、表現力・loss・暗黙前提を横断Evidenceでpressure
-5. 第二TargetとAuthoring / AI / Reference Model TransferのEvidenceを相互に戻し、Target-neutral / authoring / semantic extension境界を再評価する
-6. production / ecosystem境界を必要なEvidenceとともに広げる
+1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
+2. （完了、2026-09-19）引継ぎの基準`B`と対象版`R`を固定した
+3. （完了、2026-09-19）最初のWeb向け実行先をビルド版`T1`（T = `0ba87a4e`）として実装し、判定段階Cの検証根拠を得て`Ready`と判定した
+4. 判定段階Cの`Ready`後に並行する作業（現在地。各課題の状態は、その課題の`状態`欄を正本とする）
+   - `ISSUE-000046`：編集環境での最小限の記述・変更・受理の流れ
+   - `ISSUE-000047`：既存知識を優先する意味情報の探索。厳密・決定的な方法を基本とし、必要に応じて軽量な認知機構からモデルへ段階的に進む
+   - `ISSUE-000027`：AIによる提案と受理。手段によらず最小限の意味変更を共通の受理境界で扱う
+   - `ISSUE-000026`：二つ目の実行先による検証。実行先の違いだけでなく、可搬な実行物と実行環境の違いも比較する
+   - `ISSUE-000053`：AIが開発を再開し、業務知識を利用するための仕組み。契約、実装、設定、現在の権限、観測結果を再現可能にする
+   - `ISSUE-000078`：外部の参照モデル全体を移し替え、表現力、失われる意味、暗黙の前提を横断的に検証する
+5. 二つ目の実行先、定義の記述、AI、参照モデルの移行で得た検証根拠を相互に照合し、実行先からの独立性、記述方法、意味の拡張の境界を再評価する
+6. 本番運用と外部技術との連携の境界を、必要な検証根拠とともに広げる
 
-Gate B / Gate CのReady判定とhistorical Evidenceは各exact revisionへ固定済みです。現在の主眼はGate C後のAuthoring / Knowledge / AI / Second Targetであり、旧Gate revisionのEvidenceをcurrent Workspaceへcarry-forwardしません。
+判定段階BとCの`Ready`判定や過去の検証根拠は、それぞれの対象版に固定済みです。現在は判定段階Cの後に行う定義の記述、知識の活用、AI、二つ目の実行先の作業を重視します。以前の判定対象版で得た根拠を、現在の作業領域の検証根拠として引き継ぐことはしません。
 
 ## 先に固定しないもの
 
-- 第一Web Target framework
-- 完全なPresentation IR
-- 完全なTarget Capability taxonomy
-- Editor最終UI
-- AI provider
-- vector database
-- Proposal最終schema
-- mandatory authored Stable ID / UUID
-- Patch-only authoring model
-- WailsのTEI標準Runtime化
-- 第二Targetの種類
-- 一律performance threshold
-- 汎用Workflow Engine
-- production HA一般化
+- 最初のWeb向け実行先で用いる開発基盤
+- 表示に関する完全な中間表現
+- 実行先の機能の完全な分類体系
+- 編集環境の最終的な画面構成
+- AIの提供元
+- ベクトルデータベース
+- 変更提案の最終的なスキーマ
+- 人が記述する安定識別子やUUIDの必須化
+- 差分の適用だけを認める記述方式
+- WailsをTEIの標準実行基盤とすること
+- 二つ目の実行先の種類
+- 一律の性能基準値
+- 汎用の業務処理の実行機構
+- 本番運用の高可用性を共通機構として扱うこと
 
-ReferenceやEvidenceで必要性を確認する前に、これらの方式を固定しません。
+参照事例や検証根拠によって必要性を確認する前に、これらの方式を固定しません。
