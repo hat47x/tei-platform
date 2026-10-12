@@ -230,6 +230,12 @@ test('E30 covered comparisons report null for unknown dimensions, never a produc
 
 test('E30 invalid coverage and repository identity fail closed',async()=>{
   const audit=await observeE27(root);
+  const inherited=Object.create({aiQuestions:'complete'});
+  const inheritedReport=assessE28(audit,submission([],{
+    complete:true,coverage:inherited,
+  }));
+  assert.equal(inheritedReport.claimedCoveredCounts.aiQuestions,null);
+
   for (const badCoverage of [
     {aiQuestions:'already-approved'},
     {aiQuestions:true},
