@@ -129,8 +129,8 @@ func TestDeepDependencyClosureAndUnrelatedScopeRemainStable(t *testing.T) {
 		t.Fatalf("deep dependency closure is incomplete or unordered: %+v", selected.DependencyEpochs)
 	}
 	identity := Binding{
-		ProviderID: selected.ProviderID,
-		ContractID: selected.Contract.ID,
+		ProviderID:      selected.ProviderID,
+		ContractID:      selected.Contract.ID,
 		ContractVersion: selected.Contract.Version,
 	}
 	check := func(selection Selection) error {
