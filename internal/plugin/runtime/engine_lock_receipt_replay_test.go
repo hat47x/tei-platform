@@ -168,7 +168,7 @@ func TestActualEngineLockReceiptReplaysWithExactFiles(t *testing.T) {
 		raw  string
 	}{
 		{name: "duplicate JSON member", raw: `{"schema":"a","schema":"b"}`},
-		{name: "unpaired Unicode surrogate", raw: `{"schema":"\\uD800"}`},
+		{name: "unpaired Unicode surrogate", raw: `{"schema":"\uD800"}`},
 		{name: "trailing second root", raw: `{"schema":"a"} {"schema":"b"}`},
 	} {
 		t.Run(bad.name, func(t *testing.T) {
