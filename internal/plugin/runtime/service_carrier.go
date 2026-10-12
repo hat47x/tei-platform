@@ -42,10 +42,10 @@ type ServiceCarrierBinding struct {
 // registry. This minimal record does not require plugin authors to maintain a
 // full distribution manifest.
 type ServiceAcceptanceRecord struct {
-	Selection               ServiceProviderSelection `json:"selection"`
-	ContractAcceptanceRef   string                   `json:"contractAcceptanceRef"`
-	ProviderConformanceRef  string                   `json:"providerConformanceRef"`
-	AuthorityRevision       string                   `json:"authorityRevision"`
+	Selection              ServiceProviderSelection `json:"selection"`
+	ContractAcceptanceRef  string                   `json:"contractAcceptanceRef"`
+	ProviderConformanceRef string                   `json:"providerConformanceRef"`
+	AuthorityRevision      string                   `json:"authorityRevision"`
 }
 
 // ServiceAcceptanceReader is supplied by the Host and must consult its
