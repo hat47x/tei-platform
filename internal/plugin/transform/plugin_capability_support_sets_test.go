@@ -14,7 +14,7 @@ import (
 
 func TestPluginCapabilitySupportSetsGoTEIParity(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		change func(*plugin.Definition)
 		reject string
 	}{

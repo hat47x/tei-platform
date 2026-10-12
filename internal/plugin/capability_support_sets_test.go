@@ -12,8 +12,8 @@ import (
 
 func TestDirectPackageRejectsDuplicateCapabilitySupportSets(t *testing.T) {
 	tests := []struct {
-		name string
-		set  func(*plugin.Capability)
+		name   string
+		set    func(*plugin.Capability)
 		reject string
 	}{
 		{"actions", func(c *plugin.Capability) { c.Actions = []deployment.ActionKind{deployment.ActionTrafficShift, deployment.ActionTrafficShift} }, "more than once"},
