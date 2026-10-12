@@ -9,7 +9,10 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/environment"
-	"tei/internal/plugin"\n\t"tei/internal/modelref"\n\t"tei/internal/subject"\n\t"tei/internal/workspace"
+	"tei/internal/plugin"
+	"tei/internal/modelref"
+	"tei/internal/subject"
+	"tei/internal/workspace"
 )
 
 const referenceSemantic = "namespace sales\n\ndata Order {\n    attribute orderId type std.identifier\n}\n"
