@@ -37,7 +37,7 @@ func composedDataBusinessRuleCandidate(revision string) Candidate {
 				FunctionalDependencies: []AddFunctionalDependencySpec{{
 					Data: "fulfillment.package_line", ID: "fulfillment.package_line.label_by_line", Symbol: "labelByLine",
 					Determinants: []string{"fulfillment.package_line.order_ref", "fulfillment.package_line.line_no"},
-					Dependents: []string{"fulfillment.package_line.label"},
+					Dependents:   []string{"fulfillment.package_line.label"},
 				}},
 			},
 		}},
@@ -148,7 +148,7 @@ func TestAddDataWithCompositeKeyAndFDUsesOneSharedAcceptance(t *testing.T) {
 
 func TestAddDataBusinessRuleRejectsUnrelatedOrUndeclaredAttributes(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		mutate func(*DataSpec)
 	}{
 		{"field not in new Data", func(d *DataSpec) { d.CandidateKeys[0].Attributes[0] = "fulfillment.package_line.unknown" }},
