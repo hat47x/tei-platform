@@ -170,7 +170,7 @@ func traceRMTIdentityAcrossAcceptance(
 		Target:               key,
 		DefinitionPath:       definitionPath,
 		MeaningStatus:        rmtlink.MeaningUnresolved,
-		AuthorityLimits:      []string{
+		AuthorityLimits: []string{
 			"synthetic-source-token-is-not-original-system-identity-proof",
 			"accepted-tei-meaning-is-not-legacy-semantic-equivalence",
 			"origin-ai-is-not-human-approval",
