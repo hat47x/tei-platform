@@ -35,3 +35,25 @@ go test -count=1 ./tools/reference-composition-process-bridge
 従来のプラグイン実装はGoの`internal/`以下に依存します。一方、新しい参照プラグインは標準ライブラリのみで独立構築できます。ただし、この試験だけで製品の正式なプラグイン契約やすべての既存プラグインの独立性が証明されるわけではありません。次の段階では、言語と実行方式に依存しない呼出し契約とホストの実行権限を分離し、旧実装の段階的な置き換えを検討します。
 
 関連する設計判断は[ADR-0032](../../plan/adr/0032-composition-kernel-replacement.md)と[ADR-0033](../../plan/adr/0033-core-and-plugin-subprojects.md)を参照してください。
+
+## 保護されたWeb入口から実プロセスを呼ぶ追加試験
+
+[Issue #1145](https://github.com/hat47x/tei-platform/issues/1145)の横断検証として、`web_bridge_test.go`を追加しました。既存の[Web保護入口](../../reference/web-composition/go-host/host.go)を経由して、**合成基盤が選択した実装**を既存プロセス実行アダプターへ渡します。プラグイン実行器や認証・認可の共通契約を複製しません。
+
+追加試験は、同じGoパッケージの既存補助関数を再利用し、次の経路を確認します。
+
+```text
+合成HTTP要求
+ → Web Hostの経路・本人確認・要求元確認・操作認可
+ → Hostだけが設定できる検証済み主体
+ → Composition CoordinatorのProvider選択・現在権限
+ → 実ファイルのSHA-256照合
+ → 既存プロセス実行器と子プロセス
+ → accepted（永続的な完了は未確認）／監査
+```
+
+正常例だけでなく、本人確認・要求元確認・操作認可の拒否、認可先の障害、Host権限の失効、Provider宣言の撤去を試します。これらの拒否では**子プロセスが起動しないこと**を確認します。ブラウザ側が偽の利用者・Providerヘッダーを送っても、実行側が使用する主体はHostから渡されたものだけです。拒否・障害・受領を監査記録でも区別します。
+
+**実証範囲の制約：** この試験のセッション・CSRF・操作認可は、Host側の真偽値による**合成検証器**であり、実際のIDプロバイダー、Cookie、ブラウザ、既存業務の`security.authorize`の一貫した実行を証明しません。また、子プロセスは配備指示を`accepted`として返すだけで、データベース更新を行いません。業務操作の成功や永続的な副作用の確定、プロセス隔離、署名の検証を主張しないため、応答でも`durability=unconfirmed`と記録します。
+
+この追加試験は既存の`go test -count=1 ./tools/reference-composition-process-bridge`から実行できます。実行結果はGitHub Actionsまたは実チェックアウトによる記録を別途確認し、コード追加だけでPASSと判定しません。次の段階では、合成されたOperationではなく、実際のApplication Actionと既存`security.authorize`を同じ契約のまま横断させます。

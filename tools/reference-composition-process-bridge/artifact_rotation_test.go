@@ -21,261 +21,175 @@ import (
 	pruntime "tei/internal/plugin/runtime"
 )
 
-// TestDistinctProcessArtifactsRotateWithoutStaleDispatch exercises the same
-// host-side reference bridge with two different executable files. A logical
-// generation change with the same binary is insufficient to prove that stale
-// plans cannot dispatch an older artifact after cutover.
-func TestDistinctProcessArtifactsRotateWithoutStaleDispatch(t *testing.T) {
+// TestRejectedProcessArtifactStageRetainsVerifiedProvider covers a failed
+// cutover, which a successful two-binary rotation cannot demonstrate.
+// A failed readiness check must dispose only the candidate's resources and
+// must leave the previously verified provider callable.
+func TestRejectedProcessArtifactStageRetainsVerifiedProvider(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("the existing reference process launcher does not support executable paths containing spaces on Windows")
+		t.Skip("reference launcher does not support executable paths containing spaces on Windows")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-
-	build := func(source, basename string) (string, string) {
+	build := func(revision string) (string, string) {
 		t.Helper()
-		binary := filepath.Join(t.TempDir(), basename)
-		cmd := exec.CommandContext(ctx, "go", "build", "-o", binary, source)
-		if output, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("build %s: %v\n%s", source, err, output)
+		path := filepath.Join(t.TempDir(), "process-"+revision)
+		cmd := exec.CommandContext(ctx, "go", "build", "-ldflags", "-X main.referenceRevision="+revision,
+			"-o", path, "../../plugins/reference-process-executor")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("build %s: %v\n%s", revision, err, out)
 		}
-		data, err := os.ReadFile(binary)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		sum := sha256.Sum256(data)
-		return binary, "sha256:" + hex.EncodeToString(sum[:])
+		digest := sha256.Sum256(content)
+		return path, "sha256:" + hex.EncodeToString(digest[:])
 	}
-	legacyBinary, legacyDigest := build("../reference-process-plugin", "legacy")
-	nextBinary, nextDigest := build("../../plugins/reference-process-executor", "independent")
-	if legacyDigest == nextDigest {
-		t.Fatal("different reference implementation sources yielded the same binary digest")
+	oldPath, oldDigest := build("active")
+	candidatePath, candidateDigest := build("candidate")
+	if oldDigest == candidateDigest {
+		t.Fatal("reference builds were not distinct")
 	}
 
-	launcher := &countingLauncher{}
+	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	capabilityID := core.MustCanonicalID("process.reference")
 	capability := plugin.Capability{
-		Kind:    plugin.CapabilityDeploymentExecutor,
-		ID:      capabilityID,
+		Kind: plugin.CapabilityDeploymentExecutor, ID: capabilityID,
 		Actions: []deployment.ActionKind{deployment.ActionDatabaseRelease},
 	}
-	adapter := func(binary, digest, version string) pruntime.DeploymentExecutor {
-		identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: version}
-		plan := pruntime.EnvironmentPlan{
-			Environment:              core.MustCanonicalID("reference"),
-			PluginLockFingerprint:    "reference-process-lock",
-			RuntimePolicyFingerprint: "reference-process-policy",
-			Plugins: []pruntime.PluginRuntime{{
-				Plugin:                identity,
-				DescriptorFingerprint: "reference-process-descriptor",
-				Boundary:              pruntime.BoundaryProcess,
-				Trust:                 pruntime.TrustExternalProcess,
-				Command:               binary,
-				Args:                  []string{referenceArgvMarker},
-				SandboxPolicy:         plugin.SandboxNone,
-				Artifact:              plugin.Artifact{Digest: digest},
-			}},
-			Capabilities: []pruntime.CapabilityRuntime{{
-				Plugin: identity, Capability: capability, Boundary: pruntime.BoundaryProcess,
-			}},
-		}
-		return pruntime.DeploymentExecutor{
-			Plan: plan,
-			Registry: pruntime.Registry{
-				Processes: launcher,
-				Verifier:  fileVerifier{path: binary},
-			},
-			CapabilityID: capabilityID,
-		}
+	plan := pruntime.EnvironmentPlan{
+		Environment: core.MustCanonicalID("reference"),
+		PluginLockFingerprint: "reference-staging-lock",
+		RuntimePolicyFingerprint: "reference-staging-policy",
+		Plugins: []pruntime.PluginRuntime{{
+			Plugin: identity, DescriptorFingerprint: "reference-process-descriptor",
+			Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
+			Command: oldPath, Args: []string{referenceArgvMarker},
+			SandboxPolicy: plugin.SandboxNone,
+			Artifact: plugin.Artifact{Digest: oldDigest},
+		}},
+		Capabilities: []pruntime.CapabilityRuntime{{
+			Plugin: identity, Capability: capability, Boundary: pruntime.BoundaryProcess,
+		}},
 	}
-	legacy := adapter(legacyBinary, legacyDigest, "1.0.0")
-	next := adapter(nextBinary, nextDigest, "2.0.0")
-	command := executor.Command{
-		ID:             "artifact-rotation",
-		ActionID:       "sales_expand/apply",
-		IdempotencyKey: "artifact-rotation-once",
-		Kind:           string(deployment.ActionDatabaseRelease),
-		Database:       core.MustCanonicalID("sales_core"),
-		Version:        "1.0.0",
+	launcher := &countingLauncher{}
+	adapter := pruntime.DeploymentExecutor{
+		Plan: plan,
+		Registry: pruntime.Registry{
+			Processes: launcher, Verifier: fileVerifier{path: oldPath},
+		},
+		CapabilityID: capabilityID,
 	}
 	contract := composition.Contract{
-		ID:      "std.deployment.executor",
-		Version: "1.0.0",
-		Shape:   "reference-execute-request-result-v1",
+		ID: "std.deployment.executor", Version: "1.0.0",
+		Shape: "reference-execute-request-result-v1",
 	}
 	registry := composition.NewRegistry()
-	snap, err := registry.Apply(0, []composition.Provider{{
-		ID: "legacy", Scope: "reference", Offers: contract,
+	_, err := registry.Apply(0, []composition.Provider{{
+		ID: "stable", Scope: "reference", Offers: contract,
 	}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstSelection, err := registry.Select("legacy", "reference")
+	selection, err := registry.Select("stable", "reference")
 	if err != nil {
 		t.Fatal(err)
 	}
-	denied := errors.New("host denies this binding")
-	allowed := true
-	expectedDigests := map[string]string{
-		"legacy": legacyDigest, "independent": nextDigest,
+	oldBinding := composition.Binding{
+		ContractID: contract.ID, ContractVersion: contract.Version,
+		ProviderID: "stable", ArtifactDigest: oldDigest, Generation: 1,
 	}
-	guard := func(binding composition.Binding) error {
-		if !allowed || binding.ContractID != contract.ID ||
-			binding.ContractVersion != contract.Version ||
-			expectedDigests[binding.ProviderID] != binding.ArtifactDigest {
-			return denied
+	cleanedOld := 0
+	oldScope := composition.NewScope()
+	if err := oldScope.Track(func() error { cleanedOld++; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	guard := func(b composition.Binding) error {
+		if b != oldBinding {
+			return errors.New("host rejected unknown artifact binding")
 		}
 		return nil
 	}
-	original := composition.Binding{
-		ContractID:      contract.ID,
-		ContractVersion: contract.Version,
-		ProviderID:      "legacy",
-		ArtifactDigest:  legacyDigest,
-		Generation:      1,
-	}
-	oldScope := composition.NewScope()
-	oldCleanups := 0
-	if err := oldScope.Track(func() error { oldCleanups++; return nil }); err != nil {
-		t.Fatal(err)
-	}
-	coordinator, err := composition.NewSelectedCoordinator(registry, firstSelection, original, oldScope, guard)
+	coordinator, err := composition.NewSelectedCoordinator(registry, selection, oldBinding, oldScope, guard)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	checkResult := func(out executor.Result, plan pruntime.EnvironmentPlan, digest string) {
+	command := executor.Command{
+		ID: "staging-rejection", ActionID: "sales_expand/apply",
+		IdempotencyKey: "staging-rejection-key", Kind: string(deployment.ActionDatabaseRelease),
+		Database: core.MustCanonicalID("sales_core"), Version: "1.0.0",
+	}
+	assertOldCallable := func() {
 		t.Helper()
-		if out.Outcome != executor.OutcomeAccepted ||
-			out.ActionID != command.ActionID || out.IdempotencyKey != command.IdempotencyKey {
-			t.Fatalf("bad executor acknowledgment: %+v", out)
+		result, err := invokeSelected(ctx, coordinator, adapter, command)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if out.PluginInvocation == nil ||
-			out.PluginInvocation.ArtifactDigest != digest ||
-			!out.PluginInvocation.DigestVerified ||
-			out.PluginInvocation.SignatureVerified ||
-			out.PluginInvocation.Sandboxed {
-			t.Fatalf("incorrect plugin provenance: %+v", out.PluginInvocation)
+		if result.Outcome != executor.OutcomeAccepted || result.PluginInvocation == nil ||
+			result.PluginInvocation.ArtifactDigest != oldDigest ||
+			!result.PluginInvocation.DigestVerified || result.PluginInvocation.SignatureVerified {
+			t.Fatalf("old provider lost verified invocation identity: %+v", result)
 		}
-		if err := pruntime.ValidateDeploymentInvocation(plan, capabilityID, out.PluginInvocation); err != nil {
-			t.Fatalf("invalid locked invocation: %v", err)
+		if err := pruntime.ValidateDeploymentInvocation(plan, capabilityID, result.PluginInvocation); err != nil {
+			t.Fatal(err)
 		}
 	}
-	before, err := invokeSelected(ctx, coordinator, legacy, command)
-	if err != nil {
-		t.Fatalf("legacy plugin invocation: %v", err)
-	}
-	checkResult(before, legacy.Plan, legacyDigest)
-	pinned, err := coordinator.Acquire()
+	assertOldCallable()
+	held, err := coordinator.Acquire()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := registry.Apply(snap.Revision, []composition.Provider{{
-		ID: "independent", Scope: "reference", Offers: contract,
-	}}, []string{"legacy"}); err != nil {
-		t.Fatal(err)
-	}
-	afterSelection, err := registry.Select("independent", "reference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dispatched := launcher.calls
-	if _, err := invokeSelected(ctx, coordinator, legacy, command); !errors.Is(err, composition.ErrStaleRegistry) {
-		t.Fatalf("registry changed but old selection invoked: %v", err)
-	}
-	if launcher.calls != dispatched {
-		t.Fatal("stale selection launched a child process")
-	}
-
-	nextBinding := original
-	nextBinding.ProviderID = "independent"
-	nextBinding.ArtifactDigest = nextDigest
-	nextBinding.Generation = 2
-	abortedCleanups := 0
-	untrusted := nextBinding
+	untrusted := oldBinding
 	untrusted.ArtifactDigest = "sha256:" + strings.Repeat("0", 64)
-	badLifecycle := composition.Lifecycle{
+	untrusted.Generation = 2
+	cleanupCandidate := 0
+	badStage := composition.Lifecycle{
 		Prepare: func(_ context.Context, scope *composition.Scope) error {
-			return scope.Track(func() error { abortedCleanups++; return nil })
+			return scope.Track(func() error {
+				cleanupCandidate++
+				return os.Remove(candidatePath)
+			})
 		},
-		Ready: func(ctx context.Context, binding composition.Binding) error {
-			_, err := (fileVerifier{path: nextBinary}).Verify(ctx, next.Plan.Plugins[0].Plugin, plugin.Artifact{Digest: binding.ArtifactDigest})
+		Ready: func(ctx context.Context, b composition.Binding) error {
+			if b != untrusted {
+				return errors.New("unexpected candidate binding")
+			}
+			_, err := (fileVerifier{path: candidatePath}).Verify(ctx, identity, plugin.Artifact{Digest: b.ArtifactDigest})
 			return err
 		},
 	}
-	if err := coordinator.ReplaceSelected(ctx, registry, afterSelection, 1, untrusted, badLifecycle); err == nil {
-		t.Fatal("staged generation accepted an unverified executable digest")
+	count := launcher.calls
+	if err := coordinator.ReplaceSelected(ctx, registry, selection, 1, untrusted, badStage); err == nil {
+		t.Fatal("unverified candidate was published")
 	}
-	if abortedCleanups != 1 || coordinator.PendingRetirements() != 0 || launcher.calls != dispatched {
-		t.Fatal("failed replacement leaked a scope or dispatched a process")
+	if cleanupCandidate != 1 || cleanedOld != 0 ||
+		coordinator.PendingRetirements() != 0 || launcher.calls != count {
+		t.Fatalf("failed staging leaked or dispatched: candidate cleanup=%d old cleanup=%d calls=%d", cleanupCandidate, cleanedOld, launcher.calls)
 	}
-
-	newCleanups := 0
-	lifecycle := composition.Lifecycle{
-		Prepare: func(_ context.Context, scope *composition.Scope) error {
-			return scope.Track(func() error { newCleanups++; return nil })
-		},
-		Ready: func(ctx context.Context, binding composition.Binding) error {
-			if binding != nextBinding {
-				return errors.New("unexpected generation binding")
-			}
-			verified, err := (fileVerifier{path: nextBinary}).Verify(ctx, next.Plan.Plugins[0].Plugin, next.Plan.Plugins[0].Artifact)
-			if err != nil {
-				return err
-			}
-			if !verified.DigestVerified {
-				return errors.New("next executable digest was not verified")
-			}
-			return nil
-		},
+	if _, err := os.Stat(candidatePath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("rejected candidate was not removed: %v", err)
 	}
-	if err := coordinator.ReplaceSelected(ctx, registry, afterSelection, 1, nextBinding, lifecycle); err != nil {
-		t.Fatalf("verified generation replacement failed: %v", err)
-	}
-
-	if _, err := invokeSelected(ctx, coordinator, legacy, command); err == nil {
-		t.Fatal("old artifact dispatched after generation replacement")
-	}
-	if launcher.calls != dispatched {
-		t.Fatal("replaced generation dispatched stale executable bytes")
-	}
-	after, err := invokeSelected(ctx, coordinator, next, command)
+	stillCurrent, err := coordinator.Acquire()
 	if err != nil {
-		t.Fatalf("independent plugin invocation: %v", err)
+		t.Fatalf("rejected stage interrupted old serving: %v", err)
 	}
-	checkResult(after, next.Plan, nextDigest)
-	if launcher.calls != dispatched+1 {
-		t.Fatalf("expected only replacement process to be launched, calls=%d", launcher.calls)
+	if stillCurrent.Binding != oldBinding || held.Binding != oldBinding {
+		t.Fatal("failed stage changed an in-flight or active binding")
 	}
-	if pinned.Binding.ArtifactDigest != legacyDigest || oldCleanups != 0 {
-		t.Fatal("in-flight old generation was mutated or cleaned too early")
+	stillCurrent.Release()
+	assertOldCallable()
+	if launcher.calls != count+1 {
+		t.Fatal("failed cutover did not preserve verified process invocation")
 	}
-	pinned.Release()
-	if err := coordinator.Reap(ctx); err != nil {
+	held.Release()
+	if err := coordinator.Withdraw(1); err != nil {
 		t.Fatal(err)
-	}
-	if oldCleanups != 1 || newCleanups != 0 {
-		t.Fatalf("bad generation cleanup after release: old=%d new=%d", oldCleanups, newCleanups)
-	}
-
-	allowed = false
-	dispatched = launcher.calls
-	if _, err := invokeSelected(ctx, coordinator, next, command); !errors.Is(err, denied) {
-		t.Fatalf("host denied invocation still accepted: %v", err)
-	}
-	if launcher.calls != dispatched {
-		t.Fatal("host-denied invocation launched an external process")
-	}
-	if err := coordinator.Withdraw(2); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := invokeSelected(ctx, coordinator, next, command); !errors.Is(err, composition.ErrUnbound) {
-		t.Fatalf("withdrawn provider accepted invocation: %v", err)
 	}
 	if err := coordinator.Reap(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if newCleanups != 1 || launcher.calls != dispatched {
-		t.Fatalf("withdrawal cleanup or process dispatch mismatch: cleanup=%d calls=%d", newCleanups, launcher.calls)
+	if cleanedOld != 1 || cleanupCandidate != 1 {
+		t.Fatalf("incorrect cleanup counts after withdrawal: old=%d rejected=%d", cleanedOld, cleanupCandidate)
 	}
 }
