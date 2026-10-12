@@ -32,7 +32,7 @@ func TestProjectAdvisoryHTTP(t *testing.T) {
 func TestProjectAdvisoryRejectsMalformedOrForbidden(t *testing.T) {
 	tests := []struct {
 		name, method, contentType, body, origin string
-		want int
+		want                                    int
 	}{
 		{"method", "GET", "application/json", "", "", 405},
 		{"media", "POST", "text/plain", "{}", "", 415},
