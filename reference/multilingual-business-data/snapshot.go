@@ -136,8 +136,13 @@ func Validate(s Snapshot) []Diagnostic {
 		if r.Origin != "translation" || r.BasedOn == nil {
 			continue
 		}
-		if _, ok := findRevision(s, *r.BasedOn); !ok {
+		source, ok := findRevision(s, *r.BasedOn)
+		if !ok {
 			out = append(out, Diagnostic{"missing-source-revision", "revisions/" + strconv.Itoa(i)})
+		} else if source.Origin == "translation" {
+			// E1 only allows a direct original -> translation relation.
+			// This avoids silently treating multi-hop stale translations as current.
+			out = append(out, Diagnostic{"chained-translation-unsupported", "revisions/" + strconv.Itoa(i)})
 		}
 	}
 	seenPublications := map[Key]bool{}
@@ -206,7 +211,8 @@ func CheckProposal(s Snapshot, p TranslationProposal) string {
 	if len(Validate(s)) != 0 {
 		return "invalid-snapshot"
 	}
-	if !validKey(p.Target) || strings.TrimSpace(p.Text) == "" ||
+	if !validKey(p.Target) || !validKey(p.Source.Key) ||
+		p.Source.Revision == "" || strings.TrimSpace(p.Text) == "" ||
 		p.Target.Tenant != p.Source.Key.Tenant ||
 		p.Target.Record != p.Source.Key.Record ||
 		p.Target.Field != p.Source.Key.Field ||
