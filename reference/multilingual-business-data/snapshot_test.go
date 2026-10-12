@@ -18,8 +18,8 @@ func example() (Snapshot, Key, Key) {
 		BasedOn: &SourceRef{Key: ja, Revision: "ja-1"}, Review: "approved",
 	}
 	s := Snapshot{
-		Model: modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{{Key: field}}},
-		Revisions: []Revision{source, translated},
+		Model:        modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{{Key: field}}},
+		Revisions:    []Revision{source, translated},
 		Publications: []Publication{{Key: ja, Revision: "ja-1"}, {Key: en, Revision: "en-1"}},
 	}
 	return s, ja, en
@@ -145,9 +145,9 @@ func TestIndependentContractLanguageDoesNotExpireWithOtherVersion(t *testing.T) 
 
 func TestDuplicateMissingOrCrossTenantSourceIsRejected(t *testing.T) {
 	tests := []struct {
-		name  string
-		edit  func(*Snapshot, Key, Key)
-		code  string
+		name string
+		edit func(*Snapshot, Key, Key)
+		code string
 	}{
 		{"duplicate revision", func(s *Snapshot, _, _ Key) { s.Revisions = append(s.Revisions, s.Revisions[0]) }, "duplicate-revision"},
 		{"duplicate publication", func(s *Snapshot, _, _ Key) { s.Publications = append(s.Publications, s.Publications[0]) }, "ambiguous-publication"},
