@@ -74,10 +74,10 @@ def observe(binary_path, package_path, git_tree, git_revision, build_info):
     names = packages.decode("utf-8").splitlines()
     if not names:
         raise ValueError("API Go dependency closure is incomplete")
-    if any(name != name.strip() or not name or name.startswith("#") for name in names):
-        raise ValueError("invalid dependency package name")
     if packages != ("\n".join(names) + "\n").encode():
         raise ValueError("dependency listing is not canonical newline text")
+    if any(name != name.strip() or not name or name.startswith("#") for name in names):
+        raise ValueError("invalid dependency package name")
     if len(set(names)) != len(names):
         raise ValueError("duplicate dependency package")
     if names[-1] != EXPECTED_PACKAGE:
