@@ -18,7 +18,7 @@ const session=(change={})=>({
   mode:'illustrative',state:'closed',coverage:{...cover},...change,
 });
 const event=(id,kind,fields={})=>({
-  id,kind,observedAt:'2026-10-12T23:16:00Z',choiceId:'web.project-ui-extension',
+  id,sessionId:'e28-example',kind,observedAt:'2026-10-12T23:16:00Z',choiceId:'web.project-ui-extension',
   provenance:{kind:'human-attested',ref:'issue:1016'},...fields,
 });
 const records=[
@@ -92,6 +92,8 @@ test('E28 rejects duplicate, forged, cross-consumer, unsafe file and prompt-copy
   const base=session({mode:'caller-recorded'});
   const run=events=>measureE28Work({session:base,events,audit});
   assert.throws(()=>run([records[0],records[0]]),/duplicate_work_event/);
+  assert.throws(()=>run([event('crossSession','manual-action',{
+    sessionId:'other-session'})]),/invalid_work_event/);
   assert.throws(()=>run([event('foreign','manual-action',{choiceId:'sui.native-kit-target'})]),
     /invalid_work_event/);
   assert.throws(()=>run([event('injected','ai-question',{text:'copied private prompt'})]),
@@ -122,7 +124,8 @@ test('E28 compares only the same consumer, Target, requirement and source baseli
   const right=measureE28Work({
     session:session({id:'e28-with-profile',mode:'caller-recorded',
       approach:'profile-candidate'}),
-    events:[records[0],records[4]],audit,
+    events:[{...records[0],sessionId:'e28-with-profile'},
+      {...records[4],sessionId:'e28-with-profile'}],audit,
   });
   assert.deepEqual(compareE28Work(left,right),{
     status:'caller-reported-comparison-only',
@@ -142,7 +145,8 @@ test('E28 Stage0 can only record its own choices, never graduate to an accepted 
   const audit=await observeE27(root);
   const info=session({id:'e28-sui',consumer:'sui_stage0',target:'native',
     mode:'caller-recorded',baseline:{tei,sui}});
-  const entry=event('suiChoice','manual-action',{choiceId:'sui.native-kit-target'});
+  const entry=event('suiChoice','manual-action',{sessionId:'e28-sui',
+    choiceId:'sui.native-kit-target'});
   const report=measureE28Work({session:info,events:[entry],audit});
   assert.equal(report.measurements.manualActions,1);
   assert.equal(report.runtimeAuthority,null);
