@@ -25,6 +25,26 @@ go run ./tools/reference-standard-function-candidates \
 
 既存のアプリケーションに同じデータを参照する手書きの一覧・単票があれば、その候補を重複生成しません。別の機能の命名と派生IDが衝突するときや、対象のアプリケーション・意味の参照が曖昧なときは、候補を推測せずエラーにします。
 
+## 明示された機能の契約を調べる
+
+すでに正本に定義された機能については、次のように`-pattern`を指定します。
+
+```sh
+go run ./tools/reference-standard-function-candidates \
+  -workspace reference/workspace -application order_entry \
+  -pattern order_entry.recent_orders
+
+go run ./tools/reference-standard-function-candidates \
+  -workspace reference/workspace -application order_entry \
+  -pattern order_entry.submit_order
+```
+
+この経路では新しい機能を派生させず、既存の`Driver`が公開する解決処理をそのまま使います。一覧はデータ、問合せ、データソースの明示参照を照合し、操作はCapabilityとそのアプリケーション固有のBindingを照合します。解決不能・曖昧な参照は拒否します。
+
+戻り値の`resolved`は**正本の参照を解決した項目**、`unverified`は**実行までに別途証明すべき項目**です。問合せの提供元への接続、現在の利用権、実行先、永続化、独立した再読込は、この検査の外に残ります。操作用のPatternはデータとの作成・変更関係を宣言していないため、Capabilityの名前や出力型から関係を推定しません。すべての`executable`は`false`です。
+
+初回作業領域にはまだ明示的な機能がありません。その作業領域へ`-pattern`を指定しても、元の候補から仮の実行用Patternを作らず、失敗します。
+
 ## 確認
 
 ```sh
