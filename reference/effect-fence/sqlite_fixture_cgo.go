@@ -212,7 +212,7 @@ func (f *sqliteFixture) PrepareForTest(ctx context.Context, r Request) (any, Res
 		return nil, Result{}, errors.New("permit sequence overflow")
 	}
 	f.next++
-	token := Permit{id: f.next}
+	token := Permit{id: f.next, owner: f}
 	f.pending[token.id] = prepared{request: r, authorityVersion: version}
 	return token, Result{Disposition: Prepared}, nil
 }
@@ -221,7 +221,7 @@ func (f *sqliteFixture) CommitForTest(ctx context.Context, token any) (Result, e
 		return Result{}, err
 	}
 	p, ok := token.(Permit)
-	if !ok || p.id == 0 {
+	if !ok || p.id == 0 || p.owner != f {
 		return Result{Disposition: Denied, Reason: "unknown-permit"}, nil
 	}
 	f.mu.Lock()
