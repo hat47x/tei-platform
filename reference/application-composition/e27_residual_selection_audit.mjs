@@ -65,7 +65,7 @@ export function auditE27(observations) {
     selectionUnresolved:result.filter(r=>r.status==='selection-unresolved').length,
     runtimeProofUnresolved:result.filter(r=>r.status==='runtime-proof-unresolved').length,
     sourceUnresolved:result.filter(r=>r.status==='source-unresolved').length,
-    actualManualActions:null, actualAIQuestions:null, acceptedProfiles:0,
+    actualManualActions:null, actualAIQuestions:null, acceptedProfiles:null,
   };
   return {kind:'tei-composition-e27-reference-selection-audit-v0', summary, choices:result};
 }
