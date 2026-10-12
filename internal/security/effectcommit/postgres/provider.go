@@ -133,7 +133,7 @@ func (t *transaction) SaveReceipt(ctx context.Context, r effectcommit.Receipt) e
 }
 
 func (t *transaction) Commit(ctx context.Context) error { return t.tx.Commit(ctx) }
-func (t *transaction) Rollback() error { return t.tx.Rollback(context.Background()) }
+func (t *transaction) Rollback() error                  { return t.tx.Rollback(context.Background()) }
 
 var _ effectcommit.Provider = Provider{}
 var _ effectcommit.Transaction = (*transaction)(nil)
