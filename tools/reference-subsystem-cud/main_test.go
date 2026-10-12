@@ -204,7 +204,7 @@ func TestConflictingPatternSubsystemClaimsCannotProveForeignWrite(t *testing.T) 
 	// The same Pattern is attributed to two execution Subsystems.
 	// This is an ambiguous actor, not proof of a foreign CUD effect.
 	f.FunctionIO = append(f.FunctionIO, FunctionIO{
-		Pattern: "sales.submit", Subsystem: "stock", Data: "stock.reservation",
+		Pattern: "sales.submit", Subsystem: "stock", Data: "sales.order",
 		Operation: "U", Source: "candidate:contradictory",
 	})
 	report := Inspect(w, f)
