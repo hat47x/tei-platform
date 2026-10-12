@@ -20,10 +20,10 @@ func TestBundleDispatchesOnlyKnownPluginIdentities(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			wire := request{
 				ProtocolVersion: 1, RequestID: "request",
-				Plugin: identity{ID: tt.pluginID, Version: "1.0.0"},
+				Plugin:       identity{ID: tt.pluginID, Version: "1.0.0"},
 				CapabilityID: tt.capabilityID, DescriptorFingerprint: "descriptor",
 				Operation: "execute",
-				Payload: json.RawMessage(`{"id":"intent","actionId":"sales_expand/apply","idempotencyKey":"key"}`),
+				Payload:   json.RawMessage(`{"id":"intent","actionId":"sales_expand/apply","idempotencyKey":"key"}`),
 			}
 			input, err := json.Marshal(wire)
 			if err != nil {
@@ -62,7 +62,7 @@ func TestBundleDispatchesOnlyKnownPluginIdentities(t *testing.T) {
 func TestBundleDoesNotAcceptAmbiguousOrIncompleteInput(t *testing.T) {
 	base := request{
 		ProtocolVersion: 1, RequestID: "request",
-		Plugin: identity{ID: "tei.reference.bundle.alpha", Version: "1.0.0"},
+		Plugin:       identity{ID: "tei.reference.bundle.alpha", Version: "1.0.0"},
 		CapabilityID: "process.bundle.alpha", DescriptorFingerprint: "descriptor",
 		Operation: "execute", Payload: json.RawMessage(`{"id":"intent","actionId":"sales_expand/apply","idempotencyKey":"key"}`),
 	}
