@@ -128,6 +128,10 @@ export function projectInspectionV0(input) {
     throw new InspectionProjectionError('mixed_subject_trace');
   if(src.artifacts.some(a=>!object(a)||!nonEmpty(a.path)||!nonEmpty(a.fingerprint)))
     throw new InspectionProjectionError('invalid_artifact_trace');
+  const knownPaths=new Set(src.artifacts.map(a=>a.path));
+  if(knownPaths.size!==src.artifacts.length ||
+     src.references.some(r=>!nonEmpty(r.artifactPath)||!knownPaths.has(r.artifactPath)))
+    throw new InspectionProjectionError('inconsistent_artifact_reference');
   if (input.sourceStatus==='indexed' && (src.references.length===0 || src.artifacts.length===0))
     throw new InspectionProjectionError('inconsistent_source_status');
   const diagnostics=[];
