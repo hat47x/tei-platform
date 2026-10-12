@@ -34,15 +34,15 @@ type SourceWitness struct {
 // WorkspaceDisplayConfig selects an existing Data declaration and an already
 // pinned environment. The ordinary plugin is unrelated to language services.
 type WorkspaceDisplayConfig struct {
-	Environment core.CanonicalID
-	Scope       string
-	Data        core.CanonicalID
-	Owner       plugin.Identity
+	Environment  core.CanonicalID
+	Scope        string
+	Data         core.CanonicalID
+	Owner        plugin.Identity
 	SourceLocale string
-	Locale      string
-	Packs       []Pack
-	Grants      []Grant
-	Overrides   []Override
+	Locale       string
+	Packs        []Pack
+	Grants       []Grant
+	Overrides    []Override
 }
 
 // ReviewRequest is passed to an existing host's authorization/acceptance
@@ -203,7 +203,7 @@ func BuildWorkspaceDisplay(root string, lock plugin.Lock, cfg WorkspaceDisplayCo
 	// all other canonical meaning and relationships remain untouched.
 	graph := modelref.Graph{
 		Schema: "tei.modelref.v0",
-		Nodes: []modelref.Node{{Key: key, DisplayName: label}},
+		Nodes:  []modelref.Node{{Key: key, DisplayName: label}},
 	}
 	manifest, err := BuildLockedDisplay(catalog, env, lock, graph,
 		[]Surface{surface}, packs, grants, overrides, request)
