@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 
 class Element {
   constructor(tag){this.tag=tag;this.textContent='';this.children=[];this.listeners={};this.classList={toggle(){}};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.style={};this.viewBox={baseVal:{width:1100,height:600}};}
-  setAttribute(k,v){this[k]=v}
+  setAttribute(k,v){
+    if(k==='viewBox'){
+      const [x,y,width,height]=String(v).split(' ').map(Number);
+      this.viewBox.baseVal={x,y,width,height};
+    }else this[k]=v;
+  }
   append(...items){this.children.push(...items)}
   replaceChildren(...items){this.children=[...items]}
   addEventListener(type,fn){this.listeners[type]=fn}
@@ -71,9 +76,8 @@ test('large Procedure remains scrollable instead of clipping all Steps below ini
   await input('dfd-file',{...projection,steps,flows:[],handoffs:[]});
   assert.match($('status').textContent,/投影を読み込みました/);
   assert.equal($('diagram').children.filter(n=>n.dataset?.kind==='step').length,32);
-  const dimensions=String($('diagram').viewBox);
-  const height=Number(dimensions.split(' ')[3]);
-  assert.ok(height>600,'diagram height should expand with number of Steps: '+dimensions);
+  const height=$('diagram').viewBox.baseVal.height;
+  assert.ok(height>600,'diagram height should expand with number of Steps: '+height);
   assert.ok(parseInt($('diagram').style.height,10)>600);
 });
 
