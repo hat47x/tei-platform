@@ -108,11 +108,11 @@ Worldとrevisionを先に取得してCLIへ渡す場合は、`-workspace`の代�
 
 `e2e.mjs`は各ケースの結果を`tei.reference.studio-source-loop-receipt/v0`として標準出力に含めます。採取対象は`baseModelRevision`（R0）、Previewの`currentModelRevision`と予測`modelRevisionAfter`、Accepted Decisionの`modelRevisionBefore/After`、Sourceを再ロードした実際のR1、candidate/review指紋、変更ファイル一覧です。これらの整合を**一つのScratch受理操作の内部で検査**し、旧R0候補のPreviewとAcceptがR1を上書きしないことも検査します。
 
-Receiptは実行に成功したときだけ出力される**テスト実行記録の構造案**であり、現PR headのactual E2E PASSを意味しません。人間のAccept、実Provider、Runtime/Target、後続Observationの証拠は入らず、`not-observed`として明示します。Source IDとSource RevisionをWebのCommand/Observationへ引き渡す実際の連結は#1121/#1127の責務で、ここで実行Readyとは表示しません。
+Receiptは**一時作業領域で実際に試験を実行した記録**です。2026年10月12日に[Studio専用CI #38237367895](https://github.com/hat47x/tei-platform/actions/runs/38237367895)でER・表の2件について56項目が成功し、同じ実行でNode.jsの29テストも成功しました。CIの対象はPRの仮マージコミット`93144fa2936ed17faf93b101bb6c6db06875b01c`です。人間の受理、実際のデータベースや実行先、後続観測の証拠は含まず、`not-observed`として明示します。Source IDとSource RevisionをWebのCommand/Observationへ引き渡す実際の連結は#1121/#1127の責務で、ここで実行Readyとは表示しません。
 
 現行Source Indexは#1120の`scope + kind + ID`契約と同じスコープ情報を提供しません。Source Indexの参照自身、または`subject`内へ呼出し側が`scope`を付けてもC0解決済みと扱わず、`sourceNavigation.status=unresolved`にします。パスの重複区切りや`.`区間、開始・終了位置の形式不備も索引の段階で拒否し、ソース位置を誤って確定しません。複数scopeを持つモデルを安全に編集するには、#1120のtyped Resolverを同一revisionへ接続する必要があります。単一scopeの現Reference向けflat `data:ID` 形式を、汎用のC0表現として固定しません。
 
-## Business参照の任意結合（#1125 / Draft PR #1138）
+## 業務モデルの参照用結合（#1125 / 統合済みPR #1138）
 
 #1125の独立DFD Readerが配置されたcheckoutでは、同じScratch Workspaceを指定してDFD JSONを取得できます。
 
@@ -162,10 +162,10 @@ tools/repository-health-check.sh
 | Scenario | 初期実装 | 未検証・未対応 |
 | --- | --- | --- |
 | V00 | Worldから表/ER/機能近傍を同じ論理IDへ戻す。Source Indexのexact kind/IDで元定義のアンカーを表示。#1138 JSONの非Canonical BusinessについてPatternおよび直接Data/Relation/Validation参照をread-only結合し、Step選択からの逆向きfocusも提供 | Accepted Businessとの同revision結合は未実装。Live inspectの単一時点でのSource byte照合は追加したが、再読込を伴う一貫した画面表示・4つのAccepted Projection受入は**未達** |
-| V03 | ERのRelation追加・表のValidation追加に加え、必要ならApplicationによるValidation利用選択も同一candidateで提案。一括`review-edit`で既存Shared AcceptanceによるDiff/Impact/Reviewを表示し、実行Readyは未確認とする | read-only consumerのexact-head実GoテストとTarget/Provider readinessは未確認 |
-| V04 | Shared Acceptance CLI手順とscratch自動検証スクリプトを追加。規則+Application選択はSource2ファイルを検査するテストとして追加。Accepted Relation/Validationを表/ERへ再投影可能 | exact-head scratch E2Eのactual実行、Source reload比較は**未実行** |
+| V03 | ERでRelationを追加し、表からValidationとApplication側の利用宣言を提案する。共通受理機構の差分・影響・審査を経由する一往復を、一時作業領域で実行済み | 実画面からの操作、実データベースや実行先での可否は未確認 |
+| V04 | 共通受理機構を使う自動試験がER・表の2件とも成功。変更前後の版、受理記録、Source再読込、再投影、変更ファイルを56項目で確認 | 業務手順の受理済み正本を含む4視点連携、利用者による操作・確認は未実証 |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
-| N06 | candidateのR0・Reviewの同一性を確認し、scratch E2EにAccepted DecisionのR0/R1照合と旧候補のstale負例を追加 | 実WorkspaceでのN06実行とaccept途中の並行write試験は未実施 |
+| N06 | 一時作業領域で変更前後の版・審査指紋を確認し、古い候補のプレビューと受理を拒否する試験が成功 | 同時書込みの競合、複数編集者による実環境の操作は未試験 |
 | Invalid ref | exactな入力subject/Relation target不在・重複を拒否。Source Indexの曖昧な定義、範囲不正、危険なpathを拒否。DFDの参照切れはunresolved | 全モデルKind・全typed edge・Source byte最新性とBusinessの受理済み意味 |
 | N12 | layout書換えは意味操作へ変換しない | 独立したView Metadataの保持・再生 |
 | 性能 | focus近傍だけを返す、合成増量ケースあり | realistic 1万+件の時間/メモリ実測 |
