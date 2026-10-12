@@ -99,10 +99,18 @@ func TestAuthorizationEpochReaderFailureAndIncompleteEvidence(t *testing.T) {
 		name string
 		read func(int) (legacyauthorization.AuthorityEpochs, error)
 	}{
-		{"read-error", func(int) (legacyauthorization.AuthorityEpochs, error) { return legacyauthorization.AuthorityEpochs{}, outage }},
-		{"missing-link", func(int) (legacyauthorization.AuthorityEpochs, error) { return legacyauthorization.AuthorityEpochs{Source: "db", Membership: 1, Policy: 1}, nil }},
-		{"blank-source", func(int) (legacyauthorization.AuthorityEpochs, error) { return legacyauthorization.AuthorityEpochs{SubjectLink: 1, Membership: 1, Policy: 1}, nil }},
-		{"invalid-source", func(int) (legacyauthorization.AuthorityEpochs, error) { return legacyauthorization.AuthorityEpochs{Source: "db\nmalformed", SubjectLink: 1, Membership: 1, Policy: 1}, nil }},
+		{"read-error", func(int) (legacyauthorization.AuthorityEpochs, error) {
+			return legacyauthorization.AuthorityEpochs{}, outage
+		}},
+		{"missing-link", func(int) (legacyauthorization.AuthorityEpochs, error) {
+			return legacyauthorization.AuthorityEpochs{Source: "db", Membership: 1, Policy: 1}, nil
+		}},
+		{"blank-source", func(int) (legacyauthorization.AuthorityEpochs, error) {
+			return legacyauthorization.AuthorityEpochs{SubjectLink: 1, Membership: 1, Policy: 1}, nil
+		}},
+		{"invalid-source", func(int) (legacyauthorization.AuthorityEpochs, error) {
+			return legacyauthorization.AuthorityEpochs{Source: "db\nmalformed", SubjectLink: 1, Membership: 1, Policy: 1}, nil
+		}},
 		{"second-read-error", func(n int) (legacyauthorization.AuthorityEpochs, error) {
 			if n == 2 {
 				return legacyauthorization.AuthorityEpochs{}, outage
