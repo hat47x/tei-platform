@@ -73,8 +73,8 @@ function verifyLiveSourceNavigation(view, workspace, revision) {
   if (!rel || rel === ".." || rel.startsWith(".." + sep) || isAbsolute(rel))
     throw new Error("SOURCE_ARTIFACT_OUTSIDE_WORKSPACE");
   const bytes = readFileSync(physical);
-  const fingerprint = "sha256:" + createHash("sha256").update(bytes).digest("hex");
-  view.sourceNavigation = verifySourceAnchor(location, bytes, fingerprint);
+  view.sourceNavigation = verifySourceAnchor(location, bytes, actualBytes =>
+    "sha256:" + createHash("sha256").update(actualBytes).digest("hex"));
   // The Workspace may change between individual subprocesses. This guard
   // catches a changed Source revision; it is not a lock on concurrent writers.
   const latest = JSON.parse(execFileSync("go", ["run",
