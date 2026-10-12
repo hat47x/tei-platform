@@ -49,3 +49,35 @@ func TestRequirementNeverSilentlyDowngrades(t *testing.T) {
 		t.Fatalf("unexpected canceled state: %v", err)
 	}
 }
+
+func TestDurableRequirementNeedsIndependentEvidence(t *testing.T) {
+	declaration := BoundaryContract{
+		Boundary:                BoundaryTransaction,
+		AuthorityCheckedAtWrite: true,
+		ResourceCheckedAtWrite:  true,
+		ReceiptStoredWithWrite:  true,
+		SubjectLinksCovered:     true,
+		DurableReceipt:          true,
+		RecoveryLookup:          true,
+		Proof:                   ProofProvider,
+		ProofReference:          "test-fixture-provider",
+	}
+	called := 0
+	apply := func(context.Context) (Result, error) {
+		called++
+		return Result{Disposition: Committed}, nil
+	}
+	for _, verify := range []EvidenceVerifier{nil, func(BoundaryContract) bool { return false }} {
+		_, err := CommitWithVerifiedRequirement(context.Background(), declaration, GuaranteeDurable, verify, apply)
+		var unavailable *GuaranteeUnavailableError
+		if !errors.As(err, &unavailable) || called != 0 {
+			t.Fatalf("unverified provider was allowed: %v called=%d", err, called)
+		}
+	}
+	result, err := CommitWithVerifiedRequirement(context.Background(), declaration, GuaranteeDurable, func(c BoundaryContract) bool {
+		return c.ProofReference == "test-fixture-provider"
+	}, apply)
+	if err != nil || result.Disposition != Committed || called != 1 {
+		t.Fatalf("trusted proof was not used: %+v err=%v called=%d", result, err, called)
+	}
+}
