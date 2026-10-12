@@ -142,6 +142,8 @@ func TestHTTPSApplicationStoreRejectsUnverifiedDelegationBeforeNetwork(t *testin
 		{"missing client", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Client = nil }},
 		{"unencrypted origin", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Origin = "http://example.com" }},
 		{"userinfo origin", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Origin = "https://user@host.test" }},
+		{"empty query origin", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Origin = "https://host.test?" }},
+		{"empty fragment origin", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Origin = "https://host.test#" }},
 		{"invalid prefix", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Prefix = "//evil.test/" }},
 		{"path traversal", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Suffix = "/../commit" }},
 		{"foreign application", func(_ *HTTPSApplicationStore, _ *fixedDelegation, i *Intent) { i.ApplicationID = "inventory" }},
