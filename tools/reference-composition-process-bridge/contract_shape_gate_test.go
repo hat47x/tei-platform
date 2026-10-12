@@ -122,7 +122,7 @@ func TestProcessHostDoesNotInheritApprovalAcrossContractShapeDrift(t *testing.T)
 		if err := referenceContractGate(s, accepted, acceptedScope); err != nil {
 			return executor.Result{}, err
 		}
-		return invokeSelected(ctx, coordinator, adapter, command)
+		return invokeSelected(ctx, coordinator, adapter, command, binding)
 	}
 	first, err := invoke(selected)
 	if err != nil {
