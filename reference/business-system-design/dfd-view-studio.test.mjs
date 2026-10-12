@@ -897,3 +897,67 @@ test('a graph navigation button from old DFD cannot switch the newly loaded Proc
   assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
   assert.equal($('semantic-preview').hidden,true);
 });
+test('projection review questions and unreferenced functions display their Source without granting authority',async()=>{
+  const warnings={...projection,diagnostics:[
+    {code:'DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED',severity:'review-question',
+      message:'Pattern "unused.function" is not referenced by this Procedure',
+      source:{file:'procedure-review.json',pointer:'/application'}},
+    {code:'DFD_TRIGGER_CONSISTENCY_REVIEW',severity:'warning',
+      message:'Human review required <script>alert(1)</script>',
+      source:{file:'review.json',pointer:'/triggers/0'}}
+  ],unreferencedPatterns:['unused.function']};
+  await input('dfd-file',warnings);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.equal($('export').disabled,false);
+  const displayed=$('diagnostics').children.map(x=>x.textContent).join('\n');
+  assert.match(displayed,/DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED/);
+  assert.match(displayed,/procedure-review.json#\/application/);
+  assert.match(displayed,/review.json#\/triggers\/0/);
+  assert.match(displayed,/review-question 1件/);
+  assert.match(displayed,/Application全体の未使用を意味しない/);
+  assert.match(displayed,/<script>alert\(1\)<\/script>/,
+    'diagnostic Source text must remain literal, never HTML');
+  assert.equal($('diagnostics').children.every(x=>x.tag==='p'),true);
+});
+
+test('error diagnostics retain Source explanation while rejecting rendering and all exports',async()=>{
+  const invalid={...projection,diagnostics:[
+    {code:'DFD_TRIGGER_TARGET_MISSING',severity:'error',
+      message:'target Step missing',source:{file:'review.json',pointer:'/triggers/0/targetStep'}}
+  ]};
+  await input('dfd-file',invalid);
+  assert.match($('status').textContent,/エラー診断を確認/);
+  assert.equal($('diagram').children.length,0);
+  assert.equal($('export').disabled,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+  let displayed=$('diagnostics').children.map(x=>x.textContent).join('\n');
+  assert.match(displayed,/DFD_TRIGGER_TARGET_MISSING/);
+  assert.match(displayed,/review.json#\/triggers\/0\/targetStep/);
+
+  await input('dfd-file',projection);
+  assert.equal($('export').disabled,false);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),
+    /DFD_TRIGGER_TARGET_MISSING/);
+  await $('dfd-file').listeners.change({target:{files:[]}});
+  assert.equal($('export').disabled,true);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),
+    /DFD_TRIGGER_TARGET_MISSING/);
+});
+
+test('late failed projection cannot restore diagnostics after a newer DFD',async()=>{
+  const old=Buffer.from(JSON.stringify({...projection,diagnostics:[
+    {code:'STALE',severity:'error',message:'from an old file',
+      source:{file:'old.json',pointer:'/old'}}
+  ]}));
+  let release;
+  const pending=$('dfd-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(
+      old.buffer.slice(old.byteOffset,old.byteOffset+old.length));})
+  }]}});
+  await input('dfd-file',projection);
+  release();
+  await pending;
+  assert.equal($('export').disabled,false);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),/STALE/);
+});
