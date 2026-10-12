@@ -88,12 +88,16 @@ func runTransformBootstrap(
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("hash deterministic transform Runtime Engine source closure: %w", err)
 	}
-	engine := pruntime.RuntimeEngineIdentity{
-		ID:                   core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
-		Version:              revision,
-		ContractVersion:      "tei.runtime-engine/deterministic-transform-v1",
-		ImplementationDigest: sha256Digest([]byte(engineSourceDigest + "\n" + goToolchainDigest + "\n")),
-		Target:               "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+	engine, err := referenceRuntimeEngineIdentity(
+		core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
+		transformRuntimeEngineVersion,
+		"tei.runtime-engine/deterministic-transform-v1",
+		engineSourceDigest,
+		goToolchainDigest,
+		"host/"+runtime.GOOS+"/"+runtime.GOARCH,
+	)
+	if err != nil {
+		return transformBootstrapEvidence{}, fmt.Errorf("transform Runtime Engine identity: %w", err)
 	}
 	engineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(engine)
 	if err != nil {
