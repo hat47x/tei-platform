@@ -58,7 +58,7 @@ func TestProgrammaticSourceRejectsMalformedSurrogate(t *testing.T) {
 	source := transform.TransformSourceRealizerV1()
 	source.Program.Assertions = nil
 	source.Program.Output = transform.Expr{
-		Op: transform.OpLiteral,
+		Op:      transform.OpLiteral,
 		Literal: json.RawMessage(`"\uD800"`),
 	}
 	if _, err := transform.SourceFingerprint(source); err == nil {
