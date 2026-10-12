@@ -9,7 +9,6 @@ import (
 	"log"
 	"mime"
 	"net/http"
-	"strings"
 	"time"
 
 	customeradvice "tei/plugins/reference-project-customer-advice"
@@ -22,7 +21,7 @@ var staticFiles = map[string]struct {
 	path        string
 	contentType string
 }{
-	"/":                  {"web/index.html", "text/html; charset=utf-8"},
+	"/":                   {"web/index.html", "text/html; charset=utf-8"},
 	"/advice-element.mjs": {"web/advice-element.mjs", "text/javascript; charset=utf-8"},
 	"/advice-action.mjs":  {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
 }
@@ -105,5 +104,3 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
-// No action submission, credential handling or new authorization is defined here.
-var _ = strings.TrimSpace
