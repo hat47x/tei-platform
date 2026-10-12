@@ -115,8 +115,12 @@ test("matching B/R/T forwards only a valid-origin command", async t => {
   const origin = await f.start();
   assert.equal(await submit(origin), 200);
   assert.equal(f.count, 1);
+  // Browser-provided diagnostic headers must never override the Host's
+  // expected B/R/T. They are regenerated from the build measurement.
+  assert.equal(await submit(origin, { "X-Tei-Diagnostic-Target-Revision": "spoofed" }), 200);
+  assert.equal(f.count, 2);
   assert.equal(await submit(origin, { Origin: "http://evil.invalid" }), 403);
-  assert.equal(f.count, 1);
+  assert.equal(f.count, 2);
 });
 
 test("mismatched API manifest denies Host startup before Browser is exposed", async t => {
