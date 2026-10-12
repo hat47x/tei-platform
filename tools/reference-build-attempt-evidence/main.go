@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -20,6 +21,9 @@ const (
 	referenceSchema       = "tei.reference.build-attempt-evidence-run/v1"
 
 	attemptOutcomeFailed = "failed"
+
+	// Hard limit for each restricted diagnostic stream (stdout / stderr).
+	maxDiagnosticRetainedBytes = 64 << 10
 
 	attemptPhaseCompile    = "compile"
 	attemptPhaseLink       = "link"
@@ -234,19 +238,19 @@ func newFailedAttempt(
 	if ordinal <= 0 {
 		return buildAttemptEvidence{}, retainedDiagnostics{}, fmt.Errorf("attempt ordinal must be positive")
 	}
-	if maxRetainedBytes < 0 {
-		return buildAttemptEvidence{}, retainedDiagnostics{}, fmt.Errorf("max retained diagnostic bytes must not be negative")
+	if maxRetainedBytes < 0 || maxRetainedBytes > maxDiagnosticRetainedBytes {
+		return buildAttemptEvidence{}, retainedDiagnostics{}, fmt.Errorf("max retained diagnostic bytes must be between 0 and %d", maxDiagnosticRetainedBytes)
 	}
 
 	stdoutEvidence, stdoutRetained, err := captureDiagnostic(
-		strings.NewReader(string(failure.Stdout)),
+		bytes.NewReader(failure.Stdout),
 		maxRetainedBytes,
 	)
 	if err != nil {
 		return buildAttemptEvidence{}, retainedDiagnostics{}, err
 	}
 	stderrEvidence, stderrRetained, err := captureDiagnostic(
-		strings.NewReader(string(failure.Stderr)),
+		bytes.NewReader(failure.Stderr),
 		maxRetainedBytes,
 	)
 	if err != nil {
@@ -384,15 +388,27 @@ func captureDiagnostic(
 	reader io.Reader,
 	maxRetainedBytes int,
 ) (diagnosticCaptureEvidence, []byte, error) {
-	if maxRetainedBytes < 0 {
-		return diagnosticCaptureEvidence{}, nil, fmt.Errorf("max retained diagnostic bytes must not be negative")
+	if reader == nil {
+		return diagnosticCaptureEvidence{}, nil, fmt.Errorf("diagnostic reader is nil")
+	}
+	if maxRetainedBytes < 0 || maxRetainedBytes > maxDiagnosticRetainedBytes {
+		return diagnosticCaptureEvidence{}, nil, fmt.Errorf("max retained diagnostic bytes must be between 0 and %d", maxDiagnosticRetainedBytes)
 	}
 	hasher := sha256.New()
 	retained := make([]byte, 0, maxRetainedBytes)
 	buffer := make([]byte, 4096)
 	var observed int64
+	emptyReads := 0
 	for {
 		n, err := reader.Read(buffer)
+		if n == 0 && err == nil {
+			emptyReads++
+			if emptyReads >= 100 {
+				return diagnosticCaptureEvidence{}, nil, io.ErrNoProgress
+			}
+			continue
+		}
+		emptyReads = 0
 		if n > 0 {
 			chunk := buffer[:n]
 			if _, writeErr := hasher.Write(chunk); writeErr != nil {
