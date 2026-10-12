@@ -81,7 +81,7 @@ get_bound_value() {
   local count
   count="$(grep -c "$name=" "$output/target-binding-test.log")"
   test "$count" = 1 || { echo "missing or ambiguous bound value: $name" >&2; exit 1; }
-  grep -o "$name=[0-9a-f:]*" "$output/target-binding-test.log" | cut -d= -f2
+  grep -o "$name=[[:alnum:]:]*" "$output/target-binding-test.log" | cut -d= -f2
 }
 native_lock="$(get_bound_value TARGET_NATIVE_LOCK_SHA256)"
 wasm_lock="$(get_bound_value TARGET_WASM_LOCK_SHA256)"
