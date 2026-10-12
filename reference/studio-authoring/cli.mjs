@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Read-only Reference CLI: accepted World -> scoped projections / proposals.
 // Use the existing reference-shared-acceptance for preview, review and accept.
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync, rmSync, lstatSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
-import { projectWorld, candidateFromEdit, bindReviewArtifacts, navigateReferenceBusinessStep } from "./bridge.mjs";
+import { dirname, join, resolve, relative, isAbsolute, sep } from "node:path";
+import { projectWorld, candidateFromEdit, bindReviewArtifacts, navigateReferenceBusinessStep, verifySourceAnchor } from "./bridge.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
@@ -52,6 +53,39 @@ function fromWorkspace(workspace, withSourceIndex) {
   if (before !== after) throw new Error("SOURCE_CHANGED_DURING_PROJECTION");
   return { world, revision: after, sourceIndex };
 }
+// Only live Workspace inspection can verify bytes. Standalone World/Index
+// snapshots remain informational; do not silently label them as verified.
+function verifyLiveSourceNavigation(view, workspace, revision) {
+  const location = view.sourceNavigation;
+  if (location?.status !== "source-index-backed") return view;
+  const rootReal = realpathSync(resolve(workspace));
+  const parts = location.artifactPath.split("/");
+  let path = rootReal;
+  for (const part of parts) {
+    if (!part || part === "." || part === "..")
+      throw new Error("INVALID_SOURCE_ARTIFACT_PATH");
+    path = join(path, part);
+    if (lstatSync(path).isSymbolicLink())
+      throw new Error("SOURCE_ARTIFACT_SYMLINK_NOT_ALLOWED");
+  }
+  const physical = realpathSync(path);
+  const rel = relative(rootReal, physical);
+  if (!rel || rel === ".." || rel.startsWith(".." + sep) || isAbsolute(rel))
+    throw new Error("SOURCE_ARTIFACT_OUTSIDE_WORKSPACE");
+  const bytes = readFileSync(physical);
+  const fingerprint = "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  view.sourceNavigation = verifySourceAnchor(location, bytes, fingerprint);
+  // The Workspace may change between individual subprocesses. This guard
+  // catches a changed Source revision; it is not a lock on concurrent writers.
+  const latest = JSON.parse(execFileSync("go", ["run",
+    "./tools/reference-shared-acceptance", "revision",
+    "-workspace", rootReal], {
+    cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024
+  })).modelRevision;
+  if (latest !== revision) throw new Error("SOURCE_CHANGED_DURING_ANCHOR_VERIFICATION");
+  return view;
+}
+
 function main(argv) {
   const [command, ...rest] = argv;
   if (!["inspect", "propose", "review-edit"].includes(command)) throw new Error("UNKNOWN_COMMAND");
@@ -78,9 +112,10 @@ function main(argv) {
       return navigateReferenceBusinessStep(world, revision,
         jsonFile(opt["-business-dfd"]), focus.slice("step:".length));
     }
-    return projectWorld(world, revision, focus,
+    const view = projectWorld(world, revision, focus,
       { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
         ...(sourceIndex ? { sourceIndex } : {}) });
+    return fromFiles ? view : verifyLiveSourceNavigation(view, opt["-workspace"], revision);
   }
   const candidate = candidateFromEdit(world, revision, jsonFile(opt["-edit-file"]));
   if (command === "propose") return candidate;
