@@ -478,3 +478,95 @@ func TestFailedAttemptRejectsSuccessfulOrInvalidExitStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestSignalledBuildFailureAndExitStatusAreNotConflated(t *testing.T) {
+	plan := referenceBuildPlan()
+	zero, minusOne, minusTwo, positive := 0, -1, -2, 2
+	for _, tt := range []struct {
+		name string
+		code *int
+		signal string
+		wantError bool
+	}{
+		{name: "signal-only", signal: "SIGTERM"},
+		{name: "signal-exit-minus-one", code: &minusOne, signal: "SIGTERM"},
+		{name: "ordinary-failure", code: &positive},
+		{name: "successful-exit", code: &zero, wantError: true},
+		{name: "zero-with-signal", code: &zero, signal: "SIGTERM", wantError: true},
+		{name: "negative-without-signal", code: &minusOne, wantError: true},
+		{name: "unsupported-negative-code", code: &minusTwo, signal: "SIGTERM", wantError: true},
+		{name: "status-and-signal-conflict", code: &positive, signal: "SIGTERM", wantError: true},
+		{name: "no-termination-status", wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := newFailedAttempt(plan, 1, fakeFailure{
+				Phase: attemptPhaseCompile, FailureClass: "compile-error",
+				ExitCode: tt.code, Signal: tt.signal, DiagnosticSummary: "classified failure",
+			}, 16)
+			if (err != nil) != tt.wantError {
+				t.Fatalf("newFailedAttempt error = %v, want error = %t", err, tt.wantError)
+			}
+		})
+	}
+}
+
+func TestUntrustedDiagnosticHintIsNotPublicEvidence(t *testing.T) {
+	plan := referenceBuildPlan()
+	exitCode := 2
+	marker := "token=do-not-publish path=/private/workspace/user.go"
+	unsafe, _, err := newFailedAttempt(plan, 1, fakeFailure{
+		Phase: attemptPhaseCompile, FailureClass: "compile-error",
+		ExitCode: &exitCode, DiagnosticSummary: marker,
+	}, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+	safe, _, err := newFailedAttempt(plan, 1, fakeFailure{
+		Phase: attemptPhaseCompile, FailureClass: "compile-error",
+		ExitCode: &exitCode, DiagnosticSummary: "compile failed",
+	}, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unsafe.DiagnosticSummary != "build failed during compile: compile-error" {
+		t.Fatalf("untrusted diagnostic hint changed public summary: %q", unsafe.DiagnosticSummary)
+	}
+	if unsafe.EvidenceFingerprint != safe.EvidenceFingerprint {
+		t.Fatal("untrusted diagnostic hint changed public Evidence identity")
+	}
+	raw, err := json.Marshal(unsafe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), marker) || strings.Contains(string(raw), "/private/") {
+		t.Fatal("untrusted raw diagnostic hint leaked into public Evidence")
+	}
+}
+
+func TestPublicFailureClassificationRejectsUnsafeLabelsAndSummary(t *testing.T) {
+	plan := referenceBuildPlan()
+	exitCode := 2
+	for _, unsafeClass := range []string{"path=/private", "token=abc", "../internal", "UpperCase", strings.Repeat("a", 65)} {
+		if _, _, err := newFailedAttempt(plan, 1, fakeFailure{
+			Phase: attemptPhaseCompile, FailureClass: unsafeClass,
+			ExitCode: &exitCode, DiagnosticSummary: "ignored",
+		}, 16); err == nil {
+			t.Fatalf("unsafe failure class was accepted: %q", unsafeClass)
+		}
+	}
+	attempt, _, err := newFailedAttempt(plan, 1, fakeFailure{
+		Phase: attemptPhaseCompile, FailureClass: "compile-error",
+		ExitCode: &exitCode, DiagnosticSummary: "ignored",
+	}, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt.DiagnosticSummary = "token=forged-value"
+	attempt.EvidenceFingerprint, err = buildAttemptEvidenceFingerprint(attempt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := attempt.ValidateAgainst(plan); err == nil {
+		t.Fatal("forged diagnostic summary passed validation after recomputing its fingerprint")
+	}
+}
