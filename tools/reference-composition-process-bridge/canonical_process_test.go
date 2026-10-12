@@ -140,14 +140,14 @@ func TestCanonicalAuthorizationGatesRealSelectedProcessReceipt(t *testing.T) {
 		Actions: []deployment.ActionKind{deployment.ActionDatabaseRelease},
 	}
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
+		Environment:           core.MustCanonicalID("reference"),
 		PluginLockFingerprint: "canonical-process-reference-lock",
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin: pluginID, DescriptorFingerprint: "canonical-process-reference-descriptor",
 			Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
 			Command: binary, Args: []string{referenceArgvMarker},
 			SandboxPolicy: plugin.SandboxNone,
-			Artifact: plugin.Artifact{Digest: digest},
+			Artifact:      plugin.Artifact{Digest: digest},
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
 			Plugin: pluginID, Capability: capability, Boundary: pruntime.BoundaryProcess,
@@ -245,9 +245,9 @@ func TestCanonicalAuthorizationGatesRealSelectedProcessReceipt(t *testing.T) {
 			return active, nil
 		},
 		VerifyCSRF: func(*http.Request, webcomposition.Principal) bool { return csrfValid },
-		Authorize: authorizer,
-		Invoke: selected,
-		Audit: func(record webcomposition.AuditRecord) { audits = append(audits, record) },
+		Authorize:  authorizer,
+		Invoke:     selected,
+		Audit:      func(record webcomposition.AuditRecord) { audits = append(audits, record) },
 	})
 	if err != nil {
 		t.Fatal(err)
