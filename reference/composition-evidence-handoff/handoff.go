@@ -106,12 +106,16 @@ func Reconcile(set composition.WiringSetFinding, refs []EvidenceReference) Hando
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	// Index each untrusted locator once. Large plugin graphs must not rescan
-	// every unrelated locator for every provider in the dependency closure.
-	// Key by both provider ID and scope to retain the isolation boundary.
+	// Retain only locators for providers actually requested by the proposal.
+	// Untrusted, unrelated tenants and providers must not expand the index
+	// even if the caller supplies a very large catalog of evidence references.
 	type subjectKey struct{ providerID, scope string }
-	bySubject := make(map[subjectKey][]EvidenceReference)
+	bySubject := make(map[subjectKey][]EvidenceReference, len(targets))
 	for _, ref := range refs {
+		target, needed := targets[ref.Subject.ProviderID]
+		if !needed || target.Scope != ref.Subject.Scope {
+			continue
+		}
 		key := subjectKey{ref.Subject.ProviderID, ref.Subject.Scope}
 		bySubject[key] = append(bySubject[key], ref)
 	}
