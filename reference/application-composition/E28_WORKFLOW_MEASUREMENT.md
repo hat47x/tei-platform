@@ -56,3 +56,23 @@ JavaScriptの`observeE28(root, submission)`に提出イベントを渡すこと�
 ここまでのE21〜E28で追加Profileが必要とする独立の正本は立証されていない。他方、Profilerによる削減効果も実測されていない。したがって[E10の採用保留](E10_COMPOSITION_ADOPTION_DECISION.md)を継続する。最初に実案件で取得すべきものは、出発改訂、案件要求、採用した既存Source、実際に変更したファイル、手動操作の実記録、AIへの追加質問の実記録、局所ビルド／実Target／現在の権限の各検証結果である。
 
 SUIのCard／Document／認証・CASは引き続き[#993](https://github.com/hat47x/tei-platform/issues/993)が所有する。本実装の提出記録からそれらの成功やTEI第二Applicationの完成を推定しない。
+
+
+## E30：未追跡の種類をゼロとせず、変更ファイルの参照元を区別する
+
+E28の申告形式はそのまま利用し、**必要になった場合に限って**、提出物に任意の`coverage`（種類ごとの記録完了・未追跡）を付けられるようにした。これは開発者に詳細な設定を初回から強要する製品仕様ではなく、比較結果を誤解しないための参照試験である。
+
+- `coverage`のキーは既存の`humanDecisions`・`aiQuestions`・`manualConnections`・`changedFiles`・`validationRuns`・`requalificationRuns`に限定し、値は`complete`または`untracked`。記載がない種類は未追跡とする。
+- `submittedCounts`は、従来どおり**受け取った申告イベントの数**。新しい`claimedCoveredCounts`は、セッション全体の`complete: true`と、その種類の`coverage: complete`が明示された場合だけ数値を持つ。それ以外は`null`。単に提出件数がゼロだからといって、作業回数ゼロの観測に昇格しない。
+- 両方式が同じ基点・対象で完了申告済み、かつ双方が`coverage`を提示した場合は、**共通に記録が完了した種類の差分だけ**返す。それ以外の種類の差は`null`。共通に測定した種類が一つもない場合や、片方にしか`coverage`がない場合は`not-comparable`。従来の提出形式に`coverage`がなければ、E29の完了申告条件の下で従来の「提出件数の比較」だけを維持する。
+- `changed-source`イベントの`repository`には、任意で`owner/name`形式の出典を付けられる。これがある場合、**`repository`と相対`path`の組**で変更ファイルを計上する。TEIとSUIの同じ相対ファイル名を一つにまとめない。指定がない古い記録は引き続き相対パスで数えるが、出典が分かったことにはならない。リポジトリ名は申告値であり、GitHub APIで真正性を照合したことを意味しない。
+
+例えば、`complete: true`、`coverage: {manualConnections: 'complete', aiQuestions: 'untracked'}`とし、提出イベントに手動接続が1件・AIへの質問が0件あれば、`claimedCoveredCounts.manualConnections`は申告値の`1`、`claimedCoveredCounts.aiQuestions`は`null`となる。これは「AI質問は0件だった」という認定ではない。
+
+変更種別・出典・改訂を厳しく照合する必要がある場合は、既存の[E25リポジトリ間変更影響](E25_CROSS_REPOSITORY_REQUALIFICATION.md)とGitHubの正本へ戻る。E30も正本Source・Provider契約・実権限・SUI Native保存（#993）を複製しない。
+
+```sh
+node --test reference/application-composition/e28_workflow_measurement.test.mjs
+```
+
+これらは**提出記録の評価方法**だけの回帰試験であって、導入工数や生成AIとの実会話回数が実測できたという主張ではない。確認済みの件数は依然として`verifiedCounts: null`、本番への採用可否は別に判定する。
