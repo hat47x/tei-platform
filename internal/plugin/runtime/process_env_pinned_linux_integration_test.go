@@ -9,7 +9,9 @@ import (
 	"os"
 	"testing"
 
+	"tei/internal/core"
 	pruntime "tei/internal/plugin/runtime"
+	"tei/internal/resource"
 )
 
 // The Linux test binary is copied into the pinned, unlinked image and executed
@@ -71,6 +73,11 @@ func TestPinnedLinuxProcessEnvironmentIsHostExplicit(t *testing.T) {
 				Profile: pruntime.SandboxProfile{
 					DenyNetworkByDefault: true,
 					DenyFilesystemByDefault: true,
+					SecretInjections: []pruntime.SecretInjection{{
+						Scope: "credential", ResourceID: core.MustCanonicalID("prod.secret"),
+						Handle: "vault://opaque", Delivery: resource.SecretDeliveryEnvironment,
+						Target: "TEI_DATABASE_CREDENTIAL",
+					}},
 				},
 			}
 			resp, err = host.Invoke(context.Background(), spec, req)
@@ -78,7 +85,7 @@ func TestPinnedLinuxProcessEnvironmentIsHostExplicit(t *testing.T) {
 				t.Fatal(err)
 			}
 			checkProcessEnvProbe(t, resp, tt.wantExplicit)
-			if !net.called || !net.cleaned || !fs.called || !fs.cleaned {
+			if !net.called || !net.cleaned || !fs.called || !fs.cleaned || !secrets.called || !secrets.cleaned {
 				t.Fatal("host sandbox adapters were not invoked and cleaned")
 			}
 		})
