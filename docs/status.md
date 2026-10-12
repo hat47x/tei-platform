@@ -41,4 +41,4 @@ go test ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-詳しい確認手順と参照用作業領域の範囲は[使い始める](getting-started.md)を参照してください。この手順を掲載していても、公開候補や最新のコミットで試験に合格したとは限りません。
+詳しい確認手順と参照用作業領域の範囲は[使い始める](getting-started.md)を参照してください。手順の掲載は、公開候補や最新のコミットが試験に合格したことを意味しません。
