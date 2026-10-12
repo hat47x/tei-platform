@@ -139,21 +139,21 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 	dispatch := GenericDispatch{
 		Schema: dispatchSchema, ContractID: quoteContract,
 		ContractFingerprint: digestBytes([]byte("reference.order.quote-lines.contract/v1")),
-		Target: "reference/order_entry", Provider: identity,
+		Target:              "reference/order_entry", Provider: identity,
 		RequestShapeFingerprint: digestBytes([]byte("reference.order.quote-lines.request/v1")),
-		ResultShapeFingerprint: digestBytes([]byte("reference.order.quote-lines.result/v1")),
-		PayloadCodec: "application/json",
+		ResultShapeFingerprint:  digestBytes([]byte("reference.order.quote-lines.result/v1")),
+		PayloadCodec:            "application/json",
 	}
 	plan, err := buildTransportDispatchPlan(genericDispatchIdentity(dispatch))
 	if err != nil {
 		t.Fatal(err)
 	}
 	carrier := LegacyCarrier{
-		Plugin: plugin.Identity{ID: core.MustCanonicalID(identity.PluginID), Version: identity.PluginVersion},
-		CapabilityKind: plugin.CapabilityContractQueryExecutor,
-		CapabilityID: core.MustCanonicalID("transport.order_quote_carrier"),
+		Plugin:                plugin.Identity{ID: core.MustCanonicalID(identity.PluginID), Version: identity.PluginVersion},
+		CapabilityKind:        plugin.CapabilityContractQueryExecutor,
+		CapabilityID:          core.MustCanonicalID("transport.order_quote_carrier"),
 		DescriptorFingerprint: digestBytes([]byte("reference.order-quote.transport-carrier/v1")),
-		Operation: "generic-dispatch-v0",
+		Operation:             "generic-dispatch-v0",
 	}
 	contract := composition.Contract{
 		ID: quoteContract, Version: "1.0.0",
@@ -214,10 +214,10 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 				}
 				var input struct {
 					Currency string `json:"currency"`
-					Lines []struct {
-						SKU string `json:"sku"`
-						Quantity int64 `json:"quantity"`
-						UnitPriceMinor int64 `json:"unitPriceMinor"`
+					Lines    []struct {
+						SKU            string `json:"sku"`
+						Quantity       int64  `json:"quantity"`
+						UnitPriceMinor int64  `json:"unitPriceMinor"`
 					} `json:"lines"`
 				}
 				if err := decodeJSONExact(data, &input); err != nil ||
@@ -244,9 +244,9 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 					return
 				}
 				var value struct {
-					Currency *string `json:"currency"`
-					LineCount *int `json:"lineCount"`
-					SubtotalMinor *int64 `json:"subtotalMinor"`
+					Currency      *string `json:"currency"`
+					LineCount     *int    `json:"lineCount"`
+					SubtotalMinor *int64  `json:"subtotalMinor"`
 				}
 				if err := decodeJSONExact(execution.ResultPayload, &value); err != nil ||
 					value.Currency == nil || *value.Currency != "JPY" ||
@@ -258,8 +258,8 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 				}
 				w.Header().Set("Content-Type", "application/json")
 				_ = json.NewEncoder(w).Encode(struct {
-					Preview bool `json:"preview"`
-					Submitted bool `json:"submitted"`
+					Preview       bool  `json:"preview"`
+					Submitted     bool  `json:"submitted"`
 					SubtotalMinor int64 `json:"subtotalMinor"`
 				}{Preview: true, Submitted: false, SubtotalMinor: *value.SubtotalMinor})
 			}),
@@ -272,7 +272,7 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 	sessionOK, csrfOK := true, true
 	var audits []webcomposition.AuditRecord
 	host, err := webcomposition.NewHost(webcomposition.Policy{
-		Path: "/reference/submit-intent/quote-preview",
+		Path:   "/reference/submit-intent/quote-preview",
 		Method: http.MethodPost, ActionID: parentAction,
 		Providers: map[string]string{"corporate": corporate.Issuer, "legacy": legacy.Issuer},
 	}, webcomposition.Dependencies{
@@ -283,9 +283,9 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 			return current, nil
 		},
 		VerifyCSRF: func(*http.Request, webcomposition.Principal) bool { return csrfOK },
-		Authorize: authorize,
-		Invoke: selected,
-		Audit: func(record webcomposition.AuditRecord) { audits = append(audits, record) },
+		Authorize:  authorize,
+		Invoke:     selected,
+		Audit:      func(record webcomposition.AuditRecord) { audits = append(audits, record) },
 	})
 	if err != nil {
 		t.Fatal(err)
