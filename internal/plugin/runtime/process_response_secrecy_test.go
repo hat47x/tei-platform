@@ -81,7 +81,8 @@ type processErrorBuiltin struct {
 	identity    plugin.Identity
 	fingerprint string
 }
-func (b processErrorBuiltin) Identity() plugin.Identity { return b.identity }
+
+func (b processErrorBuiltin) Identity() plugin.Identity     { return b.identity }
 func (b processErrorBuiltin) DescriptorFingerprint() string { return b.fingerprint }
 func (b processErrorBuiltin) Invoke(context.Context, pruntime.Request) (pruntime.Response, error) {
 	return pruntime.Response{Status: pruntime.ResponseError, Error: "trusted-business-error"}, nil
