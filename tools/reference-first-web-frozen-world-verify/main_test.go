@@ -11,10 +11,6 @@ import (
 )
 
 func TestTypedWorldDigestMatchesSharedAcceptanceSerialization(t *testing.T) {
-	world := ir.World{
-		Applications: []struct{}(nil),
-	}
-	_ = world
 	// A minimally populated typed World verifies the exact generator
 	// convention: typed field order, Go's HTML escaping and final newline.
 	var typed ir.World
