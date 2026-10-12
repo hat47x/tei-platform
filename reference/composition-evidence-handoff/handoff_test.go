@@ -437,24 +437,30 @@ func TestHandoffReferenceOrderCannotChangeDiagnostic(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			refs := append([]EvidenceReference(nil), tc.refs...)
-			for shift := 0; shift < len(refs); shift++ {
-				report := ReconcileCurrent(registry, set, refs)
-				if report.Blocked || len(report.Subjects) != 2 ||
-					report.Subjects[0].State != tc.want {
-					t.Fatalf("order shift %d changed verdict, got %+v want %s", shift, report, tc.want)
+			// Enumerate every permutation of the small untrusted input set.
+			var check func(int)
+			check = func(at int) {
+				if at == len(refs) {
+					report := ReconcileCurrent(registry, set, refs)
+					if report.Blocked || len(report.Subjects) != 2 ||
+						report.Subjects[0].State != tc.want {
+						t.Fatalf("permutation changed verdict, got %+v want %s", report, tc.want)
+					}
+					wantReference := tc.want == ReferenceLinked
+					if (report.Subjects[0].Reference != nil) != wantReference ||
+						report.Subjects[1].State != ReferenceMissing ||
+						report.Subjects[1].Reference != nil {
+						t.Fatalf("permutation exposed wrong target: %+v", report)
+					}
+					return
 				}
-				wantReference := tc.want == ReferenceLinked
-				if (report.Subjects[0].Reference != nil) != wantReference {
-					t.Fatalf("shift %d unexpectedly exposes reference: %+v", shift, report)
-				}
-				// Rotate, then reverse to cover independent permutations.
-				first := refs[0]
-				copy(refs, refs[1:])
-				refs[len(refs)-1] = first
-				for i, j := 0, len(refs)-1; i < j; i, j = i+1, j-1 {
-					refs[i], refs[j] = refs[j], refs[i]
+				for i := at; i < len(refs); i++ {
+					refs[at], refs[i] = refs[i], refs[at]
+					check(at + 1)
+					refs[at], refs[i] = refs[i], refs[at]
 				}
 			}
+			check(0)
 		})
 	}
 }
