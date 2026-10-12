@@ -46,9 +46,10 @@ func PluginPackageSourceV1() Source {
 				),
 				assertEnum(selectRequired(inputExpr("pluginDefinition"), "artifact"), "{}"),
 				assertUniqueBy(
-					selectRequired(inputExpr("pluginDefinition"), "requires"),
+					selectOptional(inputExpr("pluginDefinition"), "requires"),
 					"requirement",
 					selectRequired(inputExpr("requirement"), "plugin"),
+					true,
 				),
 				assertEqual(
 					selectRequired(inputExpr("buildPlan"), "pluginDefinitionFingerprint"),
@@ -193,6 +194,10 @@ func selectRequired(from Expr, field string) Expr {
 	return Expr{Op: OpSelectField, From: exprPtr(from), Field: field}
 }
 
+func selectOptional(from Expr, field string) Expr {
+	return Expr{Op: OpSelectField, From: exprPtr(from), Field: field, Optional: true}
+}
+
 func constructObjectExpr(fields ...ObjectFieldExpr) Expr {
 	return Expr{Op: OpConstructObject, Fields: fields}
 }
@@ -225,8 +230,8 @@ func assertEnum(actual Expr, allowed ...string) Expr {
 	return Expr{Op: OpAssertEnum, Actual: exprPtr(actual), Allowed: values}
 }
 
-func assertUniqueBy(from Expr, item string, key Expr) Expr {
-	return Expr{Op: OpAssertUniqueBy, From: exprPtr(from), Item: item, Keys: []Expr{key}}
+func assertUniqueBy(from Expr, item string, key Expr, optional bool) Expr {
+	return Expr{Op: OpAssertUniqueBy, From: exprPtr(from), Item: item, Keys: []Expr{key}, Optional: optional}
 }
 
 func canonicalJSONExpr(from Expr) Expr {

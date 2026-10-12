@@ -283,7 +283,7 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 			}
 		}
 	case OpAssertUniqueBy:
-		if err := rejectUnexpectedExprFields(expr, "from", "item", "keys"); err != nil {
+		if err := rejectUnexpectedExprFields(expr, "from", "item", "keys", "optional"); err != nil {
 			return err
 		}
 		if err := child(expr.From, "assert-unique-by source"); err != nil {

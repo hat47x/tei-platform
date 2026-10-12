@@ -123,7 +123,8 @@
             "op": "input",
             "name": "pluginDefinition"
           },
-          "field": "requires"
+          "field": "requires",
+          "optional": true
         },
         "item": "requirement",
         "keys": [
@@ -135,7 +136,8 @@
             },
             "field": "plugin"
           }
-        ]
+        ],
+        "optional": true
       },
       {
         "op": "assert-equal",

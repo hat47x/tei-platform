@@ -242,6 +242,11 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		if err != nil {
 			return Value{}, err
 		}
+		// Go omits empty requirement slices from JSON. An explicitly optional
+		// collection treats absence (and JSON null) as zero elements.
+		if source.Kind == ValueNull && expr.Optional {
+			return source, nil
+		}
 		if source.Kind != ValueArray {
 			return Value{}, fmt.Errorf("assert-unique-by requires array, got %s", source.Kind)
 		}
