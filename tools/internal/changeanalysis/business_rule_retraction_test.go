@@ -96,8 +96,8 @@ func TestRuleRetractionPreservesOldEdgesInsteadOfReportingNoImpact(t *testing.T)
 	}
 	newEdges, _ := Impact(after, changes)
 	for _, e := range newEdges {
-		if strings.HasPrefix(e.From,"candidate-key:") || strings.HasPrefix(e.From,"functional-dependency:") {
-			t.Fatalf("after-only impact unexpectedly knows old rule: %+v",e)
+		if strings.HasPrefix(e.From, "candidate-key:") || strings.HasPrefix(e.From, "functional-dependency:") {
+			t.Fatalf("after-only impact unexpectedly knows old rule: %+v", e)
 		}
 	}
 }
@@ -115,10 +115,10 @@ func TestRuleAmendmentShowsBothPreviousAndNewDeterminants(t *testing.T) {
 		Dependents:   []core.CanonicalID{"sales.line.order_id"},
 	}}
 	testRuleImpacts(t, before, after, map[string]bool{
-		"candidate-key:sales.line.business_key -> attribute:sales.line.order_id via previous.semantic.candidate-key.field":true,
-		"candidate-key:sales.line.business_key -> attribute:sales.line.item_id via semantic.candidate-key.field":true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via previous.semantic.functional-dependency.dependent":true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.order_id via semantic.functional-dependency.dependent":true,
+		"candidate-key:sales.line.business_key -> attribute:sales.line.order_id via previous.semantic.candidate-key.field": true,
+		"candidate-key:sales.line.business_key -> attribute:sales.line.item_id via semantic.candidate-key.field": true,
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via previous.semantic.functional-dependency.dependent": true,
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.order_id via semantic.functional-dependency.dependent": true,
 	}, 2)
 }
 
@@ -128,9 +128,9 @@ func TestNewKeyAddsNoHistoricalRetractionWarning(t *testing.T) {
 	before.Semantics[0].Data[0].FunctionalDependencies = nil
 	after := retractionWorld()
 	testRuleImpacts(t, before, after, map[string]bool{
-		"candidate-key:sales.line.business_key -> data:sales.line via semantic.data.candidate-key":true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via semantic.functional-dependency.dependent":true,
-	},0)
+		"candidate-key:sales.line.business_key -> data:sales.line via semantic.data.candidate-key": true,
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via semantic.functional-dependency.dependent": true,
+	}, 0)
 }
 
 func TestUnverifiableOldRuleIdentityNeverBecomesSilentNoImpact(t *testing.T) {
