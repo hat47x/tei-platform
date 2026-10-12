@@ -76,18 +76,22 @@ jobs:
           path: |
             ${{ runner.temp }}/tei-transform-mutation/mutation-report.json
             ${{ runner.temp }}/tei-transform-mutation/host-isolation-report.json
+            ${{ runner.temp }}/tei-transform-mutation/test-host-public.pem
             ${{ runner.temp }}/tei-transform-mutation/baseline/engine-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/baseline/stage2-engine-lock.json
             ${{ runner.temp }}/tei-transform-mutation/baseline/stage2-host-registration.json
+            ${{ runner.temp }}/tei-transform-mutation/baseline/host-signature.txt
             ${{ runner.temp }}/tei-transform-mutation/baseline/self-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/engine-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/stage2-engine-lock.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/stage2-host-registration.json
+            ${{ runner.temp }}/tei-transform-mutation/mutation/host-signature.txt
             ${{ runner.temp }}/tei-transform-mutation/mutation/self-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/host-denial.txt
             ${{ runner.temp }}/tei-transform-mutation/host-only/engine-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/host-only/stage2-engine-lock.json
             ${{ runner.temp }}/tei-transform-mutation/host-only/stage2-host-registration.json
+            ${{ runner.temp }}/tei-transform-mutation/host-only/host-signature.txt
             ${{ runner.temp }}/tei-transform-mutation/host-only/self-build-evidence.json
           if-no-files-found: error
           retention-days: 7
