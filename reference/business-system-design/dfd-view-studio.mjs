@@ -187,7 +187,14 @@ function render() {
 async function selectNode(node){
   const generation=++selectionGeneration;
   state.selected=key(node.kind,node.id);
+  // Step selections are distinct review scopes: never carry an endpoint,
+  // condition, or flow identifier forward from a previous selection.
   $('step-action').value='assign-business-role';
+  $('step-transition-kind').value='branch';
+  $('step-transition-condition').value='';
+  $('step-info-to-kind').value='party';
+  $('step-info-id').value='';
+  $('step-info-payload').value='';
   invalidateSemanticPreview();
   updateSemanticControls();
   const d=state.dfd;
