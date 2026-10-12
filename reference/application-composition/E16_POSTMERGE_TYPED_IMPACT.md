@@ -28,3 +28,11 @@
 ## 製品判断へ進むために必要なこと
 
 Source Indexを変更した二つの固定版から、同じ解析済みSourceを使って`modelref.Diff`／`Impact`まで通す試験は残る。また、SUIのNative Canvas、保存・競合処理、権限、実Provider・UI Kit・Targetの接続と、構成表現を追加すべきかの二Consumer比較は未実施。今回のGoテストが成功しても、これらを完了とみなさない。
+
+## GitHub Actionsの初回調査（2026年10月12日）
+
+PR #1289の初期head `8a70ce28b1d2a72a8c9e590391bbd2f195b99b70`については、GitHub ActionsのWorkflow RunもCommit Check Runも見つからず、**E16を実行したCIの証跡は無かった**。Workflowは`pull_request`の`opened`／`synchronize`などに応答するため、この記録の追加で変更を送信し、PR側の試験実行を確認する。
+
+なおmainの[実行 #38219902076](https://github.com/hat47x/tei-platform/actions/runs/38219902076)は全体として**失敗**している。具体的には`internal/modelref/impact_diff.go`／`impact_review.go`のGo整形不一致、`internal/plugin/transform`のテストにおける未定義の`TransformSourceRealizerV1`が原因として現れた。一方、当該main版における`tei/reference/application-composition`の通常Goテストは成功していた。**これはmainの旧テストの結果であり、E16の実行成功ではない**。
+
+別PRの[実行 #38220719850](https://github.com/hat47x/tei-platform/actions/runs/38220719850)では未定義識別子の問題が先行して修正された一方、`TestSourceBoundaryExactLimitWithPairedUnicode`が8 MiB境界で失敗していた。これらは本PRの変更範囲外であり、E16側で変換処理やmodelrefの所有コードを重複修正しない。最新mainの変化もあるため、**新しいPR CIで局所検証の成否と既存失敗を分けて判断する**。
