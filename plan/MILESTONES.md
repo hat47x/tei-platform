@@ -1,125 +1,125 @@
-# TEI Milestones
+# TEIのマイルストーン
 
 ## 方針
 
-TEI（鼎／テイ）のMilestoneには期限を置きません。
+TEI（鼎／テイ）のマイルストーンには期限を設けません。
 
-Milestoneは「いつまでに終えるか」ではなく、**どのCapabilityとEvidenceが揃えば、その能力を成立したとみなせるか**を示します。
+マイルストーンは「いつまでに終えるか」ではなく、**どの機能と検証根拠がそろえば、その能力が成立したと判断できるか**を示します。
 
-Milestone番号は、特にGate C後では厳密な直列依存を意味しません。Milestone 5〜7は同じGate C Evidenceを入力として並行して進められます。
+マイルストーンの番号は、必ずしも着手する順番を示しません。特に判定段階Cの後は、マイルストーン5〜7を同じ検証根拠に基づいて並行して進められます。
 
-個別のM0.xxは細かなarchitecture checkpointとして継続利用できますが、本書ではProduct全体の能力到達点を扱います。
+個別のM0.xxは構成上の細かな確認点として引き続き利用できますが、本書では製品全体としての能力の到達点を扱います。
 
-関連:
+関連文書：
 
 - `plan/MASTER_PLAN.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 
-## v1 Reference Applicationとの対応
+## 第1版の参照アプリケーションとの対応
 
-`order_entry`を使い、Milestone 1〜4を一続きに実証します。
+`order_entry`を用いて、マイルストーン1〜4を一連の流れで実証します。
 
 ```text
-Milestone 1 / 2
-Meaning / Application / Legacy
+マイルストーン1・2
+意味の定義・アプリケーション・既存資産
         ↓
-Gate A — Ready
+判定段階A — Ready
         ↓
-Milestone 3
-Driver
+マイルストーン3
+設計の実行・検証
         ↓
-Gate B — 3 Required Evidence / Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
+判定段階B — 三つの必須検証根拠でReady（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B / revision R — 固定済み
+引継ぎの基準B・対象版R — 固定済み
         ↓
-Milestone 4
-First Web Target / build T1
+マイルストーン4
+最初のWeb向け実行先・ビルドT1
         ↓
-Gate C — PAS-04 Evidence
+判定段階C — PAS-04の検証根拠
         ↓
-   ┌────┴──────────────┐
-   ↓                   ↓
-Milestone 6 / 7     Milestone 5
-Studio / AI         Second Target
-PAS-01 / PAS-06     PAS-04 / RQ-024
+   ┌──────────┴─────────┐
+   ↓                    ↓
+マイルストーン6・7       マイルストーン5
+編集環境・AI             二つ目の実行先
+PAS-01・PAS-06          PAS-04・RQ-024
 ```
 
-Handoverは番号付きGateではありません。Gate B Readyの意味baselineをGate Cへ固定して渡す契約です。
+引継ぎは新しい番号付きの判定段階ではありません。判定段階Bで`Ready`と判断した意味の基準を、判定段階Cへ固定して渡すための契約です。
 
-## Milestone 0 — 上位基線がある
+## マイルストーン0 — 上位の基準をたどれる
 
 ### 到達条件
 
-- Product Value / Vision / PrinciplesがRepository上で参照できる
-- Product Requirementsが固定IDで参照できる
-- Product Acceptance ScenarioからRequirement → Plan → Evidenceへ追跡できる
-- Master Plan / Milestones / ADR / Plan Issueの役割が分離されている
-- unresolvedを成功へ読み替えない
+- 製品価値、将来像、設計原則をリポジトリで参照できる
+- 製品要求を固定の識別子で参照できる
+- 製品の受入シナリオから要求、計画、検証根拠へと追跡できる
+- 全体計画、マイルストーン、設計判断記録、計画上の課題の役割が分かれている
+- `unresolved`（未解決）を成功として扱わない
 
 ### 意味
 
 今後の作業が「何を確かめるためか」を判断できる地図がある状態です。
 
-## Milestone 1 — Meaningを作り、追跡し、検査できる
+## マイルストーン1 — 意味を定義し、追跡・検査できる
 
 ### 到達条件
 
-- authoring sourceからCanonical meaningへ追跡できる
-- file pathとSemantic identityが分離されている
-- native sourceをauthoritativeなまま接続できる
-- Diagnosticからsourceへ戻れる
-- Application PatternをApplication所有の意図として扱える
-- file moveとlogical rename等の意味差を区別できる
+- 人が記述した情報源から、正本となる意味までたどれる
+- ファイルのパスと意味上の識別子が分離されている
+- 既存の形式のソースを正本として保ちながら接続できる
+- 診断結果から元のソースへ戻れる
+- アプリケーションの構成パターンを、そのアプリケーションが管理する意図として扱える
+- ファイルの移動と論理的な名称変更など、意味が変わるかどうかを区別できる
 
 ### 意味
 
-「定義を読み込める」だけでなく、意味とsourceの関係を保持して変更・検査できる状態です。
+「定義を読み込める」だけでなく、意味と元のソースとの関係を保ちながら変更・検査できる状態です。
 
-v1の5 PatternをTEI全体の永久標準Catalogにはしません。
+第1版で用いる五つの構成パターンを、TEI全体で恒久的に使う標準の一覧にはしません。
 
-## Milestone 2 — 現実の既存業務を受け止められる
+## マイルストーン2 — 現実の既存業務を扱える
 
 ### 到達条件
 
-- Application ↔ Databaseを実例で扱える
-- Database Contract / native SQL / external assetを明示Bindingできる
-- 既存Authentication / Authorization仕様を保持したまま接続できる
-- Capability単位でstandard / existing implementationを交換できる
-- external-observed assetの未観測事実を推測しない
-- actual external Evidenceとsynthetic / fixture Evidenceを区別できる
+- アプリケーションとデータベースの関係を実例で扱える
+- データベースの契約、元形式のSQL、外部資産を明示的に対応付けられる
+- 既存の認証・認可の仕様を保ったまま接続できる
+- 機能ごとに標準実装と既存実装を入れ替えられる
+- 外部で観測する資産について、まだ観測していない事実を推測で補わない
+- 実際の外部資産から得た検証根拠と、合成データ・試験データによる根拠を区別できる
 
 ### 意味
 
-理想化sampleだけでなく、実際の既存業務資産を段階移行できる状態です。
+理想化したサンプルだけでなく、実際の既存業務の資産を段階的に移行できる状態です。
 
-PostgreSQL以外の実Database Provider Evidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は、この能力とMilestone 8のProvider圧力試験へつながる重要Evidenceですが、Gate Bの第四Required laneにはしません。
+PostgreSQL以外の実際のデータベースで得る検証根拠も重要です。最初の参照事例ではOracleに関する#214、#371、#376が該当し、この能力とマイルストーン8の提供実装の検証に役立ちます。ただし、判定段階Bにおける四つ目の必須条件にはしません。
 
-## Milestone 3 — 設計をDriverで動かして確認できる
+## マイルストーン3 — 設計を実行・検証環境で動かせる
 
-Product Acceptance Scenario: PAS-02 primary / PAS-03 secondary
+製品の受入シナリオ：PAS-02を主とし、PAS-03も対象とする
 
 ### 到達条件
 
-- Application PatternをDriverで解決できる
-- browse / record / reference / header-detailをUIなしで扱える
-- Validation / Authentication / Authorizationを実行できる
-- Capability invocationのBusiness ResultとExecution Errorを区別できる
-- Command acknowledgementとObservationを分けられる
-- same-source Reference Scenarioを再現できる
-- generated artifact / real-provider / deterministic Evidenceを相互代替しない
+- アプリケーションの構成パターンを実行・検証環境で扱える
+- 一覧、記録、参照、見出しと明細を、画面なしで扱える
+- 検証・認証・認可を実行できる
+- 機能を呼び出した際の業務結果と実行エラーを区別できる
+- 命令の受付と観測結果を区別できる
+- 同じソースを使った参照シナリオを再現できる
+- 生成物、実際の提供実装、決定的な再現性についての検証根拠を混同しない
 
-### Gate B
+### 判定段階B
 
-Gate B Required Evidenceは次の三つです。
+判定段階Bで必要な検証根拠は次の三つです。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定的な再現性を示す検証根拠
+2. #255 生成物の再現性を示す検証根拠
+3. #308 実際のPostgreSQLと一時的な試験データによる検証根拠
 
-三つを同じclean candidate revision `R`へ揃え、#387 final convergenceで確認します。
+三つを変更のない同一の候補版`R`についてそろえ、#387で最終的な整合を確認します。
 
-Gate B Ready後、その`R`をHandover Baselineへ固定します。
+判定段階Bで`Ready`と判断した後、その`R`を引継ぎの基準として固定します。
 
 ## Milestone 4 — 一つの実用TargetでApplicationを通せる
 
