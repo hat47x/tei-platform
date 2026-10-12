@@ -4,8 +4,8 @@ package main
 
 import (
 	"embed"
-	"flag"
 	"encoding/json"
+	"flag"
 	"io"
 	"log"
 	"mime"
@@ -22,9 +22,9 @@ var staticFiles = map[string]struct {
 	path        string
 	contentType string
 }{
-	"/":                   {"web/index.html", "text/html; charset=utf-8"},
-	"/advice-element.mjs": {"web/advice-element.mjs", "text/javascript; charset=utf-8"},
-	"/advice-action.mjs":        {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
+	"/":                        {"web/index.html", "text/html; charset=utf-8"},
+	"/advice-element.mjs":      {"web/advice-element.mjs", "text/javascript; charset=utf-8"},
+	"/advice-action.mjs":       {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
 	"/order-entry-context.mjs": {"web/order-entry-context.mjs", "text/javascript; charset=utf-8"},
 }
 
