@@ -105,7 +105,7 @@ printf 'CANDIDATE_COMPOSITION_BEGIN main=%s candidate=%s integration=%s tree=%s\
   go test -count=1 ./tools/reference-critical-path-evidence-audit
   go test -count=1 ./tools/reference-first-web-target \
     -run '^(TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList|TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines)$'
-  # Test-only acceptance and two synthetic Web binaries; not a Product Gate.
+  # Test-only acceptance and three synthetic Web binaries; not a Product Gate.
   TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs
   bash tools/repository-health-check.sh
 )
@@ -121,4 +121,4 @@ clean "$root"
 printf 'ISSUE_1163_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
 printf 'main=%s\ncandidate=%s\nintegrationHead=%s\nintegrationTree=%s\n' \
   "$expected_main" "$expected_1163" "$integration_head" "$integration_tree"
-printf 'limits=TEST_ONLY_ACCEPTANCE_SYNTHETIC_PROVIDER_DUAL_BINARY_NOT_DB_NOT_HUMAN_APPROVAL_NOT_N11\n'
+printf 'limits=TEST_ONLY_ACCEPTANCE_SYNTHETIC_PROVIDER_THREE_BINARIES_N11_SYNTHETIC_ONLY_NOT_DB_NOT_HUMAN_APPROVAL\n'
