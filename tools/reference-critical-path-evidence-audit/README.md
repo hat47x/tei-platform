@@ -50,14 +50,14 @@ bash tools/reference-critical-path-evidence-audit/qualify.sh
 
 ## 最新mainと#1163候補の一時結合・Web正常系と異常系
 
-旧来の4本の並走ブランチ（#1119・#1120・#1124・#1121）はmainに統合され、元のブランチ参照は削除されています。このため旧形式の`TEI_CP_COMPOSE_1119`などは使用しません。既存の`compose-smoke.sh`を更新し、**最新mainと本PR #1262の正確な先端だけ**を一時作業領域で結合して検査します。元のリポジトリ・各ブランチ・mainへマージしません。
+旧来の4本の並走ブランチ（#1119・#1120・#1124・#1121）はmainに統合されました。親計画#1119が管理する共通`compose-smoke.sh`には現在`integrated-main`モードが追加されています。**親のスクリプトは変更せず**、#1163固有の`compose-issue-1163-smoke.sh`を別途設けて、**最新mainと本PR #1262の正確な先端だけ**を一時作業領域で結合して検査します。元のリポジトリ・各ブランチ・mainへマージしません。
 
 正規GitHubへ接続できる完全にクリーンな**PR #1262のチェックアウト**で、その時点のGitHub上のmainとPR先端の40桁SHAを取得して指定します。
 
 ```bash
 TEI_CP_COMPOSE_MAIN=<current-origin-main-SHA40> \
 TEI_CP_COMPOSE_1163=<exact-PR-1262-HEAD-SHA40> \
-bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+bash tools/reference-critical-path-evidence-audit/compose-issue-1163-smoke.sh
 ```
 
 - 正規GitHubのremote URL、実際のmain/PR branch先端、作業元HEADと入力SHA、実行前後の完全cleanと非標準indexを照合します。途中でmainやPRが進んだ場合は失敗します。
