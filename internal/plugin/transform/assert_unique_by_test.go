@@ -128,6 +128,45 @@ func TestPluginPackageWithoutRequirementsMatchesGoOracle(t *testing.T) {
 	}
 }
 
+func TestAssertUniqueByOptionalCollection(t *testing.T) {
+	source := uniqueByTestSource()
+	definition := transform.Expr{Op: transform.OpInput, Name: "definition"}
+	source.Inputs = []transform.InputSpec{{Name: "definition", Kind: transform.InputObject}}
+	source.Program.Assertions[0].From = &transform.Expr{
+		Op: transform.OpSelectField, From: &definition, Field: "requires", Optional: true,
+	}
+	source.Program.Assertions[0].Optional = true
+	source.Program.Output = definition
+
+	for _, tc := range []struct {
+		name string
+		definition map[string]any
+		wantError string
+	}{
+		{name: "missing requirements", definition: map[string]any{}},
+		{name: "null requirements", definition: map[string]any{"requires": nil}},
+		{name: "empty requirements", definition: map[string]any{"requires": []any{}}},
+		{name: "valid requirement", definition: map[string]any{"requires": []any{map[string]any{"plugin": "tei.a"}}}},
+		{name: "nonarray requirement", definition: map[string]any{"requires": "tei.a"}, wantError: "requires array"},
+		{name: "duplicate requirement", definition: map[string]any{
+			"requires": []any{map[string]any{"plugin": "tei.a"}, map[string]any{"plugin": "tei.a"}},
+		}, wantError: "duplicate key"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := transform.Evaluate(source, map[string]transform.Value{
+				"definition": valueFromGoJSON(t, tc.definition),
+			})
+			if tc.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("expected %q, got %v", tc.wantError, err)
+				}
+			} else if err != nil {
+				t.Fatalf("optional requirements were rejected: %v", err)
+			}
+		})
+	}
+}
+
 func TestAssertUniqueByRejectsMalformedBinding(t *testing.T) {
 	t.Run("missing key", func(t *testing.T) {
 		source := uniqueByTestSource()
