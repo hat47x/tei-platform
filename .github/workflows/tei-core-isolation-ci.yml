@@ -102,22 +102,7 @@ jobs:
         run: |
           set -euo pipefail
           test -z "$(gofmt -l plugins/reference-order-quote/*.go tools/reference-capability-transport/*.go)"
-          go test -count=1 -timeout 120s -run '^TestIndependentBusinessQuoteOverExistingGenericProcessTransport        shell: bash
-        run: |
-          set -euo pipefail
-          gofmt -d tools/reference-composition-process-bridge/*.go
-          test -z "$(gofmt -l tools/reference-composition-process-bridge/*.go)"
-          go test -count=1 -timeout 90s ./tools/reference-composition-process-bridge
-          go vet ./tools/reference-composition-process-bridge
-
-      - name: 実行後の変更のない作業領域を確認
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
- ./tools/reference-capability-transport
+          go test -count=1 -timeout 120s -run '^TestIndependentBusinessQuoteOverExistingGenericProcessTransport$' ./tools/reference-capability-transport
           go vet ./tools/reference-capability-transport
 
       - name: 実プロセスプラグインとの接続を検証
