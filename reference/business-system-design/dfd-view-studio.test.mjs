@@ -311,3 +311,29 @@ test('concurrent Procedure and Review loads stay independent',async()=>{
   assert.match($('status').textContent,/未受理の変更候補を確認/);
   assert.equal($('semantic-preview').hidden,false);
 });
+
+test('a trigger label modified during fingerprinting cannot resurrect a stale proposal',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('review-file',approvalReview);
+  const raw=Buffer.from(JSON.stringify(approvalProcedure));
+  let count=0,release=null;
+  const delayedProcedure={arrayBuffer:()=>{
+    if(++count===1)return Promise.resolve(raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.length));
+    return new Promise(resolve=>{release=()=>{
+      resolve(raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.length));
+    }});
+  }};
+  await $('procedure-file').listeners.change({target:{files:[delayedProcedure]}});
+  selectTrigger();
+  $('trigger-label').value='最初の説明文';
+  const pending=$('semantic-propose').listeners.click();
+  for(let i=0;i<20&&!release;i++)await Promise.resolve();
+  assert.equal(typeof release,'function');
+  $('trigger-label').value='途中で変更された説明文';
+  $('trigger-label').listeners.input();
+  release();
+  await pending;
+  assert.match($('status').textContent,/DFD_SELECTION_OR_SOURCE_CHANGED/);
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+});
