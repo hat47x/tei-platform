@@ -58,7 +58,7 @@ python3 tools/reference-first-web-two-unit-e1/check_api_only_parity.py \
   "$scratch/baseline-api" "$scratch/derived/api/order-entry" \
   "$source_sha" "$scratch/derived/api" > "$scratch/parity-result.json"
 
-python3 - "$scratch/derived" "$scratch/parity-result.json" "$digest" <<'PY'
+python3 - "$scratch/derived" "$scratch/parity-result.json" "$digest" "$scratch/baseline-api" <<'PY'
 import hashlib, json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 parity = json.loads(pathlib.Path(sys.argv[2]).read_text("utf-8"))
@@ -67,6 +67,7 @@ if parity.get("syntheticHttpParityVerified") is not True or len(parity.get("scen
 mfile = root / "measurement.json"
 m = json.loads(mfile.read_text("utf-8"))
 api = (root / "api/order-entry").read_bytes()
+baseline_api = pathlib.Path(sys.argv[4]).read_bytes()
 world = (root / "api/frozen-world.json").read_bytes()
 if hashlib.sha256(world).hexdigest() != sys.argv[3]:
     raise SystemExit("frozen World changed after build")
@@ -77,6 +78,9 @@ m.update({
     "frozenWorldSHA256": sys.argv[3],
     "apiBytes": len(api),
     "apiSHA256": hashlib.sha256(api).hexdigest(),
+    "ordinaryAPIBytesSameBuild": len(baseline_api),
+    "ordinaryAPISHA256SameBuild": hashlib.sha256(baseline_api).hexdigest(),
+    "frozenAPIByteDifference": len(api) - len(baseline_api),
     "frozenAPISyntheticHTTPParityVerified": True,
     "workspaceLoaderSourceClosureExcluded": True,
     "syntaxParserSourceClosureExcluded": True,
