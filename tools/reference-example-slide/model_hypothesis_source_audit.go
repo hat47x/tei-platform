@@ -78,7 +78,7 @@ func AuditModelHypothesisSourceEvidence(input Input, proposals ModelHypotheses, 
 			finding := ModelHypothesisSourceFinding{
 				IssueID: issue.ID, HypothesisKind: issue.Kind,
 				HypothesisID: issue.HypothesisID,
-				SubjectKind: subject.Kind, SubjectID: subject.ID,
+				SubjectKind:  subject.Kind, SubjectID: subject.ID,
 				Status: "definition-not-indexed",
 			}
 			definitions := make([]sourceindex.Reference, 0)
