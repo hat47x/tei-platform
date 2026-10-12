@@ -58,8 +58,9 @@ func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			input := valueFromGoJSON(t, tc.records)
 			result, err := transform.Evaluate(uniqueByTestSource(), map[string]transform.Value{
-				"dependencies": valueFromGoJSON(t, tc.records),
+				"dependencies": input,
 			})
 			if tc.wantError != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
@@ -72,6 +73,17 @@ func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 			}
 			if result.Output.Kind != transform.ValueArray {
 				t.Fatalf("output kind %s, want array", result.Output.Kind)
+			}
+			got, err := result.Output.JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, err := input.JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, want) {
+				t.Fatalf("uniqueness assertion mutated a valid input: got %s, want %s", got, want)
 			}
 		})
 	}
