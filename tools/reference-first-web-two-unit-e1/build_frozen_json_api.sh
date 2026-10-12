@@ -64,7 +64,7 @@ if grep -Exq 'tei/internal/(workspace|syntax)' "$scratch/frozen-packages.txt"; t
 fi
 go build -trimpath \
   -tags=tei_order_only,tei_api_only,tei_frozen_world \
-  -ldflags="-buildid= -X main.frozenWorldSHA256=$digest" \
+  -ldflags="-buildid= -X main.frozenWorldSHA256=$digest -X main.referenceAPISourceRevision=$source_sha" \
   -o "$scratch/derived/api/order-entry" ./tools/reference-first-web-target
 
 # Observe the actual Go executable's embedded build settings, the exact
