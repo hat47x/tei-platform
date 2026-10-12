@@ -12,8 +12,9 @@ import (
 	"tei/internal/realization"
 )
 
-// This test double deliberately retains only query identities and invocation
-// counts. No credential, production authority or physical database is involved.
+// This test double records synthetic customer IDs solely to assert that
+// invocations stay separate. It uses no credentials or physical database
+// and confers no production runtime authority.
 type sharedCustomerExecutorProbe struct {
 	received []int64
 }
