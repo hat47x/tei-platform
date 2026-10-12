@@ -38,3 +38,9 @@ For local checks, `go test ./tools/reference-subsystem-cud` and `go vet ./tools/
 - **Malformed World/facts JSON**: input decoding fails before inspection. The CLI does not accept an unrelated pre-decoded `World` beside the digest bytes; `InspectSnapshot` decodes and inspects exactly the supplied bytes in one function. A pure `Inspect(w,f)` remains available for candidate-only unit tests but is **not** a snapshot-integrity check.
 
 **This is consistency, not authenticity.** The same caller controls both `facts.json` and `world.json`, so a newly computed matching digest cannot establish that either comes from an accepted TEI Workspace. It is not a signature, Source Index conformance, Shared Acceptance authorization, or proof of Function-level/actual effects. #1120 should provide the shared typed Source/Graph evidence; #1132 still needs an accepted ownership/declaration producer, exact Workspace revision binding, and a real integration test before qualification.
+
+## 同じ機能に複数の担当Subsystemが宣言された場合
+
+候補の`functionIO`で、同じApplication Patternに異なるSubsystemが割り当てられている場合、`IO_PATTERN_SUBSYSTEM_CONFLICT`を未解決として報告します。対象Patternに関する越境更新の診断は、この矛盾が解消されるまで確定しません。読み取り（R）と更新（C/U/D）が混在する場合や、操作対象のDataが異なる場合も、Patternの実行主体については同じ確認が必要です。
+
+一方、一つのSubsystemが同じPatternから複数のDataを扱うことや、他SubsystemのDataを読み取ることだけでは、担当の矛盾とはみなしません。ここで調べるのはあくまで呼出元が記述した候補同士の整合性であり、実際の業務担当や更新権限を認定するものではありません。
