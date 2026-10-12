@@ -1,7 +1,7 @@
 // #1124: Real Chrome interaction with the generated offline Studio form.
 // Automated browser input is NOT human acceptance or source-write authority.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -110,12 +110,57 @@ try {
     await page.screenshot({
       path: join(outputDir, scenario.name + ".png"), fullPage: true
     });
+    // Browser controls are presentation only. A caller can tamper with
+    // <select> options in DevTools; the Go-backed source bridge must refuse
+    // an unknown reference even when the real Chrome submit handler emits it.
+    await page.locator("#candidate-id").fill("chrome-1124-tampered-" + scenario.name);
+    const expectedError = scenario.name === "er"
+      ? "INVALID_RELATION_PROPOSAL"
+      : "APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE";
+    if (scenario.name === "er") {
+      await page.locator("#target-data").evaluate(el => {
+        const option = document.createElement("option");
+        option.value = "sales.nonexistent";
+        option.textContent = "sales.nonexistent";
+        el.add(option);
+        el.value = option.value;
+      });
+    } else {
+      await page.locator("#use-application").check();
+      await page.locator("#application").evaluate(el => {
+        const option = document.createElement("option");
+        option.value = "nonexistent_application";
+        option.textContent = "nonexistent_application";
+        el.add(option);
+        el.value = option.value;
+      });
+      await page.locator("#placement").fill("applications/order-entry/application.tei");
+    }
+    await page.locator('button[type="submit"]').click();
+    const tamperedOutput = JSON.parse(await page.locator("#proposal-json").inputValue());
+    assert.equal(tamperedOutput.expectedModelRevision, baseline);
+    const tamperedPath = join(temporary, scenario.name + "-tampered.json");
+    writeFileSync(tamperedPath, JSON.stringify(tamperedOutput) + "\\n", { mode: 0o600 });
+    const rejected = spawnSync(process.execPath, [
+      cli, "propose", "-workspace", workspace, "-edit-file", tamperedPath
+    ], {
+      cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024,
+      timeout: 120_000
+    });
+    assert.equal(rejected.status, 1, "tampered Chrome edit must fail before Review");
+    assert.match(rejected.stderr, new RegExp(expectedError));
+    assert.equal(rejected.stdout, "");
+    assert.equal(revision(), baseline, "rejected browser input must not change Source revision");
+    assert.deepEqual(scriptErrors, [], "tampered form must not cause an unhandled browser error");
+    assert.deepEqual(networkRequests, [], "tampered form must not trigger network I/O");
+
     receipts.push({
       name: scenario.name, focus: scenario.focus,
       editSchema: edit.schema, candidateSchema: proposed.schema,
       reviewSchema: reviewed.schema,
       revisionBound: true, realChromeDOMEvent: true,
       cspScriptExecuted: true, offlineNetworkRequests: networkRequests.length,
+      invalidBrowserReferenceRefused: true,
       accepted: false, sourceChanged: false
     });
     await context.close();
