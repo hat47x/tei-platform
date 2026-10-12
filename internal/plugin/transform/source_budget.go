@@ -14,8 +14,9 @@ import (
 // authority, and the final bytes are checked and parsed separately.
 func sourceSerializedSize(source Source, limit int) error {
 	budget := sourceSizeBudget{
-		remaining: limit,
-		active:    make(map[uintptr]bool),
+		remaining:    limit,
+		rawRemaining: MaxSerializedSourceBytes,
+		active:       make(map[uintptr]bool),
 	}
 	if err := budget.measure(reflect.ValueOf(source), 0); err != nil {
 		return fmt.Errorf("transform Source exceeds serialized size limit or structural budget: %w", err)
@@ -24,9 +25,10 @@ func sourceSerializedSize(source Source, limit int) error {
 }
 
 type sourceSizeBudget struct {
-	remaining int
-	nodes     int
-	active    map[uintptr]bool
+	remaining    int
+	rawRemaining int // cumulative unnormalized literal bytes
+	nodes        int
+	active       map[uintptr]bool
 }
 
 func (b *sourceSizeBudget) add(n int) error {
@@ -51,6 +53,13 @@ func (b *sourceSizeBudget) quoted(s string) error {
 // canonical encoding. Count those bytes now rather than allocating the
 // expanded canonical literal first.
 func (b *sourceSizeBudget) rawJSON(raw []byte) error {
+	// Compact JSON can be tiny even when the original RawMessage contains
+	// megabytes of whitespace. Bound the input bytes separately from the
+	// encoded output to prevent normalization from bypassing the budget.
+	if len(raw) > b.rawRemaining {
+		return fmt.Errorf("transform Source raw literal bytes exceed limit")
+	}
+	b.rawRemaining -= len(raw)
 	size := 0
 	inString := false
 	escaped := false
