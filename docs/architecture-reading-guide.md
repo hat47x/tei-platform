@@ -2,7 +2,7 @@
 
 この文書は、[`architecture.md`](architecture.md) の技術境界を、**仕組みの名前からではなく、何を壊さないための分離なのか**という順序で読むための案内です。
 
-全体構成の正本は`architecture.md`です。本書は新しい設計判断を追加せず、既に定めた境界を理解するための補足説明を行います。
+全体構成を定める文書は`architecture.md`です。本書は新しい設計判断を追加せず、既に定めた境界を理解するための補足説明を行います。
 
 TEIは、入力と編集、業務上の意味、アプリケーション、データベース、実行先、実行環境、セキュリティ、配備までを扱うため、個別技術だけを追うと全体像を見失いやすくなります。まず次の四つの問いを持って読むと、各節の役割を追いやすくなります。
 
@@ -30,75 +30,75 @@ TEIの全体構成は、特定の開発基盤をきれいに層分けして配�
 
 ## 2. 最初に四層だけ押さえる
 
-`architecture.md`の入口にある四層は、TEI全体を読むための地図です。
+`architecture.md`の入口にある四つの層は、TEI全体を読むための見取り図です。
 
 ```text
 Authoring Layer
-    人やtoolが意味を書く
+    人やツールが意味を記述する
         ↓
-Canonical Semantic Layer
+意味の正本層
     TEIが基準として扱う意味
         ↓
-Binding / Realization Layer
-    その意味を具体的な実装へ結び付ける
+Binding / 実現方式 Layer
+    意味を具体的な実装へ結び付ける
         ↓
-Implementation & Execution Layer
-    Go / SQL / DB / process等で実際に動かす
+実装と実行の層
+    Go / SQL / データベース / プロセスなどで実際に動かす
 ```
 
 ### なぜ四層に分けるのか
 
-たとえば受注Applicationで、顧客を選択する画面があるとします。
+たとえば受注アプリケーションで、顧客を選択する画面があるとします。
 
 業務上必要なのは、
 
-> 受注は既存のCustomerを参照する
+> 受注は既存の顧客を参照する
 
 という意味です。
 
-Webではselect box、Desktopでは検索dialog、APIではCustomer ID入力になるかもしれません。
+ウェブでは選択欄、デスクトップでは検索画面、APIでは顧客IDの入力になるかもしれません。
 
-もしWebのselect boxをCanonicalな意味にしてしまうと、Targetを変えるたびに業務意味まで変わります。
+もしウェブの選択欄を意味の正本にしてしまうと、実行先を変えるたびに業務上の意味まで変わります。
 
 TEIでは、
 
 ```text
-「Customerを参照する」
+「顧客を参照する」
         ↓
-Web Targetではselect / search UI
-Desktop Targetではdialog
-API TargetではID / reference input
+ウェブでは選択・検索画面
+デスクトップでは検索画面
+APIでは識別子や参照情報を入力
 ```
 
 という方向にします。
 
-この一例が、CanonicalとProjection、Target Adapter、Realizationを分ける理由です。
+この一例が、意味の正本と投影、実行先との接続部、実現方式を分ける理由です。
 
 ## 3. 記述形式と意味の正本を分ける
 
 ### 防ぎたい失敗
 
-同じ業務上の意味が、`.tei`、編集画面、AIの内部状態、生成したJSONなどに別々に保存されると、どれを直せばよいかわからなくなります。
+同じ業務上の意味を`.tei`ファイル、編集画面、AIの内部状態、生成したJSONなどに別々に保存すると、どれを直せばよいかわからなくなります。
 
 また、ファイルのパスを識別子とすると、ディレクトリを整理しただけで業務概念が変わったように見える可能性があります。
 
 ### 全体構成における考え方
 
 ```text
-TEI DSL / native SQL / Editor / AI candidate
-        ↓ parse / resolve / accept
-Canonical meaning
+TEIの定義言語 / SQL / 編集画面 / AIの候補
+        ↓ 解析 / 解決 / 受け入れ
+意味の正本
 ```
 
-記述形式（Authoring）は「意味を入力する方法」、正本となる意味（Canonical）は「受理後にTEIが基準として扱う意味」を指します。
+記述形式は「意味を入力する方法」、正本となる意味は「受理後にTEIが基準として扱う意味」を指します。
 
 `.tei`の構文木や編集画面の内部状態そのものを、意味の正本とはみなしません。
 
 ### 入力元の索引を分ける理由
 
-意味の正本をファイルのパスから独立させる一方で、「この意味がどの入力元から来たか」は追跡できなければなりません。
+意味の正本をファイルのパスから独立させる一方で、「この意味がどの情報源から来たか」は追跡できなければなりません。
 
-そのため、入力元の場所や範囲を正本となる意味に混ぜず、**入力元索引（Source Index）という派生情報**に記録します。
+そのため、入力元の場所や範囲を正本となる意味に含めず、**入力元索引という派生情報**に記録します。
 
 これにより、
 
@@ -109,11 +109,11 @@ Canonical meaning
 
 ### 読めることと正本になったことは別
 
-既存アプリケーションをTEIへ段階的に移管するとき、最初から既存形式の資産を捨てる必要はありません。
+既存アプリケーションをTEIへ段階的に移すとき、最初から既存形式の資産を捨てる必要はありません。
 
 ```text
 native asset
-  -> TEIがread / map / validateできる
+  -> TEIが読み取り、対応付け、検証できる
 ```
 
 まで進んでも、
@@ -156,14 +156,14 @@ TEI parse success
 
 ### 変更を共通して受け入れる境界
 
-TEIでは、ファイル、CLI、編集画面、AIなどからの変更候補を、最終的に共通の受け入れ境界へ集めます。
+TEIでは、ファイル、コマンドライン、編集画面、AIなどからの変更候補を、最終的に共通の受け入れ境界へ集めます。
 
 ```text
 file / CLI / Editor / AI
           ↓
       candidate
           ↓
-Shared Acceptance Boundary
+Shared 受け入れ境界
           ↓ accepted only
 authoritative source
           ↓ reload
@@ -184,13 +184,13 @@ Canonical World
 
 識別子、型、関係、式、制約、状態の変化とその周期など、小さな仕組みの組み合わせで表せるものは、まずその可能性を確かめます。
 
-これは、`Workflow`や`Procedure`が重要でないという意味ではありません。
+これは、業務手順や手続きが重要でないという意味ではありません。
 
 > 重要な概念であること
 >
 > と
 >
-> Coreに専用primitiveが必要であること
+> 中核に専用の基本要素が必要であること
 >
 > は別です。
 
@@ -198,7 +198,7 @@ Canonical World
 
 ### 型や関係の定義と、実データの一件一件は別
 
-たとえばTEIで`Card`というData definitionを持てても、利用者が作った`card-001`まで自動的にCanonical semantic objectになるわけではありません。
+たとえばTEIで`Card`というデータ定義を持っていても、利用者が作った`card-001`まで自動的に正本となる意味上の対象にはなりません。
 
 ```text
 Card definition
@@ -211,117 +211,117 @@ Relation definition
   != edge-019
 ```
 
-Canonical側は主に「どんな意味・構造・制約か」を保持し、Application instance dataはDatabaseやApplication store等でその定義に従って存在します。
+正本側は主に「どんな意味・構造・制約か」を保持し、アプリケーションの実体データはデータベースやアプリケーションの保存領域に定義に従って記録します。
 
-個々のrecordをObservation / Evidenceとして参照することはできますが、traceabilityのためだけに全instanceをCanonicalへ複製すると、design meaningとoperational dataが混ざります。
+個々の記録を観測や検証根拠として参照できます。ただし、追跡可能にするだけの目的で全実体を正本へ複製すると、設計上の意味と運用データが混在します。
 
-reference dataやconfigurationのようにinstance集合自体をauthoritative assetとして扱いたい場合は例外的にあり得ます。その場合も、誰がownerで、どこから変更され、何がruntime dataなのかを明示して扱います。
+参照データや設定情報のように、実体の集合自体を正本として扱う場合もあります。その場合は、誰が管理し、どこから変更し、どれが実行時データなのかを明示します。
 
 ## 6. 業務とアプリケーションの実装を分ける
 
 ### 防ぎたい失敗
 
-業務手順をアプリケーションの機能だけで表すと、電話、対面確認、外部組織の承認、物理作業等がmodelから消えることがあります。
+業務手順をアプリケーションの機能だけで表すと、電話、対面での確認、外部組織の承認、現場作業などが業務モデルから抜け落ちることがあります。
 
 そのため、TEIでは次を分けます。
 
 ```text
-Business Action
+業務上の操作
     !=
-Application Function / Pattern
+アプリケーションの機能 / 型
     !=
-Capability
+実行機能
     !=
-Realization
+実現方式
 ```
 
 たとえば、
 
 > 倉庫担当者が現物の破損を確認する
 
-という業務上の操作には、TEIアプリケーション上の機能が存在しないかもしれません。それでも業務上の意味としては正当です。
+という業務上の操作に、TEIの機能が対応しない場合もあります。それでも業務上の意味は保たれます。
 
 この境界は[`business-system-design.md`](business-system-design.md)で詳しく説明しています。
 
 ### 操作を選ぶ規則と、操作の意味を定める契約は別
 
-AIやRuleが「次にこの操作を使う」と選べても、そのpolicy自身がApplication Action、Capability、Permission、Resultの意味を所有するわけではありません。
+AIや規則が「次にこの操作を使う」と選べても、その方針自体がアプリケーション上の操作、機能、権限、結果の意味を所有するわけではありません。
 
 ```text
-Rule / AI / Human policy
-  -> selects / proposes
-semantic action
-  -> existing Validation / Authorization / Capability / Result boundary
+規則 / AI / 人の方針
+  -> 選択 / 提案
+意味上の操作
+  -> 既存の検証 / 認可 / 機能 / 結果の境界
 ```
 
 したがって、
 
 ```text
-decision policy
-  != action contract
-  != execution authority
+選択方針
+  != 操作の契約
+  != 実行権限
 ```
 
-として読みます。policyを交換するたびに別のtool semanticsやpermission modelを作らず、既知操作をdeterministic pathで選んでもAIが選んでも、同じ意味・authority境界へ収束させます。
+と捉えます。方針を変えるたびに別のツールの意味や権限の仕組みを作る必要はありません。既知の操作を決定的な経路で選ぶ場合も、AIが選ぶ場合も、同じ意味と権限の境界に従います。
 
 ### AIが「作る」とAIが「仕事をする」は別
 
 AIには少なくとも二つの利用形があります。
 
 ```text
-AI Builder
-  Application definitionを変更する
-  -> Proposal / Shared Acceptance
+AIによる開発
+  アプリケーション定義を変更する
+  -> 提案 / 共通の受け入れ手順
 
-AI Business Actor
-  accepted Actionを実行する
-  -> Capability / current Authorization / Observation
+AIによる業務実行
+  受け入れ済みの操作を実行する
+  -> 機能 / 現在の認可 / 観測
 ```
 
-AI Business Actorが受入済みCapabilityを利用するたびにApplication definition変更Proposalを作る必要はありません。一方、業務を実行できることから、そのAction定義を変更するauthoring authorityを得ることもありません。
+AIが受け入れ済みの機能を使うたびに、アプリケーション定義の変更提案を作る必要はありません。一方、業務を実行できることから、その操作の定義を変更する権限を得ることもありません。
 
 ```text
-understand
-  != execute
-  != modify definition
+理解する
+  != 実行する
+  != 定義を変更する
 ```
 
-また、Semantic Capabilityがある場合はAIへGUI clickを真似させるより、そのCapability境界を利用する方を標準にします。UIしかない既存systemではcomputer-useを使えますが、click成功をBusiness completionとはみなしません。
+また、意味上の機能がある場合はAIへ画面操作を真似させるより、その機能の境界を利用する方を標準にします。画面しかない既存システムでは画面操作を使えますが、クリックの成功を業務の完了とはみなしません。
 
-AI向けのOperational Projectionは作れても、それをCanonicalのコピーとして第二の正本にはしません。
+AI向けに情報を投影しても、それを意味の正本として扱いません。
 
 また、AIを利用可能にしたからといって全操作でAIを呼ぶ必要はありません。
 
 ```text
-known / exact
-  -> deterministic path
+既知 / 明確
+  -> 決定的な処理経路
 
-ambiguous / compositional
-  -> AI-assisted candidate
+曖昧 / 合成を伴う
+  -> AIが支援する候補作成
 ```
 
-というroutingを許します。重要なのはどちらの経路でも同じsemantic actionへ戻ることであり、「AIを使ったかどうか」を業務意味へしないことです。
+という振り分けを認めます。どちらの経路でも同じ意味上の操作へ戻り、「AIを使ったかどうか」で業務上の意味が変わることはありません。
 
 ## 7. アプリケーションとデータベースを分ける
 
 ### 防ぎたい失敗
 
-一つのApplication releaseへ、すべてのDatabase schema versionを固定すると、段階移行や共有master利用が難しくなります。
+一つのアプリケーション配布版に、すべてのデータベース構造の版を固定すると、段階移行や共有マスタの利用が難しくなります。
 
-TEIではApplicationとDatabaseを独立したUnitとして扱い、Database Contractで必要能力を結びます。
+TEIではアプリケーションとデータベースを独立した単位として扱い、データベース契約で必要な機能を結びます。
 
-たとえば受注Applicationが、
+たとえば受注アプリケーションが、
 
 ```text
 sales DB       read-write
 customer master read-only
 ```
 
-を使う場合、二つのDatabaseが同じrelease lifecycleを持つ必要はありません。
+を使う場合、二つのデータベースが同じ配布周期を持つ必要はありません。
 
 ### Desired / Actual / Diff
 
-Databaseでは、
+データベースでは、
 
 - **Desired** — 望ましい物理状態
 - **Actual** — 実際に観測した状態
@@ -336,16 +336,16 @@ Databaseでは、
 
 TEIはSQLをすべて独自DSLへ置き換えることを目的にしません。
 
-複雑なQueryでは、SQLそのものが最も自然なauthoring sourceになる場合があります。
+複雑な問い合わせでは、SQLそのものが最も自然な記述元になる場合があります。
 
 その場合、
 
 ```text
-SQL = authoritative authoring source
-Query IR = derived representation
+SQL = 正本となる記述元
+問い合わせの中間表現 = 派生表現
 ```
 
-とし、逆にGraph-authored queryなら、Graph / IR側をauthorityにできます。
+とし、図から問い合わせを記述する場合は、図または中間表現を正本にできます。
 
 重要なのは、**同じ意味について二つの正本を同時に持たないこと**です。
 
@@ -353,101 +353,101 @@ Query IR = derived representation
 
 ### 防ぎたい失敗
 
-「Web」「Desktop」といったTarget差の中には、少なくとも二種類の違いが混ざっています。
+「ウェブ」「デスクトップ」といった実行先の違いには、少なくとも二種類の差があります。
 
-1. 利用できるinteraction / device能力
-2. 実行場所・transport・identity・secret等のtrust条件
+1. 利用できる操作や装置の機能
+2. 実行場所、通信手段、識別情報、秘密情報などに関する信頼条件
 
-TEIでは、この二つをTarget CapabilityとExecution / Trust Profileとして分けて検討します。
+TEIでは、この二つを実行先の機能と実行場所・信頼条件に分けて検討します。
 
-さらにportable execution artifactのPressureから、同じTargetの内部でも**何を実行artifactにするか、どのABI / Hostで動かすか**は別の実現差になり得ることが見えています。
+さらに、移植可能な実行成果物を検討すると、同じ実行先でも、実行成果物の形式やABI、ホストの違いが別の実現上の差になり得ます。
 
 ```text
-Target
-  != execution artifact
+実行先
+  != execution 成果物
   != execution host
 ```
 
-たとえばWeb Targetだから実行artifactが必ずJavaScriptとは限らず、freestanding WasmやWorker-hosted Wasm等も取り得ます。逆に同じportable artifactをWebとDesktop Hostの双方で使える可能性もあります。
+たとえばウェブ向けの実行先だから実行成果物が必ずJavaScriptとは限らず、単独で動作するWasmやワーカー上で動作するWasm等も取り得ます。逆に同じ移植可能な成果物をWebとデスクトップの実行ホストの双方で使える可能性もあります。
 
-このためWasmを新しいTarget種別として扱わず、現時点ではRuntime Binding内部の観測軸としてPressureします。独立schemaが必要かは第二Targetとportable artifact ReferenceのEvidence後に判断します。
+このためWasmを新しい実行先の種別として扱わず、現時点では実行環境との結び付きの中の観測軸として確かめます。独立した構造が必要かは別の実行先と移植可能な成果物に関する参照資料による検証後に判断します。
 
-Target Capability / Execution / Trust Profile / artifact・ABI差のtaxonomyは第一Targetだけで固定せず、第二Targetとの差からpressure-testします。
+実行先の機能、実行場所と信頼条件、成果物やABIの違いは、第一の実行先だけで決めず、第二の実行先との比較で確かめます。
 
-### Targetの操作記録も業務意味そのものではない
+### 実行先の操作記録も業務意味そのものではない
 
-browser automationやGUI agentで同じScenarioを再実行するため、selector、coordinate、route、component identity、normalized event等をEvidenceへ残すことがあります。
+ブラウザー操作の自動化や画面操作エージェントで同じシナリオを再実行するため、選択条件、座標、経路、部品の識別情報、正規化したイベント等を検証根拠へ残すことがあります。
 
 しかし、
 
 ```text
-semantic operation
-  != Target-specific event
-  != replay artifact
+意味上の操作
+  != 実行先固有のイベント
+  != 再実行用の成果物
 ```
 
-です。Replayable BehaviorはFunctional Evidenceを再確認しやすくする派生物であり、そこからCanonical actionやBusiness Procedureを逆定義しません。異なるTargetのeventを正規化する場合も、raw Evidenceへ戻れることを優先します。
+です。再実行可能な動作記録は機能の検証根拠を確かめやすくする派生資料です。そこから正本となる操作や業務手順を定義しません。異なる実行先のイベントを正規化する場合も、未加工の検証根拠へ戻れることを優先します。
 
 ## 10. 配備では命令の成功と実際の状態を分ける
 
-Deploymentでは、
+配備では、
 
 ```text
-Release Definition
+配布版の定義
         ↓
-Deployment Run
+配備の実行記録
         ↓
-Executor Command
+実行命令
         ↓
-Observation / Evidence
+観測 / 検証根拠
 ```
 
 を分けます。
 
-commandが成功したことと、外部状態が意図どおりになったことは同じではありません。
+命令が成功したことと、外部状態が意図どおりになったことは同じではありません。
 
-たとえばmigration commandが0で終了しても、対象instanceが違っていたり、後続の外部状態が期待と異なる可能性があります。
+たとえば移行の命令が0で終了しても、対象の実体が違っていたり、その後に観測される外部の状態が期待と異なる可能性があります。
 
-そのためTEIでは、必要に応じてObservationを行い、次へ進む根拠としてEvidenceを確認します。
+そのためTEIでは、必要に応じて観測を行い、次へ進む根拠として検証根拠を確認します。
 
 ## 11. プラグインと実行環境では能力と権限を分ける
 
-PluginはCapabilityを実現できますが、Capabilityを実装していることだけで、すべてのResourceを利用できるわけではありません。
+拡張機能は機能を実現できますが、その機能を実装しているだけで、あらゆる資源を利用できるわけではありません。
 
-Permission Grant、Resource Broker、Lease、Sandbox、fencing等を通してauthorityを制限します。
+権限の付与、資源仲介機能、利用権、隔離環境、古い実行元の権限を失効させる仕組みを通じて、実行権限を制限します。
 
 ここは前提知識が多いため、先に[`security.md`](security.md)を読むと理解しやすくなります。
 
 特に次を区別します。
 
 ```text
-Capability exists
-    != permission granted
+機能が存在する
+    != 権限が付与されている
 
-Resource handle exists
-    != authority is still valid
+資源の識別子が存在する
+    != 権限が今も有効である
 
-new Host became owner
-    != old Host can no longer act
+新しいホストが管理者になった
+    != 古いホストが操作できなくなった
 ```
 
 ## 12. ホストの再起動と引き継ぎでは不明な状態を残す
 
-Hostが停止したあと、外部processの状態がわからない場合があります。
+ホストが停止したあと、外部プロセスの状態がわからない場合があります。
 
 ここで最も危険なのは、
 
-> processが見つからないから、実行されなかったことにして再実行する
+> プロセスが見つからないため、実行されなかったと判断して再実行する
 
 という判断です。
 
-外部副作用だけが完了している可能性があるため、TEIはDurable Invocation Handle、Observation、fencingを使い、`running / terminal / missing / unknown`を区別します。
+外部への作用だけが完了している可能性があるため、TEIは永続的な呼び出し識別子、観測、古い実行元の権限失効を使い、`running / terminal / missing / unknown`を区別します。
 
-`missing`や`unknown`を自動replayへ変換しません。
+`missing`や`unknown`の状態から自動的に再実行しません。
 
 ## 13. 一つの受注例から全体構成を確認する
 
-受注Applicationを例にすると、主要境界は次のようにつながります。
+受注アプリケーションを例にすると、主要境界は次のようにつながります。
 
 ```text
 Authoring
@@ -459,79 +459,79 @@ Canonical
 Application
   record / header-detail / reference Pattern
         ↓
-Database Binding
+データベースとの結び付け
   sales DB = read-write
   customer master = read-only
         ↓
-Target Projection
+実行先への投影
   Web UIを生成
         ↓
-Runtime
-  Permissionを確認してCapability実行
+実行環境
+  権限を確認して機能を実行
         ↓
-Database / external system
+データベース / 外部システム
         ↓
-Observation / Evidence
+観測 / 検証根拠
 ```
 
 もし途中で、
 
-- Customer masterへwriteするUIが出た
-- AIが既存Relationとは別のCustomer relationを勝手に作った
-- migration command successだけでDB状態を確定した
-- Target固有fieldでCanonical不足を埋めた
+- 顧客マスタへ書き込む画面が表示された
+- AIが既存の関係とは別に顧客との関係を勝手に作った
+- 移行命令の成功だけでデータベースの状態を確定した
+- 実行先固有fieldで正本となる情報の不足を埋めた
 
-といったことが起きれば、どの境界が崩れたかをArchitecture上で追えることが重要です。
+といったことが起きれば、どの境界が崩れたかを全体構成上で追えることが重要です。
 
 ## 14. どこまでが現在の保証か
 
-`architecture.md`に設計境界が書かれていることと、production-grade implementationが完成していることは別です。
+`architecture.md`に設計境界が書かれていることと、本番運用に耐える実装が完成していることは別です。
 
 ```text
-Architecture boundary exists
-  != implementation complete
-  != Reference Evidence acquired
-  != production-ready
+全体構成上の境界が定められている
+  != 実装が完了している
+  != 参照資料による検証根拠が得られている
+  != 本番利用できる
 ```
 
-実装・Evidenceの現在地は[`status.md`](status.md)を参照してください。
+実装・検証根拠の現在地は[`status.md`](status.md)を参照してください。
 
-個別のConformance文書は、「この境界について、どの実装・testまで直接追跡できるか」を示します。
+個別の準拠確認の文書は、「この境界について、どの実装・試験まで直接追跡できるか」を示します。
 
 ## 15. 読む順序の案内
 
-Architectureを最初から最後まで一度に読む必要はありません。
+全体構成を最初から最後まで一度に読む必要はありません。
 
 ### 業務モデリングを中心に読む
 
 1. [TEIの考え方](overview.md)
-2. [Business-System Design](business-system-design.md)
-3. [Architecture](architecture.md)のSemantic kernel / Business Action / Three-view節
+2. [業務システム設計](business-system-design.md)
+3. [Architecture](architecture.md)の意味を扱う中核 / 業務上の操作 / 三つの表示方式の節
 
-### Application / Databaseを中心に読む
+### アプリケーション / データベースを中心に読む
 
 1. [TEIの考え方](overview.md)
-2. 本書のApplication / Database節
-3. [Architecture](architecture.md)のDatabase lifecycle / Query節
-4. 関連Conformance
+2. 本書のアプリケーション / データベース節
+3. [Architecture](architecture.md)のデータベースの変更周期 / 問い合わせの節
+4. 関連する準拠確認文書
 
-### Runtime / Securityを中心に読む
+### 実行環境 / 安全性を中心に読む
 
-1. [Security / Trust Boundary](security.md)
-2. [Architecture](architecture.md)のPlugin / Runtime節
-3. Host restart / takeover節
-4. 関連ADR / Conformance
+1. [安全性 / 信頼境界](security.md)
+2. [Architecture](architecture.md)の拡張機能 / 実行環境の節
+3. ホストの再起動 / 引き継ぎの節
+4. 関連設計判断記録 / 準拠確認
 
-### AI / Editorを中心に読む
+### AI / 編集画面を中心に読む
 
-1. [Definition-Centered Feedback Loop](definition-centered-feedback-loop.md)
-2. [Design Synthesis / 認知支援の読み方](design-synthesis-reading-guide.md)
-3. [Architecture](architecture.md)のAuthoring candidate / Acceptance Boundary節
+1. [定義を中心とした改善の流れ](definition-centered-feedback-loop.md)
+2. [設計の統合 / 認知支援の読み方](design-synthesis-reading-guide.md)
+3. [Architecture](architecture.md)の記述候補 / 受け入れ境界節
 
 ## 16. 次に読むもの
 
-- 技術境界の正本: [Architecture](architecture.md)
-- 業務システム設計: [Business-System Design](business-system-design.md)
-- Security / Runtimeの具体例: [Security / Trust Boundary](security.md)
-- Product Requirementの読み方: [`../requirements/README.md`](../requirements/README.md)
-- 現在の実装状況: [Status](status.md)
+- 技術上の境界を定める文書: [Architecture](architecture.md)
+- 業務システム設計: [業務システム設計](business-system-design.md)
+- 安全性 / 実行環境の具体例: [安全性 / 信頼境界](security.md)
+- 製品要求の読み方: [`../requirements/README.md`](../requirements/README.md)
+- 現在の実装状況: [実装状況](status.md)
