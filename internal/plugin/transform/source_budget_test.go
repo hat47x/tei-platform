@@ -19,8 +19,7 @@ func TestSourceSizePreflightMatchesCanonicalJSONEncoding(t *testing.T) {
 		Op:      OpLiteral,
 		Literal: json.RawMessage("\"\\u2028<>&\\\\\""),
 	}
-	withEscapes.Inputs[0].Name = "escaped"
-	// Use a literal as output so no input binding changes are needed.
+	// Use a literal as output so the existing input bindings remain valid.
 	cases = append(cases, struct {
 		name   string
 		source Source
