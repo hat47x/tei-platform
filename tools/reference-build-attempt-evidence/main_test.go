@@ -465,3 +465,16 @@ func TestAttemptHistoryValidationRejectsDuplicateEvidenceFingerprint(t *testing.
 		t.Fatal("Attempt History accepted a duplicated failure Evidence fingerprint")
 	}
 }
+
+func TestFailedAttemptRejectsSuccessfulOrInvalidExitStatus(t *testing.T) {
+	plan := referenceBuildPlan()
+	for _, exitCode := range []int{0, -1} {
+		_, _, err := newFailedAttempt(plan, 1, fakeFailure{
+			Phase: attemptPhaseCompile, FailureClass: "compile-error",
+			ExitCode: &exitCode, DiagnosticSummary: "simulated failure",
+		}, 8)
+		if err == nil {
+			t.Fatalf("failed attempt accepted invalid exit status %d", exitCode)
+		}
+	}
+}
