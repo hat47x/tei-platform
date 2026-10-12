@@ -5,9 +5,9 @@ import "testing"
 func TestQuoteCalculationRejectsAmbiguousAndIncompleteJSON(t *testing.T) {
 	const valid = `{"currency":"JPY","lines":[{"sku":"PEN","quantity":3,"unitPriceMinor":250},{"sku":"BOOK","quantity":2,"unitPriceMinor":400}]}`
 	cases := []struct {
-		name string
+		name  string
 		input string
-		ok bool
+		ok    bool
 	}{
 		{name: "valid two lines", input: valid, ok: true},
 		{name: "empty list", input: `{"currency":"JPY","lines":[]}`},
