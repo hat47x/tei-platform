@@ -331,6 +331,49 @@ async function main() {
   await stopTarget();
   assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
 
+  // R0 stale-source control: launch the SAME Web binary with the original,
+  // unaccepted Source while supplying exactly the SAME caller revision labels.
+  // A manifest-based independent consumer must detect that the selected R1
+  // business rule is absent. The current Web server itself does NOT reject
+  // the mismatched caller labels; never advertise this as a runtime gate.
+  assert.equal(acceptance(["revision", "-workspace", baseline]).modelRevision, r0,
+    "baseline Source changed while running the accepted R1 scenario");
+  const stalePort = await openPort();
+  const staleAddr = "127.0.0.1:" + stalePort;
+  const staleLog = openSync(join(temp, "stale-source-server.log"), "wx", 0o600);
+  try {
+    child = spawn(binary, [
+      "-workspace", baseline, "-application", "order_entry", "-baseline-id", "B",
+      "-baseline-revision", expectedR, "-target-revision", head,
+      "-legacy-users", "reference/legacy-auth/users.json",
+      "-legacy-authorization", "reference/legacy-auth/authorization.json",
+      "-listen", staleAddr
+    ], { cwd: root, stdio: ["ignore", staleLog, staleLog] });
+  } finally { closeSync(staleLog); }
+  await ready("http://" + staleAddr);
+  const staleManifestResponse = await fetch("http://" + staleAddr + "/manifest.json",
+    { signal: AbortSignal.timeout(3000) });
+  assert.equal(staleManifestResponse.status, 200);
+  const staleManifest = await staleManifestResponse.json();
+  assert.equal(staleManifest.applicationId, manifest.applicationId);
+  assert.equal(staleManifest.targetBuildRevision, manifest.targetBuildRevision);
+  assert.equal(staleManifest.baselineRepositoryRevision, manifest.baselineRepositoryRevision);
+  assert.equal(staleManifest.handoverBaselineId, manifest.handoverBaselineId);
+  assert.equal(staleManifest.validations.includes(validationID), false,
+    "unaccepted R0 unexpectedly already contains the R1 unit-price rule");
+  assert.notDeepEqual(manifestSemantics(staleManifest), loadedMeaning,
+    "stale R0 Web incorrectly appears identical to accepted R1 despite revision labels");
+  const staleLaunch = {
+    address: staleAddr, processID: child.pid,
+    binarySHA256: sha256(readFileSync(binary)),
+    manifestSemanticSHA256: sha256(JSON.stringify(manifestSemantics(staleManifest)))
+  };
+  assert.equal(staleLaunch.binarySHA256, positiveLaunch.binarySHA256,
+    "stale Source mismatch test unexpectedly used a different Web binary");
+  await stopTarget();
+  assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
+  assert.equal(acceptance(["revision", "-workspace", baseline]).modelRevision, r0);
+
   // Do not use a quantity failure as evidence for the new unit-price rule.
   // Rebuild only the synthetic adapter using an isolated Go overlay, then run
   // the actual HTTP endpoint on a separate ephemeral loopback listener.
