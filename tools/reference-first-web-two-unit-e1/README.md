@@ -47,7 +47,8 @@ bash tools/reference-first-web-two-unit-e1/smoke.sh "$destination"
 
 ```sh
 go test -count=1 -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target
-go build -trimpath -ldflags=-buildid= -tags=tei_order_only,tei_api_only \\
+go build -trimpath -ldflags="-buildid= -X main.referenceAPISourceRevision=$(git rev-parse HEAD)" \\
+  -tags=tei_order_only,tei_api_only \\
   -o /tmp/tei-order-api-only ./tools/reference-first-web-target
 ```
 
