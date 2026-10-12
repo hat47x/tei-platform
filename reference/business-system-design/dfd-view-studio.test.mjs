@@ -961,3 +961,95 @@ test('late failed projection cannot restore diagnostics after a newer DFD',async
   assert.equal($('export').disabled,false);
   assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),/STALE/);
 });
+
+test('explicit manual-Step Data and Validation permit reverse source-only navigation',async()=>{
+  const p=approvalProjection();
+  const manual=p.steps.find(s=>s.id==='APP-10');
+  assert.equal(manual.noApplicationFunction,true);
+  manual.explicitMeaning=[
+    {kind:'semantic-data',id:'sales.order',status:'resolved-id-not-accepted',
+      source:{file:'authoring.json',pointer:'/steps/1/data/0'}},
+    {kind:'semantic-validation',id:'sales.order.quantity_positive',
+      status:'resolved-id-not-accepted',
+      source:{file:'authoring.json',pointer:'/steps/1/validations/0'}}
+  ];
+  await input('dfd-file',p);
+  const choose=(kind,id)=>{
+    const n=$('diagram').children.find(x=>x.dataset?.kind===kind&&x.dataset.id===id);
+    assert.ok(n);
+    n.listeners.keydown({key:'Enter',preventDefault(){}});
+  };
+  const click=(title)=>{
+    const button=$('details').children.flatMap(x=>x.children||[])
+      .find(x=>x.tag==='button'&&x.textContent===title);
+    assert.ok(button,'missing reference-only link '+title);
+    button.click();
+  };
+  choose('step','APP-10');
+  click('semantic-validation: sales.order.quantity_positive');
+  let detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal(detail.sourceIndexStatus,'not-verified');
+  assert.equal(detail.worldRevisionStatus,'unverified-no-model-revision-binding');
+  assert.equal(detail.matches.length,1);
+  assert.equal(detail.matches[0].relation,'explicit-business-semantic-reference');
+  assert.equal(detail.matches[0].source.pointer,'/steps/1/validations/0');
+  assert.equal(detail.matches[0].status,'resolved-id-not-accepted');
+  assert.equal($('semantic-propose').disabled,true);
+  click('step: APP-10');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.kind,'step');
+  click('semantic-data: sales.order');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.ok(detail.matches.some(m=>m.origin.kind==='step'&&m.origin.id==='APP-10'));
+  assert.ok(detail.matches.some(m=>m.origin.kind==='store'&&m.origin.id==='orders'));
+  click('store: orders');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.semanticData,'sales.order');
+});
+
+test('Function-derived Data stays distinct from explicit and is never accepted authority',async()=>{
+  const p=approvalProjection();
+  const step=p.steps.find(s=>s.id==='APP-00');
+  step.functionRefs[0].data='sales.order';
+  step.functionRefs[0].relation='sales.order.lines';
+  step.functionRefs[0].capability='security.authorize';
+  await input('dfd-file',p);
+  const functionNode=$('diagram').children.find(x=>x.dataset?.kind==='function'&&
+    x.dataset.id==='order_entry.order_record');
+  functionNode.listeners.keydown({key:'Enter',preventDefault(){}});
+  const link=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='semantic-data: sales.order');
+  assert.ok(link);
+  link.click();
+  const detail=JSON.parse($('details').children[0].textContent);
+  const derived=detail.matches.find(x=>x.origin.id==='APP-00');
+  assert.equal(derived.relation,'pattern-derived-reference');
+  assert.equal(derived.status,'derived-not-authority');
+  assert.equal(derived.via.id,'order_entry.order_record');
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal($('semantic-propose').disabled,true);
+});
+
+test('stale meaning navigation and back links are revoked when projection changes',async()=>{
+  const p=approvalProjection();
+  p.steps[0].explicitMeaning=[{kind:'semantic-data',id:'sales.order',
+    status:'resolved-id-not-accepted',source:{file:'fixture.json',pointer:'/steps/0/data/0'}}];
+  await input('dfd-file',p);
+  const step=$('diagram').children.find(x=>x.dataset?.id==='APP-00'&&x.dataset.kind==='step');
+  step.listeners.keydown({key:'Enter',preventDefault(){}});
+  const oldMeaningButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='semantic-data: sales.order');
+  assert.ok(oldMeaningButton);
+  oldMeaningButton.click();
+  const oldBackButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='step: APP-00');
+  assert.ok(oldBackButton);
+  await input('dfd-file',projection);
+  assert.equal($('details').children.length,0);
+  oldMeaningButton.click();
+  oldBackButton.click();
+  assert.equal($('details').children.length,0);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
+});
