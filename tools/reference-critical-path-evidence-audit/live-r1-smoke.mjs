@@ -160,10 +160,17 @@ async function main() {
     "accepted decision must refer to the previewed candidate");
   assert.equal(decision.reviewBinding?.fingerprint, review.reviewFingerprint,
     "accepted decision must link to the displayed review");
+  assert.equal(decision.reviewBinding?.projection?.candidateFingerprint,
+    preview.candidateFingerprint,
+    "accepted decision's embedded review must refer to the candidate");
   assert.equal(decision.sourceChanged, true);
   const r1 = acceptance(["revision", "-workspace", workspace]).modelRevision;
   assert.match(r1, /^sha256:[0-9a-f]{64}$/);
   assert.notEqual(r1, r0);
+  assert.equal(decision.modelRevisionAfter, r1,
+    "accepted decision must identify the reloaded source revision");
+  assert.match(decision.derivedWorldSha256, /^sha256:[0-9a-f]{64}$/,
+    "accepted decision must retain a derived World digest");
   assert.deepEqual(changed(beforeFiles, files(workspace)), [
     "applications/order-entry/application.tei", "semantic/sales/validation.tei"
   ]);
@@ -234,7 +241,10 @@ async function main() {
       candidateFingerprint: preview.candidateFingerprint,
       reviewFingerprint: review.reviewFingerprint,
       reviewCandidateFingerprint: review.candidateFingerprint,
+      decisionCandidateFingerprint: decision.candidateFingerprint,
       decisionReviewFingerprint: decision.reviewBinding?.fingerprint,
+      decisionModelRevisionAfter: decision.modelRevisionAfter,
+      decisionDerivedWorldSHA256: decision.derivedWorldSha256,
       decision: "automated-scratch-test-only", humanApproval: false,
       expiresWithScratchWorkspace: true
     },
