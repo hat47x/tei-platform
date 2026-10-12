@@ -138,6 +138,17 @@ class WorkflowContract(unittest.TestCase):
         (self.checkout / 'out.tmp').write_text('temporary\n')
         self.check(self.pre, False)
 
+    def test_assume_unchanged_flag_rejected(self):
+        # git status can remain empty even if this index flag hides changes.
+        git(self.checkout, 'update-index', '--assume-unchanged', 'fixture.txt')
+        self.check(self.pre, False)
+        self.check(self.post, False)
+
+    def test_skip_worktree_flag_rejected(self):
+        git(self.checkout, 'update-index', '--skip-worktree', 'fixture.txt')
+        self.check(self.pre, False)
+        self.check(self.post, False)
+
     def test_main_advance_rejected(self):
         git(self.sender, 'switch', '-q', 'main')
         self.commit_and_push(self.sender, 'refs/heads/main')
@@ -164,6 +175,7 @@ class StaticWorkflowContract(unittest.TestCase):
         self.assertIn('permissions:\n  contents: read', text)
         self.assertIn('persist-credentials: false', text)
         self.assertIn('fetch-depth: 0', text)
+        self.assertEqual(2, text.count('git ls-files -v'))
         self.assertIn('if: always()', text)
         self.assertLess(text.index('bash tools/repository-health-check.sh'),
                         text.index('if: always()'))
