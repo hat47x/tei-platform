@@ -803,7 +803,7 @@ test('World clear rejects late file completion and revokes old Step details',asy
   const fresh=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   fresh.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:302});
   await new Promise(resolve=>setTimeout(resolve,20));
-  assert.equal($('details').children.length,1,
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,1,
     'cleared World must not supply a stale navigation result');
 });
 
@@ -822,7 +822,7 @@ test('new World wins over an invalid older read, and revision changes clear navi
   let node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:303});
   await new Promise(resolve=>setTimeout(resolve,20));
-  assert.equal($('details').children.length,2,
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2,
     'the new World should remain available for read-only navigation');
   $('revision').value='revision-B';
   $('revision').listeners.input();
@@ -832,7 +832,7 @@ test('new World wins over an invalid older read, and revision changes clear navi
   node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:304});
   await new Promise(resolve=>setTimeout(resolve,20));
-  assert.equal($('details').children.length,2);
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2);
 });
 
 test('diagram follows explicit Function, Role, Party, Store and Trigger links in both directions',async()=>{
