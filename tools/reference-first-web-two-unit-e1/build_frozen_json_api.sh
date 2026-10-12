@@ -36,9 +36,22 @@ export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0
 go run ./tools/reference-first-web-frozen-world-generate \
   -workspace reference/workspace -application order_entry \
   -baseline-id "$2" -baseline-revision "$3" \
-  -target-revision "$source_sha" > "$scratch/derived/api/frozen-world.json"
+  -target-revision "$source_sha" \
+  -lineage-out "$scratch/generated-world-observation.json" \
+  > "$scratch/derived/api/frozen-world.json"
 digest="$(sha256sum "$scratch/derived/api/frozen-world.json" | cut -d' ' -f1)"
 test "${#digest}" -eq 64
+
+# Reuse Shared Acceptance's read-only Decision Index for its original
+# Source Index revision and content-addressed record validation. No new
+# Acceptance path, Authority or Artifact Lock is constructed here.
+go run ./tools/reference-shared-acceptance decisions \
+  -workspace reference/workspace > "$scratch/existing-decision-index.json"
+python3 tools/reference-first-web-two-unit-e1/observe_frozen_source_lineage.py \
+  --frozen-world "$scratch/derived/api/frozen-world.json" \
+  --generator-observation "$scratch/generated-world-observation.json" \
+  --decision-index "$scratch/existing-decision-index.json" \
+  --out "$scratch/derived/source-lineage.json"
 
 # The tagged runtime must not import Workspace or its TEI syntax parser,
 # including through indirect imports. Missing closure evidence fails the build.
@@ -71,7 +84,15 @@ baseline_api = pathlib.Path(sys.argv[4]).read_bytes()
 world = (root / "api/frozen-world.json").read_bytes()
 if hashlib.sha256(world).hexdigest() != sys.argv[3]:
     raise SystemExit("frozen World changed after build")
+lineage = json.loads((root / "source-lineage.json").read_text("utf-8"))
+if lineage["frozenWorldSHA256"] != sys.argv[3]:
+    raise SystemExit("frozen World lineage mismatch")
 m.update({
+    "sourceModelRevision": lineage["sourceModelRevision"],
+    "sourceWorldDerivedSHA256": lineage["derivedWorldSHA256"],
+    "currentAcceptedDecisionMatched": lineage["currentAcceptedDecisionMatched"],
+    "sourceAcceptanceAuthorityVerified": False,
+    "buildArtifactLockVerified": False,
     "apiBuildTags": ["tei_order_only", "tei_api_only", "tei_frozen_world"],
     "apiWorldMode": "digest-bound-frozen-world",
     "frozenWorldBytes": len(world),
