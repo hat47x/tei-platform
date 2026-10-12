@@ -11,7 +11,7 @@ import (
 
 func TestGoAndTEIPackageBuildersAgreeOnExternalRequirements(t *testing.T) {
 	type testCase struct {
-		name string
+		name   string
 		change func(*plugin.Definition)
 		reject string
 	}
@@ -46,7 +46,7 @@ func TestGoAndTEIPackageBuildersAgreeOnExternalRequirements(t *testing.T) {
 			plan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(definition)
 			goOutput, goErr := plugin.MaterializePluginPackage(definition, plan)
 			got, teiErr := transform.Evaluate(source, map[string]transform.Value{
-				"buildPlan": valueFromGoJSON(t, plan),
+				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
 			})
 			if tc.reject != "" {
