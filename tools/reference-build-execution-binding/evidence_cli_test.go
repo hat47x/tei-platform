@@ -92,4 +92,12 @@ func TestReferenceEvidenceCommandEmitsDeterministicJSON(t *testing.T) {
 	if !foundLimit {
 		t.Fatal("CLI Evidence omitted the boundary against treating external seed provenance as authority")
 	}
+	if len(actual.BuildGraph.Edges) != 1 ||
+		actual.BuildGraph.Edges[0].FromNode != "stage1" ||
+		actual.BuildGraph.Edges[0].ToNode != "stage2" ||
+		actual.BuildGraph.Edges[0].OutputRole != "builder-artifact" ||
+		normalizeDigest(actual.BuildGraph.Seeds[0].ArtifactDigest) !=
+			normalizeDigest(actual.BootstrapStage1Plan.Builder.ArtifactDigest) {
+		t.Fatal("CLI Evidence lost the exact external seed and stage1-to-stage2 builder artifact binding")
+	}
 }
