@@ -221,8 +221,10 @@ func TestSourceSizePreflightBoundsUnnormalizedLiteralBytes(t *testing.T) {
 	t.Run("cumulative literal bytes", func(t *testing.T) {
 		source := TransformSourceRealizerV1()
 		spaces := strings.Repeat(" ", MaxSerializedSourceBytes/2)
+		actual := Expr{Op: OpInput, Name: "transformSource"}
 		source.Program.Output = Expr{
-			Op: OpAssertEnum,
+			Op:     OpAssertEnum,
+			Actual: &actual,
 			Allowed: []json.RawMessage{
 				json.RawMessage("1" + spaces),
 				json.RawMessage("2" + spaces),
