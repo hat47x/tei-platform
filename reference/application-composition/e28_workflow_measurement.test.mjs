@@ -34,7 +34,8 @@ test('E28 live E1/E27 checkout reports observations, not fabricated work hours o
 
 test('E28 synthetic submitted workflow counts events and distinct changed files only as unverified',async()=>{
   const audit=await observeE27(root);
-  const source={path:'reference/ui-customization/web-react/project-extension.mjs',
+  const source={repository:'hat47x/tei-platform',
+    path:'reference/ui-customization/web-react/project-extension.mjs',
     beforeBlob:shaA,afterBlob:shaB};
   const events=[
     step('decision1','human-decision'),
@@ -62,9 +63,12 @@ test('E28 synthetic submitted workflow counts events and distinct changed files 
 test('E28 absent evidence or falsified source revision cannot become a qualified work step',async()=>{
   const audit=await observeE27(root);
   for (const event of [
-    step('bad1','changed-source',{path:'../secret',beforeBlob:shaA,afterBlob:shaB}),
-    step('bad2','changed-source',{path:'a/b',beforeBlob:shaA,afterBlob:shaA}),
-    step('bad3','changed-source',{path:'a/b',beforeBlob:'invalid',afterBlob:shaB}),
+    step('bad1','changed-source',{repository:'hat47x/tei-platform',
+      path:'../secret',beforeBlob:shaA,afterBlob:shaB}),
+    step('bad2','changed-source',{repository:'hat47x/tei-platform',
+      path:'a/b',beforeBlob:shaA,afterBlob:shaA}),
+    step('bad3','changed-source',{repository:'hat47x/tei-platform',
+      path:'a/b',beforeBlob:'invalid',afterBlob:shaB}),
     step('bad4','ai-question',{evidenceRef:'http://example.com/'}),
     step('bad5','validation-run',{outcome:'passed',path:'a/b'}),
     step('bad6','validation-run',{outcome:'approved'}),
@@ -147,4 +151,41 @@ test('E29 partial submissions cannot produce a reported productivity delta even 
     'reported-only-not-verified');
   assert.equal(completeExisting.verifiedCounts,null);
   assert.equal(completeProfile.verifiedCounts,null);
+});
+
+test('E30 same relative path in TEI and SUI is two files, not one',async()=>{
+  const audit=await observeE27(root);
+  const samePath='reference/application-composition/README.md';
+  const edit={path:samePath,beforeBlob:shaA,afterBlob:shaB};
+  const events=[
+    step('tei-edit','changed-source',{...edit,repository:'hat47x/tei-platform'}),
+    step('sui-edit','changed-source',{...edit,repository:'hat47x/sui-sensemaking'}),
+    step('tei-second-edit','changed-source',{...edit,repository:'hat47x/tei-platform',
+      beforeBlob:shaB,afterBlob:shaA}),
+  ];
+  const measured=assessE28(audit,submission(events,{complete:true}));
+  assert.equal(measured.submittedCounts.changedFiles,2);
+  assert.equal(measured.verifiedCounts,null);
+  assert.equal(measured.compatibilityVerified,false);
+  assert.equal(measured.runtimeAuthorityVerified,false);
+});
+
+test('E30 changed-source must name an unambiguous allowed repository',async()=>{
+  const audit=await observeE27(root);
+  const edit={path:'reference/README.md',beforeBlob:shaA,afterBlob:shaB};
+  for(const bad of [
+    {...edit},
+    {...edit,repository:''},
+    {...edit,repository:'hat47x/unknown'},
+    {...edit,repository:'../hat47x/tei-platform'},
+    {...edit,repository:'hat47x/tei-platform/extra'},
+    {...edit,repository:'hat47x\\\\tei-platform'},
+  ]) {
+    assert.throws(()=>assessE28(audit,submission([
+      step('invalid-repository','changed-source',bad),
+    ])),/invalid_source_edit/);
+  }
+  assert.throws(()=>assessE28(audit,submission([
+    step('invalid-non-edit','ai-question',{repository:'hat47x/tei-platform'}),
+  ])),/unexpected_source_edit/);
 });
