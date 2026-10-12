@@ -52,7 +52,7 @@ func TestSelectedCompositionRunsCanonicalProtectedOrderAction(t *testing.T) {
 		t.Fatal(err)
 	}
 	config.SelectedAction = &selectedSessionActionConfig{
-		Coordinator: coordinator,
+		Coordinator:     coordinator,
 		ContractVersion: contract.Version,
 		ProviderDigests: map[string]string{"order-command-v1": digest},
 	}
