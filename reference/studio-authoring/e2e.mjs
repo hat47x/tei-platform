@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { candidateFromEdit, projectWorld } from "./bridge.mjs";
+import { candidateFromEdit, projectWorld, navigateReferenceBusinessStep } from "./bridge.mjs";
 
 if (process.env.TEI_STUDIO_E2E !== "1") {
   process.stderr.write("Set TEI_STUDIO_E2E=1 to run scratch-only Source Acceptance tests.\n");
@@ -250,6 +250,70 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   };
 }
 
+// A fourth view is connected using the real #1125 Go producer; it remains a
+// reference-only Business fixture, not a fourth Accepted Canonical source.
+function testReferenceBusinessNavigation() {
+  const workspace = newWorkspace("business-navigation");
+  const before = managedDigests(workspace);
+  const r0 = revision(workspace);
+  const w = world(workspace);
+  const dfd = JSON.parse(command("go", [
+    "run", "./tools/reference-business-dfd", "-format", "json",
+    "-workspace", workspace
+  ]).stdout);
+  checked(dfd.schemaVersion === "business-dfd-projection-v0" &&
+    dfd.authority === "derived-read-only" &&
+    dfd.canonicalProcedureUsed === false,
+    "business: producer is explicitly noncanonical");
+  const focus = "validation:sales.order_line.quantity_positive";
+  const projected = projectWorld(w, r0, focus,
+    { businessDFD: dfd, sourceIndex: sourceIndex(workspace) });
+  checked(projected.modelRevision === r0 && projected.authority === "derived-readonly",
+    "business: four lenses are one read-only World snapshot");
+  checked(projected.views.table.value?.validations.some(v => v.subject === focus),
+    "business: table retains exact Validation ID");
+  checked(projected.views.er.edges.some(e => e.id === "sales.order.lines"),
+    "business: ER retains exact Relation ID");
+  checked(projected.views.function.items.some(p =>
+    p.relation?.id === "sales.order.lines"),
+    "business: Function retains the same Relation ID");
+  const linked = projected.views.business.items.find(s => s.stepID === "BP-05");
+  checked(!!linked && linked.explicitMeaning.some(v => v.subject === focus &&
+    v.status === "exact-id-matches-current-world"),
+    "business: Go-produced Step has an explicit Validation link");
+  checked(projected.views.business.authority === "noncanonical-reference" &&
+    projected.views.business.freshness === "unverified-no-model-revision-binding",
+    "business: no Accepted Business or same-revision claim");
+  const reverse = navigateReferenceBusinessStep(w, r0, dfd, "BP-05");
+  checked(reverse.candidates.some(c =>
+    c.focus === focus && c.status === "identity-match-only"),
+    "business: reverse Step navigation retains exact Validation ID");
+  checked(reverse.editable === false &&
+    reverse.acceptanceTargetStatus === "unresolved-use-shared-acceptance",
+    "business: reverse navigation cannot grant Source edit authority");
+  const dfdPath = input("business-navigation", ".dfd.json", dfd);
+  const cliNav = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", "step:BP-05",
+    "-business-dfd", dfdPath
+  ]).stdout);
+  checked(cliNav.schema === reverse.schema &&
+    cliNav.modelRevision === r0 &&
+    cliNav.candidates.some(c => c.focus === focus),
+    "business: CLI reproduces the same read-only reverse navigation");
+  checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
+    "business: DFD production and both navigation directions leave Source unchanged");
+  checked(revision(workspace) === r0,
+    "business: no revision changed during four-lens reference navigation");
+  return {
+    status: "PASS", authority: "noncanonical-reference",
+    provenance: "Go-produced reference-business-dfd",
+    modelRevision: r0, focus, stepID: "BP-05",
+    humanAcceptance: "not-observed",
+    actualProviderResult: "not-observed"
+  };
+}
+
 try {
   const er = testLoop("er", {
     schema: "tei.reference.studio-edit/v0", id: "e2e-relation",
@@ -268,10 +332,11 @@ try {
       placement: "applications/order-entry/application.tei" }
   }, "validation", "sales.order_line.unit_price_positive",
     ["applications/order-entry/application.tei", "semantic/sales/validation.tei"]);
+  const businessReference = testReferenceBusinessNavigation();
   const checkedHead = command("git", ["rev-parse", "HEAD"]).stdout.trim();
   process.stdout.write(JSON.stringify({
     status: "PASS", scope: "temporary scratch only; no human acceptance",
-    head: checkedHead, checks, cases: [er, table],
+    head: checkedHead, checks, cases: [er, table], businessReference,
     claimLimits: [
       "not-human-approved", "not-actual-db-provider",
       "not-web-target-execution", "not-full-repository-qualification"
