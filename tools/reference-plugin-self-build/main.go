@@ -107,34 +107,11 @@ type evidence struct {
 	Stage2RuntimePolicyFingerprint    string `json:"stage2RuntimePolicyFingerprint,omitempty"`
 }
 
-type goSourceMember struct {
-	Path   string `json:"path"`
-	Digest string `json:"digest"`
-}
+type goSourceMember = gobuilder.SourceMember
 
-type goListModule struct {
-	Path string
-	Dir  string
-}
+type goListModule = gobuilder.GoListModule
 
-type goListPackage struct {
-	Dir          string
-	ImportPath   string
-	Standard     bool
-	Module       *goListModule
-	GoFiles      []string
-	CgoFiles     []string
-	CFiles       []string
-	CXXFiles     []string
-	MFiles       []string
-	HFiles       []string
-	FFiles       []string
-	SFiles       []string
-	SwigFiles    []string
-	SwigCXXFiles []string
-	SysoFiles    []string
-	EmbedFiles   []string
-}
+type goListPackage = gobuilder.GoListPackage
 
 func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
@@ -1048,159 +1025,16 @@ func processPlanSources(
 	}
 }
 
-func resolveGoPackageSourceClosure(
-	repo, goPath, packagePath, stateDir string,
-) ([]goSourceMember, string, error) {
-	cmd := exec.Command(
-		goPath,
-		"list",
-		"-deps",
-		"-json",
-		"-mod=readonly",
-		packagePath,
-	)
-	cmd.Dir = repo
-	env, err := buildEnvironment(os.Environ(), stateDir)
-	if err != nil {
-		return nil, "", fmt.Errorf("prepare Go source closure environment: %w", err)
-	}
-	cmd.Env = env
-	raw, err := cmd.Output()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			return nil, "", fmt.Errorf(
-				"resolve Go package source closure: %w: %s",
-				err,
-				strings.TrimSpace(string(exitErr.Stderr)),
-			)
-		}
-		return nil, "", fmt.Errorf("resolve Go package source closure: %w", err)
-	}
-
-	root, err := filepath.EvalSymlinks(repo)
-	if err != nil {
-		root = filepath.Clean(repo)
-	}
-	tracked, err := trackedSourcePaths(repo)
-	if err != nil {
-		return nil, "", err
-	}
-	paths := map[string]struct{}{"go.mod": {}}
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	for {
-		var pkg goListPackage
-		if err := decoder.Decode(&pkg); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, "", fmt.Errorf("decode Go package source closure: %w", err)
-		}
-		if pkg.Standard {
-			continue
-		}
-		if pkg.Module == nil {
-			return nil, "", fmt.Errorf("Go dependency %s has no module identity", pkg.ImportPath)
-		}
-		moduleDir, err := filepath.EvalSymlinks(pkg.Module.Dir)
-		if err != nil {
-			moduleDir = filepath.Clean(pkg.Module.Dir)
-		}
-		if moduleDir != root {
-			return nil, "", fmt.Errorf(
-				"Go package source closure contains external module %s from %s",
-				pkg.Module.Path,
-				pkg.Module.Dir,
-			)
-		}
-		for _, name := range goPackageBuildFiles(pkg) {
-			full := filepath.Join(pkg.Dir, name)
-			rel, err := filepath.Rel(repo, full)
-			if err != nil {
-				return nil, "", err
-			}
-			rel = filepath.ToSlash(rel)
-			if rel == ".." || strings.HasPrefix(rel, "../") {
-				return nil, "", fmt.Errorf("Go package source escapes repository: %s", full)
-			}
-			paths[rel] = struct{}{}
-		}
-	}
-
-	ordered := make([]string, 0, len(paths))
-	for path := range paths {
-		ordered = append(ordered, path)
-	}
-	sort.Strings(ordered)
-	members := make([]goSourceMember, 0, len(ordered))
-	for _, rel := range ordered {
-		if _, ok := tracked[rel]; !ok {
-			return nil, "", fmt.Errorf("Go package source closure member is not Git-tracked: %s", rel)
-		}
-		path := filepath.Join(repo, filepath.FromSlash(rel))
-		info, err := os.Lstat(path)
-		if err != nil {
-			return nil, "", err
-		}
-		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-			return nil, "", fmt.Errorf("Go package source closure member is not a regular file: %s", rel)
-		}
-		digest, err := hashFile(path)
-		if err != nil {
-			return nil, "", err
-		}
-		members = append(members, goSourceMember{Path: rel, Digest: digest})
-	}
-	return members, goSourceClosureDigest(members), nil
+func resolveGoPackageSourceClosure(repo, goPath, packagePath, stateDir string) ([]goSourceMember, string, error) {
+	return gobuilder.ResolveSourceClosure(repo, goPath, packagePath, stateDir)
 }
 
 func goPackageBuildFiles(pkg goListPackage) []string {
-	var out []string
-	for _, files := range [][]string{
-		pkg.GoFiles,
-		pkg.CgoFiles,
-		pkg.CFiles,
-		pkg.CXXFiles,
-		pkg.MFiles,
-		pkg.HFiles,
-		pkg.FFiles,
-		pkg.SFiles,
-		pkg.SwigFiles,
-		pkg.SwigCXXFiles,
-		pkg.SysoFiles,
-		pkg.EmbedFiles,
-	} {
-		out = append(out, files...)
-	}
-	sort.Strings(out)
-	return out
+	return gobuilder.PackageBuildFiles(pkg)
 }
 
 func goSourceClosureDigest(members []goSourceMember) string {
-	ordered := append([]goSourceMember(nil), members...)
-	sort.Slice(ordered, func(i, j int) bool {
-		return ordered[i].Path < ordered[j].Path
-	})
-	sum := sha256.New()
-	for _, member := range ordered {
-		fmt.Fprintf(sum, "%s\x00%s\n", member.Path, member.Digest)
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil))
-}
-
-func trackedSourcePaths(repo string) (map[string]struct{}, error) {
-	raw, err := gitOutputBytes(repo, "ls-files", "-z")
-	if err != nil {
-		return nil, err
-	}
-	out := map[string]struct{}{}
-	for _, path := range strings.Split(string(raw), "\x00") {
-		if path == "" {
-			continue
-		}
-		out[filepath.ToSlash(path)] = struct{}{}
-	}
-	return out, nil
+	return gobuilder.SourceClosureDigest(members)
 }
 
 func requireNoExternalModules(repo, goPath string, packages ...string) error {
