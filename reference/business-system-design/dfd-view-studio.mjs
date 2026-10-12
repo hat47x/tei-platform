@@ -12,6 +12,8 @@ const digest = async bytes => 'sha256:' + [...new Uint8Array(await crypto.subtle
 const jsonFile = async file => JSON.parse(await file.text());
 const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null, pending:null, selected:null};
 let selectionGeneration=0;
+let dfdLoadGeneration=0;
+let layoutLoadGeneration=0;
 function clearSelection(){
   selectionGeneration++;
   state.selected=null;
@@ -42,10 +44,13 @@ function render() {
     assigned.get(key(node.kind,node.id))||{x:40+(i%4)*260,y:50+Math.floor(i/4)*115});
   // Preserve readable node size for large Procedures and for nodes moved
   // beyond the initial board. Coordinates are view-only, not canonical.
-  const minX=Math.min(0,...positions.map(p=>p.x-24));
-  const minY=Math.min(0,...positions.map(p=>p.y-24));
-  const maxX=Math.max(1100,...positions.map(p=>p.x+230));
-  const maxY=Math.max(600,...positions.map(p=>p.y+100));
+  let minX=0,minY=0,maxX=1100,maxY=600;
+  // A Procedure can have many Steps. Avoid argument-list overflow from
+  // Math.min(...positions) and keep the diagram scrollable.
+  for(const p of positions){
+    minX=Math.min(minX,p.x-24);minY=Math.min(minY,p.y-24);
+    maxX=Math.max(maxX,p.x+230);maxY=Math.max(maxY,p.y+100);
+  }
   const width=maxX-minX,height=maxY-minY;
   diagram.setAttribute('viewBox',`${minX} ${minY} ${width} ${height}`);
   diagram.style.width=width+'px';
@@ -181,6 +186,8 @@ $('export').addEventListener('click',()=>{
 });
 $('dfd-file').addEventListener('change',async ev=>{
   const file=ev.target.files[0];if(!file)return;
+  const generation=++dfdLoadGeneration;
+  ++layoutLoadGeneration; // Older layout reads belong to a different DFD.
   try{
     const bytes=await file.arrayBuffer();const d=JSON.parse(new TextDecoder().decode(bytes));
     if(d.schemaVersion!=='business-dfd-projection-v0'||d.authority!=='derived-read-only'||d.canonicalProcedureUsed!==false||
@@ -191,24 +198,30 @@ $('dfd-file').addEventListener('change',async ev=>{
     const initialHash=await digest(new TextEncoder().encode(JSON.stringify(initialLayout)));
     // Do not display a malformed or ambiguous DFD as an editable view.
     inspectViewLayout(d,hash,initialLayout,initialHash);
+    if(generation!==dfdLoadGeneration)return;
     state.dfd=d;state.dfdHash=hash;state.layout=initialLayout;state.layoutHash=initialHash;
     state.pending=null;dragging=null;clearSelection();
     $('preview').hidden=true;$('apply').disabled=true;
     render();status('投影を読み込みました。選択と移動は参照・表示用です。');
-  }catch(e){state.dfd=null;state.layout=null;state.pending=null;dragging=null;clearSelection();
+  }catch(e){if(generation!==dfdLoadGeneration)return;
+    state.dfd=null;state.layout=null;state.pending=null;dragging=null;clearSelection();
     $('apply').disabled=true;$('preview').hidden=true;render();status('DFD投影を読み込めません: '+e.message,true)}
 });
 $('layout-file').addEventListener('change',async ev=>{
   if(!state.dfd)return status('先にDFD投影を選択してください。',true);
   const file=ev.target.files[0];if(!file)return;
+  const generation=++layoutLoadGeneration;
+  const dfdGeneration=dfdLoadGeneration;
   try{
     const bytes=await file.arrayBuffer();const layout=JSON.parse(new TextDecoder().decode(bytes));
     const hash=await digest(bytes);
     // Inspect without synthesizing any edit or changing the layout.
+    if(generation!==layoutLoadGeneration||dfdGeneration!==dfdLoadGeneration)return;
     inspectViewLayout(state.dfd,state.dfdHash,layout,hash);
     state.layout=layout;state.layoutHash=hash;state.pending=null;dragging=null;
     $('apply').disabled=true;$('preview').hidden=true;render();status('配置ファイルを照合して読み込みました。');
-  }catch(e){status('配置ファイルを拒否しました: '+e.message,true)}
+  }catch(e){if(generation!==layoutLoadGeneration||dfdGeneration!==dfdLoadGeneration)return;
+    status('配置ファイルを拒否しました: '+e.message,true)}
 });
 $('world-file').addEventListener('change',async ev=>{
   try{state.world=await jsonFile(ev.target.files[0]);status('Worldを読み込みました。版情報の真正性は未確認です。');}
