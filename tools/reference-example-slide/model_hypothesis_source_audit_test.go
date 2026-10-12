@@ -67,8 +67,9 @@ func TestModelHypothesisSourceAuditChecksExactDataAndAttributeAnchors(t *testing
 
 func TestModelHypothesisSourceAuditNeverCertifiesBusinessHypothesis(t *testing.T) {
 	root, input, proposals := modelHypothesisAuditFixture(t)
-	// A contradiction to the proposed business key can coexist with
-	// perfectly checked source locations. Neither makes the key accepted.
+	// The semantic identifier is deliberately opaque. Even if two JSON
+	// strings look identical, no key collision is established without
+	// comparable domain semantics. Source anchors can still be exact.
 	record := input.Example.Base[0]
 	record.ID = "second-child"
 	input.Example.Base = append(input.Example.Base, record)
@@ -76,8 +77,9 @@ func TestModelHypothesisSourceAuditNeverCertifiesBusinessHypothesis(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if review.Issues[0].Result != "contradiction" {
-		t.Fatalf("fixture did not contradict the proposed business key: %+v", review.Issues)
+	if review.Issues[0].Result != "unresolved" || review.Issues[0].IndeterminatePairs != 1 ||
+		len(review.Issues[0].RecordPairs) != 0 {
+		t.Fatalf("opaque business identifiers were compared as raw strings: %+v", review.Issues)
 	}
 	audit, err := AuditLoadedWorkspaceModelHypothesisSourceEvidence(root, input, proposals)
 	if err != nil {
