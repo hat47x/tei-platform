@@ -7,6 +7,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/ir"
+	"tei/internal/validation"
 )
 
 const explicitContractSchema = "tei.explicit-pattern-contracts/v0"
@@ -25,6 +26,7 @@ type ExplicitContractReport struct {
 	TargetDatabase  core.CanonicalID        `json:"targetDatabase,omitempty"`
 	Capability      core.CanonicalID        `json:"capability,omitempty"`
 	BindingIdentity string                  `json:"bindingIdentity,omitempty"`
+	DataOperation   string                  `json:"dataOperation,omitempty"`
 	Resolved        []string                `json:"resolved"`
 	Unverified      []string                `json:"unverified"`
 	Executable      bool                    `json:"executable"`
@@ -85,6 +87,17 @@ func InspectExplicitPattern(w ir.World, applicationID, patternID core.CanonicalI
 		report.BindingIdentity = command.Binding.Binding.Identity()
 		report.Resolved = []string{"capability", "application-scoped-binding"}
 		report.Unverified = []string{"data-operation-link", "persistence", "provider-session", "current-authority", "target-command", "independent-database-read"}
+		if effect := command.Binding.Capability.Effect; effect != nil {
+			// Canonical effect declarations are validated with the existing
+			// World validator; neither names nor output type establish effects.
+			if diagnostics := validation.Validate(w); validation.HasErrors(diagnostics) {
+				return ExplicitContractReport{}, fmt.Errorf("invalid Capability data effect in Canonical World: %v", diagnostics)
+			}
+			report.DeclaredData = effect.Data
+			report.DataOperation = string(effect.Kind)
+			report.Resolved = append(report.Resolved, "data-operation-link")
+			report.Unverified = report.Unverified[1:]
+		}
 
 	default:
 		return ExplicitContractReport{}, fmt.Errorf("Pattern %s kind %s is outside standard browse/record/command contract inspection", patternID, pattern.Pattern.Kind)
