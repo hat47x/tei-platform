@@ -1,6 +1,7 @@
 package handoff
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -163,5 +164,110 @@ func TestHandoffIncompleteArtifactDigestAndFingerprint(t *testing.T) {
 				t.Fatalf("incomplete provenance accepted: %+v", got)
 			}
 		})
+	}
+}
+
+func TestHandoffManyDependenciesAndUnrelatedReferences(t *testing.T) {
+	const count = 64
+	registry := composition.NewRegistry()
+	providers := make([]composition.Provider, 0, count)
+	for i := 0; i < count; i++ {
+		contract := composition.Contract{
+			ID: fmt.Sprintf("scale.contract.%03d", i), Version: "1", Shape: "v1",
+		}
+		provider := composition.Provider{
+			ID: fmt.Sprintf("component-%03d", i), Scope: "tenant-a", Offers: contract,
+		}
+		if i > 0 {
+			provider.Requires = []composition.Dependency{{Contract: providers[i-1].Offers}}
+		}
+		providers = append(providers, provider)
+	}
+	if _, err := registry.Apply(0, providers, nil); err != nil {
+		t.Fatal(err)
+	}
+	set := registry.InspectWiringSet([]composition.WiringRequirement{{
+		Contract: providers[count-1].Offers, Scope: "tenant-a",
+	}})
+	if !registry.ProposalCurrent(set) {
+		t.Fatalf("unexpected stale dependency closure: %+v", set)
+	}
+	start := ReconcileCurrent(registry, set, nil)
+	if start.Blocked || len(start.Subjects) != count {
+		t.Fatalf("incomplete transitive verification targets: %+v", start)
+	}
+	refs := make([]EvidenceReference, 0, count*4)
+	for _, target := range start.Subjects {
+		refs = append(refs, ref(target.Target))
+		// Unrelated scope must never influence a matched subject.
+		otherTenant := ref(target.Target)
+		otherTenant.Subject.Scope = "tenant-b"
+		refs = append(refs, otherTenant)
+		// Wrong contract and obsolete epoch may exist alongside the exact
+		// reference, but cannot supersede it or make it ambiguous.
+		wrongContract := ref(target.Target)
+		wrongContract.Subject.Contract.Shape = "wrong"
+		refs = append(refs, wrongContract)
+		oldEpoch := ref(target.Target)
+		oldEpoch.Subject.Epoch++
+		refs = append(refs, oldEpoch)
+	}
+	report := ReconcileCurrent(registry, set, refs)
+	if report.Blocked || len(report.Subjects) != count {
+		t.Fatalf("unexpected blocked or incomplete report: %+v", report)
+	}
+	for i, item := range report.Subjects {
+		if item.State != ReferenceLinked || item.Reference == nil ||
+			item.Target.ProviderID != fmt.Sprintf("component-%03d", i) {
+			t.Fatalf("reference %d not exactly matched: %+v", i, item)
+		}
+	}
+	duplicate := ref(report.Subjects[count/2].Target)
+	refs = append(refs, duplicate)
+	ambiguous := ReconcileCurrent(registry, set, refs)
+	for i, item := range ambiguous.Subjects {
+		want := ReferenceLinked
+		if i == count/2 {
+			want = ReferenceAmbiguous
+		}
+		if item.State != want {
+			t.Fatalf("reference %d got %s, want %s", i, item.State, want)
+		}
+	}
+}
+
+func BenchmarkHandoffManyDependencies(b *testing.B) {
+	const count = 96
+	registry := composition.NewRegistry()
+	providers := make([]composition.Provider, 0, count)
+	for i := 0; i < count; i++ {
+		p := composition.Provider{
+			ID: fmt.Sprintf("p%03d", i), Scope: "tenant-a",
+			Offers: composition.Contract{ID: fmt.Sprintf("c%03d", i), Version: "1", Shape: "shape"},
+		}
+		if i > 0 {
+			p.Requires = []composition.Dependency{{Contract: providers[i-1].Offers}}
+		}
+		providers = append(providers, p)
+	}
+	if _, err := registry.Apply(0, providers, nil); err != nil {
+		b.Fatal(err)
+	}
+	set := registry.InspectWiringSet([]composition.WiringRequirement{{Contract: providers[count-1].Offers, Scope: "tenant-a"}})
+	first := Reconcile(set, nil)
+	refs := make([]EvidenceReference, 0, count*6)
+	for _, subject := range first.Subjects {
+		refs = append(refs, ref(subject.Target))
+		for i := 0; i < 5; i++ {
+			unrelated := ref(subject.Target)
+			unrelated.Subject.Scope = fmt.Sprintf("other-%d", i)
+			refs = append(refs, unrelated)
+		}
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if got := Reconcile(set, refs); got.Blocked || len(got.Subjects) != count {
+			b.Fatal("unexpected reconciliation result")
+		}
 	}
 }
