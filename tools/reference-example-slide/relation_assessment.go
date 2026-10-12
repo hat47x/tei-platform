@@ -19,6 +19,9 @@ type RelationFinding struct {
 	Result           string   `json:"result"`
 	Reason           string   `json:"reason"`
 	MatchedTargetIDs []string `json:"matchedTargetIds,omitempty"`
+	// PossibleTargetIDs records visible candidates whose keys may match,
+	// but cannot be compared completely. These are NOT confirmed matches.
+	PossibleTargetIDs []string `json:"possibleTargetIds,omitempty"`
 }
 
 // assessRelations checks authored RelationKey tuples, not record IDs.
@@ -95,6 +98,7 @@ func assessRelations(catalog Catalog, state map[string]Record, completeTables ma
 					// Known mismatch wins over missing components.
 				case unknown:
 					possibleUnknown = true
+					finding.PossibleTargetIDs = append(finding.PossibleTargetIDs, targetID)
 				default:
 					finding.MatchedTargetIDs = append(finding.MatchedTargetIDs, targetID)
 				}
