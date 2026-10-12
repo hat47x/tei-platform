@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"sort"
 
 	"tei/internal/core"
 )
@@ -26,6 +27,33 @@ func ValidateRequirements(requires []Requirement) error {
 	}
 	if hasDuplicate {
 		return fmt.Errorf("plugin requirement %s appears more than once", firstDuplicate)
+	}
+	return nil
+}
+
+// ValidateRequirementEntries checks the local shape of every dependency.
+// This is separate from duplicate-identity diagnostics: a malformed ID or
+// compatible major is not itself a duplicate declaration. Sorting a copy
+// makes the first reported invalid dependency independent of source order.
+func ValidateRequirementEntries(requires []Requirement) error {
+	ordered := append([]Requirement(nil), requires...)
+	sort.Slice(ordered, func(i, j int) bool {
+		if ordered[i].Plugin != ordered[j].Plugin {
+			return ordered[i].Plugin < ordered[j].Plugin
+		}
+		return ordered[i].CompatibleMajor < ordered[j].CompatibleMajor
+	})
+	for _, req := range ordered {
+		parsed, err := core.ParseCanonicalID(string(req.Plugin))
+		if err != nil {
+			return fmt.Errorf("plugin requirement %q: %w", req.Plugin, err)
+		}
+		if parsed != req.Plugin {
+			return fmt.Errorf("plugin requirement %q must be a canonical id without surrounding whitespace", req.Plugin)
+		}
+		if req.CompatibleMajor < 1 {
+			return fmt.Errorf("plugin requirement %s compatible major must be >= 1, got %d", req.Plugin, req.CompatibleMajor)
+		}
 	}
 	return nil
 }
