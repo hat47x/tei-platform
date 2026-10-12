@@ -150,9 +150,9 @@ native source authoritative
   -> TEI source authoritative for scoped concern
 ```
 
-cutover後に旧native assetをcompatibility / export / generated artifactとして残す場合も、そのartifactを第二のauthoritative sourceへ戻しません。
+正本の切り替え後に従来方式の資産を互換性維持・出力・生成物として残す場合も、その資産を第二の正本には戻しません。
 
-現時点では`AuthorityMigration`等のproduction schemaやglobal cutover protocolをCoreへ固定しません。SUI Reference Adoption等の実Referenceで、scope・equivalence・rollback情報のどれがdurable contractとして必要かを確認します。
+現時点では`AuthorityMigration`などの本番用スキーマや、全体共通の正本切り替え手順を中核へ固定しません。SUIの参照事例採用などで、対象範囲・意味の同等性・差し戻しに関する情報のうち、永続的な契約に必要なものを確かめます。
 
 ## 編集候補の統合と受け入れの境界
 
@@ -187,13 +187,13 @@ authoritative source
 
 構造化された提案（Structured Proposal）は、意味の差分・根拠・事前確認の内容を機械可読な形で扱う場合に使う経路です。すべてのファイル編集やAIによる編集を、開始前に提案へ変換することは要求しません。
 
-どちらの経路でも、未統合の変更をCanonical Worldそのものとは扱いません。正式統合後の正本を共通の読み込み・検証機構で再読込し、変更の入口によって正本となる意味が変わらないことを要求します。
+どちらの経路でも、統合前の変更を意味の正本（Canonical World）とみなしません。正式に統合した正本を共通の読み込み・検証機構で読み直し、どの経路から変更しても正本の意味が変わらないことを要求します。
 
-Acceptance / Integration Boundaryでは、対象に応じてparse / decode、normalize、validate、architecture / policy check、semantic diff、impact analysis、Repository policy、reload / conformance等を決定論的に組み合わせます。すべてを一つの中央Service、固定process、専用APIへ押し込むことは要求しません。
+受入と統合の境界では、対象に応じて解析・復号、正規化、検証、構成・方針の検査、意味上の差分、影響分析、リポジトリ規約、再読み込み・準拠確認などを決定論的に組み合わせます。すべてを一つの中央サービス、固定されたプロセス、専用APIに集約することは要求しません。
 
 Gitで十分に表現できる変更には、TEI独自の変更セットを必須にしません。Git上の競合はGitで扱います。一方、Gitではマージ可能でも意味上は不正な変更を、TEIの検証・準拠確認で拒否できることを要求します。
 
-interactiveな変更候補では、Proposal作成時点の`baseModelRevision`等と現在revisionを比較できる余地を持たせます。staleな候補を黙って最新状態へ適用せず、reject、rebase、regenerate、manual conflict resolution等へ分岐します。
+対話的な変更候補では、提案作成時の`baseModelRevision`などと現在の版を比較できる余地を残します。古くなった候補をそのまま最新状態へ適用せず、拒否、リベース、再生成、手作業による競合解消などの経路に分けます。
 
 共通の受け入れ（Shared Acceptance）は**意味の変更を正本へ受理する境界**であり、その後の実行時の副作用を無条件に許可するものではありません。
 
@@ -202,13 +202,13 @@ Proposal accepted
   != current execution authority
 ```
 
-accepted meaningから後でCapability invocationやResource accessが発生する場合、effect直前のcurrent Authorization / Permission / Resource Lease / ownership / fencing等で実行可能性を再確認します。Proposal受理時点のapproval、planner-visible state、過去のpermission snapshotをRuntime authorityとして再利用しません。current authorityがmissing / stale / ambiguousなら、副作用前にfail closedし、必要ならunresolved / recovery /再認可へ送ります。
+受理済みの意味に従って後から能力を呼び出したり資源へアクセスしたりする場合も、副作用の直前に現在の認可・権限・資源の利用許可・所有権・世代による排他制御などを再確認します。提案を受理した時点の承認、計画時に見えていた状態、過去の権限情報を実行時の権限として再利用しません。現在の権限が存在しない、古い、または曖昧な場合は、副作用の前に安全側で拒否し、必要に応じて未解決事項の処理、復旧、再認可へ進めます。
 
 これはRQ-019で扱う既存のセキュリティ機構を、記述・提案の側から見た構成上の解釈です。外部研究だけを根拠に、新しい要求や権限のスキーマは追加しません。
 
-Authoring identityはfile pathそのものではなく、qualified logical key / Canonical identityを基準にします。file移動はlogical identityが同じならsemantic no-opになり得ますが、logical rename / Canonical identity変更は明示的なsemantic changeです。StudioやAIの都合だけで、user-authored Stable ID / UUIDを全資産へ必須化しません。
+編集時の識別には、ファイルパスそのものではなく、修飾付きの論理キーや正本上の識別子を使います。ファイルを移動しても論理上の識別子が同じなら、意味が変わらない場合があります。一方、論理名や正本上の識別子の変更は、明示的な意味変更です。StudioやAIの都合だけで、利用者が記述する安定IDやUUIDをすべての資産に要求しません。
 
-ここでいうCanonical identityを、Application recordの業務上の識別子やDatabaseのphysical primary keyへ流用することも前提にしません。
+ここでいう正本上の識別子を、アプリケーションの個々の記録を識別する業務上の値や、データベースの物理主キーに流用する前提にはしません。
 
 ```text
 Canonical subject identity
@@ -216,11 +216,11 @@ Canonical subject identity
   != physical primary key
 ```
 
-一つのrecordへUUIDやsurrogate keyを付けても、業務上の識別条件や関数従属性が消えるわけではありません。反対に、業務上の複合識別を、そのまま全Providerのphysical primary keyへ固定する必要もありません。TEIは意味上の識別と実装上のkeyを分けて追跡し、Mappingによって関係を明示します。
+一つの記録にUUIDや代理キーを付けても、業務上の識別条件や関数従属性はなくなりません。反対に、業務上の複合識別をすべての提供元の物理主キーに使う必要もありません。TEIは意味上の識別と実装上のキーを分けて追跡し、対応付けによって関係を明示します。
 
-AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等はderived knowledgeとして保持できますが、Canonical meaningの第二の正本にはしません。model名、prompt、tool trajectory、judge score等も、意味を定義しない限りEvidence側へ残します。
+AIが参照するスキル、探索規則、過去に成功した提案、作業の経過などは派生知識として保持できますが、意味の第二の正本にはしません。モデル名、指示文、道具の利用履歴、評価点なども、意味を定義しない限り検証根拠側へ残します。
 
-この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置きます。Gate C後の実証は、StudioのShared Acceptance loop、Human / AI共通のread-only探索、AI Proposal / Acceptanceという独立した対象に分けて進めます。各対象で実装・確認できた範囲は[現在の実装状況](status.md)と対応するReferenceで確認します。
+この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に記録します。判定段階C後の実証は、Studioでの共通受入の一連の操作、人とAIに共通する読み取り専用の探索、AIによる提案とその受入という独立した対象に分けて進めます。各対象の実装と確認の範囲は[現在の実装状況](status.md)と対応する参照事例で確かめます。
 
 ## 開発ツールと実行環境の境界
 
@@ -236,9 +236,9 @@ repository materialization
 + required language / build toolchain
 ```
 
-これはTEI Application RuntimeのCapability modelではなく、開発Hostの環境条件です。Hostが一部しか持たない場合でも、その環境で作った通常のGit差分やcommitを別の標準開発環境へ渡して継続できます。
+これはTEIのアプリケーション実行環境における能力のモデルではなく、開発ホストに必要な環境条件です。ホストが一部の機能しか持たなくても、そこで作成した通常のGit差分やコミットを別の標準的な開発環境へ渡して作業を続けられます。
 
-TEI側が提供すべき基本面は、特定Agentのsession管理ではなく、通常のCLIとRepository contractです。
+TEIが提供すべき基本機能は、特定のエージェントのセッション管理ではなく、通常のコマンドライン操作とリポジトリの契約です。
 
 ```text
 Human / Chat / Coding Agent / CI
@@ -251,11 +251,11 @@ Human / Chat / Coding Agent / CI
  validation / world / conformance
 ```
 
-Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / Git MCPから`tei` CLIを呼べれば正規経路として成立します。TEI自身のdeveloper MCP serverを必須にはしません。
+チャット側でMCPを使う場合も、ホストが提供するシェル・ファイル操作・Git操作用のMCPから`tei`を呼び出せれば、正規の開発経路として扱えます。TEI独自の開発用MCPサーバーは必須にしません。
 
-将来native developer MCPを追加する場合は、CLIと別のCanonical解釈・Knowledge Store・Validation・Authority modelを作らず、既存の`workspace.Load`、Source Index、knowledge context、validation等と同じapplication operationを別transportから利用します。
+将来、開発用MCPをTEI自身に追加する場合も、コマンドラインとは別の正本解釈・知識の保存先・検証・権限モデルは作りません。既存の`workspace.Load`や入力元索引、知識の文脈、検証などと同じアプリケーション操作を、別の通信方式から利用します。
 
-次をTEIのProduct stateとして一般化しません。
+次の状態をTEI製品共通の状態として扱いません。
 
 - Agent Session / Agent Workspace
 - Checkpoint / internal Plan
@@ -265,19 +265,19 @@ Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / 
 - 一般的な `verified / unverified`
 - Chat transcript
 
-これらに別のProduct上の必要性がある場合は、その必要性を個別に評価します。開発Toolが所有する状態を、RQ-034のためだけにTEIへ複製しません。
+これらが製品上必要となる場合は、その必要性を個別に評価します。開発ツールが所有する状態を、RQ-034のためだけにTEIへ複製しません。
 
 この境界についての長期的な判断は[ADR-0031](../plan/adr/0031-tool-neutral-git-native-development.md)に記録します。実行可能な参照例の成立範囲は、該当する実装と検証結果から別途確認します。
 
 ## 意味を扱う中核
 
-Coreへ無制限に専用kindを追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
+中核に専用の要素種別を際限なく追加しない方針です。概念上の最小限の意味処理基盤（Micro / Semantic Kernel）は、識別子、型、関係、式、制約、ライフサイクル、メタデータ、来歴などの小さな集合を中心とします。
 
-Data、Action、Workflow、StateMachine、Migration等は、すべてをMicro Kernelの専用primitiveにする必要はないと考えています。
+データ、操作、作業の流れ、状態機械、移行などを、すべて最小限の意味処理基盤の専用要素とする必要はないと考えています。
 
 ### 意味の定義とアプリケーションの個別データを分ける
 
-Canonical Semantic Layerが扱うData / Relation / Validation等の**定義上の意味**と、Application利用時に生成・保存される個々のrecord / user content / domain instanceを同一視しません。
+正本の意味を扱う層が管理するデータ・関係・検証などの**定義上の意味**と、アプリケーションの利用時に生成・保存される個々の記録、利用者の内容、分野ごとの実データを同一視しません。
 
 ```text
 Canonical / semantic definition
@@ -293,7 +293,7 @@ Application instance data
   edge-019
 ```
 
-前者は「何を意味し、どの構造・制約を持つか」を表します。後者は、その定義に従ってApplication / Database / external system等が保持する実データです。
+前者は「何を意味し、どの構造・制約を持つか」を表します。後者は、その定義に従ってアプリケーション、データベース、外部システムなどが保持する実データです。
 
 したがって、
 
@@ -310,11 +310,11 @@ Lifecycle / state definition
 
 です。
 
-Application instanceがSource / Observation / Evidenceの対象になったり、Validation / Authorization / Capabilityから参照されたりすることはありますが、その存在だけでCanonical Worldへtop-level semantic objectとして取り込みません。traceabilityのためだけに全recordをCanonical object化しないことを優先します。
+アプリケーションの個々のデータが入力元・観測・検証根拠の対象となったり、検証・認可・能力の定義から参照されたりすることはあります。ただし、存在するだけで意味の正本（Canonical World）に最上位の意味要素として取り込みません。追跡のためだけに、すべての記録を正本上の要素に変換することは避けます。
 
-一方、reference data、policy table、configuration、静的content等で、あるinstance集合そのものをauthoritative authoring assetとして扱うProduct設計もあり得ます。その場合は「instanceだから除外」「dataだからCanonical」と機械的に決めず、source owner / lifecycle / mutation authorityを明示して分類します。
+一方、参照データ、方針の一覧、設定、静的な内容などについて、個々のデータの集合自体を正本として編集・管理する製品設計もあり得ます。その場合は「個別データだから除外」「データだから正本」と機械的に決めず、入力元の管理主体・ライフサイクル・変更権限を明示して分類します。
 
-現時点では汎用`Instance` Canonical kindやrecord mirrorをCoreへ追加しません。SUI Reference Adoption等の実Referenceで、definition / instance / projection metadata / observed runtime stateの境界をPressureします。
+現時点では汎用の`Instance`という正本上の要素種別や、各記録の複製を中核に追加しません。SUIの参照事例採用などで、定義・個別データ・派生情報の付帯情報・観測した実行時状態の境界を検証します。
 
 ## 業務操作・アプリケーション機能・外部能力・実現方式
 
@@ -331,13 +331,13 @@ Realization
   builtin / generated / Plugin / existing implementation / external system
 ```
 
-Business ActionはApplication Functionを持たなくても成立します。人間、AI、外部組織、SaaS、物理作業等を、実行可能に見せるためだけに架空のCapabilityへ変換しません。
+業務上の行為はアプリケーション機能がなくても成立します。人間、AI、外部組織、SaaS、物理作業などを、実行可能に見せるためだけに架空の能力へ変換しません。
 
-Application Functionは、View / Application Pattern / Query / Action / Capability等からFunction / Interaction viewとして再構成できます。歴史的なX-TEAに`Function` objectが存在したことだけを理由に、対称なCanonical `Function` kindを追加しません。
+アプリケーション機能は、表示・アプリケーションパターン・問い合わせ・操作・能力などから、機能や対話の視点として再構成できます。過去のX-TEAに`Function`というオブジェクトがあったという理由だけで、正本に対応する`Function`の要素種別を追加しません。
 
-Business Procedureは、purpose / trigger / actor / manual or external work / Application Function usageを説明する業務マニュアルの視点です。Runtime Workflow Engineとは分離します。
+業務手順は、目的・きっかけ・実行主体・手作業や外部作業・アプリケーション機能の利用を説明する業務マニュアルの視点です。実行時のワークフローエンジンとは分けて扱います。
 
-現時点ではBusiness ProcedureのProduct Requirementを固定しますが、`Procedure`をdurable top-level Canonical identityにするかはReference Evidenceが出るまで固定しません。
+現時点では業務手順に関する製品要求を確定しますが、`Procedure`を永続的な最上位の正本識別子にするかは、参照事例の検証根拠が得られるまで決めません。
 
 ## 三つの観点からの相互検証
 

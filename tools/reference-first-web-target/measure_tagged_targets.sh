@@ -105,6 +105,16 @@ require_source order read_scenario.go
 require_source repair main_repair_only.go
 require_source repair customer_lookup_scenario.go
 require_source repair repair_scenario_http.go
+# Prevent recurrence of order_entry's verified-session Command being
+# compiled into repair_intake despite its ordinary test suite passing.
+for source_file in session_command_route.go session_command_scenario.go; do
+  require_source combined "$source_file"
+  require_source order "$source_file"
+  reject_source repair "$source_file"
+done
+require_source repair session_command_repair_stub.go
+reject_source combined session_command_repair_stub.go
+reject_source order session_command_repair_stub.go
 for source_file in customer_lookup_scenario.go repair_scenario_http.go main_repair_only.go; do
   reject_source order "$source_file"
 done

@@ -35,7 +35,8 @@ func TestReferenceProcessAcceptsCurrentWire(t *testing.T) {
 	}
 	if acknowledgment.Outcome != "accepted" || acknowledgment.ActionID != "sales_expand/apply" ||
 		acknowledgment.IdempotencyKey != "key-one" ||
-		acknowledgment.ExternalRef != "reference-process://command-one" {
+		acknowledgment.ExternalRef != "reference-process://command-one" ||
+		!strings.Contains(acknowledgment.Message, "revision=v1") {
 		t.Fatalf("invalid acknowledgment: %+v", acknowledgment)
 	}
 }
