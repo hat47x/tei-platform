@@ -1,8 +1,8 @@
 # reference-tool-neutral-development
 
-RQ-034 / ISSUE-000083（GitHub #972）の最初のExecutable Referenceです。
+RQ-034 / ISSUE-000083（GitHub #972）の最初の実行可能な参照実装です。
 
-目的は、TEI専用Agent Runtime、Agent Adapter、Structured Proposal、TEI独自Change Set、Agent Session / Workspace / Checkpoint等を使わずに、通常のRepository開発だけで次の一往復が成立するかを確認することです。
+目的は、TEI独自のエージェント実行環境や接続部、構造化した提案、独自の変更セット、セッション・作業領域・チェックポイントなどを使わずに、通常のリポジトリ開発だけで次の一連の作業を実行できるか確かめることです。
 
 ```text
 clean TEI Repository checkout
@@ -18,11 +18,11 @@ clean TEI Repository checkout
 
 ## Scenario
 
-runnerは、**現在のTEI Repository checkout全体**を`git clone --local`で一時directoryへ複製します。元Repositoryがdirtyなら開始せず、mainや現在のworktreeを変更しません。
+検証用プログラムは、**現在のTEIリポジトリの作業領域全体**を`git clone --local`で一時ディレクトリへ複製します。元の作業領域に変更が残っている場合は開始せず、mainや現在の作業領域も変更しません。
 
-task cloneでは`cmd/tei`をbuildし、既存のknowledge-context testを実行したうえで、Reference WorkspaceをCLIから読みます。
+作業用の複製では`cmd/tei`をビルドし、既存の知識・文脈に関するテストを実行してから、参照用作業領域をコマンドラインで読み込みます。
 
-baselineには既存の次のruleがあります。
+基準となる状態には、次の規則が定義されています。
 
 ```tei
 validation sales.order_line.quantity_positive positive {
@@ -30,7 +30,7 @@ validation sales.order_line.quantity_positive positive {
 }
 ```
 
-task側では、同じ既知のValidation意味を使って次をfileへ直接追加します。
+作業用の複製では、既存の検証規則と同じ種類の意味を使い、次の内容をファイルへ直接追加します。
 
 ```tei
 validation sales.order_line.unit_price_positive positive {
@@ -38,46 +38,46 @@ validation sales.order_line.unit_price_positive positive {
 }
 ```
 
-この変更はShared Acceptanceのcandidate形式を経由しません。目的はProposal経路を否定することではなく、Proposalを使わない通常のfile-native / Git開発も第一級の経路として成立することを確認することです。
+この変更では、共通受理の候補形式を経由しません。提案を使う方法を否定するのではなく、元の形式のファイルを直接編集してGitで管理する開発も、正式な方法として成立することを確かめます。
 
 ## Tool固有stateを前提にしないpressure
 
-current Reference Workspaceには`.tei/decisions`が存在します。これはShared AcceptanceのDecision ledgerであり、Canonical meaningの第二正本ではありません。
+現在の参照用作業領域には`.tei/decisions`があります。これは共通受理に関する判断の記録であり、意味の正本をもう一つ作るものではありません。
 
-runnerはtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerを持つWorkspaceに対して、Validation出力とCanonical Worldのそれぞれがbyte単位で一致することを要求します。
+検証用プログラムは作業用の複製から別の一時作業領域を作り、そこだけで`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、判断の記録を残した作業領域と比べて、検証の出力と意味の正本となる全体モデルが、それぞれバイト単位で一致することを要求します。
 
-`.tei/plugin-lock.json`はこのpressureでは削除しません。runnerは元WorkspaceにPlugin Lockが存在することと、一時Workspaceへのcopy後もbyte単位で同一であることを確認します。Plugin resolutionを固定するlockと、Canonical meaningの第二正本ではないDecision ledgerを同じ「Tool state」として扱わないためです。
+この検査では`.tei/plugin-lock.json`を削除しません。元の作業領域にプラグインの固定情報があり、一時作業領域へ複製した後もバイト単位で同じであることを確かめます。プラグインの選択を固定する情報と、意味の第二の正本ではない判断記録では、役割が異なるためです。
 
 ## 検査内容
 
-runnerは少なくとも次を検査します。
+検証用プログラムでは、少なくとも次の条件を確認します。
 
-- 元RepositoryがGit checkoutでありcleanである
-- task環境がcurrent Repository全体のlocal cloneである
-- task clone内で`cmd/tei`をbuildできる
-- knowledge-contextの関連targeted testを実行できる
-- `workspace-files`が`semantic/sales/validation.tei`をmanaged sourceとして列挙する
-- baseline Workspaceが`tei validate`を通る
-- 既存Validationが`source-index`から`semantic/sales/validation.tei`へtraceできる
-- 既存Validationへ`knowledge-context`から到達できる
-- `.tei/decisions`を除去してもValidationとCanonical Worldが変わらない
-- `.tei/plugin-lock.json`は存在し、Decision ledger除去pressureの前後でbyte単位に保持される
-- 直接file edit後も`tei validate`を通る
-- 追加したValidationも`source-index`から同じauthoring sourceへtraceできる
-- 追加したValidationへ`knowledge-context`から到達できる
-- Canonical Worldがbaselineから実際に変わる
-- file edit後にも関連targeted testを実行できる
-- commit前の変更fileが意図した1 fileだけである
-- CLI / build / testの利用によってRepository内へ別のuntracked artifactが生成されない
-- ordinary Git commitに変更を確定できる
-- integration側は元のsource checkoutから作った別local cloneであり、task repository自体を複製しない
-- integration cloneがtaskと同じbase revisionから始まり、task result commitを通常Gitのfetch / fast-forwardで統合する
-- integration後のHEADがtask result revisionと一致する
-- integration clone内でもCLIをbuildし、関連targeted testを実行できる
-- integration cloneでも追加ValidationのSource Indexが同じauthoring sourceへ戻る
-- integration cloneで同じValidationへ到達できる
-- integration cloneのValidation出力とCanonical Worldがtask側とそれぞれbyte単位で一致する
-- read-only reload後もintegration cloneがcleanである
+- 元のリポジトリがGitの作業領域であり、変更が残っていない
+- 作業環境が現在のリポジトリ全体をローカルで複製したものである
+- 作業用の複製内で`cmd/tei`をビルドできる
+- 知識・文脈に関する対象を絞ったテストを実行できる
+- `workspace-files`が`semantic/sales/validation.tei`を管理対象のファイルとして列挙する
+- 基準となる作業領域で`tei validate`が成功する
+- 既存の検証規則について、`source-index`から`semantic/sales/validation.tei`まで入力元をたどれる
+- 既存の検証規則を`knowledge-context`から参照できる
+- `.tei/decisions`を削除しても検証結果と意味の正本となる全体モデルが変わらない
+- `.tei/plugin-lock.json`が存在し、判断の記録を削除する前後でバイト単位の一致を保つ
+- ファイルを直接編集した後も`tei validate`が成功する
+- 追加した検証規則についても、`source-index`から同じ記述元をたどれる
+- 追加した検証規則を`knowledge-context`から参照できる
+- 意味の正本となる全体モデルが基準状態から実際に変化する
+- ファイル編集後も関連する対象を絞ったテストを実行できる
+- コミット前に変更したファイルが意図した一つだけである
+- コマンドライン・ビルド・テストの実行でリポジトリ内に別の未追跡の生成物が残らない
+- 通常のGitコミットで変更を確定できる
+- 統合側は元のリポジトリから作る別のローカル複製であり、作業用の複製そのものを複製しない
+- 統合側の複製が作業側と同じ基準コミットから始まり、作業結果のコミットを通常のGitの取得と早送りで取り込む
+- 統合後の先頭コミットが作業結果のコミットと一致する
+- 統合側の複製でもコマンドラインをビルドし、関連する対象を絞ったテストを実行できる
+- 統合側の複製でも、追加した検証規則の入力元索引から同じ記述元へ戻れる
+- 統合側の複製からも同じ検証規則を参照できる
+- 統合側の検証出力と意味の正本となる全体モデルが、作業側の結果とそれぞれバイト単位で一致する
+- 読み取り専用で再取得した後も統合側の複製に変更が残らない
 
 ## Git mergeとSemantic conflict
 
@@ -95,9 +95,9 @@ merged workspace
   -> DUPLICATE_SEMANTIC_ELEMENT
 ```
 
-各branch単独ではValidationを通ることを要求します。二つのfile pathは異なるため、Gitのtext mergeではconflictしません。統合後だけ同じCanonical IDの重複を既存Semantic Validationが拒否することを確認します。
+各ブランチだけなら検証に通ることを要求します。二つのファイルはパスが異なるため、Gitでテキストを統合しても競合しません。統合後にはじめて意味上の識別子が重複し、既存の意味検証がそれを拒否することを確かめます。
 
-TEIがGit mergeを置き換えるのではなく、**Gitが正常に統合した後でも意味上の不整合をTEIが止められること**がこのpressureの目的です。
+TEIがGitの統合機能を置き換えるのではありません。**Gitで正常に統合できた場合も、意味上の不整合があればTEIが検出して停止できること**が、この検査の目的です。
 
 ## Qualification
 
