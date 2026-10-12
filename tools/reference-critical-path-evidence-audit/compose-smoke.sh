@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Read-only-to-PR cross-lane integration pressure: combine pinned Draft tips
-# in a disposable detached worktree. Never merge to main or alter owner refs.
+# Cross-lane qualification probe (#1119/#1163). Main already contains the
+# historical #1119/#1120/#1124/#1121 PRs. Compose only a pinned #1163
+# candidate on current main inside a disposable detached worktree.
+# Never change main, the candidate branch, or the caller's working tree.
 set -euo pipefail
 die() { printf 'cross-lane integration blocked: %s\n' "$*" >&2; exit 1; }
 
@@ -21,13 +23,14 @@ case "$url" in
 esac
 
 expected_main="${TEI_CP_COMPOSE_MAIN:-}"
-expected_1119="${TEI_CP_COMPOSE_1119:-}"
-expected_1120="${TEI_CP_COMPOSE_1120:-}"
-expected_1124="${TEI_CP_COMPOSE_1124:-}"
-expected_1121="${TEI_CP_COMPOSE_1121:-}"
-for value in "$expected_main" "$expected_1119" "$expected_1120" "$expected_1124" "$expected_1121"; do
+expected_1163="${TEI_CP_COMPOSE_1163:-}"
+for value in "$expected_main" "$expected_1163"; do
   [[ "$value" =~ ^[0-9a-f]{40}$ ]] ||
-    die "supply all five TEI_CP_COMPOSE_* exact 40-character SHAs"
+    die "supply exact 40-character TEI_CP_COMPOSE_MAIN and TEI_CP_COMPOSE_1163 SHAs"
+done
+for obsolete in TEI_CP_COMPOSE_1119 TEI_CP_COMPOSE_1120 TEI_CP_COMPOSE_1124 TEI_CP_COMPOSE_1121; do
+  [[ -z "${!obsolete:-}" ]] ||
+    die "$obsolete is obsolete: its producer was merged into main; remove it"
 done
 clean() {
   local where="$1" status unusual
@@ -40,20 +43,20 @@ clean() {
 }
 clean "$root"
 original_head="$(git rev-parse HEAD)"
+[[ "$original_head" == "$expected_1163" ]] ||
+  die "run from the exact #1163 candidate HEAD, not an unrelated checkout"
+
 git fetch --no-tags "$remote" --prune || die "fetch failed"
 check_tip() {
-  local branch="$1" expected="$2" actual
-  actual="$(git rev-parse "refs/remotes/$remote/$branch" 2>/dev/null)" ||
-    die "remote branch not found: $branch"
-  [[ "$actual" == "$expected" ]] || die "stale pin for $branch: $actual"
+  local name="$1" expected="$2" actual
+  actual="$(git rev-parse "refs/remotes/$remote/$name" 2>/dev/null)" ||
+    die "remote branch not found: $name"
+  [[ "$actual" == "$expected" ]] || die "stale pin for $name: $actual"
 }
 check_tip main "$expected_main"
-check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
-check_tip issue-1120-typed-reference-contract "$expected_1120"
-check_tip work/issue-1124-studio-authoring-projection "$expected_1124"
-check_tip work/issue-1121-lowering-contract "$expected_1121"
+check_tip work/issue-1163-review-evidence-link "$expected_1163"
 
-# Merge only in a disposable detached worktree. Branch refs remain untouched.
+# Merge only in a disposable detached worktree, never the owner branches.
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/tei-cp-compose.XXXXXX")"
 wt="$scratch/checkout"
 has_worktree=false
@@ -67,17 +70,28 @@ trap cleanup EXIT
 git worktree add --detach "$wt" "$expected_main" >/dev/null ||
   die "cannot create isolated worktree"
 has_worktree=true
-for head in "$expected_1119" "$expected_1120" "$expected_1124" "$expected_1121"; do
-  git -C "$wt" -c user.name="TEI Integration Test" -c user.email="integration.invalid@example.invalid" \
-    -c commit.gpgsign=false merge --no-ff --no-edit "$head" ||
-    die "candidate branches conflict or cannot be combined (no owner branch altered)"
-done
+git -C "$wt" -c user.name="TEI Integration Test" \
+  -c user.email="integration.invalid@example.invalid" \
+  -c commit.gpgsign=false merge --no-ff --no-edit "$expected_1163" ||
+  die "candidate cannot be combined with current main (no owner branch altered)"
 clean "$wt"
 integration_head="$(git -C "$wt" rev-parse HEAD)"
 integration_tree="$(git -C "$wt" rev-parse HEAD^{tree})"
-printf 'CANDIDATE_COMPOSITION_BEGIN main=%s merged-head=%s tree=%s\n' \
-  "$expected_main" "$integration_head" "$integration_tree"
 
+# An outdated or competing copy of the test must never masquerade as this PR.
+for p in \
+  tools/reference-critical-path-evidence-audit/main.go \
+  tools/reference-critical-path-evidence-audit/main_test.go \
+  tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs; do
+  candidate_blob="$(git -C "$root" rev-parse "$expected_1163:$p")" ||
+    die "candidate lacks $p"
+  tested_blob="$(git -C "$wt" rev-parse "HEAD:$p")" ||
+    die "integration worktree lacks $p"
+  [[ "$candidate_blob" == "$tested_blob" ]] ||
+    die "integration would test a different $p than #1163 candidate"
+done
+printf 'CANDIDATE_COMPOSITION_BEGIN main=%s candidate=%s integration=%s tree=%s\n' \
+  "$expected_main" "$expected_1163" "$integration_head" "$integration_tree"
 (
   cd "$wt"
   export GOENV=off GOWORK=off GOFLAGS=
@@ -91,7 +105,7 @@ printf 'CANDIDATE_COMPOSITION_BEGIN main=%s merged-head=%s tree=%s\n' \
   go test -count=1 ./tools/reference-critical-path-evidence-audit
   go test -count=1 ./tools/reference-first-web-target \
     -run '^(TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList|TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines)$'
-  # Positive R1 -> live HTTP only; synthetic Provider, no live unit-price negative.
+  # Test-only acceptance and two synthetic Web binaries; not a Product Gate.
   TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs
   bash tools/repository-health-check.sh
 )
@@ -100,14 +114,11 @@ clean "$wt"
   die "temporary merged HEAD moved"
 git fetch --no-tags "$remote" --prune || die "post-test fetch failed"
 check_tip main "$expected_main"
-check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
-check_tip issue-1120-typed-reference-contract "$expected_1120"
-check_tip work/issue-1124-studio-authoring-projection "$expected_1124"
-check_tip work/issue-1121-lowering-contract "$expected_1121"
+check_tip work/issue-1163-review-evidence-link "$expected_1163"
 [[ "$(git rev-parse HEAD)" == "$original_head" ]] ||
   die "original checkout HEAD moved"
 clean "$root"
 printf 'CROSS_LANE_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
-printf 'main=%s\nintegrationHead=%s\nintegrationTree=%s\n' \
-  "$expected_main" "$integration_head" "$integration_tree"
-printf 'limits=NOT_OWNER_PR_QUALIFICATION_NOT_LIVE_NEGATIVE_NOT_DB_NOT_HUMAN_APPROVAL\n'
+printf 'main=%s\ncandidate=%s\nintegrationHead=%s\nintegrationTree=%s\n' \
+  "$expected_main" "$expected_1163" "$integration_head" "$integration_tree"
+printf 'limits=TEST_ONLY_ACCEPTANCE_SYNTHETIC_PROVIDER_DUAL_BINARY_NOT_DB_NOT_HUMAN_APPROVAL_NOT_N11\n'
