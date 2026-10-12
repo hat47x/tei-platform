@@ -29,7 +29,7 @@ func logicalRuleCandidate(revision string) Candidate {
 			{Op: opAddFunctionalDependency, AddFunctionalDependency: &AddFunctionalDependencySpec{
 				Data: "sales.order_line", ID: "sales.order_line.item_by_line", Symbol: "itemByLine",
 				Determinants: []string{"sales.order_line.order_line_id", "sales.order_line.line_number"},
-				Dependents: []string{"sales.order_line.item_code"},
+				Dependents:   []string{"sales.order_line.item_code"},
 			}},
 		},
 	}
@@ -149,7 +149,7 @@ func TestExplicitLogicalRulePreviewAndAcceptUseSharedBoundary(t *testing.T) {
 func TestBusinessRulesDoNotModifySourceOnInvalidOrStaleCandidate(t *testing.T) {
 	cases := []struct {
 		name, stage, code string
-		edit func(*Candidate)
+		edit              func(*Candidate)
 	}{
 		{"unknown Data", "resolve", "DATA_NOT_FOUND", func(c *Candidate) {
 			c.Delta[0].AddCandidateKey.Data = "sales.missing"
