@@ -535,7 +535,7 @@ test('information ID duplication, invalid endpoint and Step re-selection discard
   $('step-info-to-id').value='unknown-party';
   $('step-info-to-id').listeners.change();
   await $('semantic-propose').listeners.click();
-  assert.match($('status').textContent,/INVALID_INFORMATION_ENDPOINT/);
+  assert.match($('status').textContent,/UNRESOLVED_ENDPOINT/);
   assert.equal($('semantic-preview').hidden,true);
   $('step-info-to-id').value='customer';
   $('step-info-to-id').listeners.change();
