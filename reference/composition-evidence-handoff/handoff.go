@@ -106,51 +106,63 @@ func Reconcile(set composition.WiringSetFinding, refs []EvidenceReference) Hando
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	// Retain only locators for providers actually requested by the proposal.
-	// Untrusted, unrelated tenants and providers must not expand the index
-	// even if the caller supplies a very large catalog of evidence references.
-	type subjectKey struct{ providerID, scope string }
-	bySubject := make(map[subjectKey][]EvidenceReference, len(targets))
+	// Stream untrusted references into a constant-size summary per requested
+	// provider. Keep at most one exact locator plus a saturating exact count:
+	// diagnostics need to distinguish zero, one and multiple exact matches,
+	// not retain an unbounded array of repeated external references.
+	type evidenceMatches struct {
+		exactCount       uint8
+		first            EvidenceReference
+		hasMismatch      bool
+		hasStale         bool
+	}
+	matches := make(map[string]*evidenceMatches, len(targets))
 	for _, ref := range refs {
 		target, needed := targets[ref.Subject.ProviderID]
 		if !needed || target.Scope != ref.Subject.Scope {
 			continue
 		}
-		key := subjectKey{ref.Subject.ProviderID, ref.Subject.Scope}
-		bySubject[key] = append(bySubject[key], ref)
+		match := matches[ref.Subject.ProviderID]
+		if match == nil {
+			match = &evidenceMatches{}
+			matches[ref.Subject.ProviderID] = match
+		}
+		switch {
+		case ref.Subject.Contract != target.Contract:
+			match.hasMismatch = true
+		case ref.Subject.Epoch != target.Epoch:
+			match.hasStale = true
+		default:
+			if match.exactCount == 0 {
+				match.first = ref
+			}
+			if match.exactCount < 2 {
+				match.exactCount++
+			}
+		}
 	}
 	out.Subjects = make([]SubjectCheck, 0, len(ids))
 	for _, id := range ids {
 		target := targets[id]
 		check := SubjectCheck{Target: target, State: ReferenceMissing}
-		var exact []EvidenceReference
-		hasStale, hasMismatch := false, false
-		for _, ref := range bySubject[subjectKey{target.ProviderID, target.Scope}] {
-			if ref.Subject.Contract != target.Contract {
-				hasMismatch = true
-				continue
+		match := matches[id]
+		if match != nil {
+			switch {
+			case match.exactCount > 1:
+				check.State = ReferenceAmbiguous
+			case match.exactCount == 1:
+				if incomplete(match.first) {
+					check.State = ReferenceIncomplete
+				} else {
+					check.State = ReferenceLinked
+					copyOfRef := match.first
+					check.Reference = &copyOfRef
+				}
+			case match.hasMismatch:
+				check.State = ReferenceMismatch
+			case match.hasStale:
+				check.State = ReferenceStale
 			}
-			if ref.Subject.Epoch != target.Epoch {
-				hasStale = true
-				continue
-			}
-			exact = append(exact, ref)
-		}
-		switch {
-		case len(exact) > 1:
-			check.State = ReferenceAmbiguous
-		case len(exact) == 1:
-			if incomplete(exact[0]) {
-				check.State = ReferenceIncomplete
-			} else {
-				check.State = ReferenceLinked
-				copyOfRef := exact[0]
-				check.Reference = &copyOfRef
-			}
-		case hasMismatch:
-			check.State = ReferenceMismatch
-		case hasStale:
-			check.State = ReferenceStale
 		}
 		out.Subjects = append(out.Subjects, check)
 	}
