@@ -58,9 +58,12 @@ jobs:
           set -euo pipefail
           go version
           drift="$(gofmt -l internal/plugin/transform/*.go tools/reference-plugin-self-build/*.go)"
+          printf '%s\n' "$drift" | sed '/^$/d' > "$RUNNER_TEMP/historical-gofmt-drift.txt"
           if [[ -n "$drift" ]]; then
-            printf 'historic-transform-gofmt-drift:\n%s\n' "$drift" >&2
-            exit 1
+            printf 'historical formatting deviation (not normalized):\n%s\n' "$drift" >&2
+            printf 'historic-formatting=FAIL (reproduction continues)\n'
+          else
+            printf 'historic-formatting=PASS\n'
           fi
           go vet ./internal/plugin/transform/... ./tools/reference-plugin-self-build
           go test -count=1 -timeout 20m ./internal/plugin/transform/... ./tools/reference-plugin-self-build ./tools/reference-transform-seed-builder
@@ -89,14 +92,21 @@ jobs:
             and .nativeReproducible == true
             and .reproducible == true
           ' "$RUNNER_TEMP/historical-evidence-v2.json" >/dev/null
+          historical_format_clean=true
+          if [[ -s "$RUNNER_TEMP/historical-gofmt-drift.txt" ]]; then
+            historical_format_clean=false
+          fi
           jq -n --arg sha "$HISTORICAL_SHA" \
             --arg workflow_sha "$GITHUB_SHA" \
+            --argjson formatting_clean "$historical_format_clean" \
             --slurpfile ev "$RUNNER_TEMP/historical-evidence-v2.json" '{
             schema: "tei.reference.transform-historical-posthoc-receipt/v1",
             testedHistoricalCommit: $sha,
             qualificationWorkflowCommit: $workflow_sha,
             qualificationTiming: "post-merge retrospective reproduction",
             isHistoricalPreMergeReceipt: false,
+            formattingClean: $formatting_clean,
+            retrospectiveStatus: (if $formatting_clean then "SCOPED_CHECKS_PASSED" else "INCOMPLETE_HISTORICAL_FORMATTING_DRIFT" end),
             focusedTransformTests: "PASS",
             evidenceSchema: $ev[0].schema,
             goVersion: $ev[0].goVersion,
@@ -125,6 +135,7 @@ jobs:
         with:
           name: tei-historical-transform-${{ github.run_id }}
           path: |
+            ${{ runner.temp }}/historical-gofmt-drift.txt
             ${{ runner.temp }}/focused-test-receipt.txt
             ${{ runner.temp }}/historical-evidence-v2.json
             ${{ runner.temp }}/historical-posthoc-receipt.json
