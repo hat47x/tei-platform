@@ -26,6 +26,10 @@ Node.jsが利用できる環境では、このGo試験から`node --test`を実�
 
 画面試験は模擬DOMによるものであり、実ブラウザーの描画や操作性、Source Acceptance、正本の同一版を確認したことにはなりません。
 
+`TestBusinessDFDGoProjectionToNodeReview`では、受注承認の参照手順・レビュー案・現行Workspaceから**実際のGo DFD投影器でJSONを生成**し、それをNode.jsの選択変更CLIへ渡します。正常な場合は未受理の変更案が得られ、入力ファイルの書込みがないことを確認します。レビュー案の指紋が古い場合と、投影器の起動契機が実行状態へ改変された場合は拒否しなければなりません。
+
+この試験はGoとNode.js間の実データ形式・指紋の整合を確認するものであり、採用済み業務手順の権限やSource Acceptanceを検証するものではありません。
+
 ## 図からの局所ナビゲーションと変更プレビュー（G1候補）
 
 `-select kind:id` はSourceを書き換えず、選択要素の参照先と元Source位置を返します。Stepは**Procedure内に限るReference-local識別**であり、同じ文字列のAccepted Taskを作ったり推測して接続したりしません。
