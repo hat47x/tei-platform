@@ -31,6 +31,40 @@ function command(executable, args) {
   });
 }
 function go(args) { return command("go", args); }
+
+// A second, test-only Web binary uses a Go build overlay. This does not modify
+// tracked source or accepted Workspace bytes; it does NOT qualify an external Provider.
+function buildNegativePriceTarget(binary) {
+  const originalPath = join(root, "tools/reference-first-web-target/reference_order_contract_query_fixture.go");
+  const original = readFileSync(originalPath, "utf8");
+  const originalValue = '"4000.00"';
+  assert.equal(original.split(originalValue).length, 2,
+    "expected exactly one synthetic unit-price fixture value");
+  const rewritten = original.replace(originalValue, '"0"');
+  const replacement = join(temp, "unit-price-negative-fixture.go");
+  writeFileSync(replacement, rewritten, { mode: 0o600 });
+  const overlay = writeJSON("unit-price-negative-overlay.json",
+    { Replace: { [originalPath]: replacement } });
+  go(["build", "-mod=readonly", "-overlay", overlay, "-o", binary,
+    "./tools/reference-first-web-target"]);
+  return {
+    sourceFile: "tools/reference-first-web-target/reference_order_contract_query_fixture.go",
+    originalSHA256: createHash("sha256").update(original).digest("hex"),
+    overlaySHA256: createHash("sha256").update(rewritten).digest("hex"),
+    override: "synthetic order 1001 line item unit_price 4000.00 to 0",
+    authority: "test-only-build-overlay",
+  };
+}
+
+async function stopTarget() {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  child.kill("SIGTERM");
+  await Promise.race([
+    new Promise(resolveExit => child.once("exit", resolveExit)), wait(3000)
+  ]);
+  if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+}
+
 function acceptance(args) {
   return JSON.parse(go(["run", "./tools/reference-shared-acceptance", ...args]));
 }
@@ -224,6 +258,60 @@ async function main() {
   assert.ok(receipt.result.validations.every(v => v.result === "satisfied"));
   assert.ok(receipt.result.command, "Web did not dispatch Command");
   assert.equal(receipt.result.observation?.nature, "synthetic");
+  const positiveLaunch = {
+    address: addr, processID: child.pid,
+    binarySHA256: createHash("sha256").update(readFileSync(binary)).digest("hex")
+  };
+  await stopTarget();
+  assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
+
+  // Do not use a quantity failure as evidence for the new unit-price rule.
+  // Rebuild only the synthetic adapter using an isolated Go overlay, then run
+  // the actual HTTP endpoint on a separate ephemeral loopback listener.
+  const negativeBinary = join(temp, "first-web-target-negative-unit-price");
+  const negativeFixture = buildNegativePriceTarget(negativeBinary);
+  const negativePort = await openPort();
+  const negativeAddr = "127.0.0.1:" + negativePort;
+  const negativeLog = openSync(join(temp, "negative-server.log"), "wx", 0o600);
+  try {
+    child = spawn(negativeBinary, [
+      "-workspace", workspace, "-application", "order_entry", "-baseline-id", "B",
+      "-baseline-revision", expectedR, "-target-revision", head,
+      "-legacy-users", "reference/legacy-auth/users.json",
+      "-legacy-authorization", "reference/legacy-auth/authorization.json",
+      "-listen", negativeAddr
+    ], { cwd: root, stdio: ["ignore", negativeLog, negativeLog] });
+  } finally { closeSync(negativeLog); }
+  await ready("http://" + negativeAddr);
+  const negativeManifestResponse = await fetch("http://" + negativeAddr + "/manifest.json",
+    { signal: AbortSignal.timeout(3000) });
+  assert.equal(negativeManifestResponse.status, 200);
+  const negativeManifest = await negativeManifestResponse.json();
+  assert.equal(negativeManifest.applicationId, manifest.applicationId);
+  assert.equal(negativeManifest.targetBuildRevision, head);
+  const negativeResponse = await fetch("http://" + negativeAddr + "/scenario/submit", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body, signal: AbortSignal.timeout(5000)
+  });
+  // Business rule denial is a completed evaluation (HTTP 200), not a
+  // transport or execution error. The side effect and Observation must not run.
+  assert.equal(negativeResponse.status, 200);
+  const negativeRaw = await negativeResponse.text();
+  assert.equal(negativeRaw.includes("editor-secret"), false, "negative Web response leaked credential");
+  const negativeReceipt = JSON.parse(negativeRaw);
+  assert.equal(negativeReceipt.targetBuildRevision, head);
+  assert.equal(negativeReceipt.result.stage, "validation-not-satisfied");
+  assert.equal(negativeReceipt.result.validations.find(v => v.validation === validationID)?.result,
+    "not-satisfied", "selected unit-price rule did not reject the synthetic zero value");
+  assert.equal(Boolean(negativeReceipt.result.command), false, "invalid unit price reached Command");
+  assert.equal(Boolean(negativeReceipt.result.observation), false, "invalid unit price reached Observation");
+  const negativeLaunch = {
+    address: negativeAddr, processID: child.pid,
+    binarySHA256: createHash("sha256").update(readFileSync(negativeBinary)).digest("hex")
+  };
+  assert.notEqual(positiveLaunch.binarySHA256, negativeLaunch.binarySHA256,
+    "test-only overlay unexpectedly produced the same Web binary");
+  await stopTarget();
   assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
   assert.deepEqual(changed(beforeFiles, files(workspace)), [
     "applications/order-entry/application.tei", "semantic/sales/validation.tei"
@@ -252,8 +340,8 @@ async function main() {
       evidenceNature: "running-first-web-target-with-synthetic-provider",
       integrationHead: head, targetBuildRevision: head,
       baselineRepositoryRevision: expectedR, application: "order_entry",
-      loopbackAddress: addr, targetProcessID: child.pid,
-      targetBinarySHA256: createHash("sha256").update(readFileSync(binary)).digest("hex"),
+      loopbackAddress: positiveLaunch.address, targetProcessID: positiveLaunch.processID,
+      targetBinarySHA256: positiveLaunch.binarySHA256,
       workspaceSourceRevisionBeforeLaunch: r1,
       healthResponseWasOK: true, runtimeAuthorityVerified: false
     },
@@ -267,7 +355,25 @@ async function main() {
       commandObserved: Boolean(receipt.result.command),
       observationNature: receipt.result.observation.nature,
       independentDatabaseRead: false,
-      negativeUnitPriceTest: "NOT_RUN"
+      negativeUnitPriceTest: "RUNNING_SERVER_SYNTHETIC_FIXTURE_OVERLAY"
+    },
+    "target-negative-launch.json": {
+      evidenceNature: "test-only-Go-overlay-Web-target",
+      integrationHead: head, targetBuildRevisionLabel: head,
+      loopbackAddress: negativeLaunch.address, targetProcessID: negativeLaunch.processID,
+      targetBinarySHA256: negativeLaunch.binarySHA256,
+      sameBinaryAsPositive: false, acceptedSourceRevisionClaim: r1,
+      overlay: negativeFixture, runtimeAuthorityVerified: false
+    },
+    "web-negative-unit-price.json": {
+      evidenceNature: "running-web-http-negative-synthetic-fixture-overlay",
+      integrationHead: head, acceptedSourceRevisionClaim: r1,
+      selectedValidation: validationID, evaluation: "not-satisfied",
+      stage: negativeReceipt.result.stage, httpStatus: negativeResponse.status,
+      commandDispatched: Boolean(negativeReceipt.result.command),
+      observationExecuted: Boolean(negativeReceipt.result.observation),
+      targetBinarySHA256: negativeLaunch.binarySHA256,
+      productionTargetUnmodified: true, independentDatabaseRead: false
     }
   });
   process.stdout.write(JSON.stringify({
@@ -277,20 +383,19 @@ async function main() {
     sourceR0: r0, acceptedScratchSourceR1: r1, exactValidation: validationID,
     validationCount: receipt.result.validations.length,
     httpStatus: submitResponse.status, commandObserved: true,
-    independentDatabaseRead: false, negativeUnitPriceRunningWeb: "NOT_TESTED",
+    independentDatabaseRead: false,
+    negativeUnitPriceRunningWeb: "TESTED_WITH_SYNTHETIC_OVERLAY_BINARY",
+    negativeUnitPriceRejected: negativeReceipt.result.stage === "validation-not-satisfied",
     evidenceDirectory: evidenceDir,
-    evidenceFiles: evidenceDir ? ["workspace-r1.json", "target-launch.json", "web-positive.json"] : [],
-    limits: ["temporary-scratch", "synthetic-provider", "no-real-db",
-      "not-human-approved", "not-E1-complete", "not-product-gate"]
+    evidenceFiles: evidenceDir ? ["workspace-r1.json", "target-launch.json",
+      "web-positive.json", "target-negative-launch.json", "web-negative-unit-price.json"] : [],
+    limits: ["temporary-scratch", "synthetic-provider", "two-distinct-test-binaries",
+      "no-real-db", "not-human-approved", "not-E1-complete", "not-product-gate"]
   }, null, 2) + "\n");
 }
 try {
   await main();
 } finally {
-  if (child && child.exitCode === null && child.signalCode === null) {
-    child.kill("SIGTERM");
-    await Promise.race([new Promise(resolveExit => child.once("exit", resolveExit)), wait(3000)]);
-    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-  }
+  await stopTarget();
   rmSync(temp, { recursive: true, force: true });
 }
