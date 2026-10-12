@@ -42,9 +42,9 @@ func TestReferenceProcessAcceptsCurrentWire(t *testing.T) {
 
 func TestReferenceProcessRejectsInvalidRequests(t *testing.T) {
 	cases := []struct {
-		name   string
-		input  string
-		args   []string
+		name         string
+		input        string
+		args         []string
 		errorMessage string
 	}{
 		{"wrong-version", strings.Replace(exampleWireRequest, `"protocolVersion":1`, `"protocolVersion":2`, 1), []string{referenceArgvMarker}, "unsupported protocol version"},
