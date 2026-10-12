@@ -102,7 +102,8 @@ jobs:
             and (.businessReference.authority == "noncanonical-reference")
             and (.businessReference.humanAcceptance == "not-observed")
             and (.businessReference.actualProviderResult == "not-observed")
-            and ([.cases[] | .humanAcceptance == "not-observed"
+            and ([.cases[] | .concurrentRivalRefused == true
+                and .humanAcceptance == "not-observed"
                 and .actualProviderResult == "not-observed"
                 and .runtimeObservation == "not-observed"] | all)
           ' "$receipt" >/dev/null
