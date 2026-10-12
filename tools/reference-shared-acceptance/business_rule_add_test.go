@@ -181,7 +181,7 @@ func TestBusinessRulesDoNotModifySourceOnInvalidOrStaleCandidate(t *testing.T) {
 		{"unrelated op payload", "normalize", "CANDIDATE_NORMALIZE", func(c *Candidate) {
 			c.Delta[0].AddRelation = &AddRelationSpec{}
 		}},
-		{"stale model revision", "base-revision", "BASE_MODEL_REVISION_MISMATCH", func(c *Candidate) {
+		{"stale model revision", "base-revision", "STALE_BASE_MODEL_REVISION", func(c *Candidate) {
 			c.BaseModelRevision = "sha256:" + strings.Repeat("0", 64)
 		}},
 	}
