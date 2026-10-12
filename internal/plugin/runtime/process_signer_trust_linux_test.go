@@ -228,8 +228,6 @@ func TestLinuxSignedPinnedProcessRevocationDrainsActualChild(t *testing.T) {
 	dir := t.TempDir()
 	marker := filepath.Join(dir, "started")
 	release := filepath.Join(dir, "release")
-	// Ensure failure paths cannot leave the child waiting for its release.
-	t.Cleanup(func() { _ = os.WriteFile(release, []byte("release"), 0600) })
 	transport := StdioProcessLauncher{Env: []string{
 		"TEI_PINNED_HELPER=1",
 		"TEI_PINNED_HELPER_MARKER=" + marker,
@@ -242,6 +240,8 @@ func TestLinuxSignedPinnedProcessRevocationDrainsActualChild(t *testing.T) {
 		t.Fatalf("cannot pin signed test executable: %v", err)
 	}
 	defer host.Close()
+	// The release defer runs before Close if a test assertion fails.
+	defer func() { _ = os.WriteFile(release, []byte("release"), 0600) }()
 	command := ProcessCommand{Executable: executable, Args: []string{"-test.run=^TestLinuxPinnedChildHelper$"}}
 	started := make(chan error, 1)
 	go func() {
@@ -256,8 +256,6 @@ func TestLinuxSignedPinnedProcessRevocationDrainsActualChild(t *testing.T) {
 	})
 	revokeDone := make(chan bool, 1)
 	go func() { revokeDone <- trust.Revoke(ref) }()
-	_, epoch, _ := trust.resolve(ref)
-	_ = epoch // the signer is removed before Revoke can complete.
 	waitSignerCondition(t, "signer removal during child execution", func() bool {
 		_, _, err := trust.resolve(ref)
 		return err != nil
