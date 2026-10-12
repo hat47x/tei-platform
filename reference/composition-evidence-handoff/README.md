@@ -43,6 +43,83 @@
 
 `handoff_test.go`には64段階の依存関係と他範囲・契約不一致・世代ずれ・正確な参照の重複が同時に存在する試験、および1万2千件の無関係な参照が検証対象や照合結果を変えないことを確かめる試験を追加した。また96段階の依存関係を対象とする性能測定用の試験と、同一Providerへの1万件の正確な参照を扱う性能測定用の試験を用意した。1万件の重複参照は曖昧として拒否し、契約の不一致・世代ずれ・他の適用範囲を混在させても判定を変えない。性能値は測定環境に依存するため、数値を取得するまでは高速化を保証しない。
 
+### 計算量と再現可能な性能測定
+
+証拠参照の件数をR、構成案から重複を取り除いた検証対象数をTとすると、E13の照合部分では、対象の並べ替えにO(T log T)、証拠参照の一回走査に平均O(R)、集約にO(T)の時間を要する。追加の一時保存量はO(T)であり、R件の証拠参照を別の索引に複写しない。これはハッシュ表の平均的な操作時間を前提にした計算量であり、実測の処理時間やレイテンシの上限を示すものではない。
+
+Go 1.23.2で同一の対象コミットを検証する際の測定例：
+
+```sh
+go test -run '^
+
+## テストの範囲
+
+`handoff_test.go`で、実`composition.Registry`から生成した構成案を利用し、欠落、世代ずれ、契約対象不一致、不完全な証拠参照、重複、適用範囲の不一致、矛盾した構成案、推移的依存の網羅と共有依存の重複除去を検査した。
+
+Go 1.23.2の独立した局所モジュールで、本PRの`proposal.go`・`selection.go`、実`registry.go`と、RouterのBinding型だけを代用する試験用定義を使用し、`go test -race -count=100 -timeout=120s ./reference/composition-evidence-handoff ./internal/composition`、`go vet ./reference/composition-evidence-handoff ./internal/composition`、`gofmt -l`が成功。新規の`handoff.go`・`handoff_test.go`はGitHubのBlob SHAとローカルの`git hash-object`が一致した。
+
+これは**完全なTEIパッケージの試験、PR exact-headの全Repository Health、実際の#951解決処理との結合試験ではない**。本番採用を判断するには、これらの検証に加えて依存関係の規模ごとの性能、証拠の失効と発行者のAuthorityを扱う境界を評価する。
+
+
+## E10：実際の契約解決結果から参照を作る縦断試験
+
+#951の参照実装には、正確な契約・実装・成果物・適合証拠から解決結果を求める`resolveCapability`がある。これとComposition側の構成案を接続するため、[Capability Contract Reference](../../tools/reference-plugin-capability-contract/README.md)と同じPackageに`composition_handoff.go`と`composition_handoff_test.go`を追加した。
+
+接続関数は、次の順番で動く。
+
+1. `composition.InspectWiringSet`で得た検証対象に、**どの正確な#951 Provider実装を対応させるか**を明示的に指定する。名前が似ているProviderを暗黙に対応させない。
+2. 既存の`resolveCapability`へ契約・Provider・適合証拠・権限区分を渡す。#951の解決器を複製しない。
+3. 解決できた結果の契約ID・**正確な版**・契約全体の指紋・実装ID・Plugin版・**成果物のダイジェスト**が、明示した対応関係と一致する場合だけ、E9の`EvidenceReference`を作る。
+4. E9の`Reconcile`で、構成案の検証対象と解決結果への参照を照合する。
+
+**二種類のScopeは区別する**：Compositionの`Scope`はそのRegistry内での隔離・選択範囲であり、#951の`AuthorityScope`（設計ツール、ビルド、アプリケーション実行など）とは同義ではない。両者の対応は、検証対象と実装を結び付ける明示的な設定によって示す。Compositionの`Contract.Shape`を#951の`ContractFingerprint`へ読み替えることもしない。
+
+### 結合試験の対象
+
+- 実際の#951の`resolveCapability`から得たProvider、契約指紋、適合証拠指紋、成果物、解決結果の識別情報がE9に欠落なく引き渡されること。
+- 適合証拠なし、権限区分の相違、契約の意味の変更、互換しない要求版、正確な実装・成果物・契約指紋からの逸脱では参照を作らないこと。
+- 証拠の更新では解決結果の識別情報が不変でも、証拠指紋が変化することを区別すること。両方の証拠参照が同時にある場合に一方を暗黙に選ばないこと。
+- Providerの撤去・同名再登録後は、以前の構成案に結び付く参照が宣言世代の古いものとして診断されること。
+- 同じ実装の複数の物理成果物が適合していても、成果物を明示しない限り解決器が曖昧として拒否すること。
+
+### 検証の状態
+
+E9の既存局所パッケージについては、ローカルで`go test -race -count=10 -timeout=90s ./reference/composition-evidence-handoff ./internal/composition`、`go vet`、Go整形検査が再度成功した。
+
+一方、今回追加した**実際の#951パッケージを使うE10の結合試験は、GitHubへソースを追加しBlob SHAを確認した段階であり、実行していない**。作業コンテナからの`git clone`はDNSで失敗する。E9局所試験の成功をE10の結合試験やPR exact-headの全体テストの成功とみなさない。
+
+なお、#951の参照解決器が渡された情報から結果を求められたことは、契約定義の発行権限、適合証拠の真正性・現在性、署名、Hostの実行許可を意味しない。E10の成功時にも最終診断を`reference-linked-unverified`に留める。Productionへ昇格するには#951の信頼できる正本・発行者検証、#943の実成果物、Hostの現在権限への接続が必要である。
+
+
+## E11：現在のRegistryを再照合してから証拠参照を表示する
+
+E9の`Reconcile`は、構成案を作った時点の宣言と証拠参照を照合する。これは過去の判定履歴を調べるには有用だが、**作成後にProviderや依存先が変更された構成案を現在も有効と誤認する危険**があった。
+
+そこで、`internal/composition/proposal_freshness.go`に読み取り専用の`Registry.ProposalCurrent`を追加し、E9側には`ReconcileCurrent`を設けた。
+
+- `ProposalCurrent`は、構成案のRegistry版、対象Providerの選択、推移的な依存先の宣言世代、検証対象の一覧を、現在のRegistryと同じMutex保護下で再照合する。
+- 既存の`Registry.validateSelectionLocked`を利用し、第二の依存解決器を作らない。無関係な更新は許容し、依存先の宣言変更・撤去・同名再登録・選択結果の改変を拒否する。
+- `ReconcileCurrent`は、鮮度検査に不合格なら`Blocked`を返し、証拠参照を表示しない。E10の実Resolverとの試験にもこの経路を採用した。
+- 旧`Reconcile`は**取得時点の履歴照合専用**として残す。結果を現在の実装の利用可能性と読み替えない。
+
+これは**実行許可のための原子的な予約ではない**。鮮度検査後にRegistryが更新される可能性があるため、Hostは配備・呼び出しの際に自身の選択・現在権限・Lease・Fencingを改めて検査する。証拠の署名・発行者の正当性・失効も別の正式な検証責務であり、鮮度検査の成功から推定しない。
+
+### 追加した試験と現時点の検証範囲
+
+`proposal_freshness_test.go`では、推移的な依存先の変更、他Tenantの無関係な登録、Provider撤去・同名再登録、偽装した宣言世代・対象Provider・適用範囲を扱う。
+
+`current_test.go`では、現在の証拠参照、無関係な更新、依存先の変更、循環する無効な編集の不採用、古い構成案の遮断と過去の参照照合を扱う。`composition_handoff_test.go`も、実Resolverから参照を作る正常系とProvider再登録時に`ReconcileCurrent`を使用するように変更した。
+
+**これらE11の追加試験は、GitHubにソースを登録した段階であり、PR exact-headのGo test実行証拠はまだ無い。** コンテナからGitHubを取得する接続はDNS・ネットワーク制約で失敗し、GitHubの当該HEADにも自動チェック結果はない。前段のE9局所試験の成功をE11へ流用しない。
+
+今後は、完全なcheckoutで`go test -race ./internal/composition ./reference/composition-evidence-handoff ./tools/reference-plugin-capability-contract`を実行し、`tools/repository-health-check.sh`の全項目PASSを取得した後に統合を判断する。
+ -bench '^BenchmarkHandoff' -benchmem -benchtime=2s -count=5 ./reference/composition-evidence-handoff
+```
+
+測定時には、対象HEAD、CPU、Goの版、ns/op・B/op・allocs/opを一緒に記録する。測定機会が得られるまでは、ベンチマーク用の試験を用意した事実と、時間の実測を済ませた事実を区別する。
+
+
+
 ## テストの範囲
 
 `handoff_test.go`で、実`composition.Registry`から生成した構成案を利用し、欠落、世代ずれ、契約対象不一致、不完全な証拠参照、重複、適用範囲の不一致、矛盾した構成案、推移的依存の網羅と共有依存の重複除去を検査した。
