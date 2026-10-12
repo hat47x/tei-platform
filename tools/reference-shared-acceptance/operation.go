@@ -35,12 +35,12 @@ type Operation struct {
 	Relation  string `json:"relation,omitempty"`
 	Placement string `json:"placement,omitempty"`
 
-	Data        *DataSpec        `json:"data,omitempty"`
-	AddRelation *AddRelationSpec `json:"addRelation,omitempty"`
-	AddCandidateKey *AddCandidateKeySpec `json:"addCandidateKey,omitempty"`
+	Data                    *DataSpec                    `json:"data,omitempty"`
+	AddRelation             *AddRelationSpec             `json:"addRelation,omitempty"`
+	AddCandidateKey         *AddCandidateKeySpec         `json:"addCandidateKey,omitempty"`
 	AddFunctionalDependency *AddFunctionalDependencySpec `json:"addFunctionalDependency,omitempty"`
-	Application *ApplicationSpec `json:"application,omitempty"`
-	Pattern     *PatternSpec     `json:"pattern,omitempty"`
+	Application             *ApplicationSpec             `json:"application,omitempty"`
+	Pattern                 *PatternSpec                 `json:"pattern,omitempty"`
 
 	EnvironmentBinding *EnvironmentBindingSpec `json:"environmentBinding,omitempty"`
 
