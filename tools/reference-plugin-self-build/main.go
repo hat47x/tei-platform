@@ -99,6 +99,10 @@ type evidence struct {
 	RuntimeDefinitionFingerprint       string                         `json:"runtimeDefinitionFingerprint"`
 	RuntimePluginLockFingerprint       string                         `json:"runtimePluginLockFingerprint"`
 	RuntimePluginLock                  plugin.Lock                    `json:"runtimePluginLock"`
+
+	Stage2EngineLockFingerprint       string `json:"stage2EngineLockFingerprint,omitempty"`
+	Stage2HostRegistrationFingerprint string `json:"stage2HostRegistrationFingerprint,omitempty"`
+	Stage2RuntimePolicyFingerprint    string `json:"stage2RuntimePolicyFingerprint,omitempty"`
 }
 
 type goSourceMember struct {
@@ -134,9 +138,16 @@ func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
 	exactEngine := flag.String("exact-runtime-engine", "", "verified external transform engine executable")
 	engineEvidence := flag.String("engine-build-evidence", "", "independent exact transform engine build Evidence JSON")
+	stage2Lock := flag.String("stage2-engine-lock", "", "Host-approved Reference stage2 engine lock")
+	hostRegistration := flag.String("stage2-host-registration", "", "explicit Host registration for Reference stage2")
 	flag.Parse()
 
-	out, err := runWithExactEngine(*repo, exactEngineOptions{Executable: *exactEngine, BuildEvidence: *engineEvidence})
+	out, err := runWithExactEngine(*repo, exactEngineOptions{
+		Executable:       *exactEngine,
+		BuildEvidence:    *engineEvidence,
+		Stage2Lock:       *stage2Lock,
+		HostRegistration: *hostRegistration,
+	})
 	if exitCode := writeSelfBuildCLIResult(os.Stdout, os.Stderr, out, err); exitCode != 0 {
 		os.Exit(exitCode)
 	}
@@ -169,6 +180,9 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if (options.Executable == "") != (options.BuildEvidence == "") {
 		return evidence{}, fmt.Errorf("exact Runtime Engine requires executable and build Evidence together")
 	}
+	if options.Executable == "" && (options.Stage2Lock != "" || options.HostRegistration != "") {
+		return evidence{}, fmt.Errorf("stage2 Host authority requires the exact Runtime Engine executable and build Evidence")
+	}
 	root, err := filepath.Abs(repo)
 	if err != nil {
 		return evidence{}, err
@@ -180,6 +194,17 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	revision, err := gitOutput(root, "rev-parse", "HEAD")
 	if err != nil {
 		return evidence{}, err
+	}
+	var acceptedStage2 referenceStage2Acceptance
+	if options.Executable != "" {
+		verified, _, err := verifyExactEngine(root, revision, options)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 exact Runtime Engine build evidence: %w", err)
+		}
+		acceptedStage2, err = acceptReferenceStage2Engine(options, verified)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 Host acceptance before invocation: %w", err)
+		}
 	}
 	treeDigest, err := hashRepositorySnapshotTree(root)
 	if err != nil {
@@ -423,6 +448,17 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	)
 	if err != nil {
 		return evidence{}, fmt.Errorf("TEI-native transform bootstrap: %w", err)
+	}
+	var stage2PolicyFingerprint string
+	if options.Executable != "" {
+		if transformBootstrap.RuntimeEngine != acceptedStage2.Engine ||
+			transformBootstrap.ExactRuntimeEngineBuildFingerprint == "" {
+			return evidence{}, fmt.Errorf("stage2 execution does not match accepted Runtime Engine")
+		}
+		stage2PolicyFingerprint, err = acceptedStage2.PolicyFingerprint(transformBootstrap.Stage2Plan)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 Runtime Policy: %w", err)
+		}
 	}
 
 	nativeDefinition, err := exactPlugin(loaded.World.Plugins, nativePluginID, nativePluginVersion)
@@ -840,6 +876,10 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		RuntimeDefinitionFingerprint:       plugin.DefinitionFingerprint(realized),
 		RuntimePluginLockFingerprint:       runtimePluginLockFingerprint,
 		RuntimePluginLock:                  runtimeLock,
+
+		Stage2EngineLockFingerprint:       acceptedStage2.LockFingerprint,
+		Stage2HostRegistrationFingerprint: acceptedStage2.HostRegistrationFingerprint,
+		Stage2RuntimePolicyFingerprint:    stage2PolicyFingerprint,
 	}, nil
 }
 
