@@ -34,14 +34,23 @@ data OrderLine {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(loaded.World.Semantics) != 1 || len(loaded.World.Semantics[0].Data) != 1 {
-		t.Fatalf("semantic model was not loaded: %+v", loaded.World.Semantics)
+	var dataFound bool
+	for _, ns := range loaded.World.Semantics {
+		if ns.ID == "sales" {
+			if len(ns.Data) != 1 {
+				t.Fatalf("sales Data declarations=%+v", ns.Data)
+			}
+			dataFound = true
+			data := ns.Data[0]
+			if len(data.CandidateKeys) != 1 || len(data.FunctionalDependencies) != 1 ||
+				data.CandidateKeys[0].ID != "sales.order_line.business_line" ||
+				data.FunctionalDependencies[0].ID != "sales.order_line.item_by_line" {
+				t.Fatalf("canonical key/FD declarations missing: %+v", data)
+			}
+		}
 	}
-	data := loaded.World.Semantics[0].Data[0]
-	if len(data.CandidateKeys) != 1 || len(data.FunctionalDependencies) != 1 ||
-		data.CandidateKeys[0].ID != "sales.order_line.business_line" ||
-		data.FunctionalDependencies[0].ID != "sales.order_line.item_by_line" {
-		t.Fatalf("canonical key/FD declarations missing: %+v", data)
+	if !dataFound {
+		t.Fatalf("sales semantic namespace was not loaded: %+v", loaded.World.Semantics)
 	}
 	for _, diagnostic := range validation.Validate(loaded.World) {
 		if strings.Contains(diagnostic.Code, "SEMANTIC_RULE") {
