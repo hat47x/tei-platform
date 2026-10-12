@@ -44,6 +44,7 @@ function nodesInProjection(dfd) {
       known.add(key);
     }
   }
+  if(dfd.steps.length===0)throw new Error('EMPTY_DFD_PROCEDURE');
   collect('step', dfd.steps);
   collect('trigger', dfd.triggers);
   collect('business-role', dfd.information?.roles ?? []);
@@ -71,6 +72,7 @@ function nodesInProjection(dfd) {
       throw new Error('UNRESOLVED_DFD_TRIGGER_TARGET');
     }
   }
+  const controlKeys=new Set();
   for(const flow of links(dfd.flows,'flows')) {
     if (!flow || !has('step',flow.from) || !has('step',flow.to) ||
         !['sequence','branch','exception'].includes(flow.kind) ||
@@ -78,13 +80,21 @@ function nodesInProjection(dfd) {
          (typeof flow.condition !== 'string' || !flow.condition.trim()))) {
       throw new Error('UNRESOLVED_DFD_CONTROL_EDGE');
     }
+    const k=JSON.stringify([flow.from,flow.to,flow.kind,flow.condition||'']);
+    if(controlKeys.has(k))throw new Error('DUPLICATE_DFD_CONTROL_EDGE');
+    controlKeys.add(k);
   }
+  const assignments=new Set();
   for(const ref of links(dfd.information?.responsibilities,'responsibilities')) {
     if (!ref || !has('business-role',ref.role) || !has('step',ref.step)) {
       throw new Error('UNRESOLVED_DFD_RESPONSIBILITY');
     }
+    const k=JSON.stringify([ref.role,ref.step]);
+    if(assignments.has(k))throw new Error('DUPLICATE_DFD_RESPONSIBILITY');
+    assignments.add(k);
   }
   const endpoints = new Set(['step','party','store']);
+  const informationIDs = new Set();
   for(const flow of links(dfd.information?.informationFlows,'informationFlows')) {
     const from=flow?.from, to=flow?.to;
     if (!endpoints.has(from?.kind) || !endpoints.has(to?.kind) ||
@@ -94,6 +104,9 @@ function nodesInProjection(dfd) {
         typeof flow.payload !== 'string' || !flow.payload.trim()) {
       throw new Error('UNRESOLVED_DFD_INFORMATION_EDGE');
     }
+    const id=requireID(flow.id,'information flow');
+    if(informationIDs.has(id))throw new Error('DUPLICATE_DFD_INFORMATION_FLOW');
+    informationIDs.add(id);
   }
   return known;
 }
