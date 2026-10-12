@@ -41,13 +41,16 @@ func TestLogicalKeysAndFDsBecomeIndependentSemanticDiffSubjects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(changes) != 2 {
+		t.Fatalf("expected exactly two typed rule changes: %+v", changes)
+	}
 	if got, want := []string{
 		changes[0].Change + " " + changes[0].Key(),
 		changes[1].Change + " " + changes[1].Key(),
 	}, []string{
 		"added candidate-key:sales.order_line.business_line",
 		"added functional-dependency:sales.order_line.item_by_line",
-	}; len(changes) != 2 || !reflect.DeepEqual(got, want) {
+	}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("diff=%+v", changes)
 	}
 	edges, unresolved := Impact(after, changes)
