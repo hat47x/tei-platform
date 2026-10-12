@@ -37,7 +37,10 @@ function validateRouteMatch(route){
   if(typeof route.method!=="string" || !/^[A-Z]+$/.test(route.method))
     throw new Error("route method must be an exact uppercase HTTP token");
   if(typeof route.path!=="string" || !route.path.startsWith("/") ||
-      /[^\x21-\x7e]/.test(route.path) || /[?#%\\]/.test(route.path) || route.path.includes("//") ||
+      // Match the first Go Host's net/url.URL.EscapedPath semantics rather
+      // than printable ASCII alone: reserved punctuation such as ! and *
+      // would otherwise be accepted here but be unreachable in NewHost.
+      !/^[-A-Za-z0-9._~/:@&=+$,;]+$/.test(route.path) || route.path.includes("//") ||
       route.path.split("/").some(part=>part==="." || part===".."))
     throw new Error("route path must be an exact unambiguous path");
   if(Object.hasOwn(route,"actionId") &&
@@ -84,6 +87,11 @@ export function composeRequestPlan(plan){
   for(const guard of hostPolicy.requiredGuards){
     if(!standardGuardEvidence.has(guard)) throw new Error("required guard has no declared evidence contract: "+guard);
   }
+  // "invoke" is the Action execution point in the E1 reference graph.
+  // A public callback or other non-Action route must not inherit an
+  // executable business Action simply by omitting route.actionId.
+  if(!route.actionId && steps.some(p=>p.id==="invoke"))
+    throw new Error("Action invocation requires an explicit Action route");
   for(const p of steps){
     if(!p.id || ids.has(p.id) || p.scope!=="server") throw new Error("step identity is duplicated or scope is not server");
     ids.set(p.id,p);
