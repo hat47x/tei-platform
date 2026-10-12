@@ -126,9 +126,9 @@ node reference/studio-authoring/cli.mjs inspect \
 
 # 逆方向: 非CanonicalなBusiness Stepから、元World上のFunction / Data /
 # Relation / Validationへの読み取り専用の参照候補を取得
-node reference/studio-authoring/cli.mjs inspect \\
-  -workspace "$scratch/workspace" \\
-  -focus step:BP-05 \\
+node reference/studio-authoring/cli.mjs inspect \
+  -workspace "$scratch/workspace" \
+  -focus step:BP-05 \
   -business-dfd "$scratch/dfd.json"
 ```
 
@@ -137,7 +137,7 @@ node reference/studio-authoring/cli.mjs inspect \\
 - 原DFDの`source.file`/`source.pointer`は**非Canonicalな参照Fixtureの位置**であり、Source Indexの編集先ではありません。
 - `manualOrExternalUnlinked`にはFunctionなしの手作業等を別掲します。これらは**Functionに未接続**であり、明示された意味参照まで存在しないという意味ではありません。近接していることだけを理由に依存辺を捏造しません。大きなProcedureでは20件までとし切詰めを明示します。
 - DFDにはWorkspace revisionのbindingが無いので、たとえ同一IDでも`freshness=unverified-no-model-revision-binding`です。旧DFDがSource revisionと一致すること、Business Procedureがacceptedであることは**証明できません**。最新Worldからの再取得と#1120 contractによる厳密な結合は後続です。
-- #1138は別レーンのDraftであり、本PRへのコードコピーやCore変更は行いません。このコマンドは#1138のツールが存在するcheckoutでのみ動きます。通常のmainではDFDを渡さずBusinessを`unresolved`に保ちます。
+- #1138の業務DFD参照実装はすでにmainへ統合されていますが、生成される業務手順は現在も受理済みの正本ではありません。ツールの存在と業務意味の承認を混同しないでください。
 
 ### 元ソース位置の確認
 
