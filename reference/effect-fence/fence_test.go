@@ -219,3 +219,31 @@ func TestParallelRevocationAndCommitIsSerialized(t *testing.T) {
 		}
 	}
 }
+
+// 確定済みの応答を別のPermitから再送する場合も、失効後には開示しない。
+func TestRevocationBeforePendingReplay(t *testing.T) {
+	m := setup(t)
+	r := request("pending-replay")
+	p1 := mustPrepare(t, m, r)
+	p2 := mustPrepare(t, m, r)
+	first, err := m.Commit(context.Background(), p1)
+	if err != nil || first.Disposition != Committed {
+		t.Fatalf("initial commit: %+v %v", first, err)
+	}
+	if err := m.SetAuthority(scope, 2, false); err != nil {
+		t.Fatal(err)
+	}
+	second, err := m.Commit(context.Background(), p2)
+	if err != nil || second.Disposition != Denied || second.Reason != "authority-changed" || second.Receipt != (Receipt{}) {
+		t.Fatalf("revoked replay leaked receipt: %+v %v", second, err)
+	}
+	if _, retry, err := m.Prepare(context.Background(), r); err != nil || retry.Disposition != Denied || retry.Receipt != (Receipt{}) {
+		t.Fatalf("revoked prepare replay: %+v %v", retry, err)
+	}
+	if _, ok := m.Lookup(scope, r.OperationID); ok {
+		t.Fatal("revoked lookup leaked receipt")
+	}
+	if value, version := m.Observe(scope); value != r.Value || version != 1 {
+		t.Fatalf("past committed data unexpectedly mutated: %q %d", value, version)
+	}
+}
