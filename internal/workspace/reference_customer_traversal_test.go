@@ -131,9 +131,11 @@ func TestTwoApplicationsUseSharedCustomerContractWithLocalBindings(t *testing.T)
 				t.Fatalf("案件ごとの読み取り専用接続を解決できません: %#v, ok=%v", db, ok)
 			}
 			// An alias belongs to its application, even when the target contract is shared.
-			otherAlias := "master"
+			otherAlias := pattern.Datasource
 			if tc.datasource == "master" {
 				otherAlias = "customer_master"
+			} else {
+				otherAlias = "master"
 			}
 			if _, ok := app.DatabaseByAliasExact(otherAlias); ok {
 				t.Fatalf("別案件の接続名 %s を暗黙に取り込んでいます", otherAlias)
