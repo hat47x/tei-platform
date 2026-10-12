@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts, navigateReferenceBusinessStep } from "./bridge.mjs";
+import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts, navigateReferenceBusinessStep, verifySourceAnchor } from "./bridge.mjs";
 
 const revision = "sha256:" + "a".repeat(64);
 function fixture() {
@@ -56,11 +57,26 @@ test("diagram editing makes an existing Shared Acceptance change-candidate, not 
       symbol: "order", target: "sales.order", cardinality: "one"
     }
   }]);
+  assert.equal(Object.hasOwn(out.delta[0], "data"), false,
+    "root data means a Go DataSpec; relation needs addRelation");
   assert.equal(out.schema, "tei.reference.change-candidate/v0");
   assert.equal(out.baseModelRevision, revision);
   assert.equal(JSON.stringify(world), before);
   const ai = candidateFromEdit(world, revision, { ...edit(), origin: "ai" });
   assert.deepEqual(ai.delta, out.delta, "Studio/AI change enters the same boundary");
+});
+
+test("visual edits are pinned to their displayed Source revision", () => {
+  const input = { ...edit(), expectedModelRevision: revision };
+  const candidate = candidateFromEdit(fixture(), revision, input);
+  assert.equal(candidate.baseModelRevision, revision);
+  assert.deepEqual(candidate.delta, candidateFromEdit(fixture(), revision, edit()).delta);
+  assert.throws(() => candidateFromEdit(fixture(),
+    "sha256:" + "b".repeat(64), input), /STUDIO_EDIT_STALE_MODEL_REVISION/);
+  assert.throws(() => candidateFromEdit(fixture(), revision,
+    { ...input, expectedModelRevision: "not-a-sha" }),
+    /STUDIO_EDIT_EXPECTED_REVISION_INVALID/);
+  assert.equal(input.expectedModelRevision, revision, "caller edit is unchanged");
 });
 
 test("table edit uses source-owned attribute, never the derived table cell", () => {
@@ -296,6 +312,64 @@ test("the existing Source Index supplies a precise definition locator without ch
     }] } }), /INVALID_SOURCE_ANCHOR/);
 });
 
+test("source index rejects unnormalized path and incomplete end positions before displaying an anchor", () => {
+  const source = {
+    artifacts: [{ path: "semantic/sales/order.tei",
+      fingerprint: "sha256:" + "a".repeat(64) }],
+    references: [{
+      subject: { kind: "semantic-relation", id: "sales.order.lines" },
+      artifactPath: "semantic/sales/order.tei", role: "definition",
+      range: { start: { offset: 2, line: 1, column: 3 },
+        end: { offset: 7, line: 1, column: 8 } }
+    }]
+  };
+  const run = input => projectWorld(fixture(), revision, "relation:sales.order.lines",
+    { sourceIndex: input });
+  assert.equal(run(source).sourceNavigation.byteVerification.status, "not-checked");
+  for (const path of ["semantic//sales/order.tei", "semantic/./sales/order.tei",
+    "semantic/sales/order.tei/", "./semantic/sales/order.tei"]) {
+    assert.throws(() => run({ ...source, artifacts: [{
+      ...source.artifacts[0], path }] }), /INVALID_OR_DUPLICATE_SOURCE_ARTIFACT/);
+  }
+  for (const end of [{ offset: 7, line: 0, column: 8 },
+    { offset: 7, line: 1, column: 0 }, { offset: 7, line: -1, column: 8 },
+    { offset: 7, line: 1.5, column: 8 }, { offset: 7, line: 1, column: 2 },
+    { offset: 7, line: 0, column: 1 }]) {
+    const invalid = structuredClone(source);
+    invalid.references[0].range.end = end;
+    assert.throws(() => run(invalid), /INVALID_SOURCE_ANCHOR/);
+  }
+});
+
+test("nested subject scope cannot be flattened to an unscoped Source Index definition", () => {
+  const base = {
+    artifacts: [{ path: "semantic/sales/order.tei",
+      fingerprint: "sha256:" + "b".repeat(64) }],
+    references: [{
+      subject: { kind: "semantic-relation", id: "sales.order.lines" },
+      artifactPath: "semantic/sales/order.tei", role: "definition",
+      range: { start: { offset: 2, line: 1, column: 3 },
+        end: { offset: 7, line: 1, column: 8 } }
+    }]
+  };
+  const run = sourceIndex => projectWorld(fixture(), revision,
+    "relation:sales.order.lines", { sourceIndex });
+  assert.equal(run(base).sourceNavigation.status, "source-index-backed");
+  const nested = structuredClone(base);
+  nested.references[0].subject.scope = "app:order_entry";
+  const ref = run(nested).sourceNavigation;
+  assert.equal(ref.status, "unresolved");
+  assert.ok(ref.reason.includes("#1120"));
+  const duplicateScope = structuredClone(base);
+  duplicateScope.references[0].subject.scope = "app:one";
+  duplicateScope.references.push({
+    ...structuredClone(duplicateScope.references[0]),
+    subject: { ...duplicateScope.references[0].subject, scope: "app:two" }
+  });
+  assert.equal(run(duplicateScope).sourceNavigation.status, "unresolved",
+    "same kind and ID with different scoped meanings must never select either");
+});
+
 test("optional #1125 Business reference joins exact Pattern ID without becoming accepted", () => {
   const world = fixture();
   const dfd = {
@@ -334,6 +408,90 @@ test("optional #1125 Business reference joins exact Pattern ID without becoming 
   assert.throws(() => projectWorld(world, revision, "relation:sales.order.lines", {
     businessDFD: duplicated
   }), /INVALID_OR_DUPLICATE_BUSINESS_STEP/);
+});
+
+test("forward and reverse Business navigation reject stale sibling references", () => {
+  const w = fixture();
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "order-entry.order-handling", diagnostics: [],
+    steps: [{
+      id: "BP-PARTIAL",
+      functionRefs: [
+        { id: "order_entry.order_lines", status: "resolved",
+          relation: "sales.order.lines" },
+        { id: "no_such_pattern", status: "unresolved" }
+      ],
+      explicitMeaning: [{ kind: "semantic-data", id: "sales.order_line",
+        status: "resolved-id-not-accepted",
+        authority: "procedure-reference-only" }]
+    }]
+  };
+  const forward = projectWorld(w, revision, "relation:sales.order.lines",
+    { businessDFD: dfd }).views.business;
+  assert.equal(forward.status, "unresolved");
+  assert.equal(forward.items.length, 1);
+  assert.equal(forward.items[0].status, "unresolved");
+  assert.deepEqual(forward.items[0].resolutionSummary,
+    { declared: 3, unresolved: 1 });
+  assert.equal(forward.items[0].functionRefs[0].status,
+    "exact-id-matches-current-world");
+  assert.equal(forward.diagnostics[0].code,
+    "BUSINESS_PATTERN_REFERENCE_STALE_OR_UNRESOLVED");
+  const reverse = navigateReferenceBusinessStep(w, revision, dfd, "BP-PARTIAL");
+  assert.equal(reverse.status, "unresolved");
+  assert.deepEqual(reverse.resolutionSummary,
+    { matched: 2, unresolved: 1, producerErrors: 0 });
+
+  const fromData = projectWorld(w, revision, "data:sales.order_line",
+    { businessDFD: dfd }).views.business;
+  assert.equal(fromData.status, "unresolved",
+    "one matched Data reference cannot hide an unrelated stale Function");
+  assert.equal(fromData.items[0].status, "unresolved");
+
+  const restored = structuredClone(dfd);
+  restored.steps[0].functionRefs.pop();
+  const clean = projectWorld(w, revision, "relation:sales.order.lines",
+    { businessDFD: restored }).views.business;
+  assert.equal(clean.status, "reference-only");
+  assert.deepEqual(clean.items[0].resolutionSummary,
+    { declared: 2, unresolved: 0 });
+  assert.equal(clean.authority, "noncanonical-reference",
+    "all identity matches still do not constitute accepted Business");
+  const empty = projectWorld(w, revision, "data:customer.customer",
+    { businessDFD: restored }).views.business;
+  assert.equal(empty.status, "unresolved");
+  assert.deepEqual(empty.items, [],
+    "a matching Procedure with no matching Step is not a resolved view");
+});
+
+test("Business forward navigation never verifies undeclared capability meaning", () => {
+  const w = fixture();
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "p", diagnostics: [],
+    steps: [{
+      id: "BP-CAP", functionRefs: [],
+      explicitMeaning: [
+        { kind: "semantic-data", id: "sales.order_line",
+          status: "resolved-id-not-accepted",
+          authority: "procedure-reference-only" },
+        { kind: "semantic-capability", id: "security.authorize",
+          status: "resolved-id-not-accepted",
+          authority: "procedure-reference-only" }
+      ]
+    }]
+  };
+  const p = projectWorld(w, revision, "data:sales.order_line",
+    { businessDFD: dfd });
+  assert.equal(p.views.business.status, "unresolved");
+  assert.equal(p.views.business.items[0].status, "unresolved");
+  assert.deepEqual(p.views.business.items[0].resolutionSummary,
+    { declared: 2, unresolved: 1 });
+  assert.equal(p.views.business.diagnostics[0].code,
+    "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED");
 });
 
 test("C0 scoped ID collision cannot be silently resolved by flat Studio token", () => {
@@ -496,6 +654,79 @@ test("local selection never expands into a global dense matrix", () => {
   assert.ok(result.views.function.items.length <= 1);
 });
 
+test("source anchor verification binds digest to the actual byte buffer", () => {
+  const bytes = Uint8Array.from([97, 10, 98, 99, 10]); // a\\nbc\\n
+  const digest = data => "sha256:" +
+    createHash("sha256").update(data).digest("hex");
+  const fingerprint = digest(bytes);
+  const navigation = {
+    status: "source-index-backed",
+    artifactFingerprint: fingerprint,
+    range: {
+      start: { offset: 2, line: 2, column: 1 },
+      end: { offset: 4, line: 2, column: 3 }
+    }
+  };
+  const verified = verifySourceAnchor(navigation, bytes, digest);
+  assert.equal(verified.status, "source-index-backed");
+  assert.equal(verified.byteVerification.status, "verified-at-read");
+  assert.equal(verified.byteVerification.fingerprint, fingerprint);
+  assert.equal(verified.byteVerification.range, "offset-and-line-column-matched");
+  assert.ok(verified.caveat.includes("no filesystem lock"));
+  assert.equal(navigation.byteVerification, undefined,
+    "the read-only navigation input must not be modified");
+
+  // The checksum is calculated over the same bytes passed to the locator
+  // check. A matching arbitrary fingerprint supplied separately is no
+  // longer sufficient to mark the anchor as verified.
+  const changed = Uint8Array.from([97, 10, 88, 99, 10]);
+  assert.throws(() => verifySourceAnchor(navigation, changed, digest),
+    /SOURCE_ARTIFACT_FINGERPRINT_STALE/);
+  const wrongChecksum = structuredClone(navigation);
+  wrongChecksum.artifactFingerprint = "sha256:" + "f".repeat(64);
+  assert.throws(() => verifySourceAnchor(wrongChecksum, bytes, digest),
+    /SOURCE_ARTIFACT_FINGERPRINT_STALE/);
+  assert.throws(() => verifySourceAnchor(navigation, bytes, () => "invalid"),
+    /SOURCE_ANCHOR_DIGEST_INVALID/);
+  assert.throws(() => verifySourceAnchor(navigation, bytes, fingerprint),
+    /SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID/);
+
+  const staleOffset = structuredClone(navigation);
+  staleOffset.range.end.offset = 6;
+  assert.throws(() => verifySourceAnchor(staleOffset, bytes, digest),
+    /SOURCE_ANCHOR_RANGE_INVALID/);
+  const staleLine = structuredClone(navigation);
+  staleLine.range.start.line = 1;
+  assert.throws(() => verifySourceAnchor(staleLine, bytes, digest),
+    /SOURCE_ANCHOR_POSITION_STALE/);
+  const staleEnd = structuredClone(navigation);
+  staleEnd.range.end.column = 4;
+  assert.throws(() => verifySourceAnchor(staleEnd, bytes, digest),
+    /SOURCE_ANCHOR_POSITION_STALE/);
+  assert.throws(() => verifySourceAnchor(navigation, "untrusted text", digest),
+    /SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID/);
+});
+
+test("source index columns are byte-based even for multibyte Japanese text", () => {
+  // Go sourceindex.PositionAt counts bytes rather than JavaScript UTF-16 units.
+  const content = Uint8Array.from([0xe3, 0x81, 0x82, 0x0a, 0x61]); // あ\\na
+  const digest = data => "sha256:" +
+    createHash("sha256").update(data).digest("hex");
+  const position = {
+    status: "source-index-backed", artifactFingerprint: digest(content),
+    range: {
+      start: { offset: 3, line: 1, column: 4 },
+      end: { offset: 4, line: 2, column: 1 }
+    }
+  };
+  const result = verifySourceAnchor(position, content, digest);
+  assert.equal(result.byteVerification.status, "verified-at-read");
+  const characterColumn = structuredClone(position);
+  characterColumn.range.start.column = 2; // UTF-16 character count: incorrect
+  assert.throws(() => verifySourceAnchor(characterColumn, content, digest),
+    /SOURCE_ANCHOR_POSITION_STALE/);
+});
+
 test("business-local step navigation returns typed World focus without canonical authority", () => {
   const world = fixture();
   world.semantics[0].validations = [
@@ -522,7 +753,10 @@ test("business-local step navigation returns typed World focus without canonical
   const result = navigateReferenceBusinessStep(world, revision, dfd, "BP-05");
   assert.equal(result.schema, "tei.reference.studio-business-step-navigation/v0");
   assert.equal(result.subject.scope, "reference-procedure:order-entry.order-handling");
-  assert.equal(result.status, "reference-only");
+  assert.equal(result.status, "unresolved",
+    "mixed current and unresolved references cannot look fully sound");
+  assert.deepEqual(result.resolutionSummary,
+    { matched: 1, unresolved: 1, producerErrors: 0 });
   assert.equal(result.candidates[0].focus, "validation:sales.order_line.price_positive");
   assert.equal(result.candidates[0].status, "identity-match-only");
   assert.equal(result.candidates[1].status, "unresolved");
@@ -546,6 +780,9 @@ test("business-local step navigation fails closed on DFD errors, duplicate IDs a
       status: "resolved", data: "sales.order" }] }]
   };
   const ok = navigateReferenceBusinessStep(world, revision, base, "S1");
+  assert.equal(ok.status, "reference-only");
+  assert.deepEqual(ok.resolutionSummary,
+    { matched: 1, unresolved: 0, producerErrors: 0 });
   assert.equal(ok.candidates[0].focus, "pattern:order_entry.record");
   assert.equal(ok.candidates[0].status, "identity-match-only");
   assert.equal(ok.editable, false);
@@ -558,6 +795,8 @@ test("business-local step navigation fails closed on DFD errors, duplicate IDs a
   const blocked = navigateReferenceBusinessStep(world, revision, producerError, "S1");
   assert.equal(blocked.status, "unresolved");
   assert.equal(blocked.candidates[0].status, "unresolved");
+  assert.deepEqual(blocked.resolutionSummary,
+    { matched: 0, unresolved: 1, producerErrors: 1 });
   const duplicate = structuredClone(base);
   duplicate.steps.push(structuredClone(duplicate.steps[0]));
   assert.throws(() => navigateReferenceBusinessStep(world, revision, duplicate, "S1"),
@@ -648,6 +887,8 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
     { encoding: "utf8" });
     assert.equal(inspectIndexed.status, 0, inspectIndexed.stderr);
     assert.equal(JSON.parse(inspectIndexed.stdout).sourceNavigation.status, "source-index-backed");
+    assert.equal(JSON.parse(inspectIndexed.stdout).sourceNavigation.byteVerification.status,
+      "not-checked", "detached Index snapshot cannot certify current file bytes");
     const businessStep = spawnSync(process.execPath, [cli, "inspect",
       "-world-file", worldPath, "-revision-file", revPath,
       "-focus", "step:BP-01", "-business-dfd", dfdPath], { encoding: "utf8" });
@@ -671,6 +912,8 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
       { encoding: "utf8" });
     assert.notEqual(unsafeReview.status, 0,
       "review-edit requires a live workspace and cannot trust unrelated snapshots");
+    assert.match(unsafeReview.stderr, /INVALID_INPUT/,
+      "negative test must reject detached snapshots by design, not due to CLI crash");
     assert.deepEqual(paths.map(p => readFileSync(p, "utf8")), before);
   } finally {
     rmSync(dir, { recursive: true, force: true });

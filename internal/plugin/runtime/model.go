@@ -106,6 +106,9 @@ type EnvironmentPlan struct {
 	RuntimePolicyFingerprint     string              `json:"runtimePolicyFingerprint"`
 	Plugins                      []PluginRuntime     `json:"plugins"`
 	Capabilities                 []CapabilityRuntime `json:"capabilities,omitempty"`
+	// ServiceBindings are host-selected, exact transport routes. They do not
+	// attest Contract/Provider conformance or issue runtime permissions.
+	ServiceBindings []ServiceCarrierBinding `json:"serviceBindings,omitempty"`
 }
 
 func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) (EnvironmentPlan, error) {
@@ -233,17 +236,19 @@ func bindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, en
 
 func PolicyFingerprint(plan EnvironmentPlan) string {
 	payload := struct {
-		Environment                  core.CanonicalID    `json:"environment"`
-		PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
-		RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
-		Plugins                      []PluginRuntime     `json:"plugins"`
-		Capabilities                 []CapabilityRuntime `json:"capabilities"`
+		Environment                  core.CanonicalID        `json:"environment"`
+		PluginLockFingerprint        string                  `json:"pluginLockFingerprint"`
+		RuntimeEngineLockFingerprint string                  `json:"runtimeEngineLockFingerprint,omitempty"`
+		Plugins                      []PluginRuntime         `json:"plugins"`
+		Capabilities                 []CapabilityRuntime     `json:"capabilities"`
+		ServiceBindings              []ServiceCarrierBinding `json:"serviceBindings,omitempty"`
 	}{
 		Environment:                  plan.Environment,
 		PluginLockFingerprint:        plan.PluginLockFingerprint,
 		RuntimeEngineLockFingerprint: plan.RuntimeEngineLockFingerprint,
 		Plugins:                      append([]PluginRuntime(nil), plan.Plugins...),
 		Capabilities:                 append([]CapabilityRuntime(nil), plan.Capabilities...),
+		ServiceBindings:              append([]ServiceCarrierBinding(nil), plan.ServiceBindings...),
 	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
@@ -488,12 +493,15 @@ func (r Registry) validateProcessImageBinding(sandboxed, digestVerified bool) er
 	return nil
 }
 
+// ServiceAcceptance is a Host-owned source of current Service acceptance.
+// Plugin descriptors and invocation payloads cannot supply the reader.
 type Registry struct {
 	Builtins               map[string]Builtin
 	BuiltinRegistrations   map[string]BuiltinRegistration
 	Processes              ProcessLauncher
 	Sandboxes              SandboxLauncher
 	Verifier               ArtifactVerifier
+	ServiceAcceptance      ServiceAcceptanceReader
 	Resources              resource.Broker
 	SupervisorOwnerships   resource.SupervisorOwnershipStore
 	SupervisorOwnerID      string
@@ -823,11 +831,25 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	if resp.DescriptorFingerprint == "" {
 		resp.DescriptorFingerprint = pr.DescriptorFingerprint
 	}
+	identityMatches := resp.ProtocolVersion == ProtocolVersion && resp.RequestID == requestID && resp.Plugin == cr.Plugin && resp.CapabilityID == id && resp.DescriptorFingerprint == pr.DescriptorFingerprint
+	if cr.Boundary == BoundaryProcess {
+		// Process response metadata is untrusted. A plugin can accidentally or
+		// deliberately embed host-supplied secrets in the error field or in a
+		// failure/mismatched-identity payload. Do not promote either to a host
+		// error, Invocation evidence, or a caller-visible diagnostic.
+		resp.Error = ""
+		if resp.Status != ResponseOK || !identityMatches {
+			resp.Payload = nil
+		}
+	}
 	inv = Invocation{Response: resp, Provenance: prov}
-	if resp.ProtocolVersion != ProtocolVersion || resp.RequestID != requestID || resp.Plugin != cr.Plugin || resp.CapabilityID != id || resp.DescriptorFingerprint != pr.DescriptorFingerprint {
+	if !identityMatches {
 		return inv, fmt.Errorf("plugin runtime response identity mismatch for capability %s", id)
 	}
 	if resp.Status == ResponseError {
+		if cr.Boundary == BoundaryProcess {
+			return inv, fmt.Errorf("plugin capability %s failed (untrusted process error details suppressed)", id)
+		}
 		return inv, fmt.Errorf("plugin capability %s failed: %s", id, resp.Error)
 	}
 	if resp.Status != ResponseOK {

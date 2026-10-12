@@ -62,6 +62,24 @@ func runProcessHelper(mode string) int {
 	if mode == "forged" {
 		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
 	}
+	// An external process may put sensitive data in the error carrier, even
+	// when it is reporting success or a malformed/mismatched response.
+	switch mode {
+	case "secret-error":
+		resp.Status = pruntime.ResponseError
+	case "secret-ok":
+		// Deliberately attach an error field to an otherwise successful reply.
+	case "secret-unknown-status":
+		resp.Status = pruntime.ResponseStatus("unrecognized")
+	case "secret-forged-identity":
+		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
+	}
+	if strings.HasPrefix(mode, "secret-") {
+		resp.Error = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		if mode != "secret-ok" {
+			resp.Payload = json.RawMessage(`{"secret":"TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"}`)
+		}
+	}
 	if mode == "env-probe" {
 		payload, err := json.Marshal(struct {
 			HostSecretPresent bool   `json:"hostSecretPresent"`

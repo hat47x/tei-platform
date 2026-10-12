@@ -164,3 +164,11 @@ generic InvocationがRuntime Authorityを代替するわけではありません
 この試験に使うShape publisher trustとProvider Conformanceは**テスト内で合成された証跡**であり、未採用の業務契約を正式公開したわけではありません。実行ファイルのSHA-256照合・Host許可フラグはテスト専用で、製品RuntimeのAuthority、Permission、Sandbox、署名、Originを代替しません。旧プロセス通信の固定指紋は**運搬手段に固有のReference値**であり、新しいService Contract/Shapeのfingerprintと同一ではありません。したがってこの結合試験を、本番向けService Contractの移行完了と解釈しません。
 
 単独モジュールとしての構築と依存の隔離は[業務プラグインの結合試験](../reference-capability-transport/order_quote_process_test.go)で別途確認します。現試験は契約候補から実プロセスまでの**接続欠落を検知するReference**であって、別のResolver、Runtime Authority、Transportを製品へ追加しません。
+
+
+### 製品Host Runtimeまで接続した縦断Reference
+
+[契約候補→ServiceCarrier→製品Host→実プロセス](quote_service_host_e2e_test.go)は、既存の候補Contract解決器・独立した要求／応答Shape Authorityのテスト用信頼証跡と、製品`EnvironmentPlan.ServiceBindings`・`Registry.InvokeSelectedServiceCarrier`を**同じ呼出し**で通します。見積もりの税抜小計1,550円が実プラグインから返り、結果Shapeに適合することを確認します。Conformance欠落・要求Shape不一致・Host Binding欠落・Artifact差異・Host Verifier失効は、別々の境界で実プロセスを起動せず拒否します。旧Carrierへ送るReference wireの生成・応答検査は従来の結合試験と共有し、第二のTransportを作りません。
+
+この試験で使うContract Publisher TrustとProvider Conformanceは**メモリ上の合成試験証跡**です。Hostの検証も実行ファイルのSHA-256照合だけであり、署名・来歴・永続的な採用記録・Sandbox・権限付与の完備は証明しません。`ServiceBinding`は正式なContract/Provider Authorityの代わりにならず、`CapabilityContractQueryExecutor`は見積もり業務を表す意味契約ではなく旧Process Carrierの種別です。案件固有プラグインの開発に、これらの試験用詳細メタデータを一律に書かせる仕様ではありません。
+

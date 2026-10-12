@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -186,6 +187,59 @@ test('an older layout read cannot overwrite a newer DFD',async()=>{
   assert.equal($('apply').disabled,true);
 });
 
+
+test('clearing a layout picker revokes a pending load and the previous move',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false);
+  const projectionSHA256='sha256:'+createHash('sha256').update(JSON.stringify(projection)).digest('hex');
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:projection.procedureId,projectionSHA256,
+    nodes:[{kind:'step',id:'BP-04',x:210,y:75}]};
+  const bytes=Buffer.from(JSON.stringify(layout));
+  let release;
+  const loading=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>
+      resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('export').disabled,true);
+  await $('layout-file').listeners.change({target:{files:[]}});
+  release();
+  await loading;
+  assert.match($('status').textContent,/配置ファイルの選択を解除/);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('export').disabled,true);
+  assert.equal($('diagram').children.find(x=>x.dataset?.id==='BP-04').transform,'translate(40,50)');
+});
+
+test('replacing a layout disables the old candidate until the new bytes are verified',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false);
+  const projectionSHA256='sha256:'+createHash('sha256').update(JSON.stringify(projection)).digest('hex');
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:projection.procedureId,projectionSHA256,
+    nodes:[{kind:'step',id:'BP-04',x:210,y:75}]};
+  const bytes=Buffer.from(JSON.stringify(layout));
+  let release;
+  const loading=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>
+      resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('export').disabled,true);
+  release();
+  await loading;
+  assert.match($('status').textContent,/配置ファイルを照合して読み込みました/);
+  assert.equal($('export').disabled,false);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('diagram').children.find(x=>x.dataset?.id==='BP-04').transform,'translate(210,75)');
+});
 
 const here=dirname(fileURLToPath(import.meta.url));
 const reference=name=>JSON.parse(readFileSync(join(here,name),'utf8'));
@@ -728,4 +782,274 @@ test('clearing a reference file defeats its outstanding asynchronous load',async
 
   await input('review-file',approvalReview);
   assert.equal($('semantic-propose').disabled,false);
+});
+
+test('World clear rejects late file completion and revokes old Step details',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:301});
+  assert.match($('details').children[0].textContent,/business.json/);
+  let release;
+  const reading=$('world-file').listeners.change({target:{files:[{
+    text:()=>new Promise(resolve=>{release=()=>resolve('{"source":"older"}');})
+  }]}});
+  assert.equal($('details').children.length,0);
+  assert.match($('details').textContent,/要素を選択すると/);
+  await $('world-file').listeners.change({target:{files:[]}});
+  release();
+  await reading;
+  assert.match($('status').textContent,/Worldの選択を解除/);
+  $('revision').value='user-supplied-revision';
+  const fresh=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  fresh.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:302});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,1,
+    'cleared World must not supply a stale navigation result');
+});
+
+test('new World wins over an invalid older read, and revision changes clear navigation',async()=>{
+  await input('dfd-file',projection);
+  let release;
+  const oldRead=$('world-file').listeners.change({target:{files:[{
+    text:()=>new Promise(resolve=>{release=()=>resolve('not-json');})
+  }]}});
+  await input('world-file',{source:'new-world'});
+  release();
+  await oldRead;
+  assert.match($('status').textContent,/Worldを読み込みました/);
+  assert.doesNotMatch($('status').textContent,/Worldを読み込めません/);
+  $('revision').value='revision-A';
+  let node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:303});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2,
+    'the new World should remain available for read-only navigation');
+  $('revision').value='revision-B';
+  $('revision').listeners.input();
+  assert.equal($('details').children.length,0);
+  assert.match($('details').textContent,/要素を選択すると/);
+  assert.match($('status').textContent,/版表示を変更/);
+  node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:304});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2);
+});
+
+test('diagram follows explicit Function, Role, Party, Store and Trigger links in both directions',async()=>{
+  const unchanged=JSON.stringify({procedure:approvalProcedure,review:approvalReview});
+  await input('dfd-file',approvalProjection());
+  const choose=(kind,id)=>{
+    const element=$('diagram').children.find(x=>x.dataset?.kind===kind&&x.dataset.id===id);
+    assert.ok(element,'visible node '+kind+':'+id);
+    element.listeners.keydown({key:'Enter',preventDefault(){}});
+    return JSON.parse($('details').children[0].textContent);
+  };
+  const jump=(kind,id)=>{
+    const links=$('details').children.find(x=>x.tag==='div');
+    assert.ok(links,'explicit reverse links must be shown');
+    const button=links.children.find(x=>x.textContent===kind+': '+id);
+    assert.ok(button,'expected graph navigation '+kind+':'+id);
+    button.click();
+    return JSON.parse($('details').children[0].textContent);
+  };
+
+  let detail=choose('function','order_entry.order_record');
+  assert.equal(detail.authority,'reference-only');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+  detail=jump('step','APP-00');
+  assert.equal(detail.source.pointer,'/steps/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='function'&&x.id==='order_entry.order_record'));
+
+  detail=choose('business-role','sales');
+  assert.equal(detail.source.pointer,'/businessRoles/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='step'));
+  const roleStep=detail.relatedDiagramNodes.find(x=>x.kind==='step');
+  detail=jump('step',roleStep.id);
+  assert.equal(detail.authority,'reference-only');
+
+  detail=choose('party','customer');
+  assert.equal(detail.source.pointer,'/externalParties/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='step'&&x.id==='APP-10'));
+  detail=jump('step','APP-10');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='party'&&x.id==='customer'));
+
+  detail=choose('store','orders');
+  assert.equal(detail.semanticData,'sales.order');
+  assert.equal(detail.source.pointer,'/stores/0');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+
+  detail=choose('trigger','TR-ORDER');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+  detail=jump('step','APP-00');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='trigger'&&x.id==='TR-ORDER'));
+  assert.equal(JSON.stringify({procedure:approvalProcedure,review:approvalReview}),unchanged);
+});
+
+test('a graph navigation button from old DFD cannot switch the newly loaded Procedure',async()=>{
+  await input('dfd-file',approvalProjection());
+  const f=$('diagram').children.find(x=>x.dataset?.kind==='function'&&x.dataset.id==='order_entry.order_record');
+  f.listeners.keydown({key:'Enter',preventDefault(){}});
+  const stale=$('details').children.find(x=>x.tag==='div').children[0];
+  await input('dfd-file',projection);
+  assert.equal($('details').children.length,0);
+  stale.click();
+  assert.equal($('details').children.length,0);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
+  assert.equal($('semantic-preview').hidden,true);
+});
+test('projection review questions and unreferenced functions display their Source without granting authority',async()=>{
+  const warnings={...projection,diagnostics:[
+    {code:'DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED',severity:'review-question',
+      message:'Pattern "unused.function" is not referenced by this Procedure',
+      source:{file:'procedure-review.json',pointer:'/application'}},
+    {code:'DFD_TRIGGER_CONSISTENCY_REVIEW',severity:'warning',
+      message:'Human review required <script>alert(1)</script>',
+      source:{file:'review.json',pointer:'/triggers/0'}}
+  ],unreferencedPatterns:['unused.function']};
+  await input('dfd-file',warnings);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.equal($('export').disabled,false);
+  const displayed=$('diagnostics').children.map(x=>x.textContent).join('\n');
+  assert.match(displayed,/DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED/);
+  assert.match(displayed,/procedure-review.json#\/application/);
+  assert.match(displayed,/review.json#\/triggers\/0/);
+  assert.match(displayed,/review-question 1件/);
+  assert.match(displayed,/Application全体の未使用を意味しない/);
+  assert.match(displayed,/<script>alert\(1\)<\/script>/,
+    'diagnostic Source text must remain literal, never HTML');
+  assert.equal($('diagnostics').children.every(x=>x.tag==='p'),true);
+});
+
+test('error diagnostics retain Source explanation while rejecting rendering and all exports',async()=>{
+  const invalid={...projection,diagnostics:[
+    {code:'DFD_TRIGGER_TARGET_MISSING',severity:'error',
+      message:'target Step missing',source:{file:'review.json',pointer:'/triggers/0/targetStep'}}
+  ]};
+  await input('dfd-file',invalid);
+  assert.match($('status').textContent,/エラー診断を確認/);
+  assert.equal($('diagram').children.length,0);
+  assert.equal($('export').disabled,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+  let displayed=$('diagnostics').children.map(x=>x.textContent).join('\n');
+  assert.match(displayed,/DFD_TRIGGER_TARGET_MISSING/);
+  assert.match(displayed,/review.json#\/triggers\/0\/targetStep/);
+
+  await input('dfd-file',projection);
+  assert.equal($('export').disabled,false);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),
+    /DFD_TRIGGER_TARGET_MISSING/);
+  await $('dfd-file').listeners.change({target:{files:[]}});
+  assert.equal($('export').disabled,true);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),
+    /DFD_TRIGGER_TARGET_MISSING/);
+});
+
+test('late failed projection cannot restore diagnostics after a newer DFD',async()=>{
+  const old=Buffer.from(JSON.stringify({...projection,diagnostics:[
+    {code:'STALE',severity:'error',message:'from an old file',
+      source:{file:'old.json',pointer:'/old'}}
+  ]}));
+  let release;
+  const pending=$('dfd-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(
+      old.buffer.slice(old.byteOffset,old.byteOffset+old.length));})
+  }]}});
+  await input('dfd-file',projection);
+  release();
+  await pending;
+  assert.equal($('export').disabled,false);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),/STALE/);
+});
+
+test('explicit manual-Step Data and Validation permit reverse source-only navigation',async()=>{
+  const p=approvalProjection();
+  const manual=p.steps.find(s=>s.id==='APP-10');
+  assert.equal(manual.noApplicationFunction,true);
+  manual.explicitMeaning=[
+    {kind:'semantic-data',id:'sales.order',status:'resolved-id-not-accepted',
+      source:{file:'authoring.json',pointer:'/steps/1/data/0'}},
+    {kind:'semantic-validation',id:'sales.order.quantity_positive',
+      status:'resolved-id-not-accepted',
+      source:{file:'authoring.json',pointer:'/steps/1/validations/0'}}
+  ];
+  await input('dfd-file',p);
+  const choose=(kind,id)=>{
+    const n=$('diagram').children.find(x=>x.dataset?.kind===kind&&x.dataset.id===id);
+    assert.ok(n);
+    n.listeners.keydown({key:'Enter',preventDefault(){}});
+  };
+  const click=(title)=>{
+    const button=$('details').children.flatMap(x=>x.children||[])
+      .find(x=>x.tag==='button'&&x.textContent===title);
+    assert.ok(button,'missing reference-only link '+title);
+    button.click();
+  };
+  choose('step','APP-10');
+  click('semantic-validation: sales.order.quantity_positive');
+  let detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal(detail.sourceIndexStatus,'not-verified');
+  assert.equal(detail.worldRevisionStatus,'unverified-no-model-revision-binding');
+  assert.equal(detail.matches.length,1);
+  assert.equal(detail.matches[0].relation,'explicit-business-semantic-reference');
+  assert.equal(detail.matches[0].source.pointer,'/steps/1/validations/0');
+  assert.equal(detail.matches[0].status,'resolved-id-not-accepted');
+  assert.equal($('semantic-propose').disabled,true);
+  click('step: APP-10');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.kind,'step');
+  click('semantic-data: sales.order');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.ok(detail.matches.some(m=>m.origin.kind==='step'&&m.origin.id==='APP-10'));
+  assert.ok(detail.matches.some(m=>m.origin.kind==='store'&&m.origin.id==='orders'));
+  click('store: orders');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.semanticData,'sales.order');
+});
+
+test('Function-derived Data stays distinct from explicit and is never accepted authority',async()=>{
+  const p=approvalProjection();
+  const step=p.steps.find(s=>s.id==='APP-00');
+  step.functionRefs[0].data='sales.order';
+  step.functionRefs[0].relation='sales.order.lines';
+  step.functionRefs[0].capability='security.authorize';
+  await input('dfd-file',p);
+  const functionNode=$('diagram').children.find(x=>x.dataset?.kind==='function'&&
+    x.dataset.id==='order_entry.order_record');
+  functionNode.listeners.keydown({key:'Enter',preventDefault(){}});
+  const link=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='semantic-data: sales.order');
+  assert.ok(link);
+  link.click();
+  const detail=JSON.parse($('details').children[0].textContent);
+  const derived=detail.matches.find(x=>x.origin.id==='APP-00');
+  assert.equal(derived.relation,'pattern-derived-reference');
+  assert.equal(derived.status,'derived-not-authority');
+  assert.equal(derived.via.id,'order_entry.order_record');
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal($('semantic-propose').disabled,true);
+});
+
+test('stale meaning navigation and back links are revoked when projection changes',async()=>{
+  const p=approvalProjection();
+  p.steps[0].explicitMeaning=[{kind:'semantic-data',id:'sales.order',
+    status:'resolved-id-not-accepted',source:{file:'fixture.json',pointer:'/steps/0/data/0'}}];
+  await input('dfd-file',p);
+  const step=$('diagram').children.find(x=>x.dataset?.id==='APP-00'&&x.dataset.kind==='step');
+  step.listeners.keydown({key:'Enter',preventDefault(){}});
+  const oldMeaningButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='semantic-data: sales.order');
+  assert.ok(oldMeaningButton);
+  oldMeaningButton.click();
+  const oldBackButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='step: APP-00');
+  assert.ok(oldBackButton);
+  await input('dfd-file',projection);
+  assert.equal($('details').children.length,0);
+  oldMeaningButton.click();
+  oldBackButton.click();
+  assert.equal($('details').children.length,0);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
 });
