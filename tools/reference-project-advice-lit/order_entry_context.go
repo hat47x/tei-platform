@@ -17,10 +17,10 @@ import (
 var loopbackAPI = regexp.MustCompile(`^http://127\.0\.0\.1:([1-9][0-9]{0,4})$`)
 
 type orderEntryContext struct {
-	Schema             string `json:"schema"`
-	ApplicationID      string `json:"applicationId"`
-	ScenarioID         string `json:"scenarioId"`
-	SelectedRowIndex   int    `json:"selectedRowIndex"`
+	Schema              string `json:"schema"`
+	ApplicationID       string `json:"applicationId"`
+	ScenarioID          string `json:"scenarioId"`
+	SelectedRowIndex    int    `json:"selectedRowIndex"`
 	TargetBuildRevision string `json:"targetBuildRevision"`
 }
 
@@ -67,7 +67,7 @@ func newOrderEntryContextHandler(origin string) (http.Handler, error) {
 		}
 		var source struct {
 			TargetBuildRevision string `json:"targetBuildRevision"`
-			Result struct {
+			Result              struct {
 				ApplicationID    string `json:"applicationId"`
 				ScenarioID       string `json:"scenarioId"`
 				SelectedRowIndex int    `json:"selectedRowIndex"`
@@ -94,10 +94,10 @@ func newOrderEntryContextHandler(origin string) (http.Handler, error) {
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_ = json.NewEncoder(w).Encode(orderEntryContext{
-			Schema: "tei.reference.order-entry-context/v0",
-			ApplicationID: source.Result.ApplicationID,
-			ScenarioID: source.Result.ScenarioID,
-			SelectedRowIndex: source.Result.SelectedRowIndex,
+			Schema:              "tei.reference.order-entry-context/v0",
+			ApplicationID:       source.Result.ApplicationID,
+			ScenarioID:          source.Result.ScenarioID,
+			SelectedRowIndex:    source.Result.SelectedRowIndex,
 			TargetBuildRevision: source.TargetBuildRevision,
 		})
 	}), nil
