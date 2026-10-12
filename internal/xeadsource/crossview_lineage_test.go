@@ -45,7 +45,12 @@ func TestCrossViewPublicAccountingRejectsUnsupportedDerivedPaths(t *testing.T) {
 			}
 		}},
 		{"missing function table declaration", func(p *CrossViewProjection) {
-			p.SourceEdges = p.SourceEdges[:len(p.SourceEdges)-1]
+			for i, edge := range p.SourceEdges {
+				if edge.Kind == "function-table-operation" {
+					p.SourceEdges = append(p.SourceEdges[:i], p.SourceEdges[i+1:]...)
+					break
+				}
+			}
 		}},
 		{"source CRUD changed without rederivation", func(p *CrossViewProjection) {
 			for i := range p.SourceEdges {
