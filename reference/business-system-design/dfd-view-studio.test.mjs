@@ -147,3 +147,38 @@ test('direction and distinct branch, exception, and information labels remain vi
     assert.ok(captions.includes(label),'missing explicit label '+label);
   }
 });
+
+test('a slower DFD read cannot replace a newer Procedure',async()=>{
+  let release;
+  const old=Buffer.from(JSON.stringify({...projection,procedureId:'old.procedure'}));
+  const waiting=$('dfd-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(old.buffer.slice(old.byteOffset,old.byteOffset+old.length));})
+  }]}});
+  await input('dfd-file',{...projection,procedureId:'new.procedure'});
+  assert.match($('status').textContent,/投影を読み込みました/);
+  release();
+  await waiting;
+  assert.equal($('diagram').children.some(n=>n.dataset?.id==='BP-04'),true);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  // Selecting a Step must still report the newer Procedure.
+  const node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,pointerId:91,clientX:0,clientY:0});
+  assert.match($('details').children[0].textContent,/business.json/);
+});
+
+test('an older layout read cannot overwrite a newer DFD',async()=>{
+  await input('dfd-file',projection);
+  let release;
+  const stale=Buffer.from(JSON.stringify({schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:'orders.review',
+    projectionSHA256:'sha256:'+'0'.repeat(64),nodes:[]}));
+  const waiting=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(stale.buffer.slice(stale.byteOffset,stale.byteOffset+stale.length));})
+  }]}});
+  await input('dfd-file',{...projection,procedureId:'fresh.procedure'});
+  release();
+  await waiting;
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.equal($('export').disabled,false);
+  assert.equal($('apply').disabled,true);
+});
