@@ -97,7 +97,6 @@ func TestCanonicalSourcePathsRejectCyclicExpressions(t *testing.T) {
 	}
 }
 
-
 func TestCanonicalSourceExactEightMiBBoundary(t *testing.T) {
 	source := transform.TransformSourceRealizerV1()
 	base, _, err := transform.MaterializeSource(source)
