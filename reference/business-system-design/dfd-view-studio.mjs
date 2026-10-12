@@ -273,9 +273,20 @@ $('export').addEventListener('click',()=>{
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 $('dfd-file').addEventListener('change',async ev=>{
-  const file=ev.target.files[0];if(!file)return;
+  const file=ev.target.files?.[0];
   const generation=++dfdLoadGeneration;
   ++layoutLoadGeneration; // Older layout reads belong to a different DFD.
+  // The input selection changed already: no old projection or proposal may
+  // remain available while the replacement bytes are still being read.
+  state.dfd=null;state.dfdHash=null;state.dfdFile=null;
+  state.layout=null;state.layoutHash=null;state.pending=null;dragging=null;
+  clearSelection();
+  $('preview').hidden=true;$('apply').disabled=true;
+  render();
+  if(!file){
+    status('DFD投影の選択を解除しました。以前の変更候補は無効です。');
+    return;
+  }
   try{
     const bytes=await file.arrayBuffer();const d=JSON.parse(new TextDecoder().decode(bytes));
     if(d.schemaVersion!=='business-dfd-projection-v0'||d.authority!=='derived-read-only'||d.canonicalProcedureUsed!==false||
@@ -292,7 +303,8 @@ $('dfd-file').addEventListener('change',async ev=>{
     $('preview').hidden=true;$('apply').disabled=true;
     render();status('投影を読み込みました。選択と移動は参照・表示用です。');
   }catch(e){if(generation!==dfdLoadGeneration)return;
-    state.dfd=null;state.dfdFile=null;state.layout=null;state.pending=null;dragging=null;clearSelection();
+    state.dfd=null;state.dfdHash=null;state.dfdFile=null;
+    state.layout=null;state.layoutHash=null;state.pending=null;dragging=null;clearSelection();
     $('apply').disabled=true;$('preview').hidden=true;render();status('DFD投影を読み込めません: '+e.message,true)}
 });
 $('layout-file').addEventListener('change',async ev=>{
@@ -333,11 +345,17 @@ for(const [id,kind,version] of [
   ['review-file','review','business-dfd-review-v0']
 ]){
   $(id).addEventListener('change',async event=>{
-    const file=event.target.files?.[0];if(!file)return;
+    const file=event.target.files?.[0];
     const generation=++semanticLoadGeneration[kind];
+    // Clearing the picker is a new generation too: do not resurrect a file
+    // or a proposal through a late asynchronous read.
     invalidateSemanticPreview();
     state[kind]=null;state[kind+'File']=null;state[kind+'Hash']=null;
     updateSemanticControls();
+    if(!file){
+      status('参照資料の選択を解除しました。以前の変更候補は無効です。');
+      return;
+    }
     try{
       const {value,hash}=await readReferenceFile(file,version);
       if(generation!==semanticLoadGeneration[kind])return;
