@@ -36,7 +36,7 @@ python3 tools/reference-first-web-two-unit-e1/migrate_browser.py \
 cp tools/reference-first-web-two-unit-e1/browser-command.js \
   "$scratch/derived/browser/browser-command.js"
 export GOENV=off GOWORK=off GOFLAGS= GOTOOLCHAIN=local GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0
-go build -trimpath -ldflags=-buildid= -tags=tei_order_only,tei_api_only \
+go build -trimpath -ldflags="-buildid= -X main.referenceAPISourceRevision=$source_sha" -tags=tei_order_only,tei_api_only \
   -o "$scratch/derived/api/order-entry" ./tools/reference-first-web-target
 python3 - "$scratch/derived" "$source_sha" <<'PY'
 import hashlib
