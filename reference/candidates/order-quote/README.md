@@ -38,3 +38,11 @@ go test -count=1 -run '^TestStandaloneQuotePatternHasSeparateCanonicalBindingAnd
 試験内でだけ**合成の発行者信頼とShape証跡**を与えても、それとは別の**Provider適合性証跡**がなければ呼出しが成立しないことを確認します。適合性の対象となる成果物指紋が異なる場合も拒否します。すべての条件を試験内の合成値で満たした場合に限り、実プロセスではない単純な模擬実装を呼び出して、三種類の証跡境界が互いに独立していることを確認します。
 
 この合成成功は**業務モデルの受理でも、正式な証跡の発行でも、実プラグインの適合性保証でもありません**。実行ファイルの署名、Runtime Permission、Resource Lease、隔離を含む実際の実行権限は別に確認する必要があります。試験内の合成証跡を候補ディレクトリへ保存して認可材料に転用しません。
+
+## 合成候補証跡と実Runtimeを直列に通す参考試験
+
+[直列結合試験](../../../tools/reference-plugin-capability-contract/order_quote_runtime_chain_test.go)は、未受理の要求・結果Shapeに対する**試験内の合成Shape Authority Evidence／Publisher Trust**、実バイナリのSHA-256へ一致させた**試験内の合成Provider Conformance Evidence**、そして**既存の製品Runtime.Registry**による実プロセス起動を、一つの見積もり要求で通します。元の候補ファイルに承認用の証跡を書き込まず、受理済み`reference/workspace`も変更しません。
+
+Runtimeはテスト用`EnvironmentPlan`、実ファイルを再読込してSHA-256を照合する検証器、標準stdioプロセスランチャーで実行します。Providerの適合性証跡・要求Shapeが欠ける場合はRuntimeに到達せず、RuntimeのDigest・Capability・権限・必須Sandboxが合わなければ子プロセスを起動しません。正常系は実プロセスの見積もり結果を候補の応答Shapeで検査します。
+
+**明確な限界**：これは試験内の合成信頼から実Runtimeへつなぐ導線であり、実際の第三者署名・発行者Trust Grant・正式なProvider適合性認定を得たわけではありません。参照用のLegacy Contract Queryはstdio通信を運ぶだけで、見積もりをDB照会とは定義しません。Runtimeの検証器は実行前にパスからハッシュを読みますが、ファイル記述子の固定やOS隔離、署名・来歴検証、Resource Leaseは保証していません。汎用呼出しとRuntimeは別の正本責務のままにし、新しいResolver／Lock／Authorityを作りません。
