@@ -32,9 +32,9 @@ func e22Workspace(t *testing.T, capability, duplicate bool) string {
 		t.Fatalf("read existing SUI semantic definition: %v", err)
 	}
 	files := map[string]string{
-		"tei.workspace.yaml": "workspace: sui_composition_e22_candidate\nsources:\n  - semantic\n  - applications\n",
-		"semantic/sui/island.tei": string(island),
-		"applications/sui/application.tei": e22Application,
+		"tei.workspace.yaml":                 "workspace: sui_composition_e22_candidate\nsources:\n  - semantic\n  - applications\n",
+		"semantic/sui/island.tei":            string(island),
+		"applications/sui/application.tei":   e22Application,
 		"applications/sui/patterns/move.tei": e22Pattern,
 	}
 	if capability {
