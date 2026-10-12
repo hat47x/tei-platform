@@ -160,4 +160,3 @@ func (p *PinnedLinuxProcess) Close() error {
 	p.image = nil
 	return err
 }
-
