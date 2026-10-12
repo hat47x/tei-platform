@@ -176,3 +176,19 @@ test('producer authority and resolution metadata cannot be forged into a review 
       new RegExp(error),label);
   }
 });
+
+test('information endpoint field order has no business identity while values still matter',()=>{
+  const reordered=clone(base);
+  for(const flow of reordered.information.informationFlows) {
+    flow.from={id:flow.from.id,kind:flow.from.kind};
+    flow.to={id:flow.to.id,kind:flow.to.kind};
+  }
+  const b=proposal({kind:'trigger',id:'TR-ORDER'},
+    {kind:'replace-trigger-label',trigger:'TR-ORDER',label:'業務上の変更案'});
+  const result=act(b,reordered);
+  assert.equal(result.readyForAcceptance,false);
+  assert.deepEqual(result.sourceWrites,[]);
+  const changed=clone(reordered);
+  changed.information.informationFlows[0].from.kind='party';
+  assert.throws(()=>act(b,changed),/DFD_REVIEW_SNAPSHOT_MISMATCH_INFORMATION_FLOWS/);
+});
