@@ -79,6 +79,14 @@ JavaScriptはフォームの一時入力をJSONへ変換し、業務APIから返
 
 成果物の測定JSONは各ファイルのサイズとSHA-256を保存します。受理されたBuilder/Lock、実ブラウザ操作、視覚品質、実Provider/IdP、本番CSRF/TLS、配備環境でのAuthorizationまでは証明しません。APIバイナリは現段階では設計時Workspace/Driver機構を含みます。第二Target #259の合格とも扱いません。
 
+### JSON二成果物の衝突しない公開
+
+`build_json_api.sh` は出力先ディレクトリが未作成であることを最初に確認しますが、ビルド中の別プロセスが同じ場所を作成する可能性があります。従来の末尾の `mv` は、その出力先が新たに作られたディレクトリやシンボリックリンクの場合、完成した成果物を意図しない場所へ移動しかねません。
+
+完成済みのステージングディレクトリは、Linux `renameat2(RENAME_NOREPLACE)` によって**存在しない名前へ一度だけ原子的に公開**します。先に同名のファイル、ディレクトリ、シンボリックリンクが存在する場合や、競合プロセスが先に公開した場合は、既存出力を変更せず失敗します。カーネル・libcがこの操作を提供しない場合も、通常の `mv` に切り替えず失敗します。ステージングと公開先は同じファイルシステム上に配置する必要があります。
+
+`test_publish_no_clobber.py` では新規公開、既存ファイル・ディレクトリ・シンボリックリンク、二プロセス競合、欠損ステージングを確認します。これは**成果物の衝突回避**の局所検証であり、署名・BuildArtifactLock・発行権限の認証や、別Hostへの安全な配布を実装したことは意味しません。
+
 ## 実Chromeでのフォーム操作・画面証拠（E1追加検証）
 
 専用CI [`tei-browser-real-e1-ci.yml`](../../.github/workflows/tei-browser-real-e1-ci.yml) では、画面生成済みHTML・外部JavaScriptと`tei_order_only,tei_api_only`の実Go APIを**独立した物理成果物・プロセス**として起動し、Ubuntu GitHub runnerに搭載されたGoogle Chromeで操作します。ライブラリは`playwright-core@1.56.1`へ固定し、ブラウザ本体はRunnerの実Chromeを使います。
