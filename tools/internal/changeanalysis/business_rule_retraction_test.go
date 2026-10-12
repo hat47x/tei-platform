@@ -37,22 +37,36 @@ func retractionWorld() ir.World {
 func testRuleImpacts(t *testing.T, before, after ir.World, expected map[string]bool, wantReviewCount int) {
 	t.Helper()
 	beforeJSON, err := json.Marshal(before)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	afterJSON, err := json.Marshal(after)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	changes, err := Diff(before, after)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	edges, unresolved := ImpactWithBefore(before, after, changes)
 	found := map[string]bool{}
-	for _, e := range edges { found[e.From+" -> "+e.To+" via "+e.Via] = true }
+	for _, e := range edges {
+		found[e.From+" -> "+e.To+" via "+e.Via] = true
+	}
 	for want := range expected {
-		if !found[want] { t.Errorf("missing old/new rule edge %s: %+v", want, edges) }
+		if !found[want] {
+			t.Errorf("missing old/new rule edge %s: %+v", want, edges)
+		}
 	}
 	seenReview := 0
 	for _, u := range unresolved {
-		if u.Code == "LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW" { seenReview++ }
+		if u.Code == "LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW" {
+			seenReview++
+		}
 	}
-	if seenReview != wantReviewCount { t.Fatalf("expected %d explicit retraction warnings, got %d: %+v", wantReviewCount, seenReview, unresolved) }
+	if seenReview != wantReviewCount {
+		t.Fatalf("expected %d explicit retraction warnings, got %d: %+v", wantReviewCount, seenReview, unresolved)
+	}
 	again, unAgain := ImpactWithBefore(before, after, changes)
 	if !reflect.DeepEqual(edges, again) || !reflect.DeepEqual(unresolved, unAgain) {
 		t.Fatal("read-only rule retraction impact was non-deterministic")
@@ -77,7 +91,9 @@ func TestRuleRetractionPreservesOldEdgesInsteadOfReportingNoImpact(t *testing.T)
 		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via previous.semantic.functional-dependency.dependent": true,
 	}, 2)
 	changes, err := Diff(before, after)
-	if err != nil || len(changes) != 2 {t.Fatalf("missing removal diff: %+v %v",changes,err)}
+	if err != nil || len(changes) != 2 {
+		t.Fatalf("missing removal diff: %+v %v", changes, err)
+	}
 	newEdges, _ := Impact(after, changes)
 	for _, e := range newEdges {
 		if strings.HasPrefix(e.From,"candidate-key:") || strings.HasPrefix(e.From,"functional-dependency:") {
@@ -90,13 +106,13 @@ func TestRuleAmendmentShowsBothPreviousAndNewDeterminants(t *testing.T) {
 	before := retractionWorld()
 	after := retractionWorld()
 	after.Semantics[0].Data[0].CandidateKeys = []semantic.CandidateKey{{
-		ID:"sales.line.business_key", Symbol:"businessKey",
-		Attributes:[]core.CanonicalID{"sales.line.item_id"},
+		ID: "sales.line.business_key", Symbol: "businessKey",
+		Attributes: []core.CanonicalID{"sales.line.item_id"},
 	}}
 	after.Semantics[0].Data[0].FunctionalDependencies = []semantic.FunctionalDependency{{
-		ID:"sales.line.item_by_line",Symbol:"itemByLine",
-		Determinants:[]core.CanonicalID{"sales.line.item_id"},
-		Dependents:[]core.CanonicalID{"sales.line.order_id"},
+		ID: "sales.line.item_by_line", Symbol: "itemByLine",
+		Determinants: []core.CanonicalID{"sales.line.item_id"},
+		Dependents:   []core.CanonicalID{"sales.line.order_id"},
 	}}
 	testRuleImpacts(t, before, after, map[string]bool{
 		"candidate-key:sales.line.business_key -> attribute:sales.line.order_id via previous.semantic.candidate-key.field":true,
@@ -108,10 +124,10 @@ func TestRuleAmendmentShowsBothPreviousAndNewDeterminants(t *testing.T) {
 
 func TestNewKeyAddsNoHistoricalRetractionWarning(t *testing.T) {
 	before := retractionWorld()
-	before.Semantics[0].Data[0].CandidateKeys=nil
-	before.Semantics[0].Data[0].FunctionalDependencies=nil
+	before.Semantics[0].Data[0].CandidateKeys = nil
+	before.Semantics[0].Data[0].FunctionalDependencies = nil
 	after := retractionWorld()
-	testRuleImpacts(t,before,after,map[string]bool{
+	testRuleImpacts(t, before, after, map[string]bool{
 		"candidate-key:sales.line.business_key -> data:sales.line via semantic.data.candidate-key":true,
 		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via semantic.functional-dependency.dependent":true,
 	},0)
@@ -120,13 +136,21 @@ func TestNewKeyAddsNoHistoricalRetractionWarning(t *testing.T) {
 func TestUnverifiableOldRuleIdentityNeverBecomesSilentNoImpact(t *testing.T) {
 	world := retractionWorld()
 	edges, unresolved := ImpactWithBefore(ir.World{}, world, []SubjectChange{{
-		Kind:"candidate-key",ID:"sales.line.unseen",Change:"removed",
+		Kind: "candidate-key", ID: "sales.line.unseen", Change: "removed",
 	}})
-	if len(edges)!=0 {t.Fatalf("fabricated old linkage: %+v",edges)}
-	seenMissing,seenReview:=false,false
-	for _,u:=range unresolved{
-		if u.Code=="LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING" {seenMissing=true}
-		if u.Code=="LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW" {seenReview=true}
+	if len(edges) != 0 {
+		t.Fatalf("fabricated old linkage: %+v", edges)
 	}
-	if !seenMissing||!seenReview {t.Fatalf("old rule identity silently lost: %+v",unresolved)}
+	seenMissing, seenReview := false, false
+	for _, u := range unresolved {
+		if u.Code == "LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING" {
+			seenMissing = true
+		}
+		if u.Code == "LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW" {
+			seenReview = true
+		}
+	}
+	if !seenMissing || !seenReview {
+		t.Fatalf("old rule identity silently lost: %+v", unresolved)
+	}
 }
