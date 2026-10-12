@@ -106,3 +106,24 @@ func TestReferenceGoBuildHostEnvironmentHasExplicitWindowsAllowlist(t *testing.T
 		t.Fatalf("Unix build inherited Host environment: %#v, %v", linux, err)
 	}
 }
+
+func TestReferenceGoExecutableUsesExactPathNotAmbientPATH(t *testing.T) {
+	goFile := filepath.Join(t.TempDir(), "go-exact")
+	if err := os.WriteFile(goFile, []byte("test executable placeholder"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(t.TempDir(), "unrelated"))
+	got, err := selectReferenceGoExecutable(goFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != goFile {
+		t.Fatalf("explicit executable changed: got %q want %q", got, goFile)
+	}
+	if _, err := selectReferenceGoExecutable(t.TempDir()); err == nil {
+		t.Fatal("Go executable directory was accepted")
+	}
+	if _, err := selectReferenceGoExecutable(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Fatal("missing Go executable was accepted")
+	}
+}
