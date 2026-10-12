@@ -10,11 +10,11 @@ import (
 // Explicit Semantic Data business-rule declarations have nested blocks to
 // delimit their attribute sets without relying on line boundaries:
 //
-//   candidate-key BusinessIdentity { field sales.order_line.order_id ... }
-//   functional-dependency ItemOfLine {
-//     determinant sales.order_line.order_id
-//     dependent sales.order_line.item_id
-//   }
+//	candidate-key BusinessIdentity { field sales.order_line.order_id ... }
+//	functional-dependency ItemOfLine {
+//	  determinant sales.order_line.order_id
+//	  dependent sales.order_line.item_id
+//	}
 //
 // They do not infer physical PKs, relation keys, or runtime truth.
 func (p *Parser) parseSemanticRuleIdentity(dataID core.CanonicalID) (core.CanonicalID, string, error) {
