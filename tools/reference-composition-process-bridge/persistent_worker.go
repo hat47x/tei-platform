@@ -3,12 +3,9 @@ package compositionprocessbridge
 import (
 	"bufio"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -46,15 +43,21 @@ type persistentWorker struct {
 }
 
 func startPersistentWorker(ctx context.Context, path, expectedDigest, revision string, failReady bool) (*persistentWorker, error) {
-	b, err := os.ReadFile(path)
-	if err != nil || fmt.Sprintf("sha256:%x", sha256.Sum256(b)) != expectedDigest {
-		return nil, errors.New("reference artifact identity mismatch")
-	}
 	args := []string{referenceArgvMarker, "--tei-reference-persistent"}
 	if failReady {
 		args = append(args, "--tei-reference-readiness-fail")
 	}
-	w := &persistentWorker{cmd: exec.Command(path, args...), events: make(chan workerEvent, 2), done: make(chan struct{}), stopScan: make(chan struct{}), gate: make(chan struct{}, 1)}
+	cmd, closeImage, err := preparePersistentCommand(ctx, path, expectedDigest, args)
+	if err != nil {
+		return nil, err
+	}
+	defer closeImage()
+	return startPersistentCommand(ctx, cmd, revision)
+}
+
+func startPersistentCommand(ctx context.Context, cmd *exec.Cmd, revision string) (*persistentWorker, error) {
+	w := &persistentWorker{cmd: cmd, events: make(chan workerEvent, 2), done: make(chan struct{}), stopScan: make(chan struct{}), gate: make(chan struct{}, 1)}
+	var err error
 	w.in, err = w.cmd.StdinPipe()
 	if err != nil {
 		return nil, err

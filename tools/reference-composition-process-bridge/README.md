@@ -54,6 +54,8 @@ go test -count=1 ./tools/reference-composition-process-bridge
 
 `persistent_worker.go`は同じ参照プラグインの常駐モードに接続する検証用の直列通信アダプターです。既存の製品用実行器を常駐方式へ変更せず、正式な通信仕様や権限の第二の正本も作りません。実行物をホストで照合して起動し、準備応答の版と実際のPIDを確認します。要求の資格情報を含む可能性がある標準エラーは保存しません。
 
+起動には最新の[実行内容固定の参照機構](PINNED_LINUX_REFERENCE.md)を共有します。検証した複製のファイル記述子から起動し、元ファイルの置換が準備後の実行へ影響しないことを確かめます。常駐参照アダプターはLinux専用で、未検証の実行先では起動を拒否します。
+
 ```sh
 go test -race -count=1 -v -run TestPersistentProcessReplacementDrainFailureAndExplicitRecovery \
   ./tools/reference-composition-process-bridge

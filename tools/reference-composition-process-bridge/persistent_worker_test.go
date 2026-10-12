@@ -22,6 +22,9 @@ import (
 )
 
 func TestPersistentProcessReplacementDrainFailureAndExplicitRecovery(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("verified persistent reference launch requires Linux")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 	build := func(revision string) (string, string) {

@@ -14,13 +14,11 @@ import (
 const webTargetServerHasPresentation = false
 
 type webTargetServer struct {
-	projection                  webTargetProjection
-	readScenario                readScenarioRunner
-	commandScenario             commandScenarioRunner
-	protectedSessionConfig      *protectedSessionCommandConfig
-	protectedSessionHandler     http.Handler
-	protectedSessionOptionCount int
-	customerLookup              customerLookupRunner
+	targetCommandRoutes
+	projection      webTargetProjection
+	readScenario    readScenarioRunner
+	commandScenario commandScenarioRunner
+	customerLookup  customerLookupRunner
 }
 
 type applicationBound interface {
