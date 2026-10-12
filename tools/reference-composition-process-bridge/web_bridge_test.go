@@ -151,7 +151,7 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 				http.Error(w, "trusted principal unavailable", http.StatusInternalServerError)
 				return
 			}
-			result, err := invokeSelected(r.Context(), coordinator, adapter, command)
+			result, err := invokeSelected(r.Context(), coordinator, adapter, command, binding)
 			if err != nil {
 				// No assertion that a failed/unknown dispatch undid an external
 				// effect, and no untrusted error detail is returned to clients.

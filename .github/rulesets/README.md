@@ -38,6 +38,23 @@ gh api repos/hat47x/tei-platform/rules/branches/main
 
 `main` 上で危険な書込み・削除・強制更新を試すことはしません。拒否動作の実証が必要なら、同じ規則を一時的な試験ブランチへ適用し、安全な実験コミットの直接pushが拒否されることを確認してから後片付けをします。
 
+## 適用前後の読み取り専用検査
+
+管理設定の有効化とは独立して、次のコマンドで定義自体を検査できます。Python標準ライブラリだけを使い、GitHubを変更しません。
+
+```bash
+python3 .github/rulesets/verify-main-protection.py --self-test
+python3 .github/rulesets/verify-main-protection.py --local
+```
+
+管理者が保護設定を適用した後は、GitHub CLIで認証してから実設定を読み戻します。
+
+```bash
+gh auth status
+python3 .github/rulesets/verify-main-protection.py --live
+```
+
+実設定の検査は、名称、対象、強制状態、PR必須、履歴保護、迂回権限、レビュー数を比較します。適用前・設定不一致・取得権限不足の場合には成功としません。GitHub APIは閲覧権限が足りないと迂回権限を省略するため、その場合も**未判定**として扱います。検査が成功しても、サーバーが不正なpushを拒否したことの実証にはなりません。
 ## 運用上の注意
 
 - この定義はGitHub上の実設定と自動同期されません。変更時はIssue #1189へ適用日時・ルールセットID・設定内容・検証結果を記録してください。
