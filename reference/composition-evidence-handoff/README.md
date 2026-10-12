@@ -116,7 +116,20 @@ E9の`Reconcile`は、構成案を作った時点の宣言と証拠参照を照�
  -bench '^BenchmarkHandoff' -benchmem -benchtime=2s -count=5 ./reference/composition-evidence-handoff
 ```
 
-測定時には、対象HEAD、CPU、Goの版、ns/op・B/op・allocs/opを一緒に記録する。測定機会が得られるまでは、ベンチマーク用の試験を用意した事実と、時間の実測を済ませた事実を区別する。
+測定時には、対象HEAD、CPU、Goの版、ns/op・B/op・allocs/opを一緒に記録する。リポジトリ同梱のベンチマークをGoの実環境で実行した値と、独立した試験構成による参考測定は区別する。
+
+#### 実ソースを使った局所参考測定（2026-10-12）
+
+GitHub作業ブランチの`handoff.go`（Git Blob SHA `c97e9fe0c21e1df02e5388c67ee1e8341d81e2d3`）と、ローカルに保存したファイルの`git hash-object`が一致することを確認した。Go 1.23.2／Linux amd64／Intel Xeon Platinum 8370C CPU @ 2.80GHzで、構成用の`composition`型だけを最小限の局所定義に置き換え、同じ`Reconcile`を5回測定した（各回`-benchtime=350ms`）。
+
+| 合成入力 | 処理時間の中央値（最小～最大） | B/opの中央値 | allocs/op |
+| --- | --- | --- | --- |
+| 96 Provider・576参照（他Scope 480件を含む） | 312,079 ns/op（309,596～359,923） | 105,123 | 214 |
+| 1 Provider・同一対象への10,000件の正確な重複 | 719,149 ns/op（536,620～869,173） | 384 | 3 |
+
+構成案は既知のProviderと推移的な依存先をすべて含め、後者は`reference-ambiguous`を返した。局所定義の型を使用した**合成ベンチマーク**なので、実Registryの宣言作成・更新・ロック、Hostの権限、実適合証拠の読取り、I/O、実際の成果物検証は時間に含まない。仮想化環境の負荷による変動もある。**最適化前の実測値がないため、速度改善率は算出しない。** リポジトリ同梱の`BenchmarkHandoff...`を完全なTEI環境で測定した値は引き続き未取得。
+
+
 
 
 
