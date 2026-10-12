@@ -7,17 +7,17 @@
 TEIは、基本的な仕組みを次の四層に分けます。
 
 ```text
-Authoring Layer
-    DSL / native SQL / Editor
+記述・編集の層（Authoring Layer）
+    DSL / 既存のSQL / エディター
         ↓
-Canonical Semantic Layer
-    identity / type / relation / expression / constraint / lifecycle
+意味の正本の層（Canonical Semantic Layer）
+    識別 / 型 / 関係 / 式 / 制約 / ライフサイクル
         ↓
-Binding / Realization Layer
-    provider / capability / persistence / custom implementation
+対応付け・実現の層（Binding / Realization Layer）
+    提供元 / 能力 / 永続化 / 個別実装
         ↓
-Implementation & Execution Layer
-    Go / SQL / DB / deployment executor / external process
+実装・実行の層（Implementation & Execution Layer）
+    Go / SQL / DB / 配備の実行器 / 外部プロセス
 ```
 
 実装技術の選択と、業務上の意味の定義は分けて扱います。
@@ -27,13 +27,13 @@ Implementation & Execution Layer
 入力の記述形式、正本となる業務上の意味、実行時に使うオブジェクトは区別します。
 
 ```text
-TEI DSL / native SQL / Editor / AI candidate
-        ↓ parse / resolve / accept
-Canonical Semantic meaning / IR
-        ↓ bind / compile / realize
-Runtime Model / Execution Plan / Target Projection
+TEI DSL / 既存のSQL / エディター / AIによる変更候補
+        ↓ 解析 / 解決 / 受理
+意味の正本 / 中間表現（IR）
+        ↓ 対応付け / コンパイル / 実現
+実行時モデル / 実行計画 / 実行先向けの派生表現
         ↓
-Go / SQL / Plugin / external system / generated application
+Go / SQL / プラグイン / 外部システム / 生成アプリケーション
 ```
 
 `.tei`はTEI固有の意味を記述する主要な入力形式です。ただし、解析後の構文木そのものを意味の正本（Canonical Model）とはみなしません。
@@ -80,17 +80,17 @@ workspace/
 入力元の情報は、意味の正本（Canonical World）に埋め込みません。入力・作業領域側で生成する**入力元索引（Source Index）**として分けて扱います。
 
 ```text
-Authoring source
+記述の入力元
   .tei / .sql / ...
-        │ parse / load
-        ├──────────────────────┐
-        ▼                      ▼
-Canonical World          Source Index
-path-independent         locator / fingerprint / range / role
-        │                      ▲
-        │ validate             │ project
-        ▼                      │
-Diagnostic + Subject ──────────┘
+        │ 解析 / 読込み
+        ├──────────────────────────┐
+        ▼                          ▼
+意味の正本（Canonical World）     入力元索引（Source Index）
+パスに依存しない                  位置 / 指紋 / 範囲 / 役割
+        │                          ▲
+        │ 検証                     │ 対応付け
+        ▼                          │
+診断結果 + 対象 ───────────────────┘
 ```
 
 入力元の成果物（Source Artifact）は、作業領域からの相対パスと内容の指紋値を持ちます。入力元への参照（Source Reference）は、パスに依存しない対象（Subject）にバイト範囲と役割を結び付けます。
@@ -115,20 +115,20 @@ M0.23で直接検証している不変条件と実装・テストの対応は、
 TEIが既存アプリケーションや外部ツールの資産を読み取れることと、その資産の意味を確定する管理権限がTEIへ移ったことは別です。
 
 ```text
-read / parse / project successfully
-  != authority transferred
+読込み / 解析 / 派生表示に成功
+  != 正本の管理権限を移管済み
 ```
 
 段階的に移管する際は、既存資産を正本として残し、TEI側の対応付け・用途別の表現・診断を、派生した読み取り専用の情報として扱えます。
 
 ```text
-before cutover
+切り替え前
 
-native source
-  = authoritative
+従来の入力元
+  = 正本
 
-TEI mapping / projection
-  = derived / reference
+TEIの対応付け / 派生表示
+  = 派生情報 / 参照情報
 ```
 
 TEI側で対象の意味を欠落なく表現できたと示す検証根拠が揃っても、正本の管理主体は自動的には変わりません。管理主体を移す場合は、少なくとも対象範囲ごとに次の情報を明示します。
@@ -145,9 +145,9 @@ TEI側で対象の意味を欠落なく表現できたと示す検証根拠が�
 部分的な移管も認めます。アプリケーション全体に一つの`tei-native`フラグを付けるのではなく、対象や関心領域ごとに管理主体が異なる状態を扱います。ただし、同じ関心領域に暗黙の正本を二つ作りません。
 
 ```text
-native source authoritative
-  -> explicit migration evidence / decision
-  -> TEI source authoritative for scoped concern
+従来の入力元が正本
+  -> 明示的な移管の根拠 / 判断
+  -> 対象範囲についてTEI側の入力元が正本
 ```
 
 正本の切り替え後に従来方式の資産を互換性維持・出力・生成物として残す場合も、その資産を第二の正本には戻しません。
@@ -161,28 +161,28 @@ native source authoritative
 未統合の変更には少なくとも二つの正規経路があります。
 
 ```text
-structured authoring path
+構造化して記述する経路
 
-AI / Editor / Tool
+AI / エディター / ツール
       ↓
-Proposal / Structured Intent
+提案 / 構造化した意図
       ↓
-Preview / Shared Acceptance
+事前確認 / 共通の受入
       ↓
-authoritative source
+正本となる入力元
 
 
-Git-native development path
+Gitを用いる開発経路
 
-Human / Chat / Codex / Claude Code / IDE
+人 / チャット / Codex / Claude Code / 開発環境
       ↓
-isolated clone / branch / worktree
+隔離した複製 / ブランチ / 作業ツリー
       ↓
-file-native edit + build / test / validate
+ファイル編集 + 構築 / 試験 / 検証
       ↓
-ordinary Git integration
+通常のGitによる統合
       ↓
-authoritative source
+正本となる入力元
 ```
 
 構造化された提案（Structured Proposal）は、意味の差分・根拠・事前確認の内容を機械可読な形で扱う場合に使う経路です。すべてのファイル編集やAIによる編集を、開始前に提案へ変換することは要求しません。
@@ -198,8 +198,8 @@ Gitで十分に表現できる変更には、TEI独自の変更セットを必�
 共通の受け入れ（Shared Acceptance）は**意味の変更を正本へ受理する境界**であり、その後の実行時の副作用を無条件に許可するものではありません。
 
 ```text
-Proposal accepted
-  != current execution authority
+提案が受理済み
+  != 現在の実行権限がある
 ```
 
 受理済みの意味に従って後から能力を呼び出したり資源へアクセスしたりする場合も、副作用の直前に現在の認可・権限・資源の利用許可・所有権・世代による排他制御などを再確認します。提案を受理した時点の承認、計画時に見えていた状態、過去の権限情報を実行時の権限として再利用しません。現在の権限が存在しない、古い、または曖昧な場合は、副作用の前に安全側で拒否し、必要に応じて未解決事項の処理、復旧、再認可へ進めます。
@@ -211,9 +211,9 @@ Proposal accepted
 ここでいう正本上の識別子を、アプリケーションの個々の記録を識別する業務上の値や、データベースの物理主キーに流用する前提にはしません。
 
 ```text
-Canonical subject identity
-  != business occurrence identifier
-  != physical primary key
+正本上の対象識別子
+  != 個々の業務事象の識別子
+  != 物理主キー
 ```
 
 一つの記録にUUIDや代理キーを付けても、業務上の識別条件や関数従属性はなくなりません。反対に、業務上の複合識別をすべての提供元の物理主キーに使う必要もありません。TEIは意味上の識別と実装上のキーを分けて追跡し、対応付けによって関係を明示します。
@@ -229,11 +229,11 @@ TEIは、ChatGPTなどのチャット実行環境、Codex、Claude Code、一般
 一つのホストで開発の一連の作業を完結するには、そのホストに少なくとも次の機能が必要です。
 
 ```text
-repository materialization
-+ filesystem read / write
-+ process execution
-+ Git operations
-+ required language / build toolchain
+リポジトリの実体を取得
++ ファイルの読取り / 書込み
++ プロセスの実行
++ Git操作
++ 必要な言語 / 構築ツール
 ```
 
 これはTEIのアプリケーション実行環境における能力のモデルではなく、開発ホストに必要な環境条件です。ホストが一部の機能しか持たなくても、そこで作成した通常のGit差分やコミットを別の標準的な開発環境へ渡して作業を続けられます。
@@ -241,14 +241,14 @@ repository materialization
 TEIが提供すべき基本機能は、特定のエージェントのセッション管理ではなく、通常のコマンドライン操作とリポジトリの契約です。
 
 ```text
-Human / Chat / Coding Agent / CI
+人 / チャット / 開発エージェント / CI
               |
-      Host shell / Git / files
+   ホストのシェル / Git / ファイル
               |
-            tei CLI
+          teiコマンド
               |
- workspace / source index / knowledge context /
- validation / world / conformance
+ 作業領域 / 入力元索引 / 知識の文脈 /
+ 検証 / 意味の正本 / 準拠確認
 ```
 
 チャット側でMCPを使う場合も、ホストが提供するシェル・ファイル操作・Git操作用のMCPから`tei`を呼び出せれば、正規の開発経路として扱えます。TEI独自の開発用MCPサーバーは必須にしません。
@@ -280,13 +280,13 @@ Human / Chat / Coding Agent / CI
 正本の意味を扱う層が管理するデータ・関係・検証などの**定義上の意味**と、アプリケーションの利用時に生成・保存される個々の記録、利用者の内容、分野ごとの実データを同一視しません。
 
 ```text
-Canonical / semantic definition
+正本上の意味定義
   Customer
   Order
   Card
-  Relation type / constraint
+  関係の種類 / 制約
 
-Application instance data
+アプリケーションの個別データ
   customer-123
   order-2026-001
   card-001
@@ -298,14 +298,14 @@ Application instance data
 したがって、
 
 ```text
-Canonical subject identity
-  != application record identity
+正本上の対象識別子
+  != アプリケーションの個々の記録の識別子
 
-Relation definition
-  != one relation instance
+関係の定義
+  != 一つの関係の実データ
 
-Lifecycle / state definition
-  != one runtime object's current state
+ライフサイクル / 状態の定義
+  != 個々の実行時オブジェクトの現在の状態
 ```
 
 です。
@@ -321,14 +321,14 @@ Lifecycle / state definition
 業務上の行為と、アプリケーションや実行環境による実現方式を分けます。
 
 ```text
-Business Action
-    ↓ zero or more system realizations
-Application Function / Application Pattern / Action
-    ↓ invokes or requires
-Capability
-    ↓ Environment Binding
-Realization
-  builtin / generated / Plugin / existing implementation / external system
+業務上の行為（Business Action）
+    ↓ システムによる実現は0個以上
+アプリケーション機能 / パターン / 操作
+    ↓ 呼び出す、または必要とする
+能力（Capability）
+    ↓ 環境で対応付け
+実現方式
+  組込み / 生成物 / プラグイン / 既存実装 / 外部システム
 ```
 
 業務上の行為はアプリケーション機能がなくても成立します。人間、AI、外部組織、SaaS、物理作業などを、実行可能に見せるためだけに架空の能力へ変換しません。
@@ -344,11 +344,11 @@ Realization
 データ、機能・対話、業務手順は、別々の正本ではなく、同じ正本上の意味を検査する異なる視点です。
 
 ```text
-Data / Relation / Validation / lifecycle
+データ / 関係 / 検証 / ライフサイクル
           ↕
-View / Pattern / Query / Action / Capability
+表示 / パターン / 問い合わせ / 操作 / 能力
           ↕
-Business Procedure / actor / manual / trigger
+業務手順 / 実行主体 / 手作業 / 起動契機
 ```
 
 一つの視点で見つかった矛盾は、正本となる情報源に戻って修正します。
@@ -364,13 +364,13 @@ CRUDマトリクス、業務の流れ、関係図などはこの検査に役立�
 認証、組織、認可を、一つの固定された組織スキーマにまとめません。
 
 ```text
-credential / external identity
-        ↓ authenticate
-Principal
-        ↓ resolve facts
-membership / attribute / relation / resource facts
-        ↓ authorize
-entry / action / resource / subject decision
+認証情報 / 外部の識別情報
+        ↓ 認証
+主体（Principal）
+        ↓ 判断に使う事実を解決
+所属 / 属性 / 関係 / 資源に関する事実
+        ↓ 認可
+入口 / 操作 / 資源 / 対象ごとの判定
 ```
 
 RBAC、ReBAC、ABACなどの方式は、提供元や権限方針の側で差し替えられるようにします。特定の方式を業務モデルの正本に固定しません。
@@ -384,23 +384,23 @@ RBAC、ReBAC、ABACなどの方式は、提供元や権限方針の側で差し�
 規則、AI、人の判断を伴う方針などが「次に何をするか」を選ぶことと、操作の意味や実行権限を定義することを分けます。
 
 ```text
-Decision Policy
-  Rule / AI / Human-assisted
-        ↓ selects or proposes
-Validated Semantic Action / Application Action
-        ↓ may invoke
-Capability
-        ↓ current authority check
-Permission / Resource / Runtime Binding
+判断方針
+  規則 / AI / 人の判断を伴う方式
+        ↓ 選択、または提案
+検証済みの意味上の操作 / アプリケーション操作
+        ↓ 必要に応じて呼び出す
+能力
+        ↓ 現在の権限を確認
+権限 / 資源 / 実行時の対応付け
 ```
 
 したがって、
 
 ```text
-Decision Policy
-  != Action Contract
-  != Capability semantics
-  != current execution authority
+判断方針
+  != 操作契約
+  != 能力の意味
+  != 現在の実行権限
 ```
 
 です。
