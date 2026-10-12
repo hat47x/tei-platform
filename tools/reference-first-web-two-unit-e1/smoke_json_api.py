@@ -112,6 +112,7 @@ def main():
                 browser_process = boot([
                     "node", "tools/reference-first-web-two-unit-e1/browser-host.mjs",
                     str(directory / "browser"), api,
+                    str(directory / "measurement.json"),
                 ], logfile)
                 browser = None
                 for _ in range(100):

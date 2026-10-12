@@ -166,3 +166,13 @@ python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py \
 `smoke_json_api.py`は固定Worldモードの成果物を与えた場合、同じpreflightを済ませ、実Go APIの`-workspace`をモデルソースではなく成果物の`api/`へ向けて起動する。実HTTPで正常、認証拒否、認可拒否、Validation、Execution Error、Origin/Content-Type拒否、API停止時のUnknown相当を検査する。さらに実Chrome E1 CIは従来方式に加えて固定World方式を別々に生成・接続し、desktop/mobileの入力操作とスクリーンショットを取る。各結果を別ディレクトリへ保持し、Human Visual AcceptanceやProduction IdP/Provider/TLS/CSRF合格と混同しない。
 
 **Productへの残る接続**は、既存Builder/Plugin BuildArtifactLockのうち妥当な参照を、Application配備単位の正式な配備可否判定へ接続すること。診断preflightはその代わりの新しいLockや実行許可Authorityではない。
+
+### 起動先APIのB/R/T再照合（診断Browser Host）
+
+配備済みのBrowserとAPIがそれぞれ正しいSHA-256を持っていても、**Browserが誤ったAPIインスタンスへ接続する**余地は別問題である。既存の`browser-host.mjs`（同一Originの検証用Loopback Proxy）はJSON Browserに対し、第三引数に`measurement.json`を要求する。既存E1ビルドで記録された`applicationId`・Handover baseline `B`・revision `R`・`browserAndApiSourceRevision`（build `T`）を期待値とし、**接続先の実Go APIから** `GET /manifest.json`を取得して突き合わせる。欠落、不一致、未到達、異なるApplication/TargetではHostがBrowser HTTPポートを公開しない。
+
+さらに`POST /scenario/submit`を上流へ送る前に同じManifestを読み直す。APIがHost起動後に入れ替わり、B/R/Tが変わった場合には**502 Unknown**として処理を中断し、業務Commandは転送しない。従来のCross-Origin拒否、Authorization/Cookie/Role/X-Forwarded-header非転送は維持する。未接続・変更・接続拒否はBusiness Resultの失敗と決めつけない。
+
+これは**既存ビルド測定値に対する診断用接続一致検査**であり、正式なHost Permission、APIの署名証明、TLS、IdP、Session/CSRFや下流Providerの認可を行うものではない。Manifestの検査から実Command転送までの短い入れ替え競合も残る。測定値を改ざんされた場合、Authorityは立証できないため、Productionへの採用には既存Host/Builder Ownerの信頼境界が必要。
+
+局所テスト`browser-host-binding.test.mjs`は、正規B/R/Tでの成功、悪意あるOrigin、起動前の異なるTarget、起動後のR変更、測定JSON欠落の拒否を実HTTPサーバーで再現する。既存`smoke_json_api.py`と`real_browser_replay.mjs`も測定JSONをHostへ渡すため、両者の実経路にこの境界が適用される。
