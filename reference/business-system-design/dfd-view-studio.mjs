@@ -18,6 +18,7 @@ let selectionGeneration=0;
 let dfdLoadGeneration=0;
 let layoutLoadGeneration=0;
 const semanticLoadGeneration={procedure:0,review:0};
+let semanticTextGeneration=0;
 function invalidateSemanticPreview(){
   state.semanticPreview=null;
   $('semantic-preview').hidden=true;
@@ -286,7 +287,10 @@ for(const [id,kind,version] of [
     }
   });
 }
-$('trigger-label').addEventListener('input',()=>invalidateSemanticPreview());
+$('trigger-label').addEventListener('input',()=>{
+  semanticTextGeneration++;
+  invalidateSemanticPreview();
+});
 $('semantic-propose').addEventListener('click',async()=>{
   const selected=state.selected?JSON.parse(state.selected):null;
   const dfd=state.dfd,procedure=state.procedure,review=state.review;
@@ -294,6 +298,7 @@ $('semantic-propose').addEventListener('click',async()=>{
   const hashes=[state.dfdHash,state.procedureHash,state.reviewHash];
   const label=$('trigger-label').value;
   const generation=selectionGeneration;
+  const labelGeneration=semanticTextGeneration;
   invalidateSemanticPreview();
   if(selected?.[0]!=='trigger'||!files.every(Boolean)||typeof label!=='string'||!label.trim()){
     status('起動契機の選択、参照資料、新しい説明文が必要です。',true);
@@ -302,7 +307,8 @@ $('semantic-propose').addEventListener('click',async()=>{
   try{
     for(let i=0;i<files.length;i++)await readChecked(files[i],hashes[i],
       ['PROJECTION','PROCEDURE','REVIEW'][i]);
-    if(generation!==selectionGeneration||dfd!==state.dfd||
+    if(generation!==selectionGeneration||labelGeneration!==semanticTextGeneration||
+       label!==$('trigger-label').value||dfd!==state.dfd||
        procedure!==state.procedure||review!==state.review)
        throw Error('DFD_SELECTION_OR_SOURCE_CHANGED');
     const binding={schema:BINDING_SCHEMA,id:'trigger-label-'+selected[1],
