@@ -60,14 +60,14 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 		digest := "sha256:" + hex.EncodeToString(sum[:])
 		identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: version}
 		plan := pruntime.EnvironmentPlan{
-			Environment: core.MustCanonicalID("reference"),
+			Environment:           core.MustCanonicalID("reference"),
 			PluginLockFingerprint: "reference-artifact-switch-lock-" + revision,
 			Plugins: []pruntime.PluginRuntime{{
 				Plugin: identity, DescriptorFingerprint: "reference-process-descriptor-" + revision,
 				Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
 				Command: path, Args: []string{referenceArgvMarker},
 				SandboxPolicy: plugin.SandboxNone,
-				Artifact: plugin.Artifact{Digest: digest},
+				Artifact:      plugin.Artifact{Digest: digest},
 			}},
 			Capabilities: []pruntime.CapabilityRuntime{{
 				Plugin: identity, Capability: capability, Boundary: pruntime.BoundaryProcess,
