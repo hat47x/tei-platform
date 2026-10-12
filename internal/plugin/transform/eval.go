@@ -261,6 +261,10 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			if key.Kind != ValueString {
 				return Value{}, fmt.Errorf("assert-unique-by key must be string, got %s", key.Kind)
 			}
+			// Hashing a key is byte-linear work, not only one collection step.
+			if err := e.consumeByteWork(len(key.String)); err != nil {
+				return Value{}, err
+			}
 			if _, exists := seen[key.String]; exists {
 				return Value{}, fmt.Errorf("assert-unique-by failed: duplicate key")
 			}
