@@ -94,7 +94,7 @@ func TestHTTPSApplicationStoreRejectsUnverifiedDelegationBeforeNetwork(t *testin
 	}))
 	defer server.Close()
 	for _, tc := range []struct {
-		name string
+		name   string
 		change func(*HTTPSApplicationStore, *fixedDelegation, *Intent)
 	}{
 		{"missing subject", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Subjects = nil }},
