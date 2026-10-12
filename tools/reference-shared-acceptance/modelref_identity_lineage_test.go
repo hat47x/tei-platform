@@ -65,9 +65,9 @@ func TestIssue1120AIProposalIdentityAcrossSharedAcceptance(t *testing.T) {
 	candidate := unitPriceCandidate(before.revision)
 	candidate.Origin.Kind = "ai"
 	candidate.Origin.Actor = "proposal-only"
-	// Preserve a caller-supplied provenance note. Neither that note nor the
+	// Preserve an explicitly unverified provenance note. Neither it nor the
 	// declared AI actor confers approval or accepted meaning.
-	candidate.Evidence[0].Note += " / legacy-record:line-17"
+	candidate.Evidence[0].Note += " / unverified-legacy-note:line-17"
 	input := mustJSON(t, candidate)
 	unchanged := treeDigest(t, root)
 	evaluation, err := evaluate(root, input)
