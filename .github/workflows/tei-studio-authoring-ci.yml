@@ -87,6 +87,32 @@ jobs:
           node --version
           node --test reference/studio-authoring/*.test.mjs
 
+      - name: 1万件合成Referenceの投影とHTML表示を実測
+        shell: bash
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/tei-studio-1124-performance.json"
+          node reference/studio-authoring/performance.mjs > "$receipt"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.studio-performance-receipt/v0"
+            and .head == $sha
+            and .fixture.kind == "synthetic"
+            and .fixture.highFanIn == 10000
+            and .result.erEdges == 10000
+            and .result.erNodes == 10001
+            and .result.functionItems == 10000
+            and .result.truncatedHTMLLists == true
+            and (.result.htmlBytes > 0)
+            and (.observed.projectionMs >= 0)
+            and (.observed.htmlMs >= 0)
+            and (.observed.rssMiB > 0)
+            and .authority.sourceWrite == "not-performed"
+            and .authority.humanAcceptance == "not-observed"
+            and .authority.actualBrowser == "not-observed"
+            and .authority.acceptedBusiness == "not-established"
+          ' "$receipt" >/dev/null
+          jq '{schema, head, fixture, result, observed, authority, qualification}' "$receipt"
+
       - name: 一時作業領域で正本受理と再投影を検証
         shell: bash
         run: |
