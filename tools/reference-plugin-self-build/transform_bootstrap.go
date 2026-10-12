@@ -22,6 +22,8 @@ const (
 	transformSeedBuilderPackage = "./tools/reference-transform-seed-builder"
 	transformMetaSourcePath     = "reference/plugin-self-build/builder-sources/transform-source-realizer-v1.transform.json"
 	transformPackageSourcePath  = "reference/plugin-self-build/builder-sources/plugin-package-v1.transform.json"
+	// A logical builder release, not the revision of its Git repository.
+	transformSeedBuilderVersion = "1.0.0"
 )
 
 type transformBootstrapExecutionKind string
@@ -272,12 +274,7 @@ func runTransformBootstrap(
 		)
 	}
 
-	seedIdentity := plugin.BuilderIdentity{
-		ID:              core.MustCanonicalID("tei.builder.transform_seed.reference"),
-		Version:         revision,
-		ContractVersion: "tei.plugin-build/v1",
-		ArtifactDigest:  seedFirstDigest,
-	}
+	seedIdentity := transformSeedBuilderIdentity(seedFirstDigest)
 	stage1Output := builderIdentityFromTransformSource(metaSource, stage1FirstDigest)
 	buildInputFingerprint := transformBootstrapComparisonFingerprint(
 		metaSourceClosureDigest,
@@ -562,6 +559,17 @@ func runTransformSeedBuilder(root, builderPath, sourceRelative, output string) e
 		return fmt.Errorf("transform seed builder: %w: %s", err, bytes.TrimSpace(combined))
 	}
 	return nil
+}
+
+// transformSeedBuilderIdentity preserves a logical version across repository
+// revisions while binding each concrete seed executable by its artifact digest.
+func transformSeedBuilderIdentity(artifactDigest string) plugin.BuilderIdentity {
+	return plugin.BuilderIdentity{
+		ID:              core.MustCanonicalID("tei.builder.transform_seed.reference"),
+		Version:         transformSeedBuilderVersion,
+		ContractVersion: "tei.plugin-build/v1",
+		ArtifactDigest:  artifactDigest,
+	}
 }
 
 func builderIdentityFromTransformSource(source transform.Source, digest string) plugin.BuilderIdentity {
