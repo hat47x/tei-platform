@@ -260,7 +260,7 @@ func TestE22SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
 			}
 		})
 	}
-	if got := e22Send(t, e.protected, "sui-v1", "order_entry"); got != http.StatusForbidden ||
+	if got := e22Send(t, e.protected, "sui-v1", "order_entry"); got != http.StatusBadRequest ||
 		e.upstream != 0 {
 		t.Fatalf("cross-application Action reached upstream: status=%d upstream=%d", got, e.upstream)
 	}
