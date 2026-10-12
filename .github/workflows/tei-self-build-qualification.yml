@@ -40,7 +40,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: tei-self-build-${{ github.event.pull_request.number || github.ref }}
+  # PRは番号単位で新しい候補を優先し、mainはコミットごとに独立して保留する。
+  group: tei-self-build-${{ github.event.pull_request.number || github.sha }}
   # 同一PRの古い候補は止めるが、mainの各コミットの証拠取得は取り消さない。
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
