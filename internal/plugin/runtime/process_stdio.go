@@ -56,6 +56,15 @@ func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand
 // invokeExecutableは通常のパス起動とLinuxの検証済みFD起動で、同じ
 // 入出力・応答サイズ・診断処理を用いる。実行対象の固定は呼出し元が担う。
 func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File) (Response, error) {
+	return l.invokeExecutableWithStartGate(ctx, command, req, executable, extraFiles, nil)
+}
+
+// processStartGate runs the OS process start while a Host-owned authorization
+// remains current. It must release its lock as soon as Start returns: child
+// completion and signer revocation are independent operations.
+type processStartGate func(start func() error) error
+
+func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File, gate processStartGate) (Response, error) {
 	if ctx == nil {
 		return Response{}, fmt.Errorf("process plugin invocation requires context")
 	}
@@ -98,7 +107,20 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 		cmd.Dir = l.Dir
 	}
 
-	if err := cmd.Run(); err != nil {
+	// Preserve the ordinary launcher path exactly. A pinned signed process
+	// uses an optional Host-owned gate around Start only, never around Wait.
+	// This avoids the check-then-start gap without blocking revocation for
+	// the lifetime of an already started child.
+	run := func() error {
+		if gate == nil {
+			return cmd.Run()
+		}
+		if err := gate(cmd.Start); err != nil {
+			return err
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return Response{}, fmt.Errorf("process plugin executable %q canceled: %w", command.Executable, ctxErr)
 		}
