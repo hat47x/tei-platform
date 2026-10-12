@@ -41,5 +41,33 @@ printf 'module tei-independent-process-plugin-probe\n\ngo 1.23.2\n' > "$module_d
   go test -count=1 ./...
   go vet ./...
   go build -o "$probe_dir/reference-executor" .
+
+  # Confirm that one independent source unit can be lowered to multiple
+  # physical targets. Compilation is not evidence of runtime conformance.
+  for target in linux/amd64 linux/arm64 wasip1/wasm; do
+    target_os="${target%/*}"
+    target_arch="${target#*/}"
+    artifact="$probe_dir/reference-${target_os}-${target_arch}"
+    GOOS="$target_os" GOARCH="$target_arch" CGO_ENABLED=0 \
+      go build -trimpath -o "$artifact" .
+    test -s "$artifact"
+
+    header="$(od -An -tx1 -N4 "$artifact" | tr -d ' \n')"
+    case "$target" in
+      linux/*) expected_header=7f454c46 ;;
+      wasip1/wasm) expected_header=0061736d ;;
+      *) echo "error: unreviewed target $target" >&2; exit 2 ;;
+    esac
+    if [[ "$header" != "$expected_header" ]]; then
+      echo "error: unexpected artifact format for $target: $header" >&2
+      exit 1
+    fi
+
+    # This is reference-only provenance: the production Host must still
+    # bind the exact artifact and its accepted service contract.
+    digest="$(sha256sum "$artifact" | cut -d ' ' -f1)"
+    printf 'reference-plugin=%s target=%s artifact=sha256:%s\n' \
+      'tei.process.reference' "$target" "$digest"
+  done
 )
 test -f "$probe_dir/reference-executor"
