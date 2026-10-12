@@ -44,6 +44,7 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	applicationAdded := map[string]bool{}
 	environmentBindingAdded := map[string]bool{}
 	undecidedStorage := map[string]string{}
+	unverifiedBusinessRules := map[string]bool{}
 
 	for _, change := range changes {
 		if change.Change == "removed" {
@@ -57,6 +58,9 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 			for _, app := range apps {
 				undeclaredValidation[app] = true
 			}
+		case "candidate-key", "functional-dependency":
+			edges = append(edges, logicalRuleEdges(after, change.Kind, id)...)
+			unverifiedBusinessRules[change.Kind+":"+change.ID] = true
 		case "relation":
 			es, undecided := relationEdges(after, id)
 			edges = append(edges, es...)
@@ -140,6 +144,12 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	sort.Strings(storageRelations)
 	for _, id := range storageRelations {
 		unresolved = append(unresolved, Unresolved{Code: "RELATION_STORAGE_NOT_AUTHORED", Message: undecidedStorage[id]})
+	}
+	for _, id := range sortedKeys(unverifiedBusinessRules) {
+		unresolved = append(unresolved, Unresolved{
+			Code: "LOGICAL_BUSINESS_RULE_UNVERIFIED",
+			Message: id + " is an explicit authored assertion; its universal business truth, candidate-key minimality and physical PK/FK mapping have not been verified",
+		})
 	}
 	unresolved = append(unresolved,
 		Unresolved{Code: "DRIVER_SCENARIO_NOT_RUN", Message: "解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない"},
