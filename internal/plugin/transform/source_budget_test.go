@@ -64,3 +64,38 @@ func TestSourceSizePreflightBoundsCyclesAndUnboundedStrings(t *testing.T) {
 		t.Fatal("cyclic expression escaped preflight")
 	}
 }
+
+func TestSourceSizePreflightRejectsExpandedRawLiteralsBeforeNormalization(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		literal json.RawMessage
+	}{
+		{
+			name:    "HTML escaping expansion",
+			literal: json.RawMessage("\"" + strings.Repeat("<", 2<<20) + "\""),
+		},
+		{
+			name:    "Unicode line separator expansion",
+			literal: json.RawMessage("\"" + strings.Repeat("\u2028", 2<<20) + "\""),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := TransformSourceRealizerV1()
+			source.Program.Output = Expr{Op: OpLiteral, Literal: tc.literal}
+			if err := sourceSerializedSize(source, MaxSerializedSourceBytes-1); err == nil {
+				t.Fatal("preflight should reject literal whose canonical form expands beyond 8 MiB")
+			}
+		})
+	}
+}
+
+func TestSourceSizePreflightBoundsRawLiteralElements(t *testing.T) {
+	source := TransformSourceRealizerV1()
+	source.Program.Output = Expr{
+		Op:      OpLiteral,
+		Literal: json.RawMessage("[" + strings.Repeat("0,", 1_000_001) + "0]"),
+	}
+	if err := sourceSerializedSize(source, MaxSerializedSourceBytes-1); err == nil {
+		t.Fatal("preflight should reject a raw literal with too many elements")
+	}
+}
