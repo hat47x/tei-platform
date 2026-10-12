@@ -52,9 +52,13 @@ test("diagram editing makes an existing Shared Acceptance change-candidate, not 
   const world = fixture(), before = JSON.stringify(world);
   const out = candidateFromEdit(world, revision, edit());
   assert.deepEqual(out.delta, [{
-    op: "add-relation", data: "sales.order_line", id: "sales.order_line.order",
-    symbol: "order", target: "sales.order", cardinality: "one"
+    op: "add-relation", addRelation: {
+      data: "sales.order_line", id: "sales.order_line.order",
+      symbol: "order", target: "sales.order", cardinality: "one"
+    }
   }]);
+  assert.equal(Object.hasOwn(out.delta[0], "data"), false,
+    "root data means a Go DataSpec; relation needs addRelation");
   assert.equal(out.schema, "tei.reference.change-candidate/v0");
   assert.equal(out.baseModelRevision, revision);
   assert.equal(JSON.stringify(world), before);
