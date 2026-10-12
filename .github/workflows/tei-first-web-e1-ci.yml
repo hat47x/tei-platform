@@ -116,16 +116,8 @@ jobs:
           set -euo pipefail
           # Actual combined + tagged First Web executables, not an HTTP
           # fixture. B/R/T are diagnostic, so this is not Acceptance evidence.
-          go test -count=1 -run '^TestActualFirstWebTargetCaptureAcrossApplications
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
-          hidden="$(git ls-files -v | awk '/^[a-zS]/ {print}')"
-          test -z "$hidden"
- \
+          go test -count=1 \
+            -run '^TestActualFirstWebTargetCaptureAcrossApplications$' \
             ./tools/reference-first-web-target-manifest-capture
 
       - name: 実行後の対象版と作業領域を照合
