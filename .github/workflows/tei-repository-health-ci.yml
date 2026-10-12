@@ -94,7 +94,10 @@ jobs:
 
       # 同一ジョブ・同一Git checkoutでfull healthとE1を結び付ける。
       # E1固有のReference・18ケース回帰は通常のGo test対象外。
+      # 全体健全性が別の原因でFAILしてもE1の独立した診断を記録する。
+      # 元のhealth失敗はworkflowの失敗として残し、マージGateは緩めない。
       - name: External Coordination E1と回帰試験を実行
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
