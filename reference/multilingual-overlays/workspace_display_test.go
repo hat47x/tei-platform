@@ -21,10 +21,10 @@ func makeSourceWorkspace(t *testing.T) (string, plugin.Lock, WorkspaceDisplayCon
 	t.Helper()
 	root := t.TempDir()
 	files := map[string]string{
-		"tei.workspace.yaml": "workspace: test\nsources:\n  - plugins\n  - semantic\n  - environments\n",
-		"plugins/tei-order-ui/1.0.0/plugin.tei": "plugin tei.order.ui v1.0.0 {\n    runtime builtin\n}\n",
-		"plugins/tei-locale-ja/1.0.0/plugin.tei": "plugin tei.locale.ja v1.0.0 {\n    runtime builtin\n}\n",
-		"semantic/sales/order.tei": referenceSemantic,
+		"tei.workspace.yaml":                       "workspace: test\nsources:\n  - plugins\n  - semantic\n  - environments\n",
+		"plugins/tei-order-ui/1.0.0/plugin.tei":    "plugin tei.order.ui v1.0.0 {\n    runtime builtin\n}\n",
+		"plugins/tei-locale-ja/1.0.0/plugin.tei":   "plugin tei.locale.ja v1.0.0 {\n    runtime builtin\n}\n",
+		"semantic/sales/order.tei":                 referenceSemantic,
 		"environments/development/environment.tei": "environment development {\n    plugin tei.order.ui ^1\n    plugin tei.locale.ja ^1\n}\n",
 	}
 	for name, content := range files {
@@ -49,17 +49,17 @@ func makeSourceWorkspace(t *testing.T) (string, plugin.Lock, WorkspaceDisplayCon
 		t.Fatal(err)
 	}
 	cfg := WorkspaceDisplayConfig{
-		Environment: core.CanonicalID("development"),
-		Scope: "workspace.sales",
-		Data: core.CanonicalID("sales.order"),
-		Owner: ordinary,
+		Environment:  core.CanonicalID("development"),
+		Scope:        "workspace.sales",
+		Data:         core.CanonicalID("sales.order"),
+		Owner:        ordinary,
 		SourceLocale: "en-US",
-		Locale: "ja-JP",
+		Locale:       "ja-JP",
 	}
 	key := resourceKey(Surface{
-		Target: ordinary,
+		Target:  ordinary,
 		Subject: typedDataKey(cfg),
-		Field: "display-name",
+		Field:   "display-name",
 	})
 	cfg.Packs = []Pack{{
 		Provider: localizer, Target: ordinary, Key: key, Locale: "ja-JP",
