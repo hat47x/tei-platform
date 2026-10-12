@@ -10,9 +10,9 @@ import (
 func TestWorldValidationSharesExternalRequirementRules(t *testing.T) {
 	valid := plugin.ExternalRequirement{Scope: "build", Kind: "toolchain", Name: "go"}
 	for _, tc := range []struct {
-		name string
+		name  string
 		items []plugin.ExternalRequirement
-		code string
+		code  string
 	}{
 		{name: "valid", items: []plugin.ExternalRequirement{valid}},
 		{name: "duplicate", items: []plugin.ExternalRequirement{valid, valid}, code: "DUPLICATE_PLUGIN_EXTERNAL_REQUIREMENT"},
