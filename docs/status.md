@@ -12,7 +12,7 @@ TEIは、ドメイン知識と技術を分けて管理するローコード開�
 | --- | --- | --- |
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、ソース索引作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
-| 参照シナリオと新しいプラグイン基盤 | 開発候補として、型付き実装を選択済み世代へ接続。`-composition-scenarios`で受注の読取と登録・後続観測を実行する。既存の模擬データを使う範囲であり、本番の提供元移行・無停止運用は未成立 | [実行方法](../tools/reference-first-web-target/README.md)、[接続計画](../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md) |
+| 参照シナリオと新しいプラグイン基盤 | 開発候補として、型付き実装を選択済み世代へ接続。`-composition-scenarios`で受注の読取と登録・後続観測、修理受付の顧客参照を実行する。アプリケーション専用ビルドでも接続を選べる。修理受付は模擬Oracleを使い、実接続・本番の提供元移行・無停止運用は未成立 | [実行方法](../tools/reference-first-web-target/README.md)、[接続計画](../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md) |
 | PostgreSQL上の受注シナリオ | 開発候補として、受注・明細の読取、確定、別読取りによる観測を実DBへ接続。現在の実行許可、排他トークン、古い読取版、重複確定を検査する。顧客参照と認証は模擬実装で、本番接続や汎用の権限基盤への移行は未成立 | [参照データと再現手順](../reference/postgres-order-execution/README.md) |
 | 画面を使わない帳票・一括処理 | 開発候補として、同一契約のCSV／JSON整形と、対象を固定した少数件の受注確定を接続。各件の検証・認可・更新・観測を共有する。取消と部分成功の記録、現在の状態による重複確定拒否を扱う。永続的な要求IDによる重複排除、自動再開、PDF表示、本番運用は未成立 | [実行方法と制約](../tools/reference-first-web-target/NON_SCREEN.md)、[整形プラグイン](../plugins/report-renderer/README.md) |
 | 共通受理と実行版の接続 | 開発候補として、共通受理で変更した検証用ソースを再読込みし、正確なソース版を投影・プラグイン呼出し・DBの実行許可へ結ぶ。古い版や読取後のソース変更は確定前に拒否する。人の承認・Studio編集・無停止のモデル交換は未成立 | [変更案から再実行までの参照例](../reference/source-execution-loop/README.md) |

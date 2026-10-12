@@ -3,9 +3,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"tei/internal/composition"
 	"tei/internal/ir"
 )
 
@@ -19,7 +21,18 @@ func main() {
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		return newReferenceReadScenarioRunner(world), command, nil, nil
+		command.model = config.Model
+		read := newReferenceReadScenarioRunner(world)
+		if config.CompositionScenarios {
+			digest, err := runningExecutableDigest()
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			r, c, err := wireComposedScenarios(context.Background(), composition.NewRegistry(), read, command, digest,
+				referenceInstanceGuard(digest, map[string]composition.Contract{"order-read": readServiceContract, "order-submit": submitServiceContract}))
+			return r, c, nil, err
+		}
+		return read, command, nil, nil
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

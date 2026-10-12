@@ -4,29 +4,16 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
-	"io"
-	"os"
 
 	"tei/internal/composition"
 )
-
-// These contracts belong to this reference consumer, not to a kernel enum.
-// Fingerprints describe the reference typed API, not semantic conformance.
-func scenarioContract(id, shape string) composition.Contract {
-	return composition.Contract{ID: id, Version: "1", Shape: fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(shape)))}
-}
 
 var (
 	readServiceContract           = scenarioContract("tei.reference.order-entry.read", "readScenarioInput -> readScenarioResult + error; read-only; RFC3339 from; nonnegative row; Driver browse/record/customer/header-detail")
 	submitServiceContract         = scenarioContract("tei.reference.order-entry.submit", "commandScenarioInput -> commandScenarioResult + error; authentication/validation/authorization/command/separate-observation; synthetic state; credentials transient")
 	postgresSubmitServiceContract = scenarioContract("tei.reference.order-entry.postgres-submit", "commandScenarioInput -> commandScenarioResult + error; current grant and fencing; canonical effect authorization; persistent PostgreSQL draft-to-submitted transition; separate external observation; unknown commit forbids automatic retry; credentials transient")
 )
-
-func projectCompositionBinding(binding composition.Binding) *compositionTrace {
-	return &compositionTrace{ContractID: binding.ContractID, ContractVersion: binding.ContractVersion, ProviderID: binding.ProviderID, ArtifactDigest: binding.ArtifactDigest, Generation: binding.Generation}
-}
 
 type composedReadScenario struct {
 	model   *scenarioModel
@@ -66,25 +53,6 @@ func (r *composedCommandScenario) RunCommand(ctx context.Context, input commandS
 		}
 	}
 	return result, err
-}
-
-// The linked executable is the actual artifact for this reference. Hashing
-// bytes proves identity only: it is neither publisher trust nor authorization.
-func runningExecutableDigest() (string, error) {
-	path, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("sha256:%x", h.Sum(nil)), nil
 }
 
 // wireComposedScenarios is a trusted host assembly point. The caller supplies

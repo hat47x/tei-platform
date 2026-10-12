@@ -38,7 +38,7 @@
 
 帳票と一括処理をHTTPなしで動かす手順は[画面を使わない参照実行](NON_SCREEN.md)を参照する。
 
-通常の起動コマンドに`-composition-scenarios`を加えると、受注の読取と登録を`internal/composition`の選択済みサービスへ接続する。対象は`order_entry`のみで、別のアプリケーションを指定した場合は起動を拒否する。
+通常の起動コマンドに`-composition-scenarios`を加えると、`order_entry`の読取・登録、または`repair_intake`の顧客参照を`internal/composition`の選択済みサービスへ接続する。両者は別の契約と登録範囲を使い、既存の業務処理を共有する。PostgreSQLへの接続と画面を使わない帳票・一括処理は引き続き受注専用である。
 
 `/scenario/read`、`/scenario/submit`、`/custom-submit`は従来と同じ操作を使う。登録処理内の読取も同じサービスを呼ぶ。JSON応答の`composition`には契約、提供元、実行ファイルのSHA-256、世代を記録する。認証拒否などの業務結果と実行エラー、登録結果と後続観測は従来どおり区別する。
 
@@ -237,6 +237,18 @@ E1で異なるApplication向けバイナリを成立させるには、共通Tran
 
 ## Application別コンパイル時Go入口（E1実装・要実行検証）
 
+専用ビルドでも`-composition-scenarios`と`-model-revision`を指定できる。アプリケーションの選択はビルド時に固定し、サービス契約を使っても起動引数から変更できない。受注専用ビルドでは模擬実装を使う。PostgreSQL接続と画面を使わない実行は複合参照ホストの入口だけで提供する。
+
+修理受付のサービスは`tei.reference.repair-intake.customer-lookup`、提供元は`repair-customer`である。入力の不正、顧客の取得結果、模擬実装であるという制約を既存の処理からそのまま返す。応答の`composition`へ契約・提供元・実行ファイルの指紋・世代を記録し、モデル版を指定した場合は呼出し前に現在のソースも照合する。参照ホストの静的な実行許可であり、利用者の認証や業務上の更新権限は追加しない。
+
+変更のないLinuxチェックアウトで、実バイナリの接続と物理的な除外を次のコマンドで確認できる。未作成のリポジトリ外ディレクトリを指定する。
+
+```sh
+python3 tools/verify-composed-targets.py --output /secure/composed-target-evidence
+```
+
+複合・受注専用・修理受付専用の実行物、SHA-256、バイト数、依存集合、シンボルを記録する。接続前・接続後・専用ビルドの結果を同じ入力で比較し、実HTTPのエラーと除外したルートも確認する。修理受付から受注、PostgreSQL接続、帳票整形の実装が除かれていることを検査する。単一プロセス内の静的結合の検証であり、別プロセスの無停止交換、実Oracle接続、本番権限、性能目標の達成を示さない。
+
 従来のタグなし`package main`はGate C用の複合Reference Targetとして残しています。
 試験用の`tei_order_only` / `tei_repair_only`で、それぞれのApplication固有Runner・HTTPルート・画面Template・単独`main`をコンパイル時に選択します。
 
@@ -263,7 +275,7 @@ bash tools/reference-first-web-target/measure_tagged_targets.sh \
 
 `repair_intake`では顧客参照用Oracle実装のみをリンク対象にするため、PostgreSQL明細Queryの実装は別ソース`reference_order_contract_query_fixture.go`へ移しました。両Applicationで共用するOracle実装を複製せず、DriverのBinding identityも変えていません。
 
-**現時点の限界**：GitHubへコードとテストをコミットしましたが、最新HEADのタグ別ビルド・回帰テスト・実シンボル観測・全体Repository HealthのPASSは取得していません。原Goソースの区別だけでlink後の完全なSecret/Authority除外は示せません。Workspace Loader/Driverを使う合成Referenceであり、Build Artifact Lockを承認する権限、Production認証認可、Browser/API二単位配備、同じ受理済みHandover B/R/Tでの実Business Result/Execution Error/Observationの完全同等性も未実証です。これらのE1受入条件は[#1167](https://github.com/hat47x/tei-platform/issues/1167)に残します。
+**検証の限界**：試験と計測は、実行した候補版と構築条件について記録します。過去の合格を現在のHEADへ持ち越しません。原Goソースの区別や参照例のシンボル除外だけでは、秘密情報や権限の完全な除外は示せません。模擬データの結果同等性は、構築成果物の承認、本番の認証・認可、ブラウザーとAPIの別配備、受理済み引継ぎ条件での実環境の完全同等性を証明しません。これらのE1受入条件は[#1167](https://github.com/hat47x/tei-platform/issues/1167)に残します。
 
 ### 実バイナリのHTTP結果同等性（明示実行する統合テスト）
 

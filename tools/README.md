@@ -62,6 +62,7 @@
 | [`reference-first-web-target/`](reference-first-web-target/) | 最初のウェブ実行先の参照実装 |
 | [`verify-postgres-order-execution.py`](verify-postgres-order-execution.py) | 使い捨てPostgreSQLで受注の読取・確定・観測と現在の実行許可を確認 |
 | [`reference_non_screen.py`](reference_non_screen.py) | 上記検証の`--non-screen`から呼ぶ、帳票出力と一括処理の実プロセス検証 |
+| [`verify-composed-targets.py`](verify-composed-targets.py) | 二つのアプリケーションのサービス接続を実バイナリで照合し、専用ビルドの依存・シンボル除外を確認 |
 | [`reference_source_execution_loop.py`](reference_source_execution_loop.py) | 上記検証器の`--source-loop`から呼ぶ、共通受理・ソース版選択・再実行の接続確認 |
 | [`reference-first-web-target-architecture-evidence/`](reference-first-web-target-architecture-evidence/) | ウェブ実行先の構成根拠の確認 |
 | [`reference-first-web-target-evidence-audit/`](reference-first-web-target-evidence-audit/) | ウェブ実行先の根拠一式の監査 |

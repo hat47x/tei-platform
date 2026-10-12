@@ -17,8 +17,10 @@ import (
 // singleApplicationConfig contains startup inputs, not a new declaration of
 // Application meaning, permissions, or Provider selection.
 type singleApplicationConfig struct {
-	LegacyUsers         string
-	LegacyAuthorization string
+	LegacyUsers          string
+	LegacyAuthorization  string
+	CompositionScenarios bool
+	Model                *scenarioModel
 }
 
 type singleApplicationRunnerFactory func(ir.World, singleApplicationConfig) (
@@ -38,11 +40,16 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	listen := flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
 	legacyUsers := flags.String("legacy-users", "reference/legacy-auth/users.json", "Reference legacy authentication fixture")
 	legacyAuthorization := flags.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Reference legacy authorization fixture")
+	composeScenarios := flags.Bool("composition-scenarios", false, "reference: use statically linked service contracts for the compiled Application")
+	modelRevision := flags.String("model-revision", "", "reference: host-selected exact source revision")
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 {
 		return fmt.Errorf("unexpected positional arguments")
+	}
+	if *modelRevision != "" && !*composeScenarios {
+		return fmt.Errorf("-model-revision requires -composition-scenarios")
 	}
 	if *requestedApplication != application {
 		return fmt.Errorf("compiled Application %s refuses requested Application %q", application, *requestedApplication)
@@ -58,6 +65,13 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if err != nil {
 		return fmt.Errorf("load reference Workspace: %w", err)
 	}
+	var model *scenarioModel
+	if *modelRevision != "" {
+		model, err = bindScenarioModel(*workspacePath, loaded, *modelRevision)
+		if err != nil {
+			return err
+		}
+	}
 	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
 		HandoverBaselineID:         *baselineID,
 		BaselineRepositoryRevision: *baselineRev,
@@ -67,9 +81,14 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if err != nil {
 		return err
 	}
+	if model != nil {
+		projection.ModelRevision = model.revision
+	}
 	read, command, options, err := factory(loaded.World, singleApplicationConfig{
-		LegacyUsers:         *legacyUsers,
-		LegacyAuthorization: *legacyAuthorization,
+		LegacyUsers:          *legacyUsers,
+		LegacyAuthorization:  *legacyAuthorization,
+		CompositionScenarios: *composeScenarios,
+		Model:                model,
 	})
 	if err != nil {
 		return err

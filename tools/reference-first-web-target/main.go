@@ -27,7 +27,7 @@ func main() {
 		legacyAuthz      = flag.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
 		listen           = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
 		scopedRoutes     = flag.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
-		composeScenarios = flag.Bool("composition-scenarios", false, "reference: run order_entry read and submit through selected service contracts")
+		composeScenarios = flag.Bool("composition-scenarios", false, "reference: run the selected Application through statically linked service contracts")
 		postgresDSNFile  = flag.String("postgres-dsn-file", "", "reference: host-owned PostgreSQL connection file; never creates fixture objects")
 		postgresFence    = flag.Int64("postgres-fencing-token", 0, "reference: expected positive database execution-grant fencing token")
 		modelRevision    = flag.String("model-revision", "", "reference: exact source revision explicitly selected by the host; does not accept proposals")
@@ -46,8 +46,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "PostgreSQL reference requires -composition-scenarios, -postgres-dsn-file and a positive -postgres-fencing-token")
 		os.Exit(2)
 	}
-	if *composeScenarios && *applicationID != "order_entry" {
-		fmt.Fprintln(os.Stderr, "-composition-scenarios currently requires -application order_entry")
+	if *postgresDSNFile != "" && *applicationID != "order_entry" {
+		fmt.Fprintln(os.Stderr, "PostgreSQL reference currently requires -application order_entry")
 		os.Exit(2)
 	}
 
@@ -151,7 +151,19 @@ func main() {
 			}
 		}
 	case core.MustCanonicalID("repair_intake"):
-		options = append(options, withCustomerLookup(newReferenceCustomerLookupScenarioRunner(loaded.World)))
+		var lookup customerLookupRunner = newReferenceCustomerLookupScenarioRunner(loaded.World)
+		if *composeScenarios {
+			digest, err := runningExecutableDigest()
+			if err != nil {
+				log.Fatal(err)
+			}
+			lookup, err = wireComposedCustomerLookup(context.Background(), composition.NewRegistry(), lookup, model, digest,
+				referenceInstanceGuard(digest, map[string]composition.Contract{"repair-customer": repairLookupContract}))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		options = append(options, withCustomerLookup(lookup))
 	default:
 		fmt.Fprintf(os.Stderr, "no scenario runner exists for Application %s (supported: order_entry, repair_intake)\n", appID)
 		os.Exit(2)

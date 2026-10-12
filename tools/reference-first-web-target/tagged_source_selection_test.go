@@ -47,15 +47,18 @@ func sourceFilesForBuildTags(t *testing.T, tags string) map[string]bool {
 
 func TestFirstWebTargetApplicationBuildTagsSelectDisjointBusinessSources(t *testing.T) {
 	common := []string{
+		"composition_host.go", "scenario_model.go",
 		"server.go", "scenario_contracts.go", "projection.go",
 		"shared_semantic_projection.go", "reference_contract_query_fixture.go",
 	}
 	orderSources := []string{
+		"composition_scenario.go", "non_screen.go", "postgres_scenario.go",
 		"read_scenario.go", "command_scenario.go", "custom_ui.go",
 		"order_scenario_http.go", "main_order_only.go", "order_only_wiring.go",
 		"reference_order_contract_query_fixture.go",
 	}
 	repairSources := []string{
+		"composition_repair.go",
 		"customer_lookup_scenario.go", "repair_scenario_http.go",
 		"main_repair_only.go", "repair_only_wiring.go",
 	}

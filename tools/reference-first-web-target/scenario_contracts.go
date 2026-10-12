@@ -100,6 +100,7 @@ type customerLookupInput struct {
 }
 
 type customerLookupResult struct {
+	Composition         *compositionTrace          `json:"composition,omitempty"`
 	ScenarioID          string                     `json:"scenarioId"`
 	Environment         string                     `json:"environment"`
 	ApplicationID       string                     `json:"applicationId"`
