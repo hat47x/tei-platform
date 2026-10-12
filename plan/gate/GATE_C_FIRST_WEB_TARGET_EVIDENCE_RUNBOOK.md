@@ -574,7 +574,7 @@ gateCReady = false
 
 ## Architecture negative Evidence
 
-Semantic / Functional acquisition runnerは同じclean `T`で:
+意味・機能の検証根拠を取得する実行器は、変更のない同じ版`T`で次の成果物も生成します。
 
 ```text
 architecture-conformance.json
@@ -586,7 +586,7 @@ architecture-conformance.json
 
 - `tools/reference-first-web-target-architecture-evidence`
 
-第一Referenceでは次をfail closedで確認する。
+最初の参照事例では次の条件を確認し、満たさなければ安全側に停止します。
 
 ### R → T Canonical不変
 
@@ -595,11 +595,11 @@ reference/workspace/**
 reference/world.json
 ```
 
-について、Handover Baseline revision `R`からTarget revision `T`までGit差分がないことを要求する。
+これらについて、引継ぎ基準版`R`から実行先の版`T`まで、Git上の差分がないことを求めます。
 
-これは第一Referenceのcoarseな不変条件であり、将来のproduction semantic diff taxonomyではない。
+これは最初の参照事例で使う大まかな不変条件であり、将来の本番向けの意味差分の分類方式ではありません。
 
-差分が存在する場合はWeb側で補完せず、baseline subject変更の可能性としてsuccessor Handoverへ戻る。
+差分がある場合はウェブ側で補わず、基準版の対象の意味が変わった可能性を確認して後継の引継ぎ手順へ戻ります。
 
 ### Web Target authority boundary
 
@@ -615,16 +615,16 @@ reference/world.json
 
 等のnative SQL本文を持たないことを確認する。
 
-これは「すべての業務二重実装が数学的に存在しない」ことの証明ではなく、第一Referenceで観測可能なauthority boundary Pressureである。
+これは業務ロジックの二重実装が一切存在しないことを数学的に証明するものではありません。最初の参照事例で観測できる管理権限の境界を検証するものです。
 
 ### shared Command / Result boundary
 
-actual `T`でfocused source testを実行し:
+実際の版`T`で対象を絞ったソース試験を実行し、次の事項を確認します。
 
-- standard JSON interactionとCustom UIが同じ`commandScenarioRunner`を利用
-- 検証規則が満たされない場合後にAuthorization / Commandへ進まない
-- 命令の実行時エラーがBusiness Result / Observationへ畳まれない
-- Execution Error HTTP envelopeが`B / R / T`を保持
+- 標準のJSON経由の操作と個別実装の画面が、同じ`commandScenarioRunner`を利用すること
+- 検証規則が満たされない場合は、認可や命令へ進まないこと
+- 命令の実行時エラーを業務上の結果や観測にまとめないこと
+- 実行時エラーのHTTP応答が`B / R / T`を保持すること
 
 ことを再確認する。
 
@@ -639,12 +639,12 @@ Architecture Evidence自身も:
 
 を要求する。
 
-このEvidenceはVisual Evidenceの代替ではない。
+この検証根拠は表示の検証根拠の代わりにはなりません。
 
 
 ## Final Gate C Readiness Audit
 
-Semantic / Functional、Visual、Architectureのactual Evidenceが**同じ`B / R / T`**へ揃った後だけ最終監査を実行する。
+意味・機能、表示、構造について実際に取得した検証根拠が、**同じ`B / R / T`**に揃った後でのみ最終監査を実行します。
 
 実装：
 
@@ -667,28 +667,28 @@ go run ./tools/reference-first-web-target-gate-c-readiness-audit \
 
 少なくとも:
 
-- Semantic / Functional source qualification成功
-- Semantic Conformance成功
-- Functional Evidence成功
-- Visual required captures完備
-- Visual criteriaすべてresolved
-- Visual Fidelity pass
-- Architecture Evidenceが同一clean `T`でreproducible
-- `R → T` Canonical World不変
-- Web Target authority boundary成立
-- standard / Custom UI shared Command boundary成立
-- Business Result / Execution Error / Observation境界成立
-- Target差分handoffが復元可能
-- すべてのunresolvedが明示分類済み
-- blocking unresolvedがない
+- 意味・機能のソースの事前確認に成功
+- 意味の準拠確認に成功
+- 機能の検証根拠が成立
+- 表示の必須撮影結果がすべて揃っている
+- 表示のすべての評価項目について結論が出ている
+- 表示の忠実度が合格
+- 構造の検証根拠を変更のない同じ版`T`で再現できる
+- `R → T`の間に正本のモデルが変わっていない
+- ウェブ実行先の管理権限の境界が成立
+- 標準と個別実装の画面が命令の境界を共有
+- 業務上の結果・実行時エラー・観測の境界が成立
+- 実行先の違いを引き継ぐ情報を復元できる
+- すべての未解決事項を明示的に分類済み
+- 判定を妨げる未解決事項がない
 
 ことを要求する。
 
-Visual auditやSemantic / Functional auditが単独で`gateCReady = false`を返すのは意図した設計である。最終auditだけが三Evidenceとarchitecture conformanceを合わせてGate C判定を行う。
+表示の監査や意味・機能の監査がそれぞれ単独で`gateCReady = false`を返すのは意図した設計です。三種類の検証根拠と構造の準拠確認を合わせて判定段階Cの合否を決めるのは、最終監査だけです。
 
 ### unresolved分類
 
-第一Referenceで既知の未解決は、黙ってsuccessへ変換しない。
+最初の参照事例で既知の未解決事項を、暗黙のうちに成功扱いにはしません。
 
 ```text
 visual-fidelity-evidence-not-acquired
@@ -708,26 +708,26 @@ general-target-neutral-presentation-taxonomy-not-yet-defined
   -> carry-forward / ISSUE-000026
 ```
 
-これ以外の未知unresolvedが現れた場合、最終auditはfail closedで停止する。
+これ以外の未知の未解決事項が現れた場合、最終監査は安全側に停止します。
 
 ### 第二Targetへの差分handoff
 
-Semantic / Functional auditはactual runから次をTarget difference handoffへ残す。
+意味・機能の監査では、実際の実行で得た次の情報を、実行先の違いを引き継ぐ記録に残します。
 
 - Application
 - Target Adapter / Host
-- observed Target Capability候補
+- 観測した実行先の能力の候補
 - Runtime Binding
 - execution artifact
 - host ABI
-- Execution / Trust observation
-- Web固有差
-- Canonicalへ持ち上げてはいけない差
-- carry-forward unresolved
+- 実行と信頼についての観測結果
+- ウェブ固有の違い
+- 正本に取り込んではいけない違い
+- 引き継ぐ未解決事項
 
-`go run`で起動したactual Evidence runではGo version / GOOS / GOARCH / launch mode / loopback bindをrun metadataから取得し、execution artifact / ABIを推測ではなく観測値としてhandoffする。
+`go run`で起動して実際に検証根拠を取得した際には、Goの版・GOOS・GOARCH・起動方式・ループバックへの接続待受けを実行記録から取得し、実行成果物とABIを推測値ではなく観測値として引き継ぎます。
 
-これは第一Targetで得た観測recordであり、Target CapabilityやExecution Profileの最終taxonomyではない。第二TargetのPressureを受けて`ISSUE-000026`で再検討する。
+これは最初の実行先で得た観測記録であり、実行先の能力や実行方式についての最終的な分類ではありません。二つ目の実行先と比較した結果を踏まえ、`ISSUE-000026`で再検討します。
 
 ### Gate C Readyの意味
 
