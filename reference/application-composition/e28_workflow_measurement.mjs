@@ -102,7 +102,9 @@ export function compareE28(existing, candidate) {
   const a=existing?.scenario, b=candidate?.scenario;
   if (!a || !b || a.arm!=='existing-source' || b.arm!=='profile-candidate' ||
       a.id!==b.id || a.consumer!==b.consumer || a.baseRevision!==b.baseRevision ||
-      a.target!==b.target || !existing.submittedCounts || !candidate.submittedCounts) {
+      a.target!==b.target || existing.scope!=='claimed-complete-not-verified' ||
+      candidate.scope!=='claimed-complete-not-verified' ||
+      !existing.submittedCounts || !candidate.submittedCounts) {
     return {status:'not-comparable', reportedDelta:null, verifiedImprovement:null};
   }
   const reportedDelta=Object.fromEntries(countedFields.map(name=>

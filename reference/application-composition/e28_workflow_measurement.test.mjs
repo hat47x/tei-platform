@@ -123,3 +123,28 @@ test('E28 no unverified report is promoted into Runtime permission or SUI accept
   assert.equal(candidate.compatibilityVerified,false);
   assert.equal(candidate.verifiedCounts,null);
 });
+
+test('E29 partial submissions cannot produce a reported productivity delta even with identical source baselines',async()=>{
+  const audit=await observeE27(root);
+  const profile={...scenario,arm:'profile-candidate'};
+  const partialExisting=assessE28(audit,submission([
+    step('a','manual-connection'),
+  ]));
+  const partialProfile=assessE28(audit,submission([
+    step('b','manual-connection'),step('c','ai-question'),
+  ],{scenario:profile}));
+  const completeExisting=assessE28(audit,submission([
+    step('d','manual-connection'),
+  ],{complete:true}));
+  const completeProfile=assessE28(audit,submission([
+    step('e','manual-connection'),step('f','ai-question'),
+  ],{scenario:profile,complete:true}));
+  const notComparable={status:'not-comparable',reportedDelta:null,verifiedImprovement:null};
+  assert.deepEqual(compareE28(partialExisting,partialProfile),notComparable);
+  assert.deepEqual(compareE28(partialExisting,completeProfile),notComparable);
+  assert.deepEqual(compareE28(completeExisting,partialProfile),notComparable);
+  assert.equal(compareE28(completeExisting,completeProfile).status,
+    'reported-only-not-verified');
+  assert.equal(completeExisting.verifiedCounts,null);
+  assert.equal(completeProfile.verifiedCounts,null);
+});
