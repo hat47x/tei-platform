@@ -397,6 +397,90 @@ test("optional #1125 Business reference joins exact Pattern ID without becoming 
   }), /INVALID_OR_DUPLICATE_BUSINESS_STEP/);
 });
 
+test("forward and reverse Business navigation reject stale sibling references", () => {
+  const w = fixture();
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "order-entry.order-handling", diagnostics: [],
+    steps: [{
+      id: "BP-PARTIAL",
+      functionRefs: [
+        { id: "order_entry.order_lines", status: "resolved",
+          relation: "sales.order.lines" },
+        { id: "no_such_pattern", status: "unresolved" }
+      ],
+      explicitMeaning: [{ kind: "semantic-data", id: "sales.order_line",
+        status: "resolved-id-not-accepted",
+        authority: "procedure-reference-only" }]
+    }]
+  };
+  const forward = projectWorld(w, revision, "relation:sales.order.lines",
+    { businessDFD: dfd }).views.business;
+  assert.equal(forward.status, "unresolved");
+  assert.equal(forward.items.length, 1);
+  assert.equal(forward.items[0].status, "unresolved");
+  assert.deepEqual(forward.items[0].resolutionSummary,
+    { declared: 3, unresolved: 1 });
+  assert.equal(forward.items[0].functionRefs[0].status,
+    "exact-id-matches-current-world");
+  assert.equal(forward.diagnostics[0].code,
+    "BUSINESS_PATTERN_REFERENCE_STALE_OR_UNRESOLVED");
+  const reverse = navigateReferenceBusinessStep(w, revision, dfd, "BP-PARTIAL");
+  assert.equal(reverse.status, "unresolved");
+  assert.deepEqual(reverse.resolutionSummary,
+    { matched: 2, unresolved: 1, producerErrors: 0 });
+
+  const fromData = projectWorld(w, revision, "data:sales.order_line",
+    { businessDFD: dfd }).views.business;
+  assert.equal(fromData.status, "unresolved",
+    "one matched Data reference cannot hide an unrelated stale Function");
+  assert.equal(fromData.items[0].status, "unresolved");
+
+  const restored = structuredClone(dfd);
+  restored.steps[0].functionRefs.pop();
+  const clean = projectWorld(w, revision, "relation:sales.order.lines",
+    { businessDFD: restored }).views.business;
+  assert.equal(clean.status, "reference-only");
+  assert.deepEqual(clean.items[0].resolutionSummary,
+    { declared: 2, unresolved: 0 });
+  assert.equal(clean.authority, "noncanonical-reference",
+    "all identity matches still do not constitute accepted Business");
+  const empty = projectWorld(w, revision, "data:sales.order",
+    { businessDFD: restored }).views.business;
+  assert.equal(empty.status, "unresolved");
+  assert.deepEqual(empty.items, [],
+    "a matching Procedure with no matching Step is not a resolved view");
+});
+
+test("Business forward navigation never verifies undeclared capability meaning", () => {
+  const w = fixture();
+  const dfd = {
+    schemaVersion: "business-dfd-projection-v0",
+    authority: "derived-read-only", canonicalProcedureUsed: false,
+    procedureId: "p", diagnostics: [],
+    steps: [{
+      id: "BP-CAP", functionRefs: [],
+      explicitMeaning: [
+        { kind: "semantic-data", id: "sales.order_line",
+          status: "resolved-id-not-accepted",
+          authority: "procedure-reference-only" },
+        { kind: "semantic-capability", id: "security.authorize",
+          status: "resolved-id-not-accepted",
+          authority: "procedure-reference-only" }
+      ]
+    }]
+  };
+  const p = projectWorld(w, revision, "data:sales.order_line",
+    { businessDFD: dfd });
+  assert.equal(p.views.business.status, "unresolved");
+  assert.equal(p.views.business.items[0].status, "unresolved");
+  assert.deepEqual(p.views.business.items[0].resolutionSummary,
+    { declared: 2, unresolved: 1 });
+  assert.equal(p.views.business.diagnostics[0].code,
+    "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED");
+});
+
 test("C0 scoped ID collision cannot be silently resolved by flat Studio token", () => {
   const anchor = {
     subject: { kind: "semantic-relation", id: "sales.order.lines" },
