@@ -17,8 +17,8 @@ func ReconcileCurrent(
 	if registry == nil || !registry.ProposalCurrent(set) {
 		return HandoffReport{
 			Revision: set.Revision,
-			Scope: set.Scope,
-			Blocked: true,
+			Scope:    set.Scope,
+			Blocked:  true,
 		}
 	}
 	return Reconcile(set, refs)
