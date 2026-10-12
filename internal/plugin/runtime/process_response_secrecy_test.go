@@ -100,9 +100,9 @@ func TestRegistryKeepsBuiltinBusinessError(t *testing.T) {
 			Boundary: pruntime.BoundaryInProcess,
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
-			Plugin: req.Plugin,
+			Plugin:     req.Plugin,
 			Capability: plugin.Capability{Kind: req.CapabilityKind, ID: req.CapabilityID},
-			Boundary: pruntime.BoundaryInProcess,
+			Boundary:   pruntime.BoundaryInProcess,
 		}},
 	}
 	reg := pruntime.Registry{Builtins: map[string]pruntime.Builtin{
