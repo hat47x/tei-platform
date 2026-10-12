@@ -1,18 +1,18 @@
 # Gate C → Second Application Reference Start Packet
 
-- Status: Active — S0-S3 complete / S4 revised after full-validation preflight / S5 review regeneration pending
-- Date: 2026-09-19
-- Primary owner after entry: ISSUE-000040
-- Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
-- Pre-Gate contracts:
+- 状態：進行中。S0〜S3完了／S4は全体検証の事前確認後に改訂／S5はレビューの再生成待ち
+- 日付：2026年9月19日
+- 開始後の主担当：ISSUE-000040
+- 入力：ISSUE-000047／ISSUE-000053の第5段階／ISSUE-000027／ISSUE-000039
+- 判定段階より前の契約：
   - `plan/workstreams/KNOWLEDGE_PORTABILITY_R0_BOUNDARY_2026-09.md`
-- Canonical Application impact before Gate C Ready: None
+- 判定段階CのReady前に正本のアプリケーションへ与える影響：なし
 
 ## 1. 目的
 
-Gate C Ready後に第二Application Referenceへ着手するとき、探索・Knowledge Portability・composition・Acceptanceを別々の作業正本へ分裂させず、一つのISSUE-000040 workstreamとして継続できる状態を用意する。
+判定段階CのReady後に第二の参照アプリケーションへ着手する際、探索・知識の移植可能性・構成案・受理を別々の作業正本に分けません。ISSUE-000040の一つの作業として継続できるようにします。
 
-この文書は第二Application sourceではない。
+この文書は、第二アプリケーションのソースではありません。
 
 ```text
 Start Packet
@@ -24,16 +24,16 @@ Start Packet
 
 ## 2. Entry Gate
 
-Entryの機械的preflightは次を正本とする。
+開始前の機械的な確認には、次を正本として用います。
 
 - `plan/gate/GATE_C_SECOND_APPLICATION_ENTRY_PREFLIGHT_2026-09.md`
 - `tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go`
 
-第二Application workstreamを開始するには、Gate C Readyを**明示Evidence**で確認する。
+第二アプリケーションの作業を開始するには、判定段階CのReadyを**明示的な検証根拠**で確認します。
 
-計画文書の見出しや将来予定からReadyを推測しない。
+計画文書の見出しや将来の予定からReadyと推測しません。
 
-開始時に次を一つのentry recordへ固定する。
+開始時には、次の情報を一つの開始記録に固定します。
 
 ```text
 gateC.status = ready
@@ -59,24 +59,24 @@ unresolved:
 
 ### Stop
 
-次のいずれかなら第二Application source authoringへ進まない。
+次のいずれかに該当する場合、第二アプリケーションのソースの記述へ進みません。
 
-- Gate C statusがReadyでない
-- `R`と`T1`が識別できない
-- Semantic Evidenceがない
-- Functional Evidenceがない
-- Visual Evidenceがない
-- Target差分が未整理で、second Application設計へ混入する可能性がある
+- 判定段階Cの状態がReadyではない
+- `R`と`T1`を区別できない
+- 意味の検証根拠がない
+- 機能の検証根拠がない
+- 表示の検証根拠がない
+- 実行先の違いが整理されておらず、第二アプリケーションの設計へ混入する可能性がある
 
-Visual Evidenceだけで開始条件を満たしたとは扱わない。
+表示の検証根拠だけで開始条件を満たしたとは扱いません。
 
 ## 3. Development-flow / workstream continuity
 
-Repositoryの現在のsolo-development flowでは、branch / PRをProduct状態やreview境界として使わず、mainへ直接commitする。
+この文書が定める単独開発の進め方では、ブランチやPRを製品の状態やレビューの境界として使わず、mainへ直接コミットします。
 
-第二Application Referenceの継続性はbranchではなく、ISSUE-000040、Proposal fingerprint、Source / Evidence、Acceptance状態で管理する。
+第二の参照アプリケーションの作業の継続性は、ブランチではなく、ISSUE-000040、構成案の照合値、ソースと検証根拠、受理の状態によって管理します。
 
-原則:
+原則は次のとおりです。
 
 ```text
 current main
@@ -98,17 +98,17 @@ change propagation Evidence
 
 ### 禁止
 
-- exploration / portability / Pattern / Environment / Driverごとにremote branchを作る
-- 同じ第二Applicationの正本候補を複数系列で並行authorする
-- branch名やPR状態をAcceptance / Canonical authorityとみなす
-- concurrent sessionの古いmain snapshotからそのまま変更を適用する
-- health checkなしにコード変更をmainへ入れる
+- 探索・移植可能性・パターン・環境・ドライバーごとにリモートブランチを作ること
+- 同じ第二アプリケーションの正本候補を複数の作業系列で並行して記述すること
+- ブランチ名やPRの状態を受理や正本の権限とみなすこと
+- 並行するセッションが保持する古いmainの状態から、そのまま変更を適用すること
+- 健全性確認をせずにコードの変更をmainへ入れること
 
-各作業はpush直前にcurrent mainへrebase / freshness確認し、コード変更時はRepository正本のhealth checkを通す。文書だけの変更でも、link、状態、Gate / Evidence claim、正本性を確認する。
+各作業ではpushの直前に現在のmainへのrebaseまたは最新状態の確認を行い、コードを変更する場合はリポジトリで定めた健全性確認を通します。文書のみの変更でも、リンク、状態、判定段階と検証根拠に関する主張、正本との関係を確認します。
 
 ## 4. First Reference scope
 
-最初の実Referenceはread-only customer lookupへ限定する。
+最初の実際の参照事例は、読取り専用の顧客検索に限定します。
 
 ### Shared authority candidates
 
@@ -119,40 +119,40 @@ change propagation Evidence
 
 ### Destination-owned decisions
 
-Gate C後に初めて決定する。
+判定段階Cの後で初めて決定します。
 
-- Application Canonical ID
-- Business context
-- destination Relation
-- destination Pattern ID
-- datasource alias
-- Authorization requirement
-- first-target surface
+- 正本上のアプリケーションID
+- 業務上の文脈
+- 移行先の関係
+- 移行先のパターンID
+- データ接続先の別名
+- 認可の要件
+- 最初の実行先における表示・操作面
 
 ### Environment-owned decisions
 
-- development binding
-- production binding
-- Resource / Permission if actually required
+- 開発環境での対応付け
+- 本番環境での対応付け
+- 実際に必要となる場合の資源・権限
 
 ### Out of scope
 
-- customer write
-- customer maintenance ownership
-- new write Contract
-- write Capability
-- second Target
-- general package manager
-- portability inheritance / override
-- cross-repository sync
+- 顧客データの書込み
+- 顧客データの保守管理権限
+- 新たな書込み契約
+- 書込みの能力
+- 二つ目の実行先
+- 汎用パッケージ管理機構
+- 移植可能性に関する継承・上書き
+- リポジトリをまたぐ同期
 
 ## 5. Work sequence
 
 ### S0 — Gate C entry capture
 
-Gate C Evidenceをentry recordへ固定し、entry preflightで`entry-evidence-complete`を確認する。
+判定段階Cの検証根拠を開始記録に固定し、開始前の確認で`entry-evidence-complete`であることを確かめます。
 
-PreflightはGate C authorityそのものではなく、accepted Gate C Evidenceがsecond Application開始に必要な形で揃っているかを確認する。
+この事前確認は判定段階Cの判断権限そのものではありません。受理済みの検証根拠が、第二アプリケーションの開始に必要な形で揃っているかを確かめます。
 
 Output:
 
@@ -162,64 +162,64 @@ Output:
 - target difference summary
 - unresolved
 
-No source change.
+ソースは変更しません。
 
 ### S1 — ISSUE-000047 candidate qualification
 
-intent:
+目的：
 
 > destination Business contextからCustomerをIDで参照したい。
 
-候補をcurrent Repositoryからread-only探索する。
+現在のリポジトリから、候補を読取り専用で探索します。
 
-最低対象:
+最低限の対象：
 
-- Customer Semantic
-- Customer ID Type
-- Customer Contract
-- Contract Query
-- origin reference Pattern provenance
+- 顧客の意味上の定義
+- 顧客IDの型
+- 顧客に関する契約
+- 契約に基づく問い合わせ
+- 元となる参照パターンの来歴
 
-判定:
+判定：
 
 - applicable
 - incompatible
 - unknown
 
-Outputにはauthority source / discovery provenance / qualification reason / missing conditionを残す。
+結果には、権威ある入力元・発見の来歴・適格性の判断理由・不足条件を記録します。
 
 ### S2 — Phase 5 portability relation
 
-S1 candidateを次へ分類する。
+S1で得た候補を次のように分類します。
 
 - linked reuse
 - conditional linked reuse
 - adopted local variation
 - rebind-required
 
-保持:
+保持する情報：
 
-- authority owner
-- dependency subject
-- provenance
-- freshness input
-- destination requirement
+- 管理権限の所有者
+- 依存関係の対象
+- 来歴
+- 情報の鮮度を判断する入力
+- 移行先の要件
 
-`applicable`を`accepted`へ変換しない。
+`applicable`を`accepted`として扱いません。
 
 ### S3 — Destination decision packet
 
-次の未決定を明示的に解く。
+次の未決定事項について、明示的に判断します。
 
-1. Application ID
-2. Business context / Relation
-3. Pattern ID
-4. datasource alias
-5. Authorization requirement
-6. development / production binding policy
-7. first-target presentation scope
+1. アプリケーションID
+2. 業務上の文脈と関係
+3. パターンID
+4. データ接続先の別名
+5. 認可の要件
+6. 開発環境と本番環境の対応付け方針
+7. 最初の実行先における表示範囲
 
-未決定が残る項目は`unknown`として保持し、originから補完しない。
+未決定の項目は`unknown`として残し、元の参照事例から推測して補いません。
 
 ### S4 — ISSUE-000040 composition candidate
 
