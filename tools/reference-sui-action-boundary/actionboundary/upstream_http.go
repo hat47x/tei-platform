@@ -131,11 +131,11 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 		return "", ErrInvalid
 	}
 	body, err := json.Marshal(struct {
-		ProtocolVersion  string `json:"protocolVersion"`
-		ApplicationID    string `json:"applicationID"`
-		ResourceID       string `json:"resourceID"`
-		ActionID         string `json:"actionID"`
-		ExpectedRevision string `json:"expectedRevision"`
+		ProtocolVersion  string          `json:"protocolVersion"`
+		ApplicationID    string          `json:"applicationID"`
+		ResourceID       string          `json:"resourceID"`
+		ActionID         string          `json:"actionID"`
+		ExpectedRevision string          `json:"expectedRevision"`
 		Payload          json.RawMessage `json:"payload"`
 	}{
 		ProtocolVersion: "1", ApplicationID: in.ApplicationID,
