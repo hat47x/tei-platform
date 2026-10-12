@@ -37,7 +37,7 @@ func TestParseJSONValidSurrogatePairsAndEscapedBackslash(t *testing.T) {
 		`"\uD83D\uDE00"`,
 		`{"\uD83D\uDE00":"\ud83d\ude00"}`,
 		`"\\uD800"`, // Literal backslash followed by 'uD800'.
-		`"�"`,          // Explicit replacement character remains permitted.
+		`"�"`,       // Explicit replacement character remains permitted.
 		`"\uFFFD"`,
 	} {
 		value, err := transform.ParseJSON([]byte(raw))
