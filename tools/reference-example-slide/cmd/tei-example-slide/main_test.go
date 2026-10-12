@@ -439,7 +439,7 @@ func TestCLIExportsRuleDeclarationDraftWithoutAcceptingBusinessRule(t *testing.T
 		Schema:                 "tei.reference.model-rule-draft-intent/v0",
 		ModelReviewFingerprint: review.Fingerprint,
 		SourceAuditFingerprint: audit.Fingerprint,
-		Requests:               []example.ModelRuleDraftRequest{{
+		Requests: []example.ModelRuleDraftRequest{{
 			IssueID:        review.Issues[0].ID,
 			ProposedRuleID: "sales.child.business-key",
 			Rationale:      "業務識別規則として検討するが根拠の真偽は未確認",
