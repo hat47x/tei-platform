@@ -65,3 +65,18 @@ go test -count=1 ./tools/reference-composition-process-bridge
 **実証範囲の制約：** この試験のセッション・CSRF・操作認可は、Host側の真偽値による**合成検証器**であり、実際のIDプロバイダー、Cookie、ブラウザ、既存業務の`security.authorize`の一貫した実行を証明しません。また、子プロセスは配備指示を`accepted`として返すだけで、データベース更新を行いません。業務操作の成功や永続的な副作用の確定、プロセス隔離、署名の検証を主張しないため、応答でも`durability=unconfirmed`と記録します。
 
 この追加試験は既存の`go test -count=1 ./tools/reference-composition-process-bridge`から実行できます。実行結果はGitHub Actionsまたは実チェックアウトによる記録を別途確認し、コード追加だけでPASSと判定しません。次の段階では、合成されたOperationではなく、実際のApplication Actionと既存`security.authorize`を同じ契約のまま横断させます。
+
+
+## Linuxで実行ファイルの内容を固定する参照試験
+
+[Issue #1370](https://github.com/hat47x/tei-platform/issues/1370)の起動対象の同一性について、`pinned_launch_linux_test.go`で実際のLinux実行ファイルを使って検証します。従来のSHA-256照合と、パス名を渡すだけの起動には時間差があります。この試験では、ホストが専用一時領域に実行ファイルを複製し、複製したバイト列のSHA-256を確認したうえで、書込み用のファイル記述子を閉じます。その後、読み取り専用に開いた実行ファイルから名前を削除し、保持したファイル記述子を通じて子プロセスを起動します。
+
+元の実行ファイルを別のバイナリに置換した場合や、シンボリックリンクの参照先を変更した場合でも、保持済みの内容を起動することを確認します。また、誤った指紋、別の実行パス、保持済みのファイル記述子の解放後の呼出しを拒否します。既存の`DeploymentExecutor`、`ArtifactVerifier`、`ProcessLauncher`を接続する試験であり、新たな製品用の契約解決機構は作りません。
+
+この例は**LinuxとネイティブのGo実行ファイルに限る参照用の境界検証**です。プラグインに耐攻撃性のある署名・来歴を与えず、実行時の権限分離やOSサンドボックスも設けません。特にホストと同じ利用者権限で動く攻撃者が、ホストプロセス自体へ干渉できる環境を安全とみなしていません。通常の本番プロセス起動をこの参照用起動器へ変更しておらず、他の実行先での成立も未検証です。
+
+Linux CI環境での局所確認は次のとおりです。
+
+```sh
+go test -count=1 -run '^TestLinuxPinnedProcess' ./tools/reference-composition-process-bridge
+```
