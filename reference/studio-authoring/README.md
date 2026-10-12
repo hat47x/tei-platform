@@ -132,6 +132,21 @@ node reference/studio-authoring/cli.mjs edit-form \
 
 編集JSONの`expectedModelRevision`には**画面生成時の版**が必ず含まれます。後続のStudio CLIが異なる版を取得した場合は`STUDIO_EDIT_STALE_MODEL_REVISION`で拒否し、最新状態へ暗黙に編集意図を移しません。従来の手書きJSONでは省略可能ですが、画面から作る候補では必須です。ブラウザ内の検査は入力補助であり、型検査・Source所有権・変更影響・受理可否はすべて既存Shared Acceptanceに委ねます。最初のフォームで扱えない意味変更は、無理にDerivedを更新せず既存のSource契約を用います。
 
+### 実Chromeによる編集フォーム操作の自動回帰
+
+既存のWeb Target用Chrome CIと同じ `playwright-core@1.56.1` とGitHub-hosted Ubuntu runnerのChromeを使用し、`edit-form -workspace` が実Workspaceから生成した **ER・表の2画面**を、実ChromeのDOM上で操作する自動試験を追加しています。`reference/studio-authoring/real-browser.mjs` は候補ID・意図・対象値の入力、フォーム送信、CSP付きインラインスクリプトの実行、出力JSONの検査、`propose`→`review-edit` による**既存のGo共通審査**への手渡しを行います。外部HTTP通信が無いこと、レビュー前後のmodelRevision不変も確認し、実画面のスクリーンショットと判定JSONをCIに短期保存します。インストールは作業領域外に限定し、ソースツリーを変更しません。
+
+```sh
+# Chromeのある環境で。依存はWorkspace外へ固定して導入
+npm install --prefix /tmp/tei-studio-playwright \
+  --no-audit --no-fund --ignore-scripts --no-save --no-package-lock \
+  playwright-core@1.56.1
+node reference/studio-authoring/real-browser.mjs \
+  /tmp/tei-studio-playwright /tmp/tei-studio-chrome-evidence
+```
+
+これは**自動化された実ブラウザ操作**であり、人間の判断・受理／実業務環境でのユーザビリティ確認ではありません。このBrowser試験は実Sourceを書き換えず、Goへの`propose/review`で止まります。既存のNode VM→Scratch Accept→R1再投影試験とは異なる境界を観測しており、両者の成功を「人間が実ブラウザでSourceを受理した」という一つの実績へ合算しません。正式なBusiness正本との同一revisionも依然未実証です。
+
 ### 読み取り専用のHTML画面
 
 既存のJSONと同じ投影・審査結果を、独立した静的HTMLとして確認できます。ブラウザを使っても正本を直接編集する機構は追加しません。HTML内の表・ER・機能・業務は同じWorldの参照用表示です。参照用業務手順は受理済み正本ではなく、提案の審査も人間による受理ではありません。
