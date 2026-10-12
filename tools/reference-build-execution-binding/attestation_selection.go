@@ -11,7 +11,7 @@ import (
 type referenceIssuerSelection struct {
 	Issuer                          string `json:"issuer"`
 	PolicyFingerprint               string `json:"policyFingerprint"`
-	SelectedAttestationFingerprint  string `json:"selectedAttestationFingerprint,omitempty"`
+	SelectedAttestationFingerprint string `json:"selectedAttestationFingerprint,omitempty"`
 	Matched                         bool   `json:"matched"`
 	Reason                          string `json:"reason"`
 }
@@ -48,7 +48,7 @@ func selectReferenceAttestations(
 	}
 
 	type verifiedAttestation struct {
-		attestation BuildAttestation
+		attestation  BuildAttestation
 		verification BuildAttestationVerification
 	}
 	byIssuer := make(map[string][]verifiedAttestation)
@@ -58,7 +58,7 @@ func selectReferenceAttestations(
 			return referenceAttestationSelection{}, fmt.Errorf("reference attestation has invalid subject or binding: %w", err)
 		}
 		byIssuer[verified.Issuer] = append(byIssuer[verified.Issuer], verifiedAttestation{
-			attestation: attestation,
+			attestation:  attestation,
 			verification: verified,
 		})
 	}
@@ -71,7 +71,7 @@ func selectReferenceAttestations(
 
 	result := referenceAttestationSelection{
 		Satisfied: true,
-		Issuers: make([]referenceIssuerSelection, 0, len(policies)),
+		Issuers:   make([]referenceIssuerSelection, 0, len(policies)),
 	}
 	for _, policy := range policies {
 		policyFingerprint, err := attestationTrustPolicyFingerprint(policy)
@@ -79,9 +79,9 @@ func selectReferenceAttestations(
 			return referenceAttestationSelection{}, err
 		}
 		selection := referenceIssuerSelection{
-			Issuer: policy.Issuer,
+			Issuer:            policy.Issuer,
 			PolicyFingerprint: policyFingerprint,
-			Reason: "required-issuer-attestation-missing",
+			Reason:            "required-issuer-attestation-missing",
 		}
 		for _, verified := range byIssuer[policy.Issuer] {
 			decision, err := evaluateAttestationTrust(verified.attestation, verified.verification, policy)
