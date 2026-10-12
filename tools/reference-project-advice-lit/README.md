@@ -28,7 +28,7 @@ API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowser�
 
 既存の受注Commandを変更せず、案件側が実Applicationと同じ画面で参照状況を確認できる足場です。実ブラウザでの表示や人間の受入は別途検証します。
 
-**Lit依存**：公式の[Lit配布バンドル](https://github.com/lit/dist/tree/v3.3.3/core) の `v3.3.3/core/lit-core.min.js` をこの参照実装内へ版固定で同梱します。ライセンスは `web/LIT-LICENSE`（BSD-3-Clause）です。UI配信時はCDNへアクセスせず、同じHostからロードし、CSPは `script-src 'self'` です。配布前には資産Digest/供給経路を既存Builder/Lockと接続する必要があります。この段階では実ブラウザ操作は別途検証するものとします。GoテストはHTTP HostとGoロジック、NodeテストはUI通信境界をそれぞれ評価するものです。
+**Lit依存**：公式の[Lit配布バンドル](https://github.com/lit/dist/tree/v3.3.3/core) の `v3.3.3/core/lit-core.min.js` をこの参照実装内へ版固定で同梱します。ライセンスは `web/LIT-LICENSE`（BSD-3-Clause）です。上流のGitタグ `v3.3.3` にある配布バンドルのGit blob SHAは `30071d620d392394d56721f05fc4808e02e038e3` で、CIが同梱ファイルと照合します。UI配信時はCDNへアクセスせず、同じHostからロードし、CSPは `script-src 'self'` です。配布前には資産Digest/供給経路を既存Builder/Lockと接続する必要があります。GitHub Actionsの [`tei-reference-project-advice-lit-browser-ci.yml`](../../.github/workflows/tei-reference-project-advice-lit-browser-ci.yml) で、PR正確HEADから実Goの受注APIと案件Hostを別プロセス起動し、Google Chromeを通してLitのShadow DOM・キーボード操作・補助提案・実読取結果・断線時の結果不確実性を検証します。1280×800と375×812を対象に画面を撮影し、SHA-256を持つ診断ReceiptをRunner外部Artifactとして保存します。テスト用ChromeとPlaywrightはRunner上で用意し、Browser配信は同一Originのローカルバンドルのみを使用します。なお、これは実Chrome上の機能検証であり、人間によるVisual受理や本番のService Contract/Authority・安全性認証ではありません。
 
 ## 以降の段階
 
@@ -36,3 +36,13 @@ API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowser�
 2. Litをローカルバンドルし、実ブラウザでアクセシビリティ・結果表示・ネットワーク断時の不確実性を確認する。
 3. TEIの契約解決と現在のHost Authorityを通して案件Pluginを呼ぶ。本Reference内だけのGo直接importを製品Runtime採用の証拠としない。
 4. 生成AIによる要求→コード生成→試験→差分の追跡を測定する。第三者向け配布、性能証明、Marketplace対応は実需要があれば追加する。
+
+## 実ブラウザ検証で確認すること
+
+- Lit 3.3.3のローカルバンドルが埋め込まれ、ブラウザから外部CDNへ接続しないこと。
+- 案件補助チェックの「提案あり」「提案なし」を実Go Host経由で表示すること。キーボードによるフォーム送信を含む。
+- 実際の`order_entry` APIの`GET /scenario/read`と一致する参照内容をLitが表示すること。既存の`POST /scenario/submit`は呼び出さないこと。
+- 補助チェック通信断と、受注参照API停止時に、成功を表示しないこと。
+- デスクトップ・モバイルの実画面と検証Receiptを保存し、未成立のAuthority・受入範囲を明示すること。
+
+作業領域を汚さずに同等の検証を実施する手順は専用Workflowを参照してください。実Chrome確認済みであっても、業務Actionの変更・認証/認可・正式Service ContractへのPlugin登録は別の課題です。

@@ -45,6 +45,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
           node --check tools/reference-project-advice-lit/real_browser_replay.mjs
+          test "$(git hash-object tools/reference-project-advice-lit/web/lit-core.min.js)" = "30071d620d392394d56721f05fc4808e02e038e3"
           node --check tools/reference-project-advice-lit/web/lit-core.min.js
           command -v google-chrome || command -v google-chrome-stable
           google-chrome --version || google-chrome-stable --version

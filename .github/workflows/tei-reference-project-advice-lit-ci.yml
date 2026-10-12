@@ -27,6 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git hash-object tools/reference-project-advice-lit/web/lit-core.min.js)" = "30071d620d392394d56721f05fc4808e02e038e3"
           gofmt -d plugins/reference-project-customer-advice/*.go tools/reference-project-advice-lit/*.go
           test -z "$(gofmt -l plugins/reference-project-customer-advice/*.go tools/reference-project-advice-lit/*.go)"
           go test -count=1 ./plugins/reference-project-customer-advice ./tools/reference-project-advice-lit
