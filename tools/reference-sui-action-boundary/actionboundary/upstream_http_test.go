@@ -176,3 +176,43 @@ func TestHTTPSApplicationStoreFailClosedOnDisconnectedApplication(t *testing.T) 
 		t.Fatalf("disconnected application outcome must be unknown: %v", err)
 	}
 }
+
+func TestHTTPSApplicationStoreUsesOneContractForIndependentInventoryApp(t *testing.T) {
+	calls := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.EscapedPath() != "/items/sku-42/adjust" {
+			t.Errorf("unexpected resource path: %q", r.URL.EscapedPath())
+		}
+		var action struct {
+			ProtocolVersion string         `json:"protocolVersion"`
+			ApplicationID   string         `json:"applicationID"`
+			ResourceID      string         `json:"resourceID"`
+			ActionID        string         `json:"actionID"`
+			Payload         map[string]any `json:"payload"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&action); err != nil ||
+			action.ProtocolVersion != "1" || action.ApplicationID != "inventory" ||
+			action.ResourceID != "sku-42" || action.ActionID != "inventory.adjust" ||
+			action.Payload["sku"] != "sku-42" || action.Payload["delta"] != float64(3) {
+			t.Errorf("non-generic inventory envelope: %+v, err=%v", action, err)
+		}
+		_, _ = w.Write([]byte(`{"protocolVersion":"1","revision":"stock-v2"}`))
+	}))
+	defer server.Close()
+	store := HTTPSApplicationStore{
+		ApplicationID: "inventory", ActionID: "inventory.adjust",
+		Origin: server.URL, Prefix: "/items/", Suffix: "/adjust",
+		Client: server.Client(), Subjects: fixedSubject{id: "human-1"},
+		Delegations: validDelegation(),
+	}
+	intent := Intent{
+		ApplicationID: "inventory", ActionID: "inventory.adjust",
+		ResourceID: "sku-42", ExpectedRevision: "stock-v1",
+		Payload: map[string]any{"sku": "sku-42", "delta": 3},
+	}
+	rev, err := store.Commit(context.Background(), intent)
+	if err != nil || rev != "stock-v2" || calls != 1 {
+		t.Fatalf("inventory commit: revision=%s calls=%d error=%v", rev, calls, err)
+	}
+}
