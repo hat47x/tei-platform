@@ -81,6 +81,7 @@ The first Reference test inputs are synthetic `SubjectInspection` JSON envelopes
 ```sh
 node --test reference/local-cpu-reuse/project-inspection-v0.test.mjs
 node --test reference/local-cpu-reuse/project-application-membership.test.mjs
+node --test reference/local-cpu-reuse/project-inspection-source-trace.test.mjs
 ```
 
-The **16 + 7 = 23** cases passed in an isolated JavaScript evaluator using files fetched back from GitHub (not a Node.js checkout, not an `operations.InspectSubject` integration test). Verified behaviors include nested `contractQuery` preservation, model identity, keys/FDs, unknown properties, wrong subject traces, stale snapshots, and explicit Application membership. An actual real-World fixture, provenance/current-revision recheck, authorized cross-application comparison, semantic-effect comparisons, CPU timing and memory metrics remain **NOT_PROVEN**.
+The **16 + 7 + 3 = 26** cases passed in an isolated JavaScript evaluator using files fetched back from GitHub (not a Node.js checkout, not an `operations.InspectSubject` integration test). The added 3 negative/positive cases check that Source Index references point to a unique listed artifact path; this is a **structural consistency check**, not an authenticity or source-permission proof. Verified behaviors include nested `contractQuery` preservation, model identity, keys/FDs, unknown properties, wrong subject traces, stale snapshots, and explicit Application membership. An actual real-World fixture, provenance/current-revision recheck, authorized cross-application comparison, semantic-effect comparisons, CPU timing and memory metrics remain **NOT_PROVEN**.
