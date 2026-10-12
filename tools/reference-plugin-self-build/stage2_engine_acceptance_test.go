@@ -306,3 +306,29 @@ func TestReferenceStage2HostApprovalKeyRotationInvalidatesPolicy(t *testing.T) {
 		t.Fatal("signing key rotation failed to invalidate Host approval")
 	}
 }
+
+func TestReferenceStage2HostApprovalRejectsSymlinkedTrustInputs(t *testing.T) {
+	engine := bootstrapTestEngine()
+	dir := t.TempDir()
+	options := writeReferenceStage2Acceptance(t, dir, engine)
+	for _, tt := range []struct {
+		name string
+		path string
+		set  func(*exactEngineOptions, string)
+	}{
+		{"trusted public key", options.TrustedHostPublicKey, func(o *exactEngineOptions, p string) { o.TrustedHostPublicKey = p }},
+		{"signature", options.HostSignature, func(o *exactEngineOptions, p string) { o.HostSignature = p }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			link := filepath.Join(dir, "linked-"+filepath.Base(tt.path))
+			if err := os.Symlink(tt.path, link); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			changed := options
+			tt.set(&changed, link)
+			if _, err := acceptReferenceStage2Engine(changed, engine); err == nil {
+				t.Fatal("symlinked Host signing trust input was accepted")
+			}
+		})
+	}
+}
