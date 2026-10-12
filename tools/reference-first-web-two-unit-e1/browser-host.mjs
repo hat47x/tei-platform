@@ -5,7 +5,7 @@ import { createServer, request as httpRequest } from "node:http";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const [assetDir, apiOrigin] = process.argv.slice(2);
+const [assetDir, apiOrigin, measurementPath] = process.argv.slice(2);
 if (!assetDir || !apiOrigin || !/^http:\/\/127\.0\.0\.1:[1-9][0-9]*$/.test(apiOrigin)) {
   throw new Error("usage: node browser-host.mjs /browser-asset-dir http://127.0.0.1:API_PORT");
 }
@@ -24,6 +24,52 @@ const browserScript = jsonForm ? readFileSync(resolve(assetDir, "browser-command
 if (jsonForm && !html.includes('src="/browser-command.js"')) {
   throw new Error("JSON form transport script is missing");
 }
+// A diagnostic JSON Browser must bind to an exact Application/Handover/Target
+// identity, not just a reachable TCP endpoint. This metadata is produced by
+// the existing builder and must be byte-verified by the calling preflight;
+// it is NOT an independent Host authority or a signed acceptance record.
+if (jsonForm && !measurementPath) {
+  throw new Error("JSON Browser requires its existing build measurement");
+}
+const measurement = measurementPath ? JSON.parse(readFileSync(resolve(measurementPath), "utf8")) : null;
+const expectedBinding = jsonForm ? {
+  applicationId: measurement?.applicationId,
+  handoverBaselineId: measurement?.handoverBaselineId,
+  baselineRepositoryRevision: measurement?.baselineRepositoryRevision,
+  targetBuildRevision: measurement?.browserAndApiSourceRevision,
+} : null;
+if (jsonForm && (
+  expectedBinding.applicationId !== "order_entry" ||
+  typeof expectedBinding.handoverBaselineId !== "string" ||
+  !/^[a-f0-9]{40}$/.test(expectedBinding.baselineRepositoryRevision || "") ||
+  !/^[a-f0-9]{40}$/.test(expectedBinding.targetBuildRevision || "") ||
+  measurement.browserTransport !== "same-origin-json"
+)) {
+  throw new Error("invalid expected JSON Browser/API binding");
+}
+const checkAPIBinding = async () => {
+  if (!expectedBinding) return;
+  const response = await fetch(apiOrigin + "/manifest.json", {
+    redirect: "error",
+    signal: AbortSignal.timeout(3000),
+    headers: { "Cache-Control": "no-cache" },
+  });
+  if (response.status !== 200) throw new Error("API manifest unavailable");
+  if (Number(response.headers.get("content-length") || "0") > 65536) {
+    throw new Error("API manifest exceeds diagnostic limit");
+  }
+  const body = await response.text();
+  if (Buffer.byteLength(body) > 65536) throw new Error("API manifest exceeds diagnostic limit");
+  const manifest = JSON.parse(body);
+  for (const [field, required] of Object.entries(expectedBinding)) {
+    if (manifest[field] !== required) {
+      throw new Error("API binding differs: " + field);
+    }
+  }
+};
+// Refuse to expose even the static diagnostic Browser when its chosen API
+// is missing or bound to a different B/R/T. No role/capability is inferred.
+await checkAPIBinding();
 const header = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
@@ -97,6 +143,19 @@ const server = createServer(async (req, res) => {
       (path.pathname === "/custom-submit" ? type !== "application/x-www-form-urlencoded" : type !== "application/json")) {
     report(res, 415, "unsupported media type");
     return;
+  }
+
+  // An endpoint that matched during start can be replaced by another API.
+  // Verify the running manifest again before forwarding a mutating command.
+  // This narrows accidental cross-unit binding; it is not an atomic trust
+  // handshake, deployment signature, or proof about the downstream Provider.
+  if (jsonForm && req.method === "POST") {
+    try {
+      await checkAPIBinding();
+    } catch (_) {
+      report(res, 502, "API binding unknown");
+      return;
+    }
   }
 
   let body = Buffer.alloc(0);
