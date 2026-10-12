@@ -40,3 +40,19 @@ bash tools/reference-first-web-two-unit-e1/smoke.sh "$destination"
 ## 残る受入条件
 
 本ReferenceはE1の**物理二成果物と合成フォームHTTP経路の局所実証**に限定します。同一Accepted Applicationでの全Scenario（認証拒否・認可拒否・Validation・Unknownを含む）とGate Cとの差分、実Browser replay/Visual、Provider/Authorization/Secretの負例、正式なBuilder/Lockへの接続は#1182で継続します。第二Target/Hostの#259を完了にしません。
+
+## API専用Go構成の局所実証
+
+`tei_order_only,tei_api_only`という追加のコンパイル条件で、受注専用APIからサーバー側HTML描画・HTMLフォーム経路・画面用テンプレートを物理的に除外できます。既存の`tei_order_only`と元の画面付き第一Web Targetには影響を与えません。
+
+```sh
+go test -count=1 -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target
+go build -trimpath -ldflags=-buildid= -tags=tei_order_only,tei_api_only \\
+  -o /tmp/tei-order-api-only ./tools/reference-first-web-target
+```
+
+API専用構成では`GET /manifest.json`、`GET /healthz`、`GET /scenario/read`、`POST /scenario/submit`を提供します。`GET /`と`GET/POST /custom-submit`は**404**です。正規のJSON業務処理、認証・認可・Validationは既存のRunnerを使い、画面を表示するロジックをAPI専用に作り直しません。
+
+新しい`check_api_only_parity.py`は、従来の受注専用バイナリとAPI専用バイナリを独立した実プロセスとして起動し、Manifest・読み取り・正常Command・認証拒否・認可拒否・検証不成立・実行エラー・不正リクエストの**HTTPステータスと本文のバイト一致**を検査します。合成資格情報は検査入力としてのみ使い、保持する証跡には残しません。
+
+**未解決**：従来のBrowser静的HTMLはフォームを`/custom-submit`へ送るため、そのままAPI専用へ接続すると404になります。新API専用を既存の`build.sh`の既定成果物に置き換えるには、Browser資産のフォーム送信をJSON APIへ変更し、実Browserでの機能・Visual・セキュリティを検査する必要があります。またAPI専用Goの設計時Workspace/Driver Loader依存も残存しています。画面描画除外はこれらの完成を意味しません。
