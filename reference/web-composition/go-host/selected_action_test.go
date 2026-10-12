@@ -130,14 +130,12 @@ func TestSelectedActionCannotBypassOrBorrowHostAuthorization(t *testing.T) {
 			status, guardCalls-before, invokes)
 	}
 	permission = false
-	assertNoSelection("host authority revoked: selection guard is called but callback is not",
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			beforeInvokes := invokes
-			host.ServeHTTP(w, r)
-			if invokes != beforeInvokes {
-				t.Error("revoked Host authority reached selected callback")
-			}
-		}), http.StatusServiceUnavailable)
+	beforeGuard, beforeInvokes := guardCalls, invokes
+	if status := run(host); status != http.StatusServiceUnavailable ||
+		guardCalls != beforeGuard+1 || invokes != beforeInvokes {
+		t.Fatalf("revoked host authority bypass: status=%d guards=%d invokes=%d",
+			status, guardCalls-beforeGuard, invokes-beforeInvokes)
+	}
 	permission = true
 	if _, err := registry.Apply(snapshot.Revision, nil, []string{providerID}); err != nil {
 		t.Fatal(err)
