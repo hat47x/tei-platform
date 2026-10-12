@@ -112,6 +112,22 @@ Receiptは**一時作業領域で実際に試験を実行した記録**です。
 
 現行Source Indexは#1120の`scope + kind + ID`契約と同じスコープ情報を提供しません。Source Indexの参照自身、または`subject`内へ呼出し側が`scope`を付けてもC0解決済みと扱わず、`sourceNavigation.status=unresolved`にします。パスの重複区切りや`.`区間、開始・終了位置の形式不備も索引の段階で拒否し、ソース位置を誤って確定しません。複数scopeを持つモデルを安全に編集するには、#1120のtyped Resolverを同一revisionへ接続する必要があります。単一scopeの現Reference向けflat `data:ID` 形式を、汎用のC0表現として固定しません。
 
+
+### 読み取り専用のHTML画面
+
+既存のJSONと同じ投影・審査結果を、独立した静的HTMLとして確認できます。ブラウザを使っても正本を直接編集する機構は追加しません。HTML内の表・ER・機能・業務は同じWorldの参照用表示です。参照用業務手順は受理済み正本ではなく、提案の審査も人間による受理ではありません。
+
+```sh
+node reference/studio-authoring/cli.mjs inspect \\
+  -workspace "$scratch/workspace" \\
+  -focus relation:sales.order.lines -format html > "$scratch/studio.html"
+node reference/studio-authoring/cli.mjs review-edit \\
+  -workspace "$scratch/workspace" -edit-file "$scratch/edit.json" \\
+  -format html > "$scratch/review.html"
+```
+
+HTMLは実行用スクリプト、フォーム、外部通信、外部画像を含まず、表示文字列をHTML用に符号化して出力します。ブラウザ内の視点切替は同じ文書内の移動であり、異なる対象IDへ移動する場合はCLIで焦点を指定して再生成します。正本の編集・受理には既存の共通受理機構が必要です。単独のWorld/Source Indexファイルを使ったHTMLでは元ソースとの一致が未確認であることを明示します。
+
 ## 業務モデルの参照用結合（#1125 / 統合済みPR #1138）
 
 #1125の独立DFD Readerが配置されたcheckoutでは、同じScratch Workspaceを指定してDFD JSONを取得できます。

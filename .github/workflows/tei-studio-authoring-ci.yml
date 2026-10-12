@@ -85,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           node --version
-          node --test reference/studio-authoring/bridge.test.mjs
+          node --test reference/studio-authoring/*.test.mjs
 
       - name: 一時作業領域で正本受理と再投影を検証
         shell: bash

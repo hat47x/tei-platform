@@ -8,6 +8,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, relative, isAbsolute, sep } from "node:path";
 import { projectWorld, candidateFromEdit, bindReviewArtifacts, navigateReferenceBusinessStep, verifySourceAnchor } from "./bridge.mjs";
+import { renderStudioHTML } from "./html.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
@@ -16,14 +17,15 @@ const usage = [
   "  node reference/studio-authoring/cli.mjs propose -workspace DIR -edit-file FILE",
   "  node reference/studio-authoring/cli.mjs review-edit -workspace DIR -edit-file FILE",
   "  alternatively: -world-file FILE -revision-file FILE [-source-index-file FILE] (read-only artifacts)",
-  "  output is JSON on stdout; no command in this CLI writes authoritative source"
+  "  inspect and review-edit may use -format html for a static read-only page",
+  "  output defaults to JSON; no command in this CLI writes authoritative source"
 ].join("\n");
 
 function flags(argv) {
   const result = {};
   for (let i = 0; i < argv.length; i += 2) {
     if (!argv[i].startsWith("-") || !argv[i + 1] || ![
-      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd", "-source-index-file"
+      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd", "-source-index-file", "-format"
     ].includes(argv[i]) || Object.hasOwn(result, argv[i])) {
       throw new Error("INVALID_FLAG: " + (argv[i] || ""));
     }
@@ -95,6 +97,9 @@ function main(argv) {
   if (!["inspect", "propose", "review-edit"].includes(command)) throw new Error("UNKNOWN_COMMAND");
   const opt = flags(rest);
   const fromFiles = !!opt["-world-file"] && !!opt["-revision-file"];
+  const format = opt["-format"] || "json";
+  if (!["json", "html"].includes(format) || (command === "propose" && opt["-format"]))
+    throw new Error("UNSUPPORTED_STUDIO_OUTPUT_FORMAT");
   if (!!opt["-workspace"] === fromFiles ||
       (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"] ||
         opt["-source-index-file"])) ||
@@ -113,13 +118,16 @@ function main(argv) {
     const focus = opt["-focus"];
     if (focus.startsWith("step:")) {
       if (!opt["-business-dfd"]) throw new Error("BUSINESS_STEP_REQUIRES_REFERENCE_DFD");
-      return navigateReferenceBusinessStep(world, revision,
+      const view = navigateReferenceBusinessStep(world, revision,
         jsonFile(opt["-business-dfd"]), focus.slice("step:".length));
+      return format === "html" ? renderStudioHTML(view) : view;
     }
     const view = projectWorld(world, revision, focus,
       { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
         ...(sourceIndex ? { sourceIndex } : {}) });
-    return fromFiles ? view : verifyLiveSourceNavigation(view, opt["-workspace"], revision);
+    const verified = fromFiles ? view : verifyLiveSourceNavigation(view, opt["-workspace"], revision);
+    return format === "html" ? renderStudioHTML(verified,
+      { sourceFromWorkspace: !fromFiles }) : verified;
   }
   const candidate = candidateFromEdit(world, revision, jsonFile(opt["-edit-file"]));
   if (command === "propose") return candidate;
@@ -149,18 +157,19 @@ function main(argv) {
       "./tools/reference-shared-acceptance", "revision", "-workspace", workspace],
       { cwd: root, encoding: "utf8" })).modelRevision;
     if (latest !== revision) throw new Error("SOURCE_CHANGED_DURING_REVIEW");
-    return { schema: "tei.reference.studio-review-edit/v0",
+    const result = { schema: "tei.reference.studio-review-edit/v0",
       modelRevision: revision, sourceRevisionAfterReview: latest,
       sourceWriteByThisCommand: false, explicitAcceptance: "not-performed",
       candidate, preview, review, reviewConsistency: binding,
       realizationReadiness: { status: "not-verified" } };
+    return format === "html" ? renderStudioHTML(result) : result;
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
 }
 try {
   const result = main(process.argv.slice(2));
-  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+  process.stdout.write(typeof result === "string" ? result : JSON.stringify(result, null, 2) + "\n");
 } catch (err) {
   process.stderr.write(String(err.message) + "\n" + usage + "\n");
   process.exitCode = 1;

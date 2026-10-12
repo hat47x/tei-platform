@@ -147,6 +147,26 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     label + ": Studio review delegates exactly to Shared Acceptance");
   checked(JSON.stringify(studioReview.candidate.delta) === JSON.stringify(proposal.delta),
     label + ": Studio review does not alter the proposed delta");
+  if (label === "er") {
+    const report = command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace, "-focus", "relation:sales.order.lines",
+      "-format", "html"
+    ]).stdout;
+    checked(report.includes("<!doctype html>") &&
+      report.includes('id="business"') &&
+      report.includes("source-index-backed") &&
+      report.includes("verified-at-read"),
+      "er: inspect HTML shows four lenses and the verified Source location");
+    const reviewPage = command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "review-edit", "-workspace", workspace, "-edit-file", editPath,
+      "-format", "html"
+    ]).stdout;
+    checked(reviewPage.includes("not-performed") &&
+      reviewPage.includes("未適用") && reviewPage.includes("source"),
+      "er: review HTML distinguishes proposal and unaccepted Source edits");
+  }
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     label + ": Preview, Review and Studio review do not mutate Source");
 
