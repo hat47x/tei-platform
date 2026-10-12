@@ -15,8 +15,14 @@ if (!Number.isSafeInteger(apiPort) || apiPort > 65535) {
   throw new Error("invalid loopback API port");
 }
 const html = readFileSync(resolve(assetDir, "index.html"));
-if (!html.includes('<form method="post" action="/custom-submit"')) {
-  throw new Error("the selected static asset does not declare the existing form contract");
+const legacyForm = html.includes('<form method="post" action="/custom-submit"');
+const jsonForm = html.includes('<form id="json-command" method="post" action="/scenario/submit"');
+if (legacyForm === jsonForm) {
+  throw new Error("static asset must declare exactly one supported form transport");
+}
+const browserScript = jsonForm ? readFileSync(resolve(assetDir, "browser-command.js")) : null;
+if (jsonForm && !html.includes('src="/browser-command.js"')) {
+  throw new Error("JSON form transport script is missing");
 }
 const header = {
   "Cache-Control": "no-store",
@@ -47,21 +53,34 @@ const server = createServer(async (req, res) => {
     report(res, 400, "invalid request target");
     return;
   }
-  if ((path.pathname === "/" || path.pathname === "/custom-submit") &&
+  if ((path.pathname === "/" || (legacyForm && path.pathname === "/custom-submit")) &&
       req.method === "GET" && !path.search) {
     res.writeHead(200, {
       ...header,
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      "Referrer-Policy": "no-referrer",
+      "Content-Security-Policy": jsonForm
+        ? "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"
+        : "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
     });
     res.end(html);
+    return;
+  }
+  if (jsonForm && path.pathname === "/browser-command.js" &&
+      req.method === "GET" && !path.search) {
+    res.writeHead(200, {
+      ...header,
+      "Content-Type": "text/javascript; charset=utf-8",
+      "Referrer-Policy": "no-referrer",
+    });
+    res.end(browserScript);
     return;
   }
   const allowed = (
     (req.method === "GET" && path.pathname === "/manifest.json" && !path.search) ||
     (req.method === "GET" && path.pathname === "/scenario/read") ||
     (req.method === "POST" && path.pathname === "/scenario/submit" && !path.search) ||
-    (req.method === "POST" && path.pathname === "/custom-submit" && !path.search)
+    (legacyForm && req.method === "POST" && path.pathname === "/custom-submit" && !path.search)
   );
   if (!allowed) {
     report(res, 404, "route is not part of this reference");
