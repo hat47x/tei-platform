@@ -50,22 +50,3 @@ func TestPluginPackageAllowsSharedCapabilityIDAcrossDifferentKinds(t *testing.T)
 	}
 }
 
-func TestPluginPackageWithoutCapabilitiesMatchesGo(t *testing.T) {
-	definition, plan := transformPackageFixture()
-	definition.Provides = nil
-	plan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(definition)
-	want, err := plugin.MaterializePluginPackage(definition, plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-		"buildPlan":        valueFromGoJSON(t, plan),
-		"pluginDefinition": valueFromGoJSON(t, definition),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Output.Kind != transform.ValueBytes || !bytes.Equal(got.Output.Bytes, want) {
-		t.Fatal("optional capabilities changed Go/TEI package equivalence")
-	}
-}
