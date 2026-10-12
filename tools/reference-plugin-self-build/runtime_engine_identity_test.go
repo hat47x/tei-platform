@@ -196,10 +196,7 @@ func TestReferenceRuntimeEngineLockSeparatesRevisionFromImplementation(t *testin
 
 func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *testing.T) {
 	root := t.TempDir()
-	codeFiles := []string{
-		"internal/plugin/transform/eval.go",
-		"internal/plugin/transform/model.go",
-	}
+	codeFiles := transformRuntimeEngineSourceFiles()
 	write := func(path, content string) {
 		fullPath := filepath.Join(root, filepath.FromSlash(path))
 		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
@@ -209,8 +206,9 @@ func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *tes
 			t.Fatal(err)
 		}
 	}
-	write(codeFiles[0], "package transform\n")
-	write(codeFiles[1], "package transform\n")
+	for _, path := range codeFiles {
+		write(path, "source: "+path+"\n")
+	}
 	sourceBefore, err := hashSourceFiles(root, codeFiles)
 	if err != nil {
 		t.Fatal(err)
@@ -227,13 +225,18 @@ func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *tes
 		t.Fatal("docs-only changes affected the Runtime Engine source closure")
 	}
 
-	write(codeFiles[0], "package transform\n// implementation changed\n")
-	sourceAfterCode, err := hashSourceFiles(root, codeFiles)
+	write("internal/plugin/transform/json_unicode.go", "Unicode parser changed\n")
+	sourceAfterUnicode, err := hashSourceFiles(root, codeFiles)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sourceBefore == sourceAfterCode {
-		t.Fatal("engine implementation changes did not affect the source closure")
+	write("internal/plugin/transform/source_budget.go", "Source budget changed\n")
+	sourceAfterBudget, err := hashSourceFiles(root, codeFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceBefore == sourceAfterUnicode || sourceAfterUnicode == sourceAfterBudget {
+		t.Fatal("changed transform implementation files did not change the source closure")
 	}
 
 	engine := func(sourceDigest string) pruntime.RuntimeEngineIdentity {
@@ -250,14 +253,18 @@ func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *tes
 		}
 		return out
 	}
-	before, afterDocs, afterCode := engine(sourceBefore), engine(sourceAfterDocs), engine(sourceAfterCode)
+	before := engine(sourceBefore)
+	afterDocs := engine(sourceAfterDocs)
+	afterUnicode := engine(sourceAfterUnicode)
+	afterBudget := engine(sourceAfterBudget)
 	if before != afterDocs {
 		t.Fatal("docs-only changes affected the Runtime Engine identity")
 	}
-	if before.ImplementationDigest == afterCode.ImplementationDigest {
+	if before.ImplementationDigest == afterUnicode.ImplementationDigest ||
+		afterUnicode.ImplementationDigest == afterBudget.ImplementationDigest {
 		t.Fatal("engine implementation changes did not affect the implementation digest")
 	}
-	if afterCode.Version != before.Version {
+	if before.Version != afterUnicode.Version || before.Version != afterBudget.Version {
 		t.Fatal("source updates unexpectedly changed the logical engine version")
 	}
 }
