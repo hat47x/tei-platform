@@ -349,3 +349,64 @@ func TestInspectWiringSetOneExplicitSelectionConstrainOtherSameSlot(t *testing.T
 		t.Fatalf("independent unpinned slot was silently selected: %+v", mixed)
 	}
 }
+
+func TestInspectWiringEvidenceTargetsAreTransitiveAndNotProof(t *testing.T) {
+	r := NewRegistry()
+	_, err := r.Apply(0, []Provider{
+		{ID: "storage", Scope: "tenant-a", Offers: probeRead},
+		{ID: "middle", Scope: "tenant-a", Offers: probeApp, Requires: []Dependency{{Contract: probeRead}}},
+		{ID: "top", Scope: "tenant-a", Offers: proposalDeepContract, Requires: []Dependency{{Contract: probeApp}}},
+		{ID: "elsewhere", Scope: "tenant-b", Offers: probeRead},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := r.InspectWiring(WiringRequirement{Scope: "tenant-a", Contract: proposalDeepContract})
+	if got.Verdict != ProposalCandidate || got.Selected == nil || len(got.VerificationTargets) != 3 {
+		t.Fatalf("verification subject closure incomplete: %+v", got)
+	}
+	want := []string{"top", "middle", "storage"}
+	for i, v := range got.VerificationTargets {
+		if v.ProviderID != want[i] || v.Scope != "tenant-a" || v.Epoch == 0 {
+			t.Fatalf("incorrect target %d %+v", i, v)
+		}
+	}
+	if got.VerificationTargets[1].Contract != probeApp || got.VerificationTargets[2].Contract != probeRead {
+		t.Fatalf("dependency contract identities missing: %+v", got.VerificationTargets)
+	}
+	// A caller cannot alter the registry's declaration via a returned target.
+	got.VerificationTargets[1].ProviderID = "forged"
+	got.VerificationTargets[1].Epoch = 9999
+	fresh := r.InspectWiring(WiringRequirement{Scope: "tenant-a", Contract: proposalDeepContract})
+	if fresh.VerificationTargets[1].ProviderID != "middle" || fresh.VerificationTargets[1].Epoch == 9999 {
+		t.Fatalf("returned verification targets aliased registry: %+v", fresh)
+	}
+	missing := r.InspectWiring(WiringRequirement{Scope: "tenant-a", Contract: Contract{ID: "not-present", Version: "1", Shape: "x"}})
+	if missing.Verdict != ProposalUnknown || len(missing.VerificationTargets) != 0 {
+		t.Fatalf("unknown candidate falsely advertises verified subjects: %+v", missing)
+	}
+}
+
+func TestInspectWiringAmbiguousAndContradictoryTargetsDoNotLeak(t *testing.T) {
+	r := NewRegistry()
+	_, err := r.Apply(0, []Provider{
+		{ID: "left", Scope: "tenant-a", Offers: probeRead},
+		{ID: "right", Scope: "tenant-a", Offers: probeRead},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ambiguous := r.InspectWiring(WiringRequirement{Scope: "tenant-a", Contract: probeRead})
+	if ambiguous.Verdict != ProposalConflict || len(ambiguous.VerificationTargets) != 0 {
+		t.Fatalf("ambiguous proof subjects were selected: %+v", ambiguous)
+	}
+	contradictory := r.InspectWiringSet([]WiringRequirement{
+		{Scope: "tenant-a", Contract: probeRead, ProviderID: "left", SlotID: "slot"},
+		{Scope: "tenant-a", Contract: probeRead, ProviderID: "right", SlotID: "slot"},
+	})
+	for _, finding := range contradictory.Findings {
+		if len(finding.VerificationTargets) != 0 || finding.Selected != nil {
+			t.Fatalf("conflicted slot returned verification subjects: %+v", finding)
+		}
+	}
+}
