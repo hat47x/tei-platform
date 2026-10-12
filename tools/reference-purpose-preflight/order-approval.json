@@ -1,0 +1,99 @@
+{
+  "cases": [
+    {
+      "id": "semantic-missing",
+      "subject": "order.confirm-shipment",
+      "purpose": "execute-preflight",
+      "rule": { "meaning": "candidate" },
+      "order": {}
+    },
+    {
+      "id": "runtime-deferred",
+      "subject": "order.confirm-shipment",
+      "purpose": "execute-preflight",
+      "rule": {
+        "meaning": "accepted",
+        "meaningRef": "order.approval-required",
+        "sourceRevision": "R1",
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "thresholdMinor": 500000
+      },
+      "order": {}
+    },
+    {
+      "id": "below-threshold",
+      "subject": "order.confirm-shipment",
+      "purpose": "execute-preflight",
+      "rule": {
+        "meaning": "accepted",
+        "meaningRef": "order.approval-required",
+        "sourceRevision": "R1",
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "thresholdMinor": 500000
+      },
+      "order": {
+        "amountMinor": 499999,
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "revision": "O2",
+        "expectedRevision": "O2"
+      }
+    },
+    {
+      "id": "at-threshold",
+      "subject": "order.confirm-shipment",
+      "purpose": "execute-preflight",
+      "rule": {
+        "meaning": "accepted",
+        "meaningRef": "order.approval-required",
+        "sourceRevision": "R1",
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "thresholdMinor": 500000
+      },
+      "order": {
+        "amountMinor": 500000,
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "revision": "O2",
+        "expectedRevision": "O2"
+      }
+    },
+    {
+      "id": "missing-currency",
+      "subject": "order.confirm-shipment",
+      "purpose": "execute-preflight",
+      "rule": {
+        "meaning": "accepted",
+        "meaningRef": "order.approval-required",
+        "sourceRevision": "R1",
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "thresholdMinor": 500000
+      },
+      "order": { "amountMinor": 500000, "revision": "O2", "expectedRevision": "O2" }
+    },
+    {
+      "id": "stale-order",
+      "subject": "order.confirm-shipment",
+      "purpose": "execute-preflight",
+      "rule": {
+        "meaning": "accepted",
+        "meaningRef": "order.approval-required",
+        "sourceRevision": "R1",
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "thresholdMinor": 500000
+      },
+      "order": {
+        "amountMinor": 500000,
+        "basis": "tax-included-order-total",
+        "currency": "JPY",
+        "revision": "O3",
+        "expectedRevision": "O2"
+      }
+    }
+  ]
+}
