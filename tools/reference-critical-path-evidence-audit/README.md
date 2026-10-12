@@ -48,26 +48,24 @@ bash tools/reference-critical-path-evidence-audit/qualify.sh
 
 成功出力は`CRITICAL_PATH_LOCAL_SOURCE_QUALIFIED_ONLY`であり、**Product Gate PASSではない**。これは他Draft（#1124/#1121）の未統合Sourceをtestするものではなく、R0→R1を使用した実running Webの新単価負例、実DB保存、独立read、人間の受入を検証しない。またリモート取得・Go/Node等が使えない環境では実行できない。作業済みの単独Go試験を、これらのtrusted full checkout資格と取り違えない。
 
-## 並走Draftの一時統合とR1の実Web正常系
+## 最新mainと#1163候補の一時結合・Web正常系と異常系
 
-`compose-smoke.sh` は #1119/#1120/#1124/#1121 の**正確なDraft branch tip**をcurrent mainへ一時統合してconsumerを試す手動Reference。各branch/PR/mainは**一切書き換えず**、専用のdetached temporary Git worktree内でだけmerge commitを作り、終了時に消去する。#1127・#1126の実装やBusiness ProcedureのAccepted authorityをこのスクリプトで捏造しない。
+旧来の4本の並走ブランチ（#1119・#1120・#1124・#1121）はmainに統合され、元のブランチ参照は削除されています。このため旧形式の`TEI_CP_COMPOSE_1119`などは使用しません。既存の`compose-smoke.sh`を更新し、**最新mainと本PR #1262の正確な先端だけ**を一時作業領域で結合して検査します。元のリポジトリ・各ブランチ・mainへマージしません。
 
-完全cleanなリポジトリrootで、**その時点でGitHubから確認したSHA40**を入力する。
+正規GitHubへ接続できる完全にクリーンな**PR #1262のチェックアウト**で、その時点のGitHub上のmainとPR先端の40桁SHAを取得して指定します。
 
 ```bash
 TEI_CP_COMPOSE_MAIN=<current-origin-main-SHA40> \
-TEI_CP_COMPOSE_1119=<PR-1135-HEAD-SHA40> \
-TEI_CP_COMPOSE_1120=<PR-1139-HEAD-SHA40> \
-TEI_CP_COMPOSE_1124=<PR-1137-HEAD-SHA40> \
-TEI_CP_COMPOSE_1121=<PR-1141-HEAD-SHA40> \
+TEI_CP_COMPOSE_1163=<exact-PR-1262-HEAD-SHA40> \
 bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 ```
 
-- canonical GitHub remote/current mainと各branch tipの一致、cleanと非標準indexを確認し、競合があればfail-closed。merge結果はdetachedの**一時的な合成HEAD**であり、単体PRのexact HEAD試験とは区別。
-- #1124のNode test/scratch E2E、#1120 scoped modelref、#1121 lowering、既存mainの受注明細Web Goテスト、親#1119 preflight、full repository-health-checkを実行する。
-- さらに `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs` を一時統合worktree内で実行する。Scratchの`reference/workspace` copyを作り、**Studioの一候補2操作→Shared Acceptance Preview/Review/test-only Accept→R1→既存Web Targetを実起動→loopback HTTP submit**を通す。Webへ変更後のApplication Validation 4件が届き、正常系では全件satisfied、Commandと**synthetic** Observationを報告する。続いて元のコードや受理済みWorkspaceを変更せず、`go build -overlay`でテスト専用の注文1001の単価を`4000.00`から`0`に置き換えた**別バイナリ**を実起動し、同じR1の規則で`validation-not-satisfied`となり、CommandとObservationへ進まないことを確認する。受理時に管理対象Source2ファイルのみ変更されたこと、両Web実行前後のscratch R1一致も検査。
-- 想定出力 `E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY` は**限定的な実験**。単価0の負例は実際のHTTPサーバを用いるが、合成データを置き換えたテスト専用**別のバイナリ**で実施し、通常のTargetと同じ実行成果物が負例に合格したとは主張しない。Go OverlayはSourceやWorkspaceを改変しない。人間の受理・実DB・current Host Authority・独立DB read・S02/S05・N11・G1四視点・第二Target・製品Gateの証拠ではない。**コード追加は実行PASSを意味しない。**
-- cross-branch compositionそのものは正式なPR mergeでもrelease候補でもない。合成環境が成功しても、各PRの正確なHEADとlatest main上での個別資格試験、独立Reviewは必要である。
+- 正規GitHubのremote URL、実際のmain/PR branch先端、作業元HEADと入力SHA、実行前後の完全cleanと非標準indexを照合します。途中でmainやPRが進んだ場合は失敗します。
+- detachedの一時worktree上だけでmainにPRを結合し、コンフリクトや証跡検査器・Web試験の入力ソースがPRと異なる場合は拒否します。
+- StudioのNode・E2E、型付き参照とWorkspace、Lowering、既存Webと資格検査器のGo test、リポジトリ全体の健全性検査を実行します。選択対象が0件の`go test -run`だけで全体合格を宣言しません。
+- `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`により、隔離scratchにStudio候補→Shared Acceptance Preview/Review→試験用のAccept→受理後R1を作ります。別CLIによるWorldの再読込と受理記録のWorld指紋一致を要求し、元Sourceの変更を監視します。
+- Web正常系は標準の合成注文を実行し、4件のValidation成立、Commandと**synthetic** Observationを確認します。異常系は`go build -overlay`で合成注文1001の単価だけを0に差し替えた**別バイナリ**を起動し、選択した単価規則だけが不成立、CommandとObservationが未実行となることを確認します。いずれも同じscratch R1の読み込みを指定します。
+- 上記はtest-onlyの受理と**異なる2つの合成バイナリ**による限定検証です。製品バイナリの実DB/Authority/独立Observation、N11・S02・S05・第二Target、G1〜G4や製品Gateを証明しません。`CROSS_LANE_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE`が出ても本PRの独立レビューと元候補HEADでの資格確認は別途必要です。
 
 **任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の5つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
 
