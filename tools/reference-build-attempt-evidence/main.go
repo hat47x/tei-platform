@@ -66,9 +66,9 @@ type buildAttemptEvidence struct {
 }
 
 type buildAttemptHistory struct {
-	Schema               string                     `json:"schema"`
-	BuildPlanFingerprint string                     `json:"buildPlanFingerprint"`
-	FailedAttempts       []failedAttemptReference   `json:"failedAttempts"`
+	Schema               string                       `json:"schema"`
+	BuildPlanFingerprint string                       `json:"buildPlanFingerprint"`
+	FailedAttempts       []failedAttemptReference     `json:"failedAttempts"`
 	SuccessfulAttempts   []successfulAttemptReference `json:"successfulAttempts,omitempty"`
 }
 
