@@ -53,9 +53,24 @@ run_pair() {
     go run ./tools/reference-transform-runtime-engine-build \
       -repo . -artifact-out "$directory/transform-engine" \
       > "$directory/engine-build-evidence.json"
+    # The verified binary still needs independent Reference Host acceptance.
+    # These records are qualification fixtures, not production authorization.
+    jq -n --slurpfile engine "$directory/engine-build-evidence.json" '{
+      formatVersion: 1,
+      stage: "stage2",
+      runtimeEngine: $engine[0].runtimeEngine
+    }' > "$directory/stage2-engine-lock.json"
+    jq -n --slurpfile engine "$directory/engine-build-evidence.json" '{
+      formatVersion: 1,
+      stage: "stage2",
+      hostId: "tei.reference.host.actions",
+      runtimeEngine: $engine[0].runtimeEngine
+    }' > "$directory/stage2-host-registration.json"
     go run ./tools/reference-plugin-self-build -repo . \
       -exact-runtime-engine "$directory/transform-engine" \
       -engine-build-evidence "$directory/engine-build-evidence.json" \
+      -stage2-engine-lock "$directory/stage2-engine-lock.json" \
+      -stage2-host-registration "$directory/stage2-host-registration.json" \
       > "$directory/self-build-evidence.json"
     test "$(git rev-parse HEAD)" = "$revision"
     test -z "$(git status --porcelain=v1 --untracked-files=all)"
@@ -74,6 +89,9 @@ run_pair() {
     and .reproducible == true
     and .transformBootstrap.exactRuntimeEngineBuildFingerprint == $engine[0].evidenceFingerprint
     and .transformBootstrap.runtimeEngine.implementationDigest == $engine[0].artifactDigest
+    and (.stage2EngineLockFingerprint | length) == 64
+    and (.stage2HostRegistrationFingerprint | length) == 64
+    and (.stage2RuntimePolicyFingerprint | length) == 64
     and .transformBootstrap.convergenceResult.converged == true
     and .transformBootstrap.stage1ArtifactDigest == .transformBootstrap.stage2ArtifactDigest
     and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageOracleDigest
@@ -84,6 +102,22 @@ run_pair() {
 }
 run_pair "$repo" "$output/baseline" "$baseline_revision"
 run_pair "$mutation_repo" "$output/mutation" "$mutation_revision"
+
+# An old Host registration must never approve the rotated executable.
+(
+  cd "$mutation_repo"
+  if go run ./tools/reference-plugin-self-build -repo . \
+    -exact-runtime-engine "$output/mutation/transform-engine" \
+    -engine-build-evidence "$output/mutation/engine-build-evidence.json" \
+    -stage2-engine-lock "$output/mutation/stage2-engine-lock.json" \
+    -stage2-host-registration "$output/baseline/stage2-host-registration.json" \
+    > "$output/mutation/should-not-run.json" 2> "$output/mutation/host-denial.txt"; then
+    echo "stale Host registration accepted the mutated Engine" >&2
+    exit 1
+  fi
+)
+grep -q "stage2 Host registration differs" "$output/mutation/host-denial.txt"
+test ! -s "$output/mutation/should-not-run.json"
 
 jq -s -e '
   .[0] as $before | .[1] as $after |
@@ -100,6 +134,9 @@ jq -s -e '
   and $before.transformBootstrap.runtimeEngineSourceDigest != $after.transformBootstrap.runtimeEngineSourceDigest
   and $before.transformBootstrap.runtimeEngine.implementationDigest != $after.transformBootstrap.runtimeEngine.implementationDigest
   and $before.transformBootstrap.runtimeEngineFingerprint != $after.transformBootstrap.runtimeEngineFingerprint
+  and $before.stage2EngineLockFingerprint != $after.stage2EngineLockFingerprint
+  and $before.stage2HostRegistrationFingerprint != $after.stage2HostRegistrationFingerprint
+  and $before.stage2RuntimePolicyFingerprint != $after.stage2RuntimePolicyFingerprint
   and $before.transformBootstrap.packageBuildPlanFingerprint != $after.transformBootstrap.packageBuildPlanFingerprint
   and $before.transformBootstrap.packageFirstArtifactDigest != $after.transformBootstrap.packageFirstArtifactDigest
   and $before.transformBootstrap.packageOracleDigest != $after.transformBootstrap.packageOracleDigest
