@@ -137,6 +137,7 @@ type goListPackage struct {
 
 func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
+	goExecutable := flag.String("go", "", "exact Go executable path; required when the runner has no embedded Go root")
 	exactEngine := flag.String("exact-runtime-engine", "", "verified external transform engine executable")
 	engineEvidence := flag.String("engine-build-evidence", "", "independent exact transform engine build Evidence JSON")
 	stage2Lock := flag.String("stage2-engine-lock", "", "Host-approved Reference stage2 engine lock")
@@ -147,6 +148,7 @@ func main() {
 	flag.Parse()
 
 	out, err := runWithExactEngine(*repo, exactEngineOptions{
+		GoExecutable:         *goExecutable,
 		Executable:           *exactEngine,
 		BuildEvidence:        *engineEvidence,
 		Stage2Lock:           *stage2Lock,
@@ -241,11 +243,9 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if err != nil {
 		return evidence{}, err
 	}
-	// Select the exact toolchain running this reference. Ambient PATH must not
-	// decide which Go builder is trusted for the same source.
-	goPath, err := filepath.EvalSymlinks(filepath.Join(runtime.GOROOT(), "bin", executableName("go")))
+	goPath, err := selectReferenceGoExecutable(options.GoExecutable)
 	if err != nil {
-		return evidence{}, fmt.Errorf("locate current Go builder: %w", err)
+		return evidence{}, fmt.Errorf("select Go builder: %w", err)
 	}
 	goBinaryDigest, err := hashFile(goPath)
 	if err != nil {
@@ -893,6 +893,35 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		Stage2HostApprovalFingerprint:     acceptedStage2.HostApprovalFingerprint,
 		Stage2RuntimePolicyFingerprint:    stage2PolicyFingerprint,
 	}, nil
+}
+
+// The builder is either explicitly pinned by its path or selected from the
+// Go toolchain embedded in the running binary. PATH is not a fallback.
+func selectReferenceGoExecutable(explicit string) (string, error) {
+	path := strings.TrimSpace(explicit)
+	if path == "" {
+		goRoot := runtime.GOROOT()
+		if goRoot == "" {
+			return "", fmt.Errorf("Go root is unavailable; specify the exact Go executable with -go")
+		}
+		path = filepath.Join(goRoot, "bin", executableName("go"))
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	resolved, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("Go executable is not a regular file: %s", resolved)
+	}
+	return resolved, nil
 }
 
 func requireValidWorld(label string, world ir.World) error {
