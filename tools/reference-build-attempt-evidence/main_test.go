@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -597,5 +599,47 @@ func TestReferenceSchemaVersionsTrackSuccessfulAttemptContract(t *testing.T) {
 	}
 	if evidence.History.Schema != "tei.reference.build-attempt-history/v1" {
 		t.Fatalf("attempt history schema was not updated: %q", evidence.History.Schema)
+	}
+}
+
+type neverProgressingReader struct{}
+
+func (neverProgressingReader) Read([]byte) (int, error) {
+	return 0, nil
+}
+
+func TestDiagnosticRetentionLimitAndNonProgressingReaders(t *testing.T) {
+	if _, _, err := captureDiagnostic(strings.NewReader("x"), maxDiagnosticRetainedBytes+1); err == nil {
+		t.Fatal("retention limit was not enforced")
+	}
+	if _, _, err := captureDiagnostic(strings.NewReader("x"), -1); err == nil {
+		t.Fatal("negative retention limit was accepted")
+	}
+	if _, _, err := captureDiagnostic(nil, 8); err == nil {
+		t.Fatal("nil diagnostic reader was accepted")
+	}
+	if _, _, err := captureDiagnostic(neverProgressingReader{}, 8); !errors.Is(err, io.ErrNoProgress) {
+		t.Fatalf("non-progressing reader error = %v, want io.ErrNoProgress", err)
+	}
+	e, retained, err := captureDiagnostic(strings.NewReader("abcdef"), 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(retained) != 3 || string(retained) != "abc" {
+		t.Fatalf("retained unexpected bytes: %q", retained)
+	}
+	if e.Bytes != 6 || e.RetainedBytes != 3 || !e.Truncated {
+		t.Fatalf("invalid captured diagnostic summary: %+v", e)
+	}
+}
+
+func TestNewFailedAttemptRejectsExcessiveDiagnosticRetention(t *testing.T) {
+	plan := referenceBuildPlan()
+	exitCode := 2
+	if _, _, err := newFailedAttempt(plan, 1, fakeFailure{
+		Phase: attemptPhaseCompile, FailureClass: "compile-error",
+		ExitCode: &exitCode,
+	}, maxDiagnosticRetainedBytes+1); err == nil {
+		t.Fatal("failed attempt accepted unbounded diagnostic retention")
 	}
 }
