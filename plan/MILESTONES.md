@@ -228,73 +228,73 @@ AIの機能を追加するだけではなく、既存知識の探索、変更候
 
 一つの作業領域の完了を、別の作業領域の着手条件にはしません。
 
-## Milestone 8 — Provider / Runtimeの交換可能性が実証される
+## マイルストーン8 — 提供実装と実行基盤の交換可能性を実証できる
 
 ### 到達条件
 
-- PostgreSQL以外のDatabase Providerを小さい実例で接続できる
-- Provider固有knowledgeがCoreへ漏れない
-- actual external asset / Provider Evidenceを取得できる
-- external Runtime / orchestratorをCapabilityとして接続できる
-- Plugin / Bundle / trust boundaryを説明できる
-- unknown / takeover / fencing / recoveryをProvider差を超えて扱える
+- PostgreSQL以外のデータベース提供実装を小さな実例で接続できる
+- 提供実装に固有の知識が中核へ入り込まない
+- 実際の外部資産や提供実装について検証根拠を取得できる
+- 外部の実行基盤や実行を統括する仕組みを機能として接続できる
+- プラグイン、配布一式、信頼の境界を説明できる
+- 状態不明、実行担当の交代、古い担当の実行防止、復旧を、提供実装の違いを超えて扱える
 
 ### 意味
 
-「交換可能」という主張が一つのReference Providerだけに依存しない状態です。
+「交換可能」という主張を、一つの参照用の提供実装だけに頼らずに説明できる状態です。
 
-## Milestone 9 — 実利用へ向けた運用境界が整う
+## マイルストーン9 — 実際の利用に向けた運用の境界が整う
 
 ### 到達条件
 
-- production永続Store / HA境界が確立される
-- credential / secret / Resource authorityが運用可能に分離される
-- signed artifact / registry / supply-chain Evidenceを扱える
-- compatibility / upgrade policyがある
-- observability / audit / failure analysisに必要なEvidenceを取得できる
-- production adapterとConformanceを持つ
+- 本番向けの永続的な保存機構と高可用性の境界が確立される
+- 認証情報、秘密情報、資源を利用する権限を、運用できる形で分離する
+- 署名付き成果物、配布用の登録先、ソフトウェアの供給経路に関する検証根拠を扱える
+- 互換性と更新に関する方針がある
+- 状態の観測、監査、障害分析に必要な検証根拠を取得できる
+- 本番向けの接続部品と準拠性の検証を備える
 
 ### 意味
 
-architecture validationを越え、限定された実利用へ責任を持って進められる状態です。
+構成の検証だけでなく、対象を限定した実際の利用へ責任を持って進められる状態です。
 
-## Version Horizon
+## 製品版ごとの到達目標
 
-### v0 — Architecture / Product Validation
+### v0 — 構成と製品価値の検証
 
-Product Valueと境界を実行可能Referenceで検証する期間です。
+製品価値と構成上の境界を、実行できる参照事例で検証する期間です。
 
-現在のM0.xx系列はここに含みます。
+現在のM0.xx系列はこの段階に含みます。
 
-### v1 — Practical Developer Platform vertical slice
+### v1 — 実用的な開発基盤の一連の機能を成立させる
 
-少なくともMilestone 0〜4を満たし、一つの現実的Applicationを設計・Driver・Database接続・第一Targetまで一続きに扱える状態を目安とします。
+少なくともマイルストーン0～4を満たし、一つの現実的なアプリケーションを、設計、実行・検証、データベース接続、最初の実行先まで一連の流れで扱える状態を目安とします。
 
-Studio / AIの完成、第二Target、production HAはv1 first-target成立の前提にはしません。
+編集環境やAIの機能の完成、二つ目の実行先、本番向けの高可用性は、v1で最初の実行先が成立するための前提にはしません。
 
-ただしGate C後にMilestone 5〜7を検証できるtrace / plan / acceptance境界を残します。
+ただし、判定段階Cの後にマイルストーン5～7を検証できるよう、追跡可能性、計画、受理の境界を保ちます。
 
-### v2 — Target / Authoring / Provider Expansion
+### v2 — 実行先・編集機能・提供実装を拡充する
 
-Milestone 5〜8を中心に、複数Target、Studio、knowledge-first / AI、Provider交換可能性を広げます。
+マイルストーン5～8を中心に、複数の実行先、編集環境、既存知識を優先するAI支援、提供実装の交換可能性を広げます。
 
-Milestone 5〜7は必要に応じて並行します。
+マイルストーン5～7は必要に応じて並行して進めます。
 
-### v3以降 — Operational Maturity
+### v3以降 — 運用能力を成熟させる
 
-Milestone 9を中心に、production運用、互換性、供給網、組織規模での再利用を深めます。
+マイルストーン9を中心に、本番運用、互換性、ソフトウェアの供給経路、組織規模での再利用を進めます。
 
 ## 先に固定しないもの
 
-- 完全なTarget Capability taxonomy
-- 第一Web Target framework
-- Studio最終UI
-- AI provider / vector database
-- Proposal最終schema
-- mandatory authored Stable ID / UUID
-- Patch-only authoring model
-- 第二Targetの種類
-- 一律performance threshold
-- production HA一般化
+- 実行先の機能に関する完全な分類体系
+- 最初のWeb向け実行先の開発基盤
+- 編集環境の最終的な画面構成
+- AIの提供元やベクトルデータベース
+- 変更提案の最終的なスキーマ
+- 人が記述する安定識別子やUUIDの必須化
+- 差分適用のみを認める記述方式
+- 二つ目の実行先の種類
+- 一律の性能基準値
+- 本番運用の高可用性を共通機構として扱うこと
 
-Reference / Evidenceが必要性を示す前に固定しません。
+参照事例や検証根拠から必要性が分かるまでは、これらを固定しません。
