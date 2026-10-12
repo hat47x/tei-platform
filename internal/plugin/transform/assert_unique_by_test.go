@@ -100,7 +100,7 @@ func TestAssertUniqueByChargesStringHashWork(t *testing.T) {
 
 func TestPluginPackageWithoutRequirementsMatchesGoOracle(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name     string
 		requires []plugin.Requirement
 	}{
 		{name: "nil slice", requires: nil},
