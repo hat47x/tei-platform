@@ -206,6 +206,43 @@ func TestCrossViewDoesNotTreatNamespacedAttributeAsFunctionID(t *testing.T) {
 	}
 }
 
+func TestCrossViewDoesNotTreatBareIOTableAsDeclaredOperation(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		attributes string
+	}{
+		{name: "no operation attributes"},
+		{name: "empty read operation", attributes: `OpR=""`},
+		{name: "empty operation attributes", attributes: `OpC="" OpR="" OpU="" OpD=""`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := `<System>
+  <Table ID="T1"/>
+  <Function ID="F1"><IOTable ID="IO1" TableID="T1" ` + tc.attributes + `/></Function>
+  <Task ID="TASK1"><TaskAction ID="A1"><TaskFunctionIO FunctionID="F1" IOID="0"/></TaskAction></Task>
+</System>`
+			projection, err := BuildCrossViewProjection(crossViewInspection(t, source, crossViewMappingFingerprint()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			accounting := CrossViewPublicAccounting(projection)
+			if accounting.IOTableCount != 1 {
+				t.Fatalf("IOTable source count=%d want=1", accounting.IOTableCount)
+			}
+			if hasCrossViewEdge(projection.SourceEdges, "function-table-operation") {
+				t.Fatalf("IOTable without operation created a source operation: %+v", projection.SourceEdges)
+			}
+			if len(projection.DerivedEdges) != 0 {
+				t.Fatalf("IOTable without operation created a derived action effect: %+v", projection.DerivedEdges)
+			}
+			if !hasCrossViewUnresolved(projection.Unresolved, "iotable-operation-missing") ||
+				accounting.UnresolvedCounts["iotable-operation-missing"] != 1 {
+				t.Fatalf("missing unresolved evidence: %+v", accounting)
+			}
+		})
+	}
+}
+
 func TestCrossViewRejectsPartialCRUDWhenMarkerIsUnsupported(t *testing.T) {
 	doc := parseCrossViewFixture(t, `<System>
   <Table ID="T1"/>
