@@ -204,7 +204,7 @@ func TestProductPinnedLinuxProcessRejectsMismatchedRegistryWiring(t *testing.T) 
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
-		name    string
+		name     string
 		verifier pruntime.ArtifactVerifier
 		launcher pruntime.ProcessLauncher
 		digest   string
