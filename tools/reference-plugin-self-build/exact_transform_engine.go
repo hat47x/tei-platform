@@ -223,7 +223,14 @@ func exactEngineWire(v transform.Value, depth int) (exactEngineWireValue, error)
 	return w, nil
 }
 
-func evaluateWithExactEngine(executable, sourcePath string, source transform.Source, inputs map[string]transform.Value) (transform.EvaluationResult, error) {
+func evaluateWithExactEngine(executable, expectedDigest, sourcePath string, source transform.Source, inputs map[string]transform.Value) (transform.EvaluationResult, error) {
+	digest, err := hashFile(executable)
+	if err != nil {
+		return transform.EvaluationResult{}, err
+	}
+	if digest != expectedDigest {
+		return transform.EvaluationResult{}, fmt.Errorf("exact Runtime Engine changed after build Evidence verification")
+	}
 	type input struct {
 		Name  string               `json:"name"`
 		Value exactEngineWireValue `json:"value"`
