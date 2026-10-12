@@ -86,10 +86,13 @@ func setupSQLiteLegacyEpochs(t *testing.T) (*sqliteFixture, *sqliteFixture, sqli
 	if err := a.exec("INSERT INTO legacy_subjects(subject,role,disabled) VALUES(" + textSQL(s.Subject) + ",'EDITOR',0)"); err != nil {
 		t.Fatal(err)
 	}
+	if err := installSQLiteLegacyRoleEpochTriggers(a); err != nil {
+		t.Fatal(err)
+	}
 	return a, b, sqliteLegacyAuthority{f: a, scope: s, source: fixtureAuthoritySource}, Request{Scope: s, OperationID: "versioned-operation", Value: "authorized"}
 }
 
-// 実際のレコードのロール変更と根拠版変更は同じSQLiteトランザクションで行う。
+// 役割だけを更新しても、DBトリガーが所属版を同じ確定境界で改版する。
 func changeSQLiteLegacyRole(f *sqliteFixture, s Scope, version uint64, role string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -97,9 +100,12 @@ func changeSQLiteLegacyRole(f *sqliteFixture, s Scope, version uint64, role stri
 		if err := f.exec("UPDATE legacy_subjects SET role=" + textSQL(role) + " WHERE subject=" + textSQL(s.Subject)); err != nil {
 			return Result{}, err
 		}
-		stmt := fmt.Sprintf("UPDATE authority_dependencies SET version=%d WHERE scope=%s AND dimension=%s", version, scopeSQL(s), textSQL("membership"))
-		if err := f.exec(stmt); err != nil {
+		row, exists, err := f.query("SELECT version FROM authority_dependencies WHERE scope=" + scopeSQL(s) + " AND dimension=" + textSQL("membership"))
+		if err != nil {
 			return Result{}, err
+		}
+		if !exists || row[0] != fmt.Sprint(version) {
+			return Result{}, fmt.Errorf("DBトリガーによる所属版更新が確認できません: %+v", row)
 		}
 		return Result{}, nil
 	})

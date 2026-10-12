@@ -54,11 +54,12 @@ type ProcedureStep struct {
 }
 
 type Facts struct {
-	SchemaVersion        string          `json:"schemaVersion"`
-	WorldJSONFingerprint string          `json:"worldJSONFingerprint,omitempty"`
-	Owners               []Owner         `json:"owners"`
-	FunctionIO           []FunctionIO    `json:"functionIO"`
-	ProcedureSteps       []ProcedureStep `json:"procedureSteps"`
+	SchemaVersion            string          `json:"schemaVersion"`
+	WorldJSONFingerprint     string          `json:"worldJSONFingerprint,omitempty"`
+	ProcedureJSONFingerprint string          `json:"procedureJSONFingerprint,omitempty"`
+	Owners                   []Owner         `json:"owners"`
+	FunctionIO               []FunctionIO    `json:"functionIO"`
+	ProcedureSteps           []ProcedureStep `json:"procedureSteps"`
 }
 
 type Diagnostic struct {
@@ -79,8 +80,9 @@ type Coverage struct {
 
 // InputFingerprints identify exact caller-supplied bytes, not acceptance.
 type InputFingerprints struct {
-	WorldJSON string `json:"worldJSON"`
-	FactsJSON string `json:"factsJSON"`
+	WorldJSON     string `json:"worldJSON"`
+	FactsJSON     string `json:"factsJSON"`
+	ProcedureJSON string `json:"procedureJSON,omitempty"`
 }
 
 type Report struct {
@@ -255,9 +257,29 @@ func Inspect(w World, f Facts) Report {
 	return r
 }
 
-// InspectSnapshot adds exact input binding to the pure, candidate-only
-// consistency check. A matching digest never confers accepted-source authority.
+// InspectSnapshot binds the exact World and candidate-facts input bytes.
+// A procedure pin without a corresponding source file fails unresolved.
 func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
+	return inspectSnapshot(worldBytes, nil, factsBytes, false)
+}
+
+// InspectBoundProcedureSnapshot also binds the bytes of a caller-supplied
+// Business Procedure source. It does not parse its meaning or confer
+// acceptance/authoritative-source status on the document or candidate facts.
+func InspectBoundProcedureSnapshot(worldBytes, procedureBytes, factsBytes []byte) (Report, error) {
+	return inspectSnapshot(worldBytes, procedureBytes, factsBytes, true)
+}
+
+func inspectSnapshot(worldBytes, procedureBytes, factsBytes []byte, hasProcedure bool) (Report, error) {
+	if hasProcedure {
+		var sourceObject map[string]json.RawMessage
+		if err := json.Unmarshal(procedureBytes, &sourceObject); err != nil {
+			return Report{}, fmt.Errorf("decode Procedure JSON: %w", err)
+		}
+		if sourceObject == nil {
+			return Report{}, fmt.Errorf("Procedure JSON must be an object")
+		}
+	}
 	var w World
 	if err := json.Unmarshal(worldBytes, &w); err != nil {
 		return Report{}, fmt.Errorf("decode World JSON: %w", err)
@@ -268,12 +290,26 @@ func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
 	}
 	r := Inspect(w, f)
 	r.InputFingerprints = &InputFingerprints{WorldJSON: snapshotDigest(worldBytes), FactsJSON: snapshotDigest(factsBytes)}
+	if hasProcedure {
+		r.InputFingerprints.ProcedureJSON = snapshotDigest(procedureBytes)
+	}
 	switch {
 	case f.WorldJSONFingerprint == "":
 		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "WORLD_SNAPSHOT_UNBOUND", Severity: "unresolved", Subject: "world", Explanation: "candidate facts must bind the exact supplied World JSON byte digest"})
 		r.Status = "unresolved"
 	case f.WorldJSONFingerprint != r.InputFingerprints.WorldJSON:
 		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "WORLD_SNAPSHOT_STALE", Severity: "unresolved", Subject: "world", Explanation: "facts were prepared for a different World JSON byte snapshot"})
+		r.Status = "unresolved"
+	}
+	switch {
+	case !hasProcedure && f.ProcedureJSONFingerprint != "":
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "PROCEDURE_SNAPSHOT_UNAVAILABLE", Severity: "unresolved", Subject: "procedure", Explanation: "candidate facts pin a Procedure JSON but no Procedure bytes were supplied"})
+		r.Status = "unresolved"
+	case hasProcedure && f.ProcedureJSONFingerprint == "":
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "PROCEDURE_SNAPSHOT_UNBOUND", Severity: "unresolved", Subject: "procedure", Explanation: "candidate facts must bind the exact supplied Procedure JSON byte digest"})
+		r.Status = "unresolved"
+	case hasProcedure && f.ProcedureJSONFingerprint != r.InputFingerprints.ProcedureJSON:
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "PROCEDURE_SNAPSHOT_STALE", Severity: "unresolved", Subject: "procedure", Explanation: "candidate facts were prepared for a different Procedure JSON byte snapshot"})
 		r.Status = "unresolved"
 	}
 	sort.Slice(r.Diagnostics, func(i, j int) bool {
@@ -292,6 +328,7 @@ func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
 func main() {
 	worldPath := flag.String("world", "", "path to tei world JSON (read-only)")
 	factsPath := flag.String("facts", "", "path to candidate declared cross-view facts JSON")
+	procedurePath := flag.String("procedure", "", "optional Procedure JSON source for exact candidate snapshot binding")
 	flag.Parse()
 	if strings.TrimSpace(*worldPath) == "" || strings.TrimSpace(*factsPath) == "" {
 		fmt.Fprintln(os.Stderr, "both -world and -facts are required")
@@ -305,7 +342,16 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	out, err := InspectSnapshot(worldBytes, factsBytes)
+	var out Report
+	if strings.TrimSpace(*procedurePath) == "" {
+		out, err = InspectSnapshot(worldBytes, factsBytes)
+	} else {
+		procedureBytes, readErr := os.ReadFile(*procedurePath)
+		if readErr != nil {
+			fail(readErr)
+		}
+		out, err = InspectBoundProcedureSnapshot(worldBytes, procedureBytes, factsBytes)
+	}
 	if err != nil {
 		fail(err)
 	}
