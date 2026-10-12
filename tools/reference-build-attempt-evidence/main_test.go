@@ -288,8 +288,7 @@ func TestReferenceEvidenceDoesNotInlineSensitiveDiagnostic(t *testing.T) {
 		t.Fatalf("attempt outcome=%s", evidence.Attempt.Outcome)
 	}
 	if len(evidence.History.FailedAttempts) != 1 ||
-		evidence.History.SuccessfulResult == nil ||
-		evidence.History.SuccessfulResult.ResultFingerprint == "" {
+		evidence.History.SuccessfulResult != nil {
 		t.Fatalf("retry history: %#v", evidence.History)
 	}
 }
@@ -461,3 +460,57 @@ func TestAttemptHistoryValidationRejectsDuplicateEvidenceFingerprint(t *testing.
 		t.Fatal("Attempt History accepted a duplicated failure Evidence fingerprint")
 	}
 }
+
+// The reference CLI constructs one simulated failure. It must not invent a
+// successful execution from a placeholder result fingerprint.
+func TestReferenceDoesNotClaimAnUnexecutedSuccessfulBuild(t *testing.T) {
+	evidence, err := buildReferenceEvidence()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.History.SuccessfulResult != nil {
+		t.Fatal("reference fixture claimed success without running a builder")
+	}
+	if len(evidence.History.FailedAttempts) != 1 {
+		t.Fatalf("reference history must contain exactly one simulated failure: %#v", evidence.History)
+	}
+}
+
+// An empty fingerprint is acceptable while an attempt is being constructed,
+// but not when it is committed to retry history.
+func TestAttemptHistoryRejectsUnfingerprintedFailure(t *testing.T) {
+	plan := referenceBuildPlan()
+	exitCode := 2
+	attempt, _, err := newFailedAttempt(plan, 1, fakeFailure{
+		Phase: attemptPhaseCompile, FailureClass: "compile-error",
+		ExitCode: &exitCode, DiagnosticSummary: "simulated failure",
+	}, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt.EvidenceFingerprint = ""
+	history, err := newAttemptHistory(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendFailure(plan, attempt); err == nil {
+		t.Fatal("history accepted an attempt without a verified evidence fingerprint")
+	}
+	if len(history.FailedAttempts) != 0 {
+		t.Fatal("rejected attempt mutated history")
+	}
+}
+
+func TestFailedAttemptRejectsSuccessfulOrInvalidExitStatus(t *testing.T) {
+	plan := referenceBuildPlan()
+	for _, exitCode := range []int{0, -1} {
+		_, _, err := newFailedAttempt(plan, 1, fakeFailure{
+			Phase: attemptPhaseCompile, FailureClass: "compile-error",
+			ExitCode: &exitCode, DiagnosticSummary: "simulated failure",
+		}, 8)
+		if err == nil {
+			t.Fatalf("failed attempt accepted invalid exit status %d", exitCode)
+		}
+	}
+}
+
