@@ -1,4 +1,4 @@
-# Definition-Centered Feedback Loop
+# 定義を中心にした改善の循環
 
 状態：現在の設計方針。意味の正本の要素種別や新たな判定段階を追加するものではない。
 
@@ -9,28 +9,28 @@ TEIは、生成AIが大量の設計書やコードを生成すること自体を
 中心となる価値は、**人にも機械にも読める簡潔な定義を意味の正本として保ち、実行・可視化・検査・探索に必要な情報をそこから再生成し、現実から得た知見を意味の責任を持つ層へ戻せること**です。
 
 ```text
-small authoritative definitions
-        ↓ normalize / validate
-Canonical meaning
-        ↓ derive / compile / project
-UI / matrix / graph / runtime / simulator / index
-        ↓ use / execute / observe
-human review / runtime result / external actuality
+簡潔な正本の定義
+        ↓ 正規化・検証
+正本となる意味
+        ↓ 導出・変換・表示
+画面・対応表・関係図・実行基盤・模擬実行・索引
+        ↓ 利用・実行・観測
+人による確認・実行結果・外部で実際に起きたこと
         ↓
-feedback
-        ↓ route to owning concern
-candidate change
-        ↓ preview / qualify
-Shared Acceptance Boundary
-        ↓ accepted minimum semantic delta
-authoritative source
-        ↓ reload / regenerate
+確認結果
+        ↓ 問題を管理する部分へ振り分ける
+変更候補
+        ↓ 影響を表示・適格性を確認
+共通の受理境界
+        ↓ 受理された最小限の意味変更
+正本となる情報源
+        ↓ 読み直し・再生成
         ↺
 ```
 
 これはAIが自ら意味の正本を書き換える仕組みではありません。AI、認知用の索引、設計・編集環境、実行環境は、業務上の意味を確定する権限を持ちません。それぞれの役割から、定義の理解・検証・改善を支援します。
 
-## 2. X-TEA / XEADから受け取るもの
+## 2. X-TEAとXEADから受け継ぐ考え方
 
 TEIは、X-TEAやXEADとの互換製品を目指しません。ただし、従来の参照モデルと三要素分析法から、現在にも生かせる設計原理を取り入れます。
 
@@ -55,82 +55,82 @@ TEIは、X-TEAやXEADとの互換製品を目指しません。ただし、従�
 
 TEIでは、外部モデルに項目が存在すること自体よりも、**その項目や視点が、どのような設計上の失敗を防いでいたか**を重視します。
 
-## 3. Definition-centeredという意味
+## 3. 定義を中心にするとはどういうことか
 
 定義を中心とする設計とは、「すべてをTEIのDSLへ書き直す」という意味ではありません。
 
 意味の正本となる情報源は、扱う関心事によって異なります。
 
 ```text
-TEI-native business / semantic meaning -> .tei等のTEI-native source
-native query meaning                  -> SQL
-existing implementation meaning       -> Go / existing asset + explicit binding
-provider/environment fact              -> provider-owned configuration / observation
+TEI固有の業務・意味の定義         → .teiなどのTEI用ファイル
+元形式で記述する問い合わせ         → SQL
+既存の実装が持つ意味               → Go・既存資産と明示した対応付け
+提供実装・環境についての事実       → 提供側の設定・観測結果
 ```
 
 同じ意味について複数の正本を暗黙に作らず、どの情報源が何を定義するかを説明できるようにします。
 
-### 3.1 irreducible meaningだけをauthorする
+### 3.1 再生成できない意味だけを人が記述する
 
 人が手作業で維持するのは、安全に自動再生成できない意味に限ります。
 
 ```text
-author explicitly
-  business identity / relation / constraint / responsibility / exceptional intent
-  provider or target choice when it is genuinely a choice
-  manual / external work when it is business meaning
+明示して記述するもの
+  業務上の識別・関係・制約・責任・例外時の意図
+  実際に選択の余地がある提供実装・実行先の選択
+  業務上の意味を持つ人の作業・外部での仕事
 
-prefer derived
-  standard CRUD
-  ordinary list/detail/form projection
-  cross-reference matrix
-  dependency graph
-  reverse index
-  impact view
-  search index
-  cognitive representation
-  generated target code
+なるべく定義から導くもの
+  標準的な登録・参照・更新・削除
+  一覧・詳細・入力フォームの通常の表示
+  相互参照の対応表
+  依存関係の図
+  逆引き索引
+  変更の影響を示す表示
+  検索索引
+  認知処理のための表現
+  実行先に応じて生成するコード
 ```
 
 情報を派生して生成することは、情報を失うことではありません。元の定義と生成規則から、その内容をいつでも説明し、再構成できなければなりません。
 
-### 3.2 progressive disclosure
+### 3.2 必要に応じて詳細を加える
 
 最初から完成したモデルを求めません。
 
 ```text
-Data / Relationで業務事実を表せる
+データと関係で業務上の事実を表す
   ↓ 必要な場合だけ
-explicit Action / Capability / Validation
-  ↓ 実現差が意味を持つ場合だけ
-Application Pattern / Binding / Realization
-  ↓ 責任・手作業・外部継続が必要な場合だけ
-Business Procedure / Handoff
-  ↓ domainで必要な場合だけ
-time / decision / evidence detail
+明示的な業務操作・機能・検証規則
+  ↓ 実現方法の違いが意味を持つ場合だけ
+アプリケーションの構成・対応付け・実現方法
+  ↓ 責任・人の作業・外部での継続が必要な場合だけ
+業務手順・引継ぎ
+  ↓ 分野によって必要な場合だけ
+時間・判断・検証根拠の詳細
 ```
 
 空欄を埋めるためだけに概念を追加しません。追加しなければ業務上の意味が失われるときに限り、必要な概念を増やします。
 
-### 3.3 semantic densityとfalse compressionを区別する
+### 3.3 意味の密度と見かけだけの簡略化を区別する
 
 定義は簡潔にしますが、短さそのものを評価指標にはしません。
 
 ```text
-high semantic density
-  = 少量のauthoringから、多くの正しいderived behaviorを再構成できる
+意味の密度が高い
+  = 少ない記述から、多くの正しい動作や表示を再構成できる
 
-false compression
-  = 必要なBusiness meaningを暗黙推論へ追い出し、短く見せる
+見かけだけの簡略化
+  = 必要な業務上の意味を暗黙の推論に委ね、定義を短く見せる
 ```
 
 手作業、責任の所在、実際に起きたこと、例外などを省いて定義を短くしても、品質が高くなるわけではありません。
 
-## 4. 三種類のmemoryを分ける
+## 4. 三種類の記憶を分ける
 
 TEIでは、生成AIや認知技術を活用する場合も、すべての知識を一つの知識グラフやモデルの重みに集約しません。
 
-### 4.1 authoritative semantic memory
+### 4.1 正本となる意味の記憶
 
 長期に保持する、正式に受理された意味です。
 
@@ -142,7 +142,7 @@ TEIでは、生成AIや認知技術を活用する場合も、すべての知識
 
 これらを失うと、製品が扱う意味を再構成できなくなります。
 
-### 4.2 derived associative / structural memory
+### 4.2 派生した連想・構造の記憶
 
 関連する情報を探し、近い事例を想起するために使います。
 
@@ -158,15 +158,15 @@ TEIでは、生成AIや認知技術を活用する場合も、すべての知識
 これらは**再生成でき、どの改訂版に対応するかが分かる**必要があります。
 
 ```text
-association != dependency
-similarity  != applicability
-activation  != fact
-novelty     != unknown
+連想は依存関係と同じではない
+類似は適用可能性を意味しない
+活性化は事実と同じではない
+新規性は未知であることと同じではない
 ```
 
 この種類の記憶を削除しても、正本の意味は変わりません。
 
-### 4.3 episodic / experience memory
+### 4.3 経験や履歴の記憶
 
 何を試し、どのように判断し、その後何が起きたかを記録します。
 
@@ -179,18 +179,18 @@ novelty     != unknown
 
 過去に成功した変更であっても、そのまま現在の意味として扱いません。現在の改訂版、入力元、検証根拠に照らして評価し直します。
 
-### 4.4 memory間のauthority rule
+### 4.4 記憶ごとの権限の境界
 
 ```text
-authoritative semantic memory
-        ↑ accepted change only
-Shared Acceptance Boundary
+正本となる意味の記憶
+        ↑ 受理した変更だけ
+共通の受理境界
         ↑
-proposal / experience / cognition
+提案・経験・認知処理
 
-associative memory  -X-> implicit semantic write
-episodic memory     -X-> implicit semantic write
-model weights       -X-> only durable record of a Decision
+連想の記憶       -X-> 意味の正本を暗黙に書き換える
+経験の記憶       -X-> 意味の正本を暗黙に書き換える
+モデルの重み     -X-> 判断を保存する唯一の永続記録にする
 ```
 
 AIや認知方式を交換・停止しても、受理済みのシステムを再構成できることを、変えてはならない条件とします。
@@ -200,38 +200,38 @@ AIや認知方式を交換・停止しても、受理済みのシステムを再
 TEIの認知支援は、性質の異なる複数の方式を組み合わせます。
 
 ```text
-Intent / local editing context
+意図・編集中の局所的な文脈
         │
-        ├─ exact identity / graph traversal
-        ├─ Reference pattern recall
-        ├─ associative / sparse cognition
-        └─ LLM interpretation / hypothesis / explanation
+        ├─ 正確な識別と関係の追跡
+        ├─ 参照事例の構成パターンの想起
+        ├─ 連想・疎な表現による認知処理
+        └─ 大規模言語モデルによる解釈・仮説・説明
                 ↓
-           candidate space
+             候補群
                 ↓
- deterministic qualification
- applicable / incompatible / unknown
+      決定的な方法で適格性を確認
+      適用可能・不適合・未確定
                 ↓
-       explicit-reference proposal
+         明示的な参照を持つ提案
 ```
 
-### Exact / graph
+### 正確な識別と関係の追跡
 
 既知の識別情報、依存関係、権限を確定的にたどります。分かっていることを、毎回大規模言語モデルに推論させません。
 
-### Reference pattern recall
+### 参照事例から構成パターンを想起する
 
 実践的な参照例から得られた構造を、出所と適用条件を添えて候補として示します。設計の型は、そのまま正解になるわけではありません。
 
-### Associative cognition
+### 連想による認知処理
 
 用語は異なっても構造が近い例や、断片的な手掛かり、局所的な新規性を候補として見つけます。FlyHash、HDC/VSA、埋め込み表現などは、この役割を担えるか比較する方式です。
 
-### LLM
+### 大規模言語モデル
 
 自然言語で表された意図の解釈、候補の比較、欠落の仮説、説明、案の統合に活用します。大規模言語モデルに入力元と検証根拠を与えても、その出力自体には確定権限を持たせません。
 
-## 6. Feedbackを正しい所有層へroutingする
+## 6. 確認結果を修正すべき部分へ戻す
 
 問題が見つかっても、すべてを意味の正本となる入力元に戻して修正するわけではありません。
 
@@ -252,29 +252,29 @@ Intent / local editing context
 
 これにより、画面の修正でデータの誤りを隠したり、AIへの指示を調整して権限上の矛盾を隠したりするような、その場しのぎの対応を防ぎます。
 
-## 7. Minimum Semantic Delta
+## 7. 意味に対する最小限の変更を提案する
 
 生成AIを使う場合も、モデルやファイル全体を毎回作り直すのではなく、**現在受理されている意味について、必要最小限の変更を提案すること**を基本とします。
 
 ```text
-base revision
-   + purpose / observed problem
-   + exact target identities
-   + minimum proposed meaning change
-   + provenance / evidence
+変更元の版
+   + 目的・確認した問題
+   + 変更対象の正確な識別情報
+   + 提案する最小限の意味変更
+   + 出所・検証根拠
         ↓
-preview
-   Semantic Diff
-   affected subjects
-   derived UI / runtime / persistence impact
-   unresolved / contradiction
+事前確認
+   意味の差分
+   影響を受ける対象
+   画面・実行基盤・保存への影響
+   未解決の事項・矛盾
         ↓
-Accept / Reject
+受理・却下
 ```
 
 最小限の意味の変更は、特定の修正用DSLを必須としません。ファイルの直接編集、設計・編集環境からの操作、構造化したAIの提案、構造の整理などが、同じ意味の差分として扱えればよいと考えます。
 
-### full regenerationを標準にしない理由
+### 全体の再生成を標準にしない理由
 
 - 人が確認する際に、重要な変更点が見えにくくなる
 - モデル固有の書式や注記まで不要に書き換えやすい
@@ -284,47 +284,47 @@ Accept / Reject
 
 ただし、新しい成果物の生成や大規模な移行など、全体の生成が適した作業まで禁止しません。重要なのは、意味上の変更点を絞り込み、人が確認できることです。
 
-## 8. Previewは生成物ではなく因果を見せる
+## 8. 変更前の確認では、成果物より影響関係を示す
 
 定義を記述・編集する画面では、入力欄を増やすよりも、**一つの定義を変えると何に影響するか**を示すことを重視します。
 
 例は次のとおりです。
 
 ```text
-Add required Relation
-  ├─ Canonical: relation-added
-  ├─ Function: Action input requirement changes
-  ├─ UI: reference selector appears
-  ├─ Persistence: migration required
-  ├─ Runtime: referential integrity enforced
-  ├─ Business: impacted Procedure candidates
-  └─ Target: affected projections
+必須の関係を追加する
+  ├─ 正本：関係が追加される
+  ├─ 機能：業務操作に必要な入力が変わる
+  ├─ 画面：参照先の選択欄が現れる
+  ├─ 保存：データ移行が必要になる
+  ├─ 実行基盤：参照整合性を検査する
+  ├─ 業務：影響を受ける手順の候補が分かる
+  └─ 実行先：影響を受ける表示が分かる
 ```
 
 影響を表すそれぞれのつながりは、導出規則または確定した依存関係までたどれる必要があります。大規模言語モデルの説明だけを根拠に影響関係を作りません。
 
-## 9. Local-first Editor
+## 9. 局所的な情報から扱える編集環境
 
 大規模なモデル全体を、常に一枚の関係図へ描く必要はありません。
 
 利用者が扱っている定義を中心に、関連する近くの要素をまとめて示します。
 
 ```text
-selected definition
-  ├─ authored local meaning
-  ├─ exact incoming / outgoing refs
-  ├─ Data / Function / Business lenses
-  ├─ relevant source / evidence
-  ├─ affected projections
-  ├─ candidate patterns / analogous cases
-  └─ unresolved / diagnostics
+選択した定義
+  ├─ 人が記述した局所的な意味
+  ├─ 正確な参照元と参照先
+  ├─ データ・機能・業務の視点
+  ├─ 関連する情報源と検証根拠
+  ├─ 影響を受ける表示
+  ├─ 構成パターンの候補と類似事例
+  └─ 未解決の事項と診断結果
 ```
 
 モデル全体の関係図や表形式の一覧は、必要に応じて生成する表示です。検索、対象範囲、近くの関連要素を活用し、定義が数百・数千あっても把握しやすいようにします。
 
 AIも同じ局所的な文脈を基本の入力とします。毎回リポジトリ全体を自由に探索し、その結果を出所の分からない暗黙知として扱う方法は標準としません。
 
-## 10. Reference Modelを知的社会資本として扱う
+## 10. 参照モデルを知的な共有資産として扱う
 
 参照モデルには、複数の役割があります。
 
@@ -337,48 +337,48 @@ AIも同じ局所的な文脈を基本の入力とします。毎回リポジト
 特に重要なのは、五つ目の「基盤を改善するための情報源」という役割です。
 
 ```text
-Platform -> Referenceを実行可能にする
-Reference -> Platformの不足・過剰を暴く
+開発基盤 → 参照モデルを実行可能にする
+参照モデル → 開発基盤の不足や過剰な機能を明らかにする
 ```
 
 両方向の改善につながらない参照モデルは、単なる実演や基準となる試験用データにとどまります。
 
-### Reference patternの扱い
+### 参照モデルから得た構成パターンの扱い
 
 複数の参照モデルから共通する設計の型を見つけることは有用です。ただし、その型は次のように候補として扱います。
 
 ```text
-intent
+実現したい意図
   ↓
-multiple candidate patterns
-  + provenance
-  + observed frequency / examples
-  + applicability conditions
-  + semantic differences
-  + optional Simulation Dataset
+複数の構成パターンの候補
+  + 出所
+  + 実例と観測された頻度
+  + 適用条件
+  + 意味上の違い
+  + 必要に応じた模擬実行用データ
   ↓
-qualification / review
+適格性の確認・検討
 ```
 
 「八つの参照例にあるから採用する」とは判断せず、現在の業務要求に合うかを別途確かめます。
 
-## 11. Observationとlearningを分ける
+## 11. 観測と学習を分ける
 
 実行環境、模擬実行、外部の現実から得た観測結果は、検証根拠として扱います。観測結果をオンライン学習によって直ちに意味の正本へ書き戻すことはしません。
 
 ```text
-expected meaning
-        ↕ compare
-observed actuality
+期待する意味
+        ↕ 比較
+観測した実際の状態
         ↓
-contradiction / drift / unknown
+矛盾・状態のずれ・未確定
         ↓
-proposal or routing decision
+変更の提案または修正先の判断
         ↓
-Shared Acceptance Boundary
+共通の受理境界
 ```
 
-### 学習可能なのはまずderived memory
+### まず派生した記憶の学習を対象にする
 
 参照モデルや実際の運用から得た経験を使って自動更新を検討する場合、まずは再生成可能な候補の生成や順位付けを対象とします。
 
@@ -391,69 +391,69 @@ Shared Acceptance Boundary
 
 受理済みの意味上の規則をモデルの重みだけに埋め込むオンライン学習は、標準的な方法にしません。
 
-## 12. Feedback qualityの観点
+## 12. 改善の質を評価する観点
 
 現時点では数値目標として固定せず、設計の確認では次の点を評価します。
 
-### semantic density
+### 意味の密度
 
 少ない記述から、どれだけ正しい意味と派生情報を再構成できるかを見ます。ただし、必要な意味を省略して短く見せることは避けます。
 
-### derivation leverage
+### 派生情報を再利用できる範囲
 
 同じ内容を人手で二重管理せず、画面・実行環境・データベース・表・文書などへ、どれだけ正確に展開できるかを見ます。
 
-### feedback closure
+### 問題を元の定義へ戻して修正できること
 
 見つかった矛盾を、その意味を管理する入力元や層まで戻って修正できるかを見ます。
 
-### reconstructability
+### 再構成できること
 
 索引、生成物、AIとのやり取りの履歴を削除しても、受理済みのシステムを再構成できるかを見ます。
 
-### locality
+### 局所的な情報で判断できること
 
 個々の定義と、その周辺の関連要素だけで、安全な変更を判断できるかを見ます。
 
-### provenance
+### 出所を追跡できること
 
 候補、設計の型、AIによる説明、過去の経験について、入力元、改訂版、検証根拠までたどれるかを見ます。
 
 これらは比較と確認の観点であり、すべてを一つの点数へまとめません。
 
-## 13. Product invariants
+## 13. 製品として守る不変条件
 
 今後AIや認知支援の機能を追加するときも、次の区別を守ります。
 
 ```text
-Definition != Projection
-Projection != Authority
-Observation != Definition
-Similarity != Applicability
-Proposal != Decision
-Autonomy != Authority
-Reference Pattern != Requirement
-Runtime Success != Business Completion
-Generated Artifact != Source of Truth
+定義と派生表示は同じではない
+派生表示は権限の根拠ではない
+観測結果と定義は同じではない
+類似していても適用可能とは限らない
+提案したことは決定したことではない
+自律性が高くても権限があるとは限らない
+参照事例の構成パターンと要求は同じではない
+実行基盤上の成功と業務の完了は同じではない
+生成物は正本ではない
 ```
 
 また、一部の機能が使えない場合にも、次のように動作を継続できるようにします。
 
 ```text
-LLM unavailable
-  -> exact / graph / manual authoringでsystemを扱える
+大規模言語モデルが利用できない
+  → 正確な検索・関係の追跡・人による記述で扱える
 
-associative cognition unavailable
-  -> exact / graph / lexical探索へ退化できる
+連想による認知処理が利用できない
+  → 正確な検索・関係の追跡・語彙検索で扱える
 
-Studio unavailable
-  -> authoritative sourceを直接review / reloadできる
+編集環境が利用できない
+  → 正本となる情報源を直接確認・再読込みできる
 
-Derived index deleted
-  -> Canonicalから再生成できる
+派生索引を削除した
+  → 意味の正本から再生成できる
 
-Target removed
-  -> Canonical business meaningは残る
+実行先を撤去した
+  → 業務上の意味の正本は残る
 ```
 
 この機能低下時の扱いは、AIや特定の画面が、見えない新たな正本になっていないか確かめるための設計上の検査です。
