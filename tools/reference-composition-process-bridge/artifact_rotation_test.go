@@ -59,15 +59,15 @@ func TestRejectedProcessArtifactStageRetainsVerifiedProvider(t *testing.T) {
 		Actions: []deployment.ActionKind{deployment.ActionDatabaseRelease},
 	}
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
-		PluginLockFingerprint: "reference-staging-lock",
+		Environment:              core.MustCanonicalID("reference"),
+		PluginLockFingerprint:    "reference-staging-lock",
 		RuntimePolicyFingerprint: "reference-staging-policy",
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin: identity, DescriptorFingerprint: "reference-process-descriptor",
 			Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
 			Command: oldPath, Args: []string{referenceArgvMarker},
 			SandboxPolicy: plugin.SandboxNone,
-			Artifact: plugin.Artifact{Digest: oldDigest},
+			Artifact:      plugin.Artifact{Digest: oldDigest},
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
 			Plugin: identity, Capability: capability, Boundary: pruntime.BoundaryProcess,
