@@ -113,18 +113,18 @@ tools/reference-gate-b-repository-evidence
 
 合格判定には、少なくとも次の条件を求めます。
 
-- Gate B Evidence専用full checkout
-- tracked / untracked / ignored local stateなし
-- tracked Git index entryが通常`H`のみ（`assume-unchanged` / `skip-worktree`なし）
-- Workspace Validation成功
-- final UI-less Scenario成功
-- external Evidence intake成功
-- repository source-boundary Conformance成功
+- 判定段階Bの検証根拠を取得する専用の完全なリポジトリ取得
+- 追跡対象・追跡対象外・無視対象のローカル状態がないこと
+- Gitの索引で、追跡対象の項目が通常の`H`のみであること（`assume-unchanged`・`skip-worktree`なし）
+- 作業領域の検証に成功
+- 画面を使わない最終シナリオに成功
+- 外部の検証根拠の取込みに成功
+- リポジトリのソース境界の準拠確認に成功
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
-- post-run source確認済み
-- 実行前後同一HEAD
-- 終了時clean source/index state
+- 実行後のソースを確認済み
+- 実行前後でHEADが同一
+- 終了時にソースと索引に変更がないこと
 
 合成データによる検証根拠を、実際の外部資産の検証根拠として読み替えません。
 
@@ -138,12 +138,12 @@ tools/reference-generated-artifact-evidence
 
 合格判定には、少なくとも次の条件を求めます。
 
-- World / Plugin Lock一致
-- Durable Run一致
+- 正本のモデルとプラグインの実装固定情報が一致
+- 永続的な実行記録が一致
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
-- post-run source確認済み
-- 同一clean source/index state
+- 実行後のソースを確認済み
+- ソースと索引が変更のない同じ状態
 
 生成成果物が古い場合に限り、正式な生成器を使って修復します。差分を確認してコミットした後、変更のない新しい版で、変更を加えない確認を再実行します。
 
@@ -163,35 +163,35 @@ tools/reference-postgres-header-detail-runtime
 
 ### source
 
-- Gate B Evidence専用full checkout
-- tracked / untracked / ignored local stateなし
-- tracked Git index entryが通常`H`のみ
+- 判定段階Bの検証根拠を取得する専用の完全なリポジトリ取得
+- 追跡対象・追跡対象外・無視対象のローカル状態がないこと
+- Gitの索引で、追跡対象の項目が通常の`H`のみ
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
-- post-run source確認済み
+- 実行後のソースを確認済み
 
 ### fixture前
 
-- default DBではない
-- user relation 0件
-- Event Trigger 0件
-- fixture object不在
+- 既定のデータベースではない
+- 利用者定義の関係が0件
+- イベントトリガーが0件
+- 試験用の構成要素が存在しない
 - `fixtureDatabaseSafety.guardPassed = true`
 
 ### runtime
 
 - 2件取得
 - 正常0件
-- missing-table Execution Error
-- explicit raw → Semantic mapping
-- support column非露出
+- 表が存在しない場合の実行時エラー
+- 元の結果から意味上の表現への明示的な対応付け
+- 補助列を外部へ露出しないこと
 
 ### cleanup
 
-- DB-side ownership marker exact一致
-- cleanup後user relation 0件
-- Event Trigger 0件
-- fixture object不在
+- データベース側の所有者を示す印が厳密に一致
+- 後片付け後、利用者定義の関係が0件
+- イベントトリガーが0件
+- 試験用の構成要素が存在しない
 - `fixtureCleanupSafety.verified = true`
 
 DSN、認証情報、引数の値、実際のデータベース名は、通常の検証根拠には保存しません。
@@ -214,7 +214,7 @@ postRunRepository.revisionStable = true
 postRunRepository.workingTreeClean = true
 ```
 
-各lane:
+各検証経路では、次を要求します。
 
 ```text
 passed = true
@@ -224,7 +224,7 @@ artifactFile != empty
 evidenceArtifactFingerprint != empty
 ```
 
-Evidence nature:
+検証根拠の種類は次のとおりです。
 
 ```text
 #310 deterministic-repository
@@ -238,7 +238,7 @@ Evidence nature:
 
 最終確認の実行器が実際に読み取った三つの子処理のJSONのバイト列そのものを、同じ実行に属する成果物としてリポジトリの外へ保存していることを要求します。
 
-保存artifact:
+保存する成果物は次のとおりです。
 
 ```text
 deterministic-repository.json
@@ -250,14 +250,14 @@ real-postgres-ephemeral-fixture.json
 
 この成果物監査は第四の必須検証経路ではありません。`artifactAuditPassed = true`だけで判定段階Bの合格を宣言しません。
 
-Ready判定では:
+合格判定では、次を確認します。
 
-1. final summaryの`artifactFile`が対応するfixed same-run fileを指すこと
-2. file exact bytesのSHA-256が`evidenceArtifactFingerprint`と一致すること
-3. child JSON本文とfinal lane envelopeのnature / revision / reproducibleが一致すること
-4. #310のWorkspace identityと#310 / #255各checkのproducer commandが正規contractとexact一致すること
-5. child JSON本文から#310 / #255 / #308固有の詳細安全条件を確認できること
-6. secret / credential / DSN / physical identity等の禁止fieldを通常Evidenceへ保存していないこと
+1. 最終結果の`artifactFile`が、同一実行で得た所定のファイルを指すこと
+2. 元のファイルのバイト列のSHA-256が`evidenceArtifactFingerprint`と一致すること
+3. 子処理のJSON本文と最終結果の検証経路の記録で、種類・版・再現可能性が一致すること
+4. #310の作業領域の識別情報、および#310・#255の各確認項目の生成元コマンドが正式な契約と厳密に一致すること
+5. 子処理のJSON本文から#310・#255・#308に固有の詳細な安全条件を確認できること
+6. 秘密情報・認証情報・DSN・物理的な識別情報など、禁止された項目を通常の検証根拠に保存していないこと
 
 を確認します。確認項目の名前だけ一致していても、生成元のコマンドが異なる成果物を同じ検証根拠として扱いません。
 
@@ -267,18 +267,18 @@ Ready判定では:
 
 ### Repository
 
-- Repository rootから起動
-- Gate B Evidence専用full checkout
-- tracked / untracked / ignored local stateなし
-- tracked Git index entryが通常`H`のみ
-- `assume-unchanged` / `skip-worktree`なし
-- clean candidate R
-- 各lane後source再確認
-- final source再確認
+- リポジトリのルートから起動
+- 判定段階Bの検証根拠を取得する専用の完全なリポジトリ取得
+- 追跡対象・追跡対象外・無視対象のローカル状態がないこと
+- Gitの索引で、追跡対象の項目が通常の`H`のみ
+- `assume-unchanged`・`skip-worktree`なし
+- 変更のない候補版R
+- 各検証経路の実行後にソースを再確認
+- 最終的にソースを再確認
 
 ### Go environment
 
-actual runで:
+実際の実行では、次を要求します。
 
 ```text
 goEnvironment.externalWorkspaceActive = false
@@ -288,45 +288,45 @@ goEnvironment.goEnvDisabled = true
 
 を要求します。
 
-runner自身のcompile前からexact `GOENV=off`、external GOWORK無効、GOFLAGS emptyを要求します。
+実行器自体をコンパイルする前から、正確な`GOENV=off`の指定、外部のGOWORKの無効化、空のGOFLAGSを要求します。
 
 ### PostgreSQL secret
 
-- final launch environmentへdirect `TEI_TEST_POSTGRES_DSN`を置かない
-- `TEI_TEST_POSTGRES_DSN_FILE`はRepository外existing regular file
-- symlink解決後もRepository外
-- final runnerがoriginal secret fileをstable single-openし、normalized DSNをRepository外owner-only temporary handoff fileへ複製する
-- Go / Git probe、#310、#255へDSN本文・original secret path・handoff pathを渡さない
-- #308 `go run` / compiler / linkerへDSN本文を渡さずtemporary handoff pathだけを渡す
-- #308 runtimeがhandoff fileからDSN本文を読み、DSN / file path environmentをsource probe前に消去する
-- DSN本文・original secret path・handoff pathをEvidenceへ保存しない
+- 最終確認の起動環境へ`TEI_TEST_POSTGRES_DSN`を直接設定しない
+- `TEI_TEST_POSTGRES_DSN_FILE`はリポジトリ外にある既存の通常ファイルを指定
+- シンボリックリンクを解決した後もリポジトリ外
+- 最終確認の実行器が元の秘密情報ファイルを安定した形で一度だけ開き、正規化したDSNをリポジトリ外の所有者専用の一時的な引継ぎファイルへ複製する
+- Go・Gitの確認処理、#310、#255にDSNの内容・元の秘密情報ファイルのパス・引継ぎ用パスを渡さない
+- #308の`go run`・コンパイラ・リンカーにはDSNの内容を渡さず、一時的な引継ぎ用パスだけを渡す
+- #308の実行環境が引継ぎファイルからDSNを読み、ソースの確認処理より前にDSN・ファイルパスの環境情報を消去する
+- DSNの内容・元の秘密情報ファイルのパス・引継ぎ用パスを検証根拠に保存しない
 
 ### child Evidence artifact store
 
-- Repository外
-- owner-only directory
-- child fileは新規作成
-- 既存fileを上書きしない
-- exact child stdout bytesを保持
+- リポジトリ外に保存すること
+- 所有者だけがアクセスできるディレクトリ
+- 子処理のファイルは新規作成
+- 既存のファイルを上書きしない
+- 子処理の標準出力のバイト列をそのまま保存
 
 ## actual Oracle
 
-#214 / #371 / #376は削除・完了扱いにしません。
+#214・#371・#376は、削除したり完了したものとして扱ったりしません。
 
-actual physical facts / provenance / effective read-only / concrete driver integration / actual readが未完了なら、そのまま未完了として保持します。
+実際の物理的な事実・来歴・実効的な読取り専用の制約・具体的なドライバーとの連携・実際のデータの読取りが未完了なら、そのまま未完了として扱います。
 
-Gate B Readyの第四Required laneにはしません。
+判定段階Bの合格に必要な第四の検証経路とはしません。
 
-Handover時:
+引継ぎでは、次のように扱います。
 
-- 十分なactual Oracle Evidenceがあれば追加verified external Evidenceとして参照
-- 未取得・actual read未完了・Rへの結び付き不足なら`unresolved`
+- 実際のOracleで得た十分な検証根拠があれば、検証済みの外部資産の根拠として追加参照
+- 未取得・実際の読取りが未完了・版Rとの結び付きが不足する場合は`unresolved`
 
-第一Web Target側でOracle physical factsを補完しません。
+最初のウェブ実行先側で、Oracleの物理的な事実を推測して補いません。
 
 ## candidate revision
 
-Required Evidenceは一つのRへ固定します。
+必須の検証根拠は一つの版Rに固定します。
 
 ```text
 #310.repositoryRevision = R
@@ -335,17 +335,17 @@ Required Evidenceは一つのRへ固定します。
 final.repositoryRevision = R
 ```
 
-Rを固定するcheckoutはfull checkoutとし、tracked / untracked / ignored local stateなし、tracked Git index entryが通常`H`のみを要求します。
+版Rを固定する作業領域はリポジトリ全体を取得し、追跡対象・追跡対象外・無視対象のローカル状態がなく、Gitの索引で追跡対象の項目が通常の`H`だけであることを要求します。
 
-異なるrevisionの成功を寄せ集めません。
+異なる版で得た成功の結果を寄せ集めません。
 
-source変更が必要ならcycleを停止し、修正をcommitして新Rを選び、三laneとfinal convergenceを最初からやり直します。
+ソースの修正が必要になった場合は一連の検証を停止し、修正をコミットして新しい版Rを選びます。その版で三つの検証経路と最終確認を初めからやり直します。
 
-mainが進んでもcandidate Rを暗黙に最新mainへ移しません。
+mainが更新されても、候補版Rを暗黙のうちに最新mainへ切り替えません。
 
 ## Ready条件
 
-Gate BをReadyとするには、少なくとも次をすべてEvidenceから説明できる必要があります。
+判定段階BをReadyとするには、少なくとも次のすべてを検証根拠から説明できる必要があります。
 
 - [x] #310 actual EvidenceがRで成立 — `deterministic-repository.json`、`repositoryRevision = e5231839a5dcc62cce1181a2731fcb7c70d16736`、`passed = true`
 - [x] #255 actual EvidenceがRで成立 — `generated-artifact-reproducibility.json`、同revision、`passed = true`
@@ -371,7 +371,7 @@ Gate BをReadyとするには、少なくとも次をすべてEvidenceから説�
 
 ## 次の行動
 
-Gate B Readyの確定後、Handover Baseline `B`をRepository revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`へ固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)です。
+判定段階BのReady確定後、引継ぎ基準版`B`をリポジトリの版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`に固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)にあります。
 
 ```text
 actual full checkout preflight
@@ -393,9 +393,9 @@ First Web Target  ← 次のIssue（`ISSUE-000007` / #70）
 
 ## 非目標
 
-- actual Oracleを第四Required laneへ戻す
-- final runner成功だけで自動Ready宣言する
-- artifact audit成功だけで自動Ready宣言する
-- 同じRの別runをsame-run artifactへ読み替える
-- GitHub Actions greenをProduct Evidenceへ格上げする
-- 第一Web Target側で不足meaningを補完する
+- 実際のOracleを第四の必須検証経路に戻すこと
+- 最終確認の実行器の成功だけで自動的にReadyを宣言すること
+- 成果物の監査の成功だけで自動的にReadyを宣言すること
+- 同じ版Rの別の実行を、同一実行内の成果物として読み替えること
+- GitHub Actionsの成功を製品の検証根拠として格上げすること
+- 最初のウェブ実行先側で不足している意味を推測して補うこと
