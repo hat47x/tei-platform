@@ -113,7 +113,7 @@ func TestQuoteCandidateContractRunsThroughProductServiceCarrierAndRealHost(t *te
 	}
 
 	identity := plugin.Identity{
-		ID: core.MustCanonicalID(resolved.Provider.PluginID),
+		ID:      core.MustCanonicalID(resolved.Provider.PluginID),
 		Version: resolved.Provider.PluginVersion,
 	}
 	selection := pruntime.ServiceProviderSelection{
