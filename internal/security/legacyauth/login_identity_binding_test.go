@@ -21,32 +21,32 @@ func TestLegacyAuthenticationBindsStoreRecordToRequestedLogin(t *testing.T) {
 		wantVerifierCalls int
 	}{
 		{
-			name: "matching login authenticates",
+			name:      "matching login authenticates",
 			requested: "user-a", returned: "user-a", found: true,
 			wantOutcome: "authenticated", wantStoreCalls: 1, wantVerifierCalls: 1,
 		},
 		{
-			name: "different login is rejected before verifying another user",
+			name:      "different login is rejected before verifying another user",
 			requested: "user-a", returned: "user-b", found: true,
 			wantError: true, wantStoreCalls: 1,
 		},
 		{
-			name: "case mismatch requires an explicit canonical mapping",
+			name:      "case mismatch requires an explicit canonical mapping",
 			requested: "user-a", returned: "USER-A", found: true,
 			wantError: true, wantStoreCalls: 1,
 		},
 		{
-			name: "empty login is rejected before store lookup",
+			name:      "empty login is rejected before store lookup",
 			requested: "", returned: "user-b", found: true,
 			wantError: true,
 		},
 		{
-			name: "blank login is rejected before store lookup",
+			name:      "blank login is rejected before store lookup",
 			requested: " \t ", returned: "user-b", found: true,
 			wantError: true,
 		},
 		{
-			name: "not found remains credential mismatch",
+			name:      "not found remains credential mismatch",
 			requested: "user-a", returned: "user-b", found: false,
 			wantOutcome: "denied", wantStoreCalls: 1,
 		},
