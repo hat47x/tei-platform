@@ -72,3 +72,10 @@ jobs:
           set -euo pipefail
           node --test reference/application-composition/e1-observe.test.mjs reference/application-composition/e27_residual_selection_audit.test.mjs
           node reference/application-composition/e27_residual_selection_audit.mjs . > /dev/null
+
+      - name: E28の構成作業計測を未検証と区別
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e28_workflow_measurement.test.mjs
+          node reference/application-composition/e28_workflow_measurement.mjs . > /dev/null

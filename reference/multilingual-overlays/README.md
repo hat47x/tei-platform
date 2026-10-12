@@ -90,3 +90,19 @@ node --test reference/multilingual-overlays/web/order-form.test.mjs
 **現時点の境界**：Pluginの定義とモデルは試験用の合成入力であり、受理済みのEditor定義は取得していない。表示用JSONのロック指紋は来歴情報であって、ブラウザが独力で発行元を認証できる証拠ではない。実製品では既存の受理・権限確認を通じて宣言を取得し、信頼できる配布経路から渡す必要がある。
 
 O2bでは、受理済みの表示面と適用許可をEditor／Runtimeへ接続する。O3では対象言語別の配布、WebView、アクセシビリティ、MF2を検証する。今回のUI連結は**タイトルの表示のみ**であり、画面全体の翻訳を実証したものではない。
+
+## O2b：読み込んだWorkspaceの原文と受理確認の境界
+
+`workspace_display.go`は、単に人工的な`modelref.Graph`を組み立てるのではなく、実際のWorkspaceを`workspace.Load`で読み込む。既存の`validation.Validate`で意味上のエラーを確認し、`index.Build`から導いた型付き参照と、`IndexedLoadedSnapshot`による**パース時のSource Index**を照合する。対象となる`semantic-data`の標準表示名は、ロード済みの`semantic.Data.Symbol`を使う。ファイル名や翻訳資源からData IDを推測しない。
+
+翻訳の原文、定義ファイルの指紋、対象モデルの型付き識別子、対象環境のPlugin Lock指紋を`SourceWitness`として束ねる。別のWorkspaceのロック、存在しないData、改訂されたSourceと古い受理記録の組合せを拒否できる。参照実装はファイルを書き換えない。
+
+**重要**：`ReviewGate`は、既存Host側の受理・権限処理との接続口であって、独自の受理器ではない。関数を呼び出すだけで、本物の人間が承認したことも、呼出し元がその判断を行う資格を持つことも立証できない。未設定のときは失敗する。試験では合成した関数で許可・拒否を模擬し、**実際のShared AcceptanceやEditorの受理済みデータへの接続は未実装**として残す。
+
+`workspace_display_test.go`は一時Workspaceへ実際の`.tei`宣言を書き、Parser、Plugin Lock、Derived Index、Source Index、レビュー接続口、表示資源E1をまとめて通す。通常プラグインには多言語用コードを加えない。
+
+```sh
+go test -race -count=3 ./reference/multilingual-overlays/...
+```
+
+**次の課題**：正式な受理機構から`Surface`・`Grant`・`Override`の正本を受け取り、SourceとPlugin Lockの固定版をホスト側で再確認すること。追加の重要度宣言、通常UI内の文字列資源ID、動的な言語切替、実ブラウザ・WebView表示はまだ対象外。上記は受理される前の**読取と根拠照合の縦断実証**である。

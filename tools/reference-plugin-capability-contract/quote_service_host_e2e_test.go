@@ -43,29 +43,6 @@ func (v *quoteServiceHostHashVerifier) Verify(
 	}, nil
 }
 
-// In-memory test substitute for a Host-managed accepted-Contract source.
-// It is deliberately NOT issuer-trusted or production provenance.
-type quoteServiceHostAcceptanceReader struct {
-	selection pruntime.ServiceProviderSelection
-	revoked   bool
-	calls     int
-}
-
-func (r *quoteServiceHostAcceptanceReader) ReadCurrentAcceptedService(
-	_ context.Context, selected pruntime.ServiceProviderSelection,
-) (pruntime.ServiceAcceptanceRecord, error) {
-	r.calls++
-	if r.revoked || r.selection != selected {
-		return pruntime.ServiceAcceptanceRecord{}, fmt.Errorf("test Service acceptance revoked or mismatched")
-	}
-	return pruntime.ServiceAcceptanceRecord{
-		Selection:              r.selection,
-		ContractAcceptanceRef:  "synthetic-quote-contract-acceptance",
-		ProviderConformanceRef: "synthetic-quote-provider-conformance",
-		AuthorityRevision:      "synthetic-test-current-v1",
-	}, nil
-}
-
 type quoteServiceHostProcess struct {
 	calls int
 	last  pruntime.Request
@@ -180,7 +157,8 @@ func TestQuoteCandidateContractRunsThroughProductServiceCarrierAndRealHost(t *te
 	plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
 	verifier := &quoteServiceHostHashVerifier{path: binary}
 	processes := &quoteServiceHostProcess{}
-	acceptanceReader := &quoteServiceHostAcceptanceReader{selection: selection}
+	acceptanceSource := testHostAcceptanceSnapshot(t, contract, provider, selection)
+	acceptanceReader := &ReferenceHostCurrentAcceptanceReader{Source: acceptanceSource}
 	host := pruntime.Registry{
 		Processes: processes, Verifier: verifier, ServiceAcceptance: acceptanceReader,
 	}
@@ -244,8 +222,8 @@ func TestQuoteCandidateContractRunsThroughProductServiceCarrierAndRealHost(t *te
 		}
 	})
 	t.Run("Host current Contract acceptance revoked", func(t *testing.T) {
-		acceptanceReader.revoked = true
-		defer func() { acceptanceReader.revoked = false }()
+		acceptanceSource.snapshot.ContractAccepted = false
+		defer func() { acceptanceSource.snapshot.ContractAccepted = true }()
 		if _, err := registry.ResolveAndInvoke(ctx, input, request); err == nil ||
 			!strings.Contains(err.Error(), "current Service acceptance denied") ||
 			verifier.calls != 0 || processes.calls != 0 {
@@ -288,7 +266,7 @@ func TestQuoteCandidateContractRunsThroughProductServiceCarrierAndRealHost(t *te
 		hostInvocation.Acceptance.Selection != selection ||
 		hostInvocation.Acceptance.ContractAcceptanceRef != "synthetic-quote-contract-acceptance" ||
 		hostInvocation.Acceptance.ProviderConformanceRef != "synthetic-quote-provider-conformance" ||
-		acceptanceReader.calls < 2 ||
+		acceptanceSource.reads < 2 ||
 		hostInvocation.Runtime.Provenance.Plugin != identity ||
 		hostInvocation.Runtime.Provenance.Artifact.Digest != digest ||
 		hostInvocation.Runtime.Provenance.Verification == nil ||

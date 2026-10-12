@@ -56,6 +56,14 @@ func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand
 // invokeExecutableは通常のパス起動とLinuxの検証済みFD起動で、同じ
 // 入出力・応答サイズ・診断処理を用いる。実行対象の固定は呼出し元が担う。
 func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File) (Response, error) {
+	return l.invokeExecutableWithStartGate(ctx, command, req, executable, extraFiles, nil)
+}
+
+// processStartGateはホストが保持する実行権限を確認しながらOSへ起動要求を渡す。
+// Startが戻った時点で権限ロックを解放し、子プロセス終了と鍵の失効は独立に扱う。
+type processStartGate func(start func() error) error
+
+func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File, gate processStartGate) (Response, error) {
 	if ctx == nil {
 		return Response{}, fmt.Errorf("process plugin invocation requires context")
 	}
@@ -98,7 +106,19 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 		cmd.Dir = l.Dir
 	}
 
-	if err := cmd.Run(); err != nil {
+	// 通常の起動方式は従来どおりRunを使う。署名済みの固定実行方式に限り
+	// Startをホスト側の権限ロックで保護し、終了待ちではロックを保持しない。
+	// 起動前の権限確認と実際のStartの間にできる競合窓を閉じる。
+	run := func() error {
+		if gate == nil {
+			return cmd.Run()
+		}
+		if err := gate(cmd.Start); err != nil {
+			return err
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return Response{}, fmt.Errorf("process plugin executable %q canceled: %w", command.Executable, ctxErr)
 		}
