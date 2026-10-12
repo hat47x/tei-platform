@@ -225,10 +225,10 @@ func TestCandidateQuoteShapeChecksStructureNotBusinessConstraints(t *testing.T) 
 	request := readQuoteCandidateShape(t, "request-v0.json")
 	result := readQuoteCandidateShape(t, "result-v0.json")
 	for _, tc := range []struct {
-		name string
+		name     string
 		artifact InvocationShapeArtifact
-		payload string
-		allowed bool
+		payload  string
+		allowed  bool
 	}{
 		{"valid request", request, `{"currency":"JPY","lines":[{"sku":"PEN","quantity":3,"unitPriceMinor":250}]}`, true},
 		{"valid result", result, `{"currency":"JPY","lineCount":1,"subtotalMinor":750}`, true},
