@@ -64,7 +64,9 @@ function coordinate(value, name) {
       Math.abs(value) > MAX_POSITION) throw new Error('INVALID_COORDINATE: ' + name);
   return value;
 }
-export function previewLayoutMove(dfd, projectionDigest, layout, currentLayoutDigest, edit) {
+// Independent read-only validation: opening a view never requires inventing
+// a semantic or coordinate edit merely to inspect its provenance.
+export function inspectViewLayout(dfd, projectionDigest, layout, currentLayoutDigest) {
   requireDigest(projectionDigest, 'projection');
   requireDigest(currentLayoutDigest, 'layout');
   const known = nodesInProjection(dfd);
@@ -83,6 +85,18 @@ export function previewLayoutMove(dfd, projectionDigest, layout, currentLayoutDi
     coordinate(entry.x, 'x'); coordinate(entry.y, 'y');
     positions.set(key, entry);
   }
+  return {
+    authority: 'view-only', procedureId: dfd.procedureId,
+    projectionSHA256: projectionDigest, layoutSHA256: currentLayoutDigest,
+    nodeCount: known.size, positionedCount: positions.size,
+    positionKeys: [...positions.keys()].sort(),
+    sourceWrites: [], editableSource: false
+  };
+}
+export function previewLayoutMove(dfd, projectionDigest, layout, currentLayoutDigest, edit) {
+  inspectViewLayout(dfd, projectionDigest, layout, currentLayoutDigest);
+  const known = nodesInProjection(dfd);
+  const positions = new Map(layout.nodes.map(row => [nodeKey(row.kind, row.id), row]));
   object(edit, ['schema', 'id', 'origin', 'intent', 'procedureId', 'projectionSHA256',
     'baseLayoutSHA256', 'operation'], 'edit');
   if (edit.schema !== EDIT_SCHEMA || !['studio', 'ai', 'cli'].includes(edit.origin) ||
