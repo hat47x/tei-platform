@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -234,9 +235,10 @@ func e22Send(t *testing.T, target http.Handler, revision, app string) int {
 
 func TestE22SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
 	e := e22Setup(t)
+	baselineGuards := e.guardCalls
 	if got := e22Send(t, e.selected, "sui-v1", "sui"); got != http.StatusForbidden ||
-		e.guardCalls != 0 || e.upstream != 0 {
-		t.Fatalf("bare selected provider reachable: status=%d guard=%d upstream=%d", got, e.guardCalls, e.upstream)
+		e.guardCalls != baselineGuards || e.upstream != 0 {
+		t.Fatalf("bare selected provider reachable: status=%d guard=%d->%d upstream=%d", got, baselineGuards, e.guardCalls, e.upstream)
 	}
 	for _, tc := range []struct {
 		name string
@@ -297,5 +299,12 @@ func TestE22UnknownRemoteOutcomeIsNeverAutomaticallyRetried(t *testing.T) {
 	// authorized observation path, not by blindly replaying a committed Move.
 	if e.delegation.calls != 1 {
 		t.Fatalf("unexpected implicit delegation retry count=%d", e.delegation.calls)
+	}
+}
+
+func TestE22FormatDiagnostic(t *testing.T) {
+	output, err := exec.Command("gofmt", "-d", "e22_selected_upstream_test.go").CombinedOutput()
+	if err != nil || len(output) > 0 {
+		t.Fatalf("file needs formatting: %v\n%s", err, output)
 	}
 }
