@@ -64,7 +64,11 @@ func (r *Registry) InspectWiring(req WiringRequirement) WiringFinding {
 	chosen := req.ProviderID
 	if chosen != "" {
 		p, exists := r.providers[chosen]
-		if exists && (p.Scope != req.Scope || p.Offers != req.Contract) {
+		if exists && p.Scope != req.Scope {
+			finding.Verdict, finding.Reason = ProposalUnknown, ReasonNoKnownProvider
+			return finding
+		}
+		if exists && p.Offers != req.Contract {
 			finding.Verdict, finding.Reason = ProposalConflict, ReasonExplicitMismatch
 			return finding
 		}
