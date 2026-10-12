@@ -9,11 +9,11 @@ import (
 // Acceptance or cryptographic authentication. The fake signature profile
 // used by this Reference never proves the issuer controls a signing key.
 type referenceIssuerSelection struct {
-	Issuer                          string `json:"issuer"`
-	PolicyFingerprint               string `json:"policyFingerprint"`
+	Issuer                         string `json:"issuer"`
+	PolicyFingerprint              string `json:"policyFingerprint"`
 	SelectedAttestationFingerprint string `json:"selectedAttestationFingerprint,omitempty"`
-	Matched                         bool   `json:"matched"`
-	Reason                          string `json:"reason"`
+	Matched                        bool   `json:"matched"`
+	Reason                         string `json:"reason"`
 }
 
 type referenceAttestationSelection struct {
