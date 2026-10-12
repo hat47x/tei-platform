@@ -62,3 +62,15 @@ func TestRequirementEntryValidationInStandalonePackageAndResolver(t *testing.T) 
 	}
 }
 
+
+func TestRequirementEntryErrorIsOrderIndependent(t *testing.T) {
+	a := plugin.Requirement{Plugin: core.CanonicalID("bad ID"), CompatibleMajor: 1}
+	z := plugin.Requirement{Plugin: cid("tei.z"), CompatibleMajor: 0}
+	first := []plugin.Requirement{z, a}
+	second := []plugin.Requirement{a, z}
+	err1 := plugin.ValidateRequirementEntries(first)
+	err2 := plugin.ValidateRequirementEntries(second)
+	if err1 == nil || err2 == nil || err1.Error() != err2.Error() {
+		t.Fatalf("declaration order changed diagnostic: first=%v second=%v", err1, err2)
+	}
+}
