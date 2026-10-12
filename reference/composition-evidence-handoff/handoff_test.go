@@ -403,3 +403,58 @@ func TestHandoffAllocationIsBoundedForRepeatedReferences(t *testing.T) {
 		t.Fatalf("allocations grew with duplicate references: single=%g repeated=%g", singleAllocs, manyAllocs)
 	}
 }
+
+func TestHandoffReferenceOrderCannotChangeDiagnostic(t *testing.T) {
+	set, registry := proposal(t)
+	baseline := ReconcileCurrent(registry, set, nil)
+	if baseline.Blocked || len(baseline.Subjects) != 2 {
+		t.Fatalf("unexpected baseline: %+v", baseline)
+	}
+	target := baseline.Subjects[0].Target
+	exact := ref(target)
+	incompleteExact := ref(target)
+	incompleteExact.ArtifactDigest = ""
+	wrongContract := ref(target)
+	wrongContract.Subject.Contract.Shape = "other"
+	stale := ref(target)
+	stale.Subject.Epoch++
+	foreignScope := ref(target)
+	foreignScope.Subject.Scope = "tenant-b"
+	foreignProvider := ref(target)
+	foreignProvider.Subject.ProviderID = "different"
+	cases := []struct {
+		name string
+		refs []EvidenceReference
+		want Diagnostic
+	}{
+		{"missing", []EvidenceReference{foreignProvider, foreignScope}, ReferenceMissing},
+		{"stale", []EvidenceReference{stale, foreignScope}, ReferenceStale},
+		{"mismatch-over-stale", []EvidenceReference{stale, wrongContract}, ReferenceMismatch},
+		{"incomplete-over-mismatch", []EvidenceReference{wrongContract, incompleteExact}, ReferenceIncomplete},
+		{"exact-over-incomplete-foreign", []EvidenceReference{foreignScope, exact, stale, wrongContract}, ReferenceLinked},
+		{"duplicate-exact-over-incomplete", []EvidenceReference{exact, incompleteExact, stale}, ReferenceAmbiguous},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			refs := append([]EvidenceReference(nil), tc.refs...)
+			for shift := 0; shift < len(refs); shift++ {
+				report := ReconcileCurrent(registry, set, refs)
+				if report.Blocked || len(report.Subjects) != 2 ||
+					report.Subjects[0].State != tc.want {
+					t.Fatalf("order shift %d changed verdict, got %+v want %s", shift, report, tc.want)
+				}
+				wantReference := tc.want == ReferenceLinked
+				if (report.Subjects[0].Reference != nil) != wantReference {
+					t.Fatalf("shift %d unexpectedly exposes reference: %+v", shift, report)
+				}
+				// Rotate, then reverse to cover independent permutations.
+				first := refs[0]
+				copy(refs, refs[1:])
+				refs[len(refs)-1] = first
+				for i, j := 0, len(refs)-1; i < j; i, j = i+1, j-1 {
+					refs[i], refs[j] = refs[j], refs[i]
+				}
+			}
+		})
+	}
+}
