@@ -187,11 +187,15 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     join(root, "reference/studio-authoring/cli.mjs"), "propose",
     "-workspace", workspace, "-edit-file", visualEditPath
   ]).stdout);
+  // The actual browser-produced input, validated through CLI propose, is
+  // what enters Go Preview/Review/Accept. A directly constructed candidate
+  // is used only as the independent semantic equivalence oracle.
   const proposal = candidateFromEdit(model, beforeRevision, edit);
-  const path = input(label, ".candidate.json", proposal);
+  const path = input(label, ".candidate.json", visualCandidate);
   checked(proposal.baseModelRevision === beforeRevision, label + ": base revision");
   checked(visualCandidate.baseModelRevision === beforeRevision &&
     visualCandidate.origin.kind === "studio" &&
+    visualCandidate.id === proposal.id &&
     JSON.stringify(visualCandidate.delta) === JSON.stringify(proposal.delta),
     label + ": browser-submitted form enters same Go-compatible candidate transport");
 
@@ -223,7 +227,7 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   // Two independent actors have reviewed competing proposals based on R0.
   // The first Acceptance must invalidate the other actor's earlier Review.
   const rivalEdit = { ...edit, id: edit.id + "-rival",
-    origin: edit.origin === "studio" ? "ai" : "studio",
+    origin: "ai",
     intent: edit.intent + "（別の編集者による競合提案）" };
   const rivalCandidate = candidateFromEdit(model, beforeRevision, rivalEdit);
   const rivalPath = input(label, ".rival-candidate.json", rivalCandidate);
@@ -243,7 +247,7 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     /^sha256:[0-9a-f]{64}$/.test(rivalReview.reviewFingerprint),
     label + ": competing candidate passes independent R0 Preview and Review");
 
-  const editPath = input(label, ".edit.json", edit);
+  const editPath = visualEditPath;
   const studioReview = JSON.parse(command(process.execPath, [
     join(root, "reference/studio-authoring/cli.mjs"),
     "review-edit", "-workspace", workspace, "-edit-file", editPath
