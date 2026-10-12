@@ -1,0 +1,98 @@
+name: TEI Runtime Engine実EvidenceからのLock再生検証
+
+# #973限定のReference再生テスト。並行するWasm Host受理PR #1593とは別ファイル。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - internal/plugin/runtime/engine_lock_receipt_replay_test.go
+      - .github/workflows/tei-runtime-engine-evidence-replay.yml
+  push:
+    branches: [main]
+    paths:
+      - internal/plugin/runtime/engine_lock_receipt_replay_test.go
+      - .github/workflows/tei-runtime-engine-evidence-replay.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-engine-receipt-replay-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-receipt-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 固定候補を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: リポジトリ指定Goを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 実Native/Wasm画像と既存の受入Evidenceを生成
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          bash tools/check-transform-wasm-conformance.sh "$RUNNER_TEMP/tei-receipt-replay"
+
+      - name: 独立のEvidence再読込みと改ざん拒否を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/tei-receipt-replay"
+          # Reference fixtureのPlugin識別子／Build Planを明示した再生manifest。
+          # 元Evidenceは改変せず保存し、Hostの署名済み許可とは区別する。
+          jq -e '
+            .schema == "tei.reference.transform-native-wasm-conformance/v1"
+            and (.realizationArtifactDigest | startswith("sha256:"))
+            and (.nativeRuntimeEngineLockFingerprint | length) == 64
+            and (.wasmRuntimeEngineLockFingerprint | length) == 64
+          ' "$work/conformance-evidence.json" >/dev/null
+          jq '. + {
+            engineVersion: "1.0.0",
+            pluginId: "tei.native.reference",
+            pluginVersion: "1.0.0",
+            pluginBuildPlanFingerprint: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }' "$work/conformance-evidence.json" > "$work/replay-receipt.json"
+          TEI_ENGINE_REPLAY_EVIDENCE="$work/replay-receipt.json" \
+          TEI_ENGINE_REPLAY_NATIVE="$work/native-engine" \
+          TEI_ENGINE_REPLAY_WASM="$work/engine-first.wasm" \
+            go test -count=1 -run '^TestActualEngineLockReceiptReplaysWithExactFiles$' -v \
+              ./internal/plugin/runtime | tee "$work/receipt-replay-test.log"
+
+      - name: 実行後のリポジトリ状態を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Evidenceと再生拒否のログを保存
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-runtime-engine-replay-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/tei-receipt-replay/conformance-evidence.json
+            ${{ runner.temp }}/tei-receipt-replay/replay-receipt.json
+            ${{ runner.temp }}/tei-receipt-replay/receipt-replay-test.log
+            ${{ runner.temp }}/tei-receipt-replay/target-binding-test.log
+          if-no-files-found: error
+          retention-days: 7
