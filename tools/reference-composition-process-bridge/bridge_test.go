@@ -45,7 +45,7 @@ func (v fileVerifier) Verify(_ context.Context, _ plugin.Identity, artifact plug
 }
 
 type countingLauncher struct {
-	calls int
+	calls    int
 	delegate pruntime.StdioProcessLauncher
 }
 
@@ -93,15 +93,15 @@ func TestSelectedCompositionInvokesExistingProcessPlugin(t *testing.T) {
 		Actions: []deployment.ActionKind{deployment.ActionDatabaseRelease},
 	}
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
-		PluginLockFingerprint: "reference-process-lock",
+		Environment:              core.MustCanonicalID("reference"),
+		PluginLockFingerprint:    "reference-process-lock",
 		RuntimePolicyFingerprint: "reference-process-policy",
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin: identity, DescriptorFingerprint: "reference-process-descriptor",
 			Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
 			Command: binaryPath, Args: []string{referenceArgvMarker},
 			SandboxPolicy: plugin.SandboxNone,
-			Artifact: plugin.Artifact{Digest: artifactDigest},
+			Artifact:      plugin.Artifact{Digest: artifactDigest},
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
 			Plugin: identity, Capability: capability, Boundary: pruntime.BoundaryProcess,
@@ -152,8 +152,8 @@ func TestSelectedCompositionInvokesExistingProcessPlugin(t *testing.T) {
 	command := executor.Command{
 		ID: "composition-process-1", ActionID: "sales_expand/apply",
 		IdempotencyKey: "composition-process-key",
-		Kind: string(deployment.ActionDatabaseRelease),
-		Database: core.MustCanonicalID("sales_core"), Version: "1.0.0",
+		Kind:           string(deployment.ActionDatabaseRelease),
+		Database:       core.MustCanonicalID("sales_core"), Version: "1.0.0",
 	}
 	assertAccepted := func(result executor.Result) {
 		t.Helper()
