@@ -69,6 +69,11 @@ if [[ "$mode" == integrated-pinned-offline ]]; then
   # Operator supplies a reviewed exact commit. Local SHA equality is NOT
   # evidence of current origin/main; any remote freshness check is deliberately
   # impossible without network. Do not silently adopt local origin/main.
+  [[ "$(git rev-parse --is-shallow-repository)" == false ]] ||
+    die "offline mode requires a complete, non-shallow Git checkout"
+  [[ "$(git config --get --bool "remote.$remote.promisor" || :)" != true &&
+     -z "$(git config --get extensions.partialclone || :)" ]] ||
+    die "offline mode refuses partial/promisor checkout that could fetch missing objects"
   [[ "$original_head" == "$expected_main" ]] ||
     die "offline mode requires the checkout HEAD to equal TEI_CP_COMPOSE_MAIN"
   [[ "$(git cat-file -t "$expected_main")" == commit ]] ||
