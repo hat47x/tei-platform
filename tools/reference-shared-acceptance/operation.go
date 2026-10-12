@@ -15,6 +15,8 @@ const (
 	opAddValidation               = "add-validation"
 	opAddData                     = "add-data"
 	opAddRelation                 = "add-relation"
+	opAddCandidateKey             = "add-candidate-key"
+	opAddFunctionalDependency     = "add-functional-dependency"
 	opAddEnvironmentBinding       = "add-environment-binding"
 	opAddApplication              = "add-application"
 	opAddReferencePattern         = "add-reference-pattern"
@@ -35,6 +37,8 @@ type Operation struct {
 
 	Data        *DataSpec        `json:"data,omitempty"`
 	AddRelation *AddRelationSpec `json:"addRelation,omitempty"`
+	AddCandidateKey *AddCandidateKeySpec `json:"addCandidateKey,omitempty"`
+	AddFunctionalDependency *AddFunctionalDependencySpec `json:"addFunctionalDependency,omitempty"`
 	Application *ApplicationSpec `json:"application,omitempty"`
 	Pattern     *PatternSpec     `json:"pattern,omitempty"`
 
@@ -96,6 +100,25 @@ type AddRelationSpec struct {
 	Target      string            `json:"target"`
 	Cardinality string            `json:"cardinality"`
 	Keys        []RelationKeySpec `json:"keys,omitempty"`
+}
+
+// AddCandidateKeySpec is an explicit assertion of a logical business key.
+// It never implies a physical PK, uniqueness DDL, or record row identity.
+type AddCandidateKeySpec struct {
+	Data       string   `json:"data"`
+	ID         string   `json:"id"`
+	Symbol     string   `json:"symbol"`
+	Attributes []string `json:"attributes"`
+}
+
+// AddFunctionalDependencySpec is an explicit determinant/dependent assertion.
+// It never derives a database index or a physical constraint.
+type AddFunctionalDependencySpec struct {
+	Data         string   `json:"data"`
+	ID           string   `json:"id"`
+	Symbol       string   `json:"symbol"`
+	Determinants []string `json:"determinants"`
+	Dependents   []string `json:"dependents"`
 }
 
 // ApplicationSpecは、Environment bindingを含まないApplication定義の意味を表す。
@@ -171,7 +194,9 @@ func onlyFields(op Operation, allowed ...string) error {
 	present := map[string]bool{
 		"namespace": op.Namespace != "", "id": op.ID != "", "kind": op.Kind != "",
 		"attribute": op.Attribute != "", "relation": op.Relation != "",
-		"data": op.Data != nil, "addRelation": op.AddRelation != nil, "application": op.Application != nil, "pattern": op.Pattern != nil,
+		"data": op.Data != nil, "addRelation": op.AddRelation != nil,
+		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
+		"application": op.Application != nil, "pattern": op.Pattern != nil,
 	}
 	for _, name := range allowed {
 		delete(present, name)
@@ -193,6 +218,10 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddData(op)
 	case opAddRelation:
 		return normalizeAddRelation(op)
+	case opAddCandidateKey:
+		return normalizeAddCandidateKey(op)
+	case opAddFunctionalDependency:
+		return normalizeAddFunctionalDependency(op)
 	case opAddEnvironmentBinding:
 		return normalizeAddEnvironmentBinding(op)
 	case opAddApplicationValidationUse:
@@ -202,8 +231,7 @@ func normalizeOperation(op Operation) (Operation, error) {
 	case opAddReferencePattern:
 		return normalizeAddReferencePattern(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s / %s / %s / %s だけを扱います）",
-			op.Op, opAddValidation, opAddData, opAddRelation, opAddApplication, opAddReferencePattern, opAddEnvironmentBinding, opAddApplicationValidationUse)
+		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use）", op.Op)
 	}
 }
 
@@ -603,6 +631,10 @@ func operationKey(op Operation) string {
 		return "data:" + op.Data.ID
 	case opAddRelation:
 		return "relation:" + op.AddRelation.ID
+	case opAddCandidateKey:
+		return "candidate-key:" + op.AddCandidateKey.ID
+	case opAddFunctionalDependency:
+		return "functional-dependency:" + op.AddFunctionalDependency.ID
 	case opAddEnvironmentBinding:
 		b := op.EnvironmentBinding
 		return "environment-binding:" + b.Environment + "/" + b.Application + "." + b.Alias
