@@ -175,3 +175,45 @@ func TestFailedHistoryRejectsUnfinalizedEvidence(t *testing.T) {
 		t.Fatal("unfinalized failure was inserted into attempt history")
 	}
 }
+
+func TestInvalidExistingHistoryCannotBeExtended(t *testing.T) {
+	plan := referenceBuildPlan()
+	builder := &fakeSuccessfulBuilder{}
+	first, err := builder.Run(plan, 1, []byte("first"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	history, err := newAttemptHistory(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendSuccess(plan, first); err != nil {
+		t.Fatal(err)
+	}
+	history.SuccessfulAttempts[0].Outcome = "cancelled"
+	before := len(history.SuccessfulAttempts)
+	second, err := builder.Run(plan, 2, []byte("second"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendSuccess(plan, second); err == nil {
+		t.Fatal("a corrupted attempt history accepted an additional success")
+	}
+	if len(history.SuccessfulAttempts) != before {
+		t.Fatal("rejected success mutated corrupted attempt history")
+	}
+	exitCode := 2
+	failure, _, err := newFailedAttempt(plan, 2, fakeFailure{
+		Phase: attemptPhaseCompile, FailureClass: "compile-error",
+		ExitCode: &exitCode, RawDiagnosticHint: "ignored",
+	}, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := history.AppendFailure(plan, failure); err == nil {
+		t.Fatal("a corrupted attempt history accepted an additional failure")
+	}
+	if len(history.FailedAttempts) != 0 {
+		t.Fatal("rejected failure mutated corrupted attempt history")
+	}
+}
