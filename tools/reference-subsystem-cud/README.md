@@ -112,3 +112,12 @@ go run ./tools/reference-subsystem-cud \
 `-source-root`で指定したディレクトリ内に、索引に記載された資料のシンボリックリンクが存在する場合は、リンクの解決先を検査します。ディレクトリ内の別ファイルを参照するリンクは許容しますが、解決先が指定ルートの外側なら読込みを拒否します。索引の相対パスが形式上正しくても、リンクから外部のファイルを参照してよいとは推定しません。ルート自体がシンボリックリンクの場合は、明示されたルートの解決先を基準にします。
 
 この検査はGo 1.23で利用可能なファイルシステム操作を使うため、**検査直後に別プロセスがリンクやファイルを差し替える競合に対する原子的な隔離保証ではありません**。未信頼の並行書込みが可能な作業領域を安全なサンドボックスとみなさず、利用するWorkspace、Source Index、および実行環境の信頼性を別途確認してください。Shared Acceptanceや実行権限の証明にもなりません。
+
+
+## Source Indexの位置範囲と業務手順ID
+
+Source Indexの`Range`は、ファイル内にある位置を指すだけでは出所の同一性を示せません。`business-procedure-authoring`の参照位置については、資料JSONの**トップレベル`procedure.id`そのもの**を指しているかも検査します。対応しない位置は`PROCEDURE_SOURCE_ANCHOR_RANGE_MISMATCH`、重複した`procedure.id`など参照対象が曖昧なJSONは`PROCEDURE_SOURCE_ID_ANCHOR_UNRESOLVED`として未解決とします。
+
+既存Workspaceの`SourceContribution`が作る資料全体の範囲、実際のID文字列の範囲、ID文字列内の一点参照はいずれも許容します。別の説明欄に同じIDが書かれていても、そこを正しい参照範囲として認定しません。
+
+この追加検証も**Source Indexの位置と対象JSONの一致**を調べるものです。業務上の責任者、正式なShared Acceptance、CUD権限や実Providerへの副作用について新たな権威を与えるものではありません。
