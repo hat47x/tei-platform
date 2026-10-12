@@ -172,15 +172,16 @@ func (m *MemoryStore) Commit(ctx context.Context, p Permit) (Result, error) {
 	}
 	delete(m.pending, p.id)
 	req := entry.request
+	// 確定済み操作の再照会でも、失効前の許可を流用してはならない。
+	grant, exists := m.authority[req.Scope]
+	if !exists || !grant.allowed || grant.version != entry.authorityVersion {
+		return Result{Disposition: Denied, Reason: "authority-changed"}, nil
+	}
 	if done, exists := m.completed[req.OperationID]; exists {
 		if done.request != req {
 			return Result{Disposition: Denied, Reason: "operation-id-conflict"}, nil
 		}
 		return Result{Disposition: Replayed, Receipt: done.receipt}, nil
-	}
-	grant, exists := m.authority[req.Scope]
-	if !exists || !grant.allowed || grant.version != entry.authorityVersion {
-		return Result{Disposition: Denied, Reason: "authority-changed"}, nil
 	}
 	key := resourceKey(req.Scope)
 	current := m.resources[key]
