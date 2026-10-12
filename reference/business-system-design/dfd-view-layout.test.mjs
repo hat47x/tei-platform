@@ -12,7 +12,7 @@ const dfd = {
     {id: 'APP-10', functionRefs: []},
     {id: 'APP-40', functionRefs: [{id:'order_entry.submit_order',status:'resolved'}]}
   ],
-  triggers: [{id:'TR-ORDER'}], diagnostics: [],
+  triggers: [{id:'TR-ORDER',kind:'event',targetStep:'APP-10'}], diagnostics: [],
   information: {roles:[{id:'approver'}], externalParties:[{id:'customer'}], stores:[{id:'orders'}]}
 };
 const layout = {
@@ -75,4 +75,21 @@ test('view can be inspected with zero positions and without proposing a change',
     {kind:'step',id:'APP-10',x:1,y:2},
     {kind:'step',id:'APP-10',x:3,y:4}
   ]},layoutHash),/DUPLICATE_LAYOUT_NODE/);
+});
+
+test('rejects dangling DFD links before any layout is displayed', () => {
+  const cases=[
+    [{...dfd, flows:[{kind:'sequence',from:'APP-10',to:'ABSENT'}]}, 'UNRESOLVED_DFD_CONTROL_EDGE'],
+    [{...dfd, triggers:[{id:'TR-ORDER',kind:'human',targetStep:'ABSENT'}]}, 'UNRESOLVED_DFD_TRIGGER_TARGET'],
+    [{...dfd, information:{...dfd.information, responsibilities:[{role:'absent',step:'APP-10'}]}}, 'UNRESOLVED_DFD_RESPONSIBILITY'],
+    [{...dfd, information:{...dfd.information, informationFlows:[{
+      id:'BAD', from:{kind:'party',id:'customer'}, to:{kind:'store',id:'orders'}, payload:'direct write'
+    }]}}, 'UNRESOLVED_DFD_INFORMATION_EDGE'],
+    [{...dfd, information:{...dfd.information, informationFlows:[{
+      id:'BAD', from:{kind:'step',id:'APP-10'}, to:{kind:'party',id:'absent'}, payload:'message'
+    }]}}, 'UNRESOLVED_DFD_INFORMATION_EDGE']
+  ];
+  for(const [broken,message] of cases) {
+    assert.throws(()=>inspectViewLayout(broken,hash,layout,layoutHash),new RegExp(message));
+  }
 });
