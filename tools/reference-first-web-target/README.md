@@ -36,6 +36,8 @@
 
 ### サービス契約を使う受注シナリオ
 
+帳票と一括処理をHTTPなしで動かす手順は[画面を使わない参照実行](NON_SCREEN.md)を参照する。
+
 通常の起動コマンドに`-composition-scenarios`を加えると、受注の読取と登録を`internal/composition`の選択済みサービスへ接続する。対象は`order_entry`のみで、別のアプリケーションを指定した場合は起動を拒否する。
 
 `/scenario/read`、`/scenario/submit`、`/custom-submit`は従来と同じ操作を使う。登録処理内の読取も同じサービスを呼ぶ。JSON応答の`composition`には契約、提供元、実行ファイルのSHA-256、世代を記録する。認証拒否などの業務結果と実行エラー、登録結果と後続観測は従来どおり区別する。

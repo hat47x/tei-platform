@@ -32,7 +32,12 @@ func main() {
 		postgresFence    = flag.Int64("postgres-fencing-token", 0, "reference: expected positive database execution-grant fencing token")
 		modelRevision    = flag.String("model-revision", "", "reference: exact source revision explicitly selected by the host; does not accept proposals")
 	)
+	nonScreen := registerNonScreenFlags()
 	flag.Parse()
+	if *nonScreen.mode != "" && (!*composeScenarios || *postgresDSNFile == "") {
+		fmt.Fprintln(os.Stderr, "-non-screen requires composed PostgreSQL execution")
+		os.Exit(2)
+	}
 	if *modelRevision != "" && !*composeScenarios {
 		fmt.Fprintln(os.Stderr, "-model-revision requires -composition-scenarios")
 		os.Exit(2)
@@ -103,6 +108,7 @@ func main() {
 		commandScenario = command
 		command.model = model
 		if *composeScenarios {
+			var state *postgresScenarioState
 			digest, err := runningExecutableDigest()
 			if err != nil {
 				log.Fatal(err)
@@ -115,7 +121,7 @@ func main() {
 					log.Fatal(err)
 				}
 				defer db.Close()
-				state := &postgresScenarioState{db: db, world: loaded.World, digest: digest, fence: *postgresFence, model: model}
+				state = &postgresScenarioState{db: db, world: loaded.World, digest: digest, fence: *postgresFence, model: model}
 				readScenario = &postgresReadScenario{state: state}
 				command.persistence = state
 			}
@@ -129,9 +135,19 @@ func main() {
 				}
 				return nil
 			}
-			readScenario, commandScenario, err = wireComposedScenarios(context.Background(), composition.NewRegistry(), readScenario, command, digest, guard)
+			registry := composition.NewRegistry()
+			readScenario, commandScenario, err = wireComposedScenarios(context.Background(), registry, readScenario, command, digest, guard)
 			if err != nil {
 				log.Fatal(err)
+			}
+			if *nonScreen.mode != "" {
+				if err := nonScreen.run(registry, readScenario, command, state, *workspacePath); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					// Close the owned connection before exiting with a failure status.
+					_ = state.db.Close()
+					os.Exit(1)
+				}
+				return
 			}
 		}
 	case core.MustCanonicalID("repair_intake"):

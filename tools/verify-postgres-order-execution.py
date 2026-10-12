@@ -25,6 +25,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', required=True, help='Evidence directory outside the repository')
     parser.add_argument('--source-loop', action='store_true', help='Also verify scratch Shared Acceptance -> selected model -> PostgreSQL execution')
+    parser.add_argument('--non-screen', action='store_true', help='Also verify CLI reports and bounded batch processing')
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     output = Path(args.output).resolve()
@@ -140,6 +141,12 @@ def main():
             from reference_source_execution_loop import verify_source_loop
             report['sourceLoop'] = verify_source_loop(root, output, binary, head, digest, dsn_file, sql, run)
             assert report['sourceLoop']['passed']
+        if args.non_screen:
+            import sys
+            sys.dont_write_bytecode = True
+            from reference_non_screen import verify_non_screen
+            report['nonScreen'] = verify_non_screen(root, output, binary, head, digest, dsn_file, sql)
+            assert report['nonScreen']['passed']
         sql("UPDATE public.tei_reference_execution_grants SET revoked=false;")
         assert request(read_path)[0] == 200
         run(['docker', 'stop', container])
@@ -167,7 +174,7 @@ def main():
         private = output / 'connection.private'
         if private.exists():
             private.unlink()
-        report['passed'] = report['cleanAfter'] and report['fixtureCleanupConfirmed'] and len(report['checks']) == 6 and (not args.source_loop or report.get('sourceLoop', {}).get('passed', False))
+        report['passed'] = report['cleanAfter'] and report['fixtureCleanupConfirmed'] and len(report['checks']) == 6 and (not args.source_loop or report.get('sourceLoop', {}).get('passed', False)) and (not args.non_screen or report.get('nonScreen', {}).get('passed', False))
         (output / 'evidence.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 
