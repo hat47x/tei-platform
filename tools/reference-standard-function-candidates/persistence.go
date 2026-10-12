@@ -14,8 +14,8 @@ import (
 // a Semantic Data, a Database-owned Mapping and an Application's write requirement.
 // It is not a runtime Provider, a write contract, or a grant of current authority.
 type DeclaredWriteMapping struct {
-	Mapping     persistence.Mapping
-	Datasource  application.DatabaseRequirement
+	Mapping    persistence.Mapping
+	Datasource application.DatabaseRequirement
 }
 
 // MatchDeclaredWriteMapping never guesses an Application's target Database from
