@@ -188,7 +188,7 @@ A80〜A83
   O1 protected-target Dataをhelper / adjacencyから補完しない
 ```
 
-A80〜A83内のchange-direction pressure:
+A80〜A83で確認する変更の影響の向きは次のとおりです。
 
 ```text
 Business wording-only change + refs unchanged
@@ -203,7 +203,7 @@ missing / ambiguous referenced identity
 
 ### A84〜A124 — operation / authoring / freshness / readiness boundary
 
-A84〜A90は、CRUD操作を意味上のデータの追跡情報から分離します。A91〜A124は現在の意味の候補を膨らませるためのものではありません。記述形式・ソースの発見・鮮度・移行時の切替え・実装の再利用・契約の設計判断と本番採用の境界を、より厳密に検証するための項目です。
+A84〜A90では、CRUD操作を意味上のデータの追跡情報と区別します。A91〜A124は、現在の意味の候補を増やすための項目ではありません。記述形式・ソースの発見・鮮度・移行時の切替え・実装の再利用・契約に関する設計判断と本番採用の境界を、より厳密に検証します。
 
 詳細な状態については、ISSUE-000042のA-setを正本とします。
 
@@ -362,7 +362,7 @@ Pre-ADR
 | RQ-025 | PAS-07 | PAS-02 / PAS-04 |
 | RQ-026 | PAS-07 | PAS-01 / PAS-02 / PAS-04 |
 
-RQ-018・RQ-021・RQ-022にも横断的に関係します。対応関係の正本は主となる追跡文書です。
+RQ-018・RQ-021・RQ-022にも横断的に関係します。要求とPASの対応関係は、主となる追跡文書を正本とします。
 
 ## 14. Gate / Stage
 
@@ -381,15 +381,15 @@ PAS-07 Reference Evidence
 
 ## 15. 更新規則
 
-1. Lane C A-setをdetail正本とし、本書はE7 / S7 mappingとrange-level summaryだけを更新する。
-2. 新pressureは新E7を増やす前に既存E7へ吸収できるか確認する。
-3. A-setの追加ごとにtableを逐語拡張せず、意味カテゴリが変わった時だけmappingを更新する。
-4. B-F27はactual Evidenceからauthoritative persistenceが必要になった場合だけreopenする。
-5. S7-01〜05はPAS-02 / accepted Semantic authorityとcross-checkし、Representation / Runtime / completeness / Evidence natureを混同しない。
-6. Pre-ADR readinessはLane C正本からderiveし、Lane Bへ独立Gate inventoryを作らない。
-7. RRB-P1 / P2 / P3とGate 15cを同じstatusへ潰さない。
-8. Observation / adjacency / Function sequence / actor差からData authorityやHandoffを推論しない。
-9. Data trace absenceをdependency absenceへ丸めず、trace projectionをsecond SOTへ昇格しない。
-10. projectionを豊かにする目的だけでV1 authoring sourceへdirect Data ref / O1 targetを追加しない。
-11. CRUD semanticsはoperation authorityをEvidence-backedにderiveできるまで追加しない。
-12. PAS-07 user value / Requirement mapping / Gate影響が変わる場合は主Traceを先に更新する。
+1. 作業領域CのA-setを詳細の正本とします。この文書はE7・S7との対応関係と、範囲ごとの要約だけを更新します。
+2. 新たな検証項目はE7を増やす前に、既存のE7へ位置付けられるかを確認します。
+3. A-setの項目を追加するたびに表を逐語的に拡張することはしません。意味の分類が変わった場合だけ、対応関係を更新します。
+4. B-F27は、実際の検証根拠から権威ある保存が必要と判明した場合に限り、再検討します。
+5. S7-01〜05はPAS-02と受理済みの意味を管理する権限に照らして確認し、表現形式・実行環境・網羅性・検証根拠の性質を混同しません。
+6. Pre-ADRの準備状況は作業領域Cの正本から導出し、作業領域Bに独立した判定段階の一覧を作りません。
+7. RRB-P1・P2・P3とGate 15cの状態を一つにまとめません。
+8. 観測・隣接関係・機能の実行順序・担当者の違いから、データを管理する権限や引継ぎを推論しません。
+9. データへの追跡情報がないことを、依存関係がないこととは扱いません。追跡情報の派生表示を第二の正本にすることもありません。
+10. 派生表示を充実させることだけを目的に、V1の記述元へデータの直接参照やO1の保護対象を追加しません。
+11. CRUD操作の意味は、操作を定義する権限について検証根拠に基づく導出ができるまで追加しません。
+12. PAS-07の利用者価値・要求との対応関係・判定段階への影響が変わる場合は、主となる追跡文書を先に更新します。
