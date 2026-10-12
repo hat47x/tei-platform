@@ -1,4 +1,5 @@
 import {previewLayoutMove, inspectViewLayout, LAYOUT_SCHEMA, EDIT_SCHEMA} from './dfd-view-layout.mjs';
+import {previewSelectedDFDEdit, BINDING_SCHEMA} from './dfd-selected-edit-bridge.mjs';
 
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
@@ -10,13 +11,35 @@ const svg = (tag, attributes={}) => {
 const digest = async bytes => 'sha256:' + [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
   .map(x=>x.toString(16).padStart(2,'0')).join('');
 const jsonFile = async file => JSON.parse(await file.text());
-const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null, pending:null, selected:null};
+const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null, pending:null, selected:null,
+  dfdFile:null, procedureFile:null, reviewFile:null, procedure:null,review:null,
+  procedureHash:null,reviewHash:null,semanticPreview:null};
 let selectionGeneration=0;
 let dfdLoadGeneration=0;
 let layoutLoadGeneration=0;
+const semanticLoadGeneration={procedure:0,review:0};
+let semanticTextGeneration=0;
+function invalidateSemanticPreview(){
+  state.semanticPreview=null;
+  $('semantic-preview').hidden=true;
+  $('semantic-export').disabled=true;
+  $('semantic-pending').textContent='';
+}
+function updateSemanticControls(){
+  const selected=state.selected ? JSON.parse(state.selected) : null;
+  const isTrigger=selected?.[0]==='trigger';
+  $('trigger-label').disabled=!isTrigger;
+  $('semantic-propose').disabled=!isTrigger||!state.dfd||!state.procedure||!state.review;
+  if(isTrigger&&state.dfd){
+    const trigger=state.dfd.triggers.find(t=>t.id===selected[1]);
+    $('trigger-label').value=trigger?.label||'';
+  }else $('trigger-label').value='';
+}
 function clearSelection(){
   selectionGeneration++;
   state.selected=null;
+  invalidateSemanticPreview();
+  updateSemanticControls();
   $('details').replaceChildren();
   $('details').textContent='要素を選択すると参照元を表示します。';
 }
@@ -114,6 +137,8 @@ function render() {
 async function selectNode(node){
   const generation=++selectionGeneration;
   state.selected=key(node.kind,node.id);
+  invalidateSemanticPreview();
+  updateSemanticControls();
   const d=state.dfd;
   const step=node.kind==='step'?d.steps.find(s=>s.id===node.id):null;
   const candidate={kind:node.kind,id:node.id,authority:'reference-only',
@@ -199,12 +224,12 @@ $('dfd-file').addEventListener('change',async ev=>{
     // Do not display a malformed or ambiguous DFD as an editable view.
     inspectViewLayout(d,hash,initialLayout,initialHash);
     if(generation!==dfdLoadGeneration)return;
-    state.dfd=d;state.dfdHash=hash;state.layout=initialLayout;state.layoutHash=initialHash;
+    state.dfd=d;state.dfdHash=hash;state.dfdFile=file;state.layout=initialLayout;state.layoutHash=initialHash;
     state.pending=null;dragging=null;clearSelection();
     $('preview').hidden=true;$('apply').disabled=true;
     render();status('投影を読み込みました。選択と移動は参照・表示用です。');
   }catch(e){if(generation!==dfdLoadGeneration)return;
-    state.dfd=null;state.layout=null;state.pending=null;dragging=null;clearSelection();
+    state.dfd=null;state.dfdFile=null;state.layout=null;state.pending=null;dragging=null;clearSelection();
     $('apply').disabled=true;$('preview').hidden=true;render();status('DFD投影を読み込めません: '+e.message,true)}
 });
 $('layout-file').addEventListener('change',async ev=>{
@@ -226,4 +251,94 @@ $('layout-file').addEventListener('change',async ev=>{
 $('world-file').addEventListener('change',async ev=>{
   try{state.world=await jsonFile(ev.target.files[0]);status('Worldを読み込みました。版情報の真正性は未確認です。');}
   catch(e){state.world=null;status('Worldを読み込めません: '+e.message,true)}
+});
+
+async function readChecked(file,expectedHash,name){
+  const bytes=await file.arrayBuffer();
+  const hash=await digest(bytes);
+  if(hash!==expectedHash)throw Error('DFD_' + name + '_INPUT_CHANGED');
+  return hash;
+}
+async function readReferenceFile(file,expectedVersion){
+  const bytes=await file.arrayBuffer();
+  const value=JSON.parse(new TextDecoder().decode(bytes));
+  if(value.schemaVersion!==expectedVersion)throw Error('UNSUPPORTED_DFD_REFERENCE_SCHEMA');
+  return {value,hash:await digest(bytes)};
+}
+for(const [id,kind,version] of [
+  ['procedure-file','procedure','business-procedure-reference-v0'],
+  ['review-file','review','business-dfd-review-v0']
+]){
+  $(id).addEventListener('change',async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    const generation=++semanticLoadGeneration[kind];
+    invalidateSemanticPreview();
+    state[kind]=null;state[kind+'File']=null;state[kind+'Hash']=null;
+    updateSemanticControls();
+    try{
+      const {value,hash}=await readReferenceFile(file,version);
+      if(generation!==semanticLoadGeneration[kind])return;
+      state[kind]=value;state[kind+'File']=file;state[kind+'Hash']=hash;
+      updateSemanticControls();
+      status('参照資料を読み込みました。正本と同一版であることは未確認です。');
+    }catch(err){
+      if(generation!==semanticLoadGeneration[kind])return;
+      status('参照資料の読み込みを拒否しました: '+err.message,true);
+    }
+  });
+}
+$('trigger-label').addEventListener('input',()=>{
+  semanticTextGeneration++;
+  invalidateSemanticPreview();
+});
+$('semantic-propose').addEventListener('click',async()=>{
+  const selected=state.selected?JSON.parse(state.selected):null;
+  const dfd=state.dfd,procedure=state.procedure,review=state.review;
+  const files=[state.dfdFile,state.procedureFile,state.reviewFile];
+  const hashes=[state.dfdHash,state.procedureHash,state.reviewHash];
+  const label=$('trigger-label').value;
+  const generation=selectionGeneration;
+  const labelGeneration=semanticTextGeneration;
+  invalidateSemanticPreview();
+  if(selected?.[0]!=='trigger'||!files.every(Boolean)||typeof label!=='string'||!label.trim()){
+    status('起動契機の選択、参照資料、新しい説明文が必要です。',true);
+    return;
+  }
+  try{
+    for(let i=0;i<files.length;i++)await readChecked(files[i],hashes[i],
+      ['PROJECTION','PROCEDURE','REVIEW'][i]);
+    if(generation!==selectionGeneration||labelGeneration!==semanticTextGeneration||
+       label!==$('trigger-label').value||dfd!==state.dfd||
+       procedure!==state.procedure||review!==state.review)
+       throw Error('DFD_SELECTION_OR_SOURCE_CHANGED');
+    const binding={schema:BINDING_SCHEMA,id:'trigger-label-'+selected[1],
+      origin:'studio',intent:'起動契機の業務上の説明文だけを変更する',
+      procedureSHA256:state.procedureHash,reviewSHA256:state.reviewHash,
+      projectionSHA256:state.dfdHash,
+      selection:{kind:'trigger',id:selected[1]},
+      operation:{kind:'replace-trigger-label',trigger:selected[1],label}};
+    const packet=previewSelectedDFDEdit(dfd,procedure,review,binding);
+    if(packet.readyForAcceptance!==false||packet.sharedAcceptanceCandidate!==null||
+       packet.sourceWrites.length!==0)throw Error('DFD_UNEXPECTED_ACCEPTANCE_AUTHORITY');
+    state.semanticPreview=packet;
+    $('semantic-pending').textContent=JSON.stringify({
+      selected:packet.selected,change:packet.change,
+      reviewAuthority:packet.authority,readyForAcceptance:packet.readyForAcceptance,
+      sourceWrites:packet.sourceWrites,inputFingerprints:packet.inputFingerprints
+    },null,2);
+    $('semantic-preview').hidden=false;
+    $('semantic-export').disabled=false;
+    status('未受理の変更候補を確認できます。正本は変更していません。');
+  }catch(err){
+    invalidateSemanticPreview();
+    status('未受理の変更候補を拒否しました: '+err.message,true);
+  }
+});
+$('semantic-export').addEventListener('click',()=>{
+  if(!state.semanticPreview)return;
+  const bytes=JSON.stringify(state.semanticPreview,null,2)+'\n';
+  const url=URL.createObjectURL(new Blob([bytes],{type:'application/json'}));
+  const anchor=document.createElement('a');
+  anchor.href=url;anchor.download='business-dfd-unaccepted-review.json';anchor.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 });

@@ -140,6 +140,112 @@
         "optional": true
       },
       {
+        "op": "assert-unique-by",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "keys": [
+          {
+            "op": "join-strings",
+            "values": [
+              {
+                "op": "select-field",
+                "from": {
+                  "op": "input",
+                  "name": "capability"
+                },
+                "field": "kind"
+              },
+              {
+                "op": "select-field",
+                "from": {
+                  "op": "input",
+                  "name": "capability"
+                },
+                "field": "id"
+              }
+            ],
+            "separator": "\u0000"
+          }
+        ],
+        "optional": true
+      },
+      {
+        "op": "assert-unique-by",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "externalRequirements",
+          "optional": true
+        },
+        "item": "externalRequirement",
+        "keys": [
+          {
+            "op": "join-strings",
+            "values": [
+              {
+                "op": "assert-enum",
+                "actual": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "externalRequirement"
+                  },
+                  "field": "scope"
+                },
+                "allowed": [
+                  "editor",
+                  "build",
+                  "test",
+                  "runtime",
+                  "migration"
+                ]
+              },
+              {
+                "op": "assert-enum",
+                "actual": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "externalRequirement"
+                  },
+                  "field": "kind"
+                },
+                "allowed": [
+                  "toolchain",
+                  "runtime",
+                  "language-package",
+                  "tool"
+                ]
+              },
+              {
+                "op": "assert-nonblank",
+                "from": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "externalRequirement"
+                  },
+                  "field": "name"
+                }
+              }
+            ],
+            "separator": "\u0000"
+          }
+        ],
+        "optional": true
+      },
+      {
         "op": "assert-equal",
         "actual": {
           "op": "select-field",
