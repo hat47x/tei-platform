@@ -26,13 +26,13 @@ type Field struct {
 }
 
 type Candidate struct {
-	DerivedID   string                  `json:"derivedId"`
-	Kind        application.PatternKind `json:"kind"`
-	Intent      string                  `json:"intent"`
-	Data        core.CanonicalID        `json:"data"`
-	Fields      []Field                 `json:"fields"`
-	Executable  bool                    `json:"executable"`
-	Missing     []string                `json:"missing"`
+	DerivedID  string                  `json:"derivedId"`
+	Kind       application.PatternKind `json:"kind"`
+	Intent     string                  `json:"intent"`
+	Data       core.CanonicalID        `json:"data"`
+	Fields     []Field                 `json:"fields"`
+	Executable bool                    `json:"executable"`
+	Missing    []string                `json:"missing"`
 }
 
 type Report struct {
@@ -123,7 +123,7 @@ func Project(w ir.World, applicationID core.CanonicalID) (Report, error) {
 				}
 			}
 			report.Candidates = append(report.Candidates, Candidate{
-				DerivedID: secondaryID,
+				DerivedID:  secondaryID,
 				Kind:       intent.kind,
 				Intent:     intent.name,
 				Data:       d.ID,
