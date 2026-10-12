@@ -142,7 +142,7 @@ func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 
 func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		majors [2]int
 	}{
 		{name: "same major", majors: [2]int{1, 1}},
