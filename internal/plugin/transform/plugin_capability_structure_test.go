@@ -2,6 +2,7 @@ package transform_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -97,7 +98,7 @@ func TestAssertEachValidatesMembersWithoutChangingSource(t *testing.T) {
 		Op: transform.OpAssertEach,
 		From: &arr,
 		Item: "dependency",
-		Body: &transform.Expr{Op: transform.OpAssertEnum, Actual: &item, Allowed: [][]byte{[]byte("\"a\""), []byte("\"b\"")}},
+		Body: &transform.Expr{Op: transform.OpAssertEnum, Actual: &item, Allowed: []json.RawMessage{json.RawMessage("\"a\""), json.RawMessage("\"b\"")}},
 	}}
 	source.Program.Output = arr
 	for _, tc := range []struct {
