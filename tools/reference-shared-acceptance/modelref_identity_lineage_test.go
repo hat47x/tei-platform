@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"tei/internal/index"
@@ -110,6 +111,15 @@ func TestIssue1120AIProposalIdentityAcrossSharedAcceptance(t *testing.T) {
 	}
 	if !hasNode(second.Graph, added) {
 		t.Fatalf("accepted validation did not materialize: %+v", added)
+	}
+	// The new validation is written in a different Source file; neither
+	// the identity nor the Source anchor of the existing Data may move.
+	stableSubject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order_line"}
+	beforeAnchors := before.index.ReferencesFor(stableSubject)
+	afterAnchors := after.index.ReferencesFor(stableSubject)
+	if len(beforeAnchors) == 0 || !reflect.DeepEqual(beforeAnchors, afterAnchors) {
+		t.Fatalf("unchanged Data source anchors drifted: before=%+v after=%+v",
+			beforeAnchors, afterAnchors)
 	}
 	impact := modelref.ReviewImpactDiff(first.Graph, second.Graph, second.Rules)
 	if !impact.GraphValid {
