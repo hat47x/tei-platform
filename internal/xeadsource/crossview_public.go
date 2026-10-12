@@ -68,6 +68,65 @@ func validateCrossViewPublication(p CrossViewProjection) error {
 			}
 		}
 	}
+	if err := validateCrossViewDerivedLineage(p); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateCrossViewDerivedLineage ensures every published potential path has
+// its complete source-backed action/function and function/table evidence.
+// Recomputing the projection fingerprint alone cannot establish this link.
+func validateCrossViewDerivedLineage(p CrossViewProjection) error {
+	actions := make(map[string]CrossViewActionObservation, len(p.Actions))
+	for _, action := range p.Actions {
+		if _, duplicate := actions[action.ActionToken]; duplicate {
+			return fmt.Errorf("cross-view publication has duplicate action observations")
+		}
+		actions[action.ActionToken] = action
+	}
+	tablesByFunction := map[string][]CrossViewEdge{}
+	for _, edge := range p.SourceEdges {
+		switch edge.Kind {
+		case "task-action":
+			action, exists := actions[edge.ToToken]
+			if !exists || action.TaskToken != edge.FromToken {
+				return fmt.Errorf("cross-view publication has a task/action relation without a matching observation")
+			}
+		case "action-function-use":
+			if _, exists := actions[edge.FromToken]; !exists {
+				return fmt.Errorf("cross-view publication has a function use without an observed action")
+			}
+		case "function-table-operation":
+			tablesByFunction[edge.FromToken] = append(tablesByFunction[edge.FromToken], edge)
+		}
+	}
+	actual := make(map[string]int, len(p.DerivedEdges))
+	for _, edge := range p.DerivedEdges {
+		actual[crossViewEdgeKey(edge)]++
+	}
+	for _, pair := range actionFunctionPairs(p.SourceEdges) {
+		for _, tableEdge := range tablesByFunction[pair.functionToken] {
+			expected := CrossViewEdge{
+				Kind:         "action-function-table-potential-operation",
+				Nature:       CrossViewNatureDerived,
+				FromToken:    pair.actionToken,
+				ToToken:      tableEdge.ToToken,
+				Operations:   tableEdge.Operations,
+				SourceTokens: normalizedTokens(append(pair.sourceTokens, tableEdge.SourceTokens...)...),
+			}
+			key := crossViewEdgeKey(expected)
+			if actual[key] == 0 {
+				return fmt.Errorf("cross-view publication is missing a source-supported potential path")
+			}
+			actual[key]--
+		}
+	}
+	for _, count := range actual {
+		if count != 0 {
+			return fmt.Errorf("cross-view publication contains a potential path without complete source evidence")
+		}
+	}
 	return nil
 }
 
