@@ -149,6 +149,27 @@ func Inspect(w World, f Facts) Report {
 			add("AMBIGUOUS_DATA_OWNER", "unresolved", id, "", "multiple owner declarations are not silently collapsed, even if they agree")
 		}
 	}
+	// A Pattern has one candidate execution Subsystem in this v1 contract.
+	// Conflicting claims make the writer identity unresolved; treating one
+	// claim as a confirmed foreign writer would manufacture a CUD finding.
+	patternSubsystems := map[string]map[string]bool{}
+	for _, op := range f.FunctionIO {
+		if op.Pattern == "" || op.Subsystem == "" || op.Data == "" || op.Source == "" {
+			continue
+		}
+		if op.Operation != "C" && op.Operation != "R" && op.Operation != "U" && op.Operation != "D" {
+			continue
+		}
+		if patternSubsystems[op.Pattern] == nil {
+			patternSubsystems[op.Pattern] = map[string]bool{}
+		}
+		patternSubsystems[op.Pattern][op.Subsystem] = true
+	}
+	for pattern, subsystems := range patternSubsystems {
+		if len(subsystems) > 1 {
+			add("IO_PATTERN_SUBSYSTEM_CONFLICT", "unresolved", pattern, "", "candidate Function I/O assigns one Pattern to multiple Subsystems; writer identity and ownership findings cannot be inferred")
+		}
+	}
 	for _, op := range f.FunctionIO {
 		subject := op.Pattern + " -> " + op.Data
 		if op.Source == "" || op.Subsystem == "" || op.Pattern == "" || op.Data == "" {
@@ -169,6 +190,11 @@ func Inspect(w World, f Facts) Report {
 		}
 		// A missing or ambiguous writer is not evidence for a CUD violation.
 		if !patternResolved || !dataResolved {
+			continue
+		}
+		// Contradictory candidate Subsystem claims do not establish an actor.
+		// Diagnose the conflict once per Pattern, not once per declared effect.
+		if len(patternSubsystems[op.Pattern]) > 1 {
 			continue
 		}
 		matches := owners[op.Data]
