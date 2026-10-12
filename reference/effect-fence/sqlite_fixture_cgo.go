@@ -331,6 +331,12 @@ func (f *sqliteFixture) Lookup(s Scope, opID string) (Receipt, bool) {
 	if err != nil || !ok || row[0] != "1" {
 		return Receipt{}, false
 	}
+	if f.requireEpochs {
+		_, active, err := f.readAuthorityDependencies(s)
+		if err != nil || !active {
+			return Receipt{}, false
+		}
+	}
 	row, ok, err = f.query("SELECT request,application,resource,version FROM committed WHERE operation=" + textSQL(opID))
 	if err != nil || !ok {
 		return Receipt{}, false
