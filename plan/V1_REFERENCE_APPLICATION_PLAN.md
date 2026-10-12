@@ -237,7 +237,7 @@ Ready判定に必要な次の条件は、すべて満たしています。
 
 ## Gate B → Gate C Handover Baseline
 
-関連: `GATE_B_TO_C_HANDOVER_CONTRACT.md` / `ISSUE-000030` / #291
+関連：`GATE_B_TO_C_HANDOVER_CONTRACT.md`／`ISSUE-000030`／#291
 
 判定段階BのReadyを受け、候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`を引継ぎ基準版`B`として固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)にあります。
 
@@ -295,15 +295,15 @@ Gate C Evidence
 
 ### 対象Scenario
 
-- browse
-- record open
-- reference lookup
-- 見出し・明細の処理 read
-- 見出し・明細の処理 edit（baselineにwrite意味がある場合）
-- 検証規則の評価 satisfied / not satisfied
+- 一覧表示
+- 記録を開く操作
+- 参照先の検索
+- 見出し・明細の読取り
+- 見出し・明細の編集（基準版に書込みの意味がある場合）
+- 検証規則が満たされる場合と満たされない場合
 - 認可で許可される場合と拒否される場合
-- command
-- Business Result
+- 命令の実行
+- 業務上の結果
 - 実行時エラー
 - 観測
 - 標準の派生表示
@@ -311,16 +311,16 @@ Gate C Evidence
 
 ### 観測する差
 
-1. Application meaning
-2. Target-neutral Presentation候補
-3. Target Capability候補
-4. Runtime Binding差
-5. execution artifact / ABI / Host差（観測可能な範囲）
-6. Execution / Trust差
-7. Web固有実装
-8. Host control plane差
-9. Canonicalへ持ち上げてはいけない差
-10. unresolved
+1. アプリケーション上の意味
+2. 実行先に依存しない表示の候補
+3. 実行先の能力の候補
+4. 実行時の対応付けの違い
+5. 実行成果物・ABI・ホストの違い（観測可能な範囲）
+6. 実行と信頼の違い
+7. ウェブ固有の実装
+8. ホストの制御機構の違い
+9. 正本へ取り込んではいけない違い
+10. 未解決事項
 
 ## Gate C — 第一Targetの境界をEvidenceで説明できる
 
@@ -405,7 +405,7 @@ AIによる提案には、意味の正本を変更する権限はありません
 - 古い版に基づく競合
 - 共有の受理手続き
 - 受理済みソースの再読込み
-- 検証規則の評価 / Conformance
+- 検証と準拠確認
 - 自律的な作業と変更権限の分離
 
 AI支援の都合だけで、手作業で記述する安定IDの必須化や、パッチだけに限定する記述方式を導入しません。
@@ -459,7 +459,7 @@ StudioのWailsホストは、二つ目のアプリケーション実行先の検
 - 実行先の比較
 - 設計判断記録
 - 合格判定の監査
-- 未解決事項 Diagnostic
+- 未解決事項に関する診断
 
 検証成果物や引継ぎ記録を、正本の意味を定義する第二の正本にはしません。
 
@@ -495,9 +495,9 @@ StudioのWailsホストは、二つ目のアプリケーション実行先の検
 - 複数のデータベースを自然に利用できる
 - 独自のSQLや個別実装を正本として利用できる
 - 既存の認証仕様を保ったまま能力へ接続できる
-- アプリケーションパターンをDriver / Targetで共有できる
+- アプリケーションパターンをドライバーと実行先で共有できる
 - 画面がなくてもドライバーで主要シナリオを検証できる
-- 標準の派生表示 / Custom UIを同じ上位意味から利用できる
+- 標準の派生表示と個別実装の画面を同じ上位の意味から利用できる
 - 業務上の結果・実行時エラー・観測を分離できる
 - 意味・機能・表示の検証根拠を混同しない
 - 何が未保証なのかを監査記録と未解決事項から判断できる
