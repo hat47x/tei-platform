@@ -189,7 +189,7 @@ func TestCLIRechecksSavedProjectionAgainstSourceFiles(t *testing.T) {
 	contractFile := filepath.Join(dir, "contract.json")
 	projectionFile := filepath.Join(dir, "saved-local-output.json")
 	for file, value := range map[string][]byte{
-		inputFile: source,
+		inputFile:    source,
 		contractFile: contract,
 	} {
 		if err := os.WriteFile(file, value, 0o600); err != nil {
