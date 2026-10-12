@@ -132,6 +132,56 @@ func TestMissingReadAndNegativeControlsFail(t *testing.T) {
 		}
 	}
 }
+// N11 is an explicit *unobserved* read-control result. Reusing the
+// target-launch or workspace evidence does not establish that control.
+func TestN11ControlMustBeSeparateFromOtherWebEvidence(t *testing.T) {
+	cases := map[string]func(*Packet){
+		"blank control": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = "  "
+		},
+		"reused workspace revision": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.WorkspaceRevisionReceipt
+		},
+		"reused target launch": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.TargetLaunchReceipt
+		},
+		"reused positive response": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.PositiveReceipt
+		},
+		"reused negative response": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.NegativeReceipt
+		},
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			p.Claim = "E1"
+			mutate(&p)
+			r := Audit(p, h, m)
+			if !has(r, "N11_UNOBSERVED_CONTROL_MISSING") ||
+				r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("N11 was satisfied by unrelated evidence: %+v", r)
+			}
+		})
+	}
+}
+
+func TestEmptyWebReceiptsDoNotPassE1(t *testing.T) {
+	for name, change := range map[string]func(*Packet){
+		"blank positive": func(p *Packet) { p.Web.PositiveReceipt = "  " },
+		"blank negative": func(p *Packet) { p.Web.NegativeReceipt = "  " },
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			p.Claim = "E1"
+			change(&p)
+			if !has(Audit(p, h, m), "ACTUAL_WEB_POSITIVE_AND_NEGATIVE_RECEIPTS_REQUIRED") {
+				t.Fatal("blank Web receipt was accepted")
+			}
+		})
+	}
+}
+
 func TestHealthNotRunCannotQualify(t *testing.T) {
 	p := fixture()
 	p.Qualification.FullHealth = "NOT_RUN"
