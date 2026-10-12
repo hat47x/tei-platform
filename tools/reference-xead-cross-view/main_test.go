@@ -2,6 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -168,5 +171,71 @@ func TestCommandRejectsUnboundSavedProjection(t *testing.T) {
 				t.Fatalf("unverified source/projection was published: %+v", output)
 			}
 		})
+	}
+}
+
+
+func TestCLIRechecksSavedProjectionAgainstSourceFiles(t *testing.T) {
+	source := []byte(`<System FormatVersion="1.2">
+  <Table ID="secret-table-1"/>
+  <Function ID="secret-function-2"><IOTable ID="secret-io-3" TableID="secret-table-1" OpR="+"/></Function>
+  <Task ID="secret-task-4"><TaskAction ID="secret-action-5">
+    <TaskFunctionIO FunctionID="secret-function-2" IOID="0"/>
+  </TaskAction></Task>
+</System>`)
+	contract := commandContractFixture()
+	dir := t.TempDir()
+	inputFile := filepath.Join(dir, "source.xead")
+	contractFile := filepath.Join(dir, "contract.json")
+	projectionFile := filepath.Join(dir, "saved-local-output.json")
+	for file, value := range map[string][]byte{
+		inputFile: source,
+		contractFile: contract,
+	} {
+		if err := os.WriteFile(file, value, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Compile and invoke the real CLI instead of only exercising its Go
+	// helper, so that the saved-output flag and public redaction are tested.
+	binary := filepath.Join(dir, "reference-xead-cross-view")
+	build := exec.Command("go", "build", "-o", binary, ".")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build reference CLI: %v\n%s", err, output)
+	}
+	save := exec.Command(binary, "-input", inputFile, "-contract", contractFile, "-local-projection")
+	saved, err := save.CombinedOutput()
+	if err != nil {
+		t.Fatalf("save local projection: %v\n%s", err, saved)
+	}
+	if err := os.WriteFile(projectionFile, saved, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	verify := func() ([]byte, error) {
+		return exec.Command(binary, "-input", inputFile, "-contract", contractFile,
+			"-verify-projection", projectionFile).CombinedOutput()
+	}
+	verified, err := verify()
+	if err != nil {
+		t.Fatalf("verify saved result: %v\n%s", err, verified)
+	}
+	var output commandOutput
+	if err := json.Unmarshal(verified, &output); err != nil {
+		t.Fatal(err)
+	}
+	if output.LocalProjection != nil || output.Accounting.TaskActionCount != 1 {
+		t.Fatalf("wrong public result: %+v", output)
+	}
+	for _, secret := range []string{"secret-table-1", "secret-function-2", "secret-action-5", "sourceTokens"} {
+		if strings.Contains(string(verified), secret) {
+			t.Fatalf("private source identifier leaked: %q", secret)
+		}
+	}
+
+	if err := os.WriteFile(inputFile, append(source, ' '), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if bad, err := verify(); err == nil {
+		t.Fatalf("stale saved projection survived XML byte change: %s", bad)
 	}
 }
