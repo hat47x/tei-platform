@@ -402,3 +402,147 @@ test('switching a selected Step or its Role invalidates the previous candidate',
   assert.equal($('semantic-preview').hidden,true);
   assert.equal($('semantic-export').disabled,true);
 });
+
+function chooseStepAction(action){
+  $('step-action').value=action;
+  $('step-action').listeners.change();
+}
+test('browser proposes a branch and exception from a selected business Step without execution authority',async()=>{
+  const originals=JSON.stringify({procedure:approvalProcedure,review:approvalReview});
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectStep('APP-10');
+  chooseStepAction('add-control-transition');
+  assert.equal($('step-role').disabled,true);
+  assert.equal($('step-transition-to').disabled,false);
+  $('step-transition-to').value='APP-30';
+  $('step-transition-to').listeners.change();
+  $('step-transition-kind').value='branch';
+  $('step-transition-kind').listeners.change();
+  $('step-transition-condition').value='手作業で内容を再確認する';
+  $('step-transition-condition').listeners.input();
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/未受理の変更候補を確認/);
+  let candidate=JSON.parse($('semantic-pending').textContent);
+  assert.equal(candidate.change.kind,'control-transition');
+  assert.deepEqual(candidate.proposedBusinessOperation,{
+    kind:'add-control-transition',from:'APP-10',to:'APP-30',
+    transitionKind:'branch',condition:'手作業で内容を再確認する'
+  });
+  assert.equal(candidate.reviewAuthority,'unaccepted-proposal-only');
+  assert.equal(candidate.readyForAcceptance,false);
+  assert.deepEqual(candidate.sourceWrites,[]);
+  assert.equal($('semantic-export').disabled,false);
+  $('step-transition-kind').value='exception';
+  $('step-transition-kind').listeners.change();
+  assert.equal($('semantic-export').disabled,true);
+  $('step-transition-condition').value='仕入先の回答が得られなかった場合';
+  $('step-transition-condition').listeners.input();
+  await $('semantic-propose').listeners.click();
+  candidate=JSON.parse($('semantic-pending').textContent);
+  assert.equal(candidate.proposedBusinessOperation.transitionKind,'exception');
+  assert.equal(candidate.readyForAcceptance,false);
+  assert.equal(JSON.stringify({procedure:approvalProcedure,review:approvalReview}),originals);
+});
+
+test('sequence has no condition, and a duplicate branch is refused',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectStep('APP-10');
+  chooseStepAction('add-control-transition');
+  $('step-transition-to').value='APP-30';
+  $('step-transition-to').listeners.change();
+  $('step-transition-kind').value='sequence';
+  $('step-transition-kind').listeners.change();
+  assert.equal($('step-transition-condition').disabled,true);
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  assert.equal(Object.hasOwn(JSON.parse($('semantic-pending').textContent)
+    .proposedBusinessOperation,'condition'),false);
+  selectStep('APP-20');
+  chooseStepAction('add-control-transition');
+  $('step-transition-to').value='APP-40';
+  $('step-transition-to').listeners.change();
+  $('step-transition-kind').value='branch';
+  $('step-transition-kind').listeners.change();
+  $('step-transition-condition').value='business approver accepts order (hypothesis)';
+  $('step-transition-condition').listeners.input();
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/DUPLICATE_CONTROL_FLOW/);
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+});
+
+test('Step to external party and conceptual Store are information-only proposals',async()=>{
+  const originals=JSON.stringify({procedure:approvalProcedure,review:approvalReview});
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectStep('APP-10');
+  chooseStepAction('add-information-flow');
+  assert.equal($('step-info-id').disabled,false);
+  assert.equal($('step-info-to-kind').value,'party');
+  $('step-info-id').value='INFO-NEW-1';
+  $('step-info-id').listeners.input();
+  $('step-info-to-id').value='customer';
+  $('step-info-to-id').listeners.change();
+  $('step-info-payload').value='配送希望日の照会';
+  $('step-info-payload').listeners.input();
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/未受理の変更候補を確認/);
+  let proposal=JSON.parse($('semantic-pending').textContent);
+  assert.equal(proposal.change.kind,'information-flow');
+  assert.deepEqual(proposal.proposedBusinessOperation,{
+    kind:'add-information-flow',id:'INFO-NEW-1',
+    from:{kind:'step',id:'APP-10'},to:{kind:'party',id:'customer'},
+    payload:'配送希望日の照会'
+  });
+  assert.equal(proposal.readyForAcceptance,false);
+  assert.deepEqual(proposal.sourceWrites,[]);
+  $('step-info-to-kind').value='store';
+  $('step-info-to-kind').listeners.change();
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('step-info-to-id').value,'orders');
+  $('step-info-id').value='INFO-NEW-2';
+  $('step-info-id').listeners.input();
+  $('step-info-payload').value='注文情報の確認要求';
+  $('step-info-payload').listeners.input();
+  await $('semantic-propose').listeners.click();
+  proposal=JSON.parse($('semantic-pending').textContent);
+  assert.deepEqual(proposal.proposedBusinessOperation.to,{kind:'store',id:'orders'});
+  assert.equal(proposal.readyForAcceptance,false);
+  assert.equal(JSON.stringify({procedure:approvalProcedure,review:approvalReview}),originals);
+  assert.equal($('semantic-export').disabled,false);
+});
+
+test('information ID duplication, invalid endpoint and Step re-selection discard proposals',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectStep('APP-10');
+  chooseStepAction('add-information-flow');
+  $('step-info-id').value='INFO-ORDER';
+  $('step-info-id').listeners.input();
+  $('step-info-payload').value='検討中の授受';
+  $('step-info-payload').listeners.input();
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/DUPLICATE_INFORMATION_FLOW/);
+  assert.equal($('semantic-export').disabled,true);
+  $('step-info-id').value='INFO-NEW-3';
+  $('step-info-id').listeners.input();
+  $('step-info-to-id').value='unknown-party';
+  $('step-info-to-id').listeners.change();
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/INVALID_INFORMATION_ENDPOINT/);
+  assert.equal($('semantic-preview').hidden,true);
+  $('step-info-to-id').value='customer';
+  $('step-info-to-id').listeners.change();
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  selectStep('APP-20');
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('step-action').value,'assign-business-role');
+});
