@@ -50,7 +50,6 @@ type transformBootstrapEvidence struct {
 	RuntimeEngineSourceDigest       string                              `json:"runtimeEngineSourceDigest"`
 	RuntimeEngine                   pruntime.RuntimeEngineIdentity      `json:"runtimeEngine"`
 	RuntimeEngineFingerprint        string                              `json:"runtimeEngineFingerprint"`
-	ExactRuntimeEngineBuildFingerprint string `json:"exactRuntimeEngineBuildFingerprint,omitempty"`
 	SeedBuilderFirstDigest          string                              `json:"seedBuilderFirstDigest"`
 	SeedBuilderSecondDigest         string                              `json:"seedBuilderSecondDigest"`
 	SeedBuilderReproducible         bool                                `json:"seedBuilderReproducible"`
@@ -71,6 +70,8 @@ type transformBootstrapEvidence struct {
 	PackageOracleDigest             string                              `json:"packageOracleDigest"`
 	PackageLockedBuild              plugin.LockedBuild                  `json:"packageLockedBuild"`
 	PackageLockFingerprint          string                              `json:"packageLockFingerprint"`
+
+	ExactRuntimeEngineBuildFingerprint string `json:"exactRuntimeEngineBuildFingerprint,omitempty"`
 }
 
 func runTransformBootstrap(
@@ -491,7 +492,6 @@ func runTransformBootstrap(
 		RuntimeEngineSourceDigest:       engineSourceDigest,
 		RuntimeEngine:                   engine,
 		RuntimeEngineFingerprint:        engineFingerprint,
-		ExactRuntimeEngineBuildFingerprint: exactBuildFingerprint,
 		SeedBuilderFirstDigest:          seedFirstDigest,
 		SeedBuilderSecondDigest:         seedSecondDigest,
 		SeedBuilderReproducible:         true,
@@ -512,6 +512,8 @@ func runTransformBootstrap(
 		PackageOracleDigest:             oracleDigest,
 		PackageLockedBuild:              lockedBuild,
 		PackageLockFingerprint:          lockFingerprint,
+
+		ExactRuntimeEngineBuildFingerprint: exactBuildFingerprint,
 	}, nil
 }
 
