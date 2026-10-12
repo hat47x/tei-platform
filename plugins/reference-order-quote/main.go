@@ -38,6 +38,7 @@ type carrierRequest struct {
 	CapabilityKind        string          `json:"capabilityKind"`
 	CapabilityID          string          `json:"capabilityId"`
 	DescriptorFingerprint string          `json:"descriptorFingerprint"`
+	PluginLockFingerprint string          `json:"pluginLockFingerprint"`
 	Operation             string          `json:"operation"`
 	Payload               json.RawMessage `json:"payload"`
 }
