@@ -292,6 +292,15 @@ async function main() {
   // turning presentation order into a false semantic mismatch.
   assert.deepEqual([...manifest.validations].sort(), [...app.validations].sort(),
     "running Web manifest did not project the accepted R1 validation selection");
+  assert.deepEqual([...(manifest.semanticUses ?? [])].sort(),
+    [...(app.semanticUses ?? [])].sort(),
+    "running Web manifest did not project the accepted R1 Semantic uses");
+  // Check Canonical Pattern identity and kind, not merely a passing command
+  // response. The Web projection may add target-local presentation details.
+  const patternsByID = patterns => patterns.map(({ id, kind }) => ({ id, kind }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  assert.deepEqual(patternsByID(manifest.patterns), patternsByID(app.patterns),
+    "running Web manifest lost or changed an accepted R1 function Pattern");
   const loadedMeaning = manifestSemantics(manifest);
   const loadedMeaningSHA256 = sha256(JSON.stringify(loadedMeaning));
 
