@@ -89,6 +89,7 @@ type fakeFailure struct {
 	FailureClass      string
 	ExitCode          *int
 	Signal            string
+	// Untrusted raw diagnostic hint: never inline this value in public Evidence.
 	DiagnosticSummary string
 	Stdout            []byte
 	Stderr            []byte
@@ -264,7 +265,7 @@ func newFailedAttempt(
 		FailureClass:         failure.FailureClass,
 		ExitCode:             failure.ExitCode,
 		Signal:               failure.Signal,
-		DiagnosticSummary:    failure.DiagnosticSummary,
+		DiagnosticSummary:    "build failed during " + failure.Phase + ": " + failure.FailureClass,
 		Stdout:               stdoutEvidence,
 		Stderr:               stderrEvidence,
 		AuthorityLimits:      append([]string(nil), attemptAuthorityLimits...),
@@ -314,17 +315,24 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 	if e.Outcome != attemptOutcomeFailed {
 		return fmt.Errorf("Build Attempt Evidence outcome must be failed")
 	}
-	if strings.TrimSpace(e.FailureClass) == "" {
-		return fmt.Errorf("Build Attempt Evidence failure class is required")
+	if !validFailureClass(e.FailureClass) {
+		return fmt.Errorf("Build Attempt Evidence failure class must be a bounded safe code")
 	}
-	if e.ExitCode == nil && strings.TrimSpace(e.Signal) == "" {
+	signal := strings.TrimSpace(e.Signal)
+	if e.ExitCode == nil && signal == "" {
 		return fmt.Errorf("Build Attempt Evidence requires exit code or signal")
 	}
-	if e.ExitCode != nil && *e.ExitCode < 0 {
-		return fmt.Errorf("Build Attempt Evidence exit code must not be negative")
-	}
-	if e.ExitCode != nil && *e.ExitCode == 0 && strings.TrimSpace(e.Signal) == "" {
-		return fmt.Errorf("failed Build Attempt Evidence cannot have a successful exit status")
+	if e.ExitCode != nil {
+		switch {
+		case *e.ExitCode == 0:
+			return fmt.Errorf("failed Build Attempt Evidence cannot have a successful exit status")
+		case *e.ExitCode < -1:
+			return fmt.Errorf("Build Attempt Evidence has an invalid exit code")
+		case *e.ExitCode == -1 && signal == "":
+			return fmt.Errorf("signalled exit code requires a signal")
+		case *e.ExitCode > 0 && signal != "":
+			return fmt.Errorf("exit status and signal cannot both describe termination")
+		}
 	}
 	if strings.TrimSpace(e.DiagnosticSummary) == "" {
 		return fmt.Errorf("Build Attempt Evidence diagnostic summary is required")
@@ -573,6 +581,22 @@ func validAttemptPhase(phase string) bool {
 	default:
 		return false
 	}
+}
+
+// Failure classes are machine-readable labels, not raw compiler messages.
+// This prevents an arbitrary path or credential from being inserted into the
+// public diagnostic summary. The raw stdout/stderr remain restricted.
+func validFailureClass(value string) bool {
+	if len(value) == 0 || len(value) > 64 {
+		return false
+	}
+	for i, c := range value {
+		if (c >= 'a' && c <= 'z') || (i > 0 && c >= '0' && c <= '9') || (i > 0 && c == '-') {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func sameBuilderIdentity(left, right plugin.BuilderIdentity) bool {
