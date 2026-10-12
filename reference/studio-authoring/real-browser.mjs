@@ -140,7 +140,7 @@ try {
     const tamperedOutput = JSON.parse(await page.locator("#proposal-json").inputValue());
     assert.equal(tamperedOutput.expectedModelRevision, baseline);
     const tamperedPath = join(temporary, scenario.name + "-tampered.json");
-    writeFileSync(tamperedPath, JSON.stringify(tamperedOutput) + "\\n", { mode: 0o600 });
+    writeFileSync(tamperedPath, JSON.stringify(tamperedOutput) + "\n", { mode: 0o600 });
     const rejected = spawnSync(process.execPath, [
       cli, "propose", "-workspace", workspace, "-edit-file", tamperedPath
     ], {
