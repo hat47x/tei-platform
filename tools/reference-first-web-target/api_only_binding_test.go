@@ -11,16 +11,16 @@ import (
 
 func TestAPIBoundCommandChecksSameRequestBeforeRunner(t *testing.T) {
 	server := &webTargetServer{projection: webTargetProjection{
-		ApplicationID: "order_entry",
-		HandoverBaselineID: "B",
+		ApplicationID:              "order_entry",
+		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: strings.Repeat("a", 40),
-		TargetBuildRevision: strings.Repeat("b", 40),
+		TargetBuildRevision:        strings.Repeat("b", 40),
 	}}
 	goodHeaders := map[string]string{
 		apiBoundApplicationHeader: "order_entry",
-		apiBoundBaselineHeader: "B",
-		apiBoundRevisionHeader: strings.Repeat("a", 40),
-		apiBoundTargetHeader: strings.Repeat("b", 40),
+		apiBoundBaselineHeader:    "B",
+		apiBoundRevisionHeader:    strings.Repeat("a", 40),
+		apiBoundTargetHeader:      strings.Repeat("b", 40),
 	}
 	call := func(path, method string, headers map[string]string, extra func(*http.Request)) int {
 		t.Helper()
