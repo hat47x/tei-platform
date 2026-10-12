@@ -375,3 +375,31 @@ func BenchmarkHandoffRepeatedExactReferences(b *testing.B) {
 		}
 	}
 }
+
+func TestHandoffAllocationIsBoundedForRepeatedReferences(t *testing.T) {
+	set, _ := proposal(t)
+	target := set.Findings[0].VerificationTargets[0]
+	one := []EvidenceReference{ref(target)}
+	many := make([]EvidenceReference, 12000)
+	for i := range many {
+		many[i] = one[0]
+	}
+	var result HandoffReport
+	singleAllocs := testing.AllocsPerRun(10, func() {
+		result = Reconcile(set, one)
+	})
+	if result.Blocked || result.Subjects[0].State != ReferenceLinked {
+		t.Fatalf("invalid single-reference baseline: %+v", result)
+	}
+	manyAllocs := testing.AllocsPerRun(10, func() {
+		result = Reconcile(set, many)
+	})
+	if result.Blocked || result.Subjects[0].State != ReferenceAmbiguous {
+		t.Fatalf("repeated references not rejected: %+v", result)
+	}
+	// Counting a repeated reference is constant-space; retaining the full
+	// reference slice would instead allocate repeatedly as it grows.
+	if manyAllocs > singleAllocs+8 {
+		t.Fatalf("allocations grew with duplicate references: single=%g repeated=%g", singleAllocs, manyAllocs)
+	}
+}
