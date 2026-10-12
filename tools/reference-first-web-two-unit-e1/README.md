@@ -200,3 +200,16 @@ JSON Browser Hostは既存の`measurement.json`を、`browser/`の親にある�
 起動後は検査したHTML/JSのバイト列をすでにメモリへ保持しており、配置元ファイルが別内容へ変更されても、**配信するBrowserの内容は静止したまま**。これはBrowser Hostの誤った静的資産配信を防ぐ局所的な対策で、稼働中API実行ファイルの真正性を独自に検査するわけではない。固定World版APIの全成果物・Source lineage・Go buildinfoの再照合は前述の`verify_frozen_unit_pair.py`の責務を維持する。
 
 測定JSON自体を攻撃者が書き換え、資産とdigestをまとめて一致させる攻撃、署名済み発行者・Builderの権限、実配備先Hostの承認はこの検査では**未証明**である。`measurement.json`を新しいLockやAuthorityには昇格させない。既存`browser-host-binding.test.mjs`には改ざんHTML/JS、偽サイズ/ハッシュ、別ルート測定値、symlink、起動後の変更に関する負例を追加した。
+
+
+### B/R/Tとは：業務モデルの引き渡し基準とTargetビルドの改訂を分離する識別
+
+**B = Handover Baseline（引き渡し基準）**：実装対象として受け渡す業務モデルの基準。**R = Baseline Repository Revision（基準リポジトリ改訂）**：その基準の内容を参照するリポジトリの具体的な改訂。**T = Target Build Revision（Targetビルド改訂）**：そのモデルを使ってWeb/APIなどの特定Target成果物を構築したソースの改訂。BとRの組が同じでも、WebのT1とDesktopのT2などTargetごとのビルド改訂が異なる場合がある。これは業務意味と実装・配備ライフサイクルを混同しないための区別であり、B/R/Tが一致しただけで配備許可や成果物の署名済み真正性は成立しない。
+
+### 固定Worldに含まれる実際の業務意味を派生World証跡と再照合
+
+`measurement.json`と`source-lineage.json`が同じ`derivedWorldSHA256`を示すだけでは、`api/frozen-world.json`の**中身の`world`**が実際にその意味と一致する証明にならない。たとえば業務モデルを変更して`frozenWorldSHA256`とファイルサイズ、関連測定値をすべて計算し直しても、元のSourceが受理した業務モデルの意味と乖離し得る。
+
+既存`verify_frozen_unit_pair.py`の公開前・公開後preflightは、`tools/reference-first-web-frozen-world-verify`で、**実際の固定World payload**を既存の`ir.World`にデコードし、Shared Acceptance/ビルド側と同じGo `encoding/json.MarshalIndent`（インデント2スペース、改行終端、既定のHTML escaping）で再シリアライズする。その結果のSHA-256を、既存Decision lineageが示す`derivedWorldSHA256`と直接照合する。未知項目や型不一致、意味データの脱落を拒否する。このGoコマンドはParserやWorkspaceを読み込んで業務モデルを再生成するわけではなく、新しいCanonical/Lock/Authorityを生成しない。
+
+**検査の限界**：既存のDecision Index自体の真正性と承認主体、Builder identity、署名された配備物、本番Hostの権限は別途確認が必要。Go typed IRの再シリアライズは、受理済みSourceと固定Worldの内容一致を局所的に検査するものであり、受理者の権限を立証しない。

@@ -56,7 +56,7 @@ class UnitPairPreflightTests(unittest.TestCase):
                 "handoverBaselineId": "B",
                 "baselineRepositoryRevision": BASELINE,
                 "targetBuildRevision": SOURCE,
-                "world": {"applications": []},
+                "world": {"applications": [], "databases": [], "environments": [], "queries": []},
             }).encode(),
         }
         for name, data in self.files.items():
@@ -121,7 +121,7 @@ class UnitPairPreflightTests(unittest.TestCase):
         (self.root / "source-lineage.json").write_text(json.dumps(self.lineage), encoding="utf-8")
 
     def check(self):
-        return preflight(self.root, build_info=INFO)
+        return preflight(self.root, build_info=INFO, world_digest=DERIVED)
 
     def test_exact_pair_passes_without_claiming_authority(self):
         result = self.check()
@@ -139,6 +139,37 @@ class UnitPairPreflightTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.check()
                 (self.root / name).write_bytes(original)
+
+    def test_recomputed_frozen_world_rejects_re_stamped_semantic_change(self):
+        # Establish the derived World baseline from the ORIGINAL frozen
+        # payload through the real Go IR serializer, not fixture literals.
+        from verify_frozen_unit_pair import observed_typed_world_digest
+        original = self.root / "api/frozen-world.json"
+        accepted = observed_typed_world_digest(original)
+        self.m["sourceWorldDerivedSHA256"] = accepted
+        self.lineage["derivedWorldSHA256"] = accepted
+        snapshot = json.loads(original.read_text())
+        # Both [] and null fit a typed Go slice but express different JSON
+        # world content. Restamp ALL frozen-file digests and sizes.
+        snapshot["world"]["applications"] = None
+        payload = json.dumps(snapshot).encode()
+        original.write_bytes(payload)
+        self.m["frozenWorldSHA256"] = digest(payload)
+        self.m["frozenWorldBytes"] = len(payload)
+        self.lineage["frozenWorldSHA256"] = digest(payload)
+        self.save()
+        with self.assertRaisesRegex(ValueError, "frozen payload versus accepted derived World"):
+            preflight(self.root, build_info=INFO)
+
+    def test_go_reserialization_matches_actual_frozen_world_fixture(self):
+        # Run the same tool as the staged publication, using a minimal
+        # correctly ordered JSON representation of the actual IR World.
+        from verify_frozen_unit_pair import observed_typed_world_digest
+        snapshot = json.loads((self.root / "api/frozen-world.json").read_text())
+        canonical = (json.dumps(snapshot["world"], indent=2, ensure_ascii=True) + "\n").encode()
+        expected = "sha256:" + digest(canonical)
+        observed = observed_typed_world_digest(self.root / "api/frozen-world.json")
+        self.assertEqual(observed, expected)
 
     def test_mixed_api_from_another_build_rejected(self):
         (self.root / "api/order-entry").write_bytes(b"other API built from different Source")

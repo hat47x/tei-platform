@@ -369,6 +369,12 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 			for _, r := range op.Data.Relations {
 				add("relation", r.ID)
 			}
+			for _, key := range op.Data.CandidateKeys {
+				add("candidate-key", key.ID)
+			}
+			for _, fd := range op.Data.FunctionalDependencies {
+				add("functional-dependency", fd.ID)
+			}
 		case opAddRelation:
 			add("relation", op.AddRelation.ID)
 		case opAddCandidateKey:

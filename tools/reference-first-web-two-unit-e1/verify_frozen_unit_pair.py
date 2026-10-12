@@ -79,7 +79,19 @@ def require_false(doc, name):
         raise ValueError("unverified authority was asserted: " + name)
 
 
-def preflight(root, build_info=None):
+def observed_typed_world_digest(world_path):
+    # The frozen bytes and Go typed-IR serialization are independent inputs:
+    # a re-stamped lineage must not hide altered business model content.
+    # This uses the EXISTING ir.World shape and encoding/json convention,
+    # never a Python approximation of Go source serialization.
+    result = subprocess.run(
+        ["go", "run", "./tools/reference-first-web-frozen-world-verify", str(world_path)],
+        check=True, capture_output=True, text=True,
+    )
+    return result.stdout.strip()
+
+
+def preflight(root, build_info=None, world_digest=None):
     root = Path(root).absolute()
     if root.is_symlink() or not root.is_dir():
         raise ValueError("artifact root must be a real directory")
@@ -130,6 +142,17 @@ def preflight(root, build_info=None):
                "current Source revision")
     must_equal(m["sourceWorldDerivedSHA256"], lineage.get("derivedWorldSHA256"),
                "derived World")
+    # Re-read the *actual embedded normalized model*, decode it with the
+    # existing Go ir.World type and reserialize it with the original generator
+    # convention. A re-stamped frozen SHA and lineage SHA alone are insufficient.
+    # The optional digest injection is for pure fixture tests only; the CLI,
+    # staged publication, and real-process CI always calculate it from bytes.
+    actual_derived = (world_digest if world_digest is not None
+                      else observed_typed_world_digest(root / "api/frozen-world.json"))
+    if not isinstance(actual_derived, str) or not SOURCE_SHA.fullmatch(actual_derived):
+        raise ValueError("invalid independently observed derived World SHA-256")
+    must_equal(actual_derived, m["sourceWorldDerivedSHA256"],
+               "frozen payload versus accepted derived World")
     must_equal(m.get("currentAcceptedDecisionMatched"),
                lineage.get("currentAcceptedDecisionMatched"), "Decision lineage")
     if type(m["currentAcceptedDecisionMatched"]) is not bool:

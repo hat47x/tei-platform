@@ -36,11 +36,32 @@ type ServiceCarrierBinding struct {
 	Operation   string                `json:"operation"`
 }
 
+// ServiceAcceptanceRecord is a read-only observation returned by the Host's
+// current Contract/Provider acceptance source. Its references are identifiers
+// into that existing authority, not self-signed trust or a new acceptance
+// registry. This minimal record does not require plugin authors to maintain a
+// full distribution manifest.
+type ServiceAcceptanceRecord struct {
+	Selection              ServiceProviderSelection `json:"selection"`
+	ContractAcceptanceRef  string                   `json:"contractAcceptanceRef"`
+	ProviderConformanceRef string                   `json:"providerConformanceRef"`
+	AuthorityRevision      string                   `json:"authorityRevision"`
+}
+
+// ServiceAcceptanceReader is supplied by the Host and must consult its
+// CURRENT trusted publication/Provider-conformance acceptance state on each
+// invocation, including revocation. It does not publish or accept Contracts,
+// re-resolve Providers, or grant runtime permissions.
+type ServiceAcceptanceReader interface {
+	ReadCurrentAcceptedService(context.Context, ServiceProviderSelection) (ServiceAcceptanceRecord, error)
+}
+
 // ServiceCarrierInvocation keeps semantic routing identity distinct from
 // existing Runtime provenance. Neither one certifies Contract publication,
 // shape validity or Provider conformance merely by being present.
 type ServiceCarrierInvocation struct {
 	Selection       ServiceProviderSelection `json:"selection"`
+	Acceptance      ServiceAcceptanceRecord  `json:"acceptance"`
 	Runtime         Invocation               `json:"runtime"`
 	AuthorityLimits []string                 `json:"authorityLimits"`
 }
@@ -129,6 +150,27 @@ func (r Registry) InvokeSelectedServiceCarrier(
 	if len(payload) == 0 || !json.Valid(payload) {
 		return ServiceCarrierInvocation{}, fmt.Errorf("service request must be a complete JSON payload")
 	}
+	if err := ctx.Err(); err != nil {
+		return ServiceCarrierInvocation{}, err
+	}
+	// A plan fingerprint and a selected Provider are not acceptance evidence.
+	// Consult the Host's existing acceptance Authority on EVERY invocation,
+	// before it can acquire any resource lease or launch a plugin process.
+	if r.ServiceAcceptance == nil {
+		return ServiceCarrierInvocation{}, fmt.Errorf("Host has no current Service acceptance source")
+	}
+	acceptance, err := r.ServiceAcceptance.ReadCurrentAcceptedService(ctx, selection)
+	if err != nil {
+		return ServiceCarrierInvocation{}, fmt.Errorf("current Service acceptance denied: %w", err)
+	}
+	if acceptance.Selection != selection {
+		return ServiceCarrierInvocation{}, fmt.Errorf("Host Service acceptance selection differs from selected Provider")
+	}
+	if strings.TrimSpace(acceptance.ContractAcceptanceRef) == "" ||
+		strings.TrimSpace(acceptance.ProviderConformanceRef) == "" ||
+		strings.TrimSpace(acceptance.AuthorityRevision) == "" {
+		return ServiceCarrierInvocation{}, fmt.Errorf("Host Service acceptance record is incomplete")
+	}
 	invocation, err := r.InvokeWithProvenance(
 		ctx, plan, binding.CarrierKind, binding.CarrierID,
 		binding.Operation, requestID, payload,
@@ -143,8 +185,9 @@ func (r Registry) InvokeSelectedServiceCarrier(
 		return ServiceCarrierInvocation{}, fmt.Errorf("service carrier Runtime provenance differs from Host binding")
 	}
 	return ServiceCarrierInvocation{
-		Selection: selection,
-		Runtime:   invocation,
+		Selection:  selection,
+		Acceptance: acceptance,
+		Runtime:    invocation,
 		AuthorityLimits: []string{
 			"service-binding-is-not-Contract-publication-authority",
 			"service-binding-is-not-Provider-conformance-evidence",

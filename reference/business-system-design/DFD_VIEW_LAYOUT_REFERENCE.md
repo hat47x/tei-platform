@@ -81,7 +81,7 @@ node --test reference/business-system-design/dfd-view-layout.test.mjs \
 python3 -m http.server 8765
 ```
 
-ブラウザーで `http://localhost:8765/reference/business-system-design/dfd-view-studio.html` を開きます。まず「DFD投影」から作成したJSONを選択します。必要に応じて、保存済みの配置ファイルも選択できます。要素をクリックすると、参照元の位置・Function・直接意味参照・条件付きHandoffを表示します。明示されたControl／起動契機／担当業務Role／Function参照／情報の授受だけを元に、図中の関連要素へのリンクを表示します。例えばFunctionからそれを明示参照するStepへ戻り、StepからFunctionやRoleへ辿れます。外部主体・概念Storeを選択した場合も、明示された情報授受の相手Stepと参照元位置を確認できます。StoreのSemantic Data IDは参照文字列を示すだけで、実DBや受理済みDataへの権限を示しません。古い投影で生成したリンクは投影差替え後に使えません。
+ブラウザーで `http://localhost:8765/reference/business-system-design/dfd-view-studio.html` を開きます。まず「DFD投影」から作成したJSONを選択します。必要に応じて、保存済みの配置ファイルも選択できます。要素をクリックすると、参照元の位置・Function・直接意味参照・条件付きHandoffを表示します。明示されたControl／起動契機／担当業務Role／Function参照／情報の授受だけを元に、図中の関連要素へのリンクを表示します。例えばFunctionからそれを明示参照するStepへ戻り、StepからFunctionやRoleへ辿れます。外部主体・概念Storeを選択した場合も、明示された情報授受の相手Stepと参照元位置を確認できます。StoreのSemantic Data IDは参照文字列を示すだけで、実DBや受理済みDataへの権限を示しません。Stepが直接宣言したData・Relation・Validation・Capability、Function経由で派生したData・Relation・Capability、Storeが明示参照したDataも、参照リンクで選択して出典・関係元へ戻れます。直接参照（`resolved-id-not-accepted`）とFunction経由（`derived-not-authority`）を混同せず、参照先選択中は業務Stepの変更候補を作れません。この参照先は図の配置・Canonicalの意味ノードではなく、既存投影の識別子照合候補です。Source IndexやWorldの同一revision、受理済みであることを証明しません。古い投影で生成したリンクは投影差替え後に使えません。
 
 図の上部では、投影器が生成した診断コード・重要度・SourceファイルとJSON Pointerを表示します。未参照Functionは**当該Procedureの範囲で明示参照がないという確認事項**であり、Application全体で不要とは判定しません。`review-question`や`warning`は非実行の参照を許容しますが、`error`を含むDFD投影は図・エクスポート・変更候補を禁止し、診断の出典表示だけを残します。出典位置は投影器の自己申告であり、受理済みの同一revision Source Indexとの一致を確認した証拠ではありません。DFD投影の解除・差替え時に古い診断表示も破棄します。
 

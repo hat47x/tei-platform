@@ -179,6 +179,14 @@ func renderData(d DataSpec) string {
 			fmt.Fprintf(&b, "        key %s -> %s\n", k.SourceAttribute, k.TargetAttribute)
 		}
 	}
+	for i := range d.CandidateKeys {
+		spec := d.CandidateKeys[i]
+		b.WriteString(renderBusinessRuleAddition(Operation{Op: opAddCandidateKey, AddCandidateKey: &spec}, "\n"))
+	}
+	for i := range d.FunctionalDependencies {
+		spec := d.FunctionalDependencies[i]
+		b.WriteString(renderBusinessRuleAddition(Operation{Op: opAddFunctionalDependency, AddFunctionalDependency: &spec}, "\n"))
+	}
 	b.WriteString("}")
 	return b.String()
 }
