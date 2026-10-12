@@ -85,7 +85,7 @@ try {
   await wait(api + "/manifest.json", go);
   host = spawn("node", [
     "tools/reference-first-web-two-unit-e1/browser-host.mjs",
-    join(root, "browser"), api,
+    join(root, "browser"), api, join(root, "measurement.json"),
   ], { stdio: ["ignore", "pipe", "ignore"] });
   let data = "";
   host.stdout.on("data", chunk => { data += String(chunk); });
