@@ -1,6 +1,6 @@
-# Definition-Centered Feedback Loop
+# 定義を中心にした改善の循環
 
-Status: current design direction / no new Canonical kind / no new Gate
+状態：現行の設計方針。意味の正本に新たな概念種別や判定段階は追加しない
 
 ## 1. 目的
 
@@ -9,130 +9,130 @@ TEIは、生成AIが大量の設計書やコードを生成すること自体を
 中心に置くのは、**人にも機械にも読める簡潔な定義を意味の正本として保ち、そこから実行・可視化・検査・探索のための情報を再生成し、現実から得たフィードバックを意味の責任を持つ層へ戻せること**です。
 
 ```text
-small authoritative definitions
-        ↓ normalize / validate
-Canonical meaning
-        ↓ derive / compile / project
-UI / matrix / graph / runtime / simulator / index
-        ↓ use / execute / observe
-human review / runtime result / external actuality
+簡潔な正本の定義
+        ↓ 正規化・検証
+正本となる意味
+        ↓ 導出・変換・表示
+画面・対応表・関係図・実行基盤・模擬実行・索引
+        ↓ 利用・実行・観測
+人による確認・実行結果・外部で実際に起きたこと
         ↓
-feedback
-        ↓ route to owning concern
-candidate change
-        ↓ preview / qualify
-Shared Acceptance Boundary
-        ↓ accepted minimum semantic delta
-authoritative source
-        ↓ reload / regenerate
+確認結果
+        ↓ 問題を管理する部分へ振り分ける
+変更候補
+        ↓ 影響を表示・適格性を確認
+共通の受理境界
+        ↓ 受理された最小限の意味変更
+正本となる情報源
+        ↓ 読み直し・再生成
         ↺
 ```
 
-この一連の流れは、自己書換え型のAIシステムを意味しません。AI、認知インデックス、Studio、Runtimeは、業務上の意味を確定する権限を持つものではありません。それぞれ異なる役割で、定義の理解・検証・改善に関わります。
+この一連の流れは、AIが正本を自ら書き換える仕組みではありません。AI、認知用の索引、編集環境、実行基盤は、それぞれ異なる役割で定義の理解・検証・改善に関わります。いずれも業務上の意味を確定する権限は持ちません。
 
-## 2. X-TEA / XEADから受け取るもの
+## 2. X-TEAとXEADから受け継ぐ考え方
 
-TEIはX-TEA / XEADとの互換製品を目指しません。一方、過去のReference Modelと三要素分析法から、現代でも有効な設計原理を抽出します。
+TEIはX-TEAやXEADとの互換製品を目指しません。一方、過去の参照モデルと三要素分析法から、現在も有効な設計原理を取り入れます。
 
 ### 継承する原理
 
-- 一つの業務システムをData / Function-Interaction / Businessの異なる視点から相互検査する
-- Data-firstであってData-onlyにはしない
-- 業務行為とApplication Functionを同一視しない
+- 一つの業務システムを、データ、機能・操作、業務の三つの視点から相互に検証する
+- データを起点にするが、データだけで設計を終えない
+- 業務上の行為とアプリケーションの機能を同一視しない
 - 人・手作業・外部組織・物理世界を含む社会システムとして業務を扱う
-- 仕様を可能な範囲で実行・Simulationし、文書だけで正しさを主張しない
-- Reference Modelを単なるfixtureではなく、PlatformとModelを相互に改善する実践コンテンツとして使う
-- model上のcross-referenceから矛盾を発見し、元の定義へ戻して直す
+- 仕様を可能な範囲で実行・模擬実行し、文書だけで正しさを主張しない
+- 参照モデルを単なる試験用データとせず、開発基盤とモデルを相互に改善する実例として使う
+- モデル内の相互参照から矛盾を発見し、元の定義へ戻って修正する
 
 ### そのまま継承しないもの
 
-- 歴史的なobject種類やfield構造
-- 全視点を対称なtop-level objectにすること
-- monolithicなDriver
-- UI / Runtime / Modelerの密結合
-- 旧製品のfile formatをTEIのCanonical形式にすること
-- Reference Model中のpatternを自動的な正解として採用すること
+- 旧製品に固有の対象種別や項目の構造
+- 三つの視点を対称な最上位の対象として定義すること
+- 一体化された大規模な実行・検証環境
+- 画面、実行基盤、モデラーの密結合
+- 旧製品のファイル形式をTEIの正本の形式にすること
+- 参照モデルに含まれる構成パターンを無条件に正解として採用すること
 
-TEIでは「外部モデルにfieldがある」ことではなく、**そのfieldや視点がどの設計失敗を防いでいたか**を問い直します。
+TEIでは「外部モデルに項目があるか」よりも、**その項目や視点がどのような設計上の誤りを防いでいたか**を問い直します。
 
-## 3. Definition-centeredという意味
+## 3. 定義を中心にするとはどういうことか
 
-Definition-centeredは「すべてをTEI DSLへ書き直す」という意味ではありません。
+定義を中心にするといっても、すべてをTEI独自の定義言語で書き直すわけではありません。
 
-意味の正本となる情報源（Authoritative source）は、関心事ごとに異なる場合があります。
+何を定義するかによって、意味の正本となる情報源は異なる場合があります。
 
 ```text
-TEI-native business / semantic meaning -> .tei等のTEI-native source
-native query meaning                  -> SQL
-existing implementation meaning       -> Go / existing asset + explicit binding
-provider/environment fact              -> provider-owned configuration / observation
+TEI固有の業務・意味の定義         → .teiなどのTEI用ファイル
+元形式で記述する問い合わせ         → SQL
+既存の実装が持つ意味               → Go・既存資産と明示した対応付け
+提供実装・環境についての事実       → 提供側の設定・観測結果
 ```
 
 同じ意味について暗黙に複数の正本を作らず、どの情報源が何を定義しているか説明できることが重要です。
 
-### 3.1 irreducible meaningだけをauthorする
+### 3.1 再生成できない意味だけを人が記述する
 
-人が手で維持するのは、機械的に安全に再生成できない意味に限定します。
+人が直接記述して維持する対象は、機械的に安全には再生成できない意味に限定します。
 
 ```text
-author explicitly
-  business identity / relation / constraint / responsibility / exceptional intent
-  provider or target choice when it is genuinely a choice
-  manual / external work when it is business meaning
+明示して記述するもの
+  業務上の識別・関係・制約・責任・例外時の意図
+  実際に選択の余地がある提供実装・実行先の選択
+  業務上の意味を持つ人の作業・外部での仕事
 
-prefer derived
-  standard CRUD
-  ordinary list/detail/form projection
-  cross-reference matrix
-  dependency graph
-  reverse index
-  impact view
-  search index
-  cognitive representation
-  generated target code
+なるべく定義から導くもの
+  標準的な登録・参照・更新・削除
+  一覧・詳細・入力フォームの通常の表示
+  相互参照の対応表
+  依存関係の図
+  逆引き索引
+  変更の影響を示す表示
+  検索索引
+  認知処理のための表現
+  実行先に応じて生成するコード
 ```
 
 派生情報として生成することは、情報を捨てることではありません。元の定義と生成規則から、いつでも説明・再構成できる必要があります。
 
-### 3.2 progressive disclosure
+### 3.2 必要に応じて詳細を加える
 
-最初から完全なmodelを要求しません。
+最初から完成したモデルを要求しません。
 
 ```text
-Data / Relationで業務事実を表せる
+データと関係で業務上の事実を表す
   ↓ 必要な場合だけ
-explicit Action / Capability / Validation
-  ↓ 実現差が意味を持つ場合だけ
-Application Pattern / Binding / Realization
-  ↓ 責任・手作業・外部継続が必要な場合だけ
-Business Procedure / Handoff
-  ↓ domainで必要な場合だけ
-time / decision / evidence detail
+明示的な業務操作・機能・検証規則
+  ↓ 実現方法の違いが意味を持つ場合だけ
+アプリケーションの構成・対応付け・実現方法
+  ↓ 責任・人の作業・外部での継続が必要な場合だけ
+業務手順・引継ぎ
+  ↓ 分野によって必要な場合だけ
+時間・判断・検証根拠の詳細
 ```
 
 概念は空欄を埋めるために追加せず、追加しなければ業務上の意味が失われる場合に限って増やします。
 
-### 3.3 semantic densityとfalse compressionを区別する
+### 3.3 意味の密度と見かけだけの簡略化を区別する
 
-定義を短くすることは目指しますが、短さ自体をKPIにはしません。
+定義を短くすることは目指します。ただし、その長さ自体を評価指標にはしません。
 
 ```text
-high semantic density
-  = 少量のauthoringから、多くの正しいderived behaviorを再構成できる
+意味の密度が高い
+  = 少ない記述から、多くの正しい動作や表示を再構成できる
 
-false compression
-  = 必要なBusiness meaningを暗黙推論へ追い出し、短く見せる
+見かけだけの簡略化
+  = 必要な業務上の意味を暗黙の推論に委ね、定義を短く見せる
 ```
 
-manual work、responsibility、actuality、exception等を削って定義を短くすることは品質向上ではありません。
+人の作業、責任、現実に起きたこと、例外などを削って定義を短くしても、品質が向上したことにはなりません。
 
-## 4. 三種類のmemoryを分ける
+## 4. 三種類の記憶を分ける
 
-生成AI・脳科学時代のTEIでは、すべてのknowledgeを一つのKnowledge Graphやmodel weightへ押し込みません。
+TEIでは、すべての知識を一つの知識グラフやモデルの重みにまとめません。生成AIや認知技術を使う場合も同様です。
 
-### 4.1 authoritative semantic memory
+### 4.1 正本となる意味の記憶
 
-長期に保持すべきaccepted meaningです。
+受理された意味のうち、長期に保持する必要があるものです。
 
 - authoritative source
 - Canonical identity / relation / constraint
@@ -142,7 +142,7 @@ manual work、responsibility、actuality、exception等を削って定義を短�
 
 これは削除するとプロダクトの意味が失われます。
 
-### 4.2 derived associative / structural memory
+### 4.2 派生した連想・構造の記憶
 
 「何を思い出すか」「何が近いか」を助けます。
 
@@ -158,15 +158,15 @@ manual work、responsibility、actuality、exception等を削って定義を短�
 これらは**再生成可能で、対象のリビジョンに結び付いている**必要があります。
 
 ```text
-association != dependency
-similarity  != applicability
-activation  != fact
-novelty     != unknown
+連想は依存関係と同じではない
+類似は適用可能性を意味しない
+活性化は事実と同じではない
+新規性は未知であることと同じではない
 ```
 
 このmemoryを削除してもCanonical meaningは変わりません。
 
-### 4.3 episodic / experience memory
+### 4.3 経験や履歴の記憶
 
 「何を試し、どう判断し、何が起きたか」を保持します。
 
@@ -179,7 +179,7 @@ novelty     != unknown
 
 過去に成功した変更も、そのまま現在のmeaningにはなりません。current revision / Source / Evidenceへ戻って再評価します。
 
-### 4.4 memory間のauthority rule
+### 4.4 記憶ごとの権限の境界
 
 ```text
 authoritative semantic memory
@@ -215,23 +215,23 @@ Intent / local editing context
        explicit-reference proposal
 ```
 
-### Exact / graph
+### 正確な識別と関係の追跡
 
 既知のidentity、dependency、authorityを確定的に辿ります。既知のことを毎回LLMに再推論させません。
 
-### Reference pattern recall
+### 参照事例から構成パターンを想起する
 
 実践Referenceから観測された構造を、provenanceと適用条件つきの候補として提示します。patternは答えではありません。
 
-### Associative cognition
+### 連想による認知処理
 
 語彙が違うが構造が近い例、partial cue、局所的なnoveltyを候補化します。FlyHash、HDC/VSA、embedding等はこの役割の比較候補です。
 
-### LLM
+### 大規模言語モデル
 
 自然言語intentの解釈、複数候補の比較、欠落仮説、説明、compositionに強みを使います。LLMにSource / Evidenceを与えても、その出力自体をauthorityにはしません。
 
-## 6. Feedbackを正しい所有層へroutingする
+## 6. 確認結果を修正すべき部分へ戻す
 
 質の高いフィードバックの仕組みでは、見つかった問題をすべてSemantic sourceへ戻すわけではありません。
 
