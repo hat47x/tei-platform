@@ -206,6 +206,7 @@ func TestBusinessDFDGoProjectionToNodeReview(t *testing.T) {
 			"DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH")
 	})
 }
+
 // TestBusinessDFDGoProjectionDrivesView exercises the actual DFD browser
 // module with Go-produced projections through its file-picker interface.
 // The DOM is mocked by Node; this is not a real-browser acceptance test.
