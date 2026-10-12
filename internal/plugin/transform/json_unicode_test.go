@@ -60,14 +60,17 @@ func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := transform.ParseSourceJSON(raw); err != nil {
+		t.Fatalf("valid baseline Source rejected: %v", err)
+	}
 
 	identityField := []byte(`"contractVersion":"` + source.Identity.ContractVersion + `"`)
 	withIdentityEscape := bytes.Replace(raw, identityField, []byte(`"contractVersion":"\uD800"`), 1)
 	if bytes.Equal(raw, withIdentityEscape) {
 		t.Fatal("identity fixture was not replaced")
 	}
-	if _, err := transform.ParseSourceJSON(withIdentityEscape); err == nil {
-		t.Fatal("unpaired surrogate in Source identity was accepted")
+	if _, err := transform.ParseSourceJSON(withIdentityEscape); err == nil || !strings.Contains(err.Error(), "surrogate") {
+		t.Fatalf("expected surrogate diagnostic for Source identity, got %v", err)
 	}
 
 	// Use an otherwise valid literal expression to exercise raw-message parsing.
@@ -77,12 +80,15 @@ func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := transform.ParseSourceJSON(withLiteral); err != nil {
+		t.Fatalf("valid literal Source rejected: %v", err)
+	}
 	withLiteralEscape := bytes.Replace(withLiteral, []byte(`"literal":"ok"`), []byte(`"literal":"\uDC00"`), 1)
 	if bytes.Equal(withLiteral, withLiteralEscape) {
 		t.Fatal("literal fixture was not replaced")
 	}
-	if _, err := transform.ParseSourceJSON(withLiteralEscape); err == nil {
-		t.Fatal("unpaired surrogate in Source literal was accepted")
+	if _, err := transform.ParseSourceJSON(withLiteralEscape); err == nil || !strings.Contains(err.Error(), "surrogate") {
+		t.Fatalf("expected surrogate diagnostic for Source literal, got %v", err)
 	}
 
 	// Verify the error does not echo the invalid field contents.
