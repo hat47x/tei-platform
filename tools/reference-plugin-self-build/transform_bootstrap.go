@@ -22,6 +22,8 @@ const (
 	transformSeedBuilderPackage = "./tools/reference-transform-seed-builder"
 	transformMetaSourcePath     = "reference/plugin-self-build/builder-sources/transform-source-realizer-v1.transform.json"
 	transformPackageSourcePath  = "reference/plugin-self-build/builder-sources/plugin-package-v1.transform.json"
+	// A logical builder release, not the revision of its Git repository.
+	transformSeedBuilderVersion = "1.0.0"
 )
 
 type transformBootstrapExecutionKind string
@@ -70,12 +72,15 @@ type transformBootstrapEvidence struct {
 	PackageOracleDigest             string                              `json:"packageOracleDigest"`
 	PackageLockedBuild              plugin.LockedBuild                  `json:"packageLockedBuild"`
 	PackageLockFingerprint          string                              `json:"packageLockFingerprint"`
+
+	ExactRuntimeEngineBuildFingerprint string `json:"exactRuntimeEngineBuildFingerprint,omitempty"`
 }
 
 func runTransformBootstrap(
 	root, goPath, goToolchainDigest, revision string,
 	packageDefinition plugin.Definition,
 	basePackagePlan plugin.BuildPlan,
+	engineOptions ...exactEngineOptions,
 ) (transformBootstrapEvidence, error) {
 	engineSources, err := transformRuntimeEngineSources(root)
 	if err != nil {
@@ -95,6 +100,25 @@ func runTransformBootstrap(
 	)
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("transform Runtime Engine identity: %w", err)
+	}
+	var exactExecutable, exactBuildFingerprint string
+	if len(engineOptions) > 1 {
+		return transformBootstrapEvidence{}, fmt.Errorf("only one exact Runtime Engine binding is allowed")
+	}
+	if len(engineOptions) == 1 {
+		if (engineOptions[0].Executable == "") != (engineOptions[0].BuildEvidence == "") {
+			return transformBootstrapEvidence{}, fmt.Errorf("exact Runtime Engine requires both executable and build Evidence")
+		}
+		if engineOptions[0].Executable != "" {
+			engine, exactBuildFingerprint, err = verifyExactEngine(root, revision, engineOptions[0])
+			if err != nil {
+				return transformBootstrapEvidence{}, fmt.Errorf("verify exact Runtime Engine before execution: %w", err)
+			}
+			exactExecutable, err = filepath.Abs(engineOptions[0].Executable)
+			if err != nil {
+				return transformBootstrapEvidence{}, err
+			}
+		}
 	}
 	engineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(engine)
 	if err != nil {
@@ -227,9 +251,13 @@ func runTransformBootstrap(
 	if err != nil {
 		return transformBootstrapEvidence{}, err
 	}
-	stage2Result, err := transform.Evaluate(stage1Source, map[string]transform.Value{
-		"transformSource": stage1Value,
-	})
+	stage2Inputs := map[string]transform.Value{"transformSource": stage1Value}
+	var stage2Result transform.EvaluationResult
+	if exactExecutable == "" {
+		stage2Result, err = transform.Evaluate(stage1Source, stage2Inputs)
+	} else {
+		stage2Result, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, stage1FirstPath, stage1Source, stage2Inputs)
+	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("execute stage1 meta-builder: %w", err)
 	}
@@ -246,12 +274,7 @@ func runTransformBootstrap(
 		)
 	}
 
-	seedIdentity := plugin.BuilderIdentity{
-		ID:              core.MustCanonicalID("tei.builder.transform_seed.reference"),
-		Version:         revision,
-		ContractVersion: "tei.plugin-build/v1",
-		ArtifactDigest:  seedFirstDigest,
-	}
+	seedIdentity := transformSeedBuilderIdentity(seedFirstDigest)
 	stage1Output := builderIdentityFromTransformSource(metaSource, stage1FirstDigest)
 	buildInputFingerprint := transformBootstrapComparisonFingerprint(
 		metaSourceClosureDigest,
@@ -325,9 +348,13 @@ func runTransformBootstrap(
 	if err != nil {
 		return transformBootstrapEvidence{}, err
 	}
-	packageBuilderResult, err := transform.Evaluate(stage1Source, map[string]transform.Value{
-		"transformSource": packageSourceValue,
-	})
+	packageBuilderInputs := map[string]transform.Value{"transformSource": packageSourceValue}
+	var packageBuilderResult transform.EvaluationResult
+	if exactExecutable == "" {
+		packageBuilderResult, err = transform.Evaluate(stage1Source, packageBuilderInputs)
+	} else {
+		packageBuilderResult, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, stage1FirstPath, stage1Source, packageBuilderInputs)
+	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("realize Plugin package builder with converged meta-builder: %w", err)
 	}
@@ -379,17 +406,28 @@ func runTransformBootstrap(
 	if err != nil {
 		return transformBootstrapEvidence{}, err
 	}
-	firstPackageResult, err := transform.Evaluate(parsedPackageBuilder, map[string]transform.Value{
+	packageInputs := map[string]transform.Value{
 		"buildPlan":        planValue,
 		"pluginDefinition": definitionValue,
-	})
+	}
+	var firstPackageResult, secondPackageResult transform.EvaluationResult
+	if exactExecutable == "" {
+		firstPackageResult, err = transform.Evaluate(parsedPackageBuilder, packageInputs)
+	} else {
+		realizedSourcePath := filepath.Join(tempDir, "realized-plugin-package.transform.json")
+		if err := os.WriteFile(realizedSourcePath, packageBuilderBytes, 0o600); err != nil {
+			return transformBootstrapEvidence{}, err
+		}
+		firstPackageResult, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, realizedSourcePath, parsedPackageBuilder, packageInputs)
+	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("execute TEI-native Plugin package builder: %w", err)
 	}
-	secondPackageResult, err := transform.Evaluate(parsedPackageBuilder, map[string]transform.Value{
-		"buildPlan":        planValue,
-		"pluginDefinition": definitionValue,
-	})
+	if exactExecutable == "" {
+		secondPackageResult, err = transform.Evaluate(parsedPackageBuilder, packageInputs)
+	} else {
+		secondPackageResult, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, filepath.Join(tempDir, "realized-plugin-package.transform.json"), parsedPackageBuilder, packageInputs)
+	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("repeat TEI-native Plugin package builder: %w", err)
 	}
@@ -471,6 +509,8 @@ func runTransformBootstrap(
 		PackageOracleDigest:             oracleDigest,
 		PackageLockedBuild:              lockedBuild,
 		PackageLockFingerprint:          lockFingerprint,
+
+		ExactRuntimeEngineBuildFingerprint: exactBuildFingerprint,
 	}, nil
 }
 
@@ -519,6 +559,17 @@ func runTransformSeedBuilder(root, builderPath, sourceRelative, output string) e
 		return fmt.Errorf("transform seed builder: %w: %s", err, bytes.TrimSpace(combined))
 	}
 	return nil
+}
+
+// transformSeedBuilderIdentity preserves a logical version across repository
+// revisions while binding each concrete seed executable by its artifact digest.
+func transformSeedBuilderIdentity(artifactDigest string) plugin.BuilderIdentity {
+	return plugin.BuilderIdentity{
+		ID:              core.MustCanonicalID("tei.builder.transform_seed.reference"),
+		Version:         transformSeedBuilderVersion,
+		ContractVersion: "tei.plugin-build/v1",
+		ArtifactDigest:  artifactDigest,
+	}
 }
 
 func builderIdentityFromTransformSource(source transform.Source, digest string) plugin.BuilderIdentity {

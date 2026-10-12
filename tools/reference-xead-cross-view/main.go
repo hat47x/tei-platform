@@ -59,7 +59,10 @@ func buildCommandOutput(
 	if err != nil {
 		return commandOutput{}, err
 	}
-	accounting := xeadsource.CrossViewPublicAccounting(projection)
+	accounting, err := xeadsource.CrossViewPublicAccounting(projection)
+	if err != nil {
+		return commandOutput{}, err
+	}
 	output := commandOutput{Accounting: accounting}
 	if includeLocalProjection {
 		output.LocalOutputNotice = "local/private evidence: contains individual source tokens and cross-view relations; do not commit as public Reference Model evidence"
