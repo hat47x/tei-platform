@@ -14,13 +14,15 @@ import (
 	"testing"
 
 	"tei/internal/composition"
+	"tei/internal/driver"
+	"tei/internal/workspace"
 	webcomposition "tei/reference/web-composition/go-host"
 	"tei/tools/reference-sui-action-boundary/actionboundary"
 )
 
-type e22SessionSubject struct{}
+type e23SessionSubject struct{}
 
-func (e22SessionSubject) Subject(ctx context.Context) (string, error) {
+func (e23SessionSubject) Subject(ctx context.Context) (string, error) {
 	p, ok := webcomposition.PrincipalFromContext(ctx)
 	if !ok {
 		return "", errors.New("no verified Host principal")
@@ -28,9 +30,9 @@ func (e22SessionSubject) Subject(ctx context.Context) (string, error) {
 	return p.PrincipalID, nil
 }
 
-type e22SessionTenant struct{}
+type e23SessionTenant struct{}
 
-func (e22SessionTenant) Tenant(ctx context.Context) (string, error) {
+func (e23SessionTenant) Tenant(ctx context.Context) (string, error) {
 	p, ok := webcomposition.PrincipalFromContext(ctx)
 	if !ok || p.Issuer != "https://issuer.example.invalid/tenant-1" {
 		return "", errors.New("no verified reference tenant")
@@ -38,12 +40,12 @@ func (e22SessionTenant) Tenant(ctx context.Context) (string, error) {
 	return "tenant-1", nil
 }
 
-type e22Delegation struct {
+type e23Delegation struct {
 	mismatch bool
 	calls    int
 }
 
-func (d *e22Delegation) Delegation(ctx context.Context, in actionboundary.Intent) (actionboundary.TrustedDelegation, error) {
+func (d *e23Delegation) Delegation(ctx context.Context, in actionboundary.Intent) (actionboundary.TrustedDelegation, error) {
 	d.calls++
 	p, ok := webcomposition.PrincipalFromContext(ctx)
 	if !ok || in.ApplicationID != "sui" || in.ActionID != "sui.move" {
@@ -59,14 +61,14 @@ func (d *e22Delegation) Delegation(ctx context.Context, in actionboundary.Intent
 	}, nil
 }
 
-type e22Harness struct {
+type e23Harness struct {
 	protected   http.Handler
 	selected    http.Handler
 	registry    *composition.Registry
 	revision    string
 	upstream    int
 	guardCalls  int
-	delegation  *e22Delegation
+	delegation  *e23Delegation
 	sessionOK   bool
 	csrfOK      bool
 	allowed     bool
@@ -75,10 +77,10 @@ type e22Harness struct {
 	audits      []webcomposition.AuditRecord
 }
 
-func e22Setup(t *testing.T) *e22Harness {
+func e23Setup(t *testing.T) *e23Harness {
 	t.Helper()
-	e := &e22Harness{
-		revision: "sui-v1", delegation: &e22Delegation{},
+	e := &e23Harness{
+		revision: "sui-v1", delegation: &e23Delegation{},
 		sessionOK: true, csrfOK: true, allowed: true, guardOK: true,
 	}
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -126,10 +128,19 @@ func e22Setup(t *testing.T) *e22Harness {
 		ApplicationID: "sui", ActionID: "sui.move",
 		Origin: server.URL, Prefix: "/docs/", Suffix: "/action-commit",
 		Client: server.Client(), Audience: "sui-test-audience",
-		Subjects: e22SessionSubject{}, Tenants: e22SessionTenant{},
+		Subjects: e23SessionSubject{}, Tenants: e23SessionTenant{},
 		Delegations: e.delegation,
 	}
 	referenceHandler, _, _ := e20Fixture(t, false)
+	// E22's temporary parsed DSL shell is the canonical SUI candidate.
+	// No SUI fake resolver is used for the declared Action lookup.
+	candidate, err := workspace.Load(e22Workspace(t, true, false))
+	if err != nil {
+		t.Fatalf("load native candidate Workspace: %v", err)
+	}
+	referenceHandler.Host.CommandGate = &actionboundary.CanonicalCommandGate{
+		Resolver: driver.NewResolver(candidate.World),
+	}
 	referenceHandler.Host.Bindings = []actionboundary.Binding{{
 		ApplicationID: "sui", ActionID: "sui.move", Store: store,
 	}}
@@ -142,7 +153,7 @@ func e22Setup(t *testing.T) *e22Harness {
 	const version = "1.0.0"
 	contract := composition.Contract{ID: action, Version: version, Shape: "sui-candidate-move-v1"}
 	registry := composition.NewRegistry()
-	_, err := registry.Apply(0, []composition.Provider{{
+	_, err = registry.Apply(0, []composition.Provider{{
 		ID: "sui-https-provider", Scope: "reference/sui",
 		Offers: contract,
 	}}, nil)
@@ -209,7 +220,7 @@ func e22Setup(t *testing.T) *e22Harness {
 	return e
 }
 
-func e22Send(t *testing.T, target http.Handler, revision, app string) int {
+func e23Send(t *testing.T, target http.Handler, revision, app string) int {
 	t.Helper()
 	body, err := json.Marshal(map[string]any{
 		"protocolVersion": "1", "applicationID": app,
@@ -232,10 +243,10 @@ func e22Send(t *testing.T, target http.Handler, revision, app string) int {
 	return recorder.Code
 }
 
-func TestE22SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
-	e := e22Setup(t)
+func TestE23SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
+	e := e23Setup(t)
 	baselineGuards := e.guardCalls
-	if got := e22Send(t, e.selected, "sui-v1", "sui"); got != http.StatusForbidden ||
+	if got := e23Send(t, e.selected, "sui-v1", "sui"); got != http.StatusForbidden ||
 		e.guardCalls != baselineGuards || e.upstream != 0 {
 		t.Fatalf("bare selected provider reachable: status=%d guard=%d->%d upstream=%d", got, baselineGuards, e.guardCalls, e.upstream)
 	}
@@ -254,22 +265,22 @@ func TestE22SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.apply()
 			before := e.upstream
-			got := e22Send(t, e.protected, "sui-v1", "sui")
+			got := e23Send(t, e.protected, "sui-v1", "sui")
 			tc.reset()
 			if got != tc.want || e.upstream != before {
 				t.Fatalf("denial: status=%d expected=%d upstream=%d->%d", got, tc.want, before, e.upstream)
 			}
 		})
 	}
-	if got := e22Send(t, e.protected, "sui-v1", "order_entry"); got != http.StatusBadRequest ||
+	if got := e23Send(t, e.protected, "sui-v1", "order_entry"); got != http.StatusBadRequest ||
 		e.upstream != 0 {
 		t.Fatalf("cross-application Action reached upstream: status=%d upstream=%d", got, e.upstream)
 	}
-	if got := e22Send(t, e.protected, "sui-v1", "sui"); got != http.StatusOK ||
+	if got := e23Send(t, e.protected, "sui-v1", "sui"); got != http.StatusOK ||
 		e.revision != "sui-v2" || e.upstream != 1 {
 		t.Fatalf("authorized selected Action failed: status=%d revision=%s upstream=%d", got, e.revision, e.upstream)
 	}
-	if got := e22Send(t, e.protected, "sui-v1", "sui"); got != http.StatusConflict ||
+	if got := e23Send(t, e.protected, "sui-v1", "sui"); got != http.StatusConflict ||
 		e.upstream != 2 || e.revision != "sui-v2" {
 		t.Fatalf("stale write was accepted: status=%d upstream=%d revision=%s", got, e.upstream, e.revision)
 	}
@@ -277,7 +288,7 @@ func TestE22SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := e22Send(t, e.protected, "sui-v2", "sui"); got != http.StatusServiceUnavailable ||
+	if got := e23Send(t, e.protected, "sui-v2", "sui"); got != http.StatusServiceUnavailable ||
 		e.upstream != 2 {
 		t.Fatalf("withdrawn provider invoked: status=%d upstream=%d", got, e.upstream)
 	}
@@ -286,10 +297,10 @@ func TestE22SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
 	}
 }
 
-func TestE22UnknownRemoteOutcomeIsNeverAutomaticallyRetried(t *testing.T) {
-	e := e22Setup(t)
+func TestE23UnknownRemoteOutcomeIsNeverAutomaticallyRetried(t *testing.T) {
+	e := e23Setup(t)
 	e.outcomeLost = true
-	got := e22Send(t, e.protected, "sui-v1", "sui")
+	got := e23Send(t, e.protected, "sui-v1", "sui")
 	if got != http.StatusInternalServerError || e.upstream != 1 || e.revision != "sui-v2" {
 		t.Fatalf("uncertain result was retried or accepted: HTTP %d sends=%d revision=%s",
 			got, e.upstream, e.revision)
