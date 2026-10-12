@@ -33,3 +33,9 @@ go test -count=1 -run '^TestIndependentBusinessQuoteOverExistingGenericProcessTr
 [正規モデルと認可の試験](../../reference/web-composition/go-host/canonical_quote_authorization_test.go)は、一時的なWorkspaceに候補を重ね、既存のDriverが業務操作・意味契約・実装への対応付けを解決することと、既存の業務認可が候補の規則を個別に評価することを確認します。
 
 現時点では、モデルを宣言して受理する段階に留まります。見積もり専用の公開Web経路や、実行ファイルへの正式な実行権限を自動生成・付与していません。前述の付随試験は引き続き、受注確定操作の認可の内部で見積もりを行う限定例です。独立した見積もりWeb操作からの実プロセス呼出しは別途検証が必要です。
+
+## JSONの曖昧性を拒否する業務境界
+
+見積もり入力については、単なる`json.Decoder.DisallowUnknownFields`では拒否できない重複キーや大文字小文字の別名を受理しないよう、トップレベルと各明細のフィールドを厳密に照合します。通貨・明細・SKU・数量・単価はすべて必須とし、JSONの`null`、余分な属性、小数の数量、重複フィールドを拒否します。ゼロ円単価は**明示的に指定した場合だけ**許容します。
+
+[プラグイン単体試験](main_test.go)は、この曖昧性と整数・範囲の検査をGo標準ライブラリだけで確認します。これはプロセス側の業務入力の厳格化であり、ブラウザの本人確認・認可・受理済み契約の発行権限をプラグインへ委譲するものではありません。候補Shapeの[対応表](../../reference/candidates/order-quote/shape-mapping.json)もまだ未受理です。
