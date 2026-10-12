@@ -113,6 +113,7 @@
 
 | ファイル | 役割 |
 | --- | --- |
+| [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIやTEI全体検証は実行しない |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
 | [`run-business-procedure-gate-a.sh`](run-business-procedure-gate-a.sh) | 業務手順Gate Aの検証 |
 | [`run-first-web-target-gate-c-evidence.sh`](run-first-web-target-gate-c-evidence.sh) | Gate C用のウェブ実行根拠の取得 |
