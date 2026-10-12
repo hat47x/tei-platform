@@ -199,6 +199,28 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     JSON.stringify(visualCandidate.delta) === JSON.stringify(proposal.delta),
     label + ": browser-submitted form enters same Go-compatible candidate transport");
 
+  // A tampered client can submit a value not present in the HTML <select>.
+  // Studio/Shared Acceptance must validate semantic references server-side.
+  const badInput = label === "er"
+    ? { ...edit, targetData: "sales.nonexistent" }
+    : { ...edit, applicationUse: { ...edit.applicationUse,
+        application: "nonexistent_application" } };
+  const tamperedFormEdit = submitOfflineEditor(editorPage, badInput, beforeRevision);
+  const tamperedPath = input(label, ".tampered-form.json", tamperedFormEdit);
+  const tamperedReview = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "review-edit",
+    "-workspace", workspace, "-edit-file", tamperedPath
+  ], false);
+  const expectedRefusal = label === "er"
+    ? "INVALID_RELATION_PROPOSAL"
+    : "APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE";
+  checked(tamperedReview.stderr.includes(expectedRefusal),
+    label + ": a forged browser reference is rejected by the Source-owned model");
+  checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before) &&
+    revision(workspace) === beforeRevision,
+    label + ": invalid browser references cannot mutate Source or its revision");
+
+
 
   const derivedEdit = input(label, ".derived-edit.json", {
     ...edit, derived: true
@@ -419,6 +441,7 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       reviewFingerprint: review.reviewFingerprint
     },
     changed, acceptedSubject: expectedID,
+    invalidBrowserReferenceRefused: true,
     editorTransport: {
       kind: "offline-editor-script-vm",
       sourceRevision: visualEdit.expectedModelRevision,
