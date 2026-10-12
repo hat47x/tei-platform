@@ -72,13 +72,14 @@ go test -race -count=1 ./reference/effect-fence
 
 `conformance.go`の`CheckAtomicConformance`は、試験用の隔離された保存先へ適用する**検査器**です。業務用の新たな認可エンジン、TEI標準の実行インターフェース、プラグイン種別ではありません。今後の保存先アダプターが異なる準備トークンを用いても試せるよう、試験用の束縛はトークンの実体を固定しません。
 
-一つの空の保存先を各検査ごとに生成し、次の六つを調べます。
+一つの空の保存先を各検査ごとに生成し、次の七つを調べます。
 
 | 検査 | 必要なふるまい |
 | --- | --- |
 | 確定・観測・再送 | 保存と確定記録が一致し、同一操作の再送で二重更新しない |
 | 権限失効 | 事前認可後の失効を、保存確定時に検知する |
 | 権限版の更新 | 許可が続く場合でも、古い許可版を使った保存を拒否する |
+| 失効後の保留済み再送 | 先に確定した同一操作の記録を、後続Permitから失効後に開示しない |
 | 保存先の競合 | 保存先が別途変更されていたら、古い版で上書きしない |
 | 並列実行 | 同じ操作識別子による二つの確定を一つの効果にまとめる |
 | 操作範囲 | 別の主体への許可の流用を拒否する |
@@ -142,3 +143,26 @@ python3 -m unittest -v reference/effect-fence/sqlite_transaction_test.py
 ```bash
 GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-fence
 ```
+
+## 第4段階：Goからの実SQLite接続を使った検証（任意実行）
+
+`sqlite_fixture_cgo.go`と`sqlite_integration_test.go`を追加しました。どちらもビルド条件`tei_sqlite_reference && cgo`を指定したときだけ対象になり、**通常のGo実装やTEI本体にはSQLite依存を追加しません**。試験用の接続処理はSQLite C APIを直接呼び、`-lsqlite3`でリンクします。Linuxの場合、SQLiteの開発用ヘッダーと共有ライブラリが必要です。
+
+```bash
+# 追加依存がない通常の参照試験
+GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-fence
+
+# 任意の実SQLite接続を含むGo競合試験
+CGO_ENABLED=1 GOENV=off GOWORK=off GO111MODULE=off \
+  go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
+
+# 任意の実SQLite接続を含む静的検査
+CGO_ENABLED=1 GOENV=off GOWORK=off GO111MODULE=off \
+  go vet -tags tei_sqlite_reference ./reference/effect-fence
+```
+
+同じ適合性検査7項目を**Goのメモリ内保存先と、実SQLiteファイルの両方**へ適用します。SQLiteでは、別の接続から権限版を変更して確定時の拒否を確認し、再接続後の保存結果再照会、二接続からの同一操作の同時確定、確定記録の保存失敗による更新全体のロールバックを確認します。追加で、同じ連番の操作トークンを別の接続へ渡しても他の書込みを確定できないことを試験します。
+
+**証明の限界**：`sqliteFixture`が扱う権限状態は、同じSQLiteファイルに試験用として置いた値です。これは実DBでのトランザクション試験であっても、TEIの`security.authorize`や主体リンクの実際の正本を接続した証拠ではありません。また、この接続処理は適合性検査用であり、製品向けのSQLiteプラグインや汎用データベースアダプターではありません。SQLiteの合成権限の検証から、外部認可サービスや他のDBに対する原子的保証を推論してはいけません。
+
+Goの`Permit`は、発行した保存先インスタンスと結び付けました。同じ内部連番が別の保存先で生じても、操作トークンを使い回せません。保存先の再起動後に使う再試行識別子は`OperationID`と確定記録であり、`Permit`を外部へ永続化・転送する設計ではありません。
