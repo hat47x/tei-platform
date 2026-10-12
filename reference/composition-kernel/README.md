@@ -178,3 +178,20 @@ Go 1.23.2を用いた独立モジュール`/mnt/data/tei-composition-test`に、
 **重要**：ここでのPASSは既存`registry.go`・`selection.go`を含む完全なTEIパッケージによるPASSではない。試験用実装は本PRにコミットしていない。PR exact-headの`tools/repository-health-check.sh`、Production Host統合、実Targetの検証は未実施。コードをmainへ統合する資格確認には、AGENTS.mdの信頼できるclean checkoutと全体Healthを別途要する。
 
 設計上の正本は[AI向け最小プラグイン規約の検討](../../plan/design/AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md)に置き、この節は参照実装の説明と限界に限定する。
+
+
+## E6：複数契約の構成案を同じ版で検査する
+
+E5の単一要求検査に続き、`internal/composition/proposal.go`へ`InspectWiringSet`を追加した。目的は、AIが複数サービスを個別に検索する間に登録簿が更新され、**異なる時点のProviderを混在させた構成案を作ることを防ぐ**ことである。
+
+- 一件または複数の要求を、一つの`Registry`ロック区間で検査し、観測した`Revision`を返す。単一要求用の`InspectWiring`も同じ経路を使う。
+- 要求ごとの`candidate`／`conflict`／`unknown`と理由を失わず、集約結果も返す。競合と未判定が同時にある場合、集約結果は競合、各要求の結果は個別に保持する。
+- 異なる`Scope`を混ぜた一括検査は`mixed-scopes`として未判定にし、候補の一覧を返さない。別Tenantの要求を一つのAI提案によって自動的に合成・承認しない。
+- 要求が空なら「すべて充足」とはしない。無効なContractも未判定とし、欠落を根拠なく「新実装が必要」と決めない。
+- 各`Selection`が含む`Revision`と`Provider Epoch`は診断時点の識別子であり、実行時の権限や後続のProvider状態を確約しない。
+
+**新たな否定試験**：複数要求を同一Revisionで評価すること、依存先の選択を失わないこと、混在したScopeを拒否すること、空の要求から成功を主張しないこと、未知と競合を混同しないこと、Registryの撤去・再登録が同時進行しても、一つの検査内で異なるEpochを混ぜないこと。
+
+検証したのは、GitHub上の`proposal.go`、`proposal_test.go`と**バイト単位で一致するファイル**と、以前から用意してあるRegistryのAPI互換の試験用実装を組み合わせた独立Go 1.23.2モジュール。具体的に`go test -race -count=100 -timeout=90s ./internal/composition`、`go vet ./...`、`gofmt -l`を実行してPASS。GitHubの二つのBlob SHA（`f17f2e7c9605b39c4571ba640432a2708aba5af2`、`3d2b9f7d96be40ce8c38b21d51aaa1a54723c865`）とローカルの`git hash-object`が一致した。
+
+**限界**：実際の`registry.go`と`selection.go`を同じチェックアウトで試験した結果ではなく、PR exact-headの全Repository Healthも未実行である。さらに、一括検査結果が同じ時点のものでも、実際に同時配備可能か、契約の意味・適合・権限が妥当かは別途検証する。Host Authorityを既存登録簿の診断結果から推定しない。
