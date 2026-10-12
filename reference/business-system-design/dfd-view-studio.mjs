@@ -17,6 +17,7 @@ const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null,
 let selectionGeneration=0;
 let dfdLoadGeneration=0;
 let layoutLoadGeneration=0;
+let worldLoadGeneration=0;
 const semanticLoadGeneration={procedure:0,review:0};
 let semanticTextGeneration=0;
 function invalidateSemanticPreview(){
@@ -339,8 +340,34 @@ $('layout-file').addEventListener('change',async ev=>{
     status('配置ファイルを拒否しました: '+e.message,true)}
 });
 $('world-file').addEventListener('change',async ev=>{
-  try{state.world=await jsonFile(ev.target.files[0]);status('Worldを読み込みました。版情報の真正性は未確認です。');}
-  catch(e){state.world=null;status('Worldを読み込めません: '+e.message,true)}
+  const generation=++worldLoadGeneration;
+  const file=ev.target.files?.[0];
+  // A World snapshot is a navigational hint, not accepted Source. Discard
+  // prior navigation before yielding to an asynchronous file read.
+  state.world=null;
+  clearSelection();
+  if(!file){
+    status('Worldの選択を解除しました。以前の参照表示は無効です。');
+    return;
+  }
+  try{
+    const world=await jsonFile(file);
+    if(generation!==worldLoadGeneration)return;
+    if(!world||typeof world!=='object'||Array.isArray(world))
+      throw Error('INVALID_WORLD_OBJECT');
+    state.world=world;
+    status('Worldを読み込みました。版情報の真正性は未確認です。');
+  }catch(e){
+    if(generation!==worldLoadGeneration)return;
+    state.world=null;
+    status('Worldを読み込めません: '+e.message,true);
+  }
+});
+$('revision').addEventListener('input',()=>{
+  // Existing Source details were produced against the previous user-supplied
+  // revision label. Require a fresh selection before showing navigation.
+  clearSelection();
+  status('Worldの版表示を変更しました。参照先を選び直してください（版の真正性は未確認）。');
 });
 
 async function readChecked(file,expectedHash,name){
