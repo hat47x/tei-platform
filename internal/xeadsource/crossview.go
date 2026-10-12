@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v3"
+const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v4"
 
 const (
 	CrossViewNatureSource  = "source-backed"
@@ -46,6 +46,8 @@ type CrossViewUnresolved struct {
 
 type CrossViewProjection struct {
 	SchemaVersion               int                          `json:"schemaVersion"`
+	SourceFormat                string                       `json:"sourceFormat"`
+	SourceFormatVersion         string                       `json:"sourceFormatVersion"`
 	SourceArtifactDigest        string                       `json:"sourceArtifactDigest"`
 	MappingContractFingerprint  string                       `json:"mappingContractFingerprint"`
 	DerivationPolicyRevision    string                       `json:"derivationPolicyRevision"`
@@ -64,6 +66,8 @@ type CrossViewProjection struct {
 
 type CrossViewAccounting struct {
 	SchemaVersion                         int            `json:"schemaVersion"`
+	SourceFormat                          string         `json:"sourceFormat"`
+	SourceFormatVersion                   string         `json:"sourceFormatVersion"`
 	SourceArtifactDigest                  string         `json:"sourceArtifactDigest"`
 	MappingContractFingerprint            string         `json:"mappingContractFingerprint"`
 	DerivationPolicyRevision              string         `json:"derivationPolicyRevision"`
@@ -195,6 +199,8 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 
 	projection := CrossViewProjection{
 		SchemaVersion:               1,
+		SourceFormat:                string(doc.Format),
+		SourceFormatVersion:         crossViewDocumentVersion(doc),
 		SourceArtifactDigest:        "sha256:" + doc.SHA256,
 		MappingContractFingerprint:  mappingContractFingerprint,
 		DerivationPolicyRevision:    CrossViewDerivationPolicyRevision,
@@ -422,9 +428,16 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 	return projection, nil
 }
 
-func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounting {
+// CrossViewPublicAccounting refuses malformed or untrusted projection content
+// before any user-supplied string can become a public aggregate map key.
+func CrossViewPublicAccounting(projection CrossViewProjection) (CrossViewAccounting, error) {
+	if err := validateCrossViewProjectionForPublication(projection); err != nil {
+		return CrossViewAccounting{}, err
+	}
 	out := CrossViewAccounting{
 		SchemaVersion:                       1,
+		SourceFormat:                        projection.SourceFormat,
+		SourceFormatVersion:                 projection.SourceFormatVersion,
 		SourceArtifactDigest:                projection.SourceArtifactDigest,
 		MappingContractFingerprint:          projection.MappingContractFingerprint,
 		DerivationPolicyRevision:            projection.DerivationPolicyRevision,
@@ -485,7 +498,1161 @@ func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounti
 	if len(out.UnresolvedCounts) == 0 {
 		out.UnresolvedCounts = nil
 	}
-	return out
+	return out, nil
+}
+
+var crossViewVersionPattern = regexp.MustCompile(`^[0-9]+(\\.[0-9]+){1,3}package xeadsource
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+)
+
+const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v4"
+
+const (
+	CrossViewNatureSource  = "source-backed"
+	CrossViewNatureDerived = "derived"
+)
+
+type CrossViewEdge struct {
+	Kind                      string   `json:"kind"`
+	Nature                    string   `json:"nature"`
+	FromToken                 string   `json:"fromToken"`
+	ToToken                   string   `json:"toToken"`
+	TargetKind                string   `json:"targetKind,omitempty"`
+	Operations                string   `json:"operations,omitempty"`
+	SourceTokens              []string `json:"sourceTokens"`
+	DerivationRuleFingerprint string   `json:"derivationRuleFingerprint,omitempty"`
+	AuthorityLimits           []string `json:"authorityLimits"`
+}
+
+type CrossViewActionObservation struct {
+	ActionToken               string   `json:"actionToken"`
+	TaskToken                 string   `json:"taskToken,omitempty"`
+	FunctionIOCount           int      `json:"functionIoCount"`
+	MissingLegacyID           bool     `json:"missingLegacyId"`
+	ManualOrExternalCandidate bool     `json:"manualOrExternalCandidate"`
+	AuthorityLimits           []string `json:"authorityLimits"`
+}
+
+type CrossViewUnresolved struct {
+	Code         string   `json:"code"`
+	RelationKind string   `json:"relationKind"`
+	SourceTokens []string `json:"sourceTokens"`
+}
+
+type CrossViewProjection struct {
+	SchemaVersion               int                          `json:"schemaVersion"`
+	SourceFormat                string                       `json:"sourceFormat"`
+	SourceFormatVersion         string                       `json:"sourceFormatVersion"`
+	SourceArtifactDigest        string                       `json:"sourceArtifactDigest"`
+	MappingContractFingerprint  string                       `json:"mappingContractFingerprint"`
+	DerivationPolicyRevision    string                       `json:"derivationPolicyRevision"`
+	DerivationPolicyFingerprint string                       `json:"derivationPolicyFingerprint"`
+	TaskCount                   int                          `json:"taskCount"`
+	TaskFunctionIOCount         int                          `json:"taskFunctionIoCount"`
+	TaskFunctionIONoTargetCount int                          `json:"taskFunctionIoNoTargetCount"`
+	IOTableCount                int                          `json:"ioTableCount"`
+	SourceEdges                 []CrossViewEdge              `json:"sourceEdges"`
+	DerivedEdges                []CrossViewEdge              `json:"derivedEdges"`
+	Actions                     []CrossViewActionObservation `json:"actions"`
+	Unresolved                  []CrossViewUnresolved        `json:"unresolved,omitempty"`
+	ProjectionFingerprint       string                       `json:"projectionFingerprint"`
+	AuthorityLimits             []string                     `json:"authorityLimits"`
+}
+
+type CrossViewAccounting struct {
+	SchemaVersion                         int            `json:"schemaVersion"`
+	SourceFormat                          string         `json:"sourceFormat"`
+	SourceFormatVersion                   string         `json:"sourceFormatVersion"`
+	SourceArtifactDigest                  string         `json:"sourceArtifactDigest"`
+	MappingContractFingerprint            string         `json:"mappingContractFingerprint"`
+	DerivationPolicyRevision              string         `json:"derivationPolicyRevision"`
+	DerivationPolicyFingerprint           string         `json:"derivationPolicyFingerprint"`
+	ProjectionFingerprint                 string         `json:"projectionFingerprint"`
+	TaskCount                             int            `json:"taskCount"`
+	TaskActionCount                       int            `json:"taskActionCount"`
+	TaskActionWithoutFunctionIOCount      int            `json:"taskActionWithoutFunctionIoCount"`
+	TaskActionMissingIDCount              int            `json:"taskActionMissingIdCount"`
+	TaskFunctionIOCount                   int            `json:"taskFunctionIoCount"`
+	TaskFunctionIONoTargetCount           int            `json:"taskFunctionIoNoTargetCount"`
+	DistinctActionFunctionPairCount       int            `json:"distinctActionFunctionPairCount"`
+	IOTableCount                          int            `json:"ioTableCount"`
+	PotentialActionFunctionTablePathCount int            `json:"potentialActionFunctionTablePathCount"`
+	TaskFunctionIOTargetKindCounts        map[string]int `json:"taskFunctionIoTargetKindCounts,omitempty"`
+	PotentialOperationCombinationCounts   map[string]int `json:"potentialOperationCombinationCounts,omitempty"`
+	SourceEdgeCounts                      map[string]int `json:"sourceEdgeCounts"`
+	DerivedEdgeCounts                     map[string]int `json:"derivedEdgeCounts"`
+	UnresolvedCounts                      map[string]int `json:"unresolvedCounts,omitempty"`
+	AuthorityLimits                       []string       `json:"authorityLimits"`
+}
+
+type crossViewNode struct {
+	node          Node
+	token         string
+	taskToken     string
+	actionToken   string
+	functionToken string
+}
+
+type actionFunctionPair struct {
+	actionToken   string
+	functionToken string
+	sourceTokens  []string
+}
+
+var crossViewFingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// BuildCrossViewProjection builds read-only relations only after verifying the
+// exact source document and its version against the supplied transcription contract.
+// Unvalidated Inspection values are not accepted at this public boundary.
+func BuildCrossViewProjection(
+	format Format,
+	source []byte,
+	contract []byte,
+) (CrossViewProjection, error) {
+	inspection, err := InspectWithContract(format, source, contract)
+	if err != nil {
+		return CrossViewProjection{}, err
+	}
+	return buildCrossViewProjection(inspection)
+}
+
+func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
+	doc := inspection.Document
+	mappingContractFingerprint, err := normalizeCrossViewContractFingerprint(inspection.TranscriptionContractFingerprint)
+	if err != nil {
+		return CrossViewProjection{}, err
+	}
+	if doc.Format != FormatXead {
+		return CrossViewProjection{}, fmt.Errorf("cross-view projection currently supports xead only: %s", doc.Format)
+	}
+	if doc.SHA256 == "" {
+		return CrossViewProjection{}, fmt.Errorf("source document digest is empty")
+	}
+
+	nodes := flattenCrossViewNodes(doc)
+	functionsByID := map[string][]crossViewNode{}
+	tablesByID := map[string][]crossViewNode{}
+	targetsByFunction := map[string]map[string][]crossViewNode{}
+	actions := map[string]*CrossViewActionObservation{}
+	taskCount := 0
+	taskFunctionIOCount := 0
+	taskFunctionIONoTargetCount := 0
+	ioTableCount := 0
+
+	for _, ref := range nodes {
+		if !ref.node.Known {
+			continue
+		}
+		switch ref.node.Name {
+		case "Task":
+			taskCount++
+		case "TaskAction":
+			_, hasID := nonEmptyExactAttribute(ref.node, "ID")
+			actions[ref.token] = &CrossViewActionObservation{
+				ActionToken:               ref.token,
+				TaskToken:                 ref.taskToken,
+				MissingLegacyID:           !hasID,
+				ManualOrExternalCandidate: true,
+				AuthorityLimits: []string{
+					"source-token-is-not-canonical-business-identity",
+					"missing-legacy-id-must-not-be-repaired-from-sortkey-or-order",
+					"absence-of-function-io-is-only-manual-or-external-candidate-evidence",
+				},
+			}
+		case "TaskFunctionIO":
+			taskFunctionIOCount++
+			if ioID, ok := exactAttribute(ref.node, "IOID"); ok && strings.TrimSpace(ioID) == "0" {
+				taskFunctionIONoTargetCount++
+			}
+			if action := actions[ref.actionToken]; action != nil {
+				action.FunctionIOCount++
+				action.ManualOrExternalCandidate = false
+			}
+		case "Function":
+			if id, ok := nonEmptyExactAttribute(ref.node, "ID"); ok {
+				functionsByID[id] = append(functionsByID[id], ref)
+			}
+		case "Table":
+			if id, ok := nonEmptyExactAttribute(ref.node, "ID"); ok {
+				tablesByID[id] = append(tablesByID[id], ref)
+			}
+		case "IOPanel", "IOSpool", "IOTable":
+			if ref.node.Name == "IOTable" {
+				ioTableCount++
+			}
+			if ref.functionToken == "" {
+				continue
+			}
+			if id, ok := nonEmptyExactAttribute(ref.node, "ID"); ok {
+				if targetsByFunction[ref.functionToken] == nil {
+					targetsByFunction[ref.functionToken] = map[string][]crossViewNode{}
+				}
+				targetsByFunction[ref.functionToken][id] = append(targetsByFunction[ref.functionToken][id], ref)
+			}
+		}
+	}
+
+	projection := CrossViewProjection{
+		SchemaVersion:               1,
+		SourceFormat:                string(doc.Format),
+		SourceFormatVersion:         crossViewDocumentVersion(doc),
+		SourceArtifactDigest:        "sha256:" + doc.SHA256,
+		MappingContractFingerprint:  mappingContractFingerprint,
+		DerivationPolicyRevision:    CrossViewDerivationPolicyRevision,
+		DerivationPolicyFingerprint: crossViewDerivationPolicyFingerprint(),
+		TaskCount:                   taskCount,
+		TaskFunctionIOCount:         taskFunctionIOCount,
+		TaskFunctionIONoTargetCount: taskFunctionIONoTargetCount,
+		IOTableCount:                ioTableCount,
+		AuthorityLimits: []string{
+			"cross-view-projection-is-not-canonical-authority",
+			"source-reachability-is-not-runtime-effect",
+			"source-reachability-is-not-transaction-authority",
+			"source-reachability-is-not-authorization-or-business-ownership",
+			"derived-path-is-not-business-action-specific-crud",
+			"inspection-contract-binding-does-not-by-itself-prove-source-profile-conformance",
+		},
+	}
+
+	for _, ref := range nodes {
+		if !ref.node.Known {
+			continue
+		}
+		switch ref.node.Name {
+		case "TaskAction":
+			if ref.taskToken == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-action-without-task",
+					"task-action",
+					[]string{ref.token},
+				))
+				continue
+			}
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "task-action",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.taskToken,
+				ToToken:      ref.token,
+				SourceTokens: normalizedTokens(ref.taskToken, ref.token),
+				AuthorityLimits: []string{
+					"source-structure-is-not-canonical-business-identity",
+					"task-order-is-not-runtime-transaction-order",
+				},
+			})
+
+		case "TaskFunctionIO":
+			if ref.actionToken == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-function-io-without-task-action",
+					"action-function-use",
+					[]string{ref.token},
+				))
+				continue
+			}
+			functionID, ok := nonEmptyExactAttribute(ref.node, "FunctionID")
+			if !ok {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-function-io-function-id-missing",
+					"action-function-use",
+					[]string{ref.actionToken, ref.token},
+				))
+				continue
+			}
+			functions := functionsByID[functionID]
+			if len(functions) != 1 {
+				code := "task-function-io-function-not-found"
+				if len(functions) > 1 {
+					code = "task-function-io-function-ambiguous"
+				}
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					code,
+					"action-function-use",
+					[]string{ref.actionToken, ref.token},
+				))
+				continue
+			}
+			function := functions[0]
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "action-function-use",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.actionToken,
+				ToToken:      function.token,
+				SourceTokens: normalizedTokens(ref.actionToken, ref.token, function.token),
+				AuthorityLimits: []string{
+					"function-use-is-not-business-action-effect",
+					"taskfunctionio-operations-text-is-not-business-action-semantics",
+				},
+			})
+
+			ioID, hasIOID := exactAttribute(ref.node, "IOID")
+			if !hasIOID || strings.TrimSpace(ioID) == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-function-io-target-id-missing",
+					"task-function-io-target",
+					[]string{ref.token, function.token},
+				))
+				continue
+			}
+			if ioID == "0" {
+				continue
+			}
+			targets := targetsByFunction[function.token][ioID]
+			if len(targets) != 1 {
+				code := "task-function-io-target-not-found"
+				if len(targets) > 1 {
+					code = "task-function-io-target-ambiguous"
+				}
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					code,
+					"task-function-io-target",
+					[]string{ref.token, function.token},
+				))
+				continue
+			}
+			target := targets[0]
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "task-function-io-target",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.token,
+				ToToken:      target.token,
+				TargetKind:   target.node.Name,
+				SourceTokens: normalizedTokens(ref.token, function.token, target.token),
+				AuthorityLimits: []string{
+					"target-interaction-is-not-business-action-semantics",
+					"io-target-is-not-business-data-effect",
+				},
+			})
+
+		case "IOTable":
+			if ref.functionToken == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-without-function",
+					"function-table-operation",
+					[]string{ref.token},
+				))
+				continue
+			}
+			tableID, ok := nonEmptyExactAttribute(ref.node, "TableID")
+			if !ok {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-table-id-missing",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token},
+				))
+				continue
+			}
+			tables := tablesByID[tableID]
+			if len(tables) != 1 {
+				code := "iotable-table-not-found"
+				if len(tables) > 1 {
+					code = "iotable-table-ambiguous"
+				}
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					code,
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token},
+				))
+				continue
+			}
+			operations, invalidOps := iotableOperations(ref.node)
+			if len(invalidOps) != 0 {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-operation-marker-unsupported",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token, tables[0].token},
+				))
+				continue
+			}
+			if operations == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-operation-missing",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token, tables[0].token},
+				))
+				continue
+			}
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "function-table-operation",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.functionToken,
+				ToToken:      tables[0].token,
+				Operations:   operations,
+				SourceTokens: normalizedTokens(ref.functionToken, ref.token, tables[0].token),
+				AuthorityLimits: []string{
+					"function-wide-iotable-is-potential-access-not-business-action-specific-effect",
+					"declared-crud-is-not-actual-runtime-effect",
+				},
+			})
+		}
+	}
+
+	pairs := actionFunctionPairs(projection.SourceEdges)
+	tableEdgesByFunction := map[string][]CrossViewEdge{}
+	for _, edge := range projection.SourceEdges {
+		if edge.Kind == "function-table-operation" {
+			tableEdgesByFunction[edge.FromToken] = append(tableEdgesByFunction[edge.FromToken], edge)
+		}
+	}
+	for _, pair := range pairs {
+		for _, tableEdge := range tableEdgesByFunction[pair.functionToken] {
+			projection.DerivedEdges = append(projection.DerivedEdges, CrossViewEdge{
+				Kind:                      "action-function-table-potential-operation",
+				Nature:                    CrossViewNatureDerived,
+				FromToken:                 pair.actionToken,
+				ToToken:                   tableEdge.ToToken,
+				Operations:                tableEdge.Operations,
+				SourceTokens:              normalizedTokens(append(pair.sourceTokens, tableEdge.SourceTokens...)...),
+				DerivationRuleFingerprint: projection.DerivationPolicyFingerprint,
+				AuthorityLimits: []string{
+					"derived-path-is-not-business-action-specific-effect",
+					"function-wide-iotable-is-potential-access-not-business-action-specific-effect",
+					"derived-path-is-not-runtime-observation",
+					"derived-path-is-not-transaction-or-authorization-evidence",
+				},
+			})
+		}
+	}
+
+	for _, action := range actions {
+		projection.Actions = append(projection.Actions, *action)
+	}
+	sortCrossViewProjection(&projection)
+	copyProjection := projection
+	copyProjection.ProjectionFingerprint = ""
+	projection.ProjectionFingerprint = crossViewFingerprint(copyProjection)
+	return projection, nil
+}
+
+// CrossViewPublicAccounting refuses malformed or untrusted projection content
+// before any user-supplied string can become a public aggregate map key.
+func CrossViewPublicAccounting(projection CrossViewProjection) (CrossViewAccounting, error) {
+	if err := validateCrossViewProjectionForPublication(projection); err != nil {
+		return CrossViewAccounting{}, err
+	}
+	out := CrossViewAccounting{
+		SchemaVersion:                       1,
+		SourceFormat:                        projection.SourceFormat,
+		SourceFormatVersion:                 projection.SourceFormatVersion,
+		SourceArtifactDigest:                projection.SourceArtifactDigest,
+		MappingContractFingerprint:          projection.MappingContractFingerprint,
+		DerivationPolicyRevision:            projection.DerivationPolicyRevision,
+		DerivationPolicyFingerprint:         projection.DerivationPolicyFingerprint,
+		ProjectionFingerprint:               projection.ProjectionFingerprint,
+		TaskFunctionIOTargetKindCounts:      map[string]int{},
+		PotentialOperationCombinationCounts: map[string]int{},
+		SourceEdgeCounts:                    map[string]int{},
+		DerivedEdgeCounts:                   map[string]int{},
+		UnresolvedCounts:                    map[string]int{},
+		AuthorityLimits: []string{
+			"public-accounting-does-not-publish-individual-cross-view-relations",
+			"aggregate-count-is-not-semantic-equivalence",
+			"potential-operation-count-is-not-action-specific-runtime-effect",
+			"benchmark-observation-is-not-universal-xtea-rule",
+		},
+	}
+	actionFunctionPairs := map[string]struct{}{}
+	for _, action := range projection.Actions {
+		out.TaskActionCount++
+		if action.FunctionIOCount == 0 {
+			out.TaskActionWithoutFunctionIOCount++
+		}
+		if action.MissingLegacyID {
+			out.TaskActionMissingIDCount++
+		}
+	}
+	out.TaskCount = projection.TaskCount
+	out.TaskFunctionIOCount = projection.TaskFunctionIOCount
+	out.TaskFunctionIONoTargetCount = projection.TaskFunctionIONoTargetCount
+	out.IOTableCount = projection.IOTableCount
+	for _, edge := range projection.SourceEdges {
+		out.SourceEdgeCounts[edge.Kind]++
+		switch edge.Kind {
+		case "action-function-use":
+			actionFunctionPairs[edge.FromToken+"\x00"+edge.ToToken] = struct{}{}
+		case "task-function-io-target":
+			out.TaskFunctionIOTargetKindCounts[edge.TargetKind]++
+		}
+	}
+	out.DistinctActionFunctionPairCount = len(actionFunctionPairs)
+	for _, edge := range projection.DerivedEdges {
+		out.DerivedEdgeCounts[edge.Kind]++
+		if edge.Kind == "action-function-table-potential-operation" {
+			out.PotentialActionFunctionTablePathCount++
+			out.PotentialOperationCombinationCounts[edge.Operations]++
+		}
+	}
+	for _, unresolved := range projection.Unresolved {
+		out.UnresolvedCounts[unresolved.Code]++
+	}
+	if len(out.TaskFunctionIOTargetKindCounts) == 0 {
+		out.TaskFunctionIOTargetKindCounts = nil
+	}
+	if len(out.PotentialOperationCombinationCounts) == 0 {
+		out.PotentialOperationCombinationCounts = nil
+	}
+	if len(out.UnresolvedCounts) == 0 {
+		out.UnresolvedCounts = nil
+	}
+	return out, nil
+}
+
+)
+var crossViewOperationPattern = regexp.MustCompile(`^C?R?U?D?package xeadsource
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+)
+
+const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v4"
+
+const (
+	CrossViewNatureSource  = "source-backed"
+	CrossViewNatureDerived = "derived"
+)
+
+type CrossViewEdge struct {
+	Kind                      string   `json:"kind"`
+	Nature                    string   `json:"nature"`
+	FromToken                 string   `json:"fromToken"`
+	ToToken                   string   `json:"toToken"`
+	TargetKind                string   `json:"targetKind,omitempty"`
+	Operations                string   `json:"operations,omitempty"`
+	SourceTokens              []string `json:"sourceTokens"`
+	DerivationRuleFingerprint string   `json:"derivationRuleFingerprint,omitempty"`
+	AuthorityLimits           []string `json:"authorityLimits"`
+}
+
+type CrossViewActionObservation struct {
+	ActionToken               string   `json:"actionToken"`
+	TaskToken                 string   `json:"taskToken,omitempty"`
+	FunctionIOCount           int      `json:"functionIoCount"`
+	MissingLegacyID           bool     `json:"missingLegacyId"`
+	ManualOrExternalCandidate bool     `json:"manualOrExternalCandidate"`
+	AuthorityLimits           []string `json:"authorityLimits"`
+}
+
+type CrossViewUnresolved struct {
+	Code         string   `json:"code"`
+	RelationKind string   `json:"relationKind"`
+	SourceTokens []string `json:"sourceTokens"`
+}
+
+type CrossViewProjection struct {
+	SchemaVersion               int                          `json:"schemaVersion"`
+	SourceFormat                string                       `json:"sourceFormat"`
+	SourceFormatVersion         string                       `json:"sourceFormatVersion"`
+	SourceArtifactDigest        string                       `json:"sourceArtifactDigest"`
+	MappingContractFingerprint  string                       `json:"mappingContractFingerprint"`
+	DerivationPolicyRevision    string                       `json:"derivationPolicyRevision"`
+	DerivationPolicyFingerprint string                       `json:"derivationPolicyFingerprint"`
+	TaskCount                   int                          `json:"taskCount"`
+	TaskFunctionIOCount         int                          `json:"taskFunctionIoCount"`
+	TaskFunctionIONoTargetCount int                          `json:"taskFunctionIoNoTargetCount"`
+	IOTableCount                int                          `json:"ioTableCount"`
+	SourceEdges                 []CrossViewEdge              `json:"sourceEdges"`
+	DerivedEdges                []CrossViewEdge              `json:"derivedEdges"`
+	Actions                     []CrossViewActionObservation `json:"actions"`
+	Unresolved                  []CrossViewUnresolved        `json:"unresolved,omitempty"`
+	ProjectionFingerprint       string                       `json:"projectionFingerprint"`
+	AuthorityLimits             []string                     `json:"authorityLimits"`
+}
+
+type CrossViewAccounting struct {
+	SchemaVersion                         int            `json:"schemaVersion"`
+	SourceFormat                          string         `json:"sourceFormat"`
+	SourceFormatVersion                   string         `json:"sourceFormatVersion"`
+	SourceArtifactDigest                  string         `json:"sourceArtifactDigest"`
+	MappingContractFingerprint            string         `json:"mappingContractFingerprint"`
+	DerivationPolicyRevision              string         `json:"derivationPolicyRevision"`
+	DerivationPolicyFingerprint           string         `json:"derivationPolicyFingerprint"`
+	ProjectionFingerprint                 string         `json:"projectionFingerprint"`
+	TaskCount                             int            `json:"taskCount"`
+	TaskActionCount                       int            `json:"taskActionCount"`
+	TaskActionWithoutFunctionIOCount      int            `json:"taskActionWithoutFunctionIoCount"`
+	TaskActionMissingIDCount              int            `json:"taskActionMissingIdCount"`
+	TaskFunctionIOCount                   int            `json:"taskFunctionIoCount"`
+	TaskFunctionIONoTargetCount           int            `json:"taskFunctionIoNoTargetCount"`
+	DistinctActionFunctionPairCount       int            `json:"distinctActionFunctionPairCount"`
+	IOTableCount                          int            `json:"ioTableCount"`
+	PotentialActionFunctionTablePathCount int            `json:"potentialActionFunctionTablePathCount"`
+	TaskFunctionIOTargetKindCounts        map[string]int `json:"taskFunctionIoTargetKindCounts,omitempty"`
+	PotentialOperationCombinationCounts   map[string]int `json:"potentialOperationCombinationCounts,omitempty"`
+	SourceEdgeCounts                      map[string]int `json:"sourceEdgeCounts"`
+	DerivedEdgeCounts                     map[string]int `json:"derivedEdgeCounts"`
+	UnresolvedCounts                      map[string]int `json:"unresolvedCounts,omitempty"`
+	AuthorityLimits                       []string       `json:"authorityLimits"`
+}
+
+type crossViewNode struct {
+	node          Node
+	token         string
+	taskToken     string
+	actionToken   string
+	functionToken string
+}
+
+type actionFunctionPair struct {
+	actionToken   string
+	functionToken string
+	sourceTokens  []string
+}
+
+var crossViewFingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// BuildCrossViewProjection builds read-only relations only after verifying the
+// exact source document and its version against the supplied transcription contract.
+// Unvalidated Inspection values are not accepted at this public boundary.
+func BuildCrossViewProjection(
+	format Format,
+	source []byte,
+	contract []byte,
+) (CrossViewProjection, error) {
+	inspection, err := InspectWithContract(format, source, contract)
+	if err != nil {
+		return CrossViewProjection{}, err
+	}
+	return buildCrossViewProjection(inspection)
+}
+
+func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
+	doc := inspection.Document
+	mappingContractFingerprint, err := normalizeCrossViewContractFingerprint(inspection.TranscriptionContractFingerprint)
+	if err != nil {
+		return CrossViewProjection{}, err
+	}
+	if doc.Format != FormatXead {
+		return CrossViewProjection{}, fmt.Errorf("cross-view projection currently supports xead only: %s", doc.Format)
+	}
+	if doc.SHA256 == "" {
+		return CrossViewProjection{}, fmt.Errorf("source document digest is empty")
+	}
+
+	nodes := flattenCrossViewNodes(doc)
+	functionsByID := map[string][]crossViewNode{}
+	tablesByID := map[string][]crossViewNode{}
+	targetsByFunction := map[string]map[string][]crossViewNode{}
+	actions := map[string]*CrossViewActionObservation{}
+	taskCount := 0
+	taskFunctionIOCount := 0
+	taskFunctionIONoTargetCount := 0
+	ioTableCount := 0
+
+	for _, ref := range nodes {
+		if !ref.node.Known {
+			continue
+		}
+		switch ref.node.Name {
+		case "Task":
+			taskCount++
+		case "TaskAction":
+			_, hasID := nonEmptyExactAttribute(ref.node, "ID")
+			actions[ref.token] = &CrossViewActionObservation{
+				ActionToken:               ref.token,
+				TaskToken:                 ref.taskToken,
+				MissingLegacyID:           !hasID,
+				ManualOrExternalCandidate: true,
+				AuthorityLimits: []string{
+					"source-token-is-not-canonical-business-identity",
+					"missing-legacy-id-must-not-be-repaired-from-sortkey-or-order",
+					"absence-of-function-io-is-only-manual-or-external-candidate-evidence",
+				},
+			}
+		case "TaskFunctionIO":
+			taskFunctionIOCount++
+			if ioID, ok := exactAttribute(ref.node, "IOID"); ok && strings.TrimSpace(ioID) == "0" {
+				taskFunctionIONoTargetCount++
+			}
+			if action := actions[ref.actionToken]; action != nil {
+				action.FunctionIOCount++
+				action.ManualOrExternalCandidate = false
+			}
+		case "Function":
+			if id, ok := nonEmptyExactAttribute(ref.node, "ID"); ok {
+				functionsByID[id] = append(functionsByID[id], ref)
+			}
+		case "Table":
+			if id, ok := nonEmptyExactAttribute(ref.node, "ID"); ok {
+				tablesByID[id] = append(tablesByID[id], ref)
+			}
+		case "IOPanel", "IOSpool", "IOTable":
+			if ref.node.Name == "IOTable" {
+				ioTableCount++
+			}
+			if ref.functionToken == "" {
+				continue
+			}
+			if id, ok := nonEmptyExactAttribute(ref.node, "ID"); ok {
+				if targetsByFunction[ref.functionToken] == nil {
+					targetsByFunction[ref.functionToken] = map[string][]crossViewNode{}
+				}
+				targetsByFunction[ref.functionToken][id] = append(targetsByFunction[ref.functionToken][id], ref)
+			}
+		}
+	}
+
+	projection := CrossViewProjection{
+		SchemaVersion:               1,
+		SourceFormat:                string(doc.Format),
+		SourceFormatVersion:         crossViewDocumentVersion(doc),
+		SourceArtifactDigest:        "sha256:" + doc.SHA256,
+		MappingContractFingerprint:  mappingContractFingerprint,
+		DerivationPolicyRevision:    CrossViewDerivationPolicyRevision,
+		DerivationPolicyFingerprint: crossViewDerivationPolicyFingerprint(),
+		TaskCount:                   taskCount,
+		TaskFunctionIOCount:         taskFunctionIOCount,
+		TaskFunctionIONoTargetCount: taskFunctionIONoTargetCount,
+		IOTableCount:                ioTableCount,
+		AuthorityLimits: []string{
+			"cross-view-projection-is-not-canonical-authority",
+			"source-reachability-is-not-runtime-effect",
+			"source-reachability-is-not-transaction-authority",
+			"source-reachability-is-not-authorization-or-business-ownership",
+			"derived-path-is-not-business-action-specific-crud",
+			"inspection-contract-binding-does-not-by-itself-prove-source-profile-conformance",
+		},
+	}
+
+	for _, ref := range nodes {
+		if !ref.node.Known {
+			continue
+		}
+		switch ref.node.Name {
+		case "TaskAction":
+			if ref.taskToken == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-action-without-task",
+					"task-action",
+					[]string{ref.token},
+				))
+				continue
+			}
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "task-action",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.taskToken,
+				ToToken:      ref.token,
+				SourceTokens: normalizedTokens(ref.taskToken, ref.token),
+				AuthorityLimits: []string{
+					"source-structure-is-not-canonical-business-identity",
+					"task-order-is-not-runtime-transaction-order",
+				},
+			})
+
+		case "TaskFunctionIO":
+			if ref.actionToken == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-function-io-without-task-action",
+					"action-function-use",
+					[]string{ref.token},
+				))
+				continue
+			}
+			functionID, ok := nonEmptyExactAttribute(ref.node, "FunctionID")
+			if !ok {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-function-io-function-id-missing",
+					"action-function-use",
+					[]string{ref.actionToken, ref.token},
+				))
+				continue
+			}
+			functions := functionsByID[functionID]
+			if len(functions) != 1 {
+				code := "task-function-io-function-not-found"
+				if len(functions) > 1 {
+					code = "task-function-io-function-ambiguous"
+				}
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					code,
+					"action-function-use",
+					[]string{ref.actionToken, ref.token},
+				))
+				continue
+			}
+			function := functions[0]
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "action-function-use",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.actionToken,
+				ToToken:      function.token,
+				SourceTokens: normalizedTokens(ref.actionToken, ref.token, function.token),
+				AuthorityLimits: []string{
+					"function-use-is-not-business-action-effect",
+					"taskfunctionio-operations-text-is-not-business-action-semantics",
+				},
+			})
+
+			ioID, hasIOID := exactAttribute(ref.node, "IOID")
+			if !hasIOID || strings.TrimSpace(ioID) == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"task-function-io-target-id-missing",
+					"task-function-io-target",
+					[]string{ref.token, function.token},
+				))
+				continue
+			}
+			if ioID == "0" {
+				continue
+			}
+			targets := targetsByFunction[function.token][ioID]
+			if len(targets) != 1 {
+				code := "task-function-io-target-not-found"
+				if len(targets) > 1 {
+					code = "task-function-io-target-ambiguous"
+				}
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					code,
+					"task-function-io-target",
+					[]string{ref.token, function.token},
+				))
+				continue
+			}
+			target := targets[0]
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "task-function-io-target",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.token,
+				ToToken:      target.token,
+				TargetKind:   target.node.Name,
+				SourceTokens: normalizedTokens(ref.token, function.token, target.token),
+				AuthorityLimits: []string{
+					"target-interaction-is-not-business-action-semantics",
+					"io-target-is-not-business-data-effect",
+				},
+			})
+
+		case "IOTable":
+			if ref.functionToken == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-without-function",
+					"function-table-operation",
+					[]string{ref.token},
+				))
+				continue
+			}
+			tableID, ok := nonEmptyExactAttribute(ref.node, "TableID")
+			if !ok {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-table-id-missing",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token},
+				))
+				continue
+			}
+			tables := tablesByID[tableID]
+			if len(tables) != 1 {
+				code := "iotable-table-not-found"
+				if len(tables) > 1 {
+					code = "iotable-table-ambiguous"
+				}
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					code,
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token},
+				))
+				continue
+			}
+			operations, invalidOps := iotableOperations(ref.node)
+			if len(invalidOps) != 0 {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-operation-marker-unsupported",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token, tables[0].token},
+				))
+				continue
+			}
+			if operations == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-operation-missing",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token, tables[0].token},
+				))
+				continue
+			}
+			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
+				Kind:         "function-table-operation",
+				Nature:       CrossViewNatureSource,
+				FromToken:    ref.functionToken,
+				ToToken:      tables[0].token,
+				Operations:   operations,
+				SourceTokens: normalizedTokens(ref.functionToken, ref.token, tables[0].token),
+				AuthorityLimits: []string{
+					"function-wide-iotable-is-potential-access-not-business-action-specific-effect",
+					"declared-crud-is-not-actual-runtime-effect",
+				},
+			})
+		}
+	}
+
+	pairs := actionFunctionPairs(projection.SourceEdges)
+	tableEdgesByFunction := map[string][]CrossViewEdge{}
+	for _, edge := range projection.SourceEdges {
+		if edge.Kind == "function-table-operation" {
+			tableEdgesByFunction[edge.FromToken] = append(tableEdgesByFunction[edge.FromToken], edge)
+		}
+	}
+	for _, pair := range pairs {
+		for _, tableEdge := range tableEdgesByFunction[pair.functionToken] {
+			projection.DerivedEdges = append(projection.DerivedEdges, CrossViewEdge{
+				Kind:                      "action-function-table-potential-operation",
+				Nature:                    CrossViewNatureDerived,
+				FromToken:                 pair.actionToken,
+				ToToken:                   tableEdge.ToToken,
+				Operations:                tableEdge.Operations,
+				SourceTokens:              normalizedTokens(append(pair.sourceTokens, tableEdge.SourceTokens...)...),
+				DerivationRuleFingerprint: projection.DerivationPolicyFingerprint,
+				AuthorityLimits: []string{
+					"derived-path-is-not-business-action-specific-effect",
+					"function-wide-iotable-is-potential-access-not-business-action-specific-effect",
+					"derived-path-is-not-runtime-observation",
+					"derived-path-is-not-transaction-or-authorization-evidence",
+				},
+			})
+		}
+	}
+
+	for _, action := range actions {
+		projection.Actions = append(projection.Actions, *action)
+	}
+	sortCrossViewProjection(&projection)
+	copyProjection := projection
+	copyProjection.ProjectionFingerprint = ""
+	projection.ProjectionFingerprint = crossViewFingerprint(copyProjection)
+	return projection, nil
+}
+
+// CrossViewPublicAccounting refuses malformed or untrusted projection content
+// before any user-supplied string can become a public aggregate map key.
+func CrossViewPublicAccounting(projection CrossViewProjection) (CrossViewAccounting, error) {
+	if err := validateCrossViewProjectionForPublication(projection); err != nil {
+		return CrossViewAccounting{}, err
+	}
+	out := CrossViewAccounting{
+		SchemaVersion:                       1,
+		SourceFormat:                        projection.SourceFormat,
+		SourceFormatVersion:                 projection.SourceFormatVersion,
+		SourceArtifactDigest:                projection.SourceArtifactDigest,
+		MappingContractFingerprint:          projection.MappingContractFingerprint,
+		DerivationPolicyRevision:            projection.DerivationPolicyRevision,
+		DerivationPolicyFingerprint:         projection.DerivationPolicyFingerprint,
+		ProjectionFingerprint:               projection.ProjectionFingerprint,
+		TaskFunctionIOTargetKindCounts:      map[string]int{},
+		PotentialOperationCombinationCounts: map[string]int{},
+		SourceEdgeCounts:                    map[string]int{},
+		DerivedEdgeCounts:                   map[string]int{},
+		UnresolvedCounts:                    map[string]int{},
+		AuthorityLimits: []string{
+			"public-accounting-does-not-publish-individual-cross-view-relations",
+			"aggregate-count-is-not-semantic-equivalence",
+			"potential-operation-count-is-not-action-specific-runtime-effect",
+			"benchmark-observation-is-not-universal-xtea-rule",
+		},
+	}
+	actionFunctionPairs := map[string]struct{}{}
+	for _, action := range projection.Actions {
+		out.TaskActionCount++
+		if action.FunctionIOCount == 0 {
+			out.TaskActionWithoutFunctionIOCount++
+		}
+		if action.MissingLegacyID {
+			out.TaskActionMissingIDCount++
+		}
+	}
+	out.TaskCount = projection.TaskCount
+	out.TaskFunctionIOCount = projection.TaskFunctionIOCount
+	out.TaskFunctionIONoTargetCount = projection.TaskFunctionIONoTargetCount
+	out.IOTableCount = projection.IOTableCount
+	for _, edge := range projection.SourceEdges {
+		out.SourceEdgeCounts[edge.Kind]++
+		switch edge.Kind {
+		case "action-function-use":
+			actionFunctionPairs[edge.FromToken+"\x00"+edge.ToToken] = struct{}{}
+		case "task-function-io-target":
+			out.TaskFunctionIOTargetKindCounts[edge.TargetKind]++
+		}
+	}
+	out.DistinctActionFunctionPairCount = len(actionFunctionPairs)
+	for _, edge := range projection.DerivedEdges {
+		out.DerivedEdgeCounts[edge.Kind]++
+		if edge.Kind == "action-function-table-potential-operation" {
+			out.PotentialActionFunctionTablePathCount++
+			out.PotentialOperationCombinationCounts[edge.Operations]++
+		}
+	}
+	for _, unresolved := range projection.Unresolved {
+		out.UnresolvedCounts[unresolved.Code]++
+	}
+	if len(out.TaskFunctionIOTargetKindCounts) == 0 {
+		out.TaskFunctionIOTargetKindCounts = nil
+	}
+	if len(out.PotentialOperationCombinationCounts) == 0 {
+		out.PotentialOperationCombinationCounts = nil
+	}
+	if len(out.UnresolvedCounts) == 0 {
+		out.UnresolvedCounts = nil
+	}
+	return out, nil
+}
+
+)
+
+func crossViewDocumentVersion(doc Document) string {
+	version, _ := exactAttribute(doc.Root, "FormatVersion")
+	return version
+}
+
+func validateCrossViewProjectionForPublication(p CrossViewProjection) error {
+	if p.SchemaVersion != 1 || p.SourceFormat != string(FormatXead) ||
+		!crossViewVersionPattern.MatchString(p.SourceFormatVersion) {
+		return fmt.Errorf("cross-view projection has an unsupported source profile")
+	}
+	if !crossViewFingerprintPattern.MatchString(p.SourceArtifactDigest) ||
+		!crossViewFingerprintPattern.MatchString(p.MappingContractFingerprint) ||
+		p.DerivationPolicyRevision != CrossViewDerivationPolicyRevision ||
+		p.DerivationPolicyFingerprint != crossViewDerivationPolicyFingerprint() ||
+		!crossViewFingerprintPattern.MatchString(p.ProjectionFingerprint) {
+		return fmt.Errorf("cross-view projection has invalid provenance")
+	}
+	copyProjection := p
+	copyProjection.ProjectionFingerprint = ""
+	if crossViewFingerprint(copyProjection) != p.ProjectionFingerprint {
+		return fmt.Errorf("cross-view projection fingerprint does not match its content")
+	}
+	if p.TaskCount < 0 || p.TaskFunctionIOCount < 0 || p.IOTableCount < 0 ||
+		p.TaskFunctionIONoTargetCount < 0 || p.TaskFunctionIONoTargetCount > p.TaskFunctionIOCount {
+		return fmt.Errorf("cross-view projection has invalid source counts")
+	}
+	for _, action := range p.Actions {
+		if !crossViewFingerprintPattern.MatchString(action.ActionToken) ||
+			(action.TaskToken != "" && !crossViewFingerprintPattern.MatchString(action.TaskToken)) ||
+			action.FunctionIOCount < 0 {
+			return fmt.Errorf("cross-view projection has invalid action metadata")
+		}
+	}
+	for _, edge := range p.SourceEdges {
+		if edge.Nature != CrossViewNatureSource || edge.DerivationRuleFingerprint != "" {
+			return fmt.Errorf("cross-view projection has invalid source edge nature")
+		}
+		if err := validateCrossViewEdgeForPublication(edge); err != nil {
+			return err
+		}
+	}
+	for _, edge := range p.DerivedEdges {
+		if edge.Nature != CrossViewNatureDerived ||
+			edge.Kind != "action-function-table-potential-operation" ||
+			edge.DerivationRuleFingerprint != p.DerivationPolicyFingerprint {
+			return fmt.Errorf("cross-view projection has invalid derived edge")
+		}
+		if err := validateCrossViewEdgeForPublication(edge); err != nil {
+			return err
+		}
+	}
+	for _, unresolved := range p.Unresolved {
+		if !crossViewUnresolvedCodeAllowed(unresolved.Code) ||
+			!crossViewRelationKindAllowed(unresolved.RelationKind) ||
+			len(unresolved.SourceTokens) == 0 {
+			return fmt.Errorf("cross-view projection has invalid unresolved vocabulary")
+		}
+		for _, token := range unresolved.SourceTokens {
+			if !crossViewFingerprintPattern.MatchString(token) {
+				return fmt.Errorf("cross-view projection has invalid unresolved source token")
+			}
+		}
+	}
+	return nil
+}
+
+func validateCrossViewEdgeForPublication(edge CrossViewEdge) error {
+	if !crossViewEdgeKindAllowed(edge.Kind) ||
+		!crossViewFingerprintPattern.MatchString(edge.FromToken) ||
+		!crossViewFingerprintPattern.MatchString(edge.ToToken) ||
+		len(edge.SourceTokens) < 2 {
+		return fmt.Errorf("cross-view projection has invalid edge identity or kind")
+	}
+	fromFound, toFound := false, false
+	for _, token := range edge.SourceTokens {
+		if !crossViewFingerprintPattern.MatchString(token) {
+			return fmt.Errorf("cross-view projection has invalid edge source token")
+		}
+		fromFound = fromFound || token == edge.FromToken
+		toFound = toFound || token == edge.ToToken
+	}
+	if !fromFound || !toFound {
+		return fmt.Errorf("cross-view projection edge has unbound source evidence")
+	}
+	switch edge.Kind {
+	case "task-function-io-target":
+		if edge.TargetKind != "IOPanel" && edge.TargetKind != "IOSpool" && edge.TargetKind != "IOTable" {
+			return fmt.Errorf("cross-view projection has unsupported interaction target")
+		}
+		if edge.Operations != "" {
+			return fmt.Errorf("cross-view projection has unexpected interaction operation")
+		}
+	case "function-table-operation", "action-function-table-potential-operation":
+		if edge.TargetKind != "" || edge.Operations == "" || !crossViewOperationPattern.MatchString(edge.Operations) {
+			return fmt.Errorf("cross-view projection has invalid CRUD operation vocabulary")
+		}
+	default:
+		if edge.TargetKind != "" || edge.Operations != "" {
+			return fmt.Errorf("cross-view projection has unexpected edge attributes")
+		}
+	}
+	return nil
+}
+
+func crossViewEdgeKindAllowed(kind string) bool {
+	switch kind {
+	case "task-action", "action-function-use", "task-function-io-target",
+		"function-table-operation", "action-function-table-potential-operation":
+		return true
+	default:
+		return false
+	}
+}
+
+func crossViewRelationKindAllowed(kind string) bool {
+	switch kind {
+	case "task-action", "action-function-use", "task-function-io-target", "function-table-operation":
+		return true
+	default:
+		return false
+	}
+}
+
+func crossViewUnresolvedCodeAllowed(code string) bool {
+	switch code {
+	case "task-action-without-task",
+		"task-function-io-without-task-action",
+		"task-function-io-function-id-missing",
+		"task-function-io-function-not-found",
+		"task-function-io-function-ambiguous",
+		"task-function-io-target-id-missing",
+		"task-function-io-target-not-found",
+		"task-function-io-target-ambiguous",
+		"iotable-without-function",
+		"iotable-table-id-missing",
+		"iotable-table-not-found",
+		"iotable-table-ambiguous",
+		"iotable-operation-marker-unsupported",
+		"iotable-operation-missing":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeCrossViewContractFingerprint(value string) (string, error) {
@@ -662,6 +1829,7 @@ func crossViewDerivationPolicyFingerprint() string {
 	}{
 		Revision: CrossViewDerivationPolicyRevision,
 		Rules: []string{
+			"source format and version are preserved from the profile-validated source root",
 			"source tokens are bound to the exact artifact digest and preorder traversal ordinal",
 			"only known unqualified source constructs participate in standard cross-view relations",
 			"only exact unqualified source attributes participate in legacy reference resolution",
