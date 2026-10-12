@@ -58,6 +58,12 @@ jobs:
           test "$source_tip" = "$EXPECTED_HEAD_SHA"
           test "$main_tip" = "$EXPECTED_MAIN_SHA"
           git merge-base --is-ancestor "$EXPECTED_MAIN_SHA" "$actual"
+          # 検査結果を隠せるGitの索引フラグも拒否する。
+          hidden_index="$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          if [[ -n "$hidden_index" ]]; then
+            printf '変更を隠す索引フラグがある：\n%s\n' "$hidden_index" >&2
+            exit 1
+          fi
           dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
           if [[ -n "$dirt" ]]; then
             printf '実行前の作業領域に変更がある：\n%s\n' "$dirt" >&2
@@ -103,6 +109,12 @@ jobs:
           test "$source_tip" = "$EXPECTED_HEAD_SHA"
           test "$main_tip" = "$EXPECTED_MAIN_SHA"
           git merge-base --is-ancestor "$EXPECTED_MAIN_SHA" "$actual"
+          # 検査結果を隠せるGitの索引フラグも拒否する。
+          hidden_index="$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          if [[ -n "$hidden_index" ]]; then
+            printf '変更を隠す索引フラグがある：\n%s\n' "$hidden_index" >&2
+            exit 1
+          fi
           dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
           if [[ -n "$dirt" ]]; then
             printf '実行後の作業領域に変更がある：\n%s\n' "$dirt" >&2
