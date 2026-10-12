@@ -22,6 +22,7 @@ import (
 )
 
 type referenceCommandScenarioRunner struct {
+	model         *scenarioModel
 	persistence   commandPersistence
 	resolver      driver.Resolver
 	read          readScenarioRunner
@@ -300,6 +301,9 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 			}
 			result.Stage = "command"
 		}
+		if err := r.model.Check(invokeCtx); err != nil {
+			return capabilityinvoke.BusinessResult{}, err
+		}
 		businessResult := capabilityinvoke.BusinessResult{
 			Capability: capability,
 			Mode:       capabilityinvoke.ResultOutput,
@@ -307,6 +311,9 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 		}
 		if r.persistence != nil {
 			err := r.persistence.Submit(invokeCtx, actualOrderID, readResult, func(effectCtx context.Context) error {
+				if err := r.model.Check(effectCtx); err != nil {
+					return err
+				}
 				final, err := r.invokeBusinessAuthorization(effectCtx, subjectID)
 				if err != nil {
 					return err

@@ -1,0 +1,16 @@
+{
+  "schema": "tei.reference.change-candidate/v0",
+  "id": "order-entry-unit-price-execution-loop",
+  "baseModelRevision": "",
+  "origin": {"kind": "cli", "actor": "reference-fixture"},
+  "intent": "受注明細の単価の正値制約と、確定前の評価対象を同じ受理で追加する",
+  "evidence": [
+    {"subject": "sales.order_line.quantity_positive"},
+    {"source": "semantic/sales/validation.tei"},
+    {"source": "applications/order-entry/application.tei"}
+  ],
+  "delta": [
+    {"op": "add-validation", "namespace": "sales", "id": "sales.order_line.unit_price_positive", "kind": "positive", "attribute": "sales.order_line.unit_price"},
+    {"op": "add-application-validation-use", "applicationValidationUse": {"application": "order_entry", "validation": "sales.order_line.unit_price_positive"}}
+  ]
+}

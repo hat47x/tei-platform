@@ -29,3 +29,5 @@ python3 tools/verify-postgres-order-execution.py --output /absolute/path/outside
 通常の全体検証では実DB専用試験を省略する。省略を実DBでの合格と扱わず、上記検証器が`TEI_REFERENCE_POSTGRES_TEST_DSN_FILE`を設定し、実DB試験が一件も省略されなかったことを確認する。試験がデータを変更する前には、各表にこの参照例の所有標識があることを検査する。
 
 段階計画は[機能拡充と基盤の接続](../../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md)、実行入口は[ウェブ参照実装](../../tools/reference-first-web-target/README.md)を参照する。
+
+`--source-loop`を付けると、同じ使い捨てDBに[ソース変更の受理から再実行まで](../source-execution-loop/README.md)の確認を追加する。ホストがソース版を選ぶ場合は、実行許可の`model_revision`もその版に合わせる。版を選ばない通常の参照ホストには空文字の許可を使い、版に結び付いた許可を流用しない。

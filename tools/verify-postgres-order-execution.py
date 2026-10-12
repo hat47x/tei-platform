@@ -22,6 +22,7 @@ def run(args, **kwargs):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', required=True, help='Evidence directory outside the repository')
+    parser.add_argument('--source-loop', action='store_true', help='Also verify scratch Shared Acceptance -> selected model -> PostgreSQL execution')
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     output = Path(args.output).resolve()
@@ -131,6 +132,14 @@ def main():
         status, _ = request('/scenario/submit', payload)
         assert status >= 400 and sql('SELECT status FROM public.orders WHERE order_id=1001;') == 'draft'
         report['checks'].append('database-side execution revocation prevents mutation')
+        if args.source_loop:
+            import sys
+            sys.dont_write_bytecode = True
+            from reference_source_execution_loop import verify_source_loop
+            report['sourceLoop'] = verify_source_loop(root, output, binary, head, digest, dsn_file, sql, run)
+            assert report['sourceLoop']['passed']
+        sql("UPDATE public.tei_reference_execution_grants SET revoked=false;")
+        assert request(read_path)[0] == 200
         run(['docker', 'stop', container])
         status, _ = request(read_path)
         assert status >= 400
@@ -156,7 +165,7 @@ def main():
         private = output / 'connection.private'
         if private.exists():
             private.unlink()
-        report['passed'] = report['cleanAfter'] and report['fixtureCleanupConfirmed'] and len(report['checks']) == 6
+        report['passed'] = report['cleanAfter'] and report['fixtureCleanupConfirmed'] and len(report['checks']) == 6 and (not args.source_loop or report.get('sourceLoop', {}).get('passed', False))
         (output / 'evidence.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 

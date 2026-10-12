@@ -15,6 +15,7 @@ import (
 
 	"tei/internal/composition"
 	"tei/internal/driver"
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -98,7 +99,7 @@ func postgresTestState(t *testing.T) *postgresScenarioState {
 	if _, err := db.ExecContext(ctx, "UPDATE public.order_lines SET quantity = CASE order_line_id WHEN 5001 THEN 2 WHEN 5003 THEN 0 ELSE 1 END"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(ctx, "UPDATE public.tei_reference_execution_grants SET artifact_digest = $1, generation = 1, fencing_token = 1, revoked = false, expires_at = clock_timestamp() + interval '10 minutes'", digest); err != nil {
+	if _, err := db.ExecContext(ctx, "UPDATE public.tei_reference_execution_grants SET artifact_digest = $1, generation = 1, fencing_token = 1, model_revision = '', revoked = false, expires_at = clock_timestamp() + interval '10 minutes'", digest); err != nil {
 		t.Fatal(err)
 	}
 	return &postgresScenarioState{db: db, world: loaded.World, digest: digest, fence: 1}
@@ -111,6 +112,7 @@ func postgresTestRunners(t *testing.T, state *postgresScenarioState, after func(
 		t.Fatal(err)
 	}
 	command.persistence = state
+	command.model = state.model
 	read := &hookedReadScenario{read: &postgresReadScenario{state: state}, after: after}
 	r, c, err := wireComposedScenarios(context.Background(), composition.NewRegistry(), read, command, state.digest, func(composition.Binding) error { return nil })
 	if err != nil {
@@ -167,6 +169,51 @@ func TestPostgresScenarioActualReadCommitAndSeparateObservation(t *testing.T) {
 	}
 	if _, err := c.RunCommand(context.Background(), postgresSubmitInput()); err == nil {
 		t.Fatal("repeated submit accepted")
+	}
+}
+
+func TestPostgresScenarioModelRevisionRequiresSeparateHostAdmission(t *testing.T) {
+	s := postgresTestState(t)
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	index, err := workspace.BuildSourceIndex(referenceWorkspacePath(t), loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := bindScenarioModel(referenceWorkspacePath(t), loaded, sourceindex.Revision(index))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.model = model
+	r, c := postgresTestRunners(t, s, nil)
+	if _, err := r.Run(context.Background(), readScenarioInput{From: postgresSubmitInput().From}); err == nil {
+		t.Fatal("source selection granted model execution implicitly")
+	}
+	if _, err := s.db.Exec("UPDATE public.tei_reference_execution_grants SET model_revision = $1", model.revision); err != nil {
+		t.Fatal(err)
+	}
+	plainState := *s
+	plainState.model = nil
+	plain, _ := postgresTestRunners(t, &plainState, nil)
+	if _, err := plain.Run(context.Background(), readScenarioInput{From: postgresSubmitInput().From}); err == nil {
+		t.Fatal("host without a selected revision used model-bound grant")
+	}
+	result, err := c.RunCommand(context.Background(), postgresSubmitInput())
+	if err != nil || result.Composition.ModelRevision != model.revision {
+		t.Fatalf("admitted model failed: %v", err)
+	}
+	if _, err := s.db.Exec("UPDATE public.orders SET status = 'draft' WHERE order_id = 1001"); err != nil {
+		t.Fatal(err)
+	}
+	_, changed := postgresTestRunners(t, s, func() {
+		if _, err := s.db.Exec("UPDATE public.tei_reference_execution_grants SET model_revision = 'different-model' WHERE provider_id = 'order-submit'"); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := changed.RunCommand(context.Background(), postgresSubmitInput()); err == nil || postgresStatus(t, s.db) != "draft" {
+		t.Fatal("changed model admission permitted a stale effect")
 	}
 }
 

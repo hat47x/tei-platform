@@ -14,6 +14,7 @@ TEIは、ドメイン知識と技術を分けて管理するローコード開�
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
 | 参照シナリオと新しいプラグイン基盤 | 開発候補として、型付き実装を選択済み世代へ接続。`-composition-scenarios`で受注の読取と登録・後続観測を実行する。既存の模擬データを使う範囲であり、本番の提供元移行・無停止運用は未成立 | [実行方法](../tools/reference-first-web-target/README.md)、[接続計画](../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md) |
 | PostgreSQL上の受注シナリオ | 開発候補として、受注・明細の読取、確定、別読取りによる観測を実DBへ接続。現在の実行許可、排他トークン、古い読取版、重複確定を検査する。顧客参照と認証は模擬実装で、本番接続や汎用の権限基盤への移行は未成立 | [参照データと再現手順](../reference/postgres-order-execution/README.md) |
+| 共通受理と実行版の接続 | 開発候補として、共通受理で変更した検証用ソースを再読込みし、正確なソース版を投影・プラグイン呼出し・DBの実行許可へ結ぶ。古い版や読取後のソース変更は確定前に拒否する。人の承認・Studio編集・無停止のモデル交換は未成立 | [変更案から再実行までの参照例](../reference/source-execution-loop/README.md) |
 | 判定段階A | **合格**。アプリケーションの型からドライバーへ渡す意味上の境界を確認した過去の判定 | [段階Aの判定記録](../plan/gate/GATE_A_READINESS_AUDIT.md) |
 | 判定段階B | **合格**。2026-09-19に固定した版`e5231839a5dcc62cce1181a2731fcb7c70d16736`について、リポジトリ上の再現性、生成物、PostgreSQL実環境を同じ実行で確認 | [段階Bの判定記録](../plan/gate/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/gate/GATE_B_EVIDENCE_RUNBOOK.md) |
 | 判定段階Cと最初のウェブ実行先 | **合格**。2026-09-19に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/gate/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/gate/GATE_C_EVIDENCE_CONTRACT.md) |

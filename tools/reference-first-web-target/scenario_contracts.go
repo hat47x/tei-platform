@@ -4,6 +4,7 @@ import "context"
 
 // compositionTrace is transport data only; it grants no runtime authority.
 type compositionTrace struct {
+	ModelRevision   string `json:"modelRevision,omitempty"`
 	ContractID      string `json:"contractId"`
 	ContractVersion string `json:"contractVersion"`
 	ProviderID      string `json:"providerId"`

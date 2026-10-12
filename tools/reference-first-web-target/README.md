@@ -44,6 +44,8 @@
 
 実際のPostgreSQLを併用する場合は、さらに`-postgres-dsn-file /secure/connection-file -postgres-fencing-token 1`を指定する。受注と明細を実DBから読み、実DBへ確定し、別読取りで観測する。顧客参照と認証は模擬実装のままで、応答に混在範囲を明示する。接続や許可の確認に失敗した場合は模擬データへ戻らない。サーバーは参照データや許可を作成しない。[使い捨てDBによる再現手順](../../reference/postgres-order-execution/README.md)を参照する。
 
+`-model-revision sha256:...`を加えると、ホストが選んだ正確なソース版を投影と呼出しに記録する。ソースや構成ファイルが変わった場合は処理を拒否し、明示的な再読込みを必要とする。PostgreSQLの許可には同じ`model_revision`を別に設定する。版の指定は変更案の受理や人の承認の証明ではない。[共通受理から再実行までの検証](../../reference/source-execution-loop/README.md)を参照する。
+
 ```sh
 go test -race -count=1 ./internal/composition ./tools/reference-first-web-target
 ```

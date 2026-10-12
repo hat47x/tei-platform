@@ -18,6 +18,7 @@ type projectionConfig struct {
 }
 
 type webTargetProjection struct {
+	ModelRevision              string                 `json:"modelRevision,omitempty"`
 	HandoverBaselineID         string                 `json:"handoverBaselineId"`
 	BaselineRepositoryRevision string                 `json:"baselineRepositoryRevision"`
 	TargetBuildRevision        string                 `json:"targetBuildRevision"`

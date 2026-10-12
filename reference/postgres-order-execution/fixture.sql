@@ -24,6 +24,7 @@ CREATE TABLE public.tei_reference_execution_grants (
     fencing_token bigint NOT NULL,
     expires_at timestamptz NOT NULL,
     revoked boolean NOT NULL DEFAULT false,
+    model_revision text NOT NULL DEFAULT '',
     PRIMARY KEY(scope, provider_id)
 );
 COMMENT ON TABLE public.orders IS 'tei.reference.postgres-order-execution.v1';
@@ -42,6 +43,7 @@ INSERT INTO public.order_lines VALUES
 
 -- The host supplies the digest of the actual executable through psql -v.
 -- These rows are reference host permission, never canonical business data.
-INSERT INTO public.tei_reference_execution_grants VALUES
+INSERT INTO public.tei_reference_execution_grants
+    (scope, provider_id, contract_id, contract_version, artifact_digest, generation, fencing_token, expires_at, revoked) VALUES
     ('reference/order_entry/development', 'order-read', 'tei.reference.order-entry.read', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false),
     ('reference/order_entry/development', 'order-submit', 'tei.reference.order-entry.postgres-submit', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false);

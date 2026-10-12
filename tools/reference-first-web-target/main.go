@@ -30,8 +30,13 @@ func main() {
 		composeScenarios = flag.Bool("composition-scenarios", false, "reference: run order_entry read and submit through selected service contracts")
 		postgresDSNFile  = flag.String("postgres-dsn-file", "", "reference: host-owned PostgreSQL connection file; never creates fixture objects")
 		postgresFence    = flag.Int64("postgres-fencing-token", 0, "reference: expected positive database execution-grant fencing token")
+		modelRevision    = flag.String("model-revision", "", "reference: exact source revision explicitly selected by the host; does not accept proposals")
 	)
 	flag.Parse()
+	if *modelRevision != "" && !*composeScenarios {
+		fmt.Fprintln(os.Stderr, "-model-revision requires -composition-scenarios")
+		os.Exit(2)
+	}
 	if (*postgresDSNFile != "" || *postgresFence != 0) && (!*composeScenarios || *postgresDSNFile == "" || *postgresFence <= 0) {
 		fmt.Fprintln(os.Stderr, "PostgreSQL reference requires -composition-scenarios, -postgres-dsn-file and a positive -postgres-fencing-token")
 		os.Exit(2)
@@ -55,6 +60,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	var model *scenarioModel
+	if *modelRevision != "" {
+		model, err = bindScenarioModel(*workspacePath, loaded, *modelRevision)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+	}
 	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
 		HandoverBaselineID:         *baselineID,
 		BaselineRepositoryRevision: *baselineRev,
@@ -64,6 +77,9 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
+	}
+	if model != nil {
+		projection.ModelRevision = model.revision
 	}
 	// Each Application gets only the scenario runners that exist for it. A runner for another
 	// Application is never attached, and newWebTargetServer rejects one that is.
@@ -85,6 +101,7 @@ func main() {
 			os.Exit(2)
 		}
 		commandScenario = command
+		command.model = model
 		if *composeScenarios {
 			digest, err := runningExecutableDigest()
 			if err != nil {
@@ -98,7 +115,7 @@ func main() {
 					log.Fatal(err)
 				}
 				defer db.Close()
-				state := &postgresScenarioState{db: db, world: loaded.World, digest: digest, fence: *postgresFence}
+				state := &postgresScenarioState{db: db, world: loaded.World, digest: digest, fence: *postgresFence, model: model}
 				readScenario = &postgresReadScenario{state: state}
 				command.persistence = state
 			}

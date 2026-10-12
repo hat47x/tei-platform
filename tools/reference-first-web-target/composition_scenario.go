@@ -29,27 +29,41 @@ func projectCompositionBinding(binding composition.Binding) *compositionTrace {
 }
 
 type composedReadScenario struct {
+	model   *scenarioModel
 	service *composition.Service[readScenarioInput, readScenarioResult]
 }
 
 func (*composedReadScenario) ApplicationID() string { return "order_entry" }
 func (r *composedReadScenario) Run(ctx context.Context, input readScenarioInput) (readScenarioResult, error) {
+	if err := r.model.Check(ctx); err != nil {
+		return readScenarioResult{}, err
+	}
 	result, binding, err := r.service.Invoke(ctx, input)
 	if err == nil {
 		result.Composition = projectCompositionBinding(binding)
+		if r.model != nil {
+			result.Composition.ModelRevision = r.model.revision
+		}
 	}
 	return result, err
 }
 
 type composedCommandScenario struct {
+	model   *scenarioModel
 	service *composition.Service[commandScenarioInput, commandScenarioResult]
 }
 
 func (*composedCommandScenario) ApplicationID() string { return "order_entry" }
 func (r *composedCommandScenario) RunCommand(ctx context.Context, input commandScenarioInput) (commandScenarioResult, error) {
+	if err := r.model.Check(ctx); err != nil {
+		return commandScenarioResult{}, err
+	}
 	result, binding, err := r.service.Invoke(ctx, input)
 	if err == nil {
 		result.Composition = projectCompositionBinding(binding)
+		if r.model != nil {
+			result.Composition.ModelRevision = r.model.revision
+		}
 	}
 	return result, err
 }
@@ -119,12 +133,12 @@ func wireComposedScenarios(ctx context.Context, registry *composition.Registry, 
 	commandBinding := composition.Binding{ContractID: submitContract.ID, ContractVersion: "1", ProviderID: "order-submit", ArtifactDigest: digest, Generation: 1}
 	// Bind the internal read to the same selected read service used by HTTP.
 	// Copy the runner to preserve the caller's existing assembly.
-	composedRead := &composedReadScenario{service: readService}
+	composedRead := &composedReadScenario{service: readService, model: command.model}
 	linkedCommand := *command
 	linkedCommand.read = composedRead
 	commandService, err := composition.NewService(ctx, registry, selectedCommand, commandBinding, guard, linkedCommand.RunCommand, lifecycle)
 	if err != nil {
 		return cleanupRead(err)
 	}
-	return composedRead, &composedCommandScenario{service: commandService}, nil
+	return composedRead, &composedCommandScenario{service: commandService, model: command.model}, nil
 }

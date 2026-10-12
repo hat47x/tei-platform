@@ -27,6 +27,7 @@ var errPostgresCommitUnknown = errors.New("PostgreSQL commit outcome is unknown;
 // This host adapter owns one explicitly configured reference database. It
 // never creates, drops or seeds objects, and never falls back to fixture data.
 type postgresScenarioState struct {
+	model  *scenarioModel
 	db     *sql.DB
 	world  ir.World
 	digest string
@@ -62,6 +63,9 @@ type grantReader interface {
 // For effects, FOR SHARE holds the grant until commit; revocation/takeover
 // updates must serialize on that row, even if issued by another connection.
 func (s *postgresScenarioState) checkGrant(ctx context.Context, reader grantReader, lock bool) error {
+	if err := s.model.Check(ctx); err != nil {
+		return err
+	}
 	b, ok := composition.InvocationBinding(ctx)
 	if !ok || b.ArtifactDigest != s.digest || s.fence <= 0 {
 		return errors.New("PostgreSQL operation requires a pinned host instance")
@@ -71,11 +75,18 @@ func (s *postgresScenarioState) checkGrant(ctx context.Context, reader grantRead
  AND contract_id = $2 AND contract_version = $3 AND artifact_digest = $4
  AND generation = $5 AND fencing_token = $6 AND NOT revoked
  AND expires_at > clock_timestamp()`
+	args := []any{b.ProviderID, b.ContractID, b.ContractVersion, b.ArtifactDigest, b.Generation, s.fence}
+	if s.model != nil {
+		query += " AND model_revision = $7"
+		args = append(args, s.model.revision)
+	} else {
+		query += " AND model_revision = ''"
+	}
 	if lock {
 		query += " FOR SHARE"
 	}
 	var permitted int
-	if err := reader.QueryRowContext(ctx, query, b.ProviderID, b.ContractID, b.ContractVersion, b.ArtifactDigest, b.Generation, s.fence).Scan(&permitted); err != nil {
+	if err := reader.QueryRowContext(ctx, query, args...).Scan(&permitted); err != nil {
 		return errors.New("PostgreSQL execution grant is absent, expired, revoked, fenced or unavailable")
 	}
 	return nil

@@ -47,21 +47,35 @@ type Result struct {
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
-	sourceSnapshotRoot string
-	sourceSnapshot     map[string][]byte
+	sourceSnapshotRoot          string
+	sourceSnapshot              map[string][]byte
+	manifestSnapshotPath        string
+	manifestSnapshotFingerprint string
+}
+
+// ManifestSource returns provenance of the manifest bytes actually parsed by
+// Load. It does not reread current disk bytes or grant acceptance authority.
+func (r Result) ManifestSource() (string, string, error) {
+	if r.manifestSnapshotPath == "" || r.manifestSnapshotFingerprint == "" {
+		return "", "", errors.New("loaded Workspace manifest provenance is unavailable")
+	}
+	return r.manifestSnapshotPath, r.manifestSnapshotFingerprint, nil
 }
 
 func Load(root string) (Result, error) {
 	manifestYAML := filepath.Join(root, "tei.workspace.yaml")
 	manifestTEI := filepath.Join(root, "tei.workspace.tei")
 	var roots []string
+	var manifestSourcePath, manifestSourceFingerprint string
 	if src, err := os.ReadFile(manifestYAML); err == nil {
+		manifestSourcePath, manifestSourceFingerprint = "tei.workspace.yaml", sourceindex.Fingerprint(src)
 		var parseErr error
 		roots, parseErr = parseWorkspaceYAML(string(src))
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
 	} else if src, legacyErr := os.ReadFile(manifestTEI); legacyErr == nil {
+		manifestSourcePath, manifestSourceFingerprint = "tei.workspace.tei", sourceindex.Fingerprint(src)
 		var parseErr error
 		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
@@ -89,6 +103,8 @@ func Load(root string) (Result, error) {
 		PluginImplementationSources: map[string]SourceLocation{},
 		ManagedFiles:                managedFiles,
 		sourceSnapshotRoot:          rootReal,
+		manifestSnapshotPath:        manifestSourcePath,
+		manifestSnapshotFingerprint: manifestSourceFingerprint,
 		sourceSnapshot:              make(map[string][]byte),
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
