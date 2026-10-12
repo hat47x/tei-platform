@@ -105,3 +105,44 @@ func TestInspectWiringProviderEpochChangesOnlyOnRelevantChanges(t *testing.T) {
 		t.Fatalf("re-registered provider revived stale selection: %+v", newest)
 	}
 }
+
+func TestInspectWiringRejectsWrongContractInSameScope(t *testing.T) {
+	r := NewRegistry()
+	if _, err := r.Apply(0, []Provider{{ID: "known", Scope: "tenant-a", Offers: probeRead}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	got := r.InspectWiring(WiringRequirement{Contract: probeApp, Scope: "tenant-a", ProviderID: "known"})
+	if got.Verdict != ProposalConflict || got.Reason != ReasonExplicitMismatch || got.Selected != nil {
+		t.Fatalf("incompatible existing provider was accepted: %+v", got)
+	}
+}
+
+func TestInspectWiringConcurrentCatalogUpdates(t *testing.T) {
+	r := NewRegistry()
+	start, err := r.Apply(0, []Provider{{ID: "one", Scope: "tenant-a", Offers: probeRead}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		rev := start.Revision
+		for i := 0; i < 80; i++ {
+			next, err := r.Apply(rev, []Provider{{ID: "other", Scope: "tenant-b", Offers: probeApp}}, nil)
+			if err != nil {
+				done <- err
+				return
+			}
+			rev = next.Revision
+		}
+		done <- nil
+	}()
+	for i := 0; i < 80; i++ {
+		got := r.InspectWiring(WiringRequirement{Contract: probeRead, Scope: "tenant-a"})
+		if got.Verdict != ProposalCandidate || got.Selected == nil || got.Selected.ProviderID != "one" {
+			t.Fatalf("concurrent unrelated updates changed service selection: %+v", got)
+		}
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
