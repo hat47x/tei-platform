@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"tei/internal/workspace"
 	"tei/internal/validation"
+	"tei/internal/workspace"
 )
 
 func writeExternalFixture(t *testing.T, file, content string) {
