@@ -56,7 +56,7 @@ class UnitPairPreflightTests(unittest.TestCase):
                 "handoverBaselineId": "B",
                 "baselineRepositoryRevision": BASELINE,
                 "targetBuildRevision": SOURCE,
-                "world": {"applications": []},
+                "world": {"applications": [], "databases": [], "environments": [], "queries": []},
             }).encode(),
         }
         for name, data in self.files.items():
