@@ -211,8 +211,18 @@ func TestIssue1120ThreeViewReferencesSurviveBusinessAuthoringEdit(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if refs := afterIndex.ReferencesFor(after.Subject); !reflect.DeepEqual(beforeRefs, refs) {
-		t.Fatalf("unchanged Business Source location drifted: before=%+v after=%+v", beforeRefs, refs)
+	refs := afterIndex.ReferencesFor(after.Subject)
+	if len(refs) != 1 || refs[0].Subject != beforeRefs[0].Subject ||
+		refs[0].ArtifactPath != beforeRefs[0].ArtifactPath ||
+		refs[0].Role != beforeRefs[0].Role ||
+		refs[0].Range.Start != beforeRefs[0].Range.Start {
+		t.Fatalf("Business authoring identity or Source path drifted: before=%+v after=%+v", beforeRefs, refs)
+	}
+	// The source byte range is *supposed* to follow a wording edit.
+	// Requiring the old end offset would treat a stale Source Index as valid.
+	if refs[0].Range.End.Offset != len(afterBytes) ||
+		refs[0].Range.End.Offset == beforeRefs[0].Range.End.Offset {
+		t.Fatalf("Source byte range did not follow the edit: before=%+v after=%+v", beforeRefs, refs)
 	}
 }
 
