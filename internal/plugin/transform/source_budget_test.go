@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"math/rand"
 	"strconv"
 	"strings"
 	"testing"
@@ -234,4 +235,51 @@ func TestSourceSizePreflightBoundsUnnormalizedLiteralBytes(t *testing.T) {
 			t.Fatal("preflight failed to enforce cumulative raw literal byte limit")
 		}
 	})
+}
+
+func TestSourceSizePreflightRandomizedCanonicalJSON(t *testing.T) {
+	// Reproducible coverage of nested RawMessage values, insignificant
+	// whitespace and different spellings of escaped Unicode.
+	random := rand.New(rand.NewSource(1064))
+	alphabet := []rune{'a', '<', '>', '&', '\\', '"', '\u2028', '\u2029', '\n', '\t', '日', 'é', '😀', 0}
+	for i := 0; i < 3000; i++ {
+		runes := make([]rune, random.Intn(280))
+		for j := range runes {
+			runes[j] = alphabet[random.Intn(len(alphabet))]
+		}
+		encoded, err := json.Marshal(string(runes))
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw := string(encoded)
+		for _, replacement := range [][2]string{
+			{"\\u003c", "<"}, {"\\u003e", ">"},
+			{"\\u0026", "&"}, {"\\u2028", "\u2028"},
+			{"\\u2029", "\u2029"},
+		} {
+			raw = strings.ReplaceAll(raw, replacement[0], replacement[1])
+		}
+		if i%2 == 0 {
+			raw = "{\"text\": " + raw + ", \"number\" : " + strconv.Itoa(i) + " }"
+		}
+		if i%3 == 0 {
+			raw = "[" + raw + ", null]"
+		}
+		source := TransformSourceRealizerV1()
+		source.Program.Output = Expr{Op: OpLiteral, Literal: json.RawMessage(raw)}
+		normalized, err := NormalizeSource(source)
+		if err != nil {
+			t.Fatalf("case %d: %v", i, err)
+		}
+		want, err := json.Marshal(normalized)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := sourceSerializedSize(source, len(want)-1); err == nil {
+			t.Fatalf("case %d: size preflight underestimated %d canonical bytes", i, len(want))
+		}
+		if err := sourceSerializedSize(normalized, len(want)); err != nil {
+			t.Fatalf("case %d: normalized source must fit exactly: %v", i, err)
+		}
+	}
 }
