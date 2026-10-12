@@ -34,7 +34,7 @@ func TestO2RealPluginLockSelectsLabelsWithoutModifyingOrdinaryPlugin(t *testing.
 			result.Text != tc.text || result.FromSource != tc.source ||
 			result.Locale != tc.locale || result.LockFingerprint == "" ||
 			result.SourceRevision != Fingerprint("受注を確定") ||
-			result.Target != request.Target || result.Resource != request.Key {
+			result.Target.ID != string(request.Target.ID) || result.Target.Version != request.Target.Version || result.Resource != request.Key {
 			t.Fatalf("%s: invalid display manifest: %+v", tc.locale, result)
 		}
 	}
