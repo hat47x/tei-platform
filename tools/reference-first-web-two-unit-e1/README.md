@@ -189,3 +189,14 @@ python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py \
 - Goのタグ付きテストとNodeの実Loopback HTTP負例で、期待値一致、B/R/T欠落・不一致・重複、Manifest照合後のAPI投影差を拒否し、Browser入力ヘッダーの偽装を転送しないことを検査する。
 
 **この4ヘッダーは認証秘密でも署名でもない。** 任意クライアントが値を推測・入力できるため、既存のIdentity/Permission/Providerと独立したセキュリティ境界として使ってはならない。また、同じB/R/Tを標榜する偽APIの検出には署名済み成果物とHostの配備権限検査が必要である。今回の受理時照合が抑えるのは、診断Browser→API接続における**異なる意味・ビルド識別子への誤配送**であり、正式なデプロイ可否の判断ではない。
+
+
+### 配信するBrowser実バイト列と測定値の起動時照合
+
+従来の`verify_frozen_unit_pair.py`は固定World成果物を**公開前**と必要時に確認する。しかし`browser-host.mjs`を公開後に直接起動する場合、以前は測定JSONのB/R/Tと稼働API Manifestのみを確認しており、**Hostがメモリに読み込んだBrowser HTML/JavaScriptが生成時の成果物と一致するか**は改めて検査していなかった。
+
+JSON Browser Hostは既存の`measurement.json`を、`browser/`の親にある同じ成果物ルートからのみ読む。起動前に`index.html`と`browser-command.js`を実読取りし、測定済み`browserSHA256`/`browserBytes`/`browserScriptSHA256`/`browserScriptBytes`と**実メモリ上のバイト列**を照合する。不一致、欠落・不正なdigest/サイズ、異なるディレクトリの測定JSON、symlinkファイル・symlinkされたBrowserディレクトリはfail-closedでHostのListenを拒否する。通常JSON API版と固定World API版のどちらにも同じ検査を適用する。
+
+起動後は検査したHTML/JSのバイト列をすでにメモリへ保持しており、配置元ファイルが別内容へ変更されても、**配信するBrowserの内容は静止したまま**。これはBrowser Hostの誤った静的資産配信を防ぐ局所的な対策で、稼働中API実行ファイルの真正性を独自に検査するわけではない。固定World版APIの全成果物・Source lineage・Go buildinfoの再照合は前述の`verify_frozen_unit_pair.py`の責務を維持する。
+
+測定JSON自体を攻撃者が書き換え、資産とdigestをまとめて一致させる攻撃、署名済み発行者・Builderの権限、実配備先Hostの承認はこの検査では**未証明**である。`measurement.json`を新しいLockやAuthorityには昇格させない。既存`browser-host-binding.test.mjs`には改ざんHTML/JS、偽サイズ/ハッシュ、別ルート測定値、symlink、起動後の変更に関する負例を追加した。
