@@ -11,6 +11,13 @@ const digest = async bytes => 'sha256:' + [...new Uint8Array(await crypto.subtle
   .map(x=>x.toString(16).padStart(2,'0')).join('');
 const jsonFile = async file => JSON.parse(await file.text());
 const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null, pending:null, selected:null};
+let selectionGeneration=0;
+function clearSelection(){
+  selectionGeneration++;
+  state.selected=null;
+  $('details').replaceChildren();
+  $('details').textContent='要素を選択すると参照元を表示します。';
+}
 function status(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error)}
 function nodes() {
   const d = state.dfd;
@@ -87,6 +94,7 @@ function render() {
   $('export').disabled=!state.layout;
 }
 async function selectNode(node){
+  const generation=++selectionGeneration;
   state.selected=key(node.kind,node.id);
   const d=state.dfd;
   const step=node.kind==='step'?d.steps.find(s=>s.id===node.id):null;
@@ -100,8 +108,10 @@ async function selectNode(node){
     const navigation=document.createElement('pre');
     try {const {navigateReferenceBusinessStep}=await import('../studio-authoring/bridge.mjs');navigation.textContent=JSON.stringify(navigateReferenceBusinessStep(state.world,$('revision').value,d,node.id),null,2)}
     catch(err){navigation.textContent='参照先未解決：'+err.message}
+    if(state.dfd!==d || selectionGeneration!==generation)return;
     $('details').append(navigation);
   }
+  if(state.dfd!==d || selectionGeneration!==generation)return;
   render();
   // Recreating the SVG should not strand keyboard focus on a detached node.
   const focused=[...$('diagram').children].find(el=>el.dataset?.kind===node.kind&&el.dataset?.id===node.id);
@@ -169,10 +179,11 @@ $('dfd-file').addEventListener('change',async ev=>{
     // Do not display a malformed or ambiguous DFD as an editable view.
     inspectViewLayout(d,hash,initialLayout,initialHash);
     state.dfd=d;state.dfdHash=hash;state.layout=initialLayout;state.layoutHash=initialHash;
-    state.pending=null;state.selected=null;
+    state.pending=null;dragging=null;clearSelection();
     $('preview').hidden=true;$('apply').disabled=true;
     render();status('投影を読み込みました。選択と移動は参照・表示用です。');
-  }catch(e){state.dfd=null;state.layout=null;render();status('DFD投影を読み込めません: '+e.message,true)}
+  }catch(e){state.dfd=null;state.layout=null;state.pending=null;dragging=null;clearSelection();
+    $('apply').disabled=true;$('preview').hidden=true;render();status('DFD投影を読み込めません: '+e.message,true)}
 });
 $('layout-file').addEventListener('change',async ev=>{
   if(!state.dfd)return status('先にDFD投影を選択してください。',true);
@@ -182,7 +193,7 @@ $('layout-file').addEventListener('change',async ev=>{
     const hash=await digest(bytes);
     // Inspect without synthesizing any edit or changing the layout.
     inspectViewLayout(state.dfd,state.dfdHash,layout,hash);
-    state.layout=layout;state.layoutHash=hash;state.pending=null;
+    state.layout=layout;state.layoutHash=hash;state.pending=null;dragging=null;
     $('apply').disabled=true;$('preview').hidden=true;render();status('配置ファイルを照合して読み込みました。');
   }catch(e){status('配置ファイルを拒否しました: '+e.message,true)}
 });
