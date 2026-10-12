@@ -900,6 +900,8 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 - 成功時の識別子は`CURRENT_MAIN_CROSS_LANE_SMOKE_ONLY_NO_PRODUCT_GATE`。**特定mainの横断回帰試験**であり、各PRのexact-head統合資格やG0〜G4の合格ではない。
 - 実験はscratchでテスト用Decisionを生成する。**Human Acceptanceの代替ではない**。
 - Command後の合成Observationは**独立した実Database readではない**。E2の保存・Host権限・Schema互換、第二Targetの合格には用いない。
-- full checkoutを利用できない現環境では、この改修後の`bash -n`／Node／Go／全体健全性検査／実HTTPの実行PASSは未取得。**コード変更を含む本PR #1274はDraftで保持する**。2026-10-12に更新された現行`AGENTS.md`は、全体健全性検査をすべてのPRの統合条件とはせず、変更範囲に対応する試験・静的解析・境界値・既存動作との照合、および未実施理由と危険性の明示を求める。本PRの変更範囲には少なくともシェル構文、旧モードとの互換性、mainモードでの旧pin拒否、実行前後の不変性を確認する必要がある。`compose-smoke.sh`が**実際に実行された際**に全体健全性検査も含める設計と、**このPRの統合にそれを一律必須とすること**は区別する。実行していない試験をPASSとは記載しない。
+- **変更範囲の独立試験（実施済み）**: GitHubの`compose-smoke.sh` blob `8173c4bd29001db812e3e140a79daa03d24b75c8`とローカルの試験対象を`git hash-object`で一致確認し、実際の`bash -n`はPASS。隔離Gitリポジトリで、不明モード、main SHA未指定・不正、旧Draft SHA混入、従来モードの必須pin未指定、正しい両モードの入力検査通過、不正remote拒否の**8ケースが全件PASS**。さらに隔離した実Gitの一時worktreeで`integrated-main`の開始から後片付けまで通し、試験用Go/Node処理を呼び出すこと、main HEAD・clean不変、一時worktree消去、runner/Health blob・Go/Node版の出力を確認した（実Gitは使用したが、Go・Studio・Web・Healthの中身は**テスト用代替処理**）。
+- **製品側の試験（未実施）**: TEIの実Go/Node E2E、全`tools/repository-health-check.sh`、実Web HTTP、外部DB接続は、この環境で完全checkoutを入手できずNOT RUN。隔離試験の成功をこれらのPASSとして転記しない。
+- 2026-10-12に更新された現行`AGENTS.md`は、全体健全性検査をすべてのPRの統合条件とはせず、変更範囲に応じた試験・静的解析・境界値・既存動作との照合、および未実施範囲・危険性の明示を要求する。`compose-smoke.sh`が**起動された場合に**全体健全性検査まで実施する設計であることと、**本PRの統合前に一律の全体健全性検査PASSを義務付けること**は区別する。Source/Target/DBの受入は別Gateであり、全て未達のままとする。
 
 **次の作業の入口**: 新しい資格検査器を追加するのではなく、既存`compose-smoke.sh`の`integrated-main`でE0/E1-Aを実行し、実測結果を#1119と#1163へ提出する。その後、#1262の修正を独立に資格確認・統合してから必要なら同じ入口を再実行する。未実施のE1-B/E2/G3/G4を推定で埋めない。
