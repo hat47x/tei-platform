@@ -343,7 +343,7 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 	denied("current subject link revoked", host, requestBody, http.StatusForbidden)
 	linkRevoked = false
 	denied("untrusted identity payload refused locally", host,
-		`{"currency":"JPY","lines":[],"principalId":"admin"}`, http.StatusBadRequest)
+		`{"currency":"JPY","lines":[{"sku":"PEN","quantity":1,"unitPriceMinor":1}],"principalId":"admin"}`, http.StatusBadRequest)
 	bad := `{"currency":"JPY","lines":[{"sku":"PEN-01","quantity":-1,"unitPriceMinor":250}]}`
 	before := launcher.calls
 	reply := send(host, bad)
