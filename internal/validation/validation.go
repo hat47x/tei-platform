@@ -90,6 +90,9 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s: %v", p.ID, err))
 		}
 		for _, c := range p.Provides {
+			if err := plugin.ValidateCapabilityID(c.ID); err != nil {
+				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_ID", "plugin %s: %v", p.ID, err))
+			}
 			if !c.Kind.Valid() {
 				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s", p.ID, c.ID, c.Kind))
 			}
