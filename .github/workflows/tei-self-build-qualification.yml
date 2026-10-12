@@ -8,25 +8,31 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - .github/workflows/tei-self-build-qualification.yml
-      - internal/plugin/transform/**
-      - internal/plugin/bootstrap.go
-      - internal/plugin/package.go
+      # Goの参照実行器はcore・配備・検証・作業領域も利用する。
+      # 監視漏れを避けるため、当面はGo実装全体を安全側で監視する。
+      - go.mod
+      - go.sum
+      - internal/**
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
       - tools/reference-transform-runtime-engine-build/**
+      - tools/self-build-ci-contract-test.py
       - reference/plugin-self-build/**
   push:
     branches: [main]
     paths:
       - .github/workflows/tei-self-build-qualification.yml
-      - internal/plugin/transform/**
-      - internal/plugin/bootstrap.go
-      - internal/plugin/package.go
+      # Goの参照実行器はcore・配備・検証・作業領域も利用する。
+      # 監視漏れを避けるため、当面はGo実装全体を安全側で監視する。
+      - go.mod
+      - go.sum
+      - internal/**
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
       - tools/reference-transform-runtime-engine-build/**
+      - tools/self-build-ci-contract-test.py
       - reference/plugin-self-build/**
   workflow_dispatch:
 
@@ -35,7 +41,8 @@ permissions:
 
 concurrency:
   group: tei-self-build-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # 同一PRの古い候補は止めるが、mainの各コミットの証拠取得は取り消さない。
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   reference-self-build:
@@ -76,6 +83,12 @@ jobs:
           go-version-file: go.mod
           check-latest: false
           cache: false
+
+      - name: セルフビルドCIの入力・証拠・起動契約を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/self-build-ci-contract-test.py
 
       - name: 実行エンジンの実体を二重構築し照合
         shell: bash
