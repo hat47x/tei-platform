@@ -220,31 +220,27 @@ func TestWithdrawalPreemptsBlockedStage(t *testing.T) {
 }
 
 func TestEmergencyWithdrawalWhileReaperWaits(t *testing.T) {
-	c, _, _ := setupCoordinator(t)
-	old, err := c.Acquire()
-	if err != nil {
+	c, _, oldScope := setupCoordinator(t)
+	cleanupEntered := make(chan struct{})
+	releaseCleanup := make(chan struct{})
+	if err := oldScope.Track(func() error { close(cleanupEntered); <-releaseCleanup; return nil }); err != nil {
 		t.Fatal(err)
 	}
 	lc := lifecycle(func(*Scope) error { return nil }, func(Binding) error { return nil })
 	if err := c.Replace(context.Background(), 1, b(2, "v2"), lc); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	started := make(chan struct{})
 	done := make(chan error, 1)
-	go func() { close(started); done <- c.Reap(ctx) }()
-	<-started
-	// Even if Drain is blocked, emergency withdrawal of v2 must work.
+	go func() { done <- c.Reap(context.Background()) }()
+	<-cleanupEntered // deterministic proof that reaper is inside the disposer
 	if err := c.Withdraw(2); err != nil {
-		t.Fatalf("withdraw blocked by Drain: %v", err)
+		t.Fatalf("withdraw blocked by cleanup: %v", err)
 	}
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("expected cancellation: %v", err)
+	if _, err := c.Acquire(); !errors.Is(err, ErrUnbound) {
+		t.Fatalf("withdrawn generation accepted new call: %v", err)
 	}
-	old.Release()
-	if err := c.Reap(context.Background()); err != nil {
+	close(releaseCleanup)
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
 	if c.PendingRetirements() != 0 {
