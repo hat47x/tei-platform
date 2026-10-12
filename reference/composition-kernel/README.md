@@ -93,3 +93,35 @@ go vet ./internal/composition
 独立Go 1.23.2モジュールに同一bytesで収録し、`go test -race -count=25 ./...`と`go vet ./...`をPASS。GitHub Blob SHAとローカルGit Hashが一致することを検証した。**Host Scheduler・Process/Wasm上の実動作、実際の切替順序、Availability、全Repository Healthは未確認**。
 
 このPlanは単純に`StopOrder`を即時実行する指示ではない。無停止更新では新版を別スコープに準備してReadyを観測し、新しい呼出しを切り替えた後で旧世代をDrain・解放する。事故・Provider消失時は計画更新とは異なるfail-closed経路をHostが選ぶ。
+
+
+## E3：Host Coordinator — 準備・切替・終了待ち・復帰
+
+`internal/composition/coordinator.go` と `router.go` の更新により、**Host局所の動的更新に必要な、最初の命令的な実行接続**を追加した。Registryによる合成可能性の評価、Artifactの実体、Hostの権限判定は、引き続き別の責務である。
+
+- `Coordinator.Replace(ctx, expected, next, Lifecycle)`：新版用のEffect Scopeを作成し、`Prepare` → `Ready` → Routerの世代CAS `Publish`を実施。準備失敗、Ready失敗、権限拒否、世代競合、panicの場合は新版Scopeを解放し、旧世代の受け付けを維持する。
+- `Coordinator.Acquire`：信頼するHostから渡されたguardを用いて、新規呼出しを現在世代へ束縛する。guardは同期的・非ブロッキングであることが必要で、Guard自体をCoreが生成するわけではない。
+- `Coordinator.Withdraw`：障害や権限失効時に現在世代への新規呼出しを遮断し、既存処理を退役管理へ渡す。準備中の新版があっても撤去を優先できる。
+- `Coordinator.Restore` と `Router.Activate`：Provider撤去後も、期待する旧世代を明示的に照合したうえで、**より新しい世代**として復帰する。Registry復帰だけで暗黙の許可・再起動は行わない。
+- `Coordinator.Reap`：退役した世代のDrain・Effect解放を管理し、キャンセル時は未処理世代を保持する。同時Reapは拒否する。Cleanupがエラーを返しても同じ逆作用を繰り返さず、失敗として呼び出し側へ返す。
+- **高優先の緊急撤去**：Prepare/Readyや既存世代のDrain/Disposerの間はCoordinator lockを保持しない。停止すべき世代の撤去が長い準備や解放で妨げられない。
+- `coordinator_vertical_test.go`：Registry Snapshot → Reconciliation Plan → Ready判断 → 新しいGenerationのPublish → 旧呼出しDrainを一つの合成Consumerで接続した。
+
+追加した負例：途中で失敗するPrepare/Ready、Host拒否、Prepare内panic、stale generation、withdraw後の新規呼出し拒否、withdraw後の明示Restore、旧版が処理中のDrain取消、cleanup失敗、準備中/Disposer内の長時間ブロック中に緊急撤去できること。
+
+### E3検証
+
+Go 1.23.2を用いた独立モジュール`/mnt/data/tei-composition-test`に、対象Goソースとテストを配置し、`go test -race -count=100 ./internal/composition`、`go vet ./...`、`gofmt -l internal/composition/*.go`を実行。テスト・VetはPASS、gofmt対象はすべて整形済み。GitHubにコミットした変更ファイルのBlob SHAと、同一ソースの`git hash-object`が一致することを照合した。
+
+これは**合成されたHost内の処理動作のEvidence**である。`tools/repository-health-check.sh`の全項目や、main/PR exact-headのtrusted full checkout、Production権限・Credential・署名・Artifact bytes検証、実際のService uptimeを確認したものではない。したがってPRはDraftのまま、mainに統合しない。
+
+### 残る重要な問題
+
+1. **RegistryとHostの原子的な一括更新は未実装**。Provider宣言が選択時点から切替までに変化するTOCTOUに対して、候補のeligibilityと最終Host Authorityを同じ受理境界に束縛する必要がある。`Ready`内でSnapshotを確認しただけでは本番の切替権限にはならない。
+2. `Scope.Track`は一時的リソース所有を宣言するが、不可逆な永続副作用を自動取消できない。準備中に登録し損ねた外部作用や、終了しない逆作用もHostが隔離・監視する必要がある。
+3. `Coordinator`は単一Routerについての第一Referenceであり、依存グラフ全体の切替をトランザクション化しない。複数Provider間の冗長化・容量・切替後のhealth確認や逆転可能なrollbackは未成立。
+4. `Router`自体を第三者Pluginへ渡せばHostのguardを迂回できるため、ProductionではRouterの所有権とInvocation入口を信頼境界で隠す必要がある。現行`Binding`のArtifact digestは書式だけの検証であり、署名・実bytes検証を表さない。
+5. `Scope.Close`の逆作用が停止しない場合、`Reap`実行主体は無期限に停止し得る。タイムアウト、隔離、leak/quarantine、回復証跡の仕様を別途検証する。キャンセルは既に開始した逆作用を強制停止しない。
+6. Goの同一プロセス内での任意コードのHot Replacement、Process/Wasmの実ロード、Browser/IoT/分散Targetの更新は未実施。
+
+次段は、Registry RevisionとProvider identityを固定した受理可能な`ActivationPlan`を最小契約として設計し、Host側のready/authority切替に結び付けること。その後でProviderの実体にProcess/Wasmを選び、負荷下の可用性を測定する。
