@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	ErrInvalidRequest    = errors.New("副作用の要求または認可根拠が不正です")
-	ErrResourceConflict  = errors.New("更新対象の版が一致しません")
-	ErrMissingProvider   = errors.New("確定境界を持つ保存先がありません")
+	ErrInvalidRequest   = errors.New("副作用の要求または認可根拠が不正です")
+	ErrResourceConflict = errors.New("更新対象の版が一致しません")
+	ErrMissingProvider  = errors.New("確定境界を持つ保存先がありません")
 )
 
 // CommitUncertainError は確定要求の応答を確認できないことを示す。
@@ -135,23 +135,43 @@ func matches(rec Receipt, req Request, hash string) bool {
 // Executeは権限版確認→確定記録再送確認→版付きデータ更新→確定記録→Commit。
 // 失効・版衝突では記録を開示せず、Commitでの障害は結果不明として返す。
 func (r Runner) Execute(ctx context.Context, req Request, grant legacyauthorization.AuthorizationGrant) (Result, error) {
-	if err := ctx.Err(); err != nil { return Result{}, err }
-	if err := validate(req, grant); err != nil { return Result{}, err }
-	if r.Provider == nil { return Result{}, ErrMissingProvider }
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
+	if err := validate(req, grant); err != nil {
+		return Result{}, err
+	}
+	if r.Provider == nil {
+		return Result{}, ErrMissingProvider
+	}
 	hash, err := digest(req)
-	if err != nil { return Result{}, err }
+	if err != nil {
+		return Result{}, err
+	}
 	tx, err := r.Provider.Begin(ctx)
-	if err != nil { return Result{}, err }
-	if tx == nil { return Result{}, ErrMissingProvider }
+	if err != nil {
+		return Result{}, err
+	}
+	if tx == nil {
+		return Result{}, ErrMissingProvider
+	}
 	defer tx.Rollback()
 
 	allowed, err := tx.CheckAuthority(ctx, req.Scope, *grant.Epochs)
-	if err != nil { return Result{}, err }
-	if !allowed { return Result{Status: StatusDenied}, nil }
+	if err != nil {
+		return Result{}, err
+	}
+	if !allowed {
+		return Result{Status: StatusDenied}, nil
+	}
 	old, exists, err := tx.FindReceipt(ctx, req.OperationID)
-	if err != nil { return Result{}, err }
+	if err != nil {
+		return Result{}, err
+	}
 	if exists {
-		if !matches(old, req, hash) { return Result{Status: StatusConflict}, nil }
+		if !matches(old, req, hash) {
+			return Result{Status: StatusConflict}, nil
+		}
 		// 実装がロックを確保するまで認可版を保持している必要がある。
 		if err := tx.Commit(ctx); err != nil {
 			return Result{}, &CommitUncertainError{Cause: err}
@@ -160,11 +180,19 @@ func (r Runner) Execute(ctx context.Context, req Request, grant legacyauthorizat
 	}
 
 	next, err := tx.WriteResource(ctx, cloneRequest(req))
-	if errors.Is(err, ErrResourceConflict) { return Result{Status: StatusConflict}, nil }
-	if err != nil { return Result{}, err }
-	if next != req.ExpectedVersion+1 { return Result{}, fmt.Errorf("保存先が期待した対象版を確定できません") }
+	if errors.Is(err, ErrResourceConflict) {
+		return Result{Status: StatusConflict}, nil
+	}
+	if err != nil {
+		return Result{}, err
+	}
+	if next != req.ExpectedVersion+1 {
+		return Result{}, fmt.Errorf("保存先が期待した対象版を確定できません")
+	}
 	rec := Receipt{Scope: req.Scope, OperationID: req.OperationID, RequestHash: hash, ResourceVersion: next}
-	if err := tx.SaveReceipt(ctx, rec); err != nil { return Result{}, err }
+	if err := tx.SaveReceipt(ctx, rec); err != nil {
+		return Result{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Result{}, &CommitUncertainError{Cause: err}
 	}
@@ -174,24 +202,48 @@ func (r Runner) Execute(ctx context.Context, req Request, grant legacyauthorizat
 // Lookupは認可を現在の正本で再検査してから、同一のDB境界で記録を照会する。
 // not-recordedは同DBで記録がないという意味だけで、外部副作用の不存在ではない。
 func (r Runner) Lookup(ctx context.Context, req Request, grant legacyauthorization.AuthorizationGrant) (Result, error) {
-	if err := ctx.Err(); err != nil { return Result{}, err }
-	if err := validate(req, grant); err != nil { return Result{}, err }
-	if r.Provider == nil { return Result{}, ErrMissingProvider }
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
+	if err := validate(req, grant); err != nil {
+		return Result{}, err
+	}
+	if r.Provider == nil {
+		return Result{}, ErrMissingProvider
+	}
 	hash, err := digest(req)
-	if err != nil { return Result{}, err }
+	if err != nil {
+		return Result{}, err
+	}
 	tx, err := r.Provider.Begin(ctx)
-	if err != nil { return Result{}, err }
-	if tx == nil { return Result{}, ErrMissingProvider }
+	if err != nil {
+		return Result{}, err
+	}
+	if tx == nil {
+		return Result{}, ErrMissingProvider
+	}
 	defer tx.Rollback()
 
 	allowed, err := tx.CheckAuthority(ctx, req.Scope, *grant.Epochs)
-	if err != nil { return Result{}, err }
-	if !allowed { return Result{Status: StatusDenied}, nil }
+	if err != nil {
+		return Result{}, err
+	}
+	if !allowed {
+		return Result{Status: StatusDenied}, nil
+	}
 	rec, found, err := tx.FindReceipt(ctx, req.OperationID)
-	if err != nil { return Result{}, err }
-	if found && !matches(rec, req, hash) { return Result{Status: StatusConflict}, nil }
-	if err := tx.Commit(ctx); err != nil { return Result{}, err }
-	if !found { return Result{Status: StatusNotRecorded}, nil }
+	if err != nil {
+		return Result{}, err
+	}
+	if found && !matches(rec, req, hash) {
+		return Result{Status: StatusConflict}, nil
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Result{}, err
+	}
+	if !found {
+		return Result{Status: StatusNotRecorded}, nil
+	}
 	return Result{Status: StatusReplayed, Receipt: rec}, nil
 }
 
