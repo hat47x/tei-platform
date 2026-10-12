@@ -129,6 +129,29 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(review.previewAcceptable === true &&
     /^sha256:[0-9a-f]{64}$/.test(review.reviewFingerprint),
     label + ": review binding");
+  // Two independent actors have reviewed competing proposals based on R0.
+  // The first Acceptance must invalidate the other actor's earlier Review.
+  const rivalEdit = { ...edit, id: edit.id + "-rival",
+    origin: edit.origin === "studio" ? "ai" : "studio",
+    intent: edit.intent + "（別の編集者による競合提案）" };
+  const rivalCandidate = candidateFromEdit(model, beforeRevision, rivalEdit);
+  const rivalPath = input(label, ".rival-candidate.json", rivalCandidate);
+  const rivalPreview = JSON.parse(acceptance([
+    "preview", "-workspace", workspace, "-candidate", rivalPath
+  ]).stdout);
+  const rivalReview = JSON.parse(acceptance([
+    "review", "-workspace", workspace, "-candidate", rivalPath, "-format", "json"
+  ]).stdout);
+  checked(rivalCandidate.id !== proposal.id &&
+    rivalCandidate.origin.kind !== proposal.origin.kind &&
+    JSON.stringify(rivalCandidate.delta) === JSON.stringify(proposal.delta),
+    label + ": independent actors enter the same Shared Acceptance transport");
+  checked(rivalPreview.acceptable === true &&
+    rivalPreview.currentModelRevision === beforeRevision &&
+    rivalReview.previewAcceptable === true &&
+    /^sha256:[0-9a-f]{64}$/.test(rivalReview.reviewFingerprint),
+    label + ": competing candidate passes independent R0 Preview and Review");
+
   const editPath = input(label, ".edit.json", edit);
   const studioReview = JSON.parse(command(process.execPath, [
     join(root, "reference/studio-authoring/cli.mjs"),
@@ -248,6 +271,21 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     label + ": stale Accepted Decision is explicitly refused (N06)");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
     label + ": stale Preview and stale Accept cannot modify newer Source");
+  // A distinct second actor's already-reviewed proposal also loses R0.
+  // This demonstrates optimistic concurrency, not simultaneous OS writes.
+  const rivalAccepted = JSON.parse(acceptance([
+    "accept", "-workspace", workspace, "-candidate", rivalPath,
+    "-expected-review-fingerprint", rivalReview.reviewFingerprint
+  ], false).stdout);
+  checked(rivalAccepted.decision === "refused" &&
+    rivalAccepted.sourceChanged === false &&
+    (rivalAccepted.refusals || []).some(r =>
+      r.code === "STALE_BASE_MODEL_REVISION"),
+    label + ": independently reviewed competing proposal is refused on R1 (N06)");
+  checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale) &&
+    revision(workspace) === afterRevision,
+    label + ": rejected competing actor cannot overwrite Accepted R1");
+
   return {
     schema: "tei.reference.studio-source-loop-receipt/v0",
     name: label, scenario: "V03-V04-N06",
@@ -266,7 +304,7 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       reviewFingerprint: review.reviewFingerprint
     },
     changed, acceptedSubject: expectedID,
-    staleCandidateRefused: true
+    staleCandidateRefused: true, concurrentRivalRefused: true
   };
 }
 
