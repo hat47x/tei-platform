@@ -172,11 +172,14 @@ func planBusinessRuleSourceCut(content []byte, kind, dataID, ruleID string) (Bus
 		return empty, nil, err
 	}
 	cut := BusinessRuleSourceCut{
-		Kind: kind, DataID: dataID, RuleID: ruleID,
-		DefinitionRange: idRange, RemovedRange: cutRange,
+		Kind:              kind,
+		DataID:            dataID,
+		RuleID:            ruleID,
+		DefinitionRange:   idRange,
+		RemovedRange:      cutRange,
 		BeforeFingerprint: sourceindex.Fingerprint(content),
-		AfterFingerprint: sourceindex.Fingerprint(after),
-		RemovedText: string(content[start:end]),
+		AfterFingerprint:  sourceindex.Fingerprint(after),
+		RemovedText:       string(content[start:end]),
 	}
 	return cut, after, nil
 }
