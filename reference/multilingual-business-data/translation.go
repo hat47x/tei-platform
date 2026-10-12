@@ -36,14 +36,21 @@ type TranslationMemory struct {
 	Confirmed    bool         `json:"confirmed"`
 }
 
+// TranslationTermPair strips tenant and model identifiers from the adapter
+// payload. Scoping happens before a term is included in this public DTO.
+type TranslationTermPair struct {
+	Source string `json:"source"`
+	Target string `json:"target"`
+}
+
 // TranslationContext is the only payload a translation adapter receives.
-// In particular it does not include arbitrary repository or tenant records.
+// It does not include tenant/record identifiers or unrelated model nodes.
 type TranslationContext struct {
-	SourceText   string            `json:"sourceText"`
-	SourceLocale string            `json:"sourceLocale"`
-	TargetLocale string            `json:"targetLocale"`
-	Terms        []TranslationTerm `json:"terms,omitempty"`
-	Protected    []string          `json:"protected,omitempty"`
+	SourceText   string                `json:"sourceText"`
+	SourceLocale string                `json:"sourceLocale"`
+	TargetLocale string                `json:"targetLocale"`
+	Terms        []TranslationTermPair `json:"terms,omitempty"`
+	Protected    []string              `json:"protected,omitempty"`
 }
 
 // Translator is supplied by an existing, authorized plugin binding. No
@@ -247,9 +254,13 @@ func PrepareTranslation(ctx context.Context, read SnapshotReader, provider Trans
 		if provider == nil || strings.TrimSpace(provider.Name()) == "" {
 			return fail("missing-provider")
 		}
+		publicTerms := make([]TranslationTermPair, 0, len(terms))
+		for _, term := range terms {
+			publicTerms = append(publicTerms, TranslationTermPair{Source: term.Source, Target: term.Target})
+		}
 		contextPayload := TranslationContext{
 			SourceText: src, SourceLocale: job.Source.Key.Locale,
-			TargetLocale: job.Target.Locale, Terms: terms,
+			TargetLocale: job.Target.Locale, Terms: publicTerms,
 			Protected: append([]string(nil), job.Protected...),
 		}
 		output, err = provider.Translate(ctx, contextPayload)
