@@ -4,6 +4,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"encoding/json"
 	"io"
 	"log"
@@ -26,8 +27,13 @@ var staticFiles = map[string]struct {
 	"/advice-action.mjs":  {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
 }
 
-func handler() http.Handler {
+func handler() http.Handler { return handlerWithContext(nil) }
+
+func handlerWithContext(contextHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
+	if contextHandler != nil {
+		mux.Handle("/project/order-entry-context", contextHandler)
+	}
 	mux.HandleFunc("/project/advice", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if r.Method != http.MethodPost {
@@ -94,10 +100,20 @@ func handler() http.Handler {
 }
 
 func main() {
+	upstream := flag.String("order-entry-api", "", "explicit loopback origin for read-only order_entry reference")
+	flag.Parse()
+	var contextHandler http.Handler
+	if *upstream != "" {
+		var err error
+		contextHandler, err = newOrderEntryContextHandler(*upstream)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	// Restrict this diagnostic endpoint to the local machine.
 	server := &http.Server{
 		Addr:              "127.0.0.1:8787",
-		Handler:           handler(),
+		Handler:           handlerWithContext(contextHandler),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	log.Print("reference project advice: http://127.0.0.1:8787")
