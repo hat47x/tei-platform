@@ -62,7 +62,7 @@ def public_pr_boundary_errors(source):
         failures.append('no elevated pull_request_target execution')
     if not re.search(r'(?m)^permissions:\n  contents: read(?:\n|$)', source):
         failures.append('token must be read-only')
-    if re.search(r'(?m)^\s+permissions:', source):
+    if re.search(r'(?m)^[ \t]+permissions:', source):
         failures.append('job must not override token permissions')
     if 'secrets.' in source or 'secrets[' in source:
         failures.append('no secrets may be referenced')
