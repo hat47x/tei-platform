@@ -95,7 +95,7 @@ func TestAssertEachValidatesMembersWithoutChangingSource(t *testing.T) {
 	arr := transform.Expr{Op: transform.OpInput, Name: "dependencies"}
 	item := transform.Expr{Op: transform.OpInput, Name: "dependency"}
 	source.Program.Assertions = []transform.Expr{{
-		Op: transform.OpAssertEach,
+		Op:   transform.OpAssertEach,
 		From: &arr,
 		Item: "dependency",
 		Body: &transform.Expr{Op: transform.OpAssertEnum, Actual: &item, Allowed: []json.RawMessage{json.RawMessage("\"a\""), json.RawMessage("\"b\"")}},
