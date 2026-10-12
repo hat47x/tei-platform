@@ -36,6 +36,7 @@ type referenceStage2Acceptance struct {
 	Engine                      pruntime.RuntimeEngineIdentity
 	LockFingerprint             string
 	HostRegistrationFingerprint string
+	HostApprovalFingerprint     string
 }
 
 func readReferenceStage2JSON(path string, target any) error {
@@ -121,6 +122,10 @@ func acceptReferenceStage2Engine(options exactEngineOptions, engine pruntime.Run
 	if registration.RuntimeEngine != lock.RuntimeEngine {
 		return referenceStage2Acceptance{}, fmt.Errorf("stage2 Host registration differs from accepted engine lock")
 	}
+	approvalFP, err := verifyReferenceStage2HostSignature(options, registration)
+	if err != nil {
+		return referenceStage2Acceptance{}, fmt.Errorf("stage2 Host approval: %w", err)
+	}
 	lockFP, err := referenceStage2Fingerprint(lock)
 	if err != nil {
 		return referenceStage2Acceptance{}, err
@@ -133,6 +138,7 @@ func acceptReferenceStage2Engine(options exactEngineOptions, engine pruntime.Run
 		Engine:                      engine,
 		LockFingerprint:             lockFP,
 		HostRegistrationFingerprint: registrationFP,
+		HostApprovalFingerprint:     approvalFP,
 	}, nil
 }
 
@@ -151,11 +157,13 @@ func (acceptance referenceStage2Acceptance) PolicyFingerprint(stage2Plan transfo
 		Schema                      string `json:"schema"`
 		LockFingerprint             string `json:"lockFingerprint"`
 		HostRegistrationFingerprint string `json:"hostRegistrationFingerprint"`
+		HostApprovalFingerprint     string `json:"hostApprovalFingerprint"`
 		Stage2PlanFingerprint       string `json:"stage2PlanFingerprint"`
 	}{
 		Schema:                      "tei.reference.stage2-runtime-policy/v1",
 		LockFingerprint:             acceptance.LockFingerprint,
 		HostRegistrationFingerprint: acceptance.HostRegistrationFingerprint,
+		HostApprovalFingerprint:     acceptance.HostApprovalFingerprint,
 		Stage2PlanFingerprint:       planFP,
 	})
 }

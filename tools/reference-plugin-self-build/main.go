@@ -102,6 +102,7 @@ type evidence struct {
 
 	Stage2EngineLockFingerprint       string `json:"stage2EngineLockFingerprint,omitempty"`
 	Stage2HostRegistrationFingerprint string `json:"stage2HostRegistrationFingerprint,omitempty"`
+	Stage2HostApprovalFingerprint     string `json:"stage2HostApprovalFingerprint,omitempty"`
 	Stage2RuntimePolicyFingerprint    string `json:"stage2RuntimePolicyFingerprint,omitempty"`
 }
 
@@ -140,13 +141,19 @@ func main() {
 	engineEvidence := flag.String("engine-build-evidence", "", "independent exact transform engine build Evidence JSON")
 	stage2Lock := flag.String("stage2-engine-lock", "", "Host-approved Reference stage2 engine lock")
 	hostRegistration := flag.String("stage2-host-registration", "", "explicit Host registration for Reference stage2")
+	hostSignature := flag.String("stage2-host-signature", "", "detached Ed25519 signature of the Host registration")
+	trustedHostKey := flag.String("stage2-trusted-host-key", "", "independently provisioned Host Ed25519 public key (PKIX PEM)")
+	trustedHostID := flag.String("stage2-trusted-host-id", "", "pinned canonical Host ID")
 	flag.Parse()
 
 	out, err := runWithExactEngine(*repo, exactEngineOptions{
-		Executable:       *exactEngine,
-		BuildEvidence:    *engineEvidence,
-		Stage2Lock:       *stage2Lock,
-		HostRegistration: *hostRegistration,
+		Executable:           *exactEngine,
+		BuildEvidence:        *engineEvidence,
+		Stage2Lock:           *stage2Lock,
+		HostRegistration:     *hostRegistration,
+		HostSignature:        *hostSignature,
+		TrustedHostPublicKey: *trustedHostKey,
+		TrustedHostID:        *trustedHostID,
 	})
 	if exitCode := writeSelfBuildCLIResult(os.Stdout, os.Stderr, out, err); exitCode != 0 {
 		os.Exit(exitCode)
@@ -180,7 +187,8 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if (options.Executable == "") != (options.BuildEvidence == "") {
 		return evidence{}, fmt.Errorf("exact Runtime Engine requires executable and build Evidence together")
 	}
-	if options.Executable == "" && (options.Stage2Lock != "" || options.HostRegistration != "") {
+	if options.Executable == "" && (options.Stage2Lock != "" || options.HostRegistration != "" ||
+		options.HostSignature != "" || options.TrustedHostPublicKey != "" || options.TrustedHostID != "") {
 		return evidence{}, fmt.Errorf("stage2 Host authority requires the exact Runtime Engine executable and build Evidence")
 	}
 	root, err := filepath.Abs(repo)
@@ -879,6 +887,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 
 		Stage2EngineLockFingerprint:       acceptedStage2.LockFingerprint,
 		Stage2HostRegistrationFingerprint: acceptedStage2.HostRegistrationFingerprint,
+		Stage2HostApprovalFingerprint:     acceptedStage2.HostApprovalFingerprint,
 		Stage2RuntimePolicyFingerprint:    stage2PolicyFingerprint,
 	}, nil
 }

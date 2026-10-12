@@ -34,6 +34,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E19：Git改訂に固定した意味ソースと変更影響](E19_GIT_REVISION_SOURCE_IMPACT.md)／[Go回帰検査](e19_git_revision_source_test.go) — 実参照Workspaceから隔離された2つのGitコミットを生成し、コミットID・Git保存バイト列・Source Index指紋・既存型付き影響を照合する。未コミットの書換えを拒否し、実際の公開Git履歴の採用判断とは区別する。
 - [E20：二つの利用先で共通Action接続を検証](E20_DUAL_CONSUMER_ACTION_WITNESS.md)／[Go回帰検査](e20_dual_consumer_action_test.go) — 実受注明細CommandとSUIの試験限定候補を、同じHostの異なるBindingへ送り、交差・Revision競合・認可拒否を検証する。実SUI Browser／保存連携は未確認。
 - [E21：二つの利用先で既存の構成機構と残余判断を照合](E21_DUAL_CONSUMER_COMPOSITION_GAP.md) — SUIとTEIの実ソースを固定改訂で比較。共通Actionの再利用、未接続の本人委譲・実保存、Target／UI Kitの採用、別リポジトリの版対応を切り分ける。構成プロファイルの正式採用は未決定。
+- [E22：Nativeアプリケーションの最小Source候補を既存Driverで解決](E22_NATIVE_APPLICATION_CANDIDATE.md)／[Go回帰試験](e22_native_application_candidate_test.go) — 実SUI Stage 0を隔離コピーし、試験中だけApplication／Command／Capabilityを追加。欠落・重複・認可なしを拒否し、SUIの受理済み意味や実保存とは区別する。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。

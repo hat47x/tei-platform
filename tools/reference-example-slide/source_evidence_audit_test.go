@@ -13,17 +13,26 @@ import (
 func sourceEvidenceFixture(t *testing.T) (Input, AnswerInput, sourceindex.Index, func(string) ([]byte, error)) {
 	t.Helper()
 	in, proposed := reviewAnswerFixture(t)
-	content := []byte("semantic sales {\n  relation child.parent {\n  }\n}\n")
-	id := "child.parent"
-	offset := strings.Index(string(content), id)
-	if offset < 0 {
+	// Actual TEI syntax stores the short token "parent" for a qualified
+	// semantic-relation subject "sales.child.parent".
+	in.Catalog.Relations[0].ID = "sales.child.parent"
+	review, err := Review(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposed.ReviewFingerprint = review.Fingerprint
+	proposed.Answers[0].Question.ID = review.Issues[0].ID
+	content := []byte("namespace sales\n\ndata Child {\n    attribute parentId type std.identifier\n    relation parent to sales.parent one\n}\n")
+	id := "sales.child.parent"
+	offset := strings.Index(string(content), "relation parent") + len("relation ")
+	if offset < len("relation ") {
 		t.Fatal("missing source anchor in fixture")
 	}
 	artifact, err := sourceindex.NewArtifact("semantic/sales.tei", content)
 	if err != nil {
 		t.Fatal(err)
 	}
-	location, err := sourceindex.RangeFromOffsets(content, offset, offset+len(id))
+	location, err := sourceindex.RangeFromOffsets(content, offset, offset+len("parent"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +92,7 @@ func TestAuditAnswerSourceEvidenceRejectsNonMatchingSubjectAndFingerprint(t *tes
 			p.Answers[0].Evidence[0].Ref = "semantic-relation:unrelated"
 		}, "different-subject"},
 		{"wrong kind", func(_ *Input, p *AnswerInput, _ *sourceindex.Index) {
-			p.Answers[0].Evidence[0].Ref = "semantic-data:child.parent"
+			p.Answers[0].Evidence[0].Ref = "semantic-data:sales.child.parent"
 		}, "different-subject"},
 		{"missing fingerprint", func(_ *Input, p *AnswerInput, _ *sourceindex.Index) {
 			p.Answers[0].Evidence[0].Fingerprint = ""
@@ -100,6 +109,17 @@ func TestAuditAnswerSourceEvidenceRejectsNonMatchingSubjectAndFingerprint(t *tes
 		{"ambiguous definitions", func(_ *Input, _ *AnswerInput, idx *sourceindex.Index) {
 			idx.References = append(idx.References, idx.References[0])
 		}, "ambiguous-definition"},
+		{"misplaced same-length anchor", func(_ *Input, _ *AnswerInput, idx *sourceindex.Index) {
+			// An index range may be in-bounds and hash-valid while pointing
+			// to a different source token. The parser range must match too.
+			ref := &idx.References[0]
+			ref.Range.End.Offset = ref.Range.Start.Offset + len("parent")
+			ref.Range.End.Column = ref.Range.Start.Column + len("parent")
+			ref.Range.Start.Offset -= len("relation ")
+			ref.Range.Start.Column -= len("relation ")
+			ref.Range.End.Offset -= len("relation ")
+			ref.Range.End.Column -= len("relation ")
+		}, "exact-subject-anchor-not-confirmed"},
 		{"coarse point location", func(_ *Input, _ *AnswerInput, idx *sourceindex.Index) {
 			idx.References[0].Range.End = idx.References[0].Range.Start
 		}, "exact-subject-anchor-not-confirmed"},
@@ -167,7 +187,7 @@ func TestAuditAnswerSourceEvidenceDoesNotInventAuthoredOrDocumentProvenance(t *t
 			Question: QuestionRef{Kind: "authored", ID: "residual"},
 			Response: "要調査", Disposition: "investigate", Context: "発注の例",
 			ClaimedBy: AnswerActor{Kind: "human", ID: "unverified"},
-			Evidence: []EvidencePointer{{Kind: "source-index", Ref: "semantic-relation:child.parent",
+			Evidence: []EvidencePointer{{Kind: "source-index", Ref: "semantic-relation:sales.child.parent",
 				Fingerprint: idx.Artifacts[0].Fingerprint}},
 		}},
 	}

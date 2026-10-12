@@ -2,6 +2,7 @@ package legacyauthorization
 
 import (
 	"context"
+	"errors"
 	"strings"
 )
 
@@ -28,3 +29,9 @@ func (e AuthorityEpochs) valid() bool {
 type EpochReader interface {
 	ReadAuthorizationEpochs(context.Context, Input) (AuthorityEpochs, error)
 }
+
+// ErrAuthorityInactive は、認可正本の健全な読取りが成功した上で、
+// 対象の認可根拠が明示的に失効していることを示す。
+// EpochReaderは版の欠落・不正値・通信障害・DB障害をこのエラーにしてはならない。
+// 利用者にエラーの詳細を返さず、security.authorizeで業務拒否へ変換する。
+var ErrAuthorityInactive = errors.New("authorization authority is inactive")

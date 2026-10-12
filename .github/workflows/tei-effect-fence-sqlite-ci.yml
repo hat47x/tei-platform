@@ -8,11 +8,15 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - 'reference/effect-fence/**'
+      - 'internal/security/legacyauthorization/**'
+      - 'internal/security/legacyauth/**'
       - '.github/workflows/tei-effect-fence-sqlite-ci.yml'
   push:
     branches: [main]
     paths:
       - 'reference/effect-fence/**'
+      - 'internal/security/legacyauthorization/**'
+      - 'internal/security/legacyauth/**'
       - '.github/workflows/tei-effect-fence-sqlite-ci.yml'
 
 permissions:
@@ -69,8 +73,8 @@ jobs:
           set -euo pipefail
           go version
           pkg-config --modversion sqlite3
-          go test -race -tags tei_sqlite_reference -count=3 ./reference/effect-fence
-          go vet -tags tei_sqlite_reference ./reference/effect-fence
+          go test -race -tags tei_sqlite_reference -count=3 ./reference/effect-fence ./internal/security/legacyauthorization ./internal/security/legacyauth
+          go vet -tags tei_sqlite_reference ./reference/effect-fence ./internal/security/legacyauthorization ./internal/security/legacyauth
           python3 -B -m unittest -q reference/effect-fence/sqlite_transaction_test.py
 
       - name: 実行後の版と作業領域を確認

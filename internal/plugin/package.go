@@ -56,6 +56,9 @@ func MaterializePluginPackage(source Definition, plan BuildPlan) ([]byte, error)
 	if err := ValidateRequirements(source.Requires); err != nil {
 		return nil, fmt.Errorf("plugin package source %s: %w", source.ID, err)
 	}
+	if err := ValidateUniqueCapabilities(source.Provides); err != nil {
+		return nil, fmt.Errorf("plugin package source %s: %w", source.ID, err)
+	}
 
 	definitionFingerprint := BuildDefinitionFingerprint(source)
 	if definitionFingerprint != plan.PluginDefinitionFingerprint {

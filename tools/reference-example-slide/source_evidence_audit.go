@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"tei/internal/sourceindex"
+	"tei/internal/syntax"
 )
 
 // SourceEvidenceAudit inspects claimed source-index pointers without changing
@@ -110,11 +111,24 @@ func AuditAnswerSourceEvidence(input Input, answers AnswerInput, idx sourceindex
 				if sourceindex.Fingerprint(content) != artifact.Fingerprint {
 					return empty, fmt.Errorf("source changed during evidence inspection: %s", artifact.Path)
 				}
-				start, end := ref.Range.Start.Offset, ref.Range.End.Offset
-				if start == end || string(content[start:end]) != id {
-					item.Status = "exact-subject-anchor-not-confirmed"
-				} else {
-					item.Status = "source-range-checked"
+				// The canonical ID is qualified (sales.order.customer),
+				// while the TEI source anchor spans the local symbol (customer).
+				// Reparse the exact verified bytes, and compare the parser's
+				// subject *and* token range rather than raw token text.
+				anchored, parseErr := syntax.ParseSemanticFileAnchored(string(content))
+				item.Status = "exact-subject-anchor-not-confirmed"
+				if parseErr == nil && ref.Range.Start.Offset < ref.Range.End.Offset {
+					matches := 0
+					for _, declaration := range anchored.Anchors {
+						if declaration.Kind == kind && declaration.ID == id &&
+							declaration.Anchor.Start.Offset == ref.Range.Start.Offset &&
+							declaration.Anchor.End.Offset == ref.Range.End.Offset {
+							matches++
+						}
+					}
+					if matches == 1 {
+						item.Status = "source-range-checked"
+					}
 				}
 			}
 			out.Findings = append(out.Findings, item)

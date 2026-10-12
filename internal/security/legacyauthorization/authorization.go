@@ -2,6 +2,7 @@ package legacyauthorization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -82,6 +83,9 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	if a.EpochReader != nil {
 		version, err := a.EpochReader.ReadAuthorizationEpochs(ctx, input)
 		if err != nil {
+			if errors.Is(err, ErrAuthorityInactive) {
+				return denied("authority_inactive"), nil
+			}
 			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の版を取得できません: %w", err)
 		}
 		if !version.valid() {
@@ -126,6 +130,9 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	if before != nil {
 		after, err := a.EpochReader.ReadAuthorizationEpochs(ctx, input)
 		if err != nil {
+			if errors.Is(err, ErrAuthorityInactive) {
+				return denied("authority_inactive"), nil
+			}
 			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の再照合に失敗しました: %w", err)
 		}
 		if !after.valid() {

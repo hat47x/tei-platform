@@ -140,6 +140,44 @@
         "optional": true
       },
       {
+        "op": "assert-unique-by",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "keys": [
+          {
+            "op": "join-strings",
+            "values": [
+              {
+                "op": "select-field",
+                "from": {
+                  "op": "input",
+                  "name": "capability"
+                },
+                "field": "kind"
+              },
+              {
+                "op": "select-field",
+                "from": {
+                  "op": "input",
+                  "name": "capability"
+                },
+                "field": "id"
+              }
+            ],
+            "separator": "\u0000"
+          }
+        ],
+        "optional": true
+      },
+      {
         "op": "assert-equal",
         "actual": {
           "op": "select-field",

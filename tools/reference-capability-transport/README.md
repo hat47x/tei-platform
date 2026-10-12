@@ -114,3 +114,13 @@ HTTP request内のContract / Provider / Target / shape identityはremote client�
 processとHTTPの両方で、同じgeneric identityとpayload digestをtransport固有carrierから分離できました。したがって、transport-neutralなdispatch / receipt identityは次のReference候補として残せます。
 
 ただし、まだproduction contractへ昇格しません。HTTP Referenceはsyntheticで、actual First Web Target / browser / Wasmとの接続Evidenceがありません。production process protocolもlegacy Capability identityのままです。
+
+## 業務上の結果を返す独立した実プロセス
+
+従来の試験は、汎用の要求・応答を繰り返して返す実装が中心でした。[受注見積もりプラグイン](../../plugins/reference-order-quote/README.md)では、**入力明細から小計を実際に計算する読み取り専用の業務処理**を別実行ファイルで動かします。
+
+[結合試験](order_quote_process_test.go)は、独立したGoモジュールから実行ファイルを構築し、既存の`TransportDispatchPlan`、合成基盤のProvider選択・現在のHost権限、実行ファイルのSHA-256照合、既存プロセス起動器を使います。明細を変えても同じ契約識別子を保ったまま、計算結果と要求・結果の指紋が変わることを確認します。また、不正な数量は子プロセスで拒否し、結果の形が変わった場合、異なる成果物が指定された場合、実行権限の失効とProviderの撤去では起動前に停止します。
+
+**本質的な区別**：通信が成功しても、結果JSONが業務契約に適合するとは限りません。結果の型が不正でも、汎用Transportの識別子照合だけでは検出できない反例を残し、呼出し元が厳密に結果形を確認する必要性を示します。ここで使う固定契約・形の文字列指紋はReference専用であり、正規のShape Authorityや採用済み契約の証拠ではありません。
+
+この読み取り専用プラグインは`order_entry.submit_order`ではありません。注文は確定せず、利用者認可も実行しません。将来の実業務プラグインへ進む際は、同じ意味契約をBrowser/API/Process等にわたって保持し、既存の`security.authorize`とRuntime Authorityを別途接続します。旧式のCapabilityKindを新しいCoreの固定列挙へ移してはなりません。
