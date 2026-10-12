@@ -38,7 +38,7 @@ def main():
     proc = None
     log = None
     report = {'candidateHead': head, 'artifactDigest': digest, 'evidenceNature': 'real-postgres-disposable-reference-data',
-              'checks': [], 'cleanBefore': True, 'cleanAfter': False, 'fixtureCleanupConfirmed': False,
+              'passed': False, 'checks': [], 'cleanBefore': True, 'cleanAfter': False, 'fixtureCleanupConfirmed': False,
               'limits': ['Oracle customer and authentication remain synthetic', 'no production or browser evidence',
                          'single PostgreSQL host; coarse line table lock', 'no process hot replacement or availability SLO']}
     try:
@@ -156,6 +156,7 @@ def main():
         private = output / 'connection.private'
         if private.exists():
             private.unlink()
+        report['passed'] = report['cleanAfter'] and report['fixtureCleanupConfirmed'] and len(report['checks']) == 6
         (output / 'evidence.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 

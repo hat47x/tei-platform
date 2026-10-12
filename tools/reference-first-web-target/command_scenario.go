@@ -300,6 +300,11 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 			}
 			result.Stage = "command"
 		}
+		businessResult := capabilityinvoke.BusinessResult{
+			Capability: capability,
+			Mode:       capabilityinvoke.ResultOutput,
+			Payload:    map[string]any{"accepted": true, "orderId": actualOrderID},
+		}
 		if r.persistence != nil {
 			err := r.persistence.Submit(invokeCtx, actualOrderID, readResult, func(effectCtx context.Context) error {
 				final, err := r.invokeBusinessAuthorization(effectCtx, subjectID)
@@ -311,6 +316,9 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 					return err
 				}
 				result.EffectAuthorization = &projected
+				if final.Mode != capabilityinvoke.ResultOutcome {
+					return errors.New("effect-time authorization returned unexpected result mode")
+				}
 				if final.Outcome == "denied" {
 					result.Stage = "authorization-denied"
 					return errEffectBusinessDenied
@@ -320,17 +328,10 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 			if err != nil {
 				return capabilityinvoke.BusinessResult{}, err
 			}
-		} else {
-			state[actualOrderID] = "submitted"
+			return businessResult, nil
 		}
-		return capabilityinvoke.BusinessResult{
-			Capability: capability,
-			Mode:       capabilityinvoke.ResultOutput,
-			Payload: map[string]any{
-				"accepted": true,
-				"orderId":  actualOrderID,
-			},
-		}, nil
+		state[actualOrderID] = "submitted"
+		return businessResult, nil
 	})
 
 	result.Stage = "command"
@@ -375,6 +376,15 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 			return result, err
 		}
 		result.Observation = &observationProjection{ReadIdentity: observation.ReadIdentity, Nature: string(observation.Nature), Result: observation.Result}
+		if observation.Nature == driver.ObservationEvidenceExternalObserved {
+			unresolved := result.Unresolved[:0]
+			for _, item := range result.Unresolved {
+				if item != "actual-external-command-observation-not-acquired" {
+					unresolved = append(unresolved, item)
+				}
+			}
+			result.Unresolved = unresolved
+		}
 		result.Stage = "completed"
 		return result, nil
 	}
