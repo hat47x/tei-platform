@@ -13,12 +13,12 @@ import (
 // ModelHypothesisSourceAudit verifies *existing* semantic Data and Attribute
 // definition anchors. It never verifies the proposed business key or FD itself.
 type ModelHypothesisSourceAudit struct {
-	Schema                  string                         `json:"schema"`
-	CaseID                  string                         `json:"caseId"`
-	ModelReviewFingerprint  string                         `json:"modelReviewFingerprint"`
-	HypothesesFingerprint   string                         `json:"hypothesesFingerprint"`
-	Fingerprint             string                         `json:"fingerprint"`
-	Findings                []ModelHypothesisSourceFinding `json:"findings"`
+	Schema                 string                         `json:"schema"`
+	CaseID                 string                         `json:"caseId"`
+	ModelReviewFingerprint string                         `json:"modelReviewFingerprint"`
+	HypothesesFingerprint  string                         `json:"hypothesesFingerprint"`
+	Fingerprint            string                         `json:"fingerprint"`
+	Findings               []ModelHypothesisSourceFinding `json:"findings"`
 }
 
 type ModelHypothesisSourceFinding struct {
