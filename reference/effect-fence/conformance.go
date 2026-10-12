@@ -170,7 +170,7 @@ func CheckAtomicConformance(ctx context.Context, fresh func() (ConformanceFixtur
 		{name: "no-cross-scope-authority", run: func(f ConformanceFixture) error {
 			r := req("op-6")
 			r.Scope.Subject = "viewer"
-			_, result, err := f.Prepare(ctx, r)
+			_, result, err := f.PrepareForTest(ctx, r)
 			if err != nil || result.Disposition != Denied {
 				return fmt.Errorf("別主体への権限流用: %+v: %v", result, err)
 			}
