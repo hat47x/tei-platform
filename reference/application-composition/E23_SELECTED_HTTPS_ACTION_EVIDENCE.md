@@ -38,4 +38,4 @@
 
 新しいCore構成表現、Resolver、Graph、保存方式、資格情報発行器は追加しない。E23は**既存実装間の接続失敗を検出する試験**であり、これを理由に本番向け機能を有効化しない。
 
-実行は`go test -count=1 ./reference/application-composition -run '^TestE22' -v`。CIの成否は、登録時の想定ではなく、対象PR headの実行結果で記録する。
+実行は`go test -count=1 ./reference/application-composition -run '^TestE23' -v`。CIの成否は、登録時の想定ではなく、対象PR headの実行結果で記録する。
