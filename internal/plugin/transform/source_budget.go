@@ -71,6 +71,31 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 		if !inString && (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t') {
 			continue
 		}
+		// Normalize escapes that encode a Unicode scalar before sizing it.
+		// In particular, a surrogate pair becomes one UTF-8 scalar in the
+		// canonical JSON value, so counting the twelve source bytes would
+		// reject a valid Source whose canonical artifact exactly fits.
+		if inString && !escaped && ch == '\\' && i+1 < len(raw) {
+			if raw[i+1] == '/' {
+				// The JSON encoder emits an unescaped slash.
+				size++
+				i++
+				if size > b.remaining {
+					return fmt.Errorf("serialized size limit exceeded")
+				}
+				continue
+			}
+			if raw[i+1] == 'u' {
+				if encodedBytes, consumed, ok := canonicalUnicodeEscapeSize(raw[i:]); ok {
+					size += encodedBytes
+					i += consumed - 1
+					if size > b.remaining {
+						return fmt.Errorf("serialized size limit exceeded")
+					}
+					continue
+				}
+			}
+		}
 		// The expansion estimate remains conservative for malformed JSON;
 		// ParseJSON is responsible for rejecting invalid syntax.
 		encodedBytes := 1
@@ -108,6 +133,41 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 		}
 	}
 	return b.add(size)
+}
+
+// canonicalUnicodeEscapeSize returns the encoded size of one decoded JSON
+// Unicode escape and how many source bytes it consumes. The JSON parser still
+// validates the literal; invalid or unpaired escapes fall back to conservative
+// byte counting and are rejected during normalization.
+func canonicalUnicodeEscapeSize(raw []byte) (size, consumed int, ok bool) {
+	if len(raw) < 6 || raw[0] != '\\' || raw[1] != 'u' {
+		return 0, 0, false
+	}
+	first, valid := jsonHex16(raw[2:6])
+	if !valid {
+		return 0, 0, false
+	}
+	r := rune(first)
+	consumed = 6
+	switch {
+	case first >= 0xd800 && first <= 0xdbff:
+		if len(raw) < 12 || raw[6] != '\\' || raw[7] != 'u' {
+			return 0, 0, false
+		}
+		second, valid := jsonHex16(raw[8:12])
+		if !valid || second < 0xdc00 || second > 0xdfff {
+			return 0, 0, false
+		}
+		r = 0x10000 + (rune(first)-0xd800)<<10 + (rune(second) - 0xdc00)
+		consumed = 12
+	case first >= 0xdc00 && first <= 0xdfff:
+		return 0, 0, false
+	}
+	encoded, err := jsonStringEncodedSize(string(r), 8)
+	if err != nil {
+		return 0, 0, false
+	}
+	return encoded - 2, consumed, true
 }
 
 func (b *sourceSizeBudget) measure(v reflect.Value, depth int) error {
