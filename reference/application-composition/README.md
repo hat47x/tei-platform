@@ -27,8 +27,9 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E12：型付き影響レビューを実際のJSONファイルから確認するCLI](E12_PAIRED_SOURCE_TYPED_REVIEW.md) — E11のGo形式JSON用判定器を単一の正本とし、E12は入力サイズ・終了コード・出力制限のみ担当。Node標準テスト13件。Goの同一snapshot結合とAuthorityは未実証。
 - [E13：E5と既存Derived Indexを一度の解析済みWorldから取得](E13_SAME_WORLD_DERIVED_OBSERVATION.md) — E5にオプトインの`-include-direct-derived`を追加し、既存`index.Build(loaded.World)`から必要な直接参照5種類だけを同時出力。Go試験7件を追加（**未実行**）。[厳格なローカル検証](qualify-e13-local.sh)はbash構文のみ確認済み。#1120 Go Impact/同一Source bytes保証は未結合。
 - [E14：受注明細の三視点直接参照とSourceの実Workspace確認](E14_CROSS_VIEW_SOURCE_WITNESS.md) — 既存Derived IndexのApplication→Pattern→Relation→Dataと出典の一意性をGoテストに固定。Go4関数・Source負例5サブケース（**未実行**）。E13の未解決時の追加開示抑止についてGoテスト2関数を追加。#1120 Impactへの統合は別Gate。
-- [E15：実Goの型付き変更影響とE12 CLIの結合確認](E15_MODELREF_E12_INTEGRATION_GATE.md) — 関連機構はmainに統合済み。Node.js子プロセスを使うためビルドタグ付きの追加試験を維持する。実行・PASSは未確認。
-- [E16：統合済みGo機構による実Workspaceの変更影響回帰検査](E16_POSTMERGE_TYPED_IMPACT.md)／[Goテスト](e16_postmerge_modelref_test.go) — 追加のビルドタグやNode.jsなしで、既存の型付き索引・差分・影響解析を受注明細の実Worldへ適用する。**テスト2件登録・実行未確認**。
+- [E15：実Goの型付き変更影響とE12 CLIの結合確認](E15_MODELREF_E12_INTEGRATION_GATE.md) — ビルドタグ付きの追加試験を専用GitHub Actionsで実行済み。Go→Nodeの受け渡しと未解決時の拒否がPASS。全依存の解決を意味しない。
+- [E16：統合済みGo機構による実Workspaceの変更影響回帰検査](E16_POSTMERGE_TYPED_IMPACT.md)／[Goテスト](e16_postmerge_modelref_test.go) — 既存の型付き索引・差分・影響解析を受注明細の実Worldへ適用する。通常GoテストでCI成功。全依存閉包は未解決。
+- [E17：解析済みソース内容と二つの実ファイル状態](E16_POSTMERGE_TYPED_IMPACT.md#e17同一解析済みbytesと二つのファイル状態)／[Goテスト](e17_source_revision_test.go) — 同じ解析結果の指紋を保持し、改行を追加した新規読取りだけが別の指紋を得ることを確認。意味モデルの変更とは区別する。通常GoテストでCI成功。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
