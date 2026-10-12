@@ -206,3 +206,60 @@ func TestBusinessDFDGoProjectionToNodeReview(t *testing.T) {
 			"DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH")
 	})
 }
+
+
+ // TestBusinessDFDGoProjectionDrivesView exercises the actual DFD browser
+ // module with Go-produced projections through its file-picker interface.
+ // The DOM is mocked by Node; this is not a real-browser acceptance test.
+func TestBusinessDFDGoProjectionDrivesView(t *testing.T) {
+  node, err := exec.LookPath("node")
+  if err != nil {
+    if os.Getenv("GITHUB_ACTIONS") == "true" {
+      t.Fatal("DFD Go-to-view integration requires Node.js on GitHub Actions")
+    }
+    t.Skip("DFD Go-to-view integration not executed: Node.js unavailable")
+  }
+  root := filepath.Join("..", "..", "reference", "business-system-design")
+  cases := []struct{
+    name, procedure, review, set string
+  }{
+    {"direct-validation", "order-entry-business-procedure.json",
+      "order-entry-dfd-review-proposal.json", "order-entry-procedure-reference-set.json"},
+    {"order-approval", filepath.Join("dfd-order-approval", "order-approval-procedure.json"),
+      filepath.Join("dfd-order-approval", "review-proposal.json"),
+      filepath.Join("dfd-order-approval", "procedure-set.json")},
+  }
+  dir := t.TempDir()
+  paths := make([]string,0,len(cases))
+  for _, sample := range cases {
+    p, err := run(filepath.Join(root,sample.procedure),filepath.Join(root,sample.review),
+      filepath.Join(root,sample.set), filepath.Join("..","..","reference","workspace"))
+    if err != nil { t.Fatalf("real Go projection for %s: %v",sample.name,err) }
+    if p.Authority != "derived-read-only" || p.CanonicalProcedureUsed {
+      t.Fatalf("real Go projection wrongly asserts authority for %s",sample.name)
+    }
+    for _, d := range p.Diagnostics {
+      if d.Severity == "error" {t.Fatalf("%s has error diagnostic: %+v",sample.name,d)}
+    }
+    bytes, err := json.Marshal(p)
+    if err != nil {t.Fatal(err)}
+    path := filepath.Join(dir,sample.name+".json")
+    if err := os.WriteFile(path,bytes,0600);err != nil {t.Fatal(err)}
+    paths=append(paths,path)
+  }
+  ctx, cancel := context.WithTimeout(context.Background(),40*time.Second)
+  defer cancel()
+  cmd := exec.CommandContext(ctx,node,
+    "--test","--test-name-pattern=real Go projection crosses browser view boundary",
+    filepath.Join(root,"dfd-view-studio.test.mjs"))
+  cmd.Env=append(os.Environ(),
+    "TEI_DFD_REAL_GO_DIRECT_PROJECTION="+paths[0],
+    "TEI_DFD_REAL_GO_APPROVAL_PROJECTION="+paths[1])
+  output,err := cmd.CombinedOutput()
+  if ctx.Err()!=nil {t.Fatalf("Go-produced DFD view integration timed out: %v\\n%s",ctx.Err(),output)}
+  if err!=nil || !strings.Contains(string(output),"# fail 0") ||
+    !strings.Contains(string(output),"# pass 1") {
+    t.Fatalf("Go-produced DFD view integration failed: %v\\n%s",err,output)
+  }
+  t.Logf("Real Go DFD projection exercised by Node DOM view test (no browser Acceptance):\\n%s",output)
+}
