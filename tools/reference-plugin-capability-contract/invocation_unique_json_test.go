@@ -20,29 +20,29 @@ func TestCandidateQuoteShapeRejectsDuplicateJSONMembers(t *testing.T) {
 		valid   bool
 	}{
 		{
-			name: "distinct lines can reuse the same member names",
-			shape: request,
+			name:    "distinct lines can reuse the same member names",
+			shape:   request,
 			payload: `{"currency":"JPY","lines":[{"sku":"PEN","quantity":1,"unitPriceMinor":250},{"sku":"BOOK","quantity":2,"unitPriceMinor":400}]}`,
-			valid: true,
+			valid:   true,
 		},
 		{
-			name: "duplicate top-level member",
-			shape: request,
+			name:    "duplicate top-level member",
+			shape:   request,
 			payload: `{"currency":"JPY","currency":"USD","lines":[{"sku":"PEN","quantity":1,"unitPriceMinor":250}]}`,
 		},
 		{
-			name: "escaped duplicate top-level member",
-			shape: request,
+			name:    "escaped duplicate top-level member",
+			shape:   request,
 			payload: `{"currency":"JPY","\u0063urrency":"USD","lines":[{"sku":"PEN","quantity":1,"unitPriceMinor":250}]}`,
 		},
 		{
-			name: "duplicate nested member in array item",
-			shape: request,
+			name:    "duplicate nested member in array item",
+			shape:   request,
 			payload: `{"currency":"JPY","lines":[{"sku":"PEN","quantity":1,"quantity":2,"unitPriceMinor":250}]}`,
 		},
 		{
-			name: "duplicate result member",
-			shape: result,
+			name:    "duplicate result member",
+			shape:   result,
 			payload: `{"currency":"JPY","lineCount":1,"subtotalMinor":250,"subtotalMinor":500}`,
 		},
 	}
