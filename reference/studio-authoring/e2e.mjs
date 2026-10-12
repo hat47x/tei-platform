@@ -196,8 +196,12 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     checked(reviewPage.includes("not-performed") &&
       reviewPage.includes("未適用") && reviewPage.includes("source") &&
       coverageCodes.every(code => reviewPage.includes(code + "　")) &&
-      reviewPage.includes("承認前に確認する審査区分"),
-      "er: review HTML displays all Go coverage categories without approving Source");
+      reviewPage.includes("承認前に確認する審査区分") &&
+      reviewPage.includes('id="handoff-candidate"') &&
+      reviewPage.includes(studioReview.candidate.id) &&
+      reviewPage.includes(studioReview.review.reviewFingerprint) &&
+      reviewPage.includes("候補・版・審査の照合済み／人の判断は未実施"),
+      "er: review HTML includes unchanged candidate, review fingerprint, and unaccepted authority");
   }
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     label + ": Preview, Review and Studio review do not mutate Source");
