@@ -44,3 +44,33 @@
 Go 1.23.2の独立した局所モジュールで、本PRの`proposal.go`・`selection.go`、実`registry.go`と、RouterのBinding型だけを代用する試験用定義を使用し、`go test -race -count=100 -timeout=120s ./reference/composition-evidence-handoff ./internal/composition`、`go vet ./reference/composition-evidence-handoff ./internal/composition`、`gofmt -l`が成功。新規の`handoff.go`・`handoff_test.go`はGitHubのBlob SHAとローカルの`git hash-object`が一致した。
 
 これは**完全なTEIパッケージの試験、PR exact-headの全Repository Health、実際の#951解決処理との結合試験ではない**。本番採用を判断するには、これらの検証に加えて依存関係の規模ごとの性能、証拠の失効と発行者のAuthorityを扱う境界を評価する。
+
+
+## E10：実際の契約解決結果から参照を作る縦断試験
+
+#951の参照実装には、正確な契約・実装・成果物・適合証拠から解決結果を求める`resolveCapability`がある。これとComposition側の構成案を接続するため、[Capability Contract Reference](../../tools/reference-plugin-capability-contract/README.md)と同じPackageに`composition_handoff.go`と`composition_handoff_test.go`を追加した。
+
+接続関数は、次の順番で動く。
+
+1. `composition.InspectWiringSet`で得た検証対象に、**どの正確な#951 Provider実装を対応させるか**を明示的に指定する。名前が似ているProviderを暗黙に対応させない。
+2. 既存の`resolveCapability`へ契約・Provider・適合証拠・権限区分を渡す。#951の解決器を複製しない。
+3. 解決できた結果の契約ID・**正確な版**・契約全体の指紋・実装ID・Plugin版・**成果物のダイジェスト**が、明示した対応関係と一致する場合だけ、E9の`EvidenceReference`を作る。
+4. E9の`Reconcile`で、構成案の検証対象と解決結果への参照を照合する。
+
+**二種類のScopeは区別する**：Compositionの`Scope`はそのRegistry内での隔離・選択範囲であり、#951の`AuthorityScope`（設計ツール、ビルド、アプリケーション実行など）とは同義ではない。両者の対応は、検証対象と実装を結び付ける明示的な設定によって示す。Compositionの`Contract.Shape`を#951の`ContractFingerprint`へ読み替えることもしない。
+
+### 結合試験の対象
+
+- 実際の#951の`resolveCapability`から得たProvider、契約指紋、適合証拠指紋、成果物、解決結果の識別情報がE9に欠落なく引き渡されること。
+- 適合証拠なし、権限区分の相違、契約の意味の変更、互換しない要求版、正確な実装・成果物・契約指紋からの逸脱では参照を作らないこと。
+- 証拠の更新では解決結果の識別情報が不変でも、証拠指紋が変化することを区別すること。両方の証拠参照が同時にある場合に一方を暗黙に選ばないこと。
+- Providerの撤去・同名再登録後は、以前の構成案に結び付く参照が宣言世代の古いものとして診断されること。
+- 同じ実装の複数の物理成果物が適合していても、成果物を明示しない限り解決器が曖昧として拒否すること。
+
+### 検証の状態
+
+E9の既存局所パッケージについては、ローカルで`go test -race -count=10 -timeout=90s ./reference/composition-evidence-handoff ./internal/composition`、`go vet`、Go整形検査が再度成功した。
+
+一方、今回追加した**実際の#951パッケージを使うE10の結合試験は、GitHubへソースを追加しBlob SHAを確認した段階であり、実行していない**。作業コンテナからの`git clone`はDNSで失敗する。E9局所試験の成功をE10の結合試験やPR exact-headの全体テストの成功とみなさない。
+
+なお、#951の参照解決器が渡された情報から結果を求められたことは、契約定義の発行権限、適合証拠の真正性・現在性、署名、Hostの実行許可を意味しない。E10の成功時にも最終診断を`reference-linked-unverified`に留める。Productionへ昇格するには#951の信頼できる正本・発行者検証、#943の実成果物、Hostの現在権限への接続が必要である。
