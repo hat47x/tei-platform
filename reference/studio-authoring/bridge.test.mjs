@@ -803,6 +803,8 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
       { encoding: "utf8" });
     assert.notEqual(unsafeReview.status, 0,
       "review-edit requires a live workspace and cannot trust unrelated snapshots");
+    assert.match(unsafeReview.stderr, /INVALID_INPUT/,
+      "negative test must reject detached snapshots by design, not due to CLI crash");
     assert.deepEqual(paths.map(p => readFileSync(p, "utf8")), before);
   } finally {
     rmSync(dir, { recursive: true, force: true });
