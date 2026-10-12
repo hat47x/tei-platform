@@ -816,6 +816,9 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_PLUGIN_REQUIREMENT", "environment %s requires plugin %s more than once", e.ID, req.ID))
 			}
 			seenPluginReq[req.ID] = struct{}{}
+			if err := req.ValidateID(); err != nil {
+				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_ID", "environment %s plugin %q: %v", e.ID, req.ID, err))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_VERSION", "environment %s plugin %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}
@@ -826,6 +829,9 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_BUNDLE_REQUIREMENT", "environment %s requires bundle %s more than once", e.ID, req.ID))
 			}
 			seenBundleReq[req.ID] = struct{}{}
+			if err := req.ValidateID(); err != nil {
+				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_ID", "environment %s bundle %q: %v", e.ID, req.ID, err))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_VERSION", "environment %s bundle %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}

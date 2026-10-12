@@ -1,6 +1,9 @@
 package environment
 
 import (
+	"fmt"
+	"sort"
+
 	"tei/internal/core"
 	"tei/internal/deployment"
 	"tei/internal/permission"
@@ -98,6 +101,47 @@ type CapabilityLeasePolicy struct {
 type ExtensionRequirement struct {
 	ID              core.CanonicalID `json:"id"`
 	CompatibleMajor int              `json:"compatibleMajor"`
+}
+
+// ValidateID rejects invalid IDs as supplied; ParseCanonicalID alone trims
+// whitespace, so equality with the original value is essential.
+func (r ExtensionRequirement) ValidateID() error {
+	id, err := core.ParseCanonicalID(string(r.ID))
+	if err != nil || id != r.ID {
+		return fmt.Errorf("invalid canonical id %q", r.ID)
+	}
+	return nil
+}
+
+// Validate checks the local shape of one environment selection, without
+// resolving it against a Plugin or Bundle catalog.
+func (r ExtensionRequirement) Validate() error {
+	if err := r.ValidateID(); err != nil {
+		return err
+	}
+	if r.CompatibleMajor < 1 {
+		return fmt.Errorf("compatible major must be >= 1, got %d", r.CompatibleMajor)
+	}
+	return nil
+}
+
+// ValidateExtensionRequirements rejects malformed entries consistently even
+// when the declaration order differs. Cross-bundle shared dependencies and
+// repeated references are separate concerns.
+func ValidateExtensionRequirements(requires []ExtensionRequirement) error {
+	ordered := append([]ExtensionRequirement(nil), requires...)
+	sort.Slice(ordered, func(i, j int) bool {
+		if ordered[i].ID != ordered[j].ID {
+			return ordered[i].ID < ordered[j].ID
+		}
+		return ordered[i].CompatibleMajor < ordered[j].CompatibleMajor
+	})
+	for _, req := range ordered {
+		if err := req.Validate(); err != nil {
+			return fmt.Errorf("extension requirement %q: %w", req.ID, err)
+		}
+	}
+	return nil
 }
 
 type Environment struct {

@@ -54,6 +54,14 @@ func (c Catalog) resolveBundle(req environment.ExtensionRequirement) (Bundle, er
 }
 
 func (c Catalog) ResolveEnvironment(env environment.Environment) (ResolvedSet, error) {
+	// Validate both selection lists before catalog lookup. In particular,
+	// bundle major 0 must not select an otherwise matching bundle v0.x.y.
+	if err := environment.ValidateExtensionRequirements(env.Plugins); err != nil {
+		return ResolvedSet{}, fmt.Errorf("environment %s plugin selection: %w", env.ID, err)
+	}
+	if err := environment.ValidateExtensionRequirements(env.Bundles); err != nil {
+		return ResolvedSet{}, fmt.Errorf("environment %s bundle selection: %w", env.ID, err)
+	}
 	var queue []Requirement
 	for _, p := range env.Plugins {
 		queue = append(queue, Requirement{Plugin: p.ID, CompatibleMajor: p.CompatibleMajor})
