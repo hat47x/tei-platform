@@ -133,10 +133,10 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 			}
 			return principal, nil
 		},
-		VerifyCSRF:    func(*http.Request, webcomposition.Principal) bool {
+		VerifyCSRF: func(*http.Request, webcomposition.Principal) bool {
 			return csrfValid
 		},
-		Authorize:     func(_ context.Context, p webcomposition.Principal, action string) (bool, error) {
+		Authorize: func(_ context.Context, p webcomposition.Principal, action string) (bool, error) {
 			if p != principal || action != actionID {
 				return false, errors.New("host identity or action mismatch")
 			}
@@ -145,7 +145,7 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 			}
 			return actionAllowed, nil
 		},
-		Invoke:        http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			verified, ok := webcomposition.PrincipalFromContext(r.Context())
 			if !ok || verified != principal {
 				http.Error(w, "trusted principal unavailable", http.StatusInternalServerError)
@@ -173,7 +173,7 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 			w.WriteHeader(http.StatusAccepted)
 			_, _ = w.Write([]byte("{\"outcome\":\"accepted\",\"durability\":\"unconfirmed\"}"))
 		}),
-		Audit:         func(record webcomposition.AuditRecord) {
+		Audit: func(record webcomposition.AuditRecord) {
 			audit = append(audit, record)
 		},
 	})
