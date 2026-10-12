@@ -101,9 +101,33 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(beforeFocus.sourceNavigation.status === "source-index-backed",
     label + ": focus resolves to exact Source Index definition");
 
+  const editorPage = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "edit-form",
+    "-workspace", workspace, "-focus", edit.subject
+  ]).stdout;
+  checked(editorPage.includes("<!doctype html>") &&
+    editorPage.includes('id="studio-edit"') &&
+    editorPage.includes('id="proposal-json"') &&
+    editorPage.includes(beforeRevision) &&
+    editorPage.includes(edit.subject) &&
+    editorPage.includes("script-src") &&
+    !editorPage.includes(workspace),
+    label + ": live offline form binds exact Source revision without exposing workspace path");
+  const visualEdit = { ...edit, origin: "studio",
+    expectedModelRevision: beforeRevision };
+  const visualEditPath = input(label, ".visual-edit.json", visualEdit);
+  const visualCandidate = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "propose",
+    "-workspace", workspace, "-edit-file", visualEditPath
+  ]).stdout);
   const proposal = candidateFromEdit(model, beforeRevision, edit);
   const path = input(label, ".candidate.json", proposal);
   checked(proposal.baseModelRevision === beforeRevision, label + ": base revision");
+  checked(visualCandidate.baseModelRevision === beforeRevision &&
+    visualCandidate.origin.kind === "studio" &&
+    JSON.stringify(visualCandidate.delta) === JSON.stringify(proposal.delta),
+    label + ": revision-pinned form edit enters same Go-compatible candidate transport");
+
 
   const derivedEdit = input(label, ".derived-edit.json", {
     ...edit, derived: true
@@ -284,6 +308,13 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     label + ": stale Accepted Decision is explicitly refused (N06)");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
     label + ": stale Preview and stale Accept cannot modify newer Source");
+  const staleBrowserEdit = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "review-edit",
+    "-workspace", workspace, "-edit-file", visualEditPath
+  ], false);
+  checked(staleBrowserEdit.stderr.includes("STUDIO_EDIT_STALE_MODEL_REVISION") &&
+    JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
+    label + ": visual edit created from R0 cannot silently rebase onto R1");
   // A distinct second actor's already-reviewed proposal also loses R0.
   // This demonstrates optimistic concurrency, not simultaneous OS writes.
   const rivalAccepted = JSON.parse(acceptance([
