@@ -78,11 +78,11 @@ func reviewProjection(input Input, projection Projection) ReviewPacket {
 			byID[id] = len(packet.Issues)
 			packet.Issues = append(packet.Issues, ReviewIssue{
 				ID: id, Stage: slide.Stage, FrameIDs: []string{slide.ID},
-				RelationID:     finding.RelationID,
-				SourceRecordID: finding.SourceRecordID,
-				MatchedTargetIDs: append([]string(nil), finding.MatchedTargetIDs...),
+				RelationID:        finding.RelationID,
+				SourceRecordID:    finding.SourceRecordID,
+				MatchedTargetIDs:  append([]string(nil), finding.MatchedTargetIDs...),
 				PossibleTargetIDs: append([]string(nil), finding.PossibleTargetIDs...),
-				Result:         finding.Result, Reason: finding.Reason,
+				Result:            finding.Result, Reason: finding.Reason,
 				Question: question, EvidenceNeeded: needed,
 				ReviewTarget: target,
 			})
