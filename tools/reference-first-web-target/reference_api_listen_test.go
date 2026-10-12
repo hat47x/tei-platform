@@ -12,7 +12,7 @@ import (
 
 func TestAPIOnlyListenDeniesNonLoopbackAndAmbiguousAddress(t *testing.T) {
 	for _, tc := range []struct {
-		addr string
+		addr  string
 		allow bool
 	}{
 		{"127.0.0.1:8080", true},
