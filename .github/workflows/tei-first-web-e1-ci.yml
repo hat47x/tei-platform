@@ -97,8 +97,12 @@ jobs:
           # All generated files remain outside the tracked checkout. The
           # script records exact source SHA, linked symbols, sizes, hashes and
           # synthetic HTTP parity, but never claims production equivalence.
-          bash tools/reference-first-web-target/measure_tagged_targets.sh \
-            "$RUNNER_TEMP/tei-first-web-e1-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          evidence_dir="$RUNNER_TEMP/tei-first-web-e1-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          bash tools/reference-first-web-target/measure_tagged_targets.sh "$evidence_dir"
+          # A successful command is not sufficient if its output went to an
+          # unintended directory. Pin both the destination and the receipt.
+          test -f "$evidence_dir/measurement.json"
+          grep -Fq '"syntheticFixtureHttpParityVerified": true' "$evidence_dir/measurement.json"
 
       - name: 実行後の対象版と作業領域を照合
         if: always()
