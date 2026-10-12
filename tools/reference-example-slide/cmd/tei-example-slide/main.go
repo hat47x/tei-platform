@@ -23,18 +23,19 @@ func main() {
 	answerFile := flag.String("answers", "", "optional answer JSON bound to exact Review fingerprint; requires -out")
 	hypothesesFile := flag.String("hypotheses", "", "optional candidate key / FD hypotheses JSON; requires -out")
 	workspaceSource := flag.String("workspace-source", "", "optional loaded Workspace source audit for -hypotheses; requires -out")
+	ruleIntents := flag.String("rule-intents", "", "optional unverified rule declaration intents; requires -hypotheses and -workspace-source")
 	flag.Parse()
-	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile, *hypothesesFile, *workspaceSource); err != nil {
+	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile, *hypothesesFile, *workspaceSource, *ruleIntents); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
 func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extraFiles ...string) error {
-	if len(extraFiles) > 3 {
+	if len(extraFiles) > 4 {
 		return fmt.Errorf("too many supplementary inputs")
 	}
-	answerFile, hypothesesFile, workspaceSource := "", "", ""
+	answerFile, hypothesesFile, workspaceSource, ruleIntentsFile := "", "", "", ""
 	if len(extraFiles) >= 1 {
 		answerFile = extraFiles[0]
 	}
@@ -43,6 +44,12 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 	}
 	if len(extraFiles) >= 3 {
 		workspaceSource = extraFiles[2]
+	}
+	if len(extraFiles) >= 4 {
+		ruleIntentsFile = extraFiles[3]
+	}
+	if ruleIntentsFile != "" && (hypothesesFile == "" || workspaceSource == "" || inputPath == "" || outputPath == "" || catalogOnly || worldPath != "") {
+		return fmt.Errorf("-rule-intents requires -input, -hypotheses, -workspace-source and -out; excludes -world and -catalog")
 	}
 	if workspaceSource != "" && (hypothesesFile == "" || catalogOnly || inputPath == "" || outputPath == "" || worldPath != "") {
 		return fmt.Errorf("-workspace-source requires -hypotheses, -input, and -out; excludes -catalog and -world")
@@ -110,6 +117,7 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 	}
 	var modelHypothesisReview *example.ModelHypothesisReview
 	var modelSourceAudit *example.ModelHypothesisSourceAudit
+	var modelRuleDraft *example.ModelRuleDeclarationDraft
 	if hypothesesFile != "" {
 		var proposals example.ModelHypotheses
 		if err := readStrictJSON(hypothesesFile, &proposals); err != nil {
@@ -126,6 +134,17 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 				return fmt.Errorf("audit model hypothesis source: %w", err)
 			}
 			modelSourceAudit = &audit
+		}
+		if ruleIntentsFile != "" {
+			var intent example.ModelRuleDraftIntent
+			if err := readStrictJSON(ruleIntentsFile, &intent); err != nil {
+				return fmt.Errorf("decode model rule draft intent: %w", err)
+			}
+			draft, err := example.DraftLoadedWorkspaceModelRules(workspaceSource, input, proposals, intent)
+			if err != nil {
+				return fmt.Errorf("build model rule draft: %w", err)
+			}
+			modelRuleDraft = &draft
 		}
 	}
 	if outputPath == "" {
@@ -169,6 +188,16 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 		}
 		auditJSON = append(auditJSON, '\n')
 		if err := os.WriteFile(filepath.Join(outputPath, "model-hypothesis-source-audit.json"), auditJSON, 0600); err != nil {
+			return err
+		}
+	}
+	if modelRuleDraft != nil {
+		draftJSON, err := json.MarshalIndent(modelRuleDraft, "", "  ")
+		if err != nil {
+			return err
+		}
+		draftJSON = append(draftJSON, '\n')
+		if err := os.WriteFile(filepath.Join(outputPath, "model-rule-declaration-draft.json"), draftJSON, 0600); err != nil {
 			return err
 		}
 	}
