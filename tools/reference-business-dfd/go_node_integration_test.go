@@ -119,17 +119,17 @@ func TestBusinessDFDGoProjectionToNodeReview(t *testing.T) {
 			t.Fatalf("real Go projection rejected by Node CLI: %v\n%s", err, stderr.String())
 		}
 		var result struct {
-			Authority              string  `json:"authority"`
-			ReadyForAcceptance     bool    `json:"readyForAcceptance"`
-			SharedAcceptanceCandidate *any `json:"sharedAcceptanceCandidate"`
-			SourceWrites           []any   `json:"sourceWrites"`
-			InputSnapshotsVerified bool   `json:"inputSnapshotsVerified"`
-			Selected struct {
+			Authority                 string `json:"authority"`
+			ReadyForAcceptance        bool   `json:"readyForAcceptance"`
+			SharedAcceptanceCandidate *any   `json:"sharedAcceptanceCandidate"`
+			SourceWrites              []any  `json:"sourceWrites"`
+			InputSnapshotsVerified    bool   `json:"inputSnapshotsVerified"`
+			Selected                  struct {
 				ID string `json:"id"`
 			} `json:"selected"`
 			ProposedReview struct {
 				Triggers []struct {
-					ID string `json:"id"`
+					ID    string `json:"id"`
 					Label string `json:"label"`
 				} `json:"triggers"`
 			} `json:"proposedReview"`
