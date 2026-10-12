@@ -1,0 +1,69 @@
+name: TEI Action 共通連携の検証
+
+# 汎用Action接続口のJavaScript参照実装を対象にする。
+# 正規のGo健全性検査とは独立し、変更がある場合にだけ実行する。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'tools/reference-sui-action-boundary/**'
+      - '.github/workflows/tei-action-boundary-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-sui-action-boundary/**'
+      - '.github/workflows/tei-action-boundary-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-action-boundary-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: 検証対象を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 実行前の版と作業領域を確認
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+            read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merge" = "$GITHUB_SHA"
+            test "$head" = "$PR_HEAD_SHA"
+          else
+            test "$GITHUB_REF" = refs/heads/main
+          fi
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          echo "検証対象：$GITHUB_SHA"
+
+      - name: 共通ActionのNode.jsテスト
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
+          node --test tools/reference-sui-action-boundary/*.test.mjs
+
+      - name: 実行後の版と作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
