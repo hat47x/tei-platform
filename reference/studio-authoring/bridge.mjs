@@ -364,6 +364,7 @@ export function navigateReferenceBusinessStep(world, revision, dfd, stepID) {
       (r.capability || "") === (pattern.capability || ""));
   }
   const verified = candidates.filter(c => c.status === "identity-match-only");
+  const unresolvedCount = candidates.length - verified.length;
   return {
     schema: "tei.reference.studio-business-step-navigation/v0",
     authority: "noncanonical-reference",
@@ -371,7 +372,13 @@ export function navigateReferenceBusinessStep(world, revision, dfd, stepID) {
     subject: { kind: "step", id: step.id,
       scope: "reference-procedure:" + dfd.procedureId,
       authority: "reference-only" },
-    status: producerValid && verified.length ? "reference-only" : "unresolved",
+    // A single valid link cannot make a mixed stale/unresolved Step look sound.
+    status: producerValid && verified.length > 0 && unresolvedCount === 0
+      ? "reference-only" : "unresolved",
+    resolutionSummary: {
+      matched: verified.length, unresolved: unresolvedCount,
+      producerErrors: dfd.diagnostics.filter(d => d.severity === "error").length
+    },
     candidates,
     source: step.source || null,
     freshness: "unverified-no-model-revision-binding",
