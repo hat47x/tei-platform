@@ -28,9 +28,9 @@ func TestCapabilityDataEffectParsesWithoutInferringRuntimeAuthority(t *testing.T
 
 func TestCapabilityDataEffectRejectsDuplicateAndUnknownKind(t *testing.T) {
 	cases := []struct {
-		name string
+		name    string
 		effects string
-		want string
+		want    string
 	}{
 		{"unknown operation", "effect upsert intake.request", "unsupported data effect"},
 		{"duplicate", "effect create intake.request\n    effect update intake.request", "more than once"},
@@ -38,7 +38,7 @@ func TestCapabilityDataEffectRejectsDuplicateAndUnknownKind(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			src := "namespace intake\ncapability intake.request.save {\n    "+tt.effects+"\n}\n"
+			src := "namespace intake\ncapability intake.request.save {\n    " + tt.effects + "\n}\n"
 			_, err := syntax.NewParser(src).ParseSemanticFile()
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("expected %q, got %v", tt.want, err)
