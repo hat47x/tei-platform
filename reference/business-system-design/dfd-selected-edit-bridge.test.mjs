@@ -140,3 +140,39 @@ test('refuses a different local Procedure even when Step identifiers coincide',(
   assert.throws(()=>act(b,{...base,procedureId:'different.procedure'}),
     /DFD_REVIEW_PROCEDURE_IDENTITY_MISMATCH/);
 });
+
+test('producer authority and resolution metadata cannot be forged into a review preview',()=>{
+  const mutations=[
+    ['role authorization',x=>{x.roleAuthorizationBinding='granted';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['manual Step reinterpreted as automatic',x=>{x.steps[1].noApplicationFunction=false;},
+      'DFD_PRODUCER_STEP_RESOLUTION_MISMATCH'],
+    ['unresolved Function kept as resolved identity',x=>{x.steps[0].functionRefs[0].status='unresolved';},
+      'DFD_PRODUCER_STEP_RESOLUTION_MISMATCH'],
+    ['missing Function status',x=>{delete x.steps[0].functionRefs[0].status;},
+      'DFD_PRODUCER_STEP_RESOLUTION_MISMATCH'],
+    ['trigger bound to runtime',x=>{x.triggers[0].runtimeBinding='cron';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['trigger authority escalated',x=>{x.triggers[0].authority='accepted';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['control-flow authority escalated',x=>{x.flows[0].authority='runtime';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['business role authority escalated',x=>{x.information.roles[0].authority='rbac';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['external party authority escalated',x=>{x.information.externalParties[0].authority='accepted';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['store resolution forged',x=>{x.information.stores[0].dataStatus='not-declared';},
+      'DFD_PRODUCER_STORE_RESOLUTION_MISMATCH'],
+    ['responsibility authority escalated',x=>{x.information.responsibilities[0].authority='execution';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['information flow authority escalated',x=>{x.information.informationFlows[0].authority='write';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH']
+  ];
+  for(const [label,mutate,error] of mutations){
+    const copy=clone(base);
+    mutate(copy);
+    assert.throws(()=>act(proposal({kind:'trigger',id:'TR-ORDER'},
+      {kind:'replace-trigger-label',trigger:'TR-ORDER',label:'候補'}),copy),
+      new RegExp(error),label);
+  }
+});
