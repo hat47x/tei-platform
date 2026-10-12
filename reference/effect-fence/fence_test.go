@@ -247,3 +247,25 @@ func TestRevocationBeforePendingReplay(t *testing.T) {
 		t.Fatalf("past committed data unexpectedly mutated: %q %d", value, version)
 	}
 }
+
+// 別の保存先インスタンスで発行されたPermitは、同じ連番でも実行しない。
+func TestPermitCannotCrossStoreBoundary(t *testing.T) {
+	first := setup(t)
+	second := setup(t)
+	original := mustPrepare(t, first, request("first-op"))
+	other := mustPrepare(t, second, request("second-op"))
+	if original.id != other.id {
+		t.Fatal("この試験では連番が衝突する必要があります")
+	}
+	result, err := second.Commit(context.Background(), original)
+	if err != nil || result.Disposition != Denied || result.Receipt != (Receipt{}) {
+		t.Fatalf("別の保存先がPermitを受け付けました: %+v %v", result, err)
+	}
+	if _, version := second.Observe(scope); version != 0 {
+		t.Fatal("別の保存先に書込みが発生しました")
+	}
+	result, err = second.Commit(context.Background(), other)
+	if err != nil || result.Disposition != Committed {
+		t.Fatalf("正しい保存先のPermitまで破棄されました: %+v %v", result, err)
+	}
+}
