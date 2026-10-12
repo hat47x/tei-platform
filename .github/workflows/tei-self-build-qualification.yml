@@ -103,6 +103,24 @@ jobs:
           test "$actual" = "$expected"
           printf 'exact-engine=%s\n' "$expected"
 
+      - name: 参照Hostのstage2ロックと実行登録を明示
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/tei-transform-engine-build-evidence.json"
+          jq -n --slurpfile e "$evidence" '{
+            formatVersion: 1,
+            stage: "stage2",
+            runtimeEngine: $e[0].runtimeEngine
+          }' > "$RUNNER_TEMP/tei-stage2-engine-lock.json"
+          jq -n --slurpfile e "$evidence" '{
+            formatVersion: 1,
+            stage: "stage2",
+            hostId: "tei.reference.host.actions",
+            runtimeEngine: $e[0].runtimeEngine
+          }' > "$RUNNER_TEMP/tei-stage2-host-registration.json"
+          # 参照Hostによる明示的な受理操作。ビルド成功だけでは本番の権限は生じない。
+
       - name: SB-1・SB-2・SB-3の実行結果を生成
         shell: bash
         run: |
@@ -111,6 +129,8 @@ jobs:
           go run ./tools/reference-plugin-self-build -repo . \
             -exact-runtime-engine "$RUNNER_TEMP/tei-transform-runtime-engine" \
             -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
+            -stage2-engine-lock "$RUNNER_TEMP/tei-stage2-engine-lock.json" \
+            -stage2-host-registration "$RUNNER_TEMP/tei-stage2-host-registration.json" \
             > "$RUNNER_TEMP/tei-self-build-evidence.json"
 
       - name: 実行結果の収束と版を確認
@@ -118,9 +138,14 @@ jobs:
         run: |
           set -euo pipefail
           evidence="$RUNNER_TEMP/tei-self-build-evidence.json"
-          jq -e --arg sha "$GITHUB_SHA" --slurpfile engine "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" '
+          jq -e --arg sha "$GITHUB_SHA" --slurpfile engine "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" --slurpfile lock "$RUNNER_TEMP/tei-stage2-engine-lock.json" --slurpfile registration "$RUNNER_TEMP/tei-stage2-host-registration.json" '
             .schema == "tei.reference.plugin-self-build-evidence/v2"
             and .repositoryRevision == $sha
+            and .transformBootstrap.stage2Plan.execution.runtimeEngine == $lock[0].runtimeEngine
+            and .transformBootstrap.runtimeEngine == $registration[0].runtimeEngine
+            and (.stage2EngineLockFingerprint | length) == 64
+            and (.stage2HostRegistrationFingerprint | length) == 64
+            and (.stage2RuntimePolicyFingerprint | length) == 64
             and .transformBootstrap.exactRuntimeEngineBuildFingerprint == $engine[0].evidenceFingerprint
             and .transformBootstrap.runtimeEngine.implementationDigest == $engine[0].artifactDigest
             and .transformBootstrap.stage2Plan.execution.runtimeEngine.implementationDigest == $engine[0].artifactDigest
@@ -135,6 +160,26 @@ jobs:
             and .reproducible == true
           ' "$evidence" >/dev/null
           jq -r '"SB-3 converged=\(.transformBootstrap.convergenceResult.converged) stage1=\(.transformBootstrap.stage1ArtifactDigest) stage2=\(.transformBootstrap.stage2ArtifactDigest) oracle=\(.transformBootstrap.packageOracleDigest)"' "$evidence"
+
+      - name: 不一致のHost登録では実行前に拒否
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq '.runtimeEngine.implementationDigest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+            "$RUNNER_TEMP/tei-stage2-host-registration.json" \
+            > "$RUNNER_TEMP/tei-stage2-host-registration-stale.json"
+          if go run ./tools/reference-plugin-self-build -repo . \
+            -exact-runtime-engine "$RUNNER_TEMP/tei-transform-runtime-engine" \
+            -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
+            -stage2-engine-lock "$RUNNER_TEMP/tei-stage2-engine-lock.json" \
+            -stage2-host-registration "$RUNNER_TEMP/tei-stage2-host-registration-stale.json" \
+            > "$RUNNER_TEMP/tei-stage2-should-not-run.json" \
+            2> "$RUNNER_TEMP/tei-stage2-denial.txt"; then
+            echo "stale Host registration was unexpectedly accepted" >&2
+            exit 1
+          fi
+          grep -q "stage2 Host registration differs" "$RUNNER_TEMP/tei-stage2-denial.txt"
+          test ! -s "$RUNNER_TEMP/tei-stage2-should-not-run.json"
 
       - name: 検証済み実行エンジンの応答を確認
         shell: bash
@@ -174,5 +219,7 @@ jobs:
             ${{ runner.temp }}/tei-transform-engine-build-evidence.json
             ${{ runner.temp }}/tei-transform-runtime-engine
             ${{ runner.temp }}/tei-transform-runtime-engine-response.json
+            ${{ runner.temp }}/tei-stage2-engine-lock.json
+            ${{ runner.temp }}/tei-stage2-host-registration.json
           if-no-files-found: error
           retention-days: 7
