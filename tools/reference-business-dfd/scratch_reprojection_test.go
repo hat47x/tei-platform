@@ -140,9 +140,9 @@ func TestBusinessDFDUnacceptedProposalReprojection(t *testing.T) {
 			dir := t.TempDir()
 			files := map[string]string{
 				"projection": filepath.Join(dir, "projection.json"),
-				"procedure": filepath.Join(dir, "procedure.json"),
-				"review": filepath.Join(dir, "review.json"),
-				"binding": filepath.Join(dir, "binding.json"),
+				"procedure":  filepath.Join(dir, "procedure.json"),
+				"review":     filepath.Join(dir, "review.json"),
+				"binding":    filepath.Join(dir, "binding.json"),
 			}
 			inputs := map[string][]byte{
 				"projection": projectionBytes,
@@ -155,15 +155,15 @@ func TestBusinessDFDUnacceptedProposalReprojection(t *testing.T) {
 				}
 			}
 			binding := map[string]any{
-				"schema": "tei.reference.business-dfd-selected-edit/v0",
-				"id": "scratch-reprojection-" + tc.name,
-				"origin": "cli",
-				"intent": "一時領域で未受理の業務レビュー案を確認する",
-				"procedureSHA256": dfdTestDigest(procedureBytes),
-				"reviewSHA256": dfdTestDigest(reviewBytes),
+				"schema":           "tei.reference.business-dfd-selected-edit/v0",
+				"id":               "scratch-reprojection-" + tc.name,
+				"origin":           "cli",
+				"intent":           "一時領域で未受理の業務レビュー案を確認する",
+				"procedureSHA256":  dfdTestDigest(procedureBytes),
+				"reviewSHA256":     dfdTestDigest(reviewBytes),
 				"projectionSHA256": dfdTestDigest(projectionBytes),
-				"selection": map[string]string{"kind": tc.kind, "id": tc.id},
-				"operation": tc.operation,
+				"selection":        map[string]string{"kind": tc.kind, "id": tc.id},
+				"operation":        tc.operation,
 			}
 			bindingBytes, err := json.Marshal(binding)
 			if err != nil {
