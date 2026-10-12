@@ -302,8 +302,13 @@ async function main() {
   const negativeReceipt = JSON.parse(negativeRaw);
   assert.equal(negativeReceipt.targetBuildRevision, head);
   assert.equal(negativeReceipt.result.stage, "validation-not-satisfied");
-  assert.equal(negativeReceipt.result.validations.find(v => v.validation === validationID)?.result,
-    "not-satisfied", "selected unit-price rule did not reject the synthetic zero value");
+  assert.equal(negativeReceipt.executionError, undefined,
+    "business validation denial must not be reported as an execution error");
+  assert.deepEqual(negativeReceipt.result.validations.map(v => v.validation),
+    app.validations, "the same accepted R1 validation selection must be exercised");
+  assert.deepEqual(negativeReceipt.result.validations.map(v => v.result),
+    app.validations.map(id => id === validationID ? "not-satisfied" : "satisfied"),
+    "only the newly accepted unit-price rule should reject this order");
   assert.equal(Boolean(negativeReceipt.result.command), false, "invalid unit price reached Command");
   assert.equal(Boolean(negativeReceipt.result.observation), false, "invalid unit price reached Observation");
   const negativeLaunch = {
