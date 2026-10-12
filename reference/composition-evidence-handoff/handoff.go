@@ -111,10 +111,10 @@ func Reconcile(set composition.WiringSetFinding, refs []EvidenceReference) Hando
 	// diagnostics need to distinguish zero, one and multiple exact matches,
 	// not retain an unbounded array of repeated external references.
 	type evidenceMatches struct {
-		exactCount       uint8
-		first            EvidenceReference
-		hasMismatch      bool
-		hasStale         bool
+		exactCount  uint8
+		first       EvidenceReference
+		hasMismatch bool
+		hasStale    bool
 	}
 	matches := make(map[string]*evidenceMatches, len(targets))
 	for _, ref := range refs {
