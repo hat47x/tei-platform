@@ -223,9 +223,9 @@ S1で得た候補を次のように分類します。
 
 ### S4 — ISSUE-000040 composition candidate
 
-既存grammarだけでProposalを作る。
+既存の文法だけを使って構成案を作成します。
 
-概念形:
+概念上の形：
 
 ```text
 application <destination> {
@@ -241,41 +241,41 @@ application <destination> {
 }
 ```
 
-reference Patternはdestination-owned。
+参照するパターンは移行先が所有します。
 
-origin `order_entry.customer_reference`をコピー正本にしない。
+元の`order_entry.customer_reference`を複製して第二の正本にはしません。
 
 ### S5 — Shared Acceptance
 
-composition candidateをISSUE-000027 / ADR-0022のAcceptance boundaryへ渡す。
+構成案の候補を、ISSUE-000027／ADR-0022で定めた受理の境界へ渡します。
 
-Acceptance前:
+受理前の禁止事項：
 
-- authoritative sourceを変更しない
-- Environment bindingを作らない
-- AI Proposalをaccepted Decisionとみなさない
+- 権威ある入力元を変更しない
+- 環境の対応付けを作成しない
+- AIの構成案を受理済みの判断とみなさない
 
-Acceptance後のみsource authoringへ進む。
+受理した後に限り、ソースの記述へ進みます。
 
 ### S6 — Source / reload / validation
 
-accepted compositionを通常のTEI sourceとしてauthorする。
+受理した構成案を通常のTEIソースとして記述します。
 
-確認:
+確認する事項：
 
-- AI / exploration indexなしでreload可能
--同じCanonical meaningを再構成
-- Validation / Source Indexが成立
-- dedicated portability grammar不要という仮説を再評価
+- AIや探索用の索引がなくても再読込みできること
+- 同じ正本上の意味を再構成できること
+- 検証規則とソース索引が成立すること
+- 移植可能性専用の文法は不要という仮説を再評価すること
 
 ### S7 — Environment Binding Proposal
 
-Application source acceptance後にEnvironment側を別authorityとして扱う。
+アプリケーションのソースを受理した後、環境側を別の権限領域として扱います。
 
-preflight:
+事前確認：
 
 
-current source inspectionでは、development / productionに既存の `master_data.dev` / `master_data.prod` Oracle instanceがあり、最小候補はdestination-owned aliasをそれぞれへ結ぶ2 bindingである。
+当時のソース確認では、開発環境と本番環境にOracleの既存インスタンス`master_data.dev`と`master_data.prod`がありました。そのため、最小の候補は移行先が所有する別名を各インスタンスに結び付ける、二つの対応付けです。
 
 ```text
 development:
@@ -285,54 +285,54 @@ production:
   bind repair_intake.customer_master -> master_data.prod
 ```
 
-新しいDatabase instance / Oracle plugin / Provider bundleを作るEvidenceは無い。
+新しいデータベースの実体、Oracleプラグイン、提供実装の一式を作成する必要性を示す検証根拠はありません。
 
-確認:
+確認する事項：
 
-- destination Application / alias
-- target Database instance
-- Database definition
-- Provider resolution
-- Permission / Resource requirement
-- BindingがPermission / Resource / Runtime authorityを暗黙grantしないこと
+- 移行先のアプリケーションと別名
+- 対象となるデータベースの実体
+- データベースの定義
+- 提供実装の解決
+- 権限と資源の要件
+- 対応付けによって権限・資源・実行時の権限を暗黙に付与しないこと
 
-origin `order_entry.master` bindingをcopy authorityとして扱わない。
+元の`order_entry.master`の対応付けを、複製の正当化に使う権限とはみなしません。
 
 ### S8 — Driver / First Web Target
 
-preflight:
+事前確認：
 
 
-read-only customer lookupを、
+読取り専用の顧客検索を、
 
 1. Driver
 2. 第一Web Target
 
-で再現する。
+これらで再現します。
 
-developmentには既に`master_data.customer/find_by_id`のContract Query executor bindingがあるため、synthetic/deterministic Driver scenarioは既存境界でpressureできる。productionには同等executor bindingが無いため、development設定を暗黙流用しない。
+開発環境には`master_data.customer/find_by_id`の契約に基づく問い合わせの実行器がすでに対応付けられています。そのため、合成データを使う決定論的なドライバーのシナリオは既存の境界で検証できます。一方、本番環境には同等の実行器の対応付けがないため、開発環境の設定を暗黙のうちに流用しません。
 
-current First Web TargetはProjectionだけ`-application`で切替可能だが、read scenario runnerが`order_entry`固定である。そのため`repair_intake` manifestと`order_entry` executionが混在し得る。S8ではこれをfail closedし、Customer ID input -> `repair_intake.intake.customer_id` mapped row -> Driver reference lookupというTarget-local read surfaceを追加pressureする。
+当時の最初のウェブ実行先では、派生表示だけを`-application`で切り替えられますが、読取りシナリオの実行器は`order_entry`に固定されていました。そのため、`repair_intake`の一覧情報と`order_entry`の実行が混在する可能性があります。S8では、この状態を安全側に停止させます。顧客IDの入力から`repair_intake.intake.customer_id`に対応付けた行を経て、ドライバーの参照用検索へ進む、実行先固有の読取り画面も追加して検証します。
 
-同じBusiness / Semantic meaningをTarget側で再定義しない。
+同じ業務上・意味上の内容を実行先側で再定義しません。
 
-S8のTarget runではhistorical `B / R`を再利用しない。`repair_intake`を含むDriver EvidenceをS8aで取得後、Handover contractのsuccessor規則に従って `B2 / R2` を固定し、First Web Target buildを別identity `T2` として追跡する。
+S8で実行先を検証するときは、過去の`B / R`をそのまま再利用しません。S8aで`repair_intake`を含むドライバーの検証根拠を取得した後、引継ぎ契約の後継版に関する規則に従い、`B2 / R2`を固定します。最初のウェブ実行先の構築版は、別の識別情報`T2`として追跡します。
 
 ### S9 — Change propagation Evidence
 
-最低限次をPressureする。
+少なくとも次の変化に対する影響を検証します。
 
-- shared Semantic change → dependency requalification
-- Contract compatible minor → compatibility再評価
-- Contract major → dependency再評価
-- origin Pattern change → provenance drift
-- destination Pattern change → originへback-propagateしない
-- origin alias / Environment binding change → destinationへ伝播しない
-- unrelated origin change → stale-allしない
+- 共有する意味の定義を変更 → 依存関係の適格性を再確認
+- 契約の互換性を保つ小さな変更 → 互換性を再評価
+- 契約の大きな変更 → 依存関係を再評価
+- 元のパターンの変更 → 来歴とのずれを確認
+- 移行先のパターン変更 → 元の定義へ書き戻さない
+- 元の別名や環境の対応付けを変更 → 移行先へ自動伝播しない
+- 無関係な元の定義の変更 → すべてを古い状態とは判定しない
 
-ISSUE-000039が利用可能なら共通impact解析を使う。
+ISSUE-000039の機能を利用できる場合は、共通の影響分析を使います。
 
-独自impact engineをISSUE-000040へ作らない。
+ISSUE-000040専用の影響分析機構は作りません。
 
 ## 6. Stop conditions
 
