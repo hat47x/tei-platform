@@ -169,12 +169,18 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 			w.TargetLaunchReceipt == w.NegativeReceipt {
 			add("E1_WEB_WORKSPACE_R1_AND_TARGET_LAUNCH_PROVENANCE_MISSING")
 		}
-		if w.PositiveReceipt == "" || w.NegativeReceipt == "" ||
+		if strings.TrimSpace(w.PositiveReceipt) == "" || strings.TrimSpace(w.NegativeReceipt) == "" ||
 			w.PositiveReceipt == w.NegativeReceipt {
 			add("ACTUAL_WEB_POSITIVE_AND_NEGATIVE_RECEIPTS_REQUIRED")
 		}
-		if w.UnobservedControlReceipt == "" || w.UnobservedControlReceipt == w.PositiveReceipt ||
-			w.UnobservedControlReceipt == w.NegativeReceipt {
+		// N11 must be a separately located no-read control, not a recycled
+		// success/denial receipt or the unrelated Source/Target provenance.
+		// Locator separation remains a claim, not inspection of receipt bytes.
+		if strings.TrimSpace(w.UnobservedControlReceipt) == "" ||
+			w.UnobservedControlReceipt == w.PositiveReceipt ||
+			w.UnobservedControlReceipt == w.NegativeReceipt ||
+			w.UnobservedControlReceipt == w.WorkspaceRevisionReceipt ||
+			w.UnobservedControlReceipt == w.TargetLaunchReceipt {
 			add("N11_UNOBSERVED_CONTROL_MISSING")
 		}
 		// Shared Acceptance fingerprints the candidate's operation delta and
