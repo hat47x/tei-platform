@@ -30,7 +30,7 @@ TEIの要求、参照資料、検証根拠を基準とし、外部の公開知�
 
 ## 3. データを起点にしつつ、データだけで設計を終えない
 
-TEIでは、変わりにくい業務DataとRelationを画面・物理DB・実装技術から分離します。
+TEIでは、変わりにくい業務データとその関係を、画面、物理データベース、実装技術から分離します。
 
 ```text
 business Data meaning
@@ -40,13 +40,13 @@ Persistence Mapping
 physical schema / Provider
 ```
 
-一方、正規化したデータモデルだけで業務システム設計が完了したとはみなしません。Function / Business視点から、利用者が意味を確認できるか、業務行為に必要な情報が揃うか、UI操作とmutation contractが整合するかをcross-checkします。
+一方、正規化したデータモデルだけで業務システム設計が完了したとはみなしません。機能・操作と業務の視点から、利用者が意味を確認できるか、業務に必要な情報が揃うか、画面操作とデータ変更の契約が整合するかを相互に確かめます。
 
 データとの対応が確認できないからといって、その業務にデータへの依存がないとは判断しません。
 
 ### データの定義と個々の記録を分ける
 
-Data視点でいう`Customer`、`Order`、`Card`等のbusiness meaningと、Applicationが実際に保持する個々のrecordを同一視しません。
+データの視点にある`Customer`、`Order`、`Card`などの業務上の定義と、アプリケーションが実際に保持する個々の記録を同一視しません。
 
 ```text
 Data definition / business meaning
@@ -54,17 +54,17 @@ Data definition / business meaning
   != current runtime state
 ```
 
-Relationについても、`Order refers to Customer`というrelation definitionと、ある`order-2026-001 -> customer-123`というinstance-level factは別です。
+データ間の関係についても、`Order refers to Customer`という関係の定義と、`order-2026-001 -> customer-123`という個別の記録間で成り立つ事実は別です。
 
-instance-level factはApplication data、Database、external system、Observation等で扱えます。Business design上必要ならEvidenceとして参照しますが、個々のinstanceをすべてCanonical Business designへ持ち込むことを要求しません。
+個々の記録に関する事実は、アプリケーションのデータ、データベース、外部システム、観測結果などで扱えます。業務設計上必要なら検証根拠として参照しますが、すべての記録を業務設計の正本へ取り込むことは求めません。
 
-ただしmaster/reference data、configuration、policy table等、instance集合自体が設計authorityを持つdomainでは明示的なauthoritative sourceとして扱う余地があります。その場合もdefinition / instance / Observationのどれがownerかを曖昧にしません。
+ただし、マスターデータや参照データ、設定、方針を定める表など、記録の集合そのものが設計上の正本となる分野もあります。その場合は正本となる情報源を明示し、定義、個々の記録、観測結果のどれを誰が管理するかを明確にします。
 
 ### 業務上の識別・関数従属性・物理キーを分ける
 
-データ設計は、すべての表に単独の`id`を付けるところから始めません。まず、業務上の一つのoccurrenceを何が識別するのか、どのData項目が何によって定まるのかを確認します。識別と関数従属性は、画面やORM、Database Providerの都合より先に検討するData meaningです。
+データ設計は、すべての表に単独の`id`を付けるところから始めません。まず、業務上の一件を何で識別するか、どのデータ項目が何によって定まるかを確認します。識別と関数従属性は、画面やORM、データベースの提供実装より先に検討すべきデータの意味です。
 
-TEIでは、少なくとも次のidentityを同一視しません。
+TEIでは、少なくとも次の三種類の識別を同一視しません。
 
 ```text
 Canonical subject identity
@@ -72,29 +72,29 @@ Canonical subject identity
   != physical primary key
 ```
 
-Canonical identityは、設計上のsubjectをRepositoryやTargetをまたいで追跡するためのidentityです。business occurrence identifierは、対象業務で「何を同じ一件として扱うか」を表します。physical primary keyは、特定DatabaseやProviderでrecordを実装・参照するための仕組みです。
+設計上の識別子は、同じ設計対象をリポジトリや実行先をまたいで追跡するために使います。業務上の識別子は、何を同じ一件として扱うかを表します。物理主キーは、特定のデータベースや提供実装で記録を保存・参照するための仕組みです。
 
-したがって、UUIDやsurrogate keyを物理実装で使うこと自体は否定しません。一方、それを追加したことで、業務上の複合識別や関数従属性、Relationの違いが見えなくなる設計は避けます。自然キーを物理主キーとして必須にすることも要求しません。
+したがって、UUIDや代用キーを物理実装で使うこと自体は否定しません。ただし、それによって業務上の複合識別、関数従属性、データ間の関係の違いが見えなくなる設計は避けます。自然キーを物理主キーとして必須にすることも要求しません。
 
-Provider、ORM、Target等の制約からsurrogate keyが必要になる場合も、本来のcandidate key、uniqueness、Relationの意味を失わないMapping / Constraintを保ちます。物理実装上の都合で正規化された構造から外れる場合は、その差を暗黙の標準形として扱わず、意図したRealization差として追跡します。
+提供実装、ORM、実行先などの制約で代用キーが必要になる場合も、元の候補キー、一意性、関係の意味を保つ対応付けと制約を用意します。物理実装の都合で正規化された構造から外れる場合は、それを暗黙の標準形とせず、意図した実装上の差として追跡します。
 
-View、Application Pattern、formの入力単位、runtime objectのidentityから、business occurrence identifierを逆算しません。Presentationや実装objectはData meaningを利用できますが、その都合をData identityのauthorityにはしません。
+表示、アプリケーションの構成パターン、入力フォーム、実行時のオブジェクトの識別子から、業務上の識別子を逆算しません。画面や実装はデータの意味を利用できますが、その都合を業務上の識別を決める根拠にはしません。
 
-たとえば、1:Nに見える構造でも意味は同じとは限りません。親から独立して存在し、参照先を変更し得るrecordと、特定の親occurrenceの内部で繰り返される明細と、独立した二つの識別対象の組合せを表すrecordでは、業務上の識別と従属性が異なります。UI上の見え方や「子table」という呼称だけから同じRelationへ畳みません。
+たとえば、1:Nに見える構造でも意味は同じとは限りません。親とは独立に存在して参照先を変更できる記録、特定の親の内部で繰り返される明細、独立した二つの対象の組合せを表す記録では、業務上の識別と従属性が異なります。画面での見え方や「子テーブル」という呼称だけで同じ関係として扱いません。
 
-Data設計時には、必要に応じて次を確認します。
+データ設計では、必要に応じて次を確認します。
 
-- 何がそのoccurrenceを業務上識別するか
-- determinantとなる項目または項目組と、そこから定まるdependentな項目は何か
-- Relationが変更可能な参照なのか、親の内部にある反復なのか、独立した識別対象同士の組合せなのか
+- 何が業務上の一件を識別するか
+- どの項目または項目の組が決定要因となり、何がそれによって定まるか
+- データ間の関係が、変更可能な参照、親の内部の反復、独立した対象同士の組合せのどれに当たるか
 - 識別や従属性がどの時点・期間・状態で成立するか
-- sourceから確定できることと、候補・推論・unresolvedのどれに留まるか
+- 情報源から確定できることと、候補・推論・未解決にとどまることは何か
 
-関数従属性そのものを、現時点から必ず新しいtop-level Canonical kindとして持つとは決めません。既存のData / Relation / Constraint / Source / Evidenceでlosslessに表現・追跡できる範囲を確認し、不足がReferenceで再現された場合に表現を追加します。
+関数従属性を、現時点から必ず正本の新たな最上位の概念種別として持つとは決めません。既存のデータ、関係、制約、情報源、検証根拠で情報を失わず表現・追跡できる範囲を確かめ、参照事例で不足が確認された場合に表現を追加します。
 
-正規化はData設計を検査する有力な手段ですが、特定の正規形を全Persistenceへ機械的に強制しません。性能や外部schema互換性のために非正規化した実装を採る場合も、realization上の都合によって元のbusiness Data meaningやdeterminantを消さないことを優先します。
+正規化はデータ設計を検査する有力な手段ですが、すべての永続化方式に特定の正規形を機械的に強制しません。性能や外部schema互換性のために非正規化した実装を採る場合も、realization上の都合によって元のbusiness Data meaningやdeterminantを消さないことを優先します。
 
-生成AIがData構造を提案する場合も、名称や一般的なschema patternだけから関数従属性を事実として補完しません。すべてのtableへ単独`id`を付けてRelationを作る案も、業務上の識別と従属性を確認した後の実現候補として扱います。根拠が不足している場合は、もっともらしいkey構造を確定せず、設計上の問いまたはunresolvedとして残します。
+生成AIがData構造を提案する場合も、名称や一般的なschema patternだけから関数従属性を事実として補完しません。すべての表に単独の`id`を付けて関係を作る案も、業務上の識別と従属性を確認した後の実現候補として扱います。根拠が不足している場合は、もっともらしいkey構造を確定せず、設計上の問いまたはunresolvedとして残します。
 
 `identifier`、`external_id`、`code`等の属性名も、業務識別の根拠にはしません。業務上の識別条件がacceptedである場合は、その構成項目に加えて、一意性が成立するscope、時間・履歴条件、Relation / Constraint、Sourceへ追跡できるようにします。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示します。
 
@@ -104,7 +104,7 @@ validity period、identifier reuse、state transition、current-state selection�
 
 ### 識別と表記・正規化を分ける
 
-同じ業務対象が、外部Systemごとに異なる文字表記、符号化、コード体系、表示形式を持つことがあります。TEIでは、business identityを一つの文字列表現や正規化規則と同一視しません。
+同じ業務対象でも、外部システムによって文字表記、符号化、コード体系、表示形式が異なることがあります。TEIでは、業務上の識別を、一つの文字列表現や正規化規則と同一視しません。
 
 原Sourceの表記を監査・相互運用のために保持する必要がある場合は、exact source representationと、検索・照合・表示等に利用するnormalized / operational representationを分けて追跡します。Unicode正規化、大文字小文字変換、異体字置換、記号除去等による一致は、明示されたPolicy / Mappingなしにidentity Evidenceへ昇格させません。
 
