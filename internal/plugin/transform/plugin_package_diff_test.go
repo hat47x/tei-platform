@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -156,14 +157,14 @@ func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
 				{Plugin: id, CompatibleMajor: tc.majors[1]},
 			}
 			plan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(definition)
-			if _, err := plugin.MaterializePluginPackage(definition, plan); err == nil {
-				t.Fatal("Go package materializer accepted repeated dependency")
+			if _, err := plugin.MaterializePluginPackage(definition, plan); err == nil || !strings.Contains(err.Error(), "more than once") {
+				t.Fatalf("Go materializer must reject repeated dependency, got %v", err)
 			}
 			if _, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
 				"buildPlan": valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
-			}); err == nil {
-				t.Fatal("TEI-native package builder accepted repeated dependency")
+			}); err == nil || !strings.Contains(err.Error(), "duplicate key") {
+				t.Fatalf("TEI-native materializer must reject the duplicate key, got %v", err)
 			}
 		})
 	}
