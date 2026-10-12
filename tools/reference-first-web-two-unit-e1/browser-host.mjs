@@ -206,6 +206,11 @@ const server = createServer(async (req, res) => {
     });
     upstream.on("end", () => {
       if (res.headersSent) return;
+      if (boundCommand && upstream.statusCode === 409) {
+        // A target-instance mismatch is never a Business Result.
+        report(res, 502, "API binding unknown");
+        return;
+      }
       res.writeHead(upstream.statusCode || 502, {
         ...header,
         "Content-Type": upstream.headers["content-type"] || "application/octet-stream",
