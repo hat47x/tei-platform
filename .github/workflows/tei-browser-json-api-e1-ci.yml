@@ -1,0 +1,94 @@
+name: TEI BrowserからJSON API専用バイナリへの実経路検証
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - '.github/workflows/tei-browser-json-api-e1-ci.yml'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - '.github/workflows/tei-browser-json-api-e1-ci.yml'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+
+permissions:
+  contents: read
+concurrency:
+  group: tei-browser-json-api-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-to-json-api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      CGO_ENABLED: '0'
+    steps:
+      - name: 検査対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Goの版を揃える
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 実行前の版・汚染を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+      - name: Browserフォームの拒否・失敗表示と静的構成を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/reference-first-web-two-unit-e1/browser-host.mjs
+          node --check tools/reference-first-web-two-unit-e1/browser-command.js
+          node --test tools/reference-first-web-two-unit-e1/browser-command.test.mjs
+          python3 -m py_compile tools/reference-first-web-two-unit-e1/migrate_browser.py
+          python3 -m py_compile tools/reference-first-web-two-unit-e1/smoke_json_api.py
+          bash -n tools/reference-first-web-two-unit-e1/build_json_api.sh
+          # py_compile writes __pycache__ in the checkout by default;
+          # remove generated files before the clean-tree gate.
+          find tools/reference-first-web-two-unit-e1 -type d -name __pycache__ -prune -exec rm -rf {} +
+      - name: 同じB/R/Tから実BrowserとGo API専用バイナリを生成して接続
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/tei-browser-json-api-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          bash tools/reference-first-web-two-unit-e1/build_json_api.sh \
+            "$dest" B e5231839a5dcc62cce1181a2731fcb7c70d16736
+          python3 tools/reference-first-web-two-unit-e1/smoke_json_api.py "$dest"
+          test -s "$dest/browser/index.html"
+          test -s "$dest/browser/browser-command.js"
+          test -s "$dest/api/order-entry"
+          grep -Fq '"browserTransport": "same-origin-json"' "$dest/measurement.json"
+          grep -Fq '"jsonApiBusinessStagesMatchedDirect": true' "$dest/json-api-smoke.json"
+          grep -Fq '"unavailableApiNotPresentedAsSuccess": true' "$dest/json-api-smoke.json"
+      - name: 実行後の対象版と作業領域を検査
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
