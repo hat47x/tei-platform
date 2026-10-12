@@ -376,24 +376,9 @@ func runTransformBootstrap(
 	}
 
 	packageBuilderIdentity := builderIdentityFromTransformSource(packageSource, packageBuilderDigest)
-	teiPackagePlan := basePackagePlan
-	teiPackagePlan.Builder = packageBuilderIdentity
-	teiPackagePlan.Dependencies = append(
-		append([]plugin.BuildDependency(nil), basePackagePlan.Dependencies...),
-		plugin.BuildDependency{
-			Kind:           "runtime-engine",
-			ID:             string(engine.ID),
-			Version:        engine.Version,
-			ArtifactDigest: engine.ImplementationDigest,
-		},
+	teiPackagePlan, teiPackagePlanFingerprint, err := transformPackageBuildPlan(
+		basePackagePlan, packageBuilderIdentity, engine, engineFingerprint,
 	)
-	teiPackagePlan.Parameters = append(
-		append([]plugin.BuildParameter(nil), basePackagePlan.Parameters...),
-		plugin.BuildParameter{Name: "runtime-engine-contract", Value: engine.ContractVersion},
-		plugin.BuildParameter{Name: "runtime-engine-fingerprint", Value: engineFingerprint},
-		plugin.BuildParameter{Name: "runtime-engine-target", Value: engine.Target},
-	)
-	teiPackagePlanFingerprint, err := plugin.BuildPlanFingerprint(teiPackagePlan)
 	if err != nil {
 		return transformBootstrapEvidence{}, err
 	}
