@@ -236,3 +236,42 @@ func TestProductPinnedLinuxProcessRejectsMismatchedRegistryWiring(t *testing.T) 
 		t.Fatalf("valid Host binding stopped executing the held image: %+v %v", ok, err)
 	}
 }
+
+// pinnedSandboxProbe detects any sandbox dispatch that would lose the pinned FD.
+// It does not provide an OS sandbox and should never be invoked in this test.
+type pinnedSandboxProbe struct{ calls int }
+
+func (s *pinnedSandboxProbe) Invoke(_ context.Context, _ pruntime.SandboxSpec, _ pruntime.Request) (pruntime.Response, error) {
+	s.calls++
+	return pruntime.Response{}, errors.New("unexpected sandbox dispatch")
+}
+
+func TestProductPinnedLinuxProcessRejectsUnboundSandboxRoute(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	dir := t.TempDir()
+	path, digest := buildPinnedFixture(t, ctx, dir, "approved")
+	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
+	pinned, err := pruntime.PinLinuxProcess(ctx, identity, path, digest, pruntime.StdioProcessLauncher{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pinned.Close()
+	sandbox := &pinnedSandboxProbe{}
+	registry := pruntime.Registry{Verifier: pinned, Processes: pinned, Sandboxes: sandbox}
+	// A preferred sandbox would dispatch the unbound command path, ignoring
+	// the image held by the verification/launch pair; reject before dispatch.
+	if _, err := invokePinnedWithRegistry(t, ctx, registry, path, digest, "", "", plugin.SandboxPreferred); err == nil ||
+		!strings.Contains(err.Error(), "pinned process image") {
+		t.Fatalf("unbound sandbox route was not denied: %v", err)
+	}
+	if sandbox.calls != 0 {
+		t.Fatal("separate sandbox launcher received the process")
+	}
+	// A configured sandbox must not be used accidentally for sandbox=none:
+	// the correctly bound image still reaches the validated process launcher.
+	out, err := invokePinnedWithRegistry(t, ctx, registry, path, digest, "", "", plugin.SandboxNone)
+	if err != nil || !strings.Contains(out.Message, "revision=approved") || sandbox.calls != 0 {
+		t.Fatalf("valid pinned route did not remain available: %+v err=%v sandboxCalls=%d", out, err, sandbox.calls)
+	}
+}
