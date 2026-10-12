@@ -77,6 +77,9 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("PLUGIN_EXTERNAL_NAME_REQUIRED", "plugin %s has external requirement with empty name", p.ID))
 			}
 		}
+		if err := plugin.ValidateRequirements(p.Requires); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
 		seenCaps := map[string]struct{}{}
 		for _, c := range p.Provides {
 			if !c.Kind.Valid() {

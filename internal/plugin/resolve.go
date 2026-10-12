@@ -27,6 +27,9 @@ func (c Catalog) resolvePlugin(req Requirement) (Definition, error) {
 	if len(matches) > 1 && matches[0].Version == matches[1].Version {
 		return Definition{}, fmt.Errorf("plugin %s version %s is declared more than once", req.Plugin, matches[0].Version)
 	}
+	if err := ValidateRequirements(matches[0].Requires); err != nil {
+		return Definition{}, fmt.Errorf("plugin %s: %w", matches[0].ID, err)
+	}
 	return NormalizeDefinition(matches[0]), nil
 }
 
