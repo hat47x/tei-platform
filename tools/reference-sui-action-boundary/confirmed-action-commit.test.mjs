@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ActionConfirmationError, createConfirmedActionCommit } from './confirmed-action-commit.mjs';
-import { ActionCommitError } from './json-action-dispatch.mjs';
+import { ActionCommitError, createJSONActionDispatcher } from './json-action-dispatch.mjs';
 
 const base = { protocolVersion: '1', applicationID: 'sui', resourceID: 'doc/1', actionID: 'sui.move', expectedRevision: 'r1', payload: { cardId: 'a', x: 20, y: 40 } };
 const persisted = { applicationID: 'sui', resourceID: 'doc/1', revision: 'r2', value: { cards: [{ id: 'a', x: 20, y: 40 }], islands: [{ id: 'i', cardIds: ['a'] }], reviewAttribution: { a: 'human' } } };
@@ -76,6 +76,39 @@ test('unknown remote outcome never triggers readback, local apply or automatic r
       assert.equal(h.state.applications, 0);
       assert.equal(h.state.record.length, 0);
     }
+  }
+});
+
+test('real JSON dispatcher preserves only verified pre-write HTTP denials', async () => {
+  for (const [status, code] of [[403, 'action_denied'], [409, 'revision_conflict'], [400, 'invalid_payload']]) {
+    let networkCalls = 0;
+    const dispatchCommit = createJSONActionDispatcher('/actions/commit', async (_path, request) => {
+      networkCalls++;
+      assert.equal(JSON.parse(request.body).resourceID, base.resourceID);
+      return { ok: false, status, json: async () => ({ protocolVersion: '1', error: code }) };
+    });
+    const h = harness({ dispatchCommit });
+    await assert.rejects(h.controller(base), (error) =>
+      error instanceof ActionCommitError && error.code === code && error.status === status);
+    assert.equal(networkCalls, 1);
+    assert.equal(h.state.applications, 0);
+  }
+});
+
+test('real dispatcher treats lost post-write acknowledgement as uncertain for both applications', async () => {
+  for (const applicationID of ['sui', 'inventory']) {
+    let serverWrites = 0;
+    const dispatchCommit = createJSONActionDispatcher('/actions/commit', async (_path, request) => {
+      const intent = JSON.parse(request.body);
+      assert.equal(intent.applicationID, applicationID);
+      serverWrites++;
+      throw new Error('socket closed after the remote store committed');
+    });
+    const h = harness({ dispatchCommit });
+    await assert.rejects(h.controller({ ...base, applicationID }), failure('commit_outcome_unknown'));
+    assert.equal(serverWrites, 1);
+    assert.equal(h.state.reads, 0);
+    assert.equal(h.state.applications, 0);
   }
 });
 
