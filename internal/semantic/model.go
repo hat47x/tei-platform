@@ -107,10 +107,27 @@ type Outcome struct {
 	Payload core.CanonicalID `json:"payload"`
 }
 
+// DataEffectKind describes the business intent of one Capability. It does
+// not authorize execution or assert that a Provider has changed durable data.
+type DataEffectKind string
+
+const (
+	DataEffectCreate DataEffectKind = "create"
+	DataEffectUpdate DataEffectKind = "update"
+)
+
+func (k DataEffectKind) Valid() bool { return k == DataEffectCreate || k == DataEffectUpdate }
+
+type DataEffect struct {
+	Kind DataEffectKind   `json:"kind"`
+	Data core.CanonicalID `json:"data"`
+}
+
 type Capability struct {
 	ID       core.CanonicalID `json:"id"`
 	Symbol   string           `json:"symbol"`
 	Inputs   []Parameter      `json:"inputs,omitempty"`
 	Output   core.CanonicalID `json:"output,omitempty"`
 	Outcomes []Outcome        `json:"outcomes,omitempty"`
+	Effect   *DataEffect      `json:"effect,omitempty"`
 }
