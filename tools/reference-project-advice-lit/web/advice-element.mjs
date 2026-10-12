@@ -2,9 +2,13 @@
 // Production targets must bundle/pin local dependencies and validate the asset.
 import {LitElement, html, css} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
 import {createAdviceAction} from './advice-action.mjs';
+import {createOrderEntryRead} from './order-entry-context.mjs';
 
 class TEIProjectCustomerAdvice extends LitElement {
-  static properties = {busy: {state: true}, result: {state: true}};
+  static properties = {
+    busy: {state: true}, result: {state: true},
+    readBusy: {state: true}, readResult: {state: true},
+  };
   static styles = css`
     :host { display:block; font-family:inherit; }
     form { display:grid; gap:.7rem; }
@@ -17,6 +21,21 @@ class TEIProjectCustomerAdvice extends LitElement {
     super();
     this.busy = false;
     this.result = '';
+    this.readBusy = false;
+    this.readResult = '';
+  }
+  async readOrderEntry() {
+    if (this.readBusy) return;
+    this.readBusy = true;
+    this.readResult = '';
+    try {
+      const context = await createOrderEntryRead(fetch.bind(globalThis))();
+      this.readResult = `受注参照: ${context.applicationId}／${context.scenarioId}／選択行 ${context.selectedRowIndex}`;
+    } catch {
+      this.readResult = '受注参照の取得には、実行中の第一Web Target APIへの明示的な接続が必要です。';
+    } finally {
+      this.readBusy = false;
+    }
   }
   async submit(event) {
     event.preventDefault();
@@ -47,6 +66,13 @@ class TEIProjectCustomerAdvice extends LitElement {
         <button type="submit" ?disabled=${this.busy}>${this.busy ? '確認中…' : '補助確認'}</button>
       </form>
       <p role="status" aria-live="polite">${this.result}</p>
+      <section aria-label="order_entry参照（読み取り専用）">
+        <h2>order_entryから読み取り（任意）</h2>
+        <button type="button" @click=${this.readOrderEntry} ?disabled=${this.readBusy}>
+          ${this.readBusy ? '参照中…' : '受注参照を取得'}
+        </button>
+        <p role="status" aria-live="polite">${this.readResult}</p>
+      </section>
     `;
   }
 }
