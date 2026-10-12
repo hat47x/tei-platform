@@ -28,12 +28,28 @@ function invalidateSemanticPreview(){
 function updateSemanticControls(){
   const selected=state.selected ? JSON.parse(state.selected) : null;
   const isTrigger=selected?.[0]==='trigger';
+  const isStep=selected?.[0]==='step';
+  const ready=Boolean(state.dfd&&state.procedure&&state.review);
   $('trigger-label').disabled=!isTrigger;
-  $('semantic-propose').disabled=!isTrigger||!state.dfd||!state.procedure||!state.review;
   if(isTrigger&&state.dfd){
     const trigger=state.dfd.triggers.find(t=>t.id===selected[1]);
     $('trigger-label').value=trigger?.label||'';
   }else $('trigger-label').value='';
+  const roleControl=$('step-role');
+  roleControl.replaceChildren();
+  const occupied=new Set((state.review?.responsibilities||[])
+    .filter(r=>r.step===selected?.[1]).map(r=>r.role));
+  const roles=isStep&&ready?(state.review?.businessRoles||[])
+    .filter(role=>!occupied.has(role.id)):[];
+  for(const role of roles){
+    const option=document.createElement('option');
+    option.value=role.id;
+    option.textContent=role.label;
+    roleControl.append(option);
+  }
+  roleControl.disabled=!isStep||roles.length===0;
+  roleControl.value=roles[0]?.id||'';
+  $('semantic-propose').disabled=!ready||!(isTrigger||isStep&&roles.length>0);
 }
 function clearSelection(){
   selectionGeneration++;
@@ -291,32 +307,45 @@ $('trigger-label').addEventListener('input',()=>{
   semanticTextGeneration++;
   invalidateSemanticPreview();
 });
+$('step-role').addEventListener('change',()=>{
+  semanticTextGeneration++;
+  invalidateSemanticPreview();
+});
 $('semantic-propose').addEventListener('click',async()=>{
   const selected=state.selected?JSON.parse(state.selected):null;
   const dfd=state.dfd,procedure=state.procedure,review=state.review;
   const files=[state.dfdFile,state.procedureFile,state.reviewFile];
   const hashes=[state.dfdHash,state.procedureHash,state.reviewHash];
   const label=$('trigger-label').value;
+  const role=$('step-role').value;
+  const mode=selected?.[0];
   const generation=selectionGeneration;
   const labelGeneration=semanticTextGeneration;
   invalidateSemanticPreview();
-  if(selected?.[0]!=='trigger'||!files.every(Boolean)||typeof label!=='string'||!label.trim()){
-    status('起動契機の選択、参照資料、新しい説明文が必要です。',true);
+  if(!['trigger','step'].includes(mode)||!files.every(Boolean)||
+    (mode==='trigger'&&(!label||!label.trim()))||
+    (mode==='step'&&(!role||$('step-role').disabled))){
+    status('Stepまたは起動契機の選択、参照資料、有効な変更内容が必要です。',true);
     return;
   }
   try{
     for(let i=0;i<files.length;i++)await readChecked(files[i],hashes[i],
       ['PROJECTION','PROCEDURE','REVIEW'][i]);
     if(generation!==selectionGeneration||labelGeneration!==semanticTextGeneration||
-       label!==$('trigger-label').value||dfd!==state.dfd||
-       procedure!==state.procedure||review!==state.review)
+       (mode==='trigger'&&label!==$('trigger-label').value)||
+       (mode==='step'&&(role!==$('step-role').value||$('step-role').disabled))||
+       dfd!==state.dfd||procedure!==state.procedure||review!==state.review)
        throw Error('DFD_SELECTION_OR_SOURCE_CHANGED');
-    const binding={schema:BINDING_SCHEMA,id:'trigger-label-'+selected[1],
-      origin:'studio',intent:'起動契機の業務上の説明文だけを変更する',
+    const operation=mode==='trigger'
+      ?{kind:'replace-trigger-label',trigger:selected[1],label}
+      :{kind:'assign-business-role',step:selected[1],role};
+    const binding={schema:BINDING_SCHEMA,id:mode+'-review-'+selected[1],
+      origin:'studio',intent:mode==='trigger'
+        ?'起動契機の業務上の説明文だけを変更する'
+        :'Stepの担当業務Roleを提案する（認可権限ではない）',
       procedureSHA256:state.procedureHash,reviewSHA256:state.reviewHash,
       projectionSHA256:state.dfdHash,
-      selection:{kind:'trigger',id:selected[1]},
-      operation:{kind:'replace-trigger-label',trigger:selected[1],label}};
+      selection:{kind:mode,id:selected[1]},operation};
     const packet=previewSelectedDFDEdit(dfd,procedure,review,binding);
     if(packet.readyForAcceptance!==false||packet.sharedAcceptanceCandidate!==null||
        packet.sourceWrites.length!==0)throw Error('DFD_UNEXPECTED_ACCEPTANCE_AUTHORITY');

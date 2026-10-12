@@ -44,9 +44,11 @@ small{display:block;color:#566a7d}#legend{margin:10px 16px;font-size:.8rem;color
 <main>
 <section id="canvas" aria-label="業務DFD"><svg id="diagram" viewBox="0 0 1100 600" aria-label="業務の流れ"></svg><div id="legend">青緑の破線：情報の授受 ／ 灰色：順序 ／ 茶色：分岐 ／ 赤色：例外 ／ 紫の点線：業務責任・Function参照 ／ 黄色：手作業。いずれも実行済みを意味しません。</div></section>
 <aside><h2>選択した要素</h2><div id="details">要素を選択すると出典と参照関係を表示します。</div><div id="preview" hidden><h2>配置変更の確認</h2><pre id="pending"></pre><small>「配置だけを反映」は画面内の一時表示を更新します。正本やファイルには書き込みません。</small></div>
-<section id="semantic-review" aria-label="起動契機の未受理変更案"><h2>起動契機の説明文</h2>
-<p>起動契機を選択し、元の手順とレビュー案を読み込んでから変更候補を作成します。</p>
-<label>新しい説明文<input id="trigger-label" type="text" disabled placeholder="起動契機を選択してください"></label>
+<section id="semantic-review" aria-label="業務DFDの未受理変更案"><h2>業務上の変更候補</h2>
+<p>起動契機の説明文、またはStepの担当業務Roleを提案できます。元の手順と未受理レビュー案の読込みが必要です。</p>
+<label>起動契機の新しい説明文<input id="trigger-label" type="text" disabled placeholder="起動契機を選択してください"></label>
+<label>Stepに追加する業務Role<select id="step-role" disabled><option value="">Stepを選択してください</option></select></label>
+<small>業務上の担当を提案します。利用者の認可Roleや実行権限は変更しません。</small>
 <button id="semantic-propose" disabled>未受理の変更候補を確認</button>
 <div id="semantic-preview" hidden><h2>未受理の差分</h2><pre id="semantic-pending"></pre>
 <button id="semantic-export" disabled>未受理候補を保存</button></div>

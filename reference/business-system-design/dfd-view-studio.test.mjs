@@ -332,3 +332,73 @@ test('a trigger label modified during fingerprinting cannot resurrect a stale pr
   assert.equal($('semantic-preview').hidden,true);
   assert.equal($('semantic-export').disabled,true);
 });
+
+function selectStep(id){
+  const node=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id===id);
+  assert.ok(node,'Step '+id+' must exist');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:77});
+}
+
+test('manual Step proposes an additional business Role without permission authority',async()=>{
+  const snapshot=JSON.stringify({procedure:approvalProcedure,review:approvalReview});
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectStep('APP-10');
+  assert.equal($('trigger-label').disabled,true);
+  assert.equal($('step-role').disabled,false);
+  assert.equal($('step-role').value,'approver');
+  assert.equal($('semantic-propose').disabled,false);
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/未受理の変更候補を確認/);
+  const proposal=JSON.parse($('semantic-pending').textContent);
+  assert.equal(proposal.change.kind,'responsibility');
+  assert.equal(proposal.reviewAuthority,'unaccepted-proposal-only');
+  assert.equal(proposal.readyForAcceptance,false);
+  assert.deepEqual(proposal.sourceWrites,[]);
+  assert.equal(proposal.selected.sourceLocatorStatus,'reference-local-pointer-checked');
+  assert.equal($('semantic-preview').hidden,false);
+  assert.equal($('semantic-export').disabled,false);
+  assert.equal(JSON.stringify({procedure:approvalProcedure,review:approvalReview}),snapshot);
+  assert.ok(approvalProcedure.steps.some(x=>x.id==='APP-10'&&!(x.applicationPatterns||[]).length));
+});
+
+test('a duplicate business Role and an unmatched Step cannot be proposed from the UI',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectStep('APP-10');
+  assert.equal($('step-role').value,'approver');
+  $('step-role').value='sales'; // Existing role, not an available choice.
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/DUPLICATE_RESPONSIBILITY/);
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+
+  await input('dfd-file',approvalProjection());
+  selectStep('APP-20');
+  assert.equal($('step-role').value,'sales');
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/未受理の変更候補を確認/);
+  assert.equal($('semantic-export').disabled,false);
+  selectTrigger();
+  assert.equal($('step-role').disabled,true);
+  assert.equal($('semantic-export').disabled,true);
+});
+
+test('switching a selected Step or its Role invalidates the previous candidate',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectStep('APP-10');
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  $('step-role').listeners.change();
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  selectStep('APP-20');
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+});
