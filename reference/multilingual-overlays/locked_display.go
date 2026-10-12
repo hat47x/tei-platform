@@ -68,9 +68,9 @@ func BuildLockedDisplay(
 	return DisplayManifest{
 		Kind: DisplayManifestKind, Environment: string(env.ID),
 		LockFingerprint: fingerprint,
-		Target: request.Target, Resource: request.Key,
+		Target:          request.Target, Resource: request.Key,
 		Locale: result.Locale, Text: result.Text,
 		SourceRevision: result.SourceRevision,
-		FromSource: result.FromSource, Fallback: result.Fallback,
+		FromSource:     result.FromSource, Fallback: result.Fallback,
 	}, nil
 }
