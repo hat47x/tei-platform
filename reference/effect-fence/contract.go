@@ -12,7 +12,7 @@ const (
 )
 
 // ProofKind は合成試験と実際の保存先を用いた証拠を区別する。
-// VerifiedProvider は第三者による認証を意味しない。証拠の妥当性は別途審査が必要。
+// ProofProvider は第三者による認証を意味しない。証拠の妥当性は別途審査が必要。
 type ProofKind string
 
 const (
