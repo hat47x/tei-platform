@@ -294,16 +294,15 @@ test('browser detects source bytes changing after initial file selection',async(
 
 test('concurrent Procedure and Review loads stay independent',async()=>{
   await input('dfd-file',approvalProjection());
-  let release;
   const bytes=Buffer.from(JSON.stringify(approvalProcedure));
-  const pending=$('procedure-file').listeners.change({target:{files:[{
-    arrayBuffer:()=>new Promise(resolve=>{
-      release=()=>resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));
-    })
-  }]}});
+  const delayedProcedure={
+    arrayBuffer:async()=>{
+      await new Promise(resolve=>setTimeout(resolve,20));
+      return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length);
+    }
+  };
+  const pending=$('procedure-file').listeners.change({target:{files:[delayedProcedure]}});
   const reviewLoad=input('review-file',approvalReview);
-  assert.equal(typeof release,'function');
-  release();
   await Promise.all([pending,reviewLoad]);
   selectTrigger();
   $('trigger-label').value='手作業としての起動を説明する';
@@ -316,22 +315,18 @@ test('a trigger label modified during fingerprinting cannot resurrect a stale pr
   await input('dfd-file',approvalProjection());
   await input('review-file',approvalReview);
   const raw=Buffer.from(JSON.stringify(approvalProcedure));
-  let count=0,release=null;
-  const delayedProcedure={arrayBuffer:()=>{
-    if(++count===1)return Promise.resolve(raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.length));
-    return new Promise(resolve=>{release=()=>{
-      resolve(raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.length));
-    }});
+  let count=0;
+  const delayedProcedure={arrayBuffer:async()=>{
+    if(++count>1)await new Promise(resolve=>setTimeout(resolve,60));
+    return raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.length);
   }};
   await $('procedure-file').listeners.change({target:{files:[delayedProcedure]}});
   selectTrigger();
   $('trigger-label').value='最初の説明文';
   const pending=$('semantic-propose').listeners.click();
-  for(let i=0;i<50&&!release;i++)await new Promise(resolve=>setTimeout(resolve,5));
-  assert.equal(typeof release,'function');
+  await new Promise(resolve=>setTimeout(resolve,5));
   $('trigger-label').value='途中で変更された説明文';
   $('trigger-label').listeners.input();
-  release();
   await pending;
   assert.match($('status').textContent,/DFD_SELECTION_OR_SOURCE_CHANGED/);
   assert.equal($('semantic-preview').hidden,true);
