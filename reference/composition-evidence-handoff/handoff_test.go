@@ -345,3 +345,33 @@ func TestHandoffManyExactReferencesRemainAmbiguous(t *testing.T) {
 		t.Fatalf("single exact locator was not selected: %+v", report)
 	}
 }
+
+func BenchmarkHandoffRepeatedExactReferences(b *testing.B) {
+	r := composition.NewRegistry()
+	contract := composition.Contract{ID: "bench.source", Version: "1", Shape: "source"}
+	if _, err := r.Apply(0, []composition.Provider{{
+		ID: "source", Scope: "bench-tenant", Offers: contract,
+	}}, nil); err != nil {
+		b.Fatal(err)
+	}
+	set := r.InspectWiringSet([]composition.WiringRequirement{{
+		Contract: contract, Scope: "bench-tenant",
+	}})
+	if set.Verdict != composition.ProposalCandidate || len(set.Findings) != 1 {
+		b.Fatalf("cannot prepare benchmark: %+v", set)
+	}
+	reference := ref(set.Findings[0].VerificationTargets[0])
+	refs := make([]EvidenceReference, 10000)
+	for i := range refs {
+		refs[i] = reference
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		report := Reconcile(set, refs)
+		if report.Blocked || len(report.Subjects) != 1 ||
+			report.Subjects[0].State != ReferenceAmbiguous {
+			b.Fatalf("untrusted repeated references accepted: %+v", report)
+		}
+	}
+}
