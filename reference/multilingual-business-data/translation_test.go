@@ -2,6 +2,7 @@ package multilingualbusinessdata
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -254,5 +255,57 @@ func TestProviderErrorAndMissingProvider(t *testing.T) {
 	p.reply = strings.Repeat("x", 10)
 	if r := PrepareTranslation(context.Background(), readerFor(&s), p, job); r.Diagnostic != "protected-token-changed" {
 		t.Fatalf("protected spans: %+v", r)
+	}
+}
+
+func TestExternalAdapterReceivesOnlyApprovedScope(t *testing.T) {
+	s, job := translationFixture()
+	job.Classification = "public"
+	job.ExternalTransferAuthorized = true
+	foreign := job.Glossary[0]
+	foreign.Tenant, foreign.Target = "another-tenant", "PRIVATE STRING"
+	job.Glossary = append(job.Glossary, foreign)
+	p := &testTranslator{name: "synthetic-external", external: true,
+		reply: "Use storage for {orderId} at 100 mg."}
+	out := PrepareTranslation(context.Background(), readerFor(&s), p, job)
+	if out.Diagnostic != "" || out.Kind != "candidate" || p.calls != 1 {
+		t.Fatalf("authorized public translation rejected: %+v", out)
+	}
+	data, err := json.Marshal(p.input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "store-a") ||
+		strings.Contains(string(data), "catalog.product.description") ||
+		strings.Contains(string(data), "another-tenant") ||
+		strings.Contains(string(data), "PRIVATE STRING") {
+		t.Fatalf("translation adapter received unrelated identifiers: %s", data)
+	}
+}
+
+func TestMissingTranslationTargetCreatesCandidate(t *testing.T) {
+	s, job := translationFixture()
+	job.Target.Locale = "de-DE"
+	job.ExpectedTargetRevision = ""
+	job.Glossary = nil
+	p := &testTranslator{name: "local", reply: "Lagerung {orderId} 100 mg."}
+	out := PrepareTranslation(context.Background(), readerFor(&s), p, job)
+	if out.Diagnostic != "" || out.Kind != "candidate" || out.Proposal.ExpectedTargetRevision != "" {
+		t.Fatalf("untranslated locale did not get candidate: %+v", out)
+	}
+	if got := Select(s, job.Target); got.Diagnostic != "missing-publication" {
+		t.Fatalf("unreviewed candidate leaked into publication: %+v", got)
+	}
+}
+
+func TestConflictingTermsFailBeforeProviderCall(t *testing.T) {
+	s, job := translationFixture()
+	conflict := job.Glossary[0]
+	conflict.Target = "safekeeping"
+	job.Glossary = append(job.Glossary, conflict)
+	p := &testTranslator{name: "local", reply: "Use storage for {orderId} at 100 mg."}
+	out := PrepareTranslation(context.Background(), readerFor(&s), p, job)
+	if out.Diagnostic != "ambiguous-term" || p.calls != 0 {
+		t.Fatalf("conflicting terminology was ignored: %+v", out)
 	}
 }
