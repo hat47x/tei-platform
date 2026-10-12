@@ -1,11 +1,28 @@
 # Product Requirement Gap Audit
 
-- 監査日: 2026-09-21（再監査。前回は2026-09-11）
-- 追記: 2026-10-03（RQ-031〜RQ-033の初期評価）
-- 対象: RQ-001〜RQ-034
-- 上流Trace: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- Quality設計: `../docs/product-quality-architecture.md`
-- Quality実証計画: `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
+- 監査の基準日: 2026-09-21（前回は2026-09-11）
+- 追加した要求の初期評価: 2026-10-03（RQ-031〜033）、2026-10-07（RQ-034）
+- 対象: RQ-001〜034
+- 現行の着手判断: [要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)
+- 横断的な受入条件: [クリティカルパス #1119](https://github.com/hat47x/tei-platform/issues/1119)
+- 上流の対応表: [要求と受入シナリオ](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
+- 品質に関する設計: [製品品質](../../docs/product-quality-architecture.md)
+- 品質の検証計画: [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+
+## この監査を現在の開発に利用するとき
+
+この文書に記載した要求別の評価区分や実測値は、上記の基準日に得た根拠によるものです。新たなコードが統合されたことだけを理由に、当時の「設計のみ」「部分的な根拠」を自動的に合格へ変更しません。現在の実装状況は[実装状況](../../docs/status.md)、着手順の評価は[#982](https://github.com/hat47x/tei-platform/issues/982)、実装間の依存関係と受入条件は[#1119](https://github.com/hat47x/tei-platform/issues/1119)を正とします。
+
+2026年10月12日に公開リポジトリを再確認したところ、解析済みソースの整合、型付き参照、アプリケーション構成、段階的な実行変換、横断計画、最初のモデル変更の参照実装は、いずれも関連するプルリクエストが`main`へ統合されています。一方、次の製品上の成立条件は引き続き別の検証が必要です。
+
+- 最初のモデル変更と診断・修復の追試は[#1161](https://github.com/hat47x/tei-platform/issues/1161)、初めて使う人とAIの実測は[#1168](https://github.com/hat47x/tei-platform/issues/1168)で確認します。テストコードの存在と初見利用者の成功を同一視しません。
+- データ定義から標準機能・保存・独立した再読込へ進む課題は[#1127](https://github.com/hat47x/tei-platform/issues/1127)、受理された一つの改訂を実行先・実際の結果まで結び付ける検証は[#1163](https://github.com/hat47x/tei-platform/issues/1163)で扱います。既存の[#1119](https://github.com/hat47x/tei-platform/issues/1119)の判定器を使い、別の証拠管理機構を作りません。
+- 業務・データ・機能の三視点を編集から正本への反映まで接続する課題は[#1124](https://github.com/hat47x/tei-platform/issues/1124)と各モデルの担当課題に残ります。コマンドラインと画面の機能を省略せず、同じ業務シナリオから試験を導く課題は[#1180](https://github.com/hat47x/tei-platform/issues/1180)が担当します。
+- 出所情報の読み取りと外部への開示は別の認可判断です。リポジトリの公開化によって保留を解除した[#1178](https://github.com/hat47x/tei-platform/issues/1178)で、既存の認可機構を再利用して検証します。
+
+従来の`plan/issue/`にあった個別作業文書は公開リポジトリから退避されています。この文書の過去の記述に残る同ディレクトリへの参照は、現行の作業場所を示しません。個別作業の状態と判断履歴はGitHubの課題で確認してください。
+
+---
 
 ## 1. 目的
 
