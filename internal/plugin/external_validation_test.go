@@ -10,8 +10,8 @@ import (
 func TestValidateExternalRequirements(t *testing.T) {
 	valid := plugin.ExternalRequirement{Scope: "build", Kind: "toolchain", Name: "go"}
 	tests := []struct {
-		name string
-		items []plugin.ExternalRequirement
+		name   string
+		items  []plugin.ExternalRequirement
 		reject string
 	}{
 		{name: "no requirements"},
