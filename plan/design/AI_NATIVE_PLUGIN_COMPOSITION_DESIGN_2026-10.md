@@ -368,3 +368,14 @@ E9の照合機構が受け取る証拠参照を、実際に#951の`resolveCapabi
 今回は第2段階の接続コードと試験をGitHubへ追加した。第3段階は未実装であり、**第2段階の成功を第3段階の承認へ昇格させない**。また、Compositionの`Scope`と#951の`AuthorityScope`、Compositionの`Contract.Shape`と#951の`ContractFingerprint`は、それぞれ別の概念のままである。
 
 具体的な否定試験と検証の未完了事項は[証拠照合ReferenceのE10](../../reference/composition-evidence-handoff/README.md)にまとめた。E9の局所試験は成功したが、新しいE10の#951実Packageを含むテスト、完全なリポジトリの健全性検査はまだ実行していない。
+
+
+## 20. 構成案の鮮度と証拠照合の時点を区別する
+
+AIがプラグイン構成案を作成した後に、下位のProviderが変更・撤去される場合がある。このとき、過去に合格した構成案と証拠参照の組合せが一致していても、**現在のRegistryに照らして有効とは限らない**。
+
+E11では、構成案の選択と直接・間接の依存先の宣言世代を、現在のRegistryと再照合する`ProposalCurrent`を追加した。E9の照合結果を現在の候補として扱う際には`ReconcileCurrent`を利用する。古い構成案や改変された構成案は遮断する。無関係なProviderの更新までは失効させない。
+
+ただし、鮮度を確認した直後にもRegistryは変更され得る。したがって、これはあくまで設計時の観測であり、**実行時のHostによる選択の再検証、権限、Lease、Fencingを代替しない**。証拠の発行者の信頼性や現在性も別の判断として残す。
+
+E11の試験ソースはPRへ追加済みだが、実Compositionと#951を含む結合試験および信頼できる全Repository Healthは未実施である。変更の目的と否定試験は[照合Reference E11](../../reference/composition-evidence-handoff/README.md)へ記録する。
