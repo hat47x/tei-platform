@@ -70,6 +70,24 @@ func openFixture(t *testing.T) *postgresFixture {
 			"RETURN NEW; END $$",
 		"CREATE TRIGGER update_membership AFTER UPDATE OF role,disabled ON " + schema +
 			".subjects FOR EACH ROW EXECUTE FUNCTION " + schema + ".bump_membership()",
+		// The definer function is the only way for a least-privilege effect writer
+		// to obtain a row lock on authority. No user-controlled search_path.
+		"CREATE FUNCTION " + schema + ".lock_authority(" +
+			"p_application TEXT, p_capability TEXT, p_subject TEXT, p_action TEXT, p_resource TEXT, " +
+			"p_source TEXT, p_subject_link BIGINT, p_membership BIGINT, p_policy BIGINT) " +
+			"RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $ " +
+			"DECLARE v_source TEXT; v_link BIGINT; v_membership BIGINT; v_policy BIGINT; v_enabled BOOLEAN; " +
+			"BEGIN " +
+			"SELECT source,subject_link,membership,policy,enabled INTO v_source,v_link,v_membership,v_policy,v_enabled FROM " + schema +
+			".authority WHERE application=p_application AND capability=p_capability AND subject=p_subject " +
+			"AND action=p_action AND resource=p_resource FOR UPDATE; " +
+			"IF NOT FOUND THEN RETURN FALSE; END IF; " +
+			"IF v_source='' OR v_link<=0 OR v_membership<=0 OR v_policy<=0 THEN " +
+			"RAISE EXCEPTION 'invalid authority version'; END IF; " +
+			"RETURN v_enabled AND v_source=p_source AND v_link=p_subject_link AND " +
+			"v_membership=p_membership AND v_policy=p_policy; END $",
+		"REVOKE ALL ON FUNCTION " + schema +
+			".lock_authority(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BIGINT,BIGINT,BIGINT) FROM PUBLIC",
 	}
 	for _, q := range sql {
 		if _, err := pool.Exec(ctx, q); err != nil {
