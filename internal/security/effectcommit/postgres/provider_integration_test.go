@@ -75,7 +75,7 @@ func openFixture(t *testing.T) *postgresFixture {
 		"CREATE FUNCTION " + schema + ".lock_authority(" +
 			"p_application TEXT, p_capability TEXT, p_subject TEXT, p_action TEXT, p_resource TEXT, " +
 			"p_source TEXT, p_subject_link BIGINT, p_membership BIGINT, p_policy BIGINT) " +
-			"RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $ " +
+			"RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS " + "$" + "$" + " " +
 			"DECLARE v_source TEXT; v_link BIGINT; v_membership BIGINT; v_policy BIGINT; v_enabled BOOLEAN; " +
 			"BEGIN " +
 			"SELECT source,subject_link,membership,policy,enabled INTO v_source,v_link,v_membership,v_policy,v_enabled FROM " + schema +
@@ -85,7 +85,7 @@ func openFixture(t *testing.T) *postgresFixture {
 			"IF v_source='' OR v_link<=0 OR v_membership<=0 OR v_policy<=0 THEN " +
 			"RAISE EXCEPTION 'invalid authority version'; END IF; " +
 			"RETURN v_enabled AND v_source=p_source AND v_link=p_subject_link AND " +
-			"v_membership=p_membership AND v_policy=p_policy; END $",
+			"v_membership=p_membership AND v_policy=p_policy; END " + "$" + "$",
 		"REVOKE ALL ON FUNCTION " + schema +
 			".lock_authority(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BIGINT,BIGINT,BIGINT) FROM PUBLIC",
 	}
