@@ -94,7 +94,7 @@ func runProcessHelper(mode string) int {
 		case "wire-duplicate-request":
 			before, after = `"requestId":"`, `"requestId":"forged","requestId":"`
 		case "wire-escaped-duplicate-status":
-			before, after = `"status":"ok"`, `"status":"ok","\\u0073tatus":"error"`
+			before, after = `"status":"ok"`, `"status":"ok","\u0073tatus":"error"`
 		case "wire-casefold-status":
 			before, after = `"status":"ok"`, `"status":"ok","Status":"error"`
 		case "wire-unknown-sensitive":
