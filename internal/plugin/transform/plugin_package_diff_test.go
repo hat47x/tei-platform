@@ -126,8 +126,6 @@ func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 	}
 }
 
-// Repository Source is authoritative; editing its program must change the
-// output without changing any builder-specific Go constructor.
 func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -187,6 +185,8 @@ func TestPluginPackageTransformValidRequirementPermutation(t *testing.T) {
 	}
 }
 
+// Repository Source is authoritative; editing its program must change the
+// output without changing any builder-specific Go constructor.
 func TestReferencePluginPackageSourceControlsOutput(t *testing.T) {
 	source := referencePluginPackageTransformSource(t)
 	before, err := transform.SourceFingerprint(source)
