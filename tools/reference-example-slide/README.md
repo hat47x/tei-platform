@@ -251,3 +251,42 @@ go vet ./tools/reference-example-slide/...
 文書・観測記録の参照には、この関数が読むための契約がないので`not-checked`を返す。利用者が直接書いた質問には派生元のRelationが無いため、入力元索引に同じ識別子が存在していても対応付けを作り出さない。
 
 **`source-range-checked`は「指定された作業領域のバイト列に、対応する範囲と識別子が存在する」ことの確認に限る。** 索引の生成過程、記述の真偽、作成者の本人性、業務への適用可能性、実提供元の記録、確認・採用の権限までは証明しない。また、現在の実装は関数呼び出しに限られ、CLIでの安全な作業領域読込みや自動的な確認記録への連携は未実装である。これらを実装する際も、既存の作業領域の境界確認と資料の同一性確認を迂回しない。
+
+## ER図から候補キー・関数従属性のレビューへ進む（#1126）
+
+`-hypotheses`に候補キーと関数従属性の**仮説**を記載したJSONを与えると、従来の`projection.json`、`review.json`、SVGに加え、`model-hypothesis-review.json`を出力します。既存の回答・変更検討で使う`review.json`の指紋は変えません。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input tools/reference-example-slide/testdata/partial_inspection.json \
+  -hypotheses /path/to/local-hypotheses.json \
+  -out /tmp/tei-example-review
+```
+
+`local-hypotheses.json`の合成例（この例は基底段階に発注レコードが一件だけあるため、**反例が見つからなくても採用には進みません**）:
+
+```json
+{
+  "schema": "tei.reference.example-model-hypotheses/v0",
+  "candidateKeys": [
+    {"id": "purchase-number-candidate", "table": "purchase_order", "fields": ["number"]}
+  ],
+  "functionalDependencies": [
+    {"id": "quantity-to-number", "table": "purchase_order", "determinants": ["quantity"], "dependents": ["number"]}
+  ]
+}
+```
+
+入力の表名・属性名には表示名や推測した物理列ではなく、`Catalog`が持つ識別子を指定します。実Worldを読み取った場合は`CatalogFromWorld`の意味属性IDが使われますが、その属性へのSource Index根拠がこの検査で確認されるわけではありません。未知の項目、不正な候補、古いモデル版、未知のJSONプロパティは出力開始前に拒否します。
+
+出力には、仮説ごとに次の区別を保ちます。
+
+- `kind`は`candidate-key`または`functional-dependency`。両者の反例の意味は異なります。
+- `table`と`fieldIds`は評価した意味上の表と属性。`diagramPlacementIds`には、この表が置かれた**すべてのER図上の配置**を記録します。属性を非表示にした配置も含み、表示設定で診断根拠を落としません。
+- `stage=base`は、検証したレコードが基底時点だけであることを示します。`frameIds`には基底時点を表示するスライドだけを記載し、後続段階へ結果を流用しません。
+- `recordPairs`は実例内で検出した矛盾の二レコード。比較不能なデータは`indeterminatePairs`等に残します。
+- `exampleFingerprint`、`catalogFingerprint`、`hypothesesFingerprint`、`fingerprint`で評価に使った入力を区別します。仮説やデータが変わればレビューを再生成し、古い結果を転用しません。配置順や仮説の記述順だけの変更はレビューの意味を変えません。
+
+`model-hypothesis-review.json`は既存の`review.json`や`answer-handoff.json`とは**別の未確認資料**です。回答を受理した、候補キーを採用した、関数従属性を意味モデルへ書き込んだ、あるいは既存の共通受理を通過したことを表しません。出力はファイル権限0600で保存し、元の具体例とともに機微なローカル検討資料として扱います。
+
+正式な業務識別子・関数従属性の宣言、対象の実際の出所確認、段階別の評価、DB主キーとの対応、図上の直接編集と受理は、引き続き[課題 #1126](https://github.com/hat47x/tei-platform/issues/1126)の未完了範囲です。
