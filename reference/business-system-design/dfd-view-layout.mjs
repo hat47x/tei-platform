@@ -57,6 +57,44 @@ function nodesInProjection(dfd) {
     }
   }
   for (const id of functions) known.add(nodeKey('function', id));
+  // A read-only diagram must not silently omit a dangling or malformed
+  // arrow. These checks only verify Reference consistency; they do not
+  // authorize any business flow, role, or runtime side effect.
+  const links = (rows, name) => {
+    if (rows === undefined || rows === null) return [];
+    if (!Array.isArray(rows)) throw new Error('INVALID_DFD_LINKS: ' + name);
+    return rows;
+  };
+  const has = (kind,id) => typeof id === 'string' && known.has(nodeKey(kind,id));
+  for(const t of dfd.triggers) {
+    if (!has('step',t.targetStep) || !['human','event','schedule'].includes(t.kind)) {
+      throw new Error('UNRESOLVED_DFD_TRIGGER_TARGET');
+    }
+  }
+  for(const flow of links(dfd.flows,'flows')) {
+    if (!flow || !has('step',flow.from) || !has('step',flow.to) ||
+        !['sequence','branch','exception'].includes(flow.kind) ||
+        (flow.kind !== 'sequence' &&
+         (typeof flow.condition !== 'string' || !flow.condition.trim()))) {
+      throw new Error('UNRESOLVED_DFD_CONTROL_EDGE');
+    }
+  }
+  for(const ref of links(dfd.information?.responsibilities,'responsibilities')) {
+    if (!ref || !has('business-role',ref.role) || !has('step',ref.step)) {
+      throw new Error('UNRESOLVED_DFD_RESPONSIBILITY');
+    }
+  }
+  const endpoints = new Set(['step','party','store']);
+  for(const flow of links(dfd.information?.informationFlows,'informationFlows')) {
+    const from=flow?.from, to=flow?.to;
+    if (!endpoints.has(from?.kind) || !endpoints.has(to?.kind) ||
+        !has(from.kind,from.id) || !has(to.kind,to.id) ||
+        (from.kind !== 'step' && to.kind !== 'step') ||
+        (from.kind === to.kind && from.id === to.id) ||
+        typeof flow.payload !== 'string' || !flow.payload.trim()) {
+      throw new Error('UNRESOLVED_DFD_INFORMATION_EDGE');
+    }
+  }
   return known;
 }
 function coordinate(value, name) {
