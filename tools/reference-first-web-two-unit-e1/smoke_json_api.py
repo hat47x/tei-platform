@@ -10,6 +10,8 @@ import pathlib
 import re
 import subprocess
 import sys
+# Reading local preflight helpers must not modify the checkout.
+sys.dont_write_bytecode = True
 import tempfile
 import time
 import urllib.error
