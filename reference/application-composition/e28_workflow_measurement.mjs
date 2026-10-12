@@ -109,7 +109,8 @@ export function assessE28(audit, submission) {
   submittedCounts.changedFiles=changedPaths.size;
   const claimedCoveredCounts=submission.coverage===undefined ? null :
     Object.fromEntries(countedFields.map(name=>[name,
-      submission.complete && submission.coverage[name]==='complete' ?
+      submission.complete && Object.hasOwn(submission.coverage,name) &&
+      submission.coverage[name]==='complete' ?
         submittedCounts[name] : null]));
   return {kind:'tei-e28-workflow-measurement-v0',
     scope:submission.complete ? 'claimed-complete-not-verified' : 'partial-not-verified',
