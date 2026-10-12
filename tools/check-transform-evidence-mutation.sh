@@ -18,13 +18,16 @@ case "$output/" in
   "$repo/"*) echo "output directory must be outside repository" >&2; exit 2 ;;
 esac
 
-mkdir -p "$output/baseline" "$output/mutation"
+mkdir -p "$output/baseline" "$output/mutation" "$output/host-only"
 mutation_repo="$output/worktree"
+host_repo="$output/host-worktree"
 cleanup() {
   git -C "$repo" worktree remove --force "$mutation_repo" >/dev/null 2>&1 || true
+  git -C "$repo" worktree remove --force "$host_repo" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 git -C "$repo" worktree add --quiet --detach "$mutation_repo" "$baseline_revision"
+git -C "$repo" worktree add --quiet --detach "$host_repo" "$baseline_revision"
 
 target="$mutation_repo/internal/plugin/transform/source_budget.go"
 # Change one reachable error string (not a comment or dead code). This is a
@@ -41,6 +44,22 @@ git -C "$mutation_repo" -c user.name='TEI Qualification' \
   commit --quiet -m "test: alter reachable transform resource-bound error"
 mutation_revision="$(git -C "$mutation_repo" rev-parse HEAD)"
 test "$mutation_revision" != "$baseline_revision"
+
+# A real (reachable) Host lease-status message changes without touching the
+# transform Engine's source closure, toolchain, target, or artifact bytes.
+host_target="$host_repo/internal/plugin/runtime/lease.go"
+host_needle='lease acquired'
+host_replacement='lease acquired (Host-only qualification mutation)'
+grep -qF "$host_needle" "$host_target"
+sed -i "0,/$host_needle/s//$host_replacement/" "$host_target"
+grep -qF "$host_replacement" "$host_target"
+git -C "$host_repo" add internal/plugin/runtime/lease.go
+git -C "$host_repo" -c user.name='TEI Qualification' \
+  -c user.email='tei-qualification@localhost' \
+  commit --quiet -m "test: change Host lease behavior outside transform Engine"
+host_revision="$(git -C "$host_repo" rev-parse HEAD)"
+test "$host_revision" != "$baseline_revision"
+test "$host_revision" != "$mutation_revision"
 
 run_pair() {
   local root="$1"
@@ -102,6 +121,47 @@ run_pair() {
 }
 run_pair "$repo" "$output/baseline" "$baseline_revision"
 run_pair "$mutation_repo" "$output/mutation" "$mutation_revision"
+run_pair "$host_repo" "$output/host-only" "$host_revision"
+
+# The independent Host edit changes an actual Go source file but must not
+# rotate the exact interpreter executable, Engine Lock, or Host registration.
+cmp -s "$output/baseline/transform-engine" "$output/host-only/transform-engine"
+cmp -s "$output/baseline/stage2-engine-lock.json" "$output/host-only/stage2-engine-lock.json"
+cmp -s "$output/baseline/stage2-host-registration.json" "$output/host-only/stage2-host-registration.json"
+jq -s -e '
+  .[0].repositoryRevision != .[1].repositoryRevision
+  and .[0].sourceClosureDigest == .[1].sourceClosureDigest
+  and .[0].artifactDigest == .[1].artifactDigest
+  and .[0].runtimeEngine == .[1].runtimeEngine
+' "$output/baseline/engine-build-evidence.json" "$output/host-only/engine-build-evidence.json" >/dev/null
+jq -s -e '
+  .[0].repositoryRevision != .[1].repositoryRevision
+  and .[0].transformBootstrap.runtimeEngineSourceDigest == .[1].transformBootstrap.runtimeEngineSourceDigest
+  and .[0].transformBootstrap.runtimeEngine == .[1].transformBootstrap.runtimeEngine
+  and .[0].transformBootstrap.runtimeEngineFingerprint == .[1].transformBootstrap.runtimeEngineFingerprint
+  and .[0].stage2EngineLockFingerprint == .[1].stage2EngineLockFingerprint
+  and .[0].stage2HostRegistrationFingerprint == .[1].stage2HostRegistrationFingerprint
+  and .[0].stage2RuntimePolicyFingerprint == .[1].stage2RuntimePolicyFingerprint
+' "$output/baseline/self-build-evidence.json" "$output/host-only/self-build-evidence.json" >/dev/null
+
+jq -n \
+  --arg before "$baseline_revision" \
+  --arg host "$host_revision" \
+  --slurpfile original "$output/baseline/self-build-evidence.json" \
+  --slurpfile hostEvidence "$output/host-only/self-build-evidence.json" \
+  '{
+    schema: "tei.reference.runtime-engine-host-isolation/v1",
+    baselineRevision: $before,
+    changedHostRevision: $host,
+    changedHostSource: "internal/plugin/runtime/lease.go",
+    engineImplementationDigest: $original[0].transformBootstrap.runtimeEngine.implementationDigest,
+    engineFingerprint: $original[0].transformBootstrap.runtimeEngineFingerprint,
+    stage2EngineLockFingerprint: $original[0].stage2EngineLockFingerprint,
+    stage2HostRegistrationFingerprint: $original[0].stage2HostRegistrationFingerprint,
+    stage2RuntimePolicyFingerprint: $original[0].stage2RuntimePolicyFingerprint,
+    hostEngineDigestSame: ($original[0].transformBootstrap.runtimeEngine.implementationDigest == $hostEvidence[0].transformBootstrap.runtimeEngine.implementationDigest),
+    verified: true
+  }' > "$output/host-isolation-report.json"
 
 # An old Host registration must never approve the rotated executable.
 (
@@ -168,5 +228,6 @@ jq -n \
     verified: true
   }' > "$output/mutation-report.json"
 cat "$output/mutation-report.json"
+cat "$output/host-isolation-report.json"
 test -z "$(git -C "$repo" status --porcelain=v1 --untracked-files=all)"
 test "$(git -C "$repo" rev-parse HEAD)" = "$baseline_revision"
