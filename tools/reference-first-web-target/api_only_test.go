@@ -9,9 +9,14 @@ import (
 )
 
 func TestAPIOnlyExcludesServerSideHTMLAndRoutes(t *testing.T) {
-	server, err := newWebTargetServer(webTargetProjection{ApplicationID:"order_entry"}, nil, nil)
-	if err != nil { t.Fatal(err) }
-	for _, tc := range []struct{ path, method string; want int }{
+	server, err := newWebTargetServer(webTargetProjection{ApplicationID: "order_entry"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		path, method string
+		want         int
+	}{
 		{"/", http.MethodGet, http.StatusNotFound},
 		{"/custom-submit", http.MethodGet, http.StatusNotFound},
 		{"/custom-submit", http.MethodPost, http.StatusNotFound},
