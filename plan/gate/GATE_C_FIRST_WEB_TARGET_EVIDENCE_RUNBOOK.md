@@ -2,45 +2,45 @@
 
 ## 目的
 
-第一Web TargetのGate C Evidenceを、Handover Baseline `B / R`とTarget build revision `T`を混同せず、同一clean revisionから再取得できるようにする。
+最初のウェブ実行先について、判定段階Cの検証根拠を再取得するための手順です。引継ぎ基準版`B / R`と実行先の構築版`T`を混同せず、変更のない同じ版から取得できるようにします。
 
-このRunbookのrunnerは次を取得する。
+この実行手順書で扱う実行器は、次の検証根拠を取得します。
 
-1. Source qualification
-2. Semantic Conformance raw artifacts
-3. Interaction / Functional raw artifacts
-4. standard Projection / Custom UIのHTML artifact
+1. ソースの事前確認
+2. 意味の準拠確認に用いる元の成果物
+3. 対話操作・機能を検証する元の成果物
+4. 標準の派生表示と個別実装の画面のHTML成果物
 
-**Visual Fidelity Evidenceは取得しない。**
+**表示の忠実度に関する検証根拠は取得しません。**
 
-HTMLの存在をScreenshot / Visual Fidelityへ読み替えない。Semantic / Functionalが成功しても、Visual Evidenceが未取得なら`gateCReady = false`のままとする。
+HTMLが存在するだけでは画面画像や表示の忠実度を検証したことにはなりません。意味と機能の検証に成功しても、表示の検証根拠が未取得なら`gateCReady = false`のままにします。
 
-契約の正本:
+契約の正本：
 
 - `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md`
 
-実装:
+実装：
 
 - `tools/run-first-web-target-gate-c-evidence.sh`
 - `tools/reference-first-web-target-evidence-audit`
 
 ## 前提
 
-Repository rootのclean full checkoutから実行する。
+リポジトリ全体を取得し、変更のない状態にしたルートディレクトリから実行します。
 
-runnerは少なくとも次をfail closedで確認する。
+実行器は少なくとも次の条件を確認し、満たせなければ安全側に停止します。
 
-- current working directoryがRepository root
-- tracked / untracked / ignored local stateがない
-- tracked index entryが通常の`H` stateのみ
-- `curl`が利用可能
-- First Web Target sourceが`gofmt`済み
-- 対象Go packageのsource testsが成功
-- run前後で同じ`targetBuildRevision = T`
-- artifact directoryがRepository外
+- 現在の作業ディレクトリがリポジトリのルートであること
+- 追跡対象・追跡対象外・無視対象にローカルの変更状態がないこと
+- 追跡対象の索引項目が通常の`H`だけであること
+- `curl`を実行できること
+- 最初のウェブ実行先のソースに`gofmt`を適用済みであること
+- 対象のGoパッケージのソース試験が成功すること
+- 実行前後で`targetBuildRevision = T`が一致すること
+- 成果物のディレクトリがリポジトリの外にあること
 
-Go実行環境はrunner内で次へ固定する。
+Goの実行環境は、実行器の内部で次のように固定します。
 
 ```text
 GOENV=off
@@ -50,7 +50,7 @@ GOFLAGS=
 
 ## Handover Baseline
 
-現在の第一Handover Baseline:
+現在の最初の引継ぎ基準版は次のとおりです。
 
 ```text
 B
@@ -58,20 +58,20 @@ baselineRepositoryRevision R =
 e5231839a5dcc62cce1181a2731fcb7c70d16736
 ```
 
-runner既定値もこのBaselineを使うが、Evidence採用時はsummary内の`B / R / T`を必ず確認する。
+実行器の既定値もこの基準版を使いますが、検証根拠を採用するときは最終結果に記録された`B / R / T`を必ず確認します。
 
-`T`はrunner開始時のclean `git rev-parse HEAD`であり、`R`へ固定しない。
+`T`は実行器の開始時に変更のない作業領域で取得する`git rev-parse HEAD`の結果です。`R`と同じ版には固定しません。
 
 ## 実行
 
-推奨はRepository外の空pathを明示する。
+リポジトリ外の空の保存先を明示して実行することを推奨します。
 
 ```bash
 TEI_GATE_C_ARTIFACT_DIR=/tmp/tei-gate-c-first-web-T \
 bash tools/run-first-web-target-gate-c-evidence.sh
 ```
 
-既定の`B / R`を上書きする場合だけ明示する。
+既定の`B / R`を変更する場合に限り、次のように明示します。
 
 ```bash
 TEI_GATE_C_BASELINE_ID=B \
@@ -80,11 +80,11 @@ TEI_GATE_C_ARTIFACT_DIR=/tmp/tei-gate-c-first-web-T \
 bash tools/run-first-web-target-gate-c-evidence.sh
 ```
 
-既存artifact directoryは上書きしない。
+既存の成果物ディレクトリは上書きしません。
 
 ## same-run raw artifacts
 
-成功runでは少なくとも次をRepository外に保持する。
+実行に成功した場合は、少なくとも次の成果物をリポジトリの外に保存します。
 
 ```text
 run-metadata.json
@@ -110,9 +110,9 @@ architecture-conformance.json
 
 ### read
 
-`read.json`はReference診断用read-only endpointから取得する。
+`read.json`は参照事例を診断するための、読取り専用の接続先から取得します。
 
-確認対象:
+確認対象は次のとおりです。
 
 - browse
 - selected record
@@ -120,11 +120,11 @@ architecture-conformance.json
 - header-detail
 - Runtime Binding
 
-standalone read endpoint自体をproductionのAuthentication済みread設計へ格上げしない。
+この独立した読取り用の接続先を、本番の認証済み読取り機能と同じものとして扱いません。
 
 ### successful Command
 
-`submit-success.json`では次を同じScenarioで確認する。
+`submit-success.json`では、同じシナリオの中で次の処理を確認します。
 
 ```text
 Authentication
@@ -135,72 +135,72 @@ Authentication
  -> separate Observation
 ```
 
-Command acknowledgementをObservationへ読み替えない。
+命令の受理応答を、その後の状態を観測した結果とは扱いません。
 
 ### Business denial
 
-次を別artifactにする。
+次の結果は別々の成果物に残します。
 
 - Authentication denied
 - Authorization denied
 
-どちらもHTTP transport errorやExecution Errorへ畳まない。
+いずれもHTTPの通信エラーや実行時エラーと混同しません。
 
 ### Validation not-satisfied
 
-`submit-validation-not-satisfied.json`ではCanonical Validationが`not-satisfied`となり、Authorization / Command / Observationへ進まないことを確認する。
+`submit-validation-not-satisfied.json`では、正本上の検証規則が`not-satisfied`となり、認可・命令・観測へ進まないことを確認します。
 
-Reference runtime fixtureではorder `1002`をこのPressureに使う。これはCanonical dataではない。
+参照事例の実行時試験データでは、注文`1002`をこの検証に使います。これは正本のデータではありません。
 
 ### Execution Error
 
-`submit-execution-error.json`ではCapability Invocationを完了できない状態をBusiness Resultへ変換しない。
+`submit-execution-error.json`では、能力の呼出しを完了できない状態を業務上の結果に変換していないことを確認します。
 
-Reference runtime fixtureではorder `1003`のsynthetic Command adapter failureを使う。
+参照事例の実行時試験データでは、注文`1003`に対する合成の命令変換器の失敗を使います。
 
-HTTP層はTarget-localな422 response envelopeとして:
+HTTP層では、実行先固有の状態コード422の応答に、次の情報を含めます。
 
 - `B / R / T`
 - partial Scenario result
 - `executionError`
 
-を保持する。
+これらを保持します。
 
-これは新しいCanonical Outcomeではない。
+これは正本上の新たな結果ではありません。
 
 ## 独立audit
 
-runnerはraw artifacts取得後に:
+実行器は元の成果物を取得した後、次の監査を実行します。
 
 ```bash
 go run ./tools/reference-first-web-target-evidence-audit ...
 ```
 
-を実行し、`semantic-functional-summary.json`を作る。
+実行後、`semantic-functional-summary.json`を作成します。
 
-auditは少なくとも次を再確認する。
+監査では、少なくとも次の項目を再確認します。
 
-- raw artifact間の`B / R / T` exact一致
-- pre/post runが同じclean `T`
-- server process / health artifact
-- 5 Application Pattern identity
-- read-only Datasource boundary
-- Oracle / PostgreSQL Runtime Binding
-- successful Command path
-- Authentication / Authorization denial
-- Validation not-satisfied
-- Command Execution Error
-- Command Business Result / Observation分離
-- Custom UI / standard interactionのshared semantic boundary
-- raw artifactへのReference credential material混入なし
+- 元の成果物間で`B / R / T`が厳密に一致すること
+- 実行前後で、変更のない同じ版`T`であること
+- サーバープロセスと稼働確認の成果物
+- 五つのアプリケーションパターンの識別情報
+- 読取り専用のデータ接続先の境界
+- OracleとPostgreSQLの実行時の対応付け
+- 命令が成功する経路
+- 認証と認可による拒否
+- 検証規則が満たされない場合
+- 命令の実行時エラー
+- 命令の業務上の結果と観測の分離
+- 個別実装の画面と標準の操作が共有する意味上の境界
+- 元の成果物に参照用認証情報の内容が混入していないこと
 
-raw exact bytesのSHA-256をsummaryへ残す。
+元のバイト列に対するSHA-256を最終結果へ記録します。
 
 ## Visual Fidelity
 
-このrunnerはVisual Fidelityを成立させない。
+この実行器の結果だけでは表示の忠実度を確認できません。
 
-summaryの期待値:
+最終結果に期待する値は次のとおりです。
 
 ```text
 sourceQualification.passed = true
@@ -211,45 +211,45 @@ visualEvidence.required = true
 gateCReady = false
 ```
 
-Screenshotまたは同等の再確認可能なVisual artifactを**同じTarget build revision T**に対して別途取得する。
+画面画像または同等に再確認できる表示の成果物を、**同じ実行先の構築版T**について別途取得します。
 
-HTML artifactやDOMの存在だけでVisual Evidenceを成立させない。
+HTMLの成果物やDOMが存在するだけでは、表示の検証が成立したとは扱いません。
 
 ## Credential boundary
 
-runtime requestにはReference用synthetic credentialを使うが、通常Evidenceへ保存しない。
+実行時の要求には参照事例用の合成認証情報を使いますが、通常の検証根拠には保存しません。
 
-auditは少なくとも次の混入をfail closedで拒否する。
+監査では、少なくとも次の情報が混入した場合、安全側に停止して拒否します。
 
 - Reference synthetic credential文字列
 - `credential-ref://legacy/`
 
-request bodyそのものをartifactへ保存しない。
+要求本文そのものは成果物に保存しません。
 
 ## 停止条件
 
-次のいずれかではGate C Evidenceへ採用しない。
+次のいずれかに該当する場合、判定段階Cの検証根拠として採用しません。
 
-- source test失敗
-- unformatted source
-- dirty / non-standard index checkout
-- run中のHEAD drift
-- server health不成立
-- B / R / T不一致
-- expected Pattern / Runtime Binding不一致
-- Business denialがExecution Errorへ変換された
-- Validation不成立後にCommandへ進んだ
-- Execution ErrorがBusiness Resultへ変換された
-- credential materialがraw artifactへ残った
-- Visual未取得なのにGate C Readyと宣言した
+- ソースの試験が失敗
+- ソースが整形されていない
+- 作業領域に変更が残る、または索引が非標準の状態
+- 実行中にHEADが変化
+- サーバーの稼働確認に失敗
+- B・R・Tが一致しない
+- 期待したパターンと実行時の対応付けが一致しない
+- 業務上の拒否が実行時エラーに変換された
+- 検証規則を満たさないのに命令へ進んだ
+- 実行時エラーが業務上の結果に変換された
+- 認証情報の内容が元の成果物に残った
+- 表示の検証根拠が未取得なのに判定段階CのReadyを宣言した
 
 ## Gate C判定
 
-このrunnerの成功はSemantic / Functional Evidence取得であり、Gate C Readyそのものではない。
+この実行器の成功は意味・機能の検証根拠を取得できたことを示しますが、判定段階CのReadyそのものではありません。
 
-Visual Fidelityを別Evidenceとして取得し、`plan/gate/GATE_C_EVIDENCE_CONTRACT.md`の全条件を独立監査した後だけGate Cを判定する。
+表示の忠実度を別の検証根拠として取得し、`plan/gate/GATE_C_EVIDENCE_CONTRACT.md`の全条件を独立して監査した後に限り、判定段階Cの合否を決めます。
 
-actual runの判定記録: `plan/gate/GATE_C_READINESS_AUDIT.md`
+実際の実行に基づく判定記録：`plan/gate/GATE_C_READINESS_AUDIT.md`
 
 
 ## Visual Evidence intake
@@ -429,7 +429,7 @@ http://127.0.0.1:18181/capture/custom-submit-validation-not-satisfied
 http://127.0.0.1:18181/capture/custom-submit-execution-error
 ```
 
-`/capture-manifest.json`には各route、source artifact、source SHA-256、`B / R / T`を保持する。
+`/capture-manifest.json`には各route、source artifact、source SHA-256、`B / R / T`これらを保持します。
 
 `-visual-manifest`を渡した場合、`http://127.0.0.1:18181/`をVisual review indexとして表示する。ここでは:
 
@@ -540,7 +540,7 @@ Visual manifestには少なくとも:
 - evaluator version
 - evaluation method
 
-を保持する。
+これらを保持します。
 
 人、VLM、image comparison等の方式をCanonical意味へ含めない。
 
@@ -582,7 +582,7 @@ architecture-conformance.json
 
 も生成する。
 
-実装:
+実装：
 
 - `tools/reference-first-web-target-architecture-evidence`
 
@@ -622,8 +622,8 @@ reference/world.json
 actual `T`でfocused source testを実行し:
 
 - standard JSON interactionとCustom UIが同じ`commandScenarioRunner`を利用
-- Validation not-satisfied後にAuthorization / Commandへ進まない
-- Command Execution ErrorがBusiness Result / Observationへ畳まれない
+- 検証規則が満たされない場合後にAuthorization / Commandへ進まない
+- 命令の実行時エラーがBusiness Result / Observationへ畳まれない
 - Execution Error HTTP envelopeが`B / R / T`を保持
 
 ことを再確認する。
@@ -646,7 +646,7 @@ Architecture Evidence自身も:
 
 Semantic / Functional、Visual、Architectureのactual Evidenceが**同じ`B / R / T`**へ揃った後だけ最終監査を実行する。
 
-実装:
+実装：
 
 - `tools/reference-first-web-target-gate-c-readiness-audit`
 
