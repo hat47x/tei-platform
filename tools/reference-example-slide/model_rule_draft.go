@@ -2,13 +2,25 @@ package exampleslide
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
-
-	"tei/internal/core"
 )
 
 const modelRuleDraftIntentSchema = "tei.reference.model-rule-draft-intent/v0"
+
+// Prospective rule IDs permit a hyphen in the local part even though today's
+// Canonical ID validator does not; these are not yet accepted Semantic IDs.
+var proposedRuleNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*package exampleslide
+
+import (
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+)
+
+)
 
 // ModelRuleDraftIntent names explicit, review-bound business-rule declarations.
 // Claims are user assertions, not verified human signatures or business truth.
@@ -124,8 +136,8 @@ func DraftLoadedWorkspaceModelRules(root string, input Input, proposed ModelHypo
 		if !strings.HasPrefix(ruleID, prefix) {
 			return empty, fmt.Errorf("rule %q must belong to semantic Data %q", ruleID, issue.Table)
 		}
-		if _, err := core.ParseLocalName(strings.TrimPrefix(ruleID, prefix)); err != nil {
-			return empty, fmt.Errorf("invalid proposed rule ID %q: %w", ruleID, err)
+		if !proposedRuleNamePattern.MatchString(strings.TrimPrefix(ruleID, prefix)) {
+			return empty, fmt.Errorf("invalid proposed rule ID %q", ruleID)
 		}
 		if usedRule[ruleID] {
 			return empty, fmt.Errorf("repeated proposed rule ID %q", ruleID)
