@@ -99,10 +99,12 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   const derivedEdit = input(label, ".derived-edit.json", {
     ...edit, derived: true
   });
-  command(process.execPath, [
+  const rejectedDerived = command(process.execPath, [
     join(root, "reference/studio-authoring/cli.mjs"),
     "review-edit", "-workspace", workspace, "-edit-file", derivedEdit
   ], false);
+  checked(rejectedDerived.stderr.includes("DERIVED_IS_READONLY_OR_INVALID_EDIT"),
+    label + ": Derived edit fails for the expected safety reason, not an unrelated CLI crash (N05)");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     label + ": Derived edit cannot produce Source changes (N05)");
   const preview = JSON.parse(acceptance([
