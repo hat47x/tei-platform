@@ -47,7 +47,8 @@ jobs:
               read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
               test -z "${extra:-}"
               test "$merge" = "$actual"
-              test "$base" = "$PR_BASE_SHA"
+              # PRイベントのbase SHAは並行main更新で古くなる。GitHubの仮統合commit自身を正とする。
+              [[ "$base" =~ ^[0-9a-f]{40}$ ]]
               test "$head" = "$PR_HEAD_SHA"
               git merge-base --is-ancestor "$PR_BASE_SHA" "$actual"
               git merge-base --is-ancestor "$PR_HEAD_SHA" "$actual"
@@ -71,8 +72,11 @@ jobs:
             printf '実行前の作業領域の変更：\n%s\n' "$dirt" >&2
             exit 1
           fi
-          printf 'event=%s\nchecked-sha=%s\npr-head=%s\npr-base=%s\n' \
+          printf 'event=%s\nchecked-sha=%s\npr-head=%s\npr-event-base=%s\n' \
             "$GITHUB_EVENT_NAME" "$actual" "$PR_HEAD_SHA" "$PR_BASE_SHA"
+          if [[ "$GITHUB_EVENT_NAME" = pull_request ]]; then
+            printf 'pr-merge-base=%s\n' "$base"
+          fi
 
       - name: 指定版のGoを用意
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
@@ -101,7 +105,8 @@ jobs:
               read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
               test -z "${extra:-}"
               test "$merge" = "$actual"
-              test "$base" = "$PR_BASE_SHA"
+              # PRイベントのbase SHAは並行main更新で古くなる。GitHubの仮統合commit自身を正とする。
+              [[ "$base" =~ ^[0-9a-f]{40}$ ]]
               test "$head" = "$PR_HEAD_SHA"
               ;;
             push)
