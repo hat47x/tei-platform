@@ -140,17 +140,36 @@ func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 	}
 }
 
-func TestReferenceTransformSourceMatchesProgrammaticConstruction(t *testing.T) {
-	fromFile := referencePluginPackageTransformSource(t)
-	fileFP, err := transform.SourceFingerprint(fromFile)
+// Repository Source is authoritative; editing its program must change the
+// output without changing any builder-specific Go constructor.
+func TestReferencePluginPackageSourceControlsOutput(t *testing.T) {
+	source := referencePluginPackageTransformSource(t)
+	before, err := transform.SourceFingerprint(source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	constructedFP, err := transform.SourceFingerprint(transform.PluginPackageSourceV1())
+	edited := source
+	edited.Program.Output.Suffix = "\n#source-change\n"
+	after, err := transform.SourceFingerprint(edited)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fileFP != constructedFP {
-		t.Fatalf("Reference transform Source diverged from construction helper: %s != %s", fileFP, constructedFP)
+	if before == after {
+		t.Fatal("builder Source change did not change its fingerprint")
+	}
+	definition, plan := transformPackageFixture()
+	result, err := transform.Evaluate(edited, map[string]transform.Value{
+		"buildPlan":        valueFromGoJSON(t, plan),
+		"pluginDefinition": valueFromGoJSON(t, definition),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oracle, err := plugin.MaterializePluginPackage(definition, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Output.Kind != transform.ValueBytes || bytes.Equal(result.Output.Bytes, oracle) {
+		t.Fatal("editing TEI-owned builder Source did not change the produced bytes")
 	}
 }
