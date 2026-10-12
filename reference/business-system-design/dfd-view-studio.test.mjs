@@ -327,7 +327,7 @@ test('a trigger label modified during fingerprinting cannot resurrect a stale pr
   selectTrigger();
   $('trigger-label').value='最初の説明文';
   const pending=$('semantic-propose').listeners.click();
-  for(let i=0;i<20&&!release;i++)await Promise.resolve();
+  for(let i=0;i<50&&!release;i++)await new Promise(resolve=>setTimeout(resolve,5));
   assert.equal(typeof release,'function');
   $('trigger-label').value='途中で変更された説明文';
   $('trigger-label').listeners.input();
