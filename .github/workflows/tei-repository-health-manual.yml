@@ -1,16 +1,16 @@
-name: TEI repository health (manual)
+name: TEI 全体健全性の確認（手動）
 
-# Issue #1189. Manual-only: no PR, push, or scheduled runner usage.
-# A manual dispatch is a separate, intentional decision to consume Actions capacity.
+# Issue #1189。PR・push・定期実行からは起動しない。
+# 手動起動は、GitHub Actionsの利用について別途判断して行う。
 on:
   workflow_dispatch:
     inputs:
       expected_head_sha:
-        description: Exact 40-character commit SHA to test
+        description: 検証対象のコミットSHA（40桁）
         required: true
         type: string
       expected_main_sha:
-        description: Exact main commit SHA used as the qualification baseline
+        description: 基準とするmainのコミットSHA（40桁）
         required: true
         type: string
 
@@ -33,20 +33,20 @@ jobs:
       EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
       EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
     steps:
-      - name: Check out the dispatched revision
+      - name: 指定されたコミットを取得
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Verify exact revision and initial cleanliness
+      - name: 実行前の版と作業領域を確認
         shell: bash
         run: |
           set -euo pipefail
-          # Reject an implicit or stale choice of the tested branch and baseline.
+          # 対象や基準の版を暗黙に選ばず、古い版も拒否する。
           [[ "$EXPECTED_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
-          # Only branch events are qualified; reject tag dispatches.
+          # タグではなくブランチからの実行だけを受け付ける。
           [[ "$GITHUB_REF" == refs/heads/* ]]
           actual="$(git rev-parse HEAD)"
           source_tip="$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git "$GITHUB_REF" | cut -f1)"
@@ -60,32 +60,32 @@ jobs:
           git merge-base --is-ancestor "$EXPECTED_MAIN_SHA" "$actual"
           dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
           if [[ -n "$dirt" ]]; then
-            printf 'Initial checkout is not clean:\n%s\n' "$dirt" >&2
+            printf '実行前の作業領域に変更がある：\n%s\n' "$dirt" >&2
             exit 1
           fi
 
-      - name: Set up exact Go toolchain
+      - name: 指定版のGoを用意
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           check-latest: false
           cache: false
 
-      - name: Run full repository health check
+      - name: リポジトリ全体の健全性を確認
         shell: bash
         run: |
           set -euo pipefail
           go version
           bash tools/repository-health-check.sh
 
-      - name: Verify final revision and clean checkout
+      - name: 実行後の版と作業領域を確認
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           [[ "$EXPECTED_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
-          # Only branch events are qualified; reject tag dispatches.
+          # タグではなくブランチからの実行だけを受け付ける。
           [[ "$GITHUB_REF" == refs/heads/* ]]
           actual="$(git rev-parse HEAD)"
           source_tip="$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git "$GITHUB_REF" | cut -f1)"
@@ -99,6 +99,6 @@ jobs:
           git merge-base --is-ancestor "$EXPECTED_MAIN_SHA" "$actual"
           dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
           if [[ -n "$dirt" ]]; then
-            printf 'Final checkout is not clean:\n%s\n' "$dirt" >&2
+            printf '実行後の作業領域に変更がある：\n%s\n' "$dirt" >&2
             exit 1
           fi
