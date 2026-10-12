@@ -1,6 +1,6 @@
 # Example-driven ER slide reference
 
-状態: **独立したGo参照実装候補（未統合・テスト未実行）**。
+状態: **参照実装はPR #1128から2026-10-11にmainへ統合済み**。ただし統合時の全体品質ゲートをPASSした証跡は未確認。この文書の機能説明は現在の実装を基準とし、確認済みの動作実績とは区別する。
 
 発注10個・一部入荷6個・検収合格4個／不合格2個の合成データを、手動配置のER図上で三つのスライドとして表示するための最小実験です。データ構造だけでは分からない業務上の疑問（不合格数量を履行残に含めるか）を未解決のまま保持します。
 
@@ -40,9 +40,9 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
 
 合成Catalogによるスライド実験に加え、実TEIの正規化済みWorldのSemantic部分から読み取るAdapterを実装候補として追加しました。ただしSource Indexの根拠まで結び付けるものではなく、実World由来の型については`std.identifier`、`std.decimal`、`std.money`等を安易にstring/float64へ狭めず`opaque`とします。これは型検証済みを意味しません。またWorldのAttribute定義に無い必須性や表示既定値を推測しません。
 
-SVGは最小の描画確認であり、完全な専用ER記号・衝突回避・印刷調整・ブラウザ表示・WASM動作を保証しません。各テーブルの例示値は先頭レコードのみを表示しますが、Projectionは表示対象の全レコードを保持します。
+SVGは最小の描画確認であり、完全な専用ER記号・衝突回避・印刷調整・ブラウザ表示・WASM動作を保証しません。現在の描画では表示対象の全レコードを扱い、Projectionにも全表示レコードを保持します。
 
-実データの安全な利用、AI候補生成、業務上の整合性の判定、詳細設計への提案とShared Acceptance接続は後続の検証対象です。WorldのRelationKeyが存在しても、説明用Caseのレコード間で業務キーを検査する機構は未実装です。**関係線を描けたことを参照整合性検証済みと読んではいけません。** この参照実装は独立した`std.*` Semantic Extensionの採用根拠にもなりません。
+実データの安全な利用、AI候補生成、業務上の最終判断、およびShared Acceptanceでの正本変更までの実証は後続の検証対象です。現在はWorld由来のRelationKeyで説明用Caseのレコードを限定的に照合しますが、部分データや型不確実性は未解決として保持します。**関係線を描けたことを参照整合性検証済みと読んではいけません。** この参照実装は独立した`std.*` Semantic Extensionの採用根拠にもなりません。
 
 設計の詳細は [M1設計候補](../../plan/design/EXAMPLE_ER_SLIDE_M1_2026-10.md) を参照してください。
 
@@ -60,7 +60,7 @@ SVGは最小の描画確認であり、完全な専用ER記号・衝突回避・
 
 RelationKeyがない（あるいは対象の属性値を比較できない）場合は、自動結合を試みず`unresolved`とする。`one`で一致Targetが複数見つかった場合だけ、Datasetが部分的でも矛盾が確定する。一致Targetが0件でも、意味モデルに必須性が無ければ、欠如を直ちに`contradiction`にはしない。
 
-Composite RelationKeyもキー対を順番どおり照合する。整数や小数のJSON表記を比較するときは有理数による完全な数値比較を使い、巨大指数を含む値は比較不能に分類してリソース消費を制限する。
+複合RelationKeyは各キー対の一致を調べる。**評価結果はキーの記述順序に左右されない**。一部のキー値が不明でも、別のキー値で確実に不一致なら、そのTargetは候補から除外できる。一方、既知のキー値に不一致がなく、不明なキー値が残る場合は対応未確定とする。整数や小数のJSON表記は有理数で正確に比較し、巨大な指数を含む値は比較不能として資源消費を制限する。
 
 ### 回帰試験の拡充
 
@@ -68,7 +68,7 @@ Composite RelationKeyもキー対を順番どおり照合する。整数や小�
 
 `world_adapter_test.go`では、実際の正規化済みWorldの`sales.order.customer`を合成レコード値で照合し、同じWorldにあるKeylessな`sales.order.lines`が安易に合格しないことを確認する。どちらも実Providerや本番データの検証ではない。
 
-**検証実行の状態:** Go test / gofmt / full Repository-healthは未実行。これらを実行したというEvidenceは存在しない。
+**検証実行の状態:** 本文書の参照実装について、統合済みmainのexact headでGo test・gofmt・full Repository-healthをPASSしたEvidenceは未取得である。PR #1128は既にマージされており、未統合という表現は古い。
 
 ## 設計レビューへの接続（Review Packet）
 
