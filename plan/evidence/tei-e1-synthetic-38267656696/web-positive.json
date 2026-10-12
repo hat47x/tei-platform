@@ -1,0 +1,25 @@
+{
+  "evidenceNature": "running-web-http-positive-synthetic-provider",
+  "integrationHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "acceptedSourceRevisionClaim": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "selectedValidationIDs": [
+    "sales.order_line.quantity_positive",
+    "sales.order.lines.line_number_unique",
+    "sales.order_line.line_number_positive",
+    "sales.order_line.unit_price_positive"
+  ],
+  "validationResults": [
+    "satisfied",
+    "satisfied",
+    "satisfied",
+    "satisfied"
+  ],
+  "stage": "completed",
+  "httpStatus": 200,
+  "commandObserved": true,
+  "observationNature": "synthetic",
+  "manifestSemanticSHA256": "9f0986e2423c06988e143f1de0361d37af57bca641d227b221de973aad42edc4",
+  "httpResponseSHA256": "2cc6176640d50a2788406c62efba96ca4df3d08f7d20db81ec401ef8f57e4b5c",
+  "independentDatabaseRead": false,
+  "negativeUnitPriceTest": "RUNNING_SERVER_SYNTHETIC_FIXTURE_OVERLAY"
+}
