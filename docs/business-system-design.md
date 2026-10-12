@@ -1,17 +1,17 @@
-# TEI 業務システム設計アーキテクチャ
+# TEIの業務システム設計
 
-Status: current architecture baseline
+状態: 現行の設計基準
 
 ## 1. 目的
 
-この文書は、TEIの実装が変化しても保持すべき業務システム設計上の境界を整理します。
+この文書では、TEIの実装が変わっても守るべき業務システム設計上の境界を整理します。
 
-TEIの要求・Reference・Evidenceを正本とし、外部の公開知見は必要に応じて設計上の参考とします。特定の既存製品や手法との系譜・互換関係を前提にはしません。
+TEIの要求・参照例・検証根拠を基準とし、外部の公開知見は必要に応じて設計の参考にします。特定の既存製品や手法との系譜・互換関係は前提としません。
 
 
 ## 2. 一つの業務システムを複数視点から確認する
 
-業務システムを少なくとも次の三視点から確認します。
+業務システムは、少なくとも次の三つの視点から確認します。
 
 ```text
                 Business
@@ -20,17 +20,17 @@ TEIの要求・Reference・Evidenceを正本とし、外部の公開知見は必
            Data -------- Function / Interaction
 ```
 
-三視点は工程順でも、独立した三つのsource of truthでもありません。同じaccepted meaningを別角度から見て、欠落・矛盾・過剰な仮定を見つけるための視点です。
+三つの視点は工程の順序でも、独立した三つの正本でもありません。同じ受け入れ済みの意味を異なる角度から確認し、欠落・矛盾・根拠のない仮定を見つけるためのものです。
 
 - **Data** — business fact、type、identity、Relation、cardinality、Constraint、lifecycle
 - **Function / Interaction** — screen / form / report、input / output、Query / Capability、batch / API、Function間呼出し
 - **Business** — trigger、actor / responsibility、business action、manual / external、judgment、handoff、exception、continuation
 
-一つの視点だけで他を説明できない場合、設計はまだ閉じていません。一方、情報が不足している場合に他視点から推測で穴を埋めることも「閉じた設計」とはみなしません。
+ある視点だけでは他の視点を説明できない場合、設計の整合性はまだ確認できていません。一方、不足する情報を別の視点からの推測で埋めても、設計が整合したとはみなしません。
 
-## 3. Data-first but not Data-only
+## 3. データを先に捉えるが、データだけでは設計を終えない
 
-TEIでは、変わりにくい業務DataとRelationを画面・物理DB・実装技術から分離します。
+TEIでは、変わりにくい業務上のデータと関係を、画面・物理データベース・実装技術から分けて扱います。
 
 ```text
 business Data meaning
@@ -40,13 +40,13 @@ Persistence Mapping
 physical schema / Provider
 ```
 
-一方、正規化されたData Modelだけで業務システム設計を完了したことにはしません。Function / Business視点から、利用者が意味を確認できるか、業務行為に必要な情報が揃うか、UI操作とmutation contractが整合するかをcross-checkします。
+一方、データモデルを正規化しただけで業務システムの設計が完了したとはみなしません。機能と業務の視点から、利用者が意味を確認できるか、業務に必要な情報が揃うか、画面上の操作と更新契約が整合するかを相互に確認します。
 
-Data traceが見つからないことを、その業務にData dependencyが存在しないというnegative factへ変換しません。
+データへの追跡情報が見つからなくても、業務にデータの依存関係がないと断定しません。
 
-### Data meaningとrecord instanceを分ける
+### データの定義と個々の記録を分ける
 
-Data視点でいう`Customer`、`Order`、`Card`等のbusiness meaningと、Applicationが実際に保持する個々のrecordを同一視しません。
+データの視点で扱う`Customer`、`Order`、`Card`などの業務上の意味と、アプリケーションが実際に保持する個々の記録は区別します。
 
 ```text
 Data definition / business meaning
@@ -54,15 +54,15 @@ Data definition / business meaning
   != current runtime state
 ```
 
-Relationについても、`Order refers to Customer`というrelation definitionと、ある`order-2026-001 -> customer-123`というinstance-level factは別です。
+関係についても、`Order refers to Customer`という関係の定義と、`order-2026-001 -> customer-123`という個々の記録に関する事実は別です。
 
 instance-level factはApplication data、Database、external system、Observation等で扱えます。Business design上必要ならEvidenceとして参照しますが、個々のinstanceをすべてCanonical Business designへ持ち込むことを要求しません。
 
 ただしmaster/reference data、configuration、policy table等、instance集合自体が設計authorityを持つdomainでは明示的なauthoritative sourceとして扱う余地があります。その場合もdefinition / instance / Observationのどれがownerかを曖昧にしません。
 
-### 業務上の識別・関数従属性・物理キーを分ける
+### 業務上の識別、関数従属性、物理キーを分ける
 
-Data設計を、各tableへ一律に単独の`id`を付けるところから始めません。まず、業務上の一つのoccurrenceを何が識別するのか、どのData項目が何によって定まるのかを確認します。識別と関数従属性は、画面やORM、Database Providerの都合より先に検討するData meaningです。
+データ設計では、最初からすべてのテーブルに単独の`id`を付けることはしません。まず、業務上の一件を何で識別するか、どの項目が何によって定まるかを確認します。識別と関数従属性は、画面やORM、データベースの提供元の都合より先に検討すべき業務上の意味です。
 
 TEIでは、少なくとも次のidentityを同一視しません。
 
@@ -74,7 +74,7 @@ Canonical subject identity
 
 Canonical identityは、設計上のsubjectをRepositoryやTargetをまたいで追跡するためのidentityです。business occurrence identifierは、対象業務で「何を同じ一件として扱うか」を表します。physical primary keyは、特定DatabaseやProviderでrecordを実装・参照するための仕組みです。
 
-したがって、UUIDやsurrogate keyを物理実装で使うこと自体は否定しません。一方、それを追加したことで、業務上の複合識別や関数従属性、Relationの違いが見えなくなる設計は避けます。自然キーを物理主キーとして必須にすることも要求しません。
+そのため、物理実装でUUIDや代理キーを使うこと自体は否定しません。ただし、代理キーを追加することで業務上の複合識別や関数従属性、関係の違いが見えなくなる設計は避けます。自然キーを物理的な主キーとして必須にすることも要求しません。
 
 Provider、ORM、Target等の制約からsurrogate keyが必要になる場合も、本来のcandidate key、uniqueness、Relationの意味を失わないMapping / Constraintを保ちます。物理実装上の都合で正規化された構造から外れる場合は、その差を暗黙の標準形として扱わず、意図したRealization差として追跡します。
 
@@ -82,7 +82,7 @@ View、Application Pattern、formの入力単位、runtime objectのidentityか�
 
 たとえば、1:Nに見える構造でも意味は同じとは限りません。親から独立して存在し、参照先を変更し得るrecordと、特定の親occurrenceの内部で繰り返される明細と、独立した二つの識別対象の組合せを表すrecordでは、業務上の識別と従属性が異なります。UI上の見え方や「子table」という呼称だけから同じRelationへ畳みません。
 
-Data設計時には、必要に応じて次を確認します。
+データを設計するときは、必要に応じて次を確認します。
 
 - 何がそのoccurrenceを業務上識別するか
 - determinantとなる項目または項目組と、そこから定まるdependentな項目は何か
@@ -102,15 +102,15 @@ Data設計時には、必要に応じて次を確認します。
 
 validity period、identifier reuse、state transition、current-state selection等の時間意味は、業務上必要な場合にSource / Contractへ戻って確定します。履歴table、Event Sourcing、Bitemporal Model等を通常のDataへ一律に導入しません。
 
-### identityと表記・正規化を分ける
+### 同一性と表記・正規化を分ける
 
-同じ業務対象が、外部Systemごとに異なる文字表記、符号化、コード体系、表示形式を持つことがあります。TEIでは、business identityを一つの文字列表現や正規化規則と同一視しません。
+同じ業務対象でも、外部システムごとに文字表記、符号化、コード体系、表示形式が異なる場合があります。TEIでは、業務上の同一性を、一つの文字列表現や正規化規則と同一視しません。
 
 原Sourceの表記を監査・相互運用のために保持する必要がある場合は、exact source representationと、検索・照合・表示等に利用するnormalized / operational representationを分けて追跡します。Unicode正規化、大文字小文字変換、異体字置換、記号除去等による一致は、明示されたPolicy / Mappingなしにidentity Evidenceへ昇格させません。
 
 表記が異なる場合も、直ちに別identityとは判断しません。どの差異を同値と扱うかはdomainと用途に依存するため、Source、scope、変換規則、必要なら人によるAcceptanceへ戻れる構造を優先します。
 
-### 論理的なData統合と物理配置を分ける
+### データの論理的な統合と物理配置を分ける
 
 TEIは、一つの業務Data Modelを一つの物理Databaseへ固定しません。ApplicationとDatabaseをN:Mで扱い、同じ業務システムのDataを複数Database、Provider、外部Serviceへ配置できます。
 
@@ -128,7 +128,7 @@ physical Database / Service / Provider
 
 APIやmessageで接続できることは、Data meaningが統合されているEvidenceではありません。逆に、論理的に一つのData Modelとして説明できることも、すべてのrecordを一つのDatabaseへ集約する理由にはしません。法令、組織責任、可用性、性能、既存資産等による配置差はBinding / Realizationとして追跡します。
 
-### Subject Area / Subsystemは理解と検査の境界候補とする
+### 対象領域とサブシステムを、理解と検査のための区分候補とする
 
 大規模な業務システムでは、全Data / Function / Procedureを一度に理解することは困難です。そこで、業務上のまとまりを検討するSubject Areaと、Dataの所属とFunction / Interactionの利用関係を重ねて確認するSubsystemを、局所的なreview boundaryとして利用できるようにします。
 
@@ -188,7 +188,7 @@ target realization
 Business Action != Application Function
 ```
 
-業務行為には、manual、physical、conversation、external system、Application Pattern、Capability、unresolved等の実現があり得ます。したがって、Application Function参照を持たないBusiness Actionも正常な状態です。
+業務上の行為は、手作業、物理的な作業、対話、外部システム、アプリケーションの型や機能などによって実現されることも、実現方法が未解決のこともあります。そのため、アプリケーションの機能への参照を持たない業務上の行為も認めます。
 
 一つのFunctionが複数の業務文脈から利用されたり、一つの業務行為が複数Functionを利用したりできるN:M性を保持します。
 
@@ -227,7 +227,7 @@ Procedure
 └─ completion / continuation
 ```
 
-これはarchitecture vocabularyであり、現時点の固定Canonical schemaではありません。特にoptional Data / Relation等の語彙が存在することは、current minimum authoring contractへdirect ref fieldを追加する根拠ではありません。
+これは設計を説明するための語彙であり、現時点で固定した正本のスキーマではありません。特に、任意のデータや関係を表す語彙があることだけでは、現行の最小記述契約に直接参照する項目を追加する根拠にはなりません。
 
 Procedureをdurable Canonical identityにするか、traceable derived artifactで足りるかはReference実験から判断します。
 
@@ -256,7 +256,7 @@ Derived Procedural Knowledgeやそのgraph / indexを削除・再生成しても
 
 ## 8. Manual workをfirst-classな業務意味として残す
 
-電話、対話、現物確認、組織判断、外部承認等が実際の業務に含まれるなら、それを直接表現できる必要があります。手作業をmodel上の欠陥や自動化待ちの穴とはみなしません。
+電話、対話、現物確認、組織での判断、外部承認などが実際の業務に含まれるなら、それらを直接表現できる必要があります。手作業は、モデルの欠陥や自動化されていない不足部分とはみなしません。
 
 また、`Validation PASS != Business Approval` です。業務判断をValidationへ置き換えるのは、accepted semantic contractが明示した場合だけです。
 
@@ -335,7 +335,7 @@ unresolved
 
 ## 11. Intention / system result / actuality / Business acceptanceを分ける
 
-業務では「指示した」「systemが成功した」「現実に起きた」「業務上受け入れた」が一致しない場合があります。
+業務では、「指示した」「システムの処理が成功した」「現実に起きた」「業務上受け入れた」が一致しない場合があります。
 
 ```text
 Business intention / instruction
@@ -416,7 +416,7 @@ Business condition
 
 現在はHandoffへEvidence fieldを追加しません。second realistic Referenceでconditionだけではreview上lossyになる場合、Handoff schemaを拡張する前に既存Source / Provenance / Evidence mechanismでtrace可能かを確認します。
 
-## 14. 三視点のcross-check
+## 14. 三つの視点による相互確認
 
 Architectureとして少なくとも次を確認します。
 
@@ -437,7 +437,7 @@ unresolved
 
 を区別します。これはdiagnostic severityの固定enumではありません。
 
-## 15. Matrixはcross-check用derived Projectionとする
+## 15. 対応表は相互確認のための派生表示とする
 
 業務行為と機能、Data、Procedure等の対応をMatrixとして可視化することは、cross-checkに有効です。ただしMatrix自体を第二のsource of truthにはしません。
 
@@ -454,9 +454,9 @@ Data / Relation × impacted Procedure / View
 
 Matrix上では `derived fact` / `human residual explanation` / `unknown` を区別し、名称の類似だけからunknownを自動補完しません。
 
-Matrixの空欄も自動的な「なし」ではありません。exact traceが無いのか、not applicableなのか、unresolvedなのかを必要に応じて区別します。
+対応表の空欄も、自動的に「関係なし」を意味するわけではありません。直接の追跡情報がないのか、対象外なのか、未解決なのかを必要に応じて区別します。
 
-## 16. Editorはconnected meaningの高密度Projectionとする
+## 16. 編集画面では関連する意味をまとめて表示する
 
 EditorはData、Relation、Rule、View、Application intent、Procedure、Source、Evidenceの関係を局所的に追える必要があります。
 
@@ -484,7 +484,7 @@ Driverが実行するのはsystem-realizableな部分であり、Business Proced
 
 Driver execution Evidenceが得られても、manual / physical / external Actionが自動的に実行済みになるわけではありません。
 
-## 18. Business meaningとTarget-neutral Presentationを分ける
+## 18. 業務上の意味と実行先に依存しない表示を分ける
 
 具体的なWeb component、Wails API、HTML template、mobile widgetをBusiness meaningへ直接埋め込みません。
 
@@ -502,13 +502,13 @@ Target-neutral interaction intent
 
 Target差はTarget CapabilityとExecution / Trust Profileへ置きます。
 
-## 19. 時間軸はopt-inの業務dimensionとする
+## 19. 時間軸は必要な業務で明示的に扱う
 
 Event順序、validity、history、lead time、waiting time、bottleneck、temporal resource use等が必要な業務では時間軸を明示します。一方、通常の業務へEvent Sourcing / Bitemporal architectureやDistributed eventual consistencyを一律導入しません。
 
 時系列上の前後関係だけでBusiness Handoffや責任境界を生成しません。
 
-## 20. Referenceは学習・圧力コンテンツとする
+## 20. 参照例は学習と設計上の検証に使う
 
 Referenceはtechnical fixtureだけでなく、学習例、platform pressure test、design-review target、regression Evidenceを兼ねられることを目指します。
 
@@ -534,7 +534,7 @@ authoritative sourceへ戻って修正
 
 一つのReferenceが動くことだけから汎用性を主張しません。異なるdomain、規模、Data構造、Business Procedure、Target / Provider条件を持つ複数Referenceによって、どの範囲までTEIの設計体系が成立するかを反証可能な形で広げます。
 
-## 21. AIはcritic / proposerでありauthorityではない
+## 21. AIは問題の指摘と提案を担い、決定権限は持たない
 
 AIはExisting knowledge探索、cross-reference候補、Procedure草案、Matrix / graph / UI Projection生成、不足検出、unresolved question提示を支援できます。
 
@@ -563,7 +563,7 @@ Identity / Type / Relation / Expression / Constraint / Lifecycle / Provenance等
 
 外部Referenceは「その概念が存在する」という証明ではなく、「どの設計失敗を避けるためにその観点が必要か」を問い直す材料として使います。
 
-## 23. 未解決Evidence question
+## 23. 検証根拠に関する未解決の問い
 
 - **O-01 Procedure identity:** traceable derived Procedureでaccepted business meaningを保持できるか。
 - **O-02 Business Flow:** runtime Workflow Engine化せず表す最小構造は何か。
@@ -582,7 +582,7 @@ Identity / Type / Relation / Expression / Constraint / Lifecycle / Provenance等
 
 ## 24. 現行TEI文書との関係
 
-この文書は次と合わせて読みます。
+この文書は、次の資料と合わせて読みます。
 
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`
