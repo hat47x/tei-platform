@@ -24,16 +24,18 @@ type ReviewPacket struct {
 }
 
 type ReviewIssue struct {
-	ID             string   `json:"id"`
-	Stage          string   `json:"stage"`
-	FrameIDs       []string `json:"frameIds"`
-	RelationID     string   `json:"relationId"`
-	SourceRecordID string   `json:"sourceRecordId"`
-	Result         string   `json:"result"`
-	Reason         string   `json:"reason"`
-	Question       string   `json:"question"`
-	EvidenceNeeded []string `json:"evidenceNeeded"`
-	ReviewTarget   string   `json:"reviewTarget"`
+	ID                string   `json:"id"`
+	Stage             string   `json:"stage"`
+	FrameIDs          []string `json:"frameIds"`
+	RelationID        string   `json:"relationId"`
+	SourceRecordID    string   `json:"sourceRecordId"`
+	MatchedTargetIDs  []string `json:"matchedTargetIds,omitempty"`
+	PossibleTargetIDs []string `json:"possibleTargetIds,omitempty"`
+	Result            string   `json:"result"`
+	Reason            string   `json:"reason"`
+	Question          string   `json:"question"`
+	EvidenceNeeded    []string `json:"evidenceNeeded"`
+	ReviewTarget      string   `json:"reviewTarget"`
 }
 
 // Review builds a new projection from its input rather than trusting a
@@ -76,9 +78,11 @@ func reviewProjection(input Input, projection Projection) ReviewPacket {
 			byID[id] = len(packet.Issues)
 			packet.Issues = append(packet.Issues, ReviewIssue{
 				ID: id, Stage: slide.Stage, FrameIDs: []string{slide.ID},
-				RelationID:     finding.RelationID,
-				SourceRecordID: finding.SourceRecordID,
-				Result:         finding.Result, Reason: finding.Reason,
+				RelationID:        finding.RelationID,
+				SourceRecordID:    finding.SourceRecordID,
+				MatchedTargetIDs:  append([]string(nil), finding.MatchedTargetIDs...),
+				PossibleTargetIDs: append([]string(nil), finding.PossibleTargetIDs...),
+				Result:            finding.Result, Reason: finding.Reason,
 				Question: question, EvidenceNeeded: needed,
 				ReviewTarget: target,
 			})

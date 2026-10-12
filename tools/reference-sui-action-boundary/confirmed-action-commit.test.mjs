@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ActionConfirmationError, createConfirmedActionCommit } from './confirmed-action-commit.mjs';
+import { ActionCommitError, createJSONActionDispatcher } from './json-action-dispatch.mjs';
 
 const base = { protocolVersion: '1', applicationID: 'sui', resourceID: 'doc/1', actionID: 'sui.move', expectedRevision: 'r1', payload: { cardId: 'a', x: 20, y: 40 } };
 const persisted = { applicationID: 'sui', resourceID: 'doc/1', revision: 'r2', value: { cards: [{ id: 'a', x: 20, y: 40 }], islands: [{ id: 'i', cardIds: ['a'] }], reviewAttribution: { a: 'human' } } };
@@ -36,13 +37,77 @@ test('local stale origin before dispatch blocks all side effects', async () => {
   assert.deepEqual(h.state.record, []);
 });
 
-test('server denial or conflict leaves local state untouched and does not retry', async () => {
-  for (const code of ['action_denied', 'revision_conflict']) {
+test('definite protocol rejection leaves local state untouched and does not retry', async () => {
+  for (const [code, status] of [
+    ['action_denied', 403], ['revision_conflict', 409],
+    ['invalid_payload', 400], ['request_origin_denied', 403],
+  ]) {
     let attempted = 0;
-    const h = harness({ dispatchCommit: async () => { attempted++; throw Object.assign(new Error(code), { code }); } });
-    await assert.rejects(h.controller(base), { code });
+    const h = harness({
+      dispatchCommit: async () => { attempted++; throw new ActionCommitError(code, status); },
+    });
+    await assert.rejects(h.controller(base), (error) =>
+      error instanceof ActionCommitError && error.code === code && error.status === status);
     assert.equal(attempted, 1);
     assert.deepEqual(h.state.record, []);
+    assert.equal(h.state.applications, 0);
+  }
+});
+
+test('unknown remote outcome never triggers readback, local apply or automatic replay', async () => {
+  const failures = [
+    () => { throw new TypeError('network disconnected after write'); },
+    () => { throw new ActionCommitError('execution_failed', 500); },
+    () => { throw new ActionCommitError('invalid_response', 200); },
+    () => { throw new ActionCommitError('unrecognized_error', undefined); },
+    () => { throw new ActionCommitError('action_denied', 500); },
+    () => { throw Object.assign(new Error('fake denial'), { code: 'action_denied', status: 403 }); },
+  ];
+  for (const app of ['sui', 'inventory']) {
+    for (const fail of failures) {
+      let attempted = 0;
+      const h = harness({
+        dispatchCommit: async () => { attempted++; fail(); },
+      });
+      await assert.rejects(h.controller({ ...base, applicationID: app }),
+        failure('commit_outcome_unknown'));
+      assert.equal(attempted, 1);
+      assert.equal(h.state.reads, 0);
+      assert.equal(h.state.applications, 0);
+      assert.equal(h.state.record.length, 0);
+    }
+  }
+});
+
+test('real JSON dispatcher preserves only verified pre-write HTTP denials', async () => {
+  for (const [status, code] of [[403, 'action_denied'], [409, 'revision_conflict'], [400, 'invalid_payload']]) {
+    let networkCalls = 0;
+    const dispatchCommit = createJSONActionDispatcher('/actions/commit', async (_path, request) => {
+      networkCalls++;
+      assert.equal(JSON.parse(request.body).resourceID, base.resourceID);
+      return { ok: false, status, json: async () => ({ protocolVersion: '1', error: code }) };
+    });
+    const h = harness({ dispatchCommit });
+    await assert.rejects(h.controller(base), (error) =>
+      error instanceof ActionCommitError && error.code === code && error.status === status);
+    assert.equal(networkCalls, 1);
+    assert.equal(h.state.applications, 0);
+  }
+});
+
+test('real dispatcher treats lost post-write acknowledgement as uncertain for both applications', async () => {
+  for (const applicationID of ['sui', 'inventory']) {
+    let serverWrites = 0;
+    const dispatchCommit = createJSONActionDispatcher('/actions/commit', async (_path, request) => {
+      const intent = JSON.parse(request.body);
+      assert.equal(intent.applicationID, applicationID);
+      serverWrites++;
+      throw new Error('socket closed after the remote store committed');
+    });
+    const h = harness({ dispatchCommit });
+    await assert.rejects(h.controller({ ...base, applicationID }), failure('commit_outcome_unknown'));
+    assert.equal(serverWrites, 1);
+    assert.equal(h.state.reads, 0);
     assert.equal(h.state.applications, 0);
   }
 });
@@ -95,8 +160,20 @@ test('failed application of acknowledged snapshot is not reported as a server ro
 
 test('inconsistent commit revision never reads resource', async () => {
   const h = harness({ dispatchCommit: async () => null });
-  await assert.rejects(h.controller(base), failure('invalid_commit_result'));
+  await assert.rejects(h.controller(base), failure('commit_outcome_unknown'));
   assert.deepEqual(h.state.record, []);
+});
+
+test('missing protocol version or null payload cannot reach the dispatcher', async () => {
+  const h = harness();
+  for (const value of [
+    { ...base, protocolVersion: '2' },
+    { ...base, protocolVersion: undefined },
+    { ...base, payload: null },
+  ]) {
+    await assert.rejects(h.controller(value), TypeError);
+  }
+  assert.equal(h.state.writes, 0);
 });
 
 test('configuration or identity missing fails before network', async () => {

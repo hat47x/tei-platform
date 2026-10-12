@@ -71,6 +71,42 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 		if !inString && (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t') {
 			continue
 		}
+		// Parse valid Unicode escape spellings without materializing decoded
+		// strings. A surrogate pair occupies 12 source bytes but encodes as
+		// one four-byte UTF-8 scalar, which matters at the exact byte limit.
+		if inString && !escaped && ch == '\\' && i+1 < len(raw) {
+			if raw[i+1] == 'u' && i+6 <= len(raw) {
+				unit, ok := jsonHex16(raw[i+2 : i+6])
+				if ok {
+					encoded := sourceUnicodeEscapeSize(unit)
+					consumed := 6
+					if unit >= 0xd800 && unit <= 0xdbff && i+12 <= len(raw) &&
+						raw[i+6] == '\\' && raw[i+7] == 'u' {
+						low, valid := jsonHex16(raw[i+8 : i+12])
+						if valid && low >= 0xdc00 && low <= 0xdfff {
+							encoded = 4
+							consumed = 12
+						}
+					}
+					if encoded > 0 {
+						size += encoded
+						if size > b.remaining {
+							return fmt.Errorf("serialized size limit exceeded")
+						}
+						i += consumed - 1
+						continue
+					}
+				}
+			} else if raw[i+1] == '/' {
+				// The JSON escape \\/ is emitted by encoding/json as /.
+				size++
+				if size > b.remaining {
+					return fmt.Errorf("serialized size limit exceeded")
+				}
+				i++
+				continue
+			}
+		}
 		// The expansion estimate remains conservative for malformed JSON;
 		// ParseJSON is responsible for rejecting invalid syntax.
 		encodedBytes := 1
@@ -108,6 +144,30 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 		}
 	}
 	return b.add(size)
+}
+
+// sourceUnicodeEscapeSize matches encoding/json's escaped string spelling.
+// Surrogate units are handled only as validated pairs by rawJSON.
+func sourceUnicodeEscapeSize(unit uint16) int {
+	switch unit {
+	case '"', '\\', '\b', '\f', '\n', '\r', '\t':
+		return 2
+	case '<', '>', '&', 0x2028, 0x2029:
+		return 6
+	}
+	if unit >= 0xd800 && unit <= 0xdfff {
+		return 0
+	}
+	if unit < 0x20 {
+		return 6
+	}
+	if unit < 0x80 {
+		return 1
+	}
+	if unit < 0x800 {
+		return 2
+	}
+	return 3
 }
 
 func (b *sourceSizeBudget) measure(v reflect.Value, depth int) error {

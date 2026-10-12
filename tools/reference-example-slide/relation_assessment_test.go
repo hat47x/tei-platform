@@ -2,6 +2,7 @@ package exampleslide
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -320,5 +321,172 @@ func TestInvalidStageCompletenessFails(t *testing.T) {
 	in.Example.Stages = []Stage{{ID: "later", CompleteTables: []string{"unknown"}}}
 	if _, err := Build(in); err == nil {
 		t.Fatal("invalid stage scope accepted")
+	}
+}
+
+func TestCompositeKeyKnownMismatchOverridesUnknownInEitherKeyOrder(t *testing.T) {
+	// One target matches the compound key. A second target has a missing
+	// component but is disqualified by another, definitely unequal component.
+	// Previously the second target made the entire relation "unresolved"
+	// whenever the missing component was encountered first.
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		in.Example.Base = append(in.Example.Base, Record{
+			ID:    "unrelated-partial-target",
+			Table: "parent",
+			Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"B"`),
+			},
+		})
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "supported" ||
+			len(finding.MatchedTargetIDs) != 1 ||
+			finding.MatchedTargetIDs[0] != "a" {
+			t.Fatalf("key order reverse=%t obscured known mismatch: %+v", reverse, finding)
+		}
+	}
+}
+
+func TestCompositeKeyPartiallyMatchingCandidateRemainsUnresolved(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		in.Example.Base = append(in.Example.Base, Record{
+			ID:    "potential-second-target",
+			Table: "parent",
+			Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"A"`),
+			},
+		})
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "unresolved" ||
+			finding.Reason != "unresolved-target-key" ||
+			len(finding.MatchedTargetIDs) != 1 {
+			t.Fatalf("potential match was incorrectly accepted: %+v", finding)
+		}
+	}
+}
+
+func TestCompositeKeyDisjointCandidatesDoNotProduceUnknown(t *testing.T) {
+	in := keyedInput()
+	in.Example.Base[0].Values["number"] = json.RawMessage(`"B"`)
+	delete(in.Example.Base[0].Values, "tenant")
+	finding := oneFinding(t, in)
+	if finding.Result != "unresolved" ||
+		finding.Reason != "target-absence-requires-business-review" ||
+		len(finding.MatchedTargetIDs) != 0 {
+		t.Fatalf("known disjoint record turned into uncertain match: %+v", finding)
+	}
+}
+
+func TestKnownOneCardinalityContradictionWinsOverUnknownCandidate(t *testing.T) {
+	in := keyedInput()
+	in.Example.CompleteTables = nil
+	duplicate := copyRecord(in.Example.Base[0])
+	duplicate.ID = "second-definite-match"
+	in.Example.Base = append(in.Example.Base, duplicate, Record{
+		ID:    "third-potential-match",
+		Table: "parent",
+		Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"A"`),
+		},
+	})
+	finding := oneFinding(t, in)
+	if finding.Result != "contradiction" ||
+		finding.Reason != "multiple-targets-for-one" ||
+		len(finding.MatchedTargetIDs) != 2 {
+		t.Fatalf("unresolved candidate hid an already proven contradiction: %+v", finding)
+	}
+}
+
+func TestCompositeKeyExplicitNullAndKnownMismatchAreOrderIndependent(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		in.Example.Base = append(in.Example.Base, Record{
+			ID:    "null-but-disjoint",
+			Table: "parent",
+			Values: map[string]json.RawMessage{
+				"tenant": json.RawMessage("null"),
+				"number": json.RawMessage(`"definitely-other"`),
+			},
+		})
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "supported" ||
+			len(finding.MatchedTargetIDs) != 1 ||
+			finding.MatchedTargetIDs[0] != "a" {
+			t.Fatalf("explicit null obscured known mismatch; reversed=%t: %+v", reverse, finding)
+		}
+	}
+}
+
+func TestTargetProvenanceDistinguishesMatchesUnknownsAndDisjointRecords(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		duplicate := copyRecord(in.Example.Base[0])
+		duplicate.ID = "another-match"
+		in.Example.Base = append(in.Example.Base,
+			duplicate,
+			Record{ID: "possible-match", Table: "parent", Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"A"`),
+			}},
+			Record{ID: "known-disjoint", Table: "parent", Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"B"`),
+			}},
+		)
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "contradiction" ||
+			finding.Reason != "multiple-targets-for-one" ||
+			!reflect.DeepEqual(finding.MatchedTargetIDs, []string{"a", "another-match"}) ||
+			!reflect.DeepEqual(finding.PossibleTargetIDs, []string{"possible-match"}) {
+			t.Fatalf("reverse=%v: mixed target evidence lost: %+v", reverse, finding)
+		}
+	}
+}
+
+func TestUnresolvedPotentialTargetRetainsCandidateRecordID(t *testing.T) {
+	in := keyedInput()
+	in.Example.Base = append(in.Example.Base, Record{
+		ID: "potential-target", Table: "parent",
+		Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"A"`),
+		},
+	})
+	finding := oneFinding(t, in)
+	if finding.Result != "unresolved" ||
+		finding.Reason != "unresolved-target-key" ||
+		!reflect.DeepEqual(finding.MatchedTargetIDs, []string{"a"}) ||
+		!reflect.DeepEqual(finding.PossibleTargetIDs, []string{"potential-target"}) {
+		t.Fatalf("unresolved candidate had no provenance: %+v", finding)
+	}
+}
+
+func TestDefiniteNonmatchDoesNotAppearInPossibleTargetIDs(t *testing.T) {
+	in := keyedInput()
+	in.Example.Base = append(in.Example.Base, Record{
+		ID: "unrelated", Table: "parent",
+		Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"B"`),
+		},
+	})
+	finding := oneFinding(t, in)
+	if finding.Result != "supported" ||
+		len(finding.PossibleTargetIDs) != 0 ||
+		!reflect.DeepEqual(finding.MatchedTargetIDs, []string{"a"}) {
+		t.Fatalf("disjoint candidate was treated as possible: %+v", finding)
 	}
 }

@@ -60,7 +60,7 @@ go test -race -count=1 ./reference/effect-fence
 
 ## 未成立の事項と次の作業
 
-1. 既存の認可Capability、BindingおよびDriverとの実接続。認証済み主体を偽装せず、実際のGrantとScopeを照合する。
+1. 既存の認可Capabilityの結果と書込み要求の厳密な照合は、参照用の`PrepareWithLegacyAuthorization`で着手済み。残るのはBinding／Driver／複数実行先の認証済み文脈との実接続、そして認可版を含む実Providerの確定境界への接続。
 2. 永続的な保存先を一つ選び、トランザクションまたは条件付き更新で権限版・対象版・確定記録を照合する。権限版を別Storeでしか読めない場合は「同一確定境界で保証できない」と明示する。
 3. 権限失効、主体リンク変更、Store障害、認可Provider障害、取消、タイムアウト後の不明状態を区別した共通適合性試験。監査記録と機密情報の扱いも確認する。
 4. CLIとWebから同一のAdapterに到達する実試験。各経路の認証と実行文脈の検査を省略しない。
@@ -153,7 +153,7 @@ GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-
 GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含むGo競合試験
-CGO_ENABLED=1 GOENV=off GOWORK=off GO111MODULE=off \
+CGO_ENABLED=1 GOENV=off GOWORK=off \
   go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含む静的検査
@@ -172,3 +172,70 @@ Goの`Permit`は、発行した保存先インスタンスと結び付けまし�
 GoからSQLiteへ接続する試験では、操作の事前検査後に**認可表を参照できない状態**を作り、確定処理が業務上の拒否（`denied`）や成功を返さず、実行エラーを返すことを確認します。この障害では更新も確定記録も残りません。表を復旧し、改めて認可版を取得した操作は確定できます。
 
 この試験は模擬認可表が属するSQLiteファイルの障害を扱います。実際の認可サービス停止、ネットワーク分断、外部APIへの送信結果が不明な障害を再現したものではありません。結果が不明な外部副作用を「何も起きなかった」と推定しないことが、別途必要です。
+
+## 既存認可の結果を受け取る参照接続口
+
+`legacy_authorization.go`の`PrepareWithLegacyAuthorization`は、既存の`security.authorize`を再利用し、主体・操作・対象が完全に一致する許可だけを`MemoryStore`の準備処理へ渡します。既存の認可規則は複製しません。入力主体と認証済み主体が異なる場合、認可アダプターを呼ぶ前に拒否します。
+
+既存認可が返す許可の型、機能ID、結果形式、三つの識別値を検査します。認可の拒否を業務上の拒否として扱い、認可サービスの障害や契約違反を実行エラーとして区別します。拒否理由の内部情報は公開しません。
+
+既存の利用者検索が**別の主体のレコードを返す不整合**も防ぐため、`internal/security/legacyauthorization/authorization.go`に主体IDの再照合を追加しました。契約違反の場合は、役割規則へ進まず実行エラーとします。
+
+この接続口は、永続的な原子性の実装ではありません。既存の`AuthorizationGrant`に認可版はなく、メモリ内の模擬権限と実際の認可正本は結び付いていません。永続保証を要求する処理は引き続き`GuaranteeUnavailableError`で停止します。
+
+対象の試験は次のように実行します。いずれも**変更範囲の検証**であり、リポジトリ全体の健全性検証ではありません。
+
+```bash
+go test -race -count=10 ./reference/effect-fence ./internal/security/legacyauthorization
+go vet ./reference/effect-fence ./internal/security/legacyauthorization
+```
+
+[認可結果と確定境界の接続メモ](INTEGRATION.md)に、今回成立した部分と実Providerへ持ち越した条件をまとめています。
+
+### 認証後の無効化・期限切れを、新しい認可判断へ反映する
+
+認証と認可の両アダプターで、`legacyauth.User.AccessDenialAt`によりアカウントの無効化、有効期間、ロック状態を同じ規則で評価します。ログイン後にアカウントが無効化された場合でも、その後の`security.authorize`は役割を評価する前に拒否します。`PrepareWithLegacyAuthorization`を使う新しい操作の準備にも、この拒否が適用されます。
+
+検証対象には`internal/security/legacyauth`も加わります。
+
+```bash
+go test -race -count=10 ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+go vet ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+```
+
+この確認は**認可時点の状態を再評価する**ものであり、認可後に起きた失効と書込み確定の原子性は実証しません。権限版・主体リンク版を実保存先で同時に照合する条件は引き続き未完成です。
+
+## 任意の実SQLite試験：認可根拠の版変更
+
+実SQLiteの試験に、主体リンク・所属・認可規則の**3種類の版条件**を加えました。
+
+`RequireAuthorityDependencies()`を指定した試験用の接続では、この3種類すべての有効な版がなければ操作を準備できません。`SetAuthorityDependency()`で別接続から版を更新・失効させた場合は、書込み確定のトランザクション内で比較して拒否します。許可が継続する規則の改版も、古い版を使った操作には適用されません。
+
+追加した`sqlite_authority_dependencies_test.go`は、失効・改版・版の欠落・版の単調増加・確定済み操作の再送・別接続の並列競合を扱います。実行コマンドは既存のSQLite連携試験と同じです。
+
+```bash
+CGO_ENABLED=1 GOENV=off GOWORK=off \
+  go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
+```
+
+これは**同一SQLiteファイルに置いた模擬版情報**の実証であり、実認可サービスの正本、役割や主体リンクの実際の更新経路と同期した証拠ではありません。通常ビルドへのSQLite依存はありません。詳細と残る設計条件は[接続メモ](INTEGRATION.md)を参照してください。
+
+実SQLiteのGo試験は専用の[変更範囲CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)でも自動実行します。通常のGoビルドにはSQLite依存を追加しません。
+
+## 版付き許可を既存認可から受け取る
+
+`security.authorize`に任意の`EpochReader`を接続できるようにしました。従来のロール判断を維持しながら、主体リンク・所属・認可規則の版を判断前後で照合し、一致する場合だけ許可結果に版証拠を含めます。版の変化は拒否、版の読取り障害や欠落は実行エラーとし、版を持たない従来の許可には永続的な原子性を主張しません。
+
+試験用SQLiteの`PrepareWithVersionedAuthorization`は、正本識別子と三つの版がSQLite側の値と一致することを、**確定済み結果の再送を返すより前**に確認します。準備後も確定時に同じ版を再照合します。
+
+専用CIでは、SQLite内の利用者レコードを既存認可規則が読み取る試験と、そのレコードのロール変更と所属版を一つのトランザクションで更新する試験を行います。実認可正本との統合や製品用DBアダプターの完成とは区別してください。詳細は[接続メモ](INTEGRATION.md)を参照してください。
+
+## 利用者変更と版更新のDBトリガー検証
+
+実SQLiteの追加試験では、ロールや無効状態の変更、利用者の追加・削除が行われると、DBトリガーが同じトランザクション内で所属版を改版します。版更新をアプリケーション側で呼び忘れる経路を試験し、欠落した版、整数上限、版更新障害では利用者変更を拒否します。
+
+同じ主体が複数の認可範囲を持つ場合も、それぞれの版を更新します。変更が先に確定したときは、いずれの古いPermitも書込みできません。認可正本の変更と書込みの並列実行も、実SQLiteの別接続で検証します。
+
+専用の[実SQLite CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)で、`tei_sqlite_reference`ビルド条件のGo競合試験として実行します。通常のTEI実行ファイルにはSQLiteやcgoを追加しません。
+
+このDBトリガーは**試験用スキーマへの対策**です。実際の認可正本の変更経路がすべて版更新を行う保証、実運用Providerの導入、外部認可サービスの整合性は未成立です。

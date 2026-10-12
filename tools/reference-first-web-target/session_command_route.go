@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"tei/internal/composition"
 	"tei/internal/realization"
 	"tei/internal/security/legacyauthorization"
 	"tei/internal/semantic/capabilityinvoke"
@@ -36,6 +37,18 @@ type protectedSessionCommandConfig struct {
 	SubjectLinks  webcomposition.SubjectLinkLookup
 	AccountNow    func() time.Time
 	Audit         func(webcomposition.AuditRecord)
+	// SelectedAction is an optional trusted Host binding, never sourced from
+	// request payload or an untrusted plugin declaration.
+	SelectedAction *selectedSessionActionConfig
+}
+
+// Only the Composition selection changes here: all registered providers
+// invoke the same existing canonical Action Runner in this reference target.
+// This does not demonstrate interchangeable physical Action implementations.
+type selectedSessionActionConfig struct {
+	Coordinator     *composition.Coordinator
+	ContractVersion string
+	ProviderDigests map[string]string
 }
 
 func withProtectedSessionCommand(config protectedSessionCommandConfig) webTargetOption {
@@ -81,6 +94,20 @@ func (s *webTargetServer) configureProtectedSessionCommand() error {
 	if err != nil {
 		return fmt.Errorf("session command authorization cannot be constructed: %w", err)
 	}
+	invoke := http.Handler(http.HandlerFunc(s.handleProtectedSessionCommand))
+	if selected := config.SelectedAction; selected != nil {
+		registered := make([]webcomposition.SelectedActionProvider, 0, len(selected.ProviderDigests))
+		for providerID, digest := range selected.ProviderDigests {
+			registered = append(registered, webcomposition.SelectedActionProvider{
+				ProviderID: providerID, ArtifactDigest: digest, Invoke: invoke,
+			})
+		}
+		invoke, err = webcomposition.NewSelectedActionInvoker(
+			selected.Coordinator, "order_entry.submit_order", selected.ContractVersion, registered)
+		if err != nil {
+			return fmt.Errorf("session command selection cannot be constructed: %w", err)
+		}
+	}
 	handler, err := webcomposition.NewHost(webcomposition.Policy{
 		Path:      "/scenario/session-submit",
 		Method:    http.MethodPost,
@@ -90,7 +117,7 @@ func (s *webTargetServer) configureProtectedSessionCommand() error {
 		VerifySession: config.VerifySession,
 		VerifyCSRF:    config.VerifyCSRF,
 		Authorize:     authorize,
-		Invoke:        http.HandlerFunc(s.handleProtectedSessionCommand),
+		Invoke:        invoke,
 		Audit:         config.Audit,
 	})
 	if err != nil {

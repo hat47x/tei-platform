@@ -6,20 +6,42 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math/rand"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+// Read the authoritative builder program from the repository rather than
+// recreating its transform AST in Go.
+func repositoryBudgetSource(t *testing.T, name string) Source {
+	t.Helper()
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("resolve transform test source path")
+	}
+	raw, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "..", "..", "..", "reference", "plugin-self-build", "builder-sources", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source, err := ParseSourceJSON(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return source
+}
 
 func TestSourceSizePreflightMatchesCanonicalJSONEncoding(t *testing.T) {
 	cases := []struct {
 		name   string
 		source Source
 	}{
-		{name: "source realizer", source: TransformSourceRealizerV1()},
-		{name: "plugin package", source: PluginPackageSourceV1()},
+		{name: "source realizer", source: repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")},
+		{name: "plugin package", source: repositoryBudgetSource(t, "plugin-package-v1.transform.json")},
 	}
-	withEscapes := TransformSourceRealizerV1()
+	withEscapes := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 	withEscapes.Program.Output = Expr{
 		Op:      OpLiteral,
 		Literal: json.RawMessage("\"\\u2028<>&\\\\\""),
@@ -55,13 +77,13 @@ func TestSourceSizePreflightMatchesCanonicalJSONEncoding(t *testing.T) {
 }
 
 func TestSourceSizePreflightBoundsCyclesAndUnboundedStrings(t *testing.T) {
-	large := TransformSourceRealizerV1()
+	large := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 	large.Identity.ContractVersion = strings.Repeat("x", MaxSerializedSourceBytes)
 	if err := sourceSerializedSize(large, MaxSerializedSourceBytes-1); err == nil {
 		t.Fatal("unbounded string escaped preflight")
 	}
 
-	cyclic := TransformSourceRealizerV1()
+	cyclic := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 	p := &Expr{Op: OpSelectField, Field: "next"}
 	p.From = p
 	cyclic.Program.Output = *p
@@ -85,7 +107,7 @@ func TestSourceSizePreflightRejectsExpandedRawLiteralsBeforeNormalization(t *tes
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := TransformSourceRealizerV1()
+			source := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 			source.Program.Output = Expr{Op: OpLiteral, Literal: tc.literal}
 			if err := sourceSerializedSize(source, MaxSerializedSourceBytes-1); err == nil {
 				t.Fatal("preflight should reject literal whose canonical form expands beyond 8 MiB")
@@ -95,7 +117,7 @@ func TestSourceSizePreflightRejectsExpandedRawLiteralsBeforeNormalization(t *tes
 }
 
 func TestSourceSizePreflightBoundsRawLiteralElements(t *testing.T) {
-	source := TransformSourceRealizerV1()
+	source := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 	source.Program.Output = Expr{
 		Op:      OpLiteral,
 		Literal: json.RawMessage("[" + strings.Repeat("0,", 1_000_001) + "0]"),
@@ -129,7 +151,7 @@ func TestSourceSizePreflightNeverUnderestimatesCanonicalLiteral(t *testing.T) {
 		} else if seed%3 == 1 {
 			raw = "[" + raw + ", true, null]"
 		}
-		source := TransformSourceRealizerV1()
+		source := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 		source.Identity.ContractVersion = strconv.Itoa(seed + 1)
 		source.Program.Output = Expr{Op: OpLiteral, Literal: json.RawMessage(raw)}
 		normalized, err := NormalizeSource(source)
@@ -154,8 +176,8 @@ func TestCanonicalSourceMatchesExistingNormalizedEncoding(t *testing.T) {
 		name   string
 		source Source
 	}{
-		{name: "source realizer", source: TransformSourceRealizerV1()},
-		{name: "plugin package", source: PluginPackageSourceV1()},
+		{name: "source realizer", source: repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")},
+		{name: "plugin package", source: repositoryBudgetSource(t, "plugin-package-v1.transform.json")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// Keep the pre-refactor encoding as an independent byte oracle:
@@ -210,7 +232,7 @@ func TestCanonicalSourceMatchesExistingNormalizedEncoding(t *testing.T) {
 
 func TestSourceSizePreflightBoundsUnnormalizedLiteralBytes(t *testing.T) {
 	t.Run("one whitespace-heavy literal", func(t *testing.T) {
-		source := TransformSourceRealizerV1()
+		source := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 		source.Program.Output = Expr{
 			Op:      OpLiteral,
 			Literal: json.RawMessage("1" + strings.Repeat(" ", MaxSerializedSourceBytes)),
@@ -220,7 +242,7 @@ func TestSourceSizePreflightBoundsUnnormalizedLiteralBytes(t *testing.T) {
 		}
 	})
 	t.Run("cumulative literal bytes", func(t *testing.T) {
-		source := TransformSourceRealizerV1()
+		source := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 		spaces := strings.Repeat(" ", MaxSerializedSourceBytes/2)
 		actual := Expr{Op: OpInput, Name: "transformSource"}
 		source.Program.Output = Expr{
@@ -265,7 +287,7 @@ func TestSourceSizePreflightRandomizedCanonicalJSON(t *testing.T) {
 		if i%3 == 0 {
 			raw = "[" + raw + ", null]"
 		}
-		source := TransformSourceRealizerV1()
+		source := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 		source.Program.Output = Expr{Op: OpLiteral, Literal: json.RawMessage(raw)}
 		normalized, err := NormalizeSource(source)
 		if err != nil {

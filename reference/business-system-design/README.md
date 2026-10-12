@@ -4,6 +4,16 @@
 
 現時点ではBusiness ProcedureをCanonical Workspaceのsource rootへ追加しません。
 
+## 一階層DFDの選択と変更候補
+
+[DFD変更候補の手順](DFD_EDIT_PROPOSAL_REFERENCE.md)には、図上で選択した要素と業務上の変更を結び付ける参照実装をまとめています。
+
+- `dfd-selected-edit-bridge.mjs`：投影、元の手順、レビュー案の内容が一致し、選択した対象と編集操作が一致した場合だけ、未受理の変更案を返します。
+- `dfd-selected-edit-cli.mjs`：入力四ファイルの指紋を実バイトで検証し、変更案を標準出力に返します。
+- `dfd-selected-edit-bridge.test.mjs`、`dfd-selected-edit-cli.test.mjs`：古い投影、別の選択対象、入力ファイルの変更などを拒否する試験です。
+
+いずれも表示と未受理の候補を扱います。Sourceの編集権限、業務仕様の採用、実行時の権限を付与する機構ではありません。
+
 ## `order-entry-business-procedure.json`
 
 `order_entry`の既存Application / Semantic identityを参照しつつ、Business側でしか持てないpurpose / trigger / actor候補 / manual actionを保持するReference authoring fixtureです。

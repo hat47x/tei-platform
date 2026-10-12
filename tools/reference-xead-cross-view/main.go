@@ -55,15 +55,14 @@ func buildCommandOutput(
 	contract []byte,
 	includeLocalProjection bool,
 ) (commandOutput, error) {
-	inspection, err := xeadsource.InspectWithContract(format, source, contract)
+	projection, err := xeadsource.BuildCrossViewProjection(format, source, contract)
 	if err != nil {
 		return commandOutput{}, err
 	}
-	projection, err := xeadsource.BuildCrossViewProjection(inspection)
+	accounting, err := xeadsource.CrossViewPublicAccounting(projection)
 	if err != nil {
 		return commandOutput{}, err
 	}
-	accounting := xeadsource.CrossViewPublicAccounting(projection)
 	output := commandOutput{Accounting: accounting}
 	if includeLocalProjection {
 		output.LocalOutputNotice = "local/private evidence: contains individual source tokens and cross-view relations; do not commit as public Reference Model evidence"

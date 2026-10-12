@@ -1,8 +1,8 @@
 # M0.24 別プロセス型プラグイン実行の準拠確認
 
-M0.24では、`BoundaryProcess`をインターフェース上の概念にとどめず、リポジトリからOSの子プロセスを実際に起動できるところまで接続します。
+M0.24では、`BoundaryProcess`をインターフェースの定義だけにとどめず、リポジトリ内の実装からOSの子プロセスを実際に起動できることを確認します。
 
-この準拠確認の対象は、**TEIのホストから子プロセスを呼び出し、JSONの応答を受け取る**最小限の信頼境界です。本番運用向けの隔離環境、高可用性のプロセス管理、別ホストからの再接続まで実装したことを意味しません。
+この準拠確認で確かめるのは、**TEIのホストが子プロセスを呼び出し、JSON形式の応答を受け取る**際の最小限の信頼境界です。本番用の隔離環境、障害に強いプロセス管理、別のホストからの再接続まで完成したことを示すものではありません。
 
 ## 実行境界
 
@@ -19,30 +19,30 @@ actual child process
   stderr → content is not copied into TEI error text
 ```
 
-`PluginRuntime.Command`は、この段階では単一の実行ファイル名またはパスを表します。シェルには渡さず、文字列を空白で分割して引数を推測することもしません。
+この段階の`PluginRuntime.Command`には、単一の実行ファイル名またはパスを指定します。シェルへ渡したり、文字列を空白で分割して引数を推測したりすることはありません。
 
-したがって、次のようなシェル固有の解釈を、TEIの実行時の契約へ暗黙に持ち込みません。
+そのため、次のようなシェル特有の文字列解釈を、TEIの実行時の仕様に暗黙に含めません。
 
-- pipe / redirect
-- variable expansion
-- glob
-- quote interpretation
+- パイプと入出力の転送
+- 環境変数などの展開
+- ワイルドカードによるファイル名の展開
+- 引用符の解釈
 - `sh -c` / `cmd /c`相当の解釈
 
 プラグインの起動に引数が必要になった場合は、シェルの構文解析を追加するのではなく、定義情報に引数を明示する構造を設ける方針です。
 
 ## 要求と応答の識別
 
-子プロセスには、既存の`runtime.Request`をJSON形式で渡します。
+子プロセスへは、既存の`runtime.Request`をJSON形式で渡します。
 
-応答を受け取った後の識別情報の検査には、登録管理側の既存の契約を使います。
+応答に含まれる識別情報は、プラグインの登録管理側で定めた規則に従って検査します。
 
-- protocol version
-- request ID
-- Plugin identity
-- Capability ID
-- descriptor fingerprint
-- response status
+- 通信規約の版
+- 要求の識別子
+- プラグインの識別情報
+- 機能の識別子
+- 記述情報の照合値
+- 応答の状態
 
 参照実装の結合テストでは、実際の子プロセスが偽のプラグイン識別情報を返した場合、登録管理側が拒否することを確かめます。
 
@@ -50,19 +50,19 @@ actual child process
 
 参照用の起動機構では、少なくとも次の状態を区別します。
 
-- executable start / exit failure
+- 実行ファイルの起動失敗・異常終了
 - context cancellation
-- malformed JSON response
-- 複数JSON valueを返すprotocol violation
-- response size超過
+- 不正なJSON形式の応答
+- 複数のJSON値を返す通信規約違反
+- 応答の大きさの上限超過
 
 処理の取り消しには`exec.CommandContext`を使い、直接起動した子プロセスが終了してから呼び出し元へ戻ります。
 
-ただし、子プロセスがさらに起動したプロセス群を、すべてのOSで完全に終了させる本番用の監督機構までは、この参照実装では保証しません。
+ただし、子プロセスが別のプロセスを起動した場合に、すべてのOSでそれらも確実に終了させる本番用の監督機構は、この参照実装の保証範囲外です。
 
 ## 標準出力の境界
 
-外部プロセスは、ホストから見れば信頼できない実行主体です。標準出力を無制限にメモリへ取り込むことはしません。
+外部プロセスは、ホストにとって信頼が確認できていない実行主体です。その標準出力を無制限にメモリへ取り込まないようにします。
 
 `StdioProcessLauncher.MaxResponseBytes`でJSON応答のサイズを制限します。値が0の場合も参照実装の既定値である8 MiBを適用し、上限を超える応答は解析前に拒否します。
 
@@ -76,12 +76,12 @@ actual child process
 
 異常終了時には、診断のため次だけを返します。
 
-- stderr byte count
-- stderr SHA-256
+- 標準エラー出力のバイト数
+- 標準エラー出力のSHA-256による照合値
 
-成功時のstderrもResponse protocolへ混ぜません。
+正常終了時の標準エラー出力も、応答の通信規約に混ぜません。
 
-これは外部プロセス自身のログを安全にする仕組みではありません。ホスト側で、エラーや来歴の記録に内容を不用意に転記しないための境界です。
+この機構が保護するのは、ホスト側のエラーや来歴の記録です。外部プロセス自身のログが安全になるわけではありません。
 
 ## 隔離環境との関係
 
@@ -91,9 +91,9 @@ actual child process
 
 したがって、
 
-- `sandbox required`なのに`SandboxLauncher`がない場合は従来どおり拒否
-- plain `Registry.Processes`経由の実行を`sandboxed=true`とは記録しない
-- `StdioProcessLauncher`の存在だけでOS sandbox実装済みとは主張しない
+- `sandbox required`が指定されているのに`SandboxLauncher`がなければ、従来どおり拒否する
+- 通常の`Registry.Processes`による実行を、`sandboxed=true`とは記録しない
+- `StdioProcessLauncher`があるだけで、OSの隔離機構を実装済みとは判断しない
 
 という境界を維持します。
 
@@ -125,7 +125,7 @@ lease / ownership cleanup
 
 `examples/process-plugin`は、このプログラムを`StdioProcessLauncher`から起動します。既存の`DeploymentExecutor`接続部を通じて、提供元に依存しない`executor.Command`を渡します。
 
-参照用のプロセスが返す`accepted`は、実行器が要求を受け付けたことを示すだけで、外部の状態が意図どおりになった証明ではありません。最終的な完了状態の確認は、従来どおり観測・検証根拠・整合確認の仕組みが担います。
+参照用プロセスが返す`accepted`は、実行器が要求を受け付けたことだけを示します。外部の状態が意図どおりに変わったことの証明ではありません。最終的な完了状態は、観測結果・検証根拠・整合性の確認によって別途確かめます。
 
 この例ではさらに`ValidateDeploymentInvocation`を呼び出し、プロセスの境界とプラグインの来歴が環境の計画と整合することを確かめます。
 
@@ -137,10 +137,10 @@ OSのプロセス識別子を`DurableInvocationHandle.RuntimeHandle`として自
 
 そのため、この準拠確認は次の機能の成立を意味しません。
 
-- Host restart後のPID reattach
-- cross-host process takeover
-- long-lived process manager durability
-- process lifecycleのHA保証
+- ホストの再起動後にプロセス識別子を使って再接続すること
+- 別のホストからプロセスの管理を引き継ぐこと
+- 長時間動くプロセス管理機構の継続性を保証すること
+- プロセスの生存期間を通じた高可用性の保証
 
 実行状態へ永続的に再接続するには、M0.22とADR-0005で定めた、内部構造を公開しない永続的な実行識別情報と、権限を伴う再接続の契約を満たす外部実行環境の接続部が必要です。
 
@@ -150,13 +150,13 @@ OSのプロセス識別子を`DurableInvocationHandle.RuntimeHandle`として自
 
 単体テストと結合テストでは、実際のテスト用実行ファイルを子プロセスとして起動し、次を確認します。
 
-- valid Request / Response round trip
-- successful stderrがprotocolへ混ざらない
-- malformed response拒否
-- oversized stdout拒否
-- non-zero exit時にstderr本文をHost errorへコピーしない
+- 正常な要求と応答の一往復
+- 正常終了時の標準エラー出力が応答に混入しないこと
+- 不正な応答を拒否すること
+- 上限を超えた標準出力を拒否すること
+- 異常終了時に標準エラー出力の本文をホスト側のエラーへ複製しないこと
 - context cancellation
-- forged response identityをRegistryが拒否
+- 偽の応答識別情報を登録管理側が拒否すること
 
 常設CIではさらに、
 
@@ -172,14 +172,14 @@ OSのプロセス識別子を`DurableInvocationHandle.RuntimeHandle`として自
 
 M0.24では、次の機能を実装済みとは扱いません。
 
-- production-grade OS sandbox
-- seccomp / namespace / Windows Job Object等のgeneric abstraction
-- Kubernetes / containerd等のdurable runtime integration
+- 本番運用向けのOS隔離環境
+- seccomp、名前空間、Windows Job Objectなどを共通に扱う抽象化
+- Kubernetesやcontainerdなど、継続的な実行環境との連携
 - cross-host reattach
-- long-lived plugin daemon protocol
-- streaming RPC
-- process pool
-- arbitrary shell command execution
-- plugin SDKの最終public API
+- 常駐型プラグインの通信規約
+- 応答を逐次受け取る遠隔呼び出し
+- プロセスの再利用を行う管理機構
+- 任意のシェル命令の実行
+- プラグイン開発用キットの最終的な公開API
 
 M0.24の目的は、別プロセスでの実行を抽象的なインターフェースだけで終わらせず、実際のOSプロセスでも、TEIの信頼・識別・来歴の境界が守られることを確かめることです。

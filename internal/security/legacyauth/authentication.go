@@ -100,17 +100,8 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	if user.CredentialRef == "" {
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy user %sにcredential参照がありません", input.LoginID)
 	}
-	if user.Disabled {
-		return denied("account_disabled"), nil
-	}
-	if !user.ValidFrom.IsZero() && now.Before(user.ValidFrom) {
-		return denied("not_yet_valid"), nil
-	}
-	if !user.ValidUntil.IsZero() && !now.Before(user.ValidUntil) {
-		return denied("expired"), nil
-	}
-	if !user.LockedUntil.IsZero() && now.Before(user.LockedUntil) {
-		return denied("account_locked"), nil
+	if reason := user.AccessDenialAt(now); reason != "" {
+		return denied(reason), nil
 	}
 	if a.Rule != nil {
 		allowed, reason, err := a.Rule.Evaluate(ctx, user, now)

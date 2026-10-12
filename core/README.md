@@ -14,6 +14,10 @@
 
 これらを機械的にまとめたものが、将来のコアになるわけではありません。既存実装の成立範囲は[実装状況](../docs/status.md)を参照してください。
 
+## 独立構築の確認
+
+合成基盤が他のTEIパッケージに依存せず試験できるかを調べるため、[隔離試験の手順](../plan/design/CORE_SUBPROJECT_ISOLATION_PROBE_2026-10.md)を用意しています。リポジトリのルートから`tools/check-core-isolation.sh`を実行します。これは現在の`internal/composition/`を一時的なモジュールへ複製して試すもので、`core/`への移管完了を意味しません。
+
 ## 構成の判断
 
 - [サブプロジェクト化の設計判断](../plan/adr/0033-core-and-plugin-subprojects.md)

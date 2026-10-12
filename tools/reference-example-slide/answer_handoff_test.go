@@ -320,3 +320,108 @@ func TestConfirmationIdentityStableAcrossPresentationReorder(t *testing.T) {
 		t.Fatal("presentation reordering needlessly invalidated confirmation identity")
 	}
 }
+
+func TestAnswerHandoffKeepsDerivedIssueAndSeparateTargetEvidence(t *testing.T) {
+	in, a := reviewAnswerFixture(t)
+	in.Example.Base = append(in.Example.Base,
+		Record{
+			ID: "possibly-matching", Table: "parent",
+			Values: map[string]json.RawMessage{"number": json.RawMessage("\"A\"")},
+		},
+		Record{
+			ID: "definitely-disjoint", Table: "parent",
+			Values: map[string]json.RawMessage{"number": json.RawMessage("\"B\"")},
+		},
+	)
+	in.Presentation.Frames = []Frame{
+		{ID: "last", Stage: "base"},
+		{ID: "first", Stage: "base"},
+	}
+	review, err := Review(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(review.Issues) != 1 || review.Issues[0].Reason != "unresolved-target-key" {
+		t.Fatalf("test setup has wrong review: %+v", review.Issues)
+	}
+	a.ReviewFingerprint = review.Fingerprint
+	a.Answers[0].Question.ID = review.Issues[0].ID
+	handoff, err := BindAnswers(in, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(handoff.Answers) != 1 {
+		t.Fatalf("incorrect handoff: %+v", handoff)
+	}
+	issue := handoff.Answers[0].SourceIssue
+	if issue == nil || !reflect.DeepEqual(*issue, review.Issues[0]) ||
+		!reflect.DeepEqual(issue.MatchedTargetIDs, []string{"a"}) ||
+		!reflect.DeepEqual(issue.PossibleTargetIDs, []string{"possibly-matching"}) ||
+		!reflect.DeepEqual(issue.FrameIDs, []string{"first", "last"}) {
+		t.Fatalf("handoff lost trusted review evidence: %+v", handoff)
+	}
+	encoded, err := json.Marshal(handoff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "definitely-disjoint") {
+		t.Fatalf("known mismatched target was presented as a candidate: %s", encoded)
+	}
+	// Answer data must not be allowed to inject an alternate issue. The
+	// source is always regenerated from the model and example.
+	if string(encoded) == "" || handoff.Answers[0].Status != "unverified" {
+		t.Fatal("handoff has incorrectly promoted an answer to authority")
+	}
+}
+
+func TestAuthoredHandoffDoesNotCreateRecordProvenance(t *testing.T) {
+	in := fixture(t)
+	review, err := Review(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := AnswerInput{
+		Schema:            answerSchema,
+		CaseID:            review.CaseID,
+		ModelRevision:     review.ModelRevision,
+		ReviewFingerprint: review.Fingerprint,
+		Answers: []AnswerEntry{{
+			Question: QuestionRef{Kind: "authored", ID: "residual"},
+			Response: "要調査", Disposition: "investigate",
+			Context: "検収", ClaimedBy: AnswerActor{Kind: "ai", ID: "assistant"},
+		}},
+	}
+	handoff, err := BindAnswers(in, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(handoff.Answers) != 1 || handoff.Answers[0].SourceIssue != nil ||
+		handoff.Answers[0].Status != "unverified" {
+		t.Fatalf("fabricated a derived issue for an authored question: %+v", handoff)
+	}
+}
+
+func TestAnswerProvenanceRemainsStableUnderFrameReordering(t *testing.T) {
+	in, a := reviewAnswerFixture(t)
+	in.Presentation.Frames = []Frame{
+		{ID: "z", Stage: "base"}, {ID: "a", Stage: "base"},
+	}
+	rev, err := Review(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.ReviewFingerprint = rev.Fingerprint
+	h1, err := BindAnswers(in, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Presentation.Frames[0], in.Presentation.Frames[1] =
+		in.Presentation.Frames[1], in.Presentation.Frames[0]
+	h2, err := BindAnswers(in, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h1, h2) {
+		t.Fatalf("display ordering changed the answer provenance: before=%+v after=%+v", h1, h2)
+	}
+}

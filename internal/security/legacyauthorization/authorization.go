@@ -3,6 +3,7 @@ package legacyauthorization
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"tei/internal/core"
 	"tei/internal/security/legacyauth"
@@ -34,6 +35,8 @@ type AuthorizationGrant struct {
 	SubjectID string
 	Action    string
 	Resource  string
+	// Epochs は任意の正本版証拠。nilの許可は永続的な原子性の根拠にできない。
+	Epochs *AuthorityEpochs `json:"epochs,omitempty"`
 }
 
 type AuthorizationDenial struct {
@@ -45,6 +48,10 @@ type AuthorizationDenial struct {
 type Adapter struct {
 	Store SubjectStore
 	Rule  Rule
+	// EpochReader がある場合だけ認可規則の評価前後で正本版を照合する。
+	EpochReader EpochReader
+	// Now は試験用の時刻注入。省略時は実行時の現在時刻を用いる。
+	Now func() time.Time
 }
 
 func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw any) (capabilityinvoke.BusinessResult, error) {
@@ -71,12 +78,38 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy authorization ruleが指定されていません")
 	}
 
+	var before *AuthorityEpochs
+	if a.EpochReader != nil {
+		version, err := a.EpochReader.ReadAuthorizationEpochs(ctx, input)
+		if err != nil {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の版を取得できません: %w", err)
+		}
+		if !version.valid() {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の版が不完全です")
+		}
+		before = &version
+	}
+
 	user, found, err := a.Store.FindBySubject(ctx, input.SubjectID)
 	if err != nil {
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy authorization用の利用者情報を取得できません: %w", err)
 	}
 	if !found {
 		return denied("not_authorized"), nil
+	}
+	// 保存先が別の主体のレコードを返した場合は、役割を評価せず停止する。
+	// 欠落・取り違えを業務上の拒否へ丸めず、保存先契約の障害として返す。
+	if user.SubjectID != input.SubjectID {
+		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy authorization subject storeの主体が要求と一致しません")
+	}
+	// 認証後に変更された利用者の無効化・期限・ロックを役割評価の前に反映する。
+	// この再判定は書込みの確定との原子性を意味しない。
+	now := time.Now()
+	if a.Now != nil {
+		now = a.Now()
+	}
+	if reason := user.AccessDenialAt(now); reason != "" {
+		return denied(reason), nil
 	}
 
 	allowed, reason, err := a.Rule.Evaluate(ctx, user, input.Action, input.Resource)
@@ -90,6 +123,19 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 		return denied(reason), nil
 	}
 
+	if before != nil {
+		after, err := a.EpochReader.ReadAuthorizationEpochs(ctx, input)
+		if err != nil {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の再照合に失敗しました: %w", err)
+		}
+		if !after.valid() {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の再照合結果が不完全です")
+		}
+		if *before != after {
+			return denied("authority_changed"), nil
+		}
+	}
+
 	return capabilityinvoke.BusinessResult{
 		Capability: AuthorizationCapability,
 		Mode:       capabilityinvoke.ResultOutcome,
@@ -98,6 +144,7 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 			SubjectID: input.SubjectID,
 			Action:    input.Action,
 			Resource:  input.Resource,
+			Epochs:    before,
 		},
 	}, nil
 }

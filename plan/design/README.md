@@ -1,54 +1,54 @@
 # 機能設計文書
 
-機能ごとの設計文書を置きます。対象は、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行境界をまとめた設計文書を置きます。採用前の案も、対象Issueと状態を冒頭に示してここで管理します。
+ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
-- 何を行うかと完了条件: GitHub Issues
-- なぜその方針を採ったか: [`../adr/`](../adr/README.md)
-- 何から進め、何をEvidenceとするか: [`../README.md`](../README.md)
-- 実装構造と技術境界のcurrent説明: [`../../docs/architecture.md`](../../docs/architecture.md)
-- 実装・Evidenceの現在地: [`../../docs/status.md`](../../docs/status.md)
-- 画面モック: [`mockups/`](mockups/README.md)
+- 作業内容と完了条件：GitHubのIssue
+- 方針を採用した理由：[`../adr/`](../adr/README.md)
+- 作業の順序と必要な検証根拠：[`../README.md`](../README.md)
+- 現行実装の構成と技術的な境界：[`../../docs/architecture.md`](../../docs/architecture.md)
+- 実装と検証根拠の現状：[`../../docs/status.md`](../../docs/status.md)
+- 画面の試作例：[`mockups/`](mockups/README.md)
 
-設計文書はIssueとADRの代わりではありません。作業の進行はIssue、採用した判断はADRが正本です。ここに置くのは、その二つだけでは分断される機能単位の設計本文です。小さい機能では新しい文書を作らず、Issue本文へ書きます。
+設計文書はIssueやADRの代わりにはなりません。作業の進行状況はIssue、採用した設計判断はADRを正本とします。ここには、それらの記録だけでは一つにまとまらない、機能単位の設計本文を置きます。小さな機能については新たな文書を作らず、Issue本文に記します。
 
-`docs/`との役割を分けます。`docs/`は実装済みの構成や利用方法を説明し、ここでは採用前の案や、変更に必要な機能設計を扱います。実装状況が変わったら、設計文書を現行構成の説明へ流用せず、`docs/architecture.md`を更新します。
+`docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
 
 ## 体裁
 
-新規追加時は[`docs/README.md`](../../docs/README.md)の「設計文書の基本体裁」に従い、冒頭で役割、正本との関係、対象範囲、現在の結論、根拠、非主張範囲を明らかにします。項目を埋めること自体を目的にはしません。
+新しい文書は[`docs/README.md`](../../docs/README.md)の「設計文書の基本体裁」に沿って作ります。冒頭で文書の役割、正本との関係、対象範囲、現在の結論、根拠、何を主張しないかを明らかにします。形式上の項目を埋めること自体を目的にはしません。
 
-状態は各設計文書の冒頭に書き、その文書自身を文書状態の正とします。この索引には可変な状態を重複記載しません。状態語彙も固定二択にはせず、その文書の性格に応じて、たとえば`実装済みの現行基線`、`実装前設計`、`評価待ち（未採用）`のように区別します。
+文書の状態は各設計文書の冒頭に記し、その文書自身を状態の正本とします。この索引には、変わり得る状態を重複して記載しません。状態を二択に固定せず、文書の性格に応じて`実装済みの現行基線`、`実装前設計`、`評価待ち（未採用）`などと区別します。
 
-ここで表すのは**文書の性格**です。Issueの進行状態、Gate判定、actual Evidenceの取得状況などの可変な現在地は、対応Issue、`docs/status.md`、Gate監査等を正とし、設計文書の状態行へ重複して持ちません。
+ここで示すのは**文書の性格**です。Issueの進行状況、判定段階の結果、実際に得られた検証根拠など、変化する状況は対応するIssue、`docs/status.md`、判定段階の監査記録などを正本とします。設計文書の状態欄には重複して記載しません。
 
 ## 一覧
 
 | 文書 | 対象 |
 | --- | --- |
-| [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md) | Application Patternの設計・実装基線（ISSUE-000005 / ADR-0017 / ADR-0018） |
-| [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) | 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計（ISSUE-000003 / ADR-0019） |
-| [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | CapabilityのBusiness Result / named OutcomeとExecution Errorの分離（ISSUE-000009 / ADR-0020） |
-| [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | Pattern解決からCapability実行、Query / Contract Query実行、Observationまでの実行境界（ISSUE-000006 / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） |
-| [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | Contract Query signature、SQL realization、executor Binding、provider runtimeの四層（ISSUE-000018〜ISSUE-000021 / ADR-0007 / ADR-0021） |
-| [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移をCanonicalな意味として定義・実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
-| [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026のcross-view照合をbounded proof obligationとしてDesign Synthesisの候補縮約へ接続する評価待ち設計 |
-| [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件単位のPlugin / UI Kit / 仕様Template / Architecture Profileの構成境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
-| [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | Capabilityのsemantic requestとHost注入のexecution contextを分離する評価待ち設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
-| [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIで既存の実装を生かしながらTEIへ移行するための設計基線。 |
-| [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、視点をまたぐ変更の適格性確認案。未採用の参照契約。 |
+| [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md) | アプリケーションの構成パターンの設計・実装基準（ISSUE-000005 / ADR-0017 / ADR-0018） |
+| [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) | 既存の認証仕様を保ち、認証・認可の機能へ接続する設計（ISSUE-000003 / ADR-0019） |
+| [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | 機能の業務結果・名前付きの結果と実行エラーを分離する設計（ISSUE-000009 / ADR-0020） |
+| [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | 構成パターンの解決から、機能と契約に基づく問い合わせの実行、観測までの境界（ISSUE-000006 / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） |
+| [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | 契約に基づく問い合わせの形式、SQLによる実現、実行器との対応付け、提供実装の実行基盤という四層（ISSUE-000018〜ISSUE-000021 / ADR-0007 / ADR-0021） |
+| [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
+| [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026の複数視点の照合を、対象を限定した証明上の条件として設計案の候補を絞り込む処理へ接続する、評価待ちの設計 |
+| [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件ごとのプラグイン、画面部品一式、仕様テンプレート、構成プロファイルの境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
+| [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | 機能に渡す意味上の要求と、ホストが注入する実行時の文脈を分ける、評価待ちの設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
+| [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
+| [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 
-## 関連Reference / Evaluation
+## 関連する参照事例と評価
 
 
-`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順は、後続のread-only実績に合わせてR1〜R6へ同期済みである。当初change / stale再評価として想定した論点は、R3〜R5を先に独立評価した後、R6 snapshot invalidationとして扱う。
+`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順序は、後続の読み取り専用の検証結果に合わせ、R1～R6へ反映済みです。当初、変更や古い状態の再評価として扱う予定だった論点は、R3～R5を先に個別に評価したうえで、R6のスナップショットの失効として扱います。
 
-R3の初期conceptual shapeにある`proposal_origin`はcurrent production field候補ではない。R5およびmixed-frontier refinementを優先し、candidate meaningとdiscovery trace / provenanceを別軸として読む。
+R3の初期構想にある`proposal_origin`は、現在の本番用フィールドの候補ではありません。R5と、異なる種類の候補が混在する場合の精緻化を優先し、候補が表す意味と、発見経路・出所の記録を別の観点で扱います。
 
-## Design Synthesisのpre-Gate-C停止点
+## 設計案の統合で判定段階C前に立ち止まる地点
 
-Design Synthesis / local cognitionのLane Dでは、Gate C前に安全に進められるread-only設計評価をR1〜R6、S1 / S2 frontier pressure、mixed-frontier context refinement、provider feasibility scope / outcome-classification pressure、S1〜S5 Acceptance素案まで実施した。
+設計案の統合とローカル認知を扱う作業領域Dでは、判定段階Cより前に安全に進められる読み取り専用の設計評価として、R1～R6、S1・S2の候補群の検証、異なる種類の候補が混在する場合の文脈の精緻化、提供実装の実現可能性と結果の分類に関する検証、S1～S5の受理に関する素案までを実施しました。
 
-ここで得たcurrent boundaryは次である。
+ここまでの評価で確認した現行の境界は、次のとおりです。
 
 ```text
 candidate discovery
@@ -92,46 +92,46 @@ LLM boundary
   -> Acceptance / authorityを所有しない
 ```
 
-Gate C前には、これらを根拠として次をproduction contractへ先行固定しない。
+判定段階Cより前には、これらの結果だけを根拠として、次の項目を本番向けの契約として固定しません。
 
-- `DesignCandidate`のCanonical kind
-- production `DesignContextPacket` schema
-- candidate originの排他的enum
-- persisted proof lifecycle / result enum
-- persisted `AcceptanceSnapshot` / proof evaluation stamp
-- production Pattern Memory schema
-- local / remote LLM provider contract
-- vector DB / graph DB / generic solver
-- automatic Shared Acceptance
-- semantic-delta persistence model
-- feedback event ontology
-- `ProviderFeasibility` production enum / candidate hierarchy
-- provider error / outcome taxonomyのproduction固定
+- 正本に新設する要素の種類としての`DesignCandidate`
+- 本番用の`DesignContextPacket`スキーマ
+- 候補の出所を表す排他的な列挙値
+- 証明の有効期間や結果を保存する列挙値
+- 永続化する`AcceptanceSnapshot`や証明の評価時点の記録
+- 本番用の構成パターンの記憶スキーマ
+- ローカル・外部の言語モデルを提供する仕組みの契約
+- ベクトルデータベース、グラフデータベース、汎用の制約解決機構
+- 共通の受理境界での自動的な受理
+- 意味の差分を永続化するモデル
+- フィードバックの出来事を分類する体系
+- 本番用の`ProviderFeasibility`列挙値や候補の階層
+- 提供実装のエラーと結果の分類体系を本番向けに固定すること
 
-新しいread-only作業を追加するのは、R1〜R6、S1 / S2 frontier pressure、mixed-frontier context refinement、provider feasibility scope / outcome-classification pressureでも説明できない具体的なinformation loss、authority contradiction、provenance / freshness / scope / owner-routing gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
+新しい読み取り専用の検証を追加するのは、R1～R6、S1・S2の候補群の検証、混在する候補の文脈の精緻化、提供実装の実現可能性と結果分類の検証だけでは説明できない問題が、現在の参照事例で見つかった場合に限ります。対象となるのは、具体的な情報の欠落、権限上の矛盾、出所・情報の鮮度・対象範囲・担当への振分けに関する不足です。将来必要になりそうだという理由だけで、抽象化や試験専用の構造を増やしません。
 
-### Gate C後のdownstream handoff guard
+### 判定段階Cの後に引き継ぐ条件
 
-Gate C後に`ISSUE-000047` / `ISSUE-000051`を再開するとき、R5 / R6で確認済みの境界を別のschemaや認知層として再設計しない。
+判定段階Cの後に`ISSUE-000047`と`ISSUE-000051`を再開するときは、R5・R6で確認済みの境界を、別のスキーマや認知処理の層として設計し直しません。
 
-`ISSUE-000047`へ渡す既知条件は次である。
+`ISSUE-000047`には、次の確認済みの条件を引き継ぎます。
 
-- semantic candidateとdiscovery mechanism / discovery traceを分離する
-- 同一candidateがexact / Pattern / associative等の複数経路で見つかっても、candidateを複製せず複数traceを保持できる
-- Reference Patternのprovenance、associative retrieval representationのbuild-input provenance / scoped freshness trace、current M1 qualificationを別物として扱う
-- retrieval score / similarity / 過去利用回数をapplicability / Evidence / Acceptanceへ変換しない
-- exact existing assetも「存在する」だけでapplicableとせず、current identity / dependency / scopeとrequired accepted authority / Evidenceへ戻ってqualifyする
+- 意味上の候補と、候補を発見する方式・発見経路の記録を分ける
+- 同じ候補を正確な照合、構成パターン、連想処理などの複数の経路で発見しても、候補を複製せず、複数の発見経路を記録できる
+- 参照パターンの出所、連想検索の表現を構築した入力の出所と対象範囲内での鮮度、現在のM1の適格性確認をそれぞれ区別する
+- 検索の評価点、類似度、過去の利用回数を、適用可能性・検証根拠・受理の判断へ直接変換しない
+- 正確に一致する既存資産も、存在するだけで適用可能とは判断しない。現在の識別子、依存関係、対象範囲、必要な受理済みの権限・検証根拠に戻って適格性を確認する
 
-`ISSUE-000051`へ渡す既知条件は次である。
+`ISSUE-000051`には、次の確認済みの条件を引き継ぎます。
 
-- derived cognitive representationはM2のregeneratable resourceであり、M1 authorityではない
-- candidate retrieval方式を変えてもsemantic candidate identityやaccepted meaningを変えない
-- derived indexのbuild-input provenance / freshness / stale判定と、M1 accepted authority / proof freshnessを混同しない
-- derived representationがfreshでも、current applicabilityやcross-view proofはrequired accepted authority / Evidenceへ独立に戻って確認する
-- R6のproof freshnessは「proofが依存するaccepted authority fingerprint」の問題であり、cognitive index用のglobal revision counter導入根拠にはしない
-- index削除・方式差し替え後もCanonical Worldが変わらないことを維持する
+- 派生した認知用の表現はM2の再生成可能な資源であり、M1で意味を決定する権限ではない
+- 候補を検索する方式を変えても、意味上の候補の識別子や受理済みの意味を変えない
+- 派生索引を構築した入力の出所・鮮度・失効の判定と、M1で受理済みの権限・証明の鮮度を混同しない
+- 派生した表現が最新でも、現在の適用可能性や複数視点の証明は、必要な受理済みの権限と検証根拠に戻って独立に確認する
+- R6における証明の鮮度は、証明が依存する受理済みの権限の照合値に関する問題であり、認知用索引のためにリポジトリ全体で共有する改訂番号を導入する根拠にはしない
+- 索引を削除したり検索方式を変更したりしても、意味の正本全体が変わらないことを維持する
 
-したがって再開時に、次を改めて導入するところから始めない。
+したがって、再開時には次の仕組みを改めて導入するところから始めません。
 
 ```text
 candidate.origin = exact | pattern | associative
@@ -146,11 +146,11 @@ cognitive index / pattern memoryを
 accepted semantic sourceとする構造
 ```
 
-actual Gate C Referenceでこれらの境界では情報が失われることが観測された場合にだけreopenする。Gate C後の最初の仕事は境界の再設計ではなく、実在するS1 candidate frontierへ000047のcurrent qualificationを当て、必要性が出たときだけ000051のretrieval方式を比較することである。
+実際の判定段階Cの参照事例で、これらの境界による情報の欠落が観測された場合に限って再検討します。判定段階Cの後は、境界を設計し直すのではなく、まず実際のS1の候補群に`ISSUE-000047`の現行の適格性確認を適用します。必要性が確認された場合に限り、`ISSUE-000051`で検索方式を比較します。
 
 ### 再開条件
 
-通常の再開点はProduct Gate C後とする。少なくとも次が実在してから、S1〜S5のactual Referenceへ進む。
+通常は製品の判定段階Cの後に再開します。少なくとも次の条件が実際に成立してから、S1～S5の参照事例を用いた検証に進みます。
 
 ```text
 Gate B Ready
@@ -171,17 +171,17 @@ S1 realistic intent / candidate frontier
   -> closed loopを1周
 ```
 
-このclosed loopのactual Evidenceを得る前に、R1〜R6のtest-only shapeやS1 / S2 frontier pressure / mixed-frontier refinement / provider feasibility pressureのconceptual shapeをproduction schemaへ昇格しない。
+この一連の改善循環を実際に検証した根拠が得られるまでは、R1～R6の試験専用の構造や、S1・S2の候補群、混在する候補の精緻化、提供実装の実現可能性に関する概念上の構造を、本番用のスキーマには採用しません。
 
 ## まだ設計文書を置いていない領域
 
-実装とADR、Conformanceは存在しますが、機能単位の設計本文をまだ置いていない領域です。必要になった時点で追加し、それまでは各ADRとConformanceを正本とします。
+ここには、実装、ADR、準拠性の検証資料は存在するものの、機能単位の設計本文はまだ置いていない領域を示します。設計本文は必要になった時点で追加し、それまでは対応するADRと準拠性の検証資料を正本とします。
 
 | 領域 | 現在の正本 |
 | --- | --- |
-| Source-to-Canonical Traceability / Source Index | [ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[`docs/conformance/source-traceability-m0.23.md`](../../docs/conformance/source-traceability-m0.23.md) |
-| Database物理schemaのDesired / Actual / Diff / Unresolved、Advanced Index、Migration rendering | ADR-0008〜ADR-0015、`docs/conformance/`のm0.26〜m0.35 |
-| Plugin / Process Runtime、Permission、Resource Broker、fencing / takeover | [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md)、[ADR-0006](../adr/0006-process-command-and-argv.md)、`docs/conformance/`のm0.22.1 / m0.24 / m0.25 |
-| Target / Presentation境界 | Gate C前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
+| 情報源から正本の意味への追跡と入力元索引 | [ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[`docs/conformance/source-traceability-m0.23.md`](../../docs/conformance/source-traceability-m0.23.md) |
+| データベースの物理スキーマに関する期待状態・実際の状態・差分・未解決事項、高度な索引、移行用の生成処理 | ADR-0008〜ADR-0015、`docs/conformance/`のm0.26〜m0.35 |
+| プラグインとプロセスの実行基盤、権限、資源の仲介、古い実行担当の排除・担当の交代 | [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md)、[ADR-0006](../adr/0006-process-command-and-argv.md)、`docs/conformance/`のm0.22.1 / m0.24 / m0.25 |
+| 実行先と表示・操作の境界 | 判定段階Cより前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
 
-Gate前に確定していない領域へ、先回りして設計文書を作りません。
+判定段階の前に確定していない領域について、先回りして設計文書は作りません。

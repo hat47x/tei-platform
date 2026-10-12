@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,11 +14,10 @@ func TestSeedBuilderMaterializesDeterministicTransformSource(t *testing.T) {
 	firstPath := filepath.Join(root, "first.json")
 	secondPath := filepath.Join(root, "second.json")
 
-	raw, err := json.MarshalIndent(transform.TransformSourceRealizerV1(), "", "  ")
+	raw, err := os.ReadFile(filepath.Join("..", "..", "reference", "plugin-self-build", "builder-sources", "transform-source-realizer-v1.transform.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw = append(raw, '\n')
 	if err := os.WriteFile(sourcePath, raw, 0o644); err != nil {
 		t.Fatal(err)
 	}

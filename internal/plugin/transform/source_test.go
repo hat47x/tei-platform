@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseSourceJSONRejectsUnknownDuplicateAndTrailingData(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source, _ := referenceTransformSource(t, "transform-source-realizer-v1.transform.json")
 	raw, err := json.Marshal(source)
 	if err != nil {
 		t.Fatal(err)

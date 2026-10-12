@@ -1,300 +1,300 @@
-# TEI Milestones
+# TEIのマイルストーン
 
 ## 方針
 
-TEI（鼎／テイ）のMilestoneには期限を置きません。
+TEI（鼎／テイ）のマイルストーンには期限を設けません。
 
-Milestoneは「いつまでに終えるか」ではなく、**どのCapabilityとEvidenceが揃えば、その能力を成立したとみなせるか**を示します。
+マイルストーンは「いつまでに終えるか」ではなく、**どの機能と検証根拠がそろえば、その能力が成立したと判断できるか**を示します。
 
-Milestone番号は、特にGate C後では厳密な直列依存を意味しません。Milestone 5〜7は同じGate C Evidenceを入力として並行して進められます。
+マイルストーンの番号は、必ずしも着手する順番を示しません。特に判定段階Cの後は、マイルストーン5〜7を同じ検証根拠に基づいて並行して進められます。
 
-個別のM0.xxは細かなarchitecture checkpointとして継続利用できますが、本書ではProduct全体の能力到達点を扱います。
+個別のM0.xxは構成上の細かな確認点として引き続き利用できますが、本書では製品全体としての能力の到達点を扱います。
 
-関連:
+関連文書：
 
 - `plan/MASTER_PLAN.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 
-## v1 Reference Applicationとの対応
+## 第1版の参照アプリケーションとの対応
 
-`order_entry`を使い、Milestone 1〜4を一続きに実証します。
+`order_entry`を用いて、マイルストーン1〜4を一連の流れで実証します。
 
 ```text
-Milestone 1 / 2
-Meaning / Application / Legacy
+マイルストーン1・2
+意味の定義・アプリケーション・既存資産
         ↓
-Gate A — Ready
+判定段階A — Ready
         ↓
-Milestone 3
-Driver
+マイルストーン3
+設計の実行・検証
         ↓
-Gate B — 3 Required Evidence / Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
+判定段階B — 三つの必須検証根拠でReady（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B / revision R — 固定済み
+引継ぎの基準B・対象版R — 固定済み
         ↓
-Milestone 4
-First Web Target / build T1
+マイルストーン4
+最初のWeb向け実行先・ビルドT1
         ↓
-Gate C — PAS-04 Evidence
+判定段階C — PAS-04の検証根拠
         ↓
-   ┌────┴──────────────┐
-   ↓                   ↓
-Milestone 6 / 7     Milestone 5
-Studio / AI         Second Target
-PAS-01 / PAS-06     PAS-04 / RQ-024
+   ┌──────────┴─────────┐
+   ↓                    ↓
+マイルストーン6・7       マイルストーン5
+編集環境・AI             二つ目の実行先
+PAS-01・PAS-06          PAS-04・RQ-024
 ```
 
-Handoverは番号付きGateではありません。Gate B Readyの意味baselineをGate Cへ固定して渡す契約です。
+引継ぎは新しい番号付きの判定段階ではありません。判定段階Bで`Ready`と判断した意味の基準を、判定段階Cへ固定して渡すための契約です。
 
-## Milestone 0 — 上位基線がある
+## マイルストーン0 — 上位の基準をたどれる
 
 ### 到達条件
 
-- Product Value / Vision / PrinciplesがRepository上で参照できる
-- Product Requirementsが固定IDで参照できる
-- Product Acceptance ScenarioからRequirement → Plan → Evidenceへ追跡できる
-- Master Plan / Milestones / ADR / Plan Issueの役割が分離されている
-- unresolvedを成功へ読み替えない
+- 製品価値、将来像、設計原則をリポジトリで参照できる
+- 製品要求を固定の識別子で参照できる
+- 製品の受入シナリオから要求、計画、検証根拠へと追跡できる
+- 全体計画、マイルストーン、設計判断記録、計画上の課題の役割が分かれている
+- `unresolved`（未解決）を成功として扱わない
 
 ### 意味
 
 今後の作業が「何を確かめるためか」を判断できる地図がある状態です。
 
-## Milestone 1 — Meaningを作り、追跡し、検査できる
+## マイルストーン1 — 意味を定義し、追跡・検査できる
 
 ### 到達条件
 
-- authoring sourceからCanonical meaningへ追跡できる
-- file pathとSemantic identityが分離されている
-- native sourceをauthoritativeなまま接続できる
-- Diagnosticからsourceへ戻れる
-- Application PatternをApplication所有の意図として扱える
-- file moveとlogical rename等の意味差を区別できる
+- 人が記述した情報源から、正本となる意味までたどれる
+- ファイルのパスと意味上の識別子が分離されている
+- 既存の形式のソースを正本として保ちながら接続できる
+- 診断結果から元のソースへ戻れる
+- アプリケーションの構成パターンを、そのアプリケーションが管理する意図として扱える
+- ファイルの移動と論理的な名称変更など、意味が変わるかどうかを区別できる
 
 ### 意味
 
-「定義を読み込める」だけでなく、意味とsourceの関係を保持して変更・検査できる状態です。
+「定義を読み込める」だけでなく、意味と元のソースとの関係を保ちながら変更・検査できる状態です。
 
-v1の5 PatternをTEI全体の永久標準Catalogにはしません。
+第1版で用いる五つの構成パターンを、TEI全体で恒久的に使う標準の一覧にはしません。
 
-## Milestone 2 — 現実の既存業務を受け止められる
+## マイルストーン2 — 現実の既存業務を扱える
 
 ### 到達条件
 
-- Application ↔ Databaseを実例で扱える
-- Database Contract / native SQL / external assetを明示Bindingできる
-- 既存Authentication / Authorization仕様を保持したまま接続できる
-- Capability単位でstandard / existing implementationを交換できる
-- external-observed assetの未観測事実を推測しない
-- actual external Evidenceとsynthetic / fixture Evidenceを区別できる
+- アプリケーションとデータベースの関係を実例で扱える
+- データベースの契約、元形式のSQL、外部資産を明示的に対応付けられる
+- 既存の認証・認可の仕様を保ったまま接続できる
+- 機能ごとに標準実装と既存実装を入れ替えられる
+- 外部で観測する資産について、まだ観測していない事実を推測で補わない
+- 実際の外部資産から得た検証根拠と、合成データ・試験データによる根拠を区別できる
 
 ### 意味
 
-理想化sampleだけでなく、実際の既存業務資産を段階移行できる状態です。
+理想化したサンプルだけでなく、実際の既存業務の資産を段階的に移行できる状態です。
 
-PostgreSQL以外の実Database Provider Evidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は、この能力とMilestone 8のProvider圧力試験へつながる重要Evidenceですが、Gate Bの第四Required laneにはしません。
+PostgreSQL以外の実際のデータベースで得る検証根拠も重要です。最初の参照事例ではOracleに関する#214、#371、#376が該当し、この能力とマイルストーン8の提供実装の検証に役立ちます。ただし、判定段階Bにおける四つ目の必須条件にはしません。
 
-## Milestone 3 — 設計をDriverで動かして確認できる
+## マイルストーン3 — 設計を実行・検証環境で動かせる
 
-Product Acceptance Scenario: PAS-02 primary / PAS-03 secondary
-
-### 到達条件
-
-- Application PatternをDriverで解決できる
-- browse / record / reference / header-detailをUIなしで扱える
-- Validation / Authentication / Authorizationを実行できる
-- Capability invocationのBusiness ResultとExecution Errorを区別できる
-- Command acknowledgementとObservationを分けられる
-- same-source Reference Scenarioを再現できる
-- generated artifact / real-provider / deterministic Evidenceを相互代替しない
-
-### Gate B
-
-Gate B Required Evidenceは次の三つです。
-
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
-
-三つを同じclean candidate revision `R`へ揃え、#387 final convergenceで確認します。
-
-Gate B Ready後、その`R`をHandover Baselineへ固定します。
-
-## Milestone 4 — 一つの実用TargetでApplicationを通せる
-
-Product Acceptance Scenario: PAS-04 primary
+製品の受入シナリオ：PAS-02を主とし、PAS-03も対象とする
 
 ### 到達条件
 
-- Handover Baseline `B` / revision `R`から第一Web TargetへProjectionできる
-- Web build revision `T1`をbaseline `R`と別に追跡できる
-- browse / record / reference / header-detail / commandを同じApplication meaningへ接続できる
-- Validation / Authorization / Capability / Result / ObservationをTarget側で再定義しない
-- standard ProjectionとCustom UIを同じ上位意味へ接続できる
-- Web Adapterを除去してもCanonical Worldが変わらない
+- アプリケーションの構成パターンを実行・検証環境で扱える
+- 一覧、記録、参照、見出しと明細を、画面なしで扱える
+- 検証・認証・認可を実行できる
+- 機能を呼び出した際の業務結果と実行エラーを区別できる
+- 命令の受付と観測結果を区別できる
+- 同じソースを使った参照シナリオを再現できる
+- 生成物、実際の提供実装、決定的な再現性についての検証根拠を混同しない
 
-### Gate C
+### 判定段階B
 
-Gate Cでは次を別Evidenceとして扱います。
+判定段階Bで必要な検証根拠は次の三つです。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
+1. #310 リポジトリの決定的な再現性を示す検証根拠
+2. #255 生成物の再現性を示す検証根拠
+3. #308 実際のPostgreSQLと一時的な試験データによる検証根拠
 
-VLM / screenshot scoreだけでSemantic / Functionalを合格にしません。
+三つを変更のない同一の候補版`R`についてそろえ、#387で最終的な整合を確認します。
 
-Gate CではTarget Capability / Execution / Trust / Web固有差を第二Targetへ渡せることも確認します。
+判定段階Bで`Ready`と判断した後、その`R`を引継ぎの基準として固定します。
 
-## Milestone 5 — 同じ意味を複数Application Targetへ展開できる
+## マイルストーン4 — 一つの実用的な実行先でアプリケーションを動かせる
 
-Product Acceptance Scenario: PAS-04 primary
+製品の受入シナリオ：PAS-04を主とする
 
 ### 到達条件
 
-- 第二Application Targetを第一Targetとは別build identityで実証できる
-- 同じHandover Baseline、または明示successor baselineを比較基準にできる
-- Target Capability差を説明できる
-- Runtime Binding差を説明できる
-- Execution / Trust Profile差を説明できる
-- Target固有実装をCanonicalへ逆流させない
-- RQ-024のperformance measurementをTarget / Host条件付きで比較できる
+- 引継ぎの基準`B`と対象版`R`から、最初のWeb向け実行先へ展開できる
+- Web向けビルド版`T1`を意味の基準版`R`とは別に追跡できる
+- 一覧、記録、参照、見出しと明細、業務操作を同じアプリケーションの意味へ結び付けられる
+- 検証、認可、機能、結果、観測を実行先で独自に再定義しない
+- 標準的な表示と独自の画面を同じ上位の意味へ結び付けられる
+- Web向けの接続部品を取り除いても、意味の正本全体は変わらない
+
+### 判定段階C
+
+判定段階Cでは、次の検証根拠を分けて扱います。
+
+1. 意味上の準拠性
+2. 操作と機能に関する検証根拠
+3. 表示の忠実度に関する検証根拠
+
+画像を扱う言語モデルやスクリーンショットの評価点だけでは、意味と機能の検証に合格したとは判断しません。
+
+判定段階Cでは、利用できる機能、実行方法、信頼の条件、Web固有の違いを、二つ目の実行先の検証へ引き継げることも確認します。
+
+## マイルストーン5 — 同じ意味を複数のアプリケーション実行先へ展開できる
+
+製品の受入シナリオ：PAS-04を主とする
+
+### 到達条件
+
+- 二つ目のアプリケーション実行先を、最初の実行先とは別のビルド識別情報で実証できる
+- 同じ引継ぎの基準、または後継となることを明示した基準を比較に使える
+- 実行先が利用できる機能の違いを説明できる
+- 実行基盤との対応付けの違いを説明できる
+- 実行方法と信頼条件の違いを説明できる
+- 実行先に固有の実装を意味の正本へ逆流させない
+- RQ-024の性能測定結果を、実行先とホストの条件を添えて比較できる
 
 ### 意味
 
-Target-neutralが第一Web Targetだけからの仮説ではなく、性質の異なる第二Targetで圧力試験された状態です。
+実行先に依存しないという主張を、最初のWeb向け実行先だけで判断せず、性質の異なる二つ目の実行先でも厳しく検証した状態です。
 
-Studio / Editorのdeveloper-facing Wails HostはApplication Target Evidenceへ数えません。
+開発者向け編集環境のWailsホストは、アプリケーション実行先の検証根拠には数えません。
 
-## Milestone 6 — Studioが安全なAuthoring環境として成立する
+## マイルストーン6 — 編集環境で安全に定義を扱える
 
-Product Acceptance Scenario: PAS-01 primary
-
-### 到達条件
-
-- StudioがCanonicalの第二正本にならない
-- high-density read / inspectができる
-- Select → Propose → Preview → Accept / Rejectの最小authoring loopを実証できる
-- file-native / CLI / AIとShared Acceptance Boundaryを共有できる
-- Preview / Rejectでauthoritative sourceを変更しない
-- Accept後にsourceをStudioなしでreloadできる
-- stale `baseModelRevision`を黙って適用しない
-- Studio都合でmandatory authored Stable IDを導入しない
-
-### 意味
-
-厳格なmeaning / source境界を壊さず、日常的なdeveloper-facing authoringへ接続できる状態です。
-
-最初のReferenceは`ISSUE-000046`で扱います。
-
-## Milestone 7 — knowledge-first / AI支援が厳格さを軽いUXへ変える
-
-Product Acceptance Scenario: PAS-06 primary / PAS-01 secondary
+製品の受入シナリオ：PAS-01を主とする
 
 ### 到達条件
 
-- Human / AIが既存Semantic資産をread-only探索できる
-- applicable / incompatible / unknownを区別できる
-- search ranking / similarityをSemantic Evidenceへ格上げしない
-- AI Proposalとaccepted Decision / source changeを区別できる
-- ProposalがCanonical / Source / Evidenceへtraceできる
-- AI ProposalもShared Acceptance Boundaryを通る
-- stale Proposalを黙って適用しない
-- autonomyとauthorityを分ける
-- Derived Knowledgeを削除してもCanonical Worldが変わらない
+- 編集環境が意味の第二の正本にならない
+- 多くの情報をまとめて読み、調べられる
+- 選択、提案、事前確認、受理・却下という最小限の編集の流れを実証できる
+- ファイルの直接編集、コマンドライン、AIと共通の受理境界を使える
+- 事前確認や却下によって正本となる情報源を変更しない
+- 受理後、編集環境を使わずに元のソースを読み直せる
+- 古くなった`baseModelRevision`を確認せずに適用しない
+- 編集環境の都合で、人が記述する安定識別子を必須にはしない
 
 ### 意味
 
-AI機能が追加されたというだけでなく、既存知識探索・変更候補・検証を通して利用者負担を減らせる状態です。
+意味と情報源の厳密な境界を保ちながら、開発者の日常的な編集作業に利用できる状態です。
 
-read-only探索は`ISSUE-000047`、AI Proposal / Acceptanceは`ISSUE-000027`で扱います。
+最初の参照事例は`ISSUE-000046`で扱います。
 
-## Gate C後のMilestone 5〜7の関係
+## マイルストーン7 — 既存知識とAIを活用して作業負担を軽くする
 
-Milestone 5、6、7は厳密な直列ではありません。
+製品の受入シナリオ：PAS-06を主とし、PAS-01も対象とする
+
+### 到達条件
+
+- 人とAIが既存の意味に関する資産を読み取り専用で探索できる
+- 適用可能・不適合・未確定を区別できる
+- 検索順位や類似度を意味の正しさを示す検証根拠とはみなさない
+- AIの提案と、受理された判断・情報源の変更を区別できる
+- 提案から意味の正本、情報源、検証根拠へ追跡できる
+- AIによる提案も共通の受理境界を通る
+- 古くなった提案を確認せずに適用しない
+- 自律性と権限を区別する
+- 派生した知識を削除しても、意味の正本全体は変わらない
+
+### 意味
+
+AIの機能を追加するだけではなく、既存知識の探索、変更候補の提示、検証によって利用者の負担を減らせる状態です。
+
+読み取り専用の探索は`ISSUE-000047`、AIによる提案と受理は`ISSUE-000027`で扱います。
+
+## 判定段階Cの後のマイルストーン5〜7の関係
+
+マイルストーン5、6、7は、必ずしも順番に完了させる必要はありません。
 
 ```text
-Gate C Ready
-   ├─→ Milestone 5 第二Target pressure test
-   ├─→ Milestone 6 Studio minimal loop
-   └─→ Milestone 7 knowledge-first / AI Proposal
+判定段階C — Ready
+   ├─→ マイルストーン5：二つ目の実行先による検証
+   ├─→ マイルストーン6：編集環境での最小限の操作
+   └─→ マイルストーン7：既存知識の探索とAIによる提案
 ```
 
-それぞれのEvidenceを相互に戻します。
+各作業で得た検証根拠を、ほかの作業にも生かします。
 
-- 第二Target差 → Studioが表示すべきTarget差 / AIが参照すべきEvidence
-- Studio authoring Evidence → Target-neutral source / acceptance境界
-- knowledge-first / AI Evidence → reusable meaning / traceability不足
+- 二つ目の実行先での違い → 編集環境で示す違いと、AIが参照する検証根拠
+- 編集環境での記述・変更に関する検証根拠 → 実行先に依存しない情報源と受理の境界
+- 既存知識の探索・AIの検証根拠 → 再利用する意味と追跡可能性に関する不足
 
-一つのlaneの完成を他laneの開始条件にしません。
+一つの作業領域の完了を、別の作業領域の着手条件にはしません。
 
-## Milestone 8 — Provider / Runtimeの交換可能性が実証される
-
-### 到達条件
-
-- PostgreSQL以外のDatabase Providerを小さい実例で接続できる
-- Provider固有knowledgeがCoreへ漏れない
-- actual external asset / Provider Evidenceを取得できる
-- external Runtime / orchestratorをCapabilityとして接続できる
-- Plugin / Bundle / trust boundaryを説明できる
-- unknown / takeover / fencing / recoveryをProvider差を超えて扱える
-
-### 意味
-
-「交換可能」という主張が一つのReference Providerだけに依存しない状態です。
-
-## Milestone 9 — 実利用へ向けた運用境界が整う
+## マイルストーン8 — 提供実装と実行基盤の交換可能性を実証できる
 
 ### 到達条件
 
-- production永続Store / HA境界が確立される
-- credential / secret / Resource authorityが運用可能に分離される
-- signed artifact / registry / supply-chain Evidenceを扱える
-- compatibility / upgrade policyがある
-- observability / audit / failure analysisに必要なEvidenceを取得できる
-- production adapterとConformanceを持つ
+- PostgreSQL以外のデータベース提供実装を小さな実例で接続できる
+- 提供実装に固有の知識が中核へ入り込まない
+- 実際の外部資産や提供実装について検証根拠を取得できる
+- 外部の実行基盤や実行を統括する仕組みを機能として接続できる
+- プラグイン、配布一式、信頼の境界を説明できる
+- 状態不明、実行担当の交代、古い担当の実行防止、復旧を、提供実装の違いを超えて扱える
 
 ### 意味
 
-architecture validationを越え、限定された実利用へ責任を持って進められる状態です。
+「交換可能」という主張を、一つの参照用の提供実装だけに頼らずに説明できる状態です。
 
-## Version Horizon
+## マイルストーン9 — 実際の利用に向けた運用の境界が整う
 
-### v0 — Architecture / Product Validation
+### 到達条件
 
-Product Valueと境界を実行可能Referenceで検証する期間です。
+- 本番向けの永続的な保存機構と高可用性の境界が確立される
+- 認証情報、秘密情報、資源を利用する権限を、運用できる形で分離する
+- 署名付き成果物、配布用の登録先、ソフトウェアの供給経路に関する検証根拠を扱える
+- 互換性と更新に関する方針がある
+- 状態の観測、監査、障害分析に必要な検証根拠を取得できる
+- 本番向けの接続部品と準拠性の検証を備える
 
-現在のM0.xx系列はここに含みます。
+### 意味
 
-### v1 — Practical Developer Platform vertical slice
+構成の検証だけでなく、対象を限定した実際の利用へ責任を持って進められる状態です。
 
-少なくともMilestone 0〜4を満たし、一つの現実的Applicationを設計・Driver・Database接続・第一Targetまで一続きに扱える状態を目安とします。
+## 製品版ごとの到達目標
 
-Studio / AIの完成、第二Target、production HAはv1 first-target成立の前提にはしません。
+### v0 — 構成と製品価値の検証
 
-ただしGate C後にMilestone 5〜7を検証できるtrace / plan / acceptance境界を残します。
+製品価値と構成上の境界を、実行できる参照事例で検証する期間です。
 
-### v2 — Target / Authoring / Provider Expansion
+現在のM0.xx系列はこの段階に含みます。
 
-Milestone 5〜8を中心に、複数Target、Studio、knowledge-first / AI、Provider交換可能性を広げます。
+### v1 — 実用的な開発基盤の一連の機能を成立させる
 
-Milestone 5〜7は必要に応じて並行します。
+少なくともマイルストーン0～4を満たし、一つの現実的なアプリケーションを、設計、実行・検証、データベース接続、最初の実行先まで一連の流れで扱える状態を目安とします。
 
-### v3以降 — Operational Maturity
+編集環境やAIの機能の完成、二つ目の実行先、本番向けの高可用性は、v1で最初の実行先が成立するための前提にはしません。
 
-Milestone 9を中心に、production運用、互換性、供給網、組織規模での再利用を深めます。
+ただし、判定段階Cの後にマイルストーン5～7を検証できるよう、追跡可能性、計画、受理の境界を保ちます。
+
+### v2 — 実行先・編集機能・提供実装を拡充する
+
+マイルストーン5～8を中心に、複数の実行先、編集環境、既存知識を優先するAI支援、提供実装の交換可能性を広げます。
+
+マイルストーン5～7は必要に応じて並行して進めます。
+
+### v3以降 — 運用能力を成熟させる
+
+マイルストーン9を中心に、本番運用、互換性、ソフトウェアの供給経路、組織規模での再利用を進めます。
 
 ## 先に固定しないもの
 
-- 完全なTarget Capability taxonomy
-- 第一Web Target framework
-- Studio最終UI
-- AI provider / vector database
-- Proposal最終schema
-- mandatory authored Stable ID / UUID
-- Patch-only authoring model
-- 第二Targetの種類
-- 一律performance threshold
-- production HA一般化
+- 実行先の機能に関する完全な分類体系
+- 最初のWeb向け実行先の開発基盤
+- 編集環境の最終的な画面構成
+- AIの提供元やベクトルデータベース
+- 変更提案の最終的なスキーマ
+- 人が記述する安定識別子やUUIDの必須化
+- 差分適用のみを認める記述方式
+- 二つ目の実行先の種類
+- 一律の性能基準値
+- 本番運用の高可用性を共通機構として扱うこと
 
-Reference / Evidenceが必要性を示す前に固定しません。
+参照事例や検証根拠から必要性が分かるまでは、これらを固定しません。
