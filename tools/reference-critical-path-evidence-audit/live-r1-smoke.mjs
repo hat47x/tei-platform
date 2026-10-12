@@ -525,6 +525,11 @@ async function main() {
       n11TargetBinarySHA256: n11Launch.binarySHA256,
       n11TargetOverlaySHA256: n11Fixture.overlaySHA256,
       n11UsesSameBinary: false,
+      staleTargetProcessID: staleLaunch.processID,
+      staleTargetLoopbackAddress: staleLaunch.address,
+      staleTargetBinarySHA256: staleLaunch.binarySHA256,
+      staleUsesSameBinaryAsPositive: true,
+      staleManifestSemanticSHA256: staleLaunch.manifestSemanticSHA256,
       workspaceSourceRevisionBeforeLaunch: r1,
       observedManifestSemanticSHA256: loadedMeaningSHA256,
       projectionMatchesAcceptedWorld: true,
@@ -584,12 +589,30 @@ async function main() {
       manifestSemanticSHA256: loadedMeaningSHA256,
       httpResponseSHA256: sha256(n11Raw),
       productionTargetUnmodified: true, independentDatabaseRead: false
+    },
+    "stale-source-control.json": {
+      evidenceNature: "running-web-http-stale-source-R0-label-spoof-control",
+      integrationHead: head, acceptedSourceRevisionClaim: r1,
+      actuallyLoadedWorkspaceSourceRevision: r0,
+      suppliedBaselineRevisionLabel: expectedR,
+      suppliedTargetBuildRevisionLabel: head,
+      applicationId: staleManifest.applicationId,
+      staleManifestSemanticSHA256: staleLaunch.manifestSemanticSHA256,
+      acceptedManifestSemanticSHA256: loadedMeaningSHA256,
+      sameTargetBinaryAsPositive: true,
+      targetBinarySHA256: staleLaunch.binarySHA256,
+      acceptedR1RuleMissing: !staleManifest.validations.includes(validationID),
+      mismatchDetectedByExternalTestHarness: true,
+      webServerRejectsMismatchedLabels: false,
+      currentRuntimeVersionBindingEnforced: false,
+      independentDatabaseRead: false
     }
   });
   const evidenceFiles = evidenceDir ? [
     "workspace-r1.json", "target-launch.json", "web-positive.json",
     "target-negative-launch.json", "web-negative-unit-price.json",
-    "target-n11-launch.json", "n11-unobserved-control.json"
+    "target-n11-launch.json", "n11-unobserved-control.json",
+    "stale-source-control.json"
   ] : [];
   // CI currently retains job logs, but not these temporary files as artifacts.
   // Publishing each file's exact checksum to stderr leaves a bounded
@@ -600,6 +623,13 @@ async function main() {
     integrationHead: head, acceptedScratchSourceR1: r1,
     manifestSemanticSHA256: loadedMeaningSHA256,
     allThreeWebManifestsMatch: true,
+    staleSourceControl: {
+      actualLoadedRevision: r0,
+      acceptedRevisionClaim: r1,
+      sameTargetBinary: true, callerRevisionLabelsIdentical: true,
+      staleManifestSemanticSHA256: staleLaunch.manifestSemanticSHA256,
+      semanticMismatchDetected: true, targetRejectedStaleLabels: false
+    },
     positiveWeb: { httpStatus: submitResponse.status,
       commandCompleted: Boolean(receipt.result.command),
       observationNature: receipt.result.observation.nature },
@@ -627,6 +657,8 @@ async function main() {
     n11UnobservedReadControl: "TESTED_WITH_SYNTHETIC_OBSERVATION_FAILURE_OVERLAY",
     n11ReportsExecutionError: n11Response.status === 422 &&
       Boolean(n11Receipt.result.command) && !n11Receipt.result.observation,
+    staleSourceMismatchDetectedByHarness: true,
+    staleSourceRejectedByTarget: false,
     manifestSemanticSHA256: loadedMeaningSHA256,
     threeWebManifestsMatchAcceptedApplication: true,
     n11HttpStatus: n11Response.status,
