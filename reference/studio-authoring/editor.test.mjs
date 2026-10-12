@@ -34,6 +34,8 @@ function simulate(html, data, useApplication = false) {
     [k, { value: v, checked: k === "use-application" && useApplication }]));
   const output = { value: "", focus(){}, select(){} };
   const notice = { textContent: "" };
+  if (html.includes('id="use-application"'))
+    elements.set("use-application", { checked: useApplication });
   elements.set("proposal-json", output);
   elements.set("notice", notice);
   let submit;
