@@ -9,6 +9,8 @@ import (
 	"net/http"
 )
 
+const webTargetServerHasPresentation = true
+
 type webTargetServer struct {
 	projection                  webTargetProjection
 	readScenario                readScenarioRunner
