@@ -271,3 +271,44 @@ func BenchmarkHandoffManyDependencies(b *testing.B) {
 		}
 	}
 }
+
+func TestHandoffUnrelatedCatalogCannotChangeOrExpandSubjects(t *testing.T) {
+	set, registry := proposal(t)
+	baseline := ReconcileCurrent(registry, set, nil)
+	if baseline.Blocked || len(baseline.Subjects) != 2 {
+		t.Fatalf("unexpected baseline: %+v", baseline)
+	}
+	// A large number of unrelated providers and scopes must not influence
+	// the exact evidence references for this proposal.
+	refs := make([]EvidenceReference, 0, 12002)
+	for i := 0; i < 12000; i++ {
+		target := baseline.Subjects[i%2].Target
+		if i%2 == 0 {
+			target.Scope = fmt.Sprintf("unrelated-tenant-%d", i)
+		} else {
+			target.ProviderID = fmt.Sprintf("unrelated-provider-%d", i)
+		}
+		refs = append(refs, ref(target))
+	}
+	onlyNoise := ReconcileCurrent(registry, set, refs)
+	if onlyNoise.Blocked || len(onlyNoise.Subjects) != 2 {
+		t.Fatalf("unrelated catalog affected structural result: %+v", onlyNoise)
+	}
+	for _, item := range onlyNoise.Subjects {
+		if item.State != ReferenceMissing || item.Reference != nil {
+			t.Fatalf("unrelated evidence affected provider status: %+v", item)
+		}
+	}
+	for _, subject := range baseline.Subjects {
+		refs = append(refs, ref(subject.Target))
+	}
+	matched := ReconcileCurrent(registry, set, refs)
+	if matched.Blocked || len(matched.Subjects) != 2 {
+		t.Fatalf("exact refs missing after unrelated catalog: %+v", matched)
+	}
+	for _, item := range matched.Subjects {
+		if item.State != ReferenceLinked || item.Reference == nil {
+			t.Fatalf("unrelated locator interfered with exact ref: %+v", item)
+		}
+	}
+}
