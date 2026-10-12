@@ -98,11 +98,15 @@ jobs:
             and .head == $sha
             and (.checks > 0)
             and (.cases | length == 2)
+            and (.businessReference.status == "PASS")
+            and (.businessReference.authority == "noncanonical-reference")
+            and (.businessReference.humanAcceptance == "not-observed")
+            and (.businessReference.actualProviderResult == "not-observed")
             and ([.cases[] | .humanAcceptance == "not-observed"
                 and .actualProviderResult == "not-observed"
                 and .runtimeObservation == "not-observed"] | all)
           ' "$receipt" >/dev/null
-          jq '{status, head, checks, caseNames: [.cases[].name], claimLimits}' "$receipt"
+          jq '{status, head, checks, caseNames: [.cases[].name], businessReference, claimLimits}' "$receipt"
 
       - name: 実行後の版と作業領域を確認
         if: always()
