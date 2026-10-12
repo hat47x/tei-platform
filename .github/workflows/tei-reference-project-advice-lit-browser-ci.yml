@@ -1,0 +1,87 @@
+name: TEI 案件Lit実Chrome参照検証
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/reference-project-advice-lit/**"
+      - "plugins/reference-project-customer-advice/**"
+      - ".github/workflows/tei-reference-project-advice-lit-browser-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-lit-project-browser-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  chrome-project:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ""
+      GOTOOLCHAIN: local
+      CGO_ENABLED: "0"
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: 検証するPR正確HEADを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Goを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 正確な対象版と実Chromeを確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          node --check tools/reference-project-advice-lit/real_browser_replay.mjs
+          node --check tools/reference-project-advice-lit/web/lit-core.min.js
+          command -v google-chrome || command -v google-chrome-stable
+          google-chrome --version || google-chrome-stable --version
+      - name: Browser診断専用Playwrightを作業領域外へ固定導入
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/tei-playwright-core" \
+            --no-audit --no-fund --ignore-scripts --no-save --no-package-lock \
+            playwright-core@1.56.1
+          test -s "$RUNNER_TEMP/tei-playwright-core/node_modules/playwright-core/index.mjs"
+      - name: 実Go API・Go案件HostとLitをChromeで操作
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tei-lit-project-binaries"
+          go build -trimpath -tags=tei_order_only,tei_api_only \
+            -o "$RUNNER_TEMP/tei-lit-project-binaries/order-entry" ./tools/reference-first-web-target
+          go build -trimpath \
+            -o "$RUNNER_TEMP/tei-lit-project-binaries/advice-host" ./tools/reference-project-advice-lit
+          node tools/reference-project-advice-lit/real_browser_replay.mjs \
+            "$RUNNER_TEMP/tei-lit-project-binaries/order-entry" \
+            "$RUNNER_TEMP/tei-lit-project-binaries/advice-host" \
+            "$RUNNER_TEMP/tei-playwright-core" \
+            "$RUNNER_TEMP/tei-lit-project-screenshots"
+          test -s "$RUNNER_TEMP/tei-lit-project-screenshots/project-lit-browser-receipt.json"
+          test -s "$RUNNER_TEMP/tei-lit-project-screenshots/desktop-lit-order-entry-read.png"
+          test -s "$RUNNER_TEMP/tei-lit-project-screenshots/mobile-lit-order-entry-read.png"
+          grep -Fq '"actualOrderEntryReadOnlyGoAPI": true' \
+            "$RUNNER_TEMP/tei-lit-project-screenshots/project-lit-browser-receipt.json"
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: 合成画面・実ブラウザ診断証跡を保存
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: project-lit-chrome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-lit-project-screenshots/
+          retention-days: 7
+          if-no-files-found: error
