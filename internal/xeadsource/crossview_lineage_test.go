@@ -100,16 +100,21 @@ func TestCrossViewPublicAccountingPreservesManyToManyAndUnresolvedEvidence(t *te
       <TaskFunctionIO FunctionID="F1" IOID="0"/>
     </TaskAction>
   </Task>
+  <Task ID="TASK2">
+    <TaskAction ID="A2">
+      <TaskFunctionIO FunctionID="F1" IOID="0"/>
+    </TaskAction>
+  </Task>
 </System>`)
 	got, err := CrossViewPublicAccounting(projection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.TaskFunctionIOCount != 2 ||
-		got.DistinctActionFunctionPairCount != 1 ||
-		got.PotentialActionFunctionTablePathCount != 2 ||
-		got.PotentialOperationCombinationCounts["R"] != 1 ||
-		got.PotentialOperationCombinationCounts["U"] != 1 ||
+	if got.TaskFunctionIOCount != 3 ||
+		got.DistinctActionFunctionPairCount != 2 ||
+		got.PotentialActionFunctionTablePathCount != 4 ||
+		got.PotentialOperationCombinationCounts["R"] != 2 ||
+		got.PotentialOperationCombinationCounts["U"] != 2 ||
 		got.UnresolvedCounts["iotable-operation-missing"] != 1 {
 		t.Fatalf("source-supported mixed projection changed: %+v", got)
 	}
