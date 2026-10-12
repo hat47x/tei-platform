@@ -586,3 +586,16 @@ func TestSignalMetadataRejectsRawDiagnosticContent(t *testing.T) {
 		}
 	}
 }
+
+func TestReferenceSchemaVersionsTrackSuccessfulAttemptContract(t *testing.T) {
+	evidence, err := buildReferenceEvidence()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.Schema != "tei.reference.build-attempt-evidence-run/v1" {
+		t.Fatalf("outer reference schema was not updated: %q", evidence.Schema)
+	}
+	if evidence.History.Schema != "tei.reference.build-attempt-history/v1" {
+		t.Fatalf("attempt history schema was not updated: %q", evidence.History.Schema)
+	}
+}
