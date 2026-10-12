@@ -30,7 +30,7 @@ func TestObserveSourceFindsExternalEditWithoutWatcher(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(before.Artifacts) != 1 || before.Artifacts[0].Path != "custom/asset.txt" {
+	if len(before.Artifacts) != 2 || before.Artifacts[0].Path != "custom/asset.txt" || before.Artifacts[1].Path != "tei.workspace.yaml" {
 		t.Fatalf("source snapshot has unexpected artifacts: %+v", before)
 	}
 	if _, err := CheckSourceFresh(before); err != nil {
@@ -82,5 +82,40 @@ func TestSourceOutsideWorkspaceIsNotObserved(t *testing.T) {
 	}
 	if _, err := ObserveSource(root); err == nil {
 		t.Fatal("source outside Workspace was observed without an error")
+	}
+}
+
+func TestObserveSourceTracksWorkspaceManifest(t *testing.T) {
+	root, _ := fixtureWorkspace(t)
+	before, err := ObserveSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Change a non-semantic part of the manifest. It is still an input to
+	// Workspace selection and must invalidate a Desktop draft observation.
+	manifest := filepath.Join(root, "tei.workspace.yaml")
+	if err := os.WriteFile(manifest, []byte("workspace: demo\nsources:\n  - custom\n# external change\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CheckSourceFresh(before); !errors.Is(err, ErrSourceChanged) {
+		t.Fatalf("manifest change was missed: %v", err)
+	}
+}
+
+func TestObserveSourceManifestSymlinkOutsideWorkspaceFailsClosed(t *testing.T) {
+	root, _ := fixtureWorkspace(t)
+	manifest := filepath.Join(root, "tei.workspace.yaml")
+	outside := filepath.Join(t.TempDir(), "external.yaml")
+	if err := os.WriteFile(outside, []byte("workspace: demo\nsources:\n  - custom\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(manifest); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, manifest); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := ObserveSource(root); err == nil {
+		t.Fatal("manifest outside Workspace was read")
 	}
 }
