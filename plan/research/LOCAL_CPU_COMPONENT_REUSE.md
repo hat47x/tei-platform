@@ -91,3 +91,12 @@ TEIの標準Web/Desktop業務UIでは、中央管理する標準コンポーネ�
 Node.js 22.16.0の別作業ディレクトリで `node --test` により **14/14 PASS**（ローカル実行のみ、現PR HEADのtrusted full checkout検証ではない）。これは**判定規則の小規模な動作確認**であってR0/R1完了や製品準拠を意味しない。
 
 次の実消費者検証では、許可を得た二つのTEI ApplicationのAccepted Sourceと実Contractからread-onlyの特徴量を作り、source-revision／identity／fingerprintを検証した上で本比較器へ投入する。ケースと評価軸はREADMEの「Next grounded experiment」に従う。#843のissue-only停止と#876/#267の条件は引き続き有効。
+
+
+### R0実ソース観測の追加（2026-10-13）
+
+最初の合成candidate比較に加え、既存 `order_entry` の実TEI Pattern Source 3ファイルについて、Git blob SHA照合付きの限定観測器（[observe-tei-pattern.mjs](../../reference/local-cpu-reuse/observe-tei-pattern.mjs)）とテストを追加した。CommandのCapability、Header-DetailのRelationをsource-observed factとして抽出し、ネストしたReferenceの `contract-query` は未対応構文として `partial` を返す。改ざん／revision drift／未知構文を黙って解釈しない。
+
+この結果は一つのApplicationのAuthoring Sourceに関する観測であり、**Accepted Canonical上の業務意味・Action契約・実装の可換性を示すものではない**。観測結果は契約fingerprint未確認のためcandidate比較器へ自動投入しない。二つ目の実Applicationを作り出して成立したことにはしない。
+
+比較器14件＋追加回帰3件はGitHub格納ソースを隔離JavaScript評価器で実行して **17件成功**。観測器の実TEI Source内容を使ったローカルNode試験は **7件成功**。いずれも**exact PR HEADのcheckoutによるfull Repository-health資格化ではない**。研究段階の次のGateは、実Accepted Canonical／Contractへのread-only Feature Projectionを既存の#267/#1121/#951の境界で取得し、許可済み二Applicationの類似候補に接続することである。
