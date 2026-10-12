@@ -30,6 +30,12 @@ Desktop Studioは、Sourceの参照・編集提案・差分確認・受理・投
 - Desktop導入を口実に第二Plugin Resolver、第二Policy Engine、CLI子プロセスによる業務APIの常用経路を作らない。
 - 初期実装の置き場やGo package名、永続schemaは[#1158](https://github.com/hat47x/tei-platform/issues/1158)の実consumerを確認してから決める。
 
+### 現行の共通Operationから見える制約
+
+- `internal/operations/validate.go` の `ValidateWorkspace` は現に存在するread-only入口であり、Source変更や受理権限は提供しない。
+- `internal/operations/inspect.go` は正規化されたWorldとSource Indexの投影を返すが、`WorldFingerprint` / `SourceIndexFingerprint` は観測値であり、書込みrevisionや受理許可ではない。`internal/operations/snapshot.go` にもその区別が明記されている。
+- したがって、既存のfingerprint値をそのままDesktopの楽観ロックに転用しない。書込み直前の実Source byte照合と、既存Acceptanceのrevision/authority条件を橋渡しする最小Operationが必要であり、この接続は**未実装・未検証**である。
+
 ## 2. 呼出し経路と型付きOperation
 
 ```text
