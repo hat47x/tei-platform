@@ -13,9 +13,9 @@ import (
 
 func TestRequirementValuesRejectedByGoAndTEITransform(t *testing.T) {
 	tests := []struct {
-		name string
-		req  plugin.Requirement
-		goError string
+		name     string
+		req      plugin.Requirement
+		goError  string
 		teiError string
 	}{
 		{"empty ID", plugin.Requirement{Plugin: "", CompatibleMajor: 1}, "invalid canonical id", "assert-canonical-id"},

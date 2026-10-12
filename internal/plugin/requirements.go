@@ -7,7 +7,7 @@ import (
 	"tei/internal/core"
 )
 
-// ValidateRequirements refuses repeated dependency identities, even when their
+// ValidateUniqueRequirements refuses repeated dependency identities, even when their
 // compatible majors are the same. A duplicate is an ambiguous declaration,
 // not a request for the resolver to select or collapse dependencies.
 func ValidateUniqueRequirements(requires []Requirement) error {
@@ -30,7 +30,6 @@ func ValidateUniqueRequirements(requires []Requirement) error {
 	}
 	return nil
 }
-
 
 // ValidateRequirementValues rejects invalid dependency identities and
 // nonpositive compatible majors. Diagnostics are independent of input order.
