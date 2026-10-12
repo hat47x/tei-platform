@@ -1,90 +1,90 @@
-# TEI Upstream Acceptance Scenario Traceability
+# TEIの上位受入シナリオと追跡関係
 
-Status: current planning baseline
+状態：現行の計画上の基準
 
 ## 1. 目的
 
-この文書は、TEIのProduct Value / Product Requirementsを、利用者レベルのProduct Acceptance Scenario、設計判断、Plan Issue、Reference、Evidence、Gate / Product claimへ接続する追跡基線です。
+この文書は、TEIの製品価値と製品要求を、利用者が確認できる受入シナリオ、設計判断、計画上の課題、参照事例、検証根拠、判定段階と製品に関する主張まで結び付けるための基準です。
 
-新しいProduct Requirement、Canonical schema、Gate、coverage率を追加する文書ではありません。
+この文書では、新しい製品要求、意味の正本のスキーマ、判定段階、要求の達成率を追加しません。
 
 ```text
-Product Value / Vision / Principles
+製品価値・将来像・設計原則
         ↓
-Product Requirement (RQ-xxx)
+製品要求（RQ-xxx）
         ↓
-Product Acceptance Scenario (PAS-xx)
+製品の受入シナリオ（PAS-xx）
         ↓
-ADR / Plan Issue / Design
+設計判断記録・計画上の課題・設計
         ↓
-Reference Scenario / Fixture
+参照シナリオ・試験用データ
         ↓
-Evidence
+検証根拠
         ↓
-Gate / Product claim
+判定段階・製品についての主張
 ```
 
-Requirementだけから実装を直接導出せず、利用者やmaintainerにとって何が成立すれば要求の意味を確認できるかをScenarioで束ねます。
+要求の記述だけから実装を直接導くのではなく、利用者や保守担当者が何を確認できれば要求を満たしたと判断できるかを、受入シナリオで示します。
 
-Scenarioが通ったことだけで関連Requirement全体を自動的に`verified`へ引き上げません。Evidence nature、source revision、Provider / Target / Host、未解決事項を分離して扱います。
+一つのシナリオが成立しても、関連する要求全体を自動的に`verified`へ変更しません。検証根拠の性質、情報源の版、提供実装・実行先・ホスト、未解決事項を区別して判断します。
 
 ## 2. 追跡原則
 
-1. Product Requirementを実装都合へ言い換えない。
-2. 一つのRequirementは複数PASへ関係してよい。
-3. 一つのPASは複数Requirementを束ねてよい。
-4. PASは利用者またはmaintainerが観測できる結果で記述する。
-5. ADRはPASを満たすための設計判断でありRequirementそのものではない。
-6. Issue close、test pass、CI green、visual scoreだけでPAS成立とは扱わない。
-7. synthetic / deterministic / generated-artifact / real-provider / actual-external等のEvidence natureを混同しない。
-8. source-dependent Evidenceは取得したrevisionへ固定し、後続revisionへ黙ってcarry-forwardしない。
-9. Target Evidenceではmeaning baseline revisionとTarget build revisionを分ける。
+1. 製品要求を実装の都合で言い換えない。
+2. 一つの要求が複数の受入シナリオに関係してもよい。
+3. 一つの受入シナリオが複数の要求を扱ってもよい。
+4. 受入シナリオは、利用者または保守担当者が確認できる結果で記述する。
+5. 設計判断記録は受入シナリオを満たすための判断であり、要求そのものではない。
+6. 課題のクローズ、テスト合格、CIの成功、画面評価の点数だけでは、受入シナリオが成立したとは判断しない。
+7. 合成データ、決定的な再現性、生成物、実際の提供実装、外部資産に関する検証根拠を混同しない。
+8. 情報源の内容に依存する検証根拠は取得時の版と結び付け、後続の版へ確認なく引き継がない。
+9. 実行先の検証では、意味の基準版と実行先のビルド版を区別する。
 10. 不足情報は`unresolved`として残し、成功へ丸めない。
-11. Gateを増やすより、既存Gateが何を証明するかを明確にする。
-12. Human / Studio / CLI / AI等の入口ごとに第二のsemantic authorityを作らない。
+11. 判定段階を増やすより、既存の判定段階で何を証明するかを明確にする。
+12. 人による操作、編集環境、コマンドライン、AIなど、変更する経路ごとに意味の第二の正本を作らない。
 
 ## 3. PAS-01 — 意味を壊さず設計を変更・再読込できる
 
 ### 利用者価値
 
-開発者は、file-native authoring、Studio、CLI / refactor、AI Proposal等の入口が異なっても、変更前後の意味差と影響を確認し、同じAcceptance原則を通して安全にauthoritative sourceを変更・再読込できます。
+開発者は、ファイルの直接編集、編集環境、コマンドラインからの構造整理、AIによる変更提案など、どの経路でも変更前後の意味の差と影響を確認できます。共通の受理原則に従い、正本となる情報源を安全に変更し、読み直すことができます。
 
 ### 代表Scenario
 
 ```text
-Canonical Source / Source Indexを読む
+正本のソースと入力元索引を読む
     ↓
-qualified logical identityを選ぶ
+一意に特定できる論理上の識別子を選ぶ
     ↓
-変更candidateを作る
+変更候補を作る
     ↓
-Preview Semantic Diff / Impact
+意味の差分と影響を事前に確認する
     ↓
-Accept / Reject
-    ↓ Accept only
-Shared Acceptance Boundary
+受理・却下を判断する
+    ↓ 受理された場合だけ
+共通の受理境界
     ↓
-authoritative file-native sourceへ反映
+正本となるファイルに反映する
     ↓
-reload
+読み直す
     ↓
-意図したCanonical meaning / identity / Conformanceを再構成
+意図した意味・識別子・準拠性を再構成する
 ```
 
-Preview / Rejectはauthoritative sourceを変更しません。
+事前確認や却下によって、正本となる情報源は変更しません。
 
-candidateは必要に応じて`baseModelRevision`を持ち、staleならreject / re-read / explicit rebase等へ進みます。最新版へ黙って適用しません。
+変更候補は必要に応じて`baseModelRevision`を持ちます。元の版が古くなっていた場合は、却下、再読込み、明示的な基準版の更新などを行い、最新版へ確認なく適用しません。
 
-### identityの注意
+### 識別子についての注意
 
-file pathそのものをSemantic identityにはしません。
+ファイルのパスそのものを意味上の識別子にはしません。
 
-- file moveだけでqualified logical identityが変わらない場合: semantic no-opとして扱える
-- logical rename / Canonical identity変更: Semantic changeとして扱う
+- ファイルを移動しても一意な論理上の識別子が変わらない場合：意味を変更しない操作として扱える
+- 論理上の名称や正本の識別子を変更する場合：意味の変更として扱う
 
-したがって、すべての変更後に「同じIDである」ことを要求するのではなく、**変更intentに対してidentity変化が説明可能であること**を要求します。
+すべての変更後に同じ識別子を維持するのではなく、**変更の意図に対して識別子の変化を説明できること**を要求します。
 
-Studio / AI都合でmandatory authored Stable ID / UUIDを導入しません。
+編集環境やAIの都合だけで、人が記述する安定識別子やUUIDを必須にはしません。
 
 ### 主なRequirement
 
@@ -99,71 +99,71 @@ Studio / AI都合でmandatory authored Stable ID / UUIDを導入しません。
 - RQ-019 Runtime / Resource authority
 - RQ-021 Reference / Conformance
 
-### shared Acceptance Boundary
+### 共通の受理境界
 
 ```text
-file edit -------┐
-Studio ----------|
-CLI / refactor --|--> candidate --> Shared Acceptance Boundary --> authoritative source
-AI Proposal -----|
-Matrix ----------|
-optional Patch --┘
+ファイルの編集 ---------┐
+編集環境 ---------------|
+コマンドライン・整理 ----|--> 変更候補 --> 共通の受理境界 --> 正本の情報源
+AIによる提案 -----------|
+対応表 -----------------|
+必要に応じた差分 -------┘
 ```
 
 対象に応じて次を組み合わせます。
 
 ```text
-Parse / Decode
- -> Normalize
- -> Validate
- -> Architecture / Policy Check
- -> Semantic Diff
- -> Impact Analysis
- -> Acceptance Policy
- -> authoritative source update
- -> reload
- -> Conformance
+解析・読取り
+ → 正規化
+ → 検証
+ → 構成と方針の確認
+ → 意味の差分
+ → 影響の分析
+ → 受理の方針による判断
+ → 正本となる情報源の更新
+ → 再読込み
+ → 準拠性の確認
 ```
 
-一つの固定API / processを要求するのではなく、入口依存でsemantic validationやauthorityが変わらないことを要求します。
+すべての変更を一つの固定APIや処理手順に限定しません。ただし、変更の入口によって意味の検証規則や権限が変わらないことを求めます。
 
 ### 現在のPlan / Evidence位置
 
-Gate C前にStudio / AIの詳細interfaceを固定しません。
+判定段階Cより前には、編集環境やAIの詳細な接続方式を固定しません。
 
 Gate C Ready後:
 
-- `ISSUE-000046` — Studio minimal Authoring Loop（PAS-01 primary）
-- `ISSUE-000027` — AI Proposal / Shared Acceptance（PAS-01 primary / PAS-06 secondary）
-- ADR-0022 — AI ProposalとCanonical受入境界の分離
+- `ISSUE-000046`：編集環境での最小限の記述・変更・受理（主にPAS-01）
+- `ISSUE-000027`：AIの変更提案と共通の受理境界（主にPAS-01、関連してPAS-06）
+- ADR-0022：AIの変更提案と意味の正本の受理境界を分ける判断
 
-StudioはProjection / Authoring Clientであり第二正本ではありません。
+編集環境は表示と記述を行うための機能であり、意味の第二の正本にはしません。
 
-Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application TargetのEvidenceへ読み替えません。
+開発者向け編集環境のWailsホストを、Wailsで生成したデスクトップアプリケーションの実行先についての検証根拠とはみなしません。
 
-## 4. PAS-02 — Application上の意味をDriverで実行・検証できる
+## 4. PAS-02 — アプリケーションの意味を実行・検証環境で確認できる
 
 ### 利用者価値
 
-開発者は画面やWeb frameworkを作る前でも、Application meaningをDriverで実行し、Validation、Authorization、Business Result、Execution Error、Observationを区別して確認できます。
+開発者は画面やWebの開発基盤を用意する前でも、アプリケーションの意味を実行・検証環境で確かめられます。その際、検証、認可、業務上の結果、実行エラー、観測結果を区別します。
 
 ### 代表Scenario
 
 ```text
-Authentication
- -> browse
- -> record
- -> reference
- -> header-detail
- -> Validation
- -> Authorization
- -> Command
- -> Business Result
- -> separate explicit read
- -> Observation
+認証
+ → 一覧表示
+ → 記録
+ → 参照
+ → 見出しと明細
+ → 検証
+ → 認可
+ → 命令
+ → 業務上の結果
+ → 独立した明示的な読取り
+ → 状態の観測
 ```
 
-Command acknowledgementだけでObserved state成立とは扱いません。
+命令が受け付けられたことだけでは、期待した外部の状態になったとは判断しません。
 
 ### 主なRequirement
 
@@ -177,39 +177,39 @@ Command acknowledgementだけでObserved state成立とは扱いません。
 
 ### 現在のEvidence位置
 
-Gate AはReadyです。Driverの主要意味境界も成立しています。
+判定段階Aは`Ready`です。実行・検証環境でも、主要な意味の境界が成立しています。
 
-Gate BはReadyです（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
+判定段階Bは`Ready`です（候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日：2026-09-19）。
 
-Required Evidenceは次の三つで、いずれも同じclean candidate revision `R`のsame-runで成立しています。
+必要な検証根拠は次の三つです。いずれも変更のない同じ候補版`R`に対して、一度の実行で成立しています。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定的な再現性を示す検証根拠
+2. #255 生成物の再現性を示す検証根拠
+3. #308 実際のPostgreSQLと一時的な試験データによる検証根拠
 
 `ISSUE-000037` / #387のfinal convergenceと`#273`の独立artifact auditも成立済みで、Handover Baseline `B / R`を固定しています（[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
 
-## 5. PAS-03 — Native / external assetを壊さず段階移行・置換できる
+## 5. PAS-03 — 既存資産を保ちながら段階的に移行・置換できる
 
 ### 利用者価値
 
-既存SQL、Database、認証、Plugin、外部Provider等をTEI独自形式へ全面移植せず、意味・契約・realization・外部観測を分離したまま段階的に利用できます。
+既存のSQL、データベース、認証、プラグイン、外部の提供実装などを、TEI独自の形式へ全面的に移し替える必要はありません。意味、契約、実現方法、外部の観測を区別したまま、段階的に利用できます。
 
 ### 代表Scenario
 
 ```text
-Canonical Contract / Application intent
+正本の契約・アプリケーションの意図
         ↓
-explicit Binding / native realization
+明示した対応付け・既存形式での実現
         ↓
-Provider / external asset
+提供実装・外部資産
         ↓
-Command or Query execution
+命令または問い合わせの実行
         ↓
-Evidence / Observation
+検証根拠・観測結果
 ```
 
-未観測のexternal physical factsを生成・推測しません。Provider固有知識はProvider / Adapter側に残し、Canonical Contractをprovider都合で変更しません。
+まだ観測していない外部の物理的な事実を、推測で補ったり生成したりしません。提供実装に固有の知識は、その提供実装と接続部品に保持し、正本の契約を提供実装の都合で変更しません。
 
 ### 主なRequirement
 
@@ -225,11 +225,11 @@ Evidence / Observation
 
 ### 現在のEvidence位置
 
-Gate Bの#308 real PostgreSQL fixtureはPAS-03の一部を圧力試験しますが、actual external Oracle Evidenceの代替ではありません。
+判定段階Bの#308で実際のPostgreSQLを用いる検証は、PAS-03の一部を厳しく確かめるものです。しかし、実際のOracle環境で得る検証根拠の代わりにはなりません。
 
-actual Oracle #214 / #371 / #376はGate B第四Required laneではなく、actual external asset / legacy compatibility / second-provider Evidenceとして継続します。
+実際のOracle環境に関する#214、#371、#376は判定段階Bの四つ目の必須条件には加えません。外部資産、既存資産との互換性、二つ目の提供実装についての検証として継続します。
 
-Gate B Ready時に未完了ならHandover Baselineへ`unresolved`として明示し、第一Target側でphysical facts / SQL / read-only方式等を補完しません。
+判定段階Bで`Ready`となった時点で未完了の事項は、引継ぎの基準に`unresolved`として記録します。最初の実行先側で物理的な事実やSQL、読み取り専用の方式などを推測で補いません。
 
 ## 6. PAS-04 — 同じApplication meaningを複数TargetへProjectionできる
 
