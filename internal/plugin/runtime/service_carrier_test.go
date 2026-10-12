@@ -160,7 +160,7 @@ func TestSelectedServiceUsesExistingRuntimeHostAuthorityAndProcess(t *testing.T)
 
 func TestSelectedServiceRejectsDriftBeforeVerifierOrProcess(t *testing.T) {
 	base, selected, child, verifier := serviceCarrierFixture(t)
-	host, acceptance := serviceCarrierHost(selected, child, verifier)
+	host, _ := serviceCarrierHost(selected, child, verifier)
 	payload := json.RawMessage(`{"value":"ok"}`)
 	for _, tc := range []struct {
 		name   string
