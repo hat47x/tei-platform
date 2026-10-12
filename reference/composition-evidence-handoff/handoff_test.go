@@ -312,3 +312,36 @@ func TestHandoffUnrelatedCatalogCannotChangeOrExpandSubjects(t *testing.T) {
 		}
 	}
 }
+
+func TestHandoffManyExactReferencesRemainAmbiguous(t *testing.T) {
+	set, registry := proposal(t)
+	target := set.Findings[0].VerificationTargets[0]
+	refs := make([]EvidenceReference, 0, 10004)
+	for i := 0; i < 10000; i++ {
+		refs = append(refs, ref(target))
+	}
+	report := ReconcileCurrent(registry, set, refs)
+	if report.Blocked || len(report.Subjects) != 2 ||
+		report.Subjects[0].State != ReferenceAmbiguous ||
+		report.Subjects[0].Reference != nil {
+		t.Fatalf("repeated exact locators were silently accepted: %+v", report)
+	}
+	// Adding unrelated, incorrect and obsolete references must not change
+	// the exact-reference ambiguity, regardless of their position.
+	wrong := ref(target)
+	wrong.Subject.Contract.Shape = "different"
+	stale := ref(target)
+	stale.Subject.Epoch++
+	foreign := ref(target)
+	foreign.Subject.Scope = "another-tenant"
+	refs = append([]EvidenceReference{wrong, stale, foreign}, refs...)
+	report = ReconcileCurrent(registry, set, refs)
+	if report.Blocked || report.Subjects[0].State != ReferenceAmbiguous {
+		t.Fatalf("unrelated locators masked exact ambiguity: %+v", report)
+	}
+	// One exact locator takes precedence over other ineligible locators.
+	report = ReconcileCurrent(registry, set, []EvidenceReference{stale, wrong, ref(target), foreign})
+	if report.Blocked || report.Subjects[0].State != ReferenceLinked || report.Subjects[0].Reference == nil {
+		t.Fatalf("single exact locator was not selected: %+v", report)
+	}
+}
