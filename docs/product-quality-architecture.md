@@ -1,36 +1,36 @@
 # TEI Product Quality Architecture
 
-Status: **Design baseline — cross-cutting / Evidence-driven**
+状態：**横断的な設計基準。検証根拠をもとに評価する方針**
 
-関連文書とIssueは次のとおりです。
+関連する文書と課題は次のとおりです。
 
-- `requirements/TEI_PRODUCT_REQUIREMENTS.md` — Product Requirement正本
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md` — 製品要求の正本
 - `plan/evidence/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — 段階的な実証計画
-- `plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md` — Requirement別の現在地
-- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` — PASとの接続
+- `plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md` — 要求ごとの達成状況
+- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` — 製品の受け入れシナリオとの対応
 - GitHub Issue #565
 
 ## 1. 位置づけ
 
-TEIにおける製品品質（Product Quality）は、意味モデルから切り離された「非機能層」ではありません。
+TEIの製品品質は、意味モデルから独立した「非機能の層」だけで扱うものではありません。
 
-すでに定めた次の境界が、Target、Provider、Runtime、Studio、AIの各領域でも一貫して守られるかを確かめるための設計軸です。
+すでに定めた次の境界が、実行先、提供元、実行環境、設計・編集環境、AIの各領域でも一貫して守られているかを確かめるための設計上の観点です。
 
-- business meaningとrealizationの分離
-- authoritative sourceとderived artifactの分離
-- explicit Binding / authority
-- Desired / Actual / Diff / Unresolved
-- Business Result / Execution Error / Observationの分離
-- Reference / Conformance / Evidenceによる再現性
-- Permission / Resource / secret境界
-- Target-conditioned performance
-- Data / Function / Businessのcross-check
+- 業務上の意味と、技術的な実現方法の分離
+- 正本となる入力元と、そこから生成した成果物の分離
+- 明示的な対応付けと権限
+- 期待状態・実際の状態・差分・未解決状態の区別
+- 業務結果・実行エラー・観測結果の分離
+- 参照例・準拠確認・検証根拠による再現性
+- 利用許可・資源・秘密情報の境界
+- 実行先の条件を踏まえた性能
+- データ・機能・業務の各視点からの相互確認
 
-このため、本書は新しい番号付きProduct Requirement、Canonical kind、Gate、Runtime subsystemを追加しません。
+このため、本書では番号付きの製品要求、意味の正本の要素種別、判定段階、実行環境の部分機構を新たに追加しません。
 
 ## 2. なぜ横断Architectureが必要か
 
-要求が適切でも、品質上の関心事を個別実装ごとに扱うと、次のような早計な判断が起こり得ます。
+要求が適切に定められていても、品質を個別の実装ごとに評価すると、次のような早計な判断につながりかねません。
 
 ```text
 Databaseでは安全
@@ -49,7 +49,7 @@ AI retrieval accuracyが高い
   != semantic correctness
 ```
 
-そのため品質については、意味・変更・実行・Interaction・Evidenceの各境界に対して、同じ観点から確認します。
+そのため品質は、意味・変更・実行・操作・検証根拠のそれぞれについて、共通の観点から確認します。
 
 ## 3. Quality axes
 
@@ -57,10 +57,10 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- Projection / Target / Provider都合でCanonical meaningが変わっていないか。
-- derived artifactが第二正本になっていないか。
-- insufficient observationを`no diff`やsuccessへ変換していないか。
-- identity解決がfirst-match等の偶然の順序へ依存していないか。
+- 表示方法・実行先・提供元の都合で、正本の意味が変わっていないか。
+- 生成した成果物が第二の正本になっていないか。
+- 観測が不十分なのに、`no diff`や成功として扱っていないか。
+- 対象の識別が、最初に一致したものを採用するなど、偶然の探索順序に依存していないか。
 
 主なRequirement:
 
@@ -70,11 +70,11 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- semantic no-op / compatible / incompatible / destructive / unresolvedを区別できるか。
-- apply前にimpactとpreconditionを説明できるか。
-- planning後にactual stateが変わった場合、古い観測でdestructive operationを実行しないか。
-- retry / fallback / CASCADE等で作用範囲を暗黙拡大していないか。
-- rollback不能ならrecovery制約を隠していないか。
+- 意味に変化がない変更、互換性のある変更、互換性のない変更、破壊的な変更、未解決の変更を区別できるか。
+- 変更を適用する前に、影響範囲と前提条件を説明できるか。
+- 計画した後で実際の状態が変わった場合、古い観測結果を根拠に破壊的な操作を実行していないか。
+- 再試行、代替処理、CASCADEなどによって、操作の対象範囲が暗黙に広がっていないか。
+- 元に戻せない変更について、復旧上の制約を隠していないか。
 
 主なRequirement:
 
@@ -84,10 +84,10 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- Business Result、named Outcome、Execution Error、Observationを区別できるか。
-- dependency unavailable / degraded / timeout / unknownをsuccessへ丸めていないか。
-- replay / takeover / retryで二重副作用を起こさないか。
-- failureがどのApplication / Binding / Capability / Provider / Runtime境界で起きたかを追えるか。
+- 業務結果、名前付きの結末、実行エラー、観測結果を区別できるか。
+- 依存先の利用不能、機能低下、時間切れ、状態不明を、成功として扱っていないか。
+- 再実行、監督役の交代、再試行によって、同じ外部変更を二重に起こさないか。
+- 失敗が、アプリケーション・対応付け・機能・提供元・実行環境のどの境界で起きたか追跡できるか。
 
 主なRequirement:
 
@@ -97,10 +97,10 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- high-density表示が操作不能・理解不能になっていないか。
-- Target / Host / input modalityに応じて主要Scenarioを完遂できるか。
-- validation / error / unavailable状態から利用者が復旧できるか。
-- accessibilityをVisual Fidelityやscreenshot similarityへ還元していないか。
+- 情報量の多い表示が、操作しにくさや理解しにくさにつながっていないか。
+- 実行先、ホスト、入力方法に合わせて、主要な利用場面の操作を完了できるか。
+- 検証エラー、処理エラー、利用不能な状態から、利用者が操作を立て直せるか。
+- 利用しやすさを、見た目の再現度や画面画像の類似度だけで評価していないか。
 
 主なRequirement:
 
@@ -110,9 +110,9 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- latency / throughput / memory / external cost等をTarget / Host / Provider / workload条件付きで観測しているか。
-- averageだけでtail / cold-start / large-data等のrelevant caseを隠していないか。
-- 一つのTargetで得たthresholdを別Targetへ無条件に転用していないか。
+- 応答時間・処理量・使用メモリ・外部費用などを、実行先・ホスト・提供元・処理負荷の条件とともに記録しているか。
+- 平均値だけを示し、処理時間の長い例、初回起動、大量データなど重要な条件を隠していないか。
+- 一つの実行先で決めた判定基準を、別の実行先へ無条件に適用していないか。
 
 主なRequirement:
 
@@ -122,9 +122,9 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- actor、UI convenience、AI autonomyをexecution authorityへ読み替えていないか。
-- secret / credential / DSN / unnecessary physical identityをdiagnosticやEvidenceへ複製していないか。
-- current Permission / Resource boundaryを迂回する実行経路がないか。
+- 業務主体、画面の便利さ、AIの自律性を、実行権限があることの根拠にしていないか。
+- 秘密情報、認証情報、接続文字列、不要な物理的識別情報を診断結果や検証根拠へ複製していないか。
+- 現在の利用許可と資源管理の境界を迂回する実行経路がないか。
 
 主なRequirement:
 
@@ -134,10 +134,10 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- 一つの意味変更に複数正本の人手同期が必要になっていないか。
-- Provider / Target固有変更がCoreへ不要に波及していないか。
-- Evidence tool / Plan / schemaを増やすこと自体が維持負債になっていないか。
-- 一人のmaintainerでもRequirement → Decision → Reference → Evidenceを追えるか。
+- 一つの意味の変更に対して、複数の正本を人手で同期する必要が生じていないか。
+- 提供元や実行先に固有の変更が、中核部分へ不要に波及していないか。
+- 検証用ツール、計画、定義形式を増やすこと自体が、保守の負担になっていないか。
+- 保守担当者が一人でも、要求から設計判断、参照例、検証根拠へとたどれるか。
 
 主なRequirement:
 
@@ -147,9 +147,9 @@ AI retrieval accuracyが高い
 
 主な問いは次のとおりです。
 
-- Application Functionだけで業務全体を説明したことにしていないか。
-- manual / external work、actor、handoff、judgmentを失っていないか。
-- Data / Function / Businessの一視点だけで矛盾を隠していないか。
+- アプリケーションの機能だけで、業務全体を説明したことにしていないか。
+- 手作業や外部で行われる仕事、業務主体、引き継ぎ、判断を漏らしていないか。
+- データ・機能・業務の一つの視点だけを見て、矛盾を見落としていないか。
 
 主なRequirement:
 
