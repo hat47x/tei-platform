@@ -146,3 +146,73 @@ func TestUnknownReasonStillProducesReviewableQuestion(t *testing.T) {
 		t.Fatalf("unrecognized reason silently discarded: %q, %v, %q", q, evidence, target)
 	}
 }
+
+func TestReviewRecordsExactAndPotentialTargetsAsSeparateEvidence(t *testing.T) {
+	in := keyedInput()
+	in.Example.CompleteTables = nil
+	duplicate := copyRecord(in.Example.Base[0])
+	duplicate.ID = "additional-confirmed"
+	in.Example.Base = append(in.Example.Base,
+		duplicate,
+		Record{ID: "unresolved-target", Table: "parent", Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"A"`),
+		}},
+		Record{ID: "definite-nonmatch", Table: "parent", Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"B"`),
+		}},
+	)
+	in.Presentation.Frames = []Frame{{ID: "z", Stage: "base"}, {ID: "a", Stage: "base"}}
+	packet, err := Review(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packet.Issues) != 1 {
+		t.Fatalf("wrong review issue count: %+v", packet.Issues)
+	}
+	issue := packet.Issues[0]
+	if issue.Result != "contradiction" ||
+		!reflect.DeepEqual(issue.MatchedTargetIDs, []string{"a", "additional-confirmed"}) ||
+		!reflect.DeepEqual(issue.PossibleTargetIDs, []string{"unresolved-target"}) ||
+		!reflect.DeepEqual(issue.FrameIDs, []string{"a", "z"}) {
+		t.Fatalf("review lost the target record evidence: %+v", issue)
+	}
+	encoded, err := json.Marshal(packet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"matchedTargetIds"`) ||
+		!strings.Contains(string(encoded), `"possibleTargetIds"`) {
+		t.Fatalf("review packet omitted concrete evidence: %s", encoded)
+	}
+	in.Presentation.Frames[0], in.Presentation.Frames[1] =
+		in.Presentation.Frames[1], in.Presentation.Frames[0]
+	reordered, err := Review(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(packet, reordered) {
+		t.Fatalf("review evidence changed with presentation order: before=%+v after=%+v", packet, reordered)
+	}
+}
+
+func TestReviewUnresolvedTargetListsOnlyPlausibleMissingKeyRecord(t *testing.T) {
+	in := keyedInput()
+	in.Example.Base = append(in.Example.Base,
+		Record{ID: "missing-tenant", Table: "parent", Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"A"`),
+		}},
+		Record{ID: "different-number", Table: "parent", Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"B"`),
+		}},
+	)
+	packet, err := Review(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packet.Issues) != 1 ||
+		packet.Issues[0].Reason != "unresolved-target-key" ||
+		!reflect.DeepEqual(packet.Issues[0].MatchedTargetIDs, []string{"a"}) ||
+		!reflect.DeepEqual(packet.Issues[0].PossibleTargetIDs, []string{"missing-tenant"}) {
+		t.Fatalf("cannot identify which target needs evidence: %+v", packet.Issues)
+	}
+}

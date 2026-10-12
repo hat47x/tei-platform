@@ -55,11 +55,7 @@ func buildCommandOutput(
 	contract []byte,
 	includeLocalProjection bool,
 ) (commandOutput, error) {
-	inspection, err := xeadsource.InspectWithContract(format, source, contract)
-	if err != nil {
-		return commandOutput{}, err
-	}
-	projection, err := xeadsource.BuildCrossViewProjection(inspection)
+	projection, err := xeadsource.BuildCrossViewProjection(format, source, contract)
 	if err != nil {
 		return commandOutput{}, err
 	}
