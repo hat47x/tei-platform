@@ -78,3 +78,13 @@ JavaScriptはフォームの一時入力をJSONへ変換し、業務APIから返
 `smoke_json_api.py`では二つの実プロセスからHTML・JavaScriptとGo JSON APIを配信し、合成入力の正常・認証拒否・認可拒否・検証未充足・実行エラーについて、API直接経路と同一Origin中継経路のHTTP本文・状態の一致を確かめます。Origin不一致・未指定、誤ったContent-Type、未知の経路とAPI停止時の502も拒否します。ブラウザJavaScriptのDOM状態はNodeの模擬環境で個別にテストし、実ブラウザの操作・画面表示の検証と区別します。
 
 成果物の測定JSONは各ファイルのサイズとSHA-256を保存します。受理されたBuilder/Lock、実ブラウザ操作、視覚品質、実Provider/IdP、本番CSRF/TLS、配備環境でのAuthorizationまでは証明しません。APIバイナリは現段階では設計時Workspace/Driver機構を含みます。第二Target #259の合格とも扱いません。
+
+## 実Chromeでのフォーム操作・画面証拠（E1追加検証）
+
+専用CI [`tei-browser-real-e1-ci.yml`](../../.github/workflows/tei-browser-real-e1-ci.yml) では、画面生成済みHTML・外部JavaScriptと`tei_order_only,tei_api_only`の実Go APIを**独立した物理成果物・プロセス**として起動し、Ubuntu GitHub runnerに搭載されたGoogle Chromeで操作します。ライブラリは`playwright-core@1.56.1`へ固定し、ブラウザ本体はRunnerの実Chromeを使います。
+
+デスクトップ（1280×800）とモバイル（375×812）で、フォーム表示、入力、送信、業務状態表示、送信後の資格情報消去、正常・認証拒否・認可拒否・Validation未充足・Execution Errorの区別を実DOMと実HTTPで検査します。API停止時には成功・拒否を決めつけず、結果不明を表示することも確認します。CSPでスクリプトが実行されない場合はこのCIが失敗します。
+
+送信前と正常完了時の各画面をPNGへ撮影し、SHA-256付きの測定JSONとともに**短期診断Artifact**へ7日間保存します。合成Credentialは撮影前・送信後に消去され、テストはraw HTTP payloadやtraceを保存しません。これらは実ブラウザ操作とスクリーンショット取得の根拠であり、**デザイン合否を人間が承認した証跡でも、特定のPixel基準とのVisual Fidelity合格でもありません**。
+
+実Provider・Production IdP/Session/Authorization・TLS/CSRFやBrowser間互換性、正式Builder/LockとGatewayの配備条件は未検証です。診断用Node Hostは製品の第三配備単位ではありません。検証したGo版、Browser版、Host、合成Scenarioと未検証条件はそれぞれ別のEvidenceとして扱います。

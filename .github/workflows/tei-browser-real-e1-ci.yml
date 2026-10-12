@@ -1,0 +1,104 @@
+name: TEI 第一Web Targetの実Chrome操作と画面証跡（E1）
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/tei-browser-real-e1-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/tei-browser-real-e1-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-browser-real-e1-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chrome-browser-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      CGO_ENABLED: '0'
+    steps:
+      - name: 信頼する対象コミットを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Goツールチェーンを固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 検証前のソースと対象版を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          node --check tools/reference-first-web-two-unit-e1/real_browser_replay.mjs
+          command -v google-chrome || command -v google-chrome-stable
+          google-chrome --version || google-chrome-stable --version
+      - name: Browser自動化ライブラリを作業領域外へ固定導入
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/tei-playwright-core" \
+            --no-audit --no-fund --ignore-scripts --no-save --no-package-lock \
+            playwright-core@1.56.1
+          test -s "$RUNNER_TEMP/tei-playwright-core/node_modules/playwright-core/index.mjs"
+      - name: 二成果物を実ビルドしてChromeで操作・撮影
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/tei-first-web-chrome-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          shots="$RUNNER_TEMP/tei-first-web-chrome-screenshots"
+          bash tools/reference-first-web-two-unit-e1/build_json_api.sh \
+            "$dest" B e5231839a5dcc62cce1181a2731fcb7c70d16736
+          node tools/reference-first-web-two-unit-e1/real_browser_replay.mjs \
+            "$dest" "$RUNNER_TEMP/tei-playwright-core" "$shots"
+          test -s "$shots/desktop-blank.png"
+          test -s "$shots/mobile-blank.png"
+          test -s "$shots/desktop-completed.png"
+          test -s "$shots/mobile-completed.png"
+          test -s "$shots/real-browser-receipt.json"
+          grep -Fq '"browserDOMAndRealHTTPVerified": true' "$shots/real-browser-receipt.json"
+          grep -Fq '"visualFidelityHumanAccepted": false' "$shots/real-browser-receipt.json"
+      - name: 実画面の合成証跡を添付（本番画面ではない）
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: first-web-chrome-e1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-first-web-chrome-screenshots/
+          retention-days: 7
+          if-no-files-found: error
+      - name: 検証後の対象版と作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
