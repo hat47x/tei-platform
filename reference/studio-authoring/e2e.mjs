@@ -162,6 +162,13 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     studioReview.sourceWriteByThisCommand === false &&
     studioReview.modelRevision === beforeRevision,
     label + ": one-shot Studio review is read-only, not Acceptance");
+  const coverageCodes = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"];
+  checked(coverageCodes.every(code =>
+    studioReview.review.sections?.filter(s => s.code === code).length === 1) &&
+    studioReview.review.coverage &&
+    studioReview.review.sections.every(s =>
+      ["available", "partial", "not-evaluated"].includes(s.coverage)),
+    label + ": Shared Acceptance reports all eight reviewed coverage categories");
   checked(studioReview.reviewConsistency.status === "reviewed-consistent" &&
     studioReview.reviewConsistency.readyToAccept === false,
     label + ": Preview and Review agree on R0 without conferring approval");
@@ -187,8 +194,10 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       "-format", "html"
     ]).stdout;
     checked(reviewPage.includes("not-performed") &&
-      reviewPage.includes("未適用") && reviewPage.includes("source"),
-      "er: review HTML distinguishes proposal and unaccepted Source edits");
+      reviewPage.includes("未適用") && reviewPage.includes("source") &&
+      coverageCodes.every(code => reviewPage.includes(code + "　")) &&
+      reviewPage.includes("承認前に確認する審査区分"),
+      "er: review HTML displays all Go coverage categories without approving Source");
   }
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     label + ": Preview, Review and Studio review do not mutate Source");

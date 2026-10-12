@@ -145,13 +145,33 @@ function businessStep(view) {
 function reviewEdit(view) {
   const preview = view.preview || {}, review = view.review || {};
   const stages = preview.stages || [];
-  const reviewSections = review.sections || [];
+  // These are the eight existing Shared Acceptance review categories.
+  // A missing/duplicate response cannot silently look fully evaluated.
+  const required = [
+    ["A1", "意味差分"], ["A2", "影響"], ["A3", "例外・診断"],
+    ["A4", "未解決点"], ["A5", "権限の変更"],
+    ["A6", "native codeへ残る箇所"], ["A7", "逆追跡"],
+    ["A8", "承認単位の大きさ"]
+  ];
+  const reported = Array.isArray(review.sections) ? review.sections : [];
   const coverage = review.coverage || {};
-  const assessment = reviewSections.length === 0
-    ? "審査区分を取得できません。範囲の充足を確認できません。"
-    : "利用可能：" + str(coverage.available ?? "不明") +
-      "／一部：" + str(coverage.partial ?? "不明") +
-      "／未評価：" + str(coverage.notEvaluated ?? "不明");
+  const badShape = reported.some(s =>
+    !s || typeof s !== "object" || typeof s.code !== "string");
+  const missing = [], duplicate = [];
+  const reviewSections = required.map(([code, title]) => {
+    const matches = reported.filter(s => s?.code === code);
+    if (matches.length === 1) return matches[0];
+    (matches.length ? duplicate : missing).push(code);
+    return { code, title, coverage: "not-evaluated",
+      note: matches.length ? "同一区分が重複しました。確認できません。"
+        : "共通受理機構から当該区分を取得できません。" };
+  });
+  const assessment = "共通受理機構の申告：利用可能 " +
+    str(coverage.available ?? "不明") + "／一部 " +
+    str(coverage.partial ?? "不明") + "／未評価 " +
+    str(coverage.notEvaluated ?? "不明") +
+    (badShape || missing.length || duplicate.length
+      ? "。区分不足・重複・形式不正があるため、審査結果は不完全です。" : "");
   const sectionBody = '<p class="warning">' + assessment + '</p>' +
     entries(reviewSections, s =>
       '<strong>' + str(s.code) + '　' + str(s.title) + '</strong>' +

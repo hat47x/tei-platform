@@ -102,6 +102,45 @@ test("proposal review never labels a preview as approved", () => {
   assert.doesNotMatch(html, /<script>|<img/);
   assert.match(html, /&lt;script&gt;/);
 });
+test("review HTML surfaces eight categories and unknown coverage", () => {
+  const codes = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"];
+  const result = { schema: "tei.reference.studio-review-edit/v0",
+    explicitAcceptance: "not-performed", sourceWriteByThisCommand: false,
+    review: { coverage: { available: 2, partial: 4, notEvaluated: 2 },
+      sections: codes.map((code, i) => ({
+        code, title: code + "審査", coverage: i < 2 ? "available"
+          : i < 6 ? "partial" : "not-evaluated",
+        summary: "根拠-" + i, items: ["項目-" + code], sources: ["preview." + code],
+        note: i === 4 ? "<img src=x onerror=alert(1)>" : ""
+      }))
+    }
+  };
+  const page = renderStudioHTML(result);
+  for (const code of codes) assert.match(page, new RegExp(code + "　"));
+  assert.match(page, /未評価 2/);
+  assert.match(page, /根拠の出所/);
+  assert.match(page, /&lt;img src=x onerror=alert/);
+  assert.doesNotMatch(page, /<img/);
+  assert.match(page, /not-performed/);
+});
+test("review HTML marks missing categories and duplicate results as unverified", () => {
+  const result = { schema: "tei.reference.studio-review-edit/v0",
+    explicitAcceptance: "not-performed", sourceWriteByThisCommand: false,
+    review: { coverage: { available: 8, partial: 0, notEvaluated: 0 },
+      sections: [
+        { code: "A1", title: "正常", coverage: "available" },
+        { code: "A1", title: "重複", coverage: "available" },
+        { code: "A2", title: "正常", coverage: "available" }, null
+      ]
+    }
+  };
+  const page = renderStudioHTML(result);
+  assert.match(page, /区分不足・重複・形式不正/);
+  assert.match(page, /同一区分が重複しました/);
+  assert.match(page, /当該区分を取得できません/);
+  assert.match(page, /A8　/);
+  assert.match(page, /not-evaluated/);
+});
 test("HTML refuses arbitrary documents, with no default authority", () => {
   assert.throws(() => renderStudioHTML({ schema: "unknown" }),
     /UNSUPPORTED_STUDIO_HTML_SCHEMA/);
