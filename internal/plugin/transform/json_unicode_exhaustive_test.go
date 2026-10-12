@@ -1,6 +1,7 @@
 package transform_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -48,5 +49,25 @@ func TestParseJSONUnicodeBackslashParity(t *testing.T) {
 		if (err != nil) != wantReject {
 			t.Fatalf("backslash count %d: rejection=%v, expected=%v", count, err != nil, wantReject)
 		}
+	}
+}
+
+// The programmatic Source path must not accept malformed literal JSON and
+// derive a valid artifact or fingerprint from encoding/json's replacement.
+func TestProgrammaticSourceRejectsMalformedSurrogate(t *testing.T) {
+	source := transform.TransformSourceRealizerV1()
+	source.Program.Assertions = nil
+	source.Program.Output = transform.Expr{
+		Op: transform.OpLiteral,
+		Literal: json.RawMessage(`"\\uD800"`),
+	}
+	if _, err := transform.SourceFingerprint(source); err == nil {
+		t.Fatal("SourceFingerprint accepted an unpaired surrogate")
+	}
+	if _, _, err := transform.MaterializeSource(source); err == nil {
+		t.Fatal("MaterializeSource accepted an unpaired surrogate")
+	}
+	if _, err := transform.SourceValue(source); err == nil {
+		t.Fatal("SourceValue accepted an unpaired surrogate")
 	}
 }
