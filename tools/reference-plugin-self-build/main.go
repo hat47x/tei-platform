@@ -135,19 +135,28 @@ func main() {
 	flag.Parse()
 
 	out, err := run(*repo)
-	if err != nil {
-		if _, reportErr := emitSelfBuildMismatchEvidence(os.Stdout, err); reportErr != nil {
-			fmt.Fprintln(os.Stderr, reportErr)
-		}
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	if exitCode := writeSelfBuildCLIResult(os.Stdout, os.Stderr, out, err); exitCode != 0 {
+		os.Exit(exitCode)
 	}
-	enc := json.NewEncoder(os.Stdout)
+}
+
+// Keep the CLI's output and exit-code decision testable without a test-only
+// switch in the production command. A mismatch is JSON evidence, not success.
+func writeSelfBuildCLIResult(stdout, stderr io.Writer, out evidence, err error) int {
+	if err != nil {
+		if _, reportErr := emitSelfBuildMismatchEvidence(stdout, err); reportErr != nil {
+			fmt.Fprintln(stderr, reportErr)
+		}
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(out); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
+	return 0
 }
 
 func run(repo string) (evidence, error) {
