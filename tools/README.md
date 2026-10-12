@@ -4,6 +4,8 @@
 
 表には、この階層の全ディレクトリと直下の実行用ファイルを載せています。各ツールの固有の使い方や判定条件は、そのディレクトリ内のREADME・実装・Issueを正とします。
 
+独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
+
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
@@ -50,6 +52,7 @@
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
 | [`reference-process-plugin/`](reference-process-plugin/) | 別プロセスで動くPluginの参照用起動点 |
+| [`reference-composition-process-bridge/`](reference-composition-process-bridge/) | 合成基盤と従来・独立プロセスプラグインの接続試験 |
 | [`reference-resource/`](reference-resource/) | 実行資源の参照用起動点 |
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
 | [`reference-runtime-snapshot/`](reference-runtime-snapshot/) | 生成時と実行時の投影境界の確認 |
