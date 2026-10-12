@@ -828,11 +828,25 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	if resp.DescriptorFingerprint == "" {
 		resp.DescriptorFingerprint = pr.DescriptorFingerprint
 	}
+	identityMatches := resp.ProtocolVersion == ProtocolVersion && resp.RequestID == requestID && resp.Plugin == cr.Plugin && resp.CapabilityID == id && resp.DescriptorFingerprint == pr.DescriptorFingerprint
+	if cr.Boundary == BoundaryProcess {
+		// Process response metadata is untrusted. A plugin can accidentally or
+		// deliberately embed host-supplied secrets in the error field or in a
+		// failure/mismatched-identity payload. Do not promote either to a host
+		// error, Invocation evidence, or a caller-visible diagnostic.
+		resp.Error = ""
+		if resp.Status != ResponseOK || !identityMatches {
+			resp.Payload = nil
+		}
+	}
 	inv = Invocation{Response: resp, Provenance: prov}
-	if resp.ProtocolVersion != ProtocolVersion || resp.RequestID != requestID || resp.Plugin != cr.Plugin || resp.CapabilityID != id || resp.DescriptorFingerprint != pr.DescriptorFingerprint {
+	if !identityMatches {
 		return inv, fmt.Errorf("plugin runtime response identity mismatch for capability %s", id)
 	}
 	if resp.Status == ResponseError {
+		if cr.Boundary == BoundaryProcess {
+			return inv, fmt.Errorf("plugin capability %s failed (untrusted process error details suppressed)", id)
+		}
 		return inv, fmt.Errorf("plugin capability %s failed: %s", id, resp.Error)
 	}
 	if resp.Status != ResponseOK {
