@@ -90,8 +90,13 @@ verify_case argv-rejected error "$probe/valid.json" '--wrong-argv'
 # Both OS process boundaries reject malformed requests without echoing the
 # original payload or returning a partial acknowledgment.
 printf '%s\n' 'private-material-not-for-echo{' > "$probe/request.json"
-if run_native "$marker" || run_wasi "$marker"; then
-  echo 'error: malformed request returned success' >&2
+native_exit=0
+run_native "$marker" || native_exit=$?
+wasi_exit=0
+run_wasi "$marker" || wasi_exit=$?
+if [[ "$native_exit" -eq 0 || "$wasi_exit" -eq 0 ||
+      "$native_exit" -ne "$wasi_exit" ]]; then
+  echo "error: malformed request exit mismatch native=$native_exit wasi=$wasi_exit" >&2
   exit 1
 fi
 if [[ -s "$probe/native.out" || -s "$probe/wasi.out" ]]; then
