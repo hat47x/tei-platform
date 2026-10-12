@@ -134,13 +134,13 @@ command
 主に次の領域で成立しています。
 
 - アプリケーションパターン
-- Datasource read / write
+- データ接続先の読取り・書込みの区別
 - 能力の対応付け
 - 正本上の検証規則
-- Business Result / Execution Error
+- 業務上の結果と実行時エラーの区別
 - 認証と認可
-- legacy認証Compatibility
-- Source / Binding traceability
+- 既存認証との互換性
+- 入力元と対応付けの追跡可能性
 
 判定段階Aの`Ready`は、実行・検証環境が完成したことではなく、そこへ引き渡す意味の契約が成立したことを示します。
 
@@ -180,7 +180,7 @@ Gate B監査：`GATE_B_READINESS_AUDIT.md`／`ISSUE-000029`／#273
 
 ### Driverで成立している主な境界
 
-- アプリケーションパターン resolution
+- アプリケーションパターンの解決
 - データ接続先の解決
 - 問い合わせと契約に基づく問い合わせ
 - 入力と結果の明示的な対応付け
@@ -239,7 +239,7 @@ Ready判定に必要な次の条件は、すべて満たしています。
 
 関連: `GATE_B_TO_C_HANDOVER_CONTRACT.md` / `ISSUE-000030` / #291
 
-Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`へ固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)です。
+判定段階BのReadyを受け、候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`を引継ぎ基準版`B`として固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)にあります。
 
 ```text
 Gate B Ready for R
@@ -248,38 +248,38 @@ Handover Baseline B
   baselineRepositoryRevision = R
 ```
 
-少なくとも次へ追跡します。
+少なくとも次の情報まで追跡できます。
 
-- Handover Baseline ID
-- baseline repository revision `R`
-- Reference Workspace
-- Application `order_entry`
-- Pattern / Data / Relation / Query / Datasource
+- 引継ぎ基準版のID
+- 基準となるリポジトリの版`R`
+- 参照用の作業領域
+- アプリケーション`order_entry`
+- パターン・データ・関係・問い合わせ・データ接続先
 - 検証規則の評価
 - 認証と認可
-- Capability / Binding
-- Business Result / Execution Error / Observation
-- Driver Scenario
-- Gate B Evidence
-- unresolved
+- 能力とその対応付け
+- 業務上の結果・実行時エラー・観測
+- ドライバーのシナリオ
+- 判定段階Bの検証根拠
+- 未解決事項
 
-引継ぎの記録は意味の第二の正本ではありません。
+引継ぎの記録を、意味についての第二の正本とはしません。
 
-Oracleについて未完了の範囲をWeb側で推測して補完しません。
+Oracleについて未確認の範囲を、ウェブ側で推測して補いません。
 
 ## Stage 3 — 第一Web Target
 
-関連: `ISSUE-000007` / #70  
-Evidence: `ISSUE-000028` / #270  
-契約: `GATE_C_EVIDENCE_CONTRACT.md`
+関連：`ISSUE-000007`／#70  
+検証根拠：`ISSUE-000028`／#270  
+契約：`GATE_C_EVIDENCE_CONTRACT.md`
 
 ### 着手条件
 
-**Gate B Ready + Handover Baseline固定後**です。2026-09-19時点で両方成立し、着手済みです。同日、actual Gate C Evidenceを取得してGate CをReadyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、判定記録: [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)）。
+**判定段階BがReadyとなり、引継ぎ基準版を固定した後**に着手します。2026年9月19日時点で両方の条件が成立し、作業を開始しました。同日、判定段階Cの検証根拠を実際に取得し、Readyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、判定記録：[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)）。
 
 ### baseline RとTarget build T1
 
-Web向け実装の版を`T1`として別に追跡します。
+ウェブ向け実装の版は、`T1`として別に追跡します。
 
 ```text
 Handover Baseline B at R
@@ -289,9 +289,9 @@ First Web Target build T1
 Gate C Evidence
 ```
 
-通常`T1 != R`です。
+通常、`T1 != R`となります。
 
-`T1`でbaseline subjectの意味変更が必要になった場合、Web固有fieldやruleで埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認して新Handover Baselineを発行します。
+`T1`の実装で基準版の対象の意味を変更する必要が生じても、ウェブ固有の項目や規則で補いません。権威ある入力元に戻り、必要なドライバーと判定段階Bの検証根拠を再確認して、新しい引継ぎ基準版を発行します。
 
 ### 対象Scenario
 
@@ -301,13 +301,13 @@ Gate C Evidence
 - 見出し・明細の処理 read
 - 見出し・明細の処理 edit（baselineにwrite意味がある場合）
 - 検証規則の評価 satisfied / not satisfied
-- Authorization allowed / denied
+- 認可で許可される場合と拒否される場合
 - command
 - Business Result
 - 実行時エラー
 - Observation
-- standard Projection
-- Custom UI
+- 標準の派生表示
+- 個別実装の画面
 
 ### 観測する差
 
@@ -324,31 +324,31 @@ Gate C Evidence
 
 ## Gate C — 第一Targetの境界をEvidenceで説明できる
 
-最初のWeb向け画面を表示できただけでは、この判定段階を通過したとはみなしません。
+最初のウェブ向け画面が表示できただけでは、判定段階Cを通過したとはみなしません。
 
-検証根拠を三種類に分けます。
+検証根拠は次の三種類に分けます。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
+1. 意味の準拠確認
+2. 操作と機能の検証根拠
+3. 表示の忠実度の検証根拠
 
-すべてのrunからHandover Baseline `B` / revision `R`とTarget build `T1`へ戻れる必要があります。
+すべての実行結果から、引継ぎ基準版`B`・版`R`と実行先の構築版`T1`を追跡できる必要があります。
 
-Gate Cで確認すること:
+判定段階Cで確認すること：
 
-- DriverとWebが同じApplication meaningを共有する
-- baseline `R`とTarget build `T1`を混同しない
-- Semantic Conformance成立
-- Reference Scenario Functional Evidence成立
-- replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtrace可能
-- Visual Evidenceを別に保持
-- Business Result / Execution Error / Observationを維持
-- Web Adapter除去でCanonicalが変わらない
-- standard Projection / Custom UIが同じ上位意味へ接続
-- Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
-- unresolvedを成功扱いしない
+- ドライバーとウェブが同じアプリケーションの意味を共有する
+- 基準版`R`と実行先の構築版`T1`を混同しない
+- 意味の準拠確認が成立
+- 参照シナリオの機能の検証根拠が成立
+- 再生可能な動作を利用する場合、意味上の操作と実行先の元の検証根拠まで追跡できる
+- 表示の検証根拠を別に保持
+- 業務上の結果・実行時エラー・観測を区別して維持
+- ウェブの変換器を取り除いても正本が変わらない
+- 標準の派生表示と個別実装の画面が同じ上位の意味へ接続
+- 実行先の能力・実行時の対応付け・実行成果物・ABI・ホスト・実行と信頼の違いを二つ目の実行先へ引き継げる
+- 未解決事項を成功として扱わない
 
-visual score / VLM judgeだけでSemantic / Functionalを合格にしません。
+表示の評価点や視覚言語モデルによる判定だけで、意味や機能の検証を合格にはしません。
 
 ## Stage 4A — Authoring / Knowledge / AI
 
@@ -450,7 +450,7 @@ Evidence候補:
 - deterministic fixture
 - Conformance test
 - generated / golden artifact
-- Driver Scenario
+- ドライバーのシナリオ
 - real-provider observation
 - actual external asset observation
 - Handover Baseline
@@ -459,7 +459,7 @@ Evidence候補:
 - Target comparison
 - ADR
 - readiness audit
-- unresolved Diagnostic
+- 未解決事項 Diagnostic
 
 Evidence artifactやHandover recordをCanonicalの第二正本にはしません。
 
@@ -497,8 +497,8 @@ v1のApplication / first-target成立判断では少なくとも次をRepository
 - 既存認証仕様を保持したままCapabilityへ接続できる
 - アプリケーションパターンをDriver / Targetで共有できる
 - UIなしでもDriverで主要Scenarioを検証できる
-- standard Projection / Custom UIを同じ上位意味から利用できる
-- Business Result / Execution Error / Observationを分離できる
+- 標準の派生表示 / Custom UIを同じ上位意味から利用できる
+- 業務上の結果・実行時エラー・観測を分離できる
 - Semantic / Functional / Visual Evidenceを混同しない
 - 何が未保証かをaudit / unresolvedから判断できる
 
