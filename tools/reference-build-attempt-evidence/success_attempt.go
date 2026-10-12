@@ -117,6 +117,9 @@ func (h *buildAttemptHistory) AppendSuccess(
 	if h == nil {
 		return fmt.Errorf("Build Attempt History is nil")
 	}
+	if err := h.Validate(); err != nil {
+		return fmt.Errorf("existing Build Attempt History is invalid: %w", err)
+	}
 	planFingerprint, err := plugin.BuildPlanFingerprint(plan)
 	if err != nil {
 		return err
