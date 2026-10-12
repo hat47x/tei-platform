@@ -416,50 +416,50 @@ AIの方針が道具を直接呼び出す命令を生成できても、それを
 AIがTEIの知識を利用する場合も、**アプリケーションの定義を変更する主体**と、**受理済みの業務・アプリケーションの知識に従って業務上の操作を実行する主体**を分けます。
 
 ```text
-Authoring Plane
+定義を変更する側
 
-Canonical / Source / Evidence
+正本 / 入力元 / 検証根拠
         ↓
-AI Builder
+構築を支援するAI
         ↓
-Proposal / Structured Intent
+提案 / 構造化した意図
         ↓
-Shared Acceptance
+共通の受入
         ↓
-authoritative source update
+正本となる入力元を更新
 ```
 
 ```text
-Operational Plane
+業務を実行する側
 
-accepted Business / Application knowledge
+受理済みの業務・アプリケーションの知識
         ↓
-Business Procedure / Action
+業務手順 / 操作
         ↓
-Semantic Capability
+意味上の能力
         ↓
-current Authorization / Resource / Binding
+現在の認可 / 資源 / 対応付け
         ↓
-Command
+命令
         ↓
-Observation / Evidence
+観測 / 検証根拠
         ↓
-Business Result / unresolved
+業務上の結果 / 未解決
 ```
 
 したがって、
 
 ```text
-AI can understand
-  != AI can execute
+AIが理解できる
+  != AIが実行できる
 
-AI can execute accepted Action
-  != AI can modify its definition
+AIが受理済みの操作を実行できる
+  != AIがその定義を変更できる
 
-read authority
-  != invoke authority
-  != side-effect authority
-  != authoring authority
+読取り権限
+  != 呼出し権限
+  != 副作用を伴う操作の権限
+  != 定義の変更権限
 ```
 
 です。
@@ -479,20 +479,20 @@ AI向けに意味の正本（Canonical World）を複製した第二の知識基
 人間、構築を支援するAI、業務を実行するAIが同じTEIの知識を参照できても、全員に同じ大量の情報を渡す必要はありません。
 
 ```text
-Canonical / Source / Evidence / accepted Decisions
-        ├─> AI Builder re-entry context
-        ├─> Design Synthesis Context Packet
-        ├─> Human Review Projection
-        └─> Operational Projection
+正本 / 入力元 / 検証根拠 / 受理済みの判断
+        ├─> 構築支援AIの作業再開用の文脈
+        ├─> 設計統合用の文脈情報
+        ├─> 人による確認向けの表示
+        └─> 業務実行向けの表示
 ```
 
 これらは同じ正本の所在へたどれる、**用途別の派生した表示**として扱います。
 
 ```text
-shared knowledge plane
-  != one universal context object
-  != one universal prompt
-  != one replicated knowledge database
+共通の知識
+  != 一つの汎用的な文脈オブジェクト
+  != 一つの汎用的な指示文
+  != 一つの複製された知識データベース
 ```
 
 構築を支援するAIが作業を再開するための文脈は、変更対象、依存関係と影響、受理済みの判断と差異、能力と対応付け、元の資産、未解決事項、検証根拠などへ再びたどり着くための表示です。
@@ -512,31 +512,31 @@ shared knowledge plane
 別のアプリケーションの知識を再利用する際、参照パターンから似た構造を探すことと、元のアプリケーションで受理済みの業務分野や基盤に関する知識を別のアプリケーションへ取り込むことは区別します。
 
 ```text
-pattern recall
-  -> candidate source / hint
+参照パターンの探索
+  -> 候補の入力元 / 手掛かり
 
-knowledge portability
-  -> origin accepted knowledge
-  + dependency / assumption / Variation
-  + destination context
-  -> qualification / mismatch / override
-  -> destination Acceptance
+知識の持ち運び
+  -> 元の場所で受理済みの知識
+  + 依存関係 / 前提 / 差異
+  + 取り込み先の文脈
+  -> 適合確認 / 不一致 / 上書き
+  -> 取り込み先での受入
 ```
 
 したがって、
 
 ```text
-knowledge exists at origin
-  != applicable at destination
+元の場所に知識が存在する
+  != 取り込み先に適用できる
 
-knowledge reused
-  != origin assumptions automatically valid
+知識を再利用した
+  != 元の前提が自動的に成立する
 
-origin updated
-  != destination silently updated
+元の知識が更新された
+  != 取り込み先も自動的に更新された
 
-destination override
-  != origin knowledge changed
+取り込み先で上書きした
+  != 元の知識が変更された
 ```
 
 です。
@@ -546,12 +546,12 @@ destination override
 再利用後の管理権限には複数の形があります。概念上は、たとえば次の違いです。
 
 ```text
-linked reuse
-  destination remains explicitly dependent on origin knowledge
+依存関係を維持する再利用
+  取り込み先は元の知識への依存を明示して保つ
 
-adopted local variation
-  destination accepts its own scoped meaning
-  while retaining origin provenance
+取り込み先で受理した独自の差異
+  元の知識の来歴を残しながら
+  取り込み先の対象範囲に固有の意味を受理する
 ```
 
 どちらの場合も、元の知識の更新を取り込み先へ無条件に自動反映しません。依存関係を維持する場合は、再確認や情報の古さの判定対象にできます。取り込み先で独自の差異を受理した場合は、元の知識が変わっても取り込み先の管理権限は自動的に変わりません。
@@ -565,14 +565,14 @@ adopted local variation
 判断方針を交換可能にしても、すべての操作を大規模言語モデルへ送る必要はありません。
 
 ```text
-known / exact / deterministic operation
-  -> deterministic path
+既知 / 正確 / 決定論的な操作
+  -> 決定論的な経路
 
-ambiguous / compositional intent
-  -> AI reasoning candidate
+曖昧な意図 / 複数の要素を組み合わせる意図
+  -> AIによる推論の候補
 
-both
-  -> same semantic action / authority boundary
+どちらも
+  -> 同じ意味上の操作 / 権限の境界
 ```
 
 正確な識別子、既知の規則、明示済みの能力、決定論的な変換などで十分に処理できる場合は、AIを呼び出さない経路を標準候補として残します。AIを呼び出さないことを「低機能」とはみなしません。
@@ -586,18 +586,18 @@ both
 データベースはアプリケーションから独立した単位です。
 
 ```text
-Persistence Mapping
+永続化の対応付け
     ↓
-Desired Physical Schema
-    ↔ Actual Physical Schema
-    ↓ diff
-Migration Proposal
-    ↓ explicit adoption
-Versioned Migration
+目標の物理スキーマ
+    ↔ 実際の物理スキーマ
+    ↓ 差分を確認
+移行の提案
+    ↓ 明示的な採用
+版を管理する移行
     ↓
-Database Release
-    ↓ provides
-Database Contract
+データベースのリリース
+    ↓ 提供する
+データベースの契約
 ```
 
 アプリケーションのリリースは、複数のデータベース契約に関する要求のスナップショットを持ちます。
@@ -625,18 +625,18 @@ M0.23では、問い合わせの宣言から既存の`.sql`ファイルを参照
 さらに2026年9月の可搬な実行成果物の圧力試験では、同じ実行先でも実行成果物・ABI・ホストを差し替えられる可能性が明らかになりました。そのため、**実行時の対応付けにおける第三の観測軸**として引き続き圧力試験を行います。
 
 ```text
-Canonical Application
+アプリケーションの正本
         ↓
-Presentation / Interaction
+表示 / 対話
         ↓
-Target Adapter
-  ├─ Target Capability
-  │    window / dialog / touch / notification / ...
-  └─ Runtime Binding
-       ├─ execution artifact / ABI / host   [Pressure中]
-       │    native Go / freestanding Wasm / Wasm Component / process / ...
-       └─ Execution / Trust Profile
-            local / network / transport / origin / session / resource / ...
+実行先への変換器
+  ├─ 実行先が提供する能力
+  │    ウィンドウ / 対話画面 / タッチ / 通知 / ...
+  └─ 実行時の対応付け
+       ├─ 実行成果物 / ABI / ホスト   [検証中]
+       │    Goのネイティブ実行 / 独立動作のWasm / Wasmコンポーネント / プロセス / ...
+       └─ 実行・信頼に関する条件
+            ローカル / ネットワーク / 通信方式 / 接続元 / セッション / 資源 / ...
 ```
 
 **実行先の能力（Target Capability）**は、その実行先やホストで利用できる入出力・対話・機器の機能です。
@@ -650,12 +650,12 @@ Target Adapter
 判定段階Cでは、意味の基準版と実行先の実装版を同じ版として扱いません。判定段階B通過時の引継ぎ基準版を`B`、その`baselineRepositoryRevision`を`R`、実行先の構築・実行時の識別情報を`T`として別々に追跡します。
 
 ```text
-Handover Baseline B
+引継ぎ基準版 B
   baselineRepositoryRevision = R
-             ↓ meaning baseline
-Target build T
-             ↓ target observation
-Gate C Evidence
+             ↓ 意味の基準版
+実行先の構築版 T
+             ↓ 実行先での観測
+判定段階Cの検証根拠
 ```
 
 通常は`T != R`です。実行先の実装中に、基準版に含まれる対象のアプリケーション上の意味を変える必要が生じた場合は、実行先固有の項目や規則で旧基準版を補いません。正本へ戻って変更し、判定段階Bに必要な検証根拠を新しい版で確認して、次の引継ぎ基準版を発行します。
@@ -673,15 +673,15 @@ GoとWails/WebViewは編集環境やホストの有力な実装候補ですが�
 対話・機能の検証根拠は、必要に応じて再実行できる操作として残せます。ただし、実行先固有の選択子、座標、経路、部品の識別子、正規化したイベントなどは、**派生した検証根拠や実現方法**であって、対話を表す正本上の識別子ではありません。
 
 ```text
-Scenario / Semantic Operation
+シナリオ / 意味上の操作
         ↓
-Target-specific interaction realization
+実行先固有の対話として実現
         ↓
-Replayable Behavior / raw Target Evidence
+再実行可能な操作 / 実行先で得た元の検証根拠
         ↓
-Result / Observation
+結果 / 観測
         ↓
-Functional Evidence
+機能の検証根拠
 ```
 
 再実行可能な操作を使っても、一つの操作の成功だけで、複数の手順からなる業務手順や一連の作業全体が成立したとは判断しません。正規化した検証根拠を作る場合も、実行先から得た元の検証根拠へたどれる来歴を保持します。判定段階Cより前に汎用的なイベントモデルを固定しません。
@@ -693,17 +693,17 @@ Functional Evidence
 ## 配備と外部状態の確認
 
 ```text
-Solution Release
-  ↓ compile
-Release Graph
+ソリューションのリリース
+  ↓ 構築
+リリースの依存関係
   ↓
-Durable Deployment Run
+永続化された配備の実行記録
   ↓
-Executor Command
+実行器への命令
   ↓
-Observation / Evidence
+観測 / 検証根拠
   ↓
-Reconcile
+実際の状態との照合
 ```
 
 リリースの定義と配備の実行履歴を分けて扱います。
@@ -727,19 +727,19 @@ M0.22.1で直接検証している境界と試験の対応は、[プラグイン
 M0.22では、監督処理の引継ぎ後に外部プロセスやコンテナへ再接続する方法を、`DurableInvocationHandle`として分離しました。
 
 ```text
-host-a dies
+host-aが停止
   ↓
-ownership expires
+所有権の有効期限が切れる
   ↓
-host-b gets fencing token 2
+host-bが排他制御トークン2を取得
   ↓
-load DurableInvocationHandle
+DurableInvocationHandleを読み込む
   ↓
-Observe runtime handle
-  ├─ running  → reattach with token 2
-  ├─ succeeded/failed → record terminal observation
-  ├─ missing → do NOT replay automatically
-  └─ unknown → keep unresolved
+実行時ハンドルの状態を観測
+  ├─ running  → トークン2で再接続
+  ├─ succeeded/failed → 終了状態の観測を記録
+  ├─ missing → 自動再実行しない
+  └─ unknown → 未解決のまま残す
 ```
 
 資源を使う権限と実行環境への再接続の両方で、世代による排他制御を要求します。
