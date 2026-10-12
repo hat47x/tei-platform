@@ -204,9 +204,9 @@ func TestRuleDraftRejectsDuplicateOrForgedRequest(t *testing.T) {
 func TestRuleDraftOrderingAndInputAreStable(t *testing.T) {
 	root, input, hypotheses, intent := modelRuleDraftFixture(t)
 	before, err := json.Marshal(struct {
-		Input Input
+		Input      Input
 		Hypotheses ModelHypotheses
-		Intent ModelRuleDraftIntent
+		Intent     ModelRuleDraftIntent
 	}{input, hypotheses, intent})
 	if err != nil {
 		t.Fatal(err)
@@ -225,9 +225,9 @@ func TestRuleDraftOrderingAndInputAreStable(t *testing.T) {
 	}
 	intent.Requests[0], intent.Requests[1] = intent.Requests[1], intent.Requests[0]
 	after, err := json.Marshal(struct {
-		Input Input
+		Input      Input
 		Hypotheses ModelHypotheses
-		Intent ModelRuleDraftIntent
+		Intent     ModelRuleDraftIntent
 	}{input, hypotheses, intent})
 	if err != nil {
 		t.Fatal(err)
