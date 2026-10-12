@@ -192,14 +192,14 @@ func TestBusinessDFDUnacceptedProposalReprojection(t *testing.T) {
 				t.Fatalf("Node selected-edit failed: %v\n%s", err, stderr)
 			}
 			var packet struct {
-				Authority                 string          `json:"authority"`
-				ReadyForAcceptance        bool            `json:"readyForAcceptance"`
-				SharedAcceptanceCandidate *json.RawMessage `json:"sharedAcceptanceCandidate"`
+				Authority                 string            `json:"authority"`
+				ReadyForAcceptance        bool              `json:"readyForAcceptance"`
+				SharedAcceptanceCandidate *json.RawMessage  `json:"sharedAcceptanceCandidate"`
 				SourceWrites              []json.RawMessage `json:"sourceWrites"`
-				InputSnapshotsVerified    bool            `json:"inputSnapshotsVerified"`
-				ProposedReview            json.RawMessage `json:"proposedReview"`
+				InputSnapshotsVerified    bool              `json:"inputSnapshotsVerified"`
+				ProposedReview            json.RawMessage   `json:"proposedReview"`
 				Selected                  struct {
-					ID string `json:"id"`
+					ID               string `json:"id"`
 					AcceptedIdentity string `json:"acceptedIdentity"`
 				} `json:"selected"`
 			}
