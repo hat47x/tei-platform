@@ -112,6 +112,7 @@ function sourceLens(sourceIndex, kind, id) {
         a.path.startsWith("/") || a.path.includes("\\") ||
         /(^|\/)\.\.(\/|$)/.test(a.path) ||
         /^[A-Za-z]:/.test(a.path) ||
+        a.path.split("/").some(part => !part || part === ".") ||
         !REVISION.test(a.fingerprint) || artifacts.has(a.path)) {
       throw new Error("INVALID_OR_DUPLICATE_SOURCE_ARTIFACT");
     }
@@ -129,7 +130,10 @@ function sourceLens(sourceIndex, kind, id) {
   // #1120 identifies a node by scope + kind + ID. Source Index today has
   // no scoped model reference; a caller-added scope tag is not enough to
   // establish the same accepted meaning. Refuse to silently drop scope.
-  if (refs.some(r => r.scope !== undefined && r.scope !== null && r.scope !== ""))
+  if (refs.some(r =>
+    (r.scope !== undefined && r.scope !== null && r.scope !== "") ||
+    (r.subject?.scope !== undefined && r.subject.scope !== null &&
+     r.subject.scope !== "")))
     return { status: "unresolved", subject: { kind: canonicalKind, id },
       reason: "Scoped locator requires #1120 typed Source Resolver" };
   if (refs.length !== 1) throw new Error("AMBIGUOUS_SOURCE_DEFINITION: " + kind + ":" + id);
@@ -139,7 +143,11 @@ function sourceLens(sourceIndex, kind, id) {
       !Number.isInteger(begin.offset) || !Number.isInteger(end.offset) ||
       begin.offset < 0 || end.offset < begin.offset ||
       !Number.isInteger(begin.line) || begin.line < 1 ||
-      !Number.isInteger(begin.column) || begin.column < 1) {
+      !Number.isInteger(begin.column) || begin.column < 1 ||
+      !Number.isInteger(end.line) || end.line < 1 ||
+      !Number.isInteger(end.column) || end.column < 1 ||
+      end.line < begin.line ||
+      (end.line === begin.line && end.column < begin.column)) {
     throw new Error("INVALID_SOURCE_ANCHOR");
   }
   return {
