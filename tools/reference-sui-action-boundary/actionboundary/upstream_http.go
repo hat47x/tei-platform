@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 var ErrRemoteOutcomeUnknown = errors.New("remote action outcome unknown")
@@ -155,6 +156,11 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 	// Force redirects off independently of the injected client's policy:
 	// following a redirect could leak the user's bearer credential.
 	client := *s.Client
+	// Unbounded network waits keep an outcome indeterminate indefinitely.
+	// A caller can set a stricter deadline through the client or context.
+	if client.Timeout == 0 {
+		client.Timeout = 15 * time.Second
+	}
 	// Do not inject cookies from an HTTP client reused across identities.
 	// The only credential on the wire is the verified delegated token.
 	client.Jar = nil
