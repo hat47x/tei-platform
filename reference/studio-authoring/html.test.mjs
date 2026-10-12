@@ -179,11 +179,15 @@ test("review handoff carries the full unchanged candidate and exact fingerprint"
     modelRevision: revision, sourceRevisionAfterReview: revision,
     candidate, explicitAcceptance: "not-performed",
     sourceWriteByThisCommand: false,
-    preview: { acceptable: true, candidateId: candidate.id,
+    preview: { schema: "tei.reference.change-preview/v0",
+      acceptable: true, candidateId: candidate.id,
       baseModelRevision: revision, currentModelRevision: revision,
       candidateFingerprint: p },
-    review: { candidateId: candidate.id, candidateFingerprint: p,
-      reviewFingerprint: reviewFp, previewAcceptable: true },
+    review: { schema: "tei.reference.approval-review/v0",
+      candidateId: candidate.id, candidateFingerprint: p,
+      reviewFingerprint: reviewFp, previewAcceptable: true,
+      sections: ["A1","A2","A3","A4","A5","A6","A7","A8"].map(code =>
+        ({ code, title: code, coverage: "available" })) },
     reviewConsistency: { status: "reviewed-consistent",
       readyToAccept: false, candidateFingerprint: p,
       reviewFingerprint: reviewFp }
@@ -225,6 +229,36 @@ test("handoff never presents an unacceptable or unbound review as verified", () 
   changed.reviewConsistency.status = "reviewed-consistent";
   changed.sourceRevisionAfterReview = "sha256:" + "f".repeat(64);
   assert.match(renderStudioHTML(changed), /未確認・不整合のため受理の案内を保留/);
+});
+test("review handoff never grants coherence for malformed digests or missing sections", () => {
+  const rev = "sha256:" + "a".repeat(64);
+  const base = {
+    schema: "tei.reference.studio-review-edit/v0",
+    modelRevision: rev, sourceRevisionAfterReview: rev,
+    explicitAcceptance: "not-performed", sourceWriteByThisCommand: false,
+    candidate: { schema: "tei.reference.change-candidate/v0",
+      id: "safe", baseModelRevision: rev },
+    preview: { schema: "tei.reference.change-preview/v0",
+      acceptable: true, candidateId: "safe", baseModelRevision: rev,
+      currentModelRevision: rev, candidateFingerprint: "not-a-sha" },
+    review: { schema: "tei.reference.approval-review/v0",
+      candidateId: "safe", candidateFingerprint: "not-a-sha",
+      previewAcceptable: true, reviewFingerprint: "not-a-sha",
+      sections: ["A1","A2","A3","A4","A5","A6","A7","A8"].map(code =>
+        ({ code, coverage: "available" })) },
+    reviewConsistency: { status: "reviewed-consistent", readyToAccept: false,
+      candidateFingerprint: "not-a-sha", reviewFingerprint: "not-a-sha" }
+  };
+  assert.match(renderStudioHTML(base), /未確認・不整合のため受理の案内を保留/);
+  const valid = structuredClone(base), hash = "sha256:" + "b".repeat(64);
+  valid.preview.candidateFingerprint = hash;
+  valid.review.candidateFingerprint = hash;
+  valid.review.reviewFingerprint = hash;
+  valid.reviewConsistency.candidateFingerprint = hash;
+  valid.reviewConsistency.reviewFingerprint = hash;
+  assert.match(renderStudioHTML(valid), /候補・版・審査の照合済み／人の判断は未実施/);
+  valid.review.sections.pop();
+  assert.match(renderStudioHTML(valid), /未確認・不整合のため受理の案内を保留/);
 });
 test("review handoff HTML-encodes malicious candidate JSON without dropping details", () => {
   const malicious = '<svg onload="alert(1)">&';
