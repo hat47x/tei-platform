@@ -9,6 +9,7 @@ on:
       - 'internal/composition/**'
       - 'tools/check-core-isolation.sh'
       - 'tools/repository-architecture-check/**'
+      - 'tools/reference-subproject-impact/**'
       - 'reference/composition-kernel/testdata/external-consumer/**'
       - 'tools/reference-composition-process-bridge/**'
       - 'plugins/reference-process-executor/**'
@@ -28,6 +29,7 @@ on:
       - 'internal/composition/**'
       - 'tools/check-core-isolation.sh'
       - 'tools/repository-architecture-check/**'
+      - 'tools/reference-subproject-impact/**'
       - 'reference/composition-kernel/testdata/external-consumer/**'
       - 'tools/reference-composition-process-bridge/**'
       - 'plugins/reference-process-executor/**'
@@ -90,6 +92,20 @@ jobs:
         run: |
           set -euo pipefail
           go test -count=1 ./tools/repository-architecture-check
+
+      - name: サブプロジェクト変更面積を測定
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          gofmt -d tools/reference-subproject-impact/*.go
+          test -z "$(gofmt -l tools/reference-subproject-impact/*.go)"
+          go test -count=1 ./tools/reference-subproject-impact
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            go run ./tools/reference-subproject-impact -base "$PR_BASE_SHA" -head "$PR_HEAD_SHA"
+          fi
 
       - name: 独立した参照プラグインを構築・試験
         shell: bash
