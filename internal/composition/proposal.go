@@ -21,6 +21,7 @@ const (
 	ReasonAmbiguousProviders   ProposalReason = "ambiguous-providers"
 	ReasonExplicitMismatch     ProposalReason = "explicit-provider-mismatch"
 	ReasonDependencyIneligible ProposalReason = "dependency-ineligible"
+	ReasonMixedScopes          ProposalReason = "mixed-scopes"
 )
 
 // WiringRequirement is a design-time request, not a runtime invocation. When
@@ -42,17 +43,74 @@ type WiringFinding struct {
 	Detail     string
 }
 
+// WiringSetFinding records one consistent design-time Registry view. This is
+// not proof that the selections can run together or that external conditions
+// (contract conformance, artifact trust, host authority) are satisfied.
+type WiringSetFinding struct {
+	Revision uint64
+	Scope    string
+	Verdict  ProposalVerdict
+	Findings []WiringFinding
+}
+
 // InspectWiring answers a design-time structural question without executing
-// or authorizing a provider. It uses the SAME Registry declarations as runtime
-// selection, rather than maintaining an independent AI-side resolver.
-// It never asserts that a search over the known registry is exhaustive.
+// or authorizing a provider. It uses the same Registry as runtime selection.
 func (r *Registry) InspectWiring(req WiringRequirement) WiringFinding {
-	if r == nil || req.Scope == "" || !req.Contract.valid() {
-		return WiringFinding{Verdict: ProposalUnknown, Reason: ReasonInvalidRequirement}
+	return r.InspectWiringSet([]WiringRequirement{req}).Findings[0]
+}
+
+// InspectWiringSet assesses a group from one atomic Registry snapshot. All
+// requirements must share one scope; multiple scopes require independent
+// scoped authorization and must not be silently merged by an AI assistant.
+// Conflict takes precedence over Unknown to surface explicit contradictions.
+func (r *Registry) InspectWiringSet(reqs []WiringRequirement) WiringSetFinding {
+	out := WiringSetFinding{Verdict: ProposalUnknown}
+	if len(reqs) == 0 {
+		return out
+	}
+	out.Findings = make([]WiringFinding, len(reqs))
+	for i := range out.Findings {
+		out.Findings[i] = WiringFinding{Verdict: ProposalUnknown, Reason: ReasonInvalidRequirement}
+	}
+	if r == nil || reqs[0].Scope == "" {
+		return out
+	}
+	out.Scope = reqs[0].Scope
+	for i, req := range reqs {
+		if req.Scope != out.Scope {
+			for j := range out.Findings {
+				out.Findings[j].Reason = ReasonMixedScopes
+			}
+			return out
+		}
+		if !req.Contract.valid() {
+			out.Findings[i].Reason = ReasonInvalidRequirement
+		}
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	out.Revision = r.snapshot.Revision
+	out.Verdict = ProposalCandidate
+	for i, req := range reqs {
+		out.Findings[i] = r.inspectWiringLocked(req)
+		switch out.Findings[i].Verdict {
+		case ProposalConflict:
+			out.Verdict = ProposalConflict
+		case ProposalUnknown:
+			if out.Verdict == ProposalCandidate {
+				out.Verdict = ProposalUnknown
+			}
+		}
+	}
+	return out
+}
 
+// inspectWiringLocked examines current registry state without changing it.
+// The caller must hold r.mu. Selection is a defensive copy.
+func (r *Registry) inspectWiringLocked(req WiringRequirement) WiringFinding {
+	if req.Scope == "" || !req.Contract.valid() {
+		return WiringFinding{Verdict: ProposalUnknown, Reason: ReasonInvalidRequirement}
+	}
 	var matches []string
 	for _, id := range sortedKeys(r.providers) {
 		p := r.providers[id]
