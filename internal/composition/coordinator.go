@@ -27,13 +27,13 @@ type Lifecycle struct {
 // the coordinator's responsibility until Reap observes its drain and cleanup.
 // It is not a cluster-wide scheduler and does not itself verify artifact bytes.
 type Coordinator struct {
-	mu      sync.Mutex
-	router  *Router
-	guard   func(Binding) error
-	retired []*Retired
-	reaping bool
+	mu               sync.Mutex
+	router           *Router
+	guard            func(Binding) error
+	retired          []*Retired
+	reaping          bool
 	selectedRegistry *Registry
-	selected Selection
+	selected         Selection
 }
 
 func NewCoordinator(router *Router, guard func(Binding) error) (*Coordinator, error) {
@@ -104,7 +104,7 @@ func (c *Coordinator) stage(ctx context.Context, expected uint64, next Binding, 
 		return err
 	}
 	if registry != nil {
-		if !selected.Contract.valid() || selected.Scope == "" || selected.Revision == 0 ||
+		if !selected.Contract.valid() || selected.Scope == "" || selected.Revision == 0 || selected.Epoch == 0 ||
 			selected.ProviderID != next.ProviderID ||
 			selected.Contract.ID != next.ContractID ||
 			selected.Contract.Version != next.ContractVersion {
