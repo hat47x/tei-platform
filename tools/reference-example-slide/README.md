@@ -290,3 +290,29 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
 `model-hypothesis-review.json`は既存の`review.json`や`answer-handoff.json`とは**別の未確認資料**です。回答を受理した、候補キーを採用した、関数従属性を意味モデルへ書き込んだ、あるいは既存の共通受理を通過したことを表しません。出力はファイル権限0600で保存し、元の具体例とともに機微なローカル検討資料として扱います。
 
 正式な業務識別子・関数従属性の宣言、対象の実際の出所確認、段階別の評価、DB主キーとの対応、図上の直接編集と受理は、引き続き[課題 #1126](https://github.com/hat47x/tei-platform/issues/1126)の未完了範囲です。
+
+
+## 候補キー・関数従属性の仮説と入力元の照合（#1126）
+
+前段の`model-hypothesis-review.json`に含まれる表・属性の識別子を、既存の入力元索引と実際の意味定義に結び付ける読み取り専用監査を追加しました。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input /path/to/workspace-matched-case.json \
+  -hypotheses /path/to/model-hypotheses.json \
+  -workspace-source /path/to/tei-workspace \
+  -out /tmp/tei-example-source-review
+```
+
+この例で`workspace-matched-case.json`の`catalog`は、指定した作業領域の意味モデルから導出した`Catalog`と一致している必要があります。`modelRevision`という文字列だけを合わせても受け付けません。`-workspace-source`は`-hypotheses`、`-input`、`-out`が必須であり、独立の`-world`指定とは併用できません。入力の照合が不成立なら**ファイル出力を開始する前に停止**します。
+
+`model-hypothesis-source-audit.json`は、各仮説が参照した意味上の表（`semantic-data`）と属性（`semantic-attribute`）について、実際の定義場所を調べた結果を記録します。`source-range-checked`は、その作業領域を読み込んだ時点の入力元索引について、原資料のバイト列・指紋・対象宣言の識別子・位置が一致したことを意味します。各結果には資料の相対パス、内容指紋、該当範囲を含めます。定義が無い、複数ある、位置が別の宣言を指す場合は区別して未確認とします。
+
+重要な境界があります。
+
+- **表・属性の定義が確認できても、候補キーや関数従属性の業務上の意味は確認されません。** 現在のTEI意味モデルには、それらの仮説を正式に宣言する型付き操作がありません。入力元索引に存在しない「業務キー定義」の場所を捏造せず、既存の共通受理用の別操作へ読み替えもしません。
+- 検査対象の`Catalog`は作業領域の読み込み結果から再導出し、同一読み込みのスナップショットと入力元索引を用います。独立したファイルの後追い読み取りを出所として使わず、スナップショットに無いパスも読み取りません。
+- スナップショットの一致は、ファイル読み込み後の実ファイルの最新性、OSの競合状態、情報の真偽、作成者の本人性、受理する権限を証明しません。
+- 出力は従来の`model-hypothesis-review.json`と別のファイルであり、`modelReviewFingerprint`と`hypothesesFingerprint`により同じレビュー対象へ結び付けます。既存の`review.json`・回答指紋を変更しません。保存は0600です。
+
+正式な業務キー・関数従属性の宣言方式、意味モデルへの差分操作、出所付き人間確認、ER図からの編集は引き続き[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)で追跡します。
