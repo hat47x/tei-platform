@@ -3,12 +3,19 @@
 package runtime
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
+
+	"tei/internal/plugin"
 )
 
 // waitSignerCondition keeps a failed concurrency invariant bounded: no test
@@ -161,5 +168,122 @@ func TestLinuxSignerRotationDrainsOnlyOldGeneration(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("Allow did not finish after the old generation drained")
+	}
+}
+
+// TestLinuxPinnedChildHelper is an isolated test binary used as the actual
+// pinned executable. The child reports its start and waits for an explicit
+// release file. The parent keeps it alive while revoking a signing key.
+func TestLinuxPinnedChildHelper(t *testing.T) {
+	if os.Getenv("TEI_PINNED_HELPER") != "1" {
+		return
+	}
+	marker := os.Getenv("TEI_PINNED_HELPER_MARKER")
+	release := os.Getenv("TEI_PINNED_HELPER_RELEASE")
+	if marker == "" || release == "" {
+		t.Fatal("missing pinned child synchronization paths")
+	}
+	if err := os.WriteFile(marker, []byte("started"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if _, err := os.Stat(release); err == nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("pinned child was not released")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestLinuxSignedPinnedProcessRevocationDrainsActualChild(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin, err := os.ReadFile(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(bin)
+	digest := "sha256:" + hex.EncodeToString(sum[:])
+	identity := plugin.Identity{ID: "tei.reference.runtime", Version: "1.0.0"}
+	const ref = "reference/test-process-signer"
+	pub, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trust := NewLinuxHostSignerTrust()
+	if err := trust.Allow(ref, pub); err != nil {
+		t.Fatal(err)
+	}
+	message, err := LinuxPinnedSignatureMessage(identity, digest, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "started")
+	release := filepath.Join(dir, "release")
+	// Ensure failure paths cannot leave the child waiting for its release.
+	t.Cleanup(func() { _ = os.WriteFile(release, []byte("release"), 0600) })
+	transport := StdioProcessLauncher{Env: []string{
+		"TEI_PINNED_HELPER=1",
+		"TEI_PINNED_HELPER_MARKER=" + marker,
+		"TEI_PINNED_HELPER_RELEASE=" + release,
+	}}
+	host, err := PinSignedLinuxProcess(ctx, trust, identity, executable, digest, LinuxPinnedSignatureProof{
+		SignatureRef: ref, Signature: ed25519.Sign(private, message),
+	}, transport)
+	if err != nil {
+		t.Fatalf("cannot pin signed test executable: %v", err)
+	}
+	defer host.Close()
+	command := ProcessCommand{Executable: executable, Args: []string{"-test.run=^TestLinuxPinnedChildHelper$"}}
+	started := make(chan error, 1)
+	go func() {
+		_, err := host.Invoke(ctx, command, Request{})
+		// The helper prints the normal go test output, not the plugin JSON
+		// protocol. Its decode error is expected, after the child exits.
+		started <- err
+	}()
+	waitSignerCondition(t, "pinned child process start", func() bool {
+		_, err := os.Stat(marker)
+		return err == nil
+	})
+	revokeDone := make(chan bool, 1)
+	go func() { revokeDone <- trust.Revoke(ref) }()
+	_, epoch, _ := trust.resolve(ref)
+	_ = epoch // the signer is removed before Revoke can complete.
+	waitSignerCondition(t, "signer removal during child execution", func() bool {
+		_, _, err := trust.resolve(ref)
+		return err != nil
+	})
+	select {
+	case <-revokeDone:
+		t.Fatal("Revoke completed while signed child was still executing")
+	default:
+	}
+	if err := os.WriteFile(release, []byte("release"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatalf("pinned child did not finish: %v", ctx.Err())
+	}
+	select {
+	case ok := <-revokeDone:
+		if !ok {
+			t.Fatal("signer was not revoked")
+		}
+	case <-ctx.Done():
+		t.Fatalf("revocation did not finish after child exit: %v", ctx.Err())
+	}
+	if _, err := host.Invoke(ctx, command, Request{}); err == nil {
+		t.Fatal("old signed process launched after revocation")
 	}
 }
