@@ -35,6 +35,7 @@
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件ごとのプラグイン、画面部品一式、仕様テンプレート、構成プロファイルの境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
 | [`MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md`](MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md) | 意味モデルと表示資源を分離する多言語対応、言語資源の所有、代替、配布、翻訳の確認（[GitHub #1396](https://github.com/hat47x/tei-platform/issues/1396)、評価待ち） |
 | [`MULTILINGUAL_BUSINESS_DATA_AND_AI_TRANSLATION_2026-10.md`](MULTILINGUAL_BUSINESS_DATA_AND_AI_TRANSLATION_2026-10.md) | 多言語の業務属性、記述の版・保存・検索・公開と、生成AIによる翻訳候補・確認・受理（[GitHub #1453](https://github.com/hat47x/tei-platform/issues/1453)、評価待ち） |
+| [`MULTILINGUAL_TRANSPARENT_PLUGIN_OVERLAY_2026-10.md`](MULTILINGUAL_TRANSPARENT_PLUGIN_OVERLAY_2026-10.md) | 通常プラグインへ多言語の表示情報を後付けする意味参照・適用許可・競合解決と合成（[GitHub #1551](https://github.com/hat47x/tei-platform/issues/1551)、参照実装検証中） |
 | [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | 機能に渡す意味上の要求と、ホストが注入する実行時の文脈を分ける、評価待ちの設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
