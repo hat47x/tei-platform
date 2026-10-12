@@ -17,7 +17,7 @@ type testTranslator struct {
 	err      error
 }
 
-func (t *testTranslator) Name() string { return t.name }
+func (t *testTranslator) Name() string   { return t.name }
 func (t *testTranslator) External() bool { return t.external }
 func (t *testTranslator) Translate(_ context.Context, input TranslationContext) (string, error) {
 	t.calls++
