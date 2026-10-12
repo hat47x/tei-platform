@@ -171,3 +171,38 @@ func TestDesktopManifestObservationDetectsChangeOmittedByModelRevision(t *testin
 		t.Fatal("recovery unexpectedly replaced the draft identity")
 	}
 }
+
+func TestDesktopTwoWindowsDoNotSilentlyReapplyTheFirstReview(t *testing.T) {
+	root := scratchWorkspace(t)
+	windowA, err := desktophost.ObserveSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	windowB, err := desktophost.ObserveSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := desktophost.CompareObservations(windowA, windowB); err != nil {
+		t.Fatalf("both windows did not begin at the same revision: %v", err)
+	}
+	revision := revisionOfDir(t, root)
+	candidate := mustJSON(t, unitPriceCandidate(revision))
+	ev, err := evaluate(root, candidate)
+	if err != nil || !ev.preview.Acceptable {
+		t.Fatalf("shared review preparation failed: %+v %v", ev.preview, err)
+	}
+	fingerprint := buildReviewProjection(ev).ReviewFingerprint
+	first, err := accept(root, candidate, acceptOptions{ExpectedReviewFingerprint: fingerprint})
+	if err != nil || first.Decision != "accepted" {
+		t.Fatalf("window B could not accept through shared boundary: %+v %v", first, err)
+	}
+	if _, err := desktophost.CheckSourceFresh(windowA); !errors.Is(err, desktophost.ErrSourceChanged) {
+		t.Fatalf("window A failed to detect window B's change: %v", err)
+	}
+	// Reusing window A's original candidate and review must not silently
+	// pass the real shared boundary, even without any WebView/watch event.
+	second, err := accept(root, candidate, acceptOptions{ExpectedReviewFingerprint: fingerprint})
+	if err != nil || second.Decision != "refused" || second.SourceChanged {
+		t.Fatalf("stale second window unexpectedly reaccepted: %+v %v", second, err)
+	}
+}
