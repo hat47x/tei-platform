@@ -9,11 +9,6 @@ import (
 	"strconv"
 )
 
-// Link markup is a compiled presentation fragment, not a capability grant.
-// Both the legacy combined diagnostic and the order-only target reuse it
-// without embedding order-entry routes into repair-only server sources.
-const orderScenarioIndexFooterHTML = `<footer>JSON projection: <a href="/manifest.json">/manifest.json</a> · read-only Driver slice: <a href="/scenario/read">/scenario/read</a> · submit Command: <code>POST /scenario/submit</code> · Custom UI: <a href="/custom-submit">/custom-submit</a> · health: <a href="/healthz">/healthz</a></footer>`
-
 // Keep transport registration beside order_entry-specific handlers.
 // The combined reference still mounts both route groups for compatibility;
 // this file separation alone does not create app-specific Go package closure.
