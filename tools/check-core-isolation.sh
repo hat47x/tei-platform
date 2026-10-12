@@ -32,7 +32,7 @@ printf 'module tei-core-composition-probe\n\ngo 1.23.2\n' > "$probe_dir/go.mod"
 mkdir -p "$probe_dir/cache" "$probe_dir/modules" "$probe_dir/home"
 (
   cd "$probe_dir"
-  export GOENV=off GOWORK=off GOFLAGS= GOTOOLCHAIN=local
+  export GOENV=off GOWORK=off GOFLAGS= GO111MODULE=on GOTOOLCHAIN=local
   export GOPROXY=off GOSUMDB=off
   export GOPATH="$probe_dir/home" GOMODCACHE="$probe_dir/modules" GOCACHE="$probe_dir/cache"
   go test -count=1 .
