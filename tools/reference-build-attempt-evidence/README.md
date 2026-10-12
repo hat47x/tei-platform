@@ -1,127 +1,69 @@
-# Build Attempt Failure Evidence Reference
+# ビルド試行の証跡（参照実装）
 
-GitHub #1110 の最小Referenceです。
+Issue [#1110](https://github.com/hat47x/tei-platform/issues/1110) の参照実装です。ビルド計画と実行に使用するビルダーを確定した後、コンパイルやリンクなどで失敗しても、何を試みたかを構造化して残します。
 
-exact BuildPlanとBuilderを確定し、actual build executionを開始した後にcompile / link / builder実行が失敗したケースを、CLI errorだけで失わず構造化Evidenceとして保持します。
+この実装は、製品全体のビルド履歴管理や実行権限を提供するものではありません。
 
-## Failureの分離
+## 区別する結果
 
-このReferenceは次を同じ状態へ潰しません。
+| 状態 | 意味 |
+| --- | --- |
+| 計画の解決失敗 | 実行すべきビルド計画を確定できなかった |
+| ビルド試行の失敗 | 計画を確定して実行を開始したが失敗した |
+| 再現性の不一致 | 独立した二回の実行で成果物が得られ、その内容が一致しなかった |
+| ビルド試行の成功 | 一回の実行で成果物を得られた |
 
-```text
-Resolution Failure
-  exact BuildPlanを確定できない
+失敗した試行の記録だけから、成功や再現性の成立を導いてはいけません。
 
-Build Attempt Failure
-  exact BuildPlan / Builderでexecutionを開始したが失敗
+## 計画との対応
 
-Reproducibility Failure
-  二つのactual outputを得たが一致しない
+試行の記録は、既存の `BuildPlanFingerprint`、`BuilderIdentity`、実行先、実行条件に結び付けます。確定していない計画に対する失敗を「ビルド試行の失敗」として記録しません。
 
-Successful Build Result
-  candidate artifactを得た
-```
+コンパイル、リンク、ビルダーの起動など、どの段階で何が起きたかを別々に残します。ただし、段階や失敗区分を表す文字列は、この参照実装の中だけで使うものです。製品全体の正式な分類として確定したわけではありません。
 
-ここで扱うのはBuild Attempt Failureだけです。
+## 診断情報と公開範囲
 
-invalid / unresolved BuildPlanからAttempt Evidenceを作りません。
+標準出力と標準エラー出力について、全文のハッシュ値、観測したバイト数、保持対象とするバイト数、省略の有無、アクセス制限区分を記録します。内容そのものは証跡のJSONに埋め込みません。
 
-## exact binding
+診断出力には、秘密情報、非公開のファイル名、ソースの断片が含まれる可能性があります。この参照実装では保持する内容の大きさを制限しますが、秘密情報の完全な除去や安全な長期保管まで実現したわけではありません。生の診断情報を公開可能と判断する根拠には使わないでください。
 
-Attempt Evidenceはcurrent production modelの:
+診断内容を変えると試行の証跡は変わり得ますが、元のビルド計画の指紋は変わりません。
 
-- BuildPlanFingerprint
-- exact BuilderIdentity
-- Target
-- Profile
+## 再試行と成功記録
 
-へbindします。
+同じ計画で失敗と再試行を繰り返しても、以前の失敗記録を残します。各試行の順序番号は重複できません。
 
-#1080 / #1106のdomain-neutral BuildExecution primitiveがproduction化された場合は、同じ責務をExecutionPlan fingerprintへ移す候補です。このReferenceだけを理由に新Core型を追加しません。
+**成果物の指紋が一致することは、二回実行された証拠ではありません。** 今回の追加では、成功した模擬ビルダーの呼び出しごとに、成果物指紋とは別の `ExecutionOccurrenceID` を発行します。
 
-## phase / failure class
+- 異なる二回の模擬実行から同じ成果物が得られた場合は、二件の成功試行として記録できます。
+- 一件の成功試行を複製して、順序番号だけを変更しても、二件目の試行として受け入れません。
+- 失敗を示す実行例には、実行していない成功試行を記録しません。
+- 失敗記録にも、確定済みの証跡指紋が必要です。
 
-phaseとfailure classはReference-local文字列です。
+識別子の発行だけで、外部から独立実行の事実を検証できるわけではありません。この参照実装が示すのは、模擬ビルダーの実行呼び出しと成果物の同一性を別々に扱う仕組みです。実際のビルダーの実行事実、実行環境、権限を信頼できる形で証明する仕組みは、別途必要です。識別子や記録の存在を、実行承認や再現性確認の合格として扱いません。
 
-例:
+## 依存する処理が未実行の場合
 
-- phase: compile / link / builder-run
-- failure class: compile-error / link-error / builder-start-failure
+先行処理が失敗して依存先を実行できない場合は、依存先を「失敗」として記録せず、「先行処理による実行阻止」として記録します。実行していない処理に失敗時の証跡を付けることも拒否します。
 
-production enumは、このReferenceから先回りして固定しません。
+## 動作の確認
 
-## diagnostics
-
-raw stdout / stderrをEvidence JSONへinlineしません。
-
-Referenceはfull streamについて:
-
-- SHA-256 digest
-- observed byte count
-- bounded retained byte count
-- truncated flag
-- access class = restricted-build-diagnostic
-
-だけをEvidenceへ残します。
-
-bounded retained bytesは、将来#1105 Artifact Store等へrestricted artifactとして保管するpressureです。このReferenceでは永続保存しません。
-
-raw diagnosticにはprivate pathやtokenが含まれ得るため、Evidence本文・Build semantic identity・公開可能metadataへ無条件に入れません。
-
-Diagnostic digestが変わればAttempt Evidence identityは変わり得ますが、BuildPlan fingerprintは変えません。
-
-## retry history
-
-同じBuildPlanを複数回attemptできます。
-
-```text
-attempt 1 failed
-attempt 2 failed
-attempt 3 succeeded
-```
-
-成功resultを記録しても過去failure fingerprintを削除しません。
-
-Attempt ordinalはEvidence instanceの順序であり、BuildPlan identityには入りません。
-
-## Build graph
-
-failed nodeとblocked downstreamを分離します。
-
-```text
-generator = failed + Attempt Evidence
-consumer  = blocked-by generator
-```
-
-blocked nodeへAttempt Evidence fingerprintを付けて「実行して失敗した」ように見せることをrejectします。
-
-## Gate
-
-Reference CLIは固定fixtureのfake compile failureを実行し、Evidence JSONをstdoutへ出した後に**意図的にnon-zero exit**します。
+失敗例を表示するコマンドです。標準出力に証跡を出力し、終了状態は**意図的に失敗**となります。
 
 ```bash
-go run ./tools/reference-build-attempt-evidence \
-  > /tmp/tei-build-attempt-evidence.json
+go run ./tools/reference-build-attempt-evidence > /tmp/tei-build-attempt-evidence.json
 ```
 
-成功exitへ丸めません。
+該当する回帰テストは次のコマンドで確認できます。
 
-## Authority
+```bash
+go test ./tools/reference-build-attempt-evidence
+```
 
-Attempt Evidenceは次を明示します。
+これらは実行手順の説明であり、この文書そのものがテスト合格を証明するものではありません。
 
-- failure Evidence != build success
-- failure EvidenceからArtifact Lockを作らない
-- failure Evidence != reproducibility result
-- diagnostic digest != Build identity
-- diagnostic retention != publication authority
-- AI repair input != Acceptance Authority
+## 権限と対象外
 
-## 非目標
+失敗の記録から成果物の固定記録や実行権限を生成しません。生成AIが修正案を作る際の参考資料に使用しても、修正を承認したことにはなりません。
 
-- compiler diagnostic schemaの標準化
-- raw stderrの無制限保存
-- secret redaction engine完成
-- failed artifact execution
-- production logging / retention
-- actual compilerを故意に壊すintegration test
+診断情報の無制限保存、製品用の永続履歴、外部ビルダーの信頼性検証、権限管理、実際のコンパイラーを故意に壊す結合試験は対象外です。
