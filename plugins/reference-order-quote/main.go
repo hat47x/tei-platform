@@ -18,7 +18,7 @@ const (
 	protocolVersion  = 1
 	contractID       = "reference.order.quote-lines/v1"
 	implementationID = "order-quote.v1"
-	pluginID         = "tei.reference.order-quote"
+	pluginID         = "tei.reference.order_quote"
 	carrierID        = "transport.order_quote_carrier"
 	contractRule     = "reference.order.quote-lines.contract/v1"
 	requestRule      = "reference.order.quote-lines.request/v1"
