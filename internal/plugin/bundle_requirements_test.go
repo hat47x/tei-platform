@@ -78,7 +78,7 @@ func TestBundleStandaloneResolverAllowsSharedRequirements(t *testing.T) {
 		},
 	}
 	env := environment.Environment{
-		ID:      cid("prod"),
+		ID: cid("prod"),
 		Plugins: []environment.ExtensionRequirement{
 			{ID: cid("tei.base"), CompatibleMajor: 1},
 		},
