@@ -112,7 +112,9 @@ type Registry struct {
 	epochs    map[string]uint64
 }
 
-func NewRegistry() *Registry { return &Registry{providers: make(map[string]Provider), epochs: make(map[string]uint64)} }
+func NewRegistry() *Registry {
+	return &Registry{providers: make(map[string]Provider), epochs: make(map[string]uint64)}
+}
 
 func (r *Registry) Snapshot() Snapshot {
 	r.mu.Lock()
