@@ -77,32 +77,6 @@ jobs:
           check-latest: false
           cache: false
 
-      - name: SB-1・SB-2・SB-3の実行結果を生成
-        shell: bash
-        run: |
-          set -euo pipefail
-          go version
-          go run ./tools/reference-plugin-self-build -repo . > "$RUNNER_TEMP/tei-self-build-evidence.json"
-
-      - name: 実行結果の収束と版を確認
-        shell: bash
-        run: |
-          set -euo pipefail
-          evidence="$RUNNER_TEMP/tei-self-build-evidence.json"
-          jq -e --arg sha "$GITHUB_SHA" '
-            .schema == "tei.reference.plugin-self-build-evidence/v2"
-            and .repositoryRevision == $sha
-            and .transformBootstrap.seedBuilderReproducible == true
-            and .transformBootstrap.convergenceResult.converged == true
-            and .transformBootstrap.stage1ArtifactDigest == .transformBootstrap.stage2ArtifactDigest
-            and .transformBootstrap.packageReproducible == true
-            and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageOracleDigest
-            and .packageReproducible == true
-            and .nativeReproducible == true
-            and .reproducible == true
-          ' "$evidence" >/dev/null
-          jq -r '"SB-3 converged=\(.transformBootstrap.convergenceResult.converged) stage1=\(.transformBootstrap.stage1ArtifactDigest) stage2=\(.transformBootstrap.stage2ArtifactDigest) oracle=\(.transformBootstrap.packageOracleDigest)"' "$evidence"
-
       - name: 実行エンジンの実体を二重構築し照合
         shell: bash
         run: |
@@ -128,6 +102,39 @@ jobs:
           actual="$(sha256sum "$engine" | cut -d' ' -f1)"
           test "$actual" = "$expected"
           printf 'exact-engine=%s\n' "$expected"
+
+      - name: SB-1・SB-2・SB-3の実行結果を生成
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go run ./tools/reference-plugin-self-build -repo . \
+            -exact-runtime-engine "$RUNNER_TEMP/tei-transform-runtime-engine" \
+            -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
+            > "$RUNNER_TEMP/tei-self-build-evidence.json"
+
+      - name: 実行結果の収束と版を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/tei-self-build-evidence.json"
+          jq -e --arg sha "$GITHUB_SHA" --slurpfile engine "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" '
+            .schema == "tei.reference.plugin-self-build-evidence/v2"
+            and .repositoryRevision == $sha
+            and .transformBootstrap.exactRuntimeEngineBuildFingerprint == $engine[0].evidenceFingerprint
+            and .transformBootstrap.runtimeEngine.implementationDigest == $engine[0].artifactDigest
+            and .transformBootstrap.stage2Plan.execution.runtimeEngine.implementationDigest == $engine[0].artifactDigest
+            and any(.transformBootstrap.packageBuildPlan.dependencies[]; .kind == "runtime-engine" and .artifactDigest == $engine[0].artifactDigest)
+            and .transformBootstrap.seedBuilderReproducible == true
+            and .transformBootstrap.convergenceResult.converged == true
+            and .transformBootstrap.stage1ArtifactDigest == .transformBootstrap.stage2ArtifactDigest
+            and .transformBootstrap.packageReproducible == true
+            and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageOracleDigest
+            and .packageReproducible == true
+            and .nativeReproducible == true
+            and .reproducible == true
+          ' "$evidence" >/dev/null
+          jq -r '"SB-3 converged=\(.transformBootstrap.convergenceResult.converged) stage1=\(.transformBootstrap.stage1ArtifactDigest) stage2=\(.transformBootstrap.stage2ArtifactDigest) oracle=\(.transformBootstrap.packageOracleDigest)"' "$evidence"
 
       - name: 検証済み実行エンジンの応答を確認
         shell: bash

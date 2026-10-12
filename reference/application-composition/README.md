@@ -30,6 +30,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E15：実Goの型付き変更影響とE12 CLIの結合確認](E15_MODELREF_E12_INTEGRATION_GATE.md) — ビルドタグ付きの追加試験を専用GitHub Actionsで実行済み。Go→Nodeの受け渡しと未解決時の拒否がPASS。全依存の解決を意味しない。
 - [E16：統合済みGo機構による実Workspaceの変更影響回帰検査](E16_POSTMERGE_TYPED_IMPACT.md)／[Goテスト](e16_postmerge_modelref_test.go) — 既存の型付き索引・差分・影響解析を受注明細の実Worldへ適用する。通常GoテストでCI成功。全依存閉包は未解決。
 - [E17：解析済みソース内容と二つの実ファイル状態](E16_POSTMERGE_TYPED_IMPACT.md#e17同一解析済みbytesと二つのファイル状態)／[Goテスト](e17_source_revision_test.go) — 同じ解析結果の指紋を保持し、改行を追加した新規読取りだけが別の指紋を得ることを確認。意味モデルの変更とは区別する。通常GoテストでCI成功。
+- [E18：二つの解析済み意味ソース状態と型付き変更影響](E18_TWO_PARSED_SOURCE_STATES.md)／[Go回帰検査](e18_semantic_source_change_test.go) — RelationとPatternの実宣言を変更し、Source差分と既存型付きImpactを接続する。多重度変更は型付き差分が空でも再確認を要求する。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
