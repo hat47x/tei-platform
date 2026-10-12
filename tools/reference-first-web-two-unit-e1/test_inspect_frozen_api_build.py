@@ -101,7 +101,7 @@ class GoBuildObservationTests(unittest.TestCase):
 
     def test_rejects_dirty_closure_and_invalid_git_identity(self):
         self.packages.write_bytes(BASE_PACKAGES.encode() + b"\n")
-        with self.assertRaisesRegex(ValueError, "canonical"):
+        with self.assertRaisesRegex(ValueError, "invalid dependency package name"):
             self.get()
         self.packages.write_text(BASE_PACKAGES, encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "Git"):
