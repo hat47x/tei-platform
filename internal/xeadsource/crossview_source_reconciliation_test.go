@@ -49,21 +49,22 @@ func TestCrossViewSourceReconciledAccountingChecksExactSource(t *testing.T) {
 func TestCrossViewSourceReconciledAccountingRejectsRefingerprintedSourceOnlyCountChanges(t *testing.T) {
 	source, contract, baseline := crossViewReconciliationFixture(t)
 	for _, tc := range []struct {
-		name string
-		edit func(*CrossViewProjection)
+		name          string
+		edit          func(*CrossViewProjection)
+		publicRejects bool
 	}{
-		{"IOID zero count omitted", func(p *CrossViewProjection) { p.TaskFunctionIONoTargetCount = 0 }},
-		{"unused Task invented", func(p *CrossViewProjection) { p.TaskCount = 3 }},
-		{"unused Task omitted", func(p *CrossViewProjection) { p.TaskCount = 1 }},
+		{"IOID zero count omitted", func(p *CrossViewProjection) { p.TaskFunctionIONoTargetCount = 0 }, true},
+		{"unused Task invented", func(p *CrossViewProjection) { p.TaskCount = 3 }, false},
+		{"unused Task omitted", func(p *CrossViewProjection) { p.TaskCount = 1 }, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := testCrossViewDeepCopy(t, baseline)
 			tc.edit(&p)
 			refingerprintCrossViewForTest(&p)
-			// The ordinary public API intentionally tests projection
-			// self-consistency, which cannot reconstruct absent source nodes.
-			if _, err := CrossViewPublicAccounting(p); err != nil {
-				t.Fatalf("fixture no longer exposes source-only accounting gap: %v", err)
+			// Targetless I/O for a resolved Function is now constrained by
+			// source-backed outcomes. Unused Tasks still require source replay.
+			if _, err := CrossViewPublicAccounting(p); (err != nil) != tc.publicRejects {
+				t.Fatalf("unexpected direct publication result: rejected=%v, want=%v, error=%v", err != nil, tc.publicRejects, err)
 			}
 			if got, err := CrossViewSourceReconciledAccounting(FormatXead, source, contract, p); err == nil {
 				t.Fatalf("refingerprinted source count was accepted: %+v", got)
