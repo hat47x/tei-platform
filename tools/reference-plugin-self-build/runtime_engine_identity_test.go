@@ -279,4 +279,3 @@ func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *tes
 		t.Fatal("source updates unexpectedly changed the logical engine version")
 	}
 }
-
