@@ -7,7 +7,7 @@ import "sort"
 // ReviewImpact intentionally rejects that case.
 func ReviewImpactDiff(before, after Graph, rules []Rule) ImpactReview {
 	result := ImpactReview{
-		SchemaVersion: "tei.modelref.impact-review/v0",
+		SchemaVersion:   "tei.modelref.impact-review/v0",
 		RuleFingerprint: RuleFingerprint(rules),
 		AuthorityLimits: []string{
 			"typed-graphs-are-candidates-not-accepted-meaning",
