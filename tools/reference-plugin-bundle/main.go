@@ -75,12 +75,12 @@ func serve(input io.Reader, output io.Writer, args []string) error {
 		return errors.New("exactly one JSON request is required")
 	}
 	resp := response{
-		ProtocolVersion: req.ProtocolVersion,
-		RequestID: req.RequestID,
-		Plugin: req.Plugin,
-		CapabilityID: req.CapabilityID,
+		ProtocolVersion:       req.ProtocolVersion,
+		RequestID:             req.RequestID,
+		Plugin:                req.Plugin,
+		CapabilityID:          req.CapabilityID,
 		DescriptorFingerprint: req.DescriptorFingerprint,
-		Status: "error",
+		Status:                "error",
 	}
 	reject := func(message string) error {
 		resp.Error = message
@@ -109,7 +109,7 @@ func serve(input io.Reader, output io.Writer, args []string) error {
 	message, externalRef := accept(cmd.ID)
 	raw, err := json.Marshal(acknowledgment{
 		AttemptID: "reference-bundle-" + req.RequestID,
-		ActionID: cmd.ActionID, IdempotencyKey: cmd.IdempotencyKey,
+		ActionID:  cmd.ActionID, IdempotencyKey: cmd.IdempotencyKey,
 		Outcome: "accepted", Message: message, ExternalRef: externalRef,
 	})
 	if err != nil {
