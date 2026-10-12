@@ -70,5 +70,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test reference/application-composition/e27_residual_selection_audit.test.mjs
+          node --test reference/application-composition/e1-observe.test.mjs reference/application-composition/e27_residual_selection_audit.test.mjs
           node reference/application-composition/e27_residual_selection_audit.mjs . > /dev/null
