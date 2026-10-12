@@ -2,9 +2,9 @@
 
 ## 目的
 
-Gate Bを通過したApplication / Driverの意味baselineを、第一Web Target / Gate Cへ曖昧なく引き渡します。
+判定段階Bを通過したアプリケーションとドライバーの意味の基準版を、最初のウェブ実行先と判定段階Cへ、曖昧さを残さず引き継ぎます。
 
-Gate Cの比較対象を「最新Driver」にせず、Gate B Readyと判定した単一repository revision `R`をHandover Baseline `B`として固定します。
+判定段階Cでは、「最新のドライバー」を比較対象にはしません。判定段階Bで合格とした特定のリポジトリの版`R`を、引継ぎ基準版`B`として固定します。
 
 ```text
 Gate B Ready for R
@@ -17,19 +17,19 @@ Target build T
 Gate C Evidence
 ```
 
-Handoverは新しいCanonical schemaや第二の正本ではありません。Git revision、既存Canonical identity、Driver Scenario、Gate B Evidence、unresolvedへの参照を束ねる検証上のcontractです。
+引継ぎは、新しい正本のスキーマでも第二の正本でもありません。Gitの版、既存の正本上の識別情報、ドライバーのシナリオ、判定段階Bの検証根拠、未解決事項への参照をまとめる、検証上の契約です。
 
-Product Acceptance ScenarioはPAS-02 primary / PAS-03 secondaryです。
+製品の受入シナリオでは、PAS-02を主な対象、PAS-03を副次的な対象とします。
 
 ## 現行Gate B scope
 
-Gate B Required Evidenceは次の三つです。
+判定段階Bで必須となる検証根拠は、次の三つです。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定論的な検証根拠
+2. #255 生成成果物の再現性に関する検証根拠
+3. #308 実際のPostgreSQL提供実装と一時的な試験用環境の検証根拠
 
-三つを同じclean candidate revision `R`へ揃えます。
+三つとも、変更のない同じ候補版`R`を対象に取得します。
 
 ```text
 #310 ─┐
@@ -45,7 +45,7 @@ same-run child Evidence artifacts
 Handover Baseline B / R
 ```
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、第四Required laneではありません。未完了なら`unresolved`としてHandoverへ渡します。
+実際のOracleに関する#214・#371・#376は、外部資産の検証根拠として引き続き重要です。ただし、第四の必須検証経路にはしません。未完了であれば`unresolved`として引き継ぎます。
 
 ## 基本原則
 
@@ -60,11 +60,11 @@ Authoritative Source / Canonical Application
                        └─ revision / Canonical identity / Evidence reference
 ```
 
-Handover recordへApplication meaningを複製し、そこからCanonicalへ逆書きしません。
+引継ぎ記録へアプリケーションの意味を複製したり、その記録から正本へ書き戻したりしません。
 
 ### 一つのbaseline revisionへ揃える
 
-異なるrevisionの成功Evidenceを寄せ集めて一つのReady revisionへ読み替えません。
+異なる版で得た成功の検証根拠を寄せ集め、単一の合格版での結果として読み替えません。
 
 - #310 `repositoryRevision = R`
 - #255 `repositoryRevision = R`
@@ -72,13 +72,13 @@ Handover recordへApplication meaningを複製し、そこからCanonicalへ逆�
 - 全lane `reproducibleRevision = true`
 - #273が同じRをReadyと判定
 
-source変更が必要になった場合、旧Rの成功を新revisionへcarry-forwardせず、新しいRで必要なEvidenceを取り直します。
+ソースの変更が必要になった場合、旧版Rの成功を新しい版へそのまま引き継ぎません。新しい版で必要な検証根拠を取り直します。
 
 ### same-Rだけでなくsame-run provenanceを要求する
 
-Handoverへ使う#310 / #255 / #308 detailed Evidenceは、単に同じRで成功した任意の三つのJSONではありません。
+引継ぎに使用する#310・#255・#308の詳細な検証根拠は、同じ版Rで成功した任意の三つのJSONではありません。
 
-**#387 final convergenceが実際に同一runで読み、保持したexact child Evidence artifacts**をRequired Evidenceとして参照します。
+**#387の最終確認が同じ実行で実際に読み取り、保存した子処理の検証成果物そのもの**を、必須の検証根拠として参照します。
 
 ```text
 #387 final summary
@@ -95,17 +95,17 @@ Handoverへ使う#310 / #255 / #308 detailed Evidenceは、単に同じRで成�
         Handover B / R
 ```
 
-同じRで後から再実行した別artifactを、#387が実際に読んだartifactと同一だと推測しません。
+同じ版Rで後から再実行した別の成果物を、#387が実際に読み取った成果物と同一だと推測しません。
 
 ### Target側の不足をbaselineへ逆輸入しない
 
-Web実装中に必要なApplication meaningがB / Rに存在しない場合、Web固有fieldや独自ruleで補ってGate Cを通しません。
+ウェブの実装中に必要となったアプリケーションの意味がB・Rにない場合、ウェブ固有の項目や独自の規則で補って判定段階Cを通過させることはしません。
 
-Application / Driverへ戻り、authoritative sourceを変更し、必要なGate B Evidenceを新revisionで再確認してsuccessor Handoverを発行します。
+アプリケーションやドライバーへ戻り、正本となる入力元を変更します。そのうえで、新しい版について必要な判定段階Bの検証根拠を再確認し、後継の引継ぎ基準版を発行します。
 
 ## Handover Baseline Bに必要な情報
 
-具体的JSON schemaやfile formatはGate B通過前に固定しません。ただし、少なくとも次を復元できる必要があります。
+具体的なJSONスキーマやファイル形式は、判定段階Bの通過前には固定しません。ただし、少なくとも次の情報を復元できる必要があります。
 
 ### Baseline identity
 
@@ -116,7 +116,7 @@ Application / Driverへ戻り、authoritative sourceを変更し、必要なGate
 
 ### Canonical Application baseline
 
-第一Referenceでは少なくとも次のidentityへ戻れるようにします。
+最初の参照事例では、少なくとも次の識別情報へたどれるようにします。
 
 - Application `order_entry`
 - Application Pattern
@@ -135,11 +135,11 @@ Application / Driverへ戻り、authoritative sourceを変更し、必要なGate
 - Observationに使う明示read境界
 - Source / Binding traceability
 
-Handoverの列挙はmanifestであり、意味本文の複製ではありません。
+引継ぎで列挙するのは参照先の一覧であり、意味の本文を複製するものではありません。
 
 ### Driver Scenario baseline
 
-少なくとも次のScenarioへ戻れるようにします。
+少なくとも次のシナリオへたどれるようにします。
 
 ```text
 Authentication
@@ -153,7 +153,7 @@ Authentication
   -> separate Observation read
 ```
 
-Business Result、named Outcome、Execution Error、Observation、Diagnosticの区別をTarget側へ引き渡します。
+業務上の結果、名前付きの結果、実行時エラー、観測、診断結果の違いを、実行先へ引き継ぎます。
 
 ### Datasource / authority boundary
 
@@ -166,11 +166,11 @@ Business Result、named Outcome、Execution Error、Observation、Diagnosticの�
 
 ## Gate B Evidence provenance
 
-Handover recordへEvidence本文を複製しません。stable reference / identity / fingerprintから実artifactへ戻れるようにします。
+引継ぎ記録へ検証根拠の本文を複製しません。安定した参照先・識別情報・照合値から、実際の成果物へたどれるようにします。
 
 ### #387 final convergence
 
-Handoverから、Ready判定へ利用した#387 final convergence artifactへ戻れる必要があります。
+引継ぎ記録から、合格判定に使用した#387の最終確認の成果物へたどれる必要があります。
 
 少なくとも:
 
@@ -186,7 +186,7 @@ Handoverから、Ready判定へ利用した#387 final convergence artifactへ戻
 
 ### same-run child exact artifacts
 
-#387が保持した三つのchild artifactをRequired Evidenceとして参照します。
+#387が保存した三つの子処理の成果物を、必須の検証根拠として参照します。
 
 - `deterministic-repository.json`
 - `generated-artifact-reproducibility.json`
@@ -202,7 +202,7 @@ Handoverから、Ready判定へ利用した#387 final convergence artifactへ戻
 
 へ戻れる必要があります。
 
-#387 runnerはfinal success直前にも保存fileを再読込してfingerprintを確認しますが、#273 Readiness Auditでも保存artifactを独立に再照合します。runner内検証だけでReadyを宣言しません。
+#387の実行器は最終的な成功判定の直前にも保存ファイルを読み直し、照合値を確認します。さらに#273の合格監査でも保存成果物を独立して照合します。実行器内の確認だけでは合格を宣言しません。
 
 ### #310 deterministic Repository
 
@@ -213,7 +213,7 @@ same-run `deterministic-repository.json`から少なくとも次へ戻ります�
 - `external-evidence-intake`成功
 - `repository-evidence-source-boundary`成功
 
-synthetic Evidenceをactual external Evidenceへ格上げしません。
+合成データから得た検証根拠を、実際の外部資産で得たものとして格上げしません。
 
 ### #255 generated artifact reproducibility
 
@@ -222,7 +222,7 @@ same-run `generated-artifact-reproducibility.json`から少なくとも次へ戻
 - World / Plugin Lock golden一致
 - Durable Run golden一致
 
-`-write`修復操作や修復直後のdirty treeを完了Evidenceにしません。
+`-write`による修復操作や、修復直後に変更の残る作業ツリーを、完了の検証根拠にはしません。
 
 ### #308 real PostgreSQL Provider
 
@@ -235,13 +235,13 @@ same-run `real-postgres-ephemeral-fixture.json`から少なくとも次へ戻り
 - DB-side ownership-protected cleanup
 - cleanup後user relation 0 / Event Trigger 0 / fixture object不在
 
-production既存Database Evidenceへ読み替えません。
+本番の既存データベースに関する検証根拠とは読み替えません。
 
 ### #273 Gate B Readiness Audit
 
-#273 / `GATE_B_READINESS_AUDIT.md`が同じRについて、#387 final summaryとsame-run child exact artifactsを監査し、Readyと判定したことを参照します。
+#273と`GATE_B_READINESS_AUDIT.md`によって、同じ版Rについて#387の最終結果と同一実行内の子処理の成果物を監査し、合格と判定したことを参照します。
 
-final runner exit codeだけをReady判定にはしません。
+最終確認の実行器の終了コードだけでは合格と判定しません。
 
 ## actual Oracleの扱い
 
