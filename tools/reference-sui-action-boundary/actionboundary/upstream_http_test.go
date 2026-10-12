@@ -26,7 +26,7 @@ func upstreamIntent() Intent {
 	return Intent{
 		ApplicationID: "sui", ResourceID: "doc-1", ActionID: "sui.move",
 		ExpectedRevision: strings.Repeat("a", 64),
-		Payload: map[string]any{"cardId": "card-1", "x": 20, "y": 25},
+		Payload:          map[string]any{"cardId": "card-1", "x": 20, "y": 25},
 	}
 }
 
@@ -75,7 +75,7 @@ func TestHTTPSApplicationStoreHostToApplication(t *testing.T) {
 	store := upstreamStore(server, actor)
 	host := Host{
 		Authorizer: permit(true),
-		Bindings: []Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: store}},
+		Bindings:   []Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: store}},
 	}
 	result, err := host.Commit(context.Background(), upstreamIntent())
 	if err != nil || result != strings.Repeat("b", 64) {
@@ -102,7 +102,9 @@ func TestHTTPSApplicationStoreRejectsUnverifiedDelegationBeforeNetwork(t *testin
 		{"mismatched subject", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.SubjectID = "other-user" }},
 		{"missing tenant", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.TenantID = "" }},
 		{"missing token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = "" }},
-		{"injected token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = "ok\nX-Actor-Ref: admin" }},
+		{"injected token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) {
+			d.value.BearerToken = "ok\nX-Actor-Ref: admin"
+		}},
 		{"missing client", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Client = nil }},
 		{"unencrypted origin", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Origin = "http://example.com" }},
 		{"userinfo origin", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Origin = "https://user@host.test" }},
