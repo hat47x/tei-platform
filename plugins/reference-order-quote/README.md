@@ -19,3 +19,9 @@
 ```sh
 go test -count=1 -run '^TestIndependentBusinessQuoteOverExistingGenericProcessTransport$' ./tools/reference-capability-transport
 ```
+
+## 保護されたWeb操作からの呼出し
+
+[Webホストと合成基盤との結合試験](../../tools/reference-capability-transport/authorized_quote_preflight_test.go)では、既存の受注確定操作に認可された要求の内部から、この読み取り専用プラグインを呼び出します。受注操作と見積もりの意味契約を別の識別子として扱うため、プラグイン側へ利用者の認証情報やWebホスト内の認可完了情報を渡す必要はありません。
+
+**受注確定はしません。** また、受注確定の認可を見積もり独立操作への包括的な権限へ転用しません。実業務操作としての見積もりは、別途モデル化・受理する必要があります。
