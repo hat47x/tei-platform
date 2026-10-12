@@ -51,8 +51,8 @@ export function composeRequestPlan(plan){
   if(!plan || !plan.route || !plan.hostPolicy || !Array.isArray(plan.steps) || !Array.isArray(plan.hostContracts)) throw new Error("request plan is incomplete");
   const {route,hostPolicy,steps,hostContracts}=plan;
   if(!route.id || !route.method || !route.path || !hostPolicy.id || !Array.isArray(hostPolicy.requiredGuards) || !Array.isArray(hostPolicy.terminalEvents)) throw new Error("host route policy is incomplete");
-  validateRouteMatch(route);
   if(route.actionId && route.exposure==="public") throw new Error("action route cannot silently become public");
+  validateRouteMatch(route);
   if(route.actionId && !hostPolicy.requiredGuards.includes("action-authorized")) throw new Error("action route has no mandatory authorization");
   if(route.actionId){
     for(const guard of ['authenticated','csrf-protected','action-authorized'])
