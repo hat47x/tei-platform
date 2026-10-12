@@ -899,30 +899,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 // The builder is either explicitly pinned by its path or selected from the
 // Go toolchain embedded in the running binary. PATH is not a fallback.
 func selectReferenceGoExecutable(explicit string) (string, error) {
-	path := strings.TrimSpace(explicit)
-	if path == "" {
-		goRoot := runtime.GOROOT()
-		if goRoot == "" {
-			return "", fmt.Errorf("Go root is unavailable; specify the exact Go executable with -go")
-		}
-		path = filepath.Join(goRoot, "bin", executableName("go"))
-	}
-	absolute, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	resolved, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", err
-	}
-	info, err := os.Stat(resolved)
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("Go executable is not a regular file: %s", resolved)
-	}
-	return resolved, nil
+	return gobuilder.SelectExecutable(explicit, runtime.GOROOT(), runtime.GOOS)
 }
 
 func requireValidWorld(label string, world ir.World) error {
@@ -1269,80 +1246,7 @@ func requireNoExternalModules(repo, goPath string, packages ...string) error {
 }
 
 func hashGoToolchain(goRoot string) (string, error) {
-	if strings.TrimSpace(goRoot) == "" {
-		return "", fmt.Errorf("Go toolchain root is empty")
-	}
-	paths := []string{
-		filepath.Join(goRoot, "VERSION"),
-		filepath.Join(goRoot, "bin", executableName("go")),
-		filepath.Join(goRoot, "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH),
-		filepath.Join(goRoot, "src"),
-	}
-	sum := sha256.New()
-	for _, root := range paths {
-		info, err := os.Lstat(root)
-		if err != nil {
-			return "", err
-		}
-		if !info.IsDir() {
-			if err := hashToolchainEntry(sum, goRoot, root, info); err != nil {
-				return "", err
-			}
-			continue
-		}
-		if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			info, err := entry.Info()
-			if err != nil {
-				return err
-			}
-			return hashToolchainEntry(sum, goRoot, path, info)
-		}); err != nil {
-			return "", err
-		}
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
-}
-
-func hashToolchainEntry(sum interface {
-	Write([]byte) (int, error)
-}, goRoot, path string, info os.FileInfo) error {
-	rel, err := filepath.Rel(goRoot, path)
-	if err != nil {
-		return err
-	}
-	rel = filepath.ToSlash(rel)
-	if _, err := fmt.Fprintf(sum, "%s\x00%o\x00", rel, info.Mode()); err != nil {
-		return err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("Go toolchain symlink is not supported in the first self-build reference: %s", rel)
-	}
-	if !info.Mode().IsRegular() {
-		_, err := fmt.Fprint(sum, "special\n")
-		return err
-	}
-	if _, err := fmt.Fprint(sum, "file\x00"); err != nil {
-		return err
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(sum, f); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(sum, "\n")
-	return err
+	return gobuilder.HashToolchain(goRoot, runtime.GOOS, runtime.GOARCH)
 }
 
 func executableName(name string) string {
