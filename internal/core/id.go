@@ -20,9 +20,26 @@ const (
 
 type Ref = identity.Ref
 
-func ParseCanonicalID(s string) (CanonicalID, error) { return identity.ParseCanonicalID(s) }
-func MustCanonicalID(s string) CanonicalID            { return identity.MustCanonicalID(s) }
-func ParseLocalName(s string) (LocalName, error)       { return identity.ParseLocalName(s) }
-func MustLocalName(s string) LocalName                 { return identity.MustLocalName(s) }
-func SymbolToSegment(symbol string) (string, error)    { return identity.SymbolToSegment(symbol) }
-func MustSymbolSegment(symbol string) string           { return identity.MustSymbolSegment(symbol) }
+func ParseCanonicalID(s string) (CanonicalID, error) {
+	return identity.ParseCanonicalID(s)
+}
+
+func MustCanonicalID(s string) CanonicalID {
+	return identity.MustCanonicalID(s)
+}
+
+func ParseLocalName(s string) (LocalName, error) {
+	return identity.ParseLocalName(s)
+}
+
+func MustLocalName(s string) LocalName {
+	return identity.MustLocalName(s)
+}
+
+func SymbolToSegment(symbol string) (string, error) {
+	return identity.SymbolToSegment(symbol)
+}
+
+func MustSymbolSegment(symbol string) string {
+	return identity.MustSymbolSegment(symbol)
+}
