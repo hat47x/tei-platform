@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, relative, isAbsolute, sep } from "node:path";
 import { projectWorld, candidateFromEdit, bindReviewArtifacts, navigateReferenceBusinessStep, verifySourceAnchor } from "./bridge.mjs";
 import { renderStudioHTML } from "./html.mjs";
+import { renderStudioEditHTML } from "./editor.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
@@ -16,6 +17,7 @@ const usage = [
   "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID|step:ID [-business-dfd FILE]",
   "  node reference/studio-authoring/cli.mjs propose -workspace DIR -edit-file FILE",
   "  node reference/studio-authoring/cli.mjs review-edit -workspace DIR -edit-file FILE",
+  "  node reference/studio-authoring/cli.mjs edit-form -workspace DIR -focus data:ID|attribute:ID",
   "  alternatively: -world-file FILE -revision-file FILE [-source-index-file FILE] (read-only artifacts)",
   "  inspect and review-edit may use -format html for a static read-only page",
   "  output defaults to JSON; no command in this CLI writes authoritative source"
@@ -94,11 +96,12 @@ function verifyLiveSourceNavigation(view, workspace, revision) {
 
 function main(argv) {
   const [command, ...rest] = argv;
-  if (!["inspect", "propose", "review-edit"].includes(command)) throw new Error("UNKNOWN_COMMAND");
+  if (!["inspect", "propose", "review-edit", "edit-form"].includes(command)) throw new Error("UNKNOWN_COMMAND");
   const opt = flags(rest);
   const fromFiles = !!opt["-world-file"] && !!opt["-revision-file"];
-  const format = opt["-format"] || "json";
-  if (!["json", "html"].includes(format) || (command === "propose" && opt["-format"]))
+  const format = opt["-format"] || (command === "edit-form" ? "html" : "json");
+  if (!["json", "html"].includes(format) || (command === "propose" && opt["-format"]) ||
+      (command === "edit-form" && format !== "html"))
     throw new Error("UNSUPPORTED_STUDIO_OUTPUT_FORMAT");
   if (!!opt["-workspace"] === fromFiles ||
       (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"] ||
@@ -106,7 +109,10 @@ function main(argv) {
       (command === "inspect" && (!opt["-focus"] || opt["-edit-file"])) ||
       (["propose", "review-edit"].includes(command) && (!opt["-edit-file"] || opt["-focus"] ||
         opt["-business-dfd"] || opt["-source-index-file"])) ||
-      (command === "review-edit" && (!opt["-workspace"] || fromFiles)))
+      (command === "review-edit" && (!opt["-workspace"] || fromFiles)) ||
+      (command === "edit-form" && (!opt["-workspace"] || !opt["-focus"] ||
+        opt["-edit-file"] || opt["-business-dfd"] || opt["-source-index-file"] ||
+        opt["-world-file"] || opt["-revision-file"])))
     throw new Error("INVALID_INPUT");
   const { world, revision, sourceIndex } = fromFiles
     ? { world: jsonFile(opt["-world-file"]),
@@ -114,6 +120,8 @@ function main(argv) {
         sourceIndex: opt["-source-index-file"]
           ? jsonFile(opt["-source-index-file"]) : undefined }
     : fromWorkspace(opt["-workspace"], command === "inspect");
+  if (command === "edit-form")
+    return renderStudioEditHTML(world, revision, opt["-focus"]);
   if (command === "inspect") {
     const focus = opt["-focus"];
     if (focus.startsWith("step:")) {
