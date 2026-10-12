@@ -12,13 +12,13 @@ import (
 // ReferenceOrderCase uses the real plugin catalog and lock machinery over
 // synthetic source definitions. The ordinary plugin declares no i18n support.
 func ReferenceOrderCase() (plugin.Catalog, environment.Environment, plugin.Lock, modelref.Graph, []Surface, []Pack, []Grant, Lookup, error) {
-	ordinary := plugin.Identity{ID: core.CanonicalID("std.order-entry"), Version: "1.2.0"}
-	localizer := plugin.Identity{ID: core.CanonicalID("std.lang-en"), Version: "1.0.0"}
+	ordinary := plugin.Identity{ID: core.CanonicalID("std.order_entry"), Version: "1.2.0"}
+	localizer := plugin.Identity{ID: core.CanonicalID("std.lang_en"), Version: "1.0.0"}
 	catalog := plugin.Catalog{Plugins: []plugin.Definition{
 		{ID: ordinary.ID, Version: ordinary.Version, Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
 		{ID: localizer.ID, Version: localizer.Version, Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
 	}}
-	env := environment.Environment{ID: core.CanonicalID("env.order-reference"), Plugins: []environment.ExtensionRequirement{
+	env := environment.Environment{ID: core.CanonicalID("env.order_reference"), Plugins: []environment.ExtensionRequirement{
 		{ID: ordinary.ID, CompatibleMajor: 1},
 		{ID: localizer.ID, CompatibleMajor: 1},
 	}}
