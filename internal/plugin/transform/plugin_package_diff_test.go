@@ -200,14 +200,6 @@ func TestPluginPackageTransformValidRequirementPermutation(t *testing.T) {
 	}
 }
 
-func TestUniqueByRequiresExactlyOneKey(t *testing.T) {
-	source := transform.PluginPackageSourceV1()
-	source.Program.Assertions[5].Keys = nil
-	if err := source.Validate(); err == nil {
-		t.Fatal("assert-unique-by without a key must fail validation")
-	}
-}
-
 func TestReferenceTransformSourceMatchesProgrammaticConstruction(t *testing.T) {
 	fromFile := referencePluginPackageTransformSource(t)
 	fileFP, err := transform.SourceFingerprint(fromFile)

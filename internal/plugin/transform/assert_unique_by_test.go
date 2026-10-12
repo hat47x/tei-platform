@@ -1,10 +1,12 @@
 package transform_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/plugin"
 	"tei/internal/plugin/transform"
 )
 
@@ -93,6 +95,36 @@ func TestAssertUniqueByChargesStringHashWork(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "maxSteps") {
 		t.Fatalf("expected oversized key hashing to consume the step budget, got %v", err)
+	}
+}
+
+func TestPluginPackageWithoutRequirementsMatchesGoOracle(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		requires []plugin.Requirement
+	}{
+		{name: "nil slice", requires: nil},
+		{name: "empty slice", requires: []plugin.Requirement{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			definition, plan := transformPackageFixture()
+			definition.Requires = tc.requires
+			plan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(definition)
+			want, err := plugin.MaterializePluginPackage(definition, plan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
+				"buildPlan": valueFromGoJSON(t, plan),
+				"pluginDefinition": valueFromGoJSON(t, definition),
+			})
+			if err != nil {
+				t.Fatalf("valid plugin with no dependencies was rejected: %v", err)
+			}
+			if got.Output.Kind != transform.ValueBytes || !bytes.Equal(got.Output.Bytes, want) {
+				t.Fatalf("valid plugin without requirements diverged from Go package oracle")
+			}
+		})
 	}
 }
 
