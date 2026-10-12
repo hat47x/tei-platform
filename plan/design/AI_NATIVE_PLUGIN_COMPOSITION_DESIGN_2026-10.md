@@ -315,3 +315,26 @@ DSHの公式資料では、利用者は実装パッケージでなくサービ�
 - コンパイラが静的に接続箇所を確定しても、動的更新に必要な権限検査を無条件に省かない。
 
 試験と未保証事項は[Composition Kernel E7](../../reference/composition-kernel/README.md)に記す。
+
+
+## 17. 構成案の充足と、独立した検証に必要な根拠の接続
+
+AIの構成案が「構造上の候補」であることを確認できても、参照するProviderが契約の意味を満たし、現在の配備物として利用可能であるとは限らない。
+
+E8では、`WiringFinding.VerificationTargets`を追加し、構造上の候補と、その直接・間接の依存先を**独立した検証へ渡す対象**として列挙できるようにした。各対象はProvider ID、Scope、Service Contractの正確な識別情報、Registry上の宣言世代を持つ。AIが「既存機能で実装不要」と結論を出す前に、どのProviderを確認する必要があるかが分かる。
+
+ただし、対象の一覧だけでは発行者の権限も、Conformance Evidenceも、Build Artifactも確かめられない。#951のCapability Contract Referenceには、実装のPlugin ID・版・Implementation ID・Artifact Digest・Contract Fingerprint・Conformance Profile・Evidence Fingerprintへの結び付けがあるため、それを**別の正本として複写せず、参照関係として接続する**。
+
+さらに、Providerの契約適合が確認されても、それを現在のHostで利用してよいかは独立した判断とする。実際のPermission、Resource、Lease、FencingはHostのAuthorityを通す。したがって判定の段階は次のように区別する。
+
+| 段階 | 確認すること | 現在の状態 |
+| --- | --- | --- |
+| 1. 構成の成立 | 契約、接続箇所、依存関係、範囲、宣言世代 | Registry Referenceで局所検証済み |
+| 2. 検証対象の網羅 | 候補と推移的な依存先を漏れなく列挙 | E8で局所検証済み |
+| 3. 契約の意味と適合 | #951の定義・実装・適合証拠と現在の信頼状態 | 未接続 |
+| 4. 実成果物の確認 | #943のBuild Artifactと実配備対象を正確に対応付ける | 未接続 |
+| 5. 実行時の受理 | Hostの現在の権限、Lease、Resource、Ready | 未接続 |
+
+この分離によって、AIの提案を**根拠不足のまま承認しない**ことと、必要な根拠を収集する作業を自動化することの両立を目指す。
+
+実装と局所試験の詳細、未成立の保証は[Composition Kernel E8](../../reference/composition-kernel/README.md)に記載する。
