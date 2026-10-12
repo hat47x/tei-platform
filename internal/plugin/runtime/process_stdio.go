@@ -215,7 +215,8 @@ func validateProcessResponseObject(decoder *json.Decoder, pluginIdentity bool) e
 // avoid implicit working-directory execution. This does not pin executable
 // bytes; hosts requiring that guarantee must use a bound artifact launcher.
 func resolveProcessExecutable(executable string, env []string) (string, error) {
-	if filepath.IsAbs(executable) || strings.ContainsAny(executable, "/\\") {
+	if filepath.IsAbs(executable) || strings.ContainsRune(executable, os.PathSeparator) ||
+		(runtime.GOOS == "windows" && strings.ContainsRune(executable, '/')) {
 		return executable, nil
 	}
 	// Windows file extensions and PATHEXT differ from POSIX executable bits.
