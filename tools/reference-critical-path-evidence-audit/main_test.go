@@ -200,7 +200,7 @@ func TestE2N11MustNotRecycleCommandOrIndependentReadEvidence(t *testing.T) {
 func TestE2RejectsWhitespaceOnlyCommandOrReadReceipt(t *testing.T) {
 	for name, mutate := range map[string]func(*Packet){
 		"command": func(p *Packet) { p.Physical.CommandReceipt = "  " },
-		"read": func(p *Packet) { p.Physical.IndependentReadReceipt = "  " },
+		"read":    func(p *Packet) { p.Physical.IndependentReadReceipt = "  " },
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := fixture()
