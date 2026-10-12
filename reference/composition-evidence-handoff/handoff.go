@@ -106,16 +106,22 @@ func Reconcile(set composition.WiringSetFinding, refs []EvidenceReference) Hando
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+	// Index each untrusted locator once. Large plugin graphs must not rescan
+	// every unrelated locator for every provider in the dependency closure.
+	// Key by both provider ID and scope to retain the isolation boundary.
+	type subjectKey struct{ providerID, scope string }
+	bySubject := make(map[subjectKey][]EvidenceReference)
+	for _, ref := range refs {
+		key := subjectKey{ref.Subject.ProviderID, ref.Subject.Scope}
+		bySubject[key] = append(bySubject[key], ref)
+	}
 	out.Subjects = make([]SubjectCheck, 0, len(ids))
 	for _, id := range ids {
 		target := targets[id]
 		check := SubjectCheck{Target: target, State: ReferenceMissing}
 		var exact []EvidenceReference
 		hasStale, hasMismatch := false, false
-		for _, ref := range refs {
-			if ref.Subject.ProviderID != target.ProviderID || ref.Subject.Scope != target.Scope {
-				continue
-			}
+		for _, ref := range bySubject[subjectKey{target.ProviderID, target.Scope}] {
 			if ref.Subject.Contract != target.Contract {
 				hasMismatch = true
 				continue
