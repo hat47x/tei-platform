@@ -252,6 +252,31 @@
         },
         "item": "capability",
         "body": {
+          "op": "assert-canonical-id",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "id"
+          }
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
           "op": "assert-each",
           "from": {
             "op": "select-field",
