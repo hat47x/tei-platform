@@ -104,7 +104,7 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 	// Only the carrier envelope and plugin identity are inspected here:
 	// payload remains opaque for the selected Service Contract to validate.
 	if err := validateProcessResponseEnvelope(stdout.buf.Bytes()); err != nil {
-		return Response{}, fmt.Errorf("invalid process plugin response envelope from executable %q: %w", command.Executable, err)
+		return Response{}, fmt.Errorf("decode process plugin response from executable %q: %w", command.Executable, err)
 	}
 	dec := json.NewDecoder(bytes.NewReader(stdout.buf.Bytes()))
 	var resp Response
