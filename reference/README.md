@@ -179,4 +179,4 @@ go run ./tools/reference-deployment-attempt
 - どのテストまたは実行例がその成果物に依存しているか
 - 値を更新したとき、設計上どの意味が変わるのか
 
-この考え方の背景は、[ADR-0003](../docs/adr/0003-reference-fixtures.md) に記録しています。
+この考え方の背景は、[ADR-0003](../plan/adr/0003-reference-fixtures.md) に記録しています。
