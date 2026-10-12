@@ -45,6 +45,14 @@ go run ./tools/reference-standard-function-candidates \
 
 操作が特定の業務データを**作成**・**変更**する意図は、Capabilityの意味宣言に任意で記述できます。たとえば `capability intake.request.create { effect create intake.request }` です。`command`側には同じデータを重複記述せず、既存のCapability参照だけを置きます。この宣言があるときだけ、`-pattern`の応答に`declaredData`と`dataOperation`が現れます。未宣言なら従来どおり`data-operation-link`は未検証です。
 
+実際の記述例は`examples/first-capability-effect/`にあります。次のコマンドは、意味定義・アプリケーション・操作機能・Bindingを**ファイルから読んで**作成の意図を表示します。
+
+```sh
+go run ./tools/reference-standard-function-candidates \
+  -workspace examples/first-capability-effect \
+  -application request_log -pattern request_log.create_request
+```
+
 `effect`は**利用者が記述した業務上の意図**であり、永続的な副作用をTEIが実行・認可・観測した証拠ではありません。参照するDataが存在しない場合、未知の操作、同じCapabilityでの重複宣言は拒否します。保存先と権限・Provider・独立再読込は、どの場合も引き続き未検証のままです。
 
 初回作業領域にはまだ明示的な機能がありません。その作業領域へ`-pattern`を指定しても、元の候補から仮の実行用Patternを作らず、失敗します。
