@@ -27,8 +27,11 @@ function projection(p=procedure,r=review) {
       source:{file:'review-proposal.json',pointer:'/flows/'+i}})),
     information:{
       roles:r.businessRoles.map(x=>({...x,authority:'proposal'})),
-      externalParties:r.externalParties.map(x=>({...x,authority:'proposal'})),
-      stores:r.stores.map(x=>({...x,authority:'proposal',dataStatus:x.semanticData?'resolved':'not-declared'})),
+      externalParties:r.externalParties.map((x,i)=>({...x,authority:'proposal',
+        source:{file:'review-proposal.json',pointer:'/externalParties/'+i}})),
+      stores:r.stores.map((x,i)=>({...x,authority:'proposal',
+        source:{file:'review-proposal.json',pointer:'/stores/'+i},
+        dataStatus:x.semanticData?'resolved':'not-declared'})),
       responsibilities:r.responsibilities.map(x=>({...x,authority:'proposal'})),
       informationFlows:r.informationFlows.map(x=>({...x,authority:'proposal'}))
     }
