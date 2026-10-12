@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {previewLayoutMove, LAYOUT_SCHEMA, EDIT_SCHEMA, PREVIEW_SCHEMA} from './dfd-view-layout.mjs';
+import {previewLayoutMove, inspectViewLayout, LAYOUT_SCHEMA, EDIT_SCHEMA, PREVIEW_SCHEMA} from './dfd-view-layout.mjs';
 
 const hash = 'sha256:' + 'a'.repeat(64);
 const layoutHash = 'sha256:' + 'b'.repeat(64);
@@ -60,4 +60,19 @@ test('rejects invalid coordinates, unchanged nodes, duplicate or dangling layout
   assert.throws(()=>run(dfd,layout,edit({operation:{kind:'move-node',nodeKind:'step',nodeId:'APP-10',x:1,y:2}})),/NO_EFFECT_MOVE/);
   assert.throws(()=>run(dfd,{...layout,nodes:[...layout.nodes,...layout.nodes]}),/DUPLICATE_LAYOUT_NODE/);
   assert.throws(()=>run(dfd,{...layout,nodes:[{kind:'step',id:'phantom',x:0,y:0}]}),/UNKNOWN_LAYOUT_NODE/);
+});
+
+test('view can be inspected with zero positions and without proposing a change', () => {
+  const empty={...layout,nodes:[]};
+  const checked=inspectViewLayout(dfd,hash,empty,layoutHash);
+  assert.equal(checked.positionedCount,0);
+  assert.equal(checked.authority,'view-only');
+  assert.equal(checked.editableSource,false);
+  assert.deepEqual(checked.sourceWrites,[]);
+  assert.throws(()=>inspectViewLayout(dfd,layoutHash,layout,layoutHash),
+    /STALE_OR_UNSUPPORTED_VIEW_LAYOUT/);
+  assert.throws(()=>inspectViewLayout(dfd,hash,{...layout,nodes:[
+    {kind:'step',id:'APP-10',x:1,y:2},
+    {kind:'step',id:'APP-10',x:3,y:4}
+  ]},layoutHash),/DUPLICATE_LAYOUT_NODE/);
 });
