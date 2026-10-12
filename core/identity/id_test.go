@@ -1,7 +1,6 @@
 package identity
 
 import (
-	"errors"
 	"testing"
 )
 
@@ -83,5 +82,4 @@ func TestMustHelpersRejectInvalidInputs(t *testing.T) {
 			invoke()
 		}()
 	}
-	_ = errors.New // no dependency on an external error type
 }
