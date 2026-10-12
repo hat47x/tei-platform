@@ -70,7 +70,7 @@ func sourceAuditWorkspaceFixture(t *testing.T) (string, Input, AnswerInput) {
 			Question:    QuestionRef{Kind: "derived", ID: review.Issues[0].ID},
 			Response:    "関連のキー定義について確認が必要",
 			Disposition: "investigate", Context: "受注例",
-			ClaimedBy:   AnswerActor{Kind: "human", ID: "unverified"},
+			ClaimedBy: AnswerActor{Kind: "human", ID: "unverified"},
 			Evidence: []EvidencePointer{{Kind: "source-index",
 				Ref:         "semantic-relation:sales.child.parent",
 				Fingerprint: idx.Artifacts[0].Fingerprint}},
