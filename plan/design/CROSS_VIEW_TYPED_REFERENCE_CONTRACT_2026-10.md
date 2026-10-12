@@ -302,3 +302,19 @@ PR #1139がmainへ統合された後、現行`modelref.Impact`を再点検した
 この改修は#1120の共通契約に閉じるもので、#1124のStudioや#1125の業務手順を推測して実装せず、既存`ir.World`・Source Index・Shared Acceptance・Runtimeを変更しない。
 
 **資格確認:** 本PRの正確なコミットでの`go test -race -count=1 ./internal/modelref/... ./internal/workspace`、`tools/repository-health-check.sh`、作業ツリーの事前/事後clean状態はまだ取得できていない。従来の#1139の統合事実を、本追加変更の品質保証や受理証拠へ読み替えない。完了まではDraftとする。
+
+## R8 — 変更前後の両Snapshotによる影響確認（2026-10-12）
+
+`ReviewImpact(before, changes, rules)`は従来の`Impact`が扱う**変更前モデルの既存Consumer**には使えるが、`added`には新要素が存在しない。変更前だけの結果が空でも、新しい要素に依存する機能が変更後モデルに増えていれば影響候補が存在する。
+
+- 変更前しか入力のない`ReviewImpact`で`added`を受け取った場合は`after-snapshot-required`とし、`GraphValid=false`にする。過去のGraphに存在しない要素を正常にレビュー済みと断言しない。
+- `ReviewImpactDiff(before, after, rules)`を追加した。双方を型・循環・根拠について検査し、いずれかに診断があれば`Affected`を返さず未確定として示す。
+- 両Graphが整合する候補である場合、`Diff`の`added`を**変更後**、`removed`を**変更前**のGraphで辿る。version/evidence/参照関係の変更は**両方**を辿り、導入直後の新たなConsumerも回収する。重複する同じ`Changed/Consumer/Reason`はまとめ、決定的に整列する。
+- 改名を自動認定することはない。`order-line`を`order-detail`に変更した場合、`Diff`はadd/removeを維持する。明示`Transition`の意味継承審査は別途`ReviewMigration`が担当する。
+- 結果の`GraphValid`は、**二つの候補Graphと規則の局所整合性のみ**を表す。Sourceファイルrevisionの同一性、AI提案の受理、Shared Acceptance、実行時の副作用を実証しない。
+
+回帰テストは、Dataの追加に伴って新たにFunction→Task/Formの逆向き影響を拾えること、変更後の参照が欠落する場合に結果を未確定にすること、同一DataのVersion変更後に追加されたConsumerを見逃さないことを対象とした。
+
+### 完了の制限
+
+ここまでの実装は`internal/modelref`に閉じた読み取り専用の契約である。正式な完了には、`tools/repository-health-check.sh`と実Workspace統合試験の完全な実行、変更前後の正本となるSource revisionの束縛、AI提案と旧資産の受理前後を追う実シナリオが必要。**追加したテストはまだtrusted full checkoutで実行していない。**
