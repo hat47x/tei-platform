@@ -71,7 +71,7 @@ jobs:
           selected = set(a["GoFiles"])
           full = set(b["GoFiles"])
           for forbidden in ("server.go", "custom_ui.go", "order_only_wiring.go",
-                            "order_presentation_routes.go"):
+                            "order_presentation_routes.go", "order_presentation_footer.go"):
               if forbidden in selected or forbidden not in full:
                   raise SystemExit(f"HTML Go source exclusion failed: {forbidden}")
           for required in ("server_api_only.go", "order_api_only_wiring.go"):
@@ -88,6 +88,8 @@ jobs:
             exit 1
           fi
           echo "apiBinaryOmitsCustomSubmitPage=true"
+          python3 tools/reference-first-web-two-unit-e1/check_api_only_parity.py \
+            "$tmp/full" "$tmp/api" "$GITHUB_SHA"
           echo "fullBytes=$(wc -c < "$tmp/full")"
           echo "apiBytes=$(wc -c < "$tmp/api")"
           echo "sourceRevision=$(git rev-parse HEAD)"
