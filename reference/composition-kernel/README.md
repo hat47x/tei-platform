@@ -149,3 +149,32 @@ Go 1.23.2を用いた独立モジュール`/mnt/data/tei-composition-test`に、
 5. Epochの正本と選択・配置の粒度は今後の本番Consumerで再評価する。特に一つのProvider宣言が複数の実行インスタンス／Targetを持つ場合、Provider EpochだけではReplica/Artifact差を表せない。実成果物identityとRuntime AuthorityはHostに持たせる。
 
 次の実装Gateは、現在の仮`guard`を**実際のArtifact検証済みAuthorityへのAdapter**に置き換え、Process/Wasm Providerで新旧世代の並行稼働とDrainingを計測すること。既存Runtimeの固定enum維持は受入条件にしない。
+
+
+## E5：生成AIが参照する構成案の充足判定（設計時の参照実装）
+
+プラグインを追加すること自体よりも、**既存の実装で要求を満たせる範囲を増やすこと**を重視する。そのため、`internal/composition/proposal.go`に`Registry.InspectWiring`を追加した。
+
+- 入力は「必要な契約」「適用範囲」「任意の明示Provider ID」。別個のAI専用プラグイン台帳を作らず、既存Registryの登録済みProviderと依存判定をそのまま参照する。
+- **候補**：一致する契約、範囲、依存を持つProviderが明示的に選ばれた、または一意に存在する。ただし適合証拠・実Artifactの信頼・Host Authorityを示すものではない。
+- **競合**：同じ契約に複数Providerが存在し、選択が曖昧。または同じ範囲にある明示Providerの契約が不一致。
+- **未判定**：入力が不完全、対象Providerが登録されていない、依存が満たされていない等。**登録されていないことだけを、新規実装が不可避である証拠にはしない。**
+- 範囲外のProviderは、存在していても未知Providerと同じ結果にする。設計時の候補探索にあたっては、さらに呼出し元の閲覧権限を別途適用しなければならない。
+- 提案結果には現時点のProvider Epochと選択された依存を含む。AIが返す構成案をHostがそのまま承認することはできず、切替時に既存`Selection`の再検証を行う。
+
+### 意図的に実装していないこと
+
+- 「不足」の断定。全Providerカタログを取得・検索できたという信頼可能な根拠が必要で、局所Registryに候補がないだけでは断定しない。
+- 既存の#951に属する契約の意味的互換性、第三者の適合証拠や失効評価、#943のBuild Artifact受理、現在のHost Permission／Lease／Fencing。
+- 複数サービス構成案全体の採用、アプリケーション生成、Target最適化、独立した第二Resolver。
+- AIが閲覧した設計情報を権限管理の代わりに使うこと。閲覧・提案・受理・実行は別の権限として扱う。
+
+### 試験と証拠の範囲
+
+`proposal_test.go`には、局所カタログの欠落を「不足」と誤断定しない試験、同じ契約の候補競合、明示Provider選択、他Tenantの存在秘匿、同一範囲の契約不一致、依存先不在・復帰、返却結果の防御的複製、Provider撤去・同名再登録によるEpoch更新、無関係な並行更新下の選択維持を収録した。
+
+ネットワーク制約により公開GitHubからの`git clone`は現実行環境でDNS失敗する。このため今回実施したのは、**GitHubへ追加した二つの新規ファイルと同一bytes**、および既存RegistryのAPIを模した**ローカル試験用実装**による単体動作確認である。Go 1.23.2、`go test -race -count=100 ./internal/composition`、`go vet ./...`がPASS。GitHub上の`proposal.go`と`proposal_test.go`のBlob SHAとローカル`git hash-object`を照合した。
+
+**重要**：ここでのPASSは既存`registry.go`・`selection.go`を含む完全なTEIパッケージによるPASSではない。試験用実装は本PRにコミットしていない。PR exact-headの`tools/repository-health-check.sh`、Production Host統合、実Targetの検証は未実施。コードをmainへ統合する資格確認には、AGENTS.mdの信頼できるclean checkoutと全体Healthを別途要する。
+
+設計上の正本は[AI向け最小プラグイン規約の検討](../../plan/design/AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md)に置き、この節は参照実装の説明と限界に限定する。
