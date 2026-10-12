@@ -103,3 +103,16 @@ func normalizeAddFunctionalDependency(op Operation) (Operation, error) {
 		Data: data, ID: id, Symbol: symbol, Determinants: determinants, Dependents: dependents,
 	}}, nil
 }
+
+func businessRuleOperationSubject(op Operation) (data, id string, attributes []string) {
+	switch op.Op {
+	case opAddCandidateKey:
+		return op.AddCandidateKey.Data, op.AddCandidateKey.ID, append([]string(nil), op.AddCandidateKey.Attributes...)
+	case opAddFunctionalDependency:
+		spec := op.AddFunctionalDependency
+		attrs := append([]string(nil), spec.Determinants...)
+		attrs = append(attrs, spec.Dependents...)
+		return spec.Data, spec.ID, attrs
+	}
+	return "", "", nil
+}
