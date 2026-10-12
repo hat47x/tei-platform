@@ -6,9 +6,19 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/core"
+	"tei/internal/plugin"
 	pruntime "tei/internal/plugin/runtime"
 	authoritytrust "tei/tools/reference-authority-evidence-trust/trust"
 )
+
+func serviceSelectionPluginIdentity(t *testing.T, provider Provider) plugin.Identity {
+	t.Helper()
+	return plugin.Identity{
+		ID:      core.MustCanonicalID(provider.PluginID),
+		Version: provider.PluginVersion,
+	}
+}
 
 type testHostCurrentAcceptanceSource struct {
 	snapshot HostCurrentAcceptanceSnapshot
