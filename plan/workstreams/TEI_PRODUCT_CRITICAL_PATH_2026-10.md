@@ -963,3 +963,45 @@ E1-Bの`validation-not-satisfied`は**業務上の拒否**でありHTTP 200と�
 3. **#1127の実DB、#1163の一改訂Evidence**：[Draft #1399](https://github.com/hat47x/tei-platform/pull/1399)の手書きoverlay→PostgreSQL write／別接続readは独立した先行試験であり、#1119のAccepted R1から通常Web Commandへつながった証拠ではない。[#1406](https://github.com/hat47x/tei-platform/pull/1406)の保存宣言の静的照合も書込み権限・実Providerの成功ではない。これらを既存契約内で収束させ、実DB write→別invocation read、S02/S05拒否、N11の未観測を区別する。
 
 **資格判定**：G0はOwner間の正式なConsumer受入を一部未確認。G1はRuntime側の受理済みSource版拘束が欠け、G2は同じR1からの実Web→実DB→独立readが未取得。G3第二Target、G4自己構築・横断受入も未完了。E1の合成証拠は進展したが、製品Gateは **UNQUALIFIED**、[#1119](https://github.com/hat47x/tei-platform/issues/1119)はopenを維持する。短期Artifactは7日で失効するため、期限後に現物の再取得が必要なら同一版の証拠を再生成し、再実行版を記録する。
+
+## 30. 変更集中と影響範囲による優先順位の更新（2026-10-12）
+
+§9のP0/P1仮説を、現在確認できる変更履歴と製品上の失敗例で再評価する。ここでの優先順位は**契約が下流を止める危険性**であり、担当者の成果や実装行数の順位ではない。§29の版別実証が根拠であり、既に閉じた#1120や#1132を再起票しない。
+
+### 観測に用いた変更頻度と限界
+
+GitHubの既定ブランチについて、`2026-10-10T00:00:00Z`〜`2026-10-12T14:33:00Z`の`commits?path=...`結果を数えた。作業時点のmain参照値は`9478b5fac91b24d4620f8fcddb933052d5c44ad2`。ディレクトリの値は配下全体であり、**コミット数は契約の破壊件数でも、変更が失敗した回数でもない**。同一コミットは複数行に重複する。Draft PRの未統合変更はここに入らない。マージ後のmainが進めば、これらは固定時点の参考値となる。
+
+| 観測した領域 | 対象期間のmain上の該当コミット数 | 読み方 |
+| --- | ---: | --- |
+| `internal/modelref/`（C0） | 69 | 下流の意味参照に波及し得るが、現行#1120の完了判定を取り消さない |
+| `tools/reference-shared-acceptance/`・`reference/studio-authoring/`（C1） | 65・58 | 受理と編集の接合面は変更が多く、実Consumerでの照合が必要 |
+| `tools/reference-first-web-target/`（C3/Web） | 182 | もっとも変更が集中。Source版を実Webが拒否しないという実測が優先度の主根拠 |
+| `tools/reference-critical-path-evidence-audit/`・`tei-critical-path-e1-ci.yml`（E1証拠） | 52・6 | 検査の変更と製品本体の修正を同一視しない |
+| `internal/plugin/`・`tools/reference-standard-function-candidates/`（構成・Data-first） | 43・3 | Plugin変更は広く波及し得るが、標準機能の現行不足は静的候補だけでは埋まらない |
+| `tools/reference-data-first-persistence/`（実DBの先行試験） | 0 | **Draft #1399の実装不存在という意味ではない**。main未統合のため、計数対象外 |
+| `tools/reference-subsystem-cud/`・`internal/sourceindex/`（C2・出所索引） | 36・3 | 独立した出所照合が進展。正式Accepted Businessの根拠とは区別 |
+
+`reference-first-web-target`はAPIの100件上限を越えたため2ページ目82件を加算した。ほかは初回ページで100件未満。対象範囲はGitHubのpath条件に依存し、開発者の実作業時間、変更の重大度、並行する作業ブランチの進捗は測っていない。
+
+### 優先順位：変更頻度よりも、依存と安全な代替可否を重く見る
+
+| 順位 | 重点課題と担当 | 下流・逆方向依存の評価 | 代替可能性と停止条件 |
+| --- | --- | --- | --- |
+| **P0-1** | **受理済みSource R1を実Web自身が拘束**。#1121・#1017、検証#1163 | C1受理→C3実行の境界。#1124・#1127・#1163が下流。B/R/TやWorldの値を呼出元が指定するだけでは受理の根拠が逆流する | **安全な代替なし**。R0と意味同値R2の両方で実行前に拒否し、R1正常系を維持するまでG1未合格 |
+| **P0-2** | **同じ受理済みR1から実Web Command→実DB write→別接続・別invocation read**。#1127・#1163 | C3、Provider/DB、Host Authority、Observationを接ぐG2の最終阻害。静的Persistence候補だけで実行権限を逆流させてはならない | **安全な代替なし**。実DB先行試験や合成Observationは部分証拠。S02/S05とN11を含む一連の実験までG2未合格 |
+| **P0-3** | **#1395後の8件E1証拠保存を現行PR仮統合版で再実測**。#1163、保存契約#1119 | E1監査はC1/C3のConsumer検査であり、製品本体のAuthorityではない。#1262のDraftを直接変更しない | 旧Artifactは回帰の参考にはなるが**新workflow版の実行証拠の代替にならない**。PR head、仮統合版、原本のハッシュを一対一で固定 |
+| **P0-4** | **三視点のAccepted Sourceへの接合・正式Consumer確認**。#1124・#1125・#1126、参照#1120、C2 #1132 | C0の識別・出所からC1の変更受理、業務・Data・FunctionのConsumerへ扇状に依存。Scope/Kindや候補と正式受理の混同を避ける | Read-only図や合成CUD候補は部分代替。業務手順の正式受理、再投影、権限のConsumer負例を取得するまで「三視点完成」は未認定 |
+| **P0-維持** | **Plugin/Capabilityの構成・禁止依存**。#951・#1016・#980・#1019 | CP-2は多数Targetへの影響を持つ。ただし具体的な禁止importは既存#980の検査が主担当で、#1119から第二検査器を作らない | 当面は既存Capability/Driver契約でP0業務一往復を進める。新たな逆方向依存が実際に検出されたら上記P0との衝突を再判定 |
+| **P1（並走）** | 第二Target、自己構築、取消・通知・帳票・シナリオ（#1129〜#1131ほか） | G3/G4と製品拡張には必要だが、最初の一つの実Web/DB一往復を直列に止めない | 代替できるという意味ではない。別のGate・ケースで固有の実証を維持 |
+
+優先順位を上げる条件は、**同一版・同一主体・同一実行対象**で矛盾が再現すること、または既存の禁止依存検査が具体的な違反を報告すること。件数だけでCore化、Enum追加、全体再構築、第二のOwnerによる重複実装を認めない。
+
+### 次の最小受入と責務
+
+1. **最初に#1163**は、#1395統合後のworkflowと#1262の8件生成を同じPR仮統合版で動かした実行ID・Artifactを報告する。未取得なら`NOT_RUN`を維持。合成試験の合格をG1/G2へ昇格しない。
+2. **#1121**は、受理Decisionの実revisionと実際に開いたManaged Sourceを突合し、R0/R2のCommand前拒否とR1成功の正負試験を担当する。#1119ではWeb Loaderを改造しない。
+3. **#1127**は、Provider/DB/Hostの実態と権限を読み戻したうえで、正常Command→独立readの同一R1相関を実証する。#1163が証拠の版と由来を監査する。
+4. **#980/#1019**が既存の依存検査と拡張シナリオを維持し、#1119は具体的な違反・改修がP0製品ループへ及ぼす影響だけを確認する。
+
+**判定**：最初の作業一覧にあったP0/P1評価について、変更集中・下流・逆依存・代替可否を実測可能な範囲で整理した。これは優先順位の評価を進めたという意味であり、正式Consumer資格、G1〜G4の製品GateやCIの新たなPASSではない。
