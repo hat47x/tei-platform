@@ -27,6 +27,20 @@ func quoteLegacyFingerprint(value string) string {
 }
 
 func quoteLegacyProcessDispatch(ctx context.Context, executable string, provider Provider, payload []byte) ([]byte, error) {
+	return quoteLegacyProcessDispatchUsing(ctx, provider, payload, func(ctx context.Context, req pruntime.Request) (pruntime.Response, error) {
+		return (pruntime.StdioProcessLauncher{}).Invoke(
+			ctx, pruntime.ProcessCommand{Executable: executable}, req,
+		)
+	})
+}
+
+// Shared wire encoder/decoder: the callback chooses whether the same legacy
+// carrier goes directly to the process or through the product Host Runtime.
+// Neither path treats the legacy fingerprint as a Service Contract identity.
+func quoteLegacyProcessDispatchUsing(
+	ctx context.Context, provider Provider, payload []byte,
+	invoke func(context.Context, pruntime.Request) (pruntime.Response, error),
+) ([]byte, error) {
 	carrierPlugin := plugin.Identity{
 		ID: core.MustCanonicalID(provider.PluginID), Version: provider.PluginVersion,
 	}
@@ -74,9 +88,7 @@ func quoteLegacyProcessDispatch(ctx context.Context, executable string, provider
 		Operation:             "generic-dispatch-v0",
 		Payload:               encoded,
 	}
-	resp, err := (pruntime.StdioProcessLauncher{}).Invoke(
-		ctx, pruntime.ProcessCommand{Executable: executable}, req,
-	)
+	resp, err := invoke(ctx, req)
 	if err != nil {
 		return nil, err
 	}
