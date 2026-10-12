@@ -113,9 +113,9 @@ func TestE26NativeOverlayAuthoringBaseline(t *testing.T) {
 		t.Fatalf("isolated Native Command candidate does not resolve: %v", err)
 	}
 	report := e26ObservedBaseline{
-		Consumer: "sui_native_candidate",
-		Status: "temporary_test_overlay_only",
-		ExistingFiles: []e26ObservedFile{baseManifest},
+		Consumer:            "sui_native_candidate",
+		Status:              "temporary_test_overlay_only",
+		ExistingFiles:       []e26ObservedFile{baseManifest},
 		ManifestSourceRoots: 2,
 	}
 	paths := []string{
@@ -172,9 +172,9 @@ func TestE26TypedNativeOverlayAddsStructureWithoutReplacingReceiver(t *testing.T
 		t.Fatal("typed Source does not constitute persistence or a completed SUI domain")
 	}
 	report := e26ObservedBaseline{
-		Consumer: "sui_native_typed_candidate",
-		Status: "temporary_test_overlay_only",
-		ManifestSourceRoots: 2,
+		Consumer:              "sui_native_typed_candidate",
+		Status:                "temporary_test_overlay_only",
+		ManifestSourceRoots:   2,
 		NativeInputAttributes: 3,
 	}
 	for _, path := range []string{
