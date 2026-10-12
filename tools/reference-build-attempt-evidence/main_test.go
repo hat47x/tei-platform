@@ -19,7 +19,7 @@ func TestFailedAttemptBindsExactBuildPlanAndBuilder(t *testing.T) {
 			Phase:             attemptPhaseCompile,
 			FailureClass:      "compile-type-error",
 			ExitCode:          &exitCode,
-			DiagnosticSummary: "compile failed",
+			RawDiagnosticHint: "compile failed",
 			Stdout:            []byte("progress"),
 			Stderr:            []byte("type mismatch"),
 		},
@@ -56,7 +56,7 @@ func TestAttemptEvidenceRequiresResolvedValidBuildPlan(t *testing.T) {
 			Phase:             attemptPhaseBuilderRun,
 			FailureClass:      "builder-start-failure",
 			ExitCode:          &exitCode,
-			DiagnosticSummary: "builder did not start",
+			RawDiagnosticHint: "builder did not start",
 		},
 		16,
 	); err == nil {
@@ -76,7 +76,7 @@ func TestDiagnosticCaptureIsBoundedAndRawSecretIsNotInline(t *testing.T) {
 			Phase:             attemptPhaseCompile,
 			FailureClass:      "compile-error",
 			ExitCode:          &exitCode,
-			DiagnosticSummary: "compiler diagnostic captured",
+			RawDiagnosticHint: "compiler diagnostic captured",
 			Stderr:            raw,
 		},
 		24,
@@ -115,7 +115,7 @@ func TestRawDiagnosticChangeDoesNotChangeBuildPlanIdentity(t *testing.T) {
 		plan, 1,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "compile failed", Stderr: []byte("diagnostic A"),
+			RawDiagnosticHint: "compile failed", Stderr: []byte("diagnostic A"),
 		},
 		16,
 	)
@@ -126,7 +126,7 @@ func TestRawDiagnosticChangeDoesNotChangeBuildPlanIdentity(t *testing.T) {
 		plan, 1,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "compile failed", Stderr: []byte("diagnostic B"),
+			RawDiagnosticHint: "compile failed", Stderr: []byte("diagnostic B"),
 		},
 		16,
 	)
@@ -148,7 +148,7 @@ func TestRetryHistoryPreservesFailuresAfterSuccess(t *testing.T) {
 		plan, 1,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "first compile failure", Stderr: []byte("first"),
+			RawDiagnosticHint: "first compile failure", Stderr: []byte("first"),
 		},
 		8,
 	)
@@ -159,7 +159,7 @@ func TestRetryHistoryPreservesFailuresAfterSuccess(t *testing.T) {
 		plan, 2,
 		fakeFailure{
 			Phase: attemptPhaseLink, FailureClass: "link-error", ExitCode: &exitCode,
-			DiagnosticSummary: "second link failure", Stderr: []byte("second"),
+			RawDiagnosticHint: "second link failure", Stderr: []byte("second"),
 		},
 		8,
 	)
@@ -203,7 +203,7 @@ func TestAttemptHistoryRejectsFailureFromDifferentPlan(t *testing.T) {
 		secondPlan, 1,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "different plan", Stderr: []byte("different"),
+			RawDiagnosticHint: "different plan", Stderr: []byte("different"),
 		},
 		8,
 	)
@@ -249,7 +249,7 @@ func TestAttemptEvidenceFingerprintCanonicalizesBuilderDigestHexCase(t *testing.
 		plan, 1,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "compile failed", Stderr: []byte("diagnostic"),
+			RawDiagnosticHint: "compile failed", Stderr: []byte("diagnostic"),
 		},
 		8,
 	)
@@ -323,7 +323,7 @@ func TestBuilderIdentityMismatchOnLogicalFieldsIsRejected(t *testing.T) {
 		plan, 1,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "compile failed", Stderr: []byte("diagnostic"),
+			RawDiagnosticHint: "compile failed", Stderr: []byte("diagnostic"),
 		},
 		8,
 	)
@@ -358,7 +358,7 @@ func TestAttemptHistoryRejectsTamperedFailureEvidence(t *testing.T) {
 		plan, 1,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "original", Stderr: []byte("diagnostic"),
+			RawDiagnosticHint: "original", Stderr: []byte("diagnostic"),
 		},
 		8,
 	)
@@ -406,7 +406,7 @@ func TestAttemptHistoryRejectsDuplicateOrOutOfOrderOrdinal(t *testing.T) {
 		plan, 2,
 		fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error", ExitCode: &exitCode,
-			DiagnosticSummary: "first recorded attempt", Stderr: []byte("first"),
+			RawDiagnosticHint: "first recorded attempt", Stderr: []byte("first"),
 		},
 		8,
 	)
@@ -425,7 +425,7 @@ func TestAttemptHistoryRejectsDuplicateOrOutOfOrderOrdinal(t *testing.T) {
 		plan, 2,
 		fakeFailure{
 			Phase: attemptPhaseLink, FailureClass: "link-error", ExitCode: &exitCode,
-			DiagnosticSummary: "duplicate ordinal", Stderr: []byte("duplicate"),
+			RawDiagnosticHint: "duplicate ordinal", Stderr: []byte("duplicate"),
 		},
 		8,
 	)
@@ -440,7 +440,7 @@ func TestAttemptHistoryRejectsDuplicateOrOutOfOrderOrdinal(t *testing.T) {
 		plan, 1,
 		fakeFailure{
 			Phase: attemptPhaseBuilderRun, FailureClass: "builder-error", ExitCode: &exitCode,
-			DiagnosticSummary: "earlier ordinal", Stderr: []byte("earlier"),
+			RawDiagnosticHint: "earlier ordinal", Stderr: []byte("earlier"),
 		},
 		8,
 	)
@@ -471,7 +471,7 @@ func TestFailedAttemptRejectsSuccessfulOrInvalidExitStatus(t *testing.T) {
 	for _, exitCode := range []int{0, -1} {
 		_, _, err := newFailedAttempt(plan, 1, fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: "compile-error",
-			ExitCode: &exitCode, DiagnosticSummary: "simulated failure",
+			ExitCode: &exitCode, RawDiagnosticHint: "simulated failure",
 		}, 8)
 		if err == nil {
 			t.Fatalf("failed attempt accepted invalid exit status %d", exitCode)
@@ -501,7 +501,7 @@ func TestSignalledBuildFailureAndExitStatusAreNotConflated(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, _, err := newFailedAttempt(plan, 1, fakeFailure{
 				Phase: attemptPhaseCompile, FailureClass: "compile-error",
-				ExitCode: tt.code, Signal: tt.signal, DiagnosticSummary: "classified failure",
+				ExitCode: tt.code, Signal: tt.signal, RawDiagnosticHint: "classified failure",
 			}, 16)
 			if (err != nil) != tt.wantError {
 				t.Fatalf("newFailedAttempt error = %v, want error = %t", err, tt.wantError)
@@ -516,14 +516,14 @@ func TestUntrustedDiagnosticHintIsNotPublicEvidence(t *testing.T) {
 	marker := "token=do-not-publish path=/private/workspace/user.go"
 	unsafe, _, err := newFailedAttempt(plan, 1, fakeFailure{
 		Phase: attemptPhaseCompile, FailureClass: "compile-error",
-		ExitCode: &exitCode, DiagnosticSummary: marker,
+		ExitCode: &exitCode, RawDiagnosticHint: marker,
 	}, 16)
 	if err != nil {
 		t.Fatal(err)
 	}
 	safe, _, err := newFailedAttempt(plan, 1, fakeFailure{
 		Phase: attemptPhaseCompile, FailureClass: "compile-error",
-		ExitCode: &exitCode, DiagnosticSummary: "compile failed",
+		ExitCode: &exitCode, RawDiagnosticHint: "compile failed",
 	}, 16)
 	if err != nil {
 		t.Fatal(err)
@@ -549,14 +549,14 @@ func TestPublicFailureClassificationRejectsUnsafeLabelsAndSummary(t *testing.T) 
 	for _, unsafeClass := range []string{"path=/private", "token=abc", "../internal", "UpperCase", strings.Repeat("a", 65)} {
 		if _, _, err := newFailedAttempt(plan, 1, fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: unsafeClass,
-			ExitCode: &exitCode, DiagnosticSummary: "ignored",
+			ExitCode: &exitCode, RawDiagnosticHint: "ignored",
 		}, 16); err == nil {
 			t.Fatalf("unsafe failure class was accepted: %q", unsafeClass)
 		}
 	}
 	attempt, _, err := newFailedAttempt(plan, 1, fakeFailure{
 		Phase: attemptPhaseCompile, FailureClass: "compile-error",
-		ExitCode: &exitCode, DiagnosticSummary: "ignored",
+		ExitCode: &exitCode, RawDiagnosticHint: "ignored",
 	}, 16)
 	if err != nil {
 		t.Fatal(err)
@@ -579,7 +579,7 @@ func TestSignalMetadataRejectsRawDiagnosticContent(t *testing.T) {
 	} {
 		_, _, err := newFailedAttempt(plan, 1, fakeFailure{
 			Phase: attemptPhaseBuilderRun, FailureClass: "builder-error",
-			Signal: signal, DiagnosticSummary: "ignored",
+			Signal: signal, RawDiagnosticHint: "ignored",
 		}, 8)
 		if err == nil {
 			t.Fatalf("unstructured signal value was accepted: %q", signal)
