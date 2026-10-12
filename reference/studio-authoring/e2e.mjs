@@ -419,6 +419,14 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       reviewFingerprint: review.reviewFingerprint
     },
     changed, acceptedSubject: expectedID,
+    editorTransport: {
+      kind: "offline-editor-script-vm",
+      sourceRevision: visualEdit.expectedModelRevision,
+      candidateOrigin: visualCandidate.origin.kind,
+      candidateID: visualCandidate.id,
+      acceptedCandidateFingerprint: decision.candidateFingerprint,
+      staleBrowserReviewRefused: true
+    },
     staleCandidateRefused: true, concurrentRivalRefused: true
   };
 }
