@@ -113,6 +113,18 @@ class OfflinePinnedCompose(unittest.TestCase):
         self.assertIn("unrequested network fetch", outcome.stderr)
         self.assertIn("fetch failed", outcome.stderr)
 
+    def test_promisor_partial_clone_refused(self):
+        self.git("config", "remote.origin.promisor", "true")
+        outcome = self.run_smoke()
+        self.assertNotEqual(0, outcome.returncode)
+        self.assertIn("refuses partial/promisor checkout", outcome.stderr)
+
+    def test_shallow_checkout_refused(self):
+        (self.repo / ".git" / "shallow").write_text(self.sha + "\n")
+        outcome = self.run_smoke()
+        self.assertNotEqual(0, outcome.returncode)
+        self.assertIn("requires a complete, non-shallow", outcome.stderr)
+
     def test_missing_trusted_remote_refused(self):
         self.git("remote", "set-url", "origin", "https://example.invalid/fake.git")
         outcome = self.run_smoke()
