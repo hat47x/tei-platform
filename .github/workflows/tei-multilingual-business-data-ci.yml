@@ -1,0 +1,64 @@
+name: TEI 多言語業務データの参照契約
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reference/multilingual-business-data/**'
+      - '.github/workflows/tei-multilingual-business-data-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/multilingual-business-data/**'
+      - '.github/workflows/tei-multilingual-business-data-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-multilingual-business-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: ソースと完全な履歴を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Goの版を用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 対象版と実行前の作業領域を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: 多言語業務データの整形・静的解析・局所試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l reference/multilingual-business-data/*.go)"
+          go vet ./reference/multilingual-business-data
+          go test -race -count=3 ./reference/multilingual-business-data
+      - name: 実行後の作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
