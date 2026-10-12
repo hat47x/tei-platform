@@ -15,7 +15,7 @@
 | `humanDecisions` | 提出された人間による判断イベントの件数 | E27の未解決項目数を判断実施回数へ換算しない |
 | `aiQuestions` | 追加質問の提出イベントの件数 | チャット全体のトークン数、推測した質問数 |
 | `manualConnections` | 手動接続の提出イベントの件数 | 自動生成された差分や未実行の構成候補 |
-| `changedFiles` | 内容指紋の異なる変更元・変更先を申告した**相異なるファイルパス数** | 同一ファイルの複数イベントを別ファイルと数えない |
+| `changedFiles` | 内容指紋の異なる変更元・変更先を申告した**相異なるリポジトリと相対パスの組数** | 同一リポジトリの同じファイルの複数イベントを別ファイルと数えない。別リポジトリの同名パスは別に数える |
 | `validationRuns` | 提出された検証実行イベントの件数（成功／失敗／未解決を別記） | 提出URLの存在だけをテスト成功と推認しない |
 | `requalificationRuns` | 更新影響の再確認イベントの件数 | [E25](E25_CROSS_REPOSITORY_REQUALIFICATION.md)の未検証契約を自動合格にしない |
 
@@ -31,7 +31,7 @@ node reference/application-composition/e28_workflow_measurement.mjs .
 node --test reference/application-composition/e28_workflow_measurement.test.mjs
 ```
 
-JavaScriptの`observeE28(root, submission)`に提出イベントを渡すこともできる。提出構造は`tei-e28-workflow-submission-v0`、案件ID／利用先／比較方式／固定した開始コミット／Target、作業の完了申告、イベント配列からなる。各イベントは重複しないID、E27の監査項目ID、操作分類、出典のGitHubリンクを持つ。変更ファイルについては安全な相対パスと前後の40桁Git blob SHA、検証イベントは結果の`passed`／`failed`／`unresolved`を申告する。
+JavaScriptの`observeE28(root, submission)`に提出イベントを渡すこともできる。提出構造は`tei-e28-workflow-submission-v0`、案件ID／利用先／比較方式／固定した開始コミット／Target、作業の完了申告、イベント配列からなる。各イベントは重複しないID、E27の監査項目ID、操作分類、出典のGitHubリンクを持つ。変更ファイルについては**リポジトリ識別子**、安全な相対パス、前後の40桁Git blob SHAを、検証イベントは結果の`passed`／`failed`／`unresolved`を申告する。
 
 **申告は実施証拠を自動検証したことにはならない。** 不正なURL、別Consumerの監査項目、出典が失われた監査項目、同じイベントIDの二重計上、移動・更新を伴わないファイル指紋、変更ファイルへのパストラバーサルを拒否する。AIへの入力全文、顧客情報、秘密情報、Runtime Grantは収集しない。
 
@@ -50,6 +50,21 @@ JavaScriptの`observeE28(root, submission)`に提出イベントを渡すこと�
 `order_entry`の小さな案件固有機能を、(a)既存実装、(b)案件内改修、(c)新規Plugin生成の順に比較する方針が[#1016の追加コメント](https://github.com/hat47x/tei-platform/issues/1016)に記録された。別の並行[PR #1567](https://github.com/hat47x/tei-platform/pull/1567)は、Goによる補助判定とLitの案件UI部品を独立に実装中（確認時点ではDraft）。E28はその実装を変更せず、案件固有の生成・選択・手動接続・再検証の申告と、実際の実行証拠を区別する。
 
 実際のGitHub PRには差分とCI結果があるが、**人間が何回判断し、AIへ何回追加質問したかはPR差分だけでは分からない**。今回は本当の二つの方式を同条件で実施していないため、改善率を示さない。
+
+
+## E30：別リポジトリの同名パスを混同しない
+
+[E25のSUI・TEI改訂比較](E25_CROSS_REPOSITORY_REQUALIFICATION.md)では、出典ファイルはリポジトリを区別していた。一方、以前のE28変更計測は`changed-source`イベントの`path`だけで変更ファイルを数え、TEIとSUIの双方に同じ相対パスがある場合に**2ファイルを1ファイルと誤計上する**おそれがあった。
+
+E30では、`changed-source`イベントに`repository`を必須とし、`repository/path`の組を数える。この参照試験で受け付ける正本は`hat47x/tei-platform`と`hat47x/sui-sensemaking`の2リポジトリに限定する。任意の第三者リポジトリを案件Pluginの候補から排除する**製品仕様ではない**。対象の拡張には、出典確認と案件ごとの受理判断が必要であり、単純に未知リポジトリを信用しない。
+
+同一リポジトリの同じ相対パスを2回編集した場合は変更**イベント2件・ファイル1件**、TEIとSUIで同名の相対パスを編集した場合は**ファイル2件**とする。リポジトリを指定しない／許容外の識別子を指定するイベント、変更以外のイベントへ識別子を混入した場合は拒否する。既存のE28テスト入力は新しい必須識別子に合わせた。
+
+```sh
+node --test reference/application-composition/e28_workflow_measurement.test.mjs
+```
+
+これは**計測単位の取り違えを防ぐ**修正であり、GitHubリンクや申告Git blobの真正性、実労務記録、業務の受理、現在の認可、実配備を証明しない。リポジトリ別の変更数を計測できても、生成AIへの追加質問数や導入工数は自動算出しない。
 
 ## 採否への影響
 
