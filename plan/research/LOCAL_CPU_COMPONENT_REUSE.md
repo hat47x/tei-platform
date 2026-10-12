@@ -109,4 +109,4 @@ TEI `main` の `internal/operations/inspect.go` に `InspectSubject`（`tei.oper
 
 特に `InspectSubject` v0は単独のSemantic Capabilityを直接返す対象種別に含まない。このため、`application-pattern.capability`のIDだけからCapabilityのtyped IO、Outcome、Data Effect、Provider Authorityを推定できない。業務ロジックの実装置換判断は現段階では**保留**する。後続で需要が確認された場合は #1165／Semantic ownerの型付きread-only Operation拡張を検討し、第二Parser／第二Worldを作らない。
 
-新たな2組の合成`inspect/v0` fixtures（Go構造体に合わせた形）を使用した23ケースは、GitHub上の該当コードを再取得した隔離JS評価器で全成功した。**実`tei inspect`コマンド、Go Workspace Load、複数ApplicationのSource Identity取得、trusted exact-head Repository-healthは未実行**である。R0の次の検証は実Operationの戻り値をこのAdapterへ与えるE2Eであり、モデル蒸留（R2）は#843/#876の停止条件を解除しない限り開始しない。
+合成`inspect/v0` fixtures（Go構造体に合わせた形）を使用した26ケースは、GitHub上の該当コードを再取得した隔離JS評価器で全成功した。うち3ケースはSource参照が登録Artifactに結び付くことと、同一パスの重複を拒否する構造検証。ただし実Sourceの真正性・許可の証明ではない。**実`tei inspect`コマンド、Go Workspace Load、複数ApplicationのSource Identity取得、trusted exact-head Repository-healthは未実行**である。R0の次の検証は実Operationの戻り値をこのAdapterへ与えるE2Eであり、モデル蒸留（R2）は#843/#876の停止条件を解除しない限り開始しない。
