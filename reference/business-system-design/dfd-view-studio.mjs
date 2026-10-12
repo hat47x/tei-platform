@@ -128,8 +128,11 @@ $('dfd-file').addEventListener('change',async ev=>{
       !Array.isArray(d.steps)||!Array.isArray(d.triggers)||!Array.isArray(d.diagnostics)||d.diagnostics.some(x=>x.severity==='error'))
       throw Error('不正または未解決のDFD投影');
     const hash=await digest(bytes);
-    state.dfd=d;state.dfdHash=hash;state.layout={schemaVersion:LAYOUT_SCHEMA,authority:'view-only',procedureId:d.procedureId,projectionSHA256:hash,nodes:[]};
-    state.layoutHash=await digest(new TextEncoder().encode(JSON.stringify(state.layout)));
+    const initialLayout={schemaVersion:LAYOUT_SCHEMA,authority:'view-only',procedureId:d.procedureId,projectionSHA256:hash,nodes:[]};
+    const initialHash=await digest(new TextEncoder().encode(JSON.stringify(initialLayout)));
+    // Do not display a malformed or ambiguous DFD as an editable view.
+    inspectViewLayout(d,hash,initialLayout,initialHash);
+    state.dfd=d;state.dfdHash=hash;state.layout=initialLayout;state.layoutHash=initialHash;
     state.pending=null;state.selected=null;
     $('preview').hidden=true;$('apply').disabled=true;
     render();status('投影を読み込みました。選択と移動は参照・表示用です。');
