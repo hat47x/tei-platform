@@ -192,9 +192,16 @@ node --test reference/studio-authoring/bridge.test.mjs
 # exact headのfull checkoutを保有する環境で、scratch Workspaceだけを変更する統合試験
 TEI_STUDIO_E2E=1 node reference/studio-authoring/e2e.mjs
 
+# 1万Data近傍の高ファンイン合成入力について、投影・HTMLの実測値をJSONで出力
+node reference/studio-authoring/performance.mjs > studio-performance.json
+
 # 全体健全性検査も実施する場合。統合判断は変更範囲に応じた試験を基準とする
 tools/repository-health-check.sh
 ```
+
+大規模な合成Referenceでは、Data 10,001件（うち参照元10,000件）、Attribute・Relation・Application Pattern各10,000件を組み立てます。同一Dataへ10,000件のRelationが集中する条件で、既存の `projectWorld` と `renderStudioHTML` を実行し、投影時間、HTML生成時間、HTMLバイト数、NodeプロセスRSSを `tei.reference.studio-performance-receipt/v0` として記録します。HTML一覧が各100件を上限に切り詰められることと、元のID・読み取り専用状態が維持されることも検査します。
+
+計測値はCI実行環境に依存する単回観測であり、時間・メモリの性能保証や実ブラウザの描画FPSを示しません。合成Worldは実Workspaceの受理済みSourceではなく、Business Procedureの同版性・人の受理・Source書込み・実Targetも実証対象外です。合格判定にマシン依存の固定ミリ秒閾値を持ち込まず、領収データに値と限界を残します。
 
 | Scenario | 初期実装 | 未検証・未対応 |
 | --- | --- | --- |
@@ -205,7 +212,7 @@ tools/repository-health-check.sh
 | N06 | 一時作業領域で、異なる編集者の独立した候補を同じR0で審査し、一方の受理後にもう一方の古い審査指紋による受理を拒否する試験を追加。正本のR1が保持されることも検査 | OS上の完全同時書込み、複数編集者による実環境の競合は未試験 |
 | Invalid ref | exactな入力subject/Relation target不在・重複を拒否。Source Indexの曖昧な定義、範囲不正、危険なpathを拒否。DFDの参照切れはunresolved | 全モデルKind・全typed edge・Source byte最新性とBusinessの受理済み意味 |
 | N12 | layout書換えは意味操作へ変換しない | 独立したView Metadataの保持・再生 |
-| 性能 | focus近傍だけを返す、合成増量ケースあり | realistic 1万+件の時間/メモリ実測 |
+| 性能 | 1万件高ファンインの合成Referenceで投影時間・HTML生成時間・HTMLサイズ・RSSをCI実測しJSON記録。表示一覧100件上限を確認 | 実業務分布の1万件超・実ブラウザ/WebView FPS・複数ユーザー負荷・実Providerを含むSLOは未測定 |
 
 ### 次の開発順序
 
