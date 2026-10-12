@@ -70,7 +70,7 @@ Authoritative Source / Canonical Application
 - #255 `repositoryRevision = R`
 - #308 `repositoryRevision = R`
 - 全lane `reproducibleRevision = true`
-- #273が同じRをReadyと判定
+- #273で同じ版Rを合格と判定
 
 ソースの変更が必要になった場合、旧版Rの成功を新しい版へそのまま引き継ぎません。新しい版で必要な検証根拠を取り直します。
 
@@ -109,10 +109,10 @@ Authoritative Source / Canonical Application
 
 ### Baseline identity
 
-- Handover Baseline identity `B`
+- 引継ぎ基準版の識別情報`B`
 - `baselineRepositoryRevision = R`
-- Reference Workspace identity
-- Gate B Readiness Audit対象revision
+- 参照用作業領域の識別情報
+- 判定段階Bの合格監査の対象版
 
 ### Canonical Application baseline
 
@@ -130,10 +130,10 @@ Authoritative Source / Canonical Application
 - Validation
 - Authentication / Authorization
 - Capability / Binding
-- Business Result / named Outcome
+- 業務上の結果と名前付きの結果
 - Execution Error
-- Observationに使う明示read境界
-- Source / Binding traceability
+- 観測に使用する明示的な読取りの境界
+- 入力元と対応付けを追跡できること
 
 引継ぎで列挙するのは参照先の一覧であり、意味の本文を複製するものではありません。
 
@@ -159,10 +159,10 @@ Authentication
 
 少なくとも次を保持します。
 
-- read / read-write
-- external-observed / managed-here等、Evidence上必要なownership性質
-- Database instance / executor Capability Binding
-- secret / credential / runtime parameterを通常Evidenceへ保存しない制約
+- 読取り専用と読書き可能の違い
+- 外部から観測したものか、ここで管理するものかなど、検証根拠に必要な所有・管理上の性質
+- データベースの実体と実行器の能力との対応付け
+- 秘密情報・認証情報・実行時の引数を通常の検証根拠に保存しない制約
 
 ## Gate B Evidence provenance
 
@@ -194,8 +194,8 @@ Authentication
 
 各artifactについて少なくとも:
 
-- artifact stable reference
-- fixed filename / lane identity
+- 成果物への安定した参照
+- 固定したファイル名と検証経路の識別情報
 - `evidenceArtifactFingerprint`
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
@@ -206,9 +206,9 @@ Authentication
 
 ### #310 deterministic Repository
 
-same-run `deterministic-repository.json`から少なくとも次へ戻ります。
+同じ実行で得た`deterministic-repository.json`から、少なくとも次の結果へたどります。
 
-- Workspace Validation成功
+- 作業領域の検証に成功
 - `final-ui-less-scenario`成功
 - `external-evidence-intake`成功
 - `repository-evidence-source-boundary`成功
@@ -217,23 +217,23 @@ same-run `deterministic-repository.json`から少なくとも次へ戻ります�
 
 ### #255 generated artifact reproducibility
 
-same-run `generated-artifact-reproducibility.json`から少なくとも次へ戻ります。
+同じ実行で得た`generated-artifact-reproducibility.json`から、少なくとも次の結果へたどります。
 
-- World / Plugin Lock golden一致
-- Durable Run golden一致
+- 意味の正本とプラグインの実装固定情報が期待出力と一致
+- 永続的な実行記録が期待出力と一致
 
 `-write`による修復操作や、修復直後に変更の残る作業ツリーを、完了の検証根拠にはしません。
 
 ### #308 real PostgreSQL Provider
 
-same-run `real-postgres-ephemeral-fixture.json`から少なくとも次へ戻ります。
+同じ実行で得た`real-postgres-ephemeral-fixture.json`から、少なくとも次の結果へたどります。
 
-- fixture前安全guard
-- 2件 / 正常0件 / missing-table Execution Error
-- explicit Semantic mapping
-- support column非露出
-- DB-side ownership-protected cleanup
-- cleanup後user relation 0 / Event Trigger 0 / fixture object不在
+- 試験用構成要素の作成前に行う安全確認
+- 2件の取得・正常に0件を取得・表が存在しない場合の実行時エラー
+- 意味上の表現への明示的な対応付け
+- 補助列を外部に露出しないこと
+- データベース側の所有権を確かめてから後片付けすること
+- 後片付け後、利用者が定義した関係0件・イベントトリガー0件・試験用構成要素なし
 
 本番の既存データベースに関する検証根拠とは読み替えません。
 
@@ -245,25 +245,25 @@ same-run `real-postgres-ephemeral-fixture.json`から少なくとも次へ戻り
 
 ## actual Oracleの扱い
 
-#214 / #371 / #376はRequired Evidence集合へ加えません。
+#214・#371・#376は、必須の検証根拠には加えません。
 
-取得済みでB / Rに対するverified external asset Evidenceとして十分なら追加参照します。少なくとも:
+取得済みで、B・Rについて検証済みの外部資産の根拠として十分であれば、追加で参照します。その際、少なくとも次を区別します。
 
-- actual observed artifact
-- evidence fingerprint
-- source-fixed acceptance receipt
-- actual read Evidence
-- runtime / realization / repository revisionとの関係
+- 実際に観測した成果物
+- 検証根拠の照合値
+- ソースの版を固定した受理記録
+- 実際の読取りの検証根拠
+- 実行環境・実現方式・リポジトリの版との関係
 
 を区別します。
 
-未取得、actual read未完了、Rへの結び付き不足なら`unresolved`として残します。
+未取得、実際の読取りが未完了、またはRとの結び付きが不十分な場合は、`unresolved`として残します。
 
-第一Web Target側でOracle physical object / column / SQL / datatype / driver behavior / read-only方式を推測・補完しません。
+最初のウェブ実行先側で、Oracleの物理的な構成要素・列・SQL・データ型・ドライバーの動作・読取り専用の方式を推測して補いません。
 
 ## Gate C Evidenceからのtrace
 
-Gate C Evidenceでは意味baselineとTarget build identityを分けます。
+判定段階Cの検証根拠では、意味の基準版と実行先の構築版の識別情報を分けます。
 
 ```text
 Gate C Evidence
@@ -276,68 +276,68 @@ Gate C Evidence
   └─ Target build identity T
 ```
 
-通常`T != R`です。
+通常は`T != R`です。
 
-Gate C Evidenceから少なくともB / R / Tへ戻れる必要があります。
+判定段階Cの検証根拠から、少なくともB・R・Tを追跡できる必要があります。
 
 ## baseline変更時
 
 ### Target実装だけの変更
 
-CSS、DOM、Web Adapter、browser automation等だけが変わり、Canonical / Driver meaningが変わらない場合はB / Rを維持できます。
+CSS、DOM、ウェブ用の変換器、ブラウザーの自動操作などだけが変わり、正本やドライバーの意味が変わらない場合は、B・Rを維持できます。
 
 ### Evidence / Diagnosticだけの変更
 
-評価方法やDiagnostic変更がGate B completion Evidenceの意味へ影響する場合は、影響するRequired Evidenceを再実行します。旧Evidenceを新baselineへ黙って読み替えません。
+評価方法や診断結果の変更が、判定段階Bの完了の検証根拠の意味に影響する場合は、該当する必須の検証をやり直します。旧版の検証根拠を、新しい基準版での成功として暗黙のうちに読み替えません。
 
 ### Application / Driver meaning変更
 
-Validation、Relation / Query / Datasource、Capability / Binding、Business Result / Outcome、Observation read境界、Pattern intent等を変える場合:
+検証規則、関係・問い合わせ・データ接続先、能力とその対応付け、業務上の結果、観測の読取り境界、パターンの意図などを変える場合は、次の手順を踏みます。
 
-1. authoritative sourceを変更
-2. Driver / Validationを再確認
-3. 必要なGate B Evidenceを新revision `R2`で取得
-4. #387を`R2`で再実行しsame-run child artifactsを取得
+1. 正本となる入力元を変更
+2. ドライバーと検証規則を再確認
+3. 必要な判定段階Bの検証根拠を新しい版`R2`で取得
+4. #387を`R2`で再実行し、同一実行内の子処理の成果物を取得
 5. #273で`R2`を再監査
-6. Readyならsuccessor Handover `B2 / R2`を発行
-7. Gate Cの影響Scenarioを再実行
+6. 合格した場合に後継の引継ぎ基準版`B2 / R2`を発行
+7. 判定段階Cで影響を受けるシナリオを再実行
 
-旧B / Rへ意味変更を黙って上書きしません。
+旧版のB・Rが表す意味を、暗黙のうちに上書きしません。
 
 ## Handover record
 
-Gate B Ready後に第一Handover recordを作成します。
+判定段階Bの合格後、最初の引継ぎ記録を作成します。
 
-最初から大きな汎用schemaへしません。Markdown + stable referencesでも、必要性が確認できれば小さいmachine-readable artifactでも構いません。
+初めから大きな汎用スキーマにはしません。Markdownと安定した参照先を組み合わせても、必要性を確認できれば小さな機械可読の成果物にしても構いません。
 
 最低条件:
 
 - `B / R`を固定
-- Canonical identityへ戻れる
-- Driver Scenarioへ戻れる
-- #387 final convergenceへ戻れる
-- #387 same-run #310 / #255 / #308 exact artifactへ戻れる
-- child fingerprintを再照合できる
-- #273 Ready Auditへ戻れる
-- optional actual external Evidenceと`unresolved`をRequired Evidenceから分離
-- secretを含まない
-- Target固有情報をCanonical baselineへ混ぜない
+- 正本上の識別情報を追跡できる
+- ドライバーのシナリオを追跡できる
+- #387の最終確認を追跡できる
+- #387が同じ実行で取得した#310・#255・#308の成果物そのものを追跡できる
+- 子処理の成果物の照合値を再確認できる
+- #273の合格監査を追跡できる
+- 任意の外部資産の検証根拠と`unresolved`を必須の検証根拠から分離
+- 秘密情報を含まない
+- 実行先固有の情報を正本の基準版へ混ぜない
 
 ## Gate C開始条件
 
-第一Web Targetの本格実装は、少なくとも次を満たしてから開始します。
+最初のウェブ実行先の本格的な実装は、少なくとも次の条件を満たしてから開始します。
 
 - Gate B Ready
 - Handover Baseline `B / R`を固定
-- #310 / #255 / #308 same-run Required EvidenceがRへ揃っている
-- #387 final convergenceとsame-run child artifactsへ追跡できる
-- #273が同じRをReadyと判定
-- Gate C対象Canonical identityを列挙できる
-- Driver Scenario baselineを再現できる
-- actual Oracle等のexternal Evidenceをverified / unresolvedとして明示できる
-- unresolvedを明示できる
+- #310・#255・#308で同じ実行により得た必須の検証根拠がRについて揃っている
+- #387の最終確認と、同一実行内の子処理の成果物を追跡できる
+- #273で同じ版Rを合格と判定
+- 判定段階Cの対象となる正本上の識別情報を列挙できる
+- ドライバーのシナリオの基準版を再現できる
+- 実際のOracleなどに関する外部の検証根拠を、検証済みか未解決か明示できる
+- 未解決事項を明示できる
 
-Handover確認は新しい番号付きGateではありません。Gate Bの出力をGate Cの入力へ固定するcontractです。
+引継ぎの確認は、新しい番号付きの判定段階ではありません。判定段階Bの出力を判定段階Cの入力として固定する契約です。
 
 ## 非目標
 
