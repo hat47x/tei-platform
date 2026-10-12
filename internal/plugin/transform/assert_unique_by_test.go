@@ -49,6 +49,7 @@ func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 		{name: "distinct keys", records: []any{map[string]any{"plugin": "tei.a"}, map[string]any{"plugin": "tei.b"}}},
 		{name: "empty collection", records: []any{}},
 		{name: "same key", records: []any{map[string]any{"plugin": "tei.a"}, map[string]any{"plugin": "tei.a"}}, wantError: "duplicate key"},
+		{name: "separated duplicate key", records: []any{map[string]any{"plugin": "tei.a"}, map[string]any{"plugin": "tei.b"}, map[string]any{"plugin": "tei.a"}}, wantError: "duplicate key"},
 		{name: "nonstring key", records: []any{map[string]any{"plugin": 1}}, wantError: "key must be string"},
 		{name: "missing key", records: []any{map[string]any{"other": "tei.a"}}, wantError: "required field"},
 		{name: "nonobject entry", records: []any{"tei.a"}, wantError: "select-field requires object"},
