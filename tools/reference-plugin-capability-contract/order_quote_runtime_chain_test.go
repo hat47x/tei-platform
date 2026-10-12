@@ -289,9 +289,9 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 			t.Fatal(err)
 		}
 		var quote struct {
-			Currency string `json:"currency"`
-			LineCount int `json:"lineCount"`
-			SubtotalMinor int64 `json:"subtotalMinor"`
+			Currency      string `json:"currency"`
+			LineCount     int    `json:"lineCount"`
+			SubtotalMinor int64  `json:"subtotalMinor"`
 		}
 		if err := decodeReferenceJSONExact(got.ResultPayload, &quote); err != nil {
 			t.Fatal(err)
