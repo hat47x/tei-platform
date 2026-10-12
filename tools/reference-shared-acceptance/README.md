@@ -425,3 +425,12 @@ testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscrat
 宣言された論理規則の属性は、**同一`add-data`に明示されたAttributeに限る**ため、まだ存在しない別のDataや類似名から業務IDを推測しません。属性・Relation・key・FDの各IDの重複も拒否します。新しいDataの候補キー・FDは差分上も独立のsubjectになり、Source Indexには正確な宣言名の位置が入ります。候補キーやFDが空の場合は、従来の`add-data`と同じソースを出力します。
 
 これは**ソースへの宣言の受理**です。業務上の規則の検証や承認権限の真正性、物理PK/FK・Migrationの生成、ER図UI上の編集を意味しません。既存namespace内の新Data追加は従来どおり非対応であり、この拡張によって機能を増やしていません。
+
+
+## 候補キー／関数従属性の変更・撤回に伴う過去参照の扱い（#1126）
+
+既存のShared Acceptanceで型付きに追加できる候補キー・関数従属性について、読み取り専用の影響解析を拡張しています。`tools/internal/changeanalysis.ImpactWithBefore(before, after, changes)` は、後状態だけでは失われる**撤回済み規則の旧Data・旧属性の参照**を、変更前のCanonical Worldから取り出してPreviewへ示します。新しい宣言への参照は従来どおり`semantic.*`、撤回・変更前の参照は`previous.semantic.*`で明確に区別します。
+
+規則の`removed`／`changed`ごとに`LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`を残し、下流の業務規則、候補キーの最小性、物理PK/FK等の影響を推測で「なし」にしません。宣言されていたはずの過去規則を旧Worldから見つけられない場合も`LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING`で未確認を明示します。通常の追加は従来の影響解析と同じで、過去に存在しないリンクを合成しません。
+
+**この段階で撤回・更新の操作は解放していません。** 書き戻しに必要な規則本文の厳密な範囲、変更前ソース指紋の固定、旧規則の参照元への説明、権限ある意思決定の記録を確認してから別の型付き操作として導入します。今回の変更は差分と影響の読み取り境界に留まり、Source、実DB、DDL、Provider、Runtime authorityを変更しません。
