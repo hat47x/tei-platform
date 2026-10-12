@@ -1,34 +1,34 @@
 # Gate C Readiness Audit（第一Web Target）
 
-- 判定日: 2026-09-19
-- 対象: `order_entry` / 第一Web Target（`reference-first-web-target` / `go-net-http`）
-- 判定: **Ready**
+- 判定日：2026年9月19日
+- 対象：`order_entry`／最初のウェブ実行先（`reference-first-web-target`／`go-net-http`）
+- 判定：**Ready**
   - Handover Baseline `B`
   - `baselineRepositoryRevision R = e5231839a5dcc62cce1181a2731fcb7c70d16736`
   - `targetBuildRevision T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
-- Product Acceptance Scenario: PAS-04 primary
-- 契約: [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
-- 実行手順: [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
-- Baseline: [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)
-- Repository Issue: ISSUE-000028-first-web-target-conformance-evidence.md / GitHub #270、ISSUE-000007-first-web-target-projection.md / GitHub #70
+- 製品受入シナリオ：PAS-04を主な対象とする
+- 契約： [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
+- 実行手順： [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
+- 基準版： [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)
+- リポジトリの課題：ISSUE-000028-first-web-target-conformance-evidence.md／GitHub #270、ISSUE-000007-first-web-target-projection.md／GitHub #70
 
 ## 目的と読み方
 
-Gate Cは「Webの画面ができた」ではなく、Gate Bを通過したApplication meaningが第一Web Targetでも保たれていることを、Evidenceから判定するものです。この文書は、その**判定記録**です。判定の規則は契約、実行手順はRunbookが正本であり、ここには複製しません。
+判定段階Cは、ウェブ画面が完成したかどうかではなく、判定段階Bを通過したアプリケーションの意味が、最初のウェブ実行先でも保たれているかを検証根拠から判定します。この文書はその**判定記録**です。判定規則は契約文書、実行方法は実行手順書を正本とし、ここには複製しません。
 
-`B / R / T`は別のidentityです（`T`は、Handover Baseline文書などでいう第一Web Target build `T1`と同じものです）。`R`は意味のbaseline（Gate B Ready時点）、`T`はWeb Targetを含むbuild revisionです。`T`は`R`より後のrevisionであり、`R → T`でCanonical Workspaceと生成Worldが変わっていないことも判定に含みます。
+`B / R / T`はそれぞれ異なる識別情報です（`T`は引継ぎ基準版の文書などでいう、最初のウェブ実行先の構築版`T1`と同じです）。`R`は判定段階Bの合格時に固定した意味の基準版であり、`T`はウェブ実行先を含む構築版です。`T`は`R`より後の版で、`R → T`の間に正本の作業領域と生成したモデルが変わっていないことも判定対象に含みます。
 
 ## 現在の結論
 
-**Gate C: Ready**です（`B / R / T`は上記）。
+**判定段階C：Ready**です（対象の`B / R / T`は上記のとおり）。
 
-Semantic Conformance、Interaction / Functional Evidence、Visual Fidelity Evidence、architecture conformanceが同じ`B / R / T`へ揃い、最終監査`tools/reference-first-web-target-gate-c-readiness-audit`が10チェックすべて成功、`gateCReady = true`を返しました。未解決事項はすべて分類済みで、blockingなものはありません。
+意味の準拠確認、操作と機能の検証根拠、表示の忠実度の検証根拠、構造上の準拠確認が、同じ`B / R / T`に揃いました。最終監査`tools/reference-first-web-target-gate-c-readiness-audit`では10件の確認項目すべてに成功し、`gateCReady = true`を返しています。未解決事項はすべて分類済みで、判定を妨げるものはありません。
 
 ## Evidence trail
 
-すべてRepositoryへcommitしていません。stable referenceはSHA-256です。
+検証成果物はいずれもリポジトリへコミットしていません。安定した参照にはSHA-256を使います。
 
-**保管先（locator）**（2026-09-20追記）: GitHub Release [`gate-c-evidence-T-0ba87a4`](https://github.com/hat47x/tei-platform/releases/tag/gate-c-evidence-T-0ba87a4)（tagは`T`を指す）のasset `tei-gate-c-evidence-T-0ba87a4e.tar.gz`、SHA-256 `de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3`。展開して`MANIFEST.sha256`で各file（Screenshot 6枚を含む）を再照合できます。
+**保管先（locator）**（2026年9月20日追記）：GitHub Release [`gate-c-evidence-T-0ba87a4`](https://github.com/hat47x/tei-platform/releases/tag/gate-c-evidence-T-0ba87a4)（タグは`T`を指す）にある成果物`tei-gate-c-evidence-T-0ba87a4e.tar.gz`。SHA-256は`de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3`です。展開後は`MANIFEST.sha256`で、画面画像6枚を含む各ファイルを再照合できます。
 
 | Evidence | nature / tool | 結果 | SHA-256 |
 | --- | --- | --- | --- |
@@ -38,11 +38,11 @@ Semantic Conformance、Interaction / Functional Evidence、Visual Fidelity Evide
 | Visual audit | `reference-first-web-target-visual-evidence-audit`（`visual-audit.json`） | required captures完備、criteria全resolved、`visualFidelityPassed = true`（単独では`gateCReady = false`） | `61858f3d89891381684b5f8a363fbbfa0471ae313286cf239e2903aa800e2180` |
 | 最終Readiness audit | `reference-first-web-target-gate-c-readiness-audit`（`gate-c-readiness-audit.json`） | 10チェック成功、`gateCReady = true` | `b796e38db9a249ef98f2cb600eb354afc70f9adf57d2c83d47116f9968a0ff6c` |
 
-Semantic / Functional run のraw artifact（`read.json`、`submit-*.json`、`custom-submit-*.html`、`server.log`、`health.txt`等）のexact bytes SHA-256は`semantic-functional-summary.json`の`artifacts`に保持しています。
+意味・機能を確認した実行で取得した元の成果物（`read.json`、`submit-*.json`、`custom-submit-*.html`、`server.log`、`health.txt`など）のバイト列そのものに対するSHA-256は、`semantic-functional-summary.json`の`artifacts`に保持しています。
 
 ### Screenshot（Visual raw artifact）
 
-viewport 1440x3000（全高を1枚で撮影）のPNGです。各captureは、同一runのTarget-rendered HTML（exact SHA-256）へ`sourceArtifact / sourceSHA256`で結び付いています。
+画面表示領域は1440×3000で、ページ全体を1枚に収めたPNGです。各画像は、同じ実行で実行先が生成したHTML（元のバイト列のSHA-256）と、`sourceArtifact / sourceSHA256`で対応付けています。
 
 | capture | Screenshot SHA-256 | source HTML SHA-256（先頭16桁） |
 | --- | --- | --- |
@@ -55,23 +55,23 @@ viewport 1440x3000（全高を1枚で撮影）のPNGです。各captureは、同
 
 ## 実行環境
 
-- OS / Host: Ubuntu 22.04（WSL2）、`go run`で起動したnative process、loopback bind
-- Go: `go1.25.14 linux/amd64`、`GOENV=off` / `GOWORK=off` / `GOFLAGS=`
-- 対象checkout: `T`のclean full checkout（tracked / untracked / ignored local stateなし、index entryは`H`のみ）。run前後で同じ`T`
-- Screenshot: Playwright同梱のChrome for Testing系`chrome-headless-shell`（build 1208）でsame-run HTMLのreplay（`tools/reference-first-web-target-visual-replay`）を撮影
-- Reference credentialはruntime inputとしてのみ使い、raw artifact / manifestへ保存していない（auditが混入を拒否）
+- OS・ホスト：Ubuntu 22.04（WSL2）、`go run`で起動したネイティブプロセス、ループバックへの接続待受け
+- Go：`go1.25.14 linux/amd64`、`GOENV=off`／`GOWORK=off`／`GOFLAGS=`
+- 対象の作業領域：版`T`でリポジトリ全体を取得し、追跡対象・追跡対象外・無視対象のローカル状態がなく、索引項目は`H`だけでした。実行の前後とも同じ`T`です。
+- 画面画像：Playwright同梱のChrome for Testing系`chrome-headless-shell`（構築版1208）を使い、同じ実行で取得したHTMLを再表示（`tools/reference-first-web-target-visual-replay`）して撮影
+- 参照用の認証情報は実行時の入力にだけ使い、元の成果物や一覧には保存していません（監査で混入を拒否）
 
 ## 実行経緯
 
-Gate Bと同様に、CI（GitHub Actions）が止まっている間に紛れ込んだ「実際に動かして初めて分かる」不具合を修正しながら進めました。旧`T`のEvidenceを新`T`へcarry-forwardしていません。
+判定段階Bと同様、GitHub Actionsの自動検査が停止していた間に残った、実際に動かして初めて判明する不具合を修正しながら検証を進めました。旧版`T`で得た検証根拠を、新版`T`にそのまま引き継いではいません。
 
-1. `T = 9d2fd694`: Runbookのsource qualificationで停止。`tools/reference-first-web-target-architecture-evidence/main_test.go`の文字列literalに`\n`ではなく実改行が入りpackageがcompileできず、他のFirst Web Target toolにもgofmt差があった。PR [#815](https://github.com/hat47x/tei-platform/pull/815)で修正（挙動変更なし）。
-2. `T = ce95dcf`: Semantic / Functional / Architecture Evidenceは成功。Visual reviewで標準Projectionのheader（Baseline R / Target T / Adapter）の長いrevision値が隣の列へ重なり判読できないことを確認し、`field-grouping-readability = fail`と記録。最終監査はVisual不成立でfail closedした。PR [#816](https://github.com/hat47x/tei-platform/pull/816)で標準Projection CSSに折り返しを追加（presentation-onlyの変更）。
-3. `T = 0ba87a4`: 上記を最初から再取得し、すべて成功。本書の判定はこの`T`に対するものです。
+1. `T = 9d2fd694`：実行手順書のソース確認で停止しました。`tools/reference-first-web-target-architecture-evidence/main_test.go`の文字列リテラルに、`\n`ではなく実際の改行が入り、パッケージをコンパイルできませんでした。他の最初のウェブ実行先用ツールにもgofmtの差分がありました。PR [#815](https://github.com/hat47x/tei-platform/pull/815)で修正しました（挙動の変更なし）。
+2. `T = ce95dcf`：意味・機能・構造に関する検証根拠の取得には成功しました。一方、表示を確認すると、標準の派生表示の見出し（Baseline R／Target T／Adapter）にある長い版の値が隣の列へ重なり、読み取れませんでした。`field-grouping-readability = fail`と記録し、最終監査では表示に関する条件が成立しなかったため、安全側に倒して不合格としました。PR [#816](https://github.com/hat47x/tei-platform/pull/816)で標準の派生表示のCSSに折返しを追加しました（表示だけの変更）。
+3. `T = 0ba87a4`：上記の検証根拠を初めから取得し直し、すべて成功しました。この文書の判定は、この`T`についてのものです。
 
 ## Gate C判定条件との対応
 
-[`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)「Gate C判定」との対応です。最終監査のチェックID（`checks`）を併記します。
+[`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)が定める「Gate C判定」との対応を示します。最終監査で使用した確認項目のID（`checks`）も記載します。
 
 - [x] すべてのGate C runが明示Handover Baseline `B` / revision `R`へ追跡できる — `same-B-R-T-and-target-identity`
 - [x] Target build revision `T`をbaseline `R`と混同していない — 同上（`B / R / T`をraw artifact間でexact照合）
@@ -90,25 +90,25 @@ Gate Bと同様に、CI（GitHub Actions）が止まっている間に紛れ込�
 
 ## Visual Fidelityの評価者とその限界
 
-Visual Fidelityは主観を含む判定であり、次のとおり**単一のAI評価者**によるものです。
+表示の忠実度には主観的な判断が含まれます。今回の評価は、次の**単一のAI評価者**によるものです。
 
-- evaluator identity: `claude-sonnet-5`、version `1`
-- evaluation method: `vlm-screenshot-review`（保持したScreenshotを目視相当で確認し、criterionごとに`pass / fail / unresolved`と根拠をmanifestへ記録）
-- 人による確認は行っていません。契約は評価方式（人 / VLM / image comparison）を限定していませんが、評価者を属性として残すことを要求します。
+- 評価者の識別情報：`claude-sonnet-5`、版`1`
+- 評価方法：`vlm-screenshot-review`（保存した画面画像を目視に相当する方法で確認し、評価項目ごとに`pass / fail / unresolved`と根拠を一覧に記録）
+- 人による確認は行っていません。契約は評価方式を人・視覚言語モデル・画像比較のいずれかに限定しませんが、評価者の情報を記録することを求めます。
 
-保持したScreenshotとmanifestは別の評価者（人を含む）が再評価できます。再評価で`fail`が出た場合、Gate Cは同じ`T`または新しい`T`で再監査します。Visual Evidenceや評価者のscoreだけでSemantic / Functional Conformanceを合格にしていない点は契約どおりです。
+保存した画面画像と評価の一覧は、人を含む別の評価者でも再評価できます。再評価で`fail`となった場合は、判定段階Cについて、同じ`T`または新しい`T`で監査をやり直します。表示の検証根拠や評価点だけで意味・機能の準拠確認を合格にしていないことは、契約に沿っています。
 
-記録した非blockingの見た目の課題（`pass`とした上で残る）:
+`pass`と判定した後も残る、合格を妨げない表示上の課題は次のとおりです。
 
-- 狭い値列で長いidentifierが途中で折り返される（例: `sales.order.custome` / `r`）
-- 標準Projectionの先頭cardの見出しが末尾1文字折り返される
-- Custom UIで2列panelと`Order lines` panelの境界線が接する
-- Custom UIのScenario state表示が、状態が変わっても段階の強調を変えない。Execution Error時のbadgeが`command`（段階名）になる
-- validation `satisfied` / `not-satisfied`のtagは文字のみで区別され、視覚的な強調差がない（monochrome Referenceの設計）
+- 幅の狭い値の列で長い識別子が途中で折り返される（例：`sales.order.custome`／`r`）
+- 標準の派生表示にある最初のカードの見出しで、末尾の1文字が折り返される
+- 個別実装の画面で、2列のパネルと`Order lines`パネルの境界線が接する
+- 個別実装の画面で、シナリオの状態が変わっても段階の強調表示が変わらない。実行時エラーの際には、バッジが`command`（段階名）になる
+- 検証結果の`satisfied`／`not-satisfied`は文字だけで区別され、表示の強調に違いがない（単色の参照事例としての設計）
 
 ## 未解決事項（carry-forward）
 
-最終監査が分類済みです。いずれもblockingではありません。
+最終監査で分類しています。いずれも合格を妨げるものではありません。
 
 | id | disposition | owner | 理由 |
 | --- | --- | --- | --- |
@@ -120,24 +120,24 @@ Visual Fidelityは主観を含む判定であり、次のとおり**単一のAI�
 
 ## 第二Targetへのhandoff
 
-`semantic-functional-summary.json`の`targetDifferenceHandoff`に、observed Target Capability候補（`http-html-projection` / `http-json-manifest` / `http-read-scenario` / `http-command-scenario` / `http-custom-submit-form`）、Runtime Binding（`sales_core` PostgreSQL / `master_data` Oracle read-only）、execution artifact（`go-run-native-process`）、ABI（`linux/amd64`）、Execution / Trust観測、Web固有差、Canonical化してはいけない差（HTTP route / status、HTML element、CSS class、Referenceのsynthetic fixture値）を保持しています。これは第一Referenceの観測recordであり、Target CapabilityやExecution Profileの最終taxonomyではありません。`ISSUE-000026`で第二Targetの圧力を受けて再検討します。
+`semantic-functional-summary.json`の`targetDifferenceHandoff`には、観測した実行先の能力の候補（`http-html-projection`／`http-json-manifest`／`http-read-scenario`／`http-command-scenario`／`http-custom-submit-form`）、実行時の対応付け（`sales_core`のPostgreSQL／読取り専用の`master_data` Oracle）、実行成果物（`go-run-native-process`）、ABI（`linux/amd64`）、実行と信頼についての観測結果、ウェブ固有の違い、正本に取り込んではいけない違い（HTTPの経路・状態コード、HTMLの要素、CSSのクラス、参照事例の合成試験データの値）を保持しています。これは最初の参照事例の観測記録であり、実行先の能力や実行方式の最終的な分類ではありません。`ISSUE-000026`で二つ目の実行先と比較し、再検討します。
 
 ## Ready の意味と非主張
 
-Gate C Readyは、契約に定めた第一Targetの意味・操作・視覚・architecture境界が、同一provenanceのEvidenceから再確認できたことだけを意味します。次は意味しません。
+判定段階CのReadyは、契約で定めた最初の実行先における意味・操作・表示・構造の境界を、来歴の揃った検証根拠から再確認できたことだけを意味します。次のことまでは意味しません。
 
-- production-readyなWeb product
-- actual external Oracle / production Commandの成功（Reference Observationはsynthetic）
-- Target-neutral Presentation taxonomyの完成
-- 第二Targetが不要になったこと
-- Visual Fidelityの人による承認
-- unresolvedの消滅
+- 本番運用に耐えられるウェブ製品であること
+- 実際の外部Oracleや本番の命令実行に成功したこと（参照事例での観測は合成データによるもの）
+- 実行先に依存しない表示方式の分類が完成したこと
+- 二つ目の実行先が不要になったこと
+- 表示の忠実度を人が承認したこと
+- 未解決事項がすべて解消したこと
 
-`T`でbaseline meaningを変更する必要が生じた場合は、Web固有のfieldやruleで埋めず、authoritative sourceへ戻して新しいHandover Baseline `B'` / `R'`を発行します。
+`T`で基準版の意味を変更する必要が生じた場合、ウェブ固有の項目や規則で補いません。正本となる入力元へ戻り、新しい引継ぎ基準版`B'`／`R'`を発行します。
 
 ## 再現
 
-Semantic / Functional / Architectureは、`T`のclean checkoutでRunbookの手順を再実行して再取得できます。Screenshotは描画環境（browser build / font）に依存するため、byte-for-byte一致は保証しません。再取得したScreenshotは新しいVisual runとして評価します。
+意味・機能・構造については、変更のない版`T`を取得した作業領域で実行手順書に従えば、検証根拠を再取得できます。一方、画面画像は描画環境（ブラウザーの構築版やフォント）に左右されるため、バイト単位での一致は保証しません。撮影し直した画面画像は、新しい表示検証の実行として評価します。
 
 ## 関連
 
