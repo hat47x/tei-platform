@@ -24,6 +24,14 @@ TEIでは、案件固有のデータモデルを含む分野固有の知識（�
 - [製品要求](requirements/TEI_PRODUCT_REQUIREMENTS.md)
 - [開発全体の計画](plan/MASTER_PLAN.md)
 
+## ソース構成と開発
+
+コアとプラグインを段階的に独立したサブプロジェクトへ整理します。現在の実装と、これからの管理方針を区別して参照してください。
+
+- [コアの管理領域](core/README.md)
+- [プラグインの管理領域](plugins/README.md)
+- [サブプロジェクト化の設計判断](plan/adr/0033-core-and-plugin-subprojects.md)
+
 ## まず動かす
 
 Goの開発環境で、試験と参照用作業領域の確認を行えます。
