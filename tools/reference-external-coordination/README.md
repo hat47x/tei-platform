@@ -12,7 +12,6 @@ Git textを用いるE1と、GitHub Issuesを別のTask Trackerとして観測す
 
 本検証は外部との作業受渡しに関するものです。Canonical Sourceの再読込やGitを用いた開発工程全体の検証を含みません。独立した開発工程の検証を扱っていた[Issue #972](https://github.com/hat47x/tei-platform/issues/972)は不要として取り下げられており、その未実施項目を本参照例の合格として扱いません。本番用のGitHub Issues Adapter、第三のBackend、Brokerの実装も対象外です。
 
-
 ```text
 product repository
   |
