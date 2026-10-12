@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 )
@@ -89,6 +90,13 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 	// definitions rather than accepting a path the E1 planner cannot attest.
 	if strings.IndexFunc(p.Path, func(r rune) bool { return r < '!' || r > '~' }) >= 0 {
 		return nil, errors.New("protected route needs an exact printable ASCII path")
+	}
+	// NewHost compares incoming EscapedPath against the compiled Policy.Path.
+	// Any path that net/url would percent-encode can never satisfy that
+	// comparison. Reject it during composition instead of accepting a route
+	// that no legitimate request could reach.
+	if (&url.URL{Path: p.Path}).EscapedPath() != p.Path {
+		return nil, errors.New("protected route path must match its canonical URL escaping")
 	}
 	for id, issuer := range p.Providers {
 		if id == "" || issuer == "" {
