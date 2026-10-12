@@ -26,8 +26,17 @@ function command(executable, args, expectedSuccess = true) {
     cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024
   });
   if (r.error) throw r.error;
-  if (expectedSuccess && r.status !== 0)
-    throw new Error(executable + " " + args.join(" ") + ": " + r.stderr);
+  if (expectedSuccess && r.status !== 0) {
+    // Shared Acceptance writes refusals and stage diagnostics to stdout.
+    // Include both streams so a negative result cannot masquerade as a
+    // launcher error. The test uses only scratch workspaces.
+    const diagnosis = {
+      exitStatus: r.status, stderr: r.stderr.slice(0, 8192),
+      stdout: r.stdout.slice(0, 16384)
+    };
+    throw new Error(executable + " " + args.join(" ") + ": " +
+      JSON.stringify(diagnosis));
+  }
   if (!expectedSuccess && r.status === 0)
     throw new Error("Expected failure but succeeded: " + executable + " " + args.join(" "));
   return r;
