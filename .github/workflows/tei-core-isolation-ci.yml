@@ -86,8 +86,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gofmt -d tools/reference-composition-process-bridge/bridge_test.go
-          test -z "$(gofmt -l tools/reference-composition-process-bridge/bridge_test.go)"
+          gofmt -d tools/reference-composition-process-bridge/*.go
+          test -z "$(gofmt -l tools/reference-composition-process-bridge/*.go)"
           go test -count=1 -timeout 90s ./tools/reference-composition-process-bridge
           go vet ./tools/reference-composition-process-bridge
 
