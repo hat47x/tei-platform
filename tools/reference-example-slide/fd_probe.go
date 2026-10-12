@@ -35,24 +35,9 @@ type FDFinding struct {
 // claims a dependency is established, or changes Canonical Source.
 // Even a complete illustrative sample cannot prove a universal business rule.
 func ProbeBaseFunctionalDependencies(catalog Catalog, example Example, hypotheses []FDHypothesis) ([]FDFinding, error) {
-	if catalog.Revision == "" || catalog.Revision != example.ModelRevision || example.ID == "" {
-		return nil, fmt.Errorf("missing or stale example revision")
-	}
-	if err := validateCatalog(catalog); err != nil {
+	state, err := validatedBaseProbeState(catalog, example)
+	if err != nil {
 		return nil, err
-	}
-	state := make(map[string]Record, len(example.Base))
-	for _, record := range example.Base {
-		if record.ID == "" || record.Table == "" {
-			return nil, fmt.Errorf("record ID and table required")
-		}
-		if _, exists := state[record.ID]; exists {
-			return nil, fmt.Errorf("duplicate record %q", record.ID)
-		}
-		state[record.ID] = record
-	}
-	if err := validateState(catalog, state); err != nil {
-		return nil, fmt.Errorf("base: %w", err)
 	}
 	ordered := append([]FDHypothesis(nil), hypotheses...)
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].ID < ordered[j].ID })
@@ -114,6 +99,31 @@ func ProbeBaseFunctionalDependencies(catalog Catalog, example Example, hypothese
 		findings = append(findings, finding)
 	}
 	return findings, nil
+}
+
+// validatedBaseProbeState applies the same revision, catalog, ID and value
+// checks to FD and candidate-key probes. It does not accept any business key.
+func validatedBaseProbeState(catalog Catalog, example Example) (map[string]Record, error) {
+	if catalog.Revision == "" || catalog.Revision != example.ModelRevision || example.ID == "" {
+		return nil, fmt.Errorf("missing or stale example revision")
+	}
+	if err := validateCatalog(catalog); err != nil {
+		return nil, err
+	}
+	state := make(map[string]Record, len(example.Base))
+	for _, record := range example.Base {
+		if record.ID == "" || record.Table == "" {
+			return nil, fmt.Errorf("record ID and table required")
+		}
+		if _, exists := state[record.ID]; exists {
+			return nil, fmt.Errorf("duplicate record %q", record.ID)
+		}
+		state[record.ID] = record
+	}
+	if err := validateState(catalog, state); err != nil {
+		return nil, fmt.Errorf("base: %w", err)
+	}
+	return state, nil
 }
 
 func validateFDFields(table Table, names []string) error {
