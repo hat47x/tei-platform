@@ -334,8 +334,8 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 			return fmt.Errorf("exit status and signal cannot both describe termination")
 		}
 	}
-	if strings.TrimSpace(e.DiagnosticSummary) == "" {
-		return fmt.Errorf("Build Attempt Evidence diagnostic summary is required")
+	if e.DiagnosticSummary != "build failed during "+e.Phase+": "+e.FailureClass {
+		return fmt.Errorf("Build Attempt Evidence diagnostic summary must match its structured classification")
 	}
 	if err := e.Stdout.Validate(); err != nil {
 		return fmt.Errorf("Build Attempt stdout: %w", err)
