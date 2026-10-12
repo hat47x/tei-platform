@@ -49,6 +49,12 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if *baselineID == "" || *baselineRev == "" || *targetRev == "" {
 		return fmt.Errorf("-baseline-id, -baseline-revision and -target-revision are required")
 	}
+	// Reject non-loopback listeners before loading even synthetic fixtures.
+	// The E1 JSON API has not acquired production Identity/TLS/Host authority;
+	// existing presentation-bearing reference Targets keep their old contract.
+	if err := validateReferenceListenAddress(*listen); err != nil {
+		return err
+	}
 	appID, err := core.ParseCanonicalID(application)
 	if err != nil {
 		return err
