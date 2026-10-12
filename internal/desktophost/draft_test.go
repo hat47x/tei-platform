@@ -87,6 +87,14 @@ func TestInvalidDraftMarker(t *testing.T) {
 	if _, err := RecoverDraftMarker([]byte("{} {}"), "/tmp/workspace", func(string) (SourceObservation, error) { return baseline(), nil }); err == nil {
 		t.Fatal("invalid marker accepted")
 	}
+	withTrailingValue := append(append([]byte(nil), encoded...), []byte(" {}")...)
+	if _, err := RecoverDraftMarker(withTrailingValue, "/tmp/workspace", func(string) (SourceObservation, error) { return baseline(), nil }); err == nil {
+		t.Fatal("trailing JSON value accepted")
+	}
+	withUnknownField := append(append([]byte(nil), encoded[:len(encoded)-1]...), []byte(",\"elevated\":true}")...)
+	if _, err := RecoverDraftMarker(withUnknownField, "/tmp/workspace", func(string) (SourceObservation, error) { return baseline(), nil }); err == nil {
+		t.Fatal("unknown marker field accepted")
+	}
 	if _, err := EncodeDraftMarker(DraftMarker{}); err == nil {
 		t.Fatal("invalid marker serialized")
 	}
