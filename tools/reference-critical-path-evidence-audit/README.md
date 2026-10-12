@@ -65,7 +65,7 @@ bash tools/reference-critical-path-evidence-audit/compose-issue-1163-smoke.sh
 - StudioのNode・E2E、型付き参照とWorkspace、Lowering、既存Webと資格検査器のGo test、リポジトリ全体の健全性検査を実行します。選択対象が0件の`go test -run`だけで全体合格を宣言しません。
 - `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`により、隔離scratchにStudio候補→Shared Acceptance Preview/Review→試験用のAccept→受理後R1を作ります。別CLIによるWorldの再読込と受理記録のWorld指紋一致を要求し、元Sourceの変更を監視します。
 - Web正常系は標準の合成注文を実行し、4件のValidation成立、Commandと**synthetic** Observationを確認します。単価異常系は`go build -overlay`で注文1001の合成単価を0にした**別バイナリ**を起動し、単価規則だけが不成立でCommand・Observationが未実行になることを確認します。さらにN11負例では、**三つ目の隔離バイナリ**でCommand実行後の合成Observation readだけを失敗させ、HTTP 422・Command結果あり・Observation結果なしを検査します。全ケースで同じscratch R1を指定し、元Sourceは変更しません。
-- 上記はtest-onlyの受理と**異なる3つの合成バイナリ**による限定検証です。N11の異常系を合成read failureとして再現するもので、製品環境でのread不能や永続DBの障害を証明しません。製品バイナリの実DB/Authority/独立Observation、S02・S05・第二Target、G1〜G4や製品Gateを証明しません。`CROSS_LANE_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE`が出ても本PRの独立レビューと元候補HEADでの資格確認は別途必要です。
+- 上記はtest-onlyの受理と**異なる3つの合成バイナリ**による限定検証です。N11の異常系を合成read failureとして再現するもので、製品環境でのread不能や永続DBの障害を証明しません。製品バイナリの実DB/Authority/独立Observation、S02・S05・第二Target、G1〜G4や製品Gateを証明しません。`ISSUE_1163_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE`が出ても本PRの独立レビューと元候補HEADでの資格確認は別途必要です。
 
 **任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の7つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
 
