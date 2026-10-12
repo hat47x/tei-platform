@@ -1,9 +1,10 @@
 // Diagnostic same-origin static Browser host for Issue #1182. Not a
 // deployable reverse proxy, Authorization Provider, or new Runtime Target.
 // The Browser asset and Go API remain two separately built physical units.
+import { createHash } from "node:crypto";
 import { createServer, request as httpRequest } from "node:http";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 
 const [assetDir, apiOrigin, measurementPath] = process.argv.slice(2);
 if (!assetDir || !apiOrigin || !/^http:\/\/127\.0\.0\.1:[1-9][0-9]*$/.test(apiOrigin)) {
@@ -26,12 +27,56 @@ if (jsonForm && !html.includes('src="/browser-command.js"')) {
 }
 // A diagnostic JSON Browser must bind to an exact Application/Handover/Target
 // identity, not just a reachable TCP endpoint. This metadata is produced by
-// the existing builder and must be byte-verified by the calling preflight;
+// the existing builder; the Host checks its Browser bytes, while the existing
+// full two-unit preflight separately checks API and frozen World bytes.
 // it is NOT an independent Host authority or a signed acceptance record.
 if (jsonForm && !measurementPath) {
   throw new Error("JSON Browser requires its existing build measurement");
 }
-const measurement = measurementPath ? JSON.parse(readFileSync(resolve(measurementPath), "utf8")) : null;
+// Verify the bytes this Host actually serves, not just the build-time
+// staging receipt. Use the existing Browser unit's measurement; do not create
+// another lock or accept a measurement from a different artifact directory.
+// All verified bytes are held in memory, so later path changes cannot alter
+// what this diagnostic Host publishes during its lifetime.
+const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
+const realRegular = (path, label) => {
+  if (realpathSync(path) !== path || !lstatSync(path).isFile()) {
+    throw new Error(label + " is not a real regular artifact file");
+  }
+  return readFileSync(path);
+};
+const assetRoot = resolve(assetDir);
+const measurementFile = measurementPath ? resolve(measurementPath) : null;
+if (jsonForm && (
+  basename(assetRoot) !== "browser" ||
+  measurementFile !== resolve(dirname(assetRoot), "measurement.json") ||
+  realpathSync(assetRoot) !== assetRoot
+)) {
+  throw new Error("JSON Browser measurement must belong to the same artifact root");
+}
+const measurement = measurementFile ?
+  JSON.parse(jsonForm ?
+    realRegular(measurementFile, "measurement").toString("utf8") :
+    readFileSync(measurementFile, "utf8")) : null;
+if (jsonForm) {
+  const checks = [
+    { name: "Browser HTML", bytes: html, file: resolve(assetRoot, "index.html"),
+      hash: "browserSHA256", size: "browserBytes" },
+    { name: "Browser script", bytes: browserScript, file: resolve(assetRoot, "browser-command.js"),
+      hash: "browserScriptSHA256", size: "browserScriptBytes" },
+  ];
+  for (const check of checks) {
+    if (realpathSync(check.file) !== check.file || !lstatSync(check.file).isFile()) {
+      throw new Error(check.name + " must be a real file in the Browser unit");
+    }
+    const claimed = measurement[check.hash];
+    if (typeof claimed !== "string" || !/^[0-9a-f]{64}$/.test(claimed) ||
+        !Number.isSafeInteger(measurement[check.size]) || measurement[check.size] <= 0 ||
+        claimed !== sha256(check.bytes) || measurement[check.size] !== check.bytes.length) {
+      throw new Error(check.name + " byte/digest binding differs from measurement");
+    }
+  }
+}
 const expectedBinding = jsonForm ? {
   applicationId: measurement?.applicationId,
   handoverBaselineId: measurement?.handoverBaselineId,
