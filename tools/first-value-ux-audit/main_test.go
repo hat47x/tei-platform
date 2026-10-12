@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -100,5 +101,61 @@ func TestDeterministicOutput(t *testing.T) {
 	}
 	if a.String() != b.String() {
 		t.Fatal("output varied")
+	}
+}
+
+func TestRejectDuplicateEvidenceKeys(t *testing.T) {
+	tests := map[string]string{
+		"session-provenance": strings.Replace(exampleSession,
+			`"provenance":"synthetic"`, `"provenance":"synthetic","provenance":"observed"`, 1),
+		"event-exit-code": strings.Replace(exampleSession,
+			`"kind":"command","exitCode":0`, `"kind":"command","exitCode":0,"exitCode":1`, 1),
+		"event-timestamp": strings.Replace(exampleSession,
+			`"kind":"source-edit"`, `"at":"2026-10-10T08:00:02Z","kind":"source-edit"`, 1),
+	}
+	for name, document := range tests {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			err := execute(strings.NewReader(document), &out)
+			if err == nil || !strings.Contains(err.Error(), "duplicate JSON key") {
+				t.Fatalf("accepted ambiguous evidence: %v", err)
+			}
+			if out.Len() != 0 {
+				t.Fatalf("invalid session emitted metrics: %q", out.String())
+			}
+		})
+	}
+}
+
+func TestRejectCounterOverflow(t *testing.T) {
+	maxInt := int(^uint(0) >> 1)
+	overflow := strings.Replace(exampleSession,
+		`"kind":"manual-fields","count":1`,
+		fmt.Sprintf(`"kind":"manual-fields","count":%d},{"at":"2026-10-10T08:00:03Z","kind":"manual-fields","count":1`, maxInt),
+		1,
+	)
+	var out bytes.Buffer
+	if err := execute(strings.NewReader(overflow), &out); err == nil || !strings.Contains(err.Error(), "overflows int") {
+		t.Fatalf("accepted overflowing manual-field total: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("overflowing session emitted metrics: %q", out.String())
+	}
+}
+
+func TestObservedSessionRejectsSyntheticRevisionSentinel(t *testing.T) {
+	observed := strings.Replace(exampleSession, `"provenance":"synthetic"`, `"provenance":"observed"`, 1)
+	var out bytes.Buffer
+	if err := execute(strings.NewReader(observed), &out); err == nil || !strings.Contains(err.Error(), "all-zero fixture") {
+		t.Fatalf("accepted observed claim with synthetic-only revision: %v", err)
+	}
+	observed = strings.Replace(observed, strings.Repeat("0", 40), strings.Repeat("a", 40), 1)
+	out.Reset()
+	if err := execute(strings.NewReader(observed), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"qualification": "unverified"`) ||
+		!strings.Contains(out.String(), "event-claims-and-evidence-references-not-independently-verified") {
+		t.Fatalf("self-reported observed session was treated as independently qualified: %q", out.String())
 	}
 }
