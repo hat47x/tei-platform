@@ -124,7 +124,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	fmt.Fprintln(os.Stderr, "reference fake builder attempt failed as intended")
+	fmt.Fprintln(os.Stderr, "reference fixture describes a simulated failure; no builder was executed")
 	os.Exit(1)
 }
 
@@ -159,10 +159,6 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	}
 	if err := history.AppendFailure(plan, attempt); err != nil {
 		return referenceEvidence{}, err
-	}
-	history.SuccessfulResult = &successfulResultReference{
-		BuildPlanFingerprint: attempt.BuildPlanFingerprint,
-		ResultFingerprint:    strings.Repeat("a", 64),
 	}
 	if err := history.Validate(); err != nil {
 		return referenceEvidence{}, err
@@ -329,6 +325,12 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 	if e.ExitCode == nil && strings.TrimSpace(e.Signal) == "" {
 		return fmt.Errorf("Build Attempt Evidence requires exit code or signal")
 	}
+	if e.ExitCode != nil && *e.ExitCode < 0 {
+		return fmt.Errorf("Build Attempt Evidence exit code must not be negative")
+	}
+	if e.ExitCode != nil && *e.ExitCode == 0 && strings.TrimSpace(e.Signal) == "" {
+		return fmt.Errorf("failed Build Attempt Evidence cannot have a successful exit status")
+	}
 	if strings.TrimSpace(e.DiagnosticSummary) == "" {
 		return fmt.Errorf("Build Attempt Evidence diagnostic summary is required")
 	}
@@ -463,6 +465,9 @@ func (h *buildAttemptHistory) AppendFailure(
 	}
 	if err := e.ValidateAgainst(plan); err != nil {
 		return fmt.Errorf("Build Attempt History failure Evidence: %w", err)
+	}
+	if err := validateFingerprint(e.EvidenceFingerprint); err != nil {
+		return fmt.Errorf("Build Attempt History requires fingerprinted failure Evidence: %w", err)
 	}
 	if len(h.FailedAttempts) > 0 {
 		last := h.FailedAttempts[len(h.FailedAttempts)-1]
