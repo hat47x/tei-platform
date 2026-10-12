@@ -50,7 +50,7 @@ func TestAuthorizationEpochInactiveIsBusinessDenial(t *testing.T) {
 
 func TestAuthorizationEpochReadFailuresRemainExecutionErrors(t *testing.T) {
 	for _, tt := range []struct {
-		name string
+		name      string
 		readError error
 	}{
 		{"provider-unavailable", errors.New("storage unavailable")},
