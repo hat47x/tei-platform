@@ -374,6 +374,73 @@ async function main() {
   assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
   assert.equal(acceptance(["revision", "-workspace", baseline]).modelRevision, r0);
 
+  // Second Source-identity control: alter only ignored whitespace in a copy
+  // of the accepted R1 Source. The Source revision MUST change, but both the
+  // normalized World and live Web manifest SHOULD remain byte-identical.
+  // This proves a matching semantic projection alone cannot attest to the
+  // exact Managed Source bytes read by a Target.
+  const equivalentWorkspace = join(temp, "semantically-equivalent-workspace");
+  cpSync(workspace, equivalentWorkspace, { recursive: true, errorOnExist: true });
+  files(equivalentWorkspace);
+  const equivalentSourcePath = "applications/order-entry/application.tei";
+  const equivalentSourceFile = join(equivalentWorkspace, equivalentSourcePath);
+  const originalBytes = readFileSync(equivalentSourceFile);
+  assert.ok(originalBytes.length && originalBytes.at(-1) === 10,
+    "expected a newline-terminated Source file for an ignored blank line control");
+  const changedBytes = Buffer.concat([originalBytes, Buffer.from("\n")]);
+  writeFileSync(equivalentSourceFile, changedBytes);
+  assert.deepEqual(changed(files(workspace), files(equivalentWorkspace)),
+    [equivalentSourcePath], "whitespace control unexpectedly changed other Source");
+  const equivalentR = acceptance(["revision", "-workspace", equivalentWorkspace]).modelRevision;
+  assert.match(equivalentR, /^sha256:[0-9a-f]{64}$/);
+  assert.notEqual(equivalentR, r1, "Managed Source byte change was not versioned");
+  const equivalentWorldJSON = go([
+    "run", "./cmd/tei", "world", "-workspace", equivalentWorkspace
+  ]);
+  const equivalentWorldSHA256 = sha256(equivalentWorldJSON);
+  assert.equal(equivalentWorldSHA256, sha256(worldJSON),
+    "ignored whitespace unexpectedly changed the derived World");
+
+  const equivalentPort = await openPort();
+  const equivalentAddr = "127.0.0.1:" + equivalentPort;
+  const equivalentLog = openSync(join(temp, "equivalent-source-server.log"), "wx", 0o600);
+  try {
+    child = spawn(binary, [
+      "-workspace", equivalentWorkspace, "-application", "order_entry",
+      "-baseline-id", "B", "-baseline-revision", expectedR,
+      "-target-revision", head,
+      "-legacy-users", "reference/legacy-auth/users.json",
+      "-legacy-authorization", "reference/legacy-auth/authorization.json",
+      "-listen", equivalentAddr
+    ], { cwd: root, stdio: ["ignore", equivalentLog, equivalentLog] });
+  } finally { closeSync(equivalentLog); }
+  await ready("http://" + equivalentAddr);
+  const equivalentResponse = await fetch("http://" + equivalentAddr + "/manifest.json",
+    { signal: AbortSignal.timeout(3000) });
+  assert.equal(equivalentResponse.status, 200);
+  const equivalentManifest = await equivalentResponse.json();
+  assert.equal(equivalentManifest.targetBuildRevision, manifest.targetBuildRevision);
+  assert.equal(equivalentManifest.baselineRepositoryRevision, manifest.baselineRepositoryRevision);
+  assert.equal(equivalentManifest.handoverBaselineId, manifest.handoverBaselineId);
+  assert.deepEqual(manifestSemantics(equivalentManifest), loadedMeaning,
+    "whitespace-only Source change unexpectedly altered Web Application meaning");
+  const equivalentLaunch = {
+    address: equivalentAddr, processID: child.pid,
+    binarySHA256: sha256(readFileSync(binary)),
+    manifestSemanticSHA256: sha256(JSON.stringify(manifestSemantics(equivalentManifest))),
+    sourceBeforeSHA256: sha256(originalBytes),
+    sourceAfterSHA256: sha256(changedBytes),
+    actualSourceRevisionBySeparateCLI: equivalentR,
+    derivedWorldSHA256: equivalentWorldSHA256
+  };
+  assert.equal(equivalentLaunch.binarySHA256, positiveLaunch.binarySHA256,
+    "equivalent Source control unexpectedly used a different Target binary");
+  assert.equal(equivalentLaunch.manifestSemanticSHA256, loadedMeaningSHA256);
+  await stopTarget();
+  assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
+  assert.equal(acceptance(["revision", "-workspace", equivalentWorkspace]).modelRevision,
+    equivalentR);
+
   // Do not use a quantity failure as evidence for the new unit-price rule.
   // Rebuild only the synthetic adapter using an isolated Go overlay, then run
   // the actual HTTP endpoint on a separate ephemeral loopback listener.
