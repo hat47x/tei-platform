@@ -192,6 +192,39 @@ function reviewEdit(view) {
       entries(s.items, x => str(x)) +
       (s.sources?.length ? '<p>根拠の出所：' +
         s.sources.map(str).join("、") + '</p>' : ''));
+  // A human may carry this *unchanged candidate* to Shared Acceptance.
+  // A fingerprint is a precondition for review, not approval authority.
+  const c = view.candidate || {};
+  const revisionBound = typeof view.modelRevision === "string" &&
+    c.baseModelRevision === view.modelRevision &&
+    preview.baseModelRevision === view.modelRevision &&
+    preview.currentModelRevision === view.modelRevision &&
+    view.sourceRevisionAfterReview === view.modelRevision;
+  const identityBound = c.id && preview.candidateId === c.id &&
+    review.candidateId === c.id &&
+    review.candidateFingerprint === preview.candidateFingerprint &&
+    review.previewAcceptable === preview.acceptable &&
+    view.reviewConsistency?.reviewFingerprint === review.reviewFingerprint &&
+    view.reviewConsistency?.candidateFingerprint === preview.candidateFingerprint;
+  const reviewVerified = revisionBound && identityBound &&
+    view.reviewConsistency?.status === "reviewed-consistent" &&
+    view.reviewConsistency?.readyToAccept === false &&
+    view.explicitAcceptance === "not-performed" &&
+    view.sourceWriteByThisCommand === false &&
+    preview.acceptable === true;
+  const handoff = section("handoff", "共通受理機構への手渡し",
+    reviewVerified ? "候補・版・審査の照合済み／人の判断は未実施" :
+      "未確認・不整合のため受理の案内を保留",
+    '<p class="warning">この画面は受理しません。表示された指紋は許可証ではなく、再審査で変わることがあります。</p>' +
+    facts([["候補の種類", c.schema], ["基準版", c.baseModelRevision],
+      ["候補指紋", preview.candidateFingerprint], ["審査指紋", review.reviewFingerprint],
+      ["次段階の照合", reviewVerified ? "一貫性のみ検証" : "未検証"]]) +
+    '<h3>変更候補の完全なJSON</h3>' +
+    '<p>以下を内容を変えずにJSONファイルとして保存し、現在の作業領域に対して共通受理機構で再審査します。</p>' +
+    '<div id="handoff-candidate">' + safeJSON(c) + '</div>' +
+    '<h3>共通受理機構による再審査</h3>' +
+    '<pre>go run ./tools/reference-shared-acceptance review -workspace "$WORKSPACE" -candidate "$CANDIDATE" -format json</pre>' +
+    '<p>人が差分・影響・権限・未解決点を確認し、受理を明示的に決めた場合に限り、既存のShared Acceptanceのacceptを使用します。審査内容が変わった場合は新しい審査指紋を使い、古い審査を流用しません。</p>');
   return document("Studioの変更提案と審査",
     "Sourceへの変更はこの文書では実行されません。差分・影響・未解決事項を確認します。",
     facts([["変更案", view.candidate?.id], ["モデルの版", view.modelRevision],
@@ -219,7 +252,7 @@ function reviewEdit(view) {
         '<strong>' + str(x.path) + '</strong>' + safeJSON({
           layer: x.layer, beforeFingerprint: x.beforeFingerprint,
           afterFingerprint: x.afterFingerprint, insertedText: x.insertedText
-        }))));
+        }))) + handoff);
 }
 export function renderStudioHTML(result, options = {}) {
   if (!result || !acceptedSchemas.has(result.schema))
