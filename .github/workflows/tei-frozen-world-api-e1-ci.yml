@@ -67,6 +67,7 @@ jobs:
           bash -n tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh
           python3 -B -c "import ast; ast.parse(open('tools/reference-first-web-two-unit-e1/check_api_only_parity.py',encoding='utf8').read())"
           python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_frozen_source_lineage.py -v
+          python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_inspect_frozen_api_build.py -v
           node --check tools/reference-first-web-two-unit-e1/real_browser_replay.mjs
       - name: 実バイナリと固定Worldを構築し、HTTP同等性と依存除外を検証
         run: |
@@ -81,6 +82,21 @@ jobs:
           grep -Fq '"buildArtifactLockVerified": false' "$dest/measurement.json"
           grep -Fq '"frozenAPISyntheticHTTPParityVerified": true' "$dest/measurement.json"
           grep -Fq '"workspaceLoaderSourceClosureExcluded": true' "$dest/measurement.json"
+          python3 - "$dest/measurement.json" <<'PY'
+          import json, sys
+          m = json.load(open(sys.argv[1], encoding="utf-8"))
+          inputs = m["apiBuildInputObservation"]
+          if inputs["sourceCommit"] != m["browserAndApiSourceRevision"]:
+              raise SystemExit("API source commit mismatch")
+          if inputs["apiSHA256"] != m["apiSHA256"] or inputs["apiBytes"] != m["apiBytes"]:
+              raise SystemExit("API byte identity mismatch")
+          if inputs["go"]["buildTags"] != sorted(m["apiBuildTags"]):
+              raise SystemExit("API Go build tag identity mismatch")
+          if m["unitBuilderAuthorityVerified"] or inputs["buildArtifactLockVerified"]:
+              raise SystemExit("diagnostic observation incorrectly grants authority")
+          if inputs["goPackageCount"] < 1 or len(inputs["sourceGitTree"]) != 40:
+              raise SystemExit("missing Source/Go closure observation")
+          PY
       - name: 実行後のexact版と作業領域を確認
         if: always()
         run: |
