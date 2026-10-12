@@ -11,7 +11,7 @@ import {pathToFileURL} from "node:url";
 if (process.argv.length !== 6) {
   throw Error("usage: node real_browser_replay.mjs ORDER_API_BINARY ADVICE_HOST_BINARY PLAYWRIGHT_ROOT SCREENSHOTS");
 }
-const [apiBinary, hostBinary, playwrightRoot, screenshots] = process.argv.slice(2).map(resolve);
+const [apiBinary, hostBinary, playwrightRoot, screenshots] = process.argv.slice(2).map(arg => resolve(arg));
 const {chromium} = await import(pathToFileURL(join(playwrightRoot, "node_modules/playwright-core/index.mjs")).href);
 const repo = resolve(".");
 const revision = execFileSync("git", ["rev-parse", "HEAD"], {encoding:"utf8"}).trim();
