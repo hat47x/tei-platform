@@ -1,4 +1,4 @@
-# Product Requirement Gap Audit
+# 製品要求と実証状況の照合
 
 - 監査の基準日: 2026-09-21（前回は2026-09-11）
 - 追加した要求の初期評価: 2026-10-03（RQ-031〜033）、2026-10-07（RQ-034）
@@ -52,7 +52,7 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 
 `Design Only`を実装済み、`Partial Evidence`をProduct claim成立済みとは読み替えません。
 
-## 3. 現在のProduct主線
+## 3. 監査時点の製品開発の主線
 
 Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](../gate/GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。
 
@@ -308,7 +308,7 @@ Data / Function / Businessの異なる視点を同型のCanonical objectへ増�
 
 actual Oracle等のexternal Evidence、second Provider、production operational boundaryを必要な範囲で継続します。
 
-## 8. 現在の優先順位
+## 8. 監査時点の優先順位
 
 1. ~~Gate B actual final Evidenceを取得する~~ — 完了（2026-09-19、R = `e5231839a5dcc62cce1181a2731fcb7c70d16736`）
 2. ~~Gate B ReadyならHandover Baseline `B / R`を固定する~~ — 完了
@@ -357,7 +357,7 @@ TEI packageをimportしないtestは、file内で定義したprobe型に対す�
 
 この連続が向かうRQ-030は、2026-09-21まで本監査にもPAS mappingにも載っていませんでした。つまり**閉じる対象が定義されていない状態で圧力だけが増えていた**ことになります。数を減らすこと自体は目的にしませんが、RQ-030のPAS（PAS-07）とEvidence tierが定まった以上、次のincrementでは「どの圧力がRQ-030のどの不確実性を減らすか」と「何が揃えば連続を終えられるか」を先に決めます。判断は`ISSUE-000053`が持ちます。
 
-## 10. 結論
+## 10. 監査時点の結論
 
 現在のTEIは、Application / Driverの主要meaningをactual Evidenceで閉じ、明示Handoverを経てFirst TargetへProjectionする段階です。
 
