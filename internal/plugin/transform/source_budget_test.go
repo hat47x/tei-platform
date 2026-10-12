@@ -2,6 +2,7 @@ package transform
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -97,5 +98,49 @@ func TestSourceSizePreflightBoundsRawLiteralElements(t *testing.T) {
 	}
 	if err := sourceSerializedSize(source, MaxSerializedSourceBytes-1); err == nil {
 		t.Fatal("preflight should reject a raw literal with too many elements")
+	}
+}
+
+func TestSourceSizePreflightNeverUnderestimatesCanonicalLiteral(t *testing.T) {
+	alphabet := []rune{'a', '<', '>', '&', '\\', '"', '\u2028', '\u2029', ' ', '\t', 'é', '日', '😀', '/', '\n'}
+	for seed := 0; seed < 600; seed++ {
+		runes := make([]rune, seed%155)
+		for i := range runes {
+			runes[i] = alphabet[(seed*29+i*23+i*i)%len(alphabet)]
+		}
+		encodedString, err := json.Marshal(string(runes))
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw := string(encodedString)
+		for _, replacement := range [][2]string{
+			{"\\u003c", "<"}, {"\\u003e", ">"},
+			{"\\u0026", "&"}, {"\\u2028", "\u2028"},
+			{"\\u2029", "\u2029"},
+		} {
+			raw = strings.ReplaceAll(raw, replacement[0], replacement[1])
+		}
+		if seed%3 == 0 {
+			raw = "{\"value\":" + raw + ", \"array\" :[1,2,3]}"
+		} else if seed%3 == 1 {
+			raw = "[" + raw + ", true, null]"
+		}
+		source := TransformSourceRealizerV1()
+		source.Identity.ContractVersion = strconv.Itoa(seed + 1)
+		source.Program.Output = Expr{Op: OpLiteral, Literal: json.RawMessage(raw)}
+		normalized, err := NormalizeSource(source)
+		if err != nil {
+			t.Fatalf("case %d normalization failed: %v", seed, err)
+		}
+		encoded, err := json.Marshal(normalized)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := sourceSerializedSize(source, len(encoded)-1); err == nil {
+			t.Fatalf("case %d underestimated canonical length %d", seed, len(encoded))
+		}
+		if err := sourceSerializedSize(normalized, len(encoded)); err != nil {
+			t.Fatalf("case %d rejected the exact normalized length: %v", seed, err)
+		}
 	}
 }
