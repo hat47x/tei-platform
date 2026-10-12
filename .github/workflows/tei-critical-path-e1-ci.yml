@@ -92,7 +92,11 @@ jobs:
           const lineage = read("workspace-r1.json");
           const launch = read("target-launch.json");
           const positive = read("web-positive.json");
-          assert.equal(summary.status, "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY");
+          const modes = [
+            "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY",
+            "E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY"
+          ];
+          assert.ok(modes.includes(summary.status), "unrecognized Web test result");
           assert.equal(summary.repositoryIntegrationHead, process.env.GITHUB_SHA);
           assert.equal(lineage.integrationHead, process.env.GITHUB_SHA);
           assert.equal(launch.targetBuildRevision, process.env.GITHUB_SHA);
@@ -106,12 +110,38 @@ jobs:
           assert.equal(positive.httpStatus, 200);
           assert.equal(positive.commandObserved, true);
           assert.equal(positive.independentDatabaseRead, false);
-          assert.equal(positive.negativeUnitPriceTest, "NOT_RUN");
-          assert.equal(summary.negativeUnitPriceRunningWeb, "NOT_TESTED");
+          if (summary.status === "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY") {
+            assert.equal(positive.negativeUnitPriceTest, "NOT_RUN");
+            assert.equal(summary.negativeUnitPriceRunningWeb, "NOT_TESTED");
+          } else {
+            // #1163 adds a test-only Go overlay and a SECOND Web binary.
+            // This demonstrates a live denial but NOT the production binary or DB.
+            const negativeLaunch = read("target-negative-launch.json");
+            const negative = read("web-negative-unit-price.json");
+            assert.equal(positive.negativeUnitPriceTest, "RUNNING_SERVER_SYNTHETIC_FIXTURE_OVERLAY");
+            assert.equal(summary.negativeUnitPriceRunningWeb, "TESTED_WITH_SYNTHETIC_OVERLAY_BINARY");
+            assert.equal(summary.negativeUnitPriceRejected, true);
+            assert.equal(negativeLaunch.integrationHead, process.env.GITHUB_SHA);
+            assert.equal(negativeLaunch.sameBinaryAsPositive, false);
+            assert.notEqual(negativeLaunch.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(negativeLaunch.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(negative.integrationHead, process.env.GITHUB_SHA);
+            assert.equal(negative.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(negative.targetBinarySHA256, negativeLaunch.targetBinarySHA256);
+            assert.equal(negative.selectedValidation, "sales.order_line.unit_price_positive");
+            assert.equal(negative.evaluation, "not-satisfied");
+            assert.equal(negative.stage, "validation-not-satisfied");
+            assert.equal(negative.httpStatus, 200);
+            assert.equal(negative.commandDispatched, false);
+            assert.equal(negative.observationExecuted, false);
+            assert.equal(negative.productionTargetUnmodified, true);
+            assert.equal(negative.independentDatabaseRead, false);
+          }
           assert.equal(summary.independentDatabaseRead, false);
           assert.equal(summary.validationCount, 4);
           console.log(JSON.stringify({
-            status: "E1_A_SYNTHETIC_WEB_ONLY",
+            status: summary.status === "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY"
+              ? "E1_A_SYNTHETIC_WEB_ONLY" : "E1_A_B_SYNTHETIC_OVERLAY_WEB_ONLY",
             testedGitHead: process.env.GITHUB_SHA,
             sourceR0: lineage.sourceBefore,
             sourceR1: lineage.sourceAfter,
@@ -119,7 +149,7 @@ jobs:
             selectedValidationIDs: positive.selectedValidationIDs,
             httpStatus: positive.httpStatus,
             commandObserved: positive.commandObserved,
-            negativeUnitPrice: "NOT_RUN",
+            negativeUnitPrice: summary.negativeUnitPriceRunningWeb,
             realDatabaseAndIndependentRead: "NOT_TESTED",
             humanAcceptance: false,
             productGate: "UNQUALIFIED"
