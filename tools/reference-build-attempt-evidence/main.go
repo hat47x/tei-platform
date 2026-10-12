@@ -319,6 +319,9 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 		return fmt.Errorf("Build Attempt Evidence failure class must be a bounded safe code")
 	}
 	signal := strings.TrimSpace(e.Signal)
+	if signal != "" && !validSignalCode(signal) {
+		return fmt.Errorf("Build Attempt Evidence signal must be a bounded safe code")
+	}
 	if e.ExitCode == nil && signal == "" {
 		return fmt.Errorf("Build Attempt Evidence requires exit code or signal")
 	}
@@ -592,6 +595,21 @@ func validFailureClass(value string) bool {
 	}
 	for i, c := range value {
 		if (c >= 'a' && c <= 'z') || (i > 0 && c >= '0' && c <= '9') || (i > 0 && c == '-') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// Only short, uppercase, machine-readable signal codes are public metadata.
+// Raw operating-system diagnostic strings belong in restricted diagnostics.
+func validSignalCode(value string) bool {
+	if len(value) == 0 || len(value) > 32 {
+		return false
+	}
+	for i, c := range value {
+		if (c >= 'A' && c <= 'Z') || (i > 0 && c >= '0' && c <= '9') || (i > 0 && c == '_') {
 			continue
 		}
 		return false
