@@ -19,7 +19,12 @@ const nativeURL=globalThis.URL;
 nativeURL.createObjectURL??=()=> 'blob:mock';
 nativeURL.revokeObjectURL??=()=> {};
 const projection={schemaVersion:'business-dfd-projection-v0',authority:'derived-read-only',canonicalProcedureUsed:false,
-  procedureId:'orders.review',steps:[{id:'BP-04',label:'manual telephone call',noApplicationFunction:true,functionRefs:[],source:{file:'business.json',pointer:'/steps/0'}}],triggers:[],flows:[],diagnostics:[],information:{roles:[],externalParties:[],stores:[],informationFlows:[]}};
+  procedureId:'orders.review',steps:[
+    {id:'BP-04',label:'manual telephone call',noApplicationFunction:true,functionRefs:[],source:{file:'business.json',pointer:'/steps/0'}},
+    {id:'BP-07',label:'submit order',noApplicationFunction:false,functionRefs:[{id:'order.submit',status:'resolved'}],source:{file:'business.json',pointer:'/steps/1'}}
+  ],triggers:[],flows:[{from:'BP-04',to:'BP-07',kind:'sequence'}],
+  handoffs:[{from:{procedure:'orders.review',step:'BP-04'},to:{procedure:'warehouse.prepare',step:'WH-00'},condition:'confirmed'}],
+  diagnostics:[],information:{roles:[{id:'reviewer',label:'reviewer'}],externalParties:[],stores:[],informationFlows:[],responsibilities:[{step:'BP-04',role:'reviewer'}]}};
 const file=value=>{const buf=Buffer.from(JSON.stringify(value));return{arrayBuffer:async()=>buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.length),text:async()=>buf.toString('utf8')}};
 const input=(id, obj)=>$(id).listeners.change({target:{files:[file(obj)]}});
 
@@ -32,6 +37,9 @@ test('reference-only SVG UI loads, selects and drags a manual Step without sourc
   assert.ok(node,'explicit reference step must be rendered');
   node.listeners.pointerdown({button:0,clientX:20,clientY:30,pointerId:1});
   assert.match($('details').children[0].textContent,/business.json/);
+  assert.match($('details').children[0].textContent,/warehouse.prepare/);
+  assert.ok($('diagram').children.some(x=>x.class==='edge responsibility'));
+  assert.ok($('diagram').children.some(x=>x.class==='edge function'));
   await $('diagram').listeners.pointerup({clientX:90,clientY:80});
   assert.equal($('apply').disabled,false);
   assert.equal($('preview').hidden,false);
