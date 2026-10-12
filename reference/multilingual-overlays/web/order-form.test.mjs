@@ -63,7 +63,7 @@ test('O2: ordinary plugin works in original Japanese with same programmatic acti
 test('O2: fake/foreign/changed manifest is not accepted by UI adapter', () => {
   const good = manifest('en-US');
   for (const change of [
-    {target:{id:'std.order-entry',version:'2.0.0'}},
+    {target:{id:'std.order_entry',version:'2.0.0'}},
     {resource:{...good.resource,field:'business-rule'}},
     {resource:{...good.resource,owner:'other-plugin'}},
     {lockFingerprint:'unlocked'},
