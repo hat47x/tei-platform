@@ -46,7 +46,7 @@ func (t *LinuxHostSignerTrust) Allow(ref string, public ed25519.PublicKey) error
 	}
 	t.serial++
 	t.signers[ref] = linuxTrustedSigner{
-		key: append(ed25519.PublicKey(nil), public...),
+		key:   append(ed25519.PublicKey(nil), public...),
 		epoch: t.serial,
 	}
 	return nil
