@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -258,5 +259,37 @@ func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *tes
 	}
 	if afterCode.Version != before.Version {
 		t.Fatal("source updates unexpectedly changed the logical engine version")
+	}
+}
+
+// Prevent added transform engine code from silently retaining the old engine
+// digest. Test sources are not part of the deployed implementation.
+func TestTransformRuntimeEngineSourceClosureCoversPackageFiles(t *testing.T) {
+	included := make(map[string]struct{})
+	for _, path := range transformRuntimeEngineSourceFiles() {
+		if _, exists := included[path]; exists {
+			t.Fatalf("Runtime Engine source closure repeats %s", path)
+		}
+		included[path] = struct{}{}
+	}
+	root := filepath.Join("..", "..")
+	files, err := filepath.Glob(filepath.Join(root, "internal", "plugin", "transform", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) == 0 {
+		t.Fatal("cannot find transform package Go source files")
+	}
+	for _, path := range files {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := included[filepath.ToSlash(relative)]; !ok {
+			t.Errorf("Runtime Engine source closure omits %s", relative)
+		}
 	}
 }
