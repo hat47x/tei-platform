@@ -58,7 +58,7 @@ func TestProjectAdvisoryRejectsMalformedOrForbidden(t *testing.T) {
 }
 
 func TestReferenceServesOnlyKnownAssets(t *testing.T) {
-	for _, path := range []string{"/", "/advice-element.mjs", "/advice-action.mjs", "/order-entry-context.mjs"} {
+	for _, path := range []string{"/", "/advice-element.mjs", "/advice-action.mjs", "/order-entry-context.mjs", "/lit-core.min.js", "/lit-license.txt"} {
 		req := httptest.NewRequest("GET", path, nil)
 		resp := httptest.NewRecorder()
 		handler().ServeHTTP(resp, req)

@@ -28,7 +28,7 @@ API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowser�
 
 既存の受注Commandを変更せず、案件側が実Applicationと同じ画面で参照状況を確認できる足場です。実ブラウザでの表示や人間の受入は別途検証します。
 
-**外部依存の留保**：UIは公式Litドキュメントにある配布用ES moduleを、参照画面に限りCDNから読み込みます。ネットワークが利用できなければ表示できません。本番配布ではLitをローカルでバンドルし、依存の版・資産Digest・CSPを固定してください。このReferenceでは実ブラウザの描画・Computer Use操作・バンドル適合性をまだ自動検証しません。GoテストはHTTP HostとGoロジック、NodeテストはUI通信境界をそれぞれ評価するものです。
+**Lit依存**：公式の[Lit配布バンドル](https://github.com/lit/dist/tree/v3.3.3/core) の `v3.3.3/core/lit-core.min.js` をこの参照実装内へ版固定で同梱します。ライセンスは `web/LIT-LICENSE`（BSD-3-Clause）です。UI配信時はCDNへアクセスせず、同じHostからロードし、CSPは `script-src 'self'` です。配布前には資産Digest/供給経路を既存Builder/Lockと接続する必要があります。この段階では実ブラウザ操作は別途検証するものとします。GoテストはHTTP HostとGoロジック、NodeテストはUI通信境界をそれぞれ評価するものです。
 
 ## 以降の段階
 

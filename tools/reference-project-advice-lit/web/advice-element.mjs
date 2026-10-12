@@ -1,6 +1,5 @@
-// Browser component uses a pinned-major Lit bundle for this online Reference.
-// Production targets must bundle/pin local dependencies and validate the asset.
-import {LitElement, html, css} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
+// Local, version-pinned Lit 3.3.3 distribution bundle; no browser-time CDN.
+import {LitElement, html, css} from './lit-core.min.js';
 import {createAdviceAction} from './advice-action.mjs';
 import {createOrderEntryRead} from './order-entry-context.mjs';
 

@@ -15,7 +15,7 @@ import (
 	customeradvice "tei/plugins/reference-project-customer-advice"
 )
 
-//go:embed web/index.html web/advice-element.mjs web/advice-action.mjs web/order-entry-context.mjs
+//go:embed web/index.html web/advice-element.mjs web/advice-action.mjs web/order-entry-context.mjs web/lit-core.min.js web/LIT-LICENSE
 var webAssets embed.FS
 
 var staticFiles = map[string]struct {
@@ -26,6 +26,8 @@ var staticFiles = map[string]struct {
 	"/advice-element.mjs":      {"web/advice-element.mjs", "text/javascript; charset=utf-8"},
 	"/advice-action.mjs":       {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
 	"/order-entry-context.mjs": {"web/order-entry-context.mjs", "text/javascript; charset=utf-8"},
+	"/lit-core.min.js":         {"web/lit-core.min.js", "text/javascript; charset=utf-8"},
+	"/lit-license.txt":        {"web/LIT-LICENSE", "text/plain; charset=utf-8"},
 }
 
 func handler() http.Handler { return handlerWithContext(nil) }
@@ -93,6 +95,8 @@ func handlerWithContext(contextHandler http.Handler) http.Handler {
 		w.Header().Set("Content-Type", asset.contentType)
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
+		w.Header().Set("Referrer-Policy", "no-referrer")
 		if r.Method == http.MethodGet {
 			_, _ = w.Write(body)
 		}
