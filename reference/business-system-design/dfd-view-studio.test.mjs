@@ -121,3 +121,27 @@ test('reloading a Procedure clears stale Source details and an in-progress drag'
   assert.equal($('apply').disabled,true);
   assert.doesNotMatch($('status').textContent,/配置変更の候補ができました/);
 });
+
+test('direction and distinct branch, exception, and information labels remain visible',async()=>{
+  const steps=['S0','S1','S2'].map(id=>({id,label:id,functionRefs:[],noApplicationFunction:true}));
+  const scenario={...projection,steps,triggers:[{id:'ORDER',kind:'event',targetStep:'S0',label:'order received'}],
+    flows:[
+      {from:'S0',to:'S1',kind:'branch',condition:'approved'},
+      {from:'S0',to:'S2',kind:'exception',condition:'returned'}
+    ],
+    information:{roles:[],externalParties:[{id:'customer',label:'Customer'}],stores:[],
+      responsibilities:[],informationFlows:[{id:'INFO',from:{kind:'party',id:'customer'},
+        to:{kind:'step',id:'S0'},payload:'order details'}]}
+  };
+  await input('dfd-file',scenario);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  const elements=$('diagram').children;
+  for(const kind of ['branch','exception','information']){
+    assert.ok(elements.some(el=>el.class==='edge '+kind),'missing directed '+kind+' arrow');
+  }
+  assert.ok(elements.some(el=>el['marker-end']==='url(#dfd-arrow)'));
+  const captions=elements.filter(el=>el.class==='edge-label').map(el=>el.textContent);
+  for(const label of ['branch: approved','exception: returned','order details']){
+    assert.ok(captions.includes(label),'missing explicit label '+label);
+  }
+});
