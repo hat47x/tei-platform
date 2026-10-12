@@ -31,6 +31,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E16：統合済みGo機構による実Workspaceの変更影響回帰検査](E16_POSTMERGE_TYPED_IMPACT.md)／[Goテスト](e16_postmerge_modelref_test.go) — 既存の型付き索引・差分・影響解析を受注明細の実Worldへ適用する。通常GoテストでCI成功。全依存閉包は未解決。
 - [E17：解析済みソース内容と二つの実ファイル状態](E16_POSTMERGE_TYPED_IMPACT.md#e17同一解析済みbytesと二つのファイル状態)／[Goテスト](e17_source_revision_test.go) — 同じ解析結果の指紋を保持し、改行を追加した新規読取りだけが別の指紋を得ることを確認。意味モデルの変更とは区別する。通常GoテストでCI成功。
 - [E18：二つの解析済み意味ソース状態と型付き変更影響](E18_TWO_PARSED_SOURCE_STATES.md)／[Go回帰検査](e18_semantic_source_change_test.go) — RelationとPatternの実宣言を変更し、Source差分と既存型付きImpactを接続する。多重度変更は型付き差分が空でも再確認を要求する。
+- [E19：Git改訂に固定した意味ソースと変更影響](E19_GIT_REVISION_SOURCE_IMPACT.md)／[Go回帰検査](e19_git_revision_source_test.go) — 実参照Workspaceから隔離された2つのGitコミットを生成し、コミットID・Git保存バイト列・Source Index指紋・既存型付き影響を照合する。未コミットの書換えを拒否し、実際の公開Git履歴の採用判断とは区別する。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
