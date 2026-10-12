@@ -1,0 +1,104 @@
+name: TEI Browser・API二成果物の局所E1検証
+
+# Same accepted identity, two physically separate artifacts; the Node
+# loopback bridge exists only for diagnostic HTTP and is not a third product.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/tei-first-web-two-unit-e1-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/tei-first-web-two-unit-e1-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-two-unit-e1-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actual-browser-and-api-units:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: 固定した検証対象を全履歴付きで取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Before identity and clean checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+            read -r actual base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$head" = "$PR_HEAD_SHA"
+            test "$actual" = "$GITHUB_SHA"
+          elif [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            test "$GITHUB_REF" = refs/heads/main
+          elif [[ "$GITHUB_EVENT_NAME" != workflow_dispatch ]]; then
+            exit 1
+          fi
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+      - name: Goの版を合わせる
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Browserホストとビルド手順を構文検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/reference-first-web-two-unit-e1/browser-host.mjs
+          bash -n tools/reference-first-web-two-unit-e1/build.sh
+          bash -n tools/reference-first-web-two-unit-e1/smoke.sh
+      - name: 二成果物を実際にビルドしHTTPで結合確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination="$RUNNER_TEMP/tei-first-web-two-unit-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          bash tools/reference-first-web-two-unit-e1/build.sh \
+            "$destination" B e5231839a5dcc62cce1181a2731fcb7c70d16736
+          bash tools/reference-first-web-two-unit-e1/smoke.sh "$destination"
+          test -s "$destination/browser/index.html"
+          test -s "$destination/api/order-entry"
+          test -f "$destination/measurement.json"
+          test -f "$destination/smoke-observation.json"
+          grep -Fq '"browserAndApiPhysicallySeparate": true' "$destination/measurement.json"
+          grep -Fq '"syntheticFormBodyEqualsDirectAPI": true' "$destination/smoke-observation.json"
+          # Never upload synthetic credentials, API logs, or unchecked
+          # evidence as a production artifact. CI logs contain only receipts.
+      - name: After identity and clean checkout
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
