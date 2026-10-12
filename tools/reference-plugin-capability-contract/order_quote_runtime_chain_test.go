@@ -131,7 +131,7 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 	capabilityID := core.MustCanonicalID("transport.order_quote_carrier")
 	descriptor := quoteChainDigest([]byte("reference.order-quote.transport-carrier/v1"))
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
+		Environment:           core.MustCanonicalID("reference"),
 		PluginLockFingerprint: "test-only-quote-chain-lock",
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin: identity, DescriptorFingerprint: descriptor,
@@ -156,19 +156,19 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 	impl.Invoke = func(ctx context.Context, quote []byte) ([]byte, error) {
 		sequence++
 		wire := quoteChainWire{
-			Schema: "tei.reference.capability-transport-dispatch/v0",
-			ContractID: contract.ID,
+			Schema:              "tei.reference.capability-transport-dispatch/v0",
+			ContractID:          contract.ID,
 			ContractFingerprint: quoteChainDigest([]byte("reference.order.quote-lines.contract/v1")),
-			Target: "reference/order_entry",
+			Target:              "reference/order_entry",
 			Provider: map[string]string{
 				"pluginId": provider.PluginID, "pluginVersion": provider.PluginVersion,
 				"implementationId": provider.ImplementationID,
-				"artifactDigest": provider.ArtifactDigest,
+				"artifactDigest":   provider.ArtifactDigest,
 			},
 			RequestShapeFingerprint: quoteChainDigest([]byte("reference.order.quote-lines.request/v1")),
-			ResultShapeFingerprint: quoteChainDigest([]byte("reference.order.quote-lines.result/v1")),
-			PayloadCodec: "application/json",
-			Payload: quote,
+			ResultShapeFingerprint:  quoteChainDigest([]byte("reference.order.quote-lines.result/v1")),
+			PayloadCodec:            "application/json",
+			Payload:                 quote,
 		}
 		// The inner transport retains the pre-existing legacy reference
 		// fingerprints. The OUTER candidate shapes are validated by the
@@ -206,10 +206,10 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		t.Fatal(err)
 	}
 	input := ResolveInput{
-		Scope: ScopeApplicationRuntime,
+		Scope:       ScopeApplicationRuntime,
 		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
-		Contracts: []Contract{contract},
-		Providers: []Provider{provider},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
 	}
 	payload := []byte(`{"currency":"JPY","lines":[{"sku":"PEN","quantity":3,"unitPriceMinor":250},{"sku":"BOOK","quantity":2,"unitPriceMinor":400}]}`)
 	attempt := func(t *testing.T, name string, want string, mutate func()) {
