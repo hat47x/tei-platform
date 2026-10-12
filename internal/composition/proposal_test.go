@@ -315,3 +315,37 @@ func TestInspectWiringSetKeepsIndependentSameContractSlots(t *testing.T) {
 		t.Fatalf("implicit slot contradiction accepted: %+v", implicit)
 	}
 }
+
+func TestInspectWiringSetOneExplicitSelectionConstrainOtherSameSlot(t *testing.T) {
+	r := NewRegistry()
+	if _, err := r.Apply(0, []Provider{
+		{ID: "read-a", Scope: "tenant-a", Offers: probeRead},
+		{ID: "read-b", Scope: "tenant-a", Offers: probeRead},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	// A partial request for the same consumer slot can inherit its single
+	// explicit choice rather than triggering ambiguity or a false conflict.
+	result := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a", SlotID: "view.data"},
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a", SlotID: "view.data"},
+	})
+	if result.Verdict != ProposalCandidate || len(result.Findings) != 2 {
+		t.Fatalf("partial requirement not unified: %+v", result)
+	}
+	for i, finding := range result.Findings {
+		if finding.Selected == nil || finding.Selected.ProviderID != "read-a" ||
+			finding.Selected.Revision != result.Revision {
+			t.Fatalf("slot %d not unified to an exact provider: %+v", i, finding)
+		}
+	}
+	// A distinct slot remains ambiguous unless it has its own explicit choice.
+	mixed := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a", SlotID: "view.data"},
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a", SlotID: "view.other"},
+	})
+	if mixed.Verdict != ProposalConflict || mixed.Findings[0].Reason != ReasonAmbiguousProviders ||
+		mixed.Findings[1].Verdict != ProposalCandidate {
+		t.Fatalf("independent unpinned slot was silently selected: %+v", mixed)
+	}
+}
