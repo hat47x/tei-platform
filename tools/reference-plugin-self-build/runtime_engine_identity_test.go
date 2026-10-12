@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"tei/internal/core"
@@ -188,5 +190,73 @@ func TestReferenceRuntimeEngineLockSeparatesRevisionFromImplementation(t *testin
 	}
 	if policyFingerprint(firstLock, firstFP) == policyFingerprint(changedLock, changedFP) {
 		t.Fatal("implementation source change did not invalidate the Runtime Policy")
+	}
+}
+
+func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *testing.T) {
+	root := t.TempDir()
+	codeFiles := []string{
+		"internal/plugin/transform/eval.go",
+		"internal/plugin/transform/model.go",
+	}
+	write := func(path, content string) {
+		fullPath := filepath.Join(root, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(fullPath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(codeFiles[0], "package transform\n")
+	write(codeFiles[1], "package transform\n")
+	sourceBefore, err := hashSourceFiles(root, codeFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Documentation is part of the repository, but not the engine source closure.
+	write("docs/overview.md", "# before\n")
+	write("docs/overview.md", "# after\n")
+	sourceAfterDocs, err := hashSourceFiles(root, codeFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceBefore != sourceAfterDocs {
+		t.Fatal("docs-only changes affected the Runtime Engine source closure")
+	}
+
+	write(codeFiles[0], "package transform\n// implementation changed\n")
+	sourceAfterCode, err := hashSourceFiles(root, codeFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceBefore == sourceAfterCode {
+		t.Fatal("engine implementation changes did not affect the source closure")
+	}
+
+	engine := func(sourceDigest string) pruntime.RuntimeEngineIdentity {
+		out, err := referenceRuntimeEngineIdentity(
+			core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
+			transformRuntimeEngineVersion,
+			"tei.runtime-engine/deterministic-transform-v1",
+			sourceDigest,
+			"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"host/linux/amd64",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	before, afterDocs, afterCode := engine(sourceBefore), engine(sourceAfterDocs), engine(sourceAfterCode)
+	if before != afterDocs {
+		t.Fatal("docs-only changes affected the Runtime Engine identity")
+	}
+	if before.ImplementationDigest == afterCode.ImplementationDigest {
+		t.Fatal("engine implementation changes did not affect the implementation digest")
+	}
+	if afterCode.Version != before.Version {
+		t.Fatal("source updates unexpectedly changed the logical engine version")
 	}
 }
