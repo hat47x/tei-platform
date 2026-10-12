@@ -11,7 +11,7 @@ func referenceSelectionFixture(t *testing.T) (BuildExecutionPlan, ArtifactSet, B
 	plan, set, resultFingerprint := attestationFixture(t)
 	first := signedSetAttestation(t, plan, set, resultFingerprint)
 	second := first
-	second.Issuer = "tei.reference.independent_issuer"
+	second.Issuer = "tei.reference.zzz_issuer"
 	var err error
 	second, err = signReferenceAttestation(second)
 	if err != nil {
