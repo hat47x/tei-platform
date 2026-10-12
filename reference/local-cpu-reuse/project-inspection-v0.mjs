@@ -28,6 +28,35 @@ function copyArray(a,fields,required,diags,label) {
 function projectCanonical(kind,c,diagnostics) {
   let allowed, model;
   switch(kind) {
+    case 'application': {
+      requireFields(c,['id']);
+      // Application membership is observed, not a declaration of Pattern semantics.
+      allowed=['id','semanticUses','validations','databases','patterns'];
+      const patterns=copyArray(c.patterns,
+        ['id','kind','data','relation','query','capability','datasource','contractQuery'],
+        ['id','kind'],diagnostics,'patterns');
+      if(new Set(patterns.map(p=>p.id)).size!==patterns.length) diagnostics.push('duplicate_pattern_identity');
+      for(let i=0;i<patterns.length;i++) if(!knownPatternKinds.has(patterns[i].kind))
+        diagnostics.push('patterns['+i+'].unknown_kind');
+      if(c.databases!==undefined && !Array.isArray(c.databases))
+        throw new InspectionProjectionError('malformed_canonical');
+      if(c.semanticUses!==undefined && (!Array.isArray(c.semanticUses)||c.semanticUses.some(x=>!nonEmpty(x))))
+        throw new InspectionProjectionError('malformed_canonical');
+      if(c.validations!==undefined && (!Array.isArray(c.validations)||c.validations.some(x=>!nonEmpty(x))))
+        throw new InspectionProjectionError('malformed_canonical');
+      model={
+        declaredPatternIds:patterns.map(p=>p.id),
+        semanticUses:c.semanticUses||[],
+        validations:c.validations||[],
+        databaseAliases:(c.databases||[]).map((d,i)=>{
+          if(!object(d)||!nonEmpty(d.alias))throw new InspectionProjectionError('malformed_canonical');
+          for(const k of unknown(d,['alias','target','access','requires']))diagnostics.push('databases['+i+'].'+k);
+          return d.alias;
+        }),
+        coverage:'membership_only'
+      };
+      break;
+    }
     case 'application-pattern': {
       requireFields(c,['id','kind']);
       allowed=['id','kind','data','relation','query','capability','datasource','contractQuery'];
@@ -132,4 +161,20 @@ export function linkPatternRelation(pattern,relation) {
   if(!nonEmpty(pattern.features?.relation))
     return {status:'no_declared_relation',accepted:false};
   return {status:pattern.features.relation===relation.subject.id?'declared_reference_match':'unresolved_reference',accepted:false};
+}
+
+/** Check only explicit Application.Pattern membership in one observed snapshot.
+ * This does NOT grant cross-application read rights or prove business meaning.
+ */
+export function linkApplicationPattern(application,pattern) {
+  if(application?.subject?.kind!=='application'||pattern?.subject?.kind!=='application-pattern')
+    throw new InspectionProjectionError('invalid_membership_kinds');
+  if(application.provenance?.worldFingerprint!==pattern.provenance?.worldFingerprint ||
+     application.provenance?.sourceIndexFingerprint!==pattern.provenance?.sourceIndexFingerprint)
+    return {status:'stale_or_different_snapshot',accepted:false};
+  if(application.completeness!=='structurally_projected'||pattern.completeness!=='structurally_projected')
+    return {status:'unknown',accepted:false};
+  const ids=application.features?.declaredPatternIds;
+  if(!Array.isArray(ids))return {status:'unknown',accepted:false};
+  return {status:ids.includes(pattern.subject.id)?'declared_membership':'unresolved_membership',accepted:false};
 }
