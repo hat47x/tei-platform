@@ -14,7 +14,7 @@
 
 ## 実Workspaceでの一往復（必ずscratch copy）
 
-以下は**操作手順**であり、本PR headで実行・PASS確認した記録ではありません。既存Gate B/Cの固定Workspaceに書かないため、まず独立コピーを用意します。
+以下は**一時作業領域での再現手順**です。PRに含めた自動試験とは異なり、手順を実行しただけでは人間の受理を証明しません。既存Gate B/Cの固定Workspaceに書かないため、まず独立コピーを用意します。
 
 ```sh
 scratch="$(mktemp -d)"
@@ -96,7 +96,7 @@ node reference/studio-authoring/cli.mjs inspect \
 
 `placement`は呼出し側が**正本で確認したApplication定義の位置**を指定します。Bridgeはパスの大まかな形式とSemantic namespace利用を確認しますが、source ownership・型検査・二重宣言・書込み可否はShared AcceptanceのPreview/Reviewが最終確認します。Application側の明示的選択が受理済みであることも、実Target・Providerで規則が実行された証拠ではありません。
 
-初期`e2e.mjs`は表のケースを2操作の候補として実施し、受理後に意味・Application双方のSourceが変化し、再投影でも利用宣言が分かることを検査します。**このE2Eスクリプト自体の実行は未確認です**。Attribute型・Validationの妥当性はShared Acceptanceへ委ねます。
+`e2e.mjs`は表のケースを2操作の候補として実施し、受理後に意味・Application双方のSourceが変化し、再投影でも利用宣言が分かることを検査します。Studio専用CIで一時作業領域上の実行を確認済みです。Attribute型・Validationの妥当性はShared Acceptanceへ委ねます。
 
 各Projectionが返す`realizationReadiness.status=not-verified`は重要です。Source Acceptanceは正本変更に限った判断であり、DB migration、Target配備、実行時権限、Provider書込み、Observationを証明しません。表示の変更だけで不要なDB migrationを要求しない一方、意味変更だけで旧schemaが利用可能と断定もしません（#1119 S01/S02）。実際の適用可否は#1121/#1126/#1127側から明示的に受け取る必要があります。
 
@@ -181,7 +181,7 @@ tools/repository-health-check.sh
 | V03 | ERでRelationを追加し、表からValidationとApplication側の利用宣言を提案する。共通受理機構の差分・影響・審査を経由する一往復を、一時作業領域で実行済み | 実画面からの操作、実データベースや実行先での可否は未確認 |
 | V04 | 共通受理機構を使うER・表の2件の受理・再投影、旧候補の拒否に加え、Go製業務DFDからの四視点参照・逆向き参照を一時作業領域で実行。合計68項目を検査 | 参照用の業務手順を受理済み正本とみなさない。人間の受理・実画面・実Providerでの確認は未実施 |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
-| N06 | 一時作業領域で変更前後の版・審査指紋を確認し、古い候補のプレビューと受理を拒否する試験が成功 | 同時書込みの競合、複数編集者による実環境の操作は未試験 |
+| N06 | 一時作業領域で、異なる編集者の独立した候補を同じR0で審査し、一方の受理後にもう一方の古い審査指紋による受理を拒否する試験を追加。正本のR1が保持されることも検査 | OS上の完全同時書込み、複数編集者による実環境の競合は未試験 |
 | Invalid ref | exactな入力subject/Relation target不在・重複を拒否。Source Indexの曖昧な定義、範囲不正、危険なpathを拒否。DFDの参照切れはunresolved | 全モデルKind・全typed edge・Source byte最新性とBusinessの受理済み意味 |
 | N12 | layout書換えは意味操作へ変換しない | 独立したView Metadataの保持・再生 |
 | 性能 | focus近傍だけを返す、合成増量ケースあり | realistic 1万+件の時間/メモリ実測 |
