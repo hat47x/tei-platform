@@ -1,4 +1,4 @@
-# M0.29 Advanced Index Actual / Diff Conformance
+# M0.29 高度な索引の実際値と差分の準拠確認
 
 ## 目的
 
@@ -6,7 +6,7 @@ M0.29では、PostgreSQLの実DBに存在するIndexを、単純な列名の並�
 
 対象はIssue #50と[ADR-0010](../../plan/adr/0010-advanced-index-semantics.md)で定めたActual / Diff側です。Advanced IndexをDesiredから記述するauthoring構文はIssue #51へ分離し、この段階では追加しません。
 
-## Physical Schemaで保持する意味
+## 物理構造で保持する意味
 
 `physical.Index`は、従来の`Columns`だけの表現から、順序を持つ`Keys`を中心とする表現へ移行しました。
 
@@ -22,7 +22,7 @@ expressionとpredicateはCore共通SQL ASTへ変換しません。`ProviderExpre
 
 既存のPersistence Mappingにある単純なIndexは、従来と同じauthoringのままcolumn `IndexKey`へrealizeされます。PostgreSQLのunique indexでは、既定のNULL treatmentをeffective semanticsである`distinct`へ解決してから比較します。
 
-## PostgreSQL catalog normalization
+## PostgreSQL目録の表記統一
 
 PostgreSQL adapterは`pg_index`を中心に、次の情報をTEIのPhysical Schemaへ正規化します。
 
@@ -38,7 +38,7 @@ provider既定のcollation / operator classや、btreeの既定sort semanticsは
 
 PRIMARY KEY / UNIQUE constraintのbacking indexを通常Indexから除外するM0.28までのnormalizationも維持します。
 
-## Schema Diff
+## 構造差分
 
 Index名はphysical objectを追跡するmatching keyとして維持します。同名Indexについて、次を分けて扱います。
 
@@ -50,7 +50,7 @@ Index名はphysical objectを追跡するmatching keyとして維持します。
 
 structural comparisonには、ordered keys、INCLUDE、predicate、unique / NULL treatment、access method、key optionを含めます。
 
-## actual PostgreSQL Conformance
+## PostgreSQL実環境での準拠確認
 
 常設のPostgreSQL integration fixtureでは、従来の単純Index、Foreign Key、Unique Constraint、View / Materialized Viewの検証に加え、次を実DBから観測します。
 
@@ -63,7 +63,7 @@ structural comparisonには、ordered keys、INCLUDE、predicate、unique / NULL
 
 Advanced Indexの観測確認後、それらのfixtureだけを除去してから既存のsimple Desired schemaと比較します。これにより、M0.26〜M0.28で成立した「同じ状態ならbaseline drift 0」という契約を維持したまま、M0.29の観測能力を追加しています。
 
-## Unit Conformance
+## 単体での準拠確認
 
 Unit testでは少なくとも次を固定します。
 

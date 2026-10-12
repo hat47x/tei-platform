@@ -1,4 +1,4 @@
-# M0.35 Advanced Index マイグレーションSQL Conformance
+# M0.35 高度な索引のマイグレーションSQL準拠確認
 
 ## 目的
 
@@ -17,7 +17,7 @@ M0.35では、Advanced IndexのDesired Physical SchemaをPostgreSQLのDDLへ変�
 
 PostgreSQLの文法は`internal/database/providers/postgres`が所有します。
 
-## CREATE INDEXで保持する意味
+## `CREATE INDEX`で保持する意味
 
 PostgreSQL rendererは、Physical Indexに表現された次の要素をSQLへ戻します。
 
@@ -60,7 +60,7 @@ collationとoperator classはSQL断片として扱わず、識別子として引
 
 3階層以上の名前や、現在のPhysical Schemaから構造を確定できない表現は推測せず拒否します。
 
-## DROP INDEXの安全境界
+## `DROP INDEX`の安全境界
 
 `DROP INDEX`は親tableのschemaを使い、必ずschema-qualified nameとして生成します。
 
@@ -80,7 +80,7 @@ M0.35では`CREATE INDEX CONCURRENTLY`と`DROP INDEX CONCURRENTLY`を自動選�
 
 また、Actualで`valid` / `ready` / `live`の異常を観測した`index-state-drift`も、自動的なdrop/recreateへ変換しません。回復方法を一意に決められないため、運用判断が必要な状態としてSQL生成を停止します。
 
-## Unit Conformance
+## 単体での準拠確認
 
 `internal/database/providers/postgres/migration_sql_test.go`と関連テストで、少なくとも次を確認します。
 
@@ -95,7 +95,7 @@ M0.35では`CREATE INDEX CONCURRENTLY`と`DROP INDEX CONCURRENTLY`を自動選�
 - schemaを確定できない`DROP INDEX`を拒否する
 - 通常のSQL生成で`CONCURRENTLY`を付けない
 
-## 実PostgreSQL Conformance
+## PostgreSQL実環境での準拠確認
 
 CIのPostgreSQL 17では、`tools/reference-postgres-migration-rendering`を使って次の閉ループを実行します。
 
@@ -117,7 +117,7 @@ fixtureでは3本のIndexを作成し、次の意味を実際のPostgreSQLで検
 
 CIは、生成したSQLが実行可能であるだけでなく、再観測後に3本のIndexが存在し、Schema Diffが完全に収束することを確認します。
 
-## 既存Conformanceとの関係
+## 既存の準拠確認との関係
 
 M0.35は、次の既存契約を前提とします。
 
@@ -130,7 +130,7 @@ M0.35は、次の既存契約を前提とします。
 
 比較段階で確定できない差をDDL生成段階へ押し流さないことが、M0.31以降の共通した安全境界です。
 
-## 現時点で行わないこと
+## 現時点で対象にしないこと
 
 M0.35では次を扱いません。
 

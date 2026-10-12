@@ -1,4 +1,4 @@
-# ADR（Architecture Decision Record）
+# 設計判断記録（ADR）
 
 このディレクトリは、TEIの設計に長く影響する判断を記録する正規の保存場所です。
 
@@ -54,9 +54,3 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0029: Applicationが評価するValidationの選択を、Canonicalな`uses validation`宣言から導く](0029-application-validation-selection-from-canonical-declaration.md)
 - [ADR-0030: 生成AIが扱う情報を文脈付きの認識状態として保持する](0030-context-scoped-epistemic-knowledge.md)
 - [ADR-0032: Cordis型の合成KernelをTEIの新しいプラグイン基盤とする](0032-composition-kernel-replacement.md)（目標方針として採用。Production実装は移行中）
-
-## `docs/adr/`について
-
-ADR-0001〜0015は、以前`docs/adr/`を正本としていました。旧URLや過去文書からの参照を壊さないため、現在も同じパスに互換案内を残しています。
-
-設計判断の本文はこの`plan/adr/`だけを正本とし、`docs/adr/`側へ本文を複製しません。新しいADRも`plan/adr/`にのみ追加します。

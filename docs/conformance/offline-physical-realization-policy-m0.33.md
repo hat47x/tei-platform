@@ -1,4 +1,4 @@
-# M0.33 Offline Physical Realization Policy Conformance
+# M0.33 オフラインでの物理構造生成方針の準拠確認
 
 M0.33では、Persistence MappingからDesired Physical Schemaを生成するときに必要となるprovider固有の知識を、Persistence Coreおよびconnected runtime Provider SPIから分離しました。
 
@@ -27,7 +27,7 @@ provider-owned offline policy
 
 Persistence CoreはPostgreSQLやOracleのpackageをimportしません。DBMSごとのphysical type、Indexの既定値、接続なしで確定できる正規化規則はprovider packageが所有します。
 
-## offlineで完結すること
+## 接続せずに完結する処理
 
 `PhysicalRealizationPolicy`には、次の情報を渡しません。
 
@@ -41,7 +41,7 @@ Persistence CoreはPostgreSQLやOracleのpackageをimportしません。DBMSご�
 
 Workspace load / validationについても、M0.33によってDB接続は追加されません。Persistence authoringを読み込む処理と、必要なprovider向けにDesired Physical Schemaを投影する処理は別のままです。
 
-## providerが所有する責務
+## 提供元が担う責務
 
 M0.33で`PhysicalRealizationPolicy`へ移した責務は、現在必要な次の範囲に限定しています。
 
@@ -66,7 +66,7 @@ PostgreSQLでは、従来Persistence Coreが持っていた次の規則をpolicy
 
 Oracleについても、既存のstorage type変換をOracle側のoffline policyへ移しています。
 
-## compositionの責務
+## 組立て側が担う責務
 
 `internal/database/realization`は、provider IDから具体的な`PhysicalRealizationPolicy`を選び、Persistence realizationへ渡すだけのcomposition境界です。
 
@@ -74,7 +74,7 @@ Oracleについても、既存のstorage type変換をOracle側のoffline policy
 
 未対応providerはgenericな既定値へ縮退させず、明示的なエラーとします。意味を確定できないproviderを、それらしい共通値へ変換することはしません。
 
-## Unit Conformance
+## 単体での準拠確認
 
 `internal/database/realization/realize_test.go`で、少なくとも次を確認します。
 
@@ -87,7 +87,7 @@ Oracleについても、既存のstorage type変換をOracle側のoffline policy
 
 Persistence package自身のテストでは、具体provider policyを直接注入します。これにより、Persistence realizationがprovider IDのswitchではなくportへの依存として動作していることも確認します。
 
-## Actual PostgreSQL Conformance
+## PostgreSQL実環境での準拠確認
 
 既存の`reference-postgres-integration`は、M0.33から`database/realization`を通じてDesired Physical Schemaを生成します。
 
@@ -101,13 +101,13 @@ Persistence package自身のテストでは、具体provider policyを直接注�
 - Advanced Indexの観測
 - PostgreSQLのeffective default normalization
 
-## runtime Provider SPIとの分離
+## 実行時の提供元接続口との分離
 
 `database/provider.Provider`はActual databaseとの対話を担当するruntime SPIであり、M0.33では変更しません。
 
 Desired realizationを行うために`Capabilities`や`Introspect`を呼び出すこともありません。offline policyとconnected runtime providerを同じ万能interfaceへまとめないことをConformance上の境界とします。
 
-## ProviderExpressionとの関係
+## 提供元固有の式との関係
 
 ADR-0012 / M0.32で、ProviderExpressionは`authored`と`provider-normalized`を区別し、比較を三値化しました。
 

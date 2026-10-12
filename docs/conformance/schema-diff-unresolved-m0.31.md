@@ -1,4 +1,4 @@
-# M0.31 Schema Diff Unresolved Comparison Conformance
+# M0.31 構造差分で比較未確定を扱う準拠確認
 
 ## 目的
 
@@ -14,7 +14,7 @@ Advanced Indexでは、expression keyとpartial predicateを`ProviderExpression`
 
 一方、表記が違うだけで常に同じとみなすこともできません。信頼できるprovider normalizationがまだない場合は、「同じ」「違う」のどちらにも確定しない状態として返します。
 
-## Diffの二つの出力
+## 差分結果の二種類
 
 `schemadiff.Diff`は次を分離します。
 
@@ -31,7 +31,7 @@ Diff
 
 `Unresolved`を`ChangeKind`には含めません。比較不能はmigration操作ではないためです。
 
-## ProviderExpressionの初期規則
+## 提供元固有の式に関する初期規則
 
 同じ名前のIndexを比較するとき、ProviderExpressionについて次を適用します。
 
@@ -43,7 +43,7 @@ Diff
 
 5について、CoreはSQL式の意味同一性を推測しません。
 
-## Index全体の判定
+## 索引全体の判定
 
 ProviderExpressionに比較未確定があっても、INCLUDE、key数、column、collation、operator class、sort、NULL ordering、unique semantics、method等に明確な構造差がある場合は、Index全体として構造差を確定できます。
 
@@ -51,13 +51,13 @@ ProviderExpressionに比較未確定があっても、INCLUDE、key数、column�
 
 明確な構造差がなく、ProviderExpressionだけが比較未確定の場合は`drop-index` / `add-index`を返さず、`Unresolved`だけを返します。
 
-## lifecycle state
+## 状態遷移
 
 Actual Indexの`valid / ready / live`は比較未確定ではなく観測事実です。
 
 したがって、構造比較が未確定であってもActual Indexがusableでなければ、`index-state-drift`は従来どおりChangeとして返せます。
 
-## FieldPath
+## 項目への経路
 
 初期実装では、比較未確定箇所を次のようなfield pathで示します。
 
@@ -68,7 +68,7 @@ index.predicate
 
 配列indexはPhysical Schemaの0始まり位置です。
 
-## migrationとの境界
+## 移行処理との境界
 
 `migration.Render`は`Diff.Unresolved`が1件でも残っているDiffからSQLを生成しません。
 

@@ -1,4 +1,4 @@
-# Conformance — M0.26 actual PostgreSQL Desired / Actual / Diff
+# M0.26 PostgreSQLの実状態と期待構造の差分確認
 
 M0.26では、既存のDatabase lifecycleをactual PostgreSQLへ接続し、Persistence Mappingから導出したDesired Physical Schemaと、実DB catalogから観測したActual Physical Schemaをend-to-endで比較します。
 
@@ -24,7 +24,7 @@ Schema Diff
 
 `SchemaSnapshot`はregeneratableなphysical observationであり、Canonical Worldではありません。
 
-## database/sql driverの境界
+## database/sqlドライバーの境界
 
 `internal/database/providers/postgres`は引き続き標準`database/sql`へだけ依存し、具体driverを選びません。
 
@@ -32,7 +32,7 @@ Reference integrationのassemblyとして`github.com/jackc/pgx/v5/stdlib`を利�
 
 接続文字列は`TEI_TEST_POSTGRES_DSN`からHost-sideに与えます。DSN、password、host等をPhysical Schema SnapshotやSchema Diffへ保存しません。
 
-## actual fixture
+## 実状態を再現する試験データ
 
 `tools/reference-postgres-integration`はintegration harnessとして専用schemaを準備します。fixture setupのDDLは、TEIがschema-change capabilityを実装したことを意味しません。
 
@@ -51,7 +51,7 @@ fixtureは少なくとも次を含みます。
 
 Desired側は同じ構造を手書きPhysical Snapshotにせず、`persistence.Mapping`から`RealizeDesired`で生成します。
 
-## Primary KeyとIndexを二重計上しない
+## 主キーと索引を二重に数えない
 
 actual PostgreSQL integrationによって、PostgreSQLがPrimary Keyのために自動生成するbacking indexを`SQLCatalogReader.Indexes`が通常Indexとしても観測していた継ぎ目が見つかりました。
 
@@ -59,15 +59,15 @@ TEI physical modelではPrimary KeyとIndexは別概念です。そのためPost
 
 これはtestを通すための文字列補正ではなく、同じphysical objectをPrimary KeyとIndexとして二重に表現しないためのprovider normalizationです。
 
-## baselineとdrift
+## 基準状態と差分
 
 Reference integrationは二段階で検証します。
 
-### baseline
+### 基準状態
 
 Persistence Mappingから生成したDesiredと、同じ形に準備したactual PostgreSQLを比較し、`schemadiff.Compare`のchangesが0件であることを要求します。
 
-### drift
+### 差分
 
 その後、test harnessがactual側だけに`drift_note text` columnを追加します。
 
@@ -75,7 +75,7 @@ TEIは再introspectionし、Desiredには存在しないactual-only columnとし
 
 M0.26では差分検出後にmigrationを自動採用・実行しません。
 
-## Foreign Keyの現在地
+## 外部キーの確認状況
 
 PostgreSQL providerはactual foreign keyを`SchemaSnapshot.ForeignKeys`へ観測します。Reference integrationでは1件のFKが実際に取得できることを確認します。
 
@@ -83,7 +83,7 @@ PostgreSQL providerはactual foreign keyを`SchemaSnapshot.ForeignKeys`へ観測
 
 この制約はM0.26時点のものです。後続M0.27 / ADR-0008でPersistence MappingからDesired FKを明示し、provider-neutral Schema DiffへForeign Keyを統合しました。現在の境界は [M0.27 Conformance](foreign-key-drift-m0.27.md) を参照してください。
 
-## 常設CI
+## 継続的な自動検査
 
 常設CIにはPostgreSQL serviceを使う独立jobを置きます。
 

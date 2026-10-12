@@ -1,4 +1,4 @@
-# Legacy Authorization Conformance
+# 既存認可仕様への接続の準拠確認
 
 ## 目的
 
@@ -6,7 +6,7 @@
 
 AuthenticationとAuthorizationは分けます。Authenticationで得たsubject identityをAuthorizationへ渡しますが、ApplicationやDriverが既存のorganization codeやrole codeを直接読み取って判断する設計にはしません。
 
-## Semantic Capability
+## 意味上の実行機能
 
 v1 Referenceでは、`security.authorize`を次の最小契約として扱います。
 
@@ -24,7 +24,7 @@ security.authorize
 
 既存user storeへ到達できない場合や、既存ruleの評価処理そのものが失敗した場合はExecution Errorとし、`denied`へ変換しません。
 
-## actionとresource
+## 操作と対象
 
 最初のReferenceでは、`order_entry`の実例から必要な三つの操作だけを扱います。
 
@@ -38,7 +38,7 @@ resourceにはWeb画面名やURLを使いません。既存のApplication Patter
 
 `order_entry.submit_order`は既存のCommand Patternであり、`sales.order.submit` Capabilityへ接続されています。そのため、Authorization ruleへ同じCapability名を重ねて記述する必要はありません。
 
-## legacy rule fixture
+## 既存規則の試験用データ
 
 `reference/legacy-auth/authorization.json`は、既存システム固有の認可表を模したReferenceです。
 
@@ -54,7 +54,7 @@ resourceにはWeb画面名やURLを使いません。既存のApplication Patter
 
 `ORDER_EDITOR`と`ORDER_VIEWER`も標準role名ではなく、このReference内のlegacy値です。
 
-## subjectからlegacy userへの接続
+## 対象者と既存利用者の対応
 
 Authenticationが返したsubject identityから、`FixtureStore.FindBySubject`を通して既存user recordを引き直します。
 
@@ -72,7 +72,7 @@ legacy authorization rule
 
 Application / Driverへorganizationやroleを公開して認可ruleを再実装させません。
 
-## 明示Binding
+## 明示的な接続
 
 `order_entry`ではAuthenticationと同じ既存のCustom Go Binding形式を使います。
 
@@ -96,7 +96,7 @@ applications/order-entry/realizations/authorize.tei
 
 Authorization専用のBinding形式は追加しません。
 
-## Referenceで確認する判断
+## 参照実装で確かめる判断
 
 編集者では、次を`allowed`として確認します。
 
@@ -114,7 +114,7 @@ Authorization専用のBinding形式は追加しません。
 
 これはReference上の最小語彙です。Authentication一例とAuthorization一例だけから、標準的な拒否理由体系を先回りして固定しません。
 
-## Execution Errorとの境界
+## 実行エラーとの境界
 
 次は`denied`ではありません。
 
@@ -126,7 +126,7 @@ Authorization専用のBinding形式は追加しません。
 
 これらは認可が拒否されたのではなく、認可判断を正常に完了できなかった状態です。PR #141で成立したCapability共通のExecution Error境界をそのまま利用します。
 
-## Plugin / Runtime Permissionとの分離
+## プラグイン・実行環境の権限との分離
 
 このAuthorizationはApplication利用者が業務操作を実行できるかを表します。
 
@@ -144,7 +144,7 @@ process PluginがDatabaseや外部resourceへアクセスできるかを制御�
 
 これらは、複数Applicationや複数Targetから必要性が確認できた段階で検討します。
 
-## Gate Aへの意味
+## 判定段階Aとの関係
 
 このReferenceにより、Driverへ次を渡せる状態を目指します。
 

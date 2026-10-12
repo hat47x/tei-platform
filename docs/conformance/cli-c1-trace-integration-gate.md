@@ -1,4 +1,4 @@
-# CLI C1 trace integration: 検証対象と未確定事項
+# CLI C1の追跡統合：検証対象と未確定事項
 
 対象: GitHub Issue #1165 / Draft PR #1172（`feat/cli-c1-typed-trace-integration`）。この記録は**検証指示**であり、PASS receiptではない。
 
@@ -10,7 +10,7 @@
 - 正規化: GraphのNode/Edge/EvidenceとSource Indexの並び順に依存しないfingerprint。ただし重複宣言・重複edgeは消さず検出対象とする。
 - Source境界: 同じWorldを保った元ファイル移動・非意味的編集でもSource側tokenが変わる。参照不能や逸脱pathはfail-closed。Source Indexを編集権限やShared Acceptanceへ昇格させない。
 
-## ローカル引き継ぎ：実行コマンド
+## ローカルへの引継ぎと実行方法
 
 GitHubの認証情報を利用できるGo 1.23.2以降のローカル環境で、**既存の開発作業ツリーとは別の新規checkout**を使う。PR #1172のhead SHAは更新され得るため、以下のコマンドで都度取得する。実際のGitHub URLは認証済みのHTTPSまたはSSHを使用する。
 
@@ -29,7 +29,7 @@ bash tools/verify-cli-c1-local.sh "$PR_HEAD" "$MAIN_HEAD" "/tmp/tei-cli-c1-recei
 
 **exit=0でもマージ権限の自動発行ではない。** 親PR依存（#1139→#1171、#1159→#1169→#1172）と、actual mainへの統合ベース、PRがDraftでなくなったか、candidate/mainのexact-SHAを再確認する。PASS receiptとこれらの条件を揃えるまではmainへ統合しない。
 
-## 信頼できる検証環境での手順
+## 信頼できる環境での検証手順
 
 1. GitHub認証済みのGo 1.23.2以降が利用可能な環境で、**最新のPR #1172 head SHAとcurrent `main` SHAを記録**する。親PR #1169など並行PRのheadも確認し、対象ブランチ名の再解決だけで判断しない。
 2. 新しいクリーンなcheckoutを取得する（共有ワークツリーや未コミット修正済みディレクトリを用いない）。PR headの**正確なコミットSHA**でdetached checkoutし、`git rev-parse HEAD` と `git status --porcelain` を保存する。期待SHAに一致しなければ停止する。
@@ -37,7 +37,7 @@ bash tools/verify-cli-c1-local.sh "$PR_HEAD" "$MAIN_HEAD" "/tmp/tei-cli-c1-recei
 4. 問題を検出した場合、**PR #1172 branch上に通常コミット**で修正する。PR headが動いたら既存PASS証跡はstaleとして破棄し、同じ手順で再検証する。共有branchのforce/rebase/resetや直接main変更はしない。
 5. full PASS後、PRや各親PRの依存、現在mainの差分、正本ドキュメントと必要なGateを確認する。**Draftのまま統合しない**。マージ直前にexact PR head、base、current mainとPASS証跡の一致を再確認する。
 
-### 検証候補（full Repository Healthの代替ではない）
+### 検証候補（リポジトリ全体の健全性検査の代わりにはならない）
 
 ```bash
 go test -count=1 ./internal/modelref/... ./internal/sourceindex/... ./internal/operations/... ./internal/workspace/... ./cmd/tei/...
@@ -56,7 +56,7 @@ go run ./cmd/tei inspect -workspace reference/workspace -subject-kind semantic-r
 
 この文書はGate判断の正本を増やすものではなく、`AGENTS.md` / `CONTRIBUTING.md` と対象Issueの合格条件を適用するための補足手順である。
 
-## 設計知見・未解決課題の恒久参照
+## 設計上の知見と未解決課題の参照先
 
 - **#1165（Issue本文）**：採用したCanonical/Source/Typed Graphの責務、Scopeの非権威性、複合tokenの使い分け、五つの初期kind、重複宣言と不完全Evidenceの扱い、CLIとGoのAdapter分離、未取得のGo品質Gate証拠、親PR依存を集約する。
 - **#1017**：Source Readerのsymlink/TOCTOU。C1のhash＋digest＋path containment検証はatomic snapshotを保証しない。

@@ -1,4 +1,4 @@
-# Conformance — M0.23 Source-to-Canonical Traceability
+# M0.23 入力元から正本までの追跡可能性に関する準拠確認
 
 この文書は、M0.23で検証しているSource-to-Canonical Traceabilityの不変条件と、Repository上の実装・テスト・CLIの対応をまとめたものです。
 
@@ -30,9 +30,9 @@ Analyzer Request / Derived Query IR
 
 Canonical WorldとSource Indexは別の情報です。Source IndexはWorkspaceから再生成できるderived sidecarであり、Canonical identityの一部ではありません。
 
-## Conformance項目
+## 準拠確認の項目
 
-### 1. File pathはsemantic identityではない
+### 1. ファイルの場所は意味上の識別子ではない
 
 Canonical IDはsource pathから導出しません。同一内容・同一Canonical declarationを別directoryへ移しても、normalized Worldは変わりません。
 
@@ -43,7 +43,7 @@ Source Indexのlocatorだけが新しいWorkspace-relative pathへ更新され�
 - `internal/workspace/source_index_invariance_test.go`
 - `internal/workspace/traceability_conformance_test.go`
 
-### 2. Source Artifactはcontent fingerprintを持つ
+### 2. 入力元の成果物は内容の照合値を持つ
 
 Source IndexのArtifactはWorkspace-relative path、format、`sha256:` content fingerprintを持ちます。
 
@@ -54,7 +54,7 @@ Source IndexのArtifactはWorkspace-relative path、format、`sha256:` content f
 - `internal/sourceindex/model.go`
 - `internal/workspace/source_index.go`
 
-### 3. Source Rangeはbyte offsetが基準
+### 3. 入力範囲はバイト位置で示す
 
 Rangeは半開区間`[start,end)`のbyte offsetを基準とし、line / columnはそのcontentから検証可能な表示情報として保持します。
 
@@ -66,7 +66,7 @@ Parserのsyntax anchorとSource Index rangeはdomain modelへphysical location�
 - `internal/syntax/semantic_anchor.go`
 - `internal/sourceindex/model.go`
 
-### 4. Semantic diagnosticはSubject経由でsourceへ戻る
+### 4. 意味上の診断から対象を介して入力元へ戻る
 
 ValidationはSource Indexを必須依存にしません。
 
@@ -84,7 +84,7 @@ Sourceを見つけられないderived / synthetic subjectは、推測でpathを�
 - `internal/validation/validation.go`
 - `internal/workspace/diagnostic_projection.go`
 
-### 5. Parse diagnosticはsource-directでよい
+### 5. 構文解析の診断は入力元を直接示せる
 
 Parse / lexer errorではCanonical subjectがまだ成立していない場合があります。その段階で擬似的なsemantic identityを作りません。
 
@@ -95,7 +95,7 @@ Loaderは位置付きsyntax errorをsource artifact + rangeへ結び、`PARSE_ER
 - `internal/syntax/error.go`
 - `internal/workspace/source_diagnostic.go`
 
-### 6. Native SQLはnative fileのままauthoritative sourceになれる
+### 6. SQLはSQLファイルのまま権威ある入力元になれる
 
 Query declarationは次の両方を扱います。
 
@@ -121,7 +121,7 @@ query:order_entry.recent_orders
   authoring  -> applications/order-entry/queries/recent_orders.sql
 ```
 
-### 7. Native SQLからAnalyzerへphysical pathを渡さない
+### 7. SQL解析器へ物理的な場所を渡さない
 
 Analyzer protocolはCanonical Query ID、dialect、SQL source等を受け取りますが、authoring file pathを要求しません。
 
@@ -132,19 +132,19 @@ Analyzer protocolはCanonical Query ID、dialect、SQL source等を受け取り�
 - `internal/query/analyzer/model.go`
 - `internal/workspace/traceability_conformance_test.go`
 
-### 8. Derived artifactからauthoritative sourceへ暗黙に逆書きしない
+### 8. 派生成果物から権威ある入力元へ暗黙に書き戻さない
 
 M0.23ではSource Index、Diagnostic projection、Analyzer result等から`.tei` / `.sql`を自動書き換えるAPIを設けません。
 
 将来Editorが修正操作を提供する場合も、Source Indexは「どこから来たか」を示す情報であって、「derived artifactを正としてauthoritative sourceを上書きしてよい」という権限ではありません。
 
-### 9. Authoritative sourceの競合をheuristicにmergeしない
+### 9. 権威ある入力元の競合を推測で統合しない
 
 一つのsubjectへ複数source roleを持たせること自体は可能です。たとえばQuery declarationの`definition`とSQL本文の`authoring`は役割が異なります。
 
 一方、同一roleで競合するauthoritative sourceを、filenameや探索順序から推測して一つへ決める設計にはしません。必要なら明示的なcomposition ruleを追加します。
 
-## CLIで確認する
+## コマンドラインで確認する
 
 Source Index全体:
 
@@ -173,7 +173,7 @@ go run ./cmd/tei validate \
 
 source referenceを解決できるfindingは`path:line:column`へ戻ります。
 
-## Reference / CI
+## 参照実装と自動検査
 
 Source Index全体のgolden fileは保存していません。現段階では、Index全体の差分を恒久的なreview artifactにするより、次を固定する方が意味境界を明確に保てると判断しています。
 
@@ -185,7 +185,7 @@ Source Index全体のgolden fileは保存していません。現段階では、
 
 常設CIでは`order_entry.recent_orders`のSource Index projectionを実行し、definition / authoring pathとfingerprintを検査します。
 
-## M0.23で主張しないこと
+## M0.23で保証する範囲外
 
 このConformanceは次を意味しません。
 

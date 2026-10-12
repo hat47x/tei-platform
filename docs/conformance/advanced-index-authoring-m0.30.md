@@ -1,4 +1,4 @@
-# M0.30 Advanced Index Desired Authoring Conformance
+# M0.30 高度な索引の期待構造を記述する際の準拠確認
 
 ## 目的
 
@@ -6,7 +6,7 @@ M0.30では、M0.29で観測・比較できるようになったAdvanced Index�
 
 対象はIssue #51とADR-0011です。Indexの推奨や自動生成ではなく、利用者が選んだphysical intentを損失なく記述し、Actualとの差を既存Schema Diffで比較できることを目的とします。
 
-## authoringの位置づけ
+## 記述方法の位置づけ
 
 Advanced IndexはSemantic modelの一部ではありません。
 
@@ -41,7 +41,7 @@ index customers_name_advanced_idx {
 }
 ```
 
-## ordered key
+## 順序付きのキー
 
 Advanced Indexではkeyの順序を保持します。
 
@@ -64,7 +64,7 @@ key expression {
 
 AttributeとExpressionを同時に持つ内部modelはDesired realizationで拒否します。
 
-## per-key semantics
+## キーごとの意味
 
 key blockでは、必要な場合に次を指定できます。
 
@@ -77,7 +77,7 @@ key blockでは、必要な場合に次を指定できます。
 
 collationとoperator classはprovider固有identifierです。Core共通taxonomyへ変換しません。
 
-### PostgreSQL B-treeのeffective default
+### PostgreSQL B-treeの既定値
 
 M0.29 Actual側のPostgreSQL catalog normalizationと表現を合わせるため、B-treeについてDB接続なしに確定できるdefaultはDesired realizationでも正規化します。
 
@@ -94,7 +94,7 @@ B-tree keyに`pg_catalog.default` collationを明示した場合も、Actual側�
 
 一方、default operator classや、provider / method / physical type / provider versionに依存する一般的なidentifier normalizationはM0.30で推測しません。これはIssue #58へ分離します。
 
-## INCLUDE
+## 付加列（INCLUDE）
 
 INCLUDE対象もSemantic Attribute IDで記述します。
 
@@ -104,7 +104,7 @@ include customer.external_id
 
 Desired realization時にphysical columnへ解決します。INCLUDE順序は保持します。
 
-## partial predicateとexpression provenance
+## 部分索引条件と式の由来
 
 partial predicateとexpression keyは次のprovenanceを必ず持ちます。
 
@@ -118,7 +118,7 @@ Provider-native SourceのSQL構文解析はTEI Core parserの責務にしませ�
 
 DBMSがcastやparenthesesを補って別の文字列表現を返す場合のnormalization契約はIssue #54へ分離しています。
 
-## unique indexのNULL treatment
+## 一意索引におけるNULLの扱い
 
 unique indexでは次を明示できます。
 
@@ -131,13 +131,13 @@ null-treatment not-distinct
 
 non-unique indexに`null-treatment`を指定した場合は拒否します。
 
-## access method
+## 索引方式
 
 `method`は任意です。
 
 未指定時はprovider既定のmethodへDesired realizationで解決します。PostgreSQLでは現行Conformance上`btree`へ解決します。
 
-## Index名とsource identity
+## 索引名と入力元の識別
 
 同一Persistence Mapping内では、Index名を一意とします。
 
@@ -150,7 +150,7 @@ ID   = <Persistence Mapping ID>/<Index Name>
 
 同じMapping内に同名Indexを複数許すと、二つの宣言が同じsubjectへ衝突し、source navigationが誤った宣言を指す可能性があります。そのため、Desired realizationとSource Index構築の双方で重複Index名を拒否します。
 
-## Source IndexとDiagnostic projection
+## 入力元索引と診断への投影
 
 たとえば次のsubjectを構築します。
 
@@ -166,7 +166,7 @@ simple formのIndexも同じ`persistence-index` subjectで追跡します。
 
 さらに、`validation.Diagnostic`がこのsubjectを持つ場合、Diagnostic projectionが同じIndex名tokenの定義位置へ戻れることを検証します。Source Indexを作れるだけでなく、Editorや診断表示へ接続できる追跡経路まで固定します。
 
-## Desired realization
+## 期待する構造の生成
 
 Persistence authoringからM0.29の`physical.Index`へ次をrealizeします。
 
@@ -182,7 +182,7 @@ Desired側の`Index.State`は常にnilです。
 
 invalid / non-ready / non-liveといったActual lifecycle stateをDesired authoringから要求することはできません。
 
-## Schema Diff
+## 構造差分
 
 M0.30ではSchema Diffの比較規則自体を増やしません。
 
@@ -196,7 +196,7 @@ Conformance testでは次を固定します。
 4. Actual lifecycle stateはDesired structural identityへ混ざらない
 5. PostgreSQL B-treeの既定動作を明示してもActual normalizationと同じ表現へ収束する
 
-## parser Conformance
+## 構文解析の準拠確認
 
 Parserでは次を固定します。
 
@@ -209,7 +209,7 @@ Parserでは次を固定します。
 - non-unique indexの`null-treatment`を拒否する
 - `index NAME`の後が`on`でも`{`でもない場合を拒否する
 
-## Workspace Conformance
+## 作業領域での準拠確認
 
 実際のWorkspace loader経路で、Advanced Indexを含むPersistence fileを読み込めることを固定します。
 
@@ -220,7 +220,7 @@ Parserでは次を固定します。
 - `persistence-index` subjectを持つDiagnosticがIndex名tokenへprojectionされる
 - 同一Mapping内の重複Index名はSource Index構築時にも拒否される
 
-## Reference Workspace
+## 参照用作業領域
 
 既存Reference Workspaceのsimple Indexは変更しません。
 
@@ -228,7 +228,7 @@ Parserでは次を固定します。
 
 Reference WorkspaceにAdvanced Indexを追加することだけを目的にworld snapshot全体を書き換えることは、M0.30の完了条件にはしません。
 
-## migration SQLとの境界
+## マイグレーションSQLとの境界
 
 M0.30は「Desiredとして表現できること」までを対象とします。
 
@@ -248,7 +248,7 @@ Advanced Indexを安全なprovider-native DDLへ変換する責務はIssue #55�
 - partitioned index semantics
 - Desired lifecycle state
 
-## 次の境界
+## 次に検討する境界
 
 M0.30完了後も、Advanced Indexには独立した課題が残ります。
 

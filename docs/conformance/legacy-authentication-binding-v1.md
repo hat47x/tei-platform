@@ -1,4 +1,4 @@
-# Legacy Authentication Binding Conformance
+# 既存認証の明示的な接続の準拠確認
 
 ## 目的
 
@@ -6,7 +6,7 @@
 
 認証処理そのものの境界は、PR #145で追加した`internal/security/legacyauth`を利用します。Capabilityを正常に実行して得られる業務上の結果とExecution Errorの区別は、PR #141で成立した共通のInvocation境界をそのまま利用します。
 
-## Applicationから見える意味
+## アプリケーションから見える意味
 
 `order_entry`は`security`意味空間を明示的に利用します。
 
@@ -21,7 +21,7 @@ application order_entry {
 
 Authenticationを特定のDatabase名やlegacy schema名としてApplicationへ持ち込みません。Applicationから見えるのは`security.authenticate`というSemantic Capabilityです。
 
-## 明示Binding
+## 明示的な接続
 
 `order_entry`では、既存の`sales.order.submit`と同じCustom Go Binding形式を使います。
 
@@ -43,7 +43,7 @@ applications/order-entry/realizations/authenticate.tei
 
 へ戻れることをConformanceで確認します。
 
-## legacy fixture
+## 既存仕様の試験用データ
 
 Git管理するReference fixtureは`reference/legacy-auth/users.json`に置きます。
 
@@ -62,7 +62,7 @@ Git管理するReference fixtureは`reference/legacy-auth/users.json`に置き�
 
 `FixtureStore`はこれらを`legacyauth.User`へ渡しますが、標準User schemaへ変換することを目的とした型ではありません。
 
-## secretの境界
+## 秘密情報の境界
 
 Git管理するfixtureには、password平文、password hash、credential hash、token、secretを保存しません。
 
@@ -113,7 +113,7 @@ fixtureのsource pathは`FixtureStore.SourcePath()`からConformance上で確認
 
 Authorizationは次の縦切りで`security.authorize`として`order_entry`のbrowse / edit / submitへ接続します。
 
-## Gate Aへの意味
+## 判定段階Aとの関係
 
 このConformanceにより、Authenticationについては次をRepositoryから説明できます。
 
