@@ -105,6 +105,8 @@ jobs:
           printf 'e1-checked-sha=%s\n' "$GITHUB_SHA"
           printf 'e1-runner-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/run.sh)"
           printf 'e1-regression-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/clean-check-test.sh)"
+          # 追加した手動exact-head Gateの契約も隔離Git fixtureで検証する。
+          python3 tools/ci-workflows-test.py
           bash -n tools/reference-external-coordination/run.sh
           bash -n tools/reference-external-coordination/clean-check-test.sh
           bash tools/reference-external-coordination/clean-check-test.sh
