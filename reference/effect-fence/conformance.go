@@ -108,6 +108,35 @@ func CheckAtomicConformance(ctx context.Context, fresh func() (ConformanceFixtur
 			}
 			return nil
 		}},
+		{name: "revoked-after-other-permit-commits", run: func(f ConformanceFixture) error {
+			r := req("op-pending-replay")
+			first, err := prepare(f, r)
+			if err != nil {
+				return err
+			}
+			second, err := prepare(f, r)
+			if err != nil {
+				return err
+			}
+			committed, err := commit(f, first)
+			if err != nil || committed.Disposition != Committed {
+				return fmt.Errorf("初回確定が失敗: %+v: %v", committed, err)
+			}
+			if err := f.SetAuthority(scope, 2, false); err != nil {
+				return err
+			}
+			replay, err := commit(f, second)
+			if err != nil || replay.Disposition != Denied || replay.Receipt != (Receipt{}) {
+				return fmt.Errorf("失効後の保留済み再送で確定記録を開示しました: %+v: %v", replay, err)
+			}
+			if _, ok := f.Lookup(scope, r.OperationID); ok {
+				return fmt.Errorf("失効後に確定記録を照会できました")
+			}
+			if _, version := f.Observe(scope); version != 1 {
+				return fmt.Errorf("失効後の再送が副作用を生じました: %d", version)
+			}
+			return nil
+		}},
 		{name: "resource-changed-before-commit", run: func(f ConformanceFixture) error {
 			p, err := prepare(f, req("op-4"))
 			if err != nil {
