@@ -55,7 +55,7 @@ func TestParseJSONValidSurrogatePairsAndEscapedBackslash(t *testing.T) {
 }
 
 func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.T) {
-	source := referencePluginPackageTransformSource(t)
+	source := canonicalTestMetaSource(t)
 	raw, err := json.Marshal(source)
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +99,7 @@ func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.
 }
 
 func TestParseSourceJSONUnicodeScalarCanonicalization(t *testing.T) {
-	source := referencePluginPackageTransformSource(t)
+	source := canonicalTestMetaSource(t)
 	source.Identity.ContractVersion = "contract/😀"
 	direct, err := json.Marshal(source)
 	if err != nil {
@@ -143,7 +143,7 @@ func TestParseSourceJSONUnicodeScalarCanonicalization(t *testing.T) {
 }
 
 func TestMaterializeSourceValidPairedSurrogateLiteral(t *testing.T) {
-	source := referencePluginPackageTransformSource(t)
+	source := canonicalTestMetaSource(t)
 	source.Program.Assertions = nil
 	source.Program.Output = transform.Expr{
 		Op:      transform.OpLiteral,

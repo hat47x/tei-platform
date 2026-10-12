@@ -71,29 +71,40 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 		if !inString && (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t') {
 			continue
 		}
-		// Normalize escapes that encode a Unicode scalar before sizing it.
-		// In particular, a surrogate pair becomes one UTF-8 scalar in the
-		// canonical JSON value, so counting the twelve source bytes would
-		// reject a valid Source whose canonical artifact exactly fits.
+		// Parse valid Unicode escape spellings without materializing decoded
+		// strings. A surrogate pair occupies 12 source bytes but encodes as
+		// one four-byte UTF-8 scalar, which matters at the exact byte limit.
 		if inString && !escaped && ch == '\\' && i+1 < len(raw) {
-			if raw[i+1] == '/' {
-				// The JSON encoder emits an unescaped slash.
+			if raw[i+1] == 'u' && i+6 <= len(raw) {
+				unit, ok := jsonHex16(raw[i+2 : i+6])
+				if ok {
+					encoded := sourceUnicodeEscapeSize(unit)
+					consumed := 6
+					if unit >= 0xd800 && unit <= 0xdbff && i+12 <= len(raw) &&
+						raw[i+6] == '\\' && raw[i+7] == 'u' {
+						low, valid := jsonHex16(raw[i+8 : i+12])
+						if valid && low >= 0xdc00 && low <= 0xdfff {
+							encoded = 4
+							consumed = 12
+						}
+					}
+					if encoded > 0 {
+						size += encoded
+						if size > b.remaining {
+							return fmt.Errorf("serialized size limit exceeded")
+						}
+						i += consumed - 1
+						continue
+					}
+				}
+			} else if raw[i+1] == '/' {
+				// The JSON escape \\/ is emitted by encoding/json as /.
 				size++
-				i++
 				if size > b.remaining {
 					return fmt.Errorf("serialized size limit exceeded")
 				}
+				i++
 				continue
-			}
-			if raw[i+1] == 'u' {
-				if encodedBytes, consumed, ok := canonicalUnicodeEscapeSize(raw[i:]); ok {
-					size += encodedBytes
-					i += consumed - 1
-					if size > b.remaining {
-						return fmt.Errorf("serialized size limit exceeded")
-					}
-					continue
-				}
 			}
 		}
 		// The expansion estimate remains conservative for malformed JSON;
@@ -135,39 +146,28 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 	return b.add(size)
 }
 
-// canonicalUnicodeEscapeSize returns the encoded size of one decoded JSON
-// Unicode escape and how many source bytes it consumes. The JSON parser still
-// validates the literal; invalid or unpaired escapes fall back to conservative
-// byte counting and are rejected during normalization.
-func canonicalUnicodeEscapeSize(raw []byte) (size, consumed int, ok bool) {
-	if len(raw) < 6 || raw[0] != '\\' || raw[1] != 'u' {
-		return 0, 0, false
+// sourceUnicodeEscapeSize matches encoding/json's escaped string spelling.
+// Surrogate units are handled only as validated pairs by rawJSON.
+func sourceUnicodeEscapeSize(unit uint16) int {
+	switch unit {
+	case '"', '\\', '\b', '\f', '\n', '\r', '\t':
+		return 2
+	case '<', '>', '&', 0x2028, 0x2029:
+		return 6
 	}
-	first, valid := jsonHex16(raw[2:6])
-	if !valid {
-		return 0, 0, false
+	if unit >= 0xd800 && unit <= 0xdfff {
+		return 0
 	}
-	r := rune(first)
-	consumed = 6
-	switch {
-	case first >= 0xd800 && first <= 0xdbff:
-		if len(raw) < 12 || raw[6] != '\\' || raw[7] != 'u' {
-			return 0, 0, false
-		}
-		second, valid := jsonHex16(raw[8:12])
-		if !valid || second < 0xdc00 || second > 0xdfff {
-			return 0, 0, false
-		}
-		r = 0x10000 + (rune(first)-0xd800)<<10 + (rune(second) - 0xdc00)
-		consumed = 12
-	case first >= 0xdc00 && first <= 0xdfff:
-		return 0, 0, false
+	if unit < 0x20 {
+		return 6
 	}
-	encoded, err := jsonStringEncodedSize(string(r), 8)
-	if err != nil {
-		return 0, 0, false
+	if unit < 0x80 {
+		return 1
 	}
-	return encoded - 2, consumed, true
+	if unit < 0x800 {
+		return 2
+	}
+	return 3
 }
 
 func (b *sourceSizeBudget) measure(v reflect.Value, depth int) error {
