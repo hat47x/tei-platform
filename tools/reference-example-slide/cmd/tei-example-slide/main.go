@@ -24,18 +24,20 @@ func main() {
 	hypothesesFile := flag.String("hypotheses", "", "optional candidate key / FD hypotheses JSON; requires -out")
 	workspaceSource := flag.String("workspace-source", "", "optional loaded Workspace source audit for -hypotheses; requires -out")
 	ruleIntents := flag.String("rule-intents", "", "optional unverified rule declaration intents; requires -hypotheses and -workspace-source")
+	ruleSourceFile := flag.String("rule-source-file", "", "optional external authored rule source file; requires -rule-intents and -rule-source-path")
+	ruleSourcePath := flag.String("rule-source-path", "", "logical relative path for the unaccepted rule source; requires -rule-source-file")
 	flag.Parse()
-	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile, *hypothesesFile, *workspaceSource, *ruleIntents); err != nil {
+	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile, *hypothesesFile, *workspaceSource, *ruleIntents, *ruleSourceFile, *ruleSourcePath); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
 func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extraFiles ...string) error {
-	if len(extraFiles) > 4 {
+	if len(extraFiles) > 6 {
 		return fmt.Errorf("too many supplementary inputs")
 	}
-	answerFile, hypothesesFile, workspaceSource, ruleIntentsFile := "", "", "", ""
+	answerFile, hypothesesFile, workspaceSource, ruleIntentsFile, ruleSourceFile, ruleSourcePath := "", "", "", "", "", ""
 	if len(extraFiles) >= 1 {
 		answerFile = extraFiles[0]
 	}
@@ -47,6 +49,18 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 	}
 	if len(extraFiles) >= 4 {
 		ruleIntentsFile = extraFiles[3]
+	}
+	if len(extraFiles) >= 5 {
+		ruleSourceFile = extraFiles[4]
+	}
+	if len(extraFiles) >= 6 {
+		ruleSourcePath = extraFiles[5]
+	}
+	if (ruleSourceFile == "") != (ruleSourcePath == "") {
+		return fmt.Errorf("-rule-source-file and -rule-source-path must be supplied together")
+	}
+	if ruleSourceFile != "" && (ruleIntentsFile == "" || hypothesesFile == "" || workspaceSource == "" || outputPath == "" || worldPath != "" || catalogOnly) {
+		return fmt.Errorf("-rule-source-file requires -rule-intents, -hypotheses, -workspace-source and -out; excludes -world and -catalog")
 	}
 	if ruleIntentsFile != "" && (hypothesesFile == "" || workspaceSource == "" || inputPath == "" || outputPath == "" || catalogOnly || worldPath != "") {
 		return fmt.Errorf("-rule-intents requires -input, -hypotheses, -workspace-source and -out; excludes -world and -catalog")
@@ -118,6 +132,7 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 	var modelHypothesisReview *example.ModelHypothesisReview
 	var modelSourceAudit *example.ModelHypothesisSourceAudit
 	var modelRuleDraft *example.ModelRuleDeclarationDraft
+	var modelRuleSource *example.ModelRuleSourceReview
 	if hypothesesFile != "" {
 		var proposals example.ModelHypotheses
 		if err := readStrictJSON(hypothesesFile, &proposals); err != nil {
@@ -145,6 +160,19 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 				return fmt.Errorf("build model rule draft: %w", err)
 			}
 			modelRuleDraft = &draft
+			if ruleSourceFile != "" {
+				// The rule file is external unaccepted input. The logical
+				// path is only an authoring locator, not a Workspace load.
+				sourceBytes, err := os.ReadFile(ruleSourceFile)
+				if err != nil {
+					return fmt.Errorf("read proposed rule source: %w", err)
+				}
+				ruleReview, err := example.IndexModelRuleDraftSource(draft, ruleSourcePath, sourceBytes)
+				if err != nil {
+					return fmt.Errorf("review proposed rule source: %w", err)
+				}
+				modelRuleSource = &ruleReview
+			}
 		}
 	}
 	if outputPath == "" {
@@ -198,6 +226,16 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 		}
 		draftJSON = append(draftJSON, '\n')
 		if err := os.WriteFile(filepath.Join(outputPath, "model-rule-declaration-draft.json"), draftJSON, 0600); err != nil {
+			return err
+		}
+	}
+	if modelRuleSource != nil {
+		sourceJSON, err := json.MarshalIndent(modelRuleSource, "", "  ")
+		if err != nil {
+			return err
+		}
+		sourceJSON = append(sourceJSON, '\n')
+		if err := os.WriteFile(filepath.Join(outputPath, "model-rule-source-review.json"), sourceJSON, 0600); err != nil {
 			return err
 		}
 	}
