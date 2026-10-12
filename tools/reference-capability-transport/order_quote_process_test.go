@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,25 +35,56 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	// Build in a separate module: no TEI internal package, private go.mod,
-	// package-level generated protocol or shared Go type dependency is needed.
+	// Build the complete source of the standalone business plugin in an
+	// unrelated offline Go module. Copying only main.go could silently omit a
+	// newly added source file from the verification.
 	binary := filepath.Join(t.TempDir(), "order-quote")
 	work := t.TempDir()
-	source, err := os.ReadFile("../../plugins/reference-order-quote/main.go")
+	sourceDir := "../../plugins/reference-order-quote"
+	entries, err := os.ReadDir(sourceDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(work, "main.go"), source, 0600); err != nil {
-		t.Fatal(err)
+	copied := 0
+	for _, entry := range entries {
+		if entry.Name() == "README.md" {
+			continue
+		}
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 ||
+			!strings.HasSuffix(entry.Name(), ".go") {
+			t.Fatalf("unsupported source in independent quote plugin: %s", entry.Name())
+		}
+		source, err := os.ReadFile(filepath.Join(sourceDir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(work, entry.Name()), source, 0600); err != nil {
+			t.Fatal(err)
+		}
+		copied++
+	}
+	if copied == 0 {
+		t.Fatal("independent quote plugin has no Go sources")
 	}
 	if err := os.WriteFile(filepath.Join(work, "go.mod"), []byte("module example.invalid/reference-order-quote\n\ngo 1.23\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	build := exec.CommandContext(ctx, "go", "build", "-o", binary, ".")
-	build.Dir = work
-	build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("standalone business plugin build failed: %v\n%s", err, output)
+	env := append(os.Environ(),
+		"GOENV=off", "GOWORK=off", "GOFLAGS=", "GO111MODULE=on",
+		"GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off",
+		"GOMODCACHE="+filepath.Join(work, "_modcache"),
+		"GOPATH="+filepath.Join(work, "_gopath"))
+	for _, args := range [][]string{
+		{"test", "-count=1", "./..."},
+		{"vet", "./..."},
+		{"build", "-o", binary, "."},
+	} {
+		cmd := exec.CommandContext(ctx, "go", args...)
+		cmd.Dir = work
+		cmd.Env = env
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("standalone quote plugin %v failed: %v\n%s", args, err, output)
+		}
 	}
 	image, err := os.ReadFile(binary)
 	if err != nil {
