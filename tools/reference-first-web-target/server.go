@@ -1,3 +1,5 @@
+//go:build !tei_api_only
+
 package main
 
 import (
