@@ -25,7 +25,7 @@ func semanticRuleWorld() ir.World {
 			FunctionalDependencies: []semantic.FunctionalDependency{{
 				ID: "sales.order_line.item_by_line", Symbol: "itemByLine",
 				Determinants: []core.CanonicalID{"sales.order_line.order_id", "sales.order_line.line_number"},
-				Dependents: []core.CanonicalID{"sales.order_line.item_code"},
+				Dependents:   []core.CanonicalID{"sales.order_line.item_code"},
 			}},
 		}},
 	}}}
