@@ -24,8 +24,12 @@ func TestContractAdmissionFailClosed(t *testing.T) {
 		Proof:                   ProofProvider,
 		ProofReference:          "evidence/actual-provider-commit",
 	}
-	if a := AssessBoundary(valid, GuaranteeDurable); !a.Allowed || a.Available != GuaranteeDurable {
-		t.Fatalf("complete provider declaration not admitted: %+v", a)
+	if a := AssessBoundary(valid, GuaranteeDurable); a.Allowed || a.Reason != "provider-evidence-not-attested" {
+		t.Fatalf("untrusted provider self-declaration accepted: %+v", a)
+	}
+	verify := func(c BoundaryContract) bool { return c.ProofReference == "evidence/actual-provider-commit" }
+	if a := AssessVerifiedBoundary(valid, GuaranteeDurable, verify); !a.Allowed || a.Available != GuaranteeDurable {
+		t.Fatalf("validated provider declaration not admitted: %+v", a)
 	}
 	cases := []struct {
 		name   string
@@ -48,7 +52,7 @@ func TestContractAdmissionFailClosed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := valid
 			tc.modify(&c)
-			if got := AssessBoundary(c, GuaranteeDurable); got.Allowed || got.Reason == "" {
+			if got := AssessVerifiedBoundary(c, GuaranteeDurable, func(BoundaryContract) bool { return true }); got.Allowed || got.Reason == "" {
 				t.Fatalf("unsafe declaration admitted: %+v", got)
 			}
 		})
