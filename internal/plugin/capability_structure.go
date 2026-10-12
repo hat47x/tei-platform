@@ -27,6 +27,52 @@ func ValidateUniqueCapabilityPermissions(specs []permission.Spec) error {
 	return fmt.Errorf("permission %q appears more than once", duplicates[0])
 }
 
+// ValidateUniqueCapabilitySupports treats simple capability declarations as sets.
+// Repeating a support never adds meaning, and silently dropping duplicates would
+// change the canonical source being fingerprinted.
+func ValidateUniqueCapabilitySupports[T ~string](field string, values []T) error {
+	seen := make(map[T]struct{}, len(values))
+	var first T
+	duplicate := false
+	for _, value := range values {
+		if _, exists := seen[value]; exists {
+			if !duplicate || value < first {
+				first = value
+				duplicate = true
+			}
+		}
+		seen[value] = struct{}{}
+	}
+	if duplicate {
+		return fmt.Errorf("%s value %q appears more than once", field, first)
+	}
+	return nil
+}
+
+// ValidateCapabilitySupportSets rejects repeated members of the six scalar
+// support arrays while leaving normalization and valid fingerprints unchanged.
+func ValidateCapabilitySupportSets(c Capability) error {
+	if err := ValidateUniqueCapabilitySupports("actions", c.Actions); err != nil {
+		return err
+	}
+	if err := ValidateUniqueCapabilitySupports("observations", c.Observations); err != nil {
+		return err
+	}
+	if err := ValidateUniqueCapabilitySupports("evidence", c.Evidence); err != nil {
+		return err
+	}
+	if err := ValidateUniqueCapabilitySupports("databaseProviders", c.DatabaseProviders); err != nil {
+		return err
+	}
+	if err := ValidateUniqueCapabilitySupports("migrationTools", c.MigrationTools); err != nil {
+		return err
+	}
+	if err := ValidateUniqueCapabilitySupports("features", c.Features); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ValidateCapabilityStructure checks local declarations independently of a
 // World. Referenced environments and runtime grants are validated elsewhere.
 func ValidateCapabilityStructure(provides []Capability) error {
@@ -56,6 +102,19 @@ func ValidateCapabilityStructure(provides []Capability) error {
 			if !p.Known() || p == environment.ProviderGeneric {
 				return fmt.Errorf("capability %s has invalid database provider %q", c.ID, p)
 			}
+		}
+		for _, tool := range c.MigrationTools {
+			if !tool.Valid() {
+				return fmt.Errorf("capability %s has invalid migration tool %q", c.ID, tool)
+			}
+		}
+		for _, feature := range c.Features {
+			if !feature.Known() {
+				return fmt.Errorf("capability %s has invalid feature %q", c.ID, feature)
+			}
+		}
+		if err := ValidateCapabilitySupportSets(c); err != nil {
+			return fmt.Errorf("capability %s: %w", c.ID, err)
 		}
 		for _, spec := range c.Permissions {
 			if err := spec.Validate(); err != nil {
