@@ -401,6 +401,9 @@ func captureDiagnostic(
 	emptyReads := 0
 	for {
 		n, err := reader.Read(buffer)
+		if n < 0 || n > len(buffer) {
+			return diagnosticCaptureEvidence{}, nil, fmt.Errorf("diagnostic reader returned an invalid byte count")
+		}
 		if n == 0 && err == nil {
 			emptyReads++
 			if emptyReads >= 100 {
