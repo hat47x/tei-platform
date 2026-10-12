@@ -19,10 +19,10 @@ type ChangeTriage struct {
 type ChangeTriageItem struct {
 	Question       QuestionRef  `json:"question"`
 	SourceIssue    *ReviewIssue `json:"sourceIssue,omitempty"`
-	Route          string      `json:"route"`
-	Reason         string      `json:"reason"`
-	NextValidation []string    `json:"nextValidation"`
-	CandidateReady bool        `json:"candidateReady"`
+	Route          string       `json:"route"`
+	Reason         string       `json:"reason"`
+	NextValidation []string     `json:"nextValidation"`
+	CandidateReady bool         `json:"candidateReady"`
 }
 
 // TriageAnsweredReview rebuilds the exact answer binding, then returns only
