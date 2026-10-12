@@ -91,14 +91,13 @@ func (t *LinuxHostSignerTrust) current(ref string, epoch uint64) bool {
 	return ok && entry.epoch == epoch
 }
 
-// startIfCurrent serializes the authorization decision with the OS process
-// start. Revoke and Allow use the exclusive lock; once either returns, a stale
-// epoch cannot start a new child. The read lock is released immediately after
-// Start, not after the child finishes, so existing work need not be drained
-// before revocation is recorded.
+// startIfCurrentは、署名鍵の有効性確認とOSへの起動要求を直列化する。
+// RevokeとAllowが書込みロックを使うため、失効・交換の完了後に旧世代の
+// 承認で新しい子プロセスを開始することはできない。読み取りロックは
+// Startの完了時に解放し、処理中の子プロセスの終了を待たせない。
 //
-// This provides Host-local start/revoke ordering. It does not stop children
-// that are already started or synchronize trust across multiple Host processes.
+// 保証するのは一つのホストの信頼集合における順序だけである。
+// 起動済みの子プロセスを停止させたり、別のホストへ失効を配布したりはしない。
 func (t *LinuxHostSignerTrust) startIfCurrent(ref string, epoch uint64, start func() error) error {
 	if t == nil {
 		return errors.New("Linux signer trust policy is missing")
