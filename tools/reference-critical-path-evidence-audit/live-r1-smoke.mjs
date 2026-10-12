@@ -531,6 +531,34 @@ async function main() {
       productionTargetUnmodified: true, independentDatabaseRead: false
     }
   });
+  const evidenceFiles = evidenceDir ? [
+    "workspace-r1.json", "target-launch.json", "web-positive.json",
+    "target-negative-launch.json", "web-negative-unit-price.json",
+    "target-n11-launch.json", "n11-unobserved-control.json"
+  ] : [];
+  // CI currently retains job logs, but not these temporary files as artifacts.
+  // Publishing each file's exact checksum to stderr leaves a bounded
+  // human-reviewable witness without disclosing synthetic HTTP response bodies.
+  const evidenceSHA256 = Object.fromEntries(evidenceFiles.map(name =>
+    [name, sha256(readFileSync(join(evidenceDir, name)))]));
+  process.stderr.write("TEI #1163 synthetic witness: " + JSON.stringify({
+    integrationHead: head, acceptedScratchSourceR1: r1,
+    manifestSemanticSHA256: loadedMeaningSHA256,
+    allThreeWebManifestsMatch: true,
+    positiveWeb: { httpStatus: submitResponse.status,
+      commandCompleted: Boolean(receipt.result.command),
+      observationNature: receipt.result.observation.nature },
+    negativeUnitPrice: { httpStatus: negativeResponse.status,
+      selectedValidation: validationID, stage: negativeReceipt.result.stage,
+      commandDispatched: Boolean(negativeReceipt.result.command) },
+    n11: { httpStatus: n11Response.status,
+      stage: n11Receipt.result.stage,
+      commandCompleted: Boolean(n11Receipt.result.command),
+      observationResultRecorded: Boolean(n11Receipt.result.observation),
+      targetBinarySHA256: n11Launch.binarySHA256 },
+    evidenceSHA256, evidenceBodiesArchivedByThisScript: false,
+    independentDatabaseRead: false, productGate: "UNQUALIFIED"
+  }) + "\n");
   process.stdout.write(JSON.stringify({
     status: "E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY", // #1119 workflow-compatible; N11 in dedicated fields
     authority: "test-harness-acceptance-not-human",
@@ -544,10 +572,13 @@ async function main() {
     n11UnobservedReadControl: "TESTED_WITH_SYNTHETIC_OBSERVATION_FAILURE_OVERLAY",
     n11ReportsExecutionError: n11Response.status === 422 &&
       Boolean(n11Receipt.result.command) && !n11Receipt.result.observation,
+    manifestSemanticSHA256: loadedMeaningSHA256,
+    threeWebManifestsMatchAcceptedApplication: true,
+    n11HttpStatus: n11Response.status,
+    n11CommandCompleted: Boolean(n11Receipt.result.command),
+    n11ObservationResultRecorded: Boolean(n11Receipt.result.observation),
     evidenceDirectory: evidenceDir,
-    evidenceFiles: evidenceDir ? ["workspace-r1.json", "target-launch.json",
-      "web-positive.json", "target-negative-launch.json", "web-negative-unit-price.json",
-      "target-n11-launch.json", "n11-unobserved-control.json"] : [],
+    evidenceFiles, evidenceSHA256,
     limits: ["temporary-scratch", "synthetic-provider", "three-distinct-test-binaries",
       "n11-synthetic-read-unavailable", "no-real-db", "not-human-approved",
       "not-E1-complete", "not-product-gate"]
