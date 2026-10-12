@@ -170,6 +170,16 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(after.modelRevision === afterRevision, label + ": new revision in projection");
   checked(after.sourceNavigation.status === "source-index-backed",
     label + ": accepted subject resolves to its exact updated Source anchor");
+  const liveInspect = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"),
+    "inspect", "-workspace", workspace,
+    "-focus", expectedKind + ":" + expectedID
+  ]).stdout);
+  checked(liveInspect.modelRevision === afterRevision &&
+    liveInspect.sourceNavigation.byteVerification?.status === "verified-at-read" &&
+    liveInspect.sourceNavigation.byteVerification?.fingerprint ===
+      liveInspect.sourceNavigation.artifactFingerprint,
+    label + ": Source Index bytes and exact position are verified on live inspect");
   if (expectedKind === "relation") {
     checked(after.views.er.edges.some(v => v.id === expectedID),
       label + ": accepted Relation appears in reprojected ER");
