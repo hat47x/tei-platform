@@ -316,3 +316,52 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
 - 出力は従来の`model-hypothesis-review.json`と別のファイルであり、`modelReviewFingerprint`と`hypothesesFingerprint`により同じレビュー対象へ結び付けます。既存の`review.json`・回答指紋を変更しません。保存は0600です。
 
 正式な業務キー・関数従属性の宣言方式、意味モデルへの差分操作、出所付き人間確認、ER図からの編集は引き続き[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)で追跡します。
+
+
+## 業務キー・関数従属性の宣言候補を型付きで持ち回る（#1126）
+
+既存の仮説検査、ER図レビュー、Workspaceの原資料出所監査を通った後に、**まだ採用されていない**業務上の候補キーと関数従属性を、独立した型付きの宣言候補として生成できます。いまの共通受理が対応しない業務規則を、`add-relation`などの別操作へ読み替えることはありません。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input /path/to/workspace-matched-case.json \
+  -hypotheses /path/to/model-hypotheses.json \
+  -workspace-source /path/to/tei-workspace \
+  -rule-intents /path/to/model-rule-intents.json \
+  -out /tmp/tei-example-model-draft
+```
+
+`model-rule-intents.json`は次の形です。二つの指紋および`issueId`には、直前の`model-hypothesis-review.json`と`model-hypothesis-source-audit.json`から**実際の値**を指定します。例示文字列をそのまま使っても検証を通過しません。
+
+```json
+{
+  "schema": "tei.reference.model-rule-draft-intent/v0",
+  "modelReviewFingerprint": "sha256:<モデル仮説レビューの実指紋>",
+  "sourceAuditFingerprint": "sha256:<出所監査の実指紋>",
+  "requests": [{
+    "issueId": "<レビュー内の実issueId>",
+    "proposedRuleId": "sales.child.business-key",
+    "rationale": "業務上この属性で一意に識別できるか確認する",
+    "claimedEvidence": [{
+      "kind": "document",
+      "ref": "documents/business-rules",
+      "fingerprint": "sha256:<参照文書の実指紋>",
+      "claimedBy": "author-claim-only"
+    }]
+  }]
+}
+```
+
+`claimedEvidence`は出所や発言者の**自己申告**であり、提出された文書の内容・本人性・承認権限を検証したものではありません。空の`claimedEvidence`も許可しますが、資料を省略しただけで承認できるわけではありません。
+
+生成する`model-rule-declaration-draft.json`は、候補キーなら`keyFields`、関数従属性なら`determinants`/`dependents`を**異なる型付き領域**として保持します。また、既存の表・属性のSource Index位置（`sourceBindings`）、反例の判定、未解決の作業、レビューと出所監査の指紋を保持します。宣言候補のIDは意味上の表IDを前置し、仮のローカル名にはハイフンを使用できます。ただし、このIDはまだ現行CoreのCanonical IDや承認済み規則IDではありません。
+
+| `status` | 意味 |
+| --- | --- |
+| `blocked-counterexample` | 具体例に確定した反例があるため、そのまま承認経路へ進めない |
+| `blocked-source-definition` | 表・属性の定義場所の出所照合が不足または不一致 |
+| `unverified-business-rule` | 反例・定義位置の障害は見つからなかったが、業務規則の真偽・承認は未確認 |
+
+`unverified-business-rule`は「採用可能」を意味しません。資料の申告や人名を付けても、**どの状態も自動的にAcceptedにはなりません**。現在の`tools/reference-shared-acceptance`に対応する型付きdeltaはまだ無く、この成果物から正本編集・DDL生成・物理PK/FK変更・Runtimeへの作用は実行しません。実Workspaceを再読込し、版・原資料・仮説・レビューが変われば古い入力を拒否します。CLIの出力先は明示指定、ファイル権限0600です。
+
+正式な規則の書式、業務識別子と物理キーの対応関係、Source Indexへの業務規則自体の定義、権限のある確認者による受理と影響解析は[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)の後続範囲です。

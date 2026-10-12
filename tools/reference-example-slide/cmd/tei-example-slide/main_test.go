@@ -416,3 +416,103 @@ func TestCLIRejectsForgedOrMissingWorkspaceSourceBeforeWriting(t *testing.T) {
 		t.Fatalf("audit error produced partial files: entries=%v err=%v", entries, err)
 	}
 }
+
+func TestCLIExportsRuleDeclarationDraftWithoutAcceptingBusinessRule(t *testing.T) {
+	root, inputPath, hypothesesPath := modelSourceCLIInputs(t)
+	var input example.Input
+	if err := readStrictJSON(inputPath, &input); err != nil {
+		t.Fatal(err)
+	}
+	var hypotheses example.ModelHypotheses
+	if err := readStrictJSON(hypothesesPath, &hypotheses); err != nil {
+		t.Fatal(err)
+	}
+	review, err := example.ReviewModelHypotheses(input, hypotheses)
+	if err != nil {
+		t.Fatal(err)
+	}
+	audit, err := example.AuditLoadedWorkspaceModelHypothesisSourceEvidence(root, input, hypotheses)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intent := example.ModelRuleDraftIntent{
+		Schema:                 "tei.reference.model-rule-draft-intent/v0",
+		ModelReviewFingerprint: review.Fingerprint,
+		SourceAuditFingerprint: audit.Fingerprint,
+		Requests: []example.ModelRuleDraftRequest{{
+			IssueID:        review.Issues[0].ID,
+			ProposedRuleID: "sales.child.business-key",
+			Rationale:      "業務識別規則として検討するが根拠の真偽は未確認",
+		}},
+	}
+	path := filepath.Join(t.TempDir(), "rule-intents.json")
+	raw, err := json.Marshal(intent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	if err := run(inputPath, "", false, out, "", hypothesesPath, root, path); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(out, "model-rule-declaration-draft.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result example.ModelRuleDeclarationDraft
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.ModelReviewFingerprint != review.Fingerprint ||
+		result.SourceAuditFingerprint != audit.Fingerprint ||
+		len(result.Declarations) != 1 ||
+		result.Declarations[0].ProposedRuleID != "sales.child.business-key" ||
+		result.Declarations[0].Status != "unverified-business-rule" {
+		t.Fatalf("unverified rule declaration lost evidence binding: %+v", result)
+	}
+	info, err := os.Stat(filepath.Join(out, "model-rule-declaration-draft.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("draft file permissions = %v, want 0600", info.Mode().Perm())
+	}
+	for _, filename := range []string{"model-hypothesis-review.json", "model-hypothesis-source-audit.json", "review.json"} {
+		if _, err := os.Stat(filepath.Join(out, filename)); err != nil {
+			t.Fatalf("lost previous review output %s: %v", filename, err)
+		}
+	}
+}
+
+func TestCLIRejectsUnboundRuleDraftBeforeGeneratingFiles(t *testing.T) {
+	root, inputPath, hypothesesPath := modelSourceCLIInputs(t)
+	intentPath := filepath.Join(t.TempDir(), "rules.json")
+	out := t.TempDir()
+	stale := `{"schema":"tei.reference.model-rule-draft-intent/v0","modelReviewFingerprint":"sha256:stale","sourceAuditFingerprint":"sha256:stale","requests":[]}`
+	if err := os.WriteFile(intentPath, []byte(stale), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(inputPath, "", false, out, "", hypothesesPath, root, intentPath); err == nil {
+		t.Fatal("stale or invalid rule review was accepted")
+	}
+	if entries, err := os.ReadDir(out); err != nil || len(entries) != 0 {
+		t.Fatalf("invalid rule created partial files: %v %v", entries, err)
+	}
+	if err := run(inputPath, "", false, out, "", hypothesesPath, "", intentPath); err == nil {
+		t.Fatal("rule draft without current Workspace source audit was accepted")
+	}
+	if err := run(inputPath, "", false, out, "", "", root, intentPath); err == nil {
+		t.Fatal("rule draft without explicit hypothesis was accepted")
+	}
+	if err := os.WriteFile(intentPath, []byte(`{"schema":"tei.reference.model-rule-draft-intent/v0","unexpected":true}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(inputPath, "", false, out, "", hypothesesPath, root, intentPath); err == nil {
+		t.Fatal("unknown rule intent field passed strict JSON parsing")
+	}
+	if entries, err := os.ReadDir(out); err != nil || len(entries) != 0 {
+		t.Fatalf("invalid rule wrote outputs: %v %v", entries, err)
+	}
+}
