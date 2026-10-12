@@ -243,3 +243,59 @@ func TestUnrelatedRegistryUpdateDoesNotDisruptSelectedService(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestProviderReRegistrationCannotReviveOldSelection(t *testing.T) {
+	r, selected, c := selectedFixture(t)
+	if err := c.ReplaceSelected(context.Background(), r, selected, 1, selectedBinding(2, "v2"), validLifecycle()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Apply(selected.Revision, nil, []string{"v2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Apply(selected.Revision+1, []Provider{provider("v2", "tenant-A", storage)}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if lease, err := c.Acquire(); !errors.Is(err, ErrStaleRegistry) {
+		if lease != nil {
+			lease.Release()
+		}
+		t.Fatalf("removed and re-registered provider silently resurrected: %v", err)
+	}
+	fresh, err := r.Select("v2", "tenant-A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.Epoch <= selected.Epoch {
+		t.Fatal("provider epoch did not advance")
+	}
+}
+
+func TestSelectedStageRejectsRevokedHostAuthority(t *testing.T) {
+	r, selected, c := selectedFixture(t)
+	denied := false
+	c.guard = func(b Binding) error {
+		if b.ProviderID == "v2" && denied {
+			return errors.New("fencing revoked")
+		}
+		return nil
+	}
+	cleaned := 0
+	lc := Lifecycle{
+		Prepare: func(_ context.Context, s *Scope) error { return s.Track(func() error { cleaned++; return nil }) },
+		Ready:   func(_ context.Context, _ Binding) error { denied = true; return nil },
+	}
+	if err := c.ReplaceSelected(context.Background(), r, selected, 1, selectedBinding(2, "v2"), lc); err == nil {
+		t.Fatal("revoked guard allowed cutover")
+	}
+	if cleaned != 1 {
+		t.Fatalf("staged effect not cleaned: %d", cleaned)
+	}
+	lease, err := c.Acquire()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lease.Binding.ProviderID != "v1" {
+		t.Fatal("previous provider not retained")
+	}
+	lease.Release()
+}
