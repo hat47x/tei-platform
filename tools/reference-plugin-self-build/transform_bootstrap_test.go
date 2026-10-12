@@ -156,6 +156,69 @@ func TestBuilderIdentityFromTransformSourcePreservesLogicalIdentity(t *testing.T
 	}
 }
 
+func TestTransformSeedBuilderVersionSeparatesRepositoryRevision(t *testing.T) {
+	const artifactDigest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	builder := transformSeedBuilderIdentity(artifactDigest)
+	if builder.ID != core.MustCanonicalID("tei.builder.transform_seed.reference") ||
+		builder.Version != "1.0.0" ||
+		builder.ContractVersion != "tei.plugin-build/v1" ||
+		builder.ArtifactDigest != artifactDigest {
+		t.Fatalf("unexpected logical seed Builder identity: %+v", builder)
+	}
+	if err := builder.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	source := bootstrapTestMetaSource(t)
+	fingerprint := func(identity plugin.BuilderIdentity) string {
+		t.Helper()
+		plan := transformBootstrapStagePlan{
+			Stage:               plugin.BootstrapStage1,
+			Builder:             identity,
+			SourceClosureDigest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+			SourceFingerprint:   "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+			Execution: transformBootstrapStageExecution{
+				Kind:   transformBootstrapExecutionNativeSeed,
+				Target: "host/test/test",
+			},
+			Output: source.Identity,
+		}
+		got, err := transformBootstrapStagePlanFingerprint(plan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	baseFingerprint := fingerprint(builder)
+
+	// Keep the repository revision in evidence, but never use it as the
+	// identity's Version or as an input to the stage plan fingerprint.
+	before := evidence{RepositoryRevision: "revision-before-docs"}
+	after := evidence{RepositoryRevision: "revision-after-docs"}
+	if before.RepositoryRevision == after.RepositoryRevision {
+		t.Fatal("test must use distinct repository revisions")
+	}
+	sameArtifactBuilder := transformSeedBuilderIdentity(artifactDigest)
+	if sameArtifactBuilder != builder || fingerprint(sameArtifactBuilder) != baseFingerprint {
+		t.Fatal("repository-only revision unexpectedly altered seed builder identity or stage plan")
+	}
+
+	changedArtifact := transformSeedBuilderIdentity("sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	changedVersion := builder
+	changedVersion.Version = "1.0.1"
+	changedContract := builder
+	changedContract.ContractVersion = "tei.plugin-build/v2"
+	for name, changed := range map[string]plugin.BuilderIdentity{
+		"seed executable": changedArtifact,
+		"logical version": changedVersion,
+		"build contract":  changedContract,
+	} {
+		if got := fingerprint(changed); got == baseFingerprint {
+			t.Errorf("%s did not affect the stage plan fingerprint", name)
+		}
+	}
+}
+
 func TestTransformBootstrapStagePlanRejectsExecutionIdentityConfusion(t *testing.T) {
 	source := bootstrapTestMetaSource(t)
 	seed := plugin.BuilderIdentity{
