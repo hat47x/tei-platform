@@ -97,3 +97,76 @@ func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.
 		t.Fatalf("diagnostic exposed raw JSON value: %v", err)
 	}
 }
+
+
+func TestParseSourceJSONUnicodeScalarCanonicalization(t *testing.T) {
+	source := transform.TransformSourceRealizerV1()
+	source.Identity.ContractVersion = "contract/😀"
+	direct, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	escaped := bytes.Replace(direct, []byte("contract/😀"), []byte(`contract/\uD83D\uDE00`), 1)
+	if bytes.Equal(direct, escaped) {
+		t.Fatal("unicode fixture was not escaped")
+	}
+	parsedDirect, err := transform.ParseSourceJSON(direct)
+	if err != nil {
+		t.Fatalf("valid UTF-8 scalar rejected: %v", err)
+	}
+	parsedEscaped, err := transform.ParseSourceJSON(escaped)
+	if err != nil {
+		t.Fatalf("valid UTF-16 surrogate pair rejected: %v", err)
+	}
+	if parsedDirect.Identity.ContractVersion != parsedEscaped.Identity.ContractVersion {
+		t.Fatal("escaped and direct Unicode scalars decoded differently")
+	}
+	fingerprintDirect, err := transform.SourceFingerprint(parsedDirect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fingerprintEscaped, err := transform.SourceFingerprint(parsedEscaped)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fingerprintDirect != fingerprintEscaped {
+		t.Fatal("equivalent Unicode spellings changed canonical Source fingerprint")
+	}
+
+	// A malformed Source must not alias the fingerprint of explicit U+FFFD.
+	invalid := bytes.Replace(escaped, []byte(`\uD83D\uDE00`), []byte(`\uD83D`), 1)
+	if bytes.Equal(invalid, escaped) {
+		t.Fatal("invalid surrogate fixture was not replaced")
+	}
+	if _, err := transform.ParseSourceJSON(invalid); err == nil || !strings.Contains(err.Error(), "surrogate") {
+		t.Fatalf("invalid Unicode escape must be rejected, got %v", err)
+	}
+}
+
+func TestMaterializeSourceValidPairedSurrogateLiteral(t *testing.T) {
+	source := transform.TransformSourceRealizerV1()
+	source.Program.Assertions = nil
+	source.Program.Output = transform.Expr{
+		Op:      transform.OpLiteral,
+		Literal: json.RawMessage(`"\uD83D\uDE00"`),
+	}
+	raw, _, err := transform.MaterializeSource(source)
+	if err != nil {
+		t.Fatalf("valid surrogate-pair literal rejected: %v", err)
+	}
+	parsed, err := transform.ParseSourceJSON(raw)
+	if err != nil {
+		t.Fatalf("valid materialized Source cannot be parsed: %v", err)
+	}
+	after, err := transform.SourceFingerprint(parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := transform.SourceFingerprint(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Fatal("materialized valid Unicode literal changed Source fingerprint")
+	}
+}
