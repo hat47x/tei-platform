@@ -2,7 +2,10 @@
 
 package effectfence
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // requiredSQLiteLegacyEpochTriggers は提供側が保持する期待DDLである。
 // 実際のトリガー定義に変更があれば書込み確定を拒否する。
@@ -92,6 +95,26 @@ func installSQLiteLegacyRoleEpochTriggers(f *sqliteFixture) error {
 	if err := f.verifyRequiredSQLiteLegacyEpochTriggers(); err != nil {
 		return err
 	}
-	f.requireSchemaGuard = true
+	f.schemaCheck = f.verifyRequiredSQLiteLegacyEpochTriggers
+	return nil
+}
+
+// verifyRequiredSQLiteLegacyEpochTriggers は、呼出元が保持する接続mutexの下で
+// 版を発行するDB側の制約が変更されていないことを確認する。
+// 管理者が一時的に無効化して戻す事象や別正本の変更は検知できない。
+func (f *sqliteFixture) verifyRequiredSQLiteLegacyEpochTriggers() error {
+	for _, expectedSQL := range requiredSQLiteLegacyEpochTriggers {
+		parts := strings.Fields(expectedSQL)
+		if len(parts) < 3 || parts[0] != "CREATE" || parts[1] != "TRIGGER" {
+			return fmt.Errorf("必要な認可正本トリガーの定義が不正です")
+		}
+		row, exists, err := f.query("SELECT sql FROM sqlite_master WHERE type='trigger' AND name=" + textSQL(parts[2]))
+		if err != nil {
+			return fmt.Errorf("認可正本の制約を確認できません: %w", err)
+		}
+		if !exists || len(row) != 1 || strings.TrimSpace(row[0]) != strings.TrimSpace(expectedSQL) {
+			return fmt.Errorf("認可正本の制約が欠落または改変されています")
+		}
+	}
 	return nil
 }
