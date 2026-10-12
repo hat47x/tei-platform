@@ -16,6 +16,9 @@ function checkRecord(r) {
   for (const f of [...r.signature.inputs, ...r.signature.outputs]) {
     if (!f || !valid(f.name) || !valid(f.type) || typeof f.nullable !== 'boolean') throw new CandidateInputError('invalid_field');
   }
+  for (const fields of [r.signature.inputs, r.signature.outputs]) {
+    if (new Set(fields.map(f => f.name)).size !== fields.length) throw new CandidateInputError('duplicate_field_name');
+  }
   for (const key of ['effects', 'failures']) if (r.signature[key].some(x => !valid(x))) throw new CandidateInputError('invalid_signature_item');
   if (r.kind === 'ui' && (!r.platform || !valid(r.platform.target) || !valid(r.platform.framework))) throw new CandidateInputError('missing_ui_platform');
   if (r.contract && (typeof r.contract !== 'object' || (r.contract.id !== undefined && !valid(r.contract.id)) || (r.contract.fingerprint !== undefined && !valid(r.contract.fingerprint)))) throw new CandidateInputError('invalid_contract');
@@ -23,7 +26,9 @@ function checkRecord(r) {
 }
 
 function compareFieldList(a, b) {
-  return stable([...a].sort((x,y) => x.name.localeCompare(y.name))) === stable([...b].sort((x,y) => x.name.localeCompare(y.name)));
+  const normalize = values => values.map(v => ({name:v.name,type:v.type,nullable:v.nullable}))
+    .sort((x,y) => x.name.localeCompare(y.name));
+  return stable(normalize(a)) === stable(normalize(b));
 }
 function compareSignatures(a, b) {
   return compareFieldList(a.inputs, b.inputs) && compareFieldList(a.outputs, b.outputs) &&
