@@ -66,17 +66,18 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_ARTIFACT", "plugin %s: %v", p.ID, err))
 		}
 		for _, ext := range p.External {
-			validScope := ext.Scope == "editor" || ext.Scope == "build" || ext.Scope == "test" || ext.Scope == "runtime" || ext.Scope == "migration"
-			validKind := ext.Kind == "toolchain" || ext.Kind == "runtime" || ext.Kind == "language-package" || ext.Kind == "tool"
-			if !validScope {
+			if !ext.ValidScope() {
 				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_SCOPE", "plugin %s external requirement %s has invalid scope %s", p.ID, ext.Name, ext.Scope))
 			}
-			if !validKind {
+			if !ext.ValidKind() {
 				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_KIND", "plugin %s external requirement %s has invalid kind %s", p.ID, ext.Name, ext.Kind))
 			}
-			if strings.TrimSpace(ext.Name) == "" {
+			if !ext.ValidName() {
 				out = append(out, errd("PLUGIN_EXTERNAL_NAME_REQUIRED", "plugin %s has external requirement with empty name", p.ID))
 			}
+		}
+		if err := plugin.ValidateUniqueExternalRequirements(p.External); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_EXTERNAL_REQUIREMENT", "plugin %s: %v", p.ID, err))
 		}
 		if err := plugin.ValidateRequirements(p.Requires); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
