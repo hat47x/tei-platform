@@ -322,3 +322,65 @@ func TestInvalidStageCompletenessFails(t *testing.T) {
 		t.Fatal("invalid stage scope accepted")
 	}
 }
+
+func TestCompositeKeyKnownMismatchOverridesUnknownInEitherKeyOrder(t *testing.T) {
+	// One target matches the compound key. A second target has a missing
+	// component but is disqualified by another, definitely unequal component.
+	// Previously the second target made the entire relation "unresolved"
+	// whenever the missing component was encountered first.
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		in.Example.Base = append(in.Example.Base, Record{
+			ID: "unrelated-partial-target",
+			Table: "parent",
+			Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"B"`),
+			},
+		})
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "supported" ||
+			len(finding.MatchedTargetIDs) != 1 ||
+			finding.MatchedTargetIDs[0] != "a" {
+			t.Fatalf("key order reverse=%t obscured known mismatch: %+v", reverse, finding)
+		}
+	}
+}
+
+func TestCompositeKeyPartiallyMatchingCandidateRemainsUnresolved(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		in.Example.Base = append(in.Example.Base, Record{
+			ID: "potential-second-target",
+			Table: "parent",
+			Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"A"`),
+			},
+		})
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "unresolved" ||
+			finding.Reason != "unresolved-target-key" ||
+			len(finding.MatchedTargetIDs) != 1 {
+			t.Fatalf("potential match was incorrectly accepted: %+v", finding)
+		}
+	}
+}
+
+func TestCompositeKeyDisjointCandidatesDoNotProduceUnknown(t *testing.T) {
+	in := keyedInput()
+	in.Example.Base[0].Values["number"] = json.RawMessage(`"B"`)
+	delete(in.Example.Base[0].Values, "tenant")
+	finding := oneFinding(t, in)
+	if finding.Result != "unresolved" ||
+		finding.Reason != "target-absence-requires-business-review" ||
+		len(finding.MatchedTargetIDs) != 0 {
+		t.Fatalf("known disjoint record turned into uncertain match: %+v", finding)
+	}
+}
