@@ -152,3 +152,15 @@ negative controlでは、Environment PlanにCapabilityが無い場合、Plugin i
 generic InvocationがRuntime Authorityを代替するわけではありません。generic resolverが選んだProviderは、production Environment Planが許可していなければ実行できません。反対に、Environment Planが許可しただけでgeneric ContractのConformanceを満たしたことにもなりません。二つの検査を別の境界として維持します。
 
 現時点では、production `InvocationProvenance`をadapter内で保持していますが、generic `InvocationExecution`の機械可読なEvidenceとしてはまだ返していません。generic consumerがRuntime Authorityの根拠へ一回で戻れるようにする場合は、provenanceを失わずに運ぶ共通receiptが別途必要です。Referenceはこの点を未解決のまま明示します。
+
+## 未採用の見積もり契約候補から実業務プロセスを呼び出すReference
+
+[結合試験](quote_process_contract_bridge_test.go)では、`reference/candidates/order-quote/shapes/`の未採用Shapeと既存のGeneric Contract解決器・Invocation Registryを使い、`plugins/reference-order-quote/`からビルドした実行ファイルを起動して、明細の税抜小計を計算します。契約の要求形状を実行前に、応答形状を実行後に検査し、候補プロバイダー・成果物指紋・テスト用Evidenceの対応付けを確認します。
+
+- Provider Conformanceが無い要求、契約Shapeに適合しない要求、解決されたものとは異なる成果物、試験用Host許可の失効は、実プロセスの起動前に拒否します。
+- 正常な要求は実プロセスが税抜小計を計算し、Invocation Registryが応答の構造を検証します。
+- 実行ファイルを書き換えた場合は、ホスト側のテスト用SHA-256照合で次の起動を拒否します。
+
+この試験に使うShape publisher trustとProvider Conformanceは**テスト内で合成された証跡**であり、未採用の業務契約を正式公開したわけではありません。実行ファイルのSHA-256照合・Host許可フラグはテスト専用で、製品RuntimeのAuthority、Permission、Sandbox、署名、Originを代替しません。旧プロセス通信の固定指紋は**運搬手段に固有のReference値**であり、新しいService Contract/Shapeのfingerprintと同一ではありません。したがってこの結合試験を、本番向けService Contractの移行完了と解釈しません。
+
+単独モジュールとしての構築と依存の隔離は[業務プラグインの結合試験](../reference-capability-transport/order_quote_process_test.go)で別途確認します。現試験は契約候補から実プロセスまでの**接続欠落を検知するReference**であって、別のResolver、Runtime Authority、Transportを製品へ追加しません。
