@@ -365,3 +365,31 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
 `unverified-business-rule`は「採用可能」を意味しません。資料の申告や人名を付けても、**どの状態も自動的にAcceptedにはなりません**。現在の`tools/reference-shared-acceptance`に対応する型付きdeltaはまだ無く、この成果物から正本編集・DDL生成・物理PK/FK変更・Runtimeへの作用は実行しません。実Workspaceを再読込し、版・原資料・仮説・レビューが変われば古い入力を拒否します。CLIの出力先は明示指定、ファイル権限0600です。
 
 正式な規則の書式、業務識別子と物理キーの対応関係、Source Indexへの業務規則自体の定義、権限のある確認者による受理と影響解析は[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)の後続範囲です。
+
+
+## 未採用の業務キー・関数従属性を独立した規則ソースへ記述する（#1126）
+
+型付きの`model-rule-declaration-draft.json`ができた後、規則そのものに**独立した記述位置**を与える最小参照実装です。まだ`semantic/model.tei`の正本文法でも、`workspace.Load`が解釈する正式な規則でもありません。規則ファイルは**外部から提出された未採用の入力**として読み込み、既存のWorkspace Source Indexとは別の、`reference-candidate-key`／`reference-functional-dependency`を持つ参照用Source Indexに記録します。
+
+```text
+tei-model-rules v0
+candidate-key sales.child.business-key on sales.child fields sales.child.parent_id
+functional-dependency sales.child.business-to-owner on sales.child determinants sales.child.business_id dependents sales.child.owner_id
+```
+
+行頭の`#`はコメント、属性を複数指定する場合はカンマ区切りで記述します。正式な`ModelRuleDraftIntent`が参照する規則ID、種類、対象Data、全属性の組と**一字一句ではなく意味上の組として**照合し、規則の余分な追加、欠落、重複、別のDataへのすり替え、型の変更は拒否します。規則IDは提出された文書中の識別子トークンのバイト範囲へ対応付け、内容指紋と一緒に保持します。項目名と書式の見かけだけから正本規則を生成したり、物理PKを推測したりしません。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input /path/to/workspace-matched-case.json \
+  -hypotheses /path/to/model-hypotheses.json \
+  -workspace-source /path/to/tei-workspace \
+  -rule-intents /path/to/model-rule-intents.json \
+  -rule-source-file /path/to/proposed-rules.txt \
+  -rule-source-path proposals/proposed-rules.txt \
+  -out /tmp/tei-model-rule-review
+```
+
+`model-rule-source-review.json`に参照Source Index、個々の定義位置、元の`ModelRuleDeclarationDraft`の指紋、未解決の権限・事実確認事項を記録します。`-rule-source-path`は提出者が付ける**論理的な相対パスの申告**です。`-rule-source-file`の内容がその位置にある、ファイルの所有者が誰か、Workspaceが管理していることを証明しません。危険な絶対パス・正規化できないパス・大きすぎる入力は拒否し、ファイル出力の前に全規則を照合します。
+
+提出されたソースへの参照には、Source Indexの`authoring`ロールと、正式な`semantic-*`とは異なる`reference-*`の種別を使用します。`definition`ロールや正本の`World.Semantics`には登録しません。`unverified-business-rule`は承認済みを意味しません。正式なSource Index登録、規則の受理、適用権限、他プラグインと共有する文法は、この実装を使って要件を確認した後の設計対象です。
