@@ -65,11 +65,13 @@ type EnvironmentBindingSpec struct {
 
 // DataSpecは、新しいsemantic namespaceに一つのDataを追加する意味を表す。
 type DataSpec struct {
-	Namespace  string          `json:"namespace"`
-	ID         string          `json:"id"`
-	Symbol     string          `json:"symbol"`
-	Attributes []AttributeSpec `json:"attributes,omitempty"`
-	Relations  []RelationSpec  `json:"relations,omitempty"`
+	Namespace              string                        `json:"namespace"`
+	ID                     string                        `json:"id"`
+	Symbol                 string                        `json:"symbol"`
+	Attributes             []AttributeSpec               `json:"attributes,omitempty"`
+	Relations              []RelationSpec                `json:"relations,omitempty"`
+	CandidateKeys          []AddCandidateKeySpec         `json:"candidateKeys,omitempty"`
+	FunctionalDependencies []AddFunctionalDependencySpec `json:"functionalDependencies,omitempty"`
 }
 
 type AttributeSpec struct {
@@ -378,6 +380,9 @@ func normalizeAddData(op Operation) (Operation, error) {
 			spec.Keys = append(spec.Keys, RelationKeySpec{SourceAttribute: string(source), TargetAttribute: string(targetAttr)})
 		}
 		out.Relations = append(out.Relations, spec)
+	}
+	if err := normalizeNewDataBusinessRules(d, &out, seen); err != nil {
+		return op, err
 	}
 	return Operation{Op: op.Op, Placement: placement, Data: &out}, nil
 }
