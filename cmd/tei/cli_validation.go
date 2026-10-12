@@ -52,6 +52,19 @@ func invalidJSONValidationArguments(out io.Writer) (int, error) {
 	}, 2)
 }
 
+// invalidJSONValidationParse preserves the opt-in JSON transport contract even
+// when FlagSet parsing fails (unknown flag or an invalid flag value).
+func invalidJSONValidationParse(out io.Writer, cause error) (int, error) {
+	return writeValidationReport(out, cliValidationReport{
+		SchemaVersion: "tei.cli.validate/v0",
+		Diagnostics:   []cliValidationItem{},
+		Error: &cliValidationFailure{
+			Code:    "INVALID_ARGUMENT",
+			Message: cause.Error(),
+		},
+	}, 2)
+}
+
 // validateWorkspaceJSON preserves the existing text command and exit codes:
 // 0 = validated, 1 = validation findings, 2 = load/index failure.
 func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
