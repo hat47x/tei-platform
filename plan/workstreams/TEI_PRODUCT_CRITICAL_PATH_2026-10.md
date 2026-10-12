@@ -905,3 +905,36 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 - 2026-10-12に更新された現行`AGENTS.md`は、全体健全性検査をすべてのPRの統合条件とはせず、変更範囲に応じた試験・静的解析・境界値・既存動作との照合、および未実施範囲・危険性の明示を要求する。`compose-smoke.sh`が**起動された場合に**全体健全性検査まで実施する設計であることと、**本PRの統合前に一律の全体健全性検査PASSを義務付けること**は区別する。Source/Target/DBの受入は別Gateであり、全て未達のままとする。
 
 **次の作業の入口**: 新しい資格検査器を追加するのではなく、既存`compose-smoke.sh`の`integrated-main`でE0/E1-Aを実行し、実測結果を#1119と#1163へ提出する。その後、#1262の修正を独立に資格確認・統合してから必要なら同じ入口を再実行する。未実施のE1-B/E2/G3/G4を推定で埋めない。
+
+## 28. GitHub Actionsで得られた実行証拠と次の停止条件（2026-10-12）
+
+### E1-Aはmainで実行済み、E1-BとN11は別PRで実行済み
+
+本節は§26〜27の**当時の「未実行」という記載を訂正する現時点の判定**である。古い手順・試験候補を消すのではなく、実行した版と合格範囲を一対一で明らかにする。
+
+| 実験 | 検査対象の版 | 実行結果と根拠 | 受入上の限界 |
+| --- | --- | --- | --- |
+| E1-A（正の単価） | main `4b8bf628a91654ff19ab267c900699ac2b4b1e9f` | [Actions #38224540835](https://github.com/hat47x/tei-platform/actions/runs/38224540835) **SUCCESS**。実Goビルド・Webプロセスを使い、Source R0≠R1、4つのValidation、HTTP 200、Commandを確認 | Sourceの受理はtest harness、Observationは合成、単価0は未実施 |
+| E1-A＋E1-B＋N11 | [#1163 / Draft PR #1262](https://github.com/hat47x/tei-platform/pull/1262) head `20f8453b451d5621d3ed6c37cc06e96b47295de9`、GitHub仮統合版 `b24216402b9e21f477e2c12c72df7a7ebc67319d` | [E1 Actions #38225770264](https://github.com/hat47x/tei-platform/actions/runs/38225770264) **SUCCESS**。正常注文、単価0の規則拒否とCommand/Observation未実行、N11のHTTP 422・Command結果あり・Observationなし。合わせて[標準Health #38225770258](https://github.com/hat47x/tei-platform/actions/runs/38225770258) **SUCCESS** | **mainに未統合**。正常系と二つの異常系は異なる試験用Goバイナリ。E2の実DBや人間受理は未実証 |
+| 最新mainの全体CI | main `d324fd9127859c431ae53c78a90203474fa91850` | [Actions #38235176913](https://github.com/hat47x/tei-platform/actions/runs/38235176913) **FAIL**。Go vet、全Go tests、Workspaceは**PASS**。Go 1.23.2の`gofmt`で`tools/reference-capability-mutation-protocol/main.go`が不一致 | 同じパスの整形PR [#1311](https://github.com/hat47x/tei-platform/pull/1311)は一度merge済みだが、現行mainで再発。担当領域の原因確認が必要 |
+
+E1-Aの実測Sourceは、`R0=sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2`、`R1=sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07`。E1-Aのmain上Target binary SHA-256は`fc3efaf3aafdfbfa9a9a22ea85eef964e47ce587d448d681f91d81aa9fd96a8a`。いずれも**その試験実行で生じたexact値**であり、後のmainへ転用しない。
+
+E1-Bの`validation-not-satisfied`は**業務上の拒否**でありHTTP 200となる。対してN11のHTTP 422は**実行後の観測失敗**で、Commandが取り消されたという意味ではない。三つのケースを同じ「エラー」へまとめない。N11を実DBによる独立したreadの成功・不成功の証拠へ昇格しない。
+
+### 既存の実PostgreSQL証拠をE2へ誤流用しない
+
+既存`tools/reference-postgres-header-detail-runtime`は、別の空の専用PostgreSQLに一時fixtureを作り、読み出し、後片付けを行い、Sourceと実DBの安全境界を記録できる。これは実Provider／SQLの**先行する有効な証拠**だが、E1の`sales.order_line.unit_price_positive`を追加して受理した**同じR1**から業務Commandを発火させた証拠ではない。`tools/reference-gate-b-final-evidence`の同一Repository改訂への収束も、**同一Accepted Source R1からのCommandと独立Observation**とは別である。
+
+次に提出するE2の最小証拠は、#1127を実行owner、#1163を一改訂Evidence監査ownerとして次をつなぐ。
+
+1. **Source**：明示受理されたR1（変更後のSemantic Validation＋Application採用）と、ターゲットをビルドした同じ意味契約の版／受理指紋。単なるGit SHAの一致だけでは代用しない。
+2. **実行前**：既存Provider・Schema実態・契約版・権限のreadinessが`current`であること。空の専用DB／独立接続を使用し、既存DBを清掃して流用しない。権限失効S05、Schema非互換S02などはCommandを**発行する前**に拒否する。
+3. **副作用**：**通常の製品Web／Driver**から選択された4規則に対する正常Commandを起動し、処理IDと実Providerのwrite結果を示す。テスト専用Go overlayバイナリで観測した単価0を通常Web実装の成功と呼ばない。
+4. **独立Observation**：別のread invocation／DB connectionで、実DBの書込み後の状態とその対象（同じscope、key、時点、Database instance）を読んで検証。Command responseの再表示、同一メモリcache、合成Observationは不可。
+5. **否定・未観測**：単価0はCommand非発行、S02/S05は事前拒否、N11ではCommand成功とObservation失敗を明確に区別し、永続性の「確認済み」を返さない。read未取得・Source相違・Provider相違は常に`not-observed`。
+6. **記録と安全**：Repository/Source/Target/Provider/Schema/Authority各revision、Source→Command→readの相関ID、実行範囲、cleanupの責任者と結果、stdoutの機密漏洩防止を残す。DB関連SecretやDSN本文を証跡へ複製しない。
+
+このE2は新しいDB Provider・第二のSchema Authority・第二の受理機構を作る指示ではない。既存のDB runtime、Web Driver、Shared Acceptance、#1163の検査を**一つの実験でつなぐ**。既存toolの個別成功を足して一往復の成功へ換算しない。
+
+**親Gate判定**：E1-Aの技術的実証は**済**。E1-B＋N11の隔離実Web実証も**PR #1262内では済**だがmainに未反映であり、異なる合成バイナリの範囲に限定。G1の正式なAuthority接続、G2のE2実DB＋独立read、G3第二Target、G4 self-buildの横断的な資格はなお未合格。#1119のIssueはopen。
