@@ -27,6 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          gofmt -d plugins/reference-project-customer-advice/*.go tools/reference-project-advice-lit/*.go
           test -z "$(gofmt -l plugins/reference-project-customer-advice/*.go tools/reference-project-advice-lit/*.go)"
           go test -count=1 ./plugins/reference-project-customer-advice ./tools/reference-project-advice-lit
       - name: UI通信とJavaScript構文を検証
