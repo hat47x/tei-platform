@@ -30,6 +30,18 @@ func TestLocateImportedSourceUsesProviderScopeAndCurrentFingerprint(t *testing.T
 		before.Reference.Range.End.Offset <= before.Reference.Range.Start.Offset {
 		t.Fatalf("missing provider-local verified source anchor: %+v", before)
 	}
+	for _, subject := range []sourceindex.Subject{
+		{Kind: "semantic-data", ID: "os.process"},
+		{Kind: "semantic-attribute", ID: "os.process.id"},
+	} {
+		loc, err := workspace.LocateImportedSource(consumer, loaded, "os", subject)
+		if err != nil {
+			t.Fatalf("locate nested semantic subject %+v: %v", subject, err)
+		}
+		if loc.Reference.ArtifactPath != "semantic/os/process.tei" || loc.Subject != subject {
+			t.Fatalf("nested subject was not bound to its provider-owned source: %+v", loc)
+		}
+	}
 	srcIndex, err := workspace.BuildSourceIndex(consumer, loaded)
 	if err != nil {
 		t.Fatal(err)
