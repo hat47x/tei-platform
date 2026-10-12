@@ -1,25 +1,25 @@
 # TEIの開発計画
 
-[TEI Master Plan](MASTER_PLAN.md)と[Milestones](MILESTONES.md)は、期限を設けず、Productの価値・着手依存・完了条件を整理する正本です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
+[開発全体の計画](MASTER_PLAN.md)と[マイルストーン](MILESTONES.md)は、期限を設けずに、製品の価値・着手の依存関係・完了条件を整理する正本です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
 
-`plan/`は、製品要求から着手順、受入シナリオ、設計判断、検証根拠までを結ぶ計画の入口です。全体計画とマイルストーンは直下に置き、個別の計画文書は役割ごとのディレクトリにまとめます。
+`plan/`は、製品要求、着手順、受け入れシナリオ、設計判断、検証根拠をつなぐ計画の入口です。全体計画とマイルストーンは直下に置き、個別の計画文書は役割ごとのディレクトリにまとめます。
 
 - 何を守るか: `product/`
 - 何を満たすか: `requirements/`
-- どのScenarioで確かめるか: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+- どのシナリオで確かめるか: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - どの順で不確実性を減らすか: `plan/`
 
 ## 文書の配置
 
-`plan/`直下には入口となる文書を置きます。詳細な計画は次の分類から探してください。
+`plan/`の直下には、入口となる文書を置きます。詳細な計画は、次の分類から探してください。
 
 | 調べたいこと | 参照先 |
 | --- | --- |
 | 全体の着手順と現在の主線 | [`MASTER_PLAN.md`](MASTER_PLAN.md) |
-| 要求から受入シナリオとEvidenceまで | [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
+| 要求から受け入れシナリオ、検証根拠まで | [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
 | 個別作業の目的・完了条件 | GitHub Issues |
 | 採用した設計判断 | [`adr/README.md`](adr/README.md) |
-| 複数Issueにまたがる機能設計 | [`design/README.md`](design/README.md) |
+| 複数の課題にまたがる機能設計 | [`design/README.md`](design/README.md) |
 | 段階判定の条件・手順・記録 | [`gate/README.md`](gate/README.md) |
 | 要求、受入条件、検証根拠 | [`evidence/README.md`](evidence/README.md) |
 | 技術調査や採用前の設計評価 | [`research/README.md`](research/README.md) |
@@ -27,16 +27,16 @@
 | 特定時点の監査結果 | 公開ツリーには個別の監査・検討記録を含めません |
 | 現在の実装・実証状況 | [`../docs/status.md`](../docs/status.md) |
 
-詳細な調査・検討記録は公開ツリーに含めず、採用した判断はADR、現行の要求と作業条件はRequirements・Issueを正本として管理します。
+詳細な調査・検討記録は公開ツリーに含めません。採用した設計判断はADR、現行の要求は要求文書、作業条件はGitHubの課題でそれぞれ管理します。
 
 ## 最初に読む文書
 
-1. [`MASTER_PLAN.md`](MASTER_PLAN.md) — 現在のworkstream /主線
-2. [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md) — `order_entry`でのv1実証順
-3. [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — RQ → PAS → Evidence trace
-4. [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md) — 現在のRequirement Evidence / Gap
-5. [`MILESTONES.md`](MILESTONES.md) — 期限なしのCapability horizon
-6. [`UPSTREAM_BREAKDOWN_2026-09.md`](workstreams/UPSTREAM_BREAKDOWN_2026-09.md) — 上流pressure / audit文書の結論を計画と下流の担当へ割り当てた導出表
+1. [`MASTER_PLAN.md`](MASTER_PLAN.md) — 現在の作業分野と開発の主線
+2. [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md) — `order_entry`を使う第1版の実証順
+3. [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — 製品要求、受け入れシナリオ、検証根拠の対応
+4. [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md) — 現在の要求に関する検証根拠と不足
+5. [`MILESTONES.md`](MILESTONES.md) — 期限を設けない機能の到達目標
+6. [`UPSTREAM_BREAKDOWN_2026-09.md`](workstreams/UPSTREAM_BREAKDOWN_2026-09.md) — 上流の設計上の検証や監査で得た結論を、計画と下流の担当へ対応付けた一覧
 
 ## 現在のv1主線
 
@@ -61,7 +61,7 @@ Studio  knowledge / AI  Second Target
 PAS-01  PAS-06 / 01     PAS-04
 ```
 
-Gate Cの後は、Studio、既存知識を優先する探索、AI Proposal、第二Targetの開発を並行して進められます。
+Gate Cの後は、設計・編集環境（Studio）、既存の知識を優先する探索、AIによる変更提案、第二の実行先の開発を並行して進められます。
 
 ## Gate A
 
@@ -70,22 +70,22 @@ Gate Cの後は、Studio、既存知識を優先する探索、AI Proposal、第
 - [`GATE_A_READINESS_AUDIT.md`](gate/GATE_A_READINESS_AUDIT.md)
 - 現在: **Ready**
 
-Application Pattern、Datasource、Validation、Authentication / Authorization、Capability Binding、Business Result / Execution Error等をDriverへ渡せる意味基線が成立しています。
+アプリケーションの型、データソース、検証、認証・認可、機能の対応付け、業務結果・実行エラーなどをドライバーへ渡すための意味上の基準が成立しています。
 
 ## Gate B
 
 ### 正本文書
 
-- [`GATE_B_EVIDENCE_ACQUISITION.md`](gate/GATE_B_EVIDENCE_ACQUISITION.md) — 何のEvidenceが必要か / 何を証明するか
-- [`GATE_B_EVIDENCE_RUNBOOK.md`](gate/GATE_B_EVIDENCE_RUNBOOK.md) — 唯一の具体実行手順
-- [`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) — Ready / Not Ready判定
+- [`GATE_B_EVIDENCE_ACQUISITION.md`](gate/GATE_B_EVIDENCE_ACQUISITION.md) — 必要な検証根拠と、それによって証明する内容
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](gate/GATE_B_EVIDENCE_RUNBOOK.md) — 正式な実行手順
+- [`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) — Ready / Not Readyの判定記録
 - ISSUE-000037-gate-b-three-lane-final-evidence.md — three-lane final convergence
 
 ### 現在
 
 **Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
 
-Required Evidenceは次の三つで、いずれもsame-run same-Rで成立しています。
+必要な検証根拠は次の三つで、いずれも同じ実行・同じ改訂版Rについて成立しています。
 
 | Evidence | Issue | 状態 |
 | --- | --- | --- |
@@ -93,7 +93,7 @@ Required Evidenceは次の三つで、いずれもsame-run same-Rで成立して
 | generated artifact reproducibility | `ISSUE-000025` / #255 | 成立 |
 | real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | 成立 |
 
-#387 final convergenceと独立artifact audit（`artifactAuditPassed = true`）の詳細は[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md)を参照してください。
+#387の最終的な集約と独立した成果物監査（`artifactAuditPassed = true`）の詳細は[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md)を参照してください。
 
 actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneではなく、未完了のままHandoverへ`unresolved`として渡しています。
 
@@ -105,7 +105,7 @@ actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとし
 
 Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定済みです。
 
-引継ぎ（Handover）は、新しい番号付きGateでも、Canonicalの第二の正本でもありません。
+引き継ぎ（Handover）は、新たな番号付きのGateでも、正本となる意味の第二の正本でもありません。
 
 ## Gate C / First Web Target
 
@@ -115,9 +115,9 @@ Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`�
 - ISSUE-000007-first-web-target-projection.md
 - ISSUE-000028-first-web-target-conformance-evidence.md
 
-Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)です。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではありません。
+Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)です。画面の見た目の忠実さを評価したのは単一のAI評価者であり、人による確認ではありません。
 
-First Web Targetのbuild revision `T1`をbaseline revision `R`と分けて追跡します。
+最初のWeb向け実行先のビルド版`T1`は、基準となる改訂版`R`とは分けて追跡します。
 
 ```text
 Handover B at R
@@ -134,7 +134,7 @@ Gate Cでは次を分離します。
 3. Visual Fidelity Evidence
 4. 必要に応じたPerformance Evidence
 
-Target側でbaseline meaningを変更する必要がある場合、Web固有field / ruleで埋めず、successor Handoverを発行します。
+実行先側で基準となる意味を変更する必要がある場合、Web固有の項目や規則で補わず、次の引き継ぎを発行します。
 
 ## Business system design / PAS-07
 
@@ -147,7 +147,7 @@ Target側でbaseline meaningを変更する必要がある場合、Web固有fiel
 4. ISSUE-000042-business-procedure-cross-view-reference.md — Lane C Reference / Pressure inventory
 7. ISSUE-000050-second-realistic-handoff-corpus.md — acceptance contractを製造 / 在庫candidateへ適用し、independent Business seedからsecond realistic Handoff Evidenceを取得する計画（2026-09-21: 実施済み。実施記録あり）
 
-現在の品質上の中心は、Business Procedureを「完全に埋めたflow」として作ることではありません。
+現在、品質面で重視するのは、業務手順を単に「すべての項目を埋めた流れ図」として作ることではありません。
 
 ```text
 known / accepted meaningをexactに保つ
@@ -162,7 +162,7 @@ second corpusもHandoff fixtureから始めず、Handoffが無くても価値を
 
 ## Definition-centered feedback / AI era
 
-Studio、knowledge-first探索、AI Proposal、非LLM認知方式を別々のAI機能として育てず、**端的なauthoritative definitionを中心にした一つのfeedback loop**へ接続します。
+設計・編集環境、既存知識を優先する探索、AIによる変更提案、言語モデルに依存しない認知支援を別々の機能として発展させるのではなく、**簡潔な正本の定義を中心とした一つの改善の循環**へつなぎます。
 
 設計本文:
 
@@ -191,7 +191,7 @@ Shared Acceptance Boundary
 authoritative source → reload / regenerate
 ```
 
-ここで、LLMやcognitive indexを新しいauthorityにしません。Reference Modelはanswer libraryではなく、worked example・実行可能content・Conformance pressure・pattern evidence・Platform feedback sourceとして扱います。
+この仕組みでは、言語モデルや認知用の索引へ新たな決定権限を与えません。参照モデルは回答集ではなく、具体的な設計例、実行できる内容、準拠条件の検証材料、設計の型を裏付ける根拠、開発基盤を改善するための情報源として扱います。
 
 Design Synthesisの長期目標は、上流purposeから複数のstructured design candidateを作り、exact / constraint / pattern / cross-view / associative cognitionで候補空間を狭め、local LLMには少数案の比較・統合・minimum semantic delta提案を担わせることです。accepted meaningからimplementationとtestをできる限り再生成し、人間の反復authoringをmeaning selection / Acceptanceへ圧縮します。
 
@@ -213,7 +213,7 @@ Select → Propose → Preview → Accept / Reject
           authoritative source → reload
 ```
 
-StudioはCanonicalの第二正本ではありません。Definition-centered loopでは、whole-model editingよりselected definition / local neighborhoodを基本にし、AIを使う場合もwhole file再生成ではなくreview可能なminimum semantic deltaを優先します。
+設計・編集環境は、正本となる意味の第二の正本ではありません。定義を中心とした改善の循環では、モデル全体を編集するより、選んだ定義と関連する近くの要素を扱います。AIを使う場合も、ファイル全体の再生成より、確認できる最小限の意味の変更を優先します。
 
 ### knowledge-first / PAS-06
 
@@ -235,9 +235,9 @@ AI ProposalはCanonical authorityではなく、file-native / Studio / CLI等と
 
 - ISSUE-000026-target-capability-execution-profile-boundary.md
 
-第一Targetだけで実行先に依存しない分類体系を完成したものとはせず、第二TargetでTarget Capability、Runtime Binding、Execution-Trust、RQ-024の性能要件を検証します。
+最初の実行先だけで、実行先に依存しない分類体系が完成したとは判断しません。第二の実行先で、利用可能な機能、実行環境との対応付け、実行時の信頼条件、RQ-024の性能要件を検証します。
 
-Studioのdeveloper-facing Wails HostをApplication Target Evidenceへ数えません。
+開発者向けに用意したStudioのWailsホストは、アプリケーションの実行先を検証した根拠には含めません。
 
 ## ADR / Plan Issue / 機能設計
 
@@ -245,13 +245,13 @@ Studioのdeveloper-facing Wails HostをApplication Target Evidenceへ数えま�
 - [`issue/`](issue/) — 複数PR / Reference / Evidenceへまたがる作業定義
 - [`design/`](design/README.md) — 機能単位の設計本文。Architectureの第二正本にはしない
 
-planning-onlyの将来作業まで不要にGitHub Issueへ二重起票することを目的にはしません。
+計画段階にある将来の作業まで、必要性を確かめずGitHubの課題として二重に登録することは目的にしません。
 
 Plan Issueの構成ルールはGitHub Issuesを参照します。
 
 ## 判定文書と調査記録の役割
 
-「監査」というファイル名だけで保管先を決めない。現在の判定や受入条件を管理する文書と、特定時点に実施した調査記録を区別する。
+「監査」というファイル名だけで保管先を決めません。現在の判定や受入条件を管理する文書と、特定の時点に実施した調査記録を区別します。
 
 | 役割 | 正本または参照先 | 扱い |
 | --- | --- | --- |
@@ -260,18 +260,18 @@ Plan Issueの構成ルールはGitHub Issuesを参照します。
 | 業務手順の契約ADR作成可否 | 関連するIssueと採用ADR | 現行の作業条件と採用済み判断をそれぞれの正本で確認します。 |
 | 特定時点の調査結果 | 公開対象外 | 詳細な調査・検討記録は製品文書と分けて管理します。 |
 
-独立レビューや証拠の引継ぎに使う文書は、関連するIssue・判定文書との関係を確かめてから配置を変更する。旧パスの移動案内は参照をつなぐだけであり、本文の正本ではない。
+独立した確認や根拠の引き継ぎに使う文書は、関連する課題や判定文書との関係を確かめてから配置を変更します。旧パスに残す移動案内は参照をつなぐためのものであり、本文の正本ではありません。
 
 ## 移動案内の整理
 
-移動済みの文書があっても、旧パスへの参照は直ちに消えない。参照元にはMarkdownのリンクだけでなく、コード、検査手順、生成物、他のリポジトリもある。そのため旧パスの案内を残す。
+文書を移動しても、旧パスへの参照がすぐになくなるとは限りません。参照元にはMarkdownのリンクのほか、コード、検査手順、生成物、別のリポジトリもあります。そのため、旧パスの案内を残します。
 
-案内を削除する際は、現在の全参照元を確認し、必要な参照を正本のパスへ変更してから行う。検索で一致が見つからなかっただけでは、確認対象が不完全な場合に参照がない証明としない。確認できない参照元がある間は、案内を削除しない。
+案内を削除するときは、現在の参照元をすべて確認し、必要な参照を正本のパスへ変更してから行います。検索で一致が見つからなくても、検索範囲が不完全なら参照が存在しないとは証明できません。未確認の参照元がある間は、案内を削除しません。
 
 ## current snapshot方針
 
-Master Plan、v1 Plan、Milestones、Gap Audit、Gate契約等の上位文書は、判断履歴を本文へ無制限に追記せず**現在の正規baseline**を優先します。
+全体計画、第1版の計画、マイルストーン、要求の不足監査、Gate契約などの上位文書には、判断履歴を無制限に追記せず、**現在の正式な基準**を優先して記載します。
 
-過去の判断経緯はGit history、ADR、完了 / superseded Plan Issueから追跡します。
+過去の判断経緯はGitの履歴、ADR、完了または置き換え済みの計画上の課題から追跡します。
 
-同じ実行手順やsemantic boundaryを複数文書で競合する正本にしません。
+同じ実行手順や意味上の境界について、複数の文書を競合する正本にしません。
