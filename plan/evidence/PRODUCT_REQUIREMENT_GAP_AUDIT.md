@@ -1,28 +1,28 @@
 # 製品要求と実証状況の照合
 
-- 監査の基準日: 2026-09-21（前回は2026-09-11）
-- 追加した要求の初期評価: 2026-10-03（RQ-031〜033）、2026-10-07（RQ-034）
-- 対象: RQ-001〜034
-- 現行の着手判断: [要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)
-- 横断的な受入条件: [クリティカルパス #1119](https://github.com/hat47x/tei-platform/issues/1119)
-- 上流の対応表: [要求と受入シナリオ](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
-- 品質に関する設計: [製品品質](../../docs/product-quality-architecture.md)
-- 品質の検証計画: [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+- 監査の基準日：2026年9月21日（前回：2026年9月11日）
+- 追加した要求の初期評価：2026年10月3日（RQ-031〜033）、2026年10月7日（RQ-034）
+- 対象：RQ-001〜034
+- 現行の着手判断：[要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)
+- 横断的な受入条件：[クリティカルパス #1119](https://github.com/hat47x/tei-platform/issues/1119)
+- 上流の対応表：[要求と受入シナリオ](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
+- 品質に関する設計：[製品品質](../../docs/product-quality-architecture.md)
+- 品質の検証計画：[製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
 
 ## この監査を現在の開発に利用するとき
 
-この文書に記載した要求別の評価区分や実測値は、上記の基準日に得た根拠によるものです。新たなコードが統合されたことだけを理由に、当時の「設計のみ」「部分的な根拠」を自動的に合格へ変更しません。現在の実装状況は[実装状況](../../docs/status.md)、着手順の評価は[#982](https://github.com/hat47x/tei-platform/issues/982)、実装間の依存関係と受入条件は[#1119](https://github.com/hat47x/tei-platform/issues/1119)を正とします。
+この文書の要求別評価と実測値は、記載した基準日に取得した根拠に基づきます。その後にコードが統合されても、当時の「設計のみ」「部分的な根拠」を自動的に合格へ変更することはありません。現在の実装状況は[実装状況](../../docs/status.md)、着手順は[#982](https://github.com/hat47x/tei-platform/issues/982)、実装間の依存関係と受入条件は[#1119](https://github.com/hat47x/tei-platform/issues/1119)を正本とします。
 
-2026年10月12日に公開リポジトリを再確認したところ、解析済みソースの整合、型付き参照、アプリケーション構成、段階的な実行変換、横断計画、最初のモデル変更の参照実装は、いずれも関連するプルリクエストが`main`へ統合されています。一方、次の製品上の成立条件は引き続き別の検証が必要です。
+2026年10月12日の公開リポジトリの再確認では、解析済みソースの整合・型付き参照・アプリケーション構成・段階的な実行変換・横断計画・最初のモデル変更の参照実装について、関連するプルリクエストが`main`へ統合済みでした。ただし、次の製品上の成立条件は別途検証が必要です。
 
-- 最初のモデル変更と診断・修復の追試は[#1161](https://github.com/hat47x/tei-platform/issues/1161)、初めて使う人とAIの実測は[#1168](https://github.com/hat47x/tei-platform/issues/1168)で確認します。テストコードの存在と初見利用者の成功を同一視しません。
-- データ定義から標準機能・保存・独立した再読込へ進む課題は[#1127](https://github.com/hat47x/tei-platform/issues/1127)、受理された一つの改訂を実行先・実際の結果まで結び付ける検証は[#1163](https://github.com/hat47x/tei-platform/issues/1163)で扱います。既存の[#1119](https://github.com/hat47x/tei-platform/issues/1119)の判定器を使い、別の証拠管理機構を作りません。
-- 業務・データ・機能の三視点を編集から正本への反映まで接続する課題は[#1124](https://github.com/hat47x/tei-platform/issues/1124)と各モデルの担当課題に残ります。コマンドラインと画面の機能を省略せず、同じ業務シナリオから試験を導く課題は[#1180](https://github.com/hat47x/tei-platform/issues/1180)が担当します。
-- 出所情報の読み取りと外部への開示は別の認可判断です。リポジトリの公開化によって保留を解除した[#1178](https://github.com/hat47x/tei-platform/issues/1178)で、既存の認可機構を再利用して検証します。
+- 最初のモデル変更と診断・修復の再試験は[#1161](https://github.com/hat47x/tei-platform/issues/1161)、初めて使う人とAIによる実測は[#1168](https://github.com/hat47x/tei-platform/issues/1168)で確認します。テストコードがあることと、初見の利用者が成功したことは区別します。
+- データ定義から標準機能・保存・独立した再読込みへ進む課題は[#1127](https://github.com/hat47x/tei-platform/issues/1127)、受理された一つの改訂と実行先で得た結果を結び付ける検証は[#1163](https://github.com/hat47x/tei-platform/issues/1163)で扱います。既存の[#1119](https://github.com/hat47x/tei-platform/issues/1119)の判定器を使用し、別の証拠管理機構は作りません。
+- 業務・データ・機能の三視点を、編集から正本への反映まで一貫して接続する課題は[#1124](https://github.com/hat47x/tei-platform/issues/1124)と各モデルの担当課題に残ります。コマンドラインと画面の機能を省略せず、同じ業務シナリオから試験を導く取組みは[#1180](https://github.com/hat47x/tei-platform/issues/1180)が担当します。
+- 出所情報の読取りと外部への開示は、別々の認可判断を必要とします。リポジトリの公開化に伴い保留を解除した[#1178](https://github.com/hat47x/tei-platform/issues/1178)で、既存の認可機構を再利用して検証します。
 
 ### 2026年10月12日の横断実証と残る接続点
 
-以下は当初の要求別評価を改定するものではなく、実行した版を固定して追跡する追補です。新しい受入判定の正本は[#1119](https://github.com/hat47x/tei-platform/issues/1119)と各担当課題にあります。
+以下は、当初の要求別評価を変更せず、実行した版を固定して追跡するための追補です。新たな受入判定は[#1119](https://github.com/hat47x/tei-platform/issues/1119)と各担当課題の記録を正本とします。
 
 | 段階 | 実際に確認できたこと | まだ成立していないこと |
 | --- | --- | --- |
@@ -32,30 +32,30 @@
 | 三視点・更新対象の照合 | [#1307](https://github.com/hat47x/tei-platform/pull/1307)は実際の参照用全体モデルに対し、更新候補の不正な推測、対象外更新、古い版を拒否する回帰試験を`main`へ統合した | その業務上の所有者や操作の宣言は試験用の合成候補。三視点から受理した同じ意味を、実行・保存の正本へ接続した証拠ではない |
 | データ定義から標準機能へ | [#1127のソース照合](https://github.com/hat47x/tei-platform/issues/1127#issuecomment-6120467798)で、最小の`data Request`が属性と利用先の宣言までであり、実行機能・提供元への結線がまだないことを確認 | 決定的な一覧・単票候補の派生と、明示した操作・保存先・権限からの実書込み・独立再読込は未実証 |
 
-**次の受入順序**は、最初のデータ定義を正本とした一覧・単票の決定的な派生、明示的な操作・保存先・権限の解決、実データへの書込みと独立再読込、同一受理版の実行・観測の突合せです。属性の型だけから更新権限や物理的な主キーを推測しません。検証できない段階は未実行・未対応として残し、別の判定器や第二の正本を設けません。
+**次の受入順序**は、最初のデータ定義を正本とする一覧・単票の決定論的な派生、操作・保存先・権限の明示的な解決、実データへの書込みと独立した再読込み、同じ受理版についての実行・観測結果の照合です。属性の型だけから更新権限や物理的な主キーを推測しません。検証できない段階は未実行・未対応として残し、新たな判定器や意味の第二の正本を設けません。
 
-なお、2026年10月12日の[main版 `f05c032d`に対する全体CI実行](https://github.com/hat47x/tei-platform/actions/runs/38236905037)は`gofmt`不一致で失敗しています（Go試験、静的解析、作業領域の検証は成功）。[CI担当 #1189](https://github.com/hat47x/tei-platform/issues/1189)が検査器の版差異を追跡しています。過去の成功を現行`main`の合格へ流用せず、またこの整形問題を業務機能の欠落として二重計上しません。
+なお、2026年10月12日の[main版 `f05c032d`に対する全体CI実行](https://github.com/hat47x/tei-platform/actions/runs/38236905037)は`gofmt`の不一致で失敗しました（Goの試験・静的解析・作業領域の検証は成功）。[CI担当 #1189](https://github.com/hat47x/tei-platform/issues/1189)が検査器の版差異を追跡しています。この実行記録について、過去の成功を現行`main`の合格とみなさず、整形上の問題を業務機能の不足として二重計上することもしません。
 
-従来の`plan/issue/`にあった個別作業文書は公開リポジトリから退避されています。この文書の過去の記述に残る同ディレクトリへの参照は、現行の作業場所を示しません。個別作業の状態と判断履歴はGitHubの課題で確認してください。
+従来の`plan/issue/`にあった個別作業文書は、公開リポジトリから退避されています。この文書の過去の記述に残る同ディレクトリへの参照は、現在の作業場所を示すものではありません。個別作業の状態と判断履歴はGitHubの課題を確認してください。
 
 ---
 
 ## 1. 目的
 
-この文書は、`requirements/TEI_PRODUCT_REQUIREMENTS.md`の各Requirementについて、現在のRepositoryにどのEvidenceがあり、どの不確実性が残っているかを逆マッピングするcurrent auditです。
+この文書は、`requirements/TEI_PRODUCT_REQUIREMENTS.md`の各製品要求について、監査時点のリポジトリに存在する検証根拠と残る不確実性を、要求ごとに逆引きして示す監査記録です。
 
-実装量、Issue close数、文書数ではなく、次を見ます。
+実装量・課題のクローズ数・文書数ではなく、次の事項を確認します。
 
-- semantic boundaryが成立しているか
-- authoritative sourceへ戻れるか
-- Reference / Conformanceで再現できるか
-- actual execution Evidenceが必要な場合に取得済みか
-- synthetic / generated / real-provider / actual-external / Target Evidenceを混同していないか
-- Provider / Target / Host / build条件を説明できるか
-- failure / degraded / unknownを成功へ読み替えていないか
-- unresolvedを成功へ丸めていないか
+- 意味を定める境界が成立しているか
+- 正本となる情報源へたどれるか
+- 参照事例と準拠確認で再現できるか
+- 実際の実行の検証根拠が必要な場合、それを取得済みか
+- 合成データ・生成成果物・実際の提供実装・実際の外部資産・実行先に関する検証根拠を混同していないか
+- 提供実装・実行先・ホスト・構築条件を説明できるか
+- 失敗・機能低下・不明を成功として扱っていないか
+- 未解決事項を成功として扱っていないか
 
-Product Qualityは新しいRequirement群として追加せず、既存RQを横断するEvidence観点として監査します。
+製品品質は新たな要求群として追加せず、既存のRQに共通する検証根拠の観点から監査します。
 
 ## 2. 評価区分
 
@@ -66,17 +66,17 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 | **Design Only** | Requirement / Architecture / Planは具体化されているが、対応するReference実証はまだない |
 | **Not Started** | 対応する設計・Referenceがほぼない |
 
-`Design Only`を実装済み、`Partial Evidence`をProduct claim成立済みとは読み替えません。
+`Design Only`を実装済み、`Partial Evidence`を製品についての主張が成立した状態とは扱いません。
 
 ## 3. 監査時点の製品開発の主線
 
-Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](../gate/GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。
+判定段階BとCは2026年9月19日にReadyへ到達しました（判定段階Cの記録：[`GATE_C_READINESS_AUDIT.md`](../gate/GATE_C_READINESS_AUDIT.md)。表示の忠実度は一人に相当するAI評価者のみで評価）。当時の直列作業で最大の阻害条件は、判定段階Cの後に並行する作業（Studio・既存知識を優先する探索とAI・第二アプリケーション・第二実行先）の着手判断でした。
 
-2026-09-21に、前回が別作業へ送っていたRQ別Evidence tierの再監査を行いました。同時に、2026-09-18のProduct再定義で追加されながらこの監査にも`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS mappingにも載っていなかったRQ-027〜RQ-030を対象へ入れました。以後の欠落は`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`がfail-closedで検出します。
+2026年9月21日、前回の監査で別作業へ委ねた要求別の検証根拠の区分を再監査しました。あわせて、9月18日の製品定義の見直しで追加されたにもかかわらず、この監査と`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS対応表に未掲載だったRQ-027〜RQ-030を追加しました。以後、`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`が欠落を検出し、安全側に停止します。
 
-2026-10-03には、意味体系を後付けで拡張・合成できることをProduct Valueへ明示したことに伴い、RQ-031〜RQ-033を追加しました。この3件は追加時点ではDesign Onlyです。Requirement追加と同じ変更でPAS mappingと本監査へ登録し、前回のように価値定義だけが検証マップより先へ進む状態を作らないようにします。
+2026年10月3日、意味体系を後から拡張・合成できることを製品価値へ明示した際に、RQ-031〜RQ-033を追加しました。この3件は追加時点でDesign Onlyです。要求の追加と同じ変更でPAS対応表と本監査へ登録し、製品価値の定義だけが検証の対応関係より先行しないようにしました。
 
-2026-10-07には、ChatGPT等のチャット実行環境、Codex、Claude Code、通常のIDE / CLI、CIからTEIを扱う開発経路を、特定Agent Runtimeへ従属させないRQ-034を追加しました。Git-nativeな開発とCLI / MCP利用を第一級に扱い、Agent Sessionや一般的な検証状態をTEIのProduct stateへ持ち込まない境界を定義します。追加時点ではDesign Onlyとし、独立した開発環境からのE2E Referenceを成立Evidenceには数えません。
+2026年10月7日、ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDEやCLI・CIからTEIを扱う開発経路を、特定のエージェント実行基盤に従属させないため、RQ-034を追加しました。Gitを基盤とする開発とCLI・MCPの利用を基本の経路として扱い、エージェントのセッションや一般的な検証状態をTEIの製品状態に持ち込まない境界を定義します。追加時点ではDesign Onlyであり、独立した開発環境から一連の処理を実行する参照事例を、成立した検証根拠には数えません。
 
 ```text
 Gate A — Ready
@@ -95,9 +95,9 @@ Gate C — PAS-04 — Ready
    └─ Second Target — PAS-04 / RQ-024
 ```
 
-Cross-cutting Product Qualityは新しいGateを挿入しません。
+横断的な製品品質の検証を理由に、新たな判定段階を追加することはしません。
 
-actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceとして継続しますが、Gate Bの第四Required laneではありません。
+実際のOracleに関する#214・#371・#376は、PAS-03と外部資産に関する重要な検証として継続します。ただし、判定段階Bの第四の必須検証経路には含めません。
 
 ## 4. Requirement別監査
 
