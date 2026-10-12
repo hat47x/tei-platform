@@ -267,3 +267,16 @@ Go 1.23.2の独立した局所モジュールで、実`registry.go`・`selection
 Go 1.23.2の独立した局所モジュールで、GitHubとBlob SHAが一致する実`registry.go`・`selection.go`・`proposal.go`・`proposal_test.go`を使用。局所的なBinding型の仮定義と既存`selection_closure_test.go`を組み合わせ、`go test -race -count=100 -timeout=120s ./internal/composition`および`go vet ./...`が成功した。
 
 本試験は宣言上の選択と検証対象の抽出に限定する。正式な#951の適合性検証器、実Build Artifact、Hostの実行権限、Coordinatorを含む全Composition package、PR exact-head全リポジトリの健全性検査は未実施である。検証対象を列挙する処理も依存閉包の走査コストを持つため、大規模構成での性能は今後計測する。
+
+
+## E9：契約適合証拠への参照の照合はKernel外に置く
+
+E8の検証対象一覧だけでは、外部の適合性検証が対象とする実装・契約・成果物と正確に対応しているかが分からない。一方、その照合のために通常の実行KernelへConformanceのResolverや証拠保管機構を追加することは、責務の重複と不要な実行時負荷を生む。
+
+そのため、任意で利用する[契約適合証拠との照合用参照実装](../composition-evidence-handoff/README.md)を別Packageとして追加した。`handoff.Reconcile`は、構造上の候補と依存閉包の検証対象をまとめ、#951のResolution／ConformanceEvidenceに対応する外部の参照情報と照合する。
+
+結果は「参照あり（未検証）」「参照なし」「宣言世代のずれ」「契約対象の不一致」「参照情報が不完全」「参照が複数で曖昧」に分ける。複数Consumerに共通する依存先は一つにまとめる。構成案自身が競合・未判定なら照合を開始せず、結果を停止扱いとする。
+
+**「参照あり（未検証）」を「適合済み」と呼ばない**。`Contract.Shape`と#951の契約全体の指紋は同義ではなく、適合試験、発行者の現在権限、成果物の真正性、失効状態は正式な別担当の検証を要する。現在のHostの実行権限も当然付与しない。
+
+新Packageは`internal/composition`からは参照されず、静的Targetの実行物への組込みを求めない。局所試験の成功条件・限界・新規ソースのHash一致は参照実装のREADMEへ記録した。
