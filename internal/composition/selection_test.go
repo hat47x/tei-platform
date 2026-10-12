@@ -3,9 +3,14 @@ package composition
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 )
+
+func selectedBinding(gen uint64, id string) Binding {
+	return Binding{ContractID: storage.ID, ContractVersion: storage.Version, ProviderID: id, ArtifactDigest: "sha256:" + strings.Repeat("a", 64), Generation: gen}
+}
 
 func selectedFixture(t *testing.T) (*Registry, Selection, *Coordinator) {
 	t.Helper()
@@ -20,7 +25,14 @@ func selectedFixture(t *testing.T) (*Registry, Selection, *Coordinator) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, _, _ := setupCoordinator(t)
+	router, err := NewRouter(selectedBinding(1, "v1"), NewScope())
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := NewCoordinator(router, allow)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return r, s, c
 }
 
@@ -52,14 +64,14 @@ func TestSelectionRejectsWrongScopeAndIneligibleProvider(t *testing.T) {
 
 func TestSelectedCutoverRechecksIdentityAndGatesInvocations(t *testing.T) {
 	registry, selected, c := selectedFixture(t)
-	mismatch := b(2, "different")
+	mismatch := selectedBinding(2, "different")
 	if err := c.ReplaceSelected(context.Background(), registry, selected, 1, mismatch, validLifecycle()); !errors.Is(err, ErrSelectionMismatch) {
 		t.Fatalf("forged provider identity accepted: %v", err)
 	}
-	if err := c.ReplaceSelected(context.Background(), nil, selected, 1, b(2, "v2"), validLifecycle()); !errors.Is(err, ErrSelectionRequired) {
+	if err := c.ReplaceSelected(context.Background(), nil, selected, 1, selectedBinding(2, "v2"), validLifecycle()); !errors.Is(err, ErrSelectionRequired) {
 		t.Fatalf("missing registry accepted: %v", err)
 	}
-	if err := c.ReplaceSelected(context.Background(), registry, selected, 1, b(2, "v2"), validLifecycle()); err != nil {
+	if err := c.ReplaceSelected(context.Background(), registry, selected, 1, selectedBinding(2, "v2"), validLifecycle()); err != nil {
 		t.Fatal(err)
 	}
 	call, err := c.Acquire()
@@ -70,7 +82,7 @@ func TestSelectedCutoverRechecksIdentityAndGatesInvocations(t *testing.T) {
 		t.Fatalf("wrong cutover provider: %s", call.Binding.ProviderID)
 	}
 	call.Release()
-	if err := c.Replace(context.Background(), 2, b(3, "v3"), validLifecycle()); !errors.Is(err, ErrSelectionRequired) {
+	if err := c.Replace(context.Background(), 2, selectedBinding(3, "v3"), validLifecycle()); !errors.Is(err, ErrSelectionRequired) {
 		t.Fatalf("raw API bypass: %v", err)
 	}
 	// A change in declarations invalidates the registry-bound view until
@@ -100,7 +112,7 @@ func TestRegistryChangeDuringPrepareRejectsStalePublication(t *testing.T) {
 	cleaned := 0
 	outcome := make(chan error, 1)
 	go func() {
-		outcome <- c.ReplaceSelected(context.Background(), r, selected, 1, b(2, "v2"), Lifecycle{
+		outcome <- c.ReplaceSelected(context.Background(), r, selected, 1, selectedBinding(2, "v2"), Lifecycle{
 			Prepare: func(_ context.Context, s *Scope) error {
 				if err := s.Track(func() error {
 					mu.Lock()
@@ -174,7 +186,7 @@ func TestSelectionRejectsAlteredDependencyBindings(t *testing.T) {
 
 func TestRestoreSelectedAfterRegistryRemoval(t *testing.T) {
 	r, selected, c := selectedFixture(t)
-	if err := c.ReplaceSelected(context.Background(), r, selected, 1, b(2, "v2"), validLifecycle()); err != nil {
+	if err := c.ReplaceSelected(context.Background(), r, selected, 1, selectedBinding(2, "v2"), validLifecycle()); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Withdraw(2); err != nil {
@@ -191,7 +203,7 @@ func TestRestoreSelectedAfterRegistryRemoval(t *testing.T) {
 	if fresh.Revision != next.Revision {
 		t.Fatal("wrong new selection revision")
 	}
-	if err := c.RestoreSelected(context.Background(), r, fresh, 2, b(3, "v3"), validLifecycle()); err != nil {
+	if err := c.RestoreSelected(context.Background(), r, fresh, 2, selectedBinding(3, "v3"), validLifecycle()); err != nil {
 		t.Fatal(err)
 	}
 	lease, err := c.Acquire()
