@@ -41,14 +41,14 @@ type Qualification struct {
 }
 
 type Acceptance struct {
-	R0                   string   `json:"r0"`
-	R1                   string   `json:"r1"`
-	CandidateFingerprint string   `json:"candidateFingerprint"`
+	R0                         string   `json:"r0"`
+	R1                         string   `json:"r1"`
+	CandidateFingerprint       string   `json:"candidateFingerprint"`
 	ReviewFingerprint          string   `json:"reviewFingerprint"`
-	ReviewCandidateFingerprint string  `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
-	DecisionReceipt      string   `json:"decisionReceipt"`
-	ReloadReceipt        string   `json:"reloadReceipt"`
-	Delta                []string `json:"delta"`
+	ReviewCandidateFingerprint string   `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
+	DecisionReceipt            string   `json:"decisionReceipt"`
+	ReloadReceipt              string   `json:"reloadReceipt"`
+	Delta                      []string `json:"delta"`
 }
 
 type Web struct {
