@@ -1,0 +1,122 @@
+name: TEI 全体健全性の確認（手動）
+
+# Issue #1189。PR・push・定期実行からは起動しない。
+# 手動起動は、GitHub Actionsの利用について別途判断して行う。
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head_sha:
+        description: 検証対象のコミットSHA（40桁）
+        required: true
+        type: string
+      expected_main_sha:
+        description: 基準とするmainのコミットSHA（40桁）
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-manual-repository-health
+  cancel-in-progress: false
+
+jobs:
+  repository-health:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+    steps:
+      - name: 指定されたコミットを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 実行前の版と作業領域を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 対象や基準の版を暗黙に選ばず、古い版も拒否する。
+          [[ "$EXPECTED_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          # タグではなくブランチからの実行だけを受け付ける。
+          [[ "$GITHUB_REF" == refs/heads/* ]]
+          actual="$(git rev-parse HEAD)"
+          source_tip="$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git "$GITHUB_REF" | cut -f1)"
+          main_tip="$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git refs/heads/main | cut -f1)"
+          printf 'expected-head=%s\nactual-head=%s\nevent-head=%s\nsource-ref=%s\nsource-tip=%s\nexpected-main=%s\nactual-main=%s\n' \
+            "$EXPECTED_HEAD_SHA" "$actual" "$GITHUB_SHA" "$GITHUB_REF" "$source_tip" "$EXPECTED_MAIN_SHA" "$main_tip"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+          test "$actual" = "$GITHUB_SHA"
+          test "$source_tip" = "$EXPECTED_HEAD_SHA"
+          test "$main_tip" = "$EXPECTED_MAIN_SHA"
+          git merge-base --is-ancestor "$EXPECTED_MAIN_SHA" "$actual"
+          # 検査結果を隠せるGitの索引フラグも拒否する。
+          hidden_index="$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          if [[ -n "$hidden_index" ]]; then
+            printf '変更を隠す索引フラグがある：\n%s\n' "$hidden_index" >&2
+            exit 1
+          fi
+          dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          if [[ -n "$dirt" ]]; then
+            printf '実行前の作業領域に変更がある：\n%s\n' "$dirt" >&2
+            exit 1
+          fi
+
+      - name: 手動CIの検査規約を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/ci-workflows-test.py
+
+      - name: 指定版のGoを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: リポジトリ全体の健全性を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          bash tools/repository-health-check.sh
+
+      - name: 実行後の版と作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          # タグではなくブランチからの実行だけを受け付ける。
+          [[ "$GITHUB_REF" == refs/heads/* ]]
+          actual="$(git rev-parse HEAD)"
+          source_tip="$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git "$GITHUB_REF" | cut -f1)"
+          main_tip="$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git refs/heads/main | cut -f1)"
+          printf 'expected-head=%s\nactual-head=%s\nevent-head=%s\nsource-ref=%s\nsource-tip=%s\nexpected-main=%s\nactual-main=%s\n' \
+            "$EXPECTED_HEAD_SHA" "$actual" "$GITHUB_SHA" "$GITHUB_REF" "$source_tip" "$EXPECTED_MAIN_SHA" "$main_tip"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+          test "$actual" = "$GITHUB_SHA"
+          test "$source_tip" = "$EXPECTED_HEAD_SHA"
+          test "$main_tip" = "$EXPECTED_MAIN_SHA"
+          git merge-base --is-ancestor "$EXPECTED_MAIN_SHA" "$actual"
+          # 検査結果を隠せるGitの索引フラグも拒否する。
+          hidden_index="$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          if [[ -n "$hidden_index" ]]; then
+            printf '変更を隠す索引フラグがある：\n%s\n' "$hidden_index" >&2
+            exit 1
+          fi
+          dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          if [[ -n "$dirt" ]]; then
+            printf '実行後の作業領域に変更がある：\n%s\n' "$dirt" >&2
+            exit 1
+          fi

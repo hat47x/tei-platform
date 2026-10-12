@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v1"
+const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v3"
 
 const (
 	CrossViewNatureSource  = "source-backed"
@@ -102,7 +102,22 @@ type actionFunctionPair struct {
 
 var crossViewFingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
-func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
+// BuildCrossViewProjection builds read-only relations only after verifying the
+// exact source document and its version against the supplied transcription contract.
+// Unvalidated Inspection values are not accepted at this public boundary.
+func BuildCrossViewProjection(
+	format Format,
+	source []byte,
+	contract []byte,
+) (CrossViewProjection, error) {
+	inspection, err := InspectWithContract(format, source, contract)
+	if err != nil {
+		return CrossViewProjection{}, err
+	}
+	return buildCrossViewProjection(inspection)
+}
+
+func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
 	doc := inspection.Document
 	mappingContractFingerprint, err := normalizeCrossViewContractFingerprint(inspection.TranscriptionContractFingerprint)
 	if err != nil {
@@ -347,6 +362,14 @@ func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 				))
 				continue
 			}
+			if operations == "" {
+				projection.Unresolved = append(projection.Unresolved, unresolvedCrossView(
+					"iotable-operation-missing",
+					"function-table-operation",
+					[]string{ref.functionToken, ref.token, tables[0].token},
+				))
+				continue
+			}
 			projection.SourceEdges = append(projection.SourceEdges, CrossViewEdge{
 				Kind:         "function-table-operation",
 				Nature:       CrossViewNatureSource,
@@ -399,7 +422,16 @@ func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 	return projection, nil
 }
 
-func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounting {
+// CrossViewPublicAccounting validates the projection before publishing its
+// vocabulary as aggregate keys. It does not grant semantic authority.
+func CrossViewPublicAccounting(projection CrossViewProjection) (CrossViewAccounting, error) {
+	if err := validateCrossViewPublication(projection); err != nil {
+		return CrossViewAccounting{}, err
+	}
+	return crossViewUncheckedAccounting(projection), nil
+}
+
+func crossViewUncheckedAccounting(projection CrossViewProjection) CrossViewAccounting {
 	out := CrossViewAccounting{
 		SchemaVersion:                       1,
 		SourceArtifactDigest:                projection.SourceArtifactDigest,
@@ -646,6 +678,7 @@ func crossViewDerivationPolicyFingerprint() string {
 			"IOID zero means no target interaction edge and is retained as a source-level count",
 			"Task to TaskAction action to Function TaskFunctionIO to target and Function to Table CRUD remain source-backed edge kinds",
 			"group TaskFunctionIO by exact action source token and uniquely resolved Function source token",
+			"only IOTable with at least one recognized CRUD operation creates a Function-to-Table operation edge",
 			"join each distinct action/function pair to every source-backed Function/IOTable/Table operation edge",
 			"carry Function-level declared CRUD unchanged and never relabel it as action-specific effect",
 			"bind every derived path to the union of supporting source tokens",

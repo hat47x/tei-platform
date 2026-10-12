@@ -70,6 +70,59 @@ go run ./tools/reference-business-dfd \
 
 `baseReviewSHA256`は入力ファイルの実バイト列で検証されます。純粋関数`proposeDFDReviewEdit`を単独で使う場合、引数の現在SHAは**呼び出し側提供値**にすぎません。CLIでは実際にハッシュを計算しますが、それでもWorkspaceのCanonical World / Source Index / Shared Acceptanceのrevisionを保証しません。
 
+## 意味の混入を拒否する
+
+未受理のレビュー案では、要素ごとに次の項目だけを認めます。ここにない項目は、内容を解釈して補うのではなく、入力を拒否します。
+
+| 要素 | 許可する項目 |
+| --- | --- |
+| 起動契機 | `id`、`kind`、`targetStep`、`label` |
+| 順序・分岐・例外 | `from`、`to`、`kind`、`condition` |
+| 業務上の役割・外部主体 | `id`、`label` |
+| 概念上の情報保管先 | `id`、`label`、任意の`semanticData` |
+| 業務上の担当 | `step`、`role` |
+| 情報の授受 | `id`、`from`、`to`、`payload` |
+
+単なる順序の矢印に条件を付けることも拒否します。認可設定、時刻による実行設定、データベースの更新指示などは、この業務レビュー案の属性ではありません。将来それらを扱う場合も、実行側の契約を明示的に参照し、別途検証する必要があります。既存のレビュー案を変更する操作で、未知の属性をそのまま次の候補へ運ぶことを防ぎます。
+
+二つの既存受注ケースについて、通常の変更候補と、要素ごとの不適切な属性の混入を試す回帰試験を追加しました。
+
+```sh
+node --test reference/business-system-design/dfd-edit-proposal.test.mjs \
+  reference/business-system-design/dfd-edit-boundary.test.mjs
+```
+
+これは**レビュー候補の形式検査**です。正本で採用された業務上の意味や、実行権限の妥当性を証明するものではありません。
+
+## 図の選択と変更対象を結び付ける
+
+`dfd-selected-edit-bridge.mjs`は、図で選択した要素から、既存の限定的な業務レビュー変更を作成するための接続です。図の入力、元の業務手順、元のレビュー案の三者を照合します。
+
+- 業務手順のID、StepのID・表示内容・Function参照、起動契機、遷移、業務Role、外部主体、概念保管先、責任割当て、情報の授受が食い違えば変更候補を作成しません。
+- 選択したStepへの担当割当て、選択した起動契機のラベル変更、選択したStepからの遷移追加、選択した端点からの情報の授受追加を認めます。それ以外の編集や、別要素へのすり替えは拒否します。
+- 戻り値は`tei.reference.business-dfd-selected-review/v0`であり、`sharedAcceptanceCandidate=null`、`readyForAcceptance=false`、`sourceWrites=[]`です。選択したStepのScopeは`reference-procedure:<手順ID>`で、採用済みの意味IDではありません。
+- この照合だけでは、受理済みWorldやSource Indexとの版一致は成立しません。同じID・同じ内容でも、採用済みの業務仕様だと認めてはなりません。
+
+`dfd-selected-edit-cli.mjs`は四つの入力ファイル（DFD投影、業務手順、レビュー案、変更指示）の実バイトからSHA-256を計算し、指示に含まれる三つの指紋と一致しなければ拒否します。変更候補生成後にも、四つのファイルが途中で変わっていないことを確認します。**このCLIは標準出力へ未受理の候補を出すだけで、いずれのファイルも書き換えません。**
+
+実行例（すべて一時領域に保存）：
+
+```sh
+node reference/business-system-design/dfd-selected-edit-cli.mjs \
+  -projection "$scratch/dfd.json" \
+  -procedure "$scratch/procedure.json" \
+  -review "$scratch/review.json" \
+  -binding "$scratch/selected-edit.json" > "$scratch/selected-preview.json"
+
+node --test \
+  reference/business-system-design/dfd-selected-edit-bridge.test.mjs \
+  reference/business-system-design/dfd-selected-edit-cli.test.mjs
+```
+
+`selected-edit.json`は`schema=tei.reference.business-dfd-selected-edit/v0`と、`projectionSHA256`、`procedureSHA256`、`reviewSHA256`、`selection:{kind,id}`、`operation`、`id`、`origin`、`intent`を明示します。SHAは各ファイルの実バイトから作成してください。選択や画面配置から自動的に編集対象を推測しないことが重要です。
+
+この接続の次段階は、#1124が受理済みBusiness Procedureの正本と同一版のSource位置を認証した後に、**別の正式な候補**として受理可否を審査することです。未受理のDFDレビュー案をShared Acceptance候補へ自動変換することは認めません。
+
 ## Studio・Typed Referenceとの統合条件
 
 1. **選択**: #1125の`-select`が返す`reference-procedure:<procedureId>`のStepとSource位置を表示する。同名のAccepted Taskと同一視しない。

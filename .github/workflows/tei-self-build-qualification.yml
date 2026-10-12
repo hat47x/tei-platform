@@ -14,6 +14,7 @@ on:
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
+      - tools/reference-transform-runtime-engine-build/**
       - reference/plugin-self-build/**
   push:
     branches: [main]
@@ -25,6 +26,7 @@ on:
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
+      - tools/reference-transform-runtime-engine-build/**
       - reference/plugin-self-build/**
   workflow_dispatch:
 
@@ -75,21 +77,54 @@ jobs:
           check-latest: false
           cache: false
 
+      - name: 実行エンジンの実体を二重構築し照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          engine="$RUNNER_TEMP/tei-transform-runtime-engine"
+          evidence="$RUNNER_TEMP/tei-transform-engine-build-evidence.json"
+          go run ./tools/reference-transform-runtime-engine-build -repo . -artifact-out "$engine" > "$evidence"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.transform-engine-build-evidence/v1"
+            and .repositoryRevision == $sha
+            and .reproducible == true
+            and (.artifactDigest | startswith("sha256:"))
+            and .artifactDigest == .firstArtifactDigest
+            and .firstArtifactDigest == .secondArtifactDigest
+            and .runtimeEngine.implementationDigest == .artifactDigest
+            and .runtimeEngine.id == .engineId
+            and .runtimeEngine.version == .engineVersion
+            and .runtimeEngine.contractVersion == .engineContract
+            and .runtimeEngine.target == .target
+            and (.evidenceFingerprint | length) > 0
+          ' "$evidence" >/dev/null
+          expected="$(jq -r '.artifactDigest | ltrimstr("sha256:")' "$evidence")"
+          actual="$(sha256sum "$engine" | cut -d' ' -f1)"
+          test "$actual" = "$expected"
+          printf 'exact-engine=%s\n' "$expected"
+
       - name: SB-1・SB-2・SB-3の実行結果を生成
         shell: bash
         run: |
           set -euo pipefail
           go version
-          go run ./tools/reference-plugin-self-build -repo . > "$RUNNER_TEMP/tei-self-build-evidence.json"
+          go run ./tools/reference-plugin-self-build -repo . \
+            -exact-runtime-engine "$RUNNER_TEMP/tei-transform-runtime-engine" \
+            -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
+            > "$RUNNER_TEMP/tei-self-build-evidence.json"
 
       - name: 実行結果の収束と版を確認
         shell: bash
         run: |
           set -euo pipefail
           evidence="$RUNNER_TEMP/tei-self-build-evidence.json"
-          jq -e --arg sha "$GITHUB_SHA" '
+          jq -e --arg sha "$GITHUB_SHA" --slurpfile engine "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" '
             .schema == "tei.reference.plugin-self-build-evidence/v2"
             and .repositoryRevision == $sha
+            and .transformBootstrap.exactRuntimeEngineBuildFingerprint == $engine[0].evidenceFingerprint
+            and .transformBootstrap.runtimeEngine.implementationDigest == $engine[0].artifactDigest
+            and .transformBootstrap.stage2Plan.execution.runtimeEngine.implementationDigest == $engine[0].artifactDigest
+            and any(.transformBootstrap.packageBuildPlan.dependencies[]; .kind == "runtime-engine" and .artifactDigest == $engine[0].artifactDigest)
             and .transformBootstrap.seedBuilderReproducible == true
             and .transformBootstrap.convergenceResult.converged == true
             and .transformBootstrap.stage1ArtifactDigest == .transformBootstrap.stage2ArtifactDigest
@@ -101,11 +136,25 @@ jobs:
           ' "$evidence" >/dev/null
           jq -r '"SB-3 converged=\(.transformBootstrap.convergenceResult.converged) stage1=\(.transformBootstrap.stage1ArtifactDigest) stage2=\(.transformBootstrap.stage2ArtifactDigest) oracle=\(.transformBootstrap.packageOracleDigest)"' "$evidence"
 
+      - name: 検証済み実行エンジンの応答を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-transform-runtime-engine" \
+            -source tools/reference-transform-runtime-engine/testdata/echo-string.transform.json \
+            < tools/reference-transform-runtime-engine/testdata/echo-string.request.json \
+            > "$RUNNER_TEMP/tei-transform-runtime-engine-response.json"
+          jq -e '
+            .schema == "tei.reference.transform-engine-response/v1"
+            and .output.kind == "string"
+            and .output.string == "hello from exact engine"
+          ' "$RUNNER_TEMP/tei-transform-runtime-engine-response.json" >/dev/null
+
       - name: 変更範囲のGo試験
         shell: bash
         run: |
           set -euo pipefail
-          go test -count=1 ./internal/plugin/transform/... ./tools/reference-plugin-self-build ./tools/reference-transform-seed-builder ./tools/reference-transform-runtime-engine
+          go test -count=1 ./internal/plugin/transform/... ./tools/reference-plugin-self-build ./tools/reference-transform-seed-builder ./tools/reference-transform-runtime-engine ./tools/reference-transform-runtime-engine-build
 
       - name: 検証後の作業領域を確認
         if: always()
@@ -120,6 +169,10 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tei-self-build-${{ github.sha }}
-          path: ${{ runner.temp }}/tei-self-build-evidence.json
+          path: |
+            ${{ runner.temp }}/tei-self-build-evidence.json
+            ${{ runner.temp }}/tei-transform-engine-build-evidence.json
+            ${{ runner.temp }}/tei-transform-runtime-engine
+            ${{ runner.temp }}/tei-transform-runtime-engine-response.json
           if-no-files-found: error
           retention-days: 7
