@@ -67,6 +67,7 @@ jobs:
           python3 -m py_compile tools/reference-first-web-two-unit-e1/migrate_browser.py
           python3 -m py_compile tools/reference-first-web-two-unit-e1/smoke_json_api.py
           bash -n tools/reference-first-web-two-unit-e1/build_json_api.sh
+          python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_publish_no_clobber.py -v
           # py_compile writes __pycache__ in the checkout by default;
           # remove generated files before the clean-tree gate.
           find tools/reference-first-web-two-unit-e1 -type d -name __pycache__ -prune -exec rm -rf {} +
