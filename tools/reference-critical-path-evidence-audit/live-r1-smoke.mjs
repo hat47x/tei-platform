@@ -57,6 +57,34 @@ function buildNegativePriceTarget(binary) {
   };
 }
 
+// N11 negative control: run a real HTTP server whose synthetic Command
+// succeeds but whose separate Observation read deliberately fails.
+// The overlay is isolated to this temporary build; neither tracked files
+// nor the accepted Workspace are modified.
+function buildUnobservedTarget(binary) {
+  const originalPath = join(root, "tools/reference-first-web-target/command_scenario.go");
+  const original = readFileSync(originalPath, "utf8");
+  const observationRead = /func\(context\.Context\) \(any, error\) \{\s*value, exists := state\[orderID\]\s*if !exists \{\s*return nil, fmt\.Errorf\("order state not found"\)\s*\}\s*return value, nil\s*\}/g;
+  const matched = [...original.matchAll(observationRead)];
+  assert.equal(matched.length, 1,
+    "expected exactly one synthetic post-Command Observation read boundary");
+  const rewritten = original.replace(observationRead,
+    'func(context.Context) (any, error) { return nil, fmt.Errorf("synthetic observation unavailable (N11 test only)") }');
+  const replacement = join(temp, "n11-unobserved-command-scenario.go");
+  writeFileSync(replacement, rewritten, { mode: 0o600 });
+  const overlay = writeJSON("n11-unobserved-overlay.json",
+    { Replace: { [originalPath]: replacement } });
+  go(["build", "-mod=readonly", "-overlay", overlay, "-o", binary,
+    "./tools/reference-first-web-target"]);
+  return {
+    sourceFile: "tools/reference-first-web-target/command_scenario.go",
+    originalSHA256: createHash("sha256").update(original).digest("hex"),
+    overlaySHA256: createHash("sha256").update(rewritten).digest("hex"),
+    override: "synthetic post-Command Observation read reports unavailable",
+    authority: "test-only-build-overlay"
+  };
+}
+
 async function stopTarget() {
   if (!child || child.exitCode !== null || child.signalCode !== null) return;
   child.kill("SIGTERM");
