@@ -51,29 +51,33 @@ func (b *sourceSizeBudget) quoted(s string) error {
 // canonical encoding. Count those bytes now rather than allocating the
 // expanded canonical literal first.
 func (b *sourceSizeBudget) rawJSON(raw []byte) error {
-	if err := b.add(len(raw)); err != nil {
-		return err
-	}
+	size := 0
 	inString := false
 	escaped := false
 	for i := 0; i < len(raw); i++ {
 		ch := raw[i]
-		// The expansion estimate is conservative even for malformed JSON;
-		// semantic and syntactic validation remains ParseJSON's responsibility.
+		// Whitespace outside strings disappears when RawMessage is
+		// compacted. Counting it would reject ordinary valid input near
+		// the byte boundary even though the canonical bytes fit.
+		if !inString && (ch == ' ' || ch == '\\n' || ch == '\\r' || ch == '\\t') {
+			continue
+		}
+		// The expansion estimate remains conservative for malformed JSON;
+		// ParseJSON is responsible for rejecting invalid syntax.
+		encodedBytes := 1
 		switch ch {
 		case '<', '>', '&':
-			if err := b.add(5); err != nil {
-				return err
-			}
+			encodedBytes = 6
 		case 0xe2:
 			if i+2 < len(raw) && raw[i+1] == 0x80 &&
 				(raw[i+2] == 0xa8 || raw[i+2] == 0xa9) {
-				if err := b.add(3); err != nil {
-					return err
-				}
+				encodedBytes = 6
 				i += 2
-				continue
 			}
+		}
+		size += encodedBytes
+		if size > b.remaining {
+			return fmt.Errorf("serialized size limit exceeded")
 		}
 		if inString {
 			if escaped {
@@ -94,7 +98,7 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 			}
 		}
 	}
-	return nil
+	return b.add(size)
 }
 
 func (b *sourceSizeBudget) measure(v reflect.Value, depth int) error {
