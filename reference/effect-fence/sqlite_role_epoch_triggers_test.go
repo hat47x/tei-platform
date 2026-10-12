@@ -4,13 +4,10 @@ package effectfence
 
 import "fmt"
 
-// installSQLiteLegacyRoleEpochTriggers は試験用の認可正本にDBトリガーを設定する。
-// アプリ側の更新手順に頼らず、同じSQLite上の利用者変更と所属版更新を
-// 同一トランザクション内で成立させる。実運用のDB Providerではない。
 // requiredSQLiteLegacyEpochTriggers は提供側が保持する期待DDLである。
 // 実際のトリガー定義に変更があれば書込み確定を拒否する。
 var requiredSQLiteLegacyEpochTriggers = []string{
-		`CREATE TRIGGER legacy_subject_epoch_on_update
+	`CREATE TRIGGER legacy_subject_epoch_on_update
 AFTER UPDATE OF role, disabled ON legacy_subjects
 BEGIN
     SELECT RAISE(ABORT, 'missing membership epoch')
@@ -32,7 +29,7 @@ BEGIN
     WHERE dimension='membership'
       AND json_extract(scope, '$.Subject')=NEW.subject;
 END`,
-		`CREATE TRIGGER legacy_subject_epoch_on_delete
+	`CREATE TRIGGER legacy_subject_epoch_on_delete
 AFTER DELETE ON legacy_subjects
 BEGIN
     SELECT RAISE(ABORT, 'missing membership epoch')
@@ -53,7 +50,7 @@ BEGIN
     WHERE dimension='membership'
       AND json_extract(scope, '$.Subject')=OLD.subject;
 END`,
-		`CREATE TRIGGER legacy_subject_epoch_on_insert
+	`CREATE TRIGGER legacy_subject_epoch_on_insert
 AFTER INSERT ON legacy_subjects
 BEGIN
     SELECT RAISE(ABORT, 'missing membership epoch')
@@ -75,13 +72,14 @@ BEGIN
     WHERE dimension='membership'
       AND json_extract(scope, '$.Subject')=NEW.subject;
 END`,
-		`CREATE TRIGGER legacy_subject_epoch_prevent_subject_rekey
+	`CREATE TRIGGER legacy_subject_epoch_prevent_subject_rekey
 BEFORE UPDATE OF subject ON legacy_subjects
 BEGIN
     SELECT RAISE(ABORT, 'subject identity is immutable');
 END`,
 }
 
+// installSQLiteLegacyRoleEpochTriggers は試験用の利用者変更をDBの同一確定境界へ束縛する。
 func installSQLiteLegacyRoleEpochTriggers(f *sqliteFixture) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
