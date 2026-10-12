@@ -121,112 +121,112 @@ PostgreSQL以外の実際のデータベースで得る検証根拠も重要で�
 
 判定段階Bで`Ready`と判断した後、その`R`を引継ぎの基準として固定します。
 
-## Milestone 4 — 一つの実用TargetでApplicationを通せる
+## マイルストーン4 — 一つの実用的な実行先でアプリケーションを動かせる
 
-Product Acceptance Scenario: PAS-04 primary
-
-### 到達条件
-
-- Handover Baseline `B` / revision `R`から第一Web TargetへProjectionできる
-- Web build revision `T1`をbaseline `R`と別に追跡できる
-- browse / record / reference / header-detail / commandを同じApplication meaningへ接続できる
-- Validation / Authorization / Capability / Result / ObservationをTarget側で再定義しない
-- standard ProjectionとCustom UIを同じ上位意味へ接続できる
-- Web Adapterを除去してもCanonical Worldが変わらない
-
-### Gate C
-
-Gate Cでは次を別Evidenceとして扱います。
-
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
-
-VLM / screenshot scoreだけでSemantic / Functionalを合格にしません。
-
-Gate CではTarget Capability / Execution / Trust / Web固有差を第二Targetへ渡せることも確認します。
-
-## Milestone 5 — 同じ意味を複数Application Targetへ展開できる
-
-Product Acceptance Scenario: PAS-04 primary
+製品の受入シナリオ：PAS-04を主とする
 
 ### 到達条件
 
-- 第二Application Targetを第一Targetとは別build identityで実証できる
-- 同じHandover Baseline、または明示successor baselineを比較基準にできる
-- Target Capability差を説明できる
-- Runtime Binding差を説明できる
-- Execution / Trust Profile差を説明できる
-- Target固有実装をCanonicalへ逆流させない
-- RQ-024のperformance measurementをTarget / Host条件付きで比較できる
+- 引継ぎの基準`B`と対象版`R`から、最初のWeb向け実行先へ展開できる
+- Web向けビルド版`T1`を意味の基準版`R`とは別に追跡できる
+- 一覧、記録、参照、見出しと明細、業務操作を同じアプリケーションの意味へ結び付けられる
+- 検証、認可、機能、結果、観測を実行先で独自に再定義しない
+- 標準的な表示と独自の画面を同じ上位の意味へ結び付けられる
+- Web向けの接続部品を取り除いても、意味の正本全体は変わらない
+
+### 判定段階C
+
+判定段階Cでは、次の検証根拠を分けて扱います。
+
+1. 意味上の準拠性
+2. 操作と機能に関する検証根拠
+3. 表示の忠実度に関する検証根拠
+
+画像を扱う言語モデルやスクリーンショットの評価点だけでは、意味と機能の検証に合格したとは判断しません。
+
+判定段階Cでは、利用できる機能、実行方法、信頼の条件、Web固有の違いを、二つ目の実行先の検証へ引き継げることも確認します。
+
+## マイルストーン5 — 同じ意味を複数のアプリケーション実行先へ展開できる
+
+製品の受入シナリオ：PAS-04を主とする
+
+### 到達条件
+
+- 二つ目のアプリケーション実行先を、最初の実行先とは別のビルド識別情報で実証できる
+- 同じ引継ぎの基準、または後継となることを明示した基準を比較に使える
+- 実行先が利用できる機能の違いを説明できる
+- 実行基盤との対応付けの違いを説明できる
+- 実行方法と信頼条件の違いを説明できる
+- 実行先に固有の実装を意味の正本へ逆流させない
+- RQ-024の性能測定結果を、実行先とホストの条件を添えて比較できる
 
 ### 意味
 
-Target-neutralが第一Web Targetだけからの仮説ではなく、性質の異なる第二Targetで圧力試験された状態です。
+実行先に依存しないという主張を、最初のWeb向け実行先だけで判断せず、性質の異なる二つ目の実行先でも厳しく検証した状態です。
 
-Studio / Editorのdeveloper-facing Wails HostはApplication Target Evidenceへ数えません。
+開発者向け編集環境のWailsホストは、アプリケーション実行先の検証根拠には数えません。
 
-## Milestone 6 — Studioが安全なAuthoring環境として成立する
+## マイルストーン6 — 編集環境で安全に定義を扱える
 
-Product Acceptance Scenario: PAS-01 primary
-
-### 到達条件
-
-- StudioがCanonicalの第二正本にならない
-- high-density read / inspectができる
-- Select → Propose → Preview → Accept / Rejectの最小authoring loopを実証できる
-- file-native / CLI / AIとShared Acceptance Boundaryを共有できる
-- Preview / Rejectでauthoritative sourceを変更しない
-- Accept後にsourceをStudioなしでreloadできる
-- stale `baseModelRevision`を黙って適用しない
-- Studio都合でmandatory authored Stable IDを導入しない
-
-### 意味
-
-厳格なmeaning / source境界を壊さず、日常的なdeveloper-facing authoringへ接続できる状態です。
-
-最初のReferenceは`ISSUE-000046`で扱います。
-
-## Milestone 7 — knowledge-first / AI支援が厳格さを軽いUXへ変える
-
-Product Acceptance Scenario: PAS-06 primary / PAS-01 secondary
+製品の受入シナリオ：PAS-01を主とする
 
 ### 到達条件
 
-- Human / AIが既存Semantic資産をread-only探索できる
-- applicable / incompatible / unknownを区別できる
-- search ranking / similarityをSemantic Evidenceへ格上げしない
-- AI Proposalとaccepted Decision / source changeを区別できる
-- ProposalがCanonical / Source / Evidenceへtraceできる
-- AI ProposalもShared Acceptance Boundaryを通る
-- stale Proposalを黙って適用しない
-- autonomyとauthorityを分ける
-- Derived Knowledgeを削除してもCanonical Worldが変わらない
+- 編集環境が意味の第二の正本にならない
+- 多くの情報をまとめて読み、調べられる
+- 選択、提案、事前確認、受理・却下という最小限の編集の流れを実証できる
+- ファイルの直接編集、コマンドライン、AIと共通の受理境界を使える
+- 事前確認や却下によって正本となる情報源を変更しない
+- 受理後、編集環境を使わずに元のソースを読み直せる
+- 古くなった`baseModelRevision`を確認せずに適用しない
+- 編集環境の都合で、人が記述する安定識別子を必須にはしない
 
 ### 意味
 
-AI機能が追加されたというだけでなく、既存知識探索・変更候補・検証を通して利用者負担を減らせる状態です。
+意味と情報源の厳密な境界を保ちながら、開発者の日常的な編集作業に利用できる状態です。
 
-read-only探索は`ISSUE-000047`、AI Proposal / Acceptanceは`ISSUE-000027`で扱います。
+最初の参照事例は`ISSUE-000046`で扱います。
 
-## Gate C後のMilestone 5〜7の関係
+## マイルストーン7 — 既存知識とAIを活用して作業負担を軽くする
 
-Milestone 5、6、7は厳密な直列ではありません。
+製品の受入シナリオ：PAS-06を主とし、PAS-01も対象とする
+
+### 到達条件
+
+- 人とAIが既存の意味に関する資産を読み取り専用で探索できる
+- 適用可能・不適合・未確定を区別できる
+- 検索順位や類似度を意味の正しさを示す検証根拠とはみなさない
+- AIの提案と、受理された判断・情報源の変更を区別できる
+- 提案から意味の正本、情報源、検証根拠へ追跡できる
+- AIによる提案も共通の受理境界を通る
+- 古くなった提案を確認せずに適用しない
+- 自律性と権限を区別する
+- 派生した知識を削除しても、意味の正本全体は変わらない
+
+### 意味
+
+AIの機能を追加するだけではなく、既存知識の探索、変更候補の提示、検証によって利用者の負担を減らせる状態です。
+
+読み取り専用の探索は`ISSUE-000047`、AIによる提案と受理は`ISSUE-000027`で扱います。
+
+## 判定段階Cの後のマイルストーン5〜7の関係
+
+マイルストーン5、6、7は、必ずしも順番に完了させる必要はありません。
 
 ```text
-Gate C Ready
-   ├─→ Milestone 5 第二Target pressure test
-   ├─→ Milestone 6 Studio minimal loop
-   └─→ Milestone 7 knowledge-first / AI Proposal
+判定段階C — Ready
+   ├─→ マイルストーン5：二つ目の実行先による検証
+   ├─→ マイルストーン6：編集環境での最小限の操作
+   └─→ マイルストーン7：既存知識の探索とAIによる提案
 ```
 
-それぞれのEvidenceを相互に戻します。
+各作業で得た検証根拠を、ほかの作業にも生かします。
 
-- 第二Target差 → Studioが表示すべきTarget差 / AIが参照すべきEvidence
-- Studio authoring Evidence → Target-neutral source / acceptance境界
-- knowledge-first / AI Evidence → reusable meaning / traceability不足
+- 二つ目の実行先での違い → 編集環境で示す違いと、AIが参照する検証根拠
+- 編集環境での記述・変更に関する検証根拠 → 実行先に依存しない情報源と受理の境界
+- 既存知識の探索・AIの検証根拠 → 再利用する意味と追跡可能性に関する不足
 
-一つのlaneの完成を他laneの開始条件にしません。
+一つの作業領域の完了を、別の作業領域の着手条件にはしません。
 
 ## Milestone 8 — Provider / Runtimeの交換可能性が実証される
 
