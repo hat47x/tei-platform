@@ -103,15 +103,15 @@ func TestIndependentQuoteRunsThroughExistingRuntimeAuthorityBoundary(t *testing.
 		ImplementationID: "order-quote.v1", ArtifactDigest: digest,
 	}
 	dispatch := GenericDispatch{
-		Schema: dispatchSchema,
-		ContractID: "reference.order.quote-lines/v1",
-		ContractFingerprint: digestBytes([]byte("reference.order.quote-lines.contract/v1")),
-		Target: "reference/order_entry",
-		Provider: provider,
+		Schema:                  dispatchSchema,
+		ContractID:              "reference.order.quote-lines/v1",
+		ContractFingerprint:     digestBytes([]byte("reference.order.quote-lines.contract/v1")),
+		Target:                  "reference/order_entry",
+		Provider:                provider,
 		RequestShapeFingerprint: digestBytes([]byte("reference.order.quote-lines.request/v1")),
-		ResultShapeFingerprint: digestBytes([]byte("reference.order.quote-lines.result/v1")),
-		PayloadCodec: "application/json",
-		Payload: []byte(`{"currency":"JPY","lines":[{"sku":"PEN","quantity":3,"unitPriceMinor":250},{"sku":"BOOK","quantity":2,"unitPriceMinor":400}]}`),
+		ResultShapeFingerprint:  digestBytes([]byte("reference.order.quote-lines.result/v1")),
+		PayloadCodec:            "application/json",
+		Payload:                 []byte(`{"currency":"JPY","lines":[{"sku":"PEN","quantity":3,"unitPriceMinor":250},{"sku":"BOOK","quantity":2,"unitPriceMinor":400}]}`),
 	}
 	transportPlan, err := buildTransportDispatchPlan(genericDispatchIdentity(dispatch))
 	if err != nil {
@@ -123,16 +123,16 @@ func TestIndependentQuoteRunsThroughExistingRuntimeAuthorityBoundary(t *testing.
 		Kind: plugin.CapabilityContractQueryExecutor, ID: legacyID,
 	}
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
+		Environment:           core.MustCanonicalID("reference"),
 		PluginLockFingerprint: lockFingerprint,
 		Plugins: []pruntime.PluginRuntime{{
-			Plugin: identity,
+			Plugin:                identity,
 			DescriptorFingerprint: descriptor,
-			Boundary: pruntime.BoundaryProcess,
-			Trust: pruntime.TrustExternalProcess,
-			Command: binary,
-			SandboxPolicy: plugin.SandboxNone,
-			Artifact: plugin.Artifact{Digest: digest},
+			Boundary:              pruntime.BoundaryProcess,
+			Trust:                 pruntime.TrustExternalProcess,
+			Command:               binary,
+			SandboxPolicy:         plugin.SandboxNone,
+			Artifact:              plugin.Artifact{Digest: digest},
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
 			Plugin: identity, Capability: capability,
@@ -212,13 +212,13 @@ func TestIndependentQuoteRunsThroughExistingRuntimeAuthorityBoundary(t *testing.
 	// Every rejection must happen BEFORE the operating system starts a new
 	// process. Failure to launch is not proof that a sandbox is installed.
 	tests := []struct {
-		name       string
-		mutate     func(*pruntime.EnvironmentPlan, *pruntime.Registry)
-		wantError  string
+		name      string
+		mutate    func(*pruntime.EnvironmentPlan, *pruntime.Registry)
+		wantError string
 	}{
 		{
-			name: "missing host verifier",
-			mutate: func(_ *pruntime.EnvironmentPlan, r *pruntime.Registry) { r.Verifier = nil },
+			name:      "missing host verifier",
+			mutate:    func(_ *pruntime.EnvironmentPlan, r *pruntime.Registry) { r.Verifier = nil },
 			wantError: "no artifact verifier",
 		},
 		{
