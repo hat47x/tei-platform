@@ -91,9 +91,15 @@ class SelfBuildCIContract(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(covers(path, pr), f"セルフビルド入力の監視漏れ: {path}")
 
+    def test_distinct_main_commits_cannot_replace_pending_evidence(self) -> None:
+        # cancel-in-progress=falseだけでは同一グループのpending runが置換される。
+        # GitHub SHAをグループに含め、各コミットの予約枠を独立させる。
+        self.assertIn("github.event.pull_request.number || github.sha", self.source)
+        self.assertNotIn("github.event.pull_request.number || github.ref", self.source)
+
     def test_main_push_is_not_cancelled_by_newer_main_push(self) -> None:
         self.assertRegex(self.source, r"(?m)^  cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}$")
-        self.assertIn("group: tei-self-build-${{ github.event.pull_request.number || github.ref }}", self.source)
+        self.assertIn("group: tei-self-build-${{ github.event.pull_request.number || github.sha }}", self.source)
         self.assertIn("    branches: [main]", self.source)
 
     def test_execution_has_verifiable_evidence_and_safe_permissions(self) -> None:
