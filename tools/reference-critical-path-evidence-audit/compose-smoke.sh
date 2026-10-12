@@ -53,6 +53,8 @@ clean() {
 }
 clean "$root"
 original_head="$(git rev-parse HEAD)"
+runner_blob="$(git hash-object "$root/tools/reference-critical-path-evidence-audit/compose-smoke.sh")" ||
+  die "cannot identify exact smoke runner"
 git fetch --no-tags "$remote" --prune || die "fetch failed"
 check_tip() {
   local branch="$1" expected="$2" actual
@@ -127,6 +129,8 @@ if [[ "$mode" == draft-tips ]]; then
 fi
 [[ "$(git rev-parse HEAD)" == "$original_head" ]] ||
   die "original checkout HEAD moved"
+[[ "$(git hash-object "$root/tools/reference-critical-path-evidence-audit/compose-smoke.sh")" == "$runner_blob" ]] ||
+  die "smoke runner changed during testing"
 clean "$root"
 if [[ "$mode" == integrated-main ]]; then
   printf 'CURRENT_MAIN_CROSS_LANE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
@@ -135,4 +139,7 @@ else
 fi
 printf 'mode=%s\nmain=%s\nintegrationHead=%s\nintegrationTree=%s\n' \
   "$mode" "$expected_main" "$integration_head" "$integration_tree"
+printf 'runnerBlob=%s\nhealthRunnerBlob=%s\n' "$runner_blob" \
+  "$(git -C "$wt" hash-object tools/repository-health-check.sh)"
+printf 'goVersion=%s\nnodeVersion=%s\n' "$(go version)" "$(node --version)"
 printf 'limits=NOT_OWNER_PR_QUALIFICATION_NOT_EXTERNAL_DB_NOT_INDEPENDENT_READ_NOT_HUMAN_APPROVAL\n'
