@@ -232,7 +232,7 @@ test('protected Action requires the exact POST method and explicit protected exp
   for(const exposure of [undefined,'public','interactive-session','protected-typo']){
     const p=clone(base);
     p.route.exposure=exposure;
-    assert.throws(()=>composeRequestPlan(p),/protected exposure/,String(exposure));
+    assert.throws(()=>composeRequestPlan(p),exposure==='public' ? /public/ : /protected exposure/,String(exposure));
   }
   for(const invalid of [null,0,{},[],true,' ',undefined]){
     const p=clone(base);
