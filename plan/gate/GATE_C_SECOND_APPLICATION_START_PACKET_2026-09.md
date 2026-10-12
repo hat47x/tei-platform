@@ -26,7 +26,7 @@ Start Packet
 
 Entryの機械的preflightは次を正本とする。
 
-- `plan/GATE_C_SECOND_APPLICATION_ENTRY_PREFLIGHT_2026-09.md`
+- `plan/gate/GATE_C_SECOND_APPLICATION_ENTRY_PREFLIGHT_2026-09.md`
 - `tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go`
 
 第二Application workstreamを開始するには、Gate C Readyを**明示Evidence**で確認する。

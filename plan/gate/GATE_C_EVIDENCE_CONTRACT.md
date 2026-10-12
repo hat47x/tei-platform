@@ -13,10 +13,10 @@ Gate Cでは、Driverと第一Web Targetが同じCanonical Application上の意�
 
 関連:
 
-- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `plan/gate/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - ISSUE-000007-first-web-target-projection.md
 - ISSUE-000028-first-web-target-conformance-evidence.md
-- `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
+- `plan/gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
 - ISSUE-000026-target-capability-execution-profile-boundary.md
 - GitHub Issue #70 / #259 / #270 / #291
 

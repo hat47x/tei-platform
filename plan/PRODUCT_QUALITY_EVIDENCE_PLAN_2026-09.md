@@ -8,8 +8,8 @@ Status: **Planning baseline — incremental / no new Gate**
 - `docs/product-quality-architecture.md`
 - `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- `plan/GATE_B_READINESS_AUDIT.md`
-- `plan/GATE_C_EVIDENCE_CONTRACT.md`
+- `plan/gate/GATE_B_READINESS_AUDIT.md`
+- `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`
 - GitHub Issue #565
 
 ## 1. 目的

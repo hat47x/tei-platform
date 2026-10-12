@@ -88,7 +88,7 @@ Handover recordはCanonicalの第二正本ではありません。
 
 ### Gate C — 第一Targetとの差をEvidenceで説明できる
 
-**Ready**です（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。Gate B / Handoverを起点に、第一Web Target build `T1`のSemantic / Functional / Visual Evidenceが同一provenanceでそろいました（[GATE_C_READINESS_AUDIT.md](GATE_C_READINESS_AUDIT.md)）。Readyの非主張（production-ready、actual external Commandの成功、Target-neutral Presentation taxonomyの完成、第二Targetが不要になったこと、Visual Fidelityの人による承認）は同auditのとおりです。
+**Ready**です（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。Gate B / Handoverを起点に、第一Web Target build `T1`のSemantic / Functional / Visual Evidenceが同一provenanceでそろいました（[GATE_C_READINESS_AUDIT.md](gate/GATE_C_READINESS_AUDIT.md)）。Readyの非主張（production-ready、actual external Commandの成功、Target-neutral Presentation taxonomyの完成、第二Targetが不要になったこと、Visual Fidelityの人による承認）は同auditのとおりです。
 
 第一Web TargetはHandover Baseline `B` / revision `R`を意味baselineとして利用します。
 

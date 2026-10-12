@@ -2,10 +2,10 @@
 
 - Status: Prepared / test-only
 - Date: 2026-09-19
-- Parent: `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
+- Parent: `plan/gate/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
 - Related:
-  - `plan/GATE_C_EVIDENCE_CONTRACT.md`
-  - `plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md`
+  - `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`
+  - `plan/gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md`
   - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
   - `plan/MASTER_PLAN.md`
 - Canonical Application impact: None

@@ -160,6 +160,6 @@ go run ./tools/reference-durable-run-golden
 ## 関連
 
 - GitHub Issue #255
-- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
+- `plan/gate/GATE_B_EVIDENCE_RUNBOOK.md`
 - `tools/reference-golden/`
 - `cmd/tei deployment-start`

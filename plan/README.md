@@ -20,6 +20,7 @@
 | 個別作業の目的・完了条件 | GitHub Issues |
 | 採用した設計判断 | [`adr/README.md`](adr/README.md) |
 | 複数Issueにまたがる機能設計 | [`design/README.md`](design/README.md) |
+| 段階判定の条件・手順・記録 | [`gate/README.md`](gate/README.md) |
 | 特定時点の監査結果 | 公開ツリーには個別の監査・検討記録を含めません |
 | 現在の実装・実証状況 | [`../docs/status.md`](../docs/status.md) |
 
@@ -61,7 +62,9 @@ Gate Cの後は、Studio、既存知識を優先する探索、AI Proposal、第
 
 ## Gate A
 
-- [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)
+判定条件、実行手順、判定記録は[`gate/README.md`](gate/README.md)にまとめています。
+
+- [`GATE_A_READINESS_AUDIT.md`](gate/GATE_A_READINESS_AUDIT.md)
 - 現在: **Ready**
 
 Application Pattern、Datasource、Validation、Authentication / Authorization、Capability Binding、Business Result / Execution Error等をDriverへ渡せる意味基線が成立しています。
@@ -70,9 +73,9 @@ Application Pattern、Datasource、Validation、Authentication / Authorization�
 
 ### 正本文書
 
-- [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md) — 何のEvidenceが必要か / 何を証明するか
-- [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md) — 唯一の具体実行手順
-- [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) — Ready / Not Ready判定
+- [`GATE_B_EVIDENCE_ACQUISITION.md`](gate/GATE_B_EVIDENCE_ACQUISITION.md) — 何のEvidenceが必要か / 何を証明するか
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](gate/GATE_B_EVIDENCE_RUNBOOK.md) — 唯一の具体実行手順
+- [`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) — Ready / Not Ready判定
 - ISSUE-000037-gate-b-three-lane-final-evidence.md — three-lane final convergence
 
 ### 現在
@@ -87,14 +90,14 @@ Required Evidenceは次の三つで、いずれもsame-run same-Rで成立して
 | generated artifact reproducibility | `ISSUE-000025` / #255 | 成立 |
 | real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | 成立 |
 
-#387 final convergenceと独立artifact audit（`artifactAuditPassed = true`）の詳細は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を参照してください。
+#387 final convergenceと独立artifact audit（`artifactAuditPassed = true`）の詳細は[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md)を参照してください。
 
 actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneではなく、未完了のままHandoverへ`unresolved`として渡しています。
 
 ## Gate B → Gate C Handover
 
-- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) — Handoverの規則・原則
-- [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md) — 実際に固定したBaseline `B / R`の記録
+- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](gate/GATE_B_TO_C_HANDOVER_CONTRACT.md) — Handoverの規則・原則
+- [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md) — 実際に固定したBaseline `B / R`の記録
 - ISSUE-000030-gate-b-to-c-handover-baseline.md
 
 Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定済みです。
@@ -103,13 +106,13 @@ Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`�
 
 ## Gate C / First Web Target
 
-- [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md) — Ready判定の記録
-- [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
-- [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
+- [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md) — Ready判定の記録
+- [`GATE_C_EVIDENCE_CONTRACT.md`](gate/GATE_C_EVIDENCE_CONTRACT.md)
+- [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 - ISSUE-000007-first-web-target-projection.md
 - ISSUE-000028-first-web-target-conformance-evidence.md
 
-Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)です。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではありません。
+Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)です。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではありません。
 
 First Web Targetのbuild revision `T1`をbaseline revision `R`と分けて追跡します。
 
@@ -249,7 +252,7 @@ Plan Issueの構成ルールはGitHub Issuesを参照します。
 
 | 役割 | 正本または参照先 | 扱い |
 | --- | --- | --- |
-| Gate A・B・Cの判定 | [Gate A](GATE_A_READINESS_AUDIT.md)／[Gate B](GATE_B_READINESS_AUDIT.md)／[Gate C](GATE_C_READINESS_AUDIT.md) | 判定した対象・版・Evidenceに結び付く正式記録。現在の`main`の検証済みを意味しない。 |
+| Gate A・B・Cの判定 | [Gate A](gate/GATE_A_READINESS_AUDIT.md)／[Gate B](gate/GATE_B_READINESS_AUDIT.md)／[Gate C](gate/GATE_C_READINESS_AUDIT.md) | 判定した対象・版・Evidenceに結び付く正式記録。現在の`main`の検証済みを意味しない。 |
 | 製品要求の不足と根拠 | [要求別の不足監査](PRODUCT_REQUIREMENT_GAP_AUDIT.md) | 更新型の照合文書。要求と実証の正本を置き換えない。 |
 | 業務手順の契約ADR作成可否 | 関連するIssueと採用ADR | 現行の作業条件と採用済み判断をそれぞれの正本で確認します。 |
 | 特定時点の調査結果 | 公開対象外 | 詳細な調査・検討記録は製品文書と分けて管理します。 |

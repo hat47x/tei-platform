@@ -329,7 +329,7 @@ Command payloadから観測状態を作らないこと、readの失敗と期待�
 - 遷移に必要なValidation
 - 状態コードの文字列
 
-Gate Cでは、同じCanonical規則をDriverとWebが利用していること、単一正本の条件変更が双方の結果へ反映されることを、[Gate C Evidence契約](../GATE_C_EVIDENCE_CONTRACT.md)のSemantic / Functional / Visualの区分に沿って確認します。表示できたことをSemantic Conformanceの合格にしません。
+Gate Cでは、同じCanonical規則をDriverとWebが利用していること、単一正本の条件変更が双方の結果へ反映されることを、[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)のSemantic / Functional / Visualの区分に沿って確認します。表示できたことをSemantic Conformanceの合格にしません。
 
 ## Reference / Conformance
 

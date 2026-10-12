@@ -215,6 +215,6 @@ EvidenceをRepositoryへ永続保存するか、どのpathを標準とするか�
 
 - GitHub Issue #310
 - ISSUE-000032-gate-b-deterministic-repository-evidence.md
-- `plan/GATE_B_EVIDENCE_ACQUISITION.md`
-- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
-- `plan/GATE_B_READINESS_AUDIT.md`
+- `plan/gate/GATE_B_EVIDENCE_ACQUISITION.md`
+- `plan/gate/GATE_B_EVIDENCE_RUNBOOK.md`
+- `plan/gate/GATE_B_READINESS_AUDIT.md`
