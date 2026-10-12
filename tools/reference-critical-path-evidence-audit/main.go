@@ -211,9 +211,16 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		if ph.HostAuthorityEvidence == "" {
 			add("S05_CURRENT_HOST_AUTHORITY_MISSING")
 		}
-		if ph.CommandReceipt == "" || ph.IndependentReadReceipt == "" ||
+		if strings.TrimSpace(ph.CommandReceipt) == "" ||
+			strings.TrimSpace(ph.IndependentReadReceipt) == "" ||
 			ph.CommandReceipt == ph.IndependentReadReceipt || ph.RecordID == "" {
 			add("E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED")
+		}
+		// A no-read control cannot be fulfilled by the very E2 Command or
+		// independently executed read whose presence the control is testing.
+		if w.UnobservedControlReceipt == ph.CommandReceipt ||
+			w.UnobservedControlReceipt == ph.IndependentReadReceipt {
+			add("N11_UNOBSERVED_CONTROL_MISSING")
 		}
 		if ph.SchemaFailureControl == "" {
 			add("S02_NEGATIVE_CONTROL_MISSING")
