@@ -94,6 +94,48 @@ node --test reference/business-system-design/dfd-edit-proposal.test.mjs \
 
 これは**レビュー候補の形式検査**です。正本で採用された業務上の意味や、実行権限の妥当性を証明するものではありません。
 
+## 図の選択と変更対象を結び付ける
+
+`dfd-selected-edit-bridge.mjs`は、図で選択した要素から、既存の限定的な業務レビュー変更を作成するための接続です。図の入力、元の業務手順、元のレビュー案の三者を照合します。
+
+- 業務手順のID、StepのID・表示内容・Function参照、起動契機、遷移、業務Role、外部主体、概念保管先、責任割当て、情報の授受が食い違えば変更候補を作成しません。
+- 選択したStepへの担当割当て、選択した起動契機のラベル変更、選択したStepからの遷移追加、選択した端点からの情報の授受追加を認めます。それ以外の編集や、別要素へのすり替えは拒否します。
+- 戻り値は`tei.reference.business-dfd-selected-review/v0`であり、`sharedAcceptanceCandidate=null`、`readyForAcceptance=false`、`sourceWrites=[]`です。選択したStepのScopeは`reference-procedure:<手順ID>`で、採用済みの意味IDではありません。
+- この照合だけでは、受理済みWorldやSource Indexとの版一致は成立しません。同じID・同じ内容でも、採用済みの業務仕様だと認めてはなりません。
+
+`dfd-selected-edit-cli.mjs`は四つの入力ファイル（DFD投影、業務手順、レビュー案、変更指示）の実バイトからSHA-256を計算し、指示に含まれる三つの指紋と一致しなければ拒否します。変更候補生成後にも、四つのファイルが途中で変わっていないことを確認します。**このCLIは標準出力へ未受理の候補を出すだけで、いずれのファイルも書き換えません。**
+
+実行例（すべて一時領域に保存）：
+
+```sh
+node reference/business-system-design/dfd-selected-edit-cli.mjs \
+  -projection "$scratch/dfd.json" \
+  -procedure "$scratch/procedure.json" \
+  -review "$scratch/review.json" \
+  -binding "$scratch/selected-edit.json" > "$scratch/selected-preview.json"
+
+node --test \
+  reference/business-system-design/dfd-selected-edit-bridge.test.mjs \
+  reference/business-system-design/dfd-selected-edit-cli.test.mjs
+```
+
+`selected-edit.json`は`schema=tei.reference.business-dfd-selected-edit/v0`と、`projectionSHA256`、`procedureSHA256`、`reviewSHA256`、`selection:{kind,id}`、`operation`、`id`、`origin`、`intent`を明示します。SHAは各ファイルの実バイトから作成してください。選択や画面配置から自動的に編集対象を推測しないことが重要です。
+
+この接続の次段階は、#1124が受理済みBusiness Procedureの正本と同一版のSource位置を認証した後に、**別の正式な候補**として受理可否を審査することです。未受理のDFDレビュー案をShared Acceptance候補へ自動変換することは認めません。
+
+### 投影器が付けた状態も照合する
+
+図上の識別子や業務上の文言が元の手順と一致していても、投影器が付けた状態を無条件に信頼しません。選択から変更候補への接続では、次を確認します。
+
+- 手作業かどうかが、元の手順で宣言されたApplication Function参照の有無と一致すること。
+- 明示されたFunction参照の解決状態が`resolved`であること。
+- 業務Roleから物理的な認可Roleを推測していないこと。
+- 起動契機の状態が`proposal`、実行への接続が`unbound`であること。
+- 順序・分岐・例外、業務Role、外部主体、概念保管先、担当、情報の授受が、いずれも`proposal`として示されること。
+- 概念保管先のData参照について、宣言がなければ`not-declared`、明示された場合は`resolved`と示されること。
+
+食い違った場合は未受理の変更候補であっても生成しません。ただし`resolved`は参照実装内での一致を意味するだけで、採用済みWorldの同一版や、情報の鮮度を証明しません。Go生成器が使う状態値に合わせ、模擬DFDを用いた回帰試験でも同じ区別を保持します。
+
 ## Studio・Typed Referenceとの統合条件
 
 1. **選択**: #1125の`-select`が返す`reference-procedure:<procedureId>`のStepとSource位置を表示する。同名のAccepted Taskと同一視しない。

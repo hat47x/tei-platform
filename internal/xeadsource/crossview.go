@@ -422,7 +422,16 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 	return projection, nil
 }
 
-func CrossViewPublicAccounting(projection CrossViewProjection) CrossViewAccounting {
+// CrossViewPublicAccounting validates the projection before publishing its
+// vocabulary as aggregate keys. It does not grant semantic authority.
+func CrossViewPublicAccounting(projection CrossViewProjection) (CrossViewAccounting, error) {
+	if err := validateCrossViewPublication(projection); err != nil {
+		return CrossViewAccounting{}, err
+	}
+	return crossViewUncheckedAccounting(projection), nil
+}
+
+func crossViewUncheckedAccounting(projection CrossViewProjection) CrossViewAccounting {
 	out := CrossViewAccounting{
 		SchemaVersion:                       1,
 		SourceArtifactDigest:                projection.SourceArtifactDigest,

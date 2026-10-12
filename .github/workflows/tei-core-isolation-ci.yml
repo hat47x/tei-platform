@@ -11,6 +11,8 @@ on:
       - 'tools/repository-architecture-check/**'
       - 'reference/composition-kernel/testdata/external-consumer/**'
       - 'tools/reference-composition-process-bridge/**'
+      - 'plugins/reference-process-executor/**'
+      - 'tools/check-reference-plugin-isolation.sh'
       - '.github/workflows/tei-core-isolation-ci.yml'
   push:
     branches: [main]
@@ -20,6 +22,8 @@ on:
       - 'tools/repository-architecture-check/**'
       - 'reference/composition-kernel/testdata/external-consumer/**'
       - 'tools/reference-composition-process-bridge/**'
+      - 'plugins/reference-process-executor/**'
+      - 'tools/check-reference-plugin-isolation.sh'
       - '.github/workflows/tei-core-isolation-ci.yml'
 
 permissions:
@@ -71,12 +75,19 @@ jobs:
           set -euo pipefail
           go test -count=1 ./tools/repository-architecture-check
 
+      - name: 独立した参照プラグインを構築・試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l plugins/reference-process-executor/*.go)"
+          bash tools/check-reference-plugin-isolation.sh
+
       - name: 実プロセスプラグインとの接続を検証
         shell: bash
         run: |
           set -euo pipefail
-          gofmt -d tools/reference-composition-process-bridge/bridge_test.go
-          test -z "$(gofmt -l tools/reference-composition-process-bridge/bridge_test.go)"
+          gofmt -d tools/reference-composition-process-bridge/*.go
+          test -z "$(gofmt -l tools/reference-composition-process-bridge/*.go)"
           go test -count=1 -timeout 90s ./tools/reference-composition-process-bridge
           go vet ./tools/reference-composition-process-bridge
 
