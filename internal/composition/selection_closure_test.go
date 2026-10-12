@@ -193,3 +193,42 @@ func BenchmarkSelectDeepDependencyClosure(b *testing.B) {
 		})
 	}
 }
+
+func TestDependencyFreeSelectionKeepsEmptyClosure(t *testing.T) {
+	r := NewRegistry()
+	if _, err := r.Apply(0, []Provider{{
+		ID: "leaf", Scope: "tenant-a",
+		Offers: Contract{ID: "leaf.contract", Version: "1", Shape: "v1"},
+	}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	selected, err := r.Select("leaf", "tenant-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected.DependencyEpochs) != 0 {
+		t.Fatalf("dependency-free provider acquired unexpected pins: %+v", selected)
+	}
+}
+
+func BenchmarkSelectDependencyFreeProvider(b *testing.B) {
+	r := NewRegistry()
+	providers := make([]Provider, 128)
+	for i := range providers {
+		providers[i] = Provider{
+			ID: fmt.Sprintf("leaf%03d", i), Scope: "tenant-a",
+			Offers: Contract{ID: fmt.Sprintf("leaf%03d", i), Version: "1", Shape: "v1"},
+		}
+	}
+	if _, err := r.Apply(0, providers, nil); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		selection, err := r.Select("leaf127", "tenant-a")
+		if err != nil || len(selection.DependencyEpochs) != 0 {
+			b.Fatalf("dependency-free selection failed: %+v %v", selection, err)
+		}
+	}
+}
