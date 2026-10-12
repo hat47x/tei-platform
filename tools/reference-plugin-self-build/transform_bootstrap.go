@@ -197,11 +197,7 @@ func runTransformBootstrap(
 		return transformBootstrapEvidence{}, err
 	}
 	if seedFirstDigest != seedSecondDigest {
-		return transformBootstrapEvidence{}, fmt.Errorf(
-			"transform stage0 seed builder is not reproducible: %s != %s",
-			seedFirstDigest,
-			seedSecondDigest,
-		)
+		return transformBootstrapEvidence{}, nonReproducibleSelfBuild("transform-seed-builder", seedFirstDigest, seedSecondDigest)
 	}
 
 	stage1FirstPath := filepath.Join(tempDir, "stage1-first.transform.json")
@@ -229,11 +225,7 @@ func runTransformBootstrap(
 		return transformBootstrapEvidence{}, err
 	}
 	if !bytes.Equal(stage1FirstBytes, stage1SecondBytes) || stage1FirstDigest != stage1SecondDigest {
-		return transformBootstrapEvidence{}, fmt.Errorf(
-			"stage0 seed produced non-reproducible stage1 builder: %s != %s",
-			stage1FirstDigest,
-			stage1SecondDigest,
-		)
+		return transformBootstrapEvidence{}, nonReproducibleSelfBuild("transform-stage1-builder", stage1FirstDigest, stage1SecondDigest)
 	}
 	stage1Source, err := transform.ParseSourceJSON(stage1FirstBytes)
 	if err != nil {
@@ -267,11 +259,7 @@ func runTransformBootstrap(
 	stage2Bytes := stage2Result.Output.Bytes
 	stage2Digest := plugin.BuildOutputDigest(stage2Bytes)
 	if !bytes.Equal(stage1FirstBytes, stage2Bytes) || stage1FirstDigest != stage2Digest {
-		return transformBootstrapEvidence{}, fmt.Errorf(
-			"transform meta-builder did not converge: stage1=%s stage2=%s",
-			stage1FirstDigest,
-			stage2Digest,
-		)
+		return transformBootstrapEvidence{}, nonReproducibleSelfBuild("transform-stage1-stage2-output", stage1FirstDigest, stage2Digest)
 	}
 
 	seedIdentity := transformSeedBuilderIdentity(seedFirstDigest)
@@ -376,24 +364,9 @@ func runTransformBootstrap(
 	}
 
 	packageBuilderIdentity := builderIdentityFromTransformSource(packageSource, packageBuilderDigest)
-	teiPackagePlan := basePackagePlan
-	teiPackagePlan.Builder = packageBuilderIdentity
-	teiPackagePlan.Dependencies = append(
-		append([]plugin.BuildDependency(nil), basePackagePlan.Dependencies...),
-		plugin.BuildDependency{
-			Kind:           "runtime-engine",
-			ID:             string(engine.ID),
-			Version:        engine.Version,
-			ArtifactDigest: engine.ImplementationDigest,
-		},
+	teiPackagePlan, teiPackagePlanFingerprint, err := transformPackageBuildPlan(
+		basePackagePlan, packageBuilderIdentity, engine, engineFingerprint,
 	)
-	teiPackagePlan.Parameters = append(
-		append([]plugin.BuildParameter(nil), basePackagePlan.Parameters...),
-		plugin.BuildParameter{Name: "runtime-engine-contract", Value: engine.ContractVersion},
-		plugin.BuildParameter{Name: "runtime-engine-fingerprint", Value: engineFingerprint},
-		plugin.BuildParameter{Name: "runtime-engine-target", Value: engine.Target},
-	)
-	teiPackagePlanFingerprint, err := plugin.BuildPlanFingerprint(teiPackagePlan)
 	if err != nil {
 		return transformBootstrapEvidence{}, err
 	}
@@ -439,11 +412,7 @@ func runTransformBootstrap(
 	firstPackageDigest := plugin.BuildOutputDigest(firstPackageBytes)
 	secondPackageDigest := plugin.BuildOutputDigest(secondPackageBytes)
 	if !bytes.Equal(firstPackageBytes, secondPackageBytes) || firstPackageDigest != secondPackageDigest {
-		return transformBootstrapEvidence{}, fmt.Errorf(
-			"TEI-native Plugin package builder is not reproducible: %s != %s",
-			firstPackageDigest,
-			secondPackageDigest,
-		)
+		return transformBootstrapEvidence{}, nonReproducibleSelfBuild("tei-native-package-materialization", firstPackageDigest, secondPackageDigest)
 	}
 	var packageManifest plugin.PluginPackageManifest
 	if err := json.Unmarshal(firstPackageBytes, &packageManifest); err != nil {
