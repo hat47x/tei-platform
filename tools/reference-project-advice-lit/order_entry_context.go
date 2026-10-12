@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -72,7 +73,12 @@ func newOrderEntryContextHandler(origin string) (http.Handler, error) {
 				SelectedRowIndex int    `json:"selectedRowIndex"`
 			} `json:"result"`
 		}
-		decoder := json.NewDecoder(io.LimitReader(response.Body, 1<<16))
+		raw, err := io.ReadAll(io.LimitReader(response.Body, (1<<16)+1))
+		if err != nil || len(raw) > 1<<16 {
+			http.Error(w, "order_entry read result exceeds limit", http.StatusBadGateway)
+			return
+		}
+		decoder := json.NewDecoder(bytes.NewReader(raw))
 		if err := decoder.Decode(&source); err != nil {
 			http.Error(w, "invalid order_entry read result", http.StatusBadGateway)
 			return
