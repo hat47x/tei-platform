@@ -148,8 +148,9 @@ func helperLauncher(t *testing.T, mode string) (pruntime.StdioProcessLauncher, p
 	if err != nil {
 		t.Fatal(err)
 	}
-	env := append([]string(nil), os.Environ()...)
-	env = append(env, processHelperModeEnv+"="+mode)
+	// The test helper should obey the same host-approved environment policy as
+	// production callers: do not forward the test runner's ambient secrets.
+	env := []string{processHelperModeEnv + "=" + mode}
 	return pruntime.StdioProcessLauncher{Env: env}, pruntime.ProcessCommand{Executable: executable}
 }
 
