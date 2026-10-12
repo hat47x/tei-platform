@@ -17,7 +17,8 @@ type ChangeTriage struct {
 }
 
 type ChangeTriageItem struct {
-	Question       QuestionRef `json:"question"`
+	Question       QuestionRef  `json:"question"`
+	SourceIssue    *ReviewIssue `json:"sourceIssue,omitempty"`
 	Route          string      `json:"route"`
 	Reason         string      `json:"reason"`
 	NextValidation []string    `json:"nextValidation"`
@@ -48,7 +49,7 @@ func TriageAnsweredReview(input Input, proposed AnswerInput) (ChangeTriage, erro
 		AnswerFingerprint: handoff.Fingerprint,
 	}
 	for _, answer := range handoff.Answers {
-		item := ChangeTriageItem{Question: answer.Question}
+		item := ChangeTriageItem{Question: answer.Question, SourceIssue: answer.SourceIssue}
 		switch answer.Disposition {
 		case "clarify-example":
 			item.Route = "example-review"
