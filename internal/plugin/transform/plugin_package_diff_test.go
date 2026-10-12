@@ -147,7 +147,7 @@ func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
 				t.Fatalf("Go materializer must reject repeated dependency, got %v", err)
 			}
 			if _, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-				"buildPlan": valueFromGoJSON(t, plan),
+				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
 			}); err == nil || !strings.Contains(err.Error(), "duplicate key") {
 				t.Fatalf("TEI-native materializer must reject the duplicate key, got %v", err)
@@ -174,7 +174,7 @@ func TestPluginPackageTransformValidRequirementPermutation(t *testing.T) {
 		t.Fatal("valid requirement ordering changed Go package bytes")
 	}
 	teiReversed, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-		"buildPlan": valueFromGoJSON(t, reversedPlan),
+		"buildPlan":        valueFromGoJSON(t, reversedPlan),
 		"pluginDefinition": valueFromGoJSON(t, reversed),
 	})
 	if err != nil {
