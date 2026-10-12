@@ -73,8 +73,8 @@ class WorkflowContract(unittest.TestCase):
         self.head_sha = git(self.checkout, 'rev-parse', 'HEAD')
         self.remote_url = self.remote.as_uri()
         _, blocks = scripts(HEALTH)
-        self.assertEqual(3, len(blocks))
-        self.pre, self.health, self.post = [x.replace(REMOTE_URL, self.remote_url) for x in blocks]
+        self.assertEqual(4, len(blocks))
+        self.pre, self.contract, self.health, self.post = [x.replace(REMOTE_URL, self.remote_url) for x in blocks]
         self.env = os.environ.copy()
         self.env.update(EXPECTED_HEAD_SHA=self.head_sha, EXPECTED_MAIN_SHA=self.main_sha,
                         GITHUB_SHA=self.head_sha, GITHUB_REF='refs/heads/work/issue-1189-ci')
@@ -141,7 +141,7 @@ class WorkflowContract(unittest.TestCase):
 class StaticWorkflowContract(unittest.TestCase):
     def test_health_script_syntax_and_permissions(self):
         text, blocks = scripts(HEALTH)
-        self.assertEqual(3, len(blocks))
+        self.assertEqual(4, len(blocks))
         self.assertRegex(text, r'(?m)^on:\n  workflow_dispatch:')
         self.assertNotRegex(text, r'(?m)^  (push|pull_request|pull_request_target|schedule):')
         self.assertIn('permissions:\n  contents: read', text)
