@@ -191,7 +191,9 @@ func TestRuleDraftRejectsDuplicateOrForgedRequest(t *testing.T) {
 		{"wrong claim", func(i *ModelRuleDraftIntent) { i.Requests[0].ClaimedEvidence[0].Kind = "verified-by-ai" }},
 		{"empty claimant", func(i *ModelRuleDraftIntent) { i.Requests[0].ClaimedEvidence[0].ClaimedBy = " " }},
 		{"bad claim hash", func(i *ModelRuleDraftIntent) { i.Requests[0].ClaimedEvidence[0].Fingerprint = "sha256:guessed" }},
-		{"duplicate claim", func(i *ModelRuleDraftIntent) { i.Requests[0].ClaimedEvidence = append(i.Requests[0].ClaimedEvidence, i.Requests[0].ClaimedEvidence[0]) }},
+		{"duplicate claim", func(i *ModelRuleDraftIntent) {
+			i.Requests[0].ClaimedEvidence = append(i.Requests[0].ClaimedEvidence, i.Requests[0].ClaimedEvidence[0])
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
