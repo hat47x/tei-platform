@@ -18,6 +18,8 @@ func TestCommonWebServerDoesNotWireSpecificApplications(t *testing.T) {
 		t.Fatal(err)
 	}
 	forbidden := map[string]bool{
+		"protectedSessionCommandConfig":            true,
+		"configureProtectedSessionCommand":         true,
 		"registerOrderEntryScenarioRoutes":         true,
 		"registerRepairIntakeScenarioRoutes":       true,
 		"customSubmitHTML":                         true,

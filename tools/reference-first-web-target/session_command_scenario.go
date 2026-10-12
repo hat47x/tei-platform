@@ -1,3 +1,5 @@
+//go:build !tei_repair_only
+
 package main
 
 import (

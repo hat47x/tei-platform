@@ -52,6 +52,7 @@ func TestFirstWebTargetApplicationBuildTagsSelectDisjointBusinessSources(t *test
 		"shared_semantic_projection.go", "reference_contract_query_fixture.go",
 	}
 	orderSources := []string{
+		"session_command_route.go", "session_command_scenario.go",
 		"composition_scenario.go", "non_screen.go", "postgres_scenario.go",
 		"read_scenario.go", "command_scenario.go", "custom_ui.go",
 		"order_scenario_http.go", "main_order_only.go", "order_only_wiring.go",
@@ -86,7 +87,7 @@ func TestFirstWebTargetApplicationBuildTagsSelectDisjointBusinessSources(t *test
 		},
 		{
 			name: "repair_intake only", tags: "tei_repair_only",
-			include: append(append([]string(nil), common...), append(repairSources, "single_application_startup.go")...),
+			include: append(append([]string(nil), common...), append(repairSources, "single_application_startup.go", "repair_command_routes.go")...),
 			exclude: append(append([]string(nil), orderSources...), legacySources...),
 		},
 	} {

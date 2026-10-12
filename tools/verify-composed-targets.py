@@ -49,9 +49,9 @@ def main():
             (output / (name + '.nm.txt')).write_text(nm + '\n')
             evidence['targets'][name] = {'digest': 'sha256:' + hashlib.sha256(binary.read_bytes()).hexdigest(), 'bytes': binary.stat().st_size}
             if name == 'repair':
-                for forbidden in ['tei/plugins/report-renderer', 'tei/tools/internal/postgresdb', 'tei/internal/driver/queryruntime/postgres', 'github.com/jackc/pgx/v5']:
+                for forbidden in ['tei/plugins/report-renderer', 'tei/tools/internal/postgresdb', 'tei/internal/driver/queryruntime/postgres', 'github.com/jackc/pgx/v5', 'tei/reference/web-composition/go-host']:
                     assert forbidden not in deps.splitlines(), forbidden
-                for forbidden in ['newReferenceReadScenarioRunner', 'newReferenceCommandScenarioRunner', 'postgresScenarioState', 'wireNonScreen']:
+                for forbidden in ['newReferenceReadScenarioRunner', 'newReferenceCommandScenarioRunner', 'postgresScenarioState', 'wireNonScreen', 'handleProtectedSessionCommand']:
                     assert forbidden not in nm, forbidden
                 assert 'composedCustomerLookup' in nm
             if name == 'order':

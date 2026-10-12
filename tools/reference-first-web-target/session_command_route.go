@@ -1,3 +1,5 @@
+//go:build !tei_repair_only
+
 package main
 
 import (
@@ -18,6 +20,14 @@ import (
 // protectedSessionCommandConfig is explicitly assembled by a trusted Host.
 // It is not read from request headers, parameters, or a plugin declaration.
 // The normal server constructor does not expose a session route by default.
+type targetCommandRoutes struct {
+	protectedSessionConfig      *protectedSessionCommandConfig
+	protectedSessionHandler     http.Handler
+	protectedSessionOptionCount int
+}
+
+func (s *webTargetServer) configureCommandRoutes() error { return s.configureProtectedSessionCommand() }
+
 type protectedSessionCommandConfig struct {
 	Runner        *referenceCommandScenarioRunner
 	Providers     map[string]string
