@@ -100,8 +100,8 @@ func TestStaleAnswerCannotBeTriaged(t *testing.T) {
 func TestChangeTriageRetainsExactSourceReviewEvidence(t *testing.T) {
 	in, a := reviewAnswerFixture(t)
 	in.Example.Base = append(in.Example.Base, Record{
-		ID: "maybe-parent",
-		Table: "parent",
+		ID:     "maybe-parent",
+		Table:  "parent",
 		Values: map[string]json.RawMessage{"number": json.RawMessage("\"A\"")},
 	})
 	review, err := Review(in)
@@ -141,9 +141,9 @@ func TestAuthoredChangeTriageDoesNotInventDerivedIssue(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := AnswerInput{
-		Schema: answerSchema,
-		CaseID: review.CaseID,
-		ModelRevision: review.ModelRevision,
+		Schema:            answerSchema,
+		CaseID:            review.CaseID,
+		ModelRevision:     review.ModelRevision,
 		ReviewFingerprint: review.Fingerprint,
 		Answers: []AnswerEntry{{
 			Question: QuestionRef{Kind: "authored", ID: "residual"},
