@@ -181,11 +181,11 @@ AIによる検索の正確さが高い
 
 少なくとも、次の状態を区別します。
 
-- 観測済み・合格
-- 観測済み・不合格
-- 未解決
-- 適用対象外
-- 未観測
+- 観測済み・合格（`observed / passed`）
+- 観測済み・不合格（`observed / failed`）
+- 未解決（`unresolved`）
+- 適用対象外（`not-applicable`）
+- 未観測（`not-yet-observed`）
 
 `not observed`を`passed`（合格）として扱いません。
 
@@ -255,7 +255,7 @@ span.status = OK
 
 一方、PostgreSQLに固有の安全機構を、すべての領域で使う共通の変更手順へ無条件に広げることもしません。
 
-## 7. Interaction / accessibility
+## 7. 操作性とアクセシビリティ
 
 実行先に依存しないことは、すべての実行先で最小限の画面機能だけを提供することではありません。
 
@@ -265,41 +265,39 @@ WebではWCAG 2.2などを検証可能な参考基準として使えます。た
 
 画面の見た目に関する検証根拠だけで、操作の成立やアクセシビリティを合格とは判断しません。
 
-## 8. Performance
+## 8. 性能
 
 RQ-024に従い、すべてに共通する性能の判定値を先に固定しません。
 
-まず参照例で基準となる値を測り、少なくとも次の条件とともに記録します。
+まず参照例で基準となる値を測り、少なくとも次の条件を添えて記録します。
 
-- Target / Host
-- Provider / Runtime
-- Scenario / workload
-- warm / cold等の条件
-- revision / build identity
-
-と一緒に保持します。
+- 実行先とホスト
+- 提供元と実行環境
+- シナリオと処理負荷
+- 起動直後か稼働が安定した後かなどの条件
+- 対象となる版とビルドの識別情報
 
 利用目的から必要性を説明できる段階で、受け入れの判定基準を定めます。
 
-## 9. AI / derived cognition
+## 9. AIと派生した認知支援
 
 AI、連想に基づく検索、派生した認知支援では、候補の質と意味の正しさを区別します。
 
 ```text
-candidate recall / ranking / latency
-        !=
-applicability
-        !=
-accepted decision
-        !=
-execution authority
+候補の検索率・順位付け・応答時間
+        ≠
+業務上の適用可能性
+        ≠
+受理された判断
+        ≠
+実行権限
 ```
 
 索引、埋め込み表現、FlyHash・HDCなどによる表現、処理の履歴は派生情報です。削除して再生成しても、意味の正本となる全体モデルが変わらないようにします。
 
 認知方式の評価値も品質の評価条件に結び付けられますが、モデルの確信度や類似度を、意味の正しさを示す検証根拠として扱いません。
 
-## 10. Operational Telemetry
+## 10. 運用時の計測情報
 
 運用時の計測情報は、実行環境を観測して得られる派生情報です。
 
@@ -308,46 +306,46 @@ OpenTelemetryなどの共通の表現規則へ対応付けられることは、�
 必要な相関は次のように表します。
 
 ```text
-TEI logical identity
-   -> operational projection
-   -> trace / metric / log
+TEIの論理的な識別子
+   → 運用時の記録との対応付け
+   → 処理の追跡記録・測定値・ログ
 ```
 
 この対応関係によって、論理上の識別子と運用時の記録を結び付けます。
 
-## 11. 外部quality modelの扱い
+## 11. 外部の品質モデルの扱い
 
 外部の標準は、TEIの要求に対する第二の正本にはしません。抜け漏れの確認や、テストの参考基準として使います。
 
-- ISO/IEC 25010:2023 — quality characteristicの監査
-- WCAG 2.2 — Web interaction / accessibility
-- OpenTelemetry semantic conventions — operational telemetry Projection
-- NIST SSDF 1.1 — secure development / supply-chain process
+- ISO/IEC 25010:2023：品質特性を監査する際の参考
+- WCAG 2.2：Webの操作性とアクセシビリティの参考
+- OpenTelemetry semantic conventions：運用時の計測情報を対応付ける際の参考
+- NIST SSDF 1.1：安全な開発とソフトウェアの供給経路を管理する際の参考
 
 採用するという明示的な判断と、TEI自身の検証根拠がない限り、標準への準拠、認証の取得、製品の完成を主張しません。
 
-## 12. Gateとの関係
+## 12. 既存の判定段階との関係
 
 この製品品質の設計は、新たな判定段階を追加するものではありません。
 
-- Gate B: 既存3 Required Evidenceを増やさない
-- Gate C: Semantic / Functional / Visualの分離を維持する
-- First Target: operability / accessibility / performance / failure behaviorを追加観測する
-- Studio / AI / Second Target: それぞれ同じQuality Envelope原則で比較する
-- production: observability / HA / supply-chain等を必要なEvidenceとともに拡張する
+- 判定段階B：既存の三つの必須検証根拠を増やさない
+- 判定段階C：意味・機能・表示の検証根拠を分ける
+- 最初の実行先：操作の成立、アクセシビリティ、性能、失敗時の動作を追加で観測する
+- 編集環境・AI・二つ目の実行先：同じ品質評価条件の原則で比較する
+- 本番運用：観測可能性、高可用性、ソフトウェアの供給経路などを、必要な検証根拠とともに拡充する
 
 品質について計画を立てたり、文書やコードを静的に確認したりしても、それを実際の環境で取得した検証根拠と同一視しません。
 
 ## 13. 先に固定しないもの
 
-- Quality Envelopeの固定schema
-- universal quality score
-- 全Target共通performance threshold
-- 全Target共通accessibility checklist
-- OpenTelemetryの必須Runtime dependency
-- generic fallback engine
-- generic retry policy
-- generic migration / rollback protocol
-- quality characteristicごとの新しいGate / PAS / Issue群
+- 品質の評価条件を表す固定のスキーマ
+- すべての品質をまとめた単一の評価点
+- すべての実行先に共通する性能基準値
+- すべての実行先に共通するアクセシビリティの確認項目
+- OpenTelemetryを実行基盤の必須依存先とすること
+- 汎用的な代替処理の実行機構
+- 汎用的な再試行の方針
+- 汎用的な移行・切戻し手順
+- 品質特性ごとに新設する判定段階・受入シナリオ・課題群
 
 これらを固定する必要があるかは、参照例と検証根拠から判断します。
