@@ -148,7 +148,8 @@ function sourceLens(sourceIndex, kind, id) {
     artifactPath: ref.artifactPath,
     artifactFingerprint: fingerprint,
     range: ref.range,
-    caveat: "Index only: the caller must verify artifact fingerprint before opening or editing; write authority is Shared Acceptance Preview."
+    byteVerification: { status: "not-checked" },
+    caveat: "Index only: raw Source bytes and range are unverified. Live inspect can verify them for that read; write authority remains with Shared Acceptance Preview."
   };
 }
 
