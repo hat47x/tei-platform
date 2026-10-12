@@ -74,3 +74,27 @@ E9の既存局所パッケージについては、ローカルで`go test -race 
 一方、今回追加した**実際の#951パッケージを使うE10の結合試験は、GitHubへソースを追加しBlob SHAを確認した段階であり、実行していない**。作業コンテナからの`git clone`はDNSで失敗する。E9局所試験の成功をE10の結合試験やPR exact-headの全体テストの成功とみなさない。
 
 なお、#951の参照解決器が渡された情報から結果を求められたことは、契約定義の発行権限、適合証拠の真正性・現在性、署名、Hostの実行許可を意味しない。E10の成功時にも最終診断を`reference-linked-unverified`に留める。Productionへ昇格するには#951の信頼できる正本・発行者検証、#943の実成果物、Hostの現在権限への接続が必要である。
+
+
+## E11：現在のRegistryを再照合してから証拠参照を表示する
+
+E9の`Reconcile`は、構成案を作った時点の宣言と証拠参照を照合する。これは過去の判定履歴を調べるには有用だが、**作成後にProviderや依存先が変更された構成案を現在も有効と誤認する危険**があった。
+
+そこで、`internal/composition/proposal_freshness.go`に読み取り専用の`Registry.ProposalCurrent`を追加し、E9側には`ReconcileCurrent`を設けた。
+
+- `ProposalCurrent`は、構成案のRegistry版、対象Providerの選択、推移的な依存先の宣言世代、検証対象の一覧を、現在のRegistryと同じMutex保護下で再照合する。
+- 既存の`Registry.validateSelectionLocked`を利用し、第二の依存解決器を作らない。無関係な更新は許容し、依存先の宣言変更・撤去・同名再登録・選択結果の改変を拒否する。
+- `ReconcileCurrent`は、鮮度検査に不合格なら`Blocked`を返し、証拠参照を表示しない。E10の実Resolverとの試験にもこの経路を採用した。
+- 旧`Reconcile`は**取得時点の履歴照合専用**として残す。結果を現在の実装の利用可能性と読み替えない。
+
+これは**実行許可のための原子的な予約ではない**。鮮度検査後にRegistryが更新される可能性があるため、Hostは配備・呼び出しの際に自身の選択・現在権限・Lease・Fencingを改めて検査する。証拠の署名・発行者の正当性・失効も別の正式な検証責務であり、鮮度検査の成功から推定しない。
+
+### 追加した試験と現時点の検証範囲
+
+`proposal_freshness_test.go`では、推移的な依存先の変更、他Tenantの無関係な登録、Provider撤去・同名再登録、偽装した宣言世代・対象Provider・適用範囲を扱う。
+
+`current_test.go`では、現在の証拠参照、無関係な更新、依存先の変更、循環する無効な編集の不採用、古い構成案の遮断と過去の参照照合を扱う。`composition_handoff_test.go`も、実Resolverから参照を作る正常系とProvider再登録時に`ReconcileCurrent`を使用するように変更した。
+
+**これらE11の追加試験は、GitHubにソースを登録した段階であり、PR exact-headのGo test実行証拠はまだ無い。** コンテナからGitHubを取得する接続はDNS・ネットワーク制約で失敗し、GitHubの当該HEADにも自動チェック結果はない。前段のE9局所試験の成功をE11へ流用しない。
+
+今後は、完全なcheckoutで`go test -race ./internal/composition ./reference/composition-evidence-handoff ./tools/reference-plugin-capability-contract`を実行し、`tools/repository-health-check.sh`の全項目PASSを取得した後に統合を判断する。
