@@ -127,3 +127,72 @@ func TestAssertEnumChargesEveryRejectedLargeCandidate(t *testing.T) {
 		})
 	}
 }
+
+func TestRepeatedCanonicalJSONChargesEncodingWorkEachTime(t *testing.T) {
+	input := transform.Expr{Op: transform.OpInput, Name: "document"}
+	encoded := transform.Expr{Op: transform.OpCanonicalJSON, From: &input}
+	digest := transform.Expr{Op: transform.OpSHA256, From: &encoded}
+	document, err := transform.Object(transform.Field{
+		Name: "payload", Value: transform.String(strings.Repeat("x", 8<<10)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		repeats int
+		allowed bool
+	}{
+		{repeats: 1, allowed: true},
+		{repeats: 3, allowed: false},
+	} {
+		outputs := make([]transform.Expr, tc.repeats)
+		for i := range outputs {
+			outputs[i] = digest
+		}
+		source := byteWorkSource("tei.builder.repeated_json_work", 22,
+			[]transform.InputSpec{{Name: "document", Kind: transform.InputObject}},
+			transform.Expr{Op: transform.OpJoinStrings, Values: outputs})
+		result, err := transform.Evaluate(source, map[string]transform.Value{"document": document})
+		if tc.allowed {
+			if err != nil {
+				t.Fatalf("one canonical encoding must fit: %v", err)
+			}
+			if result.Output.Kind != transform.ValueString || len(result.Output.String) != 64 {
+				t.Fatal("expected SHA-256 of canonical bytes")
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "maxSteps") {
+			t.Fatalf("repeated canonical JSON encoding must hit maxSteps, got %v", err)
+		}
+	}
+}
+
+func TestJoinStringsChargesRepeatedLongOutputCopy(t *testing.T) {
+	input := transform.Expr{Op: transform.OpInput, Name: "text"}
+	value := transform.String(strings.Repeat("s", 8<<10))
+	for _, tc := range []struct {
+		repeats int
+		allowed bool
+	}{
+		{repeats: 1, allowed: true},
+		{repeats: 3, allowed: false},
+	} {
+		parts := make([]transform.Expr, tc.repeats)
+		for i := range parts {
+			parts[i] = input
+		}
+		source := byteWorkSource("tei.builder.repeated_join_work", 10,
+			[]transform.InputSpec{{Name: "text", Kind: transform.InputString}},
+			transform.Expr{Op: transform.OpJoinStrings, Values: parts})
+		result, err := transform.Evaluate(source, map[string]transform.Value{"text": value})
+		if tc.allowed {
+			if err != nil {
+				t.Fatalf("single string copy must fit: %v", err)
+			}
+			if result.Output.Kind != transform.ValueString || result.Output.String != value.String {
+				t.Fatal("joined string differs from input")
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "maxSteps") {
+			t.Fatalf("repeated string output copy must hit maxSteps, got %v", err)
+		}
+	}
+}
