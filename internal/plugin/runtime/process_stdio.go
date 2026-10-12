@@ -99,6 +99,13 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 		return Response{}, fmt.Errorf("process plugin executable %q response exceeds %d bytes", command.Executable, limit)
 	}
 
+	// Reject ambiguous or unexpected transport fields before Go's permissive
+	// struct decoding can silently overwrite duplicates or case-fold names.
+	// Only the carrier envelope and plugin identity are inspected here:
+	// payload remains opaque for the selected Service Contract to validate.
+	if err := validateProcessResponseEnvelope(stdout.buf.Bytes()); err != nil {
+		return Response{}, fmt.Errorf("invalid process plugin response envelope from executable %q: %w", command.Executable, err)
+	}
 	dec := json.NewDecoder(bytes.NewReader(stdout.buf.Bytes()))
 	var resp Response
 	if err := dec.Decode(&resp); err != nil {
@@ -112,6 +119,84 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 		return Response{}, fmt.Errorf("decode trailing process plugin output from executable %q: %w", command.Executable, err)
 	}
 	return resp, nil
+}
+
+// validateProcessResponseEnvelope protects the production process carrier's
+// identity/status metadata. json.Decoder.Decode into a struct silently accepts
+// duplicate and case-folded property names, which can create parser confusion.
+// The opaque payload is intentionally NOT parsed as a Service Contract here.
+func validateProcessResponseEnvelope(raw []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if err := validateProcessResponseObject(decoder, false); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("process response contains more than one JSON value")
+		}
+		return fmt.Errorf("invalid trailing process response JSON: %w", err)
+	}
+	return nil
+}
+
+// Process header and plugin identity property names must match their JSON
+// protocol tags exactly. Never include attacker-controlled member names in
+// error messages (they may contain credentials or terminal escape sequences).
+func validateProcessResponseObject(decoder *json.Decoder, pluginIdentity bool) error {
+	start, err := decoder.Token()
+	if err != nil {
+		return fmt.Errorf("read process response object: %w", err)
+	}
+	if start != json.Delim('{') {
+		return fmt.Errorf("process response object is required")
+	}
+	seen := map[string]struct{}{}
+	for decoder.More() {
+		fieldToken, err := decoder.Token()
+		if err != nil {
+			return fmt.Errorf("read process response field: %w", err)
+		}
+		field, ok := fieldToken.(string)
+		if !ok {
+			return fmt.Errorf("process response field name is invalid")
+		}
+		if _, duplicate := seen[field]; duplicate {
+			return fmt.Errorf("duplicate process response field")
+		}
+		seen[field] = struct{}{}
+		if pluginIdentity {
+			if field != "id" && field != "version" {
+				return fmt.Errorf("undeclared process response plugin identity field")
+			}
+		} else {
+			switch field {
+			case "protocolVersion", "requestId", "plugin", "capabilityId",
+				"descriptorFingerprint", "status", "payload", "error":
+			default:
+				return fmt.Errorf("undeclared process response envelope field")
+			}
+		}
+		if field == "plugin" && !pluginIdentity {
+			if err := validateProcessResponseObject(decoder, true); err != nil {
+				return err
+			}
+			continue
+		}
+		// Preserve selected payload semantics: duplicate keys within a raw
+		// business payload are for the Service Contract, not this carrier.
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return fmt.Errorf("read process response field value: %w", err)
+		}
+	}
+	end, err := decoder.Token()
+	if err != nil {
+		return fmt.Errorf("read process response closing delimiter: %w", err)
+	}
+	if end != json.Delim('}') {
+		return fmt.Errorf("invalid process response object closing delimiter")
+	}
+	return nil
 }
 
 type boundedCapture struct {
