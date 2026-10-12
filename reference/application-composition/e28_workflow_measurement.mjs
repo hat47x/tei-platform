@@ -20,6 +20,9 @@ const pathOK = s => typeof s==='string' && s.length>0 && !s.startsWith('/') &&
 const evidenceURL = s => typeof s==='string' && /^https:\/\/github\.com\/hat47x\/(tei-platform|sui-sensemaking)\/(pull|issues|commit|actions\/runs)\/[^?#\s]+$/.test(s);
 const ownKeys = (value, keys) => value && typeof value==='object' &&
   !Array.isArray(value) && Object.keys(value).every(key=>keys.includes(key));
+// This bounded reference records Source edits from the two actual E25 consumers.
+// The GitHub URL is evidence to inspect, not authorization or Source provenance.
+const sourceRepositories = new Set(['hat47x/tei-platform','hat47x/sui-sensemaking']);
 const countedFields = Object.values(operations);
 const emptyCount = () => Object.fromEntries(countedFields.map(name=>[name,0]));
 
@@ -36,7 +39,7 @@ function validateSubmission(submission, choices) {
   }
   const seen = new Set();
   for (const event of submission.events) {
-    if (!ownKeys(event,['id','choiceId','operation','evidenceRef','path','beforeBlob','afterBlob','outcome']) ||
+    if (!ownKeys(event,['id','choiceId','operation','evidenceRef','repository','path','beforeBlob','afterBlob','outcome']) ||
         !token(event.id) || seen.has(event.id) ||
         !Object.hasOwn(operations,event.operation) || !evidenceURL(event.evidenceRef)) {
       throw new TypeError('invalid_workflow_event');
@@ -48,11 +51,13 @@ function validateSubmission(submission, choices) {
       throw new TypeError('unqualified_workflow_choice');
     }
     if (event.operation==='changed-source') {
-      if (!pathOK(event.path) || !sha(event.beforeBlob) || !sha(event.afterBlob) ||
+      if (!sourceRepositories.has(event.repository) || !pathOK(event.path) ||
+          !sha(event.beforeBlob) || !sha(event.afterBlob) ||
           event.beforeBlob===event.afterBlob || event.outcome!==undefined) {
         throw new TypeError('invalid_source_edit');
       }
-    } else if (event.path!==undefined || event.beforeBlob!==undefined || event.afterBlob!==undefined) {
+    } else if (event.repository!==undefined || event.path!==undefined ||
+               event.beforeBlob!==undefined || event.afterBlob!==undefined) {
       throw new TypeError('unexpected_source_edit');
     }
     if (['validation-run','requalification-run'].includes(event.operation)) {
@@ -88,7 +93,9 @@ export function assessE28(audit, submission) {
   const submittedCounts = emptyCount();
   const changedPaths = new Set();
   for (const event of submission.events) {
-    if (event.operation==='changed-source') changedPaths.add(event.path);
+    if (event.operation==='changed-source') {
+      changedPaths.add(event.repository+'/'+event.path);
+    }
     else submittedCounts[operations[event.operation]]++;
   }
   submittedCounts.changedFiles=changedPaths.size;
