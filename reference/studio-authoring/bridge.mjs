@@ -153,13 +153,17 @@ function sourceLens(sourceIndex, kind, id) {
   };
 }
 
-// The caller supplies bytes read from the workspace and their SHA-256.
-// This validates the Source Index locator at a specific read, but cannot
-// lock Source or grant authoring rights. Source Acceptance still rechecks R0.
-export function verifySourceAnchor(navigation, bytes, fingerprint) {
+// The trusted adapter supplies the actual file bytes and a digest function,
+// rather than an unrelated caller-provided fingerprint. Derive the SHA-256
+// from the exact bytes whose range is inspected. This still cannot lock
+// Source or grant authoring rights; Shared Acceptance rechecks R0.
+export function verifySourceAnchor(navigation, bytes, sha256ForBytes) {
   if (navigation?.status !== "source-index-backed" ||
-      !(bytes instanceof Uint8Array) || !REVISION.test(fingerprint))
+      !(bytes instanceof Uint8Array) || typeof sha256ForBytes !== "function")
     throw new Error("SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID");
+  const fingerprint = sha256ForBytes(bytes);
+  if (!REVISION.test(fingerprint))
+    throw new Error("SOURCE_ANCHOR_DIGEST_INVALID");
   if (navigation.artifactFingerprint !== fingerprint)
     throw new Error("SOURCE_ARTIFACT_FINGERPRINT_STALE");
   const start = navigation.range?.start, end = navigation.range?.end;
