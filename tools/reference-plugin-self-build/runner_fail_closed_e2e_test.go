@@ -69,10 +69,11 @@ func TestSelfBuildRunnerRejectsAlteredSecondBuilder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(cli, "-repo", root)
+	// Inject the fault through the explicit -go selection, not an ambient
+	// PATH override. The normal build runner no longer consults PATH for Go.
+	cmd := exec.Command(cli, "-repo", root, "-go", filepath.Join(wrapperDir, "go"))
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(),
-		"PATH="+wrapperDir+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"TEI_TEST_REAL_GO="+goPath,
 		"TEI_TEST_FAULT_MARKER="+marker,
 		"GOENV=off", "GOWORK=off", "GOTOOLCHAIN=local", "GOFLAGS=",
