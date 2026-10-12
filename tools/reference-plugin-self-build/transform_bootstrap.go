@@ -188,16 +188,11 @@ func runTransformBootstrap(
 	); err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("build second transform seed builder: %w", err)
 	}
-	seedFirstDigest, err := hashFile(seedFirstPath)
+	seedFirstDigest, seedSecondDigest, err := compareSelfBuildFileDigests(
+		"transform-seed-builder", seedFirstPath, seedSecondPath,
+	)
 	if err != nil {
 		return transformBootstrapEvidence{}, err
-	}
-	seedSecondDigest, err := hashFile(seedSecondPath)
-	if err != nil {
-		return transformBootstrapEvidence{}, err
-	}
-	if seedFirstDigest != seedSecondDigest {
-		return transformBootstrapEvidence{}, nonReproducibleSelfBuild("transform-seed-builder", seedFirstDigest, seedSecondDigest)
 	}
 
 	stage1FirstPath := filepath.Join(tempDir, "stage1-first.transform.json")

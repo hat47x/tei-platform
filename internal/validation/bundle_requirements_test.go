@@ -89,3 +89,49 @@ func TestBundleWorldValidationDuplicateDiagnosticIsOrderIndependent(t *testing.T
 		}
 	}
 }
+
+func TestBundleWorldValidationRejectsUnusedAndUnselectedVersionDuplicates(t *testing.T) {
+	requirement := plugin.Requirement{Plugin: cid("tei.test.reference"), CompatibleMajor: 1}
+	for _, tc := range []struct {
+		name        string
+		selectNewer bool
+	}{
+		{name: "unused bundle"},
+		{name: "unselected older version", selectNewer: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := referenceWorld()
+			w.Bundles = []plugin.Bundle{
+				{ID: cid("tei.optional"), Version: "1.0.0", Plugins: []plugin.Requirement{requirement, requirement}},
+				{ID: cid("tei.optional"), Version: "1.2.0", Plugins: []plugin.Requirement{requirement}},
+			}
+			w.Environments[0].Bundles = nil
+			if tc.selectNewer {
+				w.Environments[0].Bundles = []environment.ExtensionRequirement{
+					{ID: cid("tei.optional"), CompatibleMajor: 1},
+				}
+			}
+
+			count := 0
+			for _, diagnostic := range validation.Validate(w) {
+				if diagnostic.Code == "DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT" {
+					count++
+					if diagnostic.Severity != validation.Error ||
+						!strings.Contains(diagnostic.Message, "bundle tei.optional version 1.0.0") {
+						t.Fatalf("unselected declaration diagnostic is incomplete: %+v", diagnostic)
+					}
+				} else if diagnostic.Severity == validation.Error {
+					t.Fatalf("unexpected world validation error: %+v", diagnostic)
+				}
+			}
+			if count != 1 {
+				t.Fatalf("world validation must report an invalid unselected declaration exactly once, got %d", count)
+			}
+
+			catalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
+			if _, err := catalog.ResolveEnvironment(w.Environments[0]); err != nil {
+				t.Fatalf("standalone resolver must ignore unused or unselected invalid bundles: %v", err)
+			}
+		})
+	}
+}
