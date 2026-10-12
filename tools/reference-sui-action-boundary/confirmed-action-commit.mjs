@@ -1,3 +1,24 @@
+import { ActionCommitError } from './json-action-dispatch.mjs';
+
+// These codes and HTTP statuses are emitted before a write by the reference
+// JSONCommitHandler. All other failures may follow a completed remote write.
+const definiteRejections = new Map([
+  ['invalid_intent', 400],
+  ['invalid_payload', 400],
+  ['invalid_action', 400],
+  ['request_origin_denied', 403],
+  ['action_denied', 403],
+  ['revision_conflict', 409],
+  ['method_not_allowed', 405],
+  ['unsupported_content_type', 415],
+  ['payload_decoder_unavailable', 503],
+]);
+
+function isDefiniteRejection(error) {
+  return error instanceof ActionCommitError && definiteRejections.has(error.code) &&
+    definiteRejections.get(error.code) === error.status;
+}
+
 // Optional browser-side confirmation boundary for resource-scoped Action commits.
 // A successful POST alone must not change local canonical/application state.
 export class ActionConfirmationError extends Error {
@@ -25,9 +46,10 @@ export function createConfirmedActionCommit({ dispatchCommit, readResource, appl
   };
 
   return async (intent) => {
-    if (!intent || typeof intent !== 'object' ||
+    if (!intent || typeof intent !== 'object' || intent.protocolVersion !== '1' ||
         [intent.applicationID, intent.resourceID, intent.actionID, intent.expectedRevision]
-          .some((value) => typeof value !== 'string' || value.length === 0)) {
+          .some((value) => typeof value !== 'string' || value.length === 0) ||
+        intent.payload === null || intent.payload === undefined) {
       throw new TypeError('resource-scoped Action identity and revision are required');
     }
     // Do not use slash-separated identity segments; slashes are legal in IDs.
@@ -41,9 +63,18 @@ export function createConfirmedActionCommit({ dispatchCommit, readResource, appl
     try {
       // The server must own authorization, validation and atomic revision CAS.
       // Rejecting here must not invoke readResource or applySnapshot.
-      committedRevision = await dispatchCommit(intent);
+      try {
+        committedRevision = await dispatchCommit(intent);
+      } catch (error) {
+        // A known pre-write rejection is safe to report as such. A network
+        // failure, HTTP 5xx after execution, malformed response or foreign
+        // adapter exception cannot prove that the remote effect did not occur.
+        if (isDefiniteRejection(error)) throw error;
+        throw new ActionConfirmationError('commit_outcome_unknown');
+      }
       if (typeof committedRevision !== 'string' || committedRevision.length === 0) {
-        throw new ActionConfirmationError('invalid_commit_result');
+        // A malformed acknowledgment may follow a successful remote commit.
+        throw new ActionConfirmationError('commit_outcome_unknown');
       }
       let resource;
       try {
