@@ -244,3 +244,74 @@ func TestInspectWiringSetNoMixedEpochUnderConcurrentUpdates(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInspectWiringSetRejectsContradictorySameSlot(t *testing.T) {
+	r := NewRegistry()
+	if _, err := r.Apply(0, []Provider{
+		{ID: "read-a", Scope: "tenant-a", Offers: probeRead},
+		{ID: "read-b", Scope: "tenant-a", Offers: probeRead},
+		{ID: "app", Scope: "tenant-a", Offers: probeApp},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	// Every individual explicit Provider exists and is eligible. The pair is
+	// still an invalid proposal for one logical consumer binding point.
+	conflict := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a", SlotID: "view.data"},
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-b", SlotID: "view.data"},
+	})
+	if conflict.Verdict != ProposalConflict {
+		t.Fatalf("contradictory slot accepted: %+v", conflict)
+	}
+	for i, f := range conflict.Findings {
+		if f.Verdict != ProposalConflict || f.Reason != ReasonInconsistentSlot ||
+			f.Selected != nil || len(f.Candidates) != 0 {
+			t.Fatalf("slot %d leaked an actionable candidate: %+v", i, f)
+		}
+	}
+	// A different Contract must not be assigned to the same named slot.
+	wrongContract := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a", SlotID: "view.data"},
+		{Contract: probeApp, Scope: "tenant-a", ProviderID: "app", SlotID: "view.data"},
+	})
+	if wrongContract.Verdict != ProposalConflict ||
+		wrongContract.Findings[1].Reason != ReasonInconsistentSlot {
+		t.Fatalf("contradictory contract accepted: %+v", wrongContract)
+	}
+}
+
+func TestInspectWiringSetKeepsIndependentSameContractSlots(t *testing.T) {
+	r := NewRegistry()
+	if _, err := r.Apply(0, []Provider{
+		{ID: "read-a", Scope: "tenant-a", Offers: probeRead},
+		{ID: "read-b", Scope: "tenant-a", Offers: probeRead},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	distinct := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a", SlotID: "view.primary"},
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-b", SlotID: "view.secondary"},
+	})
+	if distinct.Verdict != ProposalCandidate || len(distinct.Findings) != 2 ||
+		distinct.Findings[0].Selected == nil || distinct.Findings[1].Selected == nil ||
+		distinct.Findings[0].Selected.ProviderID != "read-a" ||
+		distinct.Findings[1].Selected.ProviderID != "read-b" ||
+		distinct.Findings[0].Selected.Revision != distinct.Findings[1].Selected.Revision {
+		t.Fatalf("independent slots incorrectly unified: %+v", distinct)
+	}
+	repeated := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a"},
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a"},
+	})
+	if repeated.Verdict != ProposalCandidate {
+		t.Fatalf("identical shared requirements refused: %+v", repeated)
+	}
+	// An omitted slot is shared for the same exact Contract by definition.
+	implicit := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-a"},
+		{Contract: probeRead, Scope: "tenant-a", ProviderID: "read-b"},
+	})
+	if implicit.Verdict != ProposalConflict || implicit.Findings[0].Reason != ReasonInconsistentSlot {
+		t.Fatalf("implicit slot contradiction accepted: %+v", implicit)
+	}
+}
