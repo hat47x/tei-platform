@@ -153,7 +153,7 @@ GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-
 GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含むGo競合試験
-CGO_ENABLED=1 GOENV=off GOWORK=off GO111MODULE=off \
+CGO_ENABLED=1 GOENV=off GOWORK=off \
   go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含む静的検査
@@ -214,8 +214,10 @@ go vet ./internal/security/legacyauth ./internal/security/legacyauthorization ./
 追加した`sqlite_authority_dependencies_test.go`は、失効・改版・版の欠落・版の単調増加・確定済み操作の再送・別接続の並列競合を扱います。実行コマンドは既存のSQLite連携試験と同じです。
 
 ```bash
-CGO_ENABLED=1 GOENV=off GOWORK=off GO111MODULE=off \
+CGO_ENABLED=1 GOENV=off GOWORK=off \
   go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
 ```
 
 これは**同一SQLiteファイルに置いた模擬版情報**の実証であり、実認可サービスの正本、役割や主体リンクの実際の更新経路と同期した証拠ではありません。通常ビルドへのSQLite依存はありません。詳細と残る設計条件は[接続メモ](INTEGRATION.md)を参照してください。
+
+実SQLiteのGo試験は専用の[変更範囲CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)でも自動実行します。通常のGoビルドにはSQLite依存を追加しません。
