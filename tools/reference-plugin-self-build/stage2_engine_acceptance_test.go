@@ -1,7 +1,12 @@
 package main
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,8 +20,11 @@ import (
 func writeReferenceStage2Acceptance(t *testing.T, root string, engine pruntime.RuntimeEngineIdentity) exactEngineOptions {
 	t.Helper()
 	options := exactEngineOptions{
-		Stage2Lock:       filepath.Join(root, "stage2-lock.json"),
-		HostRegistration: filepath.Join(root, "host-registration.json"),
+		Stage2Lock:           filepath.Join(root, "stage2-lock.json"),
+		HostRegistration:     filepath.Join(root, "host-registration.json"),
+		HostSignature:        filepath.Join(root, "host-signature.txt"),
+		TrustedHostPublicKey: filepath.Join(root, "trusted-host-key.pem"),
+		TrustedHostID:        "tei.reference.host",
 	}
 	write := func(path string, value any) {
 		t.Helper()
@@ -33,12 +41,31 @@ func writeReferenceStage2Acceptance(t *testing.T, root string, engine pruntime.R
 		Stage:         referenceStage2Stage,
 		RuntimeEngine: engine,
 	})
-	write(options.HostRegistration, referenceStage2HostRegistration{
+	registration := referenceStage2HostRegistration{
 		FormatVersion: referenceStage2LockFormatVersion,
 		Stage:         referenceStage2Stage,
 		HostID:        core.MustCanonicalID("tei.reference.host"),
 		RuntimeEngine: engine,
-	})
+	}
+	write(options.HostRegistration, registration)
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.MarshalPKIXPublicKey(public)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(options.TrustedHostPublicKey, pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	message, err := referenceStage2HostSignedBytes(registration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(options.HostSignature, []byte(base64.StdEncoding.EncodeToString(ed25519.Sign(private, message))), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	return options
 }
 
@@ -49,7 +76,8 @@ func TestReferenceStage2AcceptanceRequiresLockAndIndependentHostRegistration(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Engine != engine || result.LockFingerprint == "" || result.HostRegistrationFingerprint == "" {
+	if result.Engine != engine || result.LockFingerprint == "" ||
+		result.HostRegistrationFingerprint == "" || result.HostApprovalFingerprint == "" {
 		t.Fatalf("accepted engine identity or fingerprints missing: %#v", result)
 	}
 	for _, tt := range []struct {
@@ -58,6 +86,9 @@ func TestReferenceStage2AcceptanceRequiresLockAndIndependentHostRegistration(t *
 	}{
 		{"no lock", func(o *exactEngineOptions) { o.Stage2Lock = "" }},
 		{"no registration", func(o *exactEngineOptions) { o.HostRegistration = "" }},
+		{"no signature", func(o *exactEngineOptions) { o.HostSignature = "" }},
+		{"no trusted key", func(o *exactEngineOptions) { o.TrustedHostPublicKey = "" }},
+		{"no pinned host ID", func(o *exactEngineOptions) { o.TrustedHostID = "" }},
 		{"no authority", func(o *exactEngineOptions) {
 			o.Stage2Lock = ""
 			o.HostRegistration = ""
@@ -213,5 +244,91 @@ func TestReferenceStage2AuthorityRejectsDuplicateKeysAndSymlinks(t *testing.T) {
 	options.HostRegistration = link
 	if _, err := acceptReferenceStage2Engine(options, engine); err == nil {
 		t.Fatal("symlinked Host authority record was accepted")
+	}
+}
+
+func TestReferenceStage2HostApprovalRejectsTamperingAndWrongTrustRoot(t *testing.T) {
+	engine := bootstrapTestEngine()
+	options := writeReferenceStage2Acceptance(t, t.TempDir(), engine)
+	if _, err := acceptReferenceStage2Engine(options, engine); err != nil {
+		t.Fatal(err)
+	}
+	signature, err := os.ReadFile(options.HostSignature)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modified := append([]byte(nil), signature...)
+	if modified[0] == 'A' {
+		modified[0] = 'B'
+	} else {
+		modified[0] = 'A'
+	}
+	if err := os.WriteFile(options.HostSignature, modified, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := acceptReferenceStage2Engine(options, engine); err == nil {
+		t.Fatal("modified Host approval signature was accepted")
+	}
+	if err := os.WriteFile(options.HostSignature, signature, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wrongKey := writeReferenceStage2Acceptance(t, t.TempDir(), engine)
+	withOtherKey := options
+	withOtherKey.TrustedHostPublicKey = wrongKey.TrustedHostPublicKey
+	if _, err := acceptReferenceStage2Engine(withOtherKey, engine); err == nil {
+		t.Fatal("Host approval was accepted under a different pinned public key")
+	}
+	withOtherID := options
+	withOtherID.TrustedHostID = "tei.reference.unrelated-host"
+	if _, err := acceptReferenceStage2Engine(withOtherID, engine); err == nil {
+		t.Fatal("Host approval was accepted for an unexpected Host ID")
+	}
+}
+
+func TestReferenceStage2HostApprovalKeyRotationInvalidatesPolicy(t *testing.T) {
+	engine := bootstrapTestEngine()
+	dir := t.TempDir()
+	options := writeReferenceStage2Acceptance(t, dir, engine)
+	first, err := acceptReferenceStage2Engine(options, engine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rotatedOptions := writeReferenceStage2Acceptance(t, dir, engine)
+	rotated, err := acceptReferenceStage2Engine(rotatedOptions, engine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.LockFingerprint != rotated.LockFingerprint ||
+		first.HostRegistrationFingerprint != rotated.HostRegistrationFingerprint {
+		t.Fatal("signing key rotation changed the exact engine lock or unsigned Host registration")
+	}
+	if first.HostApprovalFingerprint == rotated.HostApprovalFingerprint {
+		t.Fatal("signing key rotation failed to invalidate Host approval")
+	}
+}
+
+func TestReferenceStage2HostApprovalRejectsSymlinkedTrustInputs(t *testing.T) {
+	engine := bootstrapTestEngine()
+	dir := t.TempDir()
+	options := writeReferenceStage2Acceptance(t, dir, engine)
+	for _, tt := range []struct {
+		name string
+		path string
+		set  func(*exactEngineOptions, string)
+	}{
+		{"trusted public key", options.TrustedHostPublicKey, func(o *exactEngineOptions, p string) { o.TrustedHostPublicKey = p }},
+		{"signature", options.HostSignature, func(o *exactEngineOptions, p string) { o.HostSignature = p }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			link := filepath.Join(dir, "linked-"+filepath.Base(tt.path))
+			if err := os.Symlink(tt.path, link); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			changed := options
+			tt.set(&changed, link)
+			if _, err := acceptReferenceStage2Engine(changed, engine); err == nil {
+				t.Fatal("symlinked Host signing trust input was accepted")
+			}
+		})
 	}
 }

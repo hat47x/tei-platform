@@ -25,10 +25,13 @@ import (
 // exactEngineOptions selects an independently built, verified process engine.
 // An omitted option retains the existing in-process reference path.
 type exactEngineOptions struct {
-	Executable       string
-	BuildEvidence    string
-	Stage2Lock       string
-	HostRegistration string
+	Executable           string
+	BuildEvidence        string
+	Stage2Lock           string
+	HostRegistration     string
+	HostSignature        string
+	TrustedHostPublicKey string
+	TrustedHostID        string
 }
 
 type exactEngineSourceMember struct {
