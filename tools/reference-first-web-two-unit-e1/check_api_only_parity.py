@@ -32,7 +32,7 @@ def request(port, method, path, payload=None):
         return err.code, err.read()
 
 
-def boot(binary, repo, revision, workspace_path=None):
+def boot(binary, repo, revision, workspace_path=None, requested_revision=None):
     port = available_port()
     command = [
         binary,
@@ -42,7 +42,7 @@ def boot(binary, repo, revision, workspace_path=None):
         "-application", "order_entry",
         "-baseline-id", "B",
         "-baseline-revision", "e5231839a5dcc62cce1181a2731fcb7c70d16736",
-        "-target-revision", revision,
+        "-target-revision", requested_revision if requested_revision is not None else revision,
         "-listen", f"127.0.0.1:{port}",
     ]
     process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -76,6 +76,21 @@ def main():
         processes.append(full_proc)
         api_proc, api_port = boot(api, repo, revision, api_world_dir)
         processes.append(api_proc)
+        # Prove with the real compiled executable, not just a Go unit test,
+        # that a caller cannot invent a Target build revision T that differs
+        # from the Git revision embedded by the diagnostic builder.
+        wrong_t = "0" * 40 if revision != "0" * 40 else "f" * 40
+        try:
+            unexpectedly_running, _ = boot(
+                api, repo, revision, api_world_dir, requested_revision=wrong_t,
+            )
+        except RuntimeError as err:
+            if "process exited before readiness" not in str(err):
+                raise RuntimeError("misbound API start gave an unexpected failure") from err
+        else:
+            unexpectedly_running.terminate()
+            unexpectedly_running.wait(timeout=5)
+            raise RuntimeError("API-only executable accepted a different target build revision")
         for path in ("/manifest.json", "/healthz", "/scenario/read"):
             expected = request(full_port, "GET", path)
             actual = request(api_port, "GET", path)
