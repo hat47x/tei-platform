@@ -12,7 +12,7 @@ export const probes = Object.freeze([
   {id:'order.dev-binding', group:'order_entry', path:'reference/workspace/environments/development/environment.tei', contains:'bind order_entry.sales -> sales_core.dev'},
   {id:'order.provider-bundle', group:'order_entry', path:'reference/workspace/environments/development/environment.tei', contains:'bundle tei.reference.providers ^1'},
   {id:'order.plugin-lock-entry', group:'order_entry', path:'reference/workspace/.tei/plugin-lock.json', contains:'"id": "tei.runtime.reference"'},
-  {id:'order.web-endpoint', group:'order_entry', path:'tools/reference-first-web-target/server.go', contains:'/scenario/submit'},
+  {id:'order.web-endpoint', group:'order_entry', path:'tools/reference-first-web-target/order_scenario_http.go', contains:'mux.HandleFunc("/scenario/submit"'},
   {id:'order.ui-adapter', group:'order_entry', path:'reference/ui-customization/web-react/order-entry-example.mjs', contains:'createReferenceSubmitAction'},
   {id:'order.project-ui-extension', group:'order_entry', path:'reference/ui-customization/web-react/project-extension.mjs', contains:'export function projectSidePanel'},
   {id:'sui.workspace-scope', group:'sui_stage0', path:'reference/sui-adoption/workspace/tei.workspace.yaml', contains:'  - semantic'},
