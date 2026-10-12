@@ -22,11 +22,19 @@ import (
 )
 
 type referenceCommandScenarioRunner struct {
+	persistence   commandPersistence
 	resolver      driver.Resolver
 	read          readScenarioRunner
 	store         *legacyauth.FixtureStore
 	authorization *legacyauthorization.FixtureRule
 	now           time.Time
+}
+
+// commandPersistence is injected by the trusted host. It cannot redefine the
+// canonical command or skip the supplied effect-time authorization callback.
+type commandPersistence interface {
+	Submit(context.Context, int64, readScenarioResult, func(context.Context) error) error
+	Observe(context.Context, int64) (driver.ObservationReadExecution, error)
 }
 
 func newReferenceCommandScenarioRunner(
@@ -79,6 +87,14 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 			"visual-evidence-not-yet-acquired",
 			"actual-external-command-observation-not-acquired",
 		},
+	}
+	if r.persistence != nil {
+		result.AuthorityLimits = append(result.AuthorityLimits, "postgres-command-and-observation-with-synthetic-authentication-and-oracle-customer")
+		for i, limit := range result.AuthorityLimits {
+			if limit == "synthetic-command-state-is-not-external-production-state" {
+				result.AuthorityLimits[i] = "postgres-reference-state-is-not-production-evidence"
+			}
+		}
 	}
 	if input.LoginID == "" {
 		return result, fmt.Errorf("loginId is required")
@@ -242,7 +258,7 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 		if !ok || actualOrderID != orderID {
 			return capabilityinvoke.BusinessResult{}, fmt.Errorf("submit orderId does not match selected order")
 		}
-		if actualOrderID == 1003 {
+		if r.persistence == nil && actualOrderID == 1003 {
 			return capabilityinvoke.BusinessResult{}, fmt.Errorf("synthetic submit adapter unavailable for order %d", actualOrderID)
 		}
 		// Verify identity and authorization at the concrete effect Adapter,
@@ -284,7 +300,29 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 			}
 			result.Stage = "command"
 		}
-		state[actualOrderID] = "submitted"
+		if r.persistence != nil {
+			err := r.persistence.Submit(invokeCtx, actualOrderID, readResult, func(effectCtx context.Context) error {
+				final, err := r.invokeBusinessAuthorization(effectCtx, subjectID)
+				if err != nil {
+					return err
+				}
+				projected, err := projectBusinessResult(final)
+				if err != nil {
+					return err
+				}
+				result.EffectAuthorization = &projected
+				if final.Outcome == "denied" {
+					result.Stage = "authorization-denied"
+					return errEffectBusinessDenied
+				}
+				return requireMatchingBusinessGrant(final, subjectID)
+			})
+			if err != nil {
+				return capabilityinvoke.BusinessResult{}, err
+			}
+		} else {
+			state[actualOrderID] = "submitted"
+		}
 		return capabilityinvoke.BusinessResult{
 			Capability: capability,
 			Mode:       capabilityinvoke.ResultOutput,
@@ -331,6 +369,15 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	result.Command = &projectedCommand
 
 	result.Stage = "observation"
+	if r.persistence != nil {
+		observation, err := r.persistence.Observe(ctx, orderID)
+		if err != nil {
+			return result, err
+		}
+		result.Observation = &observationProjection{ReadIdentity: observation.ReadIdentity, Nature: string(observation.Nature), Result: observation.Result}
+		result.Stage = "completed"
+		return result, nil
+	}
 	observation, err := driver.ExecuteObservationRead(
 		ctx,
 		"synthetic.order_state.read",

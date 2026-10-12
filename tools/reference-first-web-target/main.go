@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"tei/internal/composition"
 	"tei/internal/core"
@@ -27,8 +28,14 @@ func main() {
 		listen           = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
 		scopedRoutes     = flag.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
 		composeScenarios = flag.Bool("composition-scenarios", false, "reference: run order_entry read and submit through selected service contracts")
+		postgresDSNFile  = flag.String("postgres-dsn-file", "", "reference: host-owned PostgreSQL connection file; never creates fixture objects")
+		postgresFence    = flag.Int64("postgres-fencing-token", 0, "reference: expected positive database execution-grant fencing token")
 	)
 	flag.Parse()
+	if (*postgresDSNFile != "" || *postgresFence != 0) && (!*composeScenarios || *postgresDSNFile == "" || *postgresFence <= 0) {
+		fmt.Fprintln(os.Stderr, "PostgreSQL reference requires -composition-scenarios, -postgres-dsn-file and a positive -postgres-fencing-token")
+		os.Exit(2)
+	}
 	if *composeScenarios && *applicationID != "order_entry" {
 		fmt.Fprintln(os.Stderr, "-composition-scenarios currently requires -application order_entry")
 		os.Exit(2)
@@ -83,17 +90,29 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			if *postgresDSNFile != "" {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				db, err := openScenarioPostgres(ctx, *postgresDSNFile)
+				cancel()
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer db.Close()
+				state := &postgresScenarioState{db: db, world: loaded.World, digest: digest, fence: *postgresFence}
+				readScenario = &postgresReadScenario{state: state}
+				command.persistence = state
+			}
 			// This host permits only its two statically linked reference instances.
 			// It does not grant production permissions or replace business checks.
 			guard := func(b composition.Binding) error {
 				if b.ArtifactDigest != digest || b.Generation != 1 ||
 					!((b.ProviderID == "order-read" && b.ContractID == readServiceContract.ID) ||
-						(b.ProviderID == "order-submit" && b.ContractID == submitServiceContract.ID)) {
+						(b.ProviderID == "order-submit" && ((command.persistence == nil && b.ContractID == submitServiceContract.ID) || (command.persistence != nil && b.ContractID == postgresSubmitServiceContract.ID)))) {
 					return fmt.Errorf("reference host rejects instance binding")
 				}
 				return nil
 			}
-			readScenario, commandScenario, err = wireComposedScenarios(context.Background(), composition.NewRegistry(), newReferenceReadScenarioRunner(loaded.World), command, digest, guard)
+			readScenario, commandScenario, err = wireComposedScenarios(context.Background(), composition.NewRegistry(), readScenario, command, digest, guard)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -40,7 +40,9 @@
 
 `/scenario/read`、`/scenario/submit`、`/custom-submit`は従来と同じ操作を使う。登録処理内の読取も同じサービスを呼ぶ。JSON応答の`composition`には契約、提供元、実行ファイルのSHA-256、世代を記録する。認証拒否などの業務結果と実行エラー、登録結果と後続観測は従来どおり区別する。
 
-この接続は静的に結合した参照用実装を対象とする。データと認証は既存の模擬データを使う。実行ファイルのハッシュは実体の識別であり、配布元の信頼や本番の権限を保証しない。保護されたセッション経路、実際のデータベース、別プロセスの交換はこのフラグの対象外である。進め方は[接続計画](../../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md)を参照する。
+このフラグだけを指定した場合は、静的に結合した参照用実装と既存の模擬データ・模擬認証を使う。実行ファイルのハッシュは実体の識別であり、配布元の信頼や本番の権限を保証しない。保護されたセッション経路と別プロセスの交換は対象外である。進め方は[接続計画](../../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md)を参照する。
+
+実際のPostgreSQLを併用する場合は、さらに`-postgres-dsn-file /secure/connection-file -postgres-fencing-token 1`を指定する。受注と明細を実DBから読み、実DBへ確定し、別読取りで観測する。顧客参照と認証は模擬実装のままで、応答に混在範囲を明示する。接続や許可の確認に失敗した場合は模擬データへ戻らない。サーバーは参照データや許可を作成しない。[使い捨てDBによる再現手順](../../reference/postgres-order-execution/README.md)を参照する。
 
 ```sh
 go test -race -count=1 ./internal/composition ./tools/reference-first-web-target

@@ -23,6 +23,8 @@ type readScenarioInput struct {
 }
 
 type readScenarioResult struct {
+	StorageRevision  string                     `json:"storageRevision,omitempty"`
+	EvidenceSources  []scenarioEvidenceSource   `json:"evidenceSources,omitempty"`
 	Composition      *compositionTrace          `json:"composition,omitempty"`
 	ScenarioID       string                     `json:"scenarioId"`
 	Environment      string                     `json:"environment"`
@@ -36,6 +38,11 @@ type readScenarioResult struct {
 	RuntimeBindings  []runtimeBindingProjection `json:"runtimeBindings"`
 	AuthorityLimits  []string                   `json:"authorityLimits"`
 	Unresolved       []string                   `json:"unresolved"`
+}
+
+type scenarioEvidenceSource struct {
+	Part   string `json:"part"`
+	Nature string `json:"nature"`
 }
 
 type readScenarioRunner interface {

@@ -7,6 +7,41 @@ import (
 	"testing"
 )
 
+func TestServiceInvocationContextBindsHostAdapterWithoutChangingCaller(t *testing.T) {
+	r, first, _ := serviceRegistry(t)
+	parent := context.Background()
+	if _, ok := InvocationBinding(parent); ok {
+		t.Fatal("plain context has instance identity")
+	}
+	s, err := NewService(parent, r, first, selectedBinding(1, "v1"), allow, func(ctx context.Context, input int) (int, error) {
+		binding, ok := InvocationBinding(ctx)
+		if !ok || binding != selectedBinding(1, "v1") {
+			t.Fatal("adapter did not receive its pinned instance")
+		}
+		binding.ProviderID = "forged"
+		again, _ := InvocationBinding(ctx)
+		if again.ProviderID != "v1" {
+			t.Fatal("adapter mutated host identity")
+		}
+		return input, nil
+	}, validLifecycle())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.Invoke(parent, 1); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := InvocationBinding(parent); ok {
+		t.Fatal("instance identity escaped into caller context")
+	}
+	if err := s.Withdraw(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Reap(parent); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func serviceRegistry(t *testing.T) (*Registry, Selection, Selection) {
 	t.Helper()
 	r := NewRegistry()

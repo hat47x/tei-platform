@@ -2,7 +2,6 @@ package postgresquery
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -18,7 +17,7 @@ import (
 // Runnerは:name形式のphysical parameterをPostgreSQLのpositional placeholderへ変換するだけで、
 // Semantic attribute、Contract input、table / column、接続先Databaseを推測しない。
 type Runner struct {
-	DB *sql.DB
+	DB Queryer
 }
 
 var _ sqlquery.Runner = Runner{}

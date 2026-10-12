@@ -60,6 +60,7 @@
 | 場所 | 役割 |
 | --- | --- |
 | [`reference-first-web-target/`](reference-first-web-target/) | 最初のウェブ実行先の参照実装 |
+| [`verify-postgres-order-execution.py`](verify-postgres-order-execution.py) | 使い捨てPostgreSQLで受注の読取・確定・観測と現在の実行許可を確認 |
 | [`reference-first-web-target-architecture-evidence/`](reference-first-web-target-architecture-evidence/) | ウェブ実行先の構成根拠の確認 |
 | [`reference-first-web-target-evidence-audit/`](reference-first-web-target-evidence-audit/) | ウェブ実行先の根拠一式の監査 |
 | [`reference-first-web-target-gate-c-readiness-audit/`](reference-first-web-target-gate-c-readiness-audit/) | Gate C判定資料の検査 |

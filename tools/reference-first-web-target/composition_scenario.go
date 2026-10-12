@@ -19,8 +19,9 @@ func scenarioContract(id, shape string) composition.Contract {
 }
 
 var (
-	readServiceContract   = scenarioContract("tei.reference.order-entry.read", "readScenarioInput -> readScenarioResult + error; read-only; RFC3339 from; nonnegative row; Driver browse/record/customer/header-detail")
-	submitServiceContract = scenarioContract("tei.reference.order-entry.submit", "commandScenarioInput -> commandScenarioResult + error; authentication/validation/authorization/command/separate-observation; synthetic state; credentials transient")
+	readServiceContract           = scenarioContract("tei.reference.order-entry.read", "readScenarioInput -> readScenarioResult + error; read-only; RFC3339 from; nonnegative row; Driver browse/record/customer/header-detail")
+	submitServiceContract         = scenarioContract("tei.reference.order-entry.submit", "commandScenarioInput -> commandScenarioResult + error; authentication/validation/authorization/command/separate-observation; synthetic state; credentials transient")
+	postgresSubmitServiceContract = scenarioContract("tei.reference.order-entry.postgres-submit", "commandScenarioInput -> commandScenarioResult + error; current grant and fencing; canonical effect authorization; persistent PostgreSQL draft-to-submitted transition; separate external observation; unknown commit forbids automatic retry; credentials transient")
 )
 
 func projectCompositionBinding(binding composition.Binding) *compositionTrace {
@@ -75,14 +76,21 @@ func runningExecutableDigest() (string, error) {
 // wireComposedScenarios is a trusted host assembly point. The caller supplies
 // current instance permission; business authorization remains in the Driver.
 // It does not turn the reference executors into real external providers.
-func wireComposedScenarios(ctx context.Context, registry *composition.Registry, read *referenceReadScenarioRunner, command *referenceCommandScenarioRunner, digest string, guard func(composition.Binding) error) (*composedReadScenario, *composedCommandScenario, error) {
+func wireComposedScenarios(ctx context.Context, registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, digest string, guard func(composition.Binding) error) (*composedReadScenario, *composedCommandScenario, error) {
 	if read == nil || command == nil || registry == nil || guard == nil {
 		return nil, nil, fmt.Errorf("reference composition requires runners, registry and host guard")
 	}
+	if err := requireApplicationMatch("composed read", read, "order_entry"); err != nil {
+		return nil, nil, err
+	}
 	scope := "reference/order_entry/development"
+	submitContract := submitServiceContract
+	if command.persistence != nil {
+		submitContract = postgresSubmitServiceContract
+	}
 	if _, err := registry.Apply(0, []composition.Provider{
 		{ID: "order-read", Scope: scope, Offers: readServiceContract},
-		{ID: "order-submit", Scope: scope, Offers: submitServiceContract, Requires: []composition.Dependency{{Contract: readServiceContract, ProviderID: "order-read"}}},
+		{ID: "order-submit", Scope: scope, Offers: submitContract, Requires: []composition.Dependency{{Contract: readServiceContract, ProviderID: "order-read"}}},
 	}, nil); err != nil {
 		return nil, nil, err
 	}
@@ -108,7 +116,7 @@ func wireComposedScenarios(ctx context.Context, registry *composition.Registry, 
 	if err != nil {
 		return cleanupRead(err)
 	}
-	commandBinding := composition.Binding{ContractID: submitServiceContract.ID, ContractVersion: "1", ProviderID: "order-submit", ArtifactDigest: digest, Generation: 1}
+	commandBinding := composition.Binding{ContractID: submitContract.ID, ContractVersion: "1", ProviderID: "order-submit", ArtifactDigest: digest, Generation: 1}
 	// Bind the internal read to the same selected read service used by HTTP.
 	// Copy the runner to preserve the caller's existing assembly.
 	composedRead := &composedReadScenario{service: readService}

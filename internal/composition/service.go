@@ -17,6 +17,19 @@ type Service[I, O any] struct {
 	instances map[Binding]func(context.Context, I) (O, error)
 }
 
+type invocationBindingKey struct{}
+
+// InvocationBinding returns the pinned instance identity for host adapters.
+// It is trace data, not an authorization grant. Hosts must recheck current
+// permission, expiry and fencing at the concrete effect boundary.
+func InvocationBinding(ctx context.Context) (Binding, bool) {
+	if ctx == nil {
+		return Binding{}, false
+	}
+	b, ok := ctx.Value(invocationBindingKey{}).(Binding)
+	return b, ok
+}
+
 // NewService prepares and checks the initial instance before making it callable.
 // The guard is a current, nonblocking host check; it must not reenter Registry.
 func NewService[I, O any](ctx context.Context, registry *Registry, selected Selection, binding Binding, guard func(Binding) error, invoke func(context.Context, I) (O, error), lifecycle Lifecycle) (service *Service[I, O], err error) {
@@ -97,7 +110,7 @@ func (s *Service[I, O]) Invoke(ctx context.Context, input I) (O, Binding, error)
 	if invoke == nil {
 		return zero, lease.Binding, ErrUnbound
 	}
-	value, err := invoke(ctx, input)
+	value, err := invoke(context.WithValue(ctx, invocationBindingKey{}, lease.Binding), input)
 	return value, lease.Binding, err
 }
 
