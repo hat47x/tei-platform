@@ -164,4 +164,29 @@ func TestReferenceRuntimeEngineLockSeparatesRevisionFromImplementation(t *testin
 	if changedFP == firstFP {
 		t.Fatal("implementation source change did not invalidate the Runtime Engine Lock")
 	}
+
+	// The effective runtime policy must follow the same revision boundary.
+	policyFingerprint := func(lock pruntime.RuntimeEngineLock, lockFingerprint string) string {
+		engine := lock.Bindings[0].Engine
+		plan := pruntime.EnvironmentPlan{
+			Environment:                  core.MustCanonicalID("tei.reference.environment"),
+			PluginLockFingerprint:        "fixed-plugin-lock",
+			RuntimeEngineLockFingerprint: lockFingerprint,
+			Plugins: []pruntime.PluginRuntime{{
+				Plugin:                lock.Bindings[0].Plugin,
+				DescriptorFingerprint: "fixed-plugin-definition",
+				BuildPlanFingerprint:  "fixed-build-plan",
+				RuntimeEngine:         &engine,
+				Boundary:              pruntime.BoundaryInProcess,
+				Trust:                 pruntime.TrustHostTrusted,
+			}},
+		}
+		return pruntime.PolicyFingerprint(plan)
+	}
+	if policyFingerprint(firstLock, firstFP) != policyFingerprint(secondLock, secondFP) {
+		t.Fatal("repository-only revision changed the Runtime Policy")
+	}
+	if policyFingerprint(firstLock, firstFP) == policyFingerprint(changedLock, changedFP) {
+		t.Fatal("implementation source change did not invalidate the Runtime Policy")
+	}
 }
