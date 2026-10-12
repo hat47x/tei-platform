@@ -2,13 +2,13 @@
 
 ## 目的
 
-このConformanceは、既存システム固有の認証仕様をTEI標準のUser schemaへ作り替えず、v1 Reference Application `order_entry`からSemantic Capability `security.authenticate`へ明示的に接続できることを確認します。
+この準拠確認では、既存システム固有の認証仕様をTEI標準の利用者データ構造へ作り替えず、第1版の参照用アプリケーション`order_entry`から意味上の機能`security.authenticate`へ明示的に接続できることを確かめます。
 
-認証処理そのものの境界は、PR #145で追加した`internal/security/legacyauth`を利用します。Capabilityを正常に実行して得られる業務上の結果とExecution Errorの区別は、PR #141で成立した共通のInvocation境界をそのまま利用します。
+認証処理そのものには、PR #145で追加した`internal/security/legacyauth`を使います。機能を正常に実行して得られた業務結果と実行エラーは、PR #141で定めた共通の呼び出しの境界に従って区別します。
 
 ## アプリケーションから見える意味
 
-`order_entry`は`security`意味空間を明示的に利用します。
+`order_entry`は、`security`という意味空間を明示的に利用します。
 
 ```tei
 application order_entry {
@@ -19,35 +19,35 @@ application order_entry {
 }
 ```
 
-Authenticationを特定のDatabase名やlegacy schema名としてApplicationへ持ち込みません。Applicationから見えるのは`security.authenticate`というSemantic Capabilityです。
+認証処理を特定のデータベース名や既存のデータ構造名としてアプリケーションへ持ち込むことはしません。アプリケーションからは、意味上の機能である`security.authenticate`を利用します。
 
 ## 明示的な接続
 
-`order_entry`では、既存の`sales.order.submit`と同じCustom Go Binding形式を使います。
+`order_entry`では、既存の`sales.order.submit`と同じGoによる接続定義の形式を使います。
 
 ```tei
 realize security.authenticate with custom go
 ```
 
-Binding identityは新しい任意IDを増やさず、既存原則どおりApplicationとCapabilityの組で表します。
+対応付けを識別する値は、新たな任意の識別子を増やさず、既存の原則に従ってアプリケーションと機能の組合せで表します。
 
 ```text
 order_entry/security.authenticate
 ```
 
-Source Indexから、このBindingのauthoring sourceである
+入力元索引から、この対応付けを記述したファイルである
 
 ```text
 applications/order-entry/realizations/authenticate.tei
 ```
 
-へ戻れることをConformanceで確認します。
+へ戻れることを準拠確認で確かめます。
 
 ## 既存仕様の試験用データ
 
-Git管理するReference fixtureは`reference/legacy-auth/users.json`に置きます。
+Gitで管理する参照用の試験データは、`reference/legacy-auth/users.json`に置きます。
 
-このfixtureはTEI標準User schemaではありません。既存システム側に存在し得るfield名と状態を、そのままReferenceとして保持します。
+この試験用データは、TEI標準の利用者データ構造ではありません。既存システムに含まれ得る項目名や状態を、そのまま参照用の値として保持します。
 
 - `user_id`
 - `subject_id`
@@ -60,19 +60,19 @@ Git管理するReference fixtureは`reference/legacy-auth/users.json`に置き�
 - `organization_code`
 - `role_code`
 
-`FixtureStore`はこれらを`legacyauth.User`へ渡しますが、標準User schemaへ変換することを目的とした型ではありません。
+`FixtureStore`はこれらの情報を`legacyauth.User`へ渡します。ただし、TEI標準の利用者データ構造への変換を目的とした型ではありません。
 
 ## 秘密情報の境界
 
-Git管理するfixtureには、password平文、password hash、credential hash、token、secretを保存しません。
+Gitで管理する試験用データには、パスワードの平文・ハッシュ値、認証情報のハッシュ値、トークン、秘密情報を保存しません。
 
-legacy recordが保持するのは`credential_ref`だけです。実際に提示されたcredentialは実行時に`CredentialVerifier`へ渡し、Canonical World、Source Index、Business Result、通常のEvidenceへコピーしません。
+既存の利用者記録が保持するのは`credential_ref`だけです。実際に提示された認証情報は、実行時に`CredentialVerifier`へ渡し、意味の正本、入力元索引、業務結果、通常の検証根拠へはコピーしません。
 
-Conformanceでは、実行時だけ渡した値が`BusinessResult`へ混入していないことも確認します。
+準拠確認では、実行時にだけ渡した値が`BusinessResult`へ混入していないことも確かめます。
 
 ## 実行経路
 
-Reference Conformanceでは、Repositoryに保存されたlegacy fixtureを読み、同じ`security.authenticate` Capabilityを`capabilityinvoke.Invoke`へ渡します。
+参照実装の準拠確認では、リポジトリに保存された既存システムを模した試験用データを読み、同じ`security.authenticate`を`capabilityinvoke.Invoke`へ渡します。
 
 ```text
 order_entry
@@ -87,43 +87,43 @@ order_entry
                     └─ CredentialVerifier
 ```
 
-この経路で認証が成立すると、PR #141で定めた`authenticated` Business Resultを返します。
+この経路で認証が成立すると、PR #141で定めた`authenticated`という業務結果を返します。
 
 ## 来歴
 
-Gate Aで必要な来歴は、同じ認証ruleを別のCanonical表現へ複製することではなく、少なくとも次を追跡できることです。
+判定段階Aで必要なのは、同じ認証規則を意味の正本に別の形で複製することではなく、少なくとも次の情報を追跡できることです。
 
-- Semantic Capability: `security.authenticate`
-- Application-scoped Binding: `order_entry/security.authenticate`
-- Binding authoring source: `applications/order-entry/realizations/authenticate.tei`
-- legacy fixture source: `reference/legacy-auth/users.json`
-- credentialの実値を解決・検証する境界: `CredentialVerifier`
+- 意味上の機能：`security.authenticate`
+- アプリケーション内の対応付け：`order_entry/security.authenticate`
+- 対応付けの記述元：`applications/order-entry/realizations/authenticate.tei`
+- 既存システムを模した試験データの入力元：`reference/legacy-auth/users.json`
+- 認証情報の実際の値を解決・検証する境界：`CredentialVerifier`
 
-fixtureのsource pathは`FixtureStore.SourcePath()`からConformance上で確認できます。
+試験用データの入力元のパスは、準拠確認で`FixtureStore.SourcePath()`から取得できます。
 
 ## この段階で固定しないこと
 
-- TEI標準User schema
+- TEI標準の利用者データ構造
 - `std.auth.*`への標準化
-- production用password hash方式
-- LDAP / OIDC / SAML等の製品選択
-- Authentication専用の新しいBinding形式
-- Webログイン画面
-- Authorization rule
+- 本番用のパスワードのハッシュ化方式
+- LDAP、OIDC、SAMLなどの製品選択
+- 認証専用の新しい対応付け形式
+- Webのログイン画面
+- 認可の規則
 
-Authorizationは次の縦切りで`security.authorize`として`order_entry`のbrowse / edit / submitへ接続します。
+認可は、次の一連の実証で`security.authorize`として`order_entry`の参照・編集・確定の操作へ接続します。
 
 ## 判定段階Aとの関係
 
-このConformanceにより、Authenticationについては次をRepositoryから説明できます。
+この準拠確認により、認証に関する次の事項をリポジトリから説明できます。
 
-- Applicationが利用するCapability identity
-- どのApplication-scoped Bindingを採用したか
-- Bindingのauthoring source
-- legacy fieldを保持したfixtureのsource
-- secret materialを保存しない境界
-- legacy fixtureからCapability Invocationまでの接続
+- アプリケーションが利用する機能の識別子
+- どのアプリケーション内の対応付けを採用したか
+- 対応付けを記述した入力元
+- 既存の項目を保持した試験用データの入力元
+- 秘密情報の実際の値を保存しない境界
+- 既存の試験用データから機能の呼び出しまでの接続
 
-Gate A全体はまだ完了しません。次にAuthorizationと実現方式交換のEvidenceを追加したうえで、Issue #68を再評価します。
+この段階だけで判定段階A全体が完了したことにはなりません。認可と実現方式の切替えについて検証根拠を追加してから、Issue #68を再評価します。
 
 関連: #68 / #69 / #124 / PR #141 / #145 / ADR-0019 / ADR-0020

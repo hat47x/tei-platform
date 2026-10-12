@@ -41,13 +41,37 @@ func ParseSourceJSON(raw []byte) (Source, error) {
 // SourceValue is the Runtime Engine's typed input projection for a validated,
 // normalized transform Source. It contains no Host state or source locator.
 func SourceValue(source Source) (Value, error) {
-	normalized, err := NormalizeSource(source)
-	if err != nil {
-		return Value{}, err
-	}
-	raw, err := json.Marshal(normalized)
+	raw, err := canonicalSourceBytes(source)
 	if err != nil {
 		return Value{}, err
 	}
 	return ParseJSON(raw)
+}
+
+// canonicalSourceBytes is the one bounded serialization path for the Source
+// value, fingerprint, and materialized artifact. Leave one byte for the
+// materialized artifact's trailing newline.
+func canonicalSourceBytes(source Source) ([]byte, error) {
+	const limit = MaxSerializedSourceBytes - 1
+	if err := sourceSerializedSize(source, limit); err != nil {
+		return nil, err
+	}
+	normalized, err := NormalizeSource(source)
+	if err != nil {
+		return nil, err
+	}
+	if err := sourceSerializedSize(normalized, limit); err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(normalized)
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > limit {
+		return nil, fmt.Errorf("transform Source exceeds serialized size limit")
+	}
+	if _, err := ParseSourceJSON(raw); err != nil {
+		return nil, fmt.Errorf("canonical transform Source cannot be parsed: %w", err)
+	}
+	return raw, nil
 }

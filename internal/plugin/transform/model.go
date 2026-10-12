@@ -590,11 +590,7 @@ func normalizeExpr(expr Expr) (Expr, error) {
 }
 
 func SourceFingerprint(source Source) (string, error) {
-	normalized, err := NormalizeSource(source)
-	if err != nil {
-		return "", err
-	}
-	raw, err := json.Marshal(normalized)
+	raw, err := canonicalSourceBytes(source)
 	if err != nil {
 		return "", err
 	}
@@ -603,11 +599,7 @@ func SourceFingerprint(source Source) (string, error) {
 }
 
 func MaterializeSource(source Source) ([]byte, string, error) {
-	normalized, err := NormalizeSource(source)
-	if err != nil {
-		return nil, "", err
-	}
-	raw, err := json.Marshal(normalized)
+	raw, err := canonicalSourceBytes(source)
 	if err != nil {
 		return nil, "", err
 	}
