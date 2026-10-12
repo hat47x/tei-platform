@@ -76,14 +76,22 @@ func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 
 func TestAssertUniqueByChargesStringHashWork(t *testing.T) {
 	source := uniqueByTestSource()
-	source.Limits.MaxSteps = 8
+	// A tiny output prevents the output serializer, rather than key hashing,
+	// from being responsible for exhausting the budget.
+	source.Program.Output = transform.Expr{Op: transform.OpLiteral, Literal: []byte(`"ok"`)}
+	source.Limits.MaxSteps = 12
+	if _, err := transform.Evaluate(source, map[string]transform.Value{
+		"dependencies": valueFromGoJSON(t, []any{map[string]any{"plugin": "a"}}),
+	}); err != nil {
+		t.Fatalf("short unique key must fit the same step budget: %v", err)
+	}
 	_, err := transform.Evaluate(source, map[string]transform.Value{
 		"dependencies": valueFromGoJSON(t, []any{
 			map[string]any{"plugin": strings.Repeat("x", 40<<10)},
 		}),
 	})
 	if err == nil || !strings.Contains(err.Error(), "maxSteps") {
-		t.Fatalf("expected oversized key work to consume the step budget, got %v", err)
+		t.Fatalf("expected oversized key hashing to consume the step budget, got %v", err)
 	}
 }
 
