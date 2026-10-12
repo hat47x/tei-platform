@@ -555,95 +555,96 @@ RQ-027〜RQ-030は2026-09-18のProduct再定義で追加されましたが、こ
 
 RQ-031〜RQ-033は2026-10-03に、固定されたモデル体系ではなく意味論を後から拡張・合成できることをProduct Valueへ明示した際に追加しました。現時点では新しいPASを増やしません。まずPAS-06のknowledge-first探索を主な検証面とし、Shared Acceptanceを扱うPAS-01と、複数の意味視点を相互検証するPAS-07を必要に応じて組み合わせます。独立したAcceptance Scenarioが必要かどうかは、Semantic ExtensionのReferenceで既存PASでは表せない利用者レベルの成立条件が確認された時点で判断します。
 
-## 12. 現行Gate / Stageとの関係
+## 12. 現在の判定段階との関係
 
 ```text
-Gate A
-  -> PAS-02のApplication meaningをDriverへ渡せることを確認
+判定段階A
+  → PAS-02のアプリケーションの意味を実行・検証環境へ渡せることを確認
 
-Gate B
-  -> PAS-02中心 + PAS-03のreal-provider境界を含む3 Required Evidenceをsame-Rへ収束
+判定段階B
+  → PAS-02を中心に、PAS-03の実際の提供実装の境界も含めた
+    三つの必須検証根拠を同じ版Rについてそろえる
 
-Gate B → C Handover
-  -> PAS-02 / PAS-03で確認したbaseline revision RとunresolvedをBとして固定
+判定段階BからCへの引継ぎ
+  → PAS-02・PAS-03で確認した基準版Rと未解決事項をBとして固定
 
-Gate C
-  -> PAS-04をFirst Web Target build T1で実証
-  -> baseline RとTarget build T1を分離
+判定段階C
+  → 最初のWeb向けビルドT1でPAS-04を実証
+  → 意味の基準版Rと実行先のビルド版T1を区別
 
-Gate C後 — 並行可能
-  -> PAS-01: ISSUE-000046 Studio minimal authoring loop
-  -> PAS-06: ISSUE-000047 knowledge-first exploration
-  -> PAS-01 / PAS-06: ISSUE-000027 AI Proposal / Acceptance
-  -> PAS-04: ISSUE-000026 second Target pressure test
+判定段階Cの後 — 並行可能
+  → PAS-01：ISSUE-000046 編集環境の最小限の記述・受理
+  → PAS-06：ISSUE-000047 既存知識を優先する探索
+  → PAS-01・PAS-06：ISSUE-000027 AIの提案・受理
+  → PAS-04：ISSUE-000026 二つ目の実行先による検証
 
-Gate非依存のparallel Reference pressure
-  -> PAS-07: ISSUE-000042 Business Procedure cross-view Reference
-  -> Gate B / Gate C Required Evidenceへ追加しない
+判定段階とは独立した参照事例による検証
+  → PAS-07：ISSUE-000042 業務手順の複数視点での検証
+  → 判定段階B・Cの必須検証根拠には追加しない
 ```
 
-PAS-05はruntime / deployment workstreamへ接続します。現行Gate B必須scopeを本書から拡張しません。
+PAS-05は実行基盤と配備に関する作業領域へ接続します。この文書から判定段階Bの必須範囲を拡張しません。
 
-PAS-07のReference runnerがgreenになってもGate B / CのReady条件は変わりません。greenはPAS-07 Evidence statusへ記録し、Shared AcceptanceやPAS-02 Runtime Evidenceを自動代替しません。
+PAS-07の参照事例の検査が成功しても、判定段階B・Cの`Ready`条件は変わりません。成功はPAS-07の検証状態へ記録しますが、共通受理境界やPAS-02の実行に関する検証根拠の代わりにはなりません。
 
-## 13. 新しいADR / Plan Issueへ要求する最小Trace
+## 13. 新しい設計判断と計画上の課題に必要な追跡情報
 
-新しい上流設計・機能提案では、必要に応じて次を明示します。
+新しい上流の設計や機能を提案する際には、必要に応じて次の情報を明示します。
 
-- 関連Product Requirement
-- Primary PAS
-- Scenarioで失敗すると利用者 / maintainerに何が見えるか
-- 保存するsemantic boundary
-- Provider / Target / Hostへ残す差
-- baseline / source / build identity
-- Reference / fixture
-- 必要なEvidence nature
-- 既存Gateへ影響するか否か
-- unresolved
-- reopen condition
+- 関連する製品要求
+- 主となる受入シナリオ（PAS）
+- シナリオに失敗した場合に利用者や保守担当者に何が見えるか
+- 維持する意味上の境界
+- 提供実装・実行先・ホストに残す違い
+- 基準版・情報源・ビルド版の識別情報
+- 参照事例・試験用データ
+- 必要な検証根拠の性質
+- 既存の判定段階に影響するか
+- 未解決事項
+- 検討を再開する条件
 
-実装が先に存在する場合でも、この欄を埋めるためだけに架空Requirementを作りません。
+実装が先に存在する場合も、この項目を埋めるためだけに架空の要求を作りません。
 
-## 14. 現行Authoring基線
+## 14. 現在の定義記述と受理の方針
 
-PAS-01 / PAS-06では次を現行前提とします。
+PAS-01とPAS-06では、次を現在の前提とします。
 
-- authoritative sourceはfile-nativeで保持可能
-- qualified logical key / Canonical identityをfile pathと分離
-- Studio / CLI / AI等はcandidate入口
-- Preview / Rejectはnon-mutating
-- AcceptはShared Acceptance Boundaryへ収束
-- accepted sourceは入口toolなしでreload可能
-- stale base revisionは明示処理
-- derived index / AI Knowledge / trajectoryは第二正本ではない
-- 独立した開発環境は、TEI専用Agent Adapterやnative MCP serverなしでSourceを直接編集し、CLI / Host-provided MCP / 通常のToolchainでBuild / Testまで行える
-- Git commit / branch / Pull Request等を変更の第一級の受け渡し経路として利用でき、Gitで足りる場合にTEI独自Change Setを要求しない
+- 正本となる情報源は元のファイル形式のまま保持できる
+- 一意な論理上の識別子と正本の識別子を、ファイルのパスから分離する
+- 編集環境・コマンドライン・AIなどは変更候補を提出する入口とする
+- 事前確認と却下では情報源を変更しない
+- 受理は共通の受理境界を通す
+- 受理された情報源は変更元の道具がなくても再読込みできる
+- 古くなった基準版は明示的に処理する
+- 派生索引・AI向けの知識・過去の作業経緯は第二の正本ではない
+- 独立した開発環境では、TEI専用のエージェント接続部品やMCPサーバーがなくても、ソースを直接編集し、コマンドライン・ホスト提供のMCP・通常の開発ツールでビルドと試験まで行える
+- Gitのコミット、ブランチ、プルリクエストを変更の主要な受渡し方法として利用できる。Gitで足りる場合にはTEI独自の変更セットを要求しない
 
-PAS-07のBusiness Procedure pressureでも、Business固有meaningをfile-native authoring sourceへ保持し、Pattern-owned Data / Relation / Query / Capability / DatasourceやMatrix / diagnostic等のderived Projectionと分離します。
+PAS-07の業務手順の検証でも、業務固有の意味は元のファイル形式の定義元に保持します。アプリケーションの構成パターンが管理するデータ、関係、問い合わせ、機能、データソースや、対応表・診断などの派生表示とは区別します。
 
-現時点でReference-local stable Procedure keyの有用性は確認していますが、accepted Business sourceをRQ-002上どのCanonical trace targetへ接続するかは`unresolved`です。この一点からfull Canonical Procedure modelやRuntime Workflowを先に固定しません。
+現時点で、参照事例内に安定した業務手順の識別子を設ける利点は確認しています。一方、受理済みの業務の定義元をRQ-002の下で正本のどの対象へ追跡するかは`unresolved`です。この問題だけを理由に、完全な業務手順モデルや実行基盤の処理の流れを先に固定しません。
 
 次を現行前提にはしません。
 
-- Semantic Patchだけを唯一のauthoring経路にすること
-- Base Semantic Digestを全candidateの必須基準にすること
-- mandatory authored Stable ID / UUID
-- Studio独自semantic authority
-- AI独自Canonical Knowledge Store
-- Agent Session / Workspace / Checkpoint / 一般的な検証状態をTEIの標準Product stateにすること
-- Agent Adapterや特定Chat UIを標準Authoringの必須経路にすること
-- Canonical `Procedure` / `Step`の先行採用
-- Business ProcedureからRuntime Workflow Orchestrationへの自動変換
+- 意味の差分の適用だけを、定義の唯一の変更経路にすること
+- 元の意味の照合値をすべての変更候補に必須とすること
+- 人が記述する安定識別子やUUIDを必須とすること
+- 編集環境独自の意味を決める権限
+- AI専用の意味の正本を保存する機構
+- エージェントのセッション、作業領域、チェックポイント、一般的な検証状態をTEIの標準的な製品状態にすること
+- エージェント用の接続部品や特定のチャット画面を定義変更の必須経路にすること
+- 正本の要素として`Procedure`や`Step`を先に採用すること
+- 業務手順から実行基盤の処理を統括する仕組みへの自動変換
 
-optional Patchを利用する場合も、file-native / Studio / CLI / AIと同じAcceptance原則へ接続します。
+任意の差分記述を利用する場合も、ファイルの直接編集、編集環境、コマンドライン、AIと同じ受理原則を適用します。
 
 ## 15. 非目標
 
-- Product Requirementsの置換
-- Canonical object `ProductAcceptanceScenario`の追加
-- runtime Scenario Registryの実装
-- Requirement coverage率 / 完成率の算出
-- Gate B / Gate Cのscopeを本書だけで変更すること
-- 第一Targetだけから完全なPresentation IRを固定すること
-- Gate C前にStudio / AIの詳細interfaceを固定すること
-- PAS-07を理由にCanonical `Procedure` / `Step`、Workflow Engine、新Gateを自動導入すること
+- 製品要求の置き換え
+- 正本の要素として`ProductAcceptanceScenario`を追加すること
+- 実行時に使うシナリオの登録機構の実装
+- 要求の達成率や完成率の算出
+- 判定段階B・Cの対象範囲をこの文書だけで変更すること
+- 最初の実行先だけを根拠に、表示の完全な中間表現を固定すること
+- 判定段階Cの前に編集環境やAIの詳細な接続方式を固定すること
+- PAS-07を理由に、正本の`Procedure`・`Step`、業務処理の実行機構、新しい判定段階を自動的に導入すること
