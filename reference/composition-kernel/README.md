@@ -195,3 +195,29 @@ E5の単一要求検査に続き、`internal/composition/proposal.go`へ`Inspect
 検証したのは、GitHub上の`proposal.go`、`proposal_test.go`と**バイト単位で一致するファイル**と、以前から用意してあるRegistryのAPI互換の試験用実装を組み合わせた独立Go 1.23.2モジュール。具体的に`go test -race -count=100 -timeout=90s ./internal/composition`、`go vet ./...`、`gofmt -l`を実行してPASS。GitHubの二つのBlob SHA（`f17f2e7c9605b39c4571ba640432a2708aba5af2`、`3d2b9f7d96be40ce8c38b21d51aaa1a54723c865`）とローカルの`git hash-object`が一致した。
 
 **限界**：実際の`registry.go`と`selection.go`を同じチェックアウトで試験した結果ではなく、PR exact-headの全Repository Healthも未実行である。さらに、一括検査結果が同じ時点のものでも、実際に同時配備可能か、契約の意味・適合・権限が妥当かは別途検証する。Host Authorityを既存登録簿の診断結果から推定しない。
+
+
+## E6：推移的な依存先の変更も世代選択に反映する
+
+前段の`Selection`は、対象Provider自身の世代と、直接依存するProviderの**識別子**を保持していた。ここには、依存先Providerの実装が変わっても、利用側の契約とProvider IDが変わらなければ、古い選択が再利用されるという抜けがあった。
+
+`selection.go`の`ProviderEpoch`と`Selection.DependencyEpochs`により、利用側から到達できる全依存先の宣言世代を、重複のない並びとして固定する。選択の受理時には、対象Provider自身の世代に加え、依存関係を辿った各Providerの世代も照合する。
+
+- 例えば「画面 → 読取サービス → DB Provider」でDB Providerの実装宣言や依存条件が変わった場合、画面自身の契約・宣言が不変でも、以前の`Selection`を**失効**させる。
+- 無関係なTenantや独立したProviderの登録変更だけで、選択を失効させない。
+- 構成案検査`InspectWiringSet`も、通常の`Registry.Select`と同じ選択生成処理を使う。AI向け検査だけ異なる条件で合格しない。
+- 非同期の準備・初回起動で、呼出し側から渡された依存世代一覧をコピーし、後から書き換えられないようにする。既存`Coordinator`と`NewSelectedCoordinator`の検証経路に反映する。
+
+### 実証の内容と限界
+
+`selection_closure_test.go`では、推移的な依存先の変更、無関係な更新で選択が維持されること、世代情報の書換え拒否、構成案とRegistryの選択結果の一致を試験する。
+
+この部分について、GitHubの`registry.go`・`selection.go`・`proposal.go`・`proposal_test.go`・`selection_closure_test.go`を**同一のソースbytes**で独立したGo 1.23.2モジュールに置き、`go test -race -count=100 ./internal/composition`と`go vet ./...`をPASS。各ソースのGit Blob SHAとの一致も確認済み。Routerの`Binding`型は、この局所試験のために最小限の仮定義を使用した。
+
+これは本物のRegistryとSelectionの選択・再検証を用いた局所試験であり、Router・Coordinator・実Provider・信頼できるHost Authorityを含む全体試験ではない。PR exact-headのクリーンな全Repository Healthも未実施。Scope終了や旧処理Drainの成功、実Artifactの意味・署名・認可も保証しない。
+
+### 性能と次の実証
+
+今回の実装は簡素な参照形で、呼出しのたびにRegistryの依存関係を走査する。依存数が多いアプリでは、世代確認の読取経路へ追加の計算・Lock競合が生じるため、**本番向けの性能として採用する前に測定が必要**である。契約・依存世代・権限の不変なスナップショットをHostで保持し、安全な版の切替時だけ再計算する方式を比較する。
+
+また、宣言世代の固定は実行インスタンスの世代を固定することではない。依存先のArtifact、現在のAuthority、fencing、更新中の実際のResource Lifetimeは、別のHost証拠として扱う。安全な宣言選択を、そのまま運用上の無停止更新や実現済み適合性へ昇格させない。
