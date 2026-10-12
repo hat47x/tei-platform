@@ -52,7 +52,7 @@ func TestAPIOnlyRejectsPublicListenBeforeLoadingWorldOrExecutingRunners(t *testi
 		"-baseline-revision", strings.Repeat("a", 40),
 		"-target-revision", strings.Repeat("b", 40),
 		"-listen", "0.0.0.0:7777",
-	})
+	}
 	called := false
 	err := runSingleApplicationTarget("order_entry", func(ir.World, singleApplicationConfig) (
 		readScenarioRunner, commandScenarioRunner, []webTargetOption, error,
