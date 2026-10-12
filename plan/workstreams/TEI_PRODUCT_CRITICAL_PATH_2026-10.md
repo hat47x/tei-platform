@@ -938,3 +938,28 @@ E1-Bの`validation-not-satisfied`は**業務上の拒否**でありHTTP 200と�
 このE2は新しいDB Provider・第二のSchema Authority・第二の受理機構を作る指示ではない。既存のDB runtime、Web Driver、Shared Acceptance、#1163の検査を**一つの実験でつなぐ**。既存toolの個別成功を足して一往復の成功へ換算しない。
 
 **親Gate判定**：E1-Aの技術的実証は**済**。E1-B＋N11の隔離実Web実証も**PR #1262内では済**だがmainに未反映であり、異なる合成バイナリの範囲に限定。G1の正式なAuthority接続、G2のE2実DB＋独立read、G3第二Target、G4 self-buildの横断的な資格はなお未合格。#1119のIssueはopen。
+
+## 29. E1保存結果とSource版拘束の横断判定（2026-10-12、追補）
+
+この節は§28の後に実測された版別結果を補う。**当時の成功・失敗を後のmainや別のPRに遡及適用しない**。合成fixtureのCI成功、受理済みSourceとの真正な結合、製品Gate通過はそれぞれ異なる。
+
+| 確認事項 | 実際に確認した版・証拠 | ここからは言えないこと |
+| --- | --- | --- |
+| E1-Aのmain事後検査と証拠保存 | [PR #1331](https://github.com/hat47x/tei-platform/pull/1331) merge `4b390208acbea4c22b2fb688174f6f41c22d6b0d`、[main E1 run #38239334884](https://github.com/hat47x/tei-platform/actions/runs/38239334884)／[Health #38239334982](https://github.com/hat47x/tei-platform/actions/runs/38239334982)はSUCCESS。実Artifact `11741926281`のZIPと3 JSONのSHA-256照合を確認 | これだけでは単価0、N11、R2、実DB、人的受理は未検証 |
+| E1-A／E1-B／N11とSource R0・R1・R2の観測 | [#1163 Draft PR #1262](https://github.com/hat47x/tei-platform/pull/1262) head `ef0ea673a988536558970cae86f00672f0599b8a`、仮統合 `dd8f7524062dcff18c15c9c356c03746461a1913`、[E1 run #38243337087](https://github.com/hat47x/tei-platform/actions/runs/38243337087)・[Health #38243337100](https://github.com/hat47x/tei-platform/actions/runs/38243337100)は双方SUCCESS。Artifact `11744141694`の8 JSON原本が目録内SHA-256と全件一致 | PRはmain未統合。受理は試験用、正常・負例は異なる合成Webバイナリ、Host Authorityと実DB書込みは未実証 |
+| 8件の証拠契約へSource R2差異の検査を組込む | [PR #1395](https://github.com/hat47x/tei-platform/pull/1395) head `0954be7d5e49d26572dcb73b1b54c6d9cf1c81b3`、[E1 #38246643033](https://github.com/hat47x/tei-platform/actions/runs/38246643033)・[Health #38246643056](https://github.com/hat47x/tei-platform/actions/runs/38246643056)はSUCCESS、merge `9b385961ab0c7744184e742d95aff91931985091` | この二つのCIは**正常系3件モード**。#1395の変更後のワークフローで**8件モードを実行したPASSは未取得** |
+
+### 製品上の反例は二つあり、同じ試験ではない
+
+- **旧R0の意味不一致**：受理済みR1というラベルを与えながら実際にはR0をWebへ読み込ませると、新単価規則の欠落とManifestの意味差分を外部ハーネスが見つける。ただし実Webは自ら拒否していない。
+- **R2の意味同値・Source不一致**：R1のSourceへ空行を加えたR2は、元のSource bytesとrevisionが異なるにもかかわらず、派生Worldと実HTTP Manifestの意味SHAがR1と同一。**意味指紋一致・B/R/Tのラベル一致は、実際に読み込んだAccepted Source bytesの同一性を保証しない**。
+
+両者をE1で記録する際、外部照合で差を検知できた事実をTarget内部の事前拒否へ読み替えない。R1の実バイトを呼出し・起動・Command発行の正しい時点で拘束する実装責任は[#1121](https://github.com/hat47x/tei-platform/issues/1121)とSource Readerの既存契約にあり、#1119が第二のSource正本や認可判定器を作らない。
+
+### 次に取るべき実測と役割
+
+1. **#1163／#1119のE1資格照合**：#1395の修正を含むワークフローを用い、#1262の8件生成を**新しいGitHub仮統合版**で実行する。新旧のrun ID、PR head、仮統合SHA、Artifact IDを固定する。ZIP実体を再取得し、GitHub記載のZIP SHA-256、目録、全8 JSONのraw byte SHA-256、R0≠R1≠R2とR1/R2のWorld・Manifest同値、Runtime未拒否という否定フラグを照合する。旧run #38243337087の成功を新workflowの成功へ転記しない。
+2. **#1121の実拘束**：Web/Driver自身が、実際に開いたManaged Source bytesを明示受理されたexact R1と照合し、不一致ならCommand前にfail closedする。R0の意味差分とR2の意味同値を双方負例に含める。受理した当事者・権限・改訂の真正性は別途証明する。
+3. **#1127の実DB、#1163の一改訂Evidence**：[Draft #1399](https://github.com/hat47x/tei-platform/pull/1399)の手書きoverlay→PostgreSQL write／別接続readは独立した先行試験であり、#1119のAccepted R1から通常Web Commandへつながった証拠ではない。[#1406](https://github.com/hat47x/tei-platform/pull/1406)の保存宣言の静的照合も書込み権限・実Providerの成功ではない。これらを既存契約内で収束させ、実DB write→別invocation read、S02/S05拒否、N11の未観測を区別する。
+
+**資格判定**：G0はOwner間の正式なConsumer受入を一部未確認。G1はRuntime側の受理済みSource版拘束が欠け、G2は同じR1からの実Web→実DB→独立readが未取得。G3第二Target、G4自己構築・横断受入も未完了。E1の合成証拠は進展したが、製品Gateは **UNQUALIFIED**、[#1119](https://github.com/hat47x/tei-platform/issues/1119)はopenを維持する。短期Artifactは7日で失効するため、期限後に現物の再取得が必要なら同一版の証拠を再生成し、再実行版を記録する。
