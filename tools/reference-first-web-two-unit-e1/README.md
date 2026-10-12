@@ -116,6 +116,7 @@ bash tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh \
 - Go APIは `tei_order_only,tei_api_only,tei_frozen_world` の三つのビルドタグで構築します。静的なimport閉包から `tei/internal/workspace` と `tei/internal/syntax` が除外されなければビルド工程は失敗します。不要パッケージの**実リンク除外**や速度・サイズの差は、測定結果を個別に確認する必要があります。
 - 生成したWorld全体のSHA-256をGoバイナリへコンパイル時に固定します。起動時にファイルdigest、Application ID、B/R/T、JSON構造を照合し、不一致なら業務処理開始前に拒否します。JSONを差し替えてApplicationの意味を変更することはできません。
 - 既存のDriver/Runner/Authentication/Authorization/Validation/Command/Observationを変更せず、通常のAPI専用バイナリと**実HTTP status/bodyの一致**を比較します。元APIは比較のためだけに一時構築し、最終成果物には含めません。
+- 測定JSONには同じcheckout・Go版・構築環境で生成した通常APIのサイズ・digest（`ordinaryAPIBytesSameBuild` / `ordinaryAPISHA256SameBuild`）と、固定World版との差（`frozenAPIByteDifference`、負値なら縮小）を記録します。過去の別revisionの測定値を削減率の根拠にしません。
 - Browser HTML/JSは従来の正規Projectionから生成し、元のBrowser/JSON API配備方式も維持します。実Browser replayは両方式へ適用できますが、合成資格情報による確認を本番受入とは扱いません。
 
 **境界と未検証事項：** 本方式は、既存のSource/Acceptance/Builder/Plugin Lockを置き換えません。digestはBuilderが選んだバイト列への拘束であり、発行者やモデルの正当な受理を認証するものではありません。Runtimeは引き続きDriverと`ir.World`を保持し、Production Provider・IdP・Session・TLS/CSRF・人間によるVisual受理も未実証です。Runtimeのモデルファイルが既存のBuilder/Artifact Authorityに拘束されるまで、Production配布に使わないでください。
