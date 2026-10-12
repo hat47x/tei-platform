@@ -27,22 +27,25 @@ func TestCrossViewPublicAccountingRejectsUnsupportedDerivedPaths(t *testing.T) {
 			p.DerivedEdges[0].Operations = "U"
 		}},
 		{"incomplete source token union", func(p *CrossViewProjection) {
-			found := false
+			var operationTokens []string
+			for _, edge := range p.SourceEdges {
+				if edge.Kind == "function-table-operation" {
+					operationTokens = edge.SourceTokens
+					break
+				}
+			}
 			for i, token := range p.DerivedEdges[0].SourceTokens {
-				if token == p.SourceEdges[1].SourceTokens[1] &&
-					token != p.DerivedEdges[0].FromToken &&
-					token != p.DerivedEdges[0].ToToken {
+				if token != p.DerivedEdges[0].FromToken &&
+					token != p.DerivedEdges[0].ToToken &&
+					containsString(operationTokens, token) {
 					p.DerivedEdges[0].SourceTokens = append(
 						p.DerivedEdges[0].SourceTokens[:i],
 						p.DerivedEdges[0].SourceTokens[i+1:]...,
 					)
-					found = true
-					break
+					return
 				}
 			}
-			if !found {
-				panic("fixture has no removable intermediate provenance token")
-			}
+			panic("fixture has no removable intermediate provenance token")
 		}},
 		{"missing function table declaration", func(p *CrossViewProjection) {
 			for i, edge := range p.SourceEdges {
