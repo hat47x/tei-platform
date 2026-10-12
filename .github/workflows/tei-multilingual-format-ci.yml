@@ -1,0 +1,70 @@
+name: TEI 多言語の数量表現（Go・Web照合）
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reference/multilingual-format/**'
+      - '.github/workflows/tei-multilingual-format-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/multilingual-format/**'
+      - '.github/workflows/tei-multilingual-format-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-multilingual-${{ github.event_name }}}-${{ github.event.pull_request.number || github.ref }}}
+  cancel-in-progress: true
+
+jobs:
+  cross-target:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象ソースと履歴を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Goの版を用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 実行環境の版を記録
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          node --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1); console.log(JSON.stringify({icu: process.versions.icu, cldr: process.versions.cldr, unicode: process.versions.unicode}))'
+      - name: Goの整形・静的解析・局所試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l reference/multilingual-format/*.go)"
+          go vet ./reference/multilingual-format
+          go test -race -count=3 ./reference/multilingual-format
+      - name: WebとNodeの地域別表現の試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/multilingual-format/*.test.mjs
+      - name: 検証後の作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
