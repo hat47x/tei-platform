@@ -85,17 +85,6 @@ jobs:
           go vet ./internal/security/effectcommit/... ./internal/security/legacyauthorization
           test -z "$(gofmt -l internal/security/effectcommit/postgres)"
 
-      - name: Go整形診断（暫定）
-        shell: bash
-        if: always()
-        run: |
-          for file in provider.go provider_integration_test.go; do
-            echo "TEI_PG_FMT_BEGIN_$file"
-            gofmt "internal/security/effectcommit/postgres/$file" | base64 -w0
-            echo
-            echo "TEI_PG_FMT_END_$file"
-          done
-
       - name: 検証後の変更を拒否
         if: always()
         shell: bash
