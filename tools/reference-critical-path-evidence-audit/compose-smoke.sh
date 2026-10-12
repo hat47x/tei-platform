@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Read-only-to-PR cross-lane integration pressure: combine pinned Draft tips
-# in a disposable detached worktree. Never merge to main or alter owner refs.
+# Run cross-lane smoke checks in a disposable detached worktree:
+# compose pinned Draft tips (historical mode), or check integrated current main.
+# Never merge to main or alter owner refs.
 set -euo pipefail
 die() { printf 'cross-lane integration blocked: %s\n' "$*" >&2; exit 1; }
 
@@ -20,15 +21,27 @@ case "$url" in
   *) die "remote is not canonical hat47x/tei-platform" ;;
 esac
 
+mode="${TEI_CP_COMPOSE_MODE:-draft-tips}"
+case "$mode" in
+  draft-tips|integrated-main) ;;
+  *) die "TEI_CP_COMPOSE_MODE must be draft-tips or integrated-main" ;;
+esac
 expected_main="${TEI_CP_COMPOSE_MAIN:-}"
 expected_1119="${TEI_CP_COMPOSE_1119:-}"
 expected_1120="${TEI_CP_COMPOSE_1120:-}"
 expected_1124="${TEI_CP_COMPOSE_1124:-}"
 expected_1121="${TEI_CP_COMPOSE_1121:-}"
-for value in "$expected_main" "$expected_1119" "$expected_1120" "$expected_1124" "$expected_1121"; do
-  [[ "$value" =~ ^[0-9a-f]{40}$ ]] ||
-    die "supply all five TEI_CP_COMPOSE_* exact 40-character SHAs"
-done
+[[ "$expected_main" =~ ^[0-9a-f]{40}$ ]] ||
+  die "supply TEI_CP_COMPOSE_MAIN as the exact 40-character current main SHA"
+if [[ "$mode" == draft-tips ]]; then
+  for value in "$expected_1119" "$expected_1120" "$expected_1124" "$expected_1121"; do
+    [[ "$value" =~ ^[0-9a-f]{40}$ ]] ||
+      die "draft-tips mode requires four exact TEI_CP_COMPOSE_* branch tip SHAs"
+  done
+else
+  [[ -z "$expected_1119$expected_1120$expected_1124$expected_1121" ]] ||
+    die "integrated-main mode refuses stale Draft branch pins"
+fi
 clean() {
   local where="$1" status unusual
   status="$(git -C "$where" status --porcelain=v1 --untracked-files=all --ignored=matching)" ||
@@ -40,6 +53,8 @@ clean() {
 }
 clean "$root"
 original_head="$(git rev-parse HEAD)"
+runner_blob="$(git hash-object "$root/tools/reference-critical-path-evidence-audit/compose-smoke.sh")" ||
+  die "cannot identify exact smoke runner"
 git fetch --no-tags "$remote" --prune || die "fetch failed"
 check_tip() {
   local branch="$1" expected="$2" actual
@@ -48,10 +63,12 @@ check_tip() {
   [[ "$actual" == "$expected" ]] || die "stale pin for $branch: $actual"
 }
 check_tip main "$expected_main"
-check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
-check_tip issue-1120-typed-reference-contract "$expected_1120"
-check_tip work/issue-1124-studio-authoring-projection "$expected_1124"
-check_tip work/issue-1121-lowering-contract "$expected_1121"
+if [[ "$mode" == draft-tips ]]; then
+  check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
+  check_tip issue-1120-typed-reference-contract "$expected_1120"
+  check_tip work/issue-1124-studio-authoring-projection "$expected_1124"
+  check_tip work/issue-1121-lowering-contract "$expected_1121"
+fi
 
 # Merge only in a disposable detached worktree. Branch refs remain untouched.
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/tei-cp-compose.XXXXXX")"
@@ -67,16 +84,18 @@ trap cleanup EXIT
 git worktree add --detach "$wt" "$expected_main" >/dev/null ||
   die "cannot create isolated worktree"
 has_worktree=true
-for head in "$expected_1119" "$expected_1120" "$expected_1124" "$expected_1121"; do
-  git -C "$wt" -c user.name="TEI Integration Test" -c user.email="integration.invalid@example.invalid" \
-    -c commit.gpgsign=false merge --no-ff --no-edit "$head" ||
-    die "candidate branches conflict or cannot be combined (no owner branch altered)"
-done
+if [[ "$mode" == draft-tips ]]; then
+  for head in "$expected_1119" "$expected_1120" "$expected_1124" "$expected_1121"; do
+    git -C "$wt" -c user.name="TEI Integration Test" -c user.email="integration.invalid@example.invalid" \
+      -c commit.gpgsign=false merge --no-ff --no-edit "$head" ||
+      die "candidate branches conflict or cannot be combined (no owner branch altered)"
+  done
+fi
 clean "$wt"
 integration_head="$(git -C "$wt" rev-parse HEAD)"
 integration_tree="$(git -C "$wt" rev-parse HEAD^{tree})"
-printf 'CANDIDATE_COMPOSITION_BEGIN main=%s merged-head=%s tree=%s\n' \
-  "$expected_main" "$integration_head" "$integration_tree"
+printf 'CROSS_LANE_SMOKE_BEGIN mode=%s main=%s tested-head=%s tree=%s\n' \
+  "$mode" "$expected_main" "$integration_head" "$integration_tree"
 
 (
   cd "$wt"
@@ -91,7 +110,9 @@ printf 'CANDIDATE_COMPOSITION_BEGIN main=%s merged-head=%s tree=%s\n' \
   go test -count=1 ./tools/reference-critical-path-evidence-audit
   go test -count=1 ./tools/reference-first-web-target \
     -run '^(TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList|TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines)$'
-  # Positive R1 -> live HTTP only; synthetic Provider, no live unit-price negative.
+  # Only code on the pinned tested HEAD can count. As of the original main
+  # Reference this is live R1 HTTP positive, synthetic Provider only. Later
+  # changes to the smoke runner must be separately inspected for their scope.
   TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs
   bash tools/repository-health-check.sh
 )
@@ -100,14 +121,25 @@ clean "$wt"
   die "temporary merged HEAD moved"
 git fetch --no-tags "$remote" --prune || die "post-test fetch failed"
 check_tip main "$expected_main"
-check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
-check_tip issue-1120-typed-reference-contract "$expected_1120"
-check_tip work/issue-1124-studio-authoring-projection "$expected_1124"
-check_tip work/issue-1121-lowering-contract "$expected_1121"
+if [[ "$mode" == draft-tips ]]; then
+  check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
+  check_tip issue-1120-typed-reference-contract "$expected_1120"
+  check_tip work/issue-1124-studio-authoring-projection "$expected_1124"
+  check_tip work/issue-1121-lowering-contract "$expected_1121"
+fi
 [[ "$(git rev-parse HEAD)" == "$original_head" ]] ||
   die "original checkout HEAD moved"
+[[ "$(git hash-object "$root/tools/reference-critical-path-evidence-audit/compose-smoke.sh")" == "$runner_blob" ]] ||
+  die "smoke runner changed during testing"
 clean "$root"
-printf 'CROSS_LANE_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
-printf 'main=%s\nintegrationHead=%s\nintegrationTree=%s\n' \
-  "$expected_main" "$integration_head" "$integration_tree"
-printf 'limits=NOT_OWNER_PR_QUALIFICATION_NOT_LIVE_NEGATIVE_NOT_DB_NOT_HUMAN_APPROVAL\n'
+if [[ "$mode" == integrated-main ]]; then
+  printf 'CURRENT_MAIN_CROSS_LANE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
+else
+  printf 'CROSS_LANE_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
+fi
+printf 'mode=%s\nmain=%s\nintegrationHead=%s\nintegrationTree=%s\n' \
+  "$mode" "$expected_main" "$integration_head" "$integration_tree"
+printf 'runnerBlob=%s\nhealthRunnerBlob=%s\n' "$runner_blob" \
+  "$(git -C "$wt" hash-object tools/repository-health-check.sh)"
+printf 'goVersion=%s\nnodeVersion=%s\n' "$(go version)" "$(node --version)"
+printf 'limits=NOT_OWNER_PR_QUALIFICATION_NOT_EXTERNAL_DB_NOT_INDEPENDENT_READ_NOT_HUMAN_APPROVAL\n'
