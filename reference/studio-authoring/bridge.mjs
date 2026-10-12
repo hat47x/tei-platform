@@ -495,6 +495,15 @@ export function candidateFromEdit(world, revision, edit) {
   exactRevision(revision);
   if (!edit || edit.schema !== EDIT_SCHEMA || edit.readonly === true ||
       edit.derived === true) throw new Error("DERIVED_IS_READONLY_OR_INVALID_EDIT");
+  // An edit created from a visual snapshot must not be silently rebased when
+  // review-edit later reads a newer accepted World. Older unbound CLI inputs
+  // remain supported, but the browser form always supplies this precondition.
+  if (edit.expectedModelRevision !== undefined) {
+    if (!REVISION.test(edit.expectedModelRevision))
+      throw new Error("STUDIO_EDIT_EXPECTED_REVISION_INVALID");
+    if (edit.expectedModelRevision !== revision)
+      throw new Error("STUDIO_EDIT_STALE_MODEL_REVISION");
+  }
   if (!isText(edit.id) || !isText(edit.intent) ||
       !["studio", "ai", "file", "cli"].includes(edit.origin) ||
       !["er", "table"].includes(edit.view)) throw new Error("INVALID_EDIT");
