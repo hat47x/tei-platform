@@ -25,8 +25,9 @@ const defaultProcessResponseLimit = 8 << 20 // 8 MiB
 // not claim that an OS PID is a durable runtime handle and does not provide
 // host-restart or cross-host reattach semantics.
 type StdioProcessLauncher struct {
-	// Env, when non-nil, replaces the child environment in the same way as
-	// exec.Cmd.Env. Leave nil to inherit the host process environment.
+	// Env is the complete host-approved child environment. Nil and empty both
+	// mean no application-supplied variables: never inherit host credentials.
+	// OS-required variables may still be added by the platform (e.g. Windows).
 	Env []string
 	// Dir, when non-empty, sets the child working directory. It is host
 	// configuration and is not derived from plugin request payloads.
@@ -80,9 +81,10 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	if l.Env != nil {
-		cmd.Env = append([]string(nil), l.Env...)
-	}
+	// exec.Cmd.Env == nil inherits the entire parent environment. Always pass
+	// a non-nil slice, including when Env is omitted, to prevent leaking host
+	// credentials and configuration into independently executed plugins.
+	cmd.Env = append([]string{}, l.Env...)
 	if l.Dir != "" {
 		cmd.Dir = l.Dir
 	}
