@@ -1,7 +1,12 @@
 package main
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,8 +20,11 @@ import (
 func writeReferenceStage2Acceptance(t *testing.T, root string, engine pruntime.RuntimeEngineIdentity) exactEngineOptions {
 	t.Helper()
 	options := exactEngineOptions{
-		Stage2Lock:       filepath.Join(root, "stage2-lock.json"),
-		HostRegistration: filepath.Join(root, "host-registration.json"),
+		Stage2Lock:           filepath.Join(root, "stage2-lock.json"),
+		HostRegistration:     filepath.Join(root, "host-registration.json"),
+		HostSignature:        filepath.Join(root, "host-signature.txt"),
+		TrustedHostPublicKey: filepath.Join(root, "trusted-host-key.pem"),
+		TrustedHostID:        "tei.reference.host",
 	}
 	write := func(path string, value any) {
 		t.Helper()
@@ -33,12 +41,31 @@ func writeReferenceStage2Acceptance(t *testing.T, root string, engine pruntime.R
 		Stage:         referenceStage2Stage,
 		RuntimeEngine: engine,
 	})
-	write(options.HostRegistration, referenceStage2HostRegistration{
+	registration := referenceStage2HostRegistration{
 		FormatVersion: referenceStage2LockFormatVersion,
 		Stage:         referenceStage2Stage,
 		HostID:        core.MustCanonicalID("tei.reference.host"),
 		RuntimeEngine: engine,
-	})
+	}
+	write(options.HostRegistration, registration)
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.MarshalPKIXPublicKey(public)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(options.TrustedHostPublicKey, pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	message, err := referenceStage2HostSignedBytes(registration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(options.HostSignature, []byte(base64.StdEncoding.EncodeToString(ed25519.Sign(private, message))), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	return options
 }
 
@@ -49,7 +76,8 @@ func TestReferenceStage2AcceptanceRequiresLockAndIndependentHostRegistration(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Engine != engine || result.LockFingerprint == "" || result.HostRegistrationFingerprint == "" {
+	if result.Engine != engine || result.LockFingerprint == "" ||
+		result.HostRegistrationFingerprint == "" || result.HostApprovalFingerprint == "" {
 		t.Fatalf("accepted engine identity or fingerprints missing: %#v", result)
 	}
 	for _, tt := range []struct {
@@ -58,6 +86,9 @@ func TestReferenceStage2AcceptanceRequiresLockAndIndependentHostRegistration(t *
 	}{
 		{"no lock", func(o *exactEngineOptions) { o.Stage2Lock = "" }},
 		{"no registration", func(o *exactEngineOptions) { o.HostRegistration = "" }},
+		{"no signature", func(o *exactEngineOptions) { o.HostSignature = "" }},
+		{"no trusted key", func(o *exactEngineOptions) { o.TrustedHostPublicKey = "" }},
+		{"no pinned host ID", func(o *exactEngineOptions) { o.TrustedHostID = "" }},
 		{"no authority", func(o *exactEngineOptions) {
 			o.Stage2Lock = ""
 			o.HostRegistration = ""
