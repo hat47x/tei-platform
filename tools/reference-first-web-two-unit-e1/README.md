@@ -55,7 +55,7 @@ API専用構成では`GET /manifest.json`、`GET /healthz`、`GET /scenario/read
 
 新しい`check_api_only_parity.py`は、従来の受注専用バイナリとAPI専用バイナリを独立した実プロセスとして起動し、Manifest・読み取り・正常Command・認証拒否・認可拒否・検証不成立・実行エラー・不正リクエストの**HTTPステータスと本文のバイト一致**を検査します。合成資格情報は検査入力としてのみ使い、保持する証跡には残しません。
 
-**未解決**：従来のBrowser静的HTMLはフォームを`/custom-submit`へ送るため、そのままAPI専用へ接続すると404になります。新API専用を既存の`build.sh`の既定成果物に置き換えるには、Browser資産のフォーム送信をJSON APIへ変更し、実Browserでの機能・Visual・セキュリティを検査する必要があります。またAPI専用Goの設計時Workspace/Driver Loader依存も残存しています。画面描画除外はこれらの完成を意味しません。
+**既存ビルドの制約**：従来のBrowser静的HTMLはフォームを`/custom-submit`へ送るため、そのままAPI専用へ接続すると404になります。既定の`build.sh`は互換性のため旧方式を維持し、JSON API専用への接続は後述の`build_json_api.sh`で選択します。実ブラウザでの機能・Visual・セキュリティは引き続き未検証です。またAPI専用Goの設計時Workspace/Driver Loader依存も残存しています。
 
 ## 静的Browserから画面非搭載JSON APIへ（選択式・局所検証）
 
