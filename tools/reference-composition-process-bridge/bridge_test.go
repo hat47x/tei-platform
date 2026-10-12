@@ -56,13 +56,21 @@ func (l *countingLauncher) Invoke(ctx context.Context, command pruntime.ProcessC
 
 // invokeSelected is deliberately a host-side reference adapter, not a second
 // implementation of the plugin protocol or a production permission authority.
-func invokeSelected(ctx context.Context, coordinator *composition.Coordinator, adapter pruntime.DeploymentExecutor, command executor.Command) (executor.Result, error) {
+// accepted MUST be the Host's already accepted invocation binding, never a
+// value copied from the incoming request or plugin-supplied claims.
+func invokeSelected(ctx context.Context, coordinator *composition.Coordinator, adapter pruntime.DeploymentExecutor, command executor.Command, accepted composition.Binding) (executor.Result, error) {
 	lease, err := coordinator.Acquire()
 	if err != nil {
 		return executor.Result{}, err
 	}
 	defer lease.Release()
-	if len(adapter.Plan.Plugins) != 1 || lease.Binding.ArtifactDigest != adapter.Plan.Plugins[0].Artifact.Digest {
+	// Digest equality is not enough: one binary may implement multiple
+	// providers, contracts or generations. Never dispatch a process when the
+	// current registry selection differs from the Host-accepted route.
+	if lease.Binding != accepted {
+		return executor.Result{}, errors.New("selected binding differs from host-accepted invocation binding")
+	}
+	if len(adapter.Plan.Plugins) != 1 || accepted.ArtifactDigest != adapter.Plan.Plugins[0].Artifact.Digest {
 		return executor.Result{}, errors.New("selected generation does not match locked plugin artifact")
 	}
 	return adapter.Execute(ctx, command)
@@ -188,7 +196,7 @@ func testSelectedCompositionInvokesProcessPlugin(t *testing.T, source string) {
 			t.Fatalf("invalid locked plugin invocation: %v", err)
 		}
 	}
-	first, err := invokeSelected(ctx, coordinator, adapter, command)
+	first, err := invokeSelected(ctx, coordinator, adapter, command, original)
 	if err != nil {
 		t.Fatalf("invoke existing process provider: %v", err)
 	}
@@ -204,7 +212,7 @@ func testSelectedCompositionInvokesProcessPlugin(t *testing.T, source string) {
 		t.Fatal(err)
 	}
 	before := launcher.calls
-	if _, err := invokeSelected(ctx, coordinator, adapter, command); !errors.Is(err, composition.ErrStaleRegistry) {
+	if _, err := invokeSelected(ctx, coordinator, adapter, command, original); !errors.Is(err, composition.ErrStaleRegistry) {
 		t.Fatalf("stale selected provider was not rejected: %v", err)
 	}
 	if launcher.calls != before {
@@ -236,11 +244,37 @@ func testSelectedCompositionInvokesProcessPlugin(t *testing.T, source string) {
 	if err := coordinator.ReplaceSelected(ctx, registry, nextSelection, 1, nextBinding, stages); err != nil {
 		t.Fatal(err)
 	}
-	second, err := invokeSelected(ctx, coordinator, adapter, command)
+	second, err := invokeSelected(ctx, coordinator, adapter, command, nextBinding)
 	if err != nil {
 		t.Fatalf("invoke replacement process provider: %v", err)
 	}
 	assertAccepted(second)
+
+	// A reused executable does not grant permission to serve a different
+	// contract, provider identity or generation. This check must happen
+	// before dispatch, independently from matching artifact bytes.
+	for _, tc := range []struct {
+		name   string
+		mutate func(*composition.Binding)
+	}{
+		{name: "contract-id", mutate: func(b *composition.Binding) { b.ContractID = "std.other.contract" }},
+		{name: "contract-version", mutate: func(b *composition.Binding) { b.ContractVersion = "9.0.0" }},
+		{name: "provider-id", mutate: func(b *composition.Binding) { b.ProviderID = "other-provider" }},
+		{name: "generation", mutate: func(b *composition.Binding) { b.Generation++ }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mismatched := nextBinding
+			tc.mutate(&mismatched)
+			beforeDispatch := launcher.calls
+			if _, err := invokeSelected(ctx, coordinator, adapter, command, mismatched); err == nil ||
+				!strings.Contains(err.Error(), "host-accepted invocation binding") {
+				t.Fatalf("incorrect accepted route allowed: %v", err)
+			}
+			if launcher.calls != beforeDispatch {
+				t.Fatal("route identity mismatch launched a child process")
+			}
+		})
+	}
 	if pinned.Binding.ProviderID != "process-v1" || oldCleanups != 0 {
 		t.Fatal("in-flight old generation was replaced or prematurely disposed")
 	}
@@ -254,7 +288,7 @@ func testSelectedCompositionInvokesProcessPlugin(t *testing.T, source string) {
 
 	before = launcher.calls
 	allowed = false
-	if _, err := invokeSelected(ctx, coordinator, adapter, command); !errors.Is(err, denied) {
+	if _, err := invokeSelected(ctx, coordinator, adapter, command, nextBinding); !errors.Is(err, denied) {
 		t.Fatalf("host guard was bypassed: %v", err)
 	}
 	if launcher.calls != before {
@@ -275,7 +309,7 @@ func testSelectedCompositionInvokesProcessPlugin(t *testing.T, source string) {
 	if err := coordinator.Withdraw(2); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := invokeSelected(ctx, coordinator, adapter, command); !errors.Is(err, composition.ErrUnbound) {
+	if _, err := invokeSelected(ctx, coordinator, adapter, command, nextBinding); !errors.Is(err, composition.ErrUnbound) {
 		t.Fatalf("withdrawn provider accepted invocation: %v", err)
 	}
 	if err := coordinator.Reap(ctx); err != nil {
