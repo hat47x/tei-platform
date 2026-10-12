@@ -134,28 +134,28 @@ TEIでは、すべての知識を一つの知識グラフやモデルの重み�
 
 受理された意味のうち、長期に保持する必要があるものです。
 
-- authoritative source
-- Canonical identity / relation / constraint
-- accepted Business meaning
-- explicit Binding / Realization choice
-- accepted Decision / policy where required
+- 正本となる情報源
+- 意味上の識別・関係・制約
+- 受理された業務上の意味
+- 明示的な対応付け・実現方法の選択
+- 必要に応じて受理された判断・方針
 
-これは削除するとプロダクトの意味が失われます。
+これらを削除すると、製品が扱う意味が失われます。
 
 ### 4.2 派生した連想・構造の記憶
 
-「何を思い出すか」「何が近いか」を助けます。
+何を思い出すか、何が近いかを調べるための情報です。
 
-- exact index / dependency index
-- lexical index
-- graph neighborhood
-- Reference Model pattern index
-- embedding
-- sparse high-dimensional representation
-- HDC / VSA等のrole-aware representation
-- candidate ranking / novelty signal
+- 正確な検索索引・依存関係の索引
+- 語彙による索引
+- 関係図上の近傍
+- 参照モデルにある構成パターンの索引
+- 埋め込み表現
+- 疎な高次元表現
+- HDCやVSAなど役割を考慮した表現
+- 候補の順位付け・新規性の手掛かり
 
-これらは**再生成可能で、対象のリビジョンに結び付いている**必要があります。
+これらは**再生成でき、対象となる版と対応付いている**必要があります。
 
 ```text
 連想は依存関係と同じではない
@@ -164,165 +164,165 @@ TEIでは、すべての知識を一つの知識グラフやモデルの重み�
 新規性は未知であることと同じではない
 ```
 
-このmemoryを削除してもCanonical meaningは変わりません。
+この記憶を削除しても、正本となる意味は変わりません。
 
 ### 4.3 経験や履歴の記憶
 
 「何を試し、どう判断し、何が起きたか」を保持します。
 
-- Proposal / rejection / acceptance record
-- Semantic Diff / impact preview
-- simulator / runtime run
-- Observation / Evidence
-- review comment / rationale
-- past correction trajectory
+- 変更の提案・却下・受理の記録
+- 意味の差分と影響の事前表示
+- 模擬実行・実行基盤での実行
+- 観測結果・検証根拠
+- 確認時の意見・理由
+- 過去の修正の経緯
 
-過去に成功した変更も、そのまま現在のmeaningにはなりません。current revision / Source / Evidenceへ戻って再評価します。
+過去に成功した変更も、そのまま現在の意味にはなりません。現在の版、情報源、検証根拠を確認して再評価します。
 
 ### 4.4 記憶ごとの権限の境界
 
 ```text
-authoritative semantic memory
-        ↑ accepted change only
-Shared Acceptance Boundary
+正本となる意味の記憶
+        ↑ 受理した変更だけ
+共通の受理境界
         ↑
-proposal / experience / cognition
+提案・経験・認知処理
 
-associative memory  -X-> implicit semantic write
-episodic memory     -X-> implicit semantic write
-model weights       -X-> only durable record of a Decision
+連想の記憶       -X-> 意味の正本を暗黙に書き換える
+経験の記憶       -X-> 意味の正本を暗黙に書き換える
+モデルの重み     -X-> 判断を保存する唯一の永続記録にする
 ```
 
-AIや認知方式を交換・停止しても、accepted systemを再構成できることを不変条件とします。
+AIや認知機構を交換・停止しても、受理済みのシステムを再構成できることを不変条件とします。
 
 ## 5. 認知機能を一つのAIへ集約しない
 
-TEIの認知は、性質の違う複数方式を協調させます。
+TEIでは、性質の異なる複数の認知方式を組み合わせます。
 
 ```text
-Intent / local editing context
+意図・編集中の局所的な文脈
         │
-        ├─ exact identity / graph traversal
-        ├─ Reference pattern recall
-        ├─ associative / sparse cognition
-        └─ LLM interpretation / hypothesis / explanation
+        ├─ 正確な識別と関係の追跡
+        ├─ 参照事例の構成パターンの想起
+        ├─ 連想・疎な表現による認知処理
+        └─ 大規模言語モデルによる解釈・仮説・説明
                 ↓
-           candidate space
+             候補群
                 ↓
- deterministic qualification
- applicable / incompatible / unknown
+      決定的な方法で適格性を確認
+      適用可能・不適合・未確定
                 ↓
-       explicit-reference proposal
+         明示的な参照を持つ提案
 ```
 
 ### 正確な識別と関係の追跡
 
-既知のidentity、dependency、authorityを確定的に辿ります。既知のことを毎回LLMに再推論させません。
+既知の識別子、依存関係、権限を決定的な方法でたどります。分かっていることを毎回、大規模言語モデルに推論し直させません。
 
 ### 参照事例から構成パターンを想起する
 
-実践Referenceから観測された構造を、provenanceと適用条件つきの候補として提示します。patternは答えではありません。
+実際の参照事例で確認された構造を、出所と適用条件を添えた候補として示します。構成パターン自体を正解とはみなしません。
 
 ### 連想による認知処理
 
-語彙が違うが構造が近い例、partial cue、局所的なnoveltyを候補化します。FlyHash、HDC/VSA、embedding等はこの役割の比較候補です。
+使われる言葉が異なっても構造が近い例や、部分的な手掛かり、新規性のある局所的な情報を候補として見つけます。FlyHash、HDC、VSA、埋め込み表現などは、この用途で比較する方式です。
 
 ### 大規模言語モデル
 
-自然言語intentの解釈、複数候補の比較、欠落仮説、説明、compositionに強みを使います。LLMにSource / Evidenceを与えても、その出力自体をauthorityにはしません。
+自然言語で表された意図の解釈、候補の比較、欠落している条件の仮説、説明、候補の組合せに用います。大規模言語モデルに情報源や検証根拠を与えても、その出力自体に決定権はありません。
 
 ## 6. 確認結果を修正すべき部分へ戻す
 
-質の高いフィードバックの仕組みでは、見つかった問題をすべてSemantic sourceへ戻すわけではありません。
+質の高い改善の仕組みでは、見つかった問題をすべて意味の定義元へ戻すわけではありません。
 
-| Feedback | 主な戻り先 | 戻してはいけない先の例 |
+| 確認した問題 | 主な修正先 | 修正先として不適切な例 |
 | --- | --- | --- |
-| Business fact / relation / constraintの欠落 | Semantic / Business authoring source | UIだけの補修 |
-| Business responsibility / manual workの欠落 | Business Procedure source | fake Application Function |
-| Target固有のinteraction問題 | Presentation / Target Adapter | domain Dataの歪曲 |
-| Provider固有の実現問題 | Binding / Realization / Provider | Canonical business meaning |
-| DB actual drift | Observation / Mapping / Migration candidate | Semantic Relationへの自動逆書き |
-| Runtime failure | Capability / Execution / Resource境界 | LLM promptだけの調整 |
-| 検索取りこぼし / ranking問題 | derived index / cognition | Canonical relationの捏造 |
-| Reference patternが合わない | candidate ranking / applicability rule | Reference patternの自動採用 |
+| 業務上の事実・関係・制約の欠落 | 意味・業務の定義元 | 画面だけの修正 |
+| 業務上の責任・人の作業の欠落 | 業務手順の定義元 | 架空のアプリケーション機能 |
+| 実行先に固有の操作の問題 | 表示・実行先への接続部品 | 分野固有のデータの歪曲 |
+| 提供実装に固有の実現上の問題 | 対応付け・実現方法・提供実装 | 業務上の意味の正本 |
+| データベースの実際の状態のずれ | 観測・対応付け・移行候補 | 意味上の関係への自動的な書戻し |
+| 実行時の失敗 | 機能・実行・資源の境界 | 大規模言語モデルへの指示だけの変更 |
+| 検索漏れ・順位付けの問題 | 派生索引・認知処理 | 意味上の関係の捏造 |
+| 参照事例の構成パターンが合わない | 候補の順位付け・適用条件の規則 | 参照事例のパターンの自動採用 |
 
 修正先を判断する原則は次のとおりです。
 
 > 目に見える症状ではなく、意味を管理する最小の層を直す。
 
-これにより「UIを直してDataの誤りを隠す」「AI promptを調整してauthority矛盾を隠す」といった局所最適を防ぎます。
+これにより、画面の修正でデータの誤りを隠したり、AIへの指示の調整だけで権限の矛盾を隠したりする、部分的な修正にとどまることを防ぎます。
 
-## 7. Minimum Semantic Delta
+## 7. 意味に対する最小限の変更を提案する
 
 生成AIを使う場合は、モデルやファイルを毎回丸ごと再生成するのではなく、**現在受理されている意味に対する最小限の変更を提案すること**を標準にします。
 
 ```text
-base revision
-   + purpose / observed problem
-   + exact target identities
-   + minimum proposed meaning change
-   + provenance / evidence
+変更元の版
+   + 目的・確認した問題
+   + 変更対象の正確な識別情報
+   + 提案する最小限の意味変更
+   + 出所・検証根拠
         ↓
-preview
-   Semantic Diff
-   affected subjects
-   derived UI / runtime / persistence impact
-   unresolved / contradiction
+事前確認
+   意味の差分
+   影響を受ける対象
+   画面・実行基盤・保存への影響
+   未解決の事項・矛盾
         ↓
-Accept / Reject
+受理・却下
 ```
 
-Minimum Semantic Deltaは固定Patch DSLを意味しません。file-native edit、Studio action、structured AI proposal、refactor等が同じ意味差分へ収束できればよいとします。
+意味に対する最小限の変更とは、特定の差分記述言語を固定することではありません。ファイルの直接編集、編集環境での操作、構造化したAIの提案、構造の整理などが同じ意味の差分へ収束できればよいとします。
 
-### full regenerationを標準にしない理由
+### 全体の再生成を標準にしない理由
 
-- 人間reviewで本質的な変更点が見えにくくなる
-- model固有のformatやcommentを不要に書き換えやすい
-- stale conflictの範囲が広がる
-- AIが未要求の意味まで補完しやすい
-- accepted meaningとgenerated wordingが混ざる
+- 人が確認するときに、本質的な変更点が見えにくくなる
+- モデル固有の形式やコメントまで不要に書き換えやすい
+- 古い版との競合が広い範囲で起きやすくなる
+- AIが求められていない意味まで補いやすくなる
+- 受理済みの意味と生成された表現が混ざる
 
-ただし新規artifact生成や大規模migrationなど、whole-artifact generationが合理的な作業まで禁止しません。重要なのはsemantic diffを局所化してreviewできることです。
+ただし、新しい成果物の生成や大規模な移行など、成果物全体を生成する方が合理的な作業は禁止しません。意味の差分を局所的に示して人が確認できることを重視します。
 
-## 8. Previewは生成物ではなく因果を見せる
+## 8. 変更前の確認では、成果物より影響関係を示す
 
-Authoring UXでは、入力formを増やすより、**一つの定義変更が何へ波及するか**を見せることを重視します。
+定義を編集する際には、入力フォームを増やすことよりも、**一つの定義の変更が何に影響するか**を示すことを重視します。
 
 例は次のとおりです。
 
 ```text
-Add required Relation
-  ├─ Canonical: relation-added
-  ├─ Function: Action input requirement changes
-  ├─ UI: reference selector appears
-  ├─ Persistence: migration required
-  ├─ Runtime: referential integrity enforced
-  ├─ Business: impacted Procedure candidates
-  └─ Target: affected projections
+必須の関係を追加する
+  ├─ 正本：関係が追加される
+  ├─ 機能：業務操作に必要な入力が変わる
+  ├─ 画面：参照先の選択欄が現れる
+  ├─ 保存：データ移行が必要になる
+  ├─ 実行基盤：参照整合性を検査する
+  ├─ 業務：影響を受ける手順の候補が分かる
+  └─ 実行先：影響を受ける表示が分かる
 ```
 
-各edgeはderived ruleまたはexact dependencyへ追跡できる必要があります。LLMの説明だけでimpactを作りません。
+影響関係の各つながりは、導出規則か正確な依存関係まで追跡できる必要があります。大規模言語モデルの説明だけで影響があると判断しません。
 
-## 9. Local-first Editor
+## 9. 局所的な情報から扱える編集環境
 
-大規模modelを常に一枚のgraphへ描くことを要求しません。
+大規模なモデルを常に一枚の関係図へ表示することは求めません。
 
 利用者が現在扱う定義を中心に、局所近傍を高密度に見せます。
 
 ```text
-selected definition
-  ├─ authored local meaning
-  ├─ exact incoming / outgoing refs
-  ├─ Data / Function / Business lenses
-  ├─ relevant source / evidence
-  ├─ affected projections
-  ├─ candidate patterns / analogous cases
-  └─ unresolved / diagnostics
+選択した定義
+  ├─ 人が記述した局所的な意味
+  ├─ 正確な参照元と参照先
+  ├─ データ・機能・業務の視点
+  ├─ 関連する情報源と検証根拠
+  ├─ 影響を受ける表示
+  ├─ 構成パターンの候補と類似事例
+  └─ 未解決の事項と診断結果
 ```
 
-全体graphやmatrixは必要に応じたProjectionです。検索・scope・local neighborhoodにより、数百・数千definitionでも認知負荷を制御します。
+全体の関係図や対応表は、必要なときに作る表示です。検索、対象範囲の絞り込み、近くの関係の表示によって、定義が数百・数千件あっても理解の負担を抑えます。
 
-AIも同じlocal contextを基本入力とし、Repository全体を毎回自由探索して暗黙知化することを標準にしません。
+AIにも同じ局所的な文脈を基本的な入力として渡します。毎回リポジトリ全体を自由に探索させ、その内容をAIだけが保持する状態を標準にはしません。
 
 ## 10. Reference Modelを知的社会資本として扱う
 
