@@ -151,3 +151,34 @@ func TestObserveSourceTracksParsedSemanticBytes(t *testing.T) {
 		t.Fatalf("parsed Source byte change was missed: %v", err)
 	}
 }
+
+func TestRecoveredDraftReconcilesWithActualWorkspace(t *testing.T) {
+	root, asset := fixtureWorkspace(t)
+	observed, err := ObserveSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := EncodeDraftMarker(DraftMarker{
+		Version: MarkerVersion, CandidateRef: "draft-7",
+		BaseModelRevision: "model-r1", Baseline: observed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := RecoverDraftMarker(raw, observed.WorkspaceRoot, ObserveSource)
+	if err != nil || recovered.Status != RecoveryNeedsReview {
+		t.Fatalf("unmodified Workspace must still require review: %+v %v", recovered, err)
+	}
+	if err := os.WriteFile(asset, []byte("edited by another process"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err = RecoverDraftMarker(raw, observed.WorkspaceRoot, ObserveSource)
+	if err != nil || recovered.Status != RecoverySourceChanged {
+		t.Fatalf("external edit must leave Draft unresolved: %+v %v", recovered, err)
+	}
+	// The marker never applies or overwrites the external edit.
+	actual, err := os.ReadFile(asset)
+	if err != nil || string(actual) != "edited by another process" {
+		t.Fatalf("recovery wrote Accepted Source: %q %v", actual, err)
+	}
+}
