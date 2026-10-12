@@ -348,6 +348,13 @@ async function main() {
       baselineRepositoryRevision: expectedR, application: "order_entry",
       loopbackAddress: positiveLaunch.address, targetProcessID: positiveLaunch.processID,
       targetBinarySHA256: positiveLaunch.binarySHA256,
+      // E1 preflight has one launch-receipt locator: keep both executions
+      // explicitly grouped here instead of hiding the distinct test binary.
+      negativeTargetProcessID: negativeLaunch.processID,
+      negativeTargetLoopbackAddress: negativeLaunch.address,
+      negativeTargetBinarySHA256: negativeLaunch.binarySHA256,
+      negativeTargetFixtureOverlaySHA256: negativeFixture.overlaySHA256,
+      negativeUsesSameBinary: false,
       workspaceSourceRevisionBeforeLaunch: r1,
       healthResponseWasOK: true, runtimeAuthorityVerified: false
     },
