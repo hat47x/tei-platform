@@ -35,6 +35,10 @@ type PinnedLinuxProcess struct {
 var _ ProcessLauncher = (*PinnedLinuxProcess)(nil)
 var _ ArtifactVerifier = (*PinnedLinuxProcess)(nil)
 
+// boundProcessImage marks a runtime-held image; Registry requires the exact
+// same instance to supply both its verifier and its execution launcher.
+func (*PinnedLinuxProcess) boundProcessImage() {}
+
 // PinLinuxProcessは実行ファイルをホスト専用領域に複製し、複製した内容の
 // SHA-256を照合してから、名前を削除した実行ファイルを読み取り専用で保持する。
 // 成果物が未検証の場合は起動可能なオブジェクトを返さない。
