@@ -191,3 +191,16 @@ go vet ./reference/effect-fence ./internal/security/legacyauthorization
 ```
 
 [認可結果と確定境界の接続メモ](INTEGRATION.md)に、今回成立した部分と実Providerへ持ち越した条件をまとめています。
+
+### 認証後の無効化・期限切れを、新しい認可判断へ反映する
+
+認証と認可の両アダプターで、`legacyauth.User.AccessDenialAt`によりアカウントの無効化、有効期間、ロック状態を同じ規則で評価します。ログイン後にアカウントが無効化された場合でも、その後の`security.authorize`は役割を評価する前に拒否します。`PrepareWithLegacyAuthorization`を使う新しい操作の準備にも、この拒否が適用されます。
+
+検証対象には`internal/security/legacyauth`も加わります。
+
+```bash
+go test -race -count=10 ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+go vet ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+```
+
+この確認は**認可時点の状態を再評価する**ものであり、認可後に起きた失効と書込み確定の原子性は実証しません。権限版・主体リンク版を実保存先で同時に照合する条件は引き続き未完成です。

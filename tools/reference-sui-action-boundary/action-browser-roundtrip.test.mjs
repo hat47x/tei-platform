@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createNativeActionBridge } from './native-action-bridge.mjs';
 import { ActionCommitError, createJSONActionDispatcher } from './json-action-dispatch.mjs';
-import { createConfirmedActionCommit } from './confirmed-action-commit.mjs';
+import { ActionConfirmationError, createConfirmedActionCommit } from './confirmed-action-commit.mjs';
 
 // This is a synthetic browser/HTTP contract fixture, NOT an integrated Go Host
 // or the SUI application's authoritative persistence implementation.
@@ -122,7 +122,10 @@ test('lost HTTP acknowledgement after server commit never marks UI committed', a
   h.loseReply(true);
   h.bridge.begin({ applicationID: 'sui', resourceID: 'canvas/1', actionID: 'sui.move', expectedRevision: 'r1' });
   h.bridge.preview({ cardId: 'card-a', x: 9, y: 10 });
-  await assert.rejects(h.bridge.drop(), /connection interrupted/);
+  await assert.rejects(h.bridge.drop(), (error) =>
+    error instanceof ActionConfirmationError &&
+    error.code === 'commit_outcome_unknown' &&
+    error.committedRevision === null);
   assert.equal(h.state.writes, 1);
   assert.equal(h.state.reads, 0);
   assert.equal(h.state.localState, null);
