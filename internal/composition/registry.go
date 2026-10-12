@@ -109,9 +109,10 @@ type Registry struct {
 	mu        sync.Mutex
 	providers map[string]Provider
 	snapshot  Snapshot
+	epochs    map[string]uint64
 }
 
-func NewRegistry() *Registry { return &Registry{providers: make(map[string]Provider)} }
+func NewRegistry() *Registry { return &Registry{providers: make(map[string]Provider), epochs: make(map[string]uint64)} }
 
 func (r *Registry) Snapshot() Snapshot {
 	r.mu.Lock()
@@ -180,6 +181,14 @@ func (r *Registry) Apply(expected uint64, upserts []Provider, removes []string) 
 		if old[id] != current[id] {
 			resolved.Transitions = append(resolved.Transitions, Transition{id, old[id], current[id]})
 		}
+	}
+	for _, change := range resolved.Transitions {
+		if r.epochs[change.ProviderID] == ^uint64(0) {
+			return Snapshot{}, fmt.Errorf("provider epoch exhausted: %s", change.ProviderID)
+		}
+	}
+	for _, change := range resolved.Transitions {
+		r.epochs[change.ProviderID]++
 	}
 	r.providers, r.snapshot = candidate, resolved
 	return cloneSnapshot(resolved), nil
