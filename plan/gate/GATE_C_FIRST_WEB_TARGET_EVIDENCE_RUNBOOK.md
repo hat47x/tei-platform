@@ -254,11 +254,11 @@ HTMLの成果物やDOMが存在するだけでは、表示の検証が成立し�
 
 ## Visual Evidence intake
 
-Semantic / Functional acquisitionとは別に、同じ`targetBuildRevision = T`へScreenshot等のVisual artifactを結び付ける。
+意味・機能の検証根拠とは別に、画面画像などの表示に関する成果物を、同じ`targetBuildRevision = T`に結び付けます。
 
 ### manifest scaffold
 
-Visual manifestの`B / R / T`、required capture ID、criterion / capture referenceを手作業で複製しないため、audit tool自身からscaffoldを生成する。
+表示の検証記録に必要な`B / R / T`、必須の撮影ID、評価項目と撮影結果への参照先を手作業で複製せず、監査ツールからひな型を生成します。
 
 ```bash
 mkdir -p /tmp/tei-gate-c-first-web-T/visual
@@ -278,9 +278,9 @@ go run ./tools/reference-first-web-target-visual-evidence-audit \
   > /tmp/tei-gate-c-first-web-T/visual/visual-manifest.json
 ```
 
-scaffoldはSemantic / Functional summaryから`B / R / T / Target Adapter / Host / source run identity`を転記し、required captureをdeterministic filenameで列挙する。
+ひな型には、意味・機能の最終結果に記録された`B / R / T / Target Adapter / Host / source run identity`を転記し、必須の撮影結果を決定論的なファイル名で列挙します。
 
-viewport高さに注意する。上の例の1440x1000では、標準ProjectionもCustom UIも下部が切れる。全体を撮る場合は`-viewport-height`を増やし、申告するviewportと実際に撮影したviewportを一致させる。第一Reference実績は1440x3000で、Playwright同梱の`chrome-headless-shell`を`--window-size=1440,3000 --screenshot=<png>`で使い、replay helperの`/capture/<id>`を撮影した。
+表示領域の高さに注意します。上の例の1440×1000では、標準の派生表示も個別実装の画面も下部が切れます。画面全体を撮影する場合は`-viewport-height`を増やし、記録する表示領域と実際の撮影条件を一致させます。最初の参照事例では1440×3000を使い、Playwright同梱の`chrome-headless-shell`を`--window-size=1440,3000 --screenshot=<png>`で起動し、再表示用補助ツールの`/capture/<id>`を撮影しました。
 
 さらに各captureへ、
 
@@ -298,9 +298,9 @@ generated scaffold
   -> Gate C Readyではない
 ```
 
-Screenshot取得後、attributed evaluatorが各criterionを`pass / fail / unresolved`へ更新し、Notesへ必要な根拠を残す。その後にVisual auditへ進む。
+画面画像の取得後、識別情報を記録した評価者が各項目を`pass / fail / unresolved`のいずれかに更新し、必要な根拠を注記に残します。その後、表示の監査へ進みます。
 
-capture tool自体はこのReferenceで固定しない。browser automation、GUI agent、人手captureのいずれでもよいが、Screenshotと評価記録を残す。
+撮影ツール自体は、この参照事例では固定しません。ブラウザーの自動操作、画面操作エージェント、人による撮影のいずれも認めますが、画面画像と評価記録は残します。
 
 監査入口:
 
@@ -315,7 +315,7 @@ go run ./tools/reference-first-web-target-visual-evidence-audit \
   > /tmp/tei-gate-c-first-web-T/visual-audit.json
 ```
 
-第一ReferenceではScreenshot artifactを`image/png`で受け入れる。これはCanonicalな画像形式ではなく、第一ReferenceのEvidence formatである。
+最初の参照事例では、画面画像の成果物を`image/png`形式で受け入れます。これは正本として標準化した画像形式ではなく、最初の参照事例に限った検証成果物の形式です。
 
 ### 必須capture
 
@@ -343,11 +343,11 @@ custom-submit-execution-error
 
 を持つ。
 
-filenameはartifact directory直下のbasenameだけを許可し、path traversalやartifact directory外へのsymlink解決を受理しない。
+ファイル名は成果物ディレクトリ直下の名前だけを認めます。ディレクトリを遡るパスや、シンボリックリンクの解決によって保存先の外を指すパスは受け付けません。
 
 ### Visual capture state recipe
 
-第一推奨は、Semantic / Functional same-runで保存した**Target-rendered HTML artifactのreplay**からScreenshotを取得する方法とする。
+最初に推奨するのは、意味・機能の検証と同じ実行で保存した、**実行先が生成したHTML成果物を再表示して画面画像を取得する方法**です。
 
 replay source mapping:
 
@@ -371,9 +371,9 @@ custom-submit-execution-error
   <- custom-submit-execution-error.html
 ```
 
-これらはすべて同じ`T`のactual Target responseから取得され、Semantic / Functional summaryへSHA-256が保存される。Visual manifest scaffoldはそのdigestを自動転記する。
+いずれも同じ版`T`について実行先が実際に返した応答から取得し、SHA-256を意味・機能の最終結果に保存します。表示記録のひな型は、その照合値を自動で転記します。
 
-したがってVisual reviewerはcredentialを再入力せず、保存済みHTMLをbrowserでrenderしてScreenshotを取得できる。
+そのため表示を確認する評価者は、認証情報を再入力せずに、保存済みのHTMLをブラウザーで描画して画面画像を取得できます。
 
 ```text
 same-run Target response HTML
@@ -384,7 +384,7 @@ same-run Target response HTML
   -> attributed Visual evaluation
 ```
 
-live Targetから直接captureする方式も許可するが、その場合もmanifestの`sourceArtifact / sourceSHA256`は同じstateのsame-run HTML responseへ一致させる。
+動作中の実行先から直接撮影する方式も認めます。ただしその場合も、記録の`sourceArtifact / sourceSHA256`を、同じ実行・同じ状態のHTML応答に一致させます。
 
 ### digest-verified replay helper
 
@@ -429,7 +429,7 @@ http://127.0.0.1:18181/capture/custom-submit-validation-not-satisfied
 http://127.0.0.1:18181/capture/custom-submit-execution-error
 ```
 
-`/capture-manifest.json`には各route、source artifact、source SHA-256、`B / R / T`これらを保持します。
+`/capture-manifest.json`には、各経路、元の成果物、そのSHA-256、`B / R / T`を記録します。
 
 `-visual-manifest`を渡した場合、`http://127.0.0.1:18181/`をVisual review indexとして表示する。ここでは:
 
@@ -442,9 +442,9 @@ http://127.0.0.1:18181/capture/custom-submit-execution-error
 
 を一画面で確認できる。
 
-review indexはmanifestを変更せず、評価結果を書き込まない。Visual auditの代替でもない。
+表示確認用の一覧は記録を書き換えず、評価結果も書き込みません。表示の監査の代わりにもなりません。
 
-helperはHTML bytesを起動時にmemoryへ固定してそのまま返す。業務処理やcredential入力を再実行しない。
+補助ツールは起動時にHTMLのバイト列をメモリに固定し、そのまま返します。業務処理や認証情報の入力は再実行しません。
 
 ```text
 Visual replay helper
@@ -493,11 +493,11 @@ custom-submit-execution-error
   expected HTTP status = 422
 ```
 
-これらのcredentialはReference runtime inputであり、Screenshot / manifest / evaluator notesへ値を転記しない。POST後のrendered pageではcredential fieldを再表示しない。
+これらの認証情報は参照事例の実行時入力です。値を画面画像・検証記録・評価者の注記へ転記しません。POST後に表示する画面にも認証情報の入力欄の値を再表示しません。
 
-replay captureを使う場合、reviewerはcredentialを再入力する必要がない。
+保存済みHTMLの再表示から撮影する場合、評価者は認証情報を再入力する必要がありません。
 
-Semantic / Functional runnerは同じ状態のHTML artifactも保存するため、Visual evaluatorはScreenshotで見えているstateがraw functional artifactと対応しているかを照合できる。ただしHTML一致をScreenshot Evidenceの代用にはしない。
+意味・機能の検証実行器は、同じ状態のHTML成果物も保存します。そのため表示の評価者は、画面画像で見える状態が元の機能検証成果物と対応しているか確かめられます。ただし、HTMLが一致したことを画面画像による検証の代わりにはしません。
 
 ### Visual評価項目
 
@@ -542,7 +542,7 @@ Visual manifestには少なくとも:
 
 これらを保持します。
 
-人、VLM、image comparison等の方式をCanonical意味へ含めない。
+人による評価、視覚言語モデル、画像比較などの評価方式を、正本上の意味には含めません。
 
 ### Visual auditの意味
 
@@ -560,7 +560,7 @@ Visual auditは:
 
 ことを確認する。
 
-全criteriaが`pass`でも、Visual audit単独ではGate C Readyを宣言しない。
+すべての評価項目が`pass`でも、表示の監査だけでは判定段階CのReadyを宣言しません。
 
 期待:
 
