@@ -66,6 +66,13 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 		return Response{}, fmt.Errorf("process plugin executable must be a single name/path; use argv for arguments")
 	}
 
+	// Reject ambiguous or malformed host-approved variables before executable
+	// lookup or process creation. In particular, PATH must have one meaning for
+	// our resolver and the operating system's child environment.
+	if err := validateProcessEnvironment(l.Env); err != nil {
+		return Response{}, err
+	}
+
 	input, err := json.Marshal(req)
 	if err != nil {
 		return Response{}, fmt.Errorf("encode process plugin request: %w", err)
@@ -204,6 +211,35 @@ func validateProcessResponseObject(decoder *json.Decoder, pluginIdentity bool) e
 	}
 	if end != json.Delim('}') {
 		return fmt.Errorf("invalid process response object closing delimiter")
+	}
+	return nil
+}
+
+// validateProcessEnvironment validates the complete host-approved environment.
+// Duplicate keys have platform-dependent meanings and could make the explicit
+// PATH used for executable lookup differ from the launched child's PATH.
+// Do not include values (which may be secrets) in any error or diagnostic.
+func validateProcessEnvironment(env []string) error {
+	seen := make(map[string]struct{}, len(env))
+	for _, entry := range env {
+		equal := strings.IndexByte(entry, '=')
+		if equal <= 0 || strings.IndexByte(entry, 0) >= 0 {
+			return fmt.Errorf("process plugin environment contains malformed entry")
+		}
+		name := entry[:equal]
+		// Reject names that cannot be represented unambiguously by ordinary
+		// shell/runtime environment lookups, without restricting values.
+		if strings.TrimSpace(name) != name || strings.ContainsAny(name, " \t\r\n") {
+			return fmt.Errorf("process plugin environment contains invalid variable name")
+		}
+		identity := name
+		if runtime.GOOS == "windows" {
+			identity = strings.ToUpper(name)
+		}
+		if _, exists := seen[identity]; exists {
+			return fmt.Errorf("process plugin environment contains duplicate variable name")
+		}
+		seen[identity] = struct{}{}
 	}
 	return nil
 }
