@@ -15,15 +15,15 @@ func TestReferenceRuntimeEngineLogicalVersionAndProvenance(t *testing.T) {
 		contract string
 	}{
 		{
-			name: "deterministic transform",
-			id: core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
-			version: transformRuntimeEngineVersion,
+			name:     "deterministic transform",
+			id:       core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
+			version:  transformRuntimeEngineVersion,
 			contract: "tei.runtime-engine/deterministic-transform-v1",
 		},
 		{
-			name: "static response",
-			id: core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
-			version: nativeRuntimeEngineVersion,
+			name:     "static response",
+			id:       core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+			version:  nativeRuntimeEngineVersion,
 			contract: "tei.runtime-engine/static-response-v1",
 		},
 	}
@@ -67,7 +67,7 @@ func TestReferenceRuntimeEngineLogicalVersionAndProvenance(t *testing.T) {
 				t.Fatal(err)
 			}
 			for name, changed := range map[string]pruntime.RuntimeEngineIdentity{
-				"source": changedSource,
+				"source":    changedSource,
 				"toolchain": changedToolchain,
 				"release": func() pruntime.RuntimeEngineIdentity {
 					copy := engine
