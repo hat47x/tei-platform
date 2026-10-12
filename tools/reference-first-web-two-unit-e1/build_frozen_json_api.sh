@@ -66,12 +66,22 @@ go build -trimpath \
   -ldflags="-buildid= -X main.frozenWorldSHA256=$digest" \
   -o "$scratch/derived/api/order-entry" ./tools/reference-first-web-target
 
+# Observe the actual Go executable's embedded build settings, the exact
+# dependency closure chosen for this tagged build, and Git's clean tree ID.
+# This records build inputs without forging a Plugin BuildArtifactLock.
+source_tree="$(git rev-parse 'HEAD^{tree}')"
+python3 tools/reference-first-web-two-unit-e1/inspect_frozen_api_build.py \
+  --binary "$scratch/derived/api/order-entry" \
+  --packages "$scratch/frozen-packages.txt" \
+  --git-tree "$source_tree" --git-revision "$source_sha" \
+  --out "$scratch/go-build-observation.json"
+
 # Same HTTP contract, unchanged Driver/Runner and synthetic permission paths.
 python3 tools/reference-first-web-two-unit-e1/check_api_only_parity.py \
   "$scratch/baseline-api" "$scratch/derived/api/order-entry" \
   "$source_sha" "$scratch/derived/api" > "$scratch/parity-result.json"
 
-python3 - "$scratch/derived" "$scratch/parity-result.json" "$digest" "$scratch/baseline-api" <<'PY'
+python3 - "$scratch/derived" "$scratch/parity-result.json" "$digest" "$scratch/baseline-api" "$scratch/go-build-observation.json" <<'PY'
 import hashlib, json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 parity = json.loads(pathlib.Path(sys.argv[2]).read_text("utf-8"))
@@ -84,10 +94,19 @@ baseline_api = pathlib.Path(sys.argv[4]).read_bytes()
 world = (root / "api/frozen-world.json").read_bytes()
 if hashlib.sha256(world).hexdigest() != sys.argv[3]:
     raise SystemExit("frozen World changed after build")
+build_inputs = json.loads(pathlib.Path(sys.argv[5]).read_text("utf-8"))
+if build_inputs["apiSHA256"] != hashlib.sha256(api).hexdigest() or build_inputs["apiBytes"] != len(api):
+    raise SystemExit("Go build input observation does not match API artifact")
+if build_inputs["sourceCommit"] != m["browserAndApiSourceRevision"]:
+    raise SystemExit("Go build Source does not match Browser Source")
+if build_inputs["go"]["goVersion"] != m["goVersion"]:
+    raise SystemExit("Go binary build version does not match Browser build version")
 lineage = json.loads((root / "source-lineage.json").read_text("utf-8"))
 if lineage["frozenWorldSHA256"] != sys.argv[3]:
     raise SystemExit("frozen World lineage mismatch")
 m.update({
+    "apiBuildInputObservation": build_inputs,
+    "unitBuilderAuthorityVerified": False,
     "sourceModelRevision": lineage["sourceModelRevision"],
     "sourceWorldDerivedSHA256": lineage["derivedWorldSHA256"],
     "currentAcceptedDecisionMatched": lineage["currentAcceptedDecisionMatched"],
