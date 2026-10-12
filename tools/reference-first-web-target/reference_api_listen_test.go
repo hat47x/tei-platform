@@ -3,6 +3,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -43,10 +44,9 @@ func TestAPIOnlyListenDeniesNonLoopbackAndAmbiguousAddress(t *testing.T) {
 }
 
 func TestAPIOnlyRejectsPublicListenBeforeLoadingWorldOrExecutingRunners(t *testing.T) {
-	originalArgs := make([]string, len(testArgs()))
-	copy(originalArgs, testArgs())
-	t.Cleanup(func() { replaceTestArgs(originalArgs) })
-	replaceTestArgs([]string{
+	originalArgs := os.Args
+	t.Cleanup(func() { os.Args = originalArgs })
+	os.Args = []string{
 		"order-entry", "-workspace", "this-path-does-not-exist",
 		"-baseline-id", "B",
 		"-baseline-revision", strings.Repeat("a", 40),
