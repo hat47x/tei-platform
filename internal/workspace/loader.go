@@ -414,6 +414,12 @@ func loadSemantics(root string, r *Result) error {
 			for _, relation := range d.Relations {
 				r.Sources["semantic-relation:"+string(relation.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 			}
+			for _, key := range d.CandidateKeys {
+				r.Sources["semantic-candidate-key:"+string(key.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
+			}
+			for _, fd := range d.FunctionalDependencies {
+				r.Sources["semantic-functional-dependency:"+string(fd.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
+			}
 		}
 		for _, c := range ns.Capabilities {
 			r.Sources["semantic-capability:"+string(c.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
