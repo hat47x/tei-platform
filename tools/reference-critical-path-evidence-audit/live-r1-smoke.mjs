@@ -120,6 +120,20 @@ function changed(before, after) {
   return [...new Set([...before.keys(), ...after.keys()])]
     .filter(p => before.get(p) !== after.get(p)).sort();
 }
+function sha256(data) {
+  return createHash("sha256").update(data).digest("hex");
+}
+// A target-derived projection is evidence of loaded Application meaning, not
+// evidence that a caller-provided R/T label matches the loaded Source bytes.
+function manifestSemantics(manifest) {
+  return {
+    applicationId: manifest.applicationId,
+    semanticUses: manifest.semanticUses ?? [],
+    validations: manifest.validations ?? [],
+    patterns: manifest.patterns ?? [],
+    unresolved: manifest.unresolved ?? []
+  };
+}
 function writeJSON(filename, value) {
   const path = join(temp, filename);
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n", { mode: 0o600 });
@@ -273,6 +287,10 @@ async function main() {
   assert.equal(manifest.applicationId, "order_entry");
   assert.equal(manifest.targetBuildRevision, head);
   assert.equal(manifest.baselineRepositoryRevision, expectedR);
+  assert.deepEqual(manifest.validations, app.validations,
+    "running Web manifest did not project the accepted R1 validation selection");
+  const loadedMeaning = manifestSemantics(manifest);
+  const loadedMeaningSHA256 = sha256(JSON.stringify(loadedMeaning));
 
   const body = JSON.stringify({
     loginId: "legacy-order-editor", credential: "editor-secret",
@@ -325,6 +343,8 @@ async function main() {
   const negativeManifest = await negativeManifestResponse.json();
   assert.equal(negativeManifest.applicationId, manifest.applicationId);
   assert.equal(negativeManifest.targetBuildRevision, head);
+  assert.deepEqual(manifestSemantics(negativeManifest), loadedMeaning,
+    "unit-price overlay must not change the accepted Application projection");
   const negativeResponse = await fetch("http://" + negativeAddr + "/scenario/submit", {
     method: "POST", headers: { "content-type": "application/json" },
     body, signal: AbortSignal.timeout(5000)
@@ -373,6 +393,13 @@ async function main() {
     ], { cwd: root, stdio: ["ignore", n11Log, n11Log] });
   } finally { closeSync(n11Log); }
   await ready("http://" + n11Addr);
+  const n11ManifestResponse = await fetch("http://" + n11Addr + "/manifest.json",
+    { signal: AbortSignal.timeout(3000) });
+  assert.equal(n11ManifestResponse.status, 200);
+  const n11Manifest = await n11ManifestResponse.json();
+  assert.equal(n11Manifest.targetBuildRevision, head);
+  assert.deepEqual(manifestSemantics(n11Manifest), loadedMeaning,
+    "N11 read-failure overlay must not alter the accepted Application projection");
   const n11Response = await fetch("http://" + n11Addr + "/scenario/submit", {
     method: "POST", headers: { "content-type": "application/json" },
     body, signal: AbortSignal.timeout(5000)
@@ -444,6 +471,8 @@ async function main() {
       n11TargetOverlaySHA256: n11Fixture.overlaySHA256,
       n11UsesSameBinary: false,
       workspaceSourceRevisionBeforeLaunch: r1,
+      observedManifestSemanticSHA256: loadedMeaningSHA256,
+      projectionMatchesAcceptedWorld: true,
       healthResponseWasOK: true, runtimeAuthorityVerified: false
     },
     "web-positive.json": {
@@ -455,6 +484,8 @@ async function main() {
       httpStatus: submitResponse.status,
       commandObserved: Boolean(receipt.result.command),
       observationNature: receipt.result.observation.nature,
+      manifestSemanticSHA256: loadedMeaningSHA256,
+      httpResponseSHA256: sha256(raw),
       independentDatabaseRead: false,
       negativeUnitPriceTest: "RUNNING_SERVER_SYNTHETIC_FIXTURE_OVERLAY"
     },
@@ -474,6 +505,8 @@ async function main() {
       commandDispatched: Boolean(negativeReceipt.result.command),
       observationExecuted: Boolean(negativeReceipt.result.observation),
       targetBinarySHA256: negativeLaunch.binarySHA256,
+      manifestSemanticSHA256: loadedMeaningSHA256,
+      httpResponseSHA256: sha256(negativeRaw),
       productionTargetUnmodified: true, independentDatabaseRead: false
     },
     "target-n11-launch.json": {
@@ -493,6 +526,8 @@ async function main() {
       observationResultRecorded: Boolean(n11Receipt.result.observation),
       executionErrorNature: "synthetic-read-unavailable",
       targetBinarySHA256: n11Launch.binarySHA256,
+      manifestSemanticSHA256: loadedMeaningSHA256,
+      httpResponseSHA256: sha256(n11Raw),
       productionTargetUnmodified: true, independentDatabaseRead: false
     }
   });
