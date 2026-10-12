@@ -39,7 +39,9 @@ JavaScriptの`observeE28(root, submission)`に提出イベントを渡すこと�
 
 ## 「既存の機構を使う」と「追加Profileを使う」の比較
 
-`compareE28(existing, candidate)`は、案件ID・利用先・開始Gitコミット・Targetが同一で、片方が`existing-source`、他方が`profile-candidate`のときだけ、**申告イベント数の差**を返す。条件が異なれば`not-comparable`とする。同条件でも結果は`reported-only-not-verified`、確認済みの生産性改善値は`null`である。
+`compareE28(existing, candidate)`は、案件ID・利用先・開始Gitコミット・Targetが同一で、片方が`existing-source`、他方が`profile-candidate`のときだけ、**申告イベント数の差**を返す。条件が異なれば`not-comparable`とする。**E29の追加条件**：双方の作業記録が提出者により`complete: true`と明示された場合だけ、申告件数の差分を返す。片方でも未完了（`partial-not-verified`）なら、案件・Target・開始コミットが同じでも`not-comparable`とする。未完了のイベント提出数を「案件全体の作業回数」として比較しない。
+
+同条件で双方が完了申告済みでも結果は`reported-only-not-verified`、確認済みの生産性改善値は`null`である。`complete: true`はあくまで提出者による完了申告であって、E28がCI成否・正式な実行権限・導入の成立を検証した証拠ではない。
 
 対照実験に必要な情報を、今回作った仮のProfile定義で埋め合わせない。どちらの方式でも、[E27の既存正本・残余判断](E27_RESIDUAL_SELECTION_AUDIT.md)と同じSource、同じAuthorityの検査、同じWeb/Native実行先を使う。
 
