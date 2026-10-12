@@ -431,7 +431,7 @@ $('semantic-propose').addEventListener('click',async()=>{
         !['sequence','branch','exception'].includes(input.transitionKind)||
         input.transitionKind!=='sequence'&&!input.transitionCondition.trim())||
       input.action==='add-information-flow'&&(!input.infoID.trim()||
-        !input.infoToID||!input.infoPayload.trim()))||
+        !input.infoToID||!input.infoPayload.trim())))||
     (['party','store'].includes(mode)&&(
       input.action!=='add-information-flow'||input.infoToKind!=='step'||
       !input.infoID.trim()||!input.infoToID||!input.infoPayload.trim()))){
