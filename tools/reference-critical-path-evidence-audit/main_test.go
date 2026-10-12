@@ -19,7 +19,7 @@ func fixture() Packet {
 		Schema: schema, Claim: "E2",
 		Contract:      Contract{ProducerPath: "tools/reference-shared-acceptance/practical_validation_loop_test.go", ConsumerPath: "tools/reference-first-web-target/practical_business_rule_test.go", PositiveTest: "TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection", NegativeTest: "TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines", EvidenceClass: "actual-observed"},
 		Qualification: Qualification{Head: h, Main: m, FullHealth: "PASS", CleanBefore: true, CleanAfter: true, Receipt: "local/health.log"},
-		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("2", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
+		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("3", 64), ReviewCandidateFingerprint: "sha256:" + strings.Repeat("2", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
 		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", NegativeValidation: "sales.order_line.unit_price_positive", NegativeEvidenceMode: "running-server", ProviderKind: "actual-db", RunMode: "running-server", WorkspaceRevisionReceipt: "local/r1-web-workspace.json", TargetLaunchReceipt: "local/target-launch.json", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
 		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
 	}
@@ -39,13 +39,49 @@ func TestCompletePacketNeverGrantsProductGate(t *testing.T) {
 		t.Fatalf("%+v", result)
 	}
 }
-func TestReviewFingerprintMustMatchCandidate(t *testing.T) {
+func TestReviewCandidateBindingMustMatchAcceptedCandidate(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"
-	p.Acceptance.ReviewFingerprint = "sha256:" + strings.Repeat("f", 64)
+	p.Acceptance.ReviewCandidateFingerprint = "sha256:" + strings.Repeat("f", 64)
 	r := Audit(p, h, m)
-	if !has(r, "ACCEPTANCE_REVIEW_FINGERPRINT_MISMATCH") || r.Status != "INCOMPLETE" {
-		t.Fatalf("review approved a different candidate: %+v", r)
+	if !has(r, "ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH") ||
+		r.Status != "INCOMPLETE" {
+		t.Fatalf("review identity did not match the accepted candidate: %+v", r)
+	}
+}
+
+func TestMissingReviewCandidateBindingCannotPassPreflight(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Acceptance.ReviewCandidateFingerprint = ""
+	r := Audit(p, h, m)
+	if !has(r, "ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH") ||
+		r.ProductGate != "UNQUALIFIED" {
+		t.Fatalf("review-to-candidate identity was not required: %+v", r)
+	}
+}
+
+func TestDistinctReviewAndCandidateDigestsAreValid(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Web.ProviderKind = "synthetic"
+	p.Physical = Physical{}
+	if p.Acceptance.CandidateFingerprint == p.Acceptance.ReviewFingerprint {
+		t.Fatal("test fixture wrongly reuses candidate digest as review digest")
+	}
+	r := Audit(p, h, m)
+	if r.Status != "REVIEW_REQUIRED" || r.ProductGate != "UNQUALIFIED" {
+		t.Fatalf("legitimate distinct candidate and review digests were rejected: %+v", r)
+	}
+}
+
+func TestReviewDigestCannotSubstituteCandidateLink(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Acceptance.ReviewCandidateFingerprint = p.Acceptance.ReviewFingerprint
+	r := Audit(p, h, m)
+	if !has(r, "ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH") {
+		t.Fatalf("review digest was confused with candidate identity: %+v", r)
 	}
 }
 
