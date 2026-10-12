@@ -141,18 +141,25 @@ class UnitPairPreflightTests(unittest.TestCase):
                 (self.root / name).write_bytes(original)
 
     def test_recomputed_frozen_world_rejects_re_stamped_semantic_change(self):
-        # The full check uses the Go typed-IR reserializer, not a hash
-        # recomputed from an attacker-controlled observation JSON.
-        snapshot = json.loads((self.root / "api/frozen-world.json").read_text())
-        snapshot["world"]["applications"].append({"id": "forged_extra"})
+        # Establish the derived World baseline from the ORIGINAL frozen
+        # payload through the real Go IR serializer, not fixture literals.
+        from verify_frozen_unit_pair import observed_typed_world_digest
+        original = self.root / "api/frozen-world.json"
+        accepted = observed_typed_world_digest(original)
+        self.m["sourceWorldDerivedSHA256"] = accepted
+        self.lineage["derivedWorldSHA256"] = accepted
+        snapshot = json.loads(original.read_text())
+        # Both [] and null fit a typed Go slice but express different JSON
+        # world content. Restamp ALL frozen-file digests and sizes.
+        snapshot["world"]["applications"] = None
         payload = json.dumps(snapshot).encode()
-        (self.root / "api/frozen-world.json").write_bytes(payload)
+        original.write_bytes(payload)
         self.m["frozenWorldSHA256"] = digest(payload)
         self.m["frozenWorldBytes"] = len(payload)
         self.lineage["frozenWorldSHA256"] = digest(payload)
         self.save()
         with self.assertRaisesRegex(ValueError, "frozen payload versus accepted derived World"):
-            preflight(self.root, build_info=INFO, world_digest="sha256:" + "0" * 64)
+            preflight(self.root, build_info=INFO)
 
     def test_go_reserialization_matches_actual_frozen_world_fixture(self):
         # Run the same tool as the staged publication, using a minimal
