@@ -18,6 +18,12 @@ type Principal struct {
 	PrincipalID string
 }
 
+// authorizedActionContextKey is written only after the Host's current
+// route, session, origin and Action authorization checks have succeeded.
+// It is a request-scoped handoff marker, not a portable Authority grant.
+// No browser header, JSON member or standalone selected Handler can create it.
+type authorizedActionContextKey struct{}
+
 // principalContextKey is private to the trusted host. Headers, query
 // parameters, and JSON supplied by the browser cannot populate this value.
 type principalContextKey struct{}
@@ -142,7 +148,9 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 			http.Error(tw, "access denied", http.StatusForbidden)
 			return
 		}
-		d.Invoke.ServeHTTP(tw, r.WithContext(context.WithValue(r.Context(), principalContextKey{}, subject)))
+		verified := context.WithValue(r.Context(), principalContextKey{}, subject)
+		verified = context.WithValue(verified, authorizedActionContextKey{}, p.ActionID)
+		d.Invoke.ServeHTTP(tw, r.WithContext(verified))
 		stage = "completed"
 	}), nil
 }
