@@ -54,7 +54,7 @@ func handoffSourceFixture(t *testing.T) (
 }
 
 func TestCompositionHandoffUsesRealCapabilityResolution(t *testing.T) {
-	_, set, contract, provider, input, expected := handoffSourceFixture(t)
+	registry, set, contract, provider, input, expected := handoffSourceFixture(t)
 	resolved, err := resolveCapability(input)
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestCompositionHandoffUsesRealCapabilityResolution(t *testing.T) {
 		ref.AuthorityScope != string(ScopeAuthoringTool) {
 		t.Fatalf("real capability resolution was not preserved: %+v", ref)
 	}
-	report := handoff.Reconcile(set, []handoff.EvidenceReference{ref})
+	report := handoff.ReconcileCurrent(registry, set, []handoff.EvidenceReference{ref})
 	if report.Blocked || len(report.Subjects) != 1 ||
 		report.Subjects[0].State != handoff.ReferenceLinked ||
 		report.Subjects[0].Reference == nil {
@@ -157,7 +157,7 @@ func TestCompositionHandoffFreshEvidenceAndRegistryEpochsRemainSeparate(t *testi
 		rotated.ResolutionFingerprint != first.ResolutionFingerprint {
 		t.Fatalf("conformance evidence rotation altered semantic resolution identity: %+v %+v", first, rotated)
 	}
-	report := handoff.Reconcile(set, []handoff.EvidenceReference{first, rotated})
+	report := handoff.ReconcileCurrent(registry, set, []handoff.EvidenceReference{first, rotated})
 	if report.Subjects[0].State != handoff.ReferenceAmbiguous {
 		t.Fatalf("two exact references silently selected: %+v", report)
 	}
@@ -181,7 +181,10 @@ func TestCompositionHandoffFreshEvidenceAndRegistryEpochsRemainSeparate(t *testi
 		next.Findings[0].VerificationTargets[0].Epoch == expected.Target.Epoch {
 		t.Fatalf("provider reinstallation did not change declaration epoch: %+v", next)
 	}
-	stale := handoff.Reconcile(next, []handoff.EvidenceReference{first})
+	if old := handoff.ReconcileCurrent(registry, set, []handoff.EvidenceReference{first}); !old.Blocked {
+		t.Fatalf("obsolete pre-reinstallation Registry proposal remained current: %+v", old)
+	}
+	stale := handoff.ReconcileCurrent(registry, next, []handoff.EvidenceReference{first})
 	if stale.Blocked || stale.Subjects[0].State != handoff.ReferenceStale {
 		t.Fatalf("stale exact reference was accepted: %+v", stale)
 	}
