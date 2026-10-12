@@ -232,7 +232,7 @@ function reviewEdit(view) {
       ["候補指紋", preview.candidateFingerprint], ["審査指紋", review.reviewFingerprint],
       ["次段階の照合", reviewVerified ? "一貫性のみ検証" : "未検証"]]) +
     '<h3>変更候補の完全なJSON</h3>' +
-    '<p>以下を内容を変えずにJSONファイルとして保存し、現在の作業領域に対して共通受理機構で再審査します。</p>' +
+    '<p>次の内容を変更せずにJSONファイルとして保存し、対象の作業領域に対して共通受理機構で再審査します。</p>' +
     '<div id="handoff-candidate">' + safeJSON(c) + '</div>' +
     '<h3>共通受理機構による再審査</h3>' +
     '<pre>go run ./tools/reference-shared-acceptance review -workspace "$WORKSPACE" -candidate "$CANDIDATE" -format json</pre>' +
