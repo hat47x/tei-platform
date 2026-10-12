@@ -147,9 +147,9 @@ func main() {
 	flag.Parse()
 
 	out, err := runWithExactEngine(*repo, exactEngineOptions{
-		Executable:       *exactEngine,
-		BuildEvidence:    *engineEvidence,
-		Stage2Lock:       *stage2Lock,
+		Executable:           *exactEngine,
+		BuildEvidence:        *engineEvidence,
+		Stage2Lock:           *stage2Lock,
 		HostRegistration:     *hostRegistration,
 		HostSignature:        *hostSignature,
 		TrustedHostPublicKey: *trustedHostKey,
