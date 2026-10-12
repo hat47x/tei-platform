@@ -455,6 +455,9 @@ func (h *buildAttemptHistory) AppendFailure(
 	if err := e.ValidateAgainst(plan); err != nil {
 		return fmt.Errorf("Build Attempt History failure Evidence: %w", err)
 	}
+	if err := validateFingerprint(e.EvidenceFingerprint); err != nil {
+		return fmt.Errorf("Build Attempt History requires finalized failure Evidence: %w", err)
+	}
 	if last := h.latestAttemptOrdinal(); e.AttemptOrdinal <= last {
 		return fmt.Errorf(
 			"Build Attempt History ordinal %d must be greater than previous ordinal %d",
