@@ -11,6 +11,7 @@ type ImpactReview struct {
 	SchemaVersion   string       `json:"schemaVersion"`
 	GraphValid      bool         `json:"graphValid"`
 	RuleFingerprint string       `json:"ruleFingerprint"`
+	Changes         []Change     `json:"changes,omitempty"`
 	Affected        []Affected   `json:"affected,omitempty"`
 	Diagnostics     []Diagnostic `json:"diagnostics,omitempty"`
 	AuthorityLimits []string     `json:"authorityLimits"`
