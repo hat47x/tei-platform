@@ -7,11 +7,9 @@ import "fmt"
 // installSQLiteLegacyRoleEpochTriggers は試験用の認可正本にDBトリガーを設定する。
 // アプリ側の更新手順に頼らず、同じSQLite上の利用者変更と所属版更新を
 // 同一トランザクション内で成立させる。実運用のDB Providerではない。
-func installSQLiteLegacyRoleEpochTriggers(f *sqliteFixture) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	for _, statement := range []string{
+// requiredSQLiteLegacyEpochTriggers は提供側が保持する期待DDLである。
+// 実際のトリガー定義に変更があれば書込み確定を拒否する。
+var requiredSQLiteLegacyEpochTriggers = []string{
 		`CREATE TRIGGER legacy_subject_epoch_on_update
 AFTER UPDATE OF role, disabled ON legacy_subjects
 BEGIN
@@ -82,10 +80,20 @@ BEFORE UPDATE OF subject ON legacy_subjects
 BEGIN
     SELECT RAISE(ABORT, 'subject identity is immutable');
 END`,
-	} {
+}
+
+func installSQLiteLegacyRoleEpochTriggers(f *sqliteFixture) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	for _, statement := range requiredSQLiteLegacyEpochTriggers {
 		if err := f.exec(statement); err != nil {
 			return fmt.Errorf("認可正本の版管理トリガーを設定できません: %w", err)
 		}
 	}
+	if err := f.verifyRequiredSQLiteLegacyEpochTriggers(); err != nil {
+		return err
+	}
+	f.requireSchemaGuard = true
 	return nil
 }
