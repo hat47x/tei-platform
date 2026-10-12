@@ -246,3 +246,63 @@ func TestReferenceStage2AuthorityRejectsDuplicateKeysAndSymlinks(t *testing.T) {
 		t.Fatal("symlinked Host authority record was accepted")
 	}
 }
+
+func TestReferenceStage2HostApprovalRejectsTamperingAndWrongTrustRoot(t *testing.T) {
+	engine := bootstrapTestEngine()
+	options := writeReferenceStage2Acceptance(t, t.TempDir(), engine)
+	if _, err := acceptReferenceStage2Engine(options, engine); err != nil {
+		t.Fatal(err)
+	}
+	signature, err := os.ReadFile(options.HostSignature)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modified := append([]byte(nil), signature...)
+	if modified[0] == 'A' {
+		modified[0] = 'B'
+	} else {
+		modified[0] = 'A'
+	}
+	if err := os.WriteFile(options.HostSignature, modified, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := acceptReferenceStage2Engine(options, engine); err == nil {
+		t.Fatal("modified Host approval signature was accepted")
+	}
+	if err := os.WriteFile(options.HostSignature, signature, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wrongKey := writeReferenceStage2Acceptance(t, t.TempDir(), engine)
+	withOtherKey := options
+	withOtherKey.TrustedHostPublicKey = wrongKey.TrustedHostPublicKey
+	if _, err := acceptReferenceStage2Engine(withOtherKey, engine); err == nil {
+		t.Fatal("Host approval was accepted under a different pinned public key")
+	}
+	withOtherID := options
+	withOtherID.TrustedHostID = "tei.reference.unrelated-host"
+	if _, err := acceptReferenceStage2Engine(withOtherID, engine); err == nil {
+		t.Fatal("Host approval was accepted for an unexpected Host ID")
+	}
+}
+
+func TestReferenceStage2HostApprovalKeyRotationInvalidatesPolicy(t *testing.T) {
+	engine := bootstrapTestEngine()
+	dir := t.TempDir()
+	options := writeReferenceStage2Acceptance(t, dir, engine)
+	first, err := acceptReferenceStage2Engine(options, engine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rotatedOptions := writeReferenceStage2Acceptance(t, dir, engine)
+	rotated, err := acceptReferenceStage2Engine(rotatedOptions, engine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.LockFingerprint != rotated.LockFingerprint ||
+		first.HostRegistrationFingerprint != rotated.HostRegistrationFingerprint {
+		t.Fatal("signing key rotation changed the exact engine lock or unsigned Host registration")
+	}
+	if first.HostApprovalFingerprint == rotated.HostApprovalFingerprint {
+		t.Fatal("signing key rotation failed to invalidate Host approval")
+	}
+}
