@@ -79,6 +79,17 @@ jobs:
           go vet -tags tei_sqlite_reference ./reference/effect-fence ./internal/security/legacyauthorization ./internal/security/legacyauth ./internal/security/effectcommit
           python3 -B -m unittest -q reference/effect-fence/sqlite_transaction_test.py
 
+      - name: 製品側Goファイルの整形診断
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in commit.go commit_test.go; do
+            echo "TEI_FMT_BEGIN_$name"
+            gofmt "internal/security/effectcommit/$name" | base64 -w0
+            echo
+            echo "TEI_FMT_END_$name"
+          done
+
       - name: 実行後の版と作業領域を確認
         if: always()
         shell: bash
