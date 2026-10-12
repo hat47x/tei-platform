@@ -446,7 +446,7 @@ test("forward and reverse Business navigation reject stale sibling references", 
     { declared: 2, unresolved: 0 });
   assert.equal(clean.authority, "noncanonical-reference",
     "all identity matches still do not constitute accepted Business");
-  const empty = projectWorld(w, revision, "data:sales.order",
+  const empty = projectWorld(w, revision, "data:customer.customer",
     { businessDFD: restored }).views.business;
   assert.equal(empty.status, "unresolved");
   assert.deepEqual(empty.items, [],
