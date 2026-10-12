@@ -229,69 +229,82 @@ function businessLens(dfd, patterns, index, focus) {
   }[focus.kind];
   const seenSteps = new Set(), matching = [], manual = [];
   const diagnostics = [];
+  const meaningMaps = {
+    "semantic-data": index.data,
+    "semantic-relation": index.relations,
+    "semantic-validation": index.validations
+  };
   for (const step of dfd.steps) {
-    if (typeof step.id !== "string" || !step.id ||
-        seenSteps.has(step.id) || !Array.isArray(step.functionRefs)) {
+    if (!step || !isText(step.id) || seenSteps.has(step.id) ||
+        !Array.isArray(step.functionRefs))
       throw new Error("INVALID_OR_DUPLICATE_BUSINESS_STEP");
-    }
     seenSteps.add(step.id);
-    const links = [];
+    const links = [], directLinks = [], stepDiagnostics = [];
+    // A Step's meaning is an entire set of explicit references. A matched
+    // focus cannot make that Step sound if a sibling reference is stale.
     for (const r of step.functionRefs) {
-      if (typeof r.id !== "string" || !r.id ||
-          !["resolved", "unresolved"].includes(r.status)) {
+      if (!r || !isText(r.id) || !["resolved", "unresolved"].includes(r.status))
         throw new Error("INVALID_BUSINESS_FUNCTION_REFERENCE");
-      }
-      if (!inFocus.has(r.id)) continue;
       const canonical = index.patterns.get(r.id);
       const current = !!canonical &&
         r.status === "resolved" &&
         (r.data || "") === (canonical.data || "") &&
         (r.relation || "") === (canonical.relation || "") &&
         (r.capability || "") === (canonical.capability || "");
-      links.push({
-        subject: "pattern:" + r.id,
-        id: r.id,
-        status: current ? "exact-id-matches-current-world" : "unresolved"
-      });
-      if (!current) diagnostics.push({
+      if (!current) stepDiagnostics.push({
         code: "BUSINESS_PATTERN_REFERENCE_STALE_OR_UNRESOLVED",
         stepID: step.id, patternID: r.id
       });
+      if (inFocus.has(r.id)) links.push({
+        subject: "pattern:" + r.id, id: r.id,
+        status: current ? "exact-id-matches-current-world" : "unresolved"
+      });
     }
-    const directLinks = [];
     for (const r of array(step.explicitMeaning, "step.explicitMeaning")) {
       if (!r || !isText(r.kind) || !isText(r.id) ||
           !["semantic-data", "semantic-relation", "semantic-validation",
             "semantic-capability"].includes(r.kind) ||
           !["resolved-id-not-accepted", "unresolved"].includes(r.status))
         throw new Error("INVALID_BUSINESS_DIRECT_MEANING");
-      if (r.kind !== explicitKind || r.id !== focus.id) continue;
+      // Studio has no authoritative capability resolver; never infer it.
       const current = r.status === "resolved-id-not-accepted" &&
         r.authority === "procedure-reference-only" &&
-        !!explicitMap?.has(r.id);
-      directLinks.push({
+        !!meaningMaps[r.kind]?.has(r.id);
+      if (!current) stepDiagnostics.push({
+        code: "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED",
+        stepID: step.id, kind: r.kind, id: r.id
+      });
+      if (r.kind === explicitKind && r.id === focus.id) directLinks.push({
         kind: r.kind, id: r.id, subject: focus.kind + ":" + r.id,
         status: current ? "exact-id-matches-current-world" : "unresolved",
         authority: "reference-only", source: r.source || null
       });
-      if (!current) diagnostics.push({
-        code: "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED",
-        stepID: step.id, kind: r.kind, id: r.id
+    }
+    if (links.length || directLinks.length) {
+      diagnostics.push(...stepDiagnostics);
+      matching.push({
+        stepID: step.id, procedureID: dfd.procedureId,
+        status: stepDiagnostics.length ? "unresolved" : "reference-only",
+        resolutionSummary: {
+          declared: step.functionRefs.length +
+            array(step.explicitMeaning, "step.explicitMeaning").length,
+          unresolved: stepDiagnostics.length
+        },
+        functionRefs: links, explicitMeaning: directLinks,
+        source: step.source || null
       });
     }
-    if (links.length || directLinks.length) matching.push({
-      stepID: step.id, procedureID: dfd.procedureId,
-      status: "reference-only", functionRefs: links,
-      explicitMeaning: directLinks, source: step.source || null
-    });
-    if (step.noApplicationFunction === true && manual.length < 20) {
-      manual.push({ stepID: step.id, realization: step.realization,
-        status: "reference-only-no-application-function", source: step.source || null });
-    }
+    if (step.noApplicationFunction === true && manual.length < 20)
+      manual.push({
+        stepID: step.id, realization: step.realization,
+        status: "reference-only-no-application-function",
+        source: step.source || null
+      });
   }
   const hasProducerErrors = dfd.diagnostics.some(d => d.severity === "error");
   return {
-    status: hasProducerErrors || diagnostics.length ? "unresolved" : "reference-only",
+    status: hasProducerErrors || diagnostics.length || !matching.length
+      ? "unresolved" : "reference-only",
     authority: "noncanonical-reference",
     procedureID: dfd.procedureId,
     freshness: "unverified-no-model-revision-binding",
