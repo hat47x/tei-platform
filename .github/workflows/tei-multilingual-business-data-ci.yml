@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 --version
-          python3 -m unittest discover -s reference/multilingual-business-data -p test_sqlite.py -v
+          python3 -B -m unittest discover -s reference/multilingual-business-data -p test_sqlite.py -v
       - name: 実行後の作業領域を確認
         if: always()
         shell: bash
