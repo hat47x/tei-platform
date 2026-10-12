@@ -39,7 +39,7 @@ func TestPostgresWriterCannotMutateAuthority(t *testing.T) {
 		}
 	}
 	t.Cleanup(func() {
-		if _, err := f.pool.Exec(context.Background(), "REASSIGN OWNED BY "+ownerRole+" TO tei"); err != nil {
+		if _, err := f.pool.Exec(context.Background(), "REASSIGN OWNED BY "+ownerRole+" TO CURRENT_USER"); err != nil {
 			t.Errorf("試験用関数の所有権を戻せません: %v", err)
 		}
 		if _, err := f.pool.Exec(context.Background(), "DROP OWNED BY "+ownerRole+", "+writerRole); err != nil {
