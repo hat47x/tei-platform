@@ -2,9 +2,9 @@
 
 ## 目的
 
-この文書は、v1 Reference Application `order_entry`をApplication Driverへ渡す前に、Gate A「Application上の意味をDriverへ渡せる」を横断的に確認した監査結果です。
+この文書は、第1版の参照アプリケーション`order_entry`をアプリケーションドライバーへ引き渡す前に、判定段階Aの「アプリケーション上の意味をドライバーへ渡せる」という条件を横断的に確認した監査記録です。
 
-Gate Aは、関連Issueの完了数では判定しません。DriverがWeb画面や専用Goコードから不足する意味を補わなくても、必要な情報をRepository上のReference / Conformanceから再現できるかを基準にします。
+判定段階Aの合否は、関連するIssueの完了件数では決めません。ドライバーがウェブ画面や専用のGoコードで不足する意味を補わずとも、必要な情報をリポジトリの参照事例と準拠確認から再現できることを基準とします。
 
 ## 評価区分
 
@@ -17,9 +17,9 @@ Gate Aは、関連Issueの完了数では判定しません。DriverがWeb画面
 
 ## 結論
 
-**Gate AはReadyです。Application Driver #69の主実装を開始できます。**
+**判定段階AはReadyです。アプリケーションドライバー#69の主な実装を開始できる状態です。**
 
-最後まで残っていたIssue #68「既存認証Compatibility」について、PR #148、#149、#151でGate Aに必要なEvidenceが揃いました。
+最後まで残っていたIssue #68「既存認証の互換性」について、PR #148・#149・#151で判定段階Aに必要な検証根拠が揃いました。
 
 ```text
 Application Pattern / Datasource      Ready
@@ -35,7 +35,7 @@ Legacy authentication compatibility  Ready
                   Driver #69
 ```
 
-この判定は、#68を閉じること自体を根拠にはしていません。認証・認可を含め、Driverへ必要な意味をRepositoryから再現できることを確認した結果です。
+この判定の根拠は、#68をクローズしたこと自体ではありません。認証と認可を含め、ドライバーに必要な意味をリポジトリから再現できると確認した結果です。
 
 ## Gate A項目別評価
 
@@ -60,7 +60,7 @@ Legacy authentication compatibility  Ready
 
 ## Application Pattern — Ready
 
-Issue #67で、`order_entry`に次の5種類のApplication Patternが実Referenceとして成立しています。
+Issue #67では、`order_entry`の次の5種類のアプリケーションパターンが、実際の参照事例として成立しています。
 
 - `browse`
 - `record`
@@ -68,43 +68,43 @@ Issue #67で、`order_entry`に次の5種類のApplication Patternが実Referenc
 - `command`
 - `header-detail`
 
-Patternは既存資産の意味を書き直す場所ではなく、ApplicationがどのCanonical identityを、どの意図で利用するかを保持する層として扱います。
+パターンは既存資産の意味を書き換える場所ではありません。アプリケーションが正本上のどの識別情報を、どの目的で使うかを保持する層です。
 
-Pattern identityはfile pathに依存せず、Source Indexからauthoring sourceへ戻れます。5種類を永久的な標準Catalogへ昇格する判断は、Driverと複数TargetからEvidenceを得るまで保留します。
+パターンの識別情報はファイルのパスに依存せず、ソース索引から記述元のソースへたどれます。この5種類を恒久的な標準カタログとする判断は、ドライバーと複数の実行先で検証根拠が得られるまで保留します。
 
 ## Datasource境界 — Ready
 
-`order_entry`は、次の二つのlogical datasourceを利用します。
+`order_entry`は、次の二つの論理的なデータ接続先を利用します。
 
 ```text
 sales  -> sales_core  -> read-write
 master -> master_data -> read
 ```
 
-Datasource accessをPatternへ複製せず、Application定義を正本とします。Driverも同じ`DatabaseRequirement`を利用し、独自設定へ書き写しません。
+データ接続先へのアクセス条件はパターンへ複製せず、アプリケーションの定義を正本とします。ドライバーも同じ`DatabaseRequirement`を使い、独自の設定には書き写しません。
 
-認証情報の保存先は、この二つへ無理に組み込みません。既存認証がDatabase、LDAP、IdP、既存関数、外部API等のどこに存在しても、DriverからはAuthentication / Authorization Capabilityを通して利用します。
+認証情報の保存先を、この二つのデータ接続先に無理に組み込むことはしません。既存の認証機構がデータベース・LDAP・IdP・既存関数・外部APIなどのどこにあっても、ドライバーは認証・認可の能力を通して利用します。
 
 ## Capability Binding — Ready
 
-Issue #126 / PR #135で、`sales.order.submit`をApplication + Capabilityから明示的に解決するReferenceが成立しました。
+Issue #126・PR #135により、アプリケーションと能力の組合せから`sales.order.submit`を明示的に解決できる参照事例が成立しました。
 
 ```text
 order_entry / sales.order.submit
 ```
 
-PR #148と#149では、同じ原則をAuthentication / Authorizationにも適用しています。
+PR #148と#149では、同じ原則を認証・認可にも適用しています。
 
 ```text
 order_entry / security.authenticate
 order_entry / security.authorize
 ```
 
-Driverはfile path、Go hook名、列挙順からimplementationを推測しません。0件または複数件で一意に解決できない状態はBusiness Resultではなく、実行準備を完了できないerrorとして扱います。
+ドライバーは、ファイルパス・Goのフック名・列挙順から実装を推測しません。候補が0件または複数件で一意に特定できなければ、業務上の結果ではなく、実行準備が完了しないエラーとして扱います。
 
 ## 業務Validation — Ready
 
-Issue #125 / PR #136 / #139 / #140で、業務ValidationのCanonical rule、authoring source、最小Evaluatorが成立しています。
+Issue #125・PR #136・#139・#140では、業務上の検証規則の正本、記述元のソース、最小限の評価器が成立しています。
 
 ```tei
 validation sales.order_line.quantity_positive positive {
@@ -117,13 +117,13 @@ validation sales.order.lines.line_number_unique relation-unique {
 }
 ```
 
-評価結果は`Satisfied / NotSatisfied`として扱い、必要な入力がないなど評価そのものを完了できない状態はerrorとして分離します。
+評価結果には`Satisfied / NotSatisfied`を用います。必要な入力がないなど、評価そのものを完了できない場合は、別のエラーとして区別します。
 
-Driverは`quantity > 0`等のrule本文を専用Goコードへ複製せず、同じCanonical ValidationとEvaluator境界を利用します。
+ドライバーは`quantity > 0`などの規則の本文を専用のGoコードに複製せず、同じ正本上の検証規則と評価器の境界を利用します。
 
 ## Capability結果境界 — Ready
 
-ADR-0020 / Issue #77に従い、Capabilityを正常に実行できた場合の業務上の結果と、Invocationそのものを完了できなかった状態を分けます。
+ADR-0020・Issue #77に従い、能力を正常に呼び出せた場合の業務上の結果と、呼出しそのものを完了できなかった状態を区別します。
 
 ```text
 Business Result
