@@ -1,4 +1,4 @@
-# Conformance — M0.25 process executable / argv
+# M0.25 別プロセスの実行形式と引数の準拠確認
 
 M0.25では、process Pluginの実行指定をshell-likeな1本のcommand lineではなく、単一executableと順序付きargvへ分離します。
 
@@ -17,7 +17,7 @@ TEI Core / Reference Hostは、command文字列に対して空白split、shell q
 
 `Runtime.Command`というfield名は互換性のため維持しますが、意味は単一executable名/pathです。引数は`Runtime.Args`に順序付きで保持します。
 
-## Authoring grammar
+## 記述文法
 
 明示的なargsを次のように記述できます。
 
@@ -40,7 +40,7 @@ runtime process "python3 -m worker" sandbox required
 - `internal/syntax/process_args_conformance_test.go`
 - `internal/syntax/plugin_parser_test.go`
 
-## Execution identity
+## 実行対象の識別
 
 argvは実行内容を変えるため、Host-local optionではなくPlugin execution identityの一部です。
 
@@ -57,7 +57,7 @@ argvは実行内容を変えるため、Host-local optionではなくPlugin exec
 
 これにより、descriptor上では同じPlugin versionなのにHost側だけ別argvを使う、といった差異をsilentに扱いません。
 
-## Runtime境界
+## 実行時の境界
 
 `PluginRuntime`は`Command`と`Args`を保持し、Process / Sandbox境界では`ProcessCommand{Executable, Args}`へ構造化したまま渡します。
 
@@ -76,7 +76,7 @@ executableとargsを一度command line文字列へ連結しません。
 - local child PIDをDurable Runtime Handleとはみなさない
 - missing / unknown時のno-auto-replay原則を弱めない
 
-## Actual child processでのargv確認
+## 実際の子プロセスで引数を確認する
 
 `tools/reference-process-plugin`は、Reference marker
 
@@ -101,7 +101,7 @@ DeploymentExecutor
 
 常設CIではReference helperをbuildし、この例を実際に実行して`accepted` responseとargv markerを確認します。
 
-## Reference fixture
+## 参照用の試験データ
 
 Reference Workspace内で実際にargsを持つprocess descriptorを一つ保持します。WorkspaceからPlugin Lock / World / Durable Runを再生成し、一致することをCIで確認します。
 

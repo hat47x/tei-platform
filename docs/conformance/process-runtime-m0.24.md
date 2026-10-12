@@ -1,4 +1,4 @@
-# Conformance — M0.24 実process Plugin runtime
+# M0.24 別プロセス型プラグイン実行の準拠確認
 
 M0.24では、`BoundaryProcess`をinterface上の概念だけでなく、Repository内で実際のOS child processとして実行できるところまで縦に接続します。
 
@@ -31,7 +31,7 @@ actual child process
 
 将来plugin commandに引数が必要な場合は、文字列のshell parseを追加するのではなく、descriptor側へ明示的なargv構造を導入することを基本方針とします。
 
-## Request / Response identity
+## 要求と応答の識別
 
 child processには既存の`runtime.Request`をJSONで渡します。
 
@@ -46,7 +46,7 @@ Responseを受け取った後のidentity validationはRegistry側の既存契約
 
 Reference integration testでは、実processが偽のPlugin identityを返した場合にRegistryが拒否することを確認します。
 
-## process failure
+## プロセスの異常終了
 
 Reference launcherは少なくとも次を区別します。
 
@@ -60,7 +60,7 @@ context cancellationには`exec.CommandContext`を使い、直接起動したchi
 
 ただし、childがさらに作成した孫process treeを全OSで完全に掃除するproduction process supervisorまでを、このReference adapterは保証しません。
 
-## stdout boundary
+## 標準出力の境界
 
 external processはHostから見ればuntrustedです。stdoutを無制限にメモリへ保持しません。
 
@@ -68,7 +68,7 @@ external processはHostから見ればuntrustedです。stdoutを無制限にメ
 
 これは最終的なproduction protocol上限を固定するものではなく、Reference Hostがunbounded external outputをそのまま受け入れないことをConformance化するものです。
 
-## stderrと秘密値
+## 標準エラー出力と秘密情報
 
 process Pluginは、Secret Injector等を通じてHost外の具体的なsecret materialへ到達する可能性があります。そのprocessが誤ってsecretをstderrへ書く可能性を前提にします。
 
@@ -83,7 +83,7 @@ process Pluginは、Secret Injector等を通じてHost外の具体的なsecret m
 
 これは外部process自身のログ出力を安全化する仕組みではありません。Host側がTEI error / provenanceへ不用意に再転記しない境界です。
 
-## Sandboxとの関係
+## 隔離環境との関係
 
 `StdioProcessLauncher`は`ProcessLauncher`と`SandboxedProcessRunner`の双方を実装しますが、**それ自体はsandboxではありません**。
 
@@ -97,7 +97,7 @@ process Pluginは、Secret Injector等を通じてHost外の具体的なsecret m
 
 という境界を維持します。
 
-## Resource Leaseとの順序
+## 資源の貸出しとの順序
 
 Registryの既存順序は変更しません。
 
@@ -119,7 +119,7 @@ lease / ownership cleanup
 
 つまり、verification不成立やrequired sandbox不在のprocessへ、先にsecret/network/filesystem leaseを渡す構造にはしません。
 
-## Reference DeploymentExecutor
+## 参照用の配備実行器
 
 `tools/reference-process-plugin`はstdio protocolを実装する最小の実process helperです。
 
@@ -129,7 +129,7 @@ Reference processが返す`accepted`はexecutor acknowledgementであり、外�
 
 例ではさらに`ValidateDeploymentInvocation`を呼び、process boundaryとPlugin provenanceがEnvironment Planと整合することを確認します。
 
-## Durable Invocation Handleとの関係
+## 永続化する実行識別子との関係
 
 このM0.24 vertical sliceはone-shot local child processです。
 
@@ -146,7 +146,7 @@ Durable reattachには、M0.22 / ADR-0005で定めたopaque durable runtime hand
 
 process invocation中にHostが失われ、副作用の有無を確定できない場合も、missing / unknownから自動replayしない原則を弱めません。
 
-## Repositoryでの検証
+## リポジトリ内での検証
 
 単体・integration testでは実際のtest binaryをchild processとして起動し、次を確認します。
 

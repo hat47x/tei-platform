@@ -1,4 +1,4 @@
-# Capability Business Result / Execution Error Conformance
+# 機能の業務結果と実行エラーの準拠確認
 
 ## 目的
 
@@ -32,7 +32,7 @@ Invoke Capability
             error
 ```
 
-## Authentication実Reference
+## 認証の実参照例
 
 Reference Workspaceには`security.authenticate`を置きます。
 
@@ -49,7 +49,7 @@ capability security.authenticate {
 
 一方、Databaseやadapterの障害は`denied`へ変換しません。
 
-## 実行時Conformance
+## 実行時の準拠確認
 
 `internal/semantic/capabilityinvoke`のテストでは、Reference WorkspaceからCanonical Capabilityを直接読み込み、次を確認します。
 
@@ -63,7 +63,7 @@ capability security.authenticate {
 
 正常な拒否をGo `error`だけで表さず、逆に実行障害を`denied`へ押し込みません。
 
-## 既存output Capabilityの互換性
+## 既存の結果を返す機能との互換性
 
 Authenticationだけに合わせた抽象になっていないことを確認するため、既存の`sales.order.submit`も同じInvocation境界へ通します。
 
@@ -80,7 +80,7 @@ capability sales.order.submit {
 
 また、作者が定義していない`submitted`等のOutcomeを暗黙に追加することは認めません。単一output Capabilityが名前付きOutcomeを返した場合はExecution Errorとして扱います。
 
-## Payload境界
+## データ本体の境界
 
 v1のInvocation境界は、Payloadの具体的な業務データObject modelを定義しません。
 

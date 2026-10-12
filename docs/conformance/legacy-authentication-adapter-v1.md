@@ -1,4 +1,4 @@
-# Legacy Authentication Adapter Conformance
+# 既存認証仕様への接続アダプターの準拠確認
 
 ## 目的
 
@@ -8,7 +8,7 @@
 
 対象はIssue #68およびADR-0019です。業務上の結果とExecution Errorの分離には、Issue #77 / ADR-0020で確定した`capabilityinvoke`の共通境界をそのまま利用します。
 
-## 既存user recordの扱い
+## 既存利用者記録の扱い
 
 v1のReference adapterは、既存システムにあり得る次のmetadataを保持できます。
 
@@ -26,7 +26,7 @@ v1のReference adapterは、既存システムにあり得る次のmetadataを�
 
 credentialについても、legacy user recordには検証対象そのものを保存せず、credentialの参照だけを保持します。
 
-## credential検証の境界
+## 認証情報の検証境界
 
 credential検証は`CredentialVerifier`へ分離します。
 
@@ -67,7 +67,7 @@ Reference testにも「正解となるsecret値」を保存せず、Verifierの�
 
 認証が成立した場合は`authenticated` Outcomeを返し、payloadにはsubject identityだけを置きます。
 
-## Execution Error
+## 実行エラー
 
 次は業務上の認証拒否ではありません。
 
@@ -83,7 +83,7 @@ Reference testにも「正解となるsecret値」を保存せず、Verifierの�
 
 そのため、`capabilityinvoke.Invoke`へGo `error`として返し、Execution Errorの境界を維持します。
 
-## 既存システム固有rule
+## 既存システム固有の規則
 
 field対応だけでは表現しにくい既存条件を、TEI共通ruleへ無理に変換しません。
 
@@ -111,7 +111,7 @@ Reference Conformanceでは、組織コード、roleコード、login失敗回�
 
 これらをAuthentication adapter一例から先回りして一般化しません。
 
-## 次の接続
+## 次の接続段階
 
 次の縦切りでは、このadapter境界をReference Workspaceの明示的なCapability Bindingへ接続し、legacy mappingの来歴とsecret非混入をRepository上のEvidenceとして確認します。
 

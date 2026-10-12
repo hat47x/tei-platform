@@ -1,4 +1,4 @@
-# Conformance — M0.27 Foreign Key realization / drift
+# M0.27 外部キーの生成と差分の準拠確認
 
 M0.27では、M0.26でactual PostgreSQLから観測できることまで確認したForeign Keyを、Desired Physical SchemaとSchema Diffへ統合します。
 
@@ -30,7 +30,7 @@ AddForeignKey / DropForeignKey
 
 Semantic RelationからForeign Keyを自動生成しません。FKを張るかどうかはDatabaseのPersistence realizationです。
 
-## Authoring
+## 記述方法
 
 Persistence Mappingでは次の形でFKを明示できます。
 
@@ -63,7 +63,7 @@ Parserは少なくとも次を拒否します。
 
 Mapping / Attributeの存在やDatabase境界はDesired realization時にも検査します。
 
-## Desired realization
+## 期待する構造の生成
 
 `persistence.ForeignKeyMapping`は物理table / column名を参照先として直接保持しません。
 
@@ -86,7 +86,7 @@ Mapping / Attributeの存在やDatabase境界はDesired realization時にも検�
 
 M0.27ではcross-database FKを作りません。
 
-## constraint nameと意味identity
+## 制約名と意味上の同一性
 
 `physical.ForeignKey.Name`は失いません。actual DBでどのconstraintを観測したか、人間へ説明する際、将来DDLを組み立てる際に有用だからです。
 
@@ -102,7 +102,7 @@ ordered source columns
 
 したがって、構造が同一でconstraint名だけ違うFKはdriftではありません。
 
-## Diff表現
+## 差分の表し方
 
 M0.27では次の2種類を追加します。
 
@@ -113,7 +113,7 @@ M0.27では次の2種類を追加します。
 
 Diffは変更提案のための意味差であり、TEIがその場でDDLを実行する命令ではありません。
 
-## 重複constraint
+## 制約の重複
 
 同じ構造を持つForeign Keyが複数存在する場合、mapへ1件だけ格納して黙って失いません。
 
@@ -121,13 +121,13 @@ Diffは変更提案のための意味差であり、TEIがその場でDDLを実�
 
 この場合もNameは構造identityではありませんが、どのactual constraintを余分な1件として報告したかをChange内に保持します。
 
-## Physical Snapshotのdeterminism
+## 物理構造の記録の決定性
 
 `SchemaSnapshot.Normalize()`はForeign KeyをNameだけで並べません。
 
 まず構造順で並べ、同一構造のtie-breakとしてNameを使います。これにより、constraint名を意味identityへ昇格させずにdeterministicなSnapshotを維持します。
 
-## actual PostgreSQL Conformance
+## PostgreSQL実環境での準拠確認
 
 `tools/reference-postgres-integration`のbaselineでは、Persistence Mappingから次のDesired FKを生成します。
 
@@ -150,7 +150,7 @@ actual PostgreSQLにも`orders_customer_fk`を作成し、FKを含むDesired / A
 
 ここでtest harnessがconstraintを削除することは、TEIのautomatic migration能力を意味しません。TEIは観測して差分を返すだけです。
 
-## 常設CI
+## 継続的な自動検査
 
 PostgreSQL serviceを使う常設jobで次を確認します。
 

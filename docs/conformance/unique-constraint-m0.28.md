@@ -1,4 +1,4 @@
-# Conformance — M0.28 Unique Constraint realization / drift
+# M0.28 一意制約の生成と差分の準拠確認
 
 M0.28では、UNIQUE constraintをPersistence MappingからDesired Physical Schemaへ実現し、actual PostgreSQLから観測した制約とprovider-neutralなSchema Diffで比較します。
 
@@ -32,7 +32,7 @@ AddUniqueConstraint / DropUniqueConstraint
 
 同時に、authoringで明示した`unique-index`は従来どおり`physical.Index{Unique:true}`として保持します。
 
-## Authoring
+## 記述方法
 
 Persistence Mappingでは次のようにUNIQUE constraintを明示します。
 
@@ -47,7 +47,7 @@ unique customers_identity_key {
 
 Parserは空のconstraintを拒否します。Attributeの存在とphysical columnへの解決はDesired realizationでも検査するため、存在しないAttributeを制約へ黙って残しません。
 
-## Desired realization
+## 期待する構造の生成
 
 `persistence.UniqueConstraintMapping`が保持するのは次です。
 
@@ -58,7 +58,7 @@ Parserは空のconstraintを拒否します。Attributeの存在とphysical colu
 
 constraint名は観測結果の説明や将来DDLを組み立てる際に有用なので保持します。ただしM0.28のSchema Drift identityには含めません。
 
-## constraint nameとstructural identity
+## 制約名と構造上の同一性
 
 M0.28の比較identityは**順序付きcolumns**です。
 
@@ -73,19 +73,19 @@ legacy_customer_email_unique(email)
 
 一方、columnやcolumn順序が異なれば別構造です。構造変更は専用`alter-unique-constraint`ではなく、Actual側の`drop-unique-constraint`とDesired側の`add-unique-constraint`として表します。
 
-## multiplicityを失わない
+## 同じ種類の制約が複数ある状態を保つ
 
 同じcolumnsを持つUNIQUE constraintが複数存在する場合、mapへ1件だけ格納して消しません。
 
 構造ごとの件数を比較し、DesiredとActualの件数差をadd/dropとして表します。名前は意味identityではありませんが、Actual側の余分なconstraintを説明するためChangeには保持します。
 
-## PostgreSQL Actual normalization
+## PostgreSQLの実状態の表記統一
 
 PostgreSQL providerは`pg_catalog.pg_constraint`の`contype='u'`からUNIQUE constraintを観測します。
 
 columnsは`conkey`の順序で復元します。M0.28が表現していない`NULLS NOT DISTINCT`を観測した場合は、通常のUNIQUE constraintへ黙って畳まず、unsupported semanticsとして明示的に失敗します。
 
-### backing indexを二重計上しない
+### 対応する索引を二重に数えない
 
 PostgreSQLではPRIMARY KEYやUNIQUE constraintにbacking indexがあります。
 
@@ -98,7 +98,7 @@ UniqueConstraint(email)
 
 一方、利用者が明示的に作成したunique indexはconstraintではないため、通常の`physical.Index{Unique:true}`として残します。
 
-## Diff表現
+## 差分の表し方
 
 M0.28では次を追加します。
 
@@ -107,7 +107,7 @@ M0.28では次を追加します。
 
 Diffは意味差の表現であり、その場でDDLを自動実行する命令ではありません。
 
-## actual PostgreSQL Conformance
+## PostgreSQL実環境での準拠確認
 
 `tools/reference-postgres-integration`では、同じtableに次を同時に作ります。
 
@@ -126,7 +126,7 @@ Persistence Mapping側にも同じ二つのintentを明示し、baselineのDesir
 
 このtest harnessによるconstraint削除は、TEIがautomatic migrationや自動修復を行うことを意味しません。TEIはDesiredとActualを比較して意味差を返しています。
 
-## 常設CI
+## 継続的な自動検査
 
 PostgreSQL serviceを使うintegration jobで、少なくとも次を継続的に確認します。
 

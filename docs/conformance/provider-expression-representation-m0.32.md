@@ -1,4 +1,4 @@
-# M0.32 ProviderExpression Representation / Comparison Conformance
+# M0.32 提供元固有の式の表現と比較に関する準拠確認
 
 ## 目的
 
@@ -6,7 +6,7 @@ M0.32では、ProviderExpressionに格納された文字列が「利用者が記
 
 対象はIssue #54とADR-0012です。M0.31で導入した`Diff.Unresolved`を比較結果の安全な受け皿として利用します。
 
-## representation
+## 表現の種類
 
 `physical.ProviderExpression`は次のrepresentationを区別します。
 
@@ -19,7 +19,7 @@ provider-normalized
 
 `provider-normalized`はprovider自身の内部表現から再構成された比較用表現です。ここでいうnormalizedは数学的なcanonical formを意味しません。
 
-## normalization provenance
+## 表記統一の由来
 
 provider-normalized表現には、必要に応じて次のprovenanceを付与します。
 
@@ -33,7 +33,7 @@ ExpressionNormalization
 
 `ProviderVersion`は、その表現契約がprovider versionに依存する場合の比較範囲です。値を取得できない場合に推測で補いません。
 
-## Desired
+## 期待する構造
 
 Persistence MappingからDesired Physical Schemaへrealizeしたexpression key / predicateは`authored`です。
 
@@ -41,7 +41,7 @@ Sourceは前後空白を除く既存のauthor textを保持します。normaliza
 
 Source Indexのauthoritative sourceは引き続きPersistence fileであり、provider-normalized表現へ置き換えません。
 
-## PostgreSQL Actual
+## PostgreSQLの実状態
 
 PostgreSQL catalog adapterが`pg_get_expr` / `pg_get_indexdef`系の経路から取得したexpression / predicateは`provider-normalized`として扱います。
 
@@ -61,19 +61,19 @@ Provider / Dialectが異なる場合は明確な構造差です。
 
 Provider / Dialectが同じ場合は次の順に判定します。
 
-### source textが同一
+### 入力文字列が同じ場合
 
 representationが異なっても一致とします。
 
 これは数学的同値性の推測ではなく、比較対象のprovider-native text自体が一致しているためです。
 
-### authored / authoredでsourceが異なる
+### 利用者記述どうしで入力が異なる場合
 
 異なるauthoring intentとして構造差とします。
 
 TEIが一方をもう一方へ自動的にcanonicalizeしたものではないため、利用者が明示的に異なる式を書いた事実を保持します。
 
-### provider-normalized / provider-normalizedでsourceが異なる
+### 提供元が統一した表現どうしで入力が異なる場合
 
 次の条件をすべて満たす場合だけ構造差と確定します。
 
@@ -84,19 +84,19 @@ TEIが一方をもう一方へ自動的にcanonicalizeしたものではない�
 
 version不明、authority不明、または契約が異なる場合は`Unresolved`とします。
 
-### authored / provider-normalizedでsourceが異なる
+### 利用者記述と提供元表現の入力が異なる場合
 
 信頼できるnormalizerをまだ通していないため`Unresolved`とします。
 
 この状態から`drop-index + add-index`を生成しません。
 
-### legacy representation
+### 旧形式の表現
 
 `Representation`が空の旧来データは、sourceが一致する場合のみ一致できます。
 
 sourceが異なる場合は、representationを推測せず`Unresolved`とします。
 
-## migration safety
+## 移行時の安全性
 
 M0.31の契約どおり、`Diff.Unresolved`が残る場合はmigration SQLを生成しません。
 
@@ -112,7 +112,7 @@ M0.31の契約どおり、`Diff.Unresolved`が残る場合はmigration SQLを生
 - collation / operator class等のnormalization（Issue #58）
 - Advanced Index DDL rendering（Issue #55）
 
-## Conformance
+## 準拠確認
 
 M0.32では少なくとも次を固定します。
 

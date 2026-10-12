@@ -1,4 +1,4 @@
-# Plugin / Runtime境界のConformance — M0.22.1
+# M0.22.1 プラグインと実行環境の境界の準拠確認
 
 この文書は、M0.22.1でPlugin / Runtime境界について何を実装し、どこまでテストで直接確認しているかを整理したものです。
 
@@ -17,7 +17,7 @@ Plugin / Runtime周辺では、似た言葉が複数の層に現れます。M0.2
 
 これらは一つの巨大なRuntime状態へまとめません。たとえば、Resource Leaseを取得できたことと、外部runtimeへ再接続できたことは別の事実です。
 
-## Pluginの解決を固定する
+## プラグインの解決先を固定する
 
 Environmentで使うPluginは、実行のたびに「その時点で最も新しいもの」を選び直すのではなく、Plugin Lockで固定します。
 
@@ -31,7 +31,7 @@ Environmentで使うPluginは、実行のたびに「その時点で最も新し
 
 Plugin Lockは供給元を完全に信頼できるものへ変える仕組みではありません。どのPluginを、どのdescriptorとpolicyの組み合わせで実行するつもりだったかを固定し、後から追跡できるようにするための境界です。
 
-## process Pluginは別のtrust boundaryとして扱う
+## 別プロセスのプラグインは独立した信頼境界として扱う
 
 `internal/plugin/runtime/model.go` では、in-processとprocessのRuntime境界を区別します。
 
@@ -48,7 +48,7 @@ process Pluginについては、Host側で必要なsandbox、artifact verificati
 
 artifact verificationやsandbox preflightに失敗したのに、先にsecretやnetwork endpointを払い出す設計にはしません。
 
-## PermissionとResource Leaseはleast authorityを保つ
+## 権限と資源の貸出しを必要最小限にする
 
 Permissionは、「このCapabilityがsecretを読む」「このendpointへ接続する」といった論理的な許可です。具体的なsecret handleや接続先は、Host Resource BrokerがResource Bindingから解決します。
 
@@ -66,7 +66,7 @@ Permissionは、「このCapabilityがsecretを読む」「このendpointへ接�
 
 ここで守ろうとしているのは「secret値をTEIが解析しない」ことだけではありません。具体的なHost materialを、Canonical DefinitionやDurable Runへ持ち込まないことです。
 
-## RenewとRefreshを同じ操作にしない
+## 更新と再読込みを別の操作にする
 
 Resource Leaseには時間的な寿命がありますが、寿命を延ばすことと、具体的なresource viewを取り直すことは別の操作です。
 
@@ -79,7 +79,7 @@ Resource Leaseには時間的な寿命がありますが、寿命を延ばすこ
 
 Host-side Lease Supervisorは、Plugin自身へRenewやRefreshの責任を押し付けません。Pluginが長時間動いている間のlease lifecycleはHost側で監督します。
 
-## Supervisor Ownershipとfencing
+## 監督役の所有権と世代管理
 
 Hostが停止・再起動した場合、古いHostと新しいHostが同じInvocationを同時に監督できてはいけません。
 
@@ -95,7 +95,7 @@ Hostが停止・再起動した場合、古いHostと新しいHostが同じInvoc
 
 Resource LeaseのrevisionとSupervisorのfencing tokenは同じ履歴ではありません。Resourceを更新した回数と、Supervisor世代が変わった回数を混同しないことが重要です。
 
-## Durable Invocation Handleとruntime reattach
+## 永続化する実行識別子と実行環境への再接続
 
 M0.22.1では、Host takeover後に外部runtimeへ再接続するため、Durable Invocation Handleを導入しています。中心となる実装は `internal/plugin/runtime/invocation_recovery.go` です。
 
@@ -117,7 +117,7 @@ Handleには、少なくとも次を保持します。
 
 また、Handle自身についても、古いfencing tokenや、同じtokenを別ownerが持ち込む場合は、runtimeへ触る前に拒否します。
 
-## runtimeの状態を勝手に推測しない
+## 実行環境の状態を推測しない
 
 reattach時に最も避けたいのは、「見つからなかったからもう一度実行する」という自動replayです。外部システムへの変更がすでに起きている可能性があるためです。
 
@@ -133,7 +133,7 @@ reattach時に最も避けたいのは、「見つからなかったからもう
 
 これらの分岐は `internal/plugin/runtime/invocation_recovery_test.go` で直接固定します。
 
-## RuntimeUnknownとfencing authority
+## 実行状態不明時の世代管理権限
 
 M0.22.1の監査で見つかった`RuntimeUnknown`時の継ぎ目は、Issue #9 / ADR-0005で判断を固定しました。
 
@@ -165,7 +165,7 @@ M0.22.1のテストが成功していても、次をproduction-readyと主張す
 
 Reference実装の役割は、これらの製品を内製することではなく、外部実装と接続するときにも守るべき意味境界を先に明らかにすることです。
 
-## 変更するときの見方
+## 変更時に確認する点
 
 Plugin / Runtime周辺を変更するときは、「テストが通ったか」だけでなく、次の順序で確認します。
 

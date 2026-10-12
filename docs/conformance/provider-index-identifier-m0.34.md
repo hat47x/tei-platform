@@ -1,4 +1,4 @@
-# M0.34 プロバイダー固有のIndex識別子 Conformance
+# M0.34 提供元固有の索引識別子に関する準拠確認
 
 ## 目的
 
@@ -10,7 +10,7 @@ M0.31で導入した`Diff.Unresolved`を、ProviderExpressionだけでなく、�
 
 ## 固定する境界
 
-### Desired Physical realization
+### 期待する物理構造の生成
 
 PostgreSQLのオフライン`RealizationPolicy`は、DBへ接続しなくても意味を確定できる既定値だけを正規化します。
 
@@ -26,7 +26,7 @@ PostgreSQLのオフライン`RealizationPolicy`は、DBへ接続しなくても�
 
 PostgreSQLではcollationを省略すると、列または式が持つcollationを利用します。そのため、明示値と省略をオフライン処理だけで同一視しません。
 
-### PostgreSQL Actual observation
+### PostgreSQLの実状態の観測
 
 Actual adapterは、実際のカタログ情報を根拠に正規化できます。
 
@@ -38,7 +38,7 @@ Actual adapterは、実際のカタログ情報を根拠に正規化できます
 
 Actual側がカタログを根拠に空値へ正規化できることと、Desired側が同じ値をオフラインで空値へ正規化できることは、別の問題として扱います。
 
-## Schema Diffの三値比較
+## 構造差分の三値比較
 
 Index keyのプロバイダー固有識別子は、次の3状態に分けます。
 
@@ -50,7 +50,7 @@ Index keyのプロバイダー固有識別子は、次の3状態に分けます�
 
 比較未確定は`Change`ではなく、`Diff.Unresolved`に格納します。
 
-### collation
+### 照合順序
 
 | Desired | Actual | 結果 |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ Index keyのプロバイダー固有識別子は、次の3状態に分けます�
 
 collationの省略は、列または式からの継承を含みます。片側だけが空の場合、現在のPhysical Schemaだけでは同値性を安全に確定できません。
 
-### operator class
+### 演算子クラス
 
 | Desired | Actual | 結果 |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ PostgreSQL Actual adapterは、実カタログで既定値だと確認したoper
 
 逆に、Desiredで明示されたoperator classがActual環境では既定値である可能性は、オフライン処理だけでは判定できません。Actualが空の場合は、構造差とは断定せず比較未確定にします。
 
-## UnresolvedComparison
+## 比較未確定の結果
 
 M0.34では`UnresolvedKind`に次を追加します。
 
@@ -119,7 +119,7 @@ actualValue
 
 Desiredが空の場合、`omitempty`によって`desiredValue`がJSONに出力されないことがあります。空であるという入力自体は、比較処理の中で保持されています。
 
-## Migration safety
+## 移行時の安全性
 
 M0.31以降のルールを変更しません。
 
@@ -127,7 +127,7 @@ M0.31以降のルールを変更しません。
 
 そのため、collationやoperator classの同値性を確定できない状態から、自動的に`DROP INDEX` / `CREATE INDEX`へ進むことはありません。
 
-## Unit Conformance
+## 単体での準拠確認
 
 `internal/database/schemadiff/provider_identifier_test.go`では、少なくとも次を確認します。
 
@@ -142,7 +142,7 @@ M0.31以降のルールを変更しません。
 
 `internal/database/migration/provider_identifier_unresolved_test.go`では、プロバイダー固有識別子の比較未確定が残るSchema Diffからmigration planを生成できないことを確認します。
 
-## 既存Conformanceとの関係
+## 既存の準拠確認との関係
 
 M0.34は、次の既存契約を変更しません。
 
@@ -154,7 +154,7 @@ M0.34は、次の既存契約を変更しません。
 
 ProviderExpressionとプロバイダー固有識別子は、ともに「分からない差をmigration Changeへ変換しない」という原則に従います。ただし、意味や判定に必要な情報が異なるため、表現と比較規則は分けて保ちます。
 
-## 現時点で行わないこと
+## 現時点で対象にしないこと
 
 M0.34では次を行いません。
 
