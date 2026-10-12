@@ -126,11 +126,11 @@ func TestObserveSourceTracksParsedSemanticBytes(t *testing.T) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\\nsources:\\n  - semantic\\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nsources:\n  - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	model := filepath.Join(dir, "model.tei")
-	initial := []byte("namespace sales\\n\\ndata Parent {\\n    attribute id type std.identifier\\n}\\n")
+	initial := []byte("namespace sales\n\ndata Parent {\n    attribute id type std.identifier\n}\n")
 	if err := os.WriteFile(model, initial, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestObserveSourceTracksParsedSemanticBytes(t *testing.T) {
 	}
 	// A formatter may change only whitespace; equivalent meaning does not
 	// make the previous byte observation current.
-	updated := append(append([]byte(nil), initial...), '\\n')
+	updated := append(append([]byte(nil), initial...), '\n')
 	if err := os.WriteFile(model, updated, 0600); err != nil {
 		t.Fatal(err)
 	}
