@@ -254,7 +254,7 @@ func runTransformBootstrap(
 	if exactExecutable == "" {
 		stage2Result, err = transform.Evaluate(stage1Source, stage2Inputs)
 	} else {
-		stage2Result, err = evaluateWithExactEngine(exactExecutable, stage1FirstPath, stage1Source, stage2Inputs)
+		stage2Result, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, stage1FirstPath, stage1Source, stage2Inputs)
 	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("execute stage1 meta-builder: %w", err)
@@ -356,7 +356,7 @@ func runTransformBootstrap(
 	if exactExecutable == "" {
 		packageBuilderResult, err = transform.Evaluate(stage1Source, packageBuilderInputs)
 	} else {
-		packageBuilderResult, err = evaluateWithExactEngine(exactExecutable, stage1FirstPath, stage1Source, packageBuilderInputs)
+		packageBuilderResult, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, stage1FirstPath, stage1Source, packageBuilderInputs)
 	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("realize Plugin package builder with converged meta-builder: %w", err)
@@ -421,7 +421,7 @@ func runTransformBootstrap(
 		if err := os.WriteFile(realizedSourcePath, packageBuilderBytes, 0o600); err != nil {
 			return transformBootstrapEvidence{}, err
 		}
-		firstPackageResult, err = evaluateWithExactEngine(exactExecutable, realizedSourcePath, parsedPackageBuilder, packageInputs)
+		firstPackageResult, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, realizedSourcePath, parsedPackageBuilder, packageInputs)
 	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("execute TEI-native Plugin package builder: %w", err)
@@ -429,7 +429,7 @@ func runTransformBootstrap(
 	if exactExecutable == "" {
 		secondPackageResult, err = transform.Evaluate(parsedPackageBuilder, packageInputs)
 	} else {
-		secondPackageResult, err = evaluateWithExactEngine(exactExecutable, filepath.Join(tempDir, "realized-plugin-package.transform.json"), parsedPackageBuilder, packageInputs)
+		secondPackageResult, err = evaluateWithExactEngine(exactExecutable, engine.ImplementationDigest, filepath.Join(tempDir, "realized-plugin-package.transform.json"), parsedPackageBuilder, packageInputs)
 	}
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("repeat TEI-native Plugin package builder: %w", err)
