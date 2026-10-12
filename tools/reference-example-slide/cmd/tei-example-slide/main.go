@@ -22,23 +22,30 @@ func main() {
 	outDir := flag.String("out", "", "optional destination for slides as SVG and projection.json")
 	answerFile := flag.String("answers", "", "optional answer JSON bound to exact Review fingerprint; requires -out")
 	hypothesesFile := flag.String("hypotheses", "", "optional candidate key / FD hypotheses JSON; requires -out")
+	workspaceSource := flag.String("workspace-source", "", "optional loaded Workspace source audit for -hypotheses; requires -out")
 	flag.Parse()
-	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile, *hypothesesFile); err != nil {
+	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile, *hypothesesFile, *workspaceSource); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
 func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extraFiles ...string) error {
-	if len(extraFiles) > 2 {
+	if len(extraFiles) > 3 {
 		return fmt.Errorf("too many supplementary inputs")
 	}
-	answerFile, hypothesesFile := "", ""
+	answerFile, hypothesesFile, workspaceSource := "", "", ""
 	if len(extraFiles) >= 1 {
 		answerFile = extraFiles[0]
 	}
 	if len(extraFiles) >= 2 {
 		hypothesesFile = extraFiles[1]
+	}
+	if len(extraFiles) >= 3 {
+		workspaceSource = extraFiles[2]
+	}
+	if workspaceSource != "" && (hypothesesFile == "" || catalogOnly || inputPath == "" || outputPath == "" || worldPath != "") {
+		return fmt.Errorf("-workspace-source requires -hypotheses, -input, and -out; excludes -catalog and -world")
 	}
 	if hypothesesFile != "" && (catalogOnly || inputPath == "" || outputPath == "") {
 		return fmt.Errorf("-hypotheses requires -input and -out, and excludes -catalog")
@@ -102,6 +109,7 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 		changeTriage = &triage
 	}
 	var modelHypothesisReview *example.ModelHypothesisReview
+	var modelSourceAudit *example.ModelHypothesisSourceAudit
 	if hypothesesFile != "" {
 		var proposals example.ModelHypotheses
 		if err := readStrictJSON(hypothesesFile, &proposals); err != nil {
@@ -112,6 +120,13 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 			return fmt.Errorf("review model hypotheses: %w", err)
 		}
 		modelHypothesisReview = &checked
+		if workspaceSource != "" {
+			audit, err := example.AuditLoadedWorkspaceModelHypothesisSourceEvidence(workspaceSource, input, proposals)
+			if err != nil {
+				return fmt.Errorf("audit model hypothesis source: %w", err)
+			}
+			modelSourceAudit = &audit
+		}
 	}
 	if outputPath == "" {
 		return printJSON(projection)
@@ -144,6 +159,16 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extra
 		}
 		modelReviewJSON = append(modelReviewJSON, '\n')
 		if err := os.WriteFile(filepath.Join(outputPath, "model-hypothesis-review.json"), modelReviewJSON, 0600); err != nil {
+			return err
+		}
+	}
+	if modelSourceAudit != nil {
+		auditJSON, err := json.MarshalIndent(modelSourceAudit, "", "  ")
+		if err != nil {
+			return err
+		}
+		auditJSON = append(auditJSON, '\n')
+		if err := os.WriteFile(filepath.Join(outputPath, "model-hypothesis-source-audit.json"), auditJSON, 0600); err != nil {
 			return err
 		}
 	}
