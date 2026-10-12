@@ -38,7 +38,8 @@ function validateSession(session) {
 
 function validateEntry(entry, session, known) {
   if (!object(entry) || !validID(entry.id) || !kinds.has(entry.kind) ||
-      !validTime(entry.observedAt) || !known.has(entry.choiceId) ||
+      !validTime(entry.observedAt) || entry.sessionId!==session.id ||
+      !known.has(entry.choiceId) ||
       known.get(entry.choiceId).consumer!==session.consumer ||
       !object(entry.provenance) ||
       !['human-attested','tool-captured'].includes(entry.provenance.kind) ||
@@ -56,7 +57,7 @@ function validateEntry(entry, session, known) {
     if (!['pass','fail','unknown'].includes(entry.outcome)) fail('invalid_verification_outcome');
   } else if (entry.outcome!==undefined) fail('unexpected_verification_outcome');
   // Only structured metadata. No copied emails, prompts, secrets or business data.
-  const allowed = new Set(['id','kind','observedAt','choiceId','provenance',
+  const allowed = new Set(['id','sessionId','kind','observedAt','choiceId','provenance',
     ...(entry.kind==='source-change'?['file']:[]),
     ...(entry.kind==='verification'?['outcome']:[])]);
   if (Object.keys(entry).some(k=>!allowed.has(k))) fail('unexpected_work_event_field');
