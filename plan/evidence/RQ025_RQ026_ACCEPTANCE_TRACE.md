@@ -1,10 +1,10 @@
 # RQ-025 / RQ-026 PAS-07 Evidence Contract
 
-Status: **supporting Lane B Evidence contract / PAS baseline is `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` / Lane C Evidence detail is ISSUE-000042**
+状態：**作業領域Bの検証根拠を補う契約です。PASの基準は`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`、作業領域Cの検証根拠の詳細はISSUE-000042を正本とします。**
 
 ## 1. 正本関係
 
-本書は採用済みRQ-025 / RQ-026をPAS-07 Evidenceへ接続するsupporting contractである。
+本書は、採用済みのRQ-025・RQ-026をPAS-07の検証根拠へつなぐ補足契約です。
 
 ```text
 PAS-07 user value / Requirement mapping / Gate relation
@@ -20,7 +20,7 @@ Business Procedure design-quality review
   -> A-set detailを逐語複製しない
 ```
 
-Reference fixture / checker / Canonical pressureはLane Cが所有する。Gate B / Gate C Required Evidenceは変更しない。
+参照事例の試験データ・検査器・正本に対する検証は作業領域Cが管理します。判定段階B・Cの必須検証根拠は変更しません。
 
 ## 2. PAS-07で壊してはいけない境界
 
@@ -44,11 +44,11 @@ explicit unresolved != design failure
 unsupported completion = false completeness
 ```
 
-利用者価値・代表Scenario・Requirement mappingの正本は主Traceとする。
+利用者価値・代表的なシナリオ・要求との対応関係は、主となる追跡文書を正本とします。
 
 ## 3. Representation pressure
 
-PAS-07はCanonical `BusinessProcedure` kindを前提にしない。
+PAS-07では、正本の要素として`BusinessProcedure`という種類が存在することを前提にしません。
 
 ```text
 V0  derived Projection
@@ -76,36 +76,36 @@ validationRefs[]
 capabilityRefs[]
 ```
 
-Direct Data / Relation refはminimum必要性未証明。将来accepted sourceに不可欠ならfail closedしてreopenする。いずれもproduction adoptionではない。
+データや関係への直接参照が最小限の契約に必要かどうかは、まだ立証されていません。将来、受理済みのソースに不可欠と判明した場合は、安全側に停止して再検討します。いずれも本番向けの採用を意味しません。
 
-fact / accepted meaning / derived / proposal / unresolvedのreview区分は品質上保持するが、それだけで新しいV2 metadata enumを要求しない。
+事実・受理済みの意味・派生情報・提案・未解決事項というレビュー上の区別は品質のために維持します。ただし、この区別だけを根拠に、新たなV2のメタデータ列挙型を要求することはしません。
 
 ## 4. RQ-025 acceptance pressure
 
-- Functionを持たないmanual / external / human judgment / physical Actionを正常なBusiness meaningとして保持する。
-- Business actor / jobからPrincipal / Authorization Role / Permissionを生成しない。
-- `direct realization != protected target / concern`を保持する。
-- Business HandoffをRuntime Workflowへ変換しない。
-- purpose / trigger / actor context / manual action / judgment / continuationをPattern-derived扱いしない。
-- Procedureをsingle Application containerへ閉じ込めない。
-- sourceから確定できないactor / trigger / sequence / realization / actuality / responsibility boundaryをfalse completenessで埋めない。
-- Business instruction、system result、external actuality、Business acceptance / continuationを自動的に同一視しない。
+- 対応する機能を持たない手作業・外部作業・人の判断・物理的な行為も、業務上の意味として保持する。
+- 業務の担当者・職務から、認証主体・認可の役割・権限を自動生成しない。
+- `direct realization != protected target / concern`という区別を保持する。
+- 業務上の引継ぎを実行基盤のワークフローへ変換しない。
+- 目的・起動条件・担当者の文脈・手作業・判断・後続処理を、パターンから派生した情報とは扱わない。
+- 業務手順を単一のアプリケーションの配下に閉じ込めない。
+- ソースから確定できない担当者・起動条件・順序・実現方式・実際の状態・責任の境界を、根拠のない完成形で埋めない。
+- 業務上の指示・システムの結果・外部で実際に起きたこと・業務上の受理と後続処理を、自動的に同一視しない。
 
 ## 5. RQ-026 acceptance pressure
 
-- accepted identityをexactに参照し、名称類似やprefixで補完しない。
-- accepted datasource / policy contradictionをdiagnosticとして露出する。
-- Business-only / Handoff / target / actuality changeをApplication-owned meaningの偽変更へ拡大しない。
-- logical address / Handoff endpointをfile pathから分離する。
-- review / approvalをrevision / fingerprintへ束縛する。
-- EvidenceなしにProcedure / Handoff / generic ref-role / graph / global Step ID / Workflow / Business Flowをproductionへ固定しない。
-- Pattern owner / policyを正しいauthorityから解決し、Legacy policyからBusiness targetをbackfillしない。
-- normalized Handoff integrityをSource Index / locatorへ戻さない。
-- physical ObservationだけからData ownership / Application Pattern / responsibility Handoffを生成しない。
-- Data cross-view matrixはevidence-backed traceだけを表示し、trace absenceをdependency absenceへ丸めない。
-- derived projectionはBusiness source / Application / Semantic authorityへ逆流させない。
-- cross-view reviewでsupported / contradiction / unresolvedを意味上区別し、insufficient EvidenceをPASS / absenceへ丸めない。
-- Handoff conditionと、そのcondition成立を支えるObservation / document等を同じauthorityへ畳まない。
+- 受理済みの識別情報を正確に参照し、名前の類似や接頭辞から補わない。
+- 受理済みのデータ接続先や方針との矛盾は、診断結果として明示する。
+- 業務固有の事項・引継ぎ・対象・実際の状態の変更を、アプリケーションが所有する意味の変更として誤って広げない。
+- 論理的な位置と引継ぎの端点を、ファイルパスとは区別する。
+- レビューと承認を対象の版・照合値に結び付ける。
+- 検証根拠がないまま、業務手順・引継ぎ・汎用の参照役割・グラフ・全体共通のステップID・ワークフロー・業務フローを本番向けの定義として固定しない。
+- パターンの管理者と方針は正しい権限元から解決し、旧システムの方針から業務上の対象を推測して補わない。
+- 正規化した引継ぎの整合性を、ソース索引や参照先の位置だけで代用しない。
+- 物理的な状態の観測だけから、データの所有関係・アプリケーションパターン・責任の引継ぎを生成しない。
+- データを複数の視点から照合する表には根拠のある追跡情報だけを表示し、追跡できないことを依存関係が存在しないこととはみなさない。
+- 派生表示の内容を、業務のソース・アプリケーション・意味の管理権限へ逆流させない。
+- 複数の視点を照合するレビューでは、根拠がある状態・矛盾・未解決を区別し、検証根拠の不足を合格や不存在とはみなさない。
+- 引継ぎの条件と、その成立を裏付ける観測・文書などを同じ管理権限で扱わない。
 
 ## 6. PAS-07 Evidence mapping
 
