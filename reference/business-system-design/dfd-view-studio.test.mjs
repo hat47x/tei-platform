@@ -545,4 +545,7 @@ test('information ID duplication, invalid endpoint and Step re-selection discard
   assert.equal($('semantic-preview').hidden,true);
   assert.equal($('semantic-export').disabled,true);
   assert.equal($('step-action').value,'assign-business-role');
+  assert.equal($('step-info-to-kind').value,'party');
+  assert.equal($('step-info-id').value,'');
+  assert.equal($('step-info-payload').value,'');
 });
