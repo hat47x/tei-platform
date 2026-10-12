@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,10 +17,13 @@ import (
 
 const (
 	attemptEvidenceSchema = "tei.reference.build-attempt-evidence/v0"
-	attemptHistorySchema  = "tei.reference.build-attempt-history/v0"
-	referenceSchema       = "tei.reference.build-attempt-evidence-run/v0"
+	attemptHistorySchema  = "tei.reference.build-attempt-history/v1"
+	referenceSchema       = "tei.reference.build-attempt-evidence-run/v1"
 
 	attemptOutcomeFailed = "failed"
+
+	// Hard limit for each restricted diagnostic stream (stdout / stderr).
+	maxDiagnosticRetainedBytes = 64 << 10
 
 	attemptPhaseCompile    = "compile"
 	attemptPhaseLink       = "link"
@@ -66,20 +70,15 @@ type buildAttemptEvidence struct {
 }
 
 type buildAttemptHistory struct {
-	Schema               string                     `json:"schema"`
-	BuildPlanFingerprint string                     `json:"buildPlanFingerprint"`
-	FailedAttempts       []failedAttemptReference   `json:"failedAttempts"`
-	SuccessfulResult     *successfulResultReference `json:"successfulResult,omitempty"`
+	Schema               string                       `json:"schema"`
+	BuildPlanFingerprint string                       `json:"buildPlanFingerprint"`
+	FailedAttempts       []failedAttemptReference     `json:"failedAttempts"`
+	SuccessfulAttempts   []successfulAttemptReference `json:"successfulAttempts,omitempty"`
 }
 
 type failedAttemptReference struct {
 	AttemptOrdinal      int    `json:"attemptOrdinal"`
 	EvidenceFingerprint string `json:"evidenceFingerprint"`
-}
-
-type successfulResultReference struct {
-	BuildPlanFingerprint string `json:"buildPlanFingerprint"`
-	ResultFingerprint    string `json:"resultFingerprint"`
 }
 
 type buildGraphAttemptState struct {
@@ -89,12 +88,13 @@ type buildGraphAttemptState struct {
 	BlockedBy                  []string `json:"blockedBy,omitempty"`
 }
 
+// fakeFailure holds untrusted diagnostic hints that must not enter public Evidence.
 type fakeFailure struct {
 	Phase             string
 	FailureClass      string
 	ExitCode          *int
 	Signal            string
-	DiagnosticSummary string
+	RawDiagnosticHint string
 	Stdout            []byte
 	Stderr            []byte
 }
@@ -124,7 +124,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	fmt.Fprintln(os.Stderr, "reference fake builder attempt failed as intended")
+	fmt.Fprintln(os.Stderr, "reference fixture describes a simulated failure; no builder was executed")
 	os.Exit(1)
 }
 
@@ -138,7 +138,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			Phase:             attemptPhaseCompile,
 			FailureClass:      "compile-type-error",
 			ExitCode:          &exitCode,
-			DiagnosticSummary: "compile failed with a structured type error",
+			RawDiagnosticHint: "compile failed with a structured type error",
 			Stdout:            []byte("compile-progress\n"),
 			Stderr: []byte(
 				"private-path=/workspace/private/source.go " +
@@ -159,10 +159,6 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	}
 	if err := history.AppendFailure(plan, attempt); err != nil {
 		return referenceEvidence{}, err
-	}
-	history.SuccessfulResult = &successfulResultReference{
-		BuildPlanFingerprint: attempt.BuildPlanFingerprint,
-		ResultFingerprint:    strings.Repeat("a", 64),
 	}
 	if err := history.Validate(); err != nil {
 		return referenceEvidence{}, err
@@ -242,19 +238,19 @@ func newFailedAttempt(
 	if ordinal <= 0 {
 		return buildAttemptEvidence{}, retainedDiagnostics{}, fmt.Errorf("attempt ordinal must be positive")
 	}
-	if maxRetainedBytes < 0 {
-		return buildAttemptEvidence{}, retainedDiagnostics{}, fmt.Errorf("max retained diagnostic bytes must not be negative")
+	if maxRetainedBytes < 0 || maxRetainedBytes > maxDiagnosticRetainedBytes {
+		return buildAttemptEvidence{}, retainedDiagnostics{}, fmt.Errorf("max retained diagnostic bytes must be between 0 and %d", maxDiagnosticRetainedBytes)
 	}
 
 	stdoutEvidence, stdoutRetained, err := captureDiagnostic(
-		strings.NewReader(string(failure.Stdout)),
+		bytes.NewReader(failure.Stdout),
 		maxRetainedBytes,
 	)
 	if err != nil {
 		return buildAttemptEvidence{}, retainedDiagnostics{}, err
 	}
 	stderrEvidence, stderrRetained, err := captureDiagnostic(
-		strings.NewReader(string(failure.Stderr)),
+		bytes.NewReader(failure.Stderr),
 		maxRetainedBytes,
 	)
 	if err != nil {
@@ -273,7 +269,7 @@ func newFailedAttempt(
 		FailureClass:         failure.FailureClass,
 		ExitCode:             failure.ExitCode,
 		Signal:               failure.Signal,
-		DiagnosticSummary:    failure.DiagnosticSummary,
+		DiagnosticSummary:    "build failed during " + failure.Phase + ": " + failure.FailureClass,
 		Stdout:               stdoutEvidence,
 		Stderr:               stderrEvidence,
 		AuthorityLimits:      append([]string(nil), attemptAuthorityLimits...),
@@ -323,14 +319,30 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 	if e.Outcome != attemptOutcomeFailed {
 		return fmt.Errorf("Build Attempt Evidence outcome must be failed")
 	}
-	if strings.TrimSpace(e.FailureClass) == "" {
-		return fmt.Errorf("Build Attempt Evidence failure class is required")
+	if !validFailureClass(e.Phase, e.FailureClass) {
+		return fmt.Errorf("Build Attempt Evidence failure class is not permitted for this phase")
 	}
-	if e.ExitCode == nil && strings.TrimSpace(e.Signal) == "" {
+	signal := strings.TrimSpace(e.Signal)
+	if e.Signal != signal || (signal != "" && !validSignalCode(signal)) {
+		return fmt.Errorf("Build Attempt Evidence signal must be a bounded safe code")
+	}
+	if e.ExitCode == nil && signal == "" {
 		return fmt.Errorf("Build Attempt Evidence requires exit code or signal")
 	}
-	if strings.TrimSpace(e.DiagnosticSummary) == "" {
-		return fmt.Errorf("Build Attempt Evidence diagnostic summary is required")
+	if e.ExitCode != nil {
+		switch {
+		case *e.ExitCode == 0:
+			return fmt.Errorf("failed Build Attempt Evidence cannot have a successful exit status")
+		case *e.ExitCode < -1:
+			return fmt.Errorf("Build Attempt Evidence has an invalid exit code")
+		case *e.ExitCode == -1 && signal == "":
+			return fmt.Errorf("signalled exit code requires a signal")
+		case *e.ExitCode > 0 && signal != "":
+			return fmt.Errorf("exit status and signal cannot both describe termination")
+		}
+	}
+	if e.DiagnosticSummary != "build failed during "+e.Phase+": "+e.FailureClass {
+		return fmt.Errorf("Build Attempt Evidence diagnostic summary must match its structured classification")
 	}
 	if err := e.Stdout.Validate(); err != nil {
 		return fmt.Errorf("Build Attempt stdout: %w", err)
@@ -376,15 +388,30 @@ func captureDiagnostic(
 	reader io.Reader,
 	maxRetainedBytes int,
 ) (diagnosticCaptureEvidence, []byte, error) {
-	if maxRetainedBytes < 0 {
-		return diagnosticCaptureEvidence{}, nil, fmt.Errorf("max retained diagnostic bytes must not be negative")
+	if reader == nil {
+		return diagnosticCaptureEvidence{}, nil, fmt.Errorf("diagnostic reader is nil")
+	}
+	if maxRetainedBytes < 0 || maxRetainedBytes > maxDiagnosticRetainedBytes {
+		return diagnosticCaptureEvidence{}, nil, fmt.Errorf("max retained diagnostic bytes must be between 0 and %d", maxDiagnosticRetainedBytes)
 	}
 	hasher := sha256.New()
 	retained := make([]byte, 0, maxRetainedBytes)
 	buffer := make([]byte, 4096)
 	var observed int64
+	emptyReads := 0
 	for {
 		n, err := reader.Read(buffer)
+		if n < 0 || n > len(buffer) {
+			return diagnosticCaptureEvidence{}, nil, fmt.Errorf("diagnostic reader returned an invalid byte count")
+		}
+		if n == 0 && err == nil {
+			emptyReads++
+			if emptyReads >= 100 {
+				return diagnosticCaptureEvidence{}, nil, io.ErrNoProgress
+			}
+			continue
+		}
+		emptyReads = 0
 		if n > 0 {
 			chunk := buffer[:n]
 			if _, writeErr := hasher.Write(chunk); writeErr != nil {
@@ -454,6 +481,9 @@ func (h *buildAttemptHistory) AppendFailure(
 	if h == nil {
 		return fmt.Errorf("Build Attempt History is nil")
 	}
+	if err := h.Validate(); err != nil {
+		return fmt.Errorf("existing Build Attempt History is invalid: %w", err)
+	}
 	planFingerprint, err := plugin.BuildPlanFingerprint(plan)
 	if err != nil {
 		return err
@@ -464,15 +494,14 @@ func (h *buildAttemptHistory) AppendFailure(
 	if err := e.ValidateAgainst(plan); err != nil {
 		return fmt.Errorf("Build Attempt History failure Evidence: %w", err)
 	}
-	if len(h.FailedAttempts) > 0 {
-		last := h.FailedAttempts[len(h.FailedAttempts)-1]
-		if e.AttemptOrdinal <= last.AttemptOrdinal {
-			return fmt.Errorf(
-				"Build Attempt History ordinal %d must be greater than previous ordinal %d",
-				e.AttemptOrdinal,
-				last.AttemptOrdinal,
-			)
-		}
+	if err := validateFingerprint(e.EvidenceFingerprint); err != nil {
+		return fmt.Errorf("Build Attempt History requires finalized failure Evidence: %w", err)
+	}
+	if last := h.latestAttemptOrdinal(); e.AttemptOrdinal <= last {
+		return fmt.Errorf(
+			"Build Attempt History ordinal %d must be greater than previous ordinal %d",
+			e.AttemptOrdinal, last,
+		)
 	}
 	h.FailedAttempts = append(
 		h.FailedAttempts,
@@ -492,12 +521,14 @@ func (h buildAttemptHistory) Validate() error {
 		return err
 	}
 	previousOrdinal := 0
+	seenOrdinals := map[int]struct{}{}
 	seenFingerprints := map[string]struct{}{}
 	for _, attempt := range h.FailedAttempts {
 		if attempt.AttemptOrdinal <= previousOrdinal {
 			return fmt.Errorf("failed attempt ordinals must be strictly increasing")
 		}
 		previousOrdinal = attempt.AttemptOrdinal
+		seenOrdinals[attempt.AttemptOrdinal] = struct{}{}
 		if err := validateFingerprint(attempt.EvidenceFingerprint); err != nil {
 			return err
 		}
@@ -507,16 +538,28 @@ func (h buildAttemptHistory) Validate() error {
 		}
 		seenFingerprints[normalized] = struct{}{}
 	}
-	if h.SuccessfulResult != nil {
-		if err := validateFingerprint(h.SuccessfulResult.BuildPlanFingerprint); err != nil {
-			return fmt.Errorf("successful result BuildPlan fingerprint: %w", err)
+	previousSuccessOrdinal := 0
+	seenOccurrences := map[string]struct{}{}
+	for _, attempt := range h.SuccessfulAttempts {
+		if err := attempt.validate(); err != nil {
+			return err
 		}
-		if normalizeFingerprint(h.SuccessfulResult.BuildPlanFingerprint) != normalizeFingerprint(h.BuildPlanFingerprint) {
-			return fmt.Errorf("successful result belongs to a different BuildPlan")
+		if !strings.EqualFold(attempt.BuildPlanFingerprint, h.BuildPlanFingerprint) {
+			return fmt.Errorf("successful attempt belongs to a different BuildPlan")
 		}
-		if err := validateFingerprint(h.SuccessfulResult.ResultFingerprint); err != nil {
-			return fmt.Errorf("successful result fingerprint: %w", err)
+		if attempt.AttemptOrdinal <= previousSuccessOrdinal {
+			return fmt.Errorf("successful attempt ordinals must be strictly increasing")
 		}
+		previousSuccessOrdinal = attempt.AttemptOrdinal
+		if _, duplicate := seenOrdinals[attempt.AttemptOrdinal]; duplicate {
+			return fmt.Errorf("execution ordinal cannot be reused across outcomes")
+		}
+		seenOrdinals[attempt.AttemptOrdinal] = struct{}{}
+		occurrence := strings.ToLower(attempt.ExecutionOccurrenceID)
+		if _, duplicate := seenOccurrences[occurrence]; duplicate {
+			return fmt.Errorf("execution occurrence cannot be reused")
+		}
+		seenOccurrences[occurrence] = struct{}{}
 	}
 	return nil
 }
@@ -559,6 +602,34 @@ func (s buildGraphAttemptState) Validate() error {
 func validAttemptPhase(phase string) bool {
 	switch phase {
 	case attemptPhaseCompile, attemptPhaseLink, attemptPhaseBuilderRun:
+		return true
+	default:
+		return false
+	}
+}
+
+// These codes are reference-local, closed classifications. Free-form
+// compiler errors and user-provided strings are never public class labels.
+// The permitted failure class must also match the attempted phase.
+func validFailureClass(phase, class string) bool {
+	switch phase {
+	case attemptPhaseCompile:
+		return class == "compile-error" || class == "compile-type-error"
+	case attemptPhaseLink:
+		return class == "link-error"
+	case attemptPhaseBuilderRun:
+		return class == "builder-error" || class == "builder-start-failure"
+	default:
+		return false
+	}
+}
+
+// Only an explicitly recognized signal name may appear in this reference's
+// public Evidence. In production, a typed OS status-to-code mapping is needed.
+func validSignalCode(value string) bool {
+	switch value {
+	case "SIGHUP", "SIGINT", "SIGQUIT", "SIGABRT", "SIGKILL",
+		"SIGPIPE", "SIGBUS", "SIGSEGV", "SIGTERM":
 		return true
 	default:
 		return false
