@@ -3,6 +3,7 @@
 - **管理**：[Issue #1016](https://github.com/hat47x/tei-platform/issues/1016)。既存のApplication／Environment／Plugin Lock等に既にある選択と、案件ごとの追加判断・実行時の検証を混同しない。
 - **基点**：2026-10-12、TEIの作業開始時点のmain `ab2eef5b37cfc83ce811ee2c60ced664336cbe8c`。SUI側の実装の出典・改訂比較については[E25](E25_CROSS_REPOSITORY_REQUALIFICATION.md)を参照し、この監査では**TEIリポジトリ外のSUIソースを読みに行かない**。
 - **読取り監査**：[E27監査器](e27_residual_selection_audit.mjs)／[E27のNode.js回帰試験](e27_residual_selection_audit.test.mjs)。[E1](e1-observe.mjs)の既存14個の既知ソース観測をそのまま用いる。別のSource Index、依存解決、Profile Registryや選択保存先を追加しない。
+- **E1の参照先追従**：受注明細の`/scenario/submit`登録は、現在の`tools/reference-first-web-target/order_scenario_http.go`にある。以前のE1観測器は旧`server.go`を見ていたため、実経路の移動に合わせて観測先を修正し、[E1回帰試験](e1-observe.test.mjs)で検査する。旧参照先のまま観測結果を成功と扱わない。
 
 ## まず既存ソースが何を語るか
 
