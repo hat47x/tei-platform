@@ -68,10 +68,18 @@ func (r *Registry) selectionLocked(p Provider, a Assessment) Selection {
 // dependencyEpochsLocked captures every unique dependent provider, including
 // indirect dependencies. evaluate() rejects cycles before these are exposed.
 func (r *Registry) dependencyEpochsLocked(id string) []ProviderEpoch {
+	// Build a call-local lookup from the Registry's authoritative snapshot.
+	// Looking up an Assessment linearly at every dependency edge makes deep
+	// selections quadratic. A call-local index avoids a second mutable cache
+	// that would need synchronization with Registry.Apply.
+	assessments := make(map[string]Assessment, len(r.snapshot.Providers))
+	for _, assessment := range r.snapshot.Providers {
+		assessments[assessment.ProviderID] = assessment
+	}
 	seen := map[string]bool{id: true}
 	var walk func(string)
 	walk = func(current string) {
-		a, ok := r.snapshot.Assessment(current)
+		a, ok := assessments[current]
 		if !ok || !a.Eligible {
 			return
 		}
