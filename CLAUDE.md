@@ -1,5 +1,5 @@
 # CLAUDE.md
 
-このRepositoryの文書構成と管理ルールは[`AGENTS.md`](AGENTS.md)を正本とします。内容を二重管理せず、こちらへは追記しません。
+このリポジトリの文書構成と管理規則は[`AGENTS.md`](AGENTS.md)を正本とします。内容を重ねて管理せず、この文書には追記しません。
 
 @AGENTS.md
