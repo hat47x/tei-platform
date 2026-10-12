@@ -62,7 +62,7 @@ func TestOrderEntryContextRejectsInvalidSources(t *testing.T) {
 func TestOrderEntryContextRejectsUnexpectedReadResponses(t *testing.T) {
 	for _, tc := range []struct {
 		name, data, contentType string
-		status int
+		status                  int
 	}{
 		{"wrong-application", `{"targetBuildRevision":"T","result":{"applicationId":"other","scenarioId":"s"}}`, "application/json", 200},
 		{"missing-revision", `{"result":{"applicationId":"order_entry","scenarioId":"s"}}`, "application/json", 200},
@@ -83,7 +83,9 @@ func TestOrderEntryContextRejectsUnexpectedReadResponses(t *testing.T) {
 			}))
 			defer upstream.Close()
 			h, err := newOrderEntryContextHandler(upstream.URL)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			resp := httptest.NewRecorder()
 			h.ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/project/order-entry-context", nil))
 			if resp.Code != http.StatusBadGateway {
@@ -103,8 +105,12 @@ func TestOrderEntryContextDoesNotCreateAWriteRoute(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, httptest.NewRequest(http.MethodPost, "/project/order-entry-context", strings.NewReader("{}")))
-	if resp.Code != http.StatusMethodNotAllowed { t.Fatalf("status=%d", resp.Code) }
+	if resp.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d", resp.Code)
+	}
 	none := httptest.NewRecorder()
 	handler().ServeHTTP(none, httptest.NewRequest(http.MethodGet, "/project/order-entry-context", nil))
-	if none.Code != http.StatusNotFound { t.Fatalf("unconfigured route=%d", none.Code) }
+	if none.Code != http.StatusNotFound {
+		t.Fatalf("unconfigured route=%d", none.Code)
+	}
 }
