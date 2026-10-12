@@ -311,29 +311,29 @@ func TestSelectedServiceAcceptanceIsHostOwnedAndRecheckedForRevocation(t *testin
 		want   string
 	}{
 		{
-			name: "contract acceptance missing",
+			name:   "contract acceptance missing",
 			mutate: func() { acceptance.record.ContractAcceptanceRef = "" },
-			want: "acceptance record is incomplete",
+			want:   "acceptance record is incomplete",
 		},
 		{
-			name: "provider conformance missing",
+			name:   "provider conformance missing",
 			mutate: func() { acceptance.record.ProviderConformanceRef = "" },
-			want: "acceptance record is incomplete",
+			want:   "acceptance record is incomplete",
 		},
 		{
-			name: "authority current revision missing",
+			name:   "authority current revision missing",
 			mutate: func() { acceptance.record.AuthorityRevision = "" },
-			want: "acceptance record is incomplete",
+			want:   "acceptance record is incomplete",
 		},
 		{
-			name: "Host record for different implementation",
+			name:   "Host record for different implementation",
 			mutate: func() { acceptance.record.Selection.ImplementationID = "unrelated" },
-			want: "selection differs from selected Provider",
+			want:   "selection differs from selected Provider",
 		},
 		{
-			name: "Host acceptance was revoked",
+			name:   "Host acceptance was revoked",
 			mutate: func() { acceptance.denied = true },
-			want: "current Service acceptance denied",
+			want:   "current Service acceptance denied",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
