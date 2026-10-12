@@ -70,3 +70,38 @@ node --test reference/business-system-design/dfd-view-layout.test.mjs \
 ```
 
 2026年10月12日、独立したNode.js 22.16.0環境で7件の試験がすべてPASSしました。GitHubに登録した4ファイルのBlob SHAが、試験に使用した4ファイルと一致することも確認しています。ただし、**これをTEI全体の検証とは扱いません**。信頼できる全リポジトリのチェックアウトによる`tools/repository-health-check.sh`、既存Goテスト、Studio実画面の動作確認は別途必要です。
+
+## 参照画面での操作（追加）
+
+`dfd-view-studio.html`と`dfd-view-studio.mjs`は、既存のDFD投影を読み込み、図の配置を一時的に操作するための小さなブラウザー用参照画面です。Studio本体への正式な組込みや、正本編集画面としての利用は想定していません。
+
+リポジトリのルートで、前節のGoコマンドを用いて`$scratch/dfd.json`を作成した後、次のように静的ファイルを公開します。
+
+```sh
+python3 -m http.server 8765
+```
+
+ブラウザーで `http://localhost:8765/reference/business-system-design/dfd-view-studio.html` を開きます。まず「DFD投影」から作成したJSONを選択します。必要に応じて、保存済みの配置ファイルも選択できます。要素をクリックすると、参照元の位置・Function・直接意味参照・条件付きHandoffを表示します。
+
+要素をドラッグすると、座標だけの変更候補が表示されます。**「配置だけを反映」**を選んでも変更されるのはブラウザー内の一時表示だけです。配置ファイルを保存する操作も、業務手順やCanonical Sourceは変更しません。初回表示時の並びは簡易的な格子配置であり、DFD上の業務順序や役割分担を意味しません。
+
+WorldのJSONと版を利用者が入力した場合に限り、#1124の既存`navigateReferenceBusinessStep`を読み取り専用で呼び出します。表示される参照は識別子の照合候補であって、受理済みの業務Stepや最新Workspaceとの版一致を証明しません。入力した版文字列だけでSource Acceptanceを認めることはありません。
+
+### 表示上の区別
+
+- 灰色の線：レビュー案に記述された順序・分岐の関係
+- 青緑色の破線：明示された情報の授受
+- 紫色の点線：業務上の責任割当てまたはFunction参照
+- 黄色のノード：Application Functionを必要としない作業
+
+倉庫など別ProcedureへのHandoffは、現時点では選択したStepの詳細に表示し、同じ画面の自動実行経路としては描きません。すべてが参照または未受理候補であり、実際に処理が完了したことは示しません。
+
+### 試験と残る検証
+
+```sh
+node --test reference/business-system-design/dfd-view-studio.test.mjs
+node --test reference/business-system-design/dfd-view-layout.test.mjs \
+  reference/business-system-design/dfd-view-layout-cli.test.mjs
+```
+
+画面ロジックは模擬DOMによるNode.js試験で、投影の読込み・選択・移動プレビュー・一時反映・古い配置の拒否を確認できます。実ブラウザーによる操作試験は別途必要です。画面の操作・入力JSON・ローカルのJavaScriptがそのまま信頼できるStudio製品実装であるとは主張しません。全リポジトリでのGoテストと`tools/repository-health-check.sh`も引き続き統合前の必須確認事項です。
