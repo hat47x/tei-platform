@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {join,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 class Element {
   constructor(tag){this.tag=tag;this.textContent='';this.children=[];this.listeners={};this.classList={toggle(){}};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.style={};this.viewBox={baseVal:{width:1100,height:600}};}
@@ -181,4 +184,151 @@ test('an older layout read cannot overwrite a newer DFD',async()=>{
   assert.match($('status').textContent,/投影を読み込みました/);
   assert.equal($('export').disabled,false);
   assert.equal($('apply').disabled,true);
+});
+
+
+const here=dirname(fileURLToPath(import.meta.url));
+const reference=name=>JSON.parse(readFileSync(join(here,name),'utf8'));
+const approvalProcedure=reference('dfd-order-approval/order-approval-procedure.json');
+const approvalReview=reference('dfd-order-approval/review-proposal.json');
+function approvalProjection(){
+  const r=approvalReview,p=approvalProcedure;
+  const source=(file,part,i)=>({file,pointer:'/'+part+'/'+i});
+  return {
+    schemaVersion:'business-dfd-projection-v0',authority:'derived-read-only',
+    canonicalProcedureUsed:false,procedureId:p.procedure.id,diagnostics:[],
+    roleAuthorizationBinding:'not-inferred',
+    steps:p.steps.map((step,i)=>({id:step.id,label:step.businessAction,
+      realization:step.realization,
+      noApplicationFunction:(step.applicationPatterns||[]).length===0,
+      functionRefs:(step.applicationPatterns||[]).map(id=>({id,status:'resolved'})),
+      source:source('order-approval-procedure.json','steps',i)})),
+    triggers:r.triggers.map((trigger,i)=>({...trigger,authority:'proposal',
+      runtimeBinding:'unbound',source:source('review-proposal.json','triggers',i)})),
+    flows:r.flows.map((v,i)=>({...v,authority:'proposal',
+      source:source('review-proposal.json','flows',i)})),
+    information:{
+      roles:r.businessRoles.map((v,i)=>({...v,authority:'proposal',
+        source:source('review-proposal.json','businessRoles',i)})),
+      externalParties:r.externalParties.map((v,i)=>({...v,authority:'proposal',
+        source:source('review-proposal.json','externalParties',i)})),
+      stores:r.stores.map((v,i)=>({...v,authority:'proposal',
+        dataStatus:v.semanticData?'resolved':'not-declared',
+        source:source('review-proposal.json','stores',i)})),
+      responsibilities:r.responsibilities.map((v,i)=>({...v,authority:'proposal',
+        source:source('review-proposal.json','responsibilities',i)})),
+      informationFlows:r.informationFlows.map((v,i)=>({...v,authority:'proposal',
+        source:source('review-proposal.json','informationFlows',i)}))
+    }
+  };
+}
+function selectTrigger(){
+  const node=$('diagram').children.find(x=>x.dataset?.kind==='trigger'&&x.dataset.id==='TR-ORDER');
+  assert.ok(node);
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:55});
+}
+test('selected trigger generates a proposal-only browser review from exact source files',async()=>{
+  const before=JSON.stringify(approvalReview);
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+  assert.equal($('trigger-label').disabled,false);
+  assert.equal($('semantic-propose').disabled,false);
+  $('trigger-label').value='担当者が受注確認を開始する';
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/未受理の変更候補を確認/);
+  assert.equal($('semantic-preview').hidden,false);
+  assert.equal($('semantic-export').disabled,false);
+  const display=JSON.parse($('semantic-pending').textContent);
+  assert.equal(display.reviewAuthority,'unaccepted-proposal-only');
+  assert.equal(display.readyForAcceptance,false);
+  assert.deepEqual(display.sourceWrites,[]);
+  assert.equal(display.selected.sourceLocatorStatus,'reference-local-pointer-checked');
+  assert.equal(display.selected.sourceFileAuthority,'unverified');
+  assert.equal(JSON.stringify(approvalReview),before);
+  $('trigger-label').value='別案';
+  $('trigger-label').listeners.input();
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+});
+
+test('browser refuses a mismatched DFD trigger and a tampered local source pointer',async()=>{
+  const d=approvalProjection();
+  d.triggers[0].label='古いレビューに基づく文言';
+  await input('dfd-file',d);
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+  $('trigger-label').value='候補';
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/DFD_REVIEW_SNAPSHOT_MISMATCH_TRIGGERS/);
+  assert.equal($('semantic-export').disabled,true);
+  const bad=approvalProjection();
+  bad.triggers[0].source.pointer='/triggers/999';
+  await input('dfd-file',bad);
+  selectTrigger();
+  $('trigger-label').value='候補';
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/DFD_SELECTED_REFERENCE_LOCATOR_MISMATCH/);
+  assert.equal($('semantic-export').disabled,true);
+});
+
+test('browser detects source bytes changing after initial file selection',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('review-file',approvalReview);
+  const original=Buffer.from(JSON.stringify(approvalProcedure));
+  const changed=Buffer.from(JSON.stringify({...approvalProcedure,procedure:{...approvalProcedure.procedure,id:'other-procedure'}}));
+  let reads=0;
+  const changingFile={arrayBuffer:async()=>{
+    const buf=++reads===1?original:changed;
+    return buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.length);
+  }};
+  await $('procedure-file').listeners.change({target:{files:[changingFile]}});
+  selectTrigger();
+  $('trigger-label').value='候補';
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/DFD_PROCEDURE_INPUT_CHANGED/);
+  assert.equal($('semantic-export').disabled,true);
+});
+
+test('concurrent Procedure and Review loads stay independent',async()=>{
+  await input('dfd-file',approvalProjection());
+  const bytes=Buffer.from(JSON.stringify(approvalProcedure));
+  const delayedProcedure={
+    arrayBuffer:async()=>{
+      await new Promise(resolve=>setTimeout(resolve,20));
+      return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length);
+    }
+  };
+  const pending=$('procedure-file').listeners.change({target:{files:[delayedProcedure]}});
+  const reviewLoad=input('review-file',approvalReview);
+  await Promise.all([pending,reviewLoad]);
+  selectTrigger();
+  $('trigger-label').value='手作業としての起動を説明する';
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/未受理の変更候補を確認/);
+  assert.equal($('semantic-preview').hidden,false);
+});
+
+test('a trigger label modified during fingerprinting cannot resurrect a stale proposal',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('review-file',approvalReview);
+  const raw=Buffer.from(JSON.stringify(approvalProcedure));
+  let count=0;
+  const delayedProcedure={arrayBuffer:async()=>{
+    if(++count>1)await new Promise(resolve=>setTimeout(resolve,60));
+    return raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.length);
+  }};
+  await $('procedure-file').listeners.change({target:{files:[delayedProcedure]}});
+  selectTrigger();
+  $('trigger-label').value='最初の説明文';
+  const pending=$('semantic-propose').listeners.click();
+  await new Promise(resolve=>setTimeout(resolve,5));
+  $('trigger-label').value='途中で変更された説明文';
+  $('trigger-label').listeners.input();
+  await pending;
+  assert.match($('status').textContent,/DFD_SELECTION_OR_SOURCE_CHANGED/);
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
 });
