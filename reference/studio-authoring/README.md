@@ -110,7 +110,7 @@ Worldとrevisionを先に取得してCLIへ渡す場合は、`-workspace`の代�
 
 Receiptは実行に成功したときだけ出力される**テスト実行記録の構造案**であり、現PR headのactual E2E PASSを意味しません。人間のAccept、実Provider、Runtime/Target、後続Observationの証拠は入らず、`not-observed`として明示します。Source IDとSource RevisionをWebのCommand/Observationへ引き渡す実際の連結は#1121/#1127の責務で、ここで実行Readyとは表示しません。
 
-現行Source Indexは#1120の`scope + kind + ID`契約と同じスコープ情報を提供しません。Source Indexの参照へ呼出し側が`scope`を付けただけではC0解決済みと扱わず、`sourceNavigation.status=unresolved`にします。複数scopeを持つモデルを安全に編集するには、#1120のtyped Resolverを同一revisionへ接続する必要があります。単一scopeの現Reference向けflat `data:ID` 形式を、汎用のC0表現として固定しません。
+現行Source Indexは#1120の`scope + kind + ID`契約と同じスコープ情報を提供しません。Source Indexの参照自身、または`subject`内へ呼出し側が`scope`を付けてもC0解決済みと扱わず、`sourceNavigation.status=unresolved`にします。パスの重複区切りや`.`区間、開始・終了位置の形式不備も索引の段階で拒否し、ソース位置を誤って確定しません。複数scopeを持つモデルを安全に編集するには、#1120のtyped Resolverを同一revisionへ接続する必要があります。単一scopeの現Reference向けflat `data:ID` 形式を、汎用のC0表現として固定しません。
 
 ## Business参照の任意結合（#1125 / Draft PR #1138）
 
