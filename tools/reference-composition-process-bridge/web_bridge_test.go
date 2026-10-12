@@ -52,15 +52,15 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 		Actions: []deployment.ActionKind{deployment.ActionDatabaseRelease},
 	}
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
-		PluginLockFingerprint: "protected-reference-lock",
+		Environment:              core.MustCanonicalID("reference"),
+		PluginLockFingerprint:    "protected-reference-lock",
 		RuntimePolicyFingerprint: "protected-reference-policy",
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin: pluginID, DescriptorFingerprint: "protected-reference-descriptor",
 			Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
 			Command: binaryPath, Args: []string{referenceArgvMarker},
 			SandboxPolicy: plugin.SandboxNone,
-			Artifact: plugin.Artifact{Digest: digest},
+			Artifact:      plugin.Artifact{Digest: digest},
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
 			Plugin: pluginID, Capability: capability, Boundary: pruntime.BoundaryProcess,
@@ -112,8 +112,8 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 	command := executor.Command{
 		ID: "protected-web-process", ActionID: actionID,
 		IdempotencyKey: "protected-web-process-request",
-		Kind: string(deployment.ActionDatabaseRelease),
-		Database: core.MustCanonicalID("sales_core"), Version: "1.0.0",
+		Kind:           string(deployment.ActionDatabaseRelease),
+		Database:       core.MustCanonicalID("sales_core"), Version: "1.0.0",
 	}
 	// These switches stand in for host-owned checks; they are never populated
 	// from browser-supplied credentials, headers or request bodies.
@@ -133,10 +133,10 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 			}
 			return principal, nil
 		},
-		VerifyCSRF: func(*http.Request, webcomposition.Principal) bool {
+		VerifyCSRF:    func(*http.Request, webcomposition.Principal) bool {
 			return csrfValid
 		},
-		Authorize: func(_ context.Context, p webcomposition.Principal, action string) (bool, error) {
+		Authorize:     func(_ context.Context, p webcomposition.Principal, action string) (bool, error) {
 			if p != principal || action != actionID {
 				return false, errors.New("host identity or action mismatch")
 			}
@@ -145,7 +145,7 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 			}
 			return actionAllowed, nil
 		},
-		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Invoke:        http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			verified, ok := webcomposition.PrincipalFromContext(r.Context())
 			if !ok || verified != principal {
 				http.Error(w, "trusted principal unavailable", http.StatusInternalServerError)
@@ -173,7 +173,7 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 			w.WriteHeader(http.StatusAccepted)
 			_, _ = w.Write([]byte("{\"outcome\":\"accepted\",\"durability\":\"unconfirmed\"}"))
 		}),
-		Audit: func(record webcomposition.AuditRecord) {
+		Audit:         func(record webcomposition.AuditRecord) {
 			audit = append(audit, record)
 		},
 	})
@@ -182,11 +182,11 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
+		name                                        string
 		session, csrf, authorize, authError, permit bool
-		wantStatus int
-		wantStage string
-		wantCalls int
+		wantStatus                                  int
+		wantStage                                   string
+		wantCalls                                   int
 	}{
 		{"unauthenticated", false, true, true, false, true, http.StatusUnauthorized, "rejected", 0},
 		{"csrf-denied", true, false, true, false, true, http.StatusForbidden, "rejected", 0},
