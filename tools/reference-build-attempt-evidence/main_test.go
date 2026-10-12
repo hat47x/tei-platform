@@ -548,7 +548,11 @@ func TestUntrustedDiagnosticHintIsNotPublicEvidence(t *testing.T) {
 func TestPublicFailureClassificationRejectsUnsafeLabelsAndSummary(t *testing.T) {
 	plan := referenceBuildPlan()
 	exitCode := 2
-	for _, unsafeClass := range []string{"path=/private", "token=abc", "../internal", "UpperCase", strings.Repeat("a", 65)} {
+	for _, unsafeClass := range []string{
+		"path=/private", "token=abc", "../internal", "UpperCase",
+		strings.Repeat("a", 65), "skabcdefghijklmnopqrstuvwxyz0123456789",
+		"token-abc123",
+	} {
 		if _, _, err := newFailedAttempt(plan, 1, fakeFailure{
 			Phase: attemptPhaseCompile, FailureClass: unsafeClass,
 			ExitCode: &exitCode, RawDiagnosticHint: "ignored",
@@ -577,7 +581,7 @@ func TestSignalMetadataRejectsRawDiagnosticContent(t *testing.T) {
 	plan := referenceBuildPlan()
 	for _, signal := range []string{
 		"token=unsafe", "path=/private", " SIGTERM ", "signal 15",
-		strings.Repeat("A", 33),
+		strings.Repeat("A", 33), "SECRETTOKEN123",
 	} {
 		_, _, err := newFailedAttempt(plan, 1, fakeFailure{
 			Phase: attemptPhaseBuilderRun, FailureClass: "builder-error",
@@ -661,5 +665,45 @@ func TestNewFailedAttemptRejectsExcessiveDiagnosticRetention(t *testing.T) {
 		ExitCode: &exitCode,
 	}, maxDiagnosticRetainedBytes+1); err == nil {
 		t.Fatal("failed attempt accepted unbounded diagnostic retention")
+	}
+}
+
+func TestPublicFailureClassificationMatchesExecutionPhase(t *testing.T) {
+	plan := referenceBuildPlan()
+	exitCode := 2
+	for _, tt := range []struct {
+		phase string
+		class string
+	}{
+		{attemptPhaseCompile, "link-error"},
+		{attemptPhaseCompile, "builder-error"},
+		{attemptPhaseLink, "compile-error"},
+		{attemptPhaseLink, "builder-start-failure"},
+		{attemptPhaseBuilderRun, "compile-type-error"},
+		{attemptPhaseBuilderRun, "link-error"},
+	} {
+		if _, _, err := newFailedAttempt(plan, 1, fakeFailure{
+			Phase: tt.phase, FailureClass: tt.class,
+			ExitCode: &exitCode, RawDiagnosticHint: "ignored",
+		}, 16); err == nil {
+			t.Fatalf("invalid phase/class pair was accepted: %q/%q", tt.phase, tt.class)
+		}
+	}
+	for _, tt := range []struct {
+		phase string
+		class string
+	}{
+		{attemptPhaseCompile, "compile-error"},
+		{attemptPhaseCompile, "compile-type-error"},
+		{attemptPhaseLink, "link-error"},
+		{attemptPhaseBuilderRun, "builder-error"},
+		{attemptPhaseBuilderRun, "builder-start-failure"},
+	} {
+		if _, _, err := newFailedAttempt(plan, 1, fakeFailure{
+			Phase: tt.phase, FailureClass: tt.class,
+			ExitCode: &exitCode, RawDiagnosticHint: "ignored",
+		}, 16); err != nil {
+			t.Fatalf("valid phase/class pair was rejected: %q/%q: %v", tt.phase, tt.class, err)
+		}
 	}
 }
