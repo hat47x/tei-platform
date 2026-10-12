@@ -70,7 +70,6 @@ func TestCommandOutputRequiresExplicitLocalProjection(t *testing.T) {
 	}
 }
 
-
 func TestCommandVerifiesSavedLocalOutputWithoutRevealingIDs(t *testing.T) {
 	source := []byte(`<System FormatVersion="1.2">
   <Table ID="private-table-471"/>
@@ -173,7 +172,6 @@ func TestCommandRejectsUnboundSavedProjection(t *testing.T) {
 		})
 	}
 }
-
 
 func TestCLIRechecksSavedProjectionAgainstSourceFiles(t *testing.T) {
 	source := []byte(`<System FormatVersion="1.2">
