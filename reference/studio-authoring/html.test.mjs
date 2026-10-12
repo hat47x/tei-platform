@@ -45,7 +45,7 @@ test("HTML displays all four lenses, exact IDs and distinct authority", () => {
   assert.match(html, /relation:sales.order.lines/);
   assert.match(html, /noncanonical-reference/);
   assert.match(html, /verified-at-read/);
-  assert.match(html, /正本との同一性/);
+  assert.match(html, /Workspaceから再取得した正本の読み取り結果/);
   assert.match(html, /default-src &#39;none&#39;/);
   assert.doesNotMatch(html, /<script|<form|onclick=/i);
 });
