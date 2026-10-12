@@ -17,7 +17,7 @@ const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null,
 let selectionGeneration=0;
 let dfdLoadGeneration=0;
 let layoutLoadGeneration=0;
-let semanticLoadGeneration=0;
+const semanticLoadGeneration={procedure:0,review:0};
 function invalidateSemanticPreview(){
   state.semanticPreview=null;
   $('semantic-preview').hidden=true;
@@ -270,18 +270,18 @@ for(const [id,kind,version] of [
 ]){
   $(id).addEventListener('change',async event=>{
     const file=event.target.files?.[0];if(!file)return;
-    const generation=++semanticLoadGeneration;
+    const generation=++semanticLoadGeneration[kind];
     invalidateSemanticPreview();
     state[kind]=null;state[kind+'File']=null;state[kind+'Hash']=null;
     updateSemanticControls();
     try{
       const {value,hash}=await readReferenceFile(file,version);
-      if(generation!==semanticLoadGeneration)return;
+      if(generation!==semanticLoadGeneration[kind])return;
       state[kind]=value;state[kind+'File']=file;state[kind+'Hash']=hash;
       updateSemanticControls();
       status('参照資料を読み込みました。正本と同一版であることは未確認です。');
     }catch(err){
-      if(generation!==semanticLoadGeneration)return;
+      if(generation!==semanticLoadGeneration[kind])return;
       status('参照資料の読み込みを拒否しました: '+err.message,true);
     }
   });
@@ -330,7 +330,7 @@ $('semantic-propose').addEventListener('click',async()=>{
 });
 $('semantic-export').addEventListener('click',()=>{
   if(!state.semanticPreview)return;
-  const bytes=JSON.stringify(state.semanticPreview,null,2)+'\\n';
+  const bytes=JSON.stringify(state.semanticPreview,null,2)+'\n';
   const url=URL.createObjectURL(new Blob([bytes],{type:'application/json'}));
   const anchor=document.createElement('a');
   anchor.href=url;anchor.download='business-dfd-unaccepted-review.json';anchor.click();
