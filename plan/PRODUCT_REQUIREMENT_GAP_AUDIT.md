@@ -37,7 +37,7 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 
 ## 3. 現在のProduct主線
 
-Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。
+Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。
 
 2026-09-21に、前回が別作業へ送っていたRQ別Evidence tierの再監査を行いました。同時に、2026-09-18のProduct再定義で追加されながらこの監査にも`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS mappingにも載っていなかったRQ-027〜RQ-030を対象へ入れました。以後の欠落は`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`がfail-closedで検出します。
 
@@ -229,7 +229,7 @@ same clean candidate R  ← e5231839a5dcc62cce1181a2731fcb7c70d16736
 #273 Gate B audit  ← Ready（artifactAuditPassed = true）
 ```
 
-Gate BはReadyへ到達し、Handover Baseline `B / R`も固定済みです（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。RQ-005 / 009 / 014はGate B以外のPartial Evidence理由（multi-DB / actual migration / 複数Application再利用等）が残るため、引き続きPartial Evidenceのままです。
+Gate BはReadyへ到達し、Handover Baseline `B / R`も固定済みです（[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。RQ-005 / 009 / 014はGate B以外のPartial Evidence理由（multi-DB / actual migration / 複数Application再利用等）が残るため、引き続きPartial Evidenceのままです。
 
 新しいquality laneを追加しません。
 

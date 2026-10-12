@@ -239,7 +239,7 @@ Ready判定の正本は`GATE_B_READINESS_AUDIT.md`です。
 
 関連: `GATE_B_TO_C_HANDOVER_CONTRACT.md` / `ISSUE-000030` / #291
 
-Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`へ固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)です。
+Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`へ固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)です。
 
 ```text
 Gate B Ready for R
@@ -275,7 +275,7 @@ Evidence: `ISSUE-000028` / #270
 
 ### 着手条件
 
-**Gate B Ready + Handover Baseline固定後**です。2026-09-19時点で両方成立し、着手済みです。同日、actual Gate C Evidenceを取得してGate CをReadyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)）。
+**Gate B Ready + Handover Baseline固定後**です。2026-09-19時点で両方成立し、着手済みです。同日、actual Gate C Evidenceを取得してGate CをReadyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、判定記録: [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)）。
 
 ### baseline RとTarget build T1
 
@@ -511,12 +511,12 @@ Studio / AI支援の完成、第二Target、production HAは第一Web Targetま�
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/MASTER_PLAN.md`
 - `plan/MILESTONES.md`
-- `plan/GATE_A_READINESS_AUDIT.md`
-- `plan/GATE_B_READINESS_AUDIT.md`
-- `plan/GATE_B_EVIDENCE_ACQUISITION.md`
-- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
-- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
-- `plan/GATE_C_EVIDENCE_CONTRACT.md`
+- `plan/gate/GATE_A_READINESS_AUDIT.md`
+- `plan/gate/GATE_B_READINESS_AUDIT.md`
+- `plan/gate/GATE_B_EVIDENCE_ACQUISITION.md`
+- `plan/gate/GATE_B_EVIDENCE_RUNBOOK.md`
+- `plan/gate/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
 - `plan/adr/0023-command-observation-explicit-read-boundary.md`
 - ISSUE-000006-application-driver-vertical-slice.md

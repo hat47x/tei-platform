@@ -17,8 +17,8 @@ HTMLの存在をScreenshot / Visual Fidelityへ読み替えない。Semantic / F
 
 契約の正本:
 
-- `plan/GATE_C_EVIDENCE_CONTRACT.md`
-- `plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md`
+- `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`
+- `plan/gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md`
 
 実装:
 
@@ -247,9 +247,9 @@ request bodyそのものをartifactへ保存しない。
 
 このrunnerの成功はSemantic / Functional Evidence取得であり、Gate C Readyそのものではない。
 
-Visual Fidelityを別Evidenceとして取得し、`plan/GATE_C_EVIDENCE_CONTRACT.md`の全条件を独立監査した後だけGate Cを判定する。
+Visual Fidelityを別Evidenceとして取得し、`plan/gate/GATE_C_EVIDENCE_CONTRACT.md`の全条件を独立監査した後だけGate Cを判定する。
 
-actual runの判定記録: `plan/GATE_C_READINESS_AUDIT.md`
+actual runの判定記録: `plan/gate/GATE_C_READINESS_AUDIT.md`
 
 
 ## Visual Evidence intake

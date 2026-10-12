@@ -13,7 +13,7 @@ Application Driverの機能設計です。Canonical Worldに置かれたApplicat
 
 - 実装構造と技術境界の説明は[`docs/architecture.md`](../../docs/architecture.md)が現行基線です。この文書はそれを置き換えず、Driver機能の内部設計を扱います。
 - 採用した設計判断はADR、作業範囲と完了条件はISSUE-000006、実装・Evidenceの現在地は[`docs/status.md`](../../docs/status.md)が正本です。
-- Gate B判定と必要Evidenceは[`plan/README.md`](../README.md)と[Gate B Readiness Audit](../GATE_B_READINESS_AUDIT.md)が正本です。この文書はGate条件を新設しません。
+- Gate B判定と必要Evidenceは[`plan/README.md`](../README.md)と[Gate B Readiness Audit](../gate/GATE_B_READINESS_AUDIT.md)が正本です。この文書はGate条件を新設しません。
 
 扱うのは、Pattern解決からCapability実行、Query / Contract Query実行、Observationまでの実行境界です。Database側の物理schema lifecycle、Plugin / Process Runtimeのauthority、Target / Presentationは扱いません。
 
@@ -161,7 +161,7 @@ synthetic Scenarioの成功を、実Database、既存外部資産、本番運用
 
 - Lifecycle評価をDriverへ接続する場合の評価順序（[ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)、提案中）
 - 複数Contract Queryをまたぐ実行の一貫性境界
-- Target共有時に何をDriver結果として渡し、何をTarget固有に残すか（[Gate C Evidence契約](../GATE_C_EVIDENCE_CONTRACT.md)）
+- Target共有時に何をDriver結果として渡し、何をTarget固有に残すか（[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)）
 - Driver Scenarioの性能条件（RQ-024、Targetごとに定義）
 
 ## 関連文書

@@ -180,6 +180,6 @@ S1 realistic intent / candidate frontier
 | Source-to-Canonical Traceability / Source Index | [ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[`docs/conformance/source-traceability-m0.23.md`](../../docs/conformance/source-traceability-m0.23.md) |
 | Database物理schemaのDesired / Actual / Diff / Unresolved、Advanced Index、Migration rendering | ADR-0008〜ADR-0015、`docs/conformance/`のm0.26〜m0.35 |
 | Plugin / Process Runtime、Permission、Resource Broker、fencing / takeover | [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md)、[ADR-0006](../adr/0006-process-command-and-argv.md)、`docs/conformance/`のm0.22.1 / m0.24 / m0.25 |
-| Target / Presentation境界 | Gate C前のため未確定。[Gate C Evidence契約](../GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
+| Target / Presentation境界 | Gate C前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
 
 Gate前に確定していない領域へ、先回りして設計文書を作りません。

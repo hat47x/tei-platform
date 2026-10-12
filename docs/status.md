@@ -12,9 +12,9 @@ TEIは、ドメイン知識と技術を分けて管理するローコード開�
 | --- | --- | --- |
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、ソース索引作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
-| 判定段階A | **合格**。アプリケーションの型からドライバーへ渡す意味上の境界を確認した過去の判定 | [段階Aの判定記録](../plan/GATE_A_READINESS_AUDIT.md) |
-| 判定段階B | **合格**。2026-09-19に固定した版`e5231839a5dcc62cce1181a2731fcb7c70d16736`について、リポジトリ上の再現性、生成物、PostgreSQL実環境を同じ実行で確認 | [段階Bの判定記録](../plan/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/GATE_B_EVIDENCE_RUNBOOK.md) |
-| 判定段階Cと最初のウェブ実行先 | **合格**。2026-09-19に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/GATE_C_EVIDENCE_CONTRACT.md) |
+| 判定段階A | **合格**。アプリケーションの型からドライバーへ渡す意味上の境界を確認した過去の判定 | [段階Aの判定記録](../plan/gate/GATE_A_READINESS_AUDIT.md) |
+| 判定段階B | **合格**。2026-09-19に固定した版`e5231839a5dcc62cce1181a2731fcb7c70d16736`について、リポジトリ上の再現性、生成物、PostgreSQL実環境を同じ実行で確認 | [段階Bの判定記録](../plan/gate/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/gate/GATE_B_EVIDENCE_RUNBOOK.md) |
+| 判定段階Cと最初のウェブ実行先 | **合格**。2026-09-19に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/gate/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/gate/GATE_C_EVIDENCE_CONTRACT.md) |
 | 共通受理と二つ目のアプリケーション | `repair_intake`の意味定義の一部を、明示的な受理を経て参照用作業領域へ取り込む経路などを検討・実装。受理した範囲と実行先での動作確認は別の状態 | [参照用作業領域の案内](../reference/README.md)、[実装の構成](architecture.md) |
 
 判定段階A・B・Cの「合格」は、**各判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を、そのまま新しい変更の検証根拠にはしません。

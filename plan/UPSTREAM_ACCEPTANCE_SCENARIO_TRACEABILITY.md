@@ -187,7 +187,7 @@ Required Evidenceは次の三つで、いずれも同じclean candidate revision
 2. #255 generated artifact reproducibility Evidence
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-`ISSUE-000037` / #387のfinal convergenceと`#273`の独立artifact auditも成立済みで、Handover Baseline `B / R`を固定しています（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
+`ISSUE-000037` / #387のfinal convergenceと`#273`の独立artifact auditも成立済みで、Handover Baseline `B / R`を固定しています（[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
 
 ## 5. PAS-03 — Native / external assetを壊さず段階移行・置換できる
 

@@ -176,6 +176,6 @@ GitHub Issue #266で、第一Referenceに対して次を実証します。
 - GitHub Issue #69
 - GitHub Issue #266
 - GitHub Issue #270
-- `plan/GATE_B_READINESS_AUDIT.md`
-- `plan/GATE_C_EVIDENCE_CONTRACT.md`
+- `plan/gate/GATE_B_READINESS_AUDIT.md`
+- `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`
 - ADR-0020: Capability Business Outcome / Execution Error
