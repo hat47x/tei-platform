@@ -59,6 +59,7 @@ jobs:
       - name: Goの固定モデルローダーと既定系の局所検査
         run: |
           set -euo pipefail
+          gofmt -d tools/reference-first-web-frozen-world-generate/main.go
           test -z "$(gofmt -l tools/reference-first-web-frozen-world-generate/*.go tools/reference-first-web-target/single_application_*.go)"
           go test -count=1 -tags=tei_order_only,tei_api_only,tei_frozen_world ./tools/reference-first-web-target
           go vet -tags=tei_order_only,tei_api_only,tei_frozen_world ./tools/reference-first-web-target
