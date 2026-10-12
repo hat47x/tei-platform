@@ -122,7 +122,7 @@ func TestExplicitLogicalRulePreviewAndAcceptUseSharedBoundary(t *testing.T) {
 			}
 		}
 	}
-	idx, read, err := workspace.IndexedLoadedSnapshot(dir, loaded)
+	idx, err := workspace.BuildSourceIndex(dir, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestExplicitLogicalRulePreviewAndAcceptUseSharedBoundary(t *testing.T) {
 			refs[0].Role != sourceindex.RoleDefinition {
 			t.Fatalf("accepted source identity not exactly indexed: %+v", refs)
 		}
-		content, err := read(orderFile)
+		content, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(orderFile)))
 		if err != nil {
 			t.Fatal(err)
 		}
