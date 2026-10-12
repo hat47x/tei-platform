@@ -44,7 +44,8 @@ type Acceptance struct {
 	R0                   string   `json:"r0"`
 	R1                   string   `json:"r1"`
 	CandidateFingerprint string   `json:"candidateFingerprint"`
-	ReviewFingerprint    string   `json:"reviewFingerprint"`
+	ReviewFingerprint          string   `json:"reviewFingerprint"`
+	ReviewCandidateFingerprint string  `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
 	DecisionReceipt      string   `json:"decisionReceipt"`
 	ReloadReceipt        string   `json:"reloadReceipt"`
 	Delta                []string `json:"delta"`
@@ -176,12 +177,13 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 			w.UnobservedControlReceipt == w.NegativeReceipt {
 			add("N11_UNOBSERVED_CONTROL_MISSING")
 		}
-		// A declared acceptance review must identify the exact candidate being
-		// approved. Equality is necessary but does not prove review authenticity.
-		if revision.MatchString(a.CandidateFingerprint) &&
-			revision.MatchString(a.ReviewFingerprint) &&
-			a.CandidateFingerprint != a.ReviewFingerprint {
-			add("ACCEPTANCE_REVIEW_FINGERPRINT_MISMATCH")
+		// Shared Acceptance fingerprints the candidate's operation delta and
+		// the entire Review Projection separately. Those digests need NOT match.
+		// The Review Projection instead embeds the candidate fingerprint.
+		// This is only a caller-reported join, not verification of the receipt.
+		if !revision.MatchString(a.ReviewCandidateFingerprint) ||
+			a.ReviewCandidateFingerprint != a.CandidateFingerprint {
+			add("ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH")
 		}
 		// The existing synthetic normal fixture rejects an invalid quantity, not
 		// the newly selected unit-price rule. A handler-only negative test is
