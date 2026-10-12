@@ -12,17 +12,17 @@ const selfBuildMismatchSchema = "tei.reference.self-build-reproducibility-failur
 // Self-build output comparisons are distinct from build execution failures.
 // A mismatch is reportable evidence but never an accepted artifact or lock.
 type selfBuildMismatchEvidence struct {
-	Schema               string   `json:"schema"`
-	Stage                string   `json:"stage"`
-	Outcome              string   `json:"outcome"`
-	FirstArtifactDigest  string   `json:"firstArtifactDigest"`
-	SecondArtifactDigest string   `json:"secondArtifactDigest"`
-	Reproducible         bool     `json:"reproducible"`
-	ArtifactDigest       string   `json:"artifactDigest"`
-	ArtifactAccepted     bool     `json:"artifactAccepted"`
-	ArtifactExportAllowed bool    `json:"artifactExportAllowed"`
-	ArtifactLockAllowed  bool     `json:"artifactLockAllowed"`
-	AuthorityLimits      []string `json:"authorityLimits"`
+	Schema                string   `json:"schema"`
+	Stage                 string   `json:"stage"`
+	Outcome               string   `json:"outcome"`
+	FirstArtifactDigest   string   `json:"firstArtifactDigest"`
+	SecondArtifactDigest  string   `json:"secondArtifactDigest"`
+	Reproducible          bool     `json:"reproducible"`
+	ArtifactDigest        string   `json:"artifactDigest"`
+	ArtifactAccepted      bool     `json:"artifactAccepted"`
+	ArtifactExportAllowed bool     `json:"artifactExportAllowed"`
+	ArtifactLockAllowed   bool     `json:"artifactLockAllowed"`
+	AuthorityLimits       []string `json:"authorityLimits"`
 }
 
 type selfBuildMismatchError struct {
