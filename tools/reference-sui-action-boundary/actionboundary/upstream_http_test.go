@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
-	"net/url"
 )
 
 type fixedTenant struct {
-	id string
+	id  string
 	err error
 }
 
