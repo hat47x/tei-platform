@@ -61,6 +61,6 @@ func Probe(locale string, count int64) (Result, error) {
 	form := plural.Cardinal.MatchPlural(tag, int(count), 0, 0, 0, 0)
 	return Result{
 		Category: category(form),
-		Number: message.NewPrinter(tag).Sprintf("%d", count),
+		Number:   message.NewPrinter(tag).Sprintf("%d", count),
 	}, nil
 }
