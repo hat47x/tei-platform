@@ -124,9 +124,9 @@ func TestReferenceSelectionRevocationChangesPolicyNotImmutableAttestation(t *tes
 func TestReferenceSelectionRejectsAmbiguousPolicyAndInvalidBinding(t *testing.T) {
 	plan, set, first, second, policyA, policyB := referenceSelectionFixture(t)
 	for _, tc := range []struct {
-		name string
+		name     string
 		policies []AttestationTrustPolicy
-		want string
+		want     string
 	}{
 		{name: "no explicit policy", want: "explicit issuer policy"},
 		{name: "duplicate issuer", policies: []AttestationTrustPolicy{policyA, policyA}, want: "more than once"},
