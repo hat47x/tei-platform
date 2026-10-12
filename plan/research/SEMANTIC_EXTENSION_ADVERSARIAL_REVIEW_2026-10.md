@@ -1,7 +1,7 @@
 # Semantic Extension依存解決 敵対的評価 — 2026-10
 
 - 状態: Adversarial Review / Pre-ADR補強
-- 対象: `plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
+- 対象: `plan/research/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
 - 実証レーン: ISSUE-000077
 - 主担当要求: RQ-031 / RQ-032 / RQ-033
 - 評価目的: 構造を肯定するためではなく、意味の再現性・依存解決・Authority分離を破れる反例を探す

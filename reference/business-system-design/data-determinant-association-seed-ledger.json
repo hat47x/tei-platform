@@ -69,7 +69,7 @@
       "id": "P-CA-1",
       "status": "proposal",
       "text": "Reuse a shared determinant-term vocabulary while keeping occurrence identity, candidate key and functional dependency as separate semantic assertions.",
-      "ref": "../../plan/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md"
+      "ref": "../../plan/research/DATA_DETERMINANT_CORE_CONTRACT_CANDIDATE_2026-10.md"
     }
   ],
   "unresolved": [

@@ -6,7 +6,7 @@ Status: **Planning baseline — incremental / no new Gate**
 
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `docs/product-quality-architecture.md`
-- `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
+- `plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/gate/GATE_B_READINESS_AUDIT.md`
 - `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`

@@ -5,7 +5,7 @@
 - Primary owner after entry: ISSUE-000040
 - Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
 - Pre-Gate contracts:
-  - `plan/KNOWLEDGE_PORTABILITY_HANDOFF_2026-09.md`
+  - `plan/workstreams/KNOWLEDGE_PORTABILITY_R0_BOUNDARY_2026-09.md`
 - Canonical Application impact before Gate C Ready: None
 
 ## 1. 目的

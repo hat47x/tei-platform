@@ -15,7 +15,7 @@
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/MILESTONES.md`
-- `plan/TECH_RESEARCH_INTEGRATION_2026-10.md` — 直近リサーチをProduct Value / existing Issueへ割り当てる現在の統合計画
+- `plan/research/TECH_RESEARCH_INTEGRATION_2026-10.md` — 直近リサーチをProduct Value / existing Issueへ割り当てる現在の統合計画
 - `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` — 成熟した外部Reference ModelをPlugin-firstで転写し、TEIの表現力と暗黙前提をpressureする横断Evidence Gate
 
 ## 現在の主線
@@ -347,7 +347,7 @@ B Semantic / Knowledge ───┬── C Application / Legacy
 
 直近のresearchは、新しいAI subsystemや新しいGateを増やす根拠にはしません。Product Valueの中心である「意味のSSOT」「技術からの独立」「人が確認可能な変更」「AIを使っても再現可能なEvidence」へ戻し、既存Workstreamへ割り当てます。
 
-詳細は[TECH_RESEARCH_INTEGRATION_2026-10.md](TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とします。
+詳細は[TECH_RESEARCH_INTEGRATION_2026-10.md](research/TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とします。
 
 Knowledge / AIでは、次の段階昇格をbaselineとしてPressureします。
 
@@ -374,7 +374,7 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 ### 2026-10-09の追加検証候補（評価待ち）
 
-直近の仕様レビュー研究、画面操作の評価、WebAssemblyのインターフェース標準化を、**新しいGateや独立した基盤の追加ではなく、既存の業務Referenceをより厳しく確かめる材料**として扱う。Product Valueにとっての意味と調査根拠は、[技術リサーチ統合方針 §9](TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とする。
+直近の仕様レビュー研究、画面操作の評価、WebAssemblyのインターフェース標準化を、**新しいGateや独立した基盤の追加ではなく、既存の業務Referenceをより厳しく確かめる材料**として扱う。Product Valueにとっての意味と調査根拠は、[技術リサーチ統合方針 §9](research/TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とする。
 
 - **REF-SPEC-01：仕様の不足を実装前に発見する。** 既存の受注Referenceで欠落、曖昧さ、矛盾、古い前提を人が発見できるかを比較する。受け皿はISSUE-000075、#982、#998、#915、#267。最初に得たい価値は、生成量ではなく、意味を誤って確定させない変更レビューである。
 - **REF-INTERACTION-01：画面操作を業務結果まで確認する。** 表示、操作、権限による拒否、Business Result、Observation、視覚評価を別の結果として記録する。受け皿は#997、#1000、#1001、#259。第一Web Targetの既存Gate C判定を遡って変更しない。

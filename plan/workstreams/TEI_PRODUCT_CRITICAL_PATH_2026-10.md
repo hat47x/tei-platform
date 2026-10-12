@@ -3,7 +3,7 @@
 - 状態: **設計・実行計画候補**。この文書の作成はコード実装・実行・製品品質の成立を意味しない。
 - 親Issue: [#1119](https://github.com/hat47x/tei-platform/issues/1119)
 - 基点: 2026-10-10時点の既存Issue/PR・Repository文書による調査。進行中PRや実行結果は着手時に再取得する。
-- 関係: [Product triage #982](https://github.com/hat47x/tei-platform/issues/982)、[三視点業務設計の既存方針](../docs/business-system-design.md)、[現在の実装状況](../docs/status.md)、[Requirement gap audit](PRODUCT_REQUIREMENT_GAP_AUDIT.md)。
+- 関係: [Product triage #982](https://github.com/hat47x/tei-platform/issues/982)、[三視点業務設計の既存方針](../../docs/business-system-design.md)、[現在の実装状況](../../docs/status.md)、[Requirement gap audit](../evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md)。
 
 ## 1. この計画が決めること
 
@@ -202,7 +202,7 @@ N10は既存Runtimeで同等試験が作れない場合、`unresolved`としてG
 
 - GitHubの `main` と本PRの比較基点: `5fc5a0e1cb4fb42897c76dd3334292e2ad4a66e4`。本PR #1135は `work/issue-1119-critical-path-product-gate` からの**文書だけのDraft**。次回の着手時にはこのSHAを流用せず、改めてmainを取得する。
 - 現状区分は `baseline-reported`（既存のstatus / Gateに記録）、`source-located`（今回main上のpathを読んだ）、`draft-candidate`（未統合）、`not-observed`（今回actual実行していない）を併記する。「Referenceあり」と「このGateのPASS」は別。
-- `docs/status.md`、`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`、`docs/business-system-design.md`を既存の製品判断の基線として参照した。今回確認したsource anchorは `internal/ir/world.go`、`internal/plugin/model.go`、`tools/reference-shared-acceptance/README.md`、`tools/repository-health-check.sh`。pathがあることとAPIの適合・actual PASSは等価ではない。
+- `docs/status.md`、`plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md`、`docs/business-system-design.md`を既存の製品判断の基線として参照した。今回確認したsource anchorは `internal/ir/world.go`、`internal/plugin/model.go`、`tools/reference-shared-acceptance/README.md`、`tools/repository-health-check.sh`。pathがあることとAPIの適合・actual PASSは等価ではない。
 - 既存Gate B/Cの過去のReady判定は変更しない。今回のP0 product loopについては全ケース**未資格確認**であり、以下の実装場所・テストは各ownerの申告待ち。
 
 | 契約・CP | Producer / 最初のconsumer | 再利用する既存境界と現状 | 下流を止める最小blocker | Evidence / Ownerが提出するもの |
@@ -299,7 +299,7 @@ blocked_by=<issue/pr/revision or none>; next=<consumer action>
 
 - V00〜V08、N01〜N12の全21 IDが表に各1回現れる（欠番・表内の重複なし）。
 - Markdownのfence開始/終了は各2個で偶数。
-- 本ファイルのrelative link 3件の解決先 `docs/business-system-design.md`、`docs/status.md`、`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md` は取得できた。
+- 本ファイルのrelative link 3件の解決先 `docs/business-system-design.md`、`docs/status.md`、`plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md` は取得できた。
 
 これらは`static-doc-check-only`。その他のリンク、Go build、plan guard、repository-health-check、actual executionは未実行。対象headが変更されたので、統合判定では本静的確認のheadと新headを混同しない。
 

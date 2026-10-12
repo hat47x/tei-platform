@@ -2,16 +2,16 @@
 
 [TEI Master Plan](MASTER_PLAN.md)と[Milestones](MILESTONES.md)は、期限を設けず、Productの価値・着手依存・完了条件を整理する正本です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
 
-`plan/`には、製品の価値・要求を、着手順、受入シナリオ、設計判断、参照実装、検証根拠、Gateへ結び付ける計画文書を置きます。
+`plan/`は、製品要求から着手順、受入シナリオ、設計判断、検証根拠までを結ぶ計画の入口です。全体計画とマイルストーンは直下に置き、個別の計画文書は役割ごとのディレクトリにまとめます。
 
 - 何を守るか: `product/`
 - 何を満たすか: `requirements/`
 - どのScenarioで確かめるか: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - どの順で不確実性を減らすか: `plan/`
 
-## 文書が多い場合の探し方
+## 文書の配置
 
-`plan/`直下には現行計画、受入・検証の契約、過去の評価記録への移動案内が共存します。ファイル数だけで重要度や最新性を判断せず、次の入口から目的の正本へ進んでください。
+`plan/`直下には入口となる文書を置きます。詳細な計画は次の分類から探してください。
 
 | 調べたいこと | 参照先 |
 | --- | --- |
@@ -21,6 +21,9 @@
 | 採用した設計判断 | [`adr/README.md`](adr/README.md) |
 | 複数Issueにまたがる機能設計 | [`design/README.md`](design/README.md) |
 | 段階判定の条件・手順・記録 | [`gate/README.md`](gate/README.md) |
+| 要求、受入条件、検証根拠 | [`evidence/README.md`](evidence/README.md) |
+| 技術調査や採用前の設計評価 | [`research/README.md`](research/README.md) |
+| 複数作業にまたがる計画・移行 | [`workstreams/README.md`](workstreams/README.md) |
 | 特定時点の監査結果 | 公開ツリーには個別の監査・検討記録を含めません |
 | 現在の実装・実証状況 | [`../docs/status.md`](../docs/status.md) |
 
@@ -31,9 +34,9 @@
 1. [`MASTER_PLAN.md`](MASTER_PLAN.md) — 現在のworkstream /主線
 2. [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md) — `order_entry`でのv1実証順
 3. [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — RQ → PAS → Evidence trace
-4. [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md) — 現在のRequirement Evidence / Gap
+4. [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md) — 現在のRequirement Evidence / Gap
 5. [`MILESTONES.md`](MILESTONES.md) — 期限なしのCapability horizon
-6. [`UPSTREAM_BREAKDOWN_2026-09.md`](UPSTREAM_BREAKDOWN_2026-09.md) — 上流pressure / audit文書の結論を計画と下流の担当へ割り当てた導出表
+6. [`UPSTREAM_BREAKDOWN_2026-09.md`](workstreams/UPSTREAM_BREAKDOWN_2026-09.md) — 上流pressure / audit文書の結論を計画と下流の担当へ割り当てた導出表
 
 ## 現在のv1主線
 
@@ -164,7 +167,7 @@ Studio、knowledge-first探索、AI Proposal、非LLM認知方式を別々のAI�
 設計本文:
 
 - [`../docs/definition-centered-feedback-loop.md`](../docs/definition-centered-feedback-loop.md) — concise definition / three-memory separation / feedback routing / minimum semantic delta / Reference Modelの役割
-- [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) — Gate C前後の実証順と既存Issueの責務統合
+- [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](workstreams/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) — Gate C前後の実証順と既存Issueの責務統合
 
 中心flow:
 
@@ -253,7 +256,7 @@ Plan Issueの構成ルールはGitHub Issuesを参照します。
 | 役割 | 正本または参照先 | 扱い |
 | --- | --- | --- |
 | Gate A・B・Cの判定 | [Gate A](gate/GATE_A_READINESS_AUDIT.md)／[Gate B](gate/GATE_B_READINESS_AUDIT.md)／[Gate C](gate/GATE_C_READINESS_AUDIT.md) | 判定した対象・版・Evidenceに結び付く正式記録。現在の`main`の検証済みを意味しない。 |
-| 製品要求の不足と根拠 | [要求別の不足監査](PRODUCT_REQUIREMENT_GAP_AUDIT.md) | 更新型の照合文書。要求と実証の正本を置き換えない。 |
+| 製品要求の不足と根拠 | [要求別の不足監査](evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md) | 更新型の照合文書。要求と実証の正本を置き換えない。 |
 | 業務手順の契約ADR作成可否 | 関連するIssueと採用ADR | 現行の作業条件と採用済み判断をそれぞれの正本で確認します。 |
 | 特定時点の調査結果 | 公開対象外 | 詳細な調査・検討記録は製品文書と分けて管理します。 |
 

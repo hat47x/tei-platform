@@ -174,4 +174,4 @@ RQ-006の`Unresolved`は主に外部状態比較のRequirementですが、「情
 
 RQ-025 / RQ-026のPrimary PASであるPAS-07は [`plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) へ統合済みです。
 
-詳細なReference / Evidence mappingは [`plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`](../plan/RQ025_RQ026_ACCEPTANCE_TRACE.md) をsupporting Evidence contractとして参照します。この索引自体をRequirementまたはPASの第二正本として拡張しません。
+詳細なReference / Evidence mappingは [`plan/evidence/RQ025_RQ026_ACCEPTANCE_TRACE.md`](../plan/evidence/RQ025_RQ026_ACCEPTANCE_TRACE.md) をsupporting Evidence contractとして参照します。この索引自体をRequirementまたはPASの第二正本として拡張しません。

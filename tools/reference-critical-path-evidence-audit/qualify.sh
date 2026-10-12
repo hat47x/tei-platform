@@ -59,7 +59,7 @@ changed="$(git diff --name-only "$main...$head")"
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   case "$path" in
-    plan/TEI_PRODUCT_CRITICAL_PATH_2026-10.md|tools/reference-critical-path-evidence-audit/*) ;;
+    plan/workstreams/TEI_PRODUCT_CRITICAL_PATH_2026-10.md|tools/reference-critical-path-evidence-audit/*) ;;
     *) die "out-of-scope changed path: $path" ;;
   esac
 done <<< "$changed"
