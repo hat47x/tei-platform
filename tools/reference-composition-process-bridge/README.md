@@ -66,17 +66,26 @@ go test -count=1 ./tools/reference-composition-process-bridge
 
 この追加試験は既存の`go test -count=1 ./tools/reference-composition-process-bridge`から実行できます。実行結果はGitHub Actionsまたは実チェックアウトによる記録を別途確認し、コード追加だけでPASSと判定しません。次の段階では、合成されたOperationではなく、実際のApplication Actionと既存`security.authorize`を同じ契約のまま横断させます。
 
+## 正規の業務認可から独立プロセスの受領まで
 
-## Linuxで実行ファイルの内容を固定する参照試験
+[Issue #1145](https://github.com/hat47x/tei-platform/issues/1145)の横断試験として、`canonical_process_test.go`を追加しました。既存の参照Workspaceの`order_entry.submit_order`について、`driver.Resolver`と既存の`security.authorize`を**実際に呼び**、許可された要求だけを、新合成基盤が選択した独立した子プロセスへ渡します。
 
-[Issue #1370](https://github.com/hat47x/tei-platform/issues/1370)の起動対象の同一性について、`pinned_launch_linux_test.go`で実際のLinux実行ファイルを使って検証します。従来のSHA-256照合と、パス名を渡すだけの起動には時間差があります。この試験では、ホストが専用一時領域に実行ファイルを複製し、複製したバイト列のSHA-256を確認したうえで、書込み用のファイル記述子を閉じます。その後、読み取り専用に開いた実行ファイルから名前を削除し、保持したファイル記述子を通じて子プロセスを起動します。
+```text
+合成された企業／既存認証セッション
+ → 保護されたWeb Hostの本人確認・要求元検査
+ → 既存Canonical Bindingとsecurity.authorizeによる操作認可
+ → 要求内だけで有効な操作認可の引渡し
+ → 合成基盤での提供者選択・現在のHost実行権限
+ → 実行ファイルのSHA-256照合と既存プロセス通信
+ → 外部プロセスによる受領応答（業務処理は未実行）
+```
 
-元の実行ファイルを別のバイナリに置換した場合や、シンボリックリンクの参照先を変更した場合でも、保持済みの内容を起動することを確認します。また、誤った指紋、別の実行パス、保持済みのファイル記述子の解放後の呼出しを拒否します。既存の`DeploymentExecutor`、`ArtifactVerifier`、`ProcessLauncher`を接続する試験であり、新たな製品用の契約解決機構は作りません。
-
-この例は**LinuxとネイティブのGo実行ファイルに限る参照用の境界検証**です。プラグインに耐攻撃性のある署名・来歴を与えず、実行時の権限分離やOSサンドボックスも設けません。特にホストと同じ利用者権限で動く攻撃者が、ホストプロセス自体へ干渉できる環境を安全とみなしていません。通常の本番プロセス起動をこの参照用起動器へ変更しておらず、他の実行先での成立も未検証です。
-
-Linux CI環境での局所確認は次のとおりです。
+企業認証と従来認証の二つの合成主体が、既存の規則で同じ利用者に結び付けられる場合の受領を確認します。閲覧者の拒否、主体対応付けの撤去・障害、要求元検査の拒否、セッションの失効、Host権限失効、成果物検証器の欠落、提供者の撤去では、子プロセスが起動しません。HTTP本文・ヘッダーに偽造した主体・権限・提供者・秘密文字列を入れても、プロセス要求のJSONには転送されないことを確認します。
 
 ```sh
-go test -count=1 -run '^TestLinuxPinnedProcess' ./tools/reference-composition-process-bridge
+go test -count=1 -run '^TestCanonicalAuthorizationGatesRealSelectedProcessReceipt$' ./tools/reference-composition-process-bridge
 ```
+
+**重要な境界**：今回使う独立プラグインは既存の*配備処理の受領器*であり、受注を登録するプラグインではありません。プロセスとの接続は、既存の`DeploymentExecutor`が理解する合成された受領要求を用いているため、`order_entry.submit_order`という業務Actionの**実行契約と一致した物理プロセス実装になったと判定してはいけません**。HTTP 202は受領試験の成功であり、業務操作が完了した証拠ではありません。業務効果もDB変更も行いません。これは、認証・認可・提供者選択・プロセス境界の縦断的な接続と非漏洩を試す限定的な結合試験です。
+
+実際の別プロセスに業務Actionを委譲するには、業務Actionの意味契約・要求／結果形式と、物理的なプロセス呼出し形式を独立させる必要があります。旧式の配備機能分類を汎用業務Actionへ流用することや、HTTPで承認した利用者を外部プロセスにそのまま自称させることは認めません。実IdP、Cookie／CSRF、本番のLease・OS隔離・署名・実行結果の永続確認も対象外です。
