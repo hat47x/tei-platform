@@ -1,6 +1,6 @@
 # コア
 
-このディレクトリは、TEIのコアを独立したサブプロジェクトとして管理するための入口です。**Subject値型と一時Effect Scopeを先行移管した段階であり、コア全体をここだけで構築できる状態ではありません。**
+このディレクトリは、TEIのコアを独立したサブプロジェクトとして管理するための入口です。**Subject値型・一時Effect Scope・M0識別子の正本を段階的に移管した状態であり、コア全体がここだけで構築できる状態ではありません。**
 
 コアは、サービス契約に基づく合成、依存関係の解決、実行世代の切り替え、信頼境界など、個別の実装に左右されない最小限の仕組みを担います。具体的な認証方式、データベース接続、画面・実行先固有の機構を抱え込まない方針です。
 
@@ -13,6 +13,10 @@
 [一時Effect Scope](effect/README.md)は、`internal/composition/scope.go`にあった、逆順の一時資源解放と失敗集約を担当する実装を移したものです。旧`composition.Scope`は`effect.Scope`への型エイリアスとなり、旧APIの利用者は同じ状態管理とエラーを引き続き使用します。合成基盤の契約選択・Host権限・世代管理は旧パッケージ側に残したままです。
 
 `bash tools/check-core-isolation.sh`では、CompositionとEffectの実ソースを別々の一時Goモジュールへ取り込み、隔離した外部Consumerからもこの型の同一性を確認します。
+
+[M0識別子と参照の正本](identity/README.md)では、既存の`CanonicalID`・`LocalName`・`Kind`・`Ref`・数値バージョン・標準名称導出を`internal/core`から移しました。旧入口は**Go型エイリアスと関数委譲のみ**です。識別子のハイフン許容など将来の規則改訂は、この機械的移管と混同しません。
+
+`bash tools/check-core-identity-isolation.sh`で`core/identity`・`core/subject`・`core/effect`の実ソースをまとめて、独立の一時Goモジュールからテスト・外部利用できることを確認します。
 
 ## 現在の実装
 
