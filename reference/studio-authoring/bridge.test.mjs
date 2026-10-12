@@ -652,7 +652,10 @@ test("business-local step navigation returns typed World focus without canonical
   const result = navigateReferenceBusinessStep(world, revision, dfd, "BP-05");
   assert.equal(result.schema, "tei.reference.studio-business-step-navigation/v0");
   assert.equal(result.subject.scope, "reference-procedure:order-entry.order-handling");
-  assert.equal(result.status, "reference-only");
+  assert.equal(result.status, "unresolved",
+    "mixed current and unresolved references cannot look fully sound");
+  assert.deepEqual(result.resolutionSummary,
+    { matched: 1, unresolved: 1, producerErrors: 0 });
   assert.equal(result.candidates[0].focus, "validation:sales.order_line.price_positive");
   assert.equal(result.candidates[0].status, "identity-match-only");
   assert.equal(result.candidates[1].status, "unresolved");
@@ -676,6 +679,9 @@ test("business-local step navigation fails closed on DFD errors, duplicate IDs a
       status: "resolved", data: "sales.order" }] }]
   };
   const ok = navigateReferenceBusinessStep(world, revision, base, "S1");
+  assert.equal(ok.status, "reference-only");
+  assert.deepEqual(ok.resolutionSummary,
+    { matched: 1, unresolved: 0, producerErrors: 0 });
   assert.equal(ok.candidates[0].focus, "pattern:order_entry.record");
   assert.equal(ok.candidates[0].status, "identity-match-only");
   assert.equal(ok.editable, false);
@@ -688,6 +694,8 @@ test("business-local step navigation fails closed on DFD errors, duplicate IDs a
   const blocked = navigateReferenceBusinessStep(world, revision, producerError, "S1");
   assert.equal(blocked.status, "unresolved");
   assert.equal(blocked.candidates[0].status, "unresolved");
+  assert.deepEqual(blocked.resolutionSummary,
+    { matched: 0, unresolved: 1, producerErrors: 1 });
   const duplicate = structuredClone(base);
   duplicate.steps.push(structuredClone(duplicate.steps[0]));
   assert.throws(() => navigateReferenceBusinessStep(world, revision, duplicate, "S1"),
