@@ -9,8 +9,15 @@ import (
 	"tei/internal/plugin/transform"
 )
 
+// Reuse the same checked-in Source as the other external transform tests.
+func canonicalTestMetaSource(t *testing.T) transform.Source {
+	t.Helper()
+	source, _ := referenceTransformSource(t, "transform-source-realizer-v1.transform.json")
+	return source
+}
+
 func TestCanonicalSourcePathsShareStrictReadableBytes(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := canonicalTestMetaSource(t)
 	artifact, digest, err := transform.MaterializeSource(source)
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +79,7 @@ func TestCanonicalSourcePathsRejectOversizedProgrammaticInput(t *testing.T) {
 	}
 	for name, mutate := range tests {
 		t.Run(name, func(t *testing.T) {
-			source := transform.TransformSourceRealizerV1()
+			source := canonicalTestMetaSource(t)
 			mutate(&source)
 			if _, _, err := transform.MaterializeSource(source); err == nil {
 				t.Fatal("MaterializeSource accepted oversized Source")
@@ -88,7 +95,7 @@ func TestCanonicalSourcePathsRejectOversizedProgrammaticInput(t *testing.T) {
 }
 
 func TestCanonicalSourcePathsRejectCyclicExpressions(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := canonicalTestMetaSource(t)
 	cycle := &transform.Expr{Op: transform.OpSelectField, Field: "x"}
 	cycle.From = cycle
 	source.Program.Output = *cycle
@@ -98,7 +105,7 @@ func TestCanonicalSourcePathsRejectCyclicExpressions(t *testing.T) {
 }
 
 func TestCanonicalSourceExactEightMiBBoundary(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := canonicalTestMetaSource(t)
 	base, _, err := transform.MaterializeSource(source)
 	if err != nil {
 		t.Fatal(err)
