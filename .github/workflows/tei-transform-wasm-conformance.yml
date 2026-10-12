@@ -69,6 +69,7 @@ jobs:
             ${{ runner.temp }}/tei-transform-wasm/conformance-evidence.json
             ${{ runner.temp }}/tei-transform-wasm/native-test.log
             ${{ runner.temp }}/tei-transform-wasm/wasm-test.log
+            ${{ runner.temp }}/tei-transform-wasm/target-binding-test.log
             ${{ runner.temp }}/tei-transform-wasm/go-version.txt
             ${{ runner.temp }}/tei-transform-wasm/node-version.txt
           if-no-files-found: error

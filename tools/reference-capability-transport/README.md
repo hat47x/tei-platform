@@ -138,3 +138,11 @@ Webホストで合成セッション、要求元検査、受注確定の正規�
 失効した認証、閲覧者、要求元の不一致、主体の対応付け解除、提供者の撤去、実行権限失効ではプロセスの呼出し前に拒否します。ヘッダー中の偽造主体、認証文字列、内部の承認情報は子プロセスへ送りません。見積もり結果には「試算である」「受注していない」と明記し、成功を受注確定の証拠にしません。
 
 この追加試験は、*既に受注確定操作の認可を得た要求内で付随処理を行う*限定例です。見積もりを独立した公開操作として実行する権限を付与するものではありません。独立した操作として公開するには、見積もり自身の正規業務契約と認可規則を受理済みモデルへ定義する必要があります。実認証基盤、正規の契約適合性、製品の実行権限、永続化はまだ対象外です。
+
+## 既存Runtime Authority経由での実見積もりプロセス検証
+
+[Runtimeの実プロセス結合試験](runtime_authorized_quote_process_test.go)では、読み取り専用の[見積もりプラグイン](../../plugins/reference-order-quote/README.md)を別Goモジュールとして構築し、従来の直接`StdioProcessLauncher`呼出しではなく、**既存`internal/plugin/runtime.Registry.InvokeWithProvenance`を経由**して起動します。
+
+Hostの参照用SHA-256照合、`EnvironmentPlan`上のCapability解決、実行ファイルのArtifact識別、実行時Permission、サンドボックス要件、プロセスの要求・応答識別子、実業務計算の1,550円とRuntime実行由来を照合します。検証器欠落、実行ファイルとのDigest不一致、未検証の署名・来歴の要求、必須サンドボックス不在、Capability撤去、未付与Permission、プロセスランチャー欠落では、子プロセス起動前に拒否します。
+
+**何を実証しないか**：テスト用検証器は現在の実行ファイルのSHA-256だけを比較し、署名や来歴は確認しません。OSサンドボックスとResource Leaseも付与していません。既存のLegacy `contract-query-executor` はstdio通信の**運搬手段**であり、見積もりをDB Contract Queryとして意味付けしません。この試験はRuntimeの拒否条件と実プロセス実行の接続を扱い、候補Shapeの正式発行者信頼や実Provider適合性は証明しません。それらは[候補の独立した検査](../reference-plugin-capability-contract/order_quote_candidate_authority_test.go)で失敗条件を確認しており、正式受理はまだありません。製品用Resolver・Lock・権限判定器は複製しません。

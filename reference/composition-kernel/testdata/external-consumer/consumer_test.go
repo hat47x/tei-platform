@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	composition "tei-core-composition-probe"
+	coreeffect "tei/core/effect"
 )
 
 func TestExternalConsumerUsesSelectedProviderAndHostAuthority(t *testing.T) {
@@ -117,5 +118,26 @@ func TestExternalConsumerUsesSelectedProviderAndHostAuthority(t *testing.T) {
 			lease.Release()
 		}
 		t.Fatalf("withdrawn provider accepted new invocation: %v", err)
+	}
+}
+
+func TestExternalConsumerScopeIsCanonicalCoreType(t *testing.T) {
+	var direct *coreeffect.Scope = composition.NewScope()
+	var legacy *composition.Scope = coreeffect.NewScope()
+	if direct == nil || legacy == nil {
+		t.Fatal("the aliased Scope is nil")
+	}
+	if err := direct.Track(func() error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if err := direct.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := direct.Track(func() error { return nil }); !errors.Is(err, composition.ErrScopeClosed) ||
+		!errors.Is(err, coreeffect.ErrScopeClosed) {
+		t.Fatalf("legacy and canonical errors differ: %v", err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

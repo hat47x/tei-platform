@@ -11,7 +11,6 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/ir"
-	"tei/internal/workspace"
 )
 
 // singleApplicationConfig contains startup inputs, not a new declaration of
@@ -54,11 +53,11 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if err != nil {
 		return err
 	}
-	loaded, err := workspace.Load(*workspacePath)
+	world, err := loadSingleApplicationWorld(*workspacePath, *baselineID, *baselineRev, *targetRev)
 	if err != nil {
-		return fmt.Errorf("load reference Workspace: %w", err)
+		return fmt.Errorf("load reference Application model: %w", err)
 	}
-	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+	projection, err := buildWebTargetProjection(world, projectionConfig{
 		HandoverBaselineID:         *baselineID,
 		BaselineRepositoryRevision: *baselineRev,
 		TargetBuildRevision:        *targetRev,
@@ -67,7 +66,7 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if err != nil {
 		return err
 	}
-	read, command, options, err := factory(loaded.World, singleApplicationConfig{
+	read, command, options, err := factory(world, singleApplicationConfig{
 		LegacyUsers:         *legacyUsers,
 		LegacyAuthorization: *legacyAuthorization,
 	})

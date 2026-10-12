@@ -10,6 +10,7 @@ on:
       - 'tools/check-core-isolation.sh'
       - 'tools/check-core-subject-isolation.sh'
       - 'core/subject/**'
+      - 'core/effect/**'
       - 'internal/subject/**'
       - 'tools/repository-architecture-check/**'
       - 'tools/reference-subproject-impact/**'
@@ -33,6 +34,7 @@ on:
       - 'tools/check-core-isolation.sh'
       - 'tools/check-core-subject-isolation.sh'
       - 'core/subject/**'
+      - 'core/effect/**'
       - 'internal/subject/**'
       - 'tools/repository-architecture-check/**'
       - 'tools/reference-subproject-impact/**'
@@ -91,6 +93,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -z "$(gofmt -l core/effect/*.go internal/composition/scope.go)"
+          go test -count=1 ./core/effect
+          go vet ./core/effect
           bash tools/check-core-isolation.sh
 
       - name: Subject正本の外部利用と旧パスの型同一性を検証

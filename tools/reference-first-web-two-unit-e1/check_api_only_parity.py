@@ -32,11 +32,11 @@ def request(port, method, path, payload=None):
         return err.code, err.read()
 
 
-def boot(binary, repo, revision):
+def boot(binary, repo, revision, workspace_path=None):
     port = available_port()
     command = [
         binary,
-        "-workspace", str(repo / "reference/workspace"),
+        "-workspace", str(workspace_path or repo / "reference/workspace"),
         "-legacy-users", str(repo / "reference/legacy-auth/users.json"),
         "-legacy-authorization", str(repo / "reference/legacy-auth/authorization.json"),
         "-application", "order_entry",
@@ -65,15 +65,16 @@ def boot(binary, repo, revision):
 
 
 def main():
-    if len(sys.argv) != 4:
-        raise SystemExit("usage: check_api_only_parity.py FULL_BINARY API_BINARY GIT_SHA")
-    full, api, revision = sys.argv[1:]
+    if len(sys.argv) not in (4, 5):
+        raise SystemExit("usage: check_api_only_parity.py FULL_BINARY API_BINARY GIT_SHA [FROZEN_API_DIRECTORY]")
+    full, api, revision = sys.argv[1:4]
+    api_world_dir = pathlib.Path(sys.argv[4]).resolve() if len(sys.argv) == 5 else None
     repo = pathlib.Path.cwd().resolve()
     processes = []
     try:
         full_proc, full_port = boot(full, repo, revision)
         processes.append(full_proc)
-        api_proc, api_port = boot(api, repo, revision)
+        api_proc, api_port = boot(api, repo, revision, api_world_dir)
         processes.append(api_proc)
         for path in ("/manifest.json", "/healthz", "/scenario/read"):
             expected = request(full_port, "GET", path)

@@ -39,6 +39,11 @@ const (
 	OpJoinStrings     Op = "join-strings"
 )
 
+// Pure, bounded validation operations usable by TEI-owned Source.
+// The evaluator has no Plugin-specific materializer special case.
+const OpAssertCanonicalID Op = "assert-canonical-id"
+const OpAssertPositiveInteger Op = "assert-positive-integer"
+
 type InputKind string
 
 const (
@@ -180,7 +185,7 @@ func (s Source) Validate() error {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
 		switch s.Program.Assertions[i].Op {
-		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertUniqueBy, OpAssertEach:
+		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertUniqueBy, OpAssertEach, OpAssertCanonicalID, OpAssertPositiveInteger:
 		default:
 			return fmt.Errorf("transform assertion %d must use assert operation, got %s", i, s.Program.Assertions[i].Op)
 		}
@@ -366,6 +371,13 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 			return err
 		}
 		if err := child(expr.From, "assert-nonblank source"); err != nil {
+			return err
+		}
+	case OpAssertCanonicalID, OpAssertPositiveInteger:
+		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
+			return err
+		}
+		if err := child(expr.From, string(expr.Op)+" source"); err != nil {
 			return err
 		}
 	case OpCanonicalJSON, OpSHA256:
