@@ -67,20 +67,20 @@ bash tools/reference-critical-path-evidence-audit/compose-issue-1163-smoke.sh
 - Web正常系は標準の合成注文を実行し、4件のValidation成立、Commandと**synthetic** Observationを確認します。単価異常系は`go build -overlay`で注文1001の合成単価を0にした**別バイナリ**を起動し、単価規則だけが不成立でCommand・Observationが未実行になることを確認します。さらにN11負例では、**三つ目の隔離バイナリ**でCommand実行後の合成Observation readだけを失敗させ、HTTP 422・Command結果あり・Observation結果なしを検査します。正常・単価0・N11の3ケースでは同じscratch R1を指定し、元Sourceは変更しません。加えて**同じ正常系Webバイナリを古いSource R0で起動し、正しいR1やTarget版を名乗る引数を与えても、実Manifestに新規単価規則がなく受理後R1と一致しない**負例を追加します。この時点でTarget自身は誤ったラベルを拒否しないため、**現行RuntimeにR1の強制拘束があるとは主張しません**。各Webサーバの`/manifest.json`から実際に表示されたApplicationのValidation・Pattern等を取り出し、別CLIで読み直した受理後Worldと、3サーバ相互の意味を照合します。これはTargetに渡したB/R/T文字列やSourceの原子的読み込みを証明するものではありません。
 - 上記はtest-onlyの受理と**異なる3つの合成バイナリ**による限定検証です。N11の異常系を合成read failureとして再現するもので、製品環境でのread不能や永続DBの障害を証明しません。製品バイナリの実DB/Authority/独立Observation、S02・S05・第二Target、G1〜G4や製品Gateを証明しません。`ISSUE_1163_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE`が出ても本PRの独立レビューと元候補HEADでの資格確認は別途必要です。
 
-**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の8つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
+**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の7つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
 
 - `workspace-r1.json`：R0→test-only Accept→R1、Preview/ReviewとDecisionの指紋、変更Sourceの相対pathと実行前後の管理対象差分を記録。さらに`cmd/tei world -workspace`を**別のCLI呼び出し**で再実行し、実際のJSONバイト列のSHA-256が受理時の`Decision.DerivedWorldSHA256`と一致するか検査する。Human Approvalと主張しない。
-- `target-launch.json`：正常系WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。同じ証跡内に、単価負例とN11用の**二つの別バイナリ**の指紋・起動先・差替Source指紋、実HTTP Manifestの意味内容の指紋も併記し、三つの起動を一つの実行成果物と偽らない。Host権限の確認ではない。
+- `target-launch.json`：正常系WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。同じ証跡内に、単価負例とN11用の**二つの別バイナリ**の指紋・起動先・差替Source指紋、実HTTP Manifestの意味内容の指紋も併記し、三つの起動を一つの実行成果物と偽らない。さらに旧R0を使った**同一バイナリ・同一B/R/T申告**の負例を`staleSourceControl`に格納する。受理したR1との不一致を検出するのは外部テストであり、Targetの起動拒否機構ではない。Host権限の確認ではない。
 - `web-positive.json`：HTTP正常系のValidation ID/結果4件、Command観測とsynthetic Observation。認証情報、実DBの値・注文個人情報は含めない。
 - `target-negative-launch.json`：テスト専用Go Overlayによる別バイナリの指紋、元fixtureと差替fixtureの指紋、起動先、同じR1申告を記録。通常Targetと同一バイナリとはみなさない。
 - `web-negative-unit-price.json`：実行中の別Webサーバに対して単価0で`not-satisfied`を得て、CommandとObservationが未実行であることを記録。合成データによる負例であり、実DBの独立観測ではない。
 - `target-n11-launch.json`：Observation readだけを失敗させる隔離Go Overlayバイナリと起動プロセス・SHA-256を記録。通常バイナリの性質へ一般化しない。
 - `n11-unobserved-control.json`：Command結果は存在するが合成Observation readが失敗し、HTTP 422・Observation結果なしとなった実サーバの負例を記録。実DBや外部readの障害証跡ではない。
-- `stale-source-control.json`：**同じ正常系Webバイナリ**に旧Source R0を与え、B/R/Tの申告ラベルは正常系と同一のまま実HTTP ManifestでR1新規規則が欠落することを検出した負例。検出主体は外部テストハーネスであり、Targetの起動拒否機能ではない。
 
-この8ファイルは同じtest harness由来の**別段階の限定的なreceipt**であり、第三者の独立署名や外部Authorityの証明ではない。各Web応答のSHA-256とManifestの意味内容のSHA-256を記録し、保存した8ファイルのSHA-256もCIの標準エラー出力に記録する。CIログが残る間は後から回収したファイルとの同一性を確認できるが、**ログ自体がSource・権限・外部効果の独立証明になるわけではない**。GitHub Actionsのワークフローは現時点でこれらのファイルを永続的なArtifactとしてアップロードしていない。必要な永続化はワークフロー管理元の#1119へ引き継ぐ。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。単価0とN11 read失敗の実Web負例は**合成Overlay別ビルドの試験コード**であり、実行前は結果未取得、実行後も外部Authorityや実際の独立DB Observationなどは未解消のため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
 
-**実行済みの範囲**: [PR #1262のGitHub仮統合コミット`b2421640`に対するE1実Web検査](https://github.com/hat47x/tei-platform/actions/runs/38225770264)と[正規全体健全性](https://github.com/hat47x/tei-platform/actions/runs/38225770258)は成功している。Source R0→test-only Accept→R1、3種の合成Web実行（正常、単価0拒否、N11読取失敗）の実測であり、Production DB／独立Observation／人間による受理の実証ではない。その後に変更したManifest照合・CIログ指紋は、この記録の過去のPASS対象に含まれないため、最新PR先端のGitHub Actionsで別途確認する。current mainやbranchが変わればSHAを確認し、異なる版のPASSを流用しない。
+この7ファイルは同じtest harness由来の**別段階の限定的なreceipt**であり、第三者の独立署名や外部Authorityの証明ではない。各Web応答のSHA-256とManifestの意味内容のSHA-256を記録し、保存した7ファイルのSHA-256もCIの標準エラー出力に記録する。旧Source負例は`target-launch.json`の入れ子にまとめ、**8番目の独立JSONファイルとはしない**。#1119のGitHub Actionsは7ファイルを厳格に照合し、SHA-256目録付きの短期（7日）Artifactとして保存する。CIログと保存ファイルを後から照合できるが、**Source・権限・外部効果の独立証明にはならない**。実行失敗時の断片を完全証拠として扱わない。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。単価0とN11 read失敗の実Web負例は**合成Overlay別ビルドの試験コード**であり、実行前は結果未取得、実行後も外部Authorityや実際の独立DB Observationなどは未解消のため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
+
+**実行済みの範囲**: [旧版のE1 Web検査 #38238866937](https://github.com/hat47x/tei-platform/actions/runs/38238866937)と[正規全体健全性 #38238866923](https://github.com/hat47x/tei-platform/actions/runs/38238866923)は、受理後R1を使う3種の合成Web実行と、同じバイナリで旧R0を使う負例を含め成功している。ただし旧版では証跡は8ファイルで、**親#1119による7ファイルのArtifact保存契約が導入される前**の実行である。現在の7ファイルに統合した版については、最新のE1 Actionsで試験・Artifact保存の両方を確認する。実DB／独立Observation／人による受理は未実証であり、過去版のPASSを新しいコミットへ流用しない。
 
 ## v0の対象シナリオと判断境界
 
