@@ -61,12 +61,16 @@ function verifyLiveSourceNavigation(view, workspace, revision) {
   const rootReal = realpathSync(resolve(workspace));
   const parts = location.artifactPath.split("/");
   let path = rootReal;
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     if (!part || part === "." || part === "..")
       throw new Error("INVALID_SOURCE_ARTIFACT_PATH");
     path = join(path, part);
-    if (lstatSync(path).isSymbolicLink())
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink())
       throw new Error("SOURCE_ARTIFACT_SYMLINK_NOT_ALLOWED");
+    if (i < parts.length - 1 ? !stat.isDirectory() : !stat.isFile())
+      throw new Error("SOURCE_ARTIFACT_NOT_REGULAR_FILE");
   }
   const physical = realpathSync(path);
   const rel = relative(rootReal, physical);
