@@ -166,6 +166,42 @@ func TestN11ControlMustBeSeparateFromOtherWebEvidence(t *testing.T) {
 	}
 }
 
+func TestE2N11MustNotRecycleCommandOrIndependentReadEvidence(t *testing.T) {
+	for name, mutate := range map[string]func(*Packet){
+		"command reused": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Physical.CommandReceipt
+		},
+		"independent read reused": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Physical.IndependentReadReceipt
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			mutate(&p)
+			r := Audit(p, h, m)
+			if !has(r, "N11_UNOBSERVED_CONTROL_MISSING") ||
+				r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("E2 used an unrelated Command/Observation as N11: %+v", r)
+			}
+		})
+	}
+}
+
+func TestE2RejectsWhitespaceOnlyCommandOrReadReceipt(t *testing.T) {
+	for name, mutate := range map[string]func(*Packet){
+		"command": func(p *Packet) { p.Physical.CommandReceipt = "  " },
+		"read": func(p *Packet) { p.Physical.IndependentReadReceipt = "  " },
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			mutate(&p)
+			if !has(Audit(p, h, m), "E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED") {
+				t.Fatal("E2 accepted a whitespace-only evidence receipt")
+			}
+		})
+	}
+}
+
 func TestEmptyWebReceiptsDoNotPassE1(t *testing.T) {
 	for name, change := range map[string]func(*Packet){
 		"blank positive": func(p *Packet) { p.Web.PositiveReceipt = "  " },
