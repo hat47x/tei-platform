@@ -50,15 +50,17 @@ type generation struct {
 // Router uses one local mutex as its linearization point for Acquire/Publish/Withdraw.
 // Cross-host updates and current execution Authority remain owned by the host.
 type Router struct {
-	mu      sync.Mutex
-	current *generation
+	mu        sync.Mutex
+	current   *generation
+	last      Binding
+	lastScope *Scope
 }
 
 func NewRouter(first Binding, scope *Scope) (*Router, error) {
 	if !first.valid() || scope == nil {
 		return nil, errors.New("initial binding and scope are required")
 	}
-	return &Router{current: &generation{binding: first, scope: scope, drained: make(chan struct{})}}, nil
+	return &Router{current: &generation{binding: first, scope: scope, drained: make(chan struct{})}, last: first, lastScope: scope}, nil
 }
 
 // Acquire pins a generation for the lifetime of one invocation. The host's current
@@ -124,7 +126,34 @@ func (r *Router) Publish(expected uint64, next Binding, scope *Scope, guard func
 		return nil, fmt.Errorf("publish guard: %w", err)
 	}
 	r.current = &generation{binding: next, scope: scope, drained: make(chan struct{})}
+	r.last, r.lastScope = next, scope
 	return retire(old), nil
+}
+
+// Activate restores a withdrawn route using a strictly newer generation. The
+// caller must have prepared and verified a distinct new instance. Old in-flight
+// requests are still pinned to the withdrawn generation until they release.
+func (r *Router) Activate(expected uint64, next Binding, scope *Scope, guard func(Binding) error) error {
+	if guard == nil {
+		return ErrGuardRequired
+	}
+	if !next.valid() || scope == nil {
+		return errors.New("next binding and scope are required")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.current != nil || r.last.Generation != expected {
+		return ErrStaleGeneration
+	}
+	if next.Generation <= expected || next.ContractID != r.last.ContractID || next.ContractVersion != r.last.ContractVersion || scope == r.lastScope {
+		return errors.New("generation, contract or scope is incompatible")
+	}
+	if err := guard(next); err != nil {
+		return fmt.Errorf("activate guard: %w", err)
+	}
+	r.current = &generation{binding: next, scope: scope, drained: make(chan struct{})}
+	r.last, r.lastScope = next, scope
+	return nil
 }
 
 // Withdraw invalidates all new acquisitions without pretending that in-flight
