@@ -6,8 +6,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"tei/internal/core"
 )
 
 type EvaluationResult struct {
@@ -391,6 +394,32 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		}
 		if strings.TrimSpace(value.String) == "" {
 			return Value{}, fmt.Errorf("assert-nonblank failed: string is empty or whitespace")
+		}
+		return value, nil
+	case OpAssertCanonicalID:
+		value, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if value.Kind != ValueString {
+			return Value{}, fmt.Errorf("assert-canonical-id requires string, got %s", value.Kind)
+		}
+		id, err := core.ParseCanonicalID(value.String)
+		if err != nil || string(id) != value.String {
+			return Value{}, fmt.Errorf("assert-canonical-id failed for %q", value.String)
+		}
+		return value, nil
+	case OpAssertPositiveInt:
+		value, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if value.Kind != ValueNumber {
+			return Value{}, fmt.Errorf("assert-positive-integer requires number, got %s", value.Kind)
+		}
+		n, err := strconv.Atoi(value.Number)
+		if err != nil || n < 1 || strconv.Itoa(n) != value.Number {
+			return Value{}, fmt.Errorf("assert-positive-integer failed for %q", value.Number)
 		}
 		return value, nil
 	case OpCanonicalJSON:
