@@ -222,3 +222,19 @@ SVGレンダラーを変更し、各配置テーブルについてSnapshot内の
 go test -count=1 ./tools/reference-example-slide/...
 go vet ./tools/reference-example-slide/...
 ```
+
+
+## 候補キーの反例検査（#1126）
+
+`ProbeBaseCandidateKeys`は、設計者が明示した`CandidateKeyHypothesis`について、説明用Caseの基底レコードから**同じキー値を持つ異なる二件**を探す、読み取り専用の検査です。複合キーの各成分は既存のFD検査と同じ厳密な値比較を使い、巨大なJSON数値の丸めや記述順序の違いで結果が変化しないようにします。
+
+例えば物理行IDが異なる二つの受注明細が、同じ「受注番号＋明細番号」を持つなら、業務識別子の仮説に対する`contradiction`としてレコードIDの組を示します。`Record.ID`やデータベースのPKが一意だからといって、仮説上の業務キーが一意とは判断しません。
+
+- `collisions`：候補キーの全成分を比較でき、同値と判明した二レコードの組。これが一件でもあれば`contradiction`です。
+- `unusableRecordIds`：欠損・null・比較不能な値（`opaque`型を含む）を持つレコード。これらを勝手に同じ値や別の値とは扱いません。
+- `indeterminatePairs`：既知のキー成分には相違がなく、少なくとも一成分の比較を完了できないレコード対の件数。既知の相違がある対は`distinctPairs`に数えます。
+- 一意に見える具体例、空の例、あるいは`completeTables`による自己申告があっても、結果は`unresolved`に留めます。**候補キーの最小性、必須性、永続的な一意性を証明しません**。
+
+候補キーと関数従属性は関連しますが、検査結果を同一視しません。キー候補が衝突することと、関数従属性の従属項目が異なることは別の反例です。検査は`Catalog`と`Example`の同じモデル版を要求し、入力とTEIの正本を変更しません。
+
+この機能はまだ`ir.World`の正式な業務キー、Source Index、ER図画面、物理PK/FK、Shared Acceptance、Runtimeへ結び付いていません。今後の設計では、これらの意味と変更権限を分離したまま横断参照を実装します。受入条件全体は[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)で管理します。
