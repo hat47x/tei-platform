@@ -46,8 +46,8 @@ func upstreamStore(server *httptest.Server, delegation *fixedDelegation) HTTPSAp
 		ApplicationID: "sui", ActionID: "sui.move",
 		Origin: server.URL, Prefix: "/docs/", Suffix: "/action-commit",
 		Client: server.Client(), Audience: "sui-receiver",
-		Subjects: fixedSubject{id: "human-1"},
-		Tenants: fixedTenant{id: "tenant-1"},
+		Subjects:    fixedSubject{id: "human-1"},
+		Tenants:     fixedTenant{id: "tenant-1"},
 		Delegations: delegation,
 	}
 }
@@ -133,7 +133,9 @@ func TestHTTPSApplicationStoreRejectsUnverifiedDelegationBeforeNetwork(t *testin
 		{"missing tenant", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.TenantID = "" }},
 		{"missing token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = "" }},
 		{"invalid bearer token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = "token@host" }},
-		{"overlong bearer token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = strings.Repeat("x", 8193) }},
+		{"overlong bearer token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) {
+			d.value.BearerToken = strings.Repeat("x", 8193)
+		}},
 		{"typed nil payload", func(_ *HTTPSApplicationStore, _ *fixedDelegation, i *Intent) { i.Payload = (*int)(nil) }},
 		{"oversized Action body", func(_ *HTTPSApplicationStore, _ *fixedDelegation, i *Intent) { i.Payload = strings.Repeat("x", 70<<10) }},
 		{"injected token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) {
@@ -243,7 +245,7 @@ func TestHTTPSApplicationStoreUsesOneContractForIndependentInventoryApp(t *testi
 		Origin: server.URL, Prefix: "/items/", Suffix: "/adjust",
 		Client: server.Client(), Audience: "inventory-receiver",
 		Subjects: fixedSubject{id: "human-1"},
-		Tenants: fixedTenant{id: "tenant-1"},
+		Tenants:  fixedTenant{id: "tenant-1"},
 		Delegations: func() *fixedDelegation {
 			d := validDelegation()
 			d.value.Audience = "inventory-receiver"
