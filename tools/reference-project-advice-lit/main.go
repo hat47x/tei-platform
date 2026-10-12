@@ -27,7 +27,7 @@ var staticFiles = map[string]struct {
 	"/advice-action.mjs":       {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
 	"/order-entry-context.mjs": {"web/order-entry-context.mjs", "text/javascript; charset=utf-8"},
 	"/lit-core.min.js":         {"web/lit-core.min.js", "text/javascript; charset=utf-8"},
-	"/lit-license.txt":        {"web/LIT-LICENSE", "text/plain; charset=utf-8"},
+	"/lit-license.txt":         {"web/LIT-LICENSE", "text/plain; charset=utf-8"},
 }
 
 func handler() http.Handler { return handlerWithContext(nil) }
