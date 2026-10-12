@@ -2,25 +2,25 @@
 
 ## 目的
 
-Gate Bで残っている作業を、設計議論へ戻さず**再現可能なactual Evidence取得**として実行するための正規手順です。
+判定段階Bで残っている作業を、設計の議論に戻さず、**再現可能な実際の検証根拠の取得**として実行するための正式な手順です。
 
-- 何のEvidenceが必要か: [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)
-- Ready / Not Ready判定: [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)
-- Gate B → C引渡し: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- 必要な検証根拠： [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)
+- 合格・不合格の判定： [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)
+- 判定段階BからCへの引継ぎ： [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
 
-**具体的なGate B command、順序、安全条件、停止条件は本書を唯一の実行正本とします。**
+**判定段階Bで使う具体的なコマンド、実行順序、安全条件、停止条件については、この文書を唯一の正式な実行手順とします。**
 
-履歴はGit history / ADR / Repository Issueから追跡し、本書へ旧実行契約を混在させません。
+変更履歴はGitの履歴・ADR・リポジトリのIssueから追跡し、この文書には旧版の実行契約を混在させません。
 
 ## 現行Gate B scope
 
-Gate B Readyへ必須のsource-dependent Evidenceは次の三つです。
+判定段階Bの合格に必須となる、ソースの版に依存した検証根拠は次の三つです。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定論的な検証根拠
+2. #255 生成成果物の再現性に関する検証根拠
+3. #308 実際のPostgreSQL提供実装と一時的な試験用環境の検証根拠
 
-三つを同じclean candidate revision `R`へ揃えます。
+三つとも、変更のない同じ候補版`R`を対象に取得します。
 
 ```text
 #310 ─┐
@@ -34,25 +34,25 @@ Gate B Readiness Audit for R
 Handover Baseline B / revision R
 ```
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、第四Required laneではありません。取得済みならHandoverへverified external Evidenceとして参照し、未完了なら`unresolved`として渡します。
+実際のOracleに関する#214・#371・#376は、外部資産の検証根拠として引き続き重要ですが、第四の必須検証経路ではありません。取得済みであれば検証済みの外部資産に関する根拠として引き継ぎ、未完了であれば`unresolved`として渡します。
 
 ## Evidence natureを相互代替しない
 
-次の読み替えをしません。
+次の検証結果を互いに読み替えません。
 
-- deterministic Repository成功 → actual external asset成功
-- generated artifact一致 → Driver Scenario成功
-- PostgreSQL ephemeral fixture成功 → production既存DB成功
-- PostgreSQL成功 → actual Oracle成功
-- CI green → Product Evidence取得済み
+- リポジトリの決定論的な検証の成功 → 実際の外部資産での成功
+- 生成成果物の一致 → ドライバーのシナリオの成功
+- PostgreSQLの一時的な試験用環境での成功 → 本番の既存データベースでの成功
+- PostgreSQLでの成功 → 実際のOracleでの成功
+- 自動検査の成功 → 製品の検証根拠を取得済み
 
-Business Result / Execution Error / Observation / Diagnosticも相互に読み替えません。
+業務上の結果、実行時エラー、観測、診断結果も互いに読み替えません。
 
 ## 0. 実行環境
 
 ### TEI checkout
 
-専用checkoutのRepository rootから開始します。
+専用に取得したリポジトリのルートディレクトリから始めます。
 
 ```bash
 git status --short --untracked-files=all --ignored=matching
@@ -61,11 +61,11 @@ git rev-parse HEAD
 go version
 ```
 
-tracked / untracked / ignoredを含むlocal stateが一つでも表示された場合は停止します。加えて、`git ls-files -v`の全tracked entryが通常の`H` tagであることを要求し、`h`（assume-unchanged）/ `S`（skip-worktree）/ `s`（両方）その他の非`H` tagがあるcheckoutはEvidenceに使いません。Gate B Evidence専用checkoutはfull checkoutとし、既存差分・ignored file・index flagを機械的に破棄せず、必要なlocal stateをcheckout外へ移すか専用checkoutを作り直してから再確認します。
+追跡対象・追跡対象外・無視対象のローカル状態が一つでも表示されたら停止します。さらに、`git ls-files -v`で追跡対象のすべての項目が通常の`H`であることを求めます。`h`（assume-unchanged）、`S`（skip-worktree）、`s`（両方）、その他の非`H`の印がある作業領域は、検証根拠の取得に使いません。判定段階Bではリポジトリ全体を専用に取得します。既存の差分、無視対象のファイル、索引の設定を機械的に破棄せず、必要なローカルの状態を作業領域の外に移すか、専用の作業領域を作り直してから再確認します。
 
 ### Go environment
 
-final convergenceではrunner自身のcompile前から次を明示します。
+最終確認では、実行器自身をコンパイルする前から次を明示します。
 
 ```text
 GOENV=off
@@ -73,28 +73,28 @@ GOWORK=off
 GOFLAGS=
 ```
 
-外部`go.work`、user-level Go environment file、`-overlay` / `-modfile` / `-tags`等の暗黙flagsをcandidate sourceへ持ち込みません。
+外部の`go.work`、利用者単位のGo環境設定ファイル、`-overlay`・`-modfile`・`-tags`などの暗黙のフラグを、候補版のソースの実行条件に持ち込みません。
 
 ### PostgreSQL
 
-#308には**Evidence専用の空PostgreSQL Database**を用意します。
+#308には、**検証根拠の取得専用となる空のPostgreSQLデータベース**を用意します。
 
 使わないもの:
 
 - `postgres`
 - `template0`
 - `template1`
-- production / shared Database
-- 既存user relationを含むDatabase
-- Event Triggerを含むDatabase
+- 本番用・共用のデータベース
+- 既存の利用者定義の関係を含むデータベース
+- イベントトリガーを含むデータベース
 
 ### DSN secret file
 
-final convergenceではDSN本文をlaunch environmentへ置きません。
+最終確認では、DSNの内容を起動時の環境変数に設定しません。
 
-Repository外のexisting regular fileへ一行DSNだけを保存し、`TEI_TEST_POSTGRES_DSN_FILE`で指定します。
+リポジトリの外にある既存の通常ファイルへ一行のDSNだけを保存し、`TEI_TEST_POSTGRES_DSN_FILE`でそのファイルを指定します。
 
-PR #466以降、runnerは**DSN secret fileをopen / readする前**に、PostgreSQL secretを除いたenvironmentでRepository sourceを観測します。
+PR #466以降、実行器は**DSNを保存した秘密情報ファイルを開いて読み込む前**に、PostgreSQLの秘密情報を含まない環境でリポジトリのソース状態を観測します。
 
 ```text
 HEAD before
@@ -110,41 +110,41 @@ HEAD stable && local source/index state clean
 secret file open / read
 ```
 
-source観測不能、観測中のHEAD drift、tracked / untracked / ignored local state、または非標準Git index stateが存在するcheckoutではsecret loaderへ進みません。このpreflightは後段のcandidate source確認を置き換えません。secret読込後にsourceが変化した場合も、lane開始前の再確認でfail closedします。
+ソースを観測できない場合、観測中にHEADが変化した場合、追跡対象・追跡対象外・無視対象のローカル状態がある場合、またはGitの索引が非標準の状態にある場合は、秘密情報の読込みへ進みません。この事前確認は、後段で行う候補版のソース確認の代わりにはなりません。秘密情報を読み込んだ後にソースが変化した場合も、各検証経路の開始前に再確認して安全側に停止します。
 
-PR #477以降、共有`tools/internal/repositoryevidence`はuntracked fileをambient Git configで隠せないよう、開始時・終了時とも`--untracked-files=all`を明示します。さらに、実行checkoutとは別のrepository / work tree / index等を観測し得るGit identity overrideに加え、`GIT_CONFIG_COUNT` / `GIT_CONFIG_PARAMETERS` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`によるcommand-scope config injectionを大小文字違いも含めfail closedで拒否します。
+PR #477以降、共有の`tools/internal/repositoryevidence`は、追跡対象外のファイルが周辺のGit設定によって隠れないよう、開始時も終了時も`--untracked-files=all`を明示します。さらに、実際に使う作業領域とは別のリポジトリ・作業ツリー・索引などを観測させるGitの識別情報の上書きも拒否します。`GIT_CONFIG_COUNT`・`GIT_CONFIG_PARAMETERS`・`GIT_CONFIG_KEY_*`・`GIT_CONFIG_VALUE_*`によるコマンド単位の設定注入は、大文字と小文字の違いも含めて検出し、安全側に停止します。
 
-PR #479以降は`--ignored=matching`も明示し、`.gitignore` / `.git/info/exclude`等でignoredになっているlocal stateもcandidate `R`外の入力として`WorkingTreeClean=false`にします。ignored Go sourceが通常の`git status --porcelain --untracked-files=all`では見えないまま`go list`へ入るケースが実測されているため、Evidence専用checkoutでは`.idea` / `.vscode` / `.DS_Store` / `.tei` cache等を含むignored local stateも残しません。
+PR #479以降は`--ignored=matching`も明示します。`.gitignore`・`.git/info/exclude`などで無視されるローカルの状態も、候補版`R`には含まれない入力として`WorkingTreeClean=false`にします。無視対象のGoソースが通常の`git status --porcelain --untracked-files=all`には現れないまま`go list`へ渡される事例が実測されているためです。検証専用の作業領域には、`.idea`・`.vscode`・`.DS_Store`・`.tei`のキャッシュなど、無視対象のローカル状態も残しません。
 
-PR #483以降は`git ls-files -v -z`も同じHEAD観測窓の内側で取得します。tracked sourceに`assume-unchanged`または`skip-worktree`を設定すると、変更後sourceがGo入力へ入る一方で通常statusがemptyのままになるケースを実測したためです。全tracked entryが通常の`H` tagの場合だけindex stateをcleanとし、`h` / `S` / `s`、malformed / 想定外の非`H` tag、index state取得失敗はいずれも成功Evidenceへ進めません。sparse checkout由来の`skip-worktree`も許容せず、Evidence専用checkoutはfull checkoutとします。
+PR #483以降は`git ls-files -v -z`も、同じHEADを観測している間に取得します。追跡対象のソースに`assume-unchanged`または`skip-worktree`を設定すると、変更後のソースがGoの入力になる一方で、通常のGitの状態表示は空のままになる事例が実測されているためです。追跡対象の項目がすべて通常の`H`である場合だけ索引に変更がないと判定します。`h`・`S`・`s`、不正な印や想定外の非`H`、索引の取得失敗はいずれも成功の根拠に含めません。部分取得に伴う`skip-worktree`も許容せず、検証専用にはリポジトリ全体を取得します。
 
-PR #465以降、secret fileはsymlink解決後もRepository外のexisting regular fileであることを確認したうえで、**検証済みのresolved pathを一度だけopen**します。
+PR #465以降、秘密情報ファイルはシンボリックリンクの解決後もリポジトリ外にある既存の通常ファイルであることを確認します。そのうえで、**検証済みの解決後のパスを一度だけ開きます**。
 
-- 事前に確認したfile identityとopen済みdescriptorを`os.SameFile`で照合する
-- 元の指定pathを読込前に再解決し、open済みfileと同じexternal file identityであることを確認する
-- DSN exact bytesはそのopen済みdescriptorから読む
-- 読込後にも元pathを再解決し、同じexternal file identityであることを確認する
-- path replacement / symlink target replacement / Repository内target / non-regular fileはfail closedにする
+- 事前に確認したファイルの識別情報と、開いたファイルの記述子を`os.SameFile`で照合する
+- 指定された元のパスを読込み前に再解決し、開いたファイルと同じ外部ファイルを指すことを確認する
+- DSNのバイト列そのものを、開いたファイルの記述子から読み取る
+- 読込み後にも元のパスを再解決し、同じ外部ファイルを指すことを確認する
+- パスの差替え・シンボリックリンクの参照先の差替え・リポジトリ内の参照先・通常ファイル以外は、安全側に停止する
 
-Repository外regular fileへ向くRepository外symlinkは、読込前後とも同一external file identityを指す場合だけ受理します。
+リポジトリ外の通常ファイルを指すリポジトリ外のシンボリックリンクは、読込みの前後で同じ外部ファイルを指す場合に限り受理します。
 
 受理する内容:
 
-- 一行の非empty DSN
-- optionalな末尾単一LF / CRLF
+- 空でない一行のDSN
+- 末尾に任意で付く、一つだけのLFまたはCRLF
 
 拒否する内容:
 
-- empty
-- multiline
-- 残存CR/LF
+- 空の値
+- 複数行の値
+- それ以外に残るCRまたはLF
 - NUL
-- Repository内file
-- symlink解決後にRepository内へ入るfile
-- non-regular file
-- 読込前後でidentityが変化するfile / path
+- リポジトリ内のファイル
+- シンボリックリンクを解決するとリポジトリ内を指すファイル
+- 通常ファイル以外
+- 読込みの前後で識別情報が変わるファイルまたはパス
 
-DSN本文、secret file path、credentialを通常Evidenceへ保存しません。
+DSNの内容、秘密情報ファイルのパス、認証情報は通常の検証根拠に保存しません。
 
 ## 1. Canonical Workspace Validation
 
@@ -160,11 +160,11 @@ go run ./cmd/tei validate -workspace reference/workspace
 ok
 ```
 
-Validation ErrorがあればEvidence取得へ進みません。
+検証エラーがあれば、検証根拠の取得へ進みません。
 
 ## 2. #310 deterministic Repository Evidence事前確認
 
-clean revisionで:
+変更のない版で実行します。
 
 ```bash
 go run ./tools/reference-gate-b-repository-evidence \
@@ -178,18 +178,18 @@ go run ./tools/reference-gate-b-repository-evidence -broad \
   > /tmp/tei-gate-b-repository-evidence.json
 ```
 
-少なくとも次を確認します。
+少なくとも次の項目を確認します。
 
 - `evidenceNature = deterministic-repository`
-- Workspace Validation成功
-- final UI-less Scenario成功
-- external Evidence intake成功
-- repository source-boundary Conformance成功
-- `repositoryRevision`非empty
+- 作業領域の検証が成功
+- 画面を使わない最終シナリオが成功
+- 外部の検証根拠の取込みが成功
+- リポジトリのソースの境界の準拠確認が成功
+- `repositoryRevision`が空でないこと
 - `reproducibleRevision = true`
-- post-run source確認済み
-- 実行前後同一HEAD
-- 実行後clean
+- 実行後のソースを確認済み
+- 実行前後でHEADが同一
+- 実行後に変更がないこと
 
 UI-less Scenario:
 
@@ -205,7 +205,7 @@ Authentication
  -> separate Observation read
 ```
 
-synthetic adapterを含むためactual external Evidenceへ格上げしません。
+合成データを扱う変換器を含むため、実際の外部資産の検証根拠には格上げしません。
 
 ## 3. #255 generated artifact事前確認
 
@@ -214,17 +214,17 @@ go run ./tools/reference-generated-artifact-evidence \
   > /tmp/tei-gate-b-generated-artifact-evidence.json
 ```
 
-このrunnerはcheck-onlyです。
+この実行器は変更を加えず、確認だけを行います。
 
 確認点:
 
-- World / Plugin Lock一致
-- Durable Run一致
-- `repositoryRevision`が対象revision
+- 意味の正本とプラグインの実装固定情報が一致
+- 永続的な実行記録が一致
+- `repositoryRevision`が対象版と一致
 - `reproducibleRevision = true`
-- post-run source確認済み
+- 実行後のソースを確認済み
 
-staleの場合だけ正規generatorを使います。
+生成成果物が古い場合に限り、正式な生成器を使います。
 
 ```bash
 go run ./tools/reference-golden
@@ -232,7 +232,7 @@ go run ./tools/reference-golden
 go run ./tools/reference-durable-run-golden
 ```
 
-修復が必要な場合だけ`-write`を使い、差分を意味上確認してcommitします。
+修復が必要な場合に限って`-write`を使い、差分を意味の観点から確認してコミットします。
 
 ```bash
 go run ./tools/reference-golden -write
@@ -244,12 +244,12 @@ git diff -- reference/order_rollout.durable-run.m0.21.start.json
 
 禁止:
 
-- generated artifactの手編集
-- fingerprintの手置換
-- fixed observed fixtureをgenerated結果へ合わせること
-- secret / temporary Evidenceのcommit
+- 生成成果物を手作業で編集すること
+- 照合値を手作業で置き換えること
+- 観測結果を固定した試験用データを生成結果に合わせて変更すること
+- 秘密情報や一時的な検証根拠をコミットすること
 
-`-write`直後のdirty treeは完了Evidenceではありません。新しいclean revisionでcheck-onlyを再実行します。
+`-write`の直後に作業ツリーへ変更が残っていても、完了の検証根拠にはなりません。変更のない新しい版で、確認だけを再実行します。
 
 ## 4. #308 real PostgreSQL事前確認
 
@@ -268,7 +268,7 @@ go run ./tools/reference-postgres-header-detail-runtime \
 少なくとも次を確認してからfixtureを作ります。
 
 - Repository開始時clean
-- Workspace Validation成功
+- 作業領域の検証が成功
 - PostgreSQL接続成功
 - default Databaseではない
 - user relation 0件
@@ -285,10 +285,10 @@ cleanupではtableをlockし、DB上markerが作成時markerとexact一致した
 
 ### #308 Evidence
 
-同じrunで少なくとも次を確認します。
+同じrunで少なくとも次の項目を確認します。
 
 - `evidenceNature = real-postgres-ephemeral-fixture`
-- `repositoryRevision`が対象revision
+- `repositoryRevision`が対象版と一致
 - `reproducibleRevision = true`
 - fixture前安全条件成立
 - `order_id=1001`で2件
@@ -378,7 +378,7 @@ go run ./tools/reference-gate-b-final-evidence \
 
 ### final runner launch guard
 
-secret read / lane開始までに少なくとも次を確認します。
+secret read / lane開始までに少なくとも次の項目を確認します。
 
 - current working directory = Git Repository root
 - process `GOENV` = exact `off`
