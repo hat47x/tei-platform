@@ -250,3 +250,18 @@ test('E30 invalid coverage and repository identity fail closed',async()=>{
     step('extra','ai-question',{repository:'hat47x/tei-platform'}),
   ])),/unexpected_source_edit/);
 });
+
+
+test('E30 no mutually covered dimension means no comparison, even when both claim complete',async()=>{
+  const audit=await observeE27(root);
+  const left=assessE28(audit,submission([],{
+    complete:true,coverage:{aiQuestions:'untracked',manualConnections:'untracked'},
+  }));
+  const right=assessE28(audit,submission([],{
+    complete:true,scenario:{...scenario,arm:'profile-candidate'},
+    coverage:{aiQuestions:'untracked',manualConnections:'untracked'},
+  }));
+  assert.deepEqual(compareE28(left,right),{
+    status:'not-comparable',reportedDelta:null,verifiedImprovement:null,
+  });
+});
