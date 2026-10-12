@@ -1,6 +1,9 @@
 package transform
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -142,5 +145,64 @@ func TestSourceSizePreflightNeverUnderestimatesCanonicalLiteral(t *testing.T) {
 		if err := sourceSerializedSize(normalized, len(encoded)); err != nil {
 			t.Fatalf("case %d rejected the exact normalized length: %v", seed, err)
 		}
+	}
+}
+
+func TestCanonicalSourceMatchesExistingNormalizedEncoding(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source Source
+	}{
+		{name: "source realizer", source: TransformSourceRealizerV1()},
+		{name: "plugin package", source: PluginPackageSourceV1()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Keep the pre-refactor encoding as an independent byte oracle:
+			// normalization followed by encoding/json, without the new helper.
+			normalized, err := NormalizeSource(tc.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			original, err := json.Marshal(normalized)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := canonicalSourceBytes(tc.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, original) {
+				t.Fatal("canonical bytes changed from the existing encoding")
+			}
+			expectedFingerprint := sha256.Sum256(original)
+			fingerprint, err := SourceFingerprint(tc.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fingerprint != hex.EncodeToString(expectedFingerprint[:]) {
+				t.Fatal("Source fingerprint changed from the existing encoding")
+			}
+			materialized, digest, err := MaterializeSource(tc.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			expectedArtifact := append(append([]byte{}, original...), '\n')
+			artifactSum := sha256.Sum256(expectedArtifact)
+			if !bytes.Equal(materialized, expectedArtifact) ||
+				digest != "sha256:"+hex.EncodeToString(artifactSum[:]) {
+				t.Fatal("materialized Source diverged from the existing byte contract")
+			}
+			value, err := SourceValue(tc.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			expectedValue, err := ParseJSON(original)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !Equal(value, expectedValue) {
+				t.Fatal("Source value differs from the existing normalized JSON projection")
+			}
+		})
 	}
 }
