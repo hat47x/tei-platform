@@ -25,13 +25,26 @@ func TestProtectedHostRejectsPathsNotRepresentableInE1(t *testing.T) {
 			Providers: map[string]string{"corporate": "https://example.invalid/issuer"},
 		}
 	}
-	if _, err := NewHost(newPolicy("/scenario/submit", "order_entry.submit_order"), deps); err != nil {
-		t.Fatalf("canonical POST Action route was refused: %v", err)
+	for _, path := range []string{"/scenario/submit", "/scenario/+@;,$"} {
+		if _, err := NewHost(newPolicy(path, "order_entry.submit_order"), deps); err != nil {
+			t.Fatalf("canonical POST Action route %q was refused: %v", path, err)
+		}
 	}
 	for _, tc := range []struct {
 		name string
 		path string
 	}{
+		{"double quote escaped by net/url", "/scenario/a\"b"},
+		{"single quote escaped by net/url", "/scenario/a'b"},
+		{"exclamation escaped by net/url", "/scenario/a!b"},
+		{"asterisk escaped by net/url", "/scenario/a*b"},
+		{"brackets escaped by net/url", "/scenario/a[b]"},
+		{"braces escaped by net/url", "/scenario/a{b}"},
+		{"angle brackets escaped by net/url", "/scenario/a<b>"},
+		{"pipe escaped by net/url", "/scenario/a|b"},
+		{"caret escaped by net/url", "/scenario/a^b"},
+		{"backtick escaped by net/url", "/scenario/a`b"},
+		{"parenthesis escaped by net/url", "/scenario/a(b)"},
 		{"space in path", "/scenario/sub mit"},
 		{"horizontal tab", "/scenario/sub\tmit"},
 		{"newline", "/scenario/sub\nmit"},
