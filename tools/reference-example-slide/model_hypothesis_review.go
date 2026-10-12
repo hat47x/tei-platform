@@ -43,14 +43,14 @@ type ModelHypothesisIssue struct {
 // ModelHypothesisReview is a separate unverified packet. Existing Review and
 // AnswerHandoff fingerprints are intentionally unchanged by this experiment.
 type ModelHypothesisReview struct {
-	Schema                 string                 `json:"schema"`
-	CaseID                 string                 `json:"caseId"`
-	ModelRevision          string                 `json:"modelRevision"`
-	ExampleFingerprint     string                 `json:"exampleFingerprint"`
-	CatalogFingerprint     string                 `json:"catalogFingerprint"`
-	HypothesesFingerprint  string                 `json:"hypothesesFingerprint"`
-	Fingerprint            string                 `json:"fingerprint"`
-	Issues                 []ModelHypothesisIssue `json:"issues"`
+	Schema                string                 `json:"schema"`
+	CaseID                string                 `json:"caseId"`
+	ModelRevision         string                 `json:"modelRevision"`
+	ExampleFingerprint    string                 `json:"exampleFingerprint"`
+	CatalogFingerprint    string                 `json:"catalogFingerprint"`
+	HypothesesFingerprint string                 `json:"hypothesesFingerprint"`
+	Fingerprint           string                 `json:"fingerprint"`
+	Issues                []ModelHypothesisIssue `json:"issues"`
 }
 
 // ReviewModelHypotheses validates the source presentation and both classes of
@@ -99,13 +99,13 @@ func ReviewModelHypotheses(input Input, proposed ModelHypotheses) (ModelHypothes
 	})
 
 	packet := ModelHypothesisReview{
-		Schema: "tei.reference.example-model-hypothesis-review/v0",
-		CaseID: input.Example.ID,
-		ModelRevision: input.Catalog.Revision,
-		ExampleFingerprint: digestHypothesisJSON(input.Example),
-		CatalogFingerprint: digestHypothesisJSON(input.Catalog),
+		Schema:                "tei.reference.example-model-hypothesis-review/v0",
+		CaseID:                input.Example.ID,
+		ModelRevision:         input.Catalog.Revision,
+		ExampleFingerprint:    digestHypothesisJSON(input.Example),
+		CatalogFingerprint:    digestHypothesisJSON(input.Catalog),
 		HypothesesFingerprint: digestHypothesisJSON(normalized),
-		Issues: make([]ModelHypothesisIssue, 0, len(keys)+len(fds)),
+		Issues:                make([]ModelHypothesisIssue, 0, len(keys)+len(fds)),
 	}
 	placements := map[string][]string{}
 	for _, placement := range input.Diagram.Placements {
@@ -130,12 +130,12 @@ func ReviewModelHypotheses(input Input, proposed ModelHypotheses) (ModelHypothes
 			kind, id, table, reason,
 		})
 		return ModelHypothesisIssue{
-			ID: "model-review-" + identity[len("sha256:"):len("sha256:")+24],
+			ID:   "model-review-" + identity[len("sha256:"):len("sha256:")+24],
 			Kind: kind, HypothesisID: id, Table: table, Stage: "base",
-			FieldIDs: append([]string(nil), fields...),
+			FieldIDs:            append([]string(nil), fields...),
 			DiagramPlacementIDs: append([]string(nil), placements[table]...),
-			FrameIDs: append([]string(nil), baseFrames...),
-			Result: result, Reason: reason,
+			FrameIDs:            append([]string(nil), baseFrames...),
+			Result:              result, Reason: reason,
 			ReviewTarget: "business-identity-proposal",
 			EvidenceNeeded: []string{
 				"independent business identity or functional dependency evidence",
