@@ -159,9 +159,9 @@ AI retrieval accuracyが高い
 
 ### 4.1 定義
 
-品質主張を単独値として保持すると、条件が失われた時点で意味が崩れます。
+品質について単独の数値だけを残すと、測定した条件が分からなくなったときに、その数値が何を示すか判断できません。
 
-そこで、重要なquality claimを次へ結び付ける考え方を**Quality Envelope**と呼びます。
+そこで、品質についての重要な主張を次の情報と結び付ける考え方を、**Quality Envelope（品質の評価条件）**と呼びます。
 
 ```text
 subject
@@ -175,11 +175,11 @@ subject
 + status
 ```
 
-Quality Envelopeは固定schemaではありません。必要な領域で必要な項目だけを持つderivedな監査単位です。
+品質の評価条件は、固定された定義形式ではありません。各領域で必要な項目を持つ、再生成可能な確認の単位です。
 
 ### 4.2 status
 
-少なくとも概念上、次を区別します。
+少なくとも、次の状態を区別します。
 
 - observed / passed
 - observed / failed
@@ -187,7 +187,7 @@ Quality Envelopeは固定schemaではありません。必要な領域で必要�
 - not-applicable
 - not-yet-observed
 
-`not observed`を`passed`へ丸めません。
+`not observed`を`passed`（合格）として扱いません。
 
 ### 4.3 Canonicalではない
 
@@ -199,11 +199,11 @@ Quality Envelopeは:
 - benchmarkからProduct Requirementを自動生成しない
 - Target固有qualityを全Targetの意味へ昇格しない
 
-という境界を持ちます。
+という制約を守ります。
 
 ## 5. Failure topology
 
-TEIでは「error」を一種類へ畳みません。
+TEIでは、異なる性質のエラーや結果を一つにまとめません。
 
 ```text
 Business Result
@@ -214,7 +214,7 @@ Developer Diagnostic
 Operational Telemetry
 ```
 
-これらは相関してよいですが同一ではありません。
+これらの情報を関連付けることはできますが、同じ意味ではありません。
 
 例は次のとおりです。
 
@@ -225,15 +225,15 @@ DB commit success
 span.status = OK
 ```
 
-はいずれも、それ単独ではbusiness successを意味しません。
+のいずれも、それだけでは業務上の成功を意味しません。
 
-Diagnostic / Telemetryには必要なlogical identityだけを持たせ、credential、password、DSN本文、secret、不要なraw business dataを通常記録へ複製しません。
+診断情報や運用記録には、必要な論理上の識別情報だけを記録します。認証情報、パスワード、接続文字列の本文、秘密情報、不要な業務データを通常の記録へ複製しません。
 
 ## 6. Change safety
 
-Change safetyはDatabase migrationだけに限定しません。
+変更時の安全性は、データベースの移行だけの問題ではありません。
 
-対象には少なくとも次があり得ます。
+少なくとも、次のような変更が対象になります。
 
 - Canonical source change
 - Application / Binding change
@@ -253,25 +253,25 @@ candidate
   -> reload / observation / evidence
 ```
 
-外部状態に依存するdestructive operationでは、古いObservationだけを実行許可へ使いません。freshness、revision、identity、ownership等、当該領域で必要なpreconditionをapply直前に確認します。
+外部の実際の状態に依存する破壊的な操作では、古い観測結果だけを実行許可の根拠にしません。情報の新しさ、改訂版、対象の識別、管理主体など、必要な前提条件を適用直前に確認します。
 
-一方、PostgreSQLの具体的な安全機構をそのまま全領域のUniversal Change Protocolへ昇格しません。
+一方、PostgreSQLに固有の安全機構を、すべての領域で使う共通の変更手順へ無条件に広げることもしません。
 
 ## 7. Interaction / accessibility
 
-Target-neutralはlowest-common-denominator UIを意味しません。
+実行先に依存しないことは、すべての実行先で最小限の画面機能だけを提供することではありません。
 
-同じApplication meaningに対し、Targetごとに自然なinteractionを提供しつつ、主要ScenarioのoperabilityをEvidence化します。
+同じアプリケーションの意味を保ちながら、実行先ごとに適した操作方法を提供します。主要な利用場面で実際に操作できることは、検証根拠として残します。
 
-WebではWCAG 2.2等をtestable referenceとして利用できます。Desktop / Mobile / API / MCP / VUIへWeb固有のsemanticsを強制しません。
+WebではWCAG 2.2などを検証可能な参考基準として使えます。ただし、デスクトップ、スマートフォン、API、MCP、音声操作にWeb固有の意味や制約を強制しません。
 
-Visual Fidelity Evidenceだけでoperability / accessibilityを合格にしません。
+画面の見た目に関する検証根拠だけで、操作の成立やアクセシビリティを合格とは判断しません。
 
 ## 8. Performance
 
-RQ-024に従い、一律thresholdを先に固定しません。
+RQ-024に従い、すべてに共通する性能の判定値を先に固定しません。
 
-最初にReferenceでbaselineを測り、少なくとも:
+まず参照例で基準となる値を測り、少なくとも次の条件とともに記録します。
 
 - Target / Host
 - Provider / Runtime
@@ -281,11 +281,11 @@ RQ-024に従い、一律thresholdを先に固定しません。
 
 と一緒に保持します。
 
-利用目的から必要性が説明できた時点でacceptance thresholdを定めます。
+利用目的から必要性を説明できる段階で、受け入れの判定基準を定めます。
 
 ## 9. AI / derived cognition
 
-AI / associative retrieval / derived cognitionでは、candidate qualityとsemantic correctnessを分けます。
+AI、連想に基づく検索、派生した認知支援では、候補の質と意味の正しさを区別します。
 
 ```text
 candidate recall / ranking / latency
@@ -297,15 +297,15 @@ accepted decision
 execution authority
 ```
 
-index、embedding、FlyHash / HDC等のrepresentation、trajectoryはderivedです。削除・再生成してもCanonical Worldが変わらないことを守ります。
+索引、埋め込み表現、FlyHash・HDCなどによる表現、処理の履歴は派生情報です。削除して再生成しても、意味の正本となる全体モデルが変わらないようにします。
 
-認知方式の評価値もQuality Envelopeへ結べますが、model confidenceやsimilarityをSemantic Evidenceへ格上げしません。
+認知方式の評価値も品質の評価条件に結び付けられますが、モデルの確信度や類似度を、意味の正しさを示す検証根拠として扱いません。
 
 ## 10. Operational Telemetry
 
-Operational TelemetryはRuntimeを観測するProjectionです。
+運用時の計測情報は、実行環境を観測して得られる派生情報です。
 
-OpenTelemetry等のsemantic conventionsへ写像できることは相互運用上有用ですが、TEI Canonical modelをtelemetry data modelへ合わせません。
+OpenTelemetryなどの共通の表現規則へ対応付けられることは、他の仕組みとの連携に役立ちます。ただし、TEIの意味の正本を、運用計測のデータ形式に合わせて変更しません。
 
 必要な相関は次のように表します。
 
@@ -315,22 +315,22 @@ TEI logical identity
    -> trace / metric / log
 ```
 
-この方向で、論理的な識別子と運用上の記録を結び付けます。
+この対応関係によって、論理上の識別子と運用時の記録を結び付けます。
 
 ## 11. 外部quality modelの扱い
 
-外部標準は、TEIの第二Requirement正本ではなく抜け漏れ監査・test referenceとして利用します。
+外部の標準は、TEIの要求に対する第二の正本にはしません。抜け漏れの確認や、テストの参考基準として使います。
 
 - ISO/IEC 25010:2023 — quality characteristicの監査
 - WCAG 2.2 — Web interaction / accessibility
 - OpenTelemetry semantic conventions — operational telemetry Projection
 - NIST SSDF 1.1 — secure development / supply-chain process
 
-明示的な採用判断とTEI自身のEvidenceなしに、準拠・認証・完成claimへ格上げしません。
+採用するという明示的な判断と、TEI自身の検証根拠がない限り、標準への準拠、認証の取得、製品の完成を主張しません。
 
 ## 12. Gateとの関係
 
-Quality Architectureは新しいGateを追加しません。
+この製品品質の設計は、新たな判定段階を追加するものではありません。
 
 - Gate B: 既存3 Required Evidenceを増やさない
 - Gate C: Semantic / Functional / Visualの分離を維持する
@@ -338,7 +338,7 @@ Quality Architectureは新しいGateを追加しません。
 - Studio / AI / Second Target: それぞれ同じQuality Envelope原則で比較する
 - production: observability / HA / supply-chain等を必要なEvidenceとともに拡張する
 
-品質の計画や静的レビューを、実環境で取得したEvidenceと同一視しません。
+品質について計画を立てたり、文書やコードを静的に確認したりしても、それを実際の環境で取得した検証根拠と同一視しません。
 
 ## 13. 先に固定しないもの
 
@@ -352,4 +352,4 @@ Quality Architectureは新しいGateを追加しません。
 - generic migration / rollback protocol
 - quality characteristicごとの新しいGate / PAS / Issue群
 
-必要性はReference / Evidenceから決めます。
+これらを固定する必要があるかは、参照例と検証根拠から判断します。
