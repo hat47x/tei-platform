@@ -635,3 +635,95 @@ test('inbound selection rejects non-Step destinations, duplicate IDs and stale c
   assert.equal($('step-info-id').value,'');
   assert.equal($('step-info-to-kind').value,'step');
 });
+
+test('clearing DFD and review pickers revokes pending proposals and disables exports',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+  $('trigger-label').value='新しい参照上の起動説明';
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  assert.equal($('semantic-export').disabled,false);
+
+  await $('review-file').listeners.change({target:{files:[]}});
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.match($('status').textContent,/選択を解除/);
+
+  await input('review-file',approvalReview);
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  await $('procedure-file').listeners.change({target:{files:[]}});
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+
+  await input('procedure-file',approvalProcedure);
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  await $('dfd-file').listeners.change({target:{files:[]}});
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.equal($('export').disabled,true);
+  assert.equal($('diagram').children.length,0);
+  assert.match($('status').textContent,/選択を解除/);
+});
+
+test('DFD replacement invalidates previous proposal before async bytes arrive',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+  $('trigger-label').value='編集中の未受理候補';
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-export').disabled,false);
+
+  const old=Buffer.from(JSON.stringify({...approvalProjection(),procedureId:'stale-read'}));
+  const pending=$('dfd-file').listeners.change({target:{files:[{
+    arrayBuffer:async()=>{
+      await new Promise(resolve=>setTimeout(resolve,35));
+      return old.buffer.slice(old.byteOffset,old.byteOffset+old.length);
+    }
+  }]}});
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.equal($('export').disabled,true);
+  assert.equal($('diagram').children.length,0);
+
+  // A newer selection must win over a late result from the older file.
+  await input('dfd-file',approvalProjection());
+  await pending;
+  assert.equal($('export').disabled,false);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='TR-ORDER'));
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+});
+
+test('clearing a reference file defeats its outstanding asynchronous load',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+
+  const bytes=Buffer.from(JSON.stringify(approvalReview));
+  const pending=$('review-file').listeners.change({target:{files:[{
+    arrayBuffer:async()=>{
+      await new Promise(resolve=>setTimeout(resolve,35));
+      return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length);
+    }
+  }]}});
+  assert.equal($('semantic-propose').disabled,true);
+  await $('review-file').listeners.change({target:{files:[]}});
+  await pending;
+  assert.equal($('semantic-propose').disabled,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.match($('status').textContent,/選択を解除/);
+
+  await input('review-file',approvalReview);
+  assert.equal($('semantic-propose').disabled,false);
+});
