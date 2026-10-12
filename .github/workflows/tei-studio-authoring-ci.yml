@@ -1,0 +1,113 @@
+name: TEI Studio 参照編集の検証
+
+# #1124専用。共通の全体健全性CIは変更せず、正本の変更は一時作業領域だけに限定する。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-studio-authoring-ci.yml
+      - reference/studio-authoring/**
+      - reference/workspace/**
+      - reference/world.json
+      - reference/business-system-design/order-entry-business-procedure.json
+      - tools/reference-shared-acceptance/**
+      - cmd/tei/**
+      - internal/sourceindex/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-studio-authoring-ci.yml
+      - reference/studio-authoring/**
+      - reference/workspace/**
+      - reference/world.json
+      - reference/business-system-design/order-entry-business-procedure.json
+      - tools/reference-shared-acceptance/**
+      - cmd/tei/**
+      - internal/sourceindex/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-studio-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  studio-source-loop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 検証対象をGit履歴とともに取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 実行前の版と作業領域を確認
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+            read -r merged base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merged" = "$GITHUB_SHA"
+            test "$head" = "$PR_HEAD_SHA"
+          fi
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          printf 'verified-commit=%s\n' "$GITHUB_SHA"
+
+      - name: Goの版を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Node.jsの版を固定
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          check-latest: false
+
+      - name: Studioの単体試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --test reference/studio-authoring/bridge.test.mjs
+
+      - name: 一時作業領域で正本受理と再投影を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/tei-studio-1124-e2e.json"
+          TEI_STUDIO_E2E=1 node reference/studio-authoring/e2e.mjs > "$receipt"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .status == "PASS"
+            and .head == $sha
+            and (.checks > 0)
+            and (.cases | length == 2)
+            and ([.cases[] | .humanAcceptance == "not-observed"
+                and .actualProviderResult == "not-observed"
+                and .runtimeObservation == "not-observed"] | all)
+          ' "$receipt" >/dev/null
+          jq '{status, head, checks, caseNames: [.cases[].name], claimLimits}' "$receipt"
+
+      - name: 実行後の版と作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
