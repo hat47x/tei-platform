@@ -1,0 +1,190 @@
+{
+  "evidenceNature": "real-postgres-ephemeral-fixture",
+  "repositoryRevision": "a2679f0d8d52b0562543464cbd32f12c2ebd72c3",
+  "workingTreeClean": true,
+  "reproducibleRevision": true,
+  "postRunRepository": {
+    "checked": true,
+    "repositoryRevision": "a2679f0d8d52b0562543464cbd32f12c2ebd72c3",
+    "revisionStable": true,
+    "workingTreeClean": true
+  },
+  "scope": {
+    "handWrittenOverlay": true,
+    "handWrittenInsertAndQuerySQL": true,
+    "generatedRoundTrip": false,
+    "authority": "none",
+    "commandToPersistenceLinkage": "unverified",
+    "productE2": false,
+    "independenceKind": "connection-pool-separation-in-one-process",
+    "deferredToNextSlice": "S05-and-duplicate-outcome",
+    "providerBindingPoolInjection": "database-identity-and-provider-derived-from-environment-binding; connection-pools-injected-by-tool",
+    "declaredReferenceMissingList": "reference-standard-function-candidates-missing-list-is-static",
+    "parameterBindingOfInsertQuery": "client-side-interpolation-by-pgx-simple-protocol"
+  },
+  "overlay": {
+    "requestTeiSha256Unchanged": true,
+    "validationErrors": 0,
+    "pluginSourceCopiedAtRun": true
+  },
+  "fixtureObject": "public.requests",
+  "fixtureOwnedByTool": true,
+  "fixtureDatabaseSafety": {
+    "guardPassed": true,
+    "databaseIdentityVerified": true,
+    "databaseIdentityPersisted": false,
+    "nonDefaultDatabaseVerified": true,
+    "userRelationsBeforeFixture": 0,
+    "eventTriggersBeforeFixture": 0,
+    "fixtureObjectAbsentBeforeCreate": true
+  },
+  "fixtureCleanupSafety": {
+    "verified": true,
+    "userRelationsAfterCleanup": 0,
+    "eventTriggersAfterCleanup": 0,
+    "fixtureObjectAbsentAfterCleanup": true
+  },
+  "positive": {
+    "preflight": [
+      {
+        "stage": "browse-pattern",
+        "status": "resolved"
+      },
+      {
+        "stage": "command-pattern-binding",
+        "status": "resolved"
+      },
+      {
+        "stage": "environment-database-binding",
+        "status": "resolved"
+      },
+      {
+        "stage": "physical-schema",
+        "status": "resolved"
+      }
+    ],
+    "schemaDiffEmptyAfterFixtureDDL": true,
+    "commandId": "cmd-26d2bdbd1b5a5e5a",
+    "bindingIdentity": "request_log/intake.request.submit",
+    "resultMode": "output",
+    "backendPidCommandPool": 133,
+    "readIdentity": "request_log.list_requests@independent-read-pool",
+    "readEvidenceNature": "real-postgres-ephemeral-fixture",
+    "observedCommandId": "cmd-26d2bdbd1b5a5e5a",
+    "backendPidReadPoolBefore": 134,
+    "backendPidReadPoolAfter": 134,
+    "backendPidsDiffer": true,
+    "rowsRead": 1,
+    "rowMatchesSubmission": true,
+    "mappedSemanticAttributes": [
+      "intake.request.request_id",
+      "intake.request.status",
+      "intake.request.summary"
+    ],
+    "observationStatus": "observed",
+    "databaseIdentitySource": "environment development: request_log.store -\u003e request_store.dev",
+    "databaseProvider": "postgres",
+    "parameterValuesPersisted": false
+  },
+  "n08MissingBinding": {
+    "name": "n08-missing-realize-binding",
+    "preflight": [
+      {
+        "stage": "browse-pattern",
+        "status": "resolved"
+      },
+      {
+        "stage": "command-pattern-binding",
+        "status": "unresolved",
+        "detail": "command Pattern request_log.submit_requestのBindingを解決できません: Application request_logからCapability intake.request.submitのBindingを解決できません: custom Go binding request_log/intake.request.submit is not defined"
+      },
+      {
+        "stage": "environment-database-binding",
+        "status": "resolved"
+      },
+      {
+        "stage": "physical-schema",
+        "status": "resolved"
+      }
+    ],
+    "commandRefusedByGate": true,
+    "driverRefusedDirectInvocation": true,
+    "commandDispatchCount": 0,
+    "rowsAfter": 0,
+    "note": "realizeを除いた作業領域のValidation Error件数は0である。拒否の根拠として検査したのは、DriverのBinding解決と実行ゲートである"
+  },
+  "s02AnalogueRelationAbsent": {
+    "name": "s02-analogue-relation-absent",
+    "preflight": [
+      {
+        "stage": "browse-pattern",
+        "status": "resolved"
+      },
+      {
+        "stage": "command-pattern-binding",
+        "status": "resolved"
+      },
+      {
+        "stage": "environment-database-binding",
+        "status": "resolved"
+      },
+      {
+        "stage": "physical-schema",
+        "status": "unresolved",
+        "detail": "add-column public.requests.request_id; add-column public.requests.status; add-column public.requests.summary; create-table public.requests"
+      }
+    ],
+    "commandRefusedByGate": true,
+    "commandDispatchCount": 0,
+    "relationAbsentAfter": true,
+    "note": "Accepted Sourceの変更を伴うS02ではなく、物理schemaだけの不一致である"
+  },
+  "s02AnalogueColumnMissing": {
+    "name": "s02-analogue-column-missing",
+    "preflight": [
+      {
+        "stage": "browse-pattern",
+        "status": "resolved"
+      },
+      {
+        "stage": "command-pattern-binding",
+        "status": "resolved"
+      },
+      {
+        "stage": "environment-database-binding",
+        "status": "resolved"
+      },
+      {
+        "stage": "physical-schema",
+        "status": "unresolved",
+        "detail": "add-column public.requests.summary"
+      }
+    ],
+    "commandRefusedByGate": true,
+    "commandDispatchCount": 0,
+    "rowsAfter": 0,
+    "note": "Accepted Sourceの変更を伴うS02ではなく、物理schemaだけの不一致である"
+  },
+  "n11ClosedReadPool": {
+    "name": "n11-closed-read-pool",
+    "commandCommitted": true,
+    "commandResultPresent": true,
+    "commandId": "cmd-3fae3324a5d68015",
+    "observationErrorSeen": true,
+    "observationStatus": "read-failed",
+    "rowsCommittedViaIndependentPool": 1,
+    "readFailureMechanism": "読取り用poolを閉じてから実行する",
+    "neverReportedAsObserved": true
+  },
+  "n11DroppedTable": {
+    "name": "n11-dropped-table",
+    "commandCommitted": true,
+    "commandResultPresent": true,
+    "commandId": "cmd-b5757b891fc58ca3",
+    "observationErrorSeen": true,
+    "observationStatus": "read-failed",
+    "rowsCommittedViaIndependentPool": 1,
+    "readFailureMechanism": "所有印を確認してfixture tableを削除してから読む",
+    "neverReportedAsObserved": true
+  }
+}
