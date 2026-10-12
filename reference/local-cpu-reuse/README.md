@@ -59,3 +59,28 @@ Avoid new TEI-LD teacher/model-training branches: #843 is issue-only subject to 
 This is **one real TEI Reference Application**, not two independent cases of business reuse; reading it does not establish Accepted Canonical semantics. Unlike the original synthetic pair comparator, the observer deliberately returns `contract:null`, `acceptance:unknown`, and `source_observation_only`. Its observations must **not** be fed to the candidate comparator as if their Contract ID/fingerprint, effect or IO semantics had already been verified. A TEI-native Accepted Canonical/Contract projection remains a separate integration step.
 
 For review, execute `node --test reference/local-cpu-reuse/observe-tei-pattern.test.mjs` from a complete repository checkout. A local Node run against pinned copies of the same three source contents passed **7/7**, but **exact-PR-head checkout execution has not yet been qualified**. As with the comparator, these tests cannot authorize writes, learning, or standardization.
+
+## Existing Canonical inspect/v0 feature projection (2026-10-13)
+
+[project-inspection-v0.mjs](project-inspection-v0.mjs) is a read-only adapter for the **existing** `internal/operations.InspectSubject` result (`tei.operations.inspect/v0`), not a new TEI parser, CLI registry, or second Canonical model. It was compared with the source-of-truth Go contracts on current `main`: `internal/operations/inspect.go`, `internal/application/model.go`, `internal/semantic/model.go`, and `internal/sourceindex/model.go`.
+
+Supported observation subjects are:
+- `application`: explicit `patterns[].id` membership, semantic namespace and validation references, database aliases. `coverage:membership_only`; **not** the full Application contract.
+- `application-pattern`: declared Pattern kind, Data/Relation/Query/Capability references, optional datasource and `contractQuery` invocation with exact input bindings.
+- `semantic-relation`: target, cardinality, explicit key bindings.
+- `semantic-data`: attribute types, relations, candidate keys, and functional dependencies.
+
+Outputs are `tei.research.inspection-features/v0` with `effect:read-only`, `authority:derived_observation_only`, `acceptance:not_asserted` and `contractConformance:not_verified`. World and Source Index fingerprints are **descriptive snapshot references**; they are not proof of Acceptance, executable rights, issuer authenticity, or approval. Do not derive a shared-implementation contract fingerprint from mere matching IDs. `SourceStatus:indexed` identifies a Source Index reference, not a credential, tenant authorization, or disclosure grant.
+
+`linkApplicationPattern` checks **explicit** Application.Pattern membership, and `linkPatternRelation` checks an exact declared Relation ID, both only within the same observed World **and** Source Index fingerprint. All links return `accepted:false`. Unknown Canonical properties and incomplete observations produce `partial` / `unknown` rather than assuming future schema compatibility. The adapter consumes *already-authorized* Inspection results; access control must be enforced before an application exposes them.
+
+**Important limitation:** `InspectSubject` v0 supports `semantic-data`, `semantic-relation`, `application`, `application-pattern`, `query`, but **not a standalone semantic Capability inspection**. A Pattern's `capability` ID alone cannot reveal its typed input/output/outcome/effect or execution authority. Do not feed this observer's Pattern projection into `comparePair` as an accepted action signature. Extending the existing inspection operation, if justified by a real consumer, belongs to #1165 and the Semantic model owner; do not invent a parallel parser or force-complete Source-based fallback.
+
+The first Reference test inputs are synthetic `SubjectInspection` JSON envelopes shaped according to the actual Go structs; **no actual `tei inspect` process/Go World load was executed for these tests**. Execute in a full repository checkout:
+
+```sh
+node --test reference/local-cpu-reuse/project-inspection-v0.test.mjs
+node --test reference/local-cpu-reuse/project-application-membership.test.mjs
+```
+
+The **16 + 7 = 23** cases passed in an isolated JavaScript evaluator using files fetched back from GitHub (not a Node.js checkout, not an `operations.InspectSubject` integration test). Verified behaviors include nested `contractQuery` preservation, model identity, keys/FDs, unknown properties, wrong subject traces, stale snapshots, and explicit Application membership. An actual real-World fixture, provenance/current-revision recheck, authorized cross-application comparison, semantic-effect comparisons, CPU timing and memory metrics remain **NOT_PROVEN**.
