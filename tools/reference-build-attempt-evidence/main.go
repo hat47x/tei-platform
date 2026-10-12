@@ -88,12 +88,12 @@ type buildGraphAttemptState struct {
 	BlockedBy                  []string `json:"blockedBy,omitempty"`
 }
 
+// fakeFailure holds untrusted diagnostic hints that must not enter public Evidence.
 type fakeFailure struct {
 	Phase             string
 	FailureClass      string
 	ExitCode          *int
 	Signal            string
-	// Untrusted diagnostic text must never be copied into public Evidence.
 	RawDiagnosticHint string
 	Stdout            []byte
 	Stderr            []byte
