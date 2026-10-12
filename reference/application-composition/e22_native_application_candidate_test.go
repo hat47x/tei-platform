@@ -144,7 +144,7 @@ func TestE22ResolvedCandidateCannotAuthorizeNativeCommit(t *testing.T) {
 	_, err = host.Commit(context.Background(), actionboundary.Intent{
 		ApplicationID: "sui", ResourceID: "doc-1", ActionID: "sui.move",
 		ExpectedRevision: "v1",
-		Payload: actionboundary.MovePayload{CardID: "card-1", X: 3, Y: 4},
+		Payload:          actionboundary.MovePayload{CardID: "card-1", X: 3, Y: 4},
 	})
 	if !errors.Is(err, actionboundary.ErrDenied) || store.writes != 0 {
 		t.Fatalf("Candidate Source granted unauthorized write: %v (writes=%d)", err, store.writes)
