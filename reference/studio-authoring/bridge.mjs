@@ -152,6 +152,45 @@ function sourceLens(sourceIndex, kind, id) {
   };
 }
 
+// The caller supplies bytes read from the workspace and their SHA-256.
+// This validates the Source Index locator at a specific read, but cannot
+// lock Source or grant authoring rights. Source Acceptance still rechecks R0.
+export function verifySourceAnchor(navigation, bytes, fingerprint) {
+  if (navigation?.status !== "source-index-backed" ||
+      !(bytes instanceof Uint8Array) || !REVISION.test(fingerprint))
+    throw new Error("SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID");
+  if (navigation.artifactFingerprint !== fingerprint)
+    throw new Error("SOURCE_ARTIFACT_FINGERPRINT_STALE");
+  const start = navigation.range?.start, end = navigation.range?.end;
+  const valid = p => p && Number.isInteger(p.offset) && p.offset >= 0 &&
+    Number.isInteger(p.line) && p.line >= 1 &&
+    Number.isInteger(p.column) && p.column >= 1;
+  if (!valid(start) || !valid(end) || end.offset < start.offset ||
+      end.offset > bytes.length)
+    throw new Error("SOURCE_ANCHOR_RANGE_INVALID");
+  let line = 1, column = 1, startMatches = false, endMatches = false;
+  for (let offset = 0; offset <= end.offset; offset++) {
+    if (offset === start.offset)
+      startMatches = start.line === line && start.column === column;
+    if (offset === end.offset) {
+      endMatches = end.line === line && end.column === column;
+      break;
+    }
+    if (bytes[offset] === 10) { line++; column = 1; }
+    else column++;
+  }
+  if (!startMatches || !endMatches)
+    throw new Error("SOURCE_ANCHOR_POSITION_STALE");
+  return {
+    ...navigation,
+    byteVerification: {
+      status: "verified-at-read", fingerprint,
+      range: "offset-and-line-column-matched"
+    },
+    caveat: "Source bytes and range matched at this read only; no filesystem lock, semantic Acceptance, or write authority. Shared Acceptance must re-check the revision."
+  };
+}
+
 // Consume #1125's read-only Business DFD JSON projection if explicitly supplied.
 // This adapter intentionally does not parse Business Procedure fixtures or claim
 // that their reference-local Step IDs belong to accepted Canonical meaning.
