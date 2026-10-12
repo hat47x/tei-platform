@@ -12,6 +12,8 @@ on:
       - 'reference/composition-kernel/testdata/external-consumer/**'
       - 'tools/reference-composition-process-bridge/**'
       - 'plugins/reference-process-executor/**'
+      - 'plugins/reference-order-quote/**'
+      - 'tools/reference-capability-transport/**'
       - 'plugins/reference-bundle-alpha/**'
       - 'plugins/reference-bundle-beta/**'
       - 'tools/reference-plugin-bundle/**'
@@ -27,6 +29,8 @@ on:
       - 'reference/composition-kernel/testdata/external-consumer/**'
       - 'tools/reference-composition-process-bridge/**'
       - 'plugins/reference-process-executor/**'
+      - 'plugins/reference-order-quote/**'
+      - 'tools/reference-capability-transport/**'
       - 'plugins/reference-bundle-alpha/**'
       - 'plugins/reference-bundle-beta/**'
       - 'tools/reference-plugin-bundle/**'
@@ -92,6 +96,29 @@ jobs:
           gofmt -d plugins/reference-bundle-alpha/*.go plugins/reference-bundle-beta/*.go tools/reference-plugin-bundle/*.go
           test -z "$(gofmt -l plugins/reference-bundle-alpha/*.go plugins/reference-bundle-beta/*.go tools/reference-plugin-bundle/*.go)"
           bash tools/check-reference-plugin-bundle-isolation.sh
+
+      - name: 独立した業務プラグインの実計算と契約境界を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l plugins/reference-order-quote/*.go tools/reference-capability-transport/*.go)"
+          go test -count=1 -timeout 120s -run '^TestIndependentBusinessQuoteOverExistingGenericProcessTransport        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -d tools/reference-composition-process-bridge/*.go
+          test -z "$(gofmt -l tools/reference-composition-process-bridge/*.go)"
+          go test -count=1 -timeout 90s ./tools/reference-composition-process-bridge
+          go vet ./tools/reference-composition-process-bridge
+
+      - name: 実行後の変更のない作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+ ./tools/reference-capability-transport
+          go vet ./tools/reference-capability-transport
 
       - name: 実プロセスプラグインとの接続を検証
         shell: bash
