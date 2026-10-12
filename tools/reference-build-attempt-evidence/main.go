@@ -17,7 +17,7 @@ import (
 const (
 	attemptEvidenceSchema = "tei.reference.build-attempt-evidence/v0"
 	attemptHistorySchema  = "tei.reference.build-attempt-history/v1"
-	referenceSchema       = "tei.reference.build-attempt-evidence-run/v0"
+	referenceSchema       = "tei.reference.build-attempt-evidence-run/v1"
 
 	attemptOutcomeFailed = "failed"
 
