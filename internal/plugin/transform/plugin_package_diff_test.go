@@ -3,9 +3,6 @@ package transform_test
 import (
 	"bytes"
 	"encoding/json"
-	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 
 	"tei/internal/core"
@@ -103,19 +100,7 @@ func valueFromGoJSON(t *testing.T, value any) transform.Value {
 
 func referencePluginPackageTransformSource(t *testing.T) transform.Source {
 	t.Helper()
-	_, currentFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve current test file")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", ".."))
-	raw, err := os.ReadFile(filepath.Join(root, "reference", "plugin-self-build", "builder-sources", "plugin-package-v1.transform.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	source, err := transform.ParseSourceJSON(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
+	source, _ := referenceTransformSource(t, "plugin-package-v1.transform.json")
 	return source
 }
 
