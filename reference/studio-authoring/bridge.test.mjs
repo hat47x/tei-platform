@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts, navigateReferenceBusinessStep } from "./bridge.mjs";
+import { projectWorld, candidateFromEdit, indexWorld, bindReviewArtifacts, navigateReferenceBusinessStep, verifySourceAnchor } from "./bridge.mjs";
 
 const revision = "sha256:" + "a".repeat(64);
 function fixture() {
@@ -492,6 +492,43 @@ test("local selection never expands into a global dense matrix", () => {
   const result = projectWorld(world, revision, "data:sales.order_line");
   assert.ok(result.views.er.edges.length <= 1);
   assert.ok(result.views.function.items.length <= 1);
+});
+
+test("source anchor verification validates exact bytes and line/column at read", () => {
+  const bytes = Uint8Array.from([97, 10, 98, 99, 10]); // a\\nbc\\n
+  const fingerprint = "sha256:" + "e".repeat(64);
+  const navigation = {
+    status: "source-index-backed",
+    artifactFingerprint: fingerprint,
+    range: {
+      start: { offset: 2, line: 2, column: 1 },
+      end: { offset: 4, line: 2, column: 3 }
+    }
+  };
+  const verified = verifySourceAnchor(navigation, bytes, fingerprint);
+  assert.equal(verified.status, "source-index-backed");
+  assert.equal(verified.byteVerification.status, "verified-at-read");
+  assert.equal(verified.byteVerification.range, "offset-and-line-column-matched");
+  assert.ok(verified.caveat.includes("not a lock") ||
+    verified.caveat.includes("no filesystem lock"));
+  assert.equal(navigation.byteVerification, undefined,
+    "the read-only navigation input must not be modified");
+  assert.throws(() => verifySourceAnchor(navigation, bytes,
+    "sha256:" + "f".repeat(64)), /SOURCE_ARTIFACT_FINGERPRINT_STALE/);
+  const staleOffset = structuredClone(navigation);
+  staleOffset.range.end.offset = 6;
+  assert.throws(() => verifySourceAnchor(staleOffset, bytes, fingerprint),
+    /SOURCE_ANCHOR_RANGE_INVALID/);
+  const staleLine = structuredClone(navigation);
+  staleLine.range.start.line = 1;
+  assert.throws(() => verifySourceAnchor(staleLine, bytes, fingerprint),
+    /SOURCE_ANCHOR_POSITION_STALE/);
+  const staleEnd = structuredClone(navigation);
+  staleEnd.range.end.column = 4;
+  assert.throws(() => verifySourceAnchor(staleEnd, bytes, fingerprint),
+    /SOURCE_ANCHOR_POSITION_STALE/);
+  assert.throws(() => verifySourceAnchor(navigation, "untrusted text", fingerprint),
+    /SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID/);
 });
 
 test("business-local step navigation returns typed World focus without canonical authority", () => {
