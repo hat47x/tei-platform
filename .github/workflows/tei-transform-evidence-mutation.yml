@@ -76,8 +76,13 @@ jobs:
           path: |
             ${{ runner.temp }}/tei-transform-mutation/mutation-report.json
             ${{ runner.temp }}/tei-transform-mutation/baseline/engine-build-evidence.json
+            ${{ runner.temp }}/tei-transform-mutation/baseline/stage2-engine-lock.json
+            ${{ runner.temp }}/tei-transform-mutation/baseline/stage2-host-registration.json
             ${{ runner.temp }}/tei-transform-mutation/baseline/self-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/engine-build-evidence.json
+            ${{ runner.temp }}/tei-transform-mutation/mutation/stage2-engine-lock.json
+            ${{ runner.temp }}/tei-transform-mutation/mutation/stage2-host-registration.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/self-build-evidence.json
+            ${{ runner.temp }}/tei-transform-mutation/mutation/host-denial.txt
           if-no-files-found: error
           retention-days: 7
