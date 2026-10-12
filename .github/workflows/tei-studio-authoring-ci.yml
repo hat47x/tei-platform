@@ -113,6 +113,50 @@ jobs:
           ' "$receipt" >/dev/null
           jq '{schema, head, fixture, result, observed, authority, qualification}' "$receipt"
 
+      - name: 既存実Chrome試験と同じ固定Playwrightライブラリを作業領域外へ準備
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome || command -v google-chrome-stable
+          npm install --prefix "$RUNNER_TEMP/tei-studio-playwright" \
+            --no-audit --no-fund --ignore-scripts --no-save --no-package-lock \
+            playwright-core@1.56.1
+          test -s "$RUNNER_TEMP/tei-studio-playwright/node_modules/playwright-core/index.mjs"
+
+      - name: 実ChromeでStudio編集フォームを送信してGo共通審査へ渡す
+        shell: bash
+        run: |
+          set -euo pipefail
+          shots="$RUNNER_TEMP/tei-studio-real-browser"
+          node reference/studio-authoring/real-browser.mjs \
+            "$RUNNER_TEMP/tei-studio-playwright" "$shots"
+          test -s "$shots/er.png"
+          test -s "$shots/table.png"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.studio-real-browser-receipt/v0"
+            and .head == $sha
+            and .browser == "real-chrome-headless"
+            and .sourceRevisionAfter == .revision
+            and (.cases | length == 2)
+            and ([.cases[] | .revisionBound == true
+              and .realChromeDOMEvent == true
+              and .cspScriptExecuted == true
+              and .offlineNetworkRequests == 0
+              and .accepted == false
+              and .sourceChanged == false] | all)
+            and .authority.humanAcceptance == "not-observed"
+            and .authority.acceptedBusiness == "not-established"
+          ' "$shots/real-browser-receipt.json" >/dev/null
+
+      - name: 実Chromeのオフライン編集画面証跡を添付
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: studio-edit-chrome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-studio-real-browser/
+          retention-days: 7
+          if-no-files-found: error
+
       - name: 一時作業領域で正本受理と再投影を検証
         shell: bash
         run: |
