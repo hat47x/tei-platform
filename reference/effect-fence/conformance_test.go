@@ -26,8 +26,8 @@ func TestAtomicConformanceMemoryStore(t *testing.T) {
 	results := CheckAtomicConformance(context.Background(), func() (ConformanceFixture, error) {
 		return &memoryConformanceFixture{NewMemoryStore()}, nil
 	})
-	if len(results) != 6 {
-		t.Fatalf("expected six checks, got %+v", results)
+	if len(results) != 7 {
+		t.Fatalf("expected seven checks, got %+v", results)
 	}
 	for _, result := range results {
 		if !result.Passed {
