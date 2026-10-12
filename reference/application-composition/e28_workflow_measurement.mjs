@@ -127,7 +127,8 @@ export function compareE28(existing, candidate) {
         existing.submittedCounts[name]>=0 &&
         Number.isSafeInteger(candidate.submittedCounts[name]) &&
         candidate.submittedCounts[name]>=0) ||
-      ((existing.claimedCoveredCounts===null)!==(candidate.claimedCoveredCounts===null))) {
+      ((existing.claimedCoveredCounts===null || existing.claimedCoveredCounts===undefined) !==
+       (candidate.claimedCoveredCounts===null || candidate.claimedCoveredCounts===undefined))) {
     return {status:'not-comparable', reportedDelta:null, verifiedImprovement:null};
   }
   if (existing.claimedCoveredCounts && candidate.claimedCoveredCounts) {
@@ -136,6 +137,9 @@ export function compareE28(existing, candidate) {
       return [name,Number.isSafeInteger(a) && a>=0 && Number.isSafeInteger(b) && b>=0 ?
         b-a : null];
     }));
+    if (!Object.values(reportedDelta).some(delta=>delta!==null)) {
+      return {status:'not-comparable', reportedDelta:null, verifiedImprovement:null};
+    }
     return {status:'reported-coverage-only-not-verified', reportedDelta,
       verifiedImprovement:null};
   }
