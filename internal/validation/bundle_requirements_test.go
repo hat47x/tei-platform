@@ -54,3 +54,38 @@ func TestBundleWorldValidationAllowsSharedRequirementsAcrossBundles(t *testing.T
 		}
 	}
 }
+
+func TestBundleWorldValidationDuplicateDiagnosticIsOrderIndependent(t *testing.T) {
+	first := []plugin.Requirement{
+		{Plugin: cid("tei.z"), CompatibleMajor: 1},
+		{Plugin: cid("tei.a"), CompatibleMajor: 2},
+		{Plugin: cid("tei.z"), CompatibleMajor: 2},
+		{Plugin: cid("tei.a"), CompatibleMajor: 1},
+	}
+	second := []plugin.Requirement{first[3], first[2], first[1], first[0]}
+	var expected string
+	for _, requirements := range [][]plugin.Requirement{first, second} {
+		w := referenceWorld()
+		w.Bundles = []plugin.Bundle{{
+			ID: cid("tei.bundle"), Version: "1.0.0", Plugins: requirements,
+		}}
+		var message string
+		for _, diagnostic := range validation.Validate(w) {
+			if diagnostic.Code != "DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT" {
+				continue
+			}
+			if message != "" {
+				t.Fatal("duplicate diagnostic must occur once per invalid bundle")
+			}
+			message = diagnostic.Message
+		}
+		if !strings.Contains(message, "plugin requirement tei.a appears more than once") {
+			t.Fatalf("expected stable lowest duplicate ID, got %q", message)
+		}
+		if expected == "" {
+			expected = message
+		} else if message != expected {
+			t.Fatalf("order changed the diagnostic: first=%q second=%q", expected, message)
+		}
+	}
+}
