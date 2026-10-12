@@ -6,9 +6,25 @@ import (
 	"testing"
 )
 
+// 試験用の束縛により、Adapter固有の準備トークンを共通の型へ強制しない。
+type memoryConformanceFixture struct{ *MemoryStore }
+
+func (f *memoryConformanceFixture) PrepareForTest(ctx context.Context, r Request) (any, Result, error) {
+	p, result, err := f.MemoryStore.Prepare(ctx, r)
+	return p, result, err
+}
+
+func (f *memoryConformanceFixture) CommitForTest(ctx context.Context, token any) (Result, error) {
+	p, ok := token.(Permit)
+	if !ok {
+		return Result{Disposition: Denied, Reason: "invalid-test-token"}, nil
+	}
+	return f.MemoryStore.Commit(ctx, p)
+}
+
 func TestAtomicConformanceMemoryStore(t *testing.T) {
 	results := CheckAtomicConformance(context.Background(), func() (ConformanceFixture, error) {
-		return NewMemoryStore(), nil
+		return &memoryConformanceFixture{NewMemoryStore()}, nil
 	})
 	if len(results) != 6 {
 		t.Fatalf("expected six checks, got %+v", results)
@@ -21,7 +37,7 @@ func TestAtomicConformanceMemoryStore(t *testing.T) {
 }
 
 // 認可版の変更を無視する不正なAdapterが、機械的に検出されることを確認する。
-type staleAuthorityFixture struct{ *MemoryStore }
+type staleAuthorityFixture struct{ *memoryConformanceFixture }
 
 func (f *staleAuthorityFixture) SetAuthority(s Scope, version uint64, allowed bool) error {
 	if version > 1 {
@@ -32,7 +48,7 @@ func (f *staleAuthorityFixture) SetAuthority(s Scope, version uint64, allowed bo
 
 func TestAtomicConformanceRejectsStaleAuthority(t *testing.T) {
 	results := CheckAtomicConformance(context.Background(), func() (ConformanceFixture, error) {
-		return &staleAuthorityFixture{MemoryStore: NewMemoryStore()}, nil
+		return &staleAuthorityFixture{&memoryConformanceFixture{NewMemoryStore()}}, nil
 	})
 	fails := map[string]bool{}
 	for _, result := range results {
@@ -54,7 +70,7 @@ func TestAtomicConformanceRequiresIsolatedFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	results := CheckAtomicConformance(context.Background(), func() (ConformanceFixture, error) {
-		return shared, nil
+		return &memoryConformanceFixture{shared}, nil
 	})
 	for _, r := range results {
 		if r.Passed || !strings.Contains(r.Detail, "隔離された空") {
