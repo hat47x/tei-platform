@@ -81,5 +81,9 @@ if [[ "$(git rev-parse HEAD)" != "$source_sha" ||
   echo "checkout changed during build" >&2
   exit 1
 fi
-mv -- "$scratch/derived" "$parent/$name"
+# A competing process may have created the destination after preflight.
+# Publish as one complete directory, atomically and without replacement.
+# Never fall back to plain mv: it can nest into a new directory or symlink.
+python3 tools/reference-first-web-two-unit-e1/publish_no_clobber.py \
+  "$scratch/derived" "$parent/$name"
 cat "$parent/$name/measurement.json"
