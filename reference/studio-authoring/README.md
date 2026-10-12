@@ -113,6 +113,23 @@ Receiptは**一時作業領域で実際に試験を実行した記録**です。
 現行Source Indexは#1120の`scope + kind + ID`契約と同じスコープ情報を提供しません。Source Indexの参照自身、または`subject`内へ呼出し側が`scope`を付けてもC0解決済みと扱わず、`sourceNavigation.status=unresolved`にします。パスの重複区切りや`.`区間、開始・終了位置の形式不備も索引の段階で拒否し、ソース位置を誤って確定しません。複数scopeを持つモデルを安全に編集するには、#1120のtyped Resolverを同一revisionへ接続する必要があります。単一scopeの現Reference向けflat `data:ID` 形式を、汎用のC0表現として固定しません。
 
 
+### ブラウザでの編集候補作成（正本は未変更）
+
+`edit-form` は、Workspaceで受理済みのWorldからDataまたはAttributeを選び、オフラインの編集候補作成画面を生成します。ERのRelation追加と、表の正値Validation追加に対応し、後者は意味名前空間の利用を明示したアプリについてだけ、利用宣言も一つの候補にできます。
+
+```sh
+node reference/studio-authoring/cli.mjs edit-form \
+  -workspace "$scratch/workspace" \
+  -focus data:sales.order_line > "$scratch/relation-editor.html"
+node reference/studio-authoring/cli.mjs edit-form \
+  -workspace "$scratch/workspace" \
+  -focus attribute:sales.order_line.unit_price > "$scratch/validation-editor.html"
+```
+
+生成HTMLをブラウザで開き、候補の識別子・変更意図・対象などを入力し、「候補JSONを生成」を選択してください。JSONはブラウザ内の読取り専用領域に出力されるので、そのままJSONファイルへ保存し、`review-edit -workspace ... -edit-file ... -format html`へ渡して審査します。**HTMLは正本へ書き込まず、承認を代行しません**。外部通信は禁止し、ブラウザスクリプトは内容指紋で固定します。
+
+編集JSONの`expectedModelRevision`には**画面生成時の版**が必ず含まれます。後続のStudio CLIが異なる版を取得した場合は`STUDIO_EDIT_STALE_MODEL_REVISION`で拒否し、最新状態へ暗黙に編集意図を移しません。従来の手書きJSONでは省略可能ですが、画面から作る候補では必須です。ブラウザ内の検査は入力補助であり、型検査・Source所有権・変更影響・受理可否はすべて既存Shared Acceptanceに委ねます。最初のフォームで扱えない意味変更は、無理にDerivedを更新せず既存のSource契約を用います。
+
 ### 読み取り専用のHTML画面
 
 既存のJSONと同じ投影・審査結果を、独立した静的HTMLとして確認できます。ブラウザを使っても正本を直接編集する機構は追加しません。HTML内の表・ER・機能・業務は同じWorldの参照用表示です。参照用業務手順は受理済み正本ではなく、提案の審査も人間による受理ではありません。
