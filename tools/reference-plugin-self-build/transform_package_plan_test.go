@@ -114,13 +114,12 @@ func TestTransformSourceMutationPropagatesToBuildPlanAndEvidence(t *testing.T) {
 			parameters["runtime-engine-target"] != engine.Target {
 			t.Fatal("Runtime Engine identity was lost from Build Plan parameters")
 		}
-		evidence := transformBootstrapEvidence{
-			RuntimeEngineSourceDigest: sourceDigest,
-			RuntimeEngine: engine,
-			RuntimeEngineFingerprint: engineFP,
-			PackageBuildPlan: plan,
-			PackageBuildPlanFingerprint: planFP,
-		}
+		var evidence transformBootstrapEvidence
+		evidence.RuntimeEngineSourceDigest = sourceDigest
+		evidence.RuntimeEngine = engine
+		evidence.RuntimeEngineFingerprint = engineFP
+		evidence.PackageBuildPlan = plan
+		evidence.PackageBuildPlanFingerprint = planFP
 		return result{sourceDigest, engine, engineFP, plan, planFP, evidence}
 	}
 
