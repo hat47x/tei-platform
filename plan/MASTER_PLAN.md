@@ -1,26 +1,26 @@
-# TEI開発全体の計画
+# TEIの開発全体計画
 
 ## 目的
 
-この文書は、TEI（鼎／テイ）の製品価値と要求を開発上の作業領域（Workstream）へ分け、現在優先する作業と並行して進められる作業を示す上位計画です。
+この文書では、TEI（鼎／テイ）の製品価値と要求を開発上の作業領域に分け、優先して進める作業と並行して進められる作業を示します。
 
 期限は設けません。優先順位は実装量ではなく、**TEIの中心価値に関する不確実性をどれだけ減らせるか**で見直します。
 
-この文書では判断履歴を積み重ねず、現在の計画の基準を保持します。過去の判断経緯はGitの履歴、ADR、リポジトリのIssueからたどります。
+この文書には過去の判断を積み重ねず、現在の計画の基準を記します。以前の判断とその理由は、Gitの履歴、設計判断記録、課題からたどります。
 
-関連文書:
+関連文書は次のとおりです。
 
 - `product/`
 - `requirements/`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/MILESTONES.md`
-- `plan/research/TECH_RESEARCH_INTEGRATION_2026-10.md` — 直近リサーチをProduct Value / existing Issueへ割り当てる現在の統合計画
-- `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` — 成熟した外部Reference ModelをPlugin-firstで転写し、TEIの表現力と暗黙前提をpressureする横断Evidence Gate
+- `plan/research/TECH_RESEARCH_INTEGRATION_2026-10.md` ：直近の調査結果を製品価値や既存の課題に結び付ける統合計画
+- `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` ：成熟した外部の参照モデルをプラグイン中心で移し替え、TEIの表現力や暗黙の前提を横断的に検証する計画
 
 ## 現在の主線
 
-v1 Reference Application `order_entry`を中心に、現在は次の順で進めます。
+第1版の参照アプリケーション`order_entry`を中心に、現在は次の順で進めます。
 
 ```text
 Product Value / Requirements
@@ -47,35 +47,35 @@ Gate C — PAS-04 Evidence — Ready
         └──────── Second Target pressure-test lane — PAS-04 / RQ-024
 ```
 
-Gate C後は、Authoring・Knowledgeと第二Targetの作業を、互いの完成を待たずに進めます。第一Targetから得た差分とEvidenceを共有しながら並行できます。
+判定段階Cの後は、定義の記述と知識の活用、第二の実行先の検証を、互いの完成を待たずに進めます。最初の実行先で確認した違いと検証根拠を共有しながら、並行して作業できます。
 
-## 現在のGate / Handover
+## 現在の判定段階と引継ぎ
 
-### Gate A — Application上の意味をDriverへ渡せる
+### 判定段階A：アプリケーションの意味を実行・検証環境へ渡せる
 
 **Ready**です。
 
-Application Pattern、Datasource、Validation、Authentication / Authorization、Capability Binding、Business Result / Execution Error等を、UI固有定義なしでDriverへ接続できる意味基線が成立しています。
+アプリケーションの構成パターン、データソース、検証、認証・認可、機能と実装の対応付け、業務上の結果と実行エラーなどを、画面固有の定義なしで実行・検証環境へ渡す意味の基準が成立しています。
 
-### Gate B — UIなしで主要Scenarioを再現できる
+### 判定段階B：画面なしで主要な業務シナリオを再現できる
 
-**Ready**です（2026-09-19再監査、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
+**Ready**です（2026-09-19の再監査、候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
 
-Required Evidenceは次の三つで、同じclean candidate revision `R`のsame-runとして成立しています。
+必要な検証根拠は次の三つです。いずれも、変更のない同一の候補版`R`を使った一度の実行で成立しています。
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-`#387` final convergenceとsame-run child artifact auditを含むReady判定の正本は `GATE_B_READINESS_AUDIT.md` です。
+`#387`での最終確認と、同じ実行で行った子成果物の監査を含む`Ready`判定の正本は`GATE_B_READINESS_AUDIT.md`です。
 
-PostgreSQL以外の実Database Provider Evidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了範囲はHandoverへ`unresolved`として渡します。
+PostgreSQL以外の実際のデータベースで得る検証根拠も重要です。最初の参照事例ではOracleに関する#214、#371、#376が該当します。ただし、これらは判定段階Bにおける四つ目の必須条件には含めません。未完了の範囲は、`unresolved`として引き継ぎます。
 
-### Handover Baseline — Gate B → Gate C
+### 引継ぎの基準：判定段階BからCへ
 
-引継ぎ（Handover）は、新しい番号付きGateではありません。
+引継ぎは、新しい番号付きの判定段階ではありません。
 
-Gate B Readyのcandidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`は、Handover Baseline `B`として固定済みです。個別記録の正本は `GATE_B_TO_C_HANDOVER_BASELINE_B.md` です。
+判定段階Bで`Ready`となった候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`は、引継ぎの基準`B`として固定済みです。正式な記録は`GATE_B_TO_C_HANDOVER_BASELINE_B.md`にあります。
 
 ```text
 Gate B Ready for R
@@ -84,15 +84,15 @@ Handover Baseline B
   baselineRepositoryRevision = R
 ```
 
-引継ぎの記録（Handover record）は、Canonicalの第二の正本ではありません。
+引継ぎの記録は、意味の第二の正本ではありません。
 
-### Gate C — 第一Targetとの差をEvidenceで説明できる
+### 判定段階C：最初の実行先で生じる違いを検証根拠で説明できる
 
 **Ready**です（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。Gate B / Handoverを起点に、第一Web Target build `T1`のSemantic / Functional / Visual Evidenceが同一provenanceでそろいました（[GATE_C_READINESS_AUDIT.md](gate/GATE_C_READINESS_AUDIT.md)）。Readyの非主張（production-ready、actual external Commandの成功、Target-neutral Presentation taxonomyの完成、第二Targetが不要になったこと、Visual Fidelityの人による承認）は同auditのとおりです。
 
-第一Web TargetはHandover Baseline `B` / revision `R`を意味baselineとして利用します。
+最初のWeb向け実行先では、引継ぎの基準`B`と対象版`R`を意味の基準として使います。
 
-Web実装のリビジョンは`T1`として別に追跡します。
+Web向け実装の版は`T1`として別に追跡します。
 
 ```text
 Baseline meaning B at R
@@ -102,21 +102,21 @@ First Web Target build T1
 Semantic / Functional / Visual Evidence
 ```
 
-`T1`でbaseline subjectの意味を変更した場合、黙って継続せず新しいHandover Baselineを発行します。
+`T1`で基準となる対象の意味を変更した場合は、そのまま作業を続けず、新しい引継ぎの基準を発行します。
 
-Gate Cでは次を分離します。
+判定段階Cでは次の三つを分けます。
 
 1. Semantic Conformance
 2. Interaction / Functional Evidence
 3. Visual Fidelity Evidence
 
-画像評価者、VLM、スクリーンショットの評価点だけを根拠に、SemanticやFunctionalを合格にはしません。
+画像を評価するAIやスクリーンショットの評価点だけを根拠に、意味や機能の検証に合格したとは判断しません。
 
-## Workstream A: Product Baseline / Traceability
+## 作業領域A：製品の基準と追跡可能性
 
 ### 目的
 
-Product Value、Requirements、PAS、ADR、Plan Issue、Reference、Evidence、Gateを一続きに追跡できる状態を維持します。
+製品価値、要求、製品受入シナリオ、設計判断記録、計画上の課題、参照事例、検証根拠、判定段階を一続きに追跡できる状態を維持します。
 
 ### 重点
 
@@ -136,11 +136,11 @@ Gate / Product claim
 
 PASは単なる網羅率の指標ではなく、要求と実証を結び付ける追跡単位として扱います。
 
-## Workstream B: Semantic / Authoring / Knowledge
+## 作業領域B：意味の定義・記述・知識
 
 ### 目的
 
-業務上の意味を定義元のソースから再構成し、複数のProjectionから同じCanonicalな意味を扱える基盤を整えます。
+定義元のソースから業務上の意味を再構成し、複数の表示・編集形式で同じ正本の意味を扱える基盤を整えます。
 
 ### 対象
 
@@ -151,13 +151,13 @@ PASは単なる網羅率の指標ではなく、要求と実証を結び付け�
 - provenance / revision
 - reusable semantic knowledge exploration
 
-Application Patternはv1ではApplication所有です。第一ReferenceだけからSemantic Kernelの標準Catalogへ持ち上げません。
+第1版では、アプリケーションの構成パターンはアプリケーション側で管理します。最初の参照事例だけを根拠に、意味を扱う中核の標準的な概念一覧へ移しません。
 
-AI向けの知識、検索インデックス、埋め込み表現、処理の履歴などは派生情報として扱い、Canonicalの第二の正本にはしません。
+AI向けの知識、検索索引、埋め込み表現、処理の履歴などは派生情報として扱い、意味の第二の正本にはしません。
 
-Gate C後のread-only探索は`ISSUE-000047`でPAS-06として実証します。
+判定段階Cの後に行う読み取り専用の探索は、`ISSUE-000047`でPAS-06として実証します。
 
-## Workstream C: Application / Legacy Compatibility
+## 作業領域C：アプリケーションと既存資産の互換性
 
 ### 目的
 
@@ -174,29 +174,29 @@ Gate C後のread-only探索は`ISSUE-000047`でPAS-06として実証します。
 - Capability Mapping
 - incremental replacement
 
-actual external assetは、観測事実とCanonical contractを分離します。
+実際の外部資産については、観測した事実と正本に定めた契約を区別します。
 
 実際には観測していない物理オブジェクト、列、SQL、データ型を推測で補いません。
 
 成熟したReference Modelの転写は`ISSUE-000078` / `REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`で扱います。転写で必要になった業務・設計概念は原則Semantic Extension / Pluginとして表し、X-TEA固有schemaをCoreへ直接追加しません。外部model本体をpublic fixtureへコピーせず、exact input digest、Source locator、mapping、loss / unresolved、Conformance Evidenceから再現します。
 
-## Workstream D: Database / Provider Lifecycle
+## 作業領域D：データベースと提供実装の変更管理
 
 ### 目的
 
-Desired / Actual / Diff / Migration / Provider境界を、Provider固有知識をCoreへ漏らさず成立させます。
+期待する状態、実際の状態、差分、移行、提供実装の各境界を、提供実装に固有の知識を中核へ持ち込まずに成立させます。
 
-PostgreSQLは深い実証Providerとして利用します。
+PostgreSQLは、詳細な検証に用いる提供実装として利用します。
 
 異なるProviderは、既存資産との互換性と、特定Providerに依存しない境界を厳しく検証するために利用します。Oracleは第一Referenceの`master_data`が持つ既存資産としての最初の具体例であり、要件がOracleに限られるわけではありません。MySQL、SQL Server等を加えるかは、具体的な既存資産や利用条件が現れた時点で決め、Oracleと同じEvidence契約（物理事実の観測、read-only境界、driver assembly、actual read）で検証します。
 
-actual Oracle Evidence未完了をGate B blockerへ戻しません。
+Oracleの実環境での検証が未完了であることを理由に、判定段階Bを未達成の状態へ戻しません。
 
-## Workstream E: Driver / Execution
+## 作業領域E：設計の実行と検証
 
 ### 目的
 
-設計内容をUI実装前に動かし、Application meaningを検証できるDriverを維持します。
+画面を実装する前に設計内容を動かし、アプリケーションの意味を検証できる実行・検証環境を維持します。
 
 ### 重点
 
@@ -208,23 +208,23 @@ actual Oracle Evidence未完了をGate B blockerへ戻しません。
 - separate Observation read
 - deterministic Scenario
 
-Driverは本番Runtimeを簡略化したものではなく、設計を検証するための基準です。
+設計用の実行・検証環境は、本番の実行基盤を簡略化したものではありません。設計を検証するための基準です。
 
-## Workstream F: Target-neutral Presentation
+## 作業領域F：実行先に依存しない表示
 
 ### 目的
 
-同じCanonical Applicationを複数TargetへProjectionし、共通意味とTarget差をEvidenceから分離します。
+正本となる同じアプリケーションを複数の実行先へ展開し、共通する意味と実行先ごとの違いを検証根拠で区別します。
 
-### 第一Target
+### 最初の実行先
 
-第一Web TargetはPAS-04の最初の実証です。
+最初のWeb向け実行先は、PAS-04の初めての実証対象です。
 
 Gate C EvidenceではHandover baseline `R`とWeb build `T1`を分けて追跡します。
 
-### 第二Target
+### 二つ目の実行先
 
-Gate C後、`ISSUE-000026`で第二Targetを選びます。
+判定段階Cの後に、`ISSUE-000026`で二つ目の実行先を選びます。
 
 比較軸:
 
@@ -238,23 +238,23 @@ Gate C後、`ISSUE-000026`で第二Targetを選びます。
 - Semantic / Functional / Visual Evidence
 - RQ-024 performance measurement
 
-第一Targetだけで、Targetに依存しない分類体系が完成したとは判断しません。
+最初の実行先だけを根拠に、実行先に依存しない分類体系が完成したとは判断しません。
 
-### Studio HostとApplication Targetを分ける
+### 編集環境の実行基盤とアプリケーションの実行先を分ける
 
-Studio / Editorがdeveloper-facing desktop hostとしてWailsを利用しても、それを第二Application Target Evidenceへ数えません。
+編集環境が開発者用デスクトップ基盤としてWailsを利用しても、それを二つ目のアプリケーション実行先の検証根拠には数えません。
 
-Generated Wails Desktop Application Targetを採用する場合は、別のTargetとしてSemantic / Functional / Visual Evidenceを取得します。
+Wailsを使って生成したデスクトップアプリケーションを採用する場合は、別の実行先として、意味・機能・表示に関する検証根拠を取得します。
 
-## Workstream G: Studio / Developer Experience
+## 作業領域G：編集環境と開発体験
 
 ### 目的
 
-厳格な意味モデルを、高密度かつ安全に扱えるdeveloper-facing Studioへ接続します。
+厳格な意味モデルを、開発者が多くの情報を安全に扱える編集環境へ接続します。
 
 ### 原則
 
-StudioはCanonicalを所有しません。
+編集環境は意味の正本を管理する主体ではありません。
 
 ```text
 Studio / file-native / CLI / AI
@@ -266,9 +266,9 @@ authoritative source
 Canonical meaning
 ```
 
-Gate C後の最初の実証は`ISSUE-000046`です。
+判定段階Cの後の最初の実証は`ISSUE-000046`で行います。
 
-最小loop:
+最小限の操作の流れは次のとおりです。
 
 ```text
 Select
@@ -284,9 +284,9 @@ Shared Acceptance Boundary
 reload / Conformance
 ```
 
-手動で記述するStable IDの必須化や、Studio専用のAcceptance engineは導入しません。
+人が記述する安定識別子を必須にはせず、編集環境専用の受理機構も導入しません。
 
-## Workstream H: AI-assisted Engineering
+## 作業領域H：AIによる開発支援
 
 ### 目的
 
@@ -294,20 +294,20 @@ AIを大量の成果物を生成するだけの仕組みとせず、既存知識
 
 ### 二段階
 
-1. `ISSUE-000047` — Human / AI共通のknowledge-first Semantic exploration（PAS-06）
-2. `ISSUE-000027` — AI Proposal / Shared Acceptance Boundary（PAS-01 / PAS-06）
+1. `ISSUE-000047`：人とAIが共通に使える、既存知識を優先する意味情報の探索（PAS-06）
+2. `ISSUE-000027`：AIによる変更提案と共通の受理境界（PAS-01、PAS-06）
 
-AI ProposalはCanonical authorityではありません。
+AIによる提案は、意味の正本を変更する権限そのものではありません。
 
-search ranking、similarity、model confidenceもSemantic Evidenceではありません。
+検索順位、類似度、モデルの確信度も、意味の正しさを示す検証根拠ではありません。
 
-autonomyとauthorityを分け、raw AI tool callをCapability / Permission modelの代替にはしません。
+AIの自律性と実行権限を分け、AIが道具を直接呼び出したことを機能や利用許可の仕組みの代わりにはしません。
 
-## Workstream I: Ecosystem / Production Boundary
+## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
 
-Coreと外部実行基盤の境界を、実利用に耐える形へ段階的に広げます。
+中核と外部の実行基盤を分ける境界を、実際の利用に耐えるよう段階的に拡充します。
 
 ### 対象
 
@@ -322,7 +322,7 @@ Coreと外部実行基盤の境界を、実利用に耐える形へ段階的に�
 
 外部のオーケストレーターやエージェント基盤が提供する汎用機能を、TEI固有の価値として再実装しません。
 
-## Workstream間の依存
+## 作業領域間の依存関係
 
 ```text
 A Product Baseline
