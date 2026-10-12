@@ -336,43 +336,43 @@ ISSUE-000040専用の影響分析機構は作りません。
 
 ## 6. Stop conditions
 
-workstream中に次が発生した場合、次stepへ自動進行しない。
+作業中に次の状況が発生した場合、次の段階へ自動的には進みません。
 
 ### Candidate unknown
 
-必要Evidenceを追加取得する。
+必要な検証根拠を追加で取得します。
 
-originの選択を推測して埋めない。
+元の定義にある選択内容を推測して補いません。
 
 ### Candidate incompatible
 
-別候補またはdestination設計変更へ戻る。
+別の候補の検討、または移行先の設計変更に戻ります。
 
-Semantic identity自体まで不用意にincompatibleへ広げない。
+意味上の識別情報そのものまで、安易に互換性なしと判定しません。
 
 ### New schema required
 
-既存grammarで表現不能な具体的Evidenceを記録する。
+既存の文法では表現できないことを示す具体的な検証根拠を記録します。
 
-先にKnowledge Package / inheritance / overrideを作らない。
+先回りして知識パッケージ・継承・上書きの機構を作りません。
 
 ### Authorization unresolved
 
-read routeが分かっても実行authorityを推測しない。
+読取りの経路が分かっても、実行権限があるとは推測しません。
 
 ### Environment unresolved
 
-Application acceptanceからBindingを自動生成しない。
+アプリケーションが受理されたことだけを根拠に、対応付けを自動生成しません。
 
 ### Target semantic divergence
 
-Target実装都合でCanonical meaningを黙って変えない。
+実行先の実装上の都合で、正本上の意味を暗黙のうちに変更しません。
 
-必要ならbaseline / accepted source変更へ戻る。
+必要であれば基準版や受理済みのソースの変更手順へ戻ります。
 
 ## 7. AI Builder handoff
 
-AI Builderへ渡すcontextは少なくとも次を含む。
+AIによる構築支援へ渡す文脈には、少なくとも次の情報を含めます。
 
 ```text
 Gate C entry
@@ -401,11 +401,11 @@ implementation
   forbidden shortcuts
 ```
 
-AIへRepository全体を無差別に読ませることを標準入口にしない。
+AIにリポジトリ全体を無差別に読ませる方法を、標準の入口にはしません。
 
 ## 8. Human review handoff
 
-Human Reviewではgenerated codeより先に、
+人によるレビューでは、生成コードより先に次の情報を提示します。
 
 - intent
 - shared authority
@@ -416,75 +416,75 @@ Human Reviewではgenerated codeより先に、
 - exact source refs
 - Acceptance status
 
-を提示する。
+これらを提示します。
 
 ```text
 less code reading
   != less Evidence
 ```
 
-を維持する。
+この関係を維持します。
 
 ## 9. Commit granularity
 
-ISSUE-000040 workstream内では、意味の境界に沿ってmainへcommitする。
+ISSUE-000040の作業では、意味上の境界ごとにmainへコミットします。
 
-推奨単位:
+推奨する単位：
 
-1. Gate C entry / qualification Evidence
-2. portability / destination decision
-3. composition Proposal
-4. accepted source
-5. Environment Binding
-6. Driver / Target Evidence
-7. change propagation Evidence
+1. 判定段階Cの開始記録と適格性の検証根拠
+2. 移植可能性と移行先での判断
+3. 構成案
+4. 受理済みソース
+5. 環境の対応付け
+6. ドライバーと実行先の検証根拠
+7. 変更の伝播に関する検証根拠
 
-「ファイルごと」ではなく「検証可能な意味単位」でcommitする。
+ファイル単位ではなく、検証可能な意味の単位でコミットします。
 
-一つの意味変更を複数の作業系列へ分けず、並行sessionがある場合はcurrent mainと関連Source / Evidenceを直前に再確認する。
+一つの意味の変更を複数の作業系列に分けません。セッションが並行する場合は、現在のmainと関連するソース・検証根拠を変更直前に再確認します。
 
 ## 10. main commit completion
 
-各意味単位のcommitは、最低限次のうち該当する情報を正本文書またはEvidenceへ残す。
+意味の単位ごとのコミットでは、少なくとも次のうち該当する情報を正本文書または検証根拠に残します。
 
-- Gate C entry Evidence
-- shared / local / Environment boundary
-- reused Canonical identities
-- destination-owned identities
-- unknown / incompatible
-- Acceptance Evidence
-- reload / Validation Evidence
-- Driver / Target Evidence
-- propagation Evidence
-- 追加schemaを導入したか / 見送ったか、その理由
+- 判定段階Cの開始時の検証根拠
+- 共有・移行先・環境のそれぞれが持つ権限の境界
+- 再利用した正本上の識別情報
+- 移行先が所有する識別情報
+- 未確認事項や互換性がない項目
+- 受理に関する検証根拠
+- 再読込みと検証に関する根拠
+- ドライバーと実行先の検証根拠
+- 変更の伝播に関する検証根拠
+- スキーマの追加を実施したか見送ったか、その理由
 
-branch / PRを完了条件にはしない。コードを変更した場合はpush前のRepository health checkを必須とし、文書だけの場合もリンク・状態・Gate / Evidence claimを確認する。
+ブランチやPRの状態を完了条件にはしません。コードを変更した場合はpush前にリポジトリの健全性確認を必須とし、文書だけの場合もリンク・状態・判定段階と検証根拠に関する主張を確認します。
 
 ## 11. 現在状態
 
-2026-09-19、第一Web TargetはGate C Readyに到達した。
+2026年9月19日、最初のウェブ実行先は判定段階CのReadyに到達しました。
 
-actual entry:
+実際の開始記録：
 
 - `B / R / T = B / e5231839a5dcc62cce1181a2731fcb7c70d16736 / 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
 
-S0は完了した。
+S0は完了しています。
 
-S1 / S2は、
+S1・S2については、
 
 - `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
 
-でSource-definedまで進んだ。
+この試験により、ソースで定義された状態まで進みました。
 
 
 
-2026-09-21時点で、revised executable pressure、multi-layer Shared Acceptance実装、actual `reference/workspace` read-only Preview、別生成AIによる独立レビュー（`review-clear-with-conditions`）まで完了した。required pre-Acceptance fixは無い。残るS5停止条件はexact `c18ae...`に対するexplicit human Acceptance decisionだけである。
+2026年9月21日時点で、改訂後の実行可能な検証、多層の共有受理機構の実装、実際の`reference/workspace`を使った読取り専用のプレビュー、別の生成AIによる独立レビュー（`review-clear-with-conditions`）まで完了しました。受理前に必須となる修正はありません。S5に残る停止条件は、正確な`c18ae...`に対する**人による明示的な受理の判断**だけです。
 
-Acceptance実行契約:
+受理手続きの実行契約：
 
-Acceptance成功後のS6 Source / reload / validation契約:
+受理に成功した後のS6で使うソース・再読込み・検証の契約：
 
-一般的な作業継続指示をAcceptance witnessへ読み替えない。
+一般的な作業継続の指示を、受理を証明する記録として扱いません。
 
 ## 12. Start Packet完了条件
 
