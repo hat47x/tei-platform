@@ -14,20 +14,20 @@ const explicitContractSchema = "tei.explicit-pattern-contracts/v0"
 // ExplicitContractReport records only references resolved from declared Source.
 // It never claims runtime permission, provider access or observed effects.
 type ExplicitContractReport struct {
-	SchemaVersion    string                  `json:"schemaVersion"`
-	Authority        string                  `json:"authority"`
-	Application      core.CanonicalID        `json:"application"`
-	Pattern          core.CanonicalID        `json:"pattern"`
-	Kind             application.PatternKind `json:"kind"`
-	DeclaredData     core.CanonicalID        `json:"declaredData,omitempty"`
-	Query            core.CanonicalID        `json:"query,omitempty"`
-	Datasource       core.LocalName          `json:"datasource,omitempty"`
-	TargetDatabase   core.CanonicalID        `json:"targetDatabase,omitempty"`
-	Capability       core.CanonicalID        `json:"capability,omitempty"`
-	BindingIdentity  string                  `json:"bindingIdentity,omitempty"`
-	Resolved         []string                `json:"resolved"`
-	Unverified       []string                `json:"unverified"`
-	Executable       bool                    `json:"executable"`
+	SchemaVersion   string                  `json:"schemaVersion"`
+	Authority       string                  `json:"authority"`
+	Application     core.CanonicalID        `json:"application"`
+	Pattern         core.CanonicalID        `json:"pattern"`
+	Kind            application.PatternKind `json:"kind"`
+	DeclaredData    core.CanonicalID        `json:"declaredData,omitempty"`
+	Query           core.CanonicalID        `json:"query,omitempty"`
+	Datasource      core.LocalName          `json:"datasource,omitempty"`
+	TargetDatabase  core.CanonicalID        `json:"targetDatabase,omitempty"`
+	Capability      core.CanonicalID        `json:"capability,omitempty"`
+	BindingIdentity string                  `json:"bindingIdentity,omitempty"`
+	Resolved        []string                `json:"resolved"`
+	Unverified      []string                `json:"unverified"`
+	Executable      bool                    `json:"executable"`
 }
 
 // InspectExplicitPattern reuses the Driver's authoritative declared-reference
