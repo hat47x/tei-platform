@@ -65,10 +65,23 @@ function render() {
     const p=positions[i];
     const g=svg('g',{transform:`translate(${p.x},${p.y})`,class:'node '+(node.manual?'manual':'')+(node.kind==='party'?' external':'')+(state.selected===key(node.kind,node.id)?' selected':'')});
     g.dataset.kind=node.kind;g.dataset.id=node.id;
+    g.setAttribute('tabindex','0');
+    g.setAttribute('role','button');
+    g.setAttribute('aria-label',node.kind+': '+node.label+' (参照のみ)');
     g.append(svg('rect',{width:190,height:56,rx:8}));
     const label=svg('text',{x:10,y:22});label.textContent=(node.label||'').slice(0,27);g.append(label);
     const note=svg('text',{x:10,y:43});note.textContent=node.kind;g.append(note);
     g.addEventListener('pointerdown',ev=>{if(ev.button!==0)return; selectNode(node);dragStart(ev,node);});
+    g.addEventListener('keydown',ev=>{
+      if(ev.key==='Enter'||ev.key===' '){
+        ev.preventDefault();selectNode(node);return;
+      }
+      const delta={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[ev.key];
+      if(!delta)return;
+      ev.preventDefault();selectNode(node);
+      const step=ev.shiftKey?1:20;
+      proposeNodeMove(node,p.x+delta[0]*step,p.y+delta[1]*step);
+    });
     diagram.append(g);
   });
   $('export').disabled=!state.layout;
@@ -90,6 +103,9 @@ async function selectNode(node){
     $('details').append(navigation);
   }
   render();
+  // Recreating the SVG should not strand keyboard focus on a detached node.
+  const focused=[...$('diagram').children].find(el=>el.dataset?.kind===node.kind&&el.dataset?.id===node.id);
+  focused?.focus?.({preventScroll:true});
 }
 let dragging=null;
 function dragStart(event,node){
@@ -97,27 +113,35 @@ function dragStart(event,node){
   const p=positionMap().get(key(node.kind,node.id));
   const index=nodes().findIndex(n=>n.kind===node.kind&&n.id===node.id);
   const position=p||{x:40+(index%4)*260,y:50+Math.floor(index/4)*115};
-  dragging={node,startX:event.clientX,startY:event.clientY,position,rect};
+  dragging={node,startX:event.clientX,startY:event.clientY,position,rect,pointerId:event.pointerId};
   $('diagram').setPointerCapture(event.pointerId);
 }
-$('diagram').addEventListener('pointerup',async event=>{
-  if(!dragging||!state.dfd||!state.layout)return;
-  const {node,startX,startY,position,rect}=dragging;dragging=null;
-  const view=$('diagram').viewBox.baseVal;
-  const dx=(event.clientX-startX)*(view.width/rect.width);
-  const dy=(event.clientY-startY)*(view.height/rect.height);
-  if(Math.abs(dx)+Math.abs(dy)<3)return;
+function proposeNodeMove(node,x,y){
+  if(!state.dfd||!state.layout)return;
   const edit={schema:EDIT_SCHEMA,id:'move-'+node.kind+'-'+node.id,origin:'studio',
     intent:'図の表示位置だけを調整する',procedureId:state.dfd.procedureId,
     projectionSHA256:state.dfdHash,baseLayoutSHA256:state.layoutHash,
     operation:{kind:'move-node',nodeKind:node.kind,nodeId:node.id,
-      x:Math.round(position.x+dx),y:Math.round(position.y+dy)}};
+      x:Math.round(x),y:Math.round(y)}};
   try{
     state.pending=previewLayoutMove(state.dfd,state.dfdHash,state.layout,state.layoutHash,edit);
     $('pending').textContent=JSON.stringify(state.pending.operation,null,2);
     $('preview').hidden=false;$('apply').disabled=false;
     status('配置変更の候補ができました。正本は変更していません。');
-  }catch(e){state.pending=null;status('配置の変更を拒否しました: '+e.message,true)}
+  }catch(e){state.pending=null;$('preview').hidden=true;$('apply').disabled=true;status('配置の変更を拒否しました: '+e.message,true)}
+}
+$('diagram').addEventListener('pointercancel',event=>{
+  if(dragging && (event.pointerId===undefined||event.pointerId===dragging.pointerId))dragging=null;
+});
+$('diagram').addEventListener('pointerup',event=>{
+  if(!dragging||!state.dfd||!state.layout)return;
+  if(event.pointerId!==undefined && dragging.pointerId!==undefined && event.pointerId!==dragging.pointerId)return;
+  const {node,startX,startY,position,rect}=dragging;dragging=null;
+  const view=$('diagram').viewBox.baseVal;
+  const dx=(event.clientX-startX)*(view.width/rect.width);
+  const dy=(event.clientY-startY)*(view.height/rect.height);
+  if(Math.abs(dx)+Math.abs(dy)<3)return;
+  proposeNodeMove(node,position.x+dx,position.y+dy);
 });
 $('apply').addEventListener('click',async()=>{
   if(!state.pending)return;
