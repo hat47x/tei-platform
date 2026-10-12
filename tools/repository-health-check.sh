@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Read-only repository health check.
+# リポジトリ全体を読み取り専用で検証する。
 #
-# GitHub Actions is currently used for manual diagnostics only (see the section on
-# GitHub Actions in CONTRIBUTING.md), so nothing checks a change before it reaches
-# main. This script is the local replacement for the checks CI would run.
+# GitHub ActionsのPR・main検証と、ローカルの任意診断の双方から使う。
+# 統合の判断は変更範囲に応じた検証で行い、この全体検証の全項目合格を
+# 一律の統合条件とはしない（AGENTS.mdとCONTRIBUTING.mdを参照）。
 #
 # Usage:
 #   tools/repository-health-check.sh          # gofmt, go vet, go test, workspace validate
