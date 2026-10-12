@@ -94,3 +94,40 @@ func TestProposalCurrentRejectsForgedAndPartialSnapshots(t *testing.T) {
 		t.Fatal("nil Registry accepted proposal")
 	}
 }
+
+func TestProposalCurrentConcurrentRegistryUpdatesRemainReadOnly(t *testing.T) {
+	r := NewRegistry()
+	contract := Contract{ID: "test.fresh.concurrent", Version: "1", Shape: "shape"}
+	initial, err := r.Apply(0, []Provider{{ID: "source", Scope: "tenant-a", Offers: contract}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal := r.InspectWiringSet([]WiringRequirement{{Contract: contract, Scope: "tenant-a"}})
+	if !r.ProposalCurrent(proposal) {
+		t.Fatal("initial proposal unexpectedly stale")
+	}
+	done := make(chan error, 1)
+	go func() {
+		revision := initial.Revision
+		for i := 0; i < 100; i++ {
+			state, err := r.Apply(revision, []Provider{{
+				ID: "unrelated", Scope: "tenant-b",
+				Offers: Contract{ID: "test.other", Version: "1", Shape: "other"},
+			}}, nil)
+			if err != nil {
+				done <- err
+				return
+			}
+			revision = state.Revision
+		}
+		done <- nil
+	}()
+	for i := 0; i < 100; i++ {
+		if !r.ProposalCurrent(proposal) {
+			t.Fatal("independent registry change invalidated stable proposal")
+		}
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
