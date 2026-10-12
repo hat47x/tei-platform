@@ -149,11 +149,17 @@ async function main() {
     "-format", "json"]);
   assert.equal(review.previewAcceptable, true);
   assert.match(review.reviewFingerprint, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(review.candidateFingerprint, preview.candidateFingerprint,
+    "review must refer to the previewed candidate");
   assert.deepEqual(changed(beforeFiles, files(workspace)), [], "preview/review wrote source");
   // A deliberate test-harness decision, NEVER a human approval.
   const decision = acceptance(["accept", "-workspace", workspace, "-candidate", proposal,
     "-expected-review-fingerprint", review.reviewFingerprint]);
   assert.equal(decision.decision, "accepted");
+  assert.equal(decision.candidateFingerprint, preview.candidateFingerprint,
+    "accepted decision must refer to the previewed candidate");
+  assert.equal(decision.reviewBinding?.fingerprint, review.reviewFingerprint,
+    "accepted decision must link to the displayed review");
   assert.equal(decision.sourceChanged, true);
   const r1 = acceptance(["revision", "-workspace", workspace]).modelRevision;
   assert.match(r1, /^sha256:[0-9a-f]{64}$/);
@@ -227,6 +233,8 @@ async function main() {
       })),
       candidateFingerprint: preview.candidateFingerprint,
       reviewFingerprint: review.reviewFingerprint,
+      reviewCandidateFingerprint: review.candidateFingerprint,
+      decisionReviewFingerprint: decision.reviewBinding?.fingerprint,
       decision: "automated-scratch-test-only", humanApproval: false,
       expiresWithScratchWorkspace: true
     },
