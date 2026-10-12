@@ -116,8 +116,8 @@ jobs:
           } else {
             // #1163 adds a test-only Go overlay and a SECOND Web binary.
             // This demonstrates a live denial but NOT the production binary or DB.
-// The Source R0 label-spoof control is a harness-detected vulnerability,
-// not proof the current Web server enforces accepted Source R1.
+            // The Source R0 label-spoof control is a harness-detected vulnerability,
+            // not proof the current Web server enforces accepted Source R1.
             const negativeLaunch = read("target-negative-launch.json");
             const negative = read("web-negative-unit-price.json");
             assert.equal(positive.negativeUnitPriceTest, "RUNNING_SERVER_SYNTHETIC_FIXTURE_OVERLAY");
