@@ -240,7 +240,7 @@ func TestSQLiteVersionedGrantDoesNotDiscloseReceiptAfterPolicyRevocation(t *test
 		t.Fatal(err)
 	}
 	_, result, err = a.PrepareWithVersionedAuthorization(context.Background(), req.Scope.Subject, req, auth, fixtureAuthoritySource)
-	if err == nil || result.Receipt != (Receipt{}) || result.Disposition != "" {
+	if err != nil || result.Disposition != Denied || result.Reason != "authorization-denied" || result.Receipt != (Receipt{}) {
 		t.Fatalf("revoked policy disclosed receipt: %+v %v", result, err)
 	}
 	if _, ok := a.Lookup(req.Scope, req.OperationID); ok {
