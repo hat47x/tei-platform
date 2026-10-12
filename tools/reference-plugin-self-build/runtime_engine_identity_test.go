@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -196,7 +195,6 @@ func TestReferenceRuntimeEngineLockSeparatesRevisionFromImplementation(t *testin
 
 func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *testing.T) {
 	root := t.TempDir()
-	codeFiles := transformRuntimeEngineSourceFiles()
 	write := func(path, content string) {
 		fullPath := filepath.Join(root, filepath.FromSlash(path))
 		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
@@ -206,8 +204,21 @@ func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *tes
 			t.Fatal(err)
 		}
 	}
-	for _, path := range codeFiles {
+	for _, path := range []string{
+		"internal/core/id.go",
+		"internal/core/version.go",
+		"internal/plugin/transform/eval.go",
+		"internal/plugin/transform/json_unicode.go",
+		"internal/plugin/transform/model.go",
+		"internal/plugin/transform/source.go",
+		"internal/plugin/transform/source_budget.go",
+		"internal/plugin/transform/value.go",
+	} {
 		write(path, "source: "+path+"\n")
+	}
+	codeFiles, err := transformRuntimeEngineSources(root)
+	if err != nil {
+		t.Fatal(err)
 	}
 	sourceBefore, err := hashSourceFiles(root, codeFiles)
 	if err != nil {
@@ -269,34 +280,3 @@ func TestReferenceRuntimeEngineSourceClosureIgnoresUnrelatedDocumentation(t *tes
 	}
 }
 
-// Prevent added transform engine code from silently retaining the old engine
-// digest. Test sources are not part of the deployed implementation.
-func TestTransformRuntimeEngineSourceClosureCoversPackageFiles(t *testing.T) {
-	included := make(map[string]struct{})
-	for _, path := range transformRuntimeEngineSourceFiles() {
-		if _, exists := included[path]; exists {
-			t.Fatalf("Runtime Engine source closure repeats %s", path)
-		}
-		included[path] = struct{}{}
-	}
-	root := filepath.Join("..", "..")
-	files, err := filepath.Glob(filepath.Join(root, "internal", "plugin", "transform", "*.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(files) == 0 {
-		t.Fatal("cannot find transform package Go source files")
-	}
-	for _, path := range files {
-		if strings.HasSuffix(path, "_test.go") {
-			continue
-		}
-		relative, err := filepath.Rel(root, path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, ok := included[filepath.ToSlash(relative)]; !ok {
-			t.Errorf("Runtime Engine source closure omits %s", relative)
-		}
-	}
-}
