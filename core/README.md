@@ -30,6 +30,12 @@
 
 この入口は**Contract resolverではありません**。Hostが採用した契約と適合性証跡を正当に取得したか、Shape検証、Publisher Authority、Conformance、Contract互換性を証明できません。結果の`AuthorityLimits`へ未検証を明示します。旧Carrierの経路が新しい製品用Universal ABIになることもありません。将来新Service Contractの正式なCore定義・解決・Host権限へ移行したときは、重複する定義を残さずこの一時対応付けを撤去します。
 
+### 呼出し時の現在受理をHostに照会する
+
+製品`Registry.InvokeSelectedServiceCarrier`は、Serviceの照合に成功しても、それだけでは起動しません。`Registry.ServiceAcceptance`にHostが注入する`ServiceAcceptanceReader`を**呼出しごと**に照会し、選択したContract/Provider/Artifactと一致する現在の受理記録を求めます。読取元が無い、受理記録が欠ける、選択対象が違う、現在の受理が撤回された場合は、既存RuntimeのVerifier・Lease・子プロセスへ進みません。受理後も、従来の`InvokeWithProvenance`が成果物検証・権限・資源制御を独立に実行します。
+
+このInterfaceは**既存の信頼済み受理情報源を読むための接続点**であり、新たなContract発行者・適合性判定器・証跡発行機構ではありません。Plugin自身やリクエストから受理元を渡すことは認めず、Hostが管理する情報源の実装が現在性・Issuer・Scope・失効の確認を負います。ContractとProviderの受理参照文字列が揃ったことだけで暗号学的な署名や正式なConformanceを証明したとは解釈しません。提供するPluginのManifestや性能証明を全案件へ追加で要求するものでもありません。
+
 ## 独立構築の確認
 
 合成基盤が他のTEIパッケージに依存せず試験できるかを調べるため、[隔離試験の手順](../plan/design/CORE_SUBPROJECT_ISOLATION_PROBE_2026-10.md)を用意しています。リポジトリのルートから`tools/check-core-isolation.sh`を実行します。これは現在の`internal/composition/`を一時的なモジュールへ複製して試すもので、`core/`への移管完了を意味しません。
