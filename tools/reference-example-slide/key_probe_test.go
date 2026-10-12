@@ -60,7 +60,7 @@ func TestCandidateKeyProbeSeparatesUnknownKeysFromProvenDuplicates(t *testing.T)
 	example.Base = append(example.Base, Record{
 		ID: "record-c", Table: "order_line",
 		Values: map[string]json.RawMessage{
-			"row_id": json.RawMessage(`"pk-c"`),
+			"row_id":   json.RawMessage(`"pk-c"`),
 			"order_id": json.RawMessage(`"order-1"`),
 		},
 	})
