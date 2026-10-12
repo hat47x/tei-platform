@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"tei/internal/workspace"
+	"tei/internal/validation"
 )
 
 func writeExternalFixture(t *testing.T, file, content string) {
@@ -51,6 +52,9 @@ func TestExternalNamespaceImportPreservesProviderIdentityAndSourceOwnership(t *t
 	}
 	if !findNamespace(before, "os") || !findNamespace(before, "monitoring") {
 		t.Fatalf("missing provider or consumer namespace: %#v", before.World.Semantics)
+	}
+	if diagnostics := validation.Validate(before.World); validation.HasErrors(diagnostics) {
+		t.Fatalf("consumer semantic type must resolve against imported namespace: %#v", diagnostics)
 	}
 	if len(before.Imports) != 1 || before.Imports[0].Namespace != "os" ||
 		before.Imports[0].Path != "../provider" ||
