@@ -4,9 +4,9 @@
 
 この文書は、TEI（鼎／テイ）が大切にする価値、目指す姿、設計原則を、製品として満たす要求にまとめます。
 
-現在の要求は業務システムを主な参照例として記述しています。TEIが目指す適用範囲は業務システムに限られず、ドメイン知識と技術を分けて管理することが有効な分野を含みます。人と生成AIが協調して設計作業を進める足場を提供することも、製品の目標です。
+現在の要求は、主に業務システムを参照例として記述しています。ただし、TEIの適用先は業務システムに限りません。分野固有の知識と実装技術を分けて管理することが有効な領域も含みます。人と生成AIが協調して設計作業を進める足場を提供することも、製品の目標です。
 
-ここでは「現在すでに実装されているか」と「プロダクトとして必要か」を分けます。実装状況は`docs/status.md`、個別の設計判断はADR、作業単位はIssueで管理します。
+この文書では、現在の実装状況と製品に必要な機能を区別します。実装状況は`docs/status.md`、個別の設計判断は設計判断記録、作業単位は課題で管理します。
 
 要求番号は、将来文書が分割されても参照しやすいように固定IDとして扱います。
 
@@ -14,9 +14,9 @@
 
 TEIは、業務概念、型、関係、制約、lifecycle等を、特定の画面、Database、言語、配備先と同一視せずに表現できなければなりません。
 
-Canonical IDはfile pathやphysical object nameから独立し、実装や配置を変更しても意味上のidentityを維持できる必要があります。
+意味上の識別子は、ファイルの場所や物理的なオブジェクト名から独立し、実装や配置を変えても同じ意味を持つ対象を識別できる必要があります。
 
-業務上の識別条件をaccepted meaningとして扱う場合は、単なる`identifier`属性の存在だけで成立済みとしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
+業務上の識別条件を受理済みの意味として扱う場合は、`identifier`という属性があるだけで成立したとみなしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
 
 時間・履歴を扱うDataでは、business occurrence identityとhistory / version identityを区別できる必要があります。適用開始日、履歴番号、version番号、最新フラグ、日時型Attribute等を、その存在や名称だけを根拠にbusiness occurrence identifierへ昇格してはいけません。validity period、identifier reuse、state transition、current-state selectionを業務意味として扱う場合は、そのscopeとSource / Contractへ追跡できる必要があります。
 
@@ -26,25 +26,25 @@ Canonical IDはfile pathやphysical object nameから独立し、実装や配置
 
 `.tei`、SQL、将来の他形式を含むauthoring sourceから、どのCanonical subjectへ寄与したかを追跡できなければなりません。
 
-source locator、fingerprint、range、roleはCanonical Worldへ無条件に混ぜず、source-sideの追跡情報として扱います。
+入力元の位置、照合値、範囲、役割は意味の正本へ無条件に混ぜず、入力元側の追跡情報として扱います。
 
-file moveやrenameだけでCanonical meaningが変わらないことを検証できる必要があります。
+ファイルの移動や名前の変更だけでは、意味の正本が変わらないことを検証できる必要があります。
 
 ## RQ-003 一つの関心事に暗黙の複数正本を作らないこと
 
-同じ意味を複数のauthoritative sourceからheuristicにmergeしてはいけません。
+同じ意味を、複数の正本から推測によって統合してはいけません。
 
-SQL-authored、Graph-authored等、authoring方式ごとに正本を明示でき、derived artifactからauthoritative sourceへ暗黙に逆書きしない必要があります。
+SQLで記述する場合もグラフで記述する場合も、どこを正本とするか明示できなければなりません。派生した成果物から正本を暗黙に書き換えてはいけません。
 
 ## RQ-004 Native assetをnativeなまま利用できること
 
-SQL、Go、外部設定、既存実装等を、TEIを利用するためだけに全面的に独自DSLへ移し替えることを要求してはいけません。
+SQL、Go、外部の設定、既存の実装などを、TEIを利用するためだけに全面的に独自の定義言語へ移し替えることを要求してはいけません。
 
-TEIは、それらを意味、Capability、Realization、Source Indexへ接続し、どの役割で使われているかを追跡できる必要があります。
+TEIは、これらの資産を意味、機能、実現方法、入力元索引と結び付け、どの役割で使われているか追跡できる必要があります。
 
 ## RQ-005 ApplicationとDatabaseをN:Mで扱えること
 
-一つのApplicationは複数Databaseを利用でき、Databaseは複数ApplicationへContractを提供できなければなりません。
+一つのアプリケーションは複数のデータベースを利用でき、一つのデータベースは複数のアプリケーションへ契約を提供できなければなりません。
 
 各Database利用について、少なくとも次を独立して扱える必要があります。
 
@@ -58,7 +58,7 @@ TEIは、それらを意味、Capability、Realization、Source Indexへ接続�
 
 一つの業務処理（確定処理等）が複数Databaseを参照し、複数Databaseを更新する場合も基本要件として扱います。このとき、どのDatabase更新が一つのtransaction boundaryに入り、どこから先が別のfailure boundaryになるかをContractとして明示できなければなりません。Database同士にまたがる原子性を、Providerの能力から暗黙に仮定してはいけません。一部のDatabaseだけ更新が成功した状態は、成功にも失敗にも丸めず、未確定（Unresolved）として観測・再実行・補償の判断へ渡せる必要があります。特定のDatabase製品の数を増やすことは、この要件の主眼ではありません。
 
-Application ReleaseとDatabase Releaseは独立したlifecycleを持ちます。
+アプリケーションの配布版とデータベースの版は、それぞれ独立した変更・運用の周期を持ちます。
 
 複数DatabaseやServiceへDataを分散しても、同じ業務対象のidentity、Relation、Constraint、ownershipをlogicalな意味として追跡できなければなりません。APIやmessageで接続できることだけを、Data meaningが統合された状態とは扱いません。
 
@@ -70,17 +70,17 @@ Database等の外部状態について、望ましい状態、観測された状
 
 legacy Database、source code、UI、業務手順等をImporterやAIが高精度に再構成できた場合も、そのAs-Is構造をDesiredへ自動採用してはいけません。Target候補はProposalとして分離し、採用判断と互換性・移行上の制約を別々に追跡できる必要があります。
 
-比較に十分な情報がない場合は、差分なしや破壊的変更へ自動変換せず、Unresolvedとして扱う必要があります。
+比較に十分な情報がない場合は、「差分なし」や「破壊的変更」と自動的に判断せず、未解決として扱う必要があります。
 
 ## RQ-007 Provider固有知識をCoreへ無制限に持ち込まないこと
 
 Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Capability等の境界へ置きます。
 
-provider-neutralな意味とprovider固有の実現・正規化を分離し、offlineで確定できるpolicyとactual connectionが必要な処理も区別できる必要があります。
+提供元に依存しない意味と、提供実装ごとの実現方法・正規化を分離できる必要があります。また、接続せずに確定できる方針と、実際の接続が必要な処理も区別できなければなりません。
 
 ## RQ-008 Capability単位で標準実装と固有実装を置き換えられること
 
-認証、認可、外部連携、帳票、処理等について、TEI標準だけを強制してはいけません。
+認証、認可、外部連携、帳票、業務処理などで、TEIの標準実装だけを強制してはいけません。
 
 Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。
 
@@ -88,7 +88,7 @@ Capabilityごとにbuiltin、generated implementation、plugin、既存実装等
 
 ## RQ-009 既存システムの認証・認可仕様を保持した移行が可能であること
 
-ユーザーID、password、無効状態、有効期限、失敗回数、独自ロック、組織情報等を含む既存認証仕様を、移行時にTEI標準へ変更することを必須にしてはいけません。
+ユーザーID、パスワード、無効状態、有効期限、失敗回数、独自のロック、組織情報などを含む既存の認証仕様を、移行時にTEI標準へ変更することを必須にしてはいけません。
 
 認証・認可はCapability契約とMappingを通して既存構造へ接続でき、後から必要な単位で置き換えられる必要があります。
 
@@ -98,7 +98,7 @@ Editor / Review Surfaceは、簡略化されたフォーム入力だけではな
 
 Data、Relation、Rule、View、Procedure等を分断された多数の画面へ追い出すのではなく、必要に応じて3階層以上の関係も局所性を保って確認できる設計を可能にします。
 
-生成AIがApplicationを構築・変更した場合、人間がgenerated code全体を読まなくても、少なくとも次を確認できる必要があります。
+生成AIがアプリケーションを構築・変更した場合、人間が生成されたコードのすべてを読まなくても、少なくとも次の事項を確認できる必要があります。
 
 - semantic diff
 - impact
@@ -122,13 +122,13 @@ Editor / Review Surface自身をCanonical source of truthとはしません。
 - database workbench
 - diagnostic / evidence view
 
-Projection間の切り替えで意味が暗黙に変化してはいけません。
+表示形式を切り替えただけで意味が変わってはいけません。
 
 ## RQ-012 Driverを設計検証用の実行・シミュレーション環境として利用できること
 
 Driverは、本番Runtimeだけでなく、設計途中のApplicationを動かし、Data、Rule、UI、Function、Database Contract等の整合性を確認する環境として利用できる必要があります。
 
-設計内容をコード生成後まで待たずに検証できることを重視します。
+コードを生成する前に設計内容を検証できることを重視します。
 
 **Driver Scenarioをシナリオテストの正本として再利用できること**: 業務定義から一度生成・受理したDriver Scenarioは、独立して保存・版管理・再読込でき、以降はそれを元にCLIの実行コマンド列・テスト、Web等のTarget固有E2Eを何度でも再生成できる必要があります。Scenarioの入力・事前条件・業務Step・期待Outcome・失敗・Observation・網羅対象の正本をCLIスクリプトやWebテストへ分散させてはいけません。業務意味のSSOTはAccepted Canonicalに残し、Scenarioが所有するのは**テストの意図と検証条件**です。ScenarioとCanonical revisionとの整合は必ず検査します。生成AIが最小の実行環境で業務定義を検証する主要手段として、生成したCLIコマンドを利用できなければなりません。
 
@@ -169,7 +169,7 @@ Application Pattern、View、Target、ORM等の実装都合から、Dataのbusin
 7. Capability call
 8. Custom implementation
 
-毎回ゼロからRepositoryとコードを読み直してApplicationの意味を再構成したり、毎回ゼロからコードを生成したりすることを標準経路にはしません。
+毎回リポジトリとコードを一から読み直してアプリケーションの意味を復元したり、毎回コードを一から生成し直したりする方法を標準にはしません。
 
 生成AIは、Canonical meaning、Source、Decision、Pattern、Policy、Capability、Binding、Evidenceから、今回の変更に必要なcontextを機械的に取得できる必要があります。
 
@@ -185,7 +185,7 @@ Data / Relationを設計・変更する場合、そのcontextから、業務上�
 
 Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
 
-既存Applicationへの変更では、少なくとも変更対象、影響範囲、維持すべき不変条件、再生成可能なderived artifact、慎重に扱うnative assetを区別できる構造を目指します。
+既存アプリケーションの変更では、変更対象、影響範囲、維持すべき不変条件、再生成できる成果物、慎重に扱う既存資産を区別できる構造を目指します。
 
 AIが作った内容を直接Canonical authorityとせず、まずProposal / Structured Intent等の候補として扱い、採用時にはEditor / CLI等と共有できる決定論的なValidation / Acceptance境界を通す必要があります。
 
@@ -224,9 +224,9 @@ Semantic ModelとExecution Mapping、Canonical meaningとderived artifact等に�
 
 ## RQ-018 CommandとObservationを分離すること
 
-外部処理へのcommand acknowledgementだけで処理完了とみなしてはいけません。
+外部処理が命令を受け付けたという応答だけで、処理が完了したとみなしてはいけません。
 
-必要な処理ではObservation / Evidenceによってactual stateを確認し、期待状態との整合を判定できる必要があります。
+必要な場合は、観測結果と検証根拠から実際の状態を確かめ、期待する状態と一致するか判定できる必要があります。
 
 ## RQ-019 実行時の権限とResourceを明示的に制約できること
 
@@ -264,15 +264,15 @@ prerelease / experimentalなframework、AI evaluator、agent方式等を検証�
 
 ## RQ-023 一人でも維持可能な開発構造を保つこと
 
-初期段階では、一人のmaintainerでも全体を追えることを重視します。
+初期段階では、保守担当者が一人でも全体を追えることを重視します。
 
-Repositoryを細かく分割しすぎず、関連する改修が同一Repository内で完結しやすい構造を基本とします。
+リポジトリを細かく分割しすぎず、関連する変更を同じリポジトリ内で完結させやすい構造を基本とします。
 
-一方、CoreとProvider / Adapterの依存境界はコード上で明確にし、将来の分離を妨げない構造を保ちます。
+一方、中核と提供実装・接続部品の依存関係はコード上で明確にし、将来の分離を妨げない構造を保ちます。
 
 ## RQ-024 性能要求をTargetごとに検証可能にすること
 
-業務端末のように短い応答時間が重要なTargetと、B2C Webのように異なる負荷特性を持つTargetを同じ固定性能前提へ押し込めません。
+応答時間の短さが重要な業務端末と、多数の利用者を想定した一般消費者向けWebサービスなど、負荷の性質が異なる実行先に同じ性能条件を一律に当てはめません。
 
 Target / Driver / Providerごとに必要な性能条件を定義し、測定・Conformanceできる構造を持つ必要があります。
 
@@ -282,7 +282,7 @@ Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの�
 
 Web Targetでは、process起動、任意filesystem access等のブラウザで成立しない実行方式をSemantic Extensionの成立条件へ含めてはいけません。Target固有のRuntime要件を満たせない場合は、意味を暗黙に変更してfallbackせず、build / Conformance段階で非対応またはUnresolvedとして扱える必要があります。
 
-現時点で根拠のない一律の数値目標は固定しません。Referenceでは、少なくともcold / warm start、初期転送量、install / cache footprint、steady memory、Extension追加時の増分cost、resolver / evaluator overheadをTargetごとに観測できるようにします。
+現時点では、根拠のない一律の数値目標を定めません。Referenceでは、少なくともcold / warm start、初期転送量、install / cache footprint、steady memory、Extension追加時の増分cost、resolver / evaluator overheadをTargetごとに観測できるようにします。
 
 ## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
 
@@ -437,7 +437,7 @@ Semantic Extensionのlogical identityと、実行・配布に使うartifact境�
 
 resolution budget超過、Catalog不足、Interface authority不足等も、実際のdependency conflictと区別して説明できる必要があります。AIやToolが「解けなかった」ことを「解が存在しない」ことへ読み替えてはいけません。
 
-この要求はAIが誤らないことを前提にしません。実装上の自由度を必要な箇所へ限定し、機械的に検証できる境界を増やすことで、同じ設計論点の再判断とApplication固有コードを減らすことを求めます。
+この要求は、AIが誤らないことを前提にはしません。実装上の自由度を必要な箇所へ限定し、機械的に検証できる境界を増やすことで、同じ設計論点の再判断とApplication固有コードを減らすことを求めます。
 
 
 ## RQ-034 標準的な開発環境からTEIを改修・実行・検証できること
