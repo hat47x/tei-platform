@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -186,6 +187,59 @@ test('an older layout read cannot overwrite a newer DFD',async()=>{
   assert.equal($('apply').disabled,true);
 });
 
+
+test('clearing a layout picker revokes a pending load and the previous move',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false);
+  const projectionSHA256='sha256:'+createHash('sha256').update(JSON.stringify(projection)).digest('hex');
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:projection.procedureId,projectionSHA256,
+    nodes:[{kind:'step',id:'BP-04',x:210,y:75}]};
+  const bytes=Buffer.from(JSON.stringify(layout));
+  let release;
+  const loading=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>
+      resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('export').disabled,true);
+  await $('layout-file').listeners.change({target:{files:[]}});
+  release();
+  await loading;
+  assert.match($('status').textContent,/配置ファイルの選択を解除/);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('export').disabled,true);
+  assert.equal($('diagram').children.find(x=>x.dataset?.id==='BP-04').transform,'translate(40,50)');
+});
+
+test('replacing a layout disables the old candidate until the new bytes are verified',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false);
+  const projectionSHA256='sha256:'+createHash('sha256').update(JSON.stringify(projection)).digest('hex');
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:projection.procedureId,projectionSHA256,
+    nodes:[{kind:'step',id:'BP-04',x:210,y:75}]};
+  const bytes=Buffer.from(JSON.stringify(layout));
+  let release;
+  const loading=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>
+      resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('export').disabled,true);
+  release();
+  await loading;
+  assert.match($('status').textContent,/配置ファイルを照合して読み込みました/);
+  assert.equal($('export').disabled,false);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('diagram').children.find(x=>x.dataset?.id==='BP-04').transform,'translate(210,75)');
+});
 
 const here=dirname(fileURLToPath(import.meta.url));
 const reference=name=>JSON.parse(readFileSync(join(here,name),'utf8'));
