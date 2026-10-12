@@ -102,7 +102,8 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 	origin, err := url.Parse(s.Origin)
 	if err != nil || origin.Scheme != "https" || origin.Host == "" ||
 		origin.User != nil || origin.Path != "" || origin.RawQuery != "" ||
-		origin.Fragment != "" || origin.Opaque != "" {
+		origin.Fragment != "" || origin.Opaque != "" ||
+		origin.ForceQuery || strings.ContainsAny(s.Origin, "?#") {
 		return "", fmt.Errorf("%w: invalid upstream HTTPS origin", ErrDenied)
 	}
 	if !strings.HasPrefix(s.Prefix, "/") || strings.HasPrefix(s.Prefix, "//") ||
@@ -158,7 +159,7 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 	client := *s.Client
 	// Unbounded network waits keep an outcome indeterminate indefinitely.
 	// A caller can set a stricter deadline through the client or context.
-	if client.Timeout == 0 {
+	if client.Timeout <= 0 {
 		client.Timeout = 15 * time.Second
 	}
 	// Do not inject cookies from an HTTP client reused across identities.
