@@ -32,11 +32,11 @@ func quoteLegacyProcessDispatch(ctx context.Context, executable string, provider
 	}
 	const descriptor = "reference-order-quote.transport-carrier/v1"
 	dispatch := struct {
-		Schema                  string `json:"schema"`
-		ContractID              string `json:"contractId"`
-		ContractFingerprint     string `json:"contractFingerprint"`
-		Target                  string `json:"target"`
-		Provider                struct {
+		Schema              string `json:"schema"`
+		ContractID          string `json:"contractId"`
+		ContractFingerprint string `json:"contractFingerprint"`
+		Target              string `json:"target"`
+		Provider            struct {
 			PluginID         string `json:"pluginId"`
 			PluginVersion    string `json:"pluginVersion"`
 			ImplementationID string `json:"implementationId"`
@@ -89,11 +89,11 @@ func quoteLegacyProcessDispatch(ctx context.Context, executable string, provider
 		return nil, fmt.Errorf("legacy process carrier response identity drifted or failed")
 	}
 	var result struct {
-		Schema                  string `json:"schema"`
-		ContractID              string `json:"contractId"`
-		ContractFingerprint     string `json:"contractFingerprint"`
-		Target                  string `json:"target"`
-		Provider                struct {
+		Schema              string `json:"schema"`
+		ContractID          string `json:"contractId"`
+		ContractFingerprint string `json:"contractFingerprint"`
+		Target              string `json:"target"`
+		Provider            struct {
 			PluginID         string `json:"pluginId"`
 			PluginVersion    string `json:"pluginVersion"`
 			ImplementationID string `json:"implementationId"`
