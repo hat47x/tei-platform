@@ -14,14 +14,14 @@ func TestParseJSONRejectsUnpairedSurrogateEscapes(t *testing.T) {
 		name string
 		raw  string
 	}{
-		{"high", `"\\uD800"`},
-		{"low", `"\\uDC00"`},
-		{"high followed by a scalar", `"\\uD800\\u0041"`},
-		{"high followed by high", `"\\uD800\\uDBFF"`},
-		{"high followed by plain text", `"\\uD800a"`},
-		{"in object key", `{"\\uD800":1}`},
-		{"in nested array", `[{"x":["\\uDC00"]}]`},
-		{"in mixed case escape", `"\\udAbC"`},
+		{"high", `"\uD800"`},
+		{"low", `"\uDC00"`},
+		{"high followed by a scalar", `"\uD800\u0041"`},
+		{"high followed by high", `"\uD800\uDBFF"`},
+		{"high followed by plain text", `"\uD800a"`},
+		{"in object key", `{"\uD800":1}`},
+		{"in nested array", `[{"x":["\uDC00"]}]`},
+		{"in mixed case escape", `"\udAbC"`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -34,11 +34,11 @@ func TestParseJSONRejectsUnpairedSurrogateEscapes(t *testing.T) {
 
 func TestParseJSONValidSurrogatePairsAndEscapedBackslash(t *testing.T) {
 	for _, raw := range []string{
-		`"\\uD83D\\uDE00"`,
-		`{"\\uD83D\\uDE00":"\\ud83d\\ude00"}`,
-		`"\\\\uD800"`, // Literal backslash followed by 'uD800'.
+		`"\uD83D\uDE00"`,
+		`{"\uD83D\uDE00":"\ud83d\ude00"}`,
+		`"\\uD800"`, // Literal backslash followed by 'uD800'.
 		`"�"`,          // Explicit replacement character remains permitted.
-		`"\\uFFFD"`,
+		`"\uFFFD"`,
 	} {
 		value, err := transform.ParseJSON([]byte(raw))
 		if err != nil {
@@ -62,7 +62,7 @@ func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.
 	}
 
 	identityField := []byte(`"contractVersion":"` + source.Identity.ContractVersion + `"`)
-	withIdentityEscape := bytes.Replace(raw, identityField, []byte(`"contractVersion":"\\uD800"`), 1)
+	withIdentityEscape := bytes.Replace(raw, identityField, []byte(`"contractVersion":"\uD800"`), 1)
 	if bytes.Equal(raw, withIdentityEscape) {
 		t.Fatal("identity fixture was not replaced")
 	}
@@ -77,7 +77,7 @@ func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	withLiteralEscape := bytes.Replace(withLiteral, []byte(`"literal":"ok"`), []byte(`"literal":"\\uDC00"`), 1)
+	withLiteralEscape := bytes.Replace(withLiteral, []byte(`"literal":"ok"`), []byte(`"literal":"\uDC00"`), 1)
 	if bytes.Equal(withLiteral, withLiteralEscape) {
 		t.Fatal("literal fixture was not replaced")
 	}
