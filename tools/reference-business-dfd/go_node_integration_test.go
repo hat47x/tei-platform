@@ -75,14 +75,14 @@ func TestBusinessDFDGoProjectionToNodeReview(t *testing.T) {
 			}
 		}
 		binding := map[string]any{
-			"schema": "tei.reference.business-dfd-selected-edit/v0",
-			"id": "go-node-reference-review",
-			"origin": "cli",
-			"intent": "業務上の起動契機の説明だけを見直す",
-			"procedureSHA256": dfdTestDigest(procedureInput),
-			"reviewSHA256": selectedReviewDigest,
+			"schema":           "tei.reference.business-dfd-selected-edit/v0",
+			"id":               "go-node-reference-review",
+			"origin":           "cli",
+			"intent":           "業務上の起動契機の説明だけを見直す",
+			"procedureSHA256":  dfdTestDigest(procedureInput),
+			"reviewSHA256":     selectedReviewDigest,
 			"projectionSHA256": dfdTestDigest(projectionInput),
-			"selection": map[string]string{"kind": "trigger", "id": "TR-ORDER"},
+			"selection":        map[string]string{"kind": "trigger", "id": "TR-ORDER"},
 			"operation": map[string]string{
 				"kind": "replace-trigger-label", "trigger": "TR-ORDER",
 				"label": "受注内容を担当者が確認する",
