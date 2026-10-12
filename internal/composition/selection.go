@@ -16,6 +16,7 @@ var (
 // leases, artifact provenance and runtime readiness before serving requests.
 type Selection struct {
 	Revision     uint64
+	Epoch        uint64
 	ProviderID   string
 	Scope        string
 	Contract     Contract
@@ -40,6 +41,7 @@ func (r *Registry) Select(providerID, scope string) (Selection, error) {
 	}
 	return Selection{
 		Revision:     r.snapshot.Revision,
+		Epoch:        r.epochs[providerID],
 		ProviderID:   p.ID,
 		Scope:        p.Scope,
 		Contract:     p.Offers,
@@ -50,7 +52,7 @@ func (r *Registry) Select(providerID, scope string) (Selection, error) {
 // validateSelectionLocked must be called while holding r.mu. It rechecks all
 // relevant contract and wiring identities, not just a caller-provided revision.
 func (r *Registry) validateSelectionLocked(s Selection, b Binding) error {
-	if r.snapshot.Revision != s.Revision {
+	if s.Revision > r.snapshot.Revision || s.Epoch == 0 || r.epochs[s.ProviderID] != s.Epoch {
 		return ErrStaleRegistry
 	}
 	p, ok := r.providers[s.ProviderID]
