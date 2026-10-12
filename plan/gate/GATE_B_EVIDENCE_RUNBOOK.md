@@ -253,7 +253,7 @@ git diff -- reference/order_rollout.durable-run.m0.21.start.json
 
 ## 4. #308 real PostgreSQL事前確認
 
-standalone toolでは従来どおり`TEI_TEST_POSTGRES_DSN`を入力にできます。
+単独で使うツールでは、従来どおり`TEI_TEST_POSTGRES_DSN`を入力として指定できます。
 
 ```bash
 TEI_TEST_POSTGRES_DSN='postgres://...' \
@@ -261,27 +261,27 @@ go run ./tools/reference-postgres-header-detail-runtime \
   > /tmp/tei-gate-b-postgres-header-detail.json
 ```
 
-これはfinal convergenceのsecret-file経路とは別の事前確認です。
+これは、最終確認で使う秘密情報ファイル経由の入力とは別の事前確認です。
 
 ### fixture前安全条件
 
-少なくとも次を確認してからfixtureを作ります。
+少なくとも次を確認してから、試験用の構成要素を作成します。
 
-- Repository開始時clean
+- 実行開始時にリポジトリへ変更がないこと
 - 作業領域の検証が成功
 - PostgreSQL接続成功
-- default Databaseではない
-- user relation 0件
+- 既定のデータベースではない
+- 利用者が定義した関係が0件
 - Event Trigger 0件
 - `public.order_lines`不在
 
 ### fixture ownership / cleanup
 
-fixture tableへtool ownership markerを付けます。
+試験用の表には、ツールによる所有を示す印を付けます。
 
-cleanupではtableをlockし、DB上markerが作成時markerとexact一致した場合だけDROPします。
+後片付けでは表をロックし、データベース上の印が作成時の印と厳密に一致した場合に限って削除します。
 
-同名objectが別主体に置換された疑いがある場合は削除せずfail closedします。
+同じ名前の構成要素が別の主体に置き換えられた疑いがある場合は、削除せずに安全側に停止します。
 
 ### #308 Evidence
 
@@ -290,22 +290,22 @@ cleanupではtableをlockし、DB上markerが作成時markerとexact一致した
 - `evidenceNature = real-postgres-ephemeral-fixture`
 - `repositoryRevision`が対象版と一致
 - `reproducibleRevision = true`
-- fixture前安全条件成立
+- 試験用の構成要素を作成する前の安全条件が成立
 - `order_id=1001`で2件
 - `order_id=9999`で正常0件
-- fixture削除後missing-tableをExecution Errorとして扱う
-- raw result → Semantic OrderLine mapping明示
-- support column `order_id`をSemantic attributeへ漏らさない
-- parameter値をEvidenceへ保存しない
-- cleanup ownership確認成功
-- cleanup後user relation 0件 / Event Trigger 0件 / fixture不在
-- post-run Repositoryが同一clean revision
+- 試験用の表を削除した後、表が存在しないことを実行時エラーとして扱う
+- 元の実行結果から意味上のOrderLineへの対応付けが明示されている
+- 補助列`order_id`を意味上の属性に含めない
+- 引数の値を検証根拠に保存しない
+- 後片付けの前に所有権の確認が成功
+- 後片付け後、利用者が定義した関係0件・イベントトリガー0件・試験用構成要素なし
+- 実行後もリポジトリが変更のない同じ版
 
-#308はreal engine + tool-owned fixture Evidenceです。production既存Database Evidenceではありません。
+#308は実際のデータベースエンジンと、ツールが管理する試験用の構成要素による検証根拠です。本番の既存データベースで得た検証根拠ではありません。
 
 ## 5. source変更を出し切る
 
-#310 / #255 / #308の事前確認でsource変更が必要なら、修正・意味確認・commitを完了します。
+#310・#255・#308の事前確認でソースの変更が必要になったら、修正し、意味の変更内容を確認して、コミットまで済ませます。
 
 最終収束前に:
 
@@ -315,9 +315,9 @@ git ls-files -v
 git rev-parse HEAD
 ```
 
-`git status --short --untracked-files=all --ignored=matching`が空であり、`git ls-files -v`の全tracked entryが通常の`H` tagであることを要求します。tracked / untracked / ignored local state、または非標準index stateが残るcheckoutをcandidate `R`へ固定しません。
+`git status --short --untracked-files=all --ignored=matching`に何も表示されず、`git ls-files -v`で追跡対象のすべての項目が通常の`H`であることを求めます。追跡対象・追跡対象外・無視対象のローカル状態や、非標準の索引状態が残る作業領域を候補版`R`として固定しません。
 
-このclean revisionをcandidate `R`とします。
+この変更のない版を候補版`R`とします。
 
 ## 6. final runner package直前検査
 
@@ -335,15 +335,15 @@ go test \
   -count=1
 ```
 
-これはProduct Evidenceそのものではありません。actual checkoutでfinal runner、shared source helper、real PostgreSQL Evidence runner、Readiness artifact auditがcompile / testできることの直前検査です。
+これは製品の検証根拠そのものではありません。実際に取得した作業領域で、最終確認の実行器、共通のソース確認用部品、実PostgreSQL用の検証実行器、合格判定用の成果物監査をコンパイル・試験できるか、直前に確かめるものです。
 
-sourceを変更した、またはworking treeがdirtyになった場合はfinal runへ進みません。
+ソースを変更した場合や、作業ツリーに変更が残った場合は、最終確認の実行へ進みません。
 
 ## 7. final convergence
 
 ### 推奨: same-run child Evidence保存先を明示
 
-Repository外にrun用parent directoryを作り、child directory自体はrunnerに新規作成させます。
+リポジトリの外に実行用の親ディレクトリを作り、子ディレクトリは実行器に新規作成させます。
 
 ```bash
 mkdir -m 700 /tmp/tei-gate-b-R
@@ -357,13 +357,13 @@ go run ./tools/reference-gate-b-final-evidence \
   > /tmp/tei-gate-b-R/final.json
 ```
 
-`children`が既に存在する場合、runnerは上書きせず停止します。
+`children`が既に存在する場合、実行器は上書きせず停止します。
 
-`-artifact-dir`を省略した場合は、runnerがRepository外のowner-only temporary directoryを新規作成し、そのpathをstderrへ表示します。
+`-artifact-dir`を省略すると、実行器がリポジトリ外に所有者だけがアクセスできる一時ディレクトリを作成し、そのパスを標準エラー出力に表示します。
 
 ### broad
 
-#310で`go test ./...`も要求する場合だけ:
+#310で`go test ./...`まで実行する必要がある場合に限り、次を使用します。
 
 ```bash
 GOENV=off \
@@ -380,16 +380,16 @@ go run ./tools/reference-gate-b-final-evidence \
 
 secret read / lane開始までに少なくとも次の項目を確認します。
 
-- current working directory = Git Repository root
-- process `GOENV` = exact `off`
-- `go env GOWORK` = emptyまたは`off`
-- `go env GOFLAGS` = empty
-- direct `TEI_TEST_POSTGRES_DSN`不存在
-- DSN secret fileがRepository外regular file
-- child Evidence保存先がRepository外
-- Repository source観測でtracked / untracked / ignored local stateがなく、tracked index entryが通常`H`のみ
+- 現在の作業ディレクトリがGitリポジトリのルート
+- プロセスの`GOENV`が正確に`off`
+- `go env GOWORK`が空、または`off`
+- `go env GOFLAGS`が空
+- `TEI_TEST_POSTGRES_DSN`を直接設定していない
+- DSNの秘密情報ファイルがリポジトリ外の通常ファイル
+- 子処理の検証根拠の保存先がリポジトリ外
+- リポジトリのソース状態の観測で、追跡対象・追跡対象外・無視対象のローカル状態がなく、追跡対象の索引項目が通常の`H`だけ
 
-現行実装の順序は概念上次です。
+現行の実装は、概念上、次の順序で処理します。
 
 ```text
 Go environment / Repository root確認
@@ -407,9 +407,9 @@ candidate sourceを再確認
 #310 → #255 → #308
 ```
 
-secret read前preflightとlane開始時source確認は別です。前者の成功後にsourceが変化しても、後者で停止します。
+秘密情報の読込み前の事前確認と、検証経路の開始時に行うソース確認は別です。前者に成功した後でソースが変わった場合も、後者で停止します。
 
-ambient確認後だけchild environmentを:
+周辺環境を確認した後で初めて、子処理の環境設定を次のように固定します。
 
 ```text
 GOENV=off
@@ -453,11 +453,11 @@ final runner return
   -> temporary handoff directoryをcleanup
 ```
 
-handoff fileは通常のfinal runner return時に削除します。processの強制kill・host停止等に対するOS-levelの完全消去までは保証せず、作成中はRepository外のowner-only temporary scopeに限定します。original secret file・handoff fileのpathやDSN本文を通常Evidenceへ保存しません。
+引継ぎ用ファイルは、最終確認の実行器が通常終了したときに削除します。プロセスの強制終了やホストの停止などに対して、OSレベルで完全に消去できることまでは保証しません。ファイルの存在する間は、リポジトリ外の所有者だけがアクセスできる一時領域に限定します。元の秘密情報ファイルと引継ぎ用ファイルのパスや、DSNの内容は通常の検証根拠に保存しません。
 
 ## 8. same-run child Evidence retention
 
-final runnerは各child stdoutのvalid Evidence JSON exact bytesを、そのrunのartifactとしてRepository外へ保存します。
+最終確認の実行器は、子処理それぞれの標準出力にある有効な検証用JSONを、元のバイト列のまま、その実行の成果物としてリポジトリ外へ保存します。
 
 filename:
 
@@ -467,18 +467,18 @@ generated-artifact-reproducibility.json
 real-postgres-ephemeral-fixture.json
 ```
 
-既存fileを上書きしません。
+既存のファイルは上書きしません。
 
-各laneのfinal summaryには:
+各検証経路の最終結果には、次を記録します。
 
 - `artifactFile`
 - `evidenceArtifactFingerprint`
 
 を残します。
 
-fingerprintは保存したexact bytesのSHA-256です。
+照合値は、保存した元のバイト列に対するSHA-256です。
 
-成功final JSONでは:
+成功した最終確認のJSONでは、次を要求します。
 
 ```text
 childArtifactsRetained = true
@@ -486,16 +486,16 @@ childArtifactsRetained = true
 
 を要求します。
 
-**後から同じRで再実行した別artifactを、final runnerが実際に読んだartifactと同一だと推測しません。** Readiness Auditではsame-run child artifactを参照します。
+**同じ版Rで後から再実行した別の成果物を、最終確認の実行器が実際に読み取った成果物と同一だとは推測しません。** 合格判定の監査では、同じ実行で得た子処理の成果物を参照します。
 
 ### 保管（採用したrunのartifact）
 
-Ready判定に採用したrunのartifactは、Repositoryへcommitせず、次のとおり保管する（`ISSUE-000057`）。
+合格判定に採用した実行の成果物は、リポジトリへコミットせず、次のように保管します（`ISSUE-000057`）。
 
 - 容量が小さい場合（目安: 数MB以下）: `MANIFEST.sha256`（各fileのSHA-256）を同梱した`tar.gz`へ圧縮し、対象revision（`R` / `T`）を指すtagを付けたGitHub Release（prerelease）のassetとして格納する。tag名は`gate-b-evidence-R-<short>` / `gate-c-evidence-T-<short>`とする。
-- 容量が大きい場合: WSL上に留める（WSLは日次バックアップの対象）。
-- 格納前に、DSN・credential・secret pathが含まれないことを確認する（audit toolの拒否に加え、grepで確認する）。
-- 格納後、assetを再ダウンロードしてSHA-256が一致することを確認し、判定文書へ保管先（locator）とarchiveのSHA-256を追記する。過去の判定は書き換えず、追記する。
+- 容量が大きい場合：WSL上に保管する（WSLは日次バックアップの対象）。
+- 格納前にDSN・認証情報・秘密情報のパスが含まれないことを確認する（監査ツールによる拒否に加えて、grepでも確認する）。
+- 格納後、成果物を再度ダウンロードしてSHA-256が一致することを確認する。判定文書には保管先と圧縮ファイルのSHA-256を追記する。過去の判定は書き換えず、追記する。
 
 ```bash
 gh release create <tag> <archive.tar.gz> --target <R/Tの完全なcommit SHA> \
