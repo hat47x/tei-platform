@@ -36,7 +36,7 @@ type AuthorizationGrant struct {
 	Action    string
 	Resource  string
 	// Epochs は任意の正本版証拠。nilの許可は永続的な原子性の根拠にできない。
-	Epochs *AuthorityEpochs
+	Epochs *AuthorityEpochs `json:"epochs,omitempty"`
 }
 
 type AuthorizationDenial struct {
