@@ -130,13 +130,13 @@ func TestCandidateQuoteShapesMapToOverlaySemanticWithoutClaimingAuthority(t *tes
 		t.Fatal("candidate shape identity or publisher differs from declared mapping")
 	}
 	expected := map[string]string{
-		"sales.quote_request.currency": "currency",
-		"sales.quote_request.lines": "lines",
-		"sales.quote_line.sku": "lines[].sku",
-		"sales.quote_line.quantity": "lines[].quantity",
+		"sales.quote_request.currency":      "currency",
+		"sales.quote_request.lines":         "lines",
+		"sales.quote_line.sku":              "lines[].sku",
+		"sales.quote_line.quantity":         "lines[].quantity",
 		"sales.quote_line.unit_price_minor": "lines[].unitPriceMinor",
-		"sales.quote_result.currency": "currency",
-		"sales.quote_result.line_count": "lineCount",
+		"sales.quote_result.currency":       "currency",
+		"sales.quote_result.line_count":     "lineCount",
 		"sales.quote_result.subtotal_minor": "subtotalMinor",
 	}
 	if !reflect.DeepEqual(mapping.FieldMappings, expected) {
@@ -154,12 +154,12 @@ func TestCandidateQuoteShapesMapToOverlaySemanticWithoutClaimingAuthority(t *tes
 		data[string(d.ID)] = d
 	}
 	types := map[string]string{
-		"sales.quote_request.currency": "std.code",
-		"sales.quote_line.sku": "std.code",
-		"sales.quote_line.quantity": "std.integer",
+		"sales.quote_request.currency":      "std.code",
+		"sales.quote_line.sku":              "std.code",
+		"sales.quote_line.quantity":         "std.integer",
 		"sales.quote_line.unit_price_minor": "std.integer",
-		"sales.quote_result.currency": "std.code",
-		"sales.quote_result.line_count": "std.integer",
+		"sales.quote_result.currency":       "std.code",
+		"sales.quote_result.line_count":     "std.integer",
 		"sales.quote_result.subtotal_minor": "std.integer",
 	}
 	for id, typ := range types {
