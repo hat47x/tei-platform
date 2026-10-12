@@ -14,6 +14,18 @@ go test ./tools/reference-business-dfd
 
 DOT の描画には任意で Graphviz を使えます。ツール自体は Graphviz に依存しません。DOT の node 配置・装飾は一時的な表示情報で、Procedure の意味や step の同一性を構成しません。
 
+## JavaScript参照機構の回帰試験
+
+GoのDFD生成器と、図の表示・変更候補を扱うJavaScriptの参照機構を、同じ変更範囲で検査します。
+
+```sh
+go test ./tools/reference-business-dfd
+```
+
+Node.jsが利用できる環境では、このGo試験から`node --test`を実行し、`reference/business-system-design/`の八つのDFD試験ファイルを確認します。GitHub ActionsではNode.jsが見つからない場合も失敗にし、JavaScript試験が実行されないまま成功と扱わないようにしています。開発者のGo専用環境でNode.jsが見つからない場合は、未実行である旨を明示してスキップします。
+
+画面試験は模擬DOMによるものであり、実ブラウザーの描画や操作性、Source Acceptance、正本の同一版を確認したことにはなりません。
+
 ## 図からの局所ナビゲーションと変更プレビュー（G1候補）
 
 `-select kind:id` はSourceを書き換えず、選択要素の参照先と元Source位置を返します。Stepは**Procedure内に限るReference-local識別**であり、同じ文字列のAccepted Taskを作ったり推測して接続したりしません。

@@ -24,6 +24,10 @@ type SelectedActionProvider struct {
 // Host. Browser input or untrusted plugin declarations must not build them.
 // Composition.Acquire applies the Host's current guard; this adapter does not
 // replace the original Action's authorization or effect-time checks.
+// The Host must also have authorized this exact Action in the current request.
+// A selected handler registered directly on an unprotected HTTP route refuses
+// dispatch even when a valid composition generation is available. Cached
+// request contexts also cannot keep this approval alive after Host return.
 func NewSelectedActionInvoker(
 	coordinator *composition.Coordinator,
 	contractID, contractVersion string,
@@ -43,6 +47,15 @@ func NewSelectedActionInvoker(
 		registered[candidate.ProviderID] = candidate
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		approval, approved := r.Context().Value(authorizedActionContextKey{}).(*authorizedActionApproval)
+		if _, ok := PrincipalFromContext(r.Context()); !ok || !approved ||
+			approval.actionID != contractID || !approval.live.Load() {
+			// A selected Action is not itself an authentication/authorization
+			// boundary. Never acquire a Provider from a bare route or reuse an
+			// approval for another Action, even when the caller forges headers.
+			http.Error(w, "protected action authorization required", http.StatusForbidden)
+			return
+		}
 		lease, err := coordinator.Acquire()
 		if err != nil {
 			http.Error(w, "action provider unavailable", http.StatusServiceUnavailable)

@@ -68,3 +68,20 @@ func emitSelfBuildMismatchEvidence(out io.Writer, err error) (bool, error) {
 	}
 	return true, nil
 }
+
+// Compare files produced by real builder executions before any artifact lock
+// can be created. A missing output is an execution error, not a mismatch.
+func compareSelfBuildFileDigests(stage, firstPath, secondPath string) (string, string, error) {
+	first, err := hashFile(firstPath)
+	if err != nil {
+		return "", "", fmt.Errorf("hash first self-build output: %w", err)
+	}
+	second, err := hashFile(secondPath)
+	if err != nil {
+		return first, "", fmt.Errorf("hash second self-build output: %w", err)
+	}
+	if first != second {
+		return first, second, nonReproducibleSelfBuild(stage, first, second)
+	}
+	return first, second, nil
+}
