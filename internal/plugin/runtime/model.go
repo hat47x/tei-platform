@@ -457,6 +457,34 @@ type Invocation struct {
 	Provenance InvocationProvenance `json:"provenance"`
 }
 
+// processImageBound identifies a process launcher whose verification evidence
+// applies only to the exact executable image it holds. This is an internal
+// marker, not a second public plugin contract or a sandbox guarantee.
+type processImageBound interface {
+	ArtifactVerifier
+	ProcessLauncher
+	boundProcessImage()
+}
+
+// validateProcessImageBinding rejects accidental mixing of a pinned verifier
+// with a pathname launcher (or the reverse) before a resource lease is issued.
+// A sandbox launcher does not receive the pinned process descriptor, so a
+// bound image must not silently take that alternate execution path.
+func (r Registry) validateProcessImageBinding(sandboxed bool) error {
+	verifiedImage, verifierBound := r.Verifier.(processImageBound)
+	launchedImage, launcherBound := r.Processes.(processImageBound)
+	if !verifierBound && !launcherBound {
+		return nil
+	}
+	if sandboxed {
+		return fmt.Errorf("pinned process image cannot be dispatched through a separate sandbox launcher")
+	}
+	if !verifierBound || !launcherBound || verifiedImage != launchedImage {
+		return fmt.Errorf("pinned process artifact verifier and process launcher must be the same held image")
+	}
+	return nil
+}
+
 type Registry struct {
 	Builtins               map[string]Builtin
 	BuiltinRegistrations   map[string]BuiltinRegistration
@@ -648,6 +676,9 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		}
 		if policy != plugin.SandboxRequired && r.Sandboxes == nil && r.Processes == nil {
 			return Invocation{}, fmt.Errorf("process plugin %s@%s has no host process or sandbox launcher", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		if err := r.validateProcessImageBinding(r.Sandboxes != nil && (policy == plugin.SandboxRequired || policy == plugin.SandboxPreferred)); err != nil {
+			return Invocation{}, fmt.Errorf("process plugin %s@%s: %w", cr.Plugin.ID, cr.Plugin.Version, err)
 		}
 	default:
 		return Invocation{}, fmt.Errorf("unsupported runtime boundary %s", cr.Boundary)
