@@ -238,7 +238,7 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     "review", "-workspace", workspace, "-candidate", rivalPath, "-format", "json"
   ]).stdout);
   checked(rivalCandidate.id !== proposal.id &&
-    rivalCandidate.origin.kind !== proposal.origin.kind &&
+    rivalCandidate.origin.kind !== visualCandidate.origin.kind &&
     JSON.stringify(rivalCandidate.delta) === JSON.stringify(proposal.delta),
     label + ": independent actors enter the same Shared Acceptance transport");
   checked(rivalPreview.acceptable === true &&
