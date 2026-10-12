@@ -8,7 +8,7 @@ Gate Bの三つのRequired Evidenceを、**同じclean candidate repository revi
 2. #255 generated artifact reproducibility Evidence
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-具体的な実行順、安全条件、停止条件の正本は`plan/GATE_B_EVIDENCE_RUNBOOK.md`です。本READMEはtool固有境界だけを説明します。
+具体的な実行順、安全条件、停止条件の正本は`plan/gate/GATE_B_EVIDENCE_RUNBOOK.md`です。本READMEはtool固有境界だけを説明します。
 
 ## 正規起動
 
@@ -309,8 +309,8 @@ child Evidence JSON自体にも各child runnerの通常のsecret非保存契約�
 
 ## 関連
 
-- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
-- `plan/GATE_B_EVIDENCE_ACQUISITION.md`
-- `plan/GATE_B_READINESS_AUDIT.md`
-- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `plan/gate/GATE_B_EVIDENCE_RUNBOOK.md`
+- `plan/gate/GATE_B_EVIDENCE_ACQUISITION.md`
+- `plan/gate/GATE_B_READINESS_AUDIT.md`
+- `plan/gate/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - ISSUE-000037-gate-b-three-lane-final-evidence.md

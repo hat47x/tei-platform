@@ -1,14 +1,14 @@
-# Legacy Authorization Conformance
+# 既存認可仕様への接続の準拠確認
 
 ## 目的
 
-このConformanceは、既存システムにある組織・role・個別ruleをTEI共通のRBAC modelへ作り替えず、v1 Reference Application `order_entry`の認可判断へ接続できることを確認します。
+この準拠確認では、既存システムの組織、ロール、個別の規則をTEI共通の役割に基づくアクセス制御モデルへ作り替えず、第1版の参照用アプリケーション`order_entry`の認可判断に接続できることを確かめます。
 
-AuthenticationとAuthorizationは分けます。Authenticationで得たsubject identityをAuthorizationへ渡しますが、ApplicationやDriverが既存のorganization codeやrole codeを直接読み取って判断する設計にはしません。
+認証と認可は区別します。認証で得た主体の識別情報を認可へ渡しますが、アプリケーションやドライバーが既存の組織コードやロールコードを直接読み取って判断する仕組みにはしません。
 
-## Semantic Capability
+## 意味上の実行機能
 
-v1 Referenceでは、`security.authorize`を次の最小契約として扱います。
+第1版の参照実装では、`security.authorize`に次の最小限の契約を用います。
 
 ```text
 subject
@@ -20,43 +20,43 @@ security.authorize
     └─ denied
 ```
 
-`allowed`と`denied`はいずれも、認可判断を正常に完了できた場合のBusiness Resultです。
+`allowed`と`denied`はいずれも、認可の判断を正常に完了した場合の業務結果です。
 
-既存user storeへ到達できない場合や、既存ruleの評価処理そのものが失敗した場合はExecution Errorとし、`denied`へ変換しません。
+既存の利用者情報の保存先へ接続できない場合や、規則の評価に失敗した場合は実行エラーとし、`denied`へ変換しません。
 
-## actionとresource
+## 操作と対象
 
-最初のReferenceでは、`order_entry`の実例から必要な三つの操作だけを扱います。
+最初の参照例では、`order_entry`で必要な三つの操作だけを扱います。
 
-| action | resource | Application上の意味 |
+| 操作 | 対象 | アプリケーション上の意味 |
 | --- | --- | --- |
 | `browse` | `order_entry.recent_orders` | 受注一覧を参照する |
 | `edit` | `order_entry.order_record` | 受注recordを編集する |
 | `execute` | `order_entry.submit_order` | 受注確定Commandを実行する |
 
-resourceにはWeb画面名やURLを使いません。既存のApplication Pattern identityを使います。
+対象の識別にはWeb画面の名前やURLを使わず、既存のアプリケーションの型の識別子を使います。
 
-`order_entry.submit_order`は既存のCommand Patternであり、`sales.order.submit` Capabilityへ接続されています。そのため、Authorization ruleへ同じCapability名を重ねて記述する必要はありません。
+`order_entry.submit_order`は既存の命令型の機能であり、`sales.order.submit`へ接続されています。そのため、認可規則に同じ機能名を重ねて記述する必要はありません。
 
-## legacy rule fixture
+## 既存規則の試験用データ
 
-`reference/legacy-auth/authorization.json`は、既存システム固有の認可表を模したReferenceです。
+`reference/legacy-auth/authorization.json`は、既存システム固有の認可表を模した参照用データです。
 
-現在の実例では、次の既存metadataをそのまま利用します。
+現在の例では、次の既存の情報をそのまま使います。
 
-- organization code
-- role code
-- action
-- resource
-- effect
+- 組織コード
+- ロールコード
+- 操作
+- 対象の資源
+- 許可または拒否の効果
 
-これはTEI標準のrole modelではありません。既存仕様を失わずにSemantic Capabilityへ接続できることを確かめるためのfixtureです。
+これはTEI標準のロールモデルではありません。既存の仕様を保ったまま意味上の機能へ接続できることを確かめるための試験用データです。
 
-`ORDER_EDITOR`と`ORDER_VIEWER`も標準role名ではなく、このReference内のlegacy値です。
+`ORDER_EDITOR`と`ORDER_VIEWER`も標準のロール名ではなく、この参照例に含まれる既存システム固有の値です。
 
-## subjectからlegacy userへの接続
+## 対象者と既存利用者の対応
 
-Authenticationが返したsubject identityから、`FixtureStore.FindBySubject`を通して既存user recordを引き直します。
+認証が返した主体の識別情報を使い、`FixtureStore.FindBySubject`で既存の利用者記録を再取得します。
 
 ```text
 Authenticated Subject
@@ -70,92 +70,92 @@ legacy user metadata
 legacy authorization rule
 ```
 
-Application / Driverへorganizationやroleを公開して認可ruleを再実装させません。
+アプリケーションやドライバーへ組織やロールの情報を公開し、認可規則を重複して実装させることはしません。
 
-## 明示Binding
+## 明示的な接続
 
-`order_entry`ではAuthenticationと同じ既存のCustom Go Binding形式を使います。
+`order_entry`では、認証と同じ既存のGoによる接続定義の形式を使います。
 
 ```tei
 realize security.authorize with custom go
 ```
 
-Binding identityは次です。
+対応付けを識別する値は次のとおりです。
 
 ```text
 order_entry/security.authorize
 ```
 
-Source Indexから、authoring sourceである
+入力元索引から、記述元のファイルである
 
 ```text
 applications/order-entry/realizations/authorize.tei
 ```
 
-へ戻れることをConformanceで確認します。
+へ戻れることを準拠確認で確かめます。
 
-Authorization専用のBinding形式は追加しません。
+認可だけのための新しい接続定義形式は追加しません。
 
-## Referenceで確認する判断
+## 参照実装で確かめる判断
 
-編集者では、次を`allowed`として確認します。
+編集者については、次の操作が`allowed`となることを確認します。
 
 - 受注一覧の参照
 - 受注recordの編集
 - 受注確定Commandの実行
 
-閲覧者では、次を確認します。
+閲覧者については、次の結果を確認します。
 
 - 受注一覧の参照 → `allowed`
 - 受注recordの編集 → `denied`
 - 受注確定Commandの実行 → `denied`
 
-未知のsubjectや、legacy ruleに一致しない操作は`denied / not_authorized`とします。
+未知の主体や、既存の認可規則に一致しない操作は`denied / not_authorized`とします。
 
-これはReference上の最小語彙です。Authentication一例とAuthorization一例だけから、標準的な拒否理由体系を先回りして固定しません。
+これは参照実装の最小限の結果表現です。認証と認可の一例ずつを根拠に、標準的な拒否理由の分類を早まって固定しません。
 
-## Execution Errorとの境界
+## 実行エラーとの境界
 
-次は`denied`ではありません。
+次の場合は、`denied`として扱いません。
 
-- subject storeを実行できない
-- legacy authorization ruleを評価できない
-- `security.authorize`以外のCapabilityを誤ってadapterへ渡す
-- subject / action / resourceが欠けている
-- adapterの入力契約そのものが壊れている
+- 主体の情報を取得する保存先を利用できない
+- 既存の認可規則を評価できない
+- `security.authorize`以外の機能を誤って接続部へ渡す
+- 主体・操作・対象の情報が不足している
+- 接続部の入力が契約に違反している
 
-これらは認可が拒否されたのではなく、認可判断を正常に完了できなかった状態です。PR #141で成立したCapability共通のExecution Error境界をそのまま利用します。
+これらは認可の拒否ではなく、判断を正常に完了できなかった状態です。PR #141で導入した、機能に共通する実行エラーの境界をそのまま使います。
 
-## Plugin / Runtime Permissionとの分離
+## プラグイン・実行環境の権限との分離
 
-このAuthorizationはApplication利用者が業務操作を実行できるかを表します。
+ここで扱う認可は、アプリケーションの利用者が業務操作を実行できるかどうかの判断です。
 
-process PluginがDatabaseや外部resourceへアクセスできるかを制御するPlugin / Runtime Permissionとは別の概念です。今回のReferenceでも両者を同じruleやCapabilityへ統合しません。
+別プロセスで動くプラグインが、データベースや外部の資源へアクセスできるかを制御する実行時の利用許可とは別のものです。この参照例でも、両者を同じ規則や機能へまとめません。
 
 ## この段階で固定しないこと
 
-- TEI標準User / Role / Permission schema
+- TEI標準の利用者・ロール・許可のデータ構造
 - `std.auth.*`への標準化
-- 汎用RBAC / ABAC rule language
-- Webのroute guardやbutton表示
-- HTTP statusへの変換
-- production用Policy Engine
-- Plugin / Runtime Permissionとの統合
+- 汎用的な役割・属性に基づく認可規則の言語
+- Webの画面遷移を守る仕組みやボタン表示
+- HTTPの状態コードへの変換
+- 本番用の認可方針を評価する仕組み
+- プラグインの実行時の利用許可との統合
 
-これらは、複数Applicationや複数Targetから必要性が確認できた段階で検討します。
+これらは、複数のアプリケーションや実行先で必要性を確認できた段階で検討します。
 
-## Gate Aへの意味
+## 判定段階Aとの関係
 
-このReferenceにより、Driverへ次を渡せる状態を目指します。
+この参照例では、ドライバーへ次の情報を渡せる状態を目指します。
 
-- authenticated subject identity
-- Authorization Capability identity
-- Application上のaction / resource
-- legacy organization / role / ruleとの接続境界
-- `allowed / denied`というBusiness Result
-- Execution Errorとの区別
-- Bindingとlegacy fixtureの来歴
+- 認証された主体の識別情報
+- 認可機能の識別子
+- アプリケーションで扱う操作と対象
+- 既存の組織・ロール・規則との接続境界
+- `allowed / denied`という業務結果
+- 実行エラーとの区別
+- 対応付けと既存の試験用データの出所
 
-このPRの後には、同じ`security.authenticate` Capability identityを維持したままlegacy実現方式を交換できることを確認します。そのEvidenceまで揃った段階でIssue #68とGate Aを再監査します。
+このPRの後は、`security.authenticate`の識別子を維持したまま、既存の認証方式を実現する接続部を交換できるか確かめます。その検証根拠が揃った段階で、Issue #68と判定段階Aを再確認します。
 
 関連: #68 / #69 / #124 / PR #141 / #145 / #148 / ADR-0019 / ADR-0020

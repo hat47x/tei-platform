@@ -1,220 +1,218 @@
-# TEI Product Quality Architecture
+# TEIの製品品質を横断して考える
 
-Status: **Design baseline — cross-cutting / Evidence-driven**
+状態：**横断的な設計基準。検証根拠をもとに評価する方針**
 
-関連文書とIssueは次のとおりです。
+関連する文書と課題は次のとおりです。
 
-- `requirements/TEI_PRODUCT_REQUIREMENTS.md` — Product Requirement正本
-- `plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — 段階的な実証計画
-- `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md` — Requirement別の現在地
-- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` — PASとの接続
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md` — 製品要求の正本
+- `plan/evidence/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — 段階的な実証計画
+- `plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md` — 要求ごとの達成状況
+- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` — 製品の受け入れシナリオとの対応
 - GitHub Issue #565
 
 ## 1. 位置づけ
 
-TEIにおける製品品質（Product Quality）は、意味モデルから切り離された「非機能層」ではありません。
+TEIの製品品質は、意味モデルから独立した「非機能の層」だけで扱うものではありません。
 
-すでに定めた次の境界が、Target、Provider、Runtime、Studio、AIの各領域でも一貫して守られるかを確かめるための設計軸です。
+すでに定めた次の境界が、実行先、提供元、実行環境、設計・編集環境、AIの各領域でも一貫して守られているかを確かめるための設計上の観点です。
 
-- business meaningとrealizationの分離
-- authoritative sourceとderived artifactの分離
-- explicit Binding / authority
-- Desired / Actual / Diff / Unresolved
-- Business Result / Execution Error / Observationの分離
-- Reference / Conformance / Evidenceによる再現性
-- Permission / Resource / secret境界
-- Target-conditioned performance
-- Data / Function / Businessのcross-check
+- 業務上の意味と、技術的な実現方法の分離
+- 正本となる入力元と、そこから生成した成果物の分離
+- 明示的な対応付けと権限
+- 期待状態・実際の状態・差分・未解決状態の区別
+- 業務結果・実行エラー・観測結果の分離
+- 参照例・準拠確認・検証根拠による再現性
+- 利用許可・資源・秘密情報の境界
+- 実行先の条件を踏まえた性能
+- データ・機能・業務の各視点からの相互確認
 
-このため、本書は新しい番号付きProduct Requirement、Canonical kind、Gate、Runtime subsystemを追加しません。
+このため、本書では番号付きの製品要求、意味の正本の要素種別、判定段階、実行環境の部分機構を新たに追加しません。
 
-## 2. なぜ横断Architectureが必要か
+## 2. なぜ分野をまたいだ品質の検証が必要か
 
-要求が適切でも、品質上の関心事を個別実装ごとに扱うと、次のような早計な判断が起こり得ます。
+要求が適切に定められていても、品質を個別の実装ごとに評価すると、次のような早計な判断につながりかねません。
 
 ```text
-Databaseでは安全
-  != Targetでも安全
+データベースでは安全
+  ≠ 実行先でも安全
 
-Semantic Conformance PASS
-  != 利用者が操作・復旧できる
+意味の準拠性検査に合格
+  ≠ 利用者が操作・復旧できる
 
-latency = 80ms
-  != 条件を失っても「高速」と主張できる
+応答時間 = 80ms
+  ≠ 測定条件を示さず「高速」と主張できる
 
-logが多い
-  != business meaningへ診断できる
+ログが多い
+  ≠ 業務上の意味に沿って診断できる
 
-AI retrieval accuracyが高い
-  != semantic correctness
+AIによる検索の正確さが高い
+  ≠ 意味の正しさが確認された
 ```
 
-そのため品質については、意味・変更・実行・Interaction・Evidenceの各境界に対して、同じ観点から確認します。
+そのため品質は、意味・変更・実行・操作・検証根拠のそれぞれについて、共通の観点から確認します。
 
-## 3. Quality axes
+## 3. 品質を確かめる八つの観点
 
-### 3.1 Meaning quality
+### 3.1 意味の品質
 
 主な問いは次のとおりです。
 
-- Projection / Target / Provider都合でCanonical meaningが変わっていないか。
-- derived artifactが第二正本になっていないか。
-- insufficient observationを`no diff`やsuccessへ変換していないか。
-- identity解決がfirst-match等の偶然の順序へ依存していないか。
+- 表示方法・実行先・提供元の都合で、正本の意味が変わっていないか。
+- 生成した成果物が第二の正本になっていないか。
+- 観測が不十分なのに、`no diff`や成功として扱っていないか。
+- 対象の識別が、最初に一致したものを採用するなど、偶然の探索順序に依存していないか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-001 / 002 / 003 / 006 / 011 / 017 / 018 / 021 / 026
 
-### 3.2 Change quality
+### 3.2 変更の品質
 
 主な問いは次のとおりです。
 
-- semantic no-op / compatible / incompatible / destructive / unresolvedを区別できるか。
-- apply前にimpactとpreconditionを説明できるか。
-- planning後にactual stateが変わった場合、古い観測でdestructive operationを実行しないか。
-- retry / fallback / CASCADE等で作用範囲を暗黙拡大していないか。
-- rollback不能ならrecovery制約を隠していないか。
+- 意味に変化がない変更、互換性のある変更、互換性のない変更、破壊的な変更、未解決の変更を区別できるか。
+- 変更を適用する前に、影響範囲と前提条件を説明できるか。
+- 計画した後で実際の状態が変わった場合、古い観測結果を根拠に破壊的な操作を実行していないか。
+- 再試行、代替処理、CASCADEなどによって、操作の対象範囲が暗黙に広がっていないか。
+- 元に戻せない変更について、復旧上の制約を隠していないか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-002 / 006 / 017 / 020 / 021 / 022
 
-### 3.3 Execution quality
+### 3.3 実行の品質
 
 主な問いは次のとおりです。
 
-- Business Result、named Outcome、Execution Error、Observationを区別できるか。
-- dependency unavailable / degraded / timeout / unknownをsuccessへ丸めていないか。
-- replay / takeover / retryで二重副作用を起こさないか。
-- failureがどのApplication / Binding / Capability / Provider / Runtime境界で起きたかを追えるか。
+- 業務結果、名前付きの結末、実行エラー、観測結果を区別できるか。
+- 依存先の利用不能、機能低下、時間切れ、状態不明を、成功として扱っていないか。
+- 再実行、監督役の交代、再試行によって、同じ外部変更を二重に起こさないか。
+- 失敗が、アプリケーション・対応付け・機能・提供元・実行環境のどの境界で起きたか追跡できるか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-018 / 019 / 020 / 021 / 022
 
-### 3.4 Interaction quality
+### 3.4 操作の品質
 
 主な問いは次のとおりです。
 
-- high-density表示が操作不能・理解不能になっていないか。
-- Target / Host / input modalityに応じて主要Scenarioを完遂できるか。
-- validation / error / unavailable状態から利用者が復旧できるか。
-- accessibilityをVisual Fidelityやscreenshot similarityへ還元していないか。
+- 情報量の多い表示が、操作しにくさや理解しにくさにつながっていないか。
+- 実行先、ホスト、入力方法に合わせて、主要な利用場面の操作を完了できるか。
+- 検証エラー、処理エラー、利用不能な状態から、利用者が操作を立て直せるか。
+- 利用しやすさを、見た目の再現度や画面画像の類似度だけで評価していないか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-010 / 011 / 013 / 021 / 024
 
-### 3.5 Performance / resource quality
+### 3.5 性能と資源利用の品質
 
 主な問いは次のとおりです。
 
-- latency / throughput / memory / external cost等をTarget / Host / Provider / workload条件付きで観測しているか。
-- averageだけでtail / cold-start / large-data等のrelevant caseを隠していないか。
-- 一つのTargetで得たthresholdを別Targetへ無条件に転用していないか。
+- 応答時間・処理量・使用メモリ・外部費用などを、実行先・ホスト・提供元・処理負荷の条件とともに記録しているか。
+- 平均値だけを示し、処理時間の長い例、初回起動、大量データなど重要な条件を隠していないか。
+- 一つの実行先で決めた判定基準を、別の実行先へ無条件に適用していないか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-021 / 022 / 023 / 024
 
-### 3.6 Security / authority quality
+### 3.6 安全性と権限の品質
 
 主な問いは次のとおりです。
 
-- actor、UI convenience、AI autonomyをexecution authorityへ読み替えていないか。
-- secret / credential / DSN / unnecessary physical identityをdiagnosticやEvidenceへ複製していないか。
-- current Permission / Resource boundaryを迂回する実行経路がないか。
+- 業務主体、画面の便利さ、AIの自律性を、実行権限があることの根拠にしていないか。
+- 秘密情報、認証情報、接続文字列、不要な物理的識別情報を診断結果や検証根拠へ複製していないか。
+- 現在の利用許可と資源管理の境界を迂回する実行経路がないか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-003 / 008 / 019 / 020 / 021 / 022
 
-### 3.7 Maintainability / evolvability quality
+### 3.7 保守性と発展のしやすさ
 
 主な問いは次のとおりです。
 
-- 一つの意味変更に複数正本の人手同期が必要になっていないか。
-- Provider / Target固有変更がCoreへ不要に波及していないか。
-- Evidence tool / Plan / schemaを増やすこと自体が維持負債になっていないか。
-- 一人のmaintainerでもRequirement → Decision → Reference → Evidenceを追えるか。
+- 一つの意味の変更に対して、複数の正本を人手で同期する必要が生じていないか。
+- 提供元や実行先に固有の変更が、中核部分へ不要に波及していないか。
+- 検証用ツール、計画、定義形式を増やすこと自体が、保守の負担になっていないか。
+- 保守担当者が一人でも、要求から設計判断、参照例、検証根拠へとたどれるか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-002 / 003 / 017 / 021 / 023
 
-### 3.8 Business completeness quality
+### 3.8 業務を漏れなく扱う品質
 
 主な問いは次のとおりです。
 
-- Application Functionだけで業務全体を説明したことにしていないか。
-- manual / external work、actor、handoff、judgmentを失っていないか。
-- Data / Function / Businessの一視点だけで矛盾を隠していないか。
+- アプリケーションの機能だけで、業務全体を説明したことにしていないか。
+- 手作業や外部で行われる仕事、業務主体、引き継ぎ、判断を漏らしていないか。
+- データ・機能・業務の一つの視点だけを見て、矛盾を見落としていないか。
 
-主なRequirement:
+主に対応する製品要求：
 
 - RQ-025 / 026
 
-## 4. Quality Envelope
+## 4. 品質の評価条件
 
 ### 4.1 定義
 
-品質主張を単独値として保持すると、条件が失われた時点で意味が崩れます。
+品質について単独の数値だけを残すと、測定した条件が分からなくなったときに、その数値が何を示すか判断できません。
 
-そこで、重要なquality claimを次へ結び付ける考え方を**Quality Envelope**と呼びます。
-
-```text
-subject
-+ revision / build identity
-+ Target / Host / Provider / Runtime context
-+ Scenario / workload / precondition
-+ quality property
-+ measure / probe
-+ acceptance rule or rationale
-+ Evidence reference
-+ status
-```
-
-Quality Envelopeは固定schemaではありません。必要な領域で必要な項目だけを持つderivedな監査単位です。
-
-### 4.2 status
-
-少なくとも概念上、次を区別します。
-
-- observed / passed
-- observed / failed
-- unresolved
-- not-applicable
-- not-yet-observed
-
-`not observed`を`passed`へ丸めません。
-
-### 4.3 Canonicalではない
-
-Quality Envelopeは:
-
-- business meaningを再定義しない
-- authoritative sourceへ暗黙に逆書きしない
-- telemetryからBusiness Resultを逆推論しない
-- benchmarkからProduct Requirementを自動生成しない
-- Target固有qualityを全Targetの意味へ昇格しない
-
-という境界を持ちます。
-
-## 5. Failure topology
-
-TEIでは「error」を一種類へ畳みません。
+そこで、品質についての重要な主張を次の情報と結び付ける考え方を、**Quality Envelope（品質の評価条件）**と呼びます。
 
 ```text
-Business Result
-Named Outcome
-Execution Error
-Observation
-Developer Diagnostic
-Operational Telemetry
+評価対象
++ 対象となる版・ビルドの識別情報
++ 実行先・ホスト・提供元・実行環境の条件
++ シナリオ・処理負荷・前提条件
++ 評価する品質特性
++ 測定方法・確認方法
++ 受入条件または判断理由
++ 検証根拠への参照
++ 評価した状態
 ```
 
-これらは相関してよいですが同一ではありません。
+品質の評価条件は、固定された定義形式ではありません。各領域で必要な項目を持つ、再生成可能な確認の単位です。
+
+### 4.2 状態
+
+少なくとも、次の状態を区別します。
+
+- 観測済み・合格（`observed / passed`）
+- 観測済み・不合格（`observed / failed`）
+- 未解決（`unresolved`）
+- 適用対象外（`not-applicable`）
+- 未観測（`not-yet-observed`）
+
+`not observed`を`passed`（合格）として扱いません。
+
+### 4.3 意味の正本とは区別する
+
+品質の評価条件では、次の制約を守ります。
+
+- 業務上の意味を再定義しない
+- 正本となる情報源へ暗黙に書き戻さない
+- 運用時の計測情報から業務結果を逆に推測しない
+- 性能などの測定結果から製品要求を自動生成しない
+- 実行先に固有の品質を、すべての実行先に共通する意味として扱わない
+
+## 5. 失敗や結果の種類を分ける
+
+TEIでは、異なる性質のエラーや結果を一つにまとめません。
+
+```text
+業務上の結果
+名前を持つ処理の結末
+実行エラー
+観測結果
+開発者向けの診断
+運用時の計測情報
+```
+
+これらの情報を関連付けることはできますが、同じ意味ではありません。
 
 例は次のとおりです。
 
@@ -225,131 +223,129 @@ DB commit success
 span.status = OK
 ```
 
-はいずれも、それ単独ではbusiness successを意味しません。
+のいずれも、それだけでは業務上の成功を意味しません。
 
-Diagnostic / Telemetryには必要なlogical identityだけを持たせ、credential、password、DSN本文、secret、不要なraw business dataを通常記録へ複製しません。
+診断情報や運用記録には、必要な論理上の識別情報だけを記録します。認証情報、パスワード、接続文字列の本文、秘密情報、不要な業務データを通常の記録へ複製しません。
 
-## 6. Change safety
+## 6. 変更の安全性
 
-Change safetyはDatabase migrationだけに限定しません。
+変更時の安全性は、データベースの移行だけの問題ではありません。
 
-対象には少なくとも次があり得ます。
+少なくとも、次のような変更が対象になります。
 
-- Canonical source change
-- Application / Binding change
-- Database desired-state change
-- generated artifact refresh
-- Target / Runtime configuration change
-- Studio / AI accepted edit
+- 意味の正本となるソースの変更
+- アプリケーションや対応付けの変更
+- データベースで期待する状態の変更
+- 生成物の更新
+- 実行先や実行環境の設定変更
+- 編集環境やAIから提案され、受理された変更
 
 共通原則は次のとおりです。
 
 ```text
-candidate
-  -> impact / compatibility
-  -> current precondition where required
-  -> explicit acceptance
-  -> apply
-  -> reload / observation / evidence
+変更候補
+  → 影響と互換性の確認
+  → 必要に応じて現在の前提条件を確認
+  → 明示的な受理
+  → 変更の適用
+  → 再読込み・観測・検証根拠の確認
 ```
 
-外部状態に依存するdestructive operationでは、古いObservationだけを実行許可へ使いません。freshness、revision、identity、ownership等、当該領域で必要なpreconditionをapply直前に確認します。
+外部の実際の状態に依存する破壊的な操作では、古い観測結果だけを実行許可の根拠にしません。情報の新しさ、改訂版、対象の識別、管理主体など、必要な前提条件を適用直前に確認します。
 
-一方、PostgreSQLの具体的な安全機構をそのまま全領域のUniversal Change Protocolへ昇格しません。
+一方、PostgreSQLに固有の安全機構を、すべての領域で使う共通の変更手順へ無条件に広げることもしません。
 
-## 7. Interaction / accessibility
+## 7. 操作性とアクセシビリティ
 
-Target-neutralはlowest-common-denominator UIを意味しません。
+実行先に依存しないことは、すべての実行先で最小限の画面機能だけを提供することではありません。
 
-同じApplication meaningに対し、Targetごとに自然なinteractionを提供しつつ、主要ScenarioのoperabilityをEvidence化します。
+同じアプリケーションの意味を保ちながら、実行先ごとに適した操作方法を提供します。主要な利用場面で実際に操作できることは、検証根拠として残します。
 
-WebではWCAG 2.2等をtestable referenceとして利用できます。Desktop / Mobile / API / MCP / VUIへWeb固有のsemanticsを強制しません。
+WebではWCAG 2.2などを検証可能な参考基準として使えます。ただし、デスクトップ、スマートフォン、API、MCP、音声操作にWeb固有の意味や制約を強制しません。
 
-Visual Fidelity Evidenceだけでoperability / accessibilityを合格にしません。
+画面の見た目に関する検証根拠だけで、操作の成立やアクセシビリティを合格とは判断しません。
 
-## 8. Performance
+## 8. 性能
 
-RQ-024に従い、一律thresholdを先に固定しません。
+RQ-024に従い、すべてに共通する性能の判定値を先に固定しません。
 
-最初にReferenceでbaselineを測り、少なくとも:
+まず参照例で基準となる値を測り、少なくとも次の条件を添えて記録します。
 
-- Target / Host
-- Provider / Runtime
-- Scenario / workload
-- warm / cold等の条件
-- revision / build identity
+- 実行先とホスト
+- 提供元と実行環境
+- シナリオと処理負荷
+- 起動直後か稼働が安定した後かなどの条件
+- 対象となる版とビルドの識別情報
 
-と一緒に保持します。
+利用目的から必要性を説明できる段階で、受け入れの判定基準を定めます。
 
-利用目的から必要性が説明できた時点でacceptance thresholdを定めます。
+## 9. AIと派生した認知支援
 
-## 9. AI / derived cognition
-
-AI / associative retrieval / derived cognitionでは、candidate qualityとsemantic correctnessを分けます。
+AI、連想に基づく検索、派生した認知支援では、候補の質と意味の正しさを区別します。
 
 ```text
-candidate recall / ranking / latency
-        !=
-applicability
-        !=
-accepted decision
-        !=
-execution authority
+候補の検索率・順位付け・応答時間
+        ≠
+業務上の適用可能性
+        ≠
+受理された判断
+        ≠
+実行権限
 ```
 
-index、embedding、FlyHash / HDC等のrepresentation、trajectoryはderivedです。削除・再生成してもCanonical Worldが変わらないことを守ります。
+索引、埋め込み表現、FlyHash・HDCなどによる表現、処理の履歴は派生情報です。削除して再生成しても、意味の正本となる全体モデルが変わらないようにします。
 
-認知方式の評価値もQuality Envelopeへ結べますが、model confidenceやsimilarityをSemantic Evidenceへ格上げしません。
+認知方式の評価値も品質の評価条件に結び付けられますが、モデルの確信度や類似度を、意味の正しさを示す検証根拠として扱いません。
 
-## 10. Operational Telemetry
+## 10. 運用時の計測情報
 
-Operational TelemetryはRuntimeを観測するProjectionです。
+運用時の計測情報は、実行環境を観測して得られる派生情報です。
 
-OpenTelemetry等のsemantic conventionsへ写像できることは相互運用上有用ですが、TEI Canonical modelをtelemetry data modelへ合わせません。
+OpenTelemetryなどの共通の表現規則へ対応付けられることは、他の仕組みとの連携に役立ちます。ただし、TEIの意味の正本を、運用計測のデータ形式に合わせて変更しません。
 
 必要な相関は次のように表します。
 
 ```text
-TEI logical identity
-   -> operational projection
-   -> trace / metric / log
+TEIの論理的な識別子
+   → 運用時の記録との対応付け
+   → 処理の追跡記録・測定値・ログ
 ```
 
-この方向で、論理的な識別子と運用上の記録を結び付けます。
+この対応関係によって、論理上の識別子と運用時の記録を結び付けます。
 
-## 11. 外部quality modelの扱い
+## 11. 外部の品質モデルの扱い
 
-外部標準は、TEIの第二Requirement正本ではなく抜け漏れ監査・test referenceとして利用します。
+外部の標準は、TEIの要求に対する第二の正本にはしません。抜け漏れの確認や、テストの参考基準として使います。
 
-- ISO/IEC 25010:2023 — quality characteristicの監査
-- WCAG 2.2 — Web interaction / accessibility
-- OpenTelemetry semantic conventions — operational telemetry Projection
-- NIST SSDF 1.1 — secure development / supply-chain process
+- ISO/IEC 25010:2023：品質特性を監査する際の参考
+- WCAG 2.2：Webの操作性とアクセシビリティの参考
+- OpenTelemetry semantic conventions：運用時の計測情報を対応付ける際の参考
+- NIST SSDF 1.1：安全な開発とソフトウェアの供給経路を管理する際の参考
 
-明示的な採用判断とTEI自身のEvidenceなしに、準拠・認証・完成claimへ格上げしません。
+採用するという明示的な判断と、TEI自身の検証根拠がない限り、標準への準拠、認証の取得、製品の完成を主張しません。
 
-## 12. Gateとの関係
+## 12. 既存の判定段階との関係
 
-Quality Architectureは新しいGateを追加しません。
+この製品品質の設計は、新たな判定段階を追加するものではありません。
 
-- Gate B: 既存3 Required Evidenceを増やさない
-- Gate C: Semantic / Functional / Visualの分離を維持する
-- First Target: operability / accessibility / performance / failure behaviorを追加観測する
-- Studio / AI / Second Target: それぞれ同じQuality Envelope原則で比較する
-- production: observability / HA / supply-chain等を必要なEvidenceとともに拡張する
+- 判定段階B：既存の三つの必須検証根拠を増やさない
+- 判定段階C：意味・機能・表示の検証根拠を分ける
+- 最初の実行先：操作の成立、アクセシビリティ、性能、失敗時の動作を追加で観測する
+- 編集環境・AI・二つ目の実行先：同じ品質評価条件の原則で比較する
+- 本番運用：観測可能性、高可用性、ソフトウェアの供給経路などを、必要な検証根拠とともに拡充する
 
-品質の計画や静的レビューを、実環境で取得したEvidenceと同一視しません。
+品質について計画を立てたり、文書やコードを静的に確認したりしても、それを実際の環境で取得した検証根拠と同一視しません。
 
 ## 13. 先に固定しないもの
 
-- Quality Envelopeの固定schema
-- universal quality score
-- 全Target共通performance threshold
-- 全Target共通accessibility checklist
-- OpenTelemetryの必須Runtime dependency
-- generic fallback engine
-- generic retry policy
-- generic migration / rollback protocol
-- quality characteristicごとの新しいGate / PAS / Issue群
+- 品質の評価条件を表す固定のスキーマ
+- すべての品質をまとめた単一の評価点
+- すべての実行先に共通する性能基準値
+- すべての実行先に共通するアクセシビリティの確認項目
+- OpenTelemetryを実行基盤の必須依存先とすること
+- 汎用的な代替処理の実行機構
+- 汎用的な再試行の方針
+- 汎用的な移行・切戻し手順
+- 品質特性ごとに新設する判定段階・受入シナリオ・課題群
 
-必要性はReference / Evidenceから決めます。
+これらを固定する必要があるかは、参照例と検証根拠から判断します。

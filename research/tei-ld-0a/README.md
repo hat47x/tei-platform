@@ -1,40 +1,36 @@
-# TEI-LD-0A corpus v0 — no-training checkpoint
+# TEI-LD-0A 提案結果コーパス
 
-This work unit implements the bounded synthetic corpus mechanics tracked by #876.
+この研究用一式は、提案結果を記録するコーパスの形式と、そこから作る三種類の検討用データを確かめます。対応する作業は[GitHub Issue #876](https://github.com/hat47x/tei-platform/issues/876)で管理しています。
 
-## Current evidence status
+## このコーパスで確認できること
 
-- The fixture rows are synthetic mechanics fixtures only.
-- They are not historical Proposal/Acceptance Evidence.
-- They are not training data and must not be used to fit logistic, LightGBM, Jev, LLM, or another learned model.
-- No teacher/provider/model output is captured by this corpus v0.
-- No row can write Canonical or authoritative source state.
+`corpus_v0.json`は、形式や検証処理を試すための合成データです。実際の提案・採用の履歴や、製品の有効性を示す根拠としては使えません。学習データでもなく、教師・提供元・モデルの出力も含みません。この研究用コードから正規の意味や権威ある定義を書き換えることもありません。
 
-The corpus exists only to exercise schema, identity, validation, candidate-set hashing, split/leakage checks, and derived V1-V3 research views. `DecodeCorpus` / `ValidateCorpus` validate these synthetic mechanics; they do not prove that a Canonical identity exists in an authoritative revision.
+`DecodeCorpus`と`ValidateCorpus`は、記録の形式、識別子、候補集合の指紋、データ分割、情報漏れの検査を行います。V1〜V3はコーパスから作る研究用の見通しです。これらの検査に通っても、記録された識別子が特定版の正規定義に実在する証明にはなりません。
 
-## Entry condition for historical evidence
+## 実際の履歴を検証根拠として扱う条件
 
-Do not label historical rows as Evidence until #267 provides actual Proposal/Acceptance records with enough provenance to bind:
+過去の行を検証根拠として扱う前に、[Shared Acceptanceの根拠](https://github.com/hat47x/tei-platform/issues/267)から、少なくとも次の情報を結び付けられる必要があります。
 
-- source and base revisions;
-- candidate identities and candidate-set identity;
-- Proposal/decision provenance;
-- reload and Validation/Conformance linkage where applicable.
+- 記述元と基準版
+- 候補の識別子と候補集合の識別情報
+- 提案と判断の由来
+- 採用後の再読込み、検証、準拠確認への参照
 
-If those records are absent, improve the upstream Evidence path rather than inventing labels.
+これらの情報がそろわない場合は、ラベルを作って補わず、先に根拠を記録する経路を整えます。実データを検証根拠として扱うには、権威ある正規定義を参照する`ValidateCorpusWithCanonicalResolver`で、各候補の識別子と版を確認します。参照先がない候補は検証に失敗します。参照先を省略した検証はできません。
 
-Before any historical row is called Evidence, run `ValidateCorpusWithCanonicalResolver` with a resolver backed by the authoritative Canonical revision source. An unresolved candidate or final mapping fails closed; a nil resolver is rejected.
+## 三種類の見通し
 
-## Branch boundary
+### V1 候補の再利用順位
 
-This is the single TEI-LD-0A corpus work unit. After its repository health gate passes and it is merged to `main`, delete or realign `research/tei-ld-0a-corpus-v0` before any teacher capture or model fitting. Do not create a parallel model-training branch from this checkpoint.
+同じ版で採用された正規定義が記録済みの候補集合にも含まれる場合に限り、再利用候補として扱います。不明な候補は負例にしません。負例は、同じ判断場面で明示的に退けられた候補か、決定的に不適合と判定された候補に限ります。
 
-## Derived-view boundaries
+### V2 不適合の分類
 
-The V1-V3 helpers are research projections over the recorded corpus, not new authority.
+参照先の根拠がそろった行だけを分類対象にします。人が採用しなかったという事実だけでは、不適合の根拠になりません。根拠のない適合候補は、負例にせず対象から外します。
 
-- V1 candidate-reuse ranking emits a positive only for a current accepted final Canonical mapping that is still a member of the recorded candidate set at the exact revision. Unknown candidates are never negatives. Negatives are limited to explicitly rejected or deterministically incompatible Canonical candidates from the same decision context.
-- V2 incompatibility emits targets only from rows with available referenced Evidence. Human rejection by itself is not an incompatibility label, and evidence-free compatible rows are omitted rather than treated as clean negatives.
-- V3 escalation is decision-context level. A current accepted Canonical mapping suppresses escalation even when the bounded candidate set also preserves stale/rejected alternatives. Stale accepted mappings, unresolved contexts, and contexts whose final mapping falls outside the recorded candidate set remain escalation cases.
+### V3 人の判断へ戻す必要性
 
-These projections must not feed post-Accept source state, Validation/Conformance outcomes, adjudicator identity, teacher/model output, or future revisions back into the feature set.
+判断場面ごとに、追加の人の判断が必要かを見ます。同じ場面で現行版の正規定義が採用済みなら、古い候補や却下済み候補が残っていても、判断が未解決とは扱いません。採用済みの候補が古い場合、場面が未解決の場合、または採用結果が記録済み候補集合の外にある場合は、追加確認の対象とします。
+
+これらの見通しは、採用後の定義、検証結果、人の判断者、教師・モデルの出力、将来版の情報を入力へ逆流させない条件を保ちます。

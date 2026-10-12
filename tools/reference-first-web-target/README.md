@@ -143,7 +143,7 @@ custom-submit-validation-not-satisfied.html
 custom-submit-execution-error.html
 ```
 
-これはFunctional Evidenceの再現性を高めるためのartifactであり、Screenshot / Visual Fidelity Evidenceそのものではありません。Visual capture recipeの正本は `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
+これはFunctional Evidenceの再現性を高めるためのartifactであり、Screenshot / Visual Fidelity Evidenceそのものではありません。Visual capture recipeの正本は `plan/gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
 
 ## Evidence高さ
 
@@ -186,7 +186,7 @@ Visualは `tools/reference-first-web-target-visual-evidence-audit`、architectur
 
 Semantic / Functional runner単独ではVisual Fidelity Evidenceを取得しません。Semantic / Functionalが成功してもsummaryは `visualEvidence.status = pending`、`gateCReady = false` のままです。Visual audit単独もGate C Readyを宣言しません。
 
-手順の正本は `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
+手順の正本は `plan/gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
 
 ## E1へ向けたApplication別のHTTP構成境界（実装準備段階）
 

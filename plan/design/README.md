@@ -1,9 +1,9 @@
 # 機能設計文書
 
-機能ごとの設計文書を置きます。対象は、複数のIssueやPRにまたがる一つの機能について、意味モデル、authoring、Validation、実行境界、Conformanceをまとめて示す文書です。
+機能ごとの設計文書を置きます。対象は、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行境界をまとめた設計文書を置きます。採用前の案も、対象Issueと状態を冒頭に示してここで管理します。
 
 - 何を行うかと完了条件: GitHub Issues
-- なぜその方針を採ったか: [`../adr/`](../adr/)
+- なぜその方針を採ったか: [`../adr/`](../adr/README.md)
 - 何から進め、何をEvidenceとするか: [`../README.md`](../README.md)
 - 実装構造と技術境界のcurrent説明: [`../../docs/architecture.md`](../../docs/architecture.md)
 - 実装・Evidenceの現在地: [`../../docs/status.md`](../../docs/status.md)
@@ -11,7 +11,7 @@
 
 設計文書はIssueとADRの代わりではありません。作業の進行はIssue、採用した判断はADRが正本です。ここに置くのは、その二つだけでは分断される機能単位の設計本文です。小さい機能では新しい文書を作らず、Issue本文へ書きます。
 
-Architecture文書の第二正本にもしません。`docs/architecture.md`が層と境界の全体像を示し、ここでは一機能の内部設計を扱います。
+`docs/`との役割を分けます。`docs/`は実装済みの構成や利用方法を説明し、ここでは採用前の案や、変更に必要な機能設計を扱います。実装状況が変わったら、設計文書を現行構成の説明へ流用せず、`docs/architecture.md`を更新します。
 
 ## 体裁
 
@@ -32,8 +32,10 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 | [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | Contract Query signature、SQL realization、executor Binding、provider runtimeの四層（ISSUE-000018〜ISSUE-000021 / ADR-0007 / ADR-0021） |
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移をCanonicalな意味として定義・実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026のcross-view照合をbounded proof obligationとしてDesign Synthesisの候補縮約へ接続する評価待ち設計 |
-| [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件単位のPlugin / UI Kit / 仕様Template / Architecture Profileの構成境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |\n| [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | Capabilityのsemantic requestとHost注入のexecution contextを分離する評価待ち設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
+| [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件単位のPlugin / UI Kit / 仕様Template / Architecture Profileの構成境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
+| [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | Capabilityのsemantic requestとHost注入のexecution contextを分離する評価待ち設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIで既存の実装を生かしながらTEIへ移行するための設計基線。 |
+| [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、視点をまたぐ変更の適格性確認案。未採用の参照契約。 |
 
 ## 関連Reference / Evaluation
 
@@ -180,6 +182,6 @@ S1 realistic intent / candidate frontier
 | Source-to-Canonical Traceability / Source Index | [ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[`docs/conformance/source-traceability-m0.23.md`](../../docs/conformance/source-traceability-m0.23.md) |
 | Database物理schemaのDesired / Actual / Diff / Unresolved、Advanced Index、Migration rendering | ADR-0008〜ADR-0015、`docs/conformance/`のm0.26〜m0.35 |
 | Plugin / Process Runtime、Permission、Resource Broker、fencing / takeover | [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md)、[ADR-0006](../adr/0006-process-command-and-argv.md)、`docs/conformance/`のm0.22.1 / m0.24 / m0.25 |
-| Target / Presentation境界 | Gate C前のため未確定。[Gate C Evidence契約](../GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
+| Target / Presentation境界 | Gate C前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
 
 Gate前に確定していない領域へ、先回りして設計文書を作りません。

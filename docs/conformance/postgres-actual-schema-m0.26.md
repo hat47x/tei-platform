@@ -1,8 +1,8 @@
-# Conformance — M0.26 actual PostgreSQL Desired / Actual / Diff
+# M0.26 PostgreSQLの実状態と期待構造の差分確認
 
-M0.26では、既存のDatabase lifecycleをactual PostgreSQLへ接続し、Persistence Mappingから導出したDesired Physical Schemaと、実DB catalogから観測したActual Physical Schemaをend-to-endで比較します。
+M0.26では、既存のデータベースの管理手順を実際のPostgreSQLに接続します。保存先への対応付けから導出した期待する物理構造と、データベースの管理情報から観測した実際の物理構造を、一連の処理で比較します。
 
-新しいCanonical DB modelを導入するのではなく、既存境界が実DBでも成立するかを確認するvertical sliceです。
+新しいデータベースの正本モデルを導入するのではなく、既存の境界が実際のデータベースでも成立するかを確かめる実証です。
 
 ## 検証する経路
 
@@ -22,21 +22,21 @@ Desired + Actual
 Schema Diff
 ```
 
-`SchemaSnapshot`はregeneratableなphysical observationであり、Canonical Worldではありません。
+`SchemaSnapshot`は再取得できる物理構造の観測結果であり、意味の正本である全体モデルではありません。
 
-## database/sql driverの境界
+## database/sqlドライバーの境界
 
-`internal/database/providers/postgres`は引き続き標準`database/sql`へだけ依存し、具体driverを選びません。
+`internal/database/providers/postgres`は引き続き標準の`database/sql`にだけ依存し、具体的なドライバーを選びません。
 
-Reference integrationのassemblyとして`github.com/jackc/pgx/v5/stdlib`を利用します。`database/sql`互換adapterを通じてactual PostgreSQLへ接続するため、provider SPIやCanonical modelへdriver identityを持ち込みません。fixtureの複文SQLを維持するため、共有接続設定でsimple protocolを選択します。
+参照実装の結合検証では`github.com/jackc/pgx/v5/stdlib`を組み合わせます。`database/sql`に対応する接続部を通じて実際のPostgreSQLを利用するため、提供元との接続規約や意味の正本にドライバーの識別情報を持ち込みません。複数の文を含む試験用SQLを扱うため、共有接続設定では簡易通信方式を選びます。
 
-接続文字列は`TEI_TEST_POSTGRES_DSN`からHost-sideに与えます。DSN、password、host等をPhysical Schema SnapshotやSchema Diffへ保存しません。
+接続文字列は、ホスト側から`TEI_TEST_POSTGRES_DSN`で与えます。接続先、パスワード、ホスト名などは、物理構造の観測結果や差分には保存しません。
 
-## actual fixture
+## 実状態を再現する試験データ
 
-`tools/reference-postgres-integration`はintegration harnessとして専用schemaを準備します。fixture setupのDDLは、TEIがschema-change capabilityを実装したことを意味しません。
+`tools/reference-postgres-integration`は、結合テスト用に専用のデータベース構造を準備します。試験データを用意するためにDDLを実行しても、TEI自身にデータベース構造を変更する機能が実装されたことにはなりません。
 
-fixtureは少なくとも次を含みます。
+試験用データには、少なくとも次を含めます。
 
 - schema-qualified tables
 - bigint
@@ -49,45 +49,45 @@ fixtureは少なくとも次を含みます。
 - ordinary indexes
 - foreign key
 
-Desired側は同じ構造を手書きPhysical Snapshotにせず、`persistence.Mapping`から`RealizeDesired`で生成します。
+期待する構造は手書きの物理構造記録ではなく、`persistence.Mapping`から`RealizeDesired`で生成します。
 
-## Primary KeyとIndexを二重計上しない
+## 主キーと索引を二重に数えない
 
-actual PostgreSQL integrationによって、PostgreSQLがPrimary Keyのために自動生成するbacking indexを`SQLCatalogReader.Indexes`が通常Indexとしても観測していた継ぎ目が見つかりました。
+実際のPostgreSQLを使った結合検証では、主キーを支えるために自動生成された索引を、`SQLCatalogReader.Indexes`が通常の索引としても取得している問題が見つかりました。
 
-TEI physical modelではPrimary KeyとIndexは別概念です。そのためPostgreSQL catalog adapterでは`indisprimary`のindexを通常Index一覧から除外します。
+TEIの物理構造モデルでは、主キーと索引を区別します。そのためPostgreSQLの管理情報を読み取る接続部では、`indisprimary`が示す索引を通常の索引一覧から除外します。
 
-これはtestを通すための文字列補正ではなく、同じphysical objectをPrimary KeyとIndexとして二重に表現しないためのprovider normalizationです。
+これはテストを通すためだけの文字列補正ではありません。同じ物理的な構成要素を主キーと索引の両方として数えないため、提供元固有の表現を整える処理です。
 
-## baselineとdrift
+## 基準状態と差分
 
-Reference integrationは二段階で検証します。
+参照実装の結合検証は、二段階で行います。
 
-### baseline
+### 基準状態
 
-Persistence Mappingから生成したDesiredと、同じ形に準備したactual PostgreSQLを比較し、`schemadiff.Compare`のchangesが0件であることを要求します。
+保存先への対応付けから生成した期待する構造と、同じ形に準備した実際のPostgreSQLを比較し、`schemadiff.Compare`が返す変更項目が0件であることを要求します。
 
-### drift
+### 差分
 
-その後、test harnessがactual側だけに`drift_note text` columnを追加します。
+その後、テスト用の仕組みが実際のデータベースにだけ`drift_note text`という列を追加します。
 
-TEIは再introspectionし、Desiredには存在しないactual-only columnとして`drop-column`差分を検出します。ここでいう`drop-column`は「Desiredへ一致させるならactual側から消える対象」というDiff表現であり、TEIが自動的にDROPを実行する意味ではありません。
+TEIは実際の構造を再取得し、期待する構造にない列として`drop-column`の差分を検出します。ここでいう`drop-column`は「期待する構造に合わせるなら、実際の構造から削除する対象」を示す差分であり、TEIが自動的に削除命令を実行するわけではありません。
 
-M0.26では差分検出後にmigrationを自動採用・実行しません。
+M0.26では、差分を検出しても移行処理を自動的に採用・実行しません。
 
-## Foreign Keyの現在地
+## 外部キーの確認状況
 
-PostgreSQL providerはactual foreign keyを`SchemaSnapshot.ForeignKeys`へ観測します。Reference integrationでは1件のFKが実際に取得できることを確認します。
+PostgreSQLの接続部は、実際の外部キーを`SchemaSnapshot.ForeignKeys`へ記録します。参照実装の結合検証では、外部キーを1件取得できることを確かめます。
 
-一方、現行`schemadiff.Compare`はForeign Key差分を比較対象にしていません。したがってM0.26は「FK introspectionは実DBで成立する」ことまでを確認し、FK drift generalizationは別課題とします。
+一方、M0.26時点の`schemadiff.Compare`は外部キーの差分を比較しません。そのため、この段階では実際のデータベースから外部キーを読み取れることまでを確認し、外部キーの差分検出は別の課題としました。
 
-この制約はM0.26時点のものです。後続M0.27 / ADR-0008でPersistence MappingからDesired FKを明示し、provider-neutral Schema DiffへForeign Keyを統合しました。現在の境界は [M0.27 Conformance](foreign-key-drift-m0.27.md) を参照してください。
+この制約はM0.26時点のものです。その後、M0.27とADR-0008で保存先への対応付けから期待する外部キーを明示し、提供元に依存しない構造差分の比較へ外部キーを追加しました。現在の扱いは[M0.27の準拠確認](foreign-key-drift-m0.27.md)を参照してください。
 
-## 常設CI
+## 継続的な自動検査
 
-常設CIにはPostgreSQL serviceを使う独立jobを置きます。
+常設の自動検査には、PostgreSQLのサービスを使う独立した実行単位を設けます。
 
-このjobでは次を確認します。
+この実行単位では、次を確かめます。
 
 - actual PostgreSQL serverが起動する
 - Reference `database/sql` driverで接続できる
@@ -97,11 +97,11 @@ PostgreSQL providerはactual foreign keyを`SchemaSnapshot.ForeignKeys`へ観測
 - foreign keyを1件観測
 - connection dataがSnapshot / Diffへ混入しない
 
-通常のunit / Reference fixture検証とはjobを分け、外部service integrationの失敗境界を明確にします。
+通常の単体テストや参照用データの検証とは実行単位を分け、外部サービスとの結合部分で起きた失敗を特定できるようにします。
 
 ## 非目標
 
-M0.26では次をproduction-readyと主張しません。
+M0.26では、次の機能を本番運用できる品質で実現したとは主張しません。
 
 - connection pool sizing / failover
 - TLS / certificate policy
@@ -113,4 +113,4 @@ M0.26では次をproduction-readyと主張しません。
 - Oracle等ほかのDB providerのactual integration
 - Foreign Key diffの一般化
 
-目的は、TEI固有のDesired / Actual / Diff境界が実PostgreSQLでも壊れないことを確認することです。
+目的は、TEIが区別する期待状態・実際の状態・差分の境界が、実際のPostgreSQLでも保たれることを確かめることです。

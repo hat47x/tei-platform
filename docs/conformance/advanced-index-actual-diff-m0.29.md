@@ -1,88 +1,88 @@
-# M0.29 Advanced Index Actual / Diff Conformance
+# M0.29 高度な索引の実際値と差分の準拠確認
 
 ## 目的
 
-M0.29では、PostgreSQLの実DBに存在するIndexを、単純な列名の並びへ潰さずに観測し、Desired Physical Schemaとの差を意味のある単位で説明できるようにします。
+M0.29では、実際のPostgreSQLにある索引を、単純な列名の並びへ省略せずに取得します。そのうえで、期待する物理構造との違いを、意味のある単位で説明できるようにします。
 
-対象はIssue #50と[ADR-0010](../../plan/adr/0010-advanced-index-semantics.md)で定めたActual / Diff側です。Advanced IndexをDesiredから記述するauthoring構文はIssue #51へ分離し、この段階では追加しません。
+対象はIssue #50と[ADR-0010](../../plan/adr/0010-advanced-index-semantics.md)で定めた、実際の状態の取得と差分の比較です。高度な索引の期待構造を記述する構文はIssue #51へ分けており、この段階では追加しません。
 
-## Physical Schemaで保持する意味
+## 物理構造で保持する意味
 
-`physical.Index`は、従来の`Columns`だけの表現から、順序を持つ`Keys`を中心とする表現へ移行しました。
+`physical.Index`は、従来の`Columns`だけでなく、順序を持つ`Keys`を中心に索引の構造を表せるようになりました。
 
-- column keyとexpression keyを区別する
-- key順序を保持する
-- INCLUDE columnをsearch keyと分離する
-- partial index predicateを保持する
-- keyごとのcollation / operator class / sort order / NULL orderingを保持する
-- unique indexのNULL treatmentを保持する
-- actual indexの`valid / ready / live`をlifecycle stateとして保持する
+- 列を使うキーと式を使うキーを区別する
+- キーの順序を保持する
+- 追加の格納列と検索キーを区別する
+- 部分索引の条件式を保持する
+- キーごとの照合順序・演算子クラス・並べ替え順序・NULLの並び順を保持する
+- 一意索引におけるNULLの扱いを保持する
+- 実際の索引の`valid / ready / live`を利用状態に関する情報として保持する
 
-expressionとpredicateはCore共通SQL ASTへ変換しません。`ProviderExpression`としてprovider / dialect / 正規化済みsourceを保持し、異なるprovider間で文字列だけを根拠に同一意味とはみなしません。
+式と部分索引の条件は、中核部分で共通のSQL構文木へ変換しません。`ProviderExpression`には提供元、SQLの方言、正規化した元の式を保持します。提供元が異なる式を、文字列が同じというだけで同じ意味とは判断しません。
 
-既存のPersistence Mappingにある単純なIndexは、従来と同じauthoringのままcolumn `IndexKey`へrealizeされます。PostgreSQLのunique indexでは、既定のNULL treatmentをeffective semanticsである`distinct`へ解決してから比較します。
+保存先への対応付けにある従来の単純な索引は、記述方法を変えずに列を表す`IndexKey`へ変換します。PostgreSQLの一意索引では、既定のNULLの扱いを実際の意味である`distinct`に確定してから比較します。
 
-## PostgreSQL catalog normalization
+## PostgreSQL目録の表記統一
 
-PostgreSQL adapterは`pg_index`を中心に、次の情報をTEIのPhysical Schemaへ正規化します。
+PostgreSQLの接続部は、主に`pg_index`から次の情報を読み取り、TEIの物理構造へ表記をそろえます。
 
-- `indnkeyatts`と`indkey`からkey / INCLUDEを分離
-- expression keyは`pg_get_indexdef`で観測
-- partial predicateは`pg_get_expr`で観測
-- `indcollation`と`indclass`からcollation / operator classを観測
-- btreeの`indoption`からASC / DESCとNULLS FIRST / LASTを観測
-- `indnullsnotdistinct`からunique NULL treatmentを観測
-- `indisvalid / indisready / indislive`からlifecycle stateを観測
+- `indnkeyatts`と`indkey`から検索キーと追加の格納列を区別する
+- 式を使うキーは`pg_get_indexdef`から取得する
+- 部分索引の条件式は`pg_get_expr`から取得する
+- `indcollation`と`indclass`から照合順序と演算子クラスを取得する
+- B-treeの`indoption`から昇順・降順とNULLの並び順を取得する
+- `indnullsnotdistinct`から一意索引におけるNULLの扱いを取得する
+- `indisvalid / indisready / indislive`から索引の利用状態に関する情報を取得する
 
-provider既定のcollation / operator classや、btreeの既定sort semanticsは、単純な既存Desired Indexと不要なdriftを起こさないようprovider adapter側で既定値へ正規化します。
+提供元が既定で使う照合順序・演算子クラスや、B-treeの標準的な並べ替えの扱いは、接続部側で既定値として表記を統一します。従来の単純な索引との間に、見かけだけの差分を生じさせないためです。
 
-PRIMARY KEY / UNIQUE constraintのbacking indexを通常Indexから除外するM0.28までのnormalizationも維持します。
+主キーや一意制約を支える内部索引を、通常の索引一覧から除外するM0.28までの扱いも維持します。
 
-## Schema Diff
+## 構造差分
 
-Index名はphysical objectを追跡するmatching keyとして維持します。同名Indexについて、次を分けて扱います。
+索引名は、物理的な構成要素を追跡し、比較対象を対応付けるために保持します。同じ名前の索引でも、次の状態を区別します。
 
-- structural intentが同じ: 同じIndex
-- structural intentが異なる: `drop-index` + `add-index`
-- structural intentは同じだがactual stateが利用可能でない: `index-state-drift`
+- 構造上の意図が同じ：同じ索引として扱う
+- 構造上の意図が異なる：`drop-index`と`add-index`で示す
+- 構造上の意図は同じでも実際には利用できない：`index-state-drift`で示す
 
-`Index.State`はstructural identityへ含めません。これにより、作成途中や失敗後のIndexを「別の定義」と誤認せず、同時に利用不能なIndexを差分0とも扱いません。
+`Index.State`は構造の同一性を判断する要素に含めません。これにより、作成途中や作成に失敗した索引を別の定義と誤認せず、使えない索引が存在する問題も見逃しません。
 
-structural comparisonには、ordered keys、INCLUDE、predicate、unique / NULL treatment、access method、key optionを含めます。
+構造の比較には、キーの順序、追加の格納列、条件式、一意性とNULLの扱い、索引方式、キーごとの設定を含めます。
 
-## actual PostgreSQL Conformance
+## PostgreSQL実環境での準拠確認
 
-常設のPostgreSQL integration fixtureでは、従来の単純Index、Foreign Key、Unique Constraint、View / Materialized Viewの検証に加え、次を実DBから観測します。
+常設のPostgreSQL結合テストでは、従来の単純な索引、外部キー、一意制約、ビューと実体化ビューに加えて、次の構造を実際のデータベースから取得します。
 
-1. partial + INCLUDE + collation + operator class + DESC NULLS LASTを持つIndex
-2. expression keyを持つIndex
-3. `NULLS NOT DISTINCT`を持つ明示的unique index
-4. `CREATE INDEX CONCURRENTLY`のbuild失敗後に残るinvalid / non-ready index
+1. 部分索引の条件、追加の格納列、照合順序、演算子クラス、降順かつNULLを最後に並べる指定を持つ索引
+2. 式を使うキーを持つ索引
+3. `NULLS NOT DISTINCT`を指定した明示的な一意索引
+4. `CREATE INDEX CONCURRENTLY`による作成に失敗した後に残る、無効または準備が完了していない索引
 
-4は、意図的に評価時エラーになるimmutable functionをfixture内だけに作り、concurrent index buildを失敗させてPostgreSQLが残すlifecycle stateを観測します。失敗が期待どおり発生しなかった場合はConformance自体を失敗させます。
+4番目の検証では、実行時に意図的なエラーを起こす不変関数を試験用データ内にだけ作ります。索引の並行作成を失敗させ、PostgreSQLに残る索引の状態を取得します。期待した失敗が発生しなければ、準拠確認そのものを失敗とします。
 
-Advanced Indexの観測確認後、それらのfixtureだけを除去してから既存のsimple Desired schemaと比較します。これにより、M0.26〜M0.28で成立した「同じ状態ならbaseline drift 0」という契約を維持したまま、M0.29の観測能力を追加しています。
+高度な索引の観測後は、その試験用データだけを除去して従来の単純な期待構造と比較します。これにより、M0.26〜M0.28で確かめた「同じ状態なら基準の差分が0件」という契約を維持したまま、M0.29の観測能力を追加しています。
 
-## Unit Conformance
+## 単体での準拠確認
 
-Unit testでは少なくとも次を固定します。
+単体テストでは、少なくとも次の条件を確認します。
 
-- usableなActual stateはstructural driftを生まない
-- `valid / ready / live`のいずれかを満たさない場合は`index-state-drift`になる
-- key順序の違いを保持する
-- expression / INCLUDE / predicate / sort / NULL ordering / collation / operator classの差を構造差として扱う
-- unique NULL treatmentの差を構造差として扱う
-- 既存の単純Index authoringがcolumn `IndexKey`へrealizeされる
-- PostgreSQL providerがprovider expressionとlifecycle stateをPhysical Schemaへ写像する
+- 利用可能な実際の状態は、それ自体では構造差分を生じさせない
+- `valid / ready / live`のいずれかを満たさない場合は`index-state-drift`とする
+- キーの順序の違いを保持する
+- 式、追加の格納列、条件式、並べ替え、NULLの順序、照合順序、演算子クラスの違いを構造差分とする
+- 一意索引におけるNULLの扱いの違いを構造差分とする
+- 従来の単純な索引の定義から、列を表す`IndexKey`を生成できる
+- PostgreSQLの接続部が固有の式と索引の状態を物理構造へ対応付ける
 
 ## 非目標
 
-M0.29では次を行いません。
+M0.29では、次の機能を対象としません。
 
-- Advanced IndexのDesired authoring DSL
-- provider expressionの共通SQL AST化
-- migration SQLの自動生成や自動repair
-- partitioned index / partition attachment semanticsの確定
-- `indcheckxmin`等、transaction visibilityを含む状態判定
+- 高度な索引の期待構造を記述するためのDSL
+- 提供元固有の式を共通のSQL構文木へ変換すること
+- 移行用SQLの自動生成や自動修復
+- 分割索引や分割領域への接続方法の意味を確定すること
+- `indcheckxmin`など、トランザクションから見える範囲まで含めた状態判定
 
-これらは意味境界を混ぜず、必要な後続Issueで扱います。
+これらは異なる意味の境界を混同せず、必要に応じて後続の課題で扱います。

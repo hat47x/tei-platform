@@ -134,8 +134,8 @@ Evidence JSONのRepository内標準保存先を、このrunnerから先行決定
 
 ## 関連
 
-- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
-- `plan/GATE_B_READINESS_AUDIT.md`
+- `plan/gate/GATE_B_EVIDENCE_RUNBOOK.md`
+- `plan/gate/GATE_B_READINESS_AUDIT.md`
 - ISSUE-000025-reference-generated-artifacts-refresh.md
 - GitHub #255 / #273
 - `tools/reference-golden/`

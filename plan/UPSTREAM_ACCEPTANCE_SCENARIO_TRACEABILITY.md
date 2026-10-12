@@ -1,506 +1,506 @@
-# TEI Upstream Acceptance Scenario Traceability
+# TEIの上位受入シナリオと追跡関係
 
-Status: current planning baseline
+状態：現行の計画上の基準
 
 ## 1. 目的
 
-この文書は、TEIのProduct Value / Product Requirementsを、利用者レベルのProduct Acceptance Scenario、設計判断、Plan Issue、Reference、Evidence、Gate / Product claimへ接続する追跡基線です。
+この文書は、TEIの製品価値と製品要求を、利用者が確認できる受入シナリオ、設計判断、計画上の課題、参照事例、検証根拠、判定段階と製品に関する主張まで結び付けるための基準です。
 
-新しいProduct Requirement、Canonical schema、Gate、coverage率を追加する文書ではありません。
+この文書では、新しい製品要求、意味の正本のスキーマ、判定段階、要求の達成率を追加しません。
 
 ```text
-Product Value / Vision / Principles
+製品価値・将来像・設計原則
         ↓
-Product Requirement (RQ-xxx)
+製品要求（RQ-xxx）
         ↓
-Product Acceptance Scenario (PAS-xx)
+製品の受入シナリオ（PAS-xx）
         ↓
-ADR / Plan Issue / Design
+設計判断記録・計画上の課題・設計
         ↓
-Reference Scenario / Fixture
+参照シナリオ・試験用データ
         ↓
-Evidence
+検証根拠
         ↓
-Gate / Product claim
+判定段階・製品についての主張
 ```
 
-Requirementだけから実装を直接導出せず、利用者やmaintainerにとって何が成立すれば要求の意味を確認できるかをScenarioで束ねます。
+要求の記述だけから実装を直接導くのではなく、利用者や保守担当者が何を確認できれば要求を満たしたと判断できるかを、受入シナリオで示します。
 
-Scenarioが通ったことだけで関連Requirement全体を自動的に`verified`へ引き上げません。Evidence nature、source revision、Provider / Target / Host、未解決事項を分離して扱います。
+一つのシナリオが成立しても、関連する要求全体を自動的に`verified`へ変更しません。検証根拠の性質、情報源の版、提供実装・実行先・ホスト、未解決事項を区別して判断します。
 
 ## 2. 追跡原則
 
-1. Product Requirementを実装都合へ言い換えない。
-2. 一つのRequirementは複数PASへ関係してよい。
-3. 一つのPASは複数Requirementを束ねてよい。
-4. PASは利用者またはmaintainerが観測できる結果で記述する。
-5. ADRはPASを満たすための設計判断でありRequirementそのものではない。
-6. Issue close、test pass、CI green、visual scoreだけでPAS成立とは扱わない。
-7. synthetic / deterministic / generated-artifact / real-provider / actual-external等のEvidence natureを混同しない。
-8. source-dependent Evidenceは取得したrevisionへ固定し、後続revisionへ黙ってcarry-forwardしない。
-9. Target Evidenceではmeaning baseline revisionとTarget build revisionを分ける。
+1. 製品要求を実装の都合で言い換えない。
+2. 一つの要求が複数の受入シナリオに関係してもよい。
+3. 一つの受入シナリオが複数の要求を扱ってもよい。
+4. 受入シナリオは、利用者または保守担当者が確認できる結果で記述する。
+5. 設計判断記録は受入シナリオを満たすための判断であり、要求そのものではない。
+6. 課題のクローズ、テスト合格、CIの成功、画面評価の点数だけでは、受入シナリオが成立したとは判断しない。
+7. 合成データ、決定的な再現性、生成物、実際の提供実装、外部資産に関する検証根拠を混同しない。
+8. 情報源の内容に依存する検証根拠は取得時の版と結び付け、後続の版へ確認なく引き継がない。
+9. 実行先の検証では、意味の基準版と実行先のビルド版を区別する。
 10. 不足情報は`unresolved`として残し、成功へ丸めない。
-11. Gateを増やすより、既存Gateが何を証明するかを明確にする。
-12. Human / Studio / CLI / AI等の入口ごとに第二のsemantic authorityを作らない。
+11. 判定段階を増やすより、既存の判定段階で何を証明するかを明確にする。
+12. 人による操作、編集環境、コマンドライン、AIなど、変更する経路ごとに意味の第二の正本を作らない。
 
 ## 3. PAS-01 — 意味を壊さず設計を変更・再読込できる
 
 ### 利用者価値
 
-開発者は、file-native authoring、Studio、CLI / refactor、AI Proposal等の入口が異なっても、変更前後の意味差と影響を確認し、同じAcceptance原則を通して安全にauthoritative sourceを変更・再読込できます。
+開発者は、ファイルの直接編集、編集環境、コマンドラインからの構造整理、AIによる変更提案など、どの経路でも変更前後の意味の差と影響を確認できます。共通の受理原則に従い、正本となる情報源を安全に変更し、読み直すことができます。
 
-### 代表Scenario
+### 代表的なシナリオ
 
 ```text
-Canonical Source / Source Indexを読む
+正本のソースと入力元索引を読む
     ↓
-qualified logical identityを選ぶ
+一意に特定できる論理上の識別子を選ぶ
     ↓
-変更candidateを作る
+変更候補を作る
     ↓
-Preview Semantic Diff / Impact
+意味の差分と影響を事前に確認する
     ↓
-Accept / Reject
-    ↓ Accept only
-Shared Acceptance Boundary
+受理・却下を判断する
+    ↓ 受理された場合だけ
+共通の受理境界
     ↓
-authoritative file-native sourceへ反映
+正本となるファイルに反映する
     ↓
-reload
+読み直す
     ↓
-意図したCanonical meaning / identity / Conformanceを再構成
+意図した意味・識別子・準拠性を再構成する
 ```
 
-Preview / Rejectはauthoritative sourceを変更しません。
+事前確認や却下によって、正本となる情報源は変更しません。
 
-candidateは必要に応じて`baseModelRevision`を持ち、staleならreject / re-read / explicit rebase等へ進みます。最新版へ黙って適用しません。
+変更候補は必要に応じて`baseModelRevision`を持ちます。元の版が古くなっていた場合は、却下、再読込み、明示的な基準版の更新などを行い、最新版へ確認なく適用しません。
 
-### identityの注意
+### 識別子についての注意
 
-file pathそのものをSemantic identityにはしません。
+ファイルのパスそのものを意味上の識別子にはしません。
 
-- file moveだけでqualified logical identityが変わらない場合: semantic no-opとして扱える
-- logical rename / Canonical identity変更: Semantic changeとして扱う
+- ファイルを移動しても一意な論理上の識別子が変わらない場合：意味を変更しない操作として扱える
+- 論理上の名称や正本の識別子を変更する場合：意味の変更として扱う
 
-したがって、すべての変更後に「同じIDである」ことを要求するのではなく、**変更intentに対してidentity変化が説明可能であること**を要求します。
+すべての変更後に同じ識別子を維持するのではなく、**変更の意図に対して識別子の変化を説明できること**を要求します。
 
-Studio / AI都合でmandatory authored Stable ID / UUIDを導入しません。
+編集環境やAIの都合だけで、人が記述する安定識別子やUUIDを必須にはしません。
 
-### 主なRequirement
+### 主に対応する製品要求
 
 - RQ-001 業務上の意味を実装技術から独立して保持
 - RQ-002 Authoring sourceとCanonical meaningの追跡
 - RQ-003 暗黙の複数正本を作らない
 - RQ-010 Editor
-- RQ-011 複数Projection
-- RQ-015 AI knowledge-first workflow
-- RQ-016 AI suggestion / decision history
+- RQ-011 複数の表示・編集形式
+- RQ-015 既存知識を優先するAIの作業の流れ
+- RQ-016 AIの提案と判断の履歴
 - RQ-017 二重管理の最小化
 - RQ-019 Runtime / Resource authority
-- RQ-021 Reference / Conformance
+- RQ-021 参照事例と準拠性の確認
 
-### shared Acceptance Boundary
+### 共通の受理境界
 
 ```text
-file edit -------┐
-Studio ----------|
-CLI / refactor --|--> candidate --> Shared Acceptance Boundary --> authoritative source
-AI Proposal -----|
-Matrix ----------|
-optional Patch --┘
+ファイルの編集 ---------┐
+編集環境 ---------------|
+コマンドライン・整理 ----|--> 変更候補 --> 共通の受理境界 --> 正本の情報源
+AIによる提案 -----------|
+対応表 -----------------|
+必要に応じた差分 -------┘
 ```
 
 対象に応じて次を組み合わせます。
 
 ```text
-Parse / Decode
- -> Normalize
- -> Validate
- -> Architecture / Policy Check
- -> Semantic Diff
- -> Impact Analysis
- -> Acceptance Policy
- -> authoritative source update
- -> reload
- -> Conformance
+解析・読取り
+ → 正規化
+ → 検証
+ → 構成と方針の確認
+ → 意味の差分
+ → 影響の分析
+ → 受理の方針による判断
+ → 正本となる情報源の更新
+ → 再読込み
+ → 準拠性の確認
 ```
 
-一つの固定API / processを要求するのではなく、入口依存でsemantic validationやauthorityが変わらないことを要求します。
+すべての変更を一つの固定APIや処理手順に限定しません。ただし、変更の入口によって意味の検証規則や権限が変わらないことを求めます。
 
-### 現在のPlan / Evidence位置
+### 現在の計画と検証根拠
 
-Gate C前にStudio / AIの詳細interfaceを固定しません。
+判定段階Cより前には、編集環境やAIの詳細な接続方式を固定しません。
 
-Gate C Ready後:
+判定段階Cで`Ready`となった後：
 
-- `ISSUE-000046` — Studio minimal Authoring Loop（PAS-01 primary）
-- `ISSUE-000027` — AI Proposal / Shared Acceptance（PAS-01 primary / PAS-06 secondary）
-- ADR-0022 — AI ProposalとCanonical受入境界の分離
+- `ISSUE-000046`：編集環境での最小限の記述・変更・受理（主にPAS-01）
+- `ISSUE-000027`：AIの変更提案と共通の受理境界（主にPAS-01、関連してPAS-06）
+- ADR-0022：AIの変更提案と意味の正本の受理境界を分ける判断
 
-StudioはProjection / Authoring Clientであり第二正本ではありません。
+編集環境は表示と記述を行うための機能であり、意味の第二の正本にはしません。
 
-Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application TargetのEvidenceへ読み替えません。
+開発者向け編集環境のWailsホストを、Wailsで生成したデスクトップアプリケーションの実行先についての検証根拠とはみなしません。
 
-## 4. PAS-02 — Application上の意味をDriverで実行・検証できる
+## 4. PAS-02 — アプリケーションの意味を実行・検証環境で確認できる
 
 ### 利用者価値
 
-開発者は画面やWeb frameworkを作る前でも、Application meaningをDriverで実行し、Validation、Authorization、Business Result、Execution Error、Observationを区別して確認できます。
+開発者は画面やWebの開発基盤を用意する前でも、アプリケーションの意味を実行・検証環境で確かめられます。その際、検証、認可、業務上の結果、実行エラー、観測結果を区別します。
 
-### 代表Scenario
+### 代表的なシナリオ
 
 ```text
-Authentication
- -> browse
- -> record
- -> reference
- -> header-detail
- -> Validation
- -> Authorization
- -> Command
- -> Business Result
- -> separate explicit read
- -> Observation
+認証
+ → 一覧表示
+ → 記録
+ → 参照
+ → 見出しと明細
+ → 検証
+ → 認可
+ → 命令
+ → 業務上の結果
+ → 独立した明示的な読取り
+ → 状態の観測
 ```
 
-Command acknowledgementだけでObserved state成立とは扱いません。
+命令が受け付けられたことだけでは、期待した外部の状態になったとは判断しません。
 
-### 主なRequirement
+### 主に対応する製品要求
 
-- RQ-005 Application / Database N:M
+- RQ-005 アプリケーションとデータベースの多対多の関係
 - RQ-008 Capability単位の実装置換
-- RQ-009 既存認証・認可Compatibility
+- RQ-009 既存の認証・認可との互換性
 - RQ-012 Driverによる設計検証
-- RQ-014 Application Pattern再利用
-- RQ-018 Command / Observation分離
-- RQ-021 Reference / Conformance
+- RQ-014 アプリケーションの構成パターンの再利用
+- RQ-018 命令と観測の区別
+- RQ-021 参照事例と準拠性の確認
 
-### 現在のEvidence位置
+### 現在の検証根拠
 
-Gate AはReadyです。Driverの主要意味境界も成立しています。
+判定段階Aは`Ready`です。実行・検証環境でも、主要な意味の境界が成立しています。
 
-Gate BはReadyです（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
+判定段階Bは`Ready`です（候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日：2026-09-19）。
 
-Required Evidenceは次の三つで、いずれも同じclean candidate revision `R`のsame-runで成立しています。
+必要な検証根拠は次の三つです。いずれも変更のない同じ候補版`R`に対して、一度の実行で成立しています。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定的な再現性を示す検証根拠
+2. #255 生成物の再現性を示す検証根拠
+3. #308 実際のPostgreSQLと一時的な試験データによる検証根拠
 
-`ISSUE-000037` / #387のfinal convergenceと`#273`の独立artifact auditも成立済みで、Handover Baseline `B / R`を固定しています（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
+`ISSUE-000037` / #387のfinal convergenceと`#273`の独立artifact auditも成立済みで、Handover Baseline `B / R`を固定しています（[`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
 
-## 5. PAS-03 — Native / external assetを壊さず段階移行・置換できる
+## 5. PAS-03 — 既存資産を保ちながら段階的に移行・置換できる
 
 ### 利用者価値
 
-既存SQL、Database、認証、Plugin、外部Provider等をTEI独自形式へ全面移植せず、意味・契約・realization・外部観測を分離したまま段階的に利用できます。
+既存のSQL、データベース、認証、プラグイン、外部の提供実装などを、TEI独自の形式へ全面的に移し替える必要はありません。意味、契約、実現方法、外部の観測を区別したまま、段階的に利用できます。
 
-### 代表Scenario
+### 代表的なシナリオ
 
 ```text
-Canonical Contract / Application intent
+正本の契約・アプリケーションの意図
         ↓
-explicit Binding / native realization
+明示した対応付け・既存形式での実現
         ↓
-Provider / external asset
+提供実装・外部資産
         ↓
-Command or Query execution
+命令または問い合わせの実行
         ↓
-Evidence / Observation
+検証根拠・観測結果
 ```
 
-未観測のexternal physical factsを生成・推測しません。Provider固有知識はProvider / Adapter側に残し、Canonical Contractをprovider都合で変更しません。
+まだ観測していない外部の物理的な事実を、推測で補ったり生成したりしません。提供実装に固有の知識は、その提供実装と接続部品に保持し、正本の契約を提供実装の都合で変更しません。
 
-### 主なRequirement
+### 主に対応する製品要求
 
 - RQ-004 Native asset利用
-- RQ-005 Application / Database N:M
-- RQ-006 Desired / Actual / Diff / Unresolved
+- RQ-005 アプリケーションとデータベースの多対多の関係
+- RQ-006 期待する状態・実際の状態・差分・未解決の区別
 - RQ-007 Provider固有知識の隔離
 - RQ-008 Capability単位の置換
-- RQ-009 既存認証・認可Compatibility
-- RQ-018 Command / Observation分離
-- RQ-019 Permission / Resource制約
-- RQ-021 Reference / Conformance
+- RQ-009 既存の認証・認可との互換性
+- RQ-018 命令と観測の区別
+- RQ-019 利用許可と資源の制約
+- RQ-021 参照事例と準拠性の確認
 
-### 現在のEvidence位置
+### 現在の検証根拠
 
-Gate Bの#308 real PostgreSQL fixtureはPAS-03の一部を圧力試験しますが、actual external Oracle Evidenceの代替ではありません。
+判定段階Bの#308で実際のPostgreSQLを用いる検証は、PAS-03の一部を厳しく確かめるものです。しかし、実際のOracle環境で得る検証根拠の代わりにはなりません。
 
-actual Oracle #214 / #371 / #376はGate B第四Required laneではなく、actual external asset / legacy compatibility / second-provider Evidenceとして継続します。
+実際のOracle環境に関する#214、#371、#376は判定段階Bの四つ目の必須条件には加えません。外部資産、既存資産との互換性、二つ目の提供実装についての検証として継続します。
 
-Gate B Ready時に未完了ならHandover Baselineへ`unresolved`として明示し、第一Target側でphysical facts / SQL / read-only方式等を補完しません。
+判定段階Bで`Ready`となった時点で未完了の事項は、引継ぎの基準に`unresolved`として記録します。最初の実行先側で物理的な事実やSQL、読み取り専用の方式などを推測で補いません。
 
-## 6. PAS-04 — 同じApplication meaningを複数TargetへProjectionできる
+## 6. PAS-04 — 同じアプリケーションの意味を複数の実行先へ展開できる
 
 ### 利用者価値
 
-同じCanonical ApplicationをWeb、Desktop、Mobile、API、MCP等へ接続しても、Target固有UI / transport / Host事情から業務意味が逆定義されません。
+意味の正本が同じアプリケーションをWeb、デスクトップ、スマートフォン、API、MCPなどへ接続しても、実行先に固有の画面・通信方式・ホストの事情によって業務上の意味を逆に決めることはありません。
 
-### baselineとTarget buildを分ける
+### 意味の基準版と実行先のビルド版を分ける
 
-Gate B Ready candidate revisionを`R`、Handover Baselineを`B`、Target実装revisionを`T`とします。
+判定段階Bで`Ready`となった候補版を`R`、引継ぎの基準を`B`、実行先の実装版を`T`とします。
 
 ```text
-Gate B Ready for R
+対象版Rについて判定段階BでReady
         ↓
-Handover Baseline B
+引継ぎの基準B
   baselineRepositoryRevision = R
-        ↓ meaning baseline
-Target build T
+        ↓ 意味の基準
+実行先のビルド版T
         ↓
-Target execution / Evidence
+実行先での実行・検証根拠
 ```
 
 通常`T != R`です。
 
-Target buildでbaseline subjectのmeaningを変更する必要が生じた場合、Target固有field / ruleで埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認し、successor Handover Baseline `B'` / `R'`を発行します。
+実行先のビルド時に、基準となる対象の意味を変更する必要が生じても、実行先固有の項目や規則で補いません。正本となる情報源に戻り、必要な実行・検証結果と判定段階Bの根拠を再確認して、後継の引継ぎ基準`B'`と対象版`R'`を発行します。
 
-旧baseline Evidenceを新baselineへ黙ってcarry-forwardしません。
+以前の基準版で得た検証根拠を、新しい基準版へ確認なく引き継ぎません。
 
-### Target評価
+### 実行先の評価
 
 少なくとも次を分離します。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
-4. 必要に応じたPerformance Evidence
+1. 意味上の準拠性
+2. 操作と機能の検証根拠
+3. 表示の忠実度に関する検証根拠
+4. 必要に応じた性能の検証根拠
 
-### 主なRequirement
+### 主に対応する製品要求
 
-- RQ-001 業務意味の実装技術非依存
-- RQ-010 EditorとのProjection境界
-- RQ-011 複数Projection
-- RQ-013 Target-neutral Presentation / Interaction
+- RQ-001 業務上の意味を実装技術から独立させる
+- RQ-010 編集環境との表示上の境界
+- RQ-011 複数の表示・編集形式
+- RQ-013 実行先に依存しない表示と操作
 - RQ-017 二重管理の最小化
-- RQ-021 Reference / Conformance
-- RQ-024 Target別性能要求
+- RQ-021 参照事例と準拠性の確認
+- RQ-024 実行先ごとの性能要求
 
-### 現在のPlan / Evidence位置
+### 現在の計画と検証根拠
 
-Gate B Ready + Handover固定後:
+判定段階Bの`Ready`判定と引継ぎの基準の固定後：
 
-- `ISSUE-000007` — First Web Target Projection
-- `ISSUE-000028` — Gate C Conformance Evidence
+- `ISSUE-000007`：最初のWeb向け実行先への展開
+- `ISSUE-000028`：判定段階Cの準拠性の検証根拠
 - `GATE_C_EVIDENCE_CONTRACT.md`
 
-Gate CではすべてのrunからHandover `B` / baseline `R`とWeb build `T1`へ追跡します。
+判定段階Cでは、どの実行記録からも引継ぎの基準`B`、意味の基準版`R`、Web向けビルド版`T1`へ追跡できるようにします。
 
-Gate C Ready後:
+判定段階Cで`Ready`となった後：
 
-- `ISSUE-000026` — second Target pressure test
+- `ISSUE-000026`：二つ目の実行先での厳密な検証
 
-第一Targetだけで完全なPresentation IR / Target Capability taxonomyを固定しません。
+最初の実行先だけを根拠に、表示の完全な中間表現や実行先の機能の分類体系を固定しません。
 
-StudioがWailsを使うことと、Generated Wails Desktop Application Targetは別です。Studio HostをPAS-04のTarget成功Evidenceへ数えません。
+編集環境がWailsを使うことと、Wailsで生成したデスクトップアプリケーションを実行先にすることは別です。編集環境のホストをPAS-04で実行先が成立した検証根拠には数えません。
 
-## 7. PAS-05 — 外部状態が不確かな場合でも安全に実行・再開できる
-
-### 利用者価値
-
-外部Runtime / Resourceの状態が不明な場合に、「成功したはず」と推測したり、副作用を無条件にreplayしたりせず、Observation、ownership、fencing、durable handle等を使って安全に判断できます。
-
-### 主なRequirement
-
-- RQ-006 Desired / Actual / Diff / Unresolved
-- RQ-018 Command / Observation分離
-- RQ-019 Permission / Resource制約
-- RQ-020 再実行 / takeover / unknown
-- RQ-021 Reference / Conformance
-
-### Evidence位置
-
-Deployment / Plugin / Resource lifecycle等のReferenceで継続します。
-
-PAS-05を現行Gate Bの新しいblockerには追加しません。現在Gate Bに必要な範囲は既存3 Required Evidenceで確認し、より広いrecovery能力は対応Milestone / Referenceで別Evidenceとして扱います。
-
-## 8. PAS-06 — 既存の意味知識を探索してから新規実装へ進める
+## 7. PAS-05 — 外部の状態が不明でも安全に実行・再開できる
 
 ### 利用者価値
 
-開発者またはAIは毎回ゼロから実装せず、既存Data、Relation、Validation、Capability、Application Pattern、利用例、Evidenceを探索し、適用可能性と不足条件を確認してから変更・構成候補へ進めます。
+外部の実行基盤や資源の状態が不明な場合でも、成功したと推測したり、外部への変更を無条件に再実行したりしません。観測結果、管理主体、古い実行担当の排除、再開時に利用できる永続的な識別情報などに基づいて判断できます。
 
-### 代表Scenario
+### 主に対応する製品要求
+
+- RQ-006 期待する状態・実際の状態・差分・未解決の区別
+- RQ-018 命令と観測の区別
+- RQ-019 利用許可と資源の制約
+- RQ-020 再実行・実行担当の交代・状態不明の扱い
+- RQ-021 参照事例と準拠性の確認
+
+### 検証根拠の位置
+
+配備、プラグイン、資源の変更周期などに関する参照事例で、引き続き検証します。
+
+PAS-05を判定段階Bの新しい必須条件には加えません。判定段階Bに必要な範囲は従来の三つの検証根拠で確認し、より広い復旧能力は対応するマイルストーンや参照事例で別に検証します。
+
+## 8. PAS-06 — 既存の意味を探索してから新規実装へ進む
+
+### 利用者価値
+
+開発者やAIは毎回ゼロから実装せず、既存のデータ、関係、検証規則、機能、アプリケーションの構成パターン、利用例、検証根拠を探索します。適用できるか、不足する条件は何かを確認してから、変更や構成の候補を考えます。
+
+### 代表的なシナリオ
 
 ```text
-purpose / intent
+目的・意図
    ↓
-read-only Semantic exploration
+意味に関する情報を読み取り専用で探索
    ↓
-identity / dependency / source / evidenceを確認
+識別子・依存関係・情報源・検証根拠を確認
    ↓
-applicable / incompatible / unknown
+適用可能・不適合・未確定
    ↓
-explicit-reference candidate
+参照元を明示した候補
    ↓
-Shared Acceptance Boundary
+共通の受理境界
 ```
 
-検索順位、文字列類似度、embedding similarity、AI confidenceだけをSemantic Evidenceにしません。
+検索順位、文字列や埋め込み表現の類似度、AIの確信度だけを、意味の正しさを示す検証根拠にはしません。
 
-AI Knowledge、index、cache、過去trajectoryはderivedでありCanonicalの第二正本ではありません。
+AI向けの知識、索引、キャッシュ、過去の作業経緯は派生情報であり、意味の第二の正本にはしません。
 
-### 主なRequirement
+### 主に対応する製品要求
 
-- RQ-002 Source traceability
+- RQ-002 情報源の追跡可能性
 - RQ-003 単一権威
-- RQ-014 Application Pattern再利用
-- RQ-015 knowledge-first AI
-- RQ-016 AI suggestion / history
-- RQ-017 二重管理最小化
-- RQ-021 Reference / Conformance
-- RQ-023 一人でも維持可能な構造
+- RQ-014 アプリケーションの構成パターンの再利用
+- RQ-015 既存知識を優先するAI
+- RQ-016 AIの提案と履歴
+- RQ-017 二重管理の最小化
+- RQ-021 参照事例と準拠性の確認
+- RQ-023 一人でも維持できる構造
 
-### 現在のPlan / Evidence位置
+### 現在の計画と検証根拠
 
-Gate C Ready後:
+判定段階Cで`Ready`となった後：
 
-- `ISSUE-000047` — Human / AI共通read-only Semantic exploration（PAS-06 primary）
-- `ISSUE-000027` — exploration結果からAI Proposal / Acceptanceへ接続
+- `ISSUE-000047`：人とAIに共通する読み取り専用の意味情報の探索（主にPAS-06）
+- `ISSUE-000027`：探索の結果をAIの変更提案と受理につなぐ
 
-最初から巨大Knowledge Graph、vector database、AI専用Knowledge Storeを作りません。
+最初から巨大な知識グラフ、ベクトルデータベース、AI専用の知識保存機構を用意しません。
 
-## 9. PAS-07 — 手作業を失わずData / Function / Businessを相互検証して設計修正できる
+## 9. PAS-07 — 人の作業を残したまま、データ・機能・業務を相互検証できる
 
 ### 利用者価値
 
-開発者は、業務をApplication内部の実行手順へ還元せず、人・外部作業を含むBusiness Procedureを確認しながらData / Function-Interaction / Businessの三視点から矛盾・不足・過剰な仮定を見つけ、Projectionだけを補修するのではなくauthoritative sourceへ戻って設計を修正できます。
+開発者は、業務をアプリケーション内部の実行手順だけに置き換えません。人の作業や外部での作業を含む業務手順を確認し、データ、機能・操作、業務の三つの視点から矛盾や不足、根拠のない仮定を見つけます。表示だけを直すのではなく、正本となる情報源へ戻って設計を修正できます。
 
-### 代表Scenario
+### 代表的なシナリオ
 
 ```text
-accepted Data / Relation / Application meaningを読む
+受理済みのデータ・関係・アプリケーションの意味を読む
         ↓
-Business固有meaningをaccepted authoring sourceとして保持する
+業務固有の意味を、受理済みの定義元として保持する
         ↓
-manual / external Actionをfake Functionへ変換しない
+人や外部の作業を架空のアプリケーション機能に置き換えない
         ↓
-existing Application / Semantic identityをexplicitに参照する
+既存のアプリケーションと意味上の識別子を明示的に参照する
         ↓
-derived cross-view Projectionで相互検証する
+三つの視点から派生した表示を使って相互検証する
         ↓
-contradiction / omission / unknown / impactを発見する
+矛盾・欠落・未確定事項・影響を発見する
         ↓
-correction candidateをauthoritative source側へ返す
+修正候補を正本となる情報源へ戻す
         ↓
-Shared Acceptance Boundary
+共通の受理境界
         ↓
-reload / regenerate / reviewする
+再読込み・再生成・確認を行う
 ```
 
 ### 壊してはいけない境界
 
 ```text
-Business Action != Application Function
-Business Flow != Procedure != Runtime Workflow Orchestration
-Business Actor / Job != Authentication Principal != Authorization Role / Policy
-Validation PASS != whole-business approval
-Application Business Result != external-world Observation
-Projection != second source of truth
+業務上の行為 ≠ アプリケーションの機能
+業務の流れ ≠ 業務手順 ≠ 実行基盤の処理の統括
+業務主体・職務 ≠ 認証された主体 ≠ 認可上の役割・方針
+検証に合格 ≠ 業務全体が承認された
+アプリケーションの業務結果 ≠ 外部で実際に起きたことの観測
+派生表示 ≠ 第二の正本
 ```
 
-Application Patternの並びやPAS-02のDriver validation sequenceを、accepted Business Procedureなしに利用者の業務手順へ読み替えません。
+アプリケーションの構成パターンの並びやPAS-02の検証手順だけから、受理済みの業務手順がないのに利用者の業務手順を推測しません。
 
-### 主なRequirement
+### 主に対応する製品要求
 
-- RQ-025 業務上の行為・手順をApplication Functionから独立して設計
-- RQ-026 Data / Function-Interaction / Business Procedureの相互検証
-- RQ-021 Reference / Conformance
-- RQ-022 設計検証段階と完成製品の区別
+- RQ-025 業務上の行為や手順をアプリケーションの機能から独立して設計
+- RQ-026 データ・機能と操作・業務手順の相互検証
+- RQ-021 参照事例と準拠性の確認
+- RQ-022 設計を検証している段階と完成した製品の区別
 
 RQ-025はPAS-07 primary / PAS-02・PAS-04 secondaryです。
 
 RQ-026はPAS-07 primary / PAS-01・PAS-02・PAS-04 secondaryです。
 
-### 現在のPlan / Evidence位置
+### 現在の計画と検証根拠
 
-Reference / Evidence実装はLane C `ISSUE-000042` / PR #482が所有します。Lane BはReference fixture / checkerを複製せず、EvidenceをPAS-07 claimへ対応付けます。
+参照事例と検証根拠の実装は、作業領域Cの`ISSUE-000042`とPR #482で管理します。作業領域Bでは試験データや検査器を複製せず、得られた根拠をPAS-07についての主張へ対応付けます。
 
 現時点では次を分離します。
 
 ```text
 E7-01〜09
-  Lane C fixture / checker / pressure tests implementation exists
-  actual Repository runner Evidence unresolved
+  作業領域Cの試験データ・検査器・厳密な検証の実装は存在する
+  実際のリポジトリの実行環境で得る検証根拠は未解決
 
 E7-10
-  file-native accepted-source pressure exists
-  production Shared Acceptance end-to-end Evidence unresolved
+  ファイルを正本とする受理済みの定義を用いた検証は存在する
+  本番向けの共通受理境界を一貫して通す検証根拠は未解決
 ```
 
 したがって:
 
 ```text
-implementation exists
-  !=
-PAS-07 execution Evidence accepted
+実装が存在する
+  ≠
+PAS-07の実行に関する検証根拠が受理された
 ```
 
-です。GitHub-hosted runnerがcheckout前に終了する状態やCI表示だけをcode failure / PAS failureへ読み替えません。
+GitHubが提供する実行環境がソース取得前に停止した場合や、CIの表示だけを見た場合に、それをコードやPASの検証の失敗とはみなしません。
 
-Business-side Representation EvidenceとPAS-02 Runtime Evidenceも分けます。
+業務側の表現に関する検証根拠と、PAS-02の実行に関する検証根拠も区別します。
 
 ```text
-Lane C Business Procedure Reference
-  -> manual / external Action
-  -> Business judgment / Validation separation
-  -> actor / authority separation
-  -> Command / Observation separation
-  -> cross-view reference / diagnostic
+作業領域Cの業務手順の参照事例
+  → 人の作業・外部の作業
+  → 業務上の判断と検証を分離
+  → 業務主体と権限を分離
+  → 命令と観測を分離
+  → 複数の視点をまたぐ参照と診断
 
-PAS-02 Driver Evidence
-  -> Validation execution
-  -> Authentication / Authorization decision
-  -> Capability execution
-  -> Business Result
-  -> separate explicit read / Observation
+PAS-02の実行・検証環境の根拠
+  → 検証を実行
+  → 認証と認可を判断
+  → 機能を実行
+  → 業務上の結果
+  → 独立した明示的な読取りと観測
 ```
 
 片方をもう片方の代替にしません。
 
-また、Reference-local stable Procedure keyはreview / handoff / stale detection / file move分離に具体的価値がありますが、それだけでCanonical `Procedure` / `Step`を採用しません。
+また、参照事例内で使う安定した手順の識別子は、確認、引継ぎ、古い版の検出、ファイル移動との区別に役立ちます。ただし、それだけで正本の要素として`Procedure`や`Step`を採用しません。
 
-file-native Business Procedure sourceのShared Acceptanceを安全に行う機械的pressureはCanonical Procedureなしでも成立しており、現在残るidentity論点は主にRQ-002のCanonical trace targetです。minimal Canonical identity shell、Subject contract拡張、formal Authoring identity等の比較はArchitecture pressureとして別に扱い、PAS-07成立条件からfull Workflow modelを逆導出しません。
+ファイルに記述した業務手順の共通受理境界を安全に検証することは、手順を正本の独立した要素にしなくても可能です。残る識別子に関する論点は、主としてRQ-002において、正本のどの対象へ追跡するかです。最小限の正本の識別情報、対象の契約の拡張、正式な記述上の識別子などは、構成上の検証課題として別に比較します。PAS-07の成立条件だけを理由に、完全な業務フローモデルを作ることはしません。
 
-### Gateへの影響
+### 既存の判定段階への影響
 
-PAS-07は新Gateではありません。
+PAS-07は新しい判定段階ではありません。
 
-- Gate B Required Evidence 3 laneへ追加しない
-- Gate C First Web Target Required Evidenceへ追加しない
-- Lane C actual runner greenはPAS-07 Evidence statusを更新するが、それだけでPAS-07全体を`accepted`へ上げない
-- end-to-end correction / acceptance / reloadはPAS-01 Shared Acceptance Evidenceとcross-checkする
+- 判定段階Bの三つの必須検証根拠へ追加しない
+- 判定段階Cの最初のWeb向け実行先に関する必須検証根拠へ追加しない
+- 作業領域Cでの実行環境の成功はPAS-07の検証状態に反映するが、それだけでPAS-07全体を`accepted`に変更しない
+- 修正、受理、再読込みまでの一連の検証は、PAS-01の共通受理境界の根拠と相互に照合する
 
-詳細なE7 mappingは `RQ025_RQ026_ACCEPTANCE_TRACE.md` をsupporting Evidence contractとして参照します。
+E7の項目別の対応関係は、補足的な検証根拠の契約である`RQ025_RQ026_ACCEPTANCE_TRACE.md`を参照してください。
 
-## 10. Cross-cutting Requirements
+## 10. 複数の受入シナリオに共通する要求
 
-### RQ-021 — Reference / Conformance
+### RQ-021 — 参照事例と準拠性の確認
 
 すべてのPASに横断します。
 
-「設計上できる」ではなく、小さいReference、fixture、Conformance、Evidenceから境界を再現できることを要求します。
+設計上は可能だという説明に留まらず、小さな参照事例、試験用データ、準拠性確認と検証根拠から、その境界を再現できることを求めます。
 
 ### RQ-022 — 完成製品と設計検証段階を区別
 
 すべてのPASに横断します。
 
-architecture probe、local fixture、synthetic adapter、beta framework、actual provider run、production claimを同じ`done`へ畳みません。
+構成上の試験、ローカルの試験データ、合成した接続部品、試験的な開発基盤、実際の提供実装での実行、本番での利用に関する主張を、すべて同じ`done`とは扱いません。
 
 ### RQ-023 — 一人でも維持可能な開発構造
 
 主にPAS-01 / PAS-06へ関係しますが全体の作業分割へ横断します。
 
-同じRepository内でRequirement → PAS → Decision → Reference → Evidenceを追えることを優先し、不要な第二正本 /巨大subsystemを増やしません。
+同じリポジトリ内で、要求から受入シナリオ、判断、参照事例、検証根拠までたどれることを優先します。不要な第二の正本や大規模な専用機構は増やしません。
 
 ### RQ-024 — Target別性能
 
 PAS-04で具体化します。
 
-第一Target `T1`と第二Target `T2`の実測を、Handover baseline、Target / Host、Runtime / Provider条件と一緒に比較します。
+最初の実行先`T1`と二つ目の実行先`T2`の測定結果を、引継ぎの基準、実行先・ホスト、実行基盤・提供実装の条件を添えて比較します。
 
-根拠のない一律thresholdを第一Targetだけから固定しません。
+最初の実行先の結果だけで、根拠のない一律の判定基準値を固定しません。
 
 ### RQ-034 — 標準的な開発環境からの改修・実行・検証
 
@@ -555,95 +555,96 @@ RQ-027〜RQ-030は2026-09-18のProduct再定義で追加されましたが、こ
 
 RQ-031〜RQ-033は2026-10-03に、固定されたモデル体系ではなく意味論を後から拡張・合成できることをProduct Valueへ明示した際に追加しました。現時点では新しいPASを増やしません。まずPAS-06のknowledge-first探索を主な検証面とし、Shared Acceptanceを扱うPAS-01と、複数の意味視点を相互検証するPAS-07を必要に応じて組み合わせます。独立したAcceptance Scenarioが必要かどうかは、Semantic ExtensionのReferenceで既存PASでは表せない利用者レベルの成立条件が確認された時点で判断します。
 
-## 12. 現行Gate / Stageとの関係
+## 12. 現在の判定段階との関係
 
 ```text
-Gate A
-  -> PAS-02のApplication meaningをDriverへ渡せることを確認
+判定段階A
+  → PAS-02のアプリケーションの意味を実行・検証環境へ渡せることを確認
 
-Gate B
-  -> PAS-02中心 + PAS-03のreal-provider境界を含む3 Required Evidenceをsame-Rへ収束
+判定段階B
+  → PAS-02を中心に、PAS-03の実際の提供実装の境界も含めた
+    三つの必須検証根拠を同じ版Rについてそろえる
 
-Gate B → C Handover
-  -> PAS-02 / PAS-03で確認したbaseline revision RとunresolvedをBとして固定
+判定段階BからCへの引継ぎ
+  → PAS-02・PAS-03で確認した基準版Rと未解決事項をBとして固定
 
-Gate C
-  -> PAS-04をFirst Web Target build T1で実証
-  -> baseline RとTarget build T1を分離
+判定段階C
+  → 最初のWeb向けビルドT1でPAS-04を実証
+  → 意味の基準版Rと実行先のビルド版T1を区別
 
-Gate C後 — 並行可能
-  -> PAS-01: ISSUE-000046 Studio minimal authoring loop
-  -> PAS-06: ISSUE-000047 knowledge-first exploration
-  -> PAS-01 / PAS-06: ISSUE-000027 AI Proposal / Acceptance
-  -> PAS-04: ISSUE-000026 second Target pressure test
+判定段階Cの後 — 並行可能
+  → PAS-01：ISSUE-000046 編集環境の最小限の記述・受理
+  → PAS-06：ISSUE-000047 既存知識を優先する探索
+  → PAS-01・PAS-06：ISSUE-000027 AIの提案・受理
+  → PAS-04：ISSUE-000026 二つ目の実行先による検証
 
-Gate非依存のparallel Reference pressure
-  -> PAS-07: ISSUE-000042 Business Procedure cross-view Reference
-  -> Gate B / Gate C Required Evidenceへ追加しない
+判定段階とは独立した参照事例による検証
+  → PAS-07：ISSUE-000042 業務手順の複数視点での検証
+  → 判定段階B・Cの必須検証根拠には追加しない
 ```
 
-PAS-05はruntime / deployment workstreamへ接続します。現行Gate B必須scopeを本書から拡張しません。
+PAS-05は実行基盤と配備に関する作業領域へ接続します。この文書から判定段階Bの必須範囲を拡張しません。
 
-PAS-07のReference runnerがgreenになってもGate B / CのReady条件は変わりません。greenはPAS-07 Evidence statusへ記録し、Shared AcceptanceやPAS-02 Runtime Evidenceを自動代替しません。
+PAS-07の参照事例の検査が成功しても、判定段階B・Cの`Ready`条件は変わりません。成功はPAS-07の検証状態へ記録しますが、共通受理境界やPAS-02の実行に関する検証根拠の代わりにはなりません。
 
-## 13. 新しいADR / Plan Issueへ要求する最小Trace
+## 13. 新しい設計判断と計画上の課題に必要な追跡情報
 
-新しい上流設計・機能提案では、必要に応じて次を明示します。
+新しい上流の設計や機能を提案する際には、必要に応じて次の情報を明示します。
 
-- 関連Product Requirement
-- Primary PAS
-- Scenarioで失敗すると利用者 / maintainerに何が見えるか
-- 保存するsemantic boundary
-- Provider / Target / Hostへ残す差
-- baseline / source / build identity
-- Reference / fixture
-- 必要なEvidence nature
-- 既存Gateへ影響するか否か
-- unresolved
-- reopen condition
+- 関連する製品要求
+- 主となる受入シナリオ（PAS）
+- シナリオに失敗した場合に利用者や保守担当者に何が見えるか
+- 維持する意味上の境界
+- 提供実装・実行先・ホストに残す違い
+- 基準版・情報源・ビルド版の識別情報
+- 参照事例・試験用データ
+- 必要な検証根拠の性質
+- 既存の判定段階に影響するか
+- 未解決事項
+- 検討を再開する条件
 
-実装が先に存在する場合でも、この欄を埋めるためだけに架空Requirementを作りません。
+実装が先に存在する場合も、この項目を埋めるためだけに架空の要求を作りません。
 
-## 14. 現行Authoring基線
+## 14. 現在の定義記述と受理の方針
 
-PAS-01 / PAS-06では次を現行前提とします。
+PAS-01とPAS-06では、次を現在の前提とします。
 
-- authoritative sourceはfile-nativeで保持可能
-- qualified logical key / Canonical identityをfile pathと分離
-- Studio / CLI / AI等はcandidate入口
-- Preview / Rejectはnon-mutating
-- AcceptはShared Acceptance Boundaryへ収束
-- accepted sourceは入口toolなしでreload可能
-- stale base revisionは明示処理
-- derived index / AI Knowledge / trajectoryは第二正本ではない
-- 独立した開発環境は、TEI専用Agent Adapterやnative MCP serverなしでSourceを直接編集し、CLI / Host-provided MCP / 通常のToolchainでBuild / Testまで行える
-- Git commit / branch / Pull Request等を変更の第一級の受け渡し経路として利用でき、Gitで足りる場合にTEI独自Change Setを要求しない
+- 正本となる情報源は元のファイル形式のまま保持できる
+- 一意な論理上の識別子と正本の識別子を、ファイルのパスから分離する
+- 編集環境・コマンドライン・AIなどは変更候補を提出する入口とする
+- 事前確認と却下では情報源を変更しない
+- 受理は共通の受理境界を通す
+- 受理された情報源は変更元の道具がなくても再読込みできる
+- 古くなった基準版は明示的に処理する
+- 派生索引・AI向けの知識・過去の作業経緯は第二の正本ではない
+- 独立した開発環境では、TEI専用のエージェント接続部品やMCPサーバーがなくても、ソースを直接編集し、コマンドライン・ホスト提供のMCP・通常の開発ツールでビルドと試験まで行える
+- Gitのコミット、ブランチ、プルリクエストを変更の主要な受渡し方法として利用できる。Gitで足りる場合にはTEI独自の変更セットを要求しない
 
-PAS-07のBusiness Procedure pressureでも、Business固有meaningをfile-native authoring sourceへ保持し、Pattern-owned Data / Relation / Query / Capability / DatasourceやMatrix / diagnostic等のderived Projectionと分離します。
+PAS-07の業務手順の検証でも、業務固有の意味は元のファイル形式の定義元に保持します。アプリケーションの構成パターンが管理するデータ、関係、問い合わせ、機能、データソースや、対応表・診断などの派生表示とは区別します。
 
-現時点でReference-local stable Procedure keyの有用性は確認していますが、accepted Business sourceをRQ-002上どのCanonical trace targetへ接続するかは`unresolved`です。この一点からfull Canonical Procedure modelやRuntime Workflowを先に固定しません。
+現時点で、参照事例内に安定した業務手順の識別子を設ける利点は確認しています。一方、受理済みの業務の定義元をRQ-002の下で正本のどの対象へ追跡するかは`unresolved`です。この問題だけを理由に、完全な業務手順モデルや実行基盤の処理の流れを先に固定しません。
 
 次を現行前提にはしません。
 
-- Semantic Patchだけを唯一のauthoring経路にすること
-- Base Semantic Digestを全candidateの必須基準にすること
-- mandatory authored Stable ID / UUID
-- Studio独自semantic authority
-- AI独自Canonical Knowledge Store
-- Agent Session / Workspace / Checkpoint / 一般的な検証状態をTEIの標準Product stateにすること
-- Agent Adapterや特定Chat UIを標準Authoringの必須経路にすること
-- Canonical `Procedure` / `Step`の先行採用
-- Business ProcedureからRuntime Workflow Orchestrationへの自動変換
+- 意味の差分の適用だけを、定義の唯一の変更経路にすること
+- 元の意味の照合値をすべての変更候補に必須とすること
+- 人が記述する安定識別子やUUIDを必須とすること
+- 編集環境独自の意味を決める権限
+- AI専用の意味の正本を保存する機構
+- エージェントのセッション、作業領域、チェックポイント、一般的な検証状態をTEIの標準的な製品状態にすること
+- エージェント用の接続部品や特定のチャット画面を定義変更の必須経路にすること
+- 正本の要素として`Procedure`や`Step`を先に採用すること
+- 業務手順から実行基盤の処理を統括する仕組みへの自動変換
 
-optional Patchを利用する場合も、file-native / Studio / CLI / AIと同じAcceptance原則へ接続します。
+任意の差分記述を利用する場合も、ファイルの直接編集、編集環境、コマンドライン、AIと同じ受理原則を適用します。
 
 ## 15. 非目標
 
-- Product Requirementsの置換
-- Canonical object `ProductAcceptanceScenario`の追加
-- runtime Scenario Registryの実装
-- Requirement coverage率 / 完成率の算出
-- Gate B / Gate Cのscopeを本書だけで変更すること
-- 第一Targetだけから完全なPresentation IRを固定すること
-- Gate C前にStudio / AIの詳細interfaceを固定すること
-- PAS-07を理由にCanonical `Procedure` / `Step`、Workflow Engine、新Gateを自動導入すること
+- 製品要求の置き換え
+- 正本の要素として`ProductAcceptanceScenario`を追加すること
+- 実行時に使うシナリオの登録機構の実装
+- 要求の達成率や完成率の算出
+- 判定段階B・Cの対象範囲をこの文書だけで変更すること
+- 最初の実行先だけを根拠に、表示の完全な中間表現を固定すること
+- 判定段階Cの前に編集環境やAIの詳細な接続方式を固定すること
+- PAS-07を理由に、正本の`Procedure`・`Step`、業務処理の実行機構、新しい判定段階を自動的に導入すること

@@ -1,10 +1,10 @@
 # TEIの全体構成
 
-この文書では、開発者向けにTEIの実装構造と技術的な境界を説明します。基本的な考え方は、先に[TEIの考え方](overview.md)を読むと把握しやすくなります。業務システム設計上の境界は[業務システムの設計](business-system-design.md)も参照してください。
+この文書では、開発者向けにTEIの実装構造と技術上の境界を説明します。基本的な考え方は[TEIの考え方](overview.md)、業務システム設計の境界は[業務システムの設計](business-system-design.md)を参照してください。
 
 ## 四つの層
 
-TEIの基本的な分離は次の4層です。
+TEIは、基本的な仕組みを次の四層に分けます。
 
 ```text
 Authoring Layer
@@ -20,11 +20,11 @@ Implementation & Execution Layer
     Go / SQL / DB / deployment executor / external process
 ```
 
-「何で実装するか」は、「何を意味するか」の一部にはしません。
+実装技術の選択と、業務上の意味の定義は分けて扱います。
 
 ## 記述形式・意味の正本・実行時の表現
 
-入力に使う記述形式、正本となる業務上の意味、実行時に使うオブジェクトは、それぞれ別のものとして扱います。
+入力の記述形式、正本となる業務上の意味、実行時に使うオブジェクトは区別します。
 
 ```text
 TEI DSL / native SQL / Editor / AI candidate
@@ -36,19 +36,29 @@ Runtime Model / Execution Plan / Target Projection
 Go / SQL / Plugin / external system / generated application
 ```
 
-`.tei`はTEI固有の意味を記述する主要な入力形式ですが、解析した構文木そのものが意味の正本（Canonical Model）になるわけではありません。
+`.tei`はTEI固有の意味を記述する主要な入力形式です。ただし、解析後の構文木そのものを意味の正本（Canonical Model）とはみなしません。
 
-意味を管理する層では、入力形式やファイルの場所に依存しない識別情報と意味を保持します。実行時には、それを特定の環境・提供元・実行先に対応させた形を使います。
+意味を管理する層では、入力形式やファイルの場所に依存しない識別情報と意味を保持します。実行時には、特定の環境・提供元・実行先へ対応付けた表現を使います。
 
 Goは、構文解析、名前や参照先の解決、検証、分析、変換、実行、プラグインの管理などを支える主要な実装言語です。ただし、個別の業務システムが持つ意味を、Goの型や開発基盤のAPI、Wailsなどの実行環境固有のAPIに固定しません。
 
-このように分けることで、業務アプリケーションは原則としてDSLや既存資産を使って記述し、中核部分の決定論的な検証と実行はGoで支えられます。
+この分離により、業務アプリケーションは原則としてDSLや既存資産で記述し、中核部分の決定論的な検証と実行をGoで支えられます。
+
+## 製品ソースの管理単位
+
+コアと標準プラグインを独立したサブプロジェクトとして扱う方針を採用しています。目標の管理領域は`core/`と`plugins/`です。実行先固有の仕組みも、原則としてプラグインに含めます。
+
+**これは移行方針であり、現在のソース配置ではありません。** 現行実装は引き続き単一のGoモジュールと`internal/`を中心としています。ソースの管理単位、論理プラグイン、ビルド入力、成果物、実行単位は同じ境界に固定しません。
+
+目標構成と移行条件は[ADR-0033](../plan/adr/0033-core-and-plugin-subprojects.md)、現在の入口は[コア](../core/README.md)と[プラグイン](../plugins/README.md)を参照してください。
+
+以下の「作業領域」は、製品ソースのリポジトリ構成とは別に、TEIで記述するアプリケーションの入力を管理する仕組みです。
 
 ## リポジトリと作業領域
 
 作業領域（Workspace）の管理対象となるルートディレクトリは、`tei.workspace.yaml`で定義します。
 
-ファイルのパスを意味上の識別子にはしません。意味の正本には安定した識別子（Canonical ID）を使います。
+ファイルのパスは意味上の識別子とせず、正本となる意味には安定した識別子（Canonical ID）を使います。
 
 ```text
 workspace/
@@ -67,7 +77,7 @@ workspace/
 
 ## 入力元から意味の正本までの追跡
 
-入力元の情報は意味の正本（Canonical World）に埋め込まず、入力・作業領域側で生成する**入力元索引（Source Index）**として分離します。
+入力元の情報は、意味の正本（Canonical World）に埋め込みません。入力・作業領域側で生成する**入力元索引（Source Index）**として分けて扱います。
 
 ```text
 Authoring source
@@ -83,11 +93,11 @@ path-independent         locator / fingerprint / range / role
 Diagnostic + Subject ──────────┘
 ```
 
-入力元の成果物（Source Artifact）は作業領域からの相対パスと内容の指紋値を持ちます。入力元への参照（Source Reference）は、パスに依存しない対象（Subject）へ、バイト範囲と役割を結び付けます。
+入力元の成果物（Source Artifact）は、作業領域からの相対パスと内容の指紋値を持ちます。入力元への参照（Source Reference）は、パスに依存しない対象（Subject）にバイト範囲と役割を結び付けます。
 
 意味の検証は入力元索引に依存せず、`Diagnostic + Subject`を返します。入力側では、その結果を元の記述位置へ対応付けます。構文解析や字句解析に失敗して、正本側の対象がまだ成立していない場合は、架空の識別子を作らず、入力元を直接示す診断として扱います。
 
-入力元索引は、次のCLIコマンドで確認できます。
+入力元索引は、次のコマンドで確認できます。
 
 ```bash
 go run ./cmd/tei source-index \
@@ -102,7 +112,7 @@ M0.23で直接検証している不変条件と実装・テストの対応は、
 
 ## 既存資産の利用と正本の移管
 
-TEIから既存アプリケーションや外部ツールの資産を読めることと、その意味を確定する正本の管理主体をTEIへ移したことは別です。
+TEIが既存アプリケーションや外部ツールの資産を読み取れることと、その資産の意味を確定する管理権限がTEIへ移ったことは別です。
 
 ```text
 read / parse / project successfully
@@ -121,7 +131,7 @@ TEI mapping / projection
   = derived / reference
 ```
 
-TEI側で対象の意味を欠落なく表現できる検証根拠が揃っても、正本の管理主体は自動的には変わりません。管理主体を移す場合は、少なくとも対象範囲ごとに次の情報を明示します。
+TEI側で対象の意味を欠落なく表現できたと示す検証根拠が揃っても、正本の管理主体は自動的には変わりません。管理主体を移す場合は、少なくとも対象範囲ごとに次の情報を明示します。
 
 - source owner before cutover
 - source owner after cutover
@@ -130,9 +140,9 @@ TEI側で対象の意味を欠落なく表現できる検証根拠が揃って�
 - unresolved / unsupported fields
 - rollback path
 
-正本の切り替えは、共同の受け入れ確認（Shared Acceptance）や明示的な移管判断を伴う**管理権限の移行**として扱います。取り込みの成功、最後に書き込んだ主体、ファイルの更新日時、構文解析の成功、生成物の存在だけから、移行したとは判断しません。
+正本の切り替えは、共同の受け入れ確認（Shared Acceptance）や明示的な移管判断を伴う**管理権限の移行**です。取り込みや構文解析の成功、最後に書き込んだ主体、ファイルの更新日時、生成物の存在だけでは、移管が成立したとは判断しません。
 
-部分的な移管も認めます。アプリケーション全体に一つの`tei-native`フラグを付けるのではなく、対象や関心領域ごとに管理主体が異なる場合を扱います。ただし、同じ関心領域に暗黙の正本を二つ作りません。
+部分的な移管も認めます。アプリケーション全体に一つの`tei-native`フラグを付けるのではなく、対象や関心領域ごとに管理主体が異なる状態を扱います。ただし、同じ関心領域に暗黙の正本を二つ作りません。
 
 ```text
 native source authoritative
@@ -146,7 +156,7 @@ cutover後に旧native assetをcompatibility / export / generated artifactとし
 
 ## 編集候補の統合と受け入れの境界
 
-Editor、CLI、file-native tooling、AI支援等が増えても、authoritative sourceを変更する入口ごとに別のCanonical authorityを増やしません。
+編集画面、コマンドライン、ファイルを直接扱うツール、AI支援などが増えても、正本を変更する入口ごとに異なる管理権限を作りません。
 
 未統合の変更には少なくとも二つの正規経路があります。
 
@@ -175,17 +185,17 @@ ordinary Git integration
 authoritative source
 ```
 
-Structured Proposalは、意味差分・根拠・Previewを機械可読に扱う価値がある場合の経路です。すべてのfile editやAI編集を開始前にProposalへ変換することは要求しません。
+構造化された提案（Structured Proposal）は、意味の差分・根拠・事前確認の内容を機械可読な形で扱う場合に使う経路です。すべてのファイル編集やAIによる編集を、開始前に提案へ変換することは要求しません。
 
-どちらの経路でも、未統合の変更をCanonical Worldそのものとは扱いません。正式統合後のauthoritative sourceを共有loader / validatorでreloadし、入口の違いによってCanonical meaningが変わらないことを要求します。
+どちらの経路でも、未統合の変更をCanonical Worldそのものとは扱いません。正式統合後の正本を共通の読み込み・検証機構で再読込し、変更の入口によって正本となる意味が変わらないことを要求します。
 
 Acceptance / Integration Boundaryでは、対象に応じてparse / decode、normalize、validate、architecture / policy check、semantic diff、impact analysis、Repository policy、reload / conformance等を決定論的に組み合わせます。すべてを一つの中央Service、固定process、専用APIへ押し込むことは要求しません。
 
-Gitで十分に表現できる変更にTEI独自Change Setを必須にせず、Git conflictはGitへ任せます。そのうえで、Git上はmerge可能でも意味上不正な変更をTEIのValidation / Conformanceで拒否できることを要求します。
+Gitで十分に表現できる変更には、TEI独自の変更セットを必須にしません。Git上の競合はGitで扱います。一方、Gitではマージ可能でも意味上は不正な変更を、TEIの検証・準拠確認で拒否できることを要求します。
 
 interactiveな変更候補では、Proposal作成時点の`baseModelRevision`等と現在revisionを比較できる余地を持たせます。staleな候補を黙って最新状態へ適用せず、reject、rebase、regenerate、manual conflict resolution等へ分岐します。
 
-Shared Acceptanceは**意味変更をauthoritative sourceへ受理する境界**であり、将来のRuntime副作用を無条件に許可する境界ではありません。
+共通の受け入れ（Shared Acceptance）は**意味の変更を正本へ受理する境界**であり、その後の実行時の副作用を無条件に許可するものではありません。
 
 ```text
 Proposal accepted
@@ -194,7 +204,7 @@ Proposal accepted
 
 accepted meaningから後でCapability invocationやResource accessが発生する場合、effect直前のcurrent Authorization / Permission / Resource Lease / ownership / fencing等で実行可能性を再確認します。Proposal受理時点のapproval、planner-visible state、過去のpermission snapshotをRuntime authorityとして再利用しません。current authorityがmissing / stale / ambiguousなら、副作用前にfail closedし、必要ならunresolved / recovery /再認可へ送ります。
 
-この境界はRQ-019の既存Security mechanismをAuthoring / Proposal側から読んだArchitecture解釈です。外部研究だけを理由に新しいRequirementやpermission schemaを追加しません。
+これはRQ-019で扱う既存のセキュリティ機構を、記述・提案の側から見た構成上の解釈です。外部研究だけを根拠に、新しい要求や権限のスキーマは追加しません。
 
 Authoring identityはfile pathそのものではなく、qualified logical key / Canonical identityを基準にします。file移動はlogical identityが同じならsemantic no-opになり得ますが、logical rename / Canonical identity変更は明示的なsemantic changeです。StudioやAIの都合だけで、user-authored Stable ID / UUIDを全資産へ必須化しません。
 
@@ -214,9 +224,9 @@ AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等�
 
 ## 開発ツールと実行環境の境界
 
-TEIは、ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE / CLI、CI等を、TEI専用Agent Runtimeの下位実装として扱いません。
+TEIは、ChatGPTなどのチャット実行環境、Codex、Claude Code、一般的な開発環境やコマンドライン、継続的インテグレーションの仕組みを、TEI専用エージェント実行環境の下位実装としては扱いません。
 
-完全な開発loopを同一Hostで完結するには、Host側が少なくとも次を持つ必要があります。
+一つのホストで開発の一連の作業を完結するには、そのホストに少なくとも次の機能が必要です。
 
 ```text
 repository materialization
@@ -257,7 +267,7 @@ Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / 
 
 これらに別のProduct上の必要性がある場合は、その必要性を個別に評価します。開発Toolが所有する状態を、RQ-034のためだけにTEIへ複製しません。
 
-この境界の長期判断は[ADR-0031](../plan/adr/0031-tool-neutral-git-native-development.md)に置きます。Executable Referenceの成立範囲は、該当する実装と検証結果から別途確認します。
+この境界についての長期的な判断は[ADR-0031](../plan/adr/0031-tool-neutral-git-native-development.md)に記録します。実行可能な参照例の成立範囲は、該当する実装と検証結果から別途確認します。
 
 ## 意味を扱う中核
 
@@ -308,7 +318,7 @@ Application instanceがSource / Observation / Evidenceの対象になったり�
 
 ## 業務操作・アプリケーション機能・外部能力・実現方式
 
-業務上の行為とApplication / Runtimeの実現を分離します。
+業務上の行為と、アプリケーションや実行環境による実現方式を分けます。
 
 ```text
 Business Action
@@ -347,11 +357,11 @@ Business Procedure / actor / manual / trigger
 
 CRUD matrix、flow、graph等はこの検査に有用ですが、原則としてderived Projectionとして生成し、人が第二の意味正本として維持することを要求しません。
 
-詳細は [Business-System Design](business-system-design.md) とRQ-025 / RQ-026を参照してください。
+詳細は[業務システム設計](business-system-design.md)とRQ-025 / RQ-026を参照してください。
 
 ## 権限判定における意味の境界
 
-Authentication / Organization / Authorizationを一つの固定organization schemaへ畳みません。
+認証、組織、認可を、一つの固定された組織スキーマにまとめません。
 
 ```text
 credential / external identity

@@ -285,3 +285,71 @@ Go 1.23.2の隔離作業領域で、これらを含む`go test -race -count=1 ./
 C1 [#1165](https://github.com/hat47x/tei-platform/issues/1165) の `tei trace` は、`#1139` の本Modelref契約と、`#1169` のCLI inspect/operations境界が双方とも検証・統合された後に接続する。Web/Desktopも同じ型付き操作を呼び、argvやJSONの形式はAdapterが所有する。`Source Index` の元定義への案内は `sourcebridge` の検証済みNavigationを使い、Edgeの存在だけで書込み許可を与えない。
 
 スコープ・Graph版・Policy版、Host側の情報開示・認可、秘匿Evidenceの伏字化、ページ取得間の情報鮮度については、実アダプターでの追加受入検証を必要とする。今回のGoのテストコード追加は実行成功の証明ではない。統合には、対象のexact headにおけるリポジトリ全体のHealth Checkが引き続き必要となる。
+
+## R7 — 変更影響の「空」と「未解決」を区別する（2026-10-12）
+
+PR #1139がmainへ統合された後、現行`modelref.Impact`を再点検したところ、`Validate`が`conflicting-rule`を検出する一方、`Impact`は競合する二つの拡張規則を個別に採用して影響先候補を生成できることが判明した。たとえば`function --reads--> data`の表示名依存がfalseとtrueで競合した場合、true側の規則を選び、表示名変更の波及先を誤って提示し得る。
+
+今回の対応は次のとおり。
+
+- `Impact`の逆向き索引構築では、`(relation, fromKind, toKind)`に対応する拡張規則を一意に選ぶ。**矛盾した規則・無効な規則・参照元/先の重複・不完全な辺の根拠**は、影響経路として使わない。
+- 新しい`ReviewImpact`は、Graph全体と変更対象を`Validate`に通し、診断があれば`GraphValid=false`と`Diagnostics`を返す。未解決な参照があるときに`Affected=[]`だけを返して「影響なし」と誤読させない。
+- `GraphValid=true`であっても、**それは渡された候補Graphと拡張規則の構造検査が成功したことだけ**を表す。元Source revisionの正当性、受理済み意味、権限、実行時の更新効果を証明しない。
+- `Impact`の従来のシグネチャーは維持し、`ReviewImpact`を追加の安全な利用口とする。新しい表や図の消費側は`ReviewImpact`の診断を先に確認してから影響一覧を表示する。
+
+負例は拡張規則の競合、参照先の欠落、派生出典の不足、未知の変更分類、存在しない変更元。正例はData→Function→Task/Formの3件の影響と、表示名に依存しないedgeでは影響が空になるケース。
+
+この改修は#1120の共通契約に閉じるもので、#1124のStudioや#1125の業務手順を推測して実装せず、既存`ir.World`・Source Index・Shared Acceptance・Runtimeを変更しない。
+
+**資格確認:** 本PRの正確なコミットでの`go test -race -count=1 ./internal/modelref/... ./internal/workspace`、`tools/repository-health-check.sh`、作業ツリーの事前/事後clean状態はまだ取得できていない。従来の#1139の統合事実を、本追加変更の品質保証や受理証拠へ読み替えない。完了まではDraftとする。
+
+## R8 — 変更前後の両Snapshotによる影響確認（2026-10-12）
+
+`ReviewImpact(before, changes, rules)`は従来の`Impact`が扱う**変更前モデルの既存Consumer**には使えるが、`added`には新要素が存在しない。変更前だけの結果が空でも、新しい要素に依存する機能が変更後モデルに増えていれば影響候補が存在する。
+
+- 変更前しか入力のない`ReviewImpact`で`added`を受け取った場合は`after-snapshot-required`とし、`GraphValid=false`にする。過去のGraphに存在しない要素を正常にレビュー済みと断言しない。
+- `ReviewImpactDiff(before, after, rules)`を追加した。双方を型・循環・根拠について検査し、いずれかに診断があれば`Affected`を返さず未確定として示す。
+- 両Graphが整合する候補である場合、`Diff`の`added`を**変更後**、`removed`を**変更前**のGraphで辿る。version/evidence/参照関係の変更は**両方**を辿り、導入直後の新たなConsumerも回収する。重複する同じ`Changed/Consumer/Reason`はまとめ、決定的に整列する。
+- 改名を自動認定することはない。`order-line`を`order-detail`に変更した場合、`Diff`はadd/removeを維持する。明示`Transition`の意味継承審査は別途`ReviewMigration`が担当する。
+- 結果の`GraphValid`は、**二つの候補Graphと規則の局所整合性のみ**を表す。Sourceファイルrevisionの同一性、AI提案の受理、Shared Acceptance、実行時の副作用を実証しない。
+
+回帰テストは、Dataの追加に伴って新たにFunction→Task/Formの逆向き影響を拾えること、変更後の参照が欠落する場合に結果を未確定にすること、同一DataのVersion変更後に追加されたConsumerを見逃さないことを対象とした。
+
+### 完了の制限
+
+ここまでの実装は`internal/modelref`に閉じた読み取り専用の契約である。正式な完了には、`tools/repository-health-check.sh`と実Workspace統合試験の完全な実行、変更前後の正本となるSource revisionの束縛、AI提案と旧資産の受理前後を追う実シナリオが必要。**追加したテストはまだtrusted full checkoutで実行していない。**
+
+## R9 — 受理前後の実Workspaceと種類付き識別子の対応検証（2026-10-12）
+
+共通参照機構を受理機構とは別に設計しているため、型付き参照の試験だけでは「提案→検証→受理→Source更新→再読み込み」の間にIDと出典が保持される保証にならない。逆に、Shared Acceptanceの既存テストだけでは `modelref.Key{Scope,Subject}` とSource Indexとの同時整合が検証されていなかった。
+
+`tools/reference-shared-acceptance/modelref_identity_lineage_test.go`を追加した。既存の `scratchWorkspaceBeforeSecondApplication`、`unitPriceCandidate`、`takeSnapshot`、`acceptViaCLI`、`decisionsOf`を利用し、受理経路を複製しない。
+
+検証シナリオは次のとおり。
+
+1. `reference/workspace`の一時複製を正規の`workspace.Load`と`Source Index`で読み取り、`index.Build→derivedbridge.FromIndex`で種類・Scope付きのData、Attribute、Validation、Application Patternを観測する。
+2. AI起点の候補を用意し、`Origin.Kind=ai`、`Origin.Actor=proposal-only`、未検証の旧資産メモを明示する。新Validation ID `sales.order_line.unit_price_positive`は、受理前のGraphにもSource Indexにも存在しないことを確認する。旧資産の実取込を行ったと主張するものではない。
+3. 共通`evaluate`で読み取り専用の事前評価を行い、管理対象Sourceの全ファイル内容と基準revisionに変更がないことを確認する。
+4. 既存CLIの`reviewFingerprint`拘束付き`accept`を通し、Decisionの基準・変更前・変更後revision、AI起点の出典メモを確認する。検証対象は**一時Workspace内だけ**であり、公開Reference本体を更新しない。
+5. 再読込したWorldから再び`derivedbridge`を構築し、既存Data/Attribute/Validation/Patternの`Key`を保持し、新Validationが`added`として現れることを`ReviewImpactDiff`で検査する。新Validationの定義元は現在のSource Indexの`semantic/sales/validation.tei`に存在することを確認する。
+6. Decision Indexから候補fingerprintが辿れること、`Origin.Actor`が`DecisionActorStatus`や`DecisionAuthorityStatus`に格上げされず、`unresolved`に留まることを確認する。
+
+これにより、同一の**実Reference構成を複製した環境**で、候補と受理前後の論理識別子、定義ファイル、記録の追跡を一つのシナリオにした。既存のSource Index移動不変性試験やShared Acceptance Decision試験の責務を再実装しない。
+
+**残る制限**：今回のテストはコードを追加した段階で、信頼できる完全なチェックアウトでのGo実行結果は未取得。AI起点であることは提案者の自己申告であり、人間による実際の承認を証明しない。旧資産の注記も実取込・元システムのID照合ではない。Legacy importの生データ→Source Token→受理済みモデルへの追跡、他Scopeとの混同、受理時の実行権限については別途検証する。受理前後のGraph比較は同一観測用Scopeを呼び出し側が渡した範囲に限定され、Scopeそのものの正当性を保証するものではない。
+
+## R10 — 旧資産Source Tokenと受理済み論理IDを別々に追跡する（2026-10-12）
+
+旧資産取り込みとTEI受理後の識別子追跡を、独立した二つの検証だけで済ませると、どちらのSourceから得た根拠で、どのReviewを経て、どの意味IDが受理されたかが失われる。
+
+`tools/reference-shared-acceptance/modelref_rmt_lineage_test.go`に、既存の`reference-xead-source-adapter`を**実際に起動して生成するSource Token**を使い、受理前からDecision Indexまでを追う試験を追加した。
+
+1. 一時複製したReference Workspaceの既存型付きID（Data）とSource Index定義を読み、受理前には追加Validationが存在しないことを確認する。
+2. 独立した合成X-TEA XMLを実Source Adapterで読み、Artifact digest、mapping契約の指紋、元Source要素に結び付くTokenを得る。手書きの注記を根拠の代わりにしない。
+3. Source EvidenceをAI提案に添付し、正規化済みCandidateと実Shared Acceptance Previewの差分に対して`prepareRMTReviewedLink`を作る。`Source Token`とTEI論理IDを同一視せず、リンクは`proposed`・意味同値性は`unresolved`にとどめる。
+4. Reviewに拘束した既存Acceptを一時Workspace上で実施し、Decisionの出典、Source Token、両指紋、受理前後Revisionを照合する。
+5. 再投影された`modelref.Key{Scope,Subject}`を`ReviewImpactDiff`で読み、追加されたValidationと既存Dataの識別子を区別し、Source Indexから新しいValidationの定義元まで再到達できることを確認する。Decision Indexも確認し、外部証跡を`current`や人の承認権限へ格上げしない。
+
+**重要な限界**：使用する元XMLは独立した合成資産で、実際の顧客や原システムの旧資産ではない。Adapterが生成するTokenはSource Artifactと要素位置に束縛されるが、元の`ID`を公開用Evidenceに複製する設計ではない。合成`Table`がTEIの単価制約に相当するという意味の同値性も証明しない。形式の読込みと識別子・根拠の**追跡経路**は検証できても、実旧資産の意味移行とHuman Acceptanceの権限付与は引き続き別の判定段階である。
+
+この試験は既存Adapter／Shared Acceptance／modelref／Source Indexの公共APIだけを呼び、新しい受理口やCore固定の旧資産メタモデルを作らない。実行結果はCIの該当headに紐づけて記録する。
