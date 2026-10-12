@@ -1,0 +1,83 @@
+name: TEI 変換Engine変更の実Evidence差分検証
+
+# 特定の資格確認だけで、実エンジン・セルフビルドを変更前後の2版で実行。
+# 一般的なPRに対する全体健全性検証の必須化ではない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-transform-evidence-mutation.yml
+      - tools/check-transform-evidence-mutation.sh
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-transform-evidence-mutation.yml
+      - tools/check-transform-evidence-mutation.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-transform-mutation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actual-evidence-differential:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 候補コミットの完全なGit履歴を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 検証するコミットと作業領域の清浄性を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          printf 'candidate=%s\n' "$GITHUB_SHA"
+
+      - name: リポジトリで指定されたGoを使用
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: ソース変更前後の実エンジンとEvidence v2を生成して比較
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/check-transform-evidence-mutation.sh "$RUNNER_TEMP/tei-transform-mutation"
+
+      - name: 実行後の候補コミットと作業領域の清浄性を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: 二版のEvidenceを監査資料として保存
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-transform-evidence-mutation-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/tei-transform-mutation/mutation-report.json
+            ${{ runner.temp }}/tei-transform-mutation/baseline/engine-build-evidence.json
+            ${{ runner.temp }}/tei-transform-mutation/baseline/self-build-evidence.json
+            ${{ runner.temp }}/tei-transform-mutation/mutation/engine-build-evidence.json
+            ${{ runner.temp }}/tei-transform-mutation/mutation/self-build-evidence.json
+          if-no-files-found: error
+          retention-days: 7
