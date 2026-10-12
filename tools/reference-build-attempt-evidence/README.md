@@ -1,8 +1,8 @@
-# Build Attempt Failure Evidence Reference
+# ビルド試行失敗の参照実装
 
-GitHub #1110 の最小Referenceです。
+GitHub #1110 に対応する、模擬データを使った参照実装です。
 
-exact BuildPlanとBuilderを確定し、actual build executionを開始した後にcompile / link / builder実行が失敗したケースを、CLI errorだけで失わず構造化Evidenceとして保持します。
+実際のビルドでコンパイルやリンク、ビルダーの起動が失敗した場合を想定し、確定済みのビルド計画とビルダーに結び付けて失敗情報を保存する構造を検証します。現行の参照コマンドは実際のコンパイラやビルダーを起動しません。
 
 ## Failureの分離
 
@@ -80,9 +80,9 @@ attempt 2 failed
 attempt 3 succeeded
 ```
 
-成功resultを記録しても過去failure fingerprintを削除しません。
+成功結果を記録しても過去の失敗記録の指紋は削除しません。ただし、参照コマンドでは失敗だけを模擬し、成功したビルド結果は記録しません。テスト中に成功結果の参照を組み立てる場合も、それ自体は実際の成功を証明しません。
 
-Attempt ordinalはEvidence instanceの順序であり、BuildPlan identityには入りません。
+試行番号は記録の順序を表し、ビルド計画の識別には使いません。履歴に追加する失敗記録には、有効な内容指紋が必要です。終了コード0でシグナルもない試行を失敗として記録しません。
 
 ## Build graph
 
@@ -97,14 +97,14 @@ blocked nodeへAttempt Evidence fingerprintを付けて「実行して失敗し�
 
 ## Gate
 
-Reference CLIは固定fixtureのfake compile failureを実行し、Evidence JSONをstdoutへ出した後に**意図的にnon-zero exit**します。
+参照コマンドは固定データから模擬的なコンパイル失敗の記録を組み立て、標準出力にJSONを出した後、**意図的に終了コード1**で終了します。実際にコンパイル失敗を発生させたという検証結果ではありません。
 
 ```bash
 go run ./tools/reference-build-attempt-evidence \
   > /tmp/tei-build-attempt-evidence.json
 ```
 
-成功exitへ丸めません。
+終了コードを成功扱いに変更しません。
 
 ## Authority
 
