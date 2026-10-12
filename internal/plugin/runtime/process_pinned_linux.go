@@ -24,14 +24,14 @@ const maxPinnedLinuxProcessBytes int64 = 64 << 20
 // 検証と起動には同一のファイル記述子を用い、署名・来歴・隔離は提供しない。
 // ホストと同じ権限の攻撃者に対する保護も、この型だけでは保証しない。
 type PinnedLinuxProcess struct {
-	mu        sync.RWMutex
-	identity  plugin.Identity
-	source    string
-	digest    string
-	signatureRef string
+	mu                sync.RWMutex
+	identity          plugin.Identity
+	source            string
+	digest            string
+	signatureRef      string
 	signatureVerified bool
-	image     *os.File
-	transport StdioProcessLauncher
+	image             *os.File
+	transport         StdioProcessLauncher
 }
 
 var _ ProcessLauncher = (*PinnedLinuxProcess)(nil)
