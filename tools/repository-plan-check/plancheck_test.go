@@ -167,7 +167,7 @@ func TestEveryRequirementIsMappedToAnAcceptanceScenario(t *testing.T) {
 		idsMatching(t, filepath.Join("plan", "UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md"), row, "## 11. Requirement → Primary PAS mapping"))
 	assertCoversEveryRequirement(t, defined,
 		"plan/evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md",
-		idsMatching(t, filepath.Join("plan", "PRODUCT_REQUIREMENT_GAP_AUDIT.md"), row, "## 4. Requirement別監査"))
+		idsMatching(t, filepath.Join("plan", "evidence", "PRODUCT_REQUIREMENT_GAP_AUDIT.md"), row, "## 4. Requirement別監査"))
 }
 
 func forEachMarkdown(t *testing.T, visit func(rel, text string)) {
