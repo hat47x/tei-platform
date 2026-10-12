@@ -17,14 +17,14 @@ type CandidateKeyHypothesis struct {
 // CandidateKeyFinding records definite collisions separately from unusable
 // values and pairs whose identity cannot be established from the example.
 type CandidateKeyFinding struct {
-	HypothesisID      string         `json:"hypothesisId"`
-	Table             string         `json:"table"`
-	Result            string         `json:"result"`
-	Reason            string         `json:"reason"`
-	Collisions        []FDRecordPair `json:"collisions,omitempty"`
-	UnusableRecordIDs []string       `json:"unusableRecordIds,omitempty"`
-	IndeterminatePairs int           `json:"indeterminatePairs"`
-	DistinctPairs     int            `json:"distinctPairs"`
+	HypothesisID       string         `json:"hypothesisId"`
+	Table              string         `json:"table"`
+	Result             string         `json:"result"`
+	Reason             string         `json:"reason"`
+	Collisions         []FDRecordPair `json:"collisions,omitempty"`
+	UnusableRecordIDs  []string       `json:"unusableRecordIds,omitempty"`
+	IndeterminatePairs int            `json:"indeterminatePairs"`
+	DistinctPairs      int            `json:"distinctPairs"`
 }
 
 // ProbeBaseCandidateKeys finds *definite* duplicate candidate-key tuples in
