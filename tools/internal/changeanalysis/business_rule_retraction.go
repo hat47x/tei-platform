@@ -32,12 +32,12 @@ func ImpactWithBefore(before, after ir.World, changes []SubjectChange) ([]Impact
 		}
 		if len(oldEdges) == 0 {
 			unresolved = append(unresolved, Unresolved{
-				Code: "LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING",
+				Code:    "LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING",
 				Message: change.Key() + " was reportedly " + change.Change + " but its previous Data and attributes could not be resolved",
 			})
 		}
 		unresolved = append(unresolved, Unresolved{
-			Code: "LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW",
+			Code:    "LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW",
 			Message: change.Key() + " is " + change.Change + "; previous determinant / dependent / owner references require human review. Downstream business validity and physical PK/FK consequences are not verified",
 		})
 	}
