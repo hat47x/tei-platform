@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 class Element {
-  constructor(tag){this.tag=tag;this.textContent='';this.children=[];this.listeners={};this.classList={toggle(){}};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.viewBox={baseVal:{width:1100,height:600}};}
+  constructor(tag){this.tag=tag;this.textContent='';this.children=[];this.listeners={};this.classList={toggle(){}};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.style={};this.viewBox={baseVal:{width:1100,height:600}};}
   setAttribute(k,v){this[k]=v}
   append(...items){this.children.push(...items)}
   replaceChildren(...items){this.children=[...items]}
@@ -63,4 +63,16 @@ test('stale view file and producer errors cannot replace displayed layout',async
   await input('dfd-file',duplicate);
   assert.match($('status').textContent,/DFD投影を読み込めません/);
   assert.equal($('export').disabled,true);
+});
+
+test('large Procedure remains scrollable instead of clipping all Steps below initial board',async()=>{
+  const steps=Array.from({length:32},(_,i)=>({id:'B-'+i,label:'step '+i,
+    noApplicationFunction:true,functionRefs:[]}));
+  await input('dfd-file',{...projection,steps,flows:[],handoffs:[]});
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.equal($('diagram').children.filter(n=>n.dataset?.kind==='step').length,32);
+  const dimensions=String($('diagram').viewBox);
+  const height=Number(dimensions.split(' ')[3]);
+  assert.ok(height>600,'diagram height should expand with number of Steps: '+dimensions);
+  assert.ok(parseInt($('diagram').style.height,10)>600);
 });
