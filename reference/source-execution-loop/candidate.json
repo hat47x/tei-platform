@@ -11,6 +11,6 @@
   ],
   "delta": [
     {"op": "add-validation", "namespace": "sales", "id": "sales.order_line.unit_price_positive", "kind": "positive", "attribute": "sales.order_line.unit_price"},
-    {"op": "add-application-validation-use", "applicationValidationUse": {"application": "order_entry", "validation": "sales.order_line.unit_price_positive"}}
+    {"op": "add-application-validation-use", "placement": "applications/order-entry/application.tei", "applicationValidationUse": {"application": "order_entry", "validation": "sales.order_line.unit_price_positive"}}
   ]
 }

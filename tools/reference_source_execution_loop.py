@@ -25,7 +25,7 @@ def verify_source_loop(root, output, binary, head, digest, dsn_file, sql, run):
     def cli(command, *args, expected=0):
         result = subprocess.run([str(acceptance), command, '-workspace', str(scratch), *args], cwd=root,
                                 capture_output=True, text=True, timeout=120)
-        assert result.returncode == expected, result.stderr
+        assert result.returncode == expected, result.stderr or result.stdout
         return json.loads(result.stdout)
 
     def revision():
