@@ -79,7 +79,7 @@ func TestSuccessfulAttemptCannotReuseFailureOrdinal(t *testing.T) {
 	exitCode := 2
 	failure, _, err := newFailedAttempt(plan, 1, fakeFailure{
 		Phase: attemptPhaseCompile, FailureClass: "compile-error",
-		ExitCode: &exitCode, DiagnosticSummary: "failed",
+		ExitCode: &exitCode, RawDiagnosticHint: "failed",
 	}, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestFailureAfterSuccessRequiresNewOrdinal(t *testing.T) {
 	exitCode := 2
 	failure, _, err := newFailedAttempt(plan, 1, fakeFailure{
 		Phase: attemptPhaseLink, FailureClass: "link-error",
-		ExitCode: &exitCode, DiagnosticSummary: "later failure",
+		ExitCode: &exitCode, RawDiagnosticHint: "later failure",
 	}, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +161,7 @@ func TestFailedHistoryRejectsUnfinalizedEvidence(t *testing.T) {
 	exitCode := 2
 	failure, _, err := newFailedAttempt(plan, 1, fakeFailure{
 		Phase: attemptPhaseCompile, FailureClass: "compile-error",
-		ExitCode: &exitCode, DiagnosticSummary: "failed",
+		ExitCode: &exitCode, RawDiagnosticHint: "failed",
 	}, 0)
 	if err != nil {
 		t.Fatal(err)
