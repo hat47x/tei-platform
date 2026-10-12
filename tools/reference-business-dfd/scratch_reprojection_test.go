@@ -102,15 +102,15 @@ func TestBusinessDFDUnacceptedProposalReprojection(t *testing.T) {
 			kind: "party", id: "supplier",
 			operation: map[string]any{
 				"kind": "add-information-flow", "id": "INFO-SCRATCH-IN",
-				"from": map[string]string{"kind": "party", "id": "supplier"},
-				"to": map[string]string{"kind": "step", "id": "APP-20"},
+				"from":    map[string]string{"kind": "party", "id": "supplier"},
+				"to":      map[string]string{"kind": "step", "id": "APP-20"},
 				"payload": "在庫の確認結果",
 			},
 			apply: func(r *review) {
 				r.InformationFlows = append(r.InformationFlows, informationFlow{
-					ID: "INFO-SCRATCH-IN",
-					From: informationEndpoint{Kind: "party", ID: "supplier"},
-					To: informationEndpoint{Kind: "step", ID: "APP-20"},
+					ID:      "INFO-SCRATCH-IN",
+					From:    informationEndpoint{Kind: "party", ID: "supplier"},
+					To:      informationEndpoint{Kind: "step", ID: "APP-20"},
 					Payload: "在庫の確認結果",
 				})
 			},
@@ -120,15 +120,15 @@ func TestBusinessDFDUnacceptedProposalReprojection(t *testing.T) {
 			kind: "step", id: "APP-10",
 			operation: map[string]any{
 				"kind": "add-information-flow", "id": "INFO-SCRATCH-OUT",
-				"from": map[string]string{"kind": "step", "id": "APP-10"},
-				"to": map[string]string{"kind": "store", "id": "orders"},
+				"from":    map[string]string{"kind": "step", "id": "APP-10"},
+				"to":      map[string]string{"kind": "store", "id": "orders"},
 				"payload": "注文確認の参考情報",
 			},
 			apply: func(r *review) {
 				r.InformationFlows = append(r.InformationFlows, informationFlow{
-					ID: "INFO-SCRATCH-OUT",
-					From: informationEndpoint{Kind: "step", ID: "APP-10"},
-					To: informationEndpoint{Kind: "store", ID: "orders"},
+					ID:      "INFO-SCRATCH-OUT",
+					From:    informationEndpoint{Kind: "step", ID: "APP-10"},
+					To:      informationEndpoint{Kind: "store", ID: "orders"},
 					Payload: "注文確認の参考情報",
 				})
 			},
