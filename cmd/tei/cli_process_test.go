@@ -71,6 +71,14 @@ func TestCLIProcessJSONContract(t *testing.T) {
 		{"validate", "-json"},
 		{"validate", "-workspace", root, "-world", "other.json", "-json"},
 		{"validate", "-workspace", root, "-json", "unexpected"},
+		// The opt-in JSON contract survives FlagSet.Parse failures, including
+		// a malformed flag that appears before -json on the argv line.
+		{"validate", "-unknown-flag", "-json"},
+		{"validate", "-limit", "not-an-integer", "-json"},
+		{"validate", "-json", "-scope", "wrong-command"},
+		{"validate", "-json", "-limit", "1"},
+		{"validate", "-json", "-world="},
+		{"validate", "-json=not-a-bool"},
 	} {
 		var invalid cliValidationReport
 		if err := json.Unmarshal(run(2, args...), &invalid); err != nil {
