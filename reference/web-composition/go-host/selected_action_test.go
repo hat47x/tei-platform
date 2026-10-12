@@ -33,6 +33,7 @@ func TestSelectedActionCannotBypassOrBorrowHostAuthorization(t *testing.T) {
 		ProviderID: providerID, ArtifactDigest: digest, Generation: 1,
 	}
 	permission := true
+	var captured *http.Request
 	guardCalls, invokes := 0, 0
 	coordinator, err := composition.NewSelectedCoordinator(
 		registry, selection, binding, composition.NewScope(), func(b composition.Binding) error {
@@ -52,6 +53,7 @@ func TestSelectedActionCannotBypassOrBorrowHostAuthorization(t *testing.T) {
 		ProviderID: providerID, ArtifactDigest: digest,
 		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invokes++
+			captured = r
 			if _, ok := PrincipalFromContext(r.Context()); !ok {
 				t.Error("selected callback lost Host principal")
 			}
@@ -129,6 +131,18 @@ func TestSelectedActionCannotBypassOrBorrowHostAuthorization(t *testing.T) {
 		t.Fatalf("authorized Action did not select one provider: status=%d guards=%d invokes=%d",
 			status, guardCalls-before, invokes)
 	}
+	// The request-scoped approval must be unusable after its Host returns.
+	if captured == nil {
+		t.Fatal("selected Action did not receive the Host request")
+	}
+	beforeReplayGuards, beforeReplayInvokes := guardCalls, invokes
+	response := httptest.NewRecorder()
+	selected.ServeHTTP(response, captured)
+	if response.Code != http.StatusForbidden || guardCalls != beforeReplayGuards ||
+		invokes != beforeReplayInvokes {
+		t.Fatalf("stale approved Context replayed: status=%d guards=%d invokes=%d",
+			response.Code, guardCalls-beforeReplayGuards, invokes-beforeReplayInvokes)
+	}
 	permission = false
 	beforeGuard, beforeInvokes := guardCalls, invokes
 	if status := run(host); status != http.StatusServiceUnavailable ||
@@ -140,7 +154,7 @@ func TestSelectedActionCannotBypassOrBorrowHostAuthorization(t *testing.T) {
 	if _, err := registry.Apply(snapshot.Revision, nil, []string{providerID}); err != nil {
 		t.Fatal(err)
 	}
-	beforeInvokes := invokes
+	beforeInvokes = invokes
 	if status := run(host); status != http.StatusServiceUnavailable || invokes != beforeInvokes {
 		t.Fatalf("withdrawn provider dispatched: status=%d invokes=%d", status, invokes)
 	}
@@ -188,10 +202,12 @@ func TestSelectedActionRequiresBothPrivateHostProofs(t *testing.T) {
 		name         string
 		addPrincipal bool
 		addApproval  bool
+		approvalLive bool
 	}{
-		{"no private proof", false, false},
-		{"principal without Action approval", true, false},
-		{"Action approval without principal", false, true},
+		{"no private proof", false, false, false},
+		{"principal without Action approval", true, false, false},
+		{"Action approval without principal", false, true, true},
+		{"expired Action approval", true, true, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/reference/submit", nil)
@@ -200,7 +216,9 @@ func TestSelectedActionRequiresBothPrivateHostProofs(t *testing.T) {
 				ctx = context.WithValue(ctx, principalContextKey{}, principal)
 			}
 			if scenario.addApproval {
-				ctx = context.WithValue(ctx, authorizedActionContextKey{}, contract.ID)
+				approval := &authorizedActionApproval{actionID: contract.ID}
+				approval.live.Store(scenario.approvalLive)
+				ctx = context.WithValue(ctx, authorizedActionContextKey{}, approval)
 			}
 			w := httptest.NewRecorder()
 			selected.ServeHTTP(w, req.WithContext(ctx))
