@@ -89,7 +89,16 @@ func TestIssue1120AIProposalIdentityAcrossSharedAcceptance(t *testing.T) {
 		decision.Origin.Actor != "proposal-only" {
 		t.Fatalf("accepted decision lost base revision / AI origin: %+v", decision)
 	}
-	if len(decision.Evidence) == 0 || decision.Evidence[0].Note != candidate.Evidence[0].Note {
+	// Candidate evidence is normalized and deterministically sorted by the
+	// existing Shared Acceptance boundary. Identity must survive without
+	// depending on the caller's original evidence array order.
+	foundOriginNote := false
+	for _, item := range decision.Evidence {
+		if item.Subject == candidate.Evidence[0].Subject && item.Note == candidate.Evidence[0].Note {
+			foundOriginNote = true
+		}
+	}
+	if !foundOriginNote {
 		t.Fatalf("proposal provenance did not survive acceptance: %+v", decision.Evidence)
 	}
 	after, err := takeSnapshot(root)
