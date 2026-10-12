@@ -23,10 +23,11 @@ func main() {
 	contractFlag := flag.String("contract", "", "path to transcription contract JSON")
 	localProjectionFlag := flag.Bool("local-projection", false, "include token-level cross-view projection; local/private output only")
 	verifyProjectionFlag := flag.String("verify-projection", "", "verify saved output from -local-projection against exact source and contract bytes")
+	oracleFlag := flag.String("expect-accounting", "", "compare the freshly derived public aggregate with a saved public accounting baseline")
 	flag.Parse()
 
 	if *inputFlag == "" || *contractFlag == "" {
-		fmt.Fprintln(os.Stderr, "usage: reference-xead-cross-view -input <model.xead> -contract <transcription-contract.json> [-format xead] [-local-projection] [-verify-projection <saved-local-projection.json>]")
+		fmt.Fprintln(os.Stderr, "usage: reference-xead-cross-view -input <model.xead> -contract <transcription-contract.json> [-format xead] [-local-projection] [-verify-projection <saved-local-projection.json>] [-expect-accounting <public-baseline.json>]")
 		os.Exit(2)
 	}
 	source, err := os.ReadFile(*inputFlag)
@@ -53,6 +54,17 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
+	}
+	if *oracleFlag != "" {
+		baselineBytes, readErr := os.ReadFile(*oracleFlag)
+		if readErr != nil {
+			fmt.Fprintln(os.Stderr, readErr)
+			os.Exit(2)
+		}
+		if err := verifyPublicAccountingBaseline(output.Accounting, baselineBytes); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
 	}
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
