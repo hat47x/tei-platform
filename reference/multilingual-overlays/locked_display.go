@@ -20,16 +20,16 @@ type DisplayPluginIdentity struct {
 // DisplayManifest is a read-only boundary between the selected TEI plugins
 // and a standard UI. It is not a runtime grant or an editable definition.
 type DisplayManifest struct {
-	Kind            string          `json:"kind"`
-	Environment     string          `json:"environment"`
-	LockFingerprint string          `json:"lockFingerprint"`
+	Kind            string                `json:"kind"`
+	Environment     string                `json:"environment"`
+	LockFingerprint string                `json:"lockFingerprint"`
 	Target          DisplayPluginIdentity `json:"target"`
-	Resource        resources.Key   `json:"resource"`
-	Locale          string          `json:"locale"`
-	Text            string          `json:"text"`
-	SourceRevision  string          `json:"sourceRevision"`
-	FromSource      bool            `json:"fromSource"`
-	Fallback        bool            `json:"fallback"`
+	Resource        resources.Key         `json:"resource"`
+	Locale          string                `json:"locale"`
+	Text            string                `json:"text"`
+	SourceRevision  string                `json:"sourceRevision"`
+	FromSource      bool                  `json:"fromSource"`
+	Fallback        bool                  `json:"fallback"`
 }
 
 const DisplayManifestKind = "tei.multilingual.display-manifest.o2"
