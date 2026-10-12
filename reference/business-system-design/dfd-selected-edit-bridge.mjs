@@ -82,8 +82,13 @@ function align(dfd,procedure,review){
     x=>({id:x.id,label:x.label,semanticData:x.semanticData||''}));
   sameRows(info.responsibilities,review.responsibilities,'RESPONSIBILITIES',
     x=>({step:x.step,role:x.role}));
+  // JSON property ordering is not an identity rule: Go and JS serializers
+  // may emit the same endpoint fields in different orders.
   sameRows(info.informationFlows,review.informationFlows,'INFORMATION_FLOWS',
-    x=>({id:x.id,from:x.from,to:x.to,payload:x.payload}));
+    x=>({id:x.id,
+      from:{kind:x.from?.kind,id:x.from?.id},
+      to:{kind:x.to?.kind,id:x.to?.id},
+      payload:x.payload}));
   checkProducerStatus(dfd,procedure);
   return procedureId;
 }
