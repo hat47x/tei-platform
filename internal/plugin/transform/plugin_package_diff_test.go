@@ -3,6 +3,7 @@ package transform_test
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -122,6 +123,65 @@ func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 	}
 	if !bytes.Equal(result.Output.Bytes, oracle) {
 		t.Fatalf("TEI-native transform differs from Go oracle")
+	}
+}
+
+func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		majors [2]int
+	}{
+		{name: "same major", majors: [2]int{1, 1}},
+		{name: "different majors", majors: [2]int{1, 2}},
+		{name: "reversed conflicting majors", majors: [2]int{2, 1}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			definition, plan := transformPackageFixture()
+			id := core.MustCanonicalID("tei.duplicate_dependency")
+			definition.Requires = []plugin.Requirement{
+				{Plugin: id, CompatibleMajor: tc.majors[0]},
+				{Plugin: id, CompatibleMajor: tc.majors[1]},
+			}
+			plan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(definition)
+			if _, err := plugin.MaterializePluginPackage(definition, plan); err == nil || !strings.Contains(err.Error(), "more than once") {
+				t.Fatalf("Go materializer must reject repeated dependency, got %v", err)
+			}
+			if _, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
+				"buildPlan":        valueFromGoJSON(t, plan),
+				"pluginDefinition": valueFromGoJSON(t, definition),
+			}); err == nil || !strings.Contains(err.Error(), "duplicate key") {
+				t.Fatalf("TEI-native materializer must reject the duplicate key, got %v", err)
+			}
+		})
+	}
+}
+
+func TestPluginPackageTransformValidRequirementPermutation(t *testing.T) {
+	definition, plan := transformPackageFixture()
+	reversed := definition
+	reversed.Requires = []plugin.Requirement{definition.Requires[1], definition.Requires[0]}
+	reversedPlan := plan
+	reversedPlan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(reversed)
+	goOriginal, err := plugin.MaterializePluginPackage(definition, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	goReversed, err := plugin.MaterializePluginPackage(reversed, reversedPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(goOriginal, goReversed) {
+		t.Fatal("valid requirement ordering changed Go package bytes")
+	}
+	teiReversed, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
+		"buildPlan":        valueFromGoJSON(t, reversedPlan),
+		"pluginDefinition": valueFromGoJSON(t, reversed),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(teiReversed.Output.Bytes, goReversed) {
+		t.Fatal("valid reordered requirements diverged from TEI-native builder")
 	}
 }
 

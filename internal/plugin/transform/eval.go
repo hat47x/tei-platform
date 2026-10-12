@@ -237,6 +237,45 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			out[i] = items[i].value
 		}
 		return arrayShared(out), nil
+	case OpAssertUniqueBy:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		// Go omits empty requirement slices from JSON. An explicitly optional
+		// collection treats absence (and JSON null) as zero elements.
+		if source.Kind == ValueNull && expr.Optional {
+			return source, nil
+		}
+		if source.Kind != ValueArray {
+			return Value{}, fmt.Errorf("assert-unique-by requires array, got %s", source.Kind)
+		}
+		if len(source.Array) > e.limits.MaxCollection {
+			return Value{}, fmt.Errorf("assert-unique-by collection exceeds maxCollection")
+		}
+		seen := make(map[string]struct{}, len(source.Array))
+		for i, item := range source.Array {
+			if err := e.consume(1); err != nil {
+				return Value{}, err
+			}
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
+			key, err := e.eval(expr.Keys[0], &local, depth+1)
+			if err != nil {
+				return Value{}, fmt.Errorf("assert-unique-by item %d: %w", i, err)
+			}
+			if key.Kind != ValueString {
+				return Value{}, fmt.Errorf("assert-unique-by key must be string, got %s", key.Kind)
+			}
+			// Hashing a key is byte-linear work, not only one collection step.
+			if err := e.consumeByteWork(len(key.String)); err != nil {
+				return Value{}, err
+			}
+			if _, exists := seen[key.String]; exists {
+				return Value{}, fmt.Errorf("assert-unique-by failed: duplicate key")
+			}
+			seen[key.String] = struct{}{}
+		}
+		return source, nil
 	case OpReplaceField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
