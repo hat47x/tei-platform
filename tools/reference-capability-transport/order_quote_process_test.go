@@ -148,6 +148,7 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 			fmt.Sprintf("reference-order-quote-%d", launcher.calls+1), d,
 		)
 	}
+	beforeGuard := guardChecks
 	execution, err := invoke(dispatch)
 	if err != nil {
 		t.Fatal(err)
@@ -170,8 +171,8 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 		execution.Receipt.Transport != "process-stdio-v1" {
 		t.Fatalf("process receipt lost semantic transport identity: %+v", execution.Receipt)
 	}
-	if launcher.calls != 1 || guardChecks != 1 {
-		t.Fatalf("missing real process or Host check: calls=%d guards=%d", launcher.calls, guardChecks)
+	if launcher.calls != 1 || guardChecks != beforeGuard+1 {
+		t.Fatalf("missing real process or invocation-time Host check: calls=%d additionalGuards=%d", launcher.calls, guardChecks-beforeGuard)
 	}
 	t.Run("different business request, same accepted semantic plan", func(t *testing.T) {
 		next := dispatch
