@@ -206,3 +206,30 @@ func TestCanonicalSourceMatchesExistingNormalizedEncoding(t *testing.T) {
 		})
 	}
 }
+
+func TestSourceSizePreflightBoundsUnnormalizedLiteralBytes(t *testing.T) {
+	t.Run("one whitespace-heavy literal", func(t *testing.T) {
+		source := TransformSourceRealizerV1()
+		source.Program.Output = Expr{
+			Op:      OpLiteral,
+			Literal: json.RawMessage("1" + strings.Repeat(" ", MaxSerializedSourceBytes)),
+		}
+		if err := sourceSerializedSize(source, MaxSerializedSourceBytes-1); err == nil {
+			t.Fatal("preflight accepted oversized raw input that compacts to one byte")
+		}
+	})
+	t.Run("cumulative literal bytes", func(t *testing.T) {
+		source := TransformSourceRealizerV1()
+		spaces := strings.Repeat(" ", MaxSerializedSourceBytes/2)
+		source.Program.Output = Expr{
+			Op: OpAssertEnum,
+			Allowed: []json.RawMessage{
+				json.RawMessage("1" + spaces),
+				json.RawMessage("2" + spaces),
+			},
+		}
+		if err := sourceSerializedSize(source, MaxSerializedSourceBytes-1); err == nil {
+			t.Fatal("preflight failed to enforce cumulative raw literal byte limit")
+		}
+	})
+}
