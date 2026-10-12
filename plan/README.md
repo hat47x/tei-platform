@@ -219,8 +219,8 @@ Web向けビルドT1
 
 この領域では、個別のアルゴリズムや機能設計に入る前に、製品として何を実現するかを確認します。
 
-4. ISSUE-000047-knowledge-first-semantic-exploration.md：人とAIが共通に使う、既存知識を優先する参照事例
-5. ISSUE-000051-derived-cognitive-retrieval-evaluation.md：候補の検索方式を比較する構成上の検証
+1. ISSUE-000047-knowledge-first-semantic-exploration.md：人とAIが共通に使う、既存知識を優先する参照事例
+2. ISSUE-000051-derived-cognitive-retrieval-evaluation.md：候補の検索方式を比較する構成上の検証
 
 人とAIが同じ正本の情報源、意味、検証根拠を読み取り専用で探索し、`applicable / incompatible / unknown`を区別することが、最初の小さな実証です。FlyHash、HDC、VSAなどは、候補生成に役立つかを比較する方式です。最終目標は検索そのものではなく、候補の生成・絞り込み・受理から実装と試験の再生成まで、改善の循環をつなぐことです。
 
@@ -242,7 +242,7 @@ AIによる提案には、意味の正本を変更する判断権限はありま
 ## 設計判断記録・計画上の課題・機能設計
 
 - [`adr/`](adr/)：長く残す設計判断
-- [`issue/`](issue/)：複数のプルリクエスト、参照事例、検証根拠にまたがる作業定義
+- [`issue/`](issue/)：複数のプルリクエスト、参照事例、検証根拠にまたがる作業の定義
 - [`design/`](design/README.md)：機能単位の設計本文。全体構成の第二の正本にはしない
 
 計画段階にある将来の作業を、必要性が確認できないままGitHubの課題へ重複登録することは目的にしません。
@@ -255,9 +255,9 @@ AIによる提案には、意味の正本を変更する判断権限はありま
 
 | 役割 | 正本または参照先 | 扱い |
 | --- | --- | --- |
-| Gate A・B・Cの判定 | [Gate A](gate/GATE_A_READINESS_AUDIT.md)／[Gate B](gate/GATE_B_READINESS_AUDIT.md)／[Gate C](gate/GATE_C_READINESS_AUDIT.md) | 判定した対象・版・Evidenceに結び付く正式記録。現在の`main`の検証済みを意味しない。 |
+| Gate A・B・Cの判定 | [Gate A](gate/GATE_A_READINESS_AUDIT.md)／[Gate B](gate/GATE_B_READINESS_AUDIT.md)／[Gate C](gate/GATE_C_READINESS_AUDIT.md) | 判定した対象・版・検証根拠に結び付く正式記録。現在の`main`が検証済みであることは意味しない。 |
 | 製品要求の不足と根拠 | [要求別の不足監査](evidence/PRODUCT_REQUIREMENT_GAP_AUDIT.md) | 更新型の照合文書。要求と実証の正本を置き換えない。 |
-| 業務手順の契約ADR作成可否 | 関連するIssueと採用ADR | 現行の作業条件と採用済み判断をそれぞれの正本で確認します。 |
+| 業務手順の契約に関する設計判断記録を作成できるか | 関連する課題と採用済みの設計判断記録 | 現行の作業条件と採用済みの判断を、それぞれの正本で確認する。 |
 | 特定時点の調査結果 | 公開対象外 | 詳細な調査・検討記録は製品文書と分けて管理します。 |
 
 独立した確認や根拠の引き継ぎに使う文書は、関連する課題や判定文書との関係を確かめてから配置を変更します。旧パスに残す移動案内は参照をつなぐためのものであり、本文の正本ではありません。
