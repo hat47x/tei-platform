@@ -16,6 +16,9 @@ import (
 func TestBusinessDFDReferenceNodeSuite(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
+		if os.Getenv("GITHUB_ACTIONS") == "true" {
+			t.Fatal("DFD JavaScript reference tests require Node.js on GitHub Actions")
+		}
 		t.Skip("DFD JavaScript reference tests not executed: Node.js is unavailable")
 	}
 
