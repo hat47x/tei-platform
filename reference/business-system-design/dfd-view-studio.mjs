@@ -269,6 +269,76 @@ function diagramReferenceSource(d,node){
     'business-role':info.roles,'party':info.externalParties,'store':info.stores};
   return (refs[node.kind]||[]).find(x=>x.id===node.id)||null;
 }
+// These references are explicit in the producer Projection; they are not
+// accepted Source Index entries, runtime bindings or evidence of DB access.
+const semanticKinds=new Set(['semantic-data','semantic-relation',
+  'semantic-validation','semantic-capability']);
+function meaningReferences(d) {
+  const links=[];
+  for(const step of d.steps){
+    for(const direct of step.explicitMeaning||[]){
+      if(!semanticKinds.has(direct.kind)||!direct.id)continue;
+      links.push({kind:direct.kind,id:direct.id,origin:{kind:'step',id:step.id},
+        relation:'explicit-business-semantic-reference',
+        status:direct.status,source:direct.source||step.source||null});
+    }
+    for(const fn of step.functionRefs||[]){
+      for(const [field,kind] of [
+        ['data','semantic-data'],['relation','semantic-relation'],
+        ['capability','semantic-capability']
+      ]){
+        if(!fn[field])continue;
+        links.push({kind,id:fn[field],origin:{kind:'step',id:step.id},
+          via:{kind:'function',id:fn.id},relation:'pattern-derived-reference',
+          status:fn.status==='resolved'?'derived-not-authority':'unresolved',
+          source:step.source||null});
+      }
+    }
+  }
+  for(const store of d.information?.stores||[]){
+    if(!store.semanticData)continue;
+    links.push({kind:'semantic-data',id:store.semanticData,
+      origin:{kind:'store',id:store.id},relation:'proposed-conceptual-store',
+      status:store.dataStatus==='resolved'?'resolved-id-not-accepted':'unresolved',
+      source:store.source||null});
+  }
+  return links;
+}
+function selectMeaningReference(d,kind,id){
+  if(state.dfd!==d)return;
+  // A meaning reference is NOT a DFD node or an editable Business Step.
+  // No selected Step/proposal is carried into this read-only navigation.
+  clearSelection();
+  const generation=selectionGeneration;
+  render();
+  const matches=meaningReferences(d).filter(x=>x.kind===kind&&x.id===id);
+  const detail={kind,id,authority:'reference-only',
+    worldRevisionStatus:'unverified-no-model-revision-binding',
+    sourceIndexStatus:'not-verified',acceptedMeaning:false,matches};
+  const pre=document.createElement('pre');
+  pre.textContent=JSON.stringify(detail,null,2);
+  $('details').append(pre);
+  const targets=new Map();
+  for(const match of matches){
+    for(const target of [match.origin,match.via].filter(Boolean))
+      targets.set(key(target.kind,target.id),target);
+  }
+  if(targets.size){
+    const links=document.createElement('div');
+    for(const target of targets.values()){
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=target.kind+': '+target.id;
+      button.addEventListener('click',()=>{
+        if(state.dfd!==d||generation!==selectionGeneration)return;
+        const selected=nodes().find(x=>x.kind===target.kind&&x.id===target.id);
+        if(selected)selectNode(selected);
+      });
+      links.append(button);
+    }
+    $('details').append(links);
+  }
+}
 async function selectNode(node){
   const generation=++selectionGeneration;
   state.selected=key(node.kind,node.id);
@@ -305,6 +375,27 @@ async function selectNode(node){
         if(state.dfd!==d||state.selected!==key(node.kind,node.id))return;
         const match=nodes().find(x=>x.kind===target.kind&&x.id===target.id);
         if(match)selectNode(match);
+      });
+      links.append(button);
+    }
+    $('details').append(links);
+  }
+  const semantic=meaningReferences(d).filter(ref=>
+    ref.origin.kind===node.kind&&ref.origin.id===node.id||
+    ref.via?.kind===node.kind&&ref.via?.id===node.id);
+  if(semantic.length){
+    const links=document.createElement('div');
+    const unique=new Set();
+    for(const ref of semantic){
+      const identity=key(ref.kind,ref.id);
+      if(unique.has(identity))continue;
+      unique.add(identity);
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=ref.kind+': '+ref.id;
+      button.addEventListener('click',()=>{
+        if(state.dfd!==d||state.selected!==key(node.kind,node.id))return;
+        selectMeaningReference(d,ref.kind,ref.id);
       });
       links.append(button);
     }
