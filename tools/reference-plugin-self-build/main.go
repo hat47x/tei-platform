@@ -136,6 +136,9 @@ func main() {
 
 	out, err := run(*repo)
 	if err != nil {
+		if _, reportErr := emitSelfBuildMismatchEvidence(os.Stdout, err); reportErr != nil {
+			fmt.Fprintln(os.Stderr, reportErr)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -319,11 +322,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if packageBuilderFirstDigest != packageBuilderSecondDigest {
-		return evidence{}, fmt.Errorf(
-			"Plugin package builder is not reproducible: %s != %s",
-			packageBuilderFirstDigest,
-			packageBuilderSecondDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("package-builder-binary", packageBuilderFirstDigest, packageBuilderSecondDigest)
 	}
 
 	packagePlan := plugin.BuildPlan{
@@ -380,11 +379,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if string(packageFirstBytes) != string(packageSecondBytes) || packageFirstArtifactDigest != packageSecondArtifactDigest {
-		return evidence{}, fmt.Errorf(
-			"standard plugin package build is not reproducible: %s != %s",
-			packageFirstArtifactDigest,
-			packageSecondArtifactDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("plugin-package-artifact", packageFirstArtifactDigest, packageSecondArtifactDigest)
 	}
 	packageLockedBuild, err := plugin.LockBuildOutput(packagePlan, packageFirstArtifactDigest)
 	if err != nil {
@@ -473,11 +468,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if nativeBuilderFirstDigest != nativeBuilderSecondDigest {
-		return evidence{}, fmt.Errorf(
-			"TEI-native Plugin builder is not reproducible: %s != %s",
-			nativeBuilderFirstDigest,
-			nativeBuilderSecondDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("native-plugin-builder-binary", nativeBuilderFirstDigest, nativeBuilderSecondDigest)
 	}
 
 	nativePlan := plugin.BuildPlan{
@@ -533,11 +524,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if string(nativeFirstBytes) != string(nativeSecondBytes) || nativeFirstArtifactDigest != nativeSecondArtifactDigest {
-		return evidence{}, fmt.Errorf(
-			"TEI-native builtin realization is not reproducible: %s != %s",
-			nativeFirstArtifactDigest,
-			nativeSecondArtifactDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("native-plugin-realization", nativeFirstArtifactDigest, nativeSecondArtifactDigest)
 	}
 	nativeLockedBuild, err := plugin.LockBuildOutput(nativePlan, nativeFirstArtifactDigest)
 	if err != nil {
@@ -637,7 +624,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if firstDigest != secondDigest {
-		return evidence{}, fmt.Errorf("reference plugin build is not reproducible: %s != %s", firstDigest, secondDigest)
+		return evidence{}, nonReproducibleSelfBuild("process-plugin-binary", firstDigest, secondDigest)
 	}
 
 	lockedBuild, err := plugin.LockBuildOutput(plan, firstDigest)
