@@ -10,12 +10,12 @@ const locales = new Set(['ja-JP', 'en-US']);
 export function validateOrderTitleManifest(manifest) {
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest) ||
       manifest.kind !== 'tei.multilingual.display-manifest.o2' ||
-      manifest.environment !== 'env.order-reference' ||
+      manifest.environment !== 'env.order_reference' ||
       typeof manifest.lockFingerprint !== 'string' ||
       !hexDigest.test(manifest.lockFingerprint) ||
-      manifest.target?.id !== 'std.order-entry' ||
+      manifest.target?.id !== 'std.order_entry' ||
       manifest.target?.version !== '1.2.0' ||
-      manifest.resource?.owner !== 'std.order-entry' ||
+      manifest.resource?.owner !== 'std.order_entry' ||
       manifest.resource?.target?.scope !== 'sales' ||
       manifest.resource?.target?.subject?.kind !== 'function' ||
       manifest.resource?.target?.subject?.id !== 'sales.order.submit' ||
