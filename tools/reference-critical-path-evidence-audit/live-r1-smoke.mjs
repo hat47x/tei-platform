@@ -597,26 +597,6 @@ async function main() {
       staleTargetBinarySHA256: staleLaunch.binarySHA256,
       staleUsesSameBinaryAsPositive: true,
       staleManifestSemanticSHA256: staleLaunch.manifestSemanticSHA256,
-      // #1119 archives exactly seven allowed receipts. Keep the fourth
-      // (stale Source R0) control inside Target launch provenance so that it
-      // remains independently inspectable without changing the archive owner.
-      staleSourceControl: {
-        evidenceNature: "synthetic-running-web-stale-source-R0-label-spoof-control",
-        externallyCheckedWorkspaceSourceRevision: r0,
-        acceptedSourceRevisionClaim: r1,
-        suppliedBaselineRevisionLabel: expectedR,
-        suppliedTargetBuildRevisionLabel: head,
-        applicationId: staleManifest.applicationId,
-        staleManifestSemanticSHA256: staleLaunch.manifestSemanticSHA256,
-        acceptedManifestSemanticSHA256: loadedMeaningSHA256,
-        sameTargetBinaryAsPositive: true,
-        targetBinarySHA256: staleLaunch.binarySHA256,
-        acceptedR1RuleMissing: !staleManifest.validations.includes(validationID),
-        mismatchDetectedByExternalTestHarness: true,
-        webServerRejectsMismatchedLabels: false,
-        currentRuntimeVersionBindingEnforced: false,
-        independentDatabaseRead: false
-      },
       equivalentSourceControl: {
         evidenceNature: "synthetic-running-web-whitespace-only-Source-R2-control",
         acceptedR1SourceRevision: r1,
@@ -697,14 +677,35 @@ async function main() {
       manifestSemanticSHA256: loadedMeaningSHA256,
       httpResponseSHA256: sha256(n11Raw),
       productionTargetUnmodified: true, independentDatabaseRead: false
+    },
+    // #1119 now requires this eighth, separately bounded negative witness.
+    // The related blank-line R2 (same World/manifest, different Source digest)
+    // is additionally preserved inside target-launch.json, without a new file.
+    "stale-source-control.json": {
+      evidenceNature: "running-web-http-stale-source-R0-label-spoof-control",
+      integrationHead: head, acceptedSourceRevisionClaim: r1,
+      actuallyLoadedWorkspaceSourceRevision: r0,
+      suppliedBaselineRevisionLabel: expectedR,
+      suppliedTargetBuildRevisionLabel: head,
+      applicationId: staleManifest.applicationId,
+      staleManifestSemanticSHA256: staleLaunch.manifestSemanticSHA256,
+      acceptedManifestSemanticSHA256: loadedMeaningSHA256,
+      sameTargetBinaryAsPositive: true,
+      targetBinarySHA256: staleLaunch.binarySHA256,
+      acceptedR1RuleMissing: !staleManifest.validations.includes(validationID),
+      mismatchDetectedByExternalTestHarness: true,
+      webServerRejectsMismatchedLabels: false,
+      currentRuntimeVersionBindingEnforced: false,
+      independentDatabaseRead: false
     }
   });
   const evidenceFiles = evidenceDir ? [
     "workspace-r1.json", "target-launch.json", "web-positive.json",
     "target-negative-launch.json", "web-negative-unit-price.json",
-    "target-n11-launch.json", "n11-unobserved-control.json"
+    "target-n11-launch.json", "n11-unobserved-control.json",
+    "stale-source-control.json"
   ] : [];
-  // Parent #1119 archives these seven restricted JSON files and their
+  // Parent #1119 archives these eight restricted JSON files and their
   // checksums as a short-lived synthetic-only Actions artifact. Log checksums
   // separately without exposing synthetic raw HTTP responses or credentials.
   const evidenceSHA256 = Object.fromEntries(evidenceFiles.map(name =>
