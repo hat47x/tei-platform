@@ -12,11 +12,11 @@ import "net/http"
 // caller can supply them; this only prevents accidentally forwarding a command
 // to a different API build after a preceding manifest observation.
 const (
-	apiBoundCommandPath = "/scenario/submit-bound"
+	apiBoundCommandPath       = "/scenario/submit-bound"
 	apiBoundApplicationHeader = "X-Tei-Diagnostic-Application"
-	apiBoundBaselineHeader = "X-Tei-Diagnostic-Baseline-Id"
-	apiBoundRevisionHeader = "X-Tei-Diagnostic-Baseline-Revision"
-	apiBoundTargetHeader = "X-Tei-Diagnostic-Target-Revision"
+	apiBoundBaselineHeader    = "X-Tei-Diagnostic-Baseline-Id"
+	apiBoundRevisionHeader    = "X-Tei-Diagnostic-Baseline-Revision"
+	apiBoundTargetHeader      = "X-Tei-Diagnostic-Target-Revision"
 )
 
 func exactlyOneExpectedHeader(r *http.Request, name, expected string) bool {
