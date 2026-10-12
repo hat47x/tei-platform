@@ -1,9 +1,15 @@
 package main
 
-import (
-	"context"
-	"tei/internal/composition"
-)
+import "context"
+
+// compositionTrace is transport data only; it grants no runtime authority.
+type compositionTrace struct {
+	ContractID      string `json:"contractId"`
+	ContractVersion string `json:"contractVersion"`
+	ProviderID      string `json:"providerId"`
+	ArtifactDigest  string `json:"artifactDigest"`
+	Generation      uint64 `json:"generation"`
+}
 
 // These JSON projections and minimal Runner interfaces form the existing
 // combined Target's transport-facing contract. Move them out of concrete
@@ -17,7 +23,7 @@ type readScenarioInput struct {
 }
 
 type readScenarioResult struct {
-	Composition      *composition.Binding       `json:"composition,omitempty"`
+	Composition      *compositionTrace          `json:"composition,omitempty"`
 	ScenarioID       string                     `json:"scenarioId"`
 	Environment      string                     `json:"environment"`
 	ApplicationID    string                     `json:"applicationId"`
@@ -44,7 +50,7 @@ type commandScenarioInput struct {
 }
 
 type commandScenarioResult struct {
-	Composition         *composition.Binding         `json:"composition,omitempty"`
+	Composition         *compositionTrace            `json:"composition,omitempty"`
 	ScenarioID          string                       `json:"scenarioId"`
 	ApplicationID       string                       `json:"applicationId"`
 	Stage               string                       `json:"stage"`

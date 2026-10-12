@@ -23,6 +23,10 @@ var (
 	submitServiceContract = scenarioContract("tei.reference.order-entry.submit", "commandScenarioInput -> commandScenarioResult + error; authentication/validation/authorization/command/separate-observation; synthetic state; credentials transient")
 )
 
+func projectCompositionBinding(binding composition.Binding) *compositionTrace {
+	return &compositionTrace{ContractID: binding.ContractID, ContractVersion: binding.ContractVersion, ProviderID: binding.ProviderID, ArtifactDigest: binding.ArtifactDigest, Generation: binding.Generation}
+}
+
 type composedReadScenario struct {
 	service *composition.Service[readScenarioInput, readScenarioResult]
 }
@@ -31,7 +35,7 @@ func (*composedReadScenario) ApplicationID() string { return "order_entry" }
 func (r *composedReadScenario) Run(ctx context.Context, input readScenarioInput) (readScenarioResult, error) {
 	result, binding, err := r.service.Invoke(ctx, input)
 	if err == nil {
-		result.Composition = &binding
+		result.Composition = projectCompositionBinding(binding)
 	}
 	return result, err
 }
@@ -44,7 +48,7 @@ func (*composedCommandScenario) ApplicationID() string { return "order_entry" }
 func (r *composedCommandScenario) RunCommand(ctx context.Context, input commandScenarioInput) (commandScenarioResult, error) {
 	result, binding, err := r.service.Invoke(ctx, input)
 	if err == nil {
-		result.Composition = &binding
+		result.Composition = projectCompositionBinding(binding)
 	}
 	return result, err
 }
