@@ -8,8 +8,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+
+	"tei/internal/sourceindex"
 )
 
 const factsSchema = "subsystem-cud-candidate-v1"
@@ -86,12 +89,13 @@ type InputFingerprints struct {
 }
 
 type Report struct {
-	SchemaVersion     string             `json:"schemaVersion"`
-	AuthorityLimit    string             `json:"authorityLimit"`
-	Status            string             `json:"status"`
-	Coverage          Coverage           `json:"coverage"`
-	InputFingerprints *InputFingerprints `json:"inputFingerprints,omitempty"`
-	Diagnostics       []Diagnostic       `json:"diagnostics"`
+	SchemaVersion     string                    `json:"schemaVersion"`
+	AuthorityLimit    string                    `json:"authorityLimit"`
+	Status            string                    `json:"status"`
+	Coverage          Coverage                  `json:"coverage"`
+	InputFingerprints *InputFingerprints        `json:"inputFingerprints,omitempty"`
+	IndexedProcedure  *IndexedProcedureEvidence `json:"indexedProcedure,omitempty"`
+	Diagnostics       []Diagnostic              `json:"diagnostics"`
 }
 
 func Inspect(w World, f Facts) Report {
@@ -336,9 +340,17 @@ func main() {
 	worldPath := flag.String("world", "", "path to tei world JSON (read-only)")
 	factsPath := flag.String("facts", "", "path to candidate declared cross-view facts JSON")
 	procedurePath := flag.String("procedure", "", "optional Procedure JSON source for exact candidate snapshot binding")
+	sourceIndexPath := flag.String("source-index", "", "optional existing Source Index JSON for Procedure source location")
+	sourceRoot := flag.String("source-root", "", "root directory for validating indexed source bytes")
+	procedureSourcePath := flag.String("procedure-source-path", "", "workspace-relative path of the indexed Procedure source")
 	flag.Parse()
 	if strings.TrimSpace(*worldPath) == "" || strings.TrimSpace(*factsPath) == "" {
 		fmt.Fprintln(os.Stderr, "both -world and -facts are required")
+		os.Exit(2)
+	}
+	indexMode := *sourceIndexPath != "" || *sourceRoot != "" || *procedureSourcePath != ""
+	if indexMode && (*sourceIndexPath == "" || *sourceRoot == "" || *procedureSourcePath == "" || *procedurePath == "") {
+		fmt.Fprintln(os.Stderr, "Source Index checks require -source-index, -source-root, -procedure-source-path, and -procedure together")
 		os.Exit(2)
 	}
 	worldBytes, err := os.ReadFile(*worldPath)
@@ -357,7 +369,26 @@ func main() {
 		if readErr != nil {
 			fail(readErr)
 		}
-		out, err = InspectBoundProcedureSnapshot(worldBytes, procedureBytes, factsBytes)
+		if !indexMode {
+			out, err = InspectBoundProcedureSnapshot(worldBytes, procedureBytes, factsBytes)
+		} else {
+			idxBytes, readErr := os.ReadFile(*sourceIndexPath)
+			if readErr != nil {
+				fail(readErr)
+			}
+			var idx sourceindex.Index
+			if err := json.Unmarshal(idxBytes, &idx); err != nil {
+				fail(fmt.Errorf("decode Source Index JSON: %w", err))
+			}
+			reader := func(path string) ([]byte, error) {
+				p, err := sourceindex.NormalizeWorkspacePath(path)
+				if err != nil || p != path {
+					return nil, fmt.Errorf("invalid indexed source path %q", path)
+				}
+				return os.ReadFile(filepath.Join(*sourceRoot, filepath.FromSlash(p)))
+			}
+			out, err = InspectIndexedProcedureSnapshot(worldBytes, procedureBytes, factsBytes, idx, *procedureSourcePath, reader)
+		}
 	}
 	if err != nil {
 		fail(err)
