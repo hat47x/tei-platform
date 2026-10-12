@@ -210,9 +210,9 @@ func TestStandaloneQuotePatternHasSeparateCanonicalBindingAndAuthorization(t *te
 	calls := 0
 	var records []AuditRecord
 	host, err := NewHost(Policy{
-		Path: "/reference/quote",
-		Method: http.MethodPost,
-		ActionID: quoteAction,
+		Path:      "/reference/quote",
+		Method:    http.MethodPost,
+		ActionID:  quoteAction,
 		Providers: map[string]string{"corporate": corporateEditor.Issuer, "legacy": legacyEditor.Issuer},
 	}, Dependencies{
 		VerifySession: func(*http.Request) (Principal, error) {
