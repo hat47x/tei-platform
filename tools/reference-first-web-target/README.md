@@ -270,3 +270,36 @@ TEI_E1_RUN_HTTP_PARITY=1 \
 `measurement.json`は、実行を省いた場合`syntheticFixtureHttpParityVerified: false`、成功した場合のみ`true`とし、`tagged-http-parity.test.txt`を保持します。合成Fixtureの一致は実DB接続・本番Authorization・Build Artifact Lockの承認を意味しません。`sameHandoverBusinessParityVerified`・`productionAuthorizationVerified`・`artifactAuthority`などの上位条件は自動的にtrueになりません。
 
 **留意**：GitHubにテストと計測手順をコミットしただけでは、Go build・Go test・Repository HealthのPASS資格は得られません。必ず実行したcheckoutのHEAD/clean前後と証跡を保存してください。
+
+## 保護された受注操作とプラグイン合成の接続（参照実装）
+
+[Issue #1145](https://github.com/hat47x/tei-platform/issues/1145)の次段階として、`session_command_route.go`の**保護済み業務操作の内側**に、合成基盤が選択した実装への接続を追加しました。従来の受注操作は変更せず、案件側が明示的に`SelectedAction`を与えた場合に限って使います。
+
+- Web入口では、本人確認、要求元保護、主体の対応付け、既存の`security.authorize`による操作認可を従来どおり先に行います。
+- 認可後、合成基盤の`Coordinator.Acquire`で現在の提供者選択とホストの権限を確認し、呼出し中は選択した世代を保持します。
+- 提供者識別子、機能契約の識別子・版、成果物の指紋がホスト側の登録情報と一致した場合だけ、既存の`RunVerifiedSessionCommand`へ進みます。提供者が消えたり実行権限が失効したりした場合は、業務操作に進まず503として監査します。
+- 登録した提供者と指紋は構成時に固定し、HTTP要求に含まれる任意の利用者ID、提供者ID、ヘッダーから選択を変更しません。業務操作内のValidation、認可の再確認、結果・Observationの扱いは従来どおりです。
+
+`session_composition_test.go`は実Workspace、既存Driver、既存の業務認可規則と受注操作を使用し、正常系、閲覧者の業務認可拒否、未認証、ホスト権限の失効、提供者撤去、設定不足を検証します。
+
+```sh
+go test -count=1 -run '^TestSelected(CompositionRunsCanonicalProtectedOrderAction|OrderActionRejectsIncompleteHostConfiguration)$' ./tools/reference-first-web-target
+go test -count=1 ./reference/web-composition/go-host
+```
+
+**実証範囲の限界**：本人確認と要求元検査は合成Fixtureです。提供者選択に使用する指紋もテスト用の宣言であり、成果物の実バイト列や署名を検査したものではありません。また、この第一段階では複数の論理的提供者を**同じ既存Action Runner**へ接続するだけで、異なる物理実装への差し替えや実プロセスの無停止更新を証明しません。合成選択の成功だけで実行権限・永続的な副作用・本番利用の安全性が成立するわけではありません。
+
+### 選択済み業務操作の保護経路を固定する
+
+合成基盤で選択した業務操作の呼出し口は、提供者を選択できるだけでは安全になりません。Web Hostの保護経路を経由せず、呼出し口をHTTP経路へ直接登録すると、業務認可を経ない呼出しにつながるおそれがあります。
+
+そのため、[選択済み操作の接続部](../../reference/web-composition/go-host/selected_action.go)は、**現在の要求について、Web Hostが検証済みの利用者と、その操作の認可完了を引き継いだ場合だけ**提供者を取得します。ホストは本人確認、要求元検査、業務認可のすべてに成功した後で、要求内だけで有効な印を付けます。別の業務操作に対する認可では通過できません。印は非公開のGoコンテキストキーで保持し、HTTPヘッダーや本文の値で代用できません。元の保護付き要求が終了すると印も失効し、以前の要求の実行文脈を保存して後から呼び直しても提供者を取得できません。
+
+この印は実行権限そのものではありません。合成基盤の提供者選択、現在の権限確認、および既存の業務操作内部の認可再確認は引き続き必要です。試験では保護経路を経ない直接呼出し、別操作の認可の流用、認証失敗、要求元確認失敗、業務認可拒否、提供者撤去を区別し、下流を呼び出さないことを確認します。
+
+```sh
+go test -count=1 ./reference/web-composition/go-host
+go test -count=1 ./tools/reference-first-web-target
+```
+
+合成された認証、要求元確認、業務Fixtureによる検証であり、実際の認証事業者や本番の権限ストアによる保証を示すものではありません。また、実装を別プロセスへ移すときはGoコンテキストの印をそのまま送信せず、ホストが所有する委譲契約を別途設計する必要があります。

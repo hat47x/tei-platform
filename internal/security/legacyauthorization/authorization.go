@@ -35,6 +35,8 @@ type AuthorizationGrant struct {
 	SubjectID string
 	Action    string
 	Resource  string
+	// Epochs は任意の正本版証拠。nilの許可は永続的な原子性の根拠にできない。
+	Epochs *AuthorityEpochs `json:"epochs,omitempty"`
 }
 
 type AuthorizationDenial struct {
@@ -46,6 +48,8 @@ type AuthorizationDenial struct {
 type Adapter struct {
 	Store SubjectStore
 	Rule  Rule
+	// EpochReader がある場合だけ認可規則の評価前後で正本版を照合する。
+	EpochReader EpochReader
 	// Now は試験用の時刻注入。省略時は実行時の現在時刻を用いる。
 	Now func() time.Time
 }
@@ -72,6 +76,18 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	}
 	if a.Rule == nil {
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy authorization ruleが指定されていません")
+	}
+
+	var before *AuthorityEpochs
+	if a.EpochReader != nil {
+		version, err := a.EpochReader.ReadAuthorizationEpochs(ctx, input)
+		if err != nil {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の版を取得できません: %w", err)
+		}
+		if !version.valid() {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の版が不完全です")
+		}
+		before = &version
 	}
 
 	user, found, err := a.Store.FindBySubject(ctx, input.SubjectID)
@@ -107,6 +123,19 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 		return denied(reason), nil
 	}
 
+	if before != nil {
+		after, err := a.EpochReader.ReadAuthorizationEpochs(ctx, input)
+		if err != nil {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の再照合に失敗しました: %w", err)
+		}
+		if !after.valid() {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("認可根拠の再照合結果が不完全です")
+		}
+		if *before != after {
+			return denied("authority_changed"), nil
+		}
+	}
+
 	return capabilityinvoke.BusinessResult{
 		Capability: AuthorizationCapability,
 		Mode:       capabilityinvoke.ResultOutcome,
@@ -115,6 +144,7 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 			SubjectID: input.SubjectID,
 			Action:    input.Action,
 			Resource:  input.Resource,
+			Epochs:    before,
 		},
 	}, nil
 }
