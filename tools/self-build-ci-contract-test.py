@@ -55,7 +55,7 @@ def trigger_paths(source: str, event: str) -> tuple[str, ...]:
             match = re.fullmatch(r"      - ([^\s#]+)", line)
             if match:
                 paths.append(match.group(1))
-            elif line.strip():
+            elif line.strip() and not line.lstrip().startswith("#"):
                 break
     if not paths:
         raise AssertionError(f"{event} の監視対象パスがない")
