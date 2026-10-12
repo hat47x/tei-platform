@@ -384,3 +384,23 @@ func TestCompositeKeyDisjointCandidatesDoNotProduceUnknown(t *testing.T) {
 		t.Fatalf("known disjoint record turned into uncertain match: %+v", finding)
 	}
 }
+
+func TestKnownOneCardinalityContradictionWinsOverUnknownCandidate(t *testing.T) {
+	in := keyedInput()
+	in.Example.CompleteTables = nil
+	duplicate := copyRecord(in.Example.Base[0])
+	duplicate.ID = "second-definite-match"
+	in.Example.Base = append(in.Example.Base, duplicate, Record{
+		ID: "third-potential-match",
+		Table: "parent",
+		Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"A"`),
+		},
+	})
+	finding := oneFinding(t, in)
+	if finding.Result != "contradiction" ||
+		finding.Reason != "multiple-targets-for-one" ||
+		len(finding.MatchedTargetIDs) != 2 {
+		t.Fatalf("unresolved candidate hid an already proven contradiction: %+v", finding)
+	}
+}
