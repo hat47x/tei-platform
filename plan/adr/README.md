@@ -54,3 +54,4 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0029: Applicationが評価するValidationの選択を、Canonicalな`uses validation`宣言から導く](0029-application-validation-selection-from-canonical-declaration.md)
 - [ADR-0030: 生成AIが扱う情報を文脈付きの認識状態として保持する](0030-context-scoped-epistemic-knowledge.md)
 - [ADR-0032: Cordis型の合成KernelをTEIの新しいプラグイン基盤とする](0032-composition-kernel-replacement.md)（目標方針として採用。Production実装は移行中）
+- [ADR-0033: コアとプラグインをサブプロジェクトとして管理する](0033-core-and-plugin-subprojects.md)（目標構成として採用。ソース移動は未実施）
