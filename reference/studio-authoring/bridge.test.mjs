@@ -531,6 +531,25 @@ test("source anchor verification validates exact bytes and line/column at read",
     /SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID/);
 });
 
+test("source index columns are byte-based even for multibyte Japanese text", () => {
+  // Go sourceindex.PositionAt counts bytes rather than JavaScript UTF-16 units.
+  const content = Uint8Array.from([0xe3, 0x81, 0x82, 0x0a, 0x61]); // あ\\na
+  const fingerprint = "sha256:" + "8".repeat(64);
+  const position = {
+    status: "source-index-backed", artifactFingerprint: fingerprint,
+    range: {
+      start: { offset: 3, line: 1, column: 4 },
+      end: { offset: 4, line: 2, column: 1 }
+    }
+  };
+  const result = verifySourceAnchor(position, content, fingerprint);
+  assert.equal(result.byteVerification.status, "verified-at-read");
+  const characterColumn = structuredClone(position);
+  characterColumn.range.start.column = 2; // UTF-16 character count: incorrect
+  assert.throws(() => verifySourceAnchor(characterColumn, content, fingerprint),
+    /SOURCE_ANCHOR_POSITION_STALE/);
+});
+
 test("business-local step navigation returns typed World focus without canonical authority", () => {
   const world = fixture();
   world.semantics[0].validations = [
@@ -683,6 +702,8 @@ test("CLI consumes snapshot artifacts without mutating inputs", () => {
     { encoding: "utf8" });
     assert.equal(inspectIndexed.status, 0, inspectIndexed.stderr);
     assert.equal(JSON.parse(inspectIndexed.stdout).sourceNavigation.status, "source-index-backed");
+    assert.equal(JSON.parse(inspectIndexed.stdout).sourceNavigation.byteVerification.status,
+      "not-checked", "detached Index snapshot cannot certify current file bytes");
     const businessStep = spawnSync(process.execPath, [cli, "inspect",
       "-world-file", worldPath, "-revision-file", revPath,
       "-focus", "step:BP-01", "-business-dfd", dfdPath], { encoding: "utf8" });
