@@ -47,26 +47,28 @@ def commit(db, *, scope, expected_epoch, resource, expected_version, operation, 
     request = repr((scope, expected_epoch, resource, expected_version, value))
     db.execute("BEGIN IMMEDIATE")
     try:
-        prior = db.execute("SELECT request, version FROM receipt WHERE operation=?", (operation,)).fetchone()
-        if prior:
-            result = ("replayed", prior[1]) if prior[0] == request else ("denied-id-conflict", None)
+        # 既存確定記録の再照会であっても、先に現在の権限を確認する。
+        authority = db.execute("SELECT epoch,allowed FROM authority WHERE scope=?", (scope,)).fetchone()
+        if authority != (expected_epoch, 1):
+            result = ("denied-authority", None)
         else:
-            authority = db.execute("SELECT epoch,allowed FROM authority WHERE scope=?", (scope,)).fetchone()
-            row = db.execute("SELECT version FROM resource WHERE id=?", (resource,)).fetchone()
-            current = row[0] if row else 0
-            if authority != (expected_epoch, 1):
-                result = ("denied-authority", None)
-            elif current != expected_version:
-                result = ("denied-version", None)
+            prior = db.execute("SELECT request, version FROM receipt WHERE operation=?", (operation,)).fetchone()
+            if prior:
+                result = ("replayed", prior[1]) if prior[0] == request else ("denied-id-conflict", None)
             else:
-                version = current + 1
-                db.execute(
-                    "INSERT INTO resource VALUES(?,?,?) "
-                    "ON CONFLICT(id) DO UPDATE SET version=excluded.version,value=excluded.value",
-                    (resource, version, value),
-                )
-                db.execute("INSERT INTO receipt VALUES(?,?,?)", (operation, request, version))
-                result = ("committed", version)
+                row = db.execute("SELECT version FROM resource WHERE id=?", (resource,)).fetchone()
+                current = row[0] if row else 0
+                if current != expected_version:
+                    result = ("denied-version", None)
+                else:
+                    version = current + 1
+                    db.execute(
+                        "INSERT INTO resource VALUES(?,?,?) "
+                        "ON CONFLICT(id) DO UPDATE SET version=excluded.version,value=excluded.value",
+                        (resource, version, value),
+                    )
+                    db.execute("INSERT INTO receipt VALUES(?,?,?)", (operation, request, version))
+                    result = ("committed", version)
         db.execute("COMMIT")
         return result
     except BaseException:
@@ -136,6 +138,12 @@ class SQLiteTransactionProof(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertCountEqual(results, [("committed", 1), ("replayed", 1)])
         self.assertEqual(self.a.execute("SELECT COUNT(*) FROM receipt").fetchone()[0], 1)
+
+    def test_revoked_replay_does_not_disclose_receipt(self):
+        self.assertEqual(commit(self.a, **self.args), ("committed", 1))
+        change_authority(self.b, self.args["scope"], 2, False)
+        self.assertEqual(commit(self.a, **self.args), ("denied-authority", None))
+        self.assertEqual(self.b.execute("SELECT COUNT(*) FROM receipt").fetchone()[0], 1)
 
     def test_operation_id_collision(self):
         self.assertEqual(commit(self.a, **self.args), ("committed", 1))
