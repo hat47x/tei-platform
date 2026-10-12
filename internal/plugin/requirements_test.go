@@ -57,29 +57,33 @@ func TestPluginRequirementsNormalizeOrderDeterministically(t *testing.T) {
 }
 
 func TestPluginPackageRejectsDuplicateDependenciesWithoutWorldValidation(t *testing.T) {
-	source := artifactFreePackageSource()
-	source.Requires = []plugin.Requirement{
-		{Plugin: cid("tei.base"), CompatibleMajor: 1},
-		{Plugin: cid("tei.base"), CompatibleMajor: 2},
-	}
-	if _, err := plugin.MaterializePluginPackage(source, pluginPackagePlan(source)); err == nil || !strings.Contains(err.Error(), "more than once") {
-		t.Fatalf("standalone package materializer must reject duplicate dependencies: %v", err)
+	for _, majors := range [][2]int{{1, 1}, {1, 2}} {
+		source := artifactFreePackageSource()
+		source.Requires = []plugin.Requirement{
+			{Plugin: cid("tei.base"), CompatibleMajor: majors[0]},
+			{Plugin: cid("tei.base"), CompatibleMajor: majors[1]},
+		}
+		if _, err := plugin.MaterializePluginPackage(source, pluginPackagePlan(source)); err == nil || !strings.Contains(err.Error(), "more than once") {
+			t.Fatalf("standalone materializer must reject duplicate majors %v: %v", majors, err)
+		}
 	}
 }
 
 func TestPluginResolverRejectsDuplicateDependencies(t *testing.T) {
-	c := plugin.Catalog{Plugins: []plugin.Definition{
-		{
-			ID: cid("tei.root"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
-			Requires: []plugin.Requirement{
-				{Plugin: cid("tei.base"), CompatibleMajor: 1},
-				{Plugin: cid("tei.base"), CompatibleMajor: 1},
+	for _, majors := range [][2]int{{1, 1}, {1, 2}} {
+		c := plugin.Catalog{Plugins: []plugin.Definition{
+			{
+				ID: cid("tei.root"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
+				Requires: []plugin.Requirement{
+					{Plugin: cid("tei.base"), CompatibleMajor: majors[0]},
+					{Plugin: cid("tei.base"), CompatibleMajor: majors[1]},
+				},
 			},
-		},
-		{ID: cid("tei.base"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
-	}}
-	env := environment.Environment{ID: cid("prod"), Plugins: []environment.ExtensionRequirement{{ID: cid("tei.root"), CompatibleMajor: 1}}}
-	if _, err := c.ResolveEnvironment(env); err == nil || !strings.Contains(err.Error(), "more than once") {
-		t.Fatalf("resolver must reject duplicate dependencies: %v", err)
+			{ID: cid("tei.base"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
+		}}
+		env := environment.Environment{ID: cid("prod"), Plugins: []environment.ExtensionRequirement{{ID: cid("tei.root"), CompatibleMajor: 1}}}
+		if _, err := c.ResolveEnvironment(env); err == nil || !strings.Contains(err.Error(), "more than once") {
+			t.Fatalf("resolver must reject duplicate majors %v: %v", majors, err)
+		}
 	}
 }
