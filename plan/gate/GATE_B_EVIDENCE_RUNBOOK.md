@@ -516,9 +516,9 @@ clean candidate revision R
 final source check
 ```
 
-#310または#255失敗時は#308を開始しません。
+#310または#255が失敗した場合は、#308を開始しません。
 
-各lane成功・失敗後にfinal runner自身がsourceを再確認します。
+各検証経路が成功・失敗した後、最終確認の実行器自身がソースを再確認します。
 
 ## 10. final success条件
 
@@ -558,13 +558,13 @@ Expected Evidence nature:
 #308 real-postgres-ephemeral-fixture
 ```
 
-文字列やfingerprintを人手で書き換えません。
+文字列や照合値を手作業で書き換えません。
 
 ## 11. Gate B Readiness Audit
 
-final convergence成功だけでGate B Readyを自動宣言しません。
+最終確認が成功しただけで、判定段階Bの合格を自動的に宣言しません。
 
-まず、#387 final summaryと、そのrunが保持したsame-run child artifact directoryをread-only補助toolで独立再監査します。
+まず、#387の最終結果と、その実行で保存した同一実行内の子処理の成果物ディレクトリを、変更を加えない補助ツールで独立して再監査します。
 
 ```bash
 GOENV=off \
@@ -576,7 +576,7 @@ go run ./tools/reference-gate-b-readiness-artifact-audit \
   > /tmp/tei-gate-b-R/readiness-artifact-audit.json
 ```
 
-成功補助JSONでは少なくとも:
+補助ツールの成功結果を示すJSONでは、少なくとも次を要求します。
 
 ```text
 evidenceNature = gate-b-readiness-artifact-audit
@@ -586,97 +586,97 @@ repositoryRevision = R
 
 を要求します。
 
-このtoolはfinal summaryと保存child exact bytesのfingerprint、same-R / post-run source、#310 / #255のexact check集合、#308のCanonical target identity / parameter / deterministic Semantic attribute集合とfixture前後安全条件を再照合し、secret / physical identity fieldの混入もfail closedで拒否します。
+このツールは、最終結果と保存した子処理の元のバイト列の照合値、同一版Rと実行後のソース状態、#310・#255の所定の確認項目、#308の正本上の対象識別情報・引数・決定論的な意味上の属性、試験用構成要素の作成前後の安全条件を再照合します。秘密情報や物理的な識別情報に関する禁止項目が混入している場合も、安全側に停止して拒否します。
 
-これは第四Required Evidence laneではありません。`artifactAuditPassed = true`だけでGate B Readyを宣言せず、続けて`GATE_B_READINESS_AUDIT.md`へ戻り、Rについて少なくとも次を監査します。
+これは第四の必須検証経路ではありません。`artifactAuditPassed = true`だけで判定段階Bの合格を宣言せず、引き続き`GATE_B_READINESS_AUDIT.md`に従って、版Rについて少なくとも次を監査します。
 
-- #310 detailed same-run Evidence成立
-- #255 detailed same-run Evidence成立
-- #308 detailed same-run Evidence成立
-- 三つが同じR
+- #310の同一実行内で得た詳細な検証根拠が成立
+- #255の同一実行内で得た詳細な検証根拠が成立
+- #308の同一実行内で得た詳細な検証根拠が成立
+- 三つとも同じ版Rを対象としている
 - `childArtifactsRetained = true`
-- final summaryのfingerprintと保存child exact bytesが一致
-- Evidence nature非代替
-- external-observed未観測事項を推測していない
-- secret / runtime parameter値を通常Evidenceへ保存していない
-- PostgreSQL fixture前後安全性成立
-- Business Result / Execution Error / Observation分離
-- unresolvedを成功へ読み替えていない
+- 最終結果の照合値と、保存した子処理の元のバイト列が一致
+- 異なる種類の検証根拠を互いに代用していない
+- 外部で観測する必要がある未確認事項を推測で補っていない
+- 秘密情報や実行時の引数の値を、通常の検証根拠へ保存していない
+- PostgreSQLの試験用構成要素を作る前後の安全条件が成立
+- 業務上の結果・実行時エラー・観測を区別している
+- 未解決事項を成功として扱っていない
 
-この監査がRをReadyと判定した場合だけHandoverへ進みます。
+この監査で版Rが合格と判定された場合に限り、引継ぎへ進みます。
 
 ## 12. Gate B → Gate C Handover
 
-Readyとなった同じRを`ISSUE-000030` / #291のHandover Baselineへ固定します。
+合格した同じ版Rを、`ISSUE-000030`・#291の引継ぎ基準版として固定します。
 
-Handoverから少なくとも次へ戻れるようにします。
+引継ぎ記録から、少なくとも次の情報を追跡できるようにします。
 
-- repository revision R
-- Canonical Application / Pattern / Data / Relation / Query / Capability
-- Driver Scenario
-- Datasource / authority境界
-- Business Result / Execution Error / Observation
-- #310 / #255 / #308 same-run Evidence
-- final convergence artifact
-- Gate B final audit for R
-- optional verified actual Oracle Evidence
-- unresolved
+- リポジトリの版R
+- 正本上のアプリケーション・パターン・データ・関係・問い合わせ・能力
+- ドライバーのシナリオ
+- データ接続先と権限の境界
+- 業務上の結果・実行時エラー・観測
+- #310・#255・#308の同一実行内の検証根拠
+- 最終確認の成果物
+- 版Rについての判定段階Bの最終監査
+- 任意に追加する、実際のOracleで取得した検証済みの根拠
+- 未解決事項
 
-HandoverはCanonicalの第二正本ではありません。
+引継ぎ記録は、意味の第二の正本ではありません。
 
-actual Oracle未完了なら#214 / #371 / #376をblockerへ戻さず、未観測範囲を`unresolved`として明示します。Web側で補完しません。
+実際のOracleに関する検証が未完了でも、#214・#371・#376を再び通過の阻害条件とはしません。観測できていない範囲を`unresolved`として明示し、ウェブ側で補いません。
 
 ## 停止条件
 
-次のいずれかでは成功Evidenceへ採用しません。
+次のいずれかに当てはまる場合、成功の検証根拠として採用しません。
 
-- Workspace Validation Error
-- Repository root以外からのfinal run
-- 開始時dirty working tree（tracked / untracked / ignored local stateを含む）
-- Git indexに`assume-unchanged` / `skip-worktree`またはその他の非標準tagがあり、全tracked entryを通常`H`へ固定できない
-- sparse checkout等により`skip-worktree`を持つfull checkoutでない状態
-- secret read前にRepository sourceをcleanかつ安定して観測できない
-- Repository source観測environmentにGit identity overrideまたは`GIT_CONFIG_*` command-scope config injectionが存在する
-- source観測不能 / HEAD drift
-- lane後dirty / revision drift
-- required lane失敗
+- 作業領域の検証エラー
+- リポジトリのルート以外から最終確認を実行
+- 開始時に作業ツリーへ変更がある（追跡対象・追跡対象外・無視対象のローカル状態を含む）
+- Gitの索引に`assume-unchanged`・`skip-worktree`その他の非標準の印があり、追跡対象の全項目を通常の`H`にできない
+- 部分取得などで`skip-worktree`が設定され、リポジトリ全体を取得していない状態
+- 秘密情報の読込み前に、リポジトリのソースが変更されず安定していることを確認できない
+- リポジトリのソースを観測する環境に、Gitの識別情報の上書きや`GIT_CONFIG_*`によるコマンド単位の設定注入がある
+- ソースを観測できない、またはHEADが変化した
+- 検証経路の実行後に変更が残った、または版が変化した
+- 必須の検証経路が失敗
 - `reproducibleRevision != true`
 - lane `repositoryRevision != R`
-- Evidence nature mismatch
+- 検証根拠の種類が一致しない
 - final `allLanesSameRevision != true`
 - `childArtifactsRetained != true`
-- child artifact保存失敗
-- artifact directoryがRepository内
-- child artifact既存fileへの上書きが必要
-- final source確認未完了
-- Readiness artifact audit失敗
-- external Go workspace有効
-- effective GOFLAGS非empty
-- exact `GOENV=off`で起動されていない
-- direct `TEI_TEST_POSTGRES_DSN`設定
-- DSN secret fileがRepository内 / symlink先Repository内 / non-regular / empty / multiline / NUL / read不能
-- DSN secret fileのpath / symlink target / file identityが読込前後で変化する
-- PostgreSQL handoff fileをRepository外owner-only temporary scopeへ作成できない
-- PostgreSQLがdefault DB
-- PostgreSQLに既存user relation / Event Triggerがある
-- fixture objectが事前存在
-- fixture ownership marker不一致
-- cleanup後fixture / user relation / Event Triggerが残る
-- generated artifact stale未修復
-- Evidenceへsecret混入の疑い
+- 子処理の成果物を保存できない
+- 成果物ディレクトリがリポジトリ内にある
+- 子処理の成果物を既存ファイルへ上書きする必要がある
+- 最終的なソースの確認が未完了
+- 合格判定に用いる成果物の監査が失敗
+- 外部のGo作業領域が有効
+- 実効的なGOFLAGSが空でない
+- 正確に`GOENV=off`を指定して起動していない
+- `TEI_TEST_POSTGRES_DSN`を直接設定している
+- DSNの秘密情報ファイルがリポジトリ内にある、シンボリックリンクの参照先がリポジトリ内、通常ファイル以外、空、複数行、NULを含む、または読込み不能
+- DSNの秘密情報ファイルのパス、シンボリックリンクの参照先、またはファイルの識別情報が読込み前後で変化する
+- PostgreSQL用の引継ぎファイルを、リポジトリ外の所有者だけがアクセスできる一時領域に作成できない
+- PostgreSQLが既定のデータベースを指す
+- PostgreSQLに既存の利用者定義の関係やイベントトリガーがある
+- 試験用の構成要素が最初から存在する
+- 試験用の構成要素の所有者を示す印が一致しない
+- 後片付け後も試験用の構成要素、利用者定義の関係、イベントトリガーが残る
+- 古い生成成果物が修復されていない
+- 検証根拠に秘密情報が混入した疑いがある
 
-source修正が必要ならcommitし、新しいclean revisionを新Rとしてcycleを最初からやり直します。
+ソースの修正が必要ならコミットし、変更のない新しい版を新たなRとして、一連の検証を最初からやり直します。
 
 ## 非目標
 
-- actual Oracleを第四Required laneへ戻す
-- Oracle未観測事項をPostgreSQL / synthetic Evidenceから補完する
-- Handover前に第一Web Targetへ着手する
-- generated artifactを手編集する
-- secret manager製品を標準化する
-- Go toolchain / module cacheをRepositoryへvendoringする
-- OS process全体をsandbox化する
-- GitHub Actions greenをGate B Product Evidenceへ格上げする
+- 実際のOracleを第四の必須検証経路に戻すこと
+- Oracleで未確認の事項をPostgreSQLや合成データの検証根拠から推測して補うこと
+- 引継ぎ前に最初のウェブ実行先へ着手すること
+- 生成成果物を手作業で編集すること
+- 秘密情報管理製品を標準化すること
+- Goの開発・構築ツール一式やモジュールキャッシュをリポジトリへ取り込んで管理すること
+- OSのプロセス全体を隔離環境で実行すること
+- GitHub Actionsの成功を判定段階Bの製品検証根拠として格上げすること
 
 ## 関連
 
