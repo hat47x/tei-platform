@@ -101,11 +101,11 @@ TEIがGitの統合機能を置き換えるのではありません。**Gitで正
 
 ## Qualification
 
-`run.sh`はRQ-034のExecutable Referenceです。ただし、code-changing PRをmainへ統合してよいというmerge authorityは、これだけでは得られません。
+`run.sh`はRQ-034を検証する実行可能な参照実装です。ただし、コードを変更したプルリクエストをmainへ統合してよいかどうかは、この結果だけでは判断できません。
 
-Repositoryの開発ルールでは、code変更を含むcandidateについて、**そのexact headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post state**が必要です。ここでcleanとは、tracked変更とuntracked fileが無いだけでなく、`.gitignore`等で無視されるartifactも残っておらず、`assume-unchanged` / `skip-worktree`のようにtracked worktree内容を隠せるindex flagも使われていない状態を指します。
+この資格確認の手順では、コードを変更した候補について、**対象となる正確なコミットで`tools/repository-health-check.sh`の全検査に合格し、前後に変更が残っていないこと**を求めます。ここで「変更がない」とは、追跡済み・未追跡のファイルだけでなく、`.gitignore`などで無視した生成物も残らず、`assume-unchanged`や`skip-worktree`のように追跡中の変更を隠せる指定も使われていない状態です。この専用手順の条件と、一般のプルリクエストに適用する変更範囲に応じた検証条件は区別します。
 
-その取り違えを減らすため、薄いwrapperを用意しています。
+条件を取り違えないよう、検証を呼び出す小さなスクリプトを用意しています。
 
 ```bash
 tools/reference-tool-neutral-development/qualify.sh \
@@ -113,7 +113,7 @@ tools/reference-tool-neutral-development/qualify.sh \
   --expected-main <current-main-sha>
 ```
 
-このwrapperは次の順でfail closedします。
+このスクリプトは次の順番で確認し、条件を満たせなければ処理を中止します。
 
 ```text
 tracked / untracked / ignored clean pre-state
@@ -127,25 +127,25 @@ tracked / untracked / ignored clean pre-state
   -> candidate / main bindingを含むPASS receiptをstdoutへ表示
 ```
 
-`--expected-main`を使う場合は、呼び出し前に通常のpreflightでremoteを再取得し、`origin/main`がcurrent mainであることを確認します。さらに、そのexpected mainがcandidate HEADのancestorであることも要求します。これにより、local `origin/main`のSHAだけは正しくてもcandidate branchがcurrent mainをまだ取り込んでいない状態をqualification PASSへ進めません。wrapper自身はnetwork accessやref更新を行いません。
+`--expected-main`を指定する場合は、先にリモートの情報を再取得し、`origin/main`がその時点のmainを指すことを確認します。さらに、そのコミットが候補の先頭コミットの祖先であることも要求します。これにより、ローカルの`origin/main`だけが正しくても、候補ブランチに最新のmainが含まれない状態では合格としません。スクリプト自身はネットワークへ接続したり参照情報を書き換えたりしません。
 
-`--expected-main`はlocal `origin/main`を固定し、同時にそのcommitがcandidate historyへ含まれることを検査します。ただしremote mainをlockしません。qualification後にmainが動いた場合、そのPASSを新しいmainへのmerge authorityとして流用せず、remote stateを再取得し、candidateへ最新mainを統合してから再qualificationします。
+`--expected-main`によって、ローカルの`origin/main`の値と、候補の履歴にそのコミットが含まれることを確認します。ただし、リモートのmainを更新できないよう固定するものではありません。検査後にmainが更新されたら、以前の合格結果をそのまま利用せず、リモートの最新状態を取得して候補へ統合し、資格確認をやり直します。
 
-wrapper自身がpre/postのtracked / untracked / ignored stateを確認するため、呼び出し側の事前checkだけにclean判定を依存しません。
+このスクリプト自身が実行前後の追跡済み・未追跡・無視対象の状態を確認するため、呼び出し元による事前検査だけに依存しません。
 
-PASS時には`candidate-head`、`origin-main`、`candidate-contains-expected-main=true`、Repository health / Reference / qualification結果をstdoutへ出します。これは永続的なTEI Product stateではなく、その時点のexact Git relationとGate結果を示すreceiptです。必要なGate handoffで、通常のIssue / PR Evidenceとして記録できます。
+合格時には、`candidate-head`、`origin-main`、`candidate-contains-expected-main=true`と、リポジトリ全体・参照実装・資格確認の結果を標準出力へ返します。これはTEI製品の永続的な状態ではなく、その時点のGitのコミット間の関係と検査結果を示す記録です。必要な引継ぎの際に、通常の課題やプルリクエストの検証根拠として保存できます。
 
 
 ### Gitの履歴・checkout境界の負例（#972 / #1173）
 
-資格チェックと統合前preflightは、dirty/untracked/ignored/index flagだけでなく、**Git自身がどのSource・commit graphを観測したか**を確認する。Gitの`refs/replace`やlegacy `info/grafts`は表示中のcommit SHAを変えずに親子関係・treeを変更できる。従来の`git merge-base --is-ancestor`だけでは、偽の祖先関係を通す危険がある。
+資格確認と統合前の事前検査では、変更済み・未追跡・無視対象のファイルや索引の指定だけでなく、**Gitが実際にどのソースとコミットの履歴を読み取ったか**も確認します。Gitの`refs/replace`や旧形式の`info/grafts`は、表示されるコミットの照合値を変えずに、親子関係やファイル構成を変えられます。`git merge-base --is-ancestor`だけでは、偽の祖先関係を見逃すおそれがあります。
 
-- 対象checkoutの物理的なtop-levelが、呼び出し側が指定したrootに一致しなければ拒否する。Git local configの`core.worktree`で別のclean directoryへ読み替えても通さない。
-- `GIT_DIR`、`GIT_WORK_TREE`、`GIT_INDEX_FILE`、`GIT_COMMON_DIR`、Git object/namespace/replace/config injection関連のambient overrideを拒否する。検証中は`GIT_NO_REPLACE_OBJECTS=1`とread-only Git呼び出しの`--no-replace-objects`を使用する。
-- `refs/replace`、`info/grafts`が存在すれば**継続しない**。候補・統合両checkoutの開始時と終了時に確認する。Gitのrepository-local`fsmonitor`を資格チェックのGit観測中に実行しない。
-- 資格確認に使うrunner自身とreceiptのrevision binding、開始・終了のclean条件、live main checkはこれまでどおり維持する。
+- 対象となる作業領域の実際の起点が、呼び出し元の指定と一致しなければ拒否します。Gitの`core.worktree`で別の変更のないディレクトリへ読み替えても認めません。
+- `GIT_DIR`、`GIT_WORK_TREE`、`GIT_INDEX_FILE`、`GIT_COMMON_DIR`など、オブジェクト保存先・名前空間・履歴の差し替え・設定の注入につながる環境変数の上書きを拒否します。検証中は`GIT_NO_REPLACE_OBJECTS=1`と、読み取り専用のGit呼び出しに付ける`--no-replace-objects`を使います。
+- `refs/replace`や`info/grafts`があれば**処理を継続しません**。候補と統合側の作業領域で、実行開始時と終了時に確認します。資格確認中は、リポジトリ固有の`fsmonitor`を実行しません。
+- 検証用プログラム自身と合格記録が対象とする版の対応、開始・終了時に変更がないこと、リモートの最新mainの確認は従来どおり維持します。
 
-`qualification_test.go`では、実テスト用Git repositoryにreplacement/grafts/core.worktree/env overrideを注入し、qualificationとintegration preflightを**両方とも**拒否することを回帰対象とする。これはGit mechanicsの合成テストであり、actual TEI full checkoutを用いるRepository Healthの資格結果ではない。
+`qualification_test.go`では、試験用のGitリポジトリに履歴の差し替え・接ぎ木・作業領域のすり替え・環境変数の上書きを加え、資格確認と統合前の検査が**両方とも拒否すること**を回帰テストで確かめます。これはGitの動作を模した試験であり、実際のTEIリポジトリ全体に対する検査の合格記録ではありません。
 
 ### machine-readable qualification receipt
 
