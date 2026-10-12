@@ -119,7 +119,7 @@ func TestCompositionHandoffRejectsUnconformantAndScopeDrift(t *testing.T) {
 func TestCompositionHandoffPinsExactVersionArtifactAndFingerprint(t *testing.T) {
 	_, _, _, provider, input, expected := handoffSourceFixture(t)
 	for _, change := range []struct {
-		name string
+		name   string
 		mutate func(*CompositionResolutionExpectation)
 	}{
 		{"version", func(e *CompositionResolutionExpectation) { e.Target.Contract.Version = "1.1.0" }},
