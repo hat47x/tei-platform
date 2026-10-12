@@ -43,8 +43,8 @@ def verify_source_loop(root, output, binary, head, digest, dsn_file, sql, run):
 
     def host_args(model_revision, address):
         return [str(binary), '-workspace', str(scratch), '-composition-scenarios', '-model-revision', model_revision,
-                '-postgres-dsn-file', str(dsn_file), '-postgres-fencing-token', '1', '-baseline-id', 'B',
-                '-baseline-revision', 'e5231839a5dcc62cce1181a2731fcb7c70d16736', '-target-revision', head, '-listen', address]
+                '-postgres-dsn-file', str(dsn_file), '-postgres-fencing-token', '1', '-baseline-id', 'reference-source-loop',
+                '-baseline-revision', head, '-target-revision', head, '-listen', address]
 
     def start(model_revision, name):
         with socket.socket() as sock:

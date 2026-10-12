@@ -20,6 +20,8 @@ def run(args, **kwargs):
 
 
 def main():
+    if not __debug__:
+        raise RuntimeError('Evidence checks require Python without assertion optimization')
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', required=True, help='Evidence directory outside the repository')
     parser.add_argument('--source-loop', action='store_true', help='Also verify scratch Shared Acceptance -> selected model -> PostgreSQL execution')
