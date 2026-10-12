@@ -9,8 +9,8 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/environment"
-	"tei/internal/plugin"
 	"tei/internal/modelref"
+	"tei/internal/plugin"
 	"tei/internal/subject"
 	"tei/internal/workspace"
 )
