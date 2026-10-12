@@ -10,6 +10,8 @@ on:
     paths:
       - 'tools/reference-first-web-target/**'
       - 'tools/reference-target-package-evidence/**'
+      - 'tools/reference-first-web-target-manifest-capture/**'
+      - 'tools/reference-runtime-snapshot/**'
       - 'reference/workspace/**'
       - 'reference/legacy-auth/**'
       - 'go.mod'
@@ -20,6 +22,8 @@ on:
     paths:
       - 'tools/reference-first-web-target/**'
       - 'tools/reference-target-package-evidence/**'
+      - 'tools/reference-first-web-target-manifest-capture/**'
+      - 'tools/reference-runtime-snapshot/**'
       - 'reference/workspace/**'
       - 'reference/legacy-auth/**'
       - 'go.mod'
@@ -103,6 +107,26 @@ jobs:
           # unintended directory. Pin both the destination and the receipt.
           test -f "$evidence_dir/measurement.json"
           grep -Fq '"syntheticFixtureHttpParityVerified": true' "$evidence_dir/measurement.json"
+
+      - name: 実第一Webの2 Application manifestを取得し固定Runtimeで再生
+        shell: bash
+        env:
+          TEI_E1_LIVE_MANIFEST_CAPTURE: '1'
+        run: |
+          set -euo pipefail
+          # Actual combined + tagged First Web executables, not an HTTP
+          # fixture. B/R/T are diagnostic, so this is not Acceptance evidence.
+          go test -count=1 -run '^TestActualFirstWebTargetCaptureAcrossApplications
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          hidden="$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$hidden"
+ \
+            ./tools/reference-first-web-target-manifest-capture
 
       - name: 実行後の対象版と作業領域を照合
         if: always()
