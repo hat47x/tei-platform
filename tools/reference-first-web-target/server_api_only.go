@@ -11,6 +11,8 @@ import (
 // This server type intentionally contains no html/template imports, template
 // fields, index page or custom-submit rendering. The existing Driver-backed
 // runners and authorization boundary are unchanged.
+const webTargetServerHasPresentation = false
+
 type webTargetServer struct {
 	projection                  webTargetProjection
 	readScenario                readScenarioRunner
