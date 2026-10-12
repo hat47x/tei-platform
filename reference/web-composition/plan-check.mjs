@@ -29,10 +29,29 @@ export function validateAuthenticationPlan(plan){
   return {providerCount:providers.size,policyCount:plan.policies.length,linkedSubjectCount:links.size};
 }
 
+// Validate the route identity before assembling guards. For the first
+// protected Action slice, the accepted E1 match must be representable by the
+// Go Host's exact POST path policy. Otherwise a plan could pass while the
+// runtime cannot enforce the route described by that plan.
+function validateRouteMatch(route){
+  if(typeof route.method!=="string" || !/^[A-Z]+$/.test(route.method))
+    throw new Error("route method must be an exact uppercase HTTP token");
+  if(typeof route.path!=="string" || !route.path.startsWith("/") ||
+      /[?#%\\\\]/.test(route.path) || route.path.includes("//") ||
+      route.path.split("/").some(part=>part==="." || part===".."))
+    throw new Error("route path must be an exact unambiguous path");
+  if(Object.hasOwn(route,"actionId") &&
+      (typeof route.actionId!=="string" || !route.actionId.trim()))
+    throw new Error("action identity must be a nonempty string");
+  if(route.actionId && (route.method!=="POST" || route.exposure!=="protected"))
+    throw new Error("protected Action reference requires POST and protected exposure");
+}
+
 export function composeRequestPlan(plan){
   if(!plan || !plan.route || !plan.hostPolicy || !Array.isArray(plan.steps) || !Array.isArray(plan.hostContracts)) throw new Error("request plan is incomplete");
   const {route,hostPolicy,steps,hostContracts}=plan;
   if(!route.id || !route.method || !route.path || !hostPolicy.id || !Array.isArray(hostPolicy.requiredGuards) || !Array.isArray(hostPolicy.terminalEvents)) throw new Error("host route policy is incomplete");
+  validateRouteMatch(route);
   if(route.actionId && route.exposure==="public") throw new Error("action route cannot silently become public");
   if(route.actionId && !hostPolicy.requiredGuards.includes("action-authorized")) throw new Error("action route has no mandatory authorization");
   if(route.actionId){
