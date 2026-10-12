@@ -1,10 +1,10 @@
-# Xead cross-view Reference
+# Xeadの三視点の対応関係を調べる
 
-GitHub #1031 / RMT-4 のread-only cross-view Referenceです。
+この参照実装は、Xeadの設計資料に記述された業務、機能、データの対応関係を読み取り専用で調べます。課題 [#1031](https://github.com/hat47x/tei-platform/issues/1031) に対応します。
 
-Xead sourceとexact transcription contractを受け取り、Data・Function・Businessをまたぐsource-backed relationとderived potential pathを構成します。
+利用者が指定したXML形式の設計資料と、読み取り方を定める契約ファイルから、資料に明記された関係と複数の記述をたどって得られた関係を区別します。公開APIの `BuildCrossViewProjection` も同じ入力を直接受け取り、`InspectWithContract` による資料の種類、ルート要素、形式の版の照合を必ず経由します。呼び出し元で組み立てた検査結果を渡して照合を省くことはできません。
 
-既定出力はpublic-safeなaggregate accountingだけです。legacy ID値、source本文、個別relation tokenは出しません。
+通常の出力は件数などの集計結果に限ります。設計資料の本文、旧識別子の値、個別の関係をたどるための識別情報は公開しません。 集計を公開する前に、解析結果の照合値、関係の種類、操作指定、未解決理由を検査します。未知の名称をそのまま集計の項目名にすることはありません。照合値は内容の変化を検知するためのもので、資料の出所や意味上の正しさを証明する署名ではありません。
 
 ```bash
 go run ./tools/reference-xead-cross-view \
@@ -12,13 +12,21 @@ go run ./tools/reference-xead-cross-view \
   -contract reference/xead-source-transcription-contract.synthetic.json
 ```
 
-個別source tokenとrelationをローカル調査で確認する場合だけ `-local-projection` を付けます。この出力はpublic Reference Model Evidenceへ保存しません。
+上記の契約ファイルは**合成試験用の不完全な例**です。外部の参照モデル全体について、記述要素の網羅性や意味の正しさを保証しません。実際の資料を照合する際は、対象の形式・版・要素に合う契約を別途確認してください。参照モデルの原本や詳細な解析結果は公開リポジトリへ保存しません。
+
+個別の対応関係を手元で調べる場合に限り、次の指定を追加します。この出力は非公開の調査資料として扱ってください。
 
 ```bash
 go run ./tools/reference-xead-cross-view \
-  -input /path/to/model.xead \
+  -input /path/to/local-model.xead \
   -contract reference/xead-source-transcription-contract.synthetic.json \
   -local-projection
 ```
 
-cross-viewはBusiness Action固有CRUD、actual Runtime effect、transaction、authorization、business ownershipを推定しません。Function-level IOTable CRUDからActionへ連結したedgeはpotential operationに限定します。
+## 結果の読み方
+
+- 表の利用宣言に有効な作成・参照・更新・削除操作が一つもない場合、操作関係を作らず、`iotable-operation-missing`として未解決に残します。表の記述自体は集計対象です。
+- 未知の操作指定があれば、理解できた操作だけを取り出すことはせず、`iotable-operation-marker-unsupported`として未解決に残します。
+- 機能から表への操作宣言は、その機能全体での利用候補です。特定の業務作業による更新、実行時の副作用、取引の確定、認可を証明するものではありません。
+
+集計結果は設計資料を読み取った証拠であり、TEIの正本への受理や、元のX-TEA Driverで実行した結果を意味しません。実機での動作確認は別課題 [#940](https://github.com/hat47x/tei-platform/issues/940) が担当します。

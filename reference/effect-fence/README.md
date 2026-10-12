@@ -153,7 +153,7 @@ GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-
 GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含むGo競合試験
-CGO_ENABLED=1 GOENV=off GOWORK=off GO111MODULE=off \
+CGO_ENABLED=1 GOENV=off GOWORK=off \
   go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含む静的検査
@@ -191,3 +191,33 @@ go vet ./reference/effect-fence ./internal/security/legacyauthorization
 ```
 
 [認可結果と確定境界の接続メモ](INTEGRATION.md)に、今回成立した部分と実Providerへ持ち越した条件をまとめています。
+
+### 認証後の無効化・期限切れを、新しい認可判断へ反映する
+
+認証と認可の両アダプターで、`legacyauth.User.AccessDenialAt`によりアカウントの無効化、有効期間、ロック状態を同じ規則で評価します。ログイン後にアカウントが無効化された場合でも、その後の`security.authorize`は役割を評価する前に拒否します。`PrepareWithLegacyAuthorization`を使う新しい操作の準備にも、この拒否が適用されます。
+
+検証対象には`internal/security/legacyauth`も加わります。
+
+```bash
+go test -race -count=10 ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+go vet ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+```
+
+この確認は**認可時点の状態を再評価する**ものであり、認可後に起きた失効と書込み確定の原子性は実証しません。権限版・主体リンク版を実保存先で同時に照合する条件は引き続き未完成です。
+
+## 任意の実SQLite試験：認可根拠の版変更
+
+実SQLiteの試験に、主体リンク・所属・認可規則の**3種類の版条件**を加えました。
+
+`RequireAuthorityDependencies()`を指定した試験用の接続では、この3種類すべての有効な版がなければ操作を準備できません。`SetAuthorityDependency()`で別接続から版を更新・失効させた場合は、書込み確定のトランザクション内で比較して拒否します。許可が継続する規則の改版も、古い版を使った操作には適用されません。
+
+追加した`sqlite_authority_dependencies_test.go`は、失効・改版・版の欠落・版の単調増加・確定済み操作の再送・別接続の並列競合を扱います。実行コマンドは既存のSQLite連携試験と同じです。
+
+```bash
+CGO_ENABLED=1 GOENV=off GOWORK=off \
+  go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
+```
+
+これは**同一SQLiteファイルに置いた模擬版情報**の実証であり、実認可サービスの正本、役割や主体リンクの実際の更新経路と同期した証拠ではありません。通常ビルドへのSQLite依存はありません。詳細と残る設計条件は[接続メモ](INTEGRATION.md)を参照してください。
+
+実SQLiteのGo試験は専用の[変更範囲CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)でも自動実行します。通常のGoビルドにはSQLite依存を追加しません。

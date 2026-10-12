@@ -132,9 +132,11 @@ type goListPackage struct {
 
 func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
+	exactEngine := flag.String("exact-runtime-engine", "", "verified external transform engine executable")
+	engineEvidence := flag.String("engine-build-evidence", "", "independent exact transform engine build Evidence JSON")
 	flag.Parse()
 
-	out, err := run(*repo)
+	out, err := runWithExactEngine(*repo, exactEngineOptions{Executable: *exactEngine, BuildEvidence: *engineEvidence})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -148,6 +150,13 @@ func main() {
 }
 
 func run(repo string) (evidence, error) {
+	return runWithExactEngine(repo, exactEngineOptions{})
+}
+
+func runWithExactEngine(repo string, options exactEngineOptions) (evidence, error) {
+	if (options.Executable == "") != (options.BuildEvidence == "") {
+		return evidence{}, fmt.Errorf("exact Runtime Engine requires executable and build Evidence together")
+	}
 	root, err := filepath.Abs(repo)
 	if err != nil {
 		return evidence{}, err
@@ -229,12 +238,16 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, fmt.Errorf("hash TEI-native runtime engine source closure: %w", err)
 	}
-	nativeRuntimeEngine := pruntime.RuntimeEngineIdentity{
-		ID:                   core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
-		Version:              revision,
-		ContractVersion:      "tei.runtime-engine/static-response-v1",
-		ImplementationDigest: sha256Digest([]byte(nativeRuntimeEngineSourceDigest + "\n" + goToolchainDigest + "\n")),
-		Target:               "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+	nativeRuntimeEngine, err := referenceRuntimeEngineIdentity(
+		core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+		nativeRuntimeEngineVersion,
+		"tei.runtime-engine/static-response-v1",
+		nativeRuntimeEngineSourceDigest,
+		goToolchainDigest,
+		"host/"+runtime.GOOS+"/"+runtime.GOARCH,
+	)
+	if err != nil {
+		return evidence{}, fmt.Errorf("static response Runtime Engine identity: %w", err)
 	}
 	nativeRuntimeEngineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(nativeRuntimeEngine)
 	if err != nil {
@@ -402,6 +415,7 @@ func run(repo string) (evidence, error) {
 		revision,
 		packageDefinition,
 		packagePlan,
+		options,
 	)
 	if err != nil {
 		return evidence{}, fmt.Errorf("TEI-native transform bootstrap: %w", err)

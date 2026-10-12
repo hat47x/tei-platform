@@ -105,11 +105,11 @@ require_source order read_scenario.go
 require_source repair main_repair_only.go
 require_source repair customer_lookup_scenario.go
 require_source repair repair_scenario_http.go
-for name in customer_lookup_scenario.go repair_scenario_http.go main_repair_only.go; do
-  reject_source order "$name"
+for source_file in customer_lookup_scenario.go repair_scenario_http.go main_repair_only.go; do
+  reject_source order "$source_file"
 done
-for name in command_scenario.go read_scenario.go custom_ui.go order_scenario_http.go main_order_only.go reference_order_contract_query_fixture.go; do
-  reject_source repair "$name"
+for source_file in command_scenario.go read_scenario.go custom_ui.go order_scenario_http.go main_order_only.go reference_order_contract_query_fixture.go; do
+  reject_source repair "$source_file"
 done
 for mode in order repair; do
   reject_source "$mode" main.go
