@@ -84,3 +84,24 @@ go run ./tools/reference-subsystem-cud \
 - 対応外の資料形式、正式な正本であることを自己宣言した資料、手順配列がない資料は`PROCEDURE_SOURCE_UNSUPPORTED`とします。資料が存在するのに候補手順が空の場合も未解決です。
 
 すべて未解決の診断であり、従来の入力JSONの指紋不一致やCUD候補の診断も引き続き有効です。これらの照合が成功しても、**受理済みの業務手順・Subsystem所有者・実行時更新・業務規則の網羅性**を証明したことにはなりません。正本採用やSource Indexの照合は既存の担当機構で行い、この参照用検査器に第二の承認機構を設けません。
+
+
+## 既存の出所索引への参照を確認する（任意）
+
+`-procedure`で資料を指定した場合、さらに既存の出所索引（Source Index）を照合できます。この検査器は新しい索引や受理台帳を作成せず、`internal/sourceindex`の既存の指紋・位置検証を使います。
+
+```sh
+go run ./tools/reference-subsystem-cud \
+  -world /path/to/world.json \
+  -procedure /path/to/workspace/procedures/order-handling.json \
+  -facts /path/to/facts.json \
+  -source-index /path/to/source-index.json \
+  -source-root /path/to/workspace \
+  -procedure-source-path procedures/order-handling.json
+```
+
+三つの索引用引数は、手順資料の指定とともに一式で渡してください。出所索引の作成・正式な受理は既存のWorkspace／Shared Acceptanceの担当です。呼び出し側は**同一Workspaceの版から取得した**索引と読取り用資料を用意する必要があります。
+
+検査では、索引の全資料の内容指紋と参照位置を既存の検証器で確認し、手順資料の正確なバイト列、Workspace相対パス、`business-procedure-authoring`の手順ID、`authoring`役割の一意な参照を照合します。資料の取り違え、古い索引、不明な参照、重複や競合する定義はすべて未解決として扱います。成功時には`indexedProcedure`に**出所位置の候補**を返し、その情報に権限がない旨を明記します。索引を読まない従来の呼出しは引き続き利用できます。
+
+**出所を探せることと、業務定義が受理されたことは異なります。** 出所索引や読取り関数自体も呼び出し元が提供するため、索引と資料が相互に一致しても、Shared Acceptanceの正本、業務上の責任、機能のCUD権限、実行結果や独立観測は確定しません。正式な受理の確認は#1163と既存の受理機構に委ねます。
