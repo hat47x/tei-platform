@@ -137,7 +137,11 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
   -out /tmp/tei-slide-answered
 ~~~
 
-出力に`answer-handoff.json`と`change-triage.json`を追加する。回答、主張された回答者、適用文脈、根拠参照、質問への厳密な対応、未検証状態、次に必要なレビューを保持する。`confirmationRoute`は既存Confirmationの`identity.kind=example-review` / `identity.subject=例とCatalogの内容に束縛したハッシュID` / `basisSubjects=[{kind:semantic-relation,id:relation-id}]`へ対応させる**入力候補**である。同じ質問ID・同じCanonical Relationであっても、例のレコードやCatalogが変われば別の確認対象として再確認する。独自の回答台帳は増やさない。
+出力に`answer-handoff.json`と`change-triage.json`を追加する。回答、主張された回答者、適用文脈、根拠参照、質問への厳密な対応、未検証状態、次に必要なレビューを保持する。
+
+**レビューの根拠を回答段階まで維持する。** 派生した質問の回答には`sourceIssue`を付け、検証時点の関連ID、レコードID、段階、スライドID、判定理由、確定一致した参照先（`matchedTargetIds`）と一致の可能性が残る参照先（`possibleTargetIds`）を、その時点のレビューから複写する。設計変更の振り分け資料にも同じ`sourceIssue`を引き継ぐ。人が自由記述の回答へ参照先IDを書き足しても、その記述から機械的な根拠を生成しない。
+
+人やAIがもともとCaseへ記載した質問（`authored`）には派生元の診断が存在しないため、`sourceIssue`を付けない。いずれも回答は引き続き`unverified`であり、変更候補の`candidateReady`は`false`のままとする。`sourceIssue`の追加は回答資料の内容指紋にも反映されるため、異なる根拠を持つ旧回答を同一資料として扱わない。`confirmationRoute`は既存Confirmationの`identity.kind=example-review` / `identity.subject=例とCatalogの内容に束縛したハッシュID` / `basisSubjects=[{kind:semantic-relation,id:relation-id}]`へ対応させる**入力候補**である。同じ質問ID・同じCanonical Relationであっても、例のレコードやCatalogが変われば別の確認対象として再確認する。独自の回答台帳は増やさない。
 
 ### 複数の権限境界
 
