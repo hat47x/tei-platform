@@ -66,6 +66,7 @@ jobs:
           go vet -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target
           bash -n tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh
           python3 -B -c "import ast; ast.parse(open('tools/reference-first-web-two-unit-e1/check_api_only_parity.py',encoding='utf8').read())"
+          python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_frozen_source_lineage.py -v
           node --check tools/reference-first-web-two-unit-e1/real_browser_replay.mjs
       - name: 実バイナリと固定Worldを構築し、HTTP同等性と依存除外を検証
         run: |
@@ -75,6 +76,9 @@ jobs:
             "$dest" B e5231839a5dcc62cce1181a2731fcb7c70d16736
           test -s "$dest/api/order-entry"
           test -s "$dest/api/frozen-world.json"
+          test -s "$dest/source-lineage.json"
+          grep -Fq '"sourceAcceptanceAuthorityVerified": false' "$dest/measurement.json"
+          grep -Fq '"buildArtifactLockVerified": false' "$dest/measurement.json"
           grep -Fq '"frozenAPISyntheticHTTPParityVerified": true' "$dest/measurement.json"
           grep -Fq '"workspaceLoaderSourceClosureExcluded": true' "$dest/measurement.json"
       - name: 実行後のexact版と作業領域を確認

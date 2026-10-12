@@ -120,3 +120,18 @@ bash tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh \
 - Browser HTML/JSは従来の正規Projectionから生成し、元のBrowser/JSON API配備方式も維持します。実Browser replayは両方式へ適用できますが、合成資格情報による確認を本番受入とは扱いません。
 
 **境界と未検証事項：** 本方式は、既存のSource/Acceptance/Builder/Plugin Lockを置き換えません。digestはBuilderが選んだバイト列への拘束であり、発行者やモデルの正当な受理を認証するものではありません。Runtimeは引き続きDriverと`ir.World`を保持し、Production Provider・IdP・Session・TLS/CSRF・人間によるVisual受理も未実証です。Runtimeのモデルファイルが既存のBuilder/Artifact Authorityに拘束されるまで、Production配布に使わないでください。
+
+### 固定Worldの既存受理記録との照合（読取り専用）
+
+選択式の固定Worldビルドでは、構築側の生成器が従来のShared Acceptanceと同じJSON符号化規約によって派生WorldのSHA-256を計算します。さらに、**既存の** `reference-shared-acceptance decisions`を読取り専用で実行し、Source Indexの現行モデル改訂と、記録済みDecisionの再検証結果を取得します。`observe_frozen_source_lineage.py`が次を照合します。
+
+- `frozen-world.json`の実バイト列と、生成器が同時に記録したSHA-256の一致
+- Decision Indexのschemaと現行`modelRevision`の形式
+- `current`かつ`accepted`のDecisionについて、記録後のモデル改訂、変更元ファイルの現在性、派生WorldのSHA-256が生成結果と一致すること
+- 既に`superseded`となったDecisionや`rejected`を、現行Worldの受理根拠に数えないこと
+
+証跡は`source-lineage.json`へ格納し、`measurement.json`には`sourceModelRevision`、`sourceWorldDerivedSHA256`、`currentAcceptedDecisionMatched`を記録します。現行改訂に一致するaccepted Decisionがなければ**`false`として未確認のまま保持**します。存在するcurrent Decisionのソース変更やWorldが一致しない場合は出力を公開せず失敗します。この経路はmanaged SourceやDecisionを一切書き換えません。
+
+Decision Indexの`origin.actor`、review fingerprint、現在一致しているという事実は、発行者・人の受理権限や本番配備権限の証明ではありません。`sourceAcceptanceAuthorityVerified`、`buildArtifactLockVerified`、`runtimeModelAcceptanceAuthority`、`artifactAuthority`は**常にfalse**です。
+
+現行の`plugin.BuildPlan` / `plugin.BuildArtifactLock`は**プラグインを識別して固定する契約**です。Application APIバイナリを便宜的なPluginと偽ってLockへ入れたり、第三のLockを新設したりしません。将来の配備単位のBuild根拠は、既存Builder/Artifact Authority担当において、非Plugin出力にも正しく対応する入力・成果物の関係が必要かを別途判断します。今回の`source-lineage.json`はその判断用の派生観測であり、単独でProduction Runtimeの実行を承認する資格にはなりません。
