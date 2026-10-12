@@ -24,18 +24,18 @@ type ReviewPacket struct {
 }
 
 type ReviewIssue struct {
-	ID             string   `json:"id"`
-	Stage          string   `json:"stage"`
-	FrameIDs       []string `json:"frameIds"`
-	RelationID     string   `json:"relationId"`
-	SourceRecordID string   `json:"sourceRecordId"`
-	MatchedTargetIDs []string `json:"matchedTargetIds,omitempty"`
+	ID                string   `json:"id"`
+	Stage             string   `json:"stage"`
+	FrameIDs          []string `json:"frameIds"`
+	RelationID        string   `json:"relationId"`
+	SourceRecordID    string   `json:"sourceRecordId"`
+	MatchedTargetIDs  []string `json:"matchedTargetIds,omitempty"`
 	PossibleTargetIDs []string `json:"possibleTargetIds,omitempty"`
-	Result         string   `json:"result"`
-	Reason         string   `json:"reason"`
-	Question       string   `json:"question"`
-	EvidenceNeeded []string `json:"evidenceNeeded"`
-	ReviewTarget   string   `json:"reviewTarget"`
+	Result            string   `json:"result"`
+	Reason            string   `json:"reason"`
+	Question          string   `json:"question"`
+	EvidenceNeeded    []string `json:"evidenceNeeded"`
+	ReviewTarget      string   `json:"reviewTarget"`
 }
 
 // Review builds a new projection from its input rather than trusting a
