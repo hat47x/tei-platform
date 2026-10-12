@@ -2,16 +2,17 @@
 set -euo pipefail
 
 # Manual conformance verification for the E1 plan and E2 session reference.
-# The repository-wide health check remains mandatory before integrating code.
+# Full repository health is a separate optional diagnosis under the current
+# AGENTS.md integration rules; this script only checks the Web reference.
 # This script never invokes GitHub Actions and does not modify the repository.
 
 usage() {
   cat <<'HELP'
 Usage: reference/web-composition/verify.sh [--race]
 
-Checks the Web E1 Node composition tests and the E2 Go reference packages.
-Run tools/repository-health-check.sh separately on the exact candidate head
-in a clean full checkout before changing Draft or merging a PR.
+Checks the Web E1 Node composition and route-table tests plus the E2 Go
+reference packages. This is a scoped check, not repository-wide health.
+Record exact-head evidence and any unrun checks in the corresponding PR.
 HELP
 }
 
