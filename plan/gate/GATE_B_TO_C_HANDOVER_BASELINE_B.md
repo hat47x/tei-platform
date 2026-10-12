@@ -96,47 +96,47 @@ goEnvironment.goEnvDisabled           = true
 
 #### #310 deterministic Repository（same-run）
 
-- Workspace Validation成功
+- 作業領域の検証に成功
 - `final-ui-less-scenario`成功（`TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI`）
-- `external-evidence-intake`成功
-- `repository-evidence-source-boundary`成功
+- `external-evidence-intake`の検証に成功
+- `repository-evidence-source-boundary`の検証に成功
 
 #### #255 generated artifact reproducibility（same-run）
 
-- World / Plugin Lock golden一致（`tools/reference-golden`）
-- Durable Run golden一致（`tools/reference-durable-run-golden`）
-- check-only run（`-write`修復操作は本runに含まない）
+- 正本のモデルとプラグインの実装固定情報が期待出力と一致（`tools/reference-golden`）
+- 永続的な実行記録が期待出力と一致（`tools/reference-durable-run-golden`）
+- 変更を加えない確認として実行（`-write`による修復操作はこの実行に含まない）
 
 #### #308 real PostgreSQL Provider（same-run）
 
-- fixture前: `userRelationsBeforeFixture = 0` / `eventTriggersBeforeFixture = 0` / `fixtureObjectAbsentBeforeCreate = true` / `nonDefaultDatabaseVerified = true`
-- runtime: 2件取得 / 正常0件 / missing-table `executionErrorObserved = true`
-- explicit raw → Semantic mapping: `contractQueryTarget = sales_core/sales_core.order_line/find_by_order`、`semanticAttributes`に support column非露出
-- cleanup後: `userRelationsAfterCleanup = 0` / `eventTriggersAfterCleanup = 0` / `fixtureObjectAbsentAfterCleanup = true` / `fixtureCleanupSafety.verified = true`
-- DSN、credential、parameter値、実Database名は本Evidenceに含まない
+- 試験用構成要素の作成前：`userRelationsBeforeFixture = 0`／`eventTriggersBeforeFixture = 0`／`fixtureObjectAbsentBeforeCreate = true`／`nonDefaultDatabaseVerified = true`
+- 実行時：2件取得／正常に0件を取得／表が存在しない場合の`executionErrorObserved = true`
+- 元の結果から意味上の表現への明示的な対応付け：`contractQueryTarget = sales_core/sales_core.order_line/find_by_order`、`semanticAttributes`に補助列を露出しない
+- 後片付け後：`userRelationsAfterCleanup = 0`／`eventTriggersAfterCleanup = 0`／`fixtureObjectAbsentAfterCleanup = true`／`fixtureCleanupSafety.verified = true`
+- DSN、認証情報、引数の値、実際のデータベース名は、この検証根拠に含まない
 
 ### #273 Gate B Readiness Audit
 
-- 判定: Ready（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)、判定日2026-09-19）
-- 独立artifact audit: `tools/reference-gate-b-readiness-artifact-audit`
+- 判定：Ready（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)、判定日2026年9月19日）
+- 独立した成果物監査：`tools/reference-gate-b-readiness-artifact-audit`
   - `artifactAuditPassed = true`
   - `finalFingerprint = sha256:3bfcdc459f9e3dd77019e1b9ae368a64bad760f65917c44e1d7d533b6a1f5f97`
-  - 3 lane個別fingerprintは上表と一致（独立tool側の再計算値であり、final runner側の`evidenceArtifactFingerprint`と一致することを確認済み）
+  - 三つの検証経路ごとの照合値は上表と一致（独立したツールによる再計算値で、最終確認の実行器が記録した`evidenceArtifactFingerprint`との一致も確認済み）
 
-final runner exit codeや`childArtifactsRetained = true`だけでReadyを宣言したものではなく、上記独立auditの再照合結果を判定根拠とします。
+最終確認の実行器の終了コードや`childArtifactsRetained = true`だけでReadyと判定したのではありません。上記の独立した監査で再照合した結果を、判定の根拠とします。
 
 ## actual Oracleの扱い（unresolved）
 
-`#214` / `#371` / `#376`のactual Oracle Evidence（physical object / column / SQL / datatype / driver behavior / real read-only方式のactual read）は、本Baselineの時点で**未取得（unresolved）**です。
+`#214`・`#371`・`#376`が対象とする実際のOracleでの検証根拠（物理的な構成要素・列・SQL・データ型・ドライバーの動作・実際の読取り専用の方式での読取り）は、この基準版の時点では**未取得（unresolved）**です。
 
-- Required Evidence集合（#310 / #255 / #308）には含まれません
-- `#310`のsynthetic Evidenceおよび`#308`のPostgreSQL ephemeral fixture Evidenceを、actual Oracle Evidenceへ格上げしていません
-- 第一Web Target側でphysical object / column / SQL / datatype / driver behavior / read-only方式を推測・補完しません
-- 取得が必要になった場合は、別途actual Oracle Evidenceとして取得し、本Baselineまたはsuccessor Baselineへ追加参照します
+- 必須の検証根拠（#310・#255・#308）には含めません
+- `#310`の合成データによる検証根拠と`#308`のPostgreSQLの一時的な試験用環境による検証根拠を、実際のOracleの検証根拠には格上げしていません
+- 最初のウェブ実行先側で、物理的な構成要素・列・SQL・データ型・ドライバーの動作・読取り専用の方式を推測して補いません
+- 取得する必要が生じた場合は、実際のOracleの検証根拠を別途取得し、この基準版または後継の基準版から追加で参照します
 
 ## Gate C開始条件との対応
 
-[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)の「Gate C開始条件」を本Baselineに対して確認します。
+[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)が定める「Gate C開始条件」を、この基準版について確認します。
 
 - [x] Gate B Ready
 - [x] Handover Baseline `B / R`を固定（本記録）
@@ -148,11 +148,11 @@ final runner exit codeや`childArtifactsRetained = true`だけでReadyを宣言�
 - [x] actual Oracle等のexternal Evidenceをverified / unresolvedとして明示できる（上記「actual Oracleの扱い」= unresolved）
 - [x] unresolvedを明示できる（同上）
 
-第一Web Target（`ISSUE-000007` / GitHub #70）は本Baseline `B / R`を比較対象とし、Target build identity `T1`を`R`と分離して追跡します。
+最初のウェブ実行先（`ISSUE-000007`／GitHub #70）では、この基準版`B / R`を比較対象とし、実行先の構築版の識別情報`T1`は`R`と区別して追跡します。
 
 ## baseline変更時
 
-Target実装中にCanonical / Driver meaningの変更が必要になった場合、本`B / R`へ黙って継続せず、`GATE_B_TO_C_HANDOVER_CONTRACT.md`の「meaning変更時はsuccessor Handover」手順に従い、新しいrevision `R2`でGate B Evidenceを再取得し、`#273`で再監査したうえでsuccessor Handover `B2 / R2`を発行します。
+実行先の実装中に正本やドライバーの意味を変更する必要が生じた場合は、この`B / R`のまま暗黙に作業を続けません。`GATE_B_TO_C_HANDOVER_CONTRACT.md`の「意味の変更時は後継の引継ぎ基準版を発行する」手順に従い、新しい版`R2`で判定段階Bの検証根拠を取得し直します。その後、`#273`で再監査し、後継の引継ぎ基準版`B2 / R2`を発行します。
 
 ## 関連
 
