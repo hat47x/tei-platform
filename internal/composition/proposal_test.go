@@ -146,3 +146,101 @@ func TestInspectWiringConcurrentCatalogUpdates(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInspectWiringSetConsistentRevisionAndScope(t *testing.T) {
+	r := NewRegistry()
+	snap, err := r.Apply(0, []Provider{
+		{ID: "data", Scope: "tenant-a", Offers: probeRead},
+		{ID: "application", Scope: "tenant-a", Offers: probeApp, Requires: []Dependency{{Contract: probeRead}}},
+		{ID: "outsider", Scope: "tenant-b", Offers: probeRead},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a"},
+		{Contract: probeApp, Scope: "tenant-a"},
+	})
+	if out.Revision != snap.Revision || out.Scope != "tenant-a" || out.Verdict != ProposalCandidate || len(out.Findings) != 2 {
+		t.Fatalf("invalid proposal snapshot: %+v", out)
+	}
+	if out.Findings[0].Selected == nil || out.Findings[1].Selected == nil {
+		t.Fatalf("not all requirements evaluated: %+v", out)
+	}
+	if out.Findings[0].Selected.Revision != out.Revision || out.Findings[1].Selected.Revision != out.Revision {
+		t.Fatalf("mixed revision in one evaluation: %+v", out)
+	}
+	if out.Findings[1].Selected.Dependencies[0].ProviderID != "data" {
+		t.Fatal("dependency not resolved")
+	}
+	// A batch must not bridge tenants without a separate authorization.
+	mixed := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeRead, Scope: "tenant-a"},
+		{Contract: probeRead, Scope: "tenant-b"},
+	})
+	if mixed.Verdict != ProposalUnknown || len(mixed.Findings) != 2 || mixed.Findings[0].Selected != nil || mixed.Findings[1].Selected != nil ||
+		mixed.Findings[0].Reason != ReasonMixedScopes || mixed.Findings[1].Reason != ReasonMixedScopes {
+		t.Fatalf("mixed tenant batch leaked candidates: %+v", mixed)
+	}
+	if got := r.InspectWiringSet(nil); got.Verdict != ProposalUnknown || len(got.Findings) != 0 {
+		t.Fatalf("empty batch treated as complete: %+v", got)
+	}
+}
+
+func TestInspectWiringSetConflictTakesPrecedenceOverUnknown(t *testing.T) {
+	r := NewRegistry()
+	if _, err := r.Apply(0, []Provider{
+		{ID: "data-a", Scope: "tenant-a", Offers: probeRead},
+		{ID: "data-b", Scope: "tenant-a", Offers: probeRead},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	result := r.InspectWiringSet([]WiringRequirement{
+		{Contract: probeApp, Scope: "tenant-a"},
+		{Contract: probeRead, Scope: "tenant-a"},
+	})
+	if result.Verdict != ProposalConflict || result.Findings[0].Verdict != ProposalUnknown || result.Findings[1].Verdict != ProposalConflict {
+		t.Fatalf("uncertain and conflicting requirements collapsed: %+v", result)
+	}
+}
+
+func TestInspectWiringSetNoMixedEpochUnderConcurrentUpdates(t *testing.T) {
+	r := NewRegistry()
+	start, err := r.Apply(0, []Provider{{ID: "data", Scope: "tenant-a", Offers: probeRead}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		rev := start.Revision
+		for i := 0; i < 50; i++ {
+			next, err := r.Apply(rev, nil, []string{"data"})
+			if err != nil {
+				done <- err
+				return
+			}
+			rev = next.Revision
+			next, err = r.Apply(rev, []Provider{{ID: "data", Scope: "tenant-a", Offers: probeRead}}, nil)
+			if err != nil {
+				done <- err
+				return
+			}
+			rev = next.Revision
+		}
+		done <- nil
+	}()
+	reqs := []WiringRequirement{{Contract: probeRead, Scope: "tenant-a"}, {Contract: probeRead, Scope: "tenant-a"}}
+	for i := 0; i < 100; i++ {
+		set := r.InspectWiringSet(reqs)
+		a, b := set.Findings[0], set.Findings[1]
+		if a.Verdict != b.Verdict || a.Reason != b.Reason {
+			t.Fatalf("batch contains two registry states: %+v", set)
+		}
+		if a.Selected != nil && (b.Selected == nil || a.Selected.Epoch != b.Selected.Epoch || a.Selected.Revision != set.Revision || b.Selected.Revision != set.Revision) {
+			t.Fatalf("batch contains two provider epochs: %+v", set)
+		}
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
