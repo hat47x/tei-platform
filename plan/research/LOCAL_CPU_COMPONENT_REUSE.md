@@ -100,3 +100,13 @@ Node.js 22.16.0の別作業ディレクトリで `node --test` により **14/14
 この結果は一つのApplicationのAuthoring Sourceに関する観測であり、**Accepted Canonical上の業務意味・Action契約・実装の可換性を示すものではない**。観測結果は契約fingerprint未確認のためcandidate比較器へ自動投入しない。二つ目の実Applicationを作り出して成立したことにはしない。
 
 比較器14件＋追加回帰3件はGitHub格納ソースを隔離JavaScript評価器で実行して **17件成功**。観測器の実TEI Source内容を使ったローカルNode試験は **7件成功**。いずれも**exact PR HEADのcheckoutによるfull Repository-health資格化ではない**。研究段階の次のGateは、実Accepted Canonical／Contractへのread-only Feature Projectionを既存の#267/#1121/#951の境界で取得し、許可済み二Applicationの類似候補に接続することである。
+
+### R0から既存Canonical Read APIへの接続（2026-10-13）
+
+TEI `main` の `internal/operations/inspect.go` に `InspectSubject`（`tei.operations.inspect/v0`）があり、`workspace.Load` の正規化 `ir.World` と既存Source Indexを用いて対象をexact kind＋IDで参照している。新しいTEI DSLパーサーや独立したGraph検索機構を増やさず、**この型付きOperationが返した観測をFeature Projectionに変換する**ことをR0の中核とする。
+
+`reference/local-cpu-reuse/project-inspection-v0.mjs` を追加した。Application membership、Application Pattern、Semantic Relation、Semantic Data（属性型、Relation、Candidate Key、FD）を入力として、出典のWorld／Source Index fingerprintと、抽出可能な構造、未対応項目のdiagnosticを保持する。Pattern→RelationとApplication→Patternは、同じ二種類のfingerprintを持つ観測上の明示IDが一致した場合のみ**宣言済み参照**として扱う。いずれも `accepted:false` であり、Source Indexの参照や `InspectSubject` の成功からAcceptanceを推定しない。
+
+特に `InspectSubject` v0は単独のSemantic Capabilityを直接返す対象種別に含まない。このため、`application-pattern.capability`のIDだけからCapabilityのtyped IO、Outcome、Data Effect、Provider Authorityを推定できない。業務ロジックの実装置換判断は現段階では**保留**する。後続で需要が確認された場合は #1165／Semantic ownerの型付きread-only Operation拡張を検討し、第二Parser／第二Worldを作らない。
+
+新たな2組の合成`inspect/v0` fixtures（Go構造体に合わせた形）を使用した23ケースは、GitHub上の該当コードを再取得した隔離JS評価器で全成功した。**実`tei inspect`コマンド、Go Workspace Load、複数ApplicationのSource Identity取得、trusted exact-head Repository-healthは未実行**である。R0の次の検証は実Operationの戻り値をこのAdapterへ与えるE2Eであり、モデル蒸留（R2）は#843/#876の停止条件を解除しない限り開始しない。
