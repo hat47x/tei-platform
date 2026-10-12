@@ -189,9 +189,9 @@ func TestE20TwoConsumerHostUsesApplicationOwnedActions(t *testing.T) {
 func TestE20CompositionCannotCrossBindOrBypassAuthority(t *testing.T) {
 	tests := []struct {
 		name, app, resource, action, revision string
-		payload                             any
-		deny                                bool
-		want                                int
+		payload                               any
+		deny                                  bool
+		want                                  int
 	}{
 		{"SUI action claimed by order-entry", "order_entry", "order-1", "sui.move", "order-v1", actionboundary.MovePayload{CardID: "card-1", X: 2, Y: 3}, false, http.StatusBadRequest},
 		{"order action claimed by SUI", "sui", "doc-1", "order_entry.submit_order", "sui-v1", e20OrderPayload{OrderID: "order-1"}, false, http.StatusBadRequest},
