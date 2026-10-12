@@ -347,3 +347,40 @@ go test ./tools/reference-shared-acceptance -count=1
 ```
 
 testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscratch copyだけを使います。最初のtestは、scratch copyから得たCanonical Worldが`reference/world.json`とbyte単位で一致すること（実際のReferenceで試していること）を確認します。
+
+
+## 既存Dataへの候補キー・関数従属性の型付き追加（#1126）
+
+`add-candidate-key` と `add-functional-dependency` は、前段でSemantic DSLへ導入した**明示的な論理規則の追加**だけを、通常のShared Acceptance経路でPreview・Review・AcceptするためのReferenceです。既存DataのSource Indexに対応するauthoritative `.tei` ファイルを自動特定し、Dataの外側の閉じ括弧直前へ宣言を挿入します。規則内部に入れ子の波括弧があっても外側のDataを正確に識別し、元のソースの他のバイトを変更しません。
+
+```json
+{
+  "op": "add-candidate-key",
+  "addCandidateKey": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.business_line",
+    "symbol": "businessLine",
+    "attributes": ["sales.order_line.order_line_id", "sales.order_line.line_number"]
+  }
+}
+```
+
+```json
+{
+  "op": "add-functional-dependency",
+  "addFunctionalDependency": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.item_by_line",
+    "symbol": "itemByLine",
+    "determinants": ["sales.order_line.order_line_id", "sales.order_line.line_number"],
+    "dependents": ["sales.order_line.item_code"]
+  }
+}
+```
+
+上記は通常の`tei.reference.change-candidate/v0`における`delta`の要素であり、単独で受理できるJSONではありません。実行には`baseModelRevision`、`origin`、`intent`、現行Sourceに対応するEvidence、Review fingerprint、明示的Accept decision等の既存の条件が適用されます。
+
+- 未存在Data・属性、Data外の属性、重複属性、既存あるいは同じcandidate内で衝突する規則ID、識別子とsymbolの不一致、placementの偽装、混在したpayloadは拒否します。対象Dataの出所を解決できない場合にも、ほかのファイルへ恣意的に書き込まず停止します。
+- Previewは規則を`candidate-key:<id>`、`functional-dependency:<id>`として**異なるSemantic subject差分**に記録します。影響解析では対象Dataと使用属性の正確な参照を示し、`LOGICAL_BUSINESS_RULE_UNVERIFIED`で業務上の妥当性・候補キー最小性・物理PK/FK対応が未確認であることを残します。
+- 物理DBのPK/UNIQUE/FK/Index、Persistence Mapping、Migrationには変更を加えません。Canonicalな規則宣言が追加されることと、業務上の規則が実証・承認されることは別です。
+- 今回は**追加のみ**です。既存規則の変更・削除、ER図UI操作、実データ検証による保証、論理から物理へのmapping、自動DDL生成は未対応とし、無理に既存の`add-relation`や別操作で代用しません。
