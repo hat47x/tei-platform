@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"tei/internal/core"
@@ -8,6 +10,19 @@ import (
 	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/plugin/transform"
 )
+
+func bootstrapTestMetaSource(t *testing.T) transform.Source {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(transformMetaSourcePath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source, err := transform.ParseSourceJSON(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return source
+}
 
 func bootstrapTestEngine() pruntime.RuntimeEngineIdentity {
 	return pruntime.RuntimeEngineIdentity{
@@ -20,7 +35,7 @@ func bootstrapTestEngine() pruntime.RuntimeEngineIdentity {
 }
 
 func TestTransformBootstrapComparisonFingerprintIgnoresStageExecution(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := bootstrapTestMetaSource(t)
 	base := transformBootstrapComparisonFingerprint(
 		"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -52,7 +67,7 @@ func TestTransformBootstrapComparisonFingerprintIgnoresStageExecution(t *testing
 }
 
 func TestTransformBootstrapStagePlanFingerprintBindsExactExecution(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := bootstrapTestMetaSource(t)
 	seed := plugin.BuilderIdentity{
 		ID:              core.MustCanonicalID("tei.builder.transform_seed.test"),
 		Version:         "seed-a",
@@ -127,7 +142,7 @@ func TestTransformBootstrapStagePlanFingerprintBindsExactExecution(t *testing.T)
 }
 
 func TestBuilderIdentityFromTransformSourcePreservesLogicalIdentity(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := bootstrapTestMetaSource(t)
 	digest := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	got := builderIdentityFromTransformSource(source, digest)
 	if got.ID != source.Identity.ID ||
@@ -142,7 +157,7 @@ func TestBuilderIdentityFromTransformSourcePreservesLogicalIdentity(t *testing.T
 }
 
 func TestTransformBootstrapStagePlanRejectsExecutionIdentityConfusion(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := bootstrapTestMetaSource(t)
 	seed := plugin.BuilderIdentity{
 		ID:              core.MustCanonicalID("tei.builder.transform_seed.test"),
 		Version:         "1.0.0",

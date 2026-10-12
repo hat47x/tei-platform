@@ -285,3 +285,36 @@ Go 1.23.2の隔離作業領域で、これらを含む`go test -race -count=1 ./
 C1 [#1165](https://github.com/hat47x/tei-platform/issues/1165) の `tei trace` は、`#1139` の本Modelref契約と、`#1169` のCLI inspect/operations境界が双方とも検証・統合された後に接続する。Web/Desktopも同じ型付き操作を呼び、argvやJSONの形式はAdapterが所有する。`Source Index` の元定義への案内は `sourcebridge` の検証済みNavigationを使い、Edgeの存在だけで書込み許可を与えない。
 
 スコープ・Graph版・Policy版、Host側の情報開示・認可、秘匿Evidenceの伏字化、ページ取得間の情報鮮度については、実アダプターでの追加受入検証を必要とする。今回のGoのテストコード追加は実行成功の証明ではない。統合には、対象のexact headにおけるリポジトリ全体のHealth Checkが引き続き必要となる。
+
+## R7 — 変更影響の「空」と「未解決」を区別する（2026-10-12）
+
+PR #1139がmainへ統合された後、現行`modelref.Impact`を再点検したところ、`Validate`が`conflicting-rule`を検出する一方、`Impact`は競合する二つの拡張規則を個別に採用して影響先候補を生成できることが判明した。たとえば`function --reads--> data`の表示名依存がfalseとtrueで競合した場合、true側の規則を選び、表示名変更の波及先を誤って提示し得る。
+
+今回の対応は次のとおり。
+
+- `Impact`の逆向き索引構築では、`(relation, fromKind, toKind)`に対応する拡張規則を一意に選ぶ。**矛盾した規則・無効な規則・参照元/先の重複・不完全な辺の根拠**は、影響経路として使わない。
+- 新しい`ReviewImpact`は、Graph全体と変更対象を`Validate`に通し、診断があれば`GraphValid=false`と`Diagnostics`を返す。未解決な参照があるときに`Affected=[]`だけを返して「影響なし」と誤読させない。
+- `GraphValid=true`であっても、**それは渡された候補Graphと拡張規則の構造検査が成功したことだけ**を表す。元Source revisionの正当性、受理済み意味、権限、実行時の更新効果を証明しない。
+- `Impact`の従来のシグネチャーは維持し、`ReviewImpact`を追加の安全な利用口とする。新しい表や図の消費側は`ReviewImpact`の診断を先に確認してから影響一覧を表示する。
+
+負例は拡張規則の競合、参照先の欠落、派生出典の不足、未知の変更分類、存在しない変更元。正例はData→Function→Task/Formの3件の影響と、表示名に依存しないedgeでは影響が空になるケース。
+
+この改修は#1120の共通契約に閉じるもので、#1124のStudioや#1125の業務手順を推測して実装せず、既存`ir.World`・Source Index・Shared Acceptance・Runtimeを変更しない。
+
+**資格確認:** 本PRの正確なコミットでの`go test -race -count=1 ./internal/modelref/... ./internal/workspace`、`tools/repository-health-check.sh`、作業ツリーの事前/事後clean状態はまだ取得できていない。従来の#1139の統合事実を、本追加変更の品質保証や受理証拠へ読み替えない。完了まではDraftとする。
+
+## R8 — 変更前後の両Snapshotによる影響確認（2026-10-12）
+
+`ReviewImpact(before, changes, rules)`は従来の`Impact`が扱う**変更前モデルの既存Consumer**には使えるが、`added`には新要素が存在しない。変更前だけの結果が空でも、新しい要素に依存する機能が変更後モデルに増えていれば影響候補が存在する。
+
+- 変更前しか入力のない`ReviewImpact`で`added`を受け取った場合は`after-snapshot-required`とし、`GraphValid=false`にする。過去のGraphに存在しない要素を正常にレビュー済みと断言しない。
+- `ReviewImpactDiff(before, after, rules)`を追加した。双方を型・循環・根拠について検査し、いずれかに診断があれば`Affected`を返さず未確定として示す。
+- 両Graphが整合する候補である場合、`Diff`の`added`を**変更後**、`removed`を**変更前**のGraphで辿る。version/evidence/参照関係の変更は**両方**を辿り、導入直後の新たなConsumerも回収する。重複する同じ`Changed/Consumer/Reason`はまとめ、決定的に整列する。
+- 改名を自動認定することはない。`order-line`を`order-detail`に変更した場合、`Diff`はadd/removeを維持する。明示`Transition`の意味継承審査は別途`ReviewMigration`が担当する。
+- 結果の`GraphValid`は、**二つの候補Graphと規則の局所整合性のみ**を表す。Sourceファイルrevisionの同一性、AI提案の受理、Shared Acceptance、実行時の副作用を実証しない。
+
+回帰テストは、Dataの追加に伴って新たにFunction→Task/Formの逆向き影響を拾えること、変更後の参照が欠落する場合に結果を未確定にすること、同一DataのVersion変更後に追加されたConsumerを見逃さないことを対象とした。
+
+### 完了の制限
+
+ここまでの実装は`internal/modelref`に閉じた読み取り専用の契約である。正式な完了には、`tools/repository-health-check.sh`と実Workspace統合試験の完全な実行、変更前後の正本となるSource revisionの束縛、AI提案と旧資産の受理前後を追う実シナリオが必要。**追加したテストはまだtrusted full checkoutで実行していない。**
