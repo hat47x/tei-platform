@@ -1,14 +1,14 @@
-# TEI Master Plan
+# TEI開発全体の計画
 
 ## 目的
 
-この文書は、TEI（鼎／テイ）のProduct Value / Requirementsを開発workstreamへ分解し、現在の主線と並行可能な作業を示すための上位計画です。
+この文書は、TEI（鼎／テイ）の製品価値と要求を開発上の作業領域（Workstream）へ分け、現在優先する作業と並行して進められる作業を示す上位計画です。
 
-期限は置きません。優先順位は実装量ではなく、**TEIの中心価値に関する不確実性をどれだけ減らせるか**で見直します。
+期限は設けません。優先順位は実装量ではなく、**TEIの中心価値に関する不確実性をどれだけ減らせるか**で見直します。
 
-履歴の蓄積ではなく、現在のplanning baselineを保持します。過去の判断経緯はGit history、ADR、Repository Issueから追跡します。
+この文書では判断履歴を積み重ねず、現在の計画の基準を保持します。過去の判断経緯はGitの履歴、ADR、リポジトリのIssueからたどります。
 
-関連:
+関連文書:
 
 - `product/`
 - `requirements/`
@@ -47,7 +47,7 @@ Gate C — PAS-04 Evidence — Ready
         └──────── Second Target pressure-test lane — PAS-04 / RQ-024
 ```
 
-Gate C後のAuthoring / Knowledgeと第二Targetは、互いの完成待ちにはしません。第一Targetから得た差とEvidenceを共有しながら並行できます。
+Gate C後は、Authoring・Knowledgeと第二Targetの作業を、互いの完成を待たずに進めます。第一Targetから得た差分とEvidenceを共有しながら並行できます。
 
 ## 現在のGate / Handover
 
@@ -73,7 +73,7 @@ PostgreSQL以外の実Database Provider Evidence（第一Referenceの具体例�
 
 ### Handover Baseline — Gate B → Gate C
 
-Handoverは新しい番号付きGateではありません。
+引継ぎ（Handover）は、新しい番号付きGateではありません。
 
 Gate B Readyのcandidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`は、Handover Baseline `B`として固定済みです。個別記録の正本は `GATE_B_TO_C_HANDOVER_BASELINE_B.md` です。
 
@@ -84,7 +84,7 @@ Handover Baseline B
   baselineRepositoryRevision = R
 ```
 
-Handover recordはCanonicalの第二正本ではありません。
+引継ぎの記録（Handover record）は、Canonicalの第二の正本ではありません。
 
 ### Gate C — 第一Targetとの差をEvidenceで説明できる
 
@@ -92,7 +92,7 @@ Handover recordはCanonicalの第二正本ではありません。
 
 第一Web TargetはHandover Baseline `B` / revision `R`を意味baselineとして利用します。
 
-Web実装revisionは`T1`として別に追跡します。
+Web実装のリビジョンは`T1`として別に追跡します。
 
 ```text
 Baseline meaning B at R
@@ -110,7 +110,7 @@ Gate Cでは次を分離します。
 2. Interaction / Functional Evidence
 3. Visual Fidelity Evidence
 
-Visual evaluator / VLM / screenshot scoreだけでSemantic / Functionalを合格にしません。
+画像評価者、VLM、スクリーンショットの評価点だけを根拠に、SemanticやFunctionalを合格にはしません。
 
 ## Workstream A: Product Baseline / Traceability
 
@@ -134,13 +134,13 @@ Evidence
 Gate / Product claim
 ```
 
-PASはcoverage scoreではなく、Requirementと実証をつなぐtrace単位として扱います。
+PASは単なる網羅率の指標ではなく、要求と実証を結び付ける追跡単位として扱います。
 
 ## Workstream B: Semantic / Authoring / Knowledge
 
 ### 目的
 
-業務上の意味をauthoring sourceから再構成し、複数Projectionから同じCanonical meaningを扱える基盤を育てます。
+業務上の意味を定義元のソースから再構成し、複数のProjectionから同じCanonicalな意味を扱える基盤を整えます。
 
 ### 対象
 
@@ -153,7 +153,7 @@ PASはcoverage scoreではなく、Requirementと実証をつなぐtrace単位�
 
 Application Patternはv1ではApplication所有です。第一ReferenceだけからSemantic Kernelの標準Catalogへ持ち上げません。
 
-AI向けKnowledge、検索index、embedding、trajectory等はderivedとして扱い、Canonicalの第二正本にはしません。
+AI向けの知識、検索インデックス、埋め込み表現、処理の履歴などは派生情報として扱い、Canonicalの第二の正本にはしません。
 
 Gate C後のread-only探索は`ISSUE-000047`でPAS-06として実証します。
 
@@ -176,7 +176,7 @@ Gate C後のread-only探索は`ISSUE-000047`でPAS-06として実証します。
 
 actual external assetは、観測事実とCanonical contractを分離します。
 
-未観測のphysical object / column / SQL / datatypeを推測しません。
+実際には観測していない物理オブジェクト、列、SQL、データ型を推測で補いません。
 
 成熟したReference Modelの転写は`ISSUE-000078` / `REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`で扱います。転写で必要になった業務・設計概念は原則Semantic Extension / Pluginとして表し、X-TEA固有schemaをCoreへ直接追加しません。外部model本体をpublic fixtureへコピーせず、exact input digest、Source locator、mapping、loss / unresolved、Conformance Evidenceから再現します。
 
@@ -188,7 +188,7 @@ Desired / Actual / Diff / Migration / Provider境界を、Provider固有知識�
 
 PostgreSQLは深い実証Providerとして利用します。
 
-異なるProviderは、既存資産互換とprovider-neutral境界の圧力試験に利用します。Oracleは第一Referenceの`master_data`が持つ既存資産としての最初の具体例であり、要件がOracleに限られるわけではありません。MySQL、SQL Server等を加えるかは、具体的な既存資産や利用条件が現れた時点で決め、Oracleと同じEvidence契約（物理事実の観測、read-only境界、driver assembly、actual read）で検証します。
+異なるProviderは、既存資産との互換性と、特定Providerに依存しない境界を厳しく検証するために利用します。Oracleは第一Referenceの`master_data`が持つ既存資産としての最初の具体例であり、要件がOracleに限られるわけではありません。MySQL、SQL Server等を加えるかは、具体的な既存資産や利用条件が現れた時点で決め、Oracleと同じEvidence契約（物理事実の観測、read-only境界、driver assembly、actual read）で検証します。
 
 actual Oracle Evidence未完了をGate B blockerへ戻しません。
 
@@ -208,7 +208,7 @@ actual Oracle Evidence未完了をGate B blockerへ戻しません。
 - separate Observation read
 - deterministic Scenario
 
-Driverは本番Runtimeの簡易版ではなく、設計検証の基準線です。
+Driverは本番Runtimeを簡略化したものではなく、設計を検証するための基準です。
 
 ## Workstream F: Target-neutral Presentation
 
@@ -238,7 +238,7 @@ Gate C後、`ISSUE-000026`で第二Targetを選びます。
 - Semantic / Functional / Visual Evidence
 - RQ-024 performance measurement
 
-第一TargetだけでTarget-neutral taxonomyを完成扱いしません。
+第一Targetだけで、Targetに依存しない分類体系が完成したとは判断しません。
 
 ### Studio HostとApplication Targetを分ける
 
@@ -284,13 +284,13 @@ Shared Acceptance Boundary
 reload / Conformance
 ```
 
-mandatory authored Stable IDやStudio専用Acceptance engineを導入しません。
+手動で記述するStable IDの必須化や、Studio専用のAcceptance engineは導入しません。
 
 ## Workstream H: AI-assisted Engineering
 
 ### 目的
 
-AIを大量生成器ではなく、既存知識探索、変更候補、検査、Decision支援へ接続します。
+AIを大量の成果物を生成するだけの仕組みとせず、既存知識の探索、変更候補の作成、検査、意思決定の支援に利用します。
 
 ### 二段階
 
@@ -320,7 +320,7 @@ Coreと外部実行基盤の境界を、実利用に耐える形へ段階的に�
 - supply-chain Evidence
 - compatibility policy
 
-外部orchestrator / agent frameworkが提供する一般機能をTEI固有価値として再実装しません。
+外部のオーケストレーターやエージェント基盤が提供する汎用機能を、TEI固有の価値として再実装しません。
 
 ## Workstream間の依存
 
@@ -341,7 +341,7 @@ B Semantic / Knowledge ───┬── C Application / Legacy
                  I Production Boundary
 ```
 
-完全な直列ではありません。Gate C後はStudio / AI / knowledge-firstと第二Targetを並行できます。
+作業は完全な直列ではありません。Gate C後は、Studio・AI・既存知識の探索と第二Targetを並行して進められます。
 
 ## 2026-10 Research Integration — Product Valueへ戻す
 
@@ -365,11 +365,11 @@ local SLM / LLM
 external LLM
 ~~~
 
-どの段階でも、candidate quality / confidenceはSemantic applicability、Acceptance、write authority、Runtime authorityを意味しません。最終的なqualification / Validation / Acceptance / authority checkは決定論的境界へ戻します。
+どの段階でも、候補の品質や確信度を、意味上の適用可能性、Acceptance、書込み権限、Runtimeの権限と同一視しません。最終的なqualification / Validation / Acceptance / authority checkは決定論的境界へ戻します。
 
 Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaningへ持ち込まず、Host / Adapter / execution artifact / ABI / Execution Profileの差として観測します。同じSemantic Operationが異なるartifact / Hostでも追跡できることを第二Target pressureへ含めます。
 
-このresearch integrationは、RQ-010 / 013 / 015 / 016 / 021 / 024 / 027〜030の既存Gapを減らすための作業であり、研究を読んだことだけでEvidence tierを変更しません。
+この研究成果の統合は、RQ-010 / 013 / 015 / 016 / 021 / 024 / 027〜030に残る不足を減らすための作業です。研究を参照しただけでEvidenceの段階を変更することはありません。
 
 
 ### 2026-10-09の追加検証候補（評価待ち）
@@ -388,7 +388,7 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとしてISSUE-000078を進めます。対象となる外部Reference Modelは、公開可能性と利用条件を個別に確認します。外部モデルそのものや詳細な派生資料はこの公開Repositoryへ含めません。
 
-これはProduct Gate Dではなく、既存Requirementをまとめて圧迫するEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
+これは新しいProduct Gate Dではなく、既存の要求をまとめて厳しく検証するためのEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
 
 転写中に見つかった不足は、Business Procedure、Lifecycle、change impact、Target、Semantic Extension等の既存Issueへ返します。Runtime / Tool Capabilityの種類をCore固定enumへ追加しないための共通境界はISSUE-000080へ返します。Reference Modelに存在するという理由だけでCore primitiveを追加しません。原モデルの内容は利用条件を確認せずpublic Repositoryへ転載せず、source fingerprint、mapping、loss / unresolved、TEI独自fixtureをEvidenceとして保持します。
 
@@ -436,4 +436,4 @@ Gate B / Gate CのReady判定とhistorical Evidenceは各exact revisionへ固定
 - 汎用Workflow Engine
 - production HA一般化
 
-Reference / Evidenceから必要性が確認される前に固定しません。
+ReferenceやEvidenceで必要性を確認する前に、これらの方式を固定しません。

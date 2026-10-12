@@ -2,29 +2,29 @@
 
 この文書は、TEI（鼎／テイ）の設計・実装で判断に迷ったときに用いる原則を定めます。
 
-原則は個別機能の仕様ではありません。複数の実現方法が成立するとき、どちらがTEIのProduct Valueに近いかを判断するために使います。
+原則は個別機能の仕様ではありません。複数の実現方法が考えられるとき、どの方法がTEIのProduct Valueにより合うかを判断するために使います。
 
 ## P1. Meaning before Realization
 
 業務上の意味を、実装方式より先に置きます。
 
-「PostgreSQLでどう表現するか」「Web画面でどう見せるか」「Goでどう書くか」は重要ですが、その都合を業務概念そのものへ混ぜません。
+PostgreSQLでの表現、Web画面での表示、Goでの実装はいずれも重要です。ただし、それぞれの技術上の都合を業務概念そのものには持ち込みません。
 
 ## P2. CanonicalとProjectionを同一視しない
 
 Canonicalな意味は、一つのファイル形式、一つの画面、一つの表現方法ではありません。
 
-DSL、表、グラフ、UI、自然言語、IRは、それぞれ用途に応じたProjectionになり得ます。Projection側の都合だけでCanonicalな意味を書き換えません。
+DSL、表、グラフ、UI、自然言語、IRは、用途に応じて意味を表すProjectionになり得ます。表現方法の都合だけでCanonicalな意味を書き換えません。
 
 ## P3. 一つの関心事に、暗黙の複数正本を作らない
 
-同じ意味について、複数のauthoritative sourceを無条件に併存させません。
+同じ意味について、複数の正本（authoritative source）を無条件に併存させません。
 
 SQL-authoredなQueryではSQLをauthoritativeにし、Graph-authoredなQueryでは別のCanonical表現をauthoritativeにするなど、どこが正本かを明確にします。Derived artifactからauthoritative sourceへ暗黙に逆書きしません。
 
 ## P4. Identityを物理配置から分離する
 
-file path、DB上の名前、画面位置などを、そのままsemantic identityにはしません。
+ファイルのパス、データベース上の名前、画面上の位置などを、そのまま意味上の識別子（semantic identity）にはしません。
 
 Canonical IDを安定した意味上の識別子として扱い、物理的な配置や実装名は追跡可能な別情報として保持します。
 
@@ -36,23 +36,23 @@ View、Application Pattern、Target、ORM、runtime objectの都合を、busines
 
 SQL、Go、外部設定、既存ツールなど、その領域で成熟した表現を無理にTEI-native DSLへ移し替えません。
 
-TEI-nativeな表現は、意味やlifecycleを明示するために使います。既存のnative assetは、必要な追跡情報を付けたうえでnativeなまま接続できることを基本とします。
+TEI独自の表現は、意味やライフサイクルを明示するために使います。既存の資産は、必要な追跡情報を付けたうえで、元の形式のまま接続できることを基本とします。
 
 ## P6. 実行時の推測より、明示的なBindingを優先する
 
 どのCapability、Provider、Database、Target、Runtimeを使うかは、重要な境界では明示的に決めます。
 
-実行時に「たぶんこれだろう」と選ぶ便利さより、後から同じ判断を再現できることを優先します。
+実行時に推測して選ぶ便利さより、後から同じ選択を再現できることを優先します。
 
 ## P7. ApplicationとDatabaseを一対一に固定しない
 
-一つのApplicationが複数Databaseを利用し、Databaseが複数ApplicationへContractを提供することを通常の構成として扱います。
+一つのApplicationが複数のDatabaseを利用し、一つのDatabaseが複数のApplicationへContractを提供する構成を、通常の構成として扱います。
 
 DatabaseごとのContract、Environment、release、障害境界、transaction境界を明示できる構造を保ちます。
 
 ## P8. 標準化と拡張をCapability境界で両立する
 
-共通的な機能は標準部品として利用できるようにしますが、標準化できない現実を排除しません。
+共通する機能は標準部品として利用できるようにしますが、標準化できない個別事情も排除しません。
 
 認証、認可、帳票、外部連携などは、Capability単位でbuiltin、generated implementation、plugin、既存実装を選べる構造を目指します。
 
@@ -64,17 +64,17 @@ Web、Desktop、Mobile、API、MCP、VUIなどを、同じ上位設計から選�
 
 Target固有の機能は独立したAdapter / Packageへ置き、新しいTargetを追加するためにCoreの意味モデルを書き換えることを基本としません。
 
-Plugin / Extensionのlogical identityを、特定Targetのprocess、binary、Wasm module等の物理境界へ固定しません。同じ意味とCapability contractを、Webではbrowser-compatibleな実装、Desktop / Serverでは別のRuntime実装として実現できる余地を保ちます。
+PluginやExtensionの論理的な識別子を、特定Targetのプロセス、バイナリ、Wasmモジュールなどの物理的な境界に固定しません。同じ意味とCapability contractを、Webではbrowser-compatibleな実装、Desktop / Serverでは別のRuntime実装として実現できる余地を保ちます。
 
 ## P10. CommandとObserved Realityを分ける
 
-命令が受理されたことと、外部世界が期待どおり変化したことを同一視しません。
+命令が受け付けられたことと、外部の状態が期待どおりに変わったことを同一視しません。
 
 ObservationとEvidenceを用い、実際の状態を確認してから完了とみなします。
 
 ## P11. 分からない状態を、分かったことにしない
 
-情報不足、provider差、外部runtime不明、normalization不足などにより一致・不一致を確定できない場合は、Unresolvedとして保持します。
+情報不足、Providerによる違い、外部Runtimeの状態が不明なこと、正規化の不足などによって一致・不一致を判断できない場合は、Unresolvedとして保持します。
 
 自動化の都合で成功、差分なし、安全などへ丸めません。
 
@@ -94,15 +94,15 @@ ObservationとEvidenceを用い、実際の状態を確認してから完了と�
 
 設計変更はShared Acceptance Boundaryを通し、業務遂行はBusiness Action / Semantic Capability / Authorization / Resource / Observationの境界を通します。
 
-AIの会話状態や推論能力を、暗黙の本番Policyや権限根拠にはしません。
+AIの会話状態や推論能力を、暗黙の本番運用ポリシーや権限の根拠にはしません。
 
 ## P13. 厳格な内部規則と、軽い利用体験を両立する
 
 型や境界を曖昧にして操作を簡単に見せるのではなく、内部は厳格に保ちます。
 
-そのうえで、機械が導出できる情報は機械が扱い、一度確認した内容は再利用し、利用者へ同じ質問を繰り返さない設計を優先します。
+そのうえで、機械的に導出できる情報は自動で扱い、一度確認した内容は再利用し、利用者へ同じ質問を繰り返さない設計を優先します。
 
-確認や提案は、必要性が高いときに控えめに行い、利用者が無視・抑制・後から変更できるようにします。
+確認や提案は、必要性が高い場合に限って控えめに行います。利用者が無視したり、抑制したり、後から変更したりできるようにします。
 
 ## P14. 既存システムの複雑さを、移行前提として受け入れる
 
@@ -112,7 +112,7 @@ AIの会話状態や推論能力を、暗黙の本番Policyや権限根拠には
 
 ## P15. 設計・実装・運用を継続的な循環にする
 
-設計内容を、納品後に陳腐化する文書だけにはしません。
+設計内容を、納品後に更新されなくなる文書だけにとどめません。
 
 同じ意味からValidation、Simulation、Generation、Runtime Bindingへ接続し、生成AIが継続的にApplicationを構築・変更できるようにします。
 
@@ -127,17 +127,17 @@ Canonical meaning
   -> canonical meaning
 ```
 
-ただし、derivedな実行結果を無条件にCanonicalへ逆流させません。
+ただし、派生した実行結果からCanonicalな意味を無条件に書き換えることはしません。
 
 ## P16. 小さいCoreと交換可能な外周を保つ
 
-Coreへ個別DB、UI、Runtime、業種固有概念を増やし続けません。データモデル、workflow、UI等の完成した意味体系も、Coreの特権的な上位モデルとして固定しません。
+Coreに個別のDatabase、UI、Runtime、業種固有の概念を増やし続けることはしません。データモデル、workflow、UI等の完成した意味体系も、Coreの特権的な上位モデルとして固定しません。
 
 Coreは、identity、namespace、composition、extension metadata、provenance、Validation / Conformance、authority boundary等、異なる意味体系を安全に接続するための共通機構を中心にします。Type、Relation、Expression、Constraint、Lifecycle等を共通primitiveとして持つ場合も、拡張側から組み合わせ、参照できる形にします。
 
-Coreの価値は語彙の多さではなく、PluginやDSLから新しい意味論を追加しても、既存の意味、追跡性、検証可能性を保てることにあります。
+Coreの価値は、扱える語彙の多さではありません。PluginやDSLから新しい意味論を追加しても、既存の意味、追跡性、検証可能性を保てることにあります。
 
-標準機能も可能な限り同じExtension contractに載せ、依存解決、conflict判定、lock、discoveryも同じ仕組みを使います。実装をbuiltinにすることは許容しますが、標準機能だけが利用できる別の意味追加経路は増やしません。Semantic Extensionの依存集合はRuntime / Toolingの依存集合と分け、Accepted meaningを再現できる単位で固定します。
+標準機能も可能な限り同じExtension contractに載せ、依存解決、conflict判定、lock、discoveryも同じ仕組みを使います。組込み（builtin）による実装は認めますが、標準機能だけが使える別の意味追加経路は増やしません。Semantic Extensionの依存集合はRuntime / Toolingの依存集合と分け、Accepted meaningを再現できる単位で固定します。
 
 同じExtension contractを使うことは、各Extensionを別artifactや別processとして実行することを意味しません。Targetの性能・配布・storage条件に応じて、複数の標準Extensionを一つのartifactへ統合したり、未使用実装を除外したりしても、logical identityと追跡性が失われない構造を優先します。
 
@@ -147,13 +147,13 @@ Coreの価値は語彙の多さではなく、PluginやDSLから新しい意味�
 
 Reference Workspace、fixture、Conformance、Evidenceを、単なるテスト補助ではなく設計の説明可能性を支える資産として扱います。
 
-Referenceは成功例を示すだけのdemoではありません。現実的なReferenceを通常経路で表現・検証・実行できない場合は、その失敗からArchitectureまたはReference設計の不足を見つけます。Reference専用の例外で通すより、Product claimを反証・限定できるEvidenceとして扱います。
+Referenceは、成功例を示すだけのデモではありません。現実的なReferenceを通常経路で表現・検証・実行できない場合は、その失敗からArchitectureまたはReference設計の不足を見つけます。Reference専用の例外で通すより、Product claimを反証・限定できるEvidenceとして扱います。
 
 一つのReferenceだけで汎用性を主張せず、異なるdomainや実現条件へReferenceを増やし、成立範囲を段階的に確かめます。
 
 ## P18. 実装都合による過剰な専門化を避ける
 
-一つのProviderや一つの技術で深い検証を行うことは重要ですが、その実装課題だけでプロダクト全体の優先順位を決めません。
+特定のProviderや技術を深く検証することは重要です。ただし、その実装上の課題だけでプロダクト全体の優先順位は決めません。
 
 Database、Application、Editor、AI支援、Target、Runtimeの各面が、Product Valueに対してどの不確実性を減らすかを見ながら進めます。
 
@@ -169,11 +169,11 @@ Database、Application、Editor、AI支援、Target、Runtimeの各面が、Prod
 
 ## P20. Knowledge reuseはcode reuseより広く捉える
 
-再利用対象をlibraryやsource codeだけに限定しません。
+再利用する対象をライブラリやソースコードだけに限定しません。
 
 Domain model、Relation、Constraint、Procedure、Policy、Variation、Capability contract、Infrastructure binding knowledge、Decision、Evidenceを、適用条件とprovenanceを保ったまま別Applicationへ移植可能な資産として扱います。
 
-copy-pasteによる再利用ではなく、元の意味と移植先との差分を理解できる再利用を重視します。
+単なるコピー・貼り付けではなく、元の意味と移植先との差分を理解できる再利用を重視します。
 
 ## P21. TEI成果物を人間・Application・AIエージェントの共通知識面にする
 
