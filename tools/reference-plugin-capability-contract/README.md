@@ -83,6 +83,8 @@ shape名だけの一致では不十分です。同じshape名でwire schemaが�
 
 shape fingerprintは文字列だけで管理しません。Referenceではrequest / resultのshapeを埋め込みJSON artifactとして保持し、Contractがshape ID、exact fingerprint、issuer identityを参照します。Implementationも同じartifactを提示しなければ実行できません。
 
+形の検証では、JSONを単純なmapへ復号すると同じキーの複数出現が上書きされ、構造上は適合と誤判定されます。このため、JSONの全階層で同じオブジェクト内の重複キーを復号時に拒否します。エスケープで異なる綴りになっていても、復号後のキーが一致すれば重複と判断します。要求はdomain実装を呼ぶ前、応答は受理する前に検査します。異なる明細行に同名属性があることは重複ではありません。読み取り専用の見積もり候補の形も、この拒否条件の負例として用います。これはJSON正規化規約・業務制約・署名・採用済みContract Authorityを追加するものではありません。
+
 Invocation Registryは、requestを実装呼出し前に検証し、resultを呼出し後に検証します。Referenceのshape languageは、JSON object / array / map / scalarとopaque bytesだけを扱う小さなものです。未知field、必須field欠落、JSON型の不一致を共通境界で拒否します。Source AdapterやContract Queryの業務意味はdomain adapter側に残し、schema validationへ移しません。
 
 実Source AdapterとContract Queryのshape artifactは`tools/reference-plugin-capability-contract/shapes/`のJSONを正本とし、Go側は埋め込んで読み込みます。Go literalとJSONを二つの正本にはしません。shape artifact内のissuer変更もfingerprint変更として検出されます。
