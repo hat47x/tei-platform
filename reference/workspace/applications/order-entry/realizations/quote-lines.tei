@@ -1,2 +1,0 @@
-// 現時点のHost側Adapterを表す。独立プロセスの実行権限は付与しない。
-realize sales.order.quote_lines with custom go
