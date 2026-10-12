@@ -66,6 +66,19 @@ test("diagram editing makes an existing Shared Acceptance change-candidate, not 
   assert.deepEqual(ai.delta, out.delta, "Studio/AI change enters the same boundary");
 });
 
+test("visual edits are pinned to their displayed Source revision", () => {
+  const input = { ...edit(), expectedModelRevision: revision };
+  const candidate = candidateFromEdit(fixture(), revision, input);
+  assert.equal(candidate.baseModelRevision, revision);
+  assert.deepEqual(candidate.delta, candidateFromEdit(fixture(), revision, edit()).delta);
+  assert.throws(() => candidateFromEdit(fixture(),
+    "sha256:" + "b".repeat(64), input), /STUDIO_EDIT_STALE_MODEL_REVISION/);
+  assert.throws(() => candidateFromEdit(fixture(), revision,
+    { ...input, expectedModelRevision: "not-a-sha" }),
+    /STUDIO_EDIT_EXPECTED_REVISION_INVALID/);
+  assert.equal(input.expectedModelRevision, revision, "caller edit is unchanged");
+});
+
 test("table edit uses source-owned attribute, never the derived table cell", () => {
   const proposed = candidateFromEdit(fixture(), revision, {
     schema: "tei.reference.studio-edit/v0", id: "candidate-2",
