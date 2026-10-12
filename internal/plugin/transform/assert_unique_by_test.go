@@ -16,23 +16,23 @@ func uniqueByTestSource() transform.Source {
 	return transform.Source{
 		FormatVersion: transform.SourceFormatVersion,
 		Identity: transform.SourceIdentity{
-			ID: core.MustCanonicalID("tei.test.requirement_uniqueness"),
-			Version: "1.0.0",
+			ID:              core.MustCanonicalID("tei.test.requirement_uniqueness"),
+			Version:         "1.0.0",
 			ContractVersion: "tei.plugin-transform/v1",
 		},
 		Profile: transform.ProfileV1,
 		Limits: transform.Limits{
-			MaxSteps: 1000,
-			MaxCollection: 100,
-			MaxInputNodes: 1000,
-			MaxInputBytes: 100000,
-			MaxOutputBytes: 100000,
+			MaxSteps:        1000,
+			MaxCollection:   100,
+			MaxInputNodes:   1000,
+			MaxInputBytes:   100000,
+			MaxOutputBytes:  100000,
 			MaxNestingDepth: 32,
 		},
 		Inputs: []transform.InputSpec{{Name: "dependencies", Kind: transform.InputArray}},
 		Program: transform.Program{
 			Assertions: []transform.Expr{{
-				Op: transform.OpAssertUniqueBy,
+				Op:   transform.OpAssertUniqueBy,
 				From: &array,
 				Item: "dependency",
 				Keys: []transform.Expr{{Op: transform.OpSelectField, From: &member, Field: "plugin"}},
@@ -44,8 +44,8 @@ func uniqueByTestSource() transform.Source {
 
 func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 	cases := []struct {
-		name string
-		records any
+		name      string
+		records   any
 		wantError string
 	}{
 		{name: "distinct keys", records: []any{map[string]any{"plugin": "tei.a"}, map[string]any{"plugin": "tei.b"}}},
@@ -58,8 +58,9 @@ func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			input := valueFromGoJSON(t, tc.records)
 			result, err := transform.Evaluate(uniqueByTestSource(), map[string]transform.Value{
-				"dependencies": valueFromGoJSON(t, tc.records),
+				"dependencies": input,
 			})
 			if tc.wantError != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
@@ -72,6 +73,17 @@ func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 			}
 			if result.Output.Kind != transform.ValueArray {
 				t.Fatalf("output kind %s, want array", result.Output.Kind)
+			}
+			got, err := result.Output.JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, err := input.JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, want) {
+				t.Fatalf("uniqueness assertion mutated a valid input: got %s, want %s", got, want)
 			}
 		})
 	}
@@ -115,7 +127,7 @@ func TestPluginPackageWithoutRequirementsMatchesGoOracle(t *testing.T) {
 				t.Fatal(err)
 			}
 			got, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-				"buildPlan": valueFromGoJSON(t, plan),
+				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
 			})
 			if err != nil {
@@ -123,6 +135,45 @@ func TestPluginPackageWithoutRequirementsMatchesGoOracle(t *testing.T) {
 			}
 			if got.Output.Kind != transform.ValueBytes || !bytes.Equal(got.Output.Bytes, want) {
 				t.Fatalf("valid plugin without requirements diverged from Go package oracle")
+			}
+		})
+	}
+}
+
+func TestAssertUniqueByOptionalCollection(t *testing.T) {
+	source := uniqueByTestSource()
+	definition := transform.Expr{Op: transform.OpInput, Name: "definition"}
+	source.Inputs = []transform.InputSpec{{Name: "definition", Kind: transform.InputObject}}
+	source.Program.Assertions[0].From = &transform.Expr{
+		Op: transform.OpSelectField, From: &definition, Field: "requires", Optional: true,
+	}
+	source.Program.Assertions[0].Optional = true
+	source.Program.Output = definition
+
+	for _, tc := range []struct {
+		name       string
+		definition map[string]any
+		wantError  string
+	}{
+		{name: "missing requirements", definition: map[string]any{}},
+		{name: "null requirements", definition: map[string]any{"requires": nil}},
+		{name: "empty requirements", definition: map[string]any{"requires": []any{}}},
+		{name: "valid requirement", definition: map[string]any{"requires": []any{map[string]any{"plugin": "tei.a"}}}},
+		{name: "nonarray requirement", definition: map[string]any{"requires": "tei.a"}, wantError: "requires array"},
+		{name: "duplicate requirement", definition: map[string]any{
+			"requires": []any{map[string]any{"plugin": "tei.a"}, map[string]any{"plugin": "tei.a"}},
+		}, wantError: "duplicate key"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := transform.Evaluate(source, map[string]transform.Value{
+				"definition": valueFromGoJSON(t, tc.definition),
+			})
+			if tc.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("expected %q, got %v", tc.wantError, err)
+				}
+			} else if err != nil {
+				t.Fatalf("optional requirements were rejected: %v", err)
 			}
 		})
 	}

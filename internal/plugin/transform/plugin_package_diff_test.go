@@ -3,9 +3,6 @@ package transform_test
 import (
 	"bytes"
 	"encoding/json"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -104,19 +101,7 @@ func valueFromGoJSON(t *testing.T, value any) transform.Value {
 
 func referencePluginPackageTransformSource(t *testing.T) transform.Source {
 	t.Helper()
-	_, currentFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve current test file")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", ".."))
-	raw, err := os.ReadFile(filepath.Join(root, "reference", "plugin-self-build", "builder-sources", "plugin-package-v1.transform.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	source, err := transform.ParseSourceJSON(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
+	source, _ := referenceTransformSource(t, "plugin-package-v1.transform.json")
 	return source
 }
 
@@ -162,7 +147,7 @@ func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
 				t.Fatalf("Go materializer must reject repeated dependency, got %v", err)
 			}
 			if _, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-				"buildPlan": valueFromGoJSON(t, plan),
+				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
 			}); err == nil || !strings.Contains(err.Error(), "duplicate key") {
 				t.Fatalf("TEI-native materializer must reject the duplicate key, got %v", err)
@@ -189,7 +174,7 @@ func TestPluginPackageTransformValidRequirementPermutation(t *testing.T) {
 		t.Fatal("valid requirement ordering changed Go package bytes")
 	}
 	teiReversed, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-		"buildPlan": valueFromGoJSON(t, reversedPlan),
+		"buildPlan":        valueFromGoJSON(t, reversedPlan),
 		"pluginDefinition": valueFromGoJSON(t, reversed),
 	})
 	if err != nil {
@@ -200,17 +185,36 @@ func TestPluginPackageTransformValidRequirementPermutation(t *testing.T) {
 	}
 }
 
-func TestReferenceTransformSourceMatchesProgrammaticConstruction(t *testing.T) {
-	fromFile := referencePluginPackageTransformSource(t)
-	fileFP, err := transform.SourceFingerprint(fromFile)
+// Repository Source is authoritative; editing its program must change the
+// output without changing any builder-specific Go constructor.
+func TestReferencePluginPackageSourceControlsOutput(t *testing.T) {
+	source := referencePluginPackageTransformSource(t)
+	before, err := transform.SourceFingerprint(source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	constructedFP, err := transform.SourceFingerprint(transform.PluginPackageSourceV1())
+	edited := source
+	edited.Program.Output.Suffix = "\n#source-change\n"
+	after, err := transform.SourceFingerprint(edited)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fileFP != constructedFP {
-		t.Fatalf("Reference transform Source diverged from construction helper: %s != %s", fileFP, constructedFP)
+	if before == after {
+		t.Fatal("builder Source change did not change its fingerprint")
+	}
+	definition, plan := transformPackageFixture()
+	result, err := transform.Evaluate(edited, map[string]transform.Value{
+		"buildPlan":        valueFromGoJSON(t, plan),
+		"pluginDefinition": valueFromGoJSON(t, definition),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oracle, err := plugin.MaterializePluginPackage(definition, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Output.Kind != transform.ValueBytes || bytes.Equal(result.Output.Bytes, oracle) {
+		t.Fatal("editing TEI-owned builder Source did not change the produced bytes")
 	}
 }
