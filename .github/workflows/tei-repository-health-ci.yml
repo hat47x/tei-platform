@@ -92,6 +92,21 @@ jobs:
           go version
           bash tools/repository-health-check.sh
 
+      # 同一ジョブ・同一Git checkoutでfull healthとE1を結び付ける。
+      # E1固有のReference・18ケース回帰は通常のGo test対象外。
+      - name: External Coordination E1と回帰試験を実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'e1-checked-sha=%s\n' "$GITHUB_SHA"
+          printf 'e1-runner-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/run.sh)"
+          printf 'e1-regression-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/clean-check-test.sh)"
+          bash -n tools/reference-external-coordination/run.sh
+          bash -n tools/reference-external-coordination/clean-check-test.sh
+          bash tools/reference-external-coordination/clean-check-test.sh
+          bash tools/reference-external-coordination/run.sh
+
       - name: 実行後の版と作業領域を確認
         if: always()
         shell: bash
