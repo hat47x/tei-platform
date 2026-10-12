@@ -85,6 +85,21 @@ func TestRegistryPinnedSandboxRequiresSameVerifiedImage(t *testing.T) {
 			t.Fatal("sandbox host policy adapters were not invoked and cleaned")
 		}
 	})
+	t.Run("preferred sandbox also retains the verified image", func(t *testing.T) {
+		preferred := plan
+		preferred.Plugins = append([]pruntime.PluginRuntime(nil), plan.Plugins...)
+		preferred.Plugins[0].SandboxPolicy = plugin.SandboxPreferred
+		net, fs := &netEnforcer{}, &fsEnforcer{}
+		reg := pruntime.Registry{Verifier: pinnedA, Processes: pinnedA, Sandboxes: makeHost(pinnedA, net, fs)}
+		inv, err := invoke(reg, preferred)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !inv.Provenance.Sandboxed || !net.called || !fs.called || !net.cleaned || !fs.cleaned {
+			t.Fatal("preferred sandbox did not use the verified pinned runner")
+		}
+		checkProcessEnvProbe(t, inv.Response, "")
+	})
 	for _, tc := range []struct {
 		name    string
 		make    func(*netEnforcer, *fsEnforcer) pruntime.Registry
