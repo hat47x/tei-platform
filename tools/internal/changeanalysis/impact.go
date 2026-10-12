@@ -147,7 +147,7 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	}
 	for _, id := range sortedKeys(unverifiedBusinessRules) {
 		unresolved = append(unresolved, Unresolved{
-			Code: "LOGICAL_BUSINESS_RULE_UNVERIFIED",
+			Code:    "LOGICAL_BUSINESS_RULE_UNVERIFIED",
 			Message: id + " is an explicit authored assertion; its universal business truth, candidate-key minimality and physical PK/FK mapping have not been verified",
 		})
 	}
