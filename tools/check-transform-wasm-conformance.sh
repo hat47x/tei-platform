@@ -104,6 +104,10 @@ jq -n \
     sourceRevision: $source,
     engineLogicalId: "tei.runtime.engine.deterministic_transform.reference",
     engineContract: "tei.runtime-engine/deterministic-transform-v1",
+    engineVersion: "1.0.0",
+    pluginId: "tei.native.reference",
+    pluginVersion: "1.0.0",
+    pluginBuildPlanFingerprint: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     nativeTarget: "host/linux/amd64",
     wasmTarget: "js/wasm",
     nativeArtifactDigest: $native,
@@ -118,6 +122,19 @@ jq -n \
     wasmReproducible: true,
     crossTargetResultEqual: true
   }' > "$output/conformance-evidence.json"
+
+# Read the serialized receipt back on a separate verification path; neither
+# the reported digest nor the runtime lock may replace physical byte checks.
+TEI_ENGINE_REPLAY_EVIDENCE="$output/conformance-evidence.json" \
+TEI_ENGINE_REPLAY_NATIVE="$output/native-engine" \
+TEI_ENGINE_REPLAY_WASM="$output/engine-first.wasm" \
+  go test -count=1 -run '^TestActualEngineLockReceiptReplaysWithExactFiles
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+ -v \
+    ./internal/plugin/runtime > "$output/receipt-replay-test.log" || {
+      cat "$output/receipt-replay-test.log" >&2
+      exit 1
+    }
 
 cat "$output/conformance-evidence.json"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
