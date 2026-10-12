@@ -28,8 +28,8 @@ func (r *Registry) ProposalCurrent(set WiringSetFinding) bool {
 		// declaration snapshot; supplying the identity-only Binding here
 		// never grants permission to execute that Binding.
 		identity := Binding{
-			ProviderID: selected.ProviderID,
-			ContractID: selected.Contract.ID,
+			ProviderID:      selected.ProviderID,
+			ContractID:      selected.Contract.ID,
 			ContractVersion: selected.Contract.Version,
 		}
 		if r.validateSelectionLocked(selected, identity) != nil {
