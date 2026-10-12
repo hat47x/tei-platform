@@ -44,3 +44,28 @@ For local checks, `go test ./tools/reference-subsystem-cud` and `go vet ./tools/
 候補の`functionIO`で、同じApplication Patternに異なるSubsystemが割り当てられている場合、`IO_PATTERN_SUBSYSTEM_CONFLICT`を未解決として報告します。対象Patternに関する越境更新の診断は、この矛盾が解消されるまで確定しません。読み取り（R）と更新（C/U/D）が混在する場合や、操作対象のDataが異なる場合も、Patternの実行主体については同じ確認が必要です。
 
 一方、一つのSubsystemが同じPatternから複数のDataを扱うことや、他SubsystemのDataを読み取ることだけでは、担当の矛盾とはみなしません。ここで調べるのはあくまで呼出元が記述した候補同士の整合性であり、実際の業務担当や更新権限を認定するものではありません。
+
+## 業務手順資料の版を候補へ結び付ける（任意）
+
+候補の `procedureSteps` が、Worldとは別に保存された業務手順資料に由来するときは、Worldの指紋だけでは鮮度を確認できません。業務手順の本文だけが変わる場合にも古い候補を検出できるよう、`-procedure` を追加しました。
+
+```sh
+go run ./tools/reference-subsystem-cud \
+  -world reference/world.json \
+  -procedure reference/business-system-design/order-entry-business-procedure.json \
+  -facts /path/to/facts.json
+```
+
+使用するときは、候補の `facts.json` に既存の `worldJSONFingerprint` とともに `procedureJSONFingerprint` を設定します。値は対象ファイルの**正確なバイト列**に対する `sha256:<64桁の16進数>` です。`sha256sum` などで求められます。
+
+| 状態 | 診断 |
+| --- | --- |
+| 指紋と入力資料が一致 | 既存の候補検査を続行。出力の `inputFingerprints.procedureJSON` に指紋を記録 |
+| `-procedure` に資料を渡したが候補に指紋がない | `PROCEDURE_SNAPSHOT_UNBOUND`（未解決） |
+| 資料のバイト列が候補作成時から変更された | `PROCEDURE_SNAPSHOT_STALE`（未解決） |
+| 候補には手順資料の指紋があるが、資料を指定しない | `PROCEDURE_SNAPSHOT_UNAVAILABLE`（未解決） |
+| 指定した資料がJSONオブジェクトではない | 入力エラー |
+
+従来のWorldだけを扱う呼出しは維持し、手順資料を結び付けた候補に限って追加の版照合を要求します。この機能は**入力バイト列の一致を確認するだけ**です。業務手順の意味や手順とFunctionの対応関係は既存の業務手順検査器の担当であり、この検査器では再解釈しません。ファイルの出所、Shared Acceptanceによる正式採用、Subsystemの業務上の責任、実際のCUD操作の存在も証明しません。
+
+回帰試験では現行の受注業務手順資料から `BP-04`（手作業）と `BP-07`（明示されたApplication Pattern）を**試験内の候補**として参照し、手作業から機能や更新操作を推測しないこと、およびWorldが同一でも手順資料変更を検知することを確認します。

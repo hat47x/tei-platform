@@ -150,11 +150,12 @@ func run(args []string, output io.Writer) error {
 	flags.SetOutput(io.Discard)
 	root := flags.String("workspace", "", "existing TEI Workspace")
 	appName := flags.String("application", "", "Canonical Application ID")
+	patternName := flags.String("pattern", "", "explicitly declared Pattern ID (inspect references only)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || *root == "" || *appName == "" {
-		return fmt.Errorf("usage: reference-standard-function-candidates -workspace PATH -application ID")
+		return fmt.Errorf("usage: reference-standard-function-candidates -workspace PATH -application ID [-pattern EXPLICIT_ID]")
 	}
 	appID, err := core.ParseCanonicalID(*appName)
 	if err != nil {
@@ -167,12 +168,23 @@ func run(args []string, output io.Writer) error {
 	if ds := validation.Validate(loaded.World); validation.HasErrors(ds) {
 		return fmt.Errorf("Workspace validation failed: %v", ds)
 	}
+	encoder := json.NewEncoder(output)
+	encoder.SetIndent("", "  ")
+	if *patternName != "" {
+		patternID, err := core.ParseCanonicalID(*patternName)
+		if err != nil {
+			return err
+		}
+		report, err := InspectExplicitPattern(loaded.World, appID, patternID)
+		if err != nil {
+			return err
+		}
+		return encoder.Encode(report)
+	}
 	report, err := Project(loaded.World, appID)
 	if err != nil {
 		return err
 	}
-	encoder := json.NewEncoder(output)
-	encoder.SetIndent("", "  ")
 	return encoder.Encode(report)
 }
 

@@ -297,3 +297,105 @@ func TestTrustEvaluationCanonicalizesVerificationFingerprintHexCase(t *testing.T
 		t.Fatalf("valid fingerprint hex case changed Trust decision: %#v", decision)
 	}
 }
+
+func TestIndependentAttestationsForSameArtifactSet(t *testing.T) {
+	plan, set, resultFingerprint := attestationFixture(t)
+	first := signedSetAttestation(t, plan, set, resultFingerprint)
+	second := first
+	second.Issuer = "tei.reference.independent_issuer"
+	second, err := signReferenceAttestation(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The same physical artifact may have multiple immutable attestations.
+	// Issuer identity belongs to the signed payload, not to the artifact.
+	if first.Subject != second.Subject ||
+		first.BuildExecutionResultFingerprint != second.BuildExecutionResultFingerprint {
+		t.Fatal("the two issuers were not bound to the same exact build result and artifact set")
+	}
+	firstFingerprint, err := buildAttestationFingerprint(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondFingerprint, err := buildAttestationFingerprint(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstFingerprint == secondFingerprint {
+		t.Fatal("different issuers were collapsed into one attestation identity")
+	}
+
+	firstVerification, err := verifyBuildAttestation(first, plan, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondVerification, err := verifyBuildAttestation(second, plan, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyA := AttestationTrustPolicy{
+		FormatVersion:    attestationTrustPolicyFormatVersion,
+		Issuer:           first.Issuer,
+		SignatureProfile: referenceFakeSignatureProfile,
+		Predicates:       []string{first.Predicate},
+		Revision:         "issuer-a-1",
+	}
+	policyB := policyA
+	policyB.Issuer = second.Issuer
+	policyB.Revision = "issuer-b-1"
+
+	for _, tc := range []struct {
+		name         string
+		attestation  BuildAttestation
+		verification BuildAttestationVerification
+		policy       AttestationTrustPolicy
+		wantTrusted  bool
+	}{
+		{name: "issuer A own policy", attestation: first, verification: firstVerification, policy: policyA, wantTrusted: true},
+		{name: "issuer B own policy", attestation: second, verification: secondVerification, policy: policyB, wantTrusted: true},
+		{name: "issuer A under B policy", attestation: first, verification: firstVerification, policy: policyB},
+		{name: "issuer B under A policy", attestation: second, verification: secondVerification, policy: policyA},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			decision, err := evaluateAttestationTrust(tc.attestation, tc.verification, tc.policy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if decision.Trusted != tc.wantTrusted {
+				t.Fatalf("issuer-specific trust leaked: trusted=%v, want %v", decision.Trusted, tc.wantTrusted)
+			}
+		})
+	}
+
+	// Rotation/revocation is a fresh policy decision for one issuer.
+	// It neither mutates its attestation nor revokes an unrelated issuer.
+	policyA.Revoked = true
+	policyA.Revision = "issuer-a-2"
+	revokedA, err := evaluateAttestationTrust(first, firstVerification, policyA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	independentB, err := evaluateAttestationTrust(second, secondVerification, policyB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revokedA.Trusted || revokedA.Reason != "issuer-revoked" || !independentB.Trusted {
+		t.Fatalf("revocation affected another issuer: A=%#v B=%#v", revokedA, independentB)
+	}
+	after, err := buildAttestationFingerprint(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after != firstFingerprint {
+		t.Fatal("issuer revocation modified an immutable attestation")
+	}
+
+	// Swapping issuer metadata without a new signature is rejected at the
+	// binding-verification step. This is only a fake-signature Reference.
+	tampered := first
+	tampered.Issuer = second.Issuer
+	if _, err := verifyBuildAttestation(tampered, plan, set); err == nil {
+		t.Fatal("issuer substitution reused a signature for a different payload")
+	}
+}
