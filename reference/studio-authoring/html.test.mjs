@@ -163,6 +163,80 @@ test("future review categories remain visible and explicitly unverified", () => 
   assert.match(page, /&lt;script&gt;bad&lt;\/script&gt;/);
   assert.doesNotMatch(page, /<script>/);
 });
+test("review handoff carries the full unchanged candidate and exact fingerprint", () => {
+  const candidate = {
+    schema: "tei.reference.change-candidate/v0", id: "relation-proposal",
+    origin: { kind: "studio" }, intent: "定義を明示する",
+    baseModelRevision: revision, evidence: [],
+    delta: [{ op: "add-relation", addRelation: {
+      data: "sales.order_line", id: "sales.order_line.order",
+      symbol: "order", target: "sales.order", cardinality: "one"
+    }}]
+  };
+  const p = "sha256:" + "b".repeat(64), reviewFp = "sha256:" + "c".repeat(64);
+  const html = renderStudioHTML({
+    schema: "tei.reference.studio-review-edit/v0",
+    modelRevision: revision, sourceRevisionAfterReview: revision,
+    candidate, explicitAcceptance: "not-performed",
+    sourceWriteByThisCommand: false,
+    preview: { acceptable: true, candidateId: candidate.id,
+      baseModelRevision: revision, currentModelRevision: revision,
+      candidateFingerprint: p },
+    review: { candidateId: candidate.id, candidateFingerprint: p,
+      reviewFingerprint: reviewFp, previewAcceptable: true },
+    reviewConsistency: { status: "reviewed-consistent",
+      readyToAccept: false, candidateFingerprint: p,
+      reviewFingerprint: reviewFp }
+  });
+  assert.match(html, /id="handoff"/);
+  assert.match(html, /id="handoff-candidate"/);
+  assert.match(html, /候補・版・審査の照合済み／人の判断は未実施/);
+  assert.match(html, /relation-proposal/);
+  assert.match(html, /sales.order_line.order/);
+  assert.match(html, /tei.reference.change-candidate\/v0/);
+  assert.match(html, /共通受理機構による再審査/);
+  assert.match(html, /-candidate &quot;\$CANDIDATE&quot;/);
+  assert.match(html, /人が差分・影響・権限・未解決点を確認/);
+  assert.doesNotMatch(html, /<form|<script|onclick=/i);
+});
+test("handoff never presents an unacceptable or unbound review as verified", () => {
+  const result = {
+    schema: "tei.reference.studio-review-edit/v0", modelRevision: revision,
+    sourceRevisionAfterReview: revision, explicitAcceptance: "not-performed",
+    sourceWriteByThisCommand: false,
+    candidate: { schema: "tei.reference.change-candidate/v0",
+      id: "untrusted", baseModelRevision: revision },
+    preview: { acceptable: false, candidateId: "untrusted",
+      baseModelRevision: revision, currentModelRevision: revision,
+      candidateFingerprint: "sha256:" + "d".repeat(64) },
+    review: { candidateId: "untrusted", previewAcceptable: false,
+      candidateFingerprint: "sha256:" + "d".repeat(64),
+      reviewFingerprint: "sha256:" + "e".repeat(64) },
+    reviewConsistency: { status: "not-acceptable", readyToAccept: false,
+      candidateFingerprint: "sha256:" + "d".repeat(64),
+      reviewFingerprint: "sha256:" + "e".repeat(64) }
+  };
+  const h1 = renderStudioHTML(result);
+  assert.match(h1, /未確認・不整合のため受理の案内を保留/);
+  assert.doesNotMatch(h1, /候補・版・審査の照合済み／人の判断は未実施/);
+  const changed = structuredClone(result);
+  changed.preview.acceptable = true;
+  changed.review.previewAcceptable = true;
+  changed.reviewConsistency.status = "reviewed-consistent";
+  changed.sourceRevisionAfterReview = "sha256:" + "f".repeat(64);
+  assert.match(renderStudioHTML(changed), /未確認・不整合のため受理の案内を保留/);
+});
+test("review handoff HTML-encodes malicious candidate JSON without dropping details", () => {
+  const malicious = '<svg onload="alert(1)">&';
+  const html = renderStudioHTML({
+    schema: "tei.reference.studio-review-edit/v0",
+    candidate: { id: malicious, intent: malicious,
+      origin: { kind: "ai" }, delta: [{ arbitrary: malicious }] }
+  });
+  assert.match(html, /&lt;svg onload=&quot;alert\(1\)&quot;&gt;&amp;/);
+  assert.match(html, /id="handoff-candidate"/);
+  assert.doesNotMatch(html, /<svg|<script|onclick=/i);
+});
 test("HTML refuses arbitrary documents, with no default authority", () => {
   assert.throws(() => renderStudioHTML({ schema: "unknown" }),
     /UNSUPPORTED_STUDIO_HTML_SCHEMA/);
