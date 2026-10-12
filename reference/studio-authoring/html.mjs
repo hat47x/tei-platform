@@ -206,7 +206,19 @@ function reviewEdit(view) {
     review.previewAcceptable === preview.acceptable &&
     view.reviewConsistency?.reviewFingerprint === review.reviewFingerprint &&
     view.reviewConsistency?.candidateFingerprint === preview.candidateFingerprint;
+  const fingerprint = x => typeof x === "string" &&
+    /^sha256:[0-9a-f]{64}$/.test(x);
   const reviewVerified = revisionBound && identityBound &&
+    fingerprint(view.modelRevision) &&
+    fingerprint(preview.candidateFingerprint) &&
+    fingerprint(review.reviewFingerprint) &&
+    c.schema === "tei.reference.change-candidate/v0" &&
+    preview.schema === "tei.reference.change-preview/v0" &&
+    review.schema === "tei.reference.approval-review/v0" &&
+    !badShape && missing.length === 0 && duplicate.length === 0 &&
+    extraSections.length === 0 &&
+    reviewSections.every(s =>
+      ["available", "partial", "not-evaluated"].includes(s.coverage)) &&
     view.reviewConsistency?.status === "reviewed-consistent" &&
     view.reviewConsistency?.readyToAccept === false &&
     view.explicitAcceptance === "not-performed" &&
