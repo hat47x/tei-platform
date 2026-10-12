@@ -59,7 +59,7 @@ func (b *sourceSizeBudget) rawJSON(raw []byte) error {
 		// Whitespace outside strings disappears when RawMessage is
 		// compacted. Counting it would reject ordinary valid input near
 		// the byte boundary even though the canonical bytes fit.
-		if !inString && (ch == ' ' || ch == '\\n' || ch == '\\r' || ch == '\\t') {
+		if !inString && (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t') {
 			continue
 		}
 		// The expansion estimate remains conservative for malformed JSON;
