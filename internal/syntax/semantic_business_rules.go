@@ -142,3 +142,36 @@ func (p *Parser) parseSemanticFunctionalDependency(dataID core.CanonicalID) (sem
 	}
 	return fd, nil
 }
+
+// skipSemanticBusinessRuleBody walks the same bounded nested block grammar
+// for source anchors. The canonical parser has already checked attribute
+// identity, duplicates, and the mandatory determinant/dependent sets.
+func skipSemanticBusinessRuleBody(lx *Lexer, kind string) error {
+	for {
+		t, err := lx.Next()
+		if err != nil {
+			return err
+		}
+		if t.Kind == TokenRBrace {
+			return nil
+		}
+		if t.Kind == TokenEOF {
+			return fmt.Errorf("unterminated %s source anchor block", kind)
+		}
+		switch kind {
+		case "candidate-key":
+			if t.Kind != TokenIdent || t.Text != "field" {
+				return fmt.Errorf("expected candidate-key field at %d:%d", t.Start.Line, t.Start.Column)
+			}
+		case "functional-dependency":
+			if t.Kind != TokenIdent || (t.Text != "determinant" && t.Text != "dependent") {
+				return fmt.Errorf("expected functional-dependency determinant or dependent at %d:%d", t.Start.Line, t.Start.Column)
+			}
+		default:
+			return fmt.Errorf("unsupported rule kind %s", kind)
+		}
+		if _, err := expectLexerIdent(lx, "business rule attribute identity"); err != nil {
+			return err
+		}
+	}
+}
