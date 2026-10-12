@@ -29,6 +29,8 @@ type ReviewIssue struct {
 	FrameIDs       []string `json:"frameIds"`
 	RelationID     string   `json:"relationId"`
 	SourceRecordID string   `json:"sourceRecordId"`
+	MatchedTargetIDs []string `json:"matchedTargetIds,omitempty"`
+	PossibleTargetIDs []string `json:"possibleTargetIds,omitempty"`
 	Result         string   `json:"result"`
 	Reason         string   `json:"reason"`
 	Question       string   `json:"question"`
@@ -78,6 +80,8 @@ func reviewProjection(input Input, projection Projection) ReviewPacket {
 				ID: id, Stage: slide.Stage, FrameIDs: []string{slide.ID},
 				RelationID:     finding.RelationID,
 				SourceRecordID: finding.SourceRecordID,
+				MatchedTargetIDs: append([]string(nil), finding.MatchedTargetIDs...),
+				PossibleTargetIDs: append([]string(nil), finding.PossibleTargetIDs...),
 				Result:         finding.Result, Reason: finding.Reason,
 				Question: question, EvidenceNeeded: needed,
 				ReviewTarget: target,
