@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Manual CI workflow contract regression with isolated local Git repositories.
+"""CI workflow contract regression with isolated local Git repositories.
 
+Covers the manual workflows, the automatic workflow's public-PR boundary
+and its main push path.
 Does not execute GitHub Actions or the TEI repository health check.
 Run from the repository root: python3 tools/ci-workflows-test.py
 """
@@ -17,6 +19,10 @@ HEALTH = ROOT / '.github/workflows/tei-repository-health-manual.yml'
 SMOKE = ROOT / '.github/workflows/tei-runner-smoke-manual.yml'
 AUTO_HEALTH = ROOT / '.github/workflows/tei-repository-health-ci.yml'
 REMOTE_URL = 'https://github.com/hat47x/tei-platform.git'
+PER_SHA_GROUP = ('tei-health-${{ github.event_name }}-'
+                 '${{ github.event.pull_request.number || github.sha }}')
+CANCEL_EXPRESSION = "${{ github.event_name == 'pull_request' }}"
+CANCEL_ONLY_PULL_REQUEST = 'cancel-in-progress: ' + CANCEL_EXPRESSION
 
 
 def command(*argv, cwd=None, env=None, check=True):
@@ -87,8 +93,22 @@ def public_pr_boundary_errors(source):
         failures.append('verify isolated candidate head')
     if 'bash tools/repository-health-check.sh' not in source:
         failures.append('do not skip repository health')
-    if 'timeout-minutes:' not in source or 'cancel-in-progress: true' not in source:
+    if 'timeout-minutes:' not in source or CANCEL_ONLY_PULL_REQUEST not in source:
         failures.append('bound runner resource use')
+    return failures
+
+
+def push_path_errors(source):
+    """Static guard for the main push path; does not run GitHub Actions."""
+    failures = []
+    group = re.findall(r'(?m)^  group:\s*(.+)$', source)
+    if group != [PER_SHA_GROUP]:
+        failures.append('push runs must be grouped per commit SHA')
+    cancel = re.findall(r'(?m)^  cancel-in-progress:\s*(.+)$', source)
+    if cancel != [CANCEL_EXPRESSION]:
+        failures.append('only pull_request runs may be cancelled')
+    if 'ls-remote' in source:
+        failures.append('push checks must not depend on the live remote main')
     return failures
 
 
@@ -206,6 +226,126 @@ class WorkflowContract(unittest.TestCase):
         self.check(self.post, False)
 
 
+def auto_push_scripts(path=AUTO_HEALTH, replace_url=None):
+    """Pick the pre and post steps of the automatic workflow by their content."""
+    _, blocks = scripts(path)
+    if replace_url is not None:
+        blocks = [x.replace(REMOTE_URL, replace_url) for x in blocks]
+    pre = [x for x in blocks if '実行前の作業領域の変更' in x]
+    post = [x for x in blocks if '実行後の作業領域の変更' in x]
+    if len(pre) != 1 or len(post) != 1:
+        raise AssertionError('expected exactly one pre and one post step')
+    return pre[0], post[0]
+
+
+class AutoWorkflowPushPath(unittest.TestCase):
+    """Run the push branch of the automatic workflow's pre and post steps.
+
+    Uses isolated local Git repositories only. It does not show how real
+    GitHub Actions push events behave.
+    """
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='tei-ci-push-')
+        self.addCleanup(self.temp.cleanup)
+        top = Path(self.temp.name)
+        upstream = top / 'upstream'
+        self.remote = top / 'remote.git'
+        self.checkout = top / 'checkout'
+        self.sender = top / 'sender'
+        command('git', 'init', '-q', '-b', 'main', str(upstream))
+        git(upstream, 'config', 'user.name', 'TEI CI Fixture')
+        git(upstream, 'config', 'user.email', 'test@example.invalid')
+        (upstream / '.gitignore').write_text('*.ignored\n', encoding='utf-8')
+        (upstream / 'fixture.txt').write_text('baseline\n', encoding='utf-8')
+        git(upstream, 'add', '.')
+        git(upstream, 'commit', '-qm', 'initial')
+        (upstream / 'fixture.txt').write_text('pushed commit\n', encoding='utf-8')
+        git(upstream, 'commit', '-qam', 'pushed commit')
+        command('git', 'clone', '-q', '--bare', str(upstream), str(self.remote))
+        command('git', 'clone', '-q', str(self.remote), str(self.checkout))
+        command('git', 'clone', '-q', str(self.remote), str(self.sender))
+        for directory in (self.checkout, self.sender):
+            git(directory, 'config', 'user.name', 'TEI CI Fixture')
+            git(directory, 'config', 'user.email', 'test@example.invalid')
+        self.pushed_sha = git(self.checkout, 'rev-parse', 'HEAD')
+        self.older_sha = git(self.checkout, 'rev-parse', 'HEAD~1')
+        # If a check reintroduces a live remote lookup, it reads this local
+        # remote instead of the network, so the main-advance case still shows it.
+        self.pre, self.post = auto_push_scripts(replace_url=self.remote.as_uri())
+        self.env = os.environ.copy()
+        self.env.update(GITHUB_EVENT_NAME='push', GITHUB_REF='refs/heads/main',
+                        GITHUB_SHA=self.pushed_sha,
+                        PR_HEAD_SHA='', PR_BASE_SHA='')
+
+    def check(self, script, success, env=None):
+        result = command('bash', '-c', script, cwd=self.checkout,
+                         env=env or self.env, check=False)
+        self.assertEqual(result.returncode == 0, success,
+                         f'exit={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}')
+
+    def advance_main(self):
+        git(self.sender, 'switch', '-q', 'main')
+        (self.sender / 'fixture.txt').write_text('later main update\n', encoding='utf-8')
+        git(self.sender, 'commit', '-qam', 'later main update')
+        git(self.sender, 'push', '-q', 'origin', 'HEAD:refs/heads/main')
+
+    def test_pushed_commit_passes(self):
+        self.check(self.pre, True)
+        self.check(self.post, True)
+
+    def test_main_advanced_after_checkout_still_passes(self):
+        self.advance_main()
+        self.assertNotEqual(
+            self.pushed_sha,
+            git(self.checkout, 'ls-remote', '--exit-code', self.remote.as_uri(),
+                'refs/heads/main').split()[0])
+        self.check(self.pre, True)
+        self.check(self.post, True)
+
+    def test_non_main_ref_rejected(self):
+        for ref in ('refs/heads/work/issue-1189-ci', 'refs/tags/version-1', ''):
+            with self.subTest(ref=ref):
+                env = dict(self.env, GITHUB_REF=ref)
+                self.check(self.pre, False, env)
+                self.check(self.post, False, env)
+
+    def test_head_differs_from_event_sha_rejected(self):
+        env = dict(self.env, GITHUB_SHA=self.older_sha)
+        self.check(self.pre, False, env)
+        self.check(self.post, False, env)
+
+    def test_unsupported_event_rejected(self):
+        env = dict(self.env, GITHUB_EVENT_NAME='workflow_dispatch')
+        self.check(self.pre, False, env)
+        self.check(self.post, False, env)
+
+    def test_assume_unchanged_flag_rejected(self):
+        git(self.checkout, 'update-index', '--assume-unchanged', 'fixture.txt')
+        self.check(self.pre, False)
+        self.check(self.post, False)
+
+    def test_skip_worktree_flag_rejected(self):
+        git(self.checkout, 'update-index', '--skip-worktree', 'fixture.txt')
+        self.check(self.pre, False)
+        self.check(self.post, False)
+
+    def test_untracked_file_rejected(self):
+        (self.checkout / 'out.tmp').write_text('temporary\n', encoding='utf-8')
+        self.check(self.pre, False)
+        self.check(self.post, False)
+
+    def test_ignored_file_rejected(self):
+        (self.checkout / 'out.ignored').write_text('temporary\n', encoding='utf-8')
+        self.check(self.pre, False)
+        self.check(self.post, False)
+
+    def test_modified_tracked_file_rejected(self):
+        (self.checkout / 'fixture.txt').write_text('changed\n', encoding='utf-8')
+        self.check(self.pre, False)
+        self.check(self.post, False)
+
+
 class StaticWorkflowContract(unittest.TestCase):
     def test_health_script_syntax_and_permissions(self):
         text, blocks = scripts(HEALTH)
@@ -296,12 +436,39 @@ class StaticWorkflowContract(unittest.TestCase):
             source.replace('bash tools/repository-health-check.sh',
                            'echo full-health-skipped', 1),
             source + '\n    continue-on-error: true\n',
+            source.replace(CANCEL_ONLY_PULL_REQUEST, 'cancel-in-progress: false', 1),
         ]
-        self.assertEqual(11, len(mutations))
+        self.assertEqual(12, len(mutations))
         for index, changed in enumerate(mutations):
             with self.subTest(index=index):
                 self.assertNotEqual(source, changed)
                 self.assertNotEqual([], public_pr_boundary_errors(changed))
+
+    def test_push_concurrency_is_per_sha_and_cancels_only_pull_requests(self):
+        text, _ = scripts(AUTO_HEALTH)
+        self.assertEqual([], push_path_errors(text))
+        self.assertIn(CANCEL_ONLY_PULL_REQUEST, text)
+        # The old shared group keyed by ref let a later main push cancel it.
+        self.assertNotIn('github.ref }}\n', text)
+
+    def test_push_path_rejects_unsafe_mutations(self):
+        source = AUTO_HEALTH.read_text(encoding='utf-8')
+        mutations = [
+            source.replace('github.event.pull_request.number || github.sha',
+                           'github.event.pull_request.number || github.ref', 1),
+            source.replace('github.event.pull_request.number || github.sha',
+                           'github.event.pull_request.number', 1),
+            source.replace(CANCEL_ONLY_PULL_REQUEST, 'cancel-in-progress: true', 1),
+            source.replace(CANCEL_ONLY_PULL_REQUEST, 'cancel-in-progress: false', 1),
+            source.replace('              test "$GITHUB_REF" = refs/heads/main\n',
+                           '              test "$GITHUB_REF" = refs/heads/main\n'
+                           '              git ls-remote ' + REMOTE_URL + ' refs/heads/main\n', 1),
+        ]
+        self.assertEqual(5, len(mutations))
+        for index, changed in enumerate(mutations):
+            with self.subTest(index=index):
+                self.assertNotEqual(source, changed)
+                self.assertNotEqual([], push_path_errors(changed))
 
     def test_runner_smoke_contract(self):
         text, blocks = scripts(SMOKE)

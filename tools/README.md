@@ -117,7 +117,7 @@
 
 | ファイル | 役割 |
 | --- | --- |
-| [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIやTEI全体検証は実行しない |
+| [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査と、自動健全性CIの公開PR境界・mainへのpush経路（コミットごとの同時実行集合、検査手順のシェル）を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIの実行、実際のpushイベントの挙動、TEI全体検証は扱わない |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
 | [`run-business-procedure-gate-a.sh`](run-business-procedure-gate-a.sh) | 業務手順Gate Aの検証 |
