@@ -68,11 +68,7 @@ func TestE24TypedNativeCandidateRetainsSourceAndShape(t *testing.T) {
 				continue
 			}
 			found = true
-			want := map[string]string{
-				"cardId": "std.text",
-				"x":      "std.decimal",
-				"y":      "std.decimal",
-			}
+			want := map[string]string{"cardId": "std.text", "x": "std.decimal", "y": "std.decimal"}
 			for _, attribute := range data.Attributes {
 				key := attribute.Symbol
 				if string(attribute.TypeRef) != want[key] {
@@ -135,24 +131,12 @@ func TestE24TypedDeclarationDoesNotReplaceApplicationPayloadDecoder(t *testing.T
 	gate := &actionboundary.CanonicalCommandGate{Resolver: driver.NewResolver(loaded.World)}
 	// A command lookup intentionally does not interpret its opaque payload.
 	// This is NOT permission to send malformed input to an actual Store.
-	illTyped := actionboundary.Intent{
-		ApplicationID: "sui",
-		ResourceID:    "doc-1",
-		ActionID:      "sui.move",
-		ExpectedRevision: "v1",
-		Payload:       map[string]any{"cardId": 42, "x": "invalid", "y": nil},
-	}
+	illTyped := actionboundary.Intent{ApplicationID: "sui", ResourceID: "doc-1", ActionID: "sui.move", ExpectedRevision: "v1", Payload: map[string]any{"cardId": 42, "x": "invalid", "y": nil}}
 	if err := gate.Check(context.Background(), illTyped); err != nil {
 		t.Fatalf("CommandGate performs identity lookup, not input decoding: %v", err)
 	}
 	handler := actionboundary.JSONCommitHandler{
-		Host: actionboundary.Host{
-			CommandGate: gate,
-			Authorizer:  e24AllowReferenceOnly{},
-			Bindings: []actionboundary.Binding{{
-				ApplicationID: "sui", ActionID: "sui.move", Store: store,
-			}},
-		},
+		Host: actionboundary.Host{CommandGate: gate, Authorizer: e24AllowReferenceOnly{}, Bindings: []actionboundary.Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: store}}},
 		// No SUI-owned decoder is registered, despite the typed declaration.
 	}
 	if got := e20HTTPCommit(t, handler, "sui", "doc-1", "sui.move", "v1",
