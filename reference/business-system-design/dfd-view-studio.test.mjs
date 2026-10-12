@@ -653,6 +653,7 @@ test('clearing DFD and review pickers revokes pending proposals and disables exp
   assert.match($('status').textContent,/選択を解除/);
 
   await input('review-file',approvalReview);
+  $('trigger-label').value='レビュー再選択後の新しい説明文';
   await $('semantic-propose').listeners.click();
   assert.equal($('semantic-preview').hidden,false);
   await $('procedure-file').listeners.change({target:{files:[]}});
@@ -661,6 +662,7 @@ test('clearing DFD and review pickers revokes pending proposals and disables exp
   assert.equal($('semantic-propose').disabled,true);
 
   await input('procedure-file',approvalProcedure);
+  $('trigger-label').value='手順再選択後の新しい説明文';
   await $('semantic-propose').listeners.click();
   assert.equal($('semantic-preview').hidden,false);
   await $('dfd-file').listeners.change({target:{files:[]}});
