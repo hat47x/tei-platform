@@ -27,6 +27,10 @@ type ExplicitContractReport struct {
 	Capability      core.CanonicalID        `json:"capability,omitempty"`
 	BindingIdentity string                  `json:"bindingIdentity,omitempty"`
 	DataOperation   string                  `json:"dataOperation,omitempty"`
+	// These are matched Source declarations, not an authorized Provider route.
+	WriteDatasource    core.LocalName   `json:"writeDatasource,omitempty"`
+	WriteDatabase      core.CanonicalID `json:"writeDatabase,omitempty"`
+	PersistenceMapping core.CanonicalID `json:"persistenceMapping,omitempty"`
 	Resolved        []string                `json:"resolved"`
 	Unverified      []string                `json:"unverified"`
 	Executable      bool                    `json:"executable"`
@@ -97,6 +101,16 @@ func InspectExplicitPattern(w ir.World, applicationID, patternID core.CanonicalI
 			report.DataOperation = string(effect.Kind)
 			report.Resolved = append(report.Resolved, "data-operation-link")
 			report.Unverified = report.Unverified[1:]
+			mapping, err := MatchDeclaredWriteMapping(w, pattern.Application, effect.Data)
+			if err != nil {
+				return ExplicitContractReport{}, err
+			}
+			if mapping != nil {
+				report.PersistenceMapping = mapping.Mapping.ID
+				report.WriteDatabase = mapping.Mapping.Database
+				report.WriteDatasource = mapping.Datasource.Alias
+				report.Resolved = append(report.Resolved, "writable-persistence-declarations")
+			}
 		}
 
 	default:
