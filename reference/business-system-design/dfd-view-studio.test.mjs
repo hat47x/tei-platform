@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 
 class Element {
   constructor(tag){this.tag=tag;this.textContent='';this.children=[];this.listeners={};this.classList={toggle(){}};this.dataset={};this.hidden=false;this.disabled=false;this.value='';this.viewBox={baseVal:{width:1100,height:600}};}
@@ -58,6 +57,10 @@ test('stale view file and producer errors cannot replace displayed layout',async
   assert.match($('status').textContent,/配置ファイルを拒否しました/);
   const invalid={...projection,diagnostics:[{severity:'error',code:'BAD'}]};
   await input('dfd-file',invalid);
+  assert.match($('status').textContent,/DFD投影を読み込めません/);
+  assert.equal($('export').disabled,true);
+  const duplicate={...projection,steps:[projection.steps[0],projection.steps[0]]};
+  await input('dfd-file',duplicate);
   assert.match($('status').textContent,/DFD投影を読み込めません/);
   assert.equal($('export').disabled,true);
 });
