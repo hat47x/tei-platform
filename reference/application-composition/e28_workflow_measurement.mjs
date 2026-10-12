@@ -17,7 +17,8 @@ const token = s => typeof s==='string' && /^[a-z][a-z0-9._-]*$/.test(s);
 const sha = s => typeof s==='string' && /^[a-f0-9]{40}$/.test(s);
 const pathOK = s => typeof s==='string' && s.length>0 && !s.startsWith('/') &&
   !s.includes('\\') && s.split('/').every(part=>part && part!=='.' && part!=='..');
-const sourceRepository = s => typeof s==='string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(s);
+const sourceRepository = s => typeof s==='string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(s) &&
+  !s.split('/').some(part=>part==='.' || part==='..');
 const evidenceURL = s => typeof s==='string' && /^https:\/\/github\.com\/hat47x\/(tei-platform|sui-sensemaking)\/(pull|issues|commit|actions\/runs)\/[^?#\s]+$/.test(s);
 const ownKeys = (value, keys) => value && typeof value==='object' &&
   !Array.isArray(value) && Object.keys(value).every(key=>keys.includes(key));
