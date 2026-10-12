@@ -20,17 +20,17 @@ const (
 // these values. This Reference only verifies their exact bindings; neither a
 // fingerprint nor an in-memory Grant authenticates the Host source.
 type HostCurrentAcceptanceSnapshot struct {
-	Contract                 Contract
-	Provider                 Provider
-	ProviderEvidence         ConformanceEvidence
-	ContractPublication      authoritytrust.Statement
-	ProviderConformance      authoritytrust.Statement
-	CurrentTrustGrants       []authoritytrust.Grant
-	ContractAccepted         bool
-	ProviderAccepted         bool
-	ContractAcceptanceRef    string
-	ProviderConformanceRef   string
-	AuthorityRevision        string
+	Contract               Contract
+	Provider               Provider
+	ProviderEvidence       ConformanceEvidence
+	ContractPublication    authoritytrust.Statement
+	ProviderConformance    authoritytrust.Statement
+	CurrentTrustGrants     []authoritytrust.Grant
+	ContractAccepted       bool
+	ProviderAccepted       bool
+	ContractAcceptanceRef  string
+	ProviderConformanceRef string
+	AuthorityRevision      string
 }
 
 // HostCurrentAcceptanceSource reads the Host's CURRENT accepted publication,
