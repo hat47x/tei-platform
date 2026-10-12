@@ -49,4 +49,3 @@ func TestPluginPackageAllowsSharedCapabilityIDAcrossDifferentKinds(t *testing.T)
 		t.Fatal("valid shared capability ID changed Go/TEI package equivalence")
 	}
 }
-
