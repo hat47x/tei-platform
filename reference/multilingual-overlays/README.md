@@ -72,3 +72,21 @@ gofmt -l reference/multilingual-overlays/*.go
 **O3**：既存Plugin Lockと資源版を固定し、対象ごとの言語資源をビルド時に絞り込む。Web・Desktop・CLIの表示、キャッシュ・差替え・失効、実行先別のメッセージ書式、権限と受理の接続を検証する。
 
 **多言語の業務データ**：商品名・商品説明などを実際に多言語保存することは、表示資源を上書きすることとは異なる。対象となる意味上の属性に多言語性を宣言し、既存のデータベース契約と業務レコードの版・受理を通じて扱う（#1453）。表示オーバーレイが暗黙にDBを変更することはない。
+
+## O2a：Plugin Lockを使用した標準UI表示
+
+`locked_display.go`は既存の`plugin.Catalog.ResolveEnvironmentWithLock`と`EnvironmentLockFingerprint`を使い、固定されたPluginの版・定義を検証してから表示資源を合成する。`order_case.go`と`cmd/render-manifest`は、通常プラグインと独立した多言語プラグインの合成事例をJSONで出力する。
+
+`web/order-form.mjs`は[既存React Starter](../ui-customization/web-react/starter.mjs)のファイルを変更せずに利用する。JSONの環境・Pluginの版・意味参照・言語・原文照合値を確認し、画面のタイトルだけを差し替える。フォームの入力名とActionは変更しない。
+
+`web/order-form.test.mjs`は、Go CLIの実際の出力をNodeで読み、React APIのスタブに渡して日本語と英語の要素構造を検証する。実ブラウザやReactDOMの描画試験ではない。
+
+```sh
+go test -race -count=3 ./reference/multilingual-overlays/...
+go run ./reference/multilingual-overlays/cmd/render-manifest en-US
+node --test reference/multilingual-overlays/web/order-form.test.mjs
+```
+
+**現時点の境界**：Pluginの定義とモデルは試験用の合成入力であり、受理済みのEditor定義は取得していない。表示用JSONのロック指紋は来歴情報であって、ブラウザが独力で発行元を認証できる証拠ではない。実製品では既存の受理・権限確認を通じて宣言を取得し、信頼できる配布経路から渡す必要がある。
+
+O2bでは、受理済みの表示面と適用許可をEditor／Runtimeへ接続する。O3では対象言語別の配布、WebView、アクセシビリティ、MF2を検証する。今回のUI連結は**タイトルの表示のみ**であり、画面全体の翻訳を実証したものではない。
