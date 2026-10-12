@@ -6,6 +6,7 @@ Run from the repository root: python3 tools/ci-workflows-test.py
 """
 
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -37,6 +38,17 @@ def scripts(path):
             body.append(following[10:] if following else '')
         blocks.append('\n'.join(body) + '\n')
     return text, blocks
+
+
+def meaningful_shell_lines(script):
+    """Compare executable shell lines, not command names in comments."""
+    return [line.strip() for line in script.splitlines()
+            if line.strip() and not line.lstrip().startswith('#')]
+
+
+def required_health_commands():
+    return ['set -euo pipefail', 'go version',
+            'bash tools/repository-health-check.sh']
 
 
 def git(directory, *args):
@@ -143,13 +155,40 @@ class StaticWorkflowContract(unittest.TestCase):
         text, blocks = scripts(HEALTH)
         self.assertEqual(4, len(blocks))
         self.assertRegex(text, r'(?m)^on:\n  workflow_dispatch:')
+        self.assertEqual(1, text.count('  workflow_dispatch:\n'))
+        self.assertEqual(1, text.count('  repository-health:\n'))
         self.assertNotRegex(text, r'(?m)^  (push|pull_request|pull_request_target|schedule):')
+        self.assertNotRegex(text, r'(?m)^\s*if:\s*(?:false|\$\{\{\s*false\s*\}\})\s*$')
+        self.assertNotIn('continue-on-error:', text)
+        self.assertNotIn('secrets.', text)
         self.assertIn('permissions:\n  contents: read', text)
+        self.assertIn('persist-credentials: false', text)
         self.assertIn('fetch-depth: 0', text)
-        self.assertIn('bash tools/repository-health-check.sh', text)
         self.assertIn('if: always()', text)
+        self.assertLess(text.index('bash tools/repository-health-check.sh'),
+                        text.index('if: always()'))
+        uses = re.findall(r'(?m)^\s*uses:\s*(\S+)', text)
+        self.assertEqual([
+            'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+            'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e',
+        ], uses)
+        # A comment or echo mentioning the command is not a health check.
+        self.assertEqual(
+            ['set -euo pipefail', 'python3 tools/ci-workflows-test.py'],
+            meaningful_shell_lines(blocks[1]))
+        self.assertEqual(required_health_commands(),
+                         meaningful_shell_lines(blocks[2]))
         for script in blocks:
             self.assertEqual(0, command('bash', '-n', '-c', script, check=False).returncode)
+
+    def test_echo_instead_of_health_fails_contract(self):
+        _, blocks = scripts(HEALTH)
+        bypass = blocks[2].replace(
+            'bash tools/repository-health-check.sh',
+            "echo 'skipped bash tools/repository-health-check.sh'")
+        self.assertNotEqual(required_health_commands(),
+                            meaningful_shell_lines(bypass))
+        self.assertIn('bash tools/repository-health-check.sh', bypass)
 
     def test_runner_smoke_contract(self):
         text, blocks = scripts(SMOKE)
