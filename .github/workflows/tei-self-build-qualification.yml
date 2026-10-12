@@ -206,6 +206,27 @@ jobs:
           grep -q "stage2 Host registration differs" "$RUNNER_TEMP/tei-stage2-denial.txt"
           test ! -s "$RUNNER_TEMP/tei-stage2-should-not-run.json"
 
+      - name: 偽造されたHost署名は実行前に拒否
+        shell: bash
+        run: |
+          set -euo pipefail
+          head -c 64 /dev/zero | base64 -w 0 > "$RUNNER_TEMP/tei-stage2-forged-signature.txt"
+          if go run ./tools/reference-plugin-self-build -repo . \
+            -exact-runtime-engine "$RUNNER_TEMP/tei-transform-runtime-engine" \
+            -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
+            -stage2-engine-lock "$RUNNER_TEMP/tei-stage2-engine-lock.json" \
+            -stage2-host-registration "$RUNNER_TEMP/tei-stage2-host-registration.json" \
+            -stage2-host-signature "$RUNNER_TEMP/tei-stage2-forged-signature.txt" \
+            -stage2-trusted-host-key "$RUNNER_TEMP/tei-stage2-trusted-host-public.pem" \
+            -stage2-trusted-host-id "tei.reference.host.actions" \
+            > "$RUNNER_TEMP/tei-stage2-forged-should-not-run.json" \
+            2> "$RUNNER_TEMP/tei-stage2-forged-denial.txt"; then
+            echo "forged Host signature was unexpectedly accepted" >&2
+            exit 1
+          fi
+          grep -q "Ed25519 signature verification failed" "$RUNNER_TEMP/tei-stage2-forged-denial.txt"
+          test ! -s "$RUNNER_TEMP/tei-stage2-forged-should-not-run.json"
+
       - name: 検証済み実行エンジンの応答を確認
         shell: bash
         run: |
