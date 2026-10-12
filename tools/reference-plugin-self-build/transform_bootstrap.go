@@ -72,19 +72,27 @@ type transformBootstrapEvidence struct {
 	PackageLockFingerprint          string                              `json:"packageLockFingerprint"`
 }
 
+// transformRuntimeEngineSourceFiles records the interpreted engine's source
+// inputs. A test checks that new transform package files are not omitted.
+func transformRuntimeEngineSourceFiles() []string {
+	return []string{
+		"internal/plugin/transform/eval.go",
+		"internal/plugin/transform/json_unicode.go",
+		"internal/plugin/transform/model.go",
+		"internal/plugin/transform/source.go",
+		"internal/plugin/transform/source_budget.go",
+		"internal/plugin/transform/value.go",
+		"internal/core/id.go",
+		"internal/core/version.go",
+	}
+}
+
 func runTransformBootstrap(
 	root, goPath, goToolchainDigest, revision string,
 	packageDefinition plugin.Definition,
 	basePackagePlan plugin.BuildPlan,
 ) (transformBootstrapEvidence, error) {
-	engineSourceDigest, err := hashSourceFiles(root, []string{
-		"internal/plugin/transform/value.go",
-		"internal/plugin/transform/model.go",
-		"internal/plugin/transform/eval.go",
-		"internal/plugin/transform/source.go",
-		"internal/core/id.go",
-		"internal/core/version.go",
-	})
+	engineSourceDigest, err := hashSourceFiles(root, transformRuntimeEngineSourceFiles())
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("hash deterministic transform Runtime Engine source closure: %w", err)
 	}
