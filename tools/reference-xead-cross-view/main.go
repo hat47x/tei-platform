@@ -22,7 +22,7 @@ func main() {
 	inputFlag := flag.String("input", "", "path to Xead source XML")
 	contractFlag := flag.String("contract", "", "path to transcription contract JSON")
 	localProjectionFlag := flag.Bool("local-projection", false, "include token-level cross-view projection; local/private output only")
-	verifyProjectionFlag := flag.String("verify-projection", "", "verify a saved local projection against exact source and contract bytes")
+	verifyProjectionFlag := flag.String("verify-projection", "", "verify saved output from -local-projection against exact source and contract bytes")
 	flag.Parse()
 
 	if *inputFlag == "" || *contractFlag == "" {
@@ -92,8 +92,8 @@ func buildVerifiedCommandOutput(
 ) (commandOutput, error) {
 	decoder := json.NewDecoder(bytes.NewReader(reportedJSON))
 	decoder.DisallowUnknownFields()
-	var reported xeadsource.CrossViewProjection
-	if err := decoder.Decode(&reported); err != nil {
+	var saved commandOutput
+	if err := decoder.Decode(&saved); err != nil {
 		return commandOutput{}, fmt.Errorf("decode saved cross-view projection: %w", err)
 	}
 	var trailing any
@@ -103,11 +103,16 @@ func buildVerifiedCommandOutput(
 		}
 		return commandOutput{}, fmt.Errorf("saved cross-view projection has invalid trailing data: %w", err)
 	}
-	accounting, err := xeadsource.CrossViewSourceReconciledAccounting(format, source, contract, reported)
+	if saved.LocalProjection == nil {
+		return commandOutput{}, fmt.Errorf("saved output has no localProjection; regenerate with -local-projection")
+	}
+	accounting, err := xeadsource.CrossViewSourceReconciledAccounting(format, source, contract, *saved.LocalProjection)
 	if err != nil {
 		return commandOutput{}, fmt.Errorf("verify saved cross-view projection: %w", err)
 	}
-	return outputFromProjection(accounting, reported, includeLocalProjection), nil
+	// Never trust accounting retained in the saved command output. Recompute
+	// from the exact verified source and publish only the fresh aggregate.
+	return outputFromProjection(accounting, *saved.LocalProjection, includeLocalProjection), nil
 }
 
 func outputFromProjection(
