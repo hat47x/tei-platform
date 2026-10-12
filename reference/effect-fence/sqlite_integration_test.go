@@ -223,3 +223,46 @@ func TestSQLitePermitBoundToIssuingConnection(t *testing.T) {
 		t.Fatalf("unexpected outcome: %q %d", value, version)
 	}
 }
+
+// 認可の保存先が参照不能になった場合、拒否と断定せず障害を返し、更新しない。
+func TestSQLiteAuthorizationStoreFailureDoesNotCommit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "authority-fault.sqlite")
+	f, err := openSQLiteFixture(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	s := Scope{Application: "orders", Capability: "save", Subject: "editor", Action: "write", Resource: "order-5"}
+	if err := f.SetAuthority(s, 1, true); err != nil {
+		t.Fatal(err)
+	}
+	req := Request{Scope: s, OperationID: "authority-fault-op", Value: "should-not-save"}
+	p, outcome, err := f.PrepareForTest(context.Background(), req)
+	if err != nil || outcome.Disposition != Prepared {
+		t.Fatalf("prepare: %+v %v", outcome, err)
+	}
+	if err := f.exec("DROP TABLE authority"); err != nil {
+		t.Fatal(err)
+	}
+	result, err := f.CommitForTest(context.Background(), p)
+	if err == nil || result.Disposition != "" {
+		t.Fatalf("authority store outage wrongly classified as business denial or success: %+v %v", result, err)
+	}
+	if value, version := f.Observe(s); value != "" || version != 0 {
+		t.Fatalf("effect despite authority failure: %q %d", value, version)
+	}
+	if err := f.exec("CREATE TABLE authority (scope TEXT PRIMARY KEY, version INTEGER NOT NULL, allowed INTEGER NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.SetAuthority(s, 2, true); err != nil {
+		t.Fatal(err)
+	}
+	p, outcome, err = f.PrepareForTest(context.Background(), req)
+	if err != nil || outcome.Disposition != Prepared {
+		t.Fatalf("retry prepare: %+v %v", outcome, err)
+	}
+	result, err = f.CommitForTest(context.Background(), p)
+	if err != nil || result.Disposition != Committed {
+		t.Fatalf("retry after authority recovery: %+v %v", result, err)
+	}
+}
