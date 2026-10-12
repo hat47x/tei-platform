@@ -872,3 +872,34 @@ main上の`tools/reference-critical-path-evidence-audit/main.go`には、`accept
 4. **G3/G4**：第二Targetの同じ意味定義に対する実差分と、採用したPlugin・Build/self-buildの安全な接続を別途確認する。先行するE1/E2の未達を帳消しにしない。
 
 **判定**：G0は台帳整備が進んだがConsumer間の正式な確認待ち。G1〜G4は引き続き未合格。mainに実装が増えたことは有益だが、独立した現物証拠と正式な受入を得るまでIssue #1119をcloseしない。実行できなかった試験にPASSと書かない。
+
+## 27. 現行mainで横断試験を実行する入口（2026-10-12）
+
+### 統合前の合成試験を再利用し、現行mainを検査する
+
+§25の`compose-smoke.sh`は、当初#1119/#1120/#1124/#1121の未統合ブランチを合成する方式であった。これらは2026-10-11にmainへ統合されており、旧ブランチを必須にしたままでは**最新mainを検証できない**。§26でその使用不能を指摘したため、既存の実行入口を**二つの明示モード**に分けた。
+
+- `integrated-main`（今回追加）: **mainのexact commitだけ**を入力し、一時的なdetached worktreeで既存のStudio/Shared Acceptance/typed ref/Lowering/Web/Go証跡検査と全Repository Healthを実行する。旧Draft SHAは指定してはならない。
+- `draft-tips`（従来互換）: current mainに未統合の4つの確定SHAを一時合成する。いまの#1119には基本的に不要。過去の旧branchが削除されている場合はfail-closedし、存在しないrefを補って合格したように扱わない。
+
+現行mainへの実行例（**本セッションでは実行していない**）:
+
+```bash
+# canonical GitHub origin/mainのSHAを、実行環境で取得して指定する。
+TEI_CP_COMPOSE_MODE=integrated-main \
+TEI_CP_COMPOSE_MAIN="$(git rev-parse refs/remotes/origin/main)" \
+bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+```
+
+両モードは正規のGitHub remoteを`fetch`し、mainのSHA固定、クリーン状態と非標準index検出、一時worktreeのHEAD/TREE、実行後のmain再照合、元checkoutの不変を要求する。**mainへmerge/pushしたり各Ownerのbranchを書き換えたりしない**。`integrated-main`は未存在の旧branchを参照せず、旧Draft pinが混入すれば拒否する。
+
+### 検証できる範囲、検証できない範囲
+
+現在mainにある`live-r1-smoke.mjs`は、新規単価Validationをscratch R1へ受理し、4規則の正常系を実際に起動したWebへHTTP送信する**試験ソース**である。合成Providerの負例や実DBの永続化を自動的に満たしたわけではない。#1163の[Draft PR #1262](https://github.com/hat47x/tei-platform/pull/1262)には、**別バイナリ**とGo Overlayの隔離fixtureによる単価0のrunning-server負例を試すコードが追加されているが、これはmainに未統合でactual Web実行も未取得。今回のmain-modeは未統合PR #1262のコードを暗黙に試験へ混ぜない。
+
+- 成功時の識別子は`CURRENT_MAIN_CROSS_LANE_SMOKE_ONLY_NO_PRODUCT_GATE`。**特定mainの横断回帰試験**であり、各PRのexact-head統合資格やG0〜G4の合格ではない。
+- 実験はscratchでテスト用Decisionを生成する。**Human Acceptanceの代替ではない**。
+- Command後の合成Observationは**独立した実Database readではない**。E2の保存・Host権限・Schema互換、第二Targetの合格には用いない。
+- full checkoutを利用できない現環境では、この改修後の`bash -n`／Node／Go／full Health／live HTTPの実行PASSは未取得。**コード変更を含む本PR #1274はDraftで保持する**。資格取得はcurrent PR headと最新mainの正確な一致、clean pre/post、trusted full`tools/repository-health-check.sh`と独立確認を要求する。
+
+**次の作業の入口**: 新しい資格検査器を追加するのではなく、既存`compose-smoke.sh`の`integrated-main`でE0/E1-Aを実行し、実測結果を#1119と#1163へ提出する。その後、#1262の修正を独立に資格確認・統合してから必要なら同じ入口を再実行する。未実施のE1-B/E2/G3/G4を推定で埋めない。
