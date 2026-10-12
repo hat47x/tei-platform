@@ -23,19 +23,21 @@ func modelRuleDraftFixture(t *testing.T) (string, Input, ModelHypotheses, ModelR
 		t.Fatal(err)
 	}
 	claims := []ModelRuleEvidenceClaim{{
-		Kind: "document", Ref: "documents/unverified-work-instruction", ClaimedBy: "designer",
+		Kind: "document",
+		Ref: "documents/unverified-work-instruction",
+		ClaimedBy: "designer",
 		Fingerprint: "sha256:" + strings.Repeat("a", 64),
 	}}
 	intent := ModelRuleDraftIntent{
-		Schema: modelRuleDraftIntentSchema,
+		Schema:                 modelRuleDraftIntentSchema,
 		ModelReviewFingerprint: review.Fingerprint,
 		SourceAuditFingerprint: audit.Fingerprint,
 	}
 	for _, issue := range review.Issues {
 		intent.Requests = append(intent.Requests, ModelRuleDraftRequest{
-			IssueID: issue.ID,
-			ProposedRuleID: issue.Table + "." + strings.ReplaceAll(issue.HypothesisID, "_", "-"),
-			Rationale: "業務上の識別と決定関係の仮説を確認する",
+			IssueID:         issue.ID,
+			ProposedRuleID:  issue.Table + "." + strings.ReplaceAll(issue.HypothesisID, "_", "-"),
+			Rationale:       "業務上の識別と決定関係の仮説を確認する",
 			ClaimedEvidence: append([]ModelRuleEvidenceClaim(nil), claims...),
 		})
 	}
@@ -124,14 +126,15 @@ func TestRuleDraftKnownCounterexampleCannotBecomeEligible(t *testing.T) {
 		t.Fatal(err)
 	}
 	intent := ModelRuleDraftIntent{
-		Schema: modelRuleDraftIntentSchema,
+		Schema:                 modelRuleDraftIntentSchema,
 		ModelReviewFingerprint: review.Fingerprint,
 		SourceAuditFingerprint: audit.Fingerprint,
 	}
 	for _, issue := range review.Issues {
 		intent.Requests = append(intent.Requests, ModelRuleDraftRequest{
-			IssueID: issue.ID, ProposedRuleID: issue.Table + "." + issue.HypothesisID,
-			Rationale: "業務の判断は後続の審査を必要とする",
+			IssueID:        issue.ID,
+			ProposedRuleID: issue.Table + "." + issue.HypothesisID,
+			Rationale:       "業務の判断は後続の審査を必要とする",
 		})
 	}
 	out, err := DraftLoadedWorkspaceModelRules(root, input, hypotheses, intent)
