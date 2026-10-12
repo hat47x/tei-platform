@@ -23,7 +23,10 @@ const measurement = JSON.parse(await readFile(join(root, "measurement.json"), "u
 assert.equal(measurement.applicationId, "order_entry");
 assert.equal(measurement.browserTransport, "same-origin-json");
 assert.equal(measurement.browserAndApiSourceRevision, revision);
-assert.deepEqual(measurement.apiBuildTags, ["tei_order_only", "tei_api_only"]);
+const frozenAPI = measurement.apiWorldMode === "digest-bound-frozen-world";
+assert.deepEqual(measurement.apiBuildTags, frozenAPI
+  ? ["tei_order_only", "tei_api_only", "tei_frozen_world"]
+  : ["tei_order_only", "tei_api_only"]);
 
 const digest = async path => createHash("sha256").update(await readFile(path)).digest("hex");
 for (const [name, key] of [
@@ -70,7 +73,7 @@ try {
   const port = await reservePort();
   const api = "http://127.0.0.1:" + port;
   go = spawn(join(root, "api/order-entry"), [
-    "-workspace", resolve("reference/workspace"),
+    "-workspace", frozenAPI ? join(root, "api") : resolve("reference/workspace"),
     "-legacy-users", resolve("reference/legacy-auth/users.json"),
     "-legacy-authorization", resolve("reference/legacy-auth/authorization.json"),
     "-application", "order_entry",
