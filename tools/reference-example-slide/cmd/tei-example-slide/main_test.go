@@ -436,13 +436,13 @@ func TestCLIExportsRuleDeclarationDraftWithoutAcceptingBusinessRule(t *testing.T
 		t.Fatal(err)
 	}
 	intent := example.ModelRuleDraftIntent{
-		Schema: "tei.reference.model-rule-draft-intent/v0",
+		Schema:                 "tei.reference.model-rule-draft-intent/v0",
 		ModelReviewFingerprint: review.Fingerprint,
 		SourceAuditFingerprint: audit.Fingerprint,
 		Requests: []example.ModelRuleDraftRequest{{
-			IssueID: review.Issues[0].ID,
+			IssueID:        review.Issues[0].ID,
 			ProposedRuleID: "sales.child.business-key",
-			Rationale: "業務識別規則として検討するが根拠の真偽は未確認",
+			Rationale:      "業務識別規則として検討するが根拠の真偽は未確認",
 		}},
 	}
 	path := filepath.Join(t.TempDir(), "rule-intents.json")
