@@ -198,8 +198,7 @@ func TestReferenceStage2AuthorityRejectsDuplicateKeysAndSymlinks(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Repeated Host-owned keys must not be subject to last-wins JSON decoding.
-	duplicate := append([]byte("{" + "\"hostId\":\"tei.reference.host\","),
-		raw[1:]...)
+	duplicate := append([]byte(`{"hostId":"tei.reference.host",`), raw[1:]...)
 	if err := os.WriteFile(options.HostRegistration, duplicate, 0o600); err != nil {
 		t.Fatal(err)
 	}
