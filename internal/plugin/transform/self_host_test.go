@@ -53,18 +53,29 @@ func builderFromSource(source transform.Source, digest string) plugin.BuilderIde
 	}
 }
 
-func TestTransformSourceRealizerReferenceMatchesProgrammaticSource(t *testing.T) {
-	fromFile, _ := referenceTransformSource(t, "transform-source-realizer-v1.transform.json")
-	fileFP, err := transform.SourceFingerprint(fromFile)
+// The checked-in Source, rather than a matching Go AST constructor, controls
+// meta-builder behavior. Changing the program changes the realized bytes.
+func TestTransformSourceRealizerProgramChangeChangesOutput(t *testing.T) {
+	source, _ := referenceTransformSource(t, "transform-source-realizer-v1.transform.json")
+	input, err := transform.SourceValue(source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	constructedFP, err := transform.SourceFingerprint(transform.TransformSourceRealizerV1())
+	original, err := transform.Evaluate(source, map[string]transform.Value{"transformSource": input})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fileFP != constructedFP {
-		t.Fatalf("Reference meta-builder Source diverged: %s != %s", fileFP, constructedFP)
+	edited := source
+	edited.Program.Output.Suffix = "\n\n"
+	changed, err := transform.Evaluate(edited, map[string]transform.Value{"transformSource": input})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if original.Output.Kind != transform.ValueBytes || changed.Output.Kind != transform.ValueBytes {
+		t.Fatal("meta-builder output must be bytes")
+	}
+	if bytes.Equal(original.Output.Bytes, changed.Output.Bytes) {
+		t.Fatal("editing TEI-owned meta-builder Source did not change output")
 	}
 }
 
@@ -228,7 +239,7 @@ func TestTransformSourceRealizerDetectsSourceDrift(t *testing.T) {
 }
 
 func TestSourceValueRejectsInvalidTransformSource(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source, _ := referenceTransformSource(t, "transform-source-realizer-v1.transform.json")
 	source.Profile = "unsupported"
 	if _, err := transform.SourceValue(source); err == nil {
 		t.Fatal("expected invalid transform Source to fail")

@@ -1,18 +1,18 @@
 # CLI C1の追跡統合：検証対象と未確定事項
 
-対象: GitHub Issue #1165 / Draft PR #1172（`feat/cli-c1-typed-trace-integration`）。この記録は**検証指示**であり、PASS receiptではない。
+対象はGitHubの課題 #1165 と下書きのプルリクエスト #1172（`feat/cli-c1-typed-trace-integration`）です。この文書は**検証手順**であり、合格を示す記録ではありません。
 
 ## 検証対象
 
-- 共通Go操作: `operations.InspectSubject`、`operations.TraceWorkspace`。CLIはarg/JSON/終了コードの薄いAdapter。
-- 出所の意味: `worldFingerprint` と `sourceIndexFingerprint` は独立。継続用 `result.snapshotFingerprint` はModelRef Graph/Rule/検索対象/方向/World/Source Indexから求め、`result.trace.snapshotFingerprint`（Graph限定）とは区別する。
-- 入力契約: `trace` と `inspect` の未知・不適切なフラグ、型不正、対象不存在・曖昧、古いfingerprintは機械可読JSONで失敗する。
-- 正規化: GraphのNode/Edge/EvidenceとSource Indexの並び順に依存しないfingerprint。ただし重複宣言・重複edgeは消さず検出対象とする。
-- Source境界: 同じWorldを保った元ファイル移動・非意味的編集でもSource側tokenが変わる。参照不能や逸脱pathはfail-closed。Source Indexを編集権限やShared Acceptanceへ昇格させない。
+- 共通のGo操作は`operations.InspectSubject`と`operations.TraceWorkspace`です。コマンドライン側は、引数・JSON・終了コードを受け渡す薄い接続部とします。
+- 出所の区別：`worldFingerprint`と`sourceIndexFingerprint`は独立しています。続きの取得に使う`result.snapshotFingerprint`には、参照関係のグラフ・規則・検索対象・探索方向・全体モデル・入力元索引を反映します。グラフだけに対応する`result.trace.snapshotFingerprint`とは異なります。
+- 入力の検証：`trace`と`inspect`に未知・不適切な引数が渡された場合や、型が不正な場合、対象がない・特定できない場合、古い照合値が指定された場合は機械可読のJSONで失敗を返します。
+- 表記の統一：グラフの節点・関係・検証根拠や入力元索引の並び順に左右されない照合値を使います。ただし、重複した宣言や関係は消さず、検出対象として残します。
+- 入力元の境界：全体モデルの意味が変わらなくても、元ファイルの移動や意味を変えない編集で入力元の識別値は変わります。参照できないパスや許可範囲外のパスは拒否します。入力元索引を編集権限や共通受理の権限として扱いません。
 
 ## ローカルへの引継ぎと実行方法
 
-GitHubの認証情報を利用できるGo 1.23.2以降のローカル環境で、**既存の開発作業ツリーとは別の新規checkout**を使う。PR #1172のhead SHAは更新され得るため、以下のコマンドで都度取得する。実際のGitHub URLは認証済みのHTTPSまたはSSHを使用する。
+GitHubへ認証済みで、Go 1.23.2以降を使えるローカル環境を用意します。**既存の開発作業領域とは別に取得したリポジトリ**を使用します。プルリクエスト #1172 の先頭コミットは変わり得るため、以下のコマンドで毎回取得します。GitHubへの接続には、認証済みのHTTPSまたはSSHを使います。
 
 ```bash
 git clone --no-checkout git@github.com:hat47x/tei-platform.git /tmp/tei-cli-c1-qualify
@@ -25,17 +25,17 @@ git checkout --detach "$PR_HEAD"
 bash tools/verify-cli-c1-local.sh "$PR_HEAD" "$MAIN_HEAD" "/tmp/tei-cli-c1-receipt-$PR_HEAD-$(date -u +%Y%m%dT%H%M%SZ)"
 ```
 
-`tools/verify-cli-c1-local.sh` は、exact PR head、remote main、クリーンなdetached checkoutを実行前後に照合し、既存の **`tools/repository-health-check.sh` を省略なく呼ぶ**。証跡 `receipt.txt` と `repository-health.log` はリポジトリ外に置き、作業ツリーを汚さない。**既存のreceiptは上書きしない**ので、実行ごとに新しい証跡ディレクトリを指定する。
+`tools/verify-cli-c1-local.sh`は、対象プルリクエストの正確なコミット、リモートのmain、ブランチから切り離された変更のない作業領域を実行前後に照合します。既存の**`tools/repository-health-check.sh`を省略せず実行します**。結果の`receipt.txt`と`repository-health.log`はリポジトリの外へ保存し、作業領域に変更を残しません。**既存の結果は上書きせず**、実行のたびに別の保存先を指定します。
 
-**exit=0でもマージ権限の自動発行ではない。** 親PR依存（#1139→#1171、#1159→#1169→#1172）と、actual mainへの統合ベース、PRがDraftでなくなったか、candidate/mainのexact-SHAを再確認する。PASS receiptとこれらの条件を揃えるまではmainへ統合しない。
+**終了コードが0でも、それだけで統合してよいわけではありません。**先行プルリクエストとの依存関係（#1139→#1171、#1159→#1169→#1172）、実際のmainとの関係、下書きの解除、候補とmainの正確なコミットを確認します。合格記録とこれらの条件がそろうまではmainへ統合しません。
 
 ## 信頼できる環境での検証手順
 
-1. GitHub認証済みのGo 1.23.2以降が利用可能な環境で、**最新のPR #1172 head SHAとcurrent `main` SHAを記録**する。親PR #1169など並行PRのheadも確認し、対象ブランチ名の再解決だけで判断しない。
-2. 新しいクリーンなcheckoutを取得する（共有ワークツリーや未コミット修正済みディレクトリを用いない）。PR headの**正確なコミットSHA**でdetached checkoutし、`git rev-parse HEAD` と `git status --porcelain` を保存する。期待SHAに一致しなければ停止する。
-3. `GOENV=off GOWORK=off GOFLAGS= tools/repository-health-check.sh` を**省略なし**で実行する。これは`gofmt -l .`、`go vet ./...`、`go test -count=1 -timeout 60m ./...`、Reference Workspace検証を含む。標準出力・標準エラー、exit、検証開始/終了のSHAとclean状態を保管する。
-4. 問題を検出した場合、**PR #1172 branch上に通常コミット**で修正する。PR headが動いたら既存PASS証跡はstaleとして破棄し、同じ手順で再検証する。共有branchのforce/rebase/resetや直接main変更はしない。
-5. full PASS後、PRや各親PRの依存、現在mainの差分、正本ドキュメントと必要なGateを確認する。**Draftのまま統合しない**。マージ直前にexact PR head、base、current mainとPASS証跡の一致を再確認する。
+1. GitHubへ認証でき、Go 1.23.2以降が使える環境で、**プルリクエスト #1172 の最新コミットと、その時点の`main`のコミットを記録**します。先行する #1169 などの先頭コミットも確認し、ブランチ名を再取得した結果だけで判断しません。
+2. 共有中や未コミットの変更がある作業領域は使わず、新しくリポジトリを取得します。対象プルリクエストの**正確なコミット**をブランチから切り離して取り出し、`git rev-parse HEAD`と`git status --porcelain`の結果を保存します。期待したコミットと異なる場合は停止します。
+3. `GOENV=off GOWORK=off GOFLAGS= tools/repository-health-check.sh`を**省略せず**実行します。これには`gofmt -l .`、`go vet ./...`、`go test -count=1 -timeout 60m ./...`、参照用作業領域の検証が含まれます。標準出力・標準エラー・終了コード・実行前後のコミット・変更の有無を記録します。
+4. 問題が見つかった場合は、**プルリクエスト #1172 の作業ブランチへ通常のコミットで修正**します。先頭コミットが変わったら以前の合格記録は現在の版には使えないため、同じ手順で検証し直します。共有ブランチの強制更新・履歴の付け替え・巻き戻しや、mainへの直接変更は行いません。
+5. 全項目の合格後も、対象と先行プルリクエストの依存関係、現在のmainとの差分、正本の文書、必要な判定段階を確認します。**下書きのまま統合してはいけません**。統合直前には、対象コミット・取り込み先・最新のmainと合格記録の対応を確かめます。
 
 ### 検証候補（リポジトリ全体の健全性検査の代わりにはならない）
 
@@ -45,23 +45,23 @@ go run ./cmd/tei trace -workspace reference/workspace -scope reference-observati
 go run ./cmd/tei inspect -workspace reference/workspace -subject-kind semantic-relation -subject-id sales.order.customer
 ```
 
-ページ継続時は`trace.result.snapshotFingerprint`を`-expected-fingerprint`として使用する。`trace.result.trace.snapshotFingerprint`は継続用のWorkspace tokenではない。
+次のページを取得するときは、`trace.result.snapshotFingerprint`を`-expected-fingerprint`へ指定します。`trace.result.trace.snapshotFingerprint`は、作業領域の継続取得に使う識別値ではありません。
 
 ## 検証していない点
 
-- この環境からのGitHub直接checkoutはDNS解決に失敗しており、**exact-headに対するgofmt/ビルド/vet/test/full Repository HealthのPASSは無い**。
-- Source読取は毎回Source Indexのdigestと範囲を検証するが、モデルload・source索引化・filesystem readを単一のOSトランザクションとして固定しない。symlink-swap raceを含む#1017の課題は別途扱う。
-- Reference Fixtureと合成Workspaceを用いるテストはProvider実動・実環境での書込み権限・人間による意味の採用の証拠にならない。
-- `full` は明示ページ分割しない場合、全候補参照を組み立てる。大規模Workspaceに対する性能・最大メモリの実測は未取得。走査予算による黙った打切りは行わない。
+- この文書を作成した環境では、GitHubからの直接取得がDNSの名前解決に失敗しました。そのため、**対象コミットでの整形・ビルド・静的解析・テスト・リポジトリ全体の検査に合格した記録はありません**。
+- 入力元の読み取りでは、入力元索引のダイジェストと読み取り範囲を毎回検証します。ただし、モデルの読み込み・入力元索引の作成・ファイルの読み取りを一つのOSトランザクションとして固定するわけではありません。シンボリックリンクのすり替えによる競合を含む #1017 は別の課題です。
+- 参照用の試験データと合成した作業領域によるテストは、実際の提供元での動作、実環境への書き込み権限、人による意味の受理を示すものではありません。
+- `full`では、明示的にページを分けなければ全候補の参照を組み立てます。大規模な作業領域での性能や最大メモリ使用量は実測できていません。処理量の上限を理由に結果を知らせず打ち切ることはしません。
 
-この文書はGate判断の正本を増やすものではなく、`AGENTS.md` / `CONTRIBUTING.md` と対象Issueの合格条件を適用するための補足手順である。
+この文書は判定段階について新たな正本を作るものではありません。`AGENTS.md`と`CONTRIBUTING.md`、対象の課題にある合格条件を適用するための補足手順です。
 
 ## 設計上の知見と未解決課題の参照先
 
 - **#1165（Issue本文）**：採用したCanonical/Source/Typed Graphの責務、Scopeの非権威性、複合tokenの使い分け、五つの初期kind、重複宣言と不完全Evidenceの扱い、CLIとGoのAdapter分離、未取得のGo品質Gate証拠、親PR依存を集約する。
-- **#1017**：Source Readerのsymlink/TOCTOU。C1のhash＋digest＋path containment検証はatomic snapshotを保証しない。
-- **#1177**：large Workspaceのページングと内部全量走査・Source Index再検証・メモリ使用量の分離。黙った走査予算による欠落を禁止し、全体テキスト出力後の一括解析案も評価する。
-- **#1178**：`read-only`を機密情報開示の認可へ昇格させない。Canonical/Source path/edge/unresolved/近傍情報のLLM送出と既存Disclosure機構を接続する。
-- **#1163**：one-revision end-to-end Acceptance/Target/Observation Evidenceとの区別。CLIの読取tokenは実行や書込権限の証拠ではない。
+- **#1017**：入力元の読み取りにおけるシンボリックリンクと、検査時点・使用時点のずれを扱います。C1のハッシュ・ダイジェスト・パスの範囲確認でも、読み取り全体が一つの時点で行われることは保証しません。
+- **#1177**：大規模な作業領域でのページ分割と内部の全量走査、入力元索引の再検証、メモリ使用量を分けて扱います。結果を知らせず省略することを禁じ、全量出力してからまとめて解析する案も評価します。
+- **#1178**：`read-only`を機密情報の開示権限と同一視しません。意味の正本、入力元のパス、関係、未解決事項、周辺情報を大規模言語モデルへ渡す際の扱いを、既存の開示制御と結び付けます。
+- **#1163**：一つの版について受理・実行先・観測を通した検証根拠と、CLIが読み取りに使う識別値を区別します。後者は実行や書き込みの権限を証明しません。
 
-C1の品質Gateが通った後も#1017/#1177/#1178/#1163は**独立した未解決課題**として残す。C1 PRへ無制限に取り込んで完了を遅らせない。
+C1の品質検査に合格した後も、#1017・#1177・#1178・#1163は**独立した課題**として扱います。C1のプルリクエストへ範囲を際限なく広げ、完了を遅らせることはしません。
