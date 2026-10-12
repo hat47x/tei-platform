@@ -891,7 +891,7 @@ TEI_CP_COMPOSE_MAIN="$(git rev-parse refs/remotes/origin/main)" \
 bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 ```
 
-両モードは正規のGitHub remoteを`fetch`し、mainのSHA固定、クリーン状態と非標準index検出、一時worktreeのHEAD/TREE、実行後のmain再照合、元checkoutの不変を要求する。**mainへmerge/pushしたり各Ownerのbranchを書き換えたりしない**。`integrated-main`は未存在の旧branchを参照せず、旧Draft pinが混入すれば拒否する。
+両モードは正規のGitHub remoteを`fetch`し、mainのSHA固定、クリーン状態と非標準index検出、一時worktreeのHEAD/TREE、実行後のmain再照合、元checkoutの不変を要求する。**mainへmerge/pushしたり各Ownerのbranchを書き換えたりしない**。`integrated-main`は未存在の旧branchを参照せず、旧Draft pinが混入すれば拒否する。 実行入口となるスクリプト自身のGit blobを開始・終了時に照合し、成功表示には対象main／一時HEAD／tree／スクリプトと全体健全性検査スクリプトのblob／Go・Node版を併記する。**これらは後日の照合に使う来歴であって、第三者署名や改ざん防止の証明ではない**。
 
 ### 検証できる範囲、検証できない範囲
 
