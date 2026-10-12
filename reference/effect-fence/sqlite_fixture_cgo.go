@@ -185,6 +185,13 @@ func (f *sqliteFixture) lookupCommitted(r Request) (Result, bool, error) {
 }
 func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 func (f *sqliteFixture) PrepareForTest(ctx context.Context, r Request) (any, Result, error) {
+	return f.prepareWithExpectedEpochs(ctx, r, nil)
+}
+
+// prepareWithExpectedEpochs binds evidence from a trusted authorizer before any replay
+// receipt can be exposed. The comparison runs under the same connection mutex that
+// captures the pending permit's epoch snapshot.
+func (f *sqliteFixture) prepareWithExpectedEpochs(ctx context.Context, r Request, expected *authorityEpochVersions) (any, Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, Result{}, err
 	}
@@ -210,6 +217,11 @@ func (f *sqliteFixture) PrepareForTest(ctx context.Context, r Request) (any, Res
 		if !active {
 			return nil, Result{Disposition: Denied, Reason: "authority-dependency-unavailable"}, nil
 		}
+		if expected != nil && !expected.matches(snapshot) {
+			return nil, Result{Disposition: Denied, Reason: "authority-dependency-changed"}, nil
+		}
+	} else if expected != nil {
+		return nil, Result{}, errors.New("版条件の照合が無効になっています")
 	}
 	old, exists, err := f.lookupCommitted(r)
 	if err != nil {

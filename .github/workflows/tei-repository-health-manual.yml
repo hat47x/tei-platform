@@ -90,6 +90,24 @@ jobs:
           go version
           bash tools/repository-health-check.sh
 
+      # 全体健全性とE1を同じ候補HEADの完全checkoutで検証する。
+      # 全体Healthが別の原因で失敗した場合も、E1固有の診断は残す。
+      # 全体HealthのFAIL判定は残すため、統合資格を緩和しない。
+      - name: External Coordination E1と18ケース回帰を確認
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+          printf 'e1-candidate-head=%s\n' "$EXPECTED_HEAD_SHA"
+          printf 'e1-expected-main=%s\n' "$EXPECTED_MAIN_SHA"
+          printf 'e1-runner-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/run.sh)"
+          printf 'e1-regression-blob=%s\n' "$(git rev-parse HEAD:tools/reference-external-coordination/clean-check-test.sh)"
+          bash -n tools/reference-external-coordination/run.sh
+          bash -n tools/reference-external-coordination/clean-check-test.sh
+          bash tools/reference-external-coordination/clean-check-test.sh
+          bash tools/reference-external-coordination/run.sh
+
       - name: 実行後の版と作業領域を確認
         if: always()
         shell: bash

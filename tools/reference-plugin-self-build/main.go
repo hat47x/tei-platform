@@ -99,6 +99,10 @@ type evidence struct {
 	RuntimeDefinitionFingerprint       string                         `json:"runtimeDefinitionFingerprint"`
 	RuntimePluginLockFingerprint       string                         `json:"runtimePluginLockFingerprint"`
 	RuntimePluginLock                  plugin.Lock                    `json:"runtimePluginLock"`
+
+	Stage2EngineLockFingerprint       string `json:"stage2EngineLockFingerprint,omitempty"`
+	Stage2HostRegistrationFingerprint string `json:"stage2HostRegistrationFingerprint,omitempty"`
+	Stage2RuntimePolicyFingerprint    string `json:"stage2RuntimePolicyFingerprint,omitempty"`
 }
 
 type goSourceMember struct {
@@ -134,19 +138,38 @@ func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
 	exactEngine := flag.String("exact-runtime-engine", "", "verified external transform engine executable")
 	engineEvidence := flag.String("engine-build-evidence", "", "independent exact transform engine build Evidence JSON")
+	stage2Lock := flag.String("stage2-engine-lock", "", "Host-approved Reference stage2 engine lock")
+	hostRegistration := flag.String("stage2-host-registration", "", "explicit Host registration for Reference stage2")
 	flag.Parse()
 
-	out, err := runWithExactEngine(*repo, exactEngineOptions{Executable: *exactEngine, BuildEvidence: *engineEvidence})
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	out, err := runWithExactEngine(*repo, exactEngineOptions{
+		Executable:       *exactEngine,
+		BuildEvidence:    *engineEvidence,
+		Stage2Lock:       *stage2Lock,
+		HostRegistration: *hostRegistration,
+	})
+	if exitCode := writeSelfBuildCLIResult(os.Stdout, os.Stderr, out, err); exitCode != 0 {
+		os.Exit(exitCode)
 	}
-	enc := json.NewEncoder(os.Stdout)
+}
+
+// Keep the CLI's output and exit-code decision testable without a test-only
+// switch in the production command. A mismatch is JSON evidence, not success.
+func writeSelfBuildCLIResult(stdout, stderr io.Writer, out evidence, err error) int {
+	if err != nil {
+		if _, reportErr := emitSelfBuildMismatchEvidence(stdout, err); reportErr != nil {
+			fmt.Fprintln(stderr, reportErr)
+		}
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(out); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
+	return 0
 }
 
 func run(repo string) (evidence, error) {
@@ -156,6 +179,9 @@ func run(repo string) (evidence, error) {
 func runWithExactEngine(repo string, options exactEngineOptions) (evidence, error) {
 	if (options.Executable == "") != (options.BuildEvidence == "") {
 		return evidence{}, fmt.Errorf("exact Runtime Engine requires executable and build Evidence together")
+	}
+	if options.Executable == "" && (options.Stage2Lock != "" || options.HostRegistration != "") {
+		return evidence{}, fmt.Errorf("stage2 Host authority requires the exact Runtime Engine executable and build Evidence")
 	}
 	root, err := filepath.Abs(repo)
 	if err != nil {
@@ -168,6 +194,17 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	revision, err := gitOutput(root, "rev-parse", "HEAD")
 	if err != nil {
 		return evidence{}, err
+	}
+	var acceptedStage2 referenceStage2Acceptance
+	if options.Executable != "" {
+		verified, _, err := verifyExactEngine(root, revision, options)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 exact Runtime Engine build evidence: %w", err)
+		}
+		acceptedStage2, err = acceptReferenceStage2Engine(options, verified)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 Host acceptance before invocation: %w", err)
+		}
 	}
 	treeDigest, err := hashRepositorySnapshotTree(root)
 	if err != nil {
@@ -328,11 +365,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		return evidence{}, err
 	}
 	if packageBuilderFirstDigest != packageBuilderSecondDigest {
-		return evidence{}, fmt.Errorf(
-			"Plugin package builder is not reproducible: %s != %s",
-			packageBuilderFirstDigest,
-			packageBuilderSecondDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("package-builder-binary", packageBuilderFirstDigest, packageBuilderSecondDigest)
 	}
 
 	packagePlan := plugin.BuildPlan{
@@ -389,11 +422,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		return evidence{}, err
 	}
 	if string(packageFirstBytes) != string(packageSecondBytes) || packageFirstArtifactDigest != packageSecondArtifactDigest {
-		return evidence{}, fmt.Errorf(
-			"standard plugin package build is not reproducible: %s != %s",
-			packageFirstArtifactDigest,
-			packageSecondArtifactDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("plugin-package-artifact", packageFirstArtifactDigest, packageSecondArtifactDigest)
 	}
 	packageLockedBuild, err := plugin.LockBuildOutput(packagePlan, packageFirstArtifactDigest)
 	if err != nil {
@@ -419,6 +448,17 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	)
 	if err != nil {
 		return evidence{}, fmt.Errorf("TEI-native transform bootstrap: %w", err)
+	}
+	var stage2PolicyFingerprint string
+	if options.Executable != "" {
+		if transformBootstrap.RuntimeEngine != acceptedStage2.Engine ||
+			transformBootstrap.ExactRuntimeEngineBuildFingerprint == "" {
+			return evidence{}, fmt.Errorf("stage2 execution does not match accepted Runtime Engine")
+		}
+		stage2PolicyFingerprint, err = acceptedStage2.PolicyFingerprint(transformBootstrap.Stage2Plan)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 Runtime Policy: %w", err)
+		}
 	}
 
 	nativeDefinition, err := exactPlugin(loaded.World.Plugins, nativePluginID, nativePluginVersion)
@@ -483,11 +523,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		return evidence{}, err
 	}
 	if nativeBuilderFirstDigest != nativeBuilderSecondDigest {
-		return evidence{}, fmt.Errorf(
-			"TEI-native Plugin builder is not reproducible: %s != %s",
-			nativeBuilderFirstDigest,
-			nativeBuilderSecondDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("native-plugin-builder-binary", nativeBuilderFirstDigest, nativeBuilderSecondDigest)
 	}
 
 	nativePlan := plugin.BuildPlan{
@@ -543,11 +579,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		return evidence{}, err
 	}
 	if string(nativeFirstBytes) != string(nativeSecondBytes) || nativeFirstArtifactDigest != nativeSecondArtifactDigest {
-		return evidence{}, fmt.Errorf(
-			"TEI-native builtin realization is not reproducible: %s != %s",
-			nativeFirstArtifactDigest,
-			nativeSecondArtifactDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("native-plugin-realization", nativeFirstArtifactDigest, nativeSecondArtifactDigest)
 	}
 	nativeLockedBuild, err := plugin.LockBuildOutput(nativePlan, nativeFirstArtifactDigest)
 	if err != nil {
@@ -647,7 +679,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		return evidence{}, err
 	}
 	if firstDigest != secondDigest {
-		return evidence{}, fmt.Errorf("reference plugin build is not reproducible: %s != %s", firstDigest, secondDigest)
+		return evidence{}, nonReproducibleSelfBuild("process-plugin-binary", firstDigest, secondDigest)
 	}
 
 	lockedBuild, err := plugin.LockBuildOutput(plan, firstDigest)
@@ -844,6 +876,10 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 		RuntimeDefinitionFingerprint:       plugin.DefinitionFingerprint(realized),
 		RuntimePluginLockFingerprint:       runtimePluginLockFingerprint,
 		RuntimePluginLock:                  runtimeLock,
+
+		Stage2EngineLockFingerprint:       acceptedStage2.LockFingerprint,
+		Stage2HostRegistrationFingerprint: acceptedStage2.HostRegistrationFingerprint,
+		Stage2RuntimePolicyFingerprint:    stage2PolicyFingerprint,
 	}, nil
 }
 

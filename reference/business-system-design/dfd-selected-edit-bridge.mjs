@@ -29,6 +29,34 @@ function sameSteps(dfd,procedure){
       functions:(s.functionRefs||s.applicationPatterns||[]).map(r=>typeof r==='string'?r:r.id).sort()};
   });
 }
+// Producer annotations do not create accepted, runtime or authorization
+// authority. A forged/stale projection must not override this boundary even
+// when all authored labels and IDs happen to match.
+function checkProducerStatus(dfd,procedure){
+  if(dfd.roleAuthorizationBinding!=='not-inferred')
+    throw Error('DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH');
+  const sourceSteps=new Map(procedure.steps.map(s=>[s.id,s]));
+  for(const step of dfd.steps){
+    const source=sourceSteps.get(step.id);
+    const expectedManual=(source?.applicationPatterns||[]).length===0;
+    if(!source||step.noApplicationFunction!==expectedManual||
+       !Array.isArray(step.functionRefs)||
+       step.functionRefs.some(ref=>ref?.status!=='resolved'))
+      throw Error('DFD_PRODUCER_STEP_RESOLUTION_MISMATCH');
+  }
+  const proposed=[
+    ...dfd.flows,...dfd.information.roles,
+    ...dfd.information.externalParties,...dfd.information.stores,
+    ...dfd.information.responsibilities,...dfd.information.informationFlows
+  ];
+  if(proposed.some(item=>item?.authority!=='proposal')||
+     dfd.triggers.some(t=>t?.authority!=='proposal'||t.runtimeBinding!=='unbound'))
+    throw Error('DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH');
+  for(const store of dfd.information.stores){
+    const status=store.semanticData?'resolved':'not-declared';
+    if(store.dataStatus!==status)throw Error('DFD_PRODUCER_STORE_RESOLUTION_MISMATCH');
+  }
+}
 function align(dfd,procedure,review){
   if(!dfd||dfd.schemaVersion!=='business-dfd-projection-v0'||
       dfd.authority!=='derived-read-only'||dfd.canonicalProcedureUsed!==false||
@@ -54,8 +82,14 @@ function align(dfd,procedure,review){
     x=>({id:x.id,label:x.label,semanticData:x.semanticData||''}));
   sameRows(info.responsibilities,review.responsibilities,'RESPONSIBILITIES',
     x=>({step:x.step,role:x.role}));
+  // JSON property ordering is not an identity rule: Go and JS serializers
+  // may emit the same endpoint fields in different orders.
   sameRows(info.informationFlows,review.informationFlows,'INFORMATION_FLOWS',
-    x=>({id:x.id,from:x.from,to:x.to,payload:x.payload}));
+    x=>({id:x.id,
+      from:{kind:x.from?.kind,id:x.from?.id},
+      to:{kind:x.to?.kind,id:x.to?.id},
+      payload:x.payload}));
+  checkProducerStatus(dfd,procedure);
   return procedureId;
 }
 function selectedNode(dfd,kind,id) {

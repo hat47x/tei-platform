@@ -15,19 +15,20 @@ function projection(p=procedure,r=review) {
   return {
     schemaVersion:'business-dfd-projection-v0',authority:'derived-read-only',
     canonicalProcedureUsed:false,procedureId:p.procedure.id,
+    roleAuthorizationBinding:'not-inferred',
     diagnostics:[],
     steps:p.steps.map((s,i)=>({id:s.id,label:s.businessAction,
       realization:s.realization,functionRefs:(s.applicationPatterns||[]).map(id=>({id,status:'resolved'})),
       noApplicationFunction:(s.applicationPatterns||[]).length===0,
       source:{file:'order-approval-procedure.json',pointer:'/steps/'+i}})),
     triggers:r.triggers.map((t,i)=>({...t,authority:'proposal',
-      source:{file:'review-proposal.json',pointer:'/triggers/'+i}})),
+      source:{file:'review-proposal.json',pointer:'/triggers/'+i},runtimeBinding:'unbound'})),
     flows:r.flows.map((f,i)=>({...f,authority:'proposal',
       source:{file:'review-proposal.json',pointer:'/flows/'+i}})),
     information:{
       roles:r.businessRoles.map(x=>({...x,authority:'proposal'})),
       externalParties:r.externalParties.map(x=>({...x,authority:'proposal'})),
-      stores:r.stores.map(x=>({...x,dataStatus:'identity-match-only'})),
+      stores:r.stores.map(x=>({...x,authority:'proposal',dataStatus:x.semanticData?'resolved':'not-declared'})),
       responsibilities:r.responsibilities.map(x=>({...x,authority:'proposal'})),
       informationFlows:r.informationFlows.map(x=>({...x,authority:'proposal'}))
     }
@@ -138,4 +139,56 @@ test('refuses a different local Procedure even when Step identifiers coincide',(
     {kind:'replace-trigger-label',trigger:'TR-ORDER',label:'候補'});
   assert.throws(()=>act(b,{...base,procedureId:'different.procedure'}),
     /DFD_REVIEW_PROCEDURE_IDENTITY_MISMATCH/);
+});
+
+test('producer authority and resolution metadata cannot be forged into a review preview',()=>{
+  const mutations=[
+    ['role authorization',x=>{x.roleAuthorizationBinding='granted';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['manual Step reinterpreted as automatic',x=>{x.steps[1].noApplicationFunction=false;},
+      'DFD_PRODUCER_STEP_RESOLUTION_MISMATCH'],
+    ['unresolved Function kept as resolved identity',x=>{x.steps[0].functionRefs[0].status='unresolved';},
+      'DFD_PRODUCER_STEP_RESOLUTION_MISMATCH'],
+    ['missing Function status',x=>{delete x.steps[0].functionRefs[0].status;},
+      'DFD_PRODUCER_STEP_RESOLUTION_MISMATCH'],
+    ['trigger bound to runtime',x=>{x.triggers[0].runtimeBinding='cron';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['trigger authority escalated',x=>{x.triggers[0].authority='accepted';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['control-flow authority escalated',x=>{x.flows[0].authority='runtime';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['business role authority escalated',x=>{x.information.roles[0].authority='rbac';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['external party authority escalated',x=>{x.information.externalParties[0].authority='accepted';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['store resolution forged',x=>{x.information.stores[0].dataStatus='not-declared';},
+      'DFD_PRODUCER_STORE_RESOLUTION_MISMATCH'],
+    ['responsibility authority escalated',x=>{x.information.responsibilities[0].authority='execution';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH'],
+    ['information flow authority escalated',x=>{x.information.informationFlows[0].authority='write';},
+      'DFD_PRODUCER_AUTHORITY_BOUNDARY_MISMATCH']
+  ];
+  for(const [label,mutate,error] of mutations){
+    const copy=clone(base);
+    mutate(copy);
+    assert.throws(()=>act(proposal({kind:'trigger',id:'TR-ORDER'},
+      {kind:'replace-trigger-label',trigger:'TR-ORDER',label:'候補'}),copy),
+      new RegExp(error),label);
+  }
+});
+
+test('information endpoint field order has no business identity while values still matter',()=>{
+  const reordered=clone(base);
+  for(const flow of reordered.information.informationFlows) {
+    flow.from={id:flow.from.id,kind:flow.from.kind};
+    flow.to={id:flow.to.id,kind:flow.to.kind};
+  }
+  const b=proposal({kind:'trigger',id:'TR-ORDER'},
+    {kind:'replace-trigger-label',trigger:'TR-ORDER',label:'業務上の変更案'});
+  const result=act(b,reordered);
+  assert.equal(result.readyForAcceptance,false);
+  assert.deepEqual(result.sourceWrites,[]);
+  const changed=clone(reordered);
+  changed.information.informationFlows[0].from.kind='party';
+  assert.throws(()=>act(b,changed),/DFD_REVIEW_SNAPSHOT_MISMATCH_INFORMATION_FLOWS/);
 });

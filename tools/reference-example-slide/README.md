@@ -137,7 +137,11 @@ go run ./tools/reference-example-slide/cmd/tei-example-slide \
   -out /tmp/tei-slide-answered
 ~~~
 
-出力に`answer-handoff.json`と`change-triage.json`を追加する。回答、主張された回答者、適用文脈、根拠参照、質問への厳密な対応、未検証状態、次に必要なレビューを保持する。`confirmationRoute`は既存Confirmationの`identity.kind=example-review` / `identity.subject=例とCatalogの内容に束縛したハッシュID` / `basisSubjects=[{kind:semantic-relation,id:relation-id}]`へ対応させる**入力候補**である。同じ質問ID・同じCanonical Relationであっても、例のレコードやCatalogが変われば別の確認対象として再確認する。独自の回答台帳は増やさない。
+出力に`answer-handoff.json`と`change-triage.json`を追加する。回答、主張された回答者、適用文脈、根拠参照、質問への厳密な対応、未検証状態、次に必要なレビューを保持する。
+
+**レビューの根拠を回答段階まで維持する。** 派生した質問の回答には`sourceIssue`を付け、検証時点の関連ID、レコードID、段階、スライドID、判定理由、確定一致した参照先（`matchedTargetIds`）と一致の可能性が残る参照先（`possibleTargetIds`）を、その時点のレビューから複写する。設計変更の振り分け資料にも同じ`sourceIssue`を引き継ぐ。人が自由記述の回答へ参照先IDを書き足しても、その記述から機械的な根拠を生成しない。
+
+人やAIがもともとCaseへ記載した質問（`authored`）には派生元の診断が存在しないため、`sourceIssue`を付けない。いずれも回答は引き続き`unverified`であり、変更候補の`candidateReady`は`false`のままとする。`sourceIssue`の追加は回答資料の内容指紋にも反映されるため、異なる根拠を持つ旧回答を同一資料として扱わない。`confirmationRoute`は既存Confirmationの`identity.kind=example-review` / `identity.subject=例とCatalogの内容に束縛したハッシュID` / `basisSubjects=[{kind:semantic-relation,id:relation-id}]`へ対応させる**入力候補**である。同じ質問ID・同じCanonical Relationであっても、例のレコードやCatalogが変われば別の確認対象として再確認する。独自の回答台帳は増やさない。
 
 ### 複数の権限境界
 
@@ -199,3 +203,38 @@ SVGレンダラーを変更し、各配置テーブルについてSnapshot内の
 この描画方式も正式なER図記法の完全実装ではない。線のルーティング、重なりの解消、印刷向けのページ分割、件数が大きい場合のページネーションは後続の検証対象とする。
 
 新しいレンダラーと三つの否定・表示テストの同等コードを独立Go 1.23.2 scratch moduleで`go test -count=1 -v ./...`（3件）と`go vet ./...`実行し、PASSを確認した。ただしこれは**新レンダラーの隔離した動作検証**であり、PR head全体のGo testやRepository-health GateのPASSではない。
+
+
+## 関数従属性を具体例から反証する（#1126）
+
+`ProbeBaseFunctionalDependencies`は、設計者が**仮説として明示した**同一表内の関数従属性を、説明用Caseの基底レコードと突き合わせる読み取り専用の検査です。入力には`Catalog`、`Example`、`FDHypothesis`を渡します。仮説には決定項目の組と、それに従属する項目の組を指定します。
+
+- 決定項目がすべて一致し、従属項目に明確な不一致がある**二つのレコード**を見つけたときだけ、`contradiction`とレコードIDの組を返します。複合項目や、巨大なJSON数値の正確な比較にも対応します。
+- 不明な値や型（`opaque`）が残る組は、無理に同値・相違と判定しません。既知の項目の不一致があれば、その組は対象から除外します。
+- 反例が見つからなくても結果は必ず`unresolved`です。完全性の自己申告、全件がたまたま一致した例、物理主キーの一意性から、業務上の関数従属性を**採用済みの意味**へ昇格させません。
+- レコードID順・仮説ID順に安定した結果を返します。入力は検証し、古いモデル版、存在しない項目、重複したレコード、重複した仮説は拒否します。
+
+この小さな検査は基底時点の説明用レコードだけを扱います。段階ごとのスナップショット、実際のデータベース、候補キー・論理キーの正式な宣言、物理DBのPK/FK、正本への編集操作とは接続していません。例えば異なる物理行IDを持つ二件で同じ「受注番号＋明細番号」に別の商品が入っていれば、その**仮説に矛盾する具体例**として示せますが、どの項目が本来の業務識別子かは決めません。
+
+関数従属性の正式な受理、モデル図での表示、Source Indexを伴う編集と変更影響は[#1126](https://github.com/hat47x/tei-platform/issues/1126)の後続作業です。結果を自動的にCanonicalやShared Acceptanceへ書き込む処理はありません。変更範囲の試験は次で実行します。
+
+```sh
+go test -count=1 ./tools/reference-example-slide/...
+go vet ./tools/reference-example-slide/...
+```
+
+
+## 候補キーの反例検査（#1126）
+
+`ProbeBaseCandidateKeys`は、設計者が明示した`CandidateKeyHypothesis`について、説明用Caseの基底レコードから**同じキー値を持つ異なる二件**を探す、読み取り専用の検査です。複合キーの各成分は既存のFD検査と同じ厳密な値比較を使い、巨大なJSON数値の丸めや記述順序の違いで結果が変化しないようにします。
+
+例えば物理行IDが異なる二つの受注明細が、同じ「受注番号＋明細番号」を持つなら、業務識別子の仮説に対する`contradiction`としてレコードIDの組を示します。`Record.ID`やデータベースのPKが一意だからといって、仮説上の業務キーが一意とは判断しません。
+
+- `collisions`：候補キーの全成分を比較でき、同値と判明した二レコードの組。これが一件でもあれば`contradiction`です。
+- `unusableRecordIds`：欠損・null・比較不能な値（`opaque`型を含む）を持つレコード。これらを勝手に同じ値や別の値とは扱いません。
+- `indeterminatePairs`：既知のキー成分には相違がなく、少なくとも一成分の比較を完了できないレコード対の件数。既知の相違がある対は`distinctPairs`に数えます。
+- 一意に見える具体例、空の例、あるいは`completeTables`による自己申告があっても、結果は`unresolved`に留めます。**候補キーの最小性、必須性、永続的な一意性を証明しません**。
+
+候補キーと関数従属性は関連しますが、検査結果を同一視しません。キー候補が衝突することと、関数従属性の従属項目が異なることは別の反例です。検査は`Catalog`と`Example`の同じモデル版を要求し、入力とTEIの正本を変更しません。
+
+この機能はまだ`ir.World`の正式な業務キー、Source Index、ER図画面、物理PK/FK、Shared Acceptance、Runtimeへ結び付いていません。今後の設計では、これらの意味と変更権限を分離したまま横断参照を実装します。受入条件全体は[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)で管理します。
