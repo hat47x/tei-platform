@@ -497,7 +497,7 @@ async function main() {
     }
   });
   process.stdout.write(JSON.stringify({
-    status: "E1_A_B_N11_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY",
+    status: "E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY", // #1119 workflow-compatible; N11 in dedicated fields
     authority: "test-harness-acceptance-not-human",
     repositoryIntegrationHead: head, baselineRepositoryRevision: expectedR,
     sourceR0: r0, acceptedScratchSourceR1: r1, exactValidation: validationID,
