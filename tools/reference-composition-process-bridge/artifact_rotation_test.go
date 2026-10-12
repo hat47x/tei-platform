@@ -55,25 +55,25 @@ func TestDistinctProcessArtifactsRotateWithoutStaleDispatch(t *testing.T) {
 	launcher := &countingLauncher{}
 	capabilityID := core.MustCanonicalID("process.reference")
 	capability := plugin.Capability{
-		Kind: plugin.CapabilityDeploymentExecutor,
-		ID: capabilityID,
+		Kind:    plugin.CapabilityDeploymentExecutor,
+		ID:      capabilityID,
 		Actions: []deployment.ActionKind{deployment.ActionDatabaseRelease},
 	}
 	adapter := func(binary, digest, version string) pruntime.DeploymentExecutor {
 		identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: version}
 		plan := pruntime.EnvironmentPlan{
-			Environment: core.MustCanonicalID("reference"),
-			PluginLockFingerprint: "reference-process-lock",
+			Environment:              core.MustCanonicalID("reference"),
+			PluginLockFingerprint:    "reference-process-lock",
 			RuntimePolicyFingerprint: "reference-process-policy",
 			Plugins: []pruntime.PluginRuntime{{
-				Plugin: identity,
+				Plugin:                identity,
 				DescriptorFingerprint: "reference-process-descriptor",
-				Boundary: pruntime.BoundaryProcess,
-				Trust: pruntime.TrustExternalProcess,
-				Command: binary,
-				Args: []string{referenceArgvMarker},
-				SandboxPolicy: plugin.SandboxNone,
-				Artifact: plugin.Artifact{Digest: digest},
+				Boundary:              pruntime.BoundaryProcess,
+				Trust:                 pruntime.TrustExternalProcess,
+				Command:               binary,
+				Args:                  []string{referenceArgvMarker},
+				SandboxPolicy:         plugin.SandboxNone,
+				Artifact:              plugin.Artifact{Digest: digest},
 			}},
 			Capabilities: []pruntime.CapabilityRuntime{{
 				Plugin: identity, Capability: capability, Boundary: pruntime.BoundaryProcess,
@@ -83,7 +83,7 @@ func TestDistinctProcessArtifactsRotateWithoutStaleDispatch(t *testing.T) {
 			Plan: plan,
 			Registry: pruntime.Registry{
 				Processes: launcher,
-				Verifier: fileVerifier{path: binary},
+				Verifier:  fileVerifier{path: binary},
 			},
 			CapabilityID: capabilityID,
 		}
@@ -91,17 +91,17 @@ func TestDistinctProcessArtifactsRotateWithoutStaleDispatch(t *testing.T) {
 	legacy := adapter(legacyBinary, legacyDigest, "1.0.0")
 	next := adapter(nextBinary, nextDigest, "2.0.0")
 	command := executor.Command{
-		ID: "artifact-rotation",
-		ActionID: "sales_expand/apply",
+		ID:             "artifact-rotation",
+		ActionID:       "sales_expand/apply",
 		IdempotencyKey: "artifact-rotation-once",
-		Kind: string(deployment.ActionDatabaseRelease),
-		Database: core.MustCanonicalID("sales_core"),
-		Version: "1.0.0",
+		Kind:           string(deployment.ActionDatabaseRelease),
+		Database:       core.MustCanonicalID("sales_core"),
+		Version:        "1.0.0",
 	}
 	contract := composition.Contract{
-		ID: "std.deployment.executor",
+		ID:      "std.deployment.executor",
 		Version: "1.0.0",
-		Shape: "reference-execute-request-result-v1",
+		Shape:   "reference-execute-request-result-v1",
 	}
 	registry := composition.NewRegistry()
 	snap, err := registry.Apply(0, []composition.Provider{{
@@ -128,11 +128,11 @@ func TestDistinctProcessArtifactsRotateWithoutStaleDispatch(t *testing.T) {
 		return nil
 	}
 	original := composition.Binding{
-		ContractID: contract.ID,
+		ContractID:      contract.ID,
 		ContractVersion: contract.Version,
-		ProviderID: "legacy",
-		ArtifactDigest: legacyDigest,
-		Generation: 1,
+		ProviderID:      "legacy",
+		ArtifactDigest:  legacyDigest,
+		Generation:      1,
 	}
 	oldScope := composition.NewScope()
 	oldCleanups := 0
