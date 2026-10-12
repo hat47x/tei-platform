@@ -102,7 +102,9 @@ func TestOrderEntryContextDoesNotCreateAWriteRoute(t *testing.T) {
 	}))
 	defer upstream.Close()
 	h, err := newOrderEntryContextHandler(upstream.URL)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, httptest.NewRequest(http.MethodPost, "/project/order-entry-context", strings.NewReader("{}")))
 	if resp.Code != http.StatusMethodNotAllowed {
