@@ -8,6 +8,9 @@ on:
     paths:
       - 'internal/composition/**'
       - 'tools/check-core-isolation.sh'
+      - 'tools/check-core-subject-isolation.sh'
+      - 'core/subject/**'
+      - 'internal/subject/**'
       - 'tools/repository-architecture-check/**'
       - 'tools/reference-subproject-impact/**'
       - 'reference/composition-kernel/testdata/external-consumer/**'
@@ -28,6 +31,9 @@ on:
     paths:
       - 'internal/composition/**'
       - 'tools/check-core-isolation.sh'
+      - 'tools/check-core-subject-isolation.sh'
+      - 'core/subject/**'
+      - 'internal/subject/**'
       - 'tools/repository-architecture-check/**'
       - 'tools/reference-subproject-impact/**'
       - 'reference/composition-kernel/testdata/external-consumer/**'
@@ -86,6 +92,14 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/check-core-isolation.sh
+
+      - name: Subject正本の外部利用と旧パスの型同一性を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l core/subject/*.go internal/subject/*.go)"
+          go test -count=1 ./core/subject ./internal/subject
+          bash tools/check-core-subject-isolation.sh
 
       - name: 既存の依存境界を検証
         shell: bash
