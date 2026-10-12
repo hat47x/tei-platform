@@ -549,3 +549,89 @@ test('information ID duplication, invalid endpoint and Step re-selection discard
   assert.equal($('step-info-id').value,'');
   assert.equal($('step-info-payload').value,'');
 });
+
+function selectInformationOrigin(kind,id){
+  const node=$('diagram').children.find(x=>x.dataset?.kind===kind&&x.dataset.id===id);
+  assert.ok(node,kind+' '+id+' must be rendered');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:81});
+}
+
+test('selected Party or Store produces inbound information-only review without acceptance',async()=>{
+  const originals=JSON.stringify({procedure:approvalProcedure,review:approvalReview});
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  for(const [kind,id,flowID,target] of [
+    ['party','supplier','INFO-INBOUND-PARTY','APP-15'],
+    ['store','orders','INFO-INBOUND-STORE','APP-00']
+  ]){
+    selectInformationOrigin(kind,id);
+    assert.equal($('step-action').value,'add-information-flow');
+    assert.equal($('step-action').disabled,true);
+    assert.equal($('trigger-label').disabled,true);
+    assert.equal($('step-role').disabled,true);
+    assert.equal($('step-transition-to').disabled,true);
+    assert.equal($('step-info-to-kind').value,'step');
+    assert.equal($('step-info-to-kind').disabled,true);
+    assert.equal($('step-info-to-id').disabled,false);
+    assert.equal($('semantic-propose').disabled,false);
+    $('step-info-id').value=flowID;
+    $('step-info-id').listeners.input();
+    $('step-info-to-id').value=target;
+    $('step-info-to-id').listeners.change();
+    $('step-info-payload').value='参照情報の伝達';
+    $('step-info-payload').listeners.input();
+    await $('semantic-propose').listeners.click();
+    assert.match($('status').textContent,/未受理の変更候補を確認/);
+    const receipt=JSON.parse($('semantic-pending').textContent);
+    assert.equal(receipt.change.kind,'information-flow');
+    assert.deepEqual(receipt.proposedBusinessOperation,{
+      kind:'add-information-flow',id:flowID,
+      from:{kind,id},to:{kind:'step',id:target},payload:'参照情報の伝達'
+    });
+    assert.equal(receipt.selected.sourceLocatorStatus,'reference-local-pointer-checked');
+    assert.equal(receipt.selected.sourceFileAuthority,'unverified');
+    assert.equal(receipt.reviewAuthority,'unaccepted-proposal-only');
+    assert.equal(receipt.readyForAcceptance,false);
+    assert.deepEqual(receipt.sourceWrites,[]);
+    assert.equal($('semantic-export').disabled,false);
+    assert.equal(JSON.stringify({procedure:approvalProcedure,review:approvalReview}),originals);
+  }
+});
+
+test('inbound selection rejects non-Step destinations, duplicate IDs and stale candidates',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectInformationOrigin('party','customer');
+  $('step-info-id').value='INFO-DATE';
+  $('step-info-id').listeners.input();
+  $('step-info-payload').value='重複する情報';
+  $('step-info-payload').listeners.input();
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/DUPLICATE_INFORMATION_FLOW/);
+  assert.equal($('semantic-export').disabled,true);
+
+  $('step-info-id').value='INFO-INBOUND-NEW';
+  $('step-info-id').listeners.input();
+  $('step-info-to-kind').value='store';
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/有効な変更内容/);
+  assert.equal($('semantic-preview').hidden,true);
+  $('step-info-to-kind').value='step';
+  $('step-info-to-id').value='unknown-step';
+  $('step-info-to-id').listeners.change();
+  await $('semantic-propose').listeners.click();
+  assert.match($('status').textContent,/UNRESOLVED_ENDPOINT/);
+  assert.equal($('semantic-export').disabled,true);
+
+  $('step-info-to-id').value='APP-10';
+  $('step-info-to-id').listeners.change();
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  selectInformationOrigin('store','orders');
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('step-info-id').value,'');
+  assert.equal($('step-info-to-kind').value,'step');
+});
