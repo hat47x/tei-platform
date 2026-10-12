@@ -270,10 +270,7 @@ func exactRuntimeEngineIdentity(artifactDigest, target string) (pruntime.Runtime
 }
 
 func resolveReproducibility(firstDigest, secondDigest string) (bool, string) {
-	if firstDigest != secondDigest {
-		return false, ""
-	}
-	return true, firstDigest
+	return gobuilder.ResolveReproducibility(firstDigest, secondDigest)
 }
 
 func sourceClosureFingerprint(members []sourceMember) string {
@@ -291,27 +288,7 @@ func evidenceFingerprint(e buildEvidence) (string, error) {
 }
 
 func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
-	cmd := exec.Command(
-		goPath,
-		"build",
-		"-trimpath",
-		"-buildvcs=false",
-		"-mod=readonly",
-		"-o",
-		output,
-		packagePath,
-	)
-	cmd.Dir = repo
-	env, err := buildEnvironment(os.Environ(), stateDir)
-	if err != nil {
-		return err
-	}
-	cmd.Env = env
-	combined, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
-	}
-	return nil
+	return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)
 }
 
 func fixedGoBuildSettings() []string {
