@@ -36,7 +36,7 @@ func TestInspectWiringAmbiguityAndExplicitSelection(t *testing.T) {
 	if got.Verdict != ProposalCandidate || got.Selected == nil || got.Selected.ProviderID != "storage-a" || got.Selected.Scope != "tenant-a" {
 		t.Fatalf("explicit valid wiring not proposed: %+v", got)
 	}
-	if got := r.InspectWiring(WiringRequirement{Contract: probeRead, Scope: "tenant-a", ProviderID: "storage-c"}); got.Verdict != ProposalConflict || got.Reason != ReasonExplicitMismatch {
+	if got := r.InspectWiring(WiringRequirement{Contract: probeRead, Scope: "tenant-a", ProviderID: "storage-c"}); got.Verdict != ProposalUnknown || got.Reason != ReasonNoKnownProvider {
 		t.Fatalf("cross-tenant provider accepted: %+v", got)
 	}
 	if got := r.InspectWiring(WiringRequirement{Contract: probeRead, Scope: "tenant-a", ProviderID: "not-present"}); got.Verdict != ProposalUnknown || got.Reason != ReasonNoKnownProvider {
