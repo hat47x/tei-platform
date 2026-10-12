@@ -63,9 +63,9 @@ Gate C — PAS-04 Evidence — Ready
 
 必要な検証根拠は次の三つです。いずれも、変更のない同一の候補版`R`を使った一度の実行で成立しています。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定的な再現性を示す検証根拠
+2. #255 生成物の再現性を示す検証根拠
+3. #308 実際のPostgreSQLと一時的な試験データによる検証根拠
 
 `#387`での最終確認と、同じ実行で行った子成果物の監査を含む`Ready`判定の正本は`GATE_B_READINESS_AUDIT.md`です。
 
@@ -88,7 +88,7 @@ Handover Baseline B
 
 ### 判定段階C：最初の実行先で生じる違いを検証根拠で説明できる
 
-**Ready**です（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。Gate B / Handoverを起点に、第一Web Target build `T1`のSemantic / Functional / Visual Evidenceが同一provenanceでそろいました（[GATE_C_READINESS_AUDIT.md](gate/GATE_C_READINESS_AUDIT.md)）。Readyの非主張（production-ready、actual external Commandの成功、Target-neutral Presentation taxonomyの完成、第二Targetが不要になったこと、Visual Fidelityの人による承認）は同auditのとおりです。
+**Ready**です（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。判定段階Bと引継ぎを起点に、最初のWeb向け実行物`T1`について、意味、機能、表示の検証根拠を同じ来歴でそろえました（[判定段階Cの監査記録](gate/GATE_C_READINESS_AUDIT.md)）。この`Ready`は、本番運用可能であることや、外部への命令が実際に成功したことを意味しません。実行先に依存しない表示の分類体系が完成したこと、二つ目の実行先が不要になったこと、表示の忠実度について人が承認したことも主張しません。これらの限界は同じ監査記録に記載しています。
 
 最初のWeb向け実行先では、引継ぎの基準`B`と対象版`R`を意味の基準として使います。
 
@@ -106,9 +106,9 @@ Semantic / Functional / Visual Evidence
 
 判定段階Cでは次の三つを分けます。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
+1. 意味に関する準拠性
+2. 操作と機能の検証根拠
+3. 表示の忠実度に関する検証根拠
 
 画像を評価するAIやスクリーンショットの評価点だけを根拠に、意味や機能の検証に合格したとは判断しません。
 
@@ -144,12 +144,12 @@ PASは単なる網羅率の指標ではなく、要求と実証を結び付け�
 
 ### 対象
 
-- Semantic Kernel
-- Source Index / Diagnostic
-- Source-to-Canonical Traceability
-- Domain Component / Semantic Pattern / Policy候補
-- provenance / revision
-- reusable semantic knowledge exploration
+- 意味を扱う中核
+- 入力元索引と診断
+- 入力元から意味の正本への追跡可能性
+- 分野固有の部品、意味の構成パターン、方針の候補
+- 出所と対象版
+- 再利用できる意味情報の探索
 
 第1版では、アプリケーションの構成パターンはアプリケーション側で管理します。最初の参照事例だけを根拠に、意味を扱う中核の標準的な概念一覧へ移しません。
 
@@ -165,20 +165,20 @@ AI向けの知識、検索索引、埋め込み表現、処理の履歴などは
 
 ### 対象
 
-- Application Pattern / intent
-- Application ↔ Database
-- Database Contract / native Query
-- Datasource read / write
-- existing authentication / authorization
-- existing SQL / external API
-- Capability Mapping
-- incremental replacement
+- アプリケーションの構成パターンと意図
+- アプリケーションとデータベースの関係
+- データベース契約と元形式の問い合わせ
+- データソースの読み取りと書込み
+- 既存の認証と認可
+- 既存のSQLと外部のAPI
+- 機能と実装の対応付け
+- 段階的な置き換え
 
 実際の外部資産については、観測した事実と正本に定めた契約を区別します。
 
 実際には観測していない物理オブジェクト、列、SQL、データ型を推測で補いません。
 
-成熟したReference Modelの転写は`ISSUE-000078` / `REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`で扱います。転写で必要になった業務・設計概念は原則Semantic Extension / Pluginとして表し、X-TEA固有schemaをCoreへ直接追加しません。外部model本体をpublic fixtureへコピーせず、exact input digest、Source locator、mapping、loss / unresolved、Conformance Evidenceから再現します。
+成熟した外部の参照モデルを移し替える作業は、`ISSUE-000078`と`REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`で扱います。必要になった業務上・設計上の概念は、原則として意味の拡張やプラグインで表し、X-TEA固有のスキーマを中核へ直接追加しません。外部モデルの本体を公開試験データへ複製せず、元資料の照合値、参照位置、対応付け、失われた意味と未解決事項、準拠性確認の根拠から追跡できるようにします。
 
 ## 作業領域D：データベースと提供実装の変更管理
 
@@ -188,7 +188,7 @@ AI向けの知識、検索索引、埋め込み表現、処理の履歴などは
 
 PostgreSQLは、詳細な検証に用いる提供実装として利用します。
 
-異なるProviderは、既存資産との互換性と、特定Providerに依存しない境界を厳しく検証するために利用します。Oracleは第一Referenceの`master_data`が持つ既存資産としての最初の具体例であり、要件がOracleに限られるわけではありません。MySQL、SQL Server等を加えるかは、具体的な既存資産や利用条件が現れた時点で決め、Oracleと同じEvidence契約（物理事実の観測、read-only境界、driver assembly、actual read）で検証します。
+異なる提供実装は、既存資産との互換性と、特定の提供実装に依存しない境界を厳しく検証するために利用します。Oracleは最初の参照事例の`master_data`が利用する既存資産の例であり、対象をOracleに限定するものではありません。MySQLやSQL Serverなどを追加するかは、具体的な資産や利用条件が明らかになった段階で判断します。検証ではOracleと同じく、物理的な事実の観測、読み取り専用の制約、実行・検証環境への接続、実際の読み取りを区別します。
 
 Oracleの実環境での検証が未完了であることを理由に、判定段階Bを未達成の状態へ戻しません。
 
@@ -200,13 +200,13 @@ Oracleの実環境での検証が未完了であることを理由に、判定�
 
 ### 重点
 
-- browse / record / reference / header-detail / command
-- Validation
-- Authentication / Authorization
-- Capability invocation
-- Business Result / Execution Error
-- separate Observation read
-- deterministic Scenario
+- 一覧表示、記録、参照、見出しと明細、操作の構成パターン
+- 検証
+- 認証と認可
+- 機能の呼出し
+- 業務上の結果と実行エラー
+- 独立した状態の観測
+- 再現可能で決定的なシナリオ
 
 設計用の実行・検証環境は、本番の実行基盤を簡略化したものではありません。設計を検証するための基準です。
 
@@ -220,7 +220,7 @@ Oracleの実環境での検証が未完了であることを理由に、判定�
 
 最初のWeb向け実行先は、PAS-04の初めての実証対象です。
 
-Gate C EvidenceではHandover baseline `R`とWeb build `T1`を分けて追跡します。
+判定段階Cの検証では、引継ぎに用いる基準版`R`とWeb向けのビルド版`T1`を区別して追跡します。
 
 ### 二つ目の実行先
 
@@ -228,15 +228,15 @@ Gate C EvidenceではHandover baseline `R`とWeb build `T1`を分けて追跡し
 
 比較軸:
 
-- Canonical Application meaning
-- Target Capability
-- Runtime Binding
-- Execution / Trust Profile
-- Target固有実装
-- Host control plane
-- Observation
-- Semantic / Functional / Visual Evidence
-- RQ-024 performance measurement
+- アプリケーションの正本となる意味
+- 実行先で利用できる機能
+- 実行基盤との対応付け
+- 実行時の条件と信頼の境界
+- 実行先に固有の実装
+- 実行環境の管理機構
+- 状態の観測
+- 意味、機能、表示の検証根拠
+- RQ-024に関する性能測定
 
 最初の実行先だけを根拠に、実行先に依存しない分類体系が完成したとは判断しません。
 
@@ -311,14 +311,14 @@ AIの自律性と実行権限を分け、AIが道具を直接呼び出したこ�
 
 ### 対象
 
-- Plugin distribution / trust
-- Plugin-defined Capability Contract（ISSUE-000080。Core固定enumを増やさずauthoring / build / runtime scopeを分離）
-- production Provider adapters
-- durable store / HA
-- observability
-- deployment integrations
-- supply-chain Evidence
-- compatibility policy
+- プラグインの配布と信頼性
+- プラグインが定める機能契約（ISSUE-000080。中核に固定の列挙値を増やさず、記述時、構築時、実行時の範囲を分離する）
+- 本番向けの提供実装との接続部品
+- 永続的な保存機構と高可用性
+- 実行状態の観測
+- 配備機構との連携
+- ソフトウェアの供給経路に関する検証根拠
+- 互換性の方針
 
 外部のオーケストレーターやエージェント基盤が提供する汎用機能を、TEI固有の価値として再実装しません。
 
