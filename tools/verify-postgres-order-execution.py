@@ -13,7 +13,10 @@ import urllib.request
 
 
 def run(args, **kwargs):
-    return subprocess.run(args, check=True, text=True, capture_output=True, timeout=600, **kwargs).stdout.strip()
+    result = subprocess.run(args, text=True, capture_output=True, timeout=600, **kwargs)
+    if result.returncode:
+        raise RuntimeError(f'{args[0]} failed with exit {result.returncode}: {result.stderr.strip()}')
+    return result.stdout.strip()
 
 
 def main():
@@ -43,7 +46,9 @@ def main():
                          '-e', 'POSTGRES_HOST_AUTH_METHOD=trust', '-e', 'POSTGRES_DB=tei_reference',
                          '-p', '127.0.0.1::5432', 'postgres:16-alpine'])
         for _ in range(100):
-            ready = subprocess.run(['docker', 'exec', container, 'pg_isready', '-U', 'postgres', '-d', 'tei_reference'],
+            # The image starts a socket-only temporary server during init. Check
+            # TCP so fixture creation waits for the final server, not that seed.
+            ready = subprocess.run(['docker', 'exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres', '-d', 'tei_reference'],
                                    capture_output=True, timeout=10)
             if ready.returncode == 0:
                 break
