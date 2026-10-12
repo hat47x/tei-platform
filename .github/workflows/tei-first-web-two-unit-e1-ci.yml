@@ -92,6 +92,7 @@ jobs:
           test -f "$destination/smoke-observation.json"
           grep -Fq '"browserAndApiPhysicallySeparate": true' "$destination/measurement.json"
           grep -Fq '"syntheticFormBodyEqualsDirectAPI": true' "$destination/smoke-observation.json"
+          grep -Fq '"apiJsonStagesAndFailuresMatchThroughBrowserHost": true' "$destination/smoke-observation.json"
           # Never upload synthetic credentials, API logs, or unchecked
           # evidence as a production artifact. CI logs contain only receipts.
       - name: After identity and clean checkout
