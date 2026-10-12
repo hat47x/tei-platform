@@ -108,30 +108,30 @@ LLM boundary
 - 本番用の`ProviderFeasibility`列挙値や候補の階層
 - 提供実装のエラーと結果の分類体系を本番向けに固定すること
 
-新しいread-only作業を追加するのは、R1〜R6、S1 / S2 frontier pressure、mixed-frontier context refinement、provider feasibility scope / outcome-classification pressureでも説明できない具体的なinformation loss、authority contradiction、provenance / freshness / scope / owner-routing gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
+新しい読み取り専用の検証を追加するのは、R1～R6、S1・S2の候補群の検証、混在する候補の文脈の精緻化、提供実装の実現可能性と結果分類の検証だけでは説明できない問題が、現在の参照事例で見つかった場合に限ります。対象となるのは、具体的な情報の欠落、権限上の矛盾、出所・情報の鮮度・対象範囲・担当への振分けに関する不足です。将来必要になりそうだという理由だけで、抽象化や試験専用の構造を増やしません。
 
-### Gate C後のdownstream handoff guard
+### 判定段階Cの後に引き継ぐ条件
 
-Gate C後に`ISSUE-000047` / `ISSUE-000051`を再開するとき、R5 / R6で確認済みの境界を別のschemaや認知層として再設計しない。
+判定段階Cの後に`ISSUE-000047`と`ISSUE-000051`を再開するときは、R5・R6で確認済みの境界を、別のスキーマや認知処理の層として設計し直しません。
 
-`ISSUE-000047`へ渡す既知条件は次である。
+`ISSUE-000047`には、次の確認済みの条件を引き継ぎます。
 
-- semantic candidateとdiscovery mechanism / discovery traceを分離する
-- 同一candidateがexact / Pattern / associative等の複数経路で見つかっても、candidateを複製せず複数traceを保持できる
-- Reference Patternのprovenance、associative retrieval representationのbuild-input provenance / scoped freshness trace、current M1 qualificationを別物として扱う
-- retrieval score / similarity / 過去利用回数をapplicability / Evidence / Acceptanceへ変換しない
-- exact existing assetも「存在する」だけでapplicableとせず、current identity / dependency / scopeとrequired accepted authority / Evidenceへ戻ってqualifyする
+- 意味上の候補と、候補を発見する方式・発見経路の記録を分ける
+- 同じ候補を正確な照合、構成パターン、連想処理などの複数の経路で発見しても、候補を複製せず、複数の発見経路を記録できる
+- 参照パターンの出所、連想検索の表現を構築した入力の出所と対象範囲内での鮮度、現在のM1の適格性確認をそれぞれ区別する
+- 検索の評価点、類似度、過去の利用回数を、適用可能性・検証根拠・受理の判断へ直接変換しない
+- 正確に一致する既存資産も、存在するだけで適用可能とは判断しない。現在の識別子、依存関係、対象範囲、必要な受理済みの権限・検証根拠に戻って適格性を確認する
 
-`ISSUE-000051`へ渡す既知条件は次である。
+`ISSUE-000051`には、次の確認済みの条件を引き継ぎます。
 
-- derived cognitive representationはM2のregeneratable resourceであり、M1 authorityではない
-- candidate retrieval方式を変えてもsemantic candidate identityやaccepted meaningを変えない
-- derived indexのbuild-input provenance / freshness / stale判定と、M1 accepted authority / proof freshnessを混同しない
-- derived representationがfreshでも、current applicabilityやcross-view proofはrequired accepted authority / Evidenceへ独立に戻って確認する
-- R6のproof freshnessは「proofが依存するaccepted authority fingerprint」の問題であり、cognitive index用のglobal revision counter導入根拠にはしない
-- index削除・方式差し替え後もCanonical Worldが変わらないことを維持する
+- 派生した認知用の表現はM2の再生成可能な資源であり、M1で意味を決定する権限ではない
+- 候補を検索する方式を変えても、意味上の候補の識別子や受理済みの意味を変えない
+- 派生索引を構築した入力の出所・鮮度・失効の判定と、M1で受理済みの権限・証明の鮮度を混同しない
+- 派生した表現が最新でも、現在の適用可能性や複数視点の証明は、必要な受理済みの権限と検証根拠に戻って独立に確認する
+- R6における証明の鮮度は、証明が依存する受理済みの権限の照合値に関する問題であり、認知用索引のためにリポジトリ全体で共有する改訂番号を導入する根拠にはしない
+- 索引を削除したり検索方式を変更したりしても、意味の正本全体が変わらないことを維持する
 
-したがって再開時に、次を改めて導入するところから始めない。
+したがって、再開時には次の仕組みを改めて導入するところから始めません。
 
 ```text
 candidate.origin = exact | pattern | associative
@@ -146,11 +146,11 @@ cognitive index / pattern memoryを
 accepted semantic sourceとする構造
 ```
 
-actual Gate C Referenceでこれらの境界では情報が失われることが観測された場合にだけreopenする。Gate C後の最初の仕事は境界の再設計ではなく、実在するS1 candidate frontierへ000047のcurrent qualificationを当て、必要性が出たときだけ000051のretrieval方式を比較することである。
+実際の判定段階Cの参照事例で、これらの境界による情報の欠落が観測された場合に限って再検討します。判定段階Cの後は、境界を設計し直すのではなく、まず実際のS1の候補群に`ISSUE-000047`の現行の適格性確認を適用します。必要性が確認された場合に限り、`ISSUE-000051`で検索方式を比較します。
 
 ### 再開条件
 
-通常の再開点はProduct Gate C後とする。少なくとも次が実在してから、S1〜S5のactual Referenceへ進む。
+通常は製品の判定段階Cの後に再開します。少なくとも次の条件が実際に成立してから、S1～S5の参照事例を用いた検証に進みます。
 
 ```text
 Gate B Ready
@@ -171,17 +171,17 @@ S1 realistic intent / candidate frontier
   -> closed loopを1周
 ```
 
-このclosed loopのactual Evidenceを得る前に、R1〜R6のtest-only shapeやS1 / S2 frontier pressure / mixed-frontier refinement / provider feasibility pressureのconceptual shapeをproduction schemaへ昇格しない。
+この一連の改善循環を実際に検証した根拠が得られるまでは、R1～R6の試験専用の構造や、S1・S2の候補群、混在する候補の精緻化、提供実装の実現可能性に関する概念上の構造を、本番用のスキーマには採用しません。
 
 ## まだ設計文書を置いていない領域
 
-実装とADR、Conformanceは存在しますが、機能単位の設計本文をまだ置いていない領域です。必要になった時点で追加し、それまでは各ADRとConformanceを正本とします。
+ここには、実装、ADR、準拠性の検証資料は存在するものの、機能単位の設計本文はまだ置いていない領域を示します。設計本文は必要になった時点で追加し、それまでは対応するADRと準拠性の検証資料を正本とします。
 
 | 領域 | 現在の正本 |
 | --- | --- |
-| Source-to-Canonical Traceability / Source Index | [ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[`docs/conformance/source-traceability-m0.23.md`](../../docs/conformance/source-traceability-m0.23.md) |
-| Database物理schemaのDesired / Actual / Diff / Unresolved、Advanced Index、Migration rendering | ADR-0008〜ADR-0015、`docs/conformance/`のm0.26〜m0.35 |
-| Plugin / Process Runtime、Permission、Resource Broker、fencing / takeover | [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md)、[ADR-0006](../adr/0006-process-command-and-argv.md)、`docs/conformance/`のm0.22.1 / m0.24 / m0.25 |
-| Target / Presentation境界 | Gate C前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
+| 情報源から正本の意味への追跡と入力元索引 | [ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[`docs/conformance/source-traceability-m0.23.md`](../../docs/conformance/source-traceability-m0.23.md) |
+| データベースの物理スキーマに関する期待状態・実際の状態・差分・未解決事項、高度な索引、移行用の生成処理 | ADR-0008〜ADR-0015、`docs/conformance/`のm0.26〜m0.35 |
+| プラグインとプロセスの実行基盤、権限、資源の仲介、古い実行担当の排除・担当の交代 | [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md)、[ADR-0006](../adr/0006-process-command-and-argv.md)、`docs/conformance/`のm0.22.1 / m0.24 / m0.25 |
+| 実行先と表示・操作の境界 | 判定段階Cより前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
 
-Gate前に確定していない領域へ、先回りして設計文書を作りません。
+判定段階の前に確定していない領域について、先回りして設計文書は作りません。
