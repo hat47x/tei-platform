@@ -97,3 +97,28 @@ func TestCanonicalSourcePathsRejectCyclicExpressions(t *testing.T) {
 	}
 }
 
+
+func TestCanonicalSourceExactEightMiBBoundary(t *testing.T) {
+	source := transform.TransformSourceRealizerV1()
+	base, _, err := transform.MaterializeSource(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Adjust an ASCII field so JSON escaping does not change the length.
+	exactStringLength := transform.MaxSerializedSourceBytes - len(base) + len(source.Identity.ContractVersion)
+	source.Identity.ContractVersion = strings.Repeat("a", exactStringLength)
+	artifact, _, err := transform.MaterializeSource(source)
+	if err != nil {
+		t.Fatalf("exactly 8 MiB should be accepted: %v", err)
+	}
+	if len(artifact) != transform.MaxSerializedSourceBytes {
+		t.Fatalf("expected exactly 8 MiB, got %d bytes", len(artifact))
+	}
+	if _, err := transform.ParseSourceJSON(artifact); err != nil {
+		t.Fatalf("exact-boundary artifact must be readable: %v", err)
+	}
+	source.Identity.ContractVersion += "a"
+	if _, _, err := transform.MaterializeSource(source); err == nil {
+		t.Fatal("8 MiB plus one byte must be rejected")
+	}
+}
