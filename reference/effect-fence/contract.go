@@ -57,7 +57,21 @@ type Assessment struct {
 // AssessBoundary は根拠不明・外部副作用・未証明の構成を安全側へ倒す。
 // require=Durable は実Provider証拠を必要とする。値が未知なら許可しない。
 // 申告内容自体の実地検証や偽装の排除は、この関数の責務外である。
+// EvidenceVerifier は、実行基盤側が実Providerの適合性証拠を信頼できるか評価する。
+// アダプター自身が返す自己申告ではなく、配備側が管理する検証器を使う必要がある。
+type EvidenceVerifier func(BoundaryContract) bool
+
 func AssessBoundary(c BoundaryContract, require Guarantee) Assessment {
+	return assessBoundary(c, require, nil)
+}
+
+// AssessVerifiedBoundary は信頼済みの証拠検証器を渡す、配備側専用の入口である。
+// 常にtrueを返す検証器やAdapterが自分で与える検証器では安全な証明にならない。
+func AssessVerifiedBoundary(c BoundaryContract, require Guarantee, verify EvidenceVerifier) Assessment {
+	return assessBoundary(c, require, verify)
+}
+
+func assessBoundary(c BoundaryContract, require Guarantee, verify EvidenceVerifier) Assessment {
 	if require != GuaranteeProcess && require != GuaranteeDurable {
 		return Assessment{Reason: "invalid-requirement", Available: GuaranteeNone}
 	}
@@ -78,10 +92,13 @@ func AssessBoundary(c BoundaryContract, require Guarantee) Assessment {
 		return Assessment{Reason: "memory-is-not-durable", Available: GuaranteeProcess}
 	case BoundaryTransaction, BoundaryConditional:
 		// 合成DBや単体試験だけでは、本番の永続的な原子性は確認できない。
-		if c.Proof == ProofProvider && c.DurableReceipt && c.RecoveryLookup {
-			return Assessment{Allowed: true, Available: GuaranteeDurable}
+		if c.Proof != ProofProvider || !c.DurableReceipt || !c.RecoveryLookup {
+			return Assessment{Reason: "durable-provider-proof-missing", Available: GuaranteeNone}
 		}
-		return Assessment{Reason: "durable-provider-proof-missing", Available: GuaranteeNone}
+		if verify == nil || !verify(c) {
+			return Assessment{Reason: "provider-evidence-not-attested", Available: GuaranteeNone}
+		}
+		return Assessment{Allowed: true, Available: GuaranteeDurable}
 	default:
 		return Assessment{Reason: "authority-and-effect-not-atomic", Available: GuaranteeNone}
 	}
