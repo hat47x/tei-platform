@@ -141,6 +141,28 @@ test("review HTML marks missing categories and duplicate results as unverified",
   assert.match(page, /A8　/);
   assert.match(page, /not-evaluated/);
 });
+test("future review categories remain visible and explicitly unverified", () => {
+  const page = renderStudioHTML({
+    schema: "tei.reference.studio-review-edit/v0",
+    explicitAcceptance: "not-performed", sourceWriteByThisCommand: false,
+    preview: { acceptable: true },
+    review: { coverage: { available: 9, partial: 0, notEvaluated: 0 },
+      sections: [
+        ...["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"].map(code => ({
+          code, title: code + " 項目", coverage: "available"
+        })),
+        { code: "A9", title: "将来の追加審査", coverage: "available",
+          items: ["<script>bad</script>"] }
+      ]
+    }
+  });
+  assert.match(page, /A9　将来の追加審査/);
+  assert.match(page, /未知の審査区分/);
+  assert.match(page, /Studioが未対応の審査区分/);
+  assert.match(page, /評価範囲：not-evaluated/);
+  assert.match(page, /&lt;script&gt;bad&lt;\/script&gt;/);
+  assert.doesNotMatch(page, /<script>/);
+});
 test("HTML refuses arbitrary documents, with no default authority", () => {
   assert.throws(() => renderStudioHTML({ schema: "unknown" }),
     /UNSUPPORTED_STUDIO_HTML_SCHEMA/);
