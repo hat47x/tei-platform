@@ -106,15 +106,15 @@ func replayBoundEngineReceipt(receipt realEngineReplayReceipt, nativePath, wasmP
 	base.Plugins[0].Artifact = plugin.Artifact{Digest: receipt.RealizationArtifactDigest}
 	bind := func(target, physicalDigest, expectedFingerprint string) error {
 		engine := pruntime.RuntimeEngineIdentity{
-			ID                  : core.MustCanonicalID(receipt.EngineLogicalID),
-			Version             : receipt.EngineVersion,
-			ContractVersion     : receipt.EngineContract,
+			ID:                   core.MustCanonicalID(receipt.EngineLogicalID),
+			Version:              receipt.EngineVersion,
+			ContractVersion:      receipt.EngineContract,
 			ImplementationDigest: physicalDigest,
-			Target              : target,
+			Target:               target,
 		}
 		lock := pruntime.RuntimeEngineLock{
 			FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
-			Bindings: []pruntime.RuntimeEngineBinding{{
+			Bindings:      []pruntime.RuntimeEngineBinding{{
 				Plugin: base.Plugins[0].Plugin,
 				Engine: engine,
 			}},
