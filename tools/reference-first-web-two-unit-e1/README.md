@@ -148,3 +148,21 @@ Plugin向けの`BuildPlan` / `BuildArtifactLock`は、現在、Plugin Identity�
 - Git commitとtreeのID、最終APIバイト数・SHA-256。既存Browser／APIの同一`browserAndApiSourceRevision`、API生成物のdigest、測定済みGo版が食い違えば成果物を公開しません。
 
 元のBrowser用HTMLとJavaScriptにも既存の実成果物SHA-256を保持しますが、この追加ではBrowser用のGo依存閉包や本番用の複数Builderを証明していません。Go packageのリストはビルド時の一時物とし、配布物には閉包digestと件数だけを含めます。build-info自体やGit tree IDを署名済み証拠とみなさず、改ざん可能な測定JSONを信用できるHost Authorityへ昇格させません。`unitBuilderAuthorityVerified`、`buildArtifactLockVerified`、`hermeticBuildVerified`、`reproducibleBinaryVerified`は**常にfalse**です。正式なSource→BuildPlan→Artifact→Host trustの権限経路は引き続き既存Builder/Deployment担当で設計・検証する必要があります。
+
+
+### 二配備単位のバイト・ビルド照合と固定World版実Chrome再生
+
+`build_frozen_json_api.sh`はatomic no-clobber公開**直前**に、`verify_frozen_unit_pair.py`で完成したstaging全体を再検査する。公開済みの出力についても、同じコマンドを読取り専用で実行できる。
+
+```sh
+python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py \
+  /tmp/tei-frozen-example
+```
+
+検査対象は`measurement.json`、`source-lineage.json`、Browser HTML/JS、Go API実行ファイル、`api/frozen-world.json`の**実バイト列**。ファイル欠落・想定外ファイル（source mapや秘匿ファイル含む）・シンボリックリンク・JSON重複キーを拒否する。宣言されたSHA-256・サイズだけでなく、World内のApplication IDとB/R/T、Source Index改訂、派生World同一性、Build ObservationのGit commit/tree・Go依存閉包情報も照合する。さらに、`go version -m`を**実行ファイルに対して再実行**し、埋込みGo版・target・CGO・trimpath・3タグがビルド記録に一致するか確認する。
+
+これは**ローカルな不整合・改ざんの検知**であり、公開鍵署名付きの発行者認証ではない。測定JSON・Source・APIそのものを攻撃者が一括置換した場合、正当なBuilder/Source Acceptance/Hostの権限は導けない。またGo package閉包のハッシュはビルド時`go list`の観測であり、実行ファイルのリンク済み全シンボルを独立解析した証明ではない。`sourceAcceptanceAuthorityVerified`、`buildArtifactLockVerified`、`productionAuthorizationVerified`、`artifactAuthority`は引き続きfalseである。
+
+`smoke_json_api.py`は固定Worldモードの成果物を与えた場合、同じpreflightを済ませ、実Go APIの`-workspace`をモデルソースではなく成果物の`api/`へ向けて起動する。実HTTPで正常、認証拒否、認可拒否、Validation、Execution Error、Origin/Content-Type拒否、API停止時のUnknown相当を検査する。さらに実Chrome E1 CIは従来方式に加えて固定World方式を別々に生成・接続し、desktop/mobileの入力操作とスクリーンショットを取る。各結果を別ディレクトリへ保持し、Human Visual AcceptanceやProduction IdP/Provider/TLS/CSRF合格と混同しない。
+
+**Productへの残る接続**は、既存Builder/Plugin BuildArtifactLockのうち妥当な参照を、Application配備単位の正式な配備可否判定へ接続すること。診断preflightはその代わりの新しいLockや実行許可Authorityではない。

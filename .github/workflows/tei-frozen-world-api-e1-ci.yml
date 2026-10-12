@@ -68,6 +68,8 @@ jobs:
           python3 -B -c "import ast; ast.parse(open('tools/reference-first-web-two-unit-e1/check_api_only_parity.py',encoding='utf8').read())"
           python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_frozen_source_lineage.py -v
           python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_inspect_frozen_api_build.py -v
+          python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_verify_frozen_unit_pair.py -v
+          python3 -B -c "import ast, pathlib; [ast.parse(pathlib.Path(p).read_text(encoding='utf-8')) for p in ('tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py', 'tools/reference-first-web-two-unit-e1/smoke_json_api.py')]"
           node --check tools/reference-first-web-two-unit-e1/real_browser_replay.mjs
       - name: 実バイナリと固定Worldを構築し、HTTP同等性と依存除外を検証
         run: |
@@ -78,6 +80,10 @@ jobs:
           test -s "$dest/api/order-entry"
           test -s "$dest/api/frozen-world.json"
           test -s "$dest/source-lineage.json"
+          python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py "$dest"
+          python3 tools/reference-first-web-two-unit-e1/smoke_json_api.py "$dest"
+          grep -Fq '"frozenWorldPairPreflightVerified": true' "$dest/json-api-smoke.json"
+          grep -Fq '"originAndMediaTypeDenied": true' "$dest/json-api-smoke.json"
           grep -Fq '"sourceAcceptanceAuthorityVerified": false' "$dest/measurement.json"
           grep -Fq '"buildArtifactLockVerified": false' "$dest/measurement.json"
           grep -Fq '"frozenAPISyntheticHTTPParityVerified": true' "$dest/measurement.json"
