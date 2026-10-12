@@ -31,8 +31,20 @@ function render() {
   const diagram=$('diagram');diagram.replaceChildren();
   if(!state.dfd){$('export').disabled=true;return;}
   const all=nodes(), assigned=positionMap(), centers=new Map();
+  const positions=all.map((node,i)=>
+    assigned.get(key(node.kind,node.id))||{x:40+(i%4)*260,y:50+Math.floor(i/4)*115});
+  // Preserve readable node size for large Procedures and for nodes moved
+  // beyond the initial board. Coordinates are view-only, not canonical.
+  const minX=Math.min(0,...positions.map(p=>p.x-24));
+  const minY=Math.min(0,...positions.map(p=>p.y-24));
+  const maxX=Math.max(1100,...positions.map(p=>p.x+230));
+  const maxY=Math.max(600,...positions.map(p=>p.y+100));
+  const width=maxX-minX,height=maxY-minY;
+  diagram.setAttribute('viewBox',`${minX} ${minY} ${width} ${height}`);
+  diagram.style.width=width+'px';
+  diagram.style.height=height+'px';
   all.forEach((node,i)=>{
-    const pos=assigned.get(key(node.kind,node.id))||{x:40+(i%4)*260,y:50+Math.floor(i/4)*115};
+    const pos=positions[i];
     centers.set(key(node.kind,node.id),{x:pos.x+95,y:pos.y+28});
   });
   const edges=[];
@@ -50,7 +62,7 @@ function render() {
     diagram.append(line);
   }
   all.forEach((node,i)=>{
-    const p=assigned.get(key(node.kind,node.id))||{x:40+(i%4)*260,y:50+Math.floor(i/4)*115};
+    const p=positions[i];
     const g=svg('g',{transform:`translate(${p.x},${p.y})`,class:'node '+(node.manual?'manual':'')+(node.kind==='party'?' external':'')+(state.selected===key(node.kind,node.id)?' selected':'')});
     g.dataset.kind=node.kind;g.dataset.id=node.id;
     g.append(svg('rect',{width:190,height:56,rx:8}));
