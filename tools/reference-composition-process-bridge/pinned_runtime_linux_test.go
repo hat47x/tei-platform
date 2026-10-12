@@ -23,6 +23,10 @@ import (
 // この試験は製品のRuntimeが提供する選択式起動器を使用する。
 // 先行する参照用pinnedReferenceHostの別実装に成功判定を依存させない。
 func invokeProductPinned(t *testing.T, ctx context.Context, host *pruntime.PinnedLinuxProcess, path, digest string, signature, provenance string, sandbox plugin.SandboxPolicy) (executor.Result, error) {
+	return invokePinnedWithRegistry(t, ctx, pruntime.Registry{Verifier: host, Processes: host}, path, digest, signature, provenance, sandbox)
+}
+
+func invokePinnedWithRegistry(t *testing.T, ctx context.Context, registry pruntime.Registry, path, digest string, signature, provenance string, sandbox plugin.SandboxPolicy) (executor.Result, error) {
 	t.Helper()
 	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	capabilityID := core.MustCanonicalID("process.reference")
@@ -48,7 +52,7 @@ func invokeProductPinned(t *testing.T, ctx context.Context, host *pruntime.Pinne
 	plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
 	adapter := pruntime.DeploymentExecutor{
 		Plan:         plan,
-		Registry:     pruntime.Registry{Verifier: host, Processes: host},
+		Registry:     registry,
 		CapabilityID: capabilityID,
 	}
 	return adapter.Execute(ctx, executor.Command{
@@ -173,5 +177,57 @@ func TestProductPinnedLinuxProcessSymlinkAndPreparationRejection(t *testing.T) {
 	_, err = pruntime.PinLinuxProcess(stopped, identity, original, digest, pruntime.StdioProcessLauncher{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled preparation was not rejected: %v", err)
+	}
+}
+
+func TestProductPinnedLinuxProcessRejectsMismatchedRegistryWiring(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	dir := t.TempDir()
+	path, originalDigest := buildPinnedFixture(t, ctx, dir, "approved")
+	replacement, replacementDigest := buildPinnedFixture(t, ctx, dir, "replaced")
+	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
+	pinned, err := pruntime.PinLinuxProcess(ctx, identity, path, originalDigest, pruntime.StdioProcessLauncher{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pinned.Close()
+	otherPinned, err := pruntime.PinLinuxProcess(ctx, identity, replacement, replacementDigest, pruntime.StdioProcessLauncher{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer otherPinned.Close()
+
+	// Make path execution observably dangerous: a mismatched verifier would
+	// attest to "approved" while an ordinary launcher starts "replaced".
+	if err := os.Rename(replacement, path); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name    string
+		verifier pruntime.ArtifactVerifier
+		launcher pruntime.ProcessLauncher
+		digest   string
+	}{
+		{name: "pinned-verifier-with-ordinary-path-launcher", verifier: pinned, launcher: pruntime.StdioProcessLauncher{}, digest: originalDigest},
+		{name: "ordinary-verifier-with-pinned-launcher", verifier: fileVerifier{path: path}, launcher: pinned, digest: replacementDigest},
+		{name: "two-distinct-pinned-images", verifier: pinned, launcher: otherPinned, digest: originalDigest},
+		{name: "missing-launcher", verifier: pinned, digest: originalDigest},
+		{name: "missing-verifier", launcher: pinned, digest: originalDigest},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := invokePinnedWithRegistry(t, ctx, pruntime.Registry{
+				Verifier: tc.verifier, Processes: tc.launcher,
+			}, path, tc.digest, "", "", plugin.SandboxNone)
+			if err == nil || !strings.Contains(err.Error(), "pinned process") {
+				t.Fatalf("invalid Host wiring was not refused before dispatch: %v", err)
+			}
+		})
+	}
+	// A correctly bound Host continues to execute the originally accepted
+	// bytes even after its source pathname now references different bytes.
+	ok, err := invokeProductPinned(t, ctx, pinned, path, originalDigest, "", "", plugin.SandboxNone)
+	if err != nil || !strings.Contains(ok.Message, "revision=approved") {
+		t.Fatalf("valid Host binding stopped executing the held image: %+v %v", ok, err)
 	}
 }
