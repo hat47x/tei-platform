@@ -209,7 +209,14 @@ async function main() {
   assert.deepEqual(changed(beforeFiles, files(workspace)), [
     "applications/order-entry/application.tei", "semantic/sales/validation.tei"
   ]);
-  const world = JSON.parse(go(["run", "./cmd/tei", "world", "-workspace", workspace]));
+  // Both producers use workspace.Load and encoding/json. Compare actual
+  // serialized bytes, not two caller-provided digest labels: this witnesses
+  // the accepted Decision's derived World in a separate CLI invocation.
+  const worldJSON = go(["run", "./cmd/tei", "world", "-workspace", workspace]);
+  const worldDigest = "sha256:" + createHash("sha256").update(worldJSON).digest("hex");
+  assert.equal(worldDigest, decision.derivedWorldSha256,
+    "a separate World CLI read differs from the accepted derived World");
+  const world = JSON.parse(worldJSON);
   const app = world.applications.find(a => a.id === "order_entry");
   assert.ok(app.validations.includes(validationID), "R1 Application did not select rule");
   assert.equal(app.validations.length, 4);
@@ -339,6 +346,7 @@ async function main() {
       decisionReviewFingerprint: decision.reviewBinding?.fingerprint,
       decisionModelRevisionAfter: decision.modelRevisionAfter,
       decisionDerivedWorldSHA256: decision.derivedWorldSha256,
+      independentlyReloadedWorldSHA256: worldDigest,
       decision: "automated-scratch-test-only", humanApproval: false,
       expiresWithScratchWorkspace: true
     },
