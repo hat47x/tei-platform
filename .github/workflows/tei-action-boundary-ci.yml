@@ -67,3 +67,55 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+  go-transport-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 対象版と作業領域を検査
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+            read -r virtual base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$virtual" = "$GITHUB_SHA"
+            test "$head" = "$PR_HEAD_SHA"
+          fi
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+      - name: Goを固定版で用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 汎用ActionのHTTPS委譲を競合検出付きで検証
+        shell: bash
+        env:
+          GOENV: off
+          GOWORK: off
+          GOFLAGS: ''
+          GOTOOLCHAIN: local
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout 10m ./tools/reference-sui-action-boundary/actionboundary
+
+      - name: 実行後の版と作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
