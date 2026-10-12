@@ -72,7 +72,7 @@ func main() {
 			FrozenWorldSHA256  string `json:"frozenWorldSha256"`
 		}{
 			DerivedWorldSHA256: "sha256:" + hex.EncodeToString(worldSum[:]),
-			FrozenWorldSHA256: hex.EncodeToString(frozenSum[:]),
+			FrozenWorldSHA256:  hex.EncodeToString(frozenSum[:]),
 		}
 		output, err := json.Marshal(lineage)
 		if err != nil {
