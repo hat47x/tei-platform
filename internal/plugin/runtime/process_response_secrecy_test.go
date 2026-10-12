@@ -16,10 +16,10 @@ const processResponseSecretCanary = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
 // actual JSON/stdio process transport, not a Response created only in memory.
 func TestRegistryDoesNotPublishUntrustedProcessErrorContents(t *testing.T) {
 	for _, tc := range []struct {
-		name             string
-		mode             string
-		wantError        string
-		wantSuccessData  bool
+		name            string
+		mode            string
+		wantError       string
+		wantSuccessData bool
 	}{
 		{name: "reported failure", mode: "secret-error", wantError: "untrusted process error details suppressed"},
 		{name: "unexpected response status", mode: "secret-unknown-status", wantError: "invalid status"},
@@ -78,7 +78,7 @@ func TestRegistryDoesNotPublishUntrustedProcessErrorContents(t *testing.T) {
 }
 
 type processErrorBuiltin struct {
-	identity plugin.Identity
+	identity    plugin.Identity
 	fingerprint string
 }
 func (b processErrorBuiltin) Identity() plugin.Identity { return b.identity }
