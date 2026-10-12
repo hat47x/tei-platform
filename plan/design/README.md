@@ -33,6 +33,7 @@
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026の複数視点の照合を、対象を限定した証明上の条件として設計案の候補を絞り込む処理へ接続する、評価待ちの設計 |
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件ごとのプラグイン、画面部品一式、仕様テンプレート、構成プロファイルの境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
+| [`MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md`](MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md) | 意味モデルと表示資源を分離する多言語対応、言語資源の所有、代替、配布、翻訳の確認（[GitHub #1396](https://github.com/hat47x/tei-platform/issues/1396)、評価待ち） |
 | [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | 機能に渡す意味上の要求と、ホストが注入する実行時の文脈を分ける、評価待ちの設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
