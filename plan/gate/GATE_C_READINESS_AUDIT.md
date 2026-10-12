@@ -108,7 +108,7 @@
 
 ## 未解決事項（carry-forward）
 
-最終監査が分類済みです。いずれもblockingではありません。
+最終監査で分類しています。いずれも合格を妨げるものではありません。
 
 | id | disposition | owner | 理由 |
 | --- | --- | --- | --- |
@@ -120,24 +120,24 @@
 
 ## 第二Targetへのhandoff
 
-`semantic-functional-summary.json`の`targetDifferenceHandoff`に、observed Target Capability候補（`http-html-projection` / `http-json-manifest` / `http-read-scenario` / `http-command-scenario` / `http-custom-submit-form`）、Runtime Binding（`sales_core` PostgreSQL / `master_data` Oracle read-only）、execution artifact（`go-run-native-process`）、ABI（`linux/amd64`）、Execution / Trust観測、Web固有差、Canonical化してはいけない差（HTTP route / status、HTML element、CSS class、Referenceのsynthetic fixture値）を保持しています。これは第一Referenceの観測recordであり、Target CapabilityやExecution Profileの最終taxonomyではありません。`ISSUE-000026`で第二Targetの圧力を受けて再検討します。
+`semantic-functional-summary.json`の`targetDifferenceHandoff`には、観測した実行先の能力の候補（`http-html-projection`／`http-json-manifest`／`http-read-scenario`／`http-command-scenario`／`http-custom-submit-form`）、実行時の対応付け（`sales_core`のPostgreSQL／読取り専用の`master_data` Oracle）、実行成果物（`go-run-native-process`）、ABI（`linux/amd64`）、実行と信頼についての観測結果、ウェブ固有の違い、正本に取り込んではいけない違い（HTTPの経路・状態コード、HTMLの要素、CSSのクラス、参照事例の合成試験データの値）を保持しています。これは最初の参照事例の観測記録であり、実行先の能力や実行方式の最終的な分類ではありません。`ISSUE-000026`で二つ目の実行先と比較し、再検討します。
 
 ## Ready の意味と非主張
 
-Gate C Readyは、契約に定めた第一Targetの意味・操作・視覚・architecture境界が、同一provenanceのEvidenceから再確認できたことだけを意味します。次は意味しません。
+判定段階CのReadyは、契約で定めた最初の実行先における意味・操作・表示・構造の境界を、来歴の揃った検証根拠から再確認できたことだけを意味します。次のことまでは意味しません。
 
-- production-readyなWeb product
-- actual external Oracle / production Commandの成功（Reference Observationはsynthetic）
-- Target-neutral Presentation taxonomyの完成
-- 第二Targetが不要になったこと
-- Visual Fidelityの人による承認
-- unresolvedの消滅
+- 本番運用に耐えられるウェブ製品であること
+- 実際の外部Oracleや本番の命令実行に成功したこと（参照事例での観測は合成データによるもの）
+- 実行先に依存しない表示方式の分類が完成したこと
+- 二つ目の実行先が不要になったこと
+- 表示の忠実度を人が承認したこと
+- 未解決事項がすべて解消したこと
 
-`T`でbaseline meaningを変更する必要が生じた場合は、Web固有のfieldやruleで埋めず、authoritative sourceへ戻して新しいHandover Baseline `B'` / `R'`を発行します。
+`T`で基準版の意味を変更する必要が生じた場合、ウェブ固有の項目や規則で補いません。正本となる入力元へ戻り、新しい引継ぎ基準版`B'`／`R'`を発行します。
 
 ## 再現
 
-Semantic / Functional / Architectureは、`T`のclean checkoutでRunbookの手順を再実行して再取得できます。Screenshotは描画環境（browser build / font）に依存するため、byte-for-byte一致は保証しません。再取得したScreenshotは新しいVisual runとして評価します。
+意味・機能・構造については、変更のない版`T`を取得した作業領域で実行手順書に従えば、検証根拠を再取得できます。一方、画面画像は描画環境（ブラウザーの構築版やフォント）に左右されるため、バイト単位での一致は保証しません。撮影し直した画面画像は、新しい表示検証の実行として評価します。
 
 ## 関連
 
