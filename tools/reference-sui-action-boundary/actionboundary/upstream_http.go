@@ -115,7 +115,7 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 		return "", fmt.Errorf("%w: upstream request failed", ErrRemoteOutcomeUnknown)
 	}
 	defer resp.Body.Close()
-	limited, err := io.ReadAll(io.LimitReader(resp.Body, 8<<10+1))
+	limited, err := io.ReadAll(io.LimitReader(resp.Body, (8<<10)+1))
 	if err != nil || len(limited) > 8<<10 {
 		return "", fmt.Errorf("%w: malformed upstream response", ErrRemoteOutcomeUnknown)
 	}
