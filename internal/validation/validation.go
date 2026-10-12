@@ -132,6 +132,9 @@ func Validate(w ir.World) []Diagnostic {
 		if _, err := plugin.ParseVersion(b.Version); err != nil {
 			out = append(out, errd("INVALID_BUNDLE_VERSION", "bundle %s: %v", b.ID, err))
 		}
+		if err := plugin.ValidateRequirements(b.Plugins); err != nil {
+			out = append(out, errd("DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
+		}
 	}
 
 	semanticNamespaces := map[core.CanonicalID]semantic.Namespace{}

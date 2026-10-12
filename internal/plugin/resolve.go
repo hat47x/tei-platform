@@ -47,6 +47,9 @@ func (c Catalog) resolveBundle(req environment.ExtensionRequirement) (Bundle, er
 	if len(matches) > 1 && matches[0].Version == matches[1].Version {
 		return Bundle{}, fmt.Errorf("bundle %s version %s is declared more than once", req.ID, matches[0].Version)
 	}
+	if err := ValidateRequirements(matches[0].Plugins); err != nil {
+		return Bundle{}, fmt.Errorf("bundle %s version %s: %w", matches[0].ID, matches[0].Version, err)
+	}
 	return matches[0], nil
 }
 
