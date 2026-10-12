@@ -1,0 +1,26 @@
+name: TEI hosted-runner smoke test (manual)
+
+# Issue #513 / #1189: diagnose runner assignment without checking out or running TEI.
+# This workflow is manual-only and does not resume automatic Actions usage.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: tei-manual-hosted-runner-smoke
+  cancel-in-progress: false
+
+jobs:
+  hosted-runner-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Confirm runner reached shell execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_OS" = Linux
+          printf 'run_id=%s\nrun_attempt=%s\nrunner_os=%s\nrunner_arch=%s\nrunner_name=%s\n' \
+            "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$RUNNER_OS" "$RUNNER_ARCH" "$RUNNER_NAME"
+          printf 'runner step execution reached\n'
