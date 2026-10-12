@@ -338,3 +338,16 @@ E8では、`WiringFinding.VerificationTargets`を追加し、構造上の候補�
 この分離によって、AIの提案を**根拠不足のまま承認しない**ことと、必要な根拠を収集する作業を自動化することの両立を目指す。
 
 実装と局所試験の詳細、未成立の保証は[Composition Kernel E8](../../reference/composition-kernel/README.md)に記載する。
+
+
+## 18. 契約適合証拠への参照を、実行機構と分けて照合する
+
+AIによる構成案の生成では、E8で列挙した検証対象と既存の#951の解決・適合性証拠を対応付ける必要がある。しかし、構成案の検査Kernelが証拠の信頼性や実行権限を自前で判定すると、既存の正式なAuthorityと二重化する。
+
+これを避けるため、[E9の独立した参照実装](../../reference/composition-evidence-handoff/README.md)を追加した。対象はProvider ID、Scope、契約ID・版・形状、宣言世代で照合する。結果には、参照不足、宣言世代の古さ、対象の不一致、参照項目の不足、複数候補の曖昧さを区別して残す。
+
+一方、#951のConformance Evidenceに含まれるPlugin ID・Plugin版・Implementation ID・Artifact Digest・Contract Fingerprint・Conformance Profile・Evidence Fingerprintは、あくまで**独立検証へ戻るための参照項目**として受け取る。構成案の`Contract.Shape`だけで、#951の契約全体の正確な指紋を推定できない。
+
+したがって、すべての参照が一致しても、最終結果は**参照先を発見した（未検証）**で止める。契約定義の発行権限、適合試験の真正性・失効状態、実Artifactと配備対象、現在のHost Permission／Leaseは別々に検証する。AIの自己評価では確定しない。
+
+本書の一連のE5～E9は、要求から構成案を作り、外部検証で必要となる根拠の不足を列挙できるまでのReferenceである。Productionの完全な契約適合、配備、AIによる自律的な実装承認を示すものではない。正式な#951のResolverを通す縦断Consumerと、PR exact-headの全体テストを次の採用条件とする。
