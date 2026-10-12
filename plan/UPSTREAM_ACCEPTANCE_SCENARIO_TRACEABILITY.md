@@ -361,53 +361,53 @@ AI向けの知識、索引、キャッシュ、過去の作業経緯は派生情
 
 最初から巨大な知識グラフ、ベクトルデータベース、AI専用の知識保存機構を用意しません。
 
-## 9. PAS-07 — 手作業を失わずData / Function / Businessを相互検証して設計修正できる
+## 9. PAS-07 — 人の作業を残したまま、データ・機能・業務を相互検証できる
 
 ### 利用者価値
 
-開発者は、業務をApplication内部の実行手順へ還元せず、人・外部作業を含むBusiness Procedureを確認しながらData / Function-Interaction / Businessの三視点から矛盾・不足・過剰な仮定を見つけ、Projectionだけを補修するのではなくauthoritative sourceへ戻って設計を修正できます。
+開発者は、業務をアプリケーション内部の実行手順だけに置き換えません。人の作業や外部での作業を含む業務手順を確認し、データ、機能・操作、業務の三つの視点から矛盾や不足、根拠のない仮定を見つけます。表示だけを直すのではなく、正本となる情報源へ戻って設計を修正できます。
 
 ### 代表的なシナリオ
 
 ```text
-accepted Data / Relation / Application meaningを読む
+受理済みのデータ・関係・アプリケーションの意味を読む
         ↓
-Business固有meaningをaccepted authoring sourceとして保持する
+業務固有の意味を、受理済みの定義元として保持する
         ↓
-manual / external Actionをfake Functionへ変換しない
+人や外部の作業を架空のアプリケーション機能に置き換えない
         ↓
-existing Application / Semantic identityをexplicitに参照する
+既存のアプリケーションと意味上の識別子を明示的に参照する
         ↓
-derived cross-view Projectionで相互検証する
+三つの視点から派生した表示を使って相互検証する
         ↓
-contradiction / omission / unknown / impactを発見する
+矛盾・欠落・未確定事項・影響を発見する
         ↓
-correction candidateをauthoritative source側へ返す
+修正候補を正本となる情報源へ戻す
         ↓
-Shared Acceptance Boundary
+共通の受理境界
         ↓
-reload / regenerate / reviewする
+再読込み・再生成・確認を行う
 ```
 
 ### 壊してはいけない境界
 
 ```text
-Business Action != Application Function
-Business Flow != Procedure != Runtime Workflow Orchestration
-Business Actor / Job != Authentication Principal != Authorization Role / Policy
-Validation PASS != whole-business approval
-Application Business Result != external-world Observation
-Projection != second source of truth
+業務上の行為 ≠ アプリケーションの機能
+業務の流れ ≠ 業務手順 ≠ 実行基盤の処理の統括
+業務主体・職務 ≠ 認証された主体 ≠ 認可上の役割・方針
+検証に合格 ≠ 業務全体が承認された
+アプリケーションの業務結果 ≠ 外部で実際に起きたことの観測
+派生表示 ≠ 第二の正本
 ```
 
-Application Patternの並びやPAS-02のDriver validation sequenceを、accepted Business Procedureなしに利用者の業務手順へ読み替えません。
+アプリケーションの構成パターンの並びやPAS-02の検証手順だけから、受理済みの業務手順がないのに利用者の業務手順を推測しません。
 
 ### 主に対応する製品要求
 
-- RQ-025 業務上の行為・手順をApplication Functionから独立して設計
-- RQ-026 Data / Function-Interaction / Business Procedureの相互検証
+- RQ-025 業務上の行為や手順をアプリケーションの機能から独立して設計
+- RQ-026 データ・機能と操作・業務手順の相互検証
 - RQ-021 参照事例と準拠性の確認
-- RQ-022 設計検証段階と完成製品の区別
+- RQ-022 設計を検証している段階と完成した製品の区別
 
 RQ-025はPAS-07 primary / PAS-02・PAS-04 secondaryです。
 
@@ -415,92 +415,92 @@ RQ-026はPAS-07 primary / PAS-01・PAS-02・PAS-04 secondaryです。
 
 ### 現在の計画と検証根拠
 
-Reference / Evidence実装はLane C `ISSUE-000042` / PR #482が所有します。Lane BはReference fixture / checkerを複製せず、EvidenceをPAS-07 claimへ対応付けます。
+参照事例と検証根拠の実装は、作業領域Cの`ISSUE-000042`とPR #482で管理します。作業領域Bでは試験データや検査器を複製せず、得られた根拠をPAS-07についての主張へ対応付けます。
 
 現時点では次を分離します。
 
 ```text
 E7-01〜09
-  Lane C fixture / checker / pressure tests implementation exists
-  actual Repository runner Evidence unresolved
+  作業領域Cの試験データ・検査器・厳密な検証の実装は存在する
+  実際のリポジトリの実行環境で得る検証根拠は未解決
 
 E7-10
-  file-native accepted-source pressure exists
-  production Shared Acceptance end-to-end Evidence unresolved
+  ファイルを正本とする受理済みの定義を用いた検証は存在する
+  本番向けの共通受理境界を一貫して通す検証根拠は未解決
 ```
 
 したがって:
 
 ```text
-implementation exists
-  !=
-PAS-07 execution Evidence accepted
+実装が存在する
+  ≠
+PAS-07の実行に関する検証根拠が受理された
 ```
 
-です。GitHub-hosted runnerがcheckout前に終了する状態やCI表示だけをcode failure / PAS failureへ読み替えません。
+GitHubが提供する実行環境がソース取得前に停止した場合や、CIの表示だけを見た場合に、それをコードやPASの検証の失敗とはみなしません。
 
-Business-side Representation EvidenceとPAS-02 Runtime Evidenceも分けます。
+業務側の表現に関する検証根拠と、PAS-02の実行に関する検証根拠も区別します。
 
 ```text
-Lane C Business Procedure Reference
-  -> manual / external Action
-  -> Business judgment / Validation separation
-  -> actor / authority separation
-  -> Command / Observation separation
-  -> cross-view reference / diagnostic
+作業領域Cの業務手順の参照事例
+  → 人の作業・外部の作業
+  → 業務上の判断と検証を分離
+  → 業務主体と権限を分離
+  → 命令と観測を分離
+  → 複数の視点をまたぐ参照と診断
 
-PAS-02 Driver Evidence
-  -> Validation execution
-  -> Authentication / Authorization decision
-  -> Capability execution
-  -> Business Result
-  -> separate explicit read / Observation
+PAS-02の実行・検証環境の根拠
+  → 検証を実行
+  → 認証と認可を判断
+  → 機能を実行
+  → 業務上の結果
+  → 独立した明示的な読取りと観測
 ```
 
 片方をもう片方の代替にしません。
 
-また、Reference-local stable Procedure keyはreview / handoff / stale detection / file move分離に具体的価値がありますが、それだけでCanonical `Procedure` / `Step`を採用しません。
+また、参照事例内で使う安定した手順の識別子は、確認、引継ぎ、古い版の検出、ファイル移動との区別に役立ちます。ただし、それだけで正本の要素として`Procedure`や`Step`を採用しません。
 
-file-native Business Procedure sourceのShared Acceptanceを安全に行う機械的pressureはCanonical Procedureなしでも成立しており、現在残るidentity論点は主にRQ-002のCanonical trace targetです。minimal Canonical identity shell、Subject contract拡張、formal Authoring identity等の比較はArchitecture pressureとして別に扱い、PAS-07成立条件からfull Workflow modelを逆導出しません。
+ファイルに記述した業務手順の共通受理境界を安全に検証することは、手順を正本の独立した要素にしなくても可能です。残る識別子に関する論点は、主としてRQ-002において、正本のどの対象へ追跡するかです。最小限の正本の識別情報、対象の契約の拡張、正式な記述上の識別子などは、構成上の検証課題として別に比較します。PAS-07の成立条件だけを理由に、完全な業務フローモデルを作ることはしません。
 
-### Gateへの影響
+### 既存の判定段階への影響
 
-PAS-07は新Gateではありません。
+PAS-07は新しい判定段階ではありません。
 
-- Gate B Required Evidence 3 laneへ追加しない
-- Gate C First Web Target Required Evidenceへ追加しない
-- Lane C actual runner greenはPAS-07 Evidence statusを更新するが、それだけでPAS-07全体を`accepted`へ上げない
-- end-to-end correction / acceptance / reloadはPAS-01 Shared Acceptance Evidenceとcross-checkする
+- 判定段階Bの三つの必須検証根拠へ追加しない
+- 判定段階Cの最初のWeb向け実行先に関する必須検証根拠へ追加しない
+- 作業領域Cでの実行環境の成功はPAS-07の検証状態に反映するが、それだけでPAS-07全体を`accepted`に変更しない
+- 修正、受理、再読込みまでの一連の検証は、PAS-01の共通受理境界の根拠と相互に照合する
 
-詳細なE7 mappingは `RQ025_RQ026_ACCEPTANCE_TRACE.md` をsupporting Evidence contractとして参照します。
+E7の項目別の対応関係は、補足的な検証根拠の契約である`RQ025_RQ026_ACCEPTANCE_TRACE.md`を参照してください。
 
-## 10. Cross-cutting Requirements
+## 10. 複数の受入シナリオに共通する要求
 
-### RQ-021 — Reference / Conformance
+### RQ-021 — 参照事例と準拠性の確認
 
 すべてのPASに横断します。
 
-「設計上できる」ではなく、小さいReference、fixture、Conformance、Evidenceから境界を再現できることを要求します。
+設計上は可能だという説明に留まらず、小さな参照事例、試験用データ、準拠性確認と検証根拠から、その境界を再現できることを求めます。
 
 ### RQ-022 — 完成製品と設計検証段階を区別
 
 すべてのPASに横断します。
 
-architecture probe、local fixture、synthetic adapter、beta framework、actual provider run、production claimを同じ`done`へ畳みません。
+構成上の試験、ローカルの試験データ、合成した接続部品、試験的な開発基盤、実際の提供実装での実行、本番での利用に関する主張を、すべて同じ`done`とは扱いません。
 
 ### RQ-023 — 一人でも維持可能な開発構造
 
 主にPAS-01 / PAS-06へ関係しますが全体の作業分割へ横断します。
 
-同じRepository内でRequirement → PAS → Decision → Reference → Evidenceを追えることを優先し、不要な第二正本 /巨大subsystemを増やしません。
+同じリポジトリ内で、要求から受入シナリオ、判断、参照事例、検証根拠までたどれることを優先します。不要な第二の正本や大規模な専用機構は増やしません。
 
 ### RQ-024 — Target別性能
 
 PAS-04で具体化します。
 
-第一Target `T1`と第二Target `T2`の実測を、Handover baseline、Target / Host、Runtime / Provider条件と一緒に比較します。
+最初の実行先`T1`と二つ目の実行先`T2`の測定結果を、引継ぎの基準、実行先・ホスト、実行基盤・提供実装の条件を添えて比較します。
 
-根拠のない一律thresholdを第一Targetだけから固定しません。
+最初の実行先の結果だけで、根拠のない一律の判定基準値を固定しません。
 
 ### RQ-034 — 標準的な開発環境からの改修・実行・検証
 
