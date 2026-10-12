@@ -103,4 +103,3 @@ func main() {
 	log.Print("reference project advice: http://127.0.0.1:8787")
 	log.Fatal(server.ListenAndServe())
 }
-
