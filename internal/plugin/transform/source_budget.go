@@ -45,6 +45,58 @@ func (b *sourceSizeBudget) quoted(s string) error {
 	return b.add(n)
 }
 
+// rawJSON accounts for the largest possible canonical JSON representation
+// before a literal or an allowed value is decoded. RawMessage may contain
+// unescaped HTML-sensitive characters or U+2028/U+2029, which grow during
+// canonical encoding. Count those bytes now rather than allocating the
+// expanded canonical literal first.
+func (b *sourceSizeBudget) rawJSON(raw []byte) error {
+	if err := b.add(len(raw)); err != nil {
+		return err
+	}
+	inString := false
+	escaped := false
+	for i := 0; i < len(raw); i++ {
+		ch := raw[i]
+		// The expansion estimate is conservative even for malformed JSON;
+		// semantic and syntactic validation remains ParseJSON's responsibility.
+		switch ch {
+		case '<', '>', '&':
+			if err := b.add(5); err != nil {
+				return err
+			}
+		case 0xe2:
+			if i+2 < len(raw) && raw[i+1] == 0x80 &&
+				(raw[i+2] == 0xa8 || raw[i+2] == 0xa9) {
+				if err := b.add(3); err != nil {
+					return err
+				}
+				i += 2
+				continue
+			}
+		}
+		if inString {
+			if escaped {
+				escaped = false
+			} else if ch == '\\' {
+				escaped = true
+			} else if ch == '"' {
+				inString = false
+			}
+		} else {
+			if ch == '"' {
+				inString = true
+			} else if ch == '{' || ch == '[' || ch == ',' {
+				b.nodes++
+				if b.nodes > 1_000_000 {
+					return fmt.Errorf("source literal node count exceeds limit")
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (b *sourceSizeBudget) measure(v reflect.Value, depth int) error {
 	if depth > 512 {
 		return fmt.Errorf("source nesting is too deep")
@@ -62,7 +114,7 @@ func (b *sourceSizeBudget) measure(v reflect.Value, depth int) error {
 		if v.IsNil() {
 			return b.add(4)
 		}
-		return b.add(v.Len())
+		return b.rawJSON(v.Bytes())
 	}
 
 	switch v.Kind() {
