@@ -1,57 +1,57 @@
-# プラグインとBundle
+# プラグインと配布一式
 
-> **新しい目標アーキテクチャ（2026-10-12）**： [ADR-0032](../plan/adr/0032-composition-kernel-replacement.md)により、サービス契約を中心としたComposition Kernelへの破壊的な移行を設計方針として採用しました。以下の固定CapabilityKind、旧Plugin Runtime / Lockの説明は、現行実装の解説です。将来の互換性を保証する規範ではありません。移行用の最小Kernel試作は `internal/composition/` にありますが、まだ本番Runtimeへ接続していません。
+> **新しい構成方針（2026-10-12）**：[設計判断記録ADR-0032](../plan/adr/0032-composition-kernel-replacement.md)で、サービス契約を中心とする構成中核への破壊的な移行を採用しました。この文書で説明する固定の`CapabilityKind`や旧来のプラグイン実行・固定機構は、現行実装についての説明です。将来の互換性を保証するものではありません。移行に向けた最小限の中核は`internal/composition/`で試作していますが、まだ本番の実行基盤には接続していません。
 
 
-TEIでは、プラグインを業務上の意味を表す最小要素とはせず、**機能（Capability）の実装を配布する単位**として扱います。
+TEIでは、プラグインを業務上の意味を表す最小単位とはせず、**機能の実装を配布する単位**として扱います。
 
 ## 識別子を分ける
 
 次の三つの識別子は、それぞれ異なるものを表します。
 
-- business Canonical ID — 例: `sales.order`
-- Capability ID — 例: `migration.atlas`
-- Plugin package ID — 例: `tei.migration.atlas`
+- 業務上の意味を識別する値。例：`sales.order`
+- 機能を識別する値。例：`migration.atlas`
+- プラグインのパッケージを識別する値。例：`tei.migration.atlas`
 
-環境（Environment）は必要な機能に実装を結び付けます。業務モデルには特定のパッケージ名を埋め込みません。
+環境では、必要な機能とその実装を対応付けます。業務モデルに特定のパッケージ名を埋め込むことはしません。
 
-## Plugin Lock
+## プラグインの実装を固定する
 
-Environmentが要求するPlugin / Bundleのcompatible majorから実装を解決し、Plugin Lockでexact versionとdescriptor fingerprintを固定します。
+環境が要求するプラグインや配布一式について、互換性のあるメジャーバージョンから実装を選びます。プラグインの実装固定情報には、厳密なバージョンと記述情報の照合値を記録します。
 
 開発時と本番環境で、意図せず別の実装が選ばれることを防ぎます。
 
-Plugin LockはRuntimeで利用する実装を固定するためのものです。PluginをSourceから再構築するためのBuild入力まで、同じLockへ押し込みません。
+実装固定情報が定めるのは、実行時に利用するプラグインです。ソースから再構築する際に必要な入力まで、同じ情報にまとめません。
 
-既存のformat 2 Plugin Lockは、Plugin version、descriptor fingerprint、必要な場合はartifact digestを固定します。SourceからbuildしたRuntime implementationを採用する場合は、exact Build PlanのfingerprintだけをPlugin Lockへ追加でbindし、build trace付きformat 3へ昇格します。
+既存の形式2では、プラグインのバージョン、記述情報の照合値、必要に応じて成果物の照合値を固定します。ソースから構築した実行用の実装を採用する場合は、正確な構築計画の照合値を実装固定情報に追加し、構築履歴を追跡できる形式3へ移行します。
 
-Build PlanのSource closure、builder、dependency、parameterそのものはBuildArtifactLock側に残します。Runtime Plugin Lockは`buildPlanFingerprint`と`artifactDigest`を持つことで、選択した実装からexact buildへ逆追跡できるようにします。同じphysical artifactを複数のlogical Pluginが共有しても、PluginごとのBuild Plan fingerprintは失いません。
+構築計画に含まれるソース一式、構築器、依存関係、引数の詳細は`BuildArtifactLock`側に残します。実行時の実装固定情報には`buildPlanFingerprint`と`artifactDigest`を持たせ、選択した実装から使用した構築条件まで追跡できるようにします。複数の論理的なプラグインが同じ物理的な成果物を共有しても、各プラグインの構築計画の照合値は保持します。
 
-format 2は読み取り互換を維持します。format 3へ移行しただけで、build traceを持たない既存Pluginまでself-build済みとみなしません。
+形式2との読み取り互換性は維持します。形式3へ移行しただけで、構築履歴のない既存プラグインまで自己構築済みとはみなしません。
 
 ## 利用する機能の解決
 
-現在のarchitecture probeでは、Database Provider、Migration Provider、Deployment Executor、Observation Provider、Evidence Provider、SQL analysis等のCapabilityを明示的に解決します。
+現在の構成検証では、データベースの接続、移行、配備の実行、状態の観測、検証根拠の取得、SQLの解析などに用いる機能の提供実装を、明示的に選びます。
 
-候補が欠けている場合や同じ優先度で複数存在する場合、TEIはheuristicに選ばずerrorとします。
+候補が見つからない場合や、同じ優先度の候補が複数ある場合は、推測で選ばずエラーとします。
 
-## Bundle
+## 配布一式
 
-Bundleは互換性のあるPlugin requirementをまとめる配布上の便宜です。BundleそのものをSemantic Coreの新しいkindにはしません。
+配布一式は、互換性のあるプラグインの要求をまとめるための単位です。配布一式そのものを、意味を扱う中核の新しい概念種別にはしません。
 
-BundleやPluginのlogical identityを、そのまま物理artifact、process、Wasm moduleの境界にはしません。一つのTarget artifactへ複数Plugin実装をまとめたり、同じartifactを複数のlogical Pluginから参照したりできる余地を保ちます。
+配布一式やプラグインの論理的な識別子を、物理的な成果物、プロセス、Wasmモジュールの単位と一致させる必要はありません。一つの実行先向け成果物に複数のプラグイン実装をまとめたり、一つの成果物を複数の論理的なプラグインから参照したりできる構造を保ちます。
 
-Targetごとのpackagingでは、Semantic / Capability上のidentity、version、Lock、provenanceを保ったまま、未使用実装の除外、共通runtimeの共有、artifactの重複排除、static linking、Wasmへの統合、lazy loading等を選べる構造を目指します。
+実行先ごとの配布形態では、意味や機能の識別、バージョン、固定された構成、出所を保ちます。そのうえで、未使用実装の除外、共通の実行基盤の共有、成果物の重複排除、静的リンク、Wasmへの統合、必要時の読み込みなどを選べる構造を目指します。
 
-この最適化によってPlugin境界を消したことにはしません。diagnostic、Evidence、更新影響、Authorityは、最適化後も元のlogical Plugin / Capabilityへ逆追跡できる必要があります。
+実装をまとめても、プラグイン間の論理的な境界は残ります。診断結果、検証根拠、変更の影響、権限については、最適化後も元のプラグインや機能まで追跡できる必要があります。
 
 ## ビルドとセルフビルド
 
-Plugin descriptorをTEIで記述できることと、Plugin implementationをTEI自身で再構築できることは別です。
+プラグインの記述情報をTEIで定義できることと、プラグインの実装そのものをTEIで再構築できることは別です。
 
-現行の`artifact`は、出来上がったartifactのdigest / signature / provenanceを記述できます。しかし、それだけではartifactを作ったSource、builder、build dependency、Target、parameterをRepositoryから再現できません。
+現行の`artifact`では、完成した成果物の照合値、署名、出所を記述できます。ただし、それだけでは構築に使ったソース、構築器、依存関係、実行先、引数をリポジトリから再現できません。
 
-Plugin self-buildでは、次の経路を独立したBuild contractとして扱います。
+プラグインの自己構築では、次の経路を独立した構築契約として扱います。
 
 ```text
 Plugin / implementation Source
@@ -63,36 +63,36 @@ Plugin / implementation Source
   -> Runtime
 ```
 
-Runtime dependencyとbuild-time dependencyも分離します。compiler、generator、SDK等を`requires plugin`へ混ぜ、実行時に不要な依存まで残す設計にはしません。
+実行時に必要な依存関係と、構築時に必要な依存関係も分けます。コンパイラ、生成器、開発用の道具などを`requires plugin`に混ぜ、実行時に不要な依存関係まで残す設計にはしません。
 
-self-buildは段階を分けて評価します。
+自己構築は三つの段階に分けて評価します。
 
-- SB-1: TEI sourceからPlugin packageを再構築できる
-- SB-2: Pluginの実行artifactを再構築できる
-- SB-3: TEI-native builderをstage0 seedから構築し、そのbuilderで再構築してconvergenceを確認できる
+- SB-1：TEIのソースからプラグインのパッケージを再構築できる
+- SB-2：プラグインの実行用成果物を再構築できる
+- SB-3：初期構築用の基底実装からTEI自身の構築器を作り、その構築器で再構築して収束を確かめられる
 
-stage0 seedは隠しません。seedのidentityとtrust boundaryをBuild Evidenceへ残します。
+初期構築に使った基底実装を隠しません。その識別情報と信頼の境界を構築の検証根拠に残します。
 
-TEI-native Pluginを優先してReference化しますが、Go、Rust、JavaScript、WebAssembly等の実装も禁止しません。言語ごとに別のPlugin modelを作らず、builder adapterを差し替えて同じSource → Build → Artifact契約へ載せます。
+TEIで実装したプラグインを優先して参照事例にしますが、Go、Rust、JavaScript、WebAssemblyなどによる実装も認めます。言語ごとに別のプラグインモデルを作らず、構築器への接続部品を切り替えて、同じソース・構築・成果物の契約を使います。
 
-Build可能であること、artifactをAccepted Plugin Lockへ採用できること、RuntimeでCapabilityをinvokeできることは別のAuthorityです。Build成功をAcceptanceやRuntime Authorityへ自動昇格させません。
+構築に成功したこと、成果物を受理済みのプラグインの実装固定情報へ採用できること、実行時に機能を呼び出せることは、それぞれ異なる権限に基づきます。構築の成功を、採用の承認や実行権限が得られたこととみなしません。
 
-実行可能な検証例と現在の成立範囲は [Plugin self-build Reference](../reference/plugin-self-build/README.md) を参照してください。
+実行できる検証例と、現在確認できている範囲は[プラグインの自己構築の参照事例](../reference/plugin-self-build/README.md)を参照してください。
 
 ## 実行時の扱い
 
-process Pluginは、Plugin LockだけでなくPermission Grant、Resource Binding、Sandbox Profile、Resource Lease、Supervisor ownership / fencing等の実行時境界を通ります。
+別プロセスで動作するプラグインには、実装固定情報だけでなく、実行許可、資源の対応付け、隔離環境の設定、資源の利用権、実行管理者の所有権と世代確認などの境界も適用します。
 
-processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
+別プロセスでの実行は実現方式の一つであり、プラグイン化しただけでプロセス分離が必要になるわけではありません。ブラウザなどプロセス実行ができない環境では、組込み・リンク済み実装、ブラウザ対応のWebAssembly、JavaScriptによる実行環境との連携など、その実行先で利用できる方式を選べる必要があります。実行先が必要とする機能を満たせない場合は、別方式へ暗黙に切り替えて意味を変えません。構築や準拠性確認の段階で、未解決または非対応として扱います。
 
-generic Capability ContractをApplication Runtimeで使う場合も、Capability resolver自体をRuntime Authorityにしません。Referenceでは、generic Providerを既存Environment PlanのCapabilityへ明示的に対応付け、実呼出しをproduction Runtime Registryへ戻します。これにより、Permission Grant、Resource Lease、artifact verification、Sandbox等の既存境界をgeneric Invocationから迂回しない構造をpressureしています。
+汎用的な機能契約をアプリケーションの実行基盤で使う場合も、実装の選択機構そのものには実行権限を与えません。参照事例では、汎用的な提供実装を既存の環境計画にある機能へ明示的に対応付け、実際の呼出しは本番用実行基盤の登録機構へ戻します。この構成によって、汎用的な呼出しから実行許可、資源の利用権、成果物の検証、隔離環境などの既存の境界を迂回できないことを検証しています。
 
-この接続はmigration用Referenceであり、productionの`CapabilityKind`を置き換えたものではありません。また、production Runtimeが返すInvocation Provenanceをgeneric Invocationの共通Evidenceとして運ぶ仕組みは未確定です。
+この接続は移行用の参照事例であり、本番環境の`CapabilityKind`を置き換えたものではありません。また、本番の実行基盤が返す呼出しの来歴を、汎用的な呼出しの共通の検証根拠として渡す仕組みは未確定です。
 
-Generic Capability Invocationをphysical transportへ載せる場合も、process protocolをuniversal ABIにしません。ISSUE-000086のReferenceでは既存process launcherとsynthetic loopback HTTPの二つで、同じContract / Provider / Target / shape identityをphysical carrierから分けて保持できるかを確認しています。
+汎用的な機能の呼出しを実際の通信手段へ載せる際も、プロセス間の通信規約をすべての実装に共通するバイナリ規約とはしません。課題`ISSUE-000086`の参照事例では、既存のプロセス起動機構と、合成したローカルのHTTP通信という二つの方式を用います。どちらでも、契約、提供実装、実行先、データ形式の識別を通信手段から独立して保てるか確認しています。
 
-transportがrequest内のidentityをAuthorityとして扱わないよう、両transportのplan-bound経路では上流の`TransportDispatchPlan`とdispatch identityを照合します。一致しない場合はprocess起動やHTTP送信の前に停止します。receiptにはPlan fingerprintを残しますが、Plan自体をCapability ConformanceやRuntime Authorityにはしません。
+通信機構が要求内の識別情報をそのまま権限の根拠としないよう、両方式とも上流の`TransportDispatchPlan`と送信時の識別情報を照合します。一致しない場合は、プロセス起動やHTTP送信の前に停止します。受領記録には計画の照合値を残します。ただし、計画そのものを機能の準拠性や実行権限の根拠とはしません。
 
-現行process Request / Responseのtop-level identityはlegacy CapabilityKind / CapabilityIDを前提とし、HTTP Referenceもproduction Runtime Authorityを持ちません。上流のCapability resolution / Runtime AuthorityからPlanを導出するE2Eも未実証です。このためgeneric Capabilityのproduction transport統合が成立したとは扱いません。
+現行のプロセス間の要求・応答では、最上位の識別情報として従来の`CapabilityKind`と`CapabilityID`を前提としています。HTTPによる参照事例にも本番用実行基盤の権限はありません。上流で機能を選択し、実行権限を確認してから計画を導出する一連の処理も、まだ実証していません。そのため、汎用的な機能を本番の通信機構へ統合できたとはみなしません。
 
-詳しくは [Security / Trust Boundary](security.md) を参照してください。
+詳しくは[安全性と信頼の境界](security.md)を参照してください。

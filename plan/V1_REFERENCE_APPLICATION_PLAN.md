@@ -1,40 +1,40 @@
-# TEI v1 Reference Application 実証計画
+# TEI第1版に向けた参照アプリケーションの実証計画
 
 ## 目的
 
-この文書は、TEI（鼎／テイ）がv1へ進むために必要なApplication側の実証を、Reference Application `order_entry`を中心に一つの主線として整理するものです。
+この文書は、TEI（鼎／テイ）が第1版へ進むために必要なアプリケーション側の実証を、参照アプリケーション`order_entry`を中心に整理したものです。
 
-個別Issueのclose数ではなく、同じ業務上の意味をSemantic → Application → Driver → Handover → Target → Evidenceへ追跡できることを重視します。
+個々の課題の完了件数よりも、同じ業務上の意味を、意味の定義、アプリケーション、実行・検証環境、引継ぎ、実行先、検証根拠へと追跡できることを重視します。
 
-期限は置きません。次へ進む条件はReference / Conformance / Evidenceで判断します。
+期限は設けません。次の段階へ進めるかどうかは、参照事例、準拠性確認、検証根拠に基づいて判断します。
 
-過去のscopeや旧Evidence laneは本文へ履歴として重ねず、Git history / ADR / Issueから追跡します。
+過去の対象範囲や旧来の検証作業の経緯は本文に重ねて記さず、Gitの履歴、設計判断記録、課題から追跡します。
 
-## v1 Reference Application
+## 第1版の参照アプリケーション
 
-v1では、新しい理想化sampleを別に作らず、`reference/workspace/applications/order-entry`を育てます。
+第1版では、新たに理想化した例を作らず、既存の`reference/workspace/applications/order-entry`を拡充します。
 
 主な資産:
 
-- `sales` / `customer` / `security` Semantic Namespace
+- 意味を管理する名前空間：`sales`、`customer`、`security`
 - `sales.Order` / `sales.OrderLine`
-- `sales.order.customer` Relation
-- `sales.order.lines` 1:N Relation
-- `sales.order.submit` Capability
-- `security.authenticate` / `security.authorize` Capability
-- `sales_core` read-write Datasource
-- `master_data` read-only / external-observed Datasource
-- Database Contract / native Query / Query realization
+- データ間の関係：`sales.order.customer`
+- 一対多の関係：`sales.order.lines`
+- 実行機能：`sales.order.submit`
+- 認証・認可の機能：`security.authenticate`、`security.authorize`
+- 読み書き可能なデータソース：`sales_core`
+- 読み取り専用で外部の状態を観測するデータソース：`master_data`
+- データベース契約、元形式の問い合わせ、問い合わせの実現方法
 - Application Pattern
 - Capability Binding
 - Canonical Validation
-- legacy Authentication / Authorization Compatibility Reference
-- Business Result / Execution Error境界
-- header-detail Contract Query realization
-- Database-owned Relation Storage
-- Source-to-Canonical Traceability
+- 既存の認証・認可方式との互換性を確認する参照事例
+- 業務上の結果と実行エラーの境界
+- 見出し・明細形式の契約に従う問い合わせの実現
+- データベースが管理する関係の保存
+- 入力元と意味の正本との追跡関係
 
-## v1業務Scenario
+## 第1版の業務シナリオ
 
 ```text
 Authentication
@@ -56,7 +56,7 @@ Command Business Result
 Observation
 ```
 
-この意味をDriver、Web、Studio、AIごとに作り直しません。同じCanonical meaningを共有し、それぞれの層ではProjection / Binding / Evidenceだけを追加します。
+業務上の意味を実行・検証環境、Web、編集環境、AIごとに作り直しません。同じ正本の意味を共有し、それぞれの層で必要な表示、対応付け、検証根拠だけを追加します。
 
 ## PASとの対応
 
@@ -96,15 +96,15 @@ Stage 4A Authoring / Knowledge        Stage 4B Second Target
   - AI Proposal PAS-01/06
 ```
 
-Stage 4Aと4Bは並行できます。Studio / AI完成を第二Targetの前提にはしません。
+段階4Aと4Bは並行して進められます。編集環境やAIの機能が完成することを、第二の実行先を検証する前提にはしません。
 
-Handoverは新しい番号付きGateではありません。Gate Bの出力をGate Cの入力へ固定する契約です。
+引継ぎは、新たな番号付きの判定段階ではありません。判定段階Bの出力を、判定段階Cの入力として固定する契約です。
 
 ## Stage 0 — Product Baseline / Gap Audit
 
 **Done**です。
 
-Product Value / Vision / Principles / Requirements / PAS / Master Plan / Gap AuditをRepository基線として扱います。
+製品の価値、将来像、設計原則、要求、受入シナリオ、全体計画、不足事項の調査結果を、リポジトリの基準資料として扱います。
 
 ## Stage 1 — Application Pattern
 
@@ -112,7 +112,7 @@ Product Value / Vision / Principles / Requirements / PAS / Master Plan / Gap Aud
 
 **Done**です。
 
-第一Referenceでは次の5種類をApplication所有の意図として実証しました。
+最初の参照事例では、次の5種類をアプリケーション側の意図として実証しました。
 
 ```text
 browse
@@ -122,7 +122,7 @@ header-detail
 command
 ```
 
-この5分類をTEI全体の永久的な標準Catalogとはみなしません。
+この5分類を、TEI全体で今後も変わらない標準一覧とはみなしません。
 
 ## Gate A — Application上の意味をDriverへ渡せる
 
@@ -142,7 +142,7 @@ command
 - legacy認証Compatibility
 - Source / Binding traceability
 
-Gate A ReadyはDriver完成ではなく、Driverへ渡す意味契約が成立したことを示します。
+判定段階Aの`Ready`は、実行・検証環境の完成ではなく、そこへ渡す意味の契約が成立したことを示します。
 
 ## Stage 2 — Application Driver
 
@@ -154,13 +154,13 @@ Evidence要求: `GATE_B_EVIDENCE_ACQUISITION.md`
 
 ### 現在の状態
 
-主要な意味境界とScenario構造は成立しています。
+主要な意味の境界とシナリオの構造は成立しています。
 
-Gate Bは**Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
+判定段階Bは**Ready**です（候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
 
 ### Gate B Required Evidence
 
-Required Evidenceは次の三つで、いずれも同じclean candidate revision `R`のsame-runで成立しています。
+必須の検証根拠は次の三つです。いずれも同じ変更のない候補版`R`について、一度の実行で成立しています。
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
@@ -195,7 +195,7 @@ actual physical facts、provenance、effective read-only、driver integration、
 
 ### Command / Observation
 
-Command acknowledgementをObserved external stateへ変換しません。
+命令が受け付けられたことを、外部で実際に確認した状態と同一視しません。
 
 ```text
 Command Business Result
@@ -205,7 +205,7 @@ explicit read boundary
 Observation / Execution Error
 ```
 
-Business Result、Execution Error、Observation、Diagnosticを別々に扱います。
+業務上の結果、実行エラー、観測結果、診断結果をそれぞれ区別して扱います。
 
 ### Gate B blocker（解消済み）
 
@@ -233,7 +233,7 @@ Readyには少なくとも次を要求し、すべて満たしています。
 - synthetic / generated / real-provider / actual external Evidenceを相互代替しない
 - Application meaning不足をWeb側へ先送りしない
 
-Ready判定の正本は`GATE_B_READINESS_AUDIT.md`です。
+`Ready`という判定の正本は`GATE_B_READINESS_AUDIT.md`です。
 
 ## Gate B → Gate C Handover Baseline
 
@@ -263,9 +263,9 @@ Handover Baseline B
 - Gate B Evidence
 - unresolved
 
-Handover recordはCanonicalの第二正本ではありません。
+引継ぎの記録は意味の第二の正本ではありません。
 
-Oracle未完了範囲をWeb側で推測・補完しません。
+Oracleについて未完了の範囲をWeb側で推測して補完しません。
 
 ## Stage 3 — 第一Web Target
 
@@ -279,7 +279,7 @@ Evidence: `ISSUE-000028` / #270
 
 ### baseline RとTarget build T1
 
-Web Targetの実装revisionを`T1`として別に追跡します。
+Web向け実装の版を`T1`として別に追跡します。
 
 ```text
 Handover Baseline B at R
@@ -324,9 +324,9 @@ Gate C Evidence
 
 ## Gate C — 第一Targetの境界をEvidenceで説明できる
 
-第一Web Targetが表示できただけでは通過しません。
+最初のWeb向け画面を表示できただけでは、この判定段階を通過したとはみなしません。
 
-Evidenceを三種類へ分けます。
+検証根拠を三種類に分けます。
 
 1. Semantic Conformance
 2. Interaction / Functional Evidence
@@ -352,7 +352,7 @@ visual score / VLM judgeだけでSemantic / Functionalを合格にしません�
 
 ## Stage 4A — Authoring / Knowledge / AI
 
-Gate C Ready後に開始します。
+判定段階Cが`Ready`となった後に開始します。
 
 ### Studio minimal Authoring Loop — `ISSUE-000046`
 
@@ -373,7 +373,7 @@ authoritative source
   ↓ reload / Conformance
 ```
 
-StudioはProjection / Authoring Clientであり第二正本ではありません。
+編集環境は、表示と記述を扱うものであり、第二の正本ではありません。
 
 file-native / CLI / AIと同じAcceptance原則へ収束します。
 
@@ -397,7 +397,7 @@ search ranking、similarity、embedding、AI confidenceはSemantic Evidenceで�
 
 Product Acceptance Scenario: PAS-01 / PAS-06
 
-AI ProposalはCanonical authorityではありません。
+AIによる提案は、意味の正本を変更できる権限そのものではありません。
 
 - explicit Canonical / Source / Evidence references
 - `baseModelRevision`
@@ -415,9 +415,9 @@ AI都合でmandatory authored Stable IDやPatch-only authoring modelを導入し
 関連: `ISSUE-000026` / #259  
 Product Acceptance Scenario: PAS-04
 
-Stage 4Aの完成を待たず、Gate C Ready後に並行開始できます。
+段階4Aの完成を待たず、判定段階Cが`Ready`となった後に並行して開始できます。
 
-第二Targetは対応数を増やすためではなく、第一Web Targetで得た境界を圧力試験するために選びます。
+第二の実行先は、対応先の数を増やすためではなく、最初のWeb向け実装で得た設計上の境界を検証するために選びます。
 
 比較軸:
 
