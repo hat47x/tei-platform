@@ -437,8 +437,11 @@ export function candidateFromEdit(world, revision, edit) {
     ensureNotUsed(edit.relationID, ix);
     if (edit.relationID !== s.id + "." + edit.symbol)
       throw new Error("RELATION_ID_MUST_MATCH_SOURCE_SYMBOL");
-    op = { op: "add-relation", data: s.id, id: edit.relationID,
-      symbol: edit.symbol, target: edit.targetData, cardinality: edit.cardinality };
+    // Shared Acceptance decodes Relation fields from typed addRelation.
+    op = { op: "add-relation", addRelation: {
+      data: s.id, id: edit.relationID, symbol: edit.symbol,
+      target: edit.targetData, cardinality: edit.cardinality
+    } };
   } else if (edit.view === "table" && edit.operation === "add-validation" &&
              s.kind === "attribute") {
     if (!isText(edit.validationID) || edit.validationKind !== "positive")
