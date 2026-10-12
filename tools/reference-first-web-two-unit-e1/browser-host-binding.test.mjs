@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const R = "a".repeat(40);
 const T = "b".repeat(40);
 const manifest = () => ({
@@ -29,13 +31,20 @@ async function setup(t) {
   const browser = join(root, "browser");
   const measurement = join(root, "measurement.json");
   await mkdir(browser);
-  await writeFile(join(browser, "index.html"), '<form id="json-command" method="post" action="/scenario/submit"><script src="/browser-command.js"></script></form>');
-  await writeFile(join(browser, "browser-command.js"), "void 0;");
-  await writeFile(measurement, JSON.stringify({
+  const html = Buffer.from('<form id="json-command" method="post" action="/scenario/submit"><script src="/browser-command.js"></script></form>');
+  const js = Buffer.from("void 0;");
+  await writeFile(join(browser, "index.html"), html);
+  await writeFile(join(browser, "browser-command.js"), js);
+  const initialReceipt = {
     ...manifest(),
     browserAndApiSourceRevision: T,
     browserTransport: "same-origin-json",
-  }));
+    browserSHA256: sha(html),
+    browserBytes: html.length,
+    browserScriptSHA256: sha(js),
+    browserScriptBytes: js.length,
+  };
+  await writeFile(measurement, JSON.stringify(initialReceipt));
   let exposed = manifest();
   let apiCommandIdentity = manifest();
   let commandCount = 0;
@@ -75,10 +84,10 @@ async function setup(t) {
     await new Promise(resolve => server.close(resolve));
     await rm(root, { recursive: true, force: true });
   });
-  const start = async (includeMeasurement = true) => {
+  const start = async (includeMeasurement = true, overrideMeasurement = measurement) => {
     child = spawn(process.execPath, [
       new URL("./browser-host.mjs", import.meta.url).pathname,
-      browser, api, ...(includeMeasurement ? [measurement] : []),
+      browser, api, ...(includeMeasurement ? [overrideMeasurement] : []),
     ], { stdio: ["ignore", "pipe", "pipe"] });
     let output = "";
     let error = "";
@@ -99,6 +108,8 @@ async function setup(t) {
     get count() { return commandCount; },
     changeManifest: next => { exposed = next; },
     changeAPICommandIdentity: next => { apiCommandIdentity = next; },
+    browser, measurement, html, js,
+    overwriteReceipt: async patch => writeFile(measurement, JSON.stringify({ ...initialReceipt, ...patch })),
   };
 }
 async function submit(origin, extraHeaders = {}) {
@@ -158,4 +169,65 @@ test("missing expected build measurement refuses JSON Browser startup", async t 
   const f = await setup(t);
   await assert.rejects(f.start(false), /JSON Browser requires its existing build measurement/);
   assert.equal(f.count, 0);
+});
+
+test("changed HTML or JavaScript fails closed before Browser Host listens", async t => {
+  const f = await setup(t);
+  await writeFile(join(f.browser, "index.html"), Buffer.concat([f.html, Buffer.from("tampered")]));
+  await assert.rejects(f.start(), /Browser HTML byte\/digest binding differs/);
+  assert.equal(f.count, 0);
+  await writeFile(join(f.browser, "index.html"), f.html);
+  await writeFile(join(f.browser, "browser-command.js"), Buffer.concat([f.js, Buffer.from("tampered")]));
+  await assert.rejects(f.start(), /Browser script byte\/digest binding differs/);
+  assert.equal(f.count, 0);
+});
+
+test("missing or misdeclared Browser measurements are refused", async t => {
+  const f = await setup(t);
+  await f.overwriteReceipt({ browserSHA256: "not-a-sha" });
+  await assert.rejects(f.start(), /Browser HTML byte\/digest binding differs/);
+  await f.overwriteReceipt({ browserBytes: f.html.length + 1 });
+  await assert.rejects(f.start(), /Browser HTML byte\/digest binding differs/);
+  await f.overwriteReceipt({ browserScriptSHA256: "0".repeat(64) });
+  await assert.rejects(f.start(), /Browser script byte\/digest binding differs/);
+  await f.overwriteReceipt({ browserScriptBytes: null });
+  await assert.rejects(f.start(), /Browser script byte\/digest binding differs/);
+  assert.equal(f.count, 0);
+});
+
+test("symlinked Browser artifact or receipt is not accepted", async t => {
+  const f = await setup(t);
+  const js = join(f.browser, "browser-command.js");
+  await unlink(js);
+  await symlink("index.html", js);
+  await assert.rejects(f.start(), /Browser script must be a real file/);
+  await unlink(js);
+  await writeFile(js, f.js);
+  const other = join(f.browser, "alternate-measurement.json");
+  // A symlink to identical measurement bytes must not be treated as trusted.
+  await writeFile(other, "{}");
+  await unlink(f.measurement);
+  await symlink(other, f.measurement);
+  await assert.rejects(f.start(), /measurement is not a real regular artifact file/);
+});
+
+test("Host cannot read a measurement from a different build root", async t => {
+  const f = await setup(t);
+  const other = join(f.browser, "elsewhere.json");
+  await writeFile(other, "{}");
+  await assert.rejects(f.start(true, other), /measurement must belong to the same artifact root/);
+  assert.equal(f.count, 0);
+});
+
+test("Host serves its checked Browser snapshot even if files later change", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  await writeFile(join(f.browser, "index.html"), "a completely different page");
+  await writeFile(join(f.browser, "browser-command.js"), "a dangerous replacement");
+  const html = await fetch(origin).then(x => x.text());
+  const js = await fetch(origin + "/browser-command.js").then(x => x.text());
+  assert.equal(html, f.html.toString("utf8"));
+  assert.equal(js, f.js.toString("utf8"));
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.count, 1);
 });
