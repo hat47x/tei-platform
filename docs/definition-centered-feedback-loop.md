@@ -324,155 +324,155 @@ TEIでは、性質の異なる複数の認知方式を組み合わせます。
 
 AIにも同じ局所的な文脈を基本的な入力として渡します。毎回リポジトリ全体を自由に探索させ、その内容をAIだけが保持する状態を標準にはしません。
 
-## 10. Reference Modelを知的社会資本として扱う
+## 10. 参照モデルを知的な共有資産として扱う
 
-Reference Modelには複数の役割があります。
+参照モデルには複数の役割があります。
 
-1. **worked example** — 利用者が良い定義の形を学ぶ
-2. **executable design content** — Driver / Simulatorで動かして理解する
-3. **Conformance pressure** — toy fixtureでは出ない設計欠陥を露出させる
-4. **pattern evidence corpus** — AI / cognitionが候補構造を想起する根拠
-5. **product feedback source** — Referenceの要求がPlatformの過不足を明らかにする
+1. **実例として学ぶ**：利用者が良い定義の形を学ぶ
+2. **動かして確かめる**：実行・検証環境や模擬実行で動かして理解する
+3. **設計上の問題を見つける**：小さな試験データでは分からない設計の不備を明らかにする
+4. **候補を考える根拠にする**：AIや認知処理が構成パターンを想起する際に参照する
+5. **製品への改善提案につなぐ**：参照モデルの要求によって開発基盤の不足や過剰な機能を明らかにする
 
 重要なのは5です。
 
 ```text
-Platform -> Referenceを実行可能にする
-Reference -> Platformの不足・過剰を暴く
+開発基盤 → 参照モデルを実行可能にする
+参照モデル → 開発基盤の不足や過剰な機能を明らかにする
 ```
 
-この双方向性がないReferenceは、単なるdemoやgolden fixtureへ縮退します。
+この双方向の関係がなければ、参照モデルは単なる実演や、結果を比較するための基準データにとどまります。
 
-### Reference patternの扱い
+### 参照モデルから得た構成パターンの扱い
 
-Reference群から共通patternを抽出することは有用ですが、patternは次の形で利用します。
+複数の参照事例から共通する構成パターンを取り出すことは有用ですが、次のように扱います。
 
 ```text
-intent
+実現したい意図
   ↓
-multiple candidate patterns
-  + provenance
-  + observed frequency / examples
-  + applicability conditions
-  + semantic differences
-  + optional Simulation Dataset
+複数の構成パターンの候補
+  + 出所
+  + 実例と観測された頻度
+  + 適用条件
+  + 意味上の違い
+  + 必要に応じた模擬実行用データ
   ↓
-qualification / review
+適格性の確認・検討
 ```
 
-「8個のReferenceにあるから採用」ではなく、現在のBusiness requirementへ合うかを別途確認します。
+「八つの参照事例にあるから採用する」とは判断せず、現在の業務要求に合うかどうかを別途確かめます。
 
-## 11. Observationとlearningを分ける
+## 11. 観測と学習を分ける
 
-Runtime / simulator / external worldからのObservationはEvidenceです。Observationそのものをonline learningで即時にsemantic writeへ変換しません。
+実行基盤、模擬実行、外部の現実世界から得た観測結果は検証根拠です。観測結果を、逐次的な学習によって即座に意味の正本へ書き戻すことはしません。
 
 ```text
-expected meaning
-        ↕ compare
-observed actuality
+期待する意味
+        ↕ 比較
+観測した実際の状態
         ↓
-contradiction / drift / unknown
+矛盾・状態のずれ・未確定
         ↓
-proposal or routing decision
+変更の提案または修正先の判断
         ↓
-Shared Acceptance Boundary
+共通の受理境界
 ```
 
-### 学習可能なのはまずderived memory
+### まず派生した記憶の学習を対象にする
 
-Referenceや運用から得た経験で自動更新を検討する場合、最初に対象にするのは再生成可能な候補生成・ranking側です。
+参照事例や運用から得た経験によって情報を自動更新する場合は、まず再生成可能な候補生成や順位付けの仕組みを対象にします。
 
-- task-local association weight
-- frequently useful candidate pattern
-- false-positive suppression
-- local retrieval hint
+- 作業ごとに使う連想の重み
+- 頻繁に役立つ構成パターンの候補
+- 誤検出の抑制
+- 局所的な検索の手掛かり
 
-それでもrevision / task / outcome / provenanceを持ち、無効化可能にします。
+その場合も、対象版、作業、結果、出所を記録し、無効化できるようにします。
 
-accepted semantic ruleをmodel weightだけへ埋め込むonline learningは標準経路にしません。
+受理済みの意味上の規則をモデルの重みだけに埋め込む逐次学習は、標準の方法にしません。
 
-## 12. Feedback qualityの観点
+## 12. 改善の質を評価する観点
 
-現時点で数値KPIへ固定しませんが、設計reviewでは次を観察します。
+現時点では数値目標として固定しませんが、設計を検討する際には次の点を確認します。
 
-### semantic density
+### 意味の密度
 
-少量のauthoringでどれだけ正しい意味・Projectionを再構成できるか。ただしfalse compressionを避ける。
+少ない記述から、どれだけ正しい意味や表示を再構成できるか。ただし、見かけだけの簡略化は避ける。
 
-### derivation leverage
+### 派生情報を再利用できる範囲
 
-同じ内容の人手二重管理なしに、UI / Runtime / DB / matrix / docs等へどれだけ正しく派生できるか。
+同じ内容を人が二重管理せずに、画面、実行基盤、データベース、対応表、文書などをどれだけ正しく導出できるか。
 
-### feedback closure
+### 問題を元の定義へ戻して修正できること
 
-見つかった矛盾を、その意味を所有するsource / layerへ戻して直せるか。
+見つかった矛盾を、その意味に責任を持つ情報源や構成部分へ戻して修正できるか。
 
-### reconstructability
+### 再構成できること
 
-index、generated artifact、AI historyを削除してもaccepted systemを再構成できるか。
+索引、生成物、AIの履歴を削除しても、受理済みのシステムを再構成できるか。
 
-### locality
+### 局所的な情報で判断できること
 
-局所definitionと近傍だけで安全な変更判断が可能か。
+局所的な定義とその周辺の情報だけで、安全に変更を判断できるか。
 
-### provenance
+### 出所を追跡できること
 
-candidate / pattern / AI explanation / experienceが、Source / revision / Evidenceへ戻れるか。
+候補、構成パターン、AIの説明、経験から、元の情報源、対象版、検証根拠までたどれるか。
 
-これらは比較・review観点であり、達成率を一つのscoreへ畳みません。
+これらは比較や検討のための観点であり、達成率を一つの点数にまとめません。
 
-## 13. Product invariants
+## 13. 製品として守る不変条件
 
 今後のAI・認知機能追加でも次を守ります。
 
 ```text
-Definition != Projection
-Projection != Authority
-Observation != Definition
-Similarity != Applicability
-Proposal != Decision
-Autonomy != Authority
-Reference Pattern != Requirement
-Runtime Success != Business Completion
-Generated Artifact != Source of Truth
+定義と派生表示は同じではない
+派生表示は権限の根拠ではない
+観測結果と定義は同じではない
+類似していても適用可能とは限らない
+提案したことは決定したことではない
+自律性が高くても権限があるとは限らない
+参照事例の構成パターンと要求は同じではない
+実行基盤上の成功と業務の完了は同じではない
+生成物は正本ではない
 ```
 
-さらに、次のdegradationを許容します。
+さらに、一部の機構が利用できなくなっても、次のように機能を維持できる構造にします。
 
 ```text
-LLM unavailable
-  -> exact / graph / manual authoringでsystemを扱える
+大規模言語モデルが利用できない
+  → 正確な検索・関係の追跡・人による記述で扱える
 
-associative cognition unavailable
-  -> exact / graph / lexical探索へ退化できる
+連想による認知処理が利用できない
+  → 正確な検索・関係の追跡・語彙検索で扱える
 
-Studio unavailable
-  -> authoritative sourceを直接review / reloadできる
+編集環境が利用できない
+  → 正本となる情報源を直接確認・再読込みできる
 
-Derived index deleted
-  -> Canonicalから再生成できる
+派生索引を削除した
+  → 意味の正本から再生成できる
 
-Target removed
-  -> Canonical business meaningは残る
+実行先を撤去した
+  → 業務上の意味の正本は残る
 ```
 
-このdegradabilityは、AIや特定UIを新しい不可視の正本にしないための設計検査です。
+一部の機構が使えなくても扱えることは、AIや特定の画面を、目に見えない新しい正本にしないための設計上の検査です。
 
 ## 14. 現時点で固定しないもの
 
-- permanentな`Cognitive Layer`というArchitecture層
-- 一つのuniversal Knowledge Graph
-- vector database
-- FlyHash / HDC / VSA / embeddingの特定方式
-- online learning
-- Proposal / Patchのplatform-wide schema
-- feedback categoryの永続enum
-- AI provider / agent framework
-- whole-model graph UI
-- Reference patternの自動採用
-- Reference Model file format
+- `Cognitive Layer`という恒久的な構成階層
+- 単一の汎用的な知識グラフ
+- ベクトルデータベース
+- FlyHash、HDC、VSA、埋め込み表現の特定方式
+- 逐次学習
+- 変更提案や差分の全体共通スキーマ
+- 確認結果の分類を保存する固定の列挙値
+- AIの提供元やエージェント用の開発基盤
+- モデル全体を一度に表示する関係図の画面
+- 参照事例の構成パターンの自動採用
+- 参照モデルのファイル形式
 
-具体的Referenceで意味が失われる場合だけ固定化をreopenします。
+具体的な参照事例で意味が失われることが分かった場合に限り、これらを固定するか再検討します。
 
 ## 15. 関連
 
