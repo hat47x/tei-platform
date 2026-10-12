@@ -287,7 +287,10 @@ async function main() {
   assert.equal(manifest.applicationId, "order_entry");
   assert.equal(manifest.targetBuildRevision, head);
   assert.equal(manifest.baselineRepositoryRevision, expectedR);
-  assert.deepEqual(manifest.validations, app.validations,
+  // Web projects canonical Validation IDs in sorted order, whereas the
+  // accepted World keeps declaration order. Validate the full ID set without
+  // turning presentation order into a false semantic mismatch.
+  assert.deepEqual([...manifest.validations].sort(), [...app.validations].sort(),
     "running Web manifest did not project the accepted R1 validation selection");
   const loadedMeaning = manifestSemantics(manifest);
   const loadedMeaningSHA256 = sha256(JSON.stringify(loadedMeaning));
