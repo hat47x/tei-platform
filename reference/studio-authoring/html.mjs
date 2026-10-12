@@ -166,14 +166,25 @@ function reviewEdit(view) {
       note: matches.length ? "同一区分が重複しました。確認できません。"
         : "共通受理機構から当該区分を取得できません。" };
   });
+  // Keep future/plugin-provided review categories visible, but never
+  // treat a category unknown to this UI as having completed review.
+  const knownCodes = new Set(required.map(([code]) => code));
+  const extraSections = reported.filter(s =>
+    s && typeof s.code === "string" && !knownCodes.has(s.code)).map(s => ({
+      ...s, coverage: "not-evaluated",
+      note: "Studioが未対応の審査区分です。報告された評価状態：" +
+        String(s.coverage ?? "不明") + "。 " + (s.note ?? "")
+    }));
   const assessment = "共通受理機構の申告：利用可能 " +
     str(coverage.available ?? "不明") + "／一部 " +
     str(coverage.partial ?? "不明") + "／未評価 " +
     str(coverage.notEvaluated ?? "不明") +
     (badShape || missing.length || duplicate.length
-      ? "。区分不足・重複・形式不正があるため、審査結果は不完全です。" : "");
+      ? "。区分不足・重複・形式不正があるため、審査結果は不完全です。" : "") +
+    (extraSections.length
+      ? "。未知の審査区分が含まれるため、審査結果は不完全です。" : "");
   const sectionBody = '<p class="warning">' + assessment + '</p>' +
-    entries(reviewSections, s =>
+    entries([...reviewSections, ...extraSections], s =>
       '<strong>' + str(s.code) + '　' + str(s.title) + '</strong>' +
       ' ／評価範囲：' + str(s.coverage) +
       (s.summary ? '<p>' + str(s.summary) + '</p>' : '') +
