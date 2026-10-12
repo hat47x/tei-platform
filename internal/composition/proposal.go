@@ -1,5 +1,7 @@
 package composition
 
+import "fmt"
+
 // ProposalVerdict describes structural feasibility only. In particular,
 // a candidate is not proof of conformance, artifact trust or host authority.
 type ProposalVerdict string
@@ -22,14 +24,18 @@ const (
 	ReasonExplicitMismatch     ProposalReason = "explicit-provider-mismatch"
 	ReasonDependencyIneligible ProposalReason = "dependency-ineligible"
 	ReasonMixedScopes          ProposalReason = "mixed-scopes"
+	ReasonInconsistentSlot     ProposalReason = "inconsistent-slot"
 )
 
 // WiringRequirement is a design-time request, not a runtime invocation. When
 // ProviderID is empty, an unambiguous match may be proposed by this registry.
+// SlotID identifies a consumer's binding point. An omitted SlotID uses the
+// exact Contract as an implicit shared slot within this batch.
 type WiringRequirement struct {
 	Contract   Contract
 	Scope      string
 	ProviderID string
+	SlotID     string
 }
 
 // WiringFinding records a candidate derived from the current Registry or the
@@ -87,12 +93,38 @@ func (r *Registry) InspectWiringSet(reqs []WiringRequirement) WiringSetFinding {
 			out.Findings[i].Reason = ReasonInvalidRequirement
 		}
 	}
+	// A proposal for one binding point must not contain competing providers
+	// or incompatible Contracts. Independent consumers may use distinct SlotIDs.
+	slots := make(map[string][]int, len(reqs))
+	for i, req := range reqs {
+		key := fmt.Sprintf("slot:%q", req.SlotID)
+		if req.SlotID == "" {
+			key = fmt.Sprintf("contract:%q/%q/%q", req.Contract.ID, req.Contract.Version, req.Contract.Shape)
+		}
+		slots[key] = append(slots[key], i)
+	}
+	contradicted := make(map[int]bool)
+	for _, indices := range slots {
+		first := reqs[indices[0]]
+		for _, i := range indices[1:] {
+			if reqs[i].Contract != first.Contract || reqs[i].ProviderID != first.ProviderID {
+				for _, j := range indices {
+					contradicted[j] = true
+				}
+				break
+			}
+		}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	out.Revision = r.snapshot.Revision
 	out.Verdict = ProposalCandidate
 	for i, req := range reqs {
-		out.Findings[i] = r.inspectWiringLocked(req)
+		if contradicted[i] {
+			out.Findings[i] = WiringFinding{Verdict: ProposalConflict, Reason: ReasonInconsistentSlot}
+		} else {
+			out.Findings[i] = r.inspectWiringLocked(req)
+		}
 		switch out.Findings[i].Verdict {
 		case ProposalConflict:
 			out.Verdict = ProposalConflict
