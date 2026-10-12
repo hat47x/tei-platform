@@ -180,3 +180,46 @@ func TestSQLiteRollbackOnReceiptWriteFailure(t *testing.T) {
 		t.Fatalf("retry commit: %+v %v", result, err)
 	}
 }
+
+// 同じ連番を持つ別接続のPermitが他の書込みを確定させないことを確認する。
+func TestSQLitePermitBoundToIssuingConnection(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "permit-scope.sqlite")
+	a, err := openSQLiteFixture(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	b, err := openSQLiteFixture(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	s := Scope{Application: "orders", Capability: "save", Subject: "editor", Action: "write", Resource: "order-4"}
+	if err := a.SetAuthority(s, 1, true); err != nil {
+		t.Fatal(err)
+	}
+	first := Request{Scope: s, OperationID: "first-connection", Value: "wrong"}
+	second := Request{Scope: s, OperationID: "second-connection", Value: "right"}
+	fromA, outcome, err := a.PrepareForTest(context.Background(), first)
+	if err != nil || outcome.Disposition != Prepared {
+		t.Fatalf("prepare A: %+v %v", outcome, err)
+	}
+	fromB, outcome, err := b.PrepareForTest(context.Background(), second)
+	if err != nil || outcome.Disposition != Prepared {
+		t.Fatalf("prepare B: %+v %v", outcome, err)
+	}
+	result, err := b.CommitForTest(context.Background(), fromA)
+	if err != nil || result.Disposition != Denied || result.Receipt != (Receipt{}) {
+		t.Fatalf("foreign permit used: %+v %v", result, err)
+	}
+	if _, version := a.Observe(s); version != 0 {
+		t.Fatal("foreign permit produced effect")
+	}
+	result, err = b.CommitForTest(context.Background(), fromB)
+	if err != nil || result.Disposition != Committed {
+		t.Fatalf("proper permit refused: %+v %v", result, err)
+	}
+	if value, version := a.Observe(s); value != "right" || version != 1 {
+		t.Fatalf("unexpected outcome: %q %d", value, version)
+	}
+}
