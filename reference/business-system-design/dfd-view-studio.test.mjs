@@ -301,9 +301,10 @@ test('concurrent Procedure and Review loads stay independent',async()=>{
       release=()=>resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));
     })
   }]}});
-  await input('review-file',approvalReview);
+  const reviewLoad=input('review-file',approvalReview);
+  assert.equal(typeof release,'function');
   release();
-  await pending;
+  await Promise.all([pending,reviewLoad]);
   selectTrigger();
   $('trigger-label').value='手作業としての起動を説明する';
   await $('semantic-propose').listeners.click();
