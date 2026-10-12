@@ -242,3 +242,28 @@ E5・E6の一括診断は、同じ登録簿の状態から複数のサービス�
 Go 1.23.2の独立した局所モジュールで、実`registry.go`・`selection.go`・`proposal.go`・`proposal_test.go`・`selection_closure_test.go`をGitHub上のBlob SHAと一致する内容で使用。`go test -race -count=100 -timeout=90s ./internal/composition`、`go vet ./...`、`gofmt -l`を確認した。Routerの`Binding`型は試験用の仮定義である。
 
 **この試験は構成案検査とRegistry選択の局所証拠であり、全Compositionパッケージ・本番Host・全Repository Healthの結果ではない。** 本番へ昇格させるには実際のConsumerが何を「同じ接続箇所」とみなすか、契約の意味、閲覧権限、現在のHost権限を別途検証する。
+
+
+## E8：構成候補から独立した適合性検証へ渡す対象を特定する
+
+`InspectWiring`と`InspectWiringSet`が返す`WiringFinding.VerificationTargets`は、構造上の候補となるProviderと、直接・間接に依存するProviderを列挙する。各対象は、Provider ID、適用範囲、Service Contract（ID・版・形状）、Registry上の宣言世代を持つ。
+
+例えば「画面 → 読取サービス → DB提供者」では、画面だけでなく読取サービス・DB提供者も検証対象となる。無関係な別TenantのProviderは含まない。候補が不明または競合する場合、適合済みと誤解される検証対象を返さない。返した値を呼出し側が改変してもRegistry本体へ影響しない。
+
+**重要：これは検証対象の一覧であり、検証済みの証拠ではない。** `Contract.Shape`の一致やProviderの登録、宣言世代が新しいという事実だけで契約の意味、実装の適合、実成果物の信頼、現在の実行権限を認めない。
+
+### #951との接続で不足している情報
+
+既存の[Capability Contract Reference](../../tools/reference-plugin-capability-contract/README.md)は、適合証拠を契約の正確な指紋と、Plugin ID・Plugin版・Implementation ID・Artifact Digest・適合試験群・証拠指紋へ結び付ける。
+
+一方、現在のComposition RegistryのProviderには、実装・成果物・証拠の全情報は含まれていない。この差を黙って補ったり、AIが見つけた資料を適合済みの証拠に格上げしたりしない。
+
+次の接続では、#951が提供する既存の正本へ`VerificationTarget`から辿り、**対象の識別が一致するか**を検査する。その後、現在の契約定義権限、適合性証拠の発行権限、失効状態、#943の成果物証拠を各担当機構で検証する。さらにHostの現在のPermission・Resource・Lease・Fencingは実行時に判定する。構成案の検査器がこれらを自前で承認しない。
+
+### 試験と性能上の留保
+
+`proposal_test.go`に、3段階の依存関係の検証対象の完全性、適用範囲の分離、結果の防御的複製、欠落・競合・同一接続箇所の矛盾時に検証済みと見なせる対象を返さない負例を追加した。
+
+Go 1.23.2の独立した局所モジュールで、GitHubとBlob SHAが一致する実`registry.go`・`selection.go`・`proposal.go`・`proposal_test.go`を使用。局所的なBinding型の仮定義と既存`selection_closure_test.go`を組み合わせ、`go test -race -count=100 -timeout=120s ./internal/composition`および`go vet ./...`が成功した。
+
+本試験は宣言上の選択と検証対象の抽出に限定する。正式な#951の適合性検証器、実Build Artifact、Hostの実行権限、Coordinatorを含む全Composition package、PR exact-head全リポジトリの健全性検査は未実施である。検証対象を列挙する処理も依存閉包の走査コストを持つため、大規模構成での性能は今後計測する。
