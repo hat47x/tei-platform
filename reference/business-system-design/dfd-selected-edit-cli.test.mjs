@@ -16,16 +16,18 @@ const review=read('dfd-order-approval/review-proposal.json');
 const projection={
   schemaVersion:'business-dfd-projection-v0',authority:'derived-read-only',
   canonicalProcedureUsed:false,procedureId:procedure.procedure.id,diagnostics:[],
+  roleAuthorizationBinding:'not-inferred',
   steps:procedure.steps.map(s=>({id:s.id,label:s.businessAction,realization:s.realization,
-    functionRefs:(s.applicationPatterns||[]).map(id=>({id,status:'resolved'}))})),
-  triggers:review.triggers.map(x=>({...x})),
-  flows:review.flows.map(x=>({...x})),
+    functionRefs:(s.applicationPatterns||[]).map(id=>({id,status:'resolved'})),
+    noApplicationFunction:(s.applicationPatterns||[]).length===0})),
+  triggers:review.triggers.map(x=>({...x,authority:'proposal',runtimeBinding:'unbound'})),
+  flows:review.flows.map(x=>({...x,authority:'proposal'})),
   information:{
-    roles:review.businessRoles.map(x=>({...x})),
-    externalParties:review.externalParties.map(x=>({...x})),
-    stores:review.stores.map(x=>({...x})),
-    responsibilities:review.responsibilities.map(x=>({...x})),
-    informationFlows:review.informationFlows.map(x=>({...x}))
+    roles:review.businessRoles.map(x=>({...x,authority:'proposal'})),
+    externalParties:review.externalParties.map(x=>({...x,authority:'proposal'})),
+    stores:review.stores.map(x=>({...x,authority:'proposal',dataStatus:x.semanticData?'resolved':'not-declared'})),
+    responsibilities:review.responsibilities.map(x=>({...x,authority:'proposal'})),
+    informationFlows:review.informationFlows.map(x=>({...x,authority:'proposal'}))
   }
 };
 function scratch(run) {
