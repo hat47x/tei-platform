@@ -1,0 +1,171 @@
+name: TEI セルフビルド実証
+
+# 一般の健全性CIとは独立して、参照用SB-3を実際に再構築する。
+# PRはGitHubの仮統合コミット、mainは当該pushコミットを検査する。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-self-build-qualification.yml
+      - internal/plugin/transform/**
+      - internal/plugin/bootstrap.go
+      - internal/plugin/package.go
+      - tools/reference-plugin-self-build/**
+      - tools/reference-transform-seed-builder/**
+      - tools/reference-transform-runtime-engine/**
+      - tools/reference-transform-runtime-engine-build/**
+      - reference/plugin-self-build/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-self-build-qualification.yml
+      - internal/plugin/transform/**
+      - internal/plugin/bootstrap.go
+      - internal/plugin/package.go
+      - tools/reference-plugin-self-build/**
+      - tools/reference-transform-seed-builder/**
+      - tools/reference-transform-runtime-engine/**
+      - tools/reference-transform-runtime-engine-build/**
+      - reference/plugin-self-build/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-self-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference-self-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 検証対象を完全なGit履歴とともに取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 検証対象の版と作業領域を確定
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+            read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merge" = "$GITHUB_SHA"
+            test "$head" = "$PR_HEAD_SHA"
+          fi
+          printf 'verified-commit=%s\n' "$GITHUB_SHA"
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+      - name: 指定されたGoを使用
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: SB-1・SB-2・SB-3の実行結果を生成
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go run ./tools/reference-plugin-self-build -repo . > "$RUNNER_TEMP/tei-self-build-evidence.json"
+
+      - name: 実行結果の収束と版を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/tei-self-build-evidence.json"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.plugin-self-build-evidence/v2"
+            and .repositoryRevision == $sha
+            and .transformBootstrap.seedBuilderReproducible == true
+            and .transformBootstrap.convergenceResult.converged == true
+            and .transformBootstrap.stage1ArtifactDigest == .transformBootstrap.stage2ArtifactDigest
+            and .transformBootstrap.packageReproducible == true
+            and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageOracleDigest
+            and .packageReproducible == true
+            and .nativeReproducible == true
+            and .reproducible == true
+          ' "$evidence" >/dev/null
+          jq -r '"SB-3 converged=\(.transformBootstrap.convergenceResult.converged) stage1=\(.transformBootstrap.stage1ArtifactDigest) stage2=\(.transformBootstrap.stage2ArtifactDigest) oracle=\(.transformBootstrap.packageOracleDigest)"' "$evidence"
+
+      - name: 実行エンジンの実体を二重構築し照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          engine="$RUNNER_TEMP/tei-transform-runtime-engine"
+          evidence="$RUNNER_TEMP/tei-transform-engine-build-evidence.json"
+          go run ./tools/reference-transform-runtime-engine-build -repo . -artifact-out "$engine" > "$evidence"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.transform-engine-build-evidence/v1"
+            and .repositoryRevision == $sha
+            and .reproducible == true
+            and (.artifactDigest | startswith("sha256:"))
+            and .artifactDigest == .firstArtifactDigest
+            and .firstArtifactDigest == .secondArtifactDigest
+            and .runtimeEngine.implementationDigest == .artifactDigest
+            and .runtimeEngine.id == .engineId
+            and .runtimeEngine.version == .engineVersion
+            and .runtimeEngine.contractVersion == .engineContract
+            and .runtimeEngine.target == .target
+            and (.evidenceFingerprint | length) > 0
+          ' "$evidence" >/dev/null
+          expected="$(jq -r '.artifactDigest | ltrimstr("sha256:")' "$evidence")"
+          actual="$(sha256sum "$engine" | cut -d' ' -f1)"
+          test "$actual" = "$expected"
+          printf 'exact-engine=%s\n' "$expected"
+
+      - name: 検証済み実行エンジンの応答を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-transform-runtime-engine" \
+            -source tools/reference-transform-runtime-engine/testdata/echo-string.transform.json \
+            < tools/reference-transform-runtime-engine/testdata/echo-string.request.json \
+            > "$RUNNER_TEMP/tei-transform-runtime-engine-response.json"
+          jq -e '
+            .schema == "tei.reference.transform-engine-response/v1"
+            and .output.kind == "string"
+            and .output.string == "hello from exact engine"
+          ' "$RUNNER_TEMP/tei-transform-runtime-engine-response.json" >/dev/null
+
+      - name: 変更範囲のGo試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./internal/plugin/transform/... ./tools/reference-plugin-self-build ./tools/reference-transform-seed-builder ./tools/reference-transform-runtime-engine ./tools/reference-transform-runtime-engine-build
+
+      - name: 検証後の作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: 実行結果を監査資料として保存
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-self-build-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/tei-self-build-evidence.json
+            ${{ runner.temp }}/tei-transform-engine-build-evidence.json
+            ${{ runner.temp }}/tei-transform-runtime-engine
+            ${{ runner.temp }}/tei-transform-runtime-engine-response.json
+          if-no-files-found: error
+          retention-days: 7

@@ -77,23 +77,24 @@ func runTransformBootstrap(
 	packageDefinition plugin.Definition,
 	basePackagePlan plugin.BuildPlan,
 ) (transformBootstrapEvidence, error) {
-	engineSourceDigest, err := hashSourceFiles(root, []string{
-		"internal/plugin/transform/value.go",
-		"internal/plugin/transform/model.go",
-		"internal/plugin/transform/eval.go",
-		"internal/plugin/transform/source.go",
-		"internal/core/id.go",
-		"internal/core/version.go",
-	})
+	engineSources, err := transformRuntimeEngineSources(root)
+	if err != nil {
+		return transformBootstrapEvidence{}, fmt.Errorf("resolve deterministic transform Runtime Engine source closure: %w", err)
+	}
+	engineSourceDigest, err := hashSourceFiles(root, engineSources)
 	if err != nil {
 		return transformBootstrapEvidence{}, fmt.Errorf("hash deterministic transform Runtime Engine source closure: %w", err)
 	}
-	engine := pruntime.RuntimeEngineIdentity{
-		ID:                   core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
-		Version:              revision,
-		ContractVersion:      "tei.runtime-engine/deterministic-transform-v1",
-		ImplementationDigest: sha256Digest([]byte(engineSourceDigest + "\n" + goToolchainDigest + "\n")),
-		Target:               "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+	engine, err := referenceRuntimeEngineIdentity(
+		core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
+		transformRuntimeEngineVersion,
+		"tei.runtime-engine/deterministic-transform-v1",
+		engineSourceDigest,
+		goToolchainDigest,
+		"host/"+runtime.GOOS+"/"+runtime.GOARCH,
+	)
+	if err != nil {
+		return transformBootstrapEvidence{}, fmt.Errorf("transform Runtime Engine identity: %w", err)
 	}
 	engineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(engine)
 	if err != nil {
@@ -471,6 +472,36 @@ func runTransformBootstrap(
 		PackageLockedBuild:              lockedBuild,
 		PackageLockFingerprint:          lockFingerprint,
 	}, nil
+}
+
+// transformRuntimeEngineSources includes every production transform package file.
+// Selecting the files from the checkout avoids silently leaving new validation,
+// canonicalization, or resource-budget implementations outside the engine identity.
+// This is deliberately a conservative source set, not proof of a linked image;
+// precise transitive Go build inputs belong to the Go builder adapter (#1096).
+func transformRuntimeEngineSources(root string) ([]string, error) {
+	const dir = "internal/plugin/transform"
+	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	if err != nil {
+		return nil, err
+	}
+	paths := []string{"internal/core/id.go", "internal/core/version.go"}
+	found := false
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		if entry.IsDir() {
+			return nil, fmt.Errorf("transform engine Source %q must be a file", name)
+		}
+		found = true
+		paths = append(paths, dir+"/"+name)
+	}
+	if !found {
+		return nil, fmt.Errorf("transform Runtime Engine source closure contains no production Go files")
+	}
+	return paths, nil
 }
 
 func runTransformSeedBuilder(root, builderPath, sourceRelative, output string) error {

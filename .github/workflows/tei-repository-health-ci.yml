@@ -1,0 +1,127 @@
+name: TEI PR・main 健全性確認
+
+# 公開リポジトリの標準ランナーだけで実行し、Secretsや書込み権限を使わない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-health-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-health:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - name: 対象版を完全なGit履歴とともに取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 実行前の版と作業領域を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$GITHUB_SHA"
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+              [[ "$PR_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+              [[ "$PR_BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+              read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+              test -z "${extra:-}"
+              test "$merge" = "$actual"
+              # PRイベントのbase SHAは並行main更新で古くなる。GitHubの仮統合commit自身を正とする。
+              [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+              test "$head" = "$PR_HEAD_SHA"
+              git merge-base --is-ancestor "$PR_BASE_SHA" "$actual"
+              git merge-base --is-ancestor "$PR_HEAD_SHA" "$actual"
+              ;;
+            push)
+              test "$GITHUB_REF" = refs/heads/main
+              test "$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git refs/heads/main | cut -f1)" = "$actual"
+              ;;
+            *)
+              echo "未対応の起動契機：$GITHUB_EVENT_NAME" >&2
+              exit 1
+              ;;
+          esac
+          hidden_index="$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          if [[ -n "$hidden_index" ]]; then
+            printf '追跡中の変更を隠す索引フラグ：\n%s\n' "$hidden_index" >&2
+            exit 1
+          fi
+          dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          if [[ -n "$dirt" ]]; then
+            printf '実行前の作業領域の変更：\n%s\n' "$dirt" >&2
+            exit 1
+          fi
+          printf 'event=%s\nchecked-sha=%s\npr-head=%s\npr-event-base=%s\n' \
+            "$GITHUB_EVENT_NAME" "$actual" "$PR_HEAD_SHA" "$PR_BASE_SHA"
+          if [[ "$GITHUB_EVENT_NAME" = pull_request ]]; then
+            printf 'pr-merge-base=%s\n' "$base"
+          fi
+
+      - name: 指定版のGoを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 正規の全体健全性確認を実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          bash tools/repository-health-check.sh
+
+      - name: 実行後の版と作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$GITHUB_SHA"
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+              read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+              test -z "${extra:-}"
+              test "$merge" = "$actual"
+              # PRイベントのbase SHAは並行main更新で古くなる。GitHubの仮統合commit自身を正とする。
+              [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+              test "$head" = "$PR_HEAD_SHA"
+              ;;
+            push)
+              test "$GITHUB_REF" = refs/heads/main
+              test "$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git refs/heads/main | cut -f1)" = "$actual"
+              ;;
+            *) exit 1 ;;
+          esac
+          hidden_index="$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          if [[ -n "$hidden_index" ]]; then
+            printf '追跡中の変更を隠す索引フラグ：\n%s\n' "$hidden_index" >&2
+            exit 1
+          fi
+          dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          if [[ -n "$dirt" ]]; then
+            printf '実行後の作業領域の変更：\n%s\n' "$dirt" >&2
+            exit 1
+          fi

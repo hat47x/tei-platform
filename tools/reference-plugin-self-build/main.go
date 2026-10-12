@@ -229,12 +229,16 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, fmt.Errorf("hash TEI-native runtime engine source closure: %w", err)
 	}
-	nativeRuntimeEngine := pruntime.RuntimeEngineIdentity{
-		ID:                   core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
-		Version:              revision,
-		ContractVersion:      "tei.runtime-engine/static-response-v1",
-		ImplementationDigest: sha256Digest([]byte(nativeRuntimeEngineSourceDigest + "\n" + goToolchainDigest + "\n")),
-		Target:               "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+	nativeRuntimeEngine, err := referenceRuntimeEngineIdentity(
+		core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+		nativeRuntimeEngineVersion,
+		"tei.runtime-engine/static-response-v1",
+		nativeRuntimeEngineSourceDigest,
+		goToolchainDigest,
+		"host/"+runtime.GOOS+"/"+runtime.GOARCH,
+	)
+	if err != nil {
+		return evidence{}, fmt.Errorf("static response Runtime Engine identity: %w", err)
 	}
 	nativeRuntimeEngineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(nativeRuntimeEngine)
 	if err != nil {

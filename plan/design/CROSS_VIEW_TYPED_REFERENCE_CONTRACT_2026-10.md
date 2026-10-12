@@ -318,3 +318,38 @@ PR #1139がmainへ統合された後、現行`modelref.Impact`を再点検した
 ### 完了の制限
 
 ここまでの実装は`internal/modelref`に閉じた読み取り専用の契約である。正式な完了には、`tools/repository-health-check.sh`と実Workspace統合試験の完全な実行、変更前後の正本となるSource revisionの束縛、AI提案と旧資産の受理前後を追う実シナリオが必要。**追加したテストはまだtrusted full checkoutで実行していない。**
+
+## R9 — 受理前後の実Workspaceと種類付き識別子の対応検証（2026-10-12）
+
+共通参照機構を受理機構とは別に設計しているため、型付き参照の試験だけでは「提案→検証→受理→Source更新→再読み込み」の間にIDと出典が保持される保証にならない。逆に、Shared Acceptanceの既存テストだけでは `modelref.Key{Scope,Subject}` とSource Indexとの同時整合が検証されていなかった。
+
+`tools/reference-shared-acceptance/modelref_identity_lineage_test.go`を追加した。既存の `scratchWorkspaceBeforeSecondApplication`、`unitPriceCandidate`、`takeSnapshot`、`acceptViaCLI`、`decisionsOf`を利用し、受理経路を複製しない。
+
+検証シナリオは次のとおり。
+
+1. `reference/workspace`の一時複製を正規の`workspace.Load`と`Source Index`で読み取り、`index.Build→derivedbridge.FromIndex`で種類・Scope付きのData、Attribute、Validation、Application Patternを観測する。
+2. AI起点の候補を用意し、`Origin.Kind=ai`、`Origin.Actor=proposal-only`、未検証の旧資産メモを明示する。新Validation ID `sales.order_line.unit_price_positive`は、受理前のGraphにもSource Indexにも存在しないことを確認する。旧資産の実取込を行ったと主張するものではない。
+3. 共通`evaluate`で読み取り専用の事前評価を行い、管理対象Sourceの全ファイル内容と基準revisionに変更がないことを確認する。
+4. 既存CLIの`reviewFingerprint`拘束付き`accept`を通し、Decisionの基準・変更前・変更後revision、AI起点の出典メモを確認する。検証対象は**一時Workspace内だけ**であり、公開Reference本体を更新しない。
+5. 再読込したWorldから再び`derivedbridge`を構築し、既存Data/Attribute/Validation/Patternの`Key`を保持し、新Validationが`added`として現れることを`ReviewImpactDiff`で検査する。新Validationの定義元は現在のSource Indexの`semantic/sales/validation.tei`に存在することを確認する。
+6. Decision Indexから候補fingerprintが辿れること、`Origin.Actor`が`DecisionActorStatus`や`DecisionAuthorityStatus`に格上げされず、`unresolved`に留まることを確認する。
+
+これにより、同一の**実Reference構成を複製した環境**で、候補と受理前後の論理識別子、定義ファイル、記録の追跡を一つのシナリオにした。既存のSource Index移動不変性試験やShared Acceptance Decision試験の責務を再実装しない。
+
+**残る制限**：今回のテストはコードを追加した段階で、信頼できる完全なチェックアウトでのGo実行結果は未取得。AI起点であることは提案者の自己申告であり、人間による実際の承認を証明しない。旧資産の注記も実取込・元システムのID照合ではない。Legacy importの生データ→Source Token→受理済みモデルへの追跡、他Scopeとの混同、受理時の実行権限については別途検証する。受理前後のGraph比較は同一観測用Scopeを呼び出し側が渡した範囲に限定され、Scopeそのものの正当性を保証するものではない。
+
+## R10 — 旧資産Source Tokenと受理済み論理IDを別々に追跡する（2026-10-12）
+
+旧資産取り込みとTEI受理後の識別子追跡を、独立した二つの検証だけで済ませると、どちらのSourceから得た根拠で、どのReviewを経て、どの意味IDが受理されたかが失われる。
+
+`tools/reference-shared-acceptance/modelref_rmt_lineage_test.go`に、既存の`reference-xead-source-adapter`を**実際に起動して生成するSource Token**を使い、受理前からDecision Indexまでを追う試験を追加した。
+
+1. 一時複製したReference Workspaceの既存型付きID（Data）とSource Index定義を読み、受理前には追加Validationが存在しないことを確認する。
+2. 独立した合成X-TEA XMLを実Source Adapterで読み、Artifact digest、mapping契約の指紋、元Source要素に結び付くTokenを得る。手書きの注記を根拠の代わりにしない。
+3. Source EvidenceをAI提案に添付し、正規化済みCandidateと実Shared Acceptance Previewの差分に対して`prepareRMTReviewedLink`を作る。`Source Token`とTEI論理IDを同一視せず、リンクは`proposed`・意味同値性は`unresolved`にとどめる。
+4. Reviewに拘束した既存Acceptを一時Workspace上で実施し、Decisionの出典、Source Token、両指紋、受理前後Revisionを照合する。
+5. 再投影された`modelref.Key{Scope,Subject}`を`ReviewImpactDiff`で読み、追加されたValidationと既存Dataの識別子を区別し、Source Indexから新しいValidationの定義元まで再到達できることを確認する。Decision Indexも確認し、外部証跡を`current`や人の承認権限へ格上げしない。
+
+**重要な限界**：使用する元XMLは独立した合成資産で、実際の顧客や原システムの旧資産ではない。Adapterが生成するTokenはSource Artifactと要素位置に束縛されるが、元の`ID`を公開用Evidenceに複製する設計ではない。合成`Table`がTEIの単価制約に相当するという意味の同値性も証明しない。形式の読込みと識別子・根拠の**追跡経路**は検証できても、実旧資産の意味移行とHuman Acceptanceの権限付与は引き続き別の判定段階である。
+
+この試験は既存Adapter／Shared Acceptance／modelref／Source Indexの公共APIだけを呼び、新しい受理口やCore固定の旧資産メタモデルを作らない。実行結果はCIの該当headに紐づけて記録する。

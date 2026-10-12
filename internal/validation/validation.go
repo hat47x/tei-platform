@@ -77,6 +77,9 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("PLUGIN_EXTERNAL_NAME_REQUIRED", "plugin %s has external requirement with empty name", p.ID))
 			}
 		}
+		if err := plugin.ValidateRequirements(p.Requires); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
 		seenCaps := map[string]struct{}{}
 		for _, c := range p.Provides {
 			if !c.Kind.Valid() {
@@ -128,6 +131,9 @@ func Validate(w ir.World) []Diagnostic {
 		seenBundleVersions[key] = struct{}{}
 		if _, err := plugin.ParseVersion(b.Version); err != nil {
 			out = append(out, errd("INVALID_BUNDLE_VERSION", "bundle %s: %v", b.ID, err))
+		}
+		if err := plugin.ValidateRequirements(b.Plugins); err != nil {
+			out = append(out, errd("DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
 		}
 	}
 

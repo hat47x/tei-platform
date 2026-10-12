@@ -1,0 +1,55 @@
+name: TEI アプリケーション構成 Go・Node 結合確認
+
+# E15は通常のGo単体試験から分離し、参照用のGo→Node受け渡しだけを確認する。
+# 権限や全依存の確定を示すものではない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - "reference/application-composition/**"
+      - ".github/workflows/tei-composition-go-node-integration.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-composition-e15-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  go-node-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ""
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Go 1.23を用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Node.js実行環境を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node -e 'if (parseInt(process.versions.node, 10) < 20) process.exit(1)'
+
+      - name: E15のGo・Node結合試験を実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -tags=tei_modelref_candidate -count=1 \
+            ./reference/application-composition \
+            -run '^TestE15ActualGoImpactToE12ReadOnlyReview$' -v

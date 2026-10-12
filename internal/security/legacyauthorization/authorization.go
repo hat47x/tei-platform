@@ -3,6 +3,7 @@ package legacyauthorization
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"tei/internal/core"
 	"tei/internal/security/legacyauth"
@@ -45,6 +46,8 @@ type AuthorizationDenial struct {
 type Adapter struct {
 	Store SubjectStore
 	Rule  Rule
+	// Now は試験用の時刻注入。省略時は実行時の現在時刻を用いる。
+	Now func() time.Time
 }
 
 func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw any) (capabilityinvoke.BusinessResult, error) {
@@ -77,6 +80,20 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	}
 	if !found {
 		return denied("not_authorized"), nil
+	}
+	// 保存先が別の主体のレコードを返した場合は、役割を評価せず停止する。
+	// 欠落・取り違えを業務上の拒否へ丸めず、保存先契約の障害として返す。
+	if user.SubjectID != input.SubjectID {
+		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy authorization subject storeの主体が要求と一致しません")
+	}
+	// 認証後に変更された利用者の無効化・期限・ロックを役割評価の前に反映する。
+	// この再判定は書込みの確定との原子性を意味しない。
+	now := time.Now()
+	if a.Now != nil {
+		now = a.Now()
+	}
+	if reason := user.AccessDenialAt(now); reason != "" {
+		return denied(reason), nil
 	}
 
 	allowed, reason, err := a.Rule.Evaluate(ctx, user, input.Action, input.Resource)
