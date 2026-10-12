@@ -1,36 +1,36 @@
 # Gate B → Gate C Handover Baseline B
 
-- Handover Baseline identity: `B`
+- 引継ぎ基準版の識別情報：`B`
 - `baselineRepositoryRevision R`: `e5231839a5dcc62cce1181a2731fcb7c70d16736`
-- 固定日: 2026-09-19
-- 固定根拠: [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)（判定日2026-09-19、Ready）
-- 規則・原則の正本: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
-- Repository Issue: ISSUE-000030-gate-b-to-c-handover-baseline.md / GitHub #291
+- 固定日：2026年9月19日
+- 固定した根拠： [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)（判定日2026-09-19、Ready）
+- 規則と原則の正本： [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- リポジトリの課題：ISSUE-000030-gate-b-to-c-handover-baseline.md／GitHub #291
 
-本記録は`GATE_B_TO_C_HANDOVER_CONTRACT.md`が定める規則の下で、実際に固定した最初のHandover Baselineの内容を残します。Contract文書自体を書き換えず、本記録が個別revisionのinstanceです。Handoverは新しいCanonical schemaでも第二の正本でもありません。stable reference / identity / fingerprintから実Evidenceへ戻るための束ねです。
+この文書には、`GATE_B_TO_C_HANDOVER_CONTRACT.md`の規則に従って実際に固定した、最初の引継ぎ基準版を記録します。契約文書そのものは変更せず、この記録を特定の版に対応する実例とします。引継ぎ記録は、新たな正本のスキーマでも第二の正本でもありません。安定した参照先、識別情報、照合値から実際の検証根拠を追跡するために、それらをまとめたものです。
 
 ## Baseline identity
 
-- Handover Baseline identity: `B`
-- `baselineRepositoryRevision = R = e5231839a5dcc62cce1181a2731fcb7c70d16736`（`hat47x/tei-platform` `main`、PR [#726](https://github.com/hat47x/tei-platform/pull/726) + PR [#727](https://github.com/hat47x/tei-platform/pull/727) squash-merge後のHEAD）
-- Reference Workspace identity: `reference/workspace`（`go run ./cmd/tei validate -workspace reference/workspace` = `ok`、既知の3件のinformational warning — `APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` x1 / `DATABASE_RELEASE_CONTRACT_NOT_CURRENT` x2、`sales_core.order_legacy`の historical contract未定義に関するもの、Gate B Ready判定をblockしない）
-- Gate B Readiness Audit対象revision: `R`と同一（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)参照）
+- 引継ぎ基準版の識別情報：`B`
+- `baselineRepositoryRevision = R = e5231839a5dcc62cce1181a2731fcb7c70d16736`（`hat47x/tei-platform`の`main`で、PR [#726](https://github.com/hat47x/tei-platform/pull/726)とPR [#727](https://github.com/hat47x/tei-platform/pull/727)をsquash mergeした後のHEAD）
+- 参照用作業領域の識別情報：`reference/workspace`（`go run ./cmd/tei validate -workspace reference/workspace` = `ok`。既知の情報通知3件：`APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` x1／`DATABASE_RELEASE_CONTRACT_NOT_CURRENT` x2。`sales_core.order_legacy`の過去の契約が未定義であることに関するもので、判定段階BのReady判定を妨げない）
+- 判定段階Bの合格監査の対象版：`R`と同一（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)参照）
 
 ## Canonical Application baseline（manifest）
 
-第一Referenceで戻れるidentityの列挙です。意味本文はauthoritative sourceが正本であり、ここでは複製しません。
+最初の参照事例から追跡できる識別情報を列挙します。意味の本文は正本となる入力元に置き、この記録には複製しません。
 
 - Application: `order_entry`
 - Application Pattern: browse / record / reference / header-detail / command
 - Data / Relation / Query: `reference/workspace/semantic/**`、`reference/workspace/database/**`（`sales_core`ほか）
-- Datasource: read / read-write境界を持つlogical Datasource定義
-- Validation: Canonical Validation（`internal/validation`系）
-- Authentication / Authorization: `order_entry` Driver内のAuthentication → Authorization境界
-- Capability / Binding: Contract Query Capability Binding（`internal/realization/contract_query.go`の`ContractQueryTarget.Identity()` = `Database/Contract/Query`三つ組）
-- Business Result / named Outcome: `internal/driver`のBusiness Result / Execution Error区別
-- Execution Error: Provider raw errorからSemantic Execution Errorへの明示mapping
-- Observationに使う明示read境界: Command acknowledgementと分離したObservation read
-- Source / Binding traceability: `internal/workspace/source_index.go`（Source Index）
+- データ接続先：読取り専用と読書き可能の境界を持つ、論理的なデータ接続先の定義
+- 検証：正本上の検証規則（`internal/validation`系）
+- 認証・認可：`order_entry`のドライバー内で、認証から認可へ至る境界
+- 機能と対応付け：契約に基づく問い合わせの機能の対応付け（`internal/realization/contract_query.go`の`ContractQueryTarget.Identity()` = `Database/Contract/Query`の三つ組）
+- 業務上の結果と名前付きの結果：`internal/driver`での業務上の結果と実行時エラーの区別
+- 実行時エラー：提供実装の元のエラーから、意味上の実行時エラーへの明示的な対応付け
+- 観測で使用する明示的な読取りの境界：命令の受理応答とは分離した観測のための読取り
+- 入力元と対応付けの追跡：`internal/workspace/source_index.go`（入力元索引、Source Index）
 
 ## Driver Scenario baseline
 
@@ -46,16 +46,16 @@ Authentication
  -> separate Observation read
 ```
 
-再現対象: `internal/driver`の`TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI`（`#310` final-ui-less-scenario checkが同一revisionで`passed = true`）。
+再現対象：`internal/driver`の`TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI`（同じ版で、`#310`の画面を使わない最終シナリオの確認結果が`passed = true`）。
 
-Business Result、named Outcome、Execution Error、Observation、DiagnosticをTarget側で一種類へ畳みません。
+業務上の結果、名前付きの結果、実行時エラー、観測、診断結果を、実行先で一つの種類にまとめません。
 
 ## Datasource / authority boundary
 
-- read / read-write: `sales_core`データベースに対するContract Query経由read
-- ownership性質: `#308` Evidenceの`fixtureOwnedByTool = true` / `preexistingFixtureProtected = true`が示す、tool-ownedなephemeral fixtureとproduction既存Databaseの区別
-- Database instance / executor Capability Binding: `databaseInstance = sales_core.dev`、`executorCapability = database.query.postgres`
-- secret / credential / runtime parameterを通常Evidenceへ保存しない制約: 全same-run child artifactへ目視・機械監査（`reference-gate-b-readiness-artifact-audit`のsensitive-field拒否check）で確認済み
+- 読取り専用・読書き可能の境界：`sales_core`データベースに対する、契約に基づく問い合わせ経由の読取り
+- 所有・管理上の性質：`#308`の検証根拠にある`fixtureOwnedByTool = true`／`preexistingFixtureProtected = true`が示す、ツール所有の一時的な試験用構成要素と本番の既存データベースの区別
+- データベースの実体と実行器の機能の対応付け：`databaseInstance = sales_core.dev`、`executorCapability = database.query.postgres`
+- 秘密情報・認証情報・実行時の引数を通常の検証根拠に保存しない制約：同じ実行で得た子処理の成果物すべてについて、目視確認と機械監査（`reference-gate-b-readiness-artifact-audit`の機密項目を拒否する確認）を実施済み
 
 ## Gate B Evidence provenance
 
@@ -76,11 +76,11 @@ goEnvironment.goFlagsEmpty            = true
 goEnvironment.goEnvDisabled           = true
 ```
 
-実行環境: Gate B Evidence専用full checkout（`git status --short --untracked-files=all --ignored=matching`空、`git ls-files -v`全`H`）、`GOENV=off` / `GOWORK=off` / `GOFLAGS=`、`TEI_TEST_POSTGRES_DSN_FILE`経由のRepository外secret file。手順は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を正規実行手順とし、本記録では複製しません。
+実行環境：判定段階Bの検証専用にリポジトリ全体を取得（`git status --short --untracked-files=all --ignored=matching`が空、`git ls-files -v`の全項目が`H`）。`GOENV=off`／`GOWORK=off`／`GOFLAGS=`を指定し、`TEI_TEST_POSTGRES_DSN_FILE`でリポジトリ外の秘密情報ファイルを参照しました。実行手順は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を正本とし、この記録には複製しません。
 
 ### same-run child exact artifacts
 
-`#387`が実際に読み、Repository外owner-only directoryへ保持した3件のchild artifact（固定filename）です。
+以下は`#387`が実際に読み取り、リポジトリ外の所有者だけがアクセスできるディレクトリに保存した、子処理の成果物3件です。ファイル名は固定しています。
 
 | lane | evidenceNature | artifactFile | evidenceArtifactFingerprint (SHA-256) |
 | --- | --- | --- | --- |
@@ -88,11 +88,11 @@ goEnvironment.goEnvDisabled           = true
 | #255 | `generated-artifact-reproducibility` | `generated-artifact-reproducibility.json` | `83b780957cdf7edd432e6e5780118eb3048c86a72de6a8d7d0b644d0c35fc847` |
 | #308 | `real-postgres-ephemeral-fixture` | `real-postgres-ephemeral-fixture.json` | `fb57ab65519fc17541a1e790c5040361c43a7883ebd68339fbe218a24c8e8a1a` |
 
-各childの`repositoryRevision = e5231839a5dcc62cce1181a2731fcb7c70d16736`、`reproducibleRevision = true`です。
+各子処理の記録には、`repositoryRevision = e5231839a5dcc62cce1181a2731fcb7c70d16736`と`reproducibleRevision = true`が設定されています。
 
-artifact本文はRunbookの規則によりRepository外へのみ保存し、Repositoryへコミットしません。stable referenceはこのfingerprint（SHA-256）と、同じ`R`に対して`GATE_B_EVIDENCE_RUNBOOK.md`の手順を再実行することによる再生成可能性です（`reproducibleRevision = true`がこれを担保します）。
+成果物の本文は実行手順書の規則に従ってリポジトリの外だけに保存し、リポジトリにはコミットしません。安定した参照には、この照合値（SHA-256）と、同じ`R`について`GATE_B_EVIDENCE_RUNBOOK.md`の手順を再実行することで再生成できる性質を用います（`reproducibleRevision = true`がその根拠です）。
 
-**保管先（locator）**: GitHub Release [`gate-b-evidence-R-e523183`](https://github.com/hat47x/tei-platform/releases/tag/gate-b-evidence-R-e523183)（tagは`R`を指す）のasset `tei-gate-b-evidence-R-e5231839.tar.gz`、SHA-256 `1af53d6ec1d7d61427d98cd0d8fda655fe0c37bb53927f36440d5e17cfec4395`。展開して`MANIFEST.sha256`で各fileを再照合できます（`ISSUE-000057`、2026-09-20追記）。
+**保管先（locator）**：GitHub Release [`gate-b-evidence-R-e523183`](https://github.com/hat47x/tei-platform/releases/tag/gate-b-evidence-R-e523183)（タグは`R`を指す）の成果物`tei-gate-b-evidence-R-e5231839.tar.gz`。SHA-256は`1af53d6ec1d7d61427d98cd0d8fda655fe0c37bb53927f36440d5e17cfec4395`です。展開後、`MANIFEST.sha256`で各ファイルを再照合できます（`ISSUE-000057`、2026年9月20日追記）。
 
 #### #310 deterministic Repository（same-run）
 
