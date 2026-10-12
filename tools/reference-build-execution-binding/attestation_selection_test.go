@@ -112,9 +112,16 @@ func TestReferenceSelectionRevocationChangesPolicyNotImmutableAttestation(t *tes
 		!revoked.Issuers[1].Matched {
 		t.Fatalf("revocation was not confined to issuer A: %#v", revoked)
 	}
-	if revoked.Issuers[0].SelectedAttestationFingerprint != prior.Issuers[0].SelectedAttestationFingerprint ||
+	if revoked.Issuers[0].SelectedAttestationFingerprint != "" ||
 		revoked.Issuers[1].SelectedAttestationFingerprint != prior.Issuers[1].SelectedAttestationFingerprint {
-		t.Fatal("fresh trust decision modified immutable attestation identities")
+		t.Fatal("revoked issuer remained selected or affected an independent issuer")
+	}
+	immutable, err := buildAttestationFingerprint(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if immutable != prior.Issuers[0].SelectedAttestationFingerprint {
+		t.Fatal("policy revocation changed the immutable attestation identity")
 	}
 	if revoked.Issuers[0].PolicyFingerprint == prior.Issuers[0].PolicyFingerprint {
 		t.Fatal("changed policy revision/revocation did not change policy identity")
