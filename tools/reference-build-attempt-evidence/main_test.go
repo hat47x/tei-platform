@@ -570,3 +570,19 @@ func TestPublicFailureClassificationRejectsUnsafeLabelsAndSummary(t *testing.T) 
 		t.Fatal("forged diagnostic summary passed validation after recomputing its fingerprint")
 	}
 }
+
+func TestSignalMetadataRejectsRawDiagnosticContent(t *testing.T) {
+	plan := referenceBuildPlan()
+	for _, signal := range []string{
+		"token=unsafe", "path=/private", " SIGTERM ", "signal 15",
+		strings.Repeat("A", 33),
+	} {
+		_, _, err := newFailedAttempt(plan, 1, fakeFailure{
+			Phase: attemptPhaseBuilderRun, FailureClass: "builder-error",
+			Signal: signal, DiagnosticSummary: "ignored",
+		}, 8)
+		if err == nil {
+			t.Fatalf("unstructured signal value was accepted: %q", signal)
+		}
+	}
+}
