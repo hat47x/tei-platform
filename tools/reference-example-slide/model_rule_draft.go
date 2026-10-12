@@ -11,31 +11,22 @@ const modelRuleDraftIntentSchema = "tei.reference.model-rule-draft-intent/v0"
 
 // Prospective rule IDs permit a hyphen in the local part even though today's
 // Canonical ID validator does not; these are not yet accepted Semantic IDs.
-var proposedRuleNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*package exampleslide
-
-import (
-	"fmt"
-	"regexp"
-	"sort"
-	"strings"
-)
-
-)
+var proposedRuleNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 
 // ModelRuleDraftIntent names explicit, review-bound business-rule declarations.
 // Claims are user assertions, not verified human signatures or business truth.
 type ModelRuleDraftIntent struct {
-	Schema                  string                  `json:"schema"`
-	ModelReviewFingerprint  string                  `json:"modelReviewFingerprint"`
-	SourceAuditFingerprint  string                  `json:"sourceAuditFingerprint"`
-	Requests                []ModelRuleDraftRequest `json:"requests"`
+	Schema                 string                  `json:"schema"`
+	ModelReviewFingerprint string                  `json:"modelReviewFingerprint"`
+	SourceAuditFingerprint string                  `json:"sourceAuditFingerprint"`
+	Requests               []ModelRuleDraftRequest `json:"requests"`
 }
 
 type ModelRuleDraftRequest struct {
-	IssueID          string                       `json:"issueId"`
-	ProposedRuleID   string                       `json:"proposedRuleId"`
-	Rationale        string                       `json:"rationale"`
-	ClaimedEvidence  []ModelRuleEvidenceClaim     `json:"claimedEvidence,omitempty"`
+	IssueID         string                   `json:"issueId"`
+	ProposedRuleID  string                   `json:"proposedRuleId"`
+	Rationale       string                   `json:"rationale"`
+	ClaimedEvidence []ModelRuleEvidenceClaim `json:"claimedEvidence,omitempty"`
 }
 
 type ModelRuleEvidenceClaim struct {
@@ -50,30 +41,30 @@ type ModelRuleEvidenceClaim struct {
 // inferred. The SourceBindings locate existing table/attribute declarations,
 // not the proposed rule's authoritative source.
 type ModelRuleDeclaration struct {
-	IssueID             string                         `json:"issueId"`
-	ProposedRuleID      string                         `json:"proposedRuleId"`
-	Kind                string                         `json:"kind"`
-	Table               string                         `json:"table"`
-	KeyFields           []string                       `json:"keyFields,omitempty"`
-	Determinants        []string                       `json:"determinants,omitempty"`
-	Dependents          []string                       `json:"dependents,omitempty"`
-	ReviewResult        string                         `json:"reviewResult"`
-	ReviewReason        string                         `json:"reviewReason"`
-	Status              string                         `json:"status"`
-	SourceBindings      []ModelHypothesisSourceFinding `json:"sourceBindings"`
-	Rationale           string                         `json:"rationale"`
-	ClaimedEvidence     []ModelRuleEvidenceClaim       `json:"claimedEvidence,omitempty"`
-	Outstanding         []string                       `json:"outstanding"`
+	IssueID         string                         `json:"issueId"`
+	ProposedRuleID  string                         `json:"proposedRuleId"`
+	Kind            string                         `json:"kind"`
+	Table           string                         `json:"table"`
+	KeyFields       []string                       `json:"keyFields,omitempty"`
+	Determinants    []string                       `json:"determinants,omitempty"`
+	Dependents      []string                       `json:"dependents,omitempty"`
+	ReviewResult    string                         `json:"reviewResult"`
+	ReviewReason    string                         `json:"reviewReason"`
+	Status          string                         `json:"status"`
+	SourceBindings  []ModelHypothesisSourceFinding `json:"sourceBindings"`
+	Rationale       string                         `json:"rationale"`
+	ClaimedEvidence []ModelRuleEvidenceClaim       `json:"claimedEvidence,omitempty"`
+	Outstanding     []string                       `json:"outstanding"`
 }
 
 type ModelRuleDeclarationDraft struct {
-	Schema                  string                 `json:"schema"`
-	CaseID                  string                 `json:"caseId"`
-	ModelRevision           string                 `json:"modelRevision"`
-	ModelReviewFingerprint  string                 `json:"modelReviewFingerprint"`
-	SourceAuditFingerprint  string                 `json:"sourceAuditFingerprint"`
-	Fingerprint             string                 `json:"fingerprint"`
-	Declarations            []ModelRuleDeclaration `json:"declarations"`
+	Schema                 string                 `json:"schema"`
+	CaseID                 string                 `json:"caseId"`
+	ModelRevision          string                 `json:"modelRevision"`
+	ModelReviewFingerprint string                 `json:"modelReviewFingerprint"`
+	SourceAuditFingerprint string                 `json:"sourceAuditFingerprint"`
+	Fingerprint            string                 `json:"fingerprint"`
+	Declarations           []ModelRuleDeclaration `json:"declarations"`
 }
 
 // DraftLoadedWorkspaceModelRules creates typed key/FD proposal *descriptions*
