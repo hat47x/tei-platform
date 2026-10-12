@@ -213,3 +213,12 @@ JSON Browser Hostは既存の`measurement.json`を、`browser/`の親にある�
 既存`verify_frozen_unit_pair.py`の公開前・公開後preflightは、`tools/reference-first-web-frozen-world-verify`で、**実際の固定World payload**を既存の`ir.World`にデコードし、Shared Acceptance/ビルド側と同じGo `encoding/json.MarshalIndent`（インデント2スペース、改行終端、既定のHTML escaping）で再シリアライズする。その結果のSHA-256を、既存Decision lineageが示す`derivedWorldSHA256`と直接照合する。未知項目や型不一致、意味データの脱落を拒否する。このGoコマンドはParserやWorkspaceを読み込んで業務モデルを再生成するわけではなく、新しいCanonical/Lock/Authorityを生成しない。
 
 **検査の限界**：既存のDecision Index自体の真正性と承認主体、Builder identity、署名された配備物、本番Hostの権限は別途確認が必要。Go typed IRの再シリアライズは、受理済みSourceと固定Worldの内容一致を局所的に検査するものであり、受理者の権限を立証しない。
+
+
+### 診断API専用バイナリの外部待受を拒否する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝その基準のリポジトリ改訂）**は、実装対象となる意味の追跡に用いる。**T（Target Build Revision＝対象Web/APIビルドのソース改訂）**は、実行成果物の実装版の識別に用いる。同じB/RでもWebのTと将来のDesktopのTは異なり得る。B/R/Tの一致も署名済み成果物・実Hostの配備権限・認証を証明しない。
+
+診断用`tei_order_only,tei_api_only` Goバイナリは、まだ本番向けTLS・Identity/Session・配備許可を持たず、合成のLegacy認証Fixtureを使う。外部インターフェースへ誤って直接公開してしまうことを防ぐため、起動時の`-listen`は**数値の`127.0.0.1:PORT`または`[::1]:PORT`**に限定する（`PORT`は1～65535）。`0.0.0.0:PORT`、`[::]:PORT`、`localhost:PORT`、LANアドレス、ポート未指定などは、Worldや認証Fixtureをロードする前にエラーで拒否する。DNS名`localhost`も明示的に許可せず、実行時名前解決に依存しない。
+
+この防止策はGoプロセス自身の**直接待受アドレスの選択**のみを制約する。Container/リバースプロキシ/Port Forwardの設定まで制御・検証するものではなく、他プロセスを介した外部公開、本番用Host PermissionやTLS・IdP・認可が成立したことにはならない。既存の`tei_order_only`画面付き参照Targetや`tei_repair_only`には制約を遡及適用せず、JSON API診断構成のみで検査する。本番ネットワーク公開は別のHost/Provider受入が必要。
