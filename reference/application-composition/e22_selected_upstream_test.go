@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -91,11 +90,11 @@ func e22Setup(t *testing.T) *e22Harness {
 			t.Errorf("untrusted transport content passed to upstream: path=%s headers=%v", r.URL.EscapedPath(), r.Header)
 		}
 		var intent struct {
-			Version  string                      `json:"protocolVersion"`
-			App      string                      `json:"applicationID"`
-			Resource string                      `json:"resourceID"`
-			Action   string                      `json:"actionID"`
-			Expected string                      `json:"expectedRevision"`
+			Version  string                     `json:"protocolVersion"`
+			App      string                     `json:"applicationID"`
+			Resource string                     `json:"resourceID"`
+			Action   string                     `json:"actionID"`
+			Expected string                     `json:"expectedRevision"`
 			Payload  actionboundary.MovePayload `json:"payload"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&intent); err != nil ||
@@ -156,7 +155,7 @@ func e22Setup(t *testing.T) *e22Harness {
 	}
 	binding := composition.Binding{
 		ContractID: action, ContractVersion: version,
-		ProviderID: "sui-https-provider",
+		ProviderID:     "sui-https-provider",
 		ArtifactDigest: "sha256:" + strings.Repeat("a", 64), Generation: 1,
 	}
 	coordinator, err := composition.NewSelectedCoordinator(
@@ -202,7 +201,7 @@ func e22Setup(t *testing.T) *e22Harness {
 			return e.allowed && actual == action, nil
 		},
 		Invoke: selected,
-		Audit: func(record webcomposition.AuditRecord) { e.audits = append(e.audits, record) },
+		Audit:  func(record webcomposition.AuditRecord) { e.audits = append(e.audits, record) },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +215,7 @@ func e22Send(t *testing.T, target http.Handler, revision, app string) int {
 		"protocolVersion": "1", "applicationID": app,
 		"resourceID": "doc-1", "actionID": "sui.move",
 		"expectedRevision": revision,
-		"payload": map[string]any{"cardId": "card-1", "x": 12, "y": 34},
+		"payload":          map[string]any{"cardId": "card-1", "x": 12, "y": 34},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -241,10 +240,10 @@ func TestE22SelectedSUIHTTPSActionRequiresEveryBoundary(t *testing.T) {
 		t.Fatalf("bare selected provider reachable: status=%d guard=%d->%d upstream=%d", got, baselineGuards, e.guardCalls, e.upstream)
 	}
 	for _, tc := range []struct {
-		name string
+		name  string
 		apply func()
 		reset func()
-		want int
+		want  int
 	}{
 		{"no session", func() { e.sessionOK = false }, func() { e.sessionOK = true }, http.StatusUnauthorized},
 		{"CSRF rejected", func() { e.csrfOK = false }, func() { e.csrfOK = true }, http.StatusForbidden},
@@ -299,12 +298,5 @@ func TestE22UnknownRemoteOutcomeIsNeverAutomaticallyRetried(t *testing.T) {
 	// authorized observation path, not by blindly replaying a committed Move.
 	if e.delegation.calls != 1 {
 		t.Fatalf("unexpected implicit delegation retry count=%d", e.delegation.calls)
-	}
-}
-
-func TestE22FormatDiagnostic(t *testing.T) {
-	output, err := exec.Command("gofmt", "-d", "e22_selected_upstream_test.go").CombinedOutput()
-	if err != nil || len(output) > 0 {
-		t.Fatalf("file needs formatting: %v\n%s", err, output)
 	}
 }
