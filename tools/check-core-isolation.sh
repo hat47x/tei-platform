@@ -42,3 +42,32 @@ printf 'module tei-core-composition-probe\n\ngo 1.23.2\n' > "$module_dir/go.mod"
   go test -count=1 ./...
   go vet ./...
 )
+
+# Use the same copied sources from another Go module, with no TEI-internal
+# imports or dependency on the repository's main go.mod.
+consumer_source="$repo_root/reference/composition-kernel/testdata/external-consumer/consumer_test.go"
+if [[ ! -f "$consumer_source" ]]; then
+  echo 'error: external consumer fixture is missing' >&2
+  exit 2
+fi
+consumer_dir="$probe_dir/consumer"
+mkdir -p "$consumer_dir"
+cp "$consumer_source" "$consumer_dir/consumer_test.go"
+cat > "$consumer_dir/go.mod" <<'EOF'
+module example.com/tei-core-consumer-probe
+
+go 1.23.2
+
+require tei-core-composition-probe v0.0.0
+
+replace tei-core-composition-probe => ../module
+EOF
+
+(
+  cd "$consumer_dir"
+  export GOENV=off GOWORK=off GOFLAGS= GO111MODULE=on GOTOOLCHAIN=local
+  export GOPROXY=off GOSUMDB=off
+  export GOPATH="$probe_dir/home" GOMODCACHE="$probe_dir/modules" GOCACHE="$probe_dir/cache"
+  go test -count=1 ./...
+  go vet ./...
+)
