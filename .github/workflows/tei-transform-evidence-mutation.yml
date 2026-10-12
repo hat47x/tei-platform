@@ -1,6 +1,6 @@
 name: TEI 変換Engine変更の実Evidence差分検証
 
-# 特定の資格確認だけで、実エンジン・セルフビルドを変更前後の2版で実行。
+# 特定の資格確認だけで、変換Engine改変と無関係Host改変の3版を実行。
 # 一般的なPRに対する全体健全性検証の必須化ではない。
 on:
   pull_request:
@@ -54,7 +54,7 @@ jobs:
           check-latest: false
           cache: false
 
-      - name: ソース変更前後の実エンジンとEvidence v2を生成して比較
+      - name: Engine変更とHostのみ変更の実Engine・Evidence v2を比較
         shell: bash
         run: |
           set -euo pipefail
@@ -68,21 +68,30 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
-      - name: 二版のEvidenceを監査資料として保存
+      - name: 三版のEvidenceを監査資料として保存
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tei-transform-evidence-mutation-${{ github.sha }}
           path: |
             ${{ runner.temp }}/tei-transform-mutation/mutation-report.json
+            ${{ runner.temp }}/tei-transform-mutation/host-isolation-report.json
+            ${{ runner.temp }}/tei-transform-mutation/test-host-public.pem
             ${{ runner.temp }}/tei-transform-mutation/baseline/engine-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/baseline/stage2-engine-lock.json
             ${{ runner.temp }}/tei-transform-mutation/baseline/stage2-host-registration.json
+            ${{ runner.temp }}/tei-transform-mutation/baseline/host-signature.txt
             ${{ runner.temp }}/tei-transform-mutation/baseline/self-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/engine-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/stage2-engine-lock.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/stage2-host-registration.json
+            ${{ runner.temp }}/tei-transform-mutation/mutation/host-signature.txt
             ${{ runner.temp }}/tei-transform-mutation/mutation/self-build-evidence.json
             ${{ runner.temp }}/tei-transform-mutation/mutation/host-denial.txt
+            ${{ runner.temp }}/tei-transform-mutation/host-only/engine-build-evidence.json
+            ${{ runner.temp }}/tei-transform-mutation/host-only/stage2-engine-lock.json
+            ${{ runner.temp }}/tei-transform-mutation/host-only/stage2-host-registration.json
+            ${{ runner.temp }}/tei-transform-mutation/host-only/host-signature.txt
+            ${{ runner.temp }}/tei-transform-mutation/host-only/self-build-evidence.json
           if-no-files-found: error
           retention-days: 7
