@@ -188,3 +188,31 @@ func TestReferenceStage2RuntimePolicyBindsAcceptedEngineAndPlan(t *testing.T) {
 		t.Fatal("accepted engine does not match execution plan, but policy was issued")
 	}
 }
+
+func TestReferenceStage2AuthorityRejectsDuplicateKeysAndSymlinks(t *testing.T) {
+	engine := bootstrapTestEngine()
+	dir := t.TempDir()
+	options := writeReferenceStage2Acceptance(t, dir, engine)
+	raw, err := os.ReadFile(options.HostRegistration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Repeated Host-owned keys must not be subject to last-wins JSON decoding.
+	duplicate := append([]byte("{" + "\"hostId\":\"tei.reference.host\","),
+		raw[1:]...)
+	if err := os.WriteFile(options.HostRegistration, duplicate, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := acceptReferenceStage2Engine(options, engine); err == nil {
+		t.Fatal("duplicate Host registration key was accepted")
+	}
+	writeReferenceStage2Acceptance(t, dir, engine)
+	link := filepath.Join(dir, "linked-registration.json")
+	if err := os.Symlink(options.HostRegistration, link); err != nil {
+		t.Skipf("cannot create symlink on this filesystem: %v", err)
+	}
+	options.HostRegistration = link
+	if _, err := acceptReferenceStage2Engine(options, engine); err == nil {
+		t.Fatal("symlinked Host authority record was accepted")
+	}
+}
