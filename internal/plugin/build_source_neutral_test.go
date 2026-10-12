@@ -11,12 +11,12 @@ import (
 // not claim that either source resolver or executable builder is implemented.
 func TestBuildPlanKeepsResolvedSourceClosureLanguageNeutral(t *testing.T) {
 	tests := []struct {
-		name          string
-		closureKind   string
-		entrypoint    string
-		recipeKind    string
-		builderID     string
-		target        string
+		name        string
+		closureKind string
+		entrypoint  string
+		recipeKind  string
+		builderID   string
+		target      string
 	}{
 		{
 			name:        "tei-native",
