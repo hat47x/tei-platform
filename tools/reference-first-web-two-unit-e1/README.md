@@ -96,3 +96,26 @@ JavaScriptはフォームの一時入力をJSONへ変換し、業務APIから返
 送信前と正常完了時の各画面をPNGへ撮影し、SHA-256付きの測定JSONとともに**短期診断Artifact**へ7日間保存します。合成Credentialは撮影前・送信後に消去され、テストはraw HTTP payloadやtraceを保存しません。これらは実ブラウザ操作とスクリーンショット取得の根拠であり、**デザイン合否を人間が承認した証跡でも、特定のPixel基準とのVisual Fidelity合格でもありません**。
 
 実Provider・Production IdP/Session/Authorization・TLS/CSRFやBrowser間互換性、正式Builder/LockとGatewayの配備条件は未検証です。診断用Node Hostは製品の第三配備単位ではありません。検証したGo版、Browser版、Host、合成Scenarioと未検証条件はそれぞれ別のEvidenceとして扱います。
+
+## 固定Worldを使うAPI成果物（選択式・E1実験）
+
+既存の `build_json_api.sh` とは別に、`build_frozen_json_api.sh` は同じ受注Application・Handover `B/R`・build `T` から、設計時のWorkspace読込みを持たないGo APIを生成する**実験経路**です。
+
+```sh
+dest="/tmp/tei-frozen-$(git rev-parse --short HEAD)"
+bash tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh \
+  "$dest" B e5231839a5dcc62cce1181a2731fcb7c70d16736
+# API起動には、-workspaceへ元TEI Workspaceではなく出力済みapi/を渡す
+"$dest/api/order-entry" \
+  -workspace "$dest/api" -application order_entry \
+  -baseline-id B -baseline-revision e5231839a5dcc62cce1181a2731fcb7c70d16736 \
+  -target-revision "$(git rev-parse HEAD)" -listen 127.0.0.1:8080
+```
+
+- ビルド側の専用CLIが**現行の** `workspace.Load` によって正規化済み`ir.World`を取得し、`api/frozen-world.json`へ派生させます。JSONファイルはAPI配備単位の一部で、業務意味の第二正本ではありません。
+- Go APIは `tei_order_only,tei_api_only,tei_frozen_world` の三つのビルドタグで構築します。静的なimport閉包から `tei/internal/workspace` と `tei/internal/syntax` が除外されなければビルド工程は失敗します。不要パッケージの**実リンク除外**や速度・サイズの差は、測定結果を個別に確認する必要があります。
+- 生成したWorld全体のSHA-256をGoバイナリへコンパイル時に固定します。起動時にファイルdigest、Application ID、B/R/T、JSON構造を照合し、不一致なら業務処理開始前に拒否します。JSONを差し替えてApplicationの意味を変更することはできません。
+- 既存のDriver/Runner/Authentication/Authorization/Validation/Command/Observationを変更せず、通常のAPI専用バイナリと**実HTTP status/bodyの一致**を比較します。元APIは比較のためだけに一時構築し、最終成果物には含めません。
+- Browser HTML/JSは従来の正規Projectionから生成し、元のBrowser/JSON API配備方式も維持します。実Browser replayは両方式へ適用できますが、合成資格情報による確認を本番受入とは扱いません。
+
+**境界と未検証事項：** 本方式は、既存のSource/Acceptance/Builder/Plugin Lockを置き換えません。digestはBuilderが選んだバイト列への拘束であり、発行者やモデルの正当な受理を認証するものではありません。Runtimeは引き続きDriverと`ir.World`を保持し、Production Provider・IdP・Session・TLS/CSRF・人間によるVisual受理も未実証です。Runtimeのモデルファイルが既存のBuilder/Artifact Authorityに拘束されるまで、Production配布に使わないでください。
