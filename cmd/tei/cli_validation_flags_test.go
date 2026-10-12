@@ -28,7 +28,7 @@ func TestWantsJSONValidationBeforeFlagParsing(t *testing.T) {
 
 func TestJSONValidationRejectsOtherCommandFlags(t *testing.T) {
 	for _, tc := range []struct {
-		args []string
+		args      []string
 		wantError bool
 	}{
 		{[]string{"-workspace", "ws", "-json"}, false},
