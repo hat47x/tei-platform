@@ -138,19 +138,17 @@ func TestActualFirstWebTargetCaptureAcrossApplications(t *testing.T) {
 							t.Fatal("frozen route failed to preserve live manifest bytes")
 						}
 					}
-					badArgs := append([]string(nil), args...)
-					for i := 0; i < len(badArgs)-1; i++ {
-						if badArgs[i] == "-application" {
-							if tc.app == "order_entry" {
-								badArgs[i+1] = "repair_intake"
-							} else {
-								badArgs[i+1] = "order_entry"
+					for _, field := range []string{"-application", "-baseline-id", "-baseline-revision", "-target-revision"} {
+						badArgs := append([]string(nil), args...)
+						for i := 0; i < len(badArgs)-1; i++ {
+							if badArgs[i] == field {
+								badArgs[i+1] = "incorrect-" + badArgs[i+1]
 							}
 						}
-					}
-					var failed bytes.Buffer
-					if err := runCapture(badArgs, &failed, io.Discard); err == nil || failed.Len() != 0 {
-						t.Fatal("wrong-Application capture failed to close before output")
+						var failed bytes.Buffer
+						if err := runCapture(badArgs, &failed, io.Discard); err == nil || failed.Len() != 0 {
+							t.Fatalf("%s mismatch did not fail before manifest output", field)
+						}
 					}
 					observed[mode] = append([]byte(nil), raw...)
 				})
