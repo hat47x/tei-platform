@@ -9,12 +9,14 @@ on:
     paths:
       - 'tools/reference-critical-path-evidence-audit/compose-smoke.sh'
       - 'tools/reference-critical-path-evidence-audit/compose_offline_test.py'
+      - 'tools/reference-critical-path-evidence-audit/README.md'
       - '.github/workflows/tei-critical-path-offline-ci.yml'
   push:
     branches: [main]
     paths:
       - 'tools/reference-critical-path-evidence-audit/compose-smoke.sh'
       - 'tools/reference-critical-path-evidence-audit/compose_offline_test.py'
+      - 'tools/reference-critical-path-evidence-audit/README.md'
       - '.github/workflows/tei-critical-path-offline-ci.yml'
 
 permissions:
