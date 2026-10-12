@@ -24,6 +24,12 @@
 
 これらを機械的にまとめたものが、将来のコアになるわけではありません。既存実装の成立範囲は[実装状況](../docs/status.md)を参照してください。
 
+## Service Contractから既存Runtimeへの移行中の接続
+
+`internal/plugin/runtime/service_carrier.go`には、選択済みService Contract/Providerを、**Hostが明示した既存Runtime Carrier**へ結び付ける移行期の入口があります。`EnvironmentPlan.ServiceBindings`は旧CapabilityKindの意味をService Contractへ転用する宣言ではなく、選択されたProviderの論理識別子・具体的なArtifact digestと、旧Runtimeがすでに持つCapability ID・Operationへの一時的な経路指定です。追加した束縛は既存Runtime Policy fingerprintの対象となり、同名Contractの重複、Scope違い、選択済みProvider/ArtifactとHost計画の不一致は実プロセス起動前に拒否します。実行時のPermission、Resource Lease、Artifact verification、Sandbox、Runtime Provenanceは既存`Registry.InvokeWithProvenance`が担います。
+
+この入口は**Contract resolverではありません**。Hostが採用した契約と適合性証跡を正当に取得したか、Shape検証、Publisher Authority、Conformance、Contract互換性を証明できません。結果の`AuthorityLimits`へ未検証を明示します。旧Carrierの経路が新しい製品用Universal ABIになることもありません。将来新Service Contractの正式なCore定義・解決・Host権限へ移行したときは、重複する定義を残さずこの一時対応付けを撤去します。
+
 ## 独立構築の確認
 
 合成基盤が他のTEIパッケージに依存せず試験できるかを調べるため、[隔離試験の手順](../plan/design/CORE_SUBPROJECT_ISOLATION_PROBE_2026-10.md)を用意しています。リポジトリのルートから`tools/check-core-isolation.sh`を実行します。これは現在の`internal/composition/`を一時的なモジュールへ複製して試すもので、`core/`への移管完了を意味しません。
