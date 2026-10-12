@@ -493,12 +493,15 @@ func (r Registry) validateProcessImageBinding(sandboxed, digestVerified bool) er
 	return nil
 }
 
+// ServiceAcceptance is a Host-owned source of current Service acceptance.
+// Plugin descriptors and invocation payloads cannot supply the reader.
 type Registry struct {
 	Builtins               map[string]Builtin
 	BuiltinRegistrations   map[string]BuiltinRegistration
 	Processes              ProcessLauncher
 	Sandboxes              SandboxLauncher
 	Verifier               ArtifactVerifier
+	ServiceAcceptance      ServiceAcceptanceReader
 	Resources              resource.Broker
 	SupervisorOwnerships   resource.SupervisorOwnershipStore
 	SupervisorOwnerID      string
