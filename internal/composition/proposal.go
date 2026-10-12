@@ -154,14 +154,7 @@ func (r *Registry) inspectWiringLocked(req WiringRequirement) WiringFinding {
 		}
 		return finding
 	}
-	selected := Selection{
-		Revision:     r.snapshot.Revision,
-		Epoch:        r.epochs[chosen],
-		ProviderID:   chosen,
-		Scope:        req.Scope,
-		Contract:     req.Contract,
-		Dependencies: append([]Edge(nil), assessment.Bindings...),
-	}
+	selected := r.selectionLocked(r.providers[chosen], assessment)
 	finding.Verdict, finding.Reason, finding.Selected = ProposalCandidate, ReasonStructurallyEligible, &selected
 	return finding
 }
