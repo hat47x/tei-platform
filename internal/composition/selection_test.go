@@ -218,3 +218,28 @@ func TestRestoreSelectedAfterRegistryRemoval(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUnrelatedRegistryUpdateDoesNotDisruptSelectedService(t *testing.T) {
+	r, selected, c := selectedFixture(t)
+	if err := c.ReplaceSelected(context.Background(), r, selected, 1, selectedBinding(2, "v2"), validLifecycle()); err != nil {
+		t.Fatal(err)
+	}
+	next, err := r.Apply(selected.Revision, []Provider{provider("tenantB", "tenant-B", app)}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.Revision == selected.Revision {
+		t.Fatal("revision did not advance")
+	}
+	lease, err := c.Acquire()
+	if err != nil {
+		t.Fatalf("unrelated edit caused avoidable service outage: %v", err)
+	}
+	if lease.Binding.ProviderID != "v2" {
+		t.Fatal("binding changed without cutover")
+	}
+	lease.Release()
+	if err := c.Reap(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
