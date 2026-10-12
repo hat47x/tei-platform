@@ -39,7 +39,7 @@ func selectedFixture(t *testing.T) (*Registry, Selection, *Coordinator) {
 func validLifecycle() Lifecycle {
 	return Lifecycle{
 		Prepare: func(_ context.Context, _ *Scope) error { return nil },
-		Ready: func(_ context.Context, _ Binding) error { return nil },
+		Ready:   func(_ context.Context, _ Binding) error { return nil },
 	}
 }
 
