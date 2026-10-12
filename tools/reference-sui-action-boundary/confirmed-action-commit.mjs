@@ -15,7 +15,7 @@ const definiteRejections = new Map([
 ]);
 
 function isDefiniteRejection(error) {
-  return error instanceof ActionCommitError &&
+  return error instanceof ActionCommitError && definiteRejections.has(error.code) &&
     definiteRejections.get(error.code) === error.status;
 }
 
