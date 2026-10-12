@@ -104,14 +104,28 @@ func (r *Registry) InspectWiringSet(reqs []WiringRequirement) WiringSetFinding {
 		slots[key] = append(slots[key], i)
 	}
 	contradicted := make(map[int]bool)
+	pinned := make(map[int]string)
 	for _, indices := range slots {
-		first := reqs[indices[0]]
-		for _, i := range indices[1:] {
-			if reqs[i].Contract != first.Contract || reqs[i].ProviderID != first.ProviderID {
-				for _, j := range indices {
-					contradicted[j] = true
+		contract := reqs[indices[0]].Contract
+		explicit := ""
+		conflict := false
+		for _, i := range indices {
+			req := reqs[i]
+			if req.Contract != contract {
+				conflict = true
+			}
+			if req.ProviderID != "" {
+				if explicit != "" && explicit != req.ProviderID {
+					conflict = true
 				}
-				break
+				explicit = req.ProviderID
+			}
+		}
+		for _, i := range indices {
+			if conflict {
+				contradicted[i] = true
+			} else if explicit != "" {
+				pinned[i] = explicit
 			}
 		}
 	}
@@ -123,6 +137,9 @@ func (r *Registry) InspectWiringSet(reqs []WiringRequirement) WiringSetFinding {
 		if contradicted[i] {
 			out.Findings[i] = WiringFinding{Verdict: ProposalConflict, Reason: ReasonInconsistentSlot}
 		} else {
+			if selected := pinned[i]; selected != "" {
+				req.ProviderID = selected
+			}
 			out.Findings[i] = r.inspectWiringLocked(req)
 		}
 		switch out.Findings[i].Verdict {
