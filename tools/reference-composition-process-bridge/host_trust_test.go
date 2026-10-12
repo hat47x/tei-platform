@@ -38,7 +38,7 @@ func TestProcessHostTrustRequirementsFailClosed(t *testing.T) {
 	digest := "sha256:" + hex.EncodeToString(sum[:])
 	capabilityID := core.MustCanonicalID("process.reference")
 	identity := plugin.Identity{
-		ID: core.MustCanonicalID("tei.process.reference"),
+		ID:      core.MustCanonicalID("tei.process.reference"),
 		Version: "1.0.0",
 	}
 	capability := plugin.Capability{
@@ -98,9 +98,9 @@ func TestProcessHostTrustRequirementsFailClosed(t *testing.T) {
 	}
 
 	cases := []struct {
-		name         string
-		change       func(*pruntime.DeploymentExecutor)
-		wantError    string
+		name      string
+		change    func(*pruntime.DeploymentExecutor)
+		wantError string
 	}{
 		{
 			name: "explicit-signature-required",
