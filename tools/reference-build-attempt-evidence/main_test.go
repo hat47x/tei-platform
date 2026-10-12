@@ -608,6 +608,14 @@ func (neverProgressingReader) Read([]byte) (int, error) {
 	return 0, nil
 }
 
+type invalidCountReader struct {
+	count int
+}
+
+func (reader invalidCountReader) Read([]byte) (int, error) {
+	return reader.count, nil
+}
+
 func TestDiagnosticRetentionLimitAndNonProgressingReaders(t *testing.T) {
 	if _, _, err := captureDiagnostic(strings.NewReader("x"), maxDiagnosticRetainedBytes+1); err == nil {
 		t.Fatal("retention limit was not enforced")
@@ -620,6 +628,18 @@ func TestDiagnosticRetentionLimitAndNonProgressingReaders(t *testing.T) {
 	}
 	if _, _, err := captureDiagnostic(neverProgressingReader{}, 8); !errors.Is(err, io.ErrNoProgress) {
 		t.Fatalf("non-progressing reader error = %v, want io.ErrNoProgress", err)
+	}
+	for _, count := range []int{-1, 4097} {
+		if _, _, err := captureDiagnostic(invalidCountReader{count: count}, 8); err == nil {
+			t.Fatalf("invalid reader byte count %d was accepted", count)
+		}
+	}
+	bounded, bytes, err := captureDiagnostic(strings.NewReader(strings.Repeat("x", maxDiagnosticRetainedBytes+10)), maxDiagnosticRetainedBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bytes) != maxDiagnosticRetainedBytes || bounded.RetainedBytes != maxDiagnosticRetainedBytes || !bounded.Truncated {
+		t.Fatalf("maximal valid capture was not retained correctly: %+v", bounded)
 	}
 	e, retained, err := captureDiagnostic(strings.NewReader("abcdef"), 3)
 	if err != nil {
