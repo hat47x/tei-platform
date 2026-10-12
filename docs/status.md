@@ -1,42 +1,42 @@
 # TEIの実装状況
 
 - 整理日: 2026-10-11
-- 段階: **実験的な開発基盤・Referenceによる実証**
-- 品質の注意: **生成AIを用いて開発中であり、コード・設計・セキュリティに対する体系的な人的レビューは未実施**。本番利用を前提としません。
+- 開発段階: **参照実装を使った実験と検証**
+- 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
-TEIは、業務モデルと実装・Database・実行先を分離し、CLIとReference Workspaceで意味・実行・観測の接続を検証しています。現時点では完成したローコード製品やGUI Editor、汎用Target Runtimeを提供していません。全体像は[README](../README.md)、価値と対象範囲は[Product Value](../product/value/TEI_PRODUCT_VALUE.md)と[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)を参照してください。
+TEIは、ドメイン知識と技術を分けて管理するためのローコード開発基盤を目指し、現在は業務システムを主な参照例として、コマンドラインと参照用作業領域で設計、実装、実行、観測のつながりを確かめています。現時点では完成した製品や画面編集機能、汎用の実行基盤を提供していません。全体像は[README](../README.md)、価値と対象範囲は[製品が大切にする価値](../product/value/TEI_PRODUCT_VALUE.md)と[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)を参照してください。
 
-## 実装・検証で確認できること
+## 実装と検証で確認できること
 
 | 領域 | 状況 | 確認先 |
 | --- | --- | --- |
-| Go CLI・Workspace | `cmd/tei`とCanonical Workspaceの読込・Validation・Source Index等を実装。具体的なコマンドは導入手順に記載 | [Getting Started](getting-started.md)、[Reference](../reference/README.md) |
-| Application / Driver | `order_entry`でbrowse、record、reference、header-detail、commandなどの意味境界を実証 | [Architecture](architecture.md)、[v1計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
-| Gate A | **Ready**。Application PatternからDriverへ渡す意味境界を確認した過去の判定 | [Gate A判定](../plan/GATE_A_READINESS_AUDIT.md) |
-| Gate B | **Ready**。固定revision `e5231839a5dcc62cce1181a2731fcb7c70d16736`（2026-09-19）に対するRepository再現性、生成物、actual PostgreSQLの同一回のEvidence | [Gate B判定](../plan/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/GATE_B_EVIDENCE_RUNBOOK.md) |
-| Gate C / 第一Web Target | **Ready**。固定build `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`（2026-09-19）のSemantic・Functional・Visual Evidence。**Visual Fidelityは単一AI評価者による評価で、人的承認ではない** | [Gate C判定](../plan/GATE_C_READINESS_AUDIT.md)、[Evidence契約](../plan/GATE_C_EVIDENCE_CONTRACT.md) |
-| Shared Acceptance・第二Application | `repair_intake`の一部Semantic Sourceを明示的受理でReference Workspaceへ取り込む経路などを検討・実装。受理範囲と実Targetの成立は別 | [Reference Workspace案内](../reference/README.md)、[実装構造](architecture.md) |
+| Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、ソース索引作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
+| アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
+| 判定段階A | **合格**。アプリケーションの型からドライバーへ渡す意味上の境界を確認した過去の判定 | [段階Aの判定記録](../plan/GATE_A_READINESS_AUDIT.md) |
+| 判定段階B | **合格**。2026-09-19に固定した版`e5231839a5dcc62cce1181a2731fcb7c70d16736`について、リポジトリ上の再現性、生成物、PostgreSQL実環境を同じ実行で確認 | [段階Bの判定記録](../plan/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/GATE_B_EVIDENCE_RUNBOOK.md) |
+| 判定段階Cと最初のウェブ実行先 | **合格**。2026-09-19に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/GATE_C_EVIDENCE_CONTRACT.md) |
+| 共通受理と二つ目のアプリケーション | `repair_intake`の意味定義の一部を、明示的な受理を経て参照用作業領域へ取り込む経路などを検討・実装。受理した範囲と実行先での動作確認は別の状態 | [参照用作業領域の案内](../reference/README.md)、[実装の構成](architecture.md) |
 
-Gate A/B/Cの「Ready」は**それぞれの判定時点・固定Source／Build／Evidenceに対するもの**です。現在のmain、すべてのProvider、未知の業務、production環境や別のTargetが自動的にReadyになることはありません。新しい変更の資格を過去の結果から自動転用しません。
+判定段階A・B・Cの「合格」は、**それぞれの判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を新しい変更の根拠としてそのまま使いません。
 
-## 現在も未検証・未完成のこと
+## 未完成または未検証のこと
 
-- **統合モデラー／Studio**: Human/AIの入力からData・Function・Businessの三視点を一貫して編集・受理・実行する製品としては未完成。
-- **第二Targetと多様な配備先**: 汎用Web・Desktop・Mobile・組込み・IoTを同等の業務定義から成立させたProduct Evidenceは未取得。
-- **外部接続と実Provider**: Referenceでのsynthetic fixtureと、Oracle等を含む実環境での認証・接続・Command実行の成立を区別。未取得のEvidenceを成功扱いしない。
-- **再現可能な実Target操作**: Gate Cの初回結果と、後続のR7 replay / repeatabilityの実行・反復確認は別。未実施分を含む。
-- **安全性・品質**: セキュリティ・プライバシー・第三者素材のライセンス・権限設定の包括的監査、体系的な人的レビュー、production durability / HAは未完了。
-- **GitHub Actions / 完全な現行検証**: Actionsは利用制限のため停止中。過去の特定revisionのPASSを最新mainの`go test ./...`やRepository HealthのPASSとして扱わない。
+- **統合モデラーと編集環境**: 人やAIの入力からデータ、機能、業務の三つの視点を一貫して編集・受理・実行する製品としては未完成です。
+- **二つ目の実行先と多様な配備先**: 同じ業務定義から汎用ウェブ、デスクトップ、モバイル、組み込み機器、IoTを動かした製品上の検証根拠はありません。
+- **外部接続と実際の提供元**: 参照実装で使う合成試験データと、Oracleなど実環境での認証、接続、操作の成立を区別します。未取得の検証根拠を成功として扱いません。
+- **実行先での再現可能な操作**: 判定段階Cの初回結果と、後続のR7再実行・反復確認は別の検証です。未実施の確認も残っています。
+- **安全性と品質**: 安全性、個人情報、第三者の素材の利用条件、権限設定に関する包括的な監査、体系的な人的確認、本番運用での耐久性・高可用性の確認は未完了です。
+- **GitHub Actionsと最新状態の検証**: 利用制限のためGitHub Actionsを停止しています。過去の特定版での合格を、最新の`main`で`go test ./...`やリポジトリ全体の健全性確認に合格した証拠として扱いません。
 
-検証可能な実装と未確定の設計を区別して進めます。開発上の優先順位は[TEI Master Plan](../plan/MASTER_PLAN.md)、技術境界は[Architecture](architecture.md)、業務設計の考え方は[Business-System Design](business-system-design.md)を参照してください。
+検証済みの実装と未確定の設計を区別して開発を進めます。優先順位は[TEIの全体計画](../plan/MASTER_PLAN.md)、技術上の境界は[全体構成](architecture.md)、業務設計の考え方は[業務システム設計](business-system-design.md)を参照してください。
 
 ## 最初に動かす
 
-Go toolchainを用いた主要なローカル確認は次のとおりです。
+Goの開発環境を使った主なローカル確認は次のとおりです。
 
 ```bash
 go test ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-より詳しい検証コマンドとReferenceの範囲は[Getting Started](getting-started.md)を参照してください。この手順を掲載したことは、公開候補や最新HEADでテストを実施・合格したという意味ではありません。
+詳しい確認手順と参照用作業領域の範囲は[使い始める](getting-started.md)を参照してください。ここに手順を載せたことは、公開候補や最新のコミットで試験に合格したという意味ではありません。

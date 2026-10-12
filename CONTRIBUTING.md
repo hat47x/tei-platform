@@ -1,73 +1,48 @@
 # TEIへの貢献
 
-TEIは、アーキテクチャの設計と参照実装を照らし合わせながら検証を続けている実験的なプロジェクトです。
+TEIは、構成設計と参照実装を照らし合わせて検証を続けている実験的なプロジェクトです。
 
 コードの変更以外にも、次のような形で参加できます。
 
-- 参照用ワークスペース（Reference Workspace）やCLIを実際に試した結果
+- 参照用作業領域やコマンドラインを実際に試した結果
 - 既存の業務システムを現在のモデルでは表現しにくい例
 - 移行・データベース・配備で問題になる例外的なケース
 - 既存のローコード、モデル駆動開発、ワークフロー、スキーマ管理ツールとの比較
 - 設計上の調査結果や運用上の知見
 - アーキテクチャ上の不整合を小さく再現できる例
 
-中核となる大きな仕組みを追加する前に、解消したい製品要求上の不確実性と、必要になる利用例をIssueや設計文書へ記録します。
+中核となる大きな仕組みを加える前に、解消したい製品要求上の不確実性と必要な利用例を、課題記録や設計文書へ記します。
 
 ## 設計上の基本姿勢
 
 TEIでは、概ね次を優先します。
 
-- runtimeの推測より明示された意味
-- special kindを増やすより小さいkernel
-- 既に強いnative formatは無理に置き換えない
-- AIが不要な箇所ではdeterministicな生成・検証
-- command acknowledgementを事実とみなさずObservationを確認する
-- 特定技術をSemantic Definitionへ埋め込むよりProvider境界を置く
+- 実行時の推測より、明示された意味を優先する
+- 個別の種類を増やすより、中核を小さく保つ
+- 既存形式で役割を果たしているものは、そのまま活用する
+- AIが不要な箇所では、決定的な生成と検証を使う
+- 操作の受け付け通知だけで事実と判断せず、観測結果を確かめる
+- 特定技術を意味の定義へ埋め込まず、提供元との境界を置く
 
-## 開発フロー（単独オーナー・並行AIセッション）
+## 開発の進め方（主担当者と複数のAI作業）
 
-human ownerは一人ですが、複数のAI session / processが同時に作業するため、Git操作は単独process前提にしません。branch / PRは人的reviewの儀式ではなく、**並行作業の分離、Gateの保持、競合のfail-close**のために使います。
+主担当者は一人ですが、複数のAI作業や処理が同時に進むことがあります。Git操作は一つの処理だけが動く前提にしません。ブランチとプルリクエストを使い、並行作業を分けて判定段階を保ちます。競合が起きた場合は安全に停止します。
 
-- 既存のtask / lane branchがある作業はそのbranchを再利用する。作業のたびに新しいremote branchを増やさない。
-- write前にremoteを再取得し、open PR、対象branchのahead / behind、変更pathの重複を確認する。
-- shared live branchはrebase / reset / force updateしない。最新`main`へ追随するときは、必要なら現在のlane tipを第一親にした通常mergeを使う。
-- milestone / Gateが完了したらPRまたは通常mergeで`main`へ戻す。統合後、独自aheadもactive PRもないbranchだけをnon-forceで最新`main`へ収束させる。active laneを機械的に削除しない。
-- `main`へforce pushしない。並行更新でexpected head / fast-forward条件が外れた場合は、forceで突破せずremote stateを再取得してreconcileする。
-- コードを変えたときは、`main`へ統合する前に`tools/repository-health-check.sh`を通す。文書だけの変更は、リンク・正本性・状態表現・Gate / Evidence claimを壊していないかを確認する。
-- **Draft PRは変更種別にかかわらずmergeしない。** merge操作の直前にPRを再取得し、`draft=false`、exact head、base、変更path、current `main`を確認する。PR作成時や数分前の状態を使い回さない。
-- code変更を含むPRは、**そのexact headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post stateの記録**がmerge authorityである。統合直前に、記録のcandidate headと対象`main`が現在のPR head / current `main`と一致することを確認する。focused test、static tree audit、PRのmergeable / merged判定は代用しない。記録が無い、またはstaleならmergeせず停止する。
-- qualification toolがmachine-readable receipt / integration preflightを提供するlaneでは、通常の`git merge`やPR mergeの直前に、exact candidateのclean checkoutからcandidate版preflightを実行し、exact expected mainの別clean integration checkoutを検査する。receiptが固定したcandidate / main / runner（preflight自身を含む）と現在のGit stateが一致しない場合は統合せず、最新mainを取り込んだcandidateでqualificationから取り直す。preflightがPASSした後はbranch名を再解決せず、出力されたexact `candidate-head` SHAを統合対象として引き継ぐ。
-- exact-head / exact-main qualification中は、そのreceiptを無効にする`main`移動を避ける。無関係な文書PRでも`main`を動かす場合はexisting laneにparkし、必要ならPRをcloseして、protected integrationが安定してから同じbranch/PRを再開する。Draftだけをmerge防止策にしない。
-- 必須PASSなしにcode-changing PRがmergeされた場合、GitHubの`merged`状態をqualificationへ読み替えない。protected candidateを動かさず、current `main` exact headのtrusted full Repository healthを取得してからforward reconciliationを再開する。
-- open PRを一括mergeしない。各PRのGate authority、exact head、main movement、並行laneを個別に確認する。
-- forward containmentや資格確認のために保持しているbranchは、PRがclosed/mergedになっただけでは通常cleanupへ戻さない。正本のGate handoffが完了し、candidate lineageをもう保持しなくてよいことを確認してからnon-forceで収束させる。
-- GitHub Actionsは月間quota等で使えないことがある。hosted CIが使えないことはlocal Gateを省略する理由にしない。
-- branch名・commit・PRの有無はProduct / Issue / Gateの状態を表さない。状態は正本文書とEvidenceで管理する。
-
-### R7B qualification branch
-
-`research/selective-knowledge-routing-r6` はFirst Web Target R7Bのlive qualification branchです。canonical 11 sourceは通常のbranch merge対象ではありません。
-
-禁止は次のとおりです。
-
-- B4 branchのgeneric merge / squash / cherry-pickをintegration authorityとして扱う
-- PASS receiptなしにcanonical 11を`main`へcopy / mergeする
-- B4をrebase / reset / force updateしてlineageを切る
-- `main`上にsourceが存在すること自体をqualification Evidenceとみなす
-
-統合はISSUE-000069-first-web-target-r7b-exact-t-replay.mdの順序に従います。
-
-```text
-trusted-local full Repository-health PASS receipt
-  -> integration receipt preflight
-  -> exact-parent merge object preparation
-  -> non-force publication
-  -> post-merge verification
-  -> B4 convergence
-  -> Packet M / actual replay
-```
-
-この順序を満たさないcanonical source mergeを検出した場合は、履歴を書き換えずforward containmentでGateを復旧し、資格確認済みB4 candidateを保持します。
+- 既存の作業用ブランチがある作業では、そのブランチを再利用する。作業のたびに新しいリモートブランチを増やしません。
+- 書き込み前にリモートの最新状態を取得し、未完了のプルリクエスト、対象ブランチの先行・遅れ、変更ファイルの重複を確認します。
+- 共有中のブランチでは履歴の付け替え、巻き戻し、強制更新を行いません。最新の`main`へ追随する場合は、必要に応じて現在の作業ブランチを第一親とする通常の統合を使います。
+- 節目や判定段階が完了したら、プルリクエストまたは通常の統合で`main`へ取り込みます。取り込み後は、独自の変更や未完了のプルリクエストがないブランチだけを、強制更新を使わず最新の`main`へ合わせます。作業中のブランチは機械的に削除しません。
+- `main`を強制更新しません。並行更新によって想定したコミットや早送り条件が変わった場合は、強制更新で進めず、リモートの最新状態を取得して変更を調整します。
+- コードを変更した場合は、`main`へ取り込む前に`tools/repository-health-check.sh`を通します。文書だけを変更した場合も、リンク、正本性、状態の説明、判定段階や検証根拠の記述を確認します。
+- **下書き状態のプルリクエストは変更の種類を問わず統合しません。** 統合操作の直前にプルリクエストを再取得し、下書き状態でないこと（`draft=false`）、対象コミット、取り込み先、変更ファイル、最新の`main`を確認します。作成時や数分前の状態は使い回しません。
+- コードを含むプルリクエストは、**対象コミットで`tools/repository-health-check.sh`を全項目実行して合格し、実行前後に変更がないことを記録してから統合します。** 統合直前に、記録にある候補コミットと対象`main`が、現在のプルリクエストと最新の`main`に一致することを確認します。個別の試験、静的な構成確認、GitHub上の統合可否・統合済み表示では代用できません。記録がない場合や、記録が現在の状態と一致しない場合は統合を止めます。
+- 検証用ツールが機械で読める証明記録や統合前確認を用意している作業では、通常の`git merge`やプルリクエストの統合前に、候補版を変更のないチェックアウトで確認し、想定する`main`を基にした別の変更のないチェックアウトでも統合結果を調べます。証明記録にある候補、`main`、実行ツール（統合前確認を含む）が現在のGit状態と一致しない場合は統合せず、最新の`main`を取り込んだ候補で検証し直します。統合前確認が合格した後はブランチ名を引き直さず、出力された`candidate-head`のSHAを統合対象として引き継ぎます。
+- 対象コミットと`main`を固定して検証している間は、その記録を無効にする`main`の更新を避けます。別の文書のプルリクエストであっても`main`を更新する場合は、既存の作業ブランチに変更を保留し、必要ならプルリクエストを閉じます。保護された統合が安定してから、同じブランチとプルリクエストで作業を再開します。下書き状態だけを統合防止策にしません。
+- 必要な検証に合格する前にコード変更を含むプルリクエストが統合された場合、GitHubの統合済み表示を検証の合格として扱いません。保護対象の候補を動かさず、現在の`main`の正確なコミットで信頼できる全体検証を行い、その後に変更の調整を再開します。
+- 未完了のプルリクエストを一括で統合しません。それぞれについて、判定根拠、対象コミット、`main`への影響、並行作業を確認します。
+- 変更の封じ込めや検証のために保持しているブランチは、プルリクエストが閉じたり統合されたりしただけでは削除しません。正本の判定段階からの引継ぎが終わり、候補の履歴を保持する必要がなくなったことを確認した後に、強制更新を使わず収束させます。
+- GitHub Actionsは月間利用枠などの制限で使えない場合があります。ホスト上の自動確認が使えなくても、手元の判定段階を省略しません。
+- ブランチ名、コミット、プルリクエストの有無だけでは、製品、課題、判定段階の状態は決まりません。状態は正本となる文書と検証根拠で管理します。
 
 ## 開発時の確認
 
@@ -78,8 +53,8 @@ go test ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-上記をまとめて確認する読み取り専用のスクリプトが`tools/repository-health-check.sh`です（`--fast`では`go test`を省略します）。GitHub Actionsを使えない間は、mainへpushする前に手元でこの確認を通してください。背景は`ISSUE-000055`にあります。
+上記をまとめて確認する読み取り専用のスクリプトが`tools/repository-health-check.sh`です（`--fast`では`go test`を省略します）。`main`へ変更を反映する前に、この確認を通してください。
 
-Reference Workspaceには、過去contractとの互換性を確認するためのwarningが意図的に含まれる場合があります。
+参照用作業領域には、過去の仕様との互換性を確認するための警告が含まれる場合があります。
 
-文書だけを変更した場合も、リンク、正本性、状態表現、Gate / Evidence claimを壊していないかを確認してください。文書品質の詳細は[`docs/documentation-quality.md`](docs/documentation-quality.md)を参照します。
+文書だけを変更した場合も、リンク、正本性、状態の説明、判定段階や検証根拠の記述を確認してください。詳しくは[`docs/documentation-quality.md`](docs/documentation-quality.md)を参照してください。

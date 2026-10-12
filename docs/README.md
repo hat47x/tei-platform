@@ -2,7 +2,7 @@
 
 この文書は、TEIの設計、実装、開発状況を調べるための案内です。製品要求、設計判断、受入条件、検証結果はここでは新たに定義しません。それぞれの正本はリンク先を参照してください。
 
-全体像は[TEIの考え方](overview.md)、実装境界は[Architecture](architecture.md)、業務モデルは[Business-System Design](business-system-design.md)から確認できます。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、開発の主線は[TEI Master Plan](../plan/MASTER_PLAN.md)に記載しています。
+全体像は[TEIの考え方](overview.md)、実装の境界は[全体構成](architecture.md)、業務モデルは[業務システム設計](business-system-design.md)で確認できます。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、開発の中心となる計画は[TEIの全体計画](../plan/MASTER_PLAN.md)に記載しています。
 
 すべての文書を順番に読む必要はありません。目的に応じて入口を選んでください。リポジトリ全体の入口は[README](../README.md)です。
 
@@ -11,55 +11,55 @@
 | 知りたいこと | 最初に読む文書 | 次に読む文書 |
 | --- | --- | --- |
 | TEIが何を目指すか | [はじめてTEIを知る方へ](for-readers.md) | [TEIの考え方](overview.md) |
-| 技術的な全体構造 | [Architecture 読み方ガイド](architecture-reading-guide.md) | [Architecture](architecture.md) |
-| 機能の実装・検証 | [Architecture](architecture.md) | [Conformance・Reference](../reference/README.md) |
-| 業務システム設計としての境界 | [業務システム設計 読み方ガイド](business-system-design-reading-guide.md) | [Business-System Design](business-system-design.md) |
-| AI / local cognition / Design Synthesis | [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md) | [TEIの考え方](overview.md) |
-| 正式なProduct Requirement | [Product Requirements 読み方ガイド](../requirements/README.md) | [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md) |
-| RequirementからEvidenceまでのつながり | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEI Planning](../plan/README.md) |
-| 現在どこまで成立しているか | [現在の実装状況](status.md) | [TEI Planning](../plan/README.md) |
-| 実際に動かしたい | [TEIを動かす](getting-started.md) | [現在の実装状況](status.md) |
-| Security / Authority境界 | [Security](security.md) | [Architecture 読み方ガイド](architecture-reading-guide.md) |
-| 用語・命名を確認したい | [Naming](naming.md) | [TEIの考え方](overview.md) |
-| 文書を書きたい・レビューしたい | [TEI 文書品質ガイド](documentation-quality.md) | [`AGENTS.md`](../AGENTS.md) |
+| 技術的な全体構造 | [全体構成の読み方](architecture-reading-guide.md) | [全体構成](architecture.md) |
+| 機能の実装と検証 | [全体構成](architecture.md) | [準拠確認と参照用資料](../reference/README.md) |
+| 業務システム設計の境界 | [業務システム設計の読み方](business-system-design-reading-guide.md) | [業務システム設計](business-system-design.md) |
+| AIによる認知支援と設計案の統合 | [設計案の統合と認知支援の読み方](design-synthesis-reading-guide.md) | [TEIの考え方](overview.md) |
+| 正式な製品要求 | [製品要求の読み方](../requirements/README.md) | [TEI製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md) |
+| 要求から検証根拠までのつながり | [上位の受け入れシナリオとの追跡関係](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEIの計画](../plan/README.md) |
+| 現在どこまで動くか | [現在の実装状況](status.md) | [TEIの計画](../plan/README.md) |
+| 実際に動かす | [TEIを動かす](getting-started.md) | [現在の実装状況](status.md) |
+| 安全性と権限の境界 | [安全性](security.md) | [全体構成の読み方](architecture-reading-guide.md) |
+| 用語と命名 | [TEIの名称と共通用語](naming.md) | [TEIの考え方](overview.md) |
+| 文書の執筆と確認 | [TEI文書品質ガイド](documentation-quality.md) | [`AGENTS.md`](../AGENTS.md) |
 
 ## 文書の役割
 
 TEIでは、説明、要求、設計判断、計画、検証の根拠を一つの長文にまとめず、役割ごとに管理します。
 
 ```text
-Product Value / Vision / Principles
+製品の価値・将来像・設計原則
         ↓
-Product Requirements
+製品要求
         ↓
-Product Acceptance Scenario
+製品の受け入れシナリオ
         ↓
-Architecture / ADR / Plan Issue
+全体構成・設計判断・計画上の課題
         ↓
-Reference / Conformance
+参照実装・準拠確認
         ↓
-Evidence
+検証根拠
         ↓
-Gate / Product claim
+判定段階・製品についての主張
 ```
 
 `docs/`には、この構造を理解し、利用するための説明と技術文書を置きます。
 
 | 文書群 | 主な役割 | 正本性 |
 | --- | --- | --- |
-| `product/` | 何を価値として守るか | Product Value / Vision / Principlesの正本 |
-| `requirements/` | 何を満たすか | Product Requirementの正本 |
-| `plan/` | PAS、Gate、ADR、Issue、機能設計、Evidence取得計画 | planning / decision / Gate / 機能設計の各正本 |
-| `docs/architecture.md` | 実装構造と技術境界を説明する | Architectureのcurrent説明基線。Requirement第二正本ではない |
-| `docs/business-system-design.md` | Data / Function / Businessをまたぐ業務設計境界を説明する | 業務システム設計のcurrent architecture baseline |
-| `docs/status.md` | 現在の実装・Evidence状態を示す | 可変のcurrent snapshot |
-| `reference/` / `tools/` | 設計仮説を実例・checkerで圧力試験する | Reference / executable Evidence surface |
-| `docs/conformance/` | 実装と設計上の不変条件の対応を示す | 対象範囲ごとのConformance説明 |
-| `docs/audits/` | 特定時点の監査結果を保管する | 監査記録。Architectureの正本ではない |
+| `product/` | 何を価値として守るか | 価値、将来像、原則の正本 |
+| `requirements/` | 何を満たすか | 製品要求の正本 |
+| `plan/` | 受け入れシナリオ、判定段階、設計判断、課題、機能設計、検証根拠の取得計画 | 計画、決定、判定段階、機能設計それぞれの正本 |
+| `docs/architecture.md` | 実装構造と技術上の境界を説明する | 現在の構成を説明する基準。要求の第二の正本ではない |
+| `docs/business-system-design.md` | データ、機能、業務をまたぐ設計上の境界を説明する | 業務システム設計の現在の基準文書 |
+| `docs/status.md` | 現在の実装と検証根拠の状態を示す | 更新される現状記録 |
+| `reference/` / `tools/` | 設計上の仮説を実例と確認用ツールで検証する | 参照実装と実行可能な検証根拠 |
+| `docs/conformance/` | 実装と設計上の不変条件の対応を示す | 対象範囲ごとの準拠説明 |
+| `docs/audits/` | 特定時点の監査結果を保管する | 監査記録。全体構成の正本ではない |
 
-`architecture-reading-guide.md`、`business-system-design-reading-guide.md`、`design-synthesis-reading-guide.md`、`requirements/README.md`は、正本を置き換えるものではありません。背景や失敗例、要求のつながりを知りたい場合に読む案内です。
+`architecture-reading-guide.md`、`business-system-design-reading-guide.md`、`design-synthesis-reading-guide.md`、`requirements/README.md`は正本を置き換えません。背景、失敗例、要求同士のつながりを知るための案内です。
 
-ADR本文の正本は[`plan/adr/`](../plan/adr/README.md)です。
+設計判断記録の正本は[`plan/adr/`](../plan/adr/README.md)です。
 
 ## おすすめの読み順
 
@@ -69,93 +69,93 @@ ADR本文の正本は[`plan/adr/`](../plan/adr/README.md)です。
 2. [TEIの考え方](overview.md)
 3. [現在の実装状況](status.md)
 
-まず、TEIが「意味・実装・実行・観測」を分ける理由を確認します。型の詳細やGateの手順は、その後に読み進めます。
+まず、TEIが「意味・実装・実行・観測」を分ける理由を確認します。型の詳細や判定段階の手順は、その後に読み進めます。
 
-### 2. Architectureを追う
+### 2. 全体構成を読む
 
 1. [TEIの考え方](overview.md)
-2. [Architecture 読み方ガイド](architecture-reading-guide.md)
-3. [Architecture](architecture.md)
+2. [全体構成を読む案内](architecture-reading-guide.md)
+3. [全体構成](architecture.md)
 4. [業務システム設計 読み方ガイド](business-system-design-reading-guide.md)
-5. [Business-System Design](business-system-design.md)
-6. 必要なADR / Conformance / Reference
+5. [業務システム設計](business-system-design.md)
+6. 必要な設計判断記録、準拠説明、参照実装
 
-`architecture-reading-guide.md`で、各技術境界がどんな失敗を防ぐのかを把握してから、`architecture.md`の詳細へ進みます。Business側のactor、manual work、Handoff、actuality等が難しい場合は、`business-system-design-reading-guide.md`で一つの業務例を追ってから正本へ進みます。
+`architecture-reading-guide.md`で、技術上の境界がどのような失敗を防ぐかを把握してから、`architecture.md`の詳細へ進みます。業務主体、手作業、引継ぎ、実際の状態などが難しい場合は、`business-system-design-reading-guide.md`で一つの業務例を追ってから正本を読みます。
 
-`architecture.md`は主に技術境界、`business-system-design.md`は主に業務設計上の境界を扱います。両者は競合する二つのArchitectureではなく、同じTEIを異なる焦点から説明します。
+`architecture.md`は主に技術上の境界を、`business-system-design.md`は主に業務設計上の境界を扱います。二つの文書は、同じTEIの異なる側面を説明します。
 
-### 3. Requirementから実証まで追う
+### 3. 要求から実証まで追う
 
-1. [Product Requirements 読み方ガイド](../requirements/README.md)
-2. [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md)
+1. [製品要求の読み方](../requirements/README.md)
+2. [TEIの製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)
 3. [業務システム設計 要求解釈基線](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
-4. [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
-5. [TEI Planning](../plan/README.md)
-6. 対応するPlan Issue / Reference / Evidence
+4. [上位の受け入れシナリオとの追跡関係](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
+5. [TEIの計画](../plan/README.md)
+6. 対応する計画上の課題、参照実装、検証根拠
 
-Requirementだけから実装を直接導出せず、PAS、設計判断、Reference、Evidenceを通して成立範囲を確認します。
+要求だけから実装を直接導かず、受け入れシナリオ、設計判断、参照実装、検証根拠を通して、成立が確認できた範囲を確かめます。
 
-### 4. AI / local cognition / Design Synthesisを追う
+### 4. AIによる認知支援と設計案の統合を読む
 
 1. [TEIの考え方](overview.md)で、TEI全体におけるAIの位置を確認します。
-2. [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md)で、Product Goalと認知支援の考え方を確認します。
+2. [設計案の統合と認知支援の読み方](design-synthesis-reading-guide.md)で、製品の目標と認知支援の考え方を確認します。
 3. 実装済みの範囲と未検証の範囲は[現在の実装状況](status.md)で確かめます。
 
-非LLM認知やモデル生成の探索項目は実装確定事項ではありません。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)に従います。
+大規模言語モデルを使わない認知機能やモデル生成の検討項目は、実装が確定した内容ではありません。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)に従います。
 
-### 5. 現在のGateを確認する
+### 5. 現在の判定段階を確認する
 
 1. [現在の実装状況](status.md)
-2. [TEI Planning](../plan/README.md)
-3. 対応するGate Readiness Audit / Evidence Contract / Runbook
+2. [TEIの計画](../plan/README.md)
+3. 対応する準備状況の判定記録、検証根拠の条件、実行手順
 
-`status.md`は現在地の入口であり、Gate判定そのものの正本は`plan/`側にあります。
+`status.md`は現在の状況を知るための入口です。判定そのものの正本は`plan/`にあります。
 
 ### 6. 文書を書く・レビューする
 
-1. [TEI 文書品質ガイド](documentation-quality.md)
+1. [TEI文書品質ガイド](documentation-quality.md)
 2. [`AGENTS.md`](../AGENTS.md)
-3. 対象文書の上位正本 / Reference / Evidence
+3. 対象文書の上位にある正本、参照実装、検証根拠
 
-TEIは扱う技術領域と業務知識が広いため、実装できる人だけが読める文書では足りません。背景や前提、用語、失敗例、判断理由を文書内で説明し、主担当者ほど詳しくない読者も目的と設計上の境界を理解してレビューできる状態を目指します。
+TEIは広い技術領域と業務知識を扱います。実装者だけが読める文書では足りません。背景、前提、用語、失敗例、判断理由を説明し、主担当者ほど詳しくない読者も目的と設計上の境界を理解して確認に参加できる状態を目指します。
 
 ## 設計文書を読むときの区別
 
 ### 「設計として決めた」と「実装で確認した」を分ける
 
-ArchitectureやRequirementに境界が書かれていても、それだけでactual Product Evidence取得済みとは扱いません。
+構成や要求に境界が書かれていても、それだけで実際の製品を検証した根拠を取得済みとは扱いません。
 
 ```text
-Architecture / Requirement exists
-  != implementation exists
-  != isolated test passes
-  != actual external Evidence exists
-  != Product claim satisfied
+構成や要求の記述
+  ≠ 実装済みであること
+  ≠ 個別の試験に合格したこと
+  ≠ 外部環境での検証根拠があること
+  ≠ 製品に関する主張を満たしたこと
 ```
 
-逆に、あるReferenceが動いたことだけで、Reference固有の形をCanonical schemaへ昇格させません。
+参照実装が動いたことだけで、その実装固有の形を正本のスキーマへ取り込みません。
 
 ### 「現在地」と「長く残す判断」を分ける
 
-頻繁に変わる実装状況やGate状態は`status.md`やReadiness Auditで追います。
+頻繁に変わる実装状況や判定段階は`status.md`や準備状況の判定記録で追います。
 
-長く残すArchitecture判断はArchitecture文書やADRへ置きます。過去の作業経緯をcurrent baseline本文へ無制限に積み上げず、Git history、完了Issue、audit記録へ分離します。
+長く残す構成上の判断は、全体構成の文書や設計判断記録に置きます。過去の作業経緯は現在の基準文書へ積み上げず、Gitの履歴、完了した課題、監査記録に分けます。
 
 ### 「説明」と「正本」を分ける
 
-`for-readers.md`、`overview.md`、各reading guide、`requirements/README.md`は理解のための説明・案内です。読みやすく言い換えても、Product RequirementやArchitecture boundaryの意味を独自に増減させません。
+`for-readers.md`、`overview.md`、各案内文書、`requirements/README.md`は理解のための説明です。読みやすく言い換えても、製品要求や構成上の境界の意味を独自に増減させません。
 
 ## 設計文書の基本体裁
 
 新しい長文の設計・分析文書を追加するときは、内容に応じて冒頭で次を明らかにします。
 
-1. 役割。Architecture、Requirement interpretation、planning、audit、experiment等のどれか。
-2. 正本との関係。何の正本で、何の第二正本ではないか。
+1. 役割。全体構成、要求の解釈、計画、監査、実験などのどれか。
+2. 正本との関係。どの情報の正本で、どの情報を扱わないか。
 3. 対象範囲。何を扱い、何を扱わないか。
 4. 現在の結論と状態。長い経緯より先に、読者が現在の判断を確認できること。
-5. 根拠。Reference、Conformance、Evidence、関連ADRとIssue。
-6. 非主張範囲。test PASSやReference成立から、何を一般化しないか。
+5. 根拠。参照実装、準拠確認、検証根拠、関連する設計判断記録と課題記録。
+6. 結論を出していない範囲。試験への合格や参照実装の成立から、何を一般化できないか。
 
-さらに、内容が難しい文書ほど、「なぜ必要か」「どんな失敗を防ぐか」「具体例ではどう見えるか」を先に説明します。詳細な執筆方針は[TEI 文書品質ガイド](documentation-quality.md)を参照してください。
+さらに、内容が難しい文書ほど、「なぜ必要か」「どんな失敗を防ぐか」「具体例ではどう見えるか」を先に説明します。詳しい執筆方針は[TEI文書品質ガイド](documentation-quality.md)を参照してください。
 
 すべての文書へ同じ固定テンプレートを強制するものではありません。文書の種類に応じて必要な項目だけを使い、形式を守ること自体を目的にしません。
