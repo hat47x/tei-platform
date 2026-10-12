@@ -92,6 +92,15 @@ func TestCrossViewPublicAPIRejectsUnverifiedSourceProfiles(t *testing.T) {
 	}
 }
 
+func crossViewAccountingForTest(t *testing.T, projection CrossViewProjection) CrossViewAccounting {
+	t.Helper()
+	accounting, err := CrossViewPublicAccounting(projection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return accounting
+}
+
 func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
 	doc := parseCrossViewFixture(t, `<System>
   <Table ID="T1"/>
@@ -112,7 +121,7 @@ func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accounting := CrossViewPublicAccounting(projection)
+	accounting := crossViewAccountingForTest(t,projection)
 
 	if accounting.TaskCount != 1 ||
 		accounting.TaskActionCount != 2 ||
@@ -210,7 +219,7 @@ func TestCrossViewKeepsUnresolvedIOTableInSourceTotals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accounting := CrossViewPublicAccounting(projection)
+	accounting := crossViewAccountingForTest(t,projection)
 	if accounting.IOTableCount != 1 {
 		t.Fatalf("IOTable source total=%d want=1", accounting.IOTableCount)
 	}
@@ -240,7 +249,7 @@ func TestCrossViewDoesNotPromoteNamespacedLookalike(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accounting := CrossViewPublicAccounting(projection)
+	accounting := crossViewAccountingForTest(t,projection)
 	if accounting.TaskFunctionIOCount != 0 {
 		t.Fatalf("namespaced lookalike counted as TaskFunctionIO: %+v", accounting)
 	}
@@ -290,7 +299,7 @@ func TestCrossViewDoesNotTreatBareIOTableAsDeclaredOperation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			accounting := CrossViewPublicAccounting(projection)
+			accounting := crossViewAccountingForTest(t,projection)
 			if accounting.IOTableCount != 1 {
 				t.Fatalf("IOTable source count=%d want=1", accounting.IOTableCount)
 			}
@@ -327,7 +336,7 @@ func TestCrossViewRejectsPartialCRUDWhenMarkerIsUnsupported(t *testing.T) {
 	if !hasCrossViewUnresolved(projection.Unresolved, "iotable-operation-marker-unsupported") {
 		t.Fatalf("unsupported CRUD marker was not retained as unresolved: %+v", projection.Unresolved)
 	}
-	accounting := CrossViewPublicAccounting(projection)
+	accounting := crossViewAccountingForTest(t,projection)
 	if accounting.IOTableCount != 1 {
 		t.Fatalf("source IOTable count=%d want=1", accounting.IOTableCount)
 	}
@@ -371,7 +380,7 @@ func TestCrossViewPublicAccountingOmitsIndividualRelationTokens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := json.Marshal(CrossViewPublicAccounting(projection))
+	encoded, err := json.Marshal(crossViewAccountingForTest(t,projection))
 	if err != nil {
 		t.Fatal(err)
 	}
