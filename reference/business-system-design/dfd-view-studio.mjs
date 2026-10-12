@@ -54,9 +54,15 @@ function render() {
     const pos=positions[i];
     centers.set(key(node.kind,node.id),{x:pos.x+95,y:pos.y+28});
   });
+  const defs=svg('defs');
+  const marker=svg('marker',{id:'dfd-arrow',markerWidth:8,markerHeight:8,refX:7,refY:4,orient:'auto'});
+  marker.append(svg('path',{d:'M0,0 L8,4 L0,8 z',fill:'#64748b'}));
+  defs.append(marker);diagram.append(defs);
   const edges=[];
-  for(const flow of state.dfd.flows||[])edges.push({from:key('step',flow.from),to:key('step',flow.to),kind:'control'});
-  for(const flow of state.dfd.information?.informationFlows||[])edges.push({from:key(flow.from.kind,flow.from.id),to:key(flow.to.kind,flow.to.id),kind:'information'});
+  for(const flow of state.dfd.flows||[])edges.push({from:key('step',flow.from),to:key('step',flow.to),
+    kind:flow.kind==='exception'?'exception':flow.kind==='branch'?'branch':'control',
+    label:flow.kind==='sequence'?'':flow.kind+': '+flow.condition});
+  for(const flow of state.dfd.information?.informationFlows||[])edges.push({from:key(flow.from.kind,flow.from.id),to:key(flow.to.kind,flow.to.id),kind:'information',label:flow.payload});
   for(const t of state.dfd.triggers||[])edges.push({from:key('trigger',t.id),to:key('step',t.targetStep),kind:'control'});
   for(const assignment of state.dfd.information?.responsibilities||[])
     edges.push({from:key('business-role',assignment.role),to:key('step',assignment.step),kind:'responsibility'});
@@ -65,8 +71,15 @@ function render() {
       edges.push({from:key('step',step.id),to:key('function',ref.id),kind:'function'});
   for(const edge of edges){
     const a=centers.get(edge.from),b=centers.get(edge.to);if(!a||!b)continue;
-    const line=svg('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:'edge '+edge.kind});
+    const line=svg('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:'edge '+edge.kind,
+      'marker-end':'url(#dfd-arrow)'});
     diagram.append(line);
+    if(edge.label){
+      const caption=svg('text',{x:Math.round((a.x+b.x)/2),y:Math.round((a.y+b.y)/2)-8,
+        class:'edge-label'});
+      caption.textContent=edge.label.slice(0,48);
+      diagram.append(caption);
+    }
   }
   all.forEach((node,i)=>{
     const p=positions[i];
