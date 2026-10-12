@@ -3,29 +3,36 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"tei/internal/composition"
 	"tei/internal/core"
 	"tei/internal/workspace"
 )
 
 func main() {
 	var (
-		workspacePath = flag.String("workspace", "reference/workspace", "TEI workspace directory")
-		applicationID = flag.String("application", "order_entry", "Canonical Application ID")
-		baselineID    = flag.String("baseline-id", "", "Handover Baseline ID, for example B")
-		baselineRev   = flag.String("baseline-revision", "", "Handover baseline repository revision R")
-		targetRev     = flag.String("target-revision", "", "Target build repository revision T")
-		legacyUsers   = flag.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
-		legacyAuthz   = flag.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
-		listen        = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
-		scopedRoutes  = flag.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		workspacePath    = flag.String("workspace", "reference/workspace", "TEI workspace directory")
+		applicationID    = flag.String("application", "order_entry", "Canonical Application ID")
+		baselineID       = flag.String("baseline-id", "", "Handover Baseline ID, for example B")
+		baselineRev      = flag.String("baseline-revision", "", "Handover baseline repository revision R")
+		targetRev        = flag.String("target-revision", "", "Target build repository revision T")
+		legacyUsers      = flag.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
+		legacyAuthz      = flag.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
+		listen           = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
+		scopedRoutes     = flag.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		composeScenarios = flag.Bool("composition-scenarios", false, "reference: run order_entry read and submit through selected service contracts")
 	)
 	flag.Parse()
+	if *composeScenarios && *applicationID != "order_entry" {
+		fmt.Fprintln(os.Stderr, "-composition-scenarios currently requires -application order_entry")
+		os.Exit(2)
+	}
 
 	if *baselineID == "" || *baselineRev == "" || *targetRev == "" {
 		fmt.Fprintln(os.Stderr, "-baseline-id, -baseline-revision and -target-revision are required")
@@ -71,6 +78,26 @@ func main() {
 			os.Exit(2)
 		}
 		commandScenario = command
+		if *composeScenarios {
+			digest, err := runningExecutableDigest()
+			if err != nil {
+				log.Fatal(err)
+			}
+			// This host permits only its two statically linked reference instances.
+			// It does not grant production permissions or replace business checks.
+			guard := func(b composition.Binding) error {
+				if b.ArtifactDigest != digest || b.Generation != 1 ||
+					!((b.ProviderID == "order-read" && b.ContractID == readServiceContract.ID) ||
+						(b.ProviderID == "order-submit" && b.ContractID == submitServiceContract.ID)) {
+					return fmt.Errorf("reference host rejects instance binding")
+				}
+				return nil
+			}
+			readScenario, commandScenario, err = wireComposedScenarios(context.Background(), composition.NewRegistry(), newReferenceReadScenarioRunner(loaded.World), command, digest, guard)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 	case core.MustCanonicalID("repair_intake"):
 		options = append(options, withCustomerLookup(newReferenceCustomerLookupScenarioRunner(loaded.World)))
 	default:

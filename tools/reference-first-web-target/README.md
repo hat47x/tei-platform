@@ -34,6 +34,18 @@
 
 ## 実行
 
+### サービス契約を使う受注シナリオ
+
+通常の起動コマンドに`-composition-scenarios`を加えると、受注の読取と登録を`internal/composition`の選択済みサービスへ接続する。対象は`order_entry`のみで、別のアプリケーションを指定した場合は起動を拒否する。
+
+`/scenario/read`、`/scenario/submit`、`/custom-submit`は従来と同じ操作を使う。登録処理内の読取も同じサービスを呼ぶ。JSON応答の`composition`には契約、提供元、実行ファイルのSHA-256、世代を記録する。認証拒否などの業務結果と実行エラー、登録結果と後続観測は従来どおり区別する。
+
+この接続は静的に結合した参照用実装を対象とする。データと認証は既存の模擬データを使う。実行ファイルのハッシュは実体の識別であり、配布元の信頼や本番の権限を保証しない。保護されたセッション経路、実際のデータベース、別プロセスの交換はこのフラグの対象外である。進め方は[接続計画](../../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md)を参照する。
+
+```sh
+go test -race -count=1 ./internal/composition ./tools/reference-first-web-target
+```
+
 Target build revisionは実際に実行するcheckoutから取得します。
 
 ```bash

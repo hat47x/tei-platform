@@ -1,6 +1,6 @@
 # TEIの実装状況
 
-- 整理日: 2026-10-11
+- 整理日: 2026-10-12
 - 開発段階: **参照実装を使った実験と検証**
 - 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
@@ -12,6 +12,7 @@ TEIは、ドメイン知識と技術を分けて管理するローコード開�
 | --- | --- | --- |
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、ソース索引作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
+| 参照シナリオと新しいプラグイン基盤 | 開発候補として、型付き実装を選択済み世代へ接続。`-composition-scenarios`で受注の読取と登録・後続観測を実行する。既存の模擬データを使う範囲であり、本番の提供元移行・無停止運用は未成立 | [実行方法](../tools/reference-first-web-target/README.md)、[接続計画](../plan/workstreams/REFERENCE_MODEL_PLUGIN_EXECUTION_2026-10.md) |
 | 判定段階A | **合格**。アプリケーションの型からドライバーへ渡す意味上の境界を確認した過去の判定 | [段階Aの判定記録](../plan/gate/GATE_A_READINESS_AUDIT.md) |
 | 判定段階B | **合格**。2026-09-19に固定した版`e5231839a5dcc62cce1181a2731fcb7c70d16736`について、リポジトリ上の再現性、生成物、PostgreSQL実環境を同じ実行で確認 | [段階Bの判定記録](../plan/gate/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/gate/GATE_B_EVIDENCE_RUNBOOK.md) |
 | 判定段階Cと最初のウェブ実行先 | **合格**。2026-09-19に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/gate/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/gate/GATE_C_EVIDENCE_CONTRACT.md) |
