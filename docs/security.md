@@ -1,27 +1,27 @@
-# Security / Trust Boundary
+# 安全性と信頼の境界
 
-この文書では、TEIにおけるセキュリティ、リソースの使用権限、実行時の信頼境界について、現在の技術設計を説明します。
+この文書では、TEIの安全性、資源を使う権限、実行時に信頼できる範囲について、現在の技術設計を説明します。
 
-製品要求や個別Providerのセキュリティ仕様を、ここで新たに定義するものではありません。設計した境界がどこまで実装・検証されているかは、対応するConformance、Reference、Evidenceで確認します。
+この文書で製品要求や個別の提供実装の安全性に関する仕様を新たに定めるものではありません。各境界がどこまで実装・検証されているかは、対応する準拠性確認、参照事例、検証根拠で確認します。
 
 最も重要なのは、次の区別です。
 
-> **「業務上その機能が存在すること」と、「ある実行主体がその機能やResourceを使ってよいこと」は別です。**
+> **「業務上その機能が存在すること」と、「ある主体がその機能や資源を使用できる権限を持つこと」は別です。**
 
-TEIのSemantic ModelにCapabilityが定義されていても、それだけでPlugin、AI、Hostに実行権限が与えられるわけではありません。
+TEIの意味モデルに機能が定義されていても、それだけでプラグイン、AI、実行環境に実行権限が与えられるわけではありません。
 
 ## 1. 何を防ぎたいのか
 
-TEIでは、業務上の意味からApplicationやRuntimeへ処理をつなぎます。そのため、意味の定義が正しくても、実行境界で次のような問題が起きると安全性を失います。
+TEIでは、業務上の意味をアプリケーションや実行基盤の処理につなぎます。そのため、意味の定義が正しくても、実行時の境界で次のような問題が起きると安全性が損なわれます。
 
-- Pluginが宣言されていないネットワークやファイルシステムへアクセスする
-- SecretがCanonical Definitionや履歴へ平文で残る
-- 一度失効したResource authorityが、その後も使えてしまう
-- Hostの交代後も旧HostがResourceを操作し続ける
-- 外部processの状態が不明なのに、同じ副作用を自動再実行する
+- プラグインが許可されていないネットワークやファイルシステムへアクセスする
+- 秘密情報が意味の正本や履歴に平文で残る
+- 失効した資源の利用権限が、その後も使えてしまう
+- 実行環境の交代後も、以前の環境が同じ資源を操作し続ける
+- 外部プロセスの状態が不明なのに、副作用のある処理を自動的に再実行する
 - 「実行を要求した」ことと「外部で実際に起きた」ことを混同する
 
-これらは単なるSecurity機能の不足ではなく、TEIが守ろうとしている「意味・権限・実行・観測の分離」を壊します。
+これらは単に安全性に関する機能が不足する問題ではありません。TEIが守る「意味・権限・実行・観測の分離」を損ないます。
 
 そのため、TEIでは次のように段階を分けます。
 
@@ -43,19 +43,19 @@ Observation / Evidence
 
 上段の意味や機能が定義されていても、下段の実行権限は自動的には与えられません。
 
-## 2. Capability is not permission — 機能の存在と権限を分ける
+## 2. 機能が存在することと利用権限を持つことを分ける
 
 ### 防ぎたい失敗
 
-たとえば、業務モデルに「メール送信」というCapabilityがあっても、すべてのPluginにメール送信を許可するわけではありません。
+たとえば、業務モデルに「メール送信」という機能があっても、すべてのプラグインにその実行を許可するわけではありません。
 
-Capabilityの存在をそのまま実行権限とみなすと、Pluginの追加や再利用だけで権限が拡大する可能性があります。
+機能の存在をそのまま実行権限とみなすと、プラグインを追加・再利用しただけで権限が拡大する可能性があります。
 
 ### TEIの境界
 
-process Pluginの実行時には、EnvironmentがCapability単位でPermission Grantを明示します。
+別プロセスで動作するプラグインの実行時には、環境側が機能ごとの利用許可を明示します。
 
-Plugin descriptorが「このCapabilityを使いたい」と要求していても、EnvironmentからGrantされなければ利用できません。
+プラグインの定義情報に利用したい機能が記されていても、環境側から許可されなければ利用できません。
 
 ```text
 Capability exists
@@ -65,22 +65,22 @@ Plugin may invoke it
 
 ### この境界が意味すること
 
-AI、Editor、generated code、automationも例外ではありません。高度な自律性を持つことは、強い権限を持つ理由にはなりません。
+AI、編集環境、生成されたコード、自動処理も例外ではありません。自律性が高いことは、強い権限を与える根拠にはなりません。
 
-## 3. Resource Broker — 業務上の識別子と実Resourceを分ける
+## 3. 資源の仲介機構で論理的な参照と実際の資源を分ける
 
 ### 防ぎたい失敗
 
-Database password、API token、network endpoint、filesystem path等をCanonical Definitionへ直接書くと、次の問題が起きます。
+データベースのパスワード、APIの認証用トークン、ネットワークの接続先、ファイルのパスなどを意味の正本へ直接書くと、次の問題が生じます。
 
 - 業務上の意味と環境固有情報が混ざる
-- SecretがGit historyや生成artifactへ残る
+- 秘密情報がGitの履歴や生成物に残る
 - 開発・検証・本番で同じ定義を再利用しにくくなる
-- Host交代やcredential rotationが業務定義の変更になる
+- 実行環境の交代や認証情報の更新が業務定義の変更につながる
 
 ### TEIの境界
 
-Canonical側では、具体値ではなくlogical Resource IDを扱います。
+意味の正本では、実際の値ではなく、論理的な資源の識別子を扱います。
 
 ```text
 logical Resource ID
@@ -90,39 +90,39 @@ Host Resource Broker
 opaque handle / endpoint / mount
 ```
 
-**Resource Broker**は、論理的なResource参照を、そのHostで実際に使えるResourceへ解決する境界です。
+**資源の仲介機構**は、論理的な資源の参照を、その実行環境で実際に使用できる資源へ結び付けます。
 
-Secretの実際の値をDurable RunやPlugin provenanceには保存しないことを基本とします。
+秘密情報の実際の値は、永続的な実行記録やプラグインの来歴には保存しないことを基本とします。
 
 ### 具体例
 
-業務定義に`production-db-password=...`を書くのではなく、`sales-db`のような論理参照を持ちます。実際のcredentialやendpointはEnvironmentとHost側のResource Brokerが解決します。
+業務定義には`production-db-password=...`のように秘密情報を直接書かず、`sales-db`のような論理的な参照を置きます。実際の認証情報や接続先は、環境と実行環境側の資源仲介機構が決定します。
 
 ### 限界
 
-Resource Brokerという抽象を持つだけでSecretが安全になるわけではありません。credentialの保管・注入・rotationを実際に安全に行う仕組みはHost / Provider側にも必要です。
+資源の仲介機構を設けただけで、秘密情報が安全になるわけではありません。認証情報の保管、受け渡し、更新を安全に行う仕組みは、実行環境や提供実装にも必要です。
 
-## 4. Sandbox Profile — 「許可したい権限」と実際のOS制約を分ける
+## 4. 隔離実行の設定とOSによる制約の強制を分ける
 
 ### 防ぎたい失敗
 
-TEI側で「networkは禁止」と記述していても、実行processがOS上では自由にnetworkへ接続できるなら、設計上のpolicyだけが存在し、実際の防御はありません。
+TEI側でネットワーク接続を禁止しても、実行するプロセスがOS上では自由に接続できるなら、方針を定めただけで、実際の防御にはなっていません。
 
 ### TEIの境界
 
-TEIが作るSandbox Profileは、Hostへ渡す**実行制約の要求**です。
+TEIが作る隔離実行の設定は、実行環境へ渡す**制約の要求**です。
 
 たとえば、
 
-- 許可するnetwork範囲
-- filesystem access
-- Secret injection
+- 接続を許可するネットワークの範囲
+- ファイルシステムへのアクセス
+- 秘密情報の受け渡し
 
 等を表します。
 
-しかし、Profileを作っただけでOS level enforcementが成立したとはみなしません。
+ただし、設定を作っただけでOSが制約を実際に強制しているとはみなしません。
 
-Hostには、制約を実際に強制する仕組みと、明示的に許可した操作だけを認めるポリシーが必要です。
+実行環境には、制約を実際に強制し、明示的に許可された操作だけを認める仕組みが必要です。
 
 ```text
 TEI Sandbox Profile
@@ -134,61 +134,61 @@ Host enforcement
 
 ### 限界
 
-現在のReferenceがgeneric OS sandbox一式をproduction-gradeで提供するわけではありません。TEIが先に固定するのは、「どの制約をHostへ要求し、どこから先をHost責務とするか」という境界です。
+現行の参照事例は、汎用的なOSの隔離環境を本番運用に必要な品質で一式提供するものではありません。TEIが先に定めるのは、どの制約を実行環境に要求し、どこから先をその実行環境の責務とするかという境界です。
 
-## 5. Resource Lease — Resource authorityに有効期間を持たせる
+## 5. 資源の利用権限に有効期間を設ける
 
 ### 防ぎたい失敗
 
-一度取得したResource handleが無期限に使えると、処理が終わった後やownershipが変わった後にも古いauthorityが残ります。
+取得した資源の参照を無期限に使用できると、処理の終了後や管理主体の変更後にも古い権限が残ります。
 
 ### TEIの境界
 
-外部Resourceへのauthorityは、原則としてinvocation-scoped Leaseとして扱います。
+外部資源の利用権限は、原則として個々の呼出しに範囲を限定した、期限付きの利用権として扱います。
 
-**Lease**は「この実行が、このResourceを、この期間・条件で使ってよい」という期限付きauthorityです。
+**期限付きの利用権**は、「この実行に限り、この資源を、この期間と条件で使ってよい」という権限です。
 
 主な要素は次です。
 
-- expiry — いつ失効するか
-- renew-before window — いつまでに更新する必要があるか
-- explicit renewal — 明示的な更新
-- explicit live refresh — 現在有効であることの再確認
-- revoke / cleanup — 取消・後始末
-- fail-closed supervision — 監督不能時は権限を広げず停止側へ倒す
+- 失効時刻 — いつ権限を失うか
+- 更新期限 — いつまでに権限を更新する必要があるか
+- 更新 — 利用権を明示的に更新すること
+- 有効性の再確認 — 現時点でも利用権が有効かを確かめること
+- 取消しと後始末 — 利用権の失効と関連資源の整理
+- 安全側に倒す監督 — 監督できないときは権限を広げず、処理を停止する
 
 ### 時刻をなぜ外から入れるのか
 
-M0.22 publication hardeningでは、Lease Supervisorのoperational clockをHostから注入可能にしています。
+M0.22の公開に向けた品質強化では、利用権を監督する機構の時刻基準を、実行環境側から与えられるようにしました。
 
-Leaseの期限判定とResource Brokerの時刻基準がずれると、片方では有効、片方では失効という状態が起こり得るためです。テストでも同じ時刻条件を再現しやすくなります。
+利用権の期限判定と資源仲介機構の時刻基準がずれると、一方では有効でも他方では失効した状態が起こり得るためです。この方法は、試験で同じ時刻条件を再現することにも役立ちます。
 
 ### 限界
 
-Leaseを導入しても、Leaseを確認しない外部Resourceまで自動的に保護されるわけではありません。authorityを使う境界で実際にLeaseを検査する必要があります。
+期限付きの利用権を導入しても、その有効性を確認しない外部資源まで自動的に保護されるわけではありません。資源を使用する直前に、利用権を実際に検査する必要があります。
 
-## 6. Ownership / fencing — Host交代後の古い操作を拒否する
+## 6. 実行環境の交代後に古い世代の操作を拒否する
 
 ### 防ぎたい失敗
 
-Host AがSupervisorとして外部Resourceを管理していたとします。
+実行環境Aが監督者として外部資源を管理していたとします。
 
-Host Aが停止したように見えたためHost Bが引き継いだ後、実はHost Aが遅れて復旧すると、AとBの双方が同じResourceを操作する可能性があります。
+実行環境Aが停止したように見えたためBが引き継いだ後、Aが遅れて復旧すると、両者が同じ資源を操作する可能性があります。
 
-単にDB上の`owner = B`を書き換えるだけでは、Aがすでに持っている接続やhandleを止められない場合があります。
+データベース上の`owner = B`を書き換えるだけでは、Aがすでに保持している接続や資源の参照を止められない場合があります。
 
 ### 起こり得る影響
 
 - 同じ処理の二重実行
-- 古いHostによるLease更新
+- 以前の実行環境による利用権の更新
 - 新しい状態を古い状態で上書きする
-- 外部processへの競合したattach / release
+- 外部プロセスへの接続や解放の競合
 
 ### TEIの境界
 
-TEIはmonotonic fencing tokenを使う契約を検証しています。
+TEIは、単調に増加する世代識別値を使う契約を検証しています。
 
-**fencing token**は、ownershipの世代を単調増加する値で識別し、古い世代からの操作を受け側で拒否するための情報です。
+**世代識別値**は、資源の管理主体の世代を増加する値で表し、古い世代からの操作を受け付け側で拒否するための情報です。
 
 ```text
 Host A owns generation 41
@@ -199,31 +199,31 @@ operation with 41 → reject as stale
 operation with 42 → current ownerとして検査
 ```
 
-このtokenをResource Brokerおよびruntime reattach境界へ伝播し、stale hostのrenew / refresh / release / reattach操作を拒否する契約を検証しています。
+この値を資源の仲介機構と実行中の処理への再接続の境界へ伝え、古い実行環境からの更新、有効性確認、解放、再接続を拒否する契約を検証しています。
 
 ### 限界
 
-fencing tokenを生成するだけでは安全になりません。Resource操作を受ける側がtokenを検査し、古い世代を拒否できる必要があります。
+世代識別値を生成するだけでは安全になりません。資源の操作を受け付ける側も値を検査し、古い世代の操作を拒否できる必要があります。
 
-また、TEI RepositoryのReferenceはdistributed consensus / production ownership store一式を提供するものではありません。
+また、TEIのリポジトリにある参照実装は、分散合意や本番用の管理主体情報の保存機構を一式提供するものではありません。
 
-## 7. Durable Invocation Handle — 外部processを「わからないから再実行」にしない
+## 7. 外部プロセスの実行を追跡し、不明なときは再実行しない
 
 ### 防ぎたい失敗
 
-TEIが外部processへ副作用のある処理を依頼した直後にHostが停止した場合、復旧後には次の三つが考えられます。
+TEIが外部プロセスに副作用のある処理を依頼した直後に実行環境が停止した場合、復旧後の状態には次の三つが考えられます。
 
-1. processはまだ動いている
-2. processは終了している
-3. process自体が見つからない
+1. プロセスはまだ動いている
+2. プロセスは終了している
+3. プロセス自体が見つからない
 
 プロセスが見つからなくても、実行されなかったとは限りません。外部への副作用だけが完了し、プロセス情報が失われている可能性もあります。
 
 ### TEIの境界
 
-外部process / containerの実行identityを**Durable Invocation Handle**として残します。
+外部プロセスやコンテナの実行を識別する情報を、**永続的な呼出し識別情報**として残します。
 
-これは、Hostが変わっても「どの外部実行を追跡していたか」を再び参照するためのdurableな識別情報です。
+これは、実行環境が変わっても、どの外部の処理を追跡していたかを再び参照するための情報です。
 
 ```text
 Durable Handle exists
@@ -233,21 +233,21 @@ finished → 結果 / Observationを確認
 missing → unknownとしてRecovery判断
 ```
 
-takeover後にruntimeが`running`なら、新しいfencing tokenでreattachできます。
+引継ぎ後に実行状態が`running`なら、新しい世代識別値を使って再接続できます。
 
-一方、handleが`missing`の場合は自動再実行しません。
+一方、呼出しの識別情報が`missing`を示す場合は、自動的に再実行しません。
 
 ### なぜ自動再実行しないのか
 
 外部副作用がすでに発生したか不明だからです。
 
-たとえば送金、メール送信、外部system更新等では、二重実行の方が「処理が止まっている」ことより重大な場合があります。
+たとえば送金、メール送信、外部システムの更新などでは、処理が停止することより、二重実行の方が重大な影響を及ぼす場合があります。
 
-そのため、状態を`unknown`としてRecovery判断へ送ります。
+そのため、状態を`unknown`（不明）として、復旧方法の判断へ渡します。
 
-## 8. Approval / Acceptanceとeffect-time authorityを分ける
+## 8. 事前の承認・受理と実行時の権限を分ける
 
-Authoring Proposalや操作候補が人またはShared Acceptance Boundaryで受理されたことと、その後に副作用を実行してよいことは同じではありません。
+設計の変更提案や操作の候補を、人または共通の受理境界が受け入れたことと、その後で副作用のある処理を実行できることは別です。
 
 ```text
 proposal / plan approved at t0
@@ -260,17 +260,17 @@ approval at t0
   != authority at t2
 ```
 
-Capability invocationやResource accessを実行する場合は、effect直前のcurrent Permission / Resource authority / Lease / ownership / fencing条件を検査します。
+機能の呼出しや資源へのアクセスでは、副作用が生じる直前に、現在の利用許可、資源の利用権、期限、管理主体、世代識別値を検査します。
 
-たとえばProposal受理後にpermissionがrevokedされた、Leaseが失効した、ownership generationが進んだ、必要なauthorityが曖昧になった場合、古いapprovalを根拠に副作用へ進みません。missing / stale / ambiguousなauthorityは副作用前にfail closedし、必要なowner / recovery / re-authorizationへ送ります。
+たとえば、提案の受理後に権限が取り消された、期限付きの利用権が失効した、管理主体の世代が進んだ、必要な権限が不明になった場合は、以前の承認を根拠に副作用のある処理へ進みません。権限が存在しない、古い、または曖昧な場合は副作用の前に安全側へ停止し、必要に応じて管理主体の確認、復旧、再認可へ進めます。
 
-この判定をAIへ再質問して補完することも前提にしません。current authorityを決定論的に検査できる境界を優先します。
+この判定をAIへの再質問で補うことも前提にしません。現在の権限を、同じ条件なら同じ結果になる方法で検査できる境界を優先します。
 
-これは新しい万能approval tokenを導入する設計ではありません。既存のPermission、Resource Broker、Lease、fencing等が、それぞれeffect時点のcurrent authorityを担保するよう接続するための境界です。
+これは、あらゆる処理に通用する新たな承認用トークンを導入する設計ではありません。既存の利用許可、資源の仲介、期限付きの利用権、世代確認が、副作用を起こす時点の権限をそれぞれ確かめるための境界です。
 
-## 9. CommandとObservationを分ける
+## 9. 実行命令と観測結果を分ける
 
-Security / Trust Boundaryでは、権限だけでなく「何が実際に起きたか」の確認も重要です。
+安全性と信頼の境界では、権限だけでなく、実際に何が起きたかを確認することも重要です。
 
 ```text
 Command accepted
@@ -278,13 +278,13 @@ Command accepted
 External state changed as intended
 ```
 
-たとえばmigration commandが成功しても、対象instanceが想定と違っていたり、後続の外部処理が失敗している可能性があります。
+たとえば、移行の命令が成功しても、対象が想定したものと違っていたり、後続の外部処理が失敗していたりする可能性があります。
 
-TEIでは、必要な処理についてObservationを取り、次へ進む根拠となるEvidenceを確認します。
+TEIでは、必要な処理の結果を観測し、次へ進むための検証根拠を確認します。
 
-AIやRuntimeが成功と返しただけで、外部での成功まで確定しないための境界でもあります。
+AIや実行基盤が成功と返しただけで、外部で実際に成功したとは判断しないための境界でもあります。
 
-## 10. 一つのtakeover例で全体を見る
+## 10. 実行環境を引き継ぐ例で全体を確かめる
 
 ここまでの境界を一つの例へつなぐと、次のようになります。
 
@@ -310,33 +310,33 @@ AIやRuntimeが成功と返しただけで、外部での成功まで確定し�
 10. runningならreattach、missingなら自動replayせずRecoveryへ
 ```
 
-この流れで重要なのは、「一つの万能Security機構」が守っているのではなく、**Permission、Resource解決、Lease、fencing、Durable identity、Observationが異なる失敗をそれぞれ防いでいる**ことです。
+この例で重要なのは、一つの万能な安全機構がすべてを守っているのではないという点です。**利用許可、資源の解決、期限付き利用権、世代の確認、実行の識別情報、状態の観測が、それぞれ異なる失敗を防いでいます。**
 
 ## 11. 現在どこまで確認しているか
 
-M0.22.1でコードとテストから直接追跡できる保証範囲は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
+M0.22.1でコードと試験から直接確認できる範囲は、[プラグインと実行基盤の準拠性確認](conformance/plugin-runtime-m0.22.1.md)に整理しています。
 
 この文書だけを根拠に、本番運用に必要なセキュリティが完成したとは判断しません。
 
-Architecture上の境界、Reference実装、isolated test、actual external Evidence、本番運用保証はそれぞれ別です。
+設計上の境界、参照実装、隔離した試験、外部環境で取得した検証根拠、本番運用の保証は、それぞれ別のものです。
 
 ## 12. 現時点で保証しないもの
 
-このRepositoryのReference実装は、次をproduction-gradeとして提供するものではありません。
+このリポジトリの参照実装は、次の機構を本番運用に必要な品質で提供するものではありません。
 
-- generic OS sandbox
-- Vault / cloud secret manager adapter
-- distributed consensus / production ownership store
-- signed artifact supply-chain一式
-- production HA guarantee
+- 汎用的なOSの隔離環境
+- Vaultなどの秘密情報管理サービスへの接続部品
+- 分散合意と本番用の管理主体情報の保存機構
+- 署名付き成果物を安全に流通させる仕組み一式
+- 本番運用での高可用性の保証
 
 現在の目的は、これらの製品機能をすべてTEI内へ作ることではありません。
 
-**後から適切なHost / Provider / external systemを接続しても、Capability、Permission、Resource authority、ownership、実行identity、Observationの境界が崩れない契約を先に実行可能にすること**を目的としています。
+**後から適切な実行環境、提供実装、外部システムを接続しても、機能、利用許可、資源の利用権限、管理主体、実行の識別、観測結果の区別が崩れない契約を先に検証できるようにすること**を目的としています。
 
 ## 13. 次に読むもの
 
-- 全体Architectureとの関係: [Architecture](architecture.md)
-- 現在の実装・Evidence状態: [現在の実装状況](status.md)
-- Plugin / Runtime境界の検証内容: [Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md)
-- 文書の読み方・品質方針: [TEI 文書品質ガイド](documentation-quality.md)
+- 全体構成との関係：[TEIの全体構成](architecture.md)
+- 現在の実装と検証根拠：[現在の実装状況](status.md)
+- プラグインと実行基盤の検証：[準拠性確認の結果](conformance/plugin-runtime-m0.22.1.md)
+- 文書の読み方と品質：[TEI文書品質ガイド](documentation-quality.md)
