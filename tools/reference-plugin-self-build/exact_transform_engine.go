@@ -169,13 +169,13 @@ type exactEngineWireField struct {
 }
 
 type exactEngineWireValue struct {
-	Kind        transform.ValueKind  `json:"kind"`
-	Bool        *bool                `json:"bool,omitempty"`
-	Number      *string              `json:"number,omitempty"`
-	String      *string              `json:"string,omitempty"`
+	Kind        transform.ValueKind     `json:"kind"`
+	Bool        *bool                   `json:"bool,omitempty"`
+	Number      *string                 `json:"number,omitempty"`
+	String      *string                 `json:"string,omitempty"`
 	Array       *[]exactEngineWireValue `json:"array,omitempty"`
 	Object      *[]exactEngineWireField `json:"object,omitempty"`
-	BytesBase64 *string              `json:"bytesBase64,omitempty"`
+	BytesBase64 *string                 `json:"bytesBase64,omitempty"`
 }
 
 func exactEngineWire(v transform.Value, depth int) (exactEngineWireValue, error) {
