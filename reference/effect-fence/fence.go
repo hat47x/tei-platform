@@ -40,7 +40,7 @@ type Request struct {
 // 外部からゼロ値を構築しても書込み権限にならない。
 type Permit struct {
 	id    uint64
-	owner *MemoryStore
+	owner any
 }
 
 // Disposition は確定、既存結果の再照会、無作用での拒否を区別する。
