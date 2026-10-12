@@ -79,6 +79,57 @@ jobs:
           go mod download
           test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
 
+      # Optional diagnostic: reproduce the first Studio->Shared Acceptance
+      # preview from the same source WITHOUT modifying the Studio owner's code.
+      - name: 受理SourceへのStudio候補を単独診断
+        shell: bash
+        run: |
+          set -euo pipefail
+          GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local node --input-type=module <<'NODE'
+          import { spawnSync } from "node:child_process";
+          import { mkdtempSync, cpSync, rmSync, writeFileSync } from "node:fs";
+          import { tmpdir } from "node:os";
+          import { join } from "node:path";
+          import { candidateFromEdit } from "./reference/studio-authoring/bridge.mjs";
+          const tmp = mkdtempSync(join(tmpdir(), "tei-cp-diagnostic-"));
+          const ws = join(tmp, "workspace");
+          const go = (args) => {
+            const r = spawnSync("go", ["run", ...args], { encoding: "utf8" });
+            if (r.error) throw r.error;
+            return r;
+          };
+          try {
+            cpSync("reference/workspace", ws, { recursive: true });
+            const rev = go(["./tools/reference-shared-acceptance", "revision", "-workspace", ws]);
+            const world = go(["./cmd/tei", "world", "-workspace", ws]);
+            if (rev.status !== 0 || world.status !== 0) {
+              throw new Error("base read failed: " + rev.stderr + " / " + world.stderr);
+            }
+            const edit = {
+              schema: "tei.reference.studio-edit/v0", id: "e2e-relation",
+              origin: "studio", intent: "明細から受注へ戻るRelationを追加する",
+              view: "er", subject: "data:sales.order_line",
+              operation: "add-relation", relationID: "sales.order_line.order",
+              symbol: "order", targetData: "sales.order", cardinality: "one"
+            };
+            const candidate = candidateFromEdit(JSON.parse(world.stdout), JSON.parse(rev.stdout).modelRevision, edit);
+            const candidatePath = join(tmp, "candidate.json");
+            writeFileSync(candidatePath, JSON.stringify(candidate) + "\n");
+            const preview = go(["./tools/reference-shared-acceptance", "preview", "-workspace", ws, "-candidate", candidatePath]);
+            let result;
+            try { result = JSON.parse(preview.stdout); } catch { result = {}; }
+            console.log(JSON.stringify({
+              diagnosticOnly: true, productGate: "UNQUALIFIED",
+              previewExitCode: preview.status, previewAcceptable: result.acceptable,
+              stages: (result.stages || []).filter(s => s.status !== "pass").map(s => ({name:s.name,status:s.status})),
+              diagnostics: (result.diagnostics || []).map(d => ({code:d.code,message:d.message})),
+              stderr: preview.stderr
+            }, null, 2));
+          } finally {
+            rmSync(tmp, { recursive:true, force:true });
+          }
+          NODE
+
       - name: 同一checkoutの実Go・Node横断Smokeを実行
         shell: bash
         run: |
