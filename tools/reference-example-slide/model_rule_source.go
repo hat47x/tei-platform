@@ -13,8 +13,8 @@ import (
 
 const (
 	ruleSourceHeader     = "tei-model-rules v0"
-	maxRuleSourceBytes    = 256 * 1024
-	maxRuleSourceEntries  = 128
+	maxRuleSourceBytes   = 256 * 1024
+	maxRuleSourceEntries = 128
 )
 
 var ruleSourceTokens = regexp.MustCompile(`\S+`)
