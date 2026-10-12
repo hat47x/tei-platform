@@ -59,9 +59,8 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 	return l.invokeExecutableWithStartGate(ctx, command, req, executable, extraFiles, nil)
 }
 
-// processStartGate runs the OS process start while a Host-owned authorization
-// remains current. It must release its lock as soon as Start returns: child
-// completion and signer revocation are independent operations.
+// processStartGateはホストが保持する実行権限を確認しながらOSへ起動要求を渡す。
+// Startが戻った時点で権限ロックを解放し、子プロセス終了と鍵の失効は独立に扱う。
 type processStartGate func(start func() error) error
 
 func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File, gate processStartGate) (Response, error) {
@@ -107,10 +106,9 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		cmd.Dir = l.Dir
 	}
 
-	// Preserve the ordinary launcher path exactly. A pinned signed process
-	// uses an optional Host-owned gate around Start only, never around Wait.
-	// This avoids the check-then-start gap without blocking revocation for
-	// the lifetime of an already started child.
+	// 通常の起動方式は従来どおりRunを使う。署名済みの固定実行方式に限り
+	// Startをホスト側の権限ロックで保護し、終了待ちではロックを保持しない。
+	// 起動前の権限確認と実際のStartの間にできる競合窓を閉じる。
 	run := func() error {
 		if gate == nil {
 			return cmd.Run()
