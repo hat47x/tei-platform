@@ -303,17 +303,16 @@ func TestIndependentAttestationsForSameArtifactSet(t *testing.T) {
 	first := signedSetAttestation(t, plan, set, resultFingerprint)
 	second := first
 	second.Issuer = "tei.reference.independent_issuer"
-	var err error
-	second, err = signReferenceAttestation(second)
+	second, err := signReferenceAttestation(second)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// The same physical artifact may have multiple immutable attestations.
 	// Issuer identity belongs to the signed payload, not to the artifact.
-	attestations := []BuildAttestation{first, second}
-	if len(attestations) != 2 {
-		t.Fatal("one attestation was discarded")
+	if first.Subject != second.Subject ||
+		first.BuildExecutionResultFingerprint != second.BuildExecutionResultFingerprint {
+		t.Fatal("the two issuers were not bound to the same exact build result and artifact set")
 	}
 	firstFingerprint, err := buildAttestationFingerprint(first)
 	if err != nil {
