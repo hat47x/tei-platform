@@ -65,3 +65,27 @@ go test -count=1 ./tools/reference-composition-process-bridge
 **実証範囲の制約：** この試験のセッション・CSRF・操作認可は、Host側の真偽値による**合成検証器**であり、実際のIDプロバイダー、Cookie、ブラウザ、既存業務の`security.authorize`の一貫した実行を証明しません。また、子プロセスは配備指示を`accepted`として返すだけで、データベース更新を行いません。業務操作の成功や永続的な副作用の確定、プロセス隔離、署名の検証を主張しないため、応答でも`durability=unconfirmed`と記録します。
 
 この追加試験は既存の`go test -count=1 ./tools/reference-composition-process-bridge`から実行できます。実行結果はGitHub Actionsまたは実チェックアウトによる記録を別途確認し、コード追加だけでPASSと判定しません。次の段階では、合成されたOperationではなく、実際のApplication Actionと既存`security.authorize`を同じ契約のまま横断させます。
+
+## 正規の業務認可から独立プロセスの受領まで
+
+[Issue #1145](https://github.com/hat47x/tei-platform/issues/1145)の横断試験として、`canonical_process_test.go`を追加しました。既存の参照Workspaceの`order_entry.submit_order`について、`driver.Resolver`と既存の`security.authorize`を**実際に呼び**、許可された要求だけを、新合成基盤が選択した独立した子プロセスへ渡します。
+
+```text
+合成された企業／既存認証セッション
+ → 保護されたWeb Hostの本人確認・要求元検査
+ → 既存Canonical Bindingとsecurity.authorizeによる操作認可
+ → 要求内だけで有効な操作認可の引渡し
+ → 合成基盤での提供者選択・現在のHost実行権限
+ → 実行ファイルのSHA-256照合と既存プロセス通信
+ → 外部プロセスによる受領応答（業務処理は未実行）
+```
+
+企業認証と従来認証の二つの合成主体が、既存の規則で同じ利用者に結び付けられる場合の受領を確認します。閲覧者の拒否、主体対応付けの撤去・障害、要求元検査の拒否、セッションの失効、Host権限失効、成果物検証器の欠落、提供者の撤去では、子プロセスが起動しません。HTTP本文・ヘッダーに偽造した主体・権限・提供者・秘密文字列を入れても、プロセス要求のJSONには転送されないことを確認します。
+
+```sh
+go test -count=1 -run '^TestCanonicalAuthorizationGatesRealSelectedProcessReceipt$' ./tools/reference-composition-process-bridge
+```
+
+**重要な境界**：今回使う独立プラグインは既存の*配備処理の受領器*であり、受注を登録するプラグインではありません。プロセスとの接続は、既存の`DeploymentExecutor`が理解する合成された受領要求を用いているため、`order_entry.submit_order`という業務Actionの**実行契約と一致した物理プロセス実装になったと判定してはいけません**。HTTP 202は受領試験の成功であり、業務操作が完了した証拠ではありません。業務効果もDB変更も行いません。これは、認証・認可・提供者選択・プロセス境界の縦断的な接続と非漏洩を試す限定的な結合試験です。
+
+実際の別プロセスに業務Actionを委譲するには、業務Actionの意味契約・要求／結果形式と、物理的なプロセス呼出し形式を独立させる必要があります。旧式の配備機能分類を汎用業務Actionへ流用することや、HTTPで承認した利用者を外部プロセスにそのまま自称させることは認めません。実IdP、Cookie／CSRF、本番のLease・OS隔離・署名・実行結果の永続確認も対象外です。
