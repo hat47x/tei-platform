@@ -30,7 +30,7 @@ func TestLockPinsVersionEvenWhenNewerCompatibleAppears(t *testing.T) {
 // Two projects may select the same logical Plugin while adopting its releases
 // at different times. A new catalog release must not modify either pinned lock.
 func TestIndependentEnvironmentsAdoptSharedPluginOnSeparateLocks(t *testing.T) {
-	id := core.MustCanonicalID("tei.reference.shared-derivation")
+	id := core.MustCanonicalID("tei.reference.shared_derivation")
 	v1 := plugin.Definition{
 		ID:      id,
 		Version: "1.0.0",
