@@ -79,8 +79,11 @@ func Validate(w ir.World) []Diagnostic {
 		if err := plugin.ValidateUniqueExternalRequirements(p.External); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_EXTERNAL_REQUIREMENT", "plugin %s: %v", p.ID, err))
 		}
-		if err := plugin.ValidateRequirements(p.Requires); err != nil {
+		if err := plugin.ValidateUniqueRequirements(p.Requires); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
+		if err := plugin.ValidateRequirementValues(p.Requires); err != nil {
+			out = append(out, errd("INVALID_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
 		}
 		if err := plugin.ValidateUniqueCapabilities(p.Provides); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s: %v", p.ID, err))
@@ -142,8 +145,11 @@ func Validate(w ir.World) []Diagnostic {
 		if _, err := plugin.ParseVersion(b.Version); err != nil {
 			out = append(out, errd("INVALID_BUNDLE_VERSION", "bundle %s: %v", b.ID, err))
 		}
-		if err := plugin.ValidateRequirements(b.Plugins); err != nil {
+		if err := plugin.ValidateUniqueRequirements(b.Plugins); err != nil {
 			out = append(out, errd("DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
+		}
+		if err := plugin.ValidateRequirementValues(b.Plugins); err != nil {
+			out = append(out, errd("INVALID_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
 		}
 	}
 

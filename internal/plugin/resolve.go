@@ -70,6 +70,9 @@ func (c Catalog) ResolveEnvironment(env environment.Environment) (ResolvedSet, e
 	visiting := map[core.CanonicalID]bool{}
 	var visit func(Requirement) error
 	visit = func(req Requirement) error {
+		if err := ValidateRequirementValues([]Requirement{req}); err != nil {
+			return err
+		}
 		if existing, ok := resolved[req.Plugin]; ok {
 			if !CompatibleMajor(existing.Version, req.CompatibleMajor) {
 				return fmt.Errorf("plugin %s already resolved to %s, incompatible with required major %d", req.Plugin, existing.Version, req.CompatibleMajor)
