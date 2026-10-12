@@ -54,12 +54,12 @@ type ProcedureStep struct {
 }
 
 type Facts struct {
-	SchemaVersion        string          `json:"schemaVersion"`
+	SchemaVersion            string          `json:"schemaVersion"`
 	WorldJSONFingerprint     string          `json:"worldJSONFingerprint,omitempty"`
 	ProcedureJSONFingerprint string          `json:"procedureJSONFingerprint,omitempty"`
-	Owners               []Owner         `json:"owners"`
-	FunctionIO           []FunctionIO    `json:"functionIO"`
-	ProcedureSteps       []ProcedureStep `json:"procedureSteps"`
+	Owners                   []Owner         `json:"owners"`
+	FunctionIO               []FunctionIO    `json:"functionIO"`
+	ProcedureSteps           []ProcedureStep `json:"procedureSteps"`
 }
 
 type Diagnostic struct {
@@ -80,7 +80,7 @@ type Coverage struct {
 
 // InputFingerprints identify exact caller-supplied bytes, not acceptance.
 type InputFingerprints struct {
-	WorldJSON string `json:"worldJSON"`
+	WorldJSON     string `json:"worldJSON"`
 	FactsJSON     string `json:"factsJSON"`
 	ProcedureJSON string `json:"procedureJSON,omitempty"`
 }
