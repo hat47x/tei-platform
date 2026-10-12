@@ -1,5 +1,0 @@
-// 受注確定とは独立した読み取り専用の業務操作。
-// commandというPatternの実行形式は、データ更新を意味しない。
-pattern order_entry.preview_order_quote command {
-    capability sales.order.quote_lines
-}
