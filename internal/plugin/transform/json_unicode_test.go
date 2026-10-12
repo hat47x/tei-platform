@@ -98,7 +98,6 @@ func TestParseSourceJSONRejectsUnpairedSurrogateInIdentityAndLiteral(t *testing.
 	}
 }
 
-
 func TestParseSourceJSONUnicodeScalarCanonicalization(t *testing.T) {
 	source := transform.TransformSourceRealizerV1()
 	source.Identity.ContractVersion = "contract/😀"
