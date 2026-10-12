@@ -28,6 +28,8 @@ type PinnedLinuxProcess struct {
 	identity  plugin.Identity
 	source    string
 	digest    string
+	signatureRef string
+	signatureVerified bool
 	image     *os.File
 	transport StdioProcessLauncher
 }
@@ -137,7 +139,14 @@ func (p *PinnedLinuxProcess) Verify(ctx context.Context, identity plugin.Identit
 	if p.image == nil || identity != p.identity || artifact.Digest != p.digest {
 		return ArtifactVerification{}, errors.New("plugin identity or digest differs from pinned process")
 	}
-	return ArtifactVerification{VerifierID: "tei-linux-pinned-process-sha256", DigestVerified: true}, nil
+	if artifact.SignatureRef != p.signatureRef {
+		return ArtifactVerification{}, errors.New("plugin signature reference differs from pinned signature evidence")
+	}
+	return ArtifactVerification{
+		VerifierID: "tei-linux-pinned-process-sha256",
+		DigestVerified: true,
+		SignatureVerified: p.signatureVerified,
+	}, nil
 }
 
 // Invokeは照合済みの実行内容を子プロセスの記述子3へ引き渡して起動する。
