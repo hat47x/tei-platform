@@ -381,9 +381,9 @@ func TestAuthoredHandoffDoesNotCreateRecordProvenance(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := AnswerInput{
-		Schema: answerSchema,
-		CaseID: review.CaseID,
-		ModelRevision: review.ModelRevision,
+		Schema:            answerSchema,
+		CaseID:            review.CaseID,
+		ModelRevision:     review.ModelRevision,
 		ReviewFingerprint: review.Fingerprint,
 		Answers: []AnswerEntry{{
 			Question: QuestionRef{Kind: "authored", ID: "residual"},
