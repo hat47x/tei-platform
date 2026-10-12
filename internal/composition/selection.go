@@ -68,6 +68,12 @@ func (r *Registry) selectionLocked(p Provider, a Assessment) Selection {
 // dependencyEpochsLocked captures every unique dependent provider, including
 // indirect dependencies. evaluate() rejects cycles before these are exposed.
 func (r *Registry) dependencyEpochsLocked(id string) []ProviderEpoch {
+	// Most providers are leaves. Do not build an index for a selection that
+	// has no dependencies: keep that common path allocation-free here.
+	root, ok := r.snapshot.Assessment(id)
+	if !ok || !root.Eligible || len(root.Bindings) == 0 {
+		return nil
+	}
 	// Build a call-local lookup from the Registry's authoritative snapshot.
 	// Looking up an Assessment linearly at every dependency edge makes deep
 	// selections quadratic. A call-local index avoids a second mutable cache
