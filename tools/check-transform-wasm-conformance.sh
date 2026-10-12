@@ -71,7 +71,10 @@ TEI_TARGET_BIND_WASM="$output/engine-first.wasm" \
 TEI_TARGET_BIND_NATIVE_DIGEST="$native_digest" \
 TEI_TARGET_BIND_WASM_DIGEST="$wasm_digest" \
   go test -count=1 -run '^TestActualTransformEngineArtifactsBindDistinctRuntimeEngineLocks$' -v \
-    ./internal/plugin/runtime > "$output/target-binding-test.log"
+    ./internal/plugin/runtime > "$output/target-binding-test.log" || {
+      cat "$output/target-binding-test.log" >&2
+      exit 1
+    }
 
 get_bound_value() {
   local name="$1"
