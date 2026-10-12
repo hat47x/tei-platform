@@ -80,16 +80,13 @@ func Validate(w ir.World) []Diagnostic {
 		if err := plugin.ValidateRequirements(p.Requires); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
 		}
-		seenCaps := map[string]struct{}{}
+		if err := plugin.ValidateUniqueCapabilities(p.Provides); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s: %v", p.ID, err))
+		}
 		for _, c := range p.Provides {
 			if !c.Kind.Valid() {
 				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s", p.ID, c.ID, c.Kind))
 			}
-			ck := string(c.Kind) + "|" + string(c.ID)
-			if _, dup := seenCaps[ck]; dup {
-				out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s provides %s %s more than once", p.ID, c.Kind, c.ID))
-			}
-			seenCaps[ck] = struct{}{}
 			for _, a := range c.Actions {
 				if !a.Valid() {
 					out = append(out, errd("INVALID_PLUGIN_ACTION_SUPPORT", "plugin %s capability %s lists invalid action %s", p.ID, c.ID, a))
