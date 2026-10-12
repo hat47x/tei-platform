@@ -4,7 +4,7 @@
 
 ## 四つの層
 
-TEIの基本的な分離は次の4層です。
+TEIは、役割を次の四つの層に分けます。
 
 ```text
 Authoring Layer
@@ -24,7 +24,7 @@ Implementation & Execution Layer
 
 ## 記述形式・意味の正本・実行時の表現
 
-入力に使う記述形式、正本となる業務上の意味、実行時に使うオブジェクトは、それぞれ別のものとして扱います。
+入力時の記述形式、正本となる業務上の意味、実行時に使う情報は、それぞれ区別します。
 
 ```text
 TEI DSL / native SQL / Editor / AI candidate
@@ -36,19 +36,19 @@ Runtime Model / Execution Plan / Target Projection
 Go / SQL / Plugin / external system / generated application
 ```
 
-`.tei`はTEI固有の意味を記述する主要な入力形式ですが、解析した構文木そのものが意味の正本（Canonical Model）になるわけではありません。
+`.tei`はTEI固有の意味を記述する主な入力形式です。ただし、解析した構文木そのものが意味の正本になるわけではありません。
 
 意味を管理する層では、入力形式やファイルの場所に依存しない識別情報と意味を保持します。実行時には、それを特定の環境・提供元・実行先に対応させた形を使います。
 
 Goは、構文解析、名前や参照先の解決、検証、分析、変換、実行、プラグインの管理などを支える主要な実装言語です。ただし、個別の業務システムが持つ意味を、Goの型や開発基盤のAPI、Wailsなどの実行環境固有のAPIに固定しません。
 
-このように分けることで、業務アプリケーションは原則としてDSLや既存資産を使って記述し、中核部分の決定論的な検証と実行はGoで支えられます。
+この区別により、業務アプリケーションは主に定義言語や既存資産で記述できます。一方、決定的な検証と実行は中核のGo実装が支えます。
 
 ## リポジトリと作業領域
 
-作業領域（Workspace）の管理対象となるルートディレクトリは、`tei.workspace.yaml`で定義します。
+管理対象となる作業領域の起点は、`tei.workspace.yaml`で定義します。
 
-ファイルのパスを意味上の識別子にはしません。意味の正本には安定した識別子（Canonical ID）を使います。
+ファイルのパスは意味上の識別子として使いません。意味の正本には安定した識別子を使います。
 
 ```text
 workspace/
@@ -67,7 +67,7 @@ workspace/
 
 ## 入力元から意味の正本までの追跡
 
-入力元の情報は意味の正本（Canonical World）に埋め込まず、入力・作業領域側で生成する**入力元索引（Source Index）**として分離します。
+入力元の情報は意味の正本に埋め込まず、入力側で生成する**入力元索引**として分けて管理します。
 
 ```text
 Authoring source
@@ -83,11 +83,11 @@ path-independent         locator / fingerprint / range / role
 Diagnostic + Subject ──────────┘
 ```
 
-入力元の成果物（Source Artifact）は作業領域からの相対パスと内容の指紋値を持ちます。入力元への参照（Source Reference）は、パスに依存しない対象（Subject）へ、バイト範囲と役割を結び付けます。
+入力元の成果物は、作業領域からの相対パスと内容の照合値を持ちます。入力元への参照は、パスに依存しない対象にバイト範囲と役割を結び付けます。
 
 意味の検証は入力元索引に依存せず、`Diagnostic + Subject`を返します。入力側では、その結果を元の記述位置へ対応付けます。構文解析や字句解析に失敗して、正本側の対象がまだ成立していない場合は、架空の識別子を作らず、入力元を直接示す診断として扱います。
 
-入力元索引は、次のCLIコマンドで確認できます。
+入力元索引は、次のコマンドで確認できます。
 
 ```bash
 go run ./cmd/tei source-index \
@@ -96,7 +96,7 @@ go run ./cmd/tei source-index \
   -subject-id order_entry.recent_orders
 ```
 
-この出力は派生した表示であり、意味の正本ではありません。
+この出力は派生表示であり、意味の正本ではありません。
 
 M0.23で直接検証している不変条件と実装・テストの対応は、[入力元と意味の正本の対応に関する適合性資料](conformance/source-traceability-m0.23.md)に整理しています。
 
@@ -130,7 +130,7 @@ TEI側で対象の意味を欠落なく表現できる検証根拠が揃って�
 - unresolved / unsupported fields
 - rollback path
 
-正本の切り替えは、共同の受け入れ確認（Shared Acceptance）や明示的な移管判断を伴う**管理権限の移行**として扱います。取り込みの成功、最後に書き込んだ主体、ファイルの更新日時、構文解析の成功、生成物の存在だけから、移行したとは判断しません。
+正本の切り替えは、共通の受理手続きや明示的な移管判断を伴う**管理権限の移行**として扱います。取り込みの成功、最後に書き込んだ主体、ファイルの更新日時、構文解析の成功、生成物の存在だけから、移行したとは判断しません。
 
 部分的な移管も認めます。アプリケーション全体に一つの`tei-native`フラグを付けるのではなく、対象や関心領域ごとに管理主体が異なる場合を扱います。ただし、同じ関心領域に暗黙の正本を二つ作りません。
 
@@ -140,13 +140,13 @@ native source authoritative
   -> TEI source authoritative for scoped concern
 ```
 
-cutover後に旧native assetをcompatibility / export / generated artifactとして残す場合も、そのartifactを第二のauthoritative sourceへ戻しません。
+正本の移管後に旧形式の資産を互換性確保、書き出し、生成物のために残す場合も、それを第二の正本とはしません。
 
 現時点では`AuthorityMigration`等のproduction schemaやglobal cutover protocolをCoreへ固定しません。SUI Reference Adoption等の実Referenceで、scope・equivalence・rollback情報のどれがdurable contractとして必要かを確認します。
 
 ## 編集候補の統合と受け入れの境界
 
-Editor、CLI、file-native tooling、AI支援等が増えても、authoritative sourceを変更する入口ごとに別のCanonical authorityを増やしません。
+編集画面、コマンドライン、ファイルを直接扱う開発ツール、AI支援などの入口が増えても、入口ごとに別の正本や管理権限を作りません。
 
 未統合の変更には少なくとも二つの正規経路があります。
 
@@ -175,17 +175,17 @@ ordinary Git integration
 authoritative source
 ```
 
-Structured Proposalは、意味差分・根拠・Previewを機械可読に扱う価値がある場合の経路です。すべてのfile editやAI編集を開始前にProposalへ変換することは要求しません。
+構造化された変更提案は、意味の差分、根拠、変更前の確認を機械的に扱う価値がある場合に使います。ファイルやAIによる変更を、すべて事前に提案形式へ変換する必要はありません。
 
-どちらの経路でも、未統合の変更をCanonical Worldそのものとは扱いません。正式統合後のauthoritative sourceを共有loader / validatorでreloadし、入口の違いによってCanonical meaningが変わらないことを要求します。
+どちらの経路でも、未統合の変更は意味の正本ではありません。正式に統合した正本を共通の読み込み・検証機構で読み直し、入口の違いによって解釈が変わらないことを求めます。
 
 Acceptance / Integration Boundaryでは、対象に応じてparse / decode、normalize、validate、architecture / policy check、semantic diff、impact analysis、Repository policy、reload / conformance等を決定論的に組み合わせます。すべてを一つの中央Service、固定process、専用APIへ押し込むことは要求しません。
 
-Gitで十分に表現できる変更にTEI独自Change Setを必須にせず、Git conflictはGitへ任せます。そのうえで、Git上はmerge可能でも意味上不正な変更をTEIのValidation / Conformanceで拒否できることを要求します。
+Gitで扱える変更にTEI独自の変更セットを必須とせず、Git上の競合はGitで解決します。そのうえで、Git上はmerge可能でも意味上不正な変更をTEIのValidation / Conformanceで拒否できることを要求します。
 
 interactiveな変更候補では、Proposal作成時点の`baseModelRevision`等と現在revisionを比較できる余地を持たせます。staleな候補を黙って最新状態へ適用せず、reject、rebase、regenerate、manual conflict resolution等へ分岐します。
 
-Shared Acceptanceは**意味変更をauthoritative sourceへ受理する境界**であり、将来のRuntime副作用を無条件に許可する境界ではありません。
+共通の受理手続きは、**意味の変更を正本に受け入れる境界**です。将来の実行時の副作用を無条件に許可するものではありません。
 
 ```text
 Proposal accepted
@@ -198,7 +198,7 @@ accepted meaningから後でCapability invocationやResource accessが発生す�
 
 Authoring identityはfile pathそのものではなく、qualified logical key / Canonical identityを基準にします。file移動はlogical identityが同じならsemantic no-opになり得ますが、logical rename / Canonical identity変更は明示的なsemantic changeです。StudioやAIの都合だけで、user-authored Stable ID / UUIDを全資産へ必須化しません。
 
-ここでいうCanonical identityを、Application recordの業務上の識別子やDatabaseのphysical primary keyへ流用することも前提にしません。
+ここでいう意味上の識別子を、アプリケーションに保存する個々の記録の業務キーや、データベースの物理主キーへ流用することも前提にしません。
 
 ```text
 Canonical subject identity
@@ -214,9 +214,9 @@ AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等�
 
 ## 開発ツールと実行環境の境界
 
-TEIは、ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE / CLI、CI等を、TEI専用Agent Runtimeの下位実装として扱いません。
+TEIは、ChatGPTなどの対話環境、Codex、Claude Code、一般的な開発環境、コマンドライン、継続的な自動検証を、TEI専用のAIエージェント実行基盤の下位実装として扱いません。
 
-完全な開発loopを同一Hostで完結するには、Host側が少なくとも次を持つ必要があります。
+開発から検証までを同じ実行環境で完結するには、少なくとも次の機能が必要です。
 
 ```text
 repository materialization
@@ -228,7 +228,7 @@ repository materialization
 
 これはTEI Application RuntimeのCapability modelではなく、開発Hostの環境条件です。Hostが一部しか持たない場合でも、その環境で作った通常のGit差分やcommitを別の標準開発環境へ渡して継続できます。
 
-TEI側が提供すべき基本面は、特定Agentのsession管理ではなく、通常のCLIとRepository contractです。
+TEIが提供する基本的な接続手段は、特定のAIエージェントの会話管理ではなく、通常のコマンドラインとリポジトリの利用規約です。
 
 ```text
 Human / Chat / Coding Agent / CI
@@ -245,7 +245,7 @@ Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / 
 
 将来native developer MCPを追加する場合は、CLIと別のCanonical解釈・Knowledge Store・Validation・Authority modelを作らず、既存の`workspace.Load`、Source Index、knowledge context、validation等と同じapplication operationを別transportから利用します。
 
-次をTEIのProduct stateとして一般化しません。
+次の情報を、TEIが管理する製品状態として一般化しません。
 
 - Agent Session / Agent Workspace
 - Checkpoint / internal Plan
@@ -261,7 +261,7 @@ Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / 
 
 ## 意味を扱う中核
 
-Coreへ無制限に専用kindを追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
+中核に専用の概念種別を無制限に追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
 
 Data、Action、Workflow、StateMachine、Migration等は、すべてをMicro Kernelの専用primitiveにする必要はないと考えています。
 
@@ -308,7 +308,7 @@ Application instanceがSource / Observation / Evidenceの対象になったり�
 
 ## 業務操作・アプリケーション機能・外部能力・実現方式
 
-業務上の行為とApplication / Runtimeの実現を分離します。
+業務上の行為と、アプリケーションや実行基盤での実現方法を分けます。
 
 ```text
 Business Action
@@ -331,7 +331,7 @@ Business Procedureは、purpose / trigger / actor / manual or external work / Ap
 
 ## 三つの観点からの相互検証
 
-Data、Function / Interaction、Business Procedureは、別々の正本ではなく同じCanonical meaningを検査する異なる視点です。
+データ、機能・操作、業務手順は別々の正本ではありません。同じ業務上の意味を検証するための異なる視点です。
 
 ```text
 Data / Relation / Validation / lifecycle
@@ -341,13 +341,13 @@ View / Pattern / Query / Action / Capability
 Business Procedure / actor / manual / trigger
 ```
 
-一つの視点で発見した矛盾はauthoritative sourceへ戻して修正します。
+一つの視点で見つかった矛盾は、正本となる情報源に戻って修正します。
 
 たとえばread-only datasourceに対する編集UI、Business Procedureが要求するのにDataに存在しない情報、Business Actionが期待するのに観測不能な完了状態等はcross-view diagnosticの対象です。
 
 CRUD matrix、flow、graph等はこの検査に有用ですが、原則としてderived Projectionとして生成し、人が第二の意味正本として維持することを要求しません。
 
-詳細は [Business-System Design](business-system-design.md) とRQ-025 / RQ-026を参照してください。
+詳しくは[業務システムの設計](business-system-design.md)と、要求RQ-025・RQ-026を参照してください。
 
 ## 権限判定における意味の境界
 
