@@ -28,7 +28,7 @@ type sqliteFixture struct {
 	db             *C.sqlite3
 	next           uint64
 	pending        map[uint64]prepared
-	requireEpochs   bool
+	requireEpochs  bool
 	epochSnapshots map[uint64]map[string]authorityDependencyState
 }
 
