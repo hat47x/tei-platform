@@ -58,8 +58,9 @@ jobs:
         run: |
           set -euo pipefail
           python3 --version
-          python3 tools/verify-critical-path-e1-archive.py
-          python3 tools/test-critical-path-e1-archive.py
+          # Tests import the verifier; avoid an untracked tools/__pycache__ in the clean checkout.
+          python3 -B tools/verify-critical-path-e1-archive.py
+          python3 -B tools/test-critical-path-e1-archive.py
 
       - name: 検証後のHEADと作業領域を確認
         if: always()
