@@ -319,8 +319,8 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 	if e.Outcome != attemptOutcomeFailed {
 		return fmt.Errorf("Build Attempt Evidence outcome must be failed")
 	}
-	if !validFailureClass(e.FailureClass) {
-		return fmt.Errorf("Build Attempt Evidence failure class must be a bounded safe code")
+	if !validFailureClass(e.Phase, e.FailureClass) {
+		return fmt.Errorf("Build Attempt Evidence failure class is not permitted for this phase")
 	}
 	signal := strings.TrimSpace(e.Signal)
 	if e.Signal != signal || (signal != "" && !validSignalCode(signal)) {
@@ -608,35 +608,32 @@ func validAttemptPhase(phase string) bool {
 	}
 }
 
-// Failure classes are machine-readable labels, not raw compiler messages.
-// This prevents an arbitrary path or credential from being inserted into the
-// public diagnostic summary. The raw stdout/stderr remain restricted.
-func validFailureClass(value string) bool {
-	if len(value) == 0 || len(value) > 64 {
+// These codes are reference-local, closed classifications. Free-form
+// compiler errors and user-provided strings are never public class labels.
+// The permitted failure class must also match the attempted phase.
+func validFailureClass(phase, class string) bool {
+	switch phase {
+	case attemptPhaseCompile:
+		return class == "compile-error" || class == "compile-type-error"
+	case attemptPhaseLink:
+		return class == "link-error"
+	case attemptPhaseBuilderRun:
+		return class == "builder-error" || class == "builder-start-failure"
+	default:
 		return false
 	}
-	for i, c := range value {
-		if (c >= 'a' && c <= 'z') || (i > 0 && c >= '0' && c <= '9') || (i > 0 && c == '-') {
-			continue
-		}
-		return false
-	}
-	return true
 }
 
-// Only short, uppercase, machine-readable signal codes are public metadata.
-// Raw operating-system diagnostic strings belong in restricted diagnostics.
+// Only an explicitly recognized signal name may appear in this reference's
+// public Evidence. In production, a typed OS status-to-code mapping is needed.
 func validSignalCode(value string) bool {
-	if len(value) == 0 || len(value) > 32 {
+	switch value {
+	case "SIGHUP", "SIGINT", "SIGQUIT", "SIGABRT", "SIGKILL",
+		"SIGPIPE", "SIGBUS", "SIGSEGV", "SIGTERM":
+		return true
+	default:
 		return false
 	}
-	for i, c := range value {
-		if (c >= 'A' && c <= 'Z') || (i > 0 && c >= '0' && c <= '9') || (i > 0 && c == '_') {
-			continue
-		}
-		return false
-	}
-	return true
 }
 
 func sameBuilderIdentity(left, right plugin.BuilderIdentity) bool {
