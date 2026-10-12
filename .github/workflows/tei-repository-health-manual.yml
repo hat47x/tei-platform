@@ -64,6 +64,12 @@ jobs:
             exit 1
           fi
 
+      - name: 手動CIの検査規約を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/ci-workflows-test.py
+
       - name: 指定版のGoを用意
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
