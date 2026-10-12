@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v2"
+const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v3"
 
 const (
 	CrossViewNatureSource  = "source-backed"
