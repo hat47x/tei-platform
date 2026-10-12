@@ -229,6 +229,14 @@ func TestProductPinnedLinuxProcessRejectsMismatchedRegistryWiring(t *testing.T) 
 			}
 		})
 	}
+	// The image cannot become authoritative without any declared digest,
+	// even if the Host has already pinned some executable bytes.
+	if _, err := invokePinnedWithRegistry(t, ctx, pruntime.Registry{
+		Verifier: pinned, Processes: pinned,
+	}, path, "", "", "", plugin.SandboxNone); err == nil ||
+		!strings.Contains(err.Error(), "verified artifact digest") {
+		t.Fatalf("pinned image accepted a declaration without a verified digest: %v", err)
+	}
 	// A correctly bound Host continues to execute the originally accepted
 	// bytes even after its source pathname now references different bytes.
 	ok, err := invokeProductPinned(t, ctx, pinned, path, originalDigest, "", "", plugin.SandboxNone)
