@@ -13,14 +13,18 @@ import (
 	"tei/internal/plugin"
 )
 
-// LinuxPinnedSignatureProof provides a detached Ed25519 signature. Its
-// PublicKey must come from an independently managed Host trust policy, never
-// from the untrusted plugin artifact or its own metadata. SignatureRef is
-// the Host-authorized reference to this proof, not a trust anchor by itself.
+// LinuxPinnedSignatureProofは署名参照と署名値だけを保持する。
+// 信頼する公開鍵は必ず別のHost管理のLinuxHostSignerTrustから取得する。
 type LinuxPinnedSignatureProof struct {
-	SignatureRef     string
-	TrustedPublicKey ed25519.PublicKey
-	Signature        []byte
+	SignatureRef string
+	Signature    []byte
+}
+
+func validateLinuxSignatureRef(ref string) error {
+	if ref == "" || strings.TrimSpace(ref) != ref || len(ref) > 512 {
+		return errors.New("Linux pinned signature requires a bounded nonblank reference")
+	}
+	return nil
 }
 
 // LinuxPinnedSignatureMessage defines the bytes that an authorized signer
@@ -41,8 +45,8 @@ func LinuxPinnedSignatureMessage(identity plugin.Identity, digest, signatureRef 
 			return nil, errors.New("Linux pinned signature digest must use lowercase hex")
 		}
 	}
-	if signatureRef == "" || strings.TrimSpace(signatureRef) != signatureRef || len(signatureRef) > 512 {
-		return nil, errors.New("Linux pinned signature requires a bounded nonblank reference")
+	if err := validateLinuxSignatureRef(signatureRef); err != nil {
+		return nil, err
 	}
 	// Encoding a fixed-field struct avoids concatenation ambiguity. A
 	// versioned domain prevents reuse as another protocol's signature.
@@ -70,11 +74,15 @@ func LinuxPinnedSignatureMessage(identity plugin.Identity, digest, signatureRef 
 // root merely by appearing in a proof. A valid signature proves possession of
 // the selected private key, not provenance, review, sandboxing, or key validity
 // beyond the Host's policy. This function never marks ProvenanceChecked=true.
-func PinSignedLinuxProcess(ctx context.Context, identity plugin.Identity, source, digest string, proof LinuxPinnedSignatureProof, transport StdioProcessLauncher) (*PinnedLinuxProcess, error) {
-	if len(proof.TrustedPublicKey) != ed25519.PublicKeySize || len(proof.Signature) != ed25519.SignatureSize {
-		return nil, errors.New("Linux pinned signature requires a trusted Ed25519 public key and signature")
+func PinSignedLinuxProcess(ctx context.Context, trust *LinuxHostSignerTrust, identity plugin.Identity, source, digest string, proof LinuxPinnedSignatureProof, transport StdioProcessLauncher) (*PinnedLinuxProcess, error) {
+	if len(proof.Signature) != ed25519.SignatureSize {
+		return nil, errors.New("Linux pinned signature requires an Ed25519 signature")
 	}
 	message, err := LinuxPinnedSignatureMessage(identity, digest, proof.SignatureRef)
+	if err != nil {
+		return nil, err
+	}
+	public, epoch, err := trust.resolve(proof.SignatureRef)
 	if err != nil {
 		return nil, err
 	}
@@ -82,13 +90,15 @@ func PinSignedLinuxProcess(ctx context.Context, identity plugin.Identity, source
 	if err != nil {
 		return nil, err
 	}
-	if !ed25519.Verify(proof.TrustedPublicKey, message, proof.Signature) {
+	if !ed25519.Verify(public, message, proof.Signature) || !trust.current(proof.SignatureRef, epoch) {
 		_ = pinned.Close()
-		return nil, fmt.Errorf("pinned image signature verification failed for %s@%s", identity.ID, identity.Version)
+		return nil, fmt.Errorf("pinned image signature verification failed or signer trust changed for %s@%s", identity.ID, identity.Version)
 	}
 	// Not published before these immutable fields are set. Both Verify and
-	// Invoke subsequently operate on this same already-checked image handle.
+	// Invoke subsequently check the same Host trust generation and image.
 	pinned.signatureRef = proof.SignatureRef
 	pinned.signatureVerified = true
+	pinned.signerTrust = trust
+	pinned.signerEpoch = epoch
 	return pinned, nil
 }

@@ -30,6 +30,8 @@ type PinnedLinuxProcess struct {
 	digest            string
 	signatureRef      string
 	signatureVerified bool
+	signerTrust       *LinuxHostSignerTrust
+	signerEpoch       uint64
 	image             *os.File
 	transport         StdioProcessLauncher
 }
@@ -142,6 +144,9 @@ func (p *PinnedLinuxProcess) Verify(ctx context.Context, identity plugin.Identit
 	if artifact.SignatureRef != p.signatureRef {
 		return ArtifactVerification{}, errors.New("plugin signature reference differs from pinned signature evidence")
 	}
+	if p.signatureVerified && !p.signerTrust.current(p.signatureRef, p.signerEpoch) {
+		return ArtifactVerification{}, errors.New("Host signer trust was revoked or changed")
+	}
 	return ArtifactVerification{
 		VerifierID:        "tei-linux-pinned-process-sha256",
 		DigestVerified:    true,
@@ -157,6 +162,11 @@ func (p *PinnedLinuxProcess) Invoke(ctx context.Context, command ProcessCommand,
 	defer p.mu.RUnlock()
 	if p.image == nil || command.Executable != p.source {
 		return Response{}, errors.New("process executable is not the pinned image")
+	}
+	// 検証後に信頼鍵が失効した場合、検証と起動の間に存在する
+	// 信頼状態の変更を起動直前にも拒否する。
+	if p.signatureVerified && !p.signerTrust.current(p.signatureRef, p.signerEpoch) {
+		return Response{}, errors.New("Host signer trust was revoked or changed")
 	}
 	return p.transport.invokeExecutable(ctx, command, request, "/proc/self/fd/3", []*os.File{p.image})
 }
