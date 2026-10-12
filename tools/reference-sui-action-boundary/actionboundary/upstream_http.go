@@ -20,6 +20,7 @@ var ErrRemoteOutcomeUnknown = errors.New("remote action outcome unknown")
 type TrustedDelegation struct {
 	SubjectID   string
 	TenantID    string
+	Audience    string
 	BearerToken string
 }
 
@@ -27,6 +28,38 @@ type TrustedDelegation struct {
 // mint a user identity based on Host service privileges or browser claims.
 type DelegationSource interface {
 	Delegation(context.Context, Intent) (TrustedDelegation, error)
+}
+
+// TenantResolver obtains the tenant from a verified runtime session,
+// independently of the application's Action payload and delegation response.
+type TenantResolver interface {
+	Tenant(context.Context) (string, error)
+}
+
+// validBearerToken accepts RFC 6750 b64token syntax, not arbitrary HTTP
+// header bytes. Bound its size so a compromised provider cannot produce an
+// unbounded secret-bearing request.
+func validBearerToken(token string) bool {
+	if len(token) == 0 || len(token) > 8192 {
+		return false
+	}
+	padding := false
+	for i := 0; i < len(token); i++ {
+		b := token[i]
+		if b == '=' {
+			if i == 0 {
+				return false
+			}
+			padding = true
+			continue
+		}
+		if padding || !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') ||
+			(b >= '0' && b <= '9') || b == '-' || b == '.' || b == '_' ||
+			b == '~' || b == '+' || b == '/') {
+			return false
+		}
+	}
+	return true
 }
 
 // HTTPSApplicationStore is a reference adapter for a separately hosted
@@ -46,8 +79,12 @@ type HTTPSApplicationStore struct {
 	Prefix string
 	Suffix string
 	Client *http.Client
+	// Audience identifies this deployment's upstream application token
+	// audience. It must be checked by the issuer and verified again by SUI.
+	Audience string
 
 	Subjects    SubjectResolver
+	Tenants     TenantResolver
 	Delegations DelegationSource
 }
 
@@ -57,7 +94,8 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 		s.ActionID != in.ActionID || in.Payload == nil {
 		return "", ErrInvalid
 	}
-	if s.Client == nil || s.Subjects == nil || s.Delegations == nil {
+	if s.Client == nil || s.Subjects == nil || s.Tenants == nil ||
+		s.Delegations == nil || s.Audience == "" {
 		return "", fmt.Errorf("%w: unconfigured trusted application transport", ErrDenied)
 	}
 	origin, err := url.Parse(s.Origin)
@@ -75,10 +113,20 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 	if err != nil || subject == "" {
 		return "", fmt.Errorf("%w: authenticated runtime subject unavailable", ErrDenied)
 	}
+	tenant, err := s.Tenants.Tenant(ctx)
+	if err != nil || tenant == "" {
+		return "", fmt.Errorf("%w: authenticated runtime tenant unavailable", ErrDenied)
+	}
 	delegation, err := s.Delegations.Delegation(ctx, in)
-	if err != nil || delegation.SubjectID != subject || delegation.TenantID == "" ||
-		delegation.BearerToken == "" || strings.ContainsAny(delegation.BearerToken, " \r\n\t") {
+	if err != nil || delegation.SubjectID != subject || delegation.TenantID != tenant ||
+		delegation.Audience != s.Audience || !validBearerToken(delegation.BearerToken) {
 		return "", fmt.Errorf("%w: verified user delegation unavailable or mismatched", ErrDenied)
+	}
+	// Distinguish an interface holding a typed nil or JSON null from a
+	// real application payload. SUI and the generic v1 contract reject null.
+	payload, err := json.Marshal(in.Payload)
+	if err != nil || bytes.Equal(bytes.TrimSpace(payload), []byte("null")) {
+		return "", ErrInvalid
 	}
 	body, err := json.Marshal(struct {
 		ProtocolVersion  string `json:"protocolVersion"`
@@ -86,13 +134,13 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 		ResourceID       string `json:"resourceID"`
 		ActionID         string `json:"actionID"`
 		ExpectedRevision string `json:"expectedRevision"`
-		Payload          any    `json:"payload"`
+		Payload          json.RawMessage `json:"payload"`
 	}{
 		ProtocolVersion: "1", ApplicationID: in.ApplicationID,
 		ResourceID: in.ResourceID, ActionID: in.ActionID,
-		ExpectedRevision: in.ExpectedRevision, Payload: in.Payload,
+		ExpectedRevision: in.ExpectedRevision, Payload: payload,
 	})
-	if err != nil {
+	if err != nil || len(body) > 64<<10 {
 		return "", ErrInvalid
 	}
 	target := s.Origin + s.Prefix + url.PathEscape(in.ResourceID) + s.Suffix
@@ -107,6 +155,9 @@ func (s HTTPSApplicationStore) Commit(ctx context.Context, in Intent) (string, e
 	// Force redirects off independently of the injected client's policy:
 	// following a redirect could leak the user's bearer credential.
 	client := *s.Client
+	// Do not inject cookies from an HTTP client reused across identities.
+	// The only credential on the wire is the verified delegated token.
+	client.Jar = nil
 	client.CheckRedirect = func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
