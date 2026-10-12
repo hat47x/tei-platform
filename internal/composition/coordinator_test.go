@@ -191,3 +191,63 @@ func TestCoordinatorCleanupErrorNotRetried(t *testing.T) {
 		t.Fatal("retried cleanup")
 	}
 }
+
+func TestWithdrawalPreemptsBlockedStage(t *testing.T) {
+	c, _, _ := setupCoordinator(t)
+	started := make(chan struct{})
+	unblock := make(chan struct{})
+	result := make(chan error, 1)
+	go func() {
+		result <- c.Replace(context.Background(), 1, b(2, "v2"), Lifecycle{
+			Prepare: func(ctx context.Context, s *Scope) error { close(started); <-unblock; return nil },
+			Ready:   func(context.Context, Binding) error { return nil },
+		})
+	}()
+	<-started
+	if err := c.Withdraw(1); err != nil {
+		t.Fatalf("withdraw must preempt blocked stage: %v", err)
+	}
+	close(unblock)
+	if err := <-result; !errors.Is(err, ErrStaleGeneration) {
+		t.Fatalf("stale stage published: %v", err)
+	}
+	if _, err := c.Acquire(); !errors.Is(err, ErrUnbound) {
+		t.Fatalf("withdrawal bypassed: %v", err)
+	}
+	if err := c.Reap(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEmergencyWithdrawalWhileReaperWaits(t *testing.T) {
+	c, _, _ := setupCoordinator(t)
+	old, err := c.Acquire()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lc := lifecycle(func(*Scope) error { return nil }, func(Binding) error { return nil })
+	if err := c.Replace(context.Background(), 1, b(2, "v2"), lc); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := make(chan struct{})
+	done := make(chan error, 1)
+	go func() { close(started); done <- c.Reap(ctx) }()
+	<-started
+	// Even if Drain is blocked, emergency withdrawal of v2 must work.
+	if err := c.Withdraw(2); err != nil {
+		t.Fatalf("withdraw blocked by Drain: %v", err)
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation: %v", err)
+	}
+	old.Release()
+	if err := c.Reap(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if c.PendingRetirements() != 0 {
+		t.Fatal("retirements leaked")
+	}
+}
