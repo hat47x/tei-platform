@@ -128,7 +128,7 @@ node reference/studio-authoring/cli.mjs edit-form \
 
 生成HTMLをブラウザで開き、候補の識別子・変更意図・対象などを入力し、「候補JSONを生成」を選択してください。JSONはブラウザ内の読取り専用領域に出力されるので、そのままJSONファイルへ保存し、`review-edit -workspace ... -edit-file ... -format html`へ渡して審査します。**HTMLは正本へ書き込まず、承認を代行しません**。外部通信は禁止し、ブラウザスクリプトは内容指紋で固定します。
 
-自動試験では、実際に生成したフォームの埋込みJavaScriptをNode.jsの隔離された模擬DOM上で実行し、そこで作成されたJSONをStudio CLIからGoの共通受理機構に渡して、**Preview・Review・テスト用Accept・Source再読込・再投影・旧版の拒否**まで確認します。これは実ブラウザやWebViewでの操作を観測したものではなく、人的な受理の証拠でもありません。
+自動試験では、実際に生成したフォームの埋込みJavaScriptをNode.jsの隔離された模擬DOM上で実行し、そこで作成されたJSONをStudio CLIからGoの共通受理機構に渡して、**Preview・Review・テスト用Accept・Source再読込・再投影・旧版の拒否**まで確認します。これは実ブラウザやWebViewでの操作を観測したものではなく、人的な受理の証拠でもありません。 編集フォームの選択項目が改ざんされて存在しないRelation参照先やアプリを指定した場合にも、Studio側で候補の審査を拒否し、正本と版を変更しないことをER・表で検査します。
 
 編集JSONの`expectedModelRevision`には**画面生成時の版**が必ず含まれます。後続のStudio CLIが異なる版を取得した場合は`STUDIO_EDIT_STALE_MODEL_REVISION`で拒否し、最新状態へ暗黙に編集意図を移しません。従来の手書きJSONでは省略可能ですが、画面から作る候補では必須です。ブラウザ内の検査は入力補助であり、型検査・Source所有権・変更影響・受理可否はすべて既存Shared Acceptanceに委ねます。最初のフォームで扱えない意味変更は、無理にDerivedを更新せず既存のSource契約を用います。
 
