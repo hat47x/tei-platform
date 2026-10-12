@@ -1,0 +1,37 @@
+name: TEI 案件Go・Lit補助参照テスト
+
+on:
+  pull_request:
+    paths:
+      - "plugins/reference-project-customer-advice/**"
+      - "tools/reference-project-advice-lit/**"
+      - ".github/workflows/tei-reference-project-advice-lit-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  project-reference:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Goを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Go形式と案件コードを検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l plugins/reference-project-customer-advice/*.go tools/reference-project-advice-lit/*.go)"
+          go test -count=1 ./plugins/reference-project-customer-advice ./tools/reference-project-advice-lit
+      - name: UI通信とJavaScript構文を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/reference-project-advice-lit/web/advice-element.mjs
+          node --test tools/reference-project-advice-lit/web/advice-action.test.mjs
