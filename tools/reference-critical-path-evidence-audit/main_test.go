@@ -145,6 +145,15 @@ func TestN11ControlMustBeSeparateFromOtherWebEvidence(t *testing.T) {
 		"reused target launch": func(p *Packet) {
 			p.Web.UnobservedControlReceipt = p.Web.TargetLaunchReceipt
 		},
+		"reused decision": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Acceptance.DecisionReceipt
+		},
+		"reused post-accept reload": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Acceptance.ReloadReceipt
+		},
+		"reused repository health": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Qualification.Receipt
+		},
 		"reused positive response": func(p *Packet) {
 			p.Web.UnobservedControlReceipt = p.Web.PositiveReceipt
 		},
@@ -199,6 +208,23 @@ func TestE2RejectsWhitespaceOnlyCommandOrReadReceipt(t *testing.T) {
 				t.Fatal("E2 accepted a whitespace-only evidence receipt")
 			}
 		})
+	}
+}
+
+func TestN11DiagnosticAppearsOnlyOnceForMultipleMissingStages(t *testing.T) {
+	p := fixture()
+	p.Web.UnobservedControlReceipt = ""
+	p.Physical.CommandReceipt = ""
+	p.Physical.IndependentReadReceipt = ""
+	r := Audit(p, h, m)
+	count := 0
+	for _, code := range r.Diagnostics {
+		if code == "N11_UNOBSERVED_CONTROL_MISSING" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("one missing N11 control yielded %d diagnostics: %+v", count, r)
 	}
 }
 
