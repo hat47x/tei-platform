@@ -72,20 +72,22 @@ def observe(binary_path, package_path, git_tree, git_revision, build_info):
         raise ValueError("API executable must be a real file")
     packages = Path(package_path).read_bytes()
     names = packages.decode("utf-8").splitlines()
-    if not names or names[-1] != EXPECTED_PACKAGE:
+    if not names:
         raise ValueError("API Go dependency closure is incomplete")
     if any(name != name.strip() or not name or name.startswith("#") for name in names):
         raise ValueError("invalid dependency package name")
+    if packages != ("\n".join(names) + "\n").encode():
+        raise ValueError("dependency listing is not canonical newline text")
     if len(set(names)) != len(names):
         raise ValueError("duplicate dependency package")
+    if names[-1] != EXPECTED_PACKAGE:
+        raise ValueError("API Go dependency closure is incomplete")
     required = {"tei/internal/ir", "tei/internal/driver", EXPECTED_PACKAGE}
     if not required.issubset(names):
         raise ValueError("missing Go runtime implementation package")
     forbidden = {"tei/internal/workspace", "tei/internal/syntax"}
     if forbidden.intersection(names):
         raise ValueError("build-only TEI source packages reached API binary")
-    if packages != ("\n".join(names) + "\n").encode():
-        raise ValueError("dependency listing is not canonical newline text")
     binary_bytes = binary.read_bytes()
     if not binary_bytes:
         raise ValueError("missing binary bytes")
