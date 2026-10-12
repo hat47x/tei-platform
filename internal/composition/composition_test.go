@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"sync"
 	"strings"
+	"sync"
 	"testing"
 )
 
