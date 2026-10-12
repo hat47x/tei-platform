@@ -85,6 +85,8 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/manifest.json", s.handleManifest)
 	mux.HandleFunc("/healthz", s.handleHealth)
 	registerCombinedScenarioRoutes(mux, s)
+	// API-only diagnostic route guards the same business Runner at dispatch.
+	mux.HandleFunc(apiBoundCommandPath, s.handleBoundCommandScenario)
 	return mux
 }
 

@@ -37,12 +37,28 @@ async function setup(t) {
     browserTransport: "same-origin-json",
   }));
   let exposed = manifest();
+  let apiCommandIdentity = manifest();
   let commandCount = 0;
   const server = createServer((req, res) => {
     if (req.url === "/manifest.json") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(exposed));
-    } else if (req.url === "/scenario/submit") {
+    } else if (req.url === "/scenario/submit-bound") {
+      const headers = {
+        "x-tei-diagnostic-application": apiCommandIdentity.applicationId,
+        "x-tei-diagnostic-baseline-id": apiCommandIdentity.handoverBaselineId,
+        "x-tei-diagnostic-baseline-revision": apiCommandIdentity.baselineRepositoryRevision,
+        "x-tei-diagnostic-target-revision": apiCommandIdentity.targetBuildRevision,
+      };
+      const matched = Object.entries(headers).every(([key, value]) =>
+        req.headers[key] === value && req.rawHeaders
+          .filter((_, index) => index % 2 === 0)
+          .filter(keyName => keyName.toLowerCase() === key).length === 1);
+      if (!matched) {
+        res.writeHead(409);
+        res.end("diagnostic API build binding mismatch");
+        return;
+      }
       commandCount++;
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ result: { stage: "completed" } }));
@@ -82,6 +98,7 @@ async function setup(t) {
     start,
     get count() { return commandCount; },
     changeManifest: next => { exposed = next; },
+    changeAPICommandIdentity: next => { apiCommandIdentity = next; },
   };
 }
 async function submit(origin, extraHeaders = {}) {
@@ -98,8 +115,12 @@ test("matching B/R/T forwards only a valid-origin command", async t => {
   const origin = await f.start();
   assert.equal(await submit(origin), 200);
   assert.equal(f.count, 1);
+  // Browser-provided diagnostic headers must never override the Host's
+  // expected B/R/T. They are regenerated from the build measurement.
+  assert.equal(await submit(origin, { "X-Tei-Diagnostic-Target-Revision": "spoofed" }), 200);
+  assert.equal(f.count, 2);
   assert.equal(await submit(origin, { Origin: "http://evil.invalid" }), 403);
-  assert.equal(f.count, 1);
+  assert.equal(f.count, 2);
 });
 
 test("mismatched API manifest denies Host startup before Browser is exposed", async t => {
@@ -116,6 +137,19 @@ test("API swap after startup denies POST without sending a command", async t => 
   assert.equal(await submit(origin), 502);
   assert.equal(f.count, 0);
   f.changeManifest(manifest());
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.count, 1);
+});
+
+test("API changes between manifest check and command dispatch: no side effects", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  // Simulate a swapped API process that still answers the old /manifest
+  // during the Host pre-check but dispatches with another projection.
+  f.changeAPICommandIdentity({ ...manifest(), targetBuildRevision: "c".repeat(40) });
+  assert.equal(await submit(origin), 502);
+  assert.equal(f.count, 0);
+  f.changeAPICommandIdentity(manifest());
   assert.equal(await submit(origin), 200);
   assert.equal(f.count, 1);
 });

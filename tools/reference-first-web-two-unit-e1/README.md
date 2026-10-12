@@ -176,3 +176,16 @@ python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py \
 これは**既存ビルド測定値に対する診断用接続一致検査**であり、正式なHost Permission、APIの署名証明、TLS、IdP、Session/CSRFや下流Providerの認可を行うものではない。Manifestの検査から実Command転送までの短い入れ替え競合も残る。測定値を改ざんされた場合、Authorityは立証できないため、Productionへの採用には既存Host/Builder Ownerの信頼境界が必要。
 
 局所テスト`browser-host-binding.test.mjs`は、正規B/R/Tでの成功、悪意あるOrigin、起動前の異なるTarget、起動後のR変更、測定JSON欠落の拒否を実HTTPサーバーで再現する。既存`smoke_json_api.py`と`real_browser_replay.mjs`も測定JSONをHostへ渡すため、両者の実経路にこの境界が適用される。
+
+
+### コマンド受理時にAPI自身がB/R/Tを照合する（診断経路）
+
+前段の`browser-host.mjs`は送信直前にAPI Manifestを再照合するが、Manifest照合と実コマンドのHTTP接続は別で、間に別版APIへ切り替わるTOCTOUが残る。そこで`tei_order_only,tei_api_only`で構築した診断APIだけに`POST /scenario/submit-bound`を追加した。Browser上の`/scenario/submit`というURLと業務リクエスト形式は変更しない。
+
+- Browser Hostは自らの**既存ビルド測定値**からApplication IDとB/R/Tの4ヘッダーを生成し、Browserが送った同名ヘッダーは一切転送しない。
+- HostからAPIへは`/scenario/submit-bound`を呼ぶ。実Go APIは**コマンド受理と同じHTTPリクエスト**でヘッダーが欠落・重複・異なる場合、既存Runnerへ到達する前にHTTP 409で拒否する。
+- Hostはこの409をBusiness Resultではない`502 API binding unknown`に変換する。正しい場合に限って従来の`handleCommandScenario`（同じDriver、Authorization、Validation、Result/Error）へ渡す。
+- 旧いAPIにはこの明示的な新経路がないため、少なくともAPIの差し替えが旧版を指す場合、旧経路へ自動的にフォールバックしてCommandを送らない。直接`/scenario/submit`を呼ぶ既存の互換検証は別の経路として維持する。
+- Goのタグ付きテストとNodeの実Loopback HTTP負例で、期待値一致、B/R/T欠落・不一致・重複、Manifest照合後のAPI投影差を拒否し、Browser入力ヘッダーの偽装を転送しないことを検査する。
+
+**この4ヘッダーは認証秘密でも署名でもない。** 任意クライアントが値を推測・入力できるため、既存のIdentity/Permission/Providerと独立したセキュリティ境界として使ってはならない。また、同じB/R/Tを標榜する偽APIの検出には署名済み成果物とHostの配備権限検査が必要である。今回の受理時照合が抑えるのは、診断Browser→API接続における**異なる意味・ビルド識別子への誤配送**であり、正式なデプロイ可否の判断ではない。
