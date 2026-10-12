@@ -84,8 +84,8 @@ func quoteCandidateAuthorizationDependencies(t *testing.T) (driver.Resolver, dri
 		t.Fatal(err)
 	}
 	var document struct {
-		Schema string `json:"schema"`
-		Rules []json.RawMessage `json:"rules"`
+		Schema string            `json:"schema"`
+		Rules  []json.RawMessage `json:"rules"`
 	}
 	if err := json.Unmarshal(originalRules, &document); err != nil {
 		t.Fatal(err)
@@ -236,13 +236,13 @@ func TestStandaloneQuotePatternHasSeparateCanonicalBindingAndAuthorization(t *te
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
-		name string
+		name      string
 		principal Principal
-		revoked bool
-		broken bool
-		session bool
-		csrf bool
-		want int
+		revoked   bool
+		broken    bool
+		session   bool
+		csrf      bool
+		want      int
 	}{
 		{"corporate editor", corporateEditor, false, false, true, true, http.StatusAccepted},
 		{"legacy editor", legacyEditor, false, false, true, true, http.StatusAccepted},
