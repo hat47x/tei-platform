@@ -100,6 +100,39 @@ function clearSelection(){
   $('details').textContent='要素を選択すると参照元を表示します。';
 }
 function status(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error)}
+function renderProjectionDiagnostics(dfd){
+  const container=$('diagnostics');
+  container.replaceChildren();
+  if(!dfd){
+    container.textContent='DFD投影を読み込むと、出典位置付きの診断と未参照Function候補を表示します。';
+    return;
+  }
+  const entries=dfd.diagnostics;
+  const summary=document.createElement('p');
+  const errors=entries.filter(d=>d.severity==='error').length;
+  const questions=entries.filter(d=>d.severity==='review-question').length;
+  summary.textContent='投影診断 '+entries.length+'件（error '+errors+'件、review-question '+questions+
+    '件）。元ファイルと同一revisionの認証は行っていません。';
+  container.append(summary);
+  for(const d of entries){
+    const item=document.createElement('p');
+    const source=d.source&&typeof d.source.file==='string'&&
+      typeof d.source.pointer==='string'
+      ? d.source.file+'#'+d.source.pointer
+      : 'Source位置未提供（未検証）';
+    // Keep all Source-originated text as plain text, never as HTML.
+    item.textContent='['+String(d.severity||'unknown')+'] '+String(d.code||'UNKNOWN')+
+      ' — '+String(d.message||'')+' ／ Source: '+source;
+    container.append(item);
+  }
+  if(Array.isArray(dfd.unreferencedPatterns)&&dfd.unreferencedPatterns.length){
+    const item=document.createElement('p');
+    item.textContent='このProcedureから明示参照されていないFunction候補（Application全体の未使用を意味しない）: '+
+      dfd.unreferencedPatterns.join(', ');
+    container.append(item);
+  }
+}
+
 function nodes() {
   const d = state.dfd;
   if(!d) return [];
@@ -357,6 +390,7 @@ $('dfd-file').addEventListener('change',async ev=>{
   state.dfd=null;state.dfdHash=null;state.dfdFile=null;
   state.layout=null;state.layoutHash=null;state.pending=null;dragging=null;
   clearSelection();
+  renderProjectionDiagnostics(null);
   $('preview').hidden=true;$('apply').disabled=true;
   render();
   if(!file){
@@ -366,8 +400,12 @@ $('dfd-file').addEventListener('change',async ev=>{
   try{
     const bytes=await file.arrayBuffer();const d=JSON.parse(new TextDecoder().decode(bytes));
     if(d.schemaVersion!=='business-dfd-projection-v0'||d.authority!=='derived-read-only'||d.canonicalProcedureUsed!==false||
-      !Array.isArray(d.steps)||!Array.isArray(d.triggers)||!Array.isArray(d.diagnostics)||d.diagnostics.some(x=>x.severity==='error'))
+      !Array.isArray(d.steps)||!Array.isArray(d.triggers)||!Array.isArray(d.diagnostics))
       throw Error('不正または未解決のDFD投影');
+    if(generation!==dfdLoadGeneration)return;
+    renderProjectionDiagnostics(d);
+    if(d.diagnostics.some(x=>x.severity==='error'))
+      throw Error('DFD投影のエラー診断を確認してください（描画と編集は拒否）。');
     const hash=await digest(bytes);
     const initialLayout={schemaVersion:LAYOUT_SCHEMA,authority:'view-only',procedureId:d.procedureId,projectionSHA256:hash,nodes:[]};
     const initialHash=await digest(new TextEncoder().encode(JSON.stringify(initialLayout)));
