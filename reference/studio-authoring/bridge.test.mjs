@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -494,9 +495,11 @@ test("local selection never expands into a global dense matrix", () => {
   assert.ok(result.views.function.items.length <= 1);
 });
 
-test("source anchor verification validates exact bytes and line/column at read", () => {
+test("source anchor verification binds digest to the actual byte buffer", () => {
   const bytes = Uint8Array.from([97, 10, 98, 99, 10]); // a\\nbc\\n
-  const fingerprint = "sha256:" + "e".repeat(64);
+  const digest = data => "sha256:" +
+    createHash("sha256").update(data).digest("hex");
+  const fingerprint = digest(bytes);
   const navigation = {
     status: "source-index-backed",
     artifactFingerprint: fingerprint,
@@ -505,48 +508,63 @@ test("source anchor verification validates exact bytes and line/column at read",
       end: { offset: 4, line: 2, column: 3 }
     }
   };
-  const verified = verifySourceAnchor(navigation, bytes, fingerprint);
+  const verified = verifySourceAnchor(navigation, bytes, digest);
   assert.equal(verified.status, "source-index-backed");
   assert.equal(verified.byteVerification.status, "verified-at-read");
+  assert.equal(verified.byteVerification.fingerprint, fingerprint);
   assert.equal(verified.byteVerification.range, "offset-and-line-column-matched");
-  assert.ok(verified.caveat.includes("not a lock") ||
-    verified.caveat.includes("no filesystem lock"));
+  assert.ok(verified.caveat.includes("no filesystem lock"));
   assert.equal(navigation.byteVerification, undefined,
     "the read-only navigation input must not be modified");
-  assert.throws(() => verifySourceAnchor(navigation, bytes,
-    "sha256:" + "f".repeat(64)), /SOURCE_ARTIFACT_FINGERPRINT_STALE/);
+
+  // The checksum is calculated over the same bytes passed to the locator
+  // check. A matching arbitrary fingerprint supplied separately is no
+  // longer sufficient to mark the anchor as verified.
+  const changed = Uint8Array.from([97, 10, 88, 99, 10]);
+  assert.throws(() => verifySourceAnchor(navigation, changed, digest),
+    /SOURCE_ARTIFACT_FINGERPRINT_STALE/);
+  const wrongChecksum = structuredClone(navigation);
+  wrongChecksum.artifactFingerprint = "sha256:" + "f".repeat(64);
+  assert.throws(() => verifySourceAnchor(wrongChecksum, bytes, digest),
+    /SOURCE_ARTIFACT_FINGERPRINT_STALE/);
+  assert.throws(() => verifySourceAnchor(navigation, bytes, () => "invalid"),
+    /SOURCE_ANCHOR_DIGEST_INVALID/);
+  assert.throws(() => verifySourceAnchor(navigation, bytes, fingerprint),
+    /SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID/);
+
   const staleOffset = structuredClone(navigation);
   staleOffset.range.end.offset = 6;
-  assert.throws(() => verifySourceAnchor(staleOffset, bytes, fingerprint),
+  assert.throws(() => verifySourceAnchor(staleOffset, bytes, digest),
     /SOURCE_ANCHOR_RANGE_INVALID/);
   const staleLine = structuredClone(navigation);
   staleLine.range.start.line = 1;
-  assert.throws(() => verifySourceAnchor(staleLine, bytes, fingerprint),
+  assert.throws(() => verifySourceAnchor(staleLine, bytes, digest),
     /SOURCE_ANCHOR_POSITION_STALE/);
   const staleEnd = structuredClone(navigation);
   staleEnd.range.end.column = 4;
-  assert.throws(() => verifySourceAnchor(staleEnd, bytes, fingerprint),
+  assert.throws(() => verifySourceAnchor(staleEnd, bytes, digest),
     /SOURCE_ANCHOR_POSITION_STALE/);
-  assert.throws(() => verifySourceAnchor(navigation, "untrusted text", fingerprint),
+  assert.throws(() => verifySourceAnchor(navigation, "untrusted text", digest),
     /SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID/);
 });
 
 test("source index columns are byte-based even for multibyte Japanese text", () => {
   // Go sourceindex.PositionAt counts bytes rather than JavaScript UTF-16 units.
   const content = Uint8Array.from([0xe3, 0x81, 0x82, 0x0a, 0x61]); // あ\\na
-  const fingerprint = "sha256:" + "8".repeat(64);
+  const digest = data => "sha256:" +
+    createHash("sha256").update(data).digest("hex");
   const position = {
-    status: "source-index-backed", artifactFingerprint: fingerprint,
+    status: "source-index-backed", artifactFingerprint: digest(content),
     range: {
       start: { offset: 3, line: 1, column: 4 },
       end: { offset: 4, line: 2, column: 1 }
     }
   };
-  const result = verifySourceAnchor(position, content, fingerprint);
+  const result = verifySourceAnchor(position, content, digest);
   assert.equal(result.byteVerification.status, "verified-at-read");
   const characterColumn = structuredClone(position);
   characterColumn.range.start.column = 2; // UTF-16 character count: incorrect
-  assert.throws(() => verifySourceAnchor(characterColumn, content, fingerprint),
+  assert.throws(() => verifySourceAnchor(characterColumn, content, digest),
     /SOURCE_ANCHOR_POSITION_STALE/);
 });
 
