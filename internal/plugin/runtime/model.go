@@ -499,6 +499,9 @@ type Registry struct {
 	Processes              ProcessLauncher
 	Sandboxes              SandboxLauncher
 	Verifier               ArtifactVerifier
+	// ServiceAcceptance reads current Host-owned Contract/Provider acceptance.
+	// Its source is not supplied by a Service request or a plugin descriptor.
+	ServiceAcceptance      ServiceAcceptanceReader
 	Resources              resource.Broker
 	SupervisorOwnerships   resource.SupervisorOwnershipStore
 	SupervisorOwnerID      string
