@@ -209,21 +209,21 @@ PR #151では、`reference/workspace`と`reference/world.json`も変更してい
 
 正本上の`security.credential`は入力の意味を表す型であり、実際の認証情報の値を保存する場所ではありません。
 
-Gate Aで確認した境界は次です。
+判定段階Aでは、次の境界を確認しました。
 
-- Git管理するReferenceへ実secretを置かない
-- Canonical Worldへ実secretを置かない
-- Source Indexへ実secretを置かない
-- Business Resultへ実行時credentialをコピーしない
-- Driver Scenarioの再現性を理由にsecretを通常Evidenceへ記録しない
+- Gitで管理する参照事例に実際の秘密情報を置かない
+- 正本のモデルに実際の秘密情報を置かない
+- ソース索引に実際の秘密情報を置かない
+- 業務上の結果へ実行時の認証情報をコピーしない
+- ドライバーのシナリオの再現性を理由に、秘密情報を通常の検証根拠へ記録しない
 
-実際のsecret解決方式は、production IdP等の具体化とともにGate A以後で扱えます。
+秘密情報を実際に取得・解決する方式は、本番用IdPなどの具体化と合わせて、判定段階Aの後で扱うことができます。
 
 ## Driverがlegacy schemaへ直接依存しないための条件 — Ready
 
-Gate Aで必要なのは、Driver実装そのものではなく、Driverがlegacy schemaを知らずに認証・認可を実行できる入口が揃っていることです。
+判定段階Aで必要なのは、ドライバーの実装そのものではありません。ドライバーが旧システムのスキーマを知らなくても認証と認可を実行できる入口が揃っていることです。
 
-現在は次をRepositoryから解決できます。
+この監査時点では、次の構造をリポジトリから解決できます。
 
 ```text
 security.authenticate
@@ -239,47 +239,47 @@ security.authorize
 Application Pattern identityを使ったaction / resource
 ```
 
-organization、role、legacy return code、物理schema等をDriverのCanonicalな入力へ追加する必要はありません。
+組織・役割・旧システム固有の戻り値・物理スキーマなどを、ドライバーの正本上の入力へ追加する必要はありません。
 
-Driver #69では、この境界を実際に利用し、legacy schemaへ直接依存していないことをGate BのConformanceとして改めて確認します。
+ドライバー#69ではこの境界を実際に利用し、旧システムのスキーマへ直接依存していないことを、判定段階Bの準拠確認として改めて検証します。
 
 ## Driver開始判定
 
-**Driver #69は開始可能です。**
+**ドライバー#69の実装を開始できる状態です。**
 
-Gate Aの必須項目に独立したBlockerは残っていません。
+判定段階Aの必須項目には、独立した阻害条件は残っていません。
 
-ただし、Gate A通過はDriverが完成したことを意味しません。次は、同じApplication上の意味をUIなしで一続きに実行し、Gate Bへ進めるかを確認します。
+ただし、判定段階Aを通過したことは、ドライバーの完成を意味しません。次は、同じアプリケーション上の意味を画面なしで一連の処理として実行し、判定段階Bへ進めるかを確認します。
 
-最小Scenarioは次です。
+最小限のシナリオは次のとおりです。
 
-1. Authenticationを実行してsubjectを得る
-2. `browse`で受注一覧を扱う
-3. `record`で一件を扱う
-4. `reference`で顧客を`master_data`から解決する
-5. `header-detail`でOrderLineを扱う
-6. Canonical業務Validationを実行する
-7. Authorizationを評価する
+1. 認証を実行して主体の識別情報を得る
+2. `browse`で受注の一覧を扱う
+3. `record`で一件の受注を扱う
+4. `reference`で`master_data`から顧客を解決する
+5. `header-detail`で受注明細を扱う
+6. 正本上の業務検証規則を実行する
+7. 認可を評価する
 8. `command`で`sales.order.submit`を呼び出す
-9. Business ResultとExecution Errorを区別する
-10. 必要な場合はObservationから外部状態を確認する
+9. 業務上の結果と実行時エラーを区別する
+10. 必要に応じて観測を通じて外部の状態を確認する
 
 ## Gate A以後へDeferredするもの
 
-次は重要ですが、Gate AのBlockerにはしません。
+次の事項は重要ですが、判定段階Aの通過を妨げる条件にはしません。
 
-- named Outcomeの第一Web Target表現
-- HTTP status / UI messageへのProjection
-- production-ready IdP
-- production HA
-- Target-neutral Presentationの最終抽象
-- 5 Patternの共有Catalog化
-- `OrderLine`の物理Persistence / FK一般化
-- production transaction coordinator
-- 汎用Validation式言語 / rule engine
-- Database constraintやWeb form validatorへのValidation Projection
-- Capability Payloadの汎用Object model
-- Runtime上で複数implementationを動的に選択する汎用機構
+- 名前付きの結果を最初のウェブ実行先で表現すること
+- HTTPの状態コードや画面のメッセージへの派生表示
+- 本番運用に耐えられるIdP
+- 本番環境の高可用性
+- 実行先に依存しない表示の最終的な抽象化
+- 五つのパターンの共有カタログ化
+- `OrderLine`の物理的な永続化と外部キーの一般化
+- 本番環境のトランザクション調整機構
+- 汎用の検証式言語と規則の実行機構
+- データベースの制約やウェブフォームの検証器への検証規則の変換
+- 能力の入出力を表す汎用オブジェクトモデル
+- 実行時に複数の実装を動的に選ぶ汎用機構
 - `std.auth.*`の標準化
 
 ## 関連
