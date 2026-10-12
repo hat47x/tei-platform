@@ -42,10 +42,10 @@ func TestTransformSourceMutationPropagatesToBuildPlanAndEvidence(t *testing.T) {
 			ID: core.MustCanonicalID("tei.builder.original"), Version: "1.0.0",
 			ContractVersion: "tei.plugin-build/v1", ArtifactDigest: digestB,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "reference/test.json"},
+		Recipe:     plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "reference/test.json"},
 		OutputKind: plugin.BuildOutputPluginPackage,
-		Target: "plugin-package",
-		Profile: "reference",
+		Target:     "plugin-package",
+		Profile:    "reference",
 		Dependencies: []plugin.BuildDependency{{
 			Kind: "source", ID: "fixed-input", Version: "1.0.0", ArtifactDigest: digestA,
 		}},
