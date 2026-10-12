@@ -33,7 +33,7 @@ func TestRequirementValuesRejectedByGoAndTEITransform(t *testing.T) {
 				t.Fatalf("Go materializer: expected %q, got %v", tc.goError, err)
 			}
 			if _, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-				"buildPlan": valueFromGoJSON(t, plan),
+				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
 			}); err == nil || !strings.Contains(err.Error(), tc.teiError) {
 				t.Fatalf("TEI Source materializer: expected %q, got %v", tc.teiError, err)
@@ -61,7 +61,7 @@ func TestRequirementMajorMustBeIntegerLexemeInTEITransform(t *testing.T) {
 				t.Fatal(err)
 			}
 			if _, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-				"buildPlan": valueFromGoJSON(t, plan),
+				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": badDefinition,
 			}); err == nil || !strings.Contains(err.Error(), "assert-positive-integer") {
 				t.Fatalf("TEI transform must reject non-integer requirement %s: %v", invalid, err)
@@ -85,7 +85,7 @@ func TestRequirementValuesPreserveEmptyAndValidPackageBytes(t *testing.T) {
 			t.Fatalf("Go materializer %v: %v", requires, err)
 		}
 		result, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-			"buildPlan": valueFromGoJSON(t, plan),
+			"buildPlan":        valueFromGoJSON(t, plan),
 			"pluginDefinition": valueFromGoJSON(t, definition),
 		})
 		if err != nil {
