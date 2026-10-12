@@ -81,6 +81,16 @@ func flattenSemantics(namespaces []semantic.Namespace) (subjectSet, error) {
 					return nil, err
 				}
 			}
+			for _, key := range d.CandidateKeys {
+				if err := out.add("candidate-key", key.ID, key); err != nil {
+					return nil, err
+				}
+			}
+			for _, fd := range d.FunctionalDependencies {
+				if err := out.add("functional-dependency", fd.ID, fd); err != nil {
+					return nil, err
+				}
+			}
 		}
 		for _, c := range ns.Capabilities {
 			if err := out.add("capability", c.ID, c); err != nil {
