@@ -15,19 +15,20 @@ function projection(p=procedure,r=review) {
   return {
     schemaVersion:'business-dfd-projection-v0',authority:'derived-read-only',
     canonicalProcedureUsed:false,procedureId:p.procedure.id,
+    roleAuthorizationBinding:'not-inferred',
     diagnostics:[],
     steps:p.steps.map((s,i)=>({id:s.id,label:s.businessAction,
       realization:s.realization,functionRefs:(s.applicationPatterns||[]).map(id=>({id,status:'resolved'})),
       noApplicationFunction:(s.applicationPatterns||[]).length===0,
       source:{file:'order-approval-procedure.json',pointer:'/steps/'+i}})),
     triggers:r.triggers.map((t,i)=>({...t,authority:'proposal',
-      source:{file:'review-proposal.json',pointer:'/triggers/'+i}})),
+      source:{file:'review-proposal.json',pointer:'/triggers/'+i},runtimeBinding:'unbound'})),
     flows:r.flows.map((f,i)=>({...f,authority:'proposal',
       source:{file:'review-proposal.json',pointer:'/flows/'+i}})),
     information:{
       roles:r.businessRoles.map(x=>({...x,authority:'proposal'})),
       externalParties:r.externalParties.map(x=>({...x,authority:'proposal'})),
-      stores:r.stores.map(x=>({...x,dataStatus:'identity-match-only'})),
+      stores:r.stores.map(x=>({...x,authority:'proposal',dataStatus:x.semanticData?'resolved':'not-declared'})),
       responsibilities:r.responsibilities.map(x=>({...x,authority:'proposal'})),
       informationFlows:r.informationFlows.map(x=>({...x,authority:'proposal'}))
     }
