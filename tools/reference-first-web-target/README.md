@@ -241,11 +241,13 @@ bash tools/reference-first-web-target/measure_tagged_targets.sh \
 
 出力先は未作成の絶対パス、リポジトリ外にしてください。計測スクリプトは前後のcheckout clean、HEAD不変、実`go list`によるGoFile選択、3種類の`go build`、`go tool nm`、byte数、SHA-256、およびE0比較JSONを記録します。失敗時は結果を正規Evidenceとみなしません。Goコードによる`tagged_source_selection_test.go`でも、3種類のGoFile集合と相手Applicationの実装除外を検証します。
 
+`repair_intake`専用バイナリについては、同一Goパッケージの受注専用ソース除外に加え、E0の実import閉包に`tei/internal/security/legacyauth`と`tei/internal/security/legacyauthorization`が**存在しない**ことを検査します。複合版・受注専用版には両方が存在することも確認し、検査の空振りを防ぎます。さらに実バイナリの`go tool nm`で修理受付専用版への両パッケージのシンボル混入を拒否します。これはSource / Linkの限定的な負例であり、認可の正しさ、本番Secretや権限の総合監査、同じB/R/Tの業務同等性を証明するものではありません。
+
 ビルド時に選択するApplicationごとに、トップ画面の案内リンクも切り替えます。共通`server.go`はリンク先を決めず、タグ別の`referenceIndexFooterHTML()`がHTML断片を提供します。従来の複合Targetのfooterは変更せず、`order_entry`専用ビルドではread/submit/custom-submit、`repair_intake`専用ビルドではcustomer-lookupのみを案内します。別Applicationのルートが404でも画面上の誘導として残らないよう、タグ別のHTMLテストと実バイナリのオプトインテストを追加しました。これはUI案内上の整合性であり、認可を代替しません。
 
 `repair_intake`では顧客参照用Oracle実装のみをリンク対象にするため、PostgreSQL明細Queryの実装は別ソース`reference_order_contract_query_fixture.go`へ移しました。両Applicationで共用するOracle実装を複製せず、DriverのBinding identityも変えていません。
 
-**現時点の限界**：GitHubへコードとテストをコミットしましたが、最新HEADのタグ別ビルド・回帰テスト・実シンボル観測・全体Repository HealthのPASSは取得していません。原Goソースの区別だけでlink後の完全なSecret/Authority除外は示せません。Workspace Loader/Driverを使う合成Referenceであり、Build Artifact Lockを承認する権限、Production認証認可、Browser/API二単位配備、同じ受理済みHandover B/R/Tでの実Business Result/Execution Error/Observationの完全同等性も未実証です。これらのE1受入条件は[#1167](https://github.com/hat47x/tei-platform/issues/1167)に残します。
+**検証状態と限界**：2026-10-12の既存E1変更ではGitHub Actionsでタグ別実ビルド・合成Fixture HTTP同等性・Repository HealthのPASSを取得し、mainへ統合しました（[#1302](https://github.com/hat47x/tei-platform/pull/1302)、[#1340](https://github.com/hat47x/tei-platform/pull/1340)）。ただし、今回の認証・認可パッケージ閉包チェックを加えた新しい候補HEADについては、CIの再実行結果により別途判断します。原Goソースの区別だけでlink後の完全なSecret/Authority除外は示せません。Workspace Loader/Driverを使う合成Referenceであり、Build Artifact Lockを承認する権限、Production認証認可、Browser/API二単位配備、同じ受理済みHandover B/R/Tでの実Business Result/Execution Error/Observationの完全同等性も未実証です。これらのE1受入条件は[#1167](https://github.com/hat47x/tei-platform/issues/1167)に残します。
 
 ### 実バイナリのHTTP結果同等性（明示実行する統合テスト）
 
