@@ -49,6 +49,7 @@ func TestDecodeGraphRejectsUnknownAndRepeatedMembers(t *testing.T) {
 		{"unknown evidence field", `{"schema":"tei.modelref.v0","nodes":[{"key":{"scope":"s","subject":{"kind":"data","id":"x"}},"evidence":[{"authority":"source-observation","sourceToken":"token","artifactFingerprint":"sha256:source","approved":true}]}],"edges":[]}`, "unknown field"},
 		{"repeated schema", `{"schema":"tei.modelref.v0","schema":"tei.modelref.v1","nodes":[],"edges":[]}`, "repeated"},
 		{"repeated scope", `{"schema":"tei.modelref.v0","nodes":[{"key":{"scope":"orders","scope":"other","subject":{"kind":"data","id":"x"}}}],"edges":[]}`, "repeated"},
+		{"case-alias scope", `{"schema":"tei.modelref.v0","nodes":[{"key":{"scope":"orders","Scope":"other","subject":{"kind":"data","id":"x"}}}],"edges":[]}`, "repeated"},
 		{"repeated provenance", `{"schema":"tei.modelref.v0","nodes":[{"key":{"scope":"orders","subject":{"kind":"data","id":"x"}},"evidence":[{"authority":"proposal","authority":"accepted"}]}],"edges":[]}`, "repeated"},
 		{"unsupported schema", `{"schema":"tei.modelref.v1","nodes":[],"edges":[]}`, "unsupported schema"},
 		{"missing schema", `{"nodes":[],"edges":[]}`, "unsupported schema"},
