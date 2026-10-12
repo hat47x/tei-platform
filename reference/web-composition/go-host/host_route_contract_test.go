@@ -28,7 +28,7 @@ func TestProtectedHostRejectsPathsNotRepresentableInE1(t *testing.T) {
 	if _, err := NewHost(newPolicy("/scenario/submit", "order_entry.submit_order"), deps); err != nil {
 		t.Fatalf("canonical POST Action route was refused: %v", err)
 	}
-	for _, tc := range []struct{
+	for _, tc := range []struct {
 		name string
 		path string
 	}{
