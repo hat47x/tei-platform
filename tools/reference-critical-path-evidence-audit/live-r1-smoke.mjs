@@ -354,6 +354,53 @@ async function main() {
     "test-only overlay unexpectedly produced the same Web binary");
   await stopTarget();
   assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
+
+  // N11: Command succeeds but the explicitly separate Observation read cannot
+  // produce a result. This control must not be replaced by the unit-price
+  // validation refusal, since that refusal never dispatches a Command.
+  const n11Binary = join(temp, "first-web-target-n11-unobserved");
+  const n11Fixture = buildUnobservedTarget(n11Binary);
+  const n11Port = await openPort();
+  const n11Addr = "127.0.0.1:" + n11Port;
+  const n11Log = openSync(join(temp, "n11-server.log"), "wx", 0o600);
+  try {
+    child = spawn(n11Binary, [
+      "-workspace", workspace, "-application", "order_entry", "-baseline-id", "B",
+      "-baseline-revision", expectedR, "-target-revision", head,
+      "-legacy-users", "reference/legacy-auth/users.json",
+      "-legacy-authorization", "reference/legacy-auth/authorization.json",
+      "-listen", n11Addr
+    ], { cwd: root, stdio: ["ignore", n11Log, n11Log] });
+  } finally { closeSync(n11Log); }
+  await ready("http://" + n11Addr);
+  const n11Response = await fetch("http://" + n11Addr + "/scenario/submit", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body, signal: AbortSignal.timeout(5000)
+  });
+  // The synthetic business Command completed, but the follow-up read failed:
+  // the request must report an Execution Error (422), not business success.
+  assert.equal(n11Response.status, 422);
+  const n11Raw = await n11Response.text();
+  assert.equal(n11Raw.includes("editor-secret"), false, "N11 Web response leaked credential");
+  const n11Receipt = JSON.parse(n11Raw);
+  assert.equal(n11Receipt.targetBuildRevision, head);
+  assert.equal(n11Receipt.result.stage, "observation");
+  assert.deepEqual(n11Receipt.result.validations.map(v => v.validation), app.validations);
+  assert.ok(n11Receipt.result.validations.every(v => v.result === "satisfied"),
+    "N11 must not hide a validation denial");
+  assert.ok(n11Receipt.result.command, "N11 did not dispatch a successful Command");
+  assert.equal(Boolean(n11Receipt.result.observation), false,
+    "failed Observation was incorrectly recorded as successful");
+  assert.match(n11Receipt.executionError,
+    /synthetic observation unavailable \(N11 test only\)/);
+  const n11Launch = {
+    address: n11Addr, processID: child.pid,
+    binarySHA256: createHash("sha256").update(readFileSync(n11Binary)).digest("hex")
+  };
+  assert.notEqual(positiveLaunch.binarySHA256, n11Launch.binarySHA256);
+  assert.notEqual(negativeLaunch.binarySHA256, n11Launch.binarySHA256);
+  await stopTarget();
+  assert.equal(acceptance(["revision", "-workspace", workspace]).modelRevision, r1);
   assert.deepEqual(changed(beforeFiles, files(workspace)), [
     "applications/order-entry/application.tei", "semantic/sales/validation.tei"
   ]);
