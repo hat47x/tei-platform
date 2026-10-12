@@ -219,8 +219,13 @@ func TestProductPinnedLinuxProcessRejectsMismatchedRegistryWiring(t *testing.T) 
 			_, err := invokePinnedWithRegistry(t, ctx, pruntime.Registry{
 				Verifier: tc.verifier, Processes: tc.launcher,
 			}, path, tc.digest, "", "", plugin.SandboxNone)
-			if err == nil || !strings.Contains(err.Error(), "pinned process") {
-				t.Fatalf("invalid Host wiring was not refused before dispatch: %v", err)
+			if err == nil {
+				t.Fatal("invalid Host wiring unexpectedly dispatched")
+			}
+			// Missing verifier/launcher is also rejected by the existing
+			// required-component guard, before the image-binding guard.
+			if tc.verifier != nil && tc.launcher != nil && !strings.Contains(err.Error(), "pinned process") {
+				t.Fatalf("mixed Host implementations bypassed binding check: %v", err)
 			}
 		})
 	}
