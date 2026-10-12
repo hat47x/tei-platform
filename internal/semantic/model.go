@@ -32,10 +32,30 @@ type Type struct {
 }
 
 type Data struct {
-	ID         core.CanonicalID `json:"id"`
-	Symbol     string           `json:"symbol"`
-	Attributes []Attribute      `json:"attributes,omitempty"`
-	Relations  []Relation       `json:"relations,omitempty"`
+	ID                     core.CanonicalID       `json:"id"`
+	Symbol                 string                 `json:"symbol"`
+	Attributes             []Attribute            `json:"attributes,omitempty"`
+	Relations              []Relation             `json:"relations,omitempty"`
+	CandidateKeys          []CandidateKey         `json:"candidateKeys,omitempty"`
+	FunctionalDependencies []FunctionalDependency `json:"functionalDependencies,omitempty"`
+}
+
+// CandidateKey is an explicitly authored assertion of a logical business
+// identity. It is not a physical PK, a generated row ID, or proof that the
+// business assertion holds for all possible records.
+type CandidateKey struct {
+	ID         core.CanonicalID   `json:"id"`
+	Symbol     string             `json:"symbol"`
+	Attributes []core.CanonicalID `json:"attributes"`
+}
+
+// FunctionalDependency is an explicitly authored Data-scoped determinant
+// assertion. It is distinct from relation join keys and physical constraints.
+type FunctionalDependency struct {
+	ID           core.CanonicalID   `json:"id"`
+	Symbol       string             `json:"symbol"`
+	Determinants []core.CanonicalID `json:"determinants"`
+	Dependents   []core.CanonicalID `json:"dependents"`
 }
 
 type Attribute struct {
