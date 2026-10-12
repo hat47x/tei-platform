@@ -72,3 +72,9 @@ jobs:
           set -euo pipefail
           node --test reference/application-composition/e1-observe.test.mjs reference/application-composition/e27_residual_selection_audit.test.mjs
           node reference/application-composition/e27_residual_selection_audit.mjs . > /dev/null
+
+      - name: E28の任意作業記録と未計測を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e28_attested_work_measure.test.mjs
