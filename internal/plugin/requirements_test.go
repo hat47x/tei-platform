@@ -32,6 +32,31 @@ func TestPluginRequirementsRejectDuplicateIDs(t *testing.T) {
 	}
 }
 
+func TestPluginRequirementsDuplicateDiagnosticDoesNotDependOnDeclarationOrder(t *testing.T) {
+	a := cid("tei.a")
+	z := cid("tei.z")
+	first := []plugin.Requirement{
+		{Plugin: z, CompatibleMajor: 1},
+		{Plugin: a, CompatibleMajor: 1},
+		{Plugin: z, CompatibleMajor: 2},
+		{Plugin: a, CompatibleMajor: 2},
+	}
+	second := []plugin.Requirement{
+		{Plugin: a, CompatibleMajor: 2},
+		{Plugin: z, CompatibleMajor: 2},
+		{Plugin: a, CompatibleMajor: 1},
+		{Plugin: z, CompatibleMajor: 1},
+	}
+	firstErr := plugin.ValidateRequirements(first)
+	secondErr := plugin.ValidateRequirements(second)
+	if firstErr == nil || secondErr == nil {
+		t.Fatalf("both invalid requirement sets must fail: first=%v second=%v", firstErr, secondErr)
+	}
+	if firstErr.Error() != secondErr.Error() || !strings.Contains(firstErr.Error(), string(a)) {
+		t.Fatalf("duplicate diagnostic changed with declaration order: first=%v second=%v", firstErr, secondErr)
+	}
+}
+
 func TestPluginRequirementsNormalizeOrderDeterministically(t *testing.T) {
 	first := plugin.Definition{
 		ID: cid("tei.root"), Version: "1.0.0",
