@@ -136,6 +136,12 @@ node --test \
 
 食い違った場合は未受理の変更候補であっても生成しません。ただし`resolved`は参照実装内での一致を意味するだけで、採用済みWorldの同一版や、情報の鮮度を証明しません。Go生成器が使う状態値に合わせ、模擬DFDを用いた回帰試験でも同じ区別を保持します。
 
+### 図の選択元を参照資料の位置へ照合する
+
+変更の対象を選んだ際、その要素が指す出典の位置も検査します。Stepなら元の業務手順の`/steps/番号`、起動契機ならレビュー案の`/triggers/番号`、外部主体なら`/externalParties/番号`、概念保管先なら`/stores/番号`に一致する必要があります。同じ資料に属する要素のファイル名が一つだけ異なる場合も拒否します。
+
+結果には`sourceLocatorStatus=reference-local-pointer-checked`と`sourceFileAuthority=unverified`を明示します。ここでの照合は、現在の参照資料内の要素を取り違えないための検査です。**ファイルの真正性や、Source Index上の採用済み版との一致を認証するものではありません。** 保存先や受理対象のファイルパスとして、この出典を無条件に利用してはなりません。
+
 ## Studio・Typed Referenceとの統合条件
 
 1. **選択**: #1125の`-select`が返す`reference-procedure:<procedureId>`のStepとSource位置を表示する。同名のAccepted Taskと同一視しない。

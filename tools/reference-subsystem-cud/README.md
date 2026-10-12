@@ -69,3 +69,18 @@ go run ./tools/reference-subsystem-cud \
 従来のWorldだけを扱う呼出しは維持し、手順資料を結び付けた候補に限って追加の版照合を要求します。この機能は**入力バイト列の一致を確認するだけ**です。業務手順の意味や手順とFunctionの対応関係は既存の業務手順検査器の担当であり、この検査器では再解釈しません。ファイルの出所、Shared Acceptanceによる正式採用、Subsystemの業務上の責任、実際のCUD操作の存在も証明しません。
 
 回帰試験では現行の受注業務手順資料から `BP-04`（手作業）と `BP-07`（明示されたApplication Pattern）を**試験内の候補**として参照し、手作業から機能や更新操作を推測しないこと、およびWorldが同一でも手順資料変更を検知することを確認します。
+
+
+## 業務手順の記述と候補の参照を照合する
+
+`-procedure`を指定したとき、業務手順資料の指紋が一致するだけでは不十分です。候補が別の手順番号や機能の参照を記述していれば、その候補の検査結果を成功とは扱えません。
+
+現時点では、未承認の参照資料`business-procedure-reference-v0`（`reference-authoring-fixture`）について、**候補に明示した手順だけ**を次のように照合します。
+
+- 候補の手順番号が資料に一意に存在すること。欠落は`PROCEDURE_STEP_NOT_FOUND`、重複は`PROCEDURE_SOURCE_STEP_AMBIGUOUS`とします。
+- `manual-unresolved`の手順を`system`へ変更したり、資料にない機能を付与したりしないこと。
+- `application-use`では、資料が明示する機能参照が一つであるときだけ、候補の`system`と同一参照の組を照合します。機能参照の違いは`PROCEDURE_PATTERN_MISMATCH`、複数参照など単一候補へ安全に対応付けられない場合は`PROCEDURE_PATTERN_CARDINALITY_UNSUPPORTED`とします。
+- 検証、認可、観測、手作業と外部作業の境界など、現在の候補形式に安全な対応がない手順は`PROCEDURE_REALIZATION_UNSUPPORTED`とします。無理に機能へ変換しません。
+- 対応外の資料形式、正式な正本であることを自己宣言した資料、手順配列がない資料は`PROCEDURE_SOURCE_UNSUPPORTED`とします。資料が存在するのに候補手順が空の場合も未解決です。
+
+すべて未解決の診断であり、従来の入力JSONの指紋不一致やCUD候補の診断も引き続き有効です。これらの照合が成功しても、**受理済みの業務手順・Subsystem所有者・実行時更新・業務規則の網羅性**を証明したことにはなりません。正本採用やSource Indexの照合は既存の担当機構で行い、この参照用検査器に第二の承認機構を設けません。

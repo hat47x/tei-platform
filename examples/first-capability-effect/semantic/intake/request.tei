@@ -1,0 +1,12 @@
+namespace intake
+
+data Request {
+    attribute requestId type std.identifier
+    attribute summary type std.text
+}
+
+capability intake.request.create {
+    input request intake.request
+    output intake.request
+    effect create intake.request
+}

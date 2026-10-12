@@ -264,8 +264,8 @@ func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
 }
 
 // InspectBoundProcedureSnapshot also binds the bytes of a caller-supplied
-// Business Procedure source. It does not parse its meaning or confer
-// acceptance/authoritative-source status on the document or candidate facts.
+// Business Procedure source. It checks explicit Step/Pattern correspondence,
+// but does not confer acceptance authority or infer runtime effects.
 func InspectBoundProcedureSnapshot(worldBytes, procedureBytes, factsBytes []byte) (Report, error) {
 	return inspectSnapshot(worldBytes, procedureBytes, factsBytes, true)
 }
@@ -311,6 +311,13 @@ func inspectSnapshot(worldBytes, procedureBytes, factsBytes []byte, hasProcedure
 	case hasProcedure && f.ProcedureJSONFingerprint != r.InputFingerprints.ProcedureJSON:
 		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "PROCEDURE_SNAPSHOT_STALE", Severity: "unresolved", Subject: "procedure", Explanation: "candidate facts were prepared for a different Procedure JSON byte snapshot"})
 		r.Status = "unresolved"
+	case hasProcedure:
+		// Only compare explicit claims for the exact candidate-bound source.
+		// Neither this step comparison nor a matching digest grants Acceptance.
+		if claims := verifyProcedureClaims(procedureBytes, f); len(claims) != 0 {
+			r.Diagnostics = append(r.Diagnostics, claims...)
+			r.Status = "unresolved"
+		}
 	}
 	sort.Slice(r.Diagnostics, func(i, j int) bool {
 		a, b := r.Diagnostics[i], r.Diagnostics[j]

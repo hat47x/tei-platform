@@ -21,20 +21,27 @@ func main() {
 	catalogOnly := flag.Bool("catalog", false, "print the read-only Catalog derived from -world")
 	outDir := flag.String("out", "", "optional destination for slides as SVG and projection.json")
 	answerFile := flag.String("answers", "", "optional answer JSON bound to exact Review fingerprint; requires -out")
+	hypothesesFile := flag.String("hypotheses", "", "optional candidate key / FD hypotheses JSON; requires -out")
 	flag.Parse()
-	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile); err != nil {
+	if err := run(*inputFile, *worldFile, *catalogOnly, *outDir, *answerFile, *hypothesesFile); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answerFiles ...string) error {
-	if len(answerFiles) > 1 {
-		return fmt.Errorf("only one answer input may be supplied")
+func run(inputPath, worldPath string, catalogOnly bool, outputPath string, extraFiles ...string) error {
+	if len(extraFiles) > 2 {
+		return fmt.Errorf("too many supplementary inputs")
 	}
-	answerFile := ""
-	if len(answerFiles) == 1 {
-		answerFile = answerFiles[0]
+	answerFile, hypothesesFile := "", ""
+	if len(extraFiles) >= 1 {
+		answerFile = extraFiles[0]
+	}
+	if len(extraFiles) >= 2 {
+		hypothesesFile = extraFiles[1]
+	}
+	if hypothesesFile != "" && (catalogOnly || inputPath == "" || outputPath == "") {
+		return fmt.Errorf("-hypotheses requires -input and -out, and excludes -catalog")
 	}
 	if answerFile != "" && (catalogOnly || inputPath == "" || outputPath == "") {
 		return fmt.Errorf("-answers requires -input and -out, and excludes -catalog")
@@ -94,6 +101,18 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 		}
 		changeTriage = &triage
 	}
+	var modelHypothesisReview *example.ModelHypothesisReview
+	if hypothesesFile != "" {
+		var proposals example.ModelHypotheses
+		if err := readStrictJSON(hypothesesFile, &proposals); err != nil {
+			return fmt.Errorf("decode model hypotheses: %w", err)
+		}
+		checked, err := example.ReviewModelHypotheses(input, proposals)
+		if err != nil {
+			return fmt.Errorf("review model hypotheses: %w", err)
+		}
+		modelHypothesisReview = &checked
+	}
 	if outputPath == "" {
 		return printJSON(projection)
 	}
@@ -117,6 +136,16 @@ func run(inputPath, worldPath string, catalogOnly bool, outputPath string, answe
 	reviewData = append(reviewData, '\n')
 	if err := os.WriteFile(filepath.Join(outputPath, "review.json"), reviewData, 0600); err != nil {
 		return err
+	}
+	if modelHypothesisReview != nil {
+		modelReviewJSON, err := json.MarshalIndent(modelHypothesisReview, "", "  ")
+		if err != nil {
+			return err
+		}
+		modelReviewJSON = append(modelReviewJSON, '\n')
+		if err := os.WriteFile(filepath.Join(outputPath, "model-hypothesis-review.json"), modelReviewJSON, 0600); err != nil {
+			return err
+		}
 	}
 	if answerHandoff != nil {
 		answerJSON, err := json.MarshalIndent(answerHandoff, "", "  ")

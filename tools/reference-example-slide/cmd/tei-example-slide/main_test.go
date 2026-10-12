@@ -187,3 +187,95 @@ func TestCLIRejectsUnknownCaseInputBeforeOutput(t *testing.T) {
 		t.Fatal("wrote outputs before validating Case schema")
 	}
 }
+
+func TestCLIExportsModelHypothesesWithERReferences(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "proposals.json")
+	proposals := example.ModelHypotheses{
+		Schema: "tei.reference.example-model-hypotheses/v0",
+		CandidateKeys: []example.CandidateKeyHypothesis{{
+			ID: "purchase-number-candidate", Table: "purchase_order", Fields: []string{"number"},
+		}},
+		FunctionalDependencies: []example.FDHypothesis{{
+			ID: "quantity-to-number", Table: "purchase_order",
+			Determinants: []string{"quantity"}, Dependents: []string{"number"},
+		}},
+	}
+	encoded, err := json.Marshal(proposals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, encoded, 0600); err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	if err := run("../../testdata/partial_inspection.json", "", false, out, "", file); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "model-hypothesis-review.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var review example.ModelHypothesisReview
+	if err := json.Unmarshal(raw, &review); err != nil {
+		t.Fatal(err)
+	}
+	if len(review.Issues) != 2 {
+		t.Fatalf("missing both proposed model questions: %+v", review)
+	}
+	for _, issue := range review.Issues {
+		if issue.Result != "unresolved" || issue.Stage != "base" ||
+			len(issue.DiagramPlacementIDs) != 1 || issue.DiagramPlacementIDs[0] != "po-box" ||
+			len(issue.FrameIDs) != 1 || issue.FrameIDs[0] != "first" {
+			t.Fatalf("unexpected slide mapping or unverified rule promotion: %+v", issue)
+		}
+	}
+	info, err := os.Stat(filepath.Join(out, "model-hypothesis-review.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("hypothesis review must remain private: %v", info.Mode().Perm())
+	}
+	// New review output does not modify the pre-existing answer fingerprint.
+	without := t.TempDir()
+	if err := run("../../testdata/partial_inspection.json", "", false, without); err != nil {
+		t.Fatal(err)
+	}
+	existing, err := os.ReadFile(filepath.Join(without, "review.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	alsoExisting, err := os.ReadFile(filepath.Join(out, "review.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(existing) != string(alsoExisting) {
+		t.Fatal("adding optional hypotheses altered existing answer review")
+	}
+}
+
+func TestCLIRejectsBadModelHypothesesBeforeWritingAnyOutput(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "invalid-proposals.json")
+	out := t.TempDir()
+	if err := os.WriteFile(file, []byte(`{"schema":"tei.reference.example-model-hypotheses/v0","candidateKeys":[{"id":"k","table":"purchase_order","fields":["unknown"]}]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run("../../testdata/partial_inspection.json", "", false, out, "", file); err == nil {
+		t.Fatal("unknown candidate field was not rejected")
+	}
+	if entries, err := os.ReadDir(out); err != nil || len(entries) != 0 {
+		t.Fatalf("wrote a partial output for invalid key proposal: %v / %v", entries, err)
+	}
+	if err := os.WriteFile(file, []byte(`{"schema":"tei.reference.example-model-hypotheses/v0","candidateKeys":[],"surprise":true}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run("../../testdata/partial_inspection.json", "", false, out, "", file); err == nil {
+		t.Fatal("unknown proposal JSON field was not rejected")
+	}
+	if err := run("../../testdata/partial_inspection.json", "", false, "", "", file); err == nil {
+		t.Fatal("missing output directory was accepted for hypotheses")
+	}
+	if err := run("", "../../../../reference/world.json", true, out, "", file); err == nil {
+		t.Fatal("catalog-only mode accepted model hypotheses")
+	}
+}

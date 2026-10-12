@@ -161,6 +161,36 @@ func TestBusinessDFDGoProjectionToNodeReview(t *testing.T) {
 		runCase(t, projectionBytes, procedureBytes, changed, dfdTestDigest(reviewBytes),
 			"STALE_OR_UNVERIFIED_DFD_EDIT_INPUT_SNAPSHOT")
 	})
+	t.Run("swapped_selected_trigger_source_pointer_fails", func(t *testing.T) {
+		var p map[string]any
+		if err := json.Unmarshal(projectionBytes, &p); err != nil {
+			t.Fatal(err)
+		}
+		triggers := p["triggers"].([]any)
+		source := triggers[0].(map[string]any)["source"].(map[string]any)
+		source["pointer"] = "/triggers/1"
+		modified, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runCase(t, modified, procedureBytes, reviewBytes, dfdTestDigest(reviewBytes),
+			"DFD_SELECTED_REFERENCE_LOCATOR_MISMATCH")
+	})
+	t.Run("swapped_selected_trigger_source_file_fails", func(t *testing.T) {
+		var p map[string]any
+		if err := json.Unmarshal(projectionBytes, &p); err != nil {
+			t.Fatal(err)
+		}
+		triggers := p["triggers"].([]any)
+		source := triggers[0].(map[string]any)["source"].(map[string]any)
+		source["file"] = "unrelated-review.json"
+		modified, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runCase(t, modified, procedureBytes, reviewBytes, dfdTestDigest(reviewBytes),
+			"DFD_SELECTED_REFERENCE_FILE_MISMATCH")
+	})
 	t.Run("forged_trigger_runtime_status_fails", func(t *testing.T) {
 		var p map[string]any
 		if err := json.Unmarshal(projectionBytes, &p); err != nil {

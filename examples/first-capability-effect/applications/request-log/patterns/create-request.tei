@@ -1,0 +1,3 @@
+pattern request_log.create_request command {
+    capability intake.request.create
+}

@@ -1,0 +1,38 @@
+name: TEI main保護定義の検査
+
+# 定義ファイルを検査するだけであり、GitHubの保護設定を変更しない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '.github/rulesets/**'
+      - '.github/workflows/tei-ruleset-contract-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/rulesets/**'
+      - '.github/workflows/tei-ruleset-contract-ci.yml'
+
+permissions: {}
+
+concurrency:
+  group: tei-ruleset-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ruleset-definition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: 保護規則の定義を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: 定義と危険な変更の検出を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/rulesets/verify-main-protection.py --self-test
+          python3 .github/rulesets/verify-main-protection.py --local

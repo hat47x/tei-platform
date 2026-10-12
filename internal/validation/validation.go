@@ -36,6 +36,7 @@ func Validate(w ir.World) []Diagnostic {
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
+	out = append(out, validateCapabilityDataEffects(w)...)
 	out = append(out, validateBusinessValidationReferences(w)...)
 
 	pluginCatalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}

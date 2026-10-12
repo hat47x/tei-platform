@@ -122,7 +122,7 @@ func TestRejectedProcessArtifactStageRetainsVerifiedProvider(t *testing.T) {
 	}
 	assertOldCallable := func() {
 		t.Helper()
-		result, err := invokeSelected(ctx, coordinator, adapter, command)
+		result, err := invokeSelected(ctx, coordinator, adapter, command, oldBinding)
 		if err != nil {
 			t.Fatal(err)
 		}
