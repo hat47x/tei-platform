@@ -38,15 +38,27 @@ type WiringRequirement struct {
 	SlotID     string
 }
 
-// WiringFinding records a candidate derived from the current Registry or the
-// reason why no candidate can be justified. A returned Selection is copied;
-// it may become stale before actual Host admission and must be revalidated.
+// VerificationTarget identifies one declared provider whose authoritative
+// Contract publication, Provider Conformance and exact artifact must be checked
+// OUTSIDE this Registry. An Epoch is only a declaration revision, not evidence
+// of trust, readiness, or permission. These fields cannot grant authority.
+type VerificationTarget struct {
+	ProviderID string
+	Scope      string
+	Contract   Contract
+	Epoch      uint64
+}
+
+// WiringFinding records a structural candidate, never a conformant/authorized
+// realization. VerificationTargets includes the candidate and all transitive
+// dependencies; consumers must obtain independent evidence for every subject.
 type WiringFinding struct {
-	Verdict    ProposalVerdict
-	Reason     ProposalReason
-	Candidates []string
-	Selected   *Selection
-	Detail     string
+	Verdict             ProposalVerdict
+	Reason              ProposalReason
+	Candidates          []string
+	Selected            *Selection
+	VerificationTargets []VerificationTarget
+	Detail              string
 }
 
 // WiringSetFinding records one consistent design-time Registry view. This is
@@ -204,6 +216,25 @@ func (r *Registry) inspectWiringLocked(req WiringRequirement) WiringFinding {
 		return finding
 	}
 	selected := r.selectionLocked(r.providers[chosen], assessment)
+	// The registry does not know implementation IDs, artifact digests, trusted
+	// issuers or current Host Authority. Return exact declaration subjects to
+	// an external verifier, never a fabricated conformance verdict.
+	targets := make([]VerificationTarget, 0, 1+len(selected.DependencyEpochs))
+	targets = append(targets, VerificationTarget{
+		ProviderID: chosen, Scope: req.Scope,
+		Contract: selected.Contract, Epoch: selected.Epoch,
+	})
+	for _, dependent := range selected.DependencyEpochs {
+		provider, found := r.providers[dependent.ProviderID]
+		if !found || provider.Scope != req.Scope {
+			return WiringFinding{Verdict: ProposalUnknown, Reason: ReasonDependencyIneligible}
+		}
+		targets = append(targets, VerificationTarget{
+			ProviderID: dependent.ProviderID, Scope: provider.Scope,
+			Contract: provider.Offers, Epoch: dependent.Epoch,
+		})
+	}
 	finding.Verdict, finding.Reason, finding.Selected = ProposalCandidate, ReasonStructurallyEligible, &selected
+	finding.VerificationTargets = targets
 	return finding
 }
