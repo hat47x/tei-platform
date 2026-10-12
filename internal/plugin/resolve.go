@@ -30,6 +30,9 @@ func (c Catalog) resolvePlugin(req Requirement) (Definition, error) {
 	if err := ValidateRequirements(matches[0].Requires); err != nil {
 		return Definition{}, fmt.Errorf("plugin %s: %w", matches[0].ID, err)
 	}
+	if err := ValidateRequirementEntries(matches[0].Requires); err != nil {
+		return Definition{}, fmt.Errorf("plugin %s: %w", matches[0].ID, err)
+	}
 	return NormalizeDefinition(matches[0]), nil
 }
 
