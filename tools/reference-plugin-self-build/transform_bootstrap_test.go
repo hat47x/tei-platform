@@ -12,7 +12,7 @@ import (
 func bootstrapTestEngine() pruntime.RuntimeEngineIdentity {
 	return pruntime.RuntimeEngineIdentity{
 		ID:                   core.MustCanonicalID("tei.runtime.engine.transform_test"),
-		Version:              "revision-a",
+		Version:              "1.0.0",
 		ContractVersion:      "tei.runtime-engine/deterministic-transform-v1",
 		ImplementationDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		Target:               "host/test/test",
