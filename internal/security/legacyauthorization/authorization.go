@@ -78,6 +78,11 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	if !found {
 		return denied("not_authorized"), nil
 	}
+	// 保存先が別の主体のレコードを返した場合は、役割を評価せず停止する。
+	// 欠落・取り違えを業務上の拒否へ丸めず、保存先契約の障害として返す。
+	if user.SubjectID != input.SubjectID {
+		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy authorization subject storeの主体が要求と一致しません")
+	}
 
 	allowed, reason, err := a.Rule.Evaluate(ctx, user, input.Action, input.Resource)
 	if err != nil {

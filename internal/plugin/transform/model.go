@@ -30,6 +30,7 @@ const (
 	OpOmitField       Op = "omit-field"
 	OpAssertEqual     Op = "assert-equal"
 	OpAssertEnum      Op = "assert-enum"
+	OpAssertUniqueBy  Op = "assert-unique-by"
 	OpCanonicalJSON   Op = "canonical-json"
 	OpSHA256          Op = "sha256"
 	OpAppendBytes     Op = "append-bytes"
@@ -177,7 +178,7 @@ func (s Source) Validate() error {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
 		switch s.Program.Assertions[i].Op {
-		case OpAssertEqual, OpAssertEnum:
+		case OpAssertEqual, OpAssertEnum, OpAssertUniqueBy:
 		default:
 			return fmt.Errorf("transform assertion %d must use assert operation, got %s", i, s.Program.Assertions[i].Op)
 		}
@@ -280,6 +281,22 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 			if err := validateExpr(expr.Keys[i], depth+1, maxDepth); err != nil {
 				return fmt.Errorf("sort-array key %d: %w", i, err)
 			}
+		}
+	case OpAssertUniqueBy:
+		if err := rejectUnexpectedExprFields(expr, "from", "item", "keys", "optional"); err != nil {
+			return err
+		}
+		if err := child(expr.From, "assert-unique-by source"); err != nil {
+			return err
+		}
+		if strings.TrimSpace(expr.Item) == "" {
+			return fmt.Errorf("assert-unique-by item name is required")
+		}
+		if len(expr.Keys) != 1 {
+			return fmt.Errorf("assert-unique-by requires exactly one key")
+		}
+		if err := validateExpr(expr.Keys[0], depth+1, maxDepth); err != nil {
+			return fmt.Errorf("assert-unique-by key: %w", err)
 		}
 	case OpReplaceField:
 		if err := rejectUnexpectedExprFields(expr, "from", "field", "value"); err != nil {
@@ -427,7 +444,7 @@ func validateExprBindings(expr Expr, scope map[string]struct{}) error {
 			return validateExprBindings(*expr.Body, local)
 		}
 		return nil
-	case OpSortArrayBy:
+	case OpSortArrayBy, OpAssertUniqueBy:
 		if err := check(expr.From); err != nil {
 			return err
 		}
@@ -590,11 +607,7 @@ func normalizeExpr(expr Expr) (Expr, error) {
 }
 
 func SourceFingerprint(source Source) (string, error) {
-	normalized, err := NormalizeSource(source)
-	if err != nil {
-		return "", err
-	}
-	raw, err := json.Marshal(normalized)
+	raw, err := canonicalSourceBytes(source)
 	if err != nil {
 		return "", err
 	}
@@ -603,11 +616,7 @@ func SourceFingerprint(source Source) (string, error) {
 }
 
 func MaterializeSource(source Source) ([]byte, string, error) {
-	normalized, err := NormalizeSource(source)
-	if err != nil {
-		return nil, "", err
-	}
-	raw, err := json.Marshal(normalized)
+	raw, err := canonicalSourceBytes(source)
 	if err != nil {
 		return nil, "", err
 	}
