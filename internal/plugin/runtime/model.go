@@ -501,7 +501,7 @@ func (r Registry) validateProcessImageBinding(sandboxed, digestVerified bool) er
 	if sandboxed {
 		if !verifierBound || sandboxImage == nil || verifiedImage != sandboxImage ||
 			(launcherBound && launchedImage != verifiedImage) {
-			return fmt.Errorf("pinned process artifact verifier and sandbox runner must hold the same image")
+			return fmt.Errorf("pinned process image: verifier and sandbox runner must hold the same image")
 		}
 		return nil
 	}
