@@ -73,7 +73,8 @@ test('stale view file and producer errors cannot replace displayed layout',async
 test('large Procedure remains scrollable instead of clipping all Steps below initial board',async()=>{
   const steps=Array.from({length:32},(_,i)=>({id:'B-'+i,label:'step '+i,
     noApplicationFunction:true,functionRefs:[]}));
-  await input('dfd-file',{...projection,steps,flows:[],handoffs:[]});
+  await input('dfd-file',{...projection,steps,flows:[],handoffs:[],
+    information:{...projection.information,responsibilities:[],informationFlows:[]}});
   assert.match($('status').textContent,/投影を読み込みました/);
   assert.equal($('diagram').children.filter(n=>n.dataset?.kind==='step').length,32);
   const height=$('diagram').viewBox.baseVal.height;
@@ -114,7 +115,8 @@ test('reloading a Procedure clears stale Source details and an in-progress drag'
   node.listeners.pointerdown({button:0,pointerId:70,clientX:0,clientY:0});
   assert.match($('details').children[0].textContent,/business.json/);
   await input('dfd-file',{...projection,procedureId:'another.procedure',
-    steps:[{id:'NEW',label:'new',functionRefs:[],noApplicationFunction:true}],flows:[],handoffs:[]});
+    steps:[{id:'NEW',label:'new',functionRefs:[],noApplicationFunction:true}],flows:[],handoffs:[],
+    information:{...projection.information,responsibilities:[],informationFlows:[]}});
   assert.equal($('details').children.length,0);
   assert.match($('details').textContent,/要素を選択すると/);
   $('diagram').listeners.pointerup({pointerId:70,clientX:250,clientY:200});
