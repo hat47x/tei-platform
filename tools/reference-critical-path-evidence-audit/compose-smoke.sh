@@ -41,7 +41,7 @@ if [[ "$mode" == draft-tips ]]; then
   done
 else
   [[ -z "$expected_1119$expected_1120$expected_1124$expected_1121" ]] ||
-    die "integrated-main mode refuses stale Draft branch pins"
+    die "integrated modes refuse stale Draft branch pins"
 fi
 clean() {
   local where="$1" status unusual
