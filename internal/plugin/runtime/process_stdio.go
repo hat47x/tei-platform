@@ -12,6 +12,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -76,7 +78,14 @@ func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command Proc
 	}
 	stdout := &boundedCapture{limit: limit}
 	stderr := newDigestWriter()
-	cmd := exec.CommandContext(ctx, executable, command.Args...)
+	// exec.CommandContext resolves unqualified names using the ambient Host
+	// PATH, even when cmd.Env is explicitly empty. Resolve from the explicit
+	// child PATH instead, before constructing the command.
+	resolved, err := resolveProcessExecutable(executable, l.Env)
+	if err != nil {
+		return Response{}, err
+	}
+	cmd := exec.CommandContext(ctx, resolved, command.Args...)
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
@@ -197,6 +206,44 @@ func validateProcessResponseObject(decoder *json.Decoder, pluginIdentity bool) e
 		return fmt.Errorf("invalid process response object closing delimiter")
 	}
 	return nil
+}
+
+// resolveProcessExecutable prevents os/exec from consulting the ambient Host
+// PATH when the plugin command is a bare executable name. The caller may use
+// an explicit path directly, or select an absolute search directory through
+// the host-approved child PATH. Empty/relative PATH entries are ignored to
+// avoid implicit working-directory execution. This does not pin executable
+// bytes; hosts requiring that guarantee must use a bound artifact launcher.
+func resolveProcessExecutable(executable string, env []string) (string, error) {
+	if filepath.IsAbs(executable) || strings.ContainsAny(executable, "/\\") {
+		return executable, nil
+	}
+	// Windows file extensions and PATHEXT differ from POSIX executable bits.
+	// Until the Host supplies an OS-specific resolver, require an explicit
+	// path on Windows instead of silently using the parent PATH.
+	if runtime.GOOS == "windows" {
+		return "", fmt.Errorf("process plugin requires an explicit executable path on Windows")
+	}
+	var pathValue string
+	for _, item := range env {
+		if strings.HasPrefix(item, "PATH=") {
+			pathValue = strings.TrimPrefix(item, "PATH=")
+		}
+	}
+	if pathValue == "" {
+		return "", fmt.Errorf("process plugin executable lookup requires an explicit PATH")
+	}
+	for _, directory := range filepath.SplitList(pathValue) {
+		if !filepath.IsAbs(directory) {
+			continue
+		}
+		candidate := filepath.Join(directory, executable)
+		info, err := os.Stat(candidate)
+		if err == nil && info.Mode().IsRegular() && info.Mode()&0111 != 0 {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("process plugin executable was not found in the explicitly configured PATH")
 }
 
 type boundedCapture struct {
