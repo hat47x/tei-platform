@@ -65,3 +65,10 @@ jobs:
         run: |
           set -euo pipefail
           node --test reference/application-composition/e25_crossrepo_requalification.test.mjs
+
+      - name: E27の既存構成と残余選択を観測
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e27_residual_selection_audit.test.mjs
+          node reference/application-composition/e27_residual_selection_audit.mjs . > /dev/null
