@@ -900,6 +900,6 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 - 成功時の識別子は`CURRENT_MAIN_CROSS_LANE_SMOKE_ONLY_NO_PRODUCT_GATE`。**特定mainの横断回帰試験**であり、各PRのexact-head統合資格やG0〜G4の合格ではない。
 - 実験はscratchでテスト用Decisionを生成する。**Human Acceptanceの代替ではない**。
 - Command後の合成Observationは**独立した実Database readではない**。E2の保存・Host権限・Schema互換、第二Targetの合格には用いない。
-- full checkoutを利用できない現環境では、この改修後の`bash -n`／Node／Go／full Health／live HTTPの実行PASSは未取得。**コード変更を含む本PR #1274はDraftで保持する**。資格取得はcurrent PR headと最新mainの正確な一致、clean pre/post、trusted full`tools/repository-health-check.sh`と独立確認を要求する。
+- full checkoutを利用できない現環境では、この改修後の`bash -n`／Node／Go／全体健全性検査／実HTTPの実行PASSは未取得。**コード変更を含む本PR #1274はDraftで保持する**。2026-10-12に更新された現行`AGENTS.md`は、全体健全性検査をすべてのPRの統合条件とはせず、変更範囲に対応する試験・静的解析・境界値・既存動作との照合、および未実施理由と危険性の明示を求める。本PRの変更範囲には少なくともシェル構文、旧モードとの互換性、mainモードでの旧pin拒否、実行前後の不変性を確認する必要がある。`compose-smoke.sh`が**実際に実行された際**に全体健全性検査も含める設計と、**このPRの統合にそれを一律必須とすること**は区別する。実行していない試験をPASSとは記載しない。
 
 **次の作業の入口**: 新しい資格検査器を追加するのではなく、既存`compose-smoke.sh`の`integrated-main`でE0/E1-Aを実行し、実測結果を#1119と#1163へ提出する。その後、#1262の修正を独立に資格確認・統合してから必要なら同じ入口を再実行する。未実施のE1-B/E2/G3/G4を推定で埋めない。
