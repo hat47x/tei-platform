@@ -27,14 +27,14 @@ func invokeProductPinned(t *testing.T, ctx context.Context, host *pruntime.Pinne
 	identity := plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"}
 	capabilityID := core.MustCanonicalID("process.reference")
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
+		Environment:           core.MustCanonicalID("reference"),
 		PluginLockFingerprint: "pinned-product-reference-lock",
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin: identity, DescriptorFingerprint: "pinned-product-descriptor",
 			Boundary: pruntime.BoundaryProcess, Trust: pruntime.TrustExternalProcess,
 			Command: path, Args: []string{referenceArgvMarker},
 			SandboxPolicy: sandbox,
-			Artifact: plugin.Artifact{Digest: digest, SignatureRef: signature, Provenance: provenance},
+			Artifact:      plugin.Artifact{Digest: digest, SignatureRef: signature, Provenance: provenance},
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
 			Plugin: identity,
@@ -47,15 +47,15 @@ func invokeProductPinned(t *testing.T, ctx context.Context, host *pruntime.Pinne
 	}
 	plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
 	adapter := pruntime.DeploymentExecutor{
-		Plan: plan,
-		Registry: pruntime.Registry{Verifier: host, Processes: host},
+		Plan:         plan,
+		Registry:     pruntime.Registry{Verifier: host, Processes: host},
 		CapabilityID: capabilityID,
 	}
 	return adapter.Execute(ctx, executor.Command{
 		ID: "pinned-production-reference", ActionID: "sales_expand/apply",
 		IdempotencyKey: "pinned-production-once",
-		Kind: string(deployment.ActionDatabaseRelease),
-		Database: core.MustCanonicalID("sales_core"), Version: "1.0.0",
+		Kind:           string(deployment.ActionDatabaseRelease),
+		Database:       core.MustCanonicalID("sales_core"), Version: "1.0.0",
 	})
 }
 
