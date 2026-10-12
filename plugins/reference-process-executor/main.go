@@ -15,6 +15,9 @@ const (
 	referenceArgvMarker = "--tei-reference-marker=argv value preserved"
 )
 
+// A link-time marker for reference-only binary generation tests; not protocol data.
+var referenceRevision = "v1"
+
 // These private structures select only fields needed from the current process
 // wire format. They are not a second normative definition of the TEI contract.
 type processRequest struct {
@@ -109,7 +112,7 @@ func serve(input io.Reader, output io.Writer, args []string) error {
 		ActionID:       command.ActionID,
 		IdempotencyKey: command.IdempotencyKey,
 		Outcome:        "accepted",
-		Message:        "reference process accepted deployment intent; argv=" + referenceArgvMarker,
+		Message:        "reference process accepted deployment intent; argv=" + referenceArgvMarker + "; revision=" + referenceRevision,
 		ExternalRef:    "reference-process://" + command.ID,
 	}
 	payload, err := json.Marshal(ack)
