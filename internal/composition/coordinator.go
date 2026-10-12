@@ -7,7 +7,10 @@ import (
 	"sync"
 )
 
-var ErrCoordinatorInvalid = errors.New("invalid composition coordinator operation")
+var (
+	ErrCoordinatorInvalid = errors.New("invalid composition coordinator operation")
+	ErrReapBusy           = errors.New("retirement reaper already running")
+)
 
 // Lifecycle describes the initialization and readiness checks of one new
 // runtime generation. Prepare must register all acquired transient resources
@@ -27,6 +30,7 @@ type Coordinator struct {
 	router  *Router
 	guard   func(Binding) error
 	retired []*Retired
+	reaping bool
 }
 
 func NewCoordinator(router *Router, guard func(Binding) error) (*Coordinator, error) {
@@ -61,8 +65,6 @@ func (c *Coordinator) stage(ctx context.Context, expected uint64, next Binding, 
 	if c == nil || ctx == nil || lifecycle.Prepare == nil || lifecycle.Ready == nil || !next.valid() {
 		return ErrCoordinatorInvalid
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -75,15 +77,21 @@ func (c *Coordinator) stage(ctx context.Context, expected uint64, next Binding, 
 		err = ctx.Err()
 	}
 	if err == nil {
-		if restore {
-			err = c.router.Activate(expected, next, scope, c.guard)
-		} else {
-			var old *Retired
-			old, err = c.router.Publish(expected, next, scope, c.guard)
-			if err == nil {
-				c.retired = append(c.retired, old)
+		// Never hold the coordination lock while running plugin Prepare/Ready.
+		// Withdrawal must remain possible during a hung or slow stage.
+		c.mu.Lock()
+		if err = ctx.Err(); err == nil {
+			if restore {
+				err = c.router.Activate(expected, next, scope, c.guard)
+			} else {
+				var old *Retired
+				old, err = c.router.Publish(expected, next, scope, c.guard)
+				if err == nil {
+					c.retired = append(c.retired, old)
+				}
 			}
 		}
+		c.mu.Unlock()
 	}
 	if err != nil {
 		return errors.Join(err, scope.Close())
@@ -107,33 +115,51 @@ func (c *Coordinator) Withdraw(expected uint64) error {
 	return nil
 }
 
-// Reap drains and cleans up queued retired generations in retirement order.
-// Cancellation leaves the active retirement in the queue for a later retry.
-// A cleanup error is reported, but a completed cleanup is not retried.
+// Reap drains and cleans up retired generations in order. The coordinator
+// lock is released while waiting for in-flight work or running disposers, so
+// emergency Withdraw and later replacements are not blocked by cleanup.
+// Only one Reap may run at a time; cancellation retains unfinished retirement.
 func (c *Coordinator) Reap(ctx context.Context) error {
 	if c == nil || ctx == nil {
 		return ErrCoordinatorInvalid
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	if c.reaping {
+		c.mu.Unlock()
+		return ErrReapBusy
+	}
+	c.reaping = true
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		c.reaping = false
+		c.mu.Unlock()
+	}()
 	var failures []error
-	for len(c.retired) > 0 {
+	for {
 		if err := ctx.Err(); err != nil {
 			return errors.Join(append(failures, err)...)
 		}
-		err := c.retired[0].Drain(ctx)
+		c.mu.Lock()
+		if len(c.retired) == 0 {
+			c.mu.Unlock()
+			return errors.Join(failures...)
+		}
+		old := c.retired[0]
+		c.mu.Unlock()
+		err := old.Drain(ctx)
 		if ctx.Err() != nil {
 			return errors.Join(append(failures, ctx.Err())...)
 		}
-		// Scope.Close may report irreversible cleanup failures. Keep the
-		// error in Evidence but do not repeat the failed inverse.
+		c.mu.Lock()
+		// Completed cleanup (including a failed inverse) is not retried.
 		c.retired[0] = nil
 		c.retired = c.retired[1:]
+		c.mu.Unlock()
 		if err != nil {
 			failures = append(failures, err)
 		}
 	}
-	return errors.Join(failures...)
 }
 
 func (c *Coordinator) PendingRetirements() int {
