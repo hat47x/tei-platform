@@ -1,0 +1,51 @@
+# Local CPU Reuse Discovery — deterministic R0/R1 Reference
+
+Status: **research-only, synthetic fixtures, not production or TEI Canonical integration** (2026-10-13).
+Design owner: [LOCAL_CPU_COMPONENT_REUSE.md](../../plan/research/LOCAL_CPU_COMPONENT_REUSE.md); related TEI #843, #876, #997, #998, #267, #1121, and SEI #543 / #546.
+
+## Purpose
+
+Test a narrow part of reuse discovery **without an LLM, training, embeddings, or network**. It compares caller-provided, pre-extracted feature records from different Applications. It ranks a bounded pair list and keeps `reuse_candidate`, `pattern_candidate`, `needs_semantic_review` and `incompatible` separate. A score derived from labels/IDs is a lexical hint, **not confidence, semantic authority, or an acceptance decision**.
+
+This is **not** a system that extracts trustworthy contract fingerprints from actual TEI Source. A caller cannot claim Verified/Accepted semantics simply by providing an ID and fingerprint. An upstream accepted-source resolver, source provenance verification, authorization, and downstream #267 acceptance/reload/conformance remain to be implemented/integrated. Exact ID/fingerprint equality in these fixtures illustrates what the comparison would do *after trusted projection*, not proof of semantic equivalence across real applications.
+
+## Research observation schema (not Canonical)
+
+One object per observed component/function:
+- `id`, `application`, `kind` = `ui` or `logic`
+- `source: { locator, digest, revision }` to trace observed input
+- `contract?: { id, fingerprint }`: claimed exact contract metadata; **not cryptographically validated**
+- `signature: { inputs: [{name,type,nullable}], outputs: [...], effects: [], failures: [] }`
+- for UI only: `platform: { target, framework }`
+- optional `labels: []` for low-authority lexical hints
+
+The comparator never writes a Source, runs Actions, modifies Canonical, or calls a model. It also never establishes whether two business rules are genuinely the same; a `reuse_candidate` is a *reviewable suggestion*, not an automatic substitution.
+
+Pair rules, in priority order:
+1. Different function kinds or incompatible input/output/effect/failure shapes: direct implementation reuse is incompatible.
+2. Missing contract ID/fingerprint or different contract IDs: semantic review required, even with matching names.
+3. Same ID but different fingerprints: contract drift; **no implicit fallback**.
+4. UI with matching contract/shape but different Target/Framework: pattern-level candidate only, not direct renderer/code reuse.
+5. Identical declared contract/fingerprint/shape on a compatible Target: possible direct component candidate, requiring external verification and acceptance.
+
+Revision and Source traces are retained for review; this Reference does **not** perform real current-revision checks. Configurable variations and migration adapters require a later design; "incompatible" means **not a direct drop-in** under the tiny Reference rules.
+
+## Run the tests
+
+```sh
+node --test reference/local-cpu-reuse/compare-candidates.test.mjs
+```
+
+Local authoring environment Node.js 22.16.0: **14 passed, 0 failed** (2026-10-13). GitHub checkout/exact-PR-head execution and full Repository-health have not been performed; test status is **local-only evidence**, not product qualification.
+
+The tests use **invented** Application names, simplified UI and Action signatures and **synthetic/noncryptographic** digests. They check same-contract candidates, deceptively similar names, changed effects/fingerprints, UI framework differences, unknown contract, deterministic output, duplicate IDs and out-of-scope output filtering. These are not two deployed business systems, and the tests do not claim real savings, performance scalability or model accuracy.
+
+### Authorization boundary
+
+`allowedApplications` is a **filter of already-authorized input**. It does not authenticate users or grant project access and cannot stop an upstream caller from fetching prohibited data first. The production integration must enforce access policy **before features are extracted or supplied to this Reference**; excluded data must not enter the comparator process or training corpus in the first place.
+
+## Next grounded experiment
+
+Select two **explicitly authorized** TEI Application Reference sources; construct a read-only feature projection with true Source revision, verified Contract IDs/fingerprints, Application identity and documented unknown fields; compare expected review decisions against deterministic output. Preserve records that are unrelated, surface-similar but semantically incompatible, and cross-framework similarities. Report candidate recall, false reuse suggestions, unknown/abstention, review cost, peak memory and p50/p95 CPU latency separately.
+
+Avoid new TEI-LD teacher/model-training branches: #843 is issue-only subject to #876 and #267 qualification/Acceptance requirements. Do not merge or enable this Reference by claiming its synthetic test proves a real cross-Application component extraction.
