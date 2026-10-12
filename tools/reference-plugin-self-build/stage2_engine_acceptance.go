@@ -32,9 +32,9 @@ type referenceStage2HostRegistration struct {
 }
 
 type referenceStage2Acceptance struct {
-	Engine                       pruntime.RuntimeEngineIdentity
-	LockFingerprint              string
-	HostRegistrationFingerprint  string
+	Engine                      pruntime.RuntimeEngineIdentity
+	LockFingerprint             string
+	HostRegistrationFingerprint string
 }
 
 func readReferenceStage2JSON(path string, target any) error {
@@ -137,10 +137,10 @@ func (acceptance referenceStage2Acceptance) PolicyFingerprint(stage2Plan transfo
 		return "", err
 	}
 	return referenceStage2Fingerprint(struct {
-		Schema                    string `json:"schema"`
-		LockFingerprint           string `json:"lockFingerprint"`
+		Schema                      string `json:"schema"`
+		LockFingerprint             string `json:"lockFingerprint"`
 		HostRegistrationFingerprint string `json:"hostRegistrationFingerprint"`
-		Stage2PlanFingerprint     string `json:"stage2PlanFingerprint"`
+		Stage2PlanFingerprint       string `json:"stage2PlanFingerprint"`
 	}{
 		Schema:                      "tei.reference.stage2-runtime-policy/v1",
 		LockFingerprint:             acceptance.LockFingerprint,
