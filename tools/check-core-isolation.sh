@@ -15,26 +15,30 @@ if ! command -v go >/dev/null 2>&1; then
   echo 'error: go is not on PATH' >&2
   exit 2
 fi
+
 source_dir="$repo_root/internal/composition"
-if [[ ! -d "$source_dir" ]] || ! compgen -G "$source_dir/*.go" >/dev/null; then
-  echo 'error: expected Go sources under internal/composition' >&2
+if [[ ! -d "$source_dir" ]] ||
+  [[ -z "$(find "$source_dir" -type f -name '*.go' ! -name '*_test.go' -print -quit)" ]]; then
+  echo 'error: expected production Go sources under internal/composition' >&2
   exit 2
 fi
 
 probe_dir="$(mktemp -d)"
 trap 'rm -rf "$probe_dir"' EXIT
-cp -R "$source_dir"/. "$probe_dir"/
-if [[ -f "$probe_dir/go.mod" || -f "$probe_dir/go.work" ]] || [[ -n "$(find "$probe_dir" -type l -print -quit)" ]]; then
-  echo 'error: nested module or symlink in isolated sources' >&2
+module_dir="$probe_dir/module"
+mkdir -p "$module_dir" "$probe_dir/cache" "$probe_dir/modules" "$probe_dir/home"
+cp -R "$source_dir"/. "$module_dir"/
+if [[ -n "$(find "$module_dir" \( -name go.mod -o -name go.work -o -type l \) -print -quit)" ]]; then
+  echo 'error: nested Go module, workspace or symlink in isolated sources' >&2
   exit 2
 fi
-printf 'module tei-core-composition-probe\n\ngo 1.23.2\n' > "$probe_dir/go.mod"
-mkdir -p "$probe_dir/cache" "$probe_dir/modules" "$probe_dir/home"
+printf 'module tei-core-composition-probe\n\ngo 1.23.2\n' > "$module_dir/go.mod"
+
 (
-  cd "$probe_dir"
+  cd "$module_dir"
   export GOENV=off GOWORK=off GOFLAGS= GO111MODULE=on GOTOOLCHAIN=local
   export GOPROXY=off GOSUMDB=off
   export GOPATH="$probe_dir/home" GOMODCACHE="$probe_dir/modules" GOCACHE="$probe_dir/cache"
-  go test -count=1 .
-  go vet .
+  go test -count=1 ./...
+  go vet ./...
 )
