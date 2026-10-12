@@ -53,7 +53,25 @@ func (c Catalog) resolveBundle(req environment.ExtensionRequirement) (Bundle, er
 	return matches[0], nil
 }
 
+// validateEnvironmentSelection rejects ambiguity within one local selector list.
+// It must run before bundle expansion: multiple bundles may legitimately share
+// the same Plugin, and a directly selected Plugin may also be bundle-provided.
+func validateEnvironmentSelection(requirements []environment.ExtensionRequirement) error {
+	normalized := make([]Requirement, len(requirements))
+	for i, req := range requirements {
+		normalized[i] = Requirement{Plugin: req.ID, CompatibleMajor: req.CompatibleMajor}
+	}
+	return ValidateRequirements(normalized)
+}
+
 func (c Catalog) ResolveEnvironment(env environment.Environment) (ResolvedSet, error) {
+	if err := validateEnvironmentSelection(env.Plugins); err != nil {
+		return ResolvedSet{}, fmt.Errorf("environment %s plugin selections: %w", env.ID, err)
+	}
+	if err := validateEnvironmentSelection(env.Bundles); err != nil {
+		return ResolvedSet{}, fmt.Errorf("environment %s bundle selections: %w", env.ID, err)
+	}
+
 	var queue []Requirement
 	for _, p := range env.Plugins {
 		queue = append(queue, Requirement{Plugin: p.ID, CompatibleMajor: p.CompatibleMajor})
