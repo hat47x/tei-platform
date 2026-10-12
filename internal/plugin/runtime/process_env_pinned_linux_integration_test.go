@@ -71,7 +71,7 @@ func TestPinnedLinuxProcessEnvironmentIsHostExplicit(t *testing.T) {
 			spec := pruntime.SandboxSpec{
 				Command: command,
 				Profile: pruntime.SandboxProfile{
-					DenyNetworkByDefault: true,
+					DenyNetworkByDefault:    true,
 					DenyFilesystemByDefault: true,
 					SecretInjections: []pruntime.SecretInjection{{
 						Scope: "credential", ResourceID: core.MustCanonicalID("prod.secret"),
