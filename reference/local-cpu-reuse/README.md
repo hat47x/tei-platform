@@ -33,10 +33,11 @@ Revision and Source traces are retained for review; this Reference does **not** 
 ## Run the tests
 
 ```sh
-node --test reference/local-cpu-reuse/compare-candidates.test.mjs
+node --test reference/local-cpu-reuse/compare-candidates*.test.mjs
+node --test reference/local-cpu-reuse/observe-tei-pattern.test.mjs
 ```
 
-Local authoring environment Node.js 22.16.0: **14 passed, 0 failed** (2026-10-13). GitHub checkout/exact-PR-head execution and full Repository-health have not been performed; test status is **local-only evidence**, not product qualification.
+On 2026-10-13 the 14 original cases and 3 additional regression cases were **17/17 PASS in a sandboxed JavaScript evaluator** loaded from the exact GitHub blob contents (not a Node.js repo checkout). The observer's seven cases passed locally with pinned copies of the actual TEI Source contents on Node.js 22.16.0. GitHub exact-PR-head Node execution and full Repository-health remain **NOT_PROVEN**; none of these results is product qualification.
 
 The tests use **invented** Application names, simplified UI and Action signatures and **synthetic/noncryptographic** digests. They check same-contract candidates, deceptively similar names, changed effects/fingerprints, UI framework differences, unknown contract, deterministic output, duplicate IDs and out-of-scope output filtering. These are not two deployed business systems, and the tests do not claim real savings, performance scalability or model accuracy.
 
