@@ -60,7 +60,7 @@ go test -race -count=1 ./reference/effect-fence
 
 ## 未成立の事項と次の作業
 
-1. 既存の認可Capability、BindingおよびDriverとの実接続。認証済み主体を偽装せず、実際のGrantとScopeを照合する。
+1. 既存の認可Capabilityの結果と書込み要求の厳密な照合は、参照用の`PrepareWithLegacyAuthorization`で着手済み。残るのはBinding／Driver／複数実行先の認証済み文脈との実接続、そして認可版を含む実Providerの確定境界への接続。
 2. 永続的な保存先を一つ選び、トランザクションまたは条件付き更新で権限版・対象版・確定記録を照合する。権限版を別Storeでしか読めない場合は「同一確定境界で保証できない」と明示する。
 3. 権限失効、主体リンク変更、Store障害、認可Provider障害、取消、タイムアウト後の不明状態を区別した共通適合性試験。監査記録と機密情報の扱いも確認する。
 4. CLIとWebから同一のAdapterに到達する実試験。各経路の認証と実行文脈の検査を省略しない。
@@ -172,3 +172,22 @@ Goの`Permit`は、発行した保存先インスタンスと結び付けまし�
 GoからSQLiteへ接続する試験では、操作の事前検査後に**認可表を参照できない状態**を作り、確定処理が業務上の拒否（`denied`）や成功を返さず、実行エラーを返すことを確認します。この障害では更新も確定記録も残りません。表を復旧し、改めて認可版を取得した操作は確定できます。
 
 この試験は模擬認可表が属するSQLiteファイルの障害を扱います。実際の認可サービス停止、ネットワーク分断、外部APIへの送信結果が不明な障害を再現したものではありません。結果が不明な外部副作用を「何も起きなかった」と推定しないことが、別途必要です。
+
+## 既存認可の結果を受け取る参照接続口
+
+`legacy_authorization.go`の`PrepareWithLegacyAuthorization`は、既存の`security.authorize`を再利用し、主体・操作・対象が完全に一致する許可だけを`MemoryStore`の準備処理へ渡します。既存の認可規則は複製しません。入力主体と認証済み主体が異なる場合、認可アダプターを呼ぶ前に拒否します。
+
+既存認可が返す許可の型、機能ID、結果形式、三つの識別値を検査します。認可の拒否を業務上の拒否として扱い、認可サービスの障害や契約違反を実行エラーとして区別します。拒否理由の内部情報は公開しません。
+
+既存の利用者検索が**別の主体のレコードを返す不整合**も防ぐため、`internal/security/legacyauthorization/authorization.go`に主体IDの再照合を追加しました。契約違反の場合は、役割規則へ進まず実行エラーとします。
+
+この接続口は、永続的な原子性の実装ではありません。既存の`AuthorizationGrant`に認可版はなく、メモリ内の模擬権限と実際の認可正本は結び付いていません。永続保証を要求する処理は引き続き`GuaranteeUnavailableError`で停止します。
+
+対象の試験は次のように実行します。いずれも**変更範囲の検証**であり、リポジトリ全体の健全性検証ではありません。
+
+```bash
+go test -race -count=10 ./reference/effect-fence ./internal/security/legacyauthorization
+go vet ./reference/effect-fence ./internal/security/legacyauthorization
+```
+
+[認可結果と確定境界の接続メモ](INTEGRATION.md)に、今回成立した部分と実Providerへ持ち越した条件をまとめています。
