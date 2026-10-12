@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -39,9 +40,9 @@ func TestSelfBuildCLIProcessFailureBoundary(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name              string
-		mode              string
-		mismatchExpected  bool
+		name             string
+		mode             string
+		mismatchExpected bool
 	}{
 		{name: "compared outputs differ", mode: "mismatch", mismatchExpected: true},
 		{name: "build failed before comparison", mode: "execution-error"},
@@ -74,8 +75,8 @@ func TestSelfBuildCLIProcessFailureBoundary(t *testing.T) {
 				t.Fatalf("CLI stdout is not a readable mismatch Evidence JSON: %v", err)
 			}
 			var trailing any
-			if err := decoder.Decode(&trailing); !errors.Is(err, os.ErrClosed) && err == nil {
-				t.Fatal("mismatch CLI printed more than one JSON value")
+			if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+				t.Fatalf("mismatch CLI printed extra or malformed output: %v", err)
 			}
 			if record.Schema != selfBuildMismatchSchema ||
 				record.Stage != "transform-stage1-stage2-output" ||
