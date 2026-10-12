@@ -14,15 +14,18 @@ import (
 	"tei/internal/workspace"
 )
 
-// ObservedArtifact is a fingerprint of bytes consumed by workspace.Load, not
+// ObservedArtifact is a read-only fingerprint of Workspace input bytes, not
 // a write lock, an authority token, or evidence of a race-free file read.
+// Parsed files, native managed files, and the Workspace manifest may each
+// have been observed at different instants.
 type ObservedArtifact struct {
 	Path        string `json:"path"`
 	Fingerprint string `json:"fingerprint"`
 }
 
-// SourceObservation is derived from the existing Workspace loader and Source
-// Index. WorkspaceRoot is sensitive local metadata and must not be sent to an
+// SourceObservation combines the existing Workspace loader/Source Index
+// with its selected manifest fingerprint. WorkspaceRoot is sensitive local
+// metadata and must not be sent to an
 // external AI or telemetry destination without a separate disclosure decision.
 type SourceObservation struct {
 	WorkspaceRoot string             `json:"workspaceRoot"`
@@ -100,9 +103,9 @@ func observeWorkspaceManifest(root string) (ObservedArtifact, error) {
 			return ObservedArtifact{}, fmt.Errorf("Workspace manifest is not a regular file")
 		}
 		// A bounded Host observation, not a new Workspace parser.
-		content, readErr := io.ReadAll(io.LimitReader(file, 2<<20+1))
+		content, readErr := io.ReadAll(io.LimitReader(file, (2<<20)+1))
 		closeErr := file.Close()
-		if readErr != nil || closeErr != nil || len(content) > 2<<20 {
+		if readErr != nil || closeErr != nil || len(content) > (2<<20) {
 			return ObservedArtifact{}, fmt.Errorf("cannot read bounded Workspace manifest")
 		}
 		return ObservedArtifact{Path: name, Fingerprint: sourceindex.Fingerprint(content)}, nil
