@@ -139,9 +139,9 @@ func TestAssertUniqueByOptionalCollection(t *testing.T) {
 	source.Program.Output = definition
 
 	for _, tc := range []struct {
-		name string
+		name       string
 		definition map[string]any
-		wantError string
+		wantError  string
 	}{
 		{name: "missing requirements", definition: map[string]any{}},
 		{name: "null requirements", definition: map[string]any{"requires": nil}},
