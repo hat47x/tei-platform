@@ -134,7 +134,7 @@ node reference/studio-authoring/cli.mjs edit-form \
 
 ### 実Chromeによる編集フォーム操作の自動回帰
 
-既存のWeb Target用Chrome CIと同じ `playwright-core@1.56.1` とGitHub-hosted Ubuntu runnerのChromeを使用し、`edit-form -workspace` が実Workspaceから生成した **ER・表の2画面**を、実ChromeのDOM上で操作する自動試験を追加しています。`reference/studio-authoring/real-browser.mjs` は候補ID・意図・対象値の入力、フォーム送信、CSP付きインラインスクリプトの実行、出力JSONの検査、`propose`→`review-edit` による**既存のGo共通審査**への手渡しを行います。外部HTTP通信が無いこと、レビュー前後のmodelRevision不変も確認し、実画面のスクリーンショットと判定JSONをCIに短期保存します。インストールは作業領域外に限定し、ソースツリーを変更しません。
+既存のWeb Target用Chrome CIと同じ `playwright-core@1.56.1` とGitHub-hosted Ubuntu runnerのChromeを使用し、`edit-form -workspace` が実Workspaceから生成した **ER・表の2画面**を、実ChromeのDOM上で操作する自動試験を追加しています。`reference/studio-authoring/real-browser.mjs` は候補ID・意図・対象値の入力、フォーム送信、CSP付きインラインスクリプトの実行、出力JSONの検査、`propose`→`review-edit` による**既存のGo共通審査**への手渡しを行います。外部HTTP通信が無いこと、レビュー前後のmodelRevision不変も確認し、実画面のスクリーンショットと判定JSONをCIに短期保存します。 さらに、実Chromeでセレクト要素へ存在しないData／Applicationの選択肢を挿入する改変負例を両画面で試し、画面側の入力制限に依存せず、Studio Bridgeが`INVALID_RELATION_PROPOSAL`と`APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE`で拒否すること、拒否後のモデル版が不変であることを確認します。インストールは作業領域外に限定し、ソースツリーを変更しません。
 
 ```sh
 # Chromeのある環境で。依存はWorkspace外へ固定して導入
