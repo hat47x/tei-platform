@@ -12,30 +12,30 @@ import (
 )
 
 const (
-	ruleSourceHeader = "tei-model-rules v0"
-	maxRuleSourceBytes = 256 * 1024
-	maxRuleSourceEntries = 128
+	ruleSourceHeader     = "tei-model-rules v0"
+	maxRuleSourceBytes    = 256 * 1024
+	maxRuleSourceEntries  = 128
 )
 
 var ruleSourceTokens = regexp.MustCompile(`\S+`)
 
 // ModelRuleSourceEntry locates an explicitly authored, unaccepted rule.
 type ModelRuleSourceEntry struct {
-	RuleID string `json:"ruleId"`
-	Kind string `json:"kind"`
-	DraftStatus string `json:"draftStatus"`
+	RuleID      string            `json:"ruleId"`
+	Kind        string            `json:"kind"`
+	DraftStatus string            `json:"draftStatus"`
 	SourceRange sourceindex.Range `json:"sourceRange"`
 }
 
 // ModelRuleSourceReview indexes proposed rule identities in a separate,
 // non-canonical reference Source Index. It does not alter Workspace Source Index.
 type ModelRuleSourceReview struct {
-	Schema string `json:"schema"`
-	DraftFingerprint string `json:"draftFingerprint"`
-	Fingerprint string `json:"fingerprint"`
-	SourceIndex sourceindex.Index `json:"sourceIndex"`
-	Entries []ModelRuleSourceEntry `json:"entries"`
-	Unresolved []string `json:"unresolved"`
+	Schema           string                 `json:"schema"`
+	DraftFingerprint string                 `json:"draftFingerprint"`
+	Fingerprint      string                 `json:"fingerprint"`
+	SourceIndex      sourceindex.Index      `json:"sourceIndex"`
+	Entries          []ModelRuleSourceEntry `json:"entries"`
+	Unresolved       []string               `json:"unresolved"`
 }
 
 // ReviewLoadedWorkspaceRuleSource always reconstructs the typed draft from
@@ -60,12 +60,12 @@ func IndexModelRuleDraftSource(draft ModelRuleDeclarationDraft, sourcePath strin
 		!validModelEvidenceFingerprint(draft.ModelReviewFingerprint) ||
 		!validModelEvidenceFingerprint(draft.SourceAuditFingerprint) ||
 		draft.Fingerprint != digestHypothesisJSON(ModelRuleDeclarationDraft{
-			Schema: draft.Schema,
-			CaseID: draft.CaseID,
-			ModelRevision: draft.ModelRevision,
+			Schema:                 draft.Schema,
+			CaseID:                 draft.CaseID,
+			ModelRevision:          draft.ModelRevision,
 			ModelReviewFingerprint: draft.ModelReviewFingerprint,
 			SourceAuditFingerprint: draft.SourceAuditFingerprint,
-			Declarations: draft.Declarations,
+			Declarations:           draft.Declarations,
 		}) {
 		return empty, fmt.Errorf("model rule draft schema or self-fingerprint mismatch")
 	}
@@ -91,7 +91,7 @@ func IndexModelRuleDraftSource(draft ModelRuleDeclarationDraft, sourcePath strin
 		desired[d.ProposedRuleID] = d
 	}
 	index := sourceindex.Index{
-		Artifacts: []sourceindex.Artifact{artifact},
+		Artifacts:  []sourceindex.Artifact{artifact},
 		References: make([]sourceindex.Reference, 0, len(desired)),
 	}
 	entries := make([]ModelRuleSourceEntry, 0, len(desired))
@@ -145,13 +145,16 @@ func IndexModelRuleDraftSource(draft ModelRuleDeclarationDraft, sourcePath strin
 					return empty, err
 				}
 				index.References = append(index.References, sourceindex.Reference{
-					Subject: sourceindex.Subject{Kind: "reference-" + d.Kind, ID: id},
+					Subject:      sourceindex.Subject{Kind: "reference-" + d.Kind, ID: id},
 					ArtifactPath: sourcePath,
-					Range: rng,
-					Role: sourceindex.RoleAuthoring,
+					Range:        rng,
+					Role:         sourceindex.RoleAuthoring,
 				})
 				entries = append(entries, ModelRuleSourceEntry{
-					RuleID: id, Kind: d.Kind, DraftStatus: d.Status, SourceRange: rng,
+					RuleID:      id,
+					Kind:        d.Kind,
+					DraftStatus: d.Status,
+					SourceRange: rng,
 				})
 				seen[id] = true
 			}
@@ -184,10 +187,10 @@ func IndexModelRuleDraftSource(draft ModelRuleDeclarationDraft, sourcePath strin
 		}
 	}
 	out := ModelRuleSourceReview{
-		Schema: "tei.reference.model-rule-source-review/v0",
+		Schema:           "tei.reference.model-rule-source-review/v0",
 		DraftFingerprint: draft.Fingerprint,
-		SourceIndex: index,
-		Entries: entries,
+		SourceIndex:      index,
+		Entries:          entries,
 		Unresolved: []string{
 			"rule file is unaccepted external authoring input, not a Workspace Semantic declaration",
 			"business validity, actor authority, and Shared Acceptance are not established",
