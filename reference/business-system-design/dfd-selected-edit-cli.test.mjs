@@ -17,17 +17,26 @@ const projection={
   schemaVersion:'business-dfd-projection-v0',authority:'derived-read-only',
   canonicalProcedureUsed:false,procedureId:procedure.procedure.id,diagnostics:[],
   roleAuthorizationBinding:'not-inferred',
-  steps:procedure.steps.map(s=>({id:s.id,label:s.businessAction,realization:s.realization,
+  steps:procedure.steps.map((s,i)=>({id:s.id,label:s.businessAction,realization:s.realization,
     functionRefs:(s.applicationPatterns||[]).map(id=>({id,status:'resolved'})),
-    noApplicationFunction:(s.applicationPatterns||[]).length===0})),
-  triggers:review.triggers.map(x=>({...x,authority:'proposal',runtimeBinding:'unbound'})),
-  flows:review.flows.map(x=>({...x,authority:'proposal'})),
+    noApplicationFunction:(s.applicationPatterns||[]).length===0,
+    source:{file:'order-approval-procedure.json',pointer:'/steps/'+i}})),
+  triggers:review.triggers.map((x,i)=>({...x,authority:'proposal',runtimeBinding:'unbound',
+    source:{file:'review-proposal.json',pointer:'/triggers/'+i}})),
+  flows:review.flows.map((x,i)=>({...x,authority:'proposal',
+    source:{file:'review-proposal.json',pointer:'/flows/'+i}})),
   information:{
-    roles:review.businessRoles.map(x=>({...x,authority:'proposal'})),
-    externalParties:review.externalParties.map(x=>({...x,authority:'proposal'})),
-    stores:review.stores.map(x=>({...x,authority:'proposal',dataStatus:x.semanticData?'resolved':'not-declared'})),
-    responsibilities:review.responsibilities.map(x=>({...x,authority:'proposal'})),
-    informationFlows:review.informationFlows.map(x=>({...x,authority:'proposal'}))
+    roles:review.businessRoles.map((x,i)=>({...x,authority:'proposal',
+      source:{file:'review-proposal.json',pointer:'/businessRoles/'+i}})),
+    externalParties:review.externalParties.map((x,i)=>({...x,authority:'proposal',
+      source:{file:'review-proposal.json',pointer:'/externalParties/'+i}})),
+    stores:review.stores.map((x,i)=>({...x,authority:'proposal',
+      dataStatus:x.semanticData?'resolved':'not-declared',
+      source:{file:'review-proposal.json',pointer:'/stores/'+i}})),
+    responsibilities:review.responsibilities.map((x,i)=>({...x,authority:'proposal',
+      source:{file:'review-proposal.json',pointer:'/responsibilities/'+i}})),
+    informationFlows:review.informationFlows.map((x,i)=>({...x,authority:'proposal',
+      source:{file:'review-proposal.json',pointer:'/informationFlows/'+i}}))
   }
 };
 function scratch(run) {
