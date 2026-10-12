@@ -14,7 +14,7 @@ import (
 // can silently replace it with U+FFFD.
 func TestParseJSONRejectsEveryUnpairedSurrogate(t *testing.T) {
 	for unit := 0xd800; unit <= 0xdfff; unit++ {
-		raw := fmt.Sprintf(`"\\u%04x"`, unit)
+		raw := fmt.Sprintf(`"\u%04x"`, unit)
 		if _, err := transform.ParseJSON([]byte(raw)); err == nil {
 			t.Fatalf("accepted unpaired UTF-16 surrogate U+%04X", unit)
 		}
@@ -26,7 +26,7 @@ func TestParseJSONRejectsEveryUnpairedSurrogate(t *testing.T) {
 func TestParseJSONDecodesPairedSurrogateBoundaryValues(t *testing.T) {
 	for high := 0xd800; high <= 0xdbff; high++ {
 		for _, low := range []int{0xdc00, 0xdfff} {
-			raw := fmt.Sprintf(`"\\u%04x\\u%04x"`, high, low)
+			raw := fmt.Sprintf(`"\u%04x\u%04x"`, high, low)
 			value, err := transform.ParseJSON([]byte(raw))
 			if err != nil {
 				t.Fatalf("rejected pair U+%04X/U+%04X: %v", high, low, err)
@@ -59,7 +59,7 @@ func TestProgrammaticSourceRejectsMalformedSurrogate(t *testing.T) {
 	source.Program.Assertions = nil
 	source.Program.Output = transform.Expr{
 		Op: transform.OpLiteral,
-		Literal: json.RawMessage(`"\\uD800"`),
+		Literal: json.RawMessage(`"\uD800"`),
 	}
 	if _, err := transform.SourceFingerprint(source); err == nil {
 		t.Fatal("SourceFingerprint accepted an unpaired surrogate")
