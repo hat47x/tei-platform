@@ -241,26 +241,29 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if err != nil {
 		return evidence{}, err
 	}
-	goPath, err := exec.LookPath("go")
+	// Select the exact toolchain running this reference. Ambient PATH must not
+	// decide which Go builder is trusted for the same source.
+	goPath, err := filepath.EvalSymlinks(filepath.Join(runtime.GOROOT(), "bin", executableName("go")))
 	if err != nil {
-		return evidence{}, fmt.Errorf("locate Go builder: %w", err)
-	}
-	if resolved, resolveErr := filepath.EvalSymlinks(goPath); resolveErr == nil {
-		goPath = resolved
+		return evidence{}, fmt.Errorf("locate current Go builder: %w", err)
 	}
 	goBinaryDigest, err := hashFile(goPath)
 	if err != nil {
 		return evidence{}, fmt.Errorf("hash Go builder binary: %w", err)
 	}
+	toolchainEnv, err := buildEnvironment(os.Environ(), "")
+	if err != nil {
+		return evidence{}, fmt.Errorf("prepare Go toolchain environment: %w", err)
+	}
 	goVersionCmd := exec.Command(goPath, "version")
-	goVersionCmd.Env = buildEnvironment(os.Environ(), "")
+	goVersionCmd.Env = toolchainEnv
 	goVersionBytes, err := goVersionCmd.Output()
 	if err != nil {
 		return evidence{}, fmt.Errorf("read Go builder version: %w", err)
 	}
 	goVersion := strings.TrimSpace(string(goVersionBytes))
 	goRootCmd := exec.Command(goPath, "env", "GOROOT")
-	goRootCmd.Env = buildEnvironment(os.Environ(), "")
+	goRootCmd.Env = toolchainEnv
 	goRootBytes, err := goRootCmd.Output()
 	if err != nil {
 		return evidence{}, fmt.Errorf("resolve Go toolchain root: %w", err)
@@ -1050,7 +1053,11 @@ func resolveGoPackageSourceClosure(
 		packagePath,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
+	env, err := buildEnvironment(os.Environ(), stateDir)
+	if err != nil {
+		return nil, "", fmt.Errorf("prepare Go source closure environment: %w", err)
+	}
+	cmd.Env = env
 	raw, err := cmd.Output()
 	if err != nil {
 		var exitErr *exec.ExitError
@@ -1209,7 +1216,11 @@ func requireNoExternalModules(repo, goPath string, packages ...string) error {
 	args = append(args, packages...)
 	cmd := exec.Command(goPath, args...)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
+	env, err := buildEnvironment(os.Environ(), stateDir)
+	if err != nil {
+		return fmt.Errorf("prepare Go dependency environment: %w", err)
+	}
+	cmd.Env = env
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("resolve Reference Go dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
@@ -1330,7 +1341,11 @@ func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
 		packagePath,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
+	env, err := buildEnvironment(os.Environ(), stateDir)
+	if err != nil {
+		return fmt.Errorf("prepare Go build environment: %w", err)
+	}
+	cmd.Env = env
 	combined, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
@@ -1376,17 +1391,43 @@ func runNativePluginBuilder(repo, builderPath, output string) error {
 	return nil
 }
 
-func buildEnvironment(base []string, stateDir string) []string {
-	out := make([]string, 0, len(base)+12)
-	for _, entry := range base {
-		key := entry
-		if i := strings.IndexByte(entry, '='); i >= 0 {
-			key = entry[:i]
+// Only a small platform-specific set of Host values is allowed into a Go
+// subprocess. In particular no credential, locale, proxy, or PATH is inherited.
+func allowedHostEnvironmentForOS(base []string, goos string) ([]string, error) {
+	allow := map[string]struct{}{}
+	if goos == "windows" {
+		for _, key := range []string{"COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR"} {
+			allow[key] = struct{}{}
 		}
-		if strings.HasPrefix(key, "GO") || key == "CGO_ENABLED" {
+	}
+	values := make(map[string]string)
+	for _, entry := range base {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok {
 			continue
 		}
+		upper := strings.ToUpper(key)
+		if _, ok := allow[upper]; !ok {
+			continue
+		}
+		normalized := upper + "=" + value
+		if previous, exists := values[upper]; exists && previous != normalized {
+			return nil, fmt.Errorf("conflicting inherited Host environment for %s", upper)
+		}
+		values[upper] = normalized
+	}
+	out := make([]string, 0, len(values))
+	for _, entry := range values {
 		out = append(out, entry)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+func buildEnvironment(base []string, stateDir string) ([]string, error) {
+	out, err := allowedHostEnvironmentForOS(base, runtime.GOOS)
+	if err != nil {
+		return nil, err
 	}
 	out = append(out,
 		"CGO_ENABLED=0",
@@ -1402,14 +1443,29 @@ func buildEnvironment(base []string, stateDir string) []string {
 		"GOWORK=off",
 	)
 	if stateDir != "" {
+		if err := os.MkdirAll(stateDir, 0o755); err != nil {
+			return nil, fmt.Errorf("create isolated build state: %w", err)
+		}
+		home := filepath.Join(stateDir, "home")
+		temp := filepath.Join(stateDir, "tmp")
+		for _, dir := range []string{home, temp} {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return nil, fmt.Errorf("create isolated build directory: %w", err)
+			}
+		}
 		out = append(out,
 			"GOCACHE="+filepath.Join(stateDir, "cache"),
 			"GOMODCACHE="+filepath.Join(stateDir, "modcache"),
 			"GOPATH="+filepath.Join(stateDir, "gopath"),
+			"HOME="+home,
+			"USERPROFILE="+home,
+			"TMPDIR="+temp,
+			"TMP="+temp,
+			"TEMP="+temp,
 		)
 	}
 	sort.Strings(out)
-	return out
+	return out, nil
 }
 
 func requireCleanRepository(repo string) error {
