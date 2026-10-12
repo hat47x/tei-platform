@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          bash -x tools/check-transform-wasm-conformance.sh "$RUNNER_TEMP/tei-transform-wasm"
+          bash tools/check-transform-wasm-conformance.sh "$RUNNER_TEMP/tei-transform-wasm"
 
       - name: 実行後もソースが清浄であることを確認
         if: always()
