@@ -331,8 +331,8 @@ func TestCompositeKeyKnownMismatchOverridesUnknownInEitherKeyOrder(t *testing.T)
 	for _, reverse := range []bool{false, true} {
 		in := keyedInput()
 		in.Example.Base = append(in.Example.Base, Record{
-			ID:     "unrelated-partial-target",
-			Table:  "parent",
+			ID:    "unrelated-partial-target",
+			Table: "parent",
 			Values: map[string]json.RawMessage{
 				"number": json.RawMessage(`"B"`),
 			},
@@ -354,8 +354,8 @@ func TestCompositeKeyPartiallyMatchingCandidateRemainsUnresolved(t *testing.T) {
 	for _, reverse := range []bool{false, true} {
 		in := keyedInput()
 		in.Example.Base = append(in.Example.Base, Record{
-			ID:     "potential-second-target",
-			Table:  "parent",
+			ID:    "potential-second-target",
+			Table: "parent",
 			Values: map[string]json.RawMessage{
 				"number": json.RawMessage(`"A"`),
 			},
@@ -391,7 +391,7 @@ func TestKnownOneCardinalityContradictionWinsOverUnknownCandidate(t *testing.T) 
 	duplicate := copyRecord(in.Example.Base[0])
 	duplicate.ID = "second-definite-match"
 	in.Example.Base = append(in.Example.Base, duplicate, Record{
-		ID:     "third-potential-match",
+		ID:    "third-potential-match",
 		Table: "parent",
 		Values: map[string]json.RawMessage{
 			"number": json.RawMessage(`"A"`),
@@ -409,8 +409,8 @@ func TestCompositeKeyExplicitNullAndKnownMismatchAreOrderIndependent(t *testing.
 	for _, reverse := range []bool{false, true} {
 		in := keyedInput()
 		in.Example.Base = append(in.Example.Base, Record{
-			ID:     "null-but-disjoint",
-			Table:  "parent",
+			ID:    "null-but-disjoint",
+			Table: "parent",
 			Values: map[string]json.RawMessage{
 				"tenant": json.RawMessage("null"),
 				"number": json.RawMessage(`"definitely-other"`),
