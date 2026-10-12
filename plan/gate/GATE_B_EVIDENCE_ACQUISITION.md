@@ -266,9 +266,9 @@ Authentication
 
 ### 目的
 
-三つのRequired Evidenceが個別に再現可能なだけでなく、**同じcandidate revision R**へ収束したことを示します。
+三つの必須の検証根拠が個別に再現できるだけでなく、**同じ候補版R**で成立したことを示します。
 
-final runnerは `tools/reference-gate-b-final-evidence` です。具体起動条件はRunbookを正とします。
+最終確認の実行器は`tools/reference-gate-b-final-evidence`です。具体的な起動条件は実行手順書を正本とします。
 
 ### lane順序
 
@@ -282,11 +282,11 @@ final runnerは `tools/reference-gate-b-final-evidence` です。具体起動条
 final source check
 ```
 
-#310または#255が失敗した場合、不要なPostgreSQL fixture操作へ進みません。
+#310または#255が失敗した場合、不要なPostgreSQLの試験用構成要素の操作には進みません。
 
 ### final success
 
-final成功には少なくとも次を要求します。
+最終確認の成功には、少なくとも次を要求します。
 
 ```text
 evidenceNature = gate-b-three-lane-final-convergence
@@ -300,7 +300,7 @@ postRunRepository.revisionStable = true
 postRunRepository.workingTreeClean = true
 ```
 
-各laneには少なくとも:
+各検証経路には、少なくとも次を要求します。
 
 - `passed = true`
 - `repositoryRevision = R`
@@ -310,13 +310,13 @@ postRunRepository.workingTreeClean = true
 
 を要求します。
 
-final runnerが実際に読んだchild stdout exact bytesをRepository外へ保持し、そのSHA-256を`evidenceArtifactFingerprint`として記録します。fingerprintだけでEvidence本文や合否を代替しません。
+最終確認の実行器が実際に読み取った子処理の標準出力を、バイト列のままリポジトリの外に保存します。そのSHA-256を`evidenceArtifactFingerprint`として記録します。照合値だけで検証根拠の本文や合否を代わりに示すことはできません。
 
 ## Final runのexecution Evidence境界
 
 ### Repository source observation
 
-共有source observationは概念上次を同じHEAD観測窓で取得します。
+共通のソース状態の観測では、概念上、次の情報を同じHEADの観測期間内に取得します。
 
 ```text
 HEAD before
@@ -328,22 +328,22 @@ git ls-files -v -z
 HEAD after
 ```
 
-少なくとも次をfail closedで要求します。
+少なくとも次の条件を要求し、満たせなければ安全側に停止します。
 
-- HEAD stable
-- tracked / untracked / ignored local stateなし
-- tracked index entryが通常`H`のみ
-- full checkout
-- Repository / work tree / common dir / index / object store / namespace等のGit identity overrideなし
-- command-scope Git config injectionなし
+- HEADが変わらないこと
+- 追跡対象・追跡対象外・無視対象のローカル変更状態がないこと
+- 追跡対象の索引項目が通常の`H`だけであること
+- リポジトリ全体を取得していること
+- リポジトリ・作業ツリー・共通ディレクトリ・索引・オブジェクト保存先・名前空間など、Gitの識別情報の上書きがないこと
+- 命令単位でGitの設定を差し込んでいないこと
 
-source observation不能、HEAD drift、ignored local state、非標準index stateを成功Evidenceへ持ち込みません。
+ソースの状態を観測できない場合、HEADが変化した場合、無視対象のローカル状態や非標準の索引状態がある場合は、その結果を成功の検証根拠に含めません。
 
 ### Go environment
 
-final runnerのcompile前からRepository外のGo environment / workspace / flagsを暗黙入力へしません。
+最終確認の実行器では、コンパイルの前から、リポジトリ外のGoの環境設定・作業領域・フラグを暗黙の入力として使いません。
 
-actual final JSONでは少なくとも:
+実際の最終確認のJSONでは、少なくとも次を確認します。
 
 ```text
 goEnvironment.externalWorkspaceActive = false
@@ -355,9 +355,9 @@ goEnvironment.goEnvDisabled = true
 
 ### PostgreSQL secret exposure
 
-final launch environmentへdirect `TEI_TEST_POSTGRES_DSN`を置きません。
+最終確認を起動する環境へ`TEI_TEST_POSTGRES_DSN`を直接設定しません。
 
-Repository外の一行secret fileを指定し、final runnerはsecret-free clean-source preflight成功後にoriginal secret fileをstable single-openします。normalized DSN本文はmemoryに保持したうえで、Repository外owner-only temporary handoff fileへ複製します。
+リポジトリ外にある一行の秘密情報ファイルを指定します。最終確認の実行器は、秘密情報を使わないソースの事前確認に成功した後で、元の秘密情報ファイルを安定した形で一度だけ開きます。正規化したDSNの内容をメモリに保持し、所有者だけがアクセスできるリポジトリ外の一時的な引継ぎファイルへ複製します。
 
 ```text
 outer go run / compiler / linker
@@ -380,21 +380,21 @@ Go / Git probe / #310 / #255
   -> 以後DSN本文はmemoryのみ
 ```
 
-normal final runner return時にtemporary handoff directoryをcleanupします。process強制killやhost停止に対するOS-level完全消去までは保証せず、Repository外owner-only temporary scopeへ限定します。
+最終確認の実行器が通常終了した際には、一時的な引継ぎ用ディレクトリを後片付けします。プロセスの強制終了やホストの停止に対して、OSレベルで完全に消去できるとは保証しません。保存場所はリポジトリ外に限定し、所有者だけがアクセスできる一時領域を使います。
 
-DSN本文、credential、original secret path、handoff pathを通常Evidenceへ保存しません。
+DSNの内容、認証情報、元の秘密情報ファイルのパス、引継ぎファイルのパスを通常の検証根拠には保存しません。
 
-これらのenvironment / secret境界はEvidence natureを増やすものではなく、Required Evidence取得の再現性・least exposure条件です。
+これらの実行環境と秘密情報の境界は、検証根拠の種類を増やすものではありません。必須の検証根拠を再現でき、秘密情報への接触を最小限に抑えるための条件です。
 
 ## Same-run child exact artifact independent audit
 
-final convergence成功だけでGate B Readyにはしません。
+三つの検証経路が同じ版で成立しただけでは、判定段階Bを合格にはしません。
 
-#387が実際に保持したsame-run child exact artifactsを、read-only補助tool `tools/reference-gate-b-readiness-artifact-audit` で独立に再監査します。具体command / 順序はRunbookを正とします。
+#387が同じ実行で取得・保存した子処理の成果物を、内容を変更しない補助ツール`tools/reference-gate-b-readiness-artifact-audit`で独立して再監査します。具体的な命令と実行順序は実行手順書を正本とします。
 
-このartifact auditは第四Required laneではありません。`artifactAuditPassed = true`だけでReadyを宣言しません。
+この成果物の監査は第四の必須検証経路ではありません。`artifactAuditPassed = true`だけでは合格を宣言しません。
 
-独立監査では少なくとも次を確認します。
+独立した監査では、少なくとも次を確認します。
 
 - fixed 3 lane / fixed artifact filename
 - final `artifactFile`との対応
@@ -408,7 +408,7 @@ final convergence成功だけでGate B Readyにはしません。
 - post-run clean source
 - secret / credential / DSN / physical identity等の禁止field非保存
 
-同じRで後から再実行した別artifactを、final convergenceが読んだsame-run artifactへ読み替えません。
+同じ版Rで後から実行して得た別の成果物を、最終確認で実際に読み取った同一実行内の成果物として扱いません。
 
 ## Optional / unresolved Evidence — actual external asset / Oracle
 
@@ -420,28 +420,28 @@ final convergence成功だけでGate B Readyにはしません。
 
 ### 性質
 
-これは**actual external asset Evidence**です。
+これは**実際の外部資産についての検証根拠**です。
 
-TEIが所有していない既存Oracle資産について、実際に観測したphysical facts、provenance、effective read-only、concrete driver behavior、actual readを扱います。
+TEIが所有しない既存のOracle資産について、実際に観測した物理的な事実、来歴、実効的な読取り専用の制約、具体的なドライバーの動作、実際の読取り結果を扱います。
 
-Evidence natureとして重要ですが、Gate B Readyの第四Required laneではありません。
+検証根拠の種類として重要ですが、判定段階Bの合格に必要な第四の検証経路ではありません。
 
 ### 未観測事実を補完しない
 
-少なくとも次を観測前に推測しません。
+少なくとも次の項目を、観測前に推測しません。
 
-- physical object kind / identity
-- physical parameter / raw columns
-- physical type / NULL semantics
-- native Oracle SQL
-- concrete driver constraints
-- effective read-only mechanism
+- 物理的な構成要素の種類と識別情報
+- 物理的な引数と元の列
+- 物理的な型とNULLの意味
+- Oracle固有のSQLの直接記述
+- 具体的なドライバーの制約
+- 実効的な読取り専用の仕組み
 
 ### Evidence intakeとactual readを分ける
 
-external Evidence artifactは非Canonicalのまま、明示authoring済みrealizationと照合します。
+外部の検証成果物は正本とは区別したまま、明示的に記述・受理した実現方式と照合します。
 
-acceptance receiptが成功してもactual read成功にはしません。
+受理記録が成功しても、実際のデータの読取りが成功したとは扱いません。
 
 ```text
 external observed artifact
@@ -455,17 +455,17 @@ raw result observation
 explicit Semantic mapping
 ```
 
-external observed artifact自体の`observedAt`がcandidate Rの時点である必要はありません。ただし、そのartifactをRに対するverified claimとしてHandoverへ載せる場合は、Rとのacceptance / runtime / actual read provenanceを明示します。
+外部から観測した成果物そのものの`observedAt`は、候補版Rの時点である必要はありません。ただし、その成果物をRについて検証済みの主張として引き継ぐ場合は、Rとの受理・実行・実際の読取りの来歴を明示します。
 
-旧revisionのacceptanceやactual readをRへ黙ってcarry-forwardしません。
+旧版での受理や実際の読取り結果を、候補版Rへ暗黙のうちに引き継ぎません。
 
 ### Gate B通過時の扱い
 
-actual Oracle Evidenceが取得済みでRに対するverified claimとして十分なら、Handoverから追加のverified external asset Evidenceとして参照できます。
+実際のOracleで得た検証根拠があり、Rについて検証済みの主張を支えるのに十分であれば、引継ぎ記録から追加の外部資産の検証根拠として参照できます。
 
-未取得、actual read未完了、またはRへの結び付きが不足する場合は、未検証範囲を`unresolved`としてHandoverします。
+未取得の場合、実際の読取りが未完了の場合、またはRとの結び付きが不十分な場合は、未検証の範囲を`unresolved`として引き継ぎます。
 
-第一Web Target側で不足Oracle factsを補完しません。
+最初のウェブ実行先側で、不足しているOracleの事実を推測して補いません。
 
 ## Gate B Required Evidence Acquisitionの完了条件
 
@@ -489,11 +489,11 @@ actual Oracle Evidenceが取得済みでRに対するverified claimとして十�
 - [ ] Evidence natureを相互代替していない
 - [ ] secret / credential / DSN本文 / original secret path / handoff path / 実Database名を通常Evidenceへ保存していない
 
-これらを取得した後、`GATE_B_READINESS_AUDIT.md`がRをReady / Not Ready判定します。一つでも成立しなければNot Readyです。
+これらを取得した後、`GATE_B_READINESS_AUDIT.md`でRの合格・不合格を判定します。一つでも成立しなければ不合格です。
 
 ## Handoverとの関係
 
-Gate BがRについてReadyになった場合、同じRを`GATE_B_TO_C_HANDOVER_CONTRACT.md`へ渡します。
+判定段階BがRについて合格した場合、同じRを`GATE_B_TO_C_HANDOVER_CONTRACT.md`へ引き継ぎます。
 
 ```text
 Handover Baseline R
@@ -511,7 +511,7 @@ Handover Baseline R
        └─ unresolved
 ```
 
-Handover recordは第二のCanonical authorityではありません。
+引継ぎ記録は、意味の正本とは別の管理権限を持つ第二の正本ではありません。
 
 ## 非目標
 
