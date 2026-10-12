@@ -78,6 +78,46 @@ func runProcessHelper(mode string) int {
 	if mode == "stderr-success" {
 		_, _ = fmt.Fprintln(os.Stderr, "diagnostic on stderr")
 	}
+	if strings.HasPrefix(mode, "wire-") {
+		// Send deliberately ambiguous wire bytes from a REAL child process;
+		// encoding a typed Response normally makes these attacks impossible.
+		resp.Payload = json.RawMessage(`{"quantity":1,"quantity":2}`)
+		raw, err := json.Marshal(resp)
+		if err != nil {
+			return 4
+		}
+		wire := string(raw)
+		var before, after string
+		switch mode {
+		case "wire-duplicate-status":
+			before, after = `"status":"ok"`, `"status":"ok","status":"error"`
+		case "wire-duplicate-request":
+			before, after = `"requestId":"`, `"requestId":"forged","requestId":"`
+		case "wire-escaped-duplicate-status":
+			before, after = `"status":"ok"`, `"status":"ok","\u0073tatus":"error"`
+		case "wire-casefold-status":
+			before, after = `"status":"ok"`, `"status":"ok","Status":"error"`
+		case "wire-unknown-sensitive":
+			before, after = `"status":"ok"`, `"status":"ok","TOP-SECRET-DO-NOT-LOG":true`
+		case "wire-duplicate-plugin-id":
+			before, after = `"plugin":{"id":"`, `"plugin":{"id":"forged","id":"`
+		case "wire-casefold-plugin-id":
+			before, after = `"plugin":{"id":"`, `"plugin":{"ID":"forged","id":"`
+		case "wire-unknown-plugin-field":
+			before, after = `"plugin":{"id":"`, `"plugin":{"hostAdmin":true,"id":"`
+		case "wire-opaque-payload-duplicates":
+			// Carrier does not parse application-specific payload members.
+			_, _ = fmt.Fprintln(os.Stdout, wire)
+			return 0
+		default:
+			return 4
+		}
+		if !strings.Contains(wire, before) {
+			return 4
+		}
+		_, _ = fmt.Fprintln(os.Stdout, strings.Replace(wire, before, after, 1))
+		return 0
+	}
 	if err := json.NewEncoder(os.Stdout).Encode(resp); err != nil {
 		return 4
 	}
@@ -178,6 +218,47 @@ func TestStdioProcessLauncherRejectsMalformedResponse(t *testing.T) {
 	launcher, command := helperLauncher(t, "malformed")
 	if _, err := launcher.Invoke(context.Background(), command, processRequest()); err == nil || !strings.Contains(err.Error(), "decode process plugin response") {
 		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestStdioProcessLauncherRejectsAmbiguousResponseHeaders(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode string
+		want string
+	}{
+		{"duplicate status", "wire-duplicate-status", "duplicate process response field"},
+		{"duplicate request id", "wire-duplicate-request", "duplicate process response field"},
+		{"unicode-escaped duplicate status", "wire-escaped-duplicate-status", "duplicate process response field"},
+		{"case-folded status alias", "wire-casefold-status", "undeclared process response envelope field"},
+		{"sensitive unknown field", "wire-unknown-sensitive", "undeclared process response envelope field"},
+		{"duplicate nested plugin id", "wire-duplicate-plugin-id", "duplicate process response field"},
+		{"case-folded nested plugin id", "wire-casefold-plugin-id", "undeclared process response plugin identity field"},
+		{"unknown nested plugin field", "wire-unknown-plugin-field", "undeclared process response plugin identity field"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			launcher, command := helperLauncher(t, tc.mode)
+			_, err := launcher.Invoke(context.Background(), command, processRequest())
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("untrusted process response was accepted: %v", err)
+			}
+			if strings.Contains(err.Error(), "TOP-SECRET-DO-NOT-LOG") {
+				t.Fatalf("untrusted process response field leaked into diagnostics: %v", err)
+			}
+		})
+	}
+}
+
+func TestStdioProcessLauncherDoesNotValidateOpaqueBusinessPayload(t *testing.T) {
+	launcher, command := helperLauncher(t, "wire-opaque-payload-duplicates")
+	response, err := launcher.Invoke(context.Background(), command, processRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The selected Service Contract validates this raw payload later. The
+	// carrier must not imply domain conformance or silently rewrite bytes.
+	if got := string(response.Payload); got != `{"quantity":1,"quantity":2}` {
+		t.Fatalf("carrier modified opaque JSON payload: %s", got)
 	}
 }
 
