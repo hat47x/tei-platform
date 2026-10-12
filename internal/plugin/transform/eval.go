@@ -237,6 +237,30 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			out[i] = items[i].value
 		}
 		return arrayShared(out), nil
+	case OpAssertEach:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind == ValueNull && expr.Optional {
+			return source, nil
+		}
+		if source.Kind != ValueArray {
+			return Value{}, fmt.Errorf("assert-each requires array, got %s", source.Kind)
+		}
+		if len(source.Array) > e.limits.MaxCollection {
+			return Value{}, fmt.Errorf("assert-each collection exceeds maxCollection")
+		}
+		for i, item := range source.Array {
+			if err := e.consume(1); err != nil {
+				return Value{}, err
+			}
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
+			if _, err := e.eval(*expr.Body, &local, depth+1); err != nil {
+				return Value{}, fmt.Errorf("assert-each item %d: %w", i, err)
+			}
+		}
+		return source, nil
 	case OpAssertUniqueBy:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {

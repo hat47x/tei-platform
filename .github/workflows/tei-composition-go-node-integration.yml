@@ -54,8 +54,14 @@ jobs:
             ./reference/application-composition \
             -run '^TestE15ActualGoImpactToE12ReadOnlyReview$' -v
 
-      - name: E22のNative構成候補を検証
+      - name: E22／E24／E26のNative構成・入力・記述量を検証
         shell: bash
         run: |
           set -euo pipefail
-          go test -count=1 ./reference/application-composition -run '^TestE22' -v
+          go test -count=1 ./reference/application-composition -run '^TestE(22|24|26)' -v
+
+      - name: E25のリポジトリ間変更影響を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e25_crossrepo_requalification.test.mjs

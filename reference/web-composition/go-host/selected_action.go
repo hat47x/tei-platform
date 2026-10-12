@@ -33,7 +33,28 @@ func NewSelectedActionInvoker(
 	contractID, contractVersion string,
 	providers []SelectedActionProvider,
 ) (http.Handler, error) {
-	if coordinator == nil || contractID == "" || contractVersion == "" || len(providers) == 0 {
+	return NewHostAuthorizedSelectedCapabilityInvoker(
+		coordinator, contractID, contractID, contractVersion, providers,
+	)
+}
+
+// NewHostAuthorizedSelectedCapabilityInvoker invokes a selected capability
+// inside the Host-approved parent Action. The parent Action and child service
+// contract are distinct identities: permission to execute the parent is not a
+// standalone permission to execute an arbitrary child or to commit its effects.
+//
+// Only the Host's private, live approval for authorizedActionID permits access.
+// The exact child contract and artifact still require Composition selection and
+// current Host guard. The caller owns any additional domain-level authorization
+// and result conformance for the child capability. No approval token or raw
+// verified Principal may be sent across a process boundary.
+func NewHostAuthorizedSelectedCapabilityInvoker(
+	coordinator *composition.Coordinator,
+	authorizedActionID, contractID, contractVersion string,
+	providers []SelectedActionProvider,
+) (http.Handler, error) {
+	if coordinator == nil || authorizedActionID == "" || contractID == "" ||
+		contractVersion == "" || len(providers) == 0 {
 		return nil, errors.New("selected action needs coordinator, exact contract and providers")
 	}
 	registered := make(map[string]SelectedActionProvider, len(providers))
@@ -49,7 +70,7 @@ func NewSelectedActionInvoker(
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		approval, approved := r.Context().Value(authorizedActionContextKey{}).(*authorizedActionApproval)
 		if _, ok := PrincipalFromContext(r.Context()); !ok || !approved ||
-			approval.actionID != contractID || !approval.live.Load() {
+			approval.actionID != authorizedActionID || !approval.live.Load() {
 			// A selected Action is not itself an authentication/authorization
 			// boundary. Never acquire a Provider from a bare route or reuse an
 			// approval for another Action, even when the caller forges headers.

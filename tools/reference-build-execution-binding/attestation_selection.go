@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // referenceIssuerSelection reports a policy decision; it is not Runtime
@@ -17,20 +18,76 @@ type referenceIssuerSelection struct {
 }
 
 type referenceAttestationSelection struct {
-	Satisfied bool                       `json:"satisfied"`
-	Issuers   []referenceIssuerSelection `json:"issuers"`
+	RequiredSubject AttestationSubject         `json:"requiredSubject"`
+	Satisfied       bool                       `json:"satisfied"`
+	Issuers         []referenceIssuerSelection `json:"issuers"`
 }
 
-// selectReferenceAttestations illustrates an explicit policy requirement over
-// independent immutable attestations. Each required issuer must have at least
-// one currently policy-matching attestation for the same exact Build result.
-// It deliberately does not infer requirements from the signatures present.
+// referenceAttestationScope is an explicit request about the subject of
+// the proof. A member attestation cannot satisfy a whole-set requirement.
+type referenceAttestationScope struct {
+	Kind AttestationSubjectKind `json:"kind"`
+	Role string                 `json:"role,omitempty"`
+}
+
+func referenceRequiredAttestationSubject(set ArtifactSet, scope referenceAttestationScope) (AttestationSubject, error) {
+	setFingerprint, err := artifactSetFingerprint(set)
+	if err != nil {
+		return AttestationSubject{}, err
+	}
+	subject := AttestationSubject{
+		Kind:                   scope.Kind,
+		ArtifactSetFingerprint: setFingerprint,
+	}
+	switch scope.Kind {
+	case attestationSubjectArtifactSet:
+		if scope.Role != "" {
+			return AttestationSubject{}, fmt.Errorf("artifact-set requirement must not specify a member role")
+		}
+	case attestationSubjectArtifactMember:
+		if strings.TrimSpace(scope.Role) == "" {
+			return AttestationSubject{}, fmt.Errorf("artifact-member requirement needs a member role")
+		}
+		member, ok := artifactMemberByRole(set, scope.Role)
+		if !ok {
+			return AttestationSubject{}, fmt.Errorf("required artifact member role %q is absent", scope.Role)
+		}
+		subject.Role = scope.Role
+		subject.ArtifactDigest = member.Digest
+	default:
+		return AttestationSubject{}, fmt.Errorf("unsupported required attestation subject kind %q", scope.Kind)
+	}
+	if err := subject.Validate(); err != nil {
+		return AttestationSubject{}, err
+	}
+	return subject, nil
+}
+
+// selectReferenceAttestations requires attestations covering the whole set.
+// Member-level requirements must use selectReferenceAttestationsForSubject.
 func selectReferenceAttestations(
 	plan BuildExecutionPlan,
 	set ArtifactSet,
 	attestations []BuildAttestation,
 	requiredPolicies []AttestationTrustPolicy,
 ) (referenceAttestationSelection, error) {
+	return selectReferenceAttestationsForSubject(plan, set, attestations, requiredPolicies,
+		referenceAttestationScope{Kind: attestationSubjectArtifactSet})
+}
+
+// selectReferenceAttestationsForSubject requires explicit scope and issuer
+// policy. This is Reference policy evaluation, not Runtime Acceptance.
+func selectReferenceAttestationsForSubject(
+	plan BuildExecutionPlan,
+	set ArtifactSet,
+	attestations []BuildAttestation,
+	requiredPolicies []AttestationTrustPolicy,
+	scope referenceAttestationScope,
+) (referenceAttestationSelection, error) {
+	subject, err := referenceRequiredAttestationSubject(set, scope)
+	if err != nil {
+		return referenceAttestationSelection{}, err
+	}
 	if len(requiredPolicies) == 0 {
 		return referenceAttestationSelection{}, fmt.Errorf("reference attestation selection requires an explicit issuer policy")
 	}
@@ -70,8 +127,9 @@ func selectReferenceAttestations(
 	}
 
 	result := referenceAttestationSelection{
-		Satisfied: true,
-		Issuers:   make([]referenceIssuerSelection, 0, len(policies)),
+		RequiredSubject: subject,
+		Satisfied:       true,
+		Issuers:         make([]referenceIssuerSelection, 0, len(policies)),
 	}
 	for _, policy := range policies {
 		policyFingerprint, err := attestationTrustPolicyFingerprint(policy)
@@ -83,17 +141,26 @@ func selectReferenceAttestations(
 			PolicyFingerprint: policyFingerprint,
 			Reason:            "required-issuer-attestation-missing",
 		}
-		for _, verified := range byIssuer[policy.Issuer] {
+		candidates := byIssuer[policy.Issuer]
+		matchingSubject := false
+		for _, verified := range candidates {
+			if normalizeAttestationSubject(verified.attestation.Subject) != normalizeAttestationSubject(subject) {
+				continue
+			}
+			matchingSubject = true
 			decision, err := evaluateAttestationTrust(verified.attestation, verified.verification, policy)
 			if err != nil {
 				return referenceAttestationSelection{}, err
 			}
-			selection.SelectedAttestationFingerprint = decision.AttestationFingerprint
 			selection.Reason = decision.Reason
 			if decision.Trusted {
+				selection.SelectedAttestationFingerprint = decision.AttestationFingerprint
 				selection.Matched = true
 				break
 			}
+		}
+		if !matchingSubject && len(candidates) > 0 {
+			selection.Reason = "required-subject-attestation-missing"
 		}
 		if !selection.Matched {
 			result.Satisfied = false

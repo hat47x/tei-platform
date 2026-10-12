@@ -1,0 +1,30 @@
+{
+  "schema": "tei.reference.e1-synthetic-evidence-manifest/v0",
+  "exactCheckoutHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "workflowRunID": "38267656696",
+  "workflowRunAttempt": "1",
+  "evidenceMode": "E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY",
+  "sourceBefore": "sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2",
+  "sourceAfter": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "evidenceSHA256": {
+    "n11-unobserved-control.json": "8530f011cc5f5127f2fe2acfab638bd1e4757915be3bc3c9a5ef650caedaa607",
+    "stale-source-control.json": "1295940704114b075d778dd8aded0cad0c8c49e669786799fd832ce698aebd6a",
+    "target-launch.json": "5f5063204da9bfe778b1451459ea8b6a18be70e1e8bec2de8578aacfa6613f32",
+    "target-n11-launch.json": "c265825d0ad2e69d7dc16dd6492d350999c7252f61f5fa26cfdbb79ceba96951",
+    "target-negative-launch.json": "9223209bebc6c67524421ee00f0666f50a053ad772fdc98a4f1aa2c0f18e1ea9",
+    "web-negative-unit-price.json": "702f23bc2eb6d5f1f2713cd677f9be6dfe7b0cf45b203813966e9441e3b8beb2",
+    "web-positive.json": "646e01eac7acea9969d09c1ba99cf9e85e050f39324a56f970e7c772b5fbf982",
+    "workspace-r1.json": "415c0c5954d54d42dd2280f3f5b218a488677500c5776a2eeec99e397117d37d"
+  },
+  "provider": "synthetic",
+  "negativeUsesDifferentTestBinary": true,
+  "staleSourceMismatchDetectedByHarness": true,
+  "staleSourceRejectedByTarget": false,
+  "runtimeVersionBindingVerified": false,
+  "semanticEquivalentR2SourceMismatchObservedByHarness": true,
+  "semanticEquivalentR2RejectedByTarget": false,
+  "independentDatabaseRead": false,
+  "humanAcceptance": false,
+  "productGate": "UNQUALIFIED",
+  "note": "CI-origin evidence, not an independently verified runtime or Provider Authority"
+}

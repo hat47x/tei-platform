@@ -1,0 +1,15 @@
+{
+  "schema": "tei.multilingual.integer-forms.e2a",
+  "cases": [
+    {"id": "en-zero", "locale": "en-US", "count": 0, "category": "other", "number": "0"},
+    {"id": "en-one", "locale": "en-US", "count": 1, "category": "one", "number": "1"},
+    {"id": "en-two", "locale": "en-US", "count": 2, "category": "other", "number": "2"},
+    {"id": "en-grouping", "locale": "en-US", "count": 12345, "category": "other", "number": "12,345"},
+    {"id": "ja-zero", "locale": "ja-JP", "count": 0, "category": "other", "number": "0"},
+    {"id": "ja-one", "locale": "ja-JP", "count": 1, "category": "other", "number": "1"},
+    {"id": "ja-grouping", "locale": "ja-JP", "count": 12345, "category": "other", "number": "12,345"},
+    {"id": "de-one", "locale": "de-DE", "count": 1, "category": "one", "number": "1"},
+    {"id": "de-two", "locale": "de-DE", "count": 2, "category": "other", "number": "2"},
+    {"id": "de-grouping", "locale": "de-DE", "count": 12345, "category": "other", "number": "12.345"}
+  ]
+}

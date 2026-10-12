@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -46,6 +47,12 @@ func (l StdioProcessLauncher) InvokeSandboxed(ctx context.Context, command Proce
 }
 
 func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand, req Request) (Response, error) {
+	return l.invokeExecutable(ctx, command, req, command.Executable, nil)
+}
+
+// invokeExecutableは通常のパス起動とLinuxの検証済みFD起動で、同じ
+// 入出力・応答サイズ・診断処理を用いる。実行対象の固定は呼出し元が担う。
+func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File) (Response, error) {
 	if ctx == nil {
 		return Response{}, fmt.Errorf("process plugin invocation requires context")
 	}
@@ -68,7 +75,8 @@ func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand
 	}
 	stdout := &boundedCapture{limit: limit}
 	stderr := newDigestWriter()
-	cmd := exec.CommandContext(ctx, command.Executable, command.Args...)
+	cmd := exec.CommandContext(ctx, executable, command.Args...)
+	cmd.ExtraFiles = extraFiles
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

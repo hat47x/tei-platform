@@ -44,9 +44,27 @@ small{display:block;color:#566a7d}#legend{margin:10px 16px;font-size:.8rem;color
 <main>
 <section id="canvas" aria-label="業務DFD"><svg id="diagram" viewBox="0 0 1100 600" aria-label="業務の流れ"></svg><div id="legend">青緑の破線：情報の授受 ／ 灰色：順序 ／ 茶色：分岐 ／ 赤色：例外 ／ 紫の点線：業務責任・Function参照 ／ 黄色：手作業。いずれも実行済みを意味しません。</div></section>
 <aside><h2>選択した要素</h2><div id="details">要素を選択すると出典と参照関係を表示します。</div><div id="preview" hidden><h2>配置変更の確認</h2><pre id="pending"></pre><small>「配置だけを反映」は画面内の一時表示を更新します。正本やファイルには書き込みません。</small></div>
-<section id="semantic-review" aria-label="起動契機の未受理変更案"><h2>起動契機の説明文</h2>
-<p>起動契機を選択し、元の手順とレビュー案を読み込んでから変更候補を作成します。</p>
-<label>新しい説明文<input id="trigger-label" type="text" disabled placeholder="起動契機を選択してください"></label>
+<section id="semantic-review" aria-label="業務DFDの未受理変更案"><h2>業務上の変更候補</h2>
+<p>起動契機の説明文、Stepの担当・遷移・情報の授受に加え、外部主体や概念StoreからStepへの情報の授受を提案できます。元の手順と未受理レビュー案が必要です。</p>
+<label>起動契機の新しい説明文<input id="trigger-label" type="text" disabled placeholder="起動契機を選択してください"></label>
+<label>選択要素の変更種類<select id="step-action" disabled>
+<option value="assign-business-role">担当業務Roleを追加</option>
+<option value="add-control-transition">順序・分岐・例外の遷移を追加</option>
+<option value="add-information-flow">情報の授受を追加</option>
+</select></label>
+<label>Stepに追加する業務Role<select id="step-role" disabled><option value="">Stepを選択してください</option></select></label>
+<label>遷移先Step<select id="step-transition-to" disabled></select></label>
+<label>遷移の種類<select id="step-transition-kind" disabled>
+<option value="branch">分岐</option><option value="exception">例外</option><option value="sequence">順序</option>
+</select></label>
+<label>分岐・例外の条件<input id="step-transition-condition" type="text" disabled placeholder="どのような場合に進むか"></label>
+<label>情報の授受の識別子<input id="step-info-id" type="text" disabled placeholder="INFO-NEW"></label>
+<label>情報の宛先の種類（外部主体・Storeを選択した場合はStep固定）<select id="step-info-to-kind" disabled>
+<option value="party">外部主体</option><option value="store">概念Store</option><option value="step">別のStep</option>
+</select></label>
+<label>情報の宛先<select id="step-info-to-id" disabled></select></label>
+<label>授受する情報<input id="step-info-payload" type="text" disabled placeholder="何を受け渡すか"></label>
+<small>情報の授受は選択した要素を出発点とし、少なくとも一方の端点がStepである必要があります。概念Storeからの授受は実際の読取り・書込みではありません。認可Roleや実行設定、正本の採用には結び付けません。</small>
 <button id="semantic-propose" disabled>未受理の変更候補を確認</button>
 <div id="semantic-preview" hidden><h2>未受理の差分</h2><pre id="semantic-pending"></pre>
 <button id="semantic-export" disabled>未受理候補を保存</button></div>
