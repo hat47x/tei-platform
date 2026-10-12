@@ -21,8 +21,8 @@
 ## 検証結果と残る条件
 
 - Goテスト **2関数を追加**。ファイル単独の`gofmt`が空（整形済み）であり、ローカルファイルのGit blobとGitHub上の登録blobが一致することを確認した。
-- **Goのコンパイル・テスト実行は未実施**。現実行環境はGitHubの直接取得が名前解決で失敗し、信頼できるリポジトリ全体のチェックアウトを用意できなかった。テストを登録したことをPASSとは記載しない。
-- 現行[AGENTS.md](../../AGENTS.md)では、変更に関係する検証を選択し、実施結果・未実施理由・残る危険性を記録する。リポジトリ全体の健全性検査は一律の統合前提ではない。ただし**未実行のGoテストを合格扱いにしない**こと、判明している失敗を無視しないことは従来どおり。
+- **GitHub ActionsでGoテストの実行・成功を確認した**。初回の[CI #38221144200](https://github.com/hat47x/tei-platform/actions/runs/38221144200)ではE16の2件がDerived Index全体の未解決17件を理由に失敗した。対象となる既知の2辺と全体閉包の判定を区別して修正し、[CI #38221506874](https://github.com/hat47x/tei-platform/actions/runs/38221506874)でGo Testを含む全体検査が成功。さらにE17追加後の[CI #38223089343](https://github.com/hat47x/tei-platform/actions/runs/38223089343)でも全体検査が成功した。ローカル手元の実行証跡とは区別する。
+- 現行[AGENTS.md](../../AGENTS.md)では、変更に関係する検証を選択し、実施結果・未実施理由・残る危険性を記録する。今回は全体検査もCIで成功したが、**17件の未解決依存を解消したことや全依存閉包を受理したことにはならない**。
 - 実行可能な環境では、まず`go test -count=1 ./reference/application-composition -run '^TestE16'`、次に`go test -count=1 ./reference/application-composition`を実行する。E15のGo→Node結合はNode.jsがある環境で`go test -tags=tei_modelref_candidate -count=1 ./reference/application-composition -run '^TestE15'`を別途実行する。
 
 ## 製品判断へ進むために必要なこと
@@ -48,4 +48,4 @@ PR #1289の初期head `8a70ce28b1d2a72a8c9e590391bbd2f195b99b70`については�
 
 これは**二つの実ファイル状態の検査**であり、Git上の異なる改訂履歴を取得した試験ではない。Sourceの指紋が変わることと、意味の版が変わることを同一視せず、どちらの情報も相互に置換しない。
 
-検証対象はGoの通常テストに含まれる。CIの実行結果は実行ID・対象PRコミットとともに確認し、未完了の実行をPASSと記録しない。
+検証対象はGoの通常テストに含まれ、[CI #38223089343](https://github.com/hat47x/tei-platform/actions/runs/38223089343)の仮統合コミット`554e06fc8e26a686f14ce4c3b5b54c7a70941e87`でPASSした。これはSource Indexにある実ファイルの二状態を検査するものであり、Git上の二つの改訂番号の真正性を証明するものではない。
