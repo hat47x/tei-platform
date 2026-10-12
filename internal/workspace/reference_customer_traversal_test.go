@@ -166,6 +166,81 @@ func TestTwoApplicationsUseSharedCustomerContractWithLocalBindings(t *testing.T)
 	}
 }
 
+// A Contract Query reused by another Application cannot authorize an alias
+// absent from this Application. The failure must stay on the changed Pattern.
+func TestReferenceCustomerAliasDoesNotBorrowAcrossApplications(t *testing.T) {
+	cases := []struct {
+		targetApp     string
+		targetPattern string
+		otherApp      string
+		otherPattern  string
+	}{
+		{
+			targetApp:     "order_entry",
+			targetPattern: "order_entry.customer_reference",
+			otherApp:      "repair_intake",
+			otherPattern:  "repair_intake.customer_reference",
+		},
+		{
+			targetApp:     "repair_intake",
+			targetPattern: "repair_intake.customer_reference",
+			otherApp:      "order_entry",
+			otherPattern:  "order_entry.customer_reference",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.targetApp, func(t *testing.T) {
+			loaded, err := workspace.Load(filepath.Join(repoRoot(t), "reference", "workspace"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ds := validation.ValidateApplicationPatterns(loaded.World); len(ds) != 0 {
+				t.Fatalf("元の参照Applicationが不整合です: %#v", ds)
+			}
+
+			other := referenceApplicationByID(t, loaded.World.Applications, tc.otherApp)
+			foreignAlias := applicationPatternByID(t, other.Patterns, tc.otherPattern).Datasource
+			if _, ok := other.DatabaseByAliasExact(foreignAlias); !ok {
+				t.Fatalf("他方の接続名 %s は宣言されていません", foreignAlias)
+			}
+
+			found := false
+			for appIndex := range loaded.World.Applications {
+				app := &loaded.World.Applications[appIndex]
+				if string(app.ID) != tc.targetApp {
+					continue
+				}
+				if app.HasDatabaseAlias(foreignAlias) {
+					t.Fatalf("試験の前提が崩れています: %s に %s が存在します", app.ID, foreignAlias)
+				}
+				for patternIndex := range app.Patterns {
+					pattern := &app.Patterns[patternIndex]
+					if string(pattern.ID) != tc.targetPattern {
+						continue
+					}
+					pattern.Datasource = foreignAlias
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("変更するPattern %s が見つかりません", tc.targetPattern)
+			}
+
+			ds := validation.ValidateApplicationPatterns(loaded.World)
+			if len(ds) != 1 || ds[0].Code != "UNKNOWN_APPLICATION_PATTERN_DATASOURCE" ||
+				ds[0].Subject == nil || ds[0].Subject.Kind != "application-pattern" ||
+				ds[0].Subject.ID != tc.targetPattern {
+				t.Fatalf("他案件の接続名を借用して処理しています: %#v", ds)
+			}
+			// The other Application's original binding remains authoritative.
+			other = referenceApplicationByID(t, loaded.World.Applications, tc.otherApp)
+			if _, ok := other.DatabaseByAliasExact(foreignAlias); !ok {
+				t.Fatalf("別案件の正規接続が変更されました: %s", tc.otherApp)
+			}
+		})
+	}
+}
+
 func referenceCustomerApplication(t *testing.T, applications []application.Application) application.Application {
 	t.Helper()
 	for _, app := range applications {

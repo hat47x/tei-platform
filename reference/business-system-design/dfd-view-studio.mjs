@@ -42,6 +42,8 @@ function updateSemanticControls(){
   const selected=state.selected ? JSON.parse(state.selected) : null;
   const isTrigger=selected?.[0]==='trigger';
   const isStep=selected?.[0]==='step';
+  const isInbound=selected?.[0]==='party'||selected?.[0]==='store';
+  const isInfoOrigin=isStep||isInbound;
   const ready=Boolean(state.dfd&&state.procedure&&state.review);
   $('trigger-label').disabled=!isTrigger;
   if(isTrigger&&state.dfd){
@@ -50,7 +52,8 @@ function updateSemanticControls(){
   }else $('trigger-label').value='';
   const actionControl=$('step-action');
   const modes=['assign-business-role','add-control-transition','add-information-flow'];
-  if(!modes.includes(actionControl.value))actionControl.value=modes[0];
+  if(isInbound)actionControl.value='add-information-flow';
+  else if(!modes.includes(actionControl.value))actionControl.value=modes[0];
   actionControl.disabled=!isStep||!ready;
   const mode=actionControl.value;
   const occupied=new Set((state.review?.responsibilities||[])
@@ -59,8 +62,8 @@ function updateSemanticControls(){
     .filter(role=>!occupied.has(role.id)):[];
   const hasRoles=populateStepOptions('step-role',roles);
   $('step-role').disabled=!isStep||!ready||mode!=='assign-business-role'||!hasRoles;
-  const steps=isStep&&ready?(state.dfd?.steps||[])
-    .filter(step=>step.id!==selected[1]):[];
+  const steps=isInfoOrigin&&ready?(state.dfd?.steps||[])
+    .filter(step=>!isStep||step.id!==selected[1]):[];
   const hasSteps=populateStepOptions('step-transition-to',steps);
   const activeControl=isStep&&ready&&mode==='add-control-transition';
   $('step-transition-to').disabled=!activeControl||!hasSteps;
@@ -69,10 +72,11 @@ function updateSemanticControls(){
     $('step-transition-kind').value='branch';
   $('step-transition-condition').disabled=!activeControl||
     $('step-transition-kind').value==='sequence';
-  const activeInfo=isStep&&ready&&mode==='add-information-flow';
+  const activeInfo=isInfoOrigin&&ready&&mode==='add-information-flow';
   const infoKind=$('step-info-to-kind');
-  if(!['step','party','store'].includes(infoKind.value))infoKind.value='party';
-  infoKind.disabled=!activeInfo;
+  if(isInbound)infoKind.value='step';
+  else if(!['step','party','store'].includes(infoKind.value))infoKind.value='party';
+  infoKind.disabled=!activeInfo||isInbound;
   const destinations=infoKind.value==='step'?steps:
     infoKind.value==='party'?(state.dfd?.information?.externalParties||[]):
       (state.dfd?.information?.stores||[]);
@@ -83,7 +87,8 @@ function updateSemanticControls(){
   $('semantic-propose').disabled=!ready||!(isTrigger||isStep&&(
     mode==='assign-business-role'&&hasRoles||
     mode==='add-control-transition'&&hasSteps||
-    mode==='add-information-flow'&&hasDestination));
+    mode==='add-information-flow'&&hasDestination)||
+    isInbound&&mode==='add-information-flow'&&hasDestination);
 }
 function clearSelection(){
   selectionGeneration++;
@@ -192,7 +197,7 @@ async function selectNode(node){
   $('step-action').value='assign-business-role';
   $('step-transition-kind').value='branch';
   $('step-transition-condition').value='';
-  $('step-info-to-kind').value='party';
+  $('step-info-to-kind').value=node.kind==='party'||node.kind==='store'?'step':'party';
   $('step-info-id').value='';
   $('step-info-payload').value='';
   invalidateSemanticPreview();
@@ -380,6 +385,16 @@ function semanticInputs(){
 function selectedBusinessOperation(selected,input){
   if(selected[0]==='trigger')
     return {kind:'replace-trigger-label',trigger:selected[1],label:input.label};
+  // External Parties and conceptual Stores can only propose information
+  // entering an explicit business Step, never a direct Store write or RBAC.
+  if(selected[0]==='party'||selected[0]==='store'){
+    if(input.action!=='add-information-flow'||input.infoToKind!=='step')
+      throw Error('DFD_INFORMATION_PROCESS_BOUNDARY_REQUIRED');
+    return {kind:'add-information-flow',id:input.infoID,
+      from:{kind:selected[0],id:selected[1]},
+      to:{kind:'step',id:input.infoToID},payload:input.infoPayload};
+  }
+  if(selected[0]!=='step')throw Error('UNSUPPORTED_DFD_BROWSER_EDIT_SELECTION');
   switch(input.action){
     case 'assign-business-role':
       return {kind:'assign-business-role',step:selected[1],role:input.role};
@@ -407,7 +422,7 @@ $('semantic-propose').addEventListener('click',async()=>{
   const labelGeneration=semanticTextGeneration;
   const inputSnapshot=JSON.stringify(input);
   invalidateSemanticPreview();
-  if(!['trigger','step'].includes(mode)||!files.every(Boolean)||
+  if(!['trigger','step','party','store'].includes(mode)||!files.every(Boolean)||
     $('semantic-propose').disabled||
     (mode==='trigger'&&(!input.label||!input.label.trim()))||
     (mode==='step'&&(
@@ -416,7 +431,10 @@ $('semantic-propose').addEventListener('click',async()=>{
         !['sequence','branch','exception'].includes(input.transitionKind)||
         input.transitionKind!=='sequence'&&!input.transitionCondition.trim())||
       input.action==='add-information-flow'&&(!input.infoID.trim()||
-        !input.infoToID||!input.infoPayload.trim())))){
+        !input.infoToID||!input.infoPayload.trim())))||
+    (['party','store'].includes(mode)&&(
+      input.action!=='add-information-flow'||input.infoToKind!=='step'||
+      !input.infoID.trim()||!input.infoToID||!input.infoPayload.trim()))){
     status('Stepまたは起動契機の選択、参照資料、有効な変更内容が必要です。',true);
     return;
   }
@@ -436,7 +454,7 @@ $('semantic-propose').addEventListener('click',async()=>{
           ?'Stepの担当業務Roleを提案する（認可権限ではない）'
           :operation.kind==='add-control-transition'
             ?'Stepからの業務上の順序・分岐・例外を提案する（自動実行ではない）'
-            :'Stepからの情報の授受を提案する（データ書込みではない）',
+            :'選択した業務要素からの情報の授受を提案する（データ書込みではない）',
       procedureSHA256:state.procedureHash,reviewSHA256:state.reviewHash,
       projectionSHA256:state.dfdHash,
       selection:{kind:mode,id:selected[1]},operation};
