@@ -140,6 +140,56 @@
         "optional": true
       },
       {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "requires",
+          "optional": true
+        },
+        "item": "requirement",
+        "body": {
+          "op": "assert-canonical-id",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "requirement"
+            },
+            "field": "plugin"
+          }
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "requires",
+          "optional": true
+        },
+        "item": "requirement",
+        "body": {
+          "op": "assert-positive-integer",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "requirement"
+            },
+            "field": "compatibleMajor"
+          }
+        },
+        "optional": true
+      },
+      {
         "op": "assert-unique-by",
         "from": {
           "op": "select-field",
