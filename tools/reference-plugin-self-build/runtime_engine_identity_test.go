@@ -9,9 +9,9 @@ import (
 
 func TestReferenceRuntimeEngineLogicalVersionAndProvenance(t *testing.T) {
 	cases := []struct {
-		name    string
-		id      core.CanonicalID
-		version string
+		name     string
+		id       core.CanonicalID
+		version  string
 		contract string
 	}{
 		{
