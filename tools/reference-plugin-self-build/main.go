@@ -1098,10 +1098,7 @@ func buildReferencePlugin(repo, goPath, output, stateDir string) error {
 }
 
 func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
-	if err := gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir); err != nil {
-		return err
-	}
-	return nil
+	return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)
 }
 
 func runPluginPackageBuilder(repo, builderPath, planPath, output string) error {
