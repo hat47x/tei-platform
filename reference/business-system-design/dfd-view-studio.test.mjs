@@ -803,7 +803,7 @@ test('World clear rejects late file completion and revokes old Step details',asy
   const fresh=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   fresh.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:302});
   await new Promise(resolve=>setTimeout(resolve,20));
-  assert.equal($('details').children.length,1,
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,1,
     'cleared World must not supply a stale navigation result');
 });
 
@@ -822,7 +822,7 @@ test('new World wins over an invalid older read, and revision changes clear navi
   let node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:303});
   await new Promise(resolve=>setTimeout(resolve,20));
-  assert.equal($('details').children.length,2,
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2,
     'the new World should remain available for read-only navigation');
   $('revision').value='revision-B';
   $('revision').listeners.input();
@@ -832,6 +832,68 @@ test('new World wins over an invalid older read, and revision changes clear navi
   node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:304});
   await new Promise(resolve=>setTimeout(resolve,20));
-  assert.equal($('details').children.length,2);
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2);
 });
 
+test('diagram follows explicit Function, Role, Party, Store and Trigger links in both directions',async()=>{
+  const unchanged=JSON.stringify({procedure:approvalProcedure,review:approvalReview});
+  await input('dfd-file',approvalProjection());
+  const choose=(kind,id)=>{
+    const element=$('diagram').children.find(x=>x.dataset?.kind===kind&&x.dataset.id===id);
+    assert.ok(element,'visible node '+kind+':'+id);
+    element.listeners.keydown({key:'Enter',preventDefault(){}});
+    return JSON.parse($('details').children[0].textContent);
+  };
+  const jump=(kind,id)=>{
+    const links=$('details').children.find(x=>x.tag==='div');
+    assert.ok(links,'explicit reverse links must be shown');
+    const button=links.children.find(x=>x.textContent===kind+': '+id);
+    assert.ok(button,'expected graph navigation '+kind+':'+id);
+    button.click();
+    return JSON.parse($('details').children[0].textContent);
+  };
+
+  let detail=choose('function','order_entry.order_record');
+  assert.equal(detail.authority,'reference-only');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+  detail=jump('step','APP-00');
+  assert.equal(detail.source.pointer,'/steps/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='function'&&x.id==='order_entry.order_record'));
+
+  detail=choose('business-role','sales');
+  assert.equal(detail.source.pointer,'/businessRoles/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='step'));
+  const roleStep=detail.relatedDiagramNodes.find(x=>x.kind==='step');
+  detail=jump('step',roleStep.id);
+  assert.equal(detail.authority,'reference-only');
+
+  detail=choose('party','customer');
+  assert.equal(detail.source.pointer,'/externalParties/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='step'&&x.id==='APP-10'));
+  detail=jump('step','APP-10');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='party'&&x.id==='customer'));
+
+  detail=choose('store','orders');
+  assert.equal(detail.semanticData,'sales.order');
+  assert.equal(detail.source.pointer,'/stores/0');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+
+  detail=choose('trigger','TR-ORDER');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+  detail=jump('step','APP-00');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='trigger'&&x.id==='TR-ORDER'));
+  assert.equal(JSON.stringify({procedure:approvalProcedure,review:approvalReview}),unchanged);
+});
+
+test('a graph navigation button from old DFD cannot switch the newly loaded Procedure',async()=>{
+  await input('dfd-file',approvalProjection());
+  const f=$('diagram').children.find(x=>x.dataset?.kind==='function'&&x.dataset.id==='order_entry.order_record');
+  f.listeners.keydown({key:'Enter',preventDefault(){}});
+  const stale=$('details').children.find(x=>x.tag==='div').children[0];
+  await input('dfd-file',projection);
+  assert.equal($('details').children.length,0);
+  stale.click();
+  assert.equal($('details').children.length,0);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
+  assert.equal($('semantic-preview').hidden,true);
+});

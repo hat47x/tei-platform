@@ -190,6 +190,52 @@ function render() {
   });
   $('export').disabled=!state.layout;
 }
+// Links are derived exclusively from explicit edges in the displayed projection.
+ // Neither the link nor its label asserts a canonical or accepted relationship.
+function relatedDiagramNodes(d,node) {
+  const all=nodes();
+  const existing=new Set(all.map(item=>key(item.kind,item.id)));
+  const seen=new Set();
+  const related=[];
+  function add(kind,id){
+    const k=key(kind,id);
+    if(k!==key(node.kind,node.id)&&existing.has(k)&&!seen.has(k)){
+      seen.add(k);related.push({kind,id});
+    }
+  }
+  const info=d.information||{};
+  if(node.kind==='step'){
+    const step=d.steps.find(x=>x.id===node.id);
+    for(const ref of step?.functionRefs||[])add('function',ref.id);
+    for(const r of info.responsibilities||[])if(r.step===node.id)add('business-role',r.role);
+    for(const trigger of d.triggers||[])if(trigger.targetStep===node.id)add('trigger',trigger.id);
+    for(const flow of d.flows||[]){
+      if(flow.from===node.id)add('step',flow.to);
+      if(flow.to===node.id)add('step',flow.from);
+    }
+  }else if(node.kind==='function'){
+    for(const step of d.steps)if((step.functionRefs||[]).some(ref=>ref.id===node.id))
+      add('step',step.id);
+  }else if(node.kind==='business-role'){
+    for(const r of info.responsibilities||[])if(r.role===node.id)add('step',r.step);
+  }else if(node.kind==='trigger'){
+    const trigger=d.triggers.find(t=>t.id===node.id);
+    if(trigger)add('step',trigger.targetStep);
+  }
+  for(const flow of info.informationFlows||[]){
+    if(flow.from.kind===node.kind&&flow.from.id===node.id)
+      add(flow.to.kind,flow.to.id);
+    if(flow.to.kind===node.kind&&flow.to.id===node.id)
+      add(flow.from.kind,flow.from.id);
+  }
+  return related;
+}
+function diagramReferenceSource(d,node){
+  const info=d.information||{};
+  const refs={'step':d.steps,'trigger':d.triggers,
+    'business-role':info.roles,'party':info.externalParties,'store':info.stores};
+  return (refs[node.kind]||[]).find(x=>x.id===node.id)||null;
+}
 async function selectNode(node){
   const generation=++selectionGeneration;
   state.selected=key(node.kind,node.id);
@@ -204,13 +250,33 @@ async function selectNode(node){
   invalidateSemanticPreview();
   updateSemanticControls();
   const d=state.dfd;
-  const step=node.kind==='step'?d.steps.find(s=>s.id===node.id):null;
+  const item=diagramReferenceSource(d,node);
+  const step=node.kind==='step'?item:null;
+  const related=relatedDiagramNodes(d,node);
   const candidate={kind:node.kind,id:node.id,authority:'reference-only',
-    source:step?.source||null,functionRefs:step?.functionRefs||[],explicitMeaning:step?.explicitMeaning||[],
+    source:item?.source||null,functionRefs:step?.functionRefs||[],
+    explicitMeaning:step?.explicitMeaning||[],
+    semanticData:node.kind==='store'?item?.semanticData||null:null,
+    relatedDiagramNodes:related,
     handoffs:step?(d.handoffs||[]).filter(h=>h.from?.procedure===d.procedureId&&h.from.step===node.id)
       .map(h=>({to:h.to,condition:h.condition,authority:h.authority,runtimeBinding:'not-inferred'})):[]};
   $('details').replaceChildren();
   const pre=document.createElement('pre');pre.textContent=JSON.stringify(candidate,null,2);$('details').append(pre);
+  if(related.length){
+    const links=document.createElement('div');
+    for(const target of related){
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=target.kind+': '+target.id;
+      button.addEventListener('click',()=>{
+        if(state.dfd!==d||state.selected!==key(node.kind,node.id))return;
+        const match=nodes().find(x=>x.kind===target.kind&&x.id===target.id);
+        if(match)selectNode(match);
+      });
+      links.append(button);
+    }
+    $('details').append(links);
+  }
   if(step&&state.world&&$('revision').value){
     const navigation=document.createElement('pre');
     try {const {navigateReferenceBusinessStep}=await import('../studio-authoring/bridge.mjs');navigation.textContent=JSON.stringify(navigateReferenceBusinessStep(state.world,$('revision').value,d,node.id),null,2)}

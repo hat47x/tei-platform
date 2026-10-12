@@ -81,7 +81,7 @@ node --test reference/business-system-design/dfd-view-layout.test.mjs \
 python3 -m http.server 8765
 ```
 
-ブラウザーで `http://localhost:8765/reference/business-system-design/dfd-view-studio.html` を開きます。まず「DFD投影」から作成したJSONを選択します。必要に応じて、保存済みの配置ファイルも選択できます。要素をクリックすると、参照元の位置・Function・直接意味参照・条件付きHandoffを表示します。
+ブラウザーで `http://localhost:8765/reference/business-system-design/dfd-view-studio.html` を開きます。まず「DFD投影」から作成したJSONを選択します。必要に応じて、保存済みの配置ファイルも選択できます。要素をクリックすると、参照元の位置・Function・直接意味参照・条件付きHandoffを表示します。明示されたControl／起動契機／担当業務Role／Function参照／情報の授受だけを元に、図中の関連要素へのリンクを表示します。例えばFunctionからそれを明示参照するStepへ戻り、StepからFunctionやRoleへ辿れます。外部主体・概念Storeを選択した場合も、明示された情報授受の相手Stepと参照元位置を確認できます。StoreのSemantic Data IDは参照文字列を示すだけで、実DBや受理済みDataへの権限を示しません。古い投影で生成したリンクは投影差替え後に使えません。
 
 要素をドラッグすると、座標だけの変更候補が表示されます。キーボードではTabで要素を選び、Enterで詳細を確認し、矢印キーで20単位、Shift＋矢印キーで1単位ずつ移動候補を作れます。キャンセルされたドラッグや、別のポインターによる操作は移動として扱いません。**「配置だけを反映」**を選んでも変更されるのはブラウザー内の一時表示だけです。配置ファイルを保存する操作も、業務手順やCanonical Sourceは変更しません。初回表示時の並びは簡易的な格子配置であり、DFD上の業務順序や役割分担を意味しません。Stepが多い場合は画面領域を拡張し、初期領域外の要素もスクロールして表示します。存在しないStepへの順序矢印、参照先のない起動契機・責任割当て・情報Flow、重複した矢印・責任割当て、Stepを一つも持たない手順は、省略して描かず、投影全体を拒否します。
 
