@@ -176,11 +176,20 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		// N11 must be a separately located no-read control, not a recycled
 		// success/denial receipt or the unrelated Source/Target provenance.
 		// Locator separation remains a claim, not inspection of receipt bytes.
-		if strings.TrimSpace(w.UnobservedControlReceipt) == "" ||
+		missingN11 := strings.TrimSpace(w.UnobservedControlReceipt) == "" ||
 			w.UnobservedControlReceipt == w.PositiveReceipt ||
 			w.UnobservedControlReceipt == w.NegativeReceipt ||
 			w.UnobservedControlReceipt == w.WorkspaceRevisionReceipt ||
-			w.UnobservedControlReceipt == w.TargetLaunchReceipt {
+			w.UnobservedControlReceipt == w.TargetLaunchReceipt ||
+			w.UnobservedControlReceipt == a.DecisionReceipt ||
+			w.UnobservedControlReceipt == a.ReloadReceipt ||
+			w.UnobservedControlReceipt == p.Qualification.Receipt
+		if p.Claim == "E2" {
+			missingN11 = missingN11 ||
+				w.UnobservedControlReceipt == p.Physical.CommandReceipt ||
+				w.UnobservedControlReceipt == p.Physical.IndependentReadReceipt
+		}
+		if missingN11 {
 			add("N11_UNOBSERVED_CONTROL_MISSING")
 		}
 		// Shared Acceptance fingerprints the candidate's operation delta and
@@ -215,12 +224,6 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 			strings.TrimSpace(ph.IndependentReadReceipt) == "" ||
 			ph.CommandReceipt == ph.IndependentReadReceipt || ph.RecordID == "" {
 			add("E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED")
-		}
-		// A no-read control cannot be fulfilled by the very E2 Command or
-		// independently executed read whose presence the control is testing.
-		if w.UnobservedControlReceipt == ph.CommandReceipt ||
-			w.UnobservedControlReceipt == ph.IndependentReadReceipt {
-			add("N11_UNOBSERVED_CONTROL_MISSING")
 		}
 		if ph.SchemaFailureControl == "" {
 			add("S02_NEGATIVE_CONTROL_MISSING")
