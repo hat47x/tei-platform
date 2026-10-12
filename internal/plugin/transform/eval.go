@@ -357,6 +357,18 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			}
 		}
 		return Value{}, fmt.Errorf("assert-enum failed")
+	case OpAssertNonBlank:
+		value, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if value.Kind != ValueString {
+			return Value{}, fmt.Errorf("assert-nonblank requires string, got %s", value.Kind)
+		}
+		if strings.TrimSpace(value.String) == "" {
+			return Value{}, fmt.Errorf("assert-nonblank failed: string is empty or whitespace")
+		}
+		return value, nil
 	case OpCanonicalJSON:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
