@@ -16,23 +16,23 @@ func uniqueByTestSource() transform.Source {
 	return transform.Source{
 		FormatVersion: transform.SourceFormatVersion,
 		Identity: transform.SourceIdentity{
-			ID: core.MustCanonicalID("tei.test.requirement_uniqueness"),
-			Version: "1.0.0",
+			ID:              core.MustCanonicalID("tei.test.requirement_uniqueness"),
+			Version:         "1.0.0",
 			ContractVersion: "tei.plugin-transform/v1",
 		},
 		Profile: transform.ProfileV1,
 		Limits: transform.Limits{
-			MaxSteps: 1000,
-			MaxCollection: 100,
-			MaxInputNodes: 1000,
-			MaxInputBytes: 100000,
-			MaxOutputBytes: 100000,
+			MaxSteps:        1000,
+			MaxCollection:   100,
+			MaxInputNodes:   1000,
+			MaxInputBytes:   100000,
+			MaxOutputBytes:  100000,
 			MaxNestingDepth: 32,
 		},
 		Inputs: []transform.InputSpec{{Name: "dependencies", Kind: transform.InputArray}},
 		Program: transform.Program{
 			Assertions: []transform.Expr{{
-				Op: transform.OpAssertUniqueBy,
+				Op:   transform.OpAssertUniqueBy,
 				From: &array,
 				Item: "dependency",
 				Keys: []transform.Expr{{Op: transform.OpSelectField, From: &member, Field: "plugin"}},
@@ -44,8 +44,8 @@ func uniqueByTestSource() transform.Source {
 
 func TestAssertUniqueByValueAndFailureSemantics(t *testing.T) {
 	cases := []struct {
-		name string
-		records any
+		name      string
+		records   any
 		wantError string
 	}{
 		{name: "distinct keys", records: []any{map[string]any{"plugin": "tei.a"}, map[string]any{"plugin": "tei.b"}}},
@@ -127,7 +127,7 @@ func TestPluginPackageWithoutRequirementsMatchesGoOracle(t *testing.T) {
 				t.Fatal(err)
 			}
 			got, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
-				"buildPlan": valueFromGoJSON(t, plan),
+				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
 			})
 			if err != nil {
