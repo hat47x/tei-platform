@@ -86,11 +86,11 @@ func TestActualTransformEngineArtifactsBindDistinctRuntimeEngineLocks(t *testing
 	bind := func(target, digest string) pruntime.EnvironmentPlan {
 		t.Helper()
 		engine := pruntime.RuntimeEngineIdentity{
-			ID: core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
-			Version: "1.0.0",
-			ContractVersion: "tei.runtime-engine/deterministic-transform-v1",
+			ID:                   core.MustCanonicalID("tei.runtime.engine.deterministic_transform.reference"),
+			Version:              "1.0.0",
+			ContractVersion:      "tei.runtime-engine/deterministic-transform-v1",
 			ImplementationDigest: digest,
-			Target: target,
+			Target:               target,
 		}
 		lock := pruntime.RuntimeEngineLock{
 			FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
