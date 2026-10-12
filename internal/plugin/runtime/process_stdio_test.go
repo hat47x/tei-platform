@@ -76,7 +76,9 @@ func runProcessHelper(mode string) int {
 	}
 	if strings.HasPrefix(mode, "secret-") {
 		resp.Error = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
-		resp.Payload = json.RawMessage(`{"secret":"TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"}`)
+		if mode != "secret-ok" {
+			resp.Payload = json.RawMessage(`{"secret":"TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"}`)
+		}
 	}
 	if mode == "env-probe" {
 		payload, err := json.Marshal(struct {
