@@ -202,7 +202,7 @@ func TestDraftMarkerStoreNeverPersistsCandidatePayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, forbidden := range []string{"candidateBytes", "authorization", "permission", "lease", "command"} {
-		if strings.Contains(string(raw), "\"" + forbidden + "\"") {
+		if strings.Contains(string(raw), "\""+forbidden+"\"") {
 			t.Fatalf("Marker unexpectedly persisted %s", forbidden)
 		}
 	}
