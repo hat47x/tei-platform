@@ -89,6 +89,7 @@ jobs:
           set -euo pipefail
           test -z "$(gofmt -l plugins/reference-process-executor/*.go)"
           bash tools/check-reference-plugin-isolation.sh
+          gofmt -d plugins/reference-bundle-alpha/*.go plugins/reference-bundle-beta/*.go tools/reference-plugin-bundle/*.go
           test -z "$(gofmt -l plugins/reference-bundle-alpha/*.go plugins/reference-bundle-beta/*.go tools/reference-plugin-bundle/*.go)"
           bash tools/check-reference-plugin-bundle-isolation.sh
 
