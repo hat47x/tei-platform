@@ -56,7 +56,7 @@ func TestTransparentLocalizationOfOrdinaryPlugin(t *testing.T) {
 			t.Fatalf("%s: %+v", tc.locale, got)
 		}
 	}
-	if in.Graph.Nodes[0] != before || !reflect.DeepEqual(in.Resolved.Plugins, pluginsBefore) {
+	if !reflect.DeepEqual(in.Graph.Nodes[0], before) || !reflect.DeepEqual(in.Resolved.Plugins, pluginsBefore) {
 		t.Fatal("ordinary plugin or model was mutated")
 	}
 	if len(projection.entries) != 1 || projection.entries[0].Key.Target != key.Target {
