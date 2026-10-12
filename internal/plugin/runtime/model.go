@@ -470,11 +470,14 @@ type processImageBound interface {
 // with a pathname launcher (or the reverse) before a resource lease is issued.
 // A sandbox launcher does not receive the pinned process descriptor, so a
 // bound image must not silently take that alternate execution path.
-func (r Registry) validateProcessImageBinding(sandboxed bool) error {
+func (r Registry) validateProcessImageBinding(sandboxed, digestVerified bool) error {
 	verifiedImage, verifierBound := r.Verifier.(processImageBound)
 	launchedImage, launcherBound := r.Processes.(processImageBound)
 	if !verifierBound && !launcherBound {
 		return nil
+	}
+	if !digestVerified {
+		return fmt.Errorf("pinned process image requires a verified artifact digest")
 	}
 	if sandboxed {
 		return fmt.Errorf("pinned process image cannot be dispatched through a separate sandbox launcher")
@@ -677,7 +680,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		if policy != plugin.SandboxRequired && r.Sandboxes == nil && r.Processes == nil {
 			return Invocation{}, fmt.Errorf("process plugin %s@%s has no host process or sandbox launcher", cr.Plugin.ID, cr.Plugin.Version)
 		}
-		if err := r.validateProcessImageBinding(r.Sandboxes != nil && (policy == plugin.SandboxRequired || policy == plugin.SandboxPreferred)); err != nil {
+		if err := r.validateProcessImageBinding(r.Sandboxes != nil && (policy == plugin.SandboxRequired || policy == plugin.SandboxPreferred), prov.Verification != nil && prov.Verification.DigestVerified); err != nil {
 			return Invocation{}, fmt.Errorf("process plugin %s@%s: %w", cr.Plugin.ID, cr.Plugin.Version, err)
 		}
 	default:
