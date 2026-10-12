@@ -62,7 +62,7 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 	imageDigest := "sha256:" + hex.EncodeToString(sha[:])
 
 	provider := GenericProviderIdentity{
-		PluginID:         "tei.reference.order-quote",
+		PluginID:         "tei.reference.order_quote",
 		PluginVersion:    "1.0.0",
 		ImplementationID: "order-quote.v1",
 		ArtifactDigest:   imageDigest,
