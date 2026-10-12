@@ -7,14 +7,12 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - tools/reference-transform-runtime-engine/target_conformance_test.go
-      - internal/plugin/runtime/engine_lock_receipt_replay_test.go
       - tools/check-transform-wasm-conformance.sh
       - .github/workflows/tei-transform-wasm-conformance.yml
   push:
     branches: [main]
     paths:
       - tools/reference-transform-runtime-engine/target_conformance_test.go
-      - internal/plugin/runtime/engine_lock_receipt_replay_test.go
       - tools/check-transform-wasm-conformance.sh
       - .github/workflows/tei-transform-wasm-conformance.yml
   workflow_dispatch:
@@ -72,7 +70,6 @@ jobs:
             ${{ runner.temp }}/tei-transform-wasm/native-test.log
             ${{ runner.temp }}/tei-transform-wasm/wasm-test.log
             ${{ runner.temp }}/tei-transform-wasm/target-binding-test.log
-            ${{ runner.temp }}/tei-transform-wasm/receipt-replay-test.log
             ${{ runner.temp }}/tei-transform-wasm/go-version.txt
             ${{ runner.temp }}/tei-transform-wasm/node-version.txt
           if-no-files-found: error
