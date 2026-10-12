@@ -195,7 +195,7 @@ test("review handoff carries the full unchanged candidate and exact fingerprint"
   assert.match(html, /sales.order_line.order/);
   assert.match(html, /tei.reference.change-candidate\/v0/);
   assert.match(html, /共通受理機構による再審査/);
-  assert.match(html, /-candidate &quot;\$CANDIDATE&quot;/);
+  assert.match(html, /-candidate "\$CANDIDATE"/);
   assert.match(html, /人が差分・影響・権限・未解決点を確認/);
   assert.doesNotMatch(html, /<form|<script|onclick=/i);
 });
