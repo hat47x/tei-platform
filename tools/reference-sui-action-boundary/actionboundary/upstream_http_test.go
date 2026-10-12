@@ -6,10 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"net/url"
 )
+
+type fixedTenant struct {
+	id string
+	err error
+}
+
+func (t fixedTenant) Tenant(context.Context) (string, error) { return t.id, t.err }
 
 type fixedDelegation struct {
 	value TrustedDelegation
@@ -34,14 +43,17 @@ func upstreamStore(server *httptest.Server, delegation *fixedDelegation) HTTPSAp
 	return HTTPSApplicationStore{
 		ApplicationID: "sui", ActionID: "sui.move",
 		Origin: server.URL, Prefix: "/docs/", Suffix: "/action-commit",
-		Client: server.Client(), Subjects: fixedSubject{id: "human-1"},
+		Client: server.Client(), Audience: "sui-receiver",
+		Subjects: fixedSubject{id: "human-1"},
+		Tenants: fixedTenant{id: "tenant-1"},
 		Delegations: delegation,
 	}
 }
 
 func validDelegation() *fixedDelegation {
 	return &fixedDelegation{value: TrustedDelegation{
-		SubjectID: "human-1", TenantID: "tenant-1", BearerToken: "audience-scoped-test-token",
+		SubjectID: "human-1", TenantID: "tenant-1",
+		Audience: "sui-receiver", BearerToken: "audience-scoped-test-token",
 	}}
 }
 
@@ -73,6 +85,18 @@ func TestHTTPSApplicationStoreHostToApplication(t *testing.T) {
 	defer server.Close()
 	actor := validDelegation()
 	store := upstreamStore(server, actor)
+	// Even if an injected client has credentials for the same host,
+	// this adapter may not accidentally attach its session cookie.
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jar.SetCookies(u, []*http.Cookie{{Name: "session", Value: "should-never-leak"}})
+	store.Client.Jar = jar
 	host := Host{
 		Authorizer: permit(true),
 		Bindings:   []Binding{{ApplicationID: "sui", ActionID: "sui.move", Store: store}},
@@ -98,10 +122,18 @@ func TestHTTPSApplicationStoreRejectsUnverifiedDelegationBeforeNetwork(t *testin
 		change func(*HTTPSApplicationStore, *fixedDelegation, *Intent)
 	}{
 		{"missing subject", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Subjects = nil }},
+		{"missing tenant resolver", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Tenants = nil }},
+		{"wrong runtime tenant", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Tenants = fixedTenant{id: "tenant-2"} }},
+		{"missing audience configuration", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Audience = "" }},
+		{"mismatched audience", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.Audience = "untrusted-receiver" }},
 		{"missing delegation", func(s *HTTPSApplicationStore, _ *fixedDelegation, _ *Intent) { s.Delegations = nil }},
 		{"mismatched subject", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.SubjectID = "other-user" }},
 		{"missing tenant", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.TenantID = "" }},
 		{"missing token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = "" }},
+		{"invalid bearer token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = "token@host" }},
+		{"overlong bearer token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) { d.value.BearerToken = strings.Repeat("x", 8193) }},
+		{"typed nil payload", func(_ *HTTPSApplicationStore, _ *fixedDelegation, i *Intent) { i.Payload = (*int)(nil) }},
+		{"oversized Action body", func(_ *HTTPSApplicationStore, _ *fixedDelegation, i *Intent) { i.Payload = strings.Repeat("x", 70<<10) }},
 		{"injected token", func(_ *HTTPSApplicationStore, d *fixedDelegation, _ *Intent) {
 			d.value.BearerToken = "ok\nX-Actor-Ref: admin"
 		}},
@@ -205,8 +237,14 @@ func TestHTTPSApplicationStoreUsesOneContractForIndependentInventoryApp(t *testi
 	store := HTTPSApplicationStore{
 		ApplicationID: "inventory", ActionID: "inventory.adjust",
 		Origin: server.URL, Prefix: "/items/", Suffix: "/adjust",
-		Client: server.Client(), Subjects: fixedSubject{id: "human-1"},
-		Delegations: validDelegation(),
+		Client: server.Client(), Audience: "inventory-receiver",
+		Subjects: fixedSubject{id: "human-1"},
+		Tenants: fixedTenant{id: "tenant-1"},
+		Delegations: func() *fixedDelegation {
+			d := validDelegation()
+			d.value.Audience = "inventory-receiver"
+			return d
+		}(),
 	}
 	intent := Intent{
 		ApplicationID: "inventory", ActionID: "inventory.adjust",
