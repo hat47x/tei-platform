@@ -10,13 +10,20 @@ import (
 	resources "tei/reference/multilingual-resources"
 )
 
+// DisplayPluginIdentity is a stable UI serialization, independent from the
+// runtime plugin.Identity Go JSON representation.
+type DisplayPluginIdentity struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
+}
+
 // DisplayManifest is a read-only boundary between the selected TEI plugins
 // and a standard UI. It is not a runtime grant or an editable definition.
 type DisplayManifest struct {
 	Kind            string          `json:"kind"`
 	Environment     string          `json:"environment"`
 	LockFingerprint string          `json:"lockFingerprint"`
-	Target          plugin.Identity `json:"target"`
+	Target          DisplayPluginIdentity `json:"target"`
 	Resource        resources.Key   `json:"resource"`
 	Locale          string          `json:"locale"`
 	Text            string          `json:"text"`
@@ -68,7 +75,7 @@ func BuildLockedDisplay(
 	return DisplayManifest{
 		Kind: DisplayManifestKind, Environment: string(env.ID),
 		LockFingerprint: fingerprint,
-		Target:          request.Target, Resource: request.Key,
+		Target:          DisplayPluginIdentity{ID: string(request.Target.ID), Version: request.Target.Version}, Resource: request.Key,
 		Locale: result.Locale, Text: result.Text,
 		SourceRevision: result.SourceRevision,
 		FromSource:     result.FromSource, Fallback: result.Fallback,
