@@ -101,6 +101,17 @@ jobs:
           check-latest: false
           cache: false
 
+      - name: 汎用ActionのGo整形を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(gofmt -l tools/reference-sui-action-boundary/actionboundary/upstream_http*.go)"
+          if [[ -n "$expected" ]]; then
+            gofmt -d tools/reference-sui-action-boundary/actionboundary/upstream_http*.go
+            echo "gofmt未整形のファイルを検出しました" >&2
+            exit 1
+          fi
+
       - name: 汎用ActionのHTTPS委譲を競合検出付きで検証
         shell: bash
         env:
