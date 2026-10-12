@@ -198,3 +198,52 @@ func TestSnapshotDecodeMustUseSameSuppliedBytes(t *testing.T) {
 		t.Fatal("invalid facts must be rejected")
 	}
 }
+
+func TestConflictingPatternSubsystemClaimsCannotProveForeignWrite(t *testing.T) {
+	w, f := fixture(t)
+	// The same Pattern is attributed to two execution Subsystems.
+	// This is an ambiguous actor, not proof of a foreign CUD effect.
+	f.FunctionIO = append(f.FunctionIO, FunctionIO{
+		Pattern: "sales.submit", Subsystem: "stock", Data: "stock.reservation",
+		Operation: "U", Source: "candidate:contradictory",
+	})
+	report := Inspect(w, f)
+	if report.Status != "unresolved" ||
+		codeCount(report, "IO_PATTERN_SUBSYSTEM_CONFLICT") != 1 ||
+		codeCount(report, "CROSS_SUBSYSTEM_WRITE_INTENT") != 0 {
+		t.Fatalf("conflicting Pattern actor must be unresolved, not a foreign-write finding: %+v", report)
+	}
+	// Reordering distinct sources does not affect a deterministic report.
+	f.FunctionIO[0], f.FunctionIO[len(f.FunctionIO)-1] = f.FunctionIO[len(f.FunctionIO)-1], f.FunctionIO[0]
+	if reordered := Inspect(w, f); !reflect.DeepEqual(report, reordered) {
+		t.Fatalf("candidate order changed diagnostics: %+v vs %+v", report, reordered)
+	}
+}
+
+func TestConsistentPatternSubsystemCanReadDifferentOwnerData(t *testing.T) {
+	w, f := fixture(t)
+	f.FunctionIO = append(f.FunctionIO, FunctionIO{
+		Pattern: "sales.submit", Subsystem: "sales", Data: "stock.reservation",
+		Operation: "R", Source: "candidate:cross-read",
+	})
+	report := Inspect(w, f)
+	if report.Status != "no-findings-in-declared-scope" ||
+		codeCount(report, "IO_PATTERN_SUBSYSTEM_CONFLICT") != 0 ||
+		codeCount(report, "CROSS_SUBSYSTEM_WRITE_INTENT") != 0 {
+		t.Fatalf("same actor with another Data and read-only intent is valid in declared scope: %+v", report)
+	}
+}
+
+func TestPatternSubsystemConflictAcrossDifferentOperations(t *testing.T) {
+	w, f := fixture(t)
+	// Opposing claims about the Pattern actor remain contradictory even
+	// when the operations or Data targets differ.
+	f.FunctionIO = append(f.FunctionIO, FunctionIO{
+		Pattern: "sales.submit", Subsystem: "stock", Data: "stock.reservation",
+		Operation: "R", Source: "candidate:ambiguous-reader",
+	})
+	report := Inspect(w, f)
+	if report.Status != "unresolved" || codeCount(report, "IO_PATTERN_SUBSYSTEM_CONFLICT") != 1 {
+		t.Fatalf("Pattern execution scope must remain unambiguous: %+v", report)
+	}
+}
