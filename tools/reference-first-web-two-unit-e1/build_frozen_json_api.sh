@@ -2,6 +2,7 @@
 # Opt-in diagnostic API build with a frozen normalized World. The unmodified
 # Browser and ordinary API builder remain the reference baseline.
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 if [[ $# -ne 3 || "$1" != /* ]]; then
   echo "usage: bash $0 /absolute/new/artifact-dir BASELINE_ID BASELINE_REVISION" >&2
   exit 2
