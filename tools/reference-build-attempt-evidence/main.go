@@ -16,7 +16,7 @@ import (
 
 const (
 	attemptEvidenceSchema = "tei.reference.build-attempt-evidence/v0"
-	attemptHistorySchema  = "tei.reference.build-attempt-history/v0"
+	attemptHistorySchema  = "tei.reference.build-attempt-history/v1"
 	referenceSchema       = "tei.reference.build-attempt-evidence-run/v0"
 
 	attemptOutcomeFailed = "failed"
@@ -69,17 +69,12 @@ type buildAttemptHistory struct {
 	Schema               string                     `json:"schema"`
 	BuildPlanFingerprint string                     `json:"buildPlanFingerprint"`
 	FailedAttempts       []failedAttemptReference   `json:"failedAttempts"`
-	SuccessfulResult     *successfulResultReference `json:"successfulResult,omitempty"`
+	SuccessfulAttempts   []successfulAttemptReference `json:"successfulAttempts,omitempty"`
 }
 
 type failedAttemptReference struct {
 	AttemptOrdinal      int    `json:"attemptOrdinal"`
 	EvidenceFingerprint string `json:"evidenceFingerprint"`
-}
-
-type successfulResultReference struct {
-	BuildPlanFingerprint string `json:"buildPlanFingerprint"`
-	ResultFingerprint    string `json:"resultFingerprint"`
 }
 
 type buildGraphAttemptState struct {
@@ -159,10 +154,6 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 	}
 	if err := history.AppendFailure(plan, attempt); err != nil {
 		return referenceEvidence{}, err
-	}
-	history.SuccessfulResult = &successfulResultReference{
-		BuildPlanFingerprint: attempt.BuildPlanFingerprint,
-		ResultFingerprint:    strings.Repeat("a", 64),
 	}
 	if err := history.Validate(); err != nil {
 		return referenceEvidence{}, err
@@ -464,15 +455,11 @@ func (h *buildAttemptHistory) AppendFailure(
 	if err := e.ValidateAgainst(plan); err != nil {
 		return fmt.Errorf("Build Attempt History failure Evidence: %w", err)
 	}
-	if len(h.FailedAttempts) > 0 {
-		last := h.FailedAttempts[len(h.FailedAttempts)-1]
-		if e.AttemptOrdinal <= last.AttemptOrdinal {
-			return fmt.Errorf(
-				"Build Attempt History ordinal %d must be greater than previous ordinal %d",
-				e.AttemptOrdinal,
-				last.AttemptOrdinal,
-			)
-		}
+	if last := h.latestAttemptOrdinal(); e.AttemptOrdinal <= last {
+		return fmt.Errorf(
+			"Build Attempt History ordinal %d must be greater than previous ordinal %d",
+			e.AttemptOrdinal, last,
+		)
 	}
 	h.FailedAttempts = append(
 		h.FailedAttempts,
@@ -492,12 +479,14 @@ func (h buildAttemptHistory) Validate() error {
 		return err
 	}
 	previousOrdinal := 0
+	seenOrdinals := map[int]struct{}{}
 	seenFingerprints := map[string]struct{}{}
 	for _, attempt := range h.FailedAttempts {
 		if attempt.AttemptOrdinal <= previousOrdinal {
 			return fmt.Errorf("failed attempt ordinals must be strictly increasing")
 		}
 		previousOrdinal = attempt.AttemptOrdinal
+		seenOrdinals[attempt.AttemptOrdinal] = struct{}{}
 		if err := validateFingerprint(attempt.EvidenceFingerprint); err != nil {
 			return err
 		}
@@ -507,16 +496,28 @@ func (h buildAttemptHistory) Validate() error {
 		}
 		seenFingerprints[normalized] = struct{}{}
 	}
-	if h.SuccessfulResult != nil {
-		if err := validateFingerprint(h.SuccessfulResult.BuildPlanFingerprint); err != nil {
-			return fmt.Errorf("successful result BuildPlan fingerprint: %w", err)
+	previousSuccessOrdinal := 0
+	seenOccurrences := map[string]struct{}{}
+	for _, attempt := range h.SuccessfulAttempts {
+		if err := attempt.validate(); err != nil {
+			return err
 		}
-		if normalizeFingerprint(h.SuccessfulResult.BuildPlanFingerprint) != normalizeFingerprint(h.BuildPlanFingerprint) {
-			return fmt.Errorf("successful result belongs to a different BuildPlan")
+		if !strings.EqualFold(attempt.BuildPlanFingerprint, h.BuildPlanFingerprint) {
+			return fmt.Errorf("successful attempt belongs to a different BuildPlan")
 		}
-		if err := validateFingerprint(h.SuccessfulResult.ResultFingerprint); err != nil {
-			return fmt.Errorf("successful result fingerprint: %w", err)
+		if attempt.AttemptOrdinal <= previousSuccessOrdinal {
+			return fmt.Errorf("successful attempt ordinals must be strictly increasing")
 		}
+		previousSuccessOrdinal = attempt.AttemptOrdinal
+		if _, duplicate := seenOrdinals[attempt.AttemptOrdinal]; duplicate {
+			return fmt.Errorf("execution ordinal cannot be reused across outcomes")
+		}
+		seenOrdinals[attempt.AttemptOrdinal] = struct{}{}
+		occurrence := strings.ToLower(attempt.ExecutionOccurrenceID)
+		if _, duplicate := seenOccurrences[occurrence]; duplicate {
+			return fmt.Errorf("execution occurrence cannot be reused")
+		}
+		seenOccurrences[occurrence] = struct{}{}
 	}
 	return nil
 }
