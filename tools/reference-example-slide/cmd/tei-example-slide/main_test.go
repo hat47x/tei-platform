@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/workspace"
 	example "tei/tools/reference-example-slide"
 )
 
@@ -277,5 +278,141 @@ func TestCLIRejectsBadModelHypothesesBeforeWritingAnyOutput(t *testing.T) {
 	}
 	if err := run("", "../../../../reference/world.json", true, out, "", file); err == nil {
 		t.Fatal("catalog-only mode accepted model hypotheses")
+	}
+}
+
+func modelSourceCLIInputs(t *testing.T) (string, string, string) {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - semantic\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	source := []byte("namespace sales\n\ndata Child {\n    attribute businessCode type std.identifier\n}\n")
+	if err := os.WriteFile(filepath.Join(root, "semantic", "model.tei"), source, 0600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := example.CatalogFromWorld(loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attribute := catalog.Tables["sales.child"].Fields[0].ID
+	input := example.Input{
+		Catalog: catalog,
+		Example: example.Example{
+			ID: "loaded-source-case", ModelRevision: catalog.Revision,
+			Base: []example.Record{{
+				ID: "row-1", Table: "sales.child",
+				Values: map[string]json.RawMessage{attribute: json.RawMessage(`"X"`)},
+			}},
+		},
+		Diagram: example.Diagram{ID: "er", Placements: []example.Placement{{
+			ID: "child-shape", Table: "sales.child", X: 10,
+		}}},
+		Presentation: example.Presentation{Frames: []example.Frame{{ID: "first", Stage: "base"}}},
+	}
+	proposals := example.ModelHypotheses{
+		Schema: "tei.reference.example-model-hypotheses/v0",
+		CandidateKeys: []example.CandidateKeyHypothesis{{
+			ID: "business-identity", Table: "sales.child", Fields: []string{attribute},
+		}},
+	}
+	inputPath := filepath.Join(t.TempDir(), "input.json")
+	proposalsPath := filepath.Join(t.TempDir(), "hypotheses.json")
+	for path, value := range map[string]any{inputPath: input, proposalsPath: proposals} {
+		data, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root, inputPath, proposalsPath
+}
+
+func TestCLIAuditsHypothesisAgainstLoadedWorkspaceSource(t *testing.T) {
+	root, inputPath, proposalsPath := modelSourceCLIInputs(t)
+	out := t.TempDir()
+	if err := run(inputPath, "", false, out, "", proposalsPath, root); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(out, "model-hypothesis-source-audit.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var audit example.ModelHypothesisSourceAudit
+	if err := json.Unmarshal(data, &audit); err != nil {
+		t.Fatal(err)
+	}
+	reviewData, err := os.ReadFile(filepath.Join(out, "model-hypothesis-review.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var review example.ModelHypothesisReview
+	if err := json.Unmarshal(reviewData, &review); err != nil {
+		t.Fatal(err)
+	}
+	if audit.ModelReviewFingerprint != review.Fingerprint ||
+		audit.HypothesesFingerprint != review.HypothesesFingerprint ||
+		len(audit.Findings) != 2 || len(review.Issues) != 1 ||
+		review.Issues[0].Result != "unresolved" {
+		t.Fatalf("review and source evidence were not separately bound: audit=%+v review=%+v", audit, review)
+	}
+	for _, finding := range audit.Findings {
+		if finding.Status != "source-range-checked" || finding.SourceRange == nil ||
+			finding.ArtifactPath != "semantic/model.tei" {
+			t.Fatalf("missing exact declaration locator: %+v", finding)
+		}
+	}
+	info, err := os.Stat(filepath.Join(out, "model-hypothesis-source-audit.json"))
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatalf("source audit was not private: info=%v err=%v", info, err)
+	}
+}
+
+func TestCLIRejectsForgedOrMissingWorkspaceSourceBeforeWriting(t *testing.T) {
+	root, inputPath, proposalsPath := modelSourceCLIInputs(t)
+	output := t.TempDir()
+	if err := run(inputPath, "", false, output, "", "", root); err == nil {
+		t.Fatal("source auditing without hypotheses was accepted")
+	}
+	if err := run(inputPath, "../../../../reference/world.json", false, output, "", proposalsPath, root); err == nil {
+		t.Fatal("source-audit allowed an unrelated World override")
+	}
+	if err := run(inputPath, "", false, output, "", proposalsPath, filepath.Join(root, "missing")); err == nil {
+		t.Fatal("nonexistent Workspace was silently accepted")
+	}
+	content, err := os.ReadFile(inputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var input example.Input
+	if err := json.Unmarshal(content, &input); err != nil {
+		t.Fatal(err)
+	}
+	// Retain the copied revision: source audit must compare the whole
+	// Catalog from the loaded Workspace, not trust a matching revision.
+	table := input.Catalog.Tables["sales.child"]
+	table.Fields[0].Required = true
+	input.Catalog.Tables["sales.child"] = table
+	forged, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(inputPath, forged, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(inputPath, "", false, output, "", proposalsPath, root); err == nil {
+		t.Fatal("forged Catalog was accepted for source audit")
+	}
+	if entries, err := os.ReadDir(output); err != nil || len(entries) != 0 {
+		t.Fatalf("audit error produced partial files: entries=%v err=%v", entries, err)
 	}
 }
