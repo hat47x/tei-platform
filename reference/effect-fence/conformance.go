@@ -12,8 +12,8 @@ import (
 type ConformanceFixture interface {
 	SetAuthority(Scope, uint64, bool) error
 	AdvanceResource(Scope, string) error
-	Prepare(context.Context, Request) (Permit, Result, error)
-	Commit(context.Context, Permit) (Result, error)
+	PrepareForTest(context.Context, Request) (any, Result, error)
+	CommitForTest(context.Context, any) (Result, error)
 	Observe(Scope) (string, uint64)
 	Lookup(Scope, string) (Receipt, bool)
 }
@@ -36,17 +36,17 @@ func CheckAtomicConformance(ctx context.Context, fresh func() (ConformanceFixtur
 		name string
 		run  func(ConformanceFixture) error
 	}
-	prepare := func(f ConformanceFixture, r Request) (Permit, error) {
-		p, result, err := f.Prepare(ctx, r)
+	prepare := func(f ConformanceFixture, r Request) (any, error) {
+		p, result, err := f.PrepareForTest(ctx, r)
 		if err != nil {
-			return Permit{}, err
+			return nil, err
 		}
 		if result.Disposition != Prepared {
-			return Permit{}, fmt.Errorf("事前検査に失敗: %s (%s)", result.Disposition, result.Reason)
+			return nil, fmt.Errorf("事前検査に失敗: %s (%s)", result.Disposition, result.Reason)
 		}
 		return p, nil
 	}
-	commit := func(f ConformanceFixture, p Permit) (Result, error) { return f.Commit(ctx, p) }
+	commit := func(f ConformanceFixture, p any) (Result, error) { return f.CommitForTest(ctx, p) }
 	scenarios := []scenario{
 		{name: "commit-observe-replay", run: func(f ConformanceFixture) error {
 			r := req("op-1")
@@ -65,7 +65,7 @@ func CheckAtomicConformance(ctx context.Context, fresh func() (ConformanceFixtur
 			if !ok || receipt != result.Receipt {
 				return fmt.Errorf("確定記録を再照会できません")
 			}
-			_, again, err := f.Prepare(ctx, r)
+			_, again, err := f.PrepareForTest(ctx, r)
 			if err != nil || again.Disposition != Replayed || again.Receipt != receipt {
 				return fmt.Errorf("再送時に元の結果を返しません: %+v: %v", again, err)
 			}
@@ -138,9 +138,9 @@ func CheckAtomicConformance(ctx context.Context, fresh func() (ConformanceFixtur
 			var wg sync.WaitGroup
 			results := make(chan Result, 2)
 			errs := make(chan error, 2)
-			for _, p := range []Permit{p1, p2} {
+			for _, p := range []any{p1, p2} {
 				wg.Add(1)
-				go func(p Permit) {
+				go func(p any) {
 					defer wg.Done()
 					result, err := commit(f, p)
 					results <- result
