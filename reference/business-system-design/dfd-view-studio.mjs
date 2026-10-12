@@ -39,6 +39,11 @@ function render() {
   for(const flow of state.dfd.flows||[])edges.push({from:key('step',flow.from),to:key('step',flow.to),kind:'control'});
   for(const flow of state.dfd.information?.informationFlows||[])edges.push({from:key(flow.from.kind,flow.from.id),to:key(flow.to.kind,flow.to.id),kind:'information'});
   for(const t of state.dfd.triggers||[])edges.push({from:key('trigger',t.id),to:key('step',t.targetStep),kind:'control'});
+  for(const assignment of state.dfd.information?.responsibilities||[])
+    edges.push({from:key('business-role',assignment.role),to:key('step',assignment.step),kind:'responsibility'});
+  for(const step of state.dfd.steps)
+    for(const ref of step.functionRefs||[])
+      edges.push({from:key('step',step.id),to:key('function',ref.id),kind:'function'});
   for(const edge of edges){
     const a=centers.get(edge.from),b=centers.get(edge.to);if(!a||!b)continue;
     const line=svg('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:'edge '+edge.kind});
@@ -61,7 +66,9 @@ async function selectNode(node){
   const d=state.dfd;
   const step=node.kind==='step'?d.steps.find(s=>s.id===node.id):null;
   const candidate={kind:node.kind,id:node.id,authority:'reference-only',
-    source:step?.source||null,functionRefs:step?.functionRefs||[],explicitMeaning:step?.explicitMeaning||[]};
+    source:step?.source||null,functionRefs:step?.functionRefs||[],explicitMeaning:step?.explicitMeaning||[],
+    handoffs:step?(d.handoffs||[]).filter(h=>h.from?.procedure===d.procedureId&&h.from.step===node.id)
+      .map(h=>({to:h.to,condition:h.condition,authority:h.authority,runtimeBinding:'not-inferred'})):[]};
   $('details').replaceChildren();
   const pre=document.createElement('pre');pre.textContent=JSON.stringify(candidate,null,2);$('details').append(pre);
   if(step&&state.world&&$('revision').value){
