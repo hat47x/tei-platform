@@ -37,10 +37,11 @@ function go(args) { return command("go", args); }
 function buildNegativePriceTarget(binary) {
   const originalPath = join(root, "tools/reference-first-web-target/reference_order_contract_query_fixture.go");
   const original = readFileSync(originalPath, "utf8");
-  const originalValue = '"4000.00"';
-  assert.equal(original.split(originalValue).length, 2,
-    "expected exactly one synthetic unit-price fixture value");
-  const rewritten = original.replace(originalValue, '"0"');
+  const firstLinePrice = /(core\.MustCanonicalID\("sales\.order_line\.unit_price"\):\s*)"4000\.00"/g;
+  const matched = [...original.matchAll(firstLinePrice)];
+  assert.equal(matched.length, 1,
+    "expected exactly one first-order-line unit-price fixture declaration");
+  const rewritten = original.replace(firstLinePrice, '$1"0"');
   const replacement = join(temp, "unit-price-negative-fixture.go");
   writeFileSync(replacement, rewritten, { mode: 0o600 });
   const overlay = writeJSON("unit-price-negative-overlay.json",
@@ -51,7 +52,7 @@ function buildNegativePriceTarget(binary) {
     sourceFile: "tools/reference-first-web-target/reference_order_contract_query_fixture.go",
     originalSHA256: createHash("sha256").update(original).digest("hex"),
     overlaySHA256: createHash("sha256").update(rewritten).digest("hex"),
-    override: "synthetic order 1001 line item unit_price 4000.00 to 0",
+    override: "first synthetic line unit_price 4000.00 to 0 (selected order 1001)",
     authority: "test-only-build-overlay",
   };
 }
