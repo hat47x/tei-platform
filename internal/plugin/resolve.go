@@ -53,6 +53,9 @@ func (c Catalog) resolveBundle(req environment.ExtensionRequirement) (Bundle, er
 	if err := ValidateRequirements(matches[0].Plugins); err != nil {
 		return Bundle{}, fmt.Errorf("bundle %s version %s: %w", matches[0].ID, matches[0].Version, err)
 	}
+	if err := ValidateRequirementEntries(matches[0].Plugins); err != nil {
+		return Bundle{}, fmt.Errorf("bundle %s version %s: %w", matches[0].ID, matches[0].Version, err)
+	}
 	return matches[0], nil
 }
 
