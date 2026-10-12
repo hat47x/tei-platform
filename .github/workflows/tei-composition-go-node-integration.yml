@@ -1,6 +1,6 @@
 name: TEI アプリケーション構成 Go・Node 結合確認
 
-# E15は通常のGo単体試験から分離し、参照用のGo→Node受け渡しだけを確認する。
+# E15のGo→Node受け渡しと、E22の既存Loader/DriverによるNative構成候補を確認する。
 # 権限や全依存の確定を示すものではない。
 on:
   pull_request:
@@ -53,3 +53,9 @@ jobs:
           go test -tags=tei_modelref_candidate -count=1 \
             ./reference/application-composition \
             -run '^TestE15ActualGoImpactToE12ReadOnlyReview$' -v
+
+      - name: E22のNative構成候補を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./reference/application-composition -run '^TestE22' -v
