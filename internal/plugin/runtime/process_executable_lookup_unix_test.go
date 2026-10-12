@@ -52,6 +52,16 @@ func TestStdioProcessLauncherExecutableLookupUsesExplicitPathOnly(t *testing.T) 
 			}
 		})
 	}
+	// On Unix, a backslash is a regular filename byte, not a path
+	// separator. os/exec would still search the parent PATH for this name.
+	backslashName := "tei\\\\host-only-probe"
+	if err := os.WriteFile(filepath.Join(hostDir, backslashName), []byte("#!/bin/sh\\nexit 61\\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (pruntime.StdioProcessLauncher{}).Invoke(context.Background(),
+		pruntime.ProcessCommand{Executable: backslashName}, processRequest()); err == nil || !strings.Contains(err.Error(), "explicit") {
+		t.Fatal("Unix backslash command name bypassed explicit PATH admission")
+	}
 	launcher := pruntime.StdioProcessLauncher{Env: []string{
 		"PATH=" + approvedDir,
 		"TEI_PROCESS_EXPLICIT_ALLOWLIST=approved",
