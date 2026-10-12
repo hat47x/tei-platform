@@ -20,8 +20,9 @@ type successfulAttemptReference struct {
 	Outcome               string `json:"outcome"`
 }
 
-// fakeSuccessfulBuilder stands in for a builder that was actually invoked.
-// A caller cannot obtain a receipt merely by copying a result fingerprint.
+// fakeSuccessfulBuilder simulates a successful builder call with supplied
+// output bytes. It does not execute or attest an external build.
+// Copying one occurrence ID cannot produce a second accepted attempt.
 type fakeSuccessfulBuilder struct {
 	runs int
 }
