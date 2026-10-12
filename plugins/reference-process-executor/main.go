@@ -57,7 +57,11 @@ type deploymentAcknowledgment struct {
 }
 
 func main() {
-	if err := serve(os.Stdin, os.Stdout, os.Args[1:]); err != nil {
+	run := serve
+	if hasExactArg(os.Args[1:], "--tei-reference-persistent") {
+		run = servePersistent
+	}
+	if err := run(os.Stdin, os.Stdout, os.Args[1:]); err != nil {
 		// Never echo request data: payloads may contain secrets.
 		fmt.Fprintln(os.Stderr, "invalid process plugin request")
 		os.Exit(2)

@@ -10,6 +10,7 @@ TEIは、ドメイン知識と技術を分けて管理するローコード開�
 
 | 領域 | 状況 | 確認先 |
 | --- | --- | --- |
+| 常駐する参照プロセスの世代交換 | 開発候補として、旧プロセスで処理を保持しながら新しい実行物とPIDへ切り替える試験を追加。終了待ちの失敗、準備拒否、取消・異常終了と明示的な復旧を扱う。処理要求の受領までの参照例であり、永続的な更新、本番権限、性能・可用性目標は未成立 | [実行方法と制約](../tools/reference-composition-process-bridge/README.md) |
 | 初回の業務モデル変更 | 独立した小さな作業領域で定義・出所索引・検証・修復を扱う参照例と回帰試験を用意。**画面生成・保存・外部連携の実証ではありません** | [初回モデル変更の手順](../examples/first-workspace/README.md)、[課題 #1161](https://github.com/hat47x/tei-platform/issues/1161) |
 | GitHub Actionsによるコード検証 | 2026-10-12に自動検査を再開。固定した`main`コミット`4fbcd92003f04254ef25882deec5549872a3c58e`で、コード整形、静的解析、Go全テスト、参照用作業領域の検証がすべて成功。**製品の実行先・外部DBの検証とは別** | [実行 #38221407786](https://github.com/hat47x/tei-platform/actions/runs/38221407786)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、ソース索引作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |

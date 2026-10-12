@@ -20,8 +20,10 @@ func TestRepairOnlySessionCommandConfigurationFailsClosed(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			server := &webTargetServer{
-				protectedSessionOptionCount: tc.count,
-				protectedSessionConfig:      tc.config,
+				targetCommandRoutes: targetCommandRoutes{
+					protectedSessionOptionCount: tc.count,
+					protectedSessionConfig:      tc.config,
+				},
 			}
 			err := server.configureProtectedSessionCommand()
 			if (err == nil) != tc.wantOK {
