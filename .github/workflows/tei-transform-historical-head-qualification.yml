@@ -82,9 +82,9 @@ jobs:
             and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageOracleDigest
             and (.transformBootstrap.runtimeEngineFingerprint | length) == 64
             and (.transformBootstrap.packageBuildPlanFingerprint | length) == 64
-            and any(.transformBootstrap.packageBuildPlan.dependencies[];
+            and (. as $ev | any($ev.transformBootstrap.packageBuildPlan.dependencies[];
               .kind == "runtime-engine"
-              and .artifactDigest == .transformBootstrap.runtimeEngine.implementationDigest)
+              and .artifactDigest == $ev.transformBootstrap.runtimeEngine.implementationDigest))
             and .packageReproducible == true
             and .nativeReproducible == true
             and .reproducible == true
