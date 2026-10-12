@@ -20,10 +20,10 @@ func fdProbeFixture() (Catalog, Example, FDHypothesis) {
 	}
 	example := Example{ID: "synthetic-order-lines", ModelRevision: "fd-r1", Base: []Record{
 		{ID: "record-b", Table: "order_line", Values: map[string]json.RawMessage{
-			"row_id": `"pk-b"`, "order_id": `"order-1"`, "line_no": `9007199254740993.0`, "item": `"item-B"`,
+			"row_id": json.RawMessage(`"pk-b"`), "order_id": json.RawMessage(`"order-1"`), "line_no": json.RawMessage(`9007199254740993.0`), "item": json.RawMessage(`"item-B"`),
 		}},
 		{ID: "record-a", Table: "order_line", Values: map[string]json.RawMessage{
-			"row_id": `"pk-a"`, "order_id": `"order-1"`, "line_no": `9007199254740993`, "item": `"item-A"`,
+			"row_id": json.RawMessage(`"pk-a"`), "order_id": json.RawMessage(`"order-1"`), "line_no": json.RawMessage(`9007199254740993`), "item": json.RawMessage(`"item-A"`),
 		}},
 	}}
 	hypothesis := FDHypothesis{
@@ -118,7 +118,7 @@ func TestFDProbeMissingOrOpaqueFieldsCannotProveConflict(t *testing.T) {
 
 func TestFDProbeRejectsInvalidDeclarationsAndUnvalidatedRecords(t *testing.T) {
 	type change struct {
-		name string
+		name  string
 		apply func(*Catalog, *Example, *FDHypothesis)
 	}
 	cases := []change{
