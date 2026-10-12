@@ -2,17 +2,134 @@ package webcomposition
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+
+	"tei/internal/driver"
+	"tei/internal/realization"
+	"tei/internal/security/legacyauth"
+	"tei/internal/security/legacyauthorization"
+	"tei/internal/semantic/capabilityinvoke"
+	"tei/internal/workspace"
 )
+
+// The accepted reference Workspace is a historical baseline and must not be
+// changed just to test a new business Action. Overlay only the candidate files
+// in a temporary copy; the existing authorizer still evaluates its own
+// explicit fixture rule, never a hand-written second permission evaluator.
+func quoteCandidateAuthorizationDependencies(t *testing.T) (driver.Resolver, driver.BindingAdapterResolver) {
+	t.Helper()
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("quote test cannot locate reference files")
+	}
+	reference := filepath.Join(filepath.Dir(filename), "..", "..")
+	source := filepath.Join(reference, "workspace")
+	target := filepath.Join(t.TempDir(), "workspace")
+	if err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		rel, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		destination := filepath.Join(target, rel)
+		if entry.IsDir() {
+			return os.MkdirAll(destination, 0755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(destination, data, 0644)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	candidate := filepath.Join(reference, "candidates", "order-quote")
+	for _, relative := range []string{
+		"semantic/sales/quote.tei",
+		"applications/order-entry/patterns/preview-order-quote.tei",
+		"applications/order-entry/realizations/quote-lines.tei",
+	} {
+		data, err := os.ReadFile(filepath.Join(candidate, filepath.FromSlash(relative)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(target, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	loaded, err := workspace.Load(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	users, err := legacyauth.LoadFixtureStore(filepath.Join(reference, "legacy-auth", "users.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalRules, err := os.ReadFile(filepath.Join(reference, "legacy-auth", "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Schema string `json:"schema"`
+		Rules []json.RawMessage `json:"rules"`
+	}
+	if err := json.Unmarshal(originalRules, &document); err != nil {
+		t.Fatal(err)
+	}
+	newRule, err := os.ReadFile(filepath.Join(candidate, "authorization-rule.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(newRule) {
+		t.Fatal("candidate authorization rule is not valid JSON")
+	}
+	document.Rules = append(document.Rules, json.RawMessage(newRule))
+	ruleBytes, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rulePath := filepath.Join(t.TempDir(), "authorization.json")
+	if err := os.WriteFile(rulePath, ruleBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	rules, err := legacyauthorization.LoadFixtureRule(rulePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter := legacyauthorization.Adapter{Store: users, Rule: rules}
+	return driver.NewResolver(loaded.World), referenceBindingResolver(
+		func(_ context.Context, binding realization.CustomGoBinding) (capabilityinvoke.Adapter, error) {
+			if binding.Identity() != "order_entry/security.authorize" {
+				return nil, errors.New("unexpected canonical authorization binding")
+			}
+			return adapter, nil
+		},
+	)
+}
 
 // The independent quote is a read-only semantic Capability, not a second
 // implementation of order_entry.submit_order. No process execution occurs.
 func TestStandaloneQuotePatternHasSeparateCanonicalBindingAndAuthorization(t *testing.T) {
-	resolver, adapters := referenceAuthorizationDependencies(t)
+	baseline, _ := referenceAuthorizationDependencies(t)
 	const quoteAction = "order_entry.preview_order_quote"
+	if _, err := baseline.ResolveCommandBinding("order_entry", quoteAction); err == nil {
+		t.Fatal("candidate quote was already present in accepted baseline")
+	}
+	resolver, adapters := quoteCandidateAuthorizationDependencies(t)
 	const quoteCapability = "sales.order.quote_lines"
 	resolved, err := resolver.ResolveCommandBinding("order_entry", quoteAction)
 	if err != nil {
