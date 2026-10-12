@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/plugin"
 	pruntime "tei/internal/plugin/runtime"
 )
 
@@ -106,5 +107,61 @@ func TestReferenceRuntimeEngineIdentityRejectsInvalidTarget(t *testing.T) {
 	)
 	if err == nil {
 		t.Fatal("missing target must be rejected")
+	}
+}
+
+// The Reference lock must not become stale from a docs-only repository commit.
+// A real implementation change still must invalidate the lock.
+func TestReferenceRuntimeEngineLockSeparatesRevisionFromImplementation(t *testing.T) {
+	build := func(revision, sourceDigest string) (evidence, pruntime.RuntimeEngineLock) {
+		engine, err := referenceRuntimeEngineIdentity(
+			core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+			nativeRuntimeEngineVersion,
+			"tei.runtime-engine/static-response-v1",
+			sourceDigest,
+			"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"host/linux/amd64",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return evidence{RepositoryRevision: revision, NativeRuntimeEngine: engine}, pruntime.RuntimeEngineLock{
+			FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+			Bindings: []pruntime.RuntimeEngineBinding{{
+				Plugin: plugin.Identity{
+					ID:      core.MustCanonicalID("tei.native.runtime.reference"),
+					Version: "1.0.0",
+				},
+				Engine: engine,
+			}},
+		}
+	}
+	const source = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	firstEvidence, firstLock := build("revision-before-docs", source)
+	secondEvidence, secondLock := build("revision-after-docs", source)
+	if firstEvidence.RepositoryRevision == secondEvidence.RepositoryRevision {
+		t.Fatal("repository provenance must retain the different revisions")
+	}
+	if firstEvidence.NativeRuntimeEngine.ImplementationDigest != firstLock.Bindings[0].Engine.ImplementationDigest {
+		t.Fatal("runtime engine lock lost its implementation digest")
+	}
+	firstFP, err := pruntime.RuntimeEngineLockFingerprint(firstLock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondFP, err := pruntime.RuntimeEngineLockFingerprint(secondLock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstFP != secondFP {
+		t.Fatal("repository-only revision changed the Runtime Engine Lock")
+	}
+	_, changedLock := build("revision-after-source-change", "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
+	changedFP, err := pruntime.RuntimeEngineLockFingerprint(changedLock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changedFP == firstFP {
+		t.Fatal("implementation source change did not invalidate the Runtime Engine Lock")
 	}
 }
