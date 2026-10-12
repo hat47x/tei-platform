@@ -285,3 +285,20 @@ Go 1.23.2の隔離作業領域で、これらを含む`go test -race -count=1 ./
 C1 [#1165](https://github.com/hat47x/tei-platform/issues/1165) の `tei trace` は、`#1139` の本Modelref契約と、`#1169` のCLI inspect/operations境界が双方とも検証・統合された後に接続する。Web/Desktopも同じ型付き操作を呼び、argvやJSONの形式はAdapterが所有する。`Source Index` の元定義への案内は `sourcebridge` の検証済みNavigationを使い、Edgeの存在だけで書込み許可を与えない。
 
 スコープ・Graph版・Policy版、Host側の情報開示・認可、秘匿Evidenceの伏字化、ページ取得間の情報鮮度については、実アダプターでの追加受入検証を必要とする。今回のGoのテストコード追加は実行成功の証明ではない。統合には、対象のexact headにおけるリポジトリ全体のHealth Checkが引き続き必要となる。
+
+## R7 — 変更影響の「空」と「未解決」を区別する（2026-10-12）
+
+PR #1139がmainへ統合された後、現行`modelref.Impact`を再点検したところ、`Validate`が`conflicting-rule`を検出する一方、`Impact`は競合する二つの拡張規則を個別に採用して影響先候補を生成できることが判明した。たとえば`function --reads--> data`の表示名依存がfalseとtrueで競合した場合、true側の規則を選び、表示名変更の波及先を誤って提示し得る。
+
+今回の対応は次のとおり。
+
+- `Impact`の逆向き索引構築では、`(relation, fromKind, toKind)`に対応する拡張規則を一意に選ぶ。**矛盾した規則・無効な規則・参照元/先の重複・不完全な辺の根拠**は、影響経路として使わない。
+- 新しい`ReviewImpact`は、Graph全体と変更対象を`Validate`に通し、診断があれば`GraphValid=false`と`Diagnostics`を返す。未解決な参照があるときに`Affected=[]`だけを返して「影響なし」と誤読させない。
+- `GraphValid=true`であっても、**それは渡された候補Graphと拡張規則の構造検査が成功したことだけ**を表す。元Source revisionの正当性、受理済み意味、権限、実行時の更新効果を証明しない。
+- `Impact`の従来のシグネチャーは維持し、`ReviewImpact`を追加の安全な利用口とする。新しい表や図の消費側は`ReviewImpact`の診断を先に確認してから影響一覧を表示する。
+
+負例は拡張規則の競合、参照先の欠落、派生出典の不足、未知の変更分類、存在しない変更元。正例はData→Function→Task/Formの3件の影響と、表示名に依存しないedgeでは影響が空になるケース。
+
+この改修は#1120の共通契約に閉じるもので、#1124のStudioや#1125の業務手順を推測して実装せず、既存`ir.World`・Source Index・Shared Acceptance・Runtimeを変更しない。
+
+**資格確認:** 本PRの正確なコミットでの`go test -race -count=1 ./internal/modelref/... ./internal/workspace`、`tools/repository-health-check.sh`、作業ツリーの事前/事後clean状態はまだ取得できていない。従来の#1139の統合事実を、本追加変更の品質保証や受理証拠へ読み替えない。完了まではDraftとする。
