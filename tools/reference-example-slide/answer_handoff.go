@@ -60,8 +60,8 @@ type ConfirmationRoute struct {
 }
 
 type BoundAnswer struct {
-	Question          QuestionRef        `json:"question"`
-	QuestionText      string             `json:"questionText"`
+	Question     QuestionRef `json:"question"`
+	QuestionText string      `json:"questionText"`
 	// A snapshot of the validated derived issue, not a claim by the answerer.
 	// Authored questions have no derived record provenance.
 	SourceIssue       *ReviewIssue       `json:"sourceIssue,omitempty"`
@@ -224,7 +224,7 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 		out.Answers = append(out.Answers, BoundAnswer{
 			Question: answer.Question, QuestionText: questionText,
 			SourceIssue: sourceIssue,
-			Response: response, Context: context,
+			Response:    response, Context: context,
 			Disposition: answer.Disposition,
 			ClaimedBy:   AnswerActor{Kind: answer.ClaimedBy.Kind, ID: actorID},
 			Evidence:    evidence, Status: "unverified",
