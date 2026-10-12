@@ -55,4 +55,26 @@ API専用構成では`GET /manifest.json`、`GET /healthz`、`GET /scenario/read
 
 新しい`check_api_only_parity.py`は、従来の受注専用バイナリとAPI専用バイナリを独立した実プロセスとして起動し、Manifest・読み取り・正常Command・認証拒否・認可拒否・検証不成立・実行エラー・不正リクエストの**HTTPステータスと本文のバイト一致**を検査します。合成資格情報は検査入力としてのみ使い、保持する証跡には残しません。
 
-**未解決**：従来のBrowser静的HTMLはフォームを`/custom-submit`へ送るため、そのままAPI専用へ接続すると404になります。新API専用を既存の`build.sh`の既定成果物に置き換えるには、Browser資産のフォーム送信をJSON APIへ変更し、実Browserでの機能・Visual・セキュリティを検査する必要があります。またAPI専用Goの設計時Workspace/Driver Loader依存も残存しています。画面描画除外はこれらの完成を意味しません。
+**既存ビルドの制約**：従来のBrowser静的HTMLはフォームを`/custom-submit`へ送るため、そのままAPI専用へ接続すると404になります。既定の`build.sh`は互換性のため旧方式を維持し、JSON API専用への接続は後述の`build_json_api.sh`で選択します。実ブラウザでの機能・Visual・セキュリティは引き続き未検証です。またAPI専用Goの設計時Workspace/Driver Loader依存も残存しています。
+
+## 静的Browserから画面非搭載JSON APIへ（選択式・局所検証）
+
+旧方式を壊さず、`build_json_api.sh`で別の配備構成を選べます。
+
+```sh
+destination="/tmp/tei-browser-json-$(git rev-parse --short HEAD)"
+bash tools/reference-first-web-two-unit-e1/build_json_api.sh \
+  "$destination" B e5231839a5dcc62cce1181a2731fcb7c70d16736
+node --test tools/reference-first-web-two-unit-e1/browser-command.test.mjs
+python3 tools/reference-first-web-two-unit-e1/smoke_json_api.py "$destination"
+```
+
+出力は静的`browser/index.html`・`browser/browser-command.js`と、HTML描画を持たないGoの`api/order-entry`です。HTMLは既存第一Web Targetが生成した同じProjection由来のものを、フォームの通信先だけ`/scenario/submit`へ差し替えて導出します。業務ルール・認可判断をブラウザへ複製しません。
+
+JavaScriptはフォームの一時入力をJSONへ変換し、業務APIから返る`completed`、`authentication-denied`、`authorization-denied`、`validation-not-satisfied`、`execution-error`を**テキスト**で区別して表示します。資格情報は送信後に入力欄から消去し、API応答を`innerHTML`で解釈しません。ネットワーク断・識別不能な応答については成功とも拒否とも判定せず、状態確認を促します。自動再送はしません。
+
+`browser-host.mjs`は新構成に限り静的JavaScriptを同一Originから配信し、`script-src 'self'`と`connect-src 'self'`のCSPを設けます。新APIには従来の`/custom-submit`ハンドラーが存在しません。これも404として確認します。診断ホストは本番用Webサーバーではありません。
+
+`smoke_json_api.py`では二つの実プロセスからHTML・JavaScriptとGo JSON APIを配信し、合成入力の正常・認証拒否・認可拒否・検証未充足・実行エラーについて、API直接経路と同一Origin中継経路のHTTP本文・状態の一致を確かめます。Origin不一致・未指定、誤ったContent-Type、未知の経路とAPI停止時の502も拒否します。ブラウザJavaScriptのDOM状態はNodeの模擬環境で個別にテストし、実ブラウザの操作・画面表示の検証と区別します。
+
+成果物の測定JSONは各ファイルのサイズとSHA-256を保存します。受理されたBuilder/Lock、実ブラウザ操作、視覚品質、実Provider/IdP、本番CSRF/TLS、配備環境でのAuthorizationまでは証明しません。APIバイナリは現段階では設計時Workspace/Driver機構を含みます。第二Target #259の合格とも扱いません。
