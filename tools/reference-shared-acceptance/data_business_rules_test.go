@@ -20,7 +20,7 @@ func composedDataBusinessRuleCandidate(revision string) Candidate {
 		BaseModelRevision: revision,
 		Origin:            Origin{Kind: "studio", Actor: "test"},
 		Intent:            "新しいDataと属性、複合候補キー、関数従属性を一回の受理で宣言する",
-		Evidence: []Evidence{{Source: orderFile}},
+		Evidence:          []Evidence{{Source: orderFile}},
 		Delta: []Operation{{
 			Op: opAddData, Placement: packageLinePath,
 			Data: &DataSpec{
@@ -152,7 +152,9 @@ func TestAddDataBusinessRuleRejectsUnrelatedOrUndeclaredAttributes(t *testing.T)
 		mutate func(*DataSpec)
 	}{
 		{"field not in new Data", func(d *DataSpec) { d.CandidateKeys[0].Attributes[0] = "fulfillment.package_line.unknown" }},
-		{"FD dependent not in new Data", func(d *DataSpec) { d.FunctionalDependencies[0].Dependents = []string{"fulfillment.package_line.unknown"} }},
+		{"FD dependent not in new Data", func(d *DataSpec) {
+			d.FunctionalDependencies[0].Dependents = []string{"fulfillment.package_line.unknown"}
+		}},
 		{"another Data owns rule", func(d *DataSpec) {
 			d.CandidateKeys[0].Data = "fulfillment.other"
 			d.CandidateKeys[0].ID = "fulfillment.other.business_line"
