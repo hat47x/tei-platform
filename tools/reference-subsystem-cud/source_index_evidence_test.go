@@ -80,6 +80,20 @@ func TestIndexedProcedureSourceFailsClosedForMissingOrAmbiguousProvenance(t *tes
 			code: "PROCEDURE_SOURCE_ANCHOR_UNRESOLVED",
 		},
 		{
+			name: "definition-only role cannot stand in for authoring",
+			edit: func(idx *sourceindex.Index, _ *string) {
+				idx.References[0].Role = sourceindex.RoleDefinition
+			},
+			code: "PROCEDURE_SOURCE_ANCHOR_UNRESOLVED",
+		},
+		{
+			name: "procedure path absent from index",
+			edit: func(_ *sourceindex.Index, p *string) {
+				*p = "procedures/another-source.json"
+			},
+			code: "PROCEDURE_SOURCE_UNINDEXED",
+		},
+		{
 			name: "derived role is not an authoring anchor",
 			edit: func(idx *sourceindex.Index, _ *string) {
 				idx.References[0].Role = sourceindex.RoleDerived
