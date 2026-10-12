@@ -1,4 +1,4 @@
--- Reference-only D2 relational projection; never install into a user's DB.
+-- Reference-only D2 relational projection. Never install into a user's DB.
 -- One physical representation for SQLite and PostgreSQL.
 CREATE TABLE tei_multilingual_revision (
   tenant_id TEXT NOT NULL,
