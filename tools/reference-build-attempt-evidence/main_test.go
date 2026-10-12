@@ -483,9 +483,9 @@ func TestSignalledBuildFailureAndExitStatusAreNotConflated(t *testing.T) {
 	plan := referenceBuildPlan()
 	zero, minusOne, minusTwo, positive := 0, -1, -2, 2
 	for _, tt := range []struct {
-		name string
-		code *int
-		signal string
+		name      string
+		code      *int
+		signal    string
 		wantError bool
 	}{
 		{name: "signal-only", signal: "SIGTERM"},
