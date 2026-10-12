@@ -3,12 +3,27 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"tei/internal/core"
 	"tei/internal/plugin/transform"
 )
+
+func referenceMetaBuilderSource(t *testing.T) transform.Source {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "reference", "plugin-self-build", "builder-sources", "transform-source-realizer-v1.transform.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source, err := transform.ParseSourceJSON(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return source
+}
 
 func requestBytes(t *testing.T, request engineRequest) []byte {
 	t.Helper()
@@ -20,7 +35,7 @@ func requestBytes(t *testing.T, request engineRequest) []byte {
 }
 
 func TestExecuteMetaBuilderThroughTypedWire(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := referenceMetaBuilderSource(t)
 	value, err := transform.SourceValue(source)
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +119,7 @@ func TestExecutePreservesBytesValue(t *testing.T) {
 }
 
 func TestDecodeRequestRejectsAmbiguousOrUnknownJSON(t *testing.T) {
-	limits := transform.TransformSourceRealizerV1().Limits
+	limits := referenceMetaBuilderSource(t).Limits
 	tests := []string{
 		`{"schema":"tei.reference.transform-engine-request/v1","schema":"tei.reference.transform-engine-request/v1","inputs":[]}`,
 		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[],"unknown":true}`,
@@ -122,7 +137,7 @@ func TestDecodeRequestRejectsAmbiguousOrUnknownJSON(t *testing.T) {
 }
 
 func TestDecodeRequestRejectsExplicitNullForWrongOrRequiredWireField(t *testing.T) {
-	limits := transform.TransformSourceRealizerV1().Limits
+	limits := referenceMetaBuilderSource(t).Limits
 	tests := []string{
 		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[{"name":"x","value":{"kind":"null","bool":null}}]}`,
 		`{"schema":"tei.reference.transform-engine-request/v1","inputs":[{"name":"x","value":{"kind":"bool","bool":null}}]}`,
@@ -144,7 +159,7 @@ func TestDecodeRequestRejectsExplicitNullForWrongOrRequiredWireField(t *testing.
 }
 
 func TestExecuteRejectsDuplicateInputNames(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := referenceMetaBuilderSource(t)
 	null := wireValue{Kind: transform.ValueNull}
 	_, err := execute(source, requestBytes(t, engineRequest{
 		Schema: engineRequestSchema,
@@ -159,7 +174,7 @@ func TestExecuteRejectsDuplicateInputNames(t *testing.T) {
 }
 
 func TestDecodeWireRejectsHiddenFieldsAndInvalidBase64(t *testing.T) {
-	limits := transform.TransformSourceRealizerV1().Limits
+	limits := referenceMetaBuilderSource(t).Limits
 	flag := true
 	text := "not-base64!"
 	tests := []wireValue{
@@ -174,7 +189,7 @@ func TestDecodeWireRejectsHiddenFieldsAndInvalidBase64(t *testing.T) {
 }
 
 func TestWireBytesBudgetUsesExactDecodedLength(t *testing.T) {
-	limits := transform.TransformSourceRealizerV1().Limits
+	limits := referenceMetaBuilderSource(t).Limits
 	limits.MaxInputBytes = 1
 	encoded := base64.StdEncoding.EncodeToString([]byte{0xff})
 	value, err := decodeWireValue(
@@ -202,7 +217,7 @@ func TestWireBytesBudgetUsesExactDecodedLength(t *testing.T) {
 }
 
 func TestWireDecodeStopsAtSemanticInputBudget(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := referenceMetaBuilderSource(t)
 	source.Limits.MaxInputBytes = 8
 	long := strings.Repeat("x", 32)
 	_, err := execute(source, requestBytes(t, engineRequest{
@@ -221,7 +236,7 @@ func TestWireDecodeStopsAtSemanticInputBudget(t *testing.T) {
 }
 
 func TestRequestLimitIsHostBoundedAboveSemanticInput(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := referenceMetaBuilderSource(t)
 	got := requestLimit(source)
 	if got <= int64(source.Limits.MaxInputBytes) {
 		t.Fatalf("wire envelope limit must account for typed/base64 overhead: %d", got)
@@ -232,7 +247,7 @@ func TestRequestLimitIsHostBoundedAboveSemanticInput(t *testing.T) {
 }
 
 func TestWireObjectPreservesFieldOrder(t *testing.T) {
-	limits := transform.TransformSourceRealizerV1().Limits
+	limits := referenceMetaBuilderSource(t).Limits
 	a := "first"
 	b := "second"
 	fields := []wireField{

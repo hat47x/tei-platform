@@ -2,33 +2,33 @@
 
 ## 目的
 
-このConformanceは、既存システム固有の認証状態や認証規則を失わずに、Semantic Capability `security.authenticate`へ接続できることを確認するものです。
+この準拠確認では、既存システムが持つ認証状態や規則を変更せず、意味上の機能である`security.authenticate`から利用できることを確かめます。
 
-ここで重要なのは、既存の認証schemaをTEI標準のUser schemaへ作り替えることではありません。既存recordと既存ruleをadapterの向こう側に保ったまま、Application / Driverからは共通のCapability契約として利用できる境界を作ります。
+既存の認証用データ構造をTEI標準の利用者定義へ作り替えることはしません。既存の記録と規則は接続部の内部に保ち、アプリケーションやドライバーからは共通の機能契約を通して利用します。
 
-対象はIssue #68およびADR-0019です。業務上の結果とExecution Errorの分離には、Issue #77 / ADR-0020で確定した`capabilityinvoke`の共通境界をそのまま利用します。
+対象は課題 #68 とADR-0019です。業務上の結果と実行エラーは、課題 #77 とADR-0020で定めた`capabilityinvoke`の共通境界で区別します。
 
 ## 既存利用者記録の扱い
 
-v1のReference adapterは、既存システムにあり得る次のmetadataを保持できます。
+第1版の参照用接続部では、既存システムが持つことのある次の情報を保持できます。
 
-- login ID
-- authenticated subjectへ対応するidentity
-- credentialの参照
+- ログイン識別子
+- 認証された主体に対応する識別情報
+- 認証情報への参照
 - 無効化状態
 - 有効期間
-- login失敗回数
-- lock期限
+- ログインの失敗回数
+- ロックの期限
 - 組織コード
-- roleコード
+- ロールコード
 
-この型はTEI標準User schemaではありません。既存schemaや既存APIから得た情報を、認証adapterへ渡すためのReference境界です。
+この型はTEI標準の利用者定義ではなく、既存のデータ構造やAPIから取得した情報を認証用の接続部へ渡すためのものです。
 
-credentialについても、legacy user recordには検証対象そのものを保存せず、credentialの参照だけを保持します。
+既存の利用者記録には、検証に使う認証情報の値そのものを保存せず、その参照先だけを保持します。
 
 ## 認証情報の検証境界
 
-credential検証は`CredentialVerifier`へ分離します。
+認証情報の検証は、`CredentialVerifier`に分離します。
 
 ```text
 runtime input
@@ -45,76 +45,76 @@ Legacy Authentication Adapter
              + presented credential
 ```
 
-提示されたcredentialは実行時入力としてVerifierへ渡します。Canonical World、Source Index、Business Resultへコピーしません。
+提示された認証情報は実行時に検証器へ渡し、意味の正本となる全体モデル、入力元索引、業務結果へ複製しません。
 
-Reference testにも「正解となるsecret値」を保存せず、Verifierの成否を注入して境界だけを検証します。
+参照用テストにも正しい秘密情報の値は記録しません。検証器の成功・失敗を外から指定し、情報の受け渡しと判定結果の区別を確かめます。
 
 ## 正常な業務結果
 
-次は、認証処理を正常に完了して得られる`denied` Outcomeです。
+次の`denied`は、認証の判断そのものは完了したうえで、利用を拒否したという業務結果です。
 
-| 条件 | Business Result |
+| 条件 | 業務結果 |
 | --- | --- |
 | 利用者が見つからない | `denied / credential_mismatch` |
-| credential不一致 | `denied / credential_mismatch` |
+| 認証情報が一致しない | `denied / credential_mismatch` |
 | 無効化済み | `denied / account_disabled` |
 | 有効期間前 | `denied / not_yet_valid` |
 | 有効期間切れ | `denied / expired` |
-| lock中 | `denied / account_locked` |
-| 既存システム固有ruleが不成立 | `denied / <legacy reason>` |
+| ロック中 | `denied / account_locked` |
+| 既存システム固有の規則を満たさない | `denied / <legacy reason>` |
 
-利用者が見つからない場合とcredential不一致は、Referenceでは同じreasonへ畳みます。利用者の存在確認を結果から不用意に露出させないためです。
+参照実装では、利用者が見つからない場合と認証情報が一致しない場合に、同じ拒否理由を返します。認証結果から利用者が存在するかどうかを推測されにくくするためです。
 
-認証が成立した場合は`authenticated` Outcomeを返し、payloadにはsubject identityだけを置きます。
+認証が成立した場合は`authenticated`を返し、その結果のデータには認証された主体の識別情報だけを含めます。
 
 ## 実行エラー
 
-次は業務上の認証拒否ではありません。
+次の場合は、業務上の認証拒否とは扱いません。
 
-- legacy user storeへ到達できない
-- credential verifierを実行できない
-- 既存ruleの評価そのものを完了できない
-- legacy recordにsubject identityがない
-- legacy recordにcredential参照がない
-- `security.authenticate`以外のCapabilityを誤ってこのadapterへ渡す
-- adapterの入力型が契約と一致しない
+- 既存の利用者情報の保存先へ接続できない
+- 認証情報の検証器を実行できない
+- 既存の規則の評価を完了できない
+- 既存の利用者記録に主体の識別情報がない
+- 既存の利用者記録に認証情報への参照がない
+- `security.authenticate`以外の機能を誤ってこの接続部へ渡す
+- 接続部の入力型が契約と一致しない
 
-これらを`denied`へ変換すると、利用者の認証が成立しなかったのか、認証判断そのものを実行できなかったのかが分からなくなります。
+これらの障害を`denied`へ変換すると、認証の判断を終えて拒否したのか、判断自体ができなかったのかを区別できません。
 
-そのため、`capabilityinvoke.Invoke`へGo `error`として返し、Execution Errorの境界を維持します。
+そのため、`capabilityinvoke.Invoke`にはGoの`error`として返し、実行エラーとの区別を維持します。
 
 ## 既存システム固有の規則
 
-field対応だけでは表現しにくい既存条件を、TEI共通ruleへ無理に変換しません。
+項目どうしの対応付けだけでは表せない既存の条件は、TEI共通の規則へ無理に置き換えません。
 
-`LegacyRule`は、既存user metadataと評価時刻を受け取り、次のどちらかを返します。
+`LegacyRule`は、既存の利用者情報と評価時刻を受け取り、次のいずれかを返します。
 
 - 正常に評価でき、許可または拒否を判断できた
 - 評価処理そのものを完了できなかった
 
-前者の拒否は`denied`、後者はExecution Errorです。
+規則を正しく評価した結果として拒否した場合は`denied`を返し、規則を評価できなかった場合は実行エラーを返します。
 
-Reference Conformanceでは、組織コード、roleコード、login失敗回数が既存metadataとしてruleへ届くことも確認します。
+参照実装の準拠確認では、組織コード、ロールコード、ログイン失敗回数が、既存の情報として規則の評価へ渡ることも確かめます。
 
 ## この段階で固定しないこと
 
-このConformanceだけでは、次を確定しません。
+この準拠確認だけでは、次の事項を確定しません。
 
-- TEI標準User schema
+- TEI標準の利用者データ構造
 - `std.auth.*`の標準Capability
-- production用password hash方式
-- LDAP / IdP / OIDC等の製品選択
-- credential rotation方式
-- Authorization rule
-- login画面
-- 汎用的な認証error階層
+- 本番用のパスワードのハッシュ化方式
+- LDAP、IdP、OIDCなどの製品選択
+- 認証情報の更新方式
+- 認可の規則
+- ログイン画面
+- 汎用的な認証エラーの分類体系
 
-これらをAuthentication adapter一例から先回りして一般化しません。
+一つの認証用接続部の結果だけで、これらを共通仕様として一般化することはしません。
 
 ## 次の接続段階
 
-次の縦切りでは、このadapter境界をReference Workspaceの明示的なCapability Bindingへ接続し、legacy mappingの来歴とsecret非混入をRepository上のEvidenceとして確認します。
+次の検証では、この接続部を参照用作業領域に定義した機能の対応付けへつなぎます。既存の項目との対応関係をたどれること、秘密情報が結果へ混入していないことを、リポジトリ内の検証根拠で確認します。
 
-その後、`security.authorize`を`order_entry`のbrowse / edit / submitへ接続し、Gate Aを再評価します。
+その後、`security.authorize`を`order_entry`の参照・編集・確定の各操作へ接続し、判定段階Aを再評価します。
 
 関連: #68 / #69 / #77 / #124 / ADR-0019 / ADR-0020

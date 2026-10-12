@@ -1,0 +1,100 @@
+name: TEI コア隔離・外部利用者検証
+
+# 独立したサブプロジェクトへ移管する前に、最小の合成基盤の
+# 単独構築・契約の外部利用を差分限定で確認する。
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'internal/composition/**'
+      - 'tools/check-core-isolation.sh'
+      - 'tools/repository-architecture-check/**'
+      - 'reference/composition-kernel/testdata/external-consumer/**'
+      - 'tools/reference-composition-process-bridge/**'
+      - 'plugins/reference-process-executor/**'
+      - 'tools/check-reference-plugin-isolation.sh'
+      - '.github/workflows/tei-core-isolation-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'internal/composition/**'
+      - 'tools/check-core-isolation.sh'
+      - 'tools/repository-architecture-check/**'
+      - 'reference/composition-kernel/testdata/external-consumer/**'
+      - 'tools/reference-composition-process-bridge/**'
+      - 'plugins/reference-process-executor/**'
+      - 'tools/check-reference-plugin-isolation.sh'
+      - '.github/workflows/tei-core-isolation-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-core-isolation-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-composition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 実行対象と変更のない作業領域を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+      - name: Go 1.23.2を用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: コア隔離・外部利用者試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/check-core-isolation.sh
+
+      - name: 既存の依存境界を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./tools/repository-architecture-check
+
+      - name: 独立した参照プラグインを構築・試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l plugins/reference-process-executor/*.go)"
+          bash tools/check-reference-plugin-isolation.sh
+
+      - name: 実プロセスプラグインとの接続を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -d tools/reference-composition-process-bridge/*.go
+          test -z "$(gofmt -l tools/reference-composition-process-bridge/*.go)"
+          go test -count=1 -timeout 90s ./tools/reference-composition-process-bridge
+          go vet ./tools/reference-composition-process-bridge
+
+      - name: 実行後の変更のない作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

@@ -411,3 +411,14 @@ transform Source内のassertionは、これらを置き換えるものではあ�
 したがって、Hostがdomain-specificなpackage materializerを呼ぶことなく、既存Canonical validationとgeneric transform Runtime Engineを組み合わせます。
 
 TEI-native package生成後は、manifest内の`buildPlanFingerprint`が、事前にvalidateしたexact Build Plan fingerprintと一致することも直接確認します。
+
+## 構築器の定義の正本
+
+二つの構築器の処理内容は、`builder-sources/`内のTEI管理下の変換定義を正本とします。
+
+- `transform-source-realizer-v1.transform.json`：構築器の再構築に使う変換定義
+- `plugin-package-v1.transform.json`：プラグインの配布一式を生成する変換定義
+
+Go側に同じ変換処理を組み立てる関数は置きません。実行機構のGo実装は初期構築用の基底実装であり、`plugin.MaterializePluginPackage`は生成結果を照合するための比較対象です。変更時にはリポジトリ内の変換定義だけを編集でき、出力の変化を回帰試験で確認します。
+
+これは定義の二重管理を解消する変更であり、Goの初期構築用実装を取り除くことや、実行機構そのものの自己構築を達成したことは意味しません。

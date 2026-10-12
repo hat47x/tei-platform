@@ -1,0 +1,318 @@
+name: TEI 受理Sourceから実Webへの一往復（E1-A）
+
+# 公開PR上で必要なときだけ実行する。試験用の受理と合成Providerであり、製品Gateではない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '.github/workflows/tei-critical-path-e1-ci.yml'
+      - 'tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs'
+      - 'tools/reference-shared-acceptance/**'
+      - 'tools/reference-first-web-target/**'
+      - 'reference/studio-authoring/**'
+      - 'reference/workspace/**'
+      - 'cmd/tei/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-critical-path-e1-ci.yml'
+      - 'tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs'
+      - 'tools/reference-shared-acceptance/**'
+      - 'tools/reference-first-web-target/**'
+      - 'reference/studio-authoring/**'
+      - 'reference/workspace/**'
+      - 'cmd/tei/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-e1a-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scratch-source-to-running-web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 試験対象のGit版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 試験前の版と作業領域を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" = pull_request ]]; then
+            read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merge" = "$GITHUB_SHA"
+            test "$head" = "${{ github.event.pull_request.head.sha }}"
+            [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          else
+            test "$GITHUB_EVENT_NAME" = push
+            test "$GITHUB_REF" = refs/heads/main
+          fi
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+      - name: Goを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 一時Source受理からWebの正常系まで実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
+          go version
+          node --check tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs
+          export TEI_CP_EVIDENCE_DIR="$RUNNER_TEMP/tei-e1a-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          export TEI_CP_LIVE_R1_SMOKE=1
+          node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs > "$RUNNER_TEMP/tei-e1a-summary.json"
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { readFileSync } from "node:fs";
+          import { join } from "node:path";
+          const read = name => JSON.parse(readFileSync(join(process.env.TEI_CP_EVIDENCE_DIR, name), "utf8"));
+          const summary = JSON.parse(readFileSync(join(process.env.RUNNER_TEMP, "tei-e1a-summary.json"), "utf8"));
+          const lineage = read("workspace-r1.json");
+          const launch = read("target-launch.json");
+          const positive = read("web-positive.json");
+          const modes = [
+            "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY",
+            "E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY"
+          ];
+          assert.ok(modes.includes(summary.status), "unrecognized Web test result");
+          assert.equal(summary.repositoryIntegrationHead, process.env.GITHUB_SHA);
+          assert.equal(lineage.integrationHead, process.env.GITHUB_SHA);
+          assert.equal(launch.targetBuildRevision, process.env.GITHUB_SHA);
+          assert.equal(positive.integrationHead, process.env.GITHUB_SHA);
+          assert.equal(lineage.sourceAfter, summary.acceptedScratchSourceR1);
+          assert.notEqual(lineage.sourceBefore, lineage.sourceAfter);
+          assert.equal(launch.workspaceSourceRevisionBeforeLaunch, lineage.sourceAfter);
+          assert.equal(positive.acceptedSourceRevisionClaim, lineage.sourceAfter);
+          assert.equal(lineage.humanApproval, false);
+          assert.equal(launch.runtimeAuthorityVerified, false);
+          assert.equal(positive.httpStatus, 200);
+          assert.equal(positive.commandObserved, true);
+          assert.equal(positive.independentDatabaseRead, false);
+          if (summary.status === "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY") {
+            assert.equal(positive.negativeUnitPriceTest, "NOT_RUN");
+            assert.equal(summary.negativeUnitPriceRunningWeb, "NOT_TESTED");
+          } else {
+            // #1163 adds a test-only Go overlay and a SECOND Web binary.
+            // This demonstrates a live denial but NOT the production binary or DB.
+            // The Source R0 label-spoof control is a harness-detected vulnerability,
+            // not proof the current Web server enforces accepted Source R1.
+            const negativeLaunch = read("target-negative-launch.json");
+            const negative = read("web-negative-unit-price.json");
+            assert.equal(positive.negativeUnitPriceTest, "RUNNING_SERVER_SYNTHETIC_FIXTURE_OVERLAY");
+            assert.equal(summary.negativeUnitPriceRunningWeb, "TESTED_WITH_SYNTHETIC_OVERLAY_BINARY");
+            assert.equal(summary.negativeUnitPriceRejected, true);
+            assert.equal(negativeLaunch.integrationHead, process.env.GITHUB_SHA);
+            assert.equal(negativeLaunch.sameBinaryAsPositive, false);
+            assert.notEqual(negativeLaunch.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(negativeLaunch.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(negative.integrationHead, process.env.GITHUB_SHA);
+            assert.equal(negative.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(negative.targetBinarySHA256, negativeLaunch.targetBinarySHA256);
+            assert.equal(negative.selectedValidation, "sales.order_line.unit_price_positive");
+            assert.equal(negative.evaluation, "not-satisfied");
+            assert.equal(negative.stage, "validation-not-satisfied");
+            assert.equal(negative.httpStatus, 200);
+            assert.equal(negative.commandDispatched, false);
+            assert.equal(negative.observationExecuted, false);
+            assert.equal(negative.productionTargetUnmodified, true);
+            assert.equal(negative.independentDatabaseRead, false);
+            // The 8th witness is a stale R0 Source with accepted R1 labels.
+            // The real target DOES NOT reject this at launch; do not report
+            // any runtime version binding or an accepted R1-only execution.
+            const stale = read("stale-source-control.json");
+            assert.equal(stale.integrationHead, process.env.GITHUB_SHA);
+            assert.equal(stale.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(stale.actuallyLoadedWorkspaceSourceRevision, lineage.sourceBefore);
+            assert.notEqual(stale.actuallyLoadedWorkspaceSourceRevision,
+              stale.acceptedSourceRevisionClaim);
+            assert.equal(stale.sameTargetBinaryAsPositive, true);
+            assert.equal(stale.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(stale.acceptedR1RuleMissing, true);
+            assert.notEqual(stale.staleManifestSemanticSHA256,
+              stale.acceptedManifestSemanticSHA256);
+            assert.equal(stale.mismatchDetectedByExternalTestHarness, true);
+            assert.equal(stale.webServerRejectsMismatchedLabels, false);
+            assert.equal(stale.currentRuntimeVersionBindingEnforced, false);
+            assert.equal(stale.independentDatabaseRead, false);
+            assert.equal(summary.staleSourceMismatchDetectedByHarness, true);
+            assert.equal(summary.staleSourceRejectedByTarget, false);
+          }
+          assert.equal(summary.independentDatabaseRead, false);
+          assert.equal(summary.validationCount, 4);
+          console.log(JSON.stringify({
+            status: summary.status === "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY"
+              ? "E1_A_SYNTHETIC_WEB_ONLY" : "E1_A_B_SYNTHETIC_OVERLAY_WEB_ONLY",
+            testedGitHead: process.env.GITHUB_SHA,
+            sourceR0: lineage.sourceBefore,
+            sourceR1: lineage.sourceAfter,
+            targetBinarySHA256: launch.targetBinarySHA256,
+            selectedValidationIDs: positive.selectedValidationIDs,
+            httpStatus: positive.httpStatus,
+            commandObserved: positive.commandObserved,
+            negativeUnitPrice: summary.negativeUnitPriceRunningWeb,
+            realDatabaseAndIndependentRead: "NOT_TESTED",
+            humanAcceptance: false,
+            productGate: "UNQUALIFIED"
+          }, null, 2));
+          NODE
+
+
+      - name: 合成E1証跡の本体と来歴を検査
+        shell: bash
+        env:
+          TEI_CP_EVIDENCE_DIR: '${{ runner.temp }}/tei-e1a-${{ github.run_id }}-${{ github.run_attempt }}'
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { createHash } from "node:crypto";
+          import { lstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+          import { join } from "node:path";
+
+          const dir = process.env.TEI_CP_EVIDENCE_DIR;
+          const summary = JSON.parse(readFileSync(join(process.env.RUNNER_TEMP, "tei-e1a-summary.json"), "utf8"));
+          const normal = summary.status === "E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY";
+          const extended = summary.status === "E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY";
+          assert.ok(normal || extended, "unrecognized E1 receipt mode");
+          assert.equal(summary.repositoryIntegrationHead, process.env.GITHUB_SHA);
+          assert.equal(summary.independentDatabaseRead, false);
+          const common = ["workspace-r1.json", "target-launch.json", "web-positive.json"];
+          const negative = [
+            "target-negative-launch.json", "web-negative-unit-price.json",
+            "target-n11-launch.json", "n11-unobserved-control.json",
+            "stale-source-control.json"
+          ];
+          const expected = (extended ? common.concat(negative) : common).sort();
+          assert.deepEqual(readdirSync(dir).sort(), expected, "unexpected evidence file or missing receipt");
+          const digests = {};
+          const receipts = {};
+          for (const name of expected) {
+            const location = join(dir, name);
+            assert.ok(lstatSync(location).isFile(), "nonregular evidence file");
+            const bytes = readFileSync(location);
+            assert.ok(bytes.length > 0 && bytes.length <= 32768, "oversized/empty evidence");
+            const raw = bytes.toString("utf8");
+            assert.ok(!/editor-secret|wrong-secret|BEGIN (?:RSA |OPENSSH )?PRIVATE KEY|Bearer\s+[a-z0-9._-]+/i.test(raw),
+              "potential credential in public CI artifact");
+            const body = JSON.parse(raw);
+            assert.equal(body.integrationHead, process.env.GITHUB_SHA);
+            assert.equal(body.evidenceNature.includes("synthetic") ||
+              body.evidenceNature.includes("test-only") ||
+              body.evidenceNature === "running-first-web-target-with-synthetic-provider" ||
+              (name === "stale-source-control.json" &&
+               body.evidenceNature === "running-web-http-stale-source-R0-label-spoof-control"),
+              true, "not an explicitly synthetic test receipt");
+            receipts[name] = body;
+            digests[name] = createHash("sha256").update(bytes).digest("hex");
+          }
+          const lineage = receipts["workspace-r1.json"];
+          const positive = receipts["web-positive.json"];
+          assert.equal(lineage.sourceAfter, summary.acceptedScratchSourceR1);
+          assert.notEqual(lineage.sourceBefore, lineage.sourceAfter);
+          assert.equal(lineage.humanApproval, false);
+          assert.equal(positive.acceptedSourceRevisionClaim, lineage.sourceAfter);
+          assert.equal(positive.independentDatabaseRead, false);
+          if (normal) {
+            assert.equal(summary.negativeUnitPriceRunningWeb, "NOT_TESTED");
+          } else {
+            const denied = receipts["web-negative-unit-price.json"];
+            const unread = receipts["n11-unobserved-control.json"];
+            const deniedLaunch = receipts["target-negative-launch.json"];
+            const unreadLaunch = receipts["target-n11-launch.json"];
+            assert.equal(denied.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(unread.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(denied.commandDispatched, false);
+            assert.equal(denied.observationExecuted, false);
+            assert.equal(denied.stage, "validation-not-satisfied");
+            assert.equal(unread.httpStatus, 422);
+            assert.equal(unread.commandCompleted, true);
+            assert.equal(unread.observationResultRecorded, false);
+            assert.equal(denied.targetBinarySHA256, deniedLaunch.targetBinarySHA256);
+            assert.equal(unread.targetBinarySHA256, unreadLaunch.targetBinarySHA256);
+            assert.notEqual(deniedLaunch.targetBinarySHA256, receipts["target-launch.json"].targetBinarySHA256);
+            const stale = receipts["stale-source-control.json"];
+            const launch = receipts["target-launch.json"];
+            assert.equal(stale.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(stale.actuallyLoadedWorkspaceSourceRevision, lineage.sourceBefore);
+            assert.notEqual(stale.staleManifestSemanticSHA256,
+              stale.acceptedManifestSemanticSHA256);
+            assert.equal(stale.sameTargetBinaryAsPositive, true);
+            assert.equal(stale.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(stale.acceptedR1RuleMissing, true);
+            assert.equal(stale.mismatchDetectedByExternalTestHarness, true);
+            assert.equal(stale.webServerRejectsMismatchedLabels, false);
+            assert.equal(stale.currentRuntimeVersionBindingEnforced, false);
+            assert.equal(stale.independentDatabaseRead, false);
+            assert.equal(summary.staleSourceMismatchDetectedByHarness, true);
+            assert.equal(summary.staleSourceRejectedByTarget, false);
+          }
+          const manifest = {
+            schema: "tei.reference.e1-synthetic-evidence-manifest/v0",
+            exactCheckoutHead: process.env.GITHUB_SHA,
+            workflowRunID: process.env.GITHUB_RUN_ID,
+            workflowRunAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            evidenceMode: summary.status,
+            sourceBefore: lineage.sourceBefore,
+            sourceAfter: lineage.sourceAfter,
+            evidenceSHA256: digests,
+            provider: "synthetic",
+            negativeUsesDifferentTestBinary: extended,
+            staleSourceMismatchDetectedByHarness: extended,
+            staleSourceRejectedByTarget: false,
+            runtimeVersionBindingVerified: false,
+            independentDatabaseRead: false,
+            humanAcceptance: false,
+            productGate: "UNQUALIFIED",
+            note: "CI-origin evidence, not an independently verified runtime or Provider Authority"
+          };
+          writeFileSync(join(dir, "evidence-manifest.json"), JSON.stringify(manifest, null, 2) + "\n",
+            { flag: "wx", mode: 0o600 });
+          console.log(JSON.stringify({
+            artifactManifestSHA256: createHash("sha256").update(
+              readFileSync(join(dir, "evidence-manifest.json"))).digest("hex"),
+            exactCheckoutHead: manifest.exactCheckoutHead,
+            evidenceMode: manifest.evidenceMode,
+            evidenceSHA256: digests,
+            productGate: "UNQUALIFIED"
+          }));
+          NODE
+
+      - name: 合成E1証跡を短期間保存
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-e1-synthetic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-e1a-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+
+      - name: 試験後の版と作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ { print }')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

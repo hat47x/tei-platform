@@ -1,12 +1,12 @@
 # M0.24 別プロセス型プラグイン実行の準拠確認
 
-M0.24では、`BoundaryProcess`をinterface上の概念だけでなく、Repository内で実際のOS child processとして実行できるところまで縦に接続します。
+M0.24では、`BoundaryProcess`をインターフェースの定義だけにとどめず、リポジトリ内の実装からOSの子プロセスを実際に起動できることを確認します。
 
-このConformanceが確認するのは、**TEI Host → child process → JSON response**という最小のprocess trust boundaryです。production-grade sandbox、HA process manager、cross-host reattachまでを実装済みとは主張しません。
+この準拠確認で確かめるのは、**TEIのホストが子プロセスを呼び出し、JSON形式の応答を受け取る**際の最小限の信頼境界です。本番用の隔離環境、障害に強いプロセス管理、別のホストからの再接続まで完成したことを示すものではありません。
 
 ## 実行境界
 
-`StdioProcessLauncher`は`ProcessLauncher`のReference実装です。
+`StdioProcessLauncher`は、`ProcessLauncher`の参照実装です。
 
 ```text
 Registry
@@ -19,81 +19,81 @@ actual child process
   stderr → content is not copied into TEI error text
 ```
 
-`PluginRuntime.Command`は現段階では一つのexecutable名またはpathとして扱います。shellへ渡さず、空白分割してargvを推測しません。
+この段階の`PluginRuntime.Command`には、単一の実行ファイル名またはパスを指定します。シェルへ渡したり、文字列を空白で分割して引数を推測したりすることはありません。
 
-したがって、次のようなshell semanticsをTEI runtime contractへ暗黙に持ち込みません。
+そのため、次のようなシェル特有の文字列解釈を、TEIの実行時の仕様に暗黙に含めません。
 
-- pipe / redirect
-- variable expansion
-- glob
-- quote interpretation
+- パイプと入出力の転送
+- 環境変数などの展開
+- ワイルドカードによるファイル名の展開
+- 引用符の解釈
 - `sh -c` / `cmd /c`相当の解釈
 
-将来plugin commandに引数が必要な場合は、文字列のshell parseを追加するのではなく、descriptor側へ明示的なargv構造を導入することを基本方針とします。
+プラグインの起動に引数が必要になった場合は、シェルの構文解析を追加するのではなく、定義情報に引数を明示する構造を設ける方針です。
 
 ## 要求と応答の識別
 
-child processには既存の`runtime.Request`をJSONで渡します。
+子プロセスへは、既存の`runtime.Request`をJSON形式で渡します。
 
-Responseを受け取った後のidentity validationはRegistry側の既存契約を維持します。
+応答に含まれる識別情報は、プラグインの登録管理側で定めた規則に従って検査します。
 
-- protocol version
-- request ID
-- Plugin identity
-- Capability ID
-- descriptor fingerprint
-- response status
+- 通信規約の版
+- 要求の識別子
+- プラグインの識別情報
+- 機能の識別子
+- 記述情報の照合値
+- 応答の状態
 
-Reference integration testでは、実processが偽のPlugin identityを返した場合にRegistryが拒否することを確認します。
+参照実装の結合テストでは、実際の子プロセスが偽のプラグイン識別情報を返した場合、登録管理側が拒否することを確かめます。
 
 ## プロセスの異常終了
 
-Reference launcherは少なくとも次を区別します。
+参照用の起動機構では、少なくとも次の状態を区別します。
 
-- executable start / exit failure
+- 実行ファイルの起動失敗・異常終了
 - context cancellation
-- malformed JSON response
-- 複数JSON valueを返すprotocol violation
-- response size超過
+- 不正なJSON形式の応答
+- 複数のJSON値を返す通信規約違反
+- 応答の大きさの上限超過
 
-context cancellationには`exec.CommandContext`を使い、直接起動したchild processの終了を待ってから返ります。
+処理の取り消しには`exec.CommandContext`を使い、直接起動した子プロセスが終了してから呼び出し元へ戻ります。
 
-ただし、childがさらに作成した孫process treeを全OSで完全に掃除するproduction process supervisorまでを、このReference adapterは保証しません。
+ただし、子プロセスが別のプロセスを起動した場合に、すべてのOSでそれらも確実に終了させる本番用の監督機構は、この参照実装の保証範囲外です。
 
 ## 標準出力の境界
 
-external processはHostから見ればuntrustedです。stdoutを無制限にメモリへ保持しません。
+外部プロセスは、ホストにとって信頼が確認できていない実行主体です。その標準出力を無制限にメモリへ取り込まないようにします。
 
-`StdioProcessLauncher.MaxResponseBytes`でResponse JSONサイズを制限し、0の場合もReference defaultの8 MiBを使います。上限超過はResponse decode前に明示的に拒否します。
+`StdioProcessLauncher.MaxResponseBytes`でJSON応答のサイズを制限します。値が0の場合も参照実装の既定値である8 MiBを適用し、上限を超える応答は解析前に拒否します。
 
-これは最終的なproduction protocol上限を固定するものではなく、Reference Hostがunbounded external outputをそのまま受け入れないことをConformance化するものです。
+これは本番環境の通信規約における最終的な上限を定めるものではありません。参照用のホストが無制限の外部出力を受け入れないことを確かめるものです。
 
 ## 標準エラー出力と秘密情報
 
-process Pluginは、Secret Injector等を通じてHost外の具体的なsecret materialへ到達する可能性があります。そのprocessが誤ってsecretをstderrへ書く可能性を前提にします。
+別プロセスで動くプラグインは、秘密情報を渡す仕組みなどを通じて、ホストの外にある秘密情報の実際の値にアクセスする可能性があります。その値が誤って標準エラー出力に書かれることを想定します。
 
-そのためReference launcherはstderr本文をTEI error textへコピーしません。
+そのため、参照用の起動機構は標準エラー出力の本文をTEIのエラー文面へコピーしません。
 
 異常終了時には、診断のため次だけを返します。
 
-- stderr byte count
-- stderr SHA-256
+- 標準エラー出力のバイト数
+- 標準エラー出力のSHA-256による照合値
 
-成功時のstderrもResponse protocolへ混ぜません。
+正常終了時の標準エラー出力も、応答の通信規約に混ぜません。
 
-これは外部process自身のログ出力を安全化する仕組みではありません。Host側がTEI error / provenanceへ不用意に再転記しない境界です。
+この機構が保護するのは、ホスト側のエラーや来歴の記録です。外部プロセス自身のログが安全になるわけではありません。
 
 ## 隔離環境との関係
 
-`StdioProcessLauncher`は`ProcessLauncher`と`SandboxedProcessRunner`の双方を実装しますが、**それ自体はsandboxではありません**。
+`StdioProcessLauncher`は`ProcessLauncher`と`SandboxedProcessRunner`の両方を実装しますが、**それ自体が隔離環境になるわけではありません**。
 
-`InvokeSandboxed`はprocess transportを再利用するだけです。実際のdeny-by-default network / filesystem policyやsecret injectionは、既存`HostSandboxLauncher`がHost-provided enforcerを適用した後で呼び出す必要があります。
+`InvokeSandboxed`は、プロセス間通信の仕組みを再利用するだけです。ネットワークやファイルシステムへのアクセスを既定で拒否する方針、秘密情報の受け渡しについては、既存の`HostSandboxLauncher`がホスト側の強制機構を適用した後で呼び出す必要があります。
 
 したがって、
 
-- `sandbox required`なのに`SandboxLauncher`がない場合は従来どおり拒否
-- plain `Registry.Processes`経由の実行を`sandboxed=true`とは記録しない
-- `StdioProcessLauncher`の存在だけでOS sandbox実装済みとは主張しない
+- `sandbox required`が指定されているのに`SandboxLauncher`がなければ、従来どおり拒否する
+- 通常の`Registry.Processes`による実行を、`sandboxed=true`とは記録しない
+- `StdioProcessLauncher`があるだけで、OSの隔離機構を実装済みとは判断しない
 
 という境界を維持します。
 
@@ -117,46 +117,46 @@ process invocation
 lease / ownership cleanup
 ```
 
-つまり、verification不成立やrequired sandbox不在のprocessへ、先にsecret/network/filesystem leaseを渡す構造にはしません。
+つまり、成果物を検証できない場合や必要な隔離環境がない場合に、秘密情報・ネットワーク・ファイルシステムの利用権を先に渡すことはしません。
 
 ## 参照用の配備実行器
 
-`tools/reference-process-plugin`はstdio protocolを実装する最小の実process helperです。
+`tools/reference-process-plugin`は、標準入出力で通信する規約を実装した最小限の実行用プログラムです。
 
-`examples/process-plugin`はこのhelperを`StdioProcessLauncher`経由で起動し、既存`DeploymentExecutor` adapterを通してprovider-neutralな`executor.Command`を渡します。
+`examples/process-plugin`は、このプログラムを`StdioProcessLauncher`から起動します。既存の`DeploymentExecutor`接続部を通じて、提供元に依存しない`executor.Command`を渡します。
 
-Reference processが返す`accepted`はexecutor acknowledgementであり、外部stateが意図どおり完成した証明ではありません。既存どおり、durable completionはObservation / Evidence / Reconcile側の責務です。
+参照用プロセスが返す`accepted`は、実行器が要求を受け付けたことだけを示します。外部の状態が意図どおりに変わったことの証明ではありません。最終的な完了状態は、観測結果・検証根拠・整合性の確認によって別途確かめます。
 
-例ではさらに`ValidateDeploymentInvocation`を呼び、process boundaryとPlugin provenanceがEnvironment Planと整合することを確認します。
+この例ではさらに`ValidateDeploymentInvocation`を呼び出し、プロセスの境界とプラグインの来歴が環境の計画と整合することを確かめます。
 
 ## 永続化する実行識別子との関係
 
-このM0.24 vertical sliceはone-shot local child processです。
+M0.24で実証するのは、ローカルで一度だけ起動する子プロセスです。
 
-OS PIDを`DurableInvocationHandle.RuntimeHandle`へ自動的に昇格させません。PIDは再利用され得て、別Hostが同一runtime identityを安全に証明する一般的なhandleではないためです。
+OSのプロセス識別子を`DurableInvocationHandle.RuntimeHandle`として自動採用しません。プロセス識別子は再利用されることがあり、別のホストから同じ実行状態を安全に確認できる汎用的な識別情報ではないためです。
 
-したがって、このConformanceは次を意味しません。
+そのため、この準拠確認は次の機能の成立を意味しません。
 
-- Host restart後のPID reattach
-- cross-host process takeover
-- long-lived process manager durability
-- process lifecycleのHA保証
+- ホストの再起動後にプロセス識別子を使って再接続すること
+- 別のホストからプロセスの管理を引き継ぐこと
+- 長時間動くプロセス管理機構の継続性を保証すること
+- プロセスの生存期間を通じた高可用性の保証
 
-Durable reattachには、M0.22 / ADR-0005で定めたopaque durable runtime handleとauthority-bearing reattach契約を満たす外部runtime adapterが必要です。
+実行状態へ永続的に再接続するには、M0.22とADR-0005で定めた、内部構造を公開しない永続的な実行識別情報と、権限を伴う再接続の契約を満たす外部実行環境の接続部が必要です。
 
-process invocation中にHostが失われ、副作用の有無を確定できない場合も、missing / unknownから自動replayしない原則を弱めません。
+プロセスの呼び出し中にホストが失われ、外部への変更が起きたか判断できない場合でも、見つからない状態や不明な状態から自動的に再実行しない原則を守ります。
 
 ## リポジトリ内での検証
 
-単体・integration testでは実際のtest binaryをchild processとして起動し、次を確認します。
+単体テストと結合テストでは、実際のテスト用実行ファイルを子プロセスとして起動し、次を確認します。
 
-- valid Request / Response round trip
-- successful stderrがprotocolへ混ざらない
-- malformed response拒否
-- oversized stdout拒否
-- non-zero exit時にstderr本文をHost errorへコピーしない
+- 正常な要求と応答の一往復
+- 正常終了時の標準エラー出力が応答に混入しないこと
+- 不正な応答を拒否すること
+- 上限を超えた標準出力を拒否すること
+- 異常終了時に標準エラー出力の本文をホスト側のエラーへ複製しないこと
 - context cancellation
-- forged response identityをRegistryが拒否
+- 偽の応答識別情報を登録管理側が拒否すること
 
 常設CIではさらに、
 
@@ -170,16 +170,16 @@ process invocation中にHostが失われ、副作用の有無を確定できな�
 
 ## 非目標
 
-M0.24では次を実装済みとはしません。
+M0.24では、次の機能を実装済みとは扱いません。
 
-- production-grade OS sandbox
-- seccomp / namespace / Windows Job Object等のgeneric abstraction
-- Kubernetes / containerd等のdurable runtime integration
+- 本番運用向けのOS隔離環境
+- seccomp、名前空間、Windows Job Objectなどを共通に扱う抽象化
+- Kubernetesやcontainerdなど、継続的な実行環境との連携
 - cross-host reattach
-- long-lived plugin daemon protocol
-- streaming RPC
-- process pool
-- arbitrary shell command execution
-- plugin SDKの最終public API
+- 常駐型プラグインの通信規約
+- 応答を逐次受け取る遠隔呼び出し
+- プロセスの再利用を行う管理機構
+- 任意のシェル命令の実行
+- プラグイン開発用キットの最終的な公開API
 
-M0.24の目的は、processを抽象interfaceの向こう側に置いたままにせず、TEIの既存trust / identity / provenance境界を実際のOS processでも壊さないことを確認することです。
+M0.24の目的は、別プロセスでの実行を抽象的なインターフェースだけで終わらせず、実際のOSプロセスでも、TEIの信頼・識別・来歴の境界が守られることを確かめることです。

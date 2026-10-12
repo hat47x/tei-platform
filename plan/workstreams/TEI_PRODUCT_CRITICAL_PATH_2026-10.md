@@ -834,3 +834,107 @@ Issue #1119の現Draft作業branchだけに、current main `e084b89f19d4ce530479
 これは**Gitの系譜/変更pathが整合したことの確認のみ**である。統合後の最新HEADでtrusted full checkout/Go/Node/full Repository Healthは実行できていないため、資格PASSやmainへのPR mergeを意味しない。mainが再び進めば最新pinと統合結果を再確認する。
 
 **実際の資格と証跡**: この節の更新はGitHub上の新しいtest-only Node/Bashスクリプトとsource契約の静的照合による。V8ではESM importを除いたNode本体の構文が解析可能なことを確認したが、これは`node --check`の代わりではない。ネットワークが使用できない現セッションで合成worktreeを作って実Go/Node/Web/Repository Healthを実行したわけではない。親PRはDraft/未統合、G1〜G4未合格。
+
+## 26. 最新main統合後の横断再判定（2026-10-12）
+
+### 実装の「存在」と製品受入を分離する
+
+旧§1〜25は、2026-10-10時点に作成した作業計画と、その時々の調査記録である。当時の「PR #1135はDraft／未統合」「#1120・#1124・#1125・#1121はDraftのみ」という表記を**現在の状態として読まない**。2026-10-12にGitHub APIから確認した事実は次のとおり。
+
+| 対象 | mainへの統合状況 | この統合だけでは成立しないもの |
+| --- | --- | --- |
+| #1119 / PR #1135 | 2026-10-11 08:00 UTCにmerge（統合commit `963de43f2abe761a583736fb890c5a6768dfbdb8`） | G0〜G4の製品受入、trusted full Repository Health |
+| #1120 / PR #1139 | 2026-10-11 07:57 UTCにmerge | scope付き意味参照から実行機能への実接合 |
+| #1125 / PR #1138 | 2026-10-11 08:00 UTCにmerge | 参照用DFDを受理済み業務手順へ昇格する権限 |
+| #1121 / PR #1141 | 2026-10-11 08:02 UTCにmerge | 実Host/Provider・下流効果の適合性、第二Target |
+| #1124 / PR #1137 | 2026-10-11 08:02 UTCにmerge | 同じSource R1を用いた一往復の実行、利用者による受入 |
+
+今回の点検で参照したmainは`b29eaf89348bbed5b59816dff4292c4bf678d4f5`（検査時点の値であり、将来のmain固定値ではない）。計画書の現行配置は`plan/workstreams/TEI_PRODUCT_CRITICAL_PATH_2026-10.md`で、旧`plan/`直下のパスは使わない。**Issue #1119は現在もopen**。PR #1135のmerged状態を本Issueのcompleted判定へ読み替えない。
+
+### 先に解消すべき横断契約の不整合
+
+main上の`tools/reference-critical-path-evidence-audit/main.go`には、`acceptance.candidateFingerprint`と`reviewFingerprint`の**同値**を要求する条件がある。しかしShared AcceptanceのCandidate指紋とReview指紋は別の内容から生成される。正しい契約は、Review投影が保持する**対象Candidateの指紋**とCandidate指紋の対応を確かめ、Review自身の指紋は別値として保持すること。現在の実装では正常な受理を誤拒否し得る。
+
+この修正は[#1163](https://github.com/hat47x/tei-platform/issues/1163)が所有し、[Draft PR #1262](https://github.com/hat47x/tei-platform/pull/1262)に正負の試験候補があるため、**#1119で同じファイルや第二の証跡検査器を作り直さない**。PR #1262はGo/Node実行とexact-head full Healthの提出が未済。未統合の修正案をmainに適用済みとして扱わない。
+
+### 現在の実行手順の使用可能範囲
+
+- `tools/reference-critical-path-evidence-audit/qualify.sh`は**PR #1135の作業ブランチ名を固定**しており、当該PRはmerge済みで旧branchはGitHubの検索上現存しない。現mainの事後資格や別PRの資格として、そのまま起動するのは適切でない。
+- `compose-smoke.sh`も**#1119を含む未統合の4本のbranch tip**がremoteにあることを前提とする。PR #1135・#1139・#1137・#1141のmerge後には、その前提を満たさない。過去の合成試験の設計記録として保持するが、現在のmainの試験に成功したと称しない。
+- 今後の全体の実行環境・資格は[公開後のCI整備 #1189](https://github.com/hat47x/tei-platform/issues/1189)を担当とし、既存`tools/repository-health-check.sh`を省略しない。#1119専用の並列CI/資格エンジンを追加しない。
+- 独立のSource revision→Observation連結は#1163、受注の実WebとData-backed Function/保存は#1127、実DB SchemaとHost Authorityは#1126/#1121の既存責務を使う。独立した別readが無い限り、synthetic Command後のObservationを外部永続化の実証に数えない。
+
+### 次に提出する最小の実験と判定
+
+1. **E0の再資格**：current mainのclean full checkoutで、Goの既存`TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection`、`TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList`、StudioのNode scratch E2E、および全`tools/repository-health-check.sh`を実行し、実行直前・直後のmain SHAとclean状態を記録する。旧branch前提の`qualify.sh`は使わない。
+2. **E1の実接続**：Studioの2操作→Shared AcceptanceのReview／Decision→Source R0≠R1→reloaded Worldの4つのValidation→**実起動**Web Targetで正値と新規単価0の拒否（Command未実行）を、同じR1と起動したTarget Tへ結びつける。通常のAPIにテスト専用単価変更機構を混ぜず、隔離されたデータを使う。
+3. **E2の独立結果**：R1からの現行Provider/Schema/Host認可適合を確認し、実DBへの効果と独立したread、非互換Schemaと権限失効の拒否を取得。E1 synthetic Webの成功から推論しない。
+4. **G3/G4**：第二Targetの同じ意味定義に対する実差分と、採用したPlugin・Build/self-buildの安全な接続を別途確認する。先行するE1/E2の未達を帳消しにしない。
+
+**判定**：G0は台帳整備が進んだがConsumer間の正式な確認待ち。G1〜G4は引き続き未合格。mainに実装が増えたことは有益だが、独立した現物証拠と正式な受入を得るまでIssue #1119をcloseしない。実行できなかった試験にPASSと書かない。
+
+## 27. 現行mainで横断試験を実行する入口（2026-10-12）
+
+### 統合前の合成試験を再利用し、現行mainを検査する
+
+§25の`compose-smoke.sh`は、当初#1119/#1120/#1124/#1121の未統合ブランチを合成する方式であった。これらは2026-10-11にmainへ統合されており、旧ブランチを必須にしたままでは**最新mainを検証できない**。§26でその使用不能を指摘したため、既存の実行入口を**二つの明示モード**に分けた。
+
+- `integrated-main`（今回追加）: **mainのexact commitだけ**を入力し、一時的なdetached worktreeで既存のStudio/Shared Acceptance/typed ref/Lowering/Web/Go証跡検査と全Repository Healthを実行する。旧Draft SHAは指定してはならない。
+- `draft-tips`（従来互換）: current mainに未統合の4つの確定SHAを一時合成する。いまの#1119には基本的に不要。過去の旧branchが削除されている場合はfail-closedし、存在しないrefを補って合格したように扱わない。
+
+現行mainへの実行例（**本セッションでは実行していない**）:
+
+```bash
+# canonical GitHub origin/mainのSHAを、実行環境で取得して指定する。
+TEI_CP_COMPOSE_MODE=integrated-main \
+TEI_CP_COMPOSE_MAIN="$(git rev-parse refs/remotes/origin/main)" \
+bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+```
+
+両モードは正規のGitHub remoteを`fetch`し、mainのSHA固定、クリーン状態と非標準index検出、一時worktreeのHEAD/TREE、実行後のmain再照合、元checkoutの不変を要求する。**mainへmerge/pushしたり各Ownerのbranchを書き換えたりしない**。`integrated-main`は未存在の旧branchを参照せず、旧Draft pinが混入すれば拒否する。 実行入口となるスクリプト自身のGit blobを開始・終了時に照合し、成功表示には対象main／一時HEAD／tree／スクリプトと全体健全性検査スクリプトのblob／Go・Node版を併記する。**これらは後日の照合に使う来歴であって、第三者署名や改ざん防止の証明ではない**。
+
+### 検証できる範囲、検証できない範囲
+
+現在mainにある`live-r1-smoke.mjs`は、新規単価Validationをscratch R1へ受理し、4規則の正常系を実際に起動したWebへHTTP送信する**試験ソース**である。合成Providerの負例や実DBの永続化を自動的に満たしたわけではない。#1163の[Draft PR #1262](https://github.com/hat47x/tei-platform/pull/1262)には、**別バイナリ**とGo Overlayの隔離fixtureによる単価0のrunning-server負例を試すコードが追加されているが、これはmainに未統合でactual Web実行も未取得。今回のmain-modeは未統合PR #1262のコードを暗黙に試験へ混ぜない。
+
+- 成功時の識別子は`CURRENT_MAIN_CROSS_LANE_SMOKE_ONLY_NO_PRODUCT_GATE`。**特定mainの横断回帰試験**であり、各PRのexact-head統合資格やG0〜G4の合格ではない。
+- 実験はscratchでテスト用Decisionを生成する。**Human Acceptanceの代替ではない**。
+- Command後の合成Observationは**独立した実Database readではない**。E2の保存・Host権限・Schema互換、第二Targetの合格には用いない。
+- **変更範囲の独立試験（実施済み）**: GitHubの`compose-smoke.sh` blob `8173c4bd29001db812e3e140a79daa03d24b75c8`とローカルの試験対象を`git hash-object`で一致確認し、実際の`bash -n`はPASS。隔離Gitリポジトリで、不明モード、main SHA未指定・不正、旧Draft SHA混入、従来モードの必須pin未指定、正しい両モードの入力検査通過、不正remote拒否の**8ケースが全件PASS**。さらに隔離した実Gitの一時worktreeで`integrated-main`の開始から後片付けまで通し、試験用Go/Node処理を呼び出すこと、main HEAD・clean不変、一時worktree消去、runner/Health blob・Go/Node版の出力を確認した（実Gitは使用したが、Go・Studio・Web・Healthの中身は**テスト用代替処理**）。
+- **製品側の試験（未実施）**: TEIの実Go/Node E2E、全`tools/repository-health-check.sh`、実Web HTTP、外部DB接続は、この環境で完全checkoutを入手できずNOT RUN。隔離試験の成功をこれらのPASSとして転記しない。
+- 2026-10-12に更新された現行`AGENTS.md`は、全体健全性検査をすべてのPRの統合条件とはせず、変更範囲に応じた試験・静的解析・境界値・既存動作との照合、および未実施範囲・危険性の明示を要求する。`compose-smoke.sh`が**起動された場合に**全体健全性検査まで実施する設計であることと、**本PRの統合前に一律の全体健全性検査PASSを義務付けること**は区別する。Source/Target/DBの受入は別Gateであり、全て未達のままとする。
+
+**次の作業の入口**: 新しい資格検査器を追加するのではなく、既存`compose-smoke.sh`の`integrated-main`でE0/E1-Aを実行し、実測結果を#1119と#1163へ提出する。その後、#1262の修正を独立に資格確認・統合してから必要なら同じ入口を再実行する。未実施のE1-B/E2/G3/G4を推定で埋めない。
+
+## 28. GitHub Actionsで得られた実行証拠と次の停止条件（2026-10-12）
+
+### E1-Aはmainで実行済み、E1-BとN11は別PRで実行済み
+
+本節は§26〜27の**当時の「未実行」という記載を訂正する現時点の判定**である。古い手順・試験候補を消すのではなく、実行した版と合格範囲を一対一で明らかにする。
+
+| 実験 | 検査対象の版 | 実行結果と根拠 | 受入上の限界 |
+| --- | --- | --- | --- |
+| E1-A（正の単価） | main `4b8bf628a91654ff19ab267c900699ac2b4b1e9f` | [Actions #38224540835](https://github.com/hat47x/tei-platform/actions/runs/38224540835) **SUCCESS**。実Goビルド・Webプロセスを使い、Source R0≠R1、4つのValidation、HTTP 200、Commandを確認 | Sourceの受理はtest harness、Observationは合成、単価0は未実施 |
+| E1-A＋E1-B＋N11 | [#1163 / Draft PR #1262](https://github.com/hat47x/tei-platform/pull/1262) head `20f8453b451d5621d3ed6c37cc06e96b47295de9`、GitHub仮統合版 `b24216402b9e21f477e2c12c72df7a7ebc67319d` | [E1 Actions #38225770264](https://github.com/hat47x/tei-platform/actions/runs/38225770264) **SUCCESS**。正常注文、単価0の規則拒否とCommand/Observation未実行、N11のHTTP 422・Command結果あり・Observationなし。合わせて[標準Health #38225770258](https://github.com/hat47x/tei-platform/actions/runs/38225770258) **SUCCESS** | **mainに未統合**。正常系と二つの異常系は異なる試験用Goバイナリ。E2の実DBや人間受理は未実証 |
+| 最新mainの全体CI | main `d324fd9127859c431ae53c78a90203474fa91850` | [Actions #38235176913](https://github.com/hat47x/tei-platform/actions/runs/38235176913) **FAIL**。Go vet、全Go tests、Workspaceは**PASS**。Go 1.23.2の`gofmt`で`tools/reference-capability-mutation-protocol/main.go`が不一致 | 同じパスの整形PR [#1311](https://github.com/hat47x/tei-platform/pull/1311)は一度merge済みだが、現行mainで再発。担当領域の原因確認が必要 |
+
+E1-Aの実測Sourceは、`R0=sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2`、`R1=sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07`。E1-Aのmain上Target binary SHA-256は`fc3efaf3aafdfbfa9a9a22ea85eef964e47ce587d448d681f91d81aa9fd96a8a`。いずれも**その試験実行で生じたexact値**であり、後のmainへ転用しない。
+
+E1-Bの`validation-not-satisfied`は**業務上の拒否**でありHTTP 200となる。対してN11のHTTP 422は**実行後の観測失敗**で、Commandが取り消されたという意味ではない。三つのケースを同じ「エラー」へまとめない。N11を実DBによる独立したreadの成功・不成功の証拠へ昇格しない。
+
+### 既存の実PostgreSQL証拠をE2へ誤流用しない
+
+既存`tools/reference-postgres-header-detail-runtime`は、別の空の専用PostgreSQLに一時fixtureを作り、読み出し、後片付けを行い、Sourceと実DBの安全境界を記録できる。これは実Provider／SQLの**先行する有効な証拠**だが、E1の`sales.order_line.unit_price_positive`を追加して受理した**同じR1**から業務Commandを発火させた証拠ではない。`tools/reference-gate-b-final-evidence`の同一Repository改訂への収束も、**同一Accepted Source R1からのCommandと独立Observation**とは別である。
+
+次に提出するE2の最小証拠は、#1127を実行owner、#1163を一改訂Evidence監査ownerとして次をつなぐ。
+
+1. **Source**：明示受理されたR1（変更後のSemantic Validation＋Application採用）と、ターゲットをビルドした同じ意味契約の版／受理指紋。単なるGit SHAの一致だけでは代用しない。
+2. **実行前**：既存Provider・Schema実態・契約版・権限のreadinessが`current`であること。空の専用DB／独立接続を使用し、既存DBを清掃して流用しない。権限失効S05、Schema非互換S02などはCommandを**発行する前**に拒否する。
+3. **副作用**：**通常の製品Web／Driver**から選択された4規則に対する正常Commandを起動し、処理IDと実Providerのwrite結果を示す。テスト専用Go overlayバイナリで観測した単価0を通常Web実装の成功と呼ばない。
+4. **独立Observation**：別のread invocation／DB connectionで、実DBの書込み後の状態とその対象（同じscope、key、時点、Database instance）を読んで検証。Command responseの再表示、同一メモリcache、合成Observationは不可。
+5. **否定・未観測**：単価0はCommand非発行、S02/S05は事前拒否、N11ではCommand成功とObservation失敗を明確に区別し、永続性の「確認済み」を返さない。read未取得・Source相違・Provider相違は常に`not-observed`。
+6. **記録と安全**：Repository/Source/Target/Provider/Schema/Authority各revision、Source→Command→readの相関ID、実行範囲、cleanupの責任者と結果、stdoutの機密漏洩防止を残す。DB関連SecretやDSN本文を証跡へ複製しない。
+
+このE2は新しいDB Provider・第二のSchema Authority・第二の受理機構を作る指示ではない。既存のDB runtime、Web Driver、Shared Acceptance、#1163の検査を**一つの実験でつなぐ**。既存toolの個別成功を足して一往復の成功へ換算しない。
+
+**親Gate判定**：E1-Aの技術的実証は**済**。E1-B＋N11の隔離実Web実証も**PR #1262内では済**だがmainに未反映であり、異なる合成バイナリの範囲に限定。G1の正式なAuthority接続、G2のE2実DB＋独立read、G3第二Target、G4 self-buildの横断的な資格はなお未合格。#1119のIssueはopen。

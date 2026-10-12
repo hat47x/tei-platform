@@ -1,12 +1,12 @@
 # M0.33 オフラインでの物理構造生成方針の準拠確認
 
-M0.33では、Persistence MappingからDesired Physical Schemaを生成するときに必要となるprovider固有の知識を、Persistence Coreおよびconnected runtime Provider SPIから分離しました。
+M0.33では、保存先への対応付けから期待する物理構造を生成する際の提供元固有の知識を、保存処理の中核部分と接続を伴う実行時の提供元接続口から分離しました。
 
-この文書では、その境界が実装上どのように保たれているかを確認します。
+この文書では、それぞれの責務が実装上どのように分けられているかを確かめます。
 
 ## 対象となる境界
 
-Desired realizationは次の三層に分かれます。
+期待する物理構造の生成は、次の三層に分かれます。
 
 ```text
 Persistence Mapping / persistence.RealizeDesired
@@ -25,7 +25,7 @@ provider-owned offline policy
               provider ID -> policy -> persistence.RealizeDesired
 ```
 
-Persistence CoreはPostgreSQLやOracleのpackageをimportしません。DBMSごとのphysical type、Indexの既定値、接続なしで確定できる正規化規則はprovider packageが所有します。
+保存処理の中核部分はPostgreSQLやOracleのパッケージを取り込みません。データベースごとの物理型、索引の既定値、接続せずに確定できる表記統一の規則は、提供元ごとのパッケージが管理します。
 
 ## 接続せずに完結する処理
 
@@ -37,20 +37,20 @@ Persistence CoreはPostgreSQLやOracleのpackageをimportしません。DBMSご�
 - 認証情報
 - runtime Provider object
 
-したがって、Desired Physical Schemaの生成だけを目的としてlive databaseへ接続する必要はありません。
+そのため、期待する物理構造を生成するだけなら、稼働中のデータベースへ接続する必要はありません。
 
-Workspace load / validationについても、M0.33によってDB接続は追加されません。Persistence authoringを読み込む処理と、必要なprovider向けにDesired Physical Schemaを投影する処理は別のままです。
+作業領域の読み込みや検証にも、M0.33によって新たなデータベース接続は発生しません。保存先の定義を読み込む処理と、必要な提供元に合わせて期待する物理構造を生成する処理は、引き続き分かれています。
 
 ## 提供元が担う責務
 
-M0.33で`PhysicalRealizationPolicy`へ移した責務は、現在必要な次の範囲に限定しています。
+M0.33で`PhysicalRealizationPolicy`へ移した責務は、現時点で必要な次の範囲に限ります。
 
-- provider-neutralな`StorageType`からphysical typeへの変換
-- Index access methodの既定値
-- unique indexにおけるNULL semanticsの既定値
-- 接続なしで確定できるIndex keyのdeterministic normalization
+- 提供元に依存しない`StorageType`から物理型への変換
+- 索引方式の既定値
+- 一意索引におけるNULLの扱いの既定値
+- 接続なしで確定できる索引キーの再現可能な表記統一
 
-PostgreSQLでは、従来Persistence Coreが持っていた次の規則をpolicyへ移しました。
+PostgreSQLでは、従来は保存処理の中核部分にあった次の規則を、この方針へ移しました。
 
 - `int64 -> pg_catalog.int8`
 - `varchar -> pg_catalog.varchar`
@@ -58,42 +58,42 @@ PostgreSQLでは、従来Persistence Coreが持っていた次の規則をpolicy
 - `datetime-tz -> pg_catalog.timestamptz`
 - `decimal -> pg_catalog.numeric`
 - `json -> pg_catalog.jsonb`
-- Index methodの既定値を`btree`とする
-- unique indexの既定NULL treatmentを`distinct`とする
-- B-treeの`ASC NULLS LAST`をeffective defaultへ正規化する
-- B-treeの`DESC NULLS FIRST`をeffective defaultへ正規化する
-- `pg_catalog.default` collationを既定表現へ正規化する
+- 索引方式の既定値を`btree`とする
+- 一意索引でのNULLの扱いの既定値を`distinct`とする
+- B-treeの`ASC NULLS LAST`を実際に適用される既定値の表現へそろえる
+- B-treeの`DESC NULLS FIRST`を実際に適用される既定値の表現へそろえる
+- `pg_catalog.default`の照合順序を既定の表現へそろえる
 
-Oracleについても、既存のstorage type変換をOracle側のoffline policyへ移しています。
+Oracleについても、既存の保存型の変換規則を、Oracle側の接続を必要としない方針へ移しました。
 
 ## 組立て側が担う責務
 
-`internal/database/realization`は、provider IDから具体的な`PhysicalRealizationPolicy`を選び、Persistence realizationへ渡すだけのcomposition境界です。
+`internal/database/realization`は、提供元の識別子から`PhysicalRealizationPolicy`を選び、物理構造の生成処理へ渡すための組立て部分です。
 
-ここにprovider switchを集約することで、CLIやintegration toolは具体policy型を知る必要がありません。一方、Persistence Coreへprovider switchを戻すこともありません。
+提供元ごとの選択処理をここに集約するため、CLIや結合検証用のツールは個別の方針の型を知る必要がありません。また、その選択処理を保存処理の中核部分へ戻すこともありません。
 
-未対応providerはgenericな既定値へ縮退させず、明示的なエラーとします。意味を確定できないproviderを、それらしい共通値へ変換することはしません。
+未対応の提供元は、汎用的な既定値で代用せず、明示的にエラーとします。意味を確定できない構造を、見かけだけもっともらしい共通値へ変換しません。
 
 ## 単体での準拠確認
 
-`internal/database/realization/realize_test.go`で、少なくとも次を確認します。
+`internal/database/realization/realize_test.go`では、少なくとも次を確認します。
 
-1. PostgreSQL IDからPostgreSQL offline policyを取得できる
-2. Oracle IDからOracle offline policyを取得できる
-3. generic providerにはbuilt-in policyを割り当てない
-4. 同じPersistence intentでもPostgreSQLでは`pg_catalog.int8`、Oracleでは`NUMBER(19)`へ投影される
-5. PostgreSQLのIndex method / unique NULL treatmentの既定値が維持される
-6. PostgreSQL B-treeのASC / NULL ordering / default collationの正規化がcomposition経由でも維持される
+1. PostgreSQLの識別子から、接続不要のPostgreSQL用方針を取得できる
+2. Oracleの識別子から、接続不要のOracle用方針を取得できる
+3. 汎用の提供元に組込みの方針を割り当てない
+4. 保存上の意図が同じでも、PostgreSQLでは`pg_catalog.int8`、Oracleでは`NUMBER(19)`へ変換される
+5. PostgreSQLでの索引方式と一意索引のNULLの扱いの既定値を維持する
+6. PostgreSQLのB-treeにおける昇順・NULLの順序・既定の照合順序の表記統一が、組立て部分を通しても維持される
 
-Persistence package自身のテストでは、具体provider policyを直接注入します。これにより、Persistence realizationがprovider IDのswitchではなくportへの依存として動作していることも確認します。
+保存処理のパッケージを単体でテストするときは、提供元固有の方針を外から直接渡します。これにより、物理構造の生成が提供元の識別子による分岐ではなく、明示した接続口に依存して動作することも確かめます。
 
 ## PostgreSQL実環境での準拠確認
 
-既存の`reference-postgres-integration`は、M0.33から`database/realization`を通じてDesired Physical Schemaを生成します。
+既存の`reference-postgres-integration`は、M0.33以降、`database/realization`を通して期待する物理構造を生成します。
 
-そのDesiredと、PostgreSQL 17の実DBをcatalog introspectionして得たActual Physical Schemaを比較し、baseline driftが0であることを引き続き確認します。
+その期待構造と、PostgreSQL 17の実際のデータベースの管理情報から読み取った構造を比較し、基準状態で差分が0件になることを引き続き確認します。
 
-このため、policy分離後も少なくとも次の既存意味が崩れていないことを実DBで確認できます。
+これにより、方針を分離した後も、少なくとも次の内容が実際のデータベースで維持されているかを確認できます。
 
 - physical type
 - Primary Key / UNIQUE constraint / Foreign Key
@@ -103,21 +103,21 @@ Persistence package自身のテストでは、具体provider policyを直接注�
 
 ## 実行時の提供元接続口との分離
 
-`database/provider.Provider`はActual databaseとの対話を担当するruntime SPIであり、M0.33では変更しません。
+`database/provider.Provider`は実際のデータベースとのやり取りを担う実行時の接続口であり、M0.33では変更しません。
 
-Desired realizationを行うために`Capabilities`や`Introspect`を呼び出すこともありません。offline policyとconnected runtime providerを同じ万能interfaceへまとめないことをConformance上の境界とします。
+期待する構造を生成するために`Capabilities`や`Introspect`を呼び出すこともありません。接続を必要としない方針と、実行時に接続する提供元の機構を、一つの万能なインターフェースへ統合しないことを準拠条件とします。
 
 ## 提供元固有の式との関係
 
-ADR-0012 / M0.32で、ProviderExpressionは`authored`と`provider-normalized`を区別し、比較を三値化しました。
+ADR-0012とM0.32では、ProviderExpressionの`authored`と`provider-normalized`を区別し、比較結果を三つの状態に分けました。
 
-M0.33では、任意のauthored expressionをprovider-normalized expressionへ変換するparser / deparserは追加しません。provider versionやserver round-tripを含む条件が未確定なためです。
+M0.33では、利用者が記述した任意の式を、提供元による復元表現へ変換する構文解析器や復元機構は追加しません。提供元の版やサーバーとの往復を含む条件が、まだ確定していないためです。
 
-`PhysicalRealizationPolicy`は、現時点で確定している純粋なphysical realizationだけを扱います。expression以外のprovider-native identifierやeffective defaultの追加契約はIssue #58で継続します。
+`PhysicalRealizationPolicy`は、現時点で確定している接続不要の物理構造生成だけを扱います。式以外の提供元固有の識別子や、実際に適用される既定値の追加規則は、Issue #58で引き続き扱います。
 
 ## 非目標
 
-M0.33では、次を実装しません。
+M0.33では、次の機能を実装しません。
 
 - runtime Provider SPIの統合・拡張
 - Workspace load時のDB接続
@@ -126,4 +126,4 @@ M0.33では、次を実装しません。
 - external provider policyのplugin discovery
 - Advanced Index DDL rendering
 
-これらを同時に取り込まず、Desired Physical realizationの所有境界だけを先に安定させます。
+これらを一度に取り込まず、期待する物理構造を生成する責務の境界を先に安定させます。
