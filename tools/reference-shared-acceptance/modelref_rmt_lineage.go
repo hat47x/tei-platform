@@ -19,16 +19,16 @@ import (
 // definition. It is NOT a declaration that an old-system construct and the
 // accepted TEI meaning are equivalent or that a human approver is qualified.
 type RMTIdentityLineage struct {
-	SourceToken	string       `json:"sourceToken"`
-	SourceDigest	string       `json:"sourceDigest"`
-	CandidateFingerprint	string     `json:"candidateFingerprint"`
-	ReviewFingerprint	string       `json:"reviewFingerprint"`
-	BeforeRevision	string       `json:"beforeRevision"`
-	AfterRevision	string       `json:"afterRevision"`
-	Target	modelref.Key `json:"target"`
-	DefinitionPath	string       `json:"definitionPath"`
-	MeaningStatus	string       `json:"meaningStatus"`
-	AuthorityLimits	[]string     `json:"authorityLimits"`
+	SourceToken          string       `json:"sourceToken"`
+	SourceDigest         string       `json:"sourceDigest"`
+	CandidateFingerprint string       `json:"candidateFingerprint"`
+	ReviewFingerprint    string       `json:"reviewFingerprint"`
+	BeforeRevision       string       `json:"beforeRevision"`
+	AfterRevision        string       `json:"afterRevision"`
+	Target               modelref.Key `json:"target"`
+	DefinitionPath       string       `json:"definitionPath"`
+	MeaningStatus        string       `json:"meaningStatus"`
+	AuthorityLimits      []string     `json:"authorityLimits"`
 }
 
 // traceRMTIdentityAcrossAcceptance insists on the current verified Decision
@@ -161,16 +161,16 @@ func traceRMTIdentityAcrossAcceptance(
 		return fail("accepted target has no unique definition anchor")
 	}
 	return RMTIdentityLineage{
-		SourceToken:	context.Source.SourceToken,
-		SourceDigest:	context.Source.SourceArtifactDigest,
-		CandidateFingerprint:	context.CandidateFingerprint,
-		ReviewFingerprint:	context.ReviewFingerprint,
-		BeforeRevision:	before.revision,
-		AfterRevision:	after.revision,
-		Target:	key,
-		DefinitionPath:	definitionPath,
-		MeaningStatus:	rmtlink.MeaningUnresolved,
-		AuthorityLimits:	[]string{
+		SourceToken:          context.Source.SourceToken,
+		SourceDigest:         context.Source.SourceArtifactDigest,
+		CandidateFingerprint: context.CandidateFingerprint,
+		ReviewFingerprint:    context.ReviewFingerprint,
+		BeforeRevision:       before.revision,
+		AfterRevision:        after.revision,
+		Target:               key,
+		DefinitionPath:       definitionPath,
+		MeaningStatus:        rmtlink.MeaningUnresolved,
+		AuthorityLimits:      []string{
 			"synthetic-source-token-is-not-original-system-identity-proof",
 			"accepted-tei-meaning-is-not-legacy-semantic-equivalence",
 			"origin-ai-is-not-human-approval",
