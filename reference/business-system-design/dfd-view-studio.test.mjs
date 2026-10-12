@@ -783,3 +783,55 @@ test('clearing a reference file defeats its outstanding asynchronous load',async
   await input('review-file',approvalReview);
   assert.equal($('semantic-propose').disabled,false);
 });
+
+test('World clear rejects late file completion and revokes old Step details',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:301});
+  assert.match($('details').children[0].textContent,/business.json/);
+  let release;
+  const reading=$('world-file').listeners.change({target:{files:[{
+    text:()=>new Promise(resolve=>{release=()=>resolve('{"source":"older"}');})
+  }]}});
+  assert.equal($('details').children.length,0);
+  assert.match($('details').textContent,/要素を選択すると/);
+  await $('world-file').listeners.change({target:{files:[]}});
+  release();
+  await reading;
+  assert.match($('status').textContent,/Worldの選択を解除/);
+  $('revision').value='user-supplied-revision';
+  const fresh=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  fresh.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:302});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.length,1,
+    'cleared World must not supply a stale navigation result');
+});
+
+test('new World wins over an invalid older read, and revision changes clear navigation',async()=>{
+  await input('dfd-file',projection);
+  let release;
+  const oldRead=$('world-file').listeners.change({target:{files:[{
+    text:()=>new Promise(resolve=>{release=()=>resolve('not-json');})
+  }]}});
+  await input('world-file',{source:'new-world'});
+  release();
+  await oldRead;
+  assert.match($('status').textContent,/Worldを読み込みました/);
+  assert.doesNotMatch($('status').textContent,/Worldを読み込めません/);
+  $('revision').value='revision-A';
+  let node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:303});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.length,2,
+    'the new World should remain available for read-only navigation');
+  $('revision').value='revision-B';
+  $('revision').listeners.input();
+  assert.equal($('details').children.length,0);
+  assert.match($('details').textContent,/要素を選択すると/);
+  assert.match($('status').textContent,/版表示を変更/);
+  node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:304});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.length,2);
+});
+
