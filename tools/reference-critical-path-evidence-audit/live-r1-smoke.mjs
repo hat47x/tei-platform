@@ -431,13 +431,18 @@ async function main() {
       baselineRepositoryRevision: expectedR, application: "order_entry",
       loopbackAddress: positiveLaunch.address, targetProcessID: positiveLaunch.processID,
       targetBinarySHA256: positiveLaunch.binarySHA256,
-      // E1 preflight has one launch-receipt locator: keep both executions
-      // explicitly grouped here instead of hiding the distinct test binary.
+      // E1 preflight has one launch-receipt locator: explicitly record all
+      // three distinct synthetic test binaries rather than claiming parity.
       negativeTargetProcessID: negativeLaunch.processID,
       negativeTargetLoopbackAddress: negativeLaunch.address,
       negativeTargetBinarySHA256: negativeLaunch.binarySHA256,
       negativeTargetFixtureOverlaySHA256: negativeFixture.overlaySHA256,
       negativeUsesSameBinary: false,
+      n11TargetProcessID: n11Launch.processID,
+      n11TargetLoopbackAddress: n11Launch.address,
+      n11TargetBinarySHA256: n11Launch.binarySHA256,
+      n11TargetOverlaySHA256: n11Fixture.overlaySHA256,
+      n11UsesSameBinary: false,
       workspaceSourceRevisionBeforeLaunch: r1,
       healthResponseWasOK: true, runtimeAuthorityVerified: false
     },
@@ -470,10 +475,29 @@ async function main() {
       observationExecuted: Boolean(negativeReceipt.result.observation),
       targetBinarySHA256: negativeLaunch.binarySHA256,
       productionTargetUnmodified: true, independentDatabaseRead: false
+    },
+    "target-n11-launch.json": {
+      evidenceNature: "test-only-Go-overlay-Web-target-N11",
+      integrationHead: head, targetBuildRevisionLabel: head,
+      loopbackAddress: n11Launch.address, targetProcessID: n11Launch.processID,
+      targetBinarySHA256: n11Launch.binarySHA256,
+      acceptedSourceRevisionClaim: r1,
+      overlay: n11Fixture, runtimeAuthorityVerified: false
+    },
+    "n11-unobserved-control.json": {
+      evidenceNature: "running-web-http-synthetic-Observation-read-failure",
+      integrationHead: head, acceptedSourceRevisionClaim: r1,
+      httpStatus: n11Response.status, stage: n11Receipt.result.stage,
+      commandCompleted: Boolean(n11Receipt.result.command),
+      observationReadAttempted: true,
+      observationResultRecorded: Boolean(n11Receipt.result.observation),
+      executionErrorNature: "synthetic-read-unavailable",
+      targetBinarySHA256: n11Launch.binarySHA256,
+      productionTargetUnmodified: true, independentDatabaseRead: false
     }
   });
   process.stdout.write(JSON.stringify({
-    status: "E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY",
+    status: "E1_A_B_N11_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY",
     authority: "test-harness-acceptance-not-human",
     repositoryIntegrationHead: head, baselineRepositoryRevision: expectedR,
     sourceR0: r0, acceptedScratchSourceR1: r1, exactValidation: validationID,
@@ -482,11 +506,16 @@ async function main() {
     independentDatabaseRead: false,
     negativeUnitPriceRunningWeb: "TESTED_WITH_SYNTHETIC_OVERLAY_BINARY",
     negativeUnitPriceRejected: negativeReceipt.result.stage === "validation-not-satisfied",
+    n11UnobservedReadControl: "TESTED_WITH_SYNTHETIC_OBSERVATION_FAILURE_OVERLAY",
+    n11ReportsExecutionError: n11Response.status === 422 &&
+      Boolean(n11Receipt.result.command) && !n11Receipt.result.observation,
     evidenceDirectory: evidenceDir,
     evidenceFiles: evidenceDir ? ["workspace-r1.json", "target-launch.json",
-      "web-positive.json", "target-negative-launch.json", "web-negative-unit-price.json"] : [],
-    limits: ["temporary-scratch", "synthetic-provider", "two-distinct-test-binaries",
-      "no-real-db", "not-human-approved", "not-E1-complete", "not-product-gate"]
+      "web-positive.json", "target-negative-launch.json", "web-negative-unit-price.json",
+      "target-n11-launch.json", "n11-unobserved-control.json"] : [],
+    limits: ["temporary-scratch", "synthetic-provider", "three-distinct-test-binaries",
+      "n11-synthetic-read-unavailable", "no-real-db", "not-human-approved",
+      "not-E1-complete", "not-product-gate"]
   }, null, 2) + "\n");
 }
 try {
