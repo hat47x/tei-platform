@@ -91,7 +91,8 @@ func TestGenericInvocationRejectsDuplicateJSONBeforeAndAfterDomainCall(t *testin
 		t.Fatalf("ambiguous request reached domain code: calls=%d err=%v", calls, err)
 	}
 	validRequest, err := json.Marshal(SourceAdapterRequest{
-		Format: "xead", SourceBytes: []byte("<System FormatVersion=\"1.2\"/>"),
+		Format:                "xead",
+		SourceBytes:           []byte("<System FormatVersion=\"1.2\"/>"),
 		TranscriptionContract: []byte("{}"),
 	})
 	if err != nil {
