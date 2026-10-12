@@ -54,8 +54,8 @@ jobs:
             ./reference/application-composition \
             -run '^TestE15ActualGoImpactToE12ReadOnlyReview$' -v
 
-      - name: E22のNative構成候補を検証
+      - name: E22／E24のNative構成・入力境界を検証
         shell: bash
         run: |
           set -euo pipefail
-          go test -count=1 ./reference/application-composition -run '^TestE22' -v
+          go test -count=1 ./reference/application-composition -run '^TestE(22|24)' -v
