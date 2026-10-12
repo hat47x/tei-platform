@@ -116,6 +116,8 @@ jobs:
           } else {
             // #1163 adds a test-only Go overlay and a SECOND Web binary.
             // This demonstrates a live denial but NOT the production binary or DB.
+// The Source R0 label-spoof control is a harness-detected vulnerability,
+// not proof the current Web server enforces accepted Source R1.
             const negativeLaunch = read("target-negative-launch.json");
             const negative = read("web-negative-unit-price.json");
             assert.equal(positive.negativeUnitPriceTest, "RUNNING_SERVER_SYNTHETIC_FIXTURE_OVERLAY");
@@ -136,6 +138,26 @@ jobs:
             assert.equal(negative.observationExecuted, false);
             assert.equal(negative.productionTargetUnmodified, true);
             assert.equal(negative.independentDatabaseRead, false);
+            // The 8th witness is a stale R0 Source with accepted R1 labels.
+            // The real target DOES NOT reject this at launch; do not report
+            // any runtime version binding or an accepted R1-only execution.
+            const stale = read("stale-source-control.json");
+            assert.equal(stale.integrationHead, process.env.GITHUB_SHA);
+            assert.equal(stale.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(stale.actuallyLoadedWorkspaceSourceRevision, lineage.sourceBefore);
+            assert.notEqual(stale.actuallyLoadedWorkspaceSourceRevision,
+              stale.acceptedSourceRevisionClaim);
+            assert.equal(stale.sameTargetBinaryAsPositive, true);
+            assert.equal(stale.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(stale.acceptedR1RuleMissing, true);
+            assert.notEqual(stale.staleManifestSemanticSHA256,
+              stale.acceptedManifestSemanticSHA256);
+            assert.equal(stale.mismatchDetectedByExternalTestHarness, true);
+            assert.equal(stale.webServerRejectsMismatchedLabels, false);
+            assert.equal(stale.currentRuntimeVersionBindingEnforced, false);
+            assert.equal(stale.independentDatabaseRead, false);
+            assert.equal(summary.staleSourceMismatchDetectedByHarness, true);
+            assert.equal(summary.staleSourceRejectedByTarget, false);
           }
           assert.equal(summary.independentDatabaseRead, false);
           assert.equal(summary.validationCount, 4);
@@ -179,7 +201,8 @@ jobs:
           const common = ["workspace-r1.json", "target-launch.json", "web-positive.json"];
           const negative = [
             "target-negative-launch.json", "web-negative-unit-price.json",
-            "target-n11-launch.json", "n11-unobserved-control.json"
+            "target-n11-launch.json", "n11-unobserved-control.json",
+            "stale-source-control.json"
           ];
           const expected = (extended ? common.concat(negative) : common).sort();
           assert.deepEqual(readdirSync(dir).sort(), expected, "unexpected evidence file or missing receipt");
@@ -197,7 +220,9 @@ jobs:
             assert.equal(body.integrationHead, process.env.GITHUB_SHA);
             assert.equal(body.evidenceNature.includes("synthetic") ||
               body.evidenceNature.includes("test-only") ||
-              body.evidenceNature === "running-first-web-target-with-synthetic-provider",
+              body.evidenceNature === "running-first-web-target-with-synthetic-provider" ||
+              (name === "stale-source-control.json" &&
+               body.evidenceNature === "running-web-http-stale-source-R0-label-spoof-control"),
               true, "not an explicitly synthetic test receipt");
             receipts[name] = body;
             digests[name] = createHash("sha256").update(bytes).digest("hex");
@@ -227,6 +252,21 @@ jobs:
             assert.equal(denied.targetBinarySHA256, deniedLaunch.targetBinarySHA256);
             assert.equal(unread.targetBinarySHA256, unreadLaunch.targetBinarySHA256);
             assert.notEqual(deniedLaunch.targetBinarySHA256, receipts["target-launch.json"].targetBinarySHA256);
+            const stale = receipts["stale-source-control.json"];
+            const launch = receipts["target-launch.json"];
+            assert.equal(stale.acceptedSourceRevisionClaim, lineage.sourceAfter);
+            assert.equal(stale.actuallyLoadedWorkspaceSourceRevision, lineage.sourceBefore);
+            assert.notEqual(stale.staleManifestSemanticSHA256,
+              stale.acceptedManifestSemanticSHA256);
+            assert.equal(stale.sameTargetBinaryAsPositive, true);
+            assert.equal(stale.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(stale.acceptedR1RuleMissing, true);
+            assert.equal(stale.mismatchDetectedByExternalTestHarness, true);
+            assert.equal(stale.webServerRejectsMismatchedLabels, false);
+            assert.equal(stale.currentRuntimeVersionBindingEnforced, false);
+            assert.equal(stale.independentDatabaseRead, false);
+            assert.equal(summary.staleSourceMismatchDetectedByHarness, true);
+            assert.equal(summary.staleSourceRejectedByTarget, false);
           }
           const manifest = {
             schema: "tei.reference.e1-synthetic-evidence-manifest/v0",
@@ -239,6 +279,9 @@ jobs:
             evidenceSHA256: digests,
             provider: "synthetic",
             negativeUsesDifferentTestBinary: extended,
+            staleSourceMismatchDetectedByHarness: extended,
+            staleSourceRejectedByTarget: false,
+            runtimeVersionBindingVerified: false,
             independentDatabaseRead: false,
             humanAcceptance: false,
             productGate: "UNQUALIFIED",
