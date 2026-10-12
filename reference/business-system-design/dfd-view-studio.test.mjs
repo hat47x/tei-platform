@@ -107,3 +107,17 @@ test('keyboard placement and pointer cancellation preserve view-only editing',as
   $('diagram').listeners.pointerup({pointerId:42,clientX:60,clientY:80});
   assert.equal($('apply').disabled,false,'active pointer should still be recognized');
 });
+
+test('reloading a Procedure clears stale Source details and an in-progress drag',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,pointerId:70,clientX:0,clientY:0});
+  assert.match($('details').children[0].textContent,/business.json/);
+  await input('dfd-file',{...projection,procedureId:'another.procedure',
+    steps:[{id:'NEW',label:'new',functionRefs:[],noApplicationFunction:true}],flows:[],handoffs:[]});
+  assert.equal($('details').children.length,0);
+  assert.match($('details').textContent,/要素を選択すると/);
+  $('diagram').listeners.pointerup({pointerId:70,clientX:250,clientY:200});
+  assert.equal($('apply').disabled,true);
+  assert.doesNotMatch($('status').textContent,/配置変更の候補ができました/);
+});
