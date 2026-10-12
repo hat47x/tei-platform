@@ -70,26 +70,32 @@ func assessRelations(catalog Catalog, state map[string]Record, completeTables ma
 				if target.Table != relation.TargetTable {
 					continue
 				}
-				match := true
+				// A composite tuple is ruled out by any comparable, unequal
+				// component, regardless of other missing/opaque components.
+				// Only a candidate with no known mismatch can be unknown.
+				unknown, mismatch := false, false
 				for _, key := range relation.Keys {
 					value := target.Values[key.TargetField]
 					if !nonNullScalar(value) {
-						possibleUnknown = true
-						match = false
-						break
+						unknown = true
+						continue
 					}
 					equal, comparable := equalScalar(source.Values[key.SourceField], value)
 					if !comparable {
-						possibleUnknown = true
-						match = false
-						break
+						unknown = true
+						continue
 					}
 					if !equal {
-						match = false
+						mismatch = true
 						break
 					}
 				}
-				if match {
+				switch {
+				case mismatch:
+					// Known mismatch wins over missing components.
+				case unknown:
+					possibleUnknown = true
+				default:
 					finding.MatchedTargetIDs = append(finding.MatchedTargetIDs, targetID)
 				}
 			}
