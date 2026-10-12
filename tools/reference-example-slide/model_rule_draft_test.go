@@ -23,9 +23,9 @@ func modelRuleDraftFixture(t *testing.T) (string, Input, ModelHypotheses, ModelR
 		t.Fatal(err)
 	}
 	claims := []ModelRuleEvidenceClaim{{
-		Kind: "document",
-		Ref: "documents/unverified-work-instruction",
-		ClaimedBy: "designer",
+		Kind:        "document",
+		Ref:         "documents/unverified-work-instruction",
+		ClaimedBy:   "designer",
 		Fingerprint: "sha256:" + strings.Repeat("a", 64),
 	}}
 	intent := ModelRuleDraftIntent{
