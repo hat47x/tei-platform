@@ -169,16 +169,29 @@ const server = createServer(async (req, res) => {
     }
   }
   // Never forward browser-supplied identity/role, cookie, Authorization,
-  // X-Forwarded-* or Host headers. Existing First Web Target owns the
-  // scenario and the legacy fixture verifier; this proxy grants nothing.
+  // X-Forwarded-* or Host headers. This is only an equality guard, not an
+  // Authorization token: untrusted clients could reconstruct these values.
+  // The API-only binary validates them against its OWN in-process projection
+  // on the same HTTP request as the actual command dispatch. A stale API
+  // without the explicit endpoint answers 404 instead of running a command.
+  const boundCommand = jsonForm && req.method === "POST" && path.pathname === "/scenario/submit";
   const outbound = httpRequest({
     hostname: "127.0.0.1",
     port: apiPort,
     method: req.method,
-    path: path.pathname + path.search,
+    path: (boundCommand ? "/scenario/submit-bound" : path.pathname) + path.search,
     timeout: 5000,
     headers: req.method === "POST"
-      ? { "content-type": type, "content-length": String(body.length) }
+      ? {
+          "content-type": type,
+          "content-length": String(body.length),
+          ...(boundCommand ? {
+            "x-tei-diagnostic-application": expectedBinding.applicationId,
+            "x-tei-diagnostic-baseline-id": expectedBinding.handoverBaselineId,
+            "x-tei-diagnostic-baseline-revision": expectedBinding.baselineRepositoryRevision,
+            "x-tei-diagnostic-target-revision": expectedBinding.targetBuildRevision,
+          } : {}),
+        }
       : {},
   }, upstream => {
     const chunks = [];
