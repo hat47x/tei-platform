@@ -13,11 +13,11 @@ import (
 // successfulAttemptReference distinguishes an execution occurrence from its
 // content result. It is reference-local evidence, not trusted attestation.
 type successfulAttemptReference struct {
-	AttemptOrdinal         int    `json:"attemptOrdinal"`
-	ExecutionOccurrenceID  string `json:"executionOccurrenceId"`
-	BuildPlanFingerprint   string `json:"buildPlanFingerprint"`
-	ResultFingerprint      string `json:"resultFingerprint"`
-	Outcome                string `json:"outcome"`
+	AttemptOrdinal        int    `json:"attemptOrdinal"`
+	ExecutionOccurrenceID string `json:"executionOccurrenceId"`
+	BuildPlanFingerprint  string `json:"buildPlanFingerprint"`
+	ResultFingerprint     string `json:"resultFingerprint"`
+	Outcome               string `json:"outcome"`
 }
 
 // fakeSuccessfulBuilder stands in for a builder that was actually invoked.
