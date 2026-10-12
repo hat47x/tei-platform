@@ -12,9 +12,9 @@ func TestPluginRequirementsRejectDuplicateIDs(t *testing.T) {
 	id := cid("tei.dependency")
 	other := cid("tei.other")
 	for _, tc := range []struct {
-		name string
+		name     string
 		requires []plugin.Requirement
-		reject bool
+		reject   bool
 	}{
 		{name: "same major", requires: []plugin.Requirement{{Plugin: id, CompatibleMajor: 1}, {Plugin: id, CompatibleMajor: 1}}, reject: true},
 		{name: "different major", requires: []plugin.Requirement{{Plugin: id, CompatibleMajor: 1}, {Plugin: id, CompatibleMajor: 2}}, reject: true},
