@@ -31,3 +31,18 @@ go test -count=1 -run '^TestLinuxPinnedGeneration' ./tools/reference-composition
 ```
 
 この試験の旧世代の処理は、実際に待機している子プロセスではなく、合成基盤の参照保持として模擬します。したがって、**切替時の実行内容の保持と解放を確認する試験**であって、長時間稼働する子プロセスの無停止移行や実業務の処理継続を証明するものではありません。現在の参照起動器をそのまま製品の共通ホストへ採用する判断でもありません。
+
+
+## Runtimeに追加した選択式のLinux起動器
+
+`internal/plugin/runtime/process_pinned_linux.go`には、`PinLinuxProcess`を追加しました。ホストが事前に許可したプラグインの識別子・実行ファイルのパス・SHA-256を渡すと、実行内容を自分の一時領域に複製して照合し、名前を削除した読み取り専用ファイル記述子を保持します。
+
+戻り値の`PinnedLinuxProcess`は既存の`ArtifactVerifier`と`ProcessLauncher`の両方を実装します。ホストが同じインスタンスを`Registry.Verifier`と`Registry.Processes`に設定すれば、既存の`DeploymentExecutor`が実行前に同じプラグイン識別子・版・成果物指紋を照合し、起動時に保持済みの内容を使います。通常の`StdioProcessLauncher`は引き続き利用できます。どちらを使うかはホストが選びます。
+
+実行内容を固定する段階では、拡張子やファイル名の信用だけで起動せず、複製先の内容をSHA-256で照合します。複製サイズは64 MiB以下とし、開始前の中断、誤った指紋、別のプラグイン識別子、違う実行パス、解放後の呼出しを拒否します。書込み用記述子を閉じてから実行用記述子を開き、呼出しが完了する前には`Close`によって閉じないようにします。入出力の大きさの制限とエラー時の標準エラー出力の扱いには既存の標準入出力処理を共用します。
+
+```sh
+go test -count=1 -run '^TestProductPinnedLinuxProcess' ./tools/reference-composition-process-bridge
+```
+
+**保証の境界：** これはLinux上の選択式起動器であって、全ホストの既定の起動方式へ適用したものではありません。`ArtifactVerifier`の結果で真になるのは指紋の一致だけで、署名や来歴の真正性は主張しません。必須の隔離実行器がない場合には従来どおり起動を拒否します。Linux以外の実行先、攻撃者と同一権限のホスト保護、長寿命の実行プロセス管理、監査と本番構築・配備への採用は別途検討が必要です。
