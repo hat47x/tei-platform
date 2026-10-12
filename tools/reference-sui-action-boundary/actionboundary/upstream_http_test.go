@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -259,18 +260,18 @@ func TestHTTPSApplicationStoreUsesOneContractForIndependentInventoryApp(t *testi
 }
 
 func TestHTTPSApplicationStoreTimeoutNeverRetries(t *testing.T) {
-	calls := 0
+	var calls atomic.Int32
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		calls.Add(1)
 		// The upstream may have committed before the network reply is lost.
-		time.Sleep(80 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		_, _ = w.Write([]byte(`{"protocolVersion":"1","revision":"r2"}`))
 	}))
 	defer server.Close()
 	store := upstreamStore(server, validDelegation())
-	store.Client.Timeout = 10 * time.Millisecond
+	store.Client.Timeout = 50 * time.Millisecond
 	_, err := store.Commit(context.Background(), upstreamIntent())
-	if !errors.Is(err, ErrRemoteOutcomeUnknown) || calls != 1 {
-		t.Fatalf("timed out upstream outcome must be unknown, not retried: calls=%d error=%v", calls, err)
+	if !errors.Is(err, ErrRemoteOutcomeUnknown) || calls.Load() != 1 {
+		t.Fatalf("timed out upstream outcome must be unknown, not retried: calls=%d error=%v", calls.Load(), err)
 	}
 }
