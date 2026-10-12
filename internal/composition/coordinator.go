@@ -81,12 +81,18 @@ func (c *Coordinator) Restore(ctx context.Context, expected uint64, next Binding
 // Registry revision. Apply and cutover share a registry lock at the linearization
 // point. This does not automatically withdraw existing leases after later edits.
 func (c *Coordinator) ReplaceSelected(ctx context.Context, registry *Registry, selected Selection, expected uint64, next Binding, lifecycle Lifecycle) error {
+	if registry == nil {
+		return ErrSelectionRequired
+	}
 	return c.stage(ctx, expected, next, lifecycle, false, registry, selected)
 }
 
 // RestoreSelected is the explicit registry-authorized resurrection after
 // withdrawal, subject to a strictly increasing host generation.
 func (c *Coordinator) RestoreSelected(ctx context.Context, registry *Registry, selected Selection, expected uint64, next Binding, lifecycle Lifecycle) error {
+	if registry == nil {
+		return ErrSelectionRequired
+	}
 	return c.stage(ctx, expected, next, lifecycle, true, registry, selected)
 }
 
