@@ -44,10 +44,10 @@ Gate C Evidence
 
 ### Handover Baseline identity
 
-- Handover Baseline ID
+- 引継ぎ基準版のID
 - `baselineRepositoryRevision = R`
 - アプリケーション・パターン・データ・関係・問い合わせ・能力など、正本への参照
-- Driver Scenario identity
+- ドライバーのシナリオの識別情報
 - 判定段階Bの検証根拠への参照
 - unresolved
 
@@ -55,7 +55,7 @@ Gate C Evidence
 
 - `targetBuildRevision = T`
 - 実行先の変換器とホストの識別情報
-- build / run identity
+- 構築・実行の識別情報
 - 実行先で実際に利用した正本上の対象
 
 ### RとTの関係
@@ -177,13 +177,13 @@ Functional conformance result
 
 ### 二重実装を作らない
 
-次をWeb Target内へ独立正本として複製しません。
+次の内容を、ウェブ実行先の内部へ独立した第二の正本として複製しません。
 
-- native SQL
-- Capability implementation
+- SQLの直接記述
+- 能力の実装
 - 検証規則
-- Authorization rule
-- Business Outcome定義
+- 認可規則
+- 業務上の結果の定義
 - Observation対象の意味
 
 ### Result境界を保つ
@@ -197,84 +197,84 @@ Observation
 Developer Diagnostic
 ```
 
-HTTP status、toast、dialog、inline message等は表現方式です。transport / UI表現からCanonical意味を逆定義しません。
+HTTPの状態コード、通知、対話画面、画面内のメッセージなどは結果の表現方式です。通信方式や画面表示から、正本上の意味を逆向きに定義しません。
 
 ### Command acknowledgementとObservationを分ける
 
-Commandが正常なBusiness Resultを返しただけで、外部状態が成立済みとみなしません。
+命令が正常な業務上の結果を返しても、それだけで外部の状態が成立したとはみなしません。
 
-Observationが必要なScenarioではCommand EvidenceとObservation Evidenceを別々に残します。
+観測が必要なシナリオでは、命令の検証根拠と観測の検証根拠を別々に残します。
 
 ### Datasource境界を破らない
 
-read-only DatasourceをTarget都合でwrite可能にしません。browser storageやform stateもCanonical Datasourceのwrite authorityにはしません。
+読み取り専用のデータ接続先を、実行先の都合で書込み可能にはしません。ブラウザーの保存領域や入力画面の状態も、正本上のデータ接続先への書込み権限にはなりません。
 
 ### Standard ProjectionとCustom UI
 
-少なくとも一箇所でCustom UIの接続を確認します。
+少なくとも一か所で、個別に実装した画面の接続を確認します。
 
-Custom UIでもApplication Pattern、Validation、Authorization、Capability、Result、Observation等の上位意味へ接続し、独自の業務正本を作りません。
+個別に実装した画面でも、アプリケーションパターン、検証、認可、能力、結果、観測などの上位の意味に接続し、独自の業務の正本は作りません。
 
 ## Evidence Recordの最小項目
 
-最初から最終JSON schemaを固定しません。ただしEvidence artifactから少なくとも次を復元できる必要があります。
+初めから最終的なJSONスキーマを固定しません。ただし、検証成果物から少なくとも次の情報を復元できる必要があります。
 
 ### Baseline provenance
 
-- Handover Baseline ID
+- 引継ぎ基準版のID
 - `baselineRepositoryRevision = R`
-- Driver Scenario identity
-- Gate B Evidence reference
-- baseline unresolved
+- ドライバーのシナリオの識別情報
+- 判定段階Bの検証根拠への参照
+- 基準版の未解決事項
 
 ### Target provenance
 
 - `targetBuildRevision = T`
 - 実行先の変換器とホストの識別情報
-- build / run identity
-- Reference Workspace / Canonical subject identity
+- 構築・実行の識別情報
+- 参照用作業領域と正本上の対象の識別情報
 
 ### Canonical references
 
-- Application ID
-- Pattern ID
-- Data / Relation / Query / Capability等、Scenarioで参照したCanonical ID
-- 必要なSource Reference
+- アプリケーションのID
+- パターンのID
+- シナリオで参照した、データ・関係・問い合わせ・能力などの正本上のID
+- 必要な入力元への参照
 
 ### Runtime / Target observations
 
-- observed Target Capability
-- observed Runtime Binding
-- execution artifact / ABI / Host identity / observations（適用可能な範囲）
-- observed Execution / Trust条件
-- interaction steps
-- replayable behavior identity / precondition / expected semantic operation（利用する場合）
-- raw Target Evidence reference
-- normalized event / behavior Evidence referenceとraw provenance（利用する場合）
+- 観測した実行先の能力
+- 観測した実行時の対応付け
+- 実行成果物・ABI・ホストの識別情報と観測結果（適用可能な範囲）
+- 観測した実行・信頼に関する条件
+- 対話操作の手順
+- 再実行可能な操作の識別情報・事前条件・期待する意味上の操作（利用する場合）
+- 実行先で得た元の検証根拠への参照
+- 正規化したイベント・操作の検証根拠への参照と、元の記録の来歴（利用する場合）
 - Business Result / Execution Error / Observationの分類
 
 ### Conformance result
 
-- Semantic Conformance result
-- Functional result
-- Visual Evidence reference
-- performance measurement reference
-- Diagnostic / unresolved
+- 意味の準拠確認の結果
+- 機能面の結果
+- 表示の検証根拠への参照
+- 性能測定結果への参照
+- 診断結果と未解決事項
 
 ### Evaluator information
 
 自動評価を使った場合は少なくとも次を追跡します。
 
-- evaluator / automation tool identity
+- 評価器・自動化ツールの識別情報
 - version
-- 入力artifact
-- evaluatorが判定したEvidence種別
+- 入力となる成果物
+- 評価器が判定した検証根拠の種類
 
-prompt、trajectory、score等を保存してもCanonical meaningへ含めません。secret、credential、不要なprivate dataを通常Evidenceへ保存しません。
+指示文、操作の経路、評価点などを保存しても、正本上の意味には含めません。秘密情報、認証情報、不要な個人情報を通常の検証根拠に保存しません。
 
 ## Evidence artifactはCanonicalではない
 
-Gate C Evidenceはderivedな検証成果物です。
+判定段階Cの検証根拠は、正本から派生した検証成果物です。
 
 ```text
 Authoritative Source / Handover Baseline
@@ -284,50 +284,50 @@ Driver / Target execution
 Evidence artifact
 ```
 
-Evidence artifactからCanonicalへ暗黙に逆書きしません。
+検証成果物から意味の正本へ、暗黙のうちに書き戻すことはしません。
 
-Screenshot、DOM snapshot、browser trace、VLM judge結果、GUI agent trajectory、performance trace等は再確認や比較に利用できますが、source of truthにはしません。
+画面画像、DOMの状態記録、ブラウザーの操作記録、視覚言語モデルによる判定、画面操作エージェントの操作経路、性能の記録などは、再確認や比較に利用できます。ただし、正本にはしません。
 
 ## Target / Runtime Binding差の引き継ぎ
 
-第一Web Targetだけで完全なtaxonomyを作りません。
+最初のウェブ実行先だけで、完全な分類体系は作りません。
 
-Gate Cでは観測した差を次へ整理し、`ISSUE-000026` / GitHub Issue #259へ渡します。
+判定段階Cでは観測した違いを次のように整理し、`ISSUE-000026`とGitHubの課題#259へ引き継ぎます。
 
-1. Application上の意味
-2. Target-neutral Presentation候補
-3. Target Capability候補
-4. Runtime Binding差
-5. execution artifact / ABI / Host差（観測可能な範囲）
-6. Execution / Trust差
-7. Web固有実装
-8. Host control plane固有差
-9. Canonicalへ持ち上げてはいけない差
-10. unresolved
+1. アプリケーション上の意味
+2. 実行先に依存しない表示の候補
+3. 実行先の能力の候補
+4. 実行時の対応付けの違い
+5. 実行成果物・ABI・ホストの違い（観測可能な範囲）
+6. 実行・信頼に関する条件の違い
+7. ウェブ固有の実装
+8. ホストの管理機構に固有の違い
+9. 意味の正本へ取り込んではいけない違い
+10. 未解決事項
 
-分類できないものは無理に既存bucketへ押し込まず`unresolved`として残します。
+分類できないものは、無理に既存の区分へ押し込まず、`unresolved`として残します。
 
-Gate Cでは、複数execution artifactを実装・比較すること自体は要求しません。第一Web Targetで実際に使ったartifact / ABI / Host identityと、観測できた実現差をEvidenceへ残せればよく、native Go対Wasm等の比較はGate C後のportable artifact ReferenceでPressureします。
+判定段階Cでは、複数の実行成果物を実装して比較すること自体は要求しません。最初のウェブ実行先で使った成果物・ABI・ホストの識別情報と、観測できた実現方法の違いを検証根拠として残します。Goのネイティブ実行とWasmの比較などは、判定段階Cの後に可搬な成果物の参照事例で圧力試験を行います。
 
 ## Visual Fidelity
 
-初期Referenceでは一律の数値閾値を置きません。
+初期の参照事例では、一律の数値によるしきい値を設けません。
 
 少なくとも次を比較可能にします。
 
-- field groupingの可読性
-- Relation / referenceの理解しやすさ
-- header-detailの局所性
-- validation feedbackの識別性
-- authorization denialとsystem errorの識別性
-- Business Result / Observationの識別性
-- standard ProjectionとCustom UIの差
+- 項目のまとまりの読みやすさ
+- 関係や参照の理解しやすさ
+- 親子関係にある明細のまとまり
+- 入力検証の結果の分かりやすさ
+- 認可による拒否とシステムエラーの区別しやすさ
+- 業務上の結果と観測結果の区別しやすさ
+- 標準の派生表示と個別実装の画面の違い
 
-Screenshotまたは同等の再確認可能なartifactを優先して残します。VLM等のjudge結果だけを保存して入力artifactを捨てません。
+画面画像、または同等に再確認できる成果物を優先して残します。視覚言語モデルなどの判定結果だけを保存して、入力となった成果物を捨てることはしません。
 
 ## Performance Evidence
 
-RQ-024の最終performance contractは第二Target以降の比較から決めますが、第一Web Targetから測定点を用意します。
+RQ-024の最終的な性能に関する契約は、二つ目以降の実行先との比較を踏まえて決めます。ただし、最初のウェブ実行先から測定項目を用意します。
 
 - initial projection / load
 - browse result render
@@ -340,13 +340,13 @@ RQ-024の最終performance contractは第二Target以降の比較から決めま
 - 実行時のエラー projection
 - observed completion
 
-根拠のない一律閾値は第一Targetだけから固定しません。
+最初の実行先だけの結果を基に、根拠のない一律のしきい値は固定しません。
 
 ## Gate C判定
 
-Gate CはIssue closeやWeb画面の存在だけでは通過しません。
+課題の終了やウェブ画面の存在だけでは、判定段階Cを通過できません。
 
-少なくとも次をEvidenceから説明できることを要求します。
+少なくとも次の事項を、検証根拠に基づいて説明できることを要求します。
 
 - すべてのGate C runが明示Handover Baseline `B` / revision `R`へ追跡できる
 - Target build revision `T`をbaseline `R`と混同していない
@@ -363,7 +363,7 @@ Gate CはIssue closeやWeb画面の存在だけでは通過しません。
 - Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
 - unresolvedを成功へ読み替えず明示できる
 
-Gate C通過後、`ISSUE-000008`のEditor / AI支援保留解除と、`ISSUE-000026`の第二Target圧力試験を判断します。
+判定段階Cの通過後、`ISSUE-000008`の編集環境・AI支援の保留解除と、`ISSUE-000026`の二つ目の実行先での圧力試験を判断します。
 
 判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)（第一Web Target、2026-09-19、Ready）
 
