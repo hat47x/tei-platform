@@ -35,6 +35,23 @@ type realEngineReplayReceipt struct {
 	WasmRuntimeEngineLockFingerprint   string `json:"wasmRuntimeEngineLockFingerprint"`
 }
 
+// Strict JSON is required even for Reference evidence. Encoding/json alone
+// permits duplicate keys and lossy Unicode decoding, which would make a
+// receipt ambiguous before physical images can be verified.
+func decodeRealEngineReplayReceipt(raw []byte) (realEngineReplayReceipt, error) {
+	if len(raw) == 0 || len(raw) > 1<<20 {
+		return realEngineReplayReceipt{}, fmt.Errorf("runtime Engine receipt size is invalid")
+	}
+	if _, err := transform.ParseJSON(raw); err != nil {
+		return realEngineReplayReceipt{}, fmt.Errorf("ambiguous or invalid runtime Engine receipt: %w", err)
+	}
+	var receipt realEngineReplayReceipt
+	if err := json.Unmarshal(raw, &receipt); err != nil {
+		return realEngineReplayReceipt{}, err
+	}
+	return receipt, nil
+}
+
 func replayBoundEngineReceipt(receipt realEngineReplayReceipt, nativePath, wasmPath, sourcePath string) error {
 	if receipt.Schema != "tei.reference.transform-native-wasm-conformance/v1" ||
 		receipt.EngineLogicalID != "tei.runtime.engine.deterministic_transform.reference" ||
@@ -142,9 +159,23 @@ func TestActualEngineLockReceiptReplaysWithExactFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var receipt realEngineReplayReceipt
-	if err := json.Unmarshal(raw, &receipt); err != nil {
+	receipt, err := decodeRealEngineReplayReceipt(raw)
+	if err != nil {
 		t.Fatal(err)
+	}
+	for _, bad := range []struct {
+		name string
+		raw  string
+	}{
+		{name: "duplicate JSON member", raw: `{"schema":"a","schema":"b"}`},
+		{name: "unpaired Unicode surrogate", raw: `{"schema":"\\uD800"}`},
+		{name: "trailing second root", raw: `{"schema":"a"} {"schema":"b"}`},
+	} {
+		t.Run(bad.name, func(t *testing.T) {
+			if _, err := decodeRealEngineReplayReceipt([]byte(bad.raw)); err == nil {
+				t.Fatal("ambiguous evidence JSON was accepted")
+			}
+		})
 	}
 	sourcePath := filepath.Join("..", "..", "..", "reference", "plugin-self-build",
 		"builder-sources", "transform-source-realizer-v1.transform.json")
