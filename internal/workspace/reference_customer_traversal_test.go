@@ -142,7 +142,7 @@ func TestTwoApplicationsUseSharedCustomerContractWithLocalBindings(t *testing.T)
 			}
 
 			refs := idx.ReferencesFor(sourceindex.Subject{Kind: "application-pattern", ID: tc.pattern})
-			if len(refs) != 1 || refs[0].Role != sourceindex.RoleAuthoring || refs[0].ArtifactPath != tc.source {
+			if len(refs) != 1 || refs[0].Role != sourceindex.RoleDefinition || refs[0].ArtifactPath != tc.source {
 				t.Fatalf("案件固有の出典が別の場所を指しています: %#v", refs)
 			}
 		})
