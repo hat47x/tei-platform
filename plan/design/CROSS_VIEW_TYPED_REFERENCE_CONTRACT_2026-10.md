@@ -318,3 +318,22 @@ PR #1139がmainへ統合された後、現行`modelref.Impact`を再点検した
 ### 完了の制限
 
 ここまでの実装は`internal/modelref`に閉じた読み取り専用の契約である。正式な完了には、`tools/repository-health-check.sh`と実Workspace統合試験の完全な実行、変更前後の正本となるSource revisionの束縛、AI提案と旧資産の受理前後を追う実シナリオが必要。**追加したテストはまだtrusted full checkoutで実行していない。**
+
+## R9 — 受理前後の実Workspaceと種類付き識別子の対応検証（2026-10-12）
+
+共通参照機構を受理機構とは別に設計しているため、型付き参照の試験だけでは「提案→検証→受理→Source更新→再読み込み」の間にIDと出典が保持される保証にならない。逆に、Shared Acceptanceの既存テストだけでは `modelref.Key{Scope,Subject}` とSource Indexとの同時整合が検証されていなかった。
+
+`tools/reference-shared-acceptance/modelref_identity_lineage_test.go`を追加した。既存の `scratchWorkspaceBeforeSecondApplication`、`unitPriceCandidate`、`takeSnapshot`、`acceptViaCLI`、`decisionsOf`を利用し、受理経路を複製しない。
+
+検証シナリオは次のとおり。
+
+1. `reference/workspace`の一時複製を正規の`workspace.Load`と`Source Index`で読み取り、`index.Build→derivedbridge.FromIndex`で種類・Scope付きのData、Attribute、Validation、Application Patternを観測する。
+2. AI起点の候補を用意し、`Origin.Kind=ai`、`Origin.Actor=proposal-only`、未検証の旧資産メモを明示する。新Validation ID `sales.order_line.unit_price_positive`は、受理前のGraphにもSource Indexにも存在しないことを確認する。旧資産の実取込を行ったと主張するものではない。
+3. 共通`evaluate`で読み取り専用の事前評価を行い、管理対象Sourceの全ファイル内容と基準revisionに変更がないことを確認する。
+4. 既存CLIの`reviewFingerprint`拘束付き`accept`を通し、Decisionの基準・変更前・変更後revision、AI起点の出典メモを確認する。検証対象は**一時Workspace内だけ**であり、公開Reference本体を更新しない。
+5. 再読込したWorldから再び`derivedbridge`を構築し、既存Data/Attribute/Validation/Patternの`Key`を保持し、新Validationが`added`として現れることを`ReviewImpactDiff`で検査する。新Validationの定義元は現在のSource Indexの`semantic/sales/validation.tei`に存在することを確認する。
+6. Decision Indexから候補fingerprintが辿れること、`Origin.Actor`が`DecisionActorStatus`や`DecisionAuthorityStatus`に格上げされず、`unresolved`に留まることを確認する。
+
+これにより、同一の**実Reference構成を複製した環境**で、候補と受理前後の論理識別子、定義ファイル、記録の追跡を一つのシナリオにした。既存のSource Index移動不変性試験やShared Acceptance Decision試験の責務を再実装しない。
+
+**残る制限**：今回のテストはコードを追加した段階で、信頼できる完全なチェックアウトでのGo実行結果は未取得。AI起点であることは提案者の自己申告であり、人間による実際の承認を証明しない。旧資産の注記も実取込・元システムのID照合ではない。Legacy importの生データ→Source Token→受理済みモデルへの追跡、他Scopeとの混同、受理時の実行権限については別途検証する。受理前後のGraph比較は同一観測用Scopeを呼び出し側が渡した範囲に限定され、Scopeそのものの正当性を保証するものではない。
