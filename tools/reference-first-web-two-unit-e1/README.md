@@ -135,3 +135,16 @@ bash tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh \
 Decision Indexの`origin.actor`、review fingerprint、現在一致しているという事実は、発行者・人の受理権限や本番配備権限の証明ではありません。`sourceAcceptanceAuthorityVerified`、`buildArtifactLockVerified`、`runtimeModelAcceptanceAuthority`、`artifactAuthority`は**常にfalse**です。
 
 現行の`plugin.BuildPlan` / `plugin.BuildArtifactLock`は**プラグインを識別して固定する契約**です。Application APIバイナリを便宜的なPluginと偽ってLockへ入れたり、第三のLockを新設したりしません。将来の配備単位のBuild根拠は、既存Builder/Artifact Authority担当において、非Plugin出力にも正しく対応する入力・成果物の関係が必要かを別途判断します。今回の`source-lineage.json`はその判断用の派生観測であり、単独でProduction Runtimeの実行を承認する資格にはなりません。
+
+
+### API配備単位の実ビルド入力観測（E1追加・診断）
+
+Plugin向けの`BuildPlan` / `BuildArtifactLock`は、現在、Plugin IdentityとPluginのビルド成果物を結び付けます。ApplicationのBrowser資産とAPIバイナリを架空のPluginへ見立ててLockへ押し込まず、正式なBuilder接続の前に**実構築の証跡として不足している項目**を調べます。
+
+`build_frozen_json_api.sh`は固定World版APIを実際にビルドした後、`go version -m api/order-entry`で**実行ファイルに埋め込まれた**Goのビルド情報を読み取ります。同時に、そのビルドへ指定した`go list -deps`結果と、cleanなGit checkoutの`HEAD`・tree IDを照合して、既存の`measurement.json`の`apiBuildInputObservation`へ記録します。
+
+- 実APIバイナリのGoバージョン、`GOOS=linux`、`GOARCH=amd64`、`GOAMD64=v1`、`CGO_ENABLED=0`、`-trimpath=true`、正確な3ビルドタグの一致。
+- 選択したGo package閉包のSHA-256とpackage件数、`internal/ir`・`internal/driver`など業務実行側の存在、`internal/workspace`・`internal/syntax`の不在。
+- Git commitとtreeのID、最終APIバイト数・SHA-256。既存Browser／APIの同一`browserAndApiSourceRevision`、API生成物のdigest、測定済みGo版が食い違えば成果物を公開しません。
+
+元のBrowser用HTMLとJavaScriptにも既存の実成果物SHA-256を保持しますが、この追加ではBrowser用のGo依存閉包や本番用の複数Builderを証明していません。Go packageのリストはビルド時の一時物とし、配布物には閉包digestと件数だけを含めます。build-info自体やGit tree IDを署名済み証拠とみなさず、改ざん可能な測定JSONを信用できるHost Authorityへ昇格させません。`unitBuilderAuthorityVerified`、`buildArtifactLockVerified`、`hermeticBuildVerified`、`reproducibleBinaryVerified`は**常にfalse**です。正式なSource→BuildPlan→Artifact→Host trustの権限経路は引き続き既存Builder/Deployment担当で設計・検証する必要があります。
