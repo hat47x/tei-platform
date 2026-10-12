@@ -1,5 +1,8 @@
 # プラグインとBundle
 
+> **新しい目標アーキテクチャ（2026-10-12）**： [ADR-0032](../plan/adr/0032-composition-kernel-replacement.md)により、サービス契約を中心としたComposition Kernelへの破壊的な移行を設計方針として採用しました。以下の固定CapabilityKind、旧Plugin Runtime / Lockの説明は、現行実装の解説です。将来の互換性を保証する規範ではありません。移行用の最小Kernel試作は `internal/composition/` にありますが、まだ本番Runtimeへ接続していません。
+
+
 TEIでは、プラグインを業務上の意味を表す最小要素とはせず、**機能（Capability）の実装を配布する単位**として扱います。
 
 ## 識別子を分ける
