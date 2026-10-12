@@ -11,6 +11,7 @@ import (
 
 	"tei/internal/core"
 	pruntime "tei/internal/plugin/runtime"
+	"tei/internal/plugin/transform"
 )
 
 // This Reference-only stage lock describes a builder execution, not a Plugin.
@@ -38,6 +39,13 @@ type referenceStage2Acceptance struct {
 }
 
 func readReferenceStage2JSON(path string, target any) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("stage2 authority record must be a regular non-symlink file")
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -49,6 +57,9 @@ func readReferenceStage2JSON(path string, target any) error {
 	}
 	if len(raw) > 1<<20 {
 		return fmt.Errorf("stage2 authority record exceeds 1 MiB")
+	}
+	if _, err := transform.ParseJSON(raw); err != nil {
+		return fmt.Errorf("stage2 authority record ambiguous or invalid JSON: %w", err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
