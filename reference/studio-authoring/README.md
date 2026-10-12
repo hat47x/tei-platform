@@ -155,7 +155,7 @@ node --test reference/studio-authoring/bridge.test.mjs
 # exact headのfull checkoutを保有する環境で、scratch Workspaceだけを変更する統合試験
 TEI_STUDIO_E2E=1 node reference/studio-authoring/e2e.mjs
 
-# 統合資格の判定では上記だけでなく、以下の完全実行とpre/post clean receiptが必要
+# 全体健全性検査も実施する場合。統合判断は変更範囲に応じた試験を基準とする
 tools/repository-health-check.sh
 ```
 
