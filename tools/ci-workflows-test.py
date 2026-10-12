@@ -85,8 +85,8 @@ class WorkflowContract(unittest.TestCase):
         self.head_sha = git(self.checkout, 'rev-parse', 'HEAD')
         self.remote_url = self.remote.as_uri()
         _, blocks = scripts(HEALTH)
-        self.assertEqual(4, len(blocks))
-        self.pre, self.contract, self.health, self.post = [x.replace(REMOTE_URL, self.remote_url) for x in blocks]
+        self.assertEqual(5, len(blocks))
+        self.pre, self.contract, self.health, self.e1, self.post = [x.replace(REMOTE_URL, self.remote_url) for x in blocks]
         self.env = os.environ.copy()
         self.env.update(EXPECTED_HEAD_SHA=self.head_sha, EXPECTED_MAIN_SHA=self.main_sha,
                         GITHUB_SHA=self.head_sha, GITHUB_REF='refs/heads/work/issue-1189-ci')
@@ -113,6 +113,10 @@ class WorkflowContract(unittest.TestCase):
     def test_stale_head_rejected(self):
         env = dict(self.env, EXPECTED_HEAD_SHA=self.main_sha)
         self.check(self.pre, False, env)
+
+    def test_e1_script_rejects_stale_head_before_execution(self):
+        env = dict(self.env, EXPECTED_HEAD_SHA=self.main_sha)
+        self.check(self.e1, False, env)
 
     def test_invalid_sha_rejected(self):
         env = dict(self.env, EXPECTED_HEAD_SHA='not-a-sha')
@@ -164,7 +168,7 @@ class WorkflowContract(unittest.TestCase):
 class StaticWorkflowContract(unittest.TestCase):
     def test_health_script_syntax_and_permissions(self):
         text, blocks = scripts(HEALTH)
-        self.assertEqual(4, len(blocks))
+        self.assertEqual(5, len(blocks))
         self.assertRegex(text, r'(?m)^on:\n  workflow_dispatch:')
         self.assertEqual(1, text.count('  workflow_dispatch:\n'))
         self.assertEqual(1, text.count('  repository-health:\n'))
@@ -190,6 +194,21 @@ class StaticWorkflowContract(unittest.TestCase):
             meaningful_shell_lines(blocks[1]))
         self.assertEqual(required_health_commands(),
                          meaningful_shell_lines(blocks[2]))
+        # E1 remains independently observable when full health fails;
+        # it does not weaken the combined job's pass/fail authority.
+        self.assertIn('if: ${{ !cancelled() }}', text)
+        e1 = meaningful_shell_lines(blocks[3])
+        self.assertIn('test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"', e1)
+        self.assertIn('bash -n tools/reference-external-coordination/run.sh', e1)
+        self.assertIn('bash -n tools/reference-external-coordination/clean-check-test.sh', e1)
+        self.assertEqual(1, e1.count(
+            'bash tools/reference-external-coordination/clean-check-test.sh'))
+        self.assertEqual(1, e1.count(
+            'bash tools/reference-external-coordination/run.sh'))
+        self.assertLess(text.index('bash tools/repository-health-check.sh'),
+                        text.index('bash tools/reference-external-coordination/clean-check-test.sh'))
+        self.assertLess(text.index('bash tools/reference-external-coordination/run.sh'),
+                        text.index('if: always()'))
         for script in blocks:
             self.assertEqual(0, command('bash', '-n', '-c', script, check=False).returncode)
 
