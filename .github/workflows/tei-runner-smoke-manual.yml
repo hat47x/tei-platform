@@ -1,0 +1,26 @@
+name: TEI 実行環境の最小診断（手動）
+
+# Issue #513・#1189。TEIの取得や実行を伴わず、実行環境の割当てを診断する。
+# 手動起動のみとし、Actionsの自動実行は再開しない。
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: tei-manual-hosted-runner-smoke
+  cancel-in-progress: false
+
+jobs:
+  hosted-runner-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: 実行環境でシェルが開始されたことを確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_OS" = Linux
+          printf 'run_id=%s\nrun_attempt=%s\nrunner_os=%s\nrunner_arch=%s\nrunner_name=%s\n' \
+            "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$RUNNER_OS" "$RUNNER_ARCH" "$RUNNER_NAME"
+          printf 'シェルの実行開始を確認\n'
