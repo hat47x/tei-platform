@@ -93,3 +93,28 @@ test('rejects dangling DFD links before any layout is displayed', () => {
     assert.throws(()=>inspectViewLayout(broken,hash,layout,layoutHash),new RegExp(message));
   }
 });
+
+test('empty Procedure and duplicate semantic arrows cannot be disguised as a valid view',()=>{
+  const missing={...dfd,steps:[]};
+  assert.throws(()=>inspectViewLayout(missing,hash,layout,layoutHash),/EMPTY_DFD_PROCEDURE/);
+  const duplicateControl={...dfd,flows:[
+    {from:'APP-10',to:'APP-10',kind:'sequence'},
+    {from:'APP-10',to:'APP-10',kind:'sequence'}
+  ]};
+  assert.throws(()=>inspectViewLayout(duplicateControl,hash,layout,layoutHash),
+    /DUPLICATE_DFD_CONTROL_EDGE/);
+  const duplicateResponsibility={...dfd,information:{
+    ...dfd.information, responsibilities:[
+      {role:'approver',step:'APP-10'},{role:'approver',step:'APP-10'}
+    ]
+  }};
+  assert.throws(()=>inspectViewLayout(duplicateResponsibility,hash,layout,layoutHash),
+    /DUPLICATE_DFD_RESPONSIBILITY/);
+  const same={id:'D-01',from:{kind:'step',id:'APP-10'},
+    to:{kind:'party',id:'customer'},payload:'request'};
+  const duplicateInformation={...dfd,information:{
+    ...dfd.information,informationFlows:[same,{...same,payload:'different meaning'}]
+  }};
+  assert.throws(()=>inspectViewLayout(duplicateInformation,hash,layout,layoutHash),
+    /DUPLICATE_DFD_INFORMATION_FLOW/);
+});
