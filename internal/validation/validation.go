@@ -109,15 +109,13 @@ func Validate(w ir.World) []Diagnostic {
 					out = append(out, errd("INVALID_PLUGIN_DATABASE_PROVIDER_SUPPORT", "plugin %s capability %s lists invalid database provider %s", p.ID, c.ID, dbp))
 				}
 			}
-			seenPermissions := map[string]struct{}{}
 			for _, perm := range c.Permissions {
 				if err := perm.Validate(); err != nil {
 					out = append(out, errd("INVALID_PLUGIN_PERMISSION", "plugin %s capability %s: %v", p.ID, c.ID, err))
 				}
-				if _, dup := seenPermissions[perm.Key()]; dup {
-					out = append(out, errd("DUPLICATE_PLUGIN_PERMISSION", "plugin %s capability %s declares permission %s more than once", p.ID, c.ID, perm.Key()))
-				}
-				seenPermissions[perm.Key()] = struct{}{}
+			}
+			if err := plugin.ValidateUniqueCapabilityPermissions(c.Permissions); err != nil {
+				out = append(out, errd("DUPLICATE_PLUGIN_PERMISSION", "plugin %s capability %s: %v", p.ID, c.ID, err))
 			}
 		}
 	}
