@@ -80,8 +80,15 @@ type Dependencies struct {
 // NewHost creates a single protected Action endpoint. Security steps belong to the
 // host, not to interchangeable middleware that may declare its own guards.
 func NewHost(p Policy, d Dependencies) (http.Handler, error) {
-	if p.Path == "" || p.Path[0] != '/' || strings.ContainsAny(p.Path, "?#%\\\\") || strings.Contains(p.Path, "//") || strings.Contains(p.Path, "/./") || strings.Contains(p.Path, "/../") || strings.HasSuffix(p.Path, "/.") || strings.HasSuffix(p.Path, "/..") || p.Method != http.MethodPost || p.ActionID == "" || len(p.Providers) == 0 {
+	if p.Path == "" || p.Path[0] != '/' || strings.ContainsAny(p.Path, "?#%\\\\") || strings.Contains(p.Path, "//") || strings.Contains(p.Path, "/./") || strings.Contains(p.Path, "/../") || strings.HasSuffix(p.Path, "/.") || strings.HasSuffix(p.Path, "/..") || p.Method != http.MethodPost || strings.TrimSpace(p.ActionID) == "" || len(p.Providers) == 0 {
 		return nil, errors.New("protected route needs exact POST path, action and providers")
+	}
+	// E1's exact protected Action route must also be representable by this Go
+	// Host: a space, control character or non-ASCII rune may be normalized or
+	// percent-encoded before the request reaches net/http. Reject these route
+	// definitions rather than accepting a path the E1 planner cannot attest.
+	if strings.IndexFunc(p.Path, func(r rune) bool { return r < '!' || r > '~' }) >= 0 {
+		return nil, errors.New("protected route needs an exact printable ASCII path")
 	}
 	for id, issuer := range p.Providers {
 		if id == "" || issuer == "" {
