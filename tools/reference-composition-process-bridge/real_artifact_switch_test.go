@@ -150,7 +150,7 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 			t.Fatalf("invalid %s invocation evidence: %v", rel.revision, err)
 		}
 	}
-	first, err := invokeSelected(ctx, coordinator, old.adapter, command)
+	first, err := invokeSelected(ctx, coordinator, old.adapter, command, oldBinding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := launcher.calls
-	if _, err := invokeSelected(ctx, coordinator, old.adapter, command); !errors.Is(err, composition.ErrStaleRegistry) {
+	if _, err := invokeSelected(ctx, coordinator, old.adapter, command, oldBinding); !errors.Is(err, composition.ErrStaleRegistry) {
 		t.Fatalf("stale registry accepted a new invocation: %v", err)
 	}
 	if launcher.calls != before {
@@ -210,13 +210,13 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 	// A fresh invocation must neither fall back to the old executable nor
 	// accept an old adapter under the new generation's lock.
 	before = launcher.calls
-	if _, err := invokeSelected(ctx, coordinator, old.adapter, command); err == nil {
+	if _, err := invokeSelected(ctx, coordinator, old.adapter, command, oldBinding); err == nil {
 		t.Fatal("old artifact was selected for a fresh new-generation invocation")
 	}
 	if launcher.calls != before {
 		t.Fatal("mismatched old artifact reached the process launcher")
 	}
-	second, err := invokeSelected(ctx, coordinator, next.adapter, command)
+	second, err := invokeSelected(ctx, coordinator, next.adapter, command, newBinding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +250,7 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 	// The host retains authority after a successful binary replacement.
 	allow = false
 	before = launcher.calls
-	if _, err := invokeSelected(ctx, coordinator, next.adapter, command); !errors.Is(err, denied) ||
+	if _, err := invokeSelected(ctx, coordinator, next.adapter, command, newBinding); !errors.Is(err, denied) ||
 		launcher.calls != before {
 		t.Fatalf("host denial did not stop the new executable: %v", err)
 	}
@@ -265,7 +265,7 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 	if err := coordinator.Withdraw(2); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := invokeSelected(ctx, coordinator, next.adapter, command); !errors.Is(err, composition.ErrUnbound) {
+	if _, err := invokeSelected(ctx, coordinator, next.adapter, command, newBinding); !errors.Is(err, composition.ErrUnbound) {
 		t.Fatalf("withdrawn new provider accepted invocation: %v", err)
 	}
 	if err := coordinator.Reap(ctx); err != nil {
