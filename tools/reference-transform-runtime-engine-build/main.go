@@ -226,26 +226,7 @@ func run(repo, artifactOut, goExecutable string) (buildEvidence, error) {
 }
 
 func selectGoExecutable(explicit string) (string, error) {
-	path := strings.TrimSpace(explicit)
-	if path == "" {
-		path = filepath.Join(runtime.GOROOT(), "bin", executableName("go"))
-	}
-	absolute, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	resolved, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", fmt.Errorf("resolve Go executable: %w", err)
-	}
-	info, err := os.Stat(resolved)
-	if err != nil {
-		return "", fmt.Errorf("stat Go executable: %w", err)
-	}
-	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("Go executable is not a regular file: %s", resolved)
-	}
-	return resolved, nil
+	return gobuilder.SelectExecutable(explicit, runtime.GOROOT(), runtime.GOOS)
 }
 
 func identifyGoToolchain(repo, goPath string) (version, goRoot, binaryDigest, toolchainDigest string, err error) {
@@ -502,78 +483,7 @@ func buildEnvironment(base []string, stateDir string) ([]string, error) {
 }
 
 func hashGoToolchain(goRoot string) (string, error) {
-	if strings.TrimSpace(goRoot) == "" {
-		return "", fmt.Errorf("Go toolchain root is empty")
-	}
-	paths := []string{
-		filepath.Join(goRoot, "VERSION"),
-		filepath.Join(goRoot, "bin", executableName("go")),
-		filepath.Join(goRoot, "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH),
-		filepath.Join(goRoot, "src"),
-	}
-	sum := sha256.New()
-	for _, root := range paths {
-		info, err := os.Lstat(root)
-		if err != nil {
-			return "", err
-		}
-		if !info.IsDir() {
-			if err := hashToolchainEntry(sum, goRoot, root, info); err != nil {
-				return "", err
-			}
-			continue
-		}
-		if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			info, err := entry.Info()
-			if err != nil {
-				return err
-			}
-			return hashToolchainEntry(sum, goRoot, path, info)
-		}); err != nil {
-			return "", err
-		}
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
-}
-
-func hashToolchainEntry(sum io.Writer, goRoot, path string, info os.FileInfo) error {
-	rel, err := filepath.Rel(goRoot, path)
-	if err != nil {
-		return err
-	}
-	rel = filepath.ToSlash(rel)
-	if _, err := fmt.Fprintf(sum, "%s\x00%o\x00", rel, info.Mode()); err != nil {
-		return err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("Go toolchain symlink is not supported in this Reference: %s", rel)
-	}
-	if !info.Mode().IsRegular() {
-		_, err := fmt.Fprint(sum, "special\n")
-		return err
-	}
-	if _, err := fmt.Fprint(sum, "file\x00"); err != nil {
-		return err
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(sum, file); err != nil {
-		file.Close()
-		return err
-	}
-	if err := file.Close(); err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(sum, "\n")
-	return err
+	return gobuilder.HashToolchain(goRoot, runtime.GOOS, runtime.GOARCH)
 }
 
 func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDigest string) error {
