@@ -53,7 +53,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -z "$(gofmt -l reference/multilingual-business-data/*.go)"
+          if test -n "$(gofmt -l reference/multilingual-business-data/*.go)"; then
+            gofmt -d reference/multilingual-business-data/*.go
+            exit 1
+          fi
           go vet ./reference/multilingual-business-data
           go test -race -count=3 ./reference/multilingual-business-data
       - name: 実行後の作業領域を確認
