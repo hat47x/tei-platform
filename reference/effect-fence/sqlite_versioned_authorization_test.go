@@ -16,8 +16,8 @@ import (
 const fixtureAuthoritySource = "sqlite-legacy-authority"
 
 type sqliteLegacyAuthority struct {
-	f *sqliteFixture
-	scope Scope
+	f      *sqliteFixture
+	scope  Scope
 	source string
 }
 
@@ -45,10 +45,10 @@ func (a sqliteLegacyAuthority) ReadAuthorizationEpochs(_ context.Context, input 
 		return legacyauthorization.AuthorityEpochs{}, errors.New("認可根拠の有効な版がありません")
 	}
 	return legacyauthorization.AuthorityEpochs{
-		Source: a.source,
+		Source:      a.source,
 		SubjectLink: snapshot["subject-link"].version,
-		Membership: snapshot["membership"].version,
-		Policy: snapshot["policy"].version,
+		Membership:  snapshot["membership"].version,
+		Policy:      snapshot["policy"].version,
 	}, nil
 }
 
@@ -86,7 +86,7 @@ func setupSQLiteLegacyEpochs(t *testing.T) (*sqliteFixture, *sqliteFixture, sqli
 	if err := a.exec("INSERT INTO legacy_subjects(subject,role,disabled) VALUES(" + textSQL(s.Subject) + ",'EDITOR',0)"); err != nil {
 		t.Fatal(err)
 	}
-	return a, b, sqliteLegacyAuthority{f:a, scope:s, source:fixtureAuthoritySource}, Request{Scope:s, OperationID:"versioned-operation", Value:"authorized"}
+	return a, b, sqliteLegacyAuthority{f: a, scope: s, source: fixtureAuthoritySource}, Request{Scope: s, OperationID: "versioned-operation", Value: "authorized"}
 }
 
 // 実際のレコードのロール変更と根拠版変更は同じSQLiteトランザクションで行う。
@@ -168,17 +168,19 @@ func TestSQLiteVersionedGrantRejectsChangeDuringRoleEvaluation(t *testing.T) {
 func TestSQLiteVersionedGrantRequiresSameTrustedSourceAndAllEpochs(t *testing.T) {
 	a, _, identity, req := setupSQLiteLegacyEpochs(t)
 	for _, tc := range []struct {
-		name string
-		auth legacyauthorization.Adapter
+		name   string
+		auth   legacyauthorization.Adapter
 		source string
 	}{
 		{"wrong-source", fixtureLegacyAdapter(identity, nil), "other-authority"},
 		{"legacy-without-epochs", legacyauthorization.Adapter{
 			Store: identity,
-			Rule: legacyRuleFunc(func(context.Context, legacyauth.User, string, string) (bool, string, error){return true, "", nil}),
+			Rule: legacyRuleFunc(func(context.Context, legacyauth.User, string, string) (bool, string, error) {
+				return true, "", nil
+			}),
 		}, fixtureAuthoritySource},
 	} {
-		t.Run(tc.name, func(t *testing.T){
+		t.Run(tc.name, func(t *testing.T) {
 			_, result, err := a.PrepareWithVersionedAuthorization(context.Background(), req.Scope.Subject, req, tc.auth, tc.source)
 			if err == nil || result.Disposition != "" {
 				t.Fatalf("untrusted grant admitted: %+v %v", result, err)
