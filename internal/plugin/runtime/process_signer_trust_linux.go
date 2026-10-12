@@ -90,3 +90,23 @@ func (t *LinuxHostSignerTrust) current(ref string, epoch uint64) bool {
 	entry, ok := t.signers[ref]
 	return ok && entry.epoch == epoch
 }
+
+// startIfCurrentは、署名鍵の有効性確認とOSへの起動要求を直列化する。
+// RevokeとAllowが書込みロックを使うため、失効・交換の完了後に旧世代の
+// 承認で新しい子プロセスを開始することはできない。読み取りロックは
+// Startの完了時に解放し、処理中の子プロセスの終了を待たせない。
+//
+// 保証するのは一つのホストの信頼集合における順序だけである。
+// 起動済みの子プロセスを停止させたり、別のホストへ失効を配布したりはしない。
+func (t *LinuxHostSignerTrust) startIfCurrent(ref string, epoch uint64, start func() error) error {
+	if t == nil {
+		return errors.New("Linux signer trust policy is missing")
+	}
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	entry, ok := t.signers[ref]
+	if !ok || entry.epoch != epoch {
+		return errors.New("Host signer trust was revoked or changed")
+	}
+	return start()
+}
