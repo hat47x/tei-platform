@@ -76,3 +76,18 @@ TEIの標準Web/Desktop業務UIでは、中央管理する標準コンポーネ�
 - 全アプリケーションのコードを常時横断取得すること。
 - 現行のTEI-LD研究停止条件の解除、Production機能完成の主張。
 - 新たな認知用Canonical、第二Resolver、TEI専用のAcceptance経路の導入。
+
+
+## R0/R1 最小比較器 Reference（2026-10-13追記）
+
+[reference/local-cpu-reuse/README.md](../../reference/local-cpu-reuse/README.md)に、**学習なし・通信なし**で二つのApplication間のUI/Logicの構造的な再利用候補を照合する限定Referenceを追加した。実装は [compare-candidates.mjs](../../reference/local-cpu-reuse/compare-candidates.mjs)、負例を含む [Node test](../../reference/local-cpu-reuse/compare-candidates.test.mjs)。
+
+- **同一契約ID＋fingerprint＋入出力/effects/failures一致**でも、結果は `reuse_candidate` でありAccepted meaningではない。UIのTarget/Frameworkが異なれば `pattern_candidate` に制限。
+- **同名でも契約IDが異なる**場合は `needs_semantic_review`、effect違い／fingerprint違い等は直接置換の `incompatible`。契約欠損時は保留。
+- lexical類似は低権限のrank hintとしてのみ利用し、受理証拠や校正済み確率とはみなさない。拒否・不明・負例も分類したまま保持する。
+- `allowedApplications` は既に許可された観測データの**出力フィルタ**であり、実際の認可・入力前のアクセス制御は呼出側が担う。観測Sourceや契約fingerprintの真正性も本Referenceでは証明しない。
+- 使用データは全て**合成fixture**。実TEI Source抽出・実Contract検証・複数案件での有効性・性能評価・#267 Acceptance統合は行っていない。
+
+Node.js 22.16.0の別作業ディレクトリで `node --test` により **14/14 PASS**（ローカル実行のみ、現PR HEADのtrusted full checkout検証ではない）。これは**判定規則の小規模な動作確認**であってR0/R1完了や製品準拠を意味しない。
+
+次の実消費者検証では、許可を得た二つのTEI ApplicationのAccepted Sourceと実Contractからread-onlyの特徴量を作り、source-revision／identity／fingerprintを検証した上で本比較器へ投入する。ケースと評価軸はREADMEの「Next grounded experiment」に従う。#843のissue-only停止と#876/#267の条件は引き続き有効。
