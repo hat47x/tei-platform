@@ -30,7 +30,8 @@ fi
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
-if [[ ! -f go.mod || ! -f reference/web-composition/plan-check.test.mjs ]]; then
+if [[ ! -f go.mod || ! -f reference/web-composition/plan-check.test.mjs ||
+      ! -f reference/web-composition/route-table.test.mjs ]]; then
   echo "error: complete TEI repository checkout required" >&2
   exit 2
 fi
@@ -49,7 +50,9 @@ packages=(
 )
 
 echo "==> Web E1 Node composition tests" >&2
-node --test reference/web-composition/plan-check.test.mjs
+node --test \
+  reference/web-composition/plan-check.test.mjs \
+  reference/web-composition/route-table.test.mjs
 echo "==> Web E2 Go vet" >&2
 go vet "${packages[@]}"
 echo "==> Web E2 Go tests" >&2
