@@ -76,3 +76,30 @@ test('large Procedure remains scrollable instead of clipping all Steps below ini
   assert.ok(height>600,'diagram height should expand with number of Steps: '+dimensions);
   assert.ok(parseInt($('diagram').style.height,10)>600);
 });
+
+test('keyboard placement and pointer cancellation preserve view-only editing',async()=>{
+  await input('dfd-file',projection);
+  let node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  assert.equal(node.role,'button');
+  assert.equal(node.tabindex,'0');
+  let prevented=false;
+  node.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){prevented=true;}});
+  assert.equal(prevented,true);
+  assert.equal($('apply').disabled,false);
+  assert.match($('pending').textContent,/"x": 60/);
+  $('apply').listeners.click();
+  await new Promise(resolve=>setTimeout(resolve,30));
+  assert.equal($('apply').disabled,true);
+  assert.match($('status').textContent,/正本には書き込んでいません/);
+  node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,pointerId:41,clientX:20,clientY:30});
+  $('diagram').listeners.pointercancel({pointerId:41});
+  $('diagram').listeners.pointerup({pointerId:41,clientX:400,clientY:300});
+  assert.equal($('apply').disabled,true,'canceled pointer must not submit a move');
+  node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,pointerId:42,clientX:20,clientY:30});
+  $('diagram').listeners.pointerup({pointerId:43,clientX:400,clientY:300});
+  assert.equal($('apply').disabled,true,'other pointer must not submit a move');
+  $('diagram').listeners.pointerup({pointerId:42,clientX:60,clientY:80});
+  assert.equal($('apply').disabled,false,'active pointer should still be recognized');
+});
