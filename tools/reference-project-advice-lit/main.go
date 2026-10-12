@@ -15,7 +15,7 @@ import (
 	customeradvice "tei/plugins/reference-project-customer-advice"
 )
 
-//go:embed web/index.html web/advice-element.mjs web/advice-action.mjs
+//go:embed web/index.html web/advice-element.mjs web/advice-action.mjs web/order-entry-context.mjs
 var webAssets embed.FS
 
 var staticFiles = map[string]struct {
@@ -24,7 +24,8 @@ var staticFiles = map[string]struct {
 }{
 	"/":                   {"web/index.html", "text/html; charset=utf-8"},
 	"/advice-element.mjs": {"web/advice-element.mjs", "text/javascript; charset=utf-8"},
-	"/advice-action.mjs":  {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
+	"/advice-action.mjs":        {"web/advice-action.mjs", "text/javascript; charset=utf-8"},
+	"/order-entry-context.mjs": {"web/order-entry-context.mjs", "text/javascript; charset=utf-8"},
 }
 
 func handler() http.Handler { return handlerWithContext(nil) }
