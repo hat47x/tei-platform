@@ -39,8 +39,13 @@ func ReviewImpact(before Graph, changes []Change, rules []Rule) ImpactReview {
 		at := fmt.Sprintf("changes/%d", i)
 		switch change.Kind {
 		case "added":
+			// A newly declared subject does not exist in this before-only
+			// snapshot. An empty Impact result cannot prove absence of
+			// consumers in the proposed after snapshot.
 			if !validKey(change.Key) {
 				review.Diagnostics = append(review.Diagnostics, Diagnostic{Code: "invalid-change-key", At: at})
+			} else {
+				review.Diagnostics = append(review.Diagnostics, Diagnostic{Code: "after-snapshot-required", At: at})
 			}
 		case "removed", "display-renamed", "physical-renamed", "version-changed",
 			"evidence-changed", "reference-changed", "reference-evidence-changed":
