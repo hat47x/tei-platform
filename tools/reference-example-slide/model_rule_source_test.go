@@ -65,29 +65,45 @@ func TestModelRuleSourceAnchorsAuthoredRuleIdentitiesExactly(t *testing.T) {
 
 func TestModelRuleSourceRejectsDriftUnexpectedAndMissingRules(t *testing.T) {
 	tests := []struct {
-		name string
+		name    string
 		rewrite func(string) string
 	}{
-		{"header", func(s string) string { return strings.Replace(s, "tei-model-rules v0", "tei-model-rules v1", 1) }},
-		{"kind", func(s string) string { return strings.Replace(s, "candidate-key sales.child.business-parent", "functional-dependency sales.child.business-parent", 1) }},
-		{"table", func(s string) string { return strings.Replace(s, "on sales.child fields", "on sales.other fields", 1) }},
-		{"field", func(s string) string { return strings.Replace(s, "fields sales.child.parent_id", "fields sales.child.other", 1) }},
-		{"unknown", func(s string) string { return strings.Replace(s, "business-parent", "unknown-rule", 1) }},
+		{"header", func(s string) string {
+			return strings.Replace(s, "tei-model-rules v0", "tei-model-rules v1", 1)
+		}},
+		{"kind", func(s string) string {
+			return strings.Replace(s, "candidate-key sales.child.business-parent", "functional-dependency sales.child.business-parent", 1)
+		}},
+		{"table", func(s string) string {
+			return strings.Replace(s, "on sales.child fields", "on sales.other fields", 1)
+		}},
+		{"field", func(s string) string {
+			return strings.Replace(s, "fields sales.child.parent_id", "fields sales.child.other", 1)
+		}},
+		{"unknown", func(s string) string {
+			return strings.Replace(s, "business-parent", "unknown-rule", 1)
+		}},
 		{"duplication", func(s string) string {
 			return s + "candidate-key sales.child.business-parent on sales.child fields sales.child.parent_id\n"
 		}},
 		{"missing", func(s string) string {
 			return strings.Replace(s, "functional-dependency sales.child.parent-depends-on-itself on sales.child determinants sales.child.parent_id dependents sales.child.parent_id\n", "", 1)
 		}},
-		{"extra token", func(s string) string { return strings.Replace(s, "fields sales.child.parent_id", "fields sales.child.parent_id accepted", 1) }},
+		{"extra token", func(s string) string {
+			return strings.Replace(s, "fields sales.child.parent_id", "fields sales.child.parent_id accepted", 1)
+		}},
 		{"wrong FD", func(s string) string {
 			return strings.Replace(s, "dependents sales.child.parent_id", "dependents sales.child.other", 1)
 		}},
 		{"duplicate attribute", func(s string) string {
 			return strings.Replace(s, "fields sales.child.parent_id", "fields sales.child.parent_id,sales.child.parent_id", 1)
 		}},
-		{"bad first", func(s string) string { return "candidate-key x on y fields z\n" + s }},
-		{"trailing declaration", func(s string) string { return s + "not-a-rule sales.child.fake on sales.child fields sales.child.parent_id" }},
+		{"bad first", func(s string) string {
+			return "candidate-key x on y fields z\n" + s
+		}},
+		{"trailing declaration", func(s string) string {
+			return s + "not-a-rule sales.child.fake on sales.child fields sales.child.parent_id"
+		}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
