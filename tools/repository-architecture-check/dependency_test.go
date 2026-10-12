@@ -120,8 +120,8 @@ func boundaryViolation(e importEdge, module string) string {
 	group := strings.TrimPrefix(e.source, "internal/")
 	group = strings.Split(group, "/")[0]
 	switch group {
-	case "core", "subject":
-		return "foundational package must not depend on other TEI internal packages"
+	case "core", "subject", "composition":
+		return "foundational or composition package must not depend on other TEI internal packages"
 	case "permission":
 		if e.path != module+"/internal/core" {
 			return "permission model may depend only on core"
@@ -145,6 +145,9 @@ func TestBoundaryViolationClassification(t *testing.T) {
 		wantViolation    bool
 	}{
 		{"internal/core", "fmt", false},
+		{"internal/composition", "context", false},
+		{"internal/composition", "tei/internal/core", true},
+		{"internal/composition", "tei/internal/plugin", true},
 		{"internal/core", "tei/internal/plugin", true},
 		{"internal/subject", "tei/internal/plugin", true},
 		{"internal/semantic/capabilityinvoke", "tei/internal/core", false},
