@@ -178,3 +178,38 @@ func TestUnrelatedEntriesDoNotOverride(t *testing.T) {
 		t.Fatalf("reordered resources changed result: %+v", got)
 	}
 }
+
+func TestSourceRevisionChangeInvalidatesPreviouslyConfirmedTranslation(t *testing.T) {
+	g, e, r := example()
+	if got := Resolve(g, []Entry{e}, r); got.Diagnostic != "" {
+		t.Fatalf("expected confirmed baseline: %+v", got)
+	}
+	e.Source.Text = "受注を正式に確定"
+	e.Source.Revision = "source-13"
+	if got := Resolve(g, []Entry{e}, r); got.Diagnostic != "stale-translation" || got.Text != "" {
+		t.Fatalf("revised source did not invalidate translation: %+v", got)
+	}
+	r.Locale = "ja-JP"
+	if got := Resolve(g, []Entry{e}, r); got.Diagnostic != "" || got.Text != "受注を正式に確定" {
+		t.Fatalf("new source text unavailable: %+v", got)
+	}
+}
+
+func TestDifferentPluginOwnersRemainIndependent(t *testing.T) {
+	g, e, r := example()
+	other := e
+	other.Key.Owner = "different-plugin"
+	other.Translations = append([]Translation(nil), e.Translations...)
+	other.Translations[0].Text = "Submit purchase"
+	entries := []Entry{other, e}
+	if got := Validate(entries); len(got) != 0 {
+		t.Fatalf("two owners wrongly collide: %+v", got)
+	}
+	if got := Resolve(g, entries, r); got.Diagnostic != "" || got.Text != "Confirm order" {
+		t.Fatalf("wrong owner selected: %+v", got)
+	}
+	r.Key.Owner = "different-plugin"
+	if got := Resolve(g, entries, r); got.Diagnostic != "" || got.Text != "Submit purchase" {
+		t.Fatalf("independent owner not selected: %+v", got)
+	}
+}
