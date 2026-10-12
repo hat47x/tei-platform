@@ -26,10 +26,10 @@ go test -count=1 -run '^TestIndependentBusinessQuoteOverExistingGenericProcessTr
 
 **受注確定はしません。** また、受注確定の認可を見積もり独立操作への包括的な権限へ転用しません。実業務操作としての見積もりは、別途モデル化・受理する必要があります。
 
-## 独立した見積もり操作のモデル化（次の段階）
+## 独立した見積もり操作の候補モデル（未受理）
 
-参照Workspaceに、読み取り専用の`sales.order.quote_lines`と、独立した業務操作`order_entry.preview_order_quote`を宣言しました。受注確定の`order_entry.submit_order`とは異なる意味契約です。認可Fixtureでは、販売部門の受注編集者に対して**見積もり操作専用の許可**を明示し、閲覧者は許可されません。
+[見積もり候補](../../reference/candidates/order-quote/README.md)に、読み取り専用の`sales.order.quote_lines`と、独立した業務操作`order_entry.preview_order_quote`を宣言しました。正式に受理された参照Workspaceは変更していません。受注確定の`order_entry.submit_order`とは異なる意味契約です。候補の認可規則では、販売部門の受注編集者に対して**見積もり操作専用の許可**を明示し、閲覧者は許可されません。
 
-[正規モデルと認可の試験](../../reference/web-composition/go-host/canonical_quote_authorization_test.go)は、既存のDriverが業務操作・意味契約・実装への対応付けを解決することと、既存の業務認可がこの操作を個別に評価することを確認します。
+[正規モデルと認可の試験](../../reference/web-composition/go-host/canonical_quote_authorization_test.go)は、一時的なWorkspaceに候補を重ね、既存のDriverが業務操作・意味契約・実装への対応付けを解決することと、既存の業務認可が候補の規則を個別に評価することを確認します。
 
 現時点では、モデルを宣言して受理する段階に留まります。見積もり専用の公開Web経路や、実行ファイルへの正式な実行権限を自動生成・付与していません。前述の付随試験は引き続き、受注確定操作の認可の内部で見積もりを行う限定例です。独立した見積もりWeb操作からの実プロセス呼出しは別途検証が必要です。
