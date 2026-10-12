@@ -58,24 +58,18 @@ func (t *transaction) CheckAuthority(ctx context.Context, s effectcommit.Scope, 
 	if e.SubjectLink > math.MaxInt64 || e.Membership > math.MaxInt64 || e.Policy > math.MaxInt64 {
 		return false, effectcommit.ErrInvalidRequest
 	}
-	q := "SELECT source, subject_link, membership, policy, enabled FROM " + t.table("authority") +
-		" WHERE application=$1 AND capability=$2 AND subject=$3 AND action=$4 AND resource=$5 FOR UPDATE"
-	var source string
-	var link, membership, policy int64
-	var enabled bool
-	err := t.tx.QueryRow(ctx, q, s.Application, s.Capability, s.Subject, s.Action, s.Resource).
-		Scan(&source, &link, &membership, &policy, &enabled)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
+	// A SELECT FOR UPDATE directly against authority would require UPDATE privileges
+	// for the effect-writer DB role. That role could then bypass revocation.
+	// A trusted, narrowly granted SECURITY DEFINER function performs the lock
+	// and comparison; the caller has no direct UPDATE on authority.
+	q := "SELECT " + t.table("lock_authority") + "($1,$2,$3,$4,$5,$6,$7,$8,$9)"
+	var allowed bool
+	err := t.tx.QueryRow(ctx, q, s.Application, s.Capability, s.Subject, s.Action, s.Resource,
+		e.Source, int64(e.SubjectLink), int64(e.Membership), int64(e.Policy)).Scan(&allowed)
 	if err != nil {
 		return false, err
 	}
-	if link <= 0 || membership <= 0 || policy <= 0 || source == "" {
-		return false, fmt.Errorf("PostgreSQL認可正本の版が破損しています")
-	}
-	return enabled && source == e.Source && uint64(link) == e.SubjectLink &&
-		uint64(membership) == e.Membership && uint64(policy) == e.Policy, nil
+	return allowed, nil
 }
 
 func (t *transaction) FindReceipt(ctx context.Context, operationID string) (effectcommit.Receipt, bool, error) {

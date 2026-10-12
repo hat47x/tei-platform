@@ -109,6 +109,19 @@ func Validate(w ir.World) []Diagnostic {
 					out = append(out, errd("INVALID_PLUGIN_DATABASE_PROVIDER_SUPPORT", "plugin %s capability %s lists invalid database provider %s", p.ID, c.ID, dbp))
 				}
 			}
+			for _, tool := range c.MigrationTools {
+				if !tool.Valid() {
+					out = append(out, errd("INVALID_PLUGIN_MIGRATION_TOOL_SUPPORT", "plugin %s capability %s lists invalid migration tool %s", p.ID, c.ID, tool))
+				}
+			}
+			for _, feature := range c.Features {
+				if !feature.Known() {
+					out = append(out, errd("INVALID_PLUGIN_FEATURE_SUPPORT", "plugin %s capability %s lists invalid feature %s", p.ID, c.ID, feature))
+				}
+			}
+			if err := plugin.ValidateUniqueCapabilitySupports(c); err != nil {
+				out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY_SUPPORT", "plugin %s: %v", p.ID, err))
+			}
 			for _, perm := range c.Permissions {
 				if err := perm.Validate(); err != nil {
 					out = append(out, errd("INVALID_PLUGIN_PERMISSION", "plugin %s capability %s: %v", p.ID, c.ID, err))

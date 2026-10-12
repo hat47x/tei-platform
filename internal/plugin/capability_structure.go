@@ -57,6 +57,19 @@ func ValidateCapabilityStructure(provides []Capability) error {
 				return fmt.Errorf("capability %s has invalid database provider %q", c.ID, p)
 			}
 		}
+		for _, tool := range c.MigrationTools {
+			if !tool.Valid() {
+				return fmt.Errorf("capability %s has invalid migration tool %q", c.ID, tool)
+			}
+		}
+		for _, feature := range c.Features {
+			if !feature.Known() {
+				return fmt.Errorf("capability %s has invalid feature %q", c.ID, feature)
+			}
+		}
+		if err := ValidateUniqueCapabilitySupports(c); err != nil {
+			return err
+		}
 		for _, spec := range c.Permissions {
 			if err := spec.Validate(); err != nil {
 				return fmt.Errorf("capability %s: %w", c.ID, err)

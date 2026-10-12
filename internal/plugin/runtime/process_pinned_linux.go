@@ -24,12 +24,14 @@ const maxPinnedLinuxProcessBytes int64 = 64 << 20
 // 検証と起動には同一のファイル記述子を用い、署名・来歴・隔離は提供しない。
 // ホストと同じ権限の攻撃者に対する保護も、この型だけでは保証しない。
 type PinnedLinuxProcess struct {
-	mu        sync.RWMutex
-	identity  plugin.Identity
-	source    string
-	digest    string
-	image     *os.File
-	transport StdioProcessLauncher
+	mu                sync.RWMutex
+	identity          plugin.Identity
+	source            string
+	digest            string
+	signatureRef      string
+	signatureVerified bool
+	image             *os.File
+	transport         StdioProcessLauncher
 }
 
 var _ ProcessLauncher = (*PinnedLinuxProcess)(nil)
@@ -137,7 +139,14 @@ func (p *PinnedLinuxProcess) Verify(ctx context.Context, identity plugin.Identit
 	if p.image == nil || identity != p.identity || artifact.Digest != p.digest {
 		return ArtifactVerification{}, errors.New("plugin identity or digest differs from pinned process")
 	}
-	return ArtifactVerification{VerifierID: "tei-linux-pinned-process-sha256", DigestVerified: true}, nil
+	if artifact.SignatureRef != p.signatureRef {
+		return ArtifactVerification{}, errors.New("plugin signature reference differs from pinned signature evidence")
+	}
+	return ArtifactVerification{
+		VerifierID:        "tei-linux-pinned-process-sha256",
+		DigestVerified:    true,
+		SignatureVerified: p.signatureVerified,
+	}, nil
 }
 
 // Invokeは照合済みの実行内容を子プロセスの記述子3へ引き渡して起動する。
