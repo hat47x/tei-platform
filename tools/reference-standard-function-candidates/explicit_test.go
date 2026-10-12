@@ -107,7 +107,12 @@ func TestExplicitInspectionRejectsUnsupportedAndAmbiguousSource(t *testing.T) {
 	w = referenceWorkspace(t)
 	for i := range w.Applications {
 		if w.Applications[i].ID == "order_entry" {
-			w.Applications[i].Databases = append(w.Applications[i].Databases, w.Applications[i].Databases[0])
+			for _, db := range w.Applications[i].Databases {
+				if db.Alias == "sales" {
+					w.Applications[i].Databases = append(w.Applications[i].Databases, db)
+					break
+				}
+			}
 		}
 	}
 	if _, err := InspectExplicitPattern(w, "order_entry", "order_entry.recent_orders"); err == nil {
