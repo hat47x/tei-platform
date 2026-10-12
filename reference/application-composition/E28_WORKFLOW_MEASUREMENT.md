@@ -1,0 +1,56 @@
+# E28：構成選択の作業・質問・更新費用を、検証範囲と分けて記録する
+
+- **管理**：[Issue #1016](https://github.com/hat47x/tei-platform/issues/1016)。
+- **基点**：2026-10-13、TEI `a2d92df59a802901274ec00302d09b81575a3422`。新たな構成Profile、依存解決器、証拠台帳、権限を設けず、[E27の読取り監査](e27_residual_selection_audit.mjs)を使う。
+- **実装**：[測定用の読み取り専用集計器](e28_workflow_measurement.mjs)／[Node回帰試験](e28_workflow_measurement.test.mjs)。
+
+## 観測できる事実と、外部からの申告を混同しない
+
+[E26](E26_COMPOSITION_COST_BASELINE.md)は受注明細の**既存5ファイル・67非空行**と、SUIの**隔離された候補3ファイル・9／15非空行**を測定した。[E27](E27_RESIDUAL_SELECTION_AUDIT.md)は現在のTEI checkoutで既知Sourceを観測し、10監査項目を既存4・Stage 0の1・選択未解決3・実行時の証拠不足2へ分類した。
+
+これだけでは人間の手動作業、生成AIへの追加質問、改修・検証にかかった時間は**観測できない**。本E28は、その値をゼロや推測値で補わない。入力なしの実ソース読取りでは作業計測を`null`とし、外部から作業記録が提出されても、**提出された件数**と**独立して確認された件数**を分離する。
+
+| 区分 | E28で数えるもの | 数えないもの |
+| --- | --- | --- |
+| `humanDecisions` | 提出された人間による判断イベントの件数 | E27の未解決項目数を判断実施回数へ換算しない |
+| `aiQuestions` | 追加質問の提出イベントの件数 | チャット全体のトークン数、推測した質問数 |
+| `manualConnections` | 手動接続の提出イベントの件数 | 自動生成された差分や未実行の構成候補 |
+| `changedFiles` | 内容指紋の異なる変更元・変更先を申告した**相異なるファイルパス数** | 同一ファイルの複数イベントを別ファイルと数えない |
+| `validationRuns` | 提出された検証実行イベントの件数（成功／失敗／未解決を別記） | 提出URLの存在だけをテスト成功と推認しない |
+| `requalificationRuns` | 更新影響の再確認イベントの件数 | [E25](E25_CROSS_REPOSITORY_REQUALIFICATION.md)の未検証契約を自動合格にしない |
+
+`submittedCounts`は**申告されたイベントの数値**である。`verifiedCounts`はE28では常に`null`。提出されたGitHubのURLは照合の手掛かりであって、リンクがあるだけで本人の判断、実際の手動操作、CI成功、秘密情報アクセス、権限取得は証明されない。実際の検証は既存のGitHub、Build/Release/Runtime、Source Indexなどの正本で行う必要がある。
+
+## 使い方と境界
+
+```sh
+# 実ソースを読み取ってE27分類を再利用する。作業回数はnullのまま。
+node reference/application-composition/e28_workflow_measurement.mjs .
+
+# 外部提出イベントの合成試験（実際の作業履歴を生成しない）。
+node --test reference/application-composition/e28_workflow_measurement.test.mjs
+```
+
+JavaScriptの`observeE28(root, submission)`に提出イベントを渡すこともできる。提出構造は`tei-e28-workflow-submission-v0`、案件ID／利用先／比較方式／固定した開始コミット／Target、作業の完了申告、イベント配列からなる。各イベントは重複しないID、E27の監査項目ID、操作分類、出典のGitHubリンクを持つ。変更ファイルについては安全な相対パスと前後の40桁Git blob SHA、検証イベントは結果の`passed`／`failed`／`unresolved`を申告する。
+
+**申告は実施証拠を自動検証したことにはならない。** 不正なURL、別Consumerの監査項目、出典が失われた監査項目、同じイベントIDの二重計上、移動・更新を伴わないファイル指紋、変更ファイルへのパストラバーサルを拒否する。AIへの入力全文、顧客情報、秘密情報、Runtime Grantは収集しない。
+
+`complete: true`は提出者による完了**申告**にすぎず、実Provider、採用済み業務意味、正式なTarget、SUIの認証済み保存を受理しない。
+
+## 「既存の機構を使う」と「追加Profileを使う」の比較
+
+`compareE28(existing, candidate)`は、案件ID・利用先・開始Gitコミット・Targetが同一で、片方が`existing-source`、他方が`profile-candidate`のときだけ、**申告イベント数の差**を返す。条件が異なれば`not-comparable`とする。同条件でも結果は`reported-only-not-verified`、確認済みの生産性改善値は`null`である。
+
+対照実験に必要な情報を、今回作った仮のProfile定義で埋め合わせない。どちらの方式でも、[E27の既存正本・残余判断](E27_RESIDUAL_SELECTION_AUDIT.md)と同じSource、同じAuthorityの検査、同じWeb/Native実行先を使う。
+
+## AI-first案件Plugin生成との関係
+
+`order_entry`の小さな案件固有機能を、(a)既存実装、(b)案件内改修、(c)新規Plugin生成の順に比較する方針が[#1016の追加コメント](https://github.com/hat47x/tei-platform/issues/1016)に記録された。別の並行[PR #1567](https://github.com/hat47x/tei-platform/pull/1567)は、Goによる補助判定とLitの案件UI部品を独立に実装中（確認時点ではDraft）。E28はその実装を変更せず、案件固有の生成・選択・手動接続・再検証の申告と、実際の実行証拠を区別する。
+
+実際のGitHub PRには差分とCI結果があるが、**人間が何回判断し、AIへ何回追加質問したかはPR差分だけでは分からない**。今回は本当の二つの方式を同条件で実施していないため、改善率を示さない。
+
+## 採否への影響
+
+ここまでのE21〜E28で追加Profileが必要とする独立の正本は立証されていない。他方、Profilerによる削減効果も実測されていない。したがって[E10の採用保留](E10_COMPOSITION_ADOPTION_DECISION.md)を継続する。最初に実案件で取得すべきものは、出発改訂、案件要求、採用した既存Source、実際に変更したファイル、手動操作の実記録、AIへの追加質問の実記録、局所ビルド／実Target／現在の権限の各検証結果である。
+
+SUIのCard／Document／認証・CASは引き続き[#993](https://github.com/hat47x/tei-platform/issues/993)が所有する。本実装の提出記録からそれらの成功やTEI第二Applicationの完成を推定しない。
