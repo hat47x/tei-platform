@@ -68,7 +68,6 @@ go test -race -count=1 ./reference/effect-fence
 
 上記が満たされるまで、Issueの完了、Production保証、main統合を宣言しません。
 
-
 ## 第2段階：共通の適合性試験
 
 `conformance.go`の`CheckAtomicConformance`は、試験用の隔離された保存先へ適用する**検査器**です。業務用の新たな認可エンジン、TEI標準の実行インターフェース、プラグイン種別ではありません。今後の保存先アダプターが異なる準備トークンを用いても試せるよう、試験用の束縛はトークンの実体を固定しません。
