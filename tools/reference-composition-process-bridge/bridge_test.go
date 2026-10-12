@@ -69,6 +69,20 @@ func invokeSelected(ctx context.Context, coordinator *composition.Coordinator, a
 }
 
 func TestSelectedCompositionInvokesExistingProcessPlugin(t *testing.T) {
+	for _, fixture := range []struct {
+		name   string
+		source string
+	}{
+		{name: "legacy", source: "../reference-process-plugin"},
+		{name: "independent", source: "../../plugins/reference-process-executor"},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			testSelectedCompositionInvokesProcessPlugin(t, fixture.source)
+		})
+	}
+}
+
+func testSelectedCompositionInvokesProcessPlugin(t *testing.T, source string) {
 	if runtime.GOOS == "windows" {
 		t.Skip("reference stdio process launcher forbids spaces in executable paths on Windows")
 	}
@@ -76,7 +90,7 @@ func TestSelectedCompositionInvokesExistingProcessPlugin(t *testing.T) {
 	defer cancel()
 
 	binaryPath := filepath.Join(t.TempDir(), "tei-process-reference")
-	build := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, "../reference-process-plugin")
+	build := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, source)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build existing process plugin: %v\n%s", err, output)
 	}

@@ -2,6 +2,7 @@ package exampleslide
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -426,5 +427,66 @@ func TestCompositeKeyExplicitNullAndKnownMismatchAreOrderIndependent(t *testing.
 			finding.MatchedTargetIDs[0] != "a" {
 			t.Fatalf("explicit null obscured known mismatch; reversed=%t: %+v", reverse, finding)
 		}
+	}
+}
+
+func TestTargetProvenanceDistinguishesMatchesUnknownsAndDisjointRecords(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		duplicate := copyRecord(in.Example.Base[0])
+		duplicate.ID = "another-match"
+		in.Example.Base = append(in.Example.Base,
+			duplicate,
+			Record{ID: "possible-match", Table: "parent", Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"A"`),
+			}},
+			Record{ID: "known-disjoint", Table: "parent", Values: map[string]json.RawMessage{
+				"number": json.RawMessage(`"B"`),
+			}},
+		)
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "contradiction" ||
+			finding.Reason != "multiple-targets-for-one" ||
+			!reflect.DeepEqual(finding.MatchedTargetIDs, []string{"a", "another-match"}) ||
+			!reflect.DeepEqual(finding.PossibleTargetIDs, []string{"possible-match"}) {
+			t.Fatalf("reverse=%v: mixed target evidence lost: %+v", reverse, finding)
+		}
+	}
+}
+
+func TestUnresolvedPotentialTargetRetainsCandidateRecordID(t *testing.T) {
+	in := keyedInput()
+	in.Example.Base = append(in.Example.Base, Record{
+		ID: "potential-target", Table: "parent",
+		Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"A"`),
+		},
+	})
+	finding := oneFinding(t, in)
+	if finding.Result != "unresolved" ||
+		finding.Reason != "unresolved-target-key" ||
+		!reflect.DeepEqual(finding.MatchedTargetIDs, []string{"a"}) ||
+		!reflect.DeepEqual(finding.PossibleTargetIDs, []string{"potential-target"}) {
+		t.Fatalf("unresolved candidate had no provenance: %+v", finding)
+	}
+}
+
+func TestDefiniteNonmatchDoesNotAppearInPossibleTargetIDs(t *testing.T) {
+	in := keyedInput()
+	in.Example.Base = append(in.Example.Base, Record{
+		ID: "unrelated", Table: "parent",
+		Values: map[string]json.RawMessage{
+			"number": json.RawMessage(`"B"`),
+		},
+	})
+	finding := oneFinding(t, in)
+	if finding.Result != "supported" ||
+		len(finding.PossibleTargetIDs) != 0 ||
+		!reflect.DeepEqual(finding.MatchedTargetIDs, []string{"a"}) {
+		t.Fatalf("disjoint candidate was treated as possible: %+v", finding)
 	}
 }
