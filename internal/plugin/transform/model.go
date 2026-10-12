@@ -25,6 +25,7 @@ const (
 	OpSelectField     Op = "select-field"
 	OpConstructObject Op = "construct-object"
 	OpMapArray        Op = "map-array"
+	OpAssertEach      Op = "assert-each"
 	OpSortArrayBy     Op = "sort-array-by"
 	OpReplaceField    Op = "replace-field"
 	OpOmitField       Op = "omit-field"
@@ -179,7 +180,7 @@ func (s Source) Validate() error {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
 		switch s.Program.Assertions[i].Op {
-		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertUniqueBy:
+		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertUniqueBy, OpAssertEach:
 		default:
 			return fmt.Errorf("transform assertion %d must use assert operation, got %s", i, s.Program.Assertions[i].Op)
 		}
@@ -282,6 +283,19 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 			if err := validateExpr(expr.Keys[i], depth+1, maxDepth); err != nil {
 				return fmt.Errorf("sort-array key %d: %w", i, err)
 			}
+		}
+	case OpAssertEach:
+		if err := rejectUnexpectedExprFields(expr, "from", "item", "body", "optional"); err != nil {
+			return err
+		}
+		if err := child(expr.From, "assert-each source"); err != nil {
+			return err
+		}
+		if strings.TrimSpace(expr.Item) == "" {
+			return fmt.Errorf("assert-each item name is required")
+		}
+		if err := child(expr.Body, "assert-each body"); err != nil {
+			return err
 		}
 	case OpAssertUniqueBy:
 		if err := rejectUnexpectedExprFields(expr, "from", "item", "keys", "optional"); err != nil {
@@ -439,12 +453,12 @@ func validateExprBindings(expr Expr, scope map[string]struct{}) error {
 			return fmt.Errorf("input or local binding %q is not declared", expr.Name)
 		}
 		return nil
-	case OpMapArray:
+	case OpMapArray, OpAssertEach:
 		if err := check(expr.From); err != nil {
 			return err
 		}
 		if _, exists := scope[expr.Item]; exists {
-			return fmt.Errorf("map-array item binding %q shadows an existing binding", expr.Item)
+			return fmt.Errorf("%s item binding %q shadows an existing binding", expr.Op, expr.Item)
 		}
 		local := copyBindingScope(scope)
 		local[expr.Item] = struct{}{}
