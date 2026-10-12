@@ -19,20 +19,20 @@ import (
 // actual bytes and canonical Source before binding the separately declared
 // target-specific Engine to the known Reference Plugin environment.
 type realEngineReplayReceipt struct {
-	Schema                           string `json:"schema"`
-	EngineLogicalID                  string `json:"engineLogicalId"`
-	EngineVersion                    string `json:"engineVersion"`
-	EngineContract                   string `json:"engineContract"`
-	PluginID                         string `json:"pluginId"`
-	PluginVersion                    string `json:"pluginVersion"`
-	PluginBuildPlanFingerprint       string `json:"pluginBuildPlanFingerprint"`
-	NativeTarget                     string `json:"nativeTarget"`
-	WasmTarget                       string `json:"wasmTarget"`
-	NativeArtifactDigest             string `json:"nativeArtifactDigest"`
-	WasmArtifactDigest               string `json:"wasmArtifactDigest"`
-	RealizationArtifactDigest        string `json:"realizationArtifactDigest"`
+	Schema                             string `json:"schema"`
+	EngineLogicalID                    string `json:"engineLogicalId"`
+	EngineVersion                      string `json:"engineVersion"`
+	EngineContract                     string `json:"engineContract"`
+	PluginID                           string `json:"pluginId"`
+	PluginVersion                      string `json:"pluginVersion"`
+	PluginBuildPlanFingerprint         string `json:"pluginBuildPlanFingerprint"`
+	NativeTarget                       string `json:"nativeTarget"`
+	WasmTarget                         string `json:"wasmTarget"`
+	NativeArtifactDigest               string `json:"nativeArtifactDigest"`
+	WasmArtifactDigest                 string `json:"wasmArtifactDigest"`
+	RealizationArtifactDigest          string `json:"realizationArtifactDigest"`
 	NativeRuntimeEngineLockFingerprint string `json:"nativeRuntimeEngineLockFingerprint"`
-	WasmRuntimeEngineLockFingerprint string `json:"wasmRuntimeEngineLockFingerprint"`
+	WasmRuntimeEngineLockFingerprint   string `json:"wasmRuntimeEngineLockFingerprint"`
 }
 
 func replayBoundEngineReceipt(receipt realEngineReplayReceipt, nativePath, wasmPath, sourcePath string) error {
@@ -89,11 +89,11 @@ func replayBoundEngineReceipt(receipt realEngineReplayReceipt, nativePath, wasmP
 	base.Plugins[0].Artifact = plugin.Artifact{Digest: receipt.RealizationArtifactDigest}
 	bind := func(target, physicalDigest, expectedFingerprint string) error {
 		engine := pruntime.RuntimeEngineIdentity{
-			ID: core.MustCanonicalID(receipt.EngineLogicalID),
-			Version: receipt.EngineVersion,
-			ContractVersion: receipt.EngineContract,
+			ID                  : core.MustCanonicalID(receipt.EngineLogicalID),
+			Version             : receipt.EngineVersion,
+			ContractVersion     : receipt.EngineContract,
 			ImplementationDigest: physicalDigest,
-			Target: target,
+			Target              : target,
 		}
 		lock := pruntime.RuntimeEngineLock{
 			FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
