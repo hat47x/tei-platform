@@ -34,7 +34,7 @@ func retractionWorld() ir.World {
 	}}}
 }
 
-func testRuleImpacts(t *testing.T, before, after ir.World, expected map[string]bool, wantReviewCount int) {
+func testRuleImpacts(t *testing.T, before, after ir.World, expected []string, wantReviewCount int) {
 	t.Helper()
 	beforeJSON, err := json.Marshal(before)
 	if err != nil {
@@ -53,7 +53,7 @@ func testRuleImpacts(t *testing.T, before, after ir.World, expected map[string]b
 	for _, e := range edges {
 		found[e.From+" -> "+e.To+" via "+e.Via] = true
 	}
-	for want := range expected {
+	for _, want := range expected {
 		if !found[want] {
 			t.Errorf("missing old/new rule edge %s: %+v", want, edges)
 		}
@@ -83,12 +83,12 @@ func TestRuleRetractionPreservesOldEdgesInsteadOfReportingNoImpact(t *testing.T)
 	after := retractionWorld()
 	after.Semantics[0].Data[0].CandidateKeys = nil
 	after.Semantics[0].Data[0].FunctionalDependencies = nil
-	testRuleImpacts(t, before, after, map[string]bool{
-		"candidate-key:sales.line.business_key -> data:sales.line via previous.semantic.data.candidate-key": true,
-		"candidate-key:sales.line.business_key -> attribute:sales.line.order_id via previous.semantic.candidate-key.field": true,
-		"candidate-key:sales.line.business_key -> attribute:sales.line.line_no via previous.semantic.candidate-key.field": true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.order_id via previous.semantic.functional-dependency.determinant": true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via previous.semantic.functional-dependency.dependent": true,
+	testRuleImpacts(t, before, after, []string{
+		"candidate-key:sales.line.business_key -> data:sales.line via previous.semantic.data.candidate-key",
+		"candidate-key:sales.line.business_key -> attribute:sales.line.order_id via previous.semantic.candidate-key.field",
+		"candidate-key:sales.line.business_key -> attribute:sales.line.line_no via previous.semantic.candidate-key.field",
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.order_id via previous.semantic.functional-dependency.determinant",
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via previous.semantic.functional-dependency.dependent",
 	}, 2)
 	changes, err := Diff(before, after)
 	if err != nil || len(changes) != 2 {
@@ -114,11 +114,11 @@ func TestRuleAmendmentShowsBothPreviousAndNewDeterminants(t *testing.T) {
 		Determinants: []core.CanonicalID{"sales.line.item_id"},
 		Dependents:   []core.CanonicalID{"sales.line.order_id"},
 	}}
-	testRuleImpacts(t, before, after, map[string]bool{
-		"candidate-key:sales.line.business_key -> attribute:sales.line.order_id via previous.semantic.candidate-key.field": true,
-		"candidate-key:sales.line.business_key -> attribute:sales.line.item_id via semantic.candidate-key.field": true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via previous.semantic.functional-dependency.dependent": true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.order_id via semantic.functional-dependency.dependent": true,
+	testRuleImpacts(t, before, after, []string{
+		"candidate-key:sales.line.business_key -> attribute:sales.line.order_id via previous.semantic.candidate-key.field",
+		"candidate-key:sales.line.business_key -> attribute:sales.line.item_id via semantic.candidate-key.field",
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via previous.semantic.functional-dependency.dependent",
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.order_id via semantic.functional-dependency.dependent",
 	}, 2)
 }
 
@@ -127,9 +127,9 @@ func TestNewKeyAddsNoHistoricalRetractionWarning(t *testing.T) {
 	before.Semantics[0].Data[0].CandidateKeys = nil
 	before.Semantics[0].Data[0].FunctionalDependencies = nil
 	after := retractionWorld()
-	testRuleImpacts(t, before, after, map[string]bool{
-		"candidate-key:sales.line.business_key -> data:sales.line via semantic.data.candidate-key": true,
-		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via semantic.functional-dependency.dependent": true,
+	testRuleImpacts(t, before, after, []string{
+		"candidate-key:sales.line.business_key -> data:sales.line via semantic.data.candidate-key",
+		"functional-dependency:sales.line.item_by_line -> attribute:sales.line.item_id via semantic.functional-dependency.dependent",
 	}, 0)
 }
 
