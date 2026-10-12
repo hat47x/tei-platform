@@ -59,6 +59,7 @@ test('unknown remote outcome never triggers readback, local apply or automatic r
     () => { throw new TypeError('network disconnected after write'); },
     () => { throw new ActionCommitError('execution_failed', 500); },
     () => { throw new ActionCommitError('invalid_response', 200); },
+    () => { throw new ActionCommitError('unrecognized_error', undefined); },
     () => { throw new ActionCommitError('action_denied', 500); },
     () => { throw Object.assign(new Error('fake denial'), { code: 'action_denied', status: 403 }); },
   ];
