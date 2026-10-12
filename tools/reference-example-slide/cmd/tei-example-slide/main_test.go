@@ -516,3 +516,87 @@ func TestCLIRejectsUnboundRuleDraftBeforeGeneratingFiles(t *testing.T) {
 		t.Fatalf("invalid rule wrote outputs: %v %v", entries, err)
 	}
 }
+
+func TestCLIScopesExternalRuleSourceAsUnacceptedAuthoring(t *testing.T) {
+	root, inputPath, proposalsPath := modelSourceCLIInputs(t)
+	var input example.Input
+	if err := readStrictJSON(inputPath, &input); err != nil {
+		t.Fatal(err)
+	}
+	var hypotheses example.ModelHypotheses
+	if err := readStrictJSON(proposalsPath, &hypotheses); err != nil {
+		t.Fatal(err)
+	}
+	review, err := example.ReviewModelHypotheses(input, hypotheses)
+	if err != nil {
+		t.Fatal(err)
+	}
+	audit, err := example.AuditLoadedWorkspaceModelHypothesisSourceEvidence(root, input, hypotheses)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intent := example.ModelRuleDraftIntent{
+		Schema:                 "tei.reference.model-rule-draft-intent/v0",
+		ModelReviewFingerprint: review.Fingerprint,
+		SourceAuditFingerprint: audit.Fingerprint,
+		Requests: []example.ModelRuleDraftRequest{{
+			IssueID:        review.Issues[0].ID,
+			ProposedRuleID: "sales.child.business-key",
+			Rationale:      "業務キーを独立に検討するための未確認宣言",
+		}},
+	}
+	intentsFile := filepath.Join(t.TempDir(), "intents.json")
+	raw, err := json.Marshal(intent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(intentsFile, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	rules := []byte("tei-model-rules v0\ncandidate-key sales.child.business-key on sales.child fields sales.child.parent_id\n")
+	external := filepath.Join(t.TempDir(), "rule-file")
+	if err := os.WriteFile(external, rules, 0600); err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	if err := run(inputPath, "", false, out, "", proposalsPath, root, intentsFile, external, "proposals/rules.tei"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(out, "model-rule-source-review.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sourceReview example.ModelRuleSourceReview
+	if err := json.Unmarshal(data, &sourceReview); err != nil {
+		t.Fatal(err)
+	}
+	if len(sourceReview.SourceIndex.References) != 1 ||
+		sourceReview.SourceIndex.References[0].Subject.Kind != "reference-candidate-key" ||
+		sourceReview.SourceIndex.References[0].Role != "authoring" {
+		t.Fatalf("source was mistaken for accepted semantic declaration: %+v", sourceReview)
+	}
+	info, err := os.Stat(filepath.Join(out, "model-rule-source-review.json"))
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatalf("rule source review file not private: %v %v", info, err)
+	}
+}
+
+func TestCLIRejectsExternalRuleSourceMismatchesBeforeOutput(t *testing.T) {
+	root, inputPath, proposalsPath := modelSourceCLIInputs(t)
+	out := t.TempDir()
+	// Reject incomplete options even before decoding an intent or source.
+	cases := [][]string{
+		{"", "proposals/rules.tei"},
+		{"/tmp/nonexistent", ""},
+		{"/tmp/nonexistent", "proposals/rules.tei"},
+	}
+	for _, pair := range cases {
+		if err := run(inputPath, "", false, out, "", proposalsPath, root, "", pair[0], pair[1]); err == nil {
+			t.Fatalf("incomplete rule source CLI arguments passed: %v", pair)
+		}
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("invalid external rule source created outputs: %+v %v", entries, err)
+	}
+}
