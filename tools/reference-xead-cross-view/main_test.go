@@ -147,6 +147,9 @@ func TestCommandRejectsUnboundSavedProjection(t *testing.T) {
 		}
 		return data
 	}
+	savedBytes := encode(saved)
+	unknownEnvelope := append(append([]byte(nil), savedBytes[:len(savedBytes)-1]...), []byte(`,"futureMeaning":true}`)...)
+	trailingJSON := append(append([]byte(nil), savedBytes...), []byte(` {}`)...)
 	for _, tc := range []struct {
 		name     string
 		source   []byte
@@ -156,8 +159,8 @@ func TestCommandRejectsUnboundSavedProjection(t *testing.T) {
 		{"changed XML", append(append([]byte(nil), source...), ' '), contract, encode(saved)},
 		{"different contract bytes", source, append(append([]byte(nil), contract...), ' '), encode(saved)},
 		{"missing projection", source, contract, encode(commandOutput{Accounting: saved.Accounting})},
-		{"unknown envelope fields", source, contract, append(append([]byte(nil), encode(saved)[:len(encode(saved))-1]...), []byte(`,"futureMeaning":true}`)... )},
-		{"trailing JSON value", source, contract, append(append([]byte(nil), encode(saved)...), []byte(` {}`)... )},
+		{"unknown envelope fields", source, contract, unknownEnvelope},
+		{"trailing JSON value", source, contract, trailingJSON},
 		{"invalid JSON", source, contract, []byte(`{"localProjection":`)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
