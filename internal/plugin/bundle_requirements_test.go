@@ -113,9 +113,9 @@ func TestBundleStandaloneResolverValidatesOnlySelectedVersion(t *testing.T) {
 		},
 	}
 	for _, tc := range []struct {
-		name string
-		old plugin.Bundle
-		latest plugin.Bundle
+		name      string
+		old       plugin.Bundle
+		latest    plugin.Bundle
 		wantError bool
 	}{
 		{name: "newest version invalid", old: good, latest: bad, wantError: true},
