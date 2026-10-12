@@ -23,7 +23,7 @@ func registerOrderEntryScenarioRoutes(mux *http.ServeMux, s *webTargetServer) {
 	if s.protectedSessionHandler != nil {
 		mux.Handle("/scenario/session-submit", s.protectedSessionHandler)
 	}
-	mux.HandleFunc("/custom-submit", s.handleCustomSubmit)
+	registerOrderPresentationRoute(mux, s)
 }
 
 type webReadScenarioResponse struct {
