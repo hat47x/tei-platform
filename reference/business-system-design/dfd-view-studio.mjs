@@ -261,8 +261,17 @@ $('diagram').addEventListener('pointerup',event=>{
 });
 $('apply').addEventListener('click',async()=>{
   if(!state.pending)return;
-  state.layout=state.pending.proposedLayout;
-  state.layoutHash=await digest(new TextEncoder().encode(JSON.stringify(state.layout)));
+  const candidate=state.pending;
+  const layout=candidate.proposedLayout;
+  const dfdGeneration=dfdLoadGeneration;
+  const generation=layoutLoadGeneration;
+  $('apply').disabled=true;
+  const hash=await digest(new TextEncoder().encode(JSON.stringify(layout)));
+  // A newer DFD, layout selection or move proposal invalidates this hash.
+  // Never complete an earlier asynchronous apply against the new view.
+  if(dfdGeneration!==dfdLoadGeneration||generation!==layoutLoadGeneration||
+     state.pending!==candidate)return;
+  state.layout=layout;state.layoutHash=hash;
   state.pending=null;$('preview').hidden=true;$('apply').disabled=true;
   render();status('配置を画面に反映しました。正本には書き込んでいません。');
 });
@@ -308,10 +317,16 @@ $('dfd-file').addEventListener('change',async ev=>{
     $('apply').disabled=true;$('preview').hidden=true;render();status('DFD投影を読み込めません: '+e.message,true)}
 });
 $('layout-file').addEventListener('change',async ev=>{
-  if(!state.dfd)return status('先にDFD投影を選択してください。',true);
-  const file=ev.target.files[0];if(!file)return;
   const generation=++layoutLoadGeneration;
   const dfdGeneration=dfdLoadGeneration;
+  const file=ev.target.files?.[0];
+  // A newly chosen (or cleared) layout revokes the prior view and pending
+  // edit before file.arrayBuffer() can yield to other user interactions.
+  state.layout=null;state.layoutHash=null;state.pending=null;dragging=null;
+  $('apply').disabled=true;$('preview').hidden=true;
+  render();
+  if(!state.dfd)return status('先にDFD投影を選択してください。',true);
+  if(!file)return status('配置ファイルの選択を解除しました。以前の配置と変更候補は無効です。');
   try{
     const bytes=await file.arrayBuffer();const layout=JSON.parse(new TextDecoder().decode(bytes));
     const hash=await digest(bytes);
