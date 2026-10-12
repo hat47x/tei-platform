@@ -134,21 +134,21 @@ Execution Error
   └─ Invocation自体を完了できない状態
 ```
 
-PR #141の実Referenceでは、少なくとも次を区別できます。
+PR #141の参照事例では、少なくとも次の結果を区別できます。
 
-- 正しいcredential → `authenticated`
-- credential不一致 → `denied`
-- account lock → `denied`
-- Database / adapter障害 → Execution Error
-- 未定義Outcome → Execution Error
+- 正しい認証情報 → `authenticated`
+- 認証情報の不一致 → `denied`
+- アカウントのロック → `denied`
+- データベースや変換器の障害 → 実行時エラー
+- 定義されていない結果 → 実行時エラー
 
-既存の`sales.order.submit`は従来どおり`output sales.order`を維持し、同じInvocation入口から扱えます。Authenticationのために既存Capabilityへ暗黙のOutcomeを追加していません。
+既存の`sales.order.submit`は、従来の`output sales.order`を維持し、同じ呼出しの入口から利用できます。認証のために、既存の能力へ暗黙の結果を追加したわけではありません。
 
 ## Authentication — Ready
 
-PR #148で、`security.authenticate`をv1 Reference Application `order_entry`から既存認証へ明示的に接続しました。
+PR #148では、`security.authenticate`を第1版の参照アプリケーション`order_entry`から既存の認証機構へ明示的に接続しました。
 
-Referenceでは、既存の利用者情報に含まれる次の意味を保持しています。
+参照事例では、既存の利用者情報に含まれる次の意味を保持しています。
 
 - user ID
 - authenticated subject identity
@@ -160,13 +160,13 @@ Referenceでは、既存の利用者情報に含まれる次の意味を保持�
 - organization
 - role
 
-これらをTEI標準User schemaへ作り替えてから利用する構造にはしていません。
+これらをTEI標準の利用者スキーマに作り直さなければ利用できない構造にはしていません。
 
-`order_entry/security.authenticate`を一意に解決でき、Source IndexからBindingのauthoring sourceへ戻れます。実行時credentialは検証境界へだけ渡し、Canonical World、Source Index、Business Result、通常Evidenceへコピーしません。
+`order_entry/security.authenticate`を一意に解決でき、ソース索引から対応付けの記述元へたどれます。実行時の認証情報は検証の境界にだけ渡し、正本のモデル・ソース索引・業務上の結果・通常の検証根拠へコピーしません。
 
 ## Authorization — Ready
 
-PR #149で、`security.authorize`を次の最小契約として実証しました。
+PR #149では、`security.authorize`について、次の最小限の契約を実証しました。
 
 ```text
 subject + action + resource
@@ -176,7 +176,7 @@ subject + action + resource
      └─ denied
 ```
 
-認可対象のresourceにはWeb画面名やURLではなく、既存のApplication Pattern identityを利用します。
+認可の対象となる資源には、ウェブ画面名やURLではなく、既存のアプリケーションパターンの識別情報を利用します。
 
 ```text
 browse  / order_entry.recent_orders
@@ -184,30 +184,30 @@ edit    / order_entry.order_record
 execute / order_entry.submit_order
 ```
 
-既存システム固有のorganization、role、ruleはadapter側で利用し、ApplicationやDriverへ公開して同じ認可条件を再実装させません。
+既存システムに固有の組織・役割・規則は変換器の側で利用します。アプリケーションやドライバーに公開して同じ認可条件を再実装させることはしません。
 
-`allowed / denied`は認可判断を正常に完了した業務上の結果です。rule store等の実行障害はExecution Errorとして分離します。
+`allowed / denied`は、認可の判断を正常に完了した際の業務上の結果です。規則の保存先などに障害があった場合は、実行時エラーとして区別します。
 
 ## 既存認証の実現方式交換 — Ready
 
-PR #151では、`order_entry/security.authenticate`という一つのApplication Bindingを変えず、その背後の実現方式だけを交換できることを確認しました。
+PR #151では、`order_entry/security.authenticate`というアプリケーション側の対応付けを維持したまま、背後の実現方式だけを交換できることを確認しました。
 
-比較したのは次の二経路です。
+比較したのは次の二つの経路です。
 
-1. 既存の利用者情報を読み、credential verificationと既存ruleを組み合わせる経路
-2. 既存関数、stored procedure、外部API等に相当する既存認証関数を呼ぶ経路
+1. 既存の利用者情報を読み、認証情報の照合と既存の規則を組み合わせる経路
+2. 既存の関数・ストアドプロシージャ・外部APIなどに相当する認証関数を呼び出す経路
 
-第二経路では、既存システム固有のreturn codeをadapterで`authenticated / denied`へ対応付けます。未対応return codeや既存関数の実行障害はExecution Errorです。
+後者では、既存システム固有の戻り値を変換器で`authenticated / denied`へ対応付けます。対応していない戻り値や既存関数の実行障害は、実行時エラーとして扱います。
 
-両経路は、同じCanonical `security.authenticate`契約、同じBinding identity、同じhookを保ち、同じauthenticated subjectを返します。
+どちらの経路も、正本上の同じ`security.authenticate`契約・同じ対応付けの識別情報・同じフックを保ち、同じ認証済み主体を返します。
 
-さらにPR #151では`reference/workspace`と`reference/world.json`を変更していません。CI #374のReference World再現性検査もGolden更新なしで成功しました。つまり、実現方式の違いをCanonical WorldやApplication上の意味へ持ち込まずに交換できています。
+PR #151では、`reference/workspace`と`reference/world.json`も変更していません。CI #374の参照用モデルの再現性検査も、期待出力を更新せずに成功しました。実現方式の違いを正本のモデルやアプリケーション上の意味へ持ち込まずに交換できたことを示しています。
 
 ## Secret境界 — Ready
 
-Reference上の認証fixtureとfunction mappingには、password平文、password hash、credential hash、token、secretを保存しません。
+参照事例の認証用試験データや関数との対応付けには、パスワードの平文・パスワードのハッシュ・認証情報のハッシュ・トークン・秘密情報を保存しません。
 
-Canonicalに存在する`security.credential`は入力の意味を表す型であり、実際のcredential値を保存する場所ではありません。
+正本上の`security.credential`は入力の意味を表す型であり、実際の認証情報の値を保存する場所ではありません。
 
 Gate Aで確認した境界は次です。
 
