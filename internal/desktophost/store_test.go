@@ -10,6 +10,19 @@ import (
 	"testing"
 )
 
+// The Host must explicitly provision a private state directory; generic
+// test temporary directories are not an authority or a permission guarantee.
+func privateDraftStateDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
 func storageMarker(t *testing.T) (DraftMarker, string) {
 	t.Helper()
 	root, source := fixtureWorkspace(t)
@@ -18,15 +31,16 @@ func storageMarker(t *testing.T) (DraftMarker, string) {
 		t.Fatal(err)
 	}
 	return DraftMarker{
-		Version: MarkerVersion, CandidateRef: "draft-immutable-1",
+		Version:           MarkerVersion,
+		CandidateRef:      "draft-immutable-1",
 		BaseModelRevision: "model-revision-observed-separately",
-		Baseline: baseline,
+		Baseline:          baseline,
 	}, source
 }
 
 func TestDraftMarkerStoreSurvivesReopenWithoutAccept(t *testing.T) {
 	marker, source := storageMarker(t)
-	state := t.TempDir()
+	state := privateDraftStateDir(t)
 	store, err := OpenDraftMarkerStore(state)
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +89,7 @@ func TestDraftMarkerStoreSurvivesReopenWithoutAccept(t *testing.T) {
 
 func TestDraftMarkerStoreRejectsSecondWindowOverwrite(t *testing.T) {
 	marker, _ := storageMarker(t)
-	state := t.TempDir()
+	state := privateDraftStateDir(t)
 	store, err := OpenDraftMarkerStore(state)
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +125,7 @@ func TestDraftMarkerStoreRejectsSecondWindowOverwrite(t *testing.T) {
 
 func TestDraftMarkerStoreRejectsUntrustedLocatorAndWorkspace(t *testing.T) {
 	marker, _ := storageMarker(t)
-	store, err := OpenDraftMarkerStore(t.TempDir())
+	store, err := OpenDraftMarkerStore(privateDraftStateDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +149,7 @@ func TestDraftMarkerStoreRejectsUntrustedLocatorAndWorkspace(t *testing.T) {
 
 func TestDraftMarkerStoreRejectsSymlinksAndUnsafePermissions(t *testing.T) {
 	marker, _ := storageMarker(t)
-	state := t.TempDir()
+	state := privateDraftStateDir(t)
 	store, err := OpenDraftMarkerStore(state)
 	if err != nil {
 		t.Fatal(err)
@@ -173,7 +187,7 @@ func TestDraftMarkerStoreRejectsSymlinksAndUnsafePermissions(t *testing.T) {
 
 func TestDraftMarkerStoreNeverPersistsCandidatePayload(t *testing.T) {
 	marker, _ := storageMarker(t)
-	state := t.TempDir()
+	state := privateDraftStateDir(t)
 	store, err := OpenDraftMarkerStore(state)
 	if err != nil {
 		t.Fatal(err)
