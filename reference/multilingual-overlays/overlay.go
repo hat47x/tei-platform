@@ -187,7 +187,7 @@ func Compose(input Input) (Projection, string) {
 		if _, exists := entryByKey[key]; exists {
 			return Projection{}, "duplicate-display-surface"
 		}
-		ref := modelref.Ref{Scope: s.Subject.Scope, Subject: s.Subject}
+		ref := modelref.Ref{Scope: s.Subject.Scope, Subject: s.Subject.Subject}
 		found, code := modelref.Resolve(input.Graph.Nodes, ref)
 		node, exists := findNode(input.Graph, s.Subject)
 		if code != "" || !exists || found != s.Subject || strings.TrimSpace(node.DisplayName) == "" {
