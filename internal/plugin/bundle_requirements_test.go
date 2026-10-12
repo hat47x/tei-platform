@@ -10,7 +10,7 @@ import (
 
 func TestBundleStandaloneResolverRejectsRepeatedPluginID(t *testing.T) {
 	env := environment.Environment{
-		ID:      cid("prod"),
+		ID: cid("prod"),
 		Bundles: []environment.ExtensionRequirement{
 			{ID: cid("tei.bundle"), CompatibleMajor: 1},
 		},
@@ -43,7 +43,7 @@ func TestBundleStandaloneResolverDuplicateDiagnosticIsOrderIndependent(t *testin
 		{a2, z2, a, z},
 	}
 	env := environment.Environment{
-		ID:      cid("prod"),
+		ID: cid("prod"),
 		Bundles: []environment.ExtensionRequirement{
 			{ID: cid("tei.bundle"), CompatibleMajor: 1},
 		},
@@ -78,7 +78,7 @@ func TestBundleStandaloneResolverAllowsSharedRequirements(t *testing.T) {
 		},
 	}
 	env := environment.Environment{
-		ID:      cid("prod"),
+		ID: cid("prod"),
 		Plugins: []environment.ExtensionRequirement{
 			{ID: cid("tei.base"), CompatibleMajor: 1},
 		},
