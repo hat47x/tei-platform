@@ -3,6 +3,7 @@ package runtime_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -25,6 +26,42 @@ func (v *serviceCarrierVerifier) Verify(
 	return pruntime.ArtifactVerification{
 		VerifierID: "reference.test-only", DigestVerified: true,
 	}, nil
+}
+
+// Test-only Host reader. Production must bind this port to the existing
+// trusted Contract acceptance and Provider conformance records, including
+// revocation; a plugin cannot install this reader.
+type serviceCarrierAcceptedReader struct {
+	record pruntime.ServiceAcceptanceRecord
+	denied bool
+	calls  int
+}
+
+func (r *serviceCarrierAcceptedReader) ReadCurrentAcceptedService(
+	_ context.Context, _ pruntime.ServiceProviderSelection,
+) (pruntime.ServiceAcceptanceRecord, error) {
+	r.calls++
+	if r.denied {
+		return pruntime.ServiceAcceptanceRecord{}, fmt.Errorf("service acceptance was revoked")
+	}
+	return r.record, nil
+}
+
+func serviceCarrierHost(
+	selected pruntime.ServiceProviderSelection,
+	processes *serviceCarrierProcess, verifier *serviceCarrierVerifier,
+) (pruntime.Registry, *serviceCarrierAcceptedReader) {
+	acceptance := &serviceCarrierAcceptedReader{
+		record: pruntime.ServiceAcceptanceRecord{
+			Selection:              selected,
+			ContractAcceptanceRef:  "reference-contract-acceptance",
+			ProviderConformanceRef: "reference-provider-conformance",
+			AuthorityRevision:      "test-local-revision-1",
+		},
+	}
+	return pruntime.Registry{
+		Processes: processes, Verifier: verifier, ServiceAcceptance: acceptance,
+	}, acceptance
 }
 
 type serviceCarrierProcess struct {
@@ -91,7 +128,7 @@ func serviceCarrierFixture(t *testing.T) (
 
 func TestSelectedServiceUsesExistingRuntimeHostAuthorityAndProcess(t *testing.T) {
 	plan, selected, child, verifier := serviceCarrierFixture(t)
-	host := pruntime.Registry{Processes: child, Verifier: verifier}
+	host, acceptance := serviceCarrierHost(selected, child, verifier)
 	request := json.RawMessage(`{"value":"ok","operation":"not-a-host-operation"}`)
 	result, err := host.InvokeSelectedServiceCarrier(
 		context.Background(), plan, selected, "service-execution-1", request,
@@ -99,7 +136,7 @@ func TestSelectedServiceUsesExistingRuntimeHostAuthorityAndProcess(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if child.calls != 1 || verifier.calls != 1 ||
+	if child.calls != 1 || verifier.calls != 1 || acceptance.calls != 1 ||
 		child.last.Operation != plan.ServiceBindings[0].Operation ||
 		child.last.Plugin != selected.Provider ||
 		child.last.CapabilityID != plan.ServiceBindings[0].CarrierID ||
@@ -109,8 +146,8 @@ func TestSelectedServiceUsesExistingRuntimeHostAuthorityAndProcess(t *testing.T)
 	if string(result.Runtime.Response.Payload) != string(request) ||
 		result.Runtime.Provenance.Artifact.Digest != selected.ArtifactDigest ||
 		result.Runtime.Provenance.Plugin != selected.Provider ||
-		result.Selection != selected {
-		t.Fatalf("missing exact selected service/Runtime provenance: %+v", result)
+		result.Selection != selected || result.Acceptance != acceptance.record {
+		t.Fatalf("missing exact selected service/Runtime provenance or current Host acceptance: %+v", result)
 	}
 	if len(result.AuthorityLimits) != 4 ||
 		result.Runtime.Provenance.Verification == nil ||
@@ -123,7 +160,7 @@ func TestSelectedServiceUsesExistingRuntimeHostAuthorityAndProcess(t *testing.T)
 
 func TestSelectedServiceRejectsDriftBeforeVerifierOrProcess(t *testing.T) {
 	base, selected, child, verifier := serviceCarrierFixture(t)
-	host := pruntime.Registry{Processes: child, Verifier: verifier}
+	host, acceptance := serviceCarrierHost(selected, child, verifier)
 	payload := json.RawMessage(`{"value":"ok"}`)
 	for _, tc := range []struct {
 		name   string
@@ -250,9 +287,98 @@ func TestSelectedServiceRejectsDriftBeforeVerifierOrProcess(t *testing.T) {
 	}
 }
 
+func TestSelectedServiceAcceptanceIsHostOwnedAndRecheckedForRevocation(t *testing.T) {
+	plan, selected, child, verifier := serviceCarrierFixture(t)
+	host, acceptance := serviceCarrierHost(selected, child, verifier)
+	payload := json.RawMessage(`{"quantity":1}`)
+
+	// The Environment Plan is insufficient without an external current
+	// acceptance source, even though its fingerprint matches.
+	noReader := host
+	noReader.ServiceAcceptance = nil
+	if _, err := noReader.InvokeSelectedServiceCarrier(
+		context.Background(), plan, selected, "no-reader", payload,
+	); err == nil || !strings.Contains(err.Error(), "no current Service acceptance source") {
+		t.Fatalf("Service executed using Plan alone: %v", err)
+	}
+	if verifier.calls != 0 || child.calls != 0 {
+		t.Fatal("service request reached verifier or process without accepted source")
+	}
+
+	for _, tc := range []struct {
+		name   string
+		mutate func()
+		want   string
+	}{
+		{
+			name: "contract acceptance missing",
+			mutate: func() { acceptance.record.ContractAcceptanceRef = "" },
+			want: "acceptance record is incomplete",
+		},
+		{
+			name: "provider conformance missing",
+			mutate: func() { acceptance.record.ProviderConformanceRef = "" },
+			want: "acceptance record is incomplete",
+		},
+		{
+			name: "authority current revision missing",
+			mutate: func() { acceptance.record.AuthorityRevision = "" },
+			want: "acceptance record is incomplete",
+		},
+		{
+			name: "Host record for different implementation",
+			mutate: func() { acceptance.record.Selection.ImplementationID = "unrelated" },
+			want: "selection differs from selected Provider",
+		},
+		{
+			name: "Host acceptance was revoked",
+			mutate: func() { acceptance.denied = true },
+			want: "current Service acceptance denied",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			original := acceptance.record
+			tc.mutate()
+			_, err := host.InvokeSelectedServiceCarrier(
+				context.Background(), plan, selected, "unaccepted", payload,
+			)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("unaccepted Service should fail closed: %v", err)
+			}
+			if verifier.calls != 0 || child.calls != 0 {
+				t.Fatal("unaccepted Service reached runtime verifier or external process")
+			}
+			acceptance.record = original
+			acceptance.denied = false
+		})
+	}
+
+	// Current Host acceptance authorizes this ROUTE only. Existing Runtime
+	// still independently validates artifact/permissions and executes.
+	if _, err := host.InvokeSelectedServiceCarrier(
+		context.Background(), plan, selected, "accepted", payload,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if child.calls != 1 || verifier.calls != 1 {
+		t.Fatal("current Host acceptance did not reach existing Runtime")
+	}
+	// Source changes while the Environment Plan and Service selection do not.
+	acceptance.denied = true
+	before := acceptance.calls
+	if _, err := host.InvokeSelectedServiceCarrier(
+		context.Background(), plan, selected, "revoked-after-success", payload,
+	); err == nil || !strings.Contains(err.Error(), "current Service acceptance denied") {
+		t.Fatalf("revocation with unchanged Plan/selection was ignored: %v", err)
+	}
+	if acceptance.calls != before+1 || child.calls != 1 || verifier.calls != 1 {
+		t.Fatal("stale accepted decision reused after revocation")
+	}
+}
+
 func TestSelectedServiceRequiresValidWireAndDeclaredHostPolicy(t *testing.T) {
 	plan, selection, child, verifier := serviceCarrierFixture(t)
-	host := pruntime.Registry{Processes: child, Verifier: verifier}
+	host, acceptance := serviceCarrierHost(selection, child, verifier)
 	for _, payload := range []json.RawMessage{
 		nil, json.RawMessage(`{"not":"complete"`),
 	} {
@@ -260,7 +386,7 @@ func TestSelectedServiceRequiresValidWireAndDeclaredHostPolicy(t *testing.T) {
 			t.Fatal("invalid service JSON reached Host Runtime")
 		}
 	}
-	if child.calls != 0 || verifier.calls != 0 {
-		t.Fatal("invalid JSON reached Host Runtime process or verifier")
+	if child.calls != 0 || verifier.calls != 0 || acceptance.calls != 0 {
+		t.Fatal("invalid JSON reached Host acceptance, verifier or process")
 	}
 }
