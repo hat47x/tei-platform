@@ -20,6 +20,15 @@ import (
 	pruntime "tei/internal/plugin/runtime"
 )
 
+type businessProcessLauncher struct {
+	calls int
+}
+
+func (l *businessProcessLauncher) Invoke(ctx context.Context, command pruntime.ProcessCommand, request pruntime.Request) (pruntime.Response, error) {
+	l.calls++
+	return (pruntime.StdioProcessLauncher{}).Invoke(ctx, command, request)
+}
+
 // The standalone provider performs a REAL deterministic read-only calculation.
 // It is NOT an order submission, database write, transaction, or replacement
 // for Host-side business authorization and effect-time Permission checks.
@@ -118,7 +127,7 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 		t.Fatal(err)
 	}
 
-	launcher := &countingProcessLauncher{delegate: pruntime.StdioProcessLauncher{}}
+	launcher := &businessProcessLauncher{}
 	invoke := func(d GenericDispatch) (TransportExecution, error) {
 		lease, err := coordinator.Acquire()
 		if err != nil {
