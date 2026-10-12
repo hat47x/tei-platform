@@ -18,6 +18,10 @@ import (
 const processHelperModeEnv = "TEI_PROCESS_HELPER_MODE"
 
 func TestMain(m *testing.M) {
+	// The dedicated probe uses argv so it works even with an empty child env.
+	if len(os.Args) == 2 && os.Args[1] == "--tei-process-env-probe" {
+		os.Exit(runProcessHelper("env-probe"))
+	}
 	if mode := os.Getenv(processHelperModeEnv); mode != "" {
 		os.Exit(runProcessHelper(mode))
 	}
@@ -57,6 +61,19 @@ func runProcessHelper(mode string) int {
 	}
 	if mode == "forged" {
 		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
+	}
+	if mode == "env-probe" {
+		payload, err := json.Marshal(struct {
+			HostSecretPresent bool   `json:"hostSecretPresent"`
+			Explicit          string `json:"explicit"`
+		}{
+			HostSecretPresent: os.Getenv("TEI_PROCESS_HOST_SECRET_CANARY") != "",
+			Explicit:          os.Getenv("TEI_PROCESS_EXPLICIT_ALLOWLIST"),
+		})
+		if err != nil {
+			return 4
+		}
+		resp.Payload = payload
 	}
 	if mode == "stderr-success" {
 		_, _ = fmt.Fprintln(os.Stderr, "diagnostic on stderr")
@@ -104,6 +121,45 @@ func TestStdioProcessLauncherRoundTripsRealChildProcess(t *testing.T) {
 	}
 	if string(resp.Payload) != string(req.Payload) {
 		t.Fatalf("payload=%s want=%s", resp.Payload, req.Payload)
+	}
+}
+
+// A missing Env must not mean "inherit everything" as it does in os/exec.
+func TestStdioProcessLauncherEnvironmentIsHostExplicit(t *testing.T) {
+	t.Setenv("TEI_PROCESS_HOST_SECRET_CANARY", "parent-only-secret")
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		name         string
+		env          []string
+		wantExplicit string
+	}{
+		{name: "nil env does not inherit"},
+		{name: "empty env does not inherit", env: []string{}},
+		{name: "explicit allowlist is passed", env: []string{"TEI_PROCESS_EXPLICIT_ALLOWLIST=allowed"}, wantExplicit: "allowed"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			launcher := pruntime.StdioProcessLauncher{Env: tt.env}
+			command := pruntime.ProcessCommand{
+				Executable: executable, Args: []string{"--tei-process-env-probe"},
+			}
+			resp, err := launcher.Invoke(context.Background(), command, processRequest())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var observed struct {
+				HostSecretPresent bool   `json:"hostSecretPresent"`
+				Explicit          string `json:"explicit"`
+			}
+			if err := json.Unmarshal(resp.Payload, &observed); err != nil {
+				t.Fatal(err)
+			}
+			if observed.HostSecretPresent || observed.Explicit != tt.wantExplicit {
+				t.Fatalf("unexpected child environment: %#v", observed)
+			}
+		})
 	}
 }
 
