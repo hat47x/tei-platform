@@ -71,7 +71,7 @@ jobs:
           pkg-config --modversion sqlite3
           go test -race -tags tei_sqlite_reference -count=3 ./reference/effect-fence
           go vet -tags tei_sqlite_reference ./reference/effect-fence
-          python3 -m unittest -q reference/effect-fence/sqlite_transaction_test.py
+          python3 -B -m unittest -q reference/effect-fence/sqlite_transaction_test.py
 
       - name: 実行後の版と作業領域を確認
         if: always()
@@ -79,4 +79,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          dirt="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          if [[ -n "$dirt" ]]; then
+            printf '検証対象の作業領域が変更されました：\\n%s\\n' "$dirt" >&2
+            exit 1
+          fi
