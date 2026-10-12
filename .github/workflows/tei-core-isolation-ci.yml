@@ -19,6 +19,8 @@ on:
       - 'tools/reference-plugin-bundle/**'
       - 'tools/check-reference-plugin-bundle-isolation.sh'
       - 'tools/check-reference-plugin-isolation.sh'
+      - 'tools/check-reference-plugin-wasi-smoke.sh'
+      - 'tools/reference-plugin-wasi-smoke/**'
       - '.github/workflows/tei-core-isolation-ci.yml'
   push:
     branches: [main]
@@ -36,6 +38,8 @@ on:
       - 'tools/reference-plugin-bundle/**'
       - 'tools/check-reference-plugin-bundle-isolation.sh'
       - 'tools/check-reference-plugin-isolation.sh'
+      - 'tools/check-reference-plugin-wasi-smoke.sh'
+      - 'tools/reference-plugin-wasi-smoke/**'
       - '.github/workflows/tei-core-isolation-ci.yml'
 
 permissions:
@@ -93,6 +97,7 @@ jobs:
           set -euo pipefail
           test -z "$(gofmt -l plugins/reference-process-executor/*.go)"
           bash tools/check-reference-plugin-isolation.sh
+          bash tools/check-reference-plugin-wasi-smoke.sh
           gofmt -d plugins/reference-bundle-alpha/*.go plugins/reference-bundle-beta/*.go tools/reference-plugin-bundle/*.go
           test -z "$(gofmt -l plugins/reference-bundle-alpha/*.go plugins/reference-bundle-beta/*.go tools/reference-plugin-bundle/*.go)"
           bash tools/check-reference-plugin-bundle-isolation.sh
