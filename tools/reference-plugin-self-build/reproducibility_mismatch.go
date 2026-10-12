@@ -36,16 +36,16 @@ func (e *selfBuildMismatchError) Error() string {
 
 func nonReproducibleSelfBuild(stage, first, second string) error {
 	return &selfBuildMismatchError{Evidence: selfBuildMismatchEvidence{
-		Schema:               selfBuildMismatchSchema,
-		Stage:                stage,
-		Outcome:              "reproducibility-failure",
-		FirstArtifactDigest:  first,
-		SecondArtifactDigest: second,
-		Reproducible:         false,
-		ArtifactDigest:       "",
-		ArtifactAccepted:     false,
+		Schema:                selfBuildMismatchSchema,
+		Stage:                 stage,
+		Outcome:               "reproducibility-failure",
+		FirstArtifactDigest:   first,
+		SecondArtifactDigest:  second,
+		Reproducible:          false,
+		ArtifactDigest:        "",
+		ArtifactAccepted:      false,
 		ArtifactExportAllowed: false,
-		ArtifactLockAllowed:  false,
+		ArtifactLockAllowed:   false,
 		AuthorityLimits: []string{
 			"mismatch-evidence-is-not-build-success",
 			"mismatch-evidence-does-not-produce-artifact-lock",
