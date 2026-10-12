@@ -222,6 +222,9 @@ func TestProcessHostDoesNotInheritApprovalAcrossContractShapeDrift(t *testing.T)
 	}); err != nil {
 		t.Fatalf("current accepted contract could not be restored: %v", err)
 	}
+	// Advance the Host-accepted invocation binding only after successful
+	// readiness validation and generation publication.
+	binding = next
 	second, err := invoke(renewed)
 	if err != nil || second.Outcome != executor.OutcomeAccepted || launcher.calls != before+1 {
 		t.Fatalf("accepted fresh generation did not dispatch: result=%+v err=%v calls=%d", second, err, launcher.calls)
