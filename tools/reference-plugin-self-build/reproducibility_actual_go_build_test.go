@@ -102,9 +102,9 @@ func TestActualGoBuildComparisonFailureBoundary(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name string
-		mode string
-		exitCode int
+		name         string
+		mode         string
+		exitCode     int
 		jsonEvidence bool
 	}{
 		{name: "deliberate genuine binary mismatch", mode: "mismatch", exitCode: 1, jsonEvidence: true},
