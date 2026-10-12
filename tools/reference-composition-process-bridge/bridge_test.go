@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"tei/internal/composition"
 	"tei/internal/core"
@@ -72,7 +72,7 @@ func TestSelectedCompositionInvokesExistingProcessPlugin(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("reference stdio process launcher forbids spaces in executable paths on Windows")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*1000000000)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	binaryPath := filepath.Join(t.TempDir(), "tei-process-reference")
@@ -272,5 +272,4 @@ func TestSelectedCompositionInvokesExistingProcessPlugin(t *testing.T) {
 	}
 	// A process acknowledgement is not durable proof of the requested external
 	// database state. The reference never performs the actual release.
-	_ = fmt.Sprintf("%s", second.Outcome)
 }
