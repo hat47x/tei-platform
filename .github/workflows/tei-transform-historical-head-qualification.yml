@@ -1,0 +1,132 @@
+name: TEI 旧変換PRの固定コミット再現検査
+
+# #1053: 後日実施する固定SHAの再現試験。当時の実行記録は生成できない。
+# 一般のPRを対象にした新たな必須Gateにはしない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-transform-historical-head-qualification.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-transform-historical-head-qualification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-exact-head:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      HISTORICAL_SHA: 868156f603a6af21dc3c56d395e2a9d07c479116
+    steps:
+      - name: 旧PRの固定コミットを完全なGit履歴とともに取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: 868156f603a6af21dc3c56d395e2a9d07c479116
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 旧ソースの版と清浄性を固定
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$HISTORICAL_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          test "$(git rev-parse --is-shallow-repository)" = false
+          printf 'historical-exact-head=%s\n' "$HISTORICAL_SHA"
+          printf 'qualification-trigger=%s\n' "$GITHUB_SHA"
+
+      - name: 旧コミット指定のGoを使用
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 旧変換器の整形・静的解析・限定試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          drift="$(gofmt -l internal/plugin/transform/*.go tools/reference-plugin-self-build/*.go)"
+          if [[ -n "$drift" ]]; then
+            printf 'historic-transform-gofmt-drift:\n%s\n' "$drift" >&2
+            exit 1
+          fi
+          go vet ./internal/plugin/transform/... ./tools/reference-plugin-self-build
+          go test -count=1 -timeout 20m ./internal/plugin/transform/... ./tools/reference-plugin-self-build ./tools/reference-transform-seed-builder
+          printf 'focused-transform-qualification=PASS\n' | tee "$RUNNER_TEMP/focused-test-receipt.txt"
+
+      - name: 旧ソースからセルフビルドEvidence v2を実生成
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-plugin-self-build -repo . > "$RUNNER_TEMP/historical-evidence-v2.json"
+          jq -e --arg sha "$HISTORICAL_SHA" '
+            .schema == "tei.reference.plugin-self-build-evidence/v2"
+            and .repositoryRevision == $sha
+            and .transformBootstrap.seedBuilderReproducible == true
+            and .transformBootstrap.convergenceResult.converged == true
+            and .transformBootstrap.stage1ArtifactDigest == .transformBootstrap.stage2ArtifactDigest
+            and .transformBootstrap.packageReproducible == true
+            and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageSecondArtifactDigest
+            and .transformBootstrap.packageFirstArtifactDigest == .transformBootstrap.packageOracleDigest
+            and (.transformBootstrap.runtimeEngineFingerprint | length) == 64
+            and (.transformBootstrap.packageBuildPlanFingerprint | length) == 64
+            and any(.transformBootstrap.packageBuildPlan.dependencies[];
+              .kind == "runtime-engine"
+              and .artifactDigest == .transformBootstrap.runtimeEngine.implementationDigest)
+            and .packageReproducible == true
+            and .nativeReproducible == true
+            and .reproducible == true
+          ' "$RUNNER_TEMP/historical-evidence-v2.json" >/dev/null
+          jq -n --arg sha "$HISTORICAL_SHA" \
+            --arg workflow_sha "$GITHUB_SHA" \
+            --slurpfile ev "$RUNNER_TEMP/historical-evidence-v2.json" '{
+            schema: "tei.reference.transform-historical-posthoc-receipt/v1",
+            testedHistoricalCommit: $sha,
+            qualificationWorkflowCommit: $workflow_sha,
+            qualificationTiming: "post-merge retrospective reproduction",
+            isHistoricalPreMergeReceipt: false,
+            focusedTransformTests: "PASS",
+            evidenceSchema: $ev[0].schema,
+            goVersion: $ev[0].goVersion,
+            runtimeEngineSourceDigest: $ev[0].transformBootstrap.runtimeEngineSourceDigest,
+            runtimeEngineFingerprint: $ev[0].transformBootstrap.runtimeEngineFingerprint,
+            pluginBuildPlanFingerprint: $ev[0].transformBootstrap.packageBuildPlanFingerprint,
+            stage1Digest: $ev[0].transformBootstrap.stage1ArtifactDigest,
+            stage2Digest: $ev[0].transformBootstrap.stage2ArtifactDigest,
+            pluginPackageOracleDigest: $ev[0].transformBootstrap.packageOracleDigest,
+            bootstrapConverged: $ev[0].transformBootstrap.convergenceResult.converged,
+            reproducible: $ev[0].reproducible
+          }' > "$RUNNER_TEMP/historical-posthoc-receipt.json"
+          cat "$RUNNER_TEMP/historical-posthoc-receipt.json"
+
+      - name: 試験後の旧コミットと作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$HISTORICAL_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: 固定コミットの証拠を保存
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-historical-transform-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/focused-test-receipt.txt
+            ${{ runner.temp }}/historical-evidence-v2.json
+            ${{ runner.temp }}/historical-posthoc-receipt.json
+          if-no-files-found: error
+          retention-days: 7
