@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"regexp"
 	"sort"
 	"strings"
