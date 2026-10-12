@@ -1,8 +1,8 @@
 # 三視点Studio authoring・最小Reference（Issue #1124）
 
-状態: **初回G0/G1向けの部分実装**。現時点で三視点統合Editorの製品受入・Source再投影・実行Evidenceは成立していません。
+状態: **Studio参照実装の部分実証**。一時作業領域でのSource受理・再読込・表/ER再投影と、四つの参照視点・HTML審査表示は自動試験で成功しています。ただし**製品としての統合編集画面・受理済み業務正本の四視点連携・人による受理・実Providerでの動作**は未達です。
 
-既存の[Shared Acceptance](../../tools/reference-shared-acceptance/README.md)とStudio authoring計画を使用します。このディレクトリに新しいCanonical正本、Patchエンジン、Validation、Acceptance、Authorizationを作りません。親の[#1119](https://github.com/hat47x/tei-platform/issues/1119)と[#1120](https://github.com/hat47x/tei-platform/issues/1120)の最終契約が確定するまでは、ここにあるJSONは**Reference限定**の運搬形式です。
+既存の[Shared Acceptance](../../tools/reference-shared-acceptance/README.md)とStudio authoring計画を使用します。このディレクトリに新しいCanonical正本、Patchエンジン、Validation、Acceptance、Authorizationを作りません。親の[#1119](https://github.com/hat47x/tei-platform/issues/1119)と、統合済みの型付き参照契約[#1120](https://github.com/hat47x/tei-platform/issues/1120)を踏まえても、Studioが扱うJSONは**参照実装限定**の運搬形式です。元Sourceの位置を特定できることは、編集権限・意味の受理・実行権限を保証しません。
 
 ## 検証する最小境界
 
@@ -108,7 +108,7 @@ Worldとrevisionを先に取得してCLIへ渡す場合は、`-workspace`の代�
 
 `e2e.mjs`は各ケースの結果を`tei.reference.studio-source-loop-receipt/v0`として標準出力に含めます。採取対象は`baseModelRevision`（R0）、Previewの`currentModelRevision`と予測`modelRevisionAfter`、Accepted Decisionの`modelRevisionBefore/After`、Sourceを再ロードした実際のR1、candidate/review指紋、変更ファイル一覧です。これらの整合を**一つのScratch受理操作の内部で検査**し、旧R0候補のPreviewとAcceptがR1を上書きしないことも検査します。
 
-Receiptは**一時作業領域で実際に試験を実行した記録**です。2026年10月12日に[Studio専用CI #38239246751](https://github.com/hat47x/tei-platform/actions/runs/38239246751)でNode.jsの31テストと、一時作業領域での68項目の試験が成功しました。後者はER・表の正本変更から再投影する2件に加え、Go製業務DFDの生成、四つの視点からの参照、業務手順からValidationへの逆向き参照を含みます。CIの対象はPRの仮マージコミット`93144fa2936ed17faf93b101bb6c6db06875b01c`です。人間の受理、実際のデータベースや実行先、後続観測の証拠は含まず、`not-observed`として明示します。Source IDとSource RevisionをWebのCommand/Observationへ引き渡す実際の連結は#1121/#1127の責務で、ここで実行Readyとは表示しません。
+Receiptは**一時作業領域で実際に試験を実行した記録**です。2026年10月12日に[Studio専用CI #38246987101](https://github.com/hat47x/tei-platform/actions/runs/38246987101)でNode.jsの39テストと、一時作業領域での80項目の試験が成功しました。後者はER・表の正本変更から再投影する2件に加え、Go製業務DFDの生成、四つの視点からの参照、業務手順からValidationへの逆向き参照を含みます。この記録の対象はPR head `6239cbbf9ebcf0d67569f746c4745b8cb49d6c75` で、Studio専用CI・全体健全性CI・E1-Aがいずれも成功しています。人間の受理、実際のデータベースや実行先、後続観測の証拠は含まず、`not-observed`として明示します。Source IDとSource RevisionをWebのCommand/Observationへ引き渡す実際の連結は#1121/#1127の責務で、ここで実行Readyとは表示しません。
 
 現行Source Indexは#1120の`scope + kind + ID`契約と同じスコープ情報を提供しません。Source Indexの参照自身、または`subject`内へ呼出し側が`scope`を付けてもC0解決済みと扱わず、`sourceNavigation.status=unresolved`にします。パスの重複区切りや`.`区間、開始・終了位置の形式不備も索引の段階で拒否し、ソース位置を誤って確定しません。複数scopeを持つモデルを安全に編集するには、#1120のtyped Resolverを同一revisionへ接続する必要があります。単一scopeの現Reference向けflat `data:ID` 形式を、汎用のC0表現として固定しません。
 
@@ -179,7 +179,7 @@ tools/repository-health-check.sh
 | --- | --- | --- |
 | V00 | 表・ER・機能の同一ID参照に加え、Goの既存業務DFD生成器を一時作業領域で動かし、同じWorldから四つの参照視点を読み取り専用で照合。`BP-05`からValidationへの逆向き参照も実行済み。Source Indexの元定義アンカーを表示 | 業務DFDは参照用でありAccepted Businessではない。同revisionの四つの**受理済み**Projectionや実画面操作、実DB・実行先との連携は**未達** |
 | V03 | ERでRelationを追加し、表からValidationとApplication側の利用宣言を提案する。共通受理機構の差分・影響・審査を経由する一往復を、一時作業領域で実行済み | 実画面からの操作、実データベースや実行先での可否は未確認 |
-| V04 | 共通受理機構を使うER・表の2件の受理・再投影、旧候補の拒否に加え、Go製業務DFDからの四視点参照・逆向き参照を一時作業領域で実行。合計68項目を検査 | 参照用の業務手順を受理済み正本とみなさない。人間の受理・実画面・実Providerでの確認は未実施 |
+| V04 | 共通受理機構を使うER・表の2件の受理・再投影、旧候補の拒否に加え、Go製業務DFDからの四視点参照・逆向き参照を一時作業領域で実行。合計80項目を検査 | 参照用の業務手順を受理済み正本とみなさない。人間の受理・実画面・実Providerでの確認は未実施 |
 | N05 | Derived直書き/任意PatchをBridgeが拒否 | 全Viewのeditable metadataの網羅 |
 | N06 | 一時作業領域で、異なる編集者の独立した候補を同じR0で審査し、一方の受理後にもう一方の古い審査指紋による受理を拒否する試験を追加。正本のR1が保持されることも検査 | OS上の完全同時書込み、複数編集者による実環境の競合は未試験 |
 | Invalid ref | exactな入力subject/Relation target不在・重複を拒否。Source Indexの曖昧な定義、範囲不正、危険なpathを拒否。DFDの参照切れはunresolved | 全モデルKind・全typed edge・Source byte最新性とBusinessの受理済み意味 |
