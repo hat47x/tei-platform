@@ -142,6 +142,19 @@ node --test \
 
 結果には`sourceLocatorStatus=reference-local-pointer-checked`と`sourceFileAuthority=unverified`を明示します。ここでの照合は、現在の参照資料内の要素を取り違えないための検査です。**ファイルの真正性や、Source Index上の採用済み版との一致を認証するものではありません。** 保存先や受理対象のファイルパスとして、この出典を無条件に利用してはなりません。
 
+## 参照画面からの起動契機の変更プレビュー
+
+`dfd-view-studio.html`では、DFD投影に加え、元の業務手順と未受理レビュー案のJSONを選択できます。図上の起動契機を選択すると、業務上の説明文についてのみ、新しい候補を入力できます。
+
+「未受理の変更候補を確認」を押すと、読み込んだ三つのファイルの実バイトからSHA-256を再計算し、初回の読み込み時と一致することを確認します。そのうえで`dfd-selected-edit-bridge.mjs`を呼び、対象の起動契機、参照手順、レビュー案、局所的なSource位置を照合して未受理の変更案を作成します。
+
+- 候補は画面内で表示し、希望する場合にのみ独立したJSONとして保存します。元のProcedure/Review/DFDファイルを書き換えません。
+- 変更できるのは起動契機の**説明文だけ**です。種別、実行時設定、業務上の責任や認可を変更しません。
+- 起動契機の選び直し、元資料の変更、入力文言の変更によって、表示中の未受理候補を破棄します。
+- 保存したJSONは`tei.reference.business-dfd-selected-review/v0`であり、正式なShared Acceptanceへの投入資料ではありません。`readyForAcceptance=false`、`sharedAcceptanceCandidate=null`、`sourceWrites=[]`のままです。
+
+実ブラウザーによる画面操作は未検証であり、Nodeの模擬DOM試験はその代用にはなりません。さらに、この照合は受理済みWorldの同一revisionや真正なSource Indexを証明しないため、変更候補を正本へ自動適用してはなりません。
+
 ## Studio・Typed Referenceとの統合条件
 
 1. **選択**: #1125の`-select`が返す`reference-procedure:<procedureId>`のStepとSource位置を表示する。同名のAccepted Taskと同一視しない。
