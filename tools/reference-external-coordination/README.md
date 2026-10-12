@@ -4,6 +4,15 @@ ISSUE-000084 / GitHub #977のE1 Executable Referenceです。
 
 目的は、複数のHuman / AI WorkerがWorkとResultを共有するために、TEI CoreへAgent Session、Workspace、Checkpoint、Fleet state等を追加しなくてもよいことをpressureすることです。最初のBackendは外部SaaSを使わず、標準GitとJSONだけで構成します。
 
+## 確認済みの範囲（2026-10-12）
+
+Git textを用いるE1と、GitHub Issuesを別のTask Trackerとして観測するE2-Aは、[Issue #977](https://github.com/hat47x/tei-platform/issues/977)・[Issue #983](https://github.com/hat47x/tei-platform/issues/983)で参照例の検証を完了しました。E2-Aの比較結果は[GitHub Issues profile](github-issues-profile.md)に記録しています。
+
+[PR #1298](https://github.com/hat47x/tei-platform/pull/1298)の統合後、[GitHub Actions #38240846308](https://github.com/hat47x/tei-platform/actions/runs/38240846308)ではmainのコミット`d540fcf20c5a2a7a2e31f1081da49803712569b7`の完全なGit作業領域で、リポジトリ全体の健全性確認4項目、E1回帰18ケース、E1本体、実行前後の版・変更状態の確認がすべて成功しました。この記録は**検証したコミットに限定**され、以後のmainの全版が自動的に合格したことは意味しません。
+
+本検証は外部との作業受渡しに関するものです。Canonical Sourceの再読込やGitを用いた開発工程全体の検証を含みません。独立した開発工程の検証を扱っていた[Issue #972](https://github.com/hat47x/tei-platform/issues/972)は不要として取り下げられており、その未実施項目を本参照例の合格として扱いません。本番用のGitHub Issues Adapter、第三のBackend、Brokerの実装も対象外です。
+
+
 ```text
 product repository
   |
@@ -53,7 +62,7 @@ bash tools/reference-external-coordination/clean-check-test.sh
 
 E1の結果だけで、Git repositoryをproductionの標準Coordination Backendには採用しません。Work / Result JSONもproduction wire formatとして固定せず、Human / Agent actor identityが認証済みだともみなしません。stale ResultのSemantic Rebase、Coordination stateからのCanonical Acceptance、Broker、Queue、distributed leaseの必要性も未確定です。ChatGPT、Copilot、Backlog、Box等のAdapter完成も主張しません。
 
-Coordination Store削除後のCanonical reloadは、このrunner単独では検証しません。Canonical reloadとGit-nativeな開発経路はRQ-034 / ISSUE-000083が所有します。本Referenceは、Coordination層がProduct Sourceの第二正本やAuthority sourceにならないことを先に検証します。
+Coordination Store削除後のCanonical Source再読込は、このrunnerでは検証しません。Gitを用いた独立の開発工程を扱ったIssue #972は不要として取り下げ済みであり、同Issueの検証を完了したことにはしません。本参照例は、外部の協調用StoreがProduct Sourceの第二正本や受理・実行の権限元にならないことを確認します。
 
 GitHub Issuesを第二consumerとして比較した結果は`github-issues-profile.md`に記録しています。Backend stateを共通lifecycleへ黙って正規化せず、`origin`、`createdVia`、Backend actor、Authorityを分離します。locatorのschemeや文字列表現はReference例であり、TEI Coreがprovider固有URIを解釈するproduction wire formatとしては固定しません。
 
