@@ -353,7 +353,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if err != nil {
 		return evidence{}, err
 	}
-	if packageBuilderFirstDigest != packageBuilderSecondDigest {
+	if reproducible, _ := gobuilder.ResolveReproducibility(packageBuilderFirstDigest, packageBuilderSecondDigest); !reproducible {
 		return evidence{}, nonReproducibleSelfBuild("package-builder-binary", packageBuilderFirstDigest, packageBuilderSecondDigest)
 	}
 
@@ -511,7 +511,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if err != nil {
 		return evidence{}, err
 	}
-	if nativeBuilderFirstDigest != nativeBuilderSecondDigest {
+	if reproducible, _ := gobuilder.ResolveReproducibility(nativeBuilderFirstDigest, nativeBuilderSecondDigest); !reproducible {
 		return evidence{}, nonReproducibleSelfBuild("native-plugin-builder-binary", nativeBuilderFirstDigest, nativeBuilderSecondDigest)
 	}
 
@@ -667,7 +667,7 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if err != nil {
 		return evidence{}, err
 	}
-	if firstDigest != secondDigest {
+	if reproducible, _ := gobuilder.ResolveReproducibility(firstDigest, secondDigest); !reproducible {
 		return evidence{}, nonReproducibleSelfBuild("process-plugin-binary", firstDigest, secondDigest)
 	}
 
@@ -1098,25 +1098,8 @@ func buildReferencePlugin(repo, goPath, output, stateDir string) error {
 }
 
 func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
-	cmd := exec.Command(
-		goPath,
-		"build",
-		"-trimpath",
-		"-buildvcs=false",
-		"-mod=readonly",
-		"-o",
-		output,
-		packagePath,
-	)
-	cmd.Dir = repo
-	env, err := buildEnvironment(os.Environ(), stateDir)
-	if err != nil {
-		return fmt.Errorf("prepare Go build environment: %w", err)
-	}
-	cmd.Env = env
-	combined, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
+	if err := gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir); err != nil {
+		return err
 	}
 	return nil
 }
