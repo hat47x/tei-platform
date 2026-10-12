@@ -35,7 +35,7 @@ func logicalRuleEdges(after ir.World, kind string, id core.CanonicalID) []Impact
 			}
 			edges = append(edges, ImpactEdge{
 				From: from, To: subjectKey("data", data.ID),
-				Via: "semantic.data." + kind,
+				Via:    "semantic.data." + kind,
 				Reason: "This explicit logical rule is declared by this Data",
 			})
 			for _, attr := range determinants {
@@ -45,14 +45,14 @@ func logicalRuleEdges(after ir.World, kind string, id core.CanonicalID) []Impact
 				}
 				edges = append(edges, ImpactEdge{
 					From: from, To: subjectKey("attribute", attr),
-					Via: "semantic." + kind + "." + role,
+					Via:    "semantic." + kind + "." + role,
 					Reason: "This attribute is explicitly named by the rule",
 				})
 			}
 			for _, attr := range dependents {
 				edges = append(edges, ImpactEdge{
 					From: from, To: subjectKey("attribute", attr),
-					Via: "semantic.functional-dependency.dependent",
+					Via:    "semantic.functional-dependency.dependent",
 					Reason: "This attribute is explicitly named as a dependent",
 				})
 			}
