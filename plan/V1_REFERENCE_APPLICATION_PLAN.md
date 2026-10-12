@@ -305,7 +305,7 @@ Gate C Evidence
 - command
 - Business Result
 - 実行時エラー
-- Observation
+- 観測
 - 標準の派生表示
 - 個別実装の画面
 
@@ -352,11 +352,11 @@ Gate C Evidence
 
 ## Stage 4A — Authoring / Knowledge / AI
 
-判定段階Cが`Ready`となった後に開始します。
+判定段階Cが`Ready`となった後に着手します。
 
 ### Studio minimal Authoring Loop — `ISSUE-000046`
 
-Product Acceptance Scenario: PAS-01
+製品受入シナリオ：PAS-01
 
 ```text
 Select
@@ -373,136 +373,136 @@ authoritative source
   ↓ reload / Conformance
 ```
 
-編集環境は、表示と記述を扱うものであり、第二の正本ではありません。
+編集環境は表示と記述を扱いますが、意味の第二の正本ではありません。
 
-file-native / CLI / AIと同じAcceptance原則へ収束します。
+ファイルを直接扱う方式・CLI・AI支援と、同じ受理の原則に従います。
 
-Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application Targetと混同しません。
+開発者向けのStudioのWailsホストと、生成されるWails製デスクトップアプリケーションの実行先を混同しません。
 
 ### knowledge-first Semantic exploration — `ISSUE-000047`
 
-Product Acceptance Scenario: PAS-06
+製品受入シナリオ：PAS-06
 
-Human / AIが新規authoring前に既存Data / Relation / Validation / Capability / Application Pattern / Evidenceをread-only探索します。
+人とAIが新たな記述を始める前に、既存のデータ・関係・検証規則・能力・アプリケーションパターン・検証根拠を読取り専用で探索します。
 
-探索候補を次へ分けます。
+探索候補を次の三つに分類します。
 
 - applicable
 - incompatible
 - unknown
 
-search ranking、similarity、embedding、AI confidenceはSemantic Evidenceではありません。
+検索順位・類似度・埋め込み表現・AIの確信度は、意味に関する検証根拠ではありません。
 
 ### AI Proposal / Acceptance — `ISSUE-000027` / #267
 
-Product Acceptance Scenario: PAS-01 / PAS-06
+製品受入シナリオ：PAS-01／PAS-06
 
-AIによる提案は、意味の正本を変更できる権限そのものではありません。
+AIによる提案には、意味の正本を変更する権限はありません。
 
-- explicit Canonical / Source / Evidence references
+- 正本・ソース・検証根拠への明示的な参照
 - `baseModelRevision`
-- Preview Semantic Diff
-- stale conflict
-- shared Acceptance
-- accepted source reload
+- 意味上の差分の事前表示
+- 古い版に基づく競合
+- 共有の受理手続き
+- 受理済みソースの再読込み
 - 検証規則の評価 / Conformance
-- autonomy / authority分離
+- 自律的な作業と変更権限の分離
 
-AI都合でmandatory authored Stable IDやPatch-only authoring modelを導入しません。
+AI支援の都合だけで、手作業で記述する安定IDの必須化や、パッチだけに限定する記述方式を導入しません。
 
 ## Stage 4B — 第二Target pressure test
 
-関連: `ISSUE-000026` / #259  
-Product Acceptance Scenario: PAS-04
+関連：`ISSUE-000026`／#259  
+製品受入シナリオ：PAS-04
 
-段階4Aの完成を待たず、判定段階Cが`Ready`となった後に並行して開始できます。
+段階4Aが完成するのを待つ必要はなく、判定段階Cが`Ready`となった後は並行して着手できます。
 
-第二の実行先は、対応先の数を増やすためではなく、最初のWeb向け実装で得た設計上の境界を検証するために選びます。
+二つ目の実行先は、対応先の数を増やすことではなく、最初のウェブ向け実装から得られた設計上の境界を検証することを目的として選びます。
 
-比較軸:
+比較する観点は次のとおりです。
 
-- Handover Baseline / Canonical meaning
-- Target build `T1` / `T2`
-- Target Capability
-- Projection差
-- Runtime Binding
-- execution artifact / ABI / Host
-- Execution / Trust Profile
-- Authorization / Resource
-- Observation
-- Semantic / Functional / Visual Evidence
-- RQ-024 performance measurement
+- 引継ぎ基準版と正本上の意味
+- 実行先の構築版`T1`・`T2`
+- 実行先の能力
+- 派生表示の違い
+- 実行時の対応付け
+- 実行成果物・ABI・ホスト
+- 実行と信頼に関する設定
+- 認可と資源
+- 観測
+- 意味・機能・表示の検証根拠
+- RQ-024の性能測定
 
-Generated Wails Desktop、Mobile、Server、API、MCP Application Target等が候補です。
+生成されるWails製デスクトップアプリケーション、モバイル、サーバー、API、MCPのアプリケーション実行先などが候補です。
 
-Studio Wails Hostは第二Application Target Evidenceへ数えません。
+StudioのWailsホストは、二つ目のアプリケーション実行先の検証根拠には数えません。
 
-第二Targetで境界修正が必要になっても、それ自体を失敗とはみなしません。第一Targetの都合を共通意味へ誤昇格していなかったかを確認します。
+二つ目の実行先で境界の修正が必要になっても、それ自体を失敗とはみなしません。最初の実行先に固有の都合を共通の意味として誤って取り込んでいなかったかを確認します。
 
 ## Evidenceの原則
 
-各Stageは「実装した」だけでは完了にしません。
+どの段階も、「実装した」という事実だけでは完了と判定しません。
 
-Evidence候補:
+検証根拠として使う候補は次のとおりです。
 
-- authoritative source
-- Source Index / Diagnostic
-- deterministic fixture
-- Conformance test
-- generated / golden artifact
+- 権威あるソース
+- ソース索引と診断結果
+- 決定論的な試験用データ
+- 準拠確認の試験
+- 生成成果物と期待出力
 - ドライバーのシナリオ
-- real-provider observation
-- actual external asset observation
-- Handover Baseline
-- Target build / run identity
-- Semantic / Functional / Visual Evidence
-- Target comparison
-- ADR
-- readiness audit
+- 実際の提供実装を通じた観測
+- 実際の外部資産に対する観測
+- 引継ぎ基準版
+- 実行先の構築版と実行記録の識別情報
+- 意味・機能・表示の検証根拠
+- 実行先の比較
+- 設計判断記録
+- 合格判定の監査
 - 未解決事項 Diagnostic
 
-Evidence artifactやHandover recordをCanonicalの第二正本にはしません。
+検証成果物や引継ぎ記録を、正本の意味を定義する第二の正本にはしません。
 
-実験結果が予想と異なる場合、その差を隠して計画へ合わせずRequirement / Architecture / Planを再評価します。
+実験結果が予想と異なる場合は、違いを隠して計画に合わせるのではなく、要求・構造・計画を見直します。
 
 ## まだ固定しないこと
 
 - アプリケーションパターンの永久標準一覧
-- 第一Web Target framework
-- 完全なPresentation IR
-- 完全なTarget Capability taxonomy
-- Studio最終UI framework
-- AI provider
-- vector database
-- Proposal最終schema
-- mandatory authored Stable ID / UUID
-- Patch-only authoring model
-- Handover汎用schema
-- 第二Target種類
-- B2C向け一律performance threshold
-- Authentication単一方式
-- 汎用Workflow Engine
-- Event Sourcing標準
-- production HA一般化
+- 最初のウェブ実行先のフレームワーク
+- 完全な表示用の中間表現
+- 完全な実行先の能力の分類体系
+- Studioの最終的な画面のフレームワーク
+- AIの提供事業者・実装
+- ベクトルデータベース
+- 提案の最終的なスキーマ
+- 手作業で記述する安定ID・UUIDの必須化
+- パッチだけを使う記述方式
+- 引継ぎに関する汎用スキーマ
+- 二つ目の実行先の種類
+- B2Cに適用する一律の性能基準
+- 認証方式の単一化
+- 汎用の作業手順実行機構
+- イベントソーシングの標準化
+- 本番環境における高可用性の一般化
 
 ## v1へ進んだと判断する条件
 
-v1のApplication / first-target成立判断では少なくとも次をRepository Evidenceから説明できることを目安とします。
+第1版のアプリケーションと最初の実行先の成立を判断する際は、少なくとも次の事項をリポジトリの検証根拠から説明できることを目安とします。
 
-- `order_entry`をSemanticから第一Targetまで追跡できる
-- Gate B Ready revision `R`をHandover Baselineとして固定できる
-- 第一Target Evidenceからbaseline `R`とTarget build `T1`へ戻れる
-- 複数Databaseを自然に利用できる
-- native SQL / Custom implementationを正本のまま利用できる
-- 既存認証仕様を保持したままCapabilityへ接続できる
+- `order_entry`を意味の定義から最初の実行先まで追跡できる
+- 判定段階BのReadyを得た版`R`を引継ぎ基準版として固定できる
+- 最初の実行先の検証根拠から基準版`R`と構築版`T1`を追跡できる
+- 複数のデータベースを自然に利用できる
+- 独自のSQLや個別実装を正本として利用できる
+- 既存の認証仕様を保ったまま能力へ接続できる
 - アプリケーションパターンをDriver / Targetで共有できる
-- UIなしでもDriverで主要Scenarioを検証できる
+- 画面がなくてもドライバーで主要シナリオを検証できる
 - 標準の派生表示 / Custom UIを同じ上位意味から利用できる
 - 業務上の結果・実行時エラー・観測を分離できる
-- Semantic / Functional / Visual Evidenceを混同しない
-- 何が未保証かをaudit / unresolvedから判断できる
+- 意味・機能・表示の検証根拠を混同しない
+- 何が未保証なのかを監査記録と未解決事項から判断できる
 
-Studio / AI支援の完成、第二Target、production HAは第一Web Targetまでのv1成立条件にはしません。ただし、それらをGate C後に検証できる境界とplan issueは保持します。
+Studio・AI支援の完成、二つ目の実行先、本番環境の高可用性は、最初のウェブ実行先までの第1版の成立条件には含めません。ただし、それらを判定段階Cの後で検証するための境界と計画上の課題は保持します。
 
 ## 関連文書
 
