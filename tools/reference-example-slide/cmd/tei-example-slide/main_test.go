@@ -553,7 +553,8 @@ func TestCLIScopesExternalRuleSourceAsUnacceptedAuthoring(t *testing.T) {
 	if err := os.WriteFile(intentsFile, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	rules := []byte("tei-model-rules v0\ncandidate-key sales.child.business-key on sales.child fields sales.child.parent_id\n")
+	attributeID := input.Catalog.Tables["sales.child"].Fields[0].ID
+	rules := []byte("tei-model-rules v0\ncandidate-key sales.child.business-key on sales.child fields " + attributeID + "\n")
 	external := filepath.Join(t.TempDir(), "rule-file")
 	if err := os.WriteFile(external, rules, 0600); err != nil {
 		t.Fatal(err)
