@@ -80,9 +80,9 @@ func serviceCarrierFixture(t *testing.T) (
 		}},
 		ServiceBindings: []pruntime.ServiceCarrierBinding{{
 			ServiceProviderSelection: selected,
-			CarrierKind:             request.CapabilityKind,
-			CarrierID:               request.CapabilityID,
-			Operation:               request.Operation,
+			CarrierKind:              request.CapabilityKind,
+			CarrierID:                request.CapabilityID,
+			Operation:                request.Operation,
 		}},
 	}
 	plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
