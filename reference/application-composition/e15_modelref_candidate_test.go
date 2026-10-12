@@ -1,8 +1,8 @@
 //go:build tei_modelref_candidate
 
-// E15 is deliberately opt-in: #1120/modelref lives in another Draft PR.
-// Run only in a disposable composite checkout containing both candidates.
-// It must not make the default #1016 package dependent on unmerged code.
+// E15 remains opt-in because it invokes a Node.js child process.
+// The modelref and Source Index snapshot packages are already in main.
+// E16 exercises the Go-only path in the default package tests.
 package main
 
 import (
@@ -120,9 +120,10 @@ func TestE15ActualGoImpactToE12ReadOnlyReview(t *testing.T) {
 		"diagnostics": append([]modelref.Diagnostic{}, diagnostics...),
 		"affected":    append([]modelref.Affected{}, affected...),
 	}
-	// Both E5 and modelref originate from one loaded.World in this Go
-	// invocation, but parser/index source bytes and durable repository revision
-	// remain unqualified until #1017 and trusted provenance checks.
+	// E5 and modelref originate from one loaded.World in this Go invocation.
+	// The merged #1017 shares parsed source bytes with Source Index, but live
+	// filesystem races, unparsed assets and pinned Git revision still need
+	// their own qualification before asserting a durable common snapshot.
 	envelope := e13PairedEvidence(loaded.World, report, src, true)
 	if envelope.Derived == nil {
 		t.Fatal("same-World E13 direct Derived Index is missing")
