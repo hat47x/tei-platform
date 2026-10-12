@@ -89,8 +89,8 @@ type fakeFailure struct {
 	FailureClass      string
 	ExitCode          *int
 	Signal            string
-	// Untrusted raw diagnostic hint: never inline this value in public Evidence.
-	DiagnosticSummary string
+	// Untrusted diagnostic text must never be copied into public Evidence.
+	RawDiagnosticHint string
 	Stdout            []byte
 	Stderr            []byte
 }
@@ -134,7 +134,7 @@ func buildReferenceEvidence() (referenceEvidence, error) {
 			Phase:             attemptPhaseCompile,
 			FailureClass:      "compile-type-error",
 			ExitCode:          &exitCode,
-			DiagnosticSummary: "compile failed with a structured type error",
+			RawDiagnosticHint: "compile failed with a structured type error",
 			Stdout:            []byte("compile-progress\n"),
 			Stderr: []byte(
 				"private-path=/workspace/private/source.go " +
