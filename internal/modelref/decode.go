@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // DecodeGraph reads a single complete v0 graph without losing unfamiliar
@@ -59,10 +60,11 @@ func rejectRepeatedKeys(decoder *json.Decoder) error {
 			if !ok {
 				return fmt.Errorf("object key is not a string")
 			}
-			if seen[name] {
+			normalized := strings.ToLower(name)
+			if seen[normalized] {
 				return fmt.Errorf("repeated JSON field %q", name)
 			}
-			seen[name] = true
+			seen[normalized] = true
 			if err := rejectRepeatedKeys(decoder); err != nil {
 				return err
 			}
