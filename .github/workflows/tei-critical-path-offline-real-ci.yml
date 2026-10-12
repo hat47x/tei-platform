@@ -48,7 +48,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git rev-parse --is-shallow-repository)" = false
           test -z "$(git config --get extensions.partialclone || :)"
-          test "$(git remote get-url origin)" = https://github.com/hat47x/tei-platform
+          case "$(git remote get-url origin)" in
+            https://github.com/hat47x/tei-platform|https://github.com/hat47x/tei-platform.git) ;;
+            *) echo "unexpected origin URL" >&2; exit 1 ;;
+          esac
           if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
             [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
             read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
