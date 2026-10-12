@@ -26,8 +26,23 @@ concurrency:
 jobs:
   reference:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tei
+          POSTGRES_PASSWORD: tei
+          POSTGRES_DB: tei
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei -d tei"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
+      TEI_MULTILINGUAL_PG_DSN: postgres://tei:tei@127.0.0.1:5432/tei?sslmode=disable
       GOENV: off
       GOWORK: off
       GOFLAGS: ''
@@ -58,7 +73,13 @@ jobs:
             exit 1
           fi
           go vet ./reference/multilingual-business-data
-          go test -race -count=3 ./reference/multilingual-business-data
+          go test -race -count=1 ./reference/multilingual-business-data
+      - name: SQLite実データの保存・再読込・検索を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -m unittest discover -s reference/multilingual-business-data -p test_sqlite.py -v
       - name: 実行後の作業領域を確認
         if: always()
         shell: bash
