@@ -134,7 +134,7 @@ func TestRuleDraftKnownCounterexampleCannotBecomeEligible(t *testing.T) {
 		intent.Requests = append(intent.Requests, ModelRuleDraftRequest{
 			IssueID:        issue.ID,
 			ProposedRuleID: issue.Table + "." + issue.HypothesisID,
-			Rationale:       "業務の判断は後続の審査を必要とする",
+			Rationale:      "業務の判断は後続の審査を必要とする",
 		})
 	}
 	out, err := DraftLoadedWorkspaceModelRules(root, input, hypotheses, intent)
