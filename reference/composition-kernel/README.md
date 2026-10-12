@@ -125,3 +125,27 @@ Go 1.23.2を用いた独立モジュール`/mnt/data/tei-composition-test`に、
 6. Goの同一プロセス内での任意コードのHot Replacement、Process/Wasmの実ロード、Browser/IoT/分散Targetの更新は未実施。
 
 次段は、Registry RevisionとProvider identityを固定した受理可能な`ActivationPlan`を最小契約として設計し、Host側のready/authority切替に結び付けること。その後でProviderの実体にProcess/Wasmを選び、負荷下の可用性を測定する。
+
+
+## E4：Provider選択の受理境界とTOCTOU対策
+
+`internal/composition/selection.go`、`bootstrap.go`とCoordinator/Registryの変更により、合成評価で選んだProviderをHostの新旧世代へ結び付ける。旧固定`CapabilityKind`は使わない。
+
+- `Registry.Select(providerID, scope)`：適格なProviderのContract ID/Version/Shape、Scope、依存ProviderへのBindingと、Declaration Epochを収集する。選択は現在の権限やArtifactに対する承認を意味しない。
+- `Registry.Apply`：宣言内容・依存関係の変化に対して**Provider単位の単調Epoch**を更新する。別Tenantの無関係な変更など、対象Providerの判定を変えない変更ではEpochを維持する。Provider撤去・同一名での再登録でも以前の選択は再利用できない。
+- `NewSelectedCoordinator`：初回起動からContract/Scope/Epoch、Host提供の権限ガードを検証し、未選択のRouterを外に渡さず、切替前の呼出しも同じ条件に束縛する。初期Providerの実Artifactとreadinessは呼び出し元Hostによって事前に確認されている必要がある。
+- `Coordinator.ReplaceSelected` / `RestoreSelected`：Prepare・ReadyはRegistry lockの外で実行し、切替直前にProvider Epoch、Contract、Scope、依存先を再検査。Registryの変更とRouterのPublishをHost局所の同一線形化区間に置く。失敗時は新Scopeを回収し、旧世代を保持する。
+- 選択済みCoordinatorの`Acquire`では現在のProvider EpochとHost guardを再検査する。Registryが変更された後、未更新の選択を使った新規呼出しはfail-closedになる。`Replace` / `Restore`の旧入口へ戻ることも拒否する。
+- `Selection.Dependencies`は非同期準備に入る前にコピーし、外部から返された選択スライスをそのまま共有しない。
+
+**局所試験**：Go 1.23.2独立モジュールで、Race Detector付き `go test -race -count=40 ./internal/composition` および `go vet ./...` をPASS。誤ったProvider/Scope、依存Binding偽装、準備中のProvider撤去、権限失効、撤去後の同名再登録、無関係なTenant更新での不要な失効、初期起動の誤選択を含む。検証用ローカルモジュールでは`gofmt -l`も空。**GitHub exact-headでのfull Repository Healthは別途必要**。
+
+### 保証範囲と未解決点
+
+1. Epochは**契約宣言の鮮度**であり、権限・署名・Artifact bytes・実ランタイム稼働を保証しない。Hostの`guard`には既存の現在権限、lease/fencing、Artifact検証と実行条件の照合が別途必要。
+2. Registryに宣言がなくなっても、自動的に`Coordinator.Withdraw`が走るわけではない。選択済み入口からの新規呼出しは拒否できるが、旧ScopeのReapとProcess停止はHostの運用責務。
+3. cutover/AcquireはRegistryとRouterの両方に短期間ロックを置く。**Host guardは必ず非ブロッキング・Registryへの再入なし**で実装する。任意の外部I/Oや`Registry.Snapshot`再入があるとデッドロックまたは長時間待機の原因になる。
+4. このRegistry/CoordinatorはHost**単一プロセス内**の候補実装であり、ノード間での瞬間的原子切替や全体の可用性を保証しない。契約Versionが変わる更新は現行RouterのVersion完全一致により拒否し、将来は明示された互換性評価と状態移行を別に導入する。
+5. Epochの正本と選択・配置の粒度は今後の本番Consumerで再評価する。特に一つのProvider宣言が複数の実行インスタンス／Targetを持つ場合、Provider EpochだけではReplica/Artifact差を表せない。実成果物identityとRuntime AuthorityはHostに持たせる。
+
+次の実装Gateは、現在の仮`guard`を**実際のArtifact検証済みAuthorityへのAdapter**に置き換え、Process/Wasm Providerで新旧世代の並行稼働とDrainingを計測すること。既存Runtimeの固定enum維持は受入条件にしない。
