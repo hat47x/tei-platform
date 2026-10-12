@@ -11,11 +11,11 @@ import (
 // IndexedProcedureEvidence is a read-only Source Index location, not a
 // Shared Acceptance decision or a declaration of operational authority.
 type IndexedProcedureEvidence struct {
-	Status         string               `json:"status"`
-	Subject        sourceindex.Subject  `json:"subject"`
+	Status         string                `json:"status"`
+	Subject        sourceindex.Subject   `json:"subject"`
 	Reference      sourceindex.Reference `json:"reference"`
-	Artifact       sourceindex.Artifact `json:"artifact"`
-	AuthorityLimit string               `json:"authorityLimit"`
+	Artifact       sourceindex.Artifact  `json:"artifact"`
+	AuthorityLimit string                `json:"authorityLimit"`
 }
 
 // InspectIndexedProcedureSnapshot checks a candidate against the exact
