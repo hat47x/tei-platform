@@ -341,7 +341,7 @@ Realization
 
 ## 三つの観点からの相互検証
 
-Data、Function / Interaction、Business Procedureは、別々の正本ではなく同じCanonical meaningを検査する異なる視点です。
+データ、機能・対話、業務手順は、別々の正本ではなく、同じ正本上の意味を検査する異なる視点です。
 
 ```text
 Data / Relation / Validation / lifecycle
@@ -351,11 +351,11 @@ View / Pattern / Query / Action / Capability
 Business Procedure / actor / manual / trigger
 ```
 
-一つの視点で発見した矛盾はauthoritative sourceへ戻して修正します。
+一つの視点で見つかった矛盾は、正本となる情報源に戻って修正します。
 
-たとえばread-only datasourceに対する編集UI、Business Procedureが要求するのにDataに存在しない情報、Business Actionが期待するのに観測不能な完了状態等はcross-view diagnosticの対象です。
+たとえば、読み取り専用のデータ接続先に対する編集画面、業務手順で必要なのにデータに存在しない情報、業務上の行為で期待するのに観測できない完了状態などは、視点をまたぐ診断の対象です。
 
-CRUD matrix、flow、graph等はこの検査に有用ですが、原則としてderived Projectionとして生成し、人が第二の意味正本として維持することを要求しません。
+CRUDマトリクス、業務の流れ、関係図などはこの検査に役立ちます。ただし、原則として派生した表示として生成し、人が第二の意味の正本として管理することは要求しません。
 
 詳細は[業務システム設計](business-system-design.md)とRQ-025 / RQ-026を参照してください。
 
@@ -373,15 +373,15 @@ membership / attribute / relation / resource facts
 entry / action / resource / subject decision
 ```
 
-RBAC / ReBAC / ABAC等の方式はProvider / Policy側で差し替えられるようにし、一方式をCanonical business modelへ固定しません。
+RBAC、ReBAC、ABACなどの方式は、提供元や権限方針の側で差し替えられるようにします。特定の方式を業務モデルの正本に固定しません。
 
-Business ProcedureのactorはAuthorization Roleではありません。actor labelや業務上の責任主体をpermission identityへ暗黙変換せず、必要な場合だけexplicit mapping / resolverを通します。
+業務手順の実行主体は認可上の役割とは異なります。主体を示す名称や業務上の責任者を、権限の識別子に暗黙のうちに変換しません。必要な場合だけ明示的な対応付けや解決処理を通します。
 
-Capabilityの意味的存在と、そのCapabilityをinvokeできるauthorityも別です。
+能力が定義されていることと、その能力を呼び出す権限があることも別です。
 
 ## 判断規則・操作契約・実行権限を分ける
 
-Rule、AI、Human-assisted policy等が「次に何をするか」を選ぶことと、その操作の意味や実行権限を定義することを分けます。
+規則、AI、人の判断を伴う方針などが「次に何をするか」を選ぶことと、操作の意味や実行権限を定義することを分けます。
 
 ```text
 Decision Policy
@@ -405,15 +405,15 @@ Decision Policy
 
 です。
 
-Rule policyとAI policyを交換しても、同じsemantic action / Validation / Authorization / Capability / Result / Observation境界へ収束できることを優先します。policyごとに別のCapability、Permission semantics、Business Outcome、Observation modelを作りません。
+規則に基づく方針とAIに基づく方針を入れ替えても、同じ意味上の操作・検証・認可・能力・結果・観測の境界を使えることを優先します。方針ごとに別の能力、権限の意味、業務上の結果、観測モデルを作りません。
 
-AI policyがraw tool callを生成できても、それを新しいAction Contractやauthorityとして扱いません。逆にdeterministic Ruleが選んだ操作も、current authority checkを迂回しません。
+AIの方針が道具を直接呼び出す命令を生成できても、それを新しい操作契約や権限として扱いません。反対に、決定論的な規則が選んだ操作も、その時点での権限確認を省略しません。
 
-現時点では汎用Decision Policy interfaceやAction Catalog schemaをCoreへ固定しません。Gate C後のsmall Referenceで、Rule / AIの差し替えがRuntime意味を二重化しないことをPressureします。
+現時点では、汎用的な判断方針の接続仕様や操作一覧のスキーマを中核に固定しません。判定段階C後の小規模な参照事例で、規則とAIを差し替えても実行時の意味が二重化しないことを検証します。
 
 ### AIによる構築と業務操作の主体を分ける
 
-AIがTEI knowledgeを利用する場合も、**Application definitionを変更する主体**と、**受入済みBusiness / Application knowledgeに従って業務Actionを実行する主体**を分けます。
+AIがTEIの知識を利用する場合も、**アプリケーションの定義を変更する主体**と、**受理済みの業務・アプリケーションの知識に従って業務上の操作を実行する主体**を分けます。
 
 ```text
 Authoring Plane
@@ -464,19 +464,19 @@ read authority
 
 です。
 
-AI Business Actorが受入済みAction / Capabilityを選択・invokeすること自体にはCanonical変更Proposalを要求しません。ただしCapability invocationは通常のcurrent Authorization / Permission / Resource / Binding境界を通り、Command successをBusiness completionへ短絡しません。
+AIが業務の実行主体として受理済みの操作や能力を選び、呼び出すこと自体には、正本の変更提案を要求しません。ただし、能力の呼び出しには通常の認可・権限・資源・対応付けに関する最新の確認が必要です。命令の成功だけで業務完了とは判断しません。
 
-Semantic Capabilityが存在する場合、AI Business Actorへ人間向けGUIのclick操作を標準境界として強制しません。既存systemにUIしかない場合はcomputer-use / adapterを利用できますが、そのUI操作もTarget-specific realizationであり、Business ResultはObservation / Evidenceへ戻って確認します。
+意味上の能力が定義されている場合、AIによる業務操作に、人間向け画面のクリックを標準の手段として強制しません。既存システムに画面しかない場合は、コンピューター操作や変換器を利用できます。ただし、その画面操作も実行先固有の実現方式であり、業務上の結果は観測と検証根拠に戻って確かめます。
 
-Business Procedureにhuman judgment、physical work、external organization、SaaS等が含まれる場合、それらをAIが実行可能に見せるためだけにCapabilityへ変換しません。AI Actorは必要なhandoff / escalationを保持します。
+業務手順に人の判断、物理的な作業、外部組織、SaaSなどが含まれる場合、それらをAIで実行できるように見せるためだけに能力へ変換しません。AIの実行主体にも、必要な引継ぎや上位者への判断依頼を残します。
 
-AI向けにCanonical Worldを複製した第二のKnowledge Baseを正本化しません。必要なOperational Projection / index / bounded contextはderivedでよく、Canonical / Source / Evidenceへ戻れることを要求します。
+AI向けに意味の正本（Canonical World）を複製した第二の知識基盤を、正本にはしません。業務実行向けの表示、索引、用途を限定した文脈は派生情報として扱えますが、正本・入力元・検証根拠へたどれることを要求します。
 
-現時点ではAI Actor専用Runtime、Agent Framework、Agent-only Capability taxonomy、machine-executable Procedure schemaをCoreへ追加しません。RQ-030 / ADR-0028 / ISSUE-000053のReferenceから最小contractを決めます。
+現時点では、AIの実行主体だけに使う実行環境、エージェント基盤、AI専用の能力分類、機械実行可能な業務手順のスキーマを中核へ追加しません。RQ-030、ADR-0028、ISSUE-000053の参照事例から最小限の契約を決めます。
 
 ### 共通の知識と主体別の表示を分ける
 
-人間、AI Builder、AI Business Actorが同じTEI knowledgeへ到達できることは、全員へ同じ巨大payloadを渡すことを意味しません。
+人間、構築を支援するAI、業務を実行するAIが同じTEIの知識を参照できても、全員に同じ大量の情報を渡す必要はありません。
 
 ```text
 Canonical / Source / Evidence / accepted Decisions
@@ -486,7 +486,7 @@ Canonical / Source / Evidence / accepted Decisions
         └─> Operational Projection
 ```
 
-これらは同じauthority rootsへ戻れる**用途別のderived projection**として扱います。
+これらは同じ正本の所在へたどれる、**用途別の派生した表示**として扱います。
 
 ```text
 shared knowledge plane
@@ -495,21 +495,21 @@ shared knowledge plane
   != one replicated knowledge database
 ```
 
-AI Builder re-entry contextは、change target、dependency / impact、accepted Decision / Variation、Capability / Binding、native asset、unresolved、Evidence等へ再入場時に到達するためのprojectionです。
+構築を支援するAIが作業を再開するための文脈は、変更対象、依存関係と影響、受理済みの判断と差異、能力と対応付け、元の資産、未解決事項、検証根拠などへ再びたどり着くための表示です。
 
-Design Synthesis Context Packetは、その中からcurrent synthesis taskに必要なcandidate frontier / proof / unresolved等へさらに狭めたtask-scoped projectionです。RQ-027を理由にS3 packetをRepository全体の永続Knowledge Storeへ拡張しません。
+設計統合用の文脈情報（Design Synthesis Context Packet）は、その中から現在の設計統合作業に必要な候補の範囲、証明、未解決事項などに絞った表示です。RQ-027を理由にS3の文脈情報をリポジトリ全体の永続的な知識の保存先へ広げません。
 
-Human Review Projectionはsemantic diff、impact、exception、unresolved、authority change、Evidence等を高密度に見せるためのprojectionです。情報を省略しても、Canonical ID / Source / Evidenceへdrill-downできることを優先します。
+人による確認向けの表示は、意味上の差分、影響、例外、未解決事項、権限の変更、検証根拠などをまとめて示します。情報を省略しても、正本の識別子、入力元、検証根拠へ詳細をたどれることを優先します。
 
-Operational ProjectionはAI Business Actorがcurrent Procedure / Action / Capability / Authorization requirement / expected Evidenceを理解するためのprojectionです。そこにCapabilityが表示されること自体をinvoke authorityにはしません。
+業務実行向けの表示は、AIの実行主体が現在の業務手順、操作、能力、認可の条件、期待する検証根拠を理解するためのものです。そこに能力が表示されていても、呼び出す権限があることにはなりません。
 
-各projectionは必要に応じて再生成でき、削除してもaccepted meaningが失われてはいけません。同じsemantic factをprojectionごとに独立authoringしません。
+各表示は必要に応じて再生成でき、削除しても受理済みの意味が失われてはいけません。同じ意味上の事実を、表示ごとに別々に記述・管理しません。
 
-現時点では汎用`ApplicationContext` / `KnowledgePacket` schemaをCoreへ固定しません。ISSUE-000053 Phase 0〜2で、既存assetからどこまで再構築できるかを先にPressureします。
+現時点では汎用の`ApplicationContext`や`KnowledgePacket`のスキーマを中核に固定しません。ISSUE-000053の段階0〜2で、既存資産からどこまで再構築できるかを先に検証します。
 
 ### 知識の持ち運びと既存パターンの再利用を分ける
 
-別Applicationの知識を再利用するとき、Reference Patternとして「似た構造を思い出す」ことと、origin Applicationで受入済みのDomain / Infrastructure knowledgeをdestinationへ持ち込むことを同一視しません。
+別のアプリケーションの知識を再利用する際、参照パターンから似た構造を探すことと、元のアプリケーションで受理済みの業務分野や基盤に関する知識を別のアプリケーションへ取り込むことは区別します。
 
 ```text
 pattern recall
@@ -541,9 +541,9 @@ destination override
 
 です。
 
-cross-Application reuseでは、少なくともorigin、dependency、assumption / precondition、Variation、Provider / Target constraint、Evidence / Decision、destination-specific overrideへ戻れることを優先します。
+アプリケーション間で知識を再利用する場合は、少なくとも元の知識、依存関係、前提と事前条件、差異、提供元や実行先の制約、検証根拠と判断、取り込み先に固有の上書き内容を追跡できることを優先します。
 
-reuse後のauthorityには複数形があり得ます。たとえばconceptually:
+再利用後の管理権限には複数の形があります。概念上は、たとえば次の違いです。
 
 ```text
 linked reuse
@@ -554,15 +554,15 @@ adopted local variation
   while retaining origin provenance
 ```
 
-のような差です。どちらを採る場合も、origin側の更新をdestinationへ無条件auto-applyしません。linked dependencyなら再qualification / stale判定対象にでき、local variationならorigin changeはcurrent destination authorityを自動変更しません。
+どちらの場合も、元の知識の更新を取り込み先へ無条件に自動反映しません。依存関係を維持する場合は、再確認や情報の古さの判定対象にできます。取り込み先で独自の差異を受理した場合は、元の知識が変わっても取り込み先の管理権限は自動的に変わりません。
 
-destination overrideをoriginへ暗黙back-propagateせず、copy-pasteだけでprovenanceを失ったforkを標準経路にしません。
+取り込み先での上書きを元の知識へ暗黙のうちに反映しません。また、単なる複写によって来歴が失われた分岐を標準の経路にはしません。
 
-現時点ではKnowledge Package、inheritance graph、override schema、cross-repository auto-sync protocolをCoreへ固定しません。RQ-029 / ISSUE-000053 Phase 5のReferenceから、どのdependency / invalidation / override traceがdurable contractとして必要かを確認します。
+現時点では、知識の配布単位、継承関係の図、上書きのスキーマ、リポジトリ間の自動同期手順を中核へ固定しません。RQ-029とISSUE-000053の段階5における参照事例から、依存関係、失効、上書きの追跡情報のうち、永続的な契約に必要なものを確認します。
 
 ### 既知の操作ではAIの呼び出しを必須にしない
 
-Decision Policyを交換可能にすることは、すべてのoperationをLLMへ送ることを意味しません。
+判断方針を交換可能にしても、すべての操作を大規模言語モデルへ送る必要はありません。
 
 ```text
 known / exact / deterministic operation
@@ -575,11 +575,11 @@ both
   -> same semantic action / authority boundary
 ```
 
-exact identity、既知rule、明示済みCapability、決定論的変換等で十分に解ける場合は、AIを呼ばない経路を標準候補として保持します。AIを呼ばないことを「低機能」とみなしません。
+正確な識別子、既知の規則、明示済みの能力、決定論的な変換などで十分に処理できる場合は、AIを呼び出さない経路を標準候補として残します。AIを呼び出さないことを「低機能」とはみなしません。
 
-逆に曖昧なpurpose、複数candidateの比較、説明・統合、semantic residual等ではAI reasoningを利用できます。ただしAI routing scoreや「AIを使う」という選択自体はSemantic applicability・Acceptance・execution authorityにはなりません。
+反対に、目的が曖昧な場合、複数候補の比較、説明や統合、残された意味上の問題などではAIによる推論を利用できます。ただし、AIへ振り分ける際の評価点や「AIを使う」という選択自体は、意味上の適用可能性、受理、実行権限を保証しません。
 
-このroutingは性能最適化だけでなく、同じsemantic contractをよりpredictable / local / low-costに満たせる範囲を保つための境界です。現時点でrouter implementationや固定thresholdはArchitectureへ採用しません。
+この振分けは性能の最適化だけを目的としません。同じ意味上の契約を、より予測しやすく、局所的で、低費用な方法で満たせる範囲を保つための境界でもあります。現時点では振分け機構の実装や固定のしきい値を全体構成に採用しません。
 
 ## データベースの変更と運用の周期
 
