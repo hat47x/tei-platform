@@ -15,6 +15,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 HEALTH = ROOT / '.github/workflows/tei-repository-health-manual.yml'
 SMOKE = ROOT / '.github/workflows/tei-runner-smoke-manual.yml'
+AUTO_HEALTH = ROOT / '.github/workflows/tei-repository-health-ci.yml'
 REMOTE_URL = 'https://github.com/hat47x/tei-platform.git'
 
 
@@ -49,6 +50,46 @@ def meaningful_shell_lines(script):
 def required_health_commands():
     return ['set -euo pipefail', 'go version',
             'bash tools/repository-health-check.sh']
+
+
+
+def public_pr_boundary_errors(source):
+    """Static public-fork safety guard; does not prove a live fork run."""
+    failures = []
+    if not re.search(r'(?m)^on:\n  pull_request:\n    branches: \[main\]', source):
+        failures.append('expected main-targeted pull_request event')
+    if 'pull_request_target' in source:
+        failures.append('no elevated pull_request_target execution')
+    if not re.search(r'(?m)^permissions:\n  contents: read(?:\n|$)', source):
+        failures.append('token must be read-only')
+    if re.search(r'(?m)^\s+permissions:', source):
+        failures.append('job must not override token permissions')
+    if 'secrets.' in source or 'secrets[' in source:
+        failures.append('no secrets may be referenced')
+    if 'continue-on-error:' in source:
+        failures.append('do not ignore checks')
+    if 'persist-credentials: false' not in source:
+        failures.append('checkout credentials must not persist')
+    if 'fetch-depth: 0' not in source:
+        failures.append('full Git history is required')
+    if 'ref: ${{ github.event.pull_request.head.sha }}' in source:
+        failures.append('primary checkout must use PR merge commit')
+    uses = re.findall(r'(?m)^\s*uses:\s*(\S+)', source)
+    if uses != [
+            'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+            'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e']:
+        failures.append('use only audited pinned actions')
+    if 'PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}' not in source:
+        failures.append('head must come from PR event')
+    if source.count('test "$head" = "$PR_HEAD_SHA"') < 2:
+        failures.append('verify PR merge commit against head')
+    if 'test "$head_parent" = "$PR_HEAD_SHA"' not in source:
+        failures.append('verify isolated candidate head')
+    if 'bash tools/repository-health-check.sh' not in source:
+        failures.append('do not skip repository health')
+    if 'timeout-minutes:' not in source or 'cancel-in-progress: true' not in source:
+        failures.append('bound runner resource use')
+    return failures
 
 
 def git(directory, *args):
@@ -220,6 +261,47 @@ class StaticWorkflowContract(unittest.TestCase):
         self.assertNotEqual(required_health_commands(),
                             meaningful_shell_lines(bypass))
         self.assertIn('bash tools/repository-health-check.sh', bypass)
+
+    def test_public_pr_ci_read_only_boundary(self):
+        text, blocks = scripts(AUTO_HEALTH)
+        self.assertEqual([], public_pr_boundary_errors(text))
+        self.assertGreaterEqual(len(blocks), 3)
+        for script in blocks:
+            self.assertEqual(
+                0, command('bash', '-n', '-c', script, check=False).returncode)
+
+    def test_public_pr_ci_rejects_unsafe_mutations(self):
+        source = AUTO_HEALTH.read_text(encoding='utf-8')
+        mutations = [
+            source.replace('  pull_request:', '  pull_request_target:', 1),
+            source.replace('permissions:\n  contents: read',
+                           'permissions:\n  contents: write', 1),
+            source.replace('    runs-on: ubuntu-24.04',
+                           '    permissions:\n      contents: write\n'
+                           '    runs-on: ubuntu-24.04', 1),
+            source.replace('      GOENV: off',
+                           '      UNSAFE_TOKEN: ${{ secrets.ACCESS_TOKEN }}\n'
+                           '      GOENV: off', 1),
+            source.replace('persist-credentials: false',
+                           'persist-credentials: true', 1),
+            source.replace('actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+                           'actions/checkout@v7', 1),
+            source.replace('PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}',
+                           'PR_HEAD_SHA: attacker-chosen', 1),
+            source.replace('test "$head_parent" = "$PR_HEAD_SHA"',
+                           'true # head not verified', 1),
+            source.replace('          fetch-depth: 0',
+                           '          ref: ${{ github.event.pull_request.head.sha }}\n'
+                           '          fetch-depth: 0', 1),
+            source.replace('bash tools/repository-health-check.sh',
+                           'echo full-health-skipped', 1),
+            source + '\n    continue-on-error: true\n',
+        ]
+        self.assertEqual(11, len(mutations))
+        for index, changed in enumerate(mutations):
+            with self.subTest(index=index):
+                self.assertNotEqual(source, changed)
+                self.assertNotEqual([], public_pr_boundary_errors(changed))
 
     def test_runner_smoke_contract(self):
         text, blocks = scripts(SMOKE)
