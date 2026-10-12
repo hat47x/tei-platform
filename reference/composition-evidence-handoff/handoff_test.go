@@ -117,3 +117,51 @@ func TestHandoffDeduplicatesSubjectsAcrossMultipleConsumers(t *testing.T) {
 		t.Fatalf("shared dependency not deduplicated %+v", got)
 	}
 }
+
+func TestHandoffRejectsMissingOrDuplicatedDependencyTargets(t *testing.T) {
+	for _, modify := range []struct {
+		name  string
+		apply func(*composition.WiringSetFinding)
+	}{
+		{"missing", func(s *composition.WiringSetFinding) {
+			s.Findings[0].VerificationTargets = s.Findings[0].VerificationTargets[:1]
+		}},
+		{"duplicate", func(s *composition.WiringSetFinding) {
+			s.Findings[0].VerificationTargets[1] = s.Findings[0].VerificationTargets[0]
+		}},
+		{"wrong-epoch", func(s *composition.WiringSetFinding) {
+			s.Findings[0].VerificationTargets[1].Epoch++
+		}},
+	} {
+		t.Run(modify.name, func(t *testing.T) {
+			set, _ := proposal(t)
+			modify.apply(&set)
+			got := Reconcile(set, nil)
+			if !got.Blocked || len(got.Subjects) != 0 {
+				t.Fatalf("forged closure produced subjects: %+v", got)
+			}
+		})
+	}
+}
+
+func TestHandoffIncompleteArtifactDigestAndFingerprint(t *testing.T) {
+	set, _ := proposal(t)
+	target := set.Findings[0].VerificationTargets[0]
+	for _, modify := range []struct {
+		name  string
+		apply func(*EvidenceReference)
+	}{
+		{"bad-digest", func(r *EvidenceReference) { r.ArtifactDigest = "sha256:invalid" }},
+		{"missing-resolution", func(r *EvidenceReference) { r.ResolutionFingerprint = "" }},
+		{"missing-implementation", func(r *EvidenceReference) { r.ImplementationID = "" }},
+	} {
+		t.Run(modify.name, func(t *testing.T) {
+			candidate := ref(target)
+			modify.apply(&candidate)
+			got := Reconcile(set, []EvidenceReference{candidate})
+			if got.Blocked || got.Subjects[0].State != ReferenceIncomplete || got.Subjects[0].Reference != nil {
+				t.Fatalf("incomplete provenance accepted: %+v", got)
+			}
+		})
+	}
+}
