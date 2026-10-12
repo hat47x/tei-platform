@@ -36,3 +36,16 @@ PR #1289の初期head `8a70ce28b1d2a72a8c9e590391bbd2f195b99b70`については�
 なおmainの[実行 #38219902076](https://github.com/hat47x/tei-platform/actions/runs/38219902076)は全体として**失敗**している。具体的には`internal/modelref/impact_diff.go`／`impact_review.go`のGo整形不一致、`internal/plugin/transform`のテストにおける未定義の`TransformSourceRealizerV1`が原因として現れた。一方、当該main版における`tei/reference/application-composition`の通常Goテストは成功していた。**これはmainの旧テストの結果であり、E16の実行成功ではない**。
 
 別PRの[実行 #38220719850](https://github.com/hat47x/tei-platform/actions/runs/38220719850)では未定義識別子の問題が先行して修正された一方、`TestSourceBoundaryExactLimitWithPairedUnicode`が8 MiB境界で失敗していた。これらは本PRの変更範囲外であり、E16側で変換処理やmodelrefの所有コードを重複修正しない。最新mainの変化もあるため、**新しいPR CIで局所検証の成否と既存失敗を分けて判断する**。
+
+## E17：同一解析済みbytesと二つのファイル状態
+
+[E17の回帰テスト](e17_source_revision_test.go)は、実際の`reference/workspace`を権限を限定した一時ディレクトリに複製し、`semantic/sales/order.tei`に改行を一つ追加する。元のWorkspaceは変更しない。
+
+1. 変更前の`workspace.Load`と`BuildSourceIndex`が観測したRelation `sales.order.customer`の定義指紋を記録する。
+2. ファイルを書き換えた**後**、変更前の`Load`結果を使ってもう一度Source Indexを構築する。解析時に保持したbytesが使われ、**古い指紋が維持される**ことを確認する。
+3. 同じディレクトリを新たに`Load`し直すと、Relationの定義Source指紋が更新されることを確認する。
+4. ただの改行追加では意味モデルが同じであるため、既存`modelref.Diff`は型付きGraphの論理変更を検出しないことを確認する。
+
+これは**二つの実ファイル状態の検査**であり、Git上の異なる改訂履歴を取得した試験ではない。Sourceの指紋が変わることと、意味の版が変わることを同一視せず、どちらの情報も相互に置換しない。
+
+検証対象はGoの通常テストに含まれる。CIの実行結果は実行ID・対象PRコミットとともに確認し、未完了の実行をPASSと記録しない。
