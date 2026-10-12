@@ -18,7 +18,7 @@ fi
 probe="$(mktemp -d)"
 trap 'rm -rf "$probe"' EXIT
 mkdir -p "$probe/module/core" "$probe/consumer" "$probe/home" "$probe/modcache" "$probe/cache"
-for name in identity subject effect; do
+for name in identity subject effect generation; do
   cp -R "$repo_root/core/$name" "$probe/module/core/$name"
 done
 if [[ -n "$(find "$probe/module" \( -type l -o -name go.mod -o -name go.work \) -print -quit)" ]]; then
