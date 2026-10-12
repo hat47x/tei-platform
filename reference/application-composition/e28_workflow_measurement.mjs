@@ -122,8 +122,22 @@ export function compareE28(existing, candidate) {
       a.id!==b.id || a.consumer!==b.consumer || a.baseRevision!==b.baseRevision ||
       a.target!==b.target || existing.scope!=='claimed-complete-not-verified' ||
       candidate.scope!=='claimed-complete-not-verified' ||
-      !existing.submittedCounts || !candidate.submittedCounts) {
+      !existing.submittedCounts || !candidate.submittedCounts ||
+      !countedFields.every(name=>Number.isSafeInteger(existing.submittedCounts[name]) &&
+        existing.submittedCounts[name]>=0 &&
+        Number.isSafeInteger(candidate.submittedCounts[name]) &&
+        candidate.submittedCounts[name]>=0) ||
+      ((existing.claimedCoveredCounts===null)!==(candidate.claimedCoveredCounts===null))) {
     return {status:'not-comparable', reportedDelta:null, verifiedImprovement:null};
+  }
+  if (existing.claimedCoveredCounts && candidate.claimedCoveredCounts) {
+    const reportedDelta=Object.fromEntries(countedFields.map(name=>{
+      const a=existing.claimedCoveredCounts[name], b=candidate.claimedCoveredCounts[name];
+      return [name,Number.isSafeInteger(a) && a>=0 && Number.isSafeInteger(b) && b>=0 ?
+        b-a : null];
+    }));
+    return {status:'reported-coverage-only-not-verified', reportedDelta,
+      verifiedImprovement:null};
   }
   const reportedDelta=Object.fromEntries(countedFields.map(name=>
     [name,candidate.submittedCounts[name]-existing.submittedCounts[name]]));
