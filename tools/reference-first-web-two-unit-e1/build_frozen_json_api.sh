@@ -2,6 +2,7 @@
 # Opt-in diagnostic API build with a frozen normalized World. The unmodified
 # Browser and ordinary API builder remain the reference baseline.
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 if [[ $# -ne 3 || "$1" != /* ]]; then
   echo "usage: bash $0 /absolute/new/artifact-dir BASELINE_ID BASELINE_REVISION" >&2
   exit 2
@@ -131,6 +132,12 @@ m.update({
 })
 mfile.write_text(json.dumps(m, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
+
+# Check the *staged*, complete Browser+API unit pair before atomic publish.
+# The receipt and built executable are independently re-read, fail-closed.
+python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py \
+  "$scratch/derived" > "$scratch/two-unit-preflight.json"
+
 if [[ "$(git rev-parse HEAD)" != "$source_sha" ||
       -n "$(git status --porcelain=v1 --untracked-files=all)" ]]; then
   echo "source changed during frozen build" >&2

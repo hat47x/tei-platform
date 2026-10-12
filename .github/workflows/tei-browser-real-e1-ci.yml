@@ -86,6 +86,23 @@ jobs:
           test -s "$shots/real-browser-receipt.json"
           grep -Fq '"browserDOMAndRealHTTPVerified": true' "$shots/real-browser-receipt.json"
           grep -Fq '"visualFidelityHumanAccepted": false' "$shots/real-browser-receipt.json"
+      - name: 固定World APIと静的Browserの実Chrome操作を追加検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/tei-frozen-chrome-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          shots="$RUNNER_TEMP/tei-first-web-chrome-screenshots/frozen"
+          bash tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh \
+            "$dest" B e5231839a5dcc62cce1181a2731fcb7c70d16736
+          python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py "$dest"
+          node tools/reference-first-web-two-unit-e1/real_browser_replay.mjs \
+            "$dest" "$RUNNER_TEMP/tei-playwright-core" "$shots"
+          test -s "$shots/desktop-blank.png"
+          test -s "$shots/mobile-blank.png"
+          test -s "$shots/desktop-completed.png"
+          test -s "$shots/mobile-completed.png"
+          grep -Fq '"browserDOMAndRealHTTPVerified": true' "$shots/real-browser-receipt.json"
+          grep -Fq '"visualFidelityHumanAccepted": false' "$shots/real-browser-receipt.json"
       - name: 実画面の合成証跡を添付（本番画面ではない）
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -37,6 +37,7 @@ type PinnedLinuxProcess struct {
 }
 
 var _ ProcessLauncher = (*PinnedLinuxProcess)(nil)
+var _ SandboxedProcessRunner = (*PinnedLinuxProcess)(nil)
 var _ ArtifactVerifier = (*PinnedLinuxProcess)(nil)
 
 // boundProcessImage marks a runtime-held image; Registry requires the exact
@@ -169,6 +170,13 @@ func (p *PinnedLinuxProcess) Invoke(ctx context.Context, command ProcessCommand,
 		return Response{}, errors.New("Host signer trust was revoked or changed")
 	}
 	return p.transport.invokeExecutable(ctx, command, request, "/proc/self/fd/3", []*os.File{p.image})
+}
+
+// InvokeSandboxedはHostSandboxLauncherによってホスト側の制約を適用した
+// 後でのみ呼び出す実行トランスポートである。この型自身はOSの隔離を行わない。
+// 実行内容の固定と子プロセス環境変数の明示指定には通常のInvokeを利用する。
+func (p *PinnedLinuxProcess) InvokeSandboxed(ctx context.Context, command ProcessCommand, request Request) (Response, error) {
+	return p.Invoke(ctx, command, request)
 }
 
 // Closeは子プロセスの実行完了を待って、保持した実行内容を解放する。
