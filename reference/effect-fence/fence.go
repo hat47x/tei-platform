@@ -38,7 +38,10 @@ type Request struct {
 
 // Permit は事前検査済みの操作を表す不透明な識別子である。
 // 外部からゼロ値を構築しても書込み権限にならない。
-type Permit struct{ id uint64 }
+type Permit struct {
+	id    uint64
+	owner *MemoryStore
+}
 
 // Disposition は確定、既存結果の再照会、無作用での拒否を区別する。
 // 外部サービスで結果が不明な状態をこの模擬実装の「拒否」に読み替えてはならない。
@@ -150,7 +153,7 @@ func (m *MemoryStore) Prepare(ctx context.Context, req Request) (Permit, Result,
 		return Permit{}, Result{}, errors.New("操作識別子の内部連番が上限に達しました")
 	}
 	m.sequence++
-	p := Permit{id: m.sequence}
+	p := Permit{id: m.sequence, owner: m}
 	m.pending[p.id] = prepared{request: req, authorityVersion: grant.version}
 	return p, Result{Disposition: Prepared}, nil
 }
@@ -167,7 +170,7 @@ func (m *MemoryStore) Commit(ctx context.Context, p Permit) (Result, error) {
 		return Result{}, err
 	}
 	entry, ok := m.pending[p.id]
-	if !ok || p.id == 0 {
+	if !ok || p.id == 0 || p.owner != m {
 		return Result{Disposition: Denied, Reason: "unknown-permit"}, nil
 	}
 	delete(m.pending, p.id)
