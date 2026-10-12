@@ -65,19 +65,21 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 
 - canonical GitHub remote/current mainと各branch tipの一致、cleanと非標準indexを確認し、競合があればfail-closed。merge結果はdetachedの**一時的な合成HEAD**であり、単体PRのexact HEAD試験とは区別。
 - #1124のNode test/scratch E2E、#1120 scoped modelref、#1121 lowering、既存mainの受注明細Web Goテスト、親#1119 preflight、full repository-health-checkを実行する。
-- さらに `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs` を一時統合worktree内で実行する。Scratchの`reference/workspace` copyを作り、**Studioの一候補2操作→Shared Acceptance Preview/Review/test-only Accept→R1→既存Web Targetを実起動→loopback HTTP submit**を通す。Webへ変更後のApplication Validation 4件が届き、全件satisfied、Commandと**synthetic** Observationを報告する。受理時に管理対象Source2ファイルのみ変更されたこと、起動前後のscratch R1一致も検査。
-- 正常系の出力 `E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY` は**限定的な実験**。人間の受理ではなく、単価0がlive serverで拒否されるE1-Bも含まない。実DB、current Host Authority、独立DB read、S02/S05、G1四視点、第二Target、製品Gateの証拠ではない。
+- さらに `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs` を一時統合worktree内で実行する。Scratchの`reference/workspace` copyを作り、**Studioの一候補2操作→Shared Acceptance Preview/Review/test-only Accept→R1→既存Web Targetを実起動→loopback HTTP submit**を通す。Webへ変更後のApplication Validation 4件が届き、正常系では全件satisfied、Commandと**synthetic** Observationを報告する。続いて元のコードや受理済みWorkspaceを変更せず、`go build -overlay`でテスト専用の注文1001の単価を`4000.00`から`0`に置き換えた**別バイナリ**を実起動し、同じR1の規則で`validation-not-satisfied`となり、CommandとObservationへ進まないことを確認する。受理時に管理対象Source2ファイルのみ変更されたこと、両Web実行前後のscratch R1一致も検査。
+- 想定出力 `E1_A_B_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY` は**限定的な実験**。単価0の負例は実際のHTTPサーバを用いるが、合成データを置き換えたテスト専用**別のバイナリ**で実施し、通常のTargetと同じ実行成果物が負例に合格したとは主張しない。Go OverlayはSourceやWorkspaceを改変しない。人間の受理・実DB・current Host Authority・独立DB read・S02/S05・N11・G1四視点・第二Target・製品Gateの証拠ではない。**コード追加は実行PASSを意味しない。**
 - cross-branch compositionそのものは正式なPR mergeでもrelease候補でもない。合成環境が成功しても、各PRの正確なHEADとlatest main上での個別資格試験、独立Reviewは必要である。
 
-**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の3つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
+**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の5つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
 
 - `workspace-r1.json`：R0→test-only Accept→R1、Preview/Review fingerprint、変更Sourceの相対pathと実行前後の管理対象差分を記録。Human Approvalと主張しない。
 - `target-launch.json`：起動WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。Host権限の確認ではない。
 - `web-positive.json`：HTTP正常系のValidation ID/結果4件、Command観測とsynthetic Observation。認証情報、実DBの値・注文個人情報は含めない。
+- `target-negative-launch.json`：テスト専用Go Overlayによる別バイナリの指紋、元fixtureと差替fixtureの指紋、起動先、同じR1申告を記録。通常Targetと同一バイナリとはみなさない。
+- `web-negative-unit-price.json`：実行中の別Webサーバに対して単価0で`not-satisfied`を得て、CommandとObservationが未実行であることを記録。合成データによる負例であり、実DBの独立観測ではない。
 
-この3ファイルは同じtest harness由来の**別段階の生存receipt**であり、第三者の独立署名や外部Authorityの証明ではない。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。現段階では新規単価0のlive Web負例とN11がないため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
+この5ファイルは同じtest harness由来の**別段階の限定的なreceipt**であり、第三者の独立署名や外部Authorityの証明ではない。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。単価0の実Web負例を追加したが、通常のTargetと別ビルドの試験であり、N11、外部Authority、実際の独立Observationなども未解消のため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
 
-**実行状況**: このスクリプトとNode smokeのコードを追加しただけ。現ChatGPT環境から正規GitHubを`git fetch`できないため、ここではfull checkout統合実行・live Web HTTP実測・full Healthは**NOT RUN**。両方のscriptが成功出力を返すことを今回の成果として報告してはならない。mainや並走ブランチが更新されればSHAを再取得して再実行する。
+**実行状況**: このスクリプトとNode smokeの正負経路はコードを追加しただけ。現ChatGPT環境から正規GitHubを`git fetch`できないため、ここではfull checkout統合実行・live Web HTTP実測・full Healthは**NOT RUN**。Go Overlayの仕組みについては隔離した最小プログラムでの動作確認のみであり、TEI Web Targetの実行証拠ではない。両方のscriptが成功出力を返すことを今回の成果として報告してはならない。mainや並走ブランチが更新されればSHAを再取得して再実行する。
 
 ## v0の対象シナリオと判断境界
 
