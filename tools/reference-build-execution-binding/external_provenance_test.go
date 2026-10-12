@@ -114,9 +114,9 @@ func TestExternalProvenanceStrictDocumentBoundary(t *testing.T) {
 	duplicateField := strings.Replace(string(document), `"issuer":`, `"issuer":"tei.reference.forged","issuer":`, 1)
 
 	for _, tc := range []struct {
-		name        string
-		document    []byte
-		wantError   string
+		name      string
+		document  []byte
+		wantError string
 	}{
 		{name: "duplicate JSON key", document: []byte(duplicateField), wantError: "duplicate field"},
 		{name: "unknown JSON key", document: []byte(extraField), wantError: "unknown field"},
