@@ -1,4 +1,4 @@
-# TEIの業務システム設計
+# TEI 業務システム設計アーキテクチャ
 
 状態: 現行の設計基準
 
@@ -28,7 +28,7 @@ TEIの要求・参照例・検証根拠を正本とし、外部の公開知見�
 
 一つの視点だけでは他の視点を説明できない場合、設計はまだ完結していません。一方、不足する情報を別の視点からの推測で埋めても、設計が整合したとはみなしません。
 
-## 3. データを先に捉えるが、データだけでは設計を終えない
+## 3. Data-first but not Data-only
 
 TEIでは、変わりにくい業務上のデータと関係を、画面・物理データベース・実装技術から分けて扱います。
 
@@ -44,7 +44,7 @@ physical schema / Provider
 
 データへの追跡情報が見つからなくても、業務にデータの依存関係がないと断定しません。
 
-### データの定義と個々の記録を分ける
+### Data meaningとrecord instanceを分ける
 
 データの視点で扱う`Customer`、`Order`、`Card`などの業務上の意味と、アプリケーションが実際に保持する個々の記録は区別します。
 
@@ -60,7 +60,7 @@ instance-level factはApplication data、Database、external system、Observatio
 
 ただしmaster/reference data、configuration、policy table等、instance集合自体が設計authorityを持つdomainでは明示的なauthoritative sourceとして扱う余地があります。その場合もdefinition / instance / Observationのどれがownerかを曖昧にしません。
 
-### 業務上の識別、関数従属性、物理キーを分ける
+### 業務上の識別・関数従属性・物理キーを分ける
 
 データ設計では、最初からすべてのテーブルに単独の`id`を付けることはしません。まず、業務上の一件を何で識別するか、どの項目が何によって定まるかを確認します。識別と関数従属性は、画面やORM、データベースの提供元の都合より先に検討すべき業務上の意味です。
 
@@ -102,7 +102,7 @@ View、Application Pattern、formの入力単位、runtime objectのidentityか�
 
 validity period、identifier reuse、state transition、current-state selection等の時間意味は、業務上必要な場合にSource / Contractへ戻って確定します。履歴table、Event Sourcing、Bitemporal Model等を通常のDataへ一律に導入しません。
 
-### 同一性と表記・正規化を分ける
+### identityと表記・正規化を分ける
 
 同じ業務対象でも、外部システムごとに文字表記、符号化、コード体系、表示形式が異なる場合があります。TEIでは、業務上の同一性を、一つの文字列表現や正規化規則と同一視しません。
 
@@ -110,7 +110,7 @@ validity period、identifier reuse、state transition、current-state selection�
 
 表記が異なる場合も、直ちに別identityとは判断しません。どの差異を同値と扱うかはdomainと用途に依存するため、Source、scope、変換規則、必要なら人によるAcceptanceへ戻れる構造を優先します。
 
-### データの論理的な統合と物理配置を分ける
+### 論理的なData統合と物理配置を分ける
 
 TEIは、一つの業務Data Modelを一つの物理Databaseへ固定しません。ApplicationとDatabaseをN:Mで扱い、同じ業務システムのDataを複数Database、Provider、外部Serviceへ配置できます。
 
@@ -128,7 +128,7 @@ physical Database / Service / Provider
 
 APIやmessageで接続できることは、Data meaningが統合されているEvidenceではありません。逆に、論理的に一つのData Modelとして説明できることも、すべてのrecordを一つのDatabaseへ集約する理由にはしません。法令、組織責任、可用性、性能、既存資産等による配置差はBinding / Realizationとして追跡します。
 
-### 対象領域とサブシステムを、理解と検査のための区分候補とする
+### Subject Area / Subsystemは理解と検査の境界候補とする
 
 大規模な業務システムでは、全Data / Function / Procedureを一度に理解することは困難です。そこで、業務上のまとまりを検討するSubject Areaと、Dataの所属とFunction / Interactionの利用関係を重ねて確認するSubsystemを、局所的なreview boundaryとして利用できるようにします。
 
@@ -416,7 +416,7 @@ Business condition
 
 現在はHandoffへEvidence fieldを追加しません。second realistic Referenceでconditionだけではreview上lossyになる場合、Handoff schemaを拡張する前に既存Source / Provenance / Evidence mechanismでtrace可能かを確認します。
 
-## 14. 三つの視点による相互確認
+## 14. 三視点のcross-check
 
 Architectureとして少なくとも次を確認します。
 
@@ -437,7 +437,7 @@ unresolved
 
 を区別します。これはdiagnostic severityの固定enumではありません。
 
-## 15. 対応表は相互確認のための派生表示とする
+## 15. Matrixはcross-check用derived Projectionとする
 
 業務行為と機能、Data、Procedure等の対応をMatrixとして可視化することは、cross-checkに有効です。ただしMatrix自体を第二のsource of truthにはしません。
 
@@ -456,7 +456,7 @@ Matrix上では `derived fact` / `human residual explanation` / `unknown` を区
 
 対応表の空欄も、自動的に「関係なし」を意味するわけではありません。直接の追跡情報がないのか、対象外なのか、未解決なのかを必要に応じて区別します。
 
-## 16. 編集画面では関連する意味をまとめて表示する
+## 16. Editorはconnected meaningの高密度Projectionとする
 
 EditorはData、Relation、Rule、View、Application intent、Procedure、Source、Evidenceの関係を局所的に追える必要があります。
 
@@ -484,7 +484,7 @@ Driverが実行するのはsystem-realizableな部分であり、Business Proced
 
 Driver execution Evidenceが得られても、manual / physical / external Actionが自動的に実行済みになるわけではありません。
 
-## 18. 業務上の意味と実行先に依存しない表示を分ける
+## 18. Business meaningとTarget-neutral Presentationを分ける
 
 具体的なWeb component、Wails API、HTML template、mobile widgetをBusiness meaningへ直接埋め込みません。
 
@@ -502,13 +502,13 @@ Target-neutral interaction intent
 
 Target差はTarget CapabilityとExecution / Trust Profileへ置きます。
 
-## 19. 時間軸は必要な業務で明示的に扱う
+## 19. 時間軸はopt-inの業務dimensionとする
 
 Event順序、validity、history、lead time、waiting time、bottleneck、temporal resource use等が必要な業務では時間軸を明示します。一方、通常の業務へEvent Sourcing / Bitemporal architectureやDistributed eventual consistencyを一律導入しません。
 
 時系列上の前後関係だけでBusiness Handoffや責任境界を生成しません。
 
-## 20. 参照例は学習と設計上の検証に使う
+## 20. Referenceは学習・圧力コンテンツとする
 
 Referenceはtechnical fixtureだけでなく、学習例、platform pressure test、design-review target、regression Evidenceを兼ねられることを目指します。
 
@@ -534,7 +534,7 @@ authoritative sourceへ戻って修正
 
 一つのReferenceが動くことだけから汎用性を主張しません。異なるdomain、規模、Data構造、Business Procedure、Target / Provider条件を持つ複数Referenceによって、どの範囲までTEIの設計体系が成立するかを反証可能な形で広げます。
 
-## 21. AIは問題の指摘と提案を担い、決定権限は持たない
+## 21. AIはcritic / proposerでありauthorityではない
 
 AIはExisting knowledge探索、cross-reference候補、Procedure草案、Matrix / graph / UI Projection生成、不足検出、unresolved question提示を支援できます。
 
@@ -563,7 +563,7 @@ Identity / Type / Relation / Expression / Constraint / Lifecycle / Provenance等
 
 外部Referenceは「その概念が存在する」という証明ではなく、「どの設計失敗を避けるためにその観点が必要か」を問い直す材料として使います。
 
-## 23. 検証根拠に関する未解決の問い
+## 23. 未解決Evidence question
 
 - **O-01 Procedure identity:** traceable derived Procedureでaccepted business meaningを保持できるか。
 - **O-02 Business Flow:** runtime Workflow Engine化せず表す最小構造は何か。
