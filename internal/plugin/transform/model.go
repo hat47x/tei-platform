@@ -32,6 +32,8 @@ const (
 	OpAssertEqual     Op = "assert-equal"
 	OpAssertEnum      Op = "assert-enum"
 	OpAssertNonBlank  Op = "assert-nonblank"
+	OpAssertCanonicalID Op = "assert-canonical-id"
+	OpAssertPositiveInt Op = "assert-positive-integer"
 	OpAssertUniqueBy  Op = "assert-unique-by"
 	OpCanonicalJSON   Op = "canonical-json"
 	OpSHA256          Op = "sha256"
@@ -180,7 +182,7 @@ func (s Source) Validate() error {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
 		switch s.Program.Assertions[i].Op {
-		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertUniqueBy, OpAssertEach:
+		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertCanonicalID, OpAssertPositiveInt, OpAssertUniqueBy, OpAssertEach:
 		default:
 			return fmt.Errorf("transform assertion %d must use assert operation, got %s", i, s.Program.Assertions[i].Op)
 		}
@@ -366,6 +368,13 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 			return err
 		}
 		if err := child(expr.From, "assert-nonblank source"); err != nil {
+			return err
+		}
+	case OpAssertCanonicalID, OpAssertPositiveInt:
+		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
+			return err
+		}
+		if err := child(expr.From, string(expr.Op)+" source"); err != nil {
 			return err
 		}
 	case OpCanonicalJSON, OpSHA256:
