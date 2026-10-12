@@ -102,7 +102,22 @@ type actionFunctionPair struct {
 
 var crossViewFingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
-func BuildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
+// BuildCrossViewProjection builds read-only relations only after verifying the
+// exact source document and its version against the supplied transcription contract.
+// Unvalidated Inspection values are not accepted at this public boundary.
+func BuildCrossViewProjection(
+	format Format,
+	source []byte,
+	contract []byte,
+) (CrossViewProjection, error) {
+	inspection, err := InspectWithContract(format, source, contract)
+	if err != nil {
+		return CrossViewProjection{}, err
+	}
+	return buildCrossViewProjection(inspection)
+}
+
+func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error) {
 	doc := inspection.Document
 	mappingContractFingerprint, err := normalizeCrossViewContractFingerprint(inspection.TranscriptionContractFingerprint)
 	if err != nil {
