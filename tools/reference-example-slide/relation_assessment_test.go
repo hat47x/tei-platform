@@ -404,3 +404,27 @@ func TestKnownOneCardinalityContradictionWinsOverUnknownCandidate(t *testing.T) 
 		t.Fatalf("unresolved candidate hid an already proven contradiction: %+v", finding)
 	}
 }
+
+func TestCompositeKeyExplicitNullAndKnownMismatchAreOrderIndependent(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		in := keyedInput()
+		in.Example.Base = append(in.Example.Base, Record{
+			ID: "null-but-disjoint",
+			Table: "parent",
+			Values: map[string]json.RawMessage{
+				"tenant": json.RawMessage("null"),
+				"number": json.RawMessage(`"definitely-other"`),
+			},
+		})
+		if reverse {
+			keys := in.Catalog.Relations[0].Keys
+			keys[0], keys[1] = keys[1], keys[0]
+		}
+		finding := oneFinding(t, in)
+		if finding.Result != "supported" ||
+			len(finding.MatchedTargetIDs) != 1 ||
+			finding.MatchedTargetIDs[0] != "a" {
+			t.Fatalf("explicit null obscured known mismatch; reversed=%t: %+v", reverse, finding)
+		}
+	}
+}
