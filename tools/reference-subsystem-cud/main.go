@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -380,12 +379,9 @@ func main() {
 			if err := json.Unmarshal(idxBytes, &idx); err != nil {
 				fail(fmt.Errorf("decode Source Index JSON: %w", err))
 			}
-			reader := func(path string) ([]byte, error) {
-				p, err := sourceindex.NormalizeWorkspacePath(path)
-				if err != nil || p != path {
-					return nil, fmt.Errorf("invalid indexed source path %q", path)
-				}
-				return os.ReadFile(filepath.Join(*sourceRoot, filepath.FromSlash(p)))
+			reader, readErr := indexedSourceReader(*sourceRoot)
+			if readErr != nil {
+				fail(readErr)
 			}
 			out, err = InspectIndexedProcedureSnapshot(worldBytes, procedureBytes, factsBytes, idx, *procedureSourcePath, reader)
 		}
