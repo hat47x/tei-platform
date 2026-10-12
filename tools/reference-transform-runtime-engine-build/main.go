@@ -17,6 +17,7 @@ import (
 
 	"tei/internal/core"
 	pruntime "tei/internal/plugin/runtime"
+	"tei/tools/internal/gobuilder"
 )
 
 const (
@@ -475,21 +476,7 @@ func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
 }
 
 func fixedGoBuildSettings() []string {
-	settings := []string{
-		"CGO_ENABLED=0",
-		"GOARCH=" + runtime.GOARCH,
-		"GOENV=off",
-		"GOEXPERIMENT=",
-		"GOFLAGS=",
-		"GOOS=" + runtime.GOOS,
-		"GOPROXY=off",
-		"GOSUMDB=off",
-		"GOTOOLCHAIN=local",
-		"GOVCS=*:off",
-		"GOWORK=off",
-	}
-	sort.Strings(settings)
-	return settings
+	return gobuilder.FixedSettings(runtime.GOOS, runtime.GOARCH)
 }
 
 func recordedBuildSettings() []string {
@@ -507,67 +494,11 @@ func allowedHostEnvironment(base []string) ([]string, error) {
 }
 
 func allowedHostEnvironmentForOS(base []string, goos string) ([]string, error) {
-	allowed := map[string]struct{}{}
-	if goos == "windows" {
-		for _, key := range []string{"COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR"} {
-			allowed[key] = struct{}{}
-		}
-	}
-	values := map[string]string{}
-	for _, entry := range base {
-		key, value, ok := strings.Cut(entry, "=")
-		if !ok {
-			continue
-		}
-		upper := strings.ToUpper(key)
-		if _, ok := allowed[upper]; !ok {
-			continue
-		}
-		normalized := upper + "=" + value
-		if existing, exists := values[upper]; exists && existing != normalized {
-			return nil, fmt.Errorf("conflicting inherited Host environment for %s", upper)
-		}
-		values[upper] = normalized
-	}
-	out := make([]string, 0, len(values))
-	for _, entry := range values {
-		out = append(out, entry)
-	}
-	sort.Strings(out)
-	return out, nil
+	return gobuilder.AllowedHostEnvironment(base, goos)
 }
 
 func buildEnvironment(base []string, stateDir string) ([]string, error) {
-	host, err := allowedHostEnvironment(base)
-	if err != nil {
-		return nil, err
-	}
-	out := append([]string(nil), host...)
-	out = append(out, fixedGoBuildSettings()...)
-	if stateDir != "" {
-		if err := os.MkdirAll(stateDir, 0o755); err != nil {
-			return nil, fmt.Errorf("create isolated build state: %w", err)
-		}
-		home := filepath.Join(stateDir, "home")
-		temp := filepath.Join(stateDir, "tmp")
-		for _, dir := range []string{home, temp} {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return nil, fmt.Errorf("create isolated build directory: %w", err)
-			}
-		}
-		out = append(out,
-			"GOCACHE="+filepath.Join(stateDir, "cache"),
-			"GOMODCACHE="+filepath.Join(stateDir, "modcache"),
-			"GOPATH="+filepath.Join(stateDir, "gopath"),
-			"HOME="+home,
-			"USERPROFILE="+home,
-			"TMPDIR="+temp,
-			"TMP="+temp,
-			"TEMP="+temp,
-		)
-	}
-	sort.Strings(out)
-	return out, nil
+	return gobuilder.Environment(base, stateDir, runtime.GOOS, runtime.GOARCH)
 }
 
 func hashGoToolchain(goRoot string) (string, error) {
