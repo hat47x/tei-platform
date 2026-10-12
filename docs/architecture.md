@@ -583,7 +583,7 @@ both
 
 ## データベースの変更と運用の周期
 
-DatabaseはApplicationから独立したUnitです。
+データベースはアプリケーションから独立した単位です。
 
 ```text
 Persistence Mapping
@@ -600,29 +600,29 @@ Database Release
 Database Contract
 ```
 
-Application Releaseは複数Database Contract Requirementのsnapshotを持ちます。
+アプリケーションのリリースは、複数のデータベース契約に関する要求のスナップショットを持ちます。
 
-M0.26ではこのうちDesired / Actual / Diffをactual PostgreSQLへ接続しました。Persistence MappingからPostgreSQL向けDesired Physical Schemaを導出し、`database/sql`経由のPostgreSQL catalog introspectionでActual Physical Schemaを取得して比較します。Actualはregeneratableな観測情報であり、connection stringやcredentialはPhysical Schemaへ含めません。
+M0.26では、目標状態・実際の状態・差分を実際のPostgreSQLに接続しました。永続化の対応付けからPostgreSQL向けの目標物理スキーマを導出し、`database/sql`経由でPostgreSQLの管理情報を調べて実際の物理スキーマを取得・比較します。実際の状態は再生成可能な観測情報であり、接続文字列や認証情報を物理スキーマには含めません。
 
-PostgreSQLではPrimary Keyのbacking indexを通常Indexとして二重に表現しません。Primary Keyは`PrimaryKey`、明示的な通常indexは`Indexes`として分離します。actual DBとの差分を検出しても、自動的なmigration採用・schema applyへ進めません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
+PostgreSQLでは、主キーを支える索引を通常の索引として重複して表しません。主キーは`PrimaryKey`、明示した通常の索引は`Indexes`として分けます。実際のデータベースとの差分を検出しても、移行の自動採用やスキーマの自動適用は行いません。詳細は[M0.26の準拠確認](conformance/postgres-actual-schema-m0.26.md)を参照してください。
 
-M0.27ではForeign Keyも同じDatabase-owned realizationとして扱います。Semantic Relationから自動生成せず、Persistence Mappingがsource Attribute、referenced Mapping、target Attributeを明示します。`RealizeDesired`がphysical FKへ解決し、Schema Diffはconstraint名ではなくsource columns / referenced table / referenced columnsの構造で比較します。constraint名だけの違いはdriftではありません。詳細は [ADR-0008](../plan/adr/0008-persistence-foreign-key-identity.md) と [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+M0.27では、外部キーもデータベース側で実現するものとして扱います。意味上の関係から自動生成するのではなく、永続化の対応付けで参照元の属性、参照先の対応付け、参照先の属性を明示します。`RealizeDesired`が物理外部キーへ解決し、スキーマ差分は制約名ではなく、参照元の列・参照先の表・参照先の列という構造で比較します。制約名だけが異なっても、構成のずれとはみなしません。詳細は[ADR-0008](../plan/adr/0008-persistence-foreign-key-identity.md)と[M0.27の準拠確認](conformance/foreign-key-drift-m0.27.md)を参照してください。
 
 ## 問い合わせ
 
-SQLは「低級だから隠す」対象ではなく、正式なauthoring front-endの一つです。
+SQLは「低級だから隠す」ものではなく、正式な記述手段の一つです。
 
-SQL-authored queryではSQLがauthoring source of truthで、Query IRはderivedです。Graph-authored queryでは逆にIRをcanonicalにしてSQLをprojectionにできます。二つのsource of truthを同時に要求しません。
+SQLで記述した問い合わせではSQLが記述上の正本であり、問い合わせの中間表現は派生情報です。図で記述した問い合わせでは、逆に中間表現を正本とし、SQLを派生した表現にできます。同時に二つの正本を要求しません。
 
-M0.23ではQuery declarationからnative `.sql`を参照できます。Workspace loaderはSQL本文を既存Query modelへ渡しますが、physical `.sql` pathはCanonical QueryやAnalyzer protocolへ混ぜません。Query declarationは`definition`、SQL fileは同一Query Subjectの`authoring` sourceとしてSource Indexから追跡します。
+M0.23では、問い合わせの宣言から既存の`.sql`ファイルを参照できます。作業領域の読込み処理はSQL本文を既存の問い合わせモデルへ渡しますが、`.sql`の物理パスを問い合わせの正本や解析器の契約には含めません。問い合わせの宣言は`definition`、SQLファイルは同じ問い合わせ対象の`authoring`という入力元として、入力元索引から追跡します。
 
 ## 実行先とホストの境界
 
-ApplicationのPresentation / InteractionをTargetへProjectionするとき、Target差を一つのframework差へまとめません。
+アプリケーションの表示や対話を実行先向けに変換する際、実行先の違いを単なる開発基盤の違いとして扱いません。
 
-少なくともTarget CapabilityとExecution / Trust Profileの二軸をReferenceから検証します。
+少なくとも実行先が提供する能力と、実行・信頼に関する条件の二つの観点を参照事例で検証します。
 
-加えて、2026-09のportable execution artifact Pressureでは、同じTargetでも実行artifact / ABI / Hostを差し替えられる可能性が明確になったため、**Runtime Binding内部の第三の観測軸**としてPressureします。
+さらに2026年9月の可搬な実行成果物の圧力試験では、同じ実行先でも実行成果物・ABI・ホストを差し替えられる可能性が明らかになりました。そのため、**実行時の対応付けにおける第三の観測軸**として引き続き圧力試験を行います。
 
 ```text
 Canonical Application
@@ -639,15 +639,15 @@ Target Adapter
             local / network / transport / origin / session / resource / ...
 ```
 
-**Target Capability**は、そのTarget / Hostで利用できる入出力・interaction・device機能です。
+**実行先の能力（Target Capability）**は、その実行先やホストで利用できる入出力・対話・機器の機能です。
 
-**Execution / Trust Profile**は、local / network、transport、identity / session、authorization、Resource、secret、lifecycle等、実行環境と信頼境界の性質です。
+**実行・信頼に関する条件（Execution / Trust Profile）**は、ローカル・ネットワーク、通信方式、識別子とセッション、認可、資源、秘密情報、ライフサイクルなど、実行環境と信頼境界の性質です。
 
-**execution artifact / ABI / host**は、現時点では独立したCanonical kindやproduction schemaではありません。同じWeb Targetがnative / remote runtime、freestanding Wasm、Worker-hosted Wasm等を取り得ることや、同じportable artifactを複数Hostへ載せ得ることを説明するため、Runtime Binding内部の実現差として観測します。WasmをWeb / Desktop / Mobile / API / MCP / VUIと同列のTarget kindにはしません。
+**実行成果物・ABI・ホスト**は、現時点では独立した正本上の要素種別や本番用スキーマではありません。同じウェブ実行先でも、ネイティブ実行環境、遠隔実行環境、独立動作するWasm、Worker上で動くWasmなどを使えることや、同じ可搬な成果物を複数のホストで使えることを説明するため、実行時の対応付けの内部にある実現方式の違いとして観測します。Wasmをウェブ・デスクトップ・モバイル・API・MCP・音声対話と同列の実行先種別にはしません。
 
-これらをどこまで独立概念として分離すべきかは、第一Web Targetと第二Target、およびportable artifact ReferenceのEvidenceから確定します。現時点で完全なtaxonomyをCoreへ固定しません。これは検討中の設計境界であり、特定のReferenceで成立した事項を全Targetへ一般化しません。
+これらをどこまで独立した概念にするかは、最初のウェブ実行先、二つ目の実行先、可搬な成果物の参照事例で得た検証根拠から確定します。現時点では完全な分類体系を中核へ固定しません。まだ検討中の設計境界であり、特定の参照事例で成立したことをすべての実行先へ一般化しません。
 
-Gate Cでは、意味baselineとTarget実装revisionを同一revisionへ畳みません。Gate B通過時のHandover Baselineを`B`、その`baselineRepositoryRevision`を`R`、Targetのbuild / runtime identityを`T`として別々に追跡します。
+判定段階Cでは、意味の基準版と実行先の実装版を同じ版として扱いません。判定段階B通過時の引継ぎ基準版を`B`、その`baselineRepositoryRevision`を`R`、実行先の構築・実行時の識別情報を`T`として別々に追跡します。
 
 ```text
 Handover Baseline B
@@ -658,19 +658,19 @@ Target build T
 Gate C Evidence
 ```
 
-通常`T != R`です。Target実装中にbaseline subjectのApplication meaningを変更する必要が生じた場合は、Target固有field / ruleで旧baselineを補完せずauthoritative sourceへ戻り、必要なGate B Evidenceを新revisionで再確認してsuccessor Handover Baselineを発行します。
+通常は`T != R`です。実行先の実装中に、基準版に含まれる対象のアプリケーション上の意味を変える必要が生じた場合は、実行先固有の項目や規則で旧基準版を補いません。正本へ戻って変更し、判定段階Bに必要な検証根拠を新しい版で確認して、次の引継ぎ基準版を発行します。
 
-Go + Wails/WebViewはEditor / Hostの有力な実装候補ですが、Wailsのplatform APIをCanonical Presentationへ写しません。Wails等が提供するMCP / control interfaceも、Hostのinspection / development control面と、Application自身がMCPを業務Targetとして公開する場合を区別します。
+GoとWails/WebViewは編集環境やホストの有力な実装候補ですが、Wailsの実行環境固有のAPIを表示の正本へ取り込みません。Wailsなどが提供するMCPや操作用の接続口についても、ホストの状態確認・開発操作と、アプリケーション自身がMCPを業務用の実行先として公開する場合を区別します。
 
-Developer-facing Studio Wails Hostはauthoring / inspection clientのHostであり、Generated Wails Desktop Application Targetとは別物です。Studio shellがWails上で動いたことをPAS-04の第二Application Target Evidenceへ数えません。Generated Wails DesktopをTargetとして採用する場合は、業務Application Projectionとして独立したSemantic / Functional / Visual Evidenceを取得します。
+開発者向けのStudioを動かすWailsホストは、記述・状態確認用のクライアントを動かすものです。生成されたWailsデスクトップアプリケーションの実行先とは異なります。Studioの外枠がWails上で動いても、PAS-04で求める二つ目のアプリケーション実行先の検証根拠には数えません。生成したWailsデスクトップを実行先として採用する場合は、業務アプリケーションから導出したものとして、意味・機能・表示の検証根拠を別途取得します。
 
-Target Conformanceでは、少なくとも次を別のEvidenceとして扱います。
+実行先の準拠確認では、少なくとも次の三つを別々の検証根拠として扱います。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
+1. 意味の準拠確認（Semantic Conformance）
+2. 対話・機能の検証根拠（Interaction / Functional Evidence）
+3. 表示の忠実度に関する検証根拠（Visual Fidelity Evidence）
 
-Interaction / Functional Evidenceは、必要に応じて再実行可能なbehaviorとして残せます。ただし、Target固有selector、coordinate、route、component identity、normalized event等は**derived Evidence / realization**であり、Canonical interaction identityではありません。
+対話・機能の検証根拠は、必要に応じて再実行できる操作として残せます。ただし、実行先固有の選択子、座標、経路、部品の識別子、正規化したイベントなどは、**派生した検証根拠や実現方法**であって、対話を表す正本上の識別子ではありません。
 
 ```text
 Scenario / Semantic Operation
@@ -684,11 +684,11 @@ Result / Observation
 Functional Evidence
 ```
 
-Replayable Behaviorを利用しても、単一behaviorの成功で複数stepのBusiness Procedureやcumulative workflow全体の成立を代替しません。normalized evidenceを作る場合もraw Target Evidenceへ戻れるprovenanceを保持します。Gate C前にUniversal Event Modelを固定しません。
+再実行可能な操作を使っても、一つの操作の成功だけで、複数の手順からなる業務手順や一連の作業全体が成立したとは判断しません。正規化した検証根拠を作る場合も、実行先から得た元の検証根拠へたどれる来歴を保持します。判定段階Cより前に汎用的なイベントモデルを固定しません。
 
-Visual evaluator、GUI agent、VLM等を利用しても、Visual EvidenceだけでSemantic / Functional Conformanceを成立させません。
+表示の評価器、画面操作を行うエージェント、視覚言語モデルなどを利用しても、表示の検証根拠だけで意味や機能の準拠確認を済ませません。
 
-第二Targetでの圧力試験は継続課題です。具体的な成立範囲は、対象Targetの実装と検証結果に基づいて判断します。
+二つ目の実行先での圧力試験は継続課題です。具体的に成立した範囲は、その実行先の実装と検証結果に基づいて判断します。
 
 ## 配備と外部状態の確認
 
@@ -706,25 +706,25 @@ Observation / Evidence
 Reconcile
 ```
 
-Release DefinitionとDeployment execution historyを分離します。
+リリースの定義と配備の実行履歴を分けて扱います。
 
 ## プラグインと実行環境
 
-PluginはCapabilityの配布単位です。
+プラグインは能力の配布単位です。
 
-EnvironmentではCapability IDへBindingし、Plugin Lockがexact versionとdescriptor / artifact identityを固定します。
+環境では能力IDへの対応付けを行い、プラグインの固定情報によって正確な版と定義情報・成果物の識別情報を固定します。
 
-process PluginではResource Broker、Permission Grant、Resource Lease、Sandbox Profile、Host Lease Supervisor、Ownership / Fencingを通して実行します。
+外部プロセス型のプラグインは、資源の仲介、権限の付与、資源の期限付き利用権、隔離環境の条件、ホスト利用権の監督、所有権と世代による排他制御を通して実行します。
 
-M0.24では`StdioProcessLauncher`をReference Host adapterとして追加し、actual child processとRequest / Response JSONをstdioで交換しました。M0.25では [ADR-0006](../plan/adr/0006-process-command-and-argv.md) に基づき、process指定を単一executableと順序付きargvへ分離しています。`Runtime.Command`は単一executable名/path、`Runtime.Args`は順序付き引数であり、Host境界では`ProcessCommand{Executable, Args}`として構造化したまま`exec.CommandContext(ctx, executable, args...)`へ渡します。shell展開、空白split、quote再解釈は行いません。plain process launcherはsandboxではなく、`sandbox required`の実行には引き続きHost Sandboxのpolicy enforcerが必要です。
+M0.24では`StdioProcessLauncher`を参照ホスト用の変換器として追加し、実際の子プロセスと標準入出力を通じて要求・応答のJSONを交換しました。M0.25では[ADR-0006](../plan/adr/0006-process-command-and-argv.md)に基づき、プロセスの指定を一つの実行ファイルと順序付きの引数に分けています。`Runtime.Command`は一つの実行ファイル名またはパス、`Runtime.Args`は順序付きの引数です。ホストとの境界では`ProcessCommand{Executable, Args}`の構造を保ち、`exec.CommandContext(ctx, executable, args...)`へ渡します。シェルによる展開、空白での分割、引用符の再解釈は行いません。通常のプロセス起動器は隔離環境ではないため、`sandbox required`の実行には引き続きホスト側の隔離規則を強制する仕組みが必要です。
 
-このone-shot local process境界とDurable reattachは別です。OS PIDをDurable Runtime Handleとはみなさず、cross-host reattachにはopaque durable handleを提供する外部runtime adapterが必要です。実process transportは [M0.24実process Conformance](conformance/process-runtime-m0.24.md)、executable / argv境界は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
+この一回限りのローカルプロセスの実行境界と、永続的な再接続は別です。OSのプロセスIDを永続的な実行ハンドルとはみなさず、ホストをまたぐ再接続には、内部構造を公開しない永続ハンドルを提供する外部実行環境の変換器が必要です。実際のプロセスとの通信は[M0.24のプロセス準拠確認](conformance/process-runtime-m0.24.md)、実行ファイルと引数の境界は[M0.25の準拠確認](conformance/process-command-argv-m0.25.md)を参照してください。
 
-M0.22.1で直接検証している境界とテストの対応は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
+M0.22.1で直接検証している境界と試験の対応は、[プラグインと実行環境の準拠確認](conformance/plugin-runtime-m0.22.1.md)に整理しています。
 
 ## ホストの再起動と引き継ぎ
 
-M0.22では、Supervisor takeover後に外部process / containerへどう再接続するかを`DurableInvocationHandle`として分離しました。
+M0.22では、監督処理の引継ぎ後に外部プロセスやコンテナへ再接続する方法を、`DurableInvocationHandle`として分離しました。
 
 ```text
 host-a dies
@@ -742,8 +742,8 @@ Observe runtime handle
   └─ unknown → keep unresolved
 ```
 
-Resource authorityのfencingとruntime reattachのfencingを両方要求します。
+資源を使う権限と実行環境への再接続の両方で、世代による排他制御を要求します。
 
-ADR-0005では、Supervisor側のauthority generationと、外部runtimeが実際に受理済みのgenerationを分離しました。`DurableInvocationHandle.FencingToken`はSupervisor generation、`RuntimeFencingToken`はruntime-confirmed generationを表します。
+ADR-0005では、監督処理側が管理する権限の世代と、外部の実行環境が実際に受理した世代を分けました。`DurableInvocationHandle.FencingToken`は監督処理側の世代、`RuntimeFencingToken`は実行環境側で確認済みの世代を表します。
 
-`unknown`では新SupervisorのgenerationだけをDurable Handleへ保存し、`RuntimeFencingToken`は進めません。後続観測でruntimeが`running` / `starting`へ戻り、authority-bearing reattachが成功した時点で両generationが再び一致します。これにより、runtime authorityが未確立なのに確立済みとして保存することを避けます。詳細は [ADR-0005](../plan/adr/0005-supervisor-and-runtime-fencing-authority.md) を参照してください。
+`unknown`の状態では、新しい監督処理側の世代だけを永続ハンドルに保存し、`RuntimeFencingToken`は更新しません。その後の観測で実行環境が`running`または`starting`へ戻り、権限を伴う再接続が成功した時点で、両者の世代が再び一致します。実行環境の権限が確立していないのに、確立済みとして保存することを防ぎます。詳細は[ADR-0005](../plan/adr/0005-supervisor-and-runtime-fencing-authority.md)を参照してください。
