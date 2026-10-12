@@ -18,8 +18,8 @@ type referenceIssuerSelection struct {
 }
 
 type referenceAttestationSelection struct {
-	RequiredSubject AttestationSubject        `json:"requiredSubject"`
-	Satisfied       bool                      `json:"satisfied"`
+	RequiredSubject AttestationSubject         `json:"requiredSubject"`
+	Satisfied       bool                       `json:"satisfied"`
 	Issuers         []referenceIssuerSelection `json:"issuers"`
 }
 
@@ -62,7 +62,6 @@ func referenceRequiredAttestationSubject(set ArtifactSet, scope referenceAttesta
 	}
 	return subject, nil
 }
-
 
 // selectReferenceAttestations requires attestations covering the whole set.
 // Member-level requirements must use selectReferenceAttestationsForSubject.
