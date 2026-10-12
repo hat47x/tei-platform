@@ -319,7 +319,7 @@ func (e buildAttemptEvidence) ValidateAgainst(plan plugin.BuildPlan) error {
 		return fmt.Errorf("Build Attempt Evidence failure class must be a bounded safe code")
 	}
 	signal := strings.TrimSpace(e.Signal)
-	if signal != "" && !validSignalCode(signal) {
+	if e.Signal != signal || (signal != "" && !validSignalCode(signal)) {
 		return fmt.Errorf("Build Attempt Evidence signal must be a bounded safe code")
 	}
 	if e.ExitCode == nil && signal == "" {
