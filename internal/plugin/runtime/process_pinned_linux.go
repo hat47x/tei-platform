@@ -143,8 +143,8 @@ func (p *PinnedLinuxProcess) Verify(ctx context.Context, identity plugin.Identit
 		return ArtifactVerification{}, errors.New("plugin signature reference differs from pinned signature evidence")
 	}
 	return ArtifactVerification{
-		VerifierID: "tei-linux-pinned-process-sha256",
-		DigestVerified: true,
+		VerifierID:        "tei-linux-pinned-process-sha256",
+		DigestVerified:    true,
 		SignatureVerified: p.signatureVerified,
 	}, nil
 }
