@@ -20,9 +20,13 @@ type Scope struct {
 	Resource    string
 }
 
+func validToken(value string) bool {
+	return strings.TrimSpace(value) != "" && !strings.ContainsAny(value, "\x00\r\n")
+}
+
 func (s Scope) valid() bool {
-	return s.Application != "" && s.Capability != "" && s.Subject != "" && s.Action != "" && s.Resource != "" &&
-		!strings.ContainsAny(s.Application+s.Resource, "\x00")
+	return validToken(s.Application) && validToken(s.Capability) && validToken(s.Subject) &&
+		validToken(s.Action) && validToken(s.Resource)
 }
 
 type Request struct {
@@ -124,7 +128,7 @@ func (m *MemoryStore) Prepare(ctx context.Context, req Request) (Permit, Result,
 	if err := ctx.Err(); err != nil {
 		return Permit{}, Result{}, err
 	}
-	if !req.Scope.valid() || req.OperationID == "" {
+	if !req.Scope.valid() || !validToken(req.OperationID) {
 		return Permit{}, Result{Disposition: Denied, Reason: "invalid-request"}, nil
 	}
 	m.mu.Lock()
@@ -141,6 +145,9 @@ func (m *MemoryStore) Prepare(ctx context.Context, req Request) (Permit, Result,
 			return Permit{}, Result{Disposition: Denied, Reason: "operation-id-conflict"}, nil
 		}
 		return Permit{}, Result{Disposition: Replayed, Receipt: done.receipt}, nil
+	}
+	if m.sequence == ^uint64(0) {
+		return Permit{}, Result{}, errors.New("操作識別子の内部連番が上限に達しました")
 	}
 	m.sequence++
 	p := Permit{id: m.sequence}
