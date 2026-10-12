@@ -1,0 +1,101 @@
+name: TEI API専用Go成果物の画面依存除外
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-target/**'
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - '.github/workflows/tei-api-only-isolation-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-target/**'
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - '.github/workflows/tei-api-only-isolation-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+permissions:
+  contents: read
+concurrency:
+  group: tei-api-only-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  api-without-templates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      CGO_ENABLED: '0'
+    steps:
+      - name: 対象Sourceを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: 対象のGo版を設定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 対象版と作業領域を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: API専用と従来構成のGoテスト・静的解析
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target
+          go vet -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target
+          go test -count=1 -tags=tei_order_only ./tools/reference-first-web-target
+          go vet -tags=tei_order_only ./tools/reference-first-web-target
+      - name: 選択ソースと実バイナリを比較
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d "$RUNNER_TEMP/tei-api-only-XXXXXXXX")"
+          go list -json -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target > "$tmp/api.json"
+          go list -json -tags=tei_order_only ./tools/reference-first-web-target > "$tmp/full.json"
+          python3 - "$tmp/api.json" "$tmp/full.json" <<'PY'
+          import json, sys
+          a, b = (json.load(open(path, encoding="utf-8")) for path in sys.argv[1:])
+          selected = set(a["GoFiles"])
+          full = set(b["GoFiles"])
+          for forbidden in ("server.go", "custom_ui.go", "order_only_wiring.go",
+                            "order_presentation_routes.go"):
+              if forbidden in selected or forbidden not in full:
+                  raise SystemExit(f"HTML Go source exclusion failed: {forbidden}")
+          for required in ("server_api_only.go", "order_api_only_wiring.go"):
+              if required not in selected or required in full:
+                  raise SystemExit(f"API-only transport not selected exclusively: {required}")
+          print("apiSourceExcludesPresentation=true")
+          PY
+          go build -trimpath -ldflags=-buildid= -tags=tei_order_only -o "$tmp/full" ./tools/reference-first-web-target
+          go build -trimpath -ldflags=-buildid= -tags=tei_order_only,tei_api_only -o "$tmp/api" ./tools/reference-first-web-target
+          test -s "$tmp/api"
+          test -s "$tmp/full"
+          if grep -aFq 'Custom Submit UI' "$tmp/api"; then
+            echo "API executable contains the compiled HTML page marker" >&2
+            exit 1
+          fi
+          echo "apiBinaryOmitsCustomSubmitPage=true"
+          echo "fullBytes=$(wc -c < "$tmp/full")"
+          echo "apiBytes=$(wc -c < "$tmp/api")"
+          echo "sourceRevision=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: 検証後の作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
