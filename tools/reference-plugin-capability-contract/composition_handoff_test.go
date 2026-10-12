@@ -47,7 +47,7 @@ func handoffSourceFixture(t *testing.T) (
 		Evidence:    []ConformanceEvidence{evidenceFor(provider, contract, "reference-evidence-a")},
 	}
 	expected := CompositionResolutionExpectation{
-		Target: set.Findings[0].VerificationTargets[0],
+		Target:   set.Findings[0].VerificationTargets[0],
 		Provider: provider,
 	}
 	return r, set, contract, provider, input, expected
