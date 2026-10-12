@@ -30,6 +30,7 @@ const (
 	OpOmitField       Op = "omit-field"
 	OpAssertEqual     Op = "assert-equal"
 	OpAssertEnum      Op = "assert-enum"
+	OpAssertNonBlank  Op = "assert-nonblank"
 	OpAssertUniqueBy  Op = "assert-unique-by"
 	OpCanonicalJSON   Op = "canonical-json"
 	OpSHA256          Op = "sha256"
@@ -178,7 +179,7 @@ func (s Source) Validate() error {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
 		switch s.Program.Assertions[i].Op {
-		case OpAssertEqual, OpAssertEnum, OpAssertUniqueBy:
+		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertUniqueBy:
 		default:
 			return fmt.Errorf("transform assertion %d must use assert operation, got %s", i, s.Program.Assertions[i].Op)
 		}
@@ -345,6 +346,13 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 			if _, err := ParseJSON(allowed); err != nil {
 				return fmt.Errorf("assert-enum value: %w", err)
 			}
+		}
+	case OpAssertNonBlank:
+		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
+			return err
+		}
+		if err := child(expr.From, "assert-nonblank source"); err != nil {
+			return err
 		}
 	case OpCanonicalJSON, OpSHA256:
 		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
