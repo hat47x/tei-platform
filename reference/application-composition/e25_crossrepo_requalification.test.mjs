@@ -17,6 +17,7 @@ const files = {
   move: sui('03_Implement/backend/src/sui_sensemaking_api/card_move_command.py'),
   clientTest: sui('03_Implement/frontend/src/api/client.test.ts'),
   casTest: sui('03_Implement/backend/tests/test_document_action_cas.py'),
+  roundtripTest: sui('03_Implement/backend/tests/test_docs_roundtrip.py'),
   canvasTest: sui('03_Implement/frontend/src/canvas/CardView.native_commit.test.ts'),
   ci: sui('.github/workflows/native-action-contract-ci.yml'),
   protocol: tei('tools/reference-sui-action-boundary/action-protocol-v1.schema.json'),
@@ -40,11 +41,13 @@ const same = [
 const oldEvidence = [
   [files.clientTest, '1fa722f2efc4f8345c9d29b95192c90f7d43e1bc'],
   [files.casTest, '178804f3ab7896b241f7588383264ee0500f411d'],
+  [files.roundtripTest, 'd84126cdcfc5ec19b116efe1078200d60b880fc8'],
   [files.canvasTest, '2f422e2350e28934476443389cf7e0a3c1d32b04'],
 ];
 const newEvidence = [
   [files.clientTest, 'c3884fd3df9e10add994134836b0863efdd69854'],
   [files.casTest, '83305e742554313a45eea4b9481fd58973985c2a'],
+  [files.roundtripTest, 'd0de530a0db795165c837298b904509af7b68569'],
   [files.canvasTest, '7d6c64bafba635cde910ebd59c16b5d7714c96e0'],
   [files.ci, '84fe3181ea2bdc7c256d54f38981e6cf385ab294'],
 ];
@@ -60,6 +63,7 @@ const consumers = [
   {id: 'sui-native-receiver', dependencies: [files.receiver, files.move, files.protocol]},
   {id: 'sui-client-evidence', dependencies: [files.clientTest]},
   {id: 'sui-storage-evidence', dependencies: [files.casTest]},
+  {id: 'sui-roundtrip-evidence', dependencies: [files.roundtripTest]},
   {id: 'sui-canvas-evidence', dependencies: [files.canvasTest]},
   {id: 'sui-ci-evidence', dependencies: [files.ci]},
   {id: 'order-web-command', dependencies: [files.app, files.pattern, files.protocol]},
@@ -79,6 +83,7 @@ test('E25 actual SUI revision changed evidence but not the four native runtime s
   for (const [id, path] of [
     ['sui-client-evidence', files.clientTest],
     ['sui-storage-evidence', files.casTest],
+    ['sui-roundtrip-evidence', files.roundtripTest],
     ['sui-canvas-evidence', files.canvasTest],
   ]) {
     assert.equal(report[id].status, 'unresolved');
@@ -132,11 +137,11 @@ test('E25 no second lock: duplicate, invalid or cross-repo ambiguous source is r
   ]), /invalid_consumer/);
 });
 
-test('E25 exactly three existing SUI test blobs changed, and the CI source was added', () => {
+test('E25 exactly four existing SUI test blobs changed, and the CI source was added', () => {
   const oldByPath = new Map(baseline.map(item => [item.path, item.gitBlobSha]));
   const modified = current.filter(item => oldByPath.has(item.path) &&
     oldByPath.get(item.path) !== item.gitBlobSha).map(item => item.path);
   const added = current.filter(item => !oldByPath.has(item.path)).map(item => item.path);
-  assert.deepEqual(modified.sort(), [files.clientTest, files.casTest, files.canvasTest].sort());
+  assert.deepEqual(modified.sort(), [files.clientTest, files.casTest, files.roundtripTest, files.canvasTest].sort());
   assert.deepEqual(added, [files.ci]);
 });
