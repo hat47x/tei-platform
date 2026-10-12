@@ -148,6 +148,7 @@ func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
 	}{
 		{name: "same major", majors: [2]int{1, 1}},
 		{name: "different majors", majors: [2]int{1, 2}},
+		{name: "reversed conflicting majors", majors: [2]int{2, 1}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			definition, plan := transformPackageFixture()
