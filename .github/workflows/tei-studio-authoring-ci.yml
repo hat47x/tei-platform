@@ -142,6 +142,7 @@ jobs:
               and .realChromeDOMEvent == true
               and .cspScriptExecuted == true
               and .offlineNetworkRequests == 0
+              and .invalidBrowserReferenceRefused == true
               and .accepted == false
               and .sourceChanged == false] | all)
             and .authority.humanAcceptance == "not-observed"
