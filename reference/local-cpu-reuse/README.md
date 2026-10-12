@@ -49,3 +49,12 @@ The tests use **invented** Application names, simplified UI and Action signature
 Select two **explicitly authorized** TEI Application Reference sources; construct a read-only feature projection with true Source revision, verified Contract IDs/fingerprints, Application identity and documented unknown fields; compare expected review decisions against deterministic output. Preserve records that are unrelated, surface-similar but semantically incompatible, and cross-framework similarities. Report candidate recall, false reuse suggestions, unknown/abstention, review cost, peak memory and p50/p95 CPU latency separately.
 
 Avoid new TEI-LD teacher/model-training branches: #843 is issue-only subject to #876 and #267 qualification/Acceptance requirements. Do not merge or enable this Reference by claiming its synthetic test proves a real cross-Application component extraction.
+
+
+## Pinned source observation probe (R0 extension, 2026-10-13)
+
+`observe-tei-pattern.mjs` and `observe-tei-pattern.test.mjs` add a tiny **Node CPU-only** source observation probe. Its seven cases reference existing `reference/workspace/applications/order-entry/patterns/` files: `submit-order.tei`, `order-lines.tei`, and `customer-reference.tei`. Source bytes must match their Git blob SHAs before a structural observation is returned. A changed source, unexpected syntax, or unrecognized extra clauses must not be promoted to a complete Pattern observation. The nested `contract-query` in the customer-reference Pattern is intentionally `partial`.
+
+This is **one real TEI Reference Application**, not two independent cases of business reuse; reading it does not establish Accepted Canonical semantics. Unlike the original synthetic pair comparator, the observer deliberately returns `contract:null`, `acceptance:unknown`, and `source_observation_only`. Its observations must **not** be fed to the candidate comparator as if their Contract ID/fingerprint, effect or IO semantics had already been verified. A TEI-native Accepted Canonical/Contract projection remains a separate integration step.
+
+For review, execute `node --test reference/local-cpu-reuse/observe-tei-pattern.test.mjs` from a complete repository checkout. A local Node run against pinned copies of the same three source contents passed **7/7**, but **exact-PR-head checkout execution has not yet been qualified**. As with the comparator, these tests cannot authorize writes, learning, or standardization.
