@@ -731,33 +731,33 @@ general-target-neutral-presentation-taxonomy-not-yet-defined
 
 ### Gate C Readyの意味
 
-最終auditが`gateCReady = true`を返しても、次を意味しない。
+最終監査が`gateCReady = true`を返しても、次の状態を保証するものではありません。
 
-- production-ready Web product
-- actual external Oracle / production Command成功
-- Target-neutral Presentation taxonomy完成
-- 第二Target不要
-- unresolved消滅
+- 本番運用に耐えられるウェブ製品
+- 実際の外部Oracleや本番の命令実行での成功
+- 実行先に依存しない表示方式の分類の完成
+- 二つ目の実行先が不要であること
+- 未解決事項がすべて解消したこと
 
-Gate C contractに定めた第一Targetの意味・操作・視覚・architecture境界が、同一provenanceのEvidenceから再確認できたことだけを意味する。
+判定段階Cの契約で定めた最初の実行先における意味・操作・表示・構造の境界を、来歴の揃った検証根拠から再確認できたことだけを意味します。
 
-actual final auditを取得するまでは、source implementationだけからGate C Readyを宣言しない。
+実際の最終監査結果を取得するまでは、ソースの実装状況だけを根拠に判定段階CのReadyを宣言しません。
 
 ## Evidence artifactの保管
 
-Ready判定に採用したrunのartifactは、Repositoryへcommitせず、次のとおり保管する（`ISSUE-000057`）。
+Ready判定に採用した実行の成果物は、リポジトリへコミットせず、次のように保管します（`ISSUE-000057`）。
 
-- 容量が小さい場合（目安: 数MB以下）: `MANIFEST.sha256`（各fileのSHA-256）を同梱した`tar.gz`へ圧縮し、対象revision（`R` / `T`）を指すtagを付けたGitHub Release（prerelease）のassetとして格納する。tag名は`gate-b-evidence-R-<short>` / `gate-c-evidence-T-<short>`とする。
-- 容量が大きい場合: WSL上に留める（WSLは日次バックアップの対象）。
-- 格納前に、DSN・credential・secret pathが含まれないことを確認する（audit toolの拒否に加え、grepで確認する）。
-- 格納後、assetを再ダウンロードしてSHA-256が一致することを確認し、判定文書へ保管先（locator）とarchiveのSHA-256を追記する。過去の判定は書き換えず、追記する。
+- 容量が小さい場合（目安：数MB以下）：各ファイルのSHA-256を記録した`MANIFEST.sha256`を同梱して`tar.gz`形式に圧縮します。対象版（`R`／`T`）を指すタグ付きのGitHub Release（公開前リリース）に成果物として保存します。タグ名は`gate-b-evidence-R-<short>`／`gate-c-evidence-T-<short>`とします。
+- 容量が大きい場合：WSL上で保管します（WSLは日次バックアップの対象）。
+- 保存前に、DSN・認証情報・秘密情報のパスが含まれていないことを確認します（監査ツールによる拒否に加え、grepでも確認）。
+- 保存後に成果物を再ダウンロードし、SHA-256が一致することを確認します。判定文書には保存先と圧縮ファイルのSHA-256を追記し、過去の判定は書き換えません。
 
 ```bash
 gh release create <tag> <archive.tar.gz> --target <R/Tの完全なcommit SHA> \
   --title "<title>" --notes-file <notes.md> --prerelease
 ```
 
-現在採用済みの第一Web Target Gate C Evidenceは次のlocatorを使う。
+現在採用している最初のウェブ実行先の判定段階Cの検証根拠は、次の保管先を使います。
 
 ```text
 tag = gate-c-evidence-T-0ba87a4
@@ -766,7 +766,7 @@ archive SHA-256 =
 de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3
 ```
 
-再取得時はarchiveだけでなく内部manifestも確認する。
+再取得するときは、圧縮ファイルだけでなく内部の一覧も確認します。
 
 ```bash
 evidence_root="$(mktemp -d)"
@@ -786,5 +786,5 @@ tar -xzf "$evidence_root/tei-gate-c-evidence-T-0ba87a4e.tar.gz" -C "$evidence_ro
 )
 ```
 
-filenameが一致するだけの展開directoryをadopted Evidenceとして扱わない。
+ファイル名が一致するだけの展開先ディレクトリを、採用済みの検証根拠として扱うことはしません。
 
