@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync/atomic"
 )
 
 // Principal is returned by a trusted, explicitly supplied session verifier.
@@ -23,6 +24,14 @@ type Principal struct {
 // It is a request-scoped handoff marker, not a portable Authority grant.
 // No browser header, JSON member or standalone selected Handler can create it.
 type authorizedActionContextKey struct{}
+
+// The marker expires when the originating protected handler returns. Keeping
+// a prior request's Context cannot authorize a later dispatch. This local
+// marker is not a remotely verifiable grant and is not an effect-time lease.
+type authorizedActionApproval struct {
+	actionID string
+	live     atomic.Bool
+}
 
 // principalContextKey is private to the trusted host. Headers, query
 // parameters, and JSON supplied by the browser cannot populate this value.
@@ -148,8 +157,11 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 			http.Error(tw, "access denied", http.StatusForbidden)
 			return
 		}
+		approval := &authorizedActionApproval{actionID: p.ActionID}
+		approval.live.Store(true)
+		defer approval.live.Store(false)
 		verified := context.WithValue(r.Context(), principalContextKey{}, subject)
-		verified = context.WithValue(verified, authorizedActionContextKey{}, p.ActionID)
+		verified = context.WithValue(verified, authorizedActionContextKey{}, approval)
 		d.Invoke.ServeHTTP(tw, r.WithContext(verified))
 		stage = "completed"
 	}), nil
