@@ -20,7 +20,7 @@ func fixture() (Input, resources.Key, plugin.Identity) {
 	input := Input{
 		Resolved: plugin.ResolvedSet{
 			Environment: core.CanonicalID("env.test"),
-			Plugins: []plugin.Identity{ordinary, lang},
+			Plugins:     []plugin.Identity{ordinary, lang},
 		},
 		Graph: modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{
 			{Key: target, DisplayName: "受注を確定"},
