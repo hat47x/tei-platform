@@ -91,7 +91,7 @@ TEI_CP_COMPOSE_MAIN=<reviewed-exact-commit-SHA40> \
 bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 ```
 
-- テスト開始時にチェックアウトの実HEADが指定SHAと完全一致すること、commit object・canonical remote URL・未追跡/ignored file・非標準indexがないことを確認。Draft tipの環境変数は拒否し、Onlineモードと違って`git fetch`を行わない。途中でもGit branchは変更せず、一時detached worktreeを終了時に消去。
+- テスト開始時にチェックアウトの実HEADが指定SHAと完全一致すること、完全履歴を持つnon-shallow・non-promisor cloneであること、commit object・canonical remote URL・未追跡/ignored file・非標準indexがないことを確認。Draft tipの環境変数は拒否し、Onlineモードと違って`git fetch`を行わない。途中でもGit branchは変更せず、一時detached worktreeを終了時に消去。
 - `GOPROXY=off`、`GOSUMDB=off`、`GOTOOLCHAIN=local`により、Go依存やツールチェーンの暗黙ダウンロードを禁止。Node、Go、Source/Studio/Lowering/Webの限定的回帰、合成E1 HTTP、Repository Healthは**実際のそのコミットのコード**で試す。事前キャッシュや必要なコマンドが欠ければその検査は失敗する。
 - 成功時のマーカーは`PINNED_OFFLINE_CROSS_LANE_SMOKE_ONLY_NO_REMOTE_FRESHNESS_NO_PRODUCT_GATE`。併せて`remoteFreshness=NOT_CHECKED_offline_operator_pinned`を出す。offline中はremote refを更新できず、現在のmainとの同一性、他のOwner branchとの追随、GitHub CI、人的受理、実DB副作用、独立read、Source実行時拘束を認定しない。指定SHAが古くなれば、別の信頼できる接続時に新しいSHAを確認して再実行する。
 - 制御フローは`python3 -B tools/reference-critical-path-evidence-audit/compose_offline_test.py`で隔離Git fixtureを使って再検査可能。この**Shell契約の試験はGo/Nodeをスタブ化**しており、TEI本体のテストPASSではない。実製品コードの成功には上の本コマンドを必要な依存が揃ったtrusted checkoutで実行する。
