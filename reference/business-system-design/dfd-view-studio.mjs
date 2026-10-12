@@ -1,4 +1,4 @@
-import {previewLayoutMove, LAYOUT_SCHEMA, EDIT_SCHEMA} from './dfd-view-layout.mjs';
+import {previewLayoutMove, inspectViewLayout, LAYOUT_SCHEMA, EDIT_SCHEMA} from './dfd-view-layout.mjs';
 
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
@@ -134,14 +134,8 @@ $('layout-file').addEventListener('change',async ev=>{
   try{
     const bytes=await file.arrayBuffer();const layout=JSON.parse(new TextDecoder().decode(bytes));
     const hash=await digest(bytes);
-    const p=layout.nodes?.[0];
-    // previewLayoutMove validates the entire layout; pick a known node and a
-    // different coordinate for a no-write validation call.
-    const node=p||nodes()[0];if(!node)throw Error('空のDFD投影');
-    const edit={schema:EDIT_SCHEMA,id:'verify-layout',origin:'studio',intent:'配置の再検査',
-      procedureId:state.dfd.procedureId,projectionSHA256:state.dfdHash,baseLayoutSHA256:hash,
-      operation:{kind:'move-node',nodeKind:node.kind||'step',nodeId:node.id,x:p?.x===0?1:0,y:p?.y||0}};
-    previewLayoutMove(state.dfd,state.dfdHash,layout,hash,edit);
+    // Inspect without synthesizing any edit or changing the layout.
+    inspectViewLayout(state.dfd,state.dfdHash,layout,hash);
     state.layout=layout;state.layoutHash=hash;state.pending=null;
     $('apply').disabled=true;$('preview').hidden=true;render();status('配置ファイルを照合して読み込みました。');
   }catch(e){status('配置ファイルを拒否しました: '+e.message,true)}
