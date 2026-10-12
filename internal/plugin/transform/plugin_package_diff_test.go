@@ -140,6 +140,72 @@ func TestPluginPackageTransformMatchesGoOracleByteForByte(t *testing.T) {
 	}
 }
 
+func TestPluginPackageTransformRejectsDuplicateRequirements(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		majors [2]int
+	}{
+		{name: "same major", majors: [2]int{1, 1}},
+		{name: "different majors", majors: [2]int{1, 2}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			definition, plan := transformPackageFixture()
+			id := core.MustCanonicalID("tei.duplicate_dependency")
+			definition.Requires = []plugin.Requirement{
+				{Plugin: id, CompatibleMajor: tc.majors[0]},
+				{Plugin: id, CompatibleMajor: tc.majors[1]},
+			}
+			plan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(definition)
+			if _, err := plugin.MaterializePluginPackage(definition, plan); err == nil {
+				t.Fatal("Go package materializer accepted repeated dependency")
+			}
+			if _, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
+				"buildPlan": valueFromGoJSON(t, plan),
+				"pluginDefinition": valueFromGoJSON(t, definition),
+			}); err == nil {
+				t.Fatal("TEI-native package builder accepted repeated dependency")
+			}
+		})
+	}
+}
+
+func TestPluginPackageTransformValidRequirementPermutation(t *testing.T) {
+	definition, plan := transformPackageFixture()
+	reversed := definition
+	reversed.Requires = []plugin.Requirement{definition.Requires[1], definition.Requires[0]}
+	reversedPlan := plan
+	reversedPlan.PluginDefinitionFingerprint = plugin.BuildDefinitionFingerprint(reversed)
+	goOriginal, err := plugin.MaterializePluginPackage(definition, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	goReversed, err := plugin.MaterializePluginPackage(reversed, reversedPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(goOriginal, goReversed) {
+		t.Fatal("valid requirement ordering changed Go package bytes")
+	}
+	teiReversed, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
+		"buildPlan": valueFromGoJSON(t, reversedPlan),
+		"pluginDefinition": valueFromGoJSON(t, reversed),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(teiReversed.Output.Bytes, goReversed) {
+		t.Fatal("valid reordered requirements diverged from TEI-native builder")
+	}
+}
+
+func TestUniqueByRequiresExactlyOneKey(t *testing.T) {
+	source := transform.PluginPackageSourceV1()
+	source.Program.Assertions[5].Keys = nil
+	if err := source.Validate(); err == nil {
+		t.Fatal("assert-unique-by without a key must fail validation")
+	}
+}
+
 func TestReferenceTransformSourceMatchesProgrammaticConstruction(t *testing.T) {
 	fromFile := referencePluginPackageTransformSource(t)
 	fileFP, err := transform.SourceFingerprint(fromFile)

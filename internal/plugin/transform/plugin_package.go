@@ -45,6 +45,11 @@ func PluginPackageSourceV1() Source {
 					selectRequired(inputExpr("pluginDefinition"), "version"),
 				),
 				assertEnum(selectRequired(inputExpr("pluginDefinition"), "artifact"), "{}"),
+				assertUniqueBy(
+					selectRequired(inputExpr("pluginDefinition"), "requires"),
+					"requirement",
+					selectRequired(inputExpr("requirement"), "plugin"),
+				),
 				assertEqual(
 					selectRequired(inputExpr("buildPlan"), "pluginDefinitionFingerprint"),
 					definitionFingerprint,
@@ -218,6 +223,10 @@ func assertEnum(actual Expr, allowed ...string) Expr {
 		values[i] = json.RawMessage(allowed[i])
 	}
 	return Expr{Op: OpAssertEnum, Actual: exprPtr(actual), Allowed: values}
+}
+
+func assertUniqueBy(from Expr, item string, key Expr) Expr {
+	return Expr{Op: OpAssertUniqueBy, From: exprPtr(from), Item: item, Keys: []Expr{key}}
 }
 
 func canonicalJSONExpr(from Expr) Expr {

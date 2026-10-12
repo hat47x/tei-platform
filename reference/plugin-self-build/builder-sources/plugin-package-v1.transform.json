@@ -116,6 +116,28 @@
         ]
       },
       {
+        "op": "assert-unique-by",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "requires"
+        },
+        "item": "requirement",
+        "keys": [
+          {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "requirement"
+            },
+            "field": "plugin"
+          }
+        ]
+      },
+      {
         "op": "assert-equal",
         "actual": {
           "op": "select-field",
