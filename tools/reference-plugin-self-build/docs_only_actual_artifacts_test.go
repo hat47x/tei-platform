@@ -134,37 +134,45 @@ func TestDocsOnlyCommitLeavesActualPluginArtifactsAndBuildPlansUnchanged(t *test
 		}
 
 		packagePlan := plugin.BuildPlan{
-			FormatVersion: plugin.BuildPlanFormatVersion,
-			Plugin: plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
+			FormatVersion:               plugin.BuildPlanFormatVersion,
+			Plugin:                      plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
 			PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(packageDefinition),
-			Sources: packagePlanSources(packageDescriptor, digest(packageDescriptor)),
-			Builder: packageBuilderIdentity(packageBuilderDigest),
-			Recipe: plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: packageDescriptor},
-			OutputKind: plugin.BuildOutputPluginPackage, Target: "plugin-package", Profile: "reference",
-			Parameters: []plugin.BuildParameter{{Name: "encoding", Value: "tei-plugin-package-json-v1"}},
+			Sources:                     packagePlanSources(packageDescriptor, digest(packageDescriptor)),
+			Builder:                     packageBuilderIdentity(packageBuilderDigest),
+			Recipe:                      plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: packageDescriptor},
+			OutputKind:                  plugin.BuildOutputPluginPackage,
+			Target:                      "plugin-package",
+			Profile:                     "reference",
+			Parameters:                  []plugin.BuildParameter{{Name: "encoding", Value: "tei-plugin-package-json-v1"}},
 		}
 		makeFingerprint("package", packagePlan)
 		nativePlan := plugin.BuildPlan{
-			FormatVersion: plugin.BuildPlanFormatVersion,
-			Plugin: plugin.Identity{ID: nativeDefinition.ID, Version: nativeDefinition.Version},
+			FormatVersion:               plugin.BuildPlanFormatVersion,
+			Plugin:                      plugin.Identity{ID: nativeDefinition.ID, Version: nativeDefinition.Version},
 			PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(nativeDefinition),
-			Sources: nativePlanSources(nativeDescriptor, digest(nativeDescriptor), nativeImplementation, digest(nativeImplementation)),
-			Builder: nativeBuilderIdentity(nativeBuilderDigest),
-			Recipe: plugin.BuildRecipe{Kind: "tei-native-realization", Entrypoint: nativeImplementation},
-			OutputKind: plugin.BuildOutputRuntimeArtifact, Target: "host/reference", Profile: "reference",
+			Sources:                     nativePlanSources(nativeDescriptor, digest(nativeDescriptor), nativeImplementation, digest(nativeImplementation)),
+			Builder:                     nativeBuilderIdentity(nativeBuilderDigest),
+			Recipe:                      plugin.BuildRecipe{Kind: "tei-native-realization", Entrypoint: nativeImplementation},
+			OutputKind:                  plugin.BuildOutputRuntimeArtifact,
+			Target:                      "host/reference",
+			Profile:                     "reference",
 		}
 		makeFingerprint("native", nativePlan)
 		processPlan := plugin.BuildPlan{
-			FormatVersion: plugin.BuildPlanFormatVersion,
-			Plugin: plugin.Identity{ID: processDefinition.ID, Version: processDefinition.Version},
+			FormatVersion:               plugin.BuildPlanFormatVersion,
+			Plugin:                      plugin.Identity{ID: processDefinition.ID, Version: processDefinition.Version},
 			PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(processDefinition),
-			Sources: processPlanSources("./cmd/demo", goSourceDigest, referenceDescriptor, digest(referenceDescriptor)),
-			Builder: plugin.BuilderIdentity{
-				ID: processDefinition.ID, Version: "reference-go-toolchain", ContractVersion: "tei.plugin-build/v1",
-				ArtifactDigest: goToolDigest,
+			Sources:                     processPlanSources("./cmd/demo", goSourceDigest, referenceDescriptor, digest(referenceDescriptor)),
+			Builder:                     plugin.BuilderIdentity{
+				ID:              processDefinition.ID,
+				Version:         "reference-go-toolchain",
+				ContractVersion: "tei.plugin-build/v1",
+				ArtifactDigest:  goToolDigest,
 			},
-			Recipe: plugin.BuildRecipe{Kind: "go-process", Entrypoint: "./cmd/demo"},
-			OutputKind: plugin.BuildOutputRuntimeArtifact, Target: "host/reference", Profile: "reference",
+			Recipe:                      plugin.BuildRecipe{Kind: "go-process", Entrypoint: "./cmd/demo"},
+			OutputKind:                  plugin.BuildOutputRuntimeArtifact,
+			Target:                      "host/reference",
+			Profile:                     "reference",
 		}
 		makeFingerprint("process", processPlan)
 
