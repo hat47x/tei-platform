@@ -19,9 +19,9 @@ import (
 // A Go build invocation is an observed attempt, not a BuildExecutionResult
 // identity. This test-only witness is deliberately not an authority claim.
 type actualGoAttemptWitness struct {
-	Attempt          string `json:"attempt"`
-	PlanFingerprint  string `json:"planFingerprint"`
-	ArtifactDigest   string `json:"artifactDigest"`
+	Attempt           string `json:"attempt"`
+	PlanFingerprint   string `json:"planFingerprint"`
+	ArtifactDigest    string `json:"artifactDigest"`
 	ResultFingerprint string `json:"resultFingerprint"`
 }
 
