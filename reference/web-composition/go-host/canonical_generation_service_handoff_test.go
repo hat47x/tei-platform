@@ -146,6 +146,7 @@ func TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute(t *testing.T) {
 				return
 			}
 			if response.Generation != binding || response.Service.Selection != selection ||
+				response.Service.Runtime.Provenance.Environment != "development" ||
 				response.Service.Runtime.Provenance.Artifact.Digest != digest ||
 				response.Service.Runtime.Provenance.Plugin.ID != physical.ID {
 				t.Error("Host generation or physical Service provenance changed")
