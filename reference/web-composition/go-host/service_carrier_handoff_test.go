@@ -30,9 +30,9 @@ func (v *serviceHandoffVerifier) Verify(_ context.Context, _ plugin.Identity, _ 
 }
 
 type serviceHandoffAcceptance struct {
-	calls   int
-	revoked bool
-	selection pruntime.ServiceProviderSelection
+	calls	int
+	revoked	bool
+	selection	pruntime.ServiceProviderSelection
 }
 
 func (a *serviceHandoffAcceptance) ReadCurrentAcceptedService(_ context.Context, selected pruntime.ServiceProviderSelection) (pruntime.ServiceAcceptanceRecord, error) {
@@ -58,16 +58,24 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 	service := composition.Contract{ID: serviceID, Version: "1.0.0", Shape: "test-quote-shape"}
 	registry := composition.NewRegistry()
 	_, err := registry.Apply(0, []composition.Provider{{ID: "quote-provider", Scope: scopeID, Offers: service}}, nil)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	selected, err := registry.Select("quote-provider", scopeID)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	binding := composition.Binding{ContractID: serviceID, ContractVersion: service.Version, ProviderID: selected.ProviderID, ArtifactDigest: digest, Generation: 1}
 	hostAllowed := true
 	coordinator, err := composition.NewSelectedCoordinator(registry, selected, binding, composition.NewScope(), func(actual composition.Binding) error {
-		if !hostAllowed || actual != binding { return errors.New("test Host guard denied") }
-		return nil
+		if !hostAllowed || actual != binding {
+			return errors.New("test Host guard denied")
+		}
+		return	nil
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	provider := plugin.Identity{ID: "tei.reference.quote", Version: "1.0.0"}
 	carrierID := core.CanonicalID("reference.quote.executor")
@@ -106,12 +114,16 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 			ProviderID: binding.ProviderID, ArtifactDigest: digest,
 			Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				captured = r
-				if _, ok := PrincipalFromContext(r.Context()); !ok { t.Error("Host principal lost") }
+				if _, ok := PrincipalFromContext(r.Context()); !ok {
+					t.Error("Host principal lost")
+				}
 				// The trusted Host supplies this exact Plan and Service selection,
 				// NOT the browser's claimed application, provider or operation.
 				result, callErr := runtimeHost.InvokeSelectedServiceCarrier(r.Context(), plan, serviceSelection,
 					"host-action-quote", json.RawMessage(`{"quantity":2,"unitPrice":100}`))
-				if callErr != nil { http.Error(w, "service unavailable", http.StatusServiceUnavailable); return }
+				if callErr != nil {
+					http.Error(w, "service unavailable", http.StatusServiceUnavailable); return
+				}
 				if result.Selection != serviceSelection || result.Runtime.Provenance.Artifact.Digest != digest {
 					t.Error("Service / Runtime provenance lost")
 				}
@@ -119,7 +131,9 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 			}),
 		}},
 	)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	principal := Principal{ProviderID: "corporate", Issuer: "issuer.example", Subject: "account-1", PrincipalID: "user-1"}
 	sessionOK, csrfOK, actionOK := true, true, true
 	host, err := NewHost(Policy{Path: "/protected/quote", Method: http.MethodPost, ActionID: actionID,
@@ -135,7 +149,9 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 			Invoke: serviceHandler,
 			Audit: func(AuditRecord) {},
 		})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	invokeHTTP := func(h http.Handler) int {
 		t.Helper()
 		req := httptest.NewRequest(http.MethodPost, "/protected/quote",
@@ -144,7 +160,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 		req.Header.Set("X-Action-ID", "another.action")
 		response := httptest.NewRecorder()
 		h.ServeHTTP(response, req)
-		return response.Code
+		return	response.Code
 	}
 	assertCalls := func(expected int) {
 		t.Helper()
@@ -153,28 +169,46 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 				process.calls, verifier.calls, accepted.calls, expected)
 		}
 	}
-	if status := invokeHTTP(serviceHandler); status != http.StatusForbidden { t.Fatalf("bare route: %d", status) }
+	if status := invokeHTTP(serviceHandler); status != http.StatusForbidden {
+		t.Fatalf("bare route: %d", status)
+	}
 	sessionOK = false
-	if status := invokeHTTP(host); status != http.StatusUnauthorized { t.Fatalf("session denied: %d", status) }
+	if status := invokeHTTP(host); status != http.StatusUnauthorized {
+		t.Fatalf("session denied: %d", status)
+	}
 	sessionOK, csrfOK = true, false
-	if status := invokeHTTP(host); status != http.StatusForbidden { t.Fatalf("CSRF denied: %d", status) }
+	if status := invokeHTTP(host); status != http.StatusForbidden {
+		t.Fatalf("CSRF denied: %d", status)
+	}
 	csrfOK, actionOK = true, false
-	if status := invokeHTTP(host); status != http.StatusForbidden { t.Fatalf("action denied: %d", status) }
+	if status := invokeHTTP(host); status != http.StatusForbidden {
+		t.Fatalf("action denied: %d", status)
+	}
 	assertCalls(0)
 	actionOK = true
-	if status := invokeHTTP(host); status != http.StatusAccepted { t.Fatalf("authorized invocation: %d", status) }
+	if status := invokeHTTP(host); status != http.StatusAccepted {
+		t.Fatalf("authorized invocation: %d", status)
+	}
 	assertCalls(1)
-	if captured == nil { t.Fatal("no protected request reached selected Action") }
+	if captured == nil {
+		t.Fatal("no protected request reached selected Action")
+	}
 	replay := httptest.NewRecorder()
 	serviceHandler.ServeHTTP(replay, captured)
-	if replay.Code != http.StatusForbidden { t.Fatalf("expired Host approval replay: %d", replay.Code) }
+	if replay.Code != http.StatusForbidden {
+		t.Fatalf("expired Host approval replay: %d", replay.Code)
+	}
 	assertCalls(1)
 	hostAllowed = false
-	if status := invokeHTTP(host); status != http.StatusServiceUnavailable { t.Fatalf("Composition guard denied: %d", status) }
+	if status := invokeHTTP(host); status != http.StatusServiceUnavailable {
+		t.Fatalf("Composition guard denied: %d", status)
+	}
 	assertCalls(1)
 	hostAllowed = true
 	accepted.revoked = true
-	if status := invokeHTTP(host); status != http.StatusServiceUnavailable { t.Fatalf("Provider revoked: %d", status) }
+	if status := invokeHTTP(host); status != http.StatusServiceUnavailable {
+		t.Fatalf("Provider revoked: %d", status)
+	}
 	if process.calls != 1 || verifier.calls != 1 || accepted.calls != 2 {
 		t.Fatalf("revoked Service reached process/verifier or was not rechecked: process=%d verifier=%d accepted=%d",
 			process.calls, verifier.calls, accepted.calls)
