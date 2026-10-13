@@ -242,3 +242,22 @@ TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.
 ```
 
 The test suite covers declared v2.4 input, type and cardinality, Contract version drift, missing/extra inputs, invalid result shape, duplicate identities, unsupported policy and mismatches between the World and exact CLI observations. CI evidence must be recorded for the *exact PR head*, not inferred from previous successful versions. No Go Core, Canonical model, production runtime, or TEI-LD training is changed.
+
+## Optional Provider routing observation without executor authority (2026-10-14)
+
+The existing Go models already separate `environment.DatabaseInstance`, `ApplicationDatabaseBinding`, and `realization.ContractQueryExecutorBinding`. They deliberately do **not** infer a Contract Query executor from a matching database provider: Go's `ResolveContractQueryExecutor` requires an explicit, unambiguous binding and a resolved Plugin Capability supporting the instance provider. Project-specific implementations should remain easy to supply rather than being blocked by speculative test, benchmark or certification obligations.
+
+[observe-provider-routing.mjs](observe-provider-routing.mjs) extends the fixed *public Reference only*, read-only Go `tei world` + four `tei inspect` observations. It first checks the typed Contract signature via the existing [qualify-query-signature.mjs](qualify-query-signature.mjs), then follows each Application's distinct local datasource alias to its exact Environment `bindings` entry and Database instance. For the current `development` Reference, both `order_entry.master` and `repair_intake.customer_master` declare a route to the **same** `master_data.dev` instance, whose definition is `master_data` and whose provider is `oracle`. This is a *declaration of routing*, not a connection attempt or permission.
+
+The optional `contractQueryExecutorBindings` array is inspected for a matching Environment, instance and exact Database/Contract/Query target. Its absence is reported as `executor:not_observed`; it is **not an error imposed on plugin developers**. Even when present, a binding yields only `explicit_binding_declared_unverified`: this research code does **not** resolve Plugin capabilities, inspect secrets, execute queries, or call an external provider. Absent Application routing is reported as `application_binding_not_declared`, with no invented instance. Duplicate/malformed targeted routes, wrong Database definition, unknown provider or duplicate executor selections fail closed rather than choosing an arbitrary entry.
+
+The research response permanently retains `executionPermitted:false`, `implementationSelected:false`, `accepted:false`, and verifier flags `pluginExecutorResolution:false`, `providerHealth:false`, `callerAuthorization:false`, `providerResultConformance:false`. A common declared instance is **not** a shared permission or verified runtime. Runtime grants, resource lease policy, Provider implementation conformance and Accepted reuse remain governed by their existing TEI layers. No changes to Go runtime, typed DSL, deployed provider, SQL Source, credential, or standard Plugin requirement are introduced.
+
+A narrowly scoped positive/negative synthetic suite and the existing opt-in real-Go E2E cover this observation:
+
+```sh
+node --test reference/local-cpu-reuse/observe-provider-routing.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+Both commands are read-only with respect to the Reference models, but `go build` may download Go modules. Results are trustworthy only after recording the exact PR head and CI result; they do not certify a live Oracle environment. The in-memory World and observation objects may reveal project metadata and must not be dumped to unrestricted logs.
