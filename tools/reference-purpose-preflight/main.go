@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"tei/internal/core"
-	"tei/internal/workspace"
 )
 
 type Fixture struct {
@@ -84,7 +83,11 @@ func runCLI(args []string, output io.Writer) error {
 		var err error
 		switch *kind {
 		case "application-pattern":
-			assessment, err = InspectWorkspace(*root, *application, *kind, *id)
+			if *environment != "" {
+				assessment, err = InspectWorkspaceForEnvironment(*root, *application, *kind, *id, *environment)
+			} else {
+				assessment, err = InspectWorkspace(*root, *application, *kind, *id)
+			}
 		case "semantic-validation":
 			assessment, err = InspectValidation(*root, *application, *id)
 		default:
@@ -109,14 +112,6 @@ func runCLI(args []string, output io.Writer) error {
 		encoder := json.NewEncoder(output)
 		encoder.SetIndent("", "  ")
 		if *purpose != "" {
-			if *environment != "" {
-				loaded, loadErr := workspace.Load(*root)
-				if loadErr != nil {
-					return fmt.Errorf("load scoped Environment: %w", loadErr)
-				}
-				binding := ObserveEnvironmentBinding(loaded.World, *environment, *application, assessment.ContractQueryUse)
-				assessment.EnvironmentBinding = &binding
-			}
 			projection, err := ProjectForPurpose(assessment, *purpose)
 			if err != nil {
 				return err
