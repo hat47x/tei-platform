@@ -14,6 +14,8 @@ GO111MODULE=off go vet ./tools/first-value-ux-audit
 
 `testdata/synthetic-session.json` は**架空のイベント・架空の経過時間・架空のSHA**で構成した、Schemaと集計ロジックの見本です。実ユーザーの測定値や動作実証ではありません。
 
+`provenance=observed`の記録には、開始時に取得した実Repositoryの40桁SHAを記入してください。例示専用の全ゼロSHAは`synthetic`だけで利用できます。SHA形式を満たしても、このツールは実在するコミットかどうかを外部照合しません。
+
 
 ## 独立セッションの始め方
 
@@ -46,7 +48,7 @@ GO111MODULE=off go vet ./tools/first-value-ux-audit
 
 ## 出力と証拠の限界
 
-`tei.first-value-ux-metrics/v1` をstdoutのJSONとして出力します。所要秒数（終了時刻がある場合）、コマンド数と非0終了数、編集数、手入力項目数、復帰操作数、独立再読込の**申告件数**、重複排除したEvidence参照を含みます。JSONへない操作や実際の滞在時間を推定しません。順序の逆転、時間窓外、未知のイベント、余分なJSON項目・値、1MiBを超える入力は拒否します。
+`tei.first-value-ux-metrics/v1` をstdoutのJSONとして出力します。所要秒数（終了時刻がある場合）、コマンド数と非0終了数、編集数、手入力項目数、復帰操作数、独立再読込の**申告件数**、重複排除したEvidence参照を含みます。JSONへない操作や実際の滞在時間を推定しません。順序の逆転、時間窓外、未知のイベント、余分なJSON項目・値、同一オブジェクト内の重複JSONキー、手入力件数の整数合計オーバーフロー、1MiBを超える入力は拒否します。別オブジェクト間で同名のフィールドを使うことは通常どおり可能です。曖昧な入力を最後のキー値で黙って上書きして集計することはありません。
 
 **`qualification` は常に `unverified`** です。`finishedAt` があっても成功とはみなしません。E1で`independent-read`が記録されなければ`independent-read-not-recorded`とします。記録されていても、その独立性やDB/Providerへの実到達を自動検証しません。架空データは常に`synthetic-session-not-user-evidence`を返します。計測器のテストPASSを製品のE1/業務利用可能性の証拠にしません。
 

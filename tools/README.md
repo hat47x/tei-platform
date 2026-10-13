@@ -35,6 +35,7 @@
 | [`reference-shared-acceptance/`](reference-shared-acceptance/) | 人・画面・AIに共通する変更受入れ処理の参照実装 |
 | [`reference-standard-function-candidates/`](reference-standard-function-candidates/) | データ定義から実行前の標準機能候補と不足する契約を提示 |
 | [`reference-spec-review/`](reference-spec-review/) | 仕様書の不足・曖昧さ・矛盾の検討支援 |
+| [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
 
 ## ビルド、配布、実行
@@ -90,6 +91,7 @@
 | [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-driver-postgres-query/`](reference-driver-postgres-query/) | DriverからPostgreSQL問合せを実行する参照用起動点 |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
+| [`reference-oracle-local-fixture/`](reference-oracle-local-fixture/) | 別用途の既存Oracleに一時的な検証用データを作り、ドライバー・名前付きバインド・読取り専用の効き方・検証根拠の受入れを確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
 | [`reference-postgres-integration/`](reference-postgres-integration/) | PostgreSQL接続の統合確認 |
 | [`reference-postgres-migration-rendering/`](reference-postgres-migration-rendering/) | PostgreSQL向け移行SQLの生成確認 |
