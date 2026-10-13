@@ -223,3 +223,22 @@ TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.
 ```
 
 Execution status belongs to the *corresponding exact-head CI result*; source changes alone do not count as a pass. No #843 training, #876 automatic qualification, or #267 Acceptance is initiated.
+
+## M0 Database Contract Query typed-signature observation (2026-10-14)
+
+The checked-in Go-normalized `reference/workspace` includes Contract `master_data.customer` **v2.4** with `find_by_id(input id: customer.customer_id) → customer.customer`, result cardinality **`zero-or-one`**. Both `order_entry` and `repair_intake` require compatible major `2`, bind `customer.customer.customer_id -> id`, and use read-only, distinct Application-local datasource aliases. The typed input, output and result cardinality come from the **owning Database Contract**: do not infer them from identical Pattern names or customer-facing UI.
+
+The research-only [qualify-query-signature.mjs](qualify-query-signature.mjs) consumes the four authorized `tei.cli.inspect/v0` reports and the normalized `tei world -workspace reference/workspace` JSON. It first reuses the existing four-subject application comparison (exact identities, Source/World Index fingerprints within inspect, declared read-only route, membership and matching Query invocation). It checks both Application and Pattern Canonical JSON **against the independently read normalized World** before looking up exactly one Database, Contract and Query. It checks Contract major, complete typed Query input binding, resolves the bound Semantic attribute to its declared type, and verifies the result Semantic Data identity and the declared result cardinality. It rejects unknown fields at the Database/Contract/Query-signature boundary, ambiguous identities, mismatches and incomplete declarations rather than guessing.
+
+Its `declared_signature_matched` outcome means **all of these declarations agree** for this fixed Reference input, and records input `customer.customer_id`, result Semantic Data `customer.customer` and `zero-or-one` cardinality. It does **not** mean the external-observed `master_data` provider is live, returns that shape, implements the expected Query, or allows a real caller to access customer data. The independent `world` and `inspect` reads are not an atomic transaction: matching the two Application subtrees reduces observable drift but **cannot prove unchanged Database Contract data, Source authenticity or a consistent revision**. Therefore `verified.providerImplementation`, `resultRuntimeShape`, `authorization`, `sourceAuthenticity` and `atomicWorkspaceSnapshot` remain false; `executionPermitted:false`, `implementationSelected:false` and `accepted:false`.
+
+The `tei world` command returns an entire normalized World, potentially containing sensitive material. This fixed public Reference E2E parses it **in memory only** and does not log or export it. Never use the research adapter as a broad tenant data export or bypass authorized Workspace disclosure controls. Neither the Reference result nor a compatible-major declaration establishes an accepted common runtime plugin.
+
+Focused qualification commands:
+
+```sh
+node --test reference/local-cpu-reuse/qualify-query-signature.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+The test suite covers declared v2.4 input, type and cardinality, Contract version drift, missing/extra inputs, invalid result shape, duplicate identities, unsupported policy and mismatches between the World and exact CLI observations. CI evidence must be recorded for the *exact PR head*, not inferred from previous successful versions. No Go Core, Canonical model, production runtime, or TEI-LD training is changed.
