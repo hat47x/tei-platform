@@ -86,9 +86,17 @@ func ProjectForPurpose(report WorkspaceAssessment, purpose string) (PurposeProje
 	// Validation declaration alone is insufficient to impose those as gates.
 	add("business-effective-scope", "conditional", "required-if-rule-or-object-selection-is-time-dependent")
 	add("runtime-business-validation", "not-evaluated", "actual-order-values-and-revision-not-read")
-	if report.ContractQueryUse != nil && report.ContractQueryUse.Status == "declared-requirement" {
-		// Only the dependency is authored. Neither a concrete Provider nor
-		// its Conformance, environment binding, or execution right is proven.
+	if report.EnvironmentBinding != nil && report.ContractQueryUse != nil &&
+		report.ContractQueryUse.Status == "declared-requirement" {
+		// A physical provider label is an authored Environment declaration.
+		// It does not establish Plugin Conformance or a live connection.
+		if report.EnvironmentBinding.Status == "declared-environment-binding" {
+			add("provider-contract", "not-evaluated", "environment-binding-declared-provider-conformance-unverified")
+		} else {
+			add("provider-contract", "unresolved", "requested-environment-binding-not-established")
+		}
+	} else if report.ContractQueryUse != nil && report.ContractQueryUse.Status == "declared-requirement" {
+		// A Contract dependency alone has no resolved Environment scope.
 		add("provider-contract", "conditional", "declared-query-dependency-provider-qualification-unverified")
 	} else {
 		add("provider-contract", "conditional", "required-if-operation-uses-bound-provider")
