@@ -141,7 +141,7 @@ func handleDiagnosticExecutable(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(struct {
 		SHA256 string `json:"sha256"`
-		Bytes int64  `json:"bytes"`
+		Bytes  int64  `json:"bytes"`
 	}{SHA256: hex.EncodeToString(sha.Sum(nil)), Bytes: size}); err != nil {
 		// A broken transport cannot constitute successful provenance evidence.
 		return
