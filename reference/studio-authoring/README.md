@@ -237,3 +237,22 @@ tools/repository-health-check.sh
 4. 運用規模の入力で性能測定を行い、Source上の変更箇所へnavigate→図/表変更→再投影をUI利用者に対して検証する。
 
 このReferenceは製品Studio完成の証拠ではありません。V05/V08（Target/Runtime/Observation）は#1121/#1127の責務です。
+
+
+## #1120 型付き参照の読み取り連携（任意）
+
+#1120のGo製 `tei trace`（`modelref` / `sourcebridge`）を既存Studioの参照表示に重ねる場合だけ、次のオプションを明示します。Studio側で独立した型付きグラフやSource Resolverは実装しません。
+
+```sh
+node reference/studio-authoring/cli.mjs inspect \
+  -workspace reference/workspace \
+  -focus relation:sales.order.lines \
+  -typed-scope order-entry-reference \
+  -format html
+```
+
+- `-typed-scope` は観測者が指定する**派生Graphのスコープ名**です。Source側の所有スコープが確定したことも、#1125のBusiness Stepが受理済みであることも意味しません。
+- 生のSource IndexアンカーとGo型付きSource Resolverの定義位置・指紋・バイト範囲を照合し、矛盾すれば `sourceConsistency=unresolved` と示します。読み取り結果の一致は編集権限でもSemantic Acceptanceでもありません。
+- `tei trace` はStudioとは別のGo呼出しでWorkspaceを読み直します。読取前後にShared AcceptanceのSource revisionを照合しますが、ファイルシステムの排他ロックや一時的な変更・復元（ABA）検出は提供しません。
+- 型付き参照は `candidate-read-only` として別領域に表示し、元の表・ER・機能・非Canonical業務DFDの権限を変更しません。Sourceが未解決、参照が不正・曖昧、TraceのJSONが不完全なら権限を補完せず拒否または未解決にします。
+- 本オプションは実Workspaceでの `inspect` に限定します。独立JSON入力、`step:ID`（参照専用Business Step）、編集・受理のコマンドには適用しません。
