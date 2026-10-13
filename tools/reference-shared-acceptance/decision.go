@@ -116,6 +116,13 @@ func decisionFrom(p Preview, kind string) Decision {
 // 派生物を決定論的に再生成できるかを確認し、一つでも満たさなければ元のsourceへ戻す
 // （追記したfileは元の内容へ、作成したfileと、そのために作ったdirectoryは削除する）。
 func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
+	// Keep the original Workspace directory handle across evaluation and
+	// mutation: replacing the caller's path must never redirect a write.
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return Decision{}, fmt.Errorf("open Acceptance Workspace root: %w", err)
+	}
+	defer files.Close()
 	ev, err := evaluate(root, data)
 	if err != nil {
 		return Decision{}, err
@@ -146,15 +153,6 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 			Projection:  &review,
 		}
 	}
-
-	// Pin the authoritative Workspace directory for all mutation and rollback
-	// paths. A later parent symlink replacement must never redirect a write
-	// outside the root even if the Source bytes happen to match.
-	files, err := os.OpenRoot(root)
-	if err != nil {
-		return Decision{}, fmt.Errorf("open Acceptance Workspace root: %w", err)
-	}
-	defer files.Close()
 
 	var written []SourceEdit
 	var createdDirs []string
@@ -201,6 +199,9 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	for i, e := range ev.edits {
 		if beforeEachWriteHook != nil {
 			beforeEachWriteHook(i, e)
+		}
+		if err := checkAcceptedWorkspaceIdentity(root, files); err != nil {
+			return refuse("SOURCE_WORKSPACE_REPLACED", err.Error()), nil
 		}
 		if e.Created {
 			name, err := acceptedSourcePath(e.Path)
