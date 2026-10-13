@@ -62,3 +62,56 @@ func TestCompareArtifactFilesSeparatesMissingOutputFromMismatchEvidence(t *testi
 		t.Fatalf("directory was treated as a build output: %+v: %v", cmp, err)
 	}
 }
+
+func TestCompareArtifactFilesRejectsSameFileAsTwoBuildAttempts(t *testing.T) {
+	dir := t.TempDir()
+	first := filepath.Join(dir, "first")
+	if err := os.WriteFile(first, []byte("independently built?"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmp, err := CompareArtifactFiles(first, first)
+	if err == nil || !strings.Contains(err.Error(), "not two independent outputs") ||
+		cmp.FirstDigest == "" || cmp.SecondDigest != cmp.FirstDigest ||
+		cmp.Reproducible || cmp.CandidateDigest != "" {
+		t.Fatalf("single file was promoted to two reproducible builds: %+v: %v", cmp, err)
+	}
+
+	// A different pathname is not evidence of an independent build when
+	// two paths share the same underlying inode/file identity.
+	hardLink := filepath.Join(dir, "hardlink-second")
+	if err := os.Link(first, hardLink); err != nil {
+		t.Skipf("hard links unavailable on this filesystem: %v", err)
+	}
+	cmp, err = CompareArtifactFiles(first, hardLink)
+	if err == nil || !strings.Contains(err.Error(), "not two independent outputs") ||
+		cmp.CandidateDigest != "" || cmp.Reproducible {
+		t.Fatalf("hard-link alias was promoted to reproducible build: %+v: %v", cmp, err)
+	}
+}
+
+func TestCompareArtifactFilesRejectsSymlinkToOtherwiseValidArtifact(t *testing.T) {
+	dir := t.TempDir()
+	first := filepath.Join(dir, "first")
+	second := filepath.Join(dir, "second")
+	alias := filepath.Join(dir, "alias-second")
+	if err := os.WriteFile(first, []byte("same bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second, []byte("same bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(second, alias); err != nil {
+		t.Skipf("symlink creation unavailable on this host: %v", err)
+	}
+	cmp, err := CompareArtifactFiles(first, alias)
+	if err == nil || !strings.Contains(err.Error(), "not a direct regular file") ||
+		cmp.FirstDigest == "" || cmp.SecondDigest != "" ||
+		cmp.Reproducible || cmp.CandidateDigest != "" {
+		t.Fatalf("symlinked artifact was treated as independent direct output: %+v: %v", cmp, err)
+	}
+	// Reproducibility remains observable for two genuinely separate files.
+	cmp, err = CompareArtifactFiles(first, second)
+	if err != nil || !cmp.Reproducible || cmp.CandidateDigest != cmp.FirstDigest {
+		t.Fatalf("two direct regular outputs were incorrectly refused: %+v: %v", cmp, err)
+	}
+}
