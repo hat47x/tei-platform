@@ -45,6 +45,20 @@ type WorkspaceAssessment struct {
 // typed using TEI's existing subject contract. It deliberately does not infer
 // order approval from the existence/name of a submit-order Pattern.
 func InspectWorkspace(root, application, kind, id string) (WorkspaceAssessment, error) {
+	return inspectWorkspace(root, application, kind, id, "")
+}
+
+// InspectWorkspaceForEnvironment reads both the Pattern/Contract declarations
+// and the requested Environment binding from the same loaded Canonical World.
+// This avoids silently mixing evidence gathered in two independent loads.
+func InspectWorkspaceForEnvironment(root, application, kind, id, environmentID string) (WorkspaceAssessment, error) {
+	if environmentID == "" {
+		return WorkspaceAssessment{}, fmt.Errorf("Environment ID is required")
+	}
+	return inspectWorkspace(root, application, kind, id, environmentID)
+}
+
+func inspectWorkspace(root, application, kind, id, environmentID string) (WorkspaceAssessment, error) {
 	result := WorkspaceAssessment{
 		SchemaVersion:    "tei.reference.purpose-preflight-source/v0",
 		Authority:        "read-only-derived-projection",
@@ -144,6 +158,10 @@ func InspectWorkspace(root, application, kind, id string) (WorkspaceAssessment, 
 	result.OperationWriteIntent = &intent
 	queryUse := ObserveDeclaredContractQuery(loaded.World, application, id)
 	result.ContractQueryUse = &queryUse
+	if environmentID != "" {
+		binding := ObserveEnvironmentBinding(loaded.World, environmentID, application, result.ContractQueryUse)
+		result.EnvironmentBinding = &binding
+	}
 	// Source Index fingerprints attest bytes, not human acceptance or
 	// equivalence of a proposed Business Procedure/approval rule.
 	result.Unresolved = append(result.Unresolved, "business-rule-acceptance-not-established")
