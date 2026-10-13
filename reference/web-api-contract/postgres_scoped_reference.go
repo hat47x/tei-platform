@@ -68,11 +68,40 @@ func (e ScopedRecentOrdersPostgres) ExecuteScopedBrowseQuery(
 		len(plan.Selected) == 0 {
 		return driver.BrowseQueryResult{}, ErrRejected
 	}
+	// The canonical Query maps five raw columns, but a Browse user must
+	// never cause unselected sensitive values to be fetched merely because
+	// Driver mapping expects all five column identities. Static, reviewed
+	// expressions replace unselected columns with typed NULL aliases.
+	// All names and expressions come from this hard-coded realization.
+	physical := []struct {
+		name string
+		expr string
+		alias string
+	}{
+		{"orderId", "o.order_id", "order_id"},
+		{"customerId", "o.customer_id", "customer_id"},
+		{"orderedAt", "o.ordered_at", "ordered_at"},
+		{"status", "o.status", "status"},
+		{"total", "o.total_amount", "total_amount"},
+	}
+	selected := make(map[string]bool, len(plan.Selected))
 	for _, name := range plan.Selected {
 		switch name {
 		case "orderId", "customerId", "orderedAt", "status", "total":
 		default:
 			return driver.BrowseQueryResult{}, ErrRejected
+		}
+		if selected[name] {
+			return driver.BrowseQueryResult{}, ErrRejected
+		}
+		selected[name] = true
+	}
+	selectItems := make([]string, len(physical))
+	for i, column := range physical {
+		if selected[column.name] {
+			selectItems[i] = column.expr
+		} else {
+			selectItems[i] = "NULL AS " + column.alias
 		}
 	}
 	if len(parameters) != 1 {
@@ -84,7 +113,7 @@ func (e ScopedRecentOrdersPostgres) ExecuteScopedBrowseQuery(
 	}
 	// No source SQL concatenation or caller-controlled identifiers. The
 	// row scope is the FIRST bound predicate; client filtering is additional.
-	statement := "SELECT o.order_id, o.customer_id, o.ordered_at, o.status, o.total_amount" +
+	statement := "SELECT " + strings.Join(selectItems, ", ") +
 		" FROM public.orders AS o WHERE o.customer_id = $1 AND o.ordered_at >= $2"
 	args := []any{scope.CustomerID, from}
 	if plan.Filter != nil {
