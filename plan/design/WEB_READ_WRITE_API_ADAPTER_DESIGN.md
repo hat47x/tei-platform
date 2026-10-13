@@ -49,6 +49,16 @@ HTTP GET → 信頼済みWeb Host → OData Parser（採用時）
 
 OData 4.01のサービスを名乗る前に、OASISのURL正規化、Case、Repeat、Literal、Type/NULL、Filter文法、Metadata、Version広告、Response/Errorの仕様を満たす必要がある。Subset Parserは規格準拠の証拠ではない。クライアント文字列をSQLへ連結しない。
 
+### 2.1. 既存の手書きSQLとの接続条件
+
+`order_entry.recent_orders`の現行Canonical Queryは、明示的なResult Column Mappingを持つnative SQLであり、`from`パラメータと固定の`ORDER BY`を含む。**この実装があるだけでは、任意のOData `$filter`、`$orderby`、`$top`、行スコープを実行できるとはいえない。** SQL文字列を安易に書き換える方式も採用しない。
+
+実行前には、既存Resolverで解決されたQuery IDと同一のProvider Bindingについて、そのProviderが実際に保証できる`scope / projection / predicate / order / limit`の範囲を確認する。必要な操作を正しく実現できない場合は**拒否**し、検索やページングだけを無視したり、先に件数を制限してから行スコープを後付けしたりしない。
+
+将来は、権限付き型付きQuery Planから各Provider固有の安全な実行計画へコンパイルする方式と、既存の固定Queryのまま少数の明示パラメータを渡す方式を比較する。実行時には、実ProviderがどのScope/Predicate/Orderingを強制したかを、実際の検証証拠で判定する。単なる「対応可能」の自己宣言は権限保証ではない。
+
+この差を[合成Reference](../../reference/web-api-contract/README.md)で段階的に検証する。現時点で実在する`order_entry.recent_orders`のPattern/Query/Data/Attribute対応を既存Driverから取得したが、ODataの外部公開や実行・永続化の成立までは示していない。
+
 ## 3. 書込契約
 
 基本は`ActionID + 型付き入力 + 信頼済みPrincipal + Revision/Idempotency`。例：
