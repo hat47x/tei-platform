@@ -33,7 +33,11 @@ func (s *testHostCurrentAcceptanceSource) ReadCurrentHostAcceptance(
 	if s.err != nil {
 		return HostCurrentAcceptanceSnapshot{}, s.err
 	}
-	return s.snapshot, nil
+	// A Host-owned source returns an isolated observation, not mutable
+	// aliases of its authoritative grant collection.
+	snapshot := s.snapshot
+	snapshot.CurrentTrustGrants = append([]authoritytrust.Grant(nil), s.snapshot.CurrentTrustGrants...)
+	return snapshot, nil
 }
 
 func testHostAcceptanceSnapshot(
