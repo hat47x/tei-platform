@@ -43,3 +43,17 @@ go test -count=1 -run '^TestScopedPostgresAgainstIsolatedDatabase$' -v ./referen
 - コンカレントな権限変更とQuery実行の原子性。現行のPolicy Revision一致はプロセス内の照合で、DB側の権限正本に同期した失効保証ではない。
 
 **実DB試験が未実行なら、Issue #1769の実DB完了チェックは埋めない。**
+
+
+## Tenantの参照例との関係
+
+`scoped_postgres_reference.go`と、この文書が扱う`postgres_scoped_reference.go`は、異なる隔離fixtureを使う二つの検証例である。共通の入口は既存の`ReadPlan`と`ScopedBrowseQueryExecutor`であり、通常のExecutorを暗黙にスコープ対応へ置き換えない。
+
+| 例 | スコープ値の入力 | 物理テーブル | 検証の範囲 |
+|---|---|---|---|
+| Tenantの例 | 注入した`SQLTenantScopeAuthority`から得る文字列`TenantID` | `public.tei_web_scoped_orders_reference` | 偽ConnectorでSQLとGrant照合、認可障害時のSQL未実行を確認 |
+| Customerの例 | 信頼済み試験入力`PostgresCustomerScope.CustomerID` | 専用DBに作る`public.orders` | 偽Connectorと明示opt-inの実PostgreSQLで行の越境、Order/Top、非選択列のNULLマスクを確認 |
+
+Customer IDをTenant IDや認可Grantとして扱わない。Tenantの例のSQLをCustomerの実DB試験が実行したとは主張しない。二つの実装を明示選択するReferenceとして併置できるが、正式Providerを二種類採用したことにはならない。
+
+製品の行スコープを共通化するには、現在の権限正本からどの値を導出し、Query・Scope ID・Policy Revisionへどう拘束するかを先に定める必要がある。権限の失効と実SQLの原子性、実Host受理、RLS、正式Providerの選択は[#1656](https://github.com/hat47x/tei-platform/issues/1656)と[#1769](https://github.com/hat47x/tei-platform/issues/1769)に残す。
