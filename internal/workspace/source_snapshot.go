@@ -40,10 +40,15 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	if result.sourceSnapshotRoot == "" {
 		return nil, fmt.Errorf("source reader has no Workspace root")
 	}
-	if result.sourceReadRoot == nil {
-		return nil, fmt.Errorf("source reader has no active Workspace root")
+	// Load has a single pinned root. Direct calls to a specific loader
+	// (including its standalone tests) retain the safe per-file os.Root
+	// boundary without pretending to have a whole-Load pin.
+	var content []byte
+	if result.sourceReadRoot != nil {
+		content, err = readPinnedWorkspaceFile(result.sourceReadRoot, path)
+	} else {
+		content, err = readWorkspaceFile(result.sourceSnapshotRoot, path)
 	}
-	content, err := readPinnedWorkspaceFile(result.sourceReadRoot, path)
 	if err != nil {
 		return nil, err
 	}
