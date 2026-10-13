@@ -153,7 +153,8 @@ func TestDesktopManifestObservationDetectsChangeOmittedByModelRevision(t *testin
 	}
 	// A comment is a byte change in the authoritative Workspace selector.
 	// The reference model revision covers Source Index artifacts, not this
-	// manifest. Do not claim the current Acceptance automatically fences it.
+	// manifest. The Shared Acceptance Review now binds these bytes, but no
+	// atomic cross-process filesystem transaction is implied.
 	if after := revisionOfDir(t, root); after != revision {
 		t.Fatalf("fixture ceased demonstrating independent manifest bytes: %s != %s", after, revision)
 	}
@@ -164,9 +165,9 @@ func TestDesktopManifestObservationDetectsChangeOmittedByModelRevision(t *testin
 	if err != nil || recovered.Status != desktophost.RecoverySourceChanged {
 		t.Fatalf("manifest change did not invalidate draft recovery: %+v %v", recovered, err)
 	}
-	// This is a read-only boundary test: there is no atomic link between
-	// Desktop preflight and Shared Acceptance's mutation fence yet. In
-	// particular, callers must not reuse the old review for Accept here.
+	// This is a read-only Desktop recovery test. The Shared Acceptance
+	// separately guards the Review and write boundary in its own tests;
+	// neither guarantees an atomic transaction with external editors.
 	if strings.TrimSpace(recovered.Marker.CandidateRef) != marker.CandidateRef {
 		t.Fatal("recovery unexpectedly replaced the draft identity")
 	}

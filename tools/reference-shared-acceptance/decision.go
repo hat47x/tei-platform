@@ -228,12 +228,18 @@ func acceptWithPinnedRoot(root string, files *os.Root, data []byte, opts acceptO
 		return decision
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	for i, e := range ev.edits {
 		if beforeEachWriteHook != nil {
 			beforeEachWriteHook(i, e)
 		}
 		if err := checkAcceptedWorkspaceIdentity(root, files); err != nil {
 			return refuse("SOURCE_WORKSPACE_REPLACED", err.Error()), nil
+		}
+		if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+			return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
 		}
 		if e.Created {
 			name, err := acceptedSourcePath(e.Path)
@@ -273,9 +279,15 @@ func acceptWithPinnedRoot(root string, files *os.Root, data []byte, opts acceptO
 	if afterWritesHook != nil {
 		afterWritesHook(root)
 	}
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	post, err := takeSnapshot(root)
 	if err != nil {
 		return refuse("POST_ACCEPT_RELOAD_FAILED", err.Error()), nil
+	}
+	if post.manifest != ev.before.manifest {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", "Workspace manifest changed during post-Accept reload"), nil
 	}
 	postSemantic, err := changeanalysis.Diff(ev.before.loaded.World, post.loaded.World)
 	if err != nil {
@@ -331,6 +343,9 @@ func acceptWithPinnedRoot(root string, files *os.Root, data []byte, opts acceptO
 		}
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	decision.SourceChanged = true
 	decision.ModelRevisionAfter = post.revision
 	decision.SourceEdits = ev.edits
