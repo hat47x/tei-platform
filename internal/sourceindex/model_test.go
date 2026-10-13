@@ -124,9 +124,13 @@ func TestNormalizeIsDeterministicWhenReferencesShareStartOffset(t *testing.T) {
 // Acceptance revision algorithm, including the NUL separator and path order.
 func TestManagedSourceRevisionLegacyCompatibility(t *testing.T) {
 	a, err := sourceindex.NewArtifact("a.tei", []byte("hello\n"))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	b, err := sourceindex.NewArtifact("b.tei", []byte("world"))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	index := sourceindex.Index{Artifacts: []sourceindex.Artifact{b, a}}
 	const want = "sha256:80f05da9df82519698ffa156665c2f0adab6ec75b731a13b51f748168bc38d21"
 	if got := sourceindex.ModelRevision(index); got != want {
