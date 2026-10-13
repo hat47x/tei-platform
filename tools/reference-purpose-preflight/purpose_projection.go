@@ -81,11 +81,14 @@ func ProjectForPurpose(report WorkspaceAssessment, purpose string) (PurposeProje
 	} else {
 		add("human-acceptance", "unverified", "accepted-purpose-specific-decision-not-established")
 	}
-	add("business-effective-scope", "unresolved", "effective-interval-and-object-selection-not-established")
+	// Whether time selection, a remote provider, or a mutation fence is needed
+	// depends on the actual Operation and its accepted effect contract. A
+	// Validation declaration alone is insufficient to impose those as gates.
+	add("business-effective-scope", "conditional", "required-if-rule-or-object-selection-is-time-dependent")
 	add("runtime-business-validation", "not-evaluated", "actual-order-values-and-revision-not-read")
-	add("provider-contract", "not-evaluated", "target-provider-binding-not-qualified")
+	add("provider-contract", "conditional", "required-if-operation-uses-bound-provider")
 	add("host-authorization", "not-evaluated", "execution-principal-and-current-policy-not-qualified")
-	add("effect-fence", "not-evaluated", "version-check-commit-and-retry-owned-by-runtime")
+	add("effect-fence", "conditional", "required-if-operation-has-write-or-external-effect")
 	add("scenario-coverage", "not-evaluated", "driver-scenario-oracle-not-executed")
 	return projection, nil
 }
