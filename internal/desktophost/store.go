@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 const maxStoredDraftMarkerBytes = 1 << 20
@@ -163,16 +162,17 @@ func (s *DraftMarkerStore) Recover(key, authorizedWorkspaceRoot string, observe 
 	if readErr != nil || closeErr != nil || len(raw) > maxStoredDraftMarkerBytes {
 		return Recovery{}, ErrDraftStoreRefused
 	}
-	var marker DraftMarker
-	// Decode through the existing strict Marker boundary. Do not trust the
-	// persisted candidate or Workspace identity to select the read location.
-	recovery, err := RecoverDraftMarker(raw, authorizedWorkspaceRoot, observe)
+	// A stored filename is not authoritative. Reject invalid JSON, a
+	// mismatched candidate identity or an unauthorized Workspace BEFORE
+	// observing Workspace Source; a corrupt marker must not trigger I/O
+	// against the Workspace, even when the caller supplied a valid root.
+	marker, err := decodeDraftMarker(raw)
 	if err != nil {
 		return Recovery{}, err
 	}
-	marker = recovery.Marker
-	if !strings.EqualFold(draftMarkerKey(marker), key) {
+	if authorizedWorkspaceRoot == "" || marker.Baseline.WorkspaceRoot != authorizedWorkspaceRoot ||
+		draftMarkerKey(marker) != key {
 		return Recovery{}, ErrInvalidDraftMarker
 	}
-	return recovery, nil
+	return classifyDraftMarker(marker, authorizedWorkspaceRoot, observe)
 }
