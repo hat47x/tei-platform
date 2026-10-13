@@ -38,3 +38,13 @@ go test -count=1 ./reference/semantic-distribution
 必要な後続は、実際の配布物を扱う選択・信頼と照合値の固定、複数の名前空間間の依存閉包、公開範囲、二つのプロジェクトでの再利用、モデル更新時の影響分析です。現行の固定的な `CapabilityKind` にモデル専用種別を増やすことは避けます。
 
 `knowledge://`を標準の参照URIとして採用する判断も、現段階では行いません。外部との相互運用で必要になるURIは、対象の種類と供給場所を混同せず別途検討します。
+
+## E4b：独立した二Consumerと依存の明示（2026-10-13）
+
+追加した `two_consumer_test.go` は、同じ `os` 名前空間を「監視」「監査」の異なる二Workspaceで実際に使用する。いずれも実際のTEI構文と `workspace.Load` を使用し、共有のデータのみ配布候補とPath Importの双方で、同じCanonical意味ビューと `validation.Validate` の成功を確認する。
+
+併せて、提供側の `os.process_id` が別名前空間 `common.machine_id` を参照する場合を検証する。配布物あるいはPath Importで `os` だけを指定しても、`common` を暗黙には付加しない。不足を既存の `UNKNOWN_SEMANTIC_TYPE_UNDERLYING` 診断で確認し、利用側が両方を明示選択した場合に検証が通ることを試す。**推移的依存閉包を自動解決する実装ではない。**
+
+二つの異なる配布者が同じ論理名前空間を異なる意味で提供するケースでは、すでに選択した配布者と内容の期待値が一致しなければ拒否する。両者を同時に合成した場合は `DUPLICATE_SEMANTIC_NAMESPACE` を診断する。自動最新版選択、後勝ち優先、RuntimeのProvider選択は実装しない。
+
+この試験は、共通資産を二Consumerに届けられる**意味上の最小条件**を調べるものである。実際のPlugin配布バイナリ、取得・信頼、正式なComposition Profile、Shared Acceptance、業務効果の定量評価は未検証であり、#1067の共有プラグイン昇格Triggerを満たしたとの宣言ではない。
