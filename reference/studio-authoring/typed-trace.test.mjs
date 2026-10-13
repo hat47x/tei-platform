@@ -75,6 +75,17 @@ test("stale Source anchor or invalid reference never becomes qualified", () => {
   const out = bindTypedTrace(view, stale, key.scope);
   assert.equal(out.status, "unresolved");
   assert.equal(out.sourceConsistency, "unresolved");
+  const unlocated = freshReport();
+  unlocated.result.source.status = "unresolved";
+  unlocated.result.source.references = [];
+  unlocated.result.source.artifacts = [];
+  const hidden = bindTypedTrace(view, unlocated, key.scope);
+  assert.equal(hidden.status, "unresolved");
+  assert.equal(hidden.sourceConsistency, "unresolved");
+  const noStudioAnchor = structuredClone(view);
+  noStudioAnchor.sourceNavigation = { status: "unresolved" };
+  assert.equal(bindTypedTrace(noStudioAnchor, freshReport(), key.scope).status,
+    "unresolved", "Go location alone cannot qualify an unbound Studio Source");
   const invalid = freshReport();
   invalid.result.trace.rows[0].status = "unresolved";
   delete invalid.result.trace.rows[0].resolvedTo;
