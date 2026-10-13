@@ -35,7 +35,11 @@ advice_pid=$!
 
 for attempt in $(seq 1 100); do
   if ! kill -0 "$api_pid" 2>/dev/null || ! kill -0 "$advice_pid" 2>/dev/null; then
-    echo "reference process exited" >&2
+    echo "reference process exited: order_entry or advice Host" >&2
+    echo "--- order_entry API startup ---" >&2
+    tail -n 40 "$tmp/api.log" >&2
+    echo "--- project advice Host startup ---" >&2
+    tail -n 40 "$tmp/advice.log" >&2
     exit 1
   fi
   if curl -fsS --max-time 1 "$api/scenario/read" -o "$tmp/read.json" &&
