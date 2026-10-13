@@ -271,7 +271,10 @@ func TestHTTPSApplicationStoreLostReplyNeverRetries(t *testing.T) {
 	entered := make(chan struct{}, 1)
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		entered <- struct{}{}
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
 		// The upstream may have committed before its response is lost.
 		<-r.Context().Done()
 	}))
