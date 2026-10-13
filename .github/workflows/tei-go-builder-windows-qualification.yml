@@ -35,7 +35,7 @@ concurrency:
 jobs:
   windows-go-builder:
     runs-on: windows-2025
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       GOENV: off
       GOWORK: off
@@ -88,6 +88,37 @@ jobs:
           # separate state paths and full bytes.Equal comparison.
           go test -count=1 -timeout 30m -v -run '^TestRealGoBuildPreExtractionRecipeParity$' ./tools/reference-transform-runtime-engine-build
           if ($LASTEXITCODE -ne 0) { throw 'Windows actual Go artifact parity failed' }
+
+          # GitHub's Windows Go toolcache can expose go.exe through a
+          # junction (C: hostedtoolcache -> D: hostedtoolcache). The
+          # historical Runner's SelectExecutable requires EvalSymlinks.
+          # Resolve the real backing toolchain root without altering or
+          # recompiling the historical source code.
+          $goRoot = (go env GOROOT).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot locate the pinned Go toolchain root' }
+          $installedRoot = Get-Item -LiteralPath $goRoot -Force
+          if ($installedRoot.Target) {
+            $resolvedRoot = [string]$installedRoot.Target
+            if (-not [System.IO.Path]::IsPathRooted($resolvedRoot)) {
+              $resolvedRoot = [System.IO.Path]::GetFullPath((Join-Path $installedRoot.Parent.FullName $resolvedRoot))
+            }
+            $goRoot = $resolvedRoot
+          }
+          $physicalGo = Join-Path $goRoot 'bin/go.exe'
+          if (-not (Test-Path -LiteralPath $physicalGo -PathType Leaf)) {
+            throw "Physical toolchain go.exe is unavailable: $physicalGo"
+          }
+          $env:TEI_HISTORICAL_GO_EXECUTABLE = $physicalGo
+          Write-Output "windows-historical-go-root=$goRoot"
+
+          # Unlike the build-recipe comparison above, these tests compile
+          # two REAL historical/current builder executables from independent
+          # Git revisions. Both must build the SAME current clean source.
+          # They must agree on artifact bytes and the full Evidence schema.
+          go test -count=1 -timeout 35m -v -run '^TestHistoricalRuntimeEngineRunnerParity$' ./tools/reference-transform-runtime-engine-build
+          if ($LASTEXITCODE -ne 0) { throw 'Windows historical Engine builder parity failed' }
+          go test -count=1 -timeout 35m -v -run '^TestHistoricalProcessPluginRunnerEvidenceParity$' ./tools/reference-plugin-self-build
+          if ($LASTEXITCODE -ne 0) { throw 'Windows historical Plugin builder parity failed' }
 
           $after = (git rev-parse HEAD).Trim()
           $dirtyAfter = @(git status --porcelain=v1 --untracked-files=all)

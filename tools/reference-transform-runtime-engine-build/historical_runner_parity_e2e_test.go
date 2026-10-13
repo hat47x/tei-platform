@@ -30,20 +30,27 @@ const preSharedGoBuildRunnerRevision = "5726a3475d8930e49f41c907ecfd352c9936192f
 // the historical *runner implementation*, not merely a hand-copied Go recipe.
 // It does not compare artifacts from two different application source trees.
 func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Git worktree + historical CLI cross-version E2E needs separate Windows runner qualification")
-	}
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		t.Skipf("Go unavailable: %v", err)
+	}
+	// The Windows CI can identify the physical Go installation behind the
+	// hosted toolcache junction. Pin that absolute executable so the pinned
+	// historical SelectExecutable (which cannot be modified) receives a
+	// path whose EvalSymlinks is supported by the current Windows runner.
+	if physical := os.Getenv("TEI_HISTORICAL_GO_EXECUTABLE"); physical != "" {
+		goPath = physical
 	}
 	goPath, err = filepath.Abs(goPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	goPath, err = filepath.EvalSymlinks(goPath)
-	if err != nil {
-		t.Fatal(err)
+	// Windows hosted Go toolcache may contain directory junctions. The
+	// absolute executable selected by LookPath is sufficient; resolving
+	// junctions via EvalSymlinks is not portable across Windows agents.
+	goInfo, err := os.Stat(goPath)
+	if err != nil || !goInfo.Mode().IsRegular() {
+		t.Fatalf("selected Go executable is not a regular file: %q (%v)", goPath, err)
 	}
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skipf("Git unavailable: %v", err)
@@ -83,6 +90,18 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	}
 
 	tmp := t.TempDir()
+	if runtime.GOOS == "windows" {
+		// Legacy builder output export uses filepath.Rel(root, out) and
+		// requires both paths to be on the same Windows volume. The hosted
+		// runner normally puts t.TempDir on C: but checks out source on D:.
+		// Keep all comparison artifacts OUTSIDE the Git checkout while using
+		// its drive, without modifying the pinned historical Runner.
+		tmp, err = os.MkdirTemp(filepath.Dir(repo), "tei-historical-runner-")
+		if err != nil {
+			t.Fatalf("allocate isolated same-volume comparison directory: %v", err)
+		}
+		t.Cleanup(func() { os.RemoveAll(tmp) })
+	}
 	oldCheckout := filepath.Join(tmp, "historical-checkout")
 	add := exec.Command("git", "-C", repo, "worktree", "add", "--detach", oldCheckout, preSharedGoBuildRunnerRevision)
 	if out, err := add.CombinedOutput(); err != nil {
