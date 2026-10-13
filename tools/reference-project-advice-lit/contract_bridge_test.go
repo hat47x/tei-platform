@@ -88,8 +88,8 @@ func TestProjectAdvisoryChangedContractDeniesStaleSelection(t *testing.T) {
 	replacement := ProjectAdvisoryContract
 	replacement.Version = "v1"
 	_, err = bridge.registry.Apply(bridge.registry.Snapshot().Revision, []composition.Provider{{
-		ID: projectAdvisoryProviderID,
-		Scope: projectAdvisoryScope,
+		ID:     projectAdvisoryProviderID,
+		Scope:  projectAdvisoryScope,
 		Offers: replacement,
 	}}, nil)
 	if err != nil {
