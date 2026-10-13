@@ -7,6 +7,8 @@ import "tei/internal/core"
 // proof that a Provider enforces its own declarations.
 type ProviderReadSupport struct {
 	QueryID        core.CanonicalID
+	PrincipalID    string
+	RowScopeID     string
 	PolicyRevision string
 	EnforcesScope  bool
 	ProjectsFields map[core.CanonicalID]bool
@@ -20,8 +22,10 @@ type ProviderReadSupport struct {
 // or be emulated after applying pagination to an unscoped result.
 func CheckReadDispatch(publication PublishedBrowse, plan ReadPlan, support ProviderReadSupport) error {
 	if support.QueryID == "" || support.QueryID != publication.QueryID ||
+		plan.PrincipalID == "" || support.PrincipalID != plan.PrincipalID ||
 		plan.PolicyRevision == "" || support.PolicyRevision != plan.PolicyRevision ||
-		plan.ScopeID == "" || !support.EnforcesScope || !support.SupportsLimit ||
+		plan.ScopeID == "" || support.RowScopeID != plan.ScopeID ||
+		!support.EnforcesScope || !support.SupportsLimit ||
 		plan.Limit < 1 || plan.Limit > 100 {
 		return ErrRejected
 	}
