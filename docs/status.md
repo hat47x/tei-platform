@@ -23,7 +23,7 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 
 判定段階A・B・Cの「合格」は、**各判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を、そのまま新しい変更の検証根拠にはしません。
 
-合成基盤と[実Processとの接続Reference](../tools/reference-composition-process-bridge/README.md)では、実際に構築した成果物と子プロセスの応答を照合します。呼出しごとに起動するProcessの経路切替と、試験用のHostガードを確認する範囲です。常駐サービスの無停止更新、実配備先の現在権限、製品Consumerからの旧Resolver撤去は未完了で、[合成Kernelの移行判定](../plan/gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と[課題 #1223](https://github.com/hat47x/tei-platform/issues/1223)で追跡します。入出力の一般的な対応付けは[評価中の設計候補](../plan/design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)で、正本の項目定義、集合の縮約、演算子との接続が残ります。今回の固定版の再検証は[検証記録と申し送り](audits/ISSUE_HANDOFF_1100_1107_1223_2026-10-13.md)を参照してください。
+合成基盤と[実Processとの接続Reference](../tools/reference-composition-process-bridge/README.md)では、実際に構築した成果物と子プロセスの応答を照合します。呼出しごとに起動するProcessの経路切替と、試験用のHostガードを確認する範囲です。常駐サービスの無停止更新、実配備先の現在権限、製品Consumerからの旧Resolver撤去は未完了で、[合成Kernelの移行判定](../plan/gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と[課題 #1223](https://github.com/hat47x/tei-platform/issues/1223)で追跡します。入出力の一般的な対応付けは[評価中の設計候補](../plan/design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)で、正本の項目定義、集合の縮約、演算子との接続が残ります。
 
 ## 未完成または未検証のこと
 
