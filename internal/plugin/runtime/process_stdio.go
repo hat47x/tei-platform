@@ -114,7 +114,7 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	// than allowed to keep consuming CPU or hold a resource lease indefinitely.
 	// Use a child-specific context so that a size violation cannot cancel the
 	// caller's context or any sibling invocation.
-	runCtx, stop := context.WithCancel(ctx)
+	runCtx, stop := context.WithTimeout(ctx, defaultProcessExecutionLimit)
 	defer stop()
 	stdout := &boundedCapture{limit: limit, onOverflow: stop}
 	stderrLimit := l.MaxStderrBytes
