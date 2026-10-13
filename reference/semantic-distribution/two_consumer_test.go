@@ -165,7 +165,7 @@ func TestDataOnlyExportDoesNotSilentlyImportDependencyClosure(t *testing.T) {
 }
 
 func TestCollidingProvidersCannotSilentlyReplaceNamespace(t *testing.T) {
-	consumer, provider := preparePair(t)
+	consumer, _ := preparePair(t)
 	same, err := workspace.Load(consumer)
 	if err != nil {
 		t.Fatal(err)
@@ -223,5 +223,4 @@ func TestCollidingProvidersCannotSilentlyReplaceNamespace(t *testing.T) {
 	if !containsDiagnostic(validation.Validate(loaded.World), "DUPLICATE_SEMANTIC_NAMESPACE") {
 		t.Fatal("two providers exported the same namespace without duplicate diagnostic")
 	}
-	_ = provider // the source of the chosen fixture is not used as an authority to resolve a tie
 }
