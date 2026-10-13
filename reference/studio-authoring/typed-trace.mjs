@@ -100,7 +100,8 @@ export function bindTypedTrace(view, cliReport, observedScope) {
     subject: key,
     sourceStatus: source.status,
     sourceConsistency,
-    status: sourceConsistency === "unresolved" || trace.unresolved > 0
+    status: source.status !== "located" || sourceConsistency !== "exact-anchor-match" ||
+      trace.unresolved > 0
       ? "unresolved" : "reference-only",
     total: trace.total, unresolved: trace.unresolved,
     projectionUnresolved, rows: trace.rows,
