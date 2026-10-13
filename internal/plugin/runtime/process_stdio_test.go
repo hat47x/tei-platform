@@ -41,6 +41,13 @@ func runProcessHelper(mode string) int {
 		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
 		return 0
 	}
+	if mode == "large-then-wait" {
+		// Deliberately exceed the response limit, then hold the process open.
+		// A bounded capture alone cannot prevent this form of resource exhaustion.
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
+		time.Sleep(30 * time.Second)
+		return 0
+	}
 	if mode == "exit" {
 		_, _ = fmt.Fprintln(os.Stderr, "TOP-SECRET-SHOULD-NOT-LEAK")
 		return 7
@@ -351,6 +358,27 @@ func TestStdioProcessLauncherBoundsUntrustedStdout(t *testing.T) {
 	launcher.MaxResponseBytes = 128
 	if _, err := launcher.Invoke(context.Background(), command, processRequest()); err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
 		t.Fatalf("oversized response was not rejected: %v", err)
+	}
+}
+
+// A real child must be terminated when its stdout exceeds the configured
+// limit, even if it deliberately remains alive after writing the extra bytes.
+// The caller's context is not canceled by the transport-specific size failure.
+func TestStdioProcessLauncherKillsChildOnStdoutOverflow(t *testing.T) {
+	launcher, command := helperLauncher(t, "large-then-wait")
+	launcher.MaxResponseBytes = 128
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	started := time.Now()
+	_, err := launcher.Invoke(ctx, command, processRequest())
+	if err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
+		t.Fatalf("oversized child did not fail with its response limit: %v", err)
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("response-size rejection unexpectedly canceled/timed out caller: %v", ctx.Err())
+	}
+	if elapsed := time.Since(started); elapsed > 4*time.Second {
+		t.Fatalf("oversized child was not stopped promptly: %s", elapsed)
 	}
 }
 

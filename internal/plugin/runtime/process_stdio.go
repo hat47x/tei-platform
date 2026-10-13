@@ -84,7 +84,14 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	if limit <= 0 {
 		limit = defaultProcessResponseLimit
 	}
-	stdout := &boundedCapture{limit: limit}
+	// The capture limit is also a running-process limit. A child that emits
+	// more than the approved response size must be stopped immediately rather
+	// than allowed to keep consuming CPU or hold a resource lease indefinitely.
+	// Use a child-specific context so that a size violation cannot cancel the
+	// caller's context or any sibling invocation.
+	runCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	stdout := &boundedCapture{limit: limit, onOverflow: stop}
 	stderr := newDigestWriter()
 	// exec.CommandContext resolves unqualified names using the ambient Host
 	// PATH, even when cmd.Env is explicitly empty. Resolve from the explicit
@@ -93,7 +100,7 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	if err != nil {
 		return Response{}, err
 	}
-	cmd := exec.CommandContext(ctx, resolved, command.Args...)
+	cmd := exec.CommandContext(runCtx, resolved, command.Args...)
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
@@ -121,6 +128,9 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	if err := run(); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return Response{}, fmt.Errorf("process plugin executable %q canceled: %w", command.Executable, ctxErr)
+		}
+		if stdout.overflow {
+			return Response{}, fmt.Errorf("process plugin executable %q response exceeds %d bytes", command.Executable, limit)
 		}
 		return Response{}, processExecutionError(command.Executable, err, stderr)
 	}
@@ -279,9 +289,10 @@ func resolveProcessExecutable(executable string, env []string) (string, error) {
 }
 
 type boundedCapture struct {
-	limit    int
-	buf      bytes.Buffer
-	overflow bool
+	limit      int
+	buf        bytes.Buffer
+	overflow   bool
+	onOverflow func()
 }
 
 func (w *boundedCapture) Write(p []byte) (int, error) {
@@ -294,8 +305,11 @@ func (w *boundedCapture) Write(p []byte) (int, error) {
 		}
 		_, _ = w.buf.Write(p[:take])
 	}
-	if n > remaining {
+	if n > remaining && !w.overflow {
 		w.overflow = true
+		if w.onOverflow != nil {
+			w.onOverflow()
+		}
 	}
 	return n, nil
 }
