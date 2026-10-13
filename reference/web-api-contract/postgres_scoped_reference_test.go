@@ -272,3 +272,42 @@ func TestScopedPostgresRejectsModifiedNativeSQL(t *testing.T) {
 		t.Fatal("changed source was issued")
 	}
 }
+
+func TestScopedPostgresPinsCanonicalColumnMappingBeforeSQL(t *testing.T) {
+	state := &scopedSQLState{}
+	q := mustScopedQuery(t)
+	q.ResultColumns = append([]query.ResultColumnMapping(nil), q.ResultColumns...)
+	q.ResultColumns[0].Attribute = core.MustCanonicalID("sales.order.total")
+	_, plan, _ := scopedTestRead(t, url.Values{"$select": {"orderId"}})
+	exec := ScopedRecentOrdersPostgres{
+		DB: scopedTestDB(t, state), Database: core.MustCanonicalID("sales_core"),
+		Scope: scopedTestAuthority(),
+	}
+	_, err := exec.ExecuteScopedBrowseQuery(context.Background(), q,
+		mustScopedDatasource(t), plan, map[string]any{"from": time.Now()})
+	if !errors.Is(err, ErrScopedQueryContract) || state.calls != 0 {
+		t.Fatalf("altered Semantic mapping reached SQL: err=%v calls=%d", err, state.calls)
+	}
+}
+
+func TestScopedPostgresDefaultOrderingHasStableTieBreaker(t *testing.T) {
+	state := &scopedSQLState{
+		columns: []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"},
+	}
+	_, plan, _ := scopedTestRead(t, url.Values{"$select": {"orderId"}, "$top": {"2"}})
+	exec := ScopedRecentOrdersPostgres{
+		DB: scopedTestDB(t, state), Database: core.MustCanonicalID("sales_core"),
+		Scope: scopedTestAuthority(),
+	}
+	_, err := exec.ExecuteScopedBrowseQuery(context.Background(), mustScopedQuery(t),
+		mustScopedDatasource(t), plan, map[string]any{
+			"from": time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC),
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.calls != 1 ||
+		!strings.Contains(state.statement, "ORDER BY o.ordered_at DESC, o.order_id DESC LIMIT $3") {
+		t.Fatalf("default Top ordering is not deterministic: %q", state.statement)
+	}
+}
