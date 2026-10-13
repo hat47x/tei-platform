@@ -147,8 +147,8 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	// Keep the error fixed; no untrusted field values enter host diagnostics.
 	if resp.ProtocolVersion == 0 || resp.RequestID == "" ||
 		resp.Plugin.ID == "" || resp.Plugin.Version == "" ||
-		resp.CapabilityID == "" || resp.DescriptorFingerprint == "" ||
-		resp.Status == "" {
+		resp.CapabilityID == "" || resp.Status == "" ||
+		(resp.DescriptorFingerprint == "" && req.DescriptorFingerprint != "") {
 		return Response{}, fmt.Errorf("process plugin response is missing required carrier identity or status")
 	}
 	var trailing any
