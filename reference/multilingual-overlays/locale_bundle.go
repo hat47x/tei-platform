@@ -128,9 +128,9 @@ func BuildLockedLocaleBundle(
 	out := LocaleBundle{
 		Kind: LocaleBundleKind, Environment: string(env.ID),
 		LockFingerprint: fingerprint,
-		Target: DisplayPluginIdentity{ID: string(req.Target.ID), Version: req.Target.Version},
-		Locales: locales,
-		Displays: make([]DisplayManifest, 0, len(keys)*len(locales)),
+		Target:          DisplayPluginIdentity{ID: string(req.Target.ID), Version: req.Target.Version},
+		Locales:         locales,
+		Displays:        make([]DisplayManifest, 0, len(keys)*len(locales)),
 	}
 	// Locale first, then typed resource: stable regardless of authoring order.
 	for _, locale := range locales {
@@ -147,7 +147,7 @@ func BuildLockedLocaleBundle(
 				LockFingerprint: out.LockFingerprint, Target: out.Target,
 				Resource: key, Locale: locale, Text: result.Text,
 				SourceRevision: result.SourceRevision,
-				FromSource: result.FromSource, Fallback: false,
+				FromSource:     result.FromSource, Fallback: false,
 			})
 		}
 	}
