@@ -10,7 +10,7 @@ import (
 
 func orderMessage() Definition {
 	return Definition{
-		Ref: Ref{Owner: plugin.Identity{ID: "sales.order_ui", Version: "1.0.0"}, ID: core.CanonicalID("order.confirmed")},
+		Ref:          Ref{Owner: plugin.Identity{ID: "sales.order_ui", Version: "1.0.0"}, ID: core.CanonicalID("order.confirmed")},
 		SourceLocale: "en-US", Text: "Order {orderId} was confirmed", Format: FormatNamedV0,
 		Parameters: []Parameter{{Name: "orderId", Kind: ParameterText}},
 	}
