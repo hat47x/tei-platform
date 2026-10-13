@@ -96,11 +96,11 @@ func TestReadDispatchRechecksGrantsForForgedPlans(t *testing.T) {
 	}
 	for name, modify := range map[string]func(*ReadPlan){
 		"filter without field grant": func(p *ReadPlan) { p.Filter = &Filter{FieldID: "orderId", Operator: "eq", Value: "x"} },
-		"sort without field grant": func(p *ReadPlan) { p.Order = &Ordering{FieldID: "orderId"} },
-		"duplicate projection":     func(p *ReadPlan) { p.Selected = []string{"orderId", "orderId"} },
-		"unknown projection":       func(p *ReadPlan) { p.Selected = []string{"private"} },
-		"empty scope":              func(p *ReadPlan) { p.ScopeID = "" },
-		"out of bounds limit":      func(p *ReadPlan) { p.Limit = 9999 },
+		"sort without field grant":   func(p *ReadPlan) { p.Order = &Ordering{FieldID: "orderId"} },
+		"duplicate projection":       func(p *ReadPlan) { p.Selected = []string{"orderId", "orderId"} },
+		"unknown projection":         func(p *ReadPlan) { p.Selected = []string{"private"} },
+		"empty scope":                func(p *ReadPlan) { p.ScopeID = "" },
+		"out of bounds limit":        func(p *ReadPlan) { p.Limit = 9999 },
 	} {
 		t.Run(name, func(t *testing.T) {
 			forged := base
