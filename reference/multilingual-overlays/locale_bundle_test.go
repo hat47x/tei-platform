@@ -42,7 +42,7 @@ func TestO3BuildLocaleBundleSelectsOnlyRequestedLocales(t *testing.T) {
 	if err := CheckLocaleBundleIntegrity(b); err != nil {
 		t.Fatalf("generated bundle has invalid integrity: %v", err)
 	}
-	c, env, lock, graph, surfaces, packs, grants, _, err := ReferenceOrderCase()
+	c, env, lock, graph, surfaces, _, _, _, err := ReferenceOrderCase()
 	if err != nil {
 		t.Fatal(err)
 	}
