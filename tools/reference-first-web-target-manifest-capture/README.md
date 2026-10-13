@@ -42,6 +42,23 @@ go test -count=1 ./tools/reference-first-web-target-manifest-capture
 go vet ./tools/reference-first-web-target-manifest-capture
 ```
 
+実Web TargetをGoバイナリとしてビルドして検査する場合は、**clean checkout**で次を実行します。
+
+```sh
+TEI_E1_LIVE_MANIFEST_CAPTURE=1 go test -count=1 \
+  -run '^TestActualFirstWebTargetCaptureAcrossApplications
+
+テストはloopback上のHTTP fixtureで、JSON raw bytesの保存、Application/B/R/Tの不一致、duplicate key、redirect、HTTP status/Content-Typeの異常、本文サイズ制限、外部URLを拒否することを検査します。これは**第一Web Target本体のFunctional/Visual/Gate C結果ではありません**。
+
+観測したProjectionを[固定Runtime Reference](../reference-frozen-manifest-target/README.md)に受け渡すには、元のHandover／Build条件と観測されたSHA-256を**独立に検証・固定**してから、固定Runtimeに`-manifest`と期待ID/digestを渡します。このcapture CLIの成功だけでは、配備物の真正性、Business Result、認証認可、Browser/API E1の分離、TEIプロダクト適合性を主張できません。
+ \
+  ./tools/reference-first-web-target-manifest-capture
+```
+
+この追加テストは同じcheckoutから**combined / order-only / repair-only**の3種類の実Web Targetをビルドし、`order_entry`と`repair_intake`の2 ApplicationでそれぞれmanifestをHTTP取得します。Capture CLIの実装を呼び出し、元のJSON bytesの一致、B/R/T・Application不一致拒否、固定Snapshotのread-only経路、およびcombinedとApplication別成果物のJSON一致を確認します。業務RunnerのFunctional parityは既存のE1専用検証へ委ね、今回の対象は**manifestの観測・引継ぎ経路**に限定します。
+
+本テストのB/Rは明示的な診断用値です。観測HTTP responseから計算するdigestも独立したHandover AcceptanceやArtifact Lockではありません。実Provider・Production Authorization・Browser/別Hostの意味同等性を示しません。
+
 テストはloopback上のHTTP fixtureで、JSON raw bytesの保存、Application/B/R/Tの不一致、duplicate key、redirect、HTTP status/Content-Typeの異常、本文サイズ制限、外部URLを拒否することを検査します。これは**第一Web Target本体のFunctional/Visual/Gate C結果ではありません**。
 
 観測したProjectionを[固定Runtime Reference](../reference-frozen-manifest-target/README.md)に受け渡すには、元のHandover／Build条件と観測されたSHA-256を**独立に検証・固定**してから、固定Runtimeに`-manifest`と期待ID/digestを渡します。このcapture CLIの成功だけでは、配備物の真正性、Business Result、認証認可、Browser/API E1の分離、TEIプロダクト適合性を主張できません。
