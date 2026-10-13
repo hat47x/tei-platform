@@ -97,12 +97,12 @@ func TestActualOrderEntryFailsClosedWhenModelOrGrantsConflict(t *testing.T) {
 			core.MustCanonicalID("sales.order.order_id"): {Filter: true},
 		}},
 		{"unmapped attribute from same Data", app, pattern, map[core.CanonicalID]FieldPolicy{
-			core.MustCanonicalID("sales.order.order_id"): {Select: true},
+			core.MustCanonicalID("sales.order.order_id"):    {Select: true},
 			core.MustCanonicalID("sales.order.external_id"): {Filter: true},
 		}},
 		{"unknown attribute", app, pattern, map[core.CanonicalID]FieldPolicy{
 			core.MustCanonicalID("sales.order.order_id"): {Select: true},
-			core.MustCanonicalID("sales.order.private"): {Sort: true},
+			core.MustCanonicalID("sales.order.private"):  {Sort: true},
 		}},
 		{"wrong application", core.MustCanonicalID("repair_intake"), pattern,
 			map[core.CanonicalID]FieldPolicy{core.MustCanonicalID("sales.order.order_id"): {Select: true}}},
