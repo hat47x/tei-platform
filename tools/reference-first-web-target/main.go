@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -10,36 +11,68 @@ import (
 	"os"
 
 	"tei/internal/core"
+	"tei/internal/sourceacceptance"
 	"tei/internal/workspace"
 )
 
 func main() {
+	// The Reference CLI has no authoritative Host acceptance service yet.
+	// A Host integration must inject its Reader here; labels and Decision JSON
+	// are not a substitute. Unaccepted fixtures require explicit diagnostics.
+	if err := runCombinedWebTarget(context.Background(), nil, os.Args[1:]); err != nil {
+		if err == flag.ErrHelp {
+			return
+		}
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+}
+
+// runCombinedWebTarget checks the Host witness before constructing any runner
+// or HTTP handler. The Reader's provenance and current effect grants remain
+// the embedding Host's responsibility; this checks startup Source identity.
+func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, args []string) error {
+	flags := flag.NewFlagSet("first-web-target", flag.ContinueOnError)
 	var (
-		workspacePath = flag.String("workspace", "reference/workspace", "TEI workspace directory")
-		applicationID = flag.String("application", "order_entry", "Canonical Application ID")
-		baselineID    = flag.String("baseline-id", "", "Handover Baseline ID, for example B")
-		baselineRev   = flag.String("baseline-revision", "", "Handover baseline repository revision R")
-		targetRev     = flag.String("target-revision", "", "Target build repository revision T")
-		legacyUsers   = flag.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
-		legacyAuthz   = flag.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
-		listen        = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
-		scopedRoutes  = flag.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		workspacePath = flags.String("workspace", "reference/workspace", "TEI workspace directory")
+		applicationID = flags.String("application", "order_entry", "Canonical Application ID")
+		baselineID    = flags.String("baseline-id", "", "Handover Baseline ID, for example B")
+		baselineRev   = flags.String("baseline-revision", "", "Handover baseline repository revision R")
+		targetRev     = flags.String("target-revision", "", "Target build repository revision T")
+		legacyUsers   = flags.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
+		legacyAuthz   = flags.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
+		listen        = flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
+		scopedRoutes  = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		diagnostic    = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
 	)
-	flag.Parse()
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("unexpected positional arguments")
+	}
 
 	if *baselineID == "" || *baselineRev == "" || *targetRev == "" {
-		fmt.Fprintln(os.Stderr, "-baseline-id, -baseline-revision and -target-revision are required")
-		os.Exit(2)
+		return fmt.Errorf("-baseline-id, -baseline-revision and -target-revision are required")
 	}
 	appID, err := core.ParseCanonicalID(*applicationID)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
-	loaded, err := workspace.Load(*workspacePath)
+	var loaded workspace.Result
+	if *diagnostic {
+		if reader != nil {
+			return fmt.Errorf("SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT: Host Reader cannot be bypassed")
+		}
+		log.Print("SOURCE_ACCEPTANCE_NOT_VERIFIED: explicit diagnostic-unaccepted-source")
+		loaded, err = workspace.Load(*workspacePath)
+	} else {
+		var verified sourceacceptance.VerifiedWorkspace
+		verified, err = sourceacceptance.LoadVerifiedWorkspace(ctx, reader, string(appID), *workspacePath)
+		loaded = verified.Loaded
+	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
 	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
 		HandoverBaselineID:         *baselineID,
@@ -48,8 +81,7 @@ func main() {
 		ApplicationID:              appID,
 	})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
 	// Each Application gets only the scenario runners that exist for it. A runner for another
 	// Application is never attached, and newWebTargetServer rejects one that is.
@@ -67,20 +99,17 @@ func main() {
 			*legacyAuthz,
 		)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
+			return err
 		}
 		commandScenario = command
 	case core.MustCanonicalID("repair_intake"):
 		options = append(options, withCustomerLookup(newReferenceCustomerLookupScenarioRunner(loaded.World)))
 	default:
-		fmt.Fprintf(os.Stderr, "no scenario runner exists for Application %s (supported: order_entry, repair_intake)\n", appID)
-		os.Exit(2)
+		return fmt.Errorf("no scenario runner exists for Application %s (supported: order_entry, repair_intake)", appID)
 	}
 	target, err := newWebTargetServer(projection, readScenario, commandScenario, options...)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
 
 	// Preserve the existing multi-Application Gate C diagnostic routes by
@@ -90,8 +119,7 @@ func main() {
 	if *scopedRoutes {
 		handler, err = target.ScopedHandler()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
+			return err
 		}
 	}
 	server := &http.Server{
@@ -107,6 +135,7 @@ func main() {
 		*targetRev,
 	)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

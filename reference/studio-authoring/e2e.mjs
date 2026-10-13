@@ -627,6 +627,15 @@ function testReferenceBusinessNavigation() {
     managedView.businessObservation.acceptedBusinessProcedure === false &&
     managedView.businessObservation.sourceRevisionBinding === "not-established",
     "business: managed Source artifacts are observed without accepting Procedure semantics");
+  checked(managedView.authority === "derived-readonly" &&
+    managedView.views.table.status === "available" &&
+    managedView.views.er.status === "available" &&
+    managedView.views.function.status === "available" &&
+    managedView.views.business.authority === "noncanonical-reference" &&
+    managedView.views.business.status === "reference-only" &&
+    managedView.views.business.items.length > 0 &&
+    managedView.views.business.items.every(item => item.status === "reference-only"),
+    "business: managed DFD inputs join the four lenses at one observed revision without crossing Shared Acceptance");
   const sourceBytes = fixtures.map(file => createHash("sha256")
     .update(readFileSync(join(businessRoot, file))).digest("hex"));
   writeFileSync(manifest, originalManifest);

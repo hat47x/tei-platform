@@ -52,7 +52,7 @@ func TestActualFirstWebTargetCaptureAcrossApplications(t *testing.T) {
 	}
 	build := func(tag string) string {
 		t.Helper()
-		target := filepath.Join(t.TempDir(), "first-web")
+		target := filepath.Join(t.TempDir(), "first-web"+tag)
 		args := []string{"build", "-trimpath", "-ldflags=-buildid=", "-o", target}
 		if tag != "" {
 			args = append(args, "-tags="+tag)
@@ -186,6 +186,9 @@ func launchActualFirstWebForCapture(t *testing.T, root, binary, app, baseline, r
 		"-legacy-authorization", "reference/legacy-auth/authorization.json",
 		"-listen", address,
 	)
+	if filepath.Base(binary) == "first-web" {
+		command.Args = append(command.Args, "-diagnostic-unaccepted-source")
+	}
 	command.Dir = root
 	command.Stdout, command.Stderr = logfile, logfile
 	if err := command.Start(); err != nil {
