@@ -37,18 +37,45 @@ func (a sqliteLegacyAuthority) ReadAuthorizationEpochs(_ context.Context, input 
 	}
 	a.f.mu.Lock()
 	defer a.f.mu.Unlock()
-	snapshot, active, err := a.f.readAuthorityDependencies(a.scope)
+	// 正本の欠落・破損と、完全に読み取れた正本の明示的な失効を区別する。
+	// 3種類を同一SQLiteスナップショットから読み、失効だけを専用エラーで返す。
+	var versions [3]uint64
+	inactive := false
+	_, err := a.f.transaction(func() (Result, error) {
+		for i, dimension := range authorityDimensions {
+			row, found, err := a.f.query("SELECT version,allowed FROM authority_dependencies WHERE scope=" +
+				scopeSQL(a.scope) + " AND dimension=" + textSQL(dimension))
+			if err != nil {
+				return Result{}, err
+			}
+			if !found || len(row) != 2 {
+				return Result{}, fmt.Errorf("認可根拠が欠落しています: %s", dimension)
+			}
+			version, err := parseVersion(row[0])
+			if err != nil || version == 0 {
+				return Result{}, fmt.Errorf("認可根拠の版が不正です: %s", dimension)
+			}
+			if row[1] != "0" && row[1] != "1" {
+				return Result{}, fmt.Errorf("認可根拠の有効状態が不正です: %s", dimension)
+			}
+			versions[i] = version
+			if row[1] == "0" {
+				inactive = true
+			}
+		}
+		return Result{}, nil
+	})
 	if err != nil {
 		return legacyauthorization.AuthorityEpochs{}, err
 	}
-	if !active {
-		return legacyauthorization.AuthorityEpochs{}, errors.New("認可根拠の有効な版がありません")
+	if inactive {
+		return legacyauthorization.AuthorityEpochs{}, fmt.Errorf("認可根拠が明示的に失効しています: %w", legacyauthorization.ErrAuthorityInactive)
 	}
 	return legacyauthorization.AuthorityEpochs{
 		Source:      a.source,
-		SubjectLink: snapshot["subject-link"].version,
-		Membership:  snapshot["membership"].version,
-		Policy:      snapshot["policy"].version,
+		SubjectLink: versions[0],
+		Membership:  versions[1],
+		Policy:      versions[2],
 	}, nil
 }
 
@@ -213,7 +240,7 @@ func TestSQLiteVersionedGrantDoesNotDiscloseReceiptAfterPolicyRevocation(t *test
 		t.Fatal(err)
 	}
 	_, result, err = a.PrepareWithVersionedAuthorization(context.Background(), req.Scope.Subject, req, auth, fixtureAuthoritySource)
-	if err == nil || result.Receipt != (Receipt{}) || result.Disposition != "" {
+	if err != nil || result.Disposition != Denied || result.Reason != "authorization-denied" || result.Receipt != (Receipt{}) {
 		t.Fatalf("revoked policy disclosed receipt: %+v %v", result, err)
 	}
 	if _, ok := a.Lookup(req.Scope, req.OperationID); ok {

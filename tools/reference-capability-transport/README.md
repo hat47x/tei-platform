@@ -114,3 +114,35 @@ HTTP request内のContract / Provider / Target / shape identityはremote client�
 processとHTTPの両方で、同じgeneric identityとpayload digestをtransport固有carrierから分離できました。したがって、transport-neutralなdispatch / receipt identityは次のReference候補として残せます。
 
 ただし、まだproduction contractへ昇格しません。HTTP Referenceはsyntheticで、actual First Web Target / browser / Wasmとの接続Evidenceがありません。production process protocolもlegacy Capability identityのままです。
+
+## 業務上の結果を返す独立した実プロセス
+
+従来の試験は、汎用の要求・応答を繰り返して返す実装が中心でした。[受注見積もりプラグイン](../../plugins/reference-order-quote/README.md)では、**入力明細から小計を実際に計算する読み取り専用の業務処理**を別実行ファイルで動かします。
+
+[結合試験](order_quote_process_test.go)は、独立したGoモジュールから実行ファイルを構築し、既存の`TransportDispatchPlan`、合成基盤のProvider選択・現在のHost権限、実行ファイルのSHA-256照合、既存プロセス起動器を使います。明細を変えても同じ契約識別子を保ったまま、計算結果と要求・結果の指紋が変わることを確認します。また、不正な数量は子プロセスで拒否し、結果の形が変わった場合、異なる成果物が指定された場合、実行権限の失効とProviderの撤去では起動前に停止します。
+
+独立構築の試験では、見積もりプラグインのディレクトリにあるGoソースを一式コピーします。未対応のファイルや入れ子の構成を黙って無視せず、外部モジュールの取得を禁止した一時的なGoモジュールで単体試験・静的検査・実行ファイルの構築を行います。ソースが将来複数のGoファイルに分かれても、`main.go`だけを検査して成功とすることはありません。
+
+専用CI「TEI コア隔離・外部利用者検証」は、`plugins/reference-order-quote/`と見積もりの通信・結合試験が変更された場合にも起動し、独立構築と実計算の代表試験を検証します。これは契約の発行権限や業務認可を与える処理ではなく、全体の試験に依存せずに独立プラグインの退行を検出するための入口です。
+
+**本質的な区別**：通信が成功しても、結果JSONが業務契約に適合するとは限りません。結果の型が不正でも、汎用Transportの識別子照合だけでは検出できない反例を残し、呼出し元が厳密に結果形を確認する必要性を示します。ここで使う固定契約・形の文字列指紋はReference専用であり、正規のShape Authorityや採用済み契約の証拠ではありません。
+
+この読み取り専用プラグインは`order_entry.submit_order`ではありません。注文は確定せず、利用者認可も実行しません。将来の実業務プラグインへ進む際は、同じ意味契約をBrowser/API/Process等にわたって保持し、既存の`security.authorize`とRuntime Authorityを別途接続します。旧式のCapabilityKindを新しいCoreの固定列挙へ移してはなりません。
+
+## 受注の認可と読み取り専用の見積もりの接続
+
+[追加試験](authorized_quote_preflight_test.go)では、参照Workspaceの受注確定操作 `order_entry.submit_order` に対する既存の業務認可を、**付随する読み取り専用の見積もり処理**へ引き継ぎます。ここで見積もりは別のサービス契約 `reference.order.quote-lines/v1` を持ち、受注確定の代替実装にはしません。
+
+Webホストで合成セッション、要求元検査、受注確定の正規の業務認可が通った場合だけ、合成基盤から見積もり提供者を選びます。現在の実行権限と実行ファイルのバイト列を確認し、独立した子プロセスへ数量・単価だけを渡します。子プロセスが小計を計算し、呼出し元で応答の型、明細件数、金額の範囲を確認します。
+
+失効した認証、閲覧者、要求元の不一致、主体の対応付け解除、提供者の撤去、実行権限失効ではプロセスの呼出し前に拒否します。ヘッダー中の偽造主体、認証文字列、内部の承認情報は子プロセスへ送りません。見積もり結果には「試算である」「受注していない」と明記し、成功を受注確定の証拠にしません。
+
+この追加試験は、*既に受注確定操作の認可を得た要求内で付随処理を行う*限定例です。見積もりを独立した公開操作として実行する権限を付与するものではありません。独立した操作として公開するには、見積もり自身の正規業務契約と認可規則を受理済みモデルへ定義する必要があります。実認証基盤、正規の契約適合性、製品の実行権限、永続化はまだ対象外です。
+
+## 既存Runtime Authority経由での実見積もりプロセス検証
+
+[Runtimeの実プロセス結合試験](runtime_authorized_quote_process_test.go)では、読み取り専用の[見積もりプラグイン](../../plugins/reference-order-quote/README.md)を別Goモジュールとして構築し、従来の直接`StdioProcessLauncher`呼出しではなく、**既存`internal/plugin/runtime.Registry.InvokeWithProvenance`を経由**して起動します。
+
+Hostの参照用SHA-256照合、`EnvironmentPlan`上のCapability解決、実行ファイルのArtifact識別、実行時Permission、サンドボックス要件、プロセスの要求・応答識別子、実業務計算の1,550円とRuntime実行由来を照合します。検証器欠落、実行ファイルとのDigest不一致、未検証の署名・来歴の要求、必須サンドボックス不在、Capability撤去、未付与Permission、プロセスランチャー欠落では、子プロセス起動前に拒否します。
+
+**何を実証しないか**：テスト用検証器は現在の実行ファイルのSHA-256だけを比較し、署名や来歴は確認しません。OSサンドボックスとResource Leaseも付与していません。既存のLegacy `contract-query-executor` はstdio通信の**運搬手段**であり、見積もりをDB Contract Queryとして意味付けしません。この試験はRuntimeの拒否条件と実プロセス実行の接続を扱い、候補Shapeの正式発行者信頼や実Provider適合性は証明しません。それらは[候補の独立した検査](../reference-plugin-capability-contract/order_quote_candidate_authority_test.go)で失敗条件を確認しており、正式受理はまだありません。製品用Resolver・Lock・権限判定器は複製しません。

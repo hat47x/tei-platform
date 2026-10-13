@@ -1,3 +1,5 @@
+//go:build !tei_api_only
+
 package main
 
 import (
@@ -6,6 +8,8 @@ import (
 	"html/template"
 	"net/http"
 )
+
+const webTargetServerHasPresentation = true
 
 type webTargetServer struct {
 	projection                  webTargetProjection

@@ -8,25 +8,31 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - .github/workflows/tei-self-build-qualification.yml
-      - internal/plugin/transform/**
-      - internal/plugin/bootstrap.go
-      - internal/plugin/package.go
+      # Goの参照実行器はcore・配備・検証・作業領域も利用する。
+      # 監視漏れを避けるため、当面はGo実装全体を安全側で監視する。
+      - go.mod
+      - go.sum
+      - internal/**
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
       - tools/reference-transform-runtime-engine-build/**
+      - tools/self-build-ci-contract-test.py
       - reference/plugin-self-build/**
   push:
     branches: [main]
     paths:
       - .github/workflows/tei-self-build-qualification.yml
-      - internal/plugin/transform/**
-      - internal/plugin/bootstrap.go
-      - internal/plugin/package.go
+      # Goの参照実行器はcore・配備・検証・作業領域も利用する。
+      # 監視漏れを避けるため、当面はGo実装全体を安全側で監視する。
+      - go.mod
+      - go.sum
+      - internal/**
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
       - tools/reference-transform-runtime-engine-build/**
+      - tools/self-build-ci-contract-test.py
       - reference/plugin-self-build/**
   workflow_dispatch:
 
@@ -34,8 +40,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: tei-self-build-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # PRは番号単位で新しい候補を優先し、mainはコミットごとに独立して保留する。
+  group: tei-self-build-${{ github.event.pull_request.number || github.sha }}
+  # 同一PRの古い候補は止めるが、mainの各コミットの証拠取得は取り消さない。
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   reference-self-build:
@@ -76,6 +84,12 @@ jobs:
           go-version-file: go.mod
           check-latest: false
           cache: false
+
+      - name: セルフビルドCIの入力・証拠・起動契約を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/self-build-ci-contract-test.py
 
       - name: 実行エンジンの実体を二重構築し照合
         shell: bash
@@ -119,7 +133,25 @@ jobs:
             hostId: "tei.reference.host.actions",
             runtimeEngine: $e[0].runtimeEngine
           }' > "$RUNNER_TEMP/tei-stage2-host-registration.json"
-          # 参照Hostによる明示的な受理操作。ビルド成功だけでは本番の権限は生じない。
+          # CIは方式の検証用に一時鍵を作る。本番の信頼済みHost鍵ではない。
+          umask 077
+          private="$RUNNER_TEMP/tei-stage2-test-private.pem"
+          openssl genpkey -algorithm ed25519 -out "$private"
+          openssl pkey -in "$private" -pubout -out "$RUNNER_TEMP/tei-stage2-trusted-host-public.pem"
+          approval="$RUNNER_TEMP/tei-stage2-host-approval-message.bin"
+          printf 'tei.reference.stage2-host-approval/ed25519/v1\000' > "$approval"
+          jq -c '{formatVersion, stage, hostId, runtimeEngine: {
+            id: .runtimeEngine.id,
+            version: .runtimeEngine.version,
+            contractVersion: .runtimeEngine.contractVersion,
+            implementationDigest: .runtimeEngine.implementationDigest,
+            target: .runtimeEngine.target
+          }}' "$RUNNER_TEMP/tei-stage2-host-registration.json" | tr -d '\n' >> "$approval"
+          openssl pkeyutl -sign -rawin -inkey "$private" -in "$approval" \
+            -out "$RUNNER_TEMP/tei-stage2-signature.bin"
+          base64 -w 0 "$RUNNER_TEMP/tei-stage2-signature.bin" > "$RUNNER_TEMP/tei-stage2-signature.txt"
+          rm -f "$private"
+          # この公開鍵はrunner上で生成した検証用アンカー。本番のHost認証ではない。
 
       - name: SB-1・SB-2・SB-3の実行結果を生成
         shell: bash
@@ -131,6 +163,9 @@ jobs:
             -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
             -stage2-engine-lock "$RUNNER_TEMP/tei-stage2-engine-lock.json" \
             -stage2-host-registration "$RUNNER_TEMP/tei-stage2-host-registration.json" \
+            -stage2-host-signature "$RUNNER_TEMP/tei-stage2-signature.txt" \
+            -stage2-trusted-host-key "$RUNNER_TEMP/tei-stage2-trusted-host-public.pem" \
+            -stage2-trusted-host-id "tei.reference.host.actions" \
             > "$RUNNER_TEMP/tei-self-build-evidence.json"
 
       - name: 実行結果の収束と版を確認
@@ -145,6 +180,7 @@ jobs:
             and .transformBootstrap.runtimeEngine == $registration[0].runtimeEngine
             and (.stage2EngineLockFingerprint | length) == 64
             and (.stage2HostRegistrationFingerprint | length) == 64
+            and (.stage2HostApprovalFingerprint | length) == 64
             and (.stage2RuntimePolicyFingerprint | length) == 64
             and .transformBootstrap.exactRuntimeEngineBuildFingerprint == $engine[0].evidenceFingerprint
             and .transformBootstrap.runtimeEngine.implementationDigest == $engine[0].artifactDigest
@@ -173,6 +209,9 @@ jobs:
             -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
             -stage2-engine-lock "$RUNNER_TEMP/tei-stage2-engine-lock.json" \
             -stage2-host-registration "$RUNNER_TEMP/tei-stage2-host-registration-stale.json" \
+            -stage2-host-signature "$RUNNER_TEMP/tei-stage2-signature.txt" \
+            -stage2-trusted-host-key "$RUNNER_TEMP/tei-stage2-trusted-host-public.pem" \
+            -stage2-trusted-host-id "tei.reference.host.actions" \
             > "$RUNNER_TEMP/tei-stage2-should-not-run.json" \
             2> "$RUNNER_TEMP/tei-stage2-denial.txt"; then
             echo "stale Host registration was unexpectedly accepted" >&2
@@ -180,6 +219,27 @@ jobs:
           fi
           grep -q "stage2 Host registration differs" "$RUNNER_TEMP/tei-stage2-denial.txt"
           test ! -s "$RUNNER_TEMP/tei-stage2-should-not-run.json"
+
+      - name: 偽造されたHost署名は実行前に拒否
+        shell: bash
+        run: |
+          set -euo pipefail
+          head -c 64 /dev/zero | base64 -w 0 > "$RUNNER_TEMP/tei-stage2-forged-signature.txt"
+          if go run ./tools/reference-plugin-self-build -repo . \
+            -exact-runtime-engine "$RUNNER_TEMP/tei-transform-runtime-engine" \
+            -engine-build-evidence "$RUNNER_TEMP/tei-transform-engine-build-evidence.json" \
+            -stage2-engine-lock "$RUNNER_TEMP/tei-stage2-engine-lock.json" \
+            -stage2-host-registration "$RUNNER_TEMP/tei-stage2-host-registration.json" \
+            -stage2-host-signature "$RUNNER_TEMP/tei-stage2-forged-signature.txt" \
+            -stage2-trusted-host-key "$RUNNER_TEMP/tei-stage2-trusted-host-public.pem" \
+            -stage2-trusted-host-id "tei.reference.host.actions" \
+            > "$RUNNER_TEMP/tei-stage2-forged-should-not-run.json" \
+            2> "$RUNNER_TEMP/tei-stage2-forged-denial.txt"; then
+            echo "forged Host signature was unexpectedly accepted" >&2
+            exit 1
+          fi
+          grep -q "Ed25519 signature verification failed" "$RUNNER_TEMP/tei-stage2-forged-denial.txt"
+          test ! -s "$RUNNER_TEMP/tei-stage2-forged-should-not-run.json"
 
       - name: 検証済み実行エンジンの応答を確認
         shell: bash
@@ -221,5 +281,7 @@ jobs:
             ${{ runner.temp }}/tei-transform-runtime-engine-response.json
             ${{ runner.temp }}/tei-stage2-engine-lock.json
             ${{ runner.temp }}/tei-stage2-host-registration.json
+            ${{ runner.temp }}/tei-stage2-signature.txt
+            ${{ runner.temp }}/tei-stage2-trusted-host-public.pem
           if-no-files-found: error
           retention-days: 7

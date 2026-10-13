@@ -68,6 +68,12 @@ func validateCrossViewPublication(p CrossViewProjection) error {
 			}
 		}
 	}
+	if err := validateCrossViewSourceCounts(p); err != nil {
+		return err
+	}
+	if err := validateCrossViewIOTargetEvidence(p); err != nil {
+		return err
+	}
 	if err := validateCrossViewDerivedLineage(p); err != nil {
 		return err
 	}
