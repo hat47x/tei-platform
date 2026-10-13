@@ -1,6 +1,6 @@
 # コア
 
-このディレクトリは、TEIのコアを独立したサブプロジェクトとして管理するための入口です。**Subject値型・一時Effect Scope・M0識別子の正本を段階的に移管した状態であり、コア全体がここだけで構築できる状態ではありません。**
+このディレクトリは、TEIのコアを独立したサブプロジェクトとして管理するための入口です。**Subject値型・一時Effect Scope・M0識別子・世代管理Routerの正本を段階的に移管した状態であり、コア全体がここだけで構築できる状態ではありません。**
 
 コアは、サービス契約に基づく合成、依存関係の解決、実行世代の切り替え、信頼境界など、個別の実装に左右されない最小限の仕組みを担います。具体的な認証方式、データベース接続、画面・実行先固有の機構を抱え込まない方針です。
 
@@ -10,13 +10,17 @@
 
 `bash tools/check-core-subject-isolation.sh`は正本のソースだけを一時Goモジュールへ複製し、Go標準ライブラリ以外への依存を持たず、別モジュールの利用者から使えることをオフラインで検証します。この一例から、新Service Contractや合成基盤が製品コアへ移管済みとは判断しません。
 
-[一時Effect Scope](effect/README.md)は、`internal/composition/scope.go`にあった、逆順の一時資源解放と失敗集約を担当する実装を移したものです。旧`composition.Scope`は`effect.Scope`への型エイリアスとなり、旧APIの利用者は同じ状態管理とエラーを引き続き使用します。合成基盤の契約選択・Host権限・世代管理は旧パッケージ側に残したままです。
+[一時Effect Scope](effect/README.md)は、`internal/composition/scope.go`にあった、逆順の一時資源解放と失敗集約を担当する実装を移したものです。旧`composition.Scope`は`effect.Scope`への型エイリアスとなり、旧APIの利用者は同じ状態管理とエラーを引き続き使用します。合成基盤の契約選択とHost権限は引き続き旧パッケージ／Host側の責務です。世代管理の実装正本は後述の`core/generation`に移管しています。
 
 `bash tools/check-core-isolation.sh`では、CompositionとEffectの実ソースを別々の一時Goモジュールへ取り込み、隔離した外部Consumerからもこの型の同一性を確認します。
 
 [M0識別子と参照の正本](identity/README.md)では、既存の`CanonicalID`・`LocalName`・`Kind`・`Ref`・数値バージョン・標準名称導出を`internal/core`から移しました。旧入口は**Go型エイリアスと関数委譲のみ**です。識別子のハイフン許容など将来の規則改訂は、この機械的移管と混同しません。
 
 `bash tools/check-core-identity-isolation.sh`で`core/identity`・`core/subject`・`core/effect`の実ソースをまとめて、独立の一時Goモジュールからテスト・外部利用できることを確認します。
+
+[世代管理Router](generation/README.md)は、旧`internal/composition/router.go`から`Router`・`Binding`・`Lease`・`Retired`の実装正本を移しました。旧Composition入口は型エイリアスと`NewRouter`委譲を使い、同じGo型・エラー同一性を保ちます。移管先は`core/effect.Scope`だけに依存し、HostのGuardによる現在権限チェック、契約選択、CoordinatorのHost側責務を奪いません。
+
+`bash tools/check-core-identity-isolation.sh`は`core/generation`を含む実Coreソース群を一時Goモジュールへ取り込み、外部利用とオフラインの試験・Vetを行います。`go test ./tools/repository-architecture-check`はCore正本の製品コードに、従来の`internal/`やプラグイン、実行先、参照実装への逆方向の直接依存が再侵入していないことを検査します（Go標準ライブラリや第三者ライブラリを一律に禁じる仕組みではありません）。
 
 ## 現在の実装
 
