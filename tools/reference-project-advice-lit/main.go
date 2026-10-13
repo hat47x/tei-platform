@@ -33,6 +33,10 @@ var staticFiles = map[string]struct {
 func handler() http.Handler { return handlerWithContext(nil) }
 
 func handlerWithContext(contextHandler http.Handler) http.Handler {
+	bridge, err := newProjectAdvisoryBridge()
+	if err != nil {
+		panic(err)
+	}
 	mux := http.NewServeMux()
 	if contextHandler != nil {
 		mux.Handle("/project/order-entry-context", contextHandler)
@@ -68,7 +72,7 @@ func handlerWithContext(contextHandler http.Handler) http.Handler {
 			http.Error(w, "trailing advisory data", http.StatusBadRequest)
 			return
 		}
-		result, err := customeradvice.Evaluate(input)
+		result, err := bridge.Evaluate(input)
 		if err != nil {
 			http.Error(w, "invalid advisory input", http.StatusBadRequest)
 			return
