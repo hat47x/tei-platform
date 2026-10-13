@@ -129,3 +129,46 @@ func TestDecisionIndexRejectsWrongSchemaAndTrailingJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestDecisionHistoryCLIReportIsReadOnlyAndSourceBound(t *testing.T) {
+	index := realDecisionIndexFixture(t)
+	data, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputFile := filepath.Join(t.TempDir(), "shared-decision-index.json")
+	if err := os.WriteFile(inputFile, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join("..", "..", "reference", "workspace")
+	var output bytes.Buffer
+	err = runCLI([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-subject-kind", "semantic-validation",
+		"-subject-id", "sales.order_line.line_number_positive",
+		"-decision-index", inputFile,
+	}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report WorkspaceAssessment
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.DecisionHistoryStatus != "reported-source-matched" || len(report.DecisionHistoryLinks) != 1 ||
+		report.ExecutionAllowed || report.RuleMeaning != "canonical-validation-declared" {
+		t.Fatalf("unexpected Decision History projection: %+v", report)
+	}
+	output.Reset()
+	if err := runCLI([]string{
+		"-workspace", root, "-application", "order_entry",
+		"-subject-kind", "application-pattern", "-subject-id", "order_entry.submit_order",
+		"-decision-index", inputFile,
+	}, &output); err == nil {
+		t.Fatal("Decision Index was silently accepted for unsupported subject kind")
+	}
+	if output.Len() != 0 {
+		t.Fatal("invalid Decision Index routing emitted a successful-looking report")
+	}
+}
