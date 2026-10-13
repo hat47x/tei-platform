@@ -349,7 +349,7 @@ func TestAddRelationAndAddValidationShareOneFileAndPreserveConcurrentMutation(t 
 	}
 
 	// 受理後に別Actorが挿入・追記の結果をさらに編集した可能性があれば、
-\t// rollbackは元のbyteで上書きせず未完了と報告する。
+	// rollbackは元のbyteで上書きせず未完了と報告する。
 	target := filepath.Join(dir, filepath.FromSlash(orderFile))
 	afterWritesHook = func(root string) {
 		content, err := os.ReadFile(target)
