@@ -8,8 +8,8 @@ import (
 
 	"tei/internal/database"
 	"tei/internal/environment"
-	"tei/internal/query"
 	"tei/internal/ir"
+	"tei/internal/query"
 	"tei/internal/realization"
 	"tei/internal/workspace"
 )
@@ -42,7 +42,7 @@ func TestActualOracleContractSignatureDoesNotEstablishProvider(t *testing.T) {
 }
 
 func queryImplementationWorld() (use DeclaredContractQuery, binding EnvironmentBindingObservation, world ir.World) {
-	world := syntheticEnvironmentBindingWorld()
+	world = syntheticEnvironmentBindingWorld()
 	world.Databases = []database.Database{{
 		ID: "master_data",
 		Contracts: []database.Contract{{
@@ -77,7 +77,7 @@ func TestExactSQLRealizationDeclarationIsStillNotProviderConformance(t *testing.
 		t.Fatalf("valid explicit native SQL declaration not observed: %+v", observed)
 	}
 	assessment := WorkspaceAssessment{
-		SubjectKind: "application-pattern", SubjectID: "example.customer_reference",
+		SubjectKind:         "application-pattern", SubjectID: "example.customer_reference",
 		QueryImplementation: &observed,
 	}
 	projected, err := ProjectForPurpose(assessment, "execute-preflight")
@@ -102,8 +102,7 @@ func TestExactSQLRealizationDeclarationIsStillNotProviderConformance(t *testing.
 }
 
 func TestQuerySignatureVersionAndPrerequisitesAreExact(t *testing.T) {
-	use, binding, fixture := queryImplementationWorld()
-	world := fixture.world
+	use, binding, world := queryImplementationWorld()
 	if got := ObserveQueryImplementation(world, &use, &binding); got.Status != "contract-signature-declared" {
 		t.Fatalf("signature-only case not represented: %+v", got)
 	}
@@ -116,7 +115,7 @@ func TestQuerySignatureVersionAndPrerequisitesAreExact(t *testing.T) {
 	if got := ObserveQueryImplementation(world, &use, &binding); got.Status != "unresolved" {
 		t.Fatalf("missing Query signature was accepted: %+v", got)
 	}
-	world = fixture.world
+	_, _, world = queryImplementationWorld()
 	world.Databases = append(world.Databases, world.Databases[0])
 	if got := ObserveQueryImplementation(world, &use, &binding); got.Status != "unresolved" {
 		t.Fatalf("ambiguous Database selected: %+v", got)
@@ -146,7 +145,7 @@ func TestQueryImplementationCLIIsOptInAndReadOnly(t *testing.T) {
 	}
 	var value struct {
 		Assessment WorkspaceAssessment `json:"assessment"`
-		Readiness PurposeProjection `json:"readiness"`
+		Readiness  PurposeProjection   `json:"readiness"`
 	}
 	if err := json.Unmarshal(scoped.Bytes(), &value); err != nil {
 		t.Fatal(err)
