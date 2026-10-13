@@ -73,6 +73,14 @@ func runProcessHelper(mode string) int {
 		resp.Status = pruntime.ResponseStatus("unrecognized")
 	case "secret-forged-identity":
 		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
+	case "secret-status-canary":
+		resp.Status = pruntime.ResponseStatus("TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG")
+	case "secret-forged-metadata-canary":
+		// The transport accepts nonempty fields; Registry must not return
+		// forged values after it rejects a mismatched response.
+		resp.RequestID = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.Plugin.Version = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.DescriptorFingerprint = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
 	}
 	if strings.HasPrefix(mode, "secret-") {
 		resp.Error = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"

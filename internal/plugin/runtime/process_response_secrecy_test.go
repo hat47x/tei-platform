@@ -2,6 +2,7 @@ package runtime_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -23,7 +24,9 @@ func TestRegistryDoesNotPublishUntrustedProcessErrorContents(t *testing.T) {
 	}{
 		{name: "reported failure", mode: "secret-error", wantError: "untrusted process error details suppressed"},
 		{name: "unexpected response status", mode: "secret-unknown-status", wantError: "invalid status"},
+		{name: "status includes host secret canary", mode: "secret-status-canary", wantError: "invalid status"},
 		{name: "identity mismatch", mode: "secret-forged-identity", wantError: "identity mismatch"},
+		{name: "identity fields contain host secret canary", mode: "secret-forged-metadata-canary", wantError: "identity mismatch"},
 		{name: "success with extraneous error field", mode: "secret-ok", wantSuccessData: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,8 +66,18 @@ func TestRegistryDoesNotPublishUntrustedProcessErrorContents(t *testing.T) {
 			if err != nil && strings.Contains(err.Error(), processResponseSecretCanary) {
 				t.Fatal("process secret leaked into host diagnostic")
 			}
-			if inv.Response.Error != "" || strings.Contains(string(inv.Response.Error), processResponseSecretCanary) {
+			if inv.Response.Error != "" {
 				t.Fatal("untrusted process error carrier escaped into Invocation")
+			}
+			// Metadata can carry secrets just as easily as Error or Payload.
+			// Test the entire serializable caller-facing Invocation, not only
+			// the raw business payload.
+			serialized, marshalErr := json.Marshal(inv)
+			if marshalErr != nil {
+				t.Fatal(marshalErr)
+			}
+			if strings.Contains(string(serialized), processResponseSecretCanary) {
+				t.Fatal("untrusted process status or identity leaked into Invocation evidence")
 			}
 			if tc.wantSuccessData {
 				if got := string(inv.Response.Payload); got != `{"value":"ok"}` {
