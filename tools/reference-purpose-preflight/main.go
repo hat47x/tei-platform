@@ -52,13 +52,14 @@ func runCLI(args []string, output io.Writer) error {
 	kind := flags.String("subject-kind", "", "typed subject kind for Workspace inspection")
 	id := flags.String("subject-id", "", "typed subject ID for Workspace inspection")
 	decisionIndex := flags.String("decision-index", "", "read-only JSON report from reference-shared-acceptance decisions")
+	purpose := flags.String("purpose", "", "development intent: describe|simulate|execute-preflight (read-only)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 {
 		return fmt.Errorf("positional arguments are not supported")
 	}
-	if *input != "" && *root == "" && *application == "" && *kind == "" && *id == "" && *decisionIndex == "" {
+	if *input != "" && *root == "" && *application == "" && *kind == "" && *id == "" && *decisionIndex == "" && *purpose == "" {
 		file, err := os.Open(*input)
 		if err != nil {
 			return err
@@ -95,9 +96,19 @@ func runCLI(args []string, output io.Writer) error {
 		}
 		encoder := json.NewEncoder(output)
 		encoder.SetIndent("", "  ")
+		if *purpose != "" {
+			projection, err := ProjectForPurpose(assessment, *purpose)
+			if err != nil {
+				return err
+			}
+			return encoder.Encode(struct {
+				Assessment WorkspaceAssessment `json:"assessment"`
+				Readiness  PurposeProjection  `json:"readiness"`
+			}{Assessment: assessment, Readiness: projection})
+		}
 		return encoder.Encode(assessment)
 	}
-	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern|semantic-validation -subject-id <id> [-decision-index <json>]")
+	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern|semantic-validation -subject-id <id> [-decision-index <json>] [-purpose describe|simulate|execute-preflight]")
 }
 
 func main() {
