@@ -39,11 +39,11 @@ func sourceAcceptedForTest(t *testing.T, root string) sourceacceptance.Record {
 		t.Fatal(err)
 	}
 	return sourceacceptance.Record{
-		ApplicationID: "order_app",
-		DecisionRef: "trusted-host-decision-test",
+		ApplicationID:     "order_app",
+		DecisionRef:       "trusted-host-decision-test",
 		AuthorityRevision: "accepted-r1",
-		ModelRevision: sourceindex.ModelRevision(idx),
-		Artifacts: append([]sourceindex.Artifact(nil), idx.Artifacts...),
+		ModelRevision:     sourceindex.ModelRevision(idx),
+		Artifacts:         append([]sourceindex.Artifact(nil), idx.Artifacts...),
 	}
 }
 
@@ -79,11 +79,11 @@ func TestO2cMissingHostDependenciesFailBeforeReader(t *testing.T) {
 	root, lock, cfg := makeSourceWorkspace(t)
 	reader := &fixtureCurrentReader{record: sourceAcceptedForTest(t, root)}
 	for _, tc := range []struct {
-		name string
-		ctx context.Context
+		name   string
+		ctx    context.Context
 		reader sourceacceptance.Reader
-		gate AcceptedDisplayGate
-		want string
+		gate   AcceptedDisplayGate
+		want   string
 	}{
 		{"nil context", nil, reader, func(AcceptedDisplayReview) error { return nil }, "context-required"},
 		{"nil reader", context.Background(), nil, func(AcceptedDisplayReview) error { return nil }, "host-reader-required"},
@@ -125,7 +125,7 @@ func TestO2cSourceAcceptanceFailuresNeverReachDisplayGate(t *testing.T) {
 		}},
 		{"changed managed membership", func(t *testing.T, root string, _ *fixtureCurrentReader, _ *string) {
 			p := filepath.Join(root, "semantic", "extra.tei")
-			if err := os.WriteFile(p, []byte("namespace extra\n\ndata Extra {}\n"), 0600); err != nil {
+			if err := os.WriteFile(p, []byte("namespace extra\n\ndata Extra {\n    attribute extraId type std.identifier\n}\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
 		}},
