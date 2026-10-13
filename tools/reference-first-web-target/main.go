@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -13,64 +14,99 @@ import (
 
 	"tei/internal/composition"
 	"tei/internal/core"
+	"tei/internal/sourceacceptance"
 	"tei/internal/workspace"
 )
 
 func main() {
-	var (
-		workspacePath    = flag.String("workspace", "reference/workspace", "TEI workspace directory")
-		applicationID    = flag.String("application", "order_entry", "Canonical Application ID")
-		baselineID       = flag.String("baseline-id", "", "Handover Baseline ID, for example B")
-		baselineRev      = flag.String("baseline-revision", "", "Handover baseline repository revision R")
-		targetRev        = flag.String("target-revision", "", "Target build repository revision T")
-		legacyUsers      = flag.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
-		legacyAuthz      = flag.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
-		listen           = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
-		scopedRoutes     = flag.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
-		composeScenarios = flag.Bool("composition-scenarios", false, "reference: run the selected Application through statically linked service contracts")
-		postgresDSNFile  = flag.String("postgres-dsn-file", "", "reference: host-owned PostgreSQL connection file; never creates fixture objects")
-		postgresFence    = flag.Int64("postgres-fencing-token", 0, "reference: expected positive database execution-grant fencing token")
-		modelRevision    = flag.String("model-revision", "", "reference: exact source revision explicitly selected by the host; does not accept proposals")
-	)
-	nonScreen := registerNonScreenFlags(flag.CommandLine)
-	flag.Parse()
-	if *nonScreen.mode != "" && (!*composeScenarios || *postgresDSNFile == "") {
-		fmt.Fprintln(os.Stderr, "-non-screen requires composed PostgreSQL execution")
+	// The Reference CLI has no authoritative Host acceptance service yet.
+	// A Host integration must inject its Reader here; labels and Decision JSON
+	// are not a substitute. Unaccepted fixtures require explicit diagnostics.
+	if err := runCombinedWebTarget(context.Background(), nil, os.Args[1:]); err != nil {
+		if err == flag.ErrHelp {
+			return
+		}
+		fmt.Fprintln(os.Stderr, err)
+		var execution *nonScreenCommandError
+		if errors.As(err, &execution) {
+			os.Exit(1)
+		}
 		os.Exit(2)
+	}
+}
+
+type nonScreenCommandError struct{ error }
+
+func (err *nonScreenCommandError) Unwrap() error { return err.error }
+
+// runCombinedWebTarget checks the Host witness before constructing any runner
+// or HTTP handler. The Reader's provenance and current effect grants remain
+// the embedding Host's responsibility; this checks startup Source identity.
+func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, args []string) error {
+	flags := flag.NewFlagSet("first-web-target", flag.ContinueOnError)
+	var (
+		workspacePath    = flags.String("workspace", "reference/workspace", "TEI workspace directory")
+		applicationID    = flags.String("application", "order_entry", "Canonical Application ID")
+		baselineID       = flags.String("baseline-id", "", "Handover Baseline ID, for example B")
+		baselineRev      = flags.String("baseline-revision", "", "Handover baseline repository revision R")
+		targetRev        = flags.String("target-revision", "", "Target build repository revision T")
+		legacyUsers      = flags.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
+		legacyAuthz      = flags.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
+		listen           = flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
+		scopedRoutes     = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		composeScenarios = flags.Bool("composition-scenarios", false, "reference: run the selected Application through statically linked service contracts")
+		postgresDSNFile  = flags.String("postgres-dsn-file", "", "reference: host-owned PostgreSQL connection file; never creates fixture objects")
+		postgresFence    = flags.Int64("postgres-fencing-token", 0, "reference: expected positive database execution-grant fencing token")
+		modelRevision    = flags.String("model-revision", "", "reference: exact source revision explicitly selected by the host; does not accept proposals")
+		diagnostic       = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
+	)
+	nonScreen := registerNonScreenFlags(flags)
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("unexpected positional arguments")
+	}
+	if *nonScreen.mode != "" && (!*composeScenarios || *postgresDSNFile == "") {
+		return fmt.Errorf("-non-screen requires composed PostgreSQL execution")
 	}
 	if *modelRevision != "" && !*composeScenarios {
-		fmt.Fprintln(os.Stderr, "-model-revision requires -composition-scenarios")
-		os.Exit(2)
+		return fmt.Errorf("-model-revision requires -composition-scenarios")
 	}
 	if (*postgresDSNFile != "" || *postgresFence != 0) && (!*composeScenarios || *postgresDSNFile == "" || *postgresFence <= 0) {
-		fmt.Fprintln(os.Stderr, "PostgreSQL reference requires -composition-scenarios, -postgres-dsn-file and a positive -postgres-fencing-token")
-		os.Exit(2)
+		return fmt.Errorf("PostgreSQL reference requires -composition-scenarios, -postgres-dsn-file and a positive -postgres-fencing-token")
 	}
 	if *postgresDSNFile != "" && *applicationID != "order_entry" {
-		fmt.Fprintln(os.Stderr, "PostgreSQL reference currently requires -application order_entry")
-		os.Exit(2)
+		return fmt.Errorf("PostgreSQL reference currently requires -application order_entry")
 	}
 
 	if *baselineID == "" || *baselineRev == "" || *targetRev == "" {
-		fmt.Fprintln(os.Stderr, "-baseline-id, -baseline-revision and -target-revision are required")
-		os.Exit(2)
+		return fmt.Errorf("-baseline-id, -baseline-revision and -target-revision are required")
 	}
 	appID, err := core.ParseCanonicalID(*applicationID)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
-	loaded, err := workspace.Load(*workspacePath)
+	var loaded workspace.Result
+	if *diagnostic {
+		if reader != nil {
+			return fmt.Errorf("SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT: Host Reader cannot be bypassed")
+		}
+		log.Print("SOURCE_ACCEPTANCE_NOT_VERIFIED: explicit diagnostic-unaccepted-source")
+		loaded, err = workspace.Load(*workspacePath)
+	} else {
+		var verified sourceacceptance.VerifiedWorkspace
+		verified, err = sourceacceptance.LoadVerifiedWorkspace(ctx, reader, string(appID), *workspacePath)
+		loaded = verified.Loaded
+	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
 	var model *scenarioModel
 	if *modelRevision != "" {
 		model, err = bindScenarioModel(*workspacePath, loaded, *modelRevision)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
+			return err
 		}
 	}
 	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
@@ -80,8 +116,7 @@ func main() {
 		ApplicationID:              appID,
 	})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
 	if model != nil {
 		projection.ModelRevision = model.revision
@@ -102,8 +137,7 @@ func main() {
 			*legacyAuthz,
 		)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
+			return err
 		}
 		commandScenario = command
 		command.model = model
@@ -111,14 +145,14 @@ func main() {
 			var state *postgresScenarioState
 			digest, err := runningExecutableDigest()
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if *postgresDSNFile != "" {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				db, err := openScenarioPostgres(ctx, *postgresDSNFile)
+				connectionCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				db, err := openScenarioPostgres(connectionCtx, *postgresDSNFile)
 				cancel()
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 				defer db.Close()
 				state = &postgresScenarioState{db: db, world: loaded.World, digest: digest, fence: *postgresFence, model: model}
@@ -136,18 +170,15 @@ func main() {
 				return nil
 			}
 			registry := composition.NewRegistry()
-			readScenario, commandScenario, err = wireComposedScenarios(context.Background(), registry, readScenario, command, digest, guard)
+			readScenario, commandScenario, err = wireComposedScenarios(ctx, registry, readScenario, command, digest, guard)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if *nonScreen.mode != "" {
 				if err := nonScreen.run(registry, readScenario, command, state, *workspacePath); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					// Close the owned connection before exiting with a failure status.
-					_ = state.db.Close()
-					os.Exit(1)
+					return &nonScreenCommandError{err}
 				}
-				return
+				return nil
 			}
 		}
 	case core.MustCanonicalID("repair_intake"):
@@ -155,23 +186,21 @@ func main() {
 		if *composeScenarios {
 			digest, err := runningExecutableDigest()
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
-			lookup, err = wireComposedCustomerLookup(context.Background(), composition.NewRegistry(), lookup, model, digest,
+			lookup, err = wireComposedCustomerLookup(ctx, composition.NewRegistry(), lookup, model, digest,
 				referenceInstanceGuard(digest, map[string]composition.Contract{"repair-customer": repairLookupContract}))
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 		}
 		options = append(options, withCustomerLookup(lookup))
 	default:
-		fmt.Fprintf(os.Stderr, "no scenario runner exists for Application %s (supported: order_entry, repair_intake)\n", appID)
-		os.Exit(2)
+		return fmt.Errorf("no scenario runner exists for Application %s (supported: order_entry, repair_intake)", appID)
 	}
 	target, err := newWebTargetServer(projection, readScenario, commandScenario, options...)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return err
 	}
 
 	// Preserve the existing multi-Application Gate C diagnostic routes by
@@ -181,8 +210,7 @@ func main() {
 	if *scopedRoutes {
 		handler, err = target.ScopedHandler()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
+			return err
 		}
 	}
 	server := &http.Server{
@@ -198,6 +226,7 @@ func main() {
 		*targetRev,
 	)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

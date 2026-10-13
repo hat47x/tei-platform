@@ -314,6 +314,9 @@ func launchTaggedParityBinary(t *testing.T, root, binary, app string) string {
 		"-legacy-authorization", "reference/legacy-auth/authorization.json",
 		"-listen", address,
 	)
+	if filepath.Base(binary) == "combined" {
+		command.Args = append(command.Args, "-diagnostic-unaccepted-source")
+	}
 	command.Dir = root
 	command.Stdout, command.Stderr = logFile, logFile
 	if err := command.Start(); err != nil {

@@ -111,6 +111,16 @@ func ProjectForPurpose(report WorkspaceAssessment, purpose string) (PurposeProje
 			add("query-implementation", "unresolved", "requested-query-implementation-not-qualified")
 		}
 	}
+	if report.ExecutorHandoff != nil {
+		switch report.ExecutorHandoff.Status {
+		case "resolved-declaration":
+			add("query-executor", "not-evaluated", "static-executor-resolved-host-current-acceptance-and-provider-conformance-not-verified")
+		case "not-declared":
+			add("query-executor", "conditional", "no-explicit-executor-binding-other-provider-path-not-excluded")
+		default:
+			add("query-executor", "unresolved", "requested-executor-binding-or-plugin-resolution-incomplete")
+		}
+	}
 	add("host-authorization", "not-evaluated", "execution-principal-and-current-policy-not-qualified")
 	if report.OperationWriteIntent != nil && report.OperationWriteIntent.Status == "declared-write" {
 		add("effect-fence", "not-evaluated", "declared-write-intent-requires-runtime-effect-fence")

@@ -87,6 +87,7 @@ func TestWebTargetHTTPBlackBoxTrace(t *testing.T) {
 	runCtx, cancelRun := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancelRun()
 	proc := exec.CommandContext(runCtx, binary,
+		"-diagnostic-unaccepted-source",
 		"-workspace", "reference/workspace",
 		"-application", "order_entry",
 		"-baseline-id", "B",

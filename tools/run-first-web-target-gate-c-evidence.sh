@@ -97,6 +97,7 @@ GOENV=off GOWORK=off GOFLAGS= \
 
 GOENV=off GOWORK=off GOFLAGS= \
   go run ./tools/reference-first-web-target \
+    -diagnostic-unaccepted-source \
     -workspace reference/workspace \
     -application order_entry \
     -baseline-id "$baseline_id" \

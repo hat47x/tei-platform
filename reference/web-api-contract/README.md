@@ -2,7 +2,7 @@
 
 - 担当：[Issue #1656](https://github.com/hat47x/tei-platform/issues/1656)
 - 設計：[標準Web API Adapter設計](../../plan/design/WEB_READ_WRITE_API_ADAPTER_DESIGN.md)
-- 状態：**合成契約の実行可能な試作**。既存Driver Resolver、既存`security.authorize` Adapterおよびリポジトリの認可fixtureとの接続検証あり。**実Query Executor・Provider側行スコープ強制・HTTP Handlerには未接続**。ODataサーバではない。
+- 状態：**合成契約の実行可能な試作**。既存Driver Resolver、既存`security.authorize` Adapterおよびリポジトリの認可fixtureとの接続検証あり。既存PostgreSQL Query Executorへの専用SQL参照接続とdatabase/sqlモックによる実行境界検証あり。**稼働中のPostgreSQL・実認可正本・HTTP Handlerとは未接続**。ODataサーバではない。
 
 ## 何を確かめるか
 
@@ -12,7 +12,7 @@
 
 ### このReferenceに含まないもの
 
-OData 4.01の完全な文法・プロトコル、`$metadata`、`$expand`、`$count`、`$apply`、型付きリテラル・複合式、HTTP Cookie/CSRF、SQL/DB、行スコープのProvider側強制、TEI Applicationの実行、セッション失効、トランザクション、監査、保存後の独立読込。**このコードをそのまま公開HTTPサーバへ接続してはいけない。**
+OData 4.01の完全な文法・プロトコル、`$metadata`、`$expand`、`$count`、`$apply`、型付きリテラル・複合式、HTTP Cookie/CSRF、実PostgreSQLサーバーでの行スコープ強制検証、認可正本との実運用接続、TEI Applicationの実行、セッション失効、トランザクション、監査、保存後の独立読込。**このコードをそのまま公開HTTPサーバへ接続してはいけない。**
 
 ## 局所検証
 
@@ -79,6 +79,16 @@ Provider呼出前に実ResolverでCanonical Query/Dataの同一性を再照合�
 `scoped_provider_selection.go`は、動的Host compositionが選んだ実装について、独立した`ScopedCanonicalExecutor`を実装していなければ拒否する。通常のPostgreSQL native SQL Executor、nil、型付きnilを拒否する回帰試験を追加した。これは**誤昇格の防止**であり、インターフェースを実装しただけでProviderの安全性を認証するものではない。
 
 `scoped_driver_bridge.go`は、Providerが権限付きTopより多い行を返した場合、処理後に部分切り詰めせず**返却全体を拒否**する。ここでもProvider内で行スコープ・Filter・Sortを実際に適用したことは証明できない。実行時SQL構成は、明示したScoped Query Realizationと安全な物理Scope Bindingが採用された場合に限り進める。
+
+## E9：Tenant PredicateをSQLの実行境界まで持ち込む（PR #1763）
+
+`scoped_postgres_reference.go`は、特定の`order_entry.recent_orders` Canonical Queryに対応する**別個の明示SQL Realization**をReferenceとして定義する。既存`recent_orders.sql`へ文字列処理でScopeを追記しない。元のQueryの列Mapping・SQL意味（既定の`ordered_at DESC`順）を照合し、別SQLに変わった場合は実行前に拒否する。
+
+参照SQLは**専用fixtureテーブル**`public.tei_web_scoped_orders_reference`だけを扱う（定義：`fixtures/postgres_scoped_orders.sql`）。`WHERE o.tenant_id = :tei_scope_tenant`がFilter/Order/Topより前にあり、`SQLTenantScopeAuthority`が返すPrincipal/Scope/PolicyRevision/QueryIDに結び付いたTenant値を、既存PostgreSQL Executorのnamed parameterへ渡す。HTTPから与えたTenant IDを使用しない。Filter/Sortは`orderId`と有限個の比較演算子のみを対応対象とし、その他は拒否。日時/`Top`も束縛値とする。権限失効・機構障害・不正GrantはDBへQueryせず拒否する。
+
+`scoped_postgres_reference_test.go`では、`database/sql`へ差し込んだ**試験用SQL Connector**から、実行されるSQL本文、`$1`等の位置引数と値、Query呼出回数、既存DriverのSemantic Mappingを観測する。別Tenantの行、値のSQLインジェクション、認可版の取り違え、不正なCanonical Query・Filter/Sort/Topを負例にする。
+
+**証拠の境界：** これはGo標準`database/sql`の`QueryContext`までのテストであり、テストConnectorはSQLを処理せず固定のraw行を返す。実PostgreSQLがWHEREを正しく実行した証拠ではなく、認可正本が真正なTenant Grantを返すことも検証していない。`EnforcesScope`宣言だけを安全性の根拠にしてはならない。実DBテスト、実ポリシー版の検証、スナップショット/トランザクション原子性、非公開列のDB取得そのものの最小化は今後の課題。
 
 ## 次の接続先
 

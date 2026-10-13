@@ -163,3 +163,36 @@ node --test reference/local-cpu-reuse/inspect-cli-process-success.test.mjs refer
 ```
 
 **Local evidence:** Node.js 22.16.0 on Linux, **13/13 PASS** (six newly committed subprocess cases plus seven previously committed summary cases). The staged source modules `run-real-inspection.mjs`, `inspect-cli-bridge.mjs`, `project-inspection-v0.mjs`, `inspection-evidence-summary.mjs`, both new tests and the fixture were verified against their exact GitHub blob SHAs. This was a **targeted staging directory test**, not a full checkout test or CI run. No TEI Go binary was built or executed. Therefore real Workspace Load, `go build`, genuine `tei inspect` end-to-end behavior, two authorized Applications, actual source authenticity, and Acceptance remain **NOT_PROVEN**. The synthetic fixture is not a substitute for the TEI executable and must never be used for Canonical decision-making or production inspection.
+
+## Opt-in genuine Go CLI → Node feature projection integration gate (2026-10-14)
+
+[real-go-inspection.e2e.test.mjs](real-go-inspection.e2e.test.mjs) extends the earlier fake-process transport test with a *genuine Go CLI binary* built from the checkout being tested. It is intentionally **opt-in**; normal Node test discovery reports a skip rather than a synthetic PASS. It never substitutes the previous fake `tei.cli.inspect/v0` emitter for this gate.
+
+From a trusted checkout with the Go version required by `go.mod`, Node 22+ and permission to read the checked-in `reference/workspace`, run:
+
+```sh
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+The test creates a disposable temporary binary with `go build -o <temp> ./cmd/tei`, with `GOTOOLCHAIN=local` (no transparent Go toolchain upgrade), and then executes the existing `run-real-inspection.mjs` against exactly the five fixed subjects in `reference/workspace`. It checks that the Go→CLI JSON→Node derived observation→redacted summary chain yields the expected subject kinds, shared snapshot, explicit declared membership/relation, `not_asserted` Acceptance and no raw Subject IDs, Canonical bodies, World/Source Index fingerprints, Contract Query or Source paths in stdout. It also calls the *real* binary for a missing Semantic Data subject and checks the structured `SUBJECT_NOT_FOUND` failure envelope. Only a **successful opt-in run** may be cited as real CLI E2E evidence. Its build may download Go module dependencies if not cached; the test itself does not send inspection results over the network.
+
+This does **not** prove trusted source identity, tenant/project authorization, real two-Application comparison, full Contract semantics, performance, or #267 Acceptance. It is one explicitly chosen **single Reference Workspace**, with read-only inspection of multiple subjects. The normal fake executable tests remain useful transport regressions, but are a different evidence tier.
+
+As of this addition the local execution environment has **Go 1.23.2** while the current `go.mod` requires **1.26.9**. Consequently the opt-in real-Go test cannot be qualified locally: new test code is committed for execution in a suitable trusted checkout, **not claimed PASS**. Its default skipped path can be syntax-smoke-tested independently. This is a targeted gate, not a request to run the full repository health suite or to enable TEI-LD training.
+
+## Two actual Reference Applications: shared customer Query, different Application context (2026-10-14)
+
+`order_entry.customer_reference` and `repair_intake.customer_reference` are distinct actual TEI Patterns in the **same checked-in Reference Workspace**. Both declare Database Contract `master_data.customer`, Query `find_by_id`, input binding `customer.customer.customer_id -> id`, target Database `master_data`, read-only access and compatible major `2`. Their Pattern Relations and Application-local datasource aliases differ (`sales.order.customer` / `repair_intake.intake.customer`, and `master` / `customer_master`). Their names and common contract do **not** prove UI-implementation or business-rule equivalence.
+
+The small read-only [compare-two-application-references.mjs](compare-two-application-references.mjs) consumes exactly four caller-authorized `tei.cli.inspect/v0` reports (Application and customer-reference Pattern from each). It uses the existing typed inspection projection to verify exact subjects, same World/Source Index snapshot, indexed Source, completeness and declared Application→Pattern membership. It additionally checks the original typed Go Application database routing/required-major metadata and exact Reference Pattern contract-query bindings. Any unknown or unsupported semantics, non-read datasource, missing/ambiguous contract route, incomplete Source, or snapshot drift **abstains or fails closed**, never implies direct reuse. This is an intentionally fixed public Reference case, not a general cross-tenant query API or second TEI parser.
+
+Its output `shared_query_invocation_declared` means the two **declarations** target an identical Query invocation under the observed World. The result **always** reports `reuseDecision:needs_semantic_review`, `acceptance:not_asserted` and `contractConformance:not_verified`. It does not feed raw CLI metadata into the synthetic `comparePair` as a verified contract fingerprint. The in-memory comparison contains publicly checked-in identifiers and Source snapshot hashes, so it must **not** be automatically printed or exported for customer workspaces.
+
+Targeted tests:
+
+```sh
+node --test reference/local-cpu-reuse/compare-two-application-references.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+The first suite uses synthetic `inspect/v0` JSON to stress changed Query, compatible major, binding, datasource, unknown policy, membership and snapshot drift. The opt-in E2E builds the genuine `tei` Go CLI and inspects the **four actual Subjects**, then checks shared Query metadata and distinct Application context. Neither exercise establishes an Accepted Contract implementation, renderer interoperability, real project-to-project authorization, transitive license rights or the cost/benefit of component extraction. Both Applications are in the **same Reference Workspace**, not independent production customers. Real two-project Source trust, review time, CPU cost and maintainability gain remain future research gates.
