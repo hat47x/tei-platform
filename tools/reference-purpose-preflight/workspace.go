@@ -29,9 +29,12 @@ type WorkspaceAssessment struct {
 	SubjectID        string          `json:"subjectId"`
 	SourceStatus     string          `json:"sourceStatus"`
 	RuleMeaning      string          `json:"ruleMeaning"`
-	ExecutionAllowed bool            `json:"executionAllowed"`
-	Witnesses        []SourceWitness `json:"witnesses"`
-	Unresolved       []string        `json:"unresolved"`
+	ExecutionAllowed      bool                  `json:"executionAllowed"`
+	Witnesses             []SourceWitness       `json:"witnesses"`
+	Unresolved            []string              `json:"unresolved"`
+	DecisionHistoryStatus string                `json:"decisionHistoryStatus,omitempty"`
+	DecisionIndexRevision string                `json:"decisionIndexRevision,omitempty"`
+	DecisionHistoryLinks  []DecisionHistoryLink `json:"decisionHistoryLinks,omitempty"`
 }
 
 // InspectWorkspace only verifies whether a real application-pattern has one
