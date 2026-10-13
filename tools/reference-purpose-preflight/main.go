@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"tei/internal/core"
+	"tei/internal/workspace"
 )
 
 type Fixture struct {
@@ -53,11 +56,20 @@ func runCLI(args []string, output io.Writer) error {
 	id := flags.String("subject-id", "", "typed subject ID for Workspace inspection")
 	decisionIndex := flags.String("decision-index", "", "read-only JSON report from reference-shared-acceptance decisions")
 	purpose := flags.String("purpose", "", "development intent: describe|simulate|execute-preflight (read-only)")
+	environment := flags.String("environment", "", "Environment ID for exact binding inspection (execute-preflight only)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 {
 		return fmt.Errorf("positional arguments are not supported")
+	}
+	if *environment != "" {
+		if *input != "" || *purpose != "execute-preflight" || *kind != "application-pattern" {
+			return fmt.Errorf("-environment requires Workspace application-pattern and -purpose execute-preflight")
+		}
+		if _, err := core.ParseCanonicalID(*environment); err != nil {
+			return fmt.Errorf("invalid Environment ID: %w", err)
+		}
 	}
 	if *input != "" && *root == "" && *application == "" && *kind == "" && *id == "" && *decisionIndex == "" && *purpose == "" {
 		file, err := os.Open(*input)
@@ -97,6 +109,14 @@ func runCLI(args []string, output io.Writer) error {
 		encoder := json.NewEncoder(output)
 		encoder.SetIndent("", "  ")
 		if *purpose != "" {
+			if *environment != "" {
+				loaded, loadErr := workspace.Load(*root)
+				if loadErr != nil {
+					return fmt.Errorf("load scoped Environment: %w", loadErr)
+				}
+				binding := ObserveEnvironmentBinding(loaded.World, *environment, *application, assessment.ContractQueryUse)
+				assessment.EnvironmentBinding = &binding
+			}
 			projection, err := ProjectForPurpose(assessment, *purpose)
 			if err != nil {
 				return err
@@ -110,9 +130,10 @@ func runCLI(args []string, output io.Writer) error {
 		// The extra operation evidence is an opt-in development projection only.
 		assessment.OperationWriteIntent = nil
 		assessment.ContractQueryUse = nil
+		assessment.EnvironmentBinding = nil
 		return encoder.Encode(assessment)
 	}
-	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern|semantic-validation -subject-id <id> [-decision-index <json>] [-purpose describe|simulate|execute-preflight]")
+	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern|semantic-validation -subject-id <id> [-decision-index <json>] [-purpose describe|simulate|execute-preflight] [-environment <id>]")
 }
 
 func main() {
