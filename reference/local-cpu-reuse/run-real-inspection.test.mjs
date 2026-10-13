@@ -18,7 +18,7 @@ function report(s) {
   const subject={kind:s.kind,id:s.id};
   return {schemaVersion:'tei.cli.inspect/v0',ok:true,
     result:{schemaVersion:'tei.operations.inspect/v0',effect:'read-only',
-      subject,canonical:fixtureCanonical[s.kind+':'+s.id],
+      subject,canonical:structuredClone(fixtureCanonical[s.kind+':'+s.id]),
       worldFingerprint:'world:example',sourceIndexFingerprint:'index:example',
       sourceStatus:'indexed',sources:{subject,
         artifacts:[{path:'workspace/patterns.tei',fingerprint:'sha256:example'}],
