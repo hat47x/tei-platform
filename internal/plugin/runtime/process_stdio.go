@@ -88,6 +88,10 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		return Response{}, fmt.Errorf("process plugin executable must be a single name/path; use argv for arguments")
 	}
 
+	if l.MaxExecutionDuration < 0 {
+		return Response{}, fmt.Errorf("process plugin execution limit must not be negative")
+	}
+
 	// Reject ambiguous or malformed host-approved variables before executable
 	// lookup or process creation. In particular, PATH must have one meaning for
 	// our resolver and the operating system's child environment.
