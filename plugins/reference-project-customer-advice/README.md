@@ -11,3 +11,9 @@ go test ./plugins/reference-project-customer-advice
 ```
 
 UIとHTTP Hostは [参照実装](../../tools/reference-project-advice-lit/README.md)を参照してください。これは製品Runtimeで登録された正式Service Providerではありません。正式な受注可否、Runtime Authority、Conformance、第三者向け配布品質は保証しません。
+
+## 案件所有の独立Goプロセス用アダプター
+
+`cmd/reference-project-advice-process` は、このパッケージの`Evaluate`を既存TEIプロセス通信へ写す薄い参照用実行体です。ホストが導出するdispatch IDを起動引数として照合しますが、アダプター自身はそのIDの受理や実行権限を判断しません。検証例は`tools/reference-runtime-capability-identity/project_advice_built_pinned_linux_test.go`にあります。
+
+独立したGo実行体として構築・実行できることと、**正式なプラグインの受理、署名、権限付与、業務Actionへの登録は別**です。既存`Plugin Lock`や`Host Authority`を置き換えません。
