@@ -70,7 +70,6 @@ func TestOrderEntryContextRejectsUnexpectedReadResponses(t *testing.T) {
 		{"missing-row-index", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s"}}`, "application/json", 200},
 		{"null-row-index", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s","selectedRowIndex":null}}`, "application/json", 200},
 		{"negative-row-index", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s","selectedRowIndex":-1}}`, "application/json", 200},
-		
 		{"trailing", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s"}}{}`, "application/json", 200},
 		{"non-json", "<html>ok</html>", "text/html", 200},
 		{"upstream-error", "unavailable", "application/json", 503},
