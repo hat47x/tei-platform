@@ -30,6 +30,7 @@
 | [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | 機能の業務結果・名前付きの結果と実行エラーを分離する設計（ISSUE-000009 / ADR-0020） |
 | [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | 構成パターンの解決から、機能と契約に基づく問い合わせの実行、観測までの境界（ISSUE-000006 / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） |
 | [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | 契約に基づく問い合わせの形式、SQLによる実現、実行器との対応付け、提供実装の実行基盤という四層（ISSUE-000018〜ISSUE-000021 / ADR-0007 / ADR-0021） |
+| [`DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md`](DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md) | PostgreSQLとSQLiteを対象に、関係データベースの共通契約と製品ごとの方言プラグインを分ける検討案（識別子、方言の面、製品の版、現行コードの仕分け、実施順序） |
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026の複数視点の照合を、対象を限定した証明上の条件として設計案の候補を絞り込む処理へ接続する、評価待ちの設計 |
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件ごとのプラグイン、画面部品一式、仕様テンプレート、構成プロファイルの境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
