@@ -84,7 +84,10 @@ export function summarizeInspectionEvidence(batch) {
       sourceStatus:o.provenance.sourceStatus
     })),
     consistentSnapshot:true,
-    links:batch.links
+    links:{
+      applicationPattern:{status:batch.links?.applicationPattern?.status??'unknown',accepted:false},
+      patternRelation:{status:batch.links?.patternRelation?.status??'unknown',accepted:false}
+    }
   };
 }
 
