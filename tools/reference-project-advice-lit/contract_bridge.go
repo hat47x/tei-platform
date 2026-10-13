@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"tei/internal/composition"
@@ -15,6 +16,8 @@ var ProjectAdvisoryContract = composition.Contract{
 	Version: "v0",
 	Shape:   "customer-code-note-to-advisory-v0",
 }
+
+var errProjectAdvisoryUnavailable = errors.New("project advisory service unavailable")
 
 const projectAdvisoryScope = "reference-project-customer-advice"
 const projectAdvisoryProviderID = "project.customer-advice.go"
@@ -74,19 +77,19 @@ func newProjectAdvisoryBridge() (*projectAdvisoryBridge, error) {
 
 func (b *projectAdvisoryBridge) Evaluate(input customeradvice.Input) (customeradvice.Result, error) {
 	if b == nil || b.registry == nil {
-		return customeradvice.Result{}, errors.New("project advisory service unavailable")
+		return customeradvice.Result{}, errProjectAdvisoryUnavailable
 	}
 	current, err := b.registry.Select(projectAdvisoryProviderID, projectAdvisoryScope)
 	if err != nil || current.Contract != ProjectAdvisoryContract ||
 		current.ProviderID != b.selection.ProviderID || current.Epoch != b.selection.Epoch {
-		return customeradvice.Result{}, errors.New("project advisory selection changed")
+		return customeradvice.Result{}, fmt.Errorf("%w: selection changed", errProjectAdvisoryUnavailable)
 	}
 	// The actual Go invocation remains diagnostic and host-owned. The
 	// selected Coordinator checks and pins a lease, but its synthetic
 	// artifact digest and reference-only guard grant NO production authority.
 	lease, err := b.coordinator.Acquire()
 	if err != nil {
-		return customeradvice.Result{}, err
+		return customeradvice.Result{}, fmt.Errorf("%w: %v", errProjectAdvisoryUnavailable, err)
 	}
 	defer lease.Release()
 	return customeradvice.Evaluate(input)
