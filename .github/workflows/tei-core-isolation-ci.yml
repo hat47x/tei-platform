@@ -156,7 +156,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gofmt -d tools/reference-capability-transport/quote_semantic_vectors_test.go
           test -z "$(gofmt -l plugins/reference-order-quote/*.go tools/reference-capability-transport/*.go)"
           go test -count=1 -timeout 120s -run '^TestIndependentBusinessQuoteOverExistingGenericProcessTransport$' ./tools/reference-capability-transport
           go vet ./tools/reference-capability-transport
