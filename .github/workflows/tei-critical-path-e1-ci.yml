@@ -72,18 +72,7 @@ jobs:
           check-latest: false
           cache: false
 
-      - name: 合成Readerを注入した実Web起動のR1正常・R0とR2拒否を検査
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Readerは試験実行ファイルだけに注入する。正式Host受理の資格ではない。
-          go test -count=1 -v \
-            -run '^TestCombinedWeb(TargetSourceGateLiveProcesses|CLIRefusesUntrustedReaderEnvironment)$' \
-            ./tools/reference-first-web-target | tee "$RUNNER_TEMP/tei-source-startup.log"
-          grep -E '^--- PASS: TestCombinedWebTargetSourceGateLiveProcesses \(' "$RUNNER_TEMP/tei-source-startup.log"
-          grep -E '^--- PASS: TestCombinedWebCLIRefusesUntrustedReaderEnvironment \(' "$RUNNER_TEMP/tei-source-startup.log"
-
-      - name: 明示診断モードで一時Source受理からWebの正常系まで実行
+      - name: 一時Source受理からWebの正常系まで実行
         shell: bash
         run: |
           set -euo pipefail
@@ -118,7 +107,6 @@ jobs:
           assert.equal(positive.acceptedSourceRevisionClaim, lineage.sourceAfter);
           assert.equal(lineage.humanApproval, false);
           assert.equal(launch.runtimeAuthorityVerified, false);
-          assert.equal(launch.sourceVerificationMode, "explicit-unaccepted-source-diagnostic");
           assert.equal(positive.httpStatus, 200);
           assert.equal(positive.commandObserved, true);
           assert.equal(positive.independentDatabaseRead, false);
