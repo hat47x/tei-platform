@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
-          gofmt -d tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go
-          test -z "$(gofmt -l tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go)"
+          gofmt -d tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-advice-process/*.go
+          test -z "$(gofmt -l tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-advice-process/*.go)"
           go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice
           test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
