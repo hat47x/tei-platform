@@ -75,3 +75,11 @@ test('read error aborts batch without treating failure as unknown candidate',asy
     return report(s);
   }),code('CLI_EXECUTION_FAILED'));
 });
+
+test('batch rejects more than 32 subjects before any external read',async()=>{
+  let calls=0;
+  const many=Array.from({length:33},(_,i)=>selector('application','app_'+i));
+  await assert.rejects(()=>inspectSubjectBatch(many,async()=>{calls++;return report()}),
+    code('INVALID_INSPECTION_BATCH'));
+  assert.equal(calls,0);
+});
