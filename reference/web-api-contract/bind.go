@@ -36,29 +36,29 @@ type TrustedReadContext struct {
 }
 
 type Filter struct {
-	FieldID string
+	FieldID  string
 	Operator string
-	Value string
+	Value    string
 }
 
 type Ordering struct {
-	FieldID string
+	FieldID    string
 	Descending bool
 }
 
 type ReadPlan struct {
 	Selected []string
-	Filter *Filter
-	Order *Ordering
-	Limit int
+	Filter   *Filter
+	Order    *Ordering
+	Limit    int
 	// The executor MUST apply this authorized scope before client filter,
 	// count/aggregation and pagination. Scope ID is NOT a SQL predicate.
-	ScopeID string
+	ScopeID        string
 	PolicyRevision string
 }
 
-var identifier = regexp.MustCompile("^[A-Za-z][A-Za-z0-9_]*$")
-var simpleComparison = regexp.MustCompile("^([A-Za-z][A-Za-z0-9_]*) (eq|ne|gt|ge|lt|le) ('(?:[^']|'')*'|[0-9]+|true|false|null)$")
+var identifier = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+var simpleComparison = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*) (eq|ne|gt|ge|lt|le) ('(?:[^']|'')*'|[0-9]+|true|false|null)$`)
 
 // BindReadSubset accepts a deliberately tiny URL query subset, suitable for
 // testing semantic authorization. It does NOT implement OData 4.01: a real
@@ -141,30 +141,30 @@ func BindReadSubset(values url.Values, fields []Field, ctx TrustedReadContext) (
 // FieldChange deliberately distinguishes clearing a field from setting a null
 // value. The real Action contract owns their business semantics.
 type FieldChange struct {
-	Kind string // "set" or "clear"
+	Kind  string // "set" or "clear"
 	Value any
 }
 
 type CommandSpec struct {
-	ActionID string
-	Allowed bool
-	WritableFields map[string]bool
-	RequiresRevision bool
+	ActionID            string
+	Allowed             bool
+	WritableFields      map[string]bool
+	RequiresRevision    bool
 	RequiresIdempotency bool
 }
 
 type CommandRequest struct {
-	ActionID string
+	ActionID         string
 	ExpectedRevision string
-	IdempotencyKey string
-	Changes map[string]FieldChange
+	IdempotencyKey   string
+	Changes          map[string]FieldChange
 }
 
 type CommandIntent struct {
-	ActionID string
+	ActionID         string
 	ExpectedRevision string
-	IdempotencyKey string
-	Changes map[string]FieldChange
+	IdempotencyKey   string
+	Changes          map[string]FieldChange
 }
 
 // BindCommand checks a synthetic Action decision; it does not execute the
