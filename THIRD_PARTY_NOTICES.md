@@ -4,10 +4,10 @@ TEIのProject codeには、この文書および各コンポーネントの個�
 
 ## Go module
 
-### github.com/jackc/pgx/v5 v5.7.6
+### github.com/jackc/pgx/v5 v5.9.0
 
 - 用途: `database/sql`互換PostgreSQL driver（`stdlib`）
-- Source: <https://github.com/jackc/pgx/tree/v5.7.6>
+- Source: <https://github.com/jackc/pgx/tree/v5.9.0>
 - License: MIT
 
 ```text
@@ -41,12 +41,11 @@ The following modules are required by the `pgx/stdlib` runtime graph. Their lice
 
 | Module | Version | License | Copyright / source |
 | --- | --- | --- | --- |
-| `github.com/jackc/pgpassfile` | v1.0.0 | MIT | Jack Christensen; <https://github.com/jackc/pgpassfile/tree/v1.0.0> |
-| `github.com/jackc/pgservicefile` | v0.0.0-20240606120523-5a60cdf6a761 | MIT | Jack Christensen; <https://github.com/jackc/pgservicefile/tree/v0.0.0-20240606120523-5a60cdf6a761> |
-| `github.com/jackc/puddle/v2` | v2.2.2 | MIT | Jack Christensen; <https://github.com/jackc/puddle/tree/v2.2.2> |
-| `golang.org/x/crypto` | v0.37.0 | BSD 3-Clause | The Go Authors; <https://go.googlesource.com/crypto/+/v0.37.0> |
-| `golang.org/x/sync` | v0.13.0 | BSD 3-Clause | The Go Authors; <https://go.googlesource.com/sync/+/v0.13.0> |
-| `golang.org/x/text` | v0.24.0 | BSD 3-Clause | The Go Authors; <https://go.googlesource.com/text/+/v0.24.0> |
+| `github.com/jackc/pgpassfile` | v1.0.0 | MIT | Copyright (c) 2019 Jack Christensen; <https://github.com/jackc/pgpassfile/tree/v1.0.0> |
+| `github.com/jackc/pgservicefile` | v0.0.0-20240606120523-5a60cdf6a761 | MIT | Copyright (c) 2020 Jack Christensen; <https://github.com/jackc/pgservicefile/tree/v0.0.0-20240606120523-5a60cdf6a761> |
+| `github.com/jackc/puddle/v2` | v2.2.2 | MIT | Copyright (c) 2018 Jack Christensen; <https://github.com/jackc/puddle/tree/v2.2.2> |
+| `golang.org/x/sync` | v0.17.0 | BSD 3-Clause | The Go Authors; <https://go.googlesource.com/sync/+/v0.17.0> |
+| `golang.org/x/text` | v0.29.0 | BSD 3-Clause | The Go Authors; <https://go.googlesource.com/text/+/v0.29.0> |
 
 The MIT license text above also applies to the three Jack Christensen modules listed here; their individual copyright notices are listed in the table.
 
