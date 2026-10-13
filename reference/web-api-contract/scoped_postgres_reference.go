@@ -48,9 +48,9 @@ type SQLTenantScopeAuthority interface {
 // It delegates physical named-parameter binding and database/sql execution
 // to TEI's existing PostgreSQL BrowseQueryExecutor.
 type ScopedPostgresOrdersReference struct {
-	DB          *sql.DB
-	Authority   SQLTenantScopeAuthority
-	Database    core.CanonicalID
+	DB        *sql.DB
+	Authority SQLTenantScopeAuthority
+	Database  core.CanonicalID
 }
 
 var _ ScopedCanonicalExecutor = ScopedPostgresOrdersReference{}
@@ -125,7 +125,7 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 	// authority or database. Values are never interpolated into SQL text.
 	source := scopedReferenceSQL
 	args := map[string]any{
-		"from": from,
+		"from":    from,
 		"tei_top": plan.Limit,
 	}
 	if plan.Filter != nil {
@@ -160,10 +160,10 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 	source += "\nORDER BY " + orderClause + "\nLIMIT :tei_top"
 
 	request := SQLTenantScopeRequest{
-		PrincipalID: plan.PrincipalID,
-		RowScopeID: plan.ScopeID,
+		PrincipalID:    plan.PrincipalID,
+		RowScopeID:     plan.ScopeID,
 		PolicyRevision: plan.PolicyRevision,
-		QueryID: q.ID,
+		QueryID:        q.ID,
 	}
 	grant, err := e.Authority.ResolveSQLTenantScope(ctx, request)
 	if err != nil {
