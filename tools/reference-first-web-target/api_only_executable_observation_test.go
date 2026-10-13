@@ -32,7 +32,7 @@ func TestDiagnosticExecutableObservationMatchesRunningLinuxImage(t *testing.T) {
 	}
 	var got struct {
 		SHA256 string `json:"sha256"`
-		Bytes int64  `json:"bytes"`
+		Bytes  int64  `json:"bytes"`
 	}
 	if err := json.Unmarshal(r.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
