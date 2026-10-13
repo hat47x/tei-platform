@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 
 	"tei/internal/core"
 	"tei/internal/ir"
@@ -115,12 +114,12 @@ type Unresolved struct {
 func Project(world ir.World) (Projection, error) {
 	out := Projection{
 		Schema: "tei.reference.er-physical-crossview/v0",
-		Data: []DataView{}, Relations: []RelationView{}, Tables: []TableView{},
+		Data:   []DataView{}, Relations: []RelationView{}, Tables: []TableView{},
 		KeyComparisons: []KeyComparison{}, Unresolved: []Unresolved{},
 	}
 	b, err := json.Marshal(struct {
-		Semantics interface{} `json:"semantics"`
-		Databases interface{} `json:"databases"`
+		Semantics   interface{} `json:"semantics"`
+		Databases   interface{} `json:"databases"`
 		Persistence interface{} `json:"persistenceMappings"`
 	}{world.Semantics, world.Databases, world.Persistence})
 	if err != nil {
@@ -213,14 +212,14 @@ func Project(world ir.World) (Projection, error) {
 			})
 			if !attrByData[owner][attr] {
 				out.Unresolved = append(out.Unresolved, Unresolved{
-					Code: "MAPPED_ATTRIBUTE_NOT_IN_DATA", Subject: id+":"+attr,
+					Code: "MAPPED_ATTRIBUTE_NOT_IN_DATA", Subject: id + ":" + attr,
 				})
 			}
 		}
 		for _, a := range m.PrimaryKey {
 			if !mapped[string(a)] {
 				out.Unresolved = append(out.Unresolved, Unresolved{
-					Code: "PK_ATTRIBUTE_HAS_NO_COLUMN", Subject: id+":"+string(a),
+					Code: "PK_ATTRIBUTE_HAS_NO_COLUMN", Subject: id + ":" + string(a),
 				})
 			}
 		}
@@ -230,7 +229,7 @@ func Project(world ir.World) (Projection, error) {
 		for _, fk := range m.ForeignKeys {
 			table.ForeignKeys = append(table.ForeignKeys, ForeignKey{
 				Name: fk.Name, Attributes: stringsOf(fk.Attributes),
-				ReferencedMapping: string(fk.ReferencedMapping),
+				ReferencedMapping:    string(fk.ReferencedMapping),
 				ReferencedAttributes: stringsOf(fk.ReferencedAttributes),
 			})
 		}

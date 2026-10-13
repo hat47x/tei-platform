@@ -29,7 +29,7 @@ func sampleWorld() ir.World {
 				FunctionalDependencies: []semantic.FunctionalDependency{{
 					ID: "sales.order_line.item_by_line", Symbol: "itemByLine",
 					Determinants: []core.CanonicalID{"sales.order_line.order_number", "sales.order_line.line_number"},
-					Dependents: []core.CanonicalID{"sales.order_line.item_code"},
+					Dependents:   []core.CanonicalID{"sales.order_line.item_code"},
 				}},
 				Relations: []semantic.Relation{{
 					ID: "sales.order_line.parent", Symbol: "parent", Target: "sales.order",
@@ -54,12 +54,12 @@ func sampleWorld() ir.World {
 				},
 				PrimaryKey: []core.CanonicalID{"sales.order_line.row_uuid"},
 				UniqueConstraints: []persistence.UniqueConstraintMapping{{
-					Name: "business_line_unique",
+					Name:       "business_line_unique",
 					Attributes: []core.CanonicalID{"sales.order_line.order_number", "sales.order_line.line_number"},
 				}},
 				ForeignKeys: []persistence.ForeignKeyMapping{{
 					Name: "fk_parent", Attributes: []core.CanonicalID{"sales.order_line.order_number"},
-					ReferencedMapping: "store.sales_order",
+					ReferencedMapping:    "store.sales_order",
 					ReferencedAttributes: []core.CanonicalID{"sales.order.order_number"},
 				}},
 			},
@@ -196,7 +196,7 @@ func TestProjectionReportsUnresolvedExternalMappingButDoesNotInventEvidence(t *t
 }
 
 func TestProjectionRejectsDuplicateDataMappingAndColumns(t *testing.T) {
-	for _, tc := range []struct{
+	for _, tc := range []struct {
 		name string
 		edit func(*ir.World)
 	}{
