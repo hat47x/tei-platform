@@ -147,6 +147,9 @@ func ObservePackageOutput(binding BuildInputEvidence, result transform.Evaluatio
 	if err != nil {
 		return PackageOutputObservation{}, fmt.Errorf("encode canonical Plugin package output: %w", err)
 	}
+	// SB-1 MaterializePluginPackage deliberately appends one trailing LF
+	// after encoding/json's struct-order representation.
+	canonical = append(canonical, '\n')
 	if !bytes.Equal(result.Output.Bytes, canonical) {
 		return PackageOutputObservation{}, fmt.Errorf("Plugin package output is not canonical SB-1 manifest bytes")
 	}
