@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	defaultProcessResponseLimit = 8 << 20 // 8 MiB
-	defaultProcessStderrLimit   = 8 << 20 // 8 MiB
+	defaultProcessResponseLimit  = 8 << 20 // 8 MiB
+	defaultProcessStderrLimit    = 8 << 20 // 8 MiB
 	defaultProcessExecutionLimit = 30 * time.Minute
 )
 
