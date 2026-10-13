@@ -18,7 +18,6 @@
 | 製品の正式な要求 | [製品要求の読み方](../requirements/README.md) | [TEI製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md) |
 | 要求と検証根拠のつながり | [上位の受け入れシナリオとの追跡関係](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEIの計画](../plan/README.md) |
 | 現在どこまで動くか | [現在の実装状況](status.md) | [TEIの計画](../plan/README.md) |
-| 成果物出力・ビルド束縛・合成基盤の検証と残条件 | [2026-10-13の検証記録と申し送り](audits/ISSUE_HANDOFF_1100_1107_1223_2026-10-13.md) | [現在の実装状況](status.md) |
 | 実際に動かす | [TEIを動かす](getting-started.md) | [現在の実装状況](status.md) |
 | 安全性と権限の境界 | [安全性](security.md) | [全体構成の読み方](architecture-reading-guide.md) |
 | 用語と命名 | [TEIの名称と共通用語](naming.md) | [TEIの考え方](overview.md) |
