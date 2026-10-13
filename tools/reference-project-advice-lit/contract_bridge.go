@@ -81,9 +81,9 @@ func (b *projectAdvisoryBridge) Evaluate(input customeradvice.Input) (customerad
 		current.ProviderID != b.selection.ProviderID || current.Epoch != b.selection.Epoch {
 		return customeradvice.Result{}, errors.New("project advisory selection changed")
 	}
-	// The actual Go invocation remains diagnostic and host-owned.
-	// Production invocation requires the Coordinator/Router guard, verified
-	// artifact, permissions and lease before dispatch.
+	// The actual Go invocation remains diagnostic and host-owned. The
+	// selected Coordinator checks and pins a lease, but its synthetic
+	// artifact digest and reference-only guard grant NO production authority.
 	lease, err := b.coordinator.Acquire()
 	if err != nil {
 		return customeradvice.Result{}, err
