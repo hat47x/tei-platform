@@ -51,3 +51,18 @@ type SignerAdminAuditSink interface {
 ## 並行開発との境界
 
 PR #1599で導入されたHost内の起動開始ガードと、PR #1601で進行中の世代別の実行中プロセス管理は変更しない。管理API・監査Sinkはそれらの上位に追加する。既存`Allow/Revoke`をただちに破壊的変更せず、まずHostの管理経路を通じた利用を実装・試験してから、低水準APIの外部公開制限を検討する。
+
+
+## 段階B：監査付き管理アダプタの参照実装
+
+`internal/plugin/runtime/process_signer_audited_admin_linux.go`には、Hostが認可した署名鍵管理に監査先を組み合わせる`LinuxSignerAuditedAdmin`を用意しました。`LinuxSignerAuditSink`が未設定の場合は操作を拒否します。許可された鍵登録・失効は、**変更前の準備記録が成功した場合にだけ**実行され、変更後に実施結果を別の記録として残します。監査イベントには操作ID、Host ID、認証済み主体、署名参照、操作、変更前後の観測世代、公開鍵のSHA-256指紋、段階、結果コード、時刻を含みます。公開鍵そのものや秘密鍵は含めません。
+
+- 権限が拒否された場合は`denied`、事前準備は`prepared`、変更成功は`applied`、失効対象なしは`unchanged`、中断・操作失敗は`failed`として区別します。
+- 事前の監査記録を保存できなければ、鍵は変更しません。変更後の結果記録が失敗した場合は`ErrLinuxSignerAuditOutcomeUnrecorded`を返します。**鍵の変更が既に成立している場合があり、エラーをロールバック成功と解釈してはいけません。**
+- `LinuxSignerAuditSink`の成功応答は、Hostが選んだ永続的な監査先への書込み完了を意味する契約です。参照用のインメモリ監査先は永続性の検証には使用できません。
+
+```sh
+go test -count=1 -run '^TestLinuxSignerAuditedAdmin' ./internal/plugin/runtime
+```
+
+**依然として未実装の要件：** 監査と鍵更新は単一の永続トランザクションではありません。`prepared`だけが残った場合、実際の鍵状態と照合して復旧する仕組みが必要です。アダプタ自身の同時操作は直列化していますが、別のアダプタや低水準の`Trust.Allow/Revoke`から行われる変更までは防ぎません。管理操作IDの重複排除、主体の真正性の取得、Host/テナントの権限設計、監査記録の保全、クラッシュ復旧、複数Host間の同期待ちは後続の課題です。
