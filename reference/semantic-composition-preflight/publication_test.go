@@ -26,8 +26,8 @@ func signedPublications(t *testing.T) (
 	for _, asset := range assets {
 		proof := PublicationProof{
 			PublisherID: "community.publisher",
-			SignerRef: "host-approved.semantic-publisher",
-			ValidUntil: publicationTime.Add(24 * time.Hour),
+			SignerRef:   "host-approved.semantic-publisher",
+			ValidUntil:  publicationTime.Add(24 * time.Hour),
 		}
 		message, err := SemanticPublicationMessage("tenant-a", asset, proof)
 		if err != nil {
