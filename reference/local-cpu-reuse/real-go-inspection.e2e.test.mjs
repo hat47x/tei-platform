@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {qualifyReferenceQuerySignature} from './qualify-query-signature.mjs';
 import {compareTwoReferenceApplications,proposeReferenceQueryAdapter,
   TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
 
@@ -106,4 +107,27 @@ test('real Go inspect -> Node read-only projection -> metadata-only summary', {
   assert.equal(proposal.accepted,false);
   assert.equal(proposal.verified.contractSemantics,false);
   assert.equal(proposal.verified.readAuthorization,false);
+
+  // Existing Go 'world' command returns normalized M0. Keep the entire World in memory;
+  // never print it, and check Application/Pattern overlap with the separate inspect reads.
+  const normalized=spawnSync(binary,['world','-workspace',workspace],{
+    cwd:root,encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024
+  });
+  assert.equal(normalized.status,0,failMessage('Normalized World read',normalized));
+  assert.equal(normalized.stderr,'');
+  const world=JSON.parse(normalized.stdout);
+  const typed=qualifyReferenceQuerySignature(world,observations);
+  assert.equal(typed.status,'declared_signature_matched');
+  assert.equal(typed.contract.id,'master_data.customer');
+  assert.deepEqual(typed.contract.version,{major:2,minor:4});
+  assert.deepEqual(typed.inputTypes,[{input:'id',type:'customer.customer_id',
+    targetAttribute:'customer.customer.customer_id'}]);
+  assert.deepEqual(typed.output,{semanticData:'customer.customer',cardinality:'zero-or-one'});
+  assert.equal(typed.executionPermitted,false);
+  assert.equal(typed.implementationSelected,false);
+  assert.equal(typed.accepted,false);
+  assert.equal(typed.verified.typedDeclaration,true);
+  assert.equal(typed.verified.providerImplementation,false);
+  assert.equal(typed.verified.authorization,false);
+  assert.equal(typed.verified.atomicWorkspaceSnapshot,false);
 });
