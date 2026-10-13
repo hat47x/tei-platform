@@ -25,7 +25,7 @@ func CheckReadDispatch(publication PublishedBrowse, plan ReadPlan, support Provi
 		plan.Limit < 1 || plan.Limit > 100 {
 		return ErrRejected
 	}
-	fields := map[string]core.CanonicalID{}
+	fields := map[string]PublishedField{}
 	for _, f := range publication.Fields {
 		if f.Name == "" || f.AttributeID == "" {
 			return ErrRejected
@@ -33,26 +33,28 @@ func CheckReadDispatch(publication PublishedBrowse, plan ReadPlan, support Provi
 		if _, seen := fields[f.Name]; seen {
 			return ErrRejected
 		}
-		fields[f.Name] = f.AttributeID
+		fields[f.Name] = f
 	}
 	if len(plan.Selected) == 0 {
 		return ErrRejected
 	}
+	selected := map[string]bool{}
 	for _, name := range plan.Selected {
-		id, exists := fields[name]
-		if !exists || !support.ProjectsFields[id] {
+		field, exists := fields[name]
+		if !exists || !field.Policy.Select || !support.ProjectsFields[field.AttributeID] || selected[name] {
 			return ErrRejected
 		}
+		selected[name] = true
 	}
 	if plan.Filter != nil {
-		id, exists := fields[plan.Filter.FieldID]
-		if !exists || !support.Filters[id][plan.Filter.Operator] {
+		field, exists := fields[plan.Filter.FieldID]
+		if !exists || !field.Policy.Filter || !support.Filters[field.AttributeID][plan.Filter.Operator] {
 			return ErrRejected
 		}
 	}
 	if plan.Order != nil {
-		id, exists := fields[plan.Order.FieldID]
-		if !exists || !support.Sorts[id] {
+		field, exists := fields[plan.Order.FieldID]
+		if !exists || !field.Policy.Sort || !support.Sorts[field.AttributeID] {
 			return ErrRejected
 		}
 	}
