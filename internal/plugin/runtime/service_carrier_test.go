@@ -69,6 +69,23 @@ func serviceCarrierHost(
 	}, acceptance
 }
 
+// Some Host acceptance implementations may return a cached success despite
+// cancellation. The Runtime must independently check the invocation context
+// after the Host call, before invoking artifact verification or any process.
+type serviceCarrierCancelingReader struct {
+	record pruntime.ServiceAcceptanceRecord
+	cancel context.CancelFunc
+	calls  int
+}
+
+func (r *serviceCarrierCancelingReader) ReadCurrentAcceptedService(
+	_ context.Context, _ pruntime.ServiceProviderSelection,
+) (pruntime.ServiceAcceptanceRecord, error) {
+	r.calls++
+	r.cancel()
+	return r.record, nil
+}
+
 type serviceCarrierProcess struct {
 	calls int
 	last  pruntime.Request
@@ -418,5 +435,49 @@ func TestSelectedServiceRequiresValidWireAndDeclaredHostPolicy(t *testing.T) {
 	}
 	if child.calls != 0 || verifier.calls != 0 || acceptance.calls != 0 {
 		t.Fatal("invalid JSON reached Host acceptance, verifier or process")
+	}
+}
+
+func TestSelectedServiceDoesNotExecuteAfterHostAcceptanceReadCancelsContext(t *testing.T) {
+	plan, selected, child, verifier := serviceCarrierFixture(t)
+	host, accepted := serviceCarrierHost(selected, child, verifier)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	reader := &serviceCarrierCancelingReader{record: accepted.record, cancel: cancel}
+	host.ServiceAcceptance = reader
+
+	_, err := host.InvokeSelectedServiceCarrier(
+		ctx, plan, selected, "cancel-during-acceptance", json.RawMessage(`{"quantity":1}`),
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled Host acceptance returned %v, want context.Canceled", err)
+	}
+	if reader.calls != 1 || verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("canceled Host acceptance reached Runtime: reads=%d verifies=%d starts=%d",
+			reader.calls, verifier.calls, child.calls)
+	}
+
+	// When canceled before entry, the Host Reader itself must not be called.
+	before, done := context.WithCancel(context.Background())
+	done()
+	_, err = host.InvokeSelectedServiceCarrier(
+		before, plan, selected, "cancel-before-acceptance", json.RawMessage(`{"quantity":1}`),
+	)
+	if !errors.Is(err, context.Canceled) || reader.calls != 1 ||
+		verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("already canceled request reached Host Reader/Runtime: err=%v reads=%d",
+			err, reader.calls)
+	}
+}
+
+func TestSelectedServiceRejectsNilContextWithoutReadingHostAcceptance(t *testing.T) {
+	plan, selected, child, verifier := serviceCarrierFixture(t)
+	host, acceptance := serviceCarrierHost(selected, child, verifier)
+	_, err := host.InvokeSelectedServiceCarrier(
+		nil, plan, selected, "nil-context", json.RawMessage(`{"quantity":1}`),
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires context") ||
+		acceptance.calls != 0 || verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("nil context must fail before Host Authority or Runtime: err=%v", err)
 	}
 }
