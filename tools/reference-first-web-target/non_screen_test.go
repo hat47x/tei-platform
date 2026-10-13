@@ -92,11 +92,15 @@ func TestPostgresScenarioBatchDeclaresPersistentSubmitDependency(t *testing.T) {
 	if !found {
 		t.Fatal("batch ignores persistent submit declaration")
 	}
-	if _, err := registry.Apply(registry.Snapshot().Revision, nil, []string{"order-submit", "order-batch"}); err != nil {
+	snapshot, err := registry.Apply(registry.Snapshot().Revision, nil, []string{"order-submit"})
+	if err != nil {
 		t.Fatal(err)
 	}
+	if assessment, exists := snapshot.Assessment("order-batch"); !exists || assessment.Eligible {
+		t.Fatal("batch declaration did not remain present and become ineligible on submit loss")
+	}
 	if _, _, err := s.batch.Invoke(context.Background(), nonScreenTestInput()); err == nil || statusOf(t, state, 1001) != "draft" {
-		t.Fatal("removed submit/batch declarations still allowed an effect")
+		t.Fatal("removed submit declaration still allowed a batch effect")
 	}
 }
 func statusOf(t *testing.T, state *postgresScenarioState, id int64) string {
