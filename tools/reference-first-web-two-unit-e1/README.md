@@ -280,3 +280,14 @@ Linux限定の`launch_verified_api.py`では、`O_NOFOLLOW`で実ファイルを
 `browser-host.mjs`は、接続前とその後の転送対象リクエストごとに、従来のB/R/Tに加えてこの照会結果を**既存`measurement.json`の`apiSHA256`／`apiBytes`**と照合する。照会パスが存在しない、値が欠落している、ハッシュ・サイズが異なる場合は、Hostの起動自体を拒否するか、起動後はHTTP 502として業務処理を実行させない。実Goテストで自己実行イメージの値を確認し、Nodeの実HTTPモックで「B/R/Tは同じだが実行イメージが違う」「API交換後の読取・書込」「照会経路がない」の負例を検査する。
 
 **検証の限界**：このレスポンスはAPIプロセス自身の**自己申告**であり、悪意のあるプロセスが偽のSHAを返す攻撃を排除しない。測定JSON自体も未署名である。従ってこれは診断Hostの誤接続を検出する補助であり、遠隔構成証明、信頼されたBuilder、Source Acceptance承認、正式BuildArtifactLock、Host配備権限、TLS/IdPまたは本番Authorizationを証明しない。新しいLockや配備許可の正本は追加しない。
+
+
+### 診断Browser HostがAPIから受け取る整合性証跡をストリーム段階で制限する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**は業務意味の受渡し基準、**R（Baseline Repository Revision＝その基準のリポジトリ改訂）**は業務Sourceの基準改訂、**T（Target Build Revision＝対象実行成果物をビルドしたソース改訂）**は各Web/API/Desktop実装の改訂を示す。意味の確定とTargetごとの更新は異なるライフサイクルを持つため、同じB/Rから複数のTを生成し得る。いずれの識別子も署名やHostの配備認可そのものではない。
+
+E1診断Browser Hostは、API側の`/manifest.json`に含まれるB/R/Tと、`/diagnostic-executable.json`に含まれる実行中Linuxプロセスの自己申告SHA-256/サイズを、既存の`measurement.json`と照合する。ただし以前のHostは、`Content-Length`の主張を見た後に`response.text()`で**全応答を読み切ってから**実バイト長を検査していた。`Content-Length`を省いたchunked応答なら上限を超えてメモリを確保してしまう。
+
+変更後は両方の証跡について、受信ストリームから読み込む各チャンクの**実バイト長を積算しながら**、Manifestは64 KiB・実行イメージ観測は4 KiBで即座に拒否する。宣言された`Content-Length`が不正・上限超過のときは読み込み開始前に拒否する。JSON以外のMedia Type、空応答、HTTP失敗も拒否し、`Content-Length`のない**正常な小型chunked JSON**は受理する。起動前・起動後の転送前とも同じ読み込み境界を通す。読取・書込Runnerへフォールバックしない。
+
+これは**APIが誤設定されたり、過大な診断証跡を返したりした場合のHostのメモリ境界**を守る対策であり、応答が信用できるという証明ではない。特に実行イメージSHAはAPIプロセスの自己申告で、悪意あるプロセスによる偽装は防げない。Trusted Builder、正式なBuildArtifactLock、Source Acceptanceの承認主体、Host配備権限・TLS/IdP/Providerの受入は引き続き別契約に委ねる。
