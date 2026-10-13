@@ -43,6 +43,12 @@ Go標準ライブラリのみを使用する。テストでは、禁止項目の
 - Command入力も、認証済み呼出元のPrincipal IDを合成`CommandIntent`へ引き継ぐようにした。ブラウザが送った識別子を使わない。新規変更のCI結果は当該headで別途確認する。
 - Principal ID・Scope ID・Policy Revisionは**識別子の整合性を調べるだけ**である。真正性、失効、行スコープの強制、コマンド実行時の再認可を保証しない。実際のRuntime実行前には既存Host/Authorizationのtrusted contextを渡し、Provider/Capability側で再検証すること。
 
+## E4：既存security.authorizeとの接続検証
+
+`authorization.go`は既存の`security.authorize` Capabilityの`legacyauthorization.Input`と`AuthorizationGrant`を使用する。信頼済み呼出元のSubject ID、操作、Resourceの三つが返却Grantと一致し、Result Outcomeが`allowed`である場合にのみ通す。拒否、Backend障害、異なるPrincipal/Action/Resource/Capability、予期しないPayload型を負例で拒否する。
+
+この検証は**既存認可契約を利用した操作単位の事前判定**であり、項目単位権限・行スコープ・更新の確定時点での再認可やトランザクション原子性は保証しない。既存Adapterが扱うEpoch証拠の有無や有効性も、この薄いGateだけで独立に検証できるものではない。実行側での認可と整合性を別途確認する。
+
 ## 次の接続先
 
 1. #1158の型付き読込・Action操作へ、手書きSubset ParserではないAdapterで接続する。
