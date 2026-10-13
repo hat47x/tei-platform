@@ -6,13 +6,13 @@ import "tei/internal/core"
 // Provider/Query binding is resolved. It is NOT an authorization grant or
 // proof that a Provider enforces its own declarations.
 type ProviderReadSupport struct {
-	QueryID           core.CanonicalID
-	PolicyRevision    string
-	EnforcesScope     bool
-	ProjectsFields    map[core.CanonicalID]bool
-	Filters           map[core.CanonicalID]map[string]bool
-	Sorts             map[core.CanonicalID]bool
-	SupportsLimit     bool
+	QueryID        core.CanonicalID
+	PolicyRevision string
+	EnforcesScope  bool
+	ProjectsFields map[core.CanonicalID]bool
+	Filters        map[core.CanonicalID]map[string]bool
+	Sorts          map[core.CanonicalID]bool
+	SupportsLimit  bool
 }
 
 // CheckReadDispatch is the last synthetic preflight before handing off a
