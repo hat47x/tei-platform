@@ -24,7 +24,7 @@ func TestWorkspaceAdapterRealSourceAndMissingMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := WorkspaceRequest{Root: root, Environment: "development", Lock: lock, Review: func(ReviewInput) error { return nil }}
+	req := WorkspaceRequest{Root: root, Environment: "development", Lock: lock, Request: Request{Application: "order_entry"}, Review: func(ReviewInput) error { return nil }}
 	if _, err := ResolveWorkspace(req); err == nil || !strings.Contains(err.Error(), "std-message-unselected") {
 		t.Fatalf("unexpected workspace resolution: %v", err)
 	}
