@@ -65,11 +65,11 @@ func TestActualGoBuildAttemptsBindToReferenceResult(t *testing.T) {
 			Digest: "sha256:" + hex.EncodeToString(sourceHash[:]),
 		}},
 		Builder: plugin.BuilderIdentity{
-			ID: core.MustCanonicalID("tei.builder.go_attempt_reference"),
+			ID:      core.MustCanonicalID("tei.builder.go_attempt_reference"),
 			Version: "1.0.0", ContractVersion: "tei.reference.go-build/v1",
 			ArtifactDigest: builderDigest,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "go-build", Entrypoint: "main.go"},
+		Recipe:         plugin.BuildRecipe{Kind: "go-build", Entrypoint: "main.go"},
 		OutputContract: "go-executable", Target: runtime.GOOS + "/" + runtime.GOARCH,
 		Parameters: []plugin.BuildParameter{
 			{Name: "flags", Value: "-trimpath -buildvcs=false -ldflags=-buildid="},
@@ -115,7 +115,7 @@ func TestActualGoBuildAttemptsBindToReferenceResult(t *testing.T) {
 			t.Fatal(err)
 		}
 		resultFP, err := buildExecutionResultFingerprint(BuildExecutionResult{
-			FormatVersion: buildExecutionResultFormatVersion,
+			FormatVersion:            buildExecutionResultFormatVersion,
 			ExecutionPlanFingerprint: planFP, ArtifactSetFingerprint: setFP,
 		})
 		if err != nil {
@@ -154,7 +154,7 @@ func TestActualGoBuildAttemptsBindToReferenceResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	changedResultFP, err := buildExecutionResultFingerprint(BuildExecutionResult{
-		FormatVersion: buildExecutionResultFormatVersion,
+		FormatVersion:            buildExecutionResultFormatVersion,
 		ExecutionPlanFingerprint: changedPlanFP, ArtifactSetFingerprint: setFP,
 	})
 	if err != nil {
