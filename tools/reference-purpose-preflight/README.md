@@ -108,6 +108,8 @@ go run ./tools/reference-purpose-preflight \
 
 結果は `assessment`（既存の定義元・決定履歴の調査結果）と `readiness`（目的別の必要条件）の二領域に分ける。`readiness.obligations[*].status` は、この参照実装が確認した範囲を `observed`／`declared`／`unresolved`／`unverified`／`not-evaluated` などで示す。特に、`canonical-validation-declared` の正本宣言や `reported-source-matched` のDecision履歴があっても、**実際に人が必要な内容を承認したこと、実行時の権限、処理成功にはならない**。両領域の `executionAllowed` は常に `false`。
 
+ただし、この段階で確認対象として表示することは、そのすべてを案件に必須と確定することではない。対象がValidation宣言だけの場合、有効期間の選択が必要か、外部Providerを使うか、書込み・外部副作用を伴うかは**実際のOperationと契約を確認してから**決まる。これらは `conditional` と表示し、全案件共通の必須Gateへ昇格させない。
+
 `-purpose` を省略した場合は従来の平坦な作業領域調査結果を返すので、既存の利用先の入力形式を壊さない。合成JSONだけの `-input` と実作業領域への `-purpose` を同時指定することはできない。必要条件の実評価、実Providerとの接続、状態変更はこの段階の対象外である。
 
 ## 結果の読み方
