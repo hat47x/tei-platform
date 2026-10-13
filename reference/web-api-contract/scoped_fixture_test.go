@@ -1,6 +1,7 @@
 package webapicontract
 
 import (
+	"context"
 	"errors"
 	"net/url"
 	"path/filepath"
@@ -174,5 +175,52 @@ func TestFixtureRefusesScopeImpersonationAndUnsupportedOperations(t *testing.T) 
 				t.Fatalf("unauthorized fixture execution escaped: result=%+v err=%v", out, err)
 			}
 		})
+	}
+}
+
+func TestRealAuthorizationAndFixtureScopeStayBound(t *testing.T) {
+	pub := scopedPublication(t)
+	ctx := TrustedReadContext{
+		PrincipalID: "subject-order-viewer", RowScopeID: "tenant-a-only", PolicyRevision: "r17",
+	}
+	plan, err := AuthorizeBrowseRead(context.Background(), fixtureAuthorization(t), pub,
+		url.Values{"$select": {"orderId"}, "$orderby": {"orderId asc"}, "$top": {"1"}}, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope := fixtureScope()
+	scope.PrincipalID = ctx.PrincipalID
+	out, err := ExecuteScopedFixtureRead(pub, plan, scopedSupport(pub, plan), scope, fixtureOrders())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out.Rows, [][]any{{int64(3)}}) {
+		t.Fatalf("authorized viewer received unexpected tenant data: %+v", out)
+	}
+	// Even a successfully authorized operation must not permit another
+	// principal's plan to be replayed with this tenant-scope snapshot.
+	plan.PrincipalID = "subject-order-editor"
+	out, err = ExecuteScopedFixtureRead(pub, plan, scopedSupport(pub, plan), scope, fixtureOrders())
+	if !errors.Is(err, ErrRejected) || len(out.Rows) != 0 {
+		t.Fatalf("cross-subject replay accepted: result=%+v err=%v", out, err)
+	}
+}
+
+func TestFixtureRejectsUnsupportedOperatorOnEmptyScopedRows(t *testing.T) {
+	pub := scopedPublication(t)
+	ctx := TrustedReadContext{
+		PrincipalID: "subject-order-editor", RowScopeID: "tenant-a-only", PolicyRevision: "r17",
+	}
+	plan, err := pub.BindRead(url.Values{"$filter": {"orderId gt 2"}}, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.Filter.Operator = "unsupported"
+	support := scopedSupport(pub, plan)
+	support.Filters[core.MustCanonicalID("sales.order.order_id")]["unsupported"] = true
+	// A zero-row scope cannot bypass parser/provider-op checks.
+	out, err := ExecuteScopedFixtureRead(pub, plan, support, fixtureScope(), nil)
+	if !errors.Is(err, ErrRejected) || len(out.Columns) != 0 {
+		t.Fatalf("invalid operation admitted in empty scope: %+v %v", out, err)
 	}
 }
