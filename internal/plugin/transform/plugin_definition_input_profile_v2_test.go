@@ -68,7 +68,7 @@ func TestV2InputProfileNormalizesExplicitEmptyArraysToGoTEIPackageBytes(t *testi
 				t.Fatal(err)
 			}
 			raw := v2RawDefinition(t, def, tc.edit)
-			normalized, evidence, err := inputprofile.CanonicalizePluginDefinition(inputprofile.PluginDefinitionJSONV2, source, raw)
+			normalized, evidence, err := inputprofile.CanonicalizePluginDefinition(inputprofile.PluginDefinitionJSONV2, source, before, raw)
 			if err != nil {
 				t.Fatalf("profile-v2 rejected valid normalization input: %v", err)
 			}
@@ -132,10 +132,24 @@ func TestV2InputProfileRejectsUnqualifiedOrAmbiguousRequests(t *testing.T) {
 	}{name: "unqualified Source identity", profile: inputprofile.PluginDefinitionJSONV2, source: other, raw: valid, want: "requires exact SB-1 package Source identity"})
 	for _, tc := range bad {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := inputprofile.CanonicalizePluginDefinition(tc.profile, tc.source, tc.raw)
+			locked, err := transform.SourceFingerprint(tc.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _, err = inputprofile.CanonicalizePluginDefinition(tc.profile, tc.source, locked, tc.raw)
 			if err == nil || !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tc.want)) {
 				t.Fatalf("profile-v2 admitted invalid input: %v (want %q)", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestV2InputProfileRejectsIncorrectOrMissingLockedSourceFingerprint(t *testing.T) {
+	source := referencePluginPackageTransformSource(t)
+	raw := []byte(`{"id":"tei.plugin","version":"1.0.0","runtime":{"kind":"builtin"},"artifact":{}}`)
+	for _, tc := range []string{"", "sha256:incorrect", "deadbeef"} {
+		if _, _, err := inputprofile.CanonicalizePluginDefinition(inputprofile.PluginDefinitionJSONV2, source, tc, raw); err == nil || !strings.Contains(err.Error(), "exact locked SB-1 Source fingerprint") {
+			t.Fatalf("untrusted Source fingerprint accepted %q: %v", tc, err)
+		}
 	}
 }
