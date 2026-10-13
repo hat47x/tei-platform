@@ -79,3 +79,22 @@ func TestRootedSourcePinsOpenedFileAcrossRename(t *testing.T) {
 		t.Fatalf("opened handle redirected after rename: %q, %v", buf[:n], err)
 	}
 }
+
+func TestRootedSourceBasicPathBoundaryOnNativeTargets(t *testing.T) {
+	if runtime.GOOS == "js" || runtime.GOOS == "wasip1" || runtime.GOOS == "plan9" {
+		t.Skip("no native traversal-resistant Root for this target")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "model.tei"), []byte("local"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readWorkspaceFile(root, "model.tei")
+	if err != nil || string(got) != "local" {
+		t.Fatalf("native root failed to read legitimate source: %q, %v", got, err)
+	}
+	for _, candidate := range []string{"../model.tei", "../../secret", "/etc/passwd", "dir/../../outside"} {
+		if _, err := readWorkspaceFile(root, candidate); err == nil {
+			t.Fatalf("path traversal %q escaped its root", candidate)
+		}
+	}
+}
