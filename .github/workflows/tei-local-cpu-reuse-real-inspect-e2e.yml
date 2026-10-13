@@ -51,4 +51,6 @@ jobs:
           go version
           node --version
           node --test reference/local-cpu-reuse/compare-two-application-references.test.mjs
+          node --test reference/local-cpu-reuse/qualify-query-signature.test.mjs
+          node --test reference/local-cpu-reuse/observe-provider-routing.test.mjs
           node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
