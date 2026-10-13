@@ -9,7 +9,8 @@ func TestMultiply(t *testing.T){
  cases:=[]struct{name string;a,b Input;want string;state InputState;err error}{
   {"amount",Input{Present,"2"},Input{Present,"300"},"600",Present,nil},
   {"zero",Input{Present,"0"},Input{Present,"300"},"0",Present,nil},
-  {"fraction",Input{Present,"1.25"},Input{Present,"0.4"},"0.500",Present,nil},
+  {"mixed denominator",Input{Present,"0.2"},Input{Present,"0.5"},"0.1",Present,nil},
+  {"fraction",Input{Present,"1.25"},Input{Present,"0.4"},"0.5",Present,nil},
   {"null",Input{Null,""},Input{Present,"300"},"",Null,nil},
   {"missing",Input{Missing,""},Input{Present,"300"},"","",ErrInput},
   {"absent relation",Input{AbsentRelation,""},Input{Present,"300"},"","",ErrInput},
