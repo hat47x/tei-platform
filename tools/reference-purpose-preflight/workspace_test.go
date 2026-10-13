@@ -51,6 +51,26 @@ func TestWorkspaceSourceDoesNotInventMissingPattern(t *testing.T) {
 	}
 }
 
+func TestWorkspaceSourceRejectsWrongApplicationOwnership(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	assessment, err := InspectWorkspace(root, "repair_intake", "application-pattern", "order_entry.customer_reference")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if assessment.SourceStatus != "unresolved" || assessment.ExecutionAllowed || assessment.RuleMeaning != "not-established" {
+		t.Fatalf("wrong Application owner was accepted: %+v", assessment)
+	}
+	found := false
+	for _, reason := range assessment.Unresolved {
+		if reason == "application-scope-mismatch" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("wrong Application did not report the scope mismatch: %+v", assessment)
+	}
+}
+
 func TestWorkspaceModeRejectsUnknownScopeAndMixedInputs(t *testing.T) {
 	for _, args := range [][]string{
 		{"-workspace", "../../reference/workspace", "-application", "order_entry", "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
