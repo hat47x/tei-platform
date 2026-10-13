@@ -14,11 +14,12 @@ import (
 	"tei/internal/workspace"
 )
 
-// golden.json の期待値は、#1177で処理を変更する前の実装（main cb5dd852）で
-// 生成した出力のSHA-256である。処理を変更した後も同じ値になることで、
-// summary・full・full -limit・Source Index・失敗時の文言が
-// バイト単位で変わらないことを示す。値を更新するときは、変更前の実装が
-// 出力した根拠をPRに残すこと。
+// golden.json の期待値は、#1177で処理を変更する前の実装（コミットbc4b673e、
+// 基点65f83eee）で生成した出力のSHA-256である。検査するのは成功時の出力だけで、
+// summary・full・full -limit・Source Index・ページ継続が処理変更後も
+// バイト単位で変わらないことを示す。構文エラーの失敗文言と「先頭のanchorを採る」
+// 規則は、internal/workspace/source_index_anchor_table_test.goで検査する。
+// 値を更新するときは、変更前の実装が出力した根拠をPRに残すこと。
 const goldenFile = "testdata/golden.json"
 
 func digest(v any) string {
@@ -115,7 +116,7 @@ func TestGoldenOutputUnchangedFromBaseline(t *testing.T) {
 	}
 }
 
-// 既存の失敗応答（Subject重複・古いfingerprint）が変わらないこと。
+// 古い継続token、およびWorkspace更新後の継続tokenが、STALE_SNAPSHOTで拒否されること。
 func TestFailureBehaviourUnchanged(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "w")
 	if err := Generate(root, Sizes[0]); err != nil {
