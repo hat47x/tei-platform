@@ -42,6 +42,7 @@ func signedPublications(t *testing.T) (
 		approved[subject] = PublisherTrust{
 			PublicKey: append(ed25519.PublicKey(nil), public...),
 			NotAfter: publicationTime.Add(48 * time.Hour),
+			Epoch:    1,
 		}
 	}
 	lookup := func(subject PublisherSubject) (PublisherTrust, error) {
@@ -230,5 +231,38 @@ func TestPublicationSignatureDomainIsNotAnExecutionImageSignature(t *testing.T) 
 	if !strings.Contains(string(msg), "tei-reference-semantic-publication-ed25519-v0") ||
 		strings.Contains(string(msg), "tei-linux-pinned-image-ed25519-v1") {
 		t.Fatalf("publication proof reused executable image authority: %s", msg)
+	}
+}
+
+func TestPublicationRevokedOrRotatedDuringAssetReadIsNotAValidPreview(t *testing.T) {
+	for _, scenario := range []string{"revoked", "rotated"} {
+		t.Run(scenario, func(t *testing.T) {
+			registry, local, _ := selectedAssetsFixture(t)
+			items, base, _ := signedPublications(t)
+			changed := false
+			lookup := func(subject PublisherSubject) (PublisherTrust, error) {
+				v, err := base(subject)
+				if err != nil || !changed {
+					return v, err
+				}
+				if scenario == "revoked" {
+					return PublisherTrust{}, errors.New("host signer revoked")
+				}
+				v.Epoch++
+				return v, nil
+			}
+			read := items[0].Asset.Fetch
+			items[0].Asset.Fetch = func(digest string) ([]byte, error) {
+				data, err := read(digest)
+				if err == nil {
+					changed = true
+				}
+				return data, err
+			}
+			report, err := InspectPublished(registry, "tenant-a", local, items, lookup, publicationTime)
+			if !errors.Is(err, ErrPublisherTrustChanged) {
+				t.Fatalf("a Host trust mutation during retrieval was accepted: %+v %v", report, err)
+			}
+		})
 	}
 }
