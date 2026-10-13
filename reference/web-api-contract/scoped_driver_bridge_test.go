@@ -50,10 +50,10 @@ func TestRealDriverRequiresScopedProviderAndProjectsOnlyPublishedColumns(t *test
 	}
 	plan, err := AuthorizeBrowseRead(context.Background(), fixtureAuthorization(t), pub,
 		url.Values{
-			"$select": {"orderId,customerId"},
-			"$filter": {"orderId gt 2"},
+			"$select":  {"orderId,customerId"},
+			"$filter":  {"orderId gt 2"},
 			"$orderby": {"orderId asc"},
-			"$top": {"2"},
+			"$top":     {"2"},
 		}, ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -184,8 +184,8 @@ func TestScopedProviderCannotMutateAuthorizedResponseProjection(t *testing.T) {
 		PrincipalID: "subject-order-editor", RowScopeID: "tenant-a-only", PolicyRevision: "r17",
 	}
 	plan, err := pub.BindRead(url.Values{
-		"$select": {"orderId"},
-		"$filter": {"orderId eq 7"},
+		"$select":  {"orderId"},
+		"$filter":  {"orderId eq 7"},
 		"$orderby": {"orderId asc"},
 	}, ctx)
 	if err != nil {
