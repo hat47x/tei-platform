@@ -261,3 +261,21 @@ func findTestArtifactFingerprint(record sourceacceptance.Record, path string) st
 	}
 	return ""
 }
+
+func TestO2cReviewCannotMutateProjectedCandidates(t *testing.T) {
+	root, lock, cfg := makeSourceWorkspace(t)
+	reader := &fixtureCurrentReader{record: sourceAcceptedForTest(t, root)}
+	manifest, _, err := BuildAcceptedWorkspaceDisplay(context.Background(), reader,
+		"order_app", root, lock, cfg, func(review AcceptedDisplayReview) error {
+			// Policy code is allowed to examine candidate slices, but changing
+			// its local view must not secretly change the later composition.
+			review.Display.Packs[0].Text = "unreviewed replacement"
+			review.Display.Grants[0].Provider.Version = "99.0.0"
+			return nil
+		})
+	if err != nil || manifest.Text != "注文" ||
+		cfg.Packs[0].Text != "注文" ||
+		cfg.Grants[0].Provider.Version != "1.0.0" {
+		t.Fatalf("gate mutated effective display projection: %+v %v", manifest, err)
+	}
+}
