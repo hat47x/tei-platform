@@ -68,4 +68,3 @@ func TestHostOutputObservationRequiresCanonicalManifestBytes(t *testing.T) {
 		})
 	}
 }
-
