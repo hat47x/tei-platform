@@ -46,6 +46,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E33：Go＋Lit案件Pluginと既存Composition Provider・#951証拠の境界](E33_PROJECT_PLUGIN_WIRING_BOUNDARY.md)／[Go回帰試験](e33_project_plugin_wiring_boundary_test.go) — #1567の固定Sourceから正式Providerを捏造せず、既存Registryの候補・曖昧さ・証拠欠落・鮮度を検証。実業務Authorityは未成立。
 - [E34：案件Go＋LitのProvider Bridge実改訂と未成立のAuthorityを照合](E34_PROJECT_BRIDGE_REVISION_REQUALIFICATION.md)／[固定PR差分](e34_project_bridge_pr1567_delta.json)／[Node計測器](e34_bridge_revision_review.mjs)／[回帰試験](e34_bridge_revision_review.test.mjs) — #1567のE32→後続HEADで新規2・変更2パスを確認し、既存Composition候補と本番の契約／権限を区別する。
 - [E35：実Go＋Lit結合CIの成功と正式Host Authorityを分離](E35_PROJECT_CI_AUTHORITY_BOUNDARY.md)／[固定CI・Source出典](e35_project_reference_ci_evidence.json)／[読取りレビュー器](e35_reference_ci_review.mjs)／[回帰試験](e35_reference_ci_review.test.mjs) — #1567の同一固定HEADでGo二プロセスSmoke・実Chrome・PR健全性が成功。ただし契約適合・実Artifact・現在のPermissionの証拠ではない。
+- [E36：統合済み案件Pluginと実行Authorityの引き渡し条件](E36_POSTMERGE_RUNTIME_AUTHORITY_HANDOFF.md) — #1567・#1781・#1789・#1691で成立した参照経路と、正式Contract／実Artifact／現在のHost権限／受注Actionの残課題を切り分ける。新しいProfileやResolverは追加しない。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
