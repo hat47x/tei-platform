@@ -92,14 +92,14 @@ func ProjectImportTypeReferences(view workspace.Result, namespaceID string) (mod
 				continue
 			}
 			key := modelref.Key{
-				Scope: "namespace:" + string(ns.ID),
+				Scope:   "namespace:" + string(ns.ID),
 				Subject: subject.Subject{Kind: "semantic-data", ID: string(data.ID)},
 			}
 			g.Nodes = append(g.Nodes, modelref.Node{Key: key})
 			g.Edges = append(g.Edges, modelref.Edge{
 				From: key,
 				To: modelref.Ref{
-					Scope: root.Scope,
+					Scope:   root.Scope,
 					Subject: root.Subject,
 				},
 				Relation: ImportedTypeImpactRule.Relation,
