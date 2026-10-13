@@ -53,10 +53,13 @@ func SelectBounded(format string, limits Limits) (string, Renderer, error) {
 }
 
 type boundedBuffer struct {
-	bytes.Buffer
-	ctx   context.Context
-	limit int
+	buffer bytes.Buffer
+	ctx    context.Context
+	limit  int
 }
+
+func (b *boundedBuffer) Len() int      { return b.buffer.Len() }
+func (b *boundedBuffer) Bytes() []byte { return b.buffer.Bytes() }
 
 func (b *boundedBuffer) Write(raw []byte) (int, error) {
 	if err := b.ctx.Err(); err != nil {
@@ -65,7 +68,7 @@ func (b *boundedBuffer) Write(raw []byte) (int, error) {
 	if len(raw) > b.limit-b.Len() {
 		return 0, ErrReportBudget
 	}
-	return b.Buffer.Write(raw)
+	return b.buffer.Write(raw)
 }
 
 func Select(format string) (string, Renderer, error) {

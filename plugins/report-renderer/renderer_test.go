@@ -84,3 +84,18 @@ func TestRendererBudgetsAccountForEncodedOutputAndKeepNoPartialDocument(t *testi
 		t.Fatal("escaped bytes not bounded")
 	}
 }
+
+func TestLargeCSVCellsCannotBypassEncodedByteBudget(t *testing.T) {
+	rows := []Row{{ItemCode: strings.Repeat("x", 9000)}}
+	doc, err := CSV(context.Background(), rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, render, err := SelectBounded("csv", Limits{MaxRows: 1, MaxBytes: len(doc.Bytes) - 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if partial, err := render(context.Background(), rows); !errors.Is(err, ErrReportBudget) || len(partial.Bytes) != 0 {
+		t.Fatal("buffered large cell escaped budget")
+	}
+}

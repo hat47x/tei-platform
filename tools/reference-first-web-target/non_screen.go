@@ -56,13 +56,19 @@ func (s *nonScreenServices) Close() error {
 	s.closeOnce.Do(func() {
 		var failures []error
 		if s.report != nil {
-			failures = append(failures, s.report.Shutdown(context.Background(), 1))
+			if err := s.report.Shutdown(context.Background(), 1); err != nil {
+				failures = append(failures, fmt.Errorf("report service cleanup: %w", err))
+			}
 		}
 		if s.batch != nil {
-			failures = append(failures, s.batch.Shutdown(context.Background(), 1))
+			if err := s.batch.Shutdown(context.Background(), 1); err != nil {
+				failures = append(failures, fmt.Errorf("batch service cleanup: %w", err))
+			}
 		}
 		if s.render != nil {
-			failures = append(failures, s.render.Shutdown(context.Background(), 1))
+			if err := s.render.Shutdown(context.Background(), 1); err != nil {
+				failures = append(failures, fmt.Errorf("renderer service cleanup: %w", err))
+			}
 		}
 		s.closeErr = errors.Join(failures...)
 	})
