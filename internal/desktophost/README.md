@@ -13,7 +13,7 @@
 
 ## 安全性上の境界と未実証
 
-- 保存領域は、呼出し側が用意する必要がある。Hostが`privateDir`を正当化できなければこのAPIを呼び出さない。OS別のACL／Keychain、アプリ署名、ディスク暗号化、完全な機微Draft保存は未実装。
+- 保存領域は、呼出し側が用意する必要がある。Hostが`privateDir`を正当化できなければこのAPIを呼び出さない。`OpenDraftMarkerStore`の初回検査に加えて、保存・再発見・復元の**各操作前**に開いているディレクトリの非公開モードを再確認する。Host起動後に権限が緩められた場合も安全側で拒否するが、**検査と操作の間の競合は原子的に防げない**。OS別のACL／Keychain、所有者、アプリ署名、ディスク暗号化、完全な機微Draft保存は未実装。
 - `DiscoverKeys`の返却値は認可・受理情報ではない。列挙先は専用のHost-private保管領域だけに限定し、件数上限4096を超える場合、未知のファイル、権限の緩いMarker、シンボリックリンクなどはfail closedにする。別Workspaceの候補識別子をWebViewへ無条件開示しない。キーごとの`Recover`で改めてHost-authorized WorkspaceとSourceを確認する。
 - `Save`は同じWorkspace・CandidateRefについて**create-only**。二つのHostウィンドウが同じMarkerを保存しても、既存の内容を上書きしない。更新したい場合は新しいCandidateRefを使う。保持期限・削除・ゴミ収集・暗号化は後続Host責務。
 - `os.Root`はNative Hostのパス境界に利用できるが、JS/WASMのTOCTOU保証は異なる。Unixの権限ビット確認だけで所有者・同一UIDプロセスからの攻撃・WindowsのACLを証明できない。
