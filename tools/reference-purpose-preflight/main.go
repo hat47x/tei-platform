@@ -106,6 +106,9 @@ func runCLI(args []string, output io.Writer) error {
 				Readiness  PurposeProjection   `json:"readiness"`
 			}{Assessment: assessment, Readiness: projection})
 		}
+		// Preserve the previous flat Workspace JSON when no purpose is requested.
+		// The extra operation evidence is an opt-in development projection only.
+		assessment.OperationWriteIntent = nil
 		return encoder.Encode(assessment)
 	}
 	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern|semantic-validation -subject-id <id> [-decision-index <json>] [-purpose describe|simulate|execute-preflight]")
