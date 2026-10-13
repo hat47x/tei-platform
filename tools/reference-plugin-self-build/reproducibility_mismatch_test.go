@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -62,5 +64,56 @@ func TestSelfBuildMismatchEvidenceWriteFailureIsReported(t *testing.T) {
 	)
 	if !matched || err == nil {
 		t.Fatalf("failed output was silently ignored: matched=%t err=%v", matched, err)
+	}
+}
+
+func TestSelfBuildFileComparisonKeepsMismatchAsTypedDomainEvidence(t *testing.T) {
+	dir := t.TempDir()
+	first := filepath.Join(dir, "builder-first")
+	second := filepath.Join(dir, "builder-second")
+	if err := os.WriteFile(first, []byte("real first build"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second, []byte("real second build"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a, b, err := compareSelfBuildFileDigests("native-plugin-builder-binary", first, second)
+	var mismatch *selfBuildMismatchError
+	if !errors.As(err, &mismatch) || a == "" || b == "" || a == b {
+		t.Fatalf("distinct files did not create typed mismatch: first=%s second=%s error=%v", a, b, err)
+	}
+	if mismatch.Evidence.Stage != "native-plugin-builder-binary" ||
+		mismatch.Evidence.FirstArtifactDigest != a ||
+		mismatch.Evidence.SecondArtifactDigest != b ||
+		mismatch.Evidence.ArtifactDigest != "" ||
+		mismatch.Evidence.ArtifactAccepted ||
+		mismatch.Evidence.ArtifactExportAllowed ||
+		mismatch.Evidence.ArtifactLockAllowed {
+		t.Fatalf("typed mismatch changed Plugin acceptance authority: %+v", mismatch.Evidence)
+	}
+	if err := os.WriteFile(second, []byte("real first build"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a, b, err = compareSelfBuildFileDigests("native-plugin-builder-binary", first, second)
+	if err != nil || a == "" || a != b {
+		t.Fatalf("matching real files rejected: a=%s b=%s err=%v", a, b, err)
+	}
+}
+
+func TestSelfBuildMissingFileNeverEmitsMismatchReceipt(t *testing.T) {
+	dir := t.TempDir()
+	first := filepath.Join(dir, "builder-first")
+	second := filepath.Join(dir, "builder-second")
+	if err := os.WriteFile(first, []byte("only first completed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a, b, err := compareSelfBuildFileDigests("process-plugin-binary", first, second)
+	if err == nil || a == "" || b != "" {
+		t.Fatalf("missing output did not fail closed: a=%s b=%s err=%v", a, b, err)
+	}
+	var receipt bytes.Buffer
+	matched, emitErr := emitSelfBuildMismatchEvidence(&receipt, err)
+	if matched || emitErr != nil || receipt.Len() != 0 {
+		t.Fatalf("missing output was misclassified as reproducibility mismatch: receipt=%q err=%v", receipt.String(), emitErr)
 	}
 }
