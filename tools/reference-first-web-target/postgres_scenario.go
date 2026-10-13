@@ -32,6 +32,9 @@ type postgresScenarioState struct {
 	world  ir.World
 	digest string
 	fence  int64
+	// Only trusted batch assembly supplies this enclosing execution condition.
+	// The adapter still checks the actual database grant, never this metadata.
+	batchGrant *scenarioExecutionGrant
 	// Internal transaction seam for actual-DB acknowledgement-loss tests.
 	// Runtime hosts leave this nil and call sql.Tx.Commit directly.
 	commit func(*sql.Tx) error
@@ -70,7 +73,19 @@ func (s *postgresScenarioState) checkGrant(ctx context.Context, reader grantRead
 		return err
 	}
 	b, ok := composition.InvocationBinding(ctx)
-	if !ok || b.ArtifactDigest != s.digest || s.fence <= 0 {
+	if !ok {
+		return errors.New("PostgreSQL operation requires a pinned host instance")
+	}
+	if s.batchGrant != nil {
+		if err := s.checkGrantBinding(ctx, reader, lock, s.batchGrant.Binding, s.batchGrant.Fence); err != nil {
+			return err
+		}
+	}
+	return s.checkGrantBinding(ctx, reader, lock, *projectCompositionBinding(b), s.fence)
+}
+
+func (s *postgresScenarioState) checkGrantBinding(ctx context.Context, reader grantReader, lock bool, b compositionTrace, fence int64) error {
+	if b.ArtifactDigest != s.digest || fence <= 0 {
 		return errors.New("PostgreSQL operation requires a pinned host instance")
 	}
 	query := `SELECT 1 FROM public.tei_reference_execution_grants
@@ -78,7 +93,7 @@ func (s *postgresScenarioState) checkGrant(ctx context.Context, reader grantRead
  AND contract_id = $2 AND contract_version = $3 AND artifact_digest = $4
  AND generation = $5 AND fencing_token = $6 AND NOT revoked
  AND expires_at > clock_timestamp()`
-	args := []any{b.ProviderID, b.ContractID, b.ContractVersion, b.ArtifactDigest, b.Generation, s.fence}
+	args := []any{b.ProviderID, b.ContractID, b.ContractVersion, b.ArtifactDigest, b.Generation, fence}
 	if s.model != nil {
 		query += " AND model_revision = $7"
 		args = append(args, s.model.revision)

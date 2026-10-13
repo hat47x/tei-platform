@@ -58,6 +58,14 @@ type commandScenarioInput struct {
 	// Only trusted batch assembly supplies this captured read. It is not a
 	// transport field or a permission; persistence must recheck its versions.
 	plannedRead *readScenarioResult
+	batchGrant  *scenarioExecutionGrant
+}
+
+// The trusted batch host supplies an identity and expected fencing value;
+// this is not a grant and cannot be filled by an HTTP request.
+type scenarioExecutionGrant struct {
+	Binding compositionTrace
+	Fence   int64
 }
 
 type commandScenarioResult struct {

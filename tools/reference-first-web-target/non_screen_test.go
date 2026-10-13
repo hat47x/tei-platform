@@ -211,6 +211,59 @@ func TestPostgresScenarioBatchSubmitWithdrawalAndExplicitGenerationRecovery(t *t
 	}
 }
 
+func TestPostgresScenarioBatchOwnRevocationCannotBeBypassedBySubmitPermission(t *testing.T) {
+	state := postgresTestState(t)
+	s := postgresNonScreen(t, state, "csv", "", func(item batchItem) {
+		if item.OrderID == 1001 {
+			if _, err := state.db.Exec("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id='order-batch'"); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+	input := nonScreenTestInput()
+	input.Rows = []int{0, 2}
+	result, _, err := s.batch.Invoke(context.Background(), input)
+	if err == nil || result.Stage != "execution-failed" || len(result.Items) != 2 || result.Items[0].Result.Stage != "completed" || result.Items[1].Result.Stage != "command" || result.Items[1].Result.Composition == nil || result.Items[1].Result.Composition.ProviderID != "order-submit" {
+		t.Fatalf("submit permission bypassed the revoked enclosing batch grant: %+v %v", result, err)
+	}
+	if statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1003) != "draft" {
+		t.Fatal("batch revocation was ignored or undid the completed item")
+	}
+}
+
+func TestPostgresScenarioBatchLocksBothExecutionGrantsUntilCommit(t *testing.T) {
+	state := postgresTestState(t)
+	checked := 0
+	state.commit = func(tx *sql.Tx) error {
+		for _, provider := range []string{"order-batch", "order-submit"} {
+			other, err := state.db.BeginTx(context.Background(), nil)
+			if err != nil {
+				return err
+			}
+			if _, err := other.Exec("SET LOCAL lock_timeout='100ms'"); err != nil {
+				_ = other.Rollback()
+				return err
+			}
+			_, err = other.Exec("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id=$1", provider)
+			_ = other.Rollback()
+			var sqlError interface{ SQLState() string }
+			if !errors.As(err, &sqlError) || sqlError.SQLState() != "55P03" {
+				t.Errorf("%s grant revocation did not wait on the effect transaction: %v", provider, err)
+				return errors.New("execution grant was not held until commit")
+			}
+			checked++
+		}
+		return tx.Commit()
+	}
+	s := postgresNonScreen(t, state, "csv", "", nil)
+	input := nonScreenTestInput()
+	input.Rows = []int{0}
+	result, _, err := s.batch.Invoke(context.Background(), input)
+	if err != nil || result.Stage != "completed" || checked != 2 || statusOf(t, state, 1001) != "submitted" {
+		t.Fatalf("independent grant locking failed: %+v %v", result, err)
+	}
+}
+
 func TestPostgresScenarioBatchReorderedInputCannotReplaceCapturedSelection(t *testing.T) {
 	state := postgresTestState(t)
 	t.Cleanup(func() {

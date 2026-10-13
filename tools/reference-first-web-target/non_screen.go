@@ -272,7 +272,7 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 				result.Stage = "journal-failed"
 				return result, err
 			}
-			r, err := command.RunCommand(ctx, commandScenarioInput{LoginID: input.LoginID, Credential: input.Credential, From: input.From, RowIndex: input.Rows[i], plannedRead: &snapshot})
+			r, err := command.RunCommand(ctx, commandScenarioInput{LoginID: input.LoginID, Credential: input.Credential, From: input.From, RowIndex: input.Rows[i], plannedRead: &snapshot, batchGrant: &scenarioExecutionGrant{Binding: *plannedBinding, Fence: state.fence}})
 			item := batchItem{OrderID: ids[i], Result: r}
 			if err != nil {
 				item.Error = "item execution failed; inspect command and observation receipts before retry"

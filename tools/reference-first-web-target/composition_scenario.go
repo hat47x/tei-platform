@@ -63,10 +63,18 @@ func selectedCommandImplementation(command *referenceCommandScenarioRunner, read
 	return func(ctx context.Context, input commandScenarioInput) (commandScenarioResult, error) {
 		invocation := linked
 		if snapshot := input.plannedRead; snapshot != nil {
-			if linked.persistence == nil || snapshot.StorageRevision == "" || snapshot.ApplicationID != "order_entry" || snapshot.From != input.From || snapshot.SelectedRowIndex != input.RowIndex {
+			persistence, ok := linked.persistence.(*postgresScenarioState)
+			grant := input.batchGrant
+			if !ok || persistence == nil || snapshot.StorageRevision == "" || snapshot.ApplicationID != "order_entry" || snapshot.From != input.From || snapshot.SelectedRowIndex != input.RowIndex || grant == nil || grant.Binding.ProviderID != "order-batch" || grant.Binding.ContractID != batchContract.ID || grant.Binding.ContractVersion != batchContract.Version {
 				return commandScenarioResult{}, fmt.Errorf("planned read does not match persistent command selection")
 			}
 			invocation.read = &frozenRead{value: *snapshot}
+			// Preserve the enclosing batch's independent execution condition.
+			// Each effect locks both grant rows in the same transaction. Clone
+			// per call so a generation's implementation stays immutable.
+			local := *persistence
+			local.batchGrant = grant
+			invocation.persistence = &local
 		}
 		return invocation.RunCommand(ctx, input)
 	}
