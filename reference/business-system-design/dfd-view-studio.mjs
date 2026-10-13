@@ -15,6 +15,7 @@ const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null,
   dfdFile:null, procedureFile:null, reviewFile:null, procedure:null,review:null,
   procedureHash:null,reviewHash:null,semanticPreview:null};
 let selectionGeneration=0;
+let renderGeneration=0;
 let dfdLoadGeneration=0;
 let layoutLoadGeneration=0;
 let worldLoadGeneration=0;
@@ -149,6 +150,10 @@ function nodes() {
 const key = (kind,id)=>JSON.stringify([kind,id]);
 function positionMap(){return new Map((state.layout?.nodes||[]).map(p=>[key(p.kind,p.id),p]));}
 function render() {
+  // An SVG element may still have a queued event after a re-render.
+  // A detached node must never select or move a replacement projection.
+  const generation=++renderGeneration;
+  const projection=state.dfd;
   const diagram=$('diagram');diagram.replaceChildren();
   if(!state.dfd){$('export').disabled=true;return;}
   const all=nodes(), assigned=positionMap(), centers=new Map();
@@ -208,8 +213,12 @@ function render() {
     g.append(svg('rect',{width:190,height:56,rx:8}));
     const label=svg('text',{x:10,y:22});label.textContent=(node.label||'').slice(0,27);g.append(label);
     const note=svg('text',{x:10,y:43});note.textContent=node.kind;g.append(note);
-    g.addEventListener('pointerdown',ev=>{if(ev.button!==0)return; selectNode(node);dragStart(ev,node);});
+    g.addEventListener('pointerdown',ev=>{
+      if(ev.button!==0||generation!==renderGeneration||state.dfd!==projection)return;
+      selectNode(node);dragStart(ev,node);
+    });
     g.addEventListener('keydown',ev=>{
+      if(generation!==renderGeneration||state.dfd!==projection)return;
       if(ev.key==='Enter'||ev.key===' '){
         ev.preventDefault();selectNode(node);return;
       }
