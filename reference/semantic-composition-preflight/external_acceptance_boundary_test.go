@@ -51,7 +51,8 @@ func TestLocalSourceAcceptanceDoesNotWitnessExternalSemanticRevision(t *testing.
 		t.Fatalf("invalid initial external semantic fixture: imports=%+v", before.Imports)
 	}
 	acceptedSource := sourceacceptance.Record{
-		ApplicationID: "monitoring", DecisionRef: "synthetic://source-only",
+		ApplicationID:     "monitoring",
+		DecisionRef:       "synthetic://source-only",
 		AuthorityRevision: "synthetic-revision",
 		ModelRevision:     sourceindex.ModelRevision(beforeIndex),
 		Artifacts:         append([]sourceindex.Artifact(nil), beforeIndex.Artifacts...),
