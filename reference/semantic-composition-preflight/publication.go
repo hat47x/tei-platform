@@ -1,6 +1,7 @@
 package semanticcompositionpreflight
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
@@ -39,6 +40,7 @@ type PublisherSubject struct {
 type PublisherTrust struct {
 	PublicKey ed25519.PublicKey
 	NotAfter  time.Time
+	Epoch     uint64
 }
 
 // PublisherTrustLookup must come from the Host policy, not from the signed
@@ -51,6 +53,10 @@ type PublishedSelection struct {
 	Asset SelectedAsset
 	Proof PublicationProof
 }
+
+// ErrPublisherTrustChanged reports that the Host's trusted signer binding
+// changed while inspecting the selected semantic assets.
+var ErrPublisherTrustChanged = errors.New("Host publisher trust changed during inspection")
 
 const semanticPublicationDomain = "tei-reference-semantic-publication-ed25519-v0"
 
@@ -128,6 +134,10 @@ func InspectPublished(
 		return Report{}, errors.New("Host signer lookup, current time and explicit publications are required")
 	}
 	assets := make([]SelectedAsset, 0, len(publications))
+	verified := make([]struct {
+		subject PublisherSubject
+		trust   PublisherTrust
+	}, 0, len(publications))
 	for _, selection := range publications {
 		asset, proof := selection.Asset, selection.Proof
 		if len(proof.Signature) != ed25519.SignatureSize {
@@ -148,13 +158,31 @@ func InspectPublished(
 		if err != nil {
 			return Report{}, fmt.Errorf("namespace %s: Host has not approved publication signer: %w", asset.Expected.NamespaceID, err)
 		}
-		if len(allowance.PublicKey) != ed25519.PublicKeySize ||
+		if len(allowance.PublicKey) != ed25519.PublicKeySize || allowance.Epoch == 0 ||
 			allowance.NotAfter.IsZero() || !now.Before(allowance.NotAfter) ||
 			proof.ValidUntil.After(allowance.NotAfter) ||
 			!ed25519.Verify(allowance.PublicKey, msg, proof.Signature) {
 			return Report{}, fmt.Errorf("namespace %s: publisher signature or Host allowance rejected", asset.Expected.NamespaceID)
 		}
 		assets = append(assets, asset)
+		verified = append(verified, struct {
+			subject PublisherSubject
+			trust   PublisherTrust
+		}{subject: subject, trust: allowance})
 	}
-	return Inspect(registry, scope, local, assets)
+	report, err := Inspect(registry, scope, local, assets)
+	if err != nil {
+		return report, err
+	}
+	// The Host must check trust at actual use time as well. This final
+	// snapshot check merely detects changes during this one inspection.
+	for _, item := range verified {
+		current, err := trusted(item.subject)
+		if err != nil || current.Epoch != item.trust.Epoch ||
+			!bytes.Equal(current.PublicKey, item.trust.PublicKey) ||
+			!current.NotAfter.Equal(item.trust.NotAfter) {
+			return report, ErrPublisherTrustChanged
+		}
+	}
+	return report, nil
 }
