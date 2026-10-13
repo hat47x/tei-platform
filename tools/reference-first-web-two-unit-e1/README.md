@@ -269,3 +269,14 @@ Linux限定の`launch_verified_api.py`では、`O_NOFOLLOW`で実ファイルを
 負例は実Linux ELFを使い、検査後のパス差し替え、異なる実行ファイル、シンボリックリンク、非実行ファイル、不正digest/size、封印済みFDへの書き換え失敗を検証する。Linux `memfd`・`/proc/self/fd`が使えない環境は**代替の未検証なpath起動へフォールバックしない**。
 
 **限界**：SHA-256の期待値を保持する測定JSONの真正性は独立には証明されていない。この操作は診断Hostの一時プロセスに対する**実行バイト一致**の保証であり、配備先Host自体の信頼、署名済みBuilder/BuildArtifactLock、外部プロキシやポート転送、TLS/IdP/Session、実DB Providerの権限を証明しない。本番のHost受理は#943/#259等の既存契約で独立に判断する。
+
+
+### API実行プロセスのバイト列とHostの接続先を再照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**、**R（Baseline Repository Revision＝引き渡し基準を参照するリポジトリ改訂）**は、実装する業務意味の同一性を追跡する。**T（Target Build Revision＝Target成果物を構築したソース改訂）**は、Web/APIなど物理的な実行成果物の改訂を追跡する。同じ業務意味B/Rから複数のTargetを独立して構築できるよう、両者を分離する。
+
+以前のE1診断Browser Hostは、APIの`/manifest.json`に表示されたB/R/Tを確認していた。しかし、**正しいB/R/Tを名乗る別のAPIプロセス**へ誤って接続する可能性は残る。Linux API専用Targetに`GET /diagnostic-executable.json`を追加し、処理している**そのプロセス**の`/proc/self/exe`から読み取ったSHA-256とバイト長をJSONで返すようにした。Goの実行ファイルとAPIの既存Manifestは変更しない（このパスはAPI専用）。
+
+`browser-host.mjs`は、接続前とその後の転送対象リクエストごとに、従来のB/R/Tに加えてこの照会結果を**既存`measurement.json`の`apiSHA256`／`apiBytes`**と照合する。照会パスが存在しない、値が欠落している、ハッシュ・サイズが異なる場合は、Hostの起動自体を拒否するか、起動後はHTTP 502として業務処理を実行させない。実Goテストで自己実行イメージの値を確認し、Nodeの実HTTPモックで「B/R/Tは同じだが実行イメージが違う」「API交換後の読取・書込」「照会経路がない」の負例を検査する。
+
+**検証の限界**：このレスポンスはAPIプロセス自身の**自己申告**であり、悪意のあるプロセスが偽のSHAを返す攻撃を排除しない。測定JSON自体も未署名である。従ってこれは診断Hostの誤接続を検出する補助であり、遠隔構成証明、信頼されたBuilder、Source Acceptance承認、正式BuildArtifactLock、Host配備権限、TLS/IdPまたは本番Authorizationを証明しない。新しいLockや配備許可の正本は追加しない。

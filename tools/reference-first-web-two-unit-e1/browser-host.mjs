@@ -88,7 +88,11 @@ if (jsonForm && (
   typeof expectedBinding.handoverBaselineId !== "string" ||
   !/^[a-f0-9]{40}$/.test(expectedBinding.baselineRepositoryRevision || "") ||
   !/^[a-f0-9]{40}$/.test(expectedBinding.targetBuildRevision || "") ||
-  measurement.browserTransport !== "same-origin-json"
+  measurement.browserTransport !== "same-origin-json" ||
+  typeof measurement.apiSHA256 !== "string" ||
+  !/^[0-9a-f]{64}$/.test(measurement.apiSHA256) ||
+  !Number.isSafeInteger(measurement.apiBytes) ||
+  measurement.apiBytes <= 0 || measurement.apiBytes > 256 * 1024 * 1024
 )) {
   throw new Error("invalid expected JSON Browser/API binding");
 }
@@ -110,6 +114,28 @@ const checkAPIBinding = async () => {
     if (manifest[field] !== required) {
       throw new Error("API binding differs: " + field);
     }
+  }
+  // Manifest B/R/T can be reproduced by a different executable. Query the
+  // actual running API's Linux /proc/self/exe image independently and compare
+  // its reported bytes to the existing builder measurement. This guards
+  // accidental process/image swaps, NOT a malicious API forging its answer.
+  const probe = await fetch(apiOrigin + "/diagnostic-executable.json", {
+    redirect: "error",
+    signal: AbortSignal.timeout(3000),
+    headers: { "Cache-Control": "no-cache" },
+  });
+  if (probe.status !== 200 ||
+      Number(probe.headers.get("content-length") || "0") > 4096) {
+    throw new Error("API executable observation unavailable");
+  }
+  const observedText = await probe.text();
+  if (Buffer.byteLength(observedText) > 4096) {
+    throw new Error("API executable observation exceeds diagnostic limit");
+  }
+  const observed = JSON.parse(observedText);
+  if (observed?.sha256 !== measurement.apiSHA256 ||
+      observed?.bytes !== measurement.apiBytes) {
+    throw new Error("live API executable image differs from measurement");
   }
 };
 // Refuse to expose even the static diagnostic Browser when its chosen API

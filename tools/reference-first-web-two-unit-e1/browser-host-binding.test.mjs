@@ -11,6 +11,7 @@ import { test } from "node:test";
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const R = "a".repeat(40);
 const T = "b".repeat(40);
+const image = () => ({ sha256: "d".repeat(64), bytes: 123456 });
 const manifest = () => ({
   applicationId: "order_entry",
   handoverBaselineId: "B",
@@ -43,9 +44,13 @@ async function setup(t) {
     browserBytes: html.length,
     browserScriptSHA256: sha(js),
     browserScriptBytes: js.length,
+    apiSHA256: image().sha256,
+    apiBytes: image().bytes,
   };
   await writeFile(measurement, JSON.stringify(initialReceipt));
   let exposed = manifest();
+  let observedImage = image();
+  let imageSupported = true;
   let apiCommandIdentity = manifest();
   let apiReadIdentity = manifest();
   let readSupported = true;
@@ -55,6 +60,14 @@ async function setup(t) {
     if (req.url === "/manifest.json") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(exposed));
+    } else if (req.url === "/diagnostic-executable.json") {
+      if (!imageSupported) {
+        res.writeHead(404);
+        res.end();
+      } else {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify(observedImage));
+      }
     } else if (req.url?.startsWith("/scenario/read-bound")) {
       if (!readSupported) {
         res.writeHead(404);
@@ -135,6 +148,8 @@ async function setup(t) {
     get count() { return commandCount; },
     get reads() { return readCount; },
     changeManifest: next => { exposed = next; },
+    changeObservedImage: next => { observedImage = next; },
+    allowImageProbe: enabled => { imageSupported = enabled; },
     changeAPICommandIdentity: next => { apiCommandIdentity = next; },
     changeAPIReadIdentity: next => { apiReadIdentity = next; },
     allowBoundRead: enabled => { readSupported = enabled; },
@@ -303,4 +318,44 @@ test("old API lacking bound read endpoint returns unknown and never falls back",
   f.allowBoundRead(true);
   assert.equal((await fetch(origin + "/scenario/read")).status, 200);
   assert.equal(f.reads, 1);
+});
+
+test("Host refuses identical B/R/T from a different live executable image", async t => {
+  const f = await setup(t);
+  f.changeObservedImage({ ...image(), sha256: "e".repeat(64) });
+  await assert.rejects(f.start(), /live API executable image differs from measurement/);
+  assert.equal(f.count, 0);
+});
+
+test("Host denies a live image swap after startup before read or command dispatch", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  f.changeObservedImage({ ...image(), bytes: image().bytes + 1 });
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(await submit(origin), 502);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+  f.changeObservedImage(image());
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 1);
+});
+
+test("missing diagnostic process image endpoint never falls back to manifest only", async t => {
+  const f = await setup(t);
+  f.allowImageProbe(false);
+  await assert.rejects(f.start(), /API executable observation unavailable/);
+  assert.equal(f.count, 0);
+});
+
+test("unsupported or forged measurement image identity prevents Host startup", async t => {
+  const f = await setup(t);
+  await f.overwriteReceipt({ apiSHA256: null });
+  await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
+  await f.overwriteReceipt({ apiBytes: 0 });
+  await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
+  await f.overwriteReceipt({ apiBytes: 257 * 1024 * 1024 });
+  await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
+  assert.equal(f.count, 0);
 });
