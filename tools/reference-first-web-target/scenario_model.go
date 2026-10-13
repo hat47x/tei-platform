@@ -24,6 +24,11 @@ type scenarioModel struct {
 }
 
 func bindScenarioModel(root string, loaded workspace.Result, expected string) (*scenarioModel, error) {
+	// The consumer Source Index does not include provider-owned imported files.
+	// A root revision alone cannot admit arbitrary current provider semantics.
+	if len(loaded.Imports) > 0 {
+		return nil, errors.New("host-selected root revision does not bind external Workspace imports; explicit provider revision admission is required")
+	}
 	index, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
 		return nil, err

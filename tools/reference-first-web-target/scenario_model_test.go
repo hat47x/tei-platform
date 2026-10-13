@@ -33,6 +33,35 @@ func selectedScenarioModel(t *testing.T) (*scenarioModel, workspace.Result) {
 	return model, loaded
 }
 
+func TestScenarioModelRejectsRootRevisionAsAdmissionForImportedWorkspace(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "consumer")
+	provider := filepath.Join(filepath.Dir(root), "provider")
+	for path, content := range map[string]string{
+		filepath.Join(root, "tei.workspace.yaml"):          "workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n",
+		filepath.Join(root, "semantic", "watch.tei"):       "namespace monitoring\ndata Watch {\n    attribute process type os.process_id\n}\n",
+		filepath.Join(provider, "tei.workspace.yaml"):      "workspace: provider\nsources:\n  - semantic\n",
+		filepath.Join(provider, "semantic", "process.tei"): "namespace os\ntype ProcessId from std.identifier\ndata Process {\n    attribute id type os.process_id\n}\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	loaded, err := workspace.Load(root)
+	if err != nil || len(loaded.Imports) != 1 {
+		t.Fatalf("imports must remain loadable: %v", err)
+	}
+	index, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bindScenarioModel(root, loaded, sourceindex.Revision(index)); err == nil || !strings.Contains(err.Error(), "external Workspace") {
+		t.Fatalf("root revision admitted provider semantics: %v", err)
+	}
+}
+
 func TestScenarioModelTracesSelectedRevisionAndIgnoresUnacceptedRecords(t *testing.T) {
 	model, loaded := selectedScenarioModel(t)
 	command, err := newReferenceCommandScenarioRunner(loaded.World, legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))

@@ -3,11 +3,13 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -51,6 +53,16 @@ func TestFrozenWorldRejectsUnpinnedOrChangedInputs(t *testing.T) {
 	save(source)
 	if err := load("B", snapshot.BaselineRepositoryRevision, snapshot.TargetBuildRevision); err != nil {
 		t.Fatal("matching frozen source rejected:", err)
+	}
+	world, model, err := loadSingleApplicationSelection(dir, "B", snapshot.BaselineRepositoryRevision, snapshot.TargetBuildRevision, "")
+	if err != nil || model != nil || !reflect.DeepEqual(world, snapshot.World) {
+		t.Fatalf("frozen selection changed World: %v", err)
+	}
+	if _, _, err := loadSingleApplicationSelection(dir, "B", snapshot.BaselineRepositoryRevision, snapshot.TargetBuildRevision, "sha256:live-source"); err == nil {
+		t.Fatal("frozen image admitted a live source revision")
+	}
+	if err := (*scenarioModel)(nil).Check(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 	for _, tc := range []struct{ b, r, rev string }{
 		{"other", snapshot.BaselineRepositoryRevision, snapshot.TargetBuildRevision},

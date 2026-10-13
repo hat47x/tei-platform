@@ -234,3 +234,17 @@ JSON Browser Hostは既存の`measurement.json`を、`browser/`の親にある�
 `check_api_only_parity.py`には、実ビルド済みAPIを異なるTで起動しようとすると、起動前に終了することの負例を追加する。正しいTの場合に限り、既存のBusiness Result/Authentication/Authorization/Validation/Execution ErrorのHTTP同等性を引き続き検査する。
 
 **境界**：このT文字列はビルドスクリプトが埋め込む単なる識別値で、暗号署名やTrusted Builderの証明ではない。悪意あるBuilderなら偽のTも埋め込める。正式なBuildArtifactLock、受理Sourceの承認者、配備Hostの権限確認、実Provider・本番TLS/IdPの受入は未実装。B/R/Tの一致を認証・認可へ読み替えない。
+
+## 選択済みサービスによる固定World実行
+
+固定WorldのAPIに`-composition-scenarios`を加えると、既存の受注読取・確定処理を選択済みの型付きサービスへ接続する。実行先は構築時のWorldを使い、Workspaceや構文解析器を読み込まない。ライブSourceの版を表す`-model-revision`は、このビルドでは拒否する。
+
+既存の固定World構築で公開したAPIを、同じ候補版の通常APIと比較する場合は、既存の比較器に`--composition`を付ける。
+
+```sh
+python3 tools/reference-first-web-two-unit-e1/check_api_only_parity.py /secure/ordinary/api/order-entry /secure/frozen/api/order-entry "$(git rev-parse HEAD)" /secure/frozen/api --composition
+```
+
+読取と6種の処理結果を比較し、応答のサービス識別が実際のAPI実行ファイルのSHA-256と一致することを確認する。比較時に取り除くのは照合済みの実行物識別だけで、認証・認可拒否や業務結果の違いは残して判定する。Tの不一致と、固定WorldへのライブSource版の指定は起動時に拒否される。HTML経路の除外も検査する。
+
+結果は模擬データによる実HTTPの同等性であり、永続更新や本番認証の証明ではない。構築時に固定したWorldの指紋を、Source受理の権限や提供元の出所確認として扱わない。
