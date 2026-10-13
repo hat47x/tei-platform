@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
+	"strings"
 
 	"tei/internal/plugin"
 	"tei/internal/plugin/transform"
@@ -31,6 +33,60 @@ type Evidence struct {
 func digest(raw []byte) string {
 	sum := sha256.Sum256(raw)
 	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+// checkExactMemberNames keeps the opt-in adapter fail-closed: Go's JSON
+// decoder accepts case-insensitive aliases ("ID" for "id") by default,
+// which can otherwise overwrite a valid sibling field without a duplicate
+// key diagnostic. The shape check uses the declared Go JSON tags, including
+// nested objects and arrays, before any struct-based normalization.
+func checkExactMemberNames(value transform.Value, schema reflect.Type, path string) error {
+	for schema.Kind() == reflect.Pointer {
+		schema = schema.Elem()
+	}
+	if value.Kind == transform.ValueNull {
+		return fmt.Errorf("null value is not allowed at %s", path)
+	}
+	switch schema.Kind() {
+	case reflect.Struct:
+		if value.Kind != transform.ValueObject {
+			return fmt.Errorf("%s requires an object", path)
+		}
+		fields := map[string]reflect.Type{}
+		for i := 0; i < schema.NumField(); i++ {
+			field := schema.Field(i)
+			if !field.IsExported() {
+				continue
+			}
+			name := strings.Split(field.Tag.Get("json"), ",")[0]
+			if name == "-" {
+				continue
+			}
+			if name == "" {
+				name = field.Name
+			}
+			fields[name] = field.Type
+		}
+		for _, field := range value.Object {
+			memberType, ok := fields[field.Name]
+			if !ok {
+				return fmt.Errorf("%s has unknown or noncanonical JSON field %q", path, field.Name)
+			}
+			if err := checkExactMemberNames(field.Value, memberType, path+"."+field.Name); err != nil {
+				return err
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		if value.Kind != transform.ValueArray {
+			return fmt.Errorf("%s requires an array", path)
+		}
+		for i, item := range value.Array {
+			if err := checkExactMemberNames(item, schema.Elem(), fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // CanonicalizePluginDefinition is an explicit host-side adapter for the exact
@@ -61,7 +117,11 @@ func CanonicalizePluginDefinition(profile string, source transform.Source, raw [
 
 	// Reject duplicate keys (including escaped aliases), invalid Unicode,
 	// excessive JSON nesting, and trailing data before decoding typed fields.
-	if _, err := transform.ParseJSON(raw); err != nil {
+	input, err := transform.ParseJSON(raw)
+	if err != nil {
+		return transform.Value{}, Evidence{}, fmt.Errorf("plugin definition input: %w", err)
+	}
+	if err := checkExactMemberNames(input, reflect.TypeOf(plugin.Definition{}), "pluginDefinition"); err != nil {
 		return transform.Value{}, Evidence{}, fmt.Errorf("plugin definition input: %w", err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
