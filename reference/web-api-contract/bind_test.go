@@ -91,6 +91,9 @@ func TestCommandHappyAndNullClearDistinction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if intent.PrincipalID != "staff-1" {
+		t.Fatalf("trusted command principal lost: %+v", intent)
+	}
 	if intent.Changes["Note"].Kind != "set" {
 		t.Fatal("lost set/null meaning")
 	}
