@@ -11,6 +11,7 @@ import { projectWorld, candidateFromEdit, bindReviewArtifacts, navigateReference
 import { renderStudioHTML } from "./html.mjs";
 import { renderStudioEditHTML } from "./editor.mjs";
 import { bindTypedTrace } from "./typed-trace.mjs";
+import { observeBusinessDFD, verifyBusinessDFDObservation } from "./business-observation.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
@@ -128,16 +129,19 @@ function main(argv) {
     return renderStudioEditHTML(world, revision, opt["-focus"]);
   if (command === "inspect") {
     const focus = opt["-focus"];
+    const business = opt["-business-dfd"] ? observeBusinessDFD(opt["-business-dfd"]) : null;
     if (focus.startsWith("step:")) {
       if (!opt["-business-dfd"]) throw new Error("BUSINESS_STEP_REQUIRES_REFERENCE_DFD");
       const view = navigateReferenceBusinessStep(world, revision,
-        jsonFile(opt["-business-dfd"]), focus.slice("step:".length));
+        business.value, focus.slice("step:".length));
+      view.businessObservation = verifyBusinessDFDObservation(opt["-business-dfd"], business);
       return format === "html" ? renderStudioHTML(view) : view;
     }
     const view = projectWorld(world, revision, focus,
-      { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
+      { ...(business ? { businessDFD: business.value } : {}),
         ...(sourceIndex ? { sourceIndex } : {}) });
     const verified = fromFiles ? view : verifyLiveSourceNavigation(view, opt["-workspace"], revision);
+    if (business) verified.businessObservation = verifyBusinessDFDObservation(opt["-business-dfd"], business);
     if (opt["-typed-scope"]) {
       // This scope names a read-only observation of the existing #1120
       // derived graph; it does NOT assert Source ownership or Business identity.
