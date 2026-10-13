@@ -275,8 +275,8 @@ func TestTwoProtectedApplicationsDoNotBorrowHostServiceBindings(t *testing.T) {
 	// per-Application guard or binding. Revocation denies both next invocations.
 	accepted.revoked = true
 	for _, tc := range []struct {
-		host http.Handler
-		path string
+		host      http.Handler
+		path      string
 		principal Principal
 	}{
 		{orderHost, "/order/customer", editor},
