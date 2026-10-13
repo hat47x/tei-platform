@@ -9,6 +9,7 @@ const isObject=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const value=x=>typeof x==='string'&&x.length>0;
 const subjectKey=s=>s.kind+'\u0000'+s.id;
 const kinds=new Set(['application','application-pattern','semantic-relation','semantic-data']);
+const MAX_BATCH_SUBJECTS=32;
 
 function checkSubject(subject) {
   if(!isObject(subject)||!kinds.has(subject.kind)||!value(subject.id))
@@ -36,7 +37,7 @@ export function projectCliInspectReport(report,expectedSubject) {
 // readOne is an injected async read of an already-authorized exact Subject.
 // It MUST return parsed tei.cli.inspect/v0; we never manufacture or infer Canonical results.
 export async function inspectSubjectBatch(subjects,readOne) {
-  if(!Array.isArray(subjects)||subjects.length===0||typeof readOne!=='function')
+  if(!Array.isArray(subjects)||subjects.length===0||subjects.length>MAX_BATCH_SUBJECTS||typeof readOne!=='function')
     throw new InspectBridgeError('INVALID_INSPECTION_BATCH');
   const ids=new Set();
   for(const s of subjects) {
