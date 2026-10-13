@@ -120,12 +120,12 @@ func TestRealDriverRefusesUnscopedFallbackAndInvalidResult(t *testing.T) {
 		}}, nil
 	})
 	for _, tc := range []struct {
-		name  string
-		pub   PublishedBrowse
-		plan  ReadPlan
-		supp  ProviderReadSupport
-		exec  ScopedCanonicalExecutor
-		want  error
+		name string
+		pub  PublishedBrowse
+		plan ReadPlan
+		supp ProviderReadSupport
+		exec ScopedCanonicalExecutor
+		want error
 	}{
 		{"missing executor", pub, plan, support, nil, ErrScopedQueryUnavailable},
 		{"wrong scope", pub, plan, func() ProviderReadSupport {
