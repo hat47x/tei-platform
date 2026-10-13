@@ -11,7 +11,7 @@ import (
 )
 
 // Two Host-owned EnvironmentPlans can bind the same logical Service to one
-// runtime process/Provider, while separately admitting or refusing that route.
+// Provider and test ProcessLauncher, while independently admitting that route.
 // The labels stand for two Application configurations; InvokeSelectedServiceCarrier
 // itself does NOT authenticate an Application identity or choose its Host plan.
 func TestSelectedServiceSharedCarrierHonorsIndependentHostPlans(t *testing.T) {
@@ -48,7 +48,7 @@ func TestSelectedServiceSharedCarrierHonorsIndependentHostPlans(t *testing.T) {
 	}
 
 	// A separate Host decision can bind the same Service to B without
-	// duplicating the logical Provider or the physical process object.
+	// duplicating the logical Provider or registered ProcessLauncher.
 	planB.ServiceBindings = append(planB.ServiceBindings, planA.ServiceBindings...)
 	planB.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(planB)
 	if err := invoke(planB, "B-bound"); err != nil {
@@ -60,7 +60,7 @@ func TestSelectedServiceSharedCarrierHonorsIndependentHostPlans(t *testing.T) {
 	}
 
 	// Withdrawing A's Host binding must not invalidate B's independent
-	// binding, even though both use the same Provider and process instance.
+	// binding, even though both use the same Provider and launcher test object.
 	planA.ServiceBindings = nil
 	planA.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(planA)
 	if err := invoke(planA, "A-withdrawn"); err == nil || !strings.Contains(err.Error(), "no Host binding") {
