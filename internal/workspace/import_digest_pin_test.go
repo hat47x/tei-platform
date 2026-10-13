@@ -64,7 +64,7 @@ func TestExternalSemanticImportOptionalDigestPin(t *testing.T) {
 
 func TestExternalSemanticImportRejectsMalformedOrDuplicateDigest(t *testing.T) {
 	for _, bad := range []struct {
-		name string
+		name   string
 		digest string
 	}{
 		{"empty", ""},
