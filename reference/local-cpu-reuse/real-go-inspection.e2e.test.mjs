@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {compareTwoReferenceApplications,TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const runner=fileURLToPath(new URL('./run-real-inspection.mjs',import.meta.url));
@@ -65,4 +66,27 @@ test('real Go inspect -> Node read-only projection -> metadata-only summary', {
   assert.equal(failed.ok,false);
   assert.equal(failed.error.code,'SUBJECT_NOT_FOUND');
   assert.equal(failed.result,undefined);
+
+  // Two actual Reference Applications in the SAME explicitly chosen public workspace:
+  // observed declaration equality is not semantic implementation equivalence.
+  const observations=TWO_APPLICATION_REFERENCE_SUBJECTS.map(subject=>{
+    const command=spawnSync(binary,['inspect','-workspace',workspace,
+      '-subject-kind',subject.kind,'-subject-id',subject.id],{
+      cwd:root,encoding:'utf8',timeout:30000,maxBuffer:1024*1024
+    });
+    assert.equal(command.status,0,failMessage('Two-Application inspect',command));
+    assert.equal(command.stderr,'');
+    return JSON.parse(command.stdout);
+  });
+  const comparison=compareTwoReferenceApplications(observations);
+  assert.equal(comparison.schemaVersion,'tei.research.cross-application-reference/v0');
+  assert.equal(comparison.sharedInvocationDeclared,true);
+  assert.equal(comparison.observation,'shared_query_invocation_declared');
+  assert.equal(comparison.reuseDecision,'needs_semantic_review');
+  assert.equal(comparison.acceptance,'not_asserted');
+  assert.equal(comparison.contractConformance,'not_verified');
+  assert.equal(comparison.declaredQuery.contract,'master_data.customer');
+  assert.equal(comparison.declaredQuery.query,'find_by_id');
+  assert.equal(comparison.declaredQuery.compatibleMajor,2);
+  assert.deepEqual(comparison.contextDifferences,['relation','datasourceAlias']);
 });
