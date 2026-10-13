@@ -80,6 +80,15 @@ Provider呼出前に実ResolverでCanonical Query/Dataの同一性を再照合�
 
 `scoped_driver_bridge.go`は、Providerが権限付きTopより多い行を返した場合、処理後に部分切り詰めせず**返却全体を拒否**する。ここでもProvider内で行スコープ・Filter・Sortを実際に適用したことは証明できない。実行時SQL構成は、明示したScoped Query Realizationと安全な物理Scope Bindingが採用された場合に限り進める。
 
+## E9：PostgreSQL明示Scoped Queryと実DB結合検証（#1769）
+
+[PostgreSQL Scoped Queryの実DB検証手順](POSTGRES_SCOPED_E2E.md)を参照。
+
+- `postgres_scoped_reference.go` は既存の`order_entry.recent_orders` Query/SQL形状にのみ適用できる**限定された明示実行契約**。物理的な顧客行制約をSQLへ値束縛し、許可されたFilter・Order・Topを続ける。隠し項目はNULL aliasでマスクし、Driverが期待するraw列名を保持する。
+- `postgres_scoped_reference_test.go` は実Driver + `database/sql`偽ConnectorでSQL/引数と不正要求時の呼出ゼロを検査する。**DBは動かさない**。
+- `postgres_scoped_integration_test.go` は環境変数による明示opt-inがあれば、完全に独立した名称`tei_web_scoped_e2e`のPostgreSQL DBに接続し、異なる顧客の実際の受注行で越境・Sort/Top・物理NULLマスクを検証する。**CI環境でDSNが未設定ならSKIPであり、実DB試験の成功ではない**。
+- 参照ScopeのCustomer IDは正本認可機構から導出されず、テスト側から信頼済みとして注入する。RLS、認可変更の原子性、一般的な業務権限、実HostやODataとの接続は未実証。
+
 ## 次の接続先
 
 1. #1158の型付き読込・Action操作へ、手書きSubset ParserではないAdapterで接続する。
