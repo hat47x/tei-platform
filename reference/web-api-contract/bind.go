@@ -53,6 +53,7 @@ type ReadPlan struct {
 	Limit    int
 	// The executor MUST apply this authorized scope before client filter,
 	// count/aggregation and pagination. Scope ID is NOT a SQL predicate.
+	PrincipalID    string
 	ScopeID        string
 	PolicyRevision string
 }
@@ -88,7 +89,7 @@ func BindReadSubset(values url.Values, fields []Field, ctx TrustedReadContext) (
 		}
 		params[key] = vals[0]
 	}
-	plan := ReadPlan{ScopeID: ctx.RowScopeID, PolicyRevision: ctx.PolicyRevision, Limit: 50}
+	plan := ReadPlan{PrincipalID: ctx.PrincipalID, ScopeID: ctx.RowScopeID, PolicyRevision: ctx.PolicyRevision, Limit: 50}
 	if selected, ok := params["select"]; ok {
 		seen := map[string]bool{}
 		for _, name := range strings.Split(selected, ",") {
