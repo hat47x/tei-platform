@@ -60,6 +60,7 @@ CordisのRevertible Effects、Reactive Coeffects、Contextによる合成規律�
 ## 残る不確実性
 
 - Contractの互換性・副作用型・Context Scopeは、実ConsumerとProviderの圧力試験なしに完全固定しない。
+- Consumer requirementが受け渡す項目、パラメータ、値の出どころ、対応付けと変換の方式は、[評価待ちの設計候補](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)で検討する。このADRの判断には含めない。
 - Go in-processの任意コード差し替えは一般に可能ではなく、更新単位の変更が必要。
 - 単純なMutexによるRouterはHost局所Referenceであり、分散一致性・Availability SLO・本番認可を提供しない。
 - 実際のService/Resource LifetimeとDBの永続状態のライフサイクルは一致しない。

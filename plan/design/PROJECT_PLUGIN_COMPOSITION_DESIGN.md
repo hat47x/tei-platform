@@ -68,6 +68,7 @@
 | UI Kit / Domain Template | 表示構成の候補、意味の候補 | UI KitのResolver、TemplateのAcceptance境界を尊重 |
 | Project-owned delta | 個別案件が変更した領域 | 更新時に保持し、衝突を検知する |
 | Environment binding reference | 実DB、外部API、秘密情報・権限等の参照先 | Environmentに所有させる。Secret値をProfileに格納しない |
+| 接続の局所名・項目の対応付け・パラメータ | 利用側の要求をどの提供元へ割り当て、どの値をどの項目へ渡すか | 業務の意味を持つ対応付けは受理済みの意味の側に置き、Profileは割当てと技術的な調整に限る。詳細は[プラグイン間の依存と入出力の対応付け](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md) |
 | Provenance / version / fingerprint | どの元資産・変更・互換性判断を採用したか | 既存Lockへ戻して検証。版番号だけでは同一性を保証しない |
 
 ### 既存の解決とAuthorityに委譲する
