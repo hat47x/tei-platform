@@ -104,7 +104,7 @@ func TestCompareArtifactFilesRejectsSymlinkToOtherwiseValidArtifact(t *testing.T
 		t.Skipf("symlink creation unavailable on this host: %v", err)
 	}
 	cmp, err := CompareArtifactFiles(first, alias)
-	if err == nil || !strings.Contains(err.Error(), "not a direct regular file") ||
+	if err == nil || !strings.Contains(err.Error(), "not a regular file") ||
 		cmp.FirstDigest == "" || cmp.SecondDigest != "" ||
 		cmp.Reproducible || cmp.CandidateDigest != "" {
 		t.Fatalf("symlinked artifact was treated as independent direct output: %+v: %v", cmp, err)
