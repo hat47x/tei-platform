@@ -16,10 +16,10 @@ import (
 // teardown hook or report a partial failure with a valid rollback callback.
 // It does not claim to enforce any operating-system policy.
 type sandboxCleanupProbe struct {
-	missing  string
-	fail     string
-	applied  []string
-	cleaned  []string
+	missing string
+	fail    string
+	applied []string
+	cleaned []string
 }
 
 func (p *sandboxCleanupProbe) apply(label string) (pruntime.Cleanup, error) {
