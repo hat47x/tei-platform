@@ -336,6 +336,13 @@ Shared Acceptanceでauthoritative Sourceを書き込む経路は、`os.OpenRoot(
 
 ただし、この**書込み側のResource containment**は、Workspace読み込み時点のSource Reader（#1017）、review fingerprintと現権限の再確認、変更済みSourceの原子的Compare-and-Swap、複数Sourceの全体トランザクションを代替しません。また、`os.Root`はJS/WASM上でOSネイティブと同一の安全性を保証しません。実Wails Hostと、OS/ファイルシステム別の互換性は未検証です。
 
+Shared Acceptance の `accept` は、評価開始前に同じWorkspaceの`.tei-accept.lock`を`os.Root.OpenFile(O_CREATE|O_EXCL)`で排他的に作成し、Previewの再評価・Review指紋照合・Source更新・再読込・Conformance・失敗時復元を終えるまで保持します。別のCLI/Studio/AIなど**この共通Accept経路を使用する協調Writer**が同時に操作すると、後から来た受理は`SOURCE_ACCEPT_BUSY`として書き込まずに拒否します。これは実OSプロセス間でも働くReferenceで、待機・自動再送・ロック奪取はしません。
+
+- lockはSource Indexの対象外にあるHost作業制御の目印であり、モデルrevision・承認・利用者権限・リソース権限を代替しません。PIDは診断用、乱数はロック所有者の復元時識別用であり、どちらも権限トークンではありません。
+- プロセスクラッシュ時に残るlockは**自動削除しません**。PIDの再利用や経過時間から安全を推測せず、運用者が他の受理実行中プロセスの不存在とSource状態を確認した後にのみ明示削除します。連携するHostでは削除前後に再Reviewが必要です。
+- lock解除時には自分が取得したファイルの実体と所有マーカーを再照合し、別Actorが置換したファイルを消しません。解除に失敗した場合は、**Acceptanceの結果自体が確定済みでもcleanup未確認のerror**として呼出し側に伝えます。Sourceを勝手に再試行しません。
+- 外部エディター、Git、別のSource書込み実装はこの協調lockに参加しないため、**任意の独立Writerを排除するatomic CASではありません**。さらに複数Sourceのtransaction、プロセス強制終了後の永続的lease/ownership、ローカルホスト外の分散lock、OS別の安全性は別検証が必要です（#267、#1017、#1529）。
+
 既存の競合検出は、受理時の各Source書込み直前とロールバック開始時の**実バイト指紋**の再照合です。検査してから`os.Rename`等で置き換えるまでの時間差を消す原子的なcompare-and-swapではありません。親ディレクトリ・シンボリックリンク・inodeの同時差替えや、複数Writerの全体取引を防ぐ共有Source Authorityは引き続き未実装です（#1017 / #267）。`ROLLBACK_INCOMPLETE`がある場合には自動再試行せず、Sourceを再読込して人間の判断・競合解消を求めます。
 
 示さないこと:
