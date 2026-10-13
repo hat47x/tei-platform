@@ -75,6 +75,13 @@ func TestMatchedDecisionCannotDischargeHumanOrRuntimeObligations(t *testing.T) {
 	if got, ok := purposeRequirementByName(p, "human-acceptance"); !ok || got.Status != "unverified" {
 		t.Fatalf("history wrongly established human approval: %+v", p)
 	}
+	// The typed subject is a Validation, not an executable Operation with
+	// an authoritatively classified effect. Do not invent extra runtime gates.
+	for _, name := range []string{"business-effective-scope", "provider-contract", "effect-fence"} {
+		if got, ok := purposeRequirementByName(p, name); !ok || got.Status != "conditional" {
+			t.Fatalf("%s should remain dependent on the actual Operation contract: %+v", name, p)
+		}
+	}
 }
 
 func TestUnresolvedSubjectNotPromotedForAnyPurpose(t *testing.T) {
