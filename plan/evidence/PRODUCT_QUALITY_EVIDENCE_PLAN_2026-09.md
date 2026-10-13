@@ -1,6 +1,6 @@
 # TEI Product Quality Evidence Plan — 2026-09
 
-Status: **Planning baseline — incremental / no new Gate**
+状態：**段階的な検証計画の基準版。新たな判定段階は設けない。**
 
 関連:
 
@@ -14,9 +14,9 @@ Status: **Planning baseline — incremental / no new Gate**
 
 ## 1. 目的
 
-Product Qualityを最後のproduction monitoringへ先送りせず、現在のReference / Gate / Target / Studio / AIへ段階的に接続します。
+製品品質の検証を本番環境の監視まで先送りせず、参照事例・判定段階・実行先・Studio・AI支援へ段階的に組み込みます。
 
-ただしquality concernごとに新しいRequirement、Gate、PAS、Evidence lane、toolを増殖させません。
+ただし、品質上の観点ごとに新たな製品要求・判定段階・PAS・必須検証経路・ツールを増やすことはしません。
 
 ```text
 existing Product Requirement
@@ -32,7 +32,7 @@ Quality Envelope
 Product claim / unresolved
 ```
 
-Quality EnvelopeはEvidenceの読み方を揃えるderived conceptであり、固定schemaやCanonical kindではありません。
+Quality Envelopeは、検証根拠の読み方を揃えるための派生的な概念です。固定スキーマや正本の要素の種類ではありません。
 
 ## 2. Product主線は変えない
 
@@ -48,13 +48,13 @@ Gate C
 Studio / AI / Second Target
 ```
 
-Quality planningを理由にGate B Required Evidenceを増やしません。
+品質の検証計画を理由に、判定段階Bの必須検証根拠を増やすことはしません。
 
-Gate Bのcurrent blockerはactual executionです。planning / static reviewをactual Evidenceへ格上げしません。
+本計画を策定した時点では、判定段階Bの阻害条件は実際の実行による検証でした。計画や静的レビューを、実際の実行の検証根拠として扱うことはしません。
 
 ## 3. Requirement mapping
 
-新しい番号付きRequirementは追加せず、qualityを既存Requirementの横断Evidenceとして扱います。
+番号付きの製品要求は新設せず、品質を既存の要求に共通する検証根拠の観点として扱います。
 
 | Quality concern | 主な既存Requirement |
 | --- | --- |
@@ -67,13 +67,13 @@ Gate Bのcurrent blockerはactual executionです。planning / static reviewをa
 | maintainability | RQ-002 / 003 / 017 / 021 / 023 |
 | business completeness | RQ-025 / 026 |
 
-このmappingはcoverage scoreではありません。
+この対応関係は、要求の網羅率を表す点数ではありません。
 
 ## 4. Evidence原則
 
 ### 4.1 quality claimを単独値にしない
 
-悪い例:
+不十分な記述の例：
 
 ```text
 p95 = 120ms
@@ -81,7 +81,7 @@ accessible = true
 safe = true
 ```
 
-最低限、必要な範囲で次へ戻れるようにします。
+少なくとも必要な範囲で、次の情報を追跡できるようにします。
 
 ```text
 subject
@@ -97,74 +97,74 @@ status
 
 ### 4.2 measureとacceptanceを分ける
 
-観測値があることと、合格条件を満たしたことは別です。
+値を観測したことと、合格条件を満たしたことは区別します。
 
-thresholdがまだない場合はbaselineとして保持できますが、勝手に`passed`へしません。
+合格の基準値が未確定でも、観測値を基準値設定のための記録として保持できます。ただし、根拠なく`passed`とはしません。
 
 ### 4.3 Evidence natureを混ぜない
 
-- deterministic / synthetic
-- generated artifact
-- real-provider fixture
-- actual external asset
-- interactive Target
-- production observation
+- 決定論的な試験・合成データによる検証
+- 生成成果物による検証
+- 実際の提供実装と試験用データによる検証
+- 実際の外部資産による検証
+- 操作可能な実行先での検証
+- 本番環境での観測
 
-を相互代替しません。
+これらを互いの代わりに使うことはしません。
 
 ### 4.4 negative Pressureを持つ
 
-正常系だけでquality boundaryを証明しません。
+正常系の成功だけでは、品質に関する境界が成立したとは証明できません。
 
-例:
+例：
 
-- stale observationでdestructive applyを拒否する
-- dependency unavailableをsuccessへ丸めない
-- keyboardだけでは操作不能な箇所を検出する
-- telemetry backend停止時もbusiness meaningが失われない
-- AI candidateが外れてもFact / authorityへ昇格しない
+- 古い観測結果に基づく破壊的な変更を拒否する
+- 依存先を利用できない状態を成功として扱わない
+- キーボードだけでは操作できない箇所を検出する
+- 監視データの保存先が停止しても業務上の意味が失われない
+- AIの候補が誤っていても、事実や権限のある判断として確定させない
 
 ## 5. Q0 — Architecture baseline
 
-本Issue #565の範囲です。
+この段階はIssue #565の対象範囲です。
 
-完了条件:
+完了条件：
 
-- [x] Product Qualityをcross-cutting architectureとして定義
-- [x] Quality Envelopeをderived Evidence conceptとして定義
-- [x] failure / change / interaction / performance / AI / telemetryの境界を整理
-- [x] 外部quality modelを第二正本にしない方針を定義
-- [x] 既存Requirementへのmappingを定義
-- [ ] Product Requirement Gap AuditをRQ-025 / RQ-026までcurrent化
+- [x] 製品品質を横断的なアーキテクチャとして定義
+- [x] Quality Envelopeを検証根拠の派生的な概念として定義
+- [x] 失敗・変更・操作・性能・AI・監視の境界を整理
+- [x] 外部の品質モデルを第二の正本にしない方針を定義
+- [x] 既存の製品要求との対応関係を定義
+- [ ] 製品要求のギャップ監査をRQ-025・RQ-026まで更新
 
-Q0にactual execution Evidenceはありません。
+Q0には、実際の実行による検証根拠はありません。
 
 ## 6. Q1 — Gate B既存Evidenceのquality監査
 
-Gate Bを拡張せず、既存Evidenceが何を示すかを明示します。
+判定段階Bの条件は拡張せず、既存の検証根拠で何を確認できるかを明示します。
 
-主な材料:
+主な検証材料：
 
-- Business Result / Execution Error / Observation分離
-- Source / Validation Diagnostic
-- Desired / Actual / Diff / Unresolved
-- generated artifact check-only / repair分離
-- real PostgreSQL fixture safety / cleanup
-- repository source / revision observation
-- Resource / secret boundary
-- no-auto-replay / unknown保持
+- 業務上の結果・実行時エラー・観測の区別
+- ソースと検証規則の診断結果
+- 期待する状態・実際の状態・差分・未解決事項
+- 生成成果物の検査だけを行う処理と修復処理の区別
+- 実際のPostgreSQLを用いた試験環境の安全性と後片付け
+- リポジトリのソースと版の観測
+- 資源と秘密情報の境界
+- 自動再実行を避ける条件と不明状態の保持
 
-Q1では:
+Q1で確認する事項：
 
-- failure nature
-- safe logical identity
-- source / runtime boundary
-- stale / unresolved handling
-- secret non-disclosure
+- 失敗の性質
+- 安全に扱える論理識別情報
+- ソースと実行環境の境界
+- 古い情報と未解決事項の扱い
+- 秘密情報を開示しないこと
 
-を説明できるか監査します。
+これらを説明できるか監査します。
 
-Q1はGate B Readyの追加条件ではありません。
+Q1は、判定段階BのReady判定に加える条件ではありません。
 
 ## 7. Q2 — First Web Target / Gate C
 
