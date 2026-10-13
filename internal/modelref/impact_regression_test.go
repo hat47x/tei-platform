@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"tei/internal/modelref"
+	"tei/internal/subject"
 )
 
 // A label-only change must stop when an upstream edge does not depend on labels.
@@ -57,5 +58,43 @@ func TestImpactFailsClosedOnUnresolvedAndUnknownRelations(t *testing.T) {
 	before.Edges[0].Relation = "unregistered-kind"
 	if got := modelref.Impact(before, []modelref.Change{change}, rules()); len(got) != 0 {
 		t.Fatalf("unregistered relation created phantom consumers: %+v", got)
+	}
+}
+
+// Unscoped references must resolve by the two-field Subject identity. Joining
+// Kind and ID with an in-band delimiter causes unrelated valid subjects to
+// collide and incorrectly suppresses the affected consumer.
+func TestUnscopedImpactUsesDistinctSubjectFields(t *testing.T) {
+	target := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "data", ID: "x\\x00y"}}
+	other := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "data\\x00x", ID: "y"}}
+	consumer := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "function", ID: "processor"}}
+	graph := modelref.Graph{
+		Schema: "tei.modelref.v0",
+		Nodes: []modelref.Node{{Key: target}, {Key: other}, {Key: consumer}},
+		Edges: []modelref.Edge{{
+			From: consumer,
+			To: modelref.Ref{Subject: target.Subject}, // intentionally omit Scope
+			Relation: "reads",
+		}},
+	}
+	rules := []modelref.Rule{{Relation: "reads", FromKind: "function", ToKind: "data"}}
+	if diagnostics := modelref.Validate(graph, rules); len(diagnostics) != 0 {
+		t.Fatalf("valid graph with distinct typed subjects was rejected: %+v", diagnostics)
+	}
+	if resolved, issue := modelref.Resolve(graph.Nodes, graph.Edges[0].To); issue != "" || resolved != target {
+		t.Fatalf("subject reference was not uniquely resolved: %+v, issue=%s", resolved, issue)
+	}
+	change := modelref.Change{Key: target, Kind: "version-changed"}
+	for _, scoped := range []bool{false, true} {
+		if scoped {
+			graph.Edges[0].To.Scope = target.Scope
+		}
+		review := modelref.ReviewImpact(graph, []modelref.Change{change}, rules)
+		if !review.GraphValid || len(review.Diagnostics) != 0 ||
+			len(review.Affected) != 1 ||
+			review.Affected[0].Changed != target ||
+			review.Affected[0].Consumer != consumer {
+			t.Fatalf("scoped=%v: valid dependency was silently omitted: %+v", scoped, review)
+		}
 	}
 }
