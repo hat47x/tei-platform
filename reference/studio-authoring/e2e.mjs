@@ -391,6 +391,18 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       liveInspect.sourceNavigation.artifactFingerprint,
     label + ": Source Index bytes and exact position are verified on live inspect");
   if (expectedKind === "relation") {
+    const acceptedTyped = JSON.parse(command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:" + expectedID,
+      "-typed-scope", "order-entry-reference"
+    ]).stdout);
+    checked(acceptedTyped.modelRevision === afterRevision &&
+      acceptedTyped.typedReferences?.modelRevision === afterRevision &&
+      acceptedTyped.typedReferences?.subject.subject.id === expectedID &&
+      acceptedTyped.typedReferences?.sourceConsistency === "exact-anchor-match" &&
+      acceptedTyped.typedReferences?.authority === "candidate-read-only",
+      label + ": accepted R1 Relation is reloaded by Go typed trace and matched to updated Source");
     checked(after.views.er.edges.some(v => v.id === expectedID),
       label + ": accepted Relation appears in reprojected ER");
     checked(after.views.table.value.relations.some(v => v.id === expectedID),
