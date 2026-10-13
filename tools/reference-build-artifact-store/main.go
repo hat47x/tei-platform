@@ -26,6 +26,16 @@ var (
 	errArtifactCorrupt  = errors.New("artifact store content is corrupt")
 )
 
+// testHook は試験だけが設定する差込み点で、本番では常にnilである。
+// 時間差の競合を決定的に再現するため、検査の間でだけ呼ばれる。
+var testHook func(stage string)
+
+const (
+	hookAfterLstat      = "after-lstat"
+	hookBeforeFinalStat = "before-final-lstat"
+	hookBeforeLink      = "before-link"
+)
+
 var artifactStoreAuthorityLimits = []string{
 	"store-availability-is-not-artifact-trust",
 	"store-availability-is-not-build-provenance",
@@ -221,6 +231,9 @@ func (s localArtifactStore) PutBytes(value []byte) (artifactStoreReceipt, error)
 	if err := s.verifyAlgorithmDirectory(); err != nil {
 		return artifactStoreReceipt{}, err
 	}
+	if testHook != nil {
+		testHook(hookBeforeLink)
+	}
 	if err := os.Link(tempPath, target); err != nil {
 		if !os.IsExist(err) {
 			return artifactStoreReceipt{}, fmt.Errorf("publish artifact store object without overwrite: %w", err)
@@ -313,6 +326,9 @@ func (s localArtifactStore) readVerified(path, expectedDigest string) ([]byte, e
 		return nil, fmt.Errorf("%w: stored object exceeds maxBytes", errArtifactCorrupt)
 	}
 
+	if testHook != nil {
+		testHook(hookAfterLstat)
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -347,6 +363,9 @@ func (s localArtifactStore) readVerified(path, expectedDigest string) ([]byte, e
 	}
 	if !os.SameFile(opened, afterOpen) || afterOpen.Size() != n {
 		return nil, fmt.Errorf("%w: stored object changed while reading", errArtifactCorrupt)
+	}
+	if testHook != nil {
+		testHook(hookBeforeFinalStat)
 	}
 	afterPath, err := os.Lstat(path)
 	if err != nil {

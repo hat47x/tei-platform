@@ -187,6 +187,26 @@ go run ./tools/reference-purpose-preflight \
 
 契約メジャーバージョンの不一致は `incompatible`、対象署名の不存在・重複、SQL realizationの重複、mapping不適合は `unresolved` とする。対象の入力元の欠落を推測・自動生成せず、必要な追跡先だけを提示する。旧CLIの平坦JSONは維持し、`executionAllowed=false` は変わらない。
 
+## Contract Query Executorの既存Resolverとの接続（第10段階）
+
+前段では、Database Contractの署名・SQL realization・Providerの構成を分けて調べた。この段階では、さらに `World.ContractQueryExecutorBindings` の明示宣言を、**既存の** `plugin.Catalog.ResolveEnvironment` と `realization.ResolveContractQueryExecutor` で解決する。新しいProvider Resolverや第二のConformance台帳は作らない。
+
+```sh
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -application order_entry \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -purpose execute-preflight \
+  -environment development
+```
+
+Reference Workspaceの `development` には `master_data.dev` と `master_data.customer/find_by_id` を `database.query.oracle` に結ぶ明示Bindingがあり、既存Pluginカタログから `tei.database.oracle@1.0.0` へ解決できる。これは **静的な定義を解決できたという限定された結果**（`assessment.executorHandoff.status=resolved-declaration`）に過ぎない。Hostによる現在のContract受理、Provider Conformance Evidence、Issuer Trust、Resource/Permission、実Oracle接続は独立したままで、目的別の `query-executor` は `not-evaluated`、`executionAllowed=false` を維持する。
+
+一方、現在の `production` は `master_data.prod` の環境Bindingは存在するが、そのTargetとInstanceを示す `ContractQueryExecutorBinding` はReference正本内に存在しない。 `not-declared` と表示し、外部実装や別経路が存在しないとは断定せず `query-executor=conditional` とする。明示Bindingの重複・Plugin未解決・DB provider不適合・Capability不一致は `unresolved`。正本にないCapabilityをDB種別から自動選択しない。
+
+この検査は指定した `-environment` と `-purpose execute-preflight` に限る。従来の平坦JSONに新項目は出さない。既存の `internal/plugin/runtime.ServiceAcceptanceReader` が持つHost現在受理と、`tools/reference-plugin-capability-contract` のIssuer/Provider Conformance Referenceは**別の検証責務**であり、ここで合成Evidenceを真正なHost受理に読み替えない。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
