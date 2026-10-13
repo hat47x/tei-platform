@@ -15,11 +15,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const (
 	defaultProcessResponseLimit = 8 << 20 // 8 MiB
 	defaultProcessStderrLimit   = 8 << 20 // 8 MiB
+	defaultProcessExecutionLimit = 30 * time.Minute
 )
 
 // StdioProcessLauncher is the smallest real OS-process implementation of
