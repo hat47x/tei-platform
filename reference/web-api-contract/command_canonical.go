@@ -36,8 +36,8 @@ func ResolvePublishedCommand(
 	}
 	result := PublishedCommand{
 		ApplicationID: applicationID,
-		PatternID: patternID,
-		CapabilityID: resolved.Capability.ID,
+		PatternID:     patternID,
+		CapabilityID:  resolved.Capability.ID,
 	}
 	for _, input := range resolved.Capability.Inputs {
 		if input.Name == "" || input.Type == "" {
