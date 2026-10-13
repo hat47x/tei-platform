@@ -26,6 +26,8 @@ http://127.0.0.1:8787/ をブラウザで開き、顧客コード`VIP-123`・メ
 
 API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowserから受け取ったCredential/Cookie等を上流へ転送しません。接続未指定の場合は対象経路を公開しません。この接続は**診断用の読取Consumer**であり、正式なTEI Provider/Runtime Authorityや業務Action統合ではありません。
 
+**ループバック診断Hostの境界**：実Listenerは `127.0.0.1:8787` に固定し、すべての静的ファイル・補助POST・読取GETの手前で受信 `Host: 127.0.0.1:8787` 以外を `421` で拒否します。ループバックへのbindだけでは防げないDNSリバインディングへの局所的な対策です。Goユニットテストと実Goプロセスを起動する `smoke_order_entry.sh` の両方で検証します。これは診断Hostのアクセス境界であって、ユーザー認証や正式なTEI認可の代替にはなりません。
+
 既存の受注Commandを変更せず、案件側が実Applicationと同じ画面で参照状況を確認できる足場です。実Chromeでの表示と操作はCIで検証していますが、人間による画面受入は別途必要です。
 
 **Lit依存**：公式の[Lit配布バンドル](https://github.com/lit/dist/tree/v3.3.3/core) の `v3.3.3/core/lit-core.min.js` をこの参照実装内へ版固定で同梱します。ライセンスは `web/LIT-LICENSE`（BSD-3-Clause）です。上流のGitタグ `v3.3.3` にある配布バンドルのGit blob SHAは `30071d620d392394d56721f05fc4808e02e038e3` で、CIが同梱ファイルと照合します。UI配信時はCDNへアクセスせず、同じHostからロードし、CSPは `script-src 'self'` です。配布前には資産Digest/供給経路を既存Builder/Lockと接続する必要があります。GitHub Actionsの [`tei-reference-project-advice-lit-browser-ci.yml`](../../.github/workflows/tei-reference-project-advice-lit-browser-ci.yml) で、PR正確HEADから実Goの受注APIと案件Hostを別プロセス起動し、Google Chromeを通してLitのShadow DOM・キーボード操作・補助提案・実読取結果・断線時の結果不確実性を検証します。1280×800と375×812を対象に画面を撮影し、SHA-256を持つ診断ReceiptをRunner外部Artifactとして保存します。テスト用ChromeとPlaywrightはRunner上で用意し、Browser配信は同一Originのローカルバンドルのみを使用します。なお、これは実Chrome上の機能検証であり、人間によるVisual受理や本番のService Contract/Authority・安全性認証ではありません。
