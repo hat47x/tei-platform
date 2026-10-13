@@ -17,7 +17,10 @@ import (
 	"strings"
 )
 
-const defaultProcessResponseLimit = 8 << 20 // 8 MiB
+const (
+	defaultProcessResponseLimit = 8 << 20 // 8 MiB
+	defaultProcessStderrLimit   = 8 << 20 // 8 MiB
+)
 
 // StdioProcessLauncher is the smallest real OS-process implementation of
 // ProcessLauncher. Executable and argv are kept separate exactly as supplied.
@@ -37,6 +40,11 @@ type StdioProcessLauncher struct {
 	// MaxResponseBytes bounds stdout captured from an untrusted process. Zero
 	// uses a conservative Reference default rather than disabling the limit.
 	MaxResponseBytes int
+	// MaxStderrBytes bounds the bytes hashed from the child diagnostic stream.
+	// A process that exceeds it is stopped, even when stdout is within limits.
+	// Zero uses the conservative default; this is separate from the stdout
+	// response limit because stderr is not part of the plugin wire protocol.
+	MaxStderrBytes int
 }
 
 var _ ProcessLauncher = StdioProcessLauncher{}
@@ -99,7 +107,11 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	runCtx, stop := context.WithCancel(ctx)
 	defer stop()
 	stdout := &boundedCapture{limit: limit, onOverflow: stop}
-	stderr := newDigestWriter()
+	stderrLimit := l.MaxStderrBytes
+	if stderrLimit <= 0 {
+		stderrLimit = defaultProcessStderrLimit
+	}
+	stderr := newDigestWriter(stderrLimit, stop)
 	// exec.CommandContext resolves unqualified names using the ambient Host
 	// PATH, even when cmd.Env is explicitly empty. Resolve from the explicit
 	// child PATH instead, before constructing the command.
@@ -139,10 +151,16 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		if stdout.overflow {
 			return Response{}, fmt.Errorf("process plugin executable %q response exceeds %d bytes", command.Executable, limit)
 		}
+		if stderr.overflow {
+			return Response{}, fmt.Errorf("process plugin executable %q stderr exceeds %d bytes", command.Executable, stderrLimit)
+		}
 		return Response{}, processExecutionError(command.Executable, err, stderr)
 	}
 	if stdout.overflow {
 		return Response{}, fmt.Errorf("process plugin executable %q response exceeds %d bytes", command.Executable, limit)
+	}
+	if stderr.overflow {
+		return Response{}, fmt.Errorf("process plugin executable %q stderr exceeds %d bytes", command.Executable, stderrLimit)
 	}
 
 	// Reject ambiguous or unexpected transport fields before Go's permissive
@@ -351,14 +369,38 @@ func (w *boundedCapture) Write(p []byte) (int, error) {
 }
 
 type digestWriter struct {
-	n int64
-	h hash.Hash
+	n          int64
+	hashed     int64
+	limit      int64
+	h          hash.Hash
+	overflow   bool
+	onOverflow func()
 }
 
-func newDigestWriter() *digestWriter { return &digestWriter{h: sha256.New()} }
+func newDigestWriter(limit int, onOverflow func()) *digestWriter {
+	return &digestWriter{h: sha256.New(), limit: int64(limit), onOverflow: onOverflow}
+}
 func (w *digestWriter) Write(p []byte) (int, error) {
-	w.n += int64(len(p))
-	return w.h.Write(p)
+	n := len(p)
+	w.n += int64(n)
+	// Hash only the approved diagnostic prefix. Never buffer untrusted
+	// stderr, and request child termination at the first limit violation.
+	remaining := w.limit - w.hashed
+	if remaining > 0 {
+		take := n
+		if int64(take) > remaining {
+			take = int(remaining)
+		}
+		_, _ = w.h.Write(p[:take])
+		w.hashed += int64(take)
+	}
+	if w.n > w.limit && !w.overflow {
+		w.overflow = true
+		if w.onOverflow != nil {
+			w.onOverflow()
+		}
+	}
+	return n, nil
 }
 func (w *digestWriter) hex() string { return hex.EncodeToString(w.h.Sum(nil)) }
 
