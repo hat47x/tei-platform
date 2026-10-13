@@ -39,6 +39,7 @@ type WorkspaceAssessment struct {
 	ContractQueryUse      *DeclaredContractQuery          `json:"contractQueryUse,omitempty"`
 	EnvironmentBinding    *EnvironmentBindingObservation  `json:"environmentBinding,omitempty"`
 	QueryImplementation   *QueryImplementationObservation `json:"queryImplementation,omitempty"`
+	ExecutorHandoff       *QueryExecutorHandoff           `json:"executorHandoff,omitempty"`
 }
 
 // InspectWorkspace only verifies whether a real application-pattern has one
@@ -164,6 +165,8 @@ func inspectWorkspace(root, application, kind, id, environmentID string) (Worksp
 		result.EnvironmentBinding = &binding
 		implementation := ObserveQueryImplementation(loaded.World, result.ContractQueryUse, result.EnvironmentBinding)
 		result.QueryImplementation = &implementation
+		handoff := ObserveQueryExecutorHandoff(loaded.World, result.ContractQueryUse, result.EnvironmentBinding)
+		result.ExecutorHandoff = &handoff
 	}
 	// Source Index fingerprints attest bytes, not human acceptance or
 	// equivalence of a proposed Business Procedure/approval rule.

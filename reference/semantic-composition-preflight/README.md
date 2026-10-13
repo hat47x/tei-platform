@@ -55,3 +55,42 @@ go test -count=1 ./reference/semantic-composition-preflight
 
 この参照実装が有効な場合に限り、次段階でProductのComposition Profile、
 信頼済みArtifact取得、提供元の公開範囲・同意・受理記録との結合を検討する。
+
+
+## E4d後段：発行者署名と取得サービス・意味配布物の照合（検証用）
+
+`publication.go`の`InspectPublished`は、既存`Inspect`を実行する**前に**、
+Hostの信頼政策から取得した公開鍵で発行者のEd25519署名を検査する参照入口。
+データ配布物・署名自身が「信頼済み鍵」を提供することは認めない。
+正式な製品ABI、Linux Process起動署名、Production Trust Storeではない。
+
+署名対象は、検証用に版と領域を限定した決定的なメッセージで、
+**Scope・取得Service Provider ID・Contract ID/version/shape、
+Publisher ID・Signer参照・配布Package ID/version・Namespace ID、
+Artifact Digest・Semantic Digest・BuildPlan fingerprint・出力種別・有効期限**
+を一括して結び付ける。Keyだけでなくこれらの内容が変われば拒否する。
+
+呼出元Hostは`PublisherTrustLookup`を独立の信頼政策から構成する。
+Lookupは指定された`PublisherSubject`の鍵とHostが定めた失効期限を返す。
+署名が存在するだけでは成功にせず、Host側の鍵拒否・交換・期限切れ、
+署名期限がHost期限を超える場合も、**CAS/Fetch実行前に**拒否する。
+単一の`InspectPublished`呼出し内では、全資産の署名確認が終わってから
+既存のComposition候補選択・Lock・配布物照合・Semantic検証を行う。
+読み取り後にもHostから同じ発行者の鍵・信頼世代・有効期限を再確認し、
+取得中の鍵の交換・失効を検出した場合は検査結果を失敗として返す。
+この検出は実行直前のHostによる最新権限確認を不要にしない。
+
+```sh
+go test -count=1 ./reference/semantic-composition-preflight
+```
+
+**保証範囲の制限**：このLookupは抽象の参照入口であり、
+Host信頼鍵の運用・権限・失効伝播・ログ・現在時刻の真正性そのものは実装しない。
+呼出元が信頼政策を untrusted payload から構成してはならない。
+署名付きの取得Service/配布物組合せを検査できても、
+独立したBuilderの出典保証、再現ビルド、Hostによる取得許可、
+実行権限、Project側の業務意味受理は成立しない。
+`InspectPublished`はDesign-timeの読取り専用検査であり、結果の利用時には
+Hostが現在のTrust、Scope、選択と許可を再評価する必要がある。
+今後の正式なPlugin Asset公開契約が完成したら、この検証用署名形式を
+重複した正本にせず、既存の信頼・配布機構へ移行する。

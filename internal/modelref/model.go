@@ -200,8 +200,20 @@ func Validate(g Graph, rules []Rule) []Diagnostic {
 	return out
 }
 
+// keyLess compares logical identities by their separate components.
+// Concatenating user-authored Kind and ID with a delimiter is not injective.
+func keyLess(a, b Key) bool {
+	if a.Scope != b.Scope {
+		return a.Scope < b.Scope
+	}
+	if a.Subject.Kind != b.Subject.Kind {
+		return a.Subject.Kind < b.Subject.Kind
+	}
+	return a.Subject.ID < b.Subject.ID
+}
+
 func sortKeys(ks []Key) {
-	sort.Slice(ks, func(i, j int) bool { return keyString(ks[i]) < keyString(ks[j]) })
+	sort.Slice(ks, func(i, j int) bool { return keyLess(ks[i], ks[j]) })
 }
 func keyString(k Key) string { return k.Scope + "\x00" + k.Subject.Kind + "\x00" + k.Subject.ID }
 
@@ -341,7 +353,7 @@ func Diff(before, after Graph) []Change {
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Key != out[j].Key {
-			return keyString(out[i].Key) < keyString(out[j].Key)
+			return keyLess(out[i].Key, out[j].Key)
 		}
 		return out[i].Kind < out[j].Kind
 	})
@@ -461,10 +473,10 @@ func Impact(before Graph, changes []Change, rules []Rule) []Affected {
 	sort.Slice(out, func(i, j int) bool {
 		a, b := out[i], out[j]
 		if a.Changed != b.Changed {
-			return keyString(a.Changed) < keyString(b.Changed)
+			return keyLess(a.Changed, b.Changed)
 		}
 		if a.Consumer != b.Consumer {
-			return keyString(a.Consumer) < keyString(b.Consumer)
+			return keyLess(a.Consumer, b.Consumer)
 		}
 		return a.Reason < b.Reason
 	})
