@@ -79,16 +79,34 @@ func TestLoadAcceptsInternalManifestLinkAndReleasesRootHandle(t *testing.T) {
 	}
 }
 
-func TestReadSourceForLoadRequiresActiveRoot(t *testing.T) {
+func TestReadSourceForLoadFallsBackToCheckedRootForDirectLoader(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "model.tei")
 	if err := os.WriteFile(source, []byte("model"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	loaded := Result{sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
-	if _, err := readSourceForLoad(root, &loaded, source); err == nil ||
-		!strings.Contains(err.Error(), "active Workspace root") {
-		t.Fatalf("unbound loader silently reread by path: %v", err)
+	got, err := readSourceForLoad(root, &loaded, source)
+	if err != nil || string(got) != "model" {
+		t.Fatalf("direct loader did not use safe rooted fallback: %q, %v", got, err)
+	}
+	if string(loaded.sourceSnapshot["model.tei"]) != "model" {
+		t.Fatalf("direct loader lost its Source snapshot: %+v", loaded.sourceSnapshot)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.tei")
+	if err := os.WriteFile(outside, []byte("secret"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(root, "alias.tei")
+	if err := os.Symlink(outside, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := readSourceForLoad(root, &loaded, alias); err == nil {
+		t.Fatal("direct loader's fallback followed an escaping symlink")
+	}
+	if _, err := readSourceForLoad(root, &Result{}, source); err == nil ||
+		!strings.Contains(err.Error(), "no Workspace root") {
+		t.Fatalf("loader without any Workspace boundary was accepted: %v", err)
 	}
 }
 
