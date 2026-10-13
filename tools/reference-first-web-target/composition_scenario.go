@@ -55,6 +55,23 @@ func (r *composedCommandScenario) RunCommand(ctx context.Context, input commandS
 	return result, err
 }
 
+// The selected implementation owns the captured batch read as transient input.
+// No request can replace the service's lifetime/guard or the effect checks.
+func selectedCommandImplementation(command *referenceCommandScenarioRunner, read readScenarioRunner) func(context.Context, commandScenarioInput) (commandScenarioResult, error) {
+	linked := *command
+	linked.read = read
+	return func(ctx context.Context, input commandScenarioInput) (commandScenarioResult, error) {
+		invocation := linked
+		if snapshot := input.plannedRead; snapshot != nil {
+			if command.persistence == nil || snapshot.StorageRevision == "" || snapshot.ApplicationID != "order_entry" || snapshot.From != input.From || snapshot.SelectedRowIndex != input.RowIndex {
+				return commandScenarioResult{}, fmt.Errorf("planned read does not match persistent command selection")
+			}
+			invocation.read = &frozenRead{value: *snapshot}
+		}
+		return invocation.RunCommand(ctx, input)
+	}
+}
+
 // wireComposedScenarios is a trusted host assembly point. The caller supplies
 // current instance permission; business authorization remains in the Driver.
 // It does not turn the reference executors into real external providers.
@@ -102,9 +119,7 @@ func wireComposedScenarios(ctx context.Context, registry *composition.Registry, 
 	// Bind the internal read to the same selected read service used by HTTP.
 	// Copy the runner to preserve the caller's existing assembly.
 	composedRead := &composedReadScenario{service: readService, model: command.model}
-	linkedCommand := *command
-	linkedCommand.read = composedRead
-	commandService, err := composition.NewService(ctx, registry, selectedCommand, commandBinding, guard, linkedCommand.RunCommand, lifecycle)
+	commandService, err := composition.NewService(ctx, registry, selectedCommand, commandBinding, guard, selectedCommandImplementation(command, composedRead), lifecycle)
 	if err != nil {
 		return cleanupRead(err)
 	}

@@ -152,9 +152,9 @@ func publishReport(ctx context.Context, root, path string, doc renderer.Document
 	return reportReceipt{Path: path, Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(doc.Bytes)), MediaType: doc.MediaType}, nil
 }
 
-func wireNonScreen(ctx context.Context, registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace, destination, format string, progress func(batchItem), limits ...renderer.Limits) (*nonScreenServices, error) {
-	if state == nil || command == nil || registry == nil || read == nil {
-		return nil, fmt.Errorf("non-screen reference requires PostgreSQL and composed read")
+func wireNonScreen(ctx context.Context, registry *composition.Registry, read readScenarioRunner, command *composedCommandScenario, state *postgresScenarioState, workspace, destination, format string, progress func(batchItem), limits ...renderer.Limits) (*nonScreenServices, error) {
+	if state == nil || command == nil || command.service == nil || registry == nil || read == nil {
+		return nil, fmt.Errorf("non-screen reference requires PostgreSQL and composed read/submit")
 	}
 	budget := renderer.DefaultLimits()
 	if len(limits) > 1 {
@@ -272,9 +272,7 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 				result.Stage = "journal-failed"
 				return result, err
 			}
-			linked := *command
-			linked.read = &frozenRead{value: snapshot}
-			r, err := linked.RunCommand(ctx, commandScenarioInput{LoginID: input.LoginID, Credential: input.Credential, From: input.From, RowIndex: input.Rows[i]})
+			r, err := command.RunCommand(ctx, commandScenarioInput{LoginID: input.LoginID, Credential: input.Credential, From: input.From, RowIndex: input.Rows[i], plannedRead: &snapshot})
 			item := batchItem{OrderID: ids[i], Result: r}
 			if err != nil {
 				item.Error = "item execution failed; inspect command and observation receipts before retry"

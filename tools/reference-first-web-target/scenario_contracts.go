@@ -55,6 +55,9 @@ type commandScenarioInput struct {
 	Credential string
 	From       string
 	RowIndex   int
+	// Only trusted batch assembly supplies this captured read. It is not a
+	// transport field or a permission; persistence must recheck its versions.
+	plannedRead *readScenarioResult
 }
 
 type commandScenarioResult struct {

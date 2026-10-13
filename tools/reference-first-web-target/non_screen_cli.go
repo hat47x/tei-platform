@@ -40,7 +40,7 @@ func registerNonScreenFlags(flags *flag.FlagSet) nonScreenFlags {
 		flags.Int("report-max-bytes", renderer.DefaultLimits().MaxBytes, "reference: encoded report byte budget"),
 	}
 }
-func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace string) (resultErr error) {
+func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *composedCommandScenario, state *postgresScenarioState, workspace string) (resultErr error) {
 	if *f.journal != "" && *f.mode != "batch" {
 		return fmt.Errorf("-batch-journal requires -non-screen batch")
 	}

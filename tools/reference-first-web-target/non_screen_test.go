@@ -42,7 +42,15 @@ func TestReportStorageRejectsWorkspaceAliasesAndExistingFiles(t *testing.T) {
 	}
 }
 
-func postgresNonScreen(t *testing.T, state *postgresScenarioState, format, path string, progress func(batchItem), registries ...**composition.Registry) *nonScreenServices {
+type nonScreenTestAssembly struct {
+	registry                *composition.Registry
+	read                    *composedReadScenario
+	submit                  *composedCommandScenario
+	command                 *referenceCommandScenarioRunner
+	allowedSubmitGeneration uint64
+}
+
+func postgresNonScreen(t *testing.T, state *postgresScenarioState, format, path string, progress func(batchItem), assemblies ...*nonScreenTestAssembly) *nonScreenServices {
 	t.Helper()
 	command, err := newReferenceCommandScenarioRunner(state.world, legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
 	if err != nil {
@@ -51,20 +59,28 @@ func postgresNonScreen(t *testing.T, state *postgresScenarioState, format, path 
 	command.persistence = state
 	command.model = state.model
 	registry := composition.NewRegistry()
-	if len(registries) > 0 {
-		*registries[0] = registry
+	assembly := &nonScreenTestAssembly{}
+	if len(assemblies) > 0 {
+		assembly = assemblies[0]
 	}
-	read, submit, err := wireComposedScenarios(context.Background(), registry, &postgresReadScenario{state: state}, command, state.digest, func(composition.Binding) error { return nil })
+	assembly.registry, assembly.command, assembly.allowedSubmitGeneration = registry, command, 1
+	read, submit, err := wireComposedScenarios(context.Background(), registry, &postgresReadScenario{state: state}, command, state.digest, func(binding composition.Binding) error {
+		if binding.ProviderID == "order-submit" && binding.Generation != assembly.allowedSubmitGeneration {
+			return composition.ErrSelectionMismatch
+		}
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err := wireNonScreen(context.Background(), registry, read, command, state, referenceWorkspacePath(t), path, format, progress)
+	assembly.read, assembly.submit = read, submit
+	s, err := wireNonScreen(context.Background(), registry, read, submit, state, referenceWorkspacePath(t), path, format, progress)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		s.Close()
-		_ = submit.service.Withdraw(1)
+		_ = submit.service.Withdraw(assembly.allowedSubmitGeneration)
 		_ = submit.service.Reap(context.Background())
 		_ = read.service.Withdraw(1)
 		_ = read.service.Reap(context.Background())
@@ -77,8 +93,9 @@ func nonScreenTestInput() nonScreenInput {
 
 func TestPostgresScenarioBatchDeclaresPersistentSubmitDependency(t *testing.T) {
 	state := postgresTestState(t)
-	var registry *composition.Registry
-	s := postgresNonScreen(t, state, "csv", "", nil, &registry)
+	var assembly nonScreenTestAssembly
+	s := postgresNonScreen(t, state, "csv", "", nil, &assembly)
+	registry := assembly.registry
 	selection, err := registry.Select("order-batch", "reference/order_entry/development")
 	if err != nil {
 		t.Fatal(err)
@@ -110,6 +127,121 @@ func statusOf(t *testing.T, state *postgresScenarioState, id int64) string {
 		t.Fatal(err)
 	}
 	return status
+}
+
+func TestPostgresScenarioBatchSubmitRevocationPreservesCompletedItems(t *testing.T) {
+	state := postgresTestState(t)
+	s := postgresNonScreen(t, state, "csv", "", func(item batchItem) {
+		if item.OrderID == 1001 {
+			if _, err := state.db.Exec("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id='order-submit'"); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+	input := nonScreenTestInput()
+	input.Rows = []int{0, 2}
+	result, _, err := s.batch.Invoke(context.Background(), input)
+	if err == nil || result.Stage != "execution-failed" || len(result.Items) != 2 || result.Items[0].Result.Stage != "completed" || result.Items[1].Result.Stage != "command" {
+		t.Fatalf("submit revocation did not stop the batch after its first commit: %+v %v", result, err)
+	}
+	for _, item := range result.Items {
+		if item.Result.Composition == nil || item.Result.Composition.ProviderID != "order-submit" || item.Result.Composition.Generation != 1 {
+			t.Fatal("batch command used its enclosing batch permission instead of the submit instance")
+		}
+	}
+	if statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1003) != "draft" {
+		t.Fatal("revocation changed the completed effect or executed the remainder")
+	}
+	if _, err := state.db.Exec("UPDATE public.tei_reference_execution_grants SET revoked=false WHERE provider_id='order-submit'"); err != nil {
+		t.Fatal(err)
+	}
+	input.Rows = []int{2}
+	result, _, err = s.batch.Invoke(context.Background(), input)
+	if err != nil || result.Stage != "completed" || statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1003) != "submitted" {
+		t.Fatalf("explicitly permitted remainder failed: %+v %v", result, err)
+	}
+}
+
+func TestPostgresScenarioBatchSubmitWithdrawalAndExplicitGenerationRecovery(t *testing.T) {
+	state := postgresTestState(t)
+	var assembly nonScreenTestAssembly
+	s := postgresNonScreen(t, state, "csv", "", func(item batchItem) {
+		if item.OrderID == 1001 {
+			if err := assembly.submit.service.Shutdown(context.Background(), 1); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}, &assembly)
+	input := nonScreenTestInput()
+	input.Rows = []int{0, 2}
+	result, _, err := s.batch.Invoke(context.Background(), input)
+	if !errors.Is(err, composition.ErrUnbound) || result.Stage != "execution-failed" || len(result.Items) != 2 || result.Items[0].Result.Stage != "completed" {
+		t.Fatalf("withdrawn submit implementation remained callable from the batch: %+v %v", result, err)
+	}
+	if assessment, exists := assembly.registry.Snapshot().Assessment("order-submit"); !exists || !assessment.Eligible {
+		t.Fatal("test removed the declaration instead of withdrawing the running instance")
+	}
+	if statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1003) != "draft" {
+		t.Fatal("service withdrawal rolled back or ran another item")
+	}
+	selected, err := assembly.registry.Select("order-submit", "reference/order_entry/development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assembly.allowedSubmitGeneration = 2
+	newState := &postgresScenarioState{db: state.db, world: state.world, digest: state.digest, fence: 2, model: state.model}
+	command := *assembly.command
+	command.persistence = newState
+	binding := composition.Binding{ContractID: postgresSubmitServiceContract.ID, ContractVersion: postgresSubmitServiceContract.Version, ProviderID: "order-submit", ArtifactDigest: state.digest, Generation: 2}
+	lifecycle := composition.Lifecycle{Prepare: func(context.Context, *composition.Scope) error { return nil }, Ready: func(context.Context, composition.Binding) error { return nil }}
+	if err := assembly.submit.service.Restore(context.Background(), selected, 1, binding, selectedCommandImplementation(&command, assembly.read), lifecycle); err != nil {
+		t.Fatal(err)
+	}
+	input.Rows = []int{2}
+	result, _, err = s.batch.Invoke(context.Background(), input)
+	if err == nil || result.Stage != "execution-failed" || len(result.Items) != 1 || result.Items[0].Result.Composition == nil || result.Items[0].Result.Composition.Generation != 2 || statusOf(t, state, 1003) != "draft" {
+		t.Fatalf("service recovery alone restored database authority: %+v %v", result, err)
+	}
+	if _, err := state.db.Exec("UPDATE public.tei_reference_execution_grants SET generation=2,fencing_token=2 WHERE provider_id='order-submit'"); err != nil {
+		t.Fatal(err)
+	}
+	result, _, err = s.batch.Invoke(context.Background(), input)
+	if err != nil || result.Stage != "completed" || result.Items[0].Result.Composition.Generation != 2 || statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1003) != "submitted" {
+		t.Fatalf("explicit generation-2 remainder failed: %+v %v", result, err)
+	}
+}
+
+func TestPostgresScenarioBatchReorderedInputCannotReplaceCapturedSelection(t *testing.T) {
+	state := postgresTestState(t)
+	t.Cleanup(func() {
+		if _, err := state.db.Exec("UPDATE public.orders SET ordered_at='2026-09-18T07:30:00Z' WHERE order_id=1003"); err != nil {
+			t.Error(err)
+		}
+	})
+	s := postgresNonScreen(t, state, "csv", "", func(item batchItem) {
+		if item.OrderID == 1001 {
+			if _, err := state.db.Exec("UPDATE public.orders SET ordered_at='2026-09-18T10:00:00Z' WHERE order_id=1003"); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+	input := nonScreenTestInput()
+	input.Rows = []int{0, 2}
+	result, _, err := s.batch.Invoke(context.Background(), input)
+	if err == nil || result.Stage != "execution-failed" || len(result.Items) != 2 || result.Items[1].OrderID != 1003 || result.Items[1].Result.Stage != "command" || result.Items[1].Result.Read == nil {
+		t.Fatalf("reordered input replaced the captured order or silently refreshed its version: %+v %v", result, err)
+	}
+	id, _ := semanticRowValueByAttribute(result.Items[1].Result.Read.SelectedOrder, "sales.order.order_id")
+	if id != int64(1003) || statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1002) != "draft" || statusOf(t, state, 1003) != "draft" {
+		t.Fatal("selection identity or completed state changed after concurrent edit")
+	}
+	// The operator reads and explicitly selects the current first row; the
+	// interrupted batch does not infer this replacement row or retry itself.
+	input.Rows = []int{0}
+	result, _, err = s.batch.Invoke(context.Background(), input)
+	if err != nil || result.Stage != "completed" || result.Planned[0] != 1003 || statusOf(t, state, 1003) != "submitted" || statusOf(t, state, 1002) != "draft" {
+		t.Fatalf("fresh explicit selection failed: %+v %v", result, err)
+	}
 }
 func TestPostgresScenarioNonScreenReportExchangeAndRevocation(t *testing.T) {
 	state := postgresTestState(t)

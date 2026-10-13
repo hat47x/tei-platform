@@ -170,12 +170,13 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 				return nil
 			}
 			registry := composition.NewRegistry()
-			readScenario, commandScenario, err = wireComposedScenarios(ctx, registry, readScenario, command, digest, guard)
+			composedRead, composedCommand, err := wireComposedScenarios(ctx, registry, readScenario, command, digest, guard)
 			if err != nil {
 				return err
 			}
+			readScenario, commandScenario = composedRead, composedCommand
 			if *nonScreen.mode != "" {
-				if err := nonScreen.run(registry, readScenario, command, state, *workspacePath); err != nil {
+				if err := nonScreen.run(registry, composedRead, composedCommand, state, *workspacePath); err != nil {
 					return &nonScreenCommandError{err}
 				}
 				return nil
