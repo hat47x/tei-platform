@@ -8,7 +8,8 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {compareTwoReferenceApplications,TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
+import {compareTwoReferenceApplications,proposeReferenceQueryAdapter,
+  TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const runner=fileURLToPath(new URL('./run-real-inspection.mjs',import.meta.url));
@@ -89,4 +90,20 @@ test('real Go inspect -> Node read-only projection -> metadata-only summary', {
   assert.equal(comparison.declaredQuery.query,'find_by_id');
   assert.equal(comparison.declaredQuery.compatibleMajor,2);
   assert.deepEqual(comparison.contextDifferences,['relation','datasourceAlias']);
+  const proposal=proposeReferenceQueryAdapter(observations);
+  assert.equal(proposal.status,'candidate_requires_semantic_review');
+  assert.equal(proposal.commonInvocation.contract,'master_data.customer');
+  assert.equal(proposal.commonInvocation.query,'find_by_id');
+  assert.equal(proposal.commonInvocation.compatibleMajor,2);
+  assert.deepEqual(proposal.applicationContext.map(x=>x.datasourceAlias),
+    ['master','customer_master']);
+  assert.deepEqual(proposal.applicationContext.map(x=>x.relation),
+    ['sales.order.customer','repair_intake.intake.customer']);
+  assert.equal(proposal.commonInvocation.datasourceAlias,undefined);
+  assert.equal(proposal.commonInvocation.relation,undefined);
+  assert.equal(proposal.executionPermitted,false);
+  assert.equal(proposal.implementationSelected,false);
+  assert.equal(proposal.accepted,false);
+  assert.equal(proposal.verified.contractSemantics,false);
+  assert.equal(proposal.verified.readAuthorization,false);
 });
