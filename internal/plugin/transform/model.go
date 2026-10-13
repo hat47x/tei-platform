@@ -29,7 +29,6 @@ const (
 	OpSortArrayBy     Op = "sort-array-by"
 	OpReplaceField    Op = "replace-field"
 	OpOmitField       Op = "omit-field"
-	OpOmitEmptyArrayField Op = "omit-empty-array-field"
 	OpAssertEqual     Op = "assert-equal"
 	OpAssertEnum      Op = "assert-enum"
 	OpAssertNonBlank  Op = "assert-nonblank"
@@ -44,6 +43,9 @@ const (
 // The evaluator has no Plugin-specific materializer special case.
 const OpAssertCanonicalID Op = "assert-canonical-id"
 const OpAssertPositiveInteger Op = "assert-positive-integer"
+
+// OpOmitEmptyArrayField is a generic, schema-independent normalization.
+const OpOmitEmptyArrayField Op = "omit-empty-array-field"
 
 type InputKind string
 
