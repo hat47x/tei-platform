@@ -115,6 +115,16 @@ func BuildWorkspaceDisplay(root string, lock plugin.Lock, cfg WorkspaceDisplayCo
 	if err != nil {
 		return reject("workspace-load: " + err.Error())
 	}
+	return buildLoadedWorkspaceDisplay(root, loaded, lock, cfg, gate, nil)
+}
+
+// buildLoadedWorkspaceDisplay keeps the parsed World and the indexed Source
+// witness on the SAME Workspace Load. The optional current-acceptance hook is
+// evaluated against that index before any display content or grant is used.
+func buildLoadedWorkspaceDisplay(root string, loaded workspace.Result, lock plugin.Lock, cfg WorkspaceDisplayConfig, gate ReviewGate, checkAccepted func(sourceindex.Index) error) (DisplayManifest, SourceWitness, error) {
+	reject := func(message string) (DisplayManifest, SourceWitness, error) {
+		return DisplayManifest{}, SourceWitness{}, fmt.Errorf("workspace-display: %s", message)
+	}
 	if validation.HasErrors(validation.Validate(loaded.World)) {
 		return reject("invalid-world")
 	}
@@ -143,6 +153,11 @@ func BuildWorkspaceDisplay(root string, lock plugin.Lock, cfg WorkspaceDisplayCo
 	idx, reader, err := workspace.IndexedLoadedSnapshot(root, loaded)
 	if err != nil {
 		return reject("source-index: " + err.Error())
+	}
+	if checkAccepted != nil {
+		if err := checkAccepted(idx); err != nil {
+			return reject("accepted-source: " + err.Error())
+		}
 	}
 	resolver, err := sourcebridge.NewResolver(derived.Graph, idx, reader)
 	if err != nil {
