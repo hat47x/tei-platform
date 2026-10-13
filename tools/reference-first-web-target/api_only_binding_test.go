@@ -73,3 +73,67 @@ func TestAPIBoundCommandChecksSameRequestBeforeRunner(t *testing.T) {
 		t.Fatalf("existing direct API route should stay accessible, got %d", got)
 	}
 }
+
+func TestAPIBoundReadChecksSameRequestBeforeRunner(t *testing.T) {
+	server := &webTargetServer{projection: webTargetProjection{
+		ApplicationID:              "order_entry",
+		HandoverBaselineID:         "B",
+		BaselineRepositoryRevision: strings.Repeat("a", 40),
+		TargetBuildRevision:        strings.Repeat("b", 40),
+	}}
+	good := map[string]string{
+		apiBoundApplicationHeader: "order_entry",
+		apiBoundBaselineHeader:    "B",
+		apiBoundRevisionHeader:    strings.Repeat("a", 40),
+		apiBoundTargetHeader:      strings.Repeat("b", 40),
+	}
+	call := func(method, path string, headers map[string]string, duplicate string) int {
+		t.Helper()
+		r := httptest.NewRequest(method, path, nil)
+		for k, v := range headers {
+			r.Header.Set(k, v)
+		}
+		if duplicate != "" {
+			r.Header.Add(duplicate, headers[duplicate])
+		}
+		w := httptest.NewRecorder()
+		server.Handler().ServeHTTP(w, r)
+		return w.Code
+	}
+	// A missing Runner is reached only after the in-process projection check.
+	if got := call(http.MethodGet, apiBoundReadPath+"?row=0", good, ""); got != http.StatusServiceUnavailable {
+		t.Fatalf("matching bound read should reach missing Runner (503), got %d", got)
+	}
+	for name := range good {
+		t.Run("missing-"+name, func(t *testing.T) {
+			bad := map[string]string{}
+			for k, v := range good {
+				if k != name {
+					bad[k] = v
+				}
+			}
+			if got := call(http.MethodGet, apiBoundReadPath, bad, ""); got != http.StatusConflict {
+				t.Fatalf("missing %s: got %d, want 409", name, got)
+			}
+		})
+		t.Run("different-"+name, func(t *testing.T) {
+			bad := map[string]string{}
+			for k, v := range good {
+				bad[k] = v
+			}
+			bad[name] = "unrelated"
+			if got := call(http.MethodGet, apiBoundReadPath, bad, ""); got != http.StatusConflict {
+				t.Fatalf("different %s: got %d, want 409", name, got)
+			}
+		})
+	}
+	if got := call(http.MethodGet, apiBoundReadPath, good, apiBoundTargetHeader); got != http.StatusConflict {
+		t.Fatalf("duplicate Target T header: got %d, want 409", got)
+	}
+	if got := call(http.MethodPost, apiBoundReadPath, good, ""); got != http.StatusMethodNotAllowed {
+		t.Fatalf("POST bound read should return 405, got %d", got)
+	}
+	if got := call(http.MethodGet, "/scenario/read", nil, ""); got != http.StatusServiceUnavailable {
+		t.Fatalf("existing direct read route must remain compatible, got %d", got)
+	}
+}

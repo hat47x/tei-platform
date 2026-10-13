@@ -24,7 +24,7 @@ go test ./tools/reference-business-dfd
 
 Node.jsが利用できる環境では、このGo試験から`node --test`を実行し、`reference/business-system-design/`の八つのDFD試験ファイルを確認します。GitHub ActionsではNode.jsが見つからない場合も失敗にし、JavaScript試験が実行されないまま成功と扱わないようにしています。開発者のGo専用環境でNode.jsが見つからない場合は、未実行である旨を明示してスキップします。
 
-画面試験は模擬DOMによるものであり、実ブラウザーの描画や操作性、Source Acceptance、正本の同一版を確認したことにはなりません。
+画面試験は模擬DOMによるものであり、実ブラウザーの描画や操作性、Source Acceptance、正本の同一版を確認したことにはなりません。\n\n追加の `TestBusinessDFDGoProjectionDrivesView` は、既存の実Go Producerから①Functionを持たず直接Validationを参照する業務Step（BP-05）と、②3種類の起動契機・Role・Store・例外を持つ受注承認案の2投影を生成し、それらをNodeの模擬DOMで**実際の `dfd-view-studio.mjs` のファイル選択ハンドラーへ渡し**、Step→Validation→Step、Store→Data、Function経由のData参照、古いリンクの無効化を検査します。手製のJS投影Fixtureだけでは発見できないGo/JS間の契約ずれを対象にします。プロセス間で渡すのは一時領域のJSONだけで、元SourceやWorldは変更しません。これは実ブラウザー操作、採用済みBusiness Procedure、同一revision Source Index、Shared Acceptanceの実証ではありません。
 
 `TestBusinessDFDGoProjectionToNodeReview`では、受注承認の参照手順・レビュー案・現行Workspaceから**実際のGo DFD投影器でJSONを生成**し、それをNode.jsの選択変更CLIへ渡します。正常な場合は未受理の変更案が得られ、入力ファイルの書込みがないことを確認します。レビュー案の指紋が古い場合と、投影器の起動契機が実行状態へ改変された場合は拒否しなければなりません。
 

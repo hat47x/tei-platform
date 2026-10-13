@@ -11,6 +11,7 @@ import { test } from "node:test";
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const R = "a".repeat(40);
 const T = "b".repeat(40);
+const image = () => ({ sha256: "d".repeat(64), bytes: 123456 });
 const manifest = () => ({
   applicationId: "order_entry",
   handoverBaselineId: "B",
@@ -43,15 +44,92 @@ async function setup(t) {
     browserBytes: html.length,
     browserScriptSHA256: sha(js),
     browserScriptBytes: js.length,
+    apiSHA256: image().sha256,
+    apiBytes: image().bytes,
   };
   await writeFile(measurement, JSON.stringify(initialReceipt));
   let exposed = manifest();
+  let manifestWireMode = "normal";
+  let imageWireMode = "normal";
+  let observedImage = image();
+  let imageSupported = true;
   let apiCommandIdentity = manifest();
+  let apiReadIdentity = manifest();
+  let readSupported = true;
+  let readCount = 0;
   let commandCount = 0;
+  // The real diagnostic API can be replaced by a streaming or malformed
+  // endpoint without changing the binding header identity. Exercise true
+  // chunked bodies with no Content-Length, not just a claimed byte count.
+  const sendObservation = (res, value, mode, maxBytes) => {
+    if (mode === "chunked-large") {
+      res.writeHead(200, {
+        "content-type": "application/json",
+        "transfer-encoding": "chunked",
+      });
+      res.write(Buffer.alloc(maxBytes + 1, 32));
+      res.end();
+      return;
+    }
+    if (mode === "wrong-media") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end(JSON.stringify(value));
+      return;
+    }
+    if (mode === "declared-large") {
+      res.writeHead(200, {
+        "content-type": "application/json",
+        "content-length": String(maxBytes + 1),
+      });
+      res.end(Buffer.alloc(maxBytes + 1, 32));
+      return;
+    }
+    if (mode === "chunked-valid") {
+      res.writeHead(200, {
+        "content-type": "application/json",
+        "transfer-encoding": "chunked",
+      });
+      res.write(JSON.stringify(value));
+      res.end();
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(value));
+  };
   const server = createServer((req, res) => {
     if (req.url === "/manifest.json") {
+      sendObservation(res, exposed, manifestWireMode, 65536);
+    } else if (req.url === "/diagnostic-executable.json") {
+      if (!imageSupported) {
+        res.writeHead(404);
+        res.end();
+      } else {
+        sendObservation(res, observedImage, imageWireMode, 4096);
+      }
+    } else if (req.url?.startsWith("/scenario/read-bound")) {
+      if (!readSupported) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      const headers = {
+        "x-tei-diagnostic-application": apiReadIdentity.applicationId,
+        "x-tei-diagnostic-baseline-id": apiReadIdentity.handoverBaselineId,
+        "x-tei-diagnostic-baseline-revision": apiReadIdentity.baselineRepositoryRevision,
+        "x-tei-diagnostic-target-revision": apiReadIdentity.targetBuildRevision,
+      };
+      const matched = Object.entries(headers).every(([key, value]) =>
+        req.headers[key] === value && req.rawHeaders
+          .filter((_, index) => index % 2 === 0)
+          .filter(keyName => keyName.toLowerCase() === key).length === 1);
+      if (req.method !== "GET" || !matched) {
+        res.writeHead(409);
+        res.end("diagnostic API read binding mismatch");
+        return;
+      }
+      readCount++;
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(exposed));
+      res.end(JSON.stringify({ result: { scenarioId: "diagnostic-read-fixture" } }));
     } else if (req.url === "/scenario/submit-bound") {
       const headers = {
         "x-tei-diagnostic-application": apiCommandIdentity.applicationId,
@@ -106,8 +184,15 @@ async function setup(t) {
   return {
     start,
     get count() { return commandCount; },
+    get reads() { return readCount; },
     changeManifest: next => { exposed = next; },
+    changeManifestWireMode: mode => { manifestWireMode = mode; },
+    changeImageWireMode: mode => { imageWireMode = mode; },
+    changeObservedImage: next => { observedImage = next; },
+    allowImageProbe: enabled => { imageSupported = enabled; },
     changeAPICommandIdentity: next => { apiCommandIdentity = next; },
+    changeAPIReadIdentity: next => { apiReadIdentity = next; },
+    allowBoundRead: enabled => { readSupported = enabled; },
     browser, measurement, html, js,
     overwriteReceipt: async patch => writeFile(measurement, JSON.stringify({ ...initialReceipt, ...patch })),
   };
@@ -230,4 +315,145 @@ test("Host serves its checked Browser snapshot even if files later change", asyn
   assert.equal(js, f.js.toString("utf8"));
   assert.equal(await submit(origin), 200);
   assert.equal(f.count, 1);
+});
+
+test("diagnostic GET binds B/R/T after startup and before read dispatch", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  assert.equal((await fetch(origin + "/scenario/read?row=0")).status, 200);
+  assert.equal(f.reads, 1);
+  // Manifest changes after initial Host startup: do not forward a read.
+  f.changeManifest({ ...manifest(), baselineRepositoryRevision: "d".repeat(40) });
+  assert.equal((await fetch(origin + "/scenario/read?row=0")).status, 502);
+  assert.equal((await fetch(origin + "/manifest.json")).status, 502);
+  assert.equal(f.reads, 1);
+  f.changeManifest(manifest());
+  assert.equal((await fetch(origin + "/scenario/read?row=0")).status, 200);
+  assert.equal(f.reads, 2);
+  assert.equal(f.count, 0);
+});
+
+test("API read identity changes after manifest preflight: no wrong read executed", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  // API serves matching manifest but uses different in-process projection
+  // when dispatching /scenario/read-bound; Host cannot trust the earlier GET.
+  f.changeAPIReadIdentity({ ...manifest(), targetBuildRevision: "c".repeat(40) });
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(f.reads, 0);
+  f.changeAPIReadIdentity(manifest());
+  assert.equal((await fetch(origin + "/scenario/read", {
+    headers: { "X-Tei-Diagnostic-Target-Revision": "spoofed" },
+  })).status, 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 0);
+});
+
+test("old API lacking bound read endpoint returns unknown and never falls back", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  f.allowBoundRead(false);
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(f.reads, 0);
+  f.allowBoundRead(true);
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(f.reads, 1);
+});
+
+test("Host refuses identical B/R/T from a different live executable image", async t => {
+  const f = await setup(t);
+  f.changeObservedImage({ ...image(), sha256: "e".repeat(64) });
+  await assert.rejects(f.start(), /live API executable image differs from measurement/);
+  assert.equal(f.count, 0);
+});
+
+test("Host denies a live image swap after startup before read or command dispatch", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  f.changeObservedImage({ ...image(), bytes: image().bytes + 1 });
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(await submit(origin), 502);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+  f.changeObservedImage(image());
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 1);
+});
+
+test("missing diagnostic process image endpoint never falls back to manifest only", async t => {
+  const f = await setup(t);
+  f.allowImageProbe(false);
+  await assert.rejects(f.start(), /API executable observation unavailable/);
+  assert.equal(f.count, 0);
+});
+
+test("unsupported or forged measurement image identity prevents Host startup", async t => {
+  const f = await setup(t);
+  await f.overwriteReceipt({ apiSHA256: null });
+  await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
+  await f.overwriteReceipt({ apiBytes: 0 });
+  await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
+  await f.overwriteReceipt({ apiBytes: 257 * 1024 * 1024 });
+  await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
+  assert.equal(f.count, 0);
+});
+
+test("small chunked JSON evidence remains valid without Content-Length", async t => {
+  const f = await setup(t);
+  f.changeManifestWireMode("chunked-valid");
+  f.changeImageWireMode("chunked-valid");
+  const origin = await f.start();
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 1);
+});
+
+test("oversized chunked API manifest fails closed before startup", async t => {
+  const f = await setup(t);
+  f.changeManifestWireMode("chunked-large");
+  await assert.rejects(f.start(), /API manifest exceeds diagnostic limit/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("oversized chunked API image observation fails closed before startup", async t => {
+  const f = await setup(t);
+  f.changeImageWireMode("chunked-large");
+  await assert.rejects(f.start(), /API executable observation exceeds diagnostic limit/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("declared oversized API image is rejected before body buffering", async t => {
+  const f = await setup(t);
+  f.changeImageWireMode("declared-large");
+  await assert.rejects(f.start(), /API executable observation exceeds diagnostic limit/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("post-start streaming oversize evidence never forwards read or command", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  f.changeImageWireMode("chunked-large");
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(await submit(origin), 502);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+  f.changeImageWireMode("normal");
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 1);
+});
+
+test("non-JSON diagnostic evidence refuses Host startup", async t => {
+  const f = await setup(t);
+  f.changeManifestWireMode("wrong-media");
+  await assert.rejects(f.start(), /API manifest is not a JSON observation/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
 });

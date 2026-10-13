@@ -1,0 +1,66 @@
+name: TEI 標準メッセージと多言語拡張参照
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reference/standard-messages/**'
+      - 'reference/message-localization/**'
+      - 'reference/multilingual-resources/**'
+      - '.github/workflows/tei-standard-messages-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/standard-messages/**'
+      - 'reference/message-localization/**'
+      - 'reference/multilingual-resources/**'
+      - '.github/workflows/tei-standard-messages-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-standard-messages-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  message-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象コミットの取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Goの版を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 差分領域の整形と静的検査
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if test -n "$(gofmt -l reference/standard-messages/*.go reference/message-localization/*.go)"; then
+            gofmt -d reference/standard-messages/*.go reference/message-localization/*.go
+            exit 1
+          fi
+          go vet ./reference/standard-messages ./reference/message-localization ./reference/multilingual-resources
+      - name: メッセージ契約と多言語の回帰試験
+        run: |
+          set -euo pipefail
+          go test -race -count=3 ./reference/standard-messages ./reference/message-localization ./reference/multilingual-resources
+      - name: 作業領域が清浄か確認
+        if: always()
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

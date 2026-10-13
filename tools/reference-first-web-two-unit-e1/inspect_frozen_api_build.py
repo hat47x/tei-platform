@@ -64,6 +64,40 @@ def read_go_build_settings(output):
     }
 
 
+
+def read_go_vcs_settings(output, expected_revision):
+    """Observe Go's own embedded VCS data, independently of -ldflags -X.
+
+    This is a compiler-recorded *diagnostic* source witness, not proof that
+    the Builder, Git checkout, source acceptance, or Host was trusted.
+    """
+    if not HEX40.fullmatch(expected_revision):
+        raise ValueError("expected VCS revision must be exact Git hex40")
+    seen = {}
+    for line in output.splitlines()[1:]:
+        fields = line.strip().split("\t")
+        if len(fields) < 2 or fields[0] != "build":
+            continue
+        for field in fields[1:]:
+            if "=" not in field:
+                raise ValueError("invalid Go build setting")
+            key, value = field.split("=", 1)
+            if key in ("vcs", "vcs.revision", "vcs.modified"):
+                if key in seen:
+                    raise ValueError("duplicate Go VCS setting: " + key)
+                seen[key] = value
+    if seen.get("vcs") != "git":
+        raise ValueError("Go VCS kind must be git")
+    revision = seen.get("vcs.revision")
+    if not isinstance(revision, str) or not HEX40.fullmatch(revision):
+        raise ValueError("Go VCS revision is missing or invalid")
+    if revision != expected_revision:
+        raise ValueError("Go VCS revision does not match Source build T")
+    if seen.get("vcs.modified") != "false":
+        raise ValueError("Go VCS build records modified or unknown source")
+    return {"revision": revision, "modified": False}
+
+
 def observe(binary_path, package_path, git_tree, git_revision, build_info):
     if not HEX40.fullmatch(git_tree) or not HEX40.fullmatch(git_revision):
         raise ValueError("Git source tree and revision must be exact hex40 IDs")
@@ -98,6 +132,7 @@ def observe(binary_path, package_path, git_tree, git_revision, build_info):
         "sourceGitTree": git_tree,
         "entrypoint": EXPECTED_PACKAGE,
         "go": settings,
+        "goVCS": read_go_vcs_settings(build_info, git_revision),
         "goPackageClosureSHA256": hashlib.sha256(packages).hexdigest(),
         "goPackageCount": len(names),
         "apiSHA256": hashlib.sha256(binary_bytes).hexdigest(),

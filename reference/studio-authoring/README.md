@@ -237,3 +237,70 @@ tools/repository-health-check.sh
 4. 運用規模の入力で性能測定を行い、Source上の変更箇所へnavigate→図/表変更→再投影をUI利用者に対して検証する。
 
 このReferenceは製品Studio完成の証拠ではありません。V05/V08（Target/Runtime/Observation）は#1121/#1127の責務です。
+
+
+## #1120 型付き参照の読み取り連携（任意）
+
+#1120のGo製 `tei trace`（`modelref` / `sourcebridge`）を既存Studioの参照表示に重ねる場合だけ、次のオプションを明示します。Studio側で独立した型付きグラフやSource Resolverは実装しません。
+
+```sh
+node reference/studio-authoring/cli.mjs inspect \
+  -workspace reference/workspace \
+  -focus relation:sales.order.lines \
+  -typed-scope order-entry-reference \
+  -format html
+```
+
+- `-typed-scope` は観測者が指定する**派生Graphのスコープ名**です。Source側の所有スコープが確定したことも、#1125のBusiness Stepが受理済みであることも意味しません。
+- 生のSource IndexアンカーとGo型付きSource Resolverの定義位置・指紋・バイト範囲を照合し、矛盾すれば `sourceConsistency=unresolved` と示します。読み取り結果の一致は編集権限でもSemantic Acceptanceでもありません。
+- `tei trace` はStudioとは別のGo呼出しでWorkspaceを読み直します。読取前後にShared AcceptanceのSource revisionを照合しますが、ファイルシステムの排他ロックや一時的な変更・復元（ABA）検出は提供しません。
+- 型付き参照は `candidate-read-only` として別領域に表示し、元の表・ER・機能・非Canonical業務DFDの権限を変更しません。Sourceが未解決、参照が不正・曖昧、TraceのJSONが不完全なら権限を補完せず拒否または未解決にします。
+- 本オプションは実Workspaceでの `inspect` に限定します。独立JSON入力、`step:ID`（参照専用Business Step）、編集・受理のコマンドには適用しません。
+
+
+### 外部Business DFDの観測証跡（#1125 → #1124）
+
+`inspect -business-dfd FILE` は、#1125の非Canonical DFDを読み取る時点で実ファイルのSHA-256とバイト長を記録し、投影処理の後に再読込して変化を拒否します。`relation:ID` 等の逆引きと `step:ID` の正引きの双方に `businessObservation` を追加します。ファイル自体は正本ではなく、`sourceRevisionBinding=not-established`、`acceptedBusinessProcedure=false`、`authority=noncanonical-reference` を明示します。
+
+この照合は外部DFDファイルの読取り前後の同一性だけを扱います。WorkspaceのrevisionとDFD producerの入力snapshotが同じであること、外部手順が正式に受理済みであること、ABA型の一時変更や書込み競合の不存在を証明しません。シンボリックリンクと通常ファイル以外は拒否します。受理済みBusinessの同一revision四視点連携は引き続き未実装です。
+
+
+## Go製業務DFDのStudio内での直接生成（#1124・#1125）
+
+以前の `-business-dfd FILE` はGo生成後の外部JSONをStudioへ渡す読み取り方です。既存のGo生成器を**Studio自身から**読み取り専用で起動する場合は、手順・未受理の図レビュー案・Handoff集合という3つの独立した参照ファイルを明示します。
+
+```sh
+node reference/studio-authoring/cli.mjs inspect \
+  -workspace reference/workspace \
+  -focus validation:sales.order_line.quantity_positive \
+  -business-procedure reference/business-system-design/order-entry-business-procedure.json \
+  -business-review reference/business-system-design/order-entry-dfd-review-proposal.json \
+  -business-set reference/business-system-design/order-entry-procedure-reference-set.json \
+  -format html
+```
+
+同じオプションで `-focus step:BP-05` とすれば、参照用の業務手順からData・Validation・Functionへ逆向き探索できます。3つのオプションはすべて必須で、外部 `-business-dfd` との同時指定、Workspaceなし、提案・審査・編集用コマンドへの適用は禁止します。UI内で業務モデルを新たに構築せず、既存 `go run ./tools/reference-business-dfd` のProducerを用います。
+
+- Studioが既存WorkspaceからWorldとrevisionを取得した後、Go生成の直前と直後に同じSource revisionを照合します。外部3ファイルの実バイト指紋・長さ・パスも前後で比較し、不一致は拒否します。Go自身のSource guardも維持されます。
+- 出力 `businessObservation` は3ファイルの出典・Workspace読取版・生成器を示します。ただしGo生成器のWorld読込みは独立プロセスであり、**単一の原子的snapshotを得たわけではありません**。`workspaceRevisionStatus=checked-around-separate-process-not-atomic`、`sourceRevisionBinding=not-established`、`acceptedBusinessProcedure=false` を維持します。
+- 生じたBusiness viewの権限は引き続き `noncanonical-reference` です。業務Roleと認可Role、手作業とFunction、起動契機と実Runtimeを統合しません。Producer側で不正参照などのblocking diagnosticが出れば成功扱いしません。
+- Studio専用CIはScratch Workspace上で実際のGo Producerを起動し、Data/ValidationからBusiness Stepへの探索とStep側からの逆探索、三つの入力出典、HTMLでの未受理表示を確かめます。試験用DFDを手書きした場合だけの成功ではありません。
+
+
+### Workspace管理対象と外部業務参照資料を区別する
+
+Go生成器に渡したProcedure・図レビュー案・Handoff集合が**同じWorkspaceの管理対象Source**に実在する場合、Studioは既存の `tei source-index` に記録された相対パス・SHA-256と、読み取った実ファイルを照合します。推測したSource rootや表示上のファイル名だけでは判定しません。
+
+`businessObservation.sources[]` の `sourceMembership` は次のいずれかです。
+
+| 状態 | 意味 |
+| --- | --- |
+| `managed-source-artifact-verified` | 宣言されたSource rootにある実ファイルを、同一WorkspaceのSource Indexへ相対パスと指紋で照合できた |
+| `external-reference-not-managed` | Source Indexに当該実ファイルがない。Workspace外ファイルや、Source rootから除かれたファイルを含む |
+| `not-checked-no-source-index` | Source Indexなしで呼んだアダプタ単体の観測。Studioの実Workspace CLIではSource Indexを渡す |
+
+3入力すべてを照合できた場合だけ `sourceSetStatus=all-input-artifacts-managed` とします。混在・未登録の場合は `contains-nonmanaged-reference-inputs` です。Source Indexに同じパスが複数ある場合、不正パス、管理対象ファイルの現在の指紋が異なる場合は拒否します。類似ファイル名の外部資料を管理対象に昇格しません。
+
+実証用には本来の `reference/workspace` を変更せずScratch copyを作成し、`tei.workspace.yaml` の `sources` に `business` を加え、そのルートに3つのReference入力をコピーします。Source rootの宣言を取り消すと、**ファイルのバイト列を変更しなくても**当該Source Indexの管理対象一覧から消え、Studioの観測結果が `external-reference-not-managed` になります。この登録状態の遷移は、Studio専用CIで実際のGo Workspace LoaderとGo Source Indexを使用して検証します。
+
+この新しい観測証跡は、採用済みのBusiness Procedureモデルを意味しません。管理対象のJSONであっても正式なBusiness schema、Source所有者・業務Stepのscope、Business意味検証、Shared Acceptanceによる受理が未実装であれば、従来どおり `acceptedBusinessProcedure=false`、`sourceRevisionBinding=not-established` を維持します。管理対象に入ったことを根拠に画面で編集・受理・実行できるようにはしません。

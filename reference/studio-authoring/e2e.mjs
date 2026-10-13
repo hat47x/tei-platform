@@ -3,7 +3,7 @@
 // A test harness Accept is NOT a human Acceptance or production authority.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { cpSync, lstatSync, mkdtempSync, readFileSync, readdirSync,
+import { cpSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, readdirSync,
   rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -305,6 +305,32 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       report.includes("source-index-backed") &&
       report.includes("verified-at-read"),
       "er: inspect HTML shows four lenses and the verified Source location");
+    // #1120 typed graph/sourcebridge is queried through the actual Go CLI.
+    // The observation scope is caller-selected; it does not qualify Business
+    // Procedure or bypass the existing Source/Acceptance authority.
+    const typedInspect = JSON.parse(command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:sales.order.lines",
+      "-typed-scope", "order-entry-reference"
+    ]).stdout);
+    checked(typedInspect.modelRevision === beforeRevision &&
+      typedInspect.typedReferences?.schema === "tei.reference.studio-typed-trace/v0" &&
+      typedInspect.typedReferences.subject.scope === "order-entry-reference" &&
+      typedInspect.typedReferences.subject.subject.kind === "semantic-relation" &&
+      typedInspect.typedReferences.sourceConsistency === "exact-anchor-match" &&
+      typedInspect.typedReferences.authority === "candidate-read-only",
+      "er: Go modelref/sourcebridge agrees with Studio Source anchor at R0");
+    const typedHTML = command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:sales.order.lines",
+      "-typed-scope", "order-entry-reference", "-format", "html"
+    ]).stdout;
+    checked(typedHTML.includes('id="typed"') &&
+      typedHTML.includes("candidate-read-only") &&
+      typedHTML.includes("exact-anchor-match"),
+      "er: browser document displays Go typed references separately without Acceptance");
     const reviewPage = command(process.execPath, [
       join(root, "reference/studio-authoring/cli.mjs"),
       "review-edit", "-workspace", workspace, "-edit-file", editPath,
@@ -365,6 +391,18 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       liveInspect.sourceNavigation.artifactFingerprint,
     label + ": Source Index bytes and exact position are verified on live inspect");
   if (expectedKind === "relation") {
+    const acceptedTyped = JSON.parse(command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:" + expectedID,
+      "-typed-scope", "order-entry-reference"
+    ]).stdout);
+    checked(acceptedTyped.modelRevision === afterRevision &&
+      acceptedTyped.typedReferences?.modelRevision === afterRevision &&
+      acceptedTyped.typedReferences?.subject.subject.id === expectedID &&
+      acceptedTyped.typedReferences?.sourceConsistency === "exact-anchor-match" &&
+      acceptedTyped.typedReferences?.authority === "candidate-read-only",
+      label + ": accepted R1 Relation is reloaded by Go typed trace and matched to updated Source");
     checked(after.views.er.edges.some(v => v.id === expectedID),
       label + ": accepted Relation appears in reprojected ER");
     checked(after.views.table.value.relations.some(v => v.id === expectedID),
@@ -505,6 +543,109 @@ function testReferenceBusinessNavigation() {
     cliNav.modelRevision === r0 &&
     cliNav.candidates.some(c => c.focus === focus),
     "business: CLI reproduces the same read-only reverse navigation");
+  // The Studio CLI now invokes the real #1125 producer itself. Its three
+  // independent reference inputs are fingerprinted, but not Accepted Source.
+  const goInputs = [
+    "-business-procedure", join(root, "reference/business-system-design/order-entry-business-procedure.json"),
+    "-business-review", join(root, "reference/business-system-design/order-entry-dfd-review-proposal.json"),
+    "-business-set", join(root, "reference/business-system-design/order-entry-procedure-reference-set.json")
+  ];
+  const liveForward = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", focus, ...goInputs
+  ]).stdout);
+  checked(liveForward.modelRevision === r0 &&
+    liveForward.views.business.items.some(x => x.stepID === "BP-05") &&
+    liveForward.businessObservation?.schema ===
+      "tei.reference.studio-business-producer-observation/v0" &&
+    liveForward.businessObservation.workspaceRevisionObserved === r0 &&
+    liveForward.businessObservation.acceptedBusinessProcedure === false &&
+    liveForward.businessObservation.sourceRevisionBinding === "not-established" &&
+    liveForward.businessObservation.sources.length === 3,
+    "business: live Go producer is source-bounded but not accepted Business");
+  const liveReverse = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", "step:BP-05", ...goInputs
+  ]).stdout);
+  checked(liveReverse.candidates.some(x => x.focus === focus) &&
+    liveReverse.businessObservation?.workspaceRevisionObserved === r0 &&
+    liveReverse.authority === "noncanonical-reference",
+    "business: live Go producer supports Step reverse navigation without acceptance");
+  const page = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", focus, ...goInputs, "-format", "html"
+  ]).stdout;
+  checked(page.includes("業務参照資料の観測証跡") &&
+    page.includes("not-established") &&
+    page.includes("go-derived-reference-observed"),
+    "business: HTML exposes the Go producer evidence and unresolved source binding");
+  const incomplete = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", focus,
+    "-business-procedure", goInputs[1]
+  ], false);
+  checked(incomplete.stderr.includes("INVALID_INPUT"),
+    "business: partially supplied Go producer input is rejected");
+  // A future Business source root may contain authored files even before a
+  // canonical Business schema exists. Observe physical Source Index membership
+  // without upgrading any Procedure/Step to accepted semantic authority.
+  const managedWorkspace = newWorkspace("business-managed-observation");
+  const businessRoot = join(managedWorkspace, "business");
+  mkdirSync(businessRoot, { recursive: true });
+  const fixtures = [
+    "order-entry-business-procedure.json",
+    "order-entry-dfd-review-proposal.json",
+    "order-entry-procedure-reference-set.json"
+  ];
+  for (const file of fixtures) cpSync(
+    join(root, "reference/business-system-design", file),
+    join(businessRoot, file));
+  const manifest = join(managedWorkspace, "tei.workspace.yaml");
+  const originalManifest = readFileSync(manifest, "utf8");
+  writeFileSync(manifest, originalManifest + "  - business" + String.fromCharCode(10));
+  const managedIndex = sourceIndex(managedWorkspace);
+  checked(fixtures.every(file => managedIndex.artifacts.some(a =>
+    a.path === "business/" + file && /^sha256:[a-f0-9]{64}$/.test(a.fingerprint))),
+    "business: declared Business root is visible as three actual managed Source Index artifacts");
+  const managedGoInputs = [
+    "-business-procedure", join(businessRoot, fixtures[0]),
+    "-business-review", join(businessRoot, fixtures[1]),
+    "-business-set", join(businessRoot, fixtures[2])
+  ];
+  const managedRevision = revision(managedWorkspace);
+  const managedView = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", managedWorkspace, "-focus", focus, ...managedGoInputs
+  ]).stdout);
+  checked(managedView.modelRevision === managedRevision &&
+    managedView.businessObservation?.workspaceRevisionObserved === managedRevision &&
+    managedView.businessObservation?.sourceSetStatus === "all-input-artifacts-managed" &&
+    managedView.businessObservation?.sources.length === 3 &&
+    managedView.businessObservation.sources.every(x =>
+      x.sourceMembership === "managed-source-artifact-verified" &&
+      x.managedArtifactPath.startsWith("business/")) &&
+    managedView.businessObservation.acceptedBusinessProcedure === false &&
+    managedView.businessObservation.sourceRevisionBinding === "not-established",
+    "business: managed Source artifacts are observed without accepting Procedure semantics");
+  const sourceBytes = fixtures.map(file => createHash("sha256")
+    .update(readFileSync(join(businessRoot, file))).digest("hex"));
+  writeFileSync(manifest, originalManifest);
+  const unlistedIndex = sourceIndex(managedWorkspace);
+  checked(fixtures.every(file => !unlistedIndex.artifacts.some(a =>
+    a.path === "business/" + file)),
+    "business: withdrawing the Source root removes physical membership");
+  const unlistedView = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", managedWorkspace, "-focus", focus, ...managedGoInputs
+  ]).stdout);
+  checked(unlistedView.businessObservation.sourceSetStatus ===
+      "contains-nonmanaged-reference-inputs" &&
+    unlistedView.businessObservation.sources.every(x =>
+      x.sourceMembership === "external-reference-not-managed") &&
+    unlistedView.businessObservation.acceptedBusinessProcedure === false &&
+    fixtures.every((file, i) => createHash("sha256")
+      .update(readFileSync(join(businessRoot, file))).digest("hex") === sourceBytes[i]),
+    "business: same bytes become external Evidence when Source-root membership is withdrawn");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     "business: DFD production and both navigation directions leave Source unchanged");
   checked(revision(workspace) === r0,

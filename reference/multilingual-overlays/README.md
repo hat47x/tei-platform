@@ -90,3 +90,47 @@ node --test reference/multilingual-overlays/web/order-form.test.mjs
 **現時点の境界**：Pluginの定義とモデルは試験用の合成入力であり、受理済みのEditor定義は取得していない。表示用JSONのロック指紋は来歴情報であって、ブラウザが独力で発行元を認証できる証拠ではない。実製品では既存の受理・権限確認を通じて宣言を取得し、信頼できる配布経路から渡す必要がある。
 
 O2bでは、受理済みの表示面と適用許可をEditor／Runtimeへ接続する。O3では対象言語別の配布、WebView、アクセシビリティ、MF2を検証する。今回のUI連結は**タイトルの表示のみ**であり、画面全体の翻訳を実証したものではない。
+
+## O2b：読み込んだWorkspaceの原文と受理確認の境界
+
+`workspace_display.go`は、単に人工的な`modelref.Graph`を組み立てるのではなく、実際のWorkspaceを`workspace.Load`で読み込む。既存の`validation.Validate`で意味上のエラーを確認し、`index.Build`から導いた型付き参照と、`IndexedLoadedSnapshot`による**パース時のSource Index**を照合する。対象となる`semantic-data`の標準表示名は、ロード済みの`semantic.Data.Symbol`を使う。ファイル名や翻訳資源からData IDを推測しない。
+
+翻訳の原文、定義ファイルの指紋、対象モデルの型付き識別子、対象環境のPlugin Lock指紋を`SourceWitness`として束ねる。別のWorkspaceのロック、存在しないData、改訂されたSourceと古い受理記録の組合せを拒否できる。参照実装はファイルを書き換えない。
+
+**重要**：`ReviewGate`は、既存Host側の受理・権限処理との接続口であって、独自の受理器ではない。関数を呼び出すだけで、本物の人間が承認したことも、呼出し元がその判断を行う資格を持つことも立証できない。未設定のときは失敗する。試験では合成した関数で許可・拒否を模擬し、**実際のShared AcceptanceやEditorの受理済みデータへの接続は未実装**として残す。
+
+`workspace_display_test.go`は一時Workspaceへ実際の`.tei`宣言を書き、Parser、Plugin Lock、Derived Index、Source Index、レビュー接続口、表示資源E1をまとめて通す。通常プラグインには多言語用コードを加えない。
+
+```sh
+go test -race -count=3 ./reference/multilingual-overlays/...
+```
+
+**次の課題**：正式な受理機構から`Surface`・`Grant`・`Override`の正本を受け取り、SourceとPlugin Lockの固定版をホスト側で再確認すること。追加の重要度宣言、通常UI内の文字列資源ID、動的な言語切替、実ブラウザ・WebView表示はまだ対象外。上記は受理される前の**読取と根拠照合の縦断実証**である。
+
+## O3a：Plugin Lock固定の言語別配布候補
+
+`locale_bundle.go`は、既存のPlugin Lock確認、O1の表示面合成とE1の言語選択を**一度ずつ**行い、明示した通常Plugin・意味参照・言語の直積だけを決定的順序で抽出する。Localeの親言語や原文へ暗黙にフォールバックせず、要求した表示のどれかが未提供・未確認・旧原文ベース・無許可ならバンドルを発行しない。元の通常Pluginの実装、データモデル、権限・機能定義は変更しない。
+
+`LocaleBundle.Digest`は、Digestフィールドを除いたGo JSONのSHA-256であり、再現性と不用意な改変の発見用。**自ら持ち込んだ訳文とDigestを同時に偽造することは可能**で、発行者の証明やHostの現在権限を示さない。実際の配布に使う場合は、正規の受理済みSourceとPlugin LockをHostが再照合し、認証済みの配布経路と別途信頼した期待Digestを用いる。現行参照ケースは合成Plugin定義とGrantを使う。O2bのSourceWitnessと`ReviewGate`を必ず接続する正式な配布パイプライン、署名、Web/Desktopのキャッシュ失効は**まだ未実装**。
+
+```sh
+go test -race ./reference/multilingual-overlays/...
+go run ./reference/multilingual-overlays/cmd/render-bundle en-US
+go run ./reference/multilingual-overlays/cmd/render-bundle ja-JP en-US
+```
+
+`CheckLocaleBundleIntegrity`は内部整合と自己宣言Digestだけを確認する。これに通っても、翻訳採用の権限・元の正本の一致は立証されない。受理機構・現在版照合の共通化は独立した#1119 / PR #1670の進行を踏まえ、重複する承認器をここに実装しない。
+
+## O2c1：Hostの現在Accepted Sourceを使う表示選択の参照経路
+
+`accepted_workspace_display.go`の`BuildAcceptedWorkspaceDisplay`は、既存の`internal/sourceacceptance.VerifyCurrent`を利用する。実際のWorkspaceを**一度だけ**ロードし、同じ`workspace.Result`のパーサー保持バイトから構成した`IndexedLoadedSnapshot`のSource Indexを、Hostが提供する「現在のAccepted Source」`sourceacceptance.Reader`で照合する。Readerが受理情報を提供しなければ、表示候補や翻訳Grantを評価しない。
+
+この経路には**二つの異なるHost責任**がある。第一に、現在性を実際に照会する信頼できるReaderをHostが渡すこと。第二に、`AcceptedDisplayGate`が、正確な通常Plugin版、意味参照、Surface/Pack/Grant/Overrideと利用環境を検査すること。Sourceが現在受理済みであっても、**翻訳Pluginに書換え権限が自動的に与えられるわけではない**。任意の呼出し元が偽のReaderと常時許可のGateを渡すことは防げないため、実際のHostで双方のAuthorityを接続するまで製品受理済み機能とは呼ばない。
+
+`AcceptedDisplayReview`は元の`ReviewRequest`とHostの`sourceacceptance.Record`を一緒にGateへ渡す。旧`BuildWorkspaceDisplay`は従来の参照APIのまま維持し、Accepted Source必須の経路と取り違えない。拒否時にReaderが返す機密エラー本文は外部へ転送しない。
+
+```sh
+go test -race -count=3 ./reference/multilingual-overlays/... ./internal/sourceacceptance
+```
+
+**未解決**：Reader・Gateの製品Host側実装、受理された翻訳宣言の正本取込、表示許可の適用時再照合、#1017の複数ファイル同時読込保証、Web/Desktopの認証済み配布／ブラウザ実描画は未実装。Source IndexとHost照合が同一`workspace.Load`に基づいていても、検査後のファイル改訂・権限失効が起こらない保証はない。
