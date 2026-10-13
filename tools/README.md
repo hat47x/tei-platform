@@ -89,6 +89,7 @@
 | --- | --- |
 | [`reference-driver-postgres-query/`](reference-driver-postgres-query/) | DriverからPostgreSQL問合せを実行する参照用起動点 |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
+| [`reference-oracle-local-fixture/`](reference-oracle-local-fixture/) | 手元の使い捨てOracle fixtureでdriver・named bind・読取り専用の効き方・Evidence受入れを確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
 | [`reference-postgres-integration/`](reference-postgres-integration/) | PostgreSQL接続の統合確認 |
 | [`reference-postgres-migration-rendering/`](reference-postgres-migration-rendering/) | PostgreSQL向け移行SQLの生成確認 |

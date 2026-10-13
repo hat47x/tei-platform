@@ -2,7 +2,10 @@ module tei
 
 go 1.26.9
 
-require github.com/jackc/pgx/v5 v5.9.0
+require (
+	github.com/jackc/pgx/v5 v5.9.0
+	github.com/sijms/go-ora/v2 v2.9.0
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
