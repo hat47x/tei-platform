@@ -268,3 +268,64 @@ func TestDraftMarkerStoreRejectsTamperedIdentityBeforeWorkspaceRead(t *testing.T
 		t.Fatalf("valid marker did not observe once and require review: %+v, %v, calls=%d", recovered, err, observations)
 	}
 }
+
+func TestDraftStorePermissionRevocationAfterOpen(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Host must verify Windows ACLs; Unix mode bits do not establish privacy")
+	}
+	marker, _ := storageMarker(t)
+	state := privateDraftStateDir(t)
+	store, err := OpenDraftMarkerStore(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	key, err := store.Save(marker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := marker
+	next.CandidateRef = "candidate-after-permission-check"
+	observations := 0
+	observe := func(root string) (SourceObservation, error) {
+		observations++
+		return marker.Baseline, nil
+	}
+
+	// A long-lived Host does not retain private-directory authority from
+	// OpenDraftMarkerStore forever. Even an execute-only group bit is unsafe.
+	for _, mode := range []os.FileMode{0o755, 0o710} {
+		if err := os.Chmod(state, mode); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := store.Save(next); !errors.Is(err, ErrDraftStoreRefused) {
+			t.Fatalf("Save allowed mode %04o: %v", mode, err)
+		}
+		if _, err := store.DiscoverKeys(); !errors.Is(err, ErrDraftStoreRefused) {
+			t.Fatalf("Discover allowed mode %04o: %v", mode, err)
+		}
+		if _, err := store.Recover(key, marker.Baseline.WorkspaceRoot, observe); !errors.Is(err, ErrDraftStoreRefused) {
+			t.Fatalf("Recover allowed mode %04o: %v", mode, err)
+		}
+		if observations != 0 {
+			t.Fatalf("revoked directory caused %d Workspace observations", observations)
+		}
+		if _, err := os.Stat(filepath.Join(state, "draft-"+draftMarkerKey(next)+".json")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("Save exposed an extra marker after permission revocation: %v", err)
+		}
+	}
+	if err := os.Chmod(state, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Save(next); err != nil {
+		t.Fatalf("Restored private directory should permit Save: %v", err)
+	}
+	keys, err := store.DiscoverKeys()
+	if err != nil || len(keys) != 2 {
+		t.Fatalf("Restored directory discovery failed: %v, %v", keys, err)
+	}
+	recovered, err := store.Recover(key, marker.Baseline.WorkspaceRoot, observe)
+	if err != nil || recovered.Status != RecoveryNeedsReview || observations != 1 {
+		t.Fatalf("Restored privacy failed read-only recovery: %+v, %v, calls=%d", recovered, err, observations)
+	}
+}

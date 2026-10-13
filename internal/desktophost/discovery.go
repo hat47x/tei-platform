@@ -24,8 +24,8 @@ const maxDraftStoreEntries = 4096
 // Discovery never opens candidate data, Source, or other Workspace paths.
 // Temporary files left by an interrupted Save are ignored, never replayed.
 func (s *DraftMarkerStore) DiscoverKeys() ([]string, error) {
-	if s == nil || s.root == nil {
-		return nil, ErrDraftStoreRefused
+	if err := s.checkPrivateRoot(); err != nil {
+		return nil, err
 	}
 	dir, err := s.root.Open(".")
 	if err != nil {

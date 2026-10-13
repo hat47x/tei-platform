@@ -48,12 +48,28 @@ func OpenDraftMarkerStore(privateDir string) (*DraftMarkerStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: open state directory: %v", ErrDraftStoreRefused, err)
 	}
-	check, err := root.Stat(".")
-	if err != nil || !check.IsDir() || (runtime.GOOS != "windows" && check.Mode().Perm()&0o077 != 0) {
+	store := &DraftMarkerStore{root: root}
+	if err := store.checkPrivateRoot(); err != nil {
 		_ = root.Close()
-		return nil, fmt.Errorf("%w: state directory must be private", ErrDraftStoreRefused)
+		return nil, err
 	}
-	return &DraftMarkerStore{root: root}, nil
+	return store, nil
+}
+
+// checkPrivateRoot validates the currently opened directory, not the original
+// pathname. A long-lived Host must recheck before every operation because
+// privacy can be revoked by chmod after OpenDraftMarkerStore succeeds.
+// This is a best-effort Unix mode guard, not a Windows ACL/ownership check
+// or an atomic defense against a concurrent permission change.
+func (s *DraftMarkerStore) checkPrivateRoot() error {
+	if s == nil || s.root == nil {
+		return ErrDraftStoreRefused
+	}
+	info, err := s.root.Stat(".")
+	if err != nil || !info.IsDir() || (runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0) {
+		return fmt.Errorf("%w: state directory must still be private", ErrDraftStoreRefused)
+	}
+	return nil
 }
 
 func (s *DraftMarkerStore) Close() error {
@@ -92,8 +108,8 @@ func draftMarkerFilename(key string) (string, error) {
 // File sync precedes publication; complete crash-durability (including the
 // directory entry) is not guaranteed on every OS/filesystem.
 func (s *DraftMarkerStore) Save(marker DraftMarker) (string, error) {
-	if s == nil || s.root == nil {
-		return "", ErrDraftStoreRefused
+	if err := s.checkPrivateRoot(); err != nil {
+		return "", err
 	}
 	raw, err := EncodeDraftMarker(marker)
 	if err != nil {
@@ -136,8 +152,8 @@ func (s *DraftMarkerStore) Save(marker DraftMarker) (string, error) {
 // no unknown external command is replayed. The Host supplies the authorized
 // workspace root and its observation function again on every call.
 func (s *DraftMarkerStore) Recover(key, authorizedWorkspaceRoot string, observe func(string) (SourceObservation, error)) (Recovery, error) {
-	if s == nil || s.root == nil {
-		return Recovery{}, ErrDraftStoreRefused
+	if err := s.checkPrivateRoot(); err != nil {
+		return Recovery{}, err
 	}
 	filename, err := draftMarkerFilename(key)
 	if err != nil {
