@@ -52,7 +52,10 @@ gh api repos/hat47x/tei-platform/rulesets/<RULESET_ID>
 ```bash
 python3 .github/rulesets/verify-main-protection.py --self-test
 python3 .github/rulesets/verify-main-protection.py --local
+python3 -m unittest discover -s .github/rulesets -p 'test_*.py' -v
 ```
+
+GitHub APIの一覧取得は100件ずつページ送りし、同名ルールの重複や詳細IDの不一致、権限不足による必須情報の欠落を**不合格または判定不能**として扱います。追加の模擬API試験はネットワークや管理者権限を必要としません。
 
 管理者が保護設定を適用した後は、GitHub CLIで認証してから実設定を読み戻します。
 
