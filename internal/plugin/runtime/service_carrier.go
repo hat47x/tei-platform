@@ -3,12 +3,19 @@ package runtime
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"tei/internal/core"
 	"tei/internal/plugin"
 )
+
+// ErrServiceAcceptanceDenied is safe to return to an untrusted caller.
+// A Host-owned Reader may mention secret authority policy, paths or tokens in
+// its error. Keep that original diagnostic inside Host-controlled telemetry,
+// not the Runtime invocation error or its unwrap chain.
+var ErrServiceAcceptanceDenied = errors.New("current Service acceptance denied")
 
 // ServiceProviderSelection is the exact logical selection supplied by the
 // future Contract resolver. It is not itself Accepted Contract evidence.
@@ -161,7 +168,13 @@ func (r Registry) InvokeSelectedServiceCarrier(
 	}
 	acceptance, err := r.ServiceAcceptance.ReadCurrentAcceptedService(ctx, selection)
 	if err != nil {
-		return ServiceCarrierInvocation{}, fmt.Errorf("current Service acceptance denied: %w", err)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ServiceCarrierInvocation{}, ctxErr
+		}
+		// A Reader is a Host-owned authority boundary. Its errors may
+		// contain internal credentials, issuer policy or private paths.
+		// Never expose the original error text or wrapped cause.
+		return ServiceCarrierInvocation{}, ErrServiceAcceptanceDenied
 	}
 	if acceptance.Selection != selection {
 		return ServiceCarrierInvocation{}, fmt.Errorf("Host Service acceptance selection differs from selected Provider")
