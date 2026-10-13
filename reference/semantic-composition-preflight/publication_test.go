@@ -38,6 +38,9 @@ func signedPublications(t *testing.T) (
 		subject := PublisherSubject{
 			Scope: "tenant-a", ProviderID: asset.ProviderID, Contract: asset.Contract,
 			PublisherID: proof.PublisherID, SignerRef: proof.SignerRef,
+			PackageID: asset.Expected.Package.PackageID,
+			PackageVersion: asset.Expected.Package.Version,
+			NamespaceID: asset.Expected.NamespaceID,
 		}
 		approved[subject] = PublisherTrust{
 			PublicKey: append(ed25519.PublicKey(nil), public...),
@@ -147,8 +150,8 @@ func TestPublicationProofTamperingFailsBeforeAnyAssetFetch(t *testing.T) {
 
 func TestHostTrustAndExpiryControlPublicationIndependentOfSignedProof(t *testing.T) {
 	cases := []struct {
-		name   string
-		trust  func(PublisherTrustLookup) PublisherTrustLookup
+		name  string
+		trust func(PublisherTrustLookup) PublisherTrustLookup
 	}{
 		{"host-key-revoked", func(_ PublisherTrustLookup) PublisherTrustLookup {
 			return func(PublisherSubject) (PublisherTrust, error) {
