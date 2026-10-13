@@ -116,16 +116,16 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 
 	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	tenantA := SQLTenantScopeRequest{
-		PrincipalID: "subject-order-editor",
-		RowScopeID: "scope-tenant-a",
+		PrincipalID:    "subject-order-editor",
+		RowScopeID:     "scope-tenant-a",
 		PolicyRevision: "e2e-policy-1",
-		QueryID: core.MustCanonicalID("order_entry.recent_orders"),
+		QueryID:        core.MustCanonicalID("order_entry.recent_orders"),
 	}
 	tenantB := SQLTenantScopeRequest{
-		PrincipalID: "subject-order-viewer",
-		RowScopeID: "scope-tenant-b",
+		PrincipalID:    "subject-order-viewer",
+		RowScopeID:     "scope-tenant-b",
 		PolicyRevision: "e2e-policy-1",
-		QueryID: core.MustCanonicalID("order_entry.recent_orders"),
+		QueryID:        core.MustCanonicalID("order_entry.recent_orders"),
 	}
 	authority := isolatedTenantScopeAuthority{grants: map[SQLTenantScopeRequest]string{
 		tenantA: "tenant-a",
@@ -139,45 +139,45 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 		wantColumns []string
 	}{
 		{
-			name: "tenant A descending top",
-			scope: tenantA,
-			options: url.Values{"$select": {"orderId"}, "$orderby": {"orderId desc"}, "$top": {"1"}},
-			want: [][]any{{int64(9)}},
+			name:        "tenant A descending top",
+			scope:       tenantA,
+			options:     url.Values{"$select": {"orderId"}, "$orderby": {"orderId desc"}, "$top": {"1"}},
+			want:        [][]any{{int64(9)}},
 			wantColumns: []string{"orderId"},
 		},
 		{
-			name: "tenant A ascending top",
-			scope: tenantA,
-			options: url.Values{"$select": {"orderId"}, "$orderby": {"orderId asc"}, "$top": {"1"}},
-			want: [][]any{{int64(3)}},
+			name:        "tenant A ascending top",
+			scope:       tenantA,
+			options:     url.Values{"$select": {"orderId"}, "$orderby": {"orderId asc"}, "$top": {"1"}},
+			want:        [][]any{{int64(3)}},
 			wantColumns: []string{"orderId"},
 		},
 		{
-			name: "tenant A cannot filter tenant B's high ID",
-			scope: tenantA,
-			options: url.Values{"$select": {"orderId"}, "$filter": {"orderId eq 100"}},
-			want: nil,
+			name:        "tenant A cannot filter tenant B's high ID",
+			scope:       tenantA,
+			options:     url.Values{"$select": {"orderId"}, "$filter": {"orderId eq 100"}},
+			want:        nil,
 			wantColumns: []string{"orderId"},
 		},
 		{
-			name: "tenant B descending top",
-			scope: tenantB,
-			options: url.Values{"$select": {"orderId"}, "$orderby": {"orderId desc"}, "$top": {"1"}},
-			want: [][]any{{int64(100)}},
+			name:        "tenant B descending top",
+			scope:       tenantB,
+			options:     url.Values{"$select": {"orderId"}, "$orderby": {"orderId desc"}, "$top": {"1"}},
+			want:        [][]any{{int64(100)}},
 			wantColumns: []string{"orderId"},
 		},
 		{
-			name: "tenant B cannot filter tenant A's ID",
-			scope: tenantB,
-			options: url.Values{"$select": {"orderId"}, "$filter": {"orderId eq 9"}},
-			want: nil,
+			name:        "tenant B cannot filter tenant A's ID",
+			scope:       tenantB,
+			options:     url.Values{"$select": {"orderId"}, "$filter": {"orderId eq 9"}},
+			want:        nil,
 			wantColumns: []string{"orderId"},
 		},
 		{
-			name: "tenant A projection order and default scope",
-			scope: tenantA,
-			options: url.Values{"$select": {"orderId,customerId"}, "$orderby": {"orderId asc"}, "$top": {"1"}},
-			want: [][]any{{int64(3), int64(11)}},
+			name:        "tenant A projection order and default scope",
+			scope:       tenantA,
+			options:     url.Values{"$select": {"orderId,customerId"}, "$orderby": {"orderId asc"}, "$top": {"1"}},
+			want:        [][]any{{int64(3), int64(11)}},
 			wantColumns: []string{"orderId", "customerId"},
 		},
 	}
@@ -186,16 +186,16 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 			pub := scopedPublication(t)
 			plan, err := AuthorizeBrowseRead(ctx, fixtureAuthorization(t), pub,
 				tc.options, TrustedReadContext{
-					PrincipalID: tc.scope.PrincipalID,
-					RowScopeID: tc.scope.RowScopeID,
+					PrincipalID:    tc.scope.PrincipalID,
+					RowScopeID:     tc.scope.RowScopeID,
 					PolicyRevision: tc.scope.PolicyRevision,
 				})
 			if err != nil {
 				t.Fatal(err)
 			}
 			provider := ScopedPostgresOrdersReference{
-				DB: db,
-				Database: core.MustCanonicalID("sales_core"),
+				DB:        db,
+				Database:  core.MustCanonicalID("sales_core"),
 				Authority: authority,
 			}
 			got, err := ExecuteScopedCanonicalRead(ctx, bridgeWorld(t), pub, plan,
@@ -232,8 +232,8 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 	forged.PolicyRevision = "outdated-policy"
 	plan, err := pub.BindRead(url.Values{"$select": {"orderId"}},
 		TrustedReadContext{
-			PrincipalID: forged.PrincipalID,
-			RowScopeID: forged.RowScopeID,
+			PrincipalID:    forged.PrincipalID,
+			RowScopeID:     forged.RowScopeID,
 			PolicyRevision: forged.PolicyRevision,
 		})
 	if err != nil {
@@ -241,7 +241,7 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 	}
 	out, err := ExecuteScopedCanonicalRead(ctx, bridgeWorld(t), pub, plan,
 		scopedSupport(pub, plan), ScopedPostgresOrdersReference{
-			DB: db, Database: core.MustCanonicalID("sales_core"), Authority: authority,
+			DB:        db, Database: core.MustCanonicalID("sales_core"), Authority: authority,
 		}, map[string]any{"from": from})
 	if !errors.Is(err, ErrAuthorizationUnavailable) || len(out.Rows) != 0 {
 		t.Fatalf("forged/stale tenant scope escaped: result=%+v err=%v", out, err)
