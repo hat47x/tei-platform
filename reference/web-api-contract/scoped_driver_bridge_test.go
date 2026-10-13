@@ -150,12 +150,12 @@ func TestRealDriverRefusesUnscopedFallbackAndInvalidResult(t *testing.T) {
 			bad := support
 			bad.QueryID = core.MustCanonicalID("other.query")
 			return bad
-		}(), provider, ErrScopedQueryUnavailable},
+		}(), provider, ErrScopedQueryContract},
 		{"wrong canonical Data", func() PublishedBrowse {
 			bad := pub
 			bad.DataID = core.MustCanonicalID("other.data")
 			return bad
-		}(), plan, support, provider, ErrScopedQueryUnavailable},
+		}(), plan, support, provider, ErrScopedQueryContract},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := seen
@@ -164,7 +164,7 @@ func TestRealDriverRefusesUnscopedFallbackAndInvalidResult(t *testing.T) {
 			if !errors.Is(err, tc.want) || len(out.Columns) != 0 || len(out.Rows) != 0 {
 				t.Fatalf("invalid dispatch escaped: result=%+v err=%v want=%v", out, err, tc.want)
 			}
-			if seen != before && tc.name != "wrong canonical Data" {
+			if seen != before {
 				t.Fatalf("provider was invoked before rejection: %s", tc.name)
 			}
 		})
