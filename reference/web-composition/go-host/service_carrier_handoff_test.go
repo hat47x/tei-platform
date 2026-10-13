@@ -188,7 +188,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 		VerifyCSRF: func(*http.Request, Principal) bool { return csrfOK },
 		Authorize:  authorizer,
 		Invoke:     serviceHandler,
-		Audit:  func(AuditRecord) {},
+		Audit:      func(AuditRecord) {},
 	})
 	if err != nil {
 		t.Fatal(err)
