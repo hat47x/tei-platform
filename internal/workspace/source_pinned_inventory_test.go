@@ -115,3 +115,27 @@ func TestManagedInventoryAllowsMissingRootAndRejectsEscapingEntries(t *testing.T
 		t.Fatalf("escaping Source was inventoried: %v", err)
 	}
 }
+
+func TestManagedInventoryRejectsAbsoluteSymlinkWithinWorkspace(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "assets")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	original := filepath.Join(dir, "original.md")
+	if err := os.WriteFile(original, []byte("inside"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(original, filepath.Join(dir, "alias.md")); err != nil {
+		t.Skipf("absolute symlink unavailable: %v", err)
+	}
+	rootHandle, err := openWorkspaceRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rootHandle.Close()
+	if _, err := scanManagedFiles(rootHandle, []string{"assets"}); err == nil ||
+		!strings.Contains(err.Error(), "outside the Workspace") {
+		t.Fatalf("absolute source link was not rejected by rooted inventory: %v", err)
+	}
+}
