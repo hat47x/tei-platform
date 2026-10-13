@@ -153,9 +153,9 @@ func TestDocsOnlyCommitLeavesActualPluginArtifactsAndBuildPlansUnchanged(t *test
 			Sources:                     nativePlanSources(nativeDescriptor, digest(nativeDescriptor), nativeImplementation, digest(nativeImplementation)),
 			Builder:                     nativeBuilderIdentity(nativeBuilderDigest),
 			Recipe:                      plugin.BuildRecipe{Kind: "tei-native-realization", Entrypoint: nativeImplementation},
-			OutputKind: plugin.BuildOutputRuntimeArtifact,
-			Target:     "host/reference",
-			Profile:    "reference",
+			OutputKind:                  plugin.BuildOutputRuntimeArtifact,
+			Target:                      "host/reference",
+			Profile:                     "reference",
 		}
 		makeFingerprint("native", nativePlan)
 		processPlan := plugin.BuildPlan{
@@ -170,9 +170,9 @@ func TestDocsOnlyCommitLeavesActualPluginArtifactsAndBuildPlansUnchanged(t *test
 				ArtifactDigest:  goToolDigest,
 			},
 			Recipe:     plugin.BuildRecipe{Kind: "go-process", Entrypoint: "./cmd/demo"},
-			OutputKind:                  plugin.BuildOutputRuntimeArtifact,
-			Target:                      "host/reference",
-			Profile:                     "reference",
+			OutputKind: plugin.BuildOutputRuntimeArtifact,
+			Target:     "host/reference",
+			Profile:    "reference",
 		}
 		makeFingerprint("process", processPlan)
 
