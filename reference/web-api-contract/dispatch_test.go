@@ -34,7 +34,7 @@ func TestReadDispatchRejectsUnsupportedNativeQueryOperations(t *testing.T) {
 	}
 	complete := func() ProviderReadSupport {
 		return ProviderReadSupport{
-			QueryID: pub.QueryID, PolicyRevision: plan.PolicyRevision,
+			QueryID: pub.QueryID, PrincipalID: plan.PrincipalID, RowScopeID: plan.ScopeID, PolicyRevision: plan.PolicyRevision,
 			EnforcesScope: true, SupportsLimit: true,
 			ProjectsFields: map[core.CanonicalID]bool{id: true},
 			Filters:        map[core.CanonicalID]map[string]bool{id: {"eq": true}},
@@ -54,6 +54,8 @@ func TestReadDispatchRejectsUnsupportedNativeQueryOperations(t *testing.T) {
 		{"unsupported pagination", func(s *ProviderReadSupport) { s.SupportsLimit = false }},
 		{"wrong query provider", func(s *ProviderReadSupport) { s.QueryID = core.MustCanonicalID("other.query") }},
 		{"stale policy", func(s *ProviderReadSupport) { s.PolicyRevision = "stale" }},
+		{"principal mismatch", func(s *ProviderReadSupport) { s.PrincipalID = "other-principal" }},
+		{"row scope mismatch", func(s *ProviderReadSupport) { s.RowScopeID = "other-scope" }},
 		{"no projection", func(s *ProviderReadSupport) { s.ProjectsFields[id] = false }},
 		{"no filter", func(s *ProviderReadSupport) { delete(s.Filters, id) }},
 		{"no filter operator", func(s *ProviderReadSupport) { s.Filters[id] = map[string]bool{"ne": true} }},
@@ -84,13 +86,13 @@ func TestReadDispatchRechecksGrantsForForgedPlans(t *testing.T) {
 			Policy: FieldPolicy{Select: true}}},
 	}
 	support := ProviderReadSupport{
-		QueryID: q, PolicyRevision: "rev1",
+		QueryID: q, PrincipalID: "staff-1", RowScopeID: "row-scope", PolicyRevision: "rev1",
 		EnforcesScope: true, SupportsLimit: true,
 		ProjectsFields: map[core.CanonicalID]bool{id: true},
 		Filters:        map[core.CanonicalID]map[string]bool{id: {"eq": true}},
 		Sorts:          map[core.CanonicalID]bool{id: true},
 	}
-	base := ReadPlan{Selected: []string{"orderId"}, Limit: 50, ScopeID: "row-scope", PolicyRevision: "rev1"}
+	base := ReadPlan{Selected: []string{"orderId"}, Limit: 50, PrincipalID: "staff-1", ScopeID: "row-scope", PolicyRevision: "rev1"}
 	if err := CheckReadDispatch(pub, base, support); err != nil {
 		t.Fatalf("expected valid preflight: %v", err)
 	}
@@ -100,6 +102,8 @@ func TestReadDispatchRechecksGrantsForForgedPlans(t *testing.T) {
 		"duplicate projection":       func(p *ReadPlan) { p.Selected = []string{"orderId", "orderId"} },
 		"unknown projection":         func(p *ReadPlan) { p.Selected = []string{"private"} },
 		"empty scope":                func(p *ReadPlan) { p.ScopeID = "" },
+		"forged principal":           func(p *ReadPlan) { p.PrincipalID = "forged-user" },
+		"forged row scope":           func(p *ReadPlan) { p.ScopeID = "other-scope" },
 		"out of bounds limit":        func(p *ReadPlan) { p.Limit = 9999 },
 	} {
 		t.Run(name, func(t *testing.T) {
