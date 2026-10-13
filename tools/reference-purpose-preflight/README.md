@@ -133,6 +133,26 @@ go run ./tools/reference-purpose-preflight \
 
 固定のCore Capability列挙、独立した実行フェンス、すべてのプラグインへの厳格な必須メタデータは新設していない。この分類は**既に明示された書込意図があるときに役立つ補助表示**であり、Providerの実際のEffectや外部副作用を網羅した保証ではない。
 
+
+## Contract Queryの明示参照とProvider未検証の分離（第7段階）
+
+実Reference `order_entry.customer_reference` が指定する `master_data.customer/find_by_id` を、既存のCanonical `Pattern` と `Application.database.master.requires` を使って突き合わせる。今回確認するのは、**ApplicationがContract Queryを明示し、同じContractへの要求を宣言しているか**だけである。
+
+```sh
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -application order_entry \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -purpose execute-preflight
+```
+
+目的指定した結果の `assessment.contractQueryUse` に、`datasourceAlias`、`targetDatabase`、`contract`、`query`、`compatibleMajor` を表示する。これは既存の型付き識別子から派生する局所的な読取り専用表示であり、別のContract正本を生成しない。Datasource aliasは既存 `DatabaseByAliasExact` で重複を許さず照合する。
+
+`declared-requirement` であっても `readiness` の `provider-contract` は `conditional` のまま、理由を「既知のQuery契約があるがProvider適合・接続は未検証」と具体化する。契約版の一致、Query実装、実TargetのResource binding、Hostの実権限、外部副作用の有無、受理済みBusiness Ruleは証明しない。要求契約が欠ける、aliasが重複する、Queryが未指定の場合、推測で代替せず未解決とする。
+
+`-purpose` を指定しない従来の平坦JSONからはこの補助フィールドを除く。作用・実行権限の評価を行わず、`executionAllowed=false` を維持する。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
