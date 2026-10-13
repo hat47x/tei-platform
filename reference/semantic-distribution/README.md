@@ -38,3 +38,21 @@ go test -count=1 ./reference/semantic-distribution
 必要な後続は、実際の配布物を扱う選択・信頼と照合値の固定、複数の名前空間間の依存閉包、公開範囲、二つのプロジェクトでの再利用、モデル更新時の影響分析です。現行の固定的な `CapabilityKind` にモデル専用種別を増やすことは避けます。
 
 `knowledge://`を標準の参照URIとして採用する判断も、現段階では行いません。外部との相互運用で必要になるURIは、対象の種類と供給場所を混同せず別途検討します。
+
+## 外部モデル変更の影響候補（E5aの独立参照実装）
+
+`impact.go`は、**現在のWorkspace Loaderで実際に解析した**二つの`workspace.Result`から、既存の`modelref.Graph`へ最小限の依存辺を投影します。新しい影響解析器や依存解決の正本は作りません。
+
+`ReviewImportedTypeImpact(before, after, "os")`は、`Result.Imports[].SemanticDigest`と実際の`World.Semantics`が一致することを確認したうえで、`modelref.ReviewImpactDiff`を使用します。供給元ファイルが移動しただけなら意味照合値は変わりません。同じCanonical IDのもとで意味定義が変わった場合は、既知の利用側データ定義を**変更影響の確認候補**として示します。
+
+このReferenceで自動抽出する依存は、**利用側が所有するSemantic Dataの属性型（`Attribute.TypeRef`）と関連先（`Relation.Target`）のみ**です。Application Action、Validation、UI、権限、外部知識サービス等の利用箇所は走査していません。したがって、候補が空でも「影響がない」とは結論できません。
+
+入力元の物理パスや配布者名は意味上のIDではありません。Provider側の出典位置はE2のSource Indexで独立管理します。また、このGraph上の`Authority: proposal`は、人間が事実を受理したことを意味しません。新しい正式なCanonical Kindや永続的な依存Graphは追加しません。
+
+検証コマンド：
+
+```sh
+go test -count=1 ./reference/semantic-distribution
+```
+
+否定試験として、読み込み元の消失、曖昧なImport宣言、照合値の偽装を拒否します。対象の意味が変わった際に参照中の`monitoring.watch`を候補として表示する一方、型・関連参照を持たない`monitoring.local`を推測で影響ありとみなしません。**未走査の種類には依然として不明な影響があり得ます**。
