@@ -196,3 +196,30 @@ TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.
 ```
 
 The first suite uses synthetic `inspect/v0` JSON to stress changed Query, compatible major, binding, datasource, unknown policy, membership and snapshot drift. The opt-in E2E builds the genuine `tei` Go CLI and inspects the **four actual Subjects**, then checks shared Query metadata and distinct Application context. Neither exercise establishes an Accepted Contract implementation, renderer interoperability, real project-to-project authorization, transitive license rights or the cost/benefit of component extraction. Both Applications are in the **same Reference Workspace**, not independent production customers. Real two-project Source trust, review time, CPU cost and maintainability gain remain future research gates.
+
+## Read-only Query-invocation adapter boundary proposal (2026-10-14)
+
+After the **real Go** two-Application observation qualified in the previous PR, `proposeReferenceQueryAdapter(reports)` extends the narrow fixed-Reference comparison into an **in-memory design candidate**, not an executable adapter. It reuses `compareTwoReferenceApplications` and therefore preserves the original exact Subject, read-only Source Index, snapshot, Application membership, route, Contract requirement, Query and input-binding checks. There is no new DSL parser, new authorization system, generated runtime code, read query execution, or modification of TEI Go Canonical types.
+
+Its `tei.research.query-invocation-adapter-proposal/v0` response deliberately separates:
+
+| Layer | Fields | Meaning |
+| --- | --- | --- |
+| Shared *declaration candidate* | `databaseTarget`, `contract`, `compatibleMajor`, `query`, `bindings` | The two public Reference Applications explicitly declared the same read-Query invocation. No Contract implementation or Query output signature was verified. |
+| Application wiring | `application`, `pattern`, `relation`, `datasourceAlias` for each Application | Relation and alias remain owned by each Application. A future adapter must receive these through Application-specific binding; it cannot infer or overwrite them. |
+| Unresolved gates | `contract_semantics`, `query_result_signature`, `caller_authorization`, `runtime_binding`, `acceptance` | Explicit omissions, **not** automatically satisfied by identifier or signature coincidence. |
+
+Status is `candidate_requires_semantic_review` only when the two *observed declarations* match. Contract/query/input drift leads to `not_shareable_from_declarations` and `commonInvocation:null`; malformed, incomplete, unindexed or out-of-snapshot Canonical observations still fail closed. Even in the matching case `executionPermitted:false`, `implementationSelected:false`, `accepted:false`, `acceptance:not_asserted` and all semantic/authorization verifier fields remain false. It does **not** call the existing `comparePair` with a fabricated Contract fingerprint or assign semantic authority.
+
+The intended eventual shape is **Application binding → parameterized shared Query-call logic → already-authorized Database Contract runtime**. This is an architectural decomposition only; runtime provider APIs, mandatory security requirements, query result shape, UI rendering, identity mapping and caching remain for concrete requirements and qualification. In particular, the Application-local `datasourceAlias` must never become a cross-Application routing instruction, and a compatible-major declaration must not be treated as verified runtime compatibility.
+
+Both fixed cases live in the checked-in `reference/workspace`. The returned in-memory object contains domain identifiers and an observation snapshot; it is *not* a general JSON export format. Disclosure and authorization remain the caller's duty before `tei inspect`, including for future customer Workspaces.
+
+Focused tests add nine new cases to the existing 15-case suite, for declaration/context split, differing Query/major/input, unresolved alias, unexpected write access, snapshot/unknown semantic policy rejection, and detached output copies. The opt-in [real-go-inspection.e2e.test.mjs](real-go-inspection.e2e.test.mjs) also asserts the boundary against the actual Go CLI's four Reference observations:
+
+```sh
+node --test reference/local-cpu-reuse/compare-two-application-references.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+Execution status belongs to the *corresponding exact-head CI result*; source changes alone do not count as a pass. No #843 training, #876 automatic qualification, or #267 Acceptance is initiated.
