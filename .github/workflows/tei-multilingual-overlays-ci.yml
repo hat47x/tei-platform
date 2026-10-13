@@ -1,0 +1,87 @@
+name: TEI 多言語表示オーバーレイ参照検証
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reference/multilingual-overlays/**'
+      - 'reference/multilingual-resources/**'
+      - 'reference/ui-customization/web-react/**'
+      - '.github/workflows/tei-multilingual-overlays-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/multilingual-overlays/**'
+      - 'reference/multilingual-resources/**'
+      - 'reference/ui-customization/web-react/**'
+      - '.github/workflows/tei-multilingual-overlays-ci.yml'
+      - 'go.mod'
+      - 'go.sum'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-multilingual-overlays-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  overlay-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象ソースを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Goを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 対象の版を記録
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: 表示面と既存E1資源の局所検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -n "$(gofmt -l reference/multilingual-overlays/*.go)"; then
+            gofmt -d reference/multilingual-overlays/*.go
+            exit 1
+          fi
+          go vet ./reference/multilingual-overlays/... ./reference/multilingual-resources ./internal/sourceacceptance
+          go test -race -count=3 ./reference/multilingual-overlays/... ./reference/multilingual-resources ./internal/sourceacceptance
+      - name: Go Plugin Lockで生成した表示情報をReact UIへ適用
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
+          node --test reference/multilingual-overlays/web/order-form.test.mjs
+      - name: 言語別配布候補を生成し余分な言語を含めない
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./reference/multilingual-overlays/cmd/render-bundle en-US > /tmp/tei-en-bundle.json
+          node -e 'const fs=require("node:fs"); const b=JSON.parse(fs.readFileSync("/tmp/tei-en-bundle.json","utf8")); if(b.kind!=="tei.multilingual.locale-bundle.o3" || b.locales.length!==1 || b.locales[0]!=="en-US" || b.displays.length!==1 || b.displays[0].text!=="Confirm order" || b.digest?.length!==71) process.exit(1)'
+          go run ./reference/multilingual-overlays/cmd/render-bundle ja-JP en-US > /tmp/tei-bilingual-bundle.json
+          node -e 'const fs=require("node:fs"); const b=JSON.parse(fs.readFileSync("/tmp/tei-bilingual-bundle.json","utf8")); if(b.locales.join(",")!=="en-US,ja-JP" || b.displays.length!==2 || b.displays[1].text!=="受注を確定") process.exit(1)'
+      - name: 実行後の作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

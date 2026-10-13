@@ -64,11 +64,39 @@ native_digest="sha256:$(sha256sum "$output/native-engine" | cut -d' ' -f1)"
 wasm_digest="sha256:$(sha256sum "$output/engine-first.wasm" | cut -d' ' -f1)"
 test "$native_digest" != "$wasm_digest" || { echo "target binaries unexpectedly identical" >&2; exit 1; }
 
+# Verify the actual target-specific images against their measured digests,
+# construct separate TEI Runtime Engine Locks, and test stale/tampered rejects.
+TEI_TARGET_BIND_NATIVE="$output/native-engine" \
+TEI_TARGET_BIND_WASM="$output/engine-first.wasm" \
+TEI_TARGET_BIND_NATIVE_DIGEST="$native_digest" \
+TEI_TARGET_BIND_WASM_DIGEST="$wasm_digest" \
+  go test -count=1 -run '^TestActualTransformEngineArtifactsBindDistinctRuntimeEngineLocks$' -v \
+    ./internal/plugin/runtime > "$output/target-binding-test.log" || {
+      cat "$output/target-binding-test.log" >&2
+      exit 1
+    }
+
+get_bound_value() {
+  local name="$1"
+  local count
+  count="$(grep -c "$name=" "$output/target-binding-test.log")"
+  test "$count" = 1 || { echo "missing or ambiguous bound value: $name" >&2; exit 1; }
+  grep -o "$name=[[:alnum:]:]*" "$output/target-binding-test.log" | cut -d= -f2
+}
+native_lock="$(get_bound_value TARGET_NATIVE_LOCK_SHA256)"
+wasm_lock="$(get_bound_value TARGET_WASM_LOCK_SHA256)"
+realization_digest="$(get_bound_value TARGET_REALIZATION_SHA256)"
+[[ "$native_lock" =~ ^[0-9a-f]{64}$ && "$wasm_lock" =~ ^[0-9a-f]{64}$ ]] || exit 1
+[[ "$realization_digest" =~ ^sha256:[0-9a-f]{64}$ && "$native_lock" != "$wasm_lock" ]] || exit 1
+
 jq -n \
   --arg source "$(git rev-parse HEAD)" \
   --arg native "$native_digest" \
   --arg wasm "$wasm_digest" \
   --arg result "$native_output" \
+  --arg nativeLock "$native_lock" \
+  --arg wasmLock "$wasm_lock" \
+  --arg realization "$realization_digest" \
   --arg go "$(cat "$output/go-version.txt")" \
   --arg node "$(cat "$output/node-version.txt")" \
   '{
@@ -81,6 +109,10 @@ jq -n \
     nativeArtifactDigest: $native,
     wasmArtifactDigest: $wasm,
     typedWireResponseDigest: $result,
+    realizationArtifactDigest: $realization,
+    nativeRuntimeEngineLockFingerprint: $nativeLock,
+    wasmRuntimeEngineLockFingerprint: $wasmLock,
+    realArtifactBindingVerified: true,
     goVersion: $go,
     nodeVersion: $node,
     wasmReproducible: true,

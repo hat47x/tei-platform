@@ -12,9 +12,9 @@
 
 ## 第1版の参照アプリケーション
 
-第1版では、新たに理想化した例を作らず、既存の`reference/workspace/applications/order-entry`を拡充します。
+第1版では、理想化した新しい例を作るのではなく、既存の`reference/workspace/applications/order-entry`を拡充します。
 
-主な資産:
+主な資産は次のとおりです。
 
 - 意味を管理する名前空間：`sales`、`customer`、`security`
 - `sales.Order` / `sales.OrderLine`
@@ -25,9 +25,9 @@
 - 読み書き可能なデータソース：`sales_core`
 - 読み取り専用で外部の状態を観測するデータソース：`master_data`
 - データベース契約、元形式の問い合わせ、問い合わせの実現方法
-- Application Pattern
-- Capability Binding
-- Canonical Validation
+- アプリケーションパターン
+- 能力の対応付け
+- 正本上の検証規則
 - 既存の認証・認可方式との互換性を確認する参照事例
 - 業務上の結果と実行エラーの境界
 - 見出し・明細形式の契約に従う問い合わせの実現
@@ -56,7 +56,7 @@ Command Business Result
 Observation
 ```
 
-業務上の意味を実行・検証環境、Web、編集環境、AIごとに作り直しません。同じ正本の意味を共有し、それぞれの層で必要な表示、対応付け、検証根拠だけを追加します。
+業務上の意味を、実行・検証環境、ウェブ、編集環境、AIでそれぞれ作り直すことはしません。同じ正本の意味を共有し、各層に必要な表示・対応付け・検証根拠だけを追加します。
 
 ## PASとの対応
 
@@ -96,13 +96,13 @@ Stage 4A Authoring / Knowledge        Stage 4B Second Target
   - AI Proposal PAS-01/06
 ```
 
-段階4Aと4Bは並行して進められます。編集環境やAIの機能が完成することを、第二の実行先を検証する前提にはしません。
+段階4Aと4Bは並行して進められます。編集環境やAI支援機能の完成を、二つ目の実行先の検証に必要な前提とはしません。
 
-引継ぎは、新たな番号付きの判定段階ではありません。判定段階Bの出力を、判定段階Cの入力として固定する契約です。
+引継ぎは、独立した新しい判定段階ではありません。判定段階Bの出力を判定段階Cの入力として固定するための契約です。
 
 ## Stage 0 — Product Baseline / Gap Audit
 
-**Done**です。
+**完了**しています。
 
 製品の価値、将来像、設計原則、要求、受入シナリオ、全体計画、不足事項の調査結果を、リポジトリの基準資料として扱います。
 
@@ -110,9 +110,9 @@ Stage 4A Authoring / Knowledge        Stage 4B Second Target
 
 関連: `ISSUE-000005` / GitHub Issue #67
 
-**Done**です。
+**完了**しています。
 
-最初の参照事例では、次の5種類をアプリケーション側の意図として実証しました。
+最初の参照事例では、次の5種類をアプリケーション側の意図として実証しています。
 
 ```text
 browse
@@ -122,49 +122,49 @@ header-detail
 command
 ```
 
-この5分類を、TEI全体で今後も変わらない標準一覧とはみなしません。
+この5分類を、将来にわたって変更のないTEI全体の標準一覧とはみなしません。
 
 ## Gate A — Application上の意味をDriverへ渡せる
 
-関連: `ISSUE-000013` / GitHub Issue #124  
-監査: `GATE_A_READINESS_AUDIT.md`
+関連：`ISSUE-000013`／GitHub Issue #124  
+監査：`GATE_A_READINESS_AUDIT.md`
 
 **Ready**です。
 
-主な成立領域:
+主に次の領域で成立しています。
 
-- Application Pattern
-- Datasource read / write
-- Capability Binding
-- Canonical Validation
-- Business Result / Execution Error
-- Authentication / Authorization
-- legacy認証Compatibility
-- Source / Binding traceability
+- アプリケーションパターン
+- データ接続先の読取り・書込みの区別
+- 能力の対応付け
+- 正本上の検証規則
+- 業務上の結果と実行時エラーの区別
+- 認証と認可
+- 既存認証との互換性
+- 入力元と対応付けの追跡可能性
 
-判定段階Aの`Ready`は、実行・検証環境の完成ではなく、そこへ渡す意味の契約が成立したことを示します。
+判定段階Aの`Ready`は、実行・検証環境が完成したことではなく、そこへ引き渡す意味の契約が成立したことを示します。
 
 ## Stage 2 — Application Driver
 
-関連: `ISSUE-000006` / GitHub Issue #69  
-Gate B監査: `GATE_B_READINESS_AUDIT.md` / `ISSUE-000029` / #273  
-Evidence要求: `GATE_B_EVIDENCE_ACQUISITION.md`  
-実行手順: `GATE_B_EVIDENCE_RUNBOOK.md`  
-最終収束: `ISSUE-000037` / #387
+関連：`ISSUE-000006`／GitHub Issue #69  
+Gate B監査：`GATE_B_READINESS_AUDIT.md`／`ISSUE-000029`／#273  
+検証根拠の要件：`GATE_B_EVIDENCE_ACQUISITION.md`  
+実行手順：`GATE_B_EVIDENCE_RUNBOOK.md`  
+最終確認：`ISSUE-000037`／#387
 
 ### 現在の状態
 
 主要な意味の境界とシナリオの構造は成立しています。
 
-判定段階Bは**Ready**です（候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
+判定段階Bは**Ready**です（候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日：2026年9月19日）。
 
 ### Gate B Required Evidence
 
-必須の検証根拠は次の三つです。いずれも同じ変更のない候補版`R`について、一度の実行で成立しています。
+必須の検証根拠は次の三つです。いずれも、変更のない同じ候補版`R`について、同一実行の中で成立しています。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定論的な検証根拠
+2. #255 生成成果物の再現性に関する検証根拠
+3. #308 実際のPostgreSQL提供実装と一時的な試験用環境の検証根拠
 
 ```text
 #310 ─┐
@@ -174,24 +174,24 @@ Evidence要求: `GATE_B_EVIDENCE_ACQUISITION.md`
 #387 final convergence  ← 成立
 ```
 
-actual Oracle #214 / #371 / #376は第四Required laneではありません。
+実際のOracleに関する#214・#371・#376は、第四の必須検証経路ではありません。
 
-actual physical facts、provenance、effective read-only、driver integration、actual readは重要なPAS-03 / external asset Evidenceとして継続します。未完了ならHandoverへ`unresolved`として渡します。
+実際の物理的な事実・来歴・実効的な読取り専用の制約・ドライバーとの連携・実際の読取りは、引き続きPAS-03の重要な外部資産の検証根拠です。未完了であれば、引継ぎ時に`unresolved`として明示します。
 
 ### Driverで成立している主な境界
 
-- Application Pattern resolution
-- Datasource resolution
-- Query / Contract Query
-- explicit input / result mapping
-- Relation traversal
-- header-detail
-- Validation
-- Authentication / Authorization
-- Capability Binding
-- Command Business Result
-- Execution Error
-- separate Observation read
+- アプリケーションパターンの解決
+- データ接続先の解決
+- 問い合わせと契約に基づく問い合わせ
+- 入力と結果の明示的な対応付け
+- 関係をたどる処理
+- 見出し・明細の処理
+- 検証規則の評価
+- 認証と認可
+- 能力の対応付け
+- 命令の業務上の結果
+- 実行時エラー
+- 独立した読取りによる観測
 
 ### Command / Observation
 
@@ -205,41 +205,41 @@ explicit read boundary
 Observation / Execution Error
 ```
 
-業務上の結果、実行エラー、観測結果、診断結果をそれぞれ区別して扱います。
+業務上の結果・実行時エラー・観測結果・診断結果は、それぞれ区別して扱います。
 
 ### Gate B blocker（解消済み）
 
-actual executionが直接blockerでしたが、2026-09-19に解消しました。
+実際に実行して検証することが直接の阻害条件でしたが、2026年9月19日に解消しました。
 
-- [x] actual TEI checkoutで#310
-- [x] clean check-only #255
-- [x] Evidence専用空PostgreSQLで#308
-- [x] #387でsame-R final convergence
-- [x] #273でReady再監査
+- [x] 実際のTEI作業領域で#310を確認
+- [x] 変更のない状態で、書込みを伴わない#255を確認
+- [x] 検証専用の空のPostgreSQLデータベースで#308を確認
+- [x] #387で同じ版Rに対する最終確認が成立
+- [x] #273でReadyの再監査が完了
 
-過程で2件のsource-navigation bugと1件の独立artifact audit期待値のstaleさを検出・修正しました（PR [#726](https://github.com/hat47x/tei-platform/pull/726) / [#727](https://github.com/hat47x/tei-platform/pull/727)）。
+この過程で、ソース位置の追跡に関する不具合2件と、独立した成果物監査で期待値が古くなっていた不具合1件を検出して修正しました（PR [#726](https://github.com/hat47x/tei-platform/pull/726)／[#727](https://github.com/hat47x/tei-platform/pull/727)）。
 
 ## Gate B — UIなしで主要Scenarioを再現できる
 
-現在: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）
+判定記録：**Ready**（候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）
 
-Readyには少なくとも次を要求し、すべて満たしています。
+Ready判定に必要な次の条件は、すべて満たしています。
 
-- #310 / #255 / #308が同じcandidate `R`
-- 各Evidenceの`reproducibleRevision = true`
-- source drift / dirty treeを採用しない
-- generated artifactを手編集しない
-- PostgreSQL fixture前後の安全境界が成立する
-- synthetic / generated / real-provider / actual external Evidenceを相互代替しない
-- Application meaning不足をWeb側へ先送りしない
+- #310・#255・#308が同じ候補版`R`を対象としている
+- 各検証根拠に`reproducibleRevision = true`が記録されている
+- ソースの変化や作業ツリーに変更が残った状態を採用しない
+- 生成成果物を手作業で編集しない
+- PostgreSQLの試験用環境の作成前後で安全条件が成立する
+- 合成データ・生成成果物・実際の提供実装・実際の外部資産による検証根拠を相互に代用しない
+- アプリケーションの意味の不足をウェブ側へ先送りしない
 
-`Ready`という判定の正本は`GATE_B_READINESS_AUDIT.md`です。
+`Ready`の判定記録の正本は`GATE_B_READINESS_AUDIT.md`です。
 
 ## Gate B → Gate C Handover Baseline
 
-関連: `GATE_B_TO_C_HANDOVER_CONTRACT.md` / `ISSUE-000030` / #291
+関連：`GATE_B_TO_C_HANDOVER_CONTRACT.md`／`ISSUE-000030`／#291
 
-Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`へ固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)です。
+判定段階BのReadyを受け、候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`を引継ぎ基準版`B`として固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)にあります。
 
 ```text
 Gate B Ready for R
@@ -248,38 +248,38 @@ Handover Baseline B
   baselineRepositoryRevision = R
 ```
 
-少なくとも次へ追跡します。
+少なくとも次の情報まで追跡できます。
 
-- Handover Baseline ID
-- baseline repository revision `R`
-- Reference Workspace
-- Application `order_entry`
-- Pattern / Data / Relation / Query / Datasource
-- Validation
-- Authentication / Authorization
-- Capability / Binding
-- Business Result / Execution Error / Observation
-- Driver Scenario
-- Gate B Evidence
-- unresolved
+- 引継ぎ基準版のID
+- 基準となるリポジトリの版`R`
+- 参照用の作業領域
+- アプリケーション`order_entry`
+- パターン・データ・関係・問い合わせ・データ接続先
+- 検証規則の評価
+- 認証と認可
+- 能力とその対応付け
+- 業務上の結果・実行時エラー・観測
+- ドライバーのシナリオ
+- 判定段階Bの検証根拠
+- 未解決事項
 
-引継ぎの記録は意味の第二の正本ではありません。
+引継ぎの記録を、意味についての第二の正本とはしません。
 
-Oracleについて未完了の範囲をWeb側で推測して補完しません。
+Oracleについて未確認の範囲を、ウェブ側で推測して補いません。
 
 ## Stage 3 — 第一Web Target
 
-関連: `ISSUE-000007` / #70  
-Evidence: `ISSUE-000028` / #270  
-契約: `GATE_C_EVIDENCE_CONTRACT.md`
+関連：`ISSUE-000007`／#70  
+検証根拠：`ISSUE-000028`／#270  
+契約：`GATE_C_EVIDENCE_CONTRACT.md`
 
 ### 着手条件
 
-**Gate B Ready + Handover Baseline固定後**です。2026-09-19時点で両方成立し、着手済みです。同日、actual Gate C Evidenceを取得してGate CをReadyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、判定記録: [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)）。
+**判定段階BがReadyとなり、引継ぎ基準版を固定した後**に着手します。2026年9月19日時点で両方の条件が成立し、作業を開始しました。同日、判定段階Cの検証根拠を実際に取得し、Readyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、判定記録：[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)）。
 
 ### baseline RとTarget build T1
 
-Web向け実装の版を`T1`として別に追跡します。
+ウェブ向け実装の版は、`T1`として別に追跡します。
 
 ```text
 Handover Baseline B at R
@@ -289,74 +289,74 @@ First Web Target build T1
 Gate C Evidence
 ```
 
-通常`T1 != R`です。
+通常、`T1 != R`となります。
 
-`T1`でbaseline subjectの意味変更が必要になった場合、Web固有fieldやruleで埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認して新Handover Baselineを発行します。
+`T1`の実装で基準版の対象の意味を変更する必要が生じても、ウェブ固有の項目や規則で補いません。権威ある入力元に戻り、必要なドライバーと判定段階Bの検証根拠を再確認して、新しい引継ぎ基準版を発行します。
 
 ### 対象Scenario
 
-- browse
-- record open
-- reference lookup
-- header-detail read
-- header-detail edit（baselineにwrite意味がある場合）
-- Validation satisfied / not satisfied
-- Authorization allowed / denied
-- command
-- Business Result
-- Execution Error
-- Observation
-- standard Projection
-- Custom UI
+- 一覧表示
+- 記録を開く操作
+- 参照先の検索
+- 見出し・明細の読取り
+- 見出し・明細の編集（基準版に書込みの意味がある場合）
+- 検証規則が満たされる場合と満たされない場合
+- 認可で許可される場合と拒否される場合
+- 命令の実行
+- 業務上の結果
+- 実行時エラー
+- 観測
+- 標準の派生表示
+- 個別実装の画面
 
 ### 観測する差
 
-1. Application meaning
-2. Target-neutral Presentation候補
-3. Target Capability候補
-4. Runtime Binding差
-5. execution artifact / ABI / Host差（観測可能な範囲）
-6. Execution / Trust差
-7. Web固有実装
-8. Host control plane差
-9. Canonicalへ持ち上げてはいけない差
-10. unresolved
+1. アプリケーション上の意味
+2. 実行先に依存しない表示の候補
+3. 実行先の能力の候補
+4. 実行時の対応付けの違い
+5. 実行成果物・ABI・ホストの違い（観測可能な範囲）
+6. 実行と信頼の違い
+7. ウェブ固有の実装
+8. ホストの制御機構の違い
+9. 正本へ取り込んではいけない違い
+10. 未解決事項
 
 ## Gate C — 第一Targetの境界をEvidenceで説明できる
 
-最初のWeb向け画面を表示できただけでは、この判定段階を通過したとはみなしません。
+最初のウェブ向け画面が表示できただけでは、判定段階Cを通過したとはみなしません。
 
-検証根拠を三種類に分けます。
+検証根拠は次の三種類に分けます。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
+1. 意味の準拠確認
+2. 操作と機能の検証根拠
+3. 表示の忠実度の検証根拠
 
-すべてのrunからHandover Baseline `B` / revision `R`とTarget build `T1`へ戻れる必要があります。
+すべての実行結果から、引継ぎ基準版`B`・版`R`と実行先の構築版`T1`を追跡できる必要があります。
 
-Gate Cで確認すること:
+判定段階Cで確認すること：
 
-- DriverとWebが同じApplication meaningを共有する
-- baseline `R`とTarget build `T1`を混同しない
-- Semantic Conformance成立
-- Reference Scenario Functional Evidence成立
-- replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtrace可能
-- Visual Evidenceを別に保持
-- Business Result / Execution Error / Observationを維持
-- Web Adapter除去でCanonicalが変わらない
-- standard Projection / Custom UIが同じ上位意味へ接続
-- Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
-- unresolvedを成功扱いしない
+- ドライバーとウェブが同じアプリケーションの意味を共有する
+- 基準版`R`と実行先の構築版`T1`を混同しない
+- 意味の準拠確認が成立
+- 参照シナリオの機能の検証根拠が成立
+- 再生可能な動作を利用する場合、意味上の操作と実行先の元の検証根拠まで追跡できる
+- 表示の検証根拠を別に保持
+- 業務上の結果・実行時エラー・観測を区別して維持
+- ウェブの変換器を取り除いても正本が変わらない
+- 標準の派生表示と個別実装の画面が同じ上位の意味へ接続
+- 実行先の能力・実行時の対応付け・実行成果物・ABI・ホスト・実行と信頼の違いを二つ目の実行先へ引き継げる
+- 未解決事項を成功として扱わない
 
-visual score / VLM judgeだけでSemantic / Functionalを合格にしません。
+表示の評価点や視覚言語モデルによる判定だけで、意味や機能の検証を合格にはしません。
 
 ## Stage 4A — Authoring / Knowledge / AI
 
-判定段階Cが`Ready`となった後に開始します。
+判定段階Cが`Ready`となった後に着手します。
 
 ### Studio minimal Authoring Loop — `ISSUE-000046`
 
-Product Acceptance Scenario: PAS-01
+製品受入シナリオ：PAS-01
 
 ```text
 Select
@@ -373,136 +373,136 @@ authoritative source
   ↓ reload / Conformance
 ```
 
-編集環境は、表示と記述を扱うものであり、第二の正本ではありません。
+編集環境は表示と記述を扱いますが、意味の第二の正本ではありません。
 
-file-native / CLI / AIと同じAcceptance原則へ収束します。
+ファイルを直接扱う方式・CLI・AI支援と、同じ受理の原則に従います。
 
-Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application Targetと混同しません。
+開発者向けのStudioのWailsホストと、生成されるWails製デスクトップアプリケーションの実行先を混同しません。
 
 ### knowledge-first Semantic exploration — `ISSUE-000047`
 
-Product Acceptance Scenario: PAS-06
+製品受入シナリオ：PAS-06
 
-Human / AIが新規authoring前に既存Data / Relation / Validation / Capability / Application Pattern / Evidenceをread-only探索します。
+人とAIが新たな記述を始める前に、既存のデータ・関係・検証規則・能力・アプリケーションパターン・検証根拠を読取り専用で探索します。
 
-探索候補を次へ分けます。
+探索候補を次の三つに分類します。
 
 - applicable
 - incompatible
 - unknown
 
-search ranking、similarity、embedding、AI confidenceはSemantic Evidenceではありません。
+検索順位・類似度・埋め込み表現・AIの確信度は、意味に関する検証根拠ではありません。
 
 ### AI Proposal / Acceptance — `ISSUE-000027` / #267
 
-Product Acceptance Scenario: PAS-01 / PAS-06
+製品受入シナリオ：PAS-01／PAS-06
 
-AIによる提案は、意味の正本を変更できる権限そのものではありません。
+AIによる提案には、意味の正本を変更する権限はありません。
 
-- explicit Canonical / Source / Evidence references
+- 正本・ソース・検証根拠への明示的な参照
 - `baseModelRevision`
-- Preview Semantic Diff
-- stale conflict
-- shared Acceptance
-- accepted source reload
-- Validation / Conformance
-- autonomy / authority分離
+- 意味上の差分の事前表示
+- 古い版に基づく競合
+- 共有の受理手続き
+- 受理済みソースの再読込み
+- 検証と準拠確認
+- 自律的な作業と変更権限の分離
 
-AI都合でmandatory authored Stable IDやPatch-only authoring modelを導入しません。
+AI支援の都合だけで、手作業で記述する安定IDの必須化や、パッチだけに限定する記述方式を導入しません。
 
 ## Stage 4B — 第二Target pressure test
 
-関連: `ISSUE-000026` / #259  
-Product Acceptance Scenario: PAS-04
+関連：`ISSUE-000026`／#259  
+製品受入シナリオ：PAS-04
 
-段階4Aの完成を待たず、判定段階Cが`Ready`となった後に並行して開始できます。
+段階4Aが完成するのを待つ必要はなく、判定段階Cが`Ready`となった後は並行して着手できます。
 
-第二の実行先は、対応先の数を増やすためではなく、最初のWeb向け実装で得た設計上の境界を検証するために選びます。
+二つ目の実行先は、対応先の数を増やすことではなく、最初のウェブ向け実装から得られた設計上の境界を検証することを目的として選びます。
 
-比較軸:
+比較する観点は次のとおりです。
 
-- Handover Baseline / Canonical meaning
-- Target build `T1` / `T2`
-- Target Capability
-- Projection差
-- Runtime Binding
-- execution artifact / ABI / Host
-- Execution / Trust Profile
-- Authorization / Resource
-- Observation
-- Semantic / Functional / Visual Evidence
-- RQ-024 performance measurement
+- 引継ぎ基準版と正本上の意味
+- 実行先の構築版`T1`・`T2`
+- 実行先の能力
+- 派生表示の違い
+- 実行時の対応付け
+- 実行成果物・ABI・ホスト
+- 実行と信頼に関する設定
+- 認可と資源
+- 観測
+- 意味・機能・表示の検証根拠
+- RQ-024の性能測定
 
-Generated Wails Desktop、Mobile、Server、API、MCP Application Target等が候補です。
+生成されるWails製デスクトップアプリケーション、モバイル、サーバー、API、MCPのアプリケーション実行先などが候補です。
 
-Studio Wails Hostは第二Application Target Evidenceへ数えません。
+StudioのWailsホストは、二つ目のアプリケーション実行先の検証根拠には数えません。
 
-第二Targetで境界修正が必要になっても、それ自体を失敗とはみなしません。第一Targetの都合を共通意味へ誤昇格していなかったかを確認します。
+二つ目の実行先で境界の修正が必要になっても、それ自体を失敗とはみなしません。最初の実行先に固有の都合を共通の意味として誤って取り込んでいなかったかを確認します。
 
 ## Evidenceの原則
 
-各Stageは「実装した」だけでは完了にしません。
+どの段階も、「実装した」という事実だけでは完了と判定しません。
 
-Evidence候補:
+検証根拠として使う候補は次のとおりです。
 
-- authoritative source
-- Source Index / Diagnostic
-- deterministic fixture
-- Conformance test
-- generated / golden artifact
-- Driver Scenario
-- real-provider observation
-- actual external asset observation
-- Handover Baseline
-- Target build / run identity
-- Semantic / Functional / Visual Evidence
-- Target comparison
-- ADR
-- readiness audit
-- unresolved Diagnostic
+- 権威あるソース
+- ソース索引と診断結果
+- 決定論的な試験用データ
+- 準拠確認の試験
+- 生成成果物と期待出力
+- ドライバーのシナリオ
+- 実際の提供実装を通じた観測
+- 実際の外部資産に対する観測
+- 引継ぎ基準版
+- 実行先の構築版と実行記録の識別情報
+- 意味・機能・表示の検証根拠
+- 実行先の比較
+- 設計判断記録
+- 合格判定の監査
+- 未解決事項に関する診断
 
-Evidence artifactやHandover recordをCanonicalの第二正本にはしません。
+検証成果物や引継ぎ記録を、正本の意味を定義する第二の正本にはしません。
 
-実験結果が予想と異なる場合、その差を隠して計画へ合わせずRequirement / Architecture / Planを再評価します。
+実験結果が予想と異なる場合は、違いを隠して計画に合わせるのではなく、要求・構造・計画を見直します。
 
 ## まだ固定しないこと
 
-- Application Patternの永久標準一覧
-- 第一Web Target framework
-- 完全なPresentation IR
-- 完全なTarget Capability taxonomy
-- Studio最終UI framework
-- AI provider
-- vector database
-- Proposal最終schema
-- mandatory authored Stable ID / UUID
-- Patch-only authoring model
-- Handover汎用schema
-- 第二Target種類
-- B2C向け一律performance threshold
-- Authentication単一方式
-- 汎用Workflow Engine
-- Event Sourcing標準
-- production HA一般化
+- アプリケーションパターンの永久標準一覧
+- 最初のウェブ実行先のフレームワーク
+- 完全な表示用の中間表現
+- 完全な実行先の能力の分類体系
+- Studioの最終的な画面のフレームワーク
+- AIの提供事業者・実装
+- ベクトルデータベース
+- 提案の最終的なスキーマ
+- 手作業で記述する安定ID・UUIDの必須化
+- パッチだけを使う記述方式
+- 引継ぎに関する汎用スキーマ
+- 二つ目の実行先の種類
+- B2Cに適用する一律の性能基準
+- 認証方式の単一化
+- 汎用の作業手順実行機構
+- イベントソーシングの標準化
+- 本番環境における高可用性の一般化
 
 ## v1へ進んだと判断する条件
 
-v1のApplication / first-target成立判断では少なくとも次をRepository Evidenceから説明できることを目安とします。
+第1版のアプリケーションと最初の実行先の成立を判断する際は、少なくとも次の事項をリポジトリの検証根拠から説明できることを目安とします。
 
-- `order_entry`をSemanticから第一Targetまで追跡できる
-- Gate B Ready revision `R`をHandover Baselineとして固定できる
-- 第一Target Evidenceからbaseline `R`とTarget build `T1`へ戻れる
-- 複数Databaseを自然に利用できる
-- native SQL / Custom implementationを正本のまま利用できる
-- 既存認証仕様を保持したままCapabilityへ接続できる
-- Application PatternをDriver / Targetで共有できる
-- UIなしでもDriverで主要Scenarioを検証できる
-- standard Projection / Custom UIを同じ上位意味から利用できる
-- Business Result / Execution Error / Observationを分離できる
-- Semantic / Functional / Visual Evidenceを混同しない
-- 何が未保証かをaudit / unresolvedから判断できる
+- `order_entry`を意味の定義から最初の実行先まで追跡できる
+- 判定段階BのReadyを得た版`R`を引継ぎ基準版として固定できる
+- 最初の実行先の検証根拠から基準版`R`と構築版`T1`を追跡できる
+- 複数のデータベースを自然に利用できる
+- 独自のSQLや個別実装を正本として利用できる
+- 既存の認証仕様を保ったまま能力へ接続できる
+- アプリケーションパターンをドライバーと実行先で共有できる
+- 画面がなくてもドライバーで主要シナリオを検証できる
+- 標準の派生表示と個別実装の画面を同じ上位の意味から利用できる
+- 業務上の結果・実行時エラー・観測を分離できる
+- 意味・機能・表示の検証根拠を混同しない
+- 何が未保証なのかを監査記録と未解決事項から判断できる
 
-Studio / AI支援の完成、第二Target、production HAは第一Web Targetまでのv1成立条件にはしません。ただし、それらをGate C後に検証できる境界とplan issueは保持します。
+Studio・AI支援の完成、二つ目の実行先、本番環境の高可用性は、最初のウェブ実行先までの第1版の成立条件には含めません。ただし、それらを判定段階Cの後で検証するための境界と計画上の課題は保持します。
 
 ## 関連文書
 

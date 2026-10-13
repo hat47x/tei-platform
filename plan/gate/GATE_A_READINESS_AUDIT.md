@@ -2,9 +2,9 @@
 
 ## 目的
 
-この文書は、v1 Reference Application `order_entry`をApplication Driverへ渡す前に、Gate A「Application上の意味をDriverへ渡せる」を横断的に確認した監査結果です。
+この文書は、第1版の参照アプリケーション`order_entry`をアプリケーションドライバーへ引き渡す前に、判定段階Aの「アプリケーション上の意味をドライバーへ渡せる」という条件を横断的に確認した監査記録です。
 
-Gate Aは、関連Issueの完了数では判定しません。DriverがWeb画面や専用Goコードから不足する意味を補わなくても、必要な情報をRepository上のReference / Conformanceから再現できるかを基準にします。
+判定段階Aの合否は、関連するIssueの完了件数では決めません。ドライバーがウェブ画面や専用のGoコードで不足する意味を補わずとも、必要な情報をリポジトリの参照事例と準拠確認から再現できることを基準とします。
 
 ## 評価区分
 
@@ -17,9 +17,9 @@ Gate Aは、関連Issueの完了数では判定しません。DriverがWeb画面
 
 ## 結論
 
-**Gate AはReadyです。Application Driver #69の主実装を開始できます。**
+**判定段階AはReadyです。アプリケーションドライバー#69の主な実装を開始できる状態です。**
 
-最後まで残っていたIssue #68「既存認証Compatibility」について、PR #148、#149、#151でGate Aに必要なEvidenceが揃いました。
+最後まで残っていたIssue #68「既存認証の互換性」について、PR #148・#149・#151で判定段階Aに必要な検証根拠が揃いました。
 
 ```text
 Application Pattern / Datasource      Ready
@@ -35,7 +35,7 @@ Legacy authentication compatibility  Ready
                   Driver #69
 ```
 
-この判定は、#68を閉じること自体を根拠にはしていません。認証・認可を含め、Driverへ必要な意味をRepositoryから再現できることを確認した結果です。
+この判定の根拠は、#68をクローズしたこと自体ではありません。認証と認可を含め、ドライバーに必要な意味をリポジトリから再現できると確認した結果です。
 
 ## Gate A項目別評価
 
@@ -60,7 +60,7 @@ Legacy authentication compatibility  Ready
 
 ## Application Pattern — Ready
 
-Issue #67で、`order_entry`に次の5種類のApplication Patternが実Referenceとして成立しています。
+Issue #67では、`order_entry`の次の5種類のアプリケーションパターンが、実際の参照事例として成立しています。
 
 - `browse`
 - `record`
@@ -68,43 +68,43 @@ Issue #67で、`order_entry`に次の5種類のApplication Patternが実Referenc
 - `command`
 - `header-detail`
 
-Patternは既存資産の意味を書き直す場所ではなく、ApplicationがどのCanonical identityを、どの意図で利用するかを保持する層として扱います。
+パターンは既存資産の意味を書き換える場所ではありません。アプリケーションが正本上のどの識別情報を、どの目的で使うかを保持する層です。
 
-Pattern identityはfile pathに依存せず、Source Indexからauthoring sourceへ戻れます。5種類を永久的な標準Catalogへ昇格する判断は、Driverと複数TargetからEvidenceを得るまで保留します。
+パターンの識別情報はファイルのパスに依存せず、ソース索引から記述元のソースへたどれます。この5種類を恒久的な標準カタログとする判断は、ドライバーと複数の実行先で検証根拠が得られるまで保留します。
 
 ## Datasource境界 — Ready
 
-`order_entry`は、次の二つのlogical datasourceを利用します。
+`order_entry`は、次の二つの論理的なデータ接続先を利用します。
 
 ```text
 sales  -> sales_core  -> read-write
 master -> master_data -> read
 ```
 
-Datasource accessをPatternへ複製せず、Application定義を正本とします。Driverも同じ`DatabaseRequirement`を利用し、独自設定へ書き写しません。
+データ接続先へのアクセス条件はパターンへ複製せず、アプリケーションの定義を正本とします。ドライバーも同じ`DatabaseRequirement`を使い、独自の設定には書き写しません。
 
-認証情報の保存先は、この二つへ無理に組み込みません。既存認証がDatabase、LDAP、IdP、既存関数、外部API等のどこに存在しても、DriverからはAuthentication / Authorization Capabilityを通して利用します。
+認証情報の保存先を、この二つのデータ接続先に無理に組み込むことはしません。既存の認証機構がデータベース・LDAP・IdP・既存関数・外部APIなどのどこにあっても、ドライバーは認証・認可の能力を通して利用します。
 
 ## Capability Binding — Ready
 
-Issue #126 / PR #135で、`sales.order.submit`をApplication + Capabilityから明示的に解決するReferenceが成立しました。
+Issue #126・PR #135により、アプリケーションと能力の組合せから`sales.order.submit`を明示的に解決できる参照事例が成立しました。
 
 ```text
 order_entry / sales.order.submit
 ```
 
-PR #148と#149では、同じ原則をAuthentication / Authorizationにも適用しています。
+PR #148と#149では、同じ原則を認証・認可にも適用しています。
 
 ```text
 order_entry / security.authenticate
 order_entry / security.authorize
 ```
 
-Driverはfile path、Go hook名、列挙順からimplementationを推測しません。0件または複数件で一意に解決できない状態はBusiness Resultではなく、実行準備を完了できないerrorとして扱います。
+ドライバーは、ファイルパス・Goのフック名・列挙順から実装を推測しません。候補が0件または複数件で一意に特定できなければ、業務上の結果ではなく、実行準備が完了しないエラーとして扱います。
 
 ## 業務Validation — Ready
 
-Issue #125 / PR #136 / #139 / #140で、業務ValidationのCanonical rule、authoring source、最小Evaluatorが成立しています。
+Issue #125・PR #136・#139・#140では、業務上の検証規則の正本、記述元のソース、最小限の評価器が成立しています。
 
 ```tei
 validation sales.order_line.quantity_positive positive {
@@ -117,13 +117,13 @@ validation sales.order.lines.line_number_unique relation-unique {
 }
 ```
 
-評価結果は`Satisfied / NotSatisfied`として扱い、必要な入力がないなど評価そのものを完了できない状態はerrorとして分離します。
+評価結果には`Satisfied / NotSatisfied`を用います。必要な入力がないなど、評価そのものを完了できない場合は、別のエラーとして区別します。
 
-Driverは`quantity > 0`等のrule本文を専用Goコードへ複製せず、同じCanonical ValidationとEvaluator境界を利用します。
+ドライバーは`quantity > 0`などの規則の本文を専用のGoコードに複製せず、同じ正本上の検証規則と評価器の境界を利用します。
 
 ## Capability結果境界 — Ready
 
-ADR-0020 / Issue #77に従い、Capabilityを正常に実行できた場合の業務上の結果と、Invocationそのものを完了できなかった状態を分けます。
+ADR-0020・Issue #77に従い、能力を正常に呼び出せた場合の業務上の結果と、呼出しそのものを完了できなかった状態を区別します。
 
 ```text
 Business Result
@@ -134,21 +134,21 @@ Execution Error
   └─ Invocation自体を完了できない状態
 ```
 
-PR #141の実Referenceでは、少なくとも次を区別できます。
+PR #141の参照事例では、少なくとも次の結果を区別できます。
 
-- 正しいcredential → `authenticated`
-- credential不一致 → `denied`
-- account lock → `denied`
-- Database / adapter障害 → Execution Error
-- 未定義Outcome → Execution Error
+- 正しい認証情報 → `authenticated`
+- 認証情報の不一致 → `denied`
+- アカウントのロック → `denied`
+- データベースや変換器の障害 → 実行時エラー
+- 定義されていない結果 → 実行時エラー
 
-既存の`sales.order.submit`は従来どおり`output sales.order`を維持し、同じInvocation入口から扱えます。Authenticationのために既存Capabilityへ暗黙のOutcomeを追加していません。
+既存の`sales.order.submit`は、従来の`output sales.order`を維持し、同じ呼出しの入口から利用できます。認証のために、既存の能力へ暗黙の結果を追加したわけではありません。
 
 ## Authentication — Ready
 
-PR #148で、`security.authenticate`をv1 Reference Application `order_entry`から既存認証へ明示的に接続しました。
+PR #148では、`security.authenticate`を第1版の参照アプリケーション`order_entry`から既存の認証機構へ明示的に接続しました。
 
-Referenceでは、既存の利用者情報に含まれる次の意味を保持しています。
+参照事例では、既存の利用者情報に含まれる次の意味を保持しています。
 
 - user ID
 - authenticated subject identity
@@ -160,13 +160,13 @@ Referenceでは、既存の利用者情報に含まれる次の意味を保持�
 - organization
 - role
 
-これらをTEI標準User schemaへ作り替えてから利用する構造にはしていません。
+これらをTEI標準の利用者スキーマに作り直さなければ利用できない構造にはしていません。
 
-`order_entry/security.authenticate`を一意に解決でき、Source IndexからBindingのauthoring sourceへ戻れます。実行時credentialは検証境界へだけ渡し、Canonical World、Source Index、Business Result、通常Evidenceへコピーしません。
+`order_entry/security.authenticate`を一意に解決でき、ソース索引から対応付けの記述元へたどれます。実行時の認証情報は検証の境界にだけ渡し、正本のモデル・ソース索引・業務上の結果・通常の検証根拠へコピーしません。
 
 ## Authorization — Ready
 
-PR #149で、`security.authorize`を次の最小契約として実証しました。
+PR #149では、`security.authorize`について、次の最小限の契約を実証しました。
 
 ```text
 subject + action + resource
@@ -176,7 +176,7 @@ subject + action + resource
      └─ denied
 ```
 
-認可対象のresourceにはWeb画面名やURLではなく、既存のApplication Pattern identityを利用します。
+認可の対象となる資源には、ウェブ画面名やURLではなく、既存のアプリケーションパターンの識別情報を利用します。
 
 ```text
 browse  / order_entry.recent_orders
@@ -184,46 +184,46 @@ edit    / order_entry.order_record
 execute / order_entry.submit_order
 ```
 
-既存システム固有のorganization、role、ruleはadapter側で利用し、ApplicationやDriverへ公開して同じ認可条件を再実装させません。
+既存システムに固有の組織・役割・規則は変換器の側で利用します。アプリケーションやドライバーに公開して同じ認可条件を再実装させることはしません。
 
-`allowed / denied`は認可判断を正常に完了した業務上の結果です。rule store等の実行障害はExecution Errorとして分離します。
+`allowed / denied`は、認可の判断を正常に完了した際の業務上の結果です。規則の保存先などに障害があった場合は、実行時エラーとして区別します。
 
 ## 既存認証の実現方式交換 — Ready
 
-PR #151では、`order_entry/security.authenticate`という一つのApplication Bindingを変えず、その背後の実現方式だけを交換できることを確認しました。
+PR #151では、`order_entry/security.authenticate`というアプリケーション側の対応付けを維持したまま、背後の実現方式だけを交換できることを確認しました。
 
-比較したのは次の二経路です。
+比較したのは次の二つの経路です。
 
-1. 既存の利用者情報を読み、credential verificationと既存ruleを組み合わせる経路
-2. 既存関数、stored procedure、外部API等に相当する既存認証関数を呼ぶ経路
+1. 既存の利用者情報を読み、認証情報の照合と既存の規則を組み合わせる経路
+2. 既存の関数・ストアドプロシージャ・外部APIなどに相当する認証関数を呼び出す経路
 
-第二経路では、既存システム固有のreturn codeをadapterで`authenticated / denied`へ対応付けます。未対応return codeや既存関数の実行障害はExecution Errorです。
+後者では、既存システム固有の戻り値を変換器で`authenticated / denied`へ対応付けます。対応していない戻り値や既存関数の実行障害は、実行時エラーとして扱います。
 
-両経路は、同じCanonical `security.authenticate`契約、同じBinding identity、同じhookを保ち、同じauthenticated subjectを返します。
+どちらの経路も、正本上の同じ`security.authenticate`契約・同じ対応付けの識別情報・同じフックを保ち、同じ認証済み主体を返します。
 
-さらにPR #151では`reference/workspace`と`reference/world.json`を変更していません。CI #374のReference World再現性検査もGolden更新なしで成功しました。つまり、実現方式の違いをCanonical WorldやApplication上の意味へ持ち込まずに交換できています。
+PR #151では、`reference/workspace`と`reference/world.json`も変更していません。CI #374の参照用モデルの再現性検査も、期待出力を更新せずに成功しました。実現方式の違いを正本のモデルやアプリケーション上の意味へ持ち込まずに交換できたことを示しています。
 
 ## Secret境界 — Ready
 
-Reference上の認証fixtureとfunction mappingには、password平文、password hash、credential hash、token、secretを保存しません。
+参照事例の認証用試験データや関数との対応付けには、パスワードの平文・パスワードのハッシュ・認証情報のハッシュ・トークン・秘密情報を保存しません。
 
-Canonicalに存在する`security.credential`は入力の意味を表す型であり、実際のcredential値を保存する場所ではありません。
+正本上の`security.credential`は入力の意味を表す型であり、実際の認証情報の値を保存する場所ではありません。
 
-Gate Aで確認した境界は次です。
+判定段階Aでは、次の境界を確認しました。
 
-- Git管理するReferenceへ実secretを置かない
-- Canonical Worldへ実secretを置かない
-- Source Indexへ実secretを置かない
-- Business Resultへ実行時credentialをコピーしない
-- Driver Scenarioの再現性を理由にsecretを通常Evidenceへ記録しない
+- Gitで管理する参照事例に実際の秘密情報を置かない
+- 正本のモデルに実際の秘密情報を置かない
+- ソース索引に実際の秘密情報を置かない
+- 業務上の結果へ実行時の認証情報をコピーしない
+- ドライバーのシナリオの再現性を理由に、秘密情報を通常の検証根拠へ記録しない
 
-実際のsecret解決方式は、production IdP等の具体化とともにGate A以後で扱えます。
+秘密情報を実際に取得・解決する方式は、本番用IdPなどの具体化と合わせて、判定段階Aの後で扱うことができます。
 
 ## Driverがlegacy schemaへ直接依存しないための条件 — Ready
 
-Gate Aで必要なのは、Driver実装そのものではなく、Driverがlegacy schemaを知らずに認証・認可を実行できる入口が揃っていることです。
+判定段階Aで必要なのは、ドライバーの実装そのものではありません。ドライバーが旧システムのスキーマを知らなくても認証と認可を実行できる入口が揃っていることです。
 
-現在は次をRepositoryから解決できます。
+この監査時点では、次の構造をリポジトリから解決できます。
 
 ```text
 security.authenticate
@@ -239,47 +239,47 @@ security.authorize
 Application Pattern identityを使ったaction / resource
 ```
 
-organization、role、legacy return code、物理schema等をDriverのCanonicalな入力へ追加する必要はありません。
+組織・役割・旧システム固有の戻り値・物理スキーマなどを、ドライバーの正本上の入力へ追加する必要はありません。
 
-Driver #69では、この境界を実際に利用し、legacy schemaへ直接依存していないことをGate BのConformanceとして改めて確認します。
+ドライバー#69ではこの境界を実際に利用し、旧システムのスキーマへ直接依存していないことを、判定段階Bの準拠確認として改めて検証します。
 
 ## Driver開始判定
 
-**Driver #69は開始可能です。**
+**ドライバー#69の実装を開始できる状態です。**
 
-Gate Aの必須項目に独立したBlockerは残っていません。
+判定段階Aの必須項目には、独立した阻害条件は残っていません。
 
-ただし、Gate A通過はDriverが完成したことを意味しません。次は、同じApplication上の意味をUIなしで一続きに実行し、Gate Bへ進めるかを確認します。
+ただし、判定段階Aを通過したことは、ドライバーの完成を意味しません。次は、同じアプリケーション上の意味を画面なしで一連の処理として実行し、判定段階Bへ進めるかを確認します。
 
-最小Scenarioは次です。
+最小限のシナリオは次のとおりです。
 
-1. Authenticationを実行してsubjectを得る
-2. `browse`で受注一覧を扱う
-3. `record`で一件を扱う
-4. `reference`で顧客を`master_data`から解決する
-5. `header-detail`でOrderLineを扱う
-6. Canonical業務Validationを実行する
-7. Authorizationを評価する
+1. 認証を実行して主体の識別情報を得る
+2. `browse`で受注の一覧を扱う
+3. `record`で一件の受注を扱う
+4. `reference`で`master_data`から顧客を解決する
+5. `header-detail`で受注明細を扱う
+6. 正本上の業務検証規則を実行する
+7. 認可を評価する
 8. `command`で`sales.order.submit`を呼び出す
-9. Business ResultとExecution Errorを区別する
-10. 必要な場合はObservationから外部状態を確認する
+9. 業務上の結果と実行時エラーを区別する
+10. 必要に応じて観測を通じて外部の状態を確認する
 
 ## Gate A以後へDeferredするもの
 
-次は重要ですが、Gate AのBlockerにはしません。
+次の事項は重要ですが、判定段階Aの通過を妨げる条件にはしません。
 
-- named Outcomeの第一Web Target表現
-- HTTP status / UI messageへのProjection
-- production-ready IdP
-- production HA
-- Target-neutral Presentationの最終抽象
-- 5 Patternの共有Catalog化
-- `OrderLine`の物理Persistence / FK一般化
-- production transaction coordinator
-- 汎用Validation式言語 / rule engine
-- Database constraintやWeb form validatorへのValidation Projection
-- Capability Payloadの汎用Object model
-- Runtime上で複数implementationを動的に選択する汎用機構
+- 名前付きの結果を最初のウェブ実行先で表現すること
+- HTTPの状態コードや画面のメッセージへの派生表示
+- 本番運用に耐えられるIdP
+- 本番環境の高可用性
+- 実行先に依存しない表示の最終的な抽象化
+- 五つのパターンの共有カタログ化
+- `OrderLine`の物理的な永続化と外部キーの一般化
+- 本番環境のトランザクション調整機構
+- 汎用の検証式言語と規則の実行機構
+- データベースの制約やウェブフォームの検証器への検証規則の変換
+- 能力の入出力を表す汎用オブジェクトモデル
+- 実行時に複数の実装を動的に選ぶ汎用機構
 - `std.auth.*`の標準化
 
 ## 関連

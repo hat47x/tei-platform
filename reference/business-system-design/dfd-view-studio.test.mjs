@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -186,6 +187,59 @@ test('an older layout read cannot overwrite a newer DFD',async()=>{
   assert.equal($('apply').disabled,true);
 });
 
+
+test('clearing a layout picker revokes a pending load and the previous move',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false);
+  const projectionSHA256='sha256:'+createHash('sha256').update(JSON.stringify(projection)).digest('hex');
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:projection.procedureId,projectionSHA256,
+    nodes:[{kind:'step',id:'BP-04',x:210,y:75}]};
+  const bytes=Buffer.from(JSON.stringify(layout));
+  let release;
+  const loading=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>
+      resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('export').disabled,true);
+  await $('layout-file').listeners.change({target:{files:[]}});
+  release();
+  await loading;
+  assert.match($('status').textContent,/配置ファイルの選択を解除/);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('export').disabled,true);
+  assert.equal($('diagram').children.find(x=>x.dataset?.id==='BP-04').transform,'translate(40,50)');
+});
+
+test('replacing a layout disables the old candidate until the new bytes are verified',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
+  node.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false);
+  const projectionSHA256='sha256:'+createHash('sha256').update(JSON.stringify(projection)).digest('hex');
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:projection.procedureId,projectionSHA256,
+    nodes:[{kind:'step',id:'BP-04',x:210,y:75}]};
+  const bytes=Buffer.from(JSON.stringify(layout));
+  let release;
+  const loading=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>
+      resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('export').disabled,true);
+  release();
+  await loading;
+  assert.match($('status').textContent,/配置ファイルを照合して読み込みました/);
+  assert.equal($('export').disabled,false);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('diagram').children.find(x=>x.dataset?.id==='BP-04').transform,'translate(210,75)');
+});
 
 const here=dirname(fileURLToPath(import.meta.url));
 const reference=name=>JSON.parse(readFileSync(join(here,name),'utf8'));
@@ -634,4 +688,508 @@ test('inbound selection rejects non-Step destinations, duplicate IDs and stale c
   assert.equal($('semantic-export').disabled,true);
   assert.equal($('step-info-id').value,'');
   assert.equal($('step-info-to-kind').value,'step');
+});
+
+test('clearing DFD and review pickers revokes pending proposals and disables exports',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+  $('trigger-label').value='新しい参照上の起動説明';
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  assert.equal($('semantic-export').disabled,false);
+
+  await $('review-file').listeners.change({target:{files:[]}});
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.match($('status').textContent,/選択を解除/);
+
+  await input('review-file',approvalReview);
+  $('trigger-label').value='レビュー再選択後の新しい説明文';
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  await $('procedure-file').listeners.change({target:{files:[]}});
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+
+  await input('procedure-file',approvalProcedure);
+  $('trigger-label').value='手順再選択後の新しい説明文';
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-preview').hidden,false);
+  await $('dfd-file').listeners.change({target:{files:[]}});
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.equal($('export').disabled,true);
+  assert.equal($('diagram').children.length,0);
+  assert.match($('status').textContent,/選択を解除/);
+});
+
+test('DFD replacement invalidates previous proposal before async bytes arrive',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+  $('trigger-label').value='編集中の未受理候補';
+  await $('semantic-propose').listeners.click();
+  assert.equal($('semantic-export').disabled,false);
+
+  const old=Buffer.from(JSON.stringify({...approvalProjection(),procedureId:'stale-read'}));
+  const pending=$('dfd-file').listeners.change({target:{files:[{
+    arrayBuffer:async()=>{
+      await new Promise(resolve=>setTimeout(resolve,35));
+      return old.buffer.slice(old.byteOffset,old.byteOffset+old.length);
+    }
+  }]}});
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.equal($('export').disabled,true);
+  assert.equal($('diagram').children.length,0);
+
+  // A newer selection must win over a late result from the older file.
+  await input('dfd-file',approvalProjection());
+  await pending;
+  assert.equal($('export').disabled,false);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='TR-ORDER'));
+  assert.equal($('semantic-preview').hidden,true);
+  assert.equal($('semantic-export').disabled,true);
+});
+
+test('clearing a reference file defeats its outstanding asynchronous load',async()=>{
+  await input('dfd-file',approvalProjection());
+  await input('procedure-file',approvalProcedure);
+  await input('review-file',approvalReview);
+  selectTrigger();
+
+  const bytes=Buffer.from(JSON.stringify(approvalReview));
+  const pending=$('review-file').listeners.change({target:{files:[{
+    arrayBuffer:async()=>{
+      await new Promise(resolve=>setTimeout(resolve,35));
+      return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length);
+    }
+  }]}});
+  assert.equal($('semantic-propose').disabled,true);
+  await $('review-file').listeners.change({target:{files:[]}});
+  await pending;
+  assert.equal($('semantic-propose').disabled,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.match($('status').textContent,/選択を解除/);
+
+  await input('review-file',approvalReview);
+  assert.equal($('semantic-propose').disabled,false);
+});
+
+test('World clear rejects late file completion and revokes old Step details',async()=>{
+  await input('dfd-file',projection);
+  const node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:301});
+  assert.match($('details').children[0].textContent,/business.json/);
+  let release;
+  const reading=$('world-file').listeners.change({target:{files:[{
+    text:()=>new Promise(resolve=>{release=()=>resolve('{"source":"older"}');})
+  }]}});
+  assert.equal($('details').children.length,0);
+  assert.match($('details').textContent,/要素を選択すると/);
+  await $('world-file').listeners.change({target:{files:[]}});
+  release();
+  await reading;
+  assert.match($('status').textContent,/Worldの選択を解除/);
+  $('revision').value='user-supplied-revision';
+  const fresh=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  fresh.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:302});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,1,
+    'cleared World must not supply a stale navigation result');
+});
+
+test('new World wins over an invalid older read, and revision changes clear navigation',async()=>{
+  await input('dfd-file',projection);
+  let release;
+  const oldRead=$('world-file').listeners.change({target:{files:[{
+    text:()=>new Promise(resolve=>{release=()=>resolve('not-json');})
+  }]}});
+  await input('world-file',{source:'new-world'});
+  release();
+  await oldRead;
+  assert.match($('status').textContent,/Worldを読み込みました/);
+  assert.doesNotMatch($('status').textContent,/Worldを読み込めません/);
+  $('revision').value='revision-A';
+  let node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:303});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2,
+    'the new World should remain available for read-only navigation');
+  $('revision').value='revision-B';
+  $('revision').listeners.input();
+  assert.equal($('details').children.length,0);
+  assert.match($('details').textContent,/要素を選択すると/);
+  assert.match($('status').textContent,/版表示を変更/);
+  node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
+  node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:304});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal($('details').children.filter(x=>x.tag==='pre').length,2);
+});
+
+test('diagram follows explicit Function, Role, Party, Store and Trigger links in both directions',async()=>{
+  const unchanged=JSON.stringify({procedure:approvalProcedure,review:approvalReview});
+  await input('dfd-file',approvalProjection());
+  const choose=(kind,id)=>{
+    const element=$('diagram').children.find(x=>x.dataset?.kind===kind&&x.dataset.id===id);
+    assert.ok(element,'visible node '+kind+':'+id);
+    element.listeners.keydown({key:'Enter',preventDefault(){}});
+    return JSON.parse($('details').children[0].textContent);
+  };
+  const jump=(kind,id)=>{
+    const links=$('details').children.find(x=>x.tag==='div');
+    assert.ok(links,'explicit reverse links must be shown');
+    const button=links.children.find(x=>x.textContent===kind+': '+id);
+    assert.ok(button,'expected graph navigation '+kind+':'+id);
+    button.click();
+    return JSON.parse($('details').children[0].textContent);
+  };
+
+  let detail=choose('function','order_entry.order_record');
+  assert.equal(detail.authority,'reference-only');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+  detail=jump('step','APP-00');
+  assert.equal(detail.source.pointer,'/steps/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='function'&&x.id==='order_entry.order_record'));
+
+  detail=choose('business-role','sales');
+  assert.equal(detail.source.pointer,'/businessRoles/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='step'));
+  const roleStep=detail.relatedDiagramNodes.find(x=>x.kind==='step');
+  detail=jump('step',roleStep.id);
+  assert.equal(detail.authority,'reference-only');
+
+  detail=choose('party','customer');
+  assert.equal(detail.source.pointer,'/externalParties/0');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='step'&&x.id==='APP-10'));
+  detail=jump('step','APP-10');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='party'&&x.id==='customer'));
+
+  detail=choose('store','orders');
+  assert.equal(detail.semanticData,'sales.order');
+  assert.equal(detail.source.pointer,'/stores/0');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+
+  detail=choose('trigger','TR-ORDER');
+  assert.deepEqual(detail.relatedDiagramNodes,[{kind:'step',id:'APP-00'}]);
+  detail=jump('step','APP-00');
+  assert.ok(detail.relatedDiagramNodes.some(x=>x.kind==='trigger'&&x.id==='TR-ORDER'));
+  assert.equal(JSON.stringify({procedure:approvalProcedure,review:approvalReview}),unchanged);
+});
+
+test('a graph navigation button from old DFD cannot switch the newly loaded Procedure',async()=>{
+  await input('dfd-file',approvalProjection());
+  const f=$('diagram').children.find(x=>x.dataset?.kind==='function'&&x.dataset.id==='order_entry.order_record');
+  f.listeners.keydown({key:'Enter',preventDefault(){}});
+  const stale=$('details').children.find(x=>x.tag==='div').children[0];
+  await input('dfd-file',projection);
+  assert.equal($('details').children.length,0);
+  stale.click();
+  assert.equal($('details').children.length,0);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
+  assert.equal($('semantic-preview').hidden,true);
+});
+test('projection review questions and unreferenced functions display their Source without granting authority',async()=>{
+  const warnings={...projection,diagnostics:[
+    {code:'DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED',severity:'review-question',
+      message:'Pattern "unused.function" is not referenced by this Procedure',
+      source:{file:'procedure-review.json',pointer:'/application'}},
+    {code:'DFD_TRIGGER_CONSISTENCY_REVIEW',severity:'warning',
+      message:'Human review required <script>alert(1)</script>',
+      source:{file:'review.json',pointer:'/triggers/0'}}
+  ],unreferencedPatterns:['unused.function']};
+  await input('dfd-file',warnings);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.equal($('export').disabled,false);
+  const displayed=$('diagnostics').children.map(x=>x.textContent).join('\n');
+  assert.match(displayed,/DFD_PROCEDURE_SCOPE_PATTERN_NOT_REFERENCED/);
+  assert.match(displayed,/procedure-review.json#\/application/);
+  assert.match(displayed,/review.json#\/triggers\/0/);
+  assert.match(displayed,/review-question 1件/);
+  assert.match(displayed,/Application全体の未使用を意味しない/);
+  assert.match(displayed,/<script>alert\(1\)<\/script>/,
+    'diagnostic Source text must remain literal, never HTML');
+  assert.equal($('diagnostics').children.every(x=>x.tag==='p'),true);
+});
+
+test('error diagnostics retain Source explanation while rejecting rendering and all exports',async()=>{
+  const invalid={...projection,diagnostics:[
+    {code:'DFD_TRIGGER_TARGET_MISSING',severity:'error',
+      message:'target Step missing',source:{file:'review.json',pointer:'/triggers/0/targetStep'}}
+  ]};
+  await input('dfd-file',invalid);
+  assert.match($('status').textContent,/エラー診断を確認/);
+  assert.equal($('diagram').children.length,0);
+  assert.equal($('export').disabled,true);
+  assert.equal($('semantic-export').disabled,true);
+  assert.equal($('semantic-propose').disabled,true);
+  let displayed=$('diagnostics').children.map(x=>x.textContent).join('\n');
+  assert.match(displayed,/DFD_TRIGGER_TARGET_MISSING/);
+  assert.match(displayed,/review.json#\/triggers\/0\/targetStep/);
+
+  await input('dfd-file',projection);
+  assert.equal($('export').disabled,false);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),
+    /DFD_TRIGGER_TARGET_MISSING/);
+  await $('dfd-file').listeners.change({target:{files:[]}});
+  assert.equal($('export').disabled,true);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),
+    /DFD_TRIGGER_TARGET_MISSING/);
+});
+
+test('late failed projection cannot restore diagnostics after a newer DFD',async()=>{
+  const old=Buffer.from(JSON.stringify({...projection,diagnostics:[
+    {code:'STALE',severity:'error',message:'from an old file',
+      source:{file:'old.json',pointer:'/old'}}
+  ]}));
+  let release;
+  const pending=$('dfd-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(
+      old.buffer.slice(old.byteOffset,old.byteOffset+old.length));})
+  }]}});
+  await input('dfd-file',projection);
+  release();
+  await pending;
+  assert.equal($('export').disabled,false);
+  assert.doesNotMatch($('diagnostics').children.map(x=>x.textContent).join('\n'),/STALE/);
+});
+
+test('explicit manual-Step Data and Validation permit reverse source-only navigation',async()=>{
+  const p=approvalProjection();
+  const manual=p.steps.find(s=>s.id==='APP-10');
+  assert.equal(manual.noApplicationFunction,true);
+  manual.explicitMeaning=[
+    {kind:'semantic-data',id:'sales.order',status:'resolved-id-not-accepted',
+      source:{file:'authoring.json',pointer:'/steps/1/data/0'}},
+    {kind:'semantic-validation',id:'sales.order.quantity_positive',
+      status:'resolved-id-not-accepted',
+      source:{file:'authoring.json',pointer:'/steps/1/validations/0'}}
+  ];
+  await input('dfd-file',p);
+  const choose=(kind,id)=>{
+    const n=$('diagram').children.find(x=>x.dataset?.kind===kind&&x.dataset.id===id);
+    assert.ok(n);
+    n.listeners.keydown({key:'Enter',preventDefault(){}});
+  };
+  const click=(title)=>{
+    const button=$('details').children.flatMap(x=>x.children||[])
+      .find(x=>x.tag==='button'&&x.textContent===title);
+    assert.ok(button,'missing reference-only link '+title);
+    button.click();
+  };
+  choose('step','APP-10');
+  click('semantic-validation: sales.order.quantity_positive');
+  let detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal(detail.sourceIndexStatus,'not-verified');
+  assert.equal(detail.worldRevisionStatus,'unverified-no-model-revision-binding');
+  assert.equal(detail.matches.length,1);
+  assert.equal(detail.matches[0].relation,'explicit-business-semantic-reference');
+  assert.equal(detail.matches[0].source.pointer,'/steps/1/validations/0');
+  assert.equal(detail.matches[0].status,'resolved-id-not-accepted');
+  assert.equal($('semantic-propose').disabled,true);
+  click('step: APP-10');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.kind,'step');
+  click('semantic-data: sales.order');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.ok(detail.matches.some(m=>m.origin.kind==='step'&&m.origin.id==='APP-10'));
+  assert.ok(detail.matches.some(m=>m.origin.kind==='store'&&m.origin.id==='orders'));
+  click('store: orders');
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.semanticData,'sales.order');
+});
+
+test('Function-derived Data stays distinct from explicit and is never accepted authority',async()=>{
+  const p=approvalProjection();
+  const step=p.steps.find(s=>s.id==='APP-00');
+  step.functionRefs[0].data='sales.order';
+  step.functionRefs[0].relation='sales.order.lines';
+  step.functionRefs[0].capability='security.authorize';
+  await input('dfd-file',p);
+  const functionNode=$('diagram').children.find(x=>x.dataset?.kind==='function'&&
+    x.dataset.id==='order_entry.order_record');
+  functionNode.listeners.keydown({key:'Enter',preventDefault(){}});
+  const link=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='semantic-data: sales.order');
+  assert.ok(link);
+  link.click();
+  const detail=JSON.parse($('details').children[0].textContent);
+  const derived=detail.matches.find(x=>x.origin.id==='APP-00');
+  assert.equal(derived.relation,'pattern-derived-reference');
+  assert.equal(derived.status,'derived-not-authority');
+  assert.equal(derived.via.id,'order_entry.order_record');
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal($('semantic-propose').disabled,true);
+});
+
+test('stale meaning navigation and back links are revoked when projection changes',async()=>{
+  const p=approvalProjection();
+  p.steps[0].explicitMeaning=[{kind:'semantic-data',id:'sales.order',
+    status:'resolved-id-not-accepted',source:{file:'fixture.json',pointer:'/steps/0/data/0'}}];
+  await input('dfd-file',p);
+  const step=$('diagram').children.find(x=>x.dataset?.id==='APP-00'&&x.dataset.kind==='step');
+  step.listeners.keydown({key:'Enter',preventDefault(){}});
+  const oldMeaningButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='semantic-data: sales.order');
+  assert.ok(oldMeaningButton);
+  oldMeaningButton.click();
+  const oldBackButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.textContent==='step: APP-00');
+  assert.ok(oldBackButton);
+  await input('dfd-file',projection);
+  assert.equal($('details').children.length,0);
+  oldMeaningButton.click();
+  oldBackButton.click();
+  assert.equal($('details').children.length,0);
+  assert.equal($('semantic-propose').disabled,true);
+  assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
+});
+
+
+test('real Go projection crosses browser view boundary without elevating Source acceptance',
+  {skip:!process.env.TEI_DFD_REAL_GO_DIRECT_PROJECTION||
+    !process.env.TEI_DFD_REAL_GO_APPROVAL_PROJECTION},async()=>{
+  await import('./dfd-view-studio.mjs');
+  const fromGo=JSON.parse(readFileSync(process.env.TEI_DFD_REAL_GO_DIRECT_PROJECTION,'utf8'));
+  const approval=JSON.parse(readFileSync(process.env.TEI_DFD_REAL_GO_APPROVAL_PROJECTION,'utf8'));
+  assert.equal(fromGo.schemaVersion,'business-dfd-projection-v0');
+  assert.equal(fromGo.authority,'derived-read-only');
+  assert.equal(fromGo.canonicalProcedureUsed,false);
+  assert.equal(fromGo.roleAuthorizationBinding,'not-inferred');
+  assert.ok(fromGo.steps.some(x=>x.id==='BP-05'&&x.noApplicationFunction&&
+    x.functionRefs.length===0&&x.explicitMeaning.length===2));
+  const observed=JSON.stringify([fromGo,approval]);
+  await input('dfd-file',fromGo);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  let step=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset?.id==='BP-05');
+  assert.ok(step,'real Go direct Validation step was not rendered');
+  step.listeners.keydown({key:'Enter',preventDefault(){}});
+  let detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.source.pointer,'/steps/5');
+  assert.equal(detail.functionRefs.length,0);
+  assert.equal(detail.explicitMeaning.length,2);
+  const validation=detail.explicitMeaning[0];
+  assert.equal(validation.kind,'semantic-validation');
+  assert.equal(validation.authority,'procedure-reference-only');
+  assert.equal(validation.status,'resolved-id-not-accepted');
+  assert.equal(validation.source.pointer,'/steps/5/validations/0');
+  const validationButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent===validation.kind+': '+validation.id);
+  assert.ok(validationButton,'real Go produced validation must navigate in view');
+  validationButton.click();
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal(detail.sourceIndexStatus,'not-verified');
+  assert.equal(detail.worldRevisionStatus,'unverified-no-model-revision-binding');
+  assert.equal(detail.matches.length,1);
+  assert.equal(detail.matches[0].source.pointer,'/steps/5/validations/0');
+  assert.equal(detail.matches[0].status,'resolved-id-not-accepted');
+  assert.equal($('semantic-propose').disabled,true);
+  const back=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent==='step: BP-05');
+  assert.ok(back);
+  back.click();
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-05');
+
+  await input('dfd-file',approval);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.equal(approval.roleAuthorizationBinding,'not-inferred');
+  assert.deepEqual([...new Set(approval.triggers.map(x=>x.kind))].sort(),
+    ['event','human','schedule']);
+  assert.ok(approval.triggers.every(x=>x.runtimeBinding==='unbound'));
+  assert.ok(approval.flows.some(x=>x.kind==='exception'&&x.condition));
+  assert.ok(approval.steps.some(x=>x.noApplicationFunction));
+  const store=$('diagram').children.find(x=>x.dataset?.kind==='store'&&x.dataset?.id==='orders');
+  assert.ok(store);
+  store.listeners.keydown({key:'Enter',preventDefault(){}});
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.semanticData,'sales.order');
+  assert.equal(detail.source.pointer,'/stores/0');
+  const dataButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent==='semantic-data: sales.order');
+  assert.ok(dataButton);
+  dataButton.click();
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.acceptedMeaning,false);
+  assert.ok(detail.matches.some(x=>x.origin.kind==='store'&&x.origin.id==='orders'));
+  assert.ok(detail.matches.some(x=>x.origin.kind==='step'&&x.via?.kind==='function'),
+    'real Go-derived Data must have explicitly linked Function origin');
+  const oldBack=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent==='store: orders');
+  assert.ok(oldBack);
+  await input('dfd-file',fromGo);
+  oldBack.click();
+  assert.equal($('details').children.length,0,
+    'stale Go-projection reverse navigation cannot restore old Source');
+  assert.equal(JSON.stringify([fromGo,approval]),observed,
+    'read-only view must not mutate real Go producer outputs');
+});
+
+test('drag started before layout apply cannot propose a move against replacement layout',async()=>{
+  await input('dfd-file',projection);
+  const n=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  n.listeners.pointerdown({button:0,pointerId:91,clientX:10,clientY:10});
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:'orders.review',projectionSHA256:'sha256:invalid',nodes:[]};
+  // Switching the picker invalidates the old layout and drag synchronously,
+  // even if the new file has not finished reading.
+  let release;
+  const bytes=Buffer.from(JSON.stringify(layout));
+  const waiting=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(
+      bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  $('diagram').listeners.pointerup({pointerId:91,clientX:500,clientY:400});
+  assert.equal($('apply').disabled,true);
+  release();await waiting;
+  assert.equal($('apply').disabled,true);
+});
+
+// A delayed event from an old SVG must not act on a replacement projection,
+// even when the new projection reuses the same reference-local Step ID.
+test('detached SVG events cannot select or move a replacement DFD',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.ok(old);
+  await input('dfd-file',{...projection});
+  assert.equal($('details').children.length,0);
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:121,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:121,clientX:400,clientY:300});
+  assert.equal($('details').children.length,0);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('semantic-propose').disabled,true);
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  live.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+});
+
+test('SVG nodes retired by selection re-render cannot propose a move',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:122,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:122,clientX:400,clientY:300});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  // Source navigation can complete asynchronously after selection began.
+  // Only a node from the completed re-render should handle fresh input.
+  await new Promise(resolve=>setTimeout(resolve,30));
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.notEqual(live,old,'selection should retire the previous SVG node');
+  live.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false,'current SVG node retains keyboard placement');
 });

@@ -30,11 +30,14 @@ type PinnedLinuxProcess struct {
 	digest            string
 	signatureRef      string
 	signatureVerified bool
+	signerTrust       *LinuxHostSignerTrust
+	signerEpoch       uint64
 	image             *os.File
 	transport         StdioProcessLauncher
 }
 
 var _ ProcessLauncher = (*PinnedLinuxProcess)(nil)
+var _ SandboxedProcessRunner = (*PinnedLinuxProcess)(nil)
 var _ ArtifactVerifier = (*PinnedLinuxProcess)(nil)
 
 // boundProcessImage marks a runtime-held image; Registry requires the exact
@@ -142,6 +145,9 @@ func (p *PinnedLinuxProcess) Verify(ctx context.Context, identity plugin.Identit
 	if artifact.SignatureRef != p.signatureRef {
 		return ArtifactVerification{}, errors.New("plugin signature reference differs from pinned signature evidence")
 	}
+	if p.signatureVerified && !p.signerTrust.current(p.signatureRef, p.signerEpoch) {
+		return ArtifactVerification{}, errors.New("Host signer trust was revoked or changed")
+	}
 	return ArtifactVerification{
 		VerifierID:        "tei-linux-pinned-process-sha256",
 		DigestVerified:    true,
@@ -158,7 +164,23 @@ func (p *PinnedLinuxProcess) Invoke(ctx context.Context, command ProcessCommand,
 	if p.image == nil || command.Executable != p.source {
 		return Response{}, errors.New("process executable is not the pinned image")
 	}
-	return p.transport.invokeExecutable(ctx, command, request, "/proc/self/fd/3", []*os.File{p.image})
+	// 署名済み実行内容は、信頼集合の読取りロックを子プロセスの
+	// Startが完了するまで保持する。失効と起動開始をHost内で直列化し、
+	// すでに起動した子プロセスのWait中は鍵の失効を妨げない。
+	var gate processStartGate
+	if p.signatureVerified {
+		gate = func(start func() error) error {
+			return p.signerTrust.startIfCurrent(p.signatureRef, p.signerEpoch, start)
+		}
+	}
+	return p.transport.invokeExecutableWithStartGate(ctx, command, request, "/proc/self/fd/3", []*os.File{p.image}, gate)
+}
+
+// InvokeSandboxedはHostSandboxLauncherによってホスト側の制約を適用した
+// 後でのみ呼び出す実行トランスポートである。この型自身はOSの隔離を行わない。
+// 実行内容の固定と子プロセス環境変数の明示指定には通常のInvokeを利用する。
+func (p *PinnedLinuxProcess) InvokeSandboxed(ctx context.Context, command ProcessCommand, request Request) (Response, error) {
+	return p.Invoke(ctx, command, request)
 }
 
 // Closeは子プロセスの実行完了を待って、保持した実行内容を解放する。

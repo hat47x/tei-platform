@@ -1,6 +1,6 @@
 # TEIの実装状況
 
-- 整理日: 2026-10-12
+- 整理日: 2026-10-13
 - 開発段階: **参照実装を使った実験と検証**
 - 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
@@ -14,12 +14,16 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 | GitHub Actionsによるコード検証 | 2026年10月12日に自動検査を再開。固定した`main`コミット`4fbcd92003f04254ef25882deec5549872a3c58e`で、コードの整形、静的解析、Goの全試験、参照用作業領域の検証がすべて成功。**製品の実行先や外部データベースの検証とは別** | [実行 #38221407786](https://github.com/hat47x/tei-platform/actions/runs/38221407786)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、入力元索引の作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子関係にある明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
+| プラグイン合成基盤 | 契約と利用範囲による提供元の選択、推移的な依存宣言の鮮度、呼出しの世代保持、逆順解放を扱うReferenceを実装。構成案の一括診断と、未検証の適合証拠参照との照合も実装。対象コミットでの全体健全性とRace Detectorによる試験を確認 | [KernelのReference](../reference/composition-kernel/README.md)、[資格記録 #1233](https://github.com/hat47x/tei-platform/pull/1233)、[二Applicationの資格記録 #1622](https://github.com/hat47x/tei-platform/pull/1622) |
+| プラグイン間の項目対応 | 既存の登録簿を使い、局所名、型・単位・多重度、出力から入力への順序を検査する参照実装を追加。恒等のスカラー試料を投影し、空文字・null・欠損・取得不能・未確定を区別する。製品の入力形式や実行時の対応付けは未確定 | [項目対応の参照実装](../reference/composition-io-mapping/README.md)、[資格記録 #1667](https://github.com/hat47x/tei-platform/pull/1667) |
 | 判定段階A | **合格**。アプリケーションの型からドライバーへ渡す意味上の境界を確認した過去の判定 | [段階Aの判定記録](../plan/gate/GATE_A_READINESS_AUDIT.md) |
 | 判定段階B | **合格**。2026年9月19日に固定した版`e5231839a5dcc62cce1181a2731fcb7c70d16736`について、リポジトリ上の再現性、生成物、PostgreSQL実環境を同じ実行で確認 | [段階Bの判定記録](../plan/gate/GATE_B_READINESS_AUDIT.md)、[実行手順](../plan/gate/GATE_B_EVIDENCE_RUNBOOK.md) |
 | 判定段階Cと最初のウェブ実行先 | **合格**。2026年9月19日に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/gate/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/gate/GATE_C_EVIDENCE_CONTRACT.md) |
 | 共通受理と二つ目のアプリケーション | `repair_intake`の意味定義の一部を、明示的な受理を経て参照用作業領域へ取り込む経路などを検討・実装。受理済みであることと、実行先で動作を確認済みであることは別 | [参照用作業領域の案内](../reference/README.md)、[実装の構成](architecture.md) |
 
 判定段階A・B・Cの「合格」は、**各判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を、そのまま新しい変更の検証根拠にはしません。
+
+合成基盤と[実Processとの接続Reference](../tools/reference-composition-process-bridge/README.md)では、実際に構築した成果物と子プロセスの応答を照合します。呼出しごとに起動するProcessの経路切替と、試験用のHostガードを確認する範囲です。常駐サービスの無停止更新、実配備先の現在権限、製品Consumerからの旧Resolver撤去は未完了で、[合成Kernelの移行判定](../plan/gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)と[課題 #1223](https://github.com/hat47x/tei-platform/issues/1223)で追跡します。入出力の一般的な対応付けは[評価中の設計候補](../plan/design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)で、正本の項目定義、集合の縮約、演算子との接続が残ります。
 
 ## 未完成または未検証のこと
 

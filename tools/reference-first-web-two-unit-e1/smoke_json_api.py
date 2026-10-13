@@ -10,11 +10,15 @@ import pathlib
 import re
 import subprocess
 import sys
+# Reading local preflight helpers must not modify the checkout.
+sys.dont_write_bytecode = True
 import tempfile
 import time
 import urllib.error
 import urllib.request
 import socket
+
+from launch_verified_api import launch_verified_api
 
 
 def free_port():
@@ -65,6 +69,14 @@ def main():
     measurement = json.loads((directory / "measurement.json").read_text("utf-8"))
     if measurement["browserTransport"] != "same-origin-json" or measurement["applicationId"] != "order_entry":
         raise SystemExit("unexpected source/transport identity")
+    frozen_api = measurement.get("apiWorldMode") == "digest-bound-frozen-world"
+    if measurement.get("apiWorldMode") not in (None, "digest-bound-frozen-world"):
+        raise SystemExit("unsupported API World mode")
+    if frozen_api:
+        # Reuse the same diagnostic artifact check immediately before HTTP
+        # invocation. It does not authorize deployment or the fixture Host.
+        from verify_frozen_unit_pair import preflight
+        preflight(directory)
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     if revision != measurement["browserAndApiSourceRevision"]:
         raise SystemExit("built revision does not match checkout")
@@ -88,20 +100,28 @@ def main():
         api_process = None
         try:
             with (temp / "api.log").open("wb") as logfile:
-                api_process = boot([
-                    str(directory / "api/order-entry"),
-                    "-workspace", str(repo / "reference/workspace"),
-                    "-legacy-users", str(repo / "reference/legacy-auth/users.json"),
-                    "-legacy-authorization", str(repo / "reference/legacy-auth/authorization.json"),
-                    "-application", "order_entry", "-baseline-id", measurement["handoverBaselineId"],
-                    "-baseline-revision", measurement["baselineRepositoryRevision"],
-                    "-target-revision", revision, "-listen", f"127.0.0.1:{api_port}",
-                ], logfile)
+                # The prior preflight and path hash are necessary but a file
+                # at that pathname could change before exec. Recheck its
+                # bytes while copying them into a Linux sealed executable
+                # snapshot; launch *those exact bytes*, not the pathname.
+                api_process = launch_verified_api(
+                    directory / "api/order-entry",
+                    [
+                        "-workspace", str(directory / "api") if frozen_api else str(repo / "reference/workspace"),
+                        "-legacy-users", str(repo / "reference/legacy-auth/users.json"),
+                        "-legacy-authorization", str(repo / "reference/legacy-auth/authorization.json"),
+                        "-application", "order_entry", "-baseline-id", measurement["handoverBaselineId"],
+                        "-baseline-revision", measurement["baselineRepositoryRevision"],
+                        "-target-revision", revision, "-listen", f"127.0.0.1:{api_port}",
+                    ],
+                    measurement["apiSHA256"], measurement["apiBytes"], logfile,
+                )
                 wait_for(api + "/manifest.json", api_process)
             with (temp / "browser.log").open("wb") as logfile:
                 browser_process = boot([
                     "node", "tools/reference-first-web-two-unit-e1/browser-host.mjs",
                     str(directory / "browser"), api,
+                    str(directory / "measurement.json"),
                 ], logfile)
                 browser = None
                 for _ in range(100):
@@ -183,6 +203,7 @@ def main():
     receipt = {
         "kind": "diagnostic-static-browser-to-api-json-http",
         "sourceRevision": revision,
+        "frozenWorldPairPreflightVerified": frozen_api,
         "browserStaticAndScriptMatchedDigests": True,
         "jsonApiBusinessStagesMatchedDirect": True,
         "originAndMediaTypeDenied": True,

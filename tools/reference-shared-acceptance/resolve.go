@@ -89,6 +89,12 @@ func indexWorld(s snapshot) worldIndex {
 				idx.relations[r.ID] = true
 				idx.subjects[string(r.ID)] = true
 			}
+			for _, k := range d.CandidateKeys {
+				idx.subjects[string(k.ID)] = true
+			}
+			for _, fd := range d.FunctionalDependencies {
+				idx.subjects[string(fd.ID)] = true
+			}
 		}
 	}
 	for _, app := range world.Applications {
@@ -130,6 +136,7 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 
 	planned := map[string]string{}
 	seenNamespaces := map[core.CanonicalID]bool{}
+	seenBusinessRuleIDs := map[string]bool{}
 	for _, op := range c.Delta {
 		key := operationKey(op)
 		diag := func(code, format string, args ...any) {
@@ -208,6 +215,24 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			}
 			if idx.relations[core.CanonicalID(op.AddRelation.ID)] {
 				diag("RELATION_ALREADY_EXISTS", "relation %s は既に存在します", op.AddRelation.ID)
+			}
+
+		case opAddCandidateKey, opAddFunctionalDependency:
+			data, id, attrs := businessRuleOperationSubject(op)
+			if !idx.dataIDs[core.CanonicalID(data)] {
+				diag("DATA_NOT_FOUND", "logical business rule requires an existing Data %s", data)
+			}
+			if idx.subjects[id] || seenBusinessRuleIDs[id] {
+				diag("BUSINESS_RULE_ID_ALREADY_EXISTS", "business rule identity %s already exists or is repeated", id)
+			}
+			seenBusinessRuleIDs[id] = true
+			for _, attr := range attrs {
+				if !idx.attributes[core.CanonicalID(attr)] {
+					diag("ATTRIBUTE_NOT_FOUND", "business rule %s references unknown attribute %s", id, attr)
+				}
+			}
+			if _, ok := s.loaded.Sources["semantic-data:"+data]; !ok {
+				diag("DATA_SOURCE_NOT_FOUND", "no authoritative source identifies Data %s", data)
 			}
 
 		case opAddApplication:

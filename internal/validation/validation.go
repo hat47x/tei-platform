@@ -35,6 +35,7 @@ func Validate(w ir.World) []Diagnostic {
 	out := validateApplicationPatterns(w)
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
+	out = append(out, validateSemanticBusinessRules(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
 	out = append(out, validateCapabilityDataEffects(w)...)
 	out = append(out, validateBusinessValidationReferences(w)...)
@@ -79,13 +80,19 @@ func Validate(w ir.World) []Diagnostic {
 		if err := plugin.ValidateUniqueExternalRequirements(p.External); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_EXTERNAL_REQUIREMENT", "plugin %s: %v", p.ID, err))
 		}
-		if err := plugin.ValidateRequirements(p.Requires); err != nil {
+		if err := plugin.ValidateUniqueRequirements(p.Requires); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
+		if err := plugin.ValidateRequirementValues(p.Requires); err != nil {
+			out = append(out, errd("INVALID_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
 		}
 		if err := plugin.ValidateUniqueCapabilities(p.Provides); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s: %v", p.ID, err))
 		}
 		for _, c := range p.Provides {
+			if err := plugin.ValidateCapabilityID(c.ID); err != nil {
+				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_ID", "plugin %s: %v", p.ID, err))
+			}
 			if !c.Kind.Valid() {
 				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s", p.ID, c.ID, c.Kind))
 			}
@@ -142,8 +149,11 @@ func Validate(w ir.World) []Diagnostic {
 		if _, err := plugin.ParseVersion(b.Version); err != nil {
 			out = append(out, errd("INVALID_BUNDLE_VERSION", "bundle %s: %v", b.ID, err))
 		}
-		if err := plugin.ValidateRequirements(b.Plugins); err != nil {
+		if err := plugin.ValidateUniqueRequirements(b.Plugins); err != nil {
 			out = append(out, errd("DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
+		}
+		if err := plugin.ValidateRequirementValues(b.Plugins); err != nil {
+			out = append(out, errd("INVALID_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
 		}
 	}
 
@@ -809,6 +819,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_PLUGIN_REQUIREMENT", "environment %s requires plugin %s more than once", e.ID, req.ID))
 			}
 			seenPluginReq[req.ID] = struct{}{}
+			parsed, err := core.ParseCanonicalID(string(req.ID))
+			if err != nil || parsed != req.ID {
+				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_ID", "environment %s requires invalid plugin id %q", e.ID, req.ID))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_VERSION", "environment %s plugin %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}
@@ -819,6 +833,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_BUNDLE_REQUIREMENT", "environment %s requires bundle %s more than once", e.ID, req.ID))
 			}
 			seenBundleReq[req.ID] = struct{}{}
+			parsed, err := core.ParseCanonicalID(string(req.ID))
+			if err != nil || parsed != req.ID {
+				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_ID", "environment %s requires invalid bundle id %q", e.ID, req.ID))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_VERSION", "environment %s bundle %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}

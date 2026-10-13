@@ -88,6 +88,16 @@ func InspectIndexedProcedureSnapshot(worldBytes, procedureBytes, factsBytes []by
 	if len(selected) != 1 || selected[0].Role != sourceindex.RoleAuthoring || selected[0].ArtifactPath != path {
 		return unresolved("PROCEDURE_SOURCE_ANCHOR_UNRESOLVED", "exactly one matching authoring reference is required, without a competing definition")
 	}
+	// Index.Validate checks the range's byte offsets and line/column metadata,
+	// not whether the range locates the declared Procedure identity. Do not
+	// report an unrelated but structurally valid range as a source anchor.
+	id, start, end, located := procedureIDValueSpan(procedureBytes)
+	if !located || id != fixture.Procedure.ID {
+		return unresolved("PROCEDURE_SOURCE_ID_ANCHOR_UNRESOLVED", "Procedure ID is absent or ambiguous in the supplied JSON source")
+	}
+	if !procedureIDCoveredByReference(selected[0].Range, start, end) {
+		return unresolved("PROCEDURE_SOURCE_ANCHOR_RANGE_MISMATCH", "indexed authoring range does not locate the actual procedure.id JSON value")
+	}
 	var artifact sourceindex.Artifact
 	for _, entry := range idx.Artifacts {
 		if entry.Path == path {

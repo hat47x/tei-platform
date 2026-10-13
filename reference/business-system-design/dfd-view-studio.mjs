@@ -15,8 +15,10 @@ const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null,
   dfdFile:null, procedureFile:null, reviewFile:null, procedure:null,review:null,
   procedureHash:null,reviewHash:null,semanticPreview:null};
 let selectionGeneration=0;
+let renderGeneration=0;
 let dfdLoadGeneration=0;
 let layoutLoadGeneration=0;
+let worldLoadGeneration=0;
 const semanticLoadGeneration={procedure:0,review:0};
 let semanticTextGeneration=0;
 function invalidateSemanticPreview(){
@@ -99,6 +101,39 @@ function clearSelection(){
   $('details').textContent='要素を選択すると参照元を表示します。';
 }
 function status(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error)}
+function renderProjectionDiagnostics(dfd){
+  const container=$('diagnostics');
+  container.replaceChildren();
+  if(!dfd){
+    container.textContent='DFD投影を読み込むと、出典位置付きの診断と未参照Function候補を表示します。';
+    return;
+  }
+  const entries=dfd.diagnostics;
+  const summary=document.createElement('p');
+  const errors=entries.filter(d=>d.severity==='error').length;
+  const questions=entries.filter(d=>d.severity==='review-question').length;
+  summary.textContent='投影診断 '+entries.length+'件（error '+errors+'件、review-question '+questions+
+    '件）。元ファイルと同一revisionの認証は行っていません。';
+  container.append(summary);
+  for(const d of entries){
+    const item=document.createElement('p');
+    const source=d.source&&typeof d.source.file==='string'&&
+      typeof d.source.pointer==='string'
+      ? d.source.file+'#'+d.source.pointer
+      : 'Source位置未提供（未検証）';
+    // Keep all Source-originated text as plain text, never as HTML.
+    item.textContent='['+String(d.severity||'unknown')+'] '+String(d.code||'UNKNOWN')+
+      ' — '+String(d.message||'')+' ／ Source: '+source;
+    container.append(item);
+  }
+  if(Array.isArray(dfd.unreferencedPatterns)&&dfd.unreferencedPatterns.length){
+    const item=document.createElement('p');
+    item.textContent='このProcedureから明示参照されていないFunction候補（Application全体の未使用を意味しない）: '+
+      dfd.unreferencedPatterns.join(', ');
+    container.append(item);
+  }
+}
+
 function nodes() {
   const d = state.dfd;
   if(!d) return [];
@@ -115,6 +150,10 @@ function nodes() {
 const key = (kind,id)=>JSON.stringify([kind,id]);
 function positionMap(){return new Map((state.layout?.nodes||[]).map(p=>[key(p.kind,p.id),p]));}
 function render() {
+  // An SVG element may still have a queued event after a re-render.
+  // A detached node must never select or move a replacement projection.
+  const generation=++renderGeneration;
+  const projection=state.dfd;
   const diagram=$('diagram');diagram.replaceChildren();
   if(!state.dfd){$('export').disabled=true;return;}
   const all=nodes(), assigned=positionMap(), centers=new Map();
@@ -174,8 +213,12 @@ function render() {
     g.append(svg('rect',{width:190,height:56,rx:8}));
     const label=svg('text',{x:10,y:22});label.textContent=(node.label||'').slice(0,27);g.append(label);
     const note=svg('text',{x:10,y:43});note.textContent=node.kind;g.append(note);
-    g.addEventListener('pointerdown',ev=>{if(ev.button!==0)return; selectNode(node);dragStart(ev,node);});
+    g.addEventListener('pointerdown',ev=>{
+      if(ev.button!==0||generation!==renderGeneration||state.dfd!==projection)return;
+      selectNode(node);dragStart(ev,node);
+    });
     g.addEventListener('keydown',ev=>{
+      if(generation!==renderGeneration||state.dfd!==projection)return;
       if(ev.key==='Enter'||ev.key===' '){
         ev.preventDefault();selectNode(node);return;
       }
@@ -189,8 +232,127 @@ function render() {
   });
   $('export').disabled=!state.layout;
 }
+// Links are derived exclusively from explicit edges in the displayed projection.
+ // Neither the link nor its label asserts a canonical or accepted relationship.
+function relatedDiagramNodes(d,node) {
+  const all=nodes();
+  const existing=new Set(all.map(item=>key(item.kind,item.id)));
+  const seen=new Set();
+  const related=[];
+  function add(kind,id){
+    const k=key(kind,id);
+    if(k!==key(node.kind,node.id)&&existing.has(k)&&!seen.has(k)){
+      seen.add(k);related.push({kind,id});
+    }
+  }
+  const info=d.information||{};
+  if(node.kind==='step'){
+    const step=d.steps.find(x=>x.id===node.id);
+    for(const ref of step?.functionRefs||[])add('function',ref.id);
+    for(const r of info.responsibilities||[])if(r.step===node.id)add('business-role',r.role);
+    for(const trigger of d.triggers||[])if(trigger.targetStep===node.id)add('trigger',trigger.id);
+    for(const flow of d.flows||[]){
+      if(flow.from===node.id)add('step',flow.to);
+      if(flow.to===node.id)add('step',flow.from);
+    }
+  }else if(node.kind==='function'){
+    for(const step of d.steps)if((step.functionRefs||[]).some(ref=>ref.id===node.id))
+      add('step',step.id);
+  }else if(node.kind==='business-role'){
+    for(const r of info.responsibilities||[])if(r.role===node.id)add('step',r.step);
+  }else if(node.kind==='trigger'){
+    const trigger=d.triggers.find(t=>t.id===node.id);
+    if(trigger)add('step',trigger.targetStep);
+  }
+  for(const flow of info.informationFlows||[]){
+    if(flow.from.kind===node.kind&&flow.from.id===node.id)
+      add(flow.to.kind,flow.to.id);
+    if(flow.to.kind===node.kind&&flow.to.id===node.id)
+      add(flow.from.kind,flow.from.id);
+  }
+  return related;
+}
+function diagramReferenceSource(d,node){
+  const info=d.information||{};
+  const refs={'step':d.steps,'trigger':d.triggers,
+    'business-role':info.roles,'party':info.externalParties,'store':info.stores};
+  return (refs[node.kind]||[]).find(x=>x.id===node.id)||null;
+}
+// These references are explicit in the producer Projection; they are not
+// accepted Source Index entries, runtime bindings or evidence of DB access.
+const semanticKinds=new Set(['semantic-data','semantic-relation',
+  'semantic-validation','semantic-capability']);
+function meaningReferences(d) {
+  const links=[];
+  for(const step of d.steps){
+    for(const direct of step.explicitMeaning||[]){
+      if(!semanticKinds.has(direct.kind)||!direct.id)continue;
+      links.push({kind:direct.kind,id:direct.id,origin:{kind:'step',id:step.id},
+        relation:'explicit-business-semantic-reference',
+        status:direct.status,source:direct.source||step.source||null});
+    }
+    for(const fn of step.functionRefs||[]){
+      for(const [field,kind] of [
+        ['data','semantic-data'],['relation','semantic-relation'],
+        ['capability','semantic-capability']
+      ]){
+        if(!fn[field])continue;
+        links.push({kind,id:fn[field],origin:{kind:'step',id:step.id},
+          via:{kind:'function',id:fn.id},relation:'pattern-derived-reference',
+          status:fn.status==='resolved'?'derived-not-authority':'unresolved',
+          source:step.source||null});
+      }
+    }
+  }
+  for(const store of d.information?.stores||[]){
+    if(!store.semanticData)continue;
+    links.push({kind:'semantic-data',id:store.semanticData,
+      origin:{kind:'store',id:store.id},relation:'proposed-conceptual-store',
+      status:store.dataStatus==='resolved'?'resolved-id-not-accepted':'unresolved',
+      source:store.source||null});
+  }
+  return links;
+}
+function selectMeaningReference(d,kind,id){
+  if(state.dfd!==d)return;
+  // A meaning reference is NOT a DFD node or an editable Business Step.
+  // No selected Step/proposal is carried into this read-only navigation.
+  clearSelection();
+  const generation=selectionGeneration;
+  render();
+  const matches=meaningReferences(d).filter(x=>x.kind===kind&&x.id===id);
+  const detail={kind,id,authority:'reference-only',
+    worldRevisionStatus:'unverified-no-model-revision-binding',
+    sourceIndexStatus:'not-verified',acceptedMeaning:false,matches};
+  const pre=document.createElement('pre');
+  pre.textContent=JSON.stringify(detail,null,2);
+  $('details').append(pre);
+  const targets=new Map();
+  for(const match of matches){
+    for(const target of [match.origin,match.via].filter(Boolean))
+      targets.set(key(target.kind,target.id),target);
+  }
+  if(targets.size){
+    const links=document.createElement('div');
+    for(const target of targets.values()){
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=target.kind+': '+target.id;
+      button.addEventListener('click',()=>{
+        if(state.dfd!==d||generation!==selectionGeneration)return;
+        const selected=nodes().find(x=>x.kind===target.kind&&x.id===target.id);
+        if(selected)selectNode(selected);
+      });
+      links.append(button);
+    }
+    $('details').append(links);
+  }
+}
 async function selectNode(node){
   const generation=++selectionGeneration;
+  // A Source navigation can await an import. Retire the old SVG controls
+  // immediately so another queued event cannot edit a stale selection.
+  ++renderGeneration;
   state.selected=key(node.kind,node.id);
   // Step selections are distinct review scopes: never carry an endpoint,
   // condition, or flow identifier forward from a previous selection.
@@ -203,13 +365,57 @@ async function selectNode(node){
   invalidateSemanticPreview();
   updateSemanticControls();
   const d=state.dfd;
-  const step=node.kind==='step'?d.steps.find(s=>s.id===node.id):null;
+  const item=diagramReferenceSource(d,node);
+  const step=node.kind==='step'?item:null;
+  const related=relatedDiagramNodes(d,node);
   const candidate={kind:node.kind,id:node.id,authority:'reference-only',
-    source:step?.source||null,functionRefs:step?.functionRefs||[],explicitMeaning:step?.explicitMeaning||[],
+    source:item?.source||null,functionRefs:step?.functionRefs||[],
+    explicitMeaning:step?.explicitMeaning||[],
+    semanticData:node.kind==='store'?item?.semanticData||null:null,
+    relatedDiagramNodes:related,
     handoffs:step?(d.handoffs||[]).filter(h=>h.from?.procedure===d.procedureId&&h.from.step===node.id)
       .map(h=>({to:h.to,condition:h.condition,authority:h.authority,runtimeBinding:'not-inferred'})):[]};
   $('details').replaceChildren();
   const pre=document.createElement('pre');pre.textContent=JSON.stringify(candidate,null,2);$('details').append(pre);
+  if(related.length){
+    const links=document.createElement('div');
+    for(const target of related){
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=target.kind+': '+target.id;
+      button.addEventListener('click',()=>{
+        if(state.dfd!==d||state.selected!==key(node.kind,node.id))return;
+        const match=nodes().find(x=>x.kind===target.kind&&x.id===target.id);
+        if(match)selectNode(match);
+      });
+      links.append(button);
+    }
+    $('details').append(links);
+  }
+  const semantic=meaningReferences(d).filter(ref=>
+    ref.origin.kind===node.kind&&ref.origin.id===node.id||
+    ref.via?.kind===node.kind&&ref.via?.id===node.id);
+  if(semantic.length){
+    const links=document.createElement('div');
+    const unique=new Set();
+    for(const ref of semantic){
+      const identity=key(ref.kind,ref.id);
+      if(unique.has(identity))continue;
+      unique.add(identity);
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=ref.kind+': '+ref.id;
+      button.addEventListener('click',()=>{
+        if(state.dfd!==d||state.selected!==key(node.kind,node.id))return;
+        selectMeaningReference(d,ref.kind,ref.id);
+      });
+      links.append(button);
+    }
+    $('details').append(links);
+  }
+  // Replace retired controls before asynchronous Source navigation.
+  // The visible diagram stays interactive while older callbacks remain invalid.
+  render();
   if(step&&state.world&&$('revision').value){
     const navigation=document.createElement('pre');
     try {const {navigateReferenceBusinessStep}=await import('../studio-authoring/bridge.mjs');navigation.textContent=JSON.stringify(navigateReferenceBusinessStep(state.world,$('revision').value,d,node.id),null,2)}
@@ -218,7 +424,6 @@ async function selectNode(node){
     $('details').append(navigation);
   }
   if(state.dfd!==d || selectionGeneration!==generation)return;
-  render();
   // Recreating the SVG should not strand keyboard focus on a detached node.
   const focused=[...$('diagram').children].find(el=>el.dataset?.kind===node.kind&&el.dataset?.id===node.id);
   focused?.focus?.({preventScroll:true});
@@ -229,7 +434,8 @@ function dragStart(event,node){
   const p=positionMap().get(key(node.kind,node.id));
   const index=nodes().findIndex(n=>n.kind===node.kind&&n.id===node.id);
   const position=p||{x:40+(index%4)*260,y:50+Math.floor(index/4)*115};
-  dragging={node,startX:event.clientX,startY:event.clientY,position,rect,pointerId:event.pointerId};
+  dragging={node,startX:event.clientX,startY:event.clientY,position,rect,pointerId:event.pointerId,
+    dfd:state.dfd,layout:state.layout};
   $('diagram').setPointerCapture(event.pointerId);
 }
 function proposeNodeMove(node,x,y){
@@ -252,7 +458,10 @@ $('diagram').addEventListener('pointercancel',event=>{
 $('diagram').addEventListener('pointerup',event=>{
   if(!dragging||!state.dfd||!state.layout)return;
   if(event.pointerId!==undefined && dragging.pointerId!==undefined && event.pointerId!==dragging.pointerId)return;
-  const {node,startX,startY,position,rect}=dragging;dragging=null;
+  const {node,startX,startY,position,rect,dfd,layout}=dragging;dragging=null;
+  // A layout picker change or an applied layout invalidates the drag origin.
+  // Never create a move against a different layout even if the DFD is unchanged.
+  if(state.dfd!==dfd||state.layout!==layout)return;
   const view=$('diagram').viewBox.baseVal;
   const dx=(event.clientX-startX)*(view.width/rect.width);
   const dy=(event.clientY-startY)*(view.height/rect.height);
@@ -261,8 +470,17 @@ $('diagram').addEventListener('pointerup',event=>{
 });
 $('apply').addEventListener('click',async()=>{
   if(!state.pending)return;
-  state.layout=state.pending.proposedLayout;
-  state.layoutHash=await digest(new TextEncoder().encode(JSON.stringify(state.layout)));
+  const candidate=state.pending;
+  const layout=candidate.proposedLayout;
+  const dfdGeneration=dfdLoadGeneration;
+  const generation=layoutLoadGeneration;
+  $('apply').disabled=true;
+  const hash=await digest(new TextEncoder().encode(JSON.stringify(layout)));
+  // A newer DFD, layout selection or move proposal invalidates this hash.
+  // Never complete an earlier asynchronous apply against the new view.
+  if(dfdGeneration!==dfdLoadGeneration||generation!==layoutLoadGeneration||
+     state.pending!==candidate)return;
+  state.layout=layout;state.layoutHash=hash;
   state.pending=null;$('preview').hidden=true;$('apply').disabled=true;
   render();status('配置を画面に反映しました。正本には書き込んでいません。');
 });
@@ -273,14 +491,30 @@ $('export').addEventListener('click',()=>{
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 $('dfd-file').addEventListener('change',async ev=>{
-  const file=ev.target.files[0];if(!file)return;
+  const file=ev.target.files?.[0];
   const generation=++dfdLoadGeneration;
   ++layoutLoadGeneration; // Older layout reads belong to a different DFD.
+  // The input selection changed already: no old projection or proposal may
+  // remain available while the replacement bytes are still being read.
+  state.dfd=null;state.dfdHash=null;state.dfdFile=null;
+  state.layout=null;state.layoutHash=null;state.pending=null;dragging=null;
+  clearSelection();
+  renderProjectionDiagnostics(null);
+  $('preview').hidden=true;$('apply').disabled=true;
+  render();
+  if(!file){
+    status('DFD投影の選択を解除しました。以前の変更候補は無効です。');
+    return;
+  }
   try{
     const bytes=await file.arrayBuffer();const d=JSON.parse(new TextDecoder().decode(bytes));
     if(d.schemaVersion!=='business-dfd-projection-v0'||d.authority!=='derived-read-only'||d.canonicalProcedureUsed!==false||
-      !Array.isArray(d.steps)||!Array.isArray(d.triggers)||!Array.isArray(d.diagnostics)||d.diagnostics.some(x=>x.severity==='error'))
+      !Array.isArray(d.steps)||!Array.isArray(d.triggers)||!Array.isArray(d.diagnostics))
       throw Error('不正または未解決のDFD投影');
+    if(generation!==dfdLoadGeneration)return;
+    renderProjectionDiagnostics(d);
+    if(d.diagnostics.some(x=>x.severity==='error'))
+      throw Error('DFD投影のエラー診断を確認してください（描画と編集は拒否）。');
     const hash=await digest(bytes);
     const initialLayout={schemaVersion:LAYOUT_SCHEMA,authority:'view-only',procedureId:d.procedureId,projectionSHA256:hash,nodes:[]};
     const initialHash=await digest(new TextEncoder().encode(JSON.stringify(initialLayout)));
@@ -292,14 +526,21 @@ $('dfd-file').addEventListener('change',async ev=>{
     $('preview').hidden=true;$('apply').disabled=true;
     render();status('投影を読み込みました。選択と移動は参照・表示用です。');
   }catch(e){if(generation!==dfdLoadGeneration)return;
-    state.dfd=null;state.dfdFile=null;state.layout=null;state.pending=null;dragging=null;clearSelection();
+    state.dfd=null;state.dfdHash=null;state.dfdFile=null;
+    state.layout=null;state.layoutHash=null;state.pending=null;dragging=null;clearSelection();
     $('apply').disabled=true;$('preview').hidden=true;render();status('DFD投影を読み込めません: '+e.message,true)}
 });
 $('layout-file').addEventListener('change',async ev=>{
-  if(!state.dfd)return status('先にDFD投影を選択してください。',true);
-  const file=ev.target.files[0];if(!file)return;
   const generation=++layoutLoadGeneration;
   const dfdGeneration=dfdLoadGeneration;
+  const file=ev.target.files?.[0];
+  // A newly chosen (or cleared) layout revokes the prior view and pending
+  // edit before file.arrayBuffer() can yield to other user interactions.
+  state.layout=null;state.layoutHash=null;state.pending=null;dragging=null;
+  $('apply').disabled=true;$('preview').hidden=true;
+  render();
+  if(!state.dfd)return status('先にDFD投影を選択してください。',true);
+  if(!file)return status('配置ファイルの選択を解除しました。以前の配置と変更候補は無効です。');
   try{
     const bytes=await file.arrayBuffer();const layout=JSON.parse(new TextDecoder().decode(bytes));
     const hash=await digest(bytes);
@@ -312,8 +553,34 @@ $('layout-file').addEventListener('change',async ev=>{
     status('配置ファイルを拒否しました: '+e.message,true)}
 });
 $('world-file').addEventListener('change',async ev=>{
-  try{state.world=await jsonFile(ev.target.files[0]);status('Worldを読み込みました。版情報の真正性は未確認です。');}
-  catch(e){state.world=null;status('Worldを読み込めません: '+e.message,true)}
+  const generation=++worldLoadGeneration;
+  const file=ev.target.files?.[0];
+  // A World snapshot is a navigational hint, not accepted Source. Discard
+  // prior navigation before yielding to an asynchronous file read.
+  state.world=null;
+  clearSelection();
+  if(!file){
+    status('Worldの選択を解除しました。以前の参照表示は無効です。');
+    return;
+  }
+  try{
+    const world=await jsonFile(file);
+    if(generation!==worldLoadGeneration)return;
+    if(!world||typeof world!=='object'||Array.isArray(world))
+      throw Error('INVALID_WORLD_OBJECT');
+    state.world=world;
+    status('Worldを読み込みました。版情報の真正性は未確認です。');
+  }catch(e){
+    if(generation!==worldLoadGeneration)return;
+    state.world=null;
+    status('Worldを読み込めません: '+e.message,true);
+  }
+});
+$('revision').addEventListener('input',()=>{
+  // Existing Source details were produced against the previous user-supplied
+  // revision label. Require a fresh selection before showing navigation.
+  clearSelection();
+  status('Worldの版表示を変更しました。参照先を選び直してください（版の真正性は未確認）。');
 });
 
 async function readChecked(file,expectedHash,name){
@@ -333,11 +600,17 @@ for(const [id,kind,version] of [
   ['review-file','review','business-dfd-review-v0']
 ]){
   $(id).addEventListener('change',async event=>{
-    const file=event.target.files?.[0];if(!file)return;
+    const file=event.target.files?.[0];
     const generation=++semanticLoadGeneration[kind];
+    // Clearing the picker is a new generation too: do not resurrect a file
+    // or a proposal through a late asynchronous read.
     invalidateSemanticPreview();
     state[kind]=null;state[kind+'File']=null;state[kind+'Hash']=null;
     updateSemanticControls();
+    if(!file){
+      status('参照資料の選択を解除しました。以前の変更候補は無効です。');
+      return;
+    }
     try{
       const {value,hash}=await readReferenceFile(file,version);
       if(generation!==semanticLoadGeneration[kind])return;

@@ -13,8 +13,9 @@ import (
 // or symlink change cannot redirect that inspection to a different file.
 //
 // This is an authoring snapshot, NOT proof of the *current* filesystem state.
-// Source loading itself still uses the best-effort containment reader tracked
-// by issue #1017; this function makes no race-free Load claim.
+// Load reads manifests and parsed Source bytes from a single pinned os.Root.
+// However inventory/Source enumeration still use filesystem paths, and in-place
+// modifications remain possible; Load is not an atomic multi-file snapshot.
 func IndexedLoadedSnapshot(root string, loaded Result) (sourceindex.Index, func(string) ([]byte, error), error) {
 	var empty sourceindex.Index
 	physical, err := canonicalWorkspaceRoot(root)

@@ -57,23 +57,40 @@ func TestTwoApplicationScopesReuseContractWithoutBorrowingProvider(t *testing.T)
 		}
 	}
 
-	// The permissive guard only lets this synthetic reference exercise the
-	// composition mechanics. It is NOT evidence of actual Host authority.
-	testGuard := func(Binding) error { return nil }
-	bind := func(c Contract, providerID, artifactByte string) Binding {
+	// A shared artifact content digest does not confer a shared Application
+	// permission or prove that both hosts use the same running instance.
+	sharedArtifactDigest := "sha256:" + strings.Repeat("a", 64)
+	bind := func(c Contract, providerID string) Binding {
 		return Binding{
 			ContractID: c.ID, ContractVersion: c.Version, ProviderID: providerID,
-			ArtifactDigest: "sha256:" + strings.Repeat(artifactByte, 64), Generation: 1,
+			ArtifactDigest: sharedArtifactDigest, Generation: 1,
+		}
+	}
+	allowedByApplication := map[string]bool{orderScope: true, repairScope: true}
+	artifactTrusted := true
+	errApplicationDenied := errors.New("Application access revoked")
+	errArtifactUntrusted := errors.New("shared artifact trust revoked")
+	// These are explicitly synthetic Host-owned guards; no Production
+	// permission, attestation or invocation context is modeled here.
+	guardFor := func(scope string) func(Binding) error {
+		return func(b Binding) error {
+			if !artifactTrusted || b.ArtifactDigest != sharedArtifactDigest {
+				return errArtifactUntrusted
+			}
+			if !allowedByApplication[scope] {
+				return errApplicationDenied
+			}
+			return nil
 		}
 	}
 	orderCoordinator, err := NewSelectedCoordinator(
-		registry, orderSelection, bind(orderView, "order.reference", "a"), NewScope(), testGuard,
+		registry, orderSelection, bind(orderView, "order.reference"), NewScope(), guardFor(orderScope),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	repairCoordinator, err := NewSelectedCoordinator(
-		registry, repairSelection, bind(repairView, "repair.reference", "b"), NewScope(), testGuard,
+		registry, repairSelection, bind(repairView, "repair.reference"), NewScope(), guardFor(repairScope),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -87,6 +104,39 @@ func TestTwoApplicationScopesReuseContractWithoutBorrowingProvider(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if inFlightOrder.Binding.ArtifactDigest != inFlightRepair.Binding.ArtifactDigest ||
+		inFlightOrder.Binding.ProviderID == inFlightRepair.Binding.ProviderID {
+		t.Fatal("physical artifact identity and logical Provider identity were conflated")
+	}
+
+	// A single Application loses access without revoking the shared artifact
+	// or interrupting already-acquired calls from either Application.
+	allowedByApplication[orderScope] = false
+	if lease, err := orderCoordinator.Acquire(); !errors.Is(err, errApplicationDenied) {
+		if lease != nil {
+			lease.Release()
+		}
+		t.Fatalf("order access was not denied independently: %v", err)
+	}
+	validRepair, err := repairCoordinator.Acquire()
+	if err != nil {
+		t.Fatalf("unrelated Application lost access to shared artifact: %v", err)
+	}
+	validRepair.Release()
+	allowedByApplication[orderScope] = true
+
+	// Revoking the shared artifact denies NEW calls for both Applications,
+	// while the previously acquired leases retain their original bindings.
+	artifactTrusted = false
+	for _, c := range []*Coordinator{orderCoordinator, repairCoordinator} {
+		if lease, err := c.Acquire(); !errors.Is(err, errArtifactUntrusted) {
+			if lease != nil {
+				lease.Release()
+			}
+			t.Fatalf("shared artifact revocation was not enforced: %v", err)
+		}
+	}
+	artifactTrusted = true
 
 	// Changing only the order-side data contract makes that Application's
 	// dependency ineligible; the other Application must not silently inherit

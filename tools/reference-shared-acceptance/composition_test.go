@@ -696,18 +696,22 @@ func TestSecondApplicationCompositionAcceptWritesExactlyTheThreeDeclaredFiles(t 
 	}
 }
 
-func TestSecondApplicationCompositionAcceptRollsAllThreeFilesBackWhenConformanceFails(t *testing.T) {
+func TestSecondApplicationCompositionPreservesChangedPatternOnConformanceFailure(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	before := treeDigest(t, dir)
 	data := mustJSON(t, secondApplicationCandidate(revisionOfDir(t, dir)))
+	var concurrent []byte
 
+	// Once a different writer changes the newly created Pattern, it is no
+	// longer safe to delete that file as part of our own rollback.
 	afterWritesHook = func(root string) {
 		path := filepath.Join(root, filepath.FromSlash(s4PatternPath))
 		content, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, append(content, '\n'), 0o644); err != nil {
+		concurrent = append(append([]byte(nil), content...), '\n')
+		if err := os.WriteFile(path, concurrent, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -717,19 +721,34 @@ func TestSecondApplicationCompositionAcceptRollsAllThreeFilesBackWhenConformance
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decision.Decision != "refused" || decision.SourceChanged || !hasCode(refusalCodes(decision), "POST_ACCEPT_CONFORMANCE_FAILED") {
+	if decision.Decision != "refused" || !decision.SourceChanged ||
+		!hasCode(refusalCodes(decision), "POST_ACCEPT_CONFORMANCE_FAILED") ||
+		!hasCode(refusalCodes(decision), "ROLLBACK_INCOMPLETE") {
 		t.Fatalf("decision=%+v", decision)
 	}
-	assertTreeUnchanged(t, before, treeDigest(t, dir))
-	for _, created := range []string{"semantic/repair-intake", "applications/repair-intake", "applications/repair-intake/patterns"} {
-		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(created))); err == nil {
-			t.Fatalf("rollback後に作成したdirectory %s が残っています", created)
+	// The other two files created by Acceptance must still be removed.
+	for _, removed := range []string{s4ApplicationPath, s4SemanticPath} {
+		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(removed))); !os.IsNotExist(err) {
+			t.Fatalf("own new Source %s was not removed: %v", removed, err)
 		}
 	}
-	for _, kept := range []string{"semantic", "applications"} {
-		if _, err := os.Stat(filepath.Join(dir, kept)); err != nil {
-			t.Fatalf("元からあるdirectory %s が消えています", kept)
+	// No pre-existing Source should have been changed by an incomplete rollback.
+	after := treeDigest(t, dir)
+	for path, fingerprint := range before {
+		if after[path] != fingerprint {
+			t.Fatalf("pre-existing Source %s changed during rollback", path)
 		}
+	}
+	pattern, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s4PatternPath)))
+	if err != nil || string(pattern) != string(concurrent) {
+		t.Fatalf("concurrent new Pattern was erased: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "semantic", "repair-intake")); !os.IsNotExist(err) {
+		t.Fatalf("empty accepted Semantic directory was not removed: %v", err)
+	}
+	// The parent containing an external Pattern must remain, by design.
+	if _, err := os.Stat(filepath.Join(dir, "applications", "repair-intake", "patterns")); err != nil {
+		t.Fatalf("external Pattern's directory was removed: %v", err)
 	}
 }
 

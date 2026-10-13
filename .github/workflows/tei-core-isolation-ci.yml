@@ -10,6 +10,11 @@ on:
       - 'tools/check-core-isolation.sh'
       - 'tools/check-core-subject-isolation.sh'
       - 'core/subject/**'
+      - 'core/effect/**'
+      - 'core/generation/**'
+      - 'core/identity/**'
+      - 'internal/core/**'
+      - 'tools/check-core-identity-isolation.sh'
       - 'internal/subject/**'
       - 'tools/repository-architecture-check/**'
       - 'tools/reference-subproject-impact/**'
@@ -33,6 +38,11 @@ on:
       - 'tools/check-core-isolation.sh'
       - 'tools/check-core-subject-isolation.sh'
       - 'core/subject/**'
+      - 'core/effect/**'
+      - 'core/generation/**'
+      - 'core/identity/**'
+      - 'internal/core/**'
+      - 'tools/check-core-identity-isolation.sh'
       - 'internal/subject/**'
       - 'tools/repository-architecture-check/**'
       - 'tools/reference-subproject-impact/**'
@@ -91,7 +101,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -z "$(gofmt -l core/effect/*.go internal/composition/scope.go)"
+          go test -count=1 ./core/effect
+          go vet ./core/effect
+          go test -count=1 ./core/generation ./internal/composition
+          go vet ./core/generation ./internal/composition
           bash tools/check-core-isolation.sh
+
+      - name: M0識別子Core正本の型同一性と外部独立利用を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l core/identity/*.go internal/core/*.go)"
+          go test -count=1 ./core/identity ./internal/core
+          go vet ./core/identity ./internal/core
+          bash tools/check-core-identity-isolation.sh
 
       - name: Subject正本の外部利用と旧パスの型同一性を検証
         shell: bash

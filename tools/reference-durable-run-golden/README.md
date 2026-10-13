@@ -141,6 +141,17 @@ go run ./tools/reference-golden
 go run ./tools/reference-durable-run-golden
 ```
 
+## Desktop Host再起動時の不明な外部結果（#1529／限定Reference）
+
+`desktop_host_recovery_test.go` は既存の `StartWithRuntimePolicy` と `RecordExecutorResult` で作ったDurable RunをHost外のscratch JSONに保存し、**別OSテストプロセス**でRunと独立したDeployment Observationを読み直す。Executorが `unknown` または `accepted` を返した後のRunは、外部作業の完了を意味しない `waiting-observation` であり、`Reconcile` と `Resume` は同じ外部コマンドを自動的に再送しない。試験は既存 `ReadyCommands` を確認するだけで、新しいDesktop専用ExecutorやRun状態機械は作らない。
+
+検証の前提・未保証：
+
+- **Executorの結果がDurable Runへ記録された後**の再起動を対象にする。実行開始から結果記録までにHostが停止した場合の不明な発火・永続Journal・原子的なwrite-ahead dispatchは未実証であり、再送禁止の製品保証にはならない。
+- scratch JSONはテスト用の模擬永続化である。HostのRun保管場所、アクセス権、書込みの原子性、Crash耐久性は実装しない。
+- Observationはリポジトリ内の固定された合成Deployment Stateである。実Provider照会、外部副作用の存在、真正性、現在権限、Human Retry承認、Wails/WebView再起動までは実証しない。
+- このReferenceの成功をDesktop Studio独自の実行権限やShared Acceptanceの受理として扱わない。
+
 ## 非目標
 
 - observed deployment fixtureの自動更新

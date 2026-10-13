@@ -58,10 +58,51 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go test -count=1 ./reference/application-composition -run '^TestE(22|24|26)' -v
+          go test -count=1 ./reference/application-composition -run '^TestE(22|24|26|33)' -v
 
       - name: E25のリポジトリ間変更影響を確認
         shell: bash
         run: |
           set -euo pipefail
           node --test reference/application-composition/e25_crossrepo_requalification.test.mjs
+
+      - name: E27の既存構成と残余選択を観測
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e1-observe.test.mjs reference/application-composition/e27_residual_selection_audit.test.mjs
+          node reference/application-composition/e27_residual_selection_audit.mjs . > /dev/null
+
+      - name: E28の構成作業計測を未検証と区別
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e28_workflow_measurement.test.mjs
+          node reference/application-composition/e28_workflow_measurement.mjs . > /dev/null
+
+      - name: E31の別リポジトリ版対応を照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e31_paired_source_comparison.test.mjs
+
+      - name: E32の実案件Plugin試作差分を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e32_plugin_pr_footprint.test.mjs
+          node reference/application-composition/e32_plugin_pr_footprint.mjs > /dev/null
+
+      - name: E34の案件Plugin Bridge改訂を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e34_bridge_revision_review.test.mjs
+          node reference/application-composition/e34_bridge_revision_review.mjs > /dev/null
+
+      - name: E35の案件Goと実Chromeの固定CI出典を照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e35_reference_ci_review.test.mjs
+          node reference/application-composition/e35_reference_ci_review.mjs > /dev/null

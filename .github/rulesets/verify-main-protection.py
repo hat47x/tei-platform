@@ -13,6 +13,7 @@ NAME = "main：PR経由の変更と履歴保全"
 DEFINITION = Path(__file__).with_name("main-pr-only.json")
 RULE_TYPES = {"pull_request", "non_fast_forward", "deletion"}
 REVIEW_PARAMETERS = {
+    "allowed_merge_methods": ["merge", "squash", "rebase"],
     "dismiss_stale_reviews_on_push": False,
     "require_code_owner_review": False,
     "require_last_push_approval": False,
@@ -53,7 +54,14 @@ def violations(value):
     else:
         parameters = pr.get("parameters") or {}
         for key, expected in REVIEW_PARAMETERS.items():
-            if parameters.get(key) != expected:
+            actual = parameters.get(key)
+            if key == "allowed_merge_methods":
+                match = (isinstance(actual, list)
+                         and len(actual) == len(expected)
+                         and set(actual) == set(expected))
+            else:
+                match = actual == expected
+            if not match:
                 errors.append("PR必須規則の値が異なります: " + key)
     return errors
 
@@ -69,17 +77,33 @@ def gh_json(endpoint):
 
 
 def verify_live():
-    all_rules = gh_json(f"repos/{REPOSITORY}/rulesets?per_page=100")
-    if not isinstance(all_rules, list):
-        return ["GitHubのルール一覧を読み取れません"], None
+    # 一覧APIは最大100件/頁。同名ルールが次頁に隠れても成功としない。
+    # 上限に達した場合は判定不能とし、不完全な一覧で合格しない。
+    all_rules = []
+    for page in range(1, 21):
+        batch = gh_json(f"repos/{REPOSITORY}/rulesets?per_page=100&page={page}")
+        if (not isinstance(batch, list)
+                or any(not isinstance(item, dict) for item in batch)
+                or len(batch) > 100):
+            return ["GitHubのルール一覧が不正または不完全です"], None
+        all_rules.extend(batch)
+        if len(batch) < 100:
+            break
+    else:
+        return ["ルール一覧が2000件以上で、全件を照合できません"], None
+
     matches = [entry for entry in all_rules
                if entry.get("name") == NAME and entry.get("source_type") == "Repository"]
     if len(matches) != 1:
         return ["同名のリポジトリルールが1件ではありません: " + str(len(matches))], None
     rule_id = matches[0].get("id")
-    if not isinstance(rule_id, int) or rule_id < 1:
+    if type(rule_id) is not int or rule_id < 1:
         return ["ルールセットIDが不正です"], None
     detail = gh_json(f"repos/{REPOSITORY}/rulesets/{rule_id}")
+    if not isinstance(detail, dict) or detail.get("id") != rule_id:
+        return ["詳細応答のルールセットIDが一覧と一致しません"], rule_id
+    if detail.get("source_type") != "Repository":
+        return ["詳細応答の管理元がリポジトリではありません"], rule_id
     return violations(detail), rule_id
 
 
@@ -104,6 +128,15 @@ def self_test():
     tests.append(changed)
     changed = copy.deepcopy(baseline)
     changed["rules"][0]["parameters"]["required_approving_review_count"] = 1
+    tests.append(changed)
+    changed = copy.deepcopy(baseline)
+    del changed["rules"][0]["parameters"]["allowed_merge_methods"]
+    tests.append(changed)
+    changed = copy.deepcopy(baseline)
+    changed["rules"][0]["parameters"]["allowed_merge_methods"] = ["merge"]
+    tests.append(changed)
+    changed = copy.deepcopy(baseline)
+    changed["rules"][0]["parameters"]["allowed_merge_methods"] = ["octopus"]
     tests.append(changed)
     changed = copy.deepcopy(baseline)
     changed["rules"].append({"type": "required_status_checks"})

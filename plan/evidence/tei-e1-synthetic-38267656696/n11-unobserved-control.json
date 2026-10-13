@@ -1,0 +1,16 @@
+{
+  "evidenceNature": "running-web-http-synthetic-Observation-read-failure",
+  "integrationHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "acceptedSourceRevisionClaim": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "httpStatus": 422,
+  "stage": "observation",
+  "commandCompleted": true,
+  "observationReadAttempted": true,
+  "observationResultRecorded": false,
+  "executionErrorNature": "synthetic-read-unavailable",
+  "targetBinarySHA256": "8dad4053db037f2271e448e552b9e67086588c2f55460c61958019a0f9acd5fb",
+  "manifestSemanticSHA256": "9f0986e2423c06988e143f1de0361d37af57bca641d227b221de973aad42edc4",
+  "httpResponseSHA256": "8b69da350d25220ec72c8cb3cd0694461cf6c82245fb2770c2c52e57d2c52070",
+  "productionTargetUnmodified": true,
+  "independentDatabaseRead": false
+}
