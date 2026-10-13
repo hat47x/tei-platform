@@ -34,6 +34,14 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E19：Git改訂に固定した意味ソースと変更影響](E19_GIT_REVISION_SOURCE_IMPACT.md)／[Go回帰検査](e19_git_revision_source_test.go) — 実参照Workspaceから隔離された2つのGitコミットを生成し、コミットID・Git保存バイト列・Source Index指紋・既存型付き影響を照合する。未コミットの書換えを拒否し、実際の公開Git履歴の採用判断とは区別する。
 - [E20：二つの利用先で共通Action接続を検証](E20_DUAL_CONSUMER_ACTION_WITNESS.md)／[Go回帰検査](e20_dual_consumer_action_test.go) — 実受注明細CommandとSUIの試験限定候補を、同じHostの異なるBindingへ送り、交差・Revision競合・認可拒否を検証する。実SUI Browser／保存連携は未確認。
 - [E21：二つの利用先で既存の構成機構と残余判断を照合](E21_DUAL_CONSUMER_COMPOSITION_GAP.md) — SUIとTEIの実ソースを固定改訂で比較。共通Actionの再利用、未接続の本人委譲・実保存、Target／UI Kitの採用、別リポジトリの版対応を切り分ける。構成プロファイルの正式採用は未決定。
+- [E22：Nativeアプリケーションの最小Source候補を既存Driverで解決](E22_NATIVE_APPLICATION_CANDIDATE.md)／[Go回帰試験](e22_native_application_candidate_test.go) — 実SUI Stage 0を隔離コピーし、試験中だけApplication／Command／Capabilityを追加。欠落・重複・認可なしを拒否し、SUIの受理済み意味や実保存とは区別する。
+- [E23：構成選択と実行時認可からHTTPS委譲までの一要求接続](E23_SELECTED_HTTPS_ACTION_EVIDENCE.md)／[Go回帰試験](e23_selected_upstream_test.go) — 既存Host、選択提供者、共通Action、合成TLS受信先を接続。実SUIの権限・保存は未確認。
+- [E24：Native操作の型宣言と入力検証の境界](E24_NATIVE_INPUT_CONTRACT_BOUNDARY.md)／[Go回帰試験](e24_native_input_contract_boundary_test.go)
+- [E25：別リポジトリの更新影響を既存変更判定器で限定](E25_CROSS_REPOSITORY_REQUALIFICATION.md)／[Node.js回帰試験](e25_crossrepo_requalification.test.mjs) — 固定したSUIの実Git改訂1回の変更を、実装と試験・CIの出典別に再検証。二つ目のLockは作らない。 — 仮のSUI操作入力を既存の意味定義で記述し、型参照の欠落、アプリ側復号処理の欠落を個別に拒否。SUIの保存・認可には触れない。
+- [E26：受注明細とSUI候補の構成記述量を再現可能な数値で測定](E26_COMPOSITION_COST_BASELINE.md)／[Go回帰試験](e26_composition_cost_baseline_test.go) — 既存Web5ファイル、隔離SUI候補3ファイルの宣言・行数を測り、実導入作業と未測定項目を混同しない。
+- [E27：既存構成と残余選択をSource観測から区分](E27_RESIDUAL_SELECTION_AUDIT.md)／[監査器](e27_residual_selection_audit.mjs)／[Node.js回帰試験](e27_residual_selection_audit.test.mjs) — 実TEI SourceのE1既知14観測点を再利用し、既存4項目・Stage 0 1項目・別判断3項目・実行時検証2項目を区別。実際の工数とAI質問数は未計測。
+- [E28：構成作業の申告・質問・改修件数を未検証のまま分離](E28_WORKFLOW_MEASUREMENT.md)／[読み取り専用集計器](e28_workflow_measurement.mjs)／[Node.js回帰試験](e28_workflow_measurement.test.mjs) — E27のSource観測を再利用。比較する実案件の人手・AI質問数は推測せず、申告イベントと検証済み結果を区別する。
+- [E31：SUIとTEIの二つのGit基点を照合する作業比較](E31_PAIRED_SOURCE_BASELINE.md)／[読取り比較器](e31_paired_source_comparison.mjs)／[Node回帰試験](e31_paired_source_comparison.test.mjs) — 既存E28比較を再利用し、SUI改訂が異なる二方式の申告件数を同条件比較へ昇格させない。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。

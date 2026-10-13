@@ -119,6 +119,8 @@
 | ファイル | 役割 |
 | --- | --- |
 | [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIやTEI全体検証は実行しない |
+| [`verify-critical-path-e1-archive.py`](verify-critical-path-e1-archive.py) | E1合成証拠の8件原本と固定SHA目録、R0/R1/R2・未資格状態を照合する（製品Gateの検査ではない） |
+| [`test-critical-path-e1-archive.py`](test-critical-path-e1-archive.py) | E1保全検査の改ざん・欠落・偽資格の回帰試験 |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
 | [`run-business-procedure-gate-a.sh`](run-business-procedure-gate-a.sh) | 業務手順Gate Aの検証 |

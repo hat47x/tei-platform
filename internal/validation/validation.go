@@ -35,6 +35,7 @@ func Validate(w ir.World) []Diagnostic {
 	out := validateApplicationPatterns(w)
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
+	out = append(out, validateSemanticBusinessRules(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
 	out = append(out, validateCapabilityDataEffects(w)...)
 	out = append(out, validateBusinessValidationReferences(w)...)
@@ -66,31 +67,35 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_ARTIFACT", "plugin %s: %v", p.ID, err))
 		}
 		for _, ext := range p.External {
-			validScope := ext.Scope == "editor" || ext.Scope == "build" || ext.Scope == "test" || ext.Scope == "runtime" || ext.Scope == "migration"
-			validKind := ext.Kind == "toolchain" || ext.Kind == "runtime" || ext.Kind == "language-package" || ext.Kind == "tool"
-			if !validScope {
+			if !ext.ValidScope() {
 				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_SCOPE", "plugin %s external requirement %s has invalid scope %s", p.ID, ext.Name, ext.Scope))
 			}
-			if !validKind {
+			if !ext.ValidKind() {
 				out = append(out, errd("INVALID_PLUGIN_EXTERNAL_KIND", "plugin %s external requirement %s has invalid kind %s", p.ID, ext.Name, ext.Kind))
 			}
-			if strings.TrimSpace(ext.Name) == "" {
+			if !ext.ValidName() {
 				out = append(out, errd("PLUGIN_EXTERNAL_NAME_REQUIRED", "plugin %s has external requirement with empty name", p.ID))
 			}
 		}
-		if err := plugin.ValidateRequirements(p.Requires); err != nil {
+		if err := plugin.ValidateUniqueExternalRequirements(p.External); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_EXTERNAL_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
+		if err := plugin.ValidateUniqueRequirements(p.Requires); err != nil {
 			out = append(out, errd("DUPLICATE_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
 		}
-		seenCaps := map[string]struct{}{}
+		if err := plugin.ValidateRequirementValues(p.Requires); err != nil {
+			out = append(out, errd("INVALID_PLUGIN_REQUIREMENT", "plugin %s: %v", p.ID, err))
+		}
+		if err := plugin.ValidateUniqueCapabilities(p.Provides); err != nil {
+			out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s: %v", p.ID, err))
+		}
 		for _, c := range p.Provides {
+			if err := plugin.ValidateCapabilityID(c.ID); err != nil {
+				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_ID", "plugin %s: %v", p.ID, err))
+			}
 			if !c.Kind.Valid() {
 				out = append(out, errd("INVALID_PLUGIN_CAPABILITY_KIND", "plugin %s capability %s has invalid kind %s", p.ID, c.ID, c.Kind))
 			}
-			ck := string(c.Kind) + "|" + string(c.ID)
-			if _, dup := seenCaps[ck]; dup {
-				out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY", "plugin %s provides %s %s more than once", p.ID, c.Kind, c.ID))
-			}
-			seenCaps[ck] = struct{}{}
 			for _, a := range c.Actions {
 				if !a.Valid() {
 					out = append(out, errd("INVALID_PLUGIN_ACTION_SUPPORT", "plugin %s capability %s lists invalid action %s", p.ID, c.ID, a))
@@ -111,15 +116,26 @@ func Validate(w ir.World) []Diagnostic {
 					out = append(out, errd("INVALID_PLUGIN_DATABASE_PROVIDER_SUPPORT", "plugin %s capability %s lists invalid database provider %s", p.ID, c.ID, dbp))
 				}
 			}
-			seenPermissions := map[string]struct{}{}
+			for _, tool := range c.MigrationTools {
+				if !tool.Valid() {
+					out = append(out, errd("INVALID_PLUGIN_MIGRATION_TOOL_SUPPORT", "plugin %s capability %s lists invalid migration tool %s", p.ID, c.ID, tool))
+				}
+			}
+			for _, feature := range c.Features {
+				if !feature.Known() {
+					out = append(out, errd("INVALID_PLUGIN_FEATURE_SUPPORT", "plugin %s capability %s lists invalid feature %s", p.ID, c.ID, feature))
+				}
+			}
+			if err := plugin.ValidateUniqueCapabilitySupports(c); err != nil {
+				out = append(out, errd("DUPLICATE_PLUGIN_CAPABILITY_SUPPORT", "plugin %s: %v", p.ID, err))
+			}
 			for _, perm := range c.Permissions {
 				if err := perm.Validate(); err != nil {
 					out = append(out, errd("INVALID_PLUGIN_PERMISSION", "plugin %s capability %s: %v", p.ID, c.ID, err))
 				}
-				if _, dup := seenPermissions[perm.Key()]; dup {
-					out = append(out, errd("DUPLICATE_PLUGIN_PERMISSION", "plugin %s capability %s declares permission %s more than once", p.ID, c.ID, perm.Key()))
-				}
-				seenPermissions[perm.Key()] = struct{}{}
+			}
+			if err := plugin.ValidateUniqueCapabilityPermissions(c.Permissions); err != nil {
+				out = append(out, errd("DUPLICATE_PLUGIN_PERMISSION", "plugin %s capability %s: %v", p.ID, c.ID, err))
 			}
 		}
 	}
@@ -133,8 +149,11 @@ func Validate(w ir.World) []Diagnostic {
 		if _, err := plugin.ParseVersion(b.Version); err != nil {
 			out = append(out, errd("INVALID_BUNDLE_VERSION", "bundle %s: %v", b.ID, err))
 		}
-		if err := plugin.ValidateRequirements(b.Plugins); err != nil {
+		if err := plugin.ValidateUniqueRequirements(b.Plugins); err != nil {
 			out = append(out, errd("DUPLICATE_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
+		}
+		if err := plugin.ValidateRequirementValues(b.Plugins); err != nil {
+			out = append(out, errd("INVALID_BUNDLE_PLUGIN_REQUIREMENT", "bundle %s version %s: %v", b.ID, b.Version, err))
 		}
 	}
 
@@ -800,6 +819,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_PLUGIN_REQUIREMENT", "environment %s requires plugin %s more than once", e.ID, req.ID))
 			}
 			seenPluginReq[req.ID] = struct{}{}
+			parsed, err := core.ParseCanonicalID(string(req.ID))
+			if err != nil || parsed != req.ID {
+				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_ID", "environment %s requires invalid plugin id %q", e.ID, req.ID))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_PLUGIN_VERSION", "environment %s plugin %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}
@@ -810,6 +833,10 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("DUPLICATE_ENVIRONMENT_BUNDLE_REQUIREMENT", "environment %s requires bundle %s more than once", e.ID, req.ID))
 			}
 			seenBundleReq[req.ID] = struct{}{}
+			parsed, err := core.ParseCanonicalID(string(req.ID))
+			if err != nil || parsed != req.ID {
+				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_ID", "environment %s requires invalid bundle id %q", e.ID, req.ID))
+			}
 			if req.CompatibleMajor < 1 {
 				out = append(out, errd("INVALID_ENVIRONMENT_BUNDLE_VERSION", "environment %s bundle %s has invalid major %d", e.ID, req.ID, req.CompatibleMajor))
 			}
