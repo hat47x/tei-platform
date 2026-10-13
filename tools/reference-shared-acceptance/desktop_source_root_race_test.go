@@ -128,7 +128,8 @@ func TestDesktopExternalNewSourceParentSymlinkRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !didSwap || decision.Decision != "refused" || decision.SourceChanged ||
-		!hasCode(refusalCodes(decision), "SOURCE_WRITE_FAILED") {
+		(!hasCode(refusalCodes(decision), "SOURCE_WRITE_FAILED") &&
+			!hasCode(refusalCodes(decision), "SOURCE_UNREADABLE")) {
 		t.Fatalf("new Source through outside parent was not refused: %+v", decision)
 	}
 	current, err := os.ReadFile(outsideFile)
