@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"tei/internal/composition"
@@ -101,5 +102,24 @@ func TestProjectAdvisoryChangedContractDeniesStaleSelection(t *testing.T) {
 	}
 	if result, err := bridge.Evaluate(customeradvice.Input{CustomerCode: "VIP-123"}); err == nil {
 		t.Fatalf("stale selected contract was invoked: %+v", result)
+	}
+}
+
+func TestProjectAdvisoryWithdrawReapThenRejects(t *testing.T) {
+	bridge, err := newProjectAdvisoryBridge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bridge.coordinator.Withdraw(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := bridge.coordinator.Reap(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if bridge.coordinator.PendingRetirements() != 0 {
+		t.Fatal("retired reference generation was not drained")
+	}
+	if _, err := bridge.Evaluate(customeradvice.Input{CustomerCode: "VIP-123"}); err == nil {
+		t.Fatal("reaped generation must not be resurrected by eligible registry declaration")
 	}
 }
