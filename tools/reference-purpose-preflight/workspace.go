@@ -22,13 +22,13 @@ type SourceWitness struct {
 }
 
 type WorkspaceAssessment struct {
-	SchemaVersion    string          `json:"schemaVersion"`
-	Authority        string          `json:"authority"`
-	Application      string          `json:"application"`
-	SubjectKind      string          `json:"subjectKind"`
-	SubjectID        string          `json:"subjectId"`
-	SourceStatus     string          `json:"sourceStatus"`
-	RuleMeaning      string          `json:"ruleMeaning"`
+	SchemaVersion         string                `json:"schemaVersion"`
+	Authority             string                `json:"authority"`
+	Application           string                `json:"application"`
+	SubjectKind           string                `json:"subjectKind"`
+	SubjectID             string                `json:"subjectId"`
+	SourceStatus          string                `json:"sourceStatus"`
+	RuleMeaning           string                `json:"ruleMeaning"`
 	ExecutionAllowed      bool                  `json:"executionAllowed"`
 	Witnesses             []SourceWitness       `json:"witnesses"`
 	Unresolved            []string              `json:"unresolved"`
@@ -36,7 +36,6 @@ type WorkspaceAssessment struct {
 	DecisionIndexRevision string                `json:"decisionIndexRevision,omitempty"`
 	DecisionHistoryLinks  []DecisionHistoryLink `json:"decisionHistoryLinks,omitempty"`
 }
-
 // InspectWorkspace only verifies whether a real application-pattern has one
 // unambiguous declaration and current Source Index provenance. The subject is
 // typed using TEI's existing subject contract. It deliberately does not infer
