@@ -28,8 +28,8 @@ def main():
     parser.add_argument('--non-screen', action='store_true', help='Also verify CLI reports and bounded batch processing')
     parser.add_argument('--frozen-api', action='store_true', help='Use the digest-bound frozen World JSON API with the same actual PostgreSQL checks')
     args = parser.parse_args()
-    if args.frozen_api and (args.source_loop or args.non_screen):
-        parser.error('--frozen-api does not support live Source changes or non-screen CLI execution')
+    if args.frozen_api and args.source_loop:
+        parser.error('--frozen-api does not support live Source changes')
     root = Path(__file__).resolve().parent.parent
     output = Path(args.output).resolve()
     if output == root or root in output.parents:
@@ -166,7 +166,7 @@ def main():
             import sys
             sys.dont_write_bytecode = True
             from reference_non_screen import verify_non_screen
-            report['nonScreen'] = verify_non_screen(root, output, binary, head, digest, dsn_file, sql)
+            report['nonScreen'] = verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspace)
             assert report['nonScreen']['passed']
         sql("UPDATE public.tei_reference_execution_grants SET revoked=false;")
         assert request(read_path)[0] == 200

@@ -1,4 +1,4 @@
-//go:build !tei_order_only && !tei_repair_only
+//go:build !tei_repair_only
 
 package main
 
@@ -17,15 +17,17 @@ import (
 
 type nonScreenFlags struct{ mode, from, rows, format, output, login, credential *string }
 
-func registerNonScreenFlags() nonScreenFlags {
+func (f nonScreenFlags) enabled() bool { return f.mode != nil && *f.mode != "" }
+
+func registerNonScreenFlags(flags *flag.FlagSet) nonScreenFlags {
 	return nonScreenFlags{
-		flag.String("non-screen", "", "reference: report or batch; exits without serving HTTP"),
-		flag.String("from", "2026-09-18T08:30:00Z", "reference: selected order search lower bound"),
-		flag.String("rows", "0", "reference: comma-separated selected row indices, at most 100"),
-		flag.String("report-format", "csv", "reference: csv or json renderer"),
-		flag.String("artifact-out", "", "reference: new output file outside model workspace"),
-		flag.String("login-id", "legacy-order-editor", "reference: batch login identity"),
-		flag.String("credential-file", "", "reference: private one-line batch credential file"),
+		flags.String("non-screen", "", "reference: report or batch; exits without serving HTTP"),
+		flags.String("from", "2026-09-18T08:30:00Z", "reference: selected order search lower bound"),
+		flags.String("rows", "0", "reference: comma-separated selected row indices, at most 100"),
+		flags.String("report-format", "csv", "reference: csv or json renderer"),
+		flags.String("artifact-out", "", "reference: new output file outside model workspace"),
+		flags.String("login-id", "legacy-order-editor", "reference: batch login identity"),
+		flags.String("credential-file", "", "reference: private one-line batch credential file"),
 	}
 }
 func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace string) error {

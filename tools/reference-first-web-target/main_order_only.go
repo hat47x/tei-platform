@@ -40,6 +40,7 @@ func orderApplicationRunners(world ir.World, config singleApplicationConfig) (
 			return nil, nil, nil, err
 		}
 		submitContract := submitServiceContract
+		var state *postgresScenarioState
 		if config.PostgresDSNFile != "" {
 			if config.OnClose == nil {
 				return nil, nil, nil, fmt.Errorf("PostgreSQL requires a host-owned connection lifetime")
@@ -51,13 +52,18 @@ func orderApplicationRunners(world ir.World, config singleApplicationConfig) (
 				return nil, nil, nil, err
 			}
 			config.OnClose(func() { _ = db.Close() })
-			state := &postgresScenarioState{db: db, world: world, digest: digest, fence: config.PostgresFence, model: config.Model}
+			state = &postgresScenarioState{db: db, world: world, digest: digest, fence: config.PostgresFence, model: config.Model}
 			read = &postgresReadScenario{state: state}
 			command.persistence = state
 			submitContract = postgresSubmitServiceContract
 		}
-		r, c, err := wireComposedScenarios(context.Background(), composition.NewRegistry(), read, command, digest,
+		registry := composition.NewRegistry()
+		r, c, err := wireComposedScenarios(context.Background(), registry, read, command, digest,
 			referenceInstanceGuard(digest, map[string]composition.Contract{"order-read": readServiceContract, "order-submit": submitContract}))
+		if err == nil && config.Backend.nonScreen.enabled() {
+			err = config.Backend.nonScreen.run(registry, r, command, state, config.WorkspacePath)
+			return nil, nil, nil, err
+		}
 		return r, c, nil, err
 	}
 	return read, command, nil, nil

@@ -32,7 +32,7 @@ func main() {
 		postgresFence    = flag.Int64("postgres-fencing-token", 0, "reference: expected positive database execution-grant fencing token")
 		modelRevision    = flag.String("model-revision", "", "reference: exact source revision explicitly selected by the host; does not accept proposals")
 	)
-	nonScreen := registerNonScreenFlags()
+	nonScreen := registerNonScreenFlags(flag.CommandLine)
 	flag.Parse()
 	if *nonScreen.mode != "" && (!*composeScenarios || *postgresDSNFile == "") {
 		fmt.Fprintln(os.Stderr, "-non-screen requires composed PostgreSQL execution")

@@ -5,10 +5,10 @@ import json
 import subprocess
 
 
-def verify_non_screen(root, output, binary, head, digest, dsn_file, sql):
+def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspace='reference/workspace'):
     checks = []
     common = [str(binary), '-composition-scenarios', '-postgres-dsn-file', str(dsn_file),
-              '-postgres-fencing-token', '1', '-workspace', 'reference/workspace',
+              '-postgres-fencing-token', '1', '-workspace', workspace,
               '-baseline-id', 'B', '-baseline-revision', 'e5231839a5dcc62cce1181a2731fcb7c70d16736',
               '-target-revision', head, '-from', '2026-09-18T00:00:00Z']
 

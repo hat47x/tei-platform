@@ -29,3 +29,15 @@ python3 tools/verify-postgres-order-execution.py --non-screen --output /secure/e
 ```
 
 この実行はCSV／JSON出力、帳票許可の取消、一括処理の部分成功、取消、重複確定拒否、明示的な残件処理を検査します。大規模処理、プロセス停止からの永続的な再開、PDF表示、ブラウザー、人による利用価値評価、本番運用の証拠ではありません。
+
+## 受注専用ビルドと固定Worldからの実行
+
+受注専用ビルドでも同じ`-non-screen report`と`-non-screen batch`を指定できます。処理後に終了し、HTTPサーバーを起動しません。選択済みサービスと実PostgreSQLの指定は必須です。修理受付専用ビルドには帳票・一括処理の引数や実装を含めません。
+
+固定Worldの実行物では、`-workspace`に構築器が公開した`api/`ディレクトリを指定します。構築時に固定したWorldから既存の業務処理を解決し、Workspaceや構文解析器は実行物へ取り込みません。帳票の出力先は、この固定Worldのディレクトリの外に置きます。ライブソースの変更・再読込みはできません。
+
+```sh
+python3 tools/verify-postgres-order-execution.py --frozen-api --non-screen --output /absolute/new/frozen-non-screen-evidence
+```
+
+この指定は、固定WorldのHTTP試験と同じ実行物・使い捨てDBを使い、実プロセスによるCSV／JSONの生成、許可失効、部分成功、重複確定拒否、明示的な残件処理を確かめます。取消は別に実DB回帰試験で調べます。要求IDによる永続的な再開には引き続き対応していません。

@@ -23,6 +23,8 @@ type singleApplicationConfig struct {
 	PostgresDSNFile      string
 	PostgresFence        int64
 	OnClose              func(func())
+	WorkspacePath        string
+	Backend              singleApplicationBackend
 }
 
 type singleApplicationRunnerFactory func(ir.World, singleApplicationConfig) (
@@ -108,9 +110,13 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	config.LegacyUsers = *legacyUsers
 	config.LegacyAuthorization = *legacyAuthorization
 	config.Model = model
+	config.WorkspacePath = *workspacePath
 	read, command, options, err := factory(world, config)
 	if err != nil {
 		return err
+	}
+	if !config.Backend.servesHTTP() {
+		return nil
 	}
 	target, err := newWebTargetServer(projection, read, command, options...)
 	if err != nil {

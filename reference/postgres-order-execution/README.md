@@ -20,7 +20,7 @@ python3 tools/verify-postgres-order-execution.py --output /absolute/path/outside
 python3 tools/verify-postgres-order-execution.py --frozen-api --output /absolute/new/frozen-postgres-evidence
 ```
 
-固定Worldの指紋と構築版Tは実行物に結び付け、DBの実行許可はその実行物のSHA-256へ設定する。固定Worldではライブソースの版指定を受け付けず、DB許可の`model_revision`は空文字を使う。`--source-loop`と`--non-screen`はこのAPIの検証と併用できない。接続設定の不足や選択済みサービスの未指定を起動前に拒否する。修理受付専用ビルドではPostgreSQL引数自体を受け付けない。
+固定Worldの指紋と構築版Tは実行物に結び付け、DBの実行許可はその実行物のSHA-256へ設定する。固定Worldではライブソースの版指定を受け付けず、DB許可の`model_revision`は空文字を使う。`--source-loop`はこの検証と併用できない。`--non-screen`を追加すると、同じ固定Worldの実行物から帳票と一括処理も検証する。接続設定の不足や選択済みサービスの未指定を起動前に拒否する。修理受付専用ビルドではPostgreSQL引数自体を受け付けない。
 
 ## 実装と安全条件
 

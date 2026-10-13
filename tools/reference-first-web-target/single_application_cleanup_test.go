@@ -33,3 +33,27 @@ func TestSingleApplicationClosesResourcesWhenFactoryFails(t *testing.T) {
 		t.Fatalf("failure=%v, cleanup=%v", err, closed)
 	}
 }
+
+func TestSingleApplicationNonScreenExitsWithoutHTTPAndClosesResources(t *testing.T) {
+	args := os.Args
+	defer func() { os.Args = args }()
+	buildRevision := referenceAPISourceRevision
+	defer func() { referenceAPISourceRevision = buildRevision }()
+	const revision = "1111111111111111111111111111111111111111"
+	referenceAPISourceRevision = revision
+	os.Args = []string{"target", "-workspace", referenceWorkspacePath(t), "-baseline-id", testBaselineID,
+		"-baseline-revision", testBaselineRevision, "-target-revision", revision,
+		"-composition-scenarios", "-postgres-dsn-file", "factory-owned", "-postgres-fencing-token", "1", "-non-screen", "report"}
+	closed := false
+	err := runSingleApplicationTarget("order_entry", func(_ ir.World, config singleApplicationConfig) (
+		readScenarioRunner, commandScenarioRunner, []webTargetOption, error,
+	) {
+		config.OnClose(func() { closed = true })
+		// A CLI factory intentionally returns no HTTP runners. Constructing
+		// an HTTP server from these values would fail instead of completing.
+		return nil, nil, nil, nil
+	})
+	if err != nil || !closed {
+		t.Fatalf("CLI completion=%v, resources closed=%v", err, closed)
+	}
+}
