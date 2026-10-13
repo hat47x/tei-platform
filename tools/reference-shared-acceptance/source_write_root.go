@@ -12,7 +12,6 @@ import (
 	"tei/internal/sourceindex"
 )
 
-
 // checkAcceptedWorkspaceIdentity detects a replacement of the named
 // Workspace directory after the root was pinned. This compares filesystem
 // identities, not merely the contents or modelRevision, and is a preflight:
