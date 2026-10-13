@@ -41,8 +41,11 @@ const report = () => ({
   }
 });
 
+// Every probe receives its own objects; mutations must not rewrite the expected key.
+const freshReport = () => structuredClone(report());
+
 test("Go typed reference remains read-only and matches Studio exact Source anchor", () => {
-  const out = bindTypedTrace(view, report(), key.scope);
+  const out = bindTypedTrace(view, freshReport(), key.scope);
   assert.equal(out.status, "reference-only");
   assert.equal(out.sourceConsistency, "exact-anchor-match");
   assert.equal(out.modelRevision, view.modelRevision);
@@ -60,19 +63,19 @@ test("scope, kind, missing authority limits, and partial result are rejected", (
     x => { x.result.trace.nextOffset = 1; },
     x => { x.result.trace.authority = "accepted"; }
   ]) {
-    const forged = report();
+    const forged = freshReport();
     changed(forged);
     assert.throws(() => bindTypedTrace(view, forged, key.scope),
       /STUDIO_TYPED_TRACE_INVALID/);
   }
 });
 test("stale Source anchor or invalid reference never becomes qualified", () => {
-  const stale = report();
+  const stale = freshReport();
   stale.result.source.artifacts[0].fingerprint = hash("9");
   const out = bindTypedTrace(view, stale, key.scope);
   assert.equal(out.status, "unresolved");
   assert.equal(out.sourceConsistency, "unresolved");
-  const invalid = report();
+  const invalid = freshReport();
   invalid.result.trace.rows[0].status = "unresolved";
   delete invalid.result.trace.rows[0].resolvedTo;
   invalid.result.trace.rows[0].issue = "wrong-kind";
