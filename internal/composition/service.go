@@ -128,6 +128,21 @@ func (s *Service[I, O]) Replace(ctx context.Context, selected Selection, expecte
 	})
 }
 
+// Restore attaches a fresh typed instance after an explicit withdrawal.
+// It uses Coordinator's selected declaration, host guard and increasing
+// generation checks. It never retries a business operation.
+func (s *Service[I, O]) Restore(ctx context.Context, selected Selection, expected uint64, binding Binding, invoke func(context.Context, I) (O, error), lifecycle Lifecycle) error {
+	if s == nil || invoke == nil || lifecycle.Prepare == nil || lifecycle.Ready == nil {
+		return ErrCoordinatorInvalid
+	}
+	return s.route.RestoreSelected(ctx, s.registry, selected, expected, binding, Lifecycle{
+		Prepare: func(ctx context.Context, scope *Scope) error {
+			return s.prepare(ctx, binding, invoke, lifecycle, scope)
+		},
+		Ready: lifecycle.Ready,
+	})
+}
+
 // Withdraw stops new requests. Reap must then observe completion and cleanup;
 // business writes are never undone by disposal of an executable instance.
 func (s *Service[I, O]) Withdraw(expected uint64) error { return s.route.Withdraw(expected) }

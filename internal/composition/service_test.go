@@ -7,6 +7,71 @@ import (
 	"testing"
 )
 
+func TestTypedServiceRestoreRequiresExplicitAdmissionAndCleansFailedCandidate(t *testing.T) {
+	r, first, next := serviceRegistry(t)
+	var denied atomic.Bool
+	guard := func(Binding) error {
+		if denied.Load() {
+			return errors.New("host admission denied")
+		}
+		return nil
+	}
+	s, err := NewService(context.Background(), r, first, selectedBinding(1, "v1"), guard, func(context.Context, int) (int, error) { return 1, nil }, validLifecycle())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Withdraw(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Reap(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	invoke := func(ctx context.Context, _ int) (int, error) {
+		b, _ := InvocationBinding(ctx)
+		if b.Generation != 2 {
+			t.Fatal("restored identity lost")
+		}
+		return 2, nil
+	}
+	cleaned := 0
+	lifecycle := validLifecycle()
+	lifecycle.Prepare = func(_ context.Context, scope *Scope) error {
+		return scope.Track(func() error { cleaned++; return nil })
+	}
+	bad := lifecycle
+	bad.Ready = func(context.Context, Binding) error { return errors.New("not ready") }
+	if err := s.Restore(context.Background(), next, 1, selectedBinding(2, "v2"), invoke, bad); err == nil || cleaned != 1 {
+		t.Fatal("unready candidate retained")
+	}
+	denied.Store(true)
+	if err := s.Restore(context.Background(), next, 1, selectedBinding(2, "v2"), invoke, lifecycle); err == nil || cleaned != 2 {
+		t.Fatal("denied restoration published or leaked")
+	}
+	if _, _, err := s.Invoke(context.Background(), 0); !errors.Is(err, ErrUnbound) {
+		t.Fatal("failed candidate became callable")
+	}
+	denied.Store(false)
+	if err := s.Restore(context.Background(), next, 1, selectedBinding(1, "v2"), invoke, lifecycle); err == nil {
+		t.Fatal("reused generation restored")
+	}
+	if err := s.Restore(context.Background(), next, 1, selectedBinding(2, "v2"), invoke, lifecycle); err != nil {
+		t.Fatal(err)
+	}
+	value, binding, err := s.Invoke(context.Background(), 0)
+	if err != nil || value != 2 || binding.ProviderID != "v2" || binding.Generation != 2 {
+		t.Fatalf("restoration: %v %v %v", value, binding, err)
+	}
+	if err := s.Withdraw(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Reap(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.instances) != 0 {
+		t.Fatal("typed instances retained after final cleanup")
+	}
+}
+
 func TestServiceInvocationContextBindsHostAdapterWithoutChangingCaller(t *testing.T) {
 	r, first, _ := serviceRegistry(t)
 	parent := context.Background()

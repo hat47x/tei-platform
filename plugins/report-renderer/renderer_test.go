@@ -4,9 +4,23 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 )
+
+func TestEmptyReportStillHonorsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	for _, render := range []Renderer{CSV, JSON} {
+		for _, rows := range [][]Row{nil, {}} {
+			doc, err := render(ctx, rows)
+			if !errors.Is(err, context.Canceled) || len(doc.Bytes) != 0 || doc.MediaType != "" {
+				t.Fatalf("cancelled empty report produced output: %+v %v", doc, err)
+			}
+		}
+	}
+}
 
 func TestRendererExchangePreservesDataAndCSVDefusesFormulas(t *testing.T) {
 	rows := []Row{{OrderID: "1001", ItemCode: " \t=SUM(1,2)\n\"x\"", Quantity: "2"}}

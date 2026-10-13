@@ -49,6 +49,9 @@ func cell(s string) string {
 	return s
 }
 func CSV(ctx context.Context, rows []Row) (Document, error) {
+	if err := ctx.Err(); err != nil {
+		return Document{}, err
+	}
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 	if err := w.Write([]string{"order_id", "line_number", "item_code", "quantity", "unit_price"}); err != nil {
