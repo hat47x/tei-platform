@@ -31,6 +31,7 @@ Go標準ライブラリのみを使用する。テストでは、禁止項目の
 
 - `canonical.go`は、既存`driver.NewResolver(...).ResolvePattern`により`order_entry.recent_orders`のApplication、Browse Pattern、Query、Dataを実Workspaceから解決する。Queryに明示されたResult Column MappingとSemantic Attribute ID・Symbolを照合する。
 - 合成の項目認可結果を**Canonical Attribute IDをキー**として渡し、権限のない項目を公開対象へ含めない。SQLのraw列名を公開API名と誤認せず、Queryにない属性を自動的に付け足さない。
+- `command_canonical.go`では、既存Driverから`order_entry.submit_order`をCommand Patternとして解決し、その`sales.order.submit` Capabilityと型付き引数を取得する。Web側でSubmitの業務処理を複製せず、権限が無ければ公開候補にしない。ただしActionの実行、業務Validation、Command結果の確認は行わない。
 - `dispatch.go`では、選択済みQueryと同一のProviderが`scope / field projection / filter operator / sort / limit`を実現できるとの信頼済み照合情報が欠けた場合、実行前に拒否する。ここに渡す`EnforcesScope`等の値は合成であり、**Provider側で実際に権限を強制した証拠にはならない**。
 - `canonical_test.go` / `dispatch_test.go`は実Workspaceを読み込むが、DBや既存のRuntime Command/Query Executorを動かすものではない。通常のnative SQLに対し動的なOData絞込、並べ替え、ページングの対応を自動的に主張しない。
 
