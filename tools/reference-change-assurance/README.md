@@ -42,7 +42,7 @@ go run ./tools/reference-change-assurance \
   -consumer-id order_entry.customer_reference
 ```
 
-変更は**ユーザーが仮定した検証シナリオ**であり、実際のSource変更を観測・証明したものではありません。出力の `impact` には既存APIの診断と影響先が含まれます。変化先と対象Consumerが型付き参照上で直接・間接に結ばれた場合は `recheck`、Graph/投影が不完全・種類未知・Consumer不在なら `unresolved` とします。型付き参照が届かないConsumerも、過去のOracleとreceipt、依存閉包が結び付いていないため**`reuse-candidate`には昇格させません**。
+変更は**ユーザーが仮定した検証シナリオ**であり、実際のSource変更を観測・証明したものではありません。出力の `impact` には既存APIの診断と影響先が含まれます。変化先と対象Consumerが型付き参照上で直接・間接に結ばれた場合は、他の投影ギャップが残っていても安全側に `recheck` を提案します。Graph検証の失敗、未知の変更種類、Consumer不在は `unresolved` とします。**影響先として現れなかった場合も、投影ギャップの残る現行Workspaceでは `unresolved`** であり、影響なしの証明とは扱いません。現行受注管理WorkspaceではDatabase/Database Contract関連の型が投影対象外となり、`projectionUnresolved` に残ります。型付き参照が届かないConsumerも、過去のOracleとreceipt、依存閉包が結び付いていないため**`reuse-candidate`には昇格させません**。
 
 既存の合成fixtureモード `-input` は保持しますが、合成fixtureの `coverage=complete` とは別の判断権限です。実Workspaceモードは `executionAllowed=false` を固定し、Runtime Authority・Effect・Provider適合・Scenario期待値を確認しません。Business ProcedureのCanonical意味を勝手に生成せず、実Sourceのrevisionと署名・権限も確認しません。
 
