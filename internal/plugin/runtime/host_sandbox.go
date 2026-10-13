@@ -203,6 +203,12 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
 		if err != nil {
 			return fail(fmt.Errorf("network policy enforcement failed: %w", err))
 		}
+		// Successful application without an undo capability would leave
+		// Host-controlled restrictions active beyond this invocation.
+		// Reject before handing any work to the child.
+		if c == nil {
+			return fail(fmt.Errorf("network policy enforcement provided no cleanup"))
+		}
 		cleanups = append(cleanups, c)
 	}
 	if h.Filesystem != nil {
@@ -210,12 +216,18 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
 		if err != nil {
 			return fail(fmt.Errorf("filesystem policy enforcement failed: %w", err))
 		}
+		if c == nil {
+			return fail(fmt.Errorf("filesystem policy enforcement provided no cleanup"))
+		}
 		cleanups = append(cleanups, c)
 	}
 	if len(spec.Profile.SecretInjections) > 0 {
 		c, err := h.Secrets.InjectSecrets(ctx, append([]SecretInjection(nil), spec.Profile.SecretInjections...))
 		if err != nil {
 			return fail(fmt.Errorf("secret injection failed: %w", err))
+		}
+		if c == nil {
+			return fail(fmt.Errorf("secret injection provided no cleanup"))
 		}
 		cleanups = append(cleanups, c)
 	}
