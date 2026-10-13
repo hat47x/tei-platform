@@ -152,3 +152,51 @@ func TestDesktopExternalProcessEditInsideAcceptWriteWindowRefusesAndRollsBack(t 
 		t.Fatalf("Host did not observe the post-refusal external Source: %v", err)
 	}
 }
+
+func TestDesktopRollbackDoesNotClobberExternalEditToAlreadyWrittenSource(t *testing.T) {
+	root := scratchWorkspace(t)
+	c := unitPriceCandidate(revisionOfDir(t, root))
+	c.Delta = append(c.Delta, Operation{
+		Op: opAddValidation, Namespace: "sales", ID: "sales.order.total_positive",
+		Kind: "positive", Attribute: "sales.order.total",
+		Placement: "semantic/sales/order.tei",
+	})
+	data := mustJSON(t, c)
+	ev, err := evaluate(root, data)
+	if err != nil || !ev.preview.Acceptable {
+		t.Fatalf("initial shared Preview failed: %+v %v", ev.preview, err)
+	}
+	reviewFP := buildReviewProjection(ev).ReviewFingerprint
+	first := filepath.Join(root, "semantic", "sales", "order.tei")
+	second := filepath.Join(root, "semantic", "sales", "validation.tei")
+	var externalFirst, externalSecond []byte
+	beforeEachWriteHook = func(index int, edit SourceEdit) {
+		if index == 1 {
+			// The first file already contains Acceptance's write. A separate
+			// process changes it before the second file causes the failure.
+			externalFirst = externalProcessEditsSource(t, first)
+			externalSecond = externalProcessEditsSource(t, second)
+		}
+	}
+	defer func() { beforeEachWriteHook = nil }()
+	decision, err := accept(root, data, acceptOptions{ExpectedReviewFingerprint: reviewFP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(externalFirst) == 0 || len(externalSecond) == 0 {
+		t.Fatal("external OS processes did not modify both Source files")
+	}
+	if decision.Decision != "refused" || !decision.SourceChanged ||
+		!hasCode(refusalCodes(decision), "SOURCE_CHANGED_DURING_ACCEPT") ||
+		!hasCode(refusalCodes(decision), "ROLLBACK_INCOMPLETE") {
+		t.Fatalf("incomplete rollback was hidden: %+v", decision)
+	}
+	firstNow, err := os.ReadFile(first)
+	if err != nil || string(firstNow) != string(externalFirst) {
+		t.Fatalf("rollback erased another process's edit to the already written file: %v", err)
+	}
+	secondNow, err := os.ReadFile(second)
+	if err != nil || string(secondNow) != string(externalSecond) {
+		t.Fatalf("refusal erased the other process's change to the unwritten file: %v", err)
+	}
+}
