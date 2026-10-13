@@ -256,3 +256,16 @@ Hostはさらに、API起動後の差替えを想定して**読取りと書込�
 `build_frozen_json_api.sh`は`go build -buildvcs=true`を明示し、`inspect_frozen_api_build.py`はGoコンパイラ由来のビルド情報を読み取る。GitのVCSであること、バイナリ内の`vcs.revision`が実ビルドのTと**完全一致**すること、`vcs.modified=false`であることを要求する。結果は既存の`apiBuildInputObservation.goVCS`に`revision`・`modified`として格納し、`verify_frozen_unit_pair.py`が公開前・公開後とも実行ファイルから再取得して照合する。欠落、偽VCS、異なるT、dirty/不明な状態、receiptだけの改ざんは拒否する。新しいLockやBuilder認可は作らない。
 
 **証明できないこと**：VCSフィールドはGoツールが取得したGitチェックアウトに関する非署名の情報であり、BuilderやGit履歴の真正性・悪意あるツールチェーン・Host配備権限を証明しない。`plugin.BuildPlan`・`plugin.BuildArtifactLock`は現在Pluginのビルド入力と成果物を固定する契約であり、このApplication二成果物に架空のPlugin IDやLockを付与して流用しない。汎用的なunit build/Host authorityへの昇格は#943・#259と調整する。形式上のB/R/Tと各観測値がすべて一致しても、署名済みArtifact、Production TLS/IdP/Provider/Runtime Authorizationは未受入。
+
+
+### 実際に起動するAPI実行ファイルのバイト列を固定する（診断用Linux Host）
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝その基準のリポジトリ改訂）**は、受理された業務モデルの意味を追跡する。一方、**T（Target Build Revision＝Target成果物を構築したソース改訂）**は、Web/API・Desktopなど個別の実装物のビルド時点を追跡する。業務モデルとTarget実装は異なるライフサイクルを持つため、同じB/Rから異なるTの実装を作り得る。
+
+従来の`smoke_json_api.py`は、測定JSONに記載された`apiSHA256`とディスク上の実ファイルを照合してから、**ファイル名で再度オープンしてAPIを起動**していた。検査後、起動直前に同じパスの実行ファイルを差し替えられると、検証したファイルと実際に実行するバイト列が一致しない恐れがある。
+
+Linux限定の`launch_verified_api.py`では、`O_NOFOLLOW`で実ファイルを開き、同一FDから読み取った全バイトの**SHA-256とバイト長**を既存`measurement.json`の値と再照合する。一致したバイト列のみ匿名`memfd`へ複製し、書込・拡張・縮小・Seal解除を禁止する`F_SEAL_*`を付与。その封印済みFDを`/proc/self/fd/N`経由で診断APIプロセスへ渡して起動する。これにより検査から実行までに、元のファイルパスを差し替えても起動する実行内容を変更できない。通常JSON APIと固定World APIの診断smoke双方に適用する。既存の業務Runnerや本番Host契約は変更しない。
+
+負例は実Linux ELFを使い、検査後のパス差し替え、異なる実行ファイル、シンボリックリンク、非実行ファイル、不正digest/size、封印済みFDへの書き換え失敗を検証する。Linux `memfd`・`/proc/self/fd`が使えない環境は**代替の未検証なpath起動へフォールバックしない**。
+
+**限界**：SHA-256の期待値を保持する測定JSONの真正性は独立には証明されていない。この操作は診断Hostの一時プロセスに対する**実行バイト一致**の保証であり、配備先Host自体の信頼、署名済みBuilder/BuildArtifactLock、外部プロキシやポート転送、TLS/IdP/Session、実DB Providerの権限を証明しない。本番のHost受理は#943/#259等の既存契約で独立に判断する。
