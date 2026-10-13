@@ -106,3 +106,17 @@ go test -race -count=3 ./reference/multilingual-overlays/...
 ```
 
 **次の課題**：正式な受理機構から`Surface`・`Grant`・`Override`の正本を受け取り、SourceとPlugin Lockの固定版をホスト側で再確認すること。追加の重要度宣言、通常UI内の文字列資源ID、動的な言語切替、実ブラウザ・WebView表示はまだ対象外。上記は受理される前の**読取と根拠照合の縦断実証**である。
+
+## O3a：Plugin Lock固定の言語別配布候補
+
+`locale_bundle.go`は、既存のPlugin Lock確認、O1の表示面合成とE1の言語選択を**一度ずつ**行い、明示した通常Plugin・意味参照・言語の直積だけを決定的順序で抽出する。Localeの親言語や原文へ暗黙にフォールバックせず、要求した表示のどれかが未提供・未確認・旧原文ベース・無許可ならバンドルを発行しない。元の通常Pluginの実装、データモデル、権限・機能定義は変更しない。
+
+`LocaleBundle.Digest`は、Digestフィールドを除いたGo JSONのSHA-256であり、再現性と不用意な改変の発見用。**自ら持ち込んだ訳文とDigestを同時に偽造することは可能**で、発行者の証明やHostの現在権限を示さない。実際の配布に使う場合は、正規の受理済みSourceとPlugin LockをHostが再照合し、認証済みの配布経路と別途信頼した期待Digestを用いる。現行参照ケースは合成Plugin定義とGrantを使う。O2bのSourceWitnessと`ReviewGate`を必ず接続する正式な配布パイプライン、署名、Web/Desktopのキャッシュ失効は**まだ未実装**。
+
+```sh
+go test -race ./reference/multilingual-overlays/...
+go run ./reference/multilingual-overlays/cmd/render-bundle en-US
+go run ./reference/multilingual-overlays/cmd/render-bundle ja-JP en-US
+```
+
+`CheckLocaleBundleIntegrity`は内部整合と自己宣言Digestだけを確認する。これに通っても、翻訳採用の権限・元の正本の一致は立証されない。受理機構・現在版照合の共通化は独立した#1119 / PR #1670の進行を踏まえ、重複する承認器をここに実装しない。
