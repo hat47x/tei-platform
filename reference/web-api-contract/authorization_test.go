@@ -11,10 +11,10 @@ import (
 )
 
 type authorizationProbe struct {
-	calls int
-	input legacyauthorization.Input
+	calls  int
+	input  legacyauthorization.Input
 	result capabilityinvoke.BusinessResult
-	err error
+	err    error
 }
 
 func (p *authorizationProbe) Invoke(_ context.Context, capability core.CanonicalID, raw any) (capabilityinvoke.BusinessResult, error) {
@@ -52,10 +52,10 @@ func TestExistingAuthorizationUsesTrustedSubjectAndExactOperation(t *testing.T) 
 
 func TestExistingAuthorizationFailsClosed(t *testing.T) {
 	cases := []struct {
-		name string
-		mutate func(*authorizationProbe)
-		subject string
-		action string
+		name     string
+		mutate   func(*authorizationProbe)
+		subject  string
+		action   string
 		resource string
 	}{
 		{"denied", func(p *authorizationProbe) { p.result.Outcome = "denied" }, "staff-1", "browse", "order_entry.recent_orders"},
