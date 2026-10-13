@@ -5,9 +5,9 @@ package composition
 import "tei/core/generation"
 
 var (
-	ErrUnbound = generation.ErrUnbound
+	ErrUnbound         = generation.ErrUnbound
 	ErrStaleGeneration = generation.ErrStaleGeneration
-	ErrGuardRequired = generation.ErrGuardRequired
+	ErrGuardRequired   = generation.ErrGuardRequired
 )
 
 type Binding = generation.Binding
