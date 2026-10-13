@@ -1,0 +1,11 @@
+persist request_store.request {
+    database request_store
+    semantic intake.request
+    table public.requests
+
+    column intake.request.request_id -> request_id storage varchar required
+    column intake.request.summary -> summary storage text required
+    column intake.request.status -> status storage varchar required
+
+    primary-key intake.request.request_id
+}

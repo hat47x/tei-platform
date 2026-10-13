@@ -46,3 +46,9 @@ go test -count=1 -run '^TestStandaloneQuotePatternHasSeparateCanonicalBindingAnd
 Runtimeはテスト用`EnvironmentPlan`、実ファイルを再読込してSHA-256を照合する検証器、標準stdioプロセスランチャーで実行します。Providerの適合性証跡・要求Shapeが欠ける場合はRuntimeに到達せず、RuntimeのDigest・Capability・権限・必須Sandboxが合わなければ子プロセスを起動しません。正常系は実プロセスの見積もり結果を候補の応答Shapeで検査します。
 
 **明確な限界**：これは試験内の合成信頼から実Runtimeへつなぐ導線であり、実際の第三者署名・発行者Trust Grant・正式なProvider適合性認定を得たわけではありません。参照用のLegacy Contract Queryはstdio通信を運ぶだけで、見積もりをDB照会とは定義しません。Runtimeの検証器は実行前にパスからハッシュを読みますが、ファイル記述子の固定やOS隔離、署名・来歴検証、Resource Leaseは保証していません。汎用呼出しとRuntimeは別の正本責務のままにし、新しいResolver／Lock／Authorityを作りません。
+
+## 実プロセス応答の失敗境界と構造適合の限界
+
+[直列結合試験](../../../tools/reference-plugin-capability-contract/order_quote_runtime_chain_test.go)では、実見積もり子プロセスが正常終了した**後**の通信応答も検証します。旧通信Envelopeの契約指紋が改変された場合は、業務結果を渡す前に拒否します。また、実子プロセスから戻った内容に試験内で異常を注入し、金額の文字列化、通貨の欠落、存在しない「受注完了」フィールドがあれば、既存の`InvocationRegistry`が結果Shape違反として拒否し、成功を表す実行結果を返さないことを確認します。これらの失敗は子プロセス起動後に検出されるため、**起動前に防げたと誤記しません**。
+
+逆に、金額が整数であっても誤った小計は現行の構造Shapeを通過します。この反例を固定して、**構造上の適合と業務上の計算正しさの証明は別**であることを明示します。今後のProvider Conformanceでは、入力と出力の意味的な関係、業務上の値制約、独立した試験証跡を扱う必要があります。今回の改修はテスト内の異常注入と文書追記に限り、Productionの証跡発行・実行権限機構を増設しません。

@@ -1,0 +1,3 @@
+pattern request_log.submit_request command {
+    capability intake.request.submit
+}

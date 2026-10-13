@@ -72,9 +72,10 @@ function lens(view, sourceFromWorkspace) {
   const table = views.table || {}, er = views.er || {};
   const fn = views.function || {}, business = views.business || {};
   const src = view.sourceNavigation || {};
+  const typed = view.typedReferences;
   const focus = view.focus || {};
   const navigation = '<nav aria-label="視点切替">' +
-    [['table', "表"], ['er', "ER図"], ['function', "機能"], ['business', "業務"], ['source', "元の定義"]]
+    [['table', "表"], ['er', "ER図"], ['function', "機能"], ['business', "業務"], ['source', "元の定義"], ...(typed ? [['typed', "型付き参照"]] : [])]
       .map(([id, label]) => '<a href="#' + id + '">' + escapeText(label) + '</a>').join("") +
     '</nav>';
   const tableBody = table.value
@@ -114,6 +115,18 @@ function lens(view, sourceFromWorkspace) {
     ["原文の終了", src.range?.end
       ? String(src.range.end.line) + "行 " + src.range.end.column + "列" : "なし"]
   ]) + '<p>' + str(src.caveat ?? src.reason ?? "元定義は特定されていません。") + '</p>';
+  const typedBody = typed ? facts([
+    ["選択した観測スコープ", typed.scope],
+    ["スコープの根拠", typed.scopeAuthority],
+    ["型付き参照の権限", typed.authority],
+    ["Source位置の一致", typed.sourceConsistency],
+    ["参照全体", typed.total], ["未解決参照", typed.unresolved],
+    ["Graph・Source指紋", typed.snapshotFingerprint]
+  ]) + '<p class="warning">Goの型付き参照も参照候補であり、受理済み業務手順・編集権限・実行結果の証明にはなりません。</p>' +
+    entries(typed.rows, row => safeJSON({ status: row.status,
+      relation: row.edge?.relation, from: row.edge?.from,
+      to: row.resolvedTo ?? row.edge?.to, issue: row.issue })) +
+    (typed.projectionUnresolved?.length ? safeJSON(typed.projectionUnresolved) : "") : "";
   const origin = sourceFromWorkspace
     ? "Workspaceから再取得した正本の読み取り結果"
     : "外部の資料から作成した投影（正本との同一性は未検証）";
@@ -128,7 +141,8 @@ function lens(view, sourceFromWorkspace) {
     section("er", "ER図", er.status, erBody) +
     section("function", "機能", fn.status, functionBody) +
     section("business", "業務", business.status, businessBody) +
-    section("source", "元の定義", src.status, sourceBody));
+    section("source", "元の定義", src.status, sourceBody) +
+    (typed ? section("typed", "型付き参照（#1120）", typed.status, typedBody) : ""));
 }
 function businessStep(view) {
   return document("業務手順からの逆向き参照",

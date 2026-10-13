@@ -77,17 +77,33 @@ def gh_json(endpoint):
 
 
 def verify_live():
-    all_rules = gh_json(f"repos/{REPOSITORY}/rulesets?per_page=100")
-    if not isinstance(all_rules, list):
-        return ["GitHubのルール一覧を読み取れません"], None
+    # 一覧APIは最大100件/頁。同名ルールが次頁に隠れても成功としない。
+    # 上限に達した場合は判定不能とし、不完全な一覧で合格しない。
+    all_rules = []
+    for page in range(1, 21):
+        batch = gh_json(f"repos/{REPOSITORY}/rulesets?per_page=100&page={page}")
+        if (not isinstance(batch, list)
+                or any(not isinstance(item, dict) for item in batch)
+                or len(batch) > 100):
+            return ["GitHubのルール一覧が不正または不完全です"], None
+        all_rules.extend(batch)
+        if len(batch) < 100:
+            break
+    else:
+        return ["ルール一覧が2000件以上で、全件を照合できません"], None
+
     matches = [entry for entry in all_rules
                if entry.get("name") == NAME and entry.get("source_type") == "Repository"]
     if len(matches) != 1:
         return ["同名のリポジトリルールが1件ではありません: " + str(len(matches))], None
     rule_id = matches[0].get("id")
-    if not isinstance(rule_id, int) or rule_id < 1:
+    if type(rule_id) is not int or rule_id < 1:
         return ["ルールセットIDが不正です"], None
     detail = gh_json(f"repos/{REPOSITORY}/rulesets/{rule_id}")
+    if not isinstance(detail, dict) or detail.get("id") != rule_id:
+        return ["詳細応答のルールセットIDが一覧と一致しません"], rule_id
+    if detail.get("source_type") != "Repository":
+        return ["詳細応答の管理元がリポジトリではありません"], rule_id
     return violations(detail), rule_id
 
 

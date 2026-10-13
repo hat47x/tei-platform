@@ -18,8 +18,12 @@ func TestSelectExecutableDoesNotUsePATH(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != goPath {
-		t.Fatalf("explicit Go executable changed: got %q want %q", got, goPath)
+	canonicalPath, err := filepath.EvalSymlinks(goPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != canonicalPath {
+		t.Fatalf("explicit Go executable changed after canonical path resolution: got %q want %q", got, canonicalPath)
 	}
 	for _, invalid := range []string{t.TempDir(), filepath.Join(dir, "missing")} {
 		if _, err := SelectExecutable(invalid, "", "linux"); err == nil {
@@ -43,8 +47,15 @@ func TestSelectExecutableUsesEmbeddedGoRootWithoutPATH(t *testing.T) {
 	}
 	t.Setenv("PATH", t.TempDir())
 	got, err := SelectExecutable("", goRoot, "linux")
-	if err != nil || got != goPath {
-		t.Fatalf("embedded Go root did not select its exact binary: got %q err=%v", got, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonicalPath, err := filepath.EvalSymlinks(goPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != canonicalPath {
+		t.Fatalf("embedded Go root did not select its canonical exact binary: got %q want %q", got, canonicalPath)
 	}
 	if goExecutableName("windows") != "go.exe" || goExecutableName("linux") != "go" {
 		t.Fatal("target-specific Go executable naming regressed")

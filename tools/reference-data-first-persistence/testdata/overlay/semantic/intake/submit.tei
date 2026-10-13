@@ -1,0 +1,6 @@
+namespace intake
+
+capability intake.request.submit {
+    input request intake.request
+    output intake.request
+}

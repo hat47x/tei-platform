@@ -1,0 +1,8 @@
+application request_log {
+    uses semantic intake
+
+    database store {
+        target request_store
+        access read-write
+    }
+}

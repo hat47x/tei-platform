@@ -2,6 +2,7 @@ package modelref
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 )
 
@@ -92,16 +93,24 @@ func ReviewMigration(before, after Graph, t Transition, retargets []EdgeRetarget
 		to       Ref
 	}
 	oldCounts, newCounts := map[edgeID]int{}, map[edgeID]int{}
-	oldEvidence, newEvidence := map[edgeID]string{}, map[edgeID]string{}
+	// An edge signature may occur more than once. Keep the full multiset of
+	// evidence; comparing only the last matching edge would hide a change.
+	oldEvidence, newEvidence := map[edgeID][]string{}, map[edgeID][]string{}
 	for _, e := range before.Edges {
 		id := edgeID{e.From, e.Relation, e.To}
 		oldCounts[id]++
-		oldEvidence[id] = evidenceKey(e.Evidence)
+		oldEvidence[id] = append(oldEvidence[id], evidenceKey(e.Evidence))
 	}
 	for _, e := range after.Edges {
 		id := edgeID{e.From, e.Relation, e.To}
 		newCounts[id]++
-		newEvidence[id] = evidenceKey(e.Evidence)
+		newEvidence[id] = append(newEvidence[id], evidenceKey(e.Evidence))
+	}
+	for id := range oldEvidence {
+		sort.Strings(oldEvidence[id])
+	}
+	for id := range newEvidence {
+		sort.Strings(newEvidence[id])
 	}
 	claimed := make(map[edgeID]bool)
 	for i, move := range retargets {
@@ -118,7 +127,7 @@ func ReviewMigration(before, after Graph, t Transition, retargets []EdgeRetarget
 			add("retarget-edge-ambiguous-or-absent", at)
 		case claimed[oldID]:
 			add("duplicate-retarget", at)
-		case oldEvidence[oldID] != newEvidence[newID]:
+		case !reflect.DeepEqual(oldEvidence[oldID], newEvidence[newID]):
 			add("retarget-evidence-changed", at)
 		default:
 			claimed[oldID] = true
@@ -142,7 +151,7 @@ func ReviewMigration(before, after Graph, t Transition, retargets []EdgeRetarget
 			}
 		} else if newCounts[id] != count {
 			add("unrelated-reference-changed", at)
-		} else if oldEvidence[id] != newEvidence[id] {
+		} else if !reflect.DeepEqual(oldEvidence[id], newEvidence[id]) {
 			add("unreviewed-reference-evidence", at)
 		}
 	}

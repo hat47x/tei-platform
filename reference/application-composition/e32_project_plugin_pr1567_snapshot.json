@@ -1,0 +1,172 @@
+{
+  "kind": "tei-e32-github-pr-files-evidence-v0",
+  "source": "github-pr-files-fixed-head",
+  "repository": "hat47x/tei-platform",
+  "pullRequest": 1567,
+  "baseSha": "aa63f482b35e9d169f150aaaac801d56db288d72",
+  "headSha": "be193266f1556e090b59cf2c237a23c0ca60236e",
+  "draftAtObservation": true,
+  "mergedAtObservation": false,
+  "files": [
+    {
+      "path": ".github/workflows/tei-reference-project-advice-lit-browser-ci.yml",
+      "role": "verification",
+      "status": "added",
+      "additions": 88,
+      "deletions": 0,
+      "gitBlobSha": "403a84fc82b8104f2248aa814f87059c6aa27be3"
+    },
+    {
+      "path": ".github/workflows/tei-reference-project-advice-lit-ci.yml",
+      "role": "verification",
+      "status": "added",
+      "additions": 46,
+      "deletions": 0,
+      "gitBlobSha": "ec6d909b63a29fc626758c9e145b395fc4eec4f5"
+    },
+    {
+      "path": "plugins/reference-project-customer-advice/README.md",
+      "role": "documentation",
+      "status": "added",
+      "additions": 13,
+      "deletions": 0,
+      "gitBlobSha": "2128819634e57b23f615bc229391fc912f5f7e63"
+    },
+    {
+      "path": "plugins/reference-project-customer-advice/advice.go",
+      "role": "project-logic",
+      "status": "added",
+      "additions": 48,
+      "deletions": 0,
+      "gitBlobSha": "0e1adb1dc471ff46daa7f608dd892eca1e3ac871"
+    },
+    {
+      "path": "plugins/reference-project-customer-advice/advice_test.go",
+      "role": "project-logic",
+      "status": "added",
+      "additions": 36,
+      "deletions": 0,
+      "gitBlobSha": "435320df53a45fff7d3faa37b9812dcf2e8b4d4d"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/README.md",
+      "role": "documentation",
+      "status": "added",
+      "additions": 48,
+      "deletions": 0,
+      "gitBlobSha": "8d41e78717e8ca0bd6bbe02dafc5c261713f58b1"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/main.go",
+      "role": "diagnostic-host",
+      "status": "added",
+      "additions": 126,
+      "deletions": 0,
+      "gitBlobSha": "3cb210363d59c0052ed5da145d5895c504c7cef7"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/main_test.go",
+      "role": "diagnostic-host",
+      "status": "added",
+      "additions": 75,
+      "deletions": 0,
+      "gitBlobSha": "48aeeedfd73e6b7d8e7600b4a5228438dc413e69"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/order_entry_context.go",
+      "role": "diagnostic-host",
+      "status": "added",
+      "additions": 104,
+      "deletions": 0,
+      "gitBlobSha": "6e05e787025d22895ba89fc664f76e9a58fc8ef3"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/order_entry_context_test.go",
+      "role": "diagnostic-host",
+      "status": "added",
+      "additions": 118,
+      "deletions": 0,
+      "gitBlobSha": "01e8a5be3ba39ee8d75bf085216721cf5448c4e3"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/real_browser_replay.mjs",
+      "role": "verification",
+      "status": "added",
+      "additions": 187,
+      "deletions": 0,
+      "gitBlobSha": "f383a46420361266f7863c6b2a17a6895343fae2"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/smoke_order_entry.sh",
+      "role": "verification",
+      "status": "added",
+      "additions": 75,
+      "deletions": 0,
+      "gitBlobSha": "01fc37b6aa31bee4086b56f32f405906a4c9fc5a"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/LIT-LICENSE",
+      "role": "third-party",
+      "status": "added",
+      "additions": 28,
+      "deletions": 0,
+      "gitBlobSha": "be7a97b60d79f596f8394b52148f9bbb5da50323"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/advice-action.mjs",
+      "role": "web-ui",
+      "status": "added",
+      "additions": 30,
+      "deletions": 0,
+      "gitBlobSha": "609e78a87134287380edbb801efe641c6b541d66"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/advice-action.test.mjs",
+      "role": "web-ui",
+      "status": "added",
+      "additions": 47,
+      "deletions": 0,
+      "gitBlobSha": "b50cabc86b5bfffb9e1c8b3c40e5844c7a610df1"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/advice-element.mjs",
+      "role": "web-ui",
+      "status": "added",
+      "additions": 78,
+      "deletions": 0,
+      "gitBlobSha": "0f415f06f9e325b3d2f544cbbe7836f0c3f3e65f"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/index.html",
+      "role": "web-ui",
+      "status": "added",
+      "additions": 23,
+      "deletions": 0,
+      "gitBlobSha": "5834f123cda7adf8026b74fde00fa2e72f4280f6"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/lit-core.min.js",
+      "role": "third-party",
+      "status": "added",
+      "additions": 24,
+      "deletions": 0,
+      "gitBlobSha": "30071d620d392394d56721f05fc4808e02e038e3"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/order-entry-context.mjs",
+      "role": "web-ui",
+      "status": "added",
+      "additions": 33,
+      "deletions": 0,
+      "gitBlobSha": "1cae592ffc1bb3eda6c7230e4586c959c6fd2c6f"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/web/order-entry-context.test.mjs",
+      "role": "web-ui",
+      "status": "added",
+      "additions": 40,
+      "deletions": 0,
+      "gitBlobSha": "989d2c85b763220a32a593d36512c9f4b2c7ae98"
+    }
+  ]
+}

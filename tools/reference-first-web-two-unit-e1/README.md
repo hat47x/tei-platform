@@ -248,3 +248,13 @@ python3 tools/reference-first-web-two-unit-e1/check_api_only_parity.py /secure/o
 読取と6種の処理結果を比較し、応答のサービス識別が実際のAPI実行ファイルのSHA-256と一致することを確認する。比較時に取り除くのは照合済みの実行物識別だけで、認証・認可拒否や業務結果の違いは残して判定する。Tの不一致と、固定WorldへのライブSource版の指定は起動時に拒否される。HTML経路の除外も検査する。
 
 結果は模擬データによる実HTTPの同等性であり、永続更新や本番認証の証明ではない。構築時に固定したWorldの指紋を、Source受理の権限や提供元の出所確認として扱わない。
+
+### Browser→APIの読取りにも同一HTTP要求でB/R/Tを照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝基準リポジトリ改訂）**は受け渡された業務モデルの意味を特定する。**T（Target Build Revision＝Target成果物のビルド改訂）**は、そこから生成したWeb/APIなどの実装成果物を特定する。同じB/Rを使ったWebとDesktopが異なるTを持ち得るため、意味の引き渡しとTargetごとの更新を区別する。B/R/Tの一致自体は本番の配備権限、署名、認証・認可を与えない。
+
+診断Browser Hostでは、書込み要求`POST /scenario/submit`をGo APIの`/scenario/submit-bound`に転送し、API自身の実行中ProjectionとB/R/Tを**Runner起動と同じHTTP要求の中で**照合してきた。読取り`GET /scenario/read`も同じ検査方式へ拡張する。Browser側の公開URLは変わらず、HostはGo APIの`GET /scenario/read-bound`へ転送する。Hostが生成したApplication/B/R/Tヘッダー4項目をGo APIが比較し、不一致・欠落・重複は409でRunnerを呼ばずに拒否。Hostは409または未対応の古いAPIによる404を502「API binding unknown」へ変換し、元の無検査ルートへは再送しない。
+
+Hostはさらに、API起動後の差替えを想定して**読取りと書込みの両方を転送する前**に実APIのManifestを再照合する。読取りの事前照合と、同じ要求内のGo API側照合は別の段階であり、APIの差替えが事前照合と実読取りの間に発生しても後者で誤った業務データの読取りを拒否できる。
+
+この仕組みは、意図しない**異なるApplication/B/R/Tへの誤転送**を診断的に防止するだけである。ヘッダー値は復元可能で暗号鍵ではなく、Host自体の配備権限、実データアクセス権、TLS/IdP、署名済みBuilder/Artifact LockやHost Trustの証明にはならない。Go APIが直接公開する従来の`/scenario/read`および業務Runnerの機能・認可は変えない。

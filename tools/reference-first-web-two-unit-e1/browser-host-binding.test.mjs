@@ -47,11 +47,38 @@ async function setup(t) {
   await writeFile(measurement, JSON.stringify(initialReceipt));
   let exposed = manifest();
   let apiCommandIdentity = manifest();
+  let apiReadIdentity = manifest();
+  let readSupported = true;
+  let readCount = 0;
   let commandCount = 0;
   const server = createServer((req, res) => {
     if (req.url === "/manifest.json") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(exposed));
+    } else if (req.url?.startsWith("/scenario/read-bound")) {
+      if (!readSupported) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      const headers = {
+        "x-tei-diagnostic-application": apiReadIdentity.applicationId,
+        "x-tei-diagnostic-baseline-id": apiReadIdentity.handoverBaselineId,
+        "x-tei-diagnostic-baseline-revision": apiReadIdentity.baselineRepositoryRevision,
+        "x-tei-diagnostic-target-revision": apiReadIdentity.targetBuildRevision,
+      };
+      const matched = Object.entries(headers).every(([key, value]) =>
+        req.headers[key] === value && req.rawHeaders
+          .filter((_, index) => index % 2 === 0)
+          .filter(keyName => keyName.toLowerCase() === key).length === 1);
+      if (req.method !== "GET" || !matched) {
+        res.writeHead(409);
+        res.end("diagnostic API read binding mismatch");
+        return;
+      }
+      readCount++;
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ result: { scenarioId: "diagnostic-read-fixture" } }));
     } else if (req.url === "/scenario/submit-bound") {
       const headers = {
         "x-tei-diagnostic-application": apiCommandIdentity.applicationId,
@@ -106,8 +133,11 @@ async function setup(t) {
   return {
     start,
     get count() { return commandCount; },
+    get reads() { return readCount; },
     changeManifest: next => { exposed = next; },
     changeAPICommandIdentity: next => { apiCommandIdentity = next; },
+    changeAPIReadIdentity: next => { apiReadIdentity = next; },
+    allowBoundRead: enabled => { readSupported = enabled; },
     browser, measurement, html, js,
     overwriteReceipt: async patch => writeFile(measurement, JSON.stringify({ ...initialReceipt, ...patch })),
   };
@@ -230,4 +260,47 @@ test("Host serves its checked Browser snapshot even if files later change", asyn
   assert.equal(js, f.js.toString("utf8"));
   assert.equal(await submit(origin), 200);
   assert.equal(f.count, 1);
+});
+
+test("diagnostic GET binds B/R/T after startup and before read dispatch", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  assert.equal((await fetch(origin + "/scenario/read?row=0")).status, 200);
+  assert.equal(f.reads, 1);
+  // Manifest changes after initial Host startup: do not forward a read.
+  f.changeManifest({ ...manifest(), baselineRepositoryRevision: "d".repeat(40) });
+  assert.equal((await fetch(origin + "/scenario/read?row=0")).status, 502);
+  assert.equal((await fetch(origin + "/manifest.json")).status, 502);
+  assert.equal(f.reads, 1);
+  f.changeManifest(manifest());
+  assert.equal((await fetch(origin + "/scenario/read?row=0")).status, 200);
+  assert.equal(f.reads, 2);
+  assert.equal(f.count, 0);
+});
+
+test("API read identity changes after manifest preflight: no wrong read executed", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  // API serves matching manifest but uses different in-process projection
+  // when dispatching /scenario/read-bound; Host cannot trust the earlier GET.
+  f.changeAPIReadIdentity({ ...manifest(), targetBuildRevision: "c".repeat(40) });
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(f.reads, 0);
+  f.changeAPIReadIdentity(manifest());
+  assert.equal((await fetch(origin + "/scenario/read", {
+    headers: { "X-Tei-Diagnostic-Target-Revision": "spoofed" },
+  })).status, 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 0);
+});
+
+test("old API lacking bound read endpoint returns unknown and never falls back", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  f.allowBoundRead(false);
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(f.reads, 0);
+  f.allowBoundRead(true);
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(f.reads, 1);
 });
