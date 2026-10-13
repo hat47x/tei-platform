@@ -11,9 +11,9 @@ import (
 // ProjectAdvisoryContract is a reference-only service identity. It does not
 // change the accepted order_entry command contract or grant host authority.
 var ProjectAdvisoryContract = composition.Contract{
-	ID: "tei.reference.project.customer-advice",
+	ID:      "tei.reference.project.customer-advice",
 	Version: "v0",
-	Shape: "customer-code-note-to-advisory-v0",
+	Shape:   "customer-code-note-to-advisory-v0",
 }
 
 const projectAdvisoryScope = "reference-project-customer-advice"
@@ -23,8 +23,8 @@ const projectAdvisoryProviderID = "project.customer-advice.go"
 // Selection is only declaration eligibility; it is never an authorization token.
 // The diagnostic host owns the Go implementation and invokes it locally.
 type projectAdvisoryBridge struct {
-	registry  *composition.Registry
-	selection composition.Selection
+	registry    *composition.Registry
+	selection   composition.Selection
 	coordinator *composition.Coordinator
 }
 
@@ -51,11 +51,11 @@ func newProjectAdvisoryBridge() (*projectAdvisoryBridge, error) {
 	// This synthetic digest identifies the reference binary binding only; it is
 	// not an artifact attestation. Production hosts must verify real bytes.
 	binding := composition.Binding{
-		ContractID: ProjectAdvisoryContract.ID,
+		ContractID:      ProjectAdvisoryContract.ID,
 		ContractVersion: ProjectAdvisoryContract.Version,
-		ProviderID: projectAdvisoryProviderID,
-		ArtifactDigest: "sha256:" + strings.Repeat("0", 64),
-		Generation: 1,
+		ProviderID:      projectAdvisoryProviderID,
+		ArtifactDigest:  "sha256:" + strings.Repeat("0", 64),
+		Generation:      1,
 	}
 	// A production host must replace this reference guard with its current
 	// permission, artifact, lease and fencing checks.
