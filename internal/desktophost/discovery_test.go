@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -139,6 +140,9 @@ func TestDraftDiscoveryFailsClosedOnMalformedOrUnsafeStoreEntries(t *testing.T) 
 		}},
 		{name: "readable-by-others", add: func(t *testing.T, state, key string) {
 			t.Helper()
+			if runtime.GOOS == "windows" {
+				t.Skip("Windows private directory ACL must be checked by the embedding Host")
+			}
 			if err := os.WriteFile(filepath.Join(state, "draft-"+key+".json"), []byte("{}"), 0o644); err != nil {
 				t.Fatal(err)
 			}
