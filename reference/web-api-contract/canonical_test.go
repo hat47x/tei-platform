@@ -38,9 +38,9 @@ func TestActualOrderEntryBrowseProjection(t *testing.T) {
 	// NEVER grants access; total is a real mapped attribute, intentionally
 	// inaccessible to this synthetic principal.
 	grants := map[core.CanonicalID]FieldPolicy{
-		core.MustCanonicalID("sales.order.order_id"): {Select: true, Filter: true, Sort: true},
-		core.MustCanonicalID("sales.order.customer_id"): {Select: true},
-		core.MustCanonicalID("sales.order.total"): {Select: false, Filter: false, Sort: false},
+		core.MustCanonicalID("sales.order.order_id"):     {Select: true, Filter: true, Sort: true},
+		core.MustCanonicalID("sales.order.customer_id"):  {Select: true},
+		core.MustCanonicalID("sales.order.total"):        {Select: false, Filter: false, Sort: false},
 	}
 	pub, err := ResolvePublishedBrowse(loaded.World, core.MustCanonicalID("order_entry"),
 		core.MustCanonicalID("order_entry.recent_orders"), grants)
