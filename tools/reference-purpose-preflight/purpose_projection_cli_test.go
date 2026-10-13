@@ -24,7 +24,7 @@ func TestCLIPurposeProjectionHasBoundedObligationsAndNoAuthority(t *testing.T) {
 			}
 			var result struct {
 				Assessment WorkspaceAssessment `json:"assessment"`
-				Readiness  PurposeProjection  `json:"readiness"`
+				Readiness  PurposeProjection   `json:"readiness"`
 			}
 			if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 				t.Fatal(err)
