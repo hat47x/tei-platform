@@ -49,7 +49,7 @@ API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowser�
 
 ## 既存Composition Registryとの最小接続
 
-`contract_bridge.go` は新しい汎用Resolverを実装せず、既存の `composition.Contract`・`Provider`・`Registry.Apply`・`Registry.Select` を利用します。案件ごとのScopeを分け、Providerの削除・Contract変更・他案件Scopeとの不一致時は補助確認を失敗として扱います。HostがWithdrawされた場合は、Registryの宣言が残っていてもCoordinatorが新規Leaseを拒否します。Go関数の実行は診断Hostのローカル呼び出しですが、既存の `NewSelectedCoordinator` と `Acquire` / `Release` を通すようにしました。Reference用の固定Bindingと合成Digest、簡易Host Guardを使用するため、**Production向けの実Artifact検証、現在の権限・fencing検証は未成立**です。`contract_bridge_test.go` で案件Scope隔離とProvider削除時の拒否を検証します。正式Runtime統合の達成を意味しません。
+`contract_bridge.go` は新しい汎用Resolverを実装せず、既存の `composition.Contract`・`Provider`・`Registry.Apply`・`Registry.Select` を利用します。案件ごとのScopeを分け、Providerの削除・Contract変更・他案件Scopeとの不一致時は補助確認を失敗として扱います。HostがWithdrawされた場合は、Registryの宣言が残っていてもCoordinatorが新規Leaseを拒否します。Retired generationのReap後も自動復活しないことを追加試験します。Go関数の実行は診断Hostのローカル呼び出しですが、既存の `NewSelectedCoordinator` と `Acquire` / `Release` を通すようにしました。Reference用の固定Bindingと合成Digest、簡易Host Guardを使用するため、**Production向けの実Artifact検証、現在の権限・fencing検証は未成立**です。`contract_bridge_test.go` で案件Scope隔離とProvider削除時の拒否を検証します。正式Runtime統合の達成を意味しません。
 
 ### main側ビルド版T固定との整合
 
