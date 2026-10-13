@@ -14,10 +14,10 @@ func TestProtectedHostRejectsPathsNotRepresentableInE1(t *testing.T) {
 		VerifySession: func(*http.Request) (Principal, error) {
 			return Principal{ProviderID: "corporate", Issuer: "https://example.invalid/issuer", Subject: "sub-1", PrincipalID: "principal-1"}, nil
 		},
-		VerifyCSRF: func(*http.Request, Principal) bool { return true },
-		Authorize: func(context.Context, Principal, string) (bool, error) { return true, nil },
-		Invoke: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
-		Audit: func(AuditRecord) {},
+		VerifyCSRF:    func(*http.Request, Principal) bool { return true },
+		Authorize:     func(context.Context, Principal, string) (bool, error) { return true, nil },
+		Invoke:        http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
+		Audit:         func(AuditRecord) {},
 	}
 	newPolicy := func(path, action string) Policy {
 		return Policy{
