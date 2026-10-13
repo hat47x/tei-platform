@@ -7,16 +7,9 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {inspectSubjectBatch,InspectBridgeError} from './inspect-cli-bridge.mjs';
 import {linkApplicationPattern,linkPatternRelation} from './project-inspection-v0.mjs';
+import {REFERENCE_SUBJECTS,summarizeInspectionEvidence,EvidenceSummaryError} from './inspection-evidence-summary.mjs';
 
 const execFileAsync=promisify(execFile);
-const REFERENCE_SUBJECTS=Object.freeze([
-  {kind:'application',id:'order_entry'},
-  {kind:'application-pattern',id:'order_entry.order_lines'},
-  {kind:'semantic-relation',id:'sales.order.lines'},
-  {kind:'semantic-data',id:'sales.order'},
-  {kind:'application-pattern',id:'order_entry.customer_reference'}
-]);
-
 function cliArgs(args) {
   if(args.length!==4)throw new InspectBridgeError('EXPECTED_BINARY_AND_WORKSPACE');
   const opts={};
@@ -65,31 +58,8 @@ export async function runReferenceInspection(binary,workspace,readOne=executeOne
   };
 }
 
-// Public CLI output is intentionally metadata-only. Full observations stay in memory
-// for the authorized caller and must not be written to logs by default.
-export function summarizeInspectionEvidence(batch) {
-  if(!batch || !Array.isArray(batch.observations))
-    throw new InspectBridgeError('INVALID_INSPECTION_EVIDENCE');
-  return {
-    schemaVersion:'tei.research.inspection-evidence/v0',
-    effect:'read-only',acceptance:'not_asserted',
-    subjectCount:batch.observations.length,
-    // Do not expose application/semantic identifiers or free-form diagnostics by default.
-    // Position is meaningful only within the fixed, explicitly selected Reference batch.
-    subjects:batch.observations.map((o,index)=>({
-      index,
-      kind:o.subject.kind,
-      completeness:o.completeness,
-      diagnosticCount:o.diagnostics.length,
-      sourceStatus:o.provenance.sourceStatus
-    })),
-    consistentSnapshot:true,
-    links:{
-      applicationPattern:{status:batch.links?.applicationPattern?.status??'unknown',accepted:false},
-      patternRelation:{status:batch.links?.patternRelation?.status??'unknown',accepted:false}
-    }
-  };
-}
+// Re-export the checked, redacting summary for existing Reference consumers.
+export {summarizeInspectionEvidence};
 
 if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   (async()=>{
@@ -97,7 +67,7 @@ if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url))
     const result=await runReferenceInspection(binary,workspace);
     process.stdout.write(JSON.stringify(summarizeInspectionEvidence(result),null,2)+'\n');
   })().catch(err=>{
-    const code=err instanceof InspectBridgeError?err.code:'REFERENCE_INSPECTION_FAILED';
+    const code=err instanceof InspectBridgeError||err instanceof EvidenceSummaryError?err.code:'REFERENCE_INSPECTION_FAILED';
     process.stderr.write(code+'\n');
     process.exitCode=1;
   });
