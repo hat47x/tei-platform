@@ -30,6 +30,9 @@ func runGenericRuntimeProcessHelper(mode string) int {
 	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
 		return 3
 	}
+	if mode == "project-advice" {
+		return runProjectAdviceProcessHelper(req)
+	}
 	renderID, err := processDispatchID(
 		"application.runtime.document-render",
 		"1.0.0",

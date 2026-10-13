@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compareTwoReferenceApplications,CrossApplicationObservationError,
-  TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
+import {compareTwoReferenceApplications,proposeReferenceQueryAdapter,
+  CrossApplicationObservationError,TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
 
 const copy=structuredClone;
 const make=()=>{
@@ -96,4 +96,75 @@ test('unknown canonical application field causes abstention',()=>{
 test('incorrect subject count fails before any projection',()=>{
   const x=make();x.pop();
   assert.throws(()=>compareTwoReferenceApplications(x),denied('INVALID_SUBJECT_BATCH'));
+});
+
+test('proposal separates shared Query invocation from two Application contexts',()=>{
+  const reports=make(),result=proposeReferenceQueryAdapter(reports);
+  assert.equal(result.schemaVersion,'tei.research.query-invocation-adapter-proposal/v0');
+  assert.equal(result.status,'candidate_requires_semantic_review');
+  assert.deepEqual(result.commonInvocation,{
+    databaseTarget:'master_data',contract:'master_data.customer',compatibleMajor:2,
+    query:'find_by_id',bindings:[{targetAttribute:'customer.customer.customer_id',input:'id'}]
+  });
+  assert.deepEqual(result.applicationContext,[
+    {application:'order_entry',pattern:'order_entry.customer_reference',
+      relation:'sales.order.customer',datasourceAlias:'master'},
+    {application:'repair_intake',pattern:'repair_intake.customer_reference',
+      relation:'repair_intake.intake.customer',datasourceAlias:'customer_master'}
+  ]);
+  assert.deepEqual(result.contextDifferences,['relation','datasourceAlias']);
+  assert.equal(result.commonInvocation.relation,undefined);
+  assert.equal(result.commonInvocation.datasourceAlias,undefined);
+  assert.equal(result.applicationContext[0].contract,undefined);
+  assert.equal(result.accepted,false);
+  assert.equal(result.executionPermitted,false);
+  assert.equal(result.implementationSelected,false);
+  assert.equal(result.authority,'derived_observation_only');
+  assert.ok(Object.values(result.verified).every(x=>typeof x==='boolean'));
+  assert.equal(result.verified.declarationMatch,true);
+  assert.equal(result.verified.contractSemantics,false);
+  assert.equal(result.verified.readAuthorization,false);
+});
+test('query drift keeps local context but provides no common adapter',()=>{
+  const x=make();x[3].result.canonical.contractQuery.query='find_by_name';
+  const p=proposeReferenceQueryAdapter(x);
+  assert.equal(p.status,'not_shareable_from_declarations');
+  assert.equal(p.commonInvocation,null);
+  assert.equal(p.verified.declarationMatch,false);
+  assert.equal(p.applicationContext.length,2);
+  assert.equal(p.executionPermitted,false);
+});
+test('compatible major drift precludes the common invocation',()=>{
+  const x=make();x[2].result.canonical.databases[0].requires[0].compatibleMajor=3;
+  const p=proposeReferenceQueryAdapter(x);
+  assert.equal(p.commonInvocation,null);
+  assert.equal(p.status,'not_shareable_from_declarations');
+});
+test('different semantic binding precludes the common invocation',()=>{
+  const x=make();x[3].result.canonical.contractQuery.inputs[0].targetAttribute='customer.customer.external_id';
+  assert.equal(proposeReferenceQueryAdapter(x).commonInvocation,null);
+});
+test('alias resolution failure aborts adapter proposal',()=>{
+  const x=make();x[2].result.canonical.databases[0].alias='wrong';
+  assert.throws(()=>proposeReferenceQueryAdapter(x),denied('UNRESOLVED_DATASOURCE_ALIAS'));
+});
+test('non-read capability cannot create a query adapter proposal',()=>{
+  const x=make();x[2].result.canonical.databases[0].access='read-write';
+  assert.throws(()=>proposeReferenceQueryAdapter(x),denied('UNVERIFIED_READ_ONLY_ROUTE'));
+});
+test('stale snapshot aborts proposal instead of carrying partial wiring',()=>{
+  const x=make();x[1].result.sourceIndexFingerprint='index:other';
+  assert.throws(()=>proposeReferenceQueryAdapter(x),denied('SNAPSHOT_DRIFT'));
+});
+test('unmodeled Canonical policy aborts proposal instead of omitting a constraint',()=>{
+  const x=make();x[3].result.canonical.contractQuery.policy='private';
+  assert.throws(()=>proposeReferenceQueryAdapter(x),denied('INCOMPLETE_SOURCE_OBSERVATION'));
+});
+test('proposal is a detached copy; modifying it never rewrites observed reports',()=>{
+  const input=make(),p=proposeReferenceQueryAdapter(input);
+  p.commonInvocation.bindings[0].targetAttribute='mutated';
+  p.applicationContext[0].relation='mutated';
+  assert.equal(input[1].result.canonical.contractQuery.inputs[0].targetAttribute,
+    'customer.customer.customer_id');
+  assert.equal(input[1].result.canonical.relation,'sales.order.customer');
 });
