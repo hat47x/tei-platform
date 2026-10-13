@@ -129,7 +129,7 @@ func TestReferenceApplicationsDispatchSameResolvedExecutorThroughServiceCarrier(
 	selection := pruntime.ServiceProviderSelection{
 		ContractID: "test-only.customer-query-service", ContractVersion: "1.0.0",
 		ContractFingerprint: "sha256:" + strings.Repeat("d", 64),
-		Scope: "application-runtime", Provider: provider,
+		Scope:               "application-runtime", Provider: provider,
 		ImplementationID: "test-only-customer-adapter", ArtifactDigest: artifact,
 	}
 	plan := pruntime.EnvironmentPlan{
@@ -141,14 +141,14 @@ func TestReferenceApplicationsDispatchSameResolvedExecutorThroughServiceCarrier(
 			Artifact: plugin.Artifact{Digest: artifact},
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
-			Plugin: provider,
+			Plugin:     provider,
 			Capability: plugin.Capability{Kind: plugin.CapabilityContractQueryExecutor, ID: capabilityID},
-			Boundary: pruntime.BoundaryProcess,
+			Boundary:   pruntime.BoundaryProcess,
 		}},
 		ServiceBindings: []pruntime.ServiceCarrierBinding{{
 			ServiceProviderSelection: selection,
-			CarrierKind: plugin.CapabilityContractQueryExecutor,
-			CarrierID: capabilityID, Operation: "query",
+			CarrierKind:              plugin.CapabilityContractQueryExecutor,
+			CarrierID:                capabilityID, Operation: "query",
 		}},
 	}
 	plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
