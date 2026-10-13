@@ -49,4 +49,4 @@ API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowser�
 
 ## 既存Composition Registryとの最小接続
 
-`contract_bridge.go` は新しい汎用Resolverを実装せず、既存の `composition.Contract`・`Provider`・`Registry.Apply`・`Registry.Select` を利用します。案件ごとのScopeを分け、Providerの削除・不一致時は補助確認を失敗として扱います。Go関数の実行はなお診断Hostのローカル呼び出しであり、Production向けのArtifact検証、Host Guard、Router Lease、権限確認を通していません。`contract_bridge_test.go` で案件Scope隔離とProvider削除時の拒否を検証します。正式Runtime統合の達成を意味しません。
+`contract_bridge.go` は新しい汎用Resolverを実装せず、既存の `composition.Contract`・`Provider`・`Registry.Apply`・`Registry.Select` を利用します。案件ごとのScopeを分け、Providerの削除・不一致時は補助確認を失敗として扱います。Go関数の実行は診断Hostのローカル呼び出しですが、既存の `NewSelectedCoordinator` と `Acquire` / `Release` を通すようにしました。Reference用の固定Bindingと合成Digest、簡易Host Guardを使用するため、**Production向けの実Artifact検証、現在の権限・fencing検証は未成立**です。`contract_bridge_test.go` で案件Scope隔離とProvider削除時の拒否を検証します。正式Runtime統合の達成を意味しません。
