@@ -43,6 +43,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E28：構成作業の申告・質問・改修件数を未検証のまま分離](E28_WORKFLOW_MEASUREMENT.md)／[読み取り専用集計器](e28_workflow_measurement.mjs)／[Node.js回帰試験](e28_workflow_measurement.test.mjs) — E27のSource観測を再利用。比較する実案件の人手・AI質問数は推測せず、申告イベントと検証済み結果を区別する。
 - [E31：SUIとTEIの二つのGit基点を照合する作業比較](E31_PAIRED_SOURCE_BASELINE.md)／[読取り比較器](e31_paired_source_comparison.mjs)／[Node回帰試験](e31_paired_source_comparison.test.mjs) — 既存E28比較を再利用し、SUI改訂が異なる二方式の申告件数を同条件比較へ昇格させない。
 - [E32：実案件Go＋Lit試作PRの変更範囲を計測](E32_REAL_PROJECT_PLUGIN_FOOTPRINT.md)／[固定PR出典](e32_project_plugin_pr1567_snapshot.json)／[読取り集計器](e32_plugin_pr_footprint.mjs)／[Node回帰試験](e32_plugin_pr_footprint.test.mjs) — #1567の20ファイル・追加1,267行を機能・試験・配布物に分離し、正式Provider採用や生成AIとの往復数と混同しない。
+- [E33：Go＋Lit案件Pluginと既存Composition Provider・#951証拠の境界](E33_PROJECT_PLUGIN_WIRING_BOUNDARY.md)／[Go回帰試験](e33_project_plugin_wiring_boundary_test.go) — #1567の固定Sourceから正式Providerを捏造せず、既存Registryの候補・曖昧さ・証拠欠落・鮮度を検証。実業務Authorityは未成立。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。
