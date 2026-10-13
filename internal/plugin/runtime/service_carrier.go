@@ -108,6 +108,9 @@ func (r Registry) InvokeSelectedServiceCarrier(
 	ctx context.Context, plan EnvironmentPlan,
 	selection ServiceProviderSelection, requestID string, payload json.RawMessage,
 ) (ServiceCarrierInvocation, error) {
+	if ctx == nil {
+		return ServiceCarrierInvocation{}, fmt.Errorf("service carrier requires context")
+	}
 	if err := validateServiceSelection(selection); err != nil {
 		return ServiceCarrierInvocation{}, err
 	}
@@ -167,10 +170,13 @@ func (r Registry) InvokeSelectedServiceCarrier(
 		return ServiceCarrierInvocation{}, fmt.Errorf("Host has no current Service acceptance source")
 	}
 	acceptance, err := r.ServiceAcceptance.ReadCurrentAcceptedService(ctx, selection)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		// A Host reader may ignore cancellation and return a seemingly
+		// accepted record. No Runtime permission, lease, artifact verification,
+		// or external process may run after that cancellation.
+		return ServiceCarrierInvocation{}, ctxErr
+	}
 	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return ServiceCarrierInvocation{}, ctxErr
-		}
 		// A Reader is a Host-owned authority boundary. Its errors may
 		// contain internal credentials, issuer policy or private paths.
 		// Never expose the original error text or wrapped cause.
