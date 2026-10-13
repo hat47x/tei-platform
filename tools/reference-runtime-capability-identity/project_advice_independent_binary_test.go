@@ -184,24 +184,24 @@ func TestIndependentProjectAdviceBinaryRejectsUnboundDispatchAndInput(t *testing
 	}{
 		{"foreign-dispatch", pruntime.Request{
 			ProtocolVersion: pruntime.ProtocolVersion,
-			RequestID: "foreign", Plugin: realization.Plugin,
+			RequestID:       "foreign", Plugin: realization.Plugin,
 			CapabilityKind: plugin.CapabilityKind(genericProcessDispatchKind),
-			CapabilityID: core.MustCanonicalID("runtime_dispatch.forged"),
-			Operation: "evaluate-advice",
-			Payload: json.RawMessage(`{"customerCode":"VIP-123"}`),
+			CapabilityID:   core.MustCanonicalID("runtime_dispatch.forged"),
+			Operation:      "evaluate-advice",
+			Payload:        json.RawMessage(`{"customerCode":"VIP-123"}`),
 		}},
 		{"unknown-operation", pruntime.Request{
 			ProtocolVersion: pruntime.ProtocolVersion,
-			RequestID: "other-operation", Plugin: realization.Plugin,
+			RequestID:       "other-operation", Plugin: realization.Plugin,
 			CapabilityKind: plugin.CapabilityKind(genericProcessDispatchKind),
-			CapabilityID: originalDispatch, Operation: "write-order",
+			CapabilityID:   originalDispatch, Operation: "write-order",
 			Payload: json.RawMessage(`{"customerCode":"VIP-123"}`),
 		}},
 		{"invalid-business-input", pruntime.Request{
 			ProtocolVersion: pruntime.ProtocolVersion,
-			RequestID: "invalid-input", Plugin: realization.Plugin,
+			RequestID:       "invalid-input", Plugin: realization.Plugin,
 			CapabilityKind: plugin.CapabilityKind(genericProcessDispatchKind),
-			CapabilityID: originalDispatch, Operation: "evaluate-advice",
+			CapabilityID:   originalDispatch, Operation: "evaluate-advice",
 			Payload: json.RawMessage(`{"customerCode":"<script>"}`),
 		}},
 	} {
