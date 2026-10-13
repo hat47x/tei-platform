@@ -93,11 +93,11 @@ func checkExactMemberNames(value transform.Value, schema reflect.Type, path stri
 // shipped SB-1 package Source. Typed, strict JSON decoding gives the same
 // member order and omitempty representation as Go's Definition serializer.
 // The adapter is NOT invoked by transform.Evaluate or any legacy caller.
-// A caller must opt in to the v2 ingress profile and record returned Evidence.
+// A caller must opt in to the v2 ingress profile, supply a trusted locked\n// Source fingerprint, and record returned Evidence.
 //
 // Changing the Source identity requires an explicit qualification of a new
 // adapter/source pair, not a silent fallback to another builder.
-func CanonicalizePluginDefinition(profile string, source transform.Source, raw []byte) (transform.Value, Evidence, error) {
+func CanonicalizePluginDefinition(profile string, source transform.Source, expectedSourceFingerprint string, raw []byte) (transform.Value, Evidence, error) {
 	if profile != PluginDefinitionJSONV2 {
 		return transform.Value{}, Evidence{}, fmt.Errorf("unsupported plugin definition input profile %q", profile)
 	}
@@ -110,6 +110,13 @@ func CanonicalizePluginDefinition(profile string, source transform.Source, raw [
 	}
 	if err := source.Validate(); err != nil {
 		return transform.Value{}, Evidence{}, fmt.Errorf("invalid bound package Source: %w", err)
+	}
+	sourceFingerprint, err := transform.SourceFingerprint(source)
+	if err != nil {
+		return transform.Value{}, Evidence{}, fmt.Errorf("fingerprint bound package Source: %w", err)
+	}
+	if expectedSourceFingerprint == "" || sourceFingerprint != expectedSourceFingerprint {
+		return transform.Value{}, Evidence{}, fmt.Errorf("input profile %q requires exact locked SB-1 Source fingerprint", profile)
 	}
 	if len(raw) > source.Limits.MaxInputBytes {
 		return transform.Value{}, Evidence{}, fmt.Errorf("plugin definition JSON exceeds Source maxInputBytes")
@@ -147,10 +154,6 @@ func CanonicalizePluginDefinition(profile string, source transform.Source, raw [
 	value, err := transform.ParseJSON(canonical)
 	if err != nil {
 		return transform.Value{}, Evidence{}, fmt.Errorf("parse canonical plugin definition: %w", err)
-	}
-	sourceFingerprint, err := transform.SourceFingerprint(source)
-	if err != nil {
-		return transform.Value{}, Evidence{}, fmt.Errorf("fingerprint bound package Source: %w", err)
 	}
 	return value, Evidence{
 		Profile:              profile,
