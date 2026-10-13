@@ -22,9 +22,6 @@ import (
 const historicalPluginGoBuildRunnerRevision = "5726a3475d8930e49f41c907ecfd352c9936192f"
 
 func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("historical Git-worktree CLI qualification needs a separate Windows runner")
-	}
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		t.Skipf("Go executable unavailable: %v", err)
@@ -33,9 +30,11 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	goPath, err = filepath.EvalSymlinks(goPath)
-	if err != nil {
-		t.Fatal(err)
+	// Use the absolute Go executable without resolving Windows toolcache
+	// junctions, which are valid but not always EvalSymlinks-compatible.
+	goInfo, err := os.Stat(goPath)
+	if err != nil || !goInfo.Mode().IsRegular() {
+		t.Fatalf("selected Go executable is not a regular file: %q (%v)", goPath, err)
 	}
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skipf("Git unavailable: %v", err)
@@ -93,8 +92,12 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		t.Fatalf("historical checkout unclean: %s", output)
 	}
 	// Build two distinct, real plugin self-build runner executables.
-	oldCLI := filepath.Join(temp, "historical-plugin-builder")
-	newCLI := filepath.Join(temp, "current-plugin-builder")
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	oldCLI := filepath.Join(temp, "historical-plugin-builder"+ext)
+	newCLI := filepath.Join(temp, "current-plugin-builder"+ext)
 	compile := func(label, checkout, output string) {
 		t.Helper()
 		cmd := exec.Command(goPath, "build", "-trimpath", "-buildvcs=false",
