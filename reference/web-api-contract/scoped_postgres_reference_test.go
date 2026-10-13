@@ -238,6 +238,10 @@ func TestScopedPostgresRejectsInvalidPlansBeforeDatabaseAccess(t *testing.T) {
 		{"wrong provider", func(q *query.EmbeddedSQL, _ *application.DatabaseRequirement, _ *ReadPlan, _ *map[string]any) {
 			q.Dialect = environment.ProviderGeneric
 		}},
+		{"changed canonical SQL", func(q *query.EmbeddedSQL, _ *application.DatabaseRequirement, _ *ReadPlan, _ *map[string]any) {
+			q.Source += " UNION SELECT * FROM somewhere_else"
+		}},
+		
 		{"wrong datasource target", func(_ *query.EmbeddedSQL, ds *application.DatabaseRequirement, _ *ReadPlan, _ *map[string]any) {
 			ds.TargetDatabase = "different_db"
 		}},
@@ -374,5 +378,45 @@ func TestScopedPostgresBindsTenantAsDataEvenWhenItLooksLikeSQL(t *testing.T) {
 	if strings.Contains(trace.sql, attack) || !strings.Contains(trace.sql, "o.tenant_id = $1") ||
 		len(trace.args) < 1 || trace.args[0].Value != attack {
 		t.Fatalf("tenant parameter escaped SQL binding: query=%s args=%v", trace.sql, trace.args)
+	}
+}
+
+func TestScopedPostgresPreservesCanonicalDefaultOrder(t *testing.T) {
+	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	q, ds := postgresCanonicalInput(t)
+	plan := postgresReadPlan(t)
+	plan.Filter = nil
+	plan.Order = nil
+	trace := &postgresScopedTrace{}
+	provider := ScopedPostgresOrdersReference{
+		DB: postgresScopedDB(t, trace),
+		Authority: &postgresScopedAuthority{tenant: "tenant-a"},
+		Database: "sales_core",
+	}
+	_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
+		map[string]any{"from": from})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if trace.calls != 1 ||
+		!strings.Contains(trace.sql, "ORDER BY o.ordered_at DESC, o.order_id DESC") ||
+		len(trace.args) != 3 {
+		t.Fatalf("scoped realization changed Canonical default ordering: %+v", trace)
+	}
+}
+
+func TestScopedPostgresRefusesTypedNilTenantAuthority(t *testing.T) {
+	q, ds := postgresCanonicalInput(t)
+	plan := postgresReadPlan(t)
+	trace := &postgresScopedTrace{}
+	var absent *postgresScopedAuthority
+	provider := ScopedPostgresOrdersReference{
+		DB: postgresScopedDB(t, trace), Authority: absent,
+		Database: "sales_core",
+	}
+	_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
+		map[string]any{"from": time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)})
+	if !errors.Is(err, ErrAuthorizationUnavailable) || trace.calls != 0 {
+		t.Fatalf("typed-nil scope authority unexpectedly invoked: %v trace=%+v", err, trace)
 	}
 }
