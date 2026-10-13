@@ -159,7 +159,7 @@ func TestEnvironmentCLIRequiresExplicitOperationPurposeAndPreservesLegacy(t *tes
 	}
 	var projected struct {
 		Assessment WorkspaceAssessment `json:"assessment"`
-		Readiness  PurposeProjection `json:"readiness"`
+		Readiness  PurposeProjection   `json:"readiness"`
 	}
 	if err := json.Unmarshal(result.Bytes(), &projected); err != nil {
 		t.Fatal(err)
