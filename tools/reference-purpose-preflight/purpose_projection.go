@@ -88,7 +88,11 @@ func ProjectForPurpose(report WorkspaceAssessment, purpose string) (PurposeProje
 	add("runtime-business-validation", "not-evaluated", "actual-order-values-and-revision-not-read")
 	add("provider-contract", "conditional", "required-if-operation-uses-bound-provider")
 	add("host-authorization", "not-evaluated", "execution-principal-and-current-policy-not-qualified")
-	add("effect-fence", "conditional", "required-if-operation-has-write-or-external-effect")
+	if report.OperationWriteIntent != nil && report.OperationWriteIntent.Status == "declared-write" {
+		add("effect-fence", "not-evaluated", "declared-write-intent-requires-runtime-effect-fence")
+	} else {
+		add("effect-fence", "conditional", "required-if-operation-has-write-or-external-effect")
+	}
 	add("scenario-coverage", "not-evaluated", "driver-scenario-oracle-not-executed")
 	return projection, nil
 }
