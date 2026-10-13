@@ -27,8 +27,11 @@ function projection(p=procedure,r=review) {
       source:{file:'review-proposal.json',pointer:'/flows/'+i}})),
     information:{
       roles:r.businessRoles.map(x=>({...x,authority:'proposal'})),
-      externalParties:r.externalParties.map(x=>({...x,authority:'proposal'})),
-      stores:r.stores.map(x=>({...x,authority:'proposal',dataStatus:x.semanticData?'resolved':'not-declared'})),
+      externalParties:r.externalParties.map((x,i)=>({...x,authority:'proposal',
+        source:{file:'review-proposal.json',pointer:'/externalParties/'+i}})),
+      stores:r.stores.map((x,i)=>({...x,authority:'proposal',
+        source:{file:'review-proposal.json',pointer:'/stores/'+i},
+        dataStatus:x.semanticData?'resolved':'not-declared'})),
       responsibilities:r.responsibilities.map(x=>({...x,authority:'proposal'})),
       informationFlows:r.informationFlows.map(x=>({...x,authority:'proposal'}))
     }
@@ -174,5 +177,69 @@ test('producer authority and resolution metadata cannot be forged into a review 
     assert.throws(()=>act(proposal({kind:'trigger',id:'TR-ORDER'},
       {kind:'replace-trigger-label',trigger:'TR-ORDER',label:'候補'}),copy),
       new RegExp(error),label);
+  }
+});
+
+test('information endpoint field order has no business identity while values still matter',()=>{
+  const reordered=clone(base);
+  for(const flow of reordered.information.informationFlows) {
+    flow.from={id:flow.from.id,kind:flow.from.kind};
+    flow.to={id:flow.to.id,kind:flow.to.kind};
+  }
+  const b=proposal({kind:'trigger',id:'TR-ORDER'},
+    {kind:'replace-trigger-label',trigger:'TR-ORDER',label:'業務上の変更案'});
+  const result=act(b,reordered);
+  assert.equal(result.readyForAcceptance,false);
+  assert.deepEqual(result.sourceWrites,[]);
+  const changed=clone(reordered);
+  changed.information.informationFlows[0].from.kind='party';
+  assert.throws(()=>act(b,changed),/DFD_REVIEW_SNAPSHOT_MISMATCH_INFORMATION_FLOWS/);
+});
+
+test('selected source pointer must resolve to the same Reference-local element',()=>{
+  const scenarios=[
+    {
+      selection:{kind:'step',id:'APP-10'},
+      operation:{kind:'assign-business-role',step:'APP-10',role:'approver'},
+      mutate:x=>x.steps.find(n=>n.id==='APP-10').source
+    },
+    {
+      selection:{kind:'trigger',id:'TR-ORDER'},
+      operation:{kind:'replace-trigger-label',trigger:'TR-ORDER',label:'候補'},
+      mutate:x=>x.triggers[0].source
+    },
+    {
+      selection:{kind:'party',id:'supplier'},
+      operation:{kind:'add-information-flow',id:'INFO-LOCAL-1',
+        from:{kind:'party',id:'supplier'},to:{kind:'step',id:'APP-40'},payload:'在庫の連絡'},
+      mutate:x=>x.information.externalParties.find(n=>n.id==='supplier').source
+    },
+    {
+      selection:{kind:'store',id:'orders'},
+      operation:{kind:'add-information-flow',id:'INFO-LOCAL-2',
+        from:{kind:'store',id:'orders'},to:{kind:'step',id:'APP-10'},payload:'注文情報'},
+      mutate:x=>x.information.stores.find(n=>n.id==='orders').source
+    }
+  ];
+  for(const {selection,operation,mutate} of scenarios){
+    const b=proposal(selection,operation);
+    const valid=act(b);
+    assert.equal(valid.selected.sourceLocatorStatus,'reference-local-pointer-checked');
+    assert.equal(valid.selected.sourceFileAuthority,'unverified');
+    assert.equal(valid.selected.acceptedIdentity,'unverified');
+    assert.equal(valid.readyForAcceptance,false);
+    assert.deepEqual(valid.sourceWrites,[]);
+    const badPointer=clone(base);
+    mutate(badPointer).pointer='/steps/999';
+    assert.throws(()=>act(b,badPointer),/DFD_SELECTED_REFERENCE_LOCATOR_MISMATCH/);
+    const missing=clone(base);
+    mutate(missing).file='';
+    assert.throws(()=>act(b,missing),/DFD_SELECTED_REFERENCE_LOCATOR_MISMATCH/);
+    const forged=clone(base);
+    mutate(forged).accepted=true;
+    assert.throws(()=>act(b,forged),/DFD_SELECTED_REFERENCE_LOCATOR_MISMATCH/);
+    const otherFile=clone(base);
+    mutate(otherFile).file='wrong-review.json';
+    assert.throws(()=>act(b,otherFile),/DFD_SELECTED_REFERENCE_FILE_MISMATCH/);
   }
 });

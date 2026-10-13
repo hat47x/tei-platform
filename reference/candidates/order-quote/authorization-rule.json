@@ -1,0 +1,7 @@
+{
+  "organization_code": "SALES",
+  "role_code": "ORDER_EDITOR",
+  "action": "execute",
+  "resource": "order_entry.preview_order_quote",
+  "effect": "allow"
+}

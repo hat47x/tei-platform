@@ -25,17 +25,24 @@ const (
 	OpSelectField     Op = "select-field"
 	OpConstructObject Op = "construct-object"
 	OpMapArray        Op = "map-array"
+	OpAssertEach      Op = "assert-each"
 	OpSortArrayBy     Op = "sort-array-by"
 	OpReplaceField    Op = "replace-field"
 	OpOmitField       Op = "omit-field"
 	OpAssertEqual     Op = "assert-equal"
 	OpAssertEnum      Op = "assert-enum"
+	OpAssertNonBlank  Op = "assert-nonblank"
 	OpAssertUniqueBy  Op = "assert-unique-by"
 	OpCanonicalJSON   Op = "canonical-json"
 	OpSHA256          Op = "sha256"
 	OpAppendBytes     Op = "append-bytes"
 	OpJoinStrings     Op = "join-strings"
 )
+
+// Pure, bounded validation operations usable by TEI-owned Source.
+// The evaluator has no Plugin-specific materializer special case.
+const OpAssertCanonicalID Op = "assert-canonical-id"
+const OpAssertPositiveInteger Op = "assert-positive-integer"
 
 type InputKind string
 
@@ -178,7 +185,7 @@ func (s Source) Validate() error {
 			return fmt.Errorf("transform assertion %d: %w", i, err)
 		}
 		switch s.Program.Assertions[i].Op {
-		case OpAssertEqual, OpAssertEnum, OpAssertUniqueBy:
+		case OpAssertEqual, OpAssertEnum, OpAssertNonBlank, OpAssertUniqueBy, OpAssertEach, OpAssertCanonicalID, OpAssertPositiveInteger:
 		default:
 			return fmt.Errorf("transform assertion %d must use assert operation, got %s", i, s.Program.Assertions[i].Op)
 		}
@@ -282,6 +289,19 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 				return fmt.Errorf("sort-array key %d: %w", i, err)
 			}
 		}
+	case OpAssertEach:
+		if err := rejectUnexpectedExprFields(expr, "from", "item", "body", "optional"); err != nil {
+			return err
+		}
+		if err := child(expr.From, "assert-each source"); err != nil {
+			return err
+		}
+		if strings.TrimSpace(expr.Item) == "" {
+			return fmt.Errorf("assert-each item name is required")
+		}
+		if err := child(expr.Body, "assert-each body"); err != nil {
+			return err
+		}
 	case OpAssertUniqueBy:
 		if err := rejectUnexpectedExprFields(expr, "from", "item", "keys", "optional"); err != nil {
 			return err
@@ -345,6 +365,20 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 			if _, err := ParseJSON(allowed); err != nil {
 				return fmt.Errorf("assert-enum value: %w", err)
 			}
+		}
+	case OpAssertNonBlank:
+		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
+			return err
+		}
+		if err := child(expr.From, "assert-nonblank source"); err != nil {
+			return err
+		}
+	case OpAssertCanonicalID, OpAssertPositiveInteger:
+		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
+			return err
+		}
+		if err := child(expr.From, string(expr.Op)+" source"); err != nil {
+			return err
 		}
 	case OpCanonicalJSON, OpSHA256:
 		if err := rejectUnexpectedExprFields(expr, "from"); err != nil {
@@ -431,12 +465,12 @@ func validateExprBindings(expr Expr, scope map[string]struct{}) error {
 			return fmt.Errorf("input or local binding %q is not declared", expr.Name)
 		}
 		return nil
-	case OpMapArray:
+	case OpMapArray, OpAssertEach:
 		if err := check(expr.From); err != nil {
 			return err
 		}
 		if _, exists := scope[expr.Item]; exists {
-			return fmt.Errorf("map-array item binding %q shadows an existing binding", expr.Item)
+			return fmt.Errorf("%s item binding %q shadows an existing binding", expr.Op, expr.Item)
 		}
 		local := copyBindingScope(scope)
 		local[expr.Item] = struct{}{}

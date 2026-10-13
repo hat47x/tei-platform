@@ -18,6 +18,10 @@ import (
 const processHelperModeEnv = "TEI_PROCESS_HELPER_MODE"
 
 func TestMain(m *testing.M) {
+	// The dedicated probe uses argv so it works even with an empty child env.
+	if len(os.Args) == 2 && os.Args[1] == "--tei-process-env-probe" {
+		os.Exit(runProcessHelper("env-probe"))
+	}
 	if mode := os.Getenv(processHelperModeEnv); mode != "" {
 		os.Exit(runProcessHelper(mode))
 	}
@@ -35,6 +39,13 @@ func runProcessHelper(mode string) int {
 	}
 	if mode == "large" {
 		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
+		return 0
+	}
+	if mode == "large-then-wait" {
+		// Deliberately exceed the response limit, then hold the process open.
+		// A bounded capture alone cannot prevent this form of resource exhaustion.
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
+		time.Sleep(30 * time.Second)
 		return 0
 	}
 	if mode == "exit" {
@@ -58,8 +69,145 @@ func runProcessHelper(mode string) int {
 	if mode == "forged" {
 		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
 	}
+	// An external process may put sensitive data in the error carrier, even
+	// when it is reporting success or a malformed/mismatched response.
+	switch mode {
+	case "secret-error":
+		resp.Status = pruntime.ResponseError
+	case "secret-ok":
+		// Deliberately attach an error field to an otherwise successful reply.
+	case "secret-unknown-status":
+		resp.Status = pruntime.ResponseStatus("unrecognized")
+	case "secret-forged-identity":
+		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
+	case "secret-status-canary":
+		resp.Status = pruntime.ResponseStatus("TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG")
+	case "secret-forged-metadata-canary":
+		// The transport accepts nonempty fields; Registry must not return
+		// forged values after it rejects a mismatched response.
+		resp.RequestID = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.Plugin.Version = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.DescriptorFingerprint = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+	}
+	if strings.HasPrefix(mode, "secret-") {
+		resp.Error = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		if mode != "secret-ok" {
+			resp.Payload = json.RawMessage(`{"secret":"TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"}`)
+		}
+	}
+	if mode == "env-probe" {
+		payload, err := json.Marshal(struct {
+			HostSecretPresent bool   `json:"hostSecretPresent"`
+			Explicit          string `json:"explicit"`
+		}{
+			HostSecretPresent: os.Getenv("TEI_PROCESS_HOST_SECRET_CANARY") != "",
+			Explicit:          os.Getenv("TEI_PROCESS_EXPLICIT_ALLOWLIST"),
+		})
+		if err != nil {
+			return 4
+		}
+		resp.Payload = payload
+	}
 	if mode == "stderr-success" {
 		_, _ = fmt.Fprintln(os.Stderr, "diagnostic on stderr")
+	}
+	if strings.HasPrefix(mode, "wire-") {
+		// Send deliberately ambiguous wire bytes from a REAL child process;
+		// encoding a typed Response normally makes these attacks impossible.
+		resp.Payload = json.RawMessage(`{"quantity":1,"quantity":2}`)
+		raw, err := json.Marshal(resp)
+		if err != nil {
+			return 4
+		}
+		wire := string(raw)
+		if strings.HasPrefix(mode, "wire-missing-") || strings.HasPrefix(mode, "wire-empty-") {
+			// Decode only to construct deliberately incomplete wire output.
+			// Never use this permissive map as the production decoder.
+			var object map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &object); err != nil {
+				return 4
+			}
+			missing := strings.HasPrefix(mode, "wire-missing-")
+			name := strings.TrimPrefix(strings.TrimPrefix(mode, "wire-missing-"), "wire-empty-")
+			field := map[string]string{
+				"protocol":    "protocolVersion",
+				"request":     "requestId",
+				"plugin":      "plugin",
+				"capability":  "capabilityId",
+				"fingerprint": "descriptorFingerprint",
+				"status":      "status",
+			}[name]
+			if strings.HasPrefix(name, "plugin-") {
+				field = "plugin"
+			}
+			if field == "" {
+				return 4
+			}
+			if strings.HasPrefix(name, "plugin-") {
+				var nested map[string]json.RawMessage
+				if err := json.Unmarshal(object["plugin"], &nested); err != nil {
+					return 4
+				}
+				nestedField := strings.TrimPrefix(name, "plugin-")
+				if nestedField != "id" && nestedField != "version" {
+					return 4
+				}
+				if missing {
+					delete(nested, nestedField)
+				} else {
+					nested[nestedField] = json.RawMessage(`""`)
+				}
+				object["plugin"], err = json.Marshal(nested)
+				if err != nil {
+					return 4
+				}
+			} else if missing {
+				delete(object, field)
+			} else {
+				value := json.RawMessage(`""`)
+				if name == "protocol" {
+					value = json.RawMessage(`0`)
+				}
+				if name == "plugin" {
+					value = json.RawMessage(`{}`)
+				}
+				object[field] = value
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(object); err != nil {
+				return 4
+			}
+			return 0
+		}
+		var before, after string
+		switch mode {
+		case "wire-duplicate-status":
+			before, after = `"status":"ok"`, `"status":"ok","status":"error"`
+		case "wire-duplicate-request":
+			before, after = `"requestId":"`, `"requestId":"forged","requestId":"`
+		case "wire-escaped-duplicate-status":
+			before, after = `"status":"ok"`, `"status":"ok","\u0073tatus":"error"`
+		case "wire-casefold-status":
+			before, after = `"status":"ok"`, `"status":"ok","Status":"error"`
+		case "wire-unknown-sensitive":
+			before, after = `"status":"ok"`, `"status":"ok","TOP-SECRET-DO-NOT-LOG":true`
+		case "wire-duplicate-plugin-id":
+			before, after = `"plugin":{"id":"`, `"plugin":{"id":"forged","id":"`
+		case "wire-casefold-plugin-id":
+			before, after = `"plugin":{"id":"`, `"plugin":{"ID":"forged","id":"`
+		case "wire-unknown-plugin-field":
+			before, after = `"plugin":{"id":"`, `"plugin":{"hostAdmin":true,"id":"`
+		case "wire-opaque-payload-duplicates":
+			// Carrier does not parse application-specific payload members.
+			_, _ = fmt.Fprintln(os.Stdout, wire)
+			return 0
+		default:
+			return 4
+		}
+		if !strings.Contains(wire, before) {
+			return 4
+		}
+		_, _ = fmt.Fprintln(os.Stdout, strings.Replace(wire, before, after, 1))
+		return 0
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(resp); err != nil {
 		return 4
@@ -73,8 +221,9 @@ func helperLauncher(t *testing.T, mode string) (pruntime.StdioProcessLauncher, p
 	if err != nil {
 		t.Fatal(err)
 	}
-	env := append([]string(nil), os.Environ()...)
-	env = append(env, processHelperModeEnv+"="+mode)
+	// The test helper should obey the same host-approved environment policy as
+	// production callers: do not forward the test runner's ambient secrets.
+	env := []string{processHelperModeEnv + "=" + mode}
 	return pruntime.StdioProcessLauncher{Env: env}, pruntime.ProcessCommand{Executable: executable}
 }
 
@@ -107,6 +256,45 @@ func TestStdioProcessLauncherRoundTripsRealChildProcess(t *testing.T) {
 	}
 }
 
+// A missing Env must not mean "inherit everything" as it does in os/exec.
+func TestStdioProcessLauncherEnvironmentIsHostExplicit(t *testing.T) {
+	t.Setenv("TEI_PROCESS_HOST_SECRET_CANARY", "parent-only-secret")
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		name         string
+		env          []string
+		wantExplicit string
+	}{
+		{name: "nil env does not inherit"},
+		{name: "empty env does not inherit", env: []string{}},
+		{name: "explicit allowlist is passed", env: []string{"TEI_PROCESS_EXPLICIT_ALLOWLIST=allowed"}, wantExplicit: "allowed"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			launcher := pruntime.StdioProcessLauncher{Env: tt.env}
+			command := pruntime.ProcessCommand{
+				Executable: executable, Args: []string{"--tei-process-env-probe"},
+			}
+			resp, err := launcher.Invoke(context.Background(), command, processRequest())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var observed struct {
+				HostSecretPresent bool   `json:"hostSecretPresent"`
+				Explicit          string `json:"explicit"`
+			}
+			if err := json.Unmarshal(resp.Payload, &observed); err != nil {
+				t.Fatal(err)
+			}
+			if observed.HostSecretPresent || observed.Explicit != tt.wantExplicit {
+				t.Fatalf("unexpected child environment: %#v", observed)
+			}
+		})
+	}
+}
+
 func TestStdioProcessLauncherKeepsSuccessStderrOutOfProtocol(t *testing.T) {
 	launcher, command := helperLauncher(t, "stderr-success")
 	resp, err := launcher.Invoke(context.Background(), command, processRequest())
@@ -125,11 +313,73 @@ func TestStdioProcessLauncherRejectsMalformedResponse(t *testing.T) {
 	}
 }
 
+func TestStdioProcessLauncherRejectsAmbiguousResponseHeaders(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode string
+		want string
+	}{
+		{"duplicate status", "wire-duplicate-status", "duplicate process response field"},
+		{"duplicate request id", "wire-duplicate-request", "duplicate process response field"},
+		{"unicode-escaped duplicate status", "wire-escaped-duplicate-status", "duplicate process response field"},
+		{"case-folded status alias", "wire-casefold-status", "undeclared process response envelope field"},
+		{"sensitive unknown field", "wire-unknown-sensitive", "undeclared process response envelope field"},
+		{"duplicate nested plugin id", "wire-duplicate-plugin-id", "duplicate process response field"},
+		{"case-folded nested plugin id", "wire-casefold-plugin-id", "undeclared process response plugin identity field"},
+		{"unknown nested plugin field", "wire-unknown-plugin-field", "undeclared process response plugin identity field"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			launcher, command := helperLauncher(t, tc.mode)
+			_, err := launcher.Invoke(context.Background(), command, processRequest())
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("untrusted process response was accepted: %v", err)
+			}
+			if strings.Contains(err.Error(), "TOP-SECRET-DO-NOT-LOG") {
+				t.Fatalf("untrusted process response field leaked into diagnostics: %v", err)
+			}
+		})
+	}
+}
+
+func TestStdioProcessLauncherDoesNotValidateOpaqueBusinessPayload(t *testing.T) {
+	launcher, command := helperLauncher(t, "wire-opaque-payload-duplicates")
+	response, err := launcher.Invoke(context.Background(), command, processRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The selected Service Contract validates this raw payload later. The
+	// carrier must not imply domain conformance or silently rewrite bytes.
+	if got := string(response.Payload); got != `{"quantity":1,"quantity":2}` {
+		t.Fatalf("carrier modified opaque JSON payload: %s", got)
+	}
+}
+
 func TestStdioProcessLauncherBoundsUntrustedStdout(t *testing.T) {
 	launcher, command := helperLauncher(t, "large")
 	launcher.MaxResponseBytes = 128
 	if _, err := launcher.Invoke(context.Background(), command, processRequest()); err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
 		t.Fatalf("oversized response was not rejected: %v", err)
+	}
+}
+
+// A real child must be terminated when its stdout exceeds the configured
+// limit, even if it deliberately remains alive after writing the extra bytes.
+// The caller's context is not canceled by the transport-specific size failure.
+func TestStdioProcessLauncherKillsChildOnStdoutOverflow(t *testing.T) {
+	launcher, command := helperLauncher(t, "large-then-wait")
+	launcher.MaxResponseBytes = 128
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	started := time.Now()
+	_, err := launcher.Invoke(ctx, command, processRequest())
+	if err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
+		t.Fatalf("oversized child did not fail with its response limit: %v", err)
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("response-size rejection unexpectedly canceled/timed out caller: %v", ctx.Err())
+	}
+	if elapsed := time.Since(started); elapsed > 4*time.Second {
+		t.Fatalf("oversized child was not stopped promptly: %s", elapsed)
 	}
 }
 

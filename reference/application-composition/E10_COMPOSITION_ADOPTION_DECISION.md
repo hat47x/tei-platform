@@ -1,7 +1,7 @@
 # E10：アプリケーション構成の採用判断 — 二つのConsumerで残る選択と検証順序
 
-- **状態**：評価待ちの設計・検証引継ぎ（2026-10-10）。新しいComposition DSL／Core kind／独立Lock／Runtime Resolverの採用ではない。
-- **管理**：[Issue #1016](https://github.com/hat47x/tei-platform/issues/1016)・[Draft PR #1051](https://github.com/hat47x/tei-platform/pull/1051)。
+- **状態**：採用判断は保留。2026-10-12にE16〜E20の統合実績と[E21の二Consumer照合](E21_DUAL_CONSUMER_COMPOSITION_GAP.md)を追記した。新しい構成DSL・Core固定列挙・独立Lock・実行時の依存解決器は採用していない。
+- **管理**：[Issue #1016](https://github.com/hat47x/tei-platform/issues/1016)。初期の[PR #1051](https://github.com/hat47x/tei-platform/pull/1051)は統合済み。以後の段階の根拠は[Reference一覧](README.md)と個別のPRを参照する。
 - **前提**：E1〜E4は異種変更の選択的再検査、E5〜E7aは限定した型付きSource定義の追跡、E8はSUI Native Consumerの実装境界、E9はContract Query入力属性の直接Source参照を扱う。いずれも**採用済みの業務意味・実Provider互換・Runtime権限・全依存閉包の証明ではない**。
 - **対象要求**：RQ-003／RQ-004／RQ-005／RQ-008／RQ-013／RQ-015。複数の正本と不要な構成記述を増やさず、実案件の再利用と安全な更新を判定する。
 
@@ -67,12 +67,13 @@
 - **Native SUI Action・保存・権限**：[#993](https://github.com/hat47x/tei-platform/issues/993)とSUIの既存正本の責務。E8のSource観察は実接続の代替にならない。
 - **Web要求・認証境界**：[#1043](https://github.com/hat47x/tei-platform/issues/1043)など既存Web構成の担当。KitのRenderer置換でRuntime Authorizationを変更しない。
 
-## 統合と次のGate（2026-10-10時点）
+## 検証の進展と次の判定（2026-10-12）
 
-- Draft [PR #1051](https://github.com/hat47x/tei-platform/pull/1051)は、`work/issue-1016-composition-e2`にE2〜E9の試作・Goテスト候補を含む。**Go E5テストとtrusted全体Repository Healthのexact-head PASSは未取得**。合成のNode/V8試験成功を統合資格としない。
-- 2026-10-10の比較でこのlaneは`main`に対して大きく遅れていた（照合時ahead 85 / behind 486、以後変わり得る）。無造作なrebase／force update／早期main統合はしない。まず並行PR #1111／#1139の所有境界と現在のAPI差を突き合わせ、必要なら安全な通常mergeを**担当laneの調整を経て**選ぶ。
-- 合格が必要な実行順序：`go test ./reference/application-composition`、同ディレクトリのNodeテスト、実`reference/workspace`でのE5 CLI→E7比較、実SUI側のNative/保存/Permission試験、最後にexact-headの**`tools/repository-health-check.sh`全項目PASS＋実行前後clean＋current main照合**。
-- **Go testやfull healthが未実行なら、PRはDraftのまま保持**する。PRの`mergeable=true`は十分条件ではない。正式なProfile Schema、Capability Kind、独立Lock、一般化された継承機構の採用ADRは、その実証が終わるまで作らない。
+初期のPR #1051と、Source解析時のバイト列を扱う[#1111](https://github.com/hat47x/tei-platform/pull/1111)、型付き参照を扱う[#1139](https://github.com/hat47x/tei-platform/pull/1139)はmainへ統合された。その後、[#1289](https://github.com/hat47x/tei-platform/pull/1289)で実Workspaceへの型付き影響検査、[#1345](https://github.com/hat47x/tei-platform/pull/1345)でGit改訂に固定したSource検査、[#1352](https://github.com/hat47x/tei-platform/pull/1352)で二つの異なるActionの共通Host接続を確認した。各段階の内容、合成／実Workspace／実行権限の区別、CIの成功範囲は個別の[Reference資料](README.md)に記録してある。
+
+SUI側ではNative操作の確定Adapter・条件付き保存と、それらの試験が進展した。TEI側にも共通の[HTTPS委譲参照処理](../../tools/reference-sui-action-boundary/PROTOCOL.md)がある。ただし、実SUI Backendへの本人委譲、実画面の一往復、二Consumerの構成コスト測定は未完了であり、SUIを正式なTEI Applicationとして受理したわけではない。具体的な未接続箇所は[E21](E21_DUAL_CONSUMER_COMPOSITION_GAP.md)に分けた。
+
+次に行うのは、(1) #993の実認証とSUI側保存の接続、(2) #1016の二案件の手動接続・重複記述・更新再作業の実測、(3) 既存の構成Sourceだけでは記録できない残余判断の有無を根拠付きで評価すること。関連する試験と文書検査は**変更範囲に応じて選択**する。リポジトリ全体の健全性検査を無条件の統合要件にはしない。未完成のプロファイル構成を正式採用したとは扱わない。
 
 ## 受入判断（今は保留）
 

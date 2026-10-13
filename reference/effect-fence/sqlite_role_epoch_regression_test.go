@@ -107,7 +107,7 @@ func TestSQLiteDeletedSubjectRevokesAllPendingPermits(t *testing.T) {
 	if err != nil || result.Disposition != Denied {
 		t.Fatalf("削除済み主体の確定: %+v %v", result, err)
 	}
-	if _, result, err = a.PrepareWithVersionedAuthorization(context.Background(), req.Scope.Subject, req, auth, fixtureAuthoritySource); err == nil || result.Receipt != (Receipt{}) {
+	if _, result, err = a.PrepareWithVersionedAuthorization(context.Background(), req.Scope.Subject, req, auth, fixtureAuthoritySource); err != nil || result.Disposition != Denied || result.Reason != "authorization-denied" || result.Receipt != (Receipt{}) {
 		t.Fatalf("削除後に古い結果が開示されました: %+v %v", result, err)
 	}
 }

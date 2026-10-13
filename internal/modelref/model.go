@@ -73,7 +73,8 @@ type Diagnostic struct {
 }
 
 func validKey(k Key) bool {
-	return strings.TrimSpace(k.Scope) != "" && strings.TrimSpace(k.Subject.Kind) != "" &&
+	scope := strings.TrimSpace(k.Scope)
+	return scope != "" && scope == k.Scope && strings.TrimSpace(k.Subject.Kind) != "" &&
 		strings.TrimSpace(k.Subject.ID) != "" && !strings.ContainsAny(k.Scope, "\n\r\t")
 }
 
@@ -376,12 +377,13 @@ func Impact(before Graph, changes []Change, rules []Rule) []Affected {
 	}
 	nodes := make(map[Key]Node, len(before.Nodes))
 	nodeCounts := make(map[Key]int, len(before.Nodes))
-	bySubject := make(map[string][]Key, len(before.Nodes))
+	bySubject := make(map[subject.Subject][]Key, len(before.Nodes))
 	for _, node := range before.Nodes {
 		nodes[node.Key] = node
 		nodeCounts[node.Key]++
-		refKey := node.Key.Subject.Kind + "\x00" + node.Key.Subject.ID
-		bySubject[refKey] = append(bySubject[refKey], node.Key)
+		// Index the structured identity, not a delimiter-joined string:
+		// valid author-defined identifiers may themselves contain delimiters.
+		bySubject[node.Key.Subject] = append(bySubject[node.Key.Subject], node.Key)
 	}
 	// Conflicting extension rules are not ordered fallbacks. A consumer
 	// may call Impact without Validate; never allow the order of rules to
@@ -418,7 +420,7 @@ func Impact(before Graph, changes []Change, rules []Rule) []Affected {
 				continue
 			}
 		} else {
-			keys := bySubject[edge.To.Subject.Kind+"\x00"+edge.To.Subject.ID]
+			keys := bySubject[edge.To.Subject]
 			if len(keys) != 1 || nodeCounts[keys[0]] != 1 {
 				continue
 			}

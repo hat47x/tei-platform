@@ -76,3 +76,34 @@ func TestNodeEvidenceOrderIsNotSemanticDifference(t *testing.T) {
 		t.Fatalf("actual evidence change was ignored: %+v", ds)
 	}
 }
+
+func TestScopeKeyAndExplicitRefUseSameWhitespaceRule(t *testing.T) {
+	for _, scope := range []string{
+		" orders-v1", "orders-v1 ",
+		"\u00a0orders-v1", "orders-v1\u00a0",
+	} {
+		t.Run(fmt.Sprintf("%q", scope), func(t *testing.T) {
+			invalid := key("data", "order-line")
+			invalid.Scope = scope
+			g := modelref.Graph{
+				Schema: "tei.modelref.v0",
+				Nodes:  []modelref.Node{{Key: invalid}},
+			}
+			if _, issue := modelref.Resolve(g.Nodes, modelref.Ref{Scope: scope, Subject: invalid.Subject}); issue != "invalid-reference" {
+				t.Fatalf("explicit padded scope must be rejected, got %q", issue)
+			}
+			if !hasCode(modelref.Validate(g, nil), "invalid-node-key") {
+				t.Fatalf("node scope accepted even though explicit references reject it: %q", scope)
+			}
+		})
+	}
+
+	valid := key("data", "order-line")
+	g := modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{{Key: valid}}}
+	if diagnostics := modelref.Validate(g, nil); len(diagnostics) != 0 {
+		t.Fatalf("valid hyphenated logical scope rejected: %+v", diagnostics)
+	}
+	if resolved, issue := modelref.Resolve(g.Nodes, modelref.Ref{Scope: valid.Scope, Subject: valid.Subject}); issue != "" || resolved != valid {
+		t.Fatalf("valid explicit scope did not resolve: resolved=%+v issue=%q", resolved, issue)
+	}
+}

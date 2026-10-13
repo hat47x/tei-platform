@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp, mkdir, writeFile, symlink, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {dirname, join, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {observeSource, probes} from './e1-observe.mjs';
 
 async function workspace(fn) {
@@ -47,3 +48,12 @@ test('refuses traversal and a symlink pointing outside the root', async () => wo
     assert.equal(r.observations[0].reason,'outside-root');
   } finally { await rm(external,{recursive:true,force:true}); }
 }));
+
+test('E1 order submit route probe follows the order-owned transport registration', async () => {
+  const route = probes.find(p=>p.id==='order.web-endpoint');
+  assert.equal(route?.path,'tools/reference-first-web-target/order_scenario_http.go');
+  const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  const result = await observeSource(repository,[route]);
+  assert.equal(result.observations[0].status,'observed');
+  assert.equal(result.observations[0].reason,'literal-present');
+});

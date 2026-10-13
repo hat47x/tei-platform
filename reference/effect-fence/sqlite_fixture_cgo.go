@@ -30,6 +30,9 @@ type sqliteFixture struct {
 	pending        map[uint64]prepared
 	requireEpochs  bool
 	epochSnapshots map[uint64]map[string]authorityDependencyState
+	// schemaCheck は試験用の認可正本が必要な制約を保持することの検査関数。
+	// nilは版付き許可の安全な確定を証明できないことを意味する。
+	schemaCheck func() error
 }
 
 func openSQLiteFixture(path string) (*sqliteFixture, error) {
@@ -200,6 +203,14 @@ func (f *sqliteFixture) prepareWithExpectedEpochs(ctx context.Context, r Request
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if expected != nil && f.schemaCheck == nil {
+		return nil, Result{}, errors.New("認可正本の変更制約が検証されていません")
+	}
+	if f.schemaCheck != nil {
+		if err := f.schemaCheck(); err != nil {
+			return nil, Result{}, err
+		}
+	}
 	row, ok, err := f.query("SELECT version,allowed FROM authority WHERE scope=" + scopeSQL(r.Scope))
 	if err != nil {
 		return nil, Result{}, err
@@ -274,6 +285,13 @@ func (f *sqliteFixture) CommitForTest(ctx context.Context, token any) (Result, e
 		if err := ctx.Err(); err != nil {
 			return Result{}, err
 		}
+		// 版の整合性だけでは、版更新を強制するDB制約の削除を発見できない。
+		// BEGIN IMMEDIATEで他の書込みを遮断してから必要な制約を検査する。
+		if f.schemaCheck != nil {
+			if err := f.schemaCheck(); err != nil {
+				return Result{}, err
+			}
+		}
 		row, ok, err := f.query("SELECT version,allowed FROM authority WHERE scope=" + scopeSQL(r.Scope))
 		if err != nil {
 			return Result{}, err
@@ -339,6 +357,10 @@ func (f *sqliteFixture) Observe(s Scope) (string, uint64) {
 func (f *sqliteFixture) Lookup(s Scope, opID string) (Receipt, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// Lookupはエラーを返せない契約のため、制約不備では記録を非開示にする。
+	if f.schemaCheck != nil && f.schemaCheck() != nil {
+		return Receipt{}, false
+	}
 	row, ok, err := f.query("SELECT allowed FROM authority WHERE scope=" + scopeSQL(s))
 	if err != nil || !ok || row[0] != "1" {
 		return Receipt{}, false

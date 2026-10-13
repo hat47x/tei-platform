@@ -307,7 +307,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
 - `usesSemantic`や`databases`の順序は、authoredされたsourceの順序としてそのまま保ちます（入れ替えるとsourceとfingerprintが変わります）。
 - 変わるべきWorld collectionは、deltaの種類から導きます（semantic層のoperationは`semantics`、Application層のoperationは`applications`）。実際に変わったcollectionの集合とexactに一致しなければ拒否します。
-- 受理はfileを新しく作るため、失敗時は作ったfileと、そのために作ったdirectoryを削除して元へ戻します（既存fileへの挿入・追記は元のbyteへ戻します）。
+- 受理途中で失敗した場合、Shared Acceptanceが自分で書いた後のSourceバイト指紋を再検査し、一致するfileだけを元へ戻します（新規fileは削除、既存fileは元のbyteへ復元）。書込み後に他プロセスが内容を変えた可能性があるfileを無条件で上書きせず、復元できなかった場合は`ROLLBACK_INCOMPLETE`で明示します。
 - Relationの追加・変更では、Previewが端点（source / target Data）を実現するPersistence Mappingへの辺と、Relationの保存方法（relation storageが定義済み / keyのsource Attributeが列として実現済みで導ける / 未決定）を返します。未決定なら`RELATION_STORAGE_NOT_AUTHORED`として残し、この変更がPersistence Mapping・migrationを変えないことも示します。
 
 ## このtoolが示すこと / 示さないこと
@@ -319,18 +319,39 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - staleなcandidateを黙って適用しない
 - 不正なcandidate（未知field / 存在しない参照 / 別layerへのplacement / 数値ではないAttributeへの`positive` / 宣言外の副作用）はsourceを変えずに拒否される
 - どの入口のcandidateも同じ`candidateFingerprint`・同じsource・同じCanonical Worldになり、AI固有のEvidenceがCanonicalへ入らない。同値なEvidenceは同じ`evidenceFingerprint`へ正規化され、Evidenceだけを変えてもsemantic fingerprintは変わらない
-- accept途中の並行変更・受理後Conformance失敗では、書いたfileを元へ戻す
+- accept途中の並行変更・受理後Conformance失敗では、**自分が書いたバイトのままのfile**について復元を試みる。書込み後に別Actorが変更した可能性のあるfileは上書きせず、`ROLLBACK_INCOMPLETE`と`sourceChanged=true`で未解決の状態を明示する。復旧完了を偽装しない（`desktop_external_process_race_test.go`）
 - 同じ意味を別fileへ移すだけならsemantic差分は出ず、論理的な改名はremoved / addedとして現れる
 - 派生物（Canonical World JSON）を消しても、accepted sourceから同じものを再生成できる
 - Environment binding: 既存のEnvironment fileへ`bind <application>.<alias> -> <instance>`を一行挿入します。Environment blockの閉じ括弧の直前へ入れ、内側のblock（`database-instance { … }`等）と取り違えません。挿入先は、そのEnvironmentを宣言しているfileに限ります。
 - `ISSUE-000046`が最小loopとして名指しするRelation変更（既存Data `sales.order_line`へ`order`を追加）について、Preview（Semantic Diff・exact dependencyのimpact・Persistence Mappingへの辺と保存方法が未決定であること）→ Reject → Accept → toolなしの再読込までを通し、変わるのは一つのfileの挿入した行だけである（`relation_test.go`）
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
-- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
+- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、作成後バイトが変わっていないfileとdirectoryの復元を試みる。外部変更の可能性があるfileは保護し、元の状態へ戻せなければ未完了と報告する
 - `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。required dependencyのauthoritative source / fingerprintもscoped Evidenceとして照合し、同じIDのdependency sourceが変わったcaseをfail closedにできる。requirements外のdependency Evidenceはhandoffしない（`qualification_handoff_test.go`）
 - Semantic Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与し、内部Evaluation fingerprintと外側artifact fingerprintを二重に固定できる。`pass / fail / unknown`はReview A3/A7へ露出するが、candidate meaningやAcceptance authorityへ昇格しない（`semantic_evaluation_handoff_test.go`）
 - accepted / rejected Decisionが、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged / none`、判断理由に使ったEvidenceの集約statusとSource/artifact別statusを返す。stale rejectはrevision conflictも保持する。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go` / `semantic_evaluation_handoff_test.go`）
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
+
+Shared Acceptanceでauthoritative Sourceを書き込む経路は、`os.OpenRoot(workspace)`で開いたWorkspaceルートに固定し、入力元の相対Sourceパスを一貫してそのルートから開きます。書込み前には親ディレクトリと終端ファイルのシンボリックリンクを拒否し、一時ファイル作成・実際の置換・失敗時復元を`os.Root`の相対操作で行います。新規Sourceは`Root.Link`のcreate-only公開により、並行プロセスが作成した同名ファイルを上書きしません。書込み途中でHostがWorkspaceの親ディレクトリをWorkspace外へのリンクに差し替えても、`Root`により外部のファイルは書き換えません（#1529）。
+
+ただし、この**書込み側のResource containment**は、Workspace読み込み時点のSource Reader（#1017）、review fingerprintと現権限の再確認、変更済みSourceの原子的Compare-and-Swap、複数Sourceの全体トランザクションを代替しません。また、`os.Root`はJS/WASM上でOSネイティブと同一の安全性を保証しません。実Wails Hostと、OS/ファイルシステム別の互換性は未検証です。
+
+Shared Acceptance の `accept` は、評価開始前に同じWorkspaceの`.tei-accept.lock`を`os.Root.OpenFile(O_CREATE|O_EXCL)`で排他的に作成し、Previewの再評価・Review指紋照合・Source更新・再読込・Conformance・失敗時復元を終えるまで保持します。別のCLI/Studio/AIなど**この共通Accept経路を使用する協調Writer**が同時に操作すると、後から来た受理は`SOURCE_ACCEPT_BUSY`として書き込まずに拒否します。これは実OSプロセス間でも働くReferenceで、待機・自動再送・ロック奪取はしません。
+
+- lockはSource Indexの対象外にあるHost作業制御の目印であり、モデルrevision・承認・利用者権限・リソース権限を代替しません。PIDは診断用、乱数はロック所有者の復元時識別用であり、どちらも権限トークンではありません。
+- プロセスクラッシュ時に残るlockは**自動削除しません**。PIDの再利用や経過時間から安全を推測せず、運用者が他の受理実行中プロセスの不存在とSource状態を確認した後にのみ明示削除します。連携するHostでは削除前後に再Reviewが必要です。
+- lock解除時には自分が取得したファイルの実体と所有マーカーを再照合し、別Actorが置換したファイルを消しません。解除に失敗した場合は、**Acceptanceの結果自体が確定済みでもcleanup未確認のerror**として呼出し側に伝えます。Sourceを勝手に再試行しません。
+- 外部エディター、Git、別のSource書込み実装はこの協調lockに参加しないため、**任意の独立Writerを排除するatomic CASではありません**。さらに複数Sourceのtransaction、プロセス強制終了後の永続的lease/ownership、ローカルホスト外の分散lock、OS別の安全性は別検証が必要です（#267、#1017、#1529）。
+
+### Workspace ManifestとReviewを結ぶ受理時の検査（#1529）
+
+モデルrevisionはSource Indexの管理対象ファイルの変更を表し、Workspace Manifest（`tei.workspace.yaml`、または`tei.workspace.tei`）の**コメントを含む実バイト**の変更を必ずしも表しません。Shared AcceptanceはWorkspaceの読み込み前後でManifestのバイト指紋を確認し、Review Projectionへ`workspaceManifestPath`・`workspaceManifestFingerprint`を組み込むことで、同じ意味の候補でも、Manifestだけを外部変更した場合は以前の`expectedReviewFingerprint`を再利用できないようにします。
+
+受理時には共通の`os.Root`からManifestの実バイトを各Source書込み前、書込み終了時、再読込後にも再検査します。変更があれば`SOURCE_MANIFEST_CHANGED_DURING_ACCEPT`として拒否し、既に書いたSourceについては既存の条件付きロールバックを実施します。このガードはCLI/Studio/AIごとに複製せず、同一のShared Acceptance内で実行します。Manifestの最大読込みは2 MiBに制限し、通常ファイルではないManifestを拒否します。
+
+**限界：** 実バイト検査は確認時点の事実であって、別のWriterによるManifest変更、旧内容への復元（ABA）、複数Sourceの同時書込みを原子的に拘束しません。SnapshotでのManifest観測とWorkspace Loaderの各Source読込みは同一のOSトランザクションではありません。Review fingerprintは人間の承認・権限を証明せず、`accept`の内部Reference呼出しで省略可能なことも変わりません。外部Writerが共通lockに協力しないケースは引き続き個別検証が必要です（#267、#1017、#1158）。
+
+既存の競合検出は、受理時の各Source書込み直前とロールバック開始時の**実バイト指紋**の再照合です。検査してから`os.Rename`等で置き換えるまでの時間差を消す原子的なcompare-and-swapではありません。親ディレクトリ・シンボリックリンク・inodeの同時差替えや、複数Writerの全体取引を防ぐ共有Source Authorityは引き続き未実装です（#1017 / #267）。`ROLLBACK_INCOMPLETE`がある場合には自動再試行せず、Sourceを再読込して人間の判断・競合解消を求めます。
 
 示さないこと:
 
@@ -347,3 +368,90 @@ go test ./tools/reference-shared-acceptance -count=1
 ```
 
 testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscratch copyだけを使います。最初のtestは、scratch copyから得たCanonical Worldが`reference/world.json`とbyte単位で一致すること（実際のReferenceで試していること）を確認します。
+
+
+## 既存Dataへの候補キー・関数従属性の型付き追加（#1126）
+
+`add-candidate-key` と `add-functional-dependency` は、前段でSemantic DSLへ導入した**明示的な論理規則の追加**だけを、通常のShared Acceptance経路でPreview・Review・AcceptするためのReferenceです。既存DataのSource Indexに対応するauthoritative `.tei` ファイルを自動特定し、Dataの外側の閉じ括弧直前へ宣言を挿入します。規則内部に入れ子の波括弧があっても外側のDataを正確に識別し、元のソースの他のバイトを変更しません。
+
+```json
+{
+  "op": "add-candidate-key",
+  "addCandidateKey": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.business_line",
+    "symbol": "businessLine",
+    "attributes": ["sales.order_line.order_line_id", "sales.order_line.line_number"]
+  }
+}
+```
+
+```json
+{
+  "op": "add-functional-dependency",
+  "addFunctionalDependency": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.item_by_line",
+    "symbol": "itemByLine",
+    "determinants": ["sales.order_line.order_line_id", "sales.order_line.line_number"],
+    "dependents": ["sales.order_line.item_code"]
+  }
+}
+```
+
+上記は通常の`tei.reference.change-candidate/v0`における`delta`の要素であり、単独で受理できるJSONではありません。実行には`baseModelRevision`、`origin`、`intent`、現行Sourceに対応するEvidence、Review fingerprint、明示的Accept decision等の既存の条件が適用されます。
+
+- 未存在Data・属性、Data外の属性、重複属性、既存あるいは同じcandidate内で衝突する規則ID、識別子とsymbolの不一致、placementの偽装、混在したpayloadは拒否します。対象Dataの出所を解決できない場合にも、ほかのファイルへ恣意的に書き込まず停止します。
+- Previewは規則を`candidate-key:<id>`、`functional-dependency:<id>`として**異なるSemantic subject差分**に記録します。影響解析では対象Dataと使用属性の正確な参照を示し、`LOGICAL_BUSINESS_RULE_UNVERIFIED`で業務上の妥当性・候補キー最小性・物理PK/FK対応が未確認であることを残します。
+- 物理DBのPK/UNIQUE/FK/Index、Persistence Mapping、Migrationには変更を加えません。Canonicalな規則宣言が追加されることと、業務上の規則が実証・承認されることは別です。
+- 今回は**追加のみ**です。既存規則の変更・削除、ER図UI操作、実データ検証による保証、論理から物理へのmapping、自動DDL生成は未対応とし、無理に既存の`add-relation`や別操作で代用しません。
+
+
+## 新しいDataを追加する際の業務キーとFDの同時宣言（#1126）
+
+既存の`add-data`（新namespace / 新source fileを一つ作成）の`data` payloadに、任意の`candidateKeys`と`functionalDependencies`を追加できます。別々に`add-candidate-key`を後から適用する必要はなく、**属性を追加する同一候補の中で業務上の意味を明示**します。
+
+```json
+{
+  "op": "add-data",
+  "placement": "semantic/fulfillment/package_line.tei",
+  "data": {
+    "namespace": "fulfillment",
+    "id": "fulfillment.package_line",
+    "symbol": "PackageLine",
+    "attributes": [
+      {"id":"fulfillment.package_line.order_ref","symbol":"orderRef","type":"std.identifier"},
+      {"id":"fulfillment.package_line.line_no","symbol":"lineNo","type":"std.integer"},
+      {"id":"fulfillment.package_line.label","symbol":"label","type":"std.text"}
+    ],
+    "candidateKeys": [{
+      "data": "fulfillment.package_line",
+      "id": "fulfillment.package_line.business_line",
+      "symbol": "businessLine",
+      "attributes": ["fulfillment.package_line.order_ref","fulfillment.package_line.line_no"]
+    }],
+    "functionalDependencies": [{
+      "data": "fulfillment.package_line",
+      "id": "fulfillment.package_line.label_by_line",
+      "symbol": "labelByLine",
+      "determinants": ["fulfillment.package_line.order_ref","fulfillment.package_line.line_no"],
+      "dependents": ["fulfillment.package_line.label"]
+    }]
+  }
+}
+```
+
+このJSONは通常の`tei.reference.change-candidate/v0`の`delta`要素です。候補全体には引き続き`baseModelRevision`、`intent`、`origin`と正本Source Evidenceなどが必要で、実際のAcceptには既存のDecision条件が適用されます。
+
+宣言された論理規則の属性は、**同一`add-data`に明示されたAttributeに限る**ため、まだ存在しない別のDataや類似名から業務IDを推測しません。属性・Relation・key・FDの各IDの重複も拒否します。新しいDataの候補キー・FDは差分上も独立のsubjectになり、Source Indexには正確な宣言名の位置が入ります。候補キーやFDが空の場合は、従来の`add-data`と同じソースを出力します。
+
+これは**ソースへの宣言の受理**です。業務上の規則の検証や承認権限の真正性、物理PK/FK・Migrationの生成、ER図UI上の編集を意味しません。既存namespace内の新Data追加は従来どおり非対応であり、この拡張によって機能を増やしていません。
+
+
+## 候補キー／関数従属性の変更・撤回に伴う過去参照の扱い（#1126）
+
+既存のShared Acceptanceで型付きに追加できる候補キー・関数従属性について、読み取り専用の影響解析を拡張しています。`tools/internal/changeanalysis.ImpactWithBefore(before, after, changes)` は、後状態だけでは失われる**撤回済み規則の旧Data・旧属性の参照**を、変更前のCanonical Worldから取り出してPreviewへ示します。新しい宣言への参照は従来どおり`semantic.*`、撤回・変更前の参照は`previous.semantic.*`で明確に区別します。
+
+規則の`removed`／`changed`ごとに`LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`を残し、下流の業務規則、候補キーの最小性、物理PK/FK等の影響を推測で「なし」にしません。宣言されていたはずの過去規則を旧Worldから見つけられない場合も`LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING`で未確認を明示します。通常の追加は従来の影響解析と同じで、過去に存在しないリンクを合成しません。
+
+**この段階で撤回・更新の操作は解放していません。** 書き戻しに必要な規則本文の厳密な範囲、変更前ソース指紋の固定、旧規則の参照元への説明、権限ある意思決定の記録を確認してから別の型付き操作として導入します。今回の変更は差分と影響の読み取り境界に留まり、Source、実DB、DDL、Provider、Runtime authorityを変更しません。

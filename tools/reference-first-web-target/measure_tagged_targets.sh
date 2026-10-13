@@ -127,6 +127,28 @@ for mode in order repair; do
   reject_source "$mode" combined_scenario_templates.go
 done
 
+# Excluding same-package GoFiles is not enough: shared code could
+# accidentally import the order-only legacy authentication/authorization
+# adapters into the repair binary. Inspect the real E0 main-module closure.
+# Also require them in order/combined so this is not a vacuous exclusion check.
+require_closure_package() {
+  if ! grep -Fq "\"importPath\": \"tei/internal/security/$2\"" "$temp/$1.e0.json"; then
+    echo "missing expected main-module package in $1: $2" >&2
+    exit 1
+  fi
+}
+reject_closure_package() {
+  if grep -Fq "\"importPath\": \"tei/internal/security/$2\"" "$temp/$1.e0.json"; then
+    echo "forbidden main-module package in $1: $2" >&2
+    exit 1
+  fi
+}
+for package in legacyauth legacyauthorization; do
+  require_closure_package combined "$package"
+  require_closure_package order "$package"
+  reject_closure_package repair "$package"
+done
+
 # A linked business Runner symbol in an excluded Application is a hard fail.
 # The reverse (no symbol) is only limited diagnostic evidence: Go may inline
 # functions, so absence of names is NOT an exhaustive secret/authorization audit.
@@ -136,6 +158,12 @@ if grep -E 'main[.](\(\*referenceCustomerLookupScenarioRunner\)|newReferenceCust
 fi
 if grep -E 'main[.](\(\*referenceCommandScenarioRunner\)|newReferenceCommandScenarioRunner|newReferenceReadScenarioRunner)' "$temp/repair.nm" >/dev/null; then
   echo "repair-only binary retained an order_entry business Runner symbol" >&2
+  exit 1
+fi
+# Symbol inspection is corroborating evidence, not a substitute for the
+# package-closure assertion: inlining can make names disappear.
+if grep -E 'tei/internal/security/(legacyauth|legacyauthorization)[.]' "$temp/repair.nm" >/dev/null; then
+  echo "repair-only binary linked a legacy order authentication/authorization symbol" >&2
   exit 1
 fi
 

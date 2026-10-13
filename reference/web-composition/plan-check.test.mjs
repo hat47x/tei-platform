@@ -241,9 +241,55 @@ test('protected Action requires the exact POST method and explicit protected exp
   }
 });
 
+test('non-Action route cannot keep the business Action invocation step', () => {
+  for(const exposure of ['public','protected']){
+    const p=clone(base);
+    p.route={id:'corporate.callback',method:'GET',path:'/login/callback/corporate',exposure};
+    assert.throws(()=>composeRequestPlan(p),/Action invocation requires an explicit Action route/,exposure);
+  }
+});
+
 test('public callback without an Action remains a distinct GET route', () => {
   const p=clone(base);
   p.route={id:'corporate.callback',method:'GET',path:'/login/callback/corporate',exposure:'public'};
+  p.hostPolicy.requiredGuards=[];
+  p.hostContracts=[];
+  p.steps=[
+    {id:'context',scope:'server',provides:['request.context']},
+    {id:'callback-validation',scope:'server',requires:['request.context'],provides:['callback.validated']},
+    {id:'audit',scope:'server',requires:['request.context'],onTerminal:['completed','rejected','error']}
+  ];
   const composed=composeRequestPlan(p);
   assert.equal(composed.routeId,'corporate.callback');
+  assert.ok(composed.order.includes('callback-validation'));
+  assert.ok(!composed.order.includes('invoke'));
+});
+
+
+test('protected Action route must be byte-exact after Go net/url EscapedPath', () => {
+  for(const path of [
+    '/scenario/a!b',
+    '/scenario/a"b',
+    "/scenario/a'b",
+    '/scenario/a*b',
+    '/scenario/a(b)',
+    '/scenario/a[b]',
+    '/scenario/a{b}',
+    '/scenario/a<b>',
+    '/scenario/a|b',
+    '/scenario/a^b',
+    '/scenario/a\`b'
+  ]){
+    const p=clone(base);
+    p.route.path=path;
+    assert.throws(()=>composeRequestPlan(p),/exact unambiguous path/,path);
+  }
+});
+
+test('protected Action retains Go URL paths that do not need escaping', () => {
+  for(const path of ['/scenario/submit','/scenario/+@;,$','/scenario/a:bc&def=2']){
+    const p=clone(base);
+    p.route.path=path;
+    assert.equal(composeRequestPlan(p).routeId,'sales.submit');
+  }
 });

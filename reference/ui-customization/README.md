@@ -77,3 +77,14 @@ Pluginとしては、少なくとも論理的identity、version、TargetとFrame
 階層化は、OOPクラスの多重継承ではなく、**単一親`extends` → 各種UI公開点への`provide` / `replace` / `decorate` → Action/Domain/Authorityへの`delegation`**を第一候補とする。Kit/Layerごとにexact versionを指定し、上書き対象を`expect`で確認する。任意Framework間のUIコード継承や複数Pluginの暗黙勝者選択は禁止する。
 
 設計、代替名称評価、13件の実行テスト、未実証範囲は[composition/README.md](composition/README.md)へ分離。Reference resolverはデザイン時の軽量実験で、既存TEI Plugin ResolverやProduction Targetの完成を意味しない。旧ディレクトリ名・既存のIssue中の「基本UI Plugin」は移行期間の歴史的記述として残す。
+
+
+## 標準UIランタイムとCPUローカル認知による共通部品候補の発見（2026-10-13、研究提案）
+
+Biz/Browser型の**中央管理された標準業務UIコンポーネント**をWeb/Desktopでモデル駆動実行する方式を評価する。標準Form／検索／明細等の共通部品に回収可能な部分については、案件ごとのUIソース生成よりも宣言的な構成を優先候補とする。**コードジェネレーターは引き続き業務ロジック、専用UI、特殊要件、標準部品自身の実装にも適用できる汎用機構**であり、標準UIの例外に限定しない。
+
+複数案件で類似する専用Renderer、入力遷移、明細制御等を見つける際は、SEIを活用した**read-onlyな共通化候補の提案**を研究する。一次判断はローカルCPU上の決定的な型・Action契約照合や構造検索で行い、軽量なranker（例：LightGBM）、Jev／LLM等は必要に応じて比較する。表層の名前やコードの類似だけで標準UIへ自動昇格させず、Target差・操作性・a11y・権限・Validation・未知の差異を残す。
+
+Web標準＋LitとDesktop WebView＋Go Hostは検証候補とするが、既存のWeb/React Referenceの実績を未実施扱いにしたり、既存のTarget/Framework二軸を破壊したりしない。共通化候補が採用された場合も公開Slot・Contract・Versionを通し、案件UI Layerの差分を黙って上書きしない。
+
+**責務の分担:** 本文書／#997はUI実現の境界を担当する。業務意味の共通化は#998、候補ランク付け研究は#843/#876、正本変更の採否は#267、Loweringは#1121、CPU推論技法はSEI #543/#546を参照する。研究詳細・負例・評価条件は[ローカルCPU共通部品化候補研究](../../plan/research/LOCAL_CPU_COMPONENT_REUSE.md)を参照。**未実装・未検証であり、現在のReferenceの合格範囲は変更しない。**

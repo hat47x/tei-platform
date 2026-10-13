@@ -25,10 +25,14 @@ import (
 // exactEngineOptions selects an independently built, verified process engine.
 // An omitted option retains the existing in-process reference path.
 type exactEngineOptions struct {
-	Executable       string
-	BuildEvidence    string
-	Stage2Lock       string
-	HostRegistration string
+	GoExecutable         string
+	Executable           string
+	BuildEvidence        string
+	Stage2Lock           string
+	HostRegistration     string
+	HostSignature        string
+	TrustedHostPublicKey string
+	TrustedHostID        string
 }
 
 type exactEngineSourceMember struct {
@@ -109,6 +113,11 @@ func verifyExactEngine(root, revision string, options exactEngineOptions) (prunt
 	}
 	if len(raw) > 2<<20 {
 		return pruntime.RuntimeEngineIdentity{}, "", fmt.Errorf("exact Runtime Engine build evidence exceeds byte limit")
+	}
+	// A typed decode alone permits duplicate keys (last-wins), including inside
+	// RuntimeEngineIdentity. Reject ambiguous receipts before fingerprinting.
+	if _, err := transform.ParseJSON(raw); err != nil {
+		return pruntime.RuntimeEngineIdentity{}, "", fmt.Errorf("exact Runtime Engine build evidence has ambiguous or invalid JSON: %w", err)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()

@@ -140,6 +140,730 @@
         "optional": true
       },
       {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "requires",
+          "optional": true
+        },
+        "item": "requirement",
+        "body": {
+          "op": "assert-canonical-id",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "requirement"
+            },
+            "field": "plugin"
+          }
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "requires",
+          "optional": true
+        },
+        "item": "requirement",
+        "body": {
+          "op": "assert-positive-integer",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "requirement"
+            },
+            "field": "compatibleMajor"
+          }
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-unique-by",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "keys": [
+          {
+            "op": "join-strings",
+            "values": [
+              {
+                "op": "assert-enum",
+                "actual": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "capability"
+                  },
+                  "field": "kind"
+                },
+                "allowed": [
+                  "deployment-executor",
+                  "observation-provider",
+                  "evidence-provider",
+                  "database-provider",
+                  "contract-query-executor",
+                  "migration-provider",
+                  "editor-intelligence"
+                ]
+              },
+              {
+                "op": "select-field",
+                "from": {
+                  "op": "input",
+                  "name": "capability"
+                },
+                "field": "id"
+              }
+            ],
+            "separator": "\u0000"
+          }
+        ],
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-canonical-id",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "id"
+          }
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-each",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "actions",
+            "optional": true
+          },
+          "item": "support",
+          "body": {
+            "op": "assert-enum",
+            "actual": {
+              "op": "input",
+              "name": "support"
+            },
+            "allowed": [
+              "database-release",
+              "database-gate",
+              "application-start",
+              "traffic-shift",
+              "rollout-health-gate",
+              "stop-accepting-work",
+              "drain-complete-gate",
+              "application-retire"
+            ]
+          },
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-each",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "observations",
+            "optional": true
+          },
+          "item": "support",
+          "body": {
+            "op": "assert-enum",
+            "actual": {
+              "op": "input",
+              "name": "support"
+            },
+            "allowed": [
+              "application-runtime",
+              "database-state"
+            ]
+          },
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-each",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "evidence",
+            "optional": true
+          },
+          "item": "support",
+          "body": {
+            "op": "assert-enum",
+            "actual": {
+              "op": "input",
+              "name": "support"
+            },
+            "allowed": [
+              "rollout-health"
+            ]
+          },
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-each",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "databaseProviders",
+            "optional": true
+          },
+          "item": "support",
+          "body": {
+            "op": "assert-enum",
+            "actual": {
+              "op": "input",
+              "name": "support"
+            },
+            "allowed": [
+              "postgres",
+              "oracle",
+              "mysql",
+              "mariadb",
+              "sqlserver",
+              "sqlite",
+              "db2",
+              "clickhouse"
+            ]
+          },
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-unique-by",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "permissions",
+            "optional": true
+          },
+          "item": "permission",
+          "keys": [
+            {
+              "op": "join-strings",
+              "separator": "\u0000",
+              "values": [
+                {
+                  "op": "assert-enum",
+                  "actual": {
+                    "op": "join-strings",
+                    "separator": "|",
+                    "values": [
+                      {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "permission"
+                        },
+                        "field": "kind"
+                      },
+                      {
+                        "op": "select-field",
+                        "from": {
+                          "op": "input",
+                          "name": "permission"
+                        },
+                        "field": "access"
+                      }
+                    ]
+                  },
+                  "allowed": [
+                    "filesystem|read",
+                    "filesystem|write",
+                    "filesystem|read-write",
+                    "network|connect",
+                    "secret|read"
+                  ]
+                },
+                {
+                  "op": "assert-nonblank",
+                  "from": {
+                    "op": "select-field",
+                    "from": {
+                      "op": "input",
+                      "name": "permission"
+                    },
+                    "field": "scope"
+                  }
+                }
+              ]
+            }
+          ],
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-unique-by",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "externalRequirements",
+          "optional": true
+        },
+        "item": "externalRequirement",
+        "keys": [
+          {
+            "op": "join-strings",
+            "values": [
+              {
+                "op": "assert-enum",
+                "actual": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "externalRequirement"
+                  },
+                  "field": "scope"
+                },
+                "allowed": [
+                  "editor",
+                  "build",
+                  "test",
+                  "runtime",
+                  "migration"
+                ]
+              },
+              {
+                "op": "assert-enum",
+                "actual": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "externalRequirement"
+                  },
+                  "field": "kind"
+                },
+                "allowed": [
+                  "toolchain",
+                  "runtime",
+                  "language-package",
+                  "tool"
+                ]
+              },
+              {
+                "op": "assert-nonblank",
+                "from": {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "externalRequirement"
+                  },
+                  "field": "name"
+                }
+              }
+            ],
+            "separator": "\u0000"
+          }
+        ],
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-unique-by",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "actions",
+            "optional": true
+          },
+          "item": "supported",
+          "keys": [
+            {
+              "op": "input",
+              "name": "supported"
+            }
+          ],
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-unique-by",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "observations",
+            "optional": true
+          },
+          "item": "supported",
+          "keys": [
+            {
+              "op": "input",
+              "name": "supported"
+            }
+          ],
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-unique-by",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "evidence",
+            "optional": true
+          },
+          "item": "supported",
+          "keys": [
+            {
+              "op": "input",
+              "name": "supported"
+            }
+          ],
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-unique-by",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "databaseProviders",
+            "optional": true
+          },
+          "item": "supported",
+          "keys": [
+            {
+              "op": "input",
+              "name": "supported"
+            }
+          ],
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-unique-by",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "migrationTools",
+            "optional": true
+          },
+          "item": "supported",
+          "keys": [
+            {
+              "op": "input",
+              "name": "supported"
+            }
+          ],
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-unique-by",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "features",
+            "optional": true
+          },
+          "item": "supported",
+          "keys": [
+            {
+              "op": "input",
+              "name": "supported"
+            }
+          ],
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-each",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "migrationTools",
+            "optional": true
+          },
+          "item": "support",
+          "body": {
+            "op": "assert-enum",
+            "actual": {
+              "op": "input",
+              "name": "support"
+            },
+            "allowed": [
+              "native",
+              "atlas",
+              "flyway",
+              "liquibase",
+              "golang-migrate"
+            ]
+          },
+          "optional": true
+        },
+        "optional": true
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "pluginDefinition"
+          },
+          "field": "provides",
+          "optional": true
+        },
+        "item": "capability",
+        "body": {
+          "op": "assert-each",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "capability"
+            },
+            "field": "features",
+            "optional": true
+          },
+          "item": "support",
+          "body": {
+            "op": "assert-enum",
+            "actual": {
+              "op": "input",
+              "name": "support"
+            },
+            "allowed": [
+              "editor.sql_analysis",
+              "editor.database_workbench"
+            ]
+          },
+          "optional": true
+        },
+        "optional": true
+      },
+      {
         "op": "assert-equal",
         "actual": {
           "op": "select-field",

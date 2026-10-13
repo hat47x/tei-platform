@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v3"
+const CrossViewDerivationPolicyRevision = "tei.xeadsource.cross-view/v4"
 
 const (
 	CrossViewNatureSource  = "source-backed"
@@ -292,7 +292,7 @@ func buildCrossViewProjection(inspection Inspection) (CrossViewProjection, error
 				))
 				continue
 			}
-			if ioID == "0" {
+			if strings.TrimSpace(ioID) == "0" {
 				continue
 			}
 			targets := targetsByFunction[function.token][ioID]
@@ -675,7 +675,7 @@ func crossViewDerivationPolicyFingerprint() string {
 			"only known unqualified source constructs participate in standard cross-view relations",
 			"only exact unqualified source attributes participate in legacy reference resolution",
 			"FunctionID TableID and IOID references resolve only when exactly one matching source node exists",
-			"IOID zero means no target interaction edge and is retained as a source-level count",
+			"IOID with surrounding whitespace trimmed and equal to zero means no target interaction edge and is retained as a source-level count",
 			"Task to TaskAction action to Function TaskFunctionIO to target and Function to Table CRUD remain source-backed edge kinds",
 			"group TaskFunctionIO by exact action source token and uniquely resolved Function source token",
 			"only IOTable with at least one recognized CRUD operation creates a Function-to-Table operation edge",

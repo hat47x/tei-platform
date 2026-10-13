@@ -151,6 +151,9 @@ func TestBuildWebTargetProjectionUsesDriverResolvedOrderEntryMeaning(t *testing.
 }
 
 func TestWebTargetServerRendersHTMLAndJSONFromSameProjection(t *testing.T) {
+	if !webTargetServerHasPresentation {
+		t.Skip("API-only build intentionally omits HTML: exercised by api_only_test.go")
+	}
 	loaded, err := workspace.Load(referenceWorkspacePath(t))
 	if err != nil {
 		t.Fatal(err)

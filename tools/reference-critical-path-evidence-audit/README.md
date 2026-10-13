@@ -83,6 +83,23 @@ bash tools/reference-critical-path-evidence-audit/compose-issue-1163-smoke.sh
 
 **実行済みの範囲**: [旧版のE1 Web検査 #38238866937](https://github.com/hat47x/tei-platform/actions/runs/38238866937)と[正規全体健全性 #38238866923](https://github.com/hat47x/tei-platform/actions/runs/38238866923)は、受理後R1を使う3種の合成Web実行と、同じバイナリで旧R0を使う負例を含め成功している。空行だけ異なるR2の負例は、この過去のrunにはまだ含まれない。その後、親#1119のArtifact保存契約は当初7ファイルから**旧R0負例を含む8ファイル**へ拡張された。空行だけ異なるR2の検証も新たに追加している。最新のPR先端については、E1 Actionsの試験と8ファイルの保存の両方を確認する。実DB／独立Observation／人による受理は未実証であり、過去版のPASSを新しいコミットへ流用しない。
 
+## GitHub Actions・GitHub接続なしの固定コミット検査（オフライン）
+
+Actionsやネットワークを使えない場合、**以前に信頼できる経路で確認した40桁のコミットSHA**と、完全なGit checkout（必要なGo modulesを事前取得済み）を用い、既存`compose-smoke.sh`でその版**だけ**を隔離worktreeで検査できる。これは`integrated-main`と異なり、GitHubの最新mainを確認しない。git remoteのURL文字列は検査するが真正性の認定にはならない。原本のSource受理や実DBの資格を補完するものでもない。
+
+```bash
+# ネットワークが使える時点で、reviewerがGitHub上のSHAを別途確認して固定する。
+# 完全でcleanなcheckoutのHEADを、固定したSHAに一致させる（履歴を改変しない）。
+TEI_CP_COMPOSE_MODE=integrated-pinned-offline \
+TEI_CP_COMPOSE_MAIN=<reviewed-exact-commit-SHA40> \
+bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+```
+
+- テスト開始時にチェックアウトの実HEADが指定SHAと完全一致すること、完全履歴を持つnon-shallow・non-promisor cloneであること、commit object・canonical remote URL・未追跡/ignored file・非標準indexがないことを確認。Draft tipの環境変数は拒否し、Onlineモードと違って`git fetch`を行わない。途中でもGit branchは変更せず、一時detached worktreeを終了時に消去。
+- `GOPROXY=off`、`GOSUMDB=off`、`GOTOOLCHAIN=local`により、Go依存やツールチェーンの暗黙ダウンロードを禁止。Node、Go、Source/Studio/Lowering/Webの限定的回帰、合成E1 HTTP、Repository Healthは**実際のそのコミットのコード**で試す。事前キャッシュや必要なコマンドが欠ければその検査は失敗する。
+- 成功時のマーカーは`PINNED_OFFLINE_CROSS_LANE_SMOKE_ONLY_NO_REMOTE_FRESHNESS_NO_PRODUCT_GATE`。併せて`remoteFreshness=NOT_CHECKED_offline_operator_pinned`を出す。offline中はremote refを更新できず、現在のmainとの同一性、他のOwner branchとの追随、GitHub CI、人的受理、実DB副作用、独立read、Source実行時拘束を認定しない。指定SHAが古くなれば、別の信頼できる接続時に新しいSHAを確認して再実行する。
+- 制御フローは`python3 -B tools/reference-critical-path-evidence-audit/compose_offline_test.py`で隔離Git fixtureを使って再検査可能。この**Shell契約の試験はGo/Nodeをスタブ化**しており、TEI本体のテストPASSではない。実製品コードの成功には上の本コマンドを必要な依存が揃ったtrusted checkoutで実行する。
+
 ## v0の対象シナリオと判断境界
 
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。

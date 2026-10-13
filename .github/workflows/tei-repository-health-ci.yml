@@ -11,9 +11,11 @@ on:
 permissions:
   contents: read
 
+# PRは同じ番号の古い実行だけを取り消す。mainへのpushはコミットごとに別の集合とし、
+# 後続のmain更新で結果が失われないようにする。
 concurrency:
-  group: tei-health-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: tei-health-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   repository-health:
@@ -54,8 +56,8 @@ jobs:
               git merge-base --is-ancestor "$PR_HEAD_SHA" "$actual"
               ;;
             push)
+              # GITHUB_SHAはpushされたコミットそのもの。取得後にmainが進んでも対象は変わらないため、リモートmainの現在位置は見ない。
               test "$GITHUB_REF" = refs/heads/main
-              test "$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git refs/heads/main | cut -f1)" = "$actual"
               ;;
             *)
               echo "未対応の起動契機：$GITHUB_EVENT_NAME" >&2
@@ -170,8 +172,8 @@ jobs:
               test "$head" = "$PR_HEAD_SHA"
               ;;
             push)
+              # 実行中にmainが進んでも、検証した対象はpushされたコミットのまま。
               test "$GITHUB_REF" = refs/heads/main
-              test "$(git ls-remote --exit-code https://github.com/hat47x/tei-platform.git refs/heads/main | cut -f1)" = "$actual"
               ;;
             *) exit 1 ;;
           esac

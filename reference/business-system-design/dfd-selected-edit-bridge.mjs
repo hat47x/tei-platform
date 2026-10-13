@@ -82,8 +82,13 @@ function align(dfd,procedure,review){
     x=>({id:x.id,label:x.label,semanticData:x.semanticData||''}));
   sameRows(info.responsibilities,review.responsibilities,'RESPONSIBILITIES',
     x=>({step:x.step,role:x.role}));
+  // JSON property ordering is not an identity rule: Go and JS serializers
+  // may emit the same endpoint fields in different orders.
   sameRows(info.informationFlows,review.informationFlows,'INFORMATION_FLOWS',
-    x=>({id:x.id,from:x.from,to:x.to,payload:x.payload}));
+    x=>({id:x.id,
+      from:{kind:x.from?.kind,id:x.from?.id},
+      to:{kind:x.to?.kind,id:x.to?.id},
+      payload:x.payload}));
   checkProducerStatus(dfd,procedure);
   return procedureId;
 }
@@ -94,6 +99,36 @@ function selectedNode(dfd,kind,id) {
   const match=entries.filter(x=>x.id===id);
   if(match.length!==1)throw Error('UNRESOLVED_OR_AMBIGUOUS_DFD_SELECTION');
   return match[0];
+}
+// Check only a reference-local JSON pointer. This is not Source Index
+// verification: a caller-supplied file path alone cannot prove authenticity.
+function referenceLocalLocator(dfd,procedure,review,selection,node){
+  const targets=selection.kind==='step'?procedure.steps:
+    selection.kind==='trigger'?review.triggers:
+    selection.kind==='party'?review.externalParties:review.stores;
+  const pointerRoot=selection.kind==='step'?'steps':
+    selection.kind==='trigger'?'triggers':
+    selection.kind==='party'?'externalParties':'stores';
+  const index=targets.findIndex(x=>x.id===selection.id);
+  const locator=node.source;
+  if(index<0||!locator||typeof locator!=='object'||
+     Array.isArray(locator)||Object.keys(locator).some(k=>!['file','pointer'].includes(k))||
+     typeof locator.file!=='string'||locator.file.trim()!==locator.file||
+     !locator.file||locator.pointer!=='/'+pointerRoot+'/'+index)
+    throw Error('DFD_SELECTED_REFERENCE_LOCATOR_MISMATCH');
+
+  // One Procedure uses a single Step source, while the elements of one
+  // review are read from the same review file. Reject one-off path swaps.
+  const group=selection.kind==='step'?dfd.steps:[
+    ...dfd.triggers,...dfd.flows,...dfd.information.roles,
+    ...dfd.information.externalParties,...dfd.information.stores,
+    ...dfd.information.responsibilities,...dfd.information.informationFlows
+  ];
+  for(const entry of group){
+    if(entry.source && entry.source.file!==locator.file)
+      throw Error('DFD_SELECTED_REFERENCE_FILE_MISMATCH');
+  }
+  return {file:locator.file,pointer:locator.pointer};
 }
 function binds(selection,operation) {
   const kind=operation?.kind,sel=selection.kind,id=selection.id;
@@ -123,6 +158,7 @@ export function previewSelectedDFDEdit(dfd,procedure,review,binding){
   const selection={kind:exact(binding.selection.kind,'SELECTION_KIND'),
     id:exact(binding.selection.id,'SELECTION_ID')};
   const node=selectedNode(dfd,selection.kind,selection.id);
+  const localSource=referenceLocalLocator(dfd,procedure,review,selection,node);
   if(!binds(selection,binding.operation))
     throw Error('DFD_SELECTION_EDIT_TARGET_MISMATCH');
   const edit={schema:EDIT_SCHEMA,id:binding.id,origin:binding.origin,
@@ -134,7 +170,8 @@ export function previewSelectedDFDEdit(dfd,procedure,review,binding){
     authority:'unaccepted-proposal-only',
     procedureId:procId,
     selected:{...selection,scope:'reference-procedure:'+procId,
-      source:node.source||null,acceptedIdentity:'unverified'},
+      source:localSource,sourceLocatorStatus:'reference-local-pointer-checked',
+      sourceFileAuthority:'unverified',acceptedIdentity:'unverified'},
     inputFingerprints:{procedure:binding.procedureSHA256,
       review:binding.reviewSHA256,projection:binding.projectionSHA256,
       verification:'caller-supplied-unverified'},

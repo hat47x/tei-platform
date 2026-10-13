@@ -179,6 +179,14 @@ func renderData(d DataSpec) string {
 			fmt.Fprintf(&b, "        key %s -> %s\n", k.SourceAttribute, k.TargetAttribute)
 		}
 	}
+	for i := range d.CandidateKeys {
+		spec := d.CandidateKeys[i]
+		b.WriteString(renderBusinessRuleAddition(Operation{Op: opAddCandidateKey, AddCandidateKey: &spec}, "\n"))
+	}
+	for i := range d.FunctionalDependencies {
+		spec := d.FunctionalDependencies[i]
+		b.WriteString(renderBusinessRuleAddition(Operation{Op: opAddFunctionalDependency, AddFunctionalDependency: &spec}, "\n"))
+	}
 	b.WriteString("}")
 	return b.String()
 }
@@ -317,6 +325,14 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				continue
 			}
 			path = location.File
+		case opAddCandidateKey, opAddFunctionalDependency:
+			data, _, _ := businessRuleOperationSubject(op)
+			location, ok := s.loaded.Sources["semantic-data:"+data]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: fmt.Sprintf("no canonical source declares Data %s", data), Subject: key})
+				continue
+			}
+			path = location.File
 		default:
 			path = op.Placement
 			if path == "" {
@@ -369,6 +385,20 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				content, text, err = insertApplicationValidationUse(content, *op.ApplicationValidationUse)
 				if err != nil {
 					return nil, []Diagnostic{{Code: "APPLICATION_BLOCK_INSERTION_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(text)
+				continue
+			}
+			if op.Op == opAddCandidateKey || op.Op == opAddFunctionalDependency {
+				data, _, _ := businessRuleOperationSubject(op)
+				symbol, ok := dataSymbol(s, data)
+				if !ok {
+					return nil, []Diagnostic{{Code: "DATA_NOT_FOUND", Message: fmt.Sprintf("Data %s does not exist", data), Subject: operationKey(op)}}
+				}
+				var text string
+				content, text, err = insertBusinessRuleIntoDataBlock(content, symbol, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "DATA_BLOCK_INSERTION_FAILED", Message: err.Error(), Subject: operationKey(op)}}
 				}
 				inserted.WriteString(text)
 				continue
