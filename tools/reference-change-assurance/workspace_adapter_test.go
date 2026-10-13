@@ -44,8 +44,16 @@ func TestRealWorkspaceImpactDoesNotInventEvidenceReuse(t *testing.T) {
 			if report.GraphNodes == 0 || report.GraphEdges == 0 {
 				t.Fatal("not backed by real Workspace typed index")
 			}
-			if len(report.ProjectionUnresolved) != 0 {
-				t.Fatalf("the real projection has unresolved references: %+v", report.ProjectionUnresolved)
+			// The actual order-entry workspace has database-contract
+			// projection gaps. They must remain visible, not disappear
+			// behind a positive typed impact or a negative review.
+			if len(report.ProjectionUnresolved) == 0 {
+				t.Fatal("expected actual projection gaps to remain visible")
+			}
+			if tc.action == "unresolved" && tc.name == "display-rename-without-verified-receipt" {
+				if report.Decision.ReasonCodes[0] != "workspace-projection-unresolved" {
+					t.Fatalf("negative impact bypassed unresolved graph projection: %+v", report.Decision)
+				}
 			}
 		})
 	}
@@ -73,5 +81,13 @@ func TestWorkspaceAdapterFailClosedBeforeAndAfterGraphReview(t *testing.T) {
 	d := classifyWorkspaceImpact(r, modelref.Graph{Nodes: []modelref.Node{{Key: pattern}}})
 	if d.Action != "unresolved" || d.ReasonCodes[0] != "workspace-projection-unresolved" {
 		t.Fatalf("opaque dependency promoted: %+v", d)
+	}
+	// A positive impact is conservative even when another, unrelated
+	// projection gap exists; it does not assert complete closure.
+	r.Impact.Affected = []modelref.Affected{{Changed: relation, Consumer: pattern, Reason: "version-changed"}}
+	r.Changed.Kind = "version-changed"
+	d = classifyWorkspaceImpact(r, modelref.Graph{Nodes: []modelref.Node{{Key: pattern}}})
+	if d.Action != "recheck" || d.ExecutionAllowed || d.ReceiptRef != "" {
+		t.Fatalf("positive observed typed impact was obscured or promoted: %+v", d)
 	}
 }
