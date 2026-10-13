@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -25,6 +29,7 @@ var errSourceAcceptBusy = errors.New("Workspace Source Acceptance lock is occupi
 type sourceAcceptLock struct {
 	files  *os.Root
 	handle *os.File
+	marker []byte
 }
 
 // acquireSourceAcceptLock must execute BEFORE evaluate/Review and remain
@@ -42,14 +47,25 @@ func acquireSourceAcceptLock(files *os.Root) (*sourceAcceptLock, error) {
 		return nil, fmt.Errorf("create Workspace Acceptance lock: %w", err)
 	}
 	guard := &sourceAcceptLock{files: files, handle: handle}
-	// The metadata is only a diagnostic hint for manual recovery, not a
-	// capability token or lease. No PID reuse or wall-clock expiry can grant
-	// authority to steal this lock.
-	if _, err := fmt.Fprintf(handle, "tei.reference.source-accept-lock/v0\npid=%d\n", os.Getpid()); err != nil {
-		return nil, errors.Join(err, guard.release())
+	// A random ownership marker distinguishes a replaced lock even if its
+	// inode number is immediately recycled by a filesystem. This marker is
+	// for release verification, NOT permission or authority to Accept.
+	var nonce [16]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		_ = handle.Close()
+		_ = files.Remove(sourceAcceptLockName)
+		return nil, fmt.Errorf("generate Acceptance lock identity: %w", err)
+	}
+	guard.marker = []byte(fmt.Sprintf("tei.reference.source-accept-lock/v0\npid=%d\nnonce=%s\n", os.Getpid(), hex.EncodeToString(nonce[:])))
+	if _, err := handle.Write(guard.marker); err != nil {
+		_ = handle.Close()
+		_ = files.Remove(sourceAcceptLockName)
+		return nil, fmt.Errorf("write Acceptance lock identity: %w", err)
 	}
 	if err := handle.Sync(); err != nil {
-		return nil, errors.Join(err, guard.release())
+		_ = handle.Close()
+		_ = files.Remove(sourceAcceptLockName)
+		return nil, fmt.Errorf("sync Acceptance lock identity: %w", err)
 	}
 	return guard, nil
 }
@@ -73,6 +89,18 @@ func (guard *sourceAcceptLock) release() error {
 	}
 	if !current.Mode().IsRegular() || !os.SameFile(owned, current) {
 		return errors.New("Workspace Acceptance lock identity changed; refusing to remove another actor's lock")
+	}
+	opened, err := guard.files.Open(sourceAcceptLockName)
+	if err != nil {
+		return fmt.Errorf("read owned Acceptance lock before release: %w", err)
+	}
+	content, readErr := io.ReadAll(io.LimitReader(opened, int64(len(guard.marker)+1)))
+	closeReadErr := opened.Close()
+	if readErr != nil || closeReadErr != nil {
+		return fmt.Errorf("verify owned Acceptance lock content: %w", errors.Join(readErr, closeReadErr))
+	}
+	if !bytes.Equal(content, guard.marker) {
+		return errors.New("Workspace Acceptance lock marker changed; refusing to remove another actor's lock")
 	}
 	if err := guard.files.Remove(sourceAcceptLockName); err != nil {
 		return fmt.Errorf("remove owned Workspace Acceptance lock: %w", err)
