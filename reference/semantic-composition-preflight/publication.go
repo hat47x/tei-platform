@@ -26,14 +26,14 @@ type PublicationProof struct {
 // explicitly selected retrieval service. The Host resolves it using its own
 // policy; a distribution envelope cannot supply the trust policy or key.
 type PublisherSubject struct {
-	Scope       string
-	ProviderID  string
-	Contract    composition.Contract
-	PublisherID string
-	SignerRef   string
-	PackageID   string
+	Scope          string
+	ProviderID     string
+	Contract       composition.Contract
+	PublisherID    string
+	SignerRef      string
+	PackageID      string
 	PackageVersion string
-	NamespaceID string
+	NamespaceID    string
 }
 
 // PublisherTrust is a Host-controlled, point-in-time public-key allowance.
