@@ -2,6 +2,8 @@
 
 2026-10-12。要求の正本は[`TEI_PRODUCT_REQUIREMENTS.md`](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、基盤の判断は[ADR-0032](../adr/0032-composition-kernel-replacement.md)とする。本書は、[三視点ローコード実証の計画](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)に沿って、機能の実行例とプラグイン基盤をどの順で接続するかを定める。新しい要求や第二の実装状況台帳は作らない。
 
+固定候補での確認結果、再現手順と残る接続条件は[開発候補の引継ぎ](REFERENCE_MODEL_PLUGIN_EXECUTION_HANDOFF_2026-10.md)を参照する。
+
 ## 進め方
 
 基盤全体の完成を待たず、受注の具体的な操作を一つずつ新しいサービス契約へ接続する。各段階で既存の業務結果が保たれることと、欠落・拒否・交換時の動作を同じ利用側から調べる。基盤だけの模擬試験に加え、既存のソース読込みと実行処理を通す。
