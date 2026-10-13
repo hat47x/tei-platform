@@ -35,6 +35,13 @@ const projection={schemaVersion:'business-dfd-projection-v0',authority:'derived-
   diagnostics:[],information:{roles:[{id:'reviewer',label:'reviewer'}],externalParties:[],stores:[],informationFlows:[],responsibilities:[{step:'BP-04',role:'reviewer'}]}};
 const file=value=>{const buf=Buffer.from(JSON.stringify(value));return{arrayBuffer:async()=>buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.length),text:async()=>buf.toString('utf8')}};
 const input=(id, obj)=>$(id).listeners.change({target:{files:[file(obj)]}});
+async function waitForNavigation() {
+  const deadline=Date.now()+5000;
+  while ($('details').children.filter(x=>x.tag==='pre').length!==2) {
+    assert.ok(Date.now()<deadline,'Source navigation did not complete');
+    await new Promise(resolve=>setTimeout(resolve,10));
+  }
+}
 
 test('reference-only SVG UI loads, selects and drags a manual Step without source updates',async()=>{
   await import('./dfd-view-studio.mjs');
@@ -52,8 +59,7 @@ test('reference-only SVG UI loads, selects and drags a manual Step without sourc
   assert.equal($('apply').disabled,false);
   assert.equal($('preview').hidden,false);
   assert.match($('pending').textContent,/move-node/);
-  $('apply').listeners.click();
-  await new Promise(resolve=>setTimeout(resolve,30));
+  await $('apply').listeners.click();
   assert.equal($('apply').disabled,true);
   assert.equal($('preview').hidden,true);
   assert.match($('status').textContent,/正本には書き込んでいません/);
@@ -96,8 +102,7 @@ test('keyboard placement and pointer cancellation preserve view-only editing',as
   assert.equal(prevented,true);
   assert.equal($('apply').disabled,false);
   assert.match($('pending').textContent,/"x": 60/);
-  $('apply').listeners.click();
-  await new Promise(resolve=>setTimeout(resolve,30));
+  await $('apply').listeners.click();
   assert.equal($('apply').disabled,true);
   assert.match($('status').textContent,/正本には書き込んでいません/);
   node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
@@ -821,7 +826,7 @@ test('new World wins over an invalid older read, and revision changes clear navi
   $('revision').value='revision-A';
   let node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:303});
-  await new Promise(resolve=>setTimeout(resolve,20));
+  await waitForNavigation();
   assert.equal($('details').children.filter(x=>x.tag==='pre').length,2,
     'the new World should remain available for read-only navigation');
   $('revision').value='revision-B';
@@ -831,7 +836,7 @@ test('new World wins over an invalid older read, and revision changes clear navi
   assert.match($('status').textContent,/版表示を変更/);
   node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:304});
-  await new Promise(resolve=>setTimeout(resolve,20));
+  await waitForNavigation();
   assert.equal($('details').children.filter(x=>x.tag==='pre').length,2);
 });
 
