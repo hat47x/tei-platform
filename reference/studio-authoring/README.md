@@ -263,3 +263,25 @@ node reference/studio-authoring/cli.mjs inspect \
 `inspect -business-dfd FILE` は、#1125の非Canonical DFDを読み取る時点で実ファイルのSHA-256とバイト長を記録し、投影処理の後に再読込して変化を拒否します。`relation:ID` 等の逆引きと `step:ID` の正引きの双方に `businessObservation` を追加します。ファイル自体は正本ではなく、`sourceRevisionBinding=not-established`、`acceptedBusinessProcedure=false`、`authority=noncanonical-reference` を明示します。
 
 この照合は外部DFDファイルの読取り前後の同一性だけを扱います。WorkspaceのrevisionとDFD producerの入力snapshotが同じであること、外部手順が正式に受理済みであること、ABA型の一時変更や書込み競合の不存在を証明しません。シンボリックリンクと通常ファイル以外は拒否します。受理済みBusinessの同一revision四視点連携は引き続き未実装です。
+
+
+## Go製業務DFDのStudio内での直接生成（#1124・#1125）
+
+以前の `-business-dfd FILE` はGo生成後の外部JSONをStudioへ渡す読み取り方です。既存のGo生成器を**Studio自身から**読み取り専用で起動する場合は、手順・未受理の図レビュー案・Handoff集合という3つの独立した参照ファイルを明示します。
+
+```sh
+node reference/studio-authoring/cli.mjs inspect \
+  -workspace reference/workspace \
+  -focus validation:sales.order_line.quantity_positive \
+  -business-procedure reference/business-system-design/order-entry-business-procedure.json \
+  -business-review reference/business-system-design/order-entry-dfd-review-proposal.json \
+  -business-set reference/business-system-design/order-entry-procedure-reference-set.json \
+  -format html
+```
+
+同じオプションで `-focus step:BP-05` とすれば、参照用の業務手順からData・Validation・Functionへ逆向き探索できます。3つのオプションはすべて必須で、外部 `-business-dfd` との同時指定、Workspaceなし、提案・審査・編集用コマンドへの適用は禁止します。UI内で業務モデルを新たに構築せず、既存 `go run ./tools/reference-business-dfd` のProducerを用います。
+
+- Studioが既存WorkspaceからWorldとrevisionを取得した後、Go生成の直前と直後に同じSource revisionを照合します。外部3ファイルの実バイト指紋・長さ・パスも前後で比較し、不一致は拒否します。Go自身のSource guardも維持されます。
+- 出力 `businessObservation` は3ファイルの出典・Workspace読取版・生成器を示します。ただしGo生成器のWorld読込みは独立プロセスであり、**単一の原子的snapshotを得たわけではありません**。`workspaceRevisionStatus=checked-around-separate-process-not-atomic`、`sourceRevisionBinding=not-established`、`acceptedBusinessProcedure=false` を維持します。
+- 生じたBusiness viewの権限は引き続き `noncanonical-reference` です。業務Roleと認可Role、手作業とFunction、起動契機と実Runtimeを統合しません。Producer側で不正参照などのblocking diagnosticが出れば成功扱いしません。
+- Studio専用CIはScratch Workspace上で実際のGo Producerを起動し、Data/ValidationからBusiness Stepへの探索とStep側からの逆探索、三つの入力出典、HTMLでの未受理表示を確かめます。試験用DFDを手書きした場合だけの成功ではありません。
