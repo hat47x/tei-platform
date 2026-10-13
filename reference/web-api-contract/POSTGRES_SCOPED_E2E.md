@@ -35,6 +35,26 @@ go test -count=1 -run '^TestScopedPostgresAgainstIsolatedDatabase$' -v ./referen
 4. 顧客11と顧客22の受注を混在投入し、高い受注番号を持つ顧客22の行が顧客11の降順TopやFilterに影響しないことを検証する。公開応答だけでなく、**非選択項目が物理結果でもNULLであること**を検査する。標準出力にはDB名とPostgreSQLの`server_version`のみ記録する。
 5. 実証記録には、実行した正確なGit commit SHA、Go version、PostgreSQL server version、test実行コマンドの秘密を除いた部分、結果を記載する。DSN未設定による`SKIP`は**実DB検証未完了**であり、CI成功と混同しない。
 
+## E10. Tenant SQLの実PostgreSQL検証（#1769後続）
+
+`scoped_postgres_integration_test.go`は、`scoped_postgres_reference.go`の**Tenant用SQL自体**を実PostgreSQLへ接続するオプトイン試験である。従来のCustomer用実DB試験では検証していなかった経路を扱う。
+
+- 専用使い捨てDB `tei_web_scoped_e2e`の実DB名、明示確認フラグ、テーブル未存在を検証してから、リポジトリの`fixtures/postgres_scoped_orders.sql`を適用する。既存テーブルの上書きは拒否する。
+- Tenant A/B別のPrincipal・Scope・Policy Revisionから構成した**固定のテストGrant**を使い、相手の受注番号がFilter・Sort・Topへ混入しないことを実DBで検査する。古いRevisionの再利用は失敗させる。
+- Tenant用のSELECTは未選択列を`NULL AS <alias>`に変え、Driverが期待するCanonical結果列名を維持しつつ、権限外の生値を物理取得しない。実DBテストでもRaw ResultがNULLになることを検査する。
+- Customer用とTenant用は同じ使い捨てDBを利用できるが、作成・廃棄するテーブルは別である。
+- `SQLTenantScopeAuthority`はテストfixtureを用いるため、**実業務の認可正本からTenant Grantを導出できた証拠ではない**。Policy失効とQueryの原子性、RLS、Host受理は未実証。
+
+秘密を含まない実行例（DSNは使い捨てDB専用の接続文字列へ置換する）：
+
+```sh
+TEI_WEB_SCOPED_PG_DSN='postgres://USER:REDACTED@HOST:5432/tei_web_scoped_e2e?sslmode=require' \
+TEI_WEB_SCOPED_PG_CONFIRM_ISOLATED=tei_web_scoped_e2e \
+go test -count=1 -run 'TestScoped.*AgainstIsolatedDatabase' -v ./reference/web-api-contract
+```
+
+**DSN未設定でのSKIPは実DB検証の成功ではない。** 実行したexact commit SHA、server_versionとGoバージョンを証拠に残す。
+
 ## なお未実証
 
 - `PostgresCustomerScope` の顧客IDが、認証済み利用者の正本権限・Tenant所属・現在のPolicy Revisionから導出されたこと。このReferenceでは信頼済み**テスト入力**である。
@@ -51,7 +71,7 @@ go test -count=1 -run '^TestScopedPostgresAgainstIsolatedDatabase$' -v ./referen
 
 | 例 | スコープ値の入力 | 物理テーブル | 検証の範囲 |
 |---|---|---|---|
-| Tenantの例 | 注入した`SQLTenantScopeAuthority`から得る文字列`TenantID` | `public.tei_web_scoped_orders_reference` | 偽ConnectorでSQLとGrant照合、認可障害時のSQL未実行を確認 |
+| Tenantの例 | 注入した`SQLTenantScopeAuthority`から得る文字列`TenantID` | `public.tei_web_scoped_orders_reference` | 偽ConnectorによるSQL/Grant照合に加え、実DB用オプトイン越境テストと非公開列NULLマスクを追加（実行結果は別途確認） |
 | Customerの例 | 信頼済み試験入力`PostgresCustomerScope.CustomerID` | 専用DBに作る`public.orders` | 偽Connectorと明示opt-inの実PostgreSQLで行の越境、Order/Top、非選択列のNULLマスクを確認 |
 
 Customer IDをTenant IDや認可Grantとして扱わない。Tenantの例のSQLをCustomerの実DB試験が実行したとは主張しない。二つの実装を明示選択するReferenceとして併置できるが、正式Providerを二種類採用したことにはならない。

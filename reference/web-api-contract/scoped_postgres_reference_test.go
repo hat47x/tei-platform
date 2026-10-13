@@ -153,7 +153,7 @@ func postgresReadPlan(t *testing.T) ReadPlan {
 func TestScopedPostgresBindsTenantInsideSQLBeforeFilterOrderLimit(t *testing.T) {
 	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	trace := &postgresScopedTrace{
-		rows: [][]sqldriver.Value{{int64(9), int64(12), from, "READY", "9000.00"}},
+		rows: [][]sqldriver.Value{{int64(9), int64(12), nil, nil, nil}},
 	}
 	authority := &postgresScopedAuthority{tenant: "tenant-a"}
 	provider := ScopedPostgresOrdersReference{
@@ -206,6 +206,18 @@ func TestScopedPostgresBindsTenantInsideSQLBeforeFilterOrderLimit(t *testing.T) 
 	if strings.Contains(trace.sql, "FROM public.orders AS o") {
 		t.Fatal("unscoped native SQL was unexpectedly executed")
 	}
+	for _, masked := range []string{
+		"NULL AS ordered_at", "NULL AS status", "NULL AS total_amount",
+	} {
+		if !strings.Contains(trace.sql, masked) {
+			t.Fatalf("unselected value was fetched instead of masked: %s", trace.sql)
+		}
+	}
+	if strings.Contains(trace.sql, "o.total_amount") ||
+		strings.Contains(trace.sql, "o.status") ||
+		strings.Contains(trace.sql, "o.ordered_at,") {
+		t.Fatalf("unselected physical expression escaped: %s", trace.sql)
+	}
 	if len(trace.args) != 4 ||
 		trace.args[0].Value != "tenant-a" ||
 		trace.args[1].Value != from ||
@@ -249,6 +261,9 @@ func TestScopedPostgresRejectsInvalidPlansBeforeDatabaseAccess(t *testing.T) {
 		}},
 		{"unknown selected field", func(_ *query.EmbeddedSQL, _ *application.DatabaseRequirement, plan *ReadPlan, _ *map[string]any) {
 			plan.Selected = []string{"Cost"}
+		}},
+		{"duplicate selected field", func(_ *query.EmbeddedSQL, _ *application.DatabaseRequirement, plan *ReadPlan, _ *map[string]any) {
+			plan.Selected = []string{"orderId", "orderId"}
 		}},
 		{"unsupported filter field", func(_ *query.EmbeddedSQL, _ *application.DatabaseRequirement, plan *ReadPlan, _ *map[string]any) {
 			plan.Filter.FieldID = "customerId"
