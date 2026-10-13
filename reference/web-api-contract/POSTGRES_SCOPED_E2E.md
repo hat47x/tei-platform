@@ -37,45 +37,23 @@ go test -count=1 -run '^TestScopedPostgresAgainstIsolatedDatabase$' -v ./referen
 
 ## E10. Tenant SQLの実PostgreSQL検証（#1769後続）
 
-`scoped_postgres_integration_test.go`は、`scoped_postgres_reference.go`の**Tenant向けSQLそのもの**を既存の`database/sql` PostgreSQL接続で実行する追加テストである。従来のCustomer向け実DB試験では検証できなかった経路を対象にする。
+`scoped_postgres_integration_test.go`は、`scoped_postgres_reference.go`の**Tenant用SQL自体**を実PostgreSQLへ接続するオプトイン試験である。従来のCustomer用実DB試験では検証していなかった経路を扱う。
 
-- `TEI_WEB_SCOPED_PG_DSN`と`TEI_WEB_SCOPED_PG_CONFIRM_ISOLATED=tei_web_scoped_e2e`の両方が揃わないと実行しない。実DB名の厳密確認、対象テーブルの未存在確認後にだけ、リポジトリに含まれる使い捨てfixture SQLを実行する。
-- テナントA/Bそれぞれの異なるPrincipal/Scopeへの**固定のテストGrant**を用い、相手の大きな受注番号がFilter/Sort/Topに影響しないことをDB実結果で検査する。古いPolicy RevisionのReplayは拒否する。
-- `orderId`以外が未選択のとき、公開結果のみならず**SQL実行のRaw Resultでも未選択列がNULL**であることを確認する。テナント参照Providerも、Canonial Raw Result Column Mappingの列名を固定した`NULL AS`へ変更している。
-- 既存の`TestScopedPostgresAgainstIsolatedDatabase`（Customer向け）と同じ**隔離DB名**を使用するが、別のテーブル`public.tei_web_scoped_orders_reference`を作成して除去する。テーブルが既存なら何も破壊せず拒否する。
-- `SQLTenantScopeAuthority`には静的なテスト実装を注入するため、**本番の権限正本からTenantを導出できた証拠にはならない**。RLS、認可失効とSQLトランザクションの原子性も未実証。
+- 専用使い捨てDB `tei_web_scoped_e2e`の実DB名、明示確認フラグ、テーブル未存在を検証してから、リポジトリの`fixtures/postgres_scoped_orders.sql`を適用する。既存テーブルの上書きは拒否する。
+- Tenant A/B別のPrincipal・Scope・Policy Revisionから構成した**固定のテストGrant**を使い、相手の受注番号がFilter・Sort・Topへ混入しないことを実DBで検査する。古いRevisionの再利用は失敗させる。
+- Tenant用のSELECTは未選択列を`NULL AS <alias>`に変え、Driverが期待するCanonical結果列名を維持しつつ、権限外の生値を物理取得しない。実DBテストでもRaw ResultがNULLになることを検査する。
+- Customer用とTenant用は同じ使い捨てDBを利用できるが、作成・廃棄するテーブルは別である。
+- `SQLTenantScopeAuthority`はテストfixtureを用いるため、**実業務の認可正本からTenant Grantを導出できた証拠ではない**。Policy失効とQueryの原子性、RLS、Host受理は未実証。
 
-この二つの実DB試験を同じ使い捨てDBで実行するコマンド（接続情報はログへ保存しない）：
+秘密を含まない実行例（DSNは使い捨てDB専用の接続文字列へ置換する）：
 
 ```sh
 TEI_WEB_SCOPED_PG_DSN='postgres://USER:REDACTED@HOST:5432/tei_web_scoped_e2e?sslmode=require' \
 TEI_WEB_SCOPED_PG_CONFIRM_ISOLATED=tei_web_scoped_e2e \
-go test -count=1 -run '^TestScoped(Postgres|TenantPostgres)AgainstIsolatedDatabase
-
-- `PostgresCustomerScope` の顧客IDが、認証済み利用者の正本権限・Tenant所属・現在のPolicy Revisionから導出されたこと。このReferenceでは信頼済み**テスト入力**である。
-- PostgreSQL RLSや広範なABAC/RBAC、行・利用目的・条件付き項目権限。今回は特定顧客を限定する明示SQL述語の実証に限る。
-- 全Query/Datasource、Count/Aggregate/Expand、OData 4.01適合、Command書込、実Host認証・CSRF、Production承認。
-- コンカレントな権限変更とQuery実行の原子性。現行のPolicy Revision一致はプロセス内の照合で、DB側の権限正本に同期した失効保証ではない。
-
-**実DB試験が未実行なら、Issue #1769の実DB完了チェックは埋めない。**
-
-
-## Tenantの参照例との関係
-
-`scoped_postgres_reference.go`と、この文書が扱う`postgres_scoped_reference.go`は、異なる隔離fixtureを使う二つの検証例である。共通の入口は既存の`ReadPlan`と`ScopedBrowseQueryExecutor`であり、通常のExecutorを暗黙にスコープ対応へ置き換えない。
-
-| 例 | スコープ値の入力 | 物理テーブル | 検証の範囲 |
-|---|---|---|---|
-| Tenantの例 | 注入した`SQLTenantScopeAuthority`から得る文字列`TenantID` | `public.tei_web_scoped_orders_reference` | 偽ConnectorでSQL/Grant照合。実DB向けのopt-in越境・Filter/Sort/Top・物理NULLマスクの試験を追加（実行結果は別途記録） |
-| Customerの例 | 信頼済み試験入力`PostgresCustomerScope.CustomerID` | 専用DBに作る`public.orders` | 偽Connectorと明示opt-inの実PostgreSQLで行の越境、Order/Top、非選択列のNULLマスクを確認 |
-
-Customer IDをTenant IDや認可Grantとして扱わない。Tenantの例のSQLをCustomerの実DB試験が実行したとは主張しない。二つの実装を明示選択するReferenceとして併置できるが、正式Providerを二種類採用したことにはならない。
-
-製品の行スコープを共通化するには、現在の権限正本からどの値を導出し、Query・Scope ID・Policy Revisionへどう拘束するかを先に定める必要がある。権限の失効と実SQLの原子性、実Host受理、RLS、正式Providerの選択は[#1656](https://github.com/hat47x/tei-platform/issues/1656)と[#1769](https://github.com/hat47x/tei-platform/issues/1769)に残す。
- -v ./reference/web-api-contract
+go test -count=1 -run 'TestScoped.*AgainstIsolatedDatabase' -v ./reference/web-api-contract
 ```
 
-**通常CIでDSN未設定のためSKIPされた場合、Tenant向け実DB検証は完了していない。** 実行証拠が得られた後に、正確なhead SHA、server_version、SQL実行結果を記録する。
+**DSN未設定でのSKIPは実DB検証の成功ではない。** 実行したexact commit SHA、server_versionとGoバージョンを証拠に残す。
 
 ## なお未実証
 
@@ -93,7 +71,7 @@ Customer IDをTenant IDや認可Grantとして扱わない。Tenantの例のSQL�
 
 | 例 | スコープ値の入力 | 物理テーブル | 検証の範囲 |
 |---|---|---|---|
-| Tenantの例 | 注入した`SQLTenantScopeAuthority`から得る文字列`TenantID` | `public.tei_web_scoped_orders_reference` | 偽ConnectorでSQL/Grant照合。実DB向けのopt-in越境・Filter/Sort/Top・物理NULLマスクの試験を追加（実行結果は別途記録） |
+| Tenantの例 | 注入した`SQLTenantScopeAuthority`から得る文字列`TenantID` | `public.tei_web_scoped_orders_reference` | 偽ConnectorによるSQL/Grant照合に加え、実DB用オプトイン越境テストと非公開列NULLマスクを追加（実行結果は別途確認） |
 | Customerの例 | 信頼済み試験入力`PostgresCustomerScope.CustomerID` | 専用DBに作る`public.orders` | 偽Connectorと明示opt-inの実PostgreSQLで行の越境、Order/Top、非選択列のNULLマスクを確認 |
 
 Customer IDをTenant IDや認可Grantとして扱わない。Tenantの例のSQLをCustomerの実DB試験が実行したとは主張しない。二つの実装を明示選択するReferenceとして併置できるが、正式Providerを二種類採用したことにはならない。
