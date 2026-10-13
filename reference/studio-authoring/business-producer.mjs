@@ -94,12 +94,12 @@ export function produceBusinessDFD({
   const after = roles.map(role => snapshot(role, files[role]));
   if (!before.every((item, i) => same(item, after[i])))
     fail("BUSINESS_DFD_INPUT_CHANGED_DURING_PROJECTION");
-  if (revision() !== modelRevision)
-    fail("BUSINESS_DFD_WORKSPACE_REVISION_CHANGED");
   // The Source Index must come from the same caller-observed Workspace read.
   // A matching physical artifact fingerprint is NOT an Accepted Business
   // source schema, logical scope, human approval or Source write authority.
   const sources = qualifySourceMembership(workspaceRoot, sourceIndex, before);
+  if (revision() !== modelRevision)
+    fail("BUSINESS_DFD_WORKSPACE_REVISION_CHANGED");
   return { value, evidence: {
     schema: "tei.reference.studio-business-producer-observation/v0",
     evidenceClass: "go-derived-reference-observed",
