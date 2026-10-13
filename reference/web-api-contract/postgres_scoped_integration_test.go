@@ -55,6 +55,11 @@ func TestScopedPostgresAgainstIsolatedDatabase(t *testing.T) {
 	if existing.Valid {
 		t.Fatal("public.orders already exists: refusing to touch existing user data")
 	}
+	var serverVersion string
+	if err := db.QueryRowContext(ctx, "SHOW server_version").Scan(&serverVersion); err != nil {
+		t.Fatal("could not establish actual PostgreSQL server version")
+	}
+	t.Logf("real PostgreSQL evidence: database=%s server_version=%s", databaseName, serverVersion)
 	_, err = db.ExecContext(ctx, "CREATE TABLE public.orders (order_id BIGINT PRIMARY KEY, customer_id BIGINT NOT NULL, ordered_at TIMESTAMPTZ NOT NULL, status TEXT NOT NULL, total_amount BIGINT NOT NULL)")
 	if err != nil {
 		t.Fatal("cannot create disposable orders fixture")
@@ -136,6 +141,24 @@ func TestScopedPostgresAgainstIsolatedDatabase(t *testing.T) {
 			if !reflect.DeepEqual(got.Rows, tc.want) ||
 				!reflect.DeepEqual(got.Columns, []string{"orderId"}) {
 				t.Fatalf("cross-tenant or ordering leakage: %+v, want=%v", got, tc.want)
+			}
+			if tc.name == "tenant 11 descending top" {
+				// The physical SQL must return NULL aliases for unselected
+				// columns even though canonical Driver mapping expects
+				// all five raw column identities.
+				physical, err := provider.ExecuteScopedBrowseQuery(ctx, mustScopedQuery(t),
+					mustScopedDatasource(t), plan, map[string]any{"from": from})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(physical.Raw.Rows) != 1 || len(physical.Raw.Rows[0]) != 5 {
+					t.Fatalf("unexpected physical result shape: %+v", physical.Raw)
+				}
+				for i := 1; i < 5; i++ {
+					if physical.Raw.Rows[0][i] != nil {
+						t.Fatalf("unselected physical attribute %d was fetched: %#v", i, physical.Raw.Rows[0][i])
+					}
+				}
 			}
 		})
 	}
