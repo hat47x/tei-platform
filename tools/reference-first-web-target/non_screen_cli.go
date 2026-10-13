@@ -15,7 +15,7 @@ import (
 	"tei/internal/composition"
 )
 
-type nonScreenFlags struct{ mode, from, rows, format, output, login, credential, orderIDs *string }
+type nonScreenFlags struct{ mode, from, rows, format, output, login, credential, orderIDs, journal *string }
 
 func (f nonScreenFlags) enabled() bool { return f.mode != nil && *f.mode != "" }
 
@@ -29,9 +29,13 @@ func registerNonScreenFlags(flags *flag.FlagSet) nonScreenFlags {
 		flags.String("login-id", "legacy-order-editor", "reference: batch login identity"),
 		flags.String("credential-file", "", "reference: private one-line batch credential file"),
 		flags.String("order-ids", "", "reference: explicit order identities for read-only batch observation"),
+		flags.String("batch-journal", "", "reference: new synchronized progress file outside the model workspace"),
 	}
 }
 func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace string) error {
+	if *f.journal != "" && *f.mode != "batch" {
+		return fmt.Errorf("-batch-journal requires -non-screen batch")
+	}
 	if *f.mode == "batch-observe" {
 		ids, err := parseObservationIDs(*f.orderIDs)
 		if err != nil {
@@ -96,10 +100,25 @@ func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRun
 		}
 		return json.NewEncoder(os.Stdout).Encode(r)
 	}
+	var journal *fileBatchJournal
+	if *f.journal != "" {
+		journal, err = openBatchJournal(workspace, *f.journal)
+		if err != nil {
+			return err
+		}
+		defer journal.file.Close()
+		input.Journal = journal
+	}
 	r, b, err := s.batch.Invoke(ctx, input)
 	r.Composition = projectCompositionBinding(b)
 	if state.model != nil {
 		r.Composition.ModelRevision = state.model.revision
+	}
+	if journal != nil {
+		if journalErr := journal.Append(batchJournalEvent{Kind: "ended", Receipt: &r}); journalErr != nil {
+			r.Stage = "journal-failed"
+			err = journalErr
+		}
 	}
 	if encodeErr := json.NewEncoder(os.Stdout).Encode(r); encodeErr != nil {
 		return encodeErr

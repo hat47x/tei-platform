@@ -7,8 +7,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"tei/internal/composition"
 	renderer "tei/plugins/report-renderer"
@@ -22,6 +20,7 @@ type nonScreenInput struct {
 	Rows       []int
 	LoginID    string
 	Credential string
+	Journal    batchJournal
 }
 type reportReceipt struct {
 	Path        string            `json:"path"`
@@ -109,26 +108,9 @@ func publishReport(ctx context.Context, root, path string, doc renderer.Document
 	if err := ctx.Err(); err != nil {
 		return reportReceipt{}, err
 	}
-	root, err := filepath.Abs(root)
+	path, err := artifactOutsideModel(root, path)
 	if err != nil {
 		return reportReceipt{}, err
-	}
-	root, err = filepath.EvalSymlinks(root)
-	if err != nil {
-		return reportReceipt{}, err
-	}
-	path, err = filepath.Abs(path)
-	if err != nil {
-		return reportReceipt{}, err
-	}
-	parent, err := filepath.EvalSymlinks(filepath.Dir(path))
-	if err != nil {
-		return reportReceipt{}, err
-	}
-	path = filepath.Join(parent, filepath.Base(path))
-	rel, err := filepath.Rel(root, path)
-	if err != nil || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))) {
-		return reportReceipt{}, fmt.Errorf("report destination must be outside the model workspace")
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
@@ -251,9 +233,18 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 		if err != nil {
 			return result, err
 		}
+		invocation, _ := composition.InvocationBinding(ctx)
+		if err := appendBatchJournal(input.Journal, batchJournalEvent{Kind: "planned", Planned: ids, Composition: projectCompositionBinding(invocation)}); err != nil {
+			result.Stage = "journal-failed"
+			return result, err
+		}
 		for i, snapshot := range snapshots {
 			if err := ctx.Err(); err != nil {
 				result.Stage = "cancelled"
+				return result, err
+			}
+			if err := appendBatchJournal(input.Journal, batchJournalEvent{Kind: "starting", OrderID: ids[i]}); err != nil {
+				result.Stage = "journal-failed"
 				return result, err
 			}
 			linked := *command
@@ -264,6 +255,10 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 				item.Error = "item execution failed; inspect command and observation receipts before retry"
 			}
 			result.Items = append(result.Items, item)
+			if journalErr := appendBatchJournal(input.Journal, batchJournalEvent{Kind: "result", Item: &item}); journalErr != nil {
+				result.Stage = "journal-failed"
+				return result, journalErr
+			}
 			if progress != nil {
 				progress(item)
 			}

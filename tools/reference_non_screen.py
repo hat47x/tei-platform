@@ -45,11 +45,24 @@ def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspa
     private.chmod(0o600)
     try:
         batch = ['-non-screen', 'batch', '-credential-file', str(private)]
-        receipt = invoke('batch-partial', batch + ['-rows', '0,1,2'], False)
+        journal_path = output / 'batch-progress.jsonl'
+        receipt = invoke('batch-partial', batch + ['-rows', '0,1,2', '-batch-journal', str(journal_path)], False)
         assert receipt['stage'] == 'business-stopped' and receipt['planned'] == [1001, 1002, 1003]
         assert len(receipt['items']) == 2 and receipt['items'][0]['result']['observation']['nature'] == 'external-observed'
         assert sql('SELECT status FROM public.orders WHERE order_id=1001;') == 'submitted'
         assert sql('SELECT status FROM public.orders WHERE order_id=1003;') == 'draft'
+        journal_raw = journal_path.read_text()
+        assert 'editor-secret' not in journal_raw
+        events = [json.loads(line) for line in journal_raw.splitlines()]
+        assert [e['kind'] for e in events] == ['planned', 'starting', 'result', 'starting', 'result', 'ended']
+        assert [e['sequence'] for e in events] == list(range(1, 7))
+        assert events[0]['planned'] == receipt['planned'] and events[0]['composition']['artifactDigest'] == digest
+        assert events[-1]['receipt'] == receipt
+        before_journal_refusal = sql('SELECT order_id,status,xmin::text FROM public.orders ORDER BY order_id;')
+        assert invoke('batch-journal-existing', batch + ['-rows', '2', '-batch-journal', str(journal_path)], False) is None
+        assert journal_path.read_text() == journal_raw
+        assert sql('SELECT order_id,status,xmin::text FROM public.orders ORDER BY order_id;') == before_journal_refusal
+        checks.append('synchronized progress journal matches receipt; no credentials; existing journal refusal before effects')
         before = sql('SELECT order_id, status, xmin::text FROM public.orders ORDER BY order_id;')
         observe_args = ['-non-screen', 'batch-observe', '-order-ids', '1003,1001,1002', '-rows', '999']
         sql("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id IN ('order-submit','order-batch');")

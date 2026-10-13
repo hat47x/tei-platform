@@ -146,3 +146,43 @@ func TestPostgresScenarioNonScreenBatchBusinessFailureAndDuplicatePlan(t *testin
 		t.Fatalf("partial business failure: %+v %v", r, err)
 	}
 }
+
+type failingBatchJournal struct {
+	kind   string
+	events []batchJournalEvent
+}
+
+func (j *failingBatchJournal) Append(e batchJournalEvent) error {
+	if e.Kind == j.kind {
+		return errors.New("injected progress storage failure")
+	}
+	j.events = append(j.events, e)
+	return nil
+}
+
+func TestPostgresScenarioBatchJournalFailureStopsAtEffectBoundary(t *testing.T) {
+	for _, kind := range []string{"planned", "starting", "result"} {
+		t.Run(kind, func(t *testing.T) {
+			state := postgresTestState(t)
+			s := postgresNonScreen(t, state, "csv", "", nil)
+			journal := &failingBatchJournal{kind: kind}
+			input := nonScreenTestInput()
+			input.Rows = []int{0, 2}
+			input.Journal = journal
+			result, _, err := s.batch.Invoke(context.Background(), input)
+			if err == nil || result.Stage != "journal-failed" || statusOf(t, state, 1003) != "draft" {
+				t.Fatalf("failure ignored: %+v %v", result, err)
+			}
+			expected := "draft"
+			if kind == "result" {
+				expected = "submitted"
+				if len(result.Items) != 1 || result.Items[0].Result.Stage != "completed" {
+					t.Fatal("completed effect hidden")
+				}
+			}
+			if statusOf(t, state, 1001) != expected {
+				t.Fatal("effect boundary changed")
+			}
+		})
+	}
+}
