@@ -55,7 +55,7 @@ func digestArtifactFile(path string) (string, os.FileInfo, error) {
 		return "", nil, err
 	}
 	if !entry.Mode().IsRegular() {
-		return "", nil, fmt.Errorf("Go build artifact is not a direct regular file: %s", path)
+		return "", nil, fmt.Errorf("Go build artifact is not a regular file (direct output required): %s", path)
 	}
 	file, err := os.Open(path)
 	if err != nil {
