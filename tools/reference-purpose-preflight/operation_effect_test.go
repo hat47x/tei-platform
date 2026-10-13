@@ -20,7 +20,7 @@ func writeIntentWorld() ir.World {
 		Semantics: []semantic.Namespace{{
 			ID: "sales",
 			Capabilities: []semantic.Capability{{
-				ID: "sales.order.submit",
+				ID:     "sales.order.submit",
 				Effect: &semantic.DataEffect{Kind: semantic.DataEffectCreate, Data: "sales.order"},
 			}},
 		}},
@@ -34,8 +34,8 @@ func TestDeclaredWriteIntentSelectsEffectFenceOnlyAsUnverifiedObligation(t *test
 		t.Fatalf("expected explicit write intent: %+v", intent)
 	}
 	report := WorkspaceAssessment{
-		SubjectKind: "application-pattern",
-		SubjectID: "order_entry.submit_order",
+		SubjectKind:          "application-pattern",
+		SubjectID:            "order_entry.submit_order",
 		OperationWriteIntent: &intent,
 	}
 	p, err := ProjectForPurpose(report, "execute-preflight")
