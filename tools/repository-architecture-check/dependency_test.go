@@ -226,7 +226,9 @@ func TestCoreProductionScannerFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := filepath.Join(dir, "router.go")
-	if err := os.WriteFile(source, []byte("package generation\\nimport \\"tei/internal/plugin\\"\\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte(`package generation
+import "tei/internal/plugin"
+`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "router_test.go"), []byte("not valid Go"), 0600); err != nil {
@@ -245,7 +247,9 @@ func TestCoreProductionScannerFailsClosed(t *testing.T) {
 	if err != nil || len(edges) != 1 || edges[0].file != "core/generation/router.go" || coreBoundaryViolation(edges[0], "tei") == "" {
 		t.Fatalf("Core import not rejected: edges=%v, err=%v", edges, err)
 	}
-	if err := os.WriteFile(source, []byte("package generation\\nimport (\\n"), 0600); err != nil {
+	if err := os.WriteFile(source, []byte(`package generation
+import (
+`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := productionImportsWithin(root, "core"); err == nil {
