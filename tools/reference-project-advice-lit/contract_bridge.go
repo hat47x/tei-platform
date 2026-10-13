@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strings"
 
 	"tei/internal/composition"
 	customeradvice "tei/plugins/reference-project-customer-advice"
@@ -24,6 +25,7 @@ const projectAdvisoryProviderID = "project.customer-advice.go"
 type projectAdvisoryBridge struct {
 	registry  *composition.Registry
 	selection composition.Selection
+	coordinator *composition.Coordinator
 }
 
 func newProjectAdvisoryBridge() (*projectAdvisoryBridge, error) {
@@ -46,7 +48,28 @@ func newProjectAdvisoryBridge() (*projectAdvisoryBridge, error) {
 	if selection.Contract != ProjectAdvisoryContract || selection.ProviderID != projectAdvisoryProviderID {
 		return nil, errors.New("unexpected project advisory contract selection")
 	}
-	return &projectAdvisoryBridge{registry: registry, selection: selection}, nil
+	// This synthetic digest identifies the reference binary binding only; it is
+	// not an artifact attestation. Production hosts must verify real bytes.
+	binding := composition.Binding{
+		ContractID: ProjectAdvisoryContract.ID,
+		ContractVersion: ProjectAdvisoryContract.Version,
+		ProviderID: projectAdvisoryProviderID,
+		ArtifactDigest: "sha256:" + strings.Repeat("0", 64),
+		Generation: 1,
+	}
+	// A production host must replace this reference guard with its current
+	// permission, artifact, lease and fencing checks.
+	guard := func(current composition.Binding) error {
+		if current != binding {
+			return errors.New("reference host binding changed")
+		}
+		return nil
+	}
+	coordinator, err := composition.NewSelectedCoordinator(registry, selection, binding, composition.NewScope(), guard)
+	if err != nil {
+		return nil, err
+	}
+	return &projectAdvisoryBridge{registry: registry, selection: selection, coordinator: coordinator}, nil
 }
 
 func (b *projectAdvisoryBridge) Evaluate(input customeradvice.Input) (customeradvice.Result, error) {
@@ -61,5 +84,10 @@ func (b *projectAdvisoryBridge) Evaluate(input customeradvice.Input) (customerad
 	// The actual Go invocation remains diagnostic and host-owned.
 	// Production invocation requires the Coordinator/Router guard, verified
 	// artifact, permissions and lease before dispatch.
+	lease, err := b.coordinator.Acquire()
+	if err != nil {
+		return customeradvice.Result{}, err
+	}
+	defer lease.Release()
 	return customeradvice.Evaluate(input)
 }
