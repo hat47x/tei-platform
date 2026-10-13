@@ -51,7 +51,7 @@ func serve(reader io.Reader, writer io.Writer) error {
 	if req.ProtocolVersion != pruntime.ProtocolVersion ||
 		req.RequestID == "" ||
 		req.Plugin != (plugin.Identity{
-			ID: core.MustCanonicalID("tei.reference.project_customer_advice"),
+			ID:      core.MustCanonicalID("tei.reference.project_customer_advice"),
 			Version: "1.0.0",
 		}) ||
 		req.CapabilityKind != plugin.CapabilityKind("generic-runtime-dispatch") ||
