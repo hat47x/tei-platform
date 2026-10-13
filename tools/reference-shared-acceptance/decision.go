@@ -174,6 +174,12 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		}
 		for i := len(createdDirs) - 1; i >= 0; i-- {
 			if err := os.Remove(createdDirs[i]); err != nil && !os.IsNotExist(err) {
+				// Another actor may have created a file in a directory that
+				// Acceptance originally created. Preserve that file and its
+				// parent: only the Source edits we wrote belong to rollback.
+				if entries, readErr := os.ReadDir(createdDirs[i]); readErr == nil && len(entries) > 0 {
+					continue
+				}
 				incomplete = append(incomplete, createdDirs[i])
 			}
 		}
