@@ -22,21 +22,21 @@ type SourceWitness struct {
 }
 
 type WorkspaceAssessment struct {
-	SchemaVersion         string                `json:"schemaVersion"`
-	Authority             string                `json:"authority"`
-	Application           string                `json:"application"`
-	SubjectKind           string                `json:"subjectKind"`
-	SubjectID             string                `json:"subjectId"`
-	SourceStatus          string                `json:"sourceStatus"`
-	RuleMeaning           string                `json:"ruleMeaning"`
-	ExecutionAllowed      bool                  `json:"executionAllowed"`
-	Witnesses             []SourceWitness       `json:"witnesses"`
-	Unresolved            []string              `json:"unresolved"`
-	DecisionHistoryStatus string                `json:"decisionHistoryStatus,omitempty"`
-	DecisionIndexRevision string                `json:"decisionIndexRevision,omitempty"`
-	DecisionHistoryLinks  []DecisionHistoryLink `json:"decisionHistoryLinks,omitempty"`
-	OperationWriteIntent  *OperationWriteIntent `json:"operationWriteIntent,omitempty"`
-	ContractQueryUse     *DeclaredContractQuery `json:"contractQueryUse,omitempty"`
+	SchemaVersion         string                 `json:"schemaVersion"`
+	Authority             string                 `json:"authority"`
+	Application           string                 `json:"application"`
+	SubjectKind           string                 `json:"subjectKind"`
+	SubjectID             string                 `json:"subjectId"`
+	SourceStatus          string                 `json:"sourceStatus"`
+	RuleMeaning           string                 `json:"ruleMeaning"`
+	ExecutionAllowed      bool                   `json:"executionAllowed"`
+	Witnesses             []SourceWitness        `json:"witnesses"`
+	Unresolved            []string               `json:"unresolved"`
+	DecisionHistoryStatus string                 `json:"decisionHistoryStatus,omitempty"`
+	DecisionIndexRevision string                 `json:"decisionIndexRevision,omitempty"`
+	DecisionHistoryLinks  []DecisionHistoryLink  `json:"decisionHistoryLinks,omitempty"`
+	OperationWriteIntent  *OperationWriteIntent  `json:"operationWriteIntent,omitempty"`
+	ContractQueryUse      *DeclaredContractQuery `json:"contractQueryUse,omitempty"`
 }
 
 // InspectWorkspace only verifies whether a real application-pattern has one
