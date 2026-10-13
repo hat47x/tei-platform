@@ -40,16 +40,16 @@ type WorkspaceAssessment struct {
 // order approval from the existence/name of a submit-order Pattern.
 func InspectWorkspace(root, application, kind, id string) (WorkspaceAssessment, error) {
 	result := WorkspaceAssessment{
-		SchemaVersion: "tei.reference.purpose-preflight-source/v0",
-		Authority: "read-only-derived-projection",
-		Application: application,
-		SubjectKind: kind,
-		SubjectID: id,
-		SourceStatus: "unresolved",
-		RuleMeaning: "not-established",
+		SchemaVersion:    "tei.reference.purpose-preflight-source/v0",
+		Authority:        "read-only-derived-projection",
+		Application:      application,
+		SubjectKind:      kind,
+		SubjectID:        id,
+		SourceStatus:     "unresolved",
+		RuleMeaning:      "not-established",
 		ExecutionAllowed: false,
-		Witnesses: []SourceWitness{},
-		Unresolved: []string{},
+		Witnesses:        []SourceWitness{},
+		Unresolved:       []string{},
 	}
 	if root == "" || application == "" || kind != "application-pattern" {
 		return result, fmt.Errorf("workspace mode requires -workspace, -application and -subject-kind application-pattern")
@@ -88,7 +88,7 @@ func InspectWorkspace(root, application, kind, id string) (WorkspaceAssessment, 
 	ctx := knowledgecontext.Build(loaded.World, sources, subject.Subject{Kind: kind, ID: id})
 	qualification, err := knowledgecontext.QualifyWithSources(ctx, sources, knowledgecontext.QualificationRequirements{
 		ExpectedKind: kind,
-		Application: application,
+		Application:  application,
 	})
 	if err != nil {
 		return result, fmt.Errorf("qualify declared subject: %w", err)
