@@ -62,8 +62,8 @@ jobs:
             gofmt -d reference/multilingual-overlays/*.go
             exit 1
           fi
-          go vet ./reference/multilingual-overlays/... ./reference/multilingual-resources
-          go test -race -count=3 ./reference/multilingual-overlays/... ./reference/multilingual-resources
+          go vet ./reference/multilingual-overlays/... ./reference/multilingual-resources ./internal/sourceacceptance
+          go test -race -count=3 ./reference/multilingual-overlays/... ./reference/multilingual-resources ./internal/sourceacceptance
       - name: Go Plugin Lockで生成した表示情報をReact UIへ適用
         shell: bash
         run: |
