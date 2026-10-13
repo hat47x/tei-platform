@@ -1,0 +1,97 @@
+name: TEI Go builder Windows 実機検証
+
+# Go-specific reference adapter qualification on an actual Windows runner.
+# This is deliberately narrower than repository-health and does not confer
+# Artifact/Host acceptance authority or replace the Linux self-build gate.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-go-builder-windows-qualification.yml
+      - go.mod
+      - go.sum
+      - tools/internal/gobuilder/**
+      - tools/reference-transform-runtime-engine-build/**
+      - tools/reference-plugin-self-build/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-go-builder-windows-qualification.yml
+      - go.mod
+      - go.sum
+      - tools/internal/gobuilder/**
+      - tools/reference-transform-runtime-engine-build/**
+      - tools/reference-plugin-self-build/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-go-builder-windows-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  windows-go-builder:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 検証対象を正確なGit版で取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 固定Go版をWindowsで用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Windows Go builder単体契約と実成果物バイト比較
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $actual = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:GITHUB_SHA) {
+            throw "Windows runner checked out unexpected commit: $actual"
+          }
+          $dirty = @(git status --porcelain=v1 --untracked-files=all)
+          if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) {
+            throw "Windows checkout is not clean: $dirty"
+          }
+          $targetOS = (go env GOOS).Trim()
+          if ($LASTEXITCODE -ne 0 -or $targetOS -ne 'windows') {
+            throw "Expected native Windows Go toolchain, got $targetOS"
+          }
+          Write-Output "windows-qualified-commit=$actual"
+          Write-Output "go-target=$targetOS"
+          go version
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot identify Windows Go compiler' }
+
+          # These portable tests include the deny-by-default Windows Host
+          # allowlist, exact Go binary selection, toolchain closure, source
+          # member classification, and byte-digest reproducibility decision.
+          go test -count=1 -timeout 25m ./tools/internal/gobuilder
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Go builder contract failed' }
+
+          # This builds the real Runtime Engine and process Plugin twice:
+          # once via the pre-extraction direct go build recipe and once via
+          # gobuilder.BuildPackage, with the same compiler, selected sources,
+          # separate state paths and full bytes.Equal comparison.
+          go test -count=1 -timeout 30m -v -run '^TestRealGoBuildPreExtractionRecipeParity$' ./tools/reference-transform-runtime-engine-build
+          if ($LASTEXITCODE -ne 0) { throw 'Windows actual Go artifact parity failed' }
+
+          $after = (git rev-parse HEAD).Trim()
+          $dirtyAfter = @(git status --porcelain=v1 --untracked-files=all)
+          if ($LASTEXITCODE -ne 0 -or $after -ne $actual -or $dirtyAfter.Count -ne 0) {
+            throw "Windows verification changed source revision or checkout: $after $dirtyAfter"
+          }
+          Write-Output "windows-real-go-artifact-parity=success"
