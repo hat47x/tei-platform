@@ -26,6 +26,7 @@ go test ./tools/reference-purpose-preflight -count=1
 ```sh
 go run ./tools/reference-purpose-preflight \
   -workspace reference/workspace \
+  -application order_entry \
   -subject-kind application-pattern \
   -subject-id order_entry.customer_reference
 ```
