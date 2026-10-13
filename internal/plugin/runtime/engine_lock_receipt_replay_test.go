@@ -114,7 +114,7 @@ func replayBoundEngineReceipt(receipt realEngineReplayReceipt, nativePath, wasmP
 		}
 		lock := pruntime.RuntimeEngineLock{
 			FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
-			Bindings:      []pruntime.RuntimeEngineBinding{{
+			Bindings: []pruntime.RuntimeEngineBinding{{
 				Plugin: base.Plugins[0].Plugin,
 				Engine: engine,
 			}},
