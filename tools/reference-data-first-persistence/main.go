@@ -139,14 +139,14 @@ type fixtureCleanupSafetyEvidence struct {
 
 type positiveEvidence struct {
 	Preflight                []stageResult `json:"preflight"`
-	SchemaDiffEmptyAfterDDL  bool          `json:"schemaDiffEmptyAfterFixtureDDL"`
+	AllStagesResolvedAfterDDL bool         `json:"allStagesResolvedAfterFixtureDDL"`
 	CommandID                string        `json:"commandId"`
 	BindingIdentity          string        `json:"bindingIdentity"`
 	ResultMode               string        `json:"resultMode"`
 	BackendPIDCommandPool    int64         `json:"backendPidCommandPool"`
 	ReadIdentity             string        `json:"readIdentity"`
 	ReadEvidenceNature       string        `json:"readEvidenceNature"`
-	ObservedCommandID        string        `json:"observedCommandId"`
+	SubmittedCommandID       string        `json:"submittedCommandId"`
 	BackendPIDReadPoolBefore int64         `json:"backendPidReadPoolBefore"`
 	BackendPIDReadPoolAfter  int64         `json:"backendPidReadPoolAfter"`
 	BackendPIDsDiffer        bool          `json:"backendPidsDiffer"`
@@ -172,7 +172,7 @@ type negativeEvidence struct {
 
 type n11Evidence struct {
 	Name                    string `json:"name"`
-	CommandCommitted        bool   `json:"commandCommitted"`
+	CommandDispatched       bool   `json:"commandDispatched"`
 	CommandResultPresent    bool   `json:"commandResultPresent"`
 	CommandID               string `json:"commandId"`
 	ObservationErrorSeen    bool   `json:"observationErrorSeen"`
@@ -1227,14 +1227,14 @@ func run() (rcpt receipt, err error) {
 	status := classifyObservation(true, readErr, matches)
 	rcpt.Positive = positiveEvidence{
 		Preflight:                positivePreflight,
-		SchemaDiffEmptyAfterDDL:  allResolved(baseline),
+		AllStagesResolvedAfterDDL: allResolved(baseline),
 		CommandID:                payload.CommandID,
 		BindingIdentity:          gate.Invocation.Binding.Binding.Identity(),
 		ResultMode:               string(gate.Invocation.Result.Mode),
 		BackendPIDCommandPool:    payload.BackendPID,
 		ReadIdentity:             observation.ReadIdentity,
 		ReadEvidenceNature:       string(observation.Nature),
-		ObservedCommandID:        sub.CommandID,
+		SubmittedCommandID:       sub.CommandID,
 		BackendPIDReadPoolBefore: pidBefore,
 		BackendPIDReadPoolAfter:  pidAfter,
 		BackendPIDsDiffer:        payload.BackendPID != pidBefore && payload.BackendPID != pidAfter,
@@ -1335,7 +1335,7 @@ func runN11(
 	}
 	evidence.CommandResultPresent = true
 	evidence.CommandID = sub.CommandID
-	evidence.CommandCommitted = adapters.dispatched == dispatchedBefore+1
+	evidence.CommandDispatched = adapters.dispatched == dispatchedBefore+1
 
 	var rows int
 	if err := committedCheckPool.QueryRowContext(ctx, `SELECT count(*) FROM public.requests WHERE request_id = $1`, sub.RequestID).Scan(&rows); err != nil {
