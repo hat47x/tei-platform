@@ -175,6 +175,18 @@ go run ./tools/reference-purpose-preflight \
 
 ここでも独立したProvider Resolverや権限台帳を増設しない。実Providerへの接続・Conformanceと副作用の実行境界は、既存Owner機構が提示する検証根拠を別途消費する必要がある。
 
+## Database Contract Queryの実装宣言とProvider Conformanceを分離する（第9段階）
+
+`-purpose execute-preflight -environment development` まで指定すると、同じロード済Canonical World内で、前段のContract Query要求・Environment bindingから指定された **Database / Contract / Query / Provider** を正確に照合する。
+
+既存のDatabase正本に存在するContract署名（メジャー・マイナーバージョンとQuery名）を確認したあと、`ContractQuerySQLRealizations` に同じTargetおよびDB種別向けの明示SQL実装がちょうど一件あるかを調べる。見つかる場合は既存 `ContractQuerySQLRealization.ValidateContract` を使用して入力・結果mappingの構造を確認する。SQL本文の実行や実Providerの署名・Conformanceは調べない。
+
+実Referenceの `master_data.customer v2.4 / find_by_id` は `development` / `production` ともに `oracle` ラベルまで追跡できるが、Reference WorkspaceにはそのTargetとProviderのSQL realizationがない。そのため `assessment.queryImplementation.status=contract-signature-declared` とし、`query-implementation` は `conditional`（別Provider実装や外部Evidenceも許容）と表示する。これは**Oracleへ接続できない、実装が存在しない、または導入を拒否すべきだという判定ではない**。
+
+一方、合成FixtureでSQL realizationが明示され、既存Query署名へのmapping検査が通った場合でも `sql-realization-declared` までしか表示しない。DBとの実通信、結果の正しさ、既存Capability Contract ReferenceのPublisher/Provider Conformance、現在のHost権限を満たしたとは扱わない。
+
+契約メジャーバージョンの不一致は `incompatible`、対象署名の不存在・重複、SQL realizationの重複、mapping不適合は `unresolved` とする。対象の入力元の欠落を推測・自動生成せず、必要な追跡先だけを提示する。旧CLIの平坦JSONは維持し、`executionAllowed=false` は変わらない。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
