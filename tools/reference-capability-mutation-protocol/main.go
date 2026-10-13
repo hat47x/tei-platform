@@ -188,10 +188,11 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 
 	if err := e.Validate(preparedResult); err != nil {
 		cleanupErr := abortPrepared(e.Provider, ctx, handle)
-		return MutationExecution{
+		outcome := MutationExecution{
 			Outcome: OutcomeNotCommitted,
 			Handle:  handle,
-		}, errors.Join(
+		}
+		return outcome, errors.Join(
 			fmt.Errorf("%w: %v", ErrResultValidation, err),
 			cleanupErr,
 		)
@@ -205,10 +206,11 @@ func (e Executor) Invoke(ctx context.Context, request MutationRequest) (Mutation
 	}
 	if err := e.Journal.RecordCommitIntent(ctx, handle); err != nil {
 		cleanupErr := abortPrepared(e.Provider, ctx, handle)
-		return MutationExecution{
+		outcome := MutationExecution{
 			Outcome: OutcomeNotCommitted,
 			Handle:  handle,
-		}, errors.Join(
+		}
+		return outcome, errors.Join(
 			fmt.Errorf("%w: commit intent: %v", ErrJournalWrite, err),
 			cleanupErr,
 		)

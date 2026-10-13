@@ -24,10 +24,15 @@ import (
 // All rights and resource versions must live in the same SQLite database for the
 // transaction below to protect against revocation; a remote identity store does not qualify.
 type sqliteFixture struct {
-	mu      sync.Mutex
-	db      *C.sqlite3
-	next    uint64
-	pending map[uint64]prepared
+	mu             sync.Mutex
+	db             *C.sqlite3
+	next           uint64
+	pending        map[uint64]prepared
+	requireEpochs  bool
+	epochSnapshots map[uint64]map[string]authorityDependencyState
+	// schemaCheck は試験用の認可正本が必要な制約を保持することの検査関数。
+	// nilは版付き許可の安全な確定を証明できないことを意味する。
+	schemaCheck func() error
 }
 
 func openSQLiteFixture(path string) (*sqliteFixture, error) {
@@ -41,7 +46,7 @@ func openSQLiteFixture(path string) (*sqliteFixture, error) {
 		}
 		return nil, fmt.Errorf("SQLite open: %d", int(rc))
 	}
-	f := &sqliteFixture{db: db, pending: map[uint64]prepared{}}
+	f := &sqliteFixture{db: db, pending: map[uint64]prepared{}, epochSnapshots: map[uint64]map[string]authorityDependencyState{}}
 	C.sqlite3_busy_timeout(db, 5000)
 	if err := f.exec("PRAGMA journal_mode=WAL;"); err != nil {
 		f.Close()
@@ -53,6 +58,7 @@ func openSQLiteFixture(path string) (*sqliteFixture, error) {
 	}
 	for _, stmt := range []string{
 		"CREATE TABLE IF NOT EXISTS authority (scope TEXT PRIMARY KEY, version INTEGER NOT NULL, allowed INTEGER NOT NULL)",
+		"CREATE TABLE IF NOT EXISTS authority_dependencies (scope TEXT NOT NULL, dimension TEXT NOT NULL, version INTEGER NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY(scope,dimension))",
 		"CREATE TABLE IF NOT EXISTS resources (resource TEXT PRIMARY KEY, version INTEGER NOT NULL, value TEXT NOT NULL)",
 		"CREATE TABLE IF NOT EXISTS committed (operation TEXT PRIMARY KEY, request TEXT NOT NULL, application TEXT NOT NULL, resource TEXT NOT NULL, version INTEGER NOT NULL)",
 	} {
@@ -182,6 +188,13 @@ func (f *sqliteFixture) lookupCommitted(r Request) (Result, bool, error) {
 }
 func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 func (f *sqliteFixture) PrepareForTest(ctx context.Context, r Request) (any, Result, error) {
+	return f.prepareWithExpectedEpochs(ctx, r, nil)
+}
+
+// prepareWithExpectedEpochs binds evidence from a trusted authorizer before any replay
+// receipt can be exposed. The comparison runs under the same connection mutex that
+// captures the pending permit's epoch snapshot.
+func (f *sqliteFixture) prepareWithExpectedEpochs(ctx context.Context, r Request, expected *authorityEpochVersions) (any, Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, Result{}, err
 	}
@@ -190,12 +203,36 @@ func (f *sqliteFixture) PrepareForTest(ctx context.Context, r Request) (any, Res
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if expected != nil && f.schemaCheck == nil {
+		return nil, Result{}, errors.New("認可正本の変更制約が検証されていません")
+	}
+	if f.schemaCheck != nil {
+		if err := f.schemaCheck(); err != nil {
+			return nil, Result{}, err
+		}
+	}
 	row, ok, err := f.query("SELECT version,allowed FROM authority WHERE scope=" + scopeSQL(r.Scope))
 	if err != nil {
 		return nil, Result{}, err
 	}
 	if !ok || row[1] != "1" {
 		return nil, Result{Disposition: Denied, Reason: "authority-unavailable"}, nil
+	}
+	var snapshot map[string]authorityDependencyState
+	if f.requireEpochs {
+		var active bool
+		snapshot, active, err = f.readAuthorityDependencies(r.Scope)
+		if err != nil {
+			return nil, Result{}, err
+		}
+		if !active {
+			return nil, Result{Disposition: Denied, Reason: "authority-dependency-unavailable"}, nil
+		}
+		if expected != nil && !expected.matches(snapshot) {
+			return nil, Result{Disposition: Denied, Reason: "authority-dependency-changed"}, nil
+		}
+	} else if expected != nil {
+		return nil, Result{}, errors.New("版条件の照合が無効になっています")
 	}
 	old, exists, err := f.lookupCommitted(r)
 	if err != nil {
@@ -214,6 +251,9 @@ func (f *sqliteFixture) PrepareForTest(ctx context.Context, r Request) (any, Res
 	f.next++
 	token := Permit{id: f.next, owner: f}
 	f.pending[token.id] = prepared{request: r, authorityVersion: version}
+	if f.requireEpochs {
+		f.epochSnapshots[token.id] = snapshot
+	}
 	return token, Result{Disposition: Prepared}, nil
 }
 func (f *sqliteFixture) CommitForTest(ctx context.Context, token any) (Result, error) {
@@ -235,10 +275,22 @@ func (f *sqliteFixture) CommitForTest(ctx context.Context, token any) (Result, e
 		return Result{}, err
 	}
 	delete(f.pending, p.id)
+	snapshot, hasSnapshot := f.epochSnapshots[p.id]
+	delete(f.epochSnapshots, p.id)
+	if f.requireEpochs && !hasSnapshot {
+		return Result{}, errors.New("認可根拠の版条件が準備されていません")
+	}
 	r := entry.request
 	return f.transaction(func() (Result, error) {
 		if err := ctx.Err(); err != nil {
 			return Result{}, err
+		}
+		// 版の整合性だけでは、版更新を強制するDB制約の削除を発見できない。
+		// BEGIN IMMEDIATEで他の書込みを遮断してから必要な制約を検査する。
+		if f.schemaCheck != nil {
+			if err := f.schemaCheck(); err != nil {
+				return Result{}, err
+			}
 		}
 		row, ok, err := f.query("SELECT version,allowed FROM authority WHERE scope=" + scopeSQL(r.Scope))
 		if err != nil {
@@ -246,6 +298,15 @@ func (f *sqliteFixture) CommitForTest(ctx context.Context, token any) (Result, e
 		}
 		if !ok || row[1] != "1" || row[0] != strconv.FormatUint(entry.authorityVersion, 10) {
 			return Result{Disposition: Denied, Reason: "authority-changed"}, nil
+		}
+		if f.requireEpochs {
+			matches, err := f.authorityDependenciesMatch(r.Scope, snapshot)
+			if err != nil {
+				return Result{}, err
+			}
+			if !matches {
+				return Result{Disposition: Denied, Reason: "authority-dependency-changed"}, nil
+			}
 		}
 		if old, exists, err := f.lookupCommitted(r); err != nil {
 			return Result{}, err
@@ -296,9 +357,19 @@ func (f *sqliteFixture) Observe(s Scope) (string, uint64) {
 func (f *sqliteFixture) Lookup(s Scope, opID string) (Receipt, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// Lookupはエラーを返せない契約のため、制約不備では記録を非開示にする。
+	if f.schemaCheck != nil && f.schemaCheck() != nil {
+		return Receipt{}, false
+	}
 	row, ok, err := f.query("SELECT allowed FROM authority WHERE scope=" + scopeSQL(s))
 	if err != nil || !ok || row[0] != "1" {
 		return Receipt{}, false
+	}
+	if f.requireEpochs {
+		_, active, err := f.readAuthorityDependencies(s)
+		if err != nil || !active {
+			return Receipt{}, false
+		}
 	}
 	row, ok, err = f.query("SELECT request,application,resource,version FROM committed WHERE operation=" + textSQL(opID))
 	if err != nil || !ok {

@@ -200,6 +200,23 @@ func semanticDataAnchors(lx *Lexer, dataID core.CanonicalID) ([]SubjectAnchor, e
 				return nil, err
 			}
 			pending = &next
+		case "candidate-key", "functional-dependency":
+			sym, err := expectLexerIdent(lx, "semantic business rule symbol")
+			if err != nil {
+				return nil, err
+			}
+			id, err := semanticChildID(dataID, sym.Text)
+			if err != nil {
+				return nil, err
+			}
+			kind := "semantic-" + t.Text
+			anchors = append(anchors, SubjectAnchor{Kind: kind, ID: string(id), Anchor: tokenAnchor(sym)})
+			if err := expectLexerKind(lx, TokenLBrace, "semantic business rule block"); err != nil {
+				return nil, err
+			}
+			if err := skipSemanticBusinessRuleBody(lx, t.Text); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, fmt.Errorf("unexpected semantic data member %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
 		}

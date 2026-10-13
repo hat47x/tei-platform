@@ -1,0 +1,93 @@
+name: TEI G2 E1/E2証拠の誤結合防止
+
+# 既存のHistorical E1 / E2a-1を一つの製品証明へ誤昇格させない。
+# 本CIは一度も実PostgresやWeb runtimeを起動せず、史料原本を照合するのみ。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '.github/workflows/tei-critical-path-e1-e2-join-ci.yml'
+      - 'tools/verify-critical-path-e1-e2-join.py'
+      - 'tools/test-critical-path-e1-e2-join.py'
+      - 'tools/verify-critical-path-e1-archive.py'
+      - 'tools/verify-e2a1-postgres-archive.py'
+      - 'plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json'
+      - 'plan/evidence/tei-e1-synthetic-38267656696/**'
+      - 'plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json'
+      - 'plan/evidence/TEI_E1_E2_JOIN_LIMITS_20261013.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-critical-path-e1-e2-join-ci.yml'
+      - 'tools/verify-critical-path-e1-e2-join.py'
+      - 'tools/test-critical-path-e1-e2-join.py'
+      - 'tools/verify-critical-path-e1-archive.py'
+      - 'tools/verify-e2a1-postgres-archive.py'
+      - 'plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json'
+      - 'plan/evidence/tei-e1-synthetic-38267656696/**'
+      - 'plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json'
+      - 'plan/evidence/TEI_E1_E2_JOIN_LIMITS_20261013.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-e1-e2-join-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  archived-cross-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: 正確なGitバージョンを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: preflight前のHEADとcleanを検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merge" = "$GITHUB_SHA"
+            test "$head" = "${{ github.event.pull_request.head.sha }}"
+            [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          fi
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: E1/E2原本照合と誤結合の負例8件
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tools/verify-critical-path-e1-e2-join.py
+          python3 -B tools/test-critical-path-e1-e2-join.py
+          # A product G2 *must not* pass against these two historical artifacts.
+          if python3 -B tools/verify-critical-path-e1-e2-join.py --require-g2 > "$RUNNER_TEMP/g2-failclosed-report.json"; then
+            echo "ERROR: unqualified evidence unexpectedly satisfied G2" >&2
+            exit 1
+          else
+            rc="$?"
+            test "$rc" -eq 3
+          fi
+          python3 - "$RUNNER_TEMP/g2-failclosed-report.json" <<'PY'
+          import json, sys
+          r=json.load(open(sys.argv[1],encoding="utf-8"))
+          assert r["status"]=="UNJOINABLE_HISTORICAL_EVIDENCE"
+          assert r["canSatisfyG2"] is False
+          assert r["productGate"]=="UNQUALIFIED"
+          assert len(r["blockedObligations"])==8
+          print("E1/E2 archived pair explicitly refuses G2 qualification")
+          PY
+      - name: postflight HEADとcleanを検査
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

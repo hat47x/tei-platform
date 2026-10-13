@@ -229,3 +229,43 @@ func TestLegacyAuthorizationBridgeNeverClaimsDurableAtomicity(t *testing.T) {
 		t.Fatalf("rejected durable commit changed data: %d", version)
 	}
 }
+
+func TestLegacyAuthorizationBridgeStopsNewWriteAfterAccountRevocation(t *testing.T) {
+	scope := legacyBridgeScope()
+	m := newLegacyBridgeStore(t)
+	user := legacyauth.User{SubjectID: scope.Subject, RoleCode: "EDITOR"}
+	calls := 0
+	auth := legacyauthorization.Adapter{
+		Store: legacySubjectStoreFunc(func(_ context.Context, subject string) (legacyauth.User, bool, error) {
+			return user, true, nil
+		}),
+		Rule: legacyRuleFunc(func(_ context.Context, _ legacyauth.User, _, _ string) (bool, string, error) {
+			calls++
+			return true, "", nil
+		}),
+	}
+	initial := legacyBridgeRequest()
+	p, result, err := m.PrepareWithLegacyAuthorization(context.Background(), scope.Subject, initial, auth)
+	if err != nil || result.Disposition != Prepared {
+		t.Fatalf("初回認可: %+v %v", result, err)
+	}
+	result, err = m.Commit(context.Background(), p)
+	if err != nil || result.Disposition != Committed {
+		t.Fatalf("初回保存: %+v %v", result, err)
+	}
+	user.Disabled = true
+	later := legacyBridgeRequest()
+	later.OperationID = "save-after-revocation"
+	later.ExpectedResourceVersion = 1
+	later.Value = "保存されてはいけない値"
+	p, result, err = m.PrepareWithLegacyAuthorization(context.Background(), scope.Subject, later, auth)
+	if err != nil || result.Disposition != Denied || result.Reason != "authorization-denied" || p != (Permit{}) {
+		t.Fatalf("失効後の新しい操作が拒否されません: %+v %v", result, err)
+	}
+	if calls != 1 {
+		t.Fatalf("無効化後に役割評価が呼ばれました: calls=%d", calls)
+	}
+	if value, version := m.Observe(scope); value != initial.Value || version != 1 {
+		t.Fatalf("無効化後に更新されました: %q %d", value, version)
+	}
+}

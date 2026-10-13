@@ -38,6 +38,7 @@ type SourceContribution struct {
 }
 
 type Result struct {
+	Imports                     []ResolvedImport `json:"imports,omitempty"`
 	World                       ir.World
 	PluginImplementations       []implementation.Source
 	PluginImplementationSources map[string]SourceLocation
@@ -49,19 +50,47 @@ type Result struct {
 	// serialized Source Index; only Load may populate this snapshot.
 	sourceSnapshotRoot string
 	sourceSnapshot     map[string][]byte
+
+	// Only populated during Load. One pinned directory handle protects all
+	// domain Source reads from a Workspace root pathname being replaced.
+	// Never retain an open OS handle in the returned Result.
+	sourceReadRoot *os.Root
 }
 
 func Load(root string) (Result, error) {
+	return loadWithStack(root, map[string]bool{})
+}
+
+func loadWithStack(root string, visiting map[string]bool) (Result, error) {
+	// Canonicalize once, then pin the directory before reading the manifest.
+	// Otherwise a rename between manifest and domain-source reads could
+	// silently redirect the second read to an unrelated Workspace.
+	rootReal, err := canonicalWorkspaceRoot(root)
+	if err != nil {
+		return Result{}, err
+	}
+	if visiting[rootReal] {
+		return Result{}, fmt.Errorf("cyclic Workspace import at %s", root)
+	}
+	sourceRoot, err := openWorkspaceRoot(rootReal)
+	if err != nil {
+		return Result{}, err
+	}
+	defer sourceRoot.Close()
+	visiting[rootReal] = true
+	defer delete(visiting, rootReal)
+
 	manifestYAML := filepath.Join(root, "tei.workspace.yaml")
 	manifestTEI := filepath.Join(root, "tei.workspace.tei")
 	var roots []string
-	if src, err := os.ReadFile(manifestYAML); err == nil {
-		var parseErr error
-		roots, parseErr = parseWorkspaceYAML(string(src))
+	var imports []WorkspaceImport
+	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
+		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
-	} else if src, legacyErr := os.ReadFile(manifestTEI); legacyErr == nil {
+		roots, imports = manifest.Sources, manifest.Imports
+	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
 		var parseErr error
 		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
@@ -71,11 +100,6 @@ func Load(root string) (Result, error) {
 		return Result{}, fmt.Errorf("TEI workspace manifest not found: expected %s", manifestYAML)
 	}
 	if err := validateWorkspaceSourceRoots(roots); err != nil {
-		return Result{}, err
-	}
-	// Bind retained loader bytes to the physical Workspace identity.
-	rootReal, err := canonicalWorkspaceRoot(root)
-	if err != nil {
 		return Result{}, err
 	}
 	// Inventory and verify the physical boundary before any domain loader can
@@ -90,6 +114,7 @@ func Load(root string) (Result, error) {
 		ManagedFiles:                managedFiles,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
+		sourceReadRoot:              sourceRoot,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
@@ -145,39 +170,20 @@ func Load(root string) (Result, error) {
 	if err := validatePluginImplementationDefinitions(&r); err != nil {
 		return Result{}, err
 	}
+	if err := loadWorkspaceImports(root, imports, &r, visiting); err != nil {
+		return Result{}, err
+	}
 	Normalize(&r.World)
+	// The loader snapshot stays available, but an OS handle must not escape
+	// the Load lifetime. Imports close their own pinned roots independently.
+	r.sourceReadRoot = nil
 	return r, nil
 }
 
+// parseWorkspaceYAML is retained for existing callers of the source-root-only API.
 func parseWorkspaceYAML(src string) ([]string, error) {
-	var roots []string
-	inSources := false
-	for n, raw := range strings.Split(src, "\n") {
-		line := strings.TrimSpace(strings.SplitN(raw, "#", 2)[0])
-		if line == "" {
-			continue
-		}
-		if strings.HasPrefix(line, "workspace:") {
-			continue
-		}
-		if line == "sources:" {
-			inSources = true
-			continue
-		}
-		if inSources && strings.HasPrefix(line, "-") {
-			v := strings.TrimSpace(strings.TrimPrefix(line, "-"))
-			if v == "" {
-				return nil, fmt.Errorf("line %d: empty source root", n+1)
-			}
-			roots = append(roots, v)
-			continue
-		}
-		return nil, fmt.Errorf("line %d: unsupported workspace manifest entry %q", n+1, line)
-	}
-	if len(roots) == 0 {
-		return nil, fmt.Errorf("sources must contain at least one source root")
-	}
-	return roots, nil
+	manifest, err := parseWorkspaceManifestYAML(src)
+	return manifest.Sources, err
 }
 
 // Source roots are portable Workspace-relative directory names. In particular,
@@ -413,6 +419,12 @@ func loadSemantics(root string, r *Result) error {
 			}
 			for _, relation := range d.Relations {
 				r.Sources["semantic-relation:"+string(relation.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
+			}
+			for _, key := range d.CandidateKeys {
+				r.Sources["semantic-candidate-key:"+string(key.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
+			}
+			for _, fd := range d.FunctionalDependencies {
+				r.Sources["semantic-functional-dependency:"+string(fd.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 			}
 		}
 		for _, c := range ns.Capabilities {

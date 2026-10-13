@@ -1,6 +1,6 @@
 # 三視点の意味参照と変更影響 — #1120 初期契約
 
-状態: **候補（Draft PR、未採用・未統合）**。対象は `internal/modelref` の独立した小契約であり、Accepted Canonical World のschemaを変更しない。
+状態: **参照契約の実装・試験をmainに導入済み**。受理済みモデルの第二の正本ではなく、読み取り専用の候補として扱う。以下の初期設計と、その後の追加検証を区別する。
 
 ## 目的と責務の境界
 
@@ -353,3 +353,52 @@ PR #1139がmainへ統合された後、現行`modelref.Impact`を再点検した
 **重要な限界**：使用する元XMLは独立した合成資産で、実際の顧客や原システムの旧資産ではない。Adapterが生成するTokenはSource Artifactと要素位置に束縛されるが、元の`ID`を公開用Evidenceに複製する設計ではない。合成`Table`がTEIの単価制約に相当するという意味の同値性も証明しない。形式の読込みと識別子・根拠の**追跡経路**は検証できても、実旧資産の意味移行とHuman Acceptanceの権限付与は引き続き別の判定段階である。
 
 この試験は既存Adapter／Shared Acceptance／modelref／Source Indexの公共APIだけを呼び、新しい受理口やCore固定の旧資産メタモデルを作らない。実行結果はCIの該当headに紐づけて記録する。
+
+## R11 — JSON互換性の保護（2026-10-12）
+
+種類付き参照をJSONで交換する際、Go標準の`json.Unmarshal`だけでは未知の項目が読み飛ばされ、同じ名前の項目が重複すると後の値が前の値を上書きする。将来、拡張側が意味や出典に関わる項目を追加した場合、古い読み取り側がそれを黙って消し、別の意味の定義として書き戻すおそれがある。
+
+`modelref.DecodeGraph`を追加し、`tei.modelref.v0`の読み取りに以下の条件を課す。
+
+- トップレベルだけでなく、論理識別子・参照・出典の入れ子部分についても未知のJSON項目を拒否する。
+- 同じJSONオブジェクト内で繰り返された項目を拒否する。Go標準の大文字・小文字を許容する読み取りにも対応し、`scope`と`Scope`の重複も認めない。
+- 本文の後に別のJSON値が続く場合、構文が壊れている場合、未対応の版や版指定がない場合を拒否する。
+- 正常な記録では、所属範囲・種類付きID・参照先の版・表示名と物理名・出典トークン・資料と規則の指紋を往復で保持する。
+
+この処理が判定するのは**記録形式の整合性だけ**である。参照の型、存在、循環、規則は`Validate`に任せる。また、解析できたという理由で受理や実行権限を認めない。
+
+互換性の方針は、同じ版の未知項目を無視せず、必要なら明示的な変換を実施するというもの。新しい版を理解しない古い読み取り側での自動的な読み直し・書き戻しを避け、元の情報を保持する。Coreのモデル種別やプラグイン規則を増やして対応することはしない。
+
+**試験の範囲**：正常な往復、未知項目、重複や大文字小文字だけが異なる項目、未対応の版、複数のJSON記録、壊れた構文、形式が正しくても参照先が存在しない場合を追加する。GitHub Actionsの結果はPRの対象コミットに結び付けて記録する。
+
+## R12 — 業務手順の編集後に三視点の参照候補を再投影する（2026-10-12）
+
+既存の受理境界を飛び越えて`ir.World`へ業務手順を追加するのではなく、Reference Workspaceと既存の業務手順の**編集用資料**を組み合わせ、種類付き参照の保存を試す。新設した`tools/reference-business-procedure-check/modelref_authoring_reprojection_test.go`は、専ら試験内の小さな接続表を使う。業務手順の正式な正本やプラグイン規則をCoreへ追加しない。
+
+1. 実`reference/workspace`を一時領域へ複製し、既存`acceptProcedureSource`で`order-entry.order-handling`を**編集用資料として**登録する。Source Index上の役割は`authoring`であって、Canonical Business Procedureの定義ではない。
+2. 同じWorkspaceの`index.Build→derivedbridge.FromIndex`が返すData/Function側の参照に、業務手順の記述に含まれるStep→Application Pattern/Validationの明示的な参照だけを足す。Business→Function側の関係は既存`evaluate`が解決できた参照に限る。既存のFunction・Data間の宣言された関係は変更・推測しない。
+3. 業務Step `BP-02`の説明を一時Source内で変更する。旧Source指紋の再利用を拒否し、新指紋との一致を確認して再読込する。Procedure ID・Step ID・Data/Pattern/Relation ID・Sourceファイルへの対応を維持する。ただし編集後にSourceのバイト数が変われば、Source Indexの終了位置は新しいバイト数に従って更新される。位置の数値そのものを不変の識別子として扱わない。
+4. 前後のGraphに`ReviewImpactDiff`を適用し、説明変更は同じStepの`display-renamed`にとどまり、他要素の追加削除・参照変更がないことを確かめる。逆方向の影響候補も、実Data `customer.customer`→Relation→Pattern `order_entry.customer_reference`→`BP-02`まで辿る。
+5. 存在しないApplication PatternのIDにすり替えた場合は、型付きGraphの組み立てを拒否する。未登録のBusiness手順を空白や表示名から補完しない。
+
+これは**実Workspaceに登録可能なBusiness authoring資料を使った参照整合性試験**であり、受理済みCanonical Business Procedureの双方向編集や、人間の承認、DB更新、実行効果を証明しない。Workspaceの意味上の正本は従来のまま維持する。既存#1125の業務手順編集候補、#1124のStudio受理、#1126のデータ編集・関数従属性と責務が重ならないことを確認し、これらの実装に新機能を加えない。
+
+この試験をCIで合格させても、Issue #1120の「受理済み三視点を同一revisionから再投影する」受入条件まで完了とは扱わない。業務手順の受理済み意味を正式に扱うための機構の進展とあわせて、継続評価する。
+
+## R13 — 受理済みDecisionとSource定義の現在性を含む識別子監査（2026-10-12）
+
+#1301の統合試験では、出典Token・Review・Decision・新しい型付き定義を同じ試験で個別に確認した。しかし、**保存後のDecision Indexから読み直した記録**と現在のSource revision・Source Indexを突き合わせる、再利用可能な一つの検証口はまだなかった。記録上のDecisionを単独で信用すると、後日のSource変更や受理対象のすり替えを見落とす。
+
+`tools/reference-shared-acceptance/modelref_rmt_lineage.go`に、読み取り専用の`traceRMTIdentityAcrossAcceptance`を加える。X-TEAの元要素の意味を推論するものではなく、既存の公開されている各判定を厳密に結合する試験用・参照用の監査関数である。
+
+- **出典**：`rmtlink.Verify`が元資料の指紋、Source Token、候補・Review指紋と変更対象を結んでいることを確認する。意味相関の状態は常に`proposed`・`unresolved`。
+- **決定**：Workspace内のDecision記録を現在のソースに照合する既存`loadDecisionRecords`を用い、一意なCandidate/Reviewの組が`accepted`であること、保存した出典根拠が一致すること、記録のSource書込みがなお`intact`であることを確認する。`Origin.Kind=ai`は提案の発信元にすぎず、決定主体の資格とはみなさない。
+- **前後の識別子**：同じScopeを利用し、変更前・変更後の`index.Build→derivedbridge`の差分からValidationの`added`を厳密に確認する。IDが存在しない状態から新たに現れることと、周辺の参照Graphが整合することを分けて検査する。
+- **Source位置**：現在のファイル内容指紋・位置を`sourcebridge.NewResolver`で確認し、Targetが唯一の`definition`へ到達することを確かめる。後でファイルが変わった場合は以前のSnapshotを現在のものと装わない。
+- **否定例**：LinkのSource Tokenすり替え、旧Revisionの流用、Decisionの新Revisionとの不一致、受理後Sourceの無断変更を拒否する。
+
+この関数の戻り値は、証拠Token、Candidate/Review/前後Revision、Scope付き型ID、現在の定義Path、そして**未解決の意味相関と権限上の限界**を同時に保持する。検証に成功しても「旧資産の構造がTEIのその意味を持つ」「人間が権限を持って承認した」「実行時権限が付与された」とは判定しない。
+
+この監査は受理・正本編集を行わず、既存のSource AdapterやShared Acceptanceを迂回する第二の処理経路を導入しない。利用可能な旧資産は合成XMLであり、顧客の実データは入力していない。Scope文字列自体の権限と意味同値性は、別の証明段階が必要である。
+
+検証結果は、この変更を含むPull Requestの正確なheadに対するGitHub Actionsを確認した上で追記する。

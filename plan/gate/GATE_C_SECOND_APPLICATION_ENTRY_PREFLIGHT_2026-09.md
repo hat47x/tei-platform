@@ -1,29 +1,29 @@
 # Gate C → Second Application Entry Preflight
 
-- Status: Prepared / test-only
-- Date: 2026-09-19
-- Parent: `plan/gate/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
-- Related:
+- 状態：準備済み／試験専用
+- 日付：2026年9月19日
+- 親文書：`plan/gate/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
+- 関連文書：
   - `plan/gate/GATE_C_EVIDENCE_CONTRACT.md`
   - `plan/gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md`
   - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
   - `plan/MASTER_PLAN.md`
-- Canonical Application impact: None
-- Product Gate impact: None
+- 正本のアプリケーションへの影響：なし
+- 製品の判定段階への影響：なし
 
 ## 1. 目的
 
-Gate C Ready後にsecond Application workstreamへ入る際、
+判定段階CのReady判定後に、第二アプリケーションの作業へ入る際、
 
-- Gate Cのstatus文字列だけ
-- Visual Evidenceだけ
-- baseline revision不明
-- Web Target build revision不明
-- Target差分未整理
+- 判定段階Cの状態を示す文字列だけがある
+- 表示に関する検証根拠しかない
+- 基準版のリビジョンが不明
+- ウェブ実行先の構築版が不明
+- 実行先の違いが整理されていない
 
-の状態で誤ってApplication authoringを開始しないよう、Start Packetのentry条件をtest-onlyにPressureする。
+といった状態でアプリケーションの記述を誤って始めないよう、開始手順書の入口条件を試験専用の検証で確かめます。
 
-このPreflightはGate Cを判定する正本ではない。
+この事前確認は、判定段階Cの合否を決める正本ではありません。
 
 ```text
 Gate C authority
@@ -38,17 +38,17 @@ Entry Preflight
 
 ## 2. Authority boundary
 
-Preflightは次を導出しない。
+事前確認では、次の事項を導出しません。
 
-- Gate C Readyそのもの
-- Semantic Conformance合否
-- Functional Evidence合否
-- Visual Evidence合否
-- first Web TargetのTarget差分分類
-- second ApplicationのAcceptance
-- Canonical Application ID
+- 判定段階CのReady判定そのもの
+- 意味の準拠確認の合否
+- 機能に関する検証根拠の合否
+- 表示に関する検証根拠の合否
+- 最初のウェブ実行先で生じる違いの分類
+- 第二アプリケーションの受理
+- 正本上のアプリケーションID
 
-Gate C statusは外部authority inputとして受け取る。
+判定段階Cの状態は、外部の権威ある入力として受け取ります。
 
 ```text
 gateCStatus = ready
@@ -59,7 +59,7 @@ gateCStatus = ready
 
 ## 3. 必須entry inputs
 
-最低限次を要求する。
+少なくとも次の入力を要求します。
 
 ### Gate C decision
 
@@ -69,82 +69,82 @@ gateCStatus = ready
 
 ### Handover baseline
 
-- Handover Baseline ID
-- baseline Repository revision `R`
+- 引継ぎ基準版のID
+- 基準となるリポジトリのリビジョン`R`
 
-current first baseline:
+現在の最初の基準版：
 
 ```text
 B
 R = e5231839a5dcc62cce1181a2731fcb7c70d16736
 ```
 
-将来successor baselineを使う場合も、IDとrevisionを明示する。
+将来、後継の基準版を使用するときも、IDとリビジョンを明示します。
 
 ### First Target build
 
-- Target build revision `T1`
+- 実行先の構築版`T1`
 
-baseline `R`とTarget build `T1`を混同しない。
+基準版`R`と実行先の構築版`T1`を混同しません。
 
 ### Evidence classes
 
-- Semantic Conformance Evidence ref
-- Interaction / Functional Evidence ref
-- Visual Fidelity Evidence ref
+- 意味の準拠確認に関する検証根拠への参照
+- 対話操作・機能に関する検証根拠への参照
+- 表示の忠実度に関する検証根拠への参照
 
-Visualだけで他二つを代替しない。
+表示の検証根拠だけで、ほかの二種類を代用しません。
 
 ### Target differences
 
-第一Web Targetで観測した差を明示記録する。
+最初のウェブ実行先で観測した違いを明示的に記録します。
 
-少なくとも、
+少なくとも、次の項目について、
 
-- Target Capability候補
-- Runtime Binding差
-- execution artifact / ABI / Host差（観測可能な範囲）
-- Execution / Trust差
-- Web固有実装
-- Canonicalへ持ち上げない差
-- unresolved
+- 実行先の能力の候補
+- 実行時の対応付けの違い
+- 実行成果物・ABI・ホストの違い（観測できる範囲）
+- 実行と信頼に関する違い
+- ウェブ固有の実装
+- 正本へ取り込まない違い
+- 未解決事項
 
-のどこに何が存在したかを後続workstreamから参照できるようにする。
+何が該当するかを後続の作業から参照できるようにします。
 
-「差がなかった」場合でも、その確認結果をexplicit recordとして残す。
+違いがなかった場合も、その確認結果を明示的に記録します。
 
 ## 4. Preflight result
 
-test-only qualificationは次の二状態のみとする。
+試験専用の確認結果は次の二状態に限ります。
 
 ```text
 entry-evidence-complete
 blocked
 ```
 
-これはProduct authorityではない。
+これ自体は製品に関する判断権限を持ちません。
 
 ### entry-evidence-complete
 
-必要entry Evidenceが揃っている。
+開始に必要な検証根拠が揃っている状態です。
 
 意味:
 
 > S0 Gate C entry captureを完了できる入力形がある。
 
-意味しないもの:
+この結果からは、次の事項は認められません。
 
-- second Application sourceを作ってよいという自動Acceptance
-- Application IDが決まった
-- candidate qualificationが終わった
-- Environment Bindingを作ってよい
-- Shared Acceptance済み
+- 第二アプリケーションのソース作成を自動的に受理したこと
+- アプリケーションIDが決定したこと
+- 候補の適格性確認が完了したこと
+- 環境の対応付けを作成してよいこと
+- 共有の受理手続きが完了したこと
 
 ### blocked
 
-必要entry inputが不足している。
+開始に必要な入力が不足している状態です。
 
-不足項目を明示する。
+不足している項目を明示します。
 
 ## 5. Current repository state
 
@@ -189,7 +189,7 @@ missing:
   functional-evidence
 ```
 
-Visual evaluator / screenshot scoreだけでentryを開かない。
+表示の評価者や画面画像の評点だけで開始条件を満たしたとは扱いません。
 
 ### B. Ready label only
 
@@ -205,15 +205,15 @@ T1 = missing
 blocked
 ```
 
-Gate Cの文字列だけをsecond Application開始authorityにしない。
+判定段階Cの状態を示す文字列だけを、第二アプリケーションの開始を認める根拠にはしません。
 
 ### C. Target difference recordなし
 
-Evidence三種が揃ってもTarget差分が記録されていなければblockする。
+三種類の検証根拠が揃っていても、実行先の違いが記録されていなければ開始を認めません。
 
 理由:
 
-second Application / knowledge laneが第一Target固有差をCanonical meaningと誤認する危険があるため。
+第二アプリケーションや知識の再利用に関する作業で、最初の実行先固有の違いを正本上の意味と誤認するおそれがあるためです。
 
 ### D. Current pre-target state
 
@@ -224,24 +224,24 @@ T1 = missing
 Gate C Evidence = missing
 ```
 
-は明示的にblocked。
+この状態は明示的に開始不可とします。
 
 ## 7. Test-only source
 
 - `tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go`
 
-確認すること:
+確認する事項は次のとおりです。
 
-1. completeなsynthetic entryは`entry-evidence-complete`
-2. current pre-target形はblocked
-3. Visual-onlyはblocked
-4. `ready` labelだけではblocked
-5. Target difference recordなしはblocked
-6. qualification typeへauthoring shortcutを追加しない
+1. 必要事項が揃った合成の開始条件は`entry-evidence-complete`
+2. 実行先の準備前の状態は開始不可
+3. 表示の検証根拠だけでは開始不可
+4. `ready`という表示だけでは開始不可
+5. 実行先の違いの記録がなければ開始不可
+6. 適格性確認の型に記述作業への近道を追加しない
 
 ## 8. Prohibited shortcuts
 
-test-only qualificationへ次を置かない。
+試験専用の適格性確認には、次の項目を含めません。
 
 - `AutoStart`
 - `CreateApplication`
@@ -252,52 +252,52 @@ test-only qualificationへ次を置かない。
 - `EnvironmentBindingCreated`
 - `TargetImplementationStarted`
 
-Preflightはentry evidenceの完全性だけを扱う。
+事前確認では、開始に必要な検証根拠が揃っているかどうかだけを扱います。
 
 ## 9. Executable Evidence runner
 
-portable runner:
+環境を移しても利用できる実行器：
 
 - `tools/run-knowledge-portability-reference-evidence.sh`
 
-対象prefixへ、
+対象となる名前の接頭辞に、
 
 - `TestGateCSecondApplication`
 
-を追加する。
+これを追加します。
 
-GitHub-hosted runner availabilityが回復した場合は、
+GitHubが提供する実行環境を再び利用できるようになった場合は、
 
 - `.github/workflows/knowledge-portability-reference-evidence.yml`
 
-から同じscriptを実行する。
+同じスクリプトを実行します。
 
-successful runが得られるまでExecutable Evidence PASSとは扱わない。
+実行が成功した記録を得るまでは、実行可能な検証根拠について合格とは扱いません。
 
 ## 10. Master Plan同期
 
-`MASTER_PLAN.md`はcurrent Evidenceに合わせ、
+`MASTER_PLAN.md`では、当時の検証根拠に合わせて、
 
 - Gate B Ready
 - Handover Baseline `B` / `R`固定済み
 - Gate C Not Ready（起票時点。2026-09-19にT = `0ba87a4e`でReadyとなった）
 - First Web Target `T1`未成立
 
-を一貫して示す。
+これらを一貫して示します。
 
-上位plan同士のstatus不整合をsecond Application開始条件へ持ち込まない。
+上位計画間の状態の不整合を、第二アプリケーションの開始条件に持ち込みません。
 
 ## 11. Gate C Ready後
 
-Gate C Readyが正式に成立した場合:
+判定段階CのReadyが正式に成立した場合は、次の順序で進めます。
 
-1. Gate C Evidence正本を確認
-2. Preflight inputへ`B/R/T1`と三Evidence、Target差分を記録
+1. 判定段階Cの検証根拠の正本を確認
+2. 事前確認の入力に`B/R/T1`、三種類の検証根拠、実行先の違いを記録
 3. `entry-evidence-complete`を確認
 4. `GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`のS0を完了
-5. 同じprimary ISSUE-000040 workstream branchでS1へ進む
+5. 同じ主担当のISSUE-000040作業ブランチでS1へ進む
 
-Preflight PASSだけでS4以降へ飛ばない。
+事前確認に合格しただけで、S4以降へ進んではいけません。
 
 ## 12. 完了条件
 

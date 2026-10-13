@@ -87,6 +87,19 @@ func Fingerprint(content []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+// ModelRevision derives the exact managed Source (path, byte fingerprint)
+// revision used by Shared Acceptance. It grants neither acceptance nor
+// authorization and does not imply an atomic multi-file filesystem read.
+func ModelRevision(index Index) string {
+	artifacts := append([]Artifact(nil), index.Artifacts...)
+	sort.Slice(artifacts, func(i, j int) bool { return artifacts[i].Path < artifacts[j].Path })
+	hash := sha256.New()
+	for _, artifact := range artifacts {
+		fmt.Fprintf(hash, "%s\x00%s\n", artifact.Path, artifact.Fingerprint)
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil))
+}
+
 func PositionAt(content []byte, offset int) (Position, error) {
 	if offset < 0 || offset > len(content) {
 		return Position{}, fmt.Errorf("source offset %d is outside [0,%d]", offset, len(content))

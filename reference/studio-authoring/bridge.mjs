@@ -112,6 +112,7 @@ function sourceLens(sourceIndex, kind, id) {
         a.path.startsWith("/") || a.path.includes("\\") ||
         /(^|\/)\.\.(\/|$)/.test(a.path) ||
         /^[A-Za-z]:/.test(a.path) ||
+        a.path.split("/").some(part => !part || part === ".") ||
         !REVISION.test(a.fingerprint) || artifacts.has(a.path)) {
       throw new Error("INVALID_OR_DUPLICATE_SOURCE_ARTIFACT");
     }
@@ -129,7 +130,10 @@ function sourceLens(sourceIndex, kind, id) {
   // #1120 identifies a node by scope + kind + ID. Source Index today has
   // no scoped model reference; a caller-added scope tag is not enough to
   // establish the same accepted meaning. Refuse to silently drop scope.
-  if (refs.some(r => r.scope !== undefined && r.scope !== null && r.scope !== ""))
+  if (refs.some(r =>
+    (r.scope !== undefined && r.scope !== null && r.scope !== "") ||
+    (r.subject?.scope !== undefined && r.subject.scope !== null &&
+     r.subject.scope !== "")))
     return { status: "unresolved", subject: { kind: canonicalKind, id },
       reason: "Scoped locator requires #1120 typed Source Resolver" };
   if (refs.length !== 1) throw new Error("AMBIGUOUS_SOURCE_DEFINITION: " + kind + ":" + id);
@@ -139,7 +143,11 @@ function sourceLens(sourceIndex, kind, id) {
       !Number.isInteger(begin.offset) || !Number.isInteger(end.offset) ||
       begin.offset < 0 || end.offset < begin.offset ||
       !Number.isInteger(begin.line) || begin.line < 1 ||
-      !Number.isInteger(begin.column) || begin.column < 1) {
+      !Number.isInteger(begin.column) || begin.column < 1 ||
+      !Number.isInteger(end.line) || end.line < 1 ||
+      !Number.isInteger(end.column) || end.column < 1 ||
+      end.line < begin.line ||
+      (end.line === begin.line && end.column < begin.column)) {
     throw new Error("INVALID_SOURCE_ANCHOR");
   }
   return {
@@ -148,7 +156,51 @@ function sourceLens(sourceIndex, kind, id) {
     artifactPath: ref.artifactPath,
     artifactFingerprint: fingerprint,
     range: ref.range,
-    caveat: "Index only: the caller must verify artifact fingerprint before opening or editing; write authority is Shared Acceptance Preview."
+    byteVerification: { status: "not-checked" },
+    caveat: "Index only: raw Source bytes and range are unverified. Live inspect can verify them for that read; write authority remains with Shared Acceptance Preview."
+  };
+}
+
+// The trusted adapter supplies the actual file bytes and a digest function,
+// rather than an unrelated caller-provided fingerprint. Derive the SHA-256
+// from the exact bytes whose range is inspected. This still cannot lock
+// Source or grant authoring rights; Shared Acceptance rechecks R0.
+export function verifySourceAnchor(navigation, bytes, sha256ForBytes) {
+  if (navigation?.status !== "source-index-backed" ||
+      !(bytes instanceof Uint8Array) || typeof sha256ForBytes !== "function")
+    throw new Error("SOURCE_ANCHOR_VERIFICATION_INPUT_INVALID");
+  const fingerprint = sha256ForBytes(bytes);
+  if (!REVISION.test(fingerprint))
+    throw new Error("SOURCE_ANCHOR_DIGEST_INVALID");
+  if (navigation.artifactFingerprint !== fingerprint)
+    throw new Error("SOURCE_ARTIFACT_FINGERPRINT_STALE");
+  const start = navigation.range?.start, end = navigation.range?.end;
+  const valid = p => p && Number.isInteger(p.offset) && p.offset >= 0 &&
+    Number.isInteger(p.line) && p.line >= 1 &&
+    Number.isInteger(p.column) && p.column >= 1;
+  if (!valid(start) || !valid(end) || end.offset < start.offset ||
+      end.offset > bytes.length)
+    throw new Error("SOURCE_ANCHOR_RANGE_INVALID");
+  let line = 1, column = 1, startMatches = false, endMatches = false;
+  for (let offset = 0; offset <= end.offset; offset++) {
+    if (offset === start.offset)
+      startMatches = start.line === line && start.column === column;
+    if (offset === end.offset) {
+      endMatches = end.line === line && end.column === column;
+      break;
+    }
+    if (bytes[offset] === 10) { line++; column = 1; }
+    else column++;
+  }
+  if (!startMatches || !endMatches)
+    throw new Error("SOURCE_ANCHOR_POSITION_STALE");
+  return {
+    ...navigation,
+    byteVerification: {
+      status: "verified-at-read", fingerprint,
+      range: "offset-and-line-column-matched"
+    },
+    caveat: "Source bytes and range matched at this read only; no filesystem lock, semantic Acceptance, or write authority. Shared Acceptance must re-check the revision."
   };
 }
 
@@ -177,69 +229,82 @@ function businessLens(dfd, patterns, index, focus) {
   }[focus.kind];
   const seenSteps = new Set(), matching = [], manual = [];
   const diagnostics = [];
+  const meaningMaps = {
+    "semantic-data": index.data,
+    "semantic-relation": index.relations,
+    "semantic-validation": index.validations
+  };
   for (const step of dfd.steps) {
-    if (typeof step.id !== "string" || !step.id ||
-        seenSteps.has(step.id) || !Array.isArray(step.functionRefs)) {
+    if (!step || !isText(step.id) || seenSteps.has(step.id) ||
+        !Array.isArray(step.functionRefs))
       throw new Error("INVALID_OR_DUPLICATE_BUSINESS_STEP");
-    }
     seenSteps.add(step.id);
-    const links = [];
+    const links = [], directLinks = [], stepDiagnostics = [];
+    // A Step's meaning is an entire set of explicit references. A matched
+    // focus cannot make that Step sound if a sibling reference is stale.
     for (const r of step.functionRefs) {
-      if (typeof r.id !== "string" || !r.id ||
-          !["resolved", "unresolved"].includes(r.status)) {
+      if (!r || !isText(r.id) || !["resolved", "unresolved"].includes(r.status))
         throw new Error("INVALID_BUSINESS_FUNCTION_REFERENCE");
-      }
-      if (!inFocus.has(r.id)) continue;
       const canonical = index.patterns.get(r.id);
       const current = !!canonical &&
         r.status === "resolved" &&
         (r.data || "") === (canonical.data || "") &&
         (r.relation || "") === (canonical.relation || "") &&
         (r.capability || "") === (canonical.capability || "");
-      links.push({
-        subject: "pattern:" + r.id,
-        id: r.id,
-        status: current ? "exact-id-matches-current-world" : "unresolved"
-      });
-      if (!current) diagnostics.push({
+      if (!current) stepDiagnostics.push({
         code: "BUSINESS_PATTERN_REFERENCE_STALE_OR_UNRESOLVED",
         stepID: step.id, patternID: r.id
       });
+      if (inFocus.has(r.id)) links.push({
+        subject: "pattern:" + r.id, id: r.id,
+        status: current ? "exact-id-matches-current-world" : "unresolved"
+      });
     }
-    const directLinks = [];
     for (const r of array(step.explicitMeaning, "step.explicitMeaning")) {
       if (!r || !isText(r.kind) || !isText(r.id) ||
           !["semantic-data", "semantic-relation", "semantic-validation",
             "semantic-capability"].includes(r.kind) ||
           !["resolved-id-not-accepted", "unresolved"].includes(r.status))
         throw new Error("INVALID_BUSINESS_DIRECT_MEANING");
-      if (r.kind !== explicitKind || r.id !== focus.id) continue;
+      // Studio has no authoritative capability resolver; never infer it.
       const current = r.status === "resolved-id-not-accepted" &&
         r.authority === "procedure-reference-only" &&
-        !!explicitMap?.has(r.id);
-      directLinks.push({
+        !!meaningMaps[r.kind]?.has(r.id);
+      if (!current) stepDiagnostics.push({
+        code: "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED",
+        stepID: step.id, kind: r.kind, id: r.id
+      });
+      if (r.kind === explicitKind && r.id === focus.id) directLinks.push({
         kind: r.kind, id: r.id, subject: focus.kind + ":" + r.id,
         status: current ? "exact-id-matches-current-world" : "unresolved",
         authority: "reference-only", source: r.source || null
       });
-      if (!current) diagnostics.push({
-        code: "BUSINESS_DIRECT_MEANING_STALE_OR_UNRESOLVED",
-        stepID: step.id, kind: r.kind, id: r.id
+    }
+    if (links.length || directLinks.length) {
+      diagnostics.push(...stepDiagnostics);
+      matching.push({
+        stepID: step.id, procedureID: dfd.procedureId,
+        status: stepDiagnostics.length ? "unresolved" : "reference-only",
+        resolutionSummary: {
+          declared: step.functionRefs.length +
+            array(step.explicitMeaning, "step.explicitMeaning").length,
+          unresolved: stepDiagnostics.length
+        },
+        functionRefs: links, explicitMeaning: directLinks,
+        source: step.source || null
       });
     }
-    if (links.length || directLinks.length) matching.push({
-      stepID: step.id, procedureID: dfd.procedureId,
-      status: "reference-only", functionRefs: links,
-      explicitMeaning: directLinks, source: step.source || null
-    });
-    if (step.noApplicationFunction === true && manual.length < 20) {
-      manual.push({ stepID: step.id, realization: step.realization,
-        status: "reference-only-no-application-function", source: step.source || null });
-    }
+    if (step.noApplicationFunction === true && manual.length < 20)
+      manual.push({
+        stepID: step.id, realization: step.realization,
+        status: "reference-only-no-application-function",
+        source: step.source || null
+      });
   }
   const hasProducerErrors = dfd.diagnostics.some(d => d.severity === "error");
   return {
-    status: hasProducerErrors || diagnostics.length ? "unresolved" : "reference-only",
+    status: hasProducerErrors || diagnostics.length || !matching.length
+      ? "unresolved" : "reference-only",
     authority: "noncanonical-reference",
     procedureID: dfd.procedureId,
     freshness: "unverified-no-model-revision-binding",
@@ -312,6 +377,7 @@ export function navigateReferenceBusinessStep(world, revision, dfd, stepID) {
       (r.capability || "") === (pattern.capability || ""));
   }
   const verified = candidates.filter(c => c.status === "identity-match-only");
+  const unresolvedCount = candidates.length - verified.length;
   return {
     schema: "tei.reference.studio-business-step-navigation/v0",
     authority: "noncanonical-reference",
@@ -319,7 +385,13 @@ export function navigateReferenceBusinessStep(world, revision, dfd, stepID) {
     subject: { kind: "step", id: step.id,
       scope: "reference-procedure:" + dfd.procedureId,
       authority: "reference-only" },
-    status: producerValid && verified.length ? "reference-only" : "unresolved",
+    // A single valid link cannot make a mixed stale/unresolved Step look sound.
+    status: producerValid && verified.length > 0 && unresolvedCount === 0
+      ? "reference-only" : "unresolved",
+    resolutionSummary: {
+      matched: verified.length, unresolved: unresolvedCount,
+      producerErrors: dfd.diagnostics.filter(d => d.severity === "error").length
+    },
     candidates,
     source: step.source || null,
     freshness: "unverified-no-model-revision-binding",
@@ -423,6 +495,15 @@ export function candidateFromEdit(world, revision, edit) {
   exactRevision(revision);
   if (!edit || edit.schema !== EDIT_SCHEMA || edit.readonly === true ||
       edit.derived === true) throw new Error("DERIVED_IS_READONLY_OR_INVALID_EDIT");
+  // An edit created from a visual snapshot must not be silently rebased when
+  // review-edit later reads a newer accepted World. Older unbound CLI inputs
+  // remain supported, but the browser form always supplies this precondition.
+  if (edit.expectedModelRevision !== undefined) {
+    if (!REVISION.test(edit.expectedModelRevision))
+      throw new Error("STUDIO_EDIT_EXPECTED_REVISION_INVALID");
+    if (edit.expectedModelRevision !== revision)
+      throw new Error("STUDIO_EDIT_STALE_MODEL_REVISION");
+  }
   if (!isText(edit.id) || !isText(edit.intent) ||
       !["studio", "ai", "file", "cli"].includes(edit.origin) ||
       !["er", "table"].includes(edit.view)) throw new Error("INVALID_EDIT");
@@ -437,8 +518,11 @@ export function candidateFromEdit(world, revision, edit) {
     ensureNotUsed(edit.relationID, ix);
     if (edit.relationID !== s.id + "." + edit.symbol)
       throw new Error("RELATION_ID_MUST_MATCH_SOURCE_SYMBOL");
-    op = { op: "add-relation", data: s.id, id: edit.relationID,
-      symbol: edit.symbol, target: edit.targetData, cardinality: edit.cardinality };
+    // Shared Acceptance expects an AddRelationSpec, not a root DataSpec.
+    op = { op: "add-relation", addRelation: {
+      data: s.id, id: edit.relationID, symbol: edit.symbol,
+      target: edit.targetData, cardinality: edit.cardinality
+    } };
   } else if (edit.view === "table" && edit.operation === "add-validation" &&
              s.kind === "attribute") {
     if (!isText(edit.validationID) || edit.validationKind !== "positive")

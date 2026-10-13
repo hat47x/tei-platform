@@ -153,7 +153,7 @@ GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-
 GOENV=off GOWORK=off GO111MODULE=off go test -race -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含むGo競合試験
-CGO_ENABLED=1 GOENV=off GOWORK=off GO111MODULE=off \
+CGO_ENABLED=1 GOENV=off GOWORK=off \
   go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
 
 # 任意の実SQLite接続を含む静的検査
@@ -191,3 +191,75 @@ go vet ./reference/effect-fence ./internal/security/legacyauthorization
 ```
 
 [認可結果と確定境界の接続メモ](INTEGRATION.md)に、今回成立した部分と実Providerへ持ち越した条件をまとめています。
+
+### 認証後の無効化・期限切れを、新しい認可判断へ反映する
+
+認証と認可の両アダプターで、`legacyauth.User.AccessDenialAt`によりアカウントの無効化、有効期間、ロック状態を同じ規則で評価します。ログイン後にアカウントが無効化された場合でも、その後の`security.authorize`は役割を評価する前に拒否します。`PrepareWithLegacyAuthorization`を使う新しい操作の準備にも、この拒否が適用されます。
+
+検証対象には`internal/security/legacyauth`も加わります。
+
+```bash
+go test -race -count=10 ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+go vet ./internal/security/legacyauth ./internal/security/legacyauthorization ./reference/effect-fence
+```
+
+この確認は**認可時点の状態を再評価する**ものであり、認可後に起きた失効と書込み確定の原子性は実証しません。権限版・主体リンク版を実保存先で同時に照合する条件は引き続き未完成です。
+
+## 任意の実SQLite試験：認可根拠の版変更
+
+実SQLiteの試験に、主体リンク・所属・認可規則の**3種類の版条件**を加えました。
+
+`RequireAuthorityDependencies()`を指定した試験用の接続では、この3種類すべての有効な版がなければ操作を準備できません。`SetAuthorityDependency()`で別接続から版を更新・失効させた場合は、書込み確定のトランザクション内で比較して拒否します。許可が継続する規則の改版も、古い版を使った操作には適用されません。
+
+追加した`sqlite_authority_dependencies_test.go`は、失効・改版・版の欠落・版の単調増加・確定済み操作の再送・別接続の並列競合を扱います。実行コマンドは既存のSQLite連携試験と同じです。
+
+```bash
+CGO_ENABLED=1 GOENV=off GOWORK=off \
+  go test -race -tags tei_sqlite_reference -count=10 ./reference/effect-fence
+```
+
+これは**同一SQLiteファイルに置いた模擬版情報**の実証であり、実認可サービスの正本、役割や主体リンクの実際の更新経路と同期した証拠ではありません。通常ビルドへのSQLite依存はありません。詳細と残る設計条件は[接続メモ](INTEGRATION.md)を参照してください。
+
+実SQLiteのGo試験は専用の[変更範囲CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)でも自動実行します。通常のGoビルドにはSQLite依存を追加しません。
+
+## 版付き許可を既存認可から受け取る
+
+`security.authorize`に任意の`EpochReader`を接続できるようにしました。従来のロール判断を維持しながら、主体リンク・所属・認可規則の版を判断前後で照合し、一致する場合だけ許可結果に版証拠を含めます。版の変化は拒否、版の読取り障害や欠落は実行エラーとし、版を持たない従来の許可には永続的な原子性を主張しません。
+
+試験用SQLiteの`PrepareWithVersionedAuthorization`は、正本識別子と三つの版がSQLite側の値と一致することを、**確定済み結果の再送を返すより前**に確認します。準備後も確定時に同じ版を再照合します。
+
+専用CIでは、SQLite内の利用者レコードを既存認可規則が読み取る試験と、そのレコードのロール変更と所属版を一つのトランザクションで更新する試験を行います。実認可正本との統合や製品用DBアダプターの完成とは区別してください。詳細は[接続メモ](INTEGRATION.md)を参照してください。
+
+## 利用者変更と版更新のDBトリガー検証
+
+実SQLiteの追加試験では、ロールや無効状態の変更、利用者の追加・削除が行われると、DBトリガーが同じトランザクション内で所属版を改版します。版更新をアプリケーション側で呼び忘れる経路を試験し、欠落した版、整数上限、版更新障害では利用者変更を拒否します。
+
+同じ主体が複数の認可範囲を持つ場合も、それぞれの版を更新します。変更が先に確定したときは、いずれの古いPermitも書込みできません。認可正本の変更と書込みの並列実行も、実SQLiteの別接続で検証します。
+
+専用の[実SQLite CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)で、`tei_sqlite_reference`ビルド条件のGo競合試験として実行します。通常のTEI実行ファイルにはSQLiteやcgoを追加しません。
+
+このDBトリガーは**試験用スキーマへの対策**です。実際の認可正本の変更経路がすべて版更新を行う保証、実運用Providerの導入、外部認可サービスの整合性は未成立です。
+
+## SQLite認可制約の変更を検知する
+
+認可情報が変わると所属版も増える、という前提を守るため、試験用SQLite接続では必要なDBトリガーの定義を準備・確定・確定記録照会の各境界で確認します。トリガーが削除されたり、同名の無作用トリガーに置き換わったりした場合は書込みを行いません。
+
+確定処理ではSQLiteの`BEGIN IMMEDIATE`を開始してから制約を照合し、版とデータの更新が同じ確定境界に収まることを確認します。検査失敗は業務拒否ではなく実行障害として扱います。実証は専用の[SQLite CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)で行います。
+
+この仕組みは試験DBの制約検査であり、管理者による制約の一時削除や別システムの正本変更まで検出できるわけではありません。実Providerで要求すべき運用上の証拠は[接続メモ](INTEGRATION.md)を参照してください。
+
+## 再接続後の安全な確定記録照会
+
+実SQLiteの参照実装に`LookupWithVersionedAuthorization`を追加しました。応答喪失・タイムアウト後、別の接続で`security.authorize`を再実行し、認証済み主体・現在の認可版・DBトリガーの定義を確認したうえで確定記録を照会します。これらの検査は再接続後にも必須であり、接続内のフラグに依存しません。
+
+返却は**記録あり／記録なし／現在の権限不足**の3つの状態と、認可・保存先の実行障害に分けます。記録の欠落を外部副作用の不成立とみなさず、障害時に記録を開示しません。認可に失敗した後の再送や、同じ操作識別子で異なる要求を指定した場合も、過去の記録は取得できません。
+
+こちらは通常の`Lookup`を置き換える本番用APIではなく、実SQLiteを使った参照検証です。再接続・権限失効・トリガー改変・認可正本障害の試験は、[専用の実SQLite CI](../../.github/workflows/tei-effect-fence-sqlite-ci.yml)で実行します。
+
+## 認可の失効とProvider障害の結果分類
+
+`security.authorize`の任意の版読取り口が`ErrAuthorityInactive`を返した場合は、正本が明示的に失効した**業務拒否**として扱います。認可正本の欠落、不正な版、通信・DB障害は**実行エラー**のまま維持します。
+
+実SQLiteの参照試験では、主体リンク・所属・認可規則の3種類を同じトランザクションで読み、明示的失効と版破損を区別します。失効後の記録照会は`not-authorized`、正本障害時は実行エラーとなり、いずれも過去の確定記録は非開示です。
+
+本番用のProviderでも、失効を確定的に確認した場合だけ専用エラーを返す必要があります。認可正本の変更と実際の副作用を同一境界で確定することは、引き続き別の受入条件です。

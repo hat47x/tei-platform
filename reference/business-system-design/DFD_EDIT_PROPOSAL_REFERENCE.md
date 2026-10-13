@@ -94,6 +94,69 @@ node --test reference/business-system-design/dfd-edit-proposal.test.mjs \
 
 これは**レビュー候補の形式検査**です。正本で採用された業務上の意味や、実行権限の妥当性を証明するものではありません。
 
+## 図の選択と変更対象を結び付ける
+
+`dfd-selected-edit-bridge.mjs`は、図で選択した要素から、既存の限定的な業務レビュー変更を作成するための接続です。図の入力、元の業務手順、元のレビュー案の三者を照合します。
+
+- 業務手順のID、StepのID・表示内容・Function参照、起動契機、遷移、業務Role、外部主体、概念保管先、責任割当て、情報の授受が食い違えば変更候補を作成しません。
+- 選択したStepへの担当割当て、選択した起動契機のラベル変更、選択したStepからの遷移追加、選択した端点からの情報の授受追加を認めます。それ以外の編集や、別要素へのすり替えは拒否します。
+- 戻り値は`tei.reference.business-dfd-selected-review/v0`であり、`sharedAcceptanceCandidate=null`、`readyForAcceptance=false`、`sourceWrites=[]`です。選択したStepのScopeは`reference-procedure:<手順ID>`で、採用済みの意味IDではありません。
+- この照合だけでは、受理済みWorldやSource Indexとの版一致は成立しません。同じID・同じ内容でも、採用済みの業務仕様だと認めてはなりません。
+
+`dfd-selected-edit-cli.mjs`は四つの入力ファイル（DFD投影、業務手順、レビュー案、変更指示）の実バイトからSHA-256を計算し、指示に含まれる三つの指紋と一致しなければ拒否します。変更候補生成後にも、四つのファイルが途中で変わっていないことを確認します。**このCLIは標準出力へ未受理の候補を出すだけで、いずれのファイルも書き換えません。**
+
+実行例（すべて一時領域に保存）：
+
+```sh
+node reference/business-system-design/dfd-selected-edit-cli.mjs \
+  -projection "$scratch/dfd.json" \
+  -procedure "$scratch/procedure.json" \
+  -review "$scratch/review.json" \
+  -binding "$scratch/selected-edit.json" > "$scratch/selected-preview.json"
+
+node --test \
+  reference/business-system-design/dfd-selected-edit-bridge.test.mjs \
+  reference/business-system-design/dfd-selected-edit-cli.test.mjs
+```
+
+`selected-edit.json`は`schema=tei.reference.business-dfd-selected-edit/v0`と、`projectionSHA256`、`procedureSHA256`、`reviewSHA256`、`selection:{kind,id}`、`operation`、`id`、`origin`、`intent`を明示します。SHAは各ファイルの実バイトから作成してください。選択や画面配置から自動的に編集対象を推測しないことが重要です。
+
+この接続の次段階は、#1124が受理済みBusiness Procedureの正本と同一版のSource位置を認証した後に、**別の正式な候補**として受理可否を審査することです。未受理のDFDレビュー案をShared Acceptance候補へ自動変換することは認めません。
+
+### 投影器が付けた状態も照合する
+
+図上の識別子や業務上の文言が元の手順と一致していても、投影器が付けた状態を無条件に信頼しません。選択から変更候補への接続では、次を確認します。
+
+- 手作業かどうかが、元の手順で宣言されたApplication Function参照の有無と一致すること。
+- 明示されたFunction参照の解決状態が`resolved`であること。
+- 業務Roleから物理的な認可Roleを推測していないこと。
+- 起動契機の状態が`proposal`、実行への接続が`unbound`であること。
+- 順序・分岐・例外、業務Role、外部主体、概念保管先、担当、情報の授受が、いずれも`proposal`として示されること。
+- 概念保管先のData参照について、宣言がなければ`not-declared`、明示された場合は`resolved`と示されること。
+
+食い違った場合は未受理の変更候補であっても生成しません。ただし`resolved`は参照実装内での一致を意味するだけで、採用済みWorldの同一版や、情報の鮮度を証明しません。Go生成器が使う状態値に合わせ、模擬DFDを用いた回帰試験でも同じ区別を保持します。
+
+### 図の選択元を参照資料の位置へ照合する
+
+変更の対象を選んだ際、その要素が指す出典の位置も検査します。Stepなら元の業務手順の`/steps/番号`、起動契機ならレビュー案の`/triggers/番号`、外部主体なら`/externalParties/番号`、概念保管先なら`/stores/番号`に一致する必要があります。同じ資料に属する要素のファイル名が一つだけ異なる場合も拒否します。
+
+結果には`sourceLocatorStatus=reference-local-pointer-checked`と`sourceFileAuthority=unverified`を明示します。ここでの照合は、現在の参照資料内の要素を取り違えないための検査です。**ファイルの真正性や、Source Index上の採用済み版との一致を認証するものではありません。** 保存先や受理対象のファイルパスとして、この出典を無条件に利用してはなりません。
+
+## 参照画面からの業務変更プレビュー
+
+`dfd-view-studio.html`では、DFD投影に加え、元の業務手順と未受理レビュー案のJSONを選択できます。図上の起動契機を選択すると説明文の変更候補を、業務Stepを選択すると、**担当する業務Roleの追加**、**別Stepへの順序・分岐・例外**、**別のStep・外部主体・概念Storeへの情報の授受**のいずれかを選択して入力できます。業務Roleは元のレビュー案で宣言されているものに限定し、そのStepにすでに割り当てられたRoleは選択肢から除きます。手作業Stepにも、Application Functionを新たに付けずに担当を提案できます。
+
+「未受理の変更候補を確認」を押すと、読み込んだ三つのファイルの実バイトからSHA-256を再計算し、初回の読み込み時と一致することを確認します。そのうえで`dfd-selected-edit-bridge.mjs`を呼び、選択したStepまたは起動契機、参照手順、レビュー案、局所的なSource位置を照合して未受理の変更案を作成します。図上の線を自動的に実行可能な業務フローへ変換するものではありません。
+
+- 候補は画面内で表示し、希望する場合にのみ独立したJSONとして保存します。元のProcedure/Review/DFDファイルを書き換えません。
+- 起動契機は**説明文だけ**を変更できます。Stepでは、担当業務Roleの追加、別Stepへの順序・分岐・例外の提案、選択したStepを出発点とする情報の授受を追加できます。分岐・例外には条件の明示が必要で、単なる順序には条件を付けません。情報の授受には識別子、宛先、情報の内容を明示します。重複する遷移や情報の授受は拒否します。いずれもRBAC認可、Function実行、Storeへの実データ更新、業務手順の受理を伴いません。
+- 外部主体（Party）や概念Storeを図上で選択した場合は、**その要素から業務Stepへ入る情報の授受**だけを提案できます。宛先種類はStepに固定し、担当Roleの追加や制御遷移への変更はできません。Storeからの授受の記述は概念上の関係であり、データベースへの読取り・書込み権限や操作の承認を意味しません。
+- 選択対象の切替え、元資料の変更、変更種類・宛先・条件・情報の内容などの入力変更によって、表示中の未受理候補を破棄します。
+- DFD投影・業務手順・レビュー案の入力を解除した場合は、該当する読込み済み状態を直ちに無効化します。DFD投影を別ファイルへ切り替える際も、**読込み完了を待たずに以前の図と変更候補を取り消す**ため、古い資料の候補を新しい資料の候補として保存できません。途中で読み込みが完了した古いファイルは世代番号で破棄します。
+- 保存したJSONは`tei.reference.business-dfd-selected-review/v0`であり、正式なShared Acceptanceへの投入資料ではありません。`readyForAcceptance=false`、`sharedAcceptanceCandidate=null`、`sourceWrites=[]`のままです。
+
+実ブラウザーによる画面操作は未検証であり、Nodeの模擬DOM試験はその代用にはなりません。さらに、この照合は受理済みWorldの同一revisionや真正なSource Indexを証明しないため、変更候補を正本へ自動適用してはなりません。
+
 ## Studio・Typed Referenceとの統合条件
 
 1. **選択**: #1125の`-select`が返す`reference-procedure:<procedureId>`のStepとSource位置を表示する。同名のAccepted Taskと同一視しない。
