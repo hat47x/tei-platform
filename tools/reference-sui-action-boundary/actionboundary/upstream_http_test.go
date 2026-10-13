@@ -263,19 +263,47 @@ func TestHTTPSApplicationStoreUsesOneContractForIndependentInventoryApp(t *testi
 	}
 }
 
-func TestHTTPSApplicationStoreTimeoutNeverRetries(t *testing.T) {
+// The test cancels the request only after the upstream has received it.
+// A wall-clock Client.Timeout starting before TLS handshake can expire before
+// the handler runs on busy CI workers, falsely reporting zero deliveries.
+func TestHTTPSApplicationStoreLostReplyNeverRetries(t *testing.T) {
 	var calls atomic.Int32
+	entered := make(chan struct{}, 1)
+	release := make(chan struct{})
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		// The upstream may have committed before the network reply is lost.
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+		// The upstream may have committed before its response is lost.
+		<-release
 		_, _ = w.Write([]byte(`{"protocolVersion":"1","revision":"r2"}`))
 	}))
 	defer server.Close()
+	// Close release before server.Close, including when a test assertion fails.
+	defer close(release)
 	store := upstreamStore(server, validDelegation())
-	store.Client.Timeout = 50 * time.Millisecond
-	_, err := store.Commit(context.Background(), upstreamIntent())
-	if !errors.Is(err, ErrRemoteOutcomeUnknown) || calls.Load() != 1 {
-		t.Fatalf("timed out upstream outcome must be unknown, not retried: calls=%d error=%v", calls.Load(), err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() {
+		_, err := store.Commit(ctx, upstreamIntent())
+		result <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(10 * time.Second):
+		cancel()
+		t.Fatal("upstream request was not delivered")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, ErrRemoteOutcomeUnknown) || calls.Load() != 1 {
+			t.Fatalf("lost upstream reply must remain unknown without retry: calls=%d error=%v", calls.Load(), err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("canceled upstream request did not finish")
 	}
 }
