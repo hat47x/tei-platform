@@ -32,6 +32,9 @@ type postgresScenarioState struct {
 	world  ir.World
 	digest string
 	fence  int64
+	// Internal transaction seam for actual-DB acknowledgement-loss tests.
+	// Runtime hosts leave this nil and call sql.Tx.Commit directly.
+	commit func(*sql.Tx) error
 }
 
 func openScenarioPostgres(ctx context.Context, path string) (*sql.DB, error) {
@@ -212,7 +215,11 @@ func (s *postgresScenarioState) Submit(ctx context.Context, id int64, snapshot r
 	if err != nil || count != 1 {
 		return errors.New("PostgreSQL order update did not affect exactly one row")
 	}
-	if err := tx.Commit(); err != nil {
+	commit := tx.Commit
+	if s.commit != nil {
+		commit = func() error { return s.commit(tx) }
+	}
+	if err := commit(); err != nil {
 		return errPostgresCommitUnknown
 	}
 	return nil

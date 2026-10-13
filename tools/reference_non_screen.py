@@ -64,6 +64,16 @@ def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspa
         assert journal_path.read_text() == journal_raw
         assert sql('SELECT order_id,status,xmin::text FROM public.orders ORDER BY order_id;') == before_journal_refusal
         checks.append('synchronized progress journal matches receipt; no credentials; existing journal refusal before effects')
+        review = invoke('batch-review-partial', ['-non-screen', 'batch-review', '-batch-journal-in', str(journal_path)])
+        assert review['ended'] and not review['incompleteTail']
+        assert [i['recorded'] for i in review['items']] == ['result-recorded', 'result-recorded', 'not-recorded-as-started']
+        assert [i['observation']['result'] for i in review['current']['items']] == ['submitted', 'draft', 'draft']
+        assert review['journalDigest'] == 'sha256:' + hashlib.sha256(journal_path.read_bytes()).hexdigest()
+        bad_journal = output / 'invalid-journal.jsonl'
+        bad_journal.write_text(journal_raw.replace('"sequence":2', '"sequence":9', 1))
+        assert invoke('batch-review-invalid', ['-non-screen', 'batch-review', '-batch-journal-in', str(bad_journal)], False) is None
+        assert sql('SELECT order_id,status,xmin::text FROM public.orders ORDER BY order_id;') == before_journal_refusal
+        checks.append('journal-driven read-only review; invalid sequence refusal; recorded progress remains separate from current database state')
         before = sql('SELECT order_id, status, xmin::text FROM public.orders ORDER BY order_id;')
         observe_args = ['-non-screen', 'batch-observe', '-order-ids', '1003,1001,1002', '-rows', '999']
         sql("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id IN ('order-submit','order-batch');")
@@ -160,6 +170,10 @@ def verify_batch_crash(root, output, common, batch, sql, invoke, container, dige
             observed = invoke('batch-observe-after-crash', ['-non-screen', 'batch-observe', '-order-ids', '1001,1003'])
             assert [i['observation']['result'] for i in observed['items']] == ['submitted', 'draft']
             assert all(i['observation']['nature'] == 'external-observed' for i in observed['items'])
+            reviewed = invoke('batch-review-after-crash', ['-non-screen', 'batch-review', '-batch-journal-in', str(journal)])
+            assert not reviewed['ended'] and not reviewed['incompleteTail']
+            assert [i['recorded'] for i in reviewed['items']] == ['result-recorded', 'started-without-result']
+            assert [i['observation']['result'] for i in reviewed['current']['items']] == ['submitted', 'draft']
             assert 'editor-secret' not in journal.read_text() + (output / 'crash-host.stderr.log').read_text()
             return {'passed': True, 'boundary': 'first commit observed; second transaction blocked before mutation',
                     'journalKinds': [e['kind'] for e in events], 'observedStates': ['submitted', 'draft'],

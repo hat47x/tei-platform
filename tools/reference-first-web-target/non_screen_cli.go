@@ -15,13 +15,13 @@ import (
 	"tei/internal/composition"
 )
 
-type nonScreenFlags struct{ mode, from, rows, format, output, login, credential, orderIDs, journal *string }
+type nonScreenFlags struct{ mode, from, rows, format, output, login, credential, orderIDs, journal, journalInput *string }
 
 func (f nonScreenFlags) enabled() bool { return f.mode != nil && *f.mode != "" }
 
 func registerNonScreenFlags(flags *flag.FlagSet) nonScreenFlags {
 	return nonScreenFlags{
-		flags.String("non-screen", "", "reference: report, batch or batch-observe; exits without serving HTTP"),
+		flags.String("non-screen", "", "reference: report, batch, batch-observe or batch-review; exits without serving HTTP"),
 		flags.String("from", "2026-09-18T08:30:00Z", "reference: selected order search lower bound"),
 		flags.String("rows", "0", "reference: comma-separated selected row indices, at most 100"),
 		flags.String("report-format", "csv", "reference: csv or json renderer"),
@@ -30,14 +30,22 @@ func registerNonScreenFlags(flags *flag.FlagSet) nonScreenFlags {
 		flags.String("credential-file", "", "reference: private one-line batch credential file"),
 		flags.String("order-ids", "", "reference: explicit order identities for read-only batch observation"),
 		flags.String("batch-journal", "", "reference: new synchronized progress file outside the model workspace"),
+		flags.String("batch-journal-in", "", "reference: untrusted progress log for read-only batch review"),
 	}
 }
 func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace string) error {
 	if *f.journal != "" && *f.mode != "batch" {
 		return fmt.Errorf("-batch-journal requires -non-screen batch")
 	}
-	if *f.mode == "batch-observe" {
-		ids, err := parseObservationIDs(*f.orderIDs)
+	if *f.mode == "batch-observe" || *f.mode == "batch-review" {
+		var review batchReview
+		var ids []int64
+		var err error
+		if *f.mode == "batch-review" {
+			review, ids, err = readBatchReview(*f.journalInput)
+		} else {
+			ids, err = parseObservationIDs(*f.orderIDs)
+		}
 		if err != nil {
 			return err
 		}
@@ -56,10 +64,14 @@ func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRun
 		if state.model != nil {
 			result.Composition.ModelRevision = state.model.revision
 		}
+		if *f.mode == "batch-review" {
+			review.Current = &result
+			return json.NewEncoder(os.Stdout).Encode(review)
+		}
 		return json.NewEncoder(os.Stdout).Encode(result)
 	}
 	if *f.mode != "report" && *f.mode != "batch" {
-		return fmt.Errorf("-non-screen must be report, batch or batch-observe")
+		return fmt.Errorf("-non-screen must be report, batch, batch-observe or batch-review")
 	}
 	input := nonScreenInput{From: *f.from, LoginID: *f.login}
 	for _, part := range strings.Split(*f.rows, ",") {

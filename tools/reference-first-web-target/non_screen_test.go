@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -184,5 +186,53 @@ func TestPostgresScenarioBatchJournalFailureStopsAtEffectBoundary(t *testing.T) 
 				t.Fatal("effect boundary changed")
 			}
 		})
+	}
+}
+
+func TestPostgresScenarioBatchUncertainCommitIsReviewedWithoutRetry(t *testing.T) {
+	state := postgresTestState(t)
+	calls := 0
+	state.commit = func(tx *sql.Tx) error {
+		calls++
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+		return errors.New("injected lost acknowledgement after actual commit")
+	}
+	s := postgresNonScreen(t, state, "csv", "", nil)
+	journal, err := openBatchJournal(referenceWorkspacePath(t), filepath.Join(t.TempDir(), "uncertain.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer journal.file.Close()
+	input := nonScreenTestInput()
+	input.Rows = []int{0, 2}
+	input.Journal = journal
+	result, _, err := s.batch.Invoke(context.Background(), input)
+	if !errors.Is(err, errPostgresCommitUnknown) || calls != 1 || result.Stage != "execution-failed" || len(result.Items) != 1 || result.Items[0].Result.Command != nil ||
+		statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1003) != "draft" {
+		t.Fatalf("uncertain commit retried or hidden: %+v %v", result, err)
+	}
+	raw, err := os.ReadFile(journal.file.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	review, ids, err := decodeBatchReview(raw)
+	if err != nil || len(ids) != 2 || review.Items[0].RecordedStage != "command" || review.Items[1].Recorded != "not-recorded-as-started" {
+		t.Fatalf("uncertain review: %+v %v", review, err)
+	}
+	observer, err := wireBatchObservation(context.Background(), composition.NewRegistry(), state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = observer.Withdraw(1); _ = observer.Reap(context.Background()) }()
+	current, _, err := observer.Invoke(context.Background(), ids)
+	if err != nil || current.Items[0].Observation.Result != "submitted" || current.Items[1].Observation.Result != "draft" || calls != 1 {
+		t.Fatal("review retried command")
+	}
+	review.Current = &current
+	b, _ := json.Marshal(review)
+	if strings.Contains(string(b), "editor-secret") {
+		t.Fatal("credential leaked")
 	}
 }
