@@ -350,6 +350,9 @@ function selectMeaningReference(d,kind,id){
 }
 async function selectNode(node){
   const generation=++selectionGeneration;
+  // A Source navigation can await an import. Retire the old SVG controls
+  // immediately so another queued event cannot edit a stale selection.
+  ++renderGeneration;
   state.selected=key(node.kind,node.id);
   // Step selections are distinct review scopes: never carry an endpoint,
   // condition, or flow identifier forward from a previous selection.
