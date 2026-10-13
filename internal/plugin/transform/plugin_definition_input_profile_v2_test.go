@@ -113,8 +113,12 @@ func TestV2InputProfileRejectsUnqualifiedOrAmbiguousRequests(t *testing.T) {
 		{name: "no opt in", source: source, raw: valid, want: "unsupported plugin definition input profile"},
 		{name: "unknown profile", profile: "tei.plugin-definition-json/v3", source: source, raw: valid, want: "unsupported plugin definition input profile"},
 		{name: "duplicate JSON key", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"id":"tei.x","id":"tei.y"}`), want: "declared more than once"},
-		{name: "unknown schema field", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"unknown":true}`), want: "unknown field"},
-		{name: "wrong property type", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"provides":99}`), want: "unmarshal"},
+		{name: "unknown schema field", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"unknown":true}`), want: "noncanonical JSON field"},
+		{name: "casefold alias", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"ID":"tei.x"}`), want: "noncanonical JSON field"},
+		{name: "mixed case alias collision", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"id":"tei.x","ID":"tei.y"}`), want: "noncanonical JSON field"},
+		{name: "nested unknown field", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"runtime":{"kind":"builtin","Kind":"process"}}`), want: "noncanonical JSON field"},
+		{name: "explicit null array", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"provides":null}`), want: "null value"},
+		{name: "wrong property type", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{"provides":99}`), want: "requires an array"},
 		{name: "trailing input", profile: inputprofile.PluginDefinitionJSONV2, source: source, raw: []byte(`{}{}`), want: "multiple values"},
 	}
 	other := source
