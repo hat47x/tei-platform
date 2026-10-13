@@ -200,6 +200,7 @@ func CheckLocaleBundleIntegrity(bundle LocaleBundle) error {
 	}
 	return nil
 }
+
 // CheckLocaleBundleAgainstLock binds a structurally consistent bundle to the
 // Host's independently supplied current catalog, environment, and lock. This
 // catches stale/different plugin selections at a distribution boundary. It
