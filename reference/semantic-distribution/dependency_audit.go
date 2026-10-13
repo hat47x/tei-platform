@@ -99,7 +99,6 @@ func AuditNamespaceDependencies(ns semantic.Namespace, available []semantic.Name
 		add("semantic-type", string(typ.ID), "underlying", typ.Underlying)
 	}
 	for _, data := range ns.Data {
-		dataID := string(data.ID)
 		for _, attr := range data.Attributes {
 			add("semantic-attribute", string(attr.ID), "type", attr.TypeRef)
 		}
@@ -125,7 +124,6 @@ func AuditNamespaceDependencies(ns semantic.Namespace, available []semantic.Name
 				add("semantic-functional-dependency", string(dependency.ID), fmt.Sprintf("dependents[%d]", i), attr)
 			}
 		}
-		_ = dataID // The nested references carry their own canonical IDs.
 	}
 	for _, cap := range ns.Capabilities {
 		id := string(cap.ID)
