@@ -66,8 +66,8 @@ func exportedNamespace(t *testing.T, provider string) semantic.Namespace {
 
 func planFixture(packageID plugin.Identity, sourceDigest string) plugin.BuildPlan {
 	return plugin.BuildPlan{
-		FormatVersion:               plugin.BuildPlanFormatVersion,
-		Plugin:                      packageID,
+		FormatVersion: plugin.BuildPlanFormatVersion,
+		Plugin:        packageID,
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(plugin.Definition{
 			ID: packageID.ID, Version: packageID.Version,
 		}),
