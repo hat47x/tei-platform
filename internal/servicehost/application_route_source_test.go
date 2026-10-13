@@ -21,15 +21,15 @@ func TestHostBoundApplicationEnvironmentReadsCurrentRouteWithoutBorrowing(t *tes
 	repairBinding := orderBinding
 	repairBinding.ProviderID = "logical-repair"
 	environment := map[core.CanonicalID]core.CanonicalID{
-		"order_entry": "development",
+		"order_entry":   "development",
 		"repair_intake": "staging",
 	}
 	expected := map[core.CanonicalID]composition.Binding{
-		"order_entry": orderBinding,
+		"order_entry":   orderBinding,
 		"repair_intake": repairBinding,
 	}
 	routes := map[core.CanonicalID]SelectedServiceCarrierRoute{
-		"order_entry": generationCarrierRoute(orderBinding, "tei.quote.shared"),
+		"order_entry":   generationCarrierRoute(orderBinding, "tei.quote.shared"),
 		"repair_intake": generationCarrierRoute(repairBinding, "tei.quote.shared"),
 	}
 	repairRoute := routes["repair_intake"]
