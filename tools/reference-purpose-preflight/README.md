@@ -67,6 +67,30 @@ go run ./tools/reference-shared-acceptance decisions -workspace reference/worksp
 
 この第3段階は業務規則の存在・出所を検査する参照実装であって、**50万円閾値を正本から導出したものではない**。適用期間、実行時のデータ、実Providerの能力、実行許可は後続の検証対象である。
 
+## Shared Acceptanceの既存決定索引との照合（第4段階）
+
+正本上のValidationの存在と、過去の受理Decisionを結ぶ場合は、**まず既存のShared Acceptanceが決定索引を生成**する。参照実装自身がDecision台帳を読取り・検証し直すのではなく、その報告を限定された履歴情報として消費する。
+
+```sh
+go run ./tools/reference-shared-acceptance decisions \
+  -workspace reference/workspace > /tmp/tei-shared-decisions.json
+
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -application order_entry \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.line_number_positive \
+  -decision-index /tmp/tei-shared-decisions.json
+```
+
+ここでは正確に一致する種類付きValidation ID（`semanticDiff.kind=validation` と `id`）、Decisionの `accepted` と `sourceChanged`、Shared Acceptance索引が報告する `sourceEdits=intact`、現在の入力元索引で確認した定義元パスと照合値を組み合わせる。該当記録があれば `decisionHistoryStatus=reported-source-matched` として記録への参照を示す。該当IDの記録が無ければ `not-matched`、記録はあるが定義元の照合値が異なるなどの場合は `recorded-subject-source-not-current` とする。
+
+**これは現在のSourceに一致する過去の変更決定が報告された、という限定的な照合であり、人間の受理を証明したものではない。** 決定索引の内容ハッシュ・検証根拠・Review Projectionを検証する責任は既存Shared Acceptanceに残る。この参照実装は外部JSONの真正性や、生成された索引が本当に指定作業領域と同じ版から取得されたことを独立には検証しない。そのため、手で書き換えたJSONを渡しても出力は`報告値`のままであり、実権限や真正な履歴の証明として使用できない。
+
+さらにReviewの照合値が `verified` でも、レビュー内容の提示と判断権限を持つ人の本人確認は別である。決定索引に含まれる `decisionActorStatus` と `decisionAuthorityStatus` をそのまま表示するが、実行許可や確認済み業務規則としては扱わない。`human-acceptance-not-verified` と `runtime-validation-not-evaluated` は引き続き未解決として保持し、`executionAllowed=false` を維持する。
+
+本段階で追跡する受注明細行番号の正数規則と、合成fixtureの50万円承認規則は別物である。他の規則の受理記録を転用して合成閾値がAcceptedとなったと主張しない。業務上の適用期間、複数業務ルールの合成、実Provider・外部効果については後続の検証が必要である。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
