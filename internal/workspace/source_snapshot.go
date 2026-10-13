@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"tei/internal/sourceindex"
@@ -24,9 +25,9 @@ func canonicalWorkspaceRoot(root string) (string, error) {
 }
 
 // readSourceForLoad retains exactly the bytes consumed by a domain loader.
-// Native supported targets open each source within a traversal-resistant root.
-// Separate reads still resolve the Workspace root by path; one Load has not
-// yet pinned a single directory handle across all of its source reads.
+// During Load, all domain Source files come from the same pinned directory
+// handle used for the manifest. A returned Result retains only frozen bytes,
+// not the OS handle. Files can still be modified in place between reads.
 func readSourceForLoad(root string, result *Result, filename string) ([]byte, error) {
 	relative, err := filepath.Rel(root, filename)
 	if err != nil {
@@ -39,7 +40,10 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	if result.sourceSnapshotRoot == "" {
 		return nil, fmt.Errorf("source reader has no Workspace root")
 	}
-	content, err := readWorkspaceFile(result.sourceSnapshotRoot, path)
+	if result.sourceReadRoot == nil {
+		return nil, fmt.Errorf("source reader has no active Workspace root")
+	}
+	content, err := readPinnedWorkspaceFile(result.sourceReadRoot, path)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +74,24 @@ func readWorkspaceFile(rootReal, rawPath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return readOpenedWorkspaceSource(file, path)
+}
+
+// readPinnedWorkspaceFile does not re-resolve a Workspace pathname. Every
+// domain Source read and the manifest itself use one Root for the entire Load.
+func readPinnedWorkspaceFile(root *os.Root, rawPath string) ([]byte, error) {
+	path, err := sourceindex.NormalizeWorkspacePath(rawPath)
+	if err != nil {
+		return nil, err
+	}
+	file, err := root.Open(filepath.FromSlash(path))
+	if err != nil {
+		return nil, fmt.Errorf("open source %q in pinned Workspace: %w", path, err)
+	}
+	return readOpenedWorkspaceSource(file, path)
+}
+
+func readOpenedWorkspaceSource(file *os.File, path string) ([]byte, error) {
 	info, err := file.Stat()
 	if err != nil {
 		file.Close()
