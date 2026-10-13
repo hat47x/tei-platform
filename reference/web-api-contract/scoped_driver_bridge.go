@@ -77,6 +77,9 @@ func ExecuteScopedCanonicalRead(
 		publication.QueryID == "" || publication.DataID == "" {
 		return PublishedReadResult{}, ErrScopedQueryUnavailable
 	}
+	if _, err := RequireScopedCanonicalExecutor(provider); err != nil {
+		return PublishedReadResult{}, err
+	}
 	if err := CheckReadDispatch(publication, plan, support); err != nil {
 		return PublishedReadResult{}, err
 	}
