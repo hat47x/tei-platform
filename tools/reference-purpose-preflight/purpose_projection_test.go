@@ -16,9 +16,9 @@ func purposeRequirementByName(p PurposeProjection, name string) (PurposeObligati
 
 func TestPurposeProjectionSelectsOnlyRelevantObligations(t *testing.T) {
 	assessment := WorkspaceAssessment{
-		SubjectKind:  "semantic-validation", SubjectID: "sales.order_line.line_number_positive",
+		SubjectKind: "semantic-validation", SubjectID: "sales.order_line.line_number_positive",
 		SourceStatus: "traceable-source-declaration", RuleMeaning: "canonical-validation-declared",
-		Witnesses:    []SourceWitness{{Path: "semantic/sales/validation.tei", Fingerprint: "sha256:source", Role: "definition"}},
+		Witnesses: []SourceWitness{{Path: "semantic/sales/validation.tei", Fingerprint: "sha256:source", Role: "definition"}},
 	}
 	var lengths []int
 	for _, purpose := range []string{"describe", "simulate", "execute-preflight"} {
@@ -54,8 +54,8 @@ func TestPurposeProjectionSelectsOnlyRelevantObligations(t *testing.T) {
 
 func TestMatchedDecisionCannotDischargeHumanOrRuntimeObligations(t *testing.T) {
 	assessment := WorkspaceAssessment{
-		SubjectKind:           "semantic-validation", SubjectID: "sales.order_line.line_number_positive",
-		SourceStatus:          "traceable-source-declaration", RuleMeaning: "canonical-validation-declared",
+		SubjectKind: "semantic-validation", SubjectID: "sales.order_line.line_number_positive",
+		SourceStatus: "traceable-source-declaration", RuleMeaning: "canonical-validation-declared",
 		Witnesses:             []SourceWitness{{Path: "semantic/sales/validation.tei", Fingerprint: "sha256:source", Role: "definition"}},
 		DecisionHistoryStatus: "reported-source-matched",
 	}
