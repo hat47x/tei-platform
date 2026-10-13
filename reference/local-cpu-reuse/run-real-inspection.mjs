@@ -74,10 +74,13 @@ export function summarizeInspectionEvidence(batch) {
     schemaVersion:'tei.research.inspection-evidence/v0',
     effect:'read-only',acceptance:'not_asserted',
     subjectCount:batch.observations.length,
-    subjects:batch.observations.map(o=>({
-      kind:o.subject.kind,id:o.subject.id,
+    // Do not expose application/semantic identifiers or free-form diagnostics by default.
+    // Position is meaningful only within the fixed, explicitly selected Reference batch.
+    subjects:batch.observations.map((o,index)=>({
+      index,
+      kind:o.subject.kind,
       completeness:o.completeness,
-      diagnosticCodes:o.diagnostics.map(d=>d.split('.')[0]),
+      diagnosticCount:o.diagnostics.length,
       sourceStatus:o.provenance.sourceStatus
     })),
     consistentSnapshot:true,
