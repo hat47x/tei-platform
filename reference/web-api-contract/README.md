@@ -27,6 +27,15 @@ Go標準ライブラリのみを使用する。テストでは、禁止項目の
 
 2026-10-13：同内容のローカルコピーに対しGo 1.23.2で`GO111MODULE=off go test -v ./reference/web-api-contract`と`GO111MODULE=off go vet ./reference/web-api-contract`が成功。Github上のGoソース2ファイルは、ローカルで整形・試験した同じファイルのGit Blob SHA（bind.go=`e37f2dbea990aab4469dfc68acd9e73acdc81f6e`、bind_test.go=`276209e471799d114e4b478ae91d2f86d0c173a7`）と一致する。ただし現行main全体との適合・実Providerの動作を確認したものではない。
 
+## E2：既存Canonicalとの接続と実行前検査（2026-10-13）
+
+- `canonical.go`は、既存`driver.NewResolver(...).ResolvePattern`により`order_entry.recent_orders`のApplication、Browse Pattern、Query、Dataを実Workspaceから解決する。Queryに明示されたResult Column MappingとSemantic Attribute ID・Symbolを照合する。
+- 合成の項目認可結果を**Canonical Attribute IDをキー**として渡し、権限のない項目を公開対象へ含めない。SQLのraw列名を公開API名と誤認せず、Queryにない属性を自動的に付け足さない。
+- `dispatch.go`では、選択済みQueryと同一のProviderが`scope / field projection / filter operator / sort / limit`を実現できるとの信頼済み照合情報が欠けた場合、実行前に拒否する。ここに渡す`EnforcesScope`等の値は合成であり、**Provider側で実際に権限を強制した証拠にはならない**。
+- `canonical_test.go` / `dispatch_test.go`は実Workspaceを読み込むが、DBや既存のRuntime Command/Query Executorを動かすものではない。通常のnative SQLに対し動的なOData絞込、並べ替え、ページングの対応を自動的に主張しない。
+
+この検証は「既存業務モデルから論理Read Modelの項目を抽出する」範囲に限る。動的SQL変換、OData準拠実装、実認可、独立した保存後観測は未実装。
+
 ## 次の接続先
 
 1. #1158の型付き読込・Action操作へ、手書きSubset ParserではないAdapterで接続する。
