@@ -47,6 +47,10 @@ type StdioProcessLauncher struct {
 	// Zero uses the conservative default; this is separate from the stdout
 	// response limit because stderr is not part of the plugin wire protocol.
 	MaxStderrBytes int
+	// MaxExecutionDuration bounds an otherwise silent one-shot plugin.
+	// Zero uses 30 minutes; a negative value is rejected before launch.
+	// The trusted Host may increase it for legitimate long-running tasks.
+	MaxExecutionDuration time.Duration
 }
 
 var _ ProcessLauncher = StdioProcessLauncher{}
