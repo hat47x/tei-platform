@@ -19,8 +19,8 @@ func orderLocaleBundle(t *testing.T) (LocaleBundle, LocaleBundleRequest) {
 		t.Fatal(err)
 	}
 	req := LocaleBundleRequest{
-		Target: lookup.Target,
-		Keys: []resources.Key{lookup.Key},
+		Target:  lookup.Target,
+		Keys:    []resources.Key{lookup.Key},
 		Locales: []string{"en-US", "ja-JP"},
 	}
 	bundle, err := BuildLockedLocaleBundle(c, env, lock, graph, surfaces, packs, grants, nil, req)
