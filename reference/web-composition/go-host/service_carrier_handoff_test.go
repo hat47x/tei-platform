@@ -51,11 +51,11 @@ func (a *serviceHandoffAcceptance) ReadCurrentAcceptedService(_ context.Context,
 // Host session/authorization, Service acceptance and artifact trust are test
 // doubles. In particular, this is NOT an issued business/Provider permission.
 func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *testing.T) {
-	const actionID = "order_entry.submit_order"
-	const serviceID = "reference.order_quote"
+	const actionID = "order_entry.preview_order_quote"
+	const serviceID = "sales.order.quote_lines"
 	const scopeID = "reference/order_entry"
 	digest := "sha256:" + strings.Repeat("a", 64)
-	service := composition.Contract{ID: serviceID, Version: "1.0.0", Shape: "test-quote-shape"}
+	service := composition.Contract{ID: serviceID, Version: "1.0.0", Shape: "test-only-quote-shape"}
 	registry := composition.NewRegistry()
 	_, err := registry.Apply(0, []composition.Provider{{ID: "quote-provider", Scope: scopeID, Offers: service}}, nil)
 	if err != nil {
@@ -108,14 +108,15 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 	accepted := &serviceHandoffAcceptance{selection: serviceSelection}
 	runtimeHost := pruntime.Registry{Processes: process, Verifier: verifier, ServiceAcceptance: accepted}
 
+	var currentPrincipal Principal
 	var captured *http.Request
 	serviceHandler, err := NewHostAuthorizedSelectedCapabilityInvoker(
 		coordinator, actionID, serviceID, service.Version, []SelectedActionProvider{{
 			ProviderID: binding.ProviderID, ArtifactDigest: digest,
 			Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				captured = r
-				if _, ok := PrincipalFromContext(r.Context()); !ok {
-					t.Error("Host principal lost")
+				if got, ok := PrincipalFromContext(r.Context()); !ok || got != currentPrincipal {
+					t.Error("Host principal was changed before Service invocation")
 				}
 				// The trusted Host supplies this exact Plan and Service selection,
 				// NOT the browser's claimed application, provider or operation.
@@ -135,22 +136,59 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	principal := Principal{ProviderID: "corporate", Issuer: "issuer.example", Subject: "account-1", PrincipalID: "user-1"}
-	sessionOK, csrfOK, actionOK := true, true, true
+	// Use the actual candidate business Pattern and existing security.authorize
+	// adapter, not a boolean substitute for business authorization. These
+	// fixture policies and subject links remain synthetic, not production trust.
+	resolver, adapters := quoteCandidateAuthorizationDependencies(t)
+	resolved, err := resolver.ResolveCommandBinding("order_entry", actionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Pattern.Capability == nil ||
+		string(resolved.Pattern.Capability.ID) != serviceID ||
+		resolved.Pattern.Capability.Effect != nil {
+		t.Fatalf("quote semantic contract does not match selected service identity: %+v", resolved.Pattern.Capability)
+	}
+	principal := Principal{
+		ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1",
+		Subject: "corporate-editor", PrincipalID: "employee-1",
+	}
+	viewer := Principal{
+		ProviderID: "corporate", Issuer: principal.Issuer,
+		Subject: "corporate-viewer", PrincipalID: "employee-2",
+	}
+	currentPrincipal = principal
+	linkRevoked, mappingUnavailable := false, false
+	authorizer, err := NewCanonicalActionAuthorizer(
+		resolver, "order_entry", actionID,
+		func(_ context.Context, identity ExternalSubject) (SubjectLink, bool, error) {
+			if mappingUnavailable {
+				return SubjectLink{}, false, errors.New("synthetic subject mapping unavailable")
+			}
+			if linkRevoked || identity != (ExternalSubject{
+				ProviderID: principal.ProviderID, Issuer: principal.Issuer, Subject: principal.Subject,
+			}) {
+				return SubjectLink{}, false, nil
+			}
+			return SubjectLink{PrincipalID: principal.PrincipalID, SubjectID: "subject-order-editor"}, true, nil
+		}, adapters,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionOK, csrfOK := true, true
 	host, err := NewHost(Policy{Path: "/protected/quote", Method: http.MethodPost, ActionID: actionID,
 		Providers: map[string]string{"corporate": principal.Issuer}}, Dependencies{
 		VerifySession: func(*http.Request) (Principal, error) {
 			if !sessionOK {
 				return Principal{}, errors.New("session revoked")
 			}
-			return principal, nil
+			return currentPrincipal, nil
 		},
 		VerifyCSRF: func(*http.Request, Principal) bool { return csrfOK },
-		Authorize: func(_ context.Context, _ Principal, action string) (bool, error) {
-			return actionOK && action == actionID, nil
-		},
-		Invoke: serviceHandler,
-		Audit:  func(AuditRecord) {},
+		Authorize:  authorizer,
+		Invoke:     serviceHandler,
+		Audit:      func(AuditRecord) {},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -183,12 +221,22 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 	if status := invokeHTTP(host); status != http.StatusForbidden {
 		t.Fatalf("CSRF denied: %d", status)
 	}
-	csrfOK, actionOK = true, false
+	csrfOK = true
+	currentPrincipal = viewer
 	if status := invokeHTTP(host); status != http.StatusForbidden {
-		t.Fatalf("action denied: %d", status)
+		t.Fatalf("viewer without canonical quote grant was allowed: %d", status)
 	}
+	currentPrincipal = principal
+	linkRevoked = true
+	if status := invokeHTTP(host); status != http.StatusForbidden {
+		t.Fatalf("revoked subject mapping was allowed: %d", status)
+	}
+	linkRevoked, mappingUnavailable = false, true
+	if status := invokeHTTP(host); status != http.StatusServiceUnavailable {
+		t.Fatalf("unavailable subject mapping was silently authorized: %d", status)
+	}
+	mappingUnavailable = false
 	assertCalls(0)
-	actionOK = true
 	if status := invokeHTTP(host); status != http.StatusAccepted {
 		t.Fatalf("authorized invocation: %d", status)
 	}
