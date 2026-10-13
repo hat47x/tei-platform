@@ -119,3 +119,37 @@ func TestNormalizeIsDeterministicWhenReferencesShareStartOffset(t *testing.T) {
 		}
 	}
 }
+
+// ModelRevision must stay byte-for-byte compatible with the established Shared
+// Acceptance revision algorithm, including the NUL separator and path order.
+func TestManagedSourceRevisionLegacyCompatibility(t *testing.T) {
+	a, err := sourceindex.NewArtifact("a.tei", []byte("hello\n"))
+	if err != nil { t.Fatal(err) }
+	b, err := sourceindex.NewArtifact("b.tei", []byte("world"))
+	if err != nil { t.Fatal(err) }
+	index := sourceindex.Index{Artifacts: []sourceindex.Artifact{b, a}}
+	const want = "sha256:80f05da9df82519698ffa156665c2f0adab6ec75b731a13b51f748168bc38d21"
+	if got := sourceindex.ModelRevision(index); got != want {
+		t.Fatalf("Shared Acceptance revision changed: got %s, want %s", got, want)
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a, b}}); got != want {
+		t.Fatalf("Source order affected revision: %s", got)
+	}
+}
+
+func TestManagedSourceRevisionByteAndMembershipSensitivity(t *testing.T) {
+	a, _ := sourceindex.NewArtifact("applications/order-entry/application.tei", []byte("application order_entry {}\n"))
+	b, _ := sourceindex.NewArtifact("semantic/sales/order.tei", []byte("data sales.order {}\n"))
+	original := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a, b}})
+	r2, _ := sourceindex.NewArtifact(a.Path, []byte("application order_entry {}\n\n"))
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{r2, b}}); got == original {
+		t.Fatal("blank-line-only R2 should change managed Source revision")
+	}
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a}}); got == original {
+		t.Fatal("omitted member should change managed Source revision")
+	}
+	b.Path = "semantic/sales/renamed.tei"
+	if got := sourceindex.ModelRevision(sourceindex.Index{Artifacts: []sourceindex.Artifact{a, b}}); got == original {
+		t.Fatal("changed path should change managed Source revision")
+	}
+}
