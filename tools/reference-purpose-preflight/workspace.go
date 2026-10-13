@@ -36,6 +36,7 @@ type WorkspaceAssessment struct {
 	DecisionIndexRevision string                `json:"decisionIndexRevision,omitempty"`
 	DecisionHistoryLinks  []DecisionHistoryLink `json:"decisionHistoryLinks,omitempty"`
 }
+
 // InspectWorkspace only verifies whether a real application-pattern has one
 // unambiguous declaration and current Source Index provenance. The subject is
 // typed using TEI's existing subject contract. It deliberately does not infer
