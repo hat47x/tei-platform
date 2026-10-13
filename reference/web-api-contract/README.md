@@ -25,7 +25,7 @@ go vet ./reference/web-api-contract
 
 Go標準ライブラリのみを使用する。テストでは、禁止項目の投影・検索・並べ替え、複合式の誤受理、件数や集計の推測経路、重複Option、ページ件数の上限、Command入力におけるAction/項目権限の逸脱を拒否する。
 
-2026-10-13：同内容のローカルコピーに対しGo 1.23.2で`GO111MODULE=off go test -v ./reference/web-api-contract`と`GO111MODULE=off go vet ./reference/web-api-contract`が成功。ただしGitHub上の最終branch先端のbyte一致・現行main全体との適合・実Providerの動作を確認したものではない。
+2026-10-13：同内容のローカルコピーに対しGo 1.23.2で`GO111MODULE=off go test -v ./reference/web-api-contract`と`GO111MODULE=off go vet ./reference/web-api-contract`が成功。Github上のGoソース2ファイルは、ローカルで整形・試験した同じファイルのGit Blob SHA（bind.go=`e37f2dbea990aab4469dfc68acd9e73acdc81f6e`、bind_test.go=`276209e471799d114e4b478ae91d2f86d0c173a7`）と一致する。ただし現行main全体との適合・実Providerの動作を確認したものではない。
 
 ## 次の接続先
 
