@@ -2,7 +2,7 @@
 
 - 担当：[Issue #1656](https://github.com/hat47x/tei-platform/issues/1656)
 - 設計：[標準Web API Adapter設計](../../plan/design/WEB_READ_WRITE_API_ADAPTER_DESIGN.md)
-- 状態：**合成契約の実行可能な試作**。現行TEIのQuery/Driver/認可Providerには未接続。ODataサーバでもHTTP Handlerでもない。
+- 状態：**合成契約の実行可能な試作**。既存Driver Resolver、既存`security.authorize` Adapterおよびリポジトリの認可fixtureとの接続検証あり。**実Query Executor・Provider側行スコープ強制・HTTP Handlerには未接続**。ODataサーバではない。
 
 ## 何を確かめるか
 
@@ -23,7 +23,7 @@ go test ./reference/web-api-contract
 go vet ./reference/web-api-contract
 ```
 
-Go標準ライブラリのみを使用する。テストでは、禁止項目の投影・検索・並べ替え、複合式の誤受理、件数や集計の推測経路、重複Option、ページ件数の上限、Command入力におけるAction/項目権限の逸脱を拒否する。
+`bind.go`の純粋なSubset Parserは標準ライブラリのみを使用する。パッケージ全体はTEI内部のCanonical/Driver/Securityを参照する。テストでは、禁止項目の投影・検索・並べ替え、複合式の誤受理、件数や集計の推測経路、重複Option、ページ件数の上限、Command入力におけるAction/項目権限の逸脱を拒否する。
 
 2026-10-13：同内容のローカルコピーに対しGo 1.23.2で`GO111MODULE=off go test -v ./reference/web-api-contract`と`GO111MODULE=off go vet ./reference/web-api-contract`が成功。Github上のGoソース2ファイルは、ローカルで整形・試験した同じファイルのGit Blob SHA（bind.go=`e37f2dbea990aab4469dfc68acd9e73acdc81f6e`、bind_test.go=`276209e471799d114e4b478ae91d2f86d0c173a7`）と一致する。ただし現行main全体との適合・実Providerの動作を確認したものではない。
 
@@ -48,6 +48,13 @@ Go標準ライブラリのみを使用する。テストでは、禁止項目の
 `authorization.go`は既存の`security.authorize` Capabilityの`legacyauthorization.Input`と`AuthorizationGrant`を使用する。信頼済み呼出元のSubject ID、操作、Resourceの三つが返却Grantと一致し、Result Outcomeが`allowed`である場合にのみ通す。拒否、Backend障害、異なるPrincipal/Action/Resource/Capability、予期しないPayload型を負例で拒否する。
 
 この検証は**既存認可契約を利用した操作単位の事前判定**であり、項目単位権限・行スコープ・更新の確定時点での再認可やトランザクション原子性は保証しない。既存Adapterが扱うEpoch証拠の有無や有効性も、この薄いGateだけで独立に検証できるものではない。実行側での認可と整合性を別途確認する。
+
+## E5：実Fixtureの操作認可・Binding接続と失敗分類
+
+- `authorized_bind.go`はCanonicalで解決したBrowse Pattern IDを`browse`認可のResourceとして、Command Pattern IDを`execute`認可のResourceとして渡す。HTTP要求文字列から権限の対象を直接採用しない。
+- `authorized_bind_test.go`は既存の`reference/legacy-auth/users.json`および`authorization.json`を**実際の`legacyauthorization.Adapter`**から読み込み、編集者・閲覧者・無効化・ロック・未知Subjectについて確認する。許可されたBrowseでも禁止列`total`へのアクセスは拒否する。
+- 認可の戻り値は、業務上の拒否`ErrRejected`、認可実行不能`ErrAuthorizationUnavailable`、不正な認可結果`ErrAuthorizationContract`へ分ける。いずれも処理続行は不可とする。外部HTTP応答に内部障害の詳細を転記しない。
+- **未検証**：本物のHost SessionからのSubject IDの取得、項目Grant/RowScope IDの認可正本からの導出、Query Providerへの安全な動的押し下げ、Capabilityの型付き入力検証、更新確定時の再認可、実書込やDB再読込。Fixtureで許可されたことは本番権限の保証にならない。
 
 ## 次の接続先
 
