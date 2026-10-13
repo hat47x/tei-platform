@@ -168,21 +168,21 @@ Q1は、判定段階BのReady判定に加える条件ではありません。
 
 ## 7. Q2 — First Web Target / Gate C
 
-Gate Cの既存Evidence分離を維持します。
+判定段階Cで定めた検証根拠の区別を維持します。
 
-1. Semantic Conformance
-2. Interaction / Functional Evidence
-3. Visual Fidelity Evidence
+1. 意味の準拠確認
+2. 操作・機能の検証根拠
+3. 表示の忠実度に関する検証根拠
 
-これらを単一`qualityScore`へ統合しません。
+これらを単一の`qualityScore`にまとめることはしません。
 
-First Targetでは追加で次を観測します。
+最初の実行先では、さらに次の事項を観測します。
 
-- operability / recovery
-- applicable accessibility checks
-- performance / resource baseline
-- failure / degraded / unknown behavior
-- Quality Envelope provenance
+- 操作可能性と回復
+- 適用可能なアクセシビリティの確認
+- 性能と資源使用量の基準値
+- 失敗・機能低下・不明状態での動作
+- Quality Envelopeの来歴
 
 ### Reference Scenario matrix
 
@@ -197,28 +197,28 @@ First Targetでは追加で次を観測します。
 | command | invoke once | pending / result state | response latency | timeout / unknown |
 | observation | actual state visible | state clarity | completion latency | unresolved保持 |
 
-この表はplanning matrixであり固定artifact schemaではありません。
+この表は検証計画を整理するためのもので、固定された成果物のスキーマではありません。
 
 ### Web accessibility
 
-適用可能なWCAG 2.2 criteriaを外部test referenceとして利用できます。
+適用可能なWCAG 2.2の達成基準を、外部の試験基準として参照できます。
 
-まずReference Scenarioで価値が高い:
+まず、参照シナリオで重要度の高い次の事項を検証します。
 
-- keyboard operation
-- focus visibility / order
-- validation / error association
-- status communication
-- non-color-only communication
-- zoom / reflow / pointer interaction where applicable
+- キーボードによる操作
+- フォーカスの視認性と移動順序
+- 検証規則とエラー表示の対応付け
+- 状態の伝達
+- 色だけに依存しない情報伝達
+- 適用可能な場合の拡大表示・リフロー・ポインター操作
 
-等からEvidence化します。
+これらから順に検証根拠を取得します。
 
-全適合claimは実Evidenceなしに宣言しません。
+実際の検証根拠なしに、全基準への適合を主張することはしません。
 
 ### performance baseline
 
-RQ-024に従い、まず:
+RQ-024に従い、まず次の条件を記録します。
 
 ```text
 B / R
@@ -232,13 +232,13 @@ observed distribution
 resource use where useful
 ```
 
-を記録します。
+各項目を記録します。
 
-全Scenarioへ一律`sub-second`等を要求しません。
+すべてのシナリオに、`sub-second`などの一律の性能基準を適用することはしません。
 
 ## 8. Q3A — Studio / Authoring quality
 
-重点Scenario:
+重点的に検証するシナリオ：
 
 ```text
 Select
@@ -248,19 +248,19 @@ Select
  -> reload / Conformance
 ```
 
-Pressure:
+厳密に検証する条件：
 
-- Preview / Rejectはnon-mutating
-- stale baseを黙ってapplyしない
-- partial write / failureをsuccess扱いしない
-- high-densityでもselection / focus / diagnostic locationを失わない
-- Acceptance failureからsource / subject / violated contractへ戻れる
+- 事前確認と却下では正本の内容を変更しない
+- 基準版が古い場合に、確認せずに変更を適用しない
+- 書込みが一部だけ完了した場合や失敗を成功として扱わない
+- 情報量の多い画面でも、選択位置・フォーカス・診断箇所を失わない
+- 受理に失敗した場合、ソース・対象・違反した契約まで追跡できる
 
-主にRQ-002 / 010 / 017 / 021 / 023を圧力試験します。
+主にRQ-002・010・017・021・023の境界を厳密に検証します。
 
 ## 9. Q3B — AI / derived cognition quality
 
-次を分離します。
+次の事項を区別します。
 
 ```text
 candidate quality
@@ -269,60 +269,60 @@ candidate quality
    != execution authority
 ```
 
-候補mechanismで測れるもの:
+候補を生成する仕組みについて測定できる項目：
 
-- recall / missed candidate
-- irrelevant candidate
-- no-candidate / unknown behavior
-- determinism / stability where expected
-- latency
-- memory / index size
-- rebuild cost
-- external model / service cost
+- 再現率と見逃した候補
+- 関係のない候補
+- 候補がない場合と不明状態での動作
+- 必要な場合の決定論的な動作と安定性
+- 応答時間
+- メモリ使用量と索引のサイズ
+- 再構築に必要な費用や処理量
+- 外部モデルやサービスの利用費用
 
-Failure Pressure:
+失敗時に検証する条件：
 
-- relevant candidateを返せない
-- irrelevant candidateが上位
-- index stale
-- LLM / external service unavailable
-- derived index全削除
+- 関連する候補を返せない
+- 関係のない候補が上位に表示される
+- 索引が古くなっている
+- LLMや外部サービスを利用できない
+- 派生した索引がすべて削除された
 
-いずれでもCanonical Worldを失わず、candidateをFactへ格上げしません。
+いずれの場合も正本のモデルを失わず、候補を事実として確定させることはしません。
 
 ## 10. Q3C — Second Target
 
-Second Targetでは第一Targetで得たquality仮説を移植せず、同じmeaning baselineに対して再測定します。
+二つ目の実行先では、最初の実行先で得た品質の仮説をそのまま当てはめず、同じ意味の基準版を対象に改めて測定します。
 
-比較軸:
+比較する観点：
 
-- Target Capability
-- Execution / Trust
-- interaction modality
-- Semantic / Functional / Visual Evidence
-- operability / accessibility
-- performance / resource
-- failure / recovery
+- 実行先の能力
+- 実行と信頼の条件
+- 操作方法
+- 意味・機能・表示の検証根拠
+- 操作可能性とアクセシビリティ
+- 性能と資源使用量
+- 失敗と回復
 
-第一Targetのthresholdが第二Targetにも妥当かはEvidenceから判断します。
+最初の実行先の合格基準値が二つ目の実行先でも妥当かどうかは、検証根拠に基づいて判断します。
 
 ## 11. Q4 — Provider / production boundary
 
-production maturityでは次を段階的にEvidence化します。
+本番運用の成熟度については、次の事項を段階的に検証します。
 
-- operational telemetry correlation
-- durable store / HA
-- recovery / takeover
-- compatibility / upgrade
-- signed artifact / provenance
-- dependency / supply-chain
-- secret / credential operation
+- 運用上の監視記録の対応付け
+- 永続的な保存機構と高可用性
+- 回復と実行担当の引継ぎ
+- 互換性と更新
+- 署名付き成果物と来歴
+- 依存関係とソフトウェアの供給経路
+- 秘密情報と認証情報の運用
 
-OpenTelemetry / NIST SSDF等を利用しても、それらへの形式準拠だけでTEI Product Requirement成立とは扱いません。
+OpenTelemetryやNIST SSDFなどを参照しても、形式上の準拠だけでTEIの製品要求を満たしたとは判断しません。
 
 ## 12. Quality Envelopeの最小評価表現
 
-領域ごとに異なるartifactを使ってよいですが、review時には少なくとも次を説明できることを目指します。
+領域ごとに異なる成果物を使えます。ただし、レビューでは少なくとも次の内容を説明できることを目指します。
 
 ```text
 claim
@@ -335,19 +335,19 @@ claim
   status: observed-pass | observed-fail | unresolved | not-applicable | not-observed
 ```
 
-この表現を今すぐCanonical schemaへしません。
+この表現を現時点で正本のスキーマとして固定することはしません。
 
 ## 13. 完了判定
 
-Product Qualityは一度で`Done`になるworkstreamではありません。
+製品品質は、一度の作業で`Done`になるものではありません。
 
-#565の完了は:
+#565で完了と判断する範囲は次のとおりです。
 
-- quality concernが既存Requirementへ整理される
-- cross-cutting Architectureがある
--段階的なEvidence計画がある
-- 新Gate / 新Requirement / 第二正本を不要に増やしていない
+- 品質上の観点が既存の製品要求との対応関係に整理されている
+- 横断的なアーキテクチャが定義されている
+- 段階的な検証根拠の取得計画がある
+- 新たな判定段階・製品要求・第二の正本を不要に増やしていない
 
-ことまでです。
+ここまでを完了範囲とします。
 
-actual quality claimは各Reference / Target / RuntimeのEvidence取得時に更新します。
+品質についての具体的な主張は、参照事例・実行先・実行環境の検証根拠を取得した時点で更新します。
