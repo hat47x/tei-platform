@@ -103,7 +103,7 @@ func runCLI(args []string, output io.Writer) error {
 			}
 			return encoder.Encode(struct {
 				Assessment WorkspaceAssessment `json:"assessment"`
-				Readiness  PurposeProjection  `json:"readiness"`
+				Readiness  PurposeProjection   `json:"readiness"`
 			}{Assessment: assessment, Readiness: projection})
 		}
 		return encoder.Encode(assessment)
