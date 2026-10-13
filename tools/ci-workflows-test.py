@@ -109,6 +109,10 @@ def push_path_errors(source):
         failures.append('only pull_request runs may be cancelled')
     if 'ls-remote' in source:
         failures.append('push checks must not depend on the live remote main')
+    if '\n  push:\n    branches: [main]\n' not in source:
+        failures.append('push trigger must stay main-only')
+    if source.count('concurrency:') != 1:
+        failures.append('concurrency must be declared once at the workflow level')
     return failures
 
 
@@ -448,8 +452,6 @@ class StaticWorkflowContract(unittest.TestCase):
         text, _ = scripts(AUTO_HEALTH)
         self.assertEqual([], push_path_errors(text))
         self.assertIn(CANCEL_ONLY_PULL_REQUEST, text)
-        # The old shared group keyed by ref let a later main push cancel it.
-        self.assertNotIn('github.ref }}\n', text)
 
     def test_push_path_rejects_unsafe_mutations(self):
         source = AUTO_HEALTH.read_text(encoding='utf-8')
@@ -463,8 +465,12 @@ class StaticWorkflowContract(unittest.TestCase):
             source.replace('              test "$GITHUB_REF" = refs/heads/main\n',
                            '              test "$GITHUB_REF" = refs/heads/main\n'
                            '              git ls-remote ' + REMOTE_URL + ' refs/heads/main\n', 1),
+            source.replace('  push:\n    branches: [main]\n',
+                           '  push:\n    branches: [main, "work/**"]\n', 1),
+            source.replace('\njobs:\n',
+                           '\nconcurrency:\n  group: extra\n\njobs:\n', 1),
         ]
-        self.assertEqual(5, len(mutations))
+        self.assertEqual(7, len(mutations))
         for index, changed in enumerate(mutations):
             with self.subTest(index=index):
                 self.assertNotEqual(source, changed)
