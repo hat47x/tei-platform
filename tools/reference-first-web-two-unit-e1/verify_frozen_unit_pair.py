@@ -16,7 +16,7 @@ import sys
 # Runtime preflight must never dirty a clean source checkout with __pycache__.
 sys.dont_write_bytecode = True
 
-from inspect_frozen_api_build import EXPECTED_TAGS, read_go_build_settings
+from inspect_frozen_api_build import EXPECTED_TAGS, read_go_build_settings, read_go_vcs_settings
 
 
 SHA = re.compile(r"[0-9a-f]{64}\Z")
