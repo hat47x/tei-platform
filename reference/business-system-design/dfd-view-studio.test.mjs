@@ -1153,3 +1153,39 @@ test('drag started before layout apply cannot propose a move against replacement
   release();await waiting;
   assert.equal($('apply').disabled,true);
 });
+
+// A delayed event from an old SVG must not act on a replacement projection,
+// even when the new projection reuses the same reference-local Step ID.
+test('detached SVG events cannot select or move a replacement DFD',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.ok(old);
+  await input('dfd-file',{...projection});
+  assert.equal($('details').children.length,0);
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:121,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:121,clientX:400,clientY:300});
+  assert.equal($('details').children.length,0);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('semantic-propose').disabled,true);
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  live.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+});
+
+test('SVG nodes retired by selection re-render cannot propose a move',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:122,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:122,clientX:400,clientY:300});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  live.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false,'current SVG node retains keyboard placement');
+});
