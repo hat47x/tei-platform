@@ -12,6 +12,26 @@ import (
 	"tei/internal/sourceindex"
 )
 
+
+// checkAcceptedWorkspaceIdentity detects a replacement of the named
+// Workspace directory after the root was pinned. This compares filesystem
+// identities, not merely the contents or modelRevision, and is a preflight:
+// another process may still rename the path after this test.
+func checkAcceptedWorkspaceIdentity(rootPath string, files *os.Root) error {
+	pinned, err := files.Stat(".")
+	if err != nil {
+		return fmt.Errorf("stat pinned Acceptance Workspace: %w", err)
+	}
+	named, err := os.Stat(rootPath)
+	if err != nil {
+		return fmt.Errorf("stat named Acceptance Workspace: %w", err)
+	}
+	if !os.SameFile(pinned, named) {
+		return fmt.Errorf("Acceptance Workspace directory has been replaced")
+	}
+	return nil
+}
+
 // acceptedSourcePath retains the shared Source Index's relative path policy.
 // All accepted-source operations below use a single opened os.Root instead
 // of rebuilding absolute write paths from an untrusted Workspace filename.
