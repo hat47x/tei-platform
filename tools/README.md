@@ -87,6 +87,7 @@
 
 | 場所 | 役割 |
 | --- | --- |
+| [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-driver-postgres-query/`](reference-driver-postgres-query/) | DriverからPostgreSQL問合せを実行する参照用起動点 |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
