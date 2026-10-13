@@ -83,6 +83,8 @@ shape名だけの一致では不十分です。同じshape名でwire schemaが�
 
 shape fingerprintは文字列だけで管理しません。Referenceではrequest / resultのshapeを埋め込みJSON artifactとして保持し、Contractがshape ID、exact fingerprint、issuer identityを参照します。Implementationも同じartifactを提示しなければ実行できません。
 
+形の検証では、JSONを単純なmapへ復号すると同じキーの複数出現が上書きされ、構造上は適合と誤判定されます。このため、JSONの全階層で同じオブジェクト内の重複キーを復号時に拒否します。エスケープで異なる綴りになっていても、復号後のキーが一致すれば重複と判断します。要求はdomain実装を呼ぶ前、応答は受理する前に検査します。異なる明細行に同名属性があることは重複ではありません。読み取り専用の見積もり候補の形も、この拒否条件の負例として用います。これはJSON正規化規約・業務制約・署名・採用済みContract Authorityを追加するものではありません。
+
 Invocation Registryは、requestを実装呼出し前に検証し、resultを呼出し後に検証します。Referenceのshape languageは、JSON object / array / map / scalarとopaque bytesだけを扱う小さなものです。未知field、必須field欠落、JSON型の不一致を共通境界で拒否します。Source AdapterやContract Queryの業務意味はdomain adapter側に残し、schema validationへ移しません。
 
 実Source AdapterとContract Queryのshape artifactは`tools/reference-plugin-capability-contract/shapes/`のJSONを正本とし、Go側は埋め込んで読み込みます。Go literalとJSONを二つの正本にはしません。shape artifact内のissuer変更もfingerprint変更として検出されます。
@@ -150,3 +152,32 @@ negative controlでは、Environment PlanにCapabilityが無い場合、Plugin i
 generic InvocationがRuntime Authorityを代替するわけではありません。generic resolverが選んだProviderは、production Environment Planが許可していなければ実行できません。反対に、Environment Planが許可しただけでgeneric ContractのConformanceを満たしたことにもなりません。二つの検査を別の境界として維持します。
 
 現時点では、production `InvocationProvenance`をadapter内で保持していますが、generic `InvocationExecution`の機械可読なEvidenceとしてはまだ返していません。generic consumerがRuntime Authorityの根拠へ一回で戻れるようにする場合は、provenanceを失わずに運ぶ共通receiptが別途必要です。Referenceはこの点を未解決のまま明示します。
+
+## 未採用の見積もり契約候補から実業務プロセスを呼び出すReference
+
+[結合試験](quote_process_contract_bridge_test.go)では、`reference/candidates/order-quote/shapes/`の未採用Shapeと既存のGeneric Contract解決器・Invocation Registryを使い、`plugins/reference-order-quote/`からビルドした実行ファイルを起動して、明細の税抜小計を計算します。契約の要求形状を実行前に、応答形状を実行後に検査し、候補プロバイダー・成果物指紋・テスト用Evidenceの対応付けを確認します。
+
+- Provider Conformanceが無い要求、契約Shapeに適合しない要求、解決されたものとは異なる成果物、試験用Host許可の失効は、実プロセスの起動前に拒否します。
+- 正常な要求は実プロセスが税抜小計を計算し、Invocation Registryが応答の構造を検証します。
+- 実行ファイルを書き換えた場合は、ホスト側のテスト用SHA-256照合で次の起動を拒否します。
+
+この試験に使うShape publisher trustとProvider Conformanceは**テスト内で合成された証跡**であり、未採用の業務契約を正式公開したわけではありません。実行ファイルのSHA-256照合・Host許可フラグはテスト専用で、製品RuntimeのAuthority、Permission、Sandbox、署名、Originを代替しません。旧プロセス通信の固定指紋は**運搬手段に固有のReference値**であり、新しいService Contract/Shapeのfingerprintと同一ではありません。したがってこの結合試験を、本番向けService Contractの移行完了と解釈しません。
+
+単独モジュールとしての構築と依存の隔離は[業務プラグインの結合試験](../reference-capability-transport/order_quote_process_test.go)で別途確認します。現試験は契約候補から実プロセスまでの**接続欠落を検知するReference**であって、別のResolver、Runtime Authority、Transportを製品へ追加しません。
+
+
+### 製品Host Runtimeまで接続した縦断Reference
+
+[契約候補→ServiceCarrier→製品Host→実プロセス](quote_service_host_e2e_test.go)は、既存の候補Contract解決器・独立した要求／応答Shape Authorityのテスト用信頼証跡と、製品`EnvironmentPlan.ServiceBindings`・`Registry.InvokeSelectedServiceCarrier`を**同じ呼出し**で通します。見積もりの税抜小計1,550円が実プラグインから返り、結果Shapeに適合することを確認します。Conformance欠落・要求Shape不一致・Host Binding欠落・Artifact差異・Host Verifier失効は、別々の境界で実プロセスを起動せず拒否します。旧Carrierへ送るReference wireの生成・応答検査は従来の結合試験と共有し、第二のTransportを作りません。
+
+この試験で使うContract Publisher TrustとProvider Conformanceは**メモリ上の合成試験証跡**です。Hostの検証も実行ファイルのSHA-256照合だけであり、署名・来歴・永続的な採用記録・Sandbox・権限付与の完備は証明しません。`ServiceBinding`は正式なContract/Provider Authorityの代わりにならず、`CapabilityContractQueryExecutor`は見積もり業務を表す意味契約ではなく旧Process Carrierの種別です。案件固有プラグインの開発に、これらの試験用詳細メタデータを一律に書かせる仕様ではありません。
+
+
+
+### Host現在受理を既存のIssuer Trustで照合するReference
+
+[Host受理Reader](host_current_acceptance_reader.go)を通し、製品Runtimeの`ServiceAcceptanceReader`へ、**Hostが管理する現在の契約公開・Provider適合性・Issuer Grant**を毎回読むためのReferenceアダプターを接続しました。契約意味の完全なFingerprint、ProviderのPlugin ID/Version・Implementation ID・成果物Digest・Conformance Profile、Provider Conformance Evidenceとその発行権限をそれぞれexact照合します。Issuerの権限種別・Scope・失効・曖昧性は**既存**の`reference-authority-evidence-trust/trust.Verify`を再利用します。旧CapabilityKindやHost Runtime Permissionを契約意味・Issuer Authorityと同一視しません。
+
+検証対象は受理Sourceが無い場合、Contract定義の後出し変更、Provider/Artifact/Conformanceの取り違え、Publisher Namespaceの横取り、Provider Conformance IssuerのScope違い、受理削除、Grant取消・二重Grantです。同一のService選択とRuntime Planであっても、次の呼出しで現在のIssuer Grantが失効していれば子プロセス起動前に拒否します。[見積もり実プロセス縦断試験](quote_service_host_e2e_test.go)にもこのReaderを配線し、単に固定文字列を返すモックから置き換えました。
+
+**重要な限界**：これは未採用候補に基づく**Reference**です。Authority Grant自体は構造と指紋の整合検査しかできず、その発行元の認証・署名・秘匿保管を保証しません。試験ではGrantも受理情報もメモリ上で合成しています。Host Sourceが信頼済みの正本であり、Namespace所有・受理・現在性・撤回を認証済みの経路で取得していることは**別途必須**です。このReaderをそのまま正式な受理機構と宣言せず、新しいIssuer/Resolverを増やしません。案件内プラグインの作者に上記の証跡を一律に記述させる要件ではありません。

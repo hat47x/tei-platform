@@ -60,8 +60,11 @@ type ConfirmationRoute struct {
 }
 
 type BoundAnswer struct {
-	Question          QuestionRef        `json:"question"`
-	QuestionText      string             `json:"questionText"`
+	Question     QuestionRef `json:"question"`
+	QuestionText string      `json:"questionText"`
+	// A snapshot of the validated derived issue, not a claim by the answerer.
+	// Authored questions have no derived record provenance.
+	SourceIssue       *ReviewIssue       `json:"sourceIssue,omitempty"`
 	Response          string             `json:"response"`
 	Disposition       string             `json:"disposition"`
 	Context           string             `json:"context"`
@@ -143,6 +146,7 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 		}
 		var questionText string
 		var route *ConfirmationRoute
+		var sourceIssue *ReviewIssue
 		switch answer.Question.Kind {
 		case "authored":
 			q, found := authored[answer.Question.ID]
@@ -156,6 +160,15 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 				return empty, fmt.Errorf("unknown or stale derived question %q", answer.Question.ID)
 			}
 			questionText = issue.Question
+			// Copy the actual issue supplied by the rebuilt Review, including
+			// its exact and possible target IDs. Never trust answer-supplied
+			// record IDs and never infer these from the answer text.
+			issueCopy := issue
+			issueCopy.FrameIDs = append([]string(nil), issue.FrameIDs...)
+			issueCopy.MatchedTargetIDs = append([]string(nil), issue.MatchedTargetIDs...)
+			issueCopy.PossibleTargetIDs = append([]string(nil), issue.PossibleTargetIDs...)
+			issueCopy.EvidenceNeeded = append([]string(nil), issue.EvidenceNeeded...)
+			sourceIssue = &issueCopy
 			if issue.RelationID != "" {
 				// The existing Confirmation history checks Source Index
 				// subjects, not the illustrative Example content. Its subject
@@ -210,7 +223,8 @@ func BindAnswers(input Input, answers AnswerInput) (AnswerHandoff, error) {
 		}
 		out.Answers = append(out.Answers, BoundAnswer{
 			Question: answer.Question, QuestionText: questionText,
-			Response: response, Context: context,
+			SourceIssue: sourceIssue,
+			Response:    response, Context: context,
 			Disposition: answer.Disposition,
 			ClaimedBy:   AnswerActor{Kind: answer.ClaimedBy.Kind, ID: actorID},
 			Evidence:    evidence, Status: "unverified",

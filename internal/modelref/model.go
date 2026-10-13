@@ -73,7 +73,8 @@ type Diagnostic struct {
 }
 
 func validKey(k Key) bool {
-	return strings.TrimSpace(k.Scope) != "" && strings.TrimSpace(k.Subject.Kind) != "" &&
+	scope := strings.TrimSpace(k.Scope)
+	return scope != "" && scope == k.Scope && strings.TrimSpace(k.Subject.Kind) != "" &&
 		strings.TrimSpace(k.Subject.ID) != "" && !strings.ContainsAny(k.Scope, "\n\r\t")
 }
 

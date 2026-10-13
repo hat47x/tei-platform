@@ -65,3 +65,34 @@ func TestMigrationCannotSilentlyReplaceReferenceEvidence(t *testing.T) {
 		t.Fatalf("unrelated edge proof substitution concealed: %+v", r.Diagnostics)
 	}
 }
+
+// All evidence for the same reference signature must be accounted for. Neither
+// the last edge in the slice nor ordering of edge declarations is authoritative.
+func TestMigrationDuplicateUnrelatedReferenceEvidenceIsNotHidden(t *testing.T) {
+	before, after, transition, move := rekeyFixture()
+	before.Edges[1].Evidence = []modelref.Evidence{{Authority: "proposal", Context: "alpha"}}
+	after.Edges[1].Evidence = []modelref.Evidence{{Authority: "proposal", Context: "alpha"}}
+	duplicate := before.Edges[1]
+	duplicate.Evidence = []modelref.Evidence{{Authority: "proposal", Context: "beta"}}
+	before.Edges = append(before.Edges, duplicate)
+	after.Edges = append(after.Edges, duplicate)
+
+	moves := []modelref.EdgeRetarget{move}
+	if out := modelref.ReviewMigration(before, after, transition, moves, rules(), "revision"); !out.Consistent {
+		t.Fatalf("unchanged duplicate references cannot block migration: %+v", out.Diagnostics)
+	}
+	last := len(after.Edges) - 1
+	after.Edges[1], after.Edges[last] = after.Edges[last], after.Edges[1]
+	if out := modelref.ReviewMigration(before, after, transition, moves, rules(), "revision"); !out.Consistent {
+		t.Fatalf("permuting duplicate edges changes evidence meaning: %+v", out.Diagnostics)
+	}
+	after.Edges[1], after.Edges[last] = after.Edges[last], after.Edges[1]
+
+	// Mutate the first occurrence, preserving the last matching edge. The
+	// former map[edgeID]string implementation compared only the last one.
+	after.Edges[1].Evidence = []modelref.Evidence{{Authority: "proposal", Context: "changed"}}
+	out := modelref.ReviewMigration(before, after, transition, moves, rules(), "revision")
+	if out.Consistent || !hasCode(out.Diagnostics, "unreviewed-reference-evidence") {
+		t.Fatalf("modified non-final duplicate was approved: %+v", out.Diagnostics)
+	}
+}

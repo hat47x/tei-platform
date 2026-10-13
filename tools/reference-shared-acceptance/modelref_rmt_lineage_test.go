@@ -187,4 +187,52 @@ func TestIssue1120RMTEvidenceTokenToAcceptedTypedIdentity(t *testing.T) {
 	if link.MeaningStatus != rmtlink.MeaningUnresolved {
 		t.Fatal("accepted TEI meaning implied equivalence with legacy observation")
 	}
+
+	lineage, err := traceRMTIdentityAcrossAcceptance(link, context, before, after, scope)
+	if err != nil {
+		t.Fatalf("recorded acceptance cannot be traced to typed Source: %v", err)
+	}
+	if lineage.Target != newKey || lineage.SourceToken != sourceEvidence.SourceToken ||
+		lineage.SourceDigest != sourceEvidence.SourceArtifactDigest ||
+		lineage.CandidateFingerprint != decision.CandidateFingerprint ||
+		lineage.ReviewFingerprint != decision.ReviewBinding.Fingerprint ||
+		lineage.DefinitionPath != "semantic/sales/validation.tei" ||
+		lineage.BeforeRevision != before.revision || lineage.AfterRevision != after.revision ||
+		lineage.MeaningStatus != rmtlink.MeaningUnresolved {
+		t.Fatalf("accepted source identity / legacy provenance drifted: %+v", lineage)
+	}
+	t.Run("reject altered source correlation", func(t *testing.T) {
+		tampered := link
+		tampered.SourceToken = "sha256:" + strings.Repeat("0", 64)
+		if _, err := traceRMTIdentityAcrossAcceptance(tampered, context, before, after, scope); err == nil {
+			t.Fatal("tampered source token was accepted")
+		}
+	})
+	t.Run("reject stale before revision", func(t *testing.T) {
+		staleBefore := before
+		staleBefore.revision = "sha256:" + strings.Repeat("0", 64)
+		if _, err := traceRMTIdentityAcrossAcceptance(link, context, staleBefore, after, scope); err == nil {
+			t.Fatal("stale base revision was accepted")
+		}
+	})
+	t.Run("reject unbound after revision", func(t *testing.T) {
+		staleAfter := after
+		staleAfter.revision = "sha256:" + strings.Repeat("0", 64)
+		if _, err := traceRMTIdentityAcrossAcceptance(link, context, before, staleAfter, scope); err == nil {
+			t.Fatal("unbound decision ledger revision was accepted")
+		}
+	})
+	t.Run("reject source mutation after snapshot", func(t *testing.T) {
+		path := filepath.Join(dir, filepath.FromSlash(lineage.DefinitionPath))
+		bytes, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, append(bytes, '\n'), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := traceRMTIdentityAcrossAcceptance(link, context, before, after, scope); err == nil {
+			t.Fatal("mutated accepted Source was treated as unchanged")
+		}
+	})
 }

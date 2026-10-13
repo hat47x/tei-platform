@@ -25,6 +25,38 @@ go run ./tools/reference-standard-function-candidates \
 
 既存のアプリケーションに同じデータを参照する手書きの一覧・単票があれば、その候補を重複生成しません。別の機能の命名と派生IDが衝突するときや、対象のアプリケーション・意味の参照が曖昧なときは、候補を推測せずエラーにします。
 
+## 明示された機能の契約を調べる
+
+すでに正本に定義された機能については、次のように`-pattern`を指定します。
+
+```sh
+go run ./tools/reference-standard-function-candidates \
+  -workspace reference/workspace -application order_entry \
+  -pattern order_entry.recent_orders
+
+go run ./tools/reference-standard-function-candidates \
+  -workspace reference/workspace -application order_entry \
+  -pattern order_entry.submit_order
+```
+
+この経路では新しい機能を派生させず、既存の`Driver`が公開する解決処理をそのまま使います。一覧はデータ、問合せ、データソースの明示参照を照合し、操作はCapabilityとそのアプリケーション固有のBindingを照合します。解決不能・曖昧な参照は拒否します。
+
+戻り値の`resolved`は**正本の参照を解決した項目**、`unverified`は**実行までに別途証明すべき項目**です。問合せの提供元への接続、現在の利用権、実行先、永続化、独立した再読込は、この検査の外に残ります。操作用のPatternはデータとの作成・変更関係を宣言していないため、Capabilityの名前や出力型から関係を推定しません。すべての`executable`は`false`です。
+
+操作が特定の業務データを**作成**・**変更**する意図は、Capabilityの意味宣言に任意で記述できます。たとえば `capability intake.request.create { effect create intake.request }` です。`command`側には同じデータを重複記述せず、既存のCapability参照だけを置きます。この宣言があるときだけ、`-pattern`の応答に`declaredData`と`dataOperation`が現れます。未宣言なら従来どおり`data-operation-link`は未検証です。
+
+実際の記述例は`examples/first-capability-effect/`にあります。次のコマンドは、意味定義・アプリケーション・操作機能・Bindingを**ファイルから読んで**作成の意図を表示します。
+
+```sh
+go run ./tools/reference-standard-function-candidates \
+  -workspace examples/first-capability-effect \
+  -application request_log -pattern request_log.create_request
+```
+
+`effect`は**利用者が記述した業務上の意図**であり、永続的な副作用をTEIが実行・認可・観測した証拠ではありません。参照するDataが存在しない場合、未知の操作、同じCapabilityでの重複宣言は拒否します。保存先と権限・Provider・独立再読込は、どの場合も引き続き未検証のままです。
+
+初回作業領域にはまだ明示的な機能がありません。その作業領域へ`-pattern`を指定しても、元の候補から仮の実行用Patternを作らず、失敗します。
+
 ## 確認
 
 ```sh

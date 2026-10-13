@@ -9,7 +9,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { candidateFromEdit, projectWorld } from "./bridge.mjs";
+import { runInNewContext } from "node:vm";
+import { candidateFromEdit, projectWorld, navigateReferenceBusinessStep } from "./bridge.mjs";
 
 if (process.env.TEI_STUDIO_E2E !== "1") {
   process.stderr.write("Set TEI_STUDIO_E2E=1 to run scratch-only Source Acceptance tests.\n");
@@ -26,8 +27,17 @@ function command(executable, args, expectedSuccess = true) {
     cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024
   });
   if (r.error) throw r.error;
-  if (expectedSuccess && r.status !== 0)
-    throw new Error(executable + " " + args.join(" ") + ": " + r.stderr);
+  if (expectedSuccess && r.status !== 0) {
+    // Shared Acceptance writes refusals and stage diagnostics to stdout.
+    // Include both streams so a negative result cannot masquerade as a
+    // launcher error. The test uses only scratch workspaces.
+    const diagnosis = {
+      exitStatus: r.status, stderr: r.stderr.slice(0, 8192),
+      stdout: r.stdout.slice(0, 16384)
+    };
+    throw new Error(executable + " " + args.join(" ") + ": " +
+      JSON.stringify(diagnosis));
+  }
   if (!expectedSuccess && r.status === 0)
     throw new Error("Expected failure but succeeded: " + executable + " " + args.join(" "));
   return r;
@@ -81,6 +91,65 @@ function input(label, suffix, value) {
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
   return path;
 }
+// Execute the actual SCRIPT embedded in the CLI-produced offline form in a
+// restricted DOM mock. Do not synthesize a visual edit JSON in the test.
+function submitOfflineEditor(html, edit, baseRevision) {
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  checked(scripts.length === 1, "editor: exactly one pinned inline script");
+  const script = scripts[0][1];
+  const digest = createHash("sha256").update(script).digest("base64");
+  checked(html.includes("script-src &#39;sha256-" + digest + "&#39;") &&
+    html.includes("connect-src &#39;none&#39;"),
+    "editor: offline script is CSP-pinned and network access denied");
+  const readInput = id => {
+    const tag = html.match(new RegExp('<input id="' + id + '"[^>]*>'))?.[0];
+    assert.ok(tag, "editor: missing expected input " + id);
+    const value = tag.match(/value="([^"]*)"/)?.[1];
+    assert.notEqual(value, undefined, "editor: missing initial value for " + id);
+    return value;
+  };
+  const values = {
+    "subject": readInput("subject"),
+    "model-revision": readInput("model-revision"),
+    "view": readInput("view"),
+    "candidate-id": edit.id, "intent": edit.intent,
+    "symbol": edit.symbol, "target-data": edit.targetData,
+    "cardinality": edit.cardinality, "validation-id": edit.validationID,
+    "application": edit.applicationUse?.application,
+    "placement": edit.applicationUse?.placement
+  };
+  checked(values.subject === edit.subject &&
+    values["model-revision"] === baseRevision &&
+    values.view === edit.view,
+    "editor: browser DOM uses exactly the currently inspected Source revision");
+  const controls = new Map(Object.entries(values).filter(([, v]) =>
+    v !== undefined).map(([key, value]) => [key, { value }]));
+  if (html.includes('id="use-application"'))
+    controls.set("use-application", { checked: !!edit.applicationUse });
+  const result = { value: "", focus() {}, select() {} };
+  const notice = { textContent: "" };
+  controls.set("proposal-json", result);
+  controls.set("notice", notice);
+  let submit;
+  controls.set("studio-edit", { addEventListener(event, handler) {
+    assert.equal(event, "submit");
+    assert.equal(submit, undefined);
+    submit = handler;
+  } });
+  // Available DOM controls and JSON only. No filesystem, subprocess or
+  // network API can be accessed by the form script in this sandbox.
+  runInNewContext(script, { document: {
+    getElementById: id => controls.get(id) ?? null
+  }, JSON }, { timeout: 1000 });
+  assert.equal(typeof submit, "function", "editor: submit handler registered");
+  let prevented = false;
+  submit({ preventDefault() { prevented = true; } });
+  checked(prevented && notice.textContent.includes("未審査") &&
+    result.value.endsWith("\n"),
+    "editor: simulated submit yields unapplied JSON only");
+  return JSON.parse(result.value);
+}
+
 function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   const workspace = newWorkspace(label);
   const beforeRevision = revision(workspace);
@@ -92,17 +161,76 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(beforeFocus.sourceNavigation.status === "source-index-backed",
     label + ": focus resolves to exact Source Index definition");
 
+  const editorPage = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "edit-form",
+    "-workspace", workspace, "-focus", edit.subject
+  ]).stdout;
+  checked(editorPage.includes("<!doctype html>") &&
+    editorPage.includes('id="studio-edit"') &&
+    editorPage.includes('id="proposal-json"') &&
+    editorPage.includes(beforeRevision) &&
+    editorPage.includes(edit.subject) &&
+    editorPage.includes("script-src") &&
+    !editorPage.includes(workspace),
+    label + ": live offline form binds exact Source revision without exposing workspace path");
+  const visualEdit = submitOfflineEditor(editorPage, edit, beforeRevision);
+  checked(visualEdit.origin === "studio" &&
+    visualEdit.expectedModelRevision === beforeRevision &&
+    visualEdit.id === edit.id &&
+    visualEdit.intent === edit.intent &&
+    visualEdit.operation === edit.operation &&
+    (edit.view !== "table" ||
+      visualEdit.applicationUse?.application === edit.applicationUse?.application),
+    label + ": actual browser-generated JSON preserves the requested operation");
+  const visualEditPath = input(label, ".visual-edit.json", visualEdit);
+  const visualCandidate = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "propose",
+    "-workspace", workspace, "-edit-file", visualEditPath
+  ]).stdout);
+  // The actual browser-produced input, validated through CLI propose, is
+  // what enters Go Preview/Review/Accept. A directly constructed candidate
+  // is used only as the independent semantic equivalence oracle.
   const proposal = candidateFromEdit(model, beforeRevision, edit);
-  const path = input(label, ".candidate.json", proposal);
+  const path = input(label, ".candidate.json", visualCandidate);
   checked(proposal.baseModelRevision === beforeRevision, label + ": base revision");
+  checked(visualCandidate.baseModelRevision === beforeRevision &&
+    visualCandidate.origin.kind === "studio" &&
+    visualCandidate.id === proposal.id &&
+    JSON.stringify(visualCandidate.delta) === JSON.stringify(proposal.delta),
+    label + ": browser-submitted form enters same Go-compatible candidate transport");
+
+  // A tampered client can submit a value not present in the HTML <select>.
+  // Studio/Shared Acceptance must validate semantic references server-side.
+  const badInput = label === "er"
+    ? { ...edit, targetData: "sales.nonexistent" }
+    : { ...edit, applicationUse: { ...edit.applicationUse,
+        application: "nonexistent_application" } };
+  const tamperedFormEdit = submitOfflineEditor(editorPage, badInput, beforeRevision);
+  const tamperedPath = input(label, ".tampered-form.json", tamperedFormEdit);
+  const tamperedReview = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "review-edit",
+    "-workspace", workspace, "-edit-file", tamperedPath
+  ], false);
+  const expectedRefusal = label === "er"
+    ? "INVALID_RELATION_PROPOSAL"
+    : "APPLICATION_DOES_NOT_DECLARE_SEMANTIC_USE";
+  checked(tamperedReview.stderr.includes(expectedRefusal),
+    label + ": a forged browser reference is rejected by the Source-owned model");
+  checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before) &&
+    revision(workspace) === beforeRevision,
+    label + ": invalid browser references cannot mutate Source or its revision");
+
+
 
   const derivedEdit = input(label, ".derived-edit.json", {
     ...edit, derived: true
   });
-  command(process.execPath, [
+  const rejectedDerived = command(process.execPath, [
     join(root, "reference/studio-authoring/cli.mjs"),
     "review-edit", "-workspace", workspace, "-edit-file", derivedEdit
   ], false);
+  checked(rejectedDerived.stderr.includes("DERIVED_IS_READONLY_OR_INVALID_EDIT"),
+    label + ": Derived edit fails for the expected safety reason, not an unrelated CLI crash (N05)");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     label + ": Derived edit cannot produce Source changes (N05)");
   const preview = JSON.parse(acceptance([
@@ -118,7 +246,30 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(review.previewAcceptable === true &&
     /^sha256:[0-9a-f]{64}$/.test(review.reviewFingerprint),
     label + ": review binding");
-  const editPath = input(label, ".edit.json", edit);
+  // Two independent actors have reviewed competing proposals based on R0.
+  // The first Acceptance must invalidate the other actor's earlier Review.
+  const rivalEdit = { ...edit, id: edit.id + "-rival",
+    origin: "ai",
+    intent: edit.intent + "（別の編集者による競合提案）" };
+  const rivalCandidate = candidateFromEdit(model, beforeRevision, rivalEdit);
+  const rivalPath = input(label, ".rival-candidate.json", rivalCandidate);
+  const rivalPreview = JSON.parse(acceptance([
+    "preview", "-workspace", workspace, "-candidate", rivalPath
+  ]).stdout);
+  const rivalReview = JSON.parse(acceptance([
+    "review", "-workspace", workspace, "-candidate", rivalPath, "-format", "json"
+  ]).stdout);
+  checked(rivalCandidate.id !== proposal.id &&
+    rivalCandidate.origin.kind !== visualCandidate.origin.kind &&
+    JSON.stringify(rivalCandidate.delta) === JSON.stringify(proposal.delta),
+    label + ": independent actors enter the same Shared Acceptance transport");
+  checked(rivalPreview.acceptable === true &&
+    rivalPreview.currentModelRevision === beforeRevision &&
+    rivalReview.previewAcceptable === true &&
+    /^sha256:[0-9a-f]{64}$/.test(rivalReview.reviewFingerprint),
+    label + ": competing candidate passes independent R0 Preview and Review");
+
+  const editPath = visualEditPath;
   const studioReview = JSON.parse(command(process.execPath, [
     join(root, "reference/studio-authoring/cli.mjs"),
     "review-edit", "-workspace", workspace, "-edit-file", editPath
@@ -128,6 +279,13 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     studioReview.sourceWriteByThisCommand === false &&
     studioReview.modelRevision === beforeRevision,
     label + ": one-shot Studio review is read-only, not Acceptance");
+  const coverageCodes = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"];
+  checked(coverageCodes.every(code =>
+    studioReview.review.sections?.filter(s => s.code === code).length === 1) &&
+    studioReview.review.coverage &&
+    studioReview.review.sections.every(s =>
+      ["available", "partial", "not-evaluated"].includes(s.coverage)),
+    label + ": Shared Acceptance reports all eight reviewed coverage categories");
   checked(studioReview.reviewConsistency.status === "reviewed-consistent" &&
     studioReview.reviewConsistency.readyToAccept === false,
     label + ": Preview and Review agree on R0 without conferring approval");
@@ -136,6 +294,58 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     label + ": Studio review delegates exactly to Shared Acceptance");
   checked(JSON.stringify(studioReview.candidate.delta) === JSON.stringify(proposal.delta),
     label + ": Studio review does not alter the proposed delta");
+  if (label === "er") {
+    const report = command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace, "-focus", "relation:sales.order.lines",
+      "-format", "html"
+    ]).stdout;
+    checked(report.includes("<!doctype html>") &&
+      report.includes('id="business"') &&
+      report.includes("source-index-backed") &&
+      report.includes("verified-at-read"),
+      "er: inspect HTML shows four lenses and the verified Source location");
+    // #1120 typed graph/sourcebridge is queried through the actual Go CLI.
+    // The observation scope is caller-selected; it does not qualify Business
+    // Procedure or bypass the existing Source/Acceptance authority.
+    const typedInspect = JSON.parse(command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:sales.order.lines",
+      "-typed-scope", "order-entry-reference"
+    ]).stdout);
+    checked(typedInspect.modelRevision === beforeRevision &&
+      typedInspect.typedReferences?.schema === "tei.reference.studio-typed-trace/v0" &&
+      typedInspect.typedReferences.subject.scope === "order-entry-reference" &&
+      typedInspect.typedReferences.subject.subject.kind === "semantic-relation" &&
+      typedInspect.typedReferences.sourceConsistency === "exact-anchor-match" &&
+      typedInspect.typedReferences.authority === "candidate-read-only",
+      "er: Go modelref/sourcebridge agrees with Studio Source anchor at R0");
+    const typedHTML = command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:sales.order.lines",
+      "-typed-scope", "order-entry-reference", "-format", "html"
+    ]).stdout;
+    checked(typedHTML.includes('id="typed"') &&
+      typedHTML.includes("candidate-read-only") &&
+      typedHTML.includes("exact-anchor-match"),
+      "er: browser document displays Go typed references separately without Acceptance");
+    const reviewPage = command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "review-edit", "-workspace", workspace, "-edit-file", editPath,
+      "-format", "html"
+    ]).stdout;
+    checked(reviewPage.includes("not-performed") &&
+      reviewPage.includes("未適用") && reviewPage.includes("source") &&
+      coverageCodes.every(code => reviewPage.includes(code + "　")) &&
+      reviewPage.includes("承認前に確認する審査区分") &&
+      reviewPage.includes('id="handoff-candidate"') &&
+      reviewPage.includes(studioReview.candidate.id) &&
+      reviewPage.includes(studioReview.review.reviewFingerprint) &&
+      reviewPage.includes("候補・版・審査の照合済み／人の判断は未実施"),
+      "er: review HTML includes unchanged candidate, review fingerprint, and unaccepted authority");
+  }
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     label + ": Preview, Review and Studio review do not mutate Source");
 
@@ -170,7 +380,29 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
   checked(after.modelRevision === afterRevision, label + ": new revision in projection");
   checked(after.sourceNavigation.status === "source-index-backed",
     label + ": accepted subject resolves to its exact updated Source anchor");
+  const liveInspect = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"),
+    "inspect", "-workspace", workspace,
+    "-focus", expectedKind + ":" + expectedID
+  ]).stdout);
+  checked(liveInspect.modelRevision === afterRevision &&
+    liveInspect.sourceNavigation.byteVerification?.status === "verified-at-read" &&
+    liveInspect.sourceNavigation.byteVerification?.fingerprint ===
+      liveInspect.sourceNavigation.artifactFingerprint,
+    label + ": Source Index bytes and exact position are verified on live inspect");
   if (expectedKind === "relation") {
+    const acceptedTyped = JSON.parse(command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:" + expectedID,
+      "-typed-scope", "order-entry-reference"
+    ]).stdout);
+    checked(acceptedTyped.modelRevision === afterRevision &&
+      acceptedTyped.typedReferences?.modelRevision === afterRevision &&
+      acceptedTyped.typedReferences?.subject.subject.id === expectedID &&
+      acceptedTyped.typedReferences?.sourceConsistency === "exact-anchor-match" &&
+      acceptedTyped.typedReferences?.authority === "candidate-read-only",
+      label + ": accepted R1 Relation is reloaded by Go typed trace and matched to updated Source");
     checked(after.views.er.edges.some(v => v.id === expectedID),
       label + ": accepted Relation appears in reprojected ER");
     checked(after.views.table.value.relations.some(v => v.id === expectedID),
@@ -207,6 +439,28 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
     label + ": stale Accepted Decision is explicitly refused (N06)");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
     label + ": stale Preview and stale Accept cannot modify newer Source");
+  const staleBrowserEdit = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "review-edit",
+    "-workspace", workspace, "-edit-file", visualEditPath
+  ], false);
+  checked(staleBrowserEdit.stderr.includes("STUDIO_EDIT_STALE_MODEL_REVISION") &&
+    JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale),
+    label + ": visual edit created from R0 cannot silently rebase onto R1");
+  // A distinct second actor's already-reviewed proposal also loses R0.
+  // This demonstrates optimistic concurrency, not simultaneous OS writes.
+  const rivalAccepted = JSON.parse(acceptance([
+    "accept", "-workspace", workspace, "-candidate", rivalPath,
+    "-expected-review-fingerprint", rivalReview.reviewFingerprint
+  ], false).stdout);
+  checked(rivalAccepted.decision === "refused" &&
+    rivalAccepted.sourceChanged === false &&
+    (rivalAccepted.refusals || []).some(r =>
+      r.code === "STALE_BASE_MODEL_REVISION"),
+    label + ": independently reviewed competing proposal is refused on R1 (N06)");
+  checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(beforeStale) &&
+    revision(workspace) === afterRevision,
+    label + ": rejected competing actor cannot overwrite Accepted R1");
+
   return {
     schema: "tei.reference.studio-source-loop-receipt/v0",
     name: label, scenario: "V03-V04-N06",
@@ -225,7 +479,80 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       reviewFingerprint: review.reviewFingerprint
     },
     changed, acceptedSubject: expectedID,
-    staleCandidateRefused: true
+    invalidBrowserReferenceRefused: true,
+    editorTransport: {
+      kind: "offline-editor-script-vm",
+      sourceRevision: visualEdit.expectedModelRevision,
+      candidateOrigin: visualCandidate.origin.kind,
+      candidateID: visualCandidate.id,
+      acceptedCandidateFingerprint: decision.candidateFingerprint,
+      staleBrowserReviewRefused: true
+    },
+    staleCandidateRefused: true, concurrentRivalRefused: true
+  };
+}
+
+// A fourth view is connected using the real #1125 Go producer; it remains a
+// reference-only Business fixture, not a fourth Accepted Canonical source.
+function testReferenceBusinessNavigation() {
+  const workspace = newWorkspace("business-navigation");
+  const before = managedDigests(workspace);
+  const r0 = revision(workspace);
+  const w = world(workspace);
+  const dfd = JSON.parse(command("go", [
+    "run", "./tools/reference-business-dfd", "-format", "json",
+    "-workspace", workspace
+  ]).stdout);
+  checked(dfd.schemaVersion === "business-dfd-projection-v0" &&
+    dfd.authority === "derived-read-only" &&
+    dfd.canonicalProcedureUsed === false,
+    "business: producer is explicitly noncanonical");
+  const focus = "validation:sales.order_line.quantity_positive";
+  const projected = projectWorld(w, r0, focus,
+    { businessDFD: dfd, sourceIndex: sourceIndex(workspace) });
+  checked(projected.modelRevision === r0 && projected.authority === "derived-readonly",
+    "business: four lenses are one read-only World snapshot");
+  checked(projected.views.table.value?.validations.some(v => v.subject === focus),
+    "business: table retains exact Validation ID");
+  checked(projected.views.er.edges.some(e => e.id === "sales.order.lines"),
+    "business: ER retains exact Relation ID");
+  checked(projected.views.function.items.some(p =>
+    p.relation?.id === "sales.order.lines"),
+    "business: Function retains the same Relation ID");
+  const linked = projected.views.business.items.find(s => s.stepID === "BP-05");
+  checked(!!linked && linked.explicitMeaning.some(v => v.subject === focus &&
+    v.status === "exact-id-matches-current-world"),
+    "business: Go-produced Step has an explicit Validation link");
+  checked(projected.views.business.authority === "noncanonical-reference" &&
+    projected.views.business.freshness === "unverified-no-model-revision-binding",
+    "business: no Accepted Business or same-revision claim");
+  const reverse = navigateReferenceBusinessStep(w, r0, dfd, "BP-05");
+  checked(reverse.candidates.some(c =>
+    c.focus === focus && c.status === "identity-match-only"),
+    "business: reverse Step navigation retains exact Validation ID");
+  checked(reverse.editable === false &&
+    reverse.acceptanceTargetStatus === "unresolved-use-shared-acceptance",
+    "business: reverse navigation cannot grant Source edit authority");
+  const dfdPath = input("business-navigation", ".dfd.json", dfd);
+  const cliNav = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", "step:BP-05",
+    "-business-dfd", dfdPath
+  ]).stdout);
+  checked(cliNav.schema === reverse.schema &&
+    cliNav.modelRevision === r0 &&
+    cliNav.candidates.some(c => c.focus === focus),
+    "business: CLI reproduces the same read-only reverse navigation");
+  checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
+    "business: DFD production and both navigation directions leave Source unchanged");
+  checked(revision(workspace) === r0,
+    "business: no revision changed during four-lens reference navigation");
+  return {
+    status: "PASS", authority: "noncanonical-reference",
+    provenance: "Go-produced reference-business-dfd",
+    modelRevision: r0, focus, stepID: "BP-05",
+    humanAcceptance: "not-observed",
+    actualProviderResult: "not-observed"
   };
 }
 
@@ -247,10 +574,11 @@ try {
       placement: "applications/order-entry/application.tei" }
   }, "validation", "sales.order_line.unit_price_positive",
     ["applications/order-entry/application.tei", "semantic/sales/validation.tei"]);
+  const businessReference = testReferenceBusinessNavigation();
   const checkedHead = command("git", ["rev-parse", "HEAD"]).stdout.trim();
   process.stdout.write(JSON.stringify({
     status: "PASS", scope: "temporary scratch only; no human acceptance",
-    head: checkedHead, checks, cases: [er, table],
+    head: checkedHead, checks, cases: [er, table], businessReference,
     claimLimits: [
       "not-human-approved", "not-actual-db-provider",
       "not-web-target-execution", "not-full-repository-qualification"

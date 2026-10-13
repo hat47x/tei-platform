@@ -81,11 +81,13 @@ node --test reference/business-system-design/dfd-view-layout.test.mjs \
 python3 -m http.server 8765
 ```
 
-ブラウザーで `http://localhost:8765/reference/business-system-design/dfd-view-studio.html` を開きます。まず「DFD投影」から作成したJSONを選択します。必要に応じて、保存済みの配置ファイルも選択できます。要素をクリックすると、参照元の位置・Function・直接意味参照・条件付きHandoffを表示します。
+ブラウザーで `http://localhost:8765/reference/business-system-design/dfd-view-studio.html` を開きます。まず「DFD投影」から作成したJSONを選択します。必要に応じて、保存済みの配置ファイルも選択できます。要素をクリックすると、参照元の位置・Function・直接意味参照・条件付きHandoffを表示します。明示されたControl／起動契機／担当業務Role／Function参照／情報の授受だけを元に、図中の関連要素へのリンクを表示します。例えばFunctionからそれを明示参照するStepへ戻り、StepからFunctionやRoleへ辿れます。外部主体・概念Storeを選択した場合も、明示された情報授受の相手Stepと参照元位置を確認できます。StoreのSemantic Data IDは参照文字列を示すだけで、実DBや受理済みDataへの権限を示しません。Stepが直接宣言したData・Relation・Validation・Capability、Function経由で派生したData・Relation・Capability、Storeが明示参照したDataも、参照リンクで選択して出典・関係元へ戻れます。直接参照（`resolved-id-not-accepted`）とFunction経由（`derived-not-authority`）を混同せず、参照先選択中は業務Stepの変更候補を作れません。この参照先は図の配置・Canonicalの意味ノードではなく、既存投影の識別子照合候補です。Source IndexやWorldの同一revision、受理済みであることを証明しません。古い投影で生成したリンクは投影差替え後に使えません。
+
+図の上部では、投影器が生成した診断コード・重要度・SourceファイルとJSON Pointerを表示します。未参照Functionは**当該Procedureの範囲で明示参照がないという確認事項**であり、Application全体で不要とは判定しません。`review-question`や`warning`は非実行の参照を許容しますが、`error`を含むDFD投影は図・エクスポート・変更候補を禁止し、診断の出典表示だけを残します。出典位置は投影器の自己申告であり、受理済みの同一revision Source Indexとの一致を確認した証拠ではありません。DFD投影の解除・差替え時に古い診断表示も破棄します。
 
 要素をドラッグすると、座標だけの変更候補が表示されます。キーボードではTabで要素を選び、Enterで詳細を確認し、矢印キーで20単位、Shift＋矢印キーで1単位ずつ移動候補を作れます。キャンセルされたドラッグや、別のポインターによる操作は移動として扱いません。**「配置だけを反映」**を選んでも変更されるのはブラウザー内の一時表示だけです。配置ファイルを保存する操作も、業務手順やCanonical Sourceは変更しません。初回表示時の並びは簡易的な格子配置であり、DFD上の業務順序や役割分担を意味しません。Stepが多い場合は画面領域を拡張し、初期領域外の要素もスクロールして表示します。存在しないStepへの順序矢印、参照先のない起動契機・責任割当て・情報Flow、重複した矢印・責任割当て、Stepを一つも持たない手順は、省略して描かず、投影全体を拒否します。
 
-WorldのJSONと版を利用者が入力した場合に限り、#1124の既存`navigateReferenceBusinessStep`を読み取り専用で呼び出します。表示される参照は識別子の照合候補であって、受理済みの業務Stepや最新Workspaceとの版一致を証明しません。入力した版文字列だけでSource Acceptanceを認めることはありません。
+WorldのJSONと版を利用者が入力した場合に限り、#1124の既存`navigateReferenceBusinessStep`を読み取り専用で呼び出します。表示される参照は識別子の照合候補であって、受理済みの業務Stepや最新Workspaceとの版一致を証明しません。入力した版文字列だけでSource Acceptanceを認めることはありません。Worldの再選択・選択解除と版文字列の変更時には選択済み要素の参照表示・未受理候補を無効化し、Worldの古い非同期読込み結果を採用しません。新しい参照結果を見るには要素を選び直します。
 
 ### 表示上の区別
 
@@ -111,3 +113,5 @@ node --test reference/business-system-design/dfd-view-layout.test.mjs \
 追加の回帰試験では、参照先の欠落、分岐と例外の矢印、キーボードからの座標変更、ポインター中断、多数Stepの表示範囲、Procedure切替え時の出典表示の破棄を検査します。いずれも参照画面内の動作を対象とし、実ブラウザーでの操作品質や、正本の編集権限を確認した証拠ではありません。
 
 2026年10月12日追補：この参照画面の更新後、GitHub上のJavaScriptをV8の模擬DOMで直接評価し、読み込み、矢印の種類と条件、キーボード操作、一時反映、長い図、誤参照の拒否、Procedure切替え時の状態破棄の8項目がすべてPASSしました。暗号学的な指紋の照合・実ブラウザーの描画・リポジトリ全体の試験は含みません。
+
+図上のドラッグ操作は、開始時のDFD投影と配置オブジェクトに拘束する。配置ファイルの選択・適用で配置が入れ替わった場合、旧ドラッグの終了イベントから新配置への変更候補を生成しない。
