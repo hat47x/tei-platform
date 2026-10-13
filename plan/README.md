@@ -21,6 +21,7 @@
 | 採用した設計判断 | [`adr/README.md`](adr/README.md) |
 | 複数の課題にまたがる機能設計 | [`design/README.md`](design/README.md) |
 | 段階判定の条件・手順・記録 | [`gate/README.md`](gate/README.md) |
+| 合成KernelのReference・実Process・製品移行・Target別の判定 | [`gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md`](gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md) |
 | 要求、受入条件、検証根拠 | [`evidence/README.md`](evidence/README.md) |
 | 技術調査や採用前の設計評価 | [`research/README.md`](research/README.md) |
 | 複数作業にまたがる計画・移行 | [`workstreams/README.md`](workstreams/README.md) |
