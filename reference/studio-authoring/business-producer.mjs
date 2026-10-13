@@ -109,8 +109,9 @@ export function produceBusinessDFD({
     sourceRevisionBinding: "not-established",
     acceptedBusinessProcedure: false, canonicalProcedureUsed: false,
     authority: "noncanonical-reference",
-    sourceSetStatus: sources.every(x => x.sourceMembership === "managed-source-artifact-verified")
-      ? "all-input-artifacts-managed" : "contains-nonmanaged-reference-inputs",
+    sourceSetStatus: sourceIndex === undefined ? "not-checked-no-source-index" :
+      sources.every(x => x.sourceMembership === "managed-source-artifact-verified")
+        ? "all-input-artifacts-managed" : "contains-nonmanaged-reference-inputs",
     sources
   } };
 }
