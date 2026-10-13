@@ -37,6 +37,32 @@ func TestWorkspaceSubjectHasVerifiedCurrentSourceButNoBusinessRuleAuthority(t *t
 	}
 }
 
+// A declared Command Pattern is not evidence that the separate business
+// procedure and threshold were accepted. The two concerns have distinct
+// acceptance/provenance paths.
+func TestSubmitOrderDeclarationIsNotApprovedBusinessRule(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	got, err := InspectWorkspace(root, "order_entry", "application-pattern", "order_entry.submit_order")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SourceStatus != "traceable-source-declaration" {
+		t.Fatalf("real order submit Pattern was not traced: %+v", got)
+	}
+	if got.RuleMeaning != "not-established" || got.ExecutionAllowed {
+		t.Fatalf("declared Command Pattern was promoted to acceptance/authority: %+v", got)
+	}
+	found := false
+	for _, reason := range got.Unresolved {
+		if reason == "business-rule-acceptance-not-established" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("the missing business acceptance was not reported: %+v", got)
+	}
+}
+
 func TestWorkspaceSourceDoesNotInventMissingPattern(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	got, err := InspectWorkspace(root, "order_entry", "application-pattern", "order_entry.nonexistent_action")
