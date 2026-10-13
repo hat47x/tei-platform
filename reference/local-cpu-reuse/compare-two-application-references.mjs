@@ -108,3 +108,44 @@ export function compareTwoReferenceApplications(reports) {
       sourceIndexFingerprint:provenance.sourceIndexFingerprint}
   };
 }
+
+// A proposal about separation of declarations, NOT a callable Query adapter.
+// Preserve the existing comparator's exact-subject, Source and Contract-route abstention
+// checks before separating the shared invocation from local Application wiring.
+export function proposeReferenceQueryAdapter(reports) {
+  const comparison=compareTwoReferenceApplications(reports);
+  // invoke() is safe here: compareTwoReferenceApplications validated both exact
+  // Canonical rows, both routes, membership and shared World/Source snapshot.
+  const left=invoke(reports[0],reports[1]);
+  const right=invoke(reports[2],reports[3]);
+  const appContext=[left,right].map(item=>({
+    application:item.application,pattern:item.pattern,relation:item.relation,
+    datasourceAlias:item.datasourceAlias
+  }));
+  return {
+    schemaVersion:'tei.research.query-invocation-adapter-proposal/v0',
+    proposalType:'declarative_read_only_query_invocation',
+    status:comparison.sharedInvocationDeclared?
+      'candidate_requires_semantic_review':'not_shareable_from_declarations',
+    // The common layer is only the already-validated, observed Query declaration;
+    // no runtime target/provider, credential, endpoint, cache or result shape.
+    commonInvocation:comparison.sharedInvocationDeclared?
+      {databaseTarget:comparison.declaredQuery.databaseTarget,
+        contract:comparison.declaredQuery.contract,
+        compatibleMajor:comparison.declaredQuery.compatibleMajor,
+        query:comparison.declaredQuery.query,
+        bindings:comparison.declaredQuery.bindings.map(x=>({...x}))}:null,
+    // App-specific relation and alias deliberately never move into shared core.
+    applicationContext:appContext,
+    contextDifferences:[...comparison.contextDifferences],
+    verified:{declarationMatch:comparison.sharedInvocationDeclared,
+      contractSemantics:false,queryResultShape:false,readAuthorization:false,
+      sourceAuthenticity:false,runtimeInteroperability:false},
+    executionPermitted:false,implementationSelected:false,accepted:false,
+    acceptance:'not_asserted',authority:'derived_observation_only',
+    unresolvedGates:['contract_semantics','query_result_signature',
+      'caller_authorization','runtime_binding','acceptance'],
+    // In-memory Reference observation only; do not export snapshots for tenants.
+    observationSnapshot:{...comparison.sourceSnapshot}
+  };
+}
