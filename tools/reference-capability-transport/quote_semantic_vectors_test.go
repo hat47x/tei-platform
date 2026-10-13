@@ -17,9 +17,9 @@ import (
 )
 
 type quoteSemanticVectorFile struct {
-	Schema   string `json:"schema"`
-	Status   string `json:"status"`
-	Contract string `json:"contract"`
+	Schema   string                `json:"schema"`
+	Status   string                `json:"status"`
+	Contract string                `json:"contract"`
 	Vectors  []quoteSemanticVector `json:"vectors"`
 }
 
@@ -100,33 +100,33 @@ func TestIndependentQuoteProcessAgainstCandidateSemanticVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	provider := GenericProviderIdentity{
-		PluginID: "tei.reference.order_quote",
-		PluginVersion: "1.0.0",
+		PluginID:         "tei.reference.order_quote",
+		PluginVersion:    "1.0.0",
 		ImplementationID: "order-quote.v1",
-		ArtifactDigest: digestBytes(image),
+		ArtifactDigest:   digestBytes(image),
 	}
 	dispatch := GenericDispatch{
-		Schema: dispatchSchema,
-		ContractID: corpus.Contract,
-		ContractFingerprint: digestBytes([]byte("reference.order.quote-lines.contract/v1")),
-		Target: "reference/order_entry",
-		Provider: provider,
+		Schema:                  dispatchSchema,
+		ContractID:              corpus.Contract,
+		ContractFingerprint:     digestBytes([]byte("reference.order.quote-lines.contract/v1")),
+		Target:                  "reference/order_entry",
+		Provider:                provider,
 		RequestShapeFingerprint: digestBytes([]byte("reference.order.quote-lines.request/v1")),
-		ResultShapeFingerprint: digestBytes([]byte("reference.order.quote-lines.result/v1")),
-		PayloadCodec: "application/json",
+		ResultShapeFingerprint:  digestBytes([]byte("reference.order.quote-lines.result/v1")),
+		PayloadCodec:            "application/json",
 	}
 	plan, err := buildTransportDispatchPlan(genericDispatchIdentity(dispatch))
 	if err != nil {
 		t.Fatal(err)
 	}
 	carrier := LegacyCarrier{
-		Plugin: plugin.Identity{
+		Plugin:                plugin.Identity{
 			ID: core.MustCanonicalID(provider.PluginID), Version: provider.PluginVersion,
 		},
-		CapabilityKind: plugin.CapabilityContractQueryExecutor,
-		CapabilityID: core.MustCanonicalID("transport.order_quote_carrier"),
+		CapabilityKind:        plugin.CapabilityContractQueryExecutor,
+		CapabilityID:          core.MustCanonicalID("transport.order_quote_carrier"),
 		DescriptorFingerprint: digestBytes([]byte("reference.order-quote.transport-carrier/v1")),
-		Operation: "generic-dispatch-v0",
+		Operation:             "generic-dispatch-v0",
 	}
 	launch := &businessProcessLauncher{}
 	seen := make(map[string]bool)
