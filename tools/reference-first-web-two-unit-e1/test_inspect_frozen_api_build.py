@@ -71,14 +71,14 @@ class GoBuildObservationTests(unittest.TestCase):
             with self.subTest(witness=old), self.assertRaisesRegex(ValueError, diagnostic):
                 self.get(VERSION.replace(old, new))
         for line, diagnostic in (
-            ("\\tbuild\\tvcs.revision=" + COMMIT + "\\n", "VCS revision"),
-            ("\\tbuild\\tvcs.modified=false\\n", "modified"),
-            ("\\tbuild\\tvcs=git\\n", "VCS kind"),
+            ("\tbuild\tvcs.revision=" + COMMIT + "\n", "VCS revision"),
+            ("\tbuild\tvcs.modified=false\n", "modified"),
+            ("\tbuild\tvcs=git\n", "VCS kind"),
         ):
             with self.subTest(missing=line), self.assertRaisesRegex(ValueError, diagnostic):
                 self.get(VERSION.replace(line, ""))
         with self.assertRaisesRegex(ValueError, "duplicate Go VCS"):
-            self.get(VERSION + "\\tbuild\\tvcs.revision=" + COMMIT + "\\n")
+            self.get(VERSION + "\tbuild\tvcs.revision=" + COMMIT + "\n")
 
     def test_missing_or_added_tag_rejected(self):
         with self.assertRaisesRegex(ValueError, "tags"):
