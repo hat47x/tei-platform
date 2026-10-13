@@ -1185,7 +1185,11 @@ test('SVG nodes retired by selection re-render cannot propose a move',async()=>{
   $('diagram').listeners.pointerup({pointerId:122,clientX:400,clientY:300});
   assert.equal($('apply').disabled,true);
   assert.equal($('preview').hidden,true);
+  // Source navigation can complete asynchronously after selection began.
+  // Only a node from the completed re-render should handle fresh input.
+  await new Promise(resolve=>setTimeout(resolve,30));
   const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.notEqual(live,old,'selection should retire the previous SVG node');
   live.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
   assert.equal($('apply').disabled,false,'current SVG node retains keyboard placement');
 });
