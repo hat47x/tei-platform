@@ -24,8 +24,8 @@ func validateSingleApplicationBackend(config singleApplicationConfig) error {
 	if !config.CompositionScenarios || config.PostgresDSNFile == "" || config.PostgresFence <= 0 {
 		return fmt.Errorf("PostgreSQL requires -composition-scenarios, -postgres-dsn-file and a positive -postgres-fencing-token")
 	}
-	if config.Backend.nonScreen.enabled() && *config.Backend.nonScreen.mode != "report" && *config.Backend.nonScreen.mode != "batch" {
-		return fmt.Errorf("-non-screen must be report or batch")
+	if config.Backend.nonScreen.enabled() && *config.Backend.nonScreen.mode != "report" && *config.Backend.nonScreen.mode != "batch" && *config.Backend.nonScreen.mode != "batch-observe" {
+		return fmt.Errorf("-non-screen must be report, batch or batch-observe")
 	}
 	return nil
 }

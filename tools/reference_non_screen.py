@@ -50,6 +50,22 @@ def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspa
         assert len(receipt['items']) == 2 and receipt['items'][0]['result']['observation']['nature'] == 'external-observed'
         assert sql('SELECT status FROM public.orders WHERE order_id=1001;') == 'submitted'
         assert sql('SELECT status FROM public.orders WHERE order_id=1003;') == 'draft'
+        before = sql('SELECT order_id, status, xmin::text FROM public.orders ORDER BY order_id;')
+        observe_args = ['-non-screen', 'batch-observe', '-order-ids', '1003,1001,1002', '-rows', '999']
+        sql("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id IN ('order-submit','order-batch');")
+        observed = invoke('batch-observe-partial', observe_args)
+        assert observed['composition']['artifactDigest'] == digest
+        assert observed['composition']['contractId'] == 'tei.reference.order-entry.batch-observe'
+        assert [item['orderId'] for item in observed['items']] == [1003, 1001, 1002]
+        assert [item['observation']['result'] for item in observed['items']] == ['draft', 'submitted', 'draft']
+        assert all(item['observation']['nature'] == 'external-observed' for item in observed['items'])
+        assert sql('SELECT order_id, status, xmin::text FROM public.orders ORDER BY order_id;') == before
+        assert invoke('batch-observe-duplicate', ['-non-screen', 'batch-observe', '-order-ids', '1001,1001'], False) is None
+        assert invoke('batch-observe-missing', ['-non-screen', 'batch-observe', '-order-ids', '1001,9999'], False) is None
+        sql("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id='order-batch-observe';")
+        assert invoke('batch-observe-revoked', observe_args, False) is None
+        sql("UPDATE public.tei_reference_execution_grants SET revoked=false WHERE provider_id IN ('order-submit','order-batch','order-batch-observe');")
+        checks.append('read-only observation by exact IDs after partial success; independent SQL row versions; separate observation grant; no partial output on refusal')
         receipt = invoke('batch-replay', batch + ['-rows', '0,1,2'], False)
         assert receipt['stage'] == 'execution-failed' and len(receipt['items']) == 1
         assert sql('SELECT status FROM public.orders WHERE order_id=1003;') == 'draft'

@@ -40,6 +40,7 @@ func TestOrderNonScreenSelectionRequiresPersistentServices(t *testing.T) {
 		{[]string{"-non-screen", "unknown", "-postgres-dsn-file", "explicit", "-postgres-fencing-token", "1", "-composition-scenarios"}, false},
 		{[]string{"-non-screen", "report", "-postgres-dsn-file", "explicit", "-postgres-fencing-token", "1", "-composition-scenarios"}, true},
 		{[]string{"-non-screen", "batch", "-postgres-dsn-file", "explicit", "-postgres-fencing-token", "1", "-composition-scenarios"}, true},
+		{[]string{"-non-screen", "batch-observe", "-postgres-dsn-file", "explicit", "-postgres-fencing-token", "1", "-composition-scenarios"}, true},
 	} {
 		flags := flag.NewFlagSet("order", flag.ContinueOnError)
 		config := singleApplicationConfig{}

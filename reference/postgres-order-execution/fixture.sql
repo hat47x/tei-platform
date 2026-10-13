@@ -48,4 +48,5 @@ INSERT INTO public.tei_reference_execution_grants
     ('reference/order_entry/development', 'order-read', 'tei.reference.order-entry.read', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false),
     ('reference/order_entry/development', 'order-submit', 'tei.reference.order-entry.postgres-submit', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false),
     ('reference/order_entry/development', 'order-report', 'tei.reference.order-entry.report', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false),
-    ('reference/order_entry/development', 'order-batch', 'tei.reference.order-entry.batch', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false);
+    ('reference/order_entry/development', 'order-batch', 'tei.reference.order-entry.batch', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false),
+    ('reference/order_entry/development', 'order-batch-observe', 'tei.reference.order-entry.batch-observe', '1', :'artifact_digest', 1, 1, clock_timestamp() + interval '10 minutes', false);

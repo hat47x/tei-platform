@@ -15,24 +15,47 @@ import (
 	"tei/internal/composition"
 )
 
-type nonScreenFlags struct{ mode, from, rows, format, output, login, credential *string }
+type nonScreenFlags struct{ mode, from, rows, format, output, login, credential, orderIDs *string }
 
 func (f nonScreenFlags) enabled() bool { return f.mode != nil && *f.mode != "" }
 
 func registerNonScreenFlags(flags *flag.FlagSet) nonScreenFlags {
 	return nonScreenFlags{
-		flags.String("non-screen", "", "reference: report or batch; exits without serving HTTP"),
+		flags.String("non-screen", "", "reference: report, batch or batch-observe; exits without serving HTTP"),
 		flags.String("from", "2026-09-18T08:30:00Z", "reference: selected order search lower bound"),
 		flags.String("rows", "0", "reference: comma-separated selected row indices, at most 100"),
 		flags.String("report-format", "csv", "reference: csv or json renderer"),
 		flags.String("artifact-out", "", "reference: new output file outside model workspace"),
 		flags.String("login-id", "legacy-order-editor", "reference: batch login identity"),
 		flags.String("credential-file", "", "reference: private one-line batch credential file"),
+		flags.String("order-ids", "", "reference: explicit order identities for read-only batch observation"),
 	}
 }
 func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace string) error {
+	if *f.mode == "batch-observe" {
+		ids, err := parseObservationIDs(*f.orderIDs)
+		if err != nil {
+			return err
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer cancel()
+		service, err := wireBatchObservation(ctx, registry, state)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = service.Withdraw(1); _ = service.Reap(context.Background()) }()
+		result, binding, err := service.Invoke(ctx, ids)
+		if err != nil {
+			return err
+		}
+		result.Composition = projectCompositionBinding(binding)
+		if state.model != nil {
+			result.Composition.ModelRevision = state.model.revision
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
 	if *f.mode != "report" && *f.mode != "batch" {
-		return fmt.Errorf("-non-screen must be report or batch")
+		return fmt.Errorf("-non-screen must be report, batch or batch-observe")
 	}
 	input := nonScreenInput{From: *f.from, LoginID: *f.login}
 	for _, part := range strings.Split(*f.rows, ",") {
