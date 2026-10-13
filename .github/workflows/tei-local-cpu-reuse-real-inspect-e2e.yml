@@ -1,0 +1,53 @@
+name: TEI local CPU reuse real inspect E2E
+
+# Narrow, non-privileged qualification for the Go -> Node read-only research bridge.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - "reference/local-cpu-reuse/**"
+      - ".github/workflows/tei-local-cpu-reuse-real-inspect-e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-local-cpu-reuse-e2e-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  real-inspect-bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ""
+      GOTOOLCHAIN: local
+      TEI_REAL_CLI_E2E: "1"
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Go from go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "false"
+
+      - name: Execute only real CLI to Node bridge gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          node --version
+          node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
