@@ -41,7 +41,7 @@ func TestHostOutputObservationRequiresCanonicalManifestBytes(t *testing.T) {
 	// Move the first field to the last position, preserving all member
 	// values and spelling. JSON order does not change the typed manifest.
 	reordered := append([]byte("{"), oracle[len(prefix):len(oracle)-1]...)
-	reordered = append(reordered, []byte(`,"formatVersion":1}`)... )
+	reordered = append(reordered, []byte(`,"formatVersion":1}`)...)
 
 	// Keep original members unchanged; the extra field must never be silently
 	// ignored when attaching a digest to execution Evidence.
