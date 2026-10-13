@@ -140,6 +140,17 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	if err := dec.Decode(&resp); err != nil {
 		return Response{}, fmt.Errorf("decode process plugin response from executable %q: %w", command.Executable, err)
 	}
+	// Registry accepts legacy in-process and mock responses that omit carrier
+	// identity, but a real Process plugin must independently echo all of the
+	// identity fields. If missing/zero values reached Registry, its legacy
+	// defaulting could turn an unbound process response into an apparent match.
+	// Keep the error fixed; no untrusted field values enter host diagnostics.
+	if resp.ProtocolVersion == 0 || resp.RequestID == "" ||
+		resp.Plugin.ID == "" || resp.Plugin.Version == "" ||
+		resp.CapabilityID == "" || resp.Status == "" ||
+		(resp.DescriptorFingerprint == "" && req.DescriptorFingerprint != "") {
+		return Response{}, fmt.Errorf("process plugin response is missing required carrier identity or status")
+	}
 	var trailing any
 	if err := dec.Decode(&trailing); !errors.Is(err, io.EOF) {
 		if err == nil {

@@ -105,6 +105,64 @@ func runProcessHelper(mode string) int {
 			return 4
 		}
 		wire := string(raw)
+		if strings.HasPrefix(mode, "wire-missing-") || strings.HasPrefix(mode, "wire-empty-") {
+			// Decode only to construct deliberately incomplete wire output.
+			// Never use this permissive map as the production decoder.
+			var object map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &object); err != nil {
+				return 4
+			}
+			missing := strings.HasPrefix(mode, "wire-missing-")
+			name := strings.TrimPrefix(strings.TrimPrefix(mode, "wire-missing-"), "wire-empty-")
+			field := map[string]string{
+				"protocol":    "protocolVersion",
+				"request":     "requestId",
+				"plugin":      "plugin",
+				"capability":  "capabilityId",
+				"fingerprint": "descriptorFingerprint",
+				"status":      "status",
+			}[name]
+			if strings.HasPrefix(name, "plugin-") {
+				field = "plugin"
+			}
+			if field == "" {
+				return 4
+			}
+			if strings.HasPrefix(name, "plugin-") {
+				var nested map[string]json.RawMessage
+				if err := json.Unmarshal(object["plugin"], &nested); err != nil {
+					return 4
+				}
+				nestedField := strings.TrimPrefix(name, "plugin-")
+				if nestedField != "id" && nestedField != "version" {
+					return 4
+				}
+				if missing {
+					delete(nested, nestedField)
+				} else {
+					nested[nestedField] = json.RawMessage(`""`)
+				}
+				object["plugin"], err = json.Marshal(nested)
+				if err != nil {
+					return 4
+				}
+			} else if missing {
+				delete(object, field)
+			} else {
+				value := json.RawMessage(`""`)
+				if name == "protocol" {
+					value = json.RawMessage(`0`)
+				}
+				if name == "plugin" {
+					value = json.RawMessage(`{}`)
+				}
+				object[field] = value
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(object); err != nil {
+				return 4
+			}
+			return 0
+		}
 		var before, after string
 		switch mode {
 		case "wire-duplicate-status":
