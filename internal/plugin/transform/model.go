@@ -44,9 +44,6 @@ const (
 const OpAssertCanonicalID Op = "assert-canonical-id"
 const OpAssertPositiveInteger Op = "assert-positive-integer"
 
-// OpOmitEmptyArrayField is a generic, schema-independent normalization.
-const OpOmitEmptyArrayField Op = "omit-empty-array-field"
-
 type InputKind string
 
 const (
@@ -334,11 +331,11 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 		if err := child(expr.Value, "replace-field value"); err != nil {
 			return err
 		}
-	case OpOmitField, OpOmitEmptyArrayField:
+	case OpOmitField:
 		if err := rejectUnexpectedExprFields(expr, "from", "field"); err != nil {
 			return err
 		}
-		if err := child(expr.From, string(expr.Op)+" source"); err != nil {
+		if err := child(expr.From, "omit-field source"); err != nil {
 			return err
 		}
 		if strings.TrimSpace(expr.Field) == "" {
