@@ -53,3 +53,26 @@ func TestBatchReviewRejectsMalformedOrConflictingRecords(t *testing.T) {
 		}
 	}
 }
+
+func TestBatchReviewKeepsRecordedModelSeparateFromCurrentExecution(t *testing.T) {
+	raw := strings.Replace(reviewFixture(t), `"kind":"planned"`, `"kind":"planned","composition":{"modelRevision":"R1"}`, 1)
+	review, _, err := decodeBatchReview([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if review.RecordedComposition == nil || review.RecordedComposition.ModelRevision != "R1" {
+		t.Fatal("recorded model lost")
+	}
+	review.bindCurrent(batchObservationReceipt{Composition: &compositionTrace{ModelRevision: "R2"}})
+	if review.ModelRevisionMatches == nil || *review.ModelRevisionMatches || review.RecordedComposition.ModelRevision != "R1" {
+		t.Fatal("old log relabelled as current model")
+	}
+	review.bindCurrent(batchObservationReceipt{Composition: &compositionTrace{ModelRevision: "R1"}})
+	if review.ModelRevisionMatches == nil || !*review.ModelRevisionMatches {
+		t.Fatal("matching revisions not reported")
+	}
+	review.bindCurrent(batchObservationReceipt{})
+	if review.ModelRevisionMatches != nil {
+		t.Fatal("missing version treated as equality")
+	}
+}

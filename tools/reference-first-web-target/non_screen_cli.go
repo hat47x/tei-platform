@@ -72,7 +72,7 @@ func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRun
 			result.Composition.ModelRevision = state.model.revision
 		}
 		if *f.mode == "batch-review" {
-			review.Current = &result
+			review.bindCurrent(result)
 			return json.NewEncoder(os.Stdout).Encode(review)
 		}
 		return json.NewEncoder(os.Stdout).Encode(result)

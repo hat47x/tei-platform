@@ -171,7 +171,7 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 	_, err = registry.Apply(registry.Snapshot().Revision, []composition.Provider{
 		{ID: provider, Scope: scope, Offers: renderer.Contract},
 		{ID: "order-report", Scope: scope, Offers: reportContract, Requires: []composition.Dependency{{Contract: readServiceContract, ProviderID: "order-read"}, {Contract: renderer.Contract, ProviderID: provider}}},
-		{ID: "order-batch", Scope: scope, Offers: batchContract, Requires: []composition.Dependency{{Contract: readServiceContract, ProviderID: "order-read"}}},
+		{ID: "order-batch", Scope: scope, Offers: batchContract, Requires: []composition.Dependency{{Contract: readServiceContract, ProviderID: "order-read"}, {Contract: postgresSubmitServiceContract, ProviderID: "order-submit"}}},
 	}, nil)
 	if err != nil {
 		return nil, err
@@ -255,7 +255,11 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 			return result, err
 		}
 		invocation, _ := composition.InvocationBinding(ctx)
-		if err := appendBatchJournal(input.Journal, batchJournalEvent{Kind: "planned", Planned: ids, Composition: projectCompositionBinding(invocation)}); err != nil {
+		plannedBinding := projectCompositionBinding(invocation)
+		if state.model != nil {
+			plannedBinding.ModelRevision = state.model.revision
+		}
+		if err := appendBatchJournal(input.Journal, batchJournalEvent{Kind: "planned", Planned: ids, Composition: plannedBinding}); err != nil {
 			result.Stage = "journal-failed"
 			return result, err
 		}

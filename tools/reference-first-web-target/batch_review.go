@@ -19,12 +19,14 @@ type batchReviewItem struct {
 	RecordedStage string `json:"recordedStage,omitempty"`
 }
 type batchReview struct {
-	JournalDigest   string                   `json:"journalDigest"`
-	Ended           bool                     `json:"ended"`
-	IncompleteTail  bool                     `json:"incompleteTail"`
-	Items           []batchReviewItem        `json:"items"`
-	Current         *batchObservationReceipt `json:"current,omitempty"`
-	AuthorityLimits []string                 `json:"authorityLimits"`
+	RecordedComposition  *compositionTrace        `json:"recordedComposition,omitempty"`
+	ModelRevisionMatches *bool                    `json:"modelRevisionMatches,omitempty"`
+	JournalDigest        string                   `json:"journalDigest"`
+	Ended                bool                     `json:"ended"`
+	IncompleteTail       bool                     `json:"incompleteTail"`
+	Items                []batchReviewItem        `json:"items"`
+	Current              *batchObservationReceipt `json:"current,omitempty"`
+	AuthorityLimits      []string                 `json:"authorityLimits"`
 }
 
 // Reject duplicate keys before typed decoding; neither a later key nor a
@@ -58,6 +60,15 @@ func checkJournalJSON(dec *json.Decoder, depth int) error {
 		_, err = dec.Token()
 	}
 	return err
+}
+
+func (review *batchReview) bindCurrent(current batchObservationReceipt) {
+	review.Current = &current
+	review.ModelRevisionMatches = nil
+	if review.RecordedComposition != nil && current.Composition != nil && review.RecordedComposition.ModelRevision != "" && current.Composition.ModelRevision != "" {
+		matches := review.RecordedComposition.ModelRevision == current.Composition.ModelRevision
+		review.ModelRevisionMatches = &matches
+	}
 }
 
 func readBatchReview(path string) (batchReview, []int64, error) {
@@ -117,6 +128,7 @@ func decodeBatchReview(raw []byte) (batchReview, []int64, error) {
 				return batchReview{}, nil, fmt.Errorf("invalid journal plan")
 			}
 			ids = event.Planned
+			result.RecordedComposition = event.Composition
 			for _, id := range ids {
 				result.Items = append(result.Items, batchReviewItem{OrderID: id, Recorded: "not-recorded-as-started"})
 			}

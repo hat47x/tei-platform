@@ -115,9 +115,14 @@ def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspa
             'limits': ['no durable request-key deduplication or automatic resume', 'no PDF, browser or human-value validation']}
 
 
-def verify_batch_crash(root, output, common, batch, sql, invoke, container, digest):
+def verify_batch_crash(root, output, common, batch, sql, invoke, container, digest, *, reset=True, rows='0,2', planned=(1001, 1003)):
     """The container, blocker session and CLI are all owned by this verifier."""
-    sql("UPDATE public.orders SET status='draft';")
+    assert planned and len(set(planned)) == len(planned) and all(isinstance(i, int) and i > 0 for i in planned)
+    if reset:
+        sql("UPDATE public.orders SET status='draft';")
+    blocked_order = planned[-1]
+    expected_kinds = ['planned'] + ['starting', 'result'] * (len(planned) - 1) + ['starting']
+    expected_states = ['submitted'] * (len(planned) - 1) + ['draft']
     journal = output / 'crashed-batch-progress.jsonl'
     blocker = host = None
     blocker_pid = None
@@ -129,7 +134,7 @@ def verify_batch_crash(root, output, common, batch, sql, invoke, container, dige
             # has locked only 1003 when it enters pg_sleep; 1001 can commit.
             blocker = subprocess.Popen(['docker', 'exec', '-e', 'PGAPPNAME=tei_batch_crash_blocker', container,
                                         'psql', '-X', '-U', 'postgres', '-d', 'tei_reference', '-v', 'ON_ERROR_STOP=1',
-                                        '-c', 'BEGIN; SELECT order_id FROM public.orders WHERE order_id=1003 FOR UPDATE; SELECT pg_sleep(30); ROLLBACK;'],
+                                        '-c', f'BEGIN; SELECT order_id FROM public.orders WHERE order_id={blocked_order} FOR UPDATE; SELECT pg_sleep(30); ROLLBACK;'],
                                        stdout=blocker_log, stderr=blocker_log)
             deadline = time.monotonic() + 8
             while time.monotonic() < deadline:
@@ -142,7 +147,7 @@ def verify_batch_crash(root, output, common, batch, sql, invoke, container, dige
                 time.sleep(.05)
             else:
                 raise RuntimeError('Owned row blocker was not ready')
-            host = subprocess.Popen(common + batch + ['-rows', '0,2', '-batch-journal', str(journal)],
+            host = subprocess.Popen(common + batch + ['-rows', rows, '-batch-journal', str(journal)],
                                     cwd=root, stdout=host_out, stderr=host_err)
             deadline = time.monotonic() + 8
             while time.monotonic() < deadline:
@@ -154,7 +159,7 @@ def verify_batch_crash(root, output, common, batch, sql, invoke, container, dige
                     for line in journal.read_bytes().splitlines(keepends=True):
                         if line.endswith(b'\n'):
                             events.append(json.loads(line))
-                started = len(events) == 4 and events[-1].get('kind') == 'starting' and events[-1].get('orderId') == 1003
+                started = len(events) == len(expected_kinds) and events[-1].get('kind') == 'starting' and events[-1].get('orderId') == blocked_order
                 blocked = sql(f'SELECT count(*) FROM pg_stat_activity WHERE {blocker_pid} = ANY(pg_blocking_pids(pid));')
                 if started and int(blocked) > 0:
                     break
@@ -168,22 +173,24 @@ def verify_batch_crash(root, output, common, batch, sql, invoke, container, dige
             sql(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid={blocker_pid} AND application_name='tei_batch_crash_blocker';")
             blocker.wait(timeout=5)
             events = [json.loads(line) for line in journal.read_text().splitlines()]
-            assert [e['kind'] for e in events] == ['planned', 'starting', 'result', 'starting']
-            assert [e['sequence'] for e in events] == [1, 2, 3, 4]
-            assert events[0]['planned'] == [1001, 1003] and events[0]['composition']['artifactDigest'] == digest
-            assert events[2]['item']['orderId'] == 1001 and events[2]['item']['result']['stage'] == 'completed'
-            assert sql('SELECT status FROM public.orders WHERE order_id=1001;') == 'submitted'
-            assert sql('SELECT status FROM public.orders WHERE order_id=1003;') == 'draft'
-            observed = invoke('batch-observe-after-crash', ['-non-screen', 'batch-observe', '-order-ids', '1001,1003'])
-            assert [i['observation']['result'] for i in observed['items']] == ['submitted', 'draft']
+            assert [e['kind'] for e in events] == expected_kinds
+            assert [e['sequence'] for e in events] == list(range(1, len(expected_kinds) + 1))
+            assert events[0]['planned'] == list(planned) and events[0]['composition']['artifactDigest'] == digest
+            for i, order in enumerate(planned[:-1]):
+                assert events[2 + 2*i]['item']['orderId'] == order and events[2 + 2*i]['item']['result']['stage'] == 'completed'
+            for order, state in zip(planned, expected_states):
+                assert sql(f'SELECT status FROM public.orders WHERE order_id={order};') == state
+            ids = ','.join(map(str, planned))
+            observed = invoke('batch-observe-after-crash', ['-non-screen', 'batch-observe', '-order-ids', ids])
+            assert [i['observation']['result'] for i in observed['items']] == expected_states
             assert all(i['observation']['nature'] == 'external-observed' for i in observed['items'])
             reviewed = invoke('batch-review-after-crash', ['-non-screen', 'batch-review', '-batch-journal-in', str(journal)])
             assert not reviewed['ended'] and not reviewed['incompleteTail']
-            assert [i['recorded'] for i in reviewed['items']] == ['result-recorded', 'started-without-result']
-            assert [i['observation']['result'] for i in reviewed['current']['items']] == ['submitted', 'draft']
+            assert [i['recorded'] for i in reviewed['items']] == ['result-recorded'] * (len(planned)-1) + ['started-without-result']
+            assert [i['observation']['result'] for i in reviewed['current']['items']] == expected_states
             assert 'editor-secret' not in journal.read_text() + (output / 'crash-host.stderr.log').read_text()
-            return {'passed': True, 'boundary': 'first commit observed; second transaction blocked before mutation',
-                    'journalKinds': [e['kind'] for e in events], 'observedStates': ['submitted', 'draft'],
+            return {'passed': True, 'boundary': 'last planned transaction blocked before mutation',
+                    'journalKinds': [e['kind'] for e in events], 'observedStates': expected_states,
                     'limits': ['starting alone does not prove rollback', 'no lost commit acknowledgement or power-loss proof', 'no automatic retry or resume']}
         finally:
             if host is not None and host.poll() is None:

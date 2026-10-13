@@ -75,7 +75,7 @@ def verify_source_loop(root, output, binary, head, digest, dsn_file, sql, run):
     try:
         r0 = revision(); evidence['baseModelRevision'] = r0
         source_before = {str(p.relative_to(scratch)): p.read_bytes() for p in scratch.rglob('*') if p.is_file()}
-        candidate = json.loads((root / 'reference/source-execution-loop/candidate.json').read_text())
+        candidate = json.loads((root / 'reference/order-workflow/change-candidate.json').read_text())
         candidate['baseModelRevision'] = r0
         candidate_path = output / 'source-loop-candidate.json'
         candidate_path.write_text(json.dumps(candidate, ensure_ascii=False, indent=2) + '\n')

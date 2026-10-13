@@ -42,7 +42,7 @@ func TestReportStorageRejectsWorkspaceAliasesAndExistingFiles(t *testing.T) {
 	}
 }
 
-func postgresNonScreen(t *testing.T, state *postgresScenarioState, format, path string, progress func(batchItem)) *nonScreenServices {
+func postgresNonScreen(t *testing.T, state *postgresScenarioState, format, path string, progress func(batchItem), registries ...**composition.Registry) *nonScreenServices {
 	t.Helper()
 	command, err := newReferenceCommandScenarioRunner(state.world, legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
 	if err != nil {
@@ -51,6 +51,9 @@ func postgresNonScreen(t *testing.T, state *postgresScenarioState, format, path 
 	command.persistence = state
 	command.model = state.model
 	registry := composition.NewRegistry()
+	if len(registries) > 0 {
+		*registries[0] = registry
+	}
 	read, submit, err := wireComposedScenarios(context.Background(), registry, &postgresReadScenario{state: state}, command, state.digest, func(composition.Binding) error { return nil })
 	if err != nil {
 		t.Fatal(err)
@@ -70,6 +73,31 @@ func postgresNonScreen(t *testing.T, state *postgresScenarioState, format, path 
 }
 func nonScreenTestInput() nonScreenInput {
 	return nonScreenInput{From: "2026-09-18T00:00:00Z", Rows: []int{0, 1, 2}, LoginID: "legacy-order-editor", Credential: "editor-secret"}
+}
+
+func TestPostgresScenarioBatchDeclaresPersistentSubmitDependency(t *testing.T) {
+	state := postgresTestState(t)
+	var registry *composition.Registry
+	s := postgresNonScreen(t, state, "csv", "", nil, &registry)
+	selection, err := registry.Select("order-batch", "reference/order_entry/development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, epoch := range selection.DependencyEpochs {
+		if epoch.ProviderID == "order-submit" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("batch ignores persistent submit declaration")
+	}
+	if _, err := registry.Apply(registry.Snapshot().Revision, nil, []string{"order-submit", "order-batch"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.batch.Invoke(context.Background(), nonScreenTestInput()); err == nil || statusOf(t, state, 1001) != "draft" {
+		t.Fatal("removed submit/batch declarations still allowed an effect")
+	}
 }
 func statusOf(t *testing.T, state *postgresScenarioState, id int64) string {
 	t.Helper()
