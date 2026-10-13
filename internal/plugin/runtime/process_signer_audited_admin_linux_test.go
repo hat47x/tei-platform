@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -27,11 +28,43 @@ func (s *recordingLinuxSignerSink) RecordSignerChange(_ context.Context, event L
 	return nil
 }
 
+// This in-memory ledger is for concurrency and rejection tests only. It
+// deliberately does not satisfy the production durability requirement.
+type recordingLinuxSignerOperationLedger struct {
+	mu           sync.Mutex
+	reservations map[string]LinuxSignerOperationReservation
+	fail         bool
+	calls        int
+}
+
+func (l *recordingLinuxSignerOperationLedger) ReserveSignerOperation(ctx context.Context, op LinuxSignerOperationReservation) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.calls++
+	if l.fail {
+		return false, errors.New("ledger failed: confidential connection token")
+	}
+	if l.reservations == nil {
+		l.reservations = make(map[string]LinuxSignerOperationReservation)
+	}
+	key := op.HostID + "\x00" + op.OperationID
+	if _, exists := l.reservations[key]; exists {
+		return false, nil
+	}
+	l.reservations[key] = op
+	return true, nil
+}
+
 func newAuditedSignerFixture(sink *recordingLinuxSignerSink, permitted bool) (*LinuxSignerAuditedAdmin, *LinuxHostSignerTrust) {
 	trust := NewLinuxHostSignerTrust()
 	return &LinuxSignerAuditedAdmin{
-		Admin: LinuxSignerAdmin{Trust: trust, Authorizer: &testSignerAuthorizer{allow: permitted}},
-		Sink:  sink, HostID: "host/reference",
+		Admin:      LinuxSignerAdmin{Trust: trust, Authorizer: &testSignerAuthorizer{allow: permitted}},
+		Sink:       sink,
+		Operations: &recordingLinuxSignerOperationLedger{},
+		HostID:     "host/reference",
 	}, trust
 }
 
@@ -92,9 +125,10 @@ func TestLinuxSignerAuditedAdminRejectsWithoutDurablePreparation(t *testing.T) {
 	}
 	var nilAuthorizer *testSignerAuthorizer
 	adminWithMissingAuthorizer := &LinuxSignerAuditedAdmin{
-		Admin:  LinuxSignerAdmin{Trust: trust, Authorizer: nilAuthorizer},
-		Sink:   &recordingLinuxSignerSink{},
-		HostID: "host/reference",
+		Admin:      LinuxSignerAdmin{Trust: trust, Authorizer: nilAuthorizer},
+		Sink:       &recordingLinuxSignerSink{},
+		Operations: &recordingLinuxSignerOperationLedger{},
+		HostID:     "host/reference",
 	}
 	if err := adminWithMissingAuthorizer.Allow(context.Background(), "host-admin", "op-nil-authorizer", req); err == nil {
 		t.Fatal("typed-nil Host authorizer was allowed to dispatch")
