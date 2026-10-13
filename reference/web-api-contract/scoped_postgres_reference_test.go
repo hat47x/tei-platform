@@ -224,7 +224,7 @@ func TestScopedPostgresRejectsInvalidPlansBeforeDatabaseAccess(t *testing.T) {
 	q, ds := postgresCanonicalInput(t)
 	base := postgresReadPlan(t)
 	cases := []struct {
-		name string
+		name   string
 		mutate func(*query.EmbeddedSQL, *application.DatabaseRequirement, *ReadPlan, *map[string]any)
 	}{
 		{"missing principal", func(_ *query.EmbeddedSQL, _ *application.DatabaseRequirement, plan *ReadPlan, _ *map[string]any) {
@@ -310,9 +310,9 @@ func TestScopedPostgresRefusesStaleAuthorityOrOutageWithoutSQL(t *testing.T) {
 	q, ds := postgresCanonicalInput(t)
 	plan := postgresReadPlan(t)
 	tests := []struct {
-		name string
+		name      string
 		configure func(*postgresScopedAuthority)
-		want error
+		want      error
 	}{
 		{"backend outage", func(a *postgresScopedAuthority) {
 			a.err = errors.New("policy database unavailable")
