@@ -76,3 +76,59 @@ test("producer refuses symlink and missing explicit input", () => {
       /BUSINESS_DFD_INVALID_PRODUCER_INPUTS/);
   } finally { rmSync(f.dir, { recursive: true, force: true }); }
 });
+
+
+test("Source Index membership is physical evidence, not Accepted Procedure authority", () => {
+  const f = fixture();
+  const outsider = fixture();
+  try {
+    const observed = produceBusinessDFD(f.args);
+    const artifacts = observed.evidence.sources.map(x => ({
+      path: x.role + ".json", fingerprint: x.fingerprint
+    }));
+    const indexed = produceBusinessDFD({
+      ...f.args, sourceIndex: { artifacts }
+    }).evidence;
+    assert.equal(indexed.sourceSetStatus, "all-input-artifacts-managed");
+    assert.ok(indexed.sources.every(x =>
+      x.sourceMembership === "managed-source-artifact-verified" &&
+      x.managedArtifactPath === x.role + ".json"));
+    assert.equal(indexed.acceptedBusinessProcedure, false);
+    assert.equal(indexed.sourceRevisionBinding, "not-established");
+    assert.equal(indexed.authority, "noncanonical-reference");
+
+    const partial = produceBusinessDFD({ ...f.args,
+      sourceIndex: { artifacts: artifacts.slice(0, 1) }
+    }).evidence;
+    assert.equal(partial.sourceSetStatus, "contains-nonmanaged-reference-inputs");
+    assert.equal(partial.sources[0].sourceMembership, "managed-source-artifact-verified");
+    assert.ok(partial.sources.slice(1).every(x =>
+      x.sourceMembership === "external-reference-not-managed"));
+
+    const changedFingerprint = artifacts.map(x => ({ ...x }));
+    changedFingerprint[0].fingerprint = R0;
+    assert.throws(() => produceBusinessDFD({ ...f.args,
+      sourceIndex: { artifacts: changedFingerprint }
+    }), /BUSINESS_DFD_MANAGED_SOURCE_INDEX_FINGERPRINT_STALE/);
+    assert.throws(() => produceBusinessDFD({ ...f.args,
+      sourceIndex: { artifacts: [...artifacts, artifacts[0]] }
+    }), /BUSINESS_DFD_SOURCE_INDEX_INVALID/);
+    assert.throws(() => produceBusinessDFD({ ...f.args,
+      sourceIndex: { artifacts: [{ path: "../procedure.json", fingerprint: R0 }] }
+    }), /BUSINESS_DFD_SOURCE_INDEX_INVALID/);
+    assert.throws(() => produceBusinessDFD({ ...f.args, sourceIndex: {} }),
+      /BUSINESS_DFD_SOURCE_INDEX_INVALID/);
+
+    const outside = produceBusinessDFD({
+      ...f.args, procedure: outsider.args.procedure,
+      sourceIndex: { artifacts }
+    }).evidence;
+    assert.equal(outside.sources[0].sourceMembership,
+      "external-reference-not-managed",
+      "same filename outside the Workspace cannot impersonate managed Source");
+    assert.equal(outside.acceptedBusinessProcedure, false);
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+    rmSync(outsider.dir, { recursive: true, force: true });
+  }
+});
