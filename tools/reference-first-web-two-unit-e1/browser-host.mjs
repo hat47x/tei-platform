@@ -96,20 +96,48 @@ if (jsonForm && (
 )) {
   throw new Error("invalid expected JSON Browser/API binding");
 }
-const checkAPIBinding = async () => {
-  if (!expectedBinding) return;
-  const response = await fetch(apiOrigin + "/manifest.json", {
+// The diagnostic API endpoint may be wrong, stale, or replaced. Its HTTP
+// Content-Length is not authority, and a chunked/streaming response may omit
+// that header entirely. Enforce the byte ceiling WHILE reading the stream;
+// calling response.text() before checking its size allocates attacker-chosen
+// bytes even when a later check rejects the document. This is an availability
+// guard only, not a signature or authenticated Host attestation.
+const readBoundedAPIEvidence = async (path, maxBytes, label) => {
+  const response = await fetch(apiOrigin + path, {
     redirect: "error",
     signal: AbortSignal.timeout(3000),
     headers: { "Cache-Control": "no-cache" },
   });
-  if (response.status !== 200) throw new Error("API manifest unavailable");
-  if (Number(response.headers.get("content-length") || "0") > 65536) {
-    throw new Error("API manifest exceeds diagnostic limit");
+  if (response.status !== 200) throw new Error(label + " unavailable");
+  const declared = response.headers.get("content-length");
+  if (declared !== null &&
+      (!/^(0|[1-9][0-9]*)$/.test(declared) ||
+        !Number.isSafeInteger(Number(declared)) ||
+        Number(declared) > maxBytes)) {
+    throw new Error(label + " exceeds diagnostic limit");
   }
-  const body = await response.text();
-  if (Buffer.byteLength(body) > 65536) throw new Error("API manifest exceeds diagnostic limit");
-  const manifest = JSON.parse(body);
+  if (response.headers.get("content-type")?.split(";")[0].trim().toLowerCase()
+      !== "application/json" || !response.body) {
+    throw new Error(label + " is not a JSON observation");
+  }
+  let size = 0;
+  const parts = [];
+  for await (const part of response.body) {
+    size += part.byteLength;
+    if (size > maxBytes) {
+      throw new Error(label + " exceeds diagnostic limit");
+    }
+    parts.push(Buffer.from(part));
+  }
+  if (size === 0) throw new Error(label + " is empty");
+  return JSON.parse(Buffer.concat(parts, size).toString("utf8"));
+};
+
+const checkAPIBinding = async () => {
+  if (!expectedBinding) return;
+  const manifest = await readBoundedAPIEvidence(
+    "/manifest.json", 65536, "API manifest",
+  );
   for (const [field, required] of Object.entries(expectedBinding)) {
     if (manifest[field] !== required) {
       throw new Error("API binding differs: " + field);
@@ -119,20 +147,9 @@ const checkAPIBinding = async () => {
   // actual running API's Linux /proc/self/exe image independently and compare
   // its reported bytes to the existing builder measurement. This guards
   // accidental process/image swaps, NOT a malicious API forging its answer.
-  const probe = await fetch(apiOrigin + "/diagnostic-executable.json", {
-    redirect: "error",
-    signal: AbortSignal.timeout(3000),
-    headers: { "Cache-Control": "no-cache" },
-  });
-  if (probe.status !== 200 ||
-      Number(probe.headers.get("content-length") || "0") > 4096) {
-    throw new Error("API executable observation unavailable");
-  }
-  const observedText = await probe.text();
-  if (Buffer.byteLength(observedText) > 4096) {
-    throw new Error("API executable observation exceeds diagnostic limit");
-  }
-  const observed = JSON.parse(observedText);
+  const observed = await readBoundedAPIEvidence(
+    "/diagnostic-executable.json", 4096, "API executable observation",
+  );
   if (observed?.sha256 !== measurement.apiSHA256 ||
       observed?.bytes !== measurement.apiBytes) {
     throw new Error("live API executable image differs from measurement");
