@@ -36,6 +36,7 @@ type WorkspaceAssessment struct {
 	DecisionIndexRevision string                `json:"decisionIndexRevision,omitempty"`
 	DecisionHistoryLinks  []DecisionHistoryLink `json:"decisionHistoryLinks,omitempty"`
 	OperationWriteIntent  *OperationWriteIntent `json:"operationWriteIntent,omitempty"`
+	ContractQueryUse     *DeclaredContractQuery `json:"contractQueryUse,omitempty"`
 }
 
 // InspectWorkspace only verifies whether a real application-pattern has one
@@ -140,6 +141,8 @@ func InspectWorkspace(root, application, kind, id string) (WorkspaceAssessment, 
 	result.SourceStatus = "traceable-source-declaration"
 	intent := ResolveOperationWriteIntent(loaded.World, application, id)
 	result.OperationWriteIntent = &intent
+	queryUse := ObserveDeclaredContractQuery(loaded.World, application, id)
+	result.ContractQueryUse = &queryUse
 	// Source Index fingerprints attest bytes, not human acceptance or
 	// equivalence of a proposed Business Procedure/approval rule.
 	result.Unresolved = append(result.Unresolved, "business-rule-acceptance-not-established")
