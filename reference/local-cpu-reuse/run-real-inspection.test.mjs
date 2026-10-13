@@ -73,3 +73,11 @@ test('default CLI evidence summary excludes business Canonical bodies and raw so
   assert.equal(output.includes('source:example'),false);
   assert.equal(JSON.parse(output).subjectCount,5);
 });
+
+test('summary never forwards unexpected link payload fields',async()=>{
+  const batch=await runReferenceInspection('binary','workspace',async(_b,_w,s)=>report(s));
+  batch.links.applicationPattern.secret='sensitive-customer-name';
+  const output=JSON.stringify(summarizeInspectionEvidence(batch));
+  assert.equal(output.includes('sensitive-customer-name'),false);
+  assert.equal(JSON.parse(output).links.applicationPattern.accepted,false);
+});
