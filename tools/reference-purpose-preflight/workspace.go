@@ -22,22 +22,23 @@ type SourceWitness struct {
 }
 
 type WorkspaceAssessment struct {
-	SchemaVersion         string                         `json:"schemaVersion"`
-	Authority             string                         `json:"authority"`
-	Application           string                         `json:"application"`
-	SubjectKind           string                         `json:"subjectKind"`
-	SubjectID             string                         `json:"subjectId"`
-	SourceStatus          string                         `json:"sourceStatus"`
-	RuleMeaning           string                         `json:"ruleMeaning"`
-	ExecutionAllowed      bool                           `json:"executionAllowed"`
-	Witnesses             []SourceWitness                `json:"witnesses"`
-	Unresolved            []string                       `json:"unresolved"`
-	DecisionHistoryStatus string                         `json:"decisionHistoryStatus,omitempty"`
-	DecisionIndexRevision string                         `json:"decisionIndexRevision,omitempty"`
-	DecisionHistoryLinks  []DecisionHistoryLink          `json:"decisionHistoryLinks,omitempty"`
-	OperationWriteIntent  *OperationWriteIntent          `json:"operationWriteIntent,omitempty"`
-	ContractQueryUse      *DeclaredContractQuery         `json:"contractQueryUse,omitempty"`
-	EnvironmentBinding    *EnvironmentBindingObservation `json:"environmentBinding,omitempty"`
+	SchemaVersion         string                          `json:"schemaVersion"`
+	Authority             string                          `json:"authority"`
+	Application           string                          `json:"application"`
+	SubjectKind           string                          `json:"subjectKind"`
+	SubjectID             string                          `json:"subjectId"`
+	SourceStatus          string                          `json:"sourceStatus"`
+	RuleMeaning           string                          `json:"ruleMeaning"`
+	ExecutionAllowed      bool                            `json:"executionAllowed"`
+	Witnesses             []SourceWitness                 `json:"witnesses"`
+	Unresolved            []string                        `json:"unresolved"`
+	DecisionHistoryStatus string                          `json:"decisionHistoryStatus,omitempty"`
+	DecisionIndexRevision string                          `json:"decisionIndexRevision,omitempty"`
+	DecisionHistoryLinks  []DecisionHistoryLink           `json:"decisionHistoryLinks,omitempty"`
+	OperationWriteIntent  *OperationWriteIntent           `json:"operationWriteIntent,omitempty"`
+	ContractQueryUse      *DeclaredContractQuery          `json:"contractQueryUse,omitempty"`
+	EnvironmentBinding    *EnvironmentBindingObservation  `json:"environmentBinding,omitempty"`
+	QueryImplementation   *QueryImplementationObservation `json:"queryImplementation,omitempty"`
 }
 
 // InspectWorkspace only verifies whether a real application-pattern has one
@@ -161,6 +162,8 @@ func inspectWorkspace(root, application, kind, id, environmentID string) (Worksp
 	if environmentID != "" {
 		binding := ObserveEnvironmentBinding(loaded.World, environmentID, application, result.ContractQueryUse)
 		result.EnvironmentBinding = &binding
+		implementation := ObserveQueryImplementation(loaded.World, result.ContractQueryUse, result.EnvironmentBinding)
+		result.QueryImplementation = &implementation
 	}
 	// Source Index fingerprints attest bytes, not human acceptance or
 	// equivalence of a proposed Business Procedure/approval rule.
