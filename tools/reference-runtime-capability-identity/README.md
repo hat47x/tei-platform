@@ -124,3 +124,11 @@ codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASS�
 **注意**：合成Candidateの`1.0.0`、fingerprint、artifact digest、Authority Evidenceはテスト材料であり、実案件プラグインが`v1`として受理された証拠でも実成果物の署名・照合結果でもありません。テストでは本番の`Registry.Invoke`、Resource Brokerの現行leaseやHost Sandboxによる案件Go実行、業務`order_entry` Actionの委譲を実行しません。今後は既存#951の契約受理・Conformanceと#976のRuntime Authorityへ、同一のexact Candidate/Lockを接続する必要があります。
 
 局所試験は `go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice` を実行します。専用Workflowも同じ2パッケージをPR正確HEADで検証します。
+
+## 案件Goロジックの実子プロセスpressure（#976、後続）
+
+`project_advice_real_process_test.go` は、統合済み `plugins/reference-project-customer-advice` の実際の `Evaluate` をGoテスト実行ファイルへリンクし、**別OSプロセス**で実行します。既存 `StdioProcessLauncher`、`HostSandboxLauncher`、`invokeWithExistingHostBoundary` の経路を用い、案件補助提案とエラーを通信します。テストでは `os.Executable()` の実bytesからSHA-256を取り、Host側の検査者が実ファイルと宣言Digestを照合します。Digest不一致時にポリシー適用器・子プロセス呼出しへ到達しないことも確認します。
+
+**受理範囲は限定的**です。このバイナリはテストプロセス自身であり、実際に配布・署名された案件Plugin成果物ではありません。Contract `1.0.0`、Conformance／Resolution Lock、Environment Execution Grantは依然として**合成候補**です。また使用するネットワーク／ファイルシステムPolicy Enforcerは既存のテスト用記録器であり、OS隔離は行っていません。検査したファイルを同じFDから起動する実行ファイル固定、署名／発行者の信頼、Permission Brokerの実Lease・fencing、運用時のPrincipal/Action認可、Accepted業務処理の委譲も証明しません。従って、実子プロセスの成功をProduction Host Authority成立の証拠にしてはなりません。
+
+現在の主目的は、**案件Goロジックの呼出し経路を既存generic Runtime機構へ接続できること**と、**未検証artifactを実行前に拒否する順序**を試験することです。正式化は#976/#951等の既存Authority／受理機構から進めます。
