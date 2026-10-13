@@ -45,8 +45,8 @@ func e33ActualDraftSource(t *testing.T) []e33File {
 	// The prior E32 GitHub observation is evidence of file identity, not a
 	// trusted release artifact or #951 Provider publication.
 	expected := map[string]string{
-		"plugins/reference-project-customer-advice/advice.go": "0e1adb1dc471ff46daa7f608dd892eca1e3ac871",
-		"tools/reference-project-advice-lit/main.go": "3cb210363d59c0052ed5da145d5895c504c7cef7",
+		"plugins/reference-project-customer-advice/advice.go":       "0e1adb1dc471ff46daa7f608dd892eca1e3ac871",
+		"tools/reference-project-advice-lit/main.go":                "3cb210363d59c0052ed5da145d5895c504c7cef7",
 		"tools/reference-project-advice-lit/order_entry_context.go": "6e05e787025d22895ba89fc664f76e9a58fc8ef3",
 		"tools/reference-project-advice-lit/web/advice-element.mjs": "0f415f06f9e325b3d2f544cbbe7836f0c3f3e65f",
 	}
@@ -82,7 +82,7 @@ func e33IllustrativeContract() composition.Contract {
 func e33Requirement(scope, provider string) composition.WiringRequirement {
 	return composition.WiringRequirement{
 		Contract: e33IllustrativeContract(),
-		Scope: scope, ProviderID: provider, SlotID: "project-advice",
+		Scope:    scope, ProviderID: provider, SlotID: "project-advice",
 	}
 }
 
@@ -139,15 +139,15 @@ func TestE33UntrustedLocatorCannotBecomeConformanceOrAuthority(t *testing.T) {
 	// All of the following identifiers are fabricated. The existing
 	// reconciler only links them; it intentionally does not authenticate them.
 	ref := handoff.EvidenceReference{
-		Subject: set.Findings[0].VerificationTargets[0],
-		AuthorityScope: "application-execution",
-		PluginID: "test-only-project-advice",
-		PluginVersion: "0",
-		ImplementationID: "test-only-Evaluate",
-		ArtifactDigest: "sha256:" + strings.Repeat("a", 64),
-		ContractFingerprint: "test-only-fingerprint",
-		ConformanceProfile: "test-only",
-		EvidenceFingerprint: "test-only-evidence",
+		Subject:               set.Findings[0].VerificationTargets[0],
+		AuthorityScope:        "application-execution",
+		PluginID:              "test-only-project-advice",
+		PluginVersion:         "0",
+		ImplementationID:      "test-only-Evaluate",
+		ArtifactDigest:        "sha256:" + strings.Repeat("a", 64),
+		ContractFingerprint:   "test-only-fingerprint",
+		ConformanceProfile:    "test-only",
+		EvidenceFingerprint:   "test-only-evidence",
 		ResolutionFingerprint: "test-only-resolution",
 	}
 	linked := handoff.ReconcileCurrent(registry, set, []handoff.EvidenceReference{ref})
