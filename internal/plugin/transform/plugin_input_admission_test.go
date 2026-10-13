@@ -43,8 +43,8 @@ func admissionFixture(t *testing.T) (plugin.Definition, plugin.BuildPlan, transf
 		t.Fatal(err)
 	}
 	return def, plan, source, inputprofile.BuildInputSelection{
-		Profile: inputprofile.PluginDefinitionJSONV2,
-		LockedSourceFingerprint: sourceFP,
+		Profile:                    inputprofile.PluginDefinitionJSONV2,
+		LockedSourceFingerprint:    sourceFP,
 		LockedBuildPlanFingerprint: planFP,
 	}, raw
 }
@@ -63,7 +63,7 @@ func TestExplicitHostInputBindingProducesExactLegacyEnginePackage(t *testing.T) 
 	}
 	if _, err := transform.Evaluate(source, map[string]transform.Value{
 		"pluginDefinition": legacy,
-		"buildPlan": valueFromGoJSON(t, plan),
+		"buildPlan":        valueFromGoJSON(t, plan),
 	}); err == nil || !strings.Contains(err.Error(), "assert-equal failed") {
 		t.Fatalf("legacy v1 evaluator accepted raw explicit arrays: %v", err)
 	}
