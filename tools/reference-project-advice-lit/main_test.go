@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/composition"
 	customeradvice "tei/plugins/reference-project-customer-advice"
 )
 
@@ -132,5 +133,69 @@ func TestDiagnosticHostRejectsDNSRebinding(t *testing.T) {
 	}
 	if readCalls != 1 {
 		t.Fatalf("expected exactly one canonical read, got %d", readCalls)
+	}
+}
+
+func TestProjectAdvisoryHTTPServiceUnavailable(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		invalidate func(*testing.T, *projectAdvisoryBridge)
+	}{
+		{"host-withdraw", func(t *testing.T, bridge *projectAdvisoryBridge) {
+			if err := bridge.coordinator.Withdraw(1); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"provider-removed", func(t *testing.T, bridge *projectAdvisoryBridge) {
+			if _, err := bridge.registry.Apply(bridge.registry.Snapshot().Revision, nil, []string{projectAdvisoryProviderID}); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"contract-changed", func(t *testing.T, bridge *projectAdvisoryBridge) {
+			contract := ProjectAdvisoryContract
+			contract.Version = "v1"
+			if _, err := bridge.registry.Apply(bridge.registry.Snapshot().Revision, []composition.Provider{{
+				ID: projectAdvisoryProviderID, Scope: projectAdvisoryScope, Offers: contract,
+			}}, nil); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bridge, err := newProjectAdvisoryBridge()
+			if err != nil {
+				t.Fatal(err)
+			}
+			tc.invalidate(t, bridge)
+			req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8787/project/advice",
+				strings.NewReader(`{"customerCode":"VIP-7","note":""}`))
+			req.Header.Set("Content-Type", "application/json")
+			resp := httptest.NewRecorder()
+			diagnosticHostOnly(handlerWithProjectBridge(nil, bridge)).ServeHTTP(resp, req)
+			if resp.Code != http.StatusServiceUnavailable {
+				t.Fatalf("expected unavailable 503, got %d: %s", resp.Code, resp.Body.String())
+			}
+			if resp.Header().Get("Cache-Control") != "no-store" {
+				t.Fatal("Host withdrawal response must not be cached")
+			}
+			if strings.Contains(resp.Body.String(), "メモの記入を推奨") {
+				t.Fatal("unavailable provider must not produce advisory")
+			}
+		})
+	}
+}
+
+func TestProjectAdvisoryHTTPInvalidInputRemains400(t *testing.T) {
+	bridge, err := newProjectAdvisoryBridge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8787/project/advice",
+		strings.NewReader(`{"customerCode":"<script>","note":""}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	diagnosticHostOnly(handlerWithProjectBridge(nil, bridge)).ServeHTTP(resp, req)
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("invalid input must stay 400, got %d", resp.Code)
 	}
 }
