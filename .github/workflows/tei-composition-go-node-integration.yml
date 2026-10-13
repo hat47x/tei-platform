@@ -99,3 +99,10 @@ jobs:
           set -euo pipefail
           node --test reference/application-composition/e34_bridge_revision_review.test.mjs
           node reference/application-composition/e34_bridge_revision_review.mjs > /dev/null
+
+      - name: E35の案件Goと実Chromeの固定CI出典を照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e35_reference_ci_review.test.mjs
+          node reference/application-composition/e35_reference_ci_review.mjs > /dev/null
