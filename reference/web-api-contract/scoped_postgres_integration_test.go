@@ -97,7 +97,7 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 		!strings.Contains(createSQL, "CREATE TABLE public.tei_web_scoped_orders_reference") {
 		t.Fatal("tenant fixture shape changed; refuse unexpected SQL")
 	}
-	insertSQL := "INSERT INTO" + strings.TrimSuffix(strings.TrimSpace(insertTail), ";")
+	insertSQL := "INSERT INTO " + strings.TrimSuffix(strings.TrimSpace(insertTail), ";")
 	// Register cleanup immediately after creating the relation so a failed
 	// INSERT does not leave behind fixture data.
 	if _, err := db.ExecContext(ctx, strings.TrimSpace(createSQL)); err != nil {
