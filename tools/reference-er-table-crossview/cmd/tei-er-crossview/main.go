@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	ercrossview "tei/tools/reference-er-table-crossview"
 	"tei/internal/workspace"
+	ercrossview "tei/tools/reference-er-table-crossview"
 )
 
 // CLI deliberately exports observations of authored model structure only.
