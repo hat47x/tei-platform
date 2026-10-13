@@ -287,7 +287,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		}
 		if review.ManifestFingerprint != "" {
 			a7.Items = append(a7.Items,
-			"workspace manifest: "+review.ManifestPath+" fingerprint="+review.ManifestFingerprint)
+				"workspace manifest: "+review.ManifestPath+" fingerprint="+review.ManifestFingerprint)
 		}
 		for _, evidence := range ev.candidate.Evidence {
 			a7.Items = append(a7.Items, describeReviewEvidence(evidence))
