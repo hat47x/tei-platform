@@ -118,6 +118,12 @@ func ExecuteScopedCanonicalRead(
 		return PublishedReadResult{}, ErrScopedQueryContract
 	}
 	mapped := execution.Result.Mapped
+	// A Provider claiming to honor Top must never return more rows than the
+	// trusted upper bound. Reject the entire result rather than truncating
+	// an unscoped or incorrectly ordered response after SQL execution.
+	if len(mapped.Rows) > plan.Limit {
+		return PublishedReadResult{}, ErrScopedQueryContract
+	}
 	indexes := make(map[core.CanonicalID]int, len(mapped.Columns))
 	for i, field := range mapped.Columns {
 		if field.Attribute == "" {
