@@ -18,10 +18,10 @@ import (
 )
 
 type postgresScopedTrace struct {
-	calls int
-	sql string
-	args []sqldriver.NamedValue
-	rows [][]sqldriver.Value
+	calls   int
+	sql     string
+	args    []sqldriver.NamedValue
+	rows    [][]sqldriver.Value
 	execErr error
 }
 
@@ -74,7 +74,7 @@ func (c *postgresScopedConn) QueryContext(
 var _ sqldriver.QueryerContext = (*postgresScopedConn)(nil)
 
 type postgresScopedRows struct {
-	rows [][]sqldriver.Value
+	rows  [][]sqldriver.Value
 	index int
 }
 
@@ -101,11 +101,11 @@ func postgresScopedDB(t *testing.T, trace *postgresScopedTrace) *sql.DB {
 }
 
 type postgresScopedAuthority struct {
-	calls int
+	calls    int
 	received SQLTenantScopeRequest
-	tenant string
-	forged *SQLTenantScopeGrant
-	err error
+	tenant   string
+	forged   *SQLTenantScopeGrant
+	err      error
 }
 
 func (a *postgresScopedAuthority) ResolveSQLTenantScope(
@@ -135,13 +135,13 @@ func postgresCanonicalInput(t *testing.T) (query.EmbeddedSQL, application.Databa
 func postgresReadPlan(t *testing.T) ReadPlan {
 	t.Helper()
 	plan, err := scopedPublication(t).BindRead(url.Values{
-		"$select": {"orderId,customerId"},
-		"$filter": {"orderId gt 2"},
+		"$select":  {"orderId,customerId"},
+		"$filter":  {"orderId gt 2"},
 		"$orderby": {"orderId desc"},
-		"$top": {"1"},
+		"$top":     {"1"},
 	}, TrustedReadContext{
-		PrincipalID: "subject-order-viewer",
-		RowScopeID: "tenant-a-only",
+		PrincipalID:    "subject-order-viewer",
+		RowScopeID:     "tenant-a-only",
 		PolicyRevision: "policy-17",
 	})
 	if err != nil {
@@ -157,22 +157,22 @@ func TestScopedPostgresBindsTenantInsideSQLBeforeFilterOrderLimit(t *testing.T) 
 	}
 	authority := &postgresScopedAuthority{tenant: "tenant-a"}
 	provider := ScopedPostgresOrdersReference{
-		DB: postgresScopedDB(t, trace),
+		DB:        postgresScopedDB(t, trace),
 		Authority: authority,
-		Database: "sales_core",
+		Database:  "sales_core",
 	}
 	pub := scopedPublication(t)
 	trusted := TrustedReadContext{
-		PrincipalID: "subject-order-viewer",
-		RowScopeID: "tenant-a-only",
+		PrincipalID:    "subject-order-viewer",
+		RowScopeID:     "tenant-a-only",
 		PolicyRevision: "policy-17",
 	}
 	plan, err := AuthorizeBrowseRead(context.Background(), fixtureAuthorization(t),
 		pub, url.Values{
-			"$select": {"orderId,customerId"},
-			"$filter": {"orderId gt 2"},
+			"$select":  {"orderId,customerId"},
+			"$filter":  {"orderId gt 2"},
 			"$orderby": {"orderId desc"},
-			"$top": {"1"},
+			"$top":     {"1"},
 		}, trusted)
 	if err != nil {
 		t.Fatal(err)
@@ -293,7 +293,7 @@ func TestScopedPostgresRejectsInvalidPlansBeforeDatabaseAccess(t *testing.T) {
 			trace := &postgresScopedTrace{}
 			authority := &postgresScopedAuthority{tenant: "tenant-a"}
 			provider := ScopedPostgresOrdersReference{
-				DB: postgresScopedDB(t, trace), Authority: authority,
+				DB:       postgresScopedDB(t, trace), Authority: authority,
 				Database: "sales_core",
 			}
 			_, err := provider.ExecuteScopedBrowseQuery(context.Background(), localQ,
@@ -320,7 +320,7 @@ func TestScopedPostgresRefusesStaleAuthorityOrOutageWithoutSQL(t *testing.T) {
 		{"wrong principal in grant", func(a *postgresScopedAuthority) {
 			a.forged = &SQLTenantScopeGrant{
 				SQLTenantScopeRequest: SQLTenantScopeRequest{
-					PrincipalID: "other", RowScopeID: plan.ScopeID,
+					PrincipalID:    "other", RowScopeID: plan.ScopeID,
 					PolicyRevision: plan.PolicyRevision, QueryID: q.ID,
 				},
 				TenantID: "tenant-a",
@@ -329,7 +329,7 @@ func TestScopedPostgresRefusesStaleAuthorityOrOutageWithoutSQL(t *testing.T) {
 		{"wrong policy revision", func(a *postgresScopedAuthority) {
 			a.forged = &SQLTenantScopeGrant{
 				SQLTenantScopeRequest: SQLTenantScopeRequest{
-					PrincipalID: plan.PrincipalID, RowScopeID: plan.ScopeID,
+					PrincipalID:    plan.PrincipalID, RowScopeID: plan.ScopeID,
 					PolicyRevision: "stale", QueryID: q.ID,
 				},
 				TenantID: "tenant-a",
@@ -345,7 +345,7 @@ func TestScopedPostgresRefusesStaleAuthorityOrOutageWithoutSQL(t *testing.T) {
 			authority := &postgresScopedAuthority{tenant: "tenant-a"}
 			tc.configure(authority)
 			provider := ScopedPostgresOrdersReference{
-				DB: postgresScopedDB(t, trace), Authority: authority,
+				DB:       postgresScopedDB(t, trace), Authority: authority,
 				Database: "sales_core",
 			}
 			_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
@@ -364,9 +364,9 @@ func TestScopedPostgresBindsTenantAsDataEvenWhenItLooksLikeSQL(t *testing.T) {
 	attack := "tenant-a' OR 1=1 --"
 	trace := &postgresScopedTrace{}
 	provider := ScopedPostgresOrdersReference{
-		DB: postgresScopedDB(t, trace),
+		DB:        postgresScopedDB(t, trace),
 		Authority: &postgresScopedAuthority{tenant: attack},
-		Database: "sales_core",
+		Database:  "sales_core",
 	}
 	_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
 		map[string]any{"from": from})
@@ -387,9 +387,9 @@ func TestScopedPostgresPreservesCanonicalDefaultOrder(t *testing.T) {
 	plan.Order = nil
 	trace := &postgresScopedTrace{}
 	provider := ScopedPostgresOrdersReference{
-		DB: postgresScopedDB(t, trace),
+		DB:        postgresScopedDB(t, trace),
 		Authority: &postgresScopedAuthority{tenant: "tenant-a"},
-		Database: "sales_core",
+		Database:  "sales_core",
 	}
 	_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
 		map[string]any{"from": from})
@@ -409,7 +409,7 @@ func TestScopedPostgresRefusesTypedNilTenantAuthority(t *testing.T) {
 	trace := &postgresScopedTrace{}
 	var absent *postgresScopedAuthority
 	provider := ScopedPostgresOrdersReference{
-		DB: postgresScopedDB(t, trace), Authority: absent,
+		DB:       postgresScopedDB(t, trace), Authority: absent,
 		Database: "sales_core",
 	}
 	_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
