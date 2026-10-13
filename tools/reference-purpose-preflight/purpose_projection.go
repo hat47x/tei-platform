@@ -86,7 +86,13 @@ func ProjectForPurpose(report WorkspaceAssessment, purpose string) (PurposeProje
 	// Validation declaration alone is insufficient to impose those as gates.
 	add("business-effective-scope", "conditional", "required-if-rule-or-object-selection-is-time-dependent")
 	add("runtime-business-validation", "not-evaluated", "actual-order-values-and-revision-not-read")
-	add("provider-contract", "conditional", "required-if-operation-uses-bound-provider")
+	if report.ContractQueryUse != nil && report.ContractQueryUse.Status == "declared-requirement" {
+		// Only the dependency is authored. Neither a concrete Provider nor
+		// its Conformance, environment binding, or execution right is proven.
+		add("provider-contract", "conditional", "declared-query-dependency-provider-qualification-unverified")
+	} else {
+		add("provider-contract", "conditional", "required-if-operation-uses-bound-provider")
+	}
 	add("host-authorization", "not-evaluated", "execution-principal-and-current-policy-not-qualified")
 	if report.OperationWriteIntent != nil && report.OperationWriteIntent.Status == "declared-write" {
 		add("effect-fence", "not-evaluated", "declared-write-intent-requires-runtime-effect-fence")
