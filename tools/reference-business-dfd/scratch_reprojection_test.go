@@ -58,11 +58,11 @@ func TestBusinessDFDUnacceptedProposalReprojection(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-kind string
-id string
-operation map[string]any
-apply func(*review)
+		name      string
+		kind      string
+		id        string
+		operation map[string]any
+		apply     func(*review)
 	}{
 		{
 			name: "trigger_business_description_only",
@@ -146,8 +146,8 @@ apply func(*review)
 			}
 			inputs := map[string][]byte{
 				"projection": projectionBytes,
-"procedure": procedureBytes,
-"review": reviewBytes,
+				"procedure":  procedureBytes,
+				"review":     reviewBytes,
 			}
 			for name, data := range inputs {
 				if err := os.WriteFile(files[name], data, 0600); err != nil {
@@ -192,15 +192,15 @@ apply func(*review)
 				t.Fatalf("Node selected-edit failed: %v\n%s", err, stderr)
 			}
 			var packet struct {
-				Authority string `json:"authority"`
-ReadyForAcceptance bool `json:"readyForAcceptance"`
-SharedAcceptanceCandidate *json.RawMessage `json:"sharedAcceptanceCandidate"`
-SourceWrites []json.RawMessage `json:"sourceWrites"`
-InputSnapshotsVerified bool `json:"inputSnapshotsVerified"`
-ProposedReview json.RawMessage `json:"proposedReview"`
+				Authority                 string            `json:"authority"`
+				ReadyForAcceptance        bool              `json:"readyForAcceptance"`
+				SharedAcceptanceCandidate *json.RawMessage  `json:"sharedAcceptanceCandidate"`
+				SourceWrites              []json.RawMessage `json:"sourceWrites"`
+				InputSnapshotsVerified    bool              `json:"inputSnapshotsVerified"`
+				ProposedReview            json.RawMessage   `json:"proposedReview"`
 				Selected                  struct {
-					ID string `json:"id"`
-AcceptedIdentity string `json:"acceptedIdentity"`
+					ID               string `json:"id"`
+					AcceptedIdentity string `json:"acceptedIdentity"`
 				} `json:"selected"`
 			}
 			if err := json.Unmarshal(stdout, &packet); err != nil {
