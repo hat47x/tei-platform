@@ -74,8 +74,8 @@ func (e ScopedRecentOrdersPostgres) ExecuteScopedBrowseQuery(
 	// expressions replace unselected columns with typed NULL aliases.
 	// All names and expressions come from this hard-coded realization.
 	physical := []struct {
-		name string
-		expr string
+		name  string
+		expr  string
 		alias string
 	}{
 		{"orderId", "o.order_id", "order_id"},
