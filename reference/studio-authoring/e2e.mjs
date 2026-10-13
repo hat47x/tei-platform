@@ -602,7 +602,7 @@ function testReferenceBusinessNavigation() {
     join(businessRoot, file));
   const manifest = join(managedWorkspace, "tei.workspace.yaml");
   const originalManifest = readFileSync(manifest, "utf8");
-  writeFileSync(manifest, originalManifest + "  - business\\n");
+  writeFileSync(manifest, originalManifest + "  - business" + String.fromCharCode(10));
   const managedIndex = sourceIndex(managedWorkspace);
   checked(fixtures.every(file => managedIndex.artifacts.some(a =>
     a.path === "business/" + file && /^sha256:[a-f0-9]{64}$/.test(a.fingerprint))),
