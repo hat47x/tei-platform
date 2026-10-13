@@ -200,3 +200,40 @@ func CheckLocaleBundleIntegrity(bundle LocaleBundle) error {
 	}
 	return nil
 }
+// CheckLocaleBundleAgainstLock binds a structurally consistent bundle to the
+// Host's independently supplied current catalog, environment, and lock. This
+// catches stale/different plugin selections at a distribution boundary. It
+// still cannot prove the received label matches accepted Source or grant
+// decisions: callers must obtain those from trusted Host mechanisms.
+func CheckLocaleBundleAgainstLock(
+	bundle LocaleBundle,
+	catalog plugin.Catalog,
+	env environment.Environment,
+	lock plugin.Lock,
+) error {
+	if err := CheckLocaleBundleIntegrity(bundle); err != nil {
+		return err
+	}
+	resolved, err := catalog.ResolveEnvironmentWithLock(env, lock)
+	if err != nil {
+		return fmt.Errorf("locale-bundle: plugin-lock: %w", err)
+	}
+	fingerprint, err := plugin.EnvironmentLockFingerprint(lock, env.ID)
+	if err != nil {
+		return fmt.Errorf("locale-bundle: environment-lock: %w", err)
+	}
+	if bundle.Environment != string(env.ID) || bundle.LockFingerprint != fingerprint {
+		return fmt.Errorf("locale-bundle: environment-lock-mismatch")
+	}
+	found := false
+	for _, identity := range resolved.Plugins {
+		if string(identity.ID) == bundle.Target.ID && identity.Version == bundle.Target.Version {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("locale-bundle: target-not-in-current-lock")
+	}
+	return nil
+}
