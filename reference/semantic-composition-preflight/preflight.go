@@ -13,7 +13,6 @@ import (
 	"tei/internal/semantic"
 	"tei/internal/stdlib"
 	"tei/internal/validation"
-	"tei/internal/workspace"
 	semanticdistribution "tei/reference/semantic-distribution"
 )
 
@@ -118,7 +117,6 @@ func Inspect(registry *composition.Registry, scope string, local []semantic.Name
 	model := ir.World{Semantics: make([]semantic.Namespace, 0, 1+len(available))}
 	model.Semantics = append(model.Semantics, stdlib.SemanticNamespace())
 	model.Semantics = append(model.Semantics, available...)
-	workspace.Normalize(&model)
 	report.Diagnostics = validation.Validate(model)
 	if validation.HasErrors(report.Diagnostics) {
 		return report, ErrInvalidSemanticView
