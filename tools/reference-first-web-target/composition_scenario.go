@@ -63,7 +63,7 @@ func selectedCommandImplementation(command *referenceCommandScenarioRunner, read
 	return func(ctx context.Context, input commandScenarioInput) (commandScenarioResult, error) {
 		invocation := linked
 		if snapshot := input.plannedRead; snapshot != nil {
-			if command.persistence == nil || snapshot.StorageRevision == "" || snapshot.ApplicationID != "order_entry" || snapshot.From != input.From || snapshot.SelectedRowIndex != input.RowIndex {
+			if linked.persistence == nil || snapshot.StorageRevision == "" || snapshot.ApplicationID != "order_entry" || snapshot.From != input.From || snapshot.SelectedRowIndex != input.RowIndex {
 				return commandScenarioResult{}, fmt.Errorf("planned read does not match persistent command selection")
 			}
 			invocation.read = &frozenRead{value: *snapshot}

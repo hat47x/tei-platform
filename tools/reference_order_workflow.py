@@ -140,6 +140,14 @@ def verify_order_workflow(root, output, binary, head, digest, dsn_file, sql, run
                 save(name, value)
                 trace = value['current']['composition'] if 'current' in value else value['composition']
                 assert trace['modelRevision'] == r1 and trace['artifactDigest'] == digest
+                if 'planned' in value:
+                    for item in value['items']:
+                        command_trace = item['result'].get('composition')
+                        if command_trace is not None:
+                            assert command_trace['providerId'] == 'order-submit'
+                            assert command_trace['contractId'] == 'tei.reference.order-entry.postgres-submit'
+                            assert command_trace['generation'] == 1 and command_trace['modelRevision'] == r1
+                            assert command_trace['artifactDigest'] == digest
             return value
 
         journal1 = output / 'workflow-batch-1.jsonl'
@@ -159,6 +167,18 @@ def verify_order_workflow(root, output, binary, head, digest, dsn_file, sql, run
         confirm_states('price-stop', '1001|submitted\n1002|submitted\n1003|draft')
         result['stages'].append('correct quantity and explicitly submit remainder; accepted price rule stops the third order')
         sql('UPDATE public.order_lines SET unit_price=6200 WHERE order_line_id=5004;')
+        # A still-permitted batch must not borrow its enclosing identity for
+        # effects after the independent submit permission has been revoked.
+        sql("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id='order-submit';")
+        maintenance_journal = output / 'workflow-maintenance.jsonl'
+        denied = invoke('workflow-maintenance-denied', batch + ['-rows', '2', '-batch-journal', str(maintenance_journal)], False)
+        assert denied['stage'] == 'execution-failed' and len(denied['items']) == 1
+        assert denied['items'][0]['result']['stage'] == 'command'
+        confirm_states('submit-permission-revoked', '1001|submitted\n1002|submitted\n1003|draft')
+        diagnosis = invoke('workflow-maintenance-review', ['-non-screen', 'batch-review', '-batch-journal-in', str(maintenance_journal)])
+        assert diagnosis['modelRevisionMatches'] is True and diagnosis['current']['items'][0]['observation']['result'] == 'draft'
+        sql("UPDATE public.tei_reference_execution_grants SET revoked=false WHERE provider_id='order-submit';")
+        result['stages'].append('revoke submit permission while batch remains permitted; independently diagnose and explicitly re-admit the remainder')
         result['crash'] = verify_batch_crash(root, output, host, batch, sql, invoke, container, digest,
                                            reset=False, rows='2', planned=(1003,))
         confirm_states('crash-reviewed', '1001|submitted\n1002|submitted\n1003|draft')
