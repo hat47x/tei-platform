@@ -217,3 +217,30 @@ func TestScopedProviderCannotMutateAuthorizedResponseProjection(t *testing.T) {
 		t.Fatalf("provider mutated the caller's authorization plan: %+v", plan)
 	}
 }
+
+func TestScopedDriverRejectsProviderReturningMoreThanAuthorizedTop(t *testing.T) {
+	pub := scopedPublication(t)
+	trusted := TrustedReadContext{
+		PrincipalID: "subject-order-editor", RowScopeID: "tenant-a-only", PolicyRevision: "r17",
+	}
+	plan, err := pub.BindRead(url.Values{"$select": {"orderId"}, "$top": {"1"}}, trusted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := scopedCanonicalExecutorFunc(func(
+		context.Context, query.EmbeddedSQL, application.DatabaseRequirement, ReadPlan, map[string]any,
+	) (driver.BrowseQueryResult, error) {
+		return driver.BrowseQueryResult{Raw: queryresult.RawResult{
+			Columns: []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"},
+			Rows: [][]any{
+				{int64(3), int64(11), "2026-10-01", "OPEN", int64(3000)},
+				{int64(9), int64(12), "2026-10-02", "READY", int64(9000)},
+			},
+		}}, nil
+	})
+	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
+		scopedSupport(pub, plan), provider, nil)
+	if !errors.Is(err, ErrScopedQueryContract) || len(out.Columns) != 0 || len(out.Rows) != 0 {
+		t.Fatalf("Provider exceeded Top but its result escaped: result=%+v err=%v", out, err)
+	}
+}
