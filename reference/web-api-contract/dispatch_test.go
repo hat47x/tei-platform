@@ -74,3 +74,40 @@ func TestReadDispatchRejectsUnsupportedNativeQueryOperations(t *testing.T) {
 		t.Fatal("native Query without an explicit trusted execution plan was dispatched")
 	}
 }
+
+func TestReadDispatchRechecksGrantsForForgedPlans(t *testing.T) {
+	id := core.MustCanonicalID("sales.order.order_id")
+	q := core.MustCanonicalID("order_entry.recent_orders")
+	pub := PublishedBrowse{
+		QueryID: q,
+		Fields: []PublishedField{{Name: "orderId", AttributeID: id,
+			Policy: FieldPolicy{Select: true}}},
+	}
+	support := ProviderReadSupport{
+		QueryID: q, PolicyRevision: "rev1",
+		EnforcesScope: true, SupportsLimit: true,
+		ProjectsFields: map[core.CanonicalID]bool{id: true},
+		Filters: map[core.CanonicalID]map[string]bool{id: {"eq": true}},
+		Sorts: map[core.CanonicalID]bool{id: true},
+	}
+	base := ReadPlan{Selected: []string{"orderId"}, Limit: 50, ScopeID: "row-scope", PolicyRevision: "rev1"}
+	if err := CheckReadDispatch(pub, base, support); err != nil {
+		t.Fatalf("expected valid preflight: %v", err)
+	}
+	for name, modify := range map[string]func(*ReadPlan){
+		"filter without field grant": func(p *ReadPlan) { p.Filter = &Filter{FieldID: "orderId", Operator: "eq", Value: "x"} },
+		"sort without field grant": func(p *ReadPlan) { p.Order = &Ordering{FieldID: "orderId"} },
+		"duplicate projection": func(p *ReadPlan) { p.Selected = []string{"orderId", "orderId"} },
+		"unknown projection": func(p *ReadPlan) { p.Selected = []string{"private"} },
+		"empty scope": func(p *ReadPlan) { p.ScopeID = "" },
+		"out of bounds limit": func(p *ReadPlan) { p.Limit = 9999 },
+	} {
+		t.Run(name, func(t *testing.T) {
+			forged := base
+			modify(&forged)
+			if err := CheckReadDispatch(pub, forged, support); !errors.Is(err, ErrRejected) {
+				t.Fatalf("forged request accepted: %v", err)
+			}
+		})
+	}
+}
