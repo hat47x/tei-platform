@@ -101,7 +101,6 @@ func TestFailClosedForMissingOrRevokedHost(t *testing.T) {
 	}
 }
 
-
 func TestHostRevocationIsConsultedAgain(t *testing.T) {
 	r, index := fixture()
 	if _, err := VerifyCurrent(context.Background(), r, "order_entry", index); err != nil {
