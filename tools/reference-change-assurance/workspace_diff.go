@@ -23,19 +23,19 @@ type SourceArtifactChange struct {
 // WorkspaceDiffReport compares two separately loaded Workspace roots.
 // Neither the filesystem snapshots nor their origin are authenticated.
 type WorkspaceDiffReport struct {
-	SchemaVersion               string                 `json:"schemaVersion"`
-	Authority                   string                 `json:"authority"`
-	Consumer                    modelref.Key           `json:"consumer"`
-	BeforeSourceRevision        string                 `json:"beforeSourceRevision"`
-	AfterSourceRevision         string                 `json:"afterSourceRevision"`
-	SourceChanges               []SourceArtifactChange `json:"sourceChanges"`
-	BeforeProjectionUnresolved  []string               `json:"beforeProjectionUnresolved"`
-	AfterProjectionUnresolved   []string               `json:"afterProjectionUnresolved"`
-	BeforeRuleFingerprint       string                 `json:"beforeRuleFingerprint"`
-	AfterRuleFingerprint        string                 `json:"afterRuleFingerprint"`
-	Impact                      modelref.ImpactReview  `json:"impact"`
-	Decision                    Decision               `json:"decision"`
-	AuthorityLimits             []string               `json:"authorityLimits"`
+	SchemaVersion              string                 `json:"schemaVersion"`
+	Authority                  string                 `json:"authority"`
+	Consumer                   modelref.Key           `json:"consumer"`
+	BeforeSourceRevision       string                 `json:"beforeSourceRevision"`
+	AfterSourceRevision        string                 `json:"afterSourceRevision"`
+	SourceChanges              []SourceArtifactChange `json:"sourceChanges"`
+	BeforeProjectionUnresolved []string               `json:"beforeProjectionUnresolved"`
+	AfterProjectionUnresolved  []string               `json:"afterProjectionUnresolved"`
+	BeforeRuleFingerprint      string                 `json:"beforeRuleFingerprint"`
+	AfterRuleFingerprint       string                 `json:"afterRuleFingerprint"`
+	Impact                     modelref.ImpactReview  `json:"impact"`
+	Decision                   Decision               `json:"decision"`
+	AuthorityLimits            []string               `json:"authorityLimits"`
 }
 
 // diffSourceArtifacts compares only entries in the existing managed Source
