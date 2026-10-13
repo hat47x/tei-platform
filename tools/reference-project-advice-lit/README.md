@@ -4,7 +4,7 @@
 
 - Goの案件固有処理：[顧客メモの補助チェック](../../plugins/reference-project-customer-advice/README.md)。`VIP-`で始まる架空コードにメモが無ければ**提案**を表示するだけです。
 - Web：LitのCustom Elementと標準の`<form>`、名前付き入力、キーボード操作、`aria-live`状態領域。
-- 接続：診断用Go HTTP Hostは、案件プラグインを明示的に呼び出し、JSONを返します。HTTP結果は正式なTEI Service Contract / Provider selection / Host Authorityを証明しません。
+- 接続：診断用Go HTTP Hostは、案件プラグインを明示的に呼び出し、JSONを返します。案件補助チェックは既存の `internal/composition.Registry` に案件Scope・Contract・Providerを宣言し、`Select` で適格なProviderを選んでからGoの案件ロジックを呼び出します。**ただしSelectionは宣言上の適格性に限り、正式なTEI Host AuthorityやRouter/Coordinator経由の実行許可ではありません。**
 - **重要**：本サンプルは`order_entry`の**読み取り専用シナリオ**へ任意で接続できますが、受注Actionの呼出し、Accepted Validation、認証、認可、DB更新には接続しません。案件の補助提案を、受注を拒否する根拠に使わないでください。
 
 ## 実行と検証
@@ -46,3 +46,7 @@ API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowser�
 - デスクトップ・モバイルの実画面と検証Receiptを保存し、未成立のAuthority・受入範囲を明示すること。
 
 作業領域を汚さずに同等の検証を実施する手順は専用Workflowを参照してください。実Chrome確認済みであっても、業務Actionの変更・認証/認可・正式Service ContractへのPlugin登録は別の課題です。
+
+## 既存Composition Registryとの最小接続
+
+`contract_bridge.go` は新しい汎用Resolverを実装せず、既存の `composition.Contract`・`Provider`・`Registry.Apply`・`Registry.Select` を利用します。案件ごとのScopeを分け、Providerの削除・不一致時は補助確認を失敗として扱います。Go関数の実行はなお診断Hostのローカル呼び出しであり、Production向けのArtifact検証、Host Guard、Router Lease、権限確認を通していません。`contract_bridge_test.go` で案件Scope隔離とProvider削除時の拒否を検証します。正式Runtime統合の達成を意味しません。
