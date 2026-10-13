@@ -109,8 +109,12 @@ func InspectWorkspace(root, kind, id string) (WorkspaceAssessment, error) {
 	}
 	sort.Slice(result.Witnesses, func(i, j int) bool {
 		a, b := result.Witnesses[i], result.Witnesses[j]
-		if a.Path != b.Path { return a.Path < b.Path }
-		if a.Role != b.Role { return a.Role < b.Role }
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		if a.Role != b.Role {
+			return a.Role < b.Role
+		}
 		return a.Fingerprint < b.Fingerprint
 	})
 	if qualification.Status != knowledgecontext.QualificationApplicable {
