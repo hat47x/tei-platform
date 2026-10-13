@@ -62,7 +62,18 @@ func Evaluate(c Case) Result {
 		return r
 	}
 	if c.Order.AmountMinor == nil {
-		r.Status, r.Reason = "deferred-to-runtime", "order-amount-not-yet-known"
+		// Already-known contradictions cannot become valid by supplying a
+		// missing amount later. Deferral is only for unresolved runtime values.
+		switch {
+		case c.Order.Currency != "" && c.Order.Currency != c.Rule.Currency:
+			r.Status, r.Reason = "indeterminate", "runtime-comparison-input-incompatible"
+		case c.Order.Basis != "" && c.Order.Basis != c.Rule.Basis:
+			r.Status, r.Reason = "indeterminate", "runtime-comparison-input-incompatible"
+		case c.Order.Revision != "" && c.Order.ExpectedRevision != "" && c.Order.Revision != c.Order.ExpectedRevision:
+			r.Status, r.Reason = "blocked", "stale-order-revision"
+		default:
+			r.Status, r.Reason = "deferred-to-runtime", "order-amount-not-yet-known"
+		}
 		return r
 	}
 	if c.Order.Currency != c.Rule.Currency || c.Order.Basis != c.Rule.Basis || *c.Order.AmountMinor < 0 {
