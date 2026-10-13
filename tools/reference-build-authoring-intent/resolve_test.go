@@ -242,7 +242,10 @@ func TestSourceClosureDigestIgnoresRootLocationAndRejectsUnsafeMembers(t *testin
 }
 
 func TestIntentRejectsEscapingAndMissingSourceRefs(t *testing.T) {
-	for _, ref := range []string{"../outside", "/abs", `a\b`, "impl/../x", ".", ""} {
+	for _, ref := range []string{
+		"../outside", "/abs", `a\b`, "impl/../x", ".", "",
+		"C:/x", "c:", "c:impl", "impl:stream", "impl\x00", "impl/main\x01.go.txt", "impl\x7f",
+	} {
 		intent := loadIntent(t)
 		intent.Sources[1].Ref = ref
 		if err := intent.Validate(); err == nil {
@@ -428,10 +431,15 @@ func TestTargetVariationChangesOnlyTheResolvedPlanParts(t *testing.T) {
 	if _, err := Resolve(unknown, NewFixtureContext(root, catalog)); err == nil {
 		t.Fatal("unknown target resolved")
 	}
+	// 提供元はdebugに対応するが、対象（Target）のカタログには定義がない場合、
+	// 提供元の絞り込みではなくCheckTargetが拒否する。
+	widened := catalog
+	widened.Providers = append([]FixtureProvider(nil), catalog.Providers...)
+	widened.Providers[1].Profiles = []string{"release", "debug"}
 	badProfile := windowsIntent
 	badProfile.Profile = "debug"
-	if _, err := Resolve(badProfile, NewFixtureContext(root, catalog)); err == nil {
-		t.Fatal("profile undefined for the target resolved")
+	if _, err := Resolve(badProfile, NewFixtureContext(root, widened)); err == nil || !strings.Contains(err.Error(), "is not defined for target") {
+		t.Fatalf("profile undefined for the target must be rejected by the target catalog: %v", err)
 	}
 }
 

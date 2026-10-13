@@ -1,44 +1,61 @@
-# Build Authoring Intent Reference
+# ビルド宣言からの計画導出の参照確認
 
-GitHub #1109の読取り専用Referenceです。人や生成AIが書く`BuildIntent`から、実装済みの`plugin.BuildPlan`を決定的に導出する境界を、JSONの固定入力と実ファイルで確かめます。
+GitHub #1109の読取り専用の参照実装です。人や生成AIが書く`BuildIntent`（ビルド宣言）から、実装済みの`plugin.BuildPlan`（確定したビルド計画）を決定的に導出する境界を、JSONの固定入力と実ファイルで確かめます。
 
-製品のparser、Core、`.tei`のbuild構文は変更しません。構文の確定は#1109のGateに従い、#971の現行main検証と#1101・#1103のReference収束の後に扱います。
+製品の構文解析、コア、`.tei`のビルド構文は変更しません。構文の確定は#1109の通過条件に従い、#971の現行main検証と、#1101・#1103の参照実装の収束の後に扱います。
 
 ## 分ける対象
 
 | 名前 | 役割 | 正本か |
 | --- | --- | --- |
-| `BuildIntent` | 人・生成AIが管理する宣言。Source参照、Builder要求、Recipe、出力、依存の論理要求、Target、Profile、非秘密のParameter、秘密の名前だけを持つ | 正本 |
-| `ResolutionContext` | Resolverが観測する外部状態への入口（Source、Builder Catalog、Build依存Catalog、Target） | 観測値 |
-| `ResolvedBuildReceipt` | Intent、Contextの識別、導出した`BuildPlan`を束ねる記録 | 導出物（`authority: derived-cache`） |
+| `BuildIntent` | 人・生成AIが管理する宣言。ソース参照、ビルド器の要求、手順の種類、出力、依存の論理要求、対象環境、構成、非秘密のパラメータ、秘密の名前だけを持つ | 正本 |
+| `ResolutionContext` | 導出時に観測する外部状態への入口（ソース、ビルド器の提供元カタログ、依存カタログ、対象環境） | 観測値 |
+| `ResolvedBuildReceipt` | 宣言の照合値、観測した状態の照合値、導出した`BuildPlan`を束ねる記録 | 導出物（`authority: derived-cache`） |
 
-宣言のidentityである`IntentFingerprint`には、Source bytes、Catalogの状態、解決結果を混ぜません。同じIntentでもSourceやCatalogが変われば、別のexact planになります。
+宣言の照合値`IntentFingerprint`には、ソースの内容、カタログの状態、解決結果を混ぜません。同じ宣言でも、ソースやカタログが変われば別の確定計画になります。
 
 ## 導出の規則
 
-1. `ParseIntent`は未知のfieldと、導出値（digest、fingerprint、locator、plan等）の手書きを拒否します。人が意図して書けるexact指定は、`builder.pin.artifactDigest`だけです。
-2. Source参照は`DirSourceResolver`が実ファイルの内容から`BuildSource`のdigestを導出します。digestは相対pathと内容だけで決まり、rootのHost上の場所には依存しません。symlinkやroot外への経路は拒否します。
-3. `subject.definitionSource`が指す`.tei`のPlugin定義を実際のparserで読み、Subjectと一致しなければ停止し、`PluginDefinitionFingerprint`を導出します。
-4. Builderは契約、`build-tool`の権限範囲、Recipe、Target、Profileに適合するProviderを列挙し、明示指定（`provider`、`pin`）で絞ります。複数残る場合は列挙順で選ばず停止します。
-5. Build依存は論理要求からCatalogのproducer outputを解決します。見つからない場合と複数ある場合は停止します。
-6. 導出した`BuildPlan`は`plan.Validate`と`plugin.BuildPlanFingerprint`を通します。
-7. 秘密は名前（`secretRequirements`）だけを宣言し、値はIntent、`BuildPlan`、Receiptのいずれにも入りません。秘密らしいParameter名は拒否します。
+1. `ParseIntent`は次を拒否します。
+   - 未知のキー
+   - 導出値（digest、照合値、locator、計画など）の手書き
+   - 同じオブジェクト内の重複キー
+   - 構造体の名前と大文字小文字まで一致しないキー
+   - 末尾の余分なJSON
 
-`VerifyDerivedReceipt`は、保存済みReceiptをIntentとContextから再導出した結果と照合します。人が導出物を編集しても正本にはならず、乖離として拒否されます。導出物を削除しても、同じIntentとContextから同じbytesを再生成できます。
+   導出値の名前を拒否する層と、キー名を厳密に照合する層は別で、どちらか一方が抜けても残りが止める多層防御です。人が意図して書ける確定指定は、`builder.pin.artifactDigest`だけです。
+2. ソース参照は`DirSourceResolver`が実ファイルの内容から`BuildSource`のdigestを導出します。digestは相対パスと内容だけで決まり、rootのHost上の場所には依存しません。次の参照は拒否します。
+   - ボリューム名（`C:/`、`c:`）、`:`、NULを含む制御文字
+   - root外へ出る経路、絶対パス、`..`
+   - 途中または末尾のsymlink
+   - 実在の綴りと大文字小文字が異なる参照（大文字小文字を区別しないファイルシステムでも同様）
+   - ファイルを一つも含まないディレクトリ
+   - ディレクトリ配下の通常ファイル以外のメンバー
+3. `subject.definitionSource`が指す`.tei`のPlugin定義を実際の構文解析器で読みます。照合値の計算に使ったバイト列と同じものを解析し、二度読みによる食い違いを避けます。主題と一致しなければ停止し、`PluginDefinitionFingerprint`を導出します。
+4. ビルド器は、契約、権限範囲`build-tool`、手順の種類、対象環境、構成に適合する提供元を列挙し、明示指定（`provider`、`pin`）で絞ります。複数残る場合は列挙順で選ばず停止します。
+5. ビルド依存は、論理要求からカタログの生成元の出力を解決します。見つからない場合と複数ある場合は停止します。
+6. 導出した`BuildPlan`は`Validate`と`plugin.BuildPlanFingerprint`を通します。
+7. 秘密は名前（`secretRequirements`）だけを宣言します。
+
+`VerifyDerivedReceipt`は、保存済みの導出物を、宣言とカタログからの再導出結果と、バイト列そのもので照合します。正規化するのは改行（CRLFと末尾の改行）だけで、重複キー、大文字小文字違いのキー、末尾の余分なJSON、空白の挿入は乖離として拒否します。人が導出物を編集しても正本にはならず、削除しても同じ宣言とカタログから同じバイト列を再生成できます。
+
+カタログの固定入力（`ParseFixtureCatalog`）は、同じ対象の重複宣言を拒否します。カタログの照合値は、各記録の完全なJSON表現で整列するため、列挙順や同順位の並びに依存しません。
 
 ## 試験が固定する内容
 
-`resolve_test.go`は#1109の受入項目に次のように対応します。
+`resolve_test.go`と`hardening_test.go`が、#1109の受入項目に次のように対応します。
 
-- 同じIntentと同じContextで同じplan fingerprint
-- field順と配列順を変えても結果が不変
-- Source内容の変更でclosureとplanのfingerprintが変わり、Intentのfingerprintは不変
-- Provider曖昧性で停止（Catalogの順序を逆にしても同じ結果）
-- 明示wiringとpinによるexact Builder固定、pin不一致で停止
-- Intentへdigestを書かなくてよい（固定入力に導出値の語を含まない）
-- Target変更で、Target依存の部分（Builder、Target）だけがplanで変わる
-- 秘密の値がIntent、plan、Receiptへ入らない
-- 導出物の削除後の再生成と、編集した導出物の拒否
+- 同じ宣言と同じカタログで同じ計画の照合値
+- フィールド順と配列順を変えても結果が不変
+- ソース内容の変更（同じ長さの変更を含む）で、導出した閉包と計画の照合値が変わり、宣言の照合値は不変
+- 定義の照合値が`plugin.BuildDefinitionFingerprint`と一致し、idと版を変えない意味的な編集で変わる
+- 提供元の曖昧性で停止（カタログの順序を逆にしても同じ結果）
+- 明示指定とpinによる確定、pin不一致で停止
+- 宣言へdigestを書かなくてよい（固定入力に導出値の語を含まない）
+- 対象環境の変更で、対象環境に依存する部分（ビルド器、対象環境）だけが計画で変わる。構成が対象環境のカタログに無い場合は拒否
+- 宣言した秘密の値が、宣言、計画、導出物へ入らない
+- 導出物の削除後の再生成と、編集した導出物（重複キー、大文字小文字違い、末尾データを含む）の拒否
+- 宣言の重複キーと大文字小文字違いのキー、ソース参照の各種拒否
 
 ## 実行
 
@@ -49,14 +66,15 @@ go run ./tools/reference-build-authoring-intent \
   -source-root tools/reference-build-authoring-intent/testdata/src
 ```
 
-標準出力へReceiptを書きます。ファイルの作成・変更とネットワーク接続は行いません。`-verify <receipt>`を付けると、保存済みReceiptの照合だけを行います。
+標準出力へ導出物を書きます。ファイルの作成・変更とネットワーク接続は行いません。`-verify <導出物>`を付けると、保存済みの導出物の照合だけを行います。
 
-## 証明しないこと
+## 限界と証明しないこと
 
-- #1101のBuilder解決、#1103のBuild graph、#1096の言語別Source closure解決の実装。`SourceResolver`、`BuilderResolver`、`DependencyResolver`、`TargetCatalog`の入口へ接続する形だけを示し、Catalogと`DirSourceResolver`はこのReference用の固定入力です。
-- ProviderのConformance Evidenceの検証、Provider信頼、Build成功、Acceptance、Runtime Authority。
-- Goなど特定言語のclosure（`_GOOS`付きファイル、`go.mod`、外部module）。
-- `.tei`のbuild構文、Host parser、Core modelへの追加、Editor表示。
-- 実際のBuild実行とBuild Lockの作成。
-- JSONの重複keyの検出（現状は後勝ちの標準decode）。
-- Subject種別はPluginのみ。Runtime Engine、Builder等の自己構築対象は扱いません。
+- 秘密について保証するのは、宣言した秘密の値が宣言、`BuildPlan`、導出物へ入らないことだけです。パラメータの値の中身は検査せず、秘密らしい値を書いても検出しません（検査するのは名前だけです）。また、`secretRequirements`の`name`に貼り付けた値は、そのまま導出物の`secretRequirementNames`に残ります。名前には値を入れないでください。
+- 宣言のJSONは、重複キーと大文字小文字違いのキーを拒否します。カタログは重複宣言を拒否しますが、カタログ側のキーの大文字小文字は標準のdecodeに従います。
+- #1101のビルド器解決、#1103のビルド依存の連鎖、#1096の言語別のソース閉包解決の実装。`SourceResolver`、`BuilderResolver`、`DependencyResolver`、`TargetCatalog`の入口へ接続する形だけを示し、カタログと`DirSourceResolver`はこの参照実装用の固定入力です。
+- 提供元の適合検証根拠の検証、提供元の信頼、ビルドの成功、受入れ、実行時の権限。
+- Goなど特定言語の閉包（`_GOOS`付きファイル、`go.mod`、外部モジュール）。
+- `.tei`のビルド構文、構文解析器、コアモデルへの追加、エディタ表示。
+- 実際のビルド実行とビルド固定記録の作成。
+- 主題の種別はPluginのみ。実行基盤、ビルド器などの自己構築対象は扱いません。
