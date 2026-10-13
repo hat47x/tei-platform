@@ -55,6 +55,21 @@ func TestV2InputProfileNormalizesExplicitEmptyArraysToGoTEIPackageBytes(t *testi
 		{name: "capability permissions explicitly empty", strip: func(d *plugin.Definition) { d.Provides[1].Permissions = nil }, edit: func(v map[string]any) {
 			v["provides"].([]any)[1].(map[string]any)["permissions"] = []any{}
 		}},
+		{name: "capability observations explicitly empty", strip: func(d *plugin.Definition) { d.Provides[0].Observations = nil }, edit: func(v map[string]any) {
+			v["provides"].([]any)[0].(map[string]any)["observations"] = []any{}
+		}},
+		{name: "capability evidence explicitly empty", strip: func(d *plugin.Definition) { d.Provides[0].Evidence = nil }, edit: func(v map[string]any) {
+			v["provides"].([]any)[0].(map[string]any)["evidence"] = []any{}
+		}},
+		{name: "capability databaseProviders explicitly empty", strip: func(d *plugin.Definition) { d.Provides[0].DatabaseProviders = nil }, edit: func(v map[string]any) {
+			v["provides"].([]any)[0].(map[string]any)["databaseProviders"] = []any{}
+		}},
+		{name: "capability migrationTools explicitly empty", strip: func(d *plugin.Definition) { d.Provides[0].MigrationTools = nil }, edit: func(v map[string]any) {
+			v["provides"].([]any)[0].(map[string]any)["migrationTools"] = []any{}
+		}},
+		{name: "capability features explicitly empty", strip: func(d *plugin.Definition) { d.Provides[0].Features = nil }, edit: func(v map[string]any) {
+			v["provides"].([]any)[0].(map[string]any)["features"] = []any{}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
