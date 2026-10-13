@@ -108,6 +108,9 @@ func TestPluginCapabilityAbsentAndEmptyProvidesPreservePackageBytes(t *testing.T
 	// fingerprint to the exact input shape; historical SB-3 engines do not
 	// support conditional empty-array omission. Do not silently claim that
 	// this noncanonical input is equivalent to the omitted representation.
+	// This input also puts "provides" first, so it differs in member order as
+	// well; plugin_empty_array_input_matrix_test.go isolates emptiness from
+	// order for every omitempty array.
 	explicitDefinition := base
 	explicitDefinition.Provides = []plugin.Capability{}
 	explicitGo, _, explicitGoErr, explicitTEIErr := materializeCapabilitySetPair(t, explicitDefinition, "[]")
