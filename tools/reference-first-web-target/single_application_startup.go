@@ -20,6 +20,9 @@ type singleApplicationConfig struct {
 	LegacyAuthorization  string
 	CompositionScenarios bool
 	Model                *scenarioModel
+	PostgresDSNFile      string
+	PostgresFence        int64
+	OnClose              func(func())
 }
 
 type singleApplicationRunnerFactory func(ir.World, singleApplicationConfig) (
@@ -41,6 +44,8 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	legacyAuthorization := flags.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Reference legacy authorization fixture")
 	composeScenarios := flags.Bool("composition-scenarios", false, "reference: use statically linked service contracts for the compiled Application")
 	modelRevision := flags.String("model-revision", "", "reference: host-selected exact source revision")
+	config := singleApplicationConfig{}
+	registerSingleApplicationBackendFlags(flags, &config)
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		return err
 	}
@@ -49,6 +54,10 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	}
 	if *modelRevision != "" && !*composeScenarios {
 		return fmt.Errorf("-model-revision requires -composition-scenarios")
+	}
+	config.CompositionScenarios = *composeScenarios
+	if err := validateSingleApplicationBackend(config); err != nil {
+		return err
 	}
 	if *requestedApplication != application {
 		return fmt.Errorf("compiled Application %s refuses requested Application %q", application, *requestedApplication)
@@ -88,12 +97,18 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if model != nil {
 		projection.ModelRevision = model.revision
 	}
-	read, command, options, err := factory(world, singleApplicationConfig{
-		LegacyUsers:          *legacyUsers,
-		LegacyAuthorization:  *legacyAuthorization,
-		CompositionScenarios: *composeScenarios,
-		Model:                model,
-	})
+	// Startup owns resources even when factory or route construction fails.
+	var cleanup []func()
+	defer func() {
+		for i := len(cleanup) - 1; i >= 0; i-- {
+			cleanup[i]()
+		}
+	}()
+	config.OnClose = func(close func()) { cleanup = append(cleanup, close) }
+	config.LegacyUsers = *legacyUsers
+	config.LegacyAuthorization = *legacyAuthorization
+	config.Model = model
+	read, command, options, err := factory(world, config)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,14 @@ python3 tools/verify-postgres-order-execution.py --output /absolute/path/outside
 
 この参照例は、実際のPostgreSQLエンジンを使った合成業務データの検証である。本番のデータ、Oracle接続、実際の認証提供元、人による操作、表示品質、可用性の根拠にはしない。
 
+構築時にWorldを固定した受注専用JSON APIも、同じDBアダプターへ接続できる。次の指定で、既存の固定World構築手順による実行物に対し、同じ実DB試験とHTTP・独立SQL照合を実施する。
+
+```sh
+python3 tools/verify-postgres-order-execution.py --frozen-api --output /absolute/new/frozen-postgres-evidence
+```
+
+固定Worldの指紋と構築版Tは実行物に結び付け、DBの実行許可はその実行物のSHA-256へ設定する。固定Worldではライブソースの版指定を受け付けず、DB許可の`model_revision`は空文字を使う。`--source-loop`と`--non-screen`はこのAPIの検証と併用できない。接続設定の不足や選択済みサービスの未指定を起動前に拒否する。修理受付専用ビルドではPostgreSQL引数自体を受け付けない。
+
 ## 実装と安全条件
 
 ウェブ参照実装の`-composition-scenarios -postgres-dsn-file /secure/connection-file -postgres-fencing-token 1`で接続する。ホストは接続ファイルを読み、SQLを実行する。サーバー自身は表・許可・参照データを作成しない。接続エラーに接続文字列を複製せず、失敗時に模擬データへ戻らない。

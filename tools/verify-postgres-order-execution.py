@@ -26,7 +26,10 @@ def main():
     parser.add_argument('--output', required=True, help='Evidence directory outside the repository')
     parser.add_argument('--source-loop', action='store_true', help='Also verify scratch Shared Acceptance -> selected model -> PostgreSQL execution')
     parser.add_argument('--non-screen', action='store_true', help='Also verify CLI reports and bounded batch processing')
+    parser.add_argument('--frozen-api', action='store_true', help='Use the digest-bound frozen World JSON API with the same actual PostgreSQL checks')
     args = parser.parse_args()
+    if args.frozen_api and (args.source_loop or args.non_screen):
+        parser.error('--frozen-api does not support live Source changes or non-screen CLI execution')
     root = Path(__file__).resolve().parent.parent
     output = Path(args.output).resolve()
     if output == root or root in output.parents:
@@ -36,15 +39,33 @@ def main():
     head = run(['git', 'rev-parse', 'HEAD'], cwd=root)
     output.mkdir(parents=True, exist_ok=True)
     binary = output / 'reference-web'
-    run(['go', 'build', '-o', str(binary), './tools/reference-first-web-target'], cwd=root)
+    workspace = 'reference/workspace'
+    if args.frozen_api:
+        frozen = output / 'frozen'
+        run(['bash', 'tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh', str(frozen),
+             'B', 'e5231839a5dcc62cce1181a2731fcb7c70d16736'], cwd=root)
+        binary = frozen / 'api/order-entry'
+        workspace = str(frozen / 'api')
+    else:
+        run(['go', 'build', '-o', str(binary), './tools/reference-first-web-target'], cwd=root)
     digest = 'sha256:' + hashlib.sha256(binary.read_bytes()).hexdigest()
     container = None
     proc = None
     log = None
     report = {'candidateHead': head, 'artifactDigest': digest, 'evidenceNature': 'real-postgres-disposable-reference-data',
+              'worldMode': 'digest-bound-frozen-world' if args.frozen_api else 'live-workspace',
               'passed': False, 'checks': [], 'cleanBefore': True, 'cleanAfter': False, 'fixtureCleanupConfirmed': False,
               'limits': ['Oracle customer and authentication remain synthetic', 'no production or browser evidence',
                          'single PostgreSQL host; coarse line table lock', 'no process hot replacement or availability SLO']}
+    if args.frozen_api:
+        report['frozenWorldSHA256'] = hashlib.sha256((Path(workspace) / 'frozen-world.json').read_bytes()).hexdigest()
+        report['startupChecks'] = []
+        # Backend selection must fail before World/credentials/connection reads.
+        for backend in [[], ['-composition-scenarios'], ['-composition-scenarios', '-postgres-fencing-token', '-1']]:
+            refused = subprocess.run([str(binary), '-postgres-dsn-file', '/missing/connection', *backend],
+                                     cwd=root, capture_output=True, text=True, timeout=15)
+            assert refused.returncode != 0 and 'PostgreSQL requires' in refused.stderr
+            report['startupChecks'].append('incomplete backend rejected before data loading')
     try:
         container = run(['docker', 'run', '-d', '--label', 'tei.reference=postgres-order-execution',
                          '-e', 'POSTGRES_HOST_AUTH_METHOD=trust', '-e', 'POSTGRES_DB=tei_reference',
@@ -89,7 +110,7 @@ def main():
         url = f'http://127.0.0.1:{http_port}'
         log = (output / 'http-host.log').open('w')
         proc = subprocess.Popen([str(binary), '-composition-scenarios', '-postgres-dsn-file', str(dsn_file),
-                                 '-postgres-fencing-token', '1', '-workspace', 'reference/workspace', '-baseline-id', 'B',
+                                 '-postgres-fencing-token', '1', '-workspace', workspace, '-baseline-id', 'B',
                                  '-baseline-revision', 'e5231839a5dcc62cce1181a2731fcb7c70d16736',
                                  '-target-revision', head, '-listen', f'127.0.0.1:{http_port}'], cwd=root, stdout=log, stderr=log)
         for _ in range(100):
