@@ -89,13 +89,15 @@ func Multiply(left,right Input)(Input,error){
  rem:=new(big.Int)
  scale:=0
  for _,factor:=range []*big.Int{two,five}{
+  exponent:=0
   for {
    q:=new(big.Int)
    q.QuoRem(denominator,factor,rem)
    if rem.Sign()!=0{break}
    denominator=q
-   scale++
+   exponent++
   }
+  if exponent>scale {scale=exponent}
  }
  if denominator.Cmp(big.NewInt(1))!=0{return Input{},fmt.Errorf("%w: nonterminating decimal",ErrOperator)}
  return Input{State:Present,Decimal:product.FloatString(scale)},nil
