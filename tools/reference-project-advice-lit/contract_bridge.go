@@ -22,15 +22,15 @@ const projectAdvisoryProviderID = "project.customer-advice.go"
 // Selection is only declaration eligibility; it is never an authorization token.
 // The diagnostic host owns the Go implementation and invokes it locally.
 type projectAdvisoryBridge struct {
-	registry *composition.Registry
+	registry  *composition.Registry
 	selection composition.Selection
 }
 
 func newProjectAdvisoryBridge() (*projectAdvisoryBridge, error) {
 	registry := composition.NewRegistry()
 	snapshot, err := registry.Apply(0, []composition.Provider{{
-		ID: projectAdvisoryProviderID,
-		Scope: projectAdvisoryScope,
+		ID:     projectAdvisoryProviderID,
+		Scope:  projectAdvisoryScope,
 		Offers: ProjectAdvisoryContract,
 	}}, nil)
 	if err != nil {
