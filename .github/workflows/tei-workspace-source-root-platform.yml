@@ -1,0 +1,80 @@
+name: TEI Workspace Source Root 対象別検証
+
+# Security boundary: native Windows rooted-open execution and Web/WASM
+# compilation must be checked separately from ordinary Linux PR CI.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-workspace-source-root-platform.yml
+      - go.mod
+      - internal/workspace/source_open*.go
+      - internal/workspace/source_snapshot.go
+      - internal/workspace/source_snapshot_internal_test.go
+      - internal/workspace/source_index_boundary_test.go
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-workspace-source-root-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  windows-root-and-wasm:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象のGit版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 固定Go版をWindowsで用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: WindowsのRoot読込と出典索引の境界試験
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:GITHUB_SHA) {
+            throw "Wrong Windows checkout: $head"
+          }
+          if ((go env GOOS).Trim() -ne 'windows') {
+            throw 'Not running native Windows Go'
+          }
+          go test -v -count=1 -timeout 10m -run '^(TestRootedSourceRejectsOutsideSymlinksAndNestedAliases|TestRootedSourceBasicPathBoundaryOnNativeTargets|TestCheckedReaderRejectsExternalSymlink|TestCheckedReaderAllowsLocalSymlinkToRegularFile|TestCheckedReaderPreservesMissingPathError|TestSourceIndexRejectsExternalSymlinkFromForgedResult|TestSourceIndexRejectsExternalSymlinkViaNestedDirectory|TestSourceIndexAllowsLocalSymlinkToRegularFile|TestSourceIndexRejectsBrokenSymlink|TestSourceIndexRejectsNonregularSource)$' ./internal/workspace
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows Workspace Source boundary tests failed'
+          }
+
+      - name: Web・WASI向け代替経路のコンパイル確認
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($target in @('js', 'wasip1')) {
+            $env:GOOS = $target
+            $env:GOARCH = 'wasm'
+            go build ./internal/workspace
+            if ($LASTEXITCODE -ne 0) {
+              throw "Workspace source boundary cannot compile for $target/wasm"
+            }
+          }
+          Remove-Item Env:GOOS -ErrorAction SilentlyContinue
+          Remove-Item Env:GOARCH -ErrorAction SilentlyContinue
+          $dirty = @(git status --porcelain=v1 --untracked-files=all)
+          if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) {
+            throw "Verification left an unclean checkout: $dirty"
+          }
