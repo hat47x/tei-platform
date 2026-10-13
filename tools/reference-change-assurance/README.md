@@ -53,6 +53,29 @@ go run ./tools/reference-change-assurance \
 - #951のProvider/Target fingerprintと実Runtime権限を別責務として保持する。
 - 将来の実Change Diffは `ReviewImpactDiff`（前後2スナップショット）を使用し、今回の`-change-kind`仮説を実際の差分と混同しない。
 
+## 二つの実WorkspaceのSource差分と型付きImpact（POC-9）
+
+`-workspace`は **仮定されたChange** の評価でした。`-before-workspace`と`-after-workspace`を併用するモードでは、二つのディレクトリを個別に`workspace.Load`し、既存`workspace.BuildSourceIndex`の **管理対象Source指紋** と `sourceindex.ModelRevision` を比較します。型付きグラフは既存の `modelref.ReviewImpactDiff` が比較し、その結果を検証計画の**候補**として取り込みます。
+
+```sh
+go run ./tools/reference-change-assurance \
+  -before-workspace /path/to/before/tei-workspace \
+  -after-workspace /path/to/after/tei-workspace \
+  -scope order-entry-reference \
+  -consumer-kind application \
+  -consumer-id order_entry
+```
+
+このコマンドはWorkspaceを変更しません。出力には変更前後のモデルSource Revision、`sourceChanges`（追加/削除/指紋変化した管理対象ファイル）、型付き`impact`、投影で未解決の参照、判断理由を含めます。既存の`-input`と`-workspace`も維持します。
+
+**重要な反例：** `reference/workspace` の `recent_orders.sql` で `ORDER BY ... DESC` を `ASC` へ変更すると、SQLの意味は変わりますが、現在の `derivedbridge.FromIndex` が投影する型付きグラフにはSQL本体の変更が現れません。この場合、`sourceChanges` とモデルRevisionの変更を保持し、`source-changed-without-typed-graph-diff`として `unresolved` にします。グラフ差分なしを「変更なし」「検証済み」とは解釈しません。
+
+有効な型付きグラフでConsumer自身または型付き依存先の変更が確認されれば`recheck`を提案します。未解決参照、Consumer不在、Rule fingerprintの差、管理対象Source変更の影響不明は`unresolved`です。いずれも`reuse-candidate`を発行せず、`executionAllowed=false`です。
+
+二つの`Load`は**各々が原子的なmulti-file snapshotではありません**。Source Indexが扱わない未管理ファイル、Runtime Effect、旧資産の意味同値、Provider artifact、外部データや権限、独立Expectationとreceiptの真正性を証明しません。`sourceChanges`はビジネス意味の差分ではなくバイト指紋の差分です。実際にSourceが変わっていない場合でも、独立した検証証拠がないため再利用を認定しません。
+
+次段階では、#1180/#1163の受入根拠と`Source Revision + Scenario/Oracle + Target/Provider`を照合し、未管理Sourceの扱いを導入します。Graph投影の欠落を推測で補う実装や新たな品質Gateは作りません。
+
 ## 収録する反例
 
 - 表示名だけの変更：業務規則の検証は再利用候補、Web表示の検証は再確認。

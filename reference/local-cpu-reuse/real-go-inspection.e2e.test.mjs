@@ -8,7 +8,10 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {compareTwoReferenceApplications,TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
+import {qualifyReferenceQuerySignature} from './qualify-query-signature.mjs';
+import {observeReferenceProviderRouting} from './observe-provider-routing.mjs';
+import {compareTwoReferenceApplications,proposeReferenceQueryAdapter,
+  TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const runner=fileURLToPath(new URL('./run-real-inspection.mjs',import.meta.url));
@@ -89,4 +92,58 @@ test('real Go inspect -> Node read-only projection -> metadata-only summary', {
   assert.equal(comparison.declaredQuery.query,'find_by_id');
   assert.equal(comparison.declaredQuery.compatibleMajor,2);
   assert.deepEqual(comparison.contextDifferences,['relation','datasourceAlias']);
+  const proposal=proposeReferenceQueryAdapter(observations);
+  assert.equal(proposal.status,'candidate_requires_semantic_review');
+  assert.equal(proposal.commonInvocation.contract,'master_data.customer');
+  assert.equal(proposal.commonInvocation.query,'find_by_id');
+  assert.equal(proposal.commonInvocation.compatibleMajor,2);
+  assert.deepEqual(proposal.applicationContext.map(x=>x.datasourceAlias),
+    ['master','customer_master']);
+  assert.deepEqual(proposal.applicationContext.map(x=>x.relation),
+    ['sales.order.customer','repair_intake.intake.customer']);
+  assert.equal(proposal.commonInvocation.datasourceAlias,undefined);
+  assert.equal(proposal.commonInvocation.relation,undefined);
+  assert.equal(proposal.executionPermitted,false);
+  assert.equal(proposal.implementationSelected,false);
+  assert.equal(proposal.accepted,false);
+  assert.equal(proposal.verified.contractSemantics,false);
+  assert.equal(proposal.verified.readAuthorization,false);
+
+  // Existing Go 'world' command returns normalized M0. Keep the entire World in memory;
+  // never print it, and check Application/Pattern overlap with the separate inspect reads.
+  const normalized=spawnSync(binary,['world','-workspace',workspace],{
+    cwd:root,encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024
+  });
+  assert.equal(normalized.status,0,failMessage('Normalized World read',normalized));
+  assert.equal(normalized.stderr,'');
+  const world=JSON.parse(normalized.stdout);
+  const typed=qualifyReferenceQuerySignature(world,observations);
+  assert.equal(typed.status,'declared_signature_matched');
+  assert.equal(typed.contract.id,'master_data.customer');
+  assert.deepEqual(typed.contract.version,{major:2,minor:4});
+  assert.deepEqual(typed.inputTypes,[{input:'id',type:'customer.customer_id',
+    targetAttribute:'customer.customer.customer_id'}]);
+  assert.deepEqual(typed.output,{semanticData:'customer.customer',cardinality:'zero-or-one'});
+  assert.equal(typed.executionPermitted,false);
+  assert.equal(typed.implementationSelected,false);
+  assert.equal(typed.accepted,false);
+  assert.equal(typed.verified.typedDeclaration,true);
+  assert.equal(typed.verified.providerImplementation,false);
+  assert.equal(typed.verified.authorization,false);
+  assert.equal(typed.verified.atomicWorkspaceSnapshot,false);
+
+  // Read only already-normalized Environment declarations. No credentials, SQL,
+  // plugin resolution or database connection are attempted.
+  const routed=observeReferenceProviderRouting(world,observations,{environmentId:'development'});
+  assert.equal(routed.status,'application_routes_declared');
+  assert.equal(routed.sameInstanceDeclared,true);
+  assert.deepEqual(routed.routes.map(x=>x.alias),['master','customer_master']);
+  assert.deepEqual(routed.routes.map(x=>x.instance),['master_data.dev','master_data.dev']);
+  assert.deepEqual(routed.routes.map(x=>x.provider),['oracle','oracle']);
+  assert.equal(routed.verified.pluginExecutorResolution,false);
+  assert.equal(routed.verified.providerHealth,false);
+  assert.equal(routed.verified.callerAuthorization,false);
+  assert.equal(routed.executionPermitted,false);
+  assert.equal(routed.implementationSelected,false);
+  assert.equal(routed.accepted,false);
 });
