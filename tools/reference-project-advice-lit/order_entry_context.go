@@ -70,7 +70,7 @@ func newOrderEntryContextHandler(origin string) (http.Handler, error) {
 			Result              struct {
 				ApplicationID    string `json:"applicationId"`
 				ScenarioID       string `json:"scenarioId"`
-				SelectedRowIndex int    `json:"selectedRowIndex"`
+				SelectedRowIndex *int   `json:"selectedRowIndex"`
 			} `json:"result"`
 		}
 		raw, err := io.ReadAll(io.LimitReader(response.Body, (1<<16)+1))
@@ -87,7 +87,7 @@ func newOrderEntryContextHandler(origin string) (http.Handler, error) {
 		if err := decoder.Decode(&trailing); err != io.EOF ||
 			source.Result.ApplicationID != "order_entry" ||
 			source.Result.ScenarioID == "" ||
-			source.Result.SelectedRowIndex < 0 ||
+			source.Result.SelectedRowIndex == nil || *source.Result.SelectedRowIndex < 0 ||
 			source.TargetBuildRevision == "" {
 			http.Error(w, "unrecognized order_entry read result", http.StatusBadGateway)
 			return
@@ -97,7 +97,7 @@ func newOrderEntryContextHandler(origin string) (http.Handler, error) {
 			Schema:              "tei.reference.order-entry-context/v0",
 			ApplicationID:       source.Result.ApplicationID,
 			ScenarioID:          source.Result.ScenarioID,
-			SelectedRowIndex:    source.Result.SelectedRowIndex,
+			SelectedRowIndex:    *source.Result.SelectedRowIndex,
 			TargetBuildRevision: source.TargetBuildRevision,
 		})
 	}), nil
