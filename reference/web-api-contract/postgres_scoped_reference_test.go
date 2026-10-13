@@ -186,6 +186,21 @@ func TestExplicitScopedPostgresRejectsBeforeQueryContext(t *testing.T) {
 		{"SQL injection literal", func(_ *PostgresCustomerScope, p *ReadPlan, _ *map[string]any) {
 			p.Filter = &Filter{FieldID: "orderId", Operator: "eq", Value: "1 OR 1=1"}
 		}},
+		{"duplicate projection", func(_ *PostgresCustomerScope, p *ReadPlan, _ *map[string]any) {
+			p.Selected = []string{"orderId", "orderId"}
+		}},
+		{"unknown projection", func(_ *PostgresCustomerScope, p *ReadPlan, _ *map[string]any) {
+			p.Selected = []string{"secretInternal"}
+		}},
+		{"hidden sort field", func(_ *PostgresCustomerScope, p *ReadPlan, _ *map[string]any) {
+			p.Order = &Ordering{FieldID: "total"}
+		}},
+		{"oversize limit", func(_ *PostgresCustomerScope, p *ReadPlan, _ *map[string]any) {
+			p.Limit = 101
+		}},
+		{"negative filter ID", func(_ *PostgresCustomerScope, p *ReadPlan, _ *map[string]any) {
+			p.Filter = &Filter{FieldID: "orderId", Operator: "eq", Value: "-1"}
+		}},
 		{"missing from parameter", func(_ *PostgresCustomerScope, _ *ReadPlan, args *map[string]any) {
 			*args = nil
 		}},
