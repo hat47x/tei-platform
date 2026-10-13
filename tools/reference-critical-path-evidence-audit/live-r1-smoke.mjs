@@ -272,6 +272,7 @@ async function main() {
   const serverLog = openSync(join(temp, "server.log"), "wx", 0o600);
   try {
     child = spawn(binary, [
+      "-diagnostic-unaccepted-source",
     "-workspace", workspace, "-application", "order_entry", "-baseline-id", "B",
     "-baseline-revision", expectedR, "-target-revision", head,
     "-legacy-users", "reference/legacy-auth/users.json",
@@ -334,7 +335,7 @@ async function main() {
   // R0 stale-source control: launch the SAME Web binary with the original,
   // unaccepted Source while supplying exactly the SAME caller revision labels.
   // A manifest-based independent consumer must detect that the selected R1
-  // business rule is absent. The current Web server itself does NOT reject
+  // business rule is absent. The explicit unaccepted-source diagnostic server does NOT reject
   // the mismatched caller labels; never advertise this as a runtime gate.
   assert.equal(acceptance(["revision", "-workspace", baseline]).modelRevision, r0,
     "baseline Source changed while running the accepted R1 scenario");
@@ -343,6 +344,7 @@ async function main() {
   const staleLog = openSync(join(temp, "stale-source-server.log"), "wx", 0o600);
   try {
     child = spawn(binary, [
+      "-diagnostic-unaccepted-source",
       "-workspace", baseline, "-application", "order_entry", "-baseline-id", "B",
       "-baseline-revision", expectedR, "-target-revision", head,
       "-legacy-users", "reference/legacy-auth/users.json",
@@ -406,6 +408,7 @@ async function main() {
   const equivalentLog = openSync(join(temp, "equivalent-source-server.log"), "wx", 0o600);
   try {
     child = spawn(binary, [
+      "-diagnostic-unaccepted-source",
       "-workspace", equivalentWorkspace, "-application", "order_entry",
       "-baseline-id", "B", "-baseline-revision", expectedR,
       "-target-revision", head,
@@ -451,6 +454,7 @@ async function main() {
   const negativeLog = openSync(join(temp, "negative-server.log"), "wx", 0o600);
   try {
     child = spawn(negativeBinary, [
+      "-diagnostic-unaccepted-source",
       "-workspace", workspace, "-application", "order_entry", "-baseline-id", "B",
       "-baseline-revision", expectedR, "-target-revision", head,
       "-legacy-users", "reference/legacy-auth/users.json",
@@ -507,6 +511,7 @@ async function main() {
   const n11Log = openSync(join(temp, "n11-server.log"), "wx", 0o600);
   try {
     child = spawn(n11Binary, [
+      "-diagnostic-unaccepted-source",
       "-workspace", workspace, "-application", "order_entry", "-baseline-id", "B",
       "-baseline-revision", expectedR, "-target-revision", head,
       "-legacy-users", "reference/legacy-auth/users.json",
@@ -576,6 +581,7 @@ async function main() {
     },
     "target-launch.json": {
       evidenceNature: "running-first-web-target-with-synthetic-provider",
+      sourceVerificationMode: "explicit-unaccepted-source-diagnostic",
       integrationHead: head, targetBuildRevision: head,
       baselineRepositoryRevision: expectedR, application: "order_entry",
       loopbackAddress: positiveLaunch.address, targetProcessID: positiveLaunch.processID,
@@ -639,6 +645,7 @@ async function main() {
     },
     "target-negative-launch.json": {
       evidenceNature: "test-only-Go-overlay-Web-target",
+      sourceVerificationMode: "explicit-unaccepted-source-diagnostic",
       integrationHead: head, targetBuildRevisionLabel: head,
       loopbackAddress: negativeLaunch.address, targetProcessID: negativeLaunch.processID,
       targetBinarySHA256: negativeLaunch.binarySHA256,
