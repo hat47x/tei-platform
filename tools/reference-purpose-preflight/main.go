@@ -48,6 +48,7 @@ func runCLI(args []string, output io.Writer) error {
 	flags.SetOutput(io.Discard)
 	input := flags.String("input", "", "synthetic JSON fixture file (read-only)")
 	root := flags.String("workspace", "", "real TEI Workspace (read-only source inspection)")
+	application := flags.String("application", "", "Application ID that owns the Pattern")
 	kind := flags.String("subject-kind", "", "typed subject kind for Workspace inspection")
 	id := flags.String("subject-id", "", "typed subject ID for Workspace inspection")
 	if err := flags.Parse(args); err != nil {
@@ -56,7 +57,7 @@ func runCLI(args []string, output io.Writer) error {
 	if flags.NArg() != 0 {
 		return fmt.Errorf("positional arguments are not supported")
 	}
-	if *input != "" && *root == "" && *kind == "" && *id == "" {
+	if *input != "" && *root == "" && *application == "" && *kind == "" && *id == "" {
 		file, err := os.Open(*input)
 		if err != nil {
 			return err
@@ -64,8 +65,8 @@ func runCLI(args []string, output io.Writer) error {
 		defer file.Close()
 		return run(file, output)
 	}
-	if *input == "" && *root != "" && *kind != "" && *id != "" {
-		assessment, err := InspectWorkspace(*root, *kind, *id)
+	if *input == "" && *root != "" && *application != "" && *kind != "" && *id != "" {
+		assessment, err := InspectWorkspace(*root, *application, *kind, *id)
 		if err != nil {
 			return err
 		}
@@ -73,7 +74,7 @@ func runCLI(args []string, output io.Writer) error {
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(assessment)
 	}
-	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -subject-kind application-pattern -subject-id <id>")
+	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern -subject-id <id>")
 }
 
 func main() {
