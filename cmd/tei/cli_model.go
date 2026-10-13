@@ -13,10 +13,10 @@ import (
 // Modeler commands share the existing operations layer with future web and
 // desktop targets. No model edit or XEA[D] acceptance occurs in this transport.
 type modelCLIResponse struct {
-	SchemaVersion string                     `json:"schemaVersion"`
-	OK            bool                       `json:"ok"`
-	Result        *operations.ModelCatalog   `json:"result,omitempty"`
-	Error         *cliInspectionFailure      `json:"error,omitempty"`
+	SchemaVersion string                   `json:"schemaVersion"`
+	OK            bool                     `json:"ok"`
+	Result        *operations.ModelCatalog `json:"result,omitempty"`
+	Error         *cliInspectionFailure    `json:"error,omitempty"`
 }
 
 func runModelCommand(args []string, out io.Writer) (int, error) {

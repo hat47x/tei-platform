@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -56,7 +57,7 @@ func TestInspectCanonicalExactKindAndID(t *testing.T) {
 
 	_, err := inspectCanonical(world, sourceindex.Subject{Kind: "semantic-data", ID: "not-found"})
 	inspectionCode(t, err, InspectionNotFound)
-	_, err = inspectCanonical(world, sourceindex.Subject{Kind: "semantic-type", ID: "same.id"})
+	_, err = inspectCanonical(world, sourceindex.Subject{Kind: "unknown-kind", ID: "same.id"})
 	inspectionCode(t, err, InspectionUnsupportedKind)
 }
 
@@ -79,7 +80,7 @@ func TestInspectSubjectRejectsInvalidRequestBeforeWorkspaceLoad(t *testing.T) {
 		_, err := InspectSubject(filepath.Join(t.TempDir(), "absent"), s)
 		inspectionCode(t, err, InspectionInvalidSubject)
 	}
-	_, err := InspectSubject(filepath.Join(t.TempDir(), "absent"), sourceindex.Subject{Kind: "semantic-type", ID: "sales.order_id"})
+	_, err := InspectSubject(filepath.Join(t.TempDir(), "absent"), sourceindex.Subject{Kind: "unknown-kind", ID: "sales.order_id"})
 	inspectionCode(t, err, InspectionUnsupportedKind)
 }
 
@@ -182,5 +183,87 @@ func TestInspectSubjectFileMoveDoesNotChangeCanonicalFingerprint(t *testing.T) {
 	if len(before.Sources.References) == 0 || len(after.Sources.References) == 0 ||
 		before.Sources.References[0].ArtifactPath == after.Sources.References[0].ArtifactPath {
 		t.Fatalf("source paths did not follow move: before=%+v after=%+v", before.Sources.References, after.Sources.References)
+	}
+}
+
+func TestModelCatalogEntriesRoundTripThroughInspection(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	catalog, err := CatalogWorkspace(root, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Entries) == 0 {
+		t.Fatal("empty reference catalog")
+	}
+	for _, entry := range catalog.Entries {
+		got, err := InspectSubject(root, entry.Subject)
+		if err != nil {
+			t.Fatalf("catalog entry %v cannot be inspected: %v", entry.Subject, err)
+		}
+		if got.Subject != entry.Subject || got.Effect != "read-only" || got.WorldFingerprint != catalog.WorldFingerprint || got.SourceIndexFingerprint != catalog.SourceIndexFingerprint || got.SourceStatus != entry.SourceStatus {
+			t.Fatalf("catalog/inspection snapshots differ for %v: %+v", entry.Subject, got)
+		}
+		var canonical struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(got.Canonical, &canonical); err != nil || canonical.ID != entry.Subject.ID {
+			t.Fatalf("wrong canonical identity: %s / %v", got.Canonical, err)
+		}
+	}
+}
+
+func TestInspectionResolvesEveryCatalogKindAndRejectsDuplicateIdentity(t *testing.T) {
+	world := ir.World{
+		Semantics: []semantic.Namespace{{ID: "same.id",
+			Types: []semantic.Type{{ID: "same.id", Symbol: "alias", Kind: semantic.TypeAlias, Underlying: "std.text"}},
+			Data: []semantic.Data{{ID: "same.id", Symbol: "record",
+				Attributes:             []semantic.Attribute{{ID: "same.id", Symbol: "attribute", TypeRef: "std.text"}},
+				Relations:              []semantic.Relation{{ID: "same.id", Symbol: "relation"}},
+				CandidateKeys:          []semantic.CandidateKey{{ID: "same.id", Symbol: "key"}},
+				FunctionalDependencies: []semantic.FunctionalDependency{{ID: "same.id", Symbol: "dependency"}},
+			}},
+			Capabilities: []semantic.Capability{{ID: "same.id", Symbol: "capability"}},
+			Validations:  []semantic.Validation{{ID: "same.id", Symbol: "validation", Kind: semantic.ValidationPositive}},
+		}},
+		Applications: []application.Application{{ID: "same.id", Patterns: []application.Pattern{{ID: "same.id"}}}},
+		Queries:      []query.EmbeddedSQL{{ID: "same.id", Source: "select 1"}},
+	}
+	ns := world.Semantics[0]
+	data := ns.Data[0]
+	expected := map[string]any{
+		"semantic": ns, "semantic-type": ns.Types[0], "semantic-data": data,
+		"semantic-attribute": data.Attributes[0], "semantic-relation": data.Relations[0],
+		"semantic-candidate-key": data.CandidateKeys[0], "semantic-functional-dependency": data.FunctionalDependencies[0],
+		"semantic-capability": ns.Capabilities[0], "semantic-validation": ns.Validations[0],
+		"application": world.Applications[0], "application-pattern": world.Applications[0].Patterns[0], "query": world.Queries[0],
+	}
+	catalog := CatalogWorld(world, sourceindex.Index{}, "", "world", "source")
+	if len(catalog.Entries) != len(expected) {
+		t.Fatalf("missing catalog kinds: %+v", catalog.Entries)
+	}
+	// Duplicate every declaration in a second container; no parent or namespace
+	// may act as an implicit discriminator for the public kind + exact ID key.
+	duplicate := world
+	duplicate.Semantics = append(append([]semantic.Namespace(nil), world.Semantics...), ns)
+	duplicate.Applications = append(append([]application.Application(nil), world.Applications...), world.Applications[0])
+	duplicate.Queries = append(append([]query.EmbeddedSQL(nil), world.Queries...), world.Queries[0])
+	for _, entry := range catalog.Entries {
+		subject := entry.Subject
+		raw, err := inspectCanonical(world, subject)
+		if err != nil {
+			t.Fatalf("%v: %v", subject, err)
+		}
+		want, err := json.Marshal(expected[subject.Kind])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(raw, want) {
+			t.Fatalf("kind %s returned another kind with the same ID: %s", subject.Kind, raw)
+		}
+		_, err = inspectCanonical(duplicate, subject)
+		inspectionCode(t, err, InspectionAmbiguous)
+		subject.ID = "missing.id"
+		_, err = inspectCanonical(world, subject)
+		inspectionCode(t, err, InspectionNotFound)
 	}
 }

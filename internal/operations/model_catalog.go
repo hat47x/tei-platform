@@ -78,11 +78,17 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 			"external-xead-xeaf-sources-are-not-canonical-tei-models",
 		},
 	}
+	seen := map[sourceindex.Subject]int{}
+	include := true
 	add := func(kind, id, symbol, detail string, parent *sourceindex.Subject) {
 		if id == "" {
 			return
 		}
 		subject := sourceindex.Subject{Kind: kind, ID: id}
+		seen[subject]++
+		if !include {
+			return
+		}
 		status := "not-indexed"
 		if refCount[subject] > 0 {
 			status = "indexed"
@@ -97,9 +103,7 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 		return &p
 	}
 	for _, ns := range world.Semantics {
-		if namespace != "" && string(ns.ID) != namespace {
-			continue
-		}
+		include = namespace == "" || string(ns.ID) == namespace
 		nsID := string(ns.ID)
 		add("semantic", nsID, "", "", nil)
 		np := parentOf("semantic", nsID)
@@ -132,22 +136,17 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 	}
 	// Applications are workspace-level and not members of one semantic
 	// namespace; exclude them when a namespace filter is requested.
-	if namespace == "" {
-		for _, app := range world.Applications {
-			appID := string(app.ID)
-			add("application", appID, "", "", nil)
-			ap := parentOf("application", appID)
-			for _, pattern := range app.Patterns {
-				add("application-pattern", string(pattern.ID), "", string(pattern.Kind), ap)
-			}
-		}
-		for _, query := range world.Queries {
-			add("query", string(query.ID), "", "", nil)
+	include = namespace == ""
+	for _, app := range world.Applications {
+		appID := string(app.ID)
+		add("application", appID, "", "", nil)
+		ap := parentOf("application", appID)
+		for _, pattern := range app.Patterns {
+			add("application-pattern", string(pattern.ID), "", string(pattern.Kind), ap)
 		}
 	}
-	seen := map[sourceindex.Subject]int{}
-	for _, entry := range out.Entries {
-		seen[entry.Subject]++
+	for _, query := range world.Queries {
+		add("query", string(query.ID), "", "", nil)
 	}
 	for i := range out.Entries {
 		if seen[out.Entries[i].Subject] > 1 {

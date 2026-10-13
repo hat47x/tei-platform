@@ -16,20 +16,20 @@ func TestCatalogWorldEnumeratesTypedSemanticAndApplicationSubjects(t *testing.T)
 			ID: "sales",
 			Data: []semantic.Data{{
 				ID: "sales.order", Symbol: "order",
-				Attributes: []semantic.Attribute{{ID: "sales.order.id", Symbol: "id", TypeRef: "std.text"}},
-				Relations: []semantic.Relation{{ID: "sales.order.customer", Symbol: "customer", Target: "sales.customer"}},
-				CandidateKeys: []semantic.CandidateKey{{ID: "sales.order.key", Symbol: "business_id"}},
+				Attributes:             []semantic.Attribute{{ID: "sales.order.id", Symbol: "id", TypeRef: "std.text"}},
+				Relations:              []semantic.Relation{{ID: "sales.order.customer", Symbol: "customer", Target: "sales.customer"}},
+				CandidateKeys:          []semantic.CandidateKey{{ID: "sales.order.key", Symbol: "business_id"}},
 				FunctionalDependencies: []semantic.FunctionalDependency{{ID: "sales.order.dep", Symbol: "fd"}},
 			}},
 			Capabilities: []semantic.Capability{{ID: "sales.order.create", Symbol: "create"}},
-			Validations: []semantic.Validation{{ID: "sales.order.positive", Symbol: "positive", Kind: semantic.ValidationPositive}},
+			Validations:  []semantic.Validation{{ID: "sales.order.positive", Symbol: "positive", Kind: semantic.ValidationPositive}},
 		}},
 		Applications: []application.Application{{ID: "order_entry", Patterns: []application.Pattern{{
 			ID: "order_entry.list", Kind: application.PatternBrowse, Data: "sales.order",
 		}}}},
 	}
 	idx := sourceindex.Index{References: []sourceindex.Reference{{
-		Subject: sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"},
+		Subject:      sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"},
 		ArtifactPath: "semantic/sales/model.tei", Role: sourceindex.RoleDefinition,
 	}}}
 	got := CatalogWorld(world, idx, "", "world", "source")
@@ -121,4 +121,24 @@ func TestCatalogWorkspaceUsesRealWorkspaceSnapshot(t *testing.T) {
 	if !found {
 		t.Fatal("source-owned sales.order is absent")
 	}
+}
+
+func TestCatalogNamespaceFilterPreservesGlobalIdentityAmbiguity(t *testing.T) {
+	world := ir.World{Semantics: []semantic.Namespace{
+		{ID: "one", Data: []semantic.Data{{ID: "shared.id", Symbol: "first"}}},
+		{ID: "two", Data: []semantic.Data{{ID: "shared.id", Symbol: "second"}}},
+	}}
+	catalog := CatalogWorld(world, sourceindex.Index{}, "one", "world", "source")
+	for _, entry := range catalog.Entries {
+		if entry.Subject.Kind != "semantic-data" {
+			continue
+		}
+		if entry.Symbol != "first" || !entry.Ambiguous {
+			t.Fatalf("namespace filter hid an ambiguity outside its view: %+v", entry)
+		}
+		_, err := inspectCanonical(world, entry.Subject)
+		inspectionCode(t, err, InspectionAmbiguous)
+		return
+	}
+	t.Fatal("filtered Data missing")
 }
