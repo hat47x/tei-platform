@@ -2,6 +2,8 @@
 
 受注の参照ホストに、HTTPを起動せず終了する`-non-screen report`と`-non-screen batch`を追加しています。実PostgreSQL、`-composition-scenarios`、接続ファイル、正の排他トークンが必要です。[既存の起動引数](README.md)に以下を加えます。
 
+複合CLIの検証用起動では`-diagnostic-unaccepted-source`も明示します。正式なホスト受理元を欠く通常起動の拒否は、一括処理や帳票でも回避しません。受注専用・固定Worldの診断実行物にはこの複合CLI用の引数を渡しません。
+
 ```sh
 # 帳票。保存先の親ディレクトリはあらかじめ作る。
 -non-screen report -from 2026-09-18T00:00:00Z -rows 0,1,2 \

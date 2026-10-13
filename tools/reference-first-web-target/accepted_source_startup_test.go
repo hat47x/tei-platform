@@ -31,6 +31,19 @@ type syntheticStartupReader struct {
 	revoked     bool
 }
 
+func TestCombinedComposedSourceGatePrecedesDatabaseOpen(t *testing.T) {
+	args := []string{"-workspace", "does-not-exist", "-baseline-id", "B", "-baseline-revision", "R", "-target-revision", "T",
+		"-composition-scenarios", "-postgres-dsn-file", "does-not-exist", "-postgres-fencing-token", "1", "-non-screen", "batch"}
+	err := runCombinedWebTarget(context.Background(), nil, args)
+	if err == nil || !strings.Contains(err.Error(), "SOURCE_ACCEPTANCE_READER_REQUIRED") {
+		t.Fatalf("composed database execution bypassed missing Host Reader: %v", err)
+	}
+	err = runCombinedWebTarget(context.Background(), syntheticStartupReader{}, append(args, "-diagnostic-unaccepted-source"))
+	if err == nil || !strings.Contains(err.Error(), "SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT") {
+		t.Fatalf("diagnostic flag bypassed injected Host Reader: %v", err)
+	}
+}
+
 func (r syntheticStartupReader) ReadCurrentAcceptedSource(ctx context.Context, _ string) (sourceacceptance.Record, error) {
 	if err := ctx.Err(); err != nil {
 		return sourceacceptance.Record{}, err

@@ -23,7 +23,8 @@ def verify_order_workflow(root, output, binary, head, digest, dsn_file, sql, run
               'limits': ['scratch machine acceptance is not human or production authority',
                          'input corrections use diagnostic SQL, not a product editing API',
                          'no durable operation-key receipt or automatic resume',
-                         'Oracle customer lookup and business identity remain synthetic']}
+                         'Oracle customer lookup and business identity remain synthetic',
+                         'combined CLI uses explicit diagnostic Source loading; no authoritative Host Reader is connected']}
     processes, logs = [], []
     credential = output / 'workflow-editor.private'
 
@@ -48,7 +49,7 @@ def verify_order_workflow(root, output, binary, head, digest, dsn_file, sql, run
         sql(f"UPDATE public.tei_reference_execution_grants SET model_revision='{model}', revoked=false, expires_at=clock_timestamp()+interval '10 minutes';")
 
     def common(model):
-        return [str(binary), '-composition-scenarios', '-workspace', str(workspace), '-model-revision', model,
+        return [str(binary), '-diagnostic-unaccepted-source', '-composition-scenarios', '-workspace', str(workspace), '-model-revision', model,
                 '-postgres-dsn-file', str(dsn_file), '-postgres-fencing-token', '1', '-baseline-id', 'order-workflow',
                 '-baseline-revision', head, '-target-revision', head]
 

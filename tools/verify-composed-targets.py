@@ -37,7 +37,8 @@ def main():
     evidence = {'candidateHead': head, 'goProfile': json.loads(run(['go', 'env', '-json', 'GOVERSION', 'GOOS', 'GOARCH', 'GOAMD64', 'CGO_ENABLED'])),
                 'passed': False, 'cleanBefore': True, 'targets': {},
                 'limits': ['synthetic Oracle, authentication and order state', 'no production authority or real database evidence',
-                           'static builds and process startup, not process hot replacement', 'no browser or user-value validation']}
+                           'static builds and process startup, not process hot replacement', 'no browser or user-value validation',
+                           'combined CLI uses explicit diagnostic Source loading, without an authoritative Host Reader']}
     try:
         for name, tags in [('combined', ''), ('order', 'tei_order_only'), ('repair', 'tei_repair_only')]:
             binary = output / name
@@ -66,6 +67,8 @@ def main():
                     '-listen', f'127.0.0.1:{port}']
             if composed:
                 args += ['-composition-scenarios']
+            if name == 'combined':
+                args += ['-diagnostic-unaccepted-source']
             log = (output / f'{name}-{app}-{composed}.log').open('w')
             proc = subprocess.Popen(args, cwd=root, env=env, stdout=log, stderr=log)
             base = f'http://127.0.0.1:{port}'

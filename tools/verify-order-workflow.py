@@ -63,7 +63,8 @@ def main():
               'worldMode': 'digest-bound-frozen-world' if args.frozen_api else 'live-workspace',
               'passed': False, 'checks': [], 'cleanBefore': True, 'cleanAfter': False, 'fixtureCleanupConfirmed': False,
               'limits': ['Oracle customer and authentication remain synthetic', 'no production or browser evidence',
-                         'single PostgreSQL host; coarse line table lock', 'no process hot replacement or availability SLO']}
+                         'single PostgreSQL host; coarse line table lock', 'no process hot replacement or availability SLO',
+                         'no authoritative Host Source Reader; live-workspace CLI uses explicit diagnostic loading']}
     if args.frozen_api:
         report['frozenWorldSHA256'] = hashlib.sha256((Path(workspace) / 'frozen-world.json').read_bytes()).hexdigest()
         report['startupChecks'] = []
@@ -126,7 +127,8 @@ def main():
             http_port = sock.getsockname()[1]
         url = f'http://127.0.0.1:{http_port}'
         log = (output / 'http-host.log').open('w')
-        proc = subprocess.Popen([str(binary), '-composition-scenarios', '-postgres-dsn-file', str(dsn_file),
+        diagnostic = [] if args.frozen_api else ['-diagnostic-unaccepted-source']
+        proc = subprocess.Popen([str(binary), *diagnostic, '-composition-scenarios', '-postgres-dsn-file', str(dsn_file),
                                  '-postgres-fencing-token', '1', '-workspace', workspace, '-baseline-id', 'B',
                                  '-baseline-revision', 'e5231839a5dcc62cce1181a2731fcb7c70d16736',
                                  '-target-revision', head, '-listen', f'127.0.0.1:{http_port}'], cwd=root, stdout=log, stderr=log)
@@ -184,6 +186,7 @@ def main():
             sys.dont_write_bytecode = True
             from reference_non_screen import verify_non_screen
             report['nonScreen'] = verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspace,
+                                                   diagnostic_source=not args.frozen_api,
                                                    owned_container=container if args.batch_crash else None)
             assert report['nonScreen']['passed']
         sql("UPDATE public.tei_reference_execution_grants SET revoked=false;")

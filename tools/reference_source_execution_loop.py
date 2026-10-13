@@ -42,7 +42,7 @@ def verify_source_loop(root, output, binary, head, digest, dsn_file, sql, run):
             return error.code, error.read().decode()
 
     def host_args(model_revision, address):
-        return [str(binary), '-workspace', str(scratch), '-composition-scenarios', '-model-revision', model_revision,
+        return [str(binary), '-diagnostic-unaccepted-source', '-workspace', str(scratch), '-composition-scenarios', '-model-revision', model_revision,
                 '-postgres-dsn-file', str(dsn_file), '-postgres-fencing-token', '1', '-baseline-id', 'reference-source-loop',
                 '-baseline-revision', head, '-target-revision', head, '-listen', address]
 

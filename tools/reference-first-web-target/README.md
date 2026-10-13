@@ -252,7 +252,7 @@ E1で異なるApplication向けバイナリを成立させるには、共通Tran
 
 ## Application別コンパイル時Go入口（E1実装・要実行検証）
 
-専用ビルドでも`-composition-scenarios`と`-model-revision`を指定できる。アプリケーションの選択はビルド時に固定し、サービス契約を使っても起動引数から変更できない。受注専用ビルドでは模擬実装を使う。PostgreSQL接続と画面を使わない実行は複合参照ホストの入口だけで提供する。
+専用ビルドでも`-composition-scenarios`と`-model-revision`を指定できる。アプリケーションの選択はビルド時に固定し、サービス契約を使っても起動引数から変更できない。受注専用ビルドは模擬実装に加えてPostgreSQL接続と画面を使わない実行を扱う。修理受付専用ビルドには受注の永続更新・帳票・一括処理を含めない。専用ビルドは診断用の参照実装であり、正式なホスト受理元への接続は複合CLIとは別に必要である。
 
 `tei_frozen_world`を使うAPI専用ビルドでも`-composition-scenarios`を指定できる。構築時に固定したWorldをそのまま既存の実行処理とサービスへ渡し、実行先にWorkspace読込みを持ち込まない。このビルドではライブのSource版を意味する`-model-revision`を拒否する。Worldの指紋とSourceの版は別の識別であり、相互に読み替えない。[固定Worldの構築手順](../reference-first-web-two-unit-e1/README.md)を参照する。
 
