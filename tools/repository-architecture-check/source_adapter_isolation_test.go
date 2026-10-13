@@ -254,9 +254,20 @@ func TestCanonicalProductBuildsWithAdapterRemoved(t *testing.T) {
 
 	// Control: a package that really imports the adapter must fail to build, so
 	// the removal is effective and a passing product build is not vacuous.
+	// Establish that the consumer builds normally, then require the failed
+	// overlay build to identify the removed adapter rather than an unrelated error.
+	baselineOutput := filepath.Join(t.TempDir(), "reference-consumer")
+	baseline := goCommand(root, nil, "build", "-o", baselineOutput, "./tools/reference-xead-source-inspect")
+	if out, err := baseline.CombinedOutput(); err != nil {
+		t.Fatalf("known Reference consumer does not build without the overlay: %v\n%s", err, out)
+	}
 	control := goCommand(root, nil, "build", "-overlay", overlay, "./tools/reference-xead-source-inspect")
-	if out, err := control.CombinedOutput(); err == nil {
+	out, err := control.CombinedOutput()
+	if err == nil {
 		t.Fatalf("adapter removal had no effect on a known consumer:\n%s", out)
+	}
+	if !strings.Contains(string(out), "/"+xeadSourceDir) {
+		t.Fatalf("overlay control failed without identifying the removed adapter: %v\n%s", err, out)
 	}
 
 	args := append([]string{"build", "-overlay", overlay}, strings.Fields(canonicalProductPatterns)...)
