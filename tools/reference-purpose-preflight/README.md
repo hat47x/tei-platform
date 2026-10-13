@@ -167,7 +167,7 @@ go run ./tools/reference-purpose-preflight \
   -environment development
 ```
 
-この調査は、前節の `contractQueryUse.status=declared-requirement` が成立した場合にのみ、既存Canonical `Environment.bindings` の `(application, alias)` を**一意に**解決し、その `DatabaseInstance.definition` がApplicationの要求対象DBと一致するかを確認する。正本の `development` では `order_entry.master -> master_data.dev`、`production` では `order_entry.master -> master_data.prod` を追跡できる。両Instanceが宣言しているDB種別は `oracle`。
+この調査は、**PatternとEnvironmentを一回のWorkspace読込みで取得した同じCanonical World**を対象にする。前節の `contractQueryUse.status=declared-requirement` が成立した場合にのみ、既存Canonical `Environment.bindings` の `(application, alias)` を**一意に**解決し、その `DatabaseInstance.definition` がApplicationの要求対象DBと一致するかを確認する。正本の `development` では `order_entry.master -> master_data.dev`、`production` では `order_entry.master -> master_data.prod` を追跡できる。両Instanceが宣言しているDB種別は `oracle`。
 
 結果は `assessment.environmentBinding` に追加し、定義一致時の `status=declared-environment-binding` は**EnvironmentがこのDB接続先を宣言したという事実**だけを表す。実Providerの通信・Query実現・Contract互換性・Plugin Conformance・リソース/権限・認可の有効性を証明しない。そのため目的別 `provider-contract` は `not-evaluated`（確認事項が具体化されたが評価は未実施）であり、`executionAllowed=false` を維持する。
 
