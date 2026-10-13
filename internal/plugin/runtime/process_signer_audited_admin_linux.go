@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -27,18 +28,18 @@ var ErrLinuxSignerAuditOutcomeUnrecorded = errors.New("Host signer change outcom
 // and public-key fingerprints. It must never include the public key bytes,
 // private key material, or plugin-provided request data beyond SignerRef.
 type LinuxSignerAuditEvent struct {
-	OperationID    string
-	HostID         string
-	Principal      string
-	SignerRef      string
-	Action         string // allow | revoke
-	Phase          string // denied | prepared | applied | unchanged | failed
-	ReasonCode     string
-	OldEpoch       uint64
-	NewEpoch       uint64
-	OldKeySHA256   string
-	NewKeySHA256   string
-	RecordedAt     time.Time
+	OperationID  string
+	HostID       string
+	Principal    string
+	SignerRef    string
+	Action       string // allow | revoke
+	Phase        string // denied | prepared | applied | unchanged | failed
+	ReasonCode   string
+	OldEpoch     uint64
+	NewEpoch     uint64
+	OldKeySHA256 string
+	NewKeySHA256 string
+	RecordedAt   time.Time
 }
 
 // LinuxSignerAuditSink must acknowledge durable recording before returning
@@ -59,9 +60,26 @@ type LinuxSignerAuditedAdmin struct {
 	HostID string
 }
 
+// A typed-nil pointer inside an interface is not equal to nil. Reject such
+// dependencies before dispatching to user-provided Host components.
+func missingLinuxSignerAdminDependency(value any) bool {
+	if value == nil {
+		return true
+	}
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return v.IsNil()
+	default:
+		return false
+	}
+}
+
 func (a *LinuxSignerAuditedAdmin) preflight(ctx context.Context, principal, operationID string) error {
-	if a == nil || ctx == nil || a.Admin.Trust == nil || a.Admin.Authorizer == nil ||
-		a.Sink == nil || a.HostID == "" || principal == "" || operationID == "" ||
+	if a == nil || ctx == nil || a.Admin.Trust == nil ||
+		missingLinuxSignerAdminDependency(a.Admin.Authorizer) ||
+		missingLinuxSignerAdminDependency(a.Sink) ||
+		a.HostID == "" || principal == "" || operationID == "" ||
 		strings.TrimSpace(a.HostID) != a.HostID ||
 		strings.TrimSpace(operationID) != operationID ||
 		len(a.HostID) > 256 || len(operationID) > 256 {
