@@ -30,6 +30,9 @@ test("Go DFD producer observation records independent input and Workspace eviden
     assert.equal(observation.evidence.authority, "noncanonical-reference");
     assert.equal(observation.evidence.acceptedBusinessProcedure, false);
     assert.equal(observation.evidence.sourceRevisionBinding, "not-established");
+    assert.equal(observation.evidence.sourceSetStatus, "not-checked-no-source-index");
+    assert.ok(observation.evidence.sources.every(x =>
+      x.sourceMembership === "not-checked-no-source-index"));
     assert.equal(observation.evidence.workspaceRevisionObserved, R0);
     assert.deepEqual(observation.evidence.sources.map(x => x.role),
       ["procedure", "review", "set"]);
