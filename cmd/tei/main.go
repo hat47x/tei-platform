@@ -93,8 +93,9 @@ func main() {
 		writeJSON(commandCatalog())
 		return
 	}
+	jsonValidationRequested := command == "validate" && wantsJSONValidation(os.Args[2:])
 	parseMode := flag.ExitOnError
-	if command == "inspect" || command == "trace" {
+	if command == "inspect" || command == "trace" || jsonValidationRequested {
 		parseMode = flag.ContinueOnError
 	}
 	fs := flag.NewFlagSet(command, parseMode)
@@ -163,6 +164,25 @@ func main() {
 		}
 		if parseErr != nil {
 			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
+	}
+	if command == "validate" && jsonValidationRequested {
+		if parseErr == nil {
+			parseErr = validateJSONValidationFlags(fs)
+		}
+		if parseErr != nil {
+			code, writeErr := invalidJSONValidationParse(os.Stdout, parseErr)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
+		if !*jsonValidation {
+			code, writeErr := invalidJSONValidationArguments(os.Stdout)
 			if writeErr != nil {
 				fmt.Fprintln(os.Stderr, writeErr)
 			}

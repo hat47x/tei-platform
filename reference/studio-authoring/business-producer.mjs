@@ -3,7 +3,7 @@
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve, relative, isAbsolute, sep } from "node:path";
 
 const REVISION = /^sha256:[0-9a-f]{64}$/;
 const roles = ["procedure", "review", "set"];
@@ -23,12 +23,45 @@ function same(a, b) {
     a.fingerprint === b.fingerprint && a.byteLength === b.byteLength;
 }
 
+// Source Index artifact membership is physical Source-set evidence only. An
+// indexed JSON file does not prove that Business meaning was normalized or
+// accepted by Shared Acceptance. Never infer a semantic Procedure identity.
+function qualifySourceMembership(workspace, sourceIndex, snapshots) {
+  if (sourceIndex === undefined) return snapshots.map(item => ({
+    ...item, sourceMembership: "not-checked-no-source-index" }));
+  if (!sourceIndex || !Array.isArray(sourceIndex.artifacts))
+    fail("BUSINESS_DFD_SOURCE_INDEX_INVALID");
+  const artifacts = new Map();
+  for (const a of sourceIndex.artifacts) {
+    if (!a || typeof a.path !== "string" || !a.path ||
+        a.path.startsWith("/") || a.path.includes("\\") ||
+        a.path.split("/").some(part => !part || part === "." || part === "..") ||
+        /^[A-Za-z]:/.test(a.path) || !REVISION.test(a.fingerprint) ||
+        artifacts.has(a.path)) fail("BUSINESS_DFD_SOURCE_INDEX_INVALID");
+    artifacts.set(a.path, a.fingerprint);
+  }
+  const workspaceReal = realpathSync(workspace);
+  return snapshots.map(item => {
+    const rel = relative(workspaceReal, item.path);
+    if (!rel || isAbsolute(rel) || rel === ".." || rel.startsWith(".." + sep))
+      return { ...item, sourceMembership: "external-reference-not-managed" };
+    const indexedPath = rel.split(sep).join("/");
+    const expected = artifacts.get(indexedPath);
+    if (!expected) return { ...item,
+      sourceMembership: "external-reference-not-managed" };
+    if (expected !== item.fingerprint)
+      fail("BUSINESS_DFD_MANAGED_SOURCE_INDEX_FINGERPRINT_STALE");
+    return { ...item, sourceMembership: "managed-source-artifact-verified",
+      managedArtifactPath: indexedPath };
+  });
+}
+
 // Caller must supply an actual live Workspace and the revision of a World
 // independently loaded from it. Read-before/read-after guards do not create
 // an atomic transaction or an Accepted Business Procedure.
 export function produceBusinessDFD({
   workspace, modelRevision, procedure, review, set, repoRoot,
-  readRevision, runProducer
+  readRevision, runProducer, sourceIndex
 }) {
   if (!REVISION.test(modelRevision) || typeof workspace !== "string" ||
       !workspace.trim() || typeof repoRoot !== "string" || !repoRoot.trim() ||
@@ -61,6 +94,10 @@ export function produceBusinessDFD({
   const after = roles.map(role => snapshot(role, files[role]));
   if (!before.every((item, i) => same(item, after[i])))
     fail("BUSINESS_DFD_INPUT_CHANGED_DURING_PROJECTION");
+  // The Source Index must come from the same caller-observed Workspace read.
+  // A matching physical artifact fingerprint is NOT an Accepted Business
+  // source schema, logical scope, human approval or Source write authority.
+  const sources = qualifySourceMembership(workspaceRoot, sourceIndex, before);
   if (revision() !== modelRevision)
     fail("BUSINESS_DFD_WORKSPACE_REVISION_CHANGED");
   return { value, evidence: {
@@ -72,6 +109,9 @@ export function produceBusinessDFD({
     sourceRevisionBinding: "not-established",
     acceptedBusinessProcedure: false, canonicalProcedureUsed: false,
     authority: "noncanonical-reference",
-    sources: before
+    sourceSetStatus: sourceIndex === undefined ? "not-checked-no-source-index" :
+      sources.every(x => x.sourceMembership === "managed-source-artifact-verified")
+        ? "all-input-artifacts-managed" : "contains-nonmanaged-reference-inputs",
+    sources
   } };
 }

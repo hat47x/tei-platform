@@ -249,7 +249,7 @@ func evaluate(root string, data []byte) (evaluation, error) {
 	})
 
 	run("impact", func() []Diagnostic {
-		ev.preview.Impact, ev.preview.Unresolved = changeanalysis.Impact(after.loaded.World, allChanges(ev.preview))
+		ev.preview.Impact, ev.preview.Unresolved = changeanalysis.ImpactWithBefore(before.loaded.World, after.loaded.World, allChanges(ev.preview))
 		return nil
 	})
 

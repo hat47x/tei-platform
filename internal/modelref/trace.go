@@ -236,7 +236,8 @@ func traceRowKey(row TraceRow) string {
 	// Length-prefixed fields prevent collisions when user-defined IDs contain
 	// separators (including hyphens, colons, and slashes).
 	fields := []string{
-		keyString(row.Edge.From), to.Scope, to.Subject.Kind, to.Subject.ID,
+		row.Edge.From.Scope, row.Edge.From.Subject.Kind, row.Edge.From.Subject.ID,
+		to.Scope, to.Subject.Kind, to.Subject.ID,
 		to.Version, row.Edge.Relation, row.Status, row.Issue, evidenceKey(row.Edge.Evidence),
 	}
 	out := ""

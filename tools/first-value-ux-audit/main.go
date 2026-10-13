@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -60,6 +61,56 @@ type Metrics struct {
 	Limitations           []string `json:"limitations"`
 }
 
+// rejectDuplicateJSONKeys rejects ambiguous session/event evidence before Go's
+// standard JSON decoder can silently accept the last occurrence of a key.
+// Separate nested objects may legitimately reuse the same property name.
+func rejectDuplicateJSONKeys(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	var walk func() error
+	walk = func() error {
+		token, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		delimiter, ok := token.(json.Delim)
+		if !ok {
+			return nil
+		}
+		switch delimiter {
+		case '{':
+			seen := map[string]struct{}{}
+			for dec.More() {
+				keyToken, err := dec.Token()
+				if err != nil {
+					return err
+				}
+				key, ok := keyToken.(string)
+				if !ok {
+					return errors.New("expected JSON object key")
+				}
+				if _, duplicate := seen[key]; duplicate {
+					return fmt.Errorf("duplicate JSON key %q", key)
+				}
+				seen[key] = struct{}{}
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+		case '[':
+			for dec.More() {
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("unexpected JSON delimiter %q", delimiter)
+		}
+		_, err = dec.Token() // consume matching closing delimiter
+		return err
+	}
+	return walk()
+}
+
 func decode(r io.Reader) (Session, error) {
 	var s Session
 	raw, err := io.ReadAll(io.LimitReader(r, (1<<20)+1))
@@ -68,6 +119,9 @@ func decode(r io.Reader) (Session, error) {
 	}
 	if len(raw) > 1<<20 {
 		return s, errors.New("session JSON exceeds 1 MiB limit")
+	}
+	if err := rejectDuplicateJSONKeys(raw); err != nil {
+		return s, fmt.Errorf("ambiguous session JSON: %w", err)
 	}
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	dec.DisallowUnknownFields()
@@ -103,6 +157,9 @@ func reduce(s Session) (Metrics, error) {
 	}
 	if s.Provenance != "observed" && s.Provenance != "synthetic" {
 		return out, fmt.Errorf("unknown provenance %q", s.Provenance)
+	}
+	if s.Provenance == "observed" && s.RepositorySHA == strings.Repeat("0", 40) {
+		return out, errors.New("all-zero fixture repositorySHA is not valid for observed sessions")
 	}
 	start, err := time.Parse(time.RFC3339Nano, s.StartedAt)
 	if err != nil {
@@ -156,6 +213,9 @@ func reduce(s Session) (Metrics, error) {
 		case "manual-fields":
 			if e.ExitCode != nil || e.Count < 1 {
 				return out, fmt.Errorf("events[%d] manual-fields requires count > 0", i)
+			}
+			if e.Count > int(^uint(0)>>1)-out.ManualFields {
+				return out, fmt.Errorf("events[%d] manual-fields total overflows int", i)
 			}
 			out.ManualFields += e.Count
 		case "recovery":

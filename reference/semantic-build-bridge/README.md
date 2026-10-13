@@ -11,9 +11,9 @@
 - `plugin.BuildPlan`：入力モデル、Builder、Recipe、出力種別、Targetを明示する。
 - `plugin.LockBuildOutput`：ビルド計画のFingerprintと出力バイトのDigestを`plugin.LockedBuild`へ固定。
 - `plugin.BuildArtifactLock.Validate`：既存のBuild Artifact Lockの版と構造を確認。
-- `InspectLockedExport`：呼び出し元が**明示指定した**一件のLock記録とPlanとArtifactの一致を確認した後、E4aの`InspectSelectedReference`に渡して正規化意味モデルを取得する。
+- `InspectLockedExport`：呼び出し元が**明示指定した**BuildPlanがLockに対応する正確なPlan/Artifact fingerprintを生成したことを確かめ、**既存の`semanticdistribution.InspectLockedSemanticAsset`**を呼び出す。この下位AdapterがBuildArtifactLockと配布元・正規化意味モデルを照合する。
 
-**新たなLock/Registry/Resolverは設けない。** `BuildOutputKind`はすでに拡張可能な文字列型のため、今回の模擬出力だけを`semantic-export-reference`とする。TEI標準の新しいOutputKind、CapabilityKind、RuntimeKind、Service Contract等は制定しない。
+**新たなLock/Registry/Resolverは設けない。** データのみの配布資産の判定は、すでにmainにある`semanticdistribution.InspectLockedSemanticAsset`（実CAS縦断のPR #1683）へ委譲する。試験用の出力種別は同Adapterの`SemanticReferenceOutputKind = semantic-data`を共用する。TEI標準の新しいOutputKind、CapabilityKind、RuntimeKind、Service Contract等は制定しない。
 
 この接続により、同じ`os`名前空間を二つの独立したWorkspaceから、Path参照と**選択済み・ビルド固定された模擬配布物**の両方で利用できることを試す。
 
@@ -35,6 +35,10 @@ go test -count=1 ./reference/semantic-build-bridge ./reference/semantic-distribu
 
 ## 次に確認するもの
 
-次期Composition Kernel/#1223とAsset Store/#1105で、**すでに外部で署名・照合済みのBuildPlan/Artifact/選択**を受け取れることを縦断する。正式な配布資産の型やパッケージ設計が決まったら、今回の`semantic-export-reference`と模擬Envelopeを正式なAsset Adapterへ置き換える。旧Pluginの固定`CapabilityKind`にSemantic機能を追加せず、製品で使用する正式なBuildOutputKindの採用はその時点で判断する。
+次期Composition Kernel/#1223とAsset Store/#1105で、**すでに外部で署名・照合済みのBuildPlan/Artifact/選択**を受け取れることを縦断する。正式な配布資産の型やパッケージ設計が決まったら、今回の試験用`semantic-data`と模擬Envelopeを正式なAsset Adapterへ置き換える。旧Pluginの固定`CapabilityKind`にSemantic機能を追加せず、製品で使用する正式なBuildOutputKindの採用はその時点で判断する。
 
 E4cは**本番機能の完成判定ではなく、既存ビルド・Lock表現の再利用可否を試したReference**。
+
+## #1683との役割整理
+
+[PR #1683](https://github.com/hat47x/tei-platform/pull/1683)は、既存`BuildArtifactLock`で明示された成果物を実ローカルCASから取得するReferenceを先にmainへ統合しました。このディレクトリの**追加価値は、読み取る前に呼出側のBuildPlanとLockedBuildの入力計画Fingerprintを照合することと、二つの独立Consumerの意味的同等性を検証すること**です。元のCAS Adapterと別の配布物取得・選択・Lockを実装しない構造へ縮退させています。

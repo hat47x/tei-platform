@@ -19,7 +19,7 @@ func fixture() Packet {
 		Schema: schema, Claim: "E2",
 		Contract:      Contract{ProducerPath: "tools/reference-shared-acceptance/practical_validation_loop_test.go", ConsumerPath: "tools/reference-first-web-target/practical_business_rule_test.go", PositiveTest: "TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection", NegativeTest: "TestReferenceCommandScenarioRejectsMissingValuesAcrossAllLines", EvidenceClass: "actual-observed"},
 		Qualification: Qualification{Head: h, Main: m, FullHealth: "PASS", CleanBefore: true, CleanAfter: true, Receipt: "local/health.log"},
-		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("2", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
+		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("3", 64), ReviewCandidateFingerprint: "sha256:" + strings.Repeat("2", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
 		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", NegativeValidation: "sales.order_line.unit_price_positive", NegativeEvidenceMode: "running-server", ProviderKind: "actual-db", RunMode: "running-server", WorkspaceRevisionReceipt: "local/r1-web-workspace.json", TargetLaunchReceipt: "local/target-launch.json", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
 		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
 	}
@@ -39,13 +39,49 @@ func TestCompletePacketNeverGrantsProductGate(t *testing.T) {
 		t.Fatalf("%+v", result)
 	}
 }
-func TestReviewFingerprintMustMatchCandidate(t *testing.T) {
+func TestReviewCandidateBindingMustMatchAcceptedCandidate(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"
-	p.Acceptance.ReviewFingerprint = "sha256:" + strings.Repeat("f", 64)
+	p.Acceptance.ReviewCandidateFingerprint = "sha256:" + strings.Repeat("f", 64)
 	r := Audit(p, h, m)
-	if !has(r, "ACCEPTANCE_REVIEW_FINGERPRINT_MISMATCH") || r.Status != "INCOMPLETE" {
-		t.Fatalf("review approved a different candidate: %+v", r)
+	if !has(r, "ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH") ||
+		r.Status != "INCOMPLETE" {
+		t.Fatalf("review identity did not match the accepted candidate: %+v", r)
+	}
+}
+
+func TestMissingReviewCandidateBindingCannotPassPreflight(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Acceptance.ReviewCandidateFingerprint = ""
+	r := Audit(p, h, m)
+	if !has(r, "ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH") ||
+		r.ProductGate != "UNQUALIFIED" {
+		t.Fatalf("review-to-candidate identity was not required: %+v", r)
+	}
+}
+
+func TestDistinctReviewAndCandidateDigestsAreValid(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Web.ProviderKind = "synthetic"
+	p.Physical = Physical{}
+	if p.Acceptance.CandidateFingerprint == p.Acceptance.ReviewFingerprint {
+		t.Fatal("test fixture wrongly reuses candidate digest as review digest")
+	}
+	r := Audit(p, h, m)
+	if r.Status != "REVIEW_REQUIRED" || r.ProductGate != "UNQUALIFIED" {
+		t.Fatalf("legitimate distinct candidate and review digests were rejected: %+v", r)
+	}
+}
+
+func TestReviewDigestCannotSubstituteCandidateLink(t *testing.T) {
+	p := fixture()
+	p.Claim = "E1"
+	p.Acceptance.ReviewCandidateFingerprint = p.Acceptance.ReviewFingerprint
+	r := Audit(p, h, m)
+	if !has(r, "ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH") {
+		t.Fatalf("review digest was confused with candidate identity: %+v", r)
 	}
 }
 
@@ -96,6 +132,119 @@ func TestMissingReadAndNegativeControlsFail(t *testing.T) {
 		}
 	}
 }
+
+// N11 is an explicit *unobserved* read-control result. Reusing the
+// target-launch or workspace evidence does not establish that control.
+func TestN11ControlMustBeSeparateFromOtherWebEvidence(t *testing.T) {
+	cases := map[string]func(*Packet){
+		"blank control": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = "  "
+		},
+		"reused workspace revision": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.WorkspaceRevisionReceipt
+		},
+		"reused target launch": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.TargetLaunchReceipt
+		},
+		"reused decision": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Acceptance.DecisionReceipt
+		},
+		"reused post-accept reload": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Acceptance.ReloadReceipt
+		},
+		"reused repository health": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Qualification.Receipt
+		},
+		"reused positive response": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.PositiveReceipt
+		},
+		"reused negative response": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Web.NegativeReceipt
+		},
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			p.Claim = "E1"
+			mutate(&p)
+			r := Audit(p, h, m)
+			if !has(r, "N11_UNOBSERVED_CONTROL_MISSING") ||
+				r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("N11 was satisfied by unrelated evidence: %+v", r)
+			}
+		})
+	}
+}
+
+func TestE2N11MustNotRecycleCommandOrIndependentReadEvidence(t *testing.T) {
+	for name, mutate := range map[string]func(*Packet){
+		"command reused": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Physical.CommandReceipt
+		},
+		"independent read reused": func(p *Packet) {
+			p.Web.UnobservedControlReceipt = p.Physical.IndependentReadReceipt
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			mutate(&p)
+			r := Audit(p, h, m)
+			if !has(r, "N11_UNOBSERVED_CONTROL_MISSING") ||
+				r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("E2 used an unrelated Command/Observation as N11: %+v", r)
+			}
+		})
+	}
+}
+
+func TestE2RejectsWhitespaceOnlyCommandOrReadReceipt(t *testing.T) {
+	for name, mutate := range map[string]func(*Packet){
+		"command": func(p *Packet) { p.Physical.CommandReceipt = "  " },
+		"read":    func(p *Packet) { p.Physical.IndependentReadReceipt = "  " },
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			mutate(&p)
+			if !has(Audit(p, h, m), "E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED") {
+				t.Fatal("E2 accepted a whitespace-only evidence receipt")
+			}
+		})
+	}
+}
+
+func TestN11DiagnosticAppearsOnlyOnceForMultipleMissingStages(t *testing.T) {
+	p := fixture()
+	p.Web.UnobservedControlReceipt = ""
+	p.Physical.CommandReceipt = ""
+	p.Physical.IndependentReadReceipt = ""
+	r := Audit(p, h, m)
+	count := 0
+	for _, code := range r.Diagnostics {
+		if code == "N11_UNOBSERVED_CONTROL_MISSING" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("one missing N11 control yielded %d diagnostics: %+v", count, r)
+	}
+}
+
+func TestEmptyWebReceiptsDoNotPassE1(t *testing.T) {
+	for name, change := range map[string]func(*Packet){
+		"blank positive": func(p *Packet) { p.Web.PositiveReceipt = "  " },
+		"blank negative": func(p *Packet) { p.Web.NegativeReceipt = "  " },
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := fixture()
+			p.Claim = "E1"
+			change(&p)
+			if !has(Audit(p, h, m), "ACTUAL_WEB_POSITIVE_AND_NEGATIVE_RECEIPTS_REQUIRED") {
+				t.Fatal("blank Web receipt was accepted")
+			}
+		})
+	}
+}
+
 func TestHealthNotRunCannotQualify(t *testing.T) {
 	p := fixture()
 	p.Qualification.FullHealth = "NOT_RUN"
@@ -351,6 +500,7 @@ func TestCurrentP0FixtureCannotBeSubmittedAsEvidence(t *testing.T) {
 		"E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED",
 		"ACCEPTED_R0_R1_LINEAGE_MISSING",
 		"E1_RUNNING_WEB_TARGET_RECEIPT_REQUIRED",
+		"ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH",
 		"E1_WEB_WORKSPACE_R1_AND_TARGET_LAUNCH_PROVENANCE_MISSING",
 		"TRUSTED_FULL_HEALTH_NOT_RECORDED",
 	} {

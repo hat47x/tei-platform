@@ -285,3 +285,22 @@ node reference/studio-authoring/cli.mjs inspect \
 - 出力 `businessObservation` は3ファイルの出典・Workspace読取版・生成器を示します。ただしGo生成器のWorld読込みは独立プロセスであり、**単一の原子的snapshotを得たわけではありません**。`workspaceRevisionStatus=checked-around-separate-process-not-atomic`、`sourceRevisionBinding=not-established`、`acceptedBusinessProcedure=false` を維持します。
 - 生じたBusiness viewの権限は引き続き `noncanonical-reference` です。業務Roleと認可Role、手作業とFunction、起動契機と実Runtimeを統合しません。Producer側で不正参照などのblocking diagnosticが出れば成功扱いしません。
 - Studio専用CIはScratch Workspace上で実際のGo Producerを起動し、Data/ValidationからBusiness Stepへの探索とStep側からの逆探索、三つの入力出典、HTMLでの未受理表示を確かめます。試験用DFDを手書きした場合だけの成功ではありません。
+
+
+### Workspace管理対象と外部業務参照資料を区別する
+
+Go生成器に渡したProcedure・図レビュー案・Handoff集合が**同じWorkspaceの管理対象Source**に実在する場合、Studioは既存の `tei source-index` に記録された相対パス・SHA-256と、読み取った実ファイルを照合します。推測したSource rootや表示上のファイル名だけでは判定しません。
+
+`businessObservation.sources[]` の `sourceMembership` は次のいずれかです。
+
+| 状態 | 意味 |
+| --- | --- |
+| `managed-source-artifact-verified` | 宣言されたSource rootにある実ファイルを、同一WorkspaceのSource Indexへ相対パスと指紋で照合できた |
+| `external-reference-not-managed` | Source Indexに当該実ファイルがない。Workspace外ファイルや、Source rootから除かれたファイルを含む |
+| `not-checked-no-source-index` | Source Indexなしで呼んだアダプタ単体の観測。Studioの実Workspace CLIではSource Indexを渡す |
+
+3入力すべてを照合できた場合だけ `sourceSetStatus=all-input-artifacts-managed` とします。混在・未登録の場合は `contains-nonmanaged-reference-inputs` です。Source Indexに同じパスが複数ある場合、不正パス、管理対象ファイルの現在の指紋が異なる場合は拒否します。類似ファイル名の外部資料を管理対象に昇格しません。
+
+実証用には本来の `reference/workspace` を変更せずScratch copyを作成し、`tei.workspace.yaml` の `sources` に `business` を加え、そのルートに3つのReference入力をコピーします。Source rootの宣言を取り消すと、**ファイルのバイト列を変更しなくても**当該Source Indexの管理対象一覧から消え、Studioの観測結果が `external-reference-not-managed` になります。この登録状態の遷移は、Studio専用CIで実際のGo Workspace LoaderとGo Source Indexを使用して検証します。
+
+この新しい観測証跡は、採用済みのBusiness Procedureモデルを意味しません。管理対象のJSONであっても正式なBusiness schema、Source所有者・業務Stepのscope、Business意味検証、Shared Acceptanceによる受理が未実装であれば、従来どおり `acceptedBusinessProcedure=false`、`sourceRevisionBinding=not-established` を維持します。管理対象に入ったことを根拠に画面で編集・受理・実行できるようにはしません。

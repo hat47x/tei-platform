@@ -2,16 +2,17 @@
 set -euo pipefail
 
 # Manual conformance verification for the E1 plan and E2 session reference.
-# The repository-wide health check remains mandatory before integrating code.
+# Full repository health is a separate optional diagnosis under the current
+# AGENTS.md integration rules; this script only checks the Web reference.
 # This script never invokes GitHub Actions and does not modify the repository.
 
 usage() {
   cat <<'HELP'
 Usage: reference/web-composition/verify.sh [--race]
 
-Checks the Web E1 Node composition tests and the E2 Go reference packages.
-Run tools/repository-health-check.sh separately on the exact candidate head
-in a clean full checkout before changing Draft or merging a PR.
+Checks the Web E1 Node composition and route-table tests plus the E2 Go
+reference packages. This is a scoped check, not repository-wide health.
+Record exact-head evidence and any unrun checks in the corresponding PR.
 HELP
 }
 
@@ -30,7 +31,8 @@ fi
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
-if [[ ! -f go.mod || ! -f reference/web-composition/plan-check.test.mjs ]]; then
+if [[ ! -f go.mod || ! -f reference/web-composition/plan-check.test.mjs ||
+      ! -f reference/web-composition/route-table.test.mjs ]]; then
   echo "error: complete TEI repository checkout required" >&2
   exit 2
 fi
@@ -49,7 +51,9 @@ packages=(
 )
 
 echo "==> Web E1 Node composition tests" >&2
-node --test reference/web-composition/plan-check.test.mjs
+node --test \
+  reference/web-composition/plan-check.test.mjs \
+  reference/web-composition/route-table.test.mjs
 echo "==> Web E2 Go vet" >&2
 go vet "${packages[@]}"
 echo "==> Web E2 Go tests" >&2

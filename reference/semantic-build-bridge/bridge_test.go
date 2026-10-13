@@ -80,7 +80,7 @@ func planFixture(packageID plugin.Identity, sourceDigest string) plugin.BuildPla
 			ContractVersion: "reference.v1", ArtifactDigest: "sha256:" + strings.Repeat("1", 64),
 		},
 		Recipe:     plugin.BuildRecipe{Kind: "semantic-export-reference", Entrypoint: "os"},
-		OutputKind: ReferenceOutputKind,
+		OutputKind: semanticdistribution.SemanticReferenceOutputKind,
 		Target:     ReferenceTarget,
 	}
 }
@@ -169,10 +169,10 @@ func TestSelectedPluginBuildLockFailClosed(t *testing.T) {
 	}{
 		{"removed-build", func(_ *plugin.BuildPlan, l *plugin.BuildArtifactLock, _ *plugin.LockedBuild, _ *[]byte, _ *semanticdistribution.Expectation) {
 			l.Builds = nil
-		}, "exact selected build is not present"},
+		}, "not present in BuildArtifactLock"},
 		{"duplicate-lock", func(_ *plugin.BuildPlan, l *plugin.BuildArtifactLock, _ *plugin.LockedBuild, _ *[]byte, _ *semanticdistribution.Expectation) {
 			l.Builds = append(l.Builds, l.Builds[0])
-		}, "invalid build artifact lock"},
+		}, "invalid existing BuildArtifactLock"},
 		{"wrong-build-input", func(p *plugin.BuildPlan, _ *plugin.BuildArtifactLock, _ *plugin.LockedBuild, _ *[]byte, _ *semanticdistribution.Expectation) {
 			p.Recipe.Entrypoint = "other"
 		}, "build plan or artifact digest mismatch"},
@@ -181,16 +181,16 @@ func TestSelectedPluginBuildLockFailClosed(t *testing.T) {
 		}, "build plan or artifact digest mismatch"},
 		{"wrong-selection-version", func(_ *plugin.BuildPlan, _ *plugin.BuildArtifactLock, s *plugin.LockedBuild, _ *[]byte, _ *semanticdistribution.Expectation) {
 			s.Plugin.Version = "9.0.0"
-		}, "exact selected build is not present"},
+		}, "selected build plan or artifact digest mismatch"},
 		{"wrong-selection-plan", func(_ *plugin.BuildPlan, _ *plugin.BuildArtifactLock, s *plugin.LockedBuild, _ *[]byte, _ *semanticdistribution.Expectation) {
 			s.PlanFingerprint = strings.Repeat("a", 64)
-		}, "exact selected build is not present"},
+		}, "selected build plan or artifact digest mismatch"},
 		{"semantic-pinning", func(_ *plugin.BuildPlan, _ *plugin.BuildArtifactLock, _ *plugin.LockedBuild, _ *[]byte, x *semanticdistribution.Expectation) {
 			x.SemanticDigest = "sha256:" + strings.Repeat("0", 64)
 		}, "semantic digest mismatch"},
 		{"mismatched-package", func(_ *plugin.BuildPlan, _ *plugin.BuildArtifactLock, _ *plugin.LockedBuild, _ *[]byte, x *semanticdistribution.Expectation) {
 			x.Package.PackageID = "other.os_models"
-		}, "selected build package identity mismatch"},
+		}, "identity differs from explicit package expectation"},
 		{"empty-selection", func(_ *plugin.BuildPlan, _ *plugin.BuildArtifactLock, s *plugin.LockedBuild, _ *[]byte, _ *semanticdistribution.Expectation) {
 			*s = plugin.LockedBuild{}
 		}, "selected build is not a data-only"},

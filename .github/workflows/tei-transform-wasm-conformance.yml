@@ -7,12 +7,16 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - tools/reference-transform-runtime-engine/target_conformance_test.go
+      - tools/reference-transform-runtime-engine/target_cli_fixture_test.go
+      - tools/reference-plugin-self-build/wasm_host_acceptance_test.go
       - tools/check-transform-wasm-conformance.sh
       - .github/workflows/tei-transform-wasm-conformance.yml
   push:
     branches: [main]
     paths:
       - tools/reference-transform-runtime-engine/target_conformance_test.go
+      - tools/reference-transform-runtime-engine/target_cli_fixture_test.go
+      - tools/reference-plugin-self-build/wasm_host_acceptance_test.go
       - tools/check-transform-wasm-conformance.sh
       - .github/workflows/tei-transform-wasm-conformance.yml
   workflow_dispatch:
@@ -70,6 +74,11 @@ jobs:
             ${{ runner.temp }}/tei-transform-wasm/native-test.log
             ${{ runner.temp }}/tei-transform-wasm/wasm-test.log
             ${{ runner.temp }}/tei-transform-wasm/target-binding-test.log
+            ${{ runner.temp }}/tei-transform-wasm/cli-fixture-test.log
+            ${{ runner.temp }}/tei-transform-wasm/wasm-host-approval.log
+            ${{ runner.temp }}/tei-transform-wasm/native-cli-response.json
+            ${{ runner.temp }}/tei-transform-wasm/wasm-cli-response.json
+            ${{ runner.temp }}/tei-transform-wasm/cli-expected-response.json
             ${{ runner.temp }}/tei-transform-wasm/go-version.txt
             ${{ runner.temp }}/tei-transform-wasm/node-version.txt
           if-no-files-found: error

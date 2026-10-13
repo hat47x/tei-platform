@@ -76,6 +76,28 @@ func TestSourceSizePreflightMatchesCanonicalJSONEncoding(t *testing.T) {
 	}
 }
 
+func TestSourceSizePreflightMatchesDecodedUnicodeEscapes(t *testing.T) {
+	source := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
+	source.Program.Output = Expr{
+		Op:      OpLiteral,
+		Literal: json.RawMessage(`"\u0061\uD83D\uDE00\/<>&"`),
+	}
+	normalized, err := NormalizeSource(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := json.Marshal(normalized)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sourceSerializedSize(source, len(canonical)); err != nil {
+		t.Fatalf("preflight rejected a Source that fits after Unicode normalization: %v", err)
+	}
+	if err := sourceSerializedSize(source, len(canonical)-1); err == nil {
+		t.Fatal("preflight accepted a Source above the exact canonical size")
+	}
+}
+
 func TestSourceSizePreflightBoundsCyclesAndUnboundedStrings(t *testing.T) {
 	large := repositoryBudgetSource(t, "transform-source-realizer-v1.transform.json")
 	large.Identity.ContractVersion = strings.Repeat("x", MaxSerializedSourceBytes)

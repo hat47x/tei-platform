@@ -264,3 +264,32 @@ test('public callback without an Action remains a distinct GET route', () => {
   assert.ok(composed.order.includes('callback-validation'));
   assert.ok(!composed.order.includes('invoke'));
 });
+
+
+test('protected Action route must be byte-exact after Go net/url EscapedPath', () => {
+  for(const path of [
+    '/scenario/a!b',
+    '/scenario/a"b',
+    "/scenario/a'b",
+    '/scenario/a*b',
+    '/scenario/a(b)',
+    '/scenario/a[b]',
+    '/scenario/a{b}',
+    '/scenario/a<b>',
+    '/scenario/a|b',
+    '/scenario/a^b',
+    '/scenario/a\`b'
+  ]){
+    const p=clone(base);
+    p.route.path=path;
+    assert.throws(()=>composeRequestPlan(p),/exact unambiguous path/,path);
+  }
+});
+
+test('protected Action retains Go URL paths that do not need escaping', () => {
+  for(const path of ['/scenario/submit','/scenario/+@;,$','/scenario/a:bc&def=2']){
+    const p=clone(base);
+    p.route.path=path;
+    assert.equal(composeRequestPlan(p).routeId,'sales.submit');
+  }
+});

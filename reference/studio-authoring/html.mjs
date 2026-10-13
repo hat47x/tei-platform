@@ -50,10 +50,13 @@ function businessEvidence(observation) {
     facts([["参照資料の出所", observation.evidenceClass],
       ["業務手順の受理", observation.acceptedBusinessProcedure === false ? "未受理" : "未確認"],
       ["正本との版の結合", observation.sourceRevisionBinding ?? "未確認"],
+      ["管理対象Sourceの登録状態", observation.sourceSetStatus ?? "未検査"],
       ["読取境界", observation.workspaceRevisionStatus ?? "外部資料"],
       ["観測したWorkspace版", observation.workspaceRevisionObserved ?? "未取得"]]) +
     entries(sources, x => str(x.role) + " ／" + str(x.path) +
-      " ／指紋 " + str(x.fingerprint) + " ／" + str(x.byteLength) + " bytes");
+      " ／指紋 " + str(x.fingerprint) + " ／" + str(x.byteLength) + " bytes" +
+      " ／管理状態 " + str(x.sourceMembership ?? "未検査") +
+      (x.managedArtifactPath ? " ／管理パス " + str(x.managedArtifactPath) : ""));
 }
 function section(id, name, status, body) {
   return '<section aria-labelledby="' + id + '-title" id="' + id + '">' +

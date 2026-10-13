@@ -35,6 +35,13 @@ const projection={schemaVersion:'business-dfd-projection-v0',authority:'derived-
   diagnostics:[],information:{roles:[{id:'reviewer',label:'reviewer'}],externalParties:[],stores:[],informationFlows:[],responsibilities:[{step:'BP-04',role:'reviewer'}]}};
 const file=value=>{const buf=Buffer.from(JSON.stringify(value));return{arrayBuffer:async()=>buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.length),text:async()=>buf.toString('utf8')}};
 const input=(id, obj)=>$(id).listeners.change({target:{files:[file(obj)]}});
+async function waitForNavigation() {
+  const deadline=Date.now()+5000;
+  while ($('details').children.filter(x=>x.tag==='pre').length!==2) {
+    assert.ok(Date.now()<deadline,'Source navigation did not complete');
+    await new Promise(resolve=>setTimeout(resolve,10));
+  }
+}
 
 test('reference-only SVG UI loads, selects and drags a manual Step without source updates',async()=>{
   await import('./dfd-view-studio.mjs');
@@ -52,8 +59,7 @@ test('reference-only SVG UI loads, selects and drags a manual Step without sourc
   assert.equal($('apply').disabled,false);
   assert.equal($('preview').hidden,false);
   assert.match($('pending').textContent,/move-node/);
-  $('apply').listeners.click();
-  await new Promise(resolve=>setTimeout(resolve,30));
+  await $('apply').listeners.click();
   assert.equal($('apply').disabled,true);
   assert.equal($('preview').hidden,true);
   assert.match($('status').textContent,/正本には書き込んでいません/);
@@ -96,8 +102,7 @@ test('keyboard placement and pointer cancellation preserve view-only editing',as
   assert.equal(prevented,true);
   assert.equal($('apply').disabled,false);
   assert.match($('pending').textContent,/"x": 60/);
-  $('apply').listeners.click();
-  await new Promise(resolve=>setTimeout(resolve,30));
+  await $('apply').listeners.click();
   assert.equal($('apply').disabled,true);
   assert.match($('status').textContent,/正本には書き込んでいません/);
   node=$('diagram').children.find(x=>x.dataset?.id==='BP-04');
@@ -821,7 +826,7 @@ test('new World wins over an invalid older read, and revision changes clear navi
   $('revision').value='revision-A';
   let node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:303});
-  await new Promise(resolve=>setTimeout(resolve,20));
+  await waitForNavigation();
   assert.equal($('details').children.filter(x=>x.tag==='pre').length,2,
     'the new World should remain available for read-only navigation');
   $('revision').value='revision-B';
@@ -831,7 +836,7 @@ test('new World wins over an invalid older read, and revision changes clear navi
   assert.match($('status').textContent,/版表示を変更/);
   node=$('diagram').children.find(n=>n.dataset?.id==='BP-04');
   node.listeners.pointerdown({button:0,clientX:0,clientY:0,pointerId:304});
-  await new Promise(resolve=>setTimeout(resolve,20));
+  await waitForNavigation();
   assert.equal($('details').children.filter(x=>x.tag==='pre').length,2);
 });
 
@@ -1152,4 +1157,44 @@ test('drag started before layout apply cannot propose a move against replacement
   assert.equal($('apply').disabled,true);
   release();await waiting;
   assert.equal($('apply').disabled,true);
+});
+
+// A delayed event from an old SVG must not act on a replacement projection,
+// even when the new projection reuses the same reference-local Step ID.
+test('detached SVG events cannot select or move a replacement DFD',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.ok(old);
+  await input('dfd-file',{...projection});
+  assert.equal($('details').children.length,0);
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:121,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:121,clientX:400,clientY:300});
+  assert.equal($('details').children.length,0);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('semantic-propose').disabled,true);
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  live.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+});
+
+test('SVG nodes retired by selection re-render cannot propose a move',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:122,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:122,clientX:400,clientY:300});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  // Source navigation can complete asynchronously after selection began.
+  // Only a node from the completed re-render should handle fresh input.
+  await new Promise(resolve=>setTimeout(resolve,30));
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.notEqual(live,old,'selection should retire the previous SVG node');
+  live.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false,'current SVG node retains keyboard placement');
 });

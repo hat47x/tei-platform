@@ -60,10 +60,10 @@ func ReviewImpactDiff(before, after Graph, rules []Rule) ImpactReview {
 	sort.Slice(result.Affected, func(i, j int) bool {
 		a, b := result.Affected[i], result.Affected[j]
 		if a.Changed != b.Changed {
-			return keyString(a.Changed) < keyString(b.Changed)
+			return keyLess(a.Changed, b.Changed)
 		}
 		if a.Consumer != b.Consumer {
-			return keyString(a.Consumer) < keyString(b.Consumer)
+			return keyLess(a.Consumer, b.Consumer)
 		}
 		return a.Reason < b.Reason
 	})

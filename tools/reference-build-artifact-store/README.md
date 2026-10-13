@@ -155,3 +155,26 @@ EvidenceにはStore rootのabsolute pathを含めません。
 Receipt Locatorはstore-relative `sha256/<hex>`だけです。
 
 runner成功はStore availability / Build provenance / Acceptance / Runtime Authorityを意味しません。
+
+## 選択済み取得サービスと実CASの横断試験（Issue #1570）
+
+`semantic_distribution_test.go`は、既存の独立した試験を拡張し、
+Composition Kernelの`Registry.InspectWiringSet`による**明示的な取得サービスの構造的候補**、
+`BuildArtifactLock`の厳密な選択、実ローカルCASからのバイト再取得、
+Semanticの内容照合、実Workspaceで記述した外部型参照の検証を一つにつなぐ。
+
+`monitoring`のモデルが参照する`os.process_id`は、
+利用側Sourceにインポート元パスを偽装せずに、
+**明示選択した`os`データ配布物**から検査する。
+配布物がCASに存在しない場合の勝手な代替選択、
+バイト取得中に選択された取得サービスを取り消した場合の旧提案の再利用を拒否する。
+
+```sh
+go test -count=1 ./tools/reference-build-artifact-store
+```
+
+あくまで参照用の選択とローカルStoreとの結合試験であり、
+実Builderの信頼証明、発行者署名、Trusted Publisher登録、
+Host権限、案件による業務意味の受理は**未検証**。
+サービスの契約・Provider IDと配布物Packageの正当な対応関係も
+この試験のみでは実証しない。新たなResolverやArtifact Lockは設けない。

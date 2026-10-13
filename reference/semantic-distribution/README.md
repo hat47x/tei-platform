@@ -65,3 +65,21 @@ go test -count=1 ./reference/semantic-distribution ./tools/reference-build-artif
 ```
 
 この段階で必要なのは、Production配布機構の新しい正本を増やすことではなく、次期Composition Kernel側にある選択・信頼・取得契約を接続した後に、このReferenceの仮のExport Envelopeを置換できることの証明です。
+
+## 外部モデル変更の影響候補（E5aの独立参照実装）
+
+`impact.go`は、**現在のWorkspace Loaderで実際に解析した**二つの`workspace.Result`から、既存の`modelref.Graph`へ最小限の依存辺を投影します。新しい影響解析器や依存解決の正本は作りません。
+
+`ReviewImportedTypeImpact(before, after, "os")`は、`Result.Imports[].SemanticDigest`と実際の`World.Semantics`が一致することを確認したうえで、`modelref.ReviewImpactDiff`を使用します。供給元ファイルが移動しただけなら意味照合値は変わりません。同じCanonical IDのもとで意味定義が変わった場合は、既知の利用側データ定義を**変更影響の確認候補**として示します。
+
+このReferenceで自動抽出する依存は、**利用側が所有するSemantic Dataの属性型（`Attribute.TypeRef`）と関連先（`Relation.Target`）のみ**です。Application Action、Validation、UI、権限、外部知識サービス等の利用箇所は走査していません。したがって、候補が空でも「影響がない」とは結論できません。
+
+入力元の物理パスや配布者名は意味上のIDではありません。Provider側の出典位置はE2のSource Indexで独立管理します。また、このGraph上の`Authority: proposal`は、人間が事実を受理したことを意味しません。新しい正式なCanonical Kindや永続的な依存Graphは追加しません。
+
+検証コマンド：
+
+```sh
+go test -count=1 ./reference/semantic-distribution
+```
+
+否定試験として、読み込み元の消失、曖昧なImport宣言、照合値の偽装を拒否します。対象の意味が変わった際に参照中の`monitoring.watch`を候補として表示する一方、型・関連参照を持たない`monitoring.local`を推測で影響ありとみなしません。**未走査の種類には依然として不明な影響があり得ます**。

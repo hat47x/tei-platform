@@ -171,3 +171,16 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 - 上記の静的修正だけでは品質Gateは通過しない。検証実施手順と未証明の境界は `docs/conformance/cli-c1-trace-integration-gate.md` を参照する。
 
 結果の階層は `result.snapshotFingerprint`（CLI継続用のWorkspace合成token）と `result.trace.snapshotFingerprint`（Goモデルの候補Graph限定token）を意図的に区別する。これは生成AIとUI Adapterが継続の対象を誤解しないための契約であり、新たなAuthorityや二重管理を意味しない。
+
+## 9. 型付き読取り操作の依存方向とCLI同値性（#1158、2026-10-13）
+
+[#1158](https://github.com/hat47x/tei-platform/issues/1158)の設計段階の完了条件のうち、次の二つを自動試験で固定した。
+
+- **依存方向**: `internal/operations/dependency_test.go`が`go list -deps`で`internal/operations`の推移的依存を取得し、`tei/cmd/`、`tei/tools/`、`tei/reference/`、`flag`、`net`配下（`net/http`を含む）、`syscall/js`、`html/template`、Wails、`golang.org/x/net`が含まれないこと、およびTEI外の外部モジュールを含まないことを検査する。検査関数は、禁止先を全体の経路要素で照合するため`tei/internal/network`のような別名を誤って拒否しない。この試験は、CLI・HTTP・デスクトップのアダプタが操作を呼び出す側であり、操作がアダプタへ依存しないことを守る。なお`os/exec`は、Validationが依存する配備実行部品を経由して現状でも到達できる。この試験は`os/exec`を禁止しておらず、推移的閉包が子プロセスを起動しないとは主張しない。
+- **CLI同値性**: `cmd/tei/cli_inprocess_parity_test.go`が、実`reference/workspace`と一時Workspaceに対して、CLIの`inspect`・`validate`のJSON結果とプロセス内の`operations.InspectSubject`・`operations.ValidateWorkspace`の結果が一致することを確認する。不在・未対応種別・空白付きIDの失敗コードも、操作の型付き誤りと一致することを検査する。`trace`は既存の`cli_trace_test.go`が同じ比較を行う。
+
+この二つは、同一プロセス内の合成ではなく実際のGo操作を用いる。ただし次は証明しない。
+
+- 認可を伴う操作、無認証HTTP・偽の主体・古いrevisionの拒否（#1158の完了条件2）。認可付き操作とHTTP/IPCのアダプタは未実装であり、本節では扱わない。
+- 実際のWebやデスクトップでの認証・実行。合成アダプタや同一プロセスの呼出しの結果を、その代用にしない。
+- HTTP方式、デスクトップのIPC方式、Wailsの採否（完了条件5）。

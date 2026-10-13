@@ -64,6 +64,44 @@ native_digest="sha256:$(sha256sum "$output/native-engine" | cut -d' ' -f1)"
 wasm_digest="sha256:$(sha256sum "$output/engine-first.wasm" | cut -d' ' -f1)"
 test "$native_digest" != "$wasm_digest" || { echo "target binaries unexpectedly identical" >&2; exit 1; }
 
+# Generate a typed-wire request and independently verify that a detached,
+# test-only Ed25519 Host approval binds this exact physical wasm image.
+TEI_TARGET_CLI_FIXTURE_OUT="$output" \
+  go test -count=1 -run '^TestExportTargetCLIConformanceFixture$' -v \
+    ./tools/reference-transform-runtime-engine > "$output/cli-fixture-test.log"
+TEI_WASM_ACCEPT_IMAGE="$output/engine-first.wasm" \
+TEI_WASM_ACCEPT_DIGEST="$wasm_digest" \
+  go test -count=1 -run '^TestReferenceWasmImageRequiresSignedHostAcceptance$' -v \
+    ./tools/reference-plugin-self-build > "$output/wasm-host-approval.log" || {
+      cat "$output/wasm-host-approval.log" >&2
+      exit 1
+    }
+grep -qF "WASM_HOST_APPROVED_DIGEST=$wasm_digest" "$output/wasm-host-approval.log"
+test "sha256:$(sha256sum "$output/engine-first.wasm" | cut -d' ' -f1)" = "$wasm_digest"
+
+# The actual independently measured executable runs only after acceptance,
+# not merely the separate js/wasm go-test harness.
+"$output/native-engine" -source "$output/cli-source.json" \
+  < "$output/cli-request.json" > "$output/native-cli-response.json"
+"$wasm_exec" "$output/engine-first.wasm" -source "$output/cli-source.json" \
+  < "$output/cli-request.json" > "$output/wasm-cli-response.json"
+for response in native-cli-response.json wasm-cli-response.json cli-expected-response.json; do
+  jq -e 'type == "object" and .schema == "tei.reference.transform-engine-response/v1"' \
+    "$output/$response" >/dev/null
+done
+cmp <(jq -cS . "$output/native-cli-response.json") \
+    <(jq -cS . "$output/wasm-cli-response.json")
+cmp <(jq -cS . "$output/cli-expected-response.json") \
+    <(jq -cS . "$output/wasm-cli-response.json")
+native_cli_digest="$(jq -c . "$output/native-cli-response.json" | tr -d '\n' | sha256sum | cut -d' ' -f1)"
+wasm_cli_digest="$(jq -c . "$output/wasm-cli-response.json" | tr -d '\n' | sha256sum | cut -d' ' -f1)"
+[[ "$native_cli_digest" == "$wasm_cli_digest" && "$native_cli_digest" == "$native_output" ]] || {
+  echo "approved wasm CLI differs from exact native typed response" >&2
+  exit 1
+}
+test "sha256:$(sha256sum "$output/engine-first.wasm" | cut -d' ' -f1)" = "$wasm_digest"
+
+
 # Verify the actual target-specific images against their measured digests,
 # construct separate TEI Runtime Engine Locks, and test stale/tampered rejects.
 TEI_TARGET_BIND_NATIVE="$output/native-engine" \
@@ -94,6 +132,7 @@ jq -n \
   --arg native "$native_digest" \
   --arg wasm "$wasm_digest" \
   --arg result "$native_output" \
+  --arg wasmCLI "$wasm_cli_digest" \
   --arg nativeLock "$native_lock" \
   --arg wasmLock "$wasm_lock" \
   --arg realization "$realization_digest" \
@@ -109,6 +148,9 @@ jq -n \
     nativeArtifactDigest: $native,
     wasmArtifactDigest: $wasm,
     typedWireResponseDigest: $result,
+    approvedWasmCLIResponseDigest: $wasmCLI,
+    signedWasmHostAcceptedBeforeInvocation: true,
+    exactWasmCLIInvokedAfterApproval: true,
     realizationArtifactDigest: $realization,
     nativeRuntimeEngineLockFingerprint: $nativeLock,
     wasmRuntimeEngineLockFingerprint: $wasmLock,

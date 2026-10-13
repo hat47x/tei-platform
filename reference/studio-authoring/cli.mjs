@@ -140,7 +140,7 @@ function main(argv) {
     const business = hasProducer ? produceBusinessDFD({
       workspace: opt["-workspace"], modelRevision: revision, repoRoot: root,
       procedure: opt["-business-procedure"], review: opt["-business-review"],
-      set: opt["-business-set"]
+      set: opt["-business-set"], sourceIndex
     }) : opt["-business-dfd"] ? observeBusinessDFD(opt["-business-dfd"]) : null;
     if (focus.startsWith("step:")) {
       if (!business) throw new Error("BUSINESS_STEP_REQUIRES_REFERENCE_DFD");
