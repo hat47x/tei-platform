@@ -56,6 +56,14 @@ go vet ./reference/web-api-contract
 - 認可の戻り値は、業務上の拒否`ErrRejected`、認可実行不能`ErrAuthorizationUnavailable`、不正な認可結果`ErrAuthorizationContract`へ分ける。いずれも処理続行は不可とする。外部HTTP応答に内部障害の詳細を転記しない。
 - **未検証**：本物のHost SessionからのSubject IDの取得、項目Grant/RowScope IDの認可正本からの導出、Query Providerへの安全な動的押し下げ、Capabilityの型付き入力検証、更新確定時の再認可、実書込やDB再読込。Fixtureで許可されたことは本番権限の保証にならない。
 
+## E6：行スコープを先に適用する実行順序の検証
+
+`scoped_fixture.go`は、**メモリ上のテスト専用行集合**に対して、(1) 認可済みTenant集合との照合、(2) 許可済み行のみのFilter、(3) 許可済み行のみのSort、(4) Top件数制限、(5) 許可項目だけの投影、という順序を**実際に適用**する。Parserで受け付けた式でも、Fixtureが扱えない値型や演算は実行せず拒否する。`scoped_fixture_test.go`は別Tenantの値がフィルターや並び順・件数へ混入しないこと、認可Revision/Principal/Scopeの不一致、空の権限情報、未知の演算、隠し列を含む返却を検査する。実`security.authorize`のfixtureを通してからスコープ処理する結合ケースも含める。
+
+**重要な制約：このFixtureは実DriverのSQL Query Executor・RDB・テナント権限正本を使用しない。** `FixtureScope.Tenants`自体はテストからの信頼済み注入値であり、実行時ポリシー評価の代替にはならない。Providerが独自に`EnforcesScope=true`と宣言しても安全性は証明されない。現行native SQL Queryをこの実装へ流用したり、取得済みrawデータをあとから切り詰めるだけの実装を公開用に採用したりしない。
+
+本番への次の接続では、実Query Executorに信頼済みScope・Filter・Sort・Limit・Projectionを**実行前に引き渡し**、Providerが適用した事実をデータ境界で検証する。未対応Providerはdispatch前に拒否する。
+
 ## 次の接続先
 
 1. #1158の型付き読込・Action操作へ、手書きSubset ParserではないAdapterで接続する。
