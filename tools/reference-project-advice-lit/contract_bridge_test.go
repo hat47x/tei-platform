@@ -56,3 +56,50 @@ func TestProjectAdvisoryCannotSelectAcrossScope(t *testing.T) {
 		t.Fatal("cross-scope selection must fail")
 	}
 }
+
+func TestProjectAdvisoryHostWithdrawDeniesEvenEligibleProvider(t *testing.T) {
+	bridge, err := newProjectAdvisoryBridge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.registry.Select(projectAdvisoryProviderID, projectAdvisoryScope); err != nil {
+		t.Fatalf("fixture must start with eligible provider: %v", err)
+	}
+	if err := bridge.coordinator.Withdraw(1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.registry.Select(projectAdvisoryProviderID, projectAdvisoryScope); err != nil {
+		t.Fatalf("registry eligibility is not revoked with Host withdrawal: %v", err)
+	}
+	if lease, err := bridge.coordinator.Acquire(); err == nil {
+		lease.Release()
+		t.Fatal("withdrawn Host must reject new leases")
+	}
+	if result, err := bridge.Evaluate(customeradvice.Input{CustomerCode: "VIP-123"}); err == nil {
+		t.Fatalf("withdrawn Host incorrectly produced advisory: %+v", result)
+	}
+}
+
+func TestProjectAdvisoryChangedContractDeniesStaleSelection(t *testing.T) {
+	bridge, err := newProjectAdvisoryBridge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement := ProjectAdvisoryContract
+	replacement.Version = "v1"
+	_, err = bridge.registry.Apply(bridge.registry.Snapshot().Revision, []composition.Provider{{
+		ID: projectAdvisoryProviderID,
+		Scope: projectAdvisoryScope,
+		Offers: replacement,
+	}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lease, err := bridge.coordinator.Acquire(); err == nil {
+		lease.Release()
+		t.Fatal("contract replacement must invalidate existing selection lease")
+	}
+	if result, err := bridge.Evaluate(customeradvice.Input{CustomerCode: "VIP-123"}); err == nil {
+		t.Fatalf("stale selected contract was invoked: %+v", result)
+	}
+}
