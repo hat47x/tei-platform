@@ -110,3 +110,11 @@ TEI `main` の `internal/operations/inspect.go` に `InspectSubject`（`tei.oper
 特に `InspectSubject` v0は単独のSemantic Capabilityを直接返す対象種別に含まない。このため、`application-pattern.capability`のIDだけからCapabilityのtyped IO、Outcome、Data Effect、Provider Authorityを推定できない。業務ロジックの実装置換判断は現段階では**保留**する。後続で需要が確認された場合は #1165／Semantic ownerの型付きread-only Operation拡張を検討し、第二Parser／第二Worldを作らない。
 
 合成`inspect/v0` fixtures（Go構造体に合わせた形）を使用した26ケースは、GitHub上の該当コードを再取得した隔離JS評価器で全成功した。うち3ケースはSource参照が登録Artifactに結び付くことと、同一パスの重複を拒否する構造検証。ただし実Sourceの真正性・許可の証明ではない。**実`tei inspect`コマンド、Go Workspace Load、複数ApplicationのSource Identity取得、trusted exact-head Repository-healthは未実行**である。R0の次の検証は実Operationの戻り値をこのAdapterへ与えるE2Eであり、モデル蒸留（R2）は#843/#876の停止条件を解除しない限り開始しない。
+
+### R0：実TEI CLIとの接続経路を用意（2026-10-13）
+
+既存 `cmd/tei/cli_inspect.go` の `tei.cli.inspect/v0` は、CLI呼出し成功時に `result: tei.operations.inspect/v0` を返す。これを観測入力として正確に扱う薄い `inspect-cli-bridge.mjs` と、指定されたローカル `tei` 実行ファイルをシェル無しで実行する `run-real-inspection.mjs` を [reference/local-cpu-reuse](../../reference/local-cpu-reuse/README.md) に追加した。既存の `operations.InspectSubject` やTEI CLI自体の意味・権限モデルは変更していない。
+
+単一の `order_entry` Reference Workspaceから **5つの明示Subject**（Application、2つのPattern、Semantic Data、Relation）を順次読み取り、各回のWorld／Source Index fingerprint一致を要求し、Application→PatternとPattern→Relationの宣言済み関係を `accepted:false` で観測する。CLIエラー、対象不一致、schema不一致、読取の途中でWorkspace snapshotが変わった場合は、部分的な成功結果を返さない。取得するSource情報は利用者があらかじめアクセス／開示を許可したWorkspaceに限定する前提であり、本Referenceには認可を実装していない。
+
+`inspect-cli-bridge.test.mjs` の**12件**、`run-real-inspection.test.mjs` の**4件**は、合成した `tei.cli.inspect/v0` 応答を使った隔離JS評価器で全成功した。ただしGoバイナリのビルド、実CLIプロセス出力、実Workspaceを通したE2E、trusted checkoutでのRepository-health、二つの実アプリケーションの比較はいずれも**未実証**。実行手順はReference READMEを参照。#843/#876の学習・qualification停止条件は維持する。
