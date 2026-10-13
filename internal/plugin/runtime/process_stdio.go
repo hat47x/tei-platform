@@ -171,6 +171,9 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		if stderr.overflow {
 			return Response{}, fmt.Errorf("process plugin executable %q stderr exceeds %d bytes", command.Executable, stderrLimit)
 		}
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			return Response{}, fmt.Errorf("process plugin execution time limit exceeded: %w", context.DeadlineExceeded)
+		}
 		return Response{}, processExecutionError(command.Executable, err, stderr)
 	}
 	if stdout.overflow {
