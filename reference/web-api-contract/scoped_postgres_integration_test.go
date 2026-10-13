@@ -241,7 +241,7 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 	}
 	out, err := ExecuteScopedCanonicalRead(ctx, bridgeWorld(t), pub, plan,
 		scopedSupport(pub, plan), ScopedPostgresOrdersReference{
-			DB:        db, Database: core.MustCanonicalID("sales_core"), Authority: authority,
+			DB: db, Database: core.MustCanonicalID("sales_core"), Authority: authority,
 		}, map[string]any{"from": from})
 	if !errors.Is(err, ErrAuthorizationUnavailable) || len(out.Rows) != 0 {
 		t.Fatalf("forged/stale tenant scope escaped: result=%+v err=%v", out, err)
