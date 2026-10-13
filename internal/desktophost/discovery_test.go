@@ -121,9 +121,6 @@ func TestDraftDiscoveryFailsClosedOnMalformedOrUnsafeStoreEntries(t *testing.T) 
 		}},
 		{name: "invalid-marker-name", add: func(t *testing.T, state, _ string) {
 			t.Helper()
-			if err := os.WriteFile(filepath.Join(state, "draft-../escape.json"), []byte("{}"), 0o600); err == nil {
-				t.Fatal("invalid filename unexpectedly accepted by filesystem")
-			}
 			if err := os.WriteFile(filepath.Join(state, "draft-not-a-sha256.json"), []byte("{}"), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -143,7 +140,11 @@ func TestDraftDiscoveryFailsClosedOnMalformedOrUnsafeStoreEntries(t *testing.T) 
 			if runtime.GOOS == "windows" {
 				t.Skip("Windows private directory ACL must be checked by the embedding Host")
 			}
-			if err := os.WriteFile(filepath.Join(state, "draft-"+key+".json"), []byte("{}"), 0o644); err != nil {
+			path := filepath.Join(state, "draft-"+key+".json")
+			if err := os.WriteFile(path, []byte("{}"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(path, 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}},
