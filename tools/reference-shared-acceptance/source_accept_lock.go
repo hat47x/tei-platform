@@ -65,10 +65,7 @@ func (guard *sourceAcceptLock) release() error {
 	closeErr := guard.handle.Close()
 	guard.handle = nil
 	if statErr != nil || closeErr != nil {
-		return errors.Join(
-			fmt.Errorf("stat owned Acceptance lock: %w", statErr),
-			fmt.Errorf("close owned Acceptance lock: %w", closeErr),
-		)
+		return fmt.Errorf("close owned Acceptance lock safely: %w", errors.Join(statErr, closeErr))
 	}
 	current, err := guard.files.Lstat(sourceAcceptLockName)
 	if err != nil {
