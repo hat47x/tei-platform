@@ -27,4 +27,4 @@ trap finish EXIT
 go test -race -count=20 ./internal/composition ./reference/composition-evidence-handoff ./reference/composition-io-mapping
 go test -count=1 ./tools/reference-plugin-capability-contract ./tools/reference-composition-process-bridge
 bash tools/check-core-isolation.sh
-printf 'scope=reference-only\nG1/G2/field-mapping=PASS\nproduction-migration/continuous-service=NOT-VERIFIED\n'
+printf 'scope=reference-only\nreference-tests/process/core-isolation=PASS\nproduction-migration/continuous-service=NOT-VERIFIED\n'

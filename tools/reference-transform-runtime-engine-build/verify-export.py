@@ -36,7 +36,7 @@ def verify(directory, expected):
     if not all(checks):
         raise ValueError("exact artifact evidence or smoke response differs")
     print("artifact-digest=" + digest)
-    print("export/digest/no-clobber/same-artifact-smoke=PASS")
+    print("artifact/evidence/response-fields=PASS")
 
 
 if __name__ == "__main__":

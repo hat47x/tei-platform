@@ -51,4 +51,5 @@ rm -rf -- "$temporary"
 temporary=""
 test "$(git rev-parse HEAD)" = "$expected"
 test -z "$(git status --porcelain=v1 --untracked-files=all --ignored)"
+printf 'export/no-clobber/same-artifact-smoke=PASS\n' >&2
 printf '%s\n' "$result"
