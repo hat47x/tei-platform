@@ -2,7 +2,6 @@ package transform_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -31,21 +30,18 @@ func TestHostOutputObservationRequiresCanonicalManifestBytes(t *testing.T) {
 		t.Fatalf("canonical SB-1 package rejected: %v", err)
 	}
 
-	var parsed plugin.PluginPackageManifest
-	if err := json.Unmarshal(oracle, &parsed); err != nil {
-		t.Fatal(err)
+	const prefix = `{"formatVersion":1,`
+	if !bytes.HasPrefix(oracle, []byte(prefix)) {
+		t.Fatal("canonical fixture changed its manifest field order")
 	}
-	// Inject a duplicate of the first top-level property. Go's ordinary
-	// decoder accepts it, retaining the same typed manifest and fingerprints.
-	duplicate := append([]byte(`{"formatVersion":`), []byte("1,")...)
-	duplicate = append(duplicate, oracle[1:]...)
+	// Inject an identical duplicate. The ordinary typed Go decoder would
+	// accept this and keep the exact same manifest and fingerprints.
+	duplicate := append([]byte(`{"formatVersion":1,`), oracle[1:]...)
 
-	// Replacing property order is also a valid JSON spelling of the same
-	// typed manifest but not the canonical SB-1 package byte representation.
-	reordered := append([]byte(`{"definition":`), mustJSON(t, parsed.Definition)...)
-	reordered = append(reordered, ',')
-	reordered = append(reordered, oracle[1:len(oracle)-1]...)
-	reordered = append(reordered, '}')
+	// Move the first field to the last position, preserving all member
+	// values and spelling. JSON order does not change the typed manifest.
+	reordered := append([]byte("{"), oracle[len(prefix):len(oracle)-1]...)
+	reordered = append(reordered, []byte(`,"formatVersion":1}`)... )
 
 	// Keep original members unchanged; the extra field must never be silently
 	// ignored when attaching a digest to execution Evidence.
@@ -73,11 +69,3 @@ func TestHostOutputObservationRequiresCanonicalManifestBytes(t *testing.T) {
 	}
 }
 
-func mustJSON(t *testing.T, value any) []byte {
-	t.Helper()
-	raw, err := json.Marshal(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
-}
