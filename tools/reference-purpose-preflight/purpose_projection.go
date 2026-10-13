@@ -101,6 +101,16 @@ func ProjectForPurpose(report WorkspaceAssessment, purpose string) (PurposeProje
 	} else {
 		add("provider-contract", "conditional", "required-if-operation-uses-bound-provider")
 	}
+	if report.QueryImplementation != nil {
+		switch report.QueryImplementation.Status {
+		case "sql-realization-declared":
+			add("query-implementation", "not-evaluated", "authored-sql-shape-validated-provider-conformance-not-verified")
+		case "contract-signature-declared":
+			add("query-implementation", "conditional", "contract-signature-exists-provider-or-external-evidence-still-required")
+		default:
+			add("query-implementation", "unresolved", "requested-query-implementation-not-qualified")
+		}
+	}
 	add("host-authorization", "not-evaluated", "execution-principal-and-current-policy-not-qualified")
 	if report.OperationWriteIntent != nil && report.OperationWriteIntent.Status == "declared-write" {
 		add("effect-fence", "not-evaluated", "declared-write-intent-requires-runtime-effect-fence")
