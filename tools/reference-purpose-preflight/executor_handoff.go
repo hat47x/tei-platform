@@ -12,14 +12,14 @@ import (
 )
 
 type QueryExecutorHandoff struct {
-	Status          string `json:"status"`
-	Reason          string `json:"reason"`
-	Environment     string `json:"environment,omitempty"`
-	Instance        string `json:"instance,omitempty"`
-	Target          string `json:"target,omitempty"`
-	Executor        string `json:"executor,omitempty"`
-	Plugin          string `json:"plugin,omitempty"`
-	PluginVersion   string `json:"pluginVersion,omitempty"`
+	Status        string `json:"status"`
+	Reason        string `json:"reason"`
+	Environment   string `json:"environment,omitempty"`
+	Instance      string `json:"instance,omitempty"`
+	Target        string `json:"target,omitempty"`
+	Executor      string `json:"executor,omitempty"`
+	Plugin        string `json:"plugin,omitempty"`
+	PluginVersion string `json:"pluginVersion,omitempty"`
 }
 
 // ObserveQueryExecutorHandoff does not resolve a Provider by its name or
