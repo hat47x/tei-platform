@@ -109,7 +109,7 @@ func TestHostBoundApplicationEnvironmentReadsCurrentRouteWithoutBorrowing(t *tes
 	type spoofKey struct{}
 	for _, tc := range []struct {
 		invoker *SelectedServiceCarrierInvoker
-		id string
+		id      string
 	}{
 		{order, "order-first"},
 		{repair, "repair-first"},
@@ -168,9 +168,9 @@ func TestHostBoundApplicationEnvironmentRejectsMissingScope(t *testing.T) {
 		return SelectedServiceCarrierRoute{}, nil
 	}
 	for _, tc := range []struct {
-		name string
-		app core.CanonicalID
-		env core.CanonicalID
+		name   string
+		app    core.CanonicalID
+		env    core.CanonicalID
 		reader CurrentApplicationServiceRoute
 	}{
 		{"missing application", "", "development", current},
