@@ -127,3 +127,7 @@ To make this an actionable gate for a future authorized checkout: first record t
 ## Evidence output hardening (2026-10-13)
 
 The opt-in CLI runner now writes a **metadata-only evidence summary** by default. Canonical bodies, field bindings, Source artifact paths, and raw World/Source Index fingerprint values are not serialized to stdout. Its in-memory API still returns detailed observations for an explicitly authorized caller; those details must not be logged or exported without separate permission. A new synthetic regression test checks that representative business attribute names and raw fingerprints are absent. This does not constitute a security audit or guarantee that Subject IDs themselves are non-sensitive. Real CLI E2E remains unexecuted.
+
+## Default evidence privacy tightening (2026-10-13)
+
+The default runner stdout omits **Subject IDs**, raw diagnostic strings, Canonical bodies, Source artifact paths, and fingerprint values. It emits only ordinal index, known Subject kind, completeness, diagnostic count, source status and bounded link status. Identifiers are still available through the explicit in-memory API for an authorized caller. The runner's five synthetic orchestration tests passed in an isolated JS evaluator after this change; no real Go CLI E2E was executed. Because kind, order, count and link status can themselves reveal structural information, use only on an authorized workspace and do not assume the summary is anonymous.
