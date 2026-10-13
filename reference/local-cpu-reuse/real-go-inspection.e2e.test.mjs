@@ -9,6 +9,7 @@ import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {qualifyReferenceQuerySignature} from './qualify-query-signature.mjs';
+import {observeReferenceProviderRouting} from './observe-provider-routing.mjs';
 import {compareTwoReferenceApplications,proposeReferenceQueryAdapter,
   TWO_APPLICATION_REFERENCE_SUBJECTS} from './compare-two-application-references.mjs';
 
@@ -130,4 +131,19 @@ test('real Go inspect -> Node read-only projection -> metadata-only summary', {
   assert.equal(typed.verified.providerImplementation,false);
   assert.equal(typed.verified.authorization,false);
   assert.equal(typed.verified.atomicWorkspaceSnapshot,false);
+
+  // Read only already-normalized Environment declarations. No credentials, SQL,
+  // plugin resolution or database connection are attempted.
+  const routed=observeReferenceProviderRouting(world,observations,{environmentId:'development'});
+  assert.equal(routed.status,'application_routes_declared');
+  assert.equal(routed.sameInstanceDeclared,true);
+  assert.deepEqual(routed.routes.map(x=>x.alias),['master','customer_master']);
+  assert.deepEqual(routed.routes.map(x=>x.instance),['master_data.dev','master_data.dev']);
+  assert.deepEqual(routed.routes.map(x=>x.provider),['oracle','oracle']);
+  assert.equal(routed.verified.pluginExecutorResolution,false);
+  assert.equal(routed.verified.providerHealth,false);
+  assert.equal(routed.verified.callerAuthorization,false);
+  assert.equal(routed.executionPermitted,false);
+  assert.equal(routed.implementationSelected,false);
+  assert.equal(routed.accepted,false);
 });
