@@ -353,7 +353,7 @@ func listPinnedDomainSources(root string, r *Result, directory string, keep func
 
 func loadPlugins(root string, r *Result) error {
 	files, err := listPinnedDomainSources(root, r, "plugins", func(name string) bool {
-		return name != "plugin.tei"
+		return name == "plugin.tei"
 	})
 	if err != nil {
 		return err
@@ -376,7 +376,7 @@ func loadPlugins(root string, r *Result) error {
 
 func loadBundles(root string, r *Result) error {
 	files, err := listPinnedDomainSources(root, r, "bundles", func(name string) bool {
-		return name != "bundle.tei"
+		return name == "bundle.tei"
 	})
 	if err != nil {
 		return err
@@ -399,7 +399,7 @@ func loadBundles(root string, r *Result) error {
 
 func loadSemantics(root string, r *Result) error {
 	files, err := listPinnedDomainSources(root, r, "semantic", func(name string) bool {
-		return !strings.HasSuffix(name, ".tei")
+		return strings.HasSuffix(name, ".tei")
 	})
 	if err != nil {
 		return err
