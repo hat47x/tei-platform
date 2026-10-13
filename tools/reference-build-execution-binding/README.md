@@ -2,6 +2,18 @@
 
 GitHub #1080 / #1097 / #1102 のread-only Referenceです。
 
+## 固定版の検証入口
+
+リポジトリのGo版、Bash、Python 3があるLinux環境で、ルートから実行する。追跡・未追跡・無視ファイルがないクリーンなチェックアウトと、完全な対象SHAを使用する。
+
+```bash
+bash tools/reference-build-execution-binding/verify-evidence.sh EXACT_HEAD
+```
+
+個別試験を実行し、既存の参照用証拠JSONの共有主体、実行結果、複数出力の差分、初期構築の外部種、段階間の構築器束縛、失効に伴う信頼判断、権限を付与しない制約を確認する。成功時は生成した既存JSONを標準出力へ返し、対象SHA・Go版・実行前後のクリーン状態は標準エラーへ出す。結果や申し送りの文書を作成しない。
+
+これは合成参照例の検査であり、JSONの真正性、暗号学的な署名、独立した構築回数、実行権限の検証器ではない。全体健全性は同じコミットで`bash tools/repository-health-check.sh`を別に実行する。対象版、結果、残条件は[課題 #1107](https://github.com/hat47x/tei-platform/issues/1107)へ記載する。
+
 現行の`internal/plugin.BuildPlan`は、一つのPlugin buildを正確に表す契約として維持します。このReferenceはproduction型を変更せず、そこから「build execution」と「logical Plugin subject」を分けて表した場合に何が残るかを検証します。
 
 ## 分けるidentity
