@@ -80,6 +80,9 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 	if e.Authority == nil {
 		return driver.BrowseQueryResult{}, ErrAuthorizationUnavailable
 	}
+	if authority := reflect.ValueOf(e.Authority); authority.Kind() == reflect.Pointer && authority.IsNil() {
+		return driver.BrowseQueryResult{}, ErrAuthorizationUnavailable
+	}
 	if e.Database != "sales_core" || ds.TargetDatabase != e.Database ||
 		ds.Alias != "sales" || q.ID != "order_entry.recent_orders" ||
 		q.Application != "order_entry" || q.Datasource != "sales" ||
@@ -96,6 +99,12 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 		{Column: "ordered_at", Attribute: "sales.order.ordered_at"},
 		{Column: "status", Attribute: "sales.order.status"},
 		{Column: "total_amount", Attribute: "sales.order.total"},
+	}
+	// This dedicated realization is pinned to the CURRENT authored Query
+	// meaning; a future native Query change requires an explicit review.
+	const expectedCanonicalSource = "SELECT o.order_id, o.customer_id, o.ordered_at, o.status, o.total_amount FROM public.orders AS o WHERE o.ordered_at >= :from ORDER BY o.ordered_at DESC"
+	if strings.Join(strings.Fields(q.Source), " ") != expectedCanonicalSource {
+		return driver.BrowseQueryResult{}, ErrRejected
 	}
 	if !reflect.DeepEqual(q.ResultColumns, expectedColumns) {
 		return driver.BrowseQueryResult{}, ErrRejected
@@ -137,16 +146,18 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 		source += "\n  AND o.order_id " + physicalOperator + " :tei_order_filter"
 		args["tei_order_filter"] = value
 	}
-	orderDirection := "ASC"
+	orderClause := "o.ordered_at DESC, o.order_id DESC"
 	if plan.Order != nil {
 		if plan.Order.FieldID != "orderId" {
 			return driver.BrowseQueryResult{}, ErrRejected
 		}
 		if plan.Order.Descending {
-			orderDirection = "DESC"
+			orderClause = "o.order_id DESC"
+		} else {
+			orderClause = "o.order_id ASC"
 		}
 	}
-	source += "\nORDER BY o.order_id " + orderDirection + "\nLIMIT :tei_top"
+	source += "\nORDER BY " + orderClause + "\nLIMIT :tei_top"
 
 	request := SQLTenantScopeRequest{
 		PrincipalID: plan.PrincipalID,
