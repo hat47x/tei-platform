@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -149,7 +148,7 @@ func (l *LinuxFileSignerOperationLedger) ReserveSignerOperation(ctx context.Cont
 	}
 
 	f := os.NewFile(uintptr(fd), name)
-	if _, err := io.Copy(f, strings.NewReader(string(append(record, '\n')))); err != nil {
+	if _, err := f.Write(append(record, '\n')); err != nil {
 		_ = f.Close()
 		return false, fmt.Errorf("write Host operation reservation: %w", err)
 	}
