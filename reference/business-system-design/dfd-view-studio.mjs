@@ -413,6 +413,9 @@ async function selectNode(node){
     }
     $('details').append(links);
   }
+  // Replace retired controls before asynchronous Source navigation.
+  // The visible diagram stays interactive while older callbacks remain invalid.
+  render();
   if(step&&state.world&&$('revision').value){
     const navigation=document.createElement('pre');
     try {const {navigateReferenceBusinessStep}=await import('../studio-authoring/bridge.mjs');navigation.textContent=JSON.stringify(navigateReferenceBusinessStep(state.world,$('revision').value,d,node.id),null,2)}
@@ -421,7 +424,6 @@ async function selectNode(node){
     $('details').append(navigation);
   }
   if(state.dfd!==d || selectionGeneration!==generation)return;
-  render();
   // Recreating the SVG should not strand keyboard focus on a detached node.
   const focused=[...$('diagram').children].find(el=>el.dataset?.kind===node.kind&&el.dataset?.id===node.id);
   focused?.focus?.({preventScroll:true});
