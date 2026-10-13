@@ -85,3 +85,33 @@ node --test reference/local-cpu-reuse/project-inspection-source-trace.test.mjs
 ```
 
 The **16 + 7 + 3 = 26** cases passed in an isolated JavaScript evaluator using files fetched back from GitHub (not a Node.js checkout, not an `operations.InspectSubject` integration test). The added 3 negative/positive cases check that Source Index references point to a unique listed artifact path; this is a **structural consistency check**, not an authenticity or source-permission proof. Verified behaviors include nested `contractQuery` preservation, model identity, keys/FDs, unknown properties, wrong subject traces, stale snapshots, and explicit Application membership. An actual real-World fixture, provenance/current-revision recheck, authorized cross-application comparison, semantic-effect comparisons, CPU timing and memory metrics remain **NOT_PROVEN**.
+
+## Opt-in real TEI CLI inspection path (2026-10-13)
+
+[inspect-cli-bridge.mjs](inspect-cli-bridge.mjs) accepts the **actual CLI envelope** `tei.cli.inspect/v0`: the Go CLI's `ok: true` and `result` containing the `tei.operations.inspect/v0` operation output. The bridge requires an exact subject kind+ID match, rejects error envelopes, malformed or unknown schemas, and rejects changing World or Source Index fingerprints across successive reads. It never converts a CLI failure into an empty feature observation.
+
+[run-real-inspection.mjs](run-real-inspection.mjs) is an **opt-in executable entry point** for the trusted local `tei` binary. It requests exactly five explicitly named subjects from the existing **single** `order_entry` Reference Workspace and emits one aggregate *derived observation* JSON document on stdout. It invokes the binary via Node `execFile` with an argument array (no shell); subprocess failures produce a short error code without copying potentially sensitive stdout/stderr into logs. A 1 MiB buffer and 30-second timeout apply per subject. These are Reference safety bounds, not general product performance requirements.
+
+From the repository root in a trusted checkout, a developer can run:
+
+```sh
+go build -o /tmp/tei-local-cpu-probe ./cmd/tei
+node reference/local-cpu-reuse/run-real-inspection.mjs \
+  --tei-bin /tmp/tei-local-cpu-probe \
+  --workspace reference/workspace
+```
+
+(The binary path is an illustrative Unix-like temporary path; use an appropriate location for another OS.) This procedure requires access to the Workspace and explicit authorization before any inspection. Do **not** aim this research command at customer workspaces without ensuring their source-disclosure policy is satisfied. The runner does not authenticate, enforce tenant permissions, or validate a trusted binary signature. It does not perform any write or provider invocation, collect training data, or transmit observations over a network.
+
+The five selectors are: `application:order_entry`, `application-pattern:order_entry.order_lines`, `semantic-relation:sales.order.lines`, `semantic-data:sales.order`, and `application-pattern:order_entry.customer_reference`. The runner reports the two declared Application→Pattern and Pattern→Relation links **only as observations** with `accepted:false`; it does not claim that a renderer, Action, or Contract is implementation-compatible. It refuses inconsistent sequential snapshots rather than combining them.
+
+Test commands in a full checkout:
+
+```sh
+node --test reference/local-cpu-reuse/inspect-cli-bridge.test.mjs
+node --test reference/local-cpu-reuse/run-real-inspection.test.mjs
+```
+
+Evidence obtained so far: **12/12 CLI-envelope / batch tests** and **4/4 runner orchestration tests** passed in an isolated JavaScript evaluator with *synthetic* Go-shaped CLI JSON; the runner tests inject a fake read function. The **actual** `go build`, `tei inspect` subprocess execution, Node ESM execution from the Git checkout, and full Repository-health remain **NOT_PROVEN**. This is a runnable verification route, not a claim that the target E2E has been observed.
+
+The next measured step is to execute this exact command at an identified checked-out revision, record the binary's source commit and `tei cli inspect` schema, inspect all five results and their source fingerprints, and keep them separate from an Approval / Acceptance evidence packet. Only after that should a second explicitly authorized Application be considered for cross-Application candidate retrieval.
