@@ -206,6 +206,10 @@ def preflight(root, build_info=None, world_digest=None):
         build_info = result.stdout
     actual_go = read_go_build_settings(build_info)
     must_equal(build.get("go"), actual_go, "actual embedded Go build options")
+    # Verify the compiler's VCS build witness, not merely a -ldflags string
+    # or fields copied from the same mutable measurement receipt.
+    actual_vcs = read_go_vcs_settings(build_info, source_revision)
+    must_equal(build.get("goVCS"), actual_vcs, "actual embedded Go VCS provenance")
     must_equal(m.get("goVersion"), actual_go["goVersion"], "Browser/API Go toolchain")
     must_equal(set(actual_go["buildTags"]), EXPECTED_TAGS, "API build tags")
     if b'<form id="json-command" method="post" action="/scenario/submit"' not in (root / "browser/index.html").read_bytes():
