@@ -80,6 +80,16 @@ func ExecuteScopedCanonicalRead(
 	if err := CheckReadDispatch(publication, plan, support); err != nil {
 		return PublishedReadResult{}, err
 	}
+	// Reject stale or forged Canonical publication identities BEFORE invoking
+	// a Provider. Checking only after ExecuteBrowseQuery would execute the
+	// wrong Query/Data contract even though the response were discarded.
+	resolved, err := resolver.ResolvePattern(publication.ApplicationID, publication.PatternID)
+	if err != nil || resolved.Pattern.Kind != application.PatternBrowse ||
+		resolved.Query == nil || resolved.Data == nil || resolved.Datasource == nil ||
+		resolved.Query.ID != publication.QueryID ||
+		resolved.Data.ID != publication.DataID {
+		return PublishedReadResult{}, ErrScopedQueryContract
+	}
 	// Freeze the authorized publication separately from the object delivered
 	// to a Provider. A Provider must not be able to widen the selected fields
 	// by mutating a shared slice or pointer after authorization.
