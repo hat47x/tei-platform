@@ -38,14 +38,14 @@ func signedPublications(t *testing.T) (
 		subject := PublisherSubject{
 			Scope: "tenant-a", ProviderID: asset.ProviderID, Contract: asset.Contract,
 			PublisherID: proof.PublisherID, SignerRef: proof.SignerRef,
-			PackageID: asset.Expected.Package.PackageID,
+			PackageID:      asset.Expected.Package.PackageID,
 			PackageVersion: asset.Expected.Package.Version,
-			NamespaceID: asset.Expected.NamespaceID,
+			NamespaceID:    asset.Expected.NamespaceID,
 		}
 		approved[subject] = PublisherTrust{
 			PublicKey: append(ed25519.PublicKey(nil), public...),
-			NotAfter: publicationTime.Add(48 * time.Hour),
-			Epoch:    1,
+			NotAfter:  publicationTime.Add(48 * time.Hour),
+			Epoch:     1,
 		}
 	}
 	lookup := func(subject PublisherSubject) (PublisherTrust, error) {
