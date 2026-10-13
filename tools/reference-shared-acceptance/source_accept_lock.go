@@ -53,19 +53,18 @@ func acquireSourceAcceptLock(files *os.Root) (*sourceAcceptLock, error) {
 	var nonce [16]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
 		_ = handle.Close()
-		_ = files.Remove(sourceAcceptLockName)
-		return nil, fmt.Errorf("generate Acceptance lock identity: %w", err)
+		// Leave the uninitialized lock in place rather than risk removing
+		// a file another actor replaced after our exclusive create.
+		return nil, fmt.Errorf("initialize Acceptance lock: inspect and clear the lock manually: %w", err)
 	}
 	guard.marker = []byte(fmt.Sprintf("tei.reference.source-accept-lock/v0\npid=%d\nnonce=%s\n", os.Getpid(), hex.EncodeToString(nonce[:])))
 	if _, err := handle.Write(guard.marker); err != nil {
 		_ = handle.Close()
-		_ = files.Remove(sourceAcceptLockName)
-		return nil, fmt.Errorf("write Acceptance lock identity: %w", err)
+		return nil, fmt.Errorf("write Acceptance lock identity: inspect and clear the lock manually: %w", err)
 	}
 	if err := handle.Sync(); err != nil {
 		_ = handle.Close()
-		_ = files.Remove(sourceAcceptLockName)
-		return nil, fmt.Errorf("sync Acceptance lock identity: %w", err)
+		return nil, fmt.Errorf("sync Acceptance lock identity: inspect and clear the lock manually: %w", err)
 	}
 	return guard, nil
 }
