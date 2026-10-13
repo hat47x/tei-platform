@@ -21,7 +21,7 @@ var (
 func fixture(t *testing.T, localized bool) Input {
 	t.Helper()
 	def := messages.Definition{
-		Ref: messages.Ref{Owner: owner, ID: core.CanonicalID("order.confirmed")},
+		Ref:          messages.Ref{Owner: owner, ID: core.CanonicalID("order.confirmed")},
 		SourceLocale: "en-US", Text: "Order {orderId} confirmed", Format: messages.FormatNamedV0,
 		Parameters: []messages.Parameter{{Name: "orderId", Kind: messages.ParameterText}},
 	}
