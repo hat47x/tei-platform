@@ -29,8 +29,8 @@ func CheckExistingAuthorization(
 	outcome, err := invoker.Invoke(ctx, legacyauthorization.AuthorizationCapability,
 		legacyauthorization.Input{
 			SubjectID: trustedSubjectID,
-			Action: action,
-			Resource: resource,
+			Action:    action,
+			Resource:  resource,
 		})
 	if err != nil {
 		return ErrRejected
