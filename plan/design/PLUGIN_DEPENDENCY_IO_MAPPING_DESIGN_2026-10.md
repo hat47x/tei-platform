@@ -2,7 +2,7 @@
 
 - **状態**：評価待ち（2026-10-12）。方式設計の候補であり、記述構文、本番の解決器、製品要求を採用したものではない。参照実装と試験はまだない。
 - **管理課題**：[#1223](https://github.com/hat47x/tei-platform/issues/1223)。[ADR-0032](../adr/0032-composition-kernel-replacement.md)の移行段階M2「契約中心の依存解決」に入出力の観点を補う。
-- **関連課題**：[#951](https://github.com/hat47x/tei-platform/issues/951)（契約の識別と適合）、[#1016](https://github.com/hat47x/tei-platform/issues/1016)（案件構成）、[#1118](https://github.com/hat47x/tei-platform/issues/1118)（呼出しの実行文脈）、[#988](https://github.com/hat47x/tei-platform/issues/988)（演算子の意味契約）、[#1103](https://github.com/hat47x/tei-platform/issues/1103)（構築専用の依存）、[#1121](https://github.com/hat47x/tei-platform/issues/1121)（段階的な具体化）、[#997](https://github.com/hat47x/tei-platform/issues/997)（UI構成キット）、[#1145](https://github.com/hat47x/tei-platform/issues/1145)（意味契約と通信規約の分離）、[Draft PR #1233](https://github.com/hat47x/tei-platform/pull/1233)（AI向けの最小プラグイン規約）。
+- **関連課題**：[#951](https://github.com/hat47x/tei-platform/issues/951)（契約の識別と適合）、[#1016](https://github.com/hat47x/tei-platform/issues/1016)（案件構成）、[#1118](https://github.com/hat47x/tei-platform/issues/1118)（呼出しの実行文脈）、[#988](https://github.com/hat47x/tei-platform/issues/988)（演算子の意味契約）、[#1103](https://github.com/hat47x/tei-platform/issues/1103)（構築専用の依存）、[#1121](https://github.com/hat47x/tei-platform/issues/1121)（段階的な具体化）、[#997](https://github.com/hat47x/tei-platform/issues/997)（UI構成キット）、[#1145](https://github.com/hat47x/tei-platform/issues/1145)（意味契約と通信規約の分離）、[PR #1233](https://github.com/hat47x/tei-platform/pull/1233)（AI向けの最小プラグイン規約）。
 - **役割**：プラグイン間の依存を、起動や実行の前後関係だけでなく、受け渡すデータ項目、パラメータ、値の出どころ、対応付けと変換、多重度、版の変化まで含めて整理する。あわせて、対応付けの情報を検査・追跡・試験・最適化にどう活用するかを示す。
 - **正本との関係**：採用済みの判断は[ADR-0032](../adr/0032-composition-kernel-replacement.md)と[ADR-0033](../adr/0033-core-and-plugin-subprojects.md)が正本である。案件ごとの選択と接続は[案件構成の設計候補](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)、実行文脈の受け渡しは[呼出し文脈の設計候補](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md)、演算子の意味は[DSL演算子の設計候補](DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md)、実行先への具体化は[重要契約の段階的な具体化](CRITICAL_LOWERING_CONTRACT_DESIGN.md)が担当する。本書はそれらを置き換えず、プラグイン間の入出力に関わる部分を横断してつなぐ。現行実装の説明は[プラグインと配布一式](../../docs/plugins.md)と[実装状況](../../docs/status.md)を参照する。
 - **根拠**：リポジトリ内の既存の仕組みの棚卸し（第2節）と、[他のOSSの調査記録](../research/PLUGIN_DEPENDENCY_IO_OSS_SURVEY_2026-10.md)（第3節）。どちらも文書とソースを読んだ結果であり、新しい試験は行っていない。
@@ -443,7 +443,7 @@ ADR-0032は、同じ契約を静的にも動的にも実現するとしている
 | 生成AIの支援 | 型、単位、機密区分が合う対応付けの候補を提案する。提案は受理の根拠にしない |
 | 観測と追跡 | 呼出しの観測記録に、どの世代とどの対応付けの照合値で動いたかを残す。機密区分のある値そのものは記録しない |
 
-構成の一覧の生成は、DeepSeek Harnessが実装定義から設定の一覧を生成し、その鮮度を検査している方式（[Draft PR #1233](https://github.com/hat47x/tei-platform/pull/1233)の第8節）と同じ考え方である。
+構成の一覧を正本から生成する案は、[AI向けの最小プラグイン規約](AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md)の第8節でも検討している。
 
 ## 13. 概念例：受注確定の通知
 
@@ -554,12 +554,12 @@ environment.production:
 
 1. **E0：本書による整理**。既存の試作、#951の契約、#1118の文脈、#1016の構成、#988の演算子との関係を整理する。この段階は文書だけである。
 2. **E1：読取りだけの棚卸し**。初回調査を2.3節に記録した（checkout `696db81de7528a307889c050c2a97865acd40b38`）。`order_entry`と参照用の作業領域で、現在コードや設定に暗黙に埋まっている対応付けを列挙する。対象は、契約問い合わせの引数とSQLの対応、データソースの別名、実行文脈の受け口、業務上の結果への対応付け、UI構成キットの差し込み口などである。本書の分類で表せない例を探し、見つかれば分類を見直す。`->`と`to`のように記述が揃っていない箇所も一覧にする。ただし記述の統一は、方式を採用してから別の変更として扱う。ここに記録した範囲は初回分であり、全Package / Referenceの網羅や試験実行は未完了である。
-3. **E2：最小の参照実装**。`internal/composition`の`Dependency`へ直接手を入れる前に、参照実装の別パッケージで、項目付きの契約、多重度、利用側の局所名、型の適合判定、出力の参照からの順序の導出を試す。Draft PR #1233が変更している`internal/composition`と衝突させない。第14節のD・M・Cの事例を対象にする。
+3. **E2：最小の参照実装**。`internal/composition`の`Dependency`へ直接手を入れる前に、参照実装の別パッケージで、項目付きの契約、多重度、利用側の局所名、型の適合判定、出力の参照からの順序の導出を試す。Provider候補の選択はPR #1233で統合した既存Registryの診断へ委譲し、第二のProvider解決器や権限機構を追加しない。第14節のD・M・Cの事例を対象にする。
 4. **E3：宣言的な対応付けと演算子の接続**。#988の演算子のうち副作用のない少数を対応付けの変換に使い、欠損、単位、機密区分の負例を通す。
 5. **E4：静的な結合と動的な構成**。同じ構成から、生成した接続コードと実行世代の束縛の両方を作り、対応付けの照合値が一致すること、静的な成果物に動的な機構が残らないことを確かめる。
 6. **E5：二つの利用側での測定**。受注のWebアプリケーションとSUI型の知識整理アプリケーションで、提供元を交換したときに、利用側の変更が対応付けだけで済むかを測る。
 
-各段階で、合成した試験の成功、実際の提供元での動作、本番環境での運用を別の検証根拠として扱う。
+各段階で、合成した試験の成功、実際の提供元での動作、本番環境での運用を別の検証根拠として扱う。Kernelと実Process、本番の無停止更新、Target別の縮退は[合成Kernelの移行判定](../gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)で確認する。
 
 ## 16. 決めないことと見直す条件
 
