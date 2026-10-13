@@ -207,3 +207,64 @@ func TestDraftMarkerStoreNeverPersistsCandidatePayload(t *testing.T) {
 		}
 	}
 }
+
+func TestDraftMarkerStoreRejectsTamperedIdentityBeforeWorkspaceRead(t *testing.T) {
+	marker, _ := storageMarker(t)
+	state := privateDraftStateDir(t)
+	store, err := OpenDraftMarkerStore(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	key, err := store.Save(marker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filename := filepath.Join(state, "draft-"+key+".json")
+	original, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tampered := marker
+	tampered.CandidateRef = "other-candidate-with-valid-metadata"
+	wrongIdentity, err := EncodeDraftMarker(tampered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observations := 0
+	observe := func(root string) (SourceObservation, error) {
+		observations++
+		if root != marker.Baseline.WorkspaceRoot {
+			t.Fatalf("unexpected Workspace observed: %s", root)
+		}
+		return marker.Baseline, nil
+	}
+	for _, tc := range []struct {
+		name string
+		raw  []byte
+	}{
+		{name: "valid-json-wrong-key", raw: wrongIdentity},
+		{name: "malformed-json", raw: []byte("{")},
+		{name: "unknown-field", raw: []byte(`{"elevated":true}`)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(filename, tc.raw, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err := store.Recover(key, marker.Baseline.WorkspaceRoot, observe)
+			if !errors.Is(err, ErrInvalidDraftMarker) {
+				t.Fatalf("corrupted immutable marker was not rejected: %v", err)
+			}
+			if observations != 0 {
+				t.Fatalf("invalid persisted marker caused %d Workspace observations", observations)
+			}
+		})
+	}
+	if err := os.WriteFile(filename, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := store.Recover(key, marker.Baseline.WorkspaceRoot, observe)
+	if err != nil || recovered.Status != RecoveryNeedsReview || observations != 1 {
+		t.Fatalf("valid marker did not observe once and require review: %+v, %v, calls=%d", recovered, err, observations)
+	}
+}
