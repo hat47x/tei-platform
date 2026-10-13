@@ -141,9 +141,13 @@ func TestFixtureRefusesScopeImpersonationAndUnsupportedOperations(t *testing.T) 
 	scenarios := []scenario{
 		{"different principal", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) { s.PrincipalID = "other" }},
 		{"different scope", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) { s.RowScopeID = "tenant-b" }},
-		{"stale policy", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) { s.PolicyRevision = "stale" }},
+		{"stale policy", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) {
+			s.PolicyRevision = "stale"
+		}},
 		{"missing tenant authority", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) { s.Tenants = nil }},
-		{"all tenant grants false", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) { s.Tenants["tenant-a"] = false }},
+		{"all tenant grants false", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) {
+			s.Tenants["tenant-a"] = false
+		}},
 		{"empty tenant id", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) { s.Tenants[""] = true }},
 		{"unsupported provider filter", func(_ *ReadPlan, support *ProviderReadSupport, _ *FixtureScope, _ *[]FixtureRow) {
 			support.Filters = nil
