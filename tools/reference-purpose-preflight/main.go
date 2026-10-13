@@ -66,7 +66,16 @@ func runCLI(args []string, output io.Writer) error {
 		return run(file, output)
 	}
 	if *input == "" && *root != "" && *application != "" && *kind != "" && *id != "" {
-		assessment, err := InspectWorkspace(*root, *application, *kind, *id)
+		var assessment WorkspaceAssessment
+		var err error
+		switch *kind {
+		case "application-pattern":
+			assessment, err = InspectWorkspace(*root, *application, *kind, *id)
+		case "semantic-validation":
+			assessment, err = InspectValidation(*root, *application, *id)
+		default:
+			return fmt.Errorf("unsupported subject kind %q", *kind)
+		}
 		if err != nil {
 			return err
 		}
@@ -74,7 +83,7 @@ func runCLI(args []string, output io.Writer) error {
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(assessment)
 	}
-	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern -subject-id <id>")
+	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -application <id> -subject-kind application-pattern|semantic-validation -subject-id <id>")
 }
 
 func main() {
