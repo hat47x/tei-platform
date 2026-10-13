@@ -134,8 +134,8 @@ func TestFixtureRefusesScopeImpersonationAndUnsupportedOperations(t *testing.T) 
 		t.Fatal(err)
 	}
 	type scenario struct {
-		name    string
-		change  func(*ReadPlan, *ProviderReadSupport, *FixtureScope, *[]FixtureRow)
+		name   string
+		change func(*ReadPlan, *ProviderReadSupport, *FixtureScope, *[]FixtureRow)
 	}
 	scenarios := []scenario{
 		{"different principal", func(_ *ReadPlan, _ *ProviderReadSupport, s *FixtureScope, _ *[]FixtureRow) { s.PrincipalID = "other" }},
