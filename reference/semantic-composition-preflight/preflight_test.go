@@ -101,11 +101,11 @@ func buildExactSemanticAsset(t *testing.T, ns semantic.Namespace, providerID str
 		Builder: plugin.BuilderIdentity{
 			ID: "tei.builder.semantic_export_reference", Version: "1.0.0",
 			ContractVersion: "tei.semantic-export-reference/v0",
-			ArtifactDigest: "sha256:" + strings.Repeat("b", 64),
+			ArtifactDigest:  "sha256:" + strings.Repeat("b", 64),
 		},
-		Recipe: plugin.BuildRecipe{Kind: "deterministic-semantic-reference", Entrypoint: string(ns.ID)},
+		Recipe:     plugin.BuildRecipe{Kind: "deterministic-semantic-reference", Entrypoint: string(ns.ID)},
 		OutputKind: semanticdistribution.SemanticReferenceOutputKind,
-		Target: "semantic/reference",
+		Target:     "semantic/reference",
 	}
 	digest := sourceindex.Fingerprint(payload)
 	locked, err := plugin.LockBuildOutput(plan, digest)
@@ -114,7 +114,7 @@ func buildExactSemanticAsset(t *testing.T, ns semantic.Namespace, providerID str
 	}
 	lock := plugin.BuildArtifactLock{
 		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds: []plugin.LockedBuild{locked},
+		Builds:        []plugin.LockedBuild{locked},
 	}
 	if err := lock.Validate(); err != nil {
 		t.Fatal(err)
