@@ -58,7 +58,7 @@ func TestTwoProtectedApplicationsDoNotBorrowHostServiceBindings(t *testing.T) {
 	selection := pruntime.ServiceProviderSelection{
 		ContractID: contractID, ContractVersion: contract.Version,
 		ContractFingerprint: "sha256:" + strings.Repeat("b", 64),
-		Scope: "application-runtime", Provider: physical,
+		Scope:               "application-runtime", Provider: physical,
 		ImplementationID: "test-only-customer-adapter", ArtifactDigest: digest,
 	}
 	process := &twoApplicationHostProcess{}
@@ -129,8 +129,8 @@ func TestTwoProtectedApplicationsDoNotBorrowHostServiceBindings(t *testing.T) {
 			}},
 			ServiceBindings: []pruntime.ServiceCarrierBinding{{
 				ServiceProviderSelection: selection,
-				CarrierKind: plugin.CapabilityContractQueryExecutor,
-				CarrierID: capabilityID, Operation: app + ".find_by_id",
+				CarrierKind:              plugin.CapabilityContractQueryExecutor,
+				CarrierID:                capabilityID, Operation: app + ".find_by_id",
 			}},
 		}
 		plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
