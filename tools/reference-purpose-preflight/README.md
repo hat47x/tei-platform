@@ -112,6 +112,27 @@ go run ./tools/reference-purpose-preflight \
 
 `-purpose` を省略した場合は従来の平坦な作業領域調査結果を返すので、既存の利用先の入力形式を壊さない。合成JSONだけの `-input` と実作業領域への `-purpose` を同時指定することはできない。必要条件の実評価、実Providerとの接続、状態変更はこの段階の対象外である。
 
+## Operationが宣言した書込意図による条件付き要件の絞込み（第6段階）
+
+「書込の有無」がCanonicalのApplication PatternからCapabilityへ追える場合だけ、条件付きだった副作用フェンスの必要性を少し具体化する。
+
+```sh
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -application order_entry \
+  -subject-kind application-pattern \
+  -subject-id order_entry.submit_order \
+  -purpose execute-preflight
+```
+
+この経路は既存Canonical Worldの `Pattern(kind=command, capability=...)` から唯一の `Capability` を解決し、`Capability.effect(create|update, data)` の**明示された宣言**を読み取る。実TargetのProviderが何を実行したかの証明ではない。
+
+`operationWriteIntent.status` が `declared-write` の場合に限り、`readiness.obligations[effect-fence]` を「必要な実行時チェックだが未評価」の `not-evaluated` とする。権限を与えず、更新確定・重複防止は既存#1174へ委ねる。
+
+一方、Referenceの `order_entry.submit_order` は `sales.order.submit` を参照するが、**現在のCapabilityには `effect` が明記されていない**。そこで `effect-not-declared` と表示し、読み取り専用であることも、副作用が不要であることも主張しない。対象のCapabilityが見つからない・重複する場合も実行可能扱いにしない。実際のOperationの仕様に応じて後続の検証が必要となる。
+
+固定のCore Capability列挙、独立した実行フェンス、すべてのプラグインへの厳格な必須メタデータは新設していない。この分類は**既に明示された書込意図があるときに役立つ補助表示**であり、Providerの実際のEffectや外部副作用を網羅した保証ではない。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
