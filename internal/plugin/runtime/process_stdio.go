@@ -137,6 +137,10 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		return Response{}, err
 	}
 	cmd := exec.CommandContext(runCtx, resolved, command.Args...)
+	// Do not wait indefinitely for descendants that inherited the stdio pipes
+	// after the direct child exits or the Host cancels its execution context.
+	// WaitDelay closes the pipes; it does NOT terminate the descendant tree.
+	cmd.WaitDelay = 2 * time.Second
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
