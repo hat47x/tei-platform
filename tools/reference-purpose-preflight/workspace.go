@@ -24,6 +24,7 @@ type SourceWitness struct {
 type WorkspaceAssessment struct {
 	SchemaVersion    string          `json:"schemaVersion"`
 	Authority        string          `json:"authority"`
+	Application      string          `json:"application"`
 	SubjectKind      string          `json:"subjectKind"`
 	SubjectID        string          `json:"subjectId"`
 	SourceStatus     string          `json:"sourceStatus"`
@@ -37,10 +38,11 @@ type WorkspaceAssessment struct {
 // unambiguous declaration and current Source Index provenance. The subject is
 // typed using TEI's existing subject contract. It deliberately does not infer
 // order approval from the existence/name of a submit-order Pattern.
-func InspectWorkspace(root, kind, id string) (WorkspaceAssessment, error) {
+func InspectWorkspace(root, application, kind, id string) (WorkspaceAssessment, error) {
 	result := WorkspaceAssessment{
 		SchemaVersion: "tei.reference.purpose-preflight-source/v0",
 		Authority: "read-only-derived-projection",
+		Application: application,
 		SubjectKind: kind,
 		SubjectID: id,
 		SourceStatus: "unresolved",
@@ -49,8 +51,11 @@ func InspectWorkspace(root, kind, id string) (WorkspaceAssessment, error) {
 		Witnesses: []SourceWitness{},
 		Unresolved: []string{},
 	}
-	if root == "" || kind != "application-pattern" {
-		return result, fmt.Errorf("workspace mode requires -workspace and -subject-kind application-pattern")
+	if root == "" || application == "" || kind != "application-pattern" {
+		return result, fmt.Errorf("workspace mode requires -workspace, -application and -subject-kind application-pattern")
+	}
+	if _, err := core.ParseCanonicalID(application); err != nil {
+		return result, fmt.Errorf("invalid Application ID: %w", err)
 	}
 	if _, err := core.ParseCanonicalID(id); err != nil {
 		return result, fmt.Errorf("invalid application Pattern ID: %w", err)
@@ -83,6 +88,7 @@ func InspectWorkspace(root, kind, id string) (WorkspaceAssessment, error) {
 	ctx := knowledgecontext.Build(loaded.World, sources, subject.Subject{Kind: kind, ID: id})
 	qualification, err := knowledgecontext.QualifyWithSources(ctx, sources, knowledgecontext.QualificationRequirements{
 		ExpectedKind: kind,
+		Application: application,
 	})
 	if err != nil {
 		return result, fmt.Errorf("qualify declared subject: %w", err)
