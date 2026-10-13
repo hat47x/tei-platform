@@ -3,6 +3,7 @@ package runtime_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -33,6 +34,7 @@ func (v *serviceCarrierVerifier) Verify(
 // revocation; a plugin cannot install this reader.
 type serviceCarrierAcceptedReader struct {
 	record pruntime.ServiceAcceptanceRecord
+	err    error
 	denied bool
 	calls  int
 }
@@ -41,6 +43,9 @@ func (r *serviceCarrierAcceptedReader) ReadCurrentAcceptedService(
 	_ context.Context, _ pruntime.ServiceProviderSelection,
 ) (pruntime.ServiceAcceptanceRecord, error) {
 	r.calls++
+	if r.err != nil {
+		return pruntime.ServiceAcceptanceRecord{}, r.err
+	}
 	if r.denied {
 		return pruntime.ServiceAcceptanceRecord{}, fmt.Errorf("service acceptance was revoked")
 	}
@@ -373,6 +378,31 @@ func TestSelectedServiceAcceptanceIsHostOwnedAndRecheckedForRevocation(t *testin
 	}
 	if acceptance.calls != before+1 || child.calls != 1 || verifier.calls != 1 {
 		t.Fatal("stale accepted decision reused after revocation")
+	}
+}
+
+// Reader failures must not expose details of the Host's trust store or
+// internal issuer policy to a plugin, caller, or Runtime API consumer.
+func TestSelectedServiceAcceptanceFailureDoesNotExposeHostReaderSecrets(t *testing.T) {
+	const secretCanary = "TEI_HOST_ACCEPTANCE_PRIVATE_SIGNER_PATH_AND_TOKEN"
+	plan, selected, child, verifier := serviceCarrierFixture(t)
+	host, acceptance := serviceCarrierHost(selected, child, verifier)
+	privateError := fmt.Errorf("open /private/issuer/%s: permission denied", secretCanary)
+	acceptance.err = privateError
+	_, err := host.InvokeSelectedServiceCarrier(
+		context.Background(), plan, selected, "host-secret-deny", json.RawMessage(`{"quantity":1}`),
+	)
+	if !errors.Is(err, pruntime.ErrServiceAcceptanceDenied) {
+		t.Fatalf("Host denial did not retain stable public error identity: %v", err)
+	}
+	if errors.Is(err, privateError) || strings.Contains(err.Error(), secretCanary) ||
+		strings.Contains(err.Error(), "/private/issuer/") ||
+		strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("Host private error leaked into Runtime response: %v", err)
+	}
+	if acceptance.calls != 1 || verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("denied Host source reached Runtime verifier/process: reads=%d verifies=%d starts=%d",
+			acceptance.calls, verifier.calls, child.calls)
 	}
 }
 
