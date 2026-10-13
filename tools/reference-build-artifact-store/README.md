@@ -155,3 +155,40 @@ EvidenceにはStore rootのabsolute pathを含めません。
 Receipt Locatorはstore-relative `sha256/<hex>`だけです。
 
 runner成功はStore availability / Build provenance / Acceptance / Runtime Authorityを意味しません。
+
+## 選択済み取得サービスと実CASの横断試験（Issue #1570）
+
+`semantic_distribution_test.go`は、既存の独立した試験を拡張し、
+Composition Kernelの`Registry.InspectWiringSet`による**明示的な取得サービスの構造的候補**、
+`BuildArtifactLock`の厳密な選択、実ローカルCASからのバイト再取得、
+Semanticの内容照合、実Workspaceで記述した外部型参照の検証を一つにつなぐ。
+
+`monitoring`のモデルが参照する`os.process_id`は、
+利用側Sourceにインポート元パスを偽装せずに、
+**明示選択した`os`データ配布物**から検査する。
+配布物がCASに存在しない場合の勝手な代替選択、
+バイト取得中に選択された取得サービスを取り消した場合の旧提案の再利用を拒否する。
+
+```sh
+go test -count=1 ./tools/reference-build-artifact-store
+```
+
+あくまで参照用の選択とローカルStoreとの結合試験であり、
+実Builderの信頼証明、発行者署名、Trusted Publisher登録、
+Host権限、案件による業務意味の受理は**未検証**。
+サービスの契約・Provider IDと配布物Packageの正当な対応関係も
+この試験のみでは実証しない。新たなResolverやArtifact Lockは設けない。
+
+## 時間差の競合の試験（Issue #1149）
+
+`readVerified`は、`Lstat`の後・`Open`の前（`after-lstat`）と、読出しの後・最後の`Lstat`の前（`before-final-lstat`）、`PutBytes`の`os.Link`の前（`before-link`）で、試験用の差込み点`testHook`を呼びます。`testHook`は本番では`nil`で、挙動は変わりません。
+
+次の三点を試験で固定します。
+
+- `Lstat`と`Open`の間にobjectが同じbytesの別のinodeへ入れ替わったら、`errArtifactCorrupt`で拒否する。
+- 読出しの後に経路が別のinodeへ入れ替わったら、`errArtifactCorrupt`で拒否する。
+- 公開の直前に同じ経路のobjectが現れても、`os.Link`は上書きせず、既存objectを保つ。破損したobjectが現れた場合も、修復せず拒否する。
+
+入れ替えるbytesは元と同じにしてあり、digestの照合だけでは検出できないため、open時の同一性検査と読出し後の再確認を個別に確かめられます。
+
+固定できていない範囲は次のとおりです。差込み点は上の三か所だけで、読出しの途中でbytesを書き換える競合や、`algorithm`ディレクトリの入替え時点の網羅は、既存の試験が個別に確かめる範囲にとどまります。悪意のあるfilesystem管理者への耐性は主張しません。

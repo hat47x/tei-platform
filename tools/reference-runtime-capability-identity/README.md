@@ -112,3 +112,15 @@ Resource Broker経路はfilesystem read一件のAcquire / Validate / Sandbox mou
 また、`AcceptedRuntimeCandidate`やAuthority Evidenceのfingerprintが信頼できるissuerから来たことは、このReference単体では証明しません。上流のAcceptance / Conformance Authorityとの接続は別の検証点です。
 
 codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASSが得られるまではmainへ統合しません。
+
+## 案件専用Go助言処理のConsumer pressure（#1567 → #976）
+
+[統合済みの案件Go/Lit参照実装](https://github.com/hat47x/tei-platform/pull/1567)を、Generic Runtime Capability Refの移行条件に当てた**独立した否定試験**です。Goの案件補助提案は正式な受注ActionやAccepted Validationではありません。
+
+現状の`tools/reference-project-advice-lit/contract_bridge.go`にある`ProjectAdvisoryContract`は、`Version=v0`および説明的な`Shape=customer-code-note-to-advisory-v0`を持ちます。Compositionの選択を示すだけで、#976のRuntime Capability Candidateに必要な受理済みsemantic version・契約fingerprint・Provider Plugin/実artifact/Resolution Lock・Execution Grantにはなりません。実行Hostも合成`ArtifactDigest`と簡易Guardを使う診断用です。
+
+`project_advice_consumer_test.go`では、*将来正式に受理されると仮定した合成Candidate*を、既存`deriveRuntimeCapabilityRef`と`buildRuntimeEnvironmentPlan`に渡します。検証内容は、旧`v0`・説明的Shape・欠落Lock／Artifactの拒否、Runtime Refの存在だけでの実行不可、明示Grantの失効・重複拒否、legacy/generic二重Authorityの拒否、Provider・Contract fingerprint・Artifact・Resolution Lock・Permissionの差し替え時の拒否です。新Resolver・Permission Store・Grant発行機構は作りません。
+
+**注意**：合成Candidateの`1.0.0`、fingerprint、artifact digest、Authority Evidenceはテスト材料であり、実案件プラグインが`v1`として受理された証拠でも実成果物の署名・照合結果でもありません。テストでは本番の`Registry.Invoke`、Resource Brokerの現行leaseやHost Sandboxによる案件Go実行、業務`order_entry` Actionの委譲を実行しません。今後は既存#951の契約受理・Conformanceと#976のRuntime Authorityへ、同一のexact Candidate/Lockを接続する必要があります。
+
+局所試験は `go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice` を実行します。専用Workflowも同じ2パッケージをPR正確HEADで検証します。

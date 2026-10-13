@@ -41,13 +41,14 @@ type Qualification struct {
 }
 
 type Acceptance struct {
-	R0                   string   `json:"r0"`
-	R1                   string   `json:"r1"`
-	CandidateFingerprint string   `json:"candidateFingerprint"`
-	ReviewFingerprint    string   `json:"reviewFingerprint"`
-	DecisionReceipt      string   `json:"decisionReceipt"`
-	ReloadReceipt        string   `json:"reloadReceipt"`
-	Delta                []string `json:"delta"`
+	R0                         string   `json:"r0"`
+	R1                         string   `json:"r1"`
+	CandidateFingerprint       string   `json:"candidateFingerprint"`
+	ReviewFingerprint          string   `json:"reviewFingerprint"`
+	ReviewCandidateFingerprint string   `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
+	DecisionReceipt            string   `json:"decisionReceipt"`
+	ReloadReceipt              string   `json:"reloadReceipt"`
+	Delta                      []string `json:"delta"`
 }
 
 type Web struct {
@@ -168,20 +169,36 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 			w.TargetLaunchReceipt == w.NegativeReceipt {
 			add("E1_WEB_WORKSPACE_R1_AND_TARGET_LAUNCH_PROVENANCE_MISSING")
 		}
-		if w.PositiveReceipt == "" || w.NegativeReceipt == "" ||
+		if strings.TrimSpace(w.PositiveReceipt) == "" || strings.TrimSpace(w.NegativeReceipt) == "" ||
 			w.PositiveReceipt == w.NegativeReceipt {
 			add("ACTUAL_WEB_POSITIVE_AND_NEGATIVE_RECEIPTS_REQUIRED")
 		}
-		if w.UnobservedControlReceipt == "" || w.UnobservedControlReceipt == w.PositiveReceipt ||
-			w.UnobservedControlReceipt == w.NegativeReceipt {
+		// N11 must be a separately located no-read control, not a recycled
+		// success/denial receipt or the unrelated Source/Target provenance.
+		// Locator separation remains a claim, not inspection of receipt bytes.
+		missingN11 := strings.TrimSpace(w.UnobservedControlReceipt) == "" ||
+			w.UnobservedControlReceipt == w.PositiveReceipt ||
+			w.UnobservedControlReceipt == w.NegativeReceipt ||
+			w.UnobservedControlReceipt == w.WorkspaceRevisionReceipt ||
+			w.UnobservedControlReceipt == w.TargetLaunchReceipt ||
+			w.UnobservedControlReceipt == a.DecisionReceipt ||
+			w.UnobservedControlReceipt == a.ReloadReceipt ||
+			w.UnobservedControlReceipt == p.Qualification.Receipt
+		if p.Claim == "E2" {
+			missingN11 = missingN11 ||
+				w.UnobservedControlReceipt == p.Physical.CommandReceipt ||
+				w.UnobservedControlReceipt == p.Physical.IndependentReadReceipt
+		}
+		if missingN11 {
 			add("N11_UNOBSERVED_CONTROL_MISSING")
 		}
-		// A declared acceptance review must identify the exact candidate being
-		// approved. Equality is necessary but does not prove review authenticity.
-		if revision.MatchString(a.CandidateFingerprint) &&
-			revision.MatchString(a.ReviewFingerprint) &&
-			a.CandidateFingerprint != a.ReviewFingerprint {
-			add("ACCEPTANCE_REVIEW_FINGERPRINT_MISMATCH")
+		// Shared Acceptance fingerprints the candidate's operation delta and
+		// the entire Review Projection separately. Those digests need NOT match.
+		// The Review Projection instead embeds the candidate fingerprint.
+		// This is only a caller-reported join, not verification of the receipt.
+		if !revision.MatchString(a.ReviewCandidateFingerprint) ||
+			a.ReviewCandidateFingerprint != a.CandidateFingerprint {
+			add("ACCEPTANCE_REVIEW_CANDIDATE_BINDING_MISSING_OR_MISMATCH")
 		}
 		// The existing synthetic normal fixture rejects an invalid quantity, not
 		// the newly selected unit-price rule. A handler-only negative test is
@@ -203,7 +220,8 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		if ph.HostAuthorityEvidence == "" {
 			add("S05_CURRENT_HOST_AUTHORITY_MISSING")
 		}
-		if ph.CommandReceipt == "" || ph.IndependentReadReceipt == "" ||
+		if strings.TrimSpace(ph.CommandReceipt) == "" ||
+			strings.TrimSpace(ph.IndependentReadReceipt) == "" ||
 			ph.CommandReceipt == ph.IndependentReadReceipt || ph.RecordID == "" {
 			add("E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED")
 		}
