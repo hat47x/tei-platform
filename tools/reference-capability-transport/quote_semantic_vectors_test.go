@@ -120,7 +120,7 @@ func TestIndependentQuoteProcessAgainstCandidateSemanticVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	carrier := LegacyCarrier{
-		Plugin:                plugin.Identity{
+		Plugin: plugin.Identity{
 			ID: core.MustCanonicalID(provider.PluginID), Version: provider.PluginVersion,
 		},
 		CapabilityKind:        plugin.CapabilityContractQueryExecutor,
