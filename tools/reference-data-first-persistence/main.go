@@ -138,25 +138,25 @@ type fixtureCleanupSafetyEvidence struct {
 }
 
 type positiveEvidence struct {
-	Preflight                []stageResult `json:"preflight"`
-	AllStagesResolvedAfterDDL bool         `json:"allStagesResolvedAfterFixtureDDL"`
-	CommandID                string        `json:"commandId"`
-	BindingIdentity          string        `json:"bindingIdentity"`
-	ResultMode               string        `json:"resultMode"`
-	BackendPIDCommandPool    int64         `json:"backendPidCommandPool"`
-	ReadIdentity             string        `json:"readIdentity"`
-	ReadEvidenceNature       string        `json:"readEvidenceNature"`
-	SubmittedCommandID       string        `json:"submittedCommandId"`
-	BackendPIDReadPoolBefore int64         `json:"backendPidReadPoolBefore"`
-	BackendPIDReadPoolAfter  int64         `json:"backendPidReadPoolAfter"`
-	BackendPIDsDiffer        bool          `json:"backendPidsDiffer"`
-	RowsRead                 int           `json:"rowsRead"`
-	RowMatchesSubmission     bool          `json:"rowMatchesSubmission"`
-	MappedSemanticAttributes []string      `json:"mappedSemanticAttributes"`
-	ObservationStatus        string        `json:"observationStatus"`
-	DatabaseIdentityFromEnv  string        `json:"databaseIdentitySource"`
-	DatabaseProviderFromEnv  string        `json:"databaseProvider"`
-	ParameterValuesPersisted bool          `json:"parameterValuesPersisted"`
+	Preflight                 []stageResult `json:"preflight"`
+	AllStagesResolvedAfterDDL bool          `json:"allStagesResolvedAfterFixtureDDL"`
+	CommandID                 string        `json:"commandId"`
+	BindingIdentity           string        `json:"bindingIdentity"`
+	ResultMode                string        `json:"resultMode"`
+	BackendPIDCommandPool     int64         `json:"backendPidCommandPool"`
+	ReadIdentity              string        `json:"readIdentity"`
+	ReadEvidenceNature        string        `json:"readEvidenceNature"`
+	SubmittedCommandID        string        `json:"submittedCommandId"`
+	BackendPIDReadPoolBefore  int64         `json:"backendPidReadPoolBefore"`
+	BackendPIDReadPoolAfter   int64         `json:"backendPidReadPoolAfter"`
+	BackendPIDsDiffer         bool          `json:"backendPidsDiffer"`
+	RowsRead                  int           `json:"rowsRead"`
+	RowMatchesSubmission      bool          `json:"rowMatchesSubmission"`
+	MappedSemanticAttributes  []string      `json:"mappedSemanticAttributes"`
+	ObservationStatus         string        `json:"observationStatus"`
+	DatabaseIdentityFromEnv   string        `json:"databaseIdentitySource"`
+	DatabaseProviderFromEnv   string        `json:"databaseProvider"`
+	ParameterValuesPersisted  bool          `json:"parameterValuesPersisted"`
 }
 
 type negativeEvidence struct {
@@ -1226,25 +1226,25 @@ func run() (rcpt receipt, err error) {
 	}
 	status := classifyObservation(true, readErr, matches)
 	rcpt.Positive = positiveEvidence{
-		Preflight:                positivePreflight,
+		Preflight:                 positivePreflight,
 		AllStagesResolvedAfterDDL: allResolved(baseline),
-		CommandID:                payload.CommandID,
-		BindingIdentity:          gate.Invocation.Binding.Binding.Identity(),
-		ResultMode:               string(gate.Invocation.Result.Mode),
-		BackendPIDCommandPool:    payload.BackendPID,
-		ReadIdentity:             observation.ReadIdentity,
-		ReadEvidenceNature:       string(observation.Nature),
-		SubmittedCommandID:       sub.CommandID,
-		BackendPIDReadPoolBefore: pidBefore,
-		BackendPIDReadPoolAfter:  pidAfter,
-		BackendPIDsDiffer:        payload.BackendPID != pidBefore && payload.BackendPID != pidAfter,
-		RowsRead:                 len(browse.Result.Mapped.Rows),
-		RowMatchesSubmission:     matches,
-		MappedSemanticAttributes: mappedAttributeIDs(browse.Result.Mapped),
-		ObservationStatus:        string(status),
-		DatabaseIdentityFromEnv:  fmt.Sprintf("environment %s: %s.%s -> %s", environmentID, applicationID, datasourceAlias, target.Instance.ID),
-		DatabaseProviderFromEnv:  string(target.Instance.Provider),
-		ParameterValuesPersisted: false,
+		CommandID:                 payload.CommandID,
+		BindingIdentity:           gate.Invocation.Binding.Binding.Identity(),
+		ResultMode:                string(gate.Invocation.Result.Mode),
+		BackendPIDCommandPool:     payload.BackendPID,
+		ReadIdentity:              observation.ReadIdentity,
+		ReadEvidenceNature:        string(observation.Nature),
+		SubmittedCommandID:        sub.CommandID,
+		BackendPIDReadPoolBefore:  pidBefore,
+		BackendPIDReadPoolAfter:   pidAfter,
+		BackendPIDsDiffer:         payload.BackendPID != pidBefore && payload.BackendPID != pidAfter,
+		RowsRead:                  len(browse.Result.Mapped.Rows),
+		RowMatchesSubmission:      matches,
+		MappedSemanticAttributes:  mappedAttributeIDs(browse.Result.Mapped),
+		ObservationStatus:         string(status),
+		DatabaseIdentityFromEnv:   fmt.Sprintf("environment %s: %s.%s -> %s", environmentID, applicationID, datasourceAlias, target.Instance.ID),
+		DatabaseProviderFromEnv:   string(target.Instance.Provider),
+		ParameterValuesPersisted:  false,
 	}
 	if status != observationObserved || pidBefore != pidAfter || !rcpt.Positive.BackendPIDsDiffer || adapters.dispatched != 1 {
 		return rcpt, fmt.Errorf("正常系の期待結果になりません: status=%s pidBefore=%d pidAfter=%d pidA=%d dispatched=%d", status, pidBefore, pidAfter, payload.BackendPID, adapters.dispatched)
