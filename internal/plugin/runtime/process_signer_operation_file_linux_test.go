@@ -11,15 +11,21 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 )
 
 func linuxFileOperationFixture(t *testing.T) (string, *LinuxFileSignerOperationLedger) {
 	t.Helper()
 	directory := t.TempDir()
+	if err := os.Chmod(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
 	ledger, err := NewLinuxFileSignerOperationLedger(directory)
 	if err != nil {
-		t.Fatal(err)
+		var st syscall.Stat_t
+		statErr := syscall.Stat(directory, &st)
+		t.Fatalf("Host file ledger directory rejected: %v (mode=%#o uid=%d euid=%d statErr=%v)", err, st.Mode&0777, st.Uid, os.Geteuid(), statErr)
 	}
 	t.Cleanup(func() { _ = ledger.Close() })
 	return directory, ledger
