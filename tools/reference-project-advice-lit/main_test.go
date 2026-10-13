@@ -73,3 +73,64 @@ func TestReferenceServesOnlyKnownAssets(t *testing.T) {
 		t.Fatalf("unknown path returned %d", resp.Code)
 	}
 }
+
+func TestDiagnosticHostRejectsDNSRebinding(t *testing.T) {
+	readCalls := 0
+	readHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		readCalls++
+		w.WriteHeader(http.StatusOK)
+	})
+	secured := diagnosticHostOnly(handlerWithContext(readHandler))
+	for _, tc := range []struct {
+		name, method, path, host, body string
+	}{
+		{"static-rebinding", "GET", "/", "attacker.invalid:8787", ""},
+		{"read-rebinding", "GET", "/project/order-entry-context", "attacker.invalid:8787", ""},
+		{"advisory-rebinding", "POST", "/project/advice", "attacker.invalid:8787", `{"customerCode":"VIP-7","note":""}`},
+		{"suffix-host", "GET", "/", "127.0.0.1.attacker.invalid:8787", ""},
+		{"alternate-host", "GET", "/", "localhost:8787", ""},
+		{"wrong-port", "GET", "/", "127.0.0.1:8788", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, "http://127.0.0.1:8787"+tc.path, strings.NewReader(tc.body))
+			req.Host = tc.host
+			if tc.method == http.MethodPost {
+				req.Header.Set("Content-Type", "application/json")
+				// A DNS-rebound origin matches the malicious Host but is never trusted.
+				req.Header.Set("Origin", "http://"+tc.host)
+			}
+			resp := httptest.NewRecorder()
+			secured.ServeHTTP(resp, req)
+			if resp.Code != http.StatusMisdirectedRequest {
+				t.Fatalf("host %q: status=%d, want=421", tc.host, resp.Code)
+			}
+			if resp.Header().Get("Cache-Control") != "no-store" {
+				t.Fatalf("rejected host response must not be cached")
+			}
+		})
+	}
+	if readCalls != 0 {
+		t.Fatalf("DNS-rebinding request reached upstream: %d", readCalls)
+	}
+	for _, tc := range []struct {
+		method, path, body string
+	}{
+		{"GET", "/", ""},
+		{"GET", "/project/order-entry-context", ""},
+		{"POST", "/project/advice", `{"customerCode":"VIP-7","note":""}`},
+	} {
+		req := httptest.NewRequest(tc.method, "http://127.0.0.1:8787"+tc.path, strings.NewReader(tc.body))
+		if tc.method == http.MethodPost {
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", "http://127.0.0.1:8787")
+		}
+		resp := httptest.NewRecorder()
+		secured.ServeHTTP(resp, req)
+		if resp.Code != http.StatusOK {
+			t.Fatalf("canonical Host %s %s: status=%d body=%s", tc.method, tc.path, resp.Code, resp.Body.String())
+		}
+	}
+	if readCalls != 1 {
+		t.Fatalf("expected exactly one canonical read, got %d", readCalls)
+	}
+}
