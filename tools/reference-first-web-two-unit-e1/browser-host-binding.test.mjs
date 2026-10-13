@@ -49,6 +49,8 @@ async function setup(t) {
   };
   await writeFile(measurement, JSON.stringify(initialReceipt));
   let exposed = manifest();
+  let manifestWireMode = "normal";
+  let imageWireMode = "normal";
   let observedImage = image();
   let imageSupported = true;
   let apiCommandIdentity = manifest();
@@ -56,17 +58,53 @@ async function setup(t) {
   let readSupported = true;
   let readCount = 0;
   let commandCount = 0;
+  // The real diagnostic API can be replaced by a streaming or malformed
+  // endpoint without changing the binding header identity. Exercise true
+  // chunked bodies with no Content-Length, not just a claimed byte count.
+  const sendObservation = (res, value, mode, maxBytes) => {
+    if (mode === "chunked-large") {
+      res.writeHead(200, {
+        "content-type": "application/json",
+        "transfer-encoding": "chunked",
+      });
+      res.write(Buffer.alloc(maxBytes + 1, 32));
+      res.end();
+      return;
+    }
+    if (mode === "wrong-media") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end(JSON.stringify(value));
+      return;
+    }
+    if (mode === "declared-large") {
+      res.writeHead(200, {
+        "content-type": "application/json",
+        "content-length": String(maxBytes + 1),
+      });
+      res.end(Buffer.alloc(maxBytes + 1, 32));
+      return;
+    }
+    if (mode === "chunked-valid") {
+      res.writeHead(200, {
+        "content-type": "application/json",
+        "transfer-encoding": "chunked",
+      });
+      res.write(JSON.stringify(value));
+      res.end();
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(value));
+  };
   const server = createServer((req, res) => {
     if (req.url === "/manifest.json") {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(exposed));
+      sendObservation(res, exposed, manifestWireMode, 65536);
     } else if (req.url === "/diagnostic-executable.json") {
       if (!imageSupported) {
         res.writeHead(404);
         res.end();
       } else {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify(observedImage));
+        sendObservation(res, observedImage, imageWireMode, 4096);
       }
     } else if (req.url?.startsWith("/scenario/read-bound")) {
       if (!readSupported) {
@@ -148,6 +186,8 @@ async function setup(t) {
     get count() { return commandCount; },
     get reads() { return readCount; },
     changeManifest: next => { exposed = next; },
+    changeManifestWireMode: mode => { manifestWireMode = mode; },
+    changeImageWireMode: mode => { imageWireMode = mode; },
     changeObservedImage: next => { observedImage = next; },
     allowImageProbe: enabled => { imageSupported = enabled; },
     changeAPICommandIdentity: next => { apiCommandIdentity = next; },
@@ -357,5 +397,63 @@ test("unsupported or forged measurement image identity prevents Host startup", a
   await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
   await f.overwriteReceipt({ apiBytes: 257 * 1024 * 1024 });
   await assert.rejects(f.start(), /invalid expected JSON Browser\/API binding/);
+  assert.equal(f.count, 0);
+});
+
+test("small chunked JSON evidence remains valid without Content-Length", async t => {
+  const f = await setup(t);
+  f.changeManifestWireMode("chunked-valid");
+  f.changeImageWireMode("chunked-valid");
+  const origin = await f.start();
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 1);
+});
+
+test("oversized chunked API manifest fails closed before startup", async t => {
+  const f = await setup(t);
+  f.changeManifestWireMode("chunked-large");
+  await assert.rejects(f.start(), /API manifest exceeds diagnostic limit/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("oversized chunked API image observation fails closed before startup", async t => {
+  const f = await setup(t);
+  f.changeImageWireMode("chunked-large");
+  await assert.rejects(f.start(), /API executable observation exceeds diagnostic limit/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("declared oversized API image is rejected before body buffering", async t => {
+  const f = await setup(t);
+  f.changeImageWireMode("declared-large");
+  await assert.rejects(f.start(), /API executable observation exceeds diagnostic limit/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("post-start streaming oversize evidence never forwards read or command", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  f.changeImageWireMode("chunked-large");
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(await submit(origin), 502);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+  f.changeImageWireMode("normal");
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 1);
+});
+
+test("non-JSON diagnostic evidence refuses Host startup", async t => {
+  const f = await setup(t);
+  f.changeManifestWireMode("wrong-media");
+  await assert.rejects(f.start(), /API manifest is not a JSON observation/);
+  assert.equal(f.reads, 0);
   assert.equal(f.count, 0);
 });
