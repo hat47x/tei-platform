@@ -153,6 +153,28 @@ go run ./tools/reference-purpose-preflight \
 
 `-purpose` を指定しない従来の平坦JSONからはこの補助フィールドを除く。作用・実行権限の評価を行わず、`executionAllowed=false` を維持する。
 
+## Environment別の明示BindingとProvider適合を区別する（第8段階）
+
+`-purpose execute-preflight` では、任意の `-environment <ID>` で**指定した環境だけ**の宣言を確認できる。環境未指定時は、従来どおり環境を推定しない。
+
+```sh
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -application order_entry \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -purpose execute-preflight \
+  -environment development
+```
+
+この調査は、前節の `contractQueryUse.status=declared-requirement` が成立した場合にのみ、既存Canonical `Environment.bindings` の `(application, alias)` を**一意に**解決し、その `DatabaseInstance.definition` がApplicationの要求対象DBと一致するかを確認する。正本の `development` では `order_entry.master -> master_data.dev`、`production` では `order_entry.master -> master_data.prod` を追跡できる。両Instanceが宣言しているDB種別は `oracle`。
+
+結果は `assessment.environmentBinding` に追加し、定義一致時の `status=declared-environment-binding` は**EnvironmentがこのDB接続先を宣言したという事実**だけを表す。実Providerの通信・Query実現・Contract互換性・Plugin Conformance・リソース/権限・認可の有効性を証明しない。そのため目的別 `provider-contract` は `not-evaluated`（確認事項が具体化されたが評価は未実施）であり、`executionAllowed=false` を維持する。
+
+対象Environment、alias/Binding、Instanceの不存在・重複は `unresolved`、Binding先が要求DBと違う場合は `incompatible` として返し、候補から適当な一件を選ばない。`-environment` は `application-pattern` と `-purpose execute-preflight` の組合せでのみ使える。従来の `-purpose` 未指定時の出力形式は変えない。
+
+ここでも独立したProvider Resolverや権限台帳を増設しない。実Providerへの接続・Conformanceと副作用の実行境界は、既存Owner機構が提示する検証根拠を別途消費する必要がある。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
