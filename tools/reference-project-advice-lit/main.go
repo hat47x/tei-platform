@@ -32,6 +32,22 @@ var staticFiles = map[string]struct {
 
 func handler() http.Handler { return handlerWithContext(nil) }
 
+// diagnosticHostOnly rejects DNS-rebinding Host aliases before any asset,
+// advisory, or read-only reference route is served. Binding the listener to
+// 127.0.0.1 does not by itself prevent browser DNS-rebinding attacks.
+// The diagnostic listener has a fixed port; this must track main's Addr.
+func diagnosticHostOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != "127.0.0.1:8787" {
+			w.Header().Set("Cache-Control", "no-store")
+			http.Error(w, "invalid diagnostic Host", http.StatusMisdirectedRequest)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+
 func handlerWithContext(contextHandler http.Handler) http.Handler {
 	bridge, err := newProjectAdvisoryBridge()
 	if err != nil {
@@ -122,7 +138,7 @@ func main() {
 	// Restrict this diagnostic endpoint to the local machine.
 	server := &http.Server{
 		Addr:              "127.0.0.1:8787",
-		Handler:           handlerWithContext(contextHandler),
+		Handler:           diagnosticHostOnly(handlerWithContext(contextHandler)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	log.Print("reference project advice: http://127.0.0.1:8787")
