@@ -55,13 +55,7 @@ type ScopedPostgresOrdersReference struct {
 
 var _ ScopedCanonicalExecutor = ScopedPostgresOrdersReference{}
 
-const scopedReferenceSQL = `SELECT
-    o.order_id,
-    o.customer_id,
-    o.ordered_at,
-    o.status,
-    o.total_amount
-FROM public.tei_web_scoped_orders_reference AS o
+const scopedReferenceFromSQL = `FROM public.tei_web_scoped_orders_reference AS o
 WHERE o.tenant_id = :tei_scope_tenant
   AND o.ordered_at >= :from`
 
@@ -113,17 +107,44 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 	if !ok || from.IsZero() {
 		return driver.BrowseQueryResult{}, ErrRejected
 	}
+	selected := make(map[string]bool, len(plan.Selected))
 	for _, name := range plan.Selected {
 		switch name {
 		case "orderId", "customerId", "orderedAt", "status", "total":
 		default:
 			return driver.BrowseQueryResult{}, ErrRejected
 		}
+		if selected[name] {
+			return driver.BrowseQueryResult{}, ErrRejected
+		}
+		selected[name] = true
+	}
+	// Keep the canonical raw column aliases while preventing the database
+	// from fetching any field omitted from the authorized projection.
+	// These expressions/aliases are fixed by this reviewed realization.
+	physicalColumns := []struct {
+		name       string
+		expression string
+		alias      string
+	}{
+		{"orderId", "o.order_id", "order_id"},
+		{"customerId", "o.customer_id", "customer_id"},
+		{"orderedAt", "o.ordered_at", "ordered_at"},
+		{"status", "o.status", "status"},
+		{"total", "o.total_amount", "total_amount"},
+	}
+	selectParts := make([]string, 0, len(physicalColumns))
+	for _, column := range physicalColumns {
+		if selected[column.name] {
+			selectParts = append(selectParts, column.expression)
+		} else {
+			selectParts = append(selectParts, "NULL AS "+column.alias)
+		}
 	}
 
 	// Validate all client-driven operations before contacting the scope
 	// authority or database. Values are never interpolated into SQL text.
-	source := scopedReferenceSQL
+	source := "SELECT\n    " + strings.Join(selectParts, ",\n    ") + "\n" + scopedReferenceFromSQL
 	args := map[string]any{
 		"from":    from,
 		"tei_top": plan.Limit,
