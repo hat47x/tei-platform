@@ -160,8 +160,13 @@ func InspectPublished(
 		}
 		if len(allowance.PublicKey) != ed25519.PublicKeySize || allowance.Epoch == 0 ||
 			allowance.NotAfter.IsZero() || !now.Before(allowance.NotAfter) ||
-			proof.ValidUntil.After(allowance.NotAfter) ||
-			!ed25519.Verify(allowance.PublicKey, msg, proof.Signature) {
+			proof.ValidUntil.After(allowance.NotAfter) {
+			return Report{}, fmt.Errorf("namespace %s: publisher signature or Host allowance rejected", asset.Expected.NamespaceID)
+		}
+		// Snapshot the Host-provided key before verifying it and before the
+		// later epoch comparison; untrusted callers cannot replace this copy.
+		allowance.PublicKey = append(ed25519.PublicKey(nil), allowance.PublicKey...)
+		if !ed25519.Verify(allowance.PublicKey, msg, proof.Signature) {
 			return Report{}, fmt.Errorf("namespace %s: publisher signature or Host allowance rejected", asset.Expected.NamespaceID)
 		}
 		assets = append(assets, asset)
