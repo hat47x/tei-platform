@@ -35,6 +35,13 @@ def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspa
     assert receipt['renderer']['providerId'] == 'report-json'
     assert len(json.loads(json_path.read_text())) == 4
     checks.append('real CLI CSV/JSON renderer selection; actual document digest and independent parsed rows')
+    assert receipt['limits'] == {'maxRows': 10000, 'maxBytes': 8 << 20}
+    for flag, value in [('-report-max-rows', '1'), ('-report-max-bytes', '1')]:
+        bounded_path = output / ('bounded-' + flag.removeprefix('-') + '.csv')
+        assert invoke('report-' + flag.removeprefix('-'), ['-non-screen', 'report', '-rows', '0,1,2',
+                      flag, value, '-artifact-out', str(bounded_path)], False) is None
+        assert not bounded_path.exists()
+    checks.append('host report row and encoded-byte budgets refuse oversized artifacts before publication')
     invoke('report-overwrite', ['-non-screen', 'report', '-artifact-out', str(csv_path)], False)
     sql("UPDATE public.tei_reference_execution_grants SET revoked=true WHERE provider_id='order-report';")
     denied = output / 'denied.csv'

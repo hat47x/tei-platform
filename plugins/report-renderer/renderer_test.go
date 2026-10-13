@@ -46,3 +46,41 @@ func TestRendererExchangePreservesDataAndCSVDefusesFormulas(t *testing.T) {
 		t.Fatal("cancelled renderer succeeded")
 	}
 }
+
+func TestRendererBudgetsAccountForEncodedOutputAndKeepNoPartialDocument(t *testing.T) {
+	rows := []Row{{OrderID: "1001", ItemCode: "<\"quoted\">", Quantity: "2"}}
+	for _, format := range []string{"csv", "json"} {
+		_, plain, err := Select(format)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected, err := plain(context.Background(), rows)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, exact, err := SelectBounded(format, Limits{MaxRows: 1, MaxBytes: len(expected.Bytes)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc, err := exact(context.Background(), rows)
+		if err != nil || string(doc.Bytes) != string(expected.Bytes) {
+			t.Fatal("exact byte boundary changed report")
+		}
+		_, short, _ := SelectBounded(format, Limits{MaxRows: 1, MaxBytes: len(expected.Bytes) - 1})
+		doc, err = short(context.Background(), rows)
+		if !errors.Is(err, ErrReportBudget) || len(doc.Bytes) != 0 || doc.MediaType != "" {
+			t.Fatal("over-budget output returned partial document")
+		}
+		doc, err = exact(context.Background(), append(rows, rows...))
+		if !errors.Is(err, ErrReportBudget) || len(doc.Bytes) != 0 {
+			t.Fatal("row budget ignored")
+		}
+	}
+	if _, _, err := SelectBounded("csv", Limits{}); err == nil {
+		t.Fatal("invalid limits accepted")
+	}
+	_, escaped, _ := SelectBounded("json", Limits{MaxRows: 1, MaxBytes: 100})
+	if doc, err := escaped(context.Background(), []Row{{ItemCode: strings.Repeat("<", 50)}}); !errors.Is(err, ErrReportBudget) || len(doc.Bytes) != 0 {
+		t.Fatal("escaped bytes not bounded")
+	}
+}

@@ -107,6 +107,37 @@ func TestServiceInvocationContextBindsHostAdapterWithoutChangingCaller(t *testin
 	}
 }
 
+func TestServiceShutdownRetainsCancelledDrainAndReportsCleanupFailure(t *testing.T) {
+	r, selected, _ := serviceRegistry(t)
+	failure := errors.New("temporary resource cleanup failed")
+	cleanups := 0
+	lifecycle := validLifecycle()
+	lifecycle.Prepare = func(_ context.Context, scope *Scope) error {
+		return scope.Track(func() error { cleanups++; return failure })
+	}
+	s, err := NewService(context.Background(), r, selected, selectedBinding(1, "v1"), allow, func(context.Context, int) (int, error) { return 42, nil }, lifecycle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Shutdown(context.Background(), 99); !errors.Is(err, ErrStaleGeneration) || cleanups != 0 {
+		t.Fatal("wrong generation silently shut down active service")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := s.Shutdown(ctx, 1); !errors.Is(err, context.Canceled) || cleanups != 0 {
+		t.Fatal("cancelled drain lost cleanup responsibility")
+	}
+	if _, _, err := s.Invoke(context.Background(), 0); !errors.Is(err, ErrUnbound) {
+		t.Fatal("shutdown continued accepting calls")
+	}
+	if err := s.Reap(context.Background()); !errors.Is(err, failure) || cleanups != 1 {
+		t.Fatal("cleanup error hidden")
+	}
+	if err := s.Reap(context.Background()); err != nil || cleanups != 1 {
+		t.Fatal("failed inverse retried")
+	}
+}
+
 func serviceRegistry(t *testing.T) (*Registry, Selection, Selection) {
 	t.Helper()
 	r := NewRegistry()

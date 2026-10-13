@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -13,9 +14,13 @@ import (
 	"strings"
 
 	"tei/internal/composition"
+	renderer "tei/plugins/report-renderer"
 )
 
-type nonScreenFlags struct{ mode, from, rows, format, output, login, credential, orderIDs, journal, journalInput *string }
+type nonScreenFlags struct {
+	mode, from, rows, format, output, login, credential, orderIDs, journal, journalInput *string
+	maxRows, maxBytes                                                                    *int
+}
 
 func (f nonScreenFlags) enabled() bool { return f.mode != nil && *f.mode != "" }
 
@@ -31,9 +36,11 @@ func registerNonScreenFlags(flags *flag.FlagSet) nonScreenFlags {
 		flags.String("order-ids", "", "reference: explicit order identities for read-only batch observation"),
 		flags.String("batch-journal", "", "reference: new synchronized progress file outside the model workspace"),
 		flags.String("batch-journal-in", "", "reference: untrusted progress log for read-only batch review"),
+		flags.Int("report-max-rows", renderer.DefaultLimits().MaxRows, "reference: report row budget"),
+		flags.Int("report-max-bytes", renderer.DefaultLimits().MaxBytes, "reference: encoded report byte budget"),
 	}
 }
-func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace string) error {
+func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace string) (resultErr error) {
 	if *f.journal != "" && *f.mode != "batch" {
 		return fmt.Errorf("-batch-journal requires -non-screen batch")
 	}
@@ -96,11 +103,11 @@ func (f nonScreenFlags) run(registry *composition.Registry, read readScenarioRun
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	s, err := wireNonScreen(ctx, registry, read, command, state, workspace, *f.output, *f.format, func(item batchItem) { _ = json.NewEncoder(os.Stderr).Encode(item) })
+	s, err := wireNonScreen(ctx, registry, read, command, state, workspace, *f.output, *f.format, func(item batchItem) { _ = json.NewEncoder(os.Stderr).Encode(item) }, renderer.Limits{MaxRows: *f.maxRows, MaxBytes: *f.maxBytes})
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	defer func() { resultErr = errors.Join(resultErr, s.Close()) }()
 	if *f.mode == "report" {
 		r, b, err := s.report.Invoke(ctx, input)
 		r.Composition = projectCompositionBinding(b)

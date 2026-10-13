@@ -147,3 +147,14 @@ func (s *Service[I, O]) Restore(ctx context.Context, selected Selection, expecte
 // business writes are never undone by disposal of an executable instance.
 func (s *Service[I, O]) Withdraw(expected uint64) error { return s.route.Withdraw(expected) }
 func (s *Service[I, O]) Reap(ctx context.Context) error { return s.route.Reap(ctx) }
+
+// Shutdown stops new calls and reports both withdrawal and retirement failures.
+// A cancelled drain retains its retirement for a later explicit Reap; no
+// business operation or failed inverse is retried by this method.
+func (s *Service[I, O]) Shutdown(ctx context.Context, expected uint64) error {
+	if s == nil || ctx == nil {
+		return ErrCoordinatorInvalid
+	}
+	err := s.Withdraw(expected)
+	return errors.Join(err, s.Reap(ctx))
+}

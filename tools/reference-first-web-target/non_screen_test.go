@@ -109,6 +109,57 @@ func TestPostgresScenarioNonScreenReportExchangeAndRevocation(t *testing.T) {
 		t.Fatal("revoked report created artifact")
 	}
 }
+
+func TestPostgresScenarioCompletedBatchSurvivesReportedPluginCleanupFailure(t *testing.T) {
+	state := postgresTestState(t)
+	s := postgresNonScreen(t, state, "csv", "", nil)
+	if err := s.render.Shutdown(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	registry := composition.NewRegistry()
+	if _, err := registry.Apply(0, []composition.Provider{{ID: "report-csv", Scope: "reference/order_entry/development", Offers: renderer.Contract}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	selected, err := registry.Select("report-csv", "reference/order_entry/development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.CreateTemp(t.TempDir(), "renderer-resource-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cleanupCalls := 0
+	lifecycle := composition.Lifecycle{Prepare: func(_ context.Context, scope *composition.Scope) error {
+		return scope.Track(func() error { cleanupCalls++; return file.Close() })
+	}, Ready: func(context.Context, composition.Binding) error { return nil }}
+	binding := composition.Binding{ContractID: renderer.Contract.ID, ContractVersion: renderer.Contract.Version, ProviderID: "report-csv", ArtifactDigest: state.digest, Generation: 1}
+	s.render, err = composition.NewService(context.Background(), registry, selected, binding, func(composition.Binding) error { return nil }, renderer.CSV, lifecycle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := nonScreenTestInput()
+	input.Rows = []int{0, 2}
+	result, _, err := s.batch.Invoke(context.Background(), input)
+	if err != nil || result.Stage != "completed" {
+		t.Fatalf("batch: %+v %v", result, err)
+	}
+	closeErr := s.Close()
+	if !errors.Is(closeErr, os.ErrClosed) || cleanupCalls != 1 {
+		t.Fatalf("cleanup failure lost: %v", closeErr)
+	}
+	if !errors.Is(s.Close(), os.ErrClosed) || cleanupCalls != 1 {
+		t.Fatal("cleanup failure forgotten or retried")
+	}
+	if _, _, err := s.report.Invoke(context.Background(), input); !errors.Is(err, composition.ErrUnbound) {
+		t.Fatal("other services still callable after cleanup failure")
+	}
+	if statusOf(t, state, 1001) != "submitted" || statusOf(t, state, 1003) != "submitted" {
+		t.Fatal("cleanup failure rolled back durable business result")
+	}
+}
 func TestPostgresScenarioNonScreenBatchCancelReplayAndExplicitRemainder(t *testing.T) {
 	state := postgresTestState(t)
 	ctx, cancel := context.WithCancel(context.Background())

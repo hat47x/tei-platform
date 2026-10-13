@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"tei/internal/composition"
 	renderer "tei/plugins/report-renderer"
@@ -29,6 +31,7 @@ type reportReceipt struct {
 	Rows        int               `json:"rows"`
 	Renderer    *compositionTrace `json:"renderer"`
 	Composition *compositionTrace `json:"composition"`
+	Limits      renderer.Limits   `json:"limits"`
 }
 type batchItem struct {
 	OrderID int64                 `json:"orderId"`
@@ -42,24 +45,28 @@ type batchReceipt struct {
 	Composition *compositionTrace `json:"composition"`
 }
 type nonScreenServices struct {
-	report *composition.Service[nonScreenInput, reportReceipt]
-	batch  *composition.Service[nonScreenInput, batchReceipt]
-	render *composition.Service[[]renderer.Row, renderer.Document]
+	report    *composition.Service[nonScreenInput, reportReceipt]
+	batch     *composition.Service[nonScreenInput, batchReceipt]
+	render    *composition.Service[[]renderer.Row, renderer.Document]
+	closeOnce sync.Once
+	closeErr  error
 }
 
-func (s *nonScreenServices) Close() {
-	if s.report != nil {
-		_ = s.report.Withdraw(1)
-		_ = s.report.Reap(context.Background())
-	}
-	if s.batch != nil {
-		_ = s.batch.Withdraw(1)
-		_ = s.batch.Reap(context.Background())
-	}
-	if s.render != nil {
-		_ = s.render.Withdraw(1)
-		_ = s.render.Reap(context.Background())
-	}
+func (s *nonScreenServices) Close() error {
+	s.closeOnce.Do(func() {
+		var failures []error
+		if s.report != nil {
+			failures = append(failures, s.report.Shutdown(context.Background(), 1))
+		}
+		if s.batch != nil {
+			failures = append(failures, s.batch.Shutdown(context.Background(), 1))
+		}
+		if s.render != nil {
+			failures = append(failures, s.render.Shutdown(context.Background(), 1))
+		}
+		s.closeErr = errors.Join(failures...)
+	})
+	return s.closeErr
 }
 
 type frozenRead struct{ value readScenarioResult }
@@ -139,11 +146,18 @@ func publishReport(ctx context.Context, root, path string, doc renderer.Document
 	return reportReceipt{Path: path, Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(doc.Bytes)), MediaType: doc.MediaType}, nil
 }
 
-func wireNonScreen(ctx context.Context, registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace, destination, format string, progress func(batchItem)) (*nonScreenServices, error) {
+func wireNonScreen(ctx context.Context, registry *composition.Registry, read readScenarioRunner, command *referenceCommandScenarioRunner, state *postgresScenarioState, workspace, destination, format string, progress func(batchItem), limits ...renderer.Limits) (*nonScreenServices, error) {
 	if state == nil || command == nil || registry == nil || read == nil {
 		return nil, fmt.Errorf("non-screen reference requires PostgreSQL and composed read")
 	}
-	provider, render, err := renderer.Select(format)
+	budget := renderer.DefaultLimits()
+	if len(limits) > 1 {
+		return nil, fmt.Errorf("one report budget is required")
+	}
+	if len(limits) == 1 {
+		budget = limits[0]
+	}
+	provider, render, err := renderer.SelectBounded(format, budget)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +191,7 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 	if err != nil {
 		return nil, err
 	}
-	fail := func(err error) (*nonScreenServices, error) { s.Close(); return nil, err }
+	fail := func(err error) (*nonScreenServices, error) { return nil, errors.Join(err, s.Close()) }
 	selection, err = registry.Select("order-report", scope)
 	if err != nil {
 		return fail(err)
@@ -213,6 +227,7 @@ func wireNonScreen(ctx context.Context, registry *composition.Registry, read rea
 		}
 		receipt, err := publishReport(ctx, workspace, destination, doc)
 		receipt.Rows = len(rows)
+		receipt.Limits = budget
 		receipt.Renderer = projectCompositionBinding(renderBinding)
 		return receipt, err
 	}, lifecycle)
