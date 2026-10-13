@@ -96,10 +96,10 @@ func scopedCanonicalWorld(t *testing.T) driver.Resolver {
 
 func scopedTestAuthority() PostgresCustomerScope {
 	return PostgresCustomerScope{
-		PrincipalID: "subject-order-viewer",
-		RowScopeID: "trusted-customer-scope",
+		PrincipalID:    "subject-order-viewer",
+		RowScopeID:     "trusted-customer-scope",
 		PolicyRevision: "policy-1",
-		CustomerID: 11,
+		CustomerID:     11,
 	}
 }
 

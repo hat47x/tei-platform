@@ -20,10 +20,11 @@ import (
 // named public.orders. No existing public.orders is modified or dropped.
 //
 // Setup example (in a disposable Postgres instance):
-//   CREATE DATABASE tei_web_scoped_e2e;
-//   TEI_WEB_SCOPED_PG_DSN='postgres://.../tei_web_scoped_e2e?sslmode=disable' \
-//     TEI_WEB_SCOPED_PG_CONFIRM_ISOLATED=tei_web_scoped_e2e \
-//     go test ./reference/web-api-contract -run TestScopedPostgresAgainstIsolatedDatabase -v
+//
+//	CREATE DATABASE tei_web_scoped_e2e;
+//	TEI_WEB_SCOPED_PG_DSN='postgres://.../tei_web_scoped_e2e?sslmode=disable' \
+//	  TEI_WEB_SCOPED_PG_CONFIRM_ISOLATED=tei_web_scoped_e2e \
+//	  go test ./reference/web-api-contract -run TestScopedPostgresAgainstIsolatedDatabase -v
 func TestScopedPostgresAgainstIsolatedDatabase(t *testing.T) {
 	dsn := os.Getenv("TEI_WEB_SCOPED_PG_DSN")
 	if dsn == "" {
@@ -118,7 +119,7 @@ func TestScopedPostgresAgainstIsolatedDatabase(t *testing.T) {
 			pub := scopedPublication(t)
 			trusted := TrustedReadContext{
 				PrincipalID: "subject-order-viewer",
-				RowScopeID: tc.scopeID, PolicyRevision: "e2e-r1",
+				RowScopeID:  tc.scopeID, PolicyRevision: "e2e-r1",
 			}
 			plan, err := AuthorizeBrowseRead(ctx, fixtureAuthorization(t), pub, tc.options, trusted)
 			if err != nil {
@@ -127,10 +128,10 @@ func TestScopedPostgresAgainstIsolatedDatabase(t *testing.T) {
 			provider := ScopedRecentOrdersPostgres{
 				DB: db, Database: core.MustCanonicalID("sales_core"),
 				Scope: PostgresCustomerScope{
-					PrincipalID: trusted.PrincipalID,
-					RowScopeID: trusted.RowScopeID,
+					PrincipalID:    trusted.PrincipalID,
+					RowScopeID:     trusted.RowScopeID,
 					PolicyRevision: trusted.PolicyRevision,
-					CustomerID: tc.customerID,
+					CustomerID:     tc.customerID,
 				},
 			}
 			got, err := ExecuteScopedCanonicalRead(ctx, scopedCanonicalWorld(t),
