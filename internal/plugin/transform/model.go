@@ -29,6 +29,7 @@ const (
 	OpSortArrayBy     Op = "sort-array-by"
 	OpReplaceField    Op = "replace-field"
 	OpOmitField       Op = "omit-field"
+	OpOmitEmptyArrayField Op = "omit-empty-array-field"
 	OpAssertEqual     Op = "assert-equal"
 	OpAssertEnum      Op = "assert-enum"
 	OpAssertNonBlank  Op = "assert-nonblank"
@@ -331,11 +332,11 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 		if err := child(expr.Value, "replace-field value"); err != nil {
 			return err
 		}
-	case OpOmitField:
+	case OpOmitField, OpOmitEmptyArrayField:
 		if err := rejectUnexpectedExprFields(expr, "from", "field"); err != nil {
 			return err
 		}
-		if err := child(expr.From, "omit-field source"); err != nil {
+		if err := child(expr.From, string(expr.Op)+" source"); err != nil {
 			return err
 		}
 		if strings.TrimSpace(expr.Field) == "" {
