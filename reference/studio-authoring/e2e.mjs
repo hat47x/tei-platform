@@ -305,6 +305,32 @@ function testLoop(label, edit, expectedKind, expectedID, expectedPath) {
       report.includes("source-index-backed") &&
       report.includes("verified-at-read"),
       "er: inspect HTML shows four lenses and the verified Source location");
+    // #1120 typed graph/sourcebridge is queried through the actual Go CLI.
+    // The observation scope is caller-selected; it does not qualify Business
+    // Procedure or bypass the existing Source/Acceptance authority.
+    const typedInspect = JSON.parse(command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:sales.order.lines",
+      "-typed-scope", "order-entry-reference"
+    ]).stdout);
+    checked(typedInspect.modelRevision === beforeRevision &&
+      typedInspect.typedReferences?.schema === "tei.reference.studio-typed-trace/v0" &&
+      typedInspect.typedReferences.subject.scope === "order-entry-reference" &&
+      typedInspect.typedReferences.subject.subject.kind === "semantic-relation" &&
+      typedInspect.typedReferences.sourceConsistency === "exact-anchor-match" &&
+      typedInspect.typedReferences.authority === "candidate-read-only",
+      "er: Go modelref/sourcebridge agrees with Studio Source anchor at R0");
+    const typedHTML = command(process.execPath, [
+      join(root, "reference/studio-authoring/cli.mjs"),
+      "inspect", "-workspace", workspace,
+      "-focus", "relation:sales.order.lines",
+      "-typed-scope", "order-entry-reference", "-format", "html"
+    ]).stdout;
+    checked(typedHTML.includes('id="typed"') &&
+      typedHTML.includes("candidate-read-only") &&
+      typedHTML.includes("exact-anchor-match"),
+      "er: browser document displays Go typed references separately without Acceptance");
     const reviewPage = command(process.execPath, [
       join(root, "reference/studio-authoring/cli.mjs"),
       "review-edit", "-workspace", workspace, "-edit-file", editPath,
