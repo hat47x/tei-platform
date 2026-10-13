@@ -420,7 +420,8 @@ function dragStart(event,node){
   const p=positionMap().get(key(node.kind,node.id));
   const index=nodes().findIndex(n=>n.kind===node.kind&&n.id===node.id);
   const position=p||{x:40+(index%4)*260,y:50+Math.floor(index/4)*115};
-  dragging={node,startX:event.clientX,startY:event.clientY,position,rect,pointerId:event.pointerId};
+  dragging={node,startX:event.clientX,startY:event.clientY,position,rect,pointerId:event.pointerId,
+    dfd:state.dfd,layout:state.layout};
   $('diagram').setPointerCapture(event.pointerId);
 }
 function proposeNodeMove(node,x,y){
@@ -443,7 +444,10 @@ $('diagram').addEventListener('pointercancel',event=>{
 $('diagram').addEventListener('pointerup',event=>{
   if(!dragging||!state.dfd||!state.layout)return;
   if(event.pointerId!==undefined && dragging.pointerId!==undefined && event.pointerId!==dragging.pointerId)return;
-  const {node,startX,startY,position,rect}=dragging;dragging=null;
+  const {node,startX,startY,position,rect,dfd,layout}=dragging;dragging=null;
+  // A layout picker change or an applied layout invalidates the drag origin.
+  // Never create a move against a different layout even if the DFD is unchanged.
+  if(state.dfd!==dfd||state.layout!==layout)return;
   const view=$('diagram').viewBox.baseVal;
   const dx=(event.clientX-startX)*(view.width/rect.width);
   const dy=(event.clientY-startY)*(view.height/rect.height);

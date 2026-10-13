@@ -41,6 +41,8 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E26：受注明細とSUI候補の構成記述量を再現可能な数値で測定](E26_COMPOSITION_COST_BASELINE.md)／[Go回帰試験](e26_composition_cost_baseline_test.go) — 既存Web5ファイル、隔離SUI候補3ファイルの宣言・行数を測り、実導入作業と未測定項目を混同しない。
 - [E27：既存構成と残余選択をSource観測から区分](E27_RESIDUAL_SELECTION_AUDIT.md)／[監査器](e27_residual_selection_audit.mjs)／[Node.js回帰試験](e27_residual_selection_audit.test.mjs) — 実TEI SourceのE1既知14観測点を再利用し、既存4項目・Stage 0 1項目・別判断3項目・実行時検証2項目を区別。実際の工数とAI質問数は未計測。
 - [E28：構成作業の申告・質問・改修件数を未検証のまま分離](E28_WORKFLOW_MEASUREMENT.md)／[読み取り専用集計器](e28_workflow_measurement.mjs)／[Node.js回帰試験](e28_workflow_measurement.test.mjs) — E27のSource観測を再利用。比較する実案件の人手・AI質問数は推測せず、申告イベントと検証済み結果を区別する。
+- [E31：SUIとTEIの二つのGit基点を照合する作業比較](E31_PAIRED_SOURCE_BASELINE.md)／[読取り比較器](e31_paired_source_comparison.mjs)／[Node回帰試験](e31_paired_source_comparison.test.mjs) — 既存E28比較を再利用し、SUI改訂が異なる二方式の申告件数を同条件比較へ昇格させない。
+- [E32：実案件Go＋Lit試作PRの変更範囲を計測](E32_REAL_PROJECT_PLUGIN_FOOTPRINT.md)／[固定PR出典](e32_project_plugin_pr1567_snapshot.json)／[読取り集計器](e32_plugin_pr_footprint.mjs)／[Node回帰試験](e32_plugin_pr_footprint.test.mjs) — #1567の20ファイル・追加1,267行を機能・試験・配布物に分離し、正式Provider採用や生成AIとの往復数と混同しない。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。

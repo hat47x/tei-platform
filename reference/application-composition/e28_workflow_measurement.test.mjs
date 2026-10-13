@@ -123,3 +123,151 @@ test('E28 no unverified report is promoted into Runtime permission or SUI accept
   assert.equal(candidate.compatibilityVerified,false);
   assert.equal(candidate.verifiedCounts,null);
 });
+
+test('E29 partial submissions cannot produce a reported productivity delta even with identical source baselines',async()=>{
+  const audit=await observeE27(root);
+  const profile={...scenario,arm:'profile-candidate'};
+  const partialExisting=assessE28(audit,submission([
+    step('a','manual-connection'),
+  ]));
+  const partialProfile=assessE28(audit,submission([
+    step('b','manual-connection'),step('c','ai-question'),
+  ],{scenario:profile}));
+  const completeExisting=assessE28(audit,submission([
+    step('d','manual-connection'),
+  ],{complete:true}));
+  const completeProfile=assessE28(audit,submission([
+    step('e','manual-connection'),step('f','ai-question'),
+  ],{scenario:profile,complete:true}));
+  const notComparable={status:'not-comparable',reportedDelta:null,verifiedImprovement:null};
+  assert.deepEqual(compareE28(partialExisting,partialProfile),notComparable);
+  assert.deepEqual(compareE28(partialExisting,completeProfile),notComparable);
+  assert.deepEqual(compareE28(completeExisting,partialProfile),notComparable);
+  assert.equal(compareE28(completeExisting,completeProfile).status,
+    'reported-only-not-verified');
+  assert.equal(completeExisting.verifiedCounts,null);
+  assert.equal(completeProfile.verifiedCounts,null);
+});
+
+
+test('E30 optional coverage keeps untracked AI questions and decisions null, not zero',async()=>{
+  const audit=await observeE27(root);
+  const report=assessE28(audit,submission([
+    step('connection1','manual-connection'),
+    step('edit1','changed-source',{
+      repository:'hat47x/tei-platform',
+      path:'reference/ui-customization/web-react/project-extension.mjs',
+      beforeBlob:shaA,afterBlob:shaB,
+    }),
+  ],{complete:true,coverage:{manualConnections:'complete',
+    changedFiles:'complete',aiQuestions:'untracked'}}));
+  assert.equal(report.submittedCounts.aiQuestions,0);
+  assert.deepEqual(report.claimedCoveredCounts,{
+    humanDecisions:null,aiQuestions:null,manualConnections:1,
+    changedFiles:1,validationRuns:null,requalificationRuns:null,
+  });
+  assert.equal(report.verifiedCounts,null);
+  assert.equal(report.runtimeAuthorityVerified,false);
+  const noEvents=assessE28(audit,submission([],{
+    complete:true,coverage:{aiQuestions:'complete'}}));
+  assert.equal(noEvents.claimedCoveredCounts.aiQuestions,0);
+  assert.equal(noEvents.claimedCoveredCounts.changedFiles,null);
+  const noCoverage=assessE28(audit,submission([],{complete:true}));
+  assert.equal(noCoverage.claimedCoveredCounts,null);
+});
+
+test('E30 an open record cannot claim complete coverage even if metadata says complete',async()=>{
+  const audit=await observeE27(root);
+  const incomplete=assessE28(audit,submission([
+    step('q1','ai-question'),
+  ],{complete:false,coverage:{aiQuestions:'complete',manualConnections:'complete'}}));
+  assert.equal(incomplete.submittedCounts.aiQuestions,1);
+  assert.equal(incomplete.claimedCoveredCounts.aiQuestions,null);
+  assert.equal(incomplete.claimedCoveredCounts.manualConnections,null);
+  assert.equal(incomplete.scope,'partial-not-verified');
+});
+
+test('E30 same path from different repositories is counted twice only with explicit identities',async()=>{
+  const audit=await observeE27(root);
+  const edit=repository=>step('edit-'+repository.replace('/','-'),'changed-source',{
+    repository,path:'docs/README.md',beforeBlob:shaA,afterBlob:shaB});
+  const report=assessE28(audit,submission([
+    edit('hat47x/tei-platform'),edit('hat47x/sui-sensemaking'),
+  ],{complete:true,coverage:{changedFiles:'complete'}}));
+  assert.equal(report.submittedCounts.changedFiles,2);
+  assert.equal(report.claimedCoveredCounts.changedFiles,2);
+  const legacy=assessE28(audit,submission([
+    step('first','changed-source',{path:'docs/README.md',beforeBlob:shaA,afterBlob:shaB}),
+    step('second','changed-source',{path:'docs/README.md',beforeBlob:shaB,afterBlob:shaA}),
+  ],{complete:true}));
+  assert.equal(legacy.submittedCounts.changedFiles,1);
+  assert.equal(legacy.claimedCoveredCounts,null);
+});
+
+test('E30 covered comparisons report null for unknown dimensions, never a productivity gain',async()=>{
+  const audit=await observeE27(root);
+  const profile={...scenario,arm:'profile-candidate'};
+  const existing=assessE28(audit,submission([
+    step('first','manual-connection'),
+    step('second','ai-question'),
+  ],{complete:true,coverage:{manualConnections:'complete',aiQuestions:'untracked'}}));
+  const candidate=assessE28(audit,submission([
+    step('first','manual-connection'),step('second','manual-connection'),
+  ],{complete:true,scenario:profile,coverage:{manualConnections:'complete',
+    aiQuestions:'untracked'}}));
+  const compared=compareE28(existing,candidate);
+  assert.equal(compared.status,'reported-coverage-only-not-verified');
+  assert.equal(compared.reportedDelta.manualConnections,1);
+  assert.equal(compared.reportedDelta.aiQuestions,null);
+  assert.equal(compared.reportedDelta.changedFiles,null);
+  assert.equal(compared.verifiedImprovement,null);
+  const withoutCoverage=assessE28(audit,submission([
+    step('first','manual-connection'),
+  ],{complete:true,scenario:profile}));
+  assert.deepEqual(compareE28(existing,withoutCoverage),
+    {status:'not-comparable',reportedDelta:null,verifiedImprovement:null});
+});
+
+test('E30 invalid coverage and repository identity fail closed',async()=>{
+  const audit=await observeE27(root);
+  const inherited=Object.create({aiQuestions:'complete'});
+  const inheritedReport=assessE28(audit,submission([],{
+    complete:true,coverage:inherited,
+  }));
+  assert.equal(inheritedReport.claimedCoveredCounts.aiQuestions,null);
+
+  for (const badCoverage of [
+    {aiQuestions:'already-approved'},
+    {aiQuestions:true},
+    {sourceCode:'complete'},
+    null,
+  ]) {
+    assert.throws(()=>assessE28(audit,submission([],{
+      complete:true,coverage:badCoverage,
+    })),/invalid_workflow_coverage/);
+  }
+  for (const badRepository of ['/root','repo','../repo','a/b/c','test\\origin']) {
+    assert.throws(()=>assessE28(audit,submission([
+      step('bad','changed-source',{repository:badRepository,path:'a/file',
+        beforeBlob:shaA,afterBlob:shaB}),
+    ])),/invalid_source_edit/);
+  }
+  assert.throws(()=>assessE28(audit,submission([
+    step('extra','ai-question',{repository:'hat47x/tei-platform'}),
+  ])),/unexpected_source_edit/);
+});
+
+
+test('E30 no mutually covered dimension means no comparison, even when both claim complete',async()=>{
+  const audit=await observeE27(root);
+  const left=assessE28(audit,submission([],{
+    complete:true,coverage:{aiQuestions:'untracked',manualConnections:'untracked'},
+  }));
+  const right=assessE28(audit,submission([],{
+    complete:true,scenario:{...scenario,arm:'profile-candidate'},
+    coverage:{aiQuestions:'untracked',manualConnections:'untracked'},
+  }));
+  assert.deepEqual(compareE28(left,right),{
+    status:'not-comparable',reportedDelta:null,verifiedImprovement:null,
+  });
+});

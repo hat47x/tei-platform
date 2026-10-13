@@ -79,3 +79,16 @@ jobs:
           set -euo pipefail
           node --test reference/application-composition/e28_workflow_measurement.test.mjs
           node reference/application-composition/e28_workflow_measurement.mjs . > /dev/null
+
+      - name: E31の別リポジトリ版対応を照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e31_paired_source_comparison.test.mjs
+
+      - name: E32の実案件Plugin試作差分を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e32_plugin_pr_footprint.test.mjs
+          node reference/application-composition/e32_plugin_pr_footprint.mjs > /dev/null

@@ -17,6 +17,7 @@ func environmentSelectionCatalog() plugin.Catalog {
 			{ID: cid("tei.other"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
 		},
 		Bundles: []plugin.Bundle{
+			{ID: cid("tei.zero"), Version: "0.1.0", Plugins: []plugin.Requirement{{Plugin: cid("tei.base"), CompatibleMajor: 1}}},
 			{ID: cid("tei.standard"), Version: "1.0.0", Plugins: []plugin.Requirement{{Plugin: cid("tei.base"), CompatibleMajor: 1}}},
 			{ID: cid("tei.standard"), Version: "2.0.0", Plugins: []plugin.Requirement{{Plugin: cid("tei.base"), CompatibleMajor: 2}}},
 			{ID: cid("tei.other_bundle"), Version: "1.0.0", Plugins: []plugin.Requirement{{Plugin: cid("tei.base"), CompatibleMajor: 1}}},
@@ -111,6 +112,7 @@ func TestEnvironmentSelectorValuesRejectMalformedSourceBeforeLookup(t *testing.T
 		{"plugin padded id", environment.Environment{Plugins: []environment.ExtensionRequirement{{ID: core.CanonicalID(" tei.base "), CompatibleMajor: 1}}}, "invalid canonical id"},
 		{"plugin zero major", environment.Environment{Plugins: []environment.ExtensionRequirement{{ID: cid("tei.base"), CompatibleMajor: 0}}}, "invalid compatible major"},
 		{"bundle invalid id", environment.Environment{Bundles: []environment.ExtensionRequirement{{ID: core.CanonicalID("bad id"), CompatibleMajor: 1}}}, "invalid canonical id"},
+		{"bundle zero major cannot select zero-version bundle", environment.Environment{Bundles: []environment.ExtensionRequirement{{ID: cid("tei.zero"), CompatibleMajor: 0}}}, "invalid compatible major"},
 		{"bundle negative major", environment.Environment{Bundles: []environment.ExtensionRequirement{{ID: cid("tei.standard"), CompatibleMajor: -1}}}, "invalid compatible major"},
 	}
 	for _, tc := range cases {

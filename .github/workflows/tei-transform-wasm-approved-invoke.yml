@@ -1,0 +1,79 @@
+name: TEI 署名Host受理後の実Wasm Engine起動照合
+
+# #973固有のReference受入試験。全PR共通Gateにはしない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - tools/reference-transform-runtime-engine/target_cli_fixture_test.go
+      - tools/reference-plugin-self-build/wasm_host_acceptance_test.go
+      - tools/check-transform-wasm-approved-invoke.sh
+      - .github/workflows/tei-transform-wasm-approved-invoke.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/reference-transform-runtime-engine/target_cli_fixture_test.go
+      - tools/reference-plugin-self-build/wasm_host_acceptance_test.go
+      - tools/check-transform-wasm-approved-invoke.sh
+      - .github/workflows/tei-transform-wasm-approved-invoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-wasm-approved-invoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  signed-host-accepted-wasm-cli:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 受入候補を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: リポジトリ指定版のGoを使用
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: 署名付き受理後に実Wasm CLIを起動する
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          bash tools/check-transform-wasm-approved-invoke.sh "$RUNNER_TEMP/tei-approved-wasm"
+
+      - name: 変更のない作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: 実CLI応答とHost受理検査のログを保存
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-wasm-approved-invoke-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/tei-approved-wasm/conformance-evidence.json
+            ${{ runner.temp }}/tei-approved-wasm/approved-wasm-cli-evidence.json
+            ${{ runner.temp }}/tei-approved-wasm/cli-fixture-test.log
+            ${{ runner.temp }}/tei-approved-wasm/wasm-host-approval.log
+            ${{ runner.temp }}/tei-approved-wasm/cli-expected-response.json
+            ${{ runner.temp }}/tei-approved-wasm/native-cli-response.json
+            ${{ runner.temp }}/tei-approved-wasm/wasm-cli-response.json
+          if-no-files-found: error
+          retention-days: 7
