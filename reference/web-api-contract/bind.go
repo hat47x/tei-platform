@@ -162,6 +162,9 @@ type CommandRequest struct {
 }
 
 type CommandIntent struct {
+	// PrincipalID is server-supplied execution context, never browser input.
+	// Its presence is not proof that the runtime authenticated this identity.
+	PrincipalID      string
 	ActionID         string
 	ExpectedRevision string
 	IdempotencyKey   string
@@ -193,5 +196,5 @@ func BindCommand(req CommandRequest, spec CommandSpec, trustedPrincipalID string
 		}
 		changes[name] = ch
 	}
-	return CommandIntent{ActionID: req.ActionID, ExpectedRevision: req.ExpectedRevision, IdempotencyKey: req.IdempotencyKey, Changes: changes}, nil
+	return CommandIntent{PrincipalID: trustedPrincipalID, ActionID: req.ActionID, ExpectedRevision: req.ExpectedRevision, IdempotencyKey: req.IdempotencyKey, Changes: changes}, nil
 }
