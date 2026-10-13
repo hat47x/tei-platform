@@ -13,8 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/driver"
+	"tei/internal/query"
 	"tei/internal/workspace"
 )
 
