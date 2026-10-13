@@ -65,8 +65,8 @@ func TestImpactFailsClosedOnUnresolvedAndUnknownRelations(t *testing.T) {
 // Kind and ID with an in-band delimiter causes unrelated valid subjects to
 // collide and incorrectly suppresses the affected consumer.
 func TestUnscopedImpactUsesDistinctSubjectFields(t *testing.T) {
-	target := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "data", ID: "x\\x00y"}}
-	other := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "data\\x00x", ID: "y"}}
+	target := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "data", ID: "x\x00y"}}
+	other := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "data\x00x", ID: "y"}}
 	consumer := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "function", ID: "processor"}}
 	graph := modelref.Graph{
 		Schema: "tei.modelref.v0",
