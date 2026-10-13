@@ -87,11 +87,11 @@ func TestAuditNamespaceDependenciesCoversSemanticReferencesAndKeepsNestedScope(t
 			}},
 		}},
 		Capabilities: []semantic.Capability{{
-			ID: "os.start",
-			Inputs: []semantic.Parameter{{Name: "machine", Type: "common.machine_id"}},
-			Output: "std.text",
+			ID:       "os.start",
+			Inputs:   []semantic.Parameter{{Name: "machine", Type: "common.machine_id"}},
+			Output:   "std.text",
 			Outcomes: []semantic.Outcome{{Name: "started", Payload: "common.sub.result"}},
-			Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "common.machine"},
+			Effect:   &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "common.machine"},
 		}},
 		Validations: []semantic.Validation{{
 			ID: "os.valid", Attribute: "common.machine.id", Relation: "os.process.machine",
@@ -124,10 +124,10 @@ func TestAuditNamespaceDependenciesCoversSemanticReferencesAndKeepsNestedScope(t
 		"semantic-attribute/type":                   "common.sub",
 		"semantic-relation/target":                  "common",
 		"semantic-relation/keys[0].targetAttribute": "common",
-		"semantic-capability/input:machine":        "common",
-		"semantic-capability/outcome:started":      "common.sub",
-		"semantic-capability/effect.data":          "common",
-		"semantic-validation/attribute":            "common",
+		"semantic-capability/input:machine":         "common",
+		"semantic-capability/outcome:started":       "common.sub",
+		"semantic-capability/effect.data":           "common",
+		"semantic-validation/attribute":             "common",
 	} {
 		if fields[field] != want {
 			t.Fatalf("missing cross-namespace reference %s expected %s: %+v", field, want, a.External)
