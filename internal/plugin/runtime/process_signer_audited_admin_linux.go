@@ -49,15 +49,17 @@ type LinuxSignerAuditSink interface {
 	RecordSignerChange(ctx context.Context, event LinuxSignerAuditEvent) error
 }
 
-// LinuxSignerAuditedAdmin composes the separately authorized Host admin with
-// a required, Host-selected audit sink. The mutex orders calls through this
-// particular instance; direct Trust.Allow/Revoke and other adapters can
-// bypass this ordering, so epochs are observations rather than a transaction.
+// LinuxSignerAuditedAdmin composes Host authorization with a required audit
+// sink and Host-owned durable operation reservation ledger. The mutex only
+// orders calls through this instance. The ledger must enforce uniqueness
+// across instances and restarts; raw Trust.Allow/Revoke can still bypass both
+// controls, so observed epochs are not transactional evidence.
 type LinuxSignerAuditedAdmin struct {
-	mu     sync.Mutex
-	Admin  LinuxSignerAdmin
-	Sink   LinuxSignerAuditSink
-	HostID string
+	mu         sync.Mutex
+	Admin      LinuxSignerAdmin
+	Sink       LinuxSignerAuditSink
+	Operations LinuxSignerOperationLedger
+	HostID     string
 }
 
 // A typed-nil pointer inside an interface is not equal to nil. Reject such
@@ -79,6 +81,7 @@ func (a *LinuxSignerAuditedAdmin) preflight(ctx context.Context, principal, oper
 	if a == nil || ctx == nil || a.Admin.Trust == nil ||
 		missingLinuxSignerAdminDependency(a.Admin.Authorizer) ||
 		missingLinuxSignerAdminDependency(a.Sink) ||
+		missingLinuxSignerAdminDependency(a.Operations) ||
 		a.HostID == "" || principal == "" || operationID == "" ||
 		strings.TrimSpace(a.HostID) != a.HostID ||
 		strings.TrimSpace(operationID) != operationID ||
@@ -102,6 +105,32 @@ func (a *LinuxSignerAuditedAdmin) snapshot(ref string) (uint64, string) {
 		return 0, ""
 	}
 	return epoch, linuxSignerKeyFingerprint(public)
+}
+
+// reserve prevents a previously used Host operation ID from changing trust
+// twice. The Host-provided ledger must atomically persist the reservation.
+// A failed result audit leaves the reservation in place for reconciliation.
+func (a *LinuxSignerAuditedAdmin) reserve(ctx context.Context, event LinuxSignerAuditEvent) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	ok, err := a.Operations.ReserveSignerOperation(ctx, LinuxSignerOperationReservation{
+		HostID:      event.HostID,
+		OperationID: event.OperationID,
+		Principal:   event.Principal,
+		SignerRef:   event.SignerRef,
+		Action:      event.Action,
+		KeySHA256:   event.NewKeySHA256,
+	})
+	if err != nil {
+		// Storage diagnostics may contain credentials. Do not pass them to
+		// the plugin or management API.
+		return ErrLinuxSignerOperationReservationUnavailable
+	}
+	if !ok {
+		return ErrLinuxSignerOperationReplay
+	}
+	return nil
 }
 
 func (a *LinuxSignerAuditedAdmin) record(ctx context.Context, event LinuxSignerAuditEvent) error {
@@ -155,6 +184,9 @@ func (a *LinuxSignerAuditedAdmin) Allow(ctx context.Context, principal, operatio
 		event.Phase, event.ReasonCode = "denied", "invalid_public_key"
 		return a.finalize(ctx, event, errors.New("invalid Host signer public key"))
 	}
+	if err := a.reserve(ctx, event); err != nil {
+		return err
+	}
 	event.OldEpoch, event.OldKeySHA256 = a.snapshot(req.SignerRef)
 	event.Phase = "prepared"
 	if err := a.record(ctx, event); err != nil {
@@ -187,6 +219,9 @@ func (a *LinuxSignerAuditedAdmin) Revoke(ctx context.Context, principal, operati
 		SignerRef: ref, Action: "revoke",
 	}
 	if err := a.authorize(ctx, event); err != nil {
+		return false, err
+	}
+	if err := a.reserve(ctx, event); err != nil {
 		return false, err
 	}
 	event.OldEpoch, event.OldKeySHA256 = a.snapshot(ref)
