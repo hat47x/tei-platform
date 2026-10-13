@@ -101,9 +101,9 @@ func TestRealLegacyAuthorizationBeforeCanonicalCommandBind(t *testing.T) {
 	// This CommandSpec only tests authorization/binding. A real Capability
 	// input must be validated by the runtime; no write occurs in this test.
 	spec := CommandSpec{
-		ActionID: string(published.CapabilityID),
-		Allowed: true,
-		RequiresRevision: true,
+		ActionID:            string(published.CapabilityID),
+		Allowed:             true,
+		RequiresRevision:    true,
 		RequiresIdempotency: true,
 	}
 	req := CommandRequest{
