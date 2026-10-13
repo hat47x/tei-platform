@@ -54,6 +54,19 @@ for attempt in $(seq 1 100); do
   sleep 0.1
 done
 test -s "$tmp/context.json"
+# Even on loopback, reject DNS-rebinding aliases at the actual HTTP listener.
+# The hostile Host must not reach either the static, read, or advisory route.
+for route in / /project/order-entry-context; do
+  status="$(curl -sS --max-time 2 -o "$tmp/host-reject.txt" -w '%{http_code}' \\
+    -H 'Host: attacker.invalid:8787' "$host$route")"
+  test "$status" = 421 || { echo "unsafe Host accepted on $route: $status" >&2; exit 1; }
+done
+status="$(curl -sS --max-time 2 -o "$tmp/host-reject.txt" -w '%{http_code}' \\
+  -H 'Host: attacker.invalid:8787' -H 'Origin: http://attacker.invalid:8787' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"customerCode":"VIP-1","note":""}' "$host/project/advice")"
+test "$status" = 421 || { echo "unsafe Host accepted on advisory: $status" >&2; exit 1; }
+echo "PASS: actual diagnostic listener rejects DNS-rebinding Host aliases"
 python3 - "$tmp/read.json" "$tmp/context.json" <<'PY'
 import json
 import pathlib
