@@ -96,7 +96,7 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 
 func supportedInspectionKind(kind string) bool {
 	switch kind {
-	case "semantic-data", "semantic-relation", "application", "application-pattern", "query":
+	case "semantic-data", "semantic-attribute", "semantic-relation", "application", "application-pattern", "query":
 		return true
 	default:
 		return false
@@ -114,6 +114,16 @@ func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMess
 			for _, item := range namespace.Data {
 				if string(item.ID) == subject.ID {
 					matches = append(matches, item)
+				}
+			}
+		}
+	case "semantic-attribute":
+		for _, namespace := range world.Semantics {
+			for _, data := range namespace.Data {
+				for _, item := range data.Attributes {
+					if string(item.ID) == subject.ID {
+						matches = append(matches, item)
+					}
 				}
 			}
 		}

@@ -10,6 +10,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/ir"
+	"tei/internal/modelref"
 	"tei/internal/query"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
@@ -26,7 +27,7 @@ func inspectionCode(t *testing.T, err error, want string) {
 func TestInspectCanonicalExactKindAndID(t *testing.T) {
 	world := ir.World{
 		Semantics: []semantic.Namespace{{ID: "sales", Data: []semantic.Data{
-			{ID: "same.id", Symbol: "canonical_data", Relations: []semantic.Relation{{ID: "same.id", Symbol: "same_relation"}}},
+			{ID: "same.id", Symbol: "canonical_data", Attributes: []semantic.Attribute{{ID: "same.id", Symbol: "same_attribute", TypeRef: "std.text"}}, Relations: []semantic.Relation{{ID: "same.id", Symbol: "same_relation"}}},
 			{ID: "other.id", Symbol: "other_data"},
 		}}},
 		Applications: []application.Application{{ID: "same.id", Patterns: []application.Pattern{{ID: "same.id"}}}},
@@ -47,6 +48,7 @@ func TestInspectCanonicalExactKindAndID(t *testing.T) {
 		}
 	}
 	check("semantic-data", world.Semantics[0].Data[0])
+	check("semantic-attribute", world.Semantics[0].Data[0].Attributes[0])
 	check("semantic-relation", world.Semantics[0].Data[0].Relations[0])
 	check("application", world.Applications[0])
 	check("application-pattern", world.Applications[0].Patterns[0])
@@ -54,7 +56,7 @@ func TestInspectCanonicalExactKindAndID(t *testing.T) {
 
 	_, err := inspectCanonical(world, sourceindex.Subject{Kind: "semantic-data", ID: "not-found"})
 	inspectionCode(t, err, InspectionNotFound)
-	_, err = inspectCanonical(world, sourceindex.Subject{Kind: "semantic-attribute", ID: "same.id"})
+	_, err = inspectCanonical(world, sourceindex.Subject{Kind: "semantic-type", ID: "same.id"})
 	inspectionCode(t, err, InspectionUnsupportedKind)
 }
 
@@ -77,7 +79,7 @@ func TestInspectSubjectRejectsInvalidRequestBeforeWorkspaceLoad(t *testing.T) {
 		_, err := InspectSubject(filepath.Join(t.TempDir(), "absent"), s)
 		inspectionCode(t, err, InspectionInvalidSubject)
 	}
-	_, err := InspectSubject(filepath.Join(t.TempDir(), "absent"), sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.id"})
+	_, err := InspectSubject(filepath.Join(t.TempDir(), "absent"), sourceindex.Subject{Kind: "semantic-type", ID: "sales.order_id"})
 	inspectionCode(t, err, InspectionUnsupportedKind)
 }
 
@@ -85,6 +87,7 @@ func TestInspectSubjectReferenceWorkspaceUsesSourceIndex(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	for _, subject := range []sourceindex.Subject{
 		{Kind: "semantic-data", ID: "sales.order"},
+		{Kind: "semantic-attribute", ID: "sales.order.order_id"},
 		{Kind: "semantic-relation", ID: "sales.order.customer"},
 		{Kind: "application", ID: "order_entry"},
 		{Kind: "application-pattern", ID: "order_entry.customer_reference"},
@@ -111,6 +114,37 @@ func TestInspectSubjectReferenceWorkspaceUsesSourceIndex(t *testing.T) {
 				t.Fatalf("source lacks fingerprint: %+v", artifact)
 			}
 		}
+	}
+}
+
+func TestInspectAttributeRejectsMissingAndDuplicateIdentities(t *testing.T) {
+	selected := sourceindex.Subject{Kind: "semantic-attribute", ID: "shared.id"}
+	world := ir.World{Semantics: []semantic.Namespace{{ID: "one", Data: []semantic.Data{{ID: "shared.id"}}}}}
+	// A Data with the same ID is not an Attribute declaration.
+	_, err := inspectCanonical(world, selected)
+	inspectionCode(t, err, InspectionNotFound)
+	world.Semantics[0].Data[0].Attributes = []semantic.Attribute{{ID: "shared.id", Symbol: "first"}}
+	world.Semantics = append(world.Semantics, semantic.Namespace{ID: "two", Data: []semantic.Data{{
+		ID: "other.data", Attributes: []semantic.Attribute{{ID: "shared.id", Symbol: "second"}},
+	}}})
+	_, err = inspectCanonical(world, selected)
+	inspectionCode(t, err, InspectionAmbiguous)
+}
+
+func TestInspectAndTraceAttributeRejectDuplicateSourceDeclarations(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: attributes\nsources:\n  - semantic\n")
+	for _, name := range []string{"one.tei", "two.tei"} {
+		writeWorkspaceFixture(t, root, filepath.Join("semantic", name),
+			"namespace sales\n\ndata Order {\n    attribute orderId type std.identifier\n}\n")
+	}
+	selected := sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.order_id"}
+	_, err := InspectSubject(root, selected)
+	inspectionCode(t, err, InspectionAmbiguous)
+	_, err = TraceWorkspace(root, modelref.Key{Scope: "reference", Subject: selected}, modelref.TraceOptions{Mode: "summary"})
+	var trace *modelref.TraceError
+	if !errors.As(err, &trace) || trace.Code != InspectionAmbiguous {
+		t.Fatalf("trace hid duplicate Attribute declarations: %v", err)
 	}
 }
 
