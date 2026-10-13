@@ -124,6 +124,9 @@ var sha256Digest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 // ParseIntent はauthoring JSONを厳密に読む。未知のfield、導出値の手書き、
 // 末尾の余分なJSONを拒否する。field順は結果に影響しない。
 func ParseIntent(raw []byte) (BuildIntent, error) {
+	if err := validateInputJSON(raw); err != nil {
+		return BuildIntent{}, fmt.Errorf("build intent: %w", err)
+	}
 	var generic any
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	if err := dec.Decode(&generic); err != nil {
