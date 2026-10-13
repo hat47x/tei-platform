@@ -68,6 +68,18 @@ OData 4.01のサービスを名乗る前に、OASISのURL正規化、Case、Repe
 
 この二つを合わせても、本番Query Providerが安全であるという証拠にはならない。とくに、Planを受け取ったProviderがその内容を無視して無制限のSQLを実行する場合、Webの実行前認可だけでは漏洩を防げない。実Providerで**Row Scope適用がFilter/Sort/Limitに先行する**ことをデータ境界で検証し、未対応時は実行を拒否する。既存固定Queryについては、パラメータやDatasourceを勝手にOData動的SQLへ変換しない。
 
+### 2.3. 実DB Providerの導入ゲート（未完了）
+
+次の検証なしに既存PostgreSQL `BrowseQueryExecutor`をWebの`ScopedCanonicalExecutor`として扱わない。
+
+1. **権限正本**：Host認証後のSubject・Tenantと認可ルールの現行版から、実行時に適用すべき行述語を得る。ブラウザやPluginの文字列`RowScopeID`は述語そのものにも保証にもならない。
+2. **明示Realization**：Canonical Query/Pattern・Datasource・Providerに一致するScoped実行契約を持ち、対象DBの安全な物理Scope条件を指定する。既存`order_entry.recent_orders`の`WHERE o.ordered_at >= :from ORDER BY ...`にTenant条件は存在せず、一般のSQLを構文置換してScopeを後付けしない。
+3. **実行前拒否**：Query/Data/Scope/Policy Revision/Principal一致、Field操作許可、Providerが実装したFilter/Sort/Limit/投影の範囲を確認する。未対応機能や行Scope欠落は、Query実行せず拒否する。
+4. **Provider強制証拠**：異なるTenantで同じフィールド値や高いSort値を持つDB試験データを用い、Scopeを先に論理適用した結果が、Filter・Sort・Top・Count・関連取得の有無に影響することを検証する。Providerの`EnforcesScope=true`は証拠にならない。
+5. **返却・障害**：結果Mappingの正本を維持し、非公開列・Raw SQL・Provider Payloadを公開しない。ProviderがTopを超える行を返した場合は後処理で切り詰めず、結果全体を拒否する。業務拒否と認可系障害は内部的に区別する。
+
+E6/E7/E8のReferenceは(3)の事前契約と(5)の一部、インメモリでの(4)相当の順序のみ実証する。**(1)(2)と実DB上での(4)はまだ未実証**であり、標準Webの実稼働受入条件には使わない。
+
 ## 3. 書込契約
 
 基本は`ActionID + 型付き入力 + 信頼済みPrincipal + Revision/Idempotency`。例：
