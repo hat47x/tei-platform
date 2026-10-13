@@ -26,6 +26,13 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	if err != nil {
 		t.Skipf("Go executable unavailable: %v", err)
 	}
+	// The Windows CI can identify the physical Go installation behind the
+	// hosted toolcache junction. Pin that absolute executable so the pinned
+	// historical SelectExecutable (which cannot be modified) receives a
+	// path whose EvalSymlinks is supported by the current Windows runner.
+	if physical := os.Getenv("TEI_HISTORICAL_GO_EXECUTABLE"); physical != "" {
+		goPath = physical
+	}
 	goPath, err = filepath.Abs(goPath)
 	if err != nil {
 		t.Fatal(err)
