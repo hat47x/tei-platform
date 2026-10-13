@@ -50,6 +50,11 @@ type Result struct {
 	// serialized Source Index; only Load may populate this snapshot.
 	sourceSnapshotRoot string
 	sourceSnapshot     map[string][]byte
+
+	// Only populated during Load. One pinned directory handle protects all
+	// domain Source reads from a Workspace root pathname being replaced.
+	// Never retain an open OS handle in the returned Result.
+	sourceReadRoot *os.Root
 }
 
 func Load(root string) (Result, error) {
@@ -57,17 +62,35 @@ func Load(root string) (Result, error) {
 }
 
 func loadWithStack(root string, visiting map[string]bool) (Result, error) {
+	// Canonicalize once, then pin the directory before reading the manifest.
+	// Otherwise a rename between manifest and domain-source reads could
+	// silently redirect the second read to an unrelated Workspace.
+	rootReal, err := canonicalWorkspaceRoot(root)
+	if err != nil {
+		return Result{}, err
+	}
+	if visiting[rootReal] {
+		return Result{}, fmt.Errorf("cyclic Workspace import at %s", root)
+	}
+	sourceRoot, err := openWorkspaceRoot(rootReal)
+	if err != nil {
+		return Result{}, err
+	}
+	defer sourceRoot.Close()
+	visiting[rootReal] = true
+	defer delete(visiting, rootReal)
+
 	manifestYAML := filepath.Join(root, "tei.workspace.yaml")
 	manifestTEI := filepath.Join(root, "tei.workspace.tei")
 	var roots []string
 	var imports []WorkspaceImport
-	if src, err := os.ReadFile(manifestYAML); err == nil {
+	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
 		roots, imports = manifest.Sources, manifest.Imports
-	} else if src, legacyErr := os.ReadFile(manifestTEI); legacyErr == nil {
+	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
 		var parseErr error
 		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
@@ -79,16 +102,6 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 	if err := validateWorkspaceSourceRoots(roots); err != nil {
 		return Result{}, err
 	}
-	// Bind retained loader bytes to the physical Workspace identity.
-	rootReal, err := canonicalWorkspaceRoot(root)
-	if err != nil {
-		return Result{}, err
-	}
-	if visiting[rootReal] {
-		return Result{}, fmt.Errorf("cyclic Workspace import at %s", root)
-	}
-	visiting[rootReal] = true
-	defer delete(visiting, rootReal)
 	// Inventory and verify the physical boundary before any domain loader can
 	// read a Source file or parse a symlink to an outside target.
 	managedFiles, err := scanManagedFiles(root, roots)
@@ -101,6 +114,7 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 		ManagedFiles:                managedFiles,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
+		sourceReadRoot:              sourceRoot,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
@@ -160,6 +174,9 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 		return Result{}, err
 	}
 	Normalize(&r.World)
+	// The loader snapshot stays available, but an OS handle must not escape
+	// the Load lifetime. Imports close their own pinned roots independently.
+	r.sourceReadRoot = nil
 	return r, nil
 }
 
