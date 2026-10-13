@@ -293,7 +293,7 @@ func TestScopedPostgresRejectsInvalidPlansBeforeDatabaseAccess(t *testing.T) {
 			trace := &postgresScopedTrace{}
 			authority := &postgresScopedAuthority{tenant: "tenant-a"}
 			provider := ScopedPostgresOrdersReference{
-				DB:       postgresScopedDB(t, trace), Authority: authority,
+				DB: postgresScopedDB(t, trace), Authority: authority,
 				Database: "sales_core",
 			}
 			_, err := provider.ExecuteScopedBrowseQuery(context.Background(), localQ,
@@ -320,7 +320,7 @@ func TestScopedPostgresRefusesStaleAuthorityOrOutageWithoutSQL(t *testing.T) {
 		{"wrong principal in grant", func(a *postgresScopedAuthority) {
 			a.forged = &SQLTenantScopeGrant{
 				SQLTenantScopeRequest: SQLTenantScopeRequest{
-					PrincipalID:    "other", RowScopeID: plan.ScopeID,
+					PrincipalID: "other", RowScopeID: plan.ScopeID,
 					PolicyRevision: plan.PolicyRevision, QueryID: q.ID,
 				},
 				TenantID: "tenant-a",
@@ -329,7 +329,7 @@ func TestScopedPostgresRefusesStaleAuthorityOrOutageWithoutSQL(t *testing.T) {
 		{"wrong policy revision", func(a *postgresScopedAuthority) {
 			a.forged = &SQLTenantScopeGrant{
 				SQLTenantScopeRequest: SQLTenantScopeRequest{
-					PrincipalID:    plan.PrincipalID, RowScopeID: plan.ScopeID,
+					PrincipalID: plan.PrincipalID, RowScopeID: plan.ScopeID,
 					PolicyRevision: "stale", QueryID: q.ID,
 				},
 				TenantID: "tenant-a",
@@ -345,7 +345,7 @@ func TestScopedPostgresRefusesStaleAuthorityOrOutageWithoutSQL(t *testing.T) {
 			authority := &postgresScopedAuthority{tenant: "tenant-a"}
 			tc.configure(authority)
 			provider := ScopedPostgresOrdersReference{
-				DB:       postgresScopedDB(t, trace), Authority: authority,
+				DB: postgresScopedDB(t, trace), Authority: authority,
 				Database: "sales_core",
 			}
 			_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
@@ -409,7 +409,7 @@ func TestScopedPostgresRefusesTypedNilTenantAuthority(t *testing.T) {
 	trace := &postgresScopedTrace{}
 	var absent *postgresScopedAuthority
 	provider := ScopedPostgresOrdersReference{
-		DB:       postgresScopedDB(t, trace), Authority: absent,
+		DB: postgresScopedDB(t, trace), Authority: absent,
 		Database: "sales_core",
 	}
 	_, err := provider.ExecuteScopedBrowseQuery(context.Background(), q, ds, plan,
