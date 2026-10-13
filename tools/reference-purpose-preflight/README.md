@@ -91,6 +91,25 @@ go run ./tools/reference-purpose-preflight \
 
 本段階で追跡する受注明細行番号の正数規則と、合成fixtureの50万円承認規則は別物である。他の規則の受理記録を転用して合成閾値がAcceptedとなったと主張しない。業務上の適用期間、複数業務ルールの合成、実Provider・外部効果については後続の検証が必要である。
 
+## 利用目的に応じた必要条件の表示（第5段階）
+
+同じ正本や決定索引を利用しても、文章の説明、試作の検証、実行に向けた事前確認では、確認すべき条件が異なる。そこで、元の正本と過去の受理記録を変更せず、対象操作と**利用目的に限った必要条件**を派生表示する。
+
+```sh
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -application order_entry \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.line_number_positive \
+  -purpose execute-preflight
+```
+
+`-purpose` に指定できる値は、当参照実装で実証する範囲の `describe`（説明）、`simulate`（合成値での検証）、`execute-preflight`（実行前の不足確認）の三種類。**TEI Coreの新しい固定列挙ではない。** 説明には定義元と意味宣言の存在、模擬検証にはさらに入力fixtureと独立した期待値、実行準備には人の確認、業務上の有効範囲、現在の業務データ、契約・提供元、認可、副作用確定、Driver Scenarioの観測が関わる。
+
+結果は `assessment`（既存の定義元・決定履歴の調査結果）と `readiness`（目的別の必要条件）の二領域に分ける。`readiness.obligations[*].status` は、この参照実装が確認した範囲を `observed`／`declared`／`unresolved`／`unverified`／`not-evaluated` などで示す。特に、`canonical-validation-declared` の正本宣言や `reported-source-matched` のDecision履歴があっても、**実際に人が必要な内容を承認したこと、実行時の権限、処理成功にはならない**。両領域の `executionAllowed` は常に `false`。
+
+`-purpose` を省略した場合は従来の平坦な作業領域調査結果を返すので、既存の利用先の入力形式を壊さない。合成JSONだけの `-input` と実作業領域への `-purpose` を同時指定することはできない。必要条件の実評価、実Providerとの接続、状態変更はこの段階の対象外である。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
