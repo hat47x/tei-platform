@@ -69,7 +69,7 @@ func TestSemanticAnchorTableMatchesPerSubjectParse(t *testing.T) {
 				{Kind: "semantic-attribute", ID: "sales.order.order_id"},
 			},
 			firstOf: map[sourceindex.Subject]string{
-				{Kind: "semantic-data", ID: "sales.order"}:                "Order",
+				{Kind: "semantic-data", ID: "sales.order"}:               "Order",
 				{Kind: "semantic-attribute", ID: "sales.order.order_id"}: "orderId",
 			},
 		},
