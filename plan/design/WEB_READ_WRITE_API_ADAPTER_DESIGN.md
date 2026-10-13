@@ -59,6 +59,15 @@ OData 4.01のサービスを名乗る前に、OASISのURL正規化、Case、Repe
 
 この差を[合成Reference](../../reference/web-api-contract/README.md)で段階的に検証する。現時点で実在する`order_entry.recent_orders`のPattern/Query/Data/Attribute対応を既存Driverから取得したが、ODataの外部公開や実行・永続化の成立までは示していない。
 
+### 2.2. 実行時の境界検証（E6/E7）
+
+二つの独立したReferenceを追加した。
+
+- **E6 — メモリ上のスコープ実施**：信頼済みTenant Scopeを先に適用し、その範囲内でFilter・Order・Topを処理してから可視項目を投影する。別Tenantの値が絞込み結果・並び順・件数を変えないことを回帰検証する。これはSQLに対する保証ではない。
+- **E7 — 既存DriverのPlan伝搬**：`driver.Resolver.ExecuteBrowseQuery`による既存Canonical Query解決・Result Column Mappingを再利用し、従来の`BrowseQueryExecutor`をWebへ直接接続せず、`ScopedCanonicalExecutor`に信頼済みReadPlanを渡す。公開結果はMapped Resultから許可項目だけを組み立て、raw SQL列やPayloadを返さない。実Providerの行スコープ強制は依然として未証明。
+
+この二つを合わせても、本番Query Providerが安全であるという証拠にはならない。とくに、Planを受け取ったProviderがその内容を無視して無制限のSQLを実行する場合、Webの実行前認可だけでは漏洩を防げない。実Providerで**Row Scope適用がFilter/Sort/Limitに先行する**ことをデータ境界で検証し、未対応時は実行を拒否する。既存固定Queryについては、パラメータやDatasourceを勝手にOData動的SQLへ変換しない。
+
 ## 3. 書込契約
 
 基本は`ActionID + 型付き入力 + 信頼済みPrincipal + Revision/Idempotency`。例：
