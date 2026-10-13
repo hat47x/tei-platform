@@ -41,6 +41,13 @@ func runProcessHelper(mode string) int {
 		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
 		return 0
 	}
+	if mode == "large-then-wait" {
+		// Deliberately exceed the response limit, then hold the process open.
+		// A bounded capture alone cannot prevent this form of resource exhaustion.
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
+		time.Sleep(30 * time.Second)
+		return 0
+	}
 	if mode == "exit" {
 		_, _ = fmt.Fprintln(os.Stderr, "TOP-SECRET-SHOULD-NOT-LEAK")
 		return 7
@@ -73,6 +80,14 @@ func runProcessHelper(mode string) int {
 		resp.Status = pruntime.ResponseStatus("unrecognized")
 	case "secret-forged-identity":
 		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
+	case "secret-status-canary":
+		resp.Status = pruntime.ResponseStatus("TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG")
+	case "secret-forged-metadata-canary":
+		// The transport accepts nonempty fields; Registry must not return
+		// forged values after it rejects a mismatched response.
+		resp.RequestID = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.Plugin.Version = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.DescriptorFingerprint = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
 	}
 	if strings.HasPrefix(mode, "secret-") {
 		resp.Error = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
@@ -206,8 +221,9 @@ func helperLauncher(t *testing.T, mode string) (pruntime.StdioProcessLauncher, p
 	if err != nil {
 		t.Fatal(err)
 	}
-	env := append([]string(nil), os.Environ()...)
-	env = append(env, processHelperModeEnv+"="+mode)
+	// The test helper should obey the same host-approved environment policy as
+	// production callers: do not forward the test runner's ambient secrets.
+	env := []string{processHelperModeEnv + "=" + mode}
 	return pruntime.StdioProcessLauncher{Env: env}, pruntime.ProcessCommand{Executable: executable}
 }
 
@@ -343,6 +359,27 @@ func TestStdioProcessLauncherBoundsUntrustedStdout(t *testing.T) {
 	launcher.MaxResponseBytes = 128
 	if _, err := launcher.Invoke(context.Background(), command, processRequest()); err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
 		t.Fatalf("oversized response was not rejected: %v", err)
+	}
+}
+
+// A real child must be terminated when its stdout exceeds the configured
+// limit, even if it deliberately remains alive after writing the extra bytes.
+// The caller's context is not canceled by the transport-specific size failure.
+func TestStdioProcessLauncherKillsChildOnStdoutOverflow(t *testing.T) {
+	launcher, command := helperLauncher(t, "large-then-wait")
+	launcher.MaxResponseBytes = 128
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	started := time.Now()
+	_, err := launcher.Invoke(ctx, command, processRequest())
+	if err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
+		t.Fatalf("oversized child did not fail with its response limit: %v", err)
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("response-size rejection unexpectedly canceled/timed out caller: %v", ctx.Err())
+	}
+	if elapsed := time.Since(started); elapsed > 4*time.Second {
+		t.Fatalf("oversized child was not stopped promptly: %s", elapsed)
 	}
 }
 

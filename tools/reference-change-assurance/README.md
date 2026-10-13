@@ -27,6 +27,32 @@ JSONに記録するのは、変更対象・変更された側面、主張が依�
 
 どの場合も `executionAllowed=false` です。`reuse-candidate` をPASS・実行許可・Release Gate合格として扱ってはいけません。`runtimeChecks` は過去の静的な根拠では代替できない現行権限や副作用確定条件を列挙します。これらの検査や実行はこのプログラムでは行いません。
 
+## 実Workspaceの型付き変更影響（POC-8）
+
+`#1120` の既存 `workspace.Load` → `index.Build` → `modelref/derivedbridge.FromIndex` → `modelref.ReviewImpact` を**読取り専用**でつなぐモードです。架空のGraphを新たに正本化せず、`reference/workspace` の受注アプリの宣言済み相互参照を使います。
+
+```sh
+go run ./tools/reference-change-assurance \
+  -workspace reference/workspace \
+  -scope order-entry-reference \
+  -change-subject-kind semantic-relation \
+  -change-subject-id sales.order.customer \
+  -change-kind version-changed \
+  -consumer-kind application-pattern \
+  -consumer-id order_entry.customer_reference
+```
+
+変更は**ユーザーが仮定した検証シナリオ**であり、実際のSource変更を観測・証明したものではありません。出力の `impact` には既存APIの診断と影響先が含まれます。変化先と対象Consumerが型付き参照上で直接・間接に結ばれた場合は、他の投影ギャップが残っていても安全側に `recheck` を提案します。Graph検証の失敗、未知の変更種類、Consumer不在は `unresolved` とします。**影響先として現れなかった場合も、投影ギャップの残る現行Workspaceでは `unresolved`** であり、影響なしの証明とは扱いません。現行受注管理WorkspaceではDatabase/Database Contract関連の型が投影対象外となり、`projectionUnresolved` に残ります。型付き参照が届かないConsumerも、過去のOracleとreceipt、依存閉包が結び付いていないため**`reuse-candidate`には昇格させません**。
+
+既存の合成fixtureモード `-input` は保持しますが、合成fixtureの `coverage=complete` とは別の判断権限です。実Workspaceモードは `executionAllowed=false` を固定し、Runtime Authority・Effect・Provider適合・Scenario期待値を確認しません。Business ProcedureのCanonical意味を勝手に生成せず、実Sourceのrevisionと署名・権限も確認しません。
+
+### 残る接続課題
+
+- #1120のTyped Graphが描く**観測範囲外の依存**（nativeコード、動的な外部Effect、未投影のBusiness手順）を推測して「非影響」とみなさない。
+- #1180のScenario・期待値、#1163のEvidence Packetを介し、根拠とOracleを対象の変更前後Sourceに結びつける。
+- #951のProvider/Target fingerprintと実Runtime権限を別責務として保持する。
+- 将来の実Change Diffは `ReviewImpactDiff`（前後2スナップショット）を使用し、今回の`-change-kind`仮説を実際の差分と混同しない。
+
 ## 収録する反例
 
 - 表示名だけの変更：業務規則の検証は再利用候補、Web表示の検証は再確認。

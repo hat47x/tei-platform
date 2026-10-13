@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"tei/internal/sourceindex"
 )
@@ -26,8 +25,9 @@ func canonicalWorkspaceRoot(root string) (string, error) {
 }
 
 // readSourceForLoad retains exactly the bytes consumed by a domain loader.
-// It does not provide an open-time containment guarantee: the shared
-// race-free Source Reader remains tracked by issue #1017.
+// During Load, all domain Source files come from the same pinned directory
+// handle used for the manifest. A returned Result retains only frozen bytes,
+// not the OS handle. Files can still be modified in place between reads.
 func readSourceForLoad(root string, result *Result, filename string) ([]byte, error) {
 	relative, err := filepath.Rel(root, filename)
 	if err != nil {
@@ -40,7 +40,15 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	if result.sourceSnapshotRoot == "" {
 		return nil, fmt.Errorf("source reader has no Workspace root")
 	}
-	content, err := readWorkspaceFile(result.sourceSnapshotRoot, path)
+	// Load has a single pinned root. Direct calls to a specific loader
+	// (including its standalone tests) retain the safe per-file os.Root
+	// boundary without pretending to have a whole-Load pin.
+	var content []byte
+	if result.sourceReadRoot != nil {
+		content, err = readPinnedWorkspaceFile(result.sourceReadRoot, path)
+	} else {
+		content, err = readWorkspaceFile(result.sourceSnapshotRoot, path)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -58,27 +66,37 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	return content, nil
 }
 
-// readWorkspaceFile applies the same best-effort physical containment check
-// to native sources read by loaders and by standalone Source Index callers.
-// EvalSymlinks and Open remain separate operations: this is NOT race-free
-// against an attacker concurrently rewriting symlinks or parent directories.
+// readWorkspaceFile opens a source through a traversal-resistant root.
+// Relative symlinks that remain inside the root are supported; escapes are
+// rejected. Targets without a trustworthy rooted-open implementation fail
+// closed rather than downgrading to EvalSymlinks followed by os.Open.
 func readWorkspaceFile(rootReal, rawPath string) ([]byte, error) {
 	path, err := sourceindex.NormalizeWorkspacePath(rawPath)
 	if err != nil {
 		return nil, err
 	}
-	physical, err := filepath.EvalSymlinks(filepath.Join(rootReal, filepath.FromSlash(path)))
+	file, err := openRootedSource(rootReal, path)
 	if err != nil {
-		return nil, fmt.Errorf("resolve source %q: %w", path, err)
+		return nil, err
 	}
-	rel, err := filepath.Rel(rootReal, physical)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return nil, fmt.Errorf("source %q resolves outside Workspace", path)
-	}
-	file, err := os.Open(physical)
+	return readOpenedWorkspaceSource(file, path)
+}
+
+// readPinnedWorkspaceFile does not re-resolve a Workspace pathname. Every
+// domain Source read and the manifest itself use one Root for the entire Load.
+func readPinnedWorkspaceFile(root *os.Root, rawPath string) ([]byte, error) {
+	path, err := sourceindex.NormalizeWorkspacePath(rawPath)
 	if err != nil {
-		return nil, fmt.Errorf("open source %q: %w", path, err)
+		return nil, err
 	}
+	file, err := root.Open(filepath.FromSlash(path))
+	if err != nil {
+		return nil, fmt.Errorf("open source %q in pinned Workspace: %w", path, err)
+	}
+	return readOpenedWorkspaceSource(file, path)
+}
+
+func readOpenedWorkspaceSource(file *os.File, path string) ([]byte, error) {
 	info, err := file.Stat()
 	if err != nil {
 		file.Close()

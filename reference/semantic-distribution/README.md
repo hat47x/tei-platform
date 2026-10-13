@@ -39,6 +39,33 @@ go test -count=1 ./reference/semantic-distribution
 
 `knowledge://`を標準の参照URIとして採用する判断も、現段階では行いません。外部との相互運用で必要になるURIは、対象の種類と供給場所を混同せず別途検討します。
 
+## E4b：独立した二Consumerと依存の明示（2026-10-13）
+
+追加した `two_consumer_test.go` は、同じ `os` 名前空間を「監視」「監査」の異なる二Workspaceで実際に使用する。いずれも実際のTEI構文と `workspace.Load` を使用し、共有のデータのみ配布候補とPath Importの双方で、同じCanonical意味ビューと `validation.Validate` の成功を確認する。
+
+併せて、提供側の `os.process_id` が別名前空間 `common.machine_id` を参照する場合を検証する。配布物あるいはPath Importで `os` だけを指定しても、`common` を暗黙には付加しない。不足を既存の `UNKNOWN_SEMANTIC_TYPE_UNDERLYING` 診断で確認し、利用側が両方を明示選択した場合に検証が通ることを試す。**推移的依存閉包を自動解決する実装ではない。**
+
+二つの異なる配布者が同じ論理名前空間を異なる意味で提供するケースでは、すでに選択した配布者と内容の期待値が一致しなければ拒否する。両者を同時に合成した場合は `DUPLICATE_SEMANTIC_NAMESPACE` を診断する。自動最新版選択、後勝ち優先、RuntimeのProvider選択は実装しない。
+
+この試験は、共通資産を二Consumerに届けられる**意味上の最小条件**を調べるものである。実際のPlugin配布バイナリ、取得・信頼、正式なComposition Profile、Shared Acceptance、業務効果の定量評価は未検証であり、#1067の共有プラグイン昇格Triggerを満たしたとの宣言ではない。
+
+## E4c：既存BuildArtifactLockとArtifact Storeの縦断接続（2026-10-13）
+
+`locked_asset.go` は、TEIの既存 `plugin.BuildArtifactLock` と、その中の**明示的に選択された一つの`plugin.LockedBuild`**だけを受け取る読取り専用Adapterの参照実装です。成果物バイト列は呼出元が提供する `fetch(digest)` 関数から取得します。既存のArtifact Lockを検索して最新のProviderを選ぶ処理や、新たなRegistry・第二Lockは実装しません。
+
+現在の `plugin.BuildOutputKind` は拡張可能な文字列型であるため、**Reference限定**の `semantic-data` 出力種別を`BuildPlan`で指定し、Runtime成果物や従来のPlugin Descriptorと区別します。正式な製品用Output ABIへの採用は未決定です。旧固定`CapabilityKind`も更新しません。
+
+`tools/reference-build-artifact-store/semantic_distribution_test.go` は、既存のローカルContent Addressed Store（#1105）に実際にデータのみの意味モデルをPutし、TEI既存の `plugin.LockBuildOutput`で作成したビルド固定情報によりGetしたバイト列を、`InspectSelectedReference`で二重照合します。StoreのDigest検証、ビルド選択のDigest・版の照合、Semantic Digest検査は異なる境界です。
+
+受入試験では、選択したBuildPlanの偽装、Runtime種別の誤用、異なる配布者、Storeに無い成果物、Store内の内容改変を拒否します。**これは実際のStore実装と既存Build Lock構造への接続**ですが、Plugin Packageの公開・依存候補からの自動選択、Builderの出所検証、署名、Host権限、Source Indexの元ソース再構成は行いません。テストのPlanとBuilder fingerprintは構造検証用の値で、認証済み実Builderの証拠ではありません。
+
+検証対象：
+```sh
+go test -count=1 ./reference/semantic-distribution ./tools/reference-build-artifact-store
+```
+
+この段階で必要なのは、Production配布機構の新しい正本を増やすことではなく、次期Composition Kernel側にある選択・信頼・取得契約を接続した後に、このReferenceの仮のExport Envelopeを置換できることの証明です。
+
 ## 外部モデル変更の影響候補（E5aの独立参照実装）
 
 `impact.go`は、**現在のWorkspace Loaderで実際に解析した**二つの`workspace.Result`から、既存の`modelref.Graph`へ最小限の依存辺を投影します。新しい影響解析器や依存解決の正本は作りません。
