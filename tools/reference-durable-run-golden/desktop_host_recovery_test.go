@@ -102,12 +102,12 @@ func TestDesktopHostReopensUnknownRunWithoutCommandReplay(t *testing.T) {
 	for _, outcome := range []executor.Outcome{executor.OutcomeUnknown, executor.OutcomeAccepted} {
 		t.Run(string(outcome), func(t *testing.T) {
 			result := executor.Result{
-				ExecutorID: "reference-executor",
-				AttemptID: "desktop-attempt-1",
-				ActionID: ready[0].ActionID,
+				ExecutorID:     "reference-executor",
+				AttemptID:      "desktop-attempt-1",
+				ActionID:       ready[0].ActionID,
 				IdempotencyKey: ready[0].IdempotencyKey,
-				Outcome: outcome,
-				ExternalRef: "job://pending-observation",
+				Outcome:        outcome,
+				ExternalRef:    "job://pending-observation",
 			}
 			recorded := durable.RecordExecutorResult(initial, result)
 			if recorded.Status != durable.RunWaitingObservation ||
