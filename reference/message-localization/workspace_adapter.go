@@ -1,7 +1,7 @@
 package messagelocalization
 
 import (
-"fmt"
+	"fmt"
 
 	"tei/internal/core"
 	"tei/internal/environment"
