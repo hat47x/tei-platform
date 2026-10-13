@@ -87,7 +87,6 @@ func TestPluginCapabilityAbsentAndEmptyProvidesPreservePackageBytes(t *testing.T
 	}{
 		{name: "nil omitted"},
 		{name: "empty omitted", provides: []plugin.Capability{}},
-		{name: "explicit empty array", provides: []plugin.Capability{}, json: "[]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			definition := base
@@ -103,6 +102,20 @@ func TestPluginCapabilityAbsentAndEmptyProvidesPreservePackageBytes(t *testing.T
 				t.Fatal("absent/empty Provides changed Go/TEI package bytes")
 			}
 		})
+	}
+	// A raw JSON caller can express the empty array explicitly, while Go's
+	// omitempty cannot. Existing deterministic-transform-v1 Source binds its
+	// fingerprint to the exact input shape; historical SB-3 engines do not
+	// support conditional empty-array omission. Do not silently claim that
+	// this noncanonical input is equivalent to the omitted representation.
+	explicitDefinition := base
+	explicitDefinition.Provides = []plugin.Capability{}
+	explicitGo, _, explicitGoErr, explicitTEIErr := materializeCapabilitySetPair(t, explicitDefinition, "[]")
+	if explicitGoErr != nil || !bytes.Equal(explicitGo, baseGo) {
+		t.Fatalf("Go empty Provides changed canonical bytes: %v", explicitGoErr)
+	}
+	if explicitTEIErr == nil || !strings.Contains(explicitTEIErr.Error(), "assert-equal failed") {
+		t.Fatalf("TEI Source must fail closed on explicit empty Provides until compatible normalization is versioned: %v", explicitTEIErr)
 	}
 }
 
