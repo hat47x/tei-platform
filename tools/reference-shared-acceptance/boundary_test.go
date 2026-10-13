@@ -426,10 +426,11 @@ func findAcceptedRule(loaded workspace.Result, id core.CanonicalID) (semantic.Va
 	return semantic.Validation{}, false
 }
 
-func TestAcceptRestoresTheSourceWhenPostAcceptConformanceFails(t *testing.T) {
+func TestAcceptDoesNotClobberPostWriteSourceChangeOnConformanceFailure(t *testing.T) {
 	dir := scratchWorkspace(t)
 	c := unitPriceCandidate(revisionOfDir(t, dir))
 	before := treeDigest(t, dir)
+	var concurrent []byte
 
 	target := filepath.Join(dir, "semantic", "sales", "validation.tei")
 	afterWritesHook = func(root string) {
@@ -437,7 +438,8 @@ func TestAcceptRestoresTheSourceWhenPostAcceptConformanceFails(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(target, append(content, '\n'), 0o644); err != nil {
+		concurrent = append(append([]byte(nil), content...), '\n')
+		if err := os.WriteFile(target, concurrent, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -447,7 +449,9 @@ func TestAcceptRestoresTheSourceWhenPostAcceptConformanceFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decision.Decision != "refused" || decision.SourceChanged || !hasCode(refusalCodes(decision), "POST_ACCEPT_CONFORMANCE_FAILED") {
+	if decision.Decision != "refused" || !decision.SourceChanged ||
+		!hasCode(refusalCodes(decision), "POST_ACCEPT_CONFORMANCE_FAILED") ||
+		!hasCode(refusalCodes(decision), "ROLLBACK_INCOMPLETE") {
 		t.Fatalf("decision=%+v", decision)
 	}
 	failed := false
@@ -459,5 +463,14 @@ func TestAcceptRestoresTheSourceWhenPostAcceptConformanceFails(t *testing.T) {
 	if !failed {
 		t.Fatalf("失敗したConformance checkが記録されていません: %+v", decision.Conformance)
 	}
-	assertTreeUnchanged(t, before, treeDigest(t, dir))
+	// The mutation after Acceptance's write might have come from another
+	// process. Blindly restoring the old bytes would erase that actor's work.
+	// Report incomplete rollback rather than falsely claiming unchanged Source.
+	actual, err := os.ReadFile(target)
+	if err != nil || string(actual) != string(concurrent) {
+		t.Fatalf("concurrent Source was overwritten by rollback: %v", err)
+	}
+	if treeDigest(t, dir)["semantic/sales/validation.tei"] == before["semantic/sales/validation.tei"] {
+		t.Fatal("fixture did not preserve the post-write mutation")
+	}
 }
