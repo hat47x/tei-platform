@@ -81,6 +81,12 @@ func InspectWorkspace(root, kind, id string) (WorkspaceAssessment, error) {
 	}
 
 	ctx := knowledgecontext.Build(loaded.World, sources, subject.Subject{Kind: kind, ID: id})
+	qualification, err := knowledgecontext.QualifyWithSources(ctx, sources, knowledgecontext.QualificationRequirements{
+		ExpectedKind: kind,
+	})
+	if err != nil {
+		return result, fmt.Errorf("qualify declared subject: %w", err)
+	}
 	if ctx.ApplicationPattern == nil {
 		result.Unresolved = append(result.Unresolved, "pattern-not-resolved-in-derived-index")
 		return result, nil
@@ -107,6 +113,12 @@ func InspectWorkspace(root, kind, id string) (WorkspaceAssessment, error) {
 		if a.Role != b.Role { return a.Role < b.Role }
 		return a.Fingerprint < b.Fingerprint
 	})
+	if qualification.Status != knowledgecontext.QualificationApplicable {
+		for _, reason := range qualification.Reasons {
+			result.Unresolved = append(result.Unresolved, reason.Code)
+		}
+		return result, nil
+	}
 	if len(result.Witnesses) == 0 {
 		result.Unresolved = append(result.Unresolved, "current-definition-source-not-established")
 		return result, nil
