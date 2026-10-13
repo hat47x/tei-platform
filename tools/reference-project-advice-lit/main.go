@@ -47,7 +47,6 @@ func diagnosticHostOnly(next http.Handler) http.Handler {
 	})
 }
 
-
 func handlerWithContext(contextHandler http.Handler) http.Handler {
 	bridge, err := newProjectAdvisoryBridge()
 	if err != nil {
