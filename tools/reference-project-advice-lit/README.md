@@ -53,6 +53,8 @@ API URLは明示的な`http://127.0.0.1:<port>`のみ許可し、HostはBrowser�
 
 `contract_bridge.go` は新しい汎用Resolverを実装せず、既存の `composition.Contract`・`Provider`・`Registry.Apply`・`Registry.Select` を利用します。案件ごとのScopeを分け、Providerの削除・Contract変更・他案件Scopeとの不一致時は補助確認を失敗として扱います。HostがWithdrawされた場合は、Registryの宣言が残っていてもCoordinatorが新規Leaseを拒否します。Retired generationのReap後も自動復活しないことを追加試験します。Go関数の実行は診断Hostのローカル呼び出しですが、既存の `NewSelectedCoordinator` と `Acquire` / `Release` を通すようにしました。Reference用の固定Bindingと合成Digest、簡易Host Guardを使用するため、**Production向けの実Artifact検証、現在の権限・fencing検証は未成立**です。`contract_bridge_test.go` で案件Scope隔離とProvider削除時の拒否を検証します。正式Runtime統合の達成を意味しません。
 
+**失敗の区別**：選択済みProviderの削除、Contractの変更、またはCoordinatorのWithdrawで新規Leaseを取得できない場合、診断Hostの補助POSTは **HTTP 503** を返します。入力値の不正や不正なJSONは **HTTP 400** のままとし、いずれも補助チェック成功を返しません。HTTPレベルの否定テストで検証します。503は本番認可の実装を示すものではなく、この参照Hostが現在の補助処理を提供できないという意味に限ります。
+
 ### main側ビルド版T固定との整合
 
 Go結合CIは通常のPull Requestマージ結果を検証し、実Chrome CIはPR正確HEADを検証します。最新mainの第一Web APIは、実行時指定のTarget Tだけでなく、ビルド時に埋め込んだTとの一致を要求します。`smoke_order_entry.sh`では既存E1ビルダーと同じ `-ldflags="-buildid= -X main.referenceAPISourceRevision=..."` を指定し、実行時の`-target-revision`と合わせます。この一致検査は**診断用Target同一性**であり、正式なArtifact Lockやリリース署名ではありません。
