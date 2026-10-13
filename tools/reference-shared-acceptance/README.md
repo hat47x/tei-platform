@@ -343,6 +343,14 @@ Shared Acceptance の `accept` は、評価開始前に同じWorkspaceの`.tei-a
 - lock解除時には自分が取得したファイルの実体と所有マーカーを再照合し、別Actorが置換したファイルを消しません。解除に失敗した場合は、**Acceptanceの結果自体が確定済みでもcleanup未確認のerror**として呼出し側に伝えます。Sourceを勝手に再試行しません。
 - 外部エディター、Git、別のSource書込み実装はこの協調lockに参加しないため、**任意の独立Writerを排除するatomic CASではありません**。さらに複数Sourceのtransaction、プロセス強制終了後の永続的lease/ownership、ローカルホスト外の分散lock、OS別の安全性は別検証が必要です（#267、#1017、#1529）。
 
+### Workspace ManifestとReviewを結ぶ受理時の検査（#1529）
+
+モデルrevisionはSource Indexの管理対象ファイルの変更を表し、Workspace Manifest（`tei.workspace.yaml`、または`tei.workspace.tei`）の**コメントを含む実バイト**の変更を必ずしも表しません。Shared AcceptanceはWorkspaceの読み込み前後でManifestのバイト指紋を確認し、Review Projectionへ`workspaceManifestPath`・`workspaceManifestFingerprint`を組み込むことで、同じ意味の候補でも、Manifestだけを外部変更した場合は以前の`expectedReviewFingerprint`を再利用できないようにします。
+
+受理時には共通の`os.Root`からManifestの実バイトを各Source書込み前、書込み終了時、再読込後にも再検査します。変更があれば`SOURCE_MANIFEST_CHANGED_DURING_ACCEPT`として拒否し、既に書いたSourceについては既存の条件付きロールバックを実施します。このガードはCLI/Studio/AIごとに複製せず、同一のShared Acceptance内で実行します。Manifestの最大読込みは2 MiBに制限し、通常ファイルではないManifestを拒否します。
+
+**限界：** 実バイト検査は確認時点の事実であって、別のWriterによるManifest変更、旧内容への復元（ABA）、複数Sourceの同時書込みを原子的に拘束しません。SnapshotでのManifest観測とWorkspace Loaderの各Source読込みは同一のOSトランザクションではありません。Review fingerprintは人間の承認・権限を証明せず、`accept`の内部Reference呼出しで省略可能なことも変わりません。外部Writerが共通lockに協力しないケースは引き続き個別検証が必要です（#267、#1017、#1158）。
+
 既存の競合検出は、受理時の各Source書込み直前とロールバック開始時の**実バイト指紋**の再照合です。検査してから`os.Rename`等で置き換えるまでの時間差を消す原子的なcompare-and-swapではありません。親ディレクトリ・シンボリックリンク・inodeの同時差替えや、複数Writerの全体取引を防ぐ共有Source Authorityは引き続き未実装です（#1017 / #267）。`ROLLBACK_INCOMPLETE`がある場合には自動再試行せず、Sourceを再読込して人間の判断・競合解消を求めます。
 
 示さないこと:
