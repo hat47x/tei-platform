@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"tei/internal/sourceindex"
@@ -49,6 +50,9 @@ func VerifyCurrent(ctx context.Context, reader Reader, applicationID string, loa
 	if err != nil {
 		return Record{}, fmt.Errorf("SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE: %w", err)
 	}
+	if err := ctx.Err(); err != nil {
+		return Record{}, fmt.Errorf("SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE: %w", err)
+	}
 	if record.ApplicationID != applicationID {
 		return Record{}, errors.New("SOURCE_ACCEPTANCE_APPLICATION_MISMATCH")
 	}
@@ -72,12 +76,18 @@ func VerifyCurrent(ctx context.Context, reader Reader, applicationID string, loa
 	if len(actual) != len(expected) {
 		return Record{}, errors.New("SOURCE_MEMBERSHIP_MISMATCH: managed file count differs")
 	}
-	for path, fingerprint := range expected {
+	// Stable failure selection is important for reproducible evidence.
+	paths := make([]string, 0, len(expected))
+	for path := range expected {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
 		got, exists := actual[path]
 		if !exists {
 			return Record{}, fmt.Errorf("SOURCE_MEMBERSHIP_MISMATCH: missing managed source %q", path)
 		}
-		if got != fingerprint {
+		if got != expected[path] {
 			return Record{}, fmt.Errorf("SOURCE_FINGERPRINT_MISMATCH: managed source %q", path)
 		}
 	}
