@@ -851,13 +851,21 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	}
 	identityMatches := resp.ProtocolVersion == ProtocolVersion && resp.RequestID == requestID && resp.Plugin == cr.Plugin && resp.CapabilityID == id && resp.DescriptorFingerprint == pr.DescriptorFingerprint
 	if cr.Boundary == BoundaryProcess {
-		// Process response metadata is untrusted. A plugin can accidentally or
-		// deliberately embed host-supplied secrets in the error field or in a
-		// failure/mismatched-identity payload. Do not promote either to a host
-		// error, Invocation evidence, or a caller-visible diagnostic.
+		// External process metadata is untrusted. Do not return attacker-supplied
+		// error/status/identity bytes in host diagnostics or Invocation evidence:
+		// an untrusted plugin can place secrets in any of those string fields.
 		resp.Error = ""
-		if resp.Status != ResponseOK || !identityMatches {
+		if !identityMatches {
+			// On an identity mismatch, the response is not attributable to this
+			// invocation; retain trusted provenance, never the forged carrier.
+			resp = Response{}
+		} else if resp.Status != ResponseOK {
 			resp.Payload = nil
+			if resp.Status != ResponseError {
+				// "error" and "ok" are known protocol constants; unknown statuses
+				// are untrusted data, not safe diagnostic labels.
+				resp.Status = ""
+			}
 		}
 	}
 	inv = Invocation{Response: resp, Provenance: prov}
@@ -871,6 +879,9 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		return inv, fmt.Errorf("plugin capability %s failed: %s", id, resp.Error)
 	}
 	if resp.Status != ResponseOK {
+		if cr.Boundary == BoundaryProcess {
+			return inv, fmt.Errorf("plugin capability %s returned invalid status (untrusted process status suppressed)", id)
+		}
 		return inv, fmt.Errorf("plugin capability %s returned invalid status %s", id, resp.Status)
 	}
 	return inv, nil
