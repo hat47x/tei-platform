@@ -72,7 +72,7 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 			raw:  `{"externalRequirements":[],"requires":[],"provides":[],"version":"1.0.0","runtime":{"args":[],"kind":"builtin"},"id":"tei.inputprofile.process"}`,
 		},
 		{
-			name: "explicit nested capability arrays and reordered JSON",
+			name:       "explicit nested capability arrays and reordered JSON",
 			capability: true,
 			raw:        `{"runtime":{"args":[],"kind":"builtin"},"provides":[{"permissions":[],"actions":[],"id":"runtime.inputprofile","kind":"deployment-executor"}],"externalRequirements":[],"version":"1.0.0","id":"tei.inputprofile.process","requires":[]}`,
 		},
