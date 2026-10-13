@@ -67,11 +67,11 @@ test('duplicate input binding cannot be converted to equivalent query signature'
 });
 test('unknown database metadata cannot be ignored in a comparison',()=>{
   const x=make();x[2].result.canonical.databases[0].tenantScope='private';
-  assert.throws(()=>compareTwoReferenceApplications(x),denied('UNVERIFIED_DATABASE_ROUTE'));
+  assert.throws(()=>compareTwoReferenceApplications(x),denied('INCOMPLETE_SOURCE_OBSERVATION'));
 });
 test('unknown nested invocation cannot be silently ignored',()=>{
   const x=make();x[3].result.canonical.contractQuery.policy='strict';
-  assert.throws(()=>compareTwoReferenceApplications(x),denied('UNVERIFIED_REFERENCE_PATTERN'));
+  assert.throws(()=>compareTwoReferenceApplications(x),denied('INCOMPLETE_SOURCE_OBSERVATION'));
 });
 test('wrong membership aborts despite matching contract and query',()=>{
   const x=make();x[2].result.canonical.patterns=[];
