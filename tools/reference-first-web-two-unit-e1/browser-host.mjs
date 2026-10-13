@@ -190,11 +190,11 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // An endpoint that matched during start can be replaced by another API.
-  // Verify the running manifest again before forwarding a mutating command.
-  // This narrows accidental cross-unit binding; it is not an atomic trust
-  // handshake, deployment signature, or proof about the downstream Provider.
-  if (jsonForm && req.method === "POST") {
+  // An endpoint that matched at startup may be replaced later. Pre-check
+  // the live manifest for EVERY forwarded JSON API request, including reads.
+  // The bound read/command endpoints also check B/R/T in the API process on
+  // the very request that invokes its Runner. None of this grants Host trust.
+  if (jsonForm) {
     try {
       await checkAPIBinding();
     } catch (_) {
@@ -220,24 +220,28 @@ const server = createServer(async (req, res) => {
   // on the same HTTP request as the actual command dispatch. A stale API
   // without the explicit endpoint answers 404 instead of running a command.
   const boundCommand = jsonForm && req.method === "POST" && path.pathname === "/scenario/submit";
+  const boundRead = jsonForm && req.method === "GET" && path.pathname === "/scenario/read";
+  const boundRequest = boundCommand || boundRead;
+  const bindingHeaders = boundRequest ? {
+    "x-tei-diagnostic-application": expectedBinding.applicationId,
+    "x-tei-diagnostic-baseline-id": expectedBinding.handoverBaselineId,
+    "x-tei-diagnostic-baseline-revision": expectedBinding.baselineRepositoryRevision,
+    "x-tei-diagnostic-target-revision": expectedBinding.targetBuildRevision,
+  } : {};
   const outbound = httpRequest({
     hostname: "127.0.0.1",
     port: apiPort,
     method: req.method,
-    path: (boundCommand ? "/scenario/submit-bound" : path.pathname) + path.search,
+    path: (boundCommand ? "/scenario/submit-bound" :
+      boundRead ? "/scenario/read-bound" : path.pathname) + path.search,
     timeout: 5000,
     headers: req.method === "POST"
       ? {
           "content-type": type,
           "content-length": String(body.length),
-          ...(boundCommand ? {
-            "x-tei-diagnostic-application": expectedBinding.applicationId,
-            "x-tei-diagnostic-baseline-id": expectedBinding.handoverBaselineId,
-            "x-tei-diagnostic-baseline-revision": expectedBinding.baselineRepositoryRevision,
-            "x-tei-diagnostic-target-revision": expectedBinding.targetBuildRevision,
-          } : {}),
+          ...bindingHeaders,
         }
-      : {},
+      : bindingHeaders,
   }, upstream => {
     const chunks = [];
     let size = 0;
@@ -251,8 +255,9 @@ const server = createServer(async (req, res) => {
     });
     upstream.on("end", () => {
       if (res.headersSent) return;
-      if (boundCommand && upstream.statusCode === 409) {
-        // A target-instance mismatch is never a Business Result.
+      if (boundRequest && (upstream.statusCode === 409 || upstream.statusCode === 404)) {
+        // An unknown/stale bound API endpoint or target mismatch is never
+        // business data, and must not be silently retried on an unbound route.
         report(res, 502, "API binding unknown");
         return;
       }

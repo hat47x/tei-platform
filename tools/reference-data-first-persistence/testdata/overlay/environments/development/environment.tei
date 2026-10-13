@@ -1,0 +1,10 @@
+environment development {
+    plugin tei.database.postgres ^1
+
+    database-instance request_store.dev {
+        definition request_store
+        provider postgres
+    }
+
+    bind request_log.store -> request_store.dev
+}

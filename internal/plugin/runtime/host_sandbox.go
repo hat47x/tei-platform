@@ -200,24 +200,43 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
 
 	if h.Network != nil {
 		c, err := h.Network.ApplyNetworkPolicy(ctx, NetworkPolicy{DenyByDefault: spec.Profile.DenyNetworkByDefault, Allowlist: append([]string(nil), spec.Profile.NetworkAllowlist...)})
+		// On a partial failure, an adapter may still return a cleanup hook.
+		// Register it before processing the error to roll back partial work.
+		if c != nil {
+			cleanups = append(cleanups, c)
+		}
 		if err != nil {
 			return fail(fmt.Errorf("network policy enforcement failed: %w", err))
 		}
-		cleanups = append(cleanups, c)
+		// Without an undo hook the Host cannot guarantee invocation-scoped
+		// cleanup; fail before dispatch rather than silently accepting it.
+		if c == nil {
+			return fail(fmt.Errorf("network policy enforcement provided no cleanup"))
+		}
 	}
 	if h.Filesystem != nil {
 		c, err := h.Filesystem.ApplyFilesystemPolicy(ctx, FilesystemPolicy{DenyByDefault: spec.Profile.DenyFilesystemByDefault, Mounts: append([]SandboxMount(nil), spec.Profile.Mounts...)})
+		if c != nil {
+			cleanups = append(cleanups, c)
+		}
 		if err != nil {
 			return fail(fmt.Errorf("filesystem policy enforcement failed: %w", err))
 		}
-		cleanups = append(cleanups, c)
+		if c == nil {
+			return fail(fmt.Errorf("filesystem policy enforcement provided no cleanup"))
+		}
 	}
 	if len(spec.Profile.SecretInjections) > 0 {
 		c, err := h.Secrets.InjectSecrets(ctx, append([]SecretInjection(nil), spec.Profile.SecretInjections...))
+		if c != nil {
+			cleanups = append(cleanups, c)
+		}
 		if err != nil {
 			return fail(fmt.Errorf("secret injection failed: %w", err))
 		}
-		cleanups = append(cleanups, c)
+		if c == nil {
+			return fail(fmt.Errorf("secret injection provided no cleanup"))
+		}
 	}
 
 	invokeCtx, cancelInvoke := context.WithCancel(ctx)

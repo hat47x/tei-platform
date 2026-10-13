@@ -307,7 +307,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
 - `usesSemantic`や`databases`の順序は、authoredされたsourceの順序としてそのまま保ちます（入れ替えるとsourceとfingerprintが変わります）。
 - 変わるべきWorld collectionは、deltaの種類から導きます（semantic層のoperationは`semantics`、Application層のoperationは`applications`）。実際に変わったcollectionの集合とexactに一致しなければ拒否します。
-- 受理はfileを新しく作るため、失敗時は作ったfileと、そのために作ったdirectoryを削除して元へ戻します（既存fileへの挿入・追記は元のbyteへ戻します）。
+- 受理途中で失敗した場合、Shared Acceptanceが自分で書いた後のSourceバイト指紋を再検査し、一致するfileだけを元へ戻します（新規fileは削除、既存fileは元のbyteへ復元）。書込み後に他プロセスが内容を変えた可能性があるfileを無条件で上書きせず、復元できなかった場合は`ROLLBACK_INCOMPLETE`で明示します。
 - Relationの追加・変更では、Previewが端点（source / target Data）を実現するPersistence Mappingへの辺と、Relationの保存方法（relation storageが定義済み / keyのsource Attributeが列として実現済みで導ける / 未決定）を返します。未決定なら`RELATION_STORAGE_NOT_AUTHORED`として残し、この変更がPersistence Mapping・migrationを変えないことも示します。
 
 ## このtoolが示すこと / 示さないこと
@@ -319,18 +319,20 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - staleなcandidateを黙って適用しない
 - 不正なcandidate（未知field / 存在しない参照 / 別layerへのplacement / 数値ではないAttributeへの`positive` / 宣言外の副作用）はsourceを変えずに拒否される
 - どの入口のcandidateも同じ`candidateFingerprint`・同じsource・同じCanonical Worldになり、AI固有のEvidenceがCanonicalへ入らない。同値なEvidenceは同じ`evidenceFingerprint`へ正規化され、Evidenceだけを変えてもsemantic fingerprintは変わらない
-- accept途中の並行変更・受理後Conformance失敗では、書いたfileを元へ戻す
+- accept途中の並行変更・受理後Conformance失敗では、**自分が書いたバイトのままのfile**について復元を試みる。書込み後に別Actorが変更した可能性のあるfileは上書きせず、`ROLLBACK_INCOMPLETE`と`sourceChanged=true`で未解決の状態を明示する。復旧完了を偽装しない（`desktop_external_process_race_test.go`）
 - 同じ意味を別fileへ移すだけならsemantic差分は出ず、論理的な改名はremoved / addedとして現れる
 - 派生物（Canonical World JSON）を消しても、accepted sourceから同じものを再生成できる
 - Environment binding: 既存のEnvironment fileへ`bind <application>.<alias> -> <instance>`を一行挿入します。Environment blockの閉じ括弧の直前へ入れ、内側のblock（`database-instance { … }`等）と取り違えません。挿入先は、そのEnvironmentを宣言しているfileに限ります。
 - `ISSUE-000046`が最小loopとして名指しするRelation変更（既存Data `sales.order_line`へ`order`を追加）について、Preview（Semantic Diff・exact dependencyのimpact・Persistence Mappingへの辺と保存方法が未決定であること）→ Reject → Accept → toolなしの再読込までを通し、変わるのは一つのfileの挿入した行だけである（`relation_test.go`）
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
-- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
+- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、作成後バイトが変わっていないfileとdirectoryの復元を試みる。外部変更の可能性があるfileは保護し、元の状態へ戻せなければ未完了と報告する
 - `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。required dependencyのauthoritative source / fingerprintもscoped Evidenceとして照合し、同じIDのdependency sourceが変わったcaseをfail closedにできる。requirements外のdependency Evidenceはhandoffしない（`qualification_handoff_test.go`）
 - Semantic Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与し、内部Evaluation fingerprintと外側artifact fingerprintを二重に固定できる。`pass / fail / unknown`はReview A3/A7へ露出するが、candidate meaningやAcceptance authorityへ昇格しない（`semantic_evaluation_handoff_test.go`）
 - accepted / rejected Decisionが、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged / none`、判断理由に使ったEvidenceの集約statusとSource/artifact別statusを返す。stale rejectはrevision conflictも保持する。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go` / `semantic_evaluation_handoff_test.go`）
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
+
+既存の競合検出は、受理時の各Source書込み直前とロールバック開始時の**実バイト指紋**の再照合です。検査してから`os.Rename`等で置き換えるまでの時間差を消す原子的なcompare-and-swapではありません。親ディレクトリ・シンボリックリンク・inodeの同時差替えや、複数Writerの全体取引を防ぐ共有Source Authorityは引き続き未実装です（#1017 / #267）。`ROLLBACK_INCOMPLETE`がある場合には自動再試行せず、Sourceを再読込して人間の判断・競合解消を求めます。
 
 示さないこと:
 

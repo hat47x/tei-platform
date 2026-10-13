@@ -234,3 +234,25 @@ JSON Browser Hostは既存の`measurement.json`を、`browser/`の親にある�
 `check_api_only_parity.py`には、実ビルド済みAPIを異なるTで起動しようとすると、起動前に終了することの負例を追加する。正しいTの場合に限り、既存のBusiness Result/Authentication/Authorization/Validation/Execution ErrorのHTTP同等性を引き続き検査する。
 
 **境界**：このT文字列はビルドスクリプトが埋め込む単なる識別値で、暗号署名やTrusted Builderの証明ではない。悪意あるBuilderなら偽のTも埋め込める。正式なBuildArtifactLock、受理Sourceの承認者、配備Hostの権限確認、実Provider・本番TLS/IdPの受入は未実装。B/R/Tの一致を認証・認可へ読み替えない。
+
+
+### Browser→APIの読取りにも同一HTTP要求でB/R/Tを照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝基準リポジトリ改訂）**は受け渡された業務モデルの意味を特定する。**T（Target Build Revision＝Target成果物のビルド改訂）**は、そこから生成したWeb/APIなどの実装成果物を特定する。同じB/Rを使ったWebとDesktopが異なるTを持ち得るため、意味の引き渡しとTargetごとの更新を区別する。B/R/Tの一致自体は本番の配備権限、署名、認証・認可を与えない。
+
+診断Browser Hostでは、書込み要求`POST /scenario/submit`をGo APIの`/scenario/submit-bound`に転送し、API自身の実行中ProjectionとB/R/Tを**Runner起動と同じHTTP要求の中で**照合してきた。読取り`GET /scenario/read`も同じ検査方式へ拡張する。Browser側の公開URLは変わらず、HostはGo APIの`GET /scenario/read-bound`へ転送する。Hostが生成したApplication/B/R/Tヘッダー4項目をGo APIが比較し、不一致・欠落・重複は409でRunnerを呼ばずに拒否。Hostは409または未対応の古いAPIによる404を502「API binding unknown」へ変換し、元の無検査ルートへは再送しない。
+
+Hostはさらに、API起動後の差替えを想定して**読取りと書込みの両方を転送する前**に実APIのManifestを再照合する。読取りの事前照合と、同じ要求内のGo API側照合は別の段階であり、APIの差替えが事前照合と実読取りの間に発生しても後者で誤った業務データの読取りを拒否できる。
+
+この仕組みは、意図しない**異なるApplication/B/R/Tへの誤転送**を診断的に防止するだけである。ヘッダー値は復元可能で暗号鍵ではなく、Host自体の配備権限、実データアクセス権、TLS/IdP、署名済みBuilder/Artifact LockやHost Trustの証明にはならない。Go APIが直接公開する従来の`/scenario/read`および業務Runnerの機能・認可は変えない。
+
+
+### Goコンパイラ自身のVCS記録とE1 Builder観測を独立照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**は業務意味の受け渡し単位、**R（Baseline Repository Revision＝その基準に対応するリポジトリ改訂）**は受け渡し時点のSource、**T（Target Build Revision＝Target成果物を構築したソース改訂）**は具体的なWeb/API成果物のビルド版である。同じB/Rから、WebのT1、DesktopのT2など独立した改訂を持つ配備成果物を生成できるよう、意味と実装のライフサイクルを分離する。
+
+以前の固定World E1は、Builderが指定する`sourceCommit=T`、`-ldflags -X`で埋め込むAPI自身のT、成果物バイトのSHA-256、Goオプション・依存閉包を照合していた。ただしどれも**Builderが設定・記録した値**であり、Go実行ファイルのビルド情報に自動記録される`vcs.revision`・`vcs.modified`を直接確認していなかった。
+
+`build_frozen_json_api.sh`は`go build -buildvcs=true`を明示し、`inspect_frozen_api_build.py`はGoコンパイラ由来のビルド情報を読み取る。GitのVCSであること、バイナリ内の`vcs.revision`が実ビルドのTと**完全一致**すること、`vcs.modified=false`であることを要求する。結果は既存の`apiBuildInputObservation.goVCS`に`revision`・`modified`として格納し、`verify_frozen_unit_pair.py`が公開前・公開後とも実行ファイルから再取得して照合する。欠落、偽VCS、異なるT、dirty/不明な状態、receiptだけの改ざんは拒否する。新しいLockやBuilder認可は作らない。
+
+**証明できないこと**：VCSフィールドはGoツールが取得したGitチェックアウトに関する非署名の情報であり、BuilderやGit履歴の真正性・悪意あるツールチェーン・Host配備権限を証明しない。`plugin.BuildPlan`・`plugin.BuildArtifactLock`は現在Pluginのビルド入力と成果物を固定する契約であり、このApplication二成果物に架空のPlugin IDやLockを付与して流用しない。汎用的なunit build/Host authorityへの昇格は#943・#259と調整する。形式上のB/R/Tと各観測値がすべて一致しても、署名済みArtifact、Production TLS/IdP/Provider/Runtime Authorizationは未受入。

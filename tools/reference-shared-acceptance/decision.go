@@ -149,24 +149,54 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 
 	var written []SourceEdit
 	var createdDirs []string
-	rollback := func() {
-		for _, e := range written {
+	// Rollback must not blindly overwrite a file another process modified
+	// after our write. This is a best-effort byte guard, NOT an atomic
+	// compare-and-swap: path replacement between read and restore remains
+	// unresolved until the common Source Authority owns the write fence.
+	rollback := func() []string {
+		var incomplete []string
+		for i := len(written) - 1; i >= 0; i-- {
+			e := written[i]
 			target := filepath.Join(root, filepath.FromSlash(e.Path))
+			current, err := os.ReadFile(target)
+			if err != nil || sourceindex.Fingerprint(current) != e.AfterFingerprint {
+				incomplete = append(incomplete, e.Path)
+				continue
+			}
 			if e.Created {
-				_ = os.Remove(target)
+				err = os.Remove(target)
 			} else {
-				_ = writeFileAtomic(target, e.before)
+				err = writeFileAtomic(target, e.before)
+			}
+			if err != nil {
+				incomplete = append(incomplete, e.Path)
 			}
 		}
 		for i := len(createdDirs) - 1; i >= 0; i-- {
-			_ = os.Remove(createdDirs[i])
+			if err := os.Remove(createdDirs[i]); err != nil && !os.IsNotExist(err) {
+				// Another actor may have created a file in a directory that
+				// Acceptance originally created. Preserve that file and its
+				// parent: only the Source edits we wrote belong to rollback.
+				if entries, readErr := os.ReadDir(createdDirs[i]); readErr == nil && len(entries) > 0 {
+					continue
+				}
+				incomplete = append(incomplete, createdDirs[i])
+			}
 		}
+		return incomplete
 	}
 	refuse := func(code, message string) Decision {
-		rollback()
+		incomplete := rollback()
 		decision.Decision = "refused"
-		decision.SourceChanged = false
+		decision.SourceChanged = len(incomplete) > 0
 		decision.Refusals = append(decision.Refusals, Diagnostic{Code: code, Message: message})
+		if len(incomplete) > 0 {
+			sort.Strings(incomplete)
+			decision.Refusals = append(decision.Refusals, Diagnostic{
+				Code:    "ROLLBACK_INCOMPLETE",
+				Message: fmt.Sprintf("並行変更または書込み失敗により元のSourceへ完全に戻せません: %s。再読込と明示的な競合解消が必要です", strings.Join(incomplete, ", ")),
+			})
+		}
 		return decision
 	}
 

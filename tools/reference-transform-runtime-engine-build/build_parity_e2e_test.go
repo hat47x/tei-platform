@@ -29,9 +29,17 @@ func TestRealGoBuildPreExtractionRecipeParity(t *testing.T) {
 	if err != nil {
 		t.Skipf("exact Go binary unavailable: %v", err)
 	}
-	goPath, err = filepath.EvalSymlinks(goPath)
+	// On Windows GitHub-hosted runners the Go toolcache lives under a
+	// directory junction; filepath.EvalSymlinks can reject that valid Go
+	// installation. Pin the absolute binary selected by LookPath and validate
+	// its actual file type rather than resolving optional directory links.
+	goPath, err = filepath.Abs(goPath)
 	if err != nil {
 		t.Fatal(err)
+	}
+	goInfo, err := os.Stat(goPath)
+	if err != nil || !goInfo.Mode().IsRegular() {
+		t.Fatalf("selected exact Go executable is not a regular file: %q (%v)", goPath, err)
 	}
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skipf("Git needed to verify the actual tracked source closure: %v", err)

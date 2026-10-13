@@ -1133,3 +1133,23 @@ test('real Go projection crosses browser view boundary without elevating Source 
   assert.equal(JSON.stringify([fromGo,approval]),observed,
     'read-only view must not mutate real Go producer outputs');
 });
+
+test('drag started before layout apply cannot propose a move against replacement layout',async()=>{
+  await input('dfd-file',projection);
+  const n=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  n.listeners.pointerdown({button:0,pointerId:91,clientX:10,clientY:10});
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:'orders.review',projectionSHA256:'sha256:invalid',nodes:[]};
+  // Switching the picker invalidates the old layout and drag synchronously,
+  // even if the new file has not finished reading.
+  let release;
+  const bytes=Buffer.from(JSON.stringify(layout));
+  const waiting=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(
+      bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  $('diagram').listeners.pointerup({pointerId:91,clientX:500,clientY:400});
+  assert.equal($('apply').disabled,true);
+  release();await waiting;
+  assert.equal($('apply').disabled,true);
+});

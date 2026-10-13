@@ -37,6 +37,7 @@
 | [`MULTILINGUAL_BUSINESS_DATA_AND_AI_TRANSLATION_2026-10.md`](MULTILINGUAL_BUSINESS_DATA_AND_AI_TRANSLATION_2026-10.md) | 多言語の業務属性、記述の版・保存・検索・公開と、生成AIによる翻訳候補・確認・受理（[GitHub #1453](https://github.com/hat47x/tei-platform/issues/1453)、評価待ち） |
 | [`MULTILINGUAL_TRANSPARENT_PLUGIN_OVERLAY_2026-10.md`](MULTILINGUAL_TRANSPARENT_PLUGIN_OVERLAY_2026-10.md) | 通常プラグインへ多言語の表示情報を後付けする意味参照・適用許可・競合解決と合成（[GitHub #1551](https://github.com/hat47x/tei-platform/issues/1551)、参照実装検証中） |
 | [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | 機能に渡す意味上の要求と、ホストが注入する実行時の文脈を分ける、評価待ちの設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
+| [`PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md`](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md) | プラグイン間の依存を、受け渡す項目・パラメータ・値の出どころ・対応付けと変換・多重度・版の変化まで含めて整理する方式設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)、評価待ち） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 | [`BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md`](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md) | 副作用を伴う実行の段階、確定後の外部効果、冪等の識別子、確定状態、補償、一括処理の再開をまとめる、評価待ちの設計（[GitHub #1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)） |

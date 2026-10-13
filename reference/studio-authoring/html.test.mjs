@@ -275,3 +275,27 @@ test("HTML refuses arbitrary documents, with no default authority", () => {
   assert.throws(() => renderStudioHTML({ schema: "unknown" }),
     /UNSUPPORTED_STUDIO_HTML_SCHEMA/);
 });
+
+test("Go typed trace appears as a separate read-only section with escaped IDs", () => {
+  const traced = structuredClone(projection);
+  traced.typedReferences = {
+    schema: "tei.reference.studio-typed-trace/v0",
+    scope: "caller-observation", scopeAuthority: "caller-selected-observation-only",
+    authority: "candidate-read-only", sourceConsistency: "exact-anchor-match",
+    status: "reference-only", total: 1, unresolved: 0,
+    snapshotFingerprint: revision, rows: [{
+      status: "resolved", edge: {
+        relation: '<img src=x onerror="alert(1)">',
+        from: { subject: { kind: "semantic-relation", id: "sales.order.lines" } },
+        to: { subject: { kind: "semantic-data", id: "sales.order" } }
+      }
+    }]
+  };
+  const html = renderStudioHTML(traced, { sourceFromWorkspace: true });
+  assert.match(html, /id="typed"/);
+  assert.match(html, /型付き参照（#1120）/);
+  assert.match(html, /caller-selected-observation-only/);
+  assert.match(html, /candidate-read-only/);
+  assert.match(html, /&lt;img src=x onerror=/);
+  assert.doesNotMatch(html, /<img|<script|onclick=/i);
+});
