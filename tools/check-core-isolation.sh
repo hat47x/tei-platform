@@ -27,9 +27,10 @@ probe_dir="$(mktemp -d)"
 trap 'rm -rf "$probe_dir"' EXIT
 module_dir="$probe_dir/module"
 core_dir="$probe_dir/core"
-mkdir -p "$module_dir" "$core_dir/core/effect" "$probe_dir/cache" "$probe_dir/modules" "$probe_dir/home"
+mkdir -p "$module_dir" "$core_dir/core/effect" "$core_dir/core/generation" "$probe_dir/cache" "$probe_dir/modules" "$probe_dir/home"
 cp -R "$source_dir"/. "$module_dir/"
 cp -R "$repo_root/core/effect/." "$core_dir/core/effect/"
+cp -R "$repo_root/core/generation/." "$core_dir/core/generation/"
 if [[ -n "$(find "$module_dir" "$core_dir" \( -name go.mod -o -name go.work -o -type l \) -print -quit)" ]]; then
   echo 'error: nested Go module, workspace or symlink in isolated sources' >&2
   exit 2

@@ -97,7 +97,7 @@ func (c *Coordinator) RestoreSelected(ctx context.Context, registry *Registry, s
 }
 
 func (c *Coordinator) stage(ctx context.Context, expected uint64, next Binding, lifecycle Lifecycle, restore bool, registry *Registry, selected Selection) error {
-	if c == nil || ctx == nil || lifecycle.Prepare == nil || lifecycle.Ready == nil || !next.valid() {
+	if c == nil || ctx == nil || lifecycle.Prepare == nil || lifecycle.Ready == nil || !next.Valid() {
 		return ErrCoordinatorInvalid
 	}
 	if err := ctx.Err(); err != nil {

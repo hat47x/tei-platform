@@ -3,6 +3,7 @@ package runtime_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -33,6 +34,7 @@ func (v *serviceCarrierVerifier) Verify(
 // revocation; a plugin cannot install this reader.
 type serviceCarrierAcceptedReader struct {
 	record pruntime.ServiceAcceptanceRecord
+	err    error
 	denied bool
 	calls  int
 }
@@ -41,6 +43,9 @@ func (r *serviceCarrierAcceptedReader) ReadCurrentAcceptedService(
 	_ context.Context, _ pruntime.ServiceProviderSelection,
 ) (pruntime.ServiceAcceptanceRecord, error) {
 	r.calls++
+	if r.err != nil {
+		return pruntime.ServiceAcceptanceRecord{}, r.err
+	}
 	if r.denied {
 		return pruntime.ServiceAcceptanceRecord{}, fmt.Errorf("service acceptance was revoked")
 	}
@@ -62,6 +67,23 @@ func serviceCarrierHost(
 	return pruntime.Registry{
 		Processes: processes, Verifier: verifier, ServiceAcceptance: acceptance,
 	}, acceptance
+}
+
+// Some Host acceptance implementations may return a cached success despite
+// cancellation. The Runtime must independently check the invocation context
+// after the Host call, before invoking artifact verification or any process.
+type serviceCarrierCancelingReader struct {
+	record pruntime.ServiceAcceptanceRecord
+	cancel context.CancelFunc
+	calls  int
+}
+
+func (r *serviceCarrierCancelingReader) ReadCurrentAcceptedService(
+	_ context.Context, _ pruntime.ServiceProviderSelection,
+) (pruntime.ServiceAcceptanceRecord, error) {
+	r.calls++
+	r.cancel()
+	return r.record, nil
 }
 
 type serviceCarrierProcess struct {
@@ -376,6 +398,31 @@ func TestSelectedServiceAcceptanceIsHostOwnedAndRecheckedForRevocation(t *testin
 	}
 }
 
+// Reader failures must not expose details of the Host's trust store or
+// internal issuer policy to a plugin, caller, or Runtime API consumer.
+func TestSelectedServiceAcceptanceFailureDoesNotExposeHostReaderSecrets(t *testing.T) {
+	const secretCanary = "TEI_HOST_ACCEPTANCE_PRIVATE_SIGNER_PATH_AND_TOKEN"
+	plan, selected, child, verifier := serviceCarrierFixture(t)
+	host, acceptance := serviceCarrierHost(selected, child, verifier)
+	privateError := fmt.Errorf("open /private/issuer/%s: permission denied", secretCanary)
+	acceptance.err = privateError
+	_, err := host.InvokeSelectedServiceCarrier(
+		context.Background(), plan, selected, "host-secret-deny", json.RawMessage(`{"quantity":1}`),
+	)
+	if !errors.Is(err, pruntime.ErrServiceAcceptanceDenied) {
+		t.Fatalf("Host denial did not retain stable public error identity: %v", err)
+	}
+	if errors.Is(err, privateError) || strings.Contains(err.Error(), secretCanary) ||
+		strings.Contains(err.Error(), "/private/issuer/") ||
+		strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("Host private error leaked into Runtime response: %v", err)
+	}
+	if acceptance.calls != 1 || verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("denied Host source reached Runtime verifier/process: reads=%d verifies=%d starts=%d",
+			acceptance.calls, verifier.calls, child.calls)
+	}
+}
+
 func TestSelectedServiceRequiresValidWireAndDeclaredHostPolicy(t *testing.T) {
 	plan, selection, child, verifier := serviceCarrierFixture(t)
 	host, acceptance := serviceCarrierHost(selection, child, verifier)
@@ -388,5 +435,49 @@ func TestSelectedServiceRequiresValidWireAndDeclaredHostPolicy(t *testing.T) {
 	}
 	if child.calls != 0 || verifier.calls != 0 || acceptance.calls != 0 {
 		t.Fatal("invalid JSON reached Host acceptance, verifier or process")
+	}
+}
+
+func TestSelectedServiceDoesNotExecuteAfterHostAcceptanceReadCancelsContext(t *testing.T) {
+	plan, selected, child, verifier := serviceCarrierFixture(t)
+	host, accepted := serviceCarrierHost(selected, child, verifier)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	reader := &serviceCarrierCancelingReader{record: accepted.record, cancel: cancel}
+	host.ServiceAcceptance = reader
+
+	_, err := host.InvokeSelectedServiceCarrier(
+		ctx, plan, selected, "cancel-during-acceptance", json.RawMessage(`{"quantity":1}`),
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled Host acceptance returned %v, want context.Canceled", err)
+	}
+	if reader.calls != 1 || verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("canceled Host acceptance reached Runtime: reads=%d verifies=%d starts=%d",
+			reader.calls, verifier.calls, child.calls)
+	}
+
+	// When canceled before entry, the Host Reader itself must not be called.
+	before, done := context.WithCancel(context.Background())
+	done()
+	_, err = host.InvokeSelectedServiceCarrier(
+		before, plan, selected, "cancel-before-acceptance", json.RawMessage(`{"quantity":1}`),
+	)
+	if !errors.Is(err, context.Canceled) || reader.calls != 1 ||
+		verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("already canceled request reached Host Reader/Runtime: err=%v reads=%d",
+			err, reader.calls)
+	}
+}
+
+func TestSelectedServiceRejectsNilContextWithoutReadingHostAcceptance(t *testing.T) {
+	plan, selected, child, verifier := serviceCarrierFixture(t)
+	host, acceptance := serviceCarrierHost(selected, child, verifier)
+	_, err := host.InvokeSelectedServiceCarrier(
+		nil, plan, selected, "nil-context", json.RawMessage(`{"quantity":1}`),
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires context") ||
+		acceptance.calls != 0 || verifier.calls != 0 || child.calls != 0 {
+		t.Fatalf("nil context must fail before Host Authority or Runtime: err=%v", err)
 	}
 }

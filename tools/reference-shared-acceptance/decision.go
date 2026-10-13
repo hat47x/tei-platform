@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -116,13 +117,44 @@ func decisionFrom(p Preview, kind string) Decision {
 // 派生物を決定論的に再生成できるかを確認し、一つでも満たさなければ元のsourceへ戻す
 // （追記したfileは元の内容へ、作成したfileと、そのために作ったdirectoryは削除する）。
 func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
-	// Keep the original Workspace directory handle across evaluation and
-	// mutation: replacing the caller's path must never redirect a write.
+	// Pin the named Workspace before any read; concurrent Shared Acceptance
+	// operations must use the SAME create-only lock, including Preview,
+	// mutation, conformance reload, and rollback. Uncooperative external
+	// writers are NOT serialized by this Reference.
 	files, err := os.OpenRoot(root)
 	if err != nil {
 		return Decision{}, fmt.Errorf("open Acceptance Workspace root: %w", err)
 	}
 	defer files.Close()
+
+	guard, err := acquireSourceAcceptLock(files)
+	if errors.Is(err, errSourceAcceptBusy) {
+		return Decision{
+			Schema:        decisionSchema,
+			Decision:      "refused",
+			SourceChanged: false,
+			Refusals: []Diagnostic{{
+				Code:    "SOURCE_ACCEPT_BUSY",
+				Message: "別の受理操作または未確認の古いlockが存在します。処理を再送せず、現在のSourceとlockを確認してください",
+			}},
+		}, nil
+	}
+	if err != nil {
+		return Decision{}, fmt.Errorf("acquire Workspace Acceptance lock: %w", err)
+	}
+	decision, acceptErr := acceptWithPinnedRoot(root, files, data, opts)
+	releaseErr := guard.release()
+	if releaseErr != nil {
+		return decision, errors.Join(acceptErr, fmt.Errorf(
+			"Acceptance outcome may have changed Source, but lock cleanup could not be confirmed: %w", releaseErr))
+	}
+	return decision, acceptErr
+}
+
+// acceptWithPinnedRoot runs only while the caller owns the cooperative lock.
+// This is still the SAME shared Acceptance implementation, not a new entry
+// point for Studio or AI. Call accept, never this helper, from adapters.
+func acceptWithPinnedRoot(root string, files *os.Root, data []byte, opts acceptOptions) (Decision, error) {
 	ev, err := evaluate(root, data)
 	if err != nil {
 		return Decision{}, err
@@ -196,12 +228,18 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		return decision
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	for i, e := range ev.edits {
 		if beforeEachWriteHook != nil {
 			beforeEachWriteHook(i, e)
 		}
 		if err := checkAcceptedWorkspaceIdentity(root, files); err != nil {
 			return refuse("SOURCE_WORKSPACE_REPLACED", err.Error()), nil
+		}
+		if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+			return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
 		}
 		if e.Created {
 			name, err := acceptedSourcePath(e.Path)
@@ -241,9 +279,15 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	if afterWritesHook != nil {
 		afterWritesHook(root)
 	}
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	post, err := takeSnapshot(root)
 	if err != nil {
 		return refuse("POST_ACCEPT_RELOAD_FAILED", err.Error()), nil
+	}
+	if post.manifest != ev.before.manifest {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", "Workspace manifest changed during post-Accept reload"), nil
 	}
 	postSemantic, err := changeanalysis.Diff(ev.before.loaded.World, post.loaded.World)
 	if err != nil {
@@ -299,6 +343,9 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		}
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	decision.SourceChanged = true
 	decision.ModelRevisionAfter = post.revision
 	decision.SourceEdits = ev.edits

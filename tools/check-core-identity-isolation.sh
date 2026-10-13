@@ -18,7 +18,7 @@ fi
 probe="$(mktemp -d)"
 trap 'rm -rf "$probe"' EXIT
 mkdir -p "$probe/module/core" "$probe/consumer" "$probe/home" "$probe/modcache" "$probe/cache"
-for name in identity subject effect; do
+for name in identity subject effect generation; do
   cp -R "$repo_root/core/$name" "$probe/module/core/$name"
 done
 if [[ -n "$(find "$probe/module" \( -type l -o -name go.mod -o -name go.work \) -print -quit)" ]]; then
@@ -42,6 +42,7 @@ import (
 	"testing"
 
 	"tei/core/effect"
+	"tei/core/generation"
 	"tei/core/identity"
 	"tei/core/subject"
 )
@@ -68,6 +69,13 @@ func TestIndependentCorePackagesWithoutMonorepo(t *testing.T) {
 	if err := s.Close(); err != nil || !released {
 		t.Fatalf("effect cleanup: %v, released=%v", err, released)
 	}
+
+	binding:=generation.Binding{ContractID:"service",ContractVersion:"1",ProviderID:"provider",ArtifactDigest:"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",Generation:1}
+	router,err:=generation.NewRouter(binding,effect.NewScope())
+	if err!=nil{t.Fatal(err)}
+	lease,err:=router.Acquire(func(generation.Binding)error{return nil})
+	if err!=nil{t.Fatal(err)}
+	lease.Release()
 }
 EOF
 (

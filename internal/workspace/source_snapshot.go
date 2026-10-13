@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"tei/internal/sourceindex"
 )
@@ -26,8 +24,9 @@ func canonicalWorkspaceRoot(root string) (string, error) {
 }
 
 // readSourceForLoad retains exactly the bytes consumed by a domain loader.
-// It does not provide an open-time containment guarantee: the shared
-// race-free Source Reader remains tracked by issue #1017.
+// Native supported targets open each source within a traversal-resistant root.
+// Separate reads still resolve the Workspace root by path; one Load has not
+// yet pinned a single directory handle across all of its source reads.
 func readSourceForLoad(root string, result *Result, filename string) ([]byte, error) {
 	relative, err := filepath.Rel(root, filename)
 	if err != nil {
@@ -58,26 +57,18 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	return content, nil
 }
 
-// readWorkspaceFile applies the same best-effort physical containment check
-// to native sources read by loaders and by standalone Source Index callers.
-// EvalSymlinks and Open remain separate operations: this is NOT race-free
-// against an attacker concurrently rewriting symlinks or parent directories.
+// readWorkspaceFile opens a source through a traversal-resistant root.
+// Relative symlinks that remain inside the root are supported; escapes are
+// rejected. Targets without a trustworthy rooted-open implementation fail
+// closed rather than downgrading to EvalSymlinks followed by os.Open.
 func readWorkspaceFile(rootReal, rawPath string) ([]byte, error) {
 	path, err := sourceindex.NormalizeWorkspacePath(rawPath)
 	if err != nil {
 		return nil, err
 	}
-	physical, err := filepath.EvalSymlinks(filepath.Join(rootReal, filepath.FromSlash(path)))
+	file, err := openRootedSource(rootReal, path)
 	if err != nil {
-		return nil, fmt.Errorf("resolve source %q: %w", path, err)
-	}
-	rel, err := filepath.Rel(rootReal, physical)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return nil, fmt.Errorf("source %q resolves outside Workspace", path)
-	}
-	file, err := os.Open(physical)
-	if err != nil {
-		return nil, fmt.Errorf("open source %q: %w", path, err)
+		return nil, err
 	}
 	info, err := file.Stat()
 	if err != nil {

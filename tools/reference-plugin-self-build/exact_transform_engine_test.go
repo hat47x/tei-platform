@@ -112,6 +112,55 @@ func TestExactEngineRejectsAlteredReceipt(t *testing.T) {
 	}
 }
 
+func TestExactEngineRejectsAmbiguousBuildEvidence(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*testing.T, []byte) []byte
+	}{
+		{
+			name: "duplicate top-level schema with canonical last value",
+			mutate: func(t *testing.T, raw []byte) []byte {
+				return append([]byte(`{"schema":"untrusted",`), raw[1:]...)
+			},
+		},
+		{
+			name: "duplicate nested Runtime Engine version with canonical last value",
+			mutate: func(t *testing.T, raw []byte) []byte {
+				needle := `"version":"` + transformRuntimeEngineVersion + `"`
+				if !strings.Contains(string(raw), needle) {
+					t.Fatal("fixture has no nested Runtime Engine version")
+				}
+				return []byte(strings.Replace(string(raw), needle, `"version":"0.0.0",`+needle, 1))
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, options := makeExactEngineFixture(t)
+			raw, err := os.ReadFile(options.BuildEvidence)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// encoding/json would use the last value and reconstruct the
+			// original, matching typed receipt and its existing fingerprint.
+			var decoded exactEngineBuildEvidence
+			mutated := tc.mutate(t, raw)
+			if err := json.Unmarshal(mutated, &decoded); err != nil {
+				t.Fatalf("test must retain a decodable receipt: %v", err)
+			}
+			if fingerprint, err := exactEngineFingerprint(decoded); err != nil || fingerprint != decoded.EvidenceFingerprint {
+				t.Fatalf("test must preserve the decoded receipt fingerprint: %q, %v", fingerprint, err)
+			}
+			if err := os.WriteFile(options.BuildEvidence, mutated, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := verifyExactEngine(root, "revision-a", options); err == nil ||
+				!strings.Contains(err.Error(), "ambiguous or invalid JSON") {
+				t.Fatalf("ambiguous exact Runtime Engine build receipt was accepted: %v", err)
+			}
+		})
+	}
+}
+
 func TestExactEngineRejectsMissingOrRepositoryLocalArtifact(t *testing.T) {
 	root, options := makeExactEngineFixture(t)
 	if _, _, err := verifyExactEngine(root, "revision-a", exactEngineOptions{Executable: options.Executable}); err == nil {

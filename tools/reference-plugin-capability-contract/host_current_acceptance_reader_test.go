@@ -33,7 +33,11 @@ func (s *testHostCurrentAcceptanceSource) ReadCurrentHostAcceptance(
 	if s.err != nil {
 		return HostCurrentAcceptanceSnapshot{}, s.err
 	}
-	return s.snapshot, nil
+	// A Host-owned source returns an isolated observation, not mutable
+	// aliases of its authoritative grant collection.
+	snapshot := s.snapshot
+	snapshot.CurrentTrustGrants = append([]authoritytrust.Grant(nil), s.snapshot.CurrentTrustGrants...)
+	return snapshot, nil
 }
 
 func testHostAcceptanceSnapshot(
@@ -292,5 +296,39 @@ func TestReferenceHostAcceptanceRejectsMissingOrBrokenSource(t *testing.T) {
 	_, err = reader.ReadCurrentAcceptedService(context.Background(), pruntime.ServiceProviderSelection{})
 	if err == nil || !strings.Contains(err.Error(), "Host current acceptance source denied") {
 		t.Fatalf("unavailable Host source not rejected: %v", err)
+	}
+}
+
+func TestReferenceHostAcceptanceUsesIsolatedCurrentSnapshot(t *testing.T) {
+	calls := 0
+	contract, provider, _ := quoteCandidateRegistryFixture(t, &calls)
+	selected := pruntime.ServiceProviderSelection{
+		ContractID:          contract.ID,
+		ContractVersion:     contract.Version,
+		ContractFingerprint: fingerprint(contract),
+		Scope:               string(provider.Scope),
+		Provider:            serviceSelectionPluginIdentity(t, provider),
+		ImplementationID:    provider.ImplementationID,
+		ArtifactDigest:      provider.ArtifactDigest,
+	}
+	source := testHostAcceptanceSnapshot(t, contract, provider, selected)
+	reader := &ReferenceHostCurrentAcceptanceReader{Source: source}
+	snapshot, err := source.ReadCurrentHostAcceptance(context.Background(), selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.CurrentTrustGrants) == 0 {
+		t.Fatal("test Host trust grants absent")
+	}
+	snapshot.CurrentTrustGrants[0].Active = false
+	if !source.snapshot.CurrentTrustGrants[0].Active {
+		t.Fatal("returned snapshot mutated the Host's current trust records")
+	}
+	if _, err := reader.ReadCurrentAcceptedService(context.Background(), selected); err != nil {
+		t.Fatalf("external mutation of returned snapshot affected current Host trust: %v", err)
+	}
+	source.snapshot.CurrentTrustGrants[0].Active = false
+	if _, err := reader.ReadCurrentAcceptedService(context.Background(), selected); err == nil {
+		t.Fatal("current Host revocation was not observed on next read")
 	}
 }

@@ -20,10 +20,10 @@ type e33File struct {
 }
 
 type e33Snapshot struct {
-	Kind      string    `json:"kind"`
-	HeadSHA   string    `json:"headSha"`
-	BaseSHA   string    `json:"baseSha"`
-	Files     []e33File `json:"files"`
+	Kind    string    `json:"kind"`
+	HeadSHA string    `json:"headSha"`
+	BaseSHA string    `json:"baseSha"`
+	Files   []e33File `json:"files"`
 }
 
 func e33ActualDraftSource(t *testing.T) []e33File {

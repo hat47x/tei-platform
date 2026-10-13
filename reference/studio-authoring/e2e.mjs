@@ -543,6 +543,49 @@ function testReferenceBusinessNavigation() {
     cliNav.modelRevision === r0 &&
     cliNav.candidates.some(c => c.focus === focus),
     "business: CLI reproduces the same read-only reverse navigation");
+  // The Studio CLI now invokes the real #1125 producer itself. Its three
+  // independent reference inputs are fingerprinted, but not Accepted Source.
+  const goInputs = [
+    "-business-procedure", join(root, "reference/business-system-design/order-entry-business-procedure.json"),
+    "-business-review", join(root, "reference/business-system-design/order-entry-dfd-review-proposal.json"),
+    "-business-set", join(root, "reference/business-system-design/order-entry-procedure-reference-set.json")
+  ];
+  const liveForward = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", focus, ...goInputs
+  ]).stdout);
+  checked(liveForward.modelRevision === r0 &&
+    liveForward.views.business.items.some(x => x.stepID === "BP-05") &&
+    liveForward.businessObservation?.schema ===
+      "tei.reference.studio-business-producer-observation/v0" &&
+    liveForward.businessObservation.workspaceRevisionObserved === r0 &&
+    liveForward.businessObservation.acceptedBusinessProcedure === false &&
+    liveForward.businessObservation.sourceRevisionBinding === "not-established" &&
+    liveForward.businessObservation.sources.length === 3,
+    "business: live Go producer is source-bounded but not accepted Business");
+  const liveReverse = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", "step:BP-05", ...goInputs
+  ]).stdout);
+  checked(liveReverse.candidates.some(x => x.focus === focus) &&
+    liveReverse.businessObservation?.workspaceRevisionObserved === r0 &&
+    liveReverse.authority === "noncanonical-reference",
+    "business: live Go producer supports Step reverse navigation without acceptance");
+  const page = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", focus, ...goInputs, "-format", "html"
+  ]).stdout;
+  checked(page.includes("業務参照資料の観測証跡") &&
+    page.includes("not-established") &&
+    page.includes("go-derived-reference-observed"),
+    "business: HTML exposes the Go producer evidence and unresolved source binding");
+  const incomplete = command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", workspace, "-focus", focus,
+    "-business-procedure", goInputs[1]
+  ], false);
+  checked(incomplete.stderr.includes("INVALID_INPUT"),
+    "business: partially supplied Go producer input is rejected");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     "business: DFD production and both navigation directions leave Source unchanged");
   checked(revision(workspace) === r0,

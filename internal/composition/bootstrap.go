@@ -9,7 +9,7 @@ package composition
 // As at cutover, the guard must be a nonblocking host-owned check which does
 // not call back into the Registry (the registry mutex is held while calling it).
 func NewSelectedCoordinator(registry *Registry, selected Selection, initial Binding, scope *Scope, guard func(Binding) error) (*Coordinator, error) {
-	if registry == nil || guard == nil || scope == nil || !initial.valid() {
+	if registry == nil || guard == nil || scope == nil || !initial.Valid() {
 		return nil, ErrCoordinatorInvalid
 	}
 	selected.Dependencies = append([]Edge(nil), selected.Dependencies...)

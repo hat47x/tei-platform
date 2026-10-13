@@ -1,0 +1,155 @@
+{
+  "schema": "tei.reference.quote-semantic-vectors/candidate-v0",
+  "status": "unaccepted",
+  "description": "Independent, fixed expected outcomes for reference-order-quote. Candidate data are not acceptance certificates or provider conformance grants.",
+  "contract": "reference.order.quote-lines/v1",
+  "vectors": [
+    {
+      "name": "two item baseline",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":3,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 2,
+        "subtotalMinor": 1550
+      }
+    },
+    {
+      "name": "order permutation",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400},{\"sku\":\"PEN\",\"quantity\":3,\"unitPriceMinor\":250}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 2,
+        "subtotalMinor": 1550
+      }
+    },
+    {
+      "name": "split equivalent",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250},{\"sku\":\"PEN\",\"quantity\":2,\"unitPriceMinor\":250},{\"sku\":\"BOOK\",\"quantity\":2,\"unitPriceMinor\":400}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 3,
+        "subtotalMinor": 1550
+      }
+    },
+    {
+      "name": "zero cost explicitly",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"FREE\",\"quantity\":1,\"unitPriceMinor\":0}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 1,
+        "subtotalMinor": 0
+      }
+    },
+    {
+      "name": "lower quantity bound",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"ONE\",\"quantity\":1,\"unitPriceMinor\":1}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 1,
+        "subtotalMinor": 1
+      }
+    },
+    {
+      "name": "maximum line product",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"MAX\",\"quantity\":100,\"unitPriceMinor\":1000000000}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 1,
+        "subtotalMinor": 100000000000
+      }
+    },
+    {
+      "name": "maximum subtotal",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"SKU-00\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-01\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-02\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-03\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-04\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-05\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-06\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-07\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-08\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-09\",\"quantity\":100,\"unitPriceMinor\":1000000000}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 10,
+        "subtotalMinor": 1000000000000
+      }
+    },
+    {
+      "name": "fifty lines",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"SKU-00\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-01\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-02\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-03\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-04\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-05\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-06\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-07\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-08\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-09\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-10\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-11\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-12\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-13\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-14\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-15\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-16\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-17\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-18\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-19\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-20\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-21\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-22\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-23\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-24\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-25\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-26\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-27\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-28\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-29\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-30\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-31\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-32\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-33\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-34\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-35\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-36\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-37\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-38\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-39\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-40\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-41\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-42\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-43\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-44\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-45\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-46\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-47\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-48\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-49\",\"quantity\":1,\"unitPriceMinor\":1}]}",
+      "expect": {
+        "currency": "JPY",
+        "lineCount": 50,
+        "subtotalMinor": 50
+      }
+    },
+    {
+      "name": "line overflow",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"SKU-00\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-01\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-02\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-03\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-04\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-05\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-06\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-07\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-08\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-09\",\"quantity\":100,\"unitPriceMinor\":1000000000},{\"sku\":\"SKU-10\",\"quantity\":100,\"unitPriceMinor\":1000000000}]}",
+      "reject": true
+    },
+    {
+      "name": "fifty one lines",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"SKU-00\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-01\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-02\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-03\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-04\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-05\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-06\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-07\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-08\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-09\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-10\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-11\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-12\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-13\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-14\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-15\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-16\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-17\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-18\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-19\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-20\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-21\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-22\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-23\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-24\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-25\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-26\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-27\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-28\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-29\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-30\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-31\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-32\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-33\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-34\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-35\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-36\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-37\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-38\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-39\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-40\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-41\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-42\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-43\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-44\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-45\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-46\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-47\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-48\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-49\",\"quantity\":1,\"unitPriceMinor\":1},{\"sku\":\"SKU-50\",\"quantity\":1,\"unitPriceMinor\":1}]}",
+      "reject": true
+    },
+    {
+      "name": "negative quantity",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":-1,\"unitPriceMinor\":1}]}",
+      "reject": true
+    },
+    {
+      "name": "fractional quantity",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1.5,\"unitPriceMinor\":1}]}",
+      "reject": true
+    },
+    {
+      "name": "negative price",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":-1}]}",
+      "reject": true
+    },
+    {
+      "name": "quantity beyond limit",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":101,\"unitPriceMinor\":1}]}",
+      "reject": true
+    },
+    {
+      "name": "price beyond limit",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":1000000001}]}",
+      "reject": true
+    },
+    {
+      "name": "unsupported currency",
+      "request": "{\"currency\":\"USD\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":250}]}",
+      "reject": true
+    },
+    {
+      "name": "missing unit price",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1}]}",
+      "reject": true
+    },
+    {
+      "name": "duplicate quantity",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"quantity\":2,\"unitPriceMinor\":3}]}",
+      "reject": true
+    },
+    {
+      "name": "case folded field",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"UnitPriceMinor\":3}]}",
+      "reject": true
+    },
+    {
+      "name": "null currency",
+      "request": "{\"currency\":null,\"lines\":[{\"sku\":\"PEN\",\"quantity\":1,\"unitPriceMinor\":3}]}",
+      "reject": true
+    },
+    {
+      "name": "blank sku",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"   \",\"quantity\":1,\"unitPriceMinor\":3}]}",
+      "reject": true
+    },
+    {
+      "name": "oversized sku",
+      "request": "{\"currency\":\"JPY\",\"lines\":[{\"sku\":\"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\",\"quantity\":1,\"unitPriceMinor\":3}]}",
+      "reject": true
+    },
+    {
+      "name": "empty lines",
+      "request": "{\"currency\":\"JPY\",\"lines\":[]}",
+      "reject": true
+    }
+  ]
+}

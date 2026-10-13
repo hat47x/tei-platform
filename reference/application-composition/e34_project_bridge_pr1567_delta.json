@@ -1,0 +1,46 @@
+{
+  "kind": "tei-e34-project-bridge-fixed-revision-delta-v0",
+  "repository": "hat47x/tei-platform",
+  "pullRequest": 1567,
+  "previousHead": "be193266f1556e090b59cf2c237a23c0ca60236e",
+  "currentHead": "596c522489dde0ad5184eba6e0220cd758f16636",
+  "source": "github-compare-commits",
+  "files": [
+    {
+      "path": "tools/reference-project-advice-lit/README.md",
+      "status": "modified",
+      "role": "documentation",
+      "beforeBlob": "8d41e78717e8ca0bd6bbe02dafc5c261713f58b1",
+      "additions": 5,
+      "deletions": 1,
+      "afterBlob": "2461db64c418d08c77707f7ee86eca28ae603ea4"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/contract_bridge.go",
+      "status": "added",
+      "role": "diagnostic-host",
+      "beforeBlob": null,
+      "additions": 93,
+      "deletions": 0,
+      "afterBlob": "d74770dacbb48e5dd42c98b3a291e82d6da5a5bb"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/contract_bridge_test.go",
+      "status": "added",
+      "role": "verification",
+      "beforeBlob": null,
+      "additions": 58,
+      "deletions": 0,
+      "afterBlob": "61d671cde96a11960d380a44a7d5b27dc0df7d84"
+    },
+    {
+      "path": "tools/reference-project-advice-lit/main.go",
+      "status": "modified",
+      "role": "diagnostic-host",
+      "beforeBlob": "3cb210363d59c0052ed5da145d5895c504c7cef7",
+      "additions": 5,
+      "deletions": 1,
+      "afterBlob": "dcc8df49f16f5fe38e3da4ed86d66bbdc4567b81"
+    }
+  ]
+}

@@ -11,6 +11,7 @@ on:
       - 'tools/check-core-subject-isolation.sh'
       - 'core/subject/**'
       - 'core/effect/**'
+      - 'core/generation/**'
       - 'core/identity/**'
       - 'internal/core/**'
       - 'tools/check-core-identity-isolation.sh'
@@ -38,6 +39,7 @@ on:
       - 'tools/check-core-subject-isolation.sh'
       - 'core/subject/**'
       - 'core/effect/**'
+      - 'core/generation/**'
       - 'core/identity/**'
       - 'internal/core/**'
       - 'tools/check-core-identity-isolation.sh'
@@ -102,6 +104,8 @@ jobs:
           test -z "$(gofmt -l core/effect/*.go internal/composition/scope.go)"
           go test -count=1 ./core/effect
           go vet ./core/effect
+          go test -count=1 ./core/generation ./internal/composition
+          go vet ./core/generation ./internal/composition
           bash tools/check-core-isolation.sh
 
       - name: M0識別子Core正本の型同一性と外部独立利用を検証

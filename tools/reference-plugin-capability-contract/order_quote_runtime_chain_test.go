@@ -343,6 +343,9 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 			t.Fatalf("shape unexpectedly proved business arithmetic: err=%v launches=%d result=%+v",
 				err, launcher.calls-before, got)
 		}
+		if err := verifyQuoteReceiptForTest(payload, got.ResultPayload); err == nil {
+			t.Fatal("test-only independent receipt oracle accepted wrong arithmetic")
+		}
 	})
 
 	t.Run("synthetic outer evidence plus real Runtime yields actual quote", func(t *testing.T) {
@@ -363,6 +366,9 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 			launcher.calls != before+1 || unusedCalls != 0 {
 			t.Fatalf("expected real child calculation, not stub: %+v launcher=%d stub=%d",
 				quote, launcher.calls-before, unusedCalls)
+		}
+		if err := verifyQuoteReceiptForTest(payload, got.ResultPayload); err != nil {
+			t.Fatalf("real independent quote failed consumer semantic receipt check: %v", err)
 		}
 		if got.Resolution.Provider.ArtifactDigest != digest ||
 			got.RequestShapeAuthorityEvidenceFingerprint == "" ||

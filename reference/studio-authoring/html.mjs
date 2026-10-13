@@ -40,6 +40,21 @@ function record(v) {
 function safeJSON(value) {
   return '<pre>' + escapeText(JSON.stringify(value ?? null, null, 2)) + '</pre>';
 }
+function businessEvidence(observation) {
+  if (!observation) return "";
+  const sources = observation.sources || (observation.artifactFingerprint ? [{
+    role: "external-dfd", path: observation.observedPath,
+    fingerprint: observation.artifactFingerprint, byteLength: observation.artifactBytes
+  }] : []);
+  return heading("業務参照資料の観測証跡", "business-evidence") +
+    facts([["参照資料の出所", observation.evidenceClass],
+      ["業務手順の受理", observation.acceptedBusinessProcedure === false ? "未受理" : "未確認"],
+      ["正本との版の結合", observation.sourceRevisionBinding ?? "未確認"],
+      ["読取境界", observation.workspaceRevisionStatus ?? "外部資料"],
+      ["観測したWorkspace版", observation.workspaceRevisionObserved ?? "未取得"]]) +
+    entries(sources, x => str(x.role) + " ／" + str(x.path) +
+      " ／指紋 " + str(x.fingerprint) + " ／" + str(x.byteLength) + " bytes");
+}
 function section(id, name, status, body) {
   return '<section aria-labelledby="' + id + '-title" id="' + id + '">' +
     '<h2 id="' + id + '-title">' + escapeText(name) + '</h2>' +
@@ -105,7 +120,8 @@ function lens(view, sourceFromWorkspace) {
       ' ／意味参照 ' + entries(item.explicitMeaning,
         r => record(r) + ' (' + str(r.status) + ')')) +
     (business.diagnostics?.length
-      ? '<details><summary>未解決事項</summary>' + safeJSON(business.diagnostics) + '</details>' : '');
+      ? '<details><summary>未解決事項</summary>' + safeJSON(business.diagnostics) + '</details>' : '') +
+    businessEvidence(view.businessObservation);
   const sourceBody = facts([
     ["元定義の照合結果", src.status ?? "unresolved"],
     ["ファイル位置", src.artifactPath ?? "なし"],
@@ -153,7 +169,8 @@ function businessStep(view) {
       ["編集可能", "いいえ"]]) +
     section("business", "参照候補", view.status,
       entries(view.candidates, c =>
-        record(c) + ' ／状態 ' + str(c.status) + ' ／出所 ' + str(c.via))) +
+        record(c) + ' ／状態 ' + str(c.status) + ' ／出所 ' + str(c.via)) +
+      businessEvidence(view.businessObservation)) +
     '<section><h2>受理の境界</h2><p>この手順は受理済みの業務正本ではありません。共通の受理機構を経由せず編集できません。</p></section>');
 }
 function reviewEdit(view) {
