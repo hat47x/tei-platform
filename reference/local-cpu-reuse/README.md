@@ -123,3 +123,7 @@ The working runtime has Go, Node.js and Git, but **does not have a checked-out T
 To make this an actionable gate for a future authorized checkout: first record the checkout commit SHA and `git status --porcelain`, then run the two CLI bridge test files under Node, build the Go CLI, execute the five-subject runner, and attach only sanitized subject IDs, observed source/world fingerprint equality, error codes and elapsed-time measurements. Avoid uploading Canonical source bodies or full CLI JSON containing business data. Recheck the checkout commit SHA after the run and discard evidence if it changed. If any of the five exact subjects is absent, report a bounded `SUBJECT_NOT_FOUND` result rather than fabricating a replacement ID.
 
 **No Go integration, mainline rebase or PR merge is claimed.**
+
+## Evidence output hardening (2026-10-13)
+
+The opt-in CLI runner now writes a **metadata-only evidence summary** by default. Canonical bodies, field bindings, Source artifact paths, and raw World/Source Index fingerprint values are not serialized to stdout. Its in-memory API still returns detailed observations for an explicitly authorized caller; those details must not be logged or exported without separate permission. A new synthetic regression test checks that representative business attribute names and raw fingerprints are absent. This does not constitute a security audit or guarantee that Subject IDs themselves are non-sensitive. Real CLI E2E remains unexecuted.
