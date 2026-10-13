@@ -31,6 +31,9 @@ type PublisherSubject struct {
 	Contract    composition.Contract
 	PublisherID string
 	SignerRef   string
+	PackageID   string
+	PackageVersion string
+	NamespaceID string
 }
 
 // PublisherTrust is a Host-controlled, point-in-time public-key allowance.
@@ -95,22 +98,22 @@ func SemanticPublicationMessage(scope string, asset SelectedAsset, proof Publica
 		OutputKind      string `json:"outputKind"`
 		ValidUntil      string `json:"validUntil"`
 	}{
-		Domain: semanticPublicationDomain,
-		Scope: scope,
-		ProviderID: asset.ProviderID,
-		ContractID: asset.Contract.ID,
+		Domain:          semanticPublicationDomain,
+		Scope:           scope,
+		ProviderID:      asset.ProviderID,
+		ContractID:      asset.Contract.ID,
 		ContractVersion: asset.Contract.Version,
-		ContractShape: asset.Contract.Shape,
-		PublisherID: proof.PublisherID,
-		SignerRef: proof.SignerRef,
-		PackageID: asset.Expected.Package.PackageID,
-		PackageVersion: asset.Expected.Package.Version,
-		NamespaceID: asset.Expected.NamespaceID,
-		ArtifactDigest: asset.Expected.ArtifactDigest,
-		SemanticDigest: asset.Expected.SemanticDigest,
+		ContractShape:   asset.Contract.Shape,
+		PublisherID:     proof.PublisherID,
+		SignerRef:       proof.SignerRef,
+		PackageID:       asset.Expected.Package.PackageID,
+		PackageVersion:  asset.Expected.Package.Version,
+		NamespaceID:     asset.Expected.NamespaceID,
+		ArtifactDigest:  asset.Expected.ArtifactDigest,
+		SemanticDigest:  asset.Expected.SemanticDigest,
 		PlanFingerprint: asset.Build.PlanFingerprint,
-		OutputKind: string(asset.Build.OutputKind),
-		ValidUntil: proof.ValidUntil.UTC().Format(time.RFC3339Nano),
+		OutputKind:      string(asset.Build.OutputKind),
+		ValidUntil:      proof.ValidUntil.UTC().Format(time.RFC3339Nano),
 	})
 }
 
@@ -153,6 +156,9 @@ func InspectPublished(
 		subject := PublisherSubject{
 			Scope: scope, ProviderID: asset.ProviderID, Contract: asset.Contract,
 			PublisherID: proof.PublisherID, SignerRef: proof.SignerRef,
+			PackageID: asset.Expected.Package.PackageID,
+			PackageVersion: asset.Expected.Package.Version,
+			NamespaceID: asset.Expected.NamespaceID,
 		}
 		allowance, err := trusted(subject)
 		if err != nil {
