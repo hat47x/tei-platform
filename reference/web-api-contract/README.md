@@ -72,6 +72,14 @@ Provider呼出前に実ResolverでCanonical Query/Dataの同一性を再照合�
 
 **このBridgeが強制するのは実行境界の型・照合・公開射影であり、実DBの行権限そのものではない。** 合成Providerがプランを無視する場合、実施証拠を真とする根拠はない。E6のFixtureによる物理的なスコープ適用と、E7の既存Driver経路検証は別々の証拠である。安全な本番実装ではQuery Provider自身の権限スコープ強制と回帰試験がさらに必要。
 
+## E8：既存PostgreSQL Executorの誤昇格を拒否する
+
+既存の`internal/driver/queryruntime/postgres.Executor`が実装する`BrowseQueryExecutor`には、Principal / Row Scope / Policy Revision / dynamic Filter / Order / Topを安全に実行する共通契約がまだない。既存の`reference/workspace/applications/order-entry/queries/recent_orders.sql`は`ordered_at >= :from`の固定SQLと`ORDER BY`を持つが、認可済みTenant Predicateや動的Scopeを受け付ける入力契約を持たない。したがって、単に既存Queryがあることを根拠にOData読込を公開しない。
+
+`scoped_provider_selection.go`は、動的Host compositionが選んだ実装について、独立した`ScopedCanonicalExecutor`を実装していなければ拒否する。通常のPostgreSQL native SQL Executor、nil、型付きnilを拒否する回帰試験を追加した。これは**誤昇格の防止**であり、インターフェースを実装しただけでProviderの安全性を認証するものではない。
+
+`scoped_driver_bridge.go`は、Providerが権限付きTopより多い行を返した場合、処理後に部分切り詰めせず**返却全体を拒否**する。ここでもProvider内で行スコープ・Filter・Sortを実際に適用したことは証明できない。実行時SQL構成は、明示したScoped Query Realizationと安全な物理Scope Bindingが採用された場合に限り進める。
+
 ## 次の接続先
 
 1. #1158の型付き読込・Action操作へ、手書きSubset ParserではないAdapterで接続する。
