@@ -138,7 +138,7 @@ func TestDiagnosticHostRejectsDNSRebinding(t *testing.T) {
 
 func TestProjectAdvisoryHTTPServiceUnavailable(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name       string
 		invalidate func(*testing.T, *projectAdvisoryBridge)
 	}{
 		{"host-withdraw", func(t *testing.T, bridge *projectAdvisoryBridge) {
