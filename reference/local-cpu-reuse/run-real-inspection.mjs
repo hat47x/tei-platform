@@ -65,11 +65,31 @@ export async function runReferenceInspection(binary,workspace,readOne=executeOne
   };
 }
 
+// Public CLI output is intentionally metadata-only. Full observations stay in memory
+// for the authorized caller and must not be written to logs by default.
+export function summarizeInspectionEvidence(batch) {
+  if(!batch || !Array.isArray(batch.observations))
+    throw new InspectBridgeError('INVALID_INSPECTION_EVIDENCE');
+  return {
+    schemaVersion:'tei.research.inspection-evidence/v0',
+    effect:'read-only',acceptance:'not_asserted',
+    subjectCount:batch.observations.length,
+    subjects:batch.observations.map(o=>({
+      kind:o.subject.kind,id:o.subject.id,
+      completeness:o.completeness,
+      diagnosticCodes:o.diagnostics.map(d=>d.split('.')[0]),
+      sourceStatus:o.provenance.sourceStatus
+    })),
+    consistentSnapshot:true,
+    links:batch.links
+  };
+}
+
 if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   (async()=>{
     const {binary,workspace}=cliArgs(process.argv.slice(2));
     const result=await runReferenceInspection(binary,workspace);
-    process.stdout.write(JSON.stringify(result,null,2)+'\n');
+    process.stdout.write(JSON.stringify(summarizeInspectionEvidence(result),null,2)+'\n');
   })().catch(err=>{
     const code=err instanceof InspectBridgeError?err.code:'REFERENCE_INSPECTION_FAILED';
     process.stderr.write(code+'\n');
