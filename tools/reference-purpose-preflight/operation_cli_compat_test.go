@@ -37,7 +37,7 @@ func TestOperationWriteIntentRemainsOptInForWorkspaceCLI(t *testing.T) {
 	}
 	var projected struct {
 		Assessment WorkspaceAssessment `json:"assessment"`
-		Readiness  PurposeProjection  `json:"readiness"`
+		Readiness  PurposeProjection   `json:"readiness"`
 	}
 	if err := json.Unmarshal(buf.Bytes(), &projected); err != nil {
 		t.Fatal(err)
