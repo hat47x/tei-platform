@@ -93,7 +93,8 @@ func checkExactMemberNames(value transform.Value, schema reflect.Type, path stri
 // shipped SB-1 package Source. Typed, strict JSON decoding gives the same
 // member order and omitempty representation as Go's Definition serializer.
 // The adapter is NOT invoked by transform.Evaluate or any legacy caller.
-// A caller must opt in to the v2 ingress profile, supply a trusted locked\n// Source fingerprint, and record returned Evidence.
+// A caller must opt in to the v2 ingress profile, supply a trusted locked
+// Source fingerprint, and record returned Evidence.
 //
 // Changing the Source identity requires an explicit qualification of a new
 // adapter/source pair, not a silent fallback to another builder.
