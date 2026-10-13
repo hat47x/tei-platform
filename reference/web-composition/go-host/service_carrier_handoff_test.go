@@ -108,6 +108,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 	accepted := &serviceHandoffAcceptance{selection: serviceSelection}
 	runtimeHost := pruntime.Registry{Processes: process, Verifier: verifier, ServiceAcceptance: accepted}
 
+	var currentPrincipal Principal
 	var captured *http.Request
 	serviceHandler, err := NewHostAuthorizedSelectedCapabilityInvoker(
 		coordinator, actionID, serviceID, service.Version, []SelectedActionProvider{{
@@ -156,7 +157,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 		ProviderID: "corporate", Issuer: principal.Issuer,
 		Subject: "corporate-viewer", PrincipalID: "employee-2",
 	}
-	currentPrincipal := principal
+	currentPrincipal = principal
 	linkRevoked, mappingUnavailable := false, false
 	authorizer, err := NewCanonicalActionAuthorizer(
 		resolver, "order_entry", actionID,
