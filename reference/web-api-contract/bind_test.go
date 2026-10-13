@@ -28,7 +28,7 @@ func TestReadSubsetHappy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(p.Selected, []string{"OrderID", "Amount"}) || p.Filter.FieldID != "Amount" || !p.Order.Descending || p.Limit != 20 || p.ScopeID != "trusted-scope-01" || p.PolicyRevision != "p42" {
+	if !reflect.DeepEqual(p.Selected, []string{"OrderID", "Amount"}) || p.Filter.FieldID != "Amount" || !p.Order.Descending || p.Limit != 20 || p.PrincipalID != "staff-1" || p.ScopeID != "trusted-scope-01" || p.PolicyRevision != "p42" {
 		t.Fatalf("unexpected plan: %#v", p)
 	}
 }
