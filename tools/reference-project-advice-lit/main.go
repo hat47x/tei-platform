@@ -5,6 +5,7 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"io"
 	"log"
@@ -52,6 +53,15 @@ func handlerWithContext(contextHandler http.Handler) http.Handler {
 	if err != nil {
 		panic(err)
 	}
+	return handlerWithProjectBridge(contextHandler, bridge)
+}
+
+// handlerWithProjectBridge keeps the reference Host-owned service injectable for
+// HTTP-level withdrawal tests, without making Registry selection an authority.
+func handlerWithProjectBridge(contextHandler http.Handler, bridge *projectAdvisoryBridge) http.Handler {
+	if bridge == nil {
+		panic("missing project advisory bridge")
+	}
 	mux := http.NewServeMux()
 	if contextHandler != nil {
 		mux.Handle("/project/order-entry-context", contextHandler)
@@ -88,6 +98,10 @@ func handlerWithContext(contextHandler http.Handler) http.Handler {
 			return
 		}
 		result, err := bridge.Evaluate(input)
+		if errors.Is(err, errProjectAdvisoryUnavailable) {
+			http.Error(w, "project advisory service unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		if err != nil {
 			http.Error(w, "invalid advisory input", http.StatusBadRequest)
 			return
