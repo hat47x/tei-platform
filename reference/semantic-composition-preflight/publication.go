@@ -156,9 +156,9 @@ func InspectPublished(
 		subject := PublisherSubject{
 			Scope: scope, ProviderID: asset.ProviderID, Contract: asset.Contract,
 			PublisherID: proof.PublisherID, SignerRef: proof.SignerRef,
-			PackageID: asset.Expected.Package.PackageID,
+			PackageID:      asset.Expected.Package.PackageID,
 			PackageVersion: asset.Expected.Package.Version,
-			NamespaceID: asset.Expected.NamespaceID,
+			NamespaceID:    asset.Expected.NamespaceID,
 		}
 		allowance, err := trusted(subject)
 		if err != nil {
