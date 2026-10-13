@@ -76,6 +76,9 @@ Lookupは指定された`PublisherSubject`の鍵とHostが定めた失効期限�
 署名期限がHost期限を超える場合も、**CAS/Fetch実行前に**拒否する。
 単一の`InspectPublished`呼出し内では、全資産の署名確認が終わってから
 既存のComposition候補選択・Lock・配布物照合・Semantic検証を行う。
+読み取り後にもHostから同じ発行者の鍵・信頼世代・有効期限を再確認し、
+取得中の鍵の交換・失効を検出した場合は検査結果を失敗として返す。
+この検出は実行直前のHostによる最新権限確認を不要にしない。
 
 ```sh
 go test -count=1 ./reference/semantic-composition-preflight
