@@ -177,3 +177,43 @@ func TestRealDriverRefusesUnscopedFallbackAndInvalidResult(t *testing.T) {
 		t.Fatalf("invalid provider mapping was published: %+v err=%v", out, err)
 	}
 }
+
+func TestScopedProviderCannotMutateAuthorizedResponseProjection(t *testing.T) {
+	pub := scopedPublication(t)
+	ctx := TrustedReadContext{
+		PrincipalID: "subject-order-editor", RowScopeID: "tenant-a-only", PolicyRevision: "r17",
+	}
+	plan, err := pub.BindRead(url.Values{
+		"$select": {"orderId"},
+		"$filter": {"orderId eq 7"},
+		"$orderby": {"orderId asc"},
+	}, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := scopedCanonicalExecutorFunc(func(
+		_ context.Context, _ query.EmbeddedSQL, _ application.DatabaseRequirement,
+		forwarded ReadPlan, _ map[string]any,
+	) (driver.BrowseQueryResult, error) {
+		forwarded.Selected[0] = "customerId"
+		forwarded.Filter.FieldID = "customerId"
+		forwarded.Order.FieldID = "customerId"
+		return driver.BrowseQueryResult{Raw: queryresult.RawResult{
+			Columns: []string{"total_amount", "status", "ordered_at", "customer_id", "order_id"},
+			Rows: [][]any{{int64(120000), "READY", "2026-10-01", int64(99), int64(7)}},
+		}}, nil
+	})
+	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
+		scopedSupport(pub, plan), provider, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out.Columns, []string{"orderId"}) ||
+		!reflect.DeepEqual(out.Rows, [][]any{{int64(7)}}) {
+		t.Fatalf("provider changed the authorized public projection: %+v", out)
+	}
+	if !reflect.DeepEqual(plan.Selected, []string{"orderId"}) ||
+		plan.Filter.FieldID != "orderId" || plan.Order.FieldID != "orderId" {
+		t.Fatalf("provider mutated the caller's authorization plan: %+v", plan)
+	}
+}
