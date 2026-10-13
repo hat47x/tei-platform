@@ -74,8 +74,13 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 	plan ReadPlan,
 	parameters map[string]any,
 ) (driver.BrowseQueryResult, error) {
-	if ctx == nil || e.DB == nil || e.Authority == nil ||
-		e.Database != "sales_core" || ds.TargetDatabase != e.Database ||
+	if ctx == nil || e.DB == nil {
+		return driver.BrowseQueryResult{}, ErrScopedQueryUnavailable
+	}
+	if e.Authority == nil {
+		return driver.BrowseQueryResult{}, ErrAuthorizationUnavailable
+	}
+	if e.Database != "sales_core" || ds.TargetDatabase != e.Database ||
 		ds.Alias != "sales" || q.ID != "order_entry.recent_orders" ||
 		q.Application != "order_entry" || q.Datasource != "sales" ||
 		q.Dialect != environment.ProviderPostgres ||
@@ -150,9 +155,12 @@ func (e ScopedPostgresOrdersReference) ExecuteScopedBrowseQuery(
 		QueryID: q.ID,
 	}
 	grant, err := e.Authority.ResolveSQLTenantScope(ctx, request)
-	if err != nil || grant.SQLTenantScopeRequest != request ||
+	if err != nil {
+		return driver.BrowseQueryResult{}, ErrAuthorizationUnavailable
+	}
+	if grant.SQLTenantScopeRequest != request ||
 		strings.TrimSpace(grant.TenantID) == "" {
-		return driver.BrowseQueryResult{}, ErrRejected
+		return driver.BrowseQueryResult{}, ErrAuthorizationContract
 	}
 	// The tenant is a positional bound value, not a SQL identifier, predicate
 	// expression or browser-supplied value.
