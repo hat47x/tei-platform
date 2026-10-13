@@ -101,6 +101,19 @@ func TestFailClosedForMissingOrRevokedHost(t *testing.T) {
 	}
 }
 
+
+func TestHostRevocationIsConsultedAgain(t *testing.T) {
+	r, index := fixture()
+	if _, err := VerifyCurrent(context.Background(), r, "order_entry", index); err != nil {
+		t.Fatalf("current acceptance was rejected: %v", err)
+	}
+	r.err = errors.New("revoked after first call")
+	expectRefusal(t, r, index, "SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE")
+	if r.calls != 2 {
+		t.Fatalf("current Host state not re-read on the second verification: calls=%d", r.calls)
+	}
+}
+
 func TestRejectForgedOrIncompleteWitness(t *testing.T) {
 	cases := []struct {
 		name, code string
