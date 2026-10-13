@@ -1,13 +1,10 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
@@ -37,13 +34,7 @@ func takeSnapshot(root string) (snapshot, error) {
 // revisionOfは、管理対象source全fileの（相対path, 内容fingerprint）からmodel revisionを導く。
 // file pathの変更もsourceの変更として現れる。意味が変わらないfile移動を意味変更と区別するのはSemantic Diffの責務である。
 func revisionOf(index sourceindex.Index) string {
-	artifacts := append([]sourceindex.Artifact(nil), index.Artifacts...)
-	sort.Slice(artifacts, func(i, j int) bool { return artifacts[i].Path < artifacts[j].Path })
-	hash := sha256.New()
-	for _, artifact := range artifacts {
-		fmt.Fprintf(hash, "%s\x00%s\n", artifact.Path, artifact.Fingerprint)
-	}
-	return "sha256:" + hex.EncodeToString(hash.Sum(nil))
+	return sourceindex.ModelRevision(index)
 }
 
 func (s snapshot) fingerprints() map[string]string {
