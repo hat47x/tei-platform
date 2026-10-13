@@ -3,11 +3,15 @@ package workspace
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 func TestPinnedSourceRootDoesNotFollowWorkspaceDirectoryReplacement(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows may disallow renaming an open directory; test symlink alias pivot instead")
+	}
 	parent := t.TempDir()
 	current := filepath.Join(parent, "workspace")
 	if err := os.Mkdir(current, 0700); err != nil {
@@ -85,5 +89,48 @@ func TestReadSourceForLoadRequiresActiveRoot(t *testing.T) {
 	if _, err := readSourceForLoad(root, &loaded, source); err == nil ||
 		!strings.Contains(err.Error(), "active Workspace root") {
 		t.Fatalf("unbound loader silently reread by path: %v", err)
+	}
+}
+
+func TestPinnedWorkspaceRootSurvivesSymlinkAliasRetarget(t *testing.T) {
+	if runtime.GOOS == "js" || runtime.GOOS == "wasip1" || runtime.GOOS == "plan9" {
+		t.Skip("this target deliberately has no secure rooted reader")
+	}
+	parent := t.TempDir()
+	before := filepath.Join(parent, "before")
+	after := filepath.Join(parent, "after")
+	for _, dir := range []string{before, after} {
+		if err := os.Mkdir(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(before, "example.tei"), []byte("before"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(after, "example.tei"), []byte("after"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(parent, "current")
+	if err := os.Symlink(before, alias); err != nil {
+		t.Skipf("symlink creation unavailable: %v", err)
+	}
+	pinned, err := openWorkspaceRoot(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pinned.Close()
+	if err := os.Remove(alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(after, alias); err != nil {
+		t.Fatal(err)
+	}
+	stillOriginal, err := readPinnedWorkspaceFile(pinned, "example.tei")
+	if err != nil || string(stillOriginal) != "before" {
+		t.Fatalf("pinned root followed modified Workspace alias: %q, %v", stillOriginal, err)
+	}
+	newAlias, err := readWorkspaceFile(alias, "example.tei")
+	if err != nil || string(newAlias) != "after" {
+		t.Fatalf("fixture did not redirect alias: %q, %v", newAlias, err)
 	}
 }
