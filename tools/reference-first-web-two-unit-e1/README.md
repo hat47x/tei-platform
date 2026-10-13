@@ -234,3 +234,14 @@ JSON Browser Hostは既存の`measurement.json`を、`browser/`の親にある�
 `check_api_only_parity.py`には、実ビルド済みAPIを異なるTで起動しようとすると、起動前に終了することの負例を追加する。正しいTの場合に限り、既存のBusiness Result/Authentication/Authorization/Validation/Execution ErrorのHTTP同等性を引き続き検査する。
 
 **境界**：このT文字列はビルドスクリプトが埋め込む単なる識別値で、暗号署名やTrusted Builderの証明ではない。悪意あるBuilderなら偽のTも埋め込める。正式なBuildArtifactLock、受理Sourceの承認者、配備Hostの権限確認、実Provider・本番TLS/IdPの受入は未実装。B/R/Tの一致を認証・認可へ読み替えない。
+
+
+### Browser→APIの読取りにも同一HTTP要求でB/R/Tを照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝基準リポジトリ改訂）**は受け渡された業務モデルの意味を特定する。**T（Target Build Revision＝Target成果物のビルド改訂）**は、そこから生成したWeb/APIなどの実装成果物を特定する。同じB/Rを使ったWebとDesktopが異なるTを持ち得るため、意味の引き渡しとTargetごとの更新を区別する。B/R/Tの一致自体は本番の配備権限、署名、認証・認可を与えない。
+
+診断Browser Hostでは、書込み要求`POST /scenario/submit`をGo APIの`/scenario/submit-bound`に転送し、API自身の実行中ProjectionとB/R/Tを**Runner起動と同じHTTP要求の中で**照合してきた。読取り`GET /scenario/read`も同じ検査方式へ拡張する。Browser側の公開URLは変わらず、HostはGo APIの`GET /scenario/read-bound`へ転送する。Hostが生成したApplication/B/R/Tヘッダー4項目をGo APIが比較し、不一致・欠落・重複は409でRunnerを呼ばずに拒否。Hostは409または未対応の古いAPIによる404を502「API binding unknown」へ変換し、元の無検査ルートへは再送しない。
+
+Hostはさらに、API起動後の差替えを想定して**読取りと書込みの両方を転送する前**に実APIのManifestを再照合する。読取りの事前照合と、同じ要求内のGo API側照合は別の段階であり、APIの差替えが事前照合と実読取りの間に発生しても後者で誤った業務データの読取りを拒否できる。
+
+この仕組みは、意図しない**異なるApplication/B/R/Tへの誤転送**を診断的に防止するだけである。ヘッダー値は復元可能で暗号鍵ではなく、Host自体の配備権限、実データアクセス権、TLS/IdP、署名済みBuilder/Artifact LockやHost Trustの証明にはならない。Go APIが直接公開する従来の`/scenario/read`および業務Runnerの機能・認可は変えない。
