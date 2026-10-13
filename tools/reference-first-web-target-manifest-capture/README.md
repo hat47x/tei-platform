@@ -8,6 +8,7 @@
 
 ```sh
 go run ./tools/reference-first-web-target \
+  -diagnostic-unaccepted-source \
   -workspace reference/workspace \
   -application order_entry \
   -baseline-id B \
