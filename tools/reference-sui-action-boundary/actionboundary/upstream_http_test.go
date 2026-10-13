@@ -269,6 +269,7 @@ func TestHTTPSApplicationStoreUsesOneContractForIndependentInventoryApp(t *testi
 func TestHTTPSApplicationStoreLostReplyNeverRetries(t *testing.T) {
 	var calls atomic.Int32
 	entered := make(chan struct{}, 1)
+	release := make(chan struct{})
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		select {
@@ -276,9 +277,12 @@ func TestHTTPSApplicationStoreLostReplyNeverRetries(t *testing.T) {
 		default:
 		}
 		// The upstream may have committed before its response is lost.
-		<-r.Context().Done()
+		<-release
+		_, _ = w.Write([]byte(`{"protocolVersion":"1","revision":"r2"}`))
 	}))
 	defer server.Close()
+	// Close release before server.Close, including when a test assertion fails.
+	defer close(release)
 	store := upstreamStore(server, validDelegation())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
