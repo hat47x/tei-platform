@@ -25,9 +25,9 @@ func TestReadDispatchRejectsUnsupportedNativeQueryOperations(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan, err := pub.BindRead(url.Values{
-		"$filter": {"orderId eq 'ORD-1'"},
+		"$filter":  {"orderId eq 'ORD-1'"},
 		"$orderby": {"orderId desc"},
-		"$top": {"5"},
+		"$top":     {"5"},
 	}, trusted())
 	if err != nil {
 		t.Fatal(err)
@@ -37,8 +37,8 @@ func TestReadDispatchRejectsUnsupportedNativeQueryOperations(t *testing.T) {
 			QueryID: pub.QueryID, PolicyRevision: plan.PolicyRevision,
 			EnforcesScope: true, SupportsLimit: true,
 			ProjectsFields: map[core.CanonicalID]bool{id: true},
-			Filters: map[core.CanonicalID]map[string]bool{id: {"eq": true}},
-			Sorts: map[core.CanonicalID]bool{id: true},
+			Filters:        map[core.CanonicalID]map[string]bool{id: {"eq": true}},
+			Sorts:          map[core.CanonicalID]bool{id: true},
 		}
 	}
 	// Synthetic complete support is deliberately not a proof that the real
@@ -87,8 +87,8 @@ func TestReadDispatchRechecksGrantsForForgedPlans(t *testing.T) {
 		QueryID: q, PolicyRevision: "rev1",
 		EnforcesScope: true, SupportsLimit: true,
 		ProjectsFields: map[core.CanonicalID]bool{id: true},
-		Filters: map[core.CanonicalID]map[string]bool{id: {"eq": true}},
-		Sorts: map[core.CanonicalID]bool{id: true},
+		Filters:        map[core.CanonicalID]map[string]bool{id: {"eq": true}},
+		Sorts:          map[core.CanonicalID]bool{id: true},
 	}
 	base := ReadPlan{Selected: []string{"orderId"}, Limit: 50, ScopeID: "row-scope", PolicyRevision: "rev1"}
 	if err := CheckReadDispatch(pub, base, support); err != nil {
@@ -97,10 +97,10 @@ func TestReadDispatchRechecksGrantsForForgedPlans(t *testing.T) {
 	for name, modify := range map[string]func(*ReadPlan){
 		"filter without field grant": func(p *ReadPlan) { p.Filter = &Filter{FieldID: "orderId", Operator: "eq", Value: "x"} },
 		"sort without field grant": func(p *ReadPlan) { p.Order = &Ordering{FieldID: "orderId"} },
-		"duplicate projection": func(p *ReadPlan) { p.Selected = []string{"orderId", "orderId"} },
-		"unknown projection": func(p *ReadPlan) { p.Selected = []string{"private"} },
-		"empty scope": func(p *ReadPlan) { p.ScopeID = "" },
-		"out of bounds limit": func(p *ReadPlan) { p.Limit = 9999 },
+		"duplicate projection":     func(p *ReadPlan) { p.Selected = []string{"orderId", "orderId"} },
+		"unknown projection":       func(p *ReadPlan) { p.Selected = []string{"private"} },
+		"empty scope":              func(p *ReadPlan) { p.ScopeID = "" },
+		"out of bounds limit":      func(p *ReadPlan) { p.Limit = 9999 },
 	} {
 		t.Run(name, func(t *testing.T) {
 			forged := base
