@@ -45,8 +45,8 @@ func (scopedSQLDriver) Open(string) (sqldriver.Conn, error) {
 type scopedSQLConn struct{ state *scopedSQLState }
 
 func (*scopedSQLConn) Prepare(string) (sqldriver.Stmt, error) { return nil, sqldriver.ErrSkip }
-func (*scopedSQLConn) Close() error { return nil }
-func (*scopedSQLConn) Begin() (sqldriver.Tx, error) { return nil, sqldriver.ErrSkip }
+func (*scopedSQLConn) Close() error                           { return nil }
+func (*scopedSQLConn) Begin() (sqldriver.Tx, error)           { return nil, sqldriver.ErrSkip }
 
 func (c *scopedSQLConn) QueryContext(
 	_ context.Context,
@@ -68,7 +68,7 @@ type scopedSQLRows struct {
 }
 
 func (r *scopedSQLRows) Columns() []string { return r.columns }
-func (r *scopedSQLRows) Close() error { return nil }
+func (r *scopedSQLRows) Close() error      { return nil }
 func (r *scopedSQLRows) Next(dest []sqldriver.Value) error {
 	if r.index >= len(r.rows) {
 		return io.EOF
@@ -120,14 +120,14 @@ func scopedTestRead(t *testing.T, params url.Values) (PublishedBrowse, ReadPlan,
 
 func TestExplicitScopedPostgresSQLBindsCustomerBeforeClientFilterAndTop(t *testing.T) {
 	pub, plan, support := scopedTestRead(t, url.Values{
-		"$select": {"orderId"},
-		"$filter": {"orderId gt 2"},
+		"$select":  {"orderId"},
+		"$filter":  {"orderId gt 2"},
 		"$orderby": {"orderId desc"},
-		"$top": {"1"},
+		"$top":     {"1"},
 	})
 	state := &scopedSQLState{
 		columns: []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"},
-		rows: [][]sqldriver.Value{{int64(9), int64(11), "2026-10-13", "READY", int64(9000)}},
+		rows:    [][]sqldriver.Value{{int64(9), int64(11), "2026-10-13", "READY", int64(9000)}},
 	}
 	exec := ScopedRecentOrdersPostgres{
 		DB: scopedTestDB(t, state), Database: core.MustCanonicalID("sales_core"),
