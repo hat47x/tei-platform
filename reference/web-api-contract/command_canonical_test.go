@@ -30,8 +30,8 @@ func TestExistingOrderCommandIsOnlyResolvedNotReimplemented(t *testing.T) {
 		t.Fatalf("published action is not the typed source contract: %+v", confirmed.Inputs)
 	}
 	cases := []struct {
-		name string
-		app core.CanonicalID
+		name    string
+		app     core.CanonicalID
 		pattern core.CanonicalID
 		allowed bool
 	}{
