@@ -163,3 +163,19 @@ node --test reference/local-cpu-reuse/inspect-cli-process-success.test.mjs refer
 ```
 
 **Local evidence:** Node.js 22.16.0 on Linux, **13/13 PASS** (six newly committed subprocess cases plus seven previously committed summary cases). The staged source modules `run-real-inspection.mjs`, `inspect-cli-bridge.mjs`, `project-inspection-v0.mjs`, `inspection-evidence-summary.mjs`, both new tests and the fixture were verified against their exact GitHub blob SHAs. This was a **targeted staging directory test**, not a full checkout test or CI run. No TEI Go binary was built or executed. Therefore real Workspace Load, `go build`, genuine `tei inspect` end-to-end behavior, two authorized Applications, actual source authenticity, and Acceptance remain **NOT_PROVEN**. The synthetic fixture is not a substitute for the TEI executable and must never be used for Canonical decision-making or production inspection.
+
+## Opt-in genuine Go CLI → Node feature projection integration gate (2026-10-14)
+
+[real-go-inspection.e2e.test.mjs](real-go-inspection.e2e.test.mjs) extends the earlier fake-process transport test with a *genuine Go CLI binary* built from the checkout being tested. It is intentionally **opt-in**; normal Node test discovery reports a skip rather than a synthetic PASS. It never substitutes the previous fake `tei.cli.inspect/v0` emitter for this gate.
+
+From a trusted checkout with the Go version required by `go.mod`, Node 22+ and permission to read the checked-in `reference/workspace`, run:
+
+```sh
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+The test creates a disposable temporary binary with `go build -o <temp> ./cmd/tei`, with `GOTOOLCHAIN=local` (no transparent Go toolchain upgrade), and then executes the existing `run-real-inspection.mjs` against exactly the five fixed subjects in `reference/workspace`. It checks that the Go→CLI JSON→Node derived observation→redacted summary chain yields the expected subject kinds, shared snapshot, explicit declared membership/relation, `not_asserted` Acceptance and no raw Subject IDs, Canonical bodies, World/Source Index fingerprints, Contract Query or Source paths in stdout. It also calls the *real* binary for a missing Semantic Data subject and checks the structured `SUBJECT_NOT_FOUND` failure envelope. Only a **successful opt-in run** may be cited as real CLI E2E evidence. Its build may download Go module dependencies if not cached; the test itself does not send inspection results over the network.
+
+This does **not** prove trusted source identity, tenant/project authorization, real two-Application comparison, full Contract semantics, performance, or #267 Acceptance. It is one explicitly chosen **single Reference Workspace**, with read-only inspection of multiple subjects. The normal fake executable tests remain useful transport regressions, but are a different evidence tier.
+
+As of this addition the local execution environment has **Go 1.23.2** while the current `go.mod` requires **1.26.9**. Consequently the opt-in real-Go test cannot be qualified locally: new test code is committed for execution in a suitable trusted checkout, **not claimed PASS**. Its default skipped path can be syntax-smoke-tested independently. This is a targeted gate, not a request to run the full repository health suite or to enable TEI-LD training.
