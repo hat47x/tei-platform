@@ -37,6 +37,12 @@ Go標準ライブラリのみを使用する。テストでは、禁止項目の
 
 この検証は「既存業務モデルから論理Read Modelの項目を抽出する」範囲に限る。動的SQL変換、OData準拠実装、実認可、独立した保存後観測は未実装。
 
+## E3：Principal継承とCI検証（2026-10-13）
+
+- PR head `47a4ad2967cde5bab23d7fc8359a22146510d922` の [CI #38374949839](https://github.com/hat47x/tei-platform/actions/runs/38374949839) は成功。これにはReadPlanのPrincipal IDとRow Scope IDの一致検査を含む。
+- Command入力も、認証済み呼出元のPrincipal IDを合成`CommandIntent`へ引き継ぐようにした。ブラウザが送った識別子を使わない。新規変更のCI結果は当該headで別途確認する。
+- Principal ID・Scope ID・Policy Revisionは**識別子の整合性を調べるだけ**である。真正性、失効、行スコープの強制、コマンド実行時の再認可を保証しない。実際のRuntime実行前には既存Host/Authorizationのtrusted contextを渡し、Provider/Capability側で再検証すること。
+
 ## 次の接続先
 
 1. #1158の型付き読込・Action操作へ、手書きSubset ParserではないAdapterで接続する。
