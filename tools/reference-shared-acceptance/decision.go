@@ -312,26 +312,6 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	return decision, nil
 }
 
-// makeDirsは、directoryを作り、そのために新しく作ったdirectory（外側から内側の順）を返す。
-func makeDirs(dir string) ([]string, error) {
-	var missing []string
-	for d := dir; ; d = filepath.Dir(d) {
-		if _, err := os.Stat(d); err == nil {
-			break
-		}
-		missing = append([]string{d}, missing...)
-		if filepath.Dir(d) == d {
-			break
-		}
-	}
-	for _, d := range missing {
-		if err := os.Mkdir(d, 0o755); err != nil {
-			return missing, err
-		}
-	}
-	return missing, nil
-}
-
 // rejectは、candidateを退け、authoritative sourceを変更しないことを記録する。
 // staleなcandidateも退けられるため、基準revisionの一致は要求しない。
 func reject(root string, data []byte, reason string) (Decision, error) {
