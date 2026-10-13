@@ -61,7 +61,7 @@ func NewSelectedServiceCarrierInvoker(
 }
 
 type SelectedServiceCarrierInvocation struct {
-	Generation Binding                           `json:"generation"`
+	Generation composition.Binding               `json:"generation"`
 	Service    pruntime.ServiceCarrierInvocation `json:"service"`
 }
 
