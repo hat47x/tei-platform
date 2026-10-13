@@ -111,11 +111,21 @@ func TestHostBuildInputBindingRejectsWrongLocksPlansAndProfiles(t *testing.T) {
 		want string
 	}{
 		{name: "no explicit opt-in", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) { s.Profile = "" }, want: "unsupported package input profile"},
-		{name: "unsupported opt-in", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) { s.Profile = "tei.plugin-definition-json/v3" }, want: "unsupported package input profile"},
-		{name: "unapproved Source", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) { s.LockedSourceFingerprint = "source-mismatch" }, want: "exact locked SB-1 Source fingerprint"},
-		{name: "missing locked plan", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) { s.LockedBuildPlanFingerprint = "" }, want: "Host-approved BuildPlan fingerprint"},
-		{name: "wrong locked plan", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) { s.LockedBuildPlanFingerprint = "plan-mismatch" }, want: "Host-approved BuildPlan fingerprint"},
-		{name: "plan source changed after lock", edit: func(_ *inputprofile.BuildInputSelection, p *plugin.BuildPlan, _ *[]byte) { p.Sources[0].Locator = "other.tei" }, want: "Host-approved BuildPlan fingerprint"},
+		{name: "unsupported opt-in", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) {
+			s.Profile = "tei.plugin-definition-json/v3"
+		}, want: "unsupported package input profile"},
+		{name: "unapproved Source", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) {
+			s.LockedSourceFingerprint = "source-mismatch"
+		}, want: "exact locked SB-1 Source fingerprint"},
+		{name: "missing locked plan", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) {
+			s.LockedBuildPlanFingerprint = ""
+		}, want: "Host-approved BuildPlan fingerprint"},
+		{name: "wrong locked plan", edit: func(s *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, _ *[]byte) {
+			s.LockedBuildPlanFingerprint = "plan-mismatch"
+		}, want: "Host-approved BuildPlan fingerprint"},
+		{name: "plan source changed after lock", edit: func(_ *inputprofile.BuildInputSelection, p *plugin.BuildPlan, _ *[]byte) {
+			p.Sources[0].Locator = "other.tei"
+		}, want: "Host-approved BuildPlan fingerprint"},
 		{name: "unsupported output kind", edit: func(s *inputprofile.BuildInputSelection, p *plugin.BuildPlan, _ *[]byte) {
 			p.OutputKind = plugin.BuildOutputKind("other")
 			s.LockedBuildPlanFingerprint, _ = plugin.BuildPlanFingerprint(*p)
@@ -126,7 +136,9 @@ func TestHostBuildInputBindingRejectsWrongLocksPlansAndProfiles(t *testing.T) {
 		{name: "definition content differs from plan", edit: func(_ *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, raw *[]byte) {
 			*raw = bytes.Replace(*raw, []byte(`"version":"1.0.0"`), []byte(`"version":"1.0.1"`), 1)
 		}, want: "canonical Plugin identity does not match"},
-		{name: "malformed JSON before execution", edit: func(_ *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, raw *[]byte) { *raw = []byte(`{"provides":[],"provides":[]}`) }, want: "declared more than once"},
+		{name: "malformed JSON before execution", edit: func(_ *inputprofile.BuildInputSelection, _ *plugin.BuildPlan, raw *[]byte) {
+			*raw = []byte(`{"provides":[],"provides":[]}`)
+		}, want: "declared more than once"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
