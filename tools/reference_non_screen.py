@@ -131,7 +131,8 @@ def verify_batch_crash(root, output, common, batch, sql, invoke, container, dige
             (output / 'crash-host.stderr.log').open('w') as host_err:
         try:
             # Wait on server state, not psql output buffering. The owned session
-            # has locked only 1003 when it enters pg_sleep; 1001 can commit.
+            # has locked only the last planned order when it enters pg_sleep;
+            # earlier planned orders can commit.
             blocker = subprocess.Popen(['docker', 'exec', '-e', 'PGAPPNAME=tei_batch_crash_blocker', container,
                                         'psql', '-X', '-U', 'postgres', '-d', 'tei_reference', '-v', 'ON_ERROR_STOP=1',
                                         '-c', f'BEGIN; SELECT order_id FROM public.orders WHERE order_id={blocked_order} FOR UPDATE; SELECT pg_sleep(30); ROLLBACK;'],
@@ -165,7 +166,7 @@ def verify_batch_crash(root, output, common, batch, sql, invoke, container, dige
                     break
                 time.sleep(.05)
             else:
-                raise RuntimeError('Batch did not reach the blocked second transaction')
+                raise RuntimeError('Batch did not reach the last blocked transaction')
             host.kill()
             host.wait(timeout=5)
             assert host.returncode != 0

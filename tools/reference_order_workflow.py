@@ -40,7 +40,7 @@ def verify_order_workflow(root, output, binary, head, digest, dsn_file, sql, run
         return value
 
     def revision():
-        return cli('decisions')['currentModelRevision']
+        return cli('revision')['modelRevision']
 
     def admit(model):
         assert model.startswith('sha256:') and len(model) == 71
