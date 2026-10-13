@@ -94,7 +94,19 @@ Web/CLI/Desktopに同一の型付きQuery/Actionを使う。GraphQL・REST・ODa
 3. 信頼済み行スコープの参照IDが欠けた場合に拒否する。
 4. CommandのAction認可、項目更新権限、競合Revision、冪等性Key、NULL設定と消去を区別する。
 
-**未検証**：OData規格準拠、実HTTP/IdP/CSRF、Row ScopeのProvider側強制、現行TEI認可・Driverとの結合、実DBへの書込・独立Read、現行main全体での動作。
+**未検証**：OData規格準拠、実HTTP/IdP/CSRF、Row ScopeのProvider側強制、実Query Executor/Command実行との結合、実DBへの書込・独立Read。既存Driver Resolverと`security.authorize` Adapter（参照fixture）への接続は確認するが、実Host認証や本番認可の保証ではない。
+
+### 5.1. Pattern単位の認可ゲートとエラー分類（参照検証）
+
+既存`security.authorize`の`SubjectID / Action / Resource`を使い、Browse時は`browse + PatternID`、Command時は`execute + PatternID`で照合する。Pattern IDは要求文字列ではなく、既存Resolverが解決したCanonical IDを使う。応答はCapability / Outcome / 認可済みSubject / Action / Resourceが一致して初めて許可と判定する。
+
+参照テストは既存`legacy-auth` fixtureのStore・Ruleを本物のAdapterへ渡し、編集者・閲覧者・無効利用者・ロック利用者・未知利用者を区別する。許可されたOperationであっても、項目別の明示的な拒否を上書きしない。
+
+- 業務上のDenied・不正要求 → `ErrRejected`（処理は実行しない）。
+- 認可サービスの実行障害・呼出設定の欠落 → `ErrAuthorizationUnavailable`（処理は実行しない）。
+- 想定外のCapability・Outcome・Grant → `ErrAuthorizationContract`（処理は実行しない）。
+
+いずれもfail closedだが、障害と業務拒否を同一のHTTP 403として報告してはならない。HTTPに対応するステータスと監査の設計はHost側の担当とし、内部障害の詳細をそのままHTTPへ露出しない。**許可は後続ExecutorのRow Scope強制やAction実行時の原子性を保証しない。**
 
 後続では、#1127の実Read Modelを#1158の共通操作へ接続し、#1043による保護下で実Providerに対する読込とCRUD Actionの独立再読込を実証する。動的Metadata、関連・派生項目による漏洩、負荷制限、ODataか単純REST＋制限付きQuery APIかを比較してから採否をADRに記録する。
 
