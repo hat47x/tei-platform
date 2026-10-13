@@ -15,6 +15,7 @@
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認 |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
+| [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 
 ## 設計、業務知識、受入れ
 
