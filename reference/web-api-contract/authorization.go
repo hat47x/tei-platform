@@ -2,10 +2,18 @@ package webapicontract
 
 import (
 	"context"
+	"errors"
 
 	"tei/internal/core"
 	"tei/internal/security/legacyauthorization"
 	"tei/internal/semantic/capabilityinvoke"
+)
+
+// Distinguish authorization denials from integration failures. The Web Host
+// must not render backend failure details into an HTTP response.
+var (
+	ErrAuthorizationUnavailable = errors.New("authorization execution unavailable")
+	ErrAuthorizationContract    = errors.New("authorization outcome contract violation")
 )
 
 // AuthorizationInvoker is the existing security.authorize Capability contract.
@@ -23,8 +31,11 @@ func CheckExistingAuthorization(
 	invoker AuthorizationInvoker,
 	trustedSubjectID, action, resource string,
 ) error {
-	if invoker == nil || trustedSubjectID == "" || action == "" || resource == "" {
+	if trustedSubjectID == "" || action == "" || resource == "" {
 		return ErrRejected
+	}
+	if invoker == nil || ctx == nil {
+		return ErrAuthorizationUnavailable
 	}
 	outcome, err := invoker.Invoke(ctx, legacyauthorization.AuthorizationCapability,
 		legacyauthorization.Input{
@@ -33,17 +44,22 @@ func CheckExistingAuthorization(
 			Resource:  resource,
 		})
 	if err != nil {
-		return ErrRejected
+		return ErrAuthorizationUnavailable
 	}
 	if outcome.Capability != legacyauthorization.AuthorizationCapability ||
-		outcome.Mode != capabilityinvoke.ResultOutcome ||
-		outcome.Outcome != "allowed" {
+		outcome.Mode != capabilityinvoke.ResultOutcome {
+		return ErrAuthorizationContract
+	}
+	if outcome.Outcome == "denied" {
 		return ErrRejected
+	}
+	if outcome.Outcome != "allowed" {
+		return ErrAuthorizationContract
 	}
 	grant, ok := outcome.Payload.(legacyauthorization.AuthorizationGrant)
 	if !ok || grant.SubjectID != trustedSubjectID ||
 		grant.Action != action || grant.Resource != resource {
-		return ErrRejected
+		return ErrAuthorizationContract
 	}
 	return nil
 }
