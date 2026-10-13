@@ -15,6 +15,7 @@ const state = {dfd:null, dfdHash:null, layout:null, layoutHash:null, world:null,
   dfdFile:null, procedureFile:null, reviewFile:null, procedure:null,review:null,
   procedureHash:null,reviewHash:null,semanticPreview:null};
 let selectionGeneration=0;
+let renderGeneration=0;
 let dfdLoadGeneration=0;
 let layoutLoadGeneration=0;
 let worldLoadGeneration=0;
@@ -149,6 +150,10 @@ function nodes() {
 const key = (kind,id)=>JSON.stringify([kind,id]);
 function positionMap(){return new Map((state.layout?.nodes||[]).map(p=>[key(p.kind,p.id),p]));}
 function render() {
+  // An SVG element may still have a queued event after a re-render.
+  // A detached node must never select or move a replacement projection.
+  const generation=++renderGeneration;
+  const projection=state.dfd;
   const diagram=$('diagram');diagram.replaceChildren();
   if(!state.dfd){$('export').disabled=true;return;}
   const all=nodes(), assigned=positionMap(), centers=new Map();
@@ -208,8 +213,12 @@ function render() {
     g.append(svg('rect',{width:190,height:56,rx:8}));
     const label=svg('text',{x:10,y:22});label.textContent=(node.label||'').slice(0,27);g.append(label);
     const note=svg('text',{x:10,y:43});note.textContent=node.kind;g.append(note);
-    g.addEventListener('pointerdown',ev=>{if(ev.button!==0)return; selectNode(node);dragStart(ev,node);});
+    g.addEventListener('pointerdown',ev=>{
+      if(ev.button!==0||generation!==renderGeneration||state.dfd!==projection)return;
+      selectNode(node);dragStart(ev,node);
+    });
     g.addEventListener('keydown',ev=>{
+      if(generation!==renderGeneration||state.dfd!==projection)return;
       if(ev.key==='Enter'||ev.key===' '){
         ev.preventDefault();selectNode(node);return;
       }
@@ -341,6 +350,9 @@ function selectMeaningReference(d,kind,id){
 }
 async function selectNode(node){
   const generation=++selectionGeneration;
+  // A Source navigation can await an import. Retire the old SVG controls
+  // immediately so another queued event cannot edit a stale selection.
+  ++renderGeneration;
   state.selected=key(node.kind,node.id);
   // Step selections are distinct review scopes: never carry an endpoint,
   // condition, or flow identifier forward from a previous selection.
@@ -401,6 +413,9 @@ async function selectNode(node){
     }
     $('details').append(links);
   }
+  // Replace retired controls before asynchronous Source navigation.
+  // The visible diagram stays interactive while older callbacks remain invalid.
+  render();
   if(step&&state.world&&$('revision').value){
     const navigation=document.createElement('pre');
     try {const {navigateReferenceBusinessStep}=await import('../studio-authoring/bridge.mjs');navigation.textContent=JSON.stringify(navigateReferenceBusinessStep(state.world,$('revision').value,d,node.id),null,2)}
@@ -409,7 +424,6 @@ async function selectNode(node){
     $('details').append(navigation);
   }
   if(state.dfd!==d || selectionGeneration!==generation)return;
-  render();
   // Recreating the SVG should not strand keyboard focus on a detached node.
   const focused=[...$('diagram').children].find(el=>el.dataset?.kind===node.kind&&el.dataset?.id===node.id);
   focused?.focus?.({preventScroll:true});
@@ -420,7 +434,8 @@ function dragStart(event,node){
   const p=positionMap().get(key(node.kind,node.id));
   const index=nodes().findIndex(n=>n.kind===node.kind&&n.id===node.id);
   const position=p||{x:40+(index%4)*260,y:50+Math.floor(index/4)*115};
-  dragging={node,startX:event.clientX,startY:event.clientY,position,rect,pointerId:event.pointerId};
+  dragging={node,startX:event.clientX,startY:event.clientY,position,rect,pointerId:event.pointerId,
+    dfd:state.dfd,layout:state.layout};
   $('diagram').setPointerCapture(event.pointerId);
 }
 function proposeNodeMove(node,x,y){
@@ -443,7 +458,10 @@ $('diagram').addEventListener('pointercancel',event=>{
 $('diagram').addEventListener('pointerup',event=>{
   if(!dragging||!state.dfd||!state.layout)return;
   if(event.pointerId!==undefined && dragging.pointerId!==undefined && event.pointerId!==dragging.pointerId)return;
-  const {node,startX,startY,position,rect}=dragging;dragging=null;
+  const {node,startX,startY,position,rect,dfd,layout}=dragging;dragging=null;
+  // A layout picker change or an applied layout invalidates the drag origin.
+  // Never create a move against a different layout even if the DFD is unchanged.
+  if(state.dfd!==dfd||state.layout!==layout)return;
   const view=$('diagram').viewBox.baseVal;
   const dx=(event.clientX-startX)*(view.width/rect.width);
   const dy=(event.clientY-startY)*(view.height/rect.height);

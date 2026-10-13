@@ -275,3 +275,62 @@ test("HTML refuses arbitrary documents, with no default authority", () => {
   assert.throws(() => renderStudioHTML({ schema: "unknown" }),
     /UNSUPPORTED_STUDIO_HTML_SCHEMA/);
 });
+
+test("Go typed trace appears as a separate read-only section with escaped IDs", () => {
+  const traced = structuredClone(projection);
+  traced.typedReferences = {
+    schema: "tei.reference.studio-typed-trace/v0",
+    scope: "caller-observation", scopeAuthority: "caller-selected-observation-only",
+    authority: "candidate-read-only", sourceConsistency: "exact-anchor-match",
+    status: "reference-only", total: 1, unresolved: 0,
+    snapshotFingerprint: revision, rows: [{
+      status: "resolved", edge: {
+        relation: '<img src=x onerror="alert(1)">',
+        from: { subject: { kind: "semantic-relation", id: "sales.order.lines" } },
+        to: { subject: { kind: "semantic-data", id: "sales.order" } }
+      }
+    }]
+  };
+  const html = renderStudioHTML(traced, { sourceFromWorkspace: true });
+  assert.match(html, /id="typed"/);
+  assert.match(html, /型付き参照（#1120）/);
+  assert.match(html, /caller-selected-observation-only/);
+  assert.match(html, /candidate-read-only/);
+  assert.match(html, /&lt;img src=x onerror=/);
+  assert.doesNotMatch(html, /<img|<script|onclick=/i);
+});
+
+test("Go DFD evidence remains separate from accepted model and is escaped in both navigation directions", () => {
+  const observed = {
+    schema: "tei.reference.studio-business-producer-observation/v0",
+    evidenceClass: "go-derived-reference-observed",
+    workspaceRevisionObserved: revision,
+    workspaceRevisionStatus: "checked-around-separate-process-not-atomic",
+    sourceRevisionBinding: "not-established",
+    sourceSetStatus: "all-input-artifacts-managed",
+    acceptedBusinessProcedure: false, authority: "noncanonical-reference",
+    sources: [{ role: "procedure", path: '<img src=x onerror="alert(1)">',
+      fingerprint: "sha256:" + "d".repeat(64), byteLength: 10,
+      sourceMembership: "managed-source-artifact-verified",
+      managedArtifactPath: "business/order-procedure.json" }]
+  };
+  const report = { ...structuredClone(projection), businessObservation: observed };
+  const html = renderStudioHTML(report);
+  assert.match(html, /業務参照資料の観測証跡/);
+  assert.match(html, /go-derived-reference-observed/);
+  assert.match(html, /not-established/);
+  assert.match(html, /checked-around-separate-process-not-atomic/);
+  assert.match(html, /managed-source-artifact-verified/);
+  assert.match(html, /all-input-artifacts-managed/);
+  assert.match(html, /business\/order-procedure\.json/);
+  assert.match(html, /&lt;img src=x onerror=/);
+  assert.doesNotMatch(html, /<img|onclick=|<script/i);
+  const reverse = renderStudioHTML({
+    schema: "tei.reference.studio-business-step-navigation/v0",
+    modelRevision: revision, subject: { id: "BP-05", scope: "reference-procedure:order" },
+    status: "reference-only", authority: "noncanonical-reference",
+    candidates: [], businessObservation: observed
+  });
+  assert.match(reverse, /業務参照資料の観測証跡/);
+  assert.match(reverse, /未受理/);
+});

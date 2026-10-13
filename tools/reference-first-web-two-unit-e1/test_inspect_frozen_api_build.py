@@ -30,6 +30,9 @@ VERSION = (
     "\tbuild\tGOARCH=amd64\n"
     "\tbuild\tGOOS=linux\n"
     "\tbuild\tGOAMD64=v1\n"
+    "\tbuild\tvcs=git\n"
+    "\tbuild\tvcs.revision=" + COMMIT + "\n"
+    "\tbuild\tvcs.modified=false\n"
 )
 
 
@@ -52,10 +55,30 @@ class GoBuildObservationTests(unittest.TestCase):
         self.assertEqual(result["go"]["buildTags"], sorted(module.EXPECTED_TAGS))
         self.assertEqual(result["sourceGitTree"], TREE)
         self.assertEqual(result["sourceCommit"], COMMIT)
+        self.assertEqual(result["goVCS"], {"revision": COMMIT, "modified": False})
         self.assertEqual(result["apiBytes"], len(self.binary.read_bytes()))
         self.assertFalse(result["builderArtifactAuthorityVerified"])
         self.assertFalse(result["buildArtifactLockVerified"])
         self.assertFalse(result["reproducibleBinaryVerified"])
+
+
+    def test_go_compiler_vcs_witness_rejects_cross_revision_or_modified_tree(self):
+        for old, new, diagnostic in (
+            ("vcs.revision=" + COMMIT, "vcs.revision=" + "c" * 40, "VCS revision"),
+            ("vcs.modified=false", "vcs.modified=true", "modified"),
+            ("vcs=git", "vcs=hg", "VCS kind"),
+        ):
+            with self.subTest(witness=old), self.assertRaisesRegex(ValueError, diagnostic):
+                self.get(VERSION.replace(old, new))
+        for line, diagnostic in (
+            ("\tbuild\tvcs.revision=" + COMMIT + "\n", "VCS revision"),
+            ("\tbuild\tvcs.modified=false\n", "modified"),
+            ("\tbuild\tvcs=git\n", "VCS kind"),
+        ):
+            with self.subTest(missing=line), self.assertRaisesRegex(ValueError, diagnostic):
+                self.get(VERSION.replace(line, ""))
+        with self.assertRaisesRegex(ValueError, "duplicate Go build setting vcs.revision"):
+            self.get(VERSION + "\tbuild\tvcs.revision=" + COMMIT + "\n")
 
     def test_missing_or_added_tag_rejected(self):
         with self.assertRaisesRegex(ValueError, "tags"):

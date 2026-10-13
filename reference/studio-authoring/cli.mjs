@@ -10,6 +10,9 @@ import { dirname, join, resolve, relative, isAbsolute, sep } from "node:path";
 import { projectWorld, candidateFromEdit, bindReviewArtifacts, navigateReferenceBusinessStep, verifySourceAnchor } from "./bridge.mjs";
 import { renderStudioHTML } from "./html.mjs";
 import { renderStudioEditHTML } from "./editor.mjs";
+import { bindTypedTrace } from "./typed-trace.mjs";
+import { observeBusinessDFD, verifyBusinessDFDObservation } from "./business-observation.mjs";
+import { produceBusinessDFD } from "./business-producer.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const usage = [
@@ -19,6 +22,8 @@ const usage = [
   "  node reference/studio-authoring/cli.mjs review-edit -workspace DIR -edit-file FILE",
   "  node reference/studio-authoring/cli.mjs edit-form -workspace DIR -focus data:ID|attribute:ID",
   "  alternatively: -world-file FILE -revision-file FILE [-source-index-file FILE] (read-only artifacts)",
+  "  inspect accepts -typed-scope OBSERVATION_SCOPE with -workspace to bind read-only Go #1120 trace",
+  "  inspect -workspace DIR -focus kind:ID -business-procedure FILE -business-review FILE -business-set FILE",
   "  inspect and review-edit may use -format html for a static read-only page",
   "  output defaults to JSON; no command in this CLI writes authoritative source"
 ].join("\n");
@@ -27,7 +32,8 @@ function flags(argv) {
   const result = {};
   for (let i = 0; i < argv.length; i += 2) {
     if (!argv[i].startsWith("-") || !argv[i + 1] || ![
-      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd", "-source-index-file", "-format"
+      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd", "-source-index-file", "-format", "-typed-scope",
+      "-business-procedure", "-business-review", "-business-set"
     ].includes(argv[i]) || Object.hasOwn(result, argv[i])) {
       throw new Error("INVALID_FLAG: " + (argv[i] || ""));
     }
@@ -99,11 +105,18 @@ function main(argv) {
   if (!["inspect", "propose", "review-edit", "edit-form"].includes(command)) throw new Error("UNKNOWN_COMMAND");
   const opt = flags(rest);
   const fromFiles = !!opt["-world-file"] && !!opt["-revision-file"];
+  const producerKeys = ["-business-procedure", "-business-review", "-business-set"];
+  const producerCount = producerKeys.filter(k => !!opt[k]).length;
+  const hasProducer = producerCount > 0;
   const format = opt["-format"] || (command === "edit-form" ? "html" : "json");
   if (!["json", "html"].includes(format) || (command === "propose" && opt["-format"]) ||
       (command === "edit-form" && format !== "html"))
     throw new Error("UNSUPPORTED_STUDIO_OUTPUT_FORMAT");
-  if (!!opt["-workspace"] === fromFiles ||
+  if ((hasProducer && (producerCount !== 3 || command !== "inspect" ||
+        fromFiles || !opt["-workspace"] || opt["-business-dfd"])) ||
+      (opt["-typed-scope"] && (command !== "inspect" || fromFiles ||
+        opt["-focus"]?.startsWith("step:"))) ||
+      !!opt["-workspace"] === fromFiles ||
       (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"] ||
         opt["-source-index-file"])) ||
       (command === "inspect" && (!opt["-focus"] || opt["-edit-file"])) ||
@@ -124,16 +137,59 @@ function main(argv) {
     return renderStudioEditHTML(world, revision, opt["-focus"]);
   if (command === "inspect") {
     const focus = opt["-focus"];
+    const business = hasProducer ? produceBusinessDFD({
+      workspace: opt["-workspace"], modelRevision: revision, repoRoot: root,
+      procedure: opt["-business-procedure"], review: opt["-business-review"],
+      set: opt["-business-set"], sourceIndex
+    }) : opt["-business-dfd"] ? observeBusinessDFD(opt["-business-dfd"]) : null;
     if (focus.startsWith("step:")) {
-      if (!opt["-business-dfd"]) throw new Error("BUSINESS_STEP_REQUIRES_REFERENCE_DFD");
+      if (!business) throw new Error("BUSINESS_STEP_REQUIRES_REFERENCE_DFD");
       const view = navigateReferenceBusinessStep(world, revision,
-        jsonFile(opt["-business-dfd"]), focus.slice("step:".length));
+        business.value, focus.slice("step:".length));
+      view.businessObservation = hasProducer ? business.evidence :
+        verifyBusinessDFDObservation(opt["-business-dfd"], business);
       return format === "html" ? renderStudioHTML(view) : view;
     }
     const view = projectWorld(world, revision, focus,
-      { ...(opt["-business-dfd"] ? { businessDFD: jsonFile(opt["-business-dfd"]) } : {}),
+      { ...(business ? { businessDFD: business.value } : {}),
         ...(sourceIndex ? { sourceIndex } : {}) });
     const verified = fromFiles ? view : verifyLiveSourceNavigation(view, opt["-workspace"], revision);
+    if (business) verified.businessObservation = hasProducer ? business.evidence :
+      verifyBusinessDFDObservation(opt["-business-dfd"], business);
+    if (opt["-typed-scope"]) {
+      // This scope names a read-only observation of the existing #1120
+      // derived graph; it does NOT assert Source ownership or Business identity.
+      const scope = opt["-typed-scope"];
+      if (scope !== scope.trim() || !scope)
+        throw new Error("INVALID_TYPED_TRACE_SCOPE");
+      const colon = focus.indexOf(":");
+      const kinds = { data: "semantic-data", relation: "semantic-relation",
+        attribute: "semantic-attribute", validation: "semantic-validation",
+        pattern: "application-pattern" };
+      const kind = kinds[focus.slice(0, colon)];
+      if (!kind) throw new Error("UNSUPPORTED_TYPED_STUDIO_FOCUS");
+      const traced = spawnSync("go", ["run", "./cmd/tei", "trace",
+        "-workspace", resolve(opt["-workspace"]), "-scope", scope,
+        "-subject-kind", kind, "-subject-id", focus.slice(colon + 1),
+        "-direction", "both", "-mode", "full"],
+      { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+      if (traced.error) throw traced.error;
+      let report;
+      try { report = JSON.parse(traced.stdout); }
+      catch { throw new Error("GO_TYPED_TRACE_NO_JSON: " + traced.stderr); }
+      if (traced.status !== 0)
+        throw new Error("GO_TYPED_TRACE_FAILED: " +
+          (report.error?.code || traced.stderr || String(traced.status)));
+      verified.typedReferences = bindTypedTrace(verified, report, scope);
+      // Go trace reloads the Workspace separately. This double revision
+      // check limits mixed snapshots but does not lock concurrent writers.
+      const current = JSON.parse(execFileSync("go", ["run",
+        "./tools/reference-shared-acceptance", "revision",
+        "-workspace", resolve(opt["-workspace"])],
+      { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 })).modelRevision;
+      if (current !== revision)
+        throw new Error("SOURCE_CHANGED_DURING_TYPED_TRACE");
+    }
     return format === "html" ? renderStudioHTML(verified,
       { sourceFromWorkspace: !fromFiles }) : verified;
   }

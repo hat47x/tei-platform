@@ -1133,3 +1133,63 @@ test('real Go projection crosses browser view boundary without elevating Source 
   assert.equal(JSON.stringify([fromGo,approval]),observed,
     'read-only view must not mutate real Go producer outputs');
 });
+
+test('drag started before layout apply cannot propose a move against replacement layout',async()=>{
+  await input('dfd-file',projection);
+  const n=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  n.listeners.pointerdown({button:0,pointerId:91,clientX:10,clientY:10});
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:'orders.review',projectionSHA256:'sha256:invalid',nodes:[]};
+  // Switching the picker invalidates the old layout and drag synchronously,
+  // even if the new file has not finished reading.
+  let release;
+  const bytes=Buffer.from(JSON.stringify(layout));
+  const waiting=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(
+      bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  $('diagram').listeners.pointerup({pointerId:91,clientX:500,clientY:400});
+  assert.equal($('apply').disabled,true);
+  release();await waiting;
+  assert.equal($('apply').disabled,true);
+});
+
+// A delayed event from an old SVG must not act on a replacement projection,
+// even when the new projection reuses the same reference-local Step ID.
+test('detached SVG events cannot select or move a replacement DFD',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.ok(old);
+  await input('dfd-file',{...projection});
+  assert.equal($('details').children.length,0);
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:121,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:121,clientX:400,clientY:300});
+  assert.equal($('details').children.length,0);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('semantic-propose').disabled,true);
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  live.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+});
+
+test('SVG nodes retired by selection re-render cannot propose a move',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:122,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:122,clientX:400,clientY:300});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  // Source navigation can complete asynchronously after selection began.
+  // Only a node from the completed re-render should handle fresh input.
+  await new Promise(resolve=>setTimeout(resolve,30));
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.notEqual(live,old,'selection should retire the previous SVG node');
+  live.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false,'current SVG node retains keyboard placement');
+});

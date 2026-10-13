@@ -307,7 +307,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
 - `usesSemantic`や`databases`の順序は、authoredされたsourceの順序としてそのまま保ちます（入れ替えるとsourceとfingerprintが変わります）。
 - 変わるべきWorld collectionは、deltaの種類から導きます（semantic層のoperationは`semantics`、Application層のoperationは`applications`）。実際に変わったcollectionの集合とexactに一致しなければ拒否します。
-- 受理はfileを新しく作るため、失敗時は作ったfileと、そのために作ったdirectoryを削除して元へ戻します（既存fileへの挿入・追記は元のbyteへ戻します）。
+- 受理途中で失敗した場合、Shared Acceptanceが自分で書いた後のSourceバイト指紋を再検査し、一致するfileだけを元へ戻します（新規fileは削除、既存fileは元のbyteへ復元）。書込み後に他プロセスが内容を変えた可能性があるfileを無条件で上書きせず、復元できなかった場合は`ROLLBACK_INCOMPLETE`で明示します。
 - Relationの追加・変更では、Previewが端点（source / target Data）を実現するPersistence Mappingへの辺と、Relationの保存方法（relation storageが定義済み / keyのsource Attributeが列として実現済みで導ける / 未決定）を返します。未決定なら`RELATION_STORAGE_NOT_AUTHORED`として残し、この変更がPersistence Mapping・migrationを変えないことも示します。
 
 ## このtoolが示すこと / 示さないこと
@@ -319,18 +319,39 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - staleなcandidateを黙って適用しない
 - 不正なcandidate（未知field / 存在しない参照 / 別layerへのplacement / 数値ではないAttributeへの`positive` / 宣言外の副作用）はsourceを変えずに拒否される
 - どの入口のcandidateも同じ`candidateFingerprint`・同じsource・同じCanonical Worldになり、AI固有のEvidenceがCanonicalへ入らない。同値なEvidenceは同じ`evidenceFingerprint`へ正規化され、Evidenceだけを変えてもsemantic fingerprintは変わらない
-- accept途中の並行変更・受理後Conformance失敗では、書いたfileを元へ戻す
+- accept途中の並行変更・受理後Conformance失敗では、**自分が書いたバイトのままのfile**について復元を試みる。書込み後に別Actorが変更した可能性のあるfileは上書きせず、`ROLLBACK_INCOMPLETE`と`sourceChanged=true`で未解決の状態を明示する。復旧完了を偽装しない（`desktop_external_process_race_test.go`）
 - 同じ意味を別fileへ移すだけならsemantic差分は出ず、論理的な改名はremoved / addedとして現れる
 - 派生物（Canonical World JSON）を消しても、accepted sourceから同じものを再生成できる
 - Environment binding: 既存のEnvironment fileへ`bind <application>.<alias> -> <instance>`を一行挿入します。Environment blockの閉じ括弧の直前へ入れ、内側のblock（`database-instance { … }`等）と取り違えません。挿入先は、そのEnvironmentを宣言しているfileに限ります。
 - `ISSUE-000046`が最小loopとして名指しするRelation変更（既存Data `sales.order_line`へ`order`を追加）について、Preview（Semantic Diff・exact dependencyのimpact・Persistence Mappingへの辺と保存方法が未決定であること）→ Reject → Accept → toolなしの再読込までを通し、変わるのは一つのfileの挿入した行だけである（`relation_test.go`）
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
-- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
+- そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、作成後バイトが変わっていないfileとdirectoryの復元を試みる。外部変更の可能性があるfileは保護し、元の状態へ戻せなければ未完了と報告する
 - `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。required dependencyのauthoritative source / fingerprintもscoped Evidenceとして照合し、同じIDのdependency sourceが変わったcaseをfail closedにできる。requirements外のdependency Evidenceはhandoffしない（`qualification_handoff_test.go`）
 - Semantic Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与し、内部Evaluation fingerprintと外側artifact fingerprintを二重に固定できる。`pass / fail / unknown`はReview A3/A7へ露出するが、candidate meaningやAcceptance authorityへ昇格しない（`semantic_evaluation_handoff_test.go`）
 - accepted / rejected Decisionが、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged / none`、判断理由に使ったEvidenceの集約statusとSource/artifact別statusを返す。stale rejectはrevision conflictも保持する。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go` / `semantic_evaluation_handoff_test.go`）
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
+
+Shared Acceptanceでauthoritative Sourceを書き込む経路は、`os.OpenRoot(workspace)`で開いたWorkspaceルートに固定し、入力元の相対Sourceパスを一貫してそのルートから開きます。書込み前には親ディレクトリと終端ファイルのシンボリックリンクを拒否し、一時ファイル作成・実際の置換・失敗時復元を`os.Root`の相対操作で行います。新規Sourceは`Root.Link`のcreate-only公開により、並行プロセスが作成した同名ファイルを上書きしません。書込み途中でHostがWorkspaceの親ディレクトリをWorkspace外へのリンクに差し替えても、`Root`により外部のファイルは書き換えません（#1529）。
+
+ただし、この**書込み側のResource containment**は、Workspace読み込み時点のSource Reader（#1017）、review fingerprintと現権限の再確認、変更済みSourceの原子的Compare-and-Swap、複数Sourceの全体トランザクションを代替しません。また、`os.Root`はJS/WASM上でOSネイティブと同一の安全性を保証しません。実Wails Hostと、OS/ファイルシステム別の互換性は未検証です。
+
+Shared Acceptance の `accept` は、評価開始前に同じWorkspaceの`.tei-accept.lock`を`os.Root.OpenFile(O_CREATE|O_EXCL)`で排他的に作成し、Previewの再評価・Review指紋照合・Source更新・再読込・Conformance・失敗時復元を終えるまで保持します。別のCLI/Studio/AIなど**この共通Accept経路を使用する協調Writer**が同時に操作すると、後から来た受理は`SOURCE_ACCEPT_BUSY`として書き込まずに拒否します。これは実OSプロセス間でも働くReferenceで、待機・自動再送・ロック奪取はしません。
+
+- lockはSource Indexの対象外にあるHost作業制御の目印であり、モデルrevision・承認・利用者権限・リソース権限を代替しません。PIDは診断用、乱数はロック所有者の復元時識別用であり、どちらも権限トークンではありません。
+- プロセスクラッシュ時に残るlockは**自動削除しません**。PIDの再利用や経過時間から安全を推測せず、運用者が他の受理実行中プロセスの不存在とSource状態を確認した後にのみ明示削除します。連携するHostでは削除前後に再Reviewが必要です。
+- lock解除時には自分が取得したファイルの実体と所有マーカーを再照合し、別Actorが置換したファイルを消しません。解除に失敗した場合は、**Acceptanceの結果自体が確定済みでもcleanup未確認のerror**として呼出し側に伝えます。Sourceを勝手に再試行しません。
+- 外部エディター、Git、別のSource書込み実装はこの協調lockに参加しないため、**任意の独立Writerを排除するatomic CASではありません**。さらに複数Sourceのtransaction、プロセス強制終了後の永続的lease/ownership、ローカルホスト外の分散lock、OS別の安全性は別検証が必要です（#267、#1017、#1529）。
+
+### Workspace ManifestとReviewを結ぶ受理時の検査（#1529）
+
+モデルrevisionはSource Indexの管理対象ファイルの変更を表し、Workspace Manifest（`tei.workspace.yaml`、または`tei.workspace.tei`）の**コメントを含む実バイト**の変更を必ずしも表しません。Shared AcceptanceはWorkspaceの読み込み前後でManifestのバイト指紋を確認し、Review Projectionへ`workspaceManifestPath`・`workspaceManifestFingerprint`を組み込むことで、同じ意味の候補でも、Manifestだけを外部変更した場合は以前の`expectedReviewFingerprint`を再利用できないようにします。
+
+受理時には共通の`os.Root`からManifestの実バイトを各Source書込み前、書込み終了時、再読込後にも再検査します。変更があれば`SOURCE_MANIFEST_CHANGED_DURING_ACCEPT`として拒否し、既に書いたSourceについては既存の条件付きロールバックを実施します。このガードはCLI/Studio/AIごとに複製せず、同一のShared Acceptance内で実行します。Manifestの最大読込みは2 MiBに制限し、通常ファイルではないManifestを拒否します。
+
+**限界：** 実バイト検査は確認時点の事実であって、別のWriterによるManifest変更、旧内容への復元（ABA）、複数Sourceの同時書込みを原子的に拘束しません。SnapshotでのManifest観測とWorkspace Loaderの各Source読込みは同一のOSトランザクションではありません。Review fingerprintは人間の承認・権限を証明せず、`accept`の内部Reference呼出しで省略可能なことも変わりません。外部Writerが共通lockに協力しないケースは引き続き個別検証が必要です（#267、#1017、#1158）。
+
+既存の競合検出は、受理時の各Source書込み直前とロールバック開始時の**実バイト指紋**の再照合です。検査してから`os.Rename`等で置き換えるまでの時間差を消す原子的なcompare-and-swapではありません。親ディレクトリ・シンボリックリンク・inodeの同時差替えや、複数Writerの全体取引を防ぐ共有Source Authorityは引き続き未実装です（#1017 / #267）。`ROLLBACK_INCOMPLETE`がある場合には自動再試行せず、Sourceを再読込して人間の判断・競合解消を求めます。
 
 示さないこと:
 

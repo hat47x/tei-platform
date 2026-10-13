@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -17,6 +18,9 @@ type WorkspaceImport struct {
 	Alias     string `json:"alias"`
 	Path      string `json:"path"`
 	Namespace string `json:"namespace"`
+	// SemanticDigest optionally pins this particular normalized namespace; it
+	// is not a plugin artifact digest or a recursive dependency lock.
+	SemanticDigest string `json:"semanticDigest,omitempty"`
 }
 
 // ResolvedImport records a read-only dependency. SemanticDigest fingerprints
@@ -88,6 +92,14 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import namespace", n+1)
 				}
 				out.Imports[current].Namespace = strings.TrimSpace(strings.TrimPrefix(line, "namespace:"))
+			case strings.HasPrefix(line, "semanticDigest:"):
+				if out.Imports[current].SemanticDigest != "" {
+					return workspaceManifest{}, fmt.Errorf("line %d: duplicate import semanticDigest", n+1)
+				}
+				out.Imports[current].SemanticDigest = strings.TrimSpace(strings.TrimPrefix(line, "semanticDigest:"))
+				if !validImportSemanticDigest(out.Imports[current].SemanticDigest) {
+					return workspaceManifest{}, fmt.Errorf("line %d: invalid import semanticDigest: expected sha256 followed by 64 lowercase hex digits", n+1)
+				}
 			default:
 				return workspaceManifest{}, fmt.Errorf("line %d: unsupported import entry %q", n+1, line)
 			}
@@ -116,12 +128,26 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			return workspaceManifest{}, fmt.Errorf("duplicate imported namespace %q", imp.Namespace)
 		}
 		namespaces[imp.Namespace] = true
+		if imp.SemanticDigest != "" && !validImportSemanticDigest(imp.SemanticDigest) {
+			return workspaceManifest{}, fmt.Errorf("import %q: invalid semanticDigest", imp.Alias)
+		}
 		if imp.Path == "" || imp.Path == "." || path.IsAbs(imp.Path) ||
 			strings.ContainsAny(imp.Path, "\\:") || path.Clean(imp.Path) != imp.Path {
 			return workspaceManifest{}, fmt.Errorf("import %q: path %q must be a clean relative Workspace directory", imp.Alias, imp.Path)
 		}
 	}
 	return out, nil
+}
+
+// validImportSemanticDigest checks the existing semantic fingerprint representation.
+// The pin is an explicit, fail-closed assertion rather than a new lockfile.
+func validImportSemanticDigest(value string) bool {
+	const prefix = "sha256:"
+	if !strings.HasPrefix(value, prefix) || len(value) != len(prefix)+64 || value != strings.ToLower(value) {
+		return false
+	}
+	_, err := hex.DecodeString(strings.TrimPrefix(value, prefix))
+	return err == nil
 }
 
 // loadWorkspaceImports uses the provider's own Workspace loader, preserving its
@@ -161,13 +187,17 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 		if err != nil {
 			return fmt.Errorf("import %q: fingerprint namespace: %w", imp.Alias, err)
 		}
+		actualDigest := sourceindex.Fingerprint(encoded)
+		if imp.SemanticDigest != "" && imp.SemanticDigest != actualDigest {
+			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s)", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
+		}
 		owned[imp.Namespace] = true
 		result.World.Semantics = append(result.World.Semantics, *selected)
 		result.Imports = append(result.Imports, ResolvedImport{
 			Alias:          imp.Alias,
 			Path:           imp.Path,
 			Namespace:      imp.Namespace,
-			SemanticDigest: sourceindex.Fingerprint(encoded),
+			SemanticDigest: actualDigest,
 		})
 	}
 	return nil

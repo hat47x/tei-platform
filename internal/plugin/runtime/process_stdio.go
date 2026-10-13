@@ -74,6 +74,13 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		return Response{}, fmt.Errorf("process plugin executable must be a single name/path; use argv for arguments")
 	}
 
+	// Reject ambiguous or malformed host-approved variables before executable
+	// lookup or process creation. In particular, PATH must have one meaning for
+	// our resolver and the operating system's child environment.
+	if err := validateProcessEnvironment(l.Env); err != nil {
+		return Response{}, err
+	}
+
 	input, err := json.Marshal(req)
 	if err != nil {
 		return Response{}, fmt.Errorf("encode process plugin request: %w", err)
@@ -84,7 +91,14 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	if limit <= 0 {
 		limit = defaultProcessResponseLimit
 	}
-	stdout := &boundedCapture{limit: limit}
+	// The capture limit is also a running-process limit. A child that emits
+	// more than the approved response size must be stopped immediately rather
+	// than allowed to keep consuming CPU or hold a resource lease indefinitely.
+	// Use a child-specific context so that a size violation cannot cancel the
+	// caller's context or any sibling invocation.
+	runCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	stdout := &boundedCapture{limit: limit, onOverflow: stop}
 	stderr := newDigestWriter()
 	// exec.CommandContext resolves unqualified names using the ambient Host
 	// PATH, even when cmd.Env is explicitly empty. Resolve from the explicit
@@ -93,7 +107,7 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	if err != nil {
 		return Response{}, err
 	}
-	cmd := exec.CommandContext(ctx, resolved, command.Args...)
+	cmd := exec.CommandContext(runCtx, resolved, command.Args...)
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
@@ -122,6 +136,9 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return Response{}, fmt.Errorf("process plugin executable %q canceled: %w", command.Executable, ctxErr)
 		}
+		if stdout.overflow {
+			return Response{}, fmt.Errorf("process plugin executable %q response exceeds %d bytes", command.Executable, limit)
+		}
 		return Response{}, processExecutionError(command.Executable, err, stderr)
 	}
 	if stdout.overflow {
@@ -139,6 +156,17 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	var resp Response
 	if err := dec.Decode(&resp); err != nil {
 		return Response{}, fmt.Errorf("decode process plugin response from executable %q: %w", command.Executable, err)
+	}
+	// Registry accepts legacy in-process and mock responses that omit carrier
+	// identity, but a real Process plugin must independently echo all of the
+	// identity fields. If missing/zero values reached Registry, its legacy
+	// defaulting could turn an unbound process response into an apparent match.
+	// Keep the error fixed; no untrusted field values enter host diagnostics.
+	if resp.ProtocolVersion == 0 || resp.RequestID == "" ||
+		resp.Plugin.ID == "" || resp.Plugin.Version == "" ||
+		resp.CapabilityID == "" || resp.Status == "" ||
+		(resp.DescriptorFingerprint == "" && req.DescriptorFingerprint != "") {
+		return Response{}, fmt.Errorf("process plugin response is missing required carrier identity or status")
 	}
 	var trailing any
 	if err := dec.Decode(&trailing); !errors.Is(err, io.EOF) {
@@ -228,6 +256,35 @@ func validateProcessResponseObject(decoder *json.Decoder, pluginIdentity bool) e
 	return nil
 }
 
+// validateProcessEnvironment validates the complete host-approved environment.
+// Duplicate keys have platform-dependent meanings and could make the explicit
+// PATH used for executable lookup differ from the launched child's PATH.
+// Do not include values (which may be secrets) in any error or diagnostic.
+func validateProcessEnvironment(env []string) error {
+	seen := make(map[string]struct{}, len(env))
+	for _, entry := range env {
+		equal := strings.IndexByte(entry, '=')
+		if equal <= 0 || strings.IndexByte(entry, 0) >= 0 {
+			return fmt.Errorf("process plugin environment contains malformed entry")
+		}
+		name := entry[:equal]
+		// Reject names that cannot be represented unambiguously by ordinary
+		// shell/runtime environment lookups, without restricting values.
+		if strings.TrimSpace(name) != name || strings.ContainsAny(name, " \t\r\n") {
+			return fmt.Errorf("process plugin environment contains invalid variable name")
+		}
+		identity := name
+		if runtime.GOOS == "windows" {
+			identity = strings.ToUpper(name)
+		}
+		if _, exists := seen[identity]; exists {
+			return fmt.Errorf("process plugin environment contains duplicate variable name")
+		}
+		seen[identity] = struct{}{}
+	}
+	return nil
+}
+
 // resolveProcessExecutable prevents os/exec from consulting the ambient Host
 // PATH when the plugin command is a bare executable name. The caller may use
 // an explicit path directly, or select an absolute search directory through
@@ -268,9 +325,10 @@ func resolveProcessExecutable(executable string, env []string) (string, error) {
 }
 
 type boundedCapture struct {
-	limit    int
-	buf      bytes.Buffer
-	overflow bool
+	limit      int
+	buf        bytes.Buffer
+	overflow   bool
+	onOverflow func()
 }
 
 func (w *boundedCapture) Write(p []byte) (int, error) {
@@ -283,8 +341,11 @@ func (w *boundedCapture) Write(p []byte) (int, error) {
 		}
 		_, _ = w.buf.Write(p[:take])
 	}
-	if n > remaining {
+	if n > remaining && !w.overflow {
 		w.overflow = true
+		if w.onOverflow != nil {
+			w.onOverflow()
+		}
 	}
 	return n, nil
 }

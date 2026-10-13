@@ -234,3 +234,60 @@ JSON Browser Hostは既存の`measurement.json`を、`browser/`の親にある�
 `check_api_only_parity.py`には、実ビルド済みAPIを異なるTで起動しようとすると、起動前に終了することの負例を追加する。正しいTの場合に限り、既存のBusiness Result/Authentication/Authorization/Validation/Execution ErrorのHTTP同等性を引き続き検査する。
 
 **境界**：このT文字列はビルドスクリプトが埋め込む単なる識別値で、暗号署名やTrusted Builderの証明ではない。悪意あるBuilderなら偽のTも埋め込める。正式なBuildArtifactLock、受理Sourceの承認者、配備Hostの権限確認、実Provider・本番TLS/IdPの受入は未実装。B/R/Tの一致を認証・認可へ読み替えない。
+
+
+### Browser→APIの読取りにも同一HTTP要求でB/R/Tを照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝基準リポジトリ改訂）**は受け渡された業務モデルの意味を特定する。**T（Target Build Revision＝Target成果物のビルド改訂）**は、そこから生成したWeb/APIなどの実装成果物を特定する。同じB/Rを使ったWebとDesktopが異なるTを持ち得るため、意味の引き渡しとTargetごとの更新を区別する。B/R/Tの一致自体は本番の配備権限、署名、認証・認可を与えない。
+
+診断Browser Hostでは、書込み要求`POST /scenario/submit`をGo APIの`/scenario/submit-bound`に転送し、API自身の実行中ProjectionとB/R/Tを**Runner起動と同じHTTP要求の中で**照合してきた。読取り`GET /scenario/read`も同じ検査方式へ拡張する。Browser側の公開URLは変わらず、HostはGo APIの`GET /scenario/read-bound`へ転送する。Hostが生成したApplication/B/R/Tヘッダー4項目をGo APIが比較し、不一致・欠落・重複は409でRunnerを呼ばずに拒否。Hostは409または未対応の古いAPIによる404を502「API binding unknown」へ変換し、元の無検査ルートへは再送しない。
+
+Hostはさらに、API起動後の差替えを想定して**読取りと書込みの両方を転送する前**に実APIのManifestを再照合する。読取りの事前照合と、同じ要求内のGo API側照合は別の段階であり、APIの差替えが事前照合と実読取りの間に発生しても後者で誤った業務データの読取りを拒否できる。
+
+この仕組みは、意図しない**異なるApplication/B/R/Tへの誤転送**を診断的に防止するだけである。ヘッダー値は復元可能で暗号鍵ではなく、Host自体の配備権限、実データアクセス権、TLS/IdP、署名済みBuilder/Artifact LockやHost Trustの証明にはならない。Go APIが直接公開する従来の`/scenario/read`および業務Runnerの機能・認可は変えない。
+
+
+### Goコンパイラ自身のVCS記録とE1 Builder観測を独立照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**は業務意味の受け渡し単位、**R（Baseline Repository Revision＝その基準に対応するリポジトリ改訂）**は受け渡し時点のSource、**T（Target Build Revision＝Target成果物を構築したソース改訂）**は具体的なWeb/API成果物のビルド版である。同じB/Rから、WebのT1、DesktopのT2など独立した改訂を持つ配備成果物を生成できるよう、意味と実装のライフサイクルを分離する。
+
+以前の固定World E1は、Builderが指定する`sourceCommit=T`、`-ldflags -X`で埋め込むAPI自身のT、成果物バイトのSHA-256、Goオプション・依存閉包を照合していた。ただしどれも**Builderが設定・記録した値**であり、Go実行ファイルのビルド情報に自動記録される`vcs.revision`・`vcs.modified`を直接確認していなかった。
+
+`build_frozen_json_api.sh`は`go build -buildvcs=true`を明示し、`inspect_frozen_api_build.py`はGoコンパイラ由来のビルド情報を読み取る。GitのVCSであること、バイナリ内の`vcs.revision`が実ビルドのTと**完全一致**すること、`vcs.modified=false`であることを要求する。結果は既存の`apiBuildInputObservation.goVCS`に`revision`・`modified`として格納し、`verify_frozen_unit_pair.py`が公開前・公開後とも実行ファイルから再取得して照合する。欠落、偽VCS、異なるT、dirty/不明な状態、receiptだけの改ざんは拒否する。新しいLockやBuilder認可は作らない。
+
+**証明できないこと**：VCSフィールドはGoツールが取得したGitチェックアウトに関する非署名の情報であり、BuilderやGit履歴の真正性・悪意あるツールチェーン・Host配備権限を証明しない。`plugin.BuildPlan`・`plugin.BuildArtifactLock`は現在Pluginのビルド入力と成果物を固定する契約であり、このApplication二成果物に架空のPlugin IDやLockを付与して流用しない。汎用的なunit build/Host authorityへの昇格は#943・#259と調整する。形式上のB/R/Tと各観測値がすべて一致しても、署名済みArtifact、Production TLS/IdP/Provider/Runtime Authorizationは未受入。
+
+
+### 実際に起動するAPI実行ファイルのバイト列を固定する（診断用Linux Host）
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝その基準のリポジトリ改訂）**は、受理された業務モデルの意味を追跡する。一方、**T（Target Build Revision＝Target成果物を構築したソース改訂）**は、Web/API・Desktopなど個別の実装物のビルド時点を追跡する。業務モデルとTarget実装は異なるライフサイクルを持つため、同じB/Rから異なるTの実装を作り得る。
+
+従来の`smoke_json_api.py`は、測定JSONに記載された`apiSHA256`とディスク上の実ファイルを照合してから、**ファイル名で再度オープンしてAPIを起動**していた。検査後、起動直前に同じパスの実行ファイルを差し替えられると、検証したファイルと実際に実行するバイト列が一致しない恐れがある。
+
+Linux限定の`launch_verified_api.py`では、`O_NOFOLLOW`で実ファイルを開き、同一FDから読み取った全バイトの**SHA-256とバイト長**を既存`measurement.json`の値と再照合する。一致したバイト列のみ匿名`memfd`へ複製し、書込・拡張・縮小・Seal解除を禁止する`F_SEAL_*`を付与。その封印済みFDを`/proc/self/fd/N`経由で診断APIプロセスへ渡して起動する。これにより検査から実行までに、元のファイルパスを差し替えても起動する実行内容を変更できない。通常JSON APIと固定World APIの診断smoke双方に適用する。既存の業務Runnerや本番Host契約は変更しない。
+
+負例は実Linux ELFを使い、検査後のパス差し替え、異なる実行ファイル、シンボリックリンク、非実行ファイル、不正digest/size、封印済みFDへの書き換え失敗を検証する。Linux `memfd`・`/proc/self/fd`が使えない環境は**代替の未検証なpath起動へフォールバックしない**。
+
+**限界**：SHA-256の期待値を保持する測定JSONの真正性は独立には証明されていない。この操作は診断Hostの一時プロセスに対する**実行バイト一致**の保証であり、配備先Host自体の信頼、署名済みBuilder/BuildArtifactLock、外部プロキシやポート転送、TLS/IdP/Session、実DB Providerの権限を証明しない。本番のHost受理は#943/#259等の既存契約で独立に判断する。
+
+
+### API実行プロセスのバイト列とHostの接続先を再照合する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**、**R（Baseline Repository Revision＝引き渡し基準を参照するリポジトリ改訂）**は、実装する業務意味の同一性を追跡する。**T（Target Build Revision＝Target成果物を構築したソース改訂）**は、Web/APIなど物理的な実行成果物の改訂を追跡する。同じ業務意味B/Rから複数のTargetを独立して構築できるよう、両者を分離する。
+
+以前のE1診断Browser Hostは、APIの`/manifest.json`に表示されたB/R/Tを確認していた。しかし、**正しいB/R/Tを名乗る別のAPIプロセス**へ誤って接続する可能性は残る。Linux API専用Targetに`GET /diagnostic-executable.json`を追加し、処理している**そのプロセス**の`/proc/self/exe`から読み取ったSHA-256とバイト長をJSONで返すようにした。Goの実行ファイルとAPIの既存Manifestは変更しない（このパスはAPI専用）。
+
+`browser-host.mjs`は、接続前とその後の転送対象リクエストごとに、従来のB/R/Tに加えてこの照会結果を**既存`measurement.json`の`apiSHA256`／`apiBytes`**と照合する。照会パスが存在しない、値が欠落している、ハッシュ・サイズが異なる場合は、Hostの起動自体を拒否するか、起動後はHTTP 502として業務処理を実行させない。実Goテストで自己実行イメージの値を確認し、Nodeの実HTTPモックで「B/R/Tは同じだが実行イメージが違う」「API交換後の読取・書込」「照会経路がない」の負例を検査する。
+
+**検証の限界**：このレスポンスはAPIプロセス自身の**自己申告**であり、悪意のあるプロセスが偽のSHAを返す攻撃を排除しない。測定JSON自体も未署名である。従ってこれは診断Hostの誤接続を検出する補助であり、遠隔構成証明、信頼されたBuilder、Source Acceptance承認、正式BuildArtifactLock、Host配備権限、TLS/IdPまたは本番Authorizationを証明しない。新しいLockや配備許可の正本は追加しない。
+
+
+### 診断Browser HostがAPIから受け取る整合性証跡をストリーム段階で制限する
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**は業務意味の受渡し基準、**R（Baseline Repository Revision＝その基準のリポジトリ改訂）**は業務Sourceの基準改訂、**T（Target Build Revision＝対象実行成果物をビルドしたソース改訂）**は各Web/API/Desktop実装の改訂を示す。意味の確定とTargetごとの更新は異なるライフサイクルを持つため、同じB/Rから複数のTを生成し得る。いずれの識別子も署名やHostの配備認可そのものではない。
+
+E1診断Browser Hostは、API側の`/manifest.json`に含まれるB/R/Tと、`/diagnostic-executable.json`に含まれる実行中Linuxプロセスの自己申告SHA-256/サイズを、既存の`measurement.json`と照合する。ただし以前のHostは、`Content-Length`の主張を見た後に`response.text()`で**全応答を読み切ってから**実バイト長を検査していた。`Content-Length`を省いたchunked応答なら上限を超えてメモリを確保してしまう。
+
+変更後は両方の証跡について、受信ストリームから読み込む各チャンクの**実バイト長を積算しながら**、Manifestは64 KiB・実行イメージ観測は4 KiBで即座に拒否する。宣言された`Content-Length`が不正・上限超過のときは読み込み開始前に拒否する。JSON以外のMedia Type、空応答、HTTP失敗も拒否し、`Content-Length`のない**正常な小型chunked JSON**は受理する。起動前・起動後の転送前とも同じ読み込み境界を通す。読取・書込Runnerへフォールバックしない。
+
+これは**APIが誤設定されたり、過大な診断証跡を返したりした場合のHostのメモリ境界**を守る対策であり、応答が信用できるという証明ではない。特に実行イメージSHAはAPIプロセスの自己申告で、悪意あるプロセスによる偽装は防げない。Trusted Builder、正式なBuildArtifactLock、Source Acceptanceの承認主体、Host配備権限・TLS/IdP/Providerの受入は引き続き別契約に委ねる。

@@ -139,15 +139,12 @@ func run(repo, artifactOut, goExecutable string) (buildEvidence, error) {
 	if err := buildGoPackage(root, goPath, enginePackage, secondPath, filepath.Join(tempDir, "state-second")); err != nil {
 		return buildEvidence{}, fmt.Errorf("build second transform Runtime Engine: %w", err)
 	}
-	firstDigest, err := hashFile(firstPath)
+	comparison, err := gobuilder.CompareArtifactFiles(firstPath, secondPath)
 	if err != nil {
 		return buildEvidence{}, err
 	}
-	secondDigest, err := hashFile(secondPath)
-	if err != nil {
-		return buildEvidence{}, err
-	}
-	reproducible, artifactDigest := resolveReproducibility(firstDigest, secondDigest)
+	firstDigest, secondDigest := comparison.FirstDigest, comparison.SecondDigest
+	reproducible, artifactDigest := comparison.Reproducible, comparison.CandidateDigest
 	target := "host/" + runtime.GOOS + "/" + runtime.GOARCH
 	var exactRuntimeEngine *pruntime.RuntimeEngineIdentity
 	if reproducible {

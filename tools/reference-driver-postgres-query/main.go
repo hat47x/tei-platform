@@ -9,38 +9,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"tei/internal/application"
-	"tei/internal/database/providers/postgres"
 	"tei/internal/driver"
-	"tei/internal/environment"
-	"tei/internal/query"
+	postgresquery "tei/internal/driver/queryruntime/postgres"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 	"tei/tools/internal/postgresdb"
 )
-
-type postgresBrowseExecutor struct {
-	db *sql.DB
-}
-
-func (e postgresBrowseExecutor) ExecuteBrowseQuery(
-	ctx context.Context,
-	q query.EmbeddedSQL,
-	datasource application.DatabaseRequirement,
-	parameters map[string]any,
-) (driver.BrowseQueryResult, error) {
-	if q.Dialect != environment.ProviderPostgres {
-		return driver.BrowseQueryResult{}, fmt.Errorf("Reference PostgreSQL Executorはdialect %sを扱えません", q.Dialect)
-	}
-	if datasource.TargetDatabase != "sales_core" {
-		return driver.BrowseQueryResult{}, fmt.Errorf("Reference PostgreSQL Executorの対象Databaseはsales_coreですが、%sが指定されています", datasource.TargetDatabase)
-	}
-	raw, err := postgres.ExecuteRawQuery(ctx, e.db, q.Source, parameters)
-	if err != nil {
-		return driver.BrowseQueryResult{}, err
-	}
-	return driver.BrowseQueryResult{Payload: raw}, nil
-}
 
 type report struct {
 	Application              string   `json:"application"`
@@ -54,6 +28,7 @@ type report struct {
 	ParameterNames           []string `json:"parameterNames"`
 	ParameterValuesPersisted bool     `json:"parameterValuesPersisted"`
 	SemanticMappingApplied   bool     `json:"semanticMappingApplied"`
+	MappedAttributes         []string `json:"mappedAttributes"`
 	FirstRawRow              []any    `json:"firstRawRow,omitempty"`
 }
 
@@ -88,21 +63,24 @@ func main() {
 		}
 	}
 
+	// 製品側のPostgreSQL Query Executorをそのまま使う。raw resultはExecutorが物理的に観測した
+	// 列と値であり、Semantic mappingはDriverがCanonical Queryの明示mappingから適用する。
 	resolver := driver.NewResolver(loaded.World)
 	executed, err := resolver.ExecuteBrowseQuery(
 		ctx,
 		"order_entry",
 		"order_entry.recent_orders",
-		postgresBrowseExecutor{db: db},
+		postgresquery.Executor{DB: db, Database: "sales_core"},
 		map[string]any{"from": time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)},
 	)
 	if err != nil {
 		panic(err)
 	}
-	raw, ok := executed.Result.Payload.(postgres.RawQueryResult)
+	execution, ok := executed.Result.Payload.(postgresquery.Result)
 	if !ok {
 		panic(fmt.Errorf("Reference PostgreSQL Executorが想定外のresult型 %T を返しました", executed.Result.Payload))
 	}
+	raw := executed.Result.Raw
 	wantColumns := []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"}
 	if !sameStrings(raw.Columns, wantColumns) {
 		panic(fmt.Errorf("recent_ordersのraw columns=%v want=%v", raw.Columns, wantColumns))
@@ -110,8 +88,19 @@ func main() {
 	if len(raw.Rows) != 2 {
 		panic(fmt.Errorf("recent_ordersのrow数=%d want=2", len(raw.Rows)))
 	}
-	if !sameStrings(raw.ParameterNames, []string{"from"}) {
-		panic(fmt.Errorf("recent_ordersのparameter順=%v want=[from]", raw.ParameterNames))
+	if !sameStrings(execution.ParameterNames, []string{"from"}) {
+		panic(fmt.Errorf("recent_ordersのparameter順=%v want=[from]", execution.ParameterNames))
+	}
+	mapped := executed.Result.Mapped
+	if len(mapped.Columns) != len(raw.Columns) {
+		panic(fmt.Errorf("recent_ordersのmapping列数=%d want=%d", len(mapped.Columns), len(raw.Columns)))
+	}
+	mappedAttributes := make([]string, len(mapped.Columns))
+	for i, column := range mapped.Columns {
+		if column.Raw != raw.Columns[i] {
+			panic(fmt.Errorf("recent_ordersのmapping %d列目のraw列=%q want=%q", i, column.Raw, raw.Columns[i]))
+		}
+		mappedAttributes[i] = string(column.Attribute)
 	}
 
 	out := report{
@@ -123,9 +112,10 @@ func main() {
 		Dialect:                  string(executed.Resolution.Query.Dialect),
 		Columns:                  raw.Columns,
 		RowCount:                 len(raw.Rows),
-		ParameterNames:           raw.ParameterNames,
+		ParameterNames:           execution.ParameterNames,
 		ParameterValuesPersisted: false,
-		SemanticMappingApplied:   false,
+		SemanticMappingApplied:   true,
+		MappedAttributes:         mappedAttributes,
 		FirstRawRow:              jsonSafeRow(raw.Rows[0]),
 	}
 	enc := json.NewEncoder(os.Stdout)
