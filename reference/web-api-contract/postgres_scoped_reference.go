@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +59,18 @@ func (e ScopedRecentOrdersPostgres) ExecuteScopedBrowseQuery(
 		q.Datasource != "sales" ||
 		q.Dialect != environment.ProviderPostgres ||
 		strings.Join(strings.Fields(q.Source), " ") != recentOrdersCanonicalShape {
+		return driver.BrowseQueryResult{}, ErrScopedQueryContract
+	}
+	// A static realization must fail closed if the Canonical meaning
+	// changes, even when SQL source/Query ID still appear familiar.
+	expectedMappings := []query.ResultColumnMapping{
+		{Column: "order_id", Attribute: "sales.order.order_id"},
+		{Column: "customer_id", Attribute: "sales.order.customer_id"},
+		{Column: "ordered_at", Attribute: "sales.order.ordered_at"},
+		{Column: "status", Attribute: "sales.order.status"},
+		{Column: "total_amount", Attribute: "sales.order.total"},
+	}
+	if !reflect.DeepEqual(q.ResultColumns, expectedMappings) {
 		return driver.BrowseQueryResult{}, ErrScopedQueryContract
 	}
 	scope := e.Scope
@@ -136,7 +149,8 @@ func (e ScopedRecentOrdersPostgres) ExecuteScopedBrowseQuery(
 		statement += " AND o.order_id " + operator + " $3"
 		args = append(args, orderID)
 	}
-	orderBy := "o.ordered_at DESC"
+	// Keep the canonical newest-first meaning with a stable tie breaker.
+	orderBy := "o.ordered_at DESC, o.order_id DESC"
 	if plan.Order != nil {
 		if plan.Order.FieldID != "orderId" {
 			return driver.BrowseQueryResult{}, ErrRejected
