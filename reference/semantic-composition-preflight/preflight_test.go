@@ -273,3 +273,36 @@ func TestCompositionSemanticPreflightRejectsRegistryChangeDuringFetch(t *testing
 		t.Fatalf("stale structural selection was accepted: %+v, %v", result, err)
 	}
 }
+
+func TestCompositionSemanticPreflightRejectsExistingNamespaceWithMissingTargetSymbol(t *testing.T) {
+	registry, local, assets := selectedAssetsFixture(t)
+	// AuditSelectedNamespaceSet can only confirm the selected prefix "common";
+	// the actual target symbol still must pass canonical semantic validation.
+	_, provided := selectedSemanticFixture(t)
+	var changed semantic.Namespace
+	for _, ns := range provided {
+		if ns.ID == "os" {
+			changed = ns
+			break
+		}
+	}
+	if changed.ID != "os" || len(changed.Types) == 0 {
+		t.Fatal("missing os fixture")
+	}
+	changed.Types[0].Underlying = "common.not_declared"
+	for i := range assets {
+		if assets[i].Expected.NamespaceID == "os" {
+			assets[i] = buildExactSemanticAsset(t, changed, "read-os")
+		}
+	}
+	report, err := Inspect(registry, "tenant-a", local, assets)
+	if !errors.Is(err, ErrInvalidSemanticView) {
+		t.Fatalf("a prefix match was mistaken for a declared semantic target: %+v, %v", report, err)
+	}
+	if len(report.References.Unmatched) != 0 {
+		t.Fatalf("the selected prefix exists; the missing symbol is a validation failure: %+v", report.References)
+	}
+	if len(report.Diagnostics) == 0 {
+		t.Fatal("the concrete semantic target failure lost its validator diagnostics")
+	}
+}
