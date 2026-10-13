@@ -106,11 +106,15 @@ func TestCompositionScenariosKeepDriverResultsAndBusinessDenials(t *testing.T) {
 	if response.Code != 200 || !strings.Contains(response.Body.String(), "order-read") {
 		t.Fatalf("HTTP consumer: %d %s", response.Code, response.Body.String())
 	}
+	failed, err := cc.RunCommand(context.Background(), commandScenarioInput{LoginID: "legacy-order-editor", Credential: "editor-secret", From: "2026-09-18T07:00:00Z", RowIndex: 2})
+	if err == nil || failed.Composition == nil || failed.Composition.ProviderID != "order-submit" || failed.Read == nil || failed.Read.Composition == nil {
+		t.Fatalf("selected failed invocation lost its trace: %+v %v", failed, err)
+	}
 	denied.Store(true)
 	if _, err := cr.Run(context.Background(), input); err == nil {
 		t.Fatal("host denial bypassed")
 	}
-	if _, err := cc.RunCommand(context.Background(), commandScenarioInput{}); err == nil {
+	if result, err := cc.RunCommand(context.Background(), commandScenarioInput{}); err == nil || result.Composition != nil {
 		t.Fatal("host denial bypassed by command")
 	}
 	denied.Store(false)

@@ -84,7 +84,7 @@ def main():
         api_digest = "sha256:" + hashlib.sha256(pathlib.Path(api).read_bytes()).hexdigest() if composed else None
         def comparable(response):
             status, body = response
-            if not composed or status != 200:
+            if not composed:
                 return response
             try:
                 value = json.loads(body)
@@ -104,7 +104,7 @@ def main():
                 remove_trace(result)
             return status, json.dumps(value, sort_keys=True).encode()
         def expected_comparable(response):
-            if composed and response[0] == 200:
+            if composed:
                 try:
                     return response[0], json.dumps(json.loads(response[1]), sort_keys=True).encode()
                 except json.JSONDecodeError:

@@ -26,7 +26,7 @@ func (r *composedReadScenario) Run(ctx context.Context, input readScenarioInput)
 		return readScenarioResult{}, err
 	}
 	result, binding, err := r.service.Invoke(ctx, input)
-	if err == nil {
+	if binding.ContractID != "" {
 		result.Composition = projectCompositionBinding(binding)
 		if r.model != nil {
 			result.Composition.ModelRevision = r.model.revision
@@ -46,7 +46,7 @@ func (r *composedCommandScenario) RunCommand(ctx context.Context, input commandS
 		return commandScenarioResult{}, err
 	}
 	result, binding, err := r.service.Invoke(ctx, input)
-	if err == nil {
+	if binding.ContractID != "" {
 		result.Composition = projectCompositionBinding(binding)
 		if r.model != nil {
 			result.Composition.ModelRevision = r.model.revision
