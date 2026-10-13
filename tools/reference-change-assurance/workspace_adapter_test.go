@@ -44,15 +44,16 @@ func TestRealWorkspaceImpactDoesNotInventEvidenceReuse(t *testing.T) {
 			if report.GraphNodes == 0 || report.GraphEdges == 0 {
 				t.Fatal("not backed by real Workspace typed index")
 			}
-			// The actual order-entry workspace has database-contract
-			// projection gaps. They must remain visible, not disappear
-			// behind a positive typed impact or a negative review.
-			if len(report.ProjectionUnresolved) == 0 {
-				t.Fatal("expected actual projection gaps to remain visible")
-			}
-			if tc.action == "unresolved" && tc.name == "display-rename-without-verified-receipt" {
-				if report.Decision.ReasonCodes[0] != "workspace-projection-unresolved" {
-					t.Fatalf("negative impact bypassed unresolved graph projection: %+v", report.Decision)
+			// Today, the real Workspace contains Database Contract
+			// projection gaps. They must remain visible for inspection,
+			// but resolving them later must not break this regression.
+			if tc.name == "display-rename-without-verified-receipt" {
+				wantReason := "no-bound-receipt-or-proven-dependency-closure"
+				if len(report.ProjectionUnresolved) > 0 {
+					wantReason = "workspace-projection-unresolved"
+				}
+				if report.Decision.ReasonCodes[0] != wantReason {
+					t.Fatalf("negative impact bypassed the evidence boundary: %+v", report.Decision)
 				}
 			}
 		})
