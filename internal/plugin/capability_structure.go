@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"tei/internal/core"
 	"tei/internal/environment"
 	"tei/internal/permission"
 )
@@ -27,6 +28,16 @@ func ValidateUniqueCapabilityPermissions(specs []permission.Spec) error {
 	return fmt.Errorf("permission %q appears more than once", duplicates[0])
 }
 
+// ValidateCapabilityID checks the exact declared identifier without silently
+// trimming or normalizing a malformed plugin definition.
+func ValidateCapabilityID(id core.CanonicalID) error {
+	parsed, err := core.ParseCanonicalID(string(id))
+	if err != nil || parsed != id {
+		return fmt.Errorf("capability ID %q has invalid canonical id", id)
+	}
+	return nil
+}
+
 // ValidateCapabilityStructure checks local declarations independently of a
 // World. Referenced environments and runtime grants are validated elsewhere.
 func ValidateCapabilityStructure(provides []Capability) error {
@@ -34,6 +45,9 @@ func ValidateCapabilityStructure(provides []Capability) error {
 		return err
 	}
 	for _, c := range provides {
+		if err := ValidateCapabilityID(c.ID); err != nil {
+			return err
+		}
 		if !c.Kind.Valid() {
 			return fmt.Errorf("capability %s has invalid kind %q", c.ID, c.Kind)
 		}

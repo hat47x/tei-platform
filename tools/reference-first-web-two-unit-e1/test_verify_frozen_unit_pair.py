@@ -32,6 +32,9 @@ INFO = (
     "\tbuild\tGOARCH=amd64\n"
     "\tbuild\tGOOS=linux\n"
     "\tbuild\tGOAMD64=v1\n"
+    "\tbuild\tvcs=git\n"
+    "\tbuild\tvcs.revision=" + SOURCE + "\n"
+    "\tbuild\tvcs.modified=false\n"
 )
 
 
@@ -107,6 +110,7 @@ class UnitPairPreflightTests(unittest.TestCase):
             "apiSHA256": self.m["apiSHA256"],
             "apiBytes": self.m["apiBytes"],
             "go": GO.copy(),
+            "goVCS": {"revision": SOURCE, "modified": False},
             "goPackageCount": 227,
             "goPackageClosureSHA256": "f" * 64,
             "builderArtifactAuthorityVerified": False,
@@ -203,6 +207,23 @@ class UnitPairPreflightTests(unittest.TestCase):
         self.m["apiBuildInputObservation"]["go"]["goamd64"] = "v3"
         self.save()
         with self.assertRaisesRegex(ValueError, "actual embedded Go build options"):
+            self.check()
+
+
+    def test_real_go_vcs_metadata_cannot_be_restamped_by_receipt(self):
+        # Changing both receipt and build observation cannot replace the
+        # independent build-info carried in the executable.
+        with self.assertRaisesRegex(ValueError, "VCS revision"):
+            preflight(self.root, build_info=INFO.replace(
+                "vcs.revision=" + SOURCE, "vcs.revision=" + BASELINE
+            ), world_digest=DERIVED)
+        with self.assertRaisesRegex(ValueError, "modified"):
+            preflight(self.root, build_info=INFO.replace(
+                "vcs.modified=false", "vcs.modified=true"
+            ), world_digest=DERIVED)
+        self.m["apiBuildInputObservation"]["goVCS"]["revision"] = BASELINE
+        self.save()
+        with self.assertRaisesRegex(ValueError, "actual embedded Go VCS provenance"):
             self.check()
 
     def test_true_permission_or_build_authority_claim_fails(self):

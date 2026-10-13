@@ -80,7 +80,9 @@ jobs:
           print("apiSourceExcludesPresentation=true")
           PY
           go build -trimpath -ldflags=-buildid= -tags=tei_order_only -o "$tmp/full" ./tools/reference-first-web-target
-          go build -trimpath -ldflags=-buildid= -tags=tei_order_only,tei_api_only -o "$tmp/api" ./tools/reference-first-web-target
+          # The E1 JSON API must carry the *actual* clean checkout T. The
+          # ordinary presentation-bearing reference remains unchanged.
+          go build -trimpath -ldflags="-buildid= -X main.referenceAPISourceRevision=$GITHUB_SHA" -tags=tei_order_only,tei_api_only -o "$tmp/api" ./tools/reference-first-web-target
           test -s "$tmp/api"
           test -s "$tmp/full"
           if grep -aFq 'Custom Submit UI' "$tmp/api"; then

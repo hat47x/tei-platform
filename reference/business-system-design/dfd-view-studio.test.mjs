@@ -1053,3 +1053,143 @@ test('stale meaning navigation and back links are revoked when projection change
   assert.equal($('semantic-propose').disabled,true);
   assert.ok($('diagram').children.some(x=>x.dataset?.id==='BP-04'));
 });
+
+
+test('real Go projection crosses browser view boundary without elevating Source acceptance',
+  {skip:!process.env.TEI_DFD_REAL_GO_DIRECT_PROJECTION||
+    !process.env.TEI_DFD_REAL_GO_APPROVAL_PROJECTION},async()=>{
+  await import('./dfd-view-studio.mjs');
+  const fromGo=JSON.parse(readFileSync(process.env.TEI_DFD_REAL_GO_DIRECT_PROJECTION,'utf8'));
+  const approval=JSON.parse(readFileSync(process.env.TEI_DFD_REAL_GO_APPROVAL_PROJECTION,'utf8'));
+  assert.equal(fromGo.schemaVersion,'business-dfd-projection-v0');
+  assert.equal(fromGo.authority,'derived-read-only');
+  assert.equal(fromGo.canonicalProcedureUsed,false);
+  assert.equal(fromGo.roleAuthorizationBinding,'not-inferred');
+  assert.ok(fromGo.steps.some(x=>x.id==='BP-05'&&x.noApplicationFunction&&
+    x.functionRefs.length===0&&x.explicitMeaning.length===2));
+  const observed=JSON.stringify([fromGo,approval]);
+  await input('dfd-file',fromGo);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  let step=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset?.id==='BP-05');
+  assert.ok(step,'real Go direct Validation step was not rendered');
+  step.listeners.keydown({key:'Enter',preventDefault(){}});
+  let detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.source.pointer,'/steps/5');
+  assert.equal(detail.functionRefs.length,0);
+  assert.equal(detail.explicitMeaning.length,2);
+  const validation=detail.explicitMeaning[0];
+  assert.equal(validation.kind,'semantic-validation');
+  assert.equal(validation.authority,'procedure-reference-only');
+  assert.equal(validation.status,'resolved-id-not-accepted');
+  assert.equal(validation.source.pointer,'/steps/5/validations/0');
+  const validationButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent===validation.kind+': '+validation.id);
+  assert.ok(validationButton,'real Go produced validation must navigate in view');
+  validationButton.click();
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.acceptedMeaning,false);
+  assert.equal(detail.sourceIndexStatus,'not-verified');
+  assert.equal(detail.worldRevisionStatus,'unverified-no-model-revision-binding');
+  assert.equal(detail.matches.length,1);
+  assert.equal(detail.matches[0].source.pointer,'/steps/5/validations/0');
+  assert.equal(detail.matches[0].status,'resolved-id-not-accepted');
+  assert.equal($('semantic-propose').disabled,true);
+  const back=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent==='step: BP-05');
+  assert.ok(back);
+  back.click();
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-05');
+
+  await input('dfd-file',approval);
+  assert.match($('status').textContent,/投影を読み込みました/);
+  assert.equal(approval.roleAuthorizationBinding,'not-inferred');
+  assert.deepEqual([...new Set(approval.triggers.map(x=>x.kind))].sort(),
+    ['event','human','schedule']);
+  assert.ok(approval.triggers.every(x=>x.runtimeBinding==='unbound'));
+  assert.ok(approval.flows.some(x=>x.kind==='exception'&&x.condition));
+  assert.ok(approval.steps.some(x=>x.noApplicationFunction));
+  const store=$('diagram').children.find(x=>x.dataset?.kind==='store'&&x.dataset?.id==='orders');
+  assert.ok(store);
+  store.listeners.keydown({key:'Enter',preventDefault(){}});
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.semanticData,'sales.order');
+  assert.equal(detail.source.pointer,'/stores/0');
+  const dataButton=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent==='semantic-data: sales.order');
+  assert.ok(dataButton);
+  dataButton.click();
+  detail=JSON.parse($('details').children[0].textContent);
+  assert.equal(detail.acceptedMeaning,false);
+  assert.ok(detail.matches.some(x=>x.origin.kind==='store'&&x.origin.id==='orders'));
+  assert.ok(detail.matches.some(x=>x.origin.kind==='step'&&x.via?.kind==='function'),
+    'real Go-derived Data must have explicitly linked Function origin');
+  const oldBack=$('details').children.flatMap(x=>x.children||[])
+    .find(x=>x.tag==='button'&&x.textContent==='store: orders');
+  assert.ok(oldBack);
+  await input('dfd-file',fromGo);
+  oldBack.click();
+  assert.equal($('details').children.length,0,
+    'stale Go-projection reverse navigation cannot restore old Source');
+  assert.equal(JSON.stringify([fromGo,approval]),observed,
+    'read-only view must not mutate real Go producer outputs');
+});
+
+test('drag started before layout apply cannot propose a move against replacement layout',async()=>{
+  await input('dfd-file',projection);
+  const n=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  n.listeners.pointerdown({button:0,pointerId:91,clientX:10,clientY:10});
+  const layout={schemaVersion:'tei.reference.business-dfd-view-layout/v0',
+    authority:'view-only',procedureId:'orders.review',projectionSHA256:'sha256:invalid',nodes:[]};
+  // Switching the picker invalidates the old layout and drag synchronously,
+  // even if the new file has not finished reading.
+  let release;
+  const bytes=Buffer.from(JSON.stringify(layout));
+  const waiting=$('layout-file').listeners.change({target:{files:[{
+    arrayBuffer:()=>new Promise(resolve=>{release=()=>resolve(
+      bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.length));})
+  }]}});
+  $('diagram').listeners.pointerup({pointerId:91,clientX:500,clientY:400});
+  assert.equal($('apply').disabled,true);
+  release();await waiting;
+  assert.equal($('apply').disabled,true);
+});
+
+// A delayed event from an old SVG must not act on a replacement projection,
+// even when the new projection reuses the same reference-local Step ID.
+test('detached SVG events cannot select or move a replacement DFD',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.ok(old);
+  await input('dfd-file',{...projection});
+  assert.equal($('details').children.length,0);
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:121,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:121,clientX:400,clientY:300});
+  assert.equal($('details').children.length,0);
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  assert.equal($('semantic-propose').disabled,true);
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  live.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+});
+
+test('SVG nodes retired by selection re-render cannot propose a move',async()=>{
+  await input('dfd-file',projection);
+  const old=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  old.listeners.keydown({key:'Enter',preventDefault(){}});
+  assert.equal(JSON.parse($('details').children[0].textContent).id,'BP-04');
+  old.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  old.listeners.pointerdown({button:0,pointerId:122,clientX:10,clientY:10});
+  $('diagram').listeners.pointerup({pointerId:122,clientX:400,clientY:300});
+  assert.equal($('apply').disabled,true);
+  assert.equal($('preview').hidden,true);
+  // Source navigation can complete asynchronously after selection began.
+  // Only a node from the completed re-render should handle fresh input.
+  await new Promise(resolve=>setTimeout(resolve,30));
+  const live=$('diagram').children.find(x=>x.dataset?.kind==='step'&&x.dataset.id==='BP-04');
+  assert.notEqual(live,old,'selection should retire the previous SVG node');
+  live.listeners.keydown({key:'ArrowRight',shiftKey:false,preventDefault(){}});
+  assert.equal($('apply').disabled,false,'current SVG node retains keyboard placement');
+});

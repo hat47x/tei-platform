@@ -1,0 +1,416 @@
+{
+  "cases": [
+    {
+      "id": "display-only-rename",
+      "purpose": "execute-preflight",
+      "changes": [
+        {
+          "subject": "action:order.approve",
+          "aspects": [
+            "display"
+          ]
+        }
+      ],
+      "claims": [
+        {
+          "id": "semantic-rule",
+          "coverage": "complete",
+          "dependencies": [
+            "action:order.approve",
+            "rule:approval.threshold"
+          ],
+          "coveredAspects": [
+            "display",
+            "meaning",
+            "binding"
+          ],
+          "impactAspects": [
+            "meaning",
+            "binding"
+          ],
+          "currentContext": {
+            "semanticFingerprint": "rule-50man",
+            "scenarioRevision": "s2"
+          },
+          "receipts": [
+            {
+              "id": "r-semantic-v2",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "semanticFingerprint": "rule-50man",
+                "scenarioRevision": "s2"
+              }
+            }
+          ],
+          "runtimeChecks": [
+            "authority.current",
+            "effect.fence"
+          ]
+        },
+        {
+          "id": "ui-display",
+          "coverage": "complete",
+          "dependencies": [
+            "action:order.approve"
+          ],
+          "coveredAspects": [
+            "display",
+            "meaning",
+            "binding"
+          ],
+          "impactAspects": [
+            "display",
+            "binding"
+          ],
+          "currentContext": {
+            "targetBuild": "web-v3"
+          },
+          "receipts": [
+            {
+              "id": "r-ui-v3",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "targetBuild": "web-v3"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "threshold-change",
+      "purpose": "simulate",
+      "changes": [
+        {
+          "subject": "rule:approval.threshold",
+          "aspects": [
+            "meaning"
+          ]
+        }
+      ],
+      "claims": [
+        {
+          "id": "approval-boundary",
+          "coverage": "complete",
+          "dependencies": [
+            "rule:approval.threshold",
+            "action:order.approve"
+          ],
+          "coveredAspects": [
+            "meaning",
+            "display"
+          ],
+          "impactAspects": [
+            "meaning"
+          ],
+          "currentContext": {
+            "semanticFingerprint": "rule-60man"
+          },
+          "receipts": [
+            {
+              "id": "r-old-rule",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "semanticFingerprint": "rule-50man"
+              }
+            }
+          ]
+        },
+        {
+          "id": "independent-order-intake",
+          "coverage": "complete",
+          "dependencies": [
+            "action:order.accept"
+          ],
+          "coveredAspects": [
+            "meaning",
+            "display"
+          ],
+          "impactAspects": [
+            "meaning"
+          ],
+          "currentContext": {
+            "semanticFingerprint": "intake-v2"
+          },
+          "receipts": [
+            {
+              "id": "r-intake",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "semanticFingerprint": "intake-v2"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "provider-replaced",
+      "purpose": "release-review",
+      "changes": [
+        {
+          "subject": "provider:shipment",
+          "aspects": [
+            "artifact"
+          ]
+        }
+      ],
+      "claims": [
+        {
+          "id": "business-meaning",
+          "coverage": "complete",
+          "dependencies": [
+            "rule:shipment"
+          ],
+          "coveredAspects": [
+            "meaning",
+            "display",
+            "artifact"
+          ],
+          "impactAspects": [
+            "meaning"
+          ],
+          "currentContext": {
+            "semanticFingerprint": "ship-rule-v1"
+          },
+          "receipts": [
+            {
+              "id": "r-rule",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "semanticFingerprint": "ship-rule-v1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "provider-conformance",
+          "coverage": "complete",
+          "dependencies": [
+            "provider:shipment"
+          ],
+          "coveredAspects": [
+            "artifact",
+            "binding",
+            "contract"
+          ],
+          "impactAspects": [
+            "artifact",
+            "binding",
+            "contract"
+          ],
+          "currentContext": {
+            "providerArtifact": "sha-new",
+            "targetBuild": "web-v3"
+          },
+          "receipts": [
+            {
+              "id": "r-old",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "providerArtifact": "sha-old",
+                "targetBuild": "web-v3"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "opaque-native-effect",
+      "purpose": "execute-preflight",
+      "changes": [
+        {
+          "subject": "function:native.send",
+          "aspects": [
+            "effect"
+          ]
+        }
+      ],
+      "claims": [
+        {
+          "id": "effect-conformance",
+          "coverage": "opaque",
+          "dependencies": [
+            "function:native.send"
+          ],
+          "coveredAspects": [
+            "effect"
+          ],
+          "impactAspects": [
+            "effect"
+          ],
+          "currentContext": {
+            "artifact": "sha-3"
+          },
+          "receipts": [
+            {
+              "id": "r-native",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "artifact": "sha-3"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-authority-revoked",
+      "purpose": "execute-preflight",
+      "changes": [],
+      "claims": [
+        {
+          "id": "static-shape",
+          "coverage": "complete",
+          "dependencies": [
+            "action:order.approve"
+          ],
+          "coveredAspects": [
+            "meaning",
+            "binding"
+          ],
+          "impactAspects": [
+            "meaning",
+            "binding"
+          ],
+          "currentContext": {
+            "contractFingerprint": "c2"
+          },
+          "receipts": [
+            {
+              "id": "r-shape",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "contractFingerprint": "c2"
+              }
+            }
+          ],
+          "runtimeChecks": [
+            "authority.current",
+            "effect.fence"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unknown-aspect",
+      "purpose": "simulate",
+      "changes": [
+        {
+          "subject": "action:order.approve",
+          "aspects": [
+            "data-shape"
+          ]
+        }
+      ],
+      "claims": [
+        {
+          "id": "rule",
+          "coverage": "complete",
+          "dependencies": [
+            "action:order.approve"
+          ],
+          "coveredAspects": [
+            "meaning",
+            "display"
+          ],
+          "impactAspects": [
+            "meaning"
+          ],
+          "currentContext": {
+            "semanticFingerprint": "r1"
+          },
+          "receipts": [
+            {
+              "id": "r1",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "semanticFingerprint": "r1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "target-drift",
+      "purpose": "release-review",
+      "changes": [],
+      "claims": [
+        {
+          "id": "target-e2e",
+          "coverage": "complete",
+          "dependencies": [
+            "target:web"
+          ],
+          "coveredAspects": [
+            "target",
+            "artifact"
+          ],
+          "impactAspects": [
+            "target",
+            "artifact"
+          ],
+          "currentContext": {
+            "targetBuild": "web-v4"
+          },
+          "receipts": [
+            {
+              "id": "r-web-v3",
+              "outcome": "pass",
+              "oracleOrigin": "independent",
+              "context": {
+                "targetBuild": "web-v3"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "self-derived-oracle",
+      "purpose": "simulate",
+      "changes": [],
+      "claims": [
+        {
+          "id": "fixture-expectation",
+          "coverage": "complete",
+          "dependencies": [
+            "rule:order.total"
+          ],
+          "coveredAspects": [
+            "meaning"
+          ],
+          "impactAspects": [
+            "meaning"
+          ],
+          "currentContext": {
+            "rule": "r1",
+            "fixture": "f1"
+          },
+          "receipts": [
+            {
+              "id": "r-derived",
+              "outcome": "pass",
+              "oracleOrigin": "implementation-derived",
+              "context": {
+                "rule": "r1",
+                "fixture": "f1"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

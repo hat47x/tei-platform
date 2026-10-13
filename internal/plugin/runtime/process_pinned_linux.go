@@ -164,12 +164,16 @@ func (p *PinnedLinuxProcess) Invoke(ctx context.Context, command ProcessCommand,
 	if p.image == nil || command.Executable != p.source {
 		return Response{}, errors.New("process executable is not the pinned image")
 	}
-	// 検証後に信頼鍵が失効した場合、検証と起動の間に存在する
-	// 信頼状態の変更を起動直前にも拒否する。
-	if p.signatureVerified && !p.signerTrust.current(p.signatureRef, p.signerEpoch) {
-		return Response{}, errors.New("Host signer trust was revoked or changed")
+	// 署名済み実行内容は、信頼集合の読取りロックを子プロセスの
+	// Startが完了するまで保持する。失効と起動開始をHost内で直列化し、
+	// すでに起動した子プロセスのWait中は鍵の失効を妨げない。
+	var gate processStartGate
+	if p.signatureVerified {
+		gate = func(start func() error) error {
+			return p.signerTrust.startIfCurrent(p.signatureRef, p.signerEpoch, start)
+		}
 	}
-	return p.transport.invokeExecutable(ctx, command, request, "/proc/self/fd/3", []*os.File{p.image})
+	return p.transport.invokeExecutableWithStartGate(ctx, command, request, "/proc/self/fd/3", []*os.File{p.image}, gate)
 }
 
 // InvokeSandboxedはHostSandboxLauncherによってホスト側の制約を適用した

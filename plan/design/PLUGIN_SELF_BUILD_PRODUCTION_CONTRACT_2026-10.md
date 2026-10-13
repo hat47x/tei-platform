@@ -169,6 +169,7 @@ Locked replayが成功しても、失効したProviderをBuild実行してよい
 | SBP-20 | Web/CLI/Desktop別経路で同じBuild IntentとLockを使用 | 同じmeaning・validation・権限拒否・diagnosticを保存（#1173/#943） |
 | SBP-21 | Runtime-only dependencyをbuild graphへ混入 | graph生成を拒否または明示的なbuild-only provenanceなしを検出（#1103） |
 | SBP-22 | Cgo/hidden ignored/untracked/symlink等が実compile inputとなる | 対象closureを完全固定できなければ拒否（#1096/#1122） |
+| SBP-23 | SB-1 package入力でomitempty配列を`[]`と明示、または項目順だけ変更 | shipped Sourceはexact input shapeのfingerprintを照合するため`assert-equal failed`で拒否。黙示正規化しない（#1739、入力受理契約は[docs/plugins.md](../../docs/plugins.md)） |
 
 ## 5. 完成判定を層別に扱う
 
@@ -190,6 +191,7 @@ Locked replayが成功しても、失効したProviderをBuild実行してよい
 - engine / toolchainのhost-side loaded code attestation
 - リモートArtifact Store / distributed scheduler / cache eviction
 - 複数Target間のoutput byte一致（意味同等性と混同しない）
+- SB-1 package入力の空配列と省略の意味同値化（#1739）。固定済みのRuntime Engineは未知のoperationを拒否するため、`omit-empty-array-field`相当の演算をshipped Sourceへ足せない。導入する場合は新Profile/Engine versionに束縛し、旧Source・旧SB-3 Evidenceの検証を残して、新旧Go/TEIの実生成bytesを比較する。未実装
 
 いずれも先に巨大Coreを追加して決めない。positive Reference 1件・negative Reference 1件・consumer 2種類以上で必要性を確かめる。
 

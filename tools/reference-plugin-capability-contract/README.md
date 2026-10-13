@@ -172,3 +172,12 @@ generic InvocationがRuntime Authorityを代替するわけではありません
 
 この試験で使うContract Publisher TrustとProvider Conformanceは**メモリ上の合成試験証跡**です。Hostの検証も実行ファイルのSHA-256照合だけであり、署名・来歴・永続的な採用記録・Sandbox・権限付与の完備は証明しません。`ServiceBinding`は正式なContract/Provider Authorityの代わりにならず、`CapabilityContractQueryExecutor`は見積もり業務を表す意味契約ではなく旧Process Carrierの種別です。案件固有プラグインの開発に、これらの試験用詳細メタデータを一律に書かせる仕様ではありません。
 
+
+
+### Host現在受理を既存のIssuer Trustで照合するReference
+
+[Host受理Reader](host_current_acceptance_reader.go)を通し、製品Runtimeの`ServiceAcceptanceReader`へ、**Hostが管理する現在の契約公開・Provider適合性・Issuer Grant**を毎回読むためのReferenceアダプターを接続しました。契約意味の完全なFingerprint、ProviderのPlugin ID/Version・Implementation ID・成果物Digest・Conformance Profile、Provider Conformance Evidenceとその発行権限をそれぞれexact照合します。Issuerの権限種別・Scope・失効・曖昧性は**既存**の`reference-authority-evidence-trust/trust.Verify`を再利用します。旧CapabilityKindやHost Runtime Permissionを契約意味・Issuer Authorityと同一視しません。
+
+検証対象は受理Sourceが無い場合、Contract定義の後出し変更、Provider/Artifact/Conformanceの取り違え、Publisher Namespaceの横取り、Provider Conformance IssuerのScope違い、受理削除、Grant取消・二重Grantです。同一のService選択とRuntime Planであっても、次の呼出しで現在のIssuer Grantが失効していれば子プロセス起動前に拒否します。[見積もり実プロセス縦断試験](quote_service_host_e2e_test.go)にもこのReaderを配線し、単に固定文字列を返すモックから置き換えました。
+
+**重要な限界**：これは未採用候補に基づく**Reference**です。Authority Grant自体は構造と指紋の整合検査しかできず、その発行元の認証・署名・秘匿保管を保証しません。試験ではGrantも受理情報もメモリ上で合成しています。Host Sourceが信頼済みの正本であり、Namespace所有・受理・現在性・撤回を認証済みの経路で取得していることは**別途必須**です。このReaderをそのまま正式な受理機構と宣言せず、新しいIssuer/Resolverを増やしません。案件内プラグインの作者に上記の証跡を一律に記述させる要件ではありません。

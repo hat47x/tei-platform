@@ -22,6 +22,9 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		return sourceindex.Index{}, fmt.Errorf("loaded source snapshot belongs to another Workspace")
 	}
 	idx := sourceindex.Index{}
+	// 意味定義ファイルの構文解析結果は、この呼出し内の同一バイト列に限って共有する。
+	// 呼出しをまたいで保持せず、Revisionに束縛しない永続キャッシュは持たない。
+	anchorTables := map[string]*semanticAnchorTable{}
 	contents := map[string][]byte{}
 	artifacts := map[string]sourceindex.Artifact{}
 
@@ -42,8 +45,9 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 			contents[p] = snapshot
 			return snapshot, nil
 		}
-		// Standalone Results and unparsed managed assets go through the same
-		// checked native reader as Load. It is not a race-free open boundary.
+		// Standalone Results and unparsed managed assets use a traversal-
+		// resistant rooted open per read. This is NOT a pinned multi-file
+		// Workspace snapshot, unlike the bytes retained by Load.
 		content, err := readWorkspaceFile(rootReal, p)
 		if err != nil {
 			return nil, err
@@ -86,7 +90,7 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		}
 		content := contents[artifact.Path]
 		subject := subjectFromSourceKey(key)
-		rng, exact, err := exactSubjectRange(content, subject)
+		rng, exact, err := exactSubjectRange(content, subject, anchorTables, artifact.Path)
 		if err != nil {
 			return sourceindex.Index{}, fmt.Errorf("source %s in %s: %w", key, artifact.Path, err)
 		}
@@ -177,17 +181,41 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 	return idx, nil
 }
 
-func exactSubjectRange(content []byte, subject sourceindex.Subject) (sourceindex.Range, bool, error) {
-	if isSemanticSubjectKind(subject.Kind) {
-		anchored, err := syntax.ParseSemanticFileAnchored(string(content))
-		if err != nil {
-			return sourceindex.Range{}, true, err
+// semanticAnchorTable は1ファイル分の構文解析結果。解析の成否も保持し、
+// 失敗したファイルでは従来と同じ誤りを同じ文言で返す。
+type semanticAnchorTable struct {
+	err     error
+	offsets map[sourceindex.Subject][2]int // 同一Subjectが複数ある場合は先頭のanchorを採る（従来のfirst-match）
+}
+
+func buildSemanticAnchorTable(content []byte) *semanticAnchorTable {
+	anchored, err := syntax.ParseSemanticFileAnchored(string(content))
+	if err != nil {
+		return &semanticAnchorTable{err: err}
+	}
+	table := &semanticAnchorTable{offsets: make(map[sourceindex.Subject][2]int, len(anchored.Anchors))}
+	for _, item := range anchored.Anchors {
+		key := sourceindex.Subject{Kind: item.Kind, ID: item.ID}
+		if _, exists := table.offsets[key]; !exists {
+			table.offsets[key] = [2]int{item.Anchor.Start.Offset, item.Anchor.End.Offset}
 		}
-		for _, item := range anchored.Anchors {
-			if item.Kind == subject.Kind && item.ID == subject.ID {
-				rng, err := sourceindex.RangeFromOffsets(content, item.Anchor.Start.Offset, item.Anchor.End.Offset)
-				return rng, true, err
-			}
+	}
+	return table
+}
+
+func exactSubjectRange(content []byte, subject sourceindex.Subject, tables map[string]*semanticAnchorTable, path string) (sourceindex.Range, bool, error) {
+	if isSemanticSubjectKind(subject.Kind) {
+		table, ok := tables[path]
+		if !ok {
+			table = buildSemanticAnchorTable(content)
+			tables[path] = table
+		}
+		if table.err != nil {
+			return sourceindex.Range{}, true, table.err
+		}
+		if span, found := table.offsets[subject]; found {
+			rng, err := sourceindex.RangeFromOffsets(content, span[0], span[1])
+			return rng, true, err
 		}
 		return sourceindex.Range{}, true, fmt.Errorf("semantic subject %s:%s has no syntax anchor", subject.Kind, subject.ID)
 	}

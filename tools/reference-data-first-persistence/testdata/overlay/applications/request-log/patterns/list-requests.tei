@@ -1,0 +1,4 @@
+pattern request_log.list_requests browse {
+    data intake.request
+    query request_log.list_requests
+}

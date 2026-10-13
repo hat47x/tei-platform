@@ -41,6 +41,13 @@ func runProcessHelper(mode string) int {
 		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
 		return 0
 	}
+	if mode == "large-then-wait" {
+		// Deliberately exceed the response limit, then hold the process open.
+		// A bounded capture alone cannot prevent this form of resource exhaustion.
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
+		time.Sleep(30 * time.Second)
+		return 0
+	}
 	if mode == "exit" {
 		_, _ = fmt.Fprintln(os.Stderr, "TOP-SECRET-SHOULD-NOT-LEAK")
 		return 7
@@ -73,6 +80,14 @@ func runProcessHelper(mode string) int {
 		resp.Status = pruntime.ResponseStatus("unrecognized")
 	case "secret-forged-identity":
 		resp.Plugin.ID = core.MustCanonicalID("forged.plugin")
+	case "secret-status-canary":
+		resp.Status = pruntime.ResponseStatus("TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG")
+	case "secret-forged-metadata-canary":
+		// The transport accepts nonempty fields; Registry must not return
+		// forged values after it rejects a mismatched response.
+		resp.RequestID = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.Plugin.Version = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
+		resp.DescriptorFingerprint = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
 	}
 	if strings.HasPrefix(mode, "secret-") {
 		resp.Error = "TEI_PROCESS_SECRET_CANARY_DO_NOT_LOG"
@@ -105,6 +120,64 @@ func runProcessHelper(mode string) int {
 			return 4
 		}
 		wire := string(raw)
+		if strings.HasPrefix(mode, "wire-missing-") || strings.HasPrefix(mode, "wire-empty-") {
+			// Decode only to construct deliberately incomplete wire output.
+			// Never use this permissive map as the production decoder.
+			var object map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &object); err != nil {
+				return 4
+			}
+			missing := strings.HasPrefix(mode, "wire-missing-")
+			name := strings.TrimPrefix(strings.TrimPrefix(mode, "wire-missing-"), "wire-empty-")
+			field := map[string]string{
+				"protocol":    "protocolVersion",
+				"request":     "requestId",
+				"plugin":      "plugin",
+				"capability":  "capabilityId",
+				"fingerprint": "descriptorFingerprint",
+				"status":      "status",
+			}[name]
+			if strings.HasPrefix(name, "plugin-") {
+				field = "plugin"
+			}
+			if field == "" {
+				return 4
+			}
+			if strings.HasPrefix(name, "plugin-") {
+				var nested map[string]json.RawMessage
+				if err := json.Unmarshal(object["plugin"], &nested); err != nil {
+					return 4
+				}
+				nestedField := strings.TrimPrefix(name, "plugin-")
+				if nestedField != "id" && nestedField != "version" {
+					return 4
+				}
+				if missing {
+					delete(nested, nestedField)
+				} else {
+					nested[nestedField] = json.RawMessage(`""`)
+				}
+				object["plugin"], err = json.Marshal(nested)
+				if err != nil {
+					return 4
+				}
+			} else if missing {
+				delete(object, field)
+			} else {
+				value := json.RawMessage(`""`)
+				if name == "protocol" {
+					value = json.RawMessage(`0`)
+				}
+				if name == "plugin" {
+					value = json.RawMessage(`{}`)
+				}
+				object[field] = value
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(object); err != nil {
+				return 4
+			}
+			return 0
+		}
 		var before, after string
 		switch mode {
 		case "wire-duplicate-status":
@@ -148,8 +221,9 @@ func helperLauncher(t *testing.T, mode string) (pruntime.StdioProcessLauncher, p
 	if err != nil {
 		t.Fatal(err)
 	}
-	env := append([]string(nil), os.Environ()...)
-	env = append(env, processHelperModeEnv+"="+mode)
+	// The test helper should obey the same host-approved environment policy as
+	// production callers: do not forward the test runner's ambient secrets.
+	env := []string{processHelperModeEnv + "=" + mode}
 	return pruntime.StdioProcessLauncher{Env: env}, pruntime.ProcessCommand{Executable: executable}
 }
 
@@ -285,6 +359,27 @@ func TestStdioProcessLauncherBoundsUntrustedStdout(t *testing.T) {
 	launcher.MaxResponseBytes = 128
 	if _, err := launcher.Invoke(context.Background(), command, processRequest()); err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
 		t.Fatalf("oversized response was not rejected: %v", err)
+	}
+}
+
+// A real child must be terminated when its stdout exceeds the configured
+// limit, even if it deliberately remains alive after writing the extra bytes.
+// The caller's context is not canceled by the transport-specific size failure.
+func TestStdioProcessLauncherKillsChildOnStdoutOverflow(t *testing.T) {
+	launcher, command := helperLauncher(t, "large-then-wait")
+	launcher.MaxResponseBytes = 128
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	started := time.Now()
+	_, err := launcher.Invoke(ctx, command, processRequest())
+	if err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
+		t.Fatalf("oversized child did not fail with its response limit: %v", err)
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("response-size rejection unexpectedly canceled/timed out caller: %v", ctx.Err())
+	}
+	if elapsed := time.Since(started); elapsed > 4*time.Second {
+		t.Fatalf("oversized child was not stopped promptly: %s", elapsed)
 	}
 }
 

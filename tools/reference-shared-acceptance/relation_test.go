@@ -316,7 +316,7 @@ func TestInsertIntoDataBlockHonoursLayoutAndLineEndings(t *testing.T) {
 	})
 }
 
-func TestAddRelationAndAddValidationShareOneFileAndRollBackTogether(t *testing.T) {
+func TestAddRelationAndAddValidationShareOneFileAndPreserveConcurrentMutation(t *testing.T) {
 	dir := scratchWorkspace(t)
 	original, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(orderFile)))
 	if err != nil {
@@ -329,6 +329,7 @@ func TestAddRelationAndAddValidationShareOneFileAndRollBackTogether(t *testing.T
 	})
 	data := mustJSON(t, c)
 	before := treeDigest(t, dir)
+	var concurrent []byte
 
 	ev, err := evaluate(dir, data)
 	if err != nil || !ev.preview.Acceptable {
@@ -347,21 +348,30 @@ func TestAddRelationAndAddValidationShareOneFileAndRollBackTogether(t *testing.T
 		t.Fatalf("挿入と追記の順序が想定と違います:\n%s", afterText)
 	}
 
-	// 受理後Conformanceが失敗すると、挿入も追記も一緒に元のbyteへ戻る。
+	// 受理後に別Actorが挿入・追記の結果をさらに編集した可能性があれば、
+	// rollbackは元のbyteで上書きせず未完了と報告する。
 	target := filepath.Join(dir, filepath.FromSlash(orderFile))
 	afterWritesHook = func(root string) {
 		content, err := os.ReadFile(target)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(target, append(content, '\n'), 0o644); err != nil {
+		concurrent = append(append([]byte(nil), content...), '\n')
+		if err := os.WriteFile(target, concurrent, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
 	defer func() { afterWritesHook = nil }()
 	decision, err := accept(dir, data, acceptOptions{})
-	if err != nil || decision.Decision != "refused" || decision.SourceChanged {
+	if err != nil || decision.Decision != "refused" || !decision.SourceChanged ||
+		!hasCode(refusalCodes(decision), "ROLLBACK_INCOMPLETE") {
 		t.Fatalf("decision=%+v err=%v", decision, err)
 	}
-	assertTreeUnchanged(t, before, treeDigest(t, dir))
+	actual, err := os.ReadFile(target)
+	if err != nil || string(actual) != string(concurrent) {
+		t.Fatalf("rollback erased the concurrent edit: %v", err)
+	}
+	if treeDigest(t, dir)[orderFile] == before[orderFile] {
+		t.Fatal("fixture did not leave a concurrent mutation for classification")
+	}
 }
