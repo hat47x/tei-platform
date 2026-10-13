@@ -238,3 +238,158 @@ go vet ./tools/reference-example-slide/...
 候補キーと関数従属性は関連しますが、検査結果を同一視しません。キー候補が衝突することと、関数従属性の従属項目が異なることは別の反例です。検査は`Catalog`と`Example`の同じモデル版を要求し、入力とTEIの正本を変更しません。
 
 この機能はまだ`ir.World`の正式な業務キー、Source Index、ER図画面、物理PK/FK、Shared Acceptance、Runtimeへ結び付いていません。今後の設計では、これらの意味と変更権限を分離したまま横断参照を実装します。受入条件全体は[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)で管理します。
+
+
+## 回答の出典参照を原資料の内容と照合する
+
+`AuditAnswerSourceEvidence`は、回答の再束縛から始め、既存の入力元索引と原資料のバイト列を使って、出典参照を検査する**読み取り専用の関数**である。利用者が提供する読込関数は、対象の作業領域に閉じたものでなければならない。検査側が任意のパスを直接開くことはない。
+
+まず入力元索引の全資料について、内容指紋と位置の妥当性を検証する。検証に失敗した場合は、個別の参照を部分的に合格扱いせず、検査全体を失敗させる。
+
+派生質問の`sourceIssue.relationId`について、回答者が申告した`source-index`参照が同じ`semantic-relation`を指すか調べる。定義として索引化された場所が一つに定まり、回答に記載された資料指紋が現在のバイト列と一致し、指定位置の識別子も一致する場合だけ`source-range-checked`を返す。欠落・異なる識別子・古い指紋・位置だけの粗い参照・複数定義は、区別した未確認状態にする。原資料が検査途中で変化した場合も、成功を返さない。
+
+文書・観測記録の参照には、この関数が読むための契約がないので`not-checked`を返す。利用者が直接書いた質問には派生元のRelationが無いため、入力元索引に同じ識別子が存在していても対応付けを作り出さない。
+
+**`source-range-checked`は「指定された作業領域のバイト列に、対応する範囲と識別子が存在する」ことの確認に限る。** 索引の生成過程、記述の真偽、作成者の本人性、業務への適用可能性、実提供元の記録、確認・採用の権限までは証明しない。また、現在の実装は関数呼び出しに限られ、CLIでの安全な作業領域読込みや自動的な確認記録への連携は未実装である。これらを実装する際も、既存の作業領域の境界確認と資料の同一性確認を迂回しない。
+
+## ER図から候補キー・関数従属性のレビューへ進む（#1126）
+
+`-hypotheses`に候補キーと関数従属性の**仮説**を記載したJSONを与えると、従来の`projection.json`、`review.json`、SVGに加え、`model-hypothesis-review.json`を出力します。既存の回答・変更検討で使う`review.json`の指紋は変えません。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input tools/reference-example-slide/testdata/partial_inspection.json \
+  -hypotheses /path/to/local-hypotheses.json \
+  -out /tmp/tei-example-review
+```
+
+`local-hypotheses.json`の合成例（この例は基底段階に発注レコードが一件だけあるため、**反例が見つからなくても採用には進みません**）:
+
+```json
+{
+  "schema": "tei.reference.example-model-hypotheses/v0",
+  "candidateKeys": [
+    {"id": "purchase-number-candidate", "table": "purchase_order", "fields": ["number"]}
+  ],
+  "functionalDependencies": [
+    {"id": "quantity-to-number", "table": "purchase_order", "determinants": ["quantity"], "dependents": ["number"]}
+  ]
+}
+```
+
+入力の表名・属性名には表示名や推測した物理列ではなく、`Catalog`が持つ識別子を指定します。実Worldを読み取った場合は`CatalogFromWorld`の意味属性IDが使われますが、その属性へのSource Index根拠がこの検査で確認されるわけではありません。未知の項目、不正な候補、古いモデル版、未知のJSONプロパティは出力開始前に拒否します。
+
+出力には、仮説ごとに次の区別を保ちます。
+
+- `kind`は`candidate-key`または`functional-dependency`。両者の反例の意味は異なります。
+- `table`と`fieldIds`は評価した意味上の表と属性。`diagramPlacementIds`には、この表が置かれた**すべてのER図上の配置**を記録します。属性を非表示にした配置も含み、表示設定で診断根拠を落としません。
+- `stage=base`は、検証したレコードが基底時点だけであることを示します。`frameIds`には基底時点を表示するスライドだけを記載し、後続段階へ結果を流用しません。
+- `recordPairs`は実例内で検出した矛盾の二レコード。比較不能なデータは`indeterminatePairs`等に残します。
+- `exampleFingerprint`、`catalogFingerprint`、`hypothesesFingerprint`、`fingerprint`で評価に使った入力を区別します。仮説やデータが変わればレビューを再生成し、古い結果を転用しません。配置順や仮説の記述順だけの変更はレビューの意味を変えません。
+
+`model-hypothesis-review.json`は既存の`review.json`や`answer-handoff.json`とは**別の未確認資料**です。回答を受理した、候補キーを採用した、関数従属性を意味モデルへ書き込んだ、あるいは既存の共通受理を通過したことを表しません。出力はファイル権限0600で保存し、元の具体例とともに機微なローカル検討資料として扱います。
+
+正式な業務識別子・関数従属性の宣言、対象の実際の出所確認、段階別の評価、DB主キーとの対応、図上の直接編集と受理は、引き続き[課題 #1126](https://github.com/hat47x/tei-platform/issues/1126)の未完了範囲です。
+
+
+## 候補キー・関数従属性の仮説と入力元の照合（#1126）
+
+前段の`model-hypothesis-review.json`に含まれる表・属性の識別子を、既存の入力元索引と実際の意味定義に結び付ける読み取り専用監査を追加しました。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input /path/to/workspace-matched-case.json \
+  -hypotheses /path/to/model-hypotheses.json \
+  -workspace-source /path/to/tei-workspace \
+  -out /tmp/tei-example-source-review
+```
+
+この例で`workspace-matched-case.json`の`catalog`は、指定した作業領域の意味モデルから導出した`Catalog`と一致している必要があります。`modelRevision`という文字列だけを合わせても受け付けません。`-workspace-source`は`-hypotheses`、`-input`、`-out`が必須であり、独立の`-world`指定とは併用できません。入力の照合が不成立なら**ファイル出力を開始する前に停止**します。
+
+`model-hypothesis-source-audit.json`は、各仮説が参照した意味上の表（`semantic-data`）と属性（`semantic-attribute`）について、実際の定義場所を調べた結果を記録します。`source-range-checked`は、その作業領域を読み込んだ時点の入力元索引について、原資料のバイト列・指紋・対象宣言の識別子・位置が一致したことを意味します。各結果には資料の相対パス、内容指紋、該当範囲を含めます。定義が無い、複数ある、位置が別の宣言を指す場合は区別して未確認とします。
+
+重要な境界があります。
+
+- **表・属性の定義が確認できても、候補キーや関数従属性の業務上の意味は確認されません。** 現在のTEI意味モデルには、それらの仮説を正式に宣言する型付き操作がありません。入力元索引に存在しない「業務キー定義」の場所を捏造せず、既存の共通受理用の別操作へ読み替えもしません。
+- 検査対象の`Catalog`は作業領域の読み込み結果から再導出し、同一読み込みのスナップショットと入力元索引を用います。独立したファイルの後追い読み取りを出所として使わず、スナップショットに無いパスも読み取りません。
+- スナップショットの一致は、ファイル読み込み後の実ファイルの最新性、OSの競合状態、情報の真偽、作成者の本人性、受理する権限を証明しません。
+- 出力は従来の`model-hypothesis-review.json`と別のファイルであり、`modelReviewFingerprint`と`hypothesesFingerprint`により同じレビュー対象へ結び付けます。既存の`review.json`・回答指紋を変更しません。保存は0600です。
+
+正式な業務キー・関数従属性の宣言方式、意味モデルへの差分操作、出所付き人間確認、ER図からの編集は引き続き[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)で追跡します。
+
+
+## 業務キー・関数従属性の宣言候補を型付きで持ち回る（#1126）
+
+既存の仮説検査、ER図レビュー、Workspaceの原資料出所監査を通った後に、**まだ採用されていない**業務上の候補キーと関数従属性を、独立した型付きの宣言候補として生成できます。いまの共通受理が対応しない業務規則を、`add-relation`などの別操作へ読み替えることはありません。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input /path/to/workspace-matched-case.json \
+  -hypotheses /path/to/model-hypotheses.json \
+  -workspace-source /path/to/tei-workspace \
+  -rule-intents /path/to/model-rule-intents.json \
+  -out /tmp/tei-example-model-draft
+```
+
+`model-rule-intents.json`は次の形です。二つの指紋および`issueId`には、直前の`model-hypothesis-review.json`と`model-hypothesis-source-audit.json`から**実際の値**を指定します。例示文字列をそのまま使っても検証を通過しません。
+
+```json
+{
+  "schema": "tei.reference.model-rule-draft-intent/v0",
+  "modelReviewFingerprint": "sha256:<モデル仮説レビューの実指紋>",
+  "sourceAuditFingerprint": "sha256:<出所監査の実指紋>",
+  "requests": [{
+    "issueId": "<レビュー内の実issueId>",
+    "proposedRuleId": "sales.child.business-key",
+    "rationale": "業務上この属性で一意に識別できるか確認する",
+    "claimedEvidence": [{
+      "kind": "document",
+      "ref": "documents/business-rules",
+      "fingerprint": "sha256:<参照文書の実指紋>",
+      "claimedBy": "author-claim-only"
+    }]
+  }]
+}
+```
+
+`claimedEvidence`は出所や発言者の**自己申告**であり、提出された文書の内容・本人性・承認権限を検証したものではありません。空の`claimedEvidence`も許可しますが、資料を省略しただけで承認できるわけではありません。
+
+生成する`model-rule-declaration-draft.json`は、候補キーなら`keyFields`、関数従属性なら`determinants`/`dependents`を**異なる型付き領域**として保持します。また、既存の表・属性のSource Index位置（`sourceBindings`）、反例の判定、未解決の作業、レビューと出所監査の指紋を保持します。宣言候補のIDは意味上の表IDを前置し、仮のローカル名にはハイフンを使用できます。ただし、このIDはまだ現行CoreのCanonical IDや承認済み規則IDではありません。
+
+| `status` | 意味 |
+| --- | --- |
+| `blocked-counterexample` | 具体例に確定した反例があるため、そのまま承認経路へ進めない |
+| `blocked-source-definition` | 表・属性の定義場所の出所照合が不足または不一致 |
+| `unverified-business-rule` | 反例・定義位置の障害は見つからなかったが、業務規則の真偽・承認は未確認 |
+
+`unverified-business-rule`は「採用可能」を意味しません。資料の申告や人名を付けても、**どの状態も自動的にAcceptedにはなりません**。現在の`tools/reference-shared-acceptance`に対応する型付きdeltaはまだ無く、この成果物から正本編集・DDL生成・物理PK/FK変更・Runtimeへの作用は実行しません。実Workspaceを再読込し、版・原資料・仮説・レビューが変われば古い入力を拒否します。CLIの出力先は明示指定、ファイル権限0600です。
+
+正式な規則の書式、業務識別子と物理キーの対応関係、Source Indexへの業務規則自体の定義、権限のある確認者による受理と影響解析は[Issue #1126](https://github.com/hat47x/tei-platform/issues/1126)の後続範囲です。
+
+
+## 未採用の業務キー・関数従属性を独立した規則ソースへ記述する（#1126）
+
+型付きの`model-rule-declaration-draft.json`ができた後、規則そのものに**独立した記述位置**を与える最小参照実装です。まだ`semantic/model.tei`の正本文法でも、`workspace.Load`が解釈する正式な規則でもありません。規則ファイルは**外部から提出された未採用の入力**として読み込み、既存のWorkspace Source Indexとは別の、`reference-candidate-key`／`reference-functional-dependency`を持つ参照用Source Indexに記録します。
+
+```text
+tei-model-rules v0
+candidate-key sales.child.business-key on sales.child fields sales.child.parent_id
+functional-dependency sales.child.business-to-owner on sales.child determinants sales.child.business_id dependents sales.child.owner_id
+```
+
+行頭の`#`はコメント、属性を複数指定する場合はカンマ区切りで記述します。正式な`ModelRuleDraftIntent`が参照する規則ID、種類、対象Data、全属性の組と**一字一句ではなく意味上の組として**照合し、規則の余分な追加、欠落、重複、別のDataへのすり替え、型の変更は拒否します。規則IDは提出された文書中の識別子トークンのバイト範囲へ対応付け、内容指紋と一緒に保持します。項目名と書式の見かけだけから正本規則を生成したり、物理PKを推測したりしません。
+
+```sh
+go run ./tools/reference-example-slide/cmd/tei-example-slide \
+  -input /path/to/workspace-matched-case.json \
+  -hypotheses /path/to/model-hypotheses.json \
+  -workspace-source /path/to/tei-workspace \
+  -rule-intents /path/to/model-rule-intents.json \
+  -rule-source-file /path/to/proposed-rules.txt \
+  -rule-source-path proposals/proposed-rules.txt \
+  -out /tmp/tei-model-rule-review
+```
+
+`model-rule-source-review.json`に参照Source Index、個々の定義位置、元の`ModelRuleDeclarationDraft`の指紋、未解決の権限・事実確認事項を記録します。`-rule-source-path`は提出者が付ける**論理的な相対パスの申告**です。`-rule-source-file`の内容がその位置にある、ファイルの所有者が誰か、Workspaceが管理していることを証明しません。危険な絶対パス・正規化できないパス・大きすぎる入力は拒否し、ファイル出力の前に全規則を照合します。
+
+提出されたソースへの参照には、Source Indexの`authoring`ロールと、正式な`semantic-*`とは異なる`reference-*`の種別を使用します。`definition`ロールや正本の`World.Semantics`には登録しません。`unverified-business-rule`は承認済みを意味しません。正式なSource Index登録、規則の受理、適用権限、他プラグインと共有する文法は、この実装を使って要件を確認した後の設計対象です。

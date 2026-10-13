@@ -1,0 +1,5 @@
+database request_store {
+    kind relational
+    ownership managed-here
+    uses semantic intake
+}

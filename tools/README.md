@@ -87,6 +87,7 @@
 
 | 場所 | 役割 |
 | --- | --- |
+| [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-driver-postgres-query/`](reference-driver-postgres-query/) | DriverからPostgreSQL問合せを実行する参照用起動点 |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
@@ -117,7 +118,9 @@
 
 | ファイル | 役割 |
 | --- | --- |
-| [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIやTEI全体検証は実行しない |
+| [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査と、自動健全性CIの公開PR境界・mainへのpush経路（コミットごとの同時実行集合、検査手順のシェル）を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIの実行、実際のpushイベントの挙動、TEI全体検証は扱わない |
+| [`verify-critical-path-e1-archive.py`](verify-critical-path-e1-archive.py) | E1合成証拠の8件原本と固定SHA目録、R0/R1/R2・未資格状態を照合する（製品Gateの検査ではない） |
+| [`test-critical-path-e1-archive.py`](test-critical-path-e1-archive.py) | E1保全検査の改ざん・欠落・偽資格の回帰試験 |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
 | [`run-business-procedure-gate-a.sh`](run-business-procedure-gate-a.sh) | 業務手順Gate Aの検証 |

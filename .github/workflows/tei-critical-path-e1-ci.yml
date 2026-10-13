@@ -154,6 +154,31 @@ jobs:
               stale.acceptedManifestSemanticSHA256);
             assert.equal(stale.mismatchDetectedByExternalTestHarness, true);
             assert.equal(stale.webServerRejectsMismatchedLabels, false);
+            // A whitespace-only R2 has DIFFERENT managed Source bytes, yet
+            // the SAME derived World and manifest. Semantic SHA equality is
+            // therefore not Source-revision authority.
+            const r2 = launch.equivalentSourceControl;
+            assert.equal(r2.evidenceNature,
+              "synthetic-running-web-whitespace-only-Source-R2-control");
+            assert.equal(r2.acceptedR1SourceRevision, lineage.sourceAfter);
+            assert.match(r2.externallyCheckedChangedSourceRevision, /^sha256:[0-9a-f]{64}$/);
+            assert.notEqual(r2.externallyCheckedChangedSourceRevision, lineage.sourceAfter);
+            assert.equal(r2.alteredSourceRelativePath, "applications/order-entry/application.tei");
+            assert.match(r2.sourceBeforeSHA256, /^[0-9a-f]{64}$/);
+            assert.match(r2.sourceAfterSHA256, /^[0-9a-f]{64}$/);
+            assert.notEqual(r2.sourceBeforeSHA256, r2.sourceAfterSHA256);
+            assert.equal(r2.derivedWorldSHA256, r2.acceptedWorldSHA256);
+            assert.equal(r2.derivedWorldIsSame, true);
+            assert.equal(r2.manifestSemanticSHA256, r2.acceptedManifestSemanticSHA256);
+            assert.equal(r2.manifestSemanticSHA256, positive.manifestSemanticSHA256);
+            assert.equal(r2.manifestMeaningIsSame, true);
+            assert.equal(r2.callerRevisionLabelsIdentical, true);
+            assert.equal(r2.sameTargetBinaryAsPositive, true);
+            assert.equal(r2.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(r2.mismatchDetectedBySourceRevisionCheck, true);
+            assert.equal(r2.mismatchNotVisibleInManifest, true);
+            assert.equal(r2.currentRuntimeVersionBindingEnforced, false);
+            assert.equal(r2.independentDatabaseRead, false);
             assert.equal(stale.currentRuntimeVersionBindingEnforced, false);
             assert.equal(stale.independentDatabaseRead, false);
             assert.equal(summary.staleSourceMismatchDetectedByHarness, true);
@@ -263,6 +288,31 @@ jobs:
             assert.equal(stale.acceptedR1RuleMissing, true);
             assert.equal(stale.mismatchDetectedByExternalTestHarness, true);
             assert.equal(stale.webServerRejectsMismatchedLabels, false);
+            // A whitespace-only R2 has DIFFERENT managed Source bytes, yet
+            // the SAME derived World and manifest. Semantic SHA equality is
+            // therefore not Source-revision authority.
+            const r2 = launch.equivalentSourceControl;
+            assert.equal(r2.evidenceNature,
+              "synthetic-running-web-whitespace-only-Source-R2-control");
+            assert.equal(r2.acceptedR1SourceRevision, lineage.sourceAfter);
+            assert.match(r2.externallyCheckedChangedSourceRevision, /^sha256:[0-9a-f]{64}$/);
+            assert.notEqual(r2.externallyCheckedChangedSourceRevision, lineage.sourceAfter);
+            assert.equal(r2.alteredSourceRelativePath, "applications/order-entry/application.tei");
+            assert.match(r2.sourceBeforeSHA256, /^[0-9a-f]{64}$/);
+            assert.match(r2.sourceAfterSHA256, /^[0-9a-f]{64}$/);
+            assert.notEqual(r2.sourceBeforeSHA256, r2.sourceAfterSHA256);
+            assert.equal(r2.derivedWorldSHA256, r2.acceptedWorldSHA256);
+            assert.equal(r2.derivedWorldIsSame, true);
+            assert.equal(r2.manifestSemanticSHA256, r2.acceptedManifestSemanticSHA256);
+            assert.equal(r2.manifestSemanticSHA256, positive.manifestSemanticSHA256);
+            assert.equal(r2.manifestMeaningIsSame, true);
+            assert.equal(r2.callerRevisionLabelsIdentical, true);
+            assert.equal(r2.sameTargetBinaryAsPositive, true);
+            assert.equal(r2.targetBinarySHA256, launch.targetBinarySHA256);
+            assert.equal(r2.mismatchDetectedBySourceRevisionCheck, true);
+            assert.equal(r2.mismatchNotVisibleInManifest, true);
+            assert.equal(r2.currentRuntimeVersionBindingEnforced, false);
+            assert.equal(r2.independentDatabaseRead, false);
             assert.equal(stale.currentRuntimeVersionBindingEnforced, false);
             assert.equal(stale.independentDatabaseRead, false);
             assert.equal(summary.staleSourceMismatchDetectedByHarness, true);
@@ -282,6 +332,8 @@ jobs:
             staleSourceMismatchDetectedByHarness: extended,
             staleSourceRejectedByTarget: false,
             runtimeVersionBindingVerified: false,
+            semanticEquivalentR2SourceMismatchObservedByHarness: extended,
+            semanticEquivalentR2RejectedByTarget: false,
             independentDatabaseRead: false,
             humanAcceptance: false,
             productGate: "UNQUALIFIED",
