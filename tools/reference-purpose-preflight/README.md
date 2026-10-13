@@ -41,6 +41,32 @@ go run ./tools/reference-purpose-preflight \
 go test ./tools/reference-purpose-preflight -count=1
 ```
 
+## 正本にあるValidationを確認する（第3段階）
+
+`order_entry.submit_order` の定義元を追跡できても、「出荷時の50万円承認規則」は証明されない。一方、既存の正本には `sales.order_line.line_number_positive`（受注明細の行番号に対する正数検査）が実際に記述され、`order_entry` がそれを利用する宣言も存在する。
+
+その違いを、**新しい規則や受理台帳を作らず**、既存の知識の適用条件検査と入力元索引で確かめる。
+
+```sh
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -application order_entry \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.line_number_positive
+```
+
+この入口では、正本のValidationが一意であること、指定したApplicationがそのValidationと名前空間を明示的に利用していること、型付き定義元と現在の照合値を検査する。満たす場合の `ruleMeaning=canonical-validation-declared` は、**正本に機械可読な意味宣言があること**を表す。人間の承認履歴を確認したという意味ではない。人の受理資格と実行時検証はそれぞれ `human-acceptance-not-verified`、`runtime-validation-not-evaluated` として残し、`executionAllowed=false` を維持する。
+
+実際の決定記録は既存のShared Acceptance側で照合できる。
+
+```sh
+go run ./tools/reference-shared-acceptance decisions -workspace reference/workspace
+```
+
+この決定記録は、保存された過去の判断と現在のソースがどう対応するかを確かめるための**既存の検査入口**であり、本ツール内に第二のDecision Indexは作らない。決定記録が `accepted` でも、現在の実行権限や、当該規則が人によって正式に確認されたことまで自動的に証明するわけではない。過去の変更の受理と、利用目的に対して必要な人間の確認範囲を区別する。
+
+この第3段階は業務規則の存在・出所を検査する参照実装であって、**50万円閾値を正本から導出したものではない**。適用期間、実行時のデータ、実Providerの能力、実行許可は後続の検証対象である。
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
