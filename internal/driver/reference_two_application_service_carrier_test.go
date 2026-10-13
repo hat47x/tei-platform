@@ -12,8 +12,8 @@ import (
 	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/driver"
-	"tei/internal/realization"
 	"tei/internal/plugin"
+	"tei/internal/realization"
 	pruntime "tei/internal/plugin/runtime"
 )
 
@@ -168,8 +168,8 @@ func TestReferenceApplicationsDispatchSameResolvedExecutorThroughServiceCarrier(
 
 	for _, tc := range []struct {
 		app, pattern core.CanonicalID
-		id int64
-		repair bool
+		id           int64
+		repair       bool
 	}{
 		{"order_entry", "order_entry.customer_reference", 42, false},
 		{"repair_intake", "repair_intake.customer_reference", 84, true},
@@ -220,7 +220,7 @@ func TestReferenceApplicationsDispatchSameResolvedExecutorThroughServiceCarrier(
 	acceptance.revoked = true
 	for _, tc := range []struct {
 		app, pattern core.CanonicalID
-		repair bool
+		repair       bool
 	}{
 		{"order_entry", "order_entry.customer_reference", false},
 		{"repair_intake", "repair_intake.customer_reference", true},
