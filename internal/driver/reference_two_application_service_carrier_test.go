@@ -240,4 +240,57 @@ func TestReferenceApplicationsDispatchSameResolvedExecutorThroughServiceCarrier(
 		t.Fatalf("revoked Service was invoked: received=%v verifier=%d accepted=%d",
 			process.received, verifier.calls, acceptance.calls)
 	}
+
+	// Application binding withdrawal is NOT shared Provider revocation.
+	// The next Resolver reads a fresh in-memory World with only the repair
+	// Application's Environment binding removed. Do not infer automatic
+	// live reload of an accepted Host plan from this isolated test.
+	acceptance.revoked = false
+	withoutRepairBinding := referenceWorld(t)
+	removed := 0
+	for i := range withoutRepairBinding.Environments {
+		if withoutRepairBinding.Environments[i].ID != "development" {
+			continue
+		}
+		kept := withoutRepairBinding.Environments[i].Bindings[:0:0]
+		for _, binding := range withoutRepairBinding.Environments[i].Bindings {
+			if binding.Application == "repair_intake" {
+				removed++
+				continue
+			}
+			kept = append(kept, binding)
+		}
+		withoutRepairBinding.Environments[i].Bindings = kept
+	}
+	if removed != 1 {
+		t.Fatalf("expected exactly one repair Environment binding, removed %d", removed)
+	}
+	_, err = driver.NewResolver(withoutRepairBinding).ExecuteReferenceContractQueryInEnvironment(
+		context.Background(), "development", "repair_intake", "repair_intake.customer_reference",
+		repairSource, 0, registry,
+	)
+	if err == nil {
+		t.Fatal("repair Application used shared Service without its own Environment binding")
+	}
+	if !slices.Equal(process.received, []int64{42, 84}) ||
+		verifier.calls != 2 || acceptance.calls != 4 {
+		t.Fatalf("unbound Application reached shared Service: received=%v verifier=%d accepted=%d",
+			process.received, verifier.calls, acceptance.calls)
+	}
+	orderResult, err := driver.NewResolver(withoutRepairBinding).ExecuteReferenceContractQueryInEnvironment(
+		context.Background(), "development", "order_entry", "order_entry.customer_reference",
+		orderSource, 0, registry,
+	)
+	if err != nil {
+		t.Fatalf("unrelated order Application lost the shared Service: %v", err)
+	}
+	if len(orderResult.Execution.Result.Rows) != 1 ||
+		orderResult.Execution.Result.Rows[0].Attributes["customer.customer.customer_id"] != int64(42) {
+		t.Fatalf("order Application received another result: %+v", orderResult.Execution.Result)
+	}
+	if !slices.Equal(process.received, []int64{42, 84, 42}) ||
+		verifier.calls != 3 || acceptance.calls != 5 {
+		t.Fatalf("binding withdrawal affected unrelated Application: received=%v verifier=%d accepted=%d",
+			process.received, verifier.calls, acceptance.calls)
+	}
 }
