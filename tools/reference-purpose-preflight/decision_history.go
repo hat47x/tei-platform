@@ -5,7 +5,6 @@ package main
 // actor's identity nor recreates the authority of Shared Acceptance.
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -142,7 +141,5 @@ func AttachDecisionHistory(report *WorkspaceAssessment, reader io.Reader) error 
 	return nil
 }
 
-// Compile-time assertion that a real JSON input can include nested record
-// payloads. Deliberately do not use DisallowUnknownFields: the Decision Index
-// producer owns all remaining fields, including diagnostic and review details.
-var _ = bytes.MinRead
+// Remaining Decision Index fields are owned by the Shared Acceptance producer.
+// This consumer deliberately reads only the fields needed for historical links.
