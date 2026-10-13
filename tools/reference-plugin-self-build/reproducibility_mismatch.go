@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"tei/tools/internal/gobuilder"
 )
 
 const selfBuildMismatchSchema = "tei.reference.self-build-reproducibility-failure/v0"
@@ -72,16 +74,13 @@ func emitSelfBuildMismatchEvidence(out io.Writer, err error) (bool, error) {
 // Compare files produced by real builder executions before any artifact lock
 // can be created. A missing output is an execution error, not a mismatch.
 func compareSelfBuildFileDigests(stage, firstPath, secondPath string) (string, string, error) {
-	first, err := hashFile(firstPath)
+	comparison, err := gobuilder.CompareArtifactFiles(firstPath, secondPath)
 	if err != nil {
-		return "", "", fmt.Errorf("hash first self-build output: %w", err)
+		return comparison.FirstDigest, comparison.SecondDigest, err
 	}
-	second, err := hashFile(secondPath)
-	if err != nil {
-		return first, "", fmt.Errorf("hash second self-build output: %w", err)
+	if !comparison.Reproducible {
+		return comparison.FirstDigest, comparison.SecondDigest,
+			nonReproducibleSelfBuild(stage, comparison.FirstDigest, comparison.SecondDigest)
 	}
-	if first != second {
-		return first, second, nonReproducibleSelfBuild(stage, first, second)
-	}
-	return first, second, nil
+	return comparison.FirstDigest, comparison.SecondDigest, nil
 }

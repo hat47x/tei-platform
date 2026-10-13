@@ -345,16 +345,11 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	); err != nil {
 		return evidence{}, fmt.Errorf("build second Plugin package builder: %w", err)
 	}
-	packageBuilderFirstDigest, err := hashFile(packageBuilderFirstPath)
+	packageBuilderFirstDigest, packageBuilderSecondDigest, err := compareSelfBuildFileDigests(
+		"package-builder-binary", packageBuilderFirstPath, packageBuilderSecondPath,
+	)
 	if err != nil {
 		return evidence{}, err
-	}
-	packageBuilderSecondDigest, err := hashFile(packageBuilderSecondPath)
-	if err != nil {
-		return evidence{}, err
-	}
-	if reproducible, _ := gobuilder.ResolveReproducibility(packageBuilderFirstDigest, packageBuilderSecondDigest); !reproducible {
-		return evidence{}, nonReproducibleSelfBuild("package-builder-binary", packageBuilderFirstDigest, packageBuilderSecondDigest)
 	}
 
 	packagePlan := plugin.BuildPlan{
@@ -503,16 +498,11 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	); err != nil {
 		return evidence{}, fmt.Errorf("build second native Plugin builder: %w", err)
 	}
-	nativeBuilderFirstDigest, err := hashFile(nativeBuilderFirstPath)
+	nativeBuilderFirstDigest, nativeBuilderSecondDigest, err := compareSelfBuildFileDigests(
+		"native-plugin-builder-binary", nativeBuilderFirstPath, nativeBuilderSecondPath,
+	)
 	if err != nil {
 		return evidence{}, err
-	}
-	nativeBuilderSecondDigest, err := hashFile(nativeBuilderSecondPath)
-	if err != nil {
-		return evidence{}, err
-	}
-	if reproducible, _ := gobuilder.ResolveReproducibility(nativeBuilderFirstDigest, nativeBuilderSecondDigest); !reproducible {
-		return evidence{}, nonReproducibleSelfBuild("native-plugin-builder-binary", nativeBuilderFirstDigest, nativeBuilderSecondDigest)
 	}
 
 	nativePlan := plugin.BuildPlan{
@@ -659,16 +649,11 @@ func runWithExactEngine(repo string, options exactEngineOptions) (evidence, erro
 	if err := buildReferencePlugin(root, goPath, secondPath, secondState); err != nil {
 		return evidence{}, err
 	}
-	firstDigest, err := hashFile(firstPath)
+	firstDigest, secondDigest, err := compareSelfBuildFileDigests(
+		"process-plugin-binary", firstPath, secondPath,
+	)
 	if err != nil {
 		return evidence{}, err
-	}
-	secondDigest, err := hashFile(secondPath)
-	if err != nil {
-		return evidence{}, err
-	}
-	if reproducible, _ := gobuilder.ResolveReproducibility(firstDigest, secondDigest); !reproducible {
-		return evidence{}, nonReproducibleSelfBuild("process-plugin-binary", firstDigest, secondDigest)
 	}
 
 	lockedBuild, err := plugin.LockBuildOutput(plan, firstDigest)

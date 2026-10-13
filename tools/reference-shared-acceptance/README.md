@@ -332,6 +332,10 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
 
+Shared Acceptanceでauthoritative Sourceを書き込む経路は、`os.OpenRoot(workspace)`で開いたWorkspaceルートに固定し、入力元の相対Sourceパスを一貫してそのルートから開きます。書込み前には親ディレクトリと終端ファイルのシンボリックリンクを拒否し、一時ファイル作成・実際の置換・失敗時復元を`os.Root`の相対操作で行います。新規Sourceは`Root.Link`のcreate-only公開により、並行プロセスが作成した同名ファイルを上書きしません。書込み途中でHostがWorkspaceの親ディレクトリをWorkspace外へのリンクに差し替えても、`Root`により外部のファイルは書き換えません（#1529）。
+
+ただし、この**書込み側のResource containment**は、Workspace読み込み時点のSource Reader（#1017）、review fingerprintと現権限の再確認、変更済みSourceの原子的Compare-and-Swap、複数Sourceの全体トランザクションを代替しません。また、`os.Root`はJS/WASM上でOSネイティブと同一の安全性を保証しません。実Wails Hostと、OS/ファイルシステム別の互換性は未検証です。
+
 既存の競合検出は、受理時の各Source書込み直前とロールバック開始時の**実バイト指紋**の再照合です。検査してから`os.Rename`等で置き換えるまでの時間差を消す原子的なcompare-and-swapではありません。親ディレクトリ・シンボリックリンク・inodeの同時差替えや、複数Writerの全体取引を防ぐ共有Source Authorityは引き続き未実装です（#1017 / #267）。`ROLLBACK_INCOMPLETE`がある場合には自動再試行せず、Sourceを再読込して人間の判断・競合解消を求めます。
 
 示さないこと:
