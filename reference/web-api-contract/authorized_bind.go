@@ -28,7 +28,7 @@ func AuthorizeBrowseRead(
 	}
 	if err := CheckExistingAuthorization(ctx, authorization,
 		trusted.PrincipalID, "browse", string(publication.PatternID)); err != nil {
-		return ReadPlan{}, ErrRejected
+		return ReadPlan{}, err
 	}
 	return publication.BindRead(values, trusted)
 }
@@ -53,7 +53,7 @@ func AuthorizeCommandIntent(
 	}
 	if err := CheckExistingAuthorization(ctx, authorization,
 		trustedPrincipalID, "execute", string(publication.PatternID)); err != nil {
-		return CommandIntent{}, ErrRejected
+		return CommandIntent{}, err
 	}
 	return BindCommand(request, spec, trustedPrincipalID)
 }
