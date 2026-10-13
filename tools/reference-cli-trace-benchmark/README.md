@@ -29,7 +29,7 @@ go test ./tools/reference-cli-trace-benchmark               # 出力不変の確
 - WSL2（Linux 6.18、amd64）、Go 1.26.9、13th Gen Intel Core i7-1365U（12論理CPU）、メモリ約7.8GiB
 - `GOMAXPROCS=12`。Windowsホストの負荷による揺れがあり、同じ処理でも十数％から数十％ずれます。数値は桁と傾向を見るためのものです。
 
-## 変更前の基準値（main cb5dd852相当、`BuildSourceIndex`変更前）
+## 変更前の基準値（変更前のコミットbc4b673e、基点65f83eee。largeの値は同じ処理を含む旧基点での計測）
 
 medium（5回の中央値）とlarge（3回の中央値）の処理別の時間です。
 
