@@ -79,6 +79,9 @@ func ExecuteScopedFixtureRead(
 		scoped = append(scoped, row)
 	}
 	if plan.Filter != nil {
+		if !validFixtureOperator(plan.Filter.Operator) {
+			return FixtureReadResult{}, ErrRejected
+		}
 		attribute := attributes[plan.Filter.FieldID]
 		filtered := make([]FixtureRow, 0, len(scoped))
 		for _, row := range scoped {
@@ -92,8 +95,6 @@ func ExecuteScopedFixtureRead(
 			}
 			if fixtureComparisonMatches(cmp, plan.Filter.Operator) {
 				filtered = append(filtered, row)
-			} else if !validFixtureOperator(plan.Filter.Operator) {
-				return FixtureReadResult{}, ErrRejected
 			}
 		}
 		scoped = filtered
