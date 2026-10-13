@@ -68,7 +68,7 @@ func TestBuildLockedDataOnlySemanticExportUsesExistingArtifactStore(t *testing.T
 		Builder: plugin.BuilderIdentity{
 			ID: core.MustCanonicalID("tei.builder.semantic_export_reference"), Version: "1.0.0",
 			ContractVersion: "tei.semantic-export-reference/v0",
-			ArtifactDigest: "sha256:" + strings.Repeat("c", 64),
+			ArtifactDigest:  "sha256:" + strings.Repeat("c", 64),
 		},
 		Recipe:     plugin.BuildRecipe{Kind: "deterministic-semantic-reference", Entrypoint: "os"},
 		OutputKind: semanticdistribution.SemanticReferenceOutputKind,
