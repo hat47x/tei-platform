@@ -22,13 +22,19 @@ type importEdge struct {
 }
 
 func productionImports(root string) ([]importEdge, error) {
+	return productionImportsWithin(root, "internal")
+}
+
+// productionImportsWithin inspects actual production Go imports, omitting
+// test-only and ignored Go source. It intentionally does not apply a policy.
+func productionImportsWithin(root, subtree string) ([]importEdge, error) {
 	var edges []importEdge
-	err := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, d fs.DirEntry, walkErr error) error {
+	err := filepath.WalkDir(filepath.Join(root, subtree), func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if d.IsDir() {
-			if path != filepath.Join(root, "internal") {
+			if path != filepath.Join(root, subtree) {
 				name := d.Name()
 				if name == "testdata" || name == "vendor" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
 					return fs.SkipDir
@@ -137,6 +143,114 @@ func boundaryViolation(e importEdge, module string) string {
 		}
 	}
 	return ""
+}
+
+// coreBoundaryViolation protects the migrated source-of-truth packages from
+// dependencies on TEI's host, plugin, tooling and reference implementations.
+// It deliberately permits other core packages and third-party imports: an
+// isolated build proves resolvable dependencies; this is only a source boundary.
+func coreBoundaryViolation(e importEdge, module string) string {
+	if e.source != "core" && !strings.HasPrefix(e.source, "core/") {
+		return ""
+	}
+	if !strings.HasPrefix(e.path, module+"/") {
+		return ""
+	}
+	local := strings.TrimPrefix(e.path, module+"/")
+	if local == "core" || strings.HasPrefix(local, "core/") {
+		return ""
+	}
+	return "Core must not import TEI implementation, tooling or reference packages outside core/"
+}
+
+func TestCoreBoundaryViolationClassification(t *testing.T) {
+	for _, tc := range []struct {
+		source, imported string
+		violation        bool
+	}{
+		{"core/identity", "fmt", false},
+		{"core/generation", "tei/core/effect", false},
+		{"core/generation", "tei/core", false},
+		{"core/identity", "github.com/thirdparty/example", false},
+		{"core/identity", "tei/internal/core", true},
+		{"core/generation", "tei/internal/composition", true},
+		{"core/generation", "tei/plugins/order-quote", true},
+		{"core/subject", "tei/reference/composition-kernel", true},
+		{"core/effect", "tei/cmd/tei", true},
+		{"core/effect", "tei/tools/diagnostics", true},
+		{"core/identity", "tei/corelike", true},
+		{"internal/composition", "tei/internal/plugin", false},
+	} {
+		got := coreBoundaryViolation(importEdge{source: tc.source, path: tc.imported}, "tei")
+		if (got != "") != tc.violation {
+			t.Errorf("%s -> %s: violation=%q, want %v", tc.source, tc.imported, got, tc.violation)
+		}
+	}
+	changed := importEdge{source: "core/generation", path: "github.com/example/tei-platform/internal/plugin"}
+	if coreBoundaryViolation(changed, "github.com/example/tei-platform") == "" {
+		t.Fatal("module rename bypassed Core boundary")
+	}
+	if coreBoundaryViolation(changed, "tei") != "" {
+		t.Fatal("unrelated module incorrectly rejected")
+	}
+}
+
+func TestCoreProductionDependencyBoundaries(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Clean(filepath.Join(wd, "..", ".."))
+	module, err := readModulePath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edges, err := productionImportsWithin(root, "core")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(edges) == 0 {
+		t.Fatal("no Core production imports inspected")
+	}
+	for _, e := range edges {
+		if reason := coreBoundaryViolation(e, module); reason != "" {
+			t.Errorf("%s imports %s: %s", e.file, e.path, reason)
+		}
+	}
+}
+
+func TestCoreProductionScannerFailsClosed(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "core", "generation")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(dir, "router.go")
+	if err := os.WriteFile(source, []byte("package generation\\nimport \\"tei/internal/plugin\\"\\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "router_test.go"), []byte("not valid Go"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"testdata", "vendor", "_ignored"} {
+		ignored := filepath.Join(dir, name)
+		if err := os.MkdirAll(ignored, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(ignored, "fake.go"), []byte("not valid Go"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	edges, err := productionImportsWithin(root, "core")
+	if err != nil || len(edges) != 1 || edges[0].file != "core/generation/router.go" || coreBoundaryViolation(edges[0], "tei") == "" {
+		t.Fatalf("Core import not rejected: edges=%v, err=%v", edges, err)
+	}
+	if err := os.WriteFile(source, []byte("package generation\\nimport (\\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := productionImportsWithin(root, "core"); err == nil {
+		t.Fatal("malformed Core production source must fail closed")
+	}
 }
 
 func TestBoundaryViolationClassification(t *testing.T) {
