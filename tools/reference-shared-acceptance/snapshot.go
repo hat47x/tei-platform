@@ -17,9 +17,19 @@ type snapshot struct {
 	loaded   workspace.Result
 	index    sourceindex.Index
 	revision string
+	manifest manifestFingerprint
 }
 
 func takeSnapshot(root string) (snapshot, error) {
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return snapshot{}, fmt.Errorf("open Workspace manifest root: %w", err)
+	}
+	defer files.Close()
+	beforeManifest, err := readAcceptanceManifest(files)
+	if err != nil {
+		return snapshot{}, err
+	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
 		return snapshot{}, fmt.Errorf("workspaceを読み込めません: %w", err)
@@ -28,7 +38,10 @@ func takeSnapshot(root string) (snapshot, error) {
 	if err != nil {
 		return snapshot{}, fmt.Errorf("Source Indexを構築できません: %w", err)
 	}
-	return snapshot{root: root, loaded: loaded, index: index, revision: revisionOf(index)}, nil
+	if err := checkAcceptanceManifest(files, beforeManifest); err != nil {
+		return snapshot{}, fmt.Errorf("Workspace changed during Source snapshot: %w", err)
+	}
+	return snapshot{root: root, loaded: loaded, index: index, revision: revisionOf(index), manifest: beforeManifest}, nil
 }
 
 // revisionOfは、管理対象source全fileの（相対path, 内容fingerprint）からmodel revisionを導く。
