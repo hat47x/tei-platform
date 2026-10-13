@@ -26,12 +26,12 @@ type Projection struct {
 }
 
 type DataView struct {
-	ID                string          `json:"id"`
-	Symbol            string          `json:"symbol"`
-	Attributes        []AttributeView `json:"attributes"`
-	CandidateKeys     []LogicalKey    `json:"candidateKeys"`
-	Dependencies      []Dependency    `json:"functionalDependencies"`
-	PhysicalMappingIDs []string       `json:"physicalMappingIds"`
+	ID                 string          `json:"id"`
+	Symbol             string          `json:"symbol"`
+	Attributes         []AttributeView `json:"attributes"`
+	CandidateKeys      []LogicalKey    `json:"candidateKeys"`
+	Dependencies       []Dependency    `json:"functionalDependencies"`
+	PhysicalMappingIDs []string        `json:"physicalMappingIds"`
 }
 
 type AttributeView struct {
@@ -65,14 +65,14 @@ type RelationKey struct {
 }
 
 type TableView struct {
-	MappingID       string       `json:"mappingId"`
-	DatabaseID      string       `json:"databaseId"`
-	SemanticDataID  string       `json:"semanticDataId"`
-	Name            string       `json:"name"`
-	Columns         []ColumnView `json:"columns"`
-	PrimaryKey      []string     `json:"primaryKey"`
-	UniqueKeys      []UniqueKey  `json:"uniqueKeys"`
-	ForeignKeys     []ForeignKey `json:"foreignKeys"`
+	MappingID      string       `json:"mappingId"`
+	DatabaseID     string       `json:"databaseId"`
+	SemanticDataID string       `json:"semanticDataId"`
+	Name           string       `json:"name"`
+	Columns        []ColumnView `json:"columns"`
+	PrimaryKey     []string     `json:"primaryKey"`
+	UniqueKeys     []UniqueKey  `json:"uniqueKeys"`
+	ForeignKeys    []ForeignKey `json:"foreignKeys"`
 }
 
 type ColumnView struct {
