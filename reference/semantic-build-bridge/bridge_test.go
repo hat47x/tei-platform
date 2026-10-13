@@ -72,7 +72,7 @@ func planFixture(packageID plugin.Identity, sourceDigest string) plugin.BuildPla
 			ID: packageID.ID, Version: packageID.Version,
 		}),
 		Sources: []plugin.BuildSource{{
-			Kind: "semantic-namespace", ID: "os", Locator: "provider:semantic/os",
+			Kind: "semantic-namespace-snapshot", ID: "os", Locator: "derived:workspace/os",
 			Digest: sourceDigest,
 		}},
 		Builder: plugin.BuilderIdentity{
