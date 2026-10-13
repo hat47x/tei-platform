@@ -48,6 +48,13 @@ func runProcessHelper(mode string) int {
 		time.Sleep(30 * time.Second)
 		return 0
 	}
+	if mode == "stderr-large" || mode == "stderr-large-then-wait" {
+		_, _ = fmt.Fprint(os.Stderr, "TEI_PROCESS_STDERR_SECRET_CANARY"+strings.Repeat("x", 4096))
+		if mode == "stderr-large-then-wait" {
+			time.Sleep(30 * time.Second)
+		}
+		return 0
+	}
 	if mode == "exit" {
 		_, _ = fmt.Fprintln(os.Stderr, "TOP-SECRET-SHOULD-NOT-LEAK")
 		return 7
@@ -380,6 +387,39 @@ func TestStdioProcessLauncherKillsChildOnStdoutOverflow(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed > 4*time.Second {
 		t.Fatalf("oversized child was not stopped promptly: %s", elapsed)
+	}
+}
+
+// A child that floods stderr must not retain a Host invocation indefinitely
+// after its output exceeds the independent diagnostic budget. A successful
+// exit after excessive stderr must also be rejected, rather than accepted as
+// if the protocol exchange had been normal.
+func TestStdioProcessLauncherRejectsAndTerminatesExcessiveStderr(t *testing.T) {
+	for _, mode := range []string{"stderr-large", "stderr-large-then-wait"} {
+		t.Run(mode, func(t *testing.T) {
+			launcher, command := helperLauncher(t, mode)
+			launcher.MaxStderrBytes = 128
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			started := time.Now()
+			resp, err := launcher.Invoke(ctx, command, processRequest())
+			if err == nil || !strings.Contains(err.Error(), "stderr exceeds 128 bytes") {
+				t.Fatalf("excessive diagnostic output accepted: %v", err)
+			}
+			if strings.Contains(err.Error(), "TEI_PROCESS_STDERR_SECRET_CANARY") ||
+				strings.Contains(err.Error(), "stderrSHA256=") {
+				t.Fatal("rejected diagnostic stream escaped into Host error")
+			}
+			if resp.Status != "" || len(resp.Payload) != 0 {
+				t.Fatal("failed Process invocation returned an untrusted response")
+			}
+			if ctx.Err() != nil {
+				t.Fatalf("stderr overflow unexpectedly canceled parent context: %v", ctx.Err())
+			}
+			if elapsed := time.Since(started); elapsed > 4*time.Second {
+				t.Fatalf("child emitting excessive stderr was not stopped promptly: %s", elapsed)
+			}
+		})
 	}
 }
 
