@@ -15,11 +15,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const (
-	defaultProcessResponseLimit = 8 << 20 // 8 MiB
-	defaultProcessStderrLimit   = 8 << 20 // 8 MiB
+	defaultProcessResponseLimit  = 8 << 20 // 8 MiB
+	defaultProcessStderrLimit    = 8 << 20 // 8 MiB
+	defaultProcessExecutionLimit = 30 * time.Minute
 )
 
 // StdioProcessLauncher is the smallest real OS-process implementation of
@@ -45,6 +47,17 @@ type StdioProcessLauncher struct {
 	// Zero uses the conservative default; this is separate from the stdout
 	// response limit because stderr is not part of the plugin wire protocol.
 	MaxStderrBytes int
+	// MaxExecutionDuration bounds an otherwise silent one-shot plugin.
+	// Zero uses 30 minutes; a negative value is rejected before launch.
+	// The trusted Host may increase it for legitimate long-running tasks.
+	MaxExecutionDuration time.Duration
+}
+
+func (l StdioProcessLauncher) executionDuration() time.Duration {
+	if l.MaxExecutionDuration > 0 {
+		return l.MaxExecutionDuration
+	}
+	return defaultProcessExecutionLimit
 }
 
 var _ ProcessLauncher = StdioProcessLauncher{}
@@ -82,6 +95,10 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		return Response{}, fmt.Errorf("process plugin executable must be a single name/path; use argv for arguments")
 	}
 
+	if l.MaxExecutionDuration < 0 {
+		return Response{}, fmt.Errorf("process plugin execution limit must not be negative")
+	}
+
 	// Reject ambiguous or malformed host-approved variables before executable
 	// lookup or process creation. In particular, PATH must have one meaning for
 	// our resolver and the operating system's child environment.
@@ -104,7 +121,7 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 	// than allowed to keep consuming CPU or hold a resource lease indefinitely.
 	// Use a child-specific context so that a size violation cannot cancel the
 	// caller's context or any sibling invocation.
-	runCtx, stop := context.WithCancel(ctx)
+	runCtx, stop := context.WithTimeout(ctx, l.executionDuration())
 	defer stop()
 	stdout := &boundedCapture{limit: limit, onOverflow: stop}
 	stderrLimit := l.MaxStderrBytes
@@ -120,6 +137,10 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		return Response{}, err
 	}
 	cmd := exec.CommandContext(runCtx, resolved, command.Args...)
+	// Do not wait indefinitely for descendants that inherited the stdio pipes
+	// after the direct child exits or the Host cancels its execution context.
+	// WaitDelay closes the pipes; it does NOT terminate the descendant tree.
+	cmd.WaitDelay = 2 * time.Second
 	cmd.ExtraFiles = extraFiles
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
@@ -153,6 +174,9 @@ func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context,
 		}
 		if stderr.overflow {
 			return Response{}, fmt.Errorf("process plugin executable %q stderr exceeds %d bytes", command.Executable, stderrLimit)
+		}
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			return Response{}, fmt.Errorf("process plugin execution time limit exceeded: %w", context.DeadlineExceeded)
 		}
 		return Response{}, processExecutionError(command.Executable, err, stderr)
 	}
