@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -89,12 +90,9 @@ func lowercaseHex(value string) bool {
 // privateDraftFileMode centralizes the Unix permission policy used by
 // discovery. Windows ACL checks remain the responsibility of the Host.
 func privateDraftFileMode(mode os.FileMode) error {
-	if mode&os.ModePerm != mode.Perm() {
-		return ErrDraftStoreRefused
-	}
 	// os.Root's permission policy is identical to Recover's: Windows ACLs
 	// cannot be inferred from Unix permission bits.
-	if mode.Perm()&0o077 != 0 && os.PathSeparator == '/' {
+	if runtime.GOOS != "windows" && mode.Perm()&0o077 != 0 {
 		return ErrDraftStoreRefused
 	}
 	return nil
